@@ -4,7 +4,7 @@ Oscillator Pattern Recognizers - CCI, Stochastic, Williams %R, MFI
 This module provides pattern recognition for oscillator-based technical indicators.
 """
 
-from typing import Any, Dict, Optional
+from typing import Optional
 
 import pandas as pd
 
@@ -32,12 +32,35 @@ except ImportError:
     def compute_mfi(df: pd.DataFrame, period: int = 14) -> pd.Series:
         return pd.Series([50.0] * len(df), index=df.index)
 
-from .base import PatternRecognizer, SignalResult, MultiTimeframeData
+from ..types import PatternConfig
+from .base import MultiTimeframeData, PatternRecognizer, RegimeAdjustment, SignalResult
 
-try:
-    from ..types import RegimeAdjustment
-except ImportError:
-    RegimeAdjustment = Dict[str, Any]  # type: ignore
+
+def _iter_multi_timeframe_frames(
+    multi_timeframe_data: Optional[MultiTimeframeData],
+    *,
+    min_length: int = 20,
+) -> list[pd.DataFrame]:
+    """Yield valid timeframe DataFrames from multi-timeframe payloads."""
+    if not multi_timeframe_data:
+        return []
+
+    frames: list[pd.DataFrame] = []
+    for tf_data in multi_timeframe_data.values():
+        if not isinstance(tf_data, dict):
+            continue
+        tf_df = tf_data.get("data")
+        if isinstance(tf_df, pd.DataFrame) and len(tf_df) > min_length:
+            frames.append(tf_df)
+    return frames
+
+
+def _coerce_level(value: object, default: float) -> float:
+    """Safely coerce threshold level values into float."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 
 
 class CCIRecognizer(PatternRecognizer):
@@ -46,7 +69,7 @@ class CCIRecognizer(PatternRecognizer):
     Identifies overbought/oversold conditions and trend signals.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[PatternConfig] = None):
         super().__init__(config)
         self.pattern_type = "cci"
         self.overbought_level = self.config.get("overbought_level", 100)
@@ -99,8 +122,12 @@ class CCIRecognizer(PatternRecognizer):
             # Regime-aware threshold adjustment
             if self.regime_aware and multi_timeframe_data:
                 adjusted_levels = self._adjust_thresholds_for_regime(multi_timeframe_data)
-                overbought_level = float(adjusted_levels.get('overbought', self.overbought_level))
-                oversold_level = float(adjusted_levels.get('oversold', self.oversold_level))
+                overbought_level = _coerce_level(
+                    adjusted_levels.get("overbought"), float(self.overbought_level)
+                )
+                oversold_level = _coerce_level(
+                    adjusted_levels.get("oversold"), float(self.oversold_level)
+                )
             else:
                 overbought_level = float(self.overbought_level)
                 oversold_level = float(self.oversold_level)
@@ -169,7 +196,7 @@ class CCIRecognizer(PatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int,
-        multi_timeframe_data: Dict[str, Any]
+        multi_timeframe_data: MultiTimeframeData,
     ) -> float:
         """
         Analyze CCI alignment across multiple timeframes.
@@ -188,26 +215,23 @@ class CCIRecognizer(PatternRecognizer):
             aligned_timeframes = 0
 
             # Check alignment with higher timeframes
-            for tf, tf_data in multi_timeframe_data.items():
-                if isinstance(tf_data, dict) and 'data' in tf_data:
-                    tf_df = tf_data['data']
-                    if len(tf_df) > 20:
-                        try:
-                            tf_cci = compute_cci(tf_df)
-                            if len(tf_cci) > 0:
-                                latest_tf_cci = tf_cci.iloc[-1]
+            for tf_df in _iter_multi_timeframe_frames(multi_timeframe_data):
+                try:
+                    tf_cci = compute_cci(tf_df)
+                    if len(tf_cci) > 0:
+                        latest_tf_cci = tf_cci.iloc[-1]
 
-                                # Check if signals align
-                                base_signal = 1 if base_cci > 0 else -1
-                                tf_signal = 1 if latest_tf_cci > 0 else -1
+                        # Check if signals align
+                        base_signal = 1 if base_cci > 0 else -1
+                        tf_signal = 1 if latest_tf_cci > 0 else -1
 
-                                if base_signal == tf_signal:
-                                    alignment_score += 0.2
-                                    aligned_timeframes += 1
-                                else:
-                                    alignment_score -= 0.1
-                        except Exception:
-                            continue
+                        if base_signal == tf_signal:
+                            alignment_score += 0.2
+                            aligned_timeframes += 1
+                        else:
+                            alignment_score -= 0.1
+                except Exception:
+                    continue
 
             # Boost confidence if multiple timeframes align
             if aligned_timeframes >= 2:
@@ -242,25 +266,22 @@ class CCIRecognizer(PatternRecognizer):
             if multi_timeframe_data:
                 volatility_indicators = []
 
-                for tf, tf_data in multi_timeframe_data.items():
-                    if isinstance(tf_data, dict) and 'data' in tf_data:
-                        tf_df = tf_data['data']
-                        if len(tf_df) > 20:
-                            try:
-                                # Calculate ATR as volatility proxy
-                                high_low = tf_df['high'] - tf_df['low']
-                                high_close = (tf_df['high'] - tf_df['close'].shift(1)).abs()
-                                low_close = (tf_df['low'] - tf_df['close'].shift(1)).abs()
-                                tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-                                atr = tr.rolling(14).mean()
+                for tf_df in _iter_multi_timeframe_frames(multi_timeframe_data):
+                    try:
+                        # Calculate ATR as volatility proxy
+                        high_low = tf_df["high"] - tf_df["low"]
+                        high_close = (tf_df["high"] - tf_df["close"].shift(1)).abs()
+                        low_close = (tf_df["low"] - tf_df["close"].shift(1)).abs()
+                        tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+                        atr = tr.rolling(14).mean()
 
-                                if len(atr) > 0:
-                                    current_atr = atr.iloc[-1]
-                                    avg_price = tf_df['close'].iloc[-1]
-                                    volatility = current_atr / avg_price
-                                    volatility_indicators.append(volatility)
-                            except Exception:
-                                continue
+                        if len(atr) > 0:
+                            current_atr = atr.iloc[-1]
+                            avg_price = tf_df["close"].iloc[-1]
+                            volatility = current_atr / avg_price
+                            volatility_indicators.append(volatility)
+                    except Exception:
+                        continue
 
                 if volatility_indicators:
                     avg_volatility = sum(volatility_indicators) / len(volatility_indicators)
@@ -293,7 +314,7 @@ class StochasticRecognizer(PatternRecognizer):
     Identifies overbought/oversold conditions using %K and %D lines.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[PatternConfig] = None):
         super().__init__(config)
         self.pattern_type = "stochastic"
         self.overbought_level = self.config.get("overbought_level", 80)
@@ -308,7 +329,7 @@ class StochasticRecognizer(PatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+        multi_timeframe_data: Optional[MultiTimeframeData] = None,
     ) -> Optional[SignalResult]:
         """
         Recognize Stochastic patterns with multi-timeframe support.
@@ -347,8 +368,12 @@ class StochasticRecognizer(PatternRecognizer):
             # Regime-aware threshold adjustment
             if self.regime_aware and multi_timeframe_data:
                 adjusted_levels = self._adjust_thresholds_for_regime(multi_timeframe_data)
-                overbought_level = float(adjusted_levels.get('overbought') or self.overbought_level)
-                oversold_level = float(adjusted_levels.get('oversold') or self.oversold_level)
+                overbought_level = _coerce_level(
+                    adjusted_levels.get("overbought"), float(self.overbought_level)
+                )
+                oversold_level = _coerce_level(
+                    adjusted_levels.get("oversold"), float(self.oversold_level)
+                )
             else:
                 overbought_level = float(self.overbought_level)
                 oversold_level = float(self.oversold_level)
@@ -451,7 +476,7 @@ class StochasticRecognizer(PatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int,
-        multi_timeframe_data: Dict[str, Any]
+        multi_timeframe_data: MultiTimeframeData,
     ) -> float:
         """
         Analyze Stochastic alignment across multiple timeframes.
@@ -473,29 +498,30 @@ class StochasticRecognizer(PatternRecognizer):
             aligned_timeframes = 0
 
             # Check alignment with higher timeframes
-            for tf, tf_data in multi_timeframe_data.items():
-                if isinstance(tf_data, dict) and 'data' in tf_data:
-                    tf_df = tf_data['data']
-                    if len(tf_df) > 20:
-                        try:
-                            tf_stoch = compute_stochastic(tf_df)
-                            if len(tf_stoch) > 0:
-                                latest_tf_k = tf_stoch["stoch_k"].iloc[-1]
-                                latest_tf_d = tf_stoch["stoch_d"].iloc[-1]
+            for tf_df in _iter_multi_timeframe_frames(multi_timeframe_data):
+                try:
+                    tf_stoch = compute_stochastic(tf_df)
+                    if len(tf_stoch) > 0:
+                        latest_tf_k = tf_stoch["stoch_k"].iloc[-1]
+                        latest_tf_d = tf_stoch["stoch_d"].iloc[-1]
 
-                                # Check if signals align (both overbought/oversold)
-                                base_overbought = base_k >= 80 and base_d >= 80
-                                base_oversold = base_k <= 20 and base_d <= 20
-                                tf_overbought = latest_tf_k >= 80 and latest_tf_d >= 80
-                                tf_oversold = latest_tf_k <= 20 and latest_tf_d <= 20
+                        # Check if signals align (both overbought/oversold)
+                        base_overbought = base_k >= 80 and base_d >= 80
+                        base_oversold = base_k <= 20 and base_d <= 20
+                        tf_overbought = latest_tf_k >= 80 and latest_tf_d >= 80
+                        tf_oversold = latest_tf_k <= 20 and latest_tf_d <= 20
 
-                                if (base_overbought and tf_overbought) or (base_oversold and tf_oversold):
-                                    alignment_score += 0.25
-                                    aligned_timeframes += 1
-                                elif (base_overbought and tf_oversold) or (base_oversold and tf_overbought):
-                                    alignment_score -= 0.15
-                        except Exception:
-                            continue
+                        if (base_overbought and tf_overbought) or (
+                            base_oversold and tf_oversold
+                        ):
+                            alignment_score += 0.25
+                            aligned_timeframes += 1
+                        elif (base_overbought and tf_oversold) or (
+                            base_oversold and tf_overbought
+                        ):
+                            alignment_score -= 0.15
+                except Exception:
+                    continue
 
             # Boost confidence if multiple timeframes align
             if aligned_timeframes >= 2:
@@ -530,25 +556,22 @@ class StochasticRecognizer(PatternRecognizer):
             if multi_timeframe_data:
                 trend_indicators = []
 
-                for tf, tf_data in multi_timeframe_data.items():
-                    if isinstance(tf_data, dict) and 'data' in tf_data:
-                        tf_df = tf_data['data']
-                        if len(tf_df) > 20:
-                            try:
-                                # Calculate trend strength using moving averages
-                                sma_20 = tf_df['close'].rolling(20).mean()
-                                sma_50 = tf_df['close'].rolling(50).mean()
+                for tf_df in _iter_multi_timeframe_frames(multi_timeframe_data):
+                    try:
+                        # Calculate trend strength using moving averages
+                        sma_20 = tf_df["close"].rolling(20).mean()
+                        sma_50 = tf_df["close"].rolling(50).mean()
 
-                                if len(sma_20) > 0 and len(sma_50) > 0:
-                                    current_price = tf_df['close'].iloc[-1]
-                                    current_sma20 = sma_20.iloc[-1]
-                                    current_sma50 = sma_50.iloc[-1]
+                        if len(sma_20) > 0 and len(sma_50) > 0:
+                            current_price = tf_df["close"].iloc[-1]
+                            current_sma20 = sma_20.iloc[-1]
+                            current_sma50 = sma_50.iloc[-1]
 
-                                    # Trend strength based on MA separation
-                                    trend_strength = abs(current_sma20 - current_sma50) / current_price
-                                    trend_indicators.append(trend_strength)
-                            except Exception:
-                                continue
+                            # Trend strength based on MA separation
+                            trend_strength = abs(current_sma20 - current_sma50) / current_price
+                            trend_indicators.append(trend_strength)
+                    except Exception:
+                        continue
 
                 if trend_indicators:
                     avg_trend_strength = sum(trend_indicators) / len(trend_indicators)
@@ -581,7 +604,7 @@ class WilliamsRRecognizer(PatternRecognizer):
     Identifies overbought/oversold conditions using Williams %R oscillator.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[PatternConfig] = None):
         super().__init__(config)
         self.pattern_type = "williams_r"
         self.overbought_level = self.config.get("overbought_level", -20)
@@ -596,7 +619,7 @@ class WilliamsRRecognizer(PatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+        multi_timeframe_data: Optional[MultiTimeframeData] = None,
     ) -> Optional[SignalResult]:
         """
         Recognize Williams %R patterns with multi-timeframe support.
@@ -634,8 +657,12 @@ class WilliamsRRecognizer(PatternRecognizer):
             # Regime-aware threshold adjustment
             if self.regime_aware and multi_timeframe_data:
                 adjusted_levels = self._adjust_thresholds_for_regime(multi_timeframe_data)
-                overbought_level = float(adjusted_levels.get('overbought') or self.overbought_level)
-                oversold_level = float(adjusted_levels.get('oversold') or self.oversold_level)
+                overbought_level = _coerce_level(
+                    adjusted_levels.get("overbought"), float(self.overbought_level)
+                )
+                oversold_level = _coerce_level(
+                    adjusted_levels.get("oversold"), float(self.oversold_level)
+                )
             else:
                 overbought_level = float(self.overbought_level)
                 oversold_level = float(self.oversold_level)
@@ -704,7 +731,7 @@ class WilliamsRRecognizer(PatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int,
-        multi_timeframe_data: Dict[str, Any]
+        multi_timeframe_data: MultiTimeframeData,
     ) -> float:
         """
         Analyze Williams %R alignment across multiple timeframes.
@@ -723,28 +750,29 @@ class WilliamsRRecognizer(PatternRecognizer):
             aligned_timeframes = 0
 
             # Check alignment with higher timeframes
-            for tf, tf_data in multi_timeframe_data.items():
-                if isinstance(tf_data, dict) and 'data' in tf_data:
-                    tf_df = tf_data['data']
-                    if len(tf_df) > 20:
-                        try:
-                            tf_wr = compute_williams_r(tf_df)
-                            if len(tf_wr) > 0:
-                                latest_tf_wr = tf_wr.iloc[-1]
+            for tf_df in _iter_multi_timeframe_frames(multi_timeframe_data):
+                try:
+                    tf_wr = compute_williams_r(tf_df)
+                    if len(tf_wr) > 0:
+                        latest_tf_wr = tf_wr.iloc[-1]
 
-                                # Check if signals align (both overbought/oversold)
-                                base_overbought = base_wr >= -20
-                                base_oversold = base_wr <= -80
-                                tf_overbought = latest_tf_wr >= -20
-                                tf_oversold = latest_tf_wr <= -80
+                        # Check if signals align (both overbought/oversold)
+                        base_overbought = base_wr >= -20
+                        base_oversold = base_wr <= -80
+                        tf_overbought = latest_tf_wr >= -20
+                        tf_oversold = latest_tf_wr <= -80
 
-                                if (base_overbought and tf_overbought) or (base_oversold and tf_oversold):
-                                    alignment_score += 0.25
-                                    aligned_timeframes += 1
-                                elif (base_overbought and tf_oversold) or (base_oversold and tf_overbought):
-                                    alignment_score -= 0.15
-                        except Exception:
-                            continue
+                        if (base_overbought and tf_overbought) or (
+                            base_oversold and tf_oversold
+                        ):
+                            alignment_score += 0.25
+                            aligned_timeframes += 1
+                        elif (base_overbought and tf_oversold) or (
+                            base_oversold and tf_overbought
+                        ):
+                            alignment_score -= 0.15
+                except Exception:
+                    continue
 
             # Boost confidence if multiple timeframes align
             if aligned_timeframes >= 2:
@@ -779,19 +807,20 @@ class WilliamsRRecognizer(PatternRecognizer):
             if multi_timeframe_data:
                 momentum_indicators = []
 
-                for tf, tf_data in multi_timeframe_data.items():
-                    if isinstance(tf_data, dict) and 'data' in tf_data:
-                        tf_df = tf_data['data']
-                        if len(tf_df) > 20:
-                            try:
-                                # Calculate momentum using ROC (Rate of Change)
-                                roc = (tf_df['close'] - tf_df['close'].shift(10)) / tf_df['close'].shift(10) * 100
+                for tf_df in _iter_multi_timeframe_frames(multi_timeframe_data):
+                    try:
+                        # Calculate momentum using ROC (Rate of Change)
+                        roc = (
+                            (tf_df["close"] - tf_df["close"].shift(10))
+                            / tf_df["close"].shift(10)
+                            * 100
+                        )
 
-                                if len(roc) > 0:
-                                    current_roc = roc.iloc[-1]
-                                    momentum_indicators.append(abs(current_roc))
-                            except Exception:
-                                continue
+                        if len(roc) > 0:
+                            current_roc = roc.iloc[-1]
+                            momentum_indicators.append(abs(current_roc))
+                    except Exception:
+                        continue
 
                 if momentum_indicators:
                     avg_momentum = sum(momentum_indicators) / len(momentum_indicators)
@@ -824,7 +853,7 @@ class MFIRecognizer(PatternRecognizer):
     Identifies overbought/oversold conditions using volume-weighted momentum.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[PatternConfig] = None):
         super().__init__(config)
         self.pattern_type = "mfi"
         self.overbought_level = self.config.get("overbought_level", 80)
@@ -839,7 +868,7 @@ class MFIRecognizer(PatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+        multi_timeframe_data: Optional[MultiTimeframeData] = None,
     ) -> Optional[SignalResult]:
         """
         Recognize MFI patterns with multi-timeframe support.
@@ -877,8 +906,12 @@ class MFIRecognizer(PatternRecognizer):
             # Regime-aware threshold adjustment
             if self.regime_aware and multi_timeframe_data:
                 adjusted_levels = self._adjust_thresholds_for_regime(multi_timeframe_data)
-                overbought_level = float(adjusted_levels.get('overbought') or self.overbought_level)
-                oversold_level = float(adjusted_levels.get('oversold') or self.oversold_level)
+                overbought_level = _coerce_level(
+                    adjusted_levels.get("overbought"), float(self.overbought_level)
+                )
+                oversold_level = _coerce_level(
+                    adjusted_levels.get("oversold"), float(self.oversold_level)
+                )
             else:
                 overbought_level = float(self.overbought_level)
                 oversold_level = float(self.oversold_level)
@@ -947,7 +980,7 @@ class MFIRecognizer(PatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int,
-        multi_timeframe_data: Dict[str, Any]
+        multi_timeframe_data: MultiTimeframeData,
     ) -> float:
         """
         Analyze MFI alignment across multiple timeframes.
@@ -966,28 +999,29 @@ class MFIRecognizer(PatternRecognizer):
             aligned_timeframes = 0
 
             # Check alignment with higher timeframes
-            for tf, tf_data in multi_timeframe_data.items():
-                if isinstance(tf_data, dict) and 'data' in tf_data:
-                    tf_df = tf_data['data']
-                    if len(tf_df) > 20:
-                        try:
-                            tf_mfi = compute_mfi(tf_df)
-                            if len(tf_mfi) > 0:
-                                latest_tf_mfi = tf_mfi.iloc[-1]
+            for tf_df in _iter_multi_timeframe_frames(multi_timeframe_data):
+                try:
+                    tf_mfi = compute_mfi(tf_df)
+                    if len(tf_mfi) > 0:
+                        latest_tf_mfi = tf_mfi.iloc[-1]
 
-                                # Check if signals align (both overbought/oversold)
-                                base_overbought = base_mfi >= 80
-                                base_oversold = base_mfi <= 20
-                                tf_overbought = latest_tf_mfi >= 80
-                                tf_oversold = latest_tf_mfi <= 20
+                        # Check if signals align (both overbought/oversold)
+                        base_overbought = base_mfi >= 80
+                        base_oversold = base_mfi <= 20
+                        tf_overbought = latest_tf_mfi >= 80
+                        tf_oversold = latest_tf_mfi <= 20
 
-                                if (base_overbought and tf_overbought) or (base_oversold and tf_oversold):
-                                    alignment_score += 0.25
-                                    aligned_timeframes += 1
-                                elif (base_overbought and tf_oversold) or (base_oversold and tf_overbought):
-                                    alignment_score -= 0.15
-                        except Exception:
-                            continue
+                        if (base_overbought and tf_overbought) or (
+                            base_oversold and tf_oversold
+                        ):
+                            alignment_score += 0.25
+                            aligned_timeframes += 1
+                        elif (base_overbought and tf_oversold) or (
+                            base_oversold and tf_overbought
+                        ):
+                            alignment_score -= 0.15
+                except Exception:
+                    continue
 
             # Boost confidence if multiple timeframes align
             if aligned_timeframes >= 2:
@@ -1022,20 +1056,17 @@ class MFIRecognizer(PatternRecognizer):
             if multi_timeframe_data:
                 volume_indicators = []
 
-                for tf, tf_data in multi_timeframe_data.items():
-                    if isinstance(tf_data, dict) and 'data' in tf_data:
-                        tf_df = tf_data['data']
-                        if len(tf_df) > 20:
-                            try:
-                                # Calculate volume relative strength
-                                avg_volume = tf_df['volume'].rolling(20).mean()
-                                if len(avg_volume) > 0:
-                                    current_volume = tf_df['volume'].iloc[-1]
-                                    avg_vol = avg_volume.iloc[-1]
-                                    volume_ratio = current_volume / avg_vol if avg_vol > 0 else 1.0
-                                    volume_indicators.append(volume_ratio)
-                            except Exception:
-                                continue
+                for tf_df in _iter_multi_timeframe_frames(multi_timeframe_data):
+                    try:
+                        # Calculate volume relative strength
+                        avg_volume = tf_df["volume"].rolling(20).mean()
+                        if len(avg_volume) > 0:
+                            current_volume = tf_df["volume"].iloc[-1]
+                            avg_vol = avg_volume.iloc[-1]
+                            volume_ratio = current_volume / avg_vol if avg_vol > 0 else 1.0
+                            volume_indicators.append(volume_ratio)
+                    except Exception:
+                        continue
 
                 if volume_indicators:
                     avg_volume_ratio = sum(volume_indicators) / len(volume_indicators)

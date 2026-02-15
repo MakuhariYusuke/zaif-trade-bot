@@ -7,8 +7,9 @@ for optimal performance across multiple trading strategies.
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -27,6 +28,7 @@ from ..config.asg_portfolio_config import (
     RiskParityConfig,
     StrategyAllocatorConfig,
 )
+from ..components.history_helpers import append_with_compaction
 from ..interfaces.portfolio_interfaces import (
     AllocationStrategy,
     IStrategyAllocator,
@@ -34,6 +36,7 @@ from ..interfaces.portfolio_interfaces import (
     RiskMetrics,
     StrategyPerformance,
 )
+from ..interfaces.common_types import PayloadMap
 from ztb.metrics.metrics import max_drawdown
 
 logger = logging.getLogger(__name__)
@@ -60,11 +63,12 @@ class BaseStrategyAllocator(IStrategyAllocator):
         self.config = config
         self.last_allocation: Optional[Dict[str, float]] = None
         self.performance_history: List[StrategyPerformance] = []
+        self.allocation_history: List[PortfolioAllocation] = []
 
     def allocate_strategies(
         self,
         strategy_performance: Dict[str, StrategyPerformance],
-        market_conditions: Dict[str, Any],
+        market_conditions: PayloadMap,
     ) -> PortfolioAllocation:
         """Allocate capital across trading strategies."""
         start_time = time.time()
@@ -119,7 +123,7 @@ class BaseStrategyAllocator(IStrategyAllocator):
 
             self.last_allocation = allocations
 
-            return PortfolioAllocation(
+            allocation = PortfolioAllocation(
                 allocations=allocations,
                 expected_return=result.expected_return,
                 expected_volatility=result.expected_risk,
@@ -127,6 +131,13 @@ class BaseStrategyAllocator(IStrategyAllocator):
                 diversification_ratio=result.diversification_ratio,
                 timestamp=time.time(),
             )
+            append_with_compaction(
+                self.allocation_history,
+                allocation,
+                high_water=1000,
+                retain=500,
+            )
+            return allocation
 
         except Exception as e:
             logger.error(f"Strategy allocation failed: {e}")
@@ -135,7 +146,7 @@ class BaseStrategyAllocator(IStrategyAllocator):
     def rebalance_portfolio(
         self,
         current_performance: Dict[str, StrategyPerformance],
-        market_conditions: Dict[str, Any],
+        market_conditions: PayloadMap,
     ) -> PortfolioAllocation:
         """Rebalance portfolio based on current conditions."""
         # Check if rebalancing is needed
@@ -149,7 +160,6 @@ class BaseStrategyAllocator(IStrategyAllocator):
                     sharpe_ratio=0.0,
                     diversification_ratio=0.0,
                     timestamp=time.time(),
-                    metadata={"reason": "no_rebalance_needed", "rebalance_frequency": self.config.rebalance_frequency, "last_rebalance_time": time.time()},
                 )
 
         # Perform full reallocation
@@ -219,16 +229,9 @@ class BaseStrategyAllocator(IStrategyAllocator):
                 concentration_metrics={},
             )
 
-    def get_allocation_history(self) -> List[Dict[str, Any]]:
+    def get_allocation_history(self) -> List[PortfolioAllocation]:
         """Get historical allocation data."""
-        return [
-            {
-                "timestamp": perf.timestamp,
-                "allocations": getattr(perf, "allocations", {}),
-                "performance": perf.__dict__,
-            }
-            for perf in self.performance_history
-        ]
+        return list(self.allocation_history)
 
     def _prepare_strategy_data(
         self, strategy_performance: Dict[str, StrategyPerformance]
@@ -266,12 +269,7 @@ class BaseStrategyAllocator(IStrategyAllocator):
         self, strategy_performance: Dict[str, StrategyPerformance]
     ) -> Dict[str, float]:
         """Equal weight allocation across all strategies."""
-        n = len(strategy_performance)
-        if n == 0:
-            return {}
-
-        weight = 1.0 / n
-        return dict.fromkeys(strategy_performance.keys(), weight)
+        return self._build_equal_weight_allocations(list(strategy_performance.keys()))
 
     def _risk_parity_allocation(
         self,
@@ -293,28 +291,16 @@ class BaseStrategyAllocator(IStrategyAllocator):
             # Risk parity optimization
             def risk_parity_objective(weights):
                 port_risk = np.sqrt(weights.T @ cov_matrix @ weights)
+                if port_risk <= 0:
+                    return float("inf")
                 risk_contribs = weights * (cov_matrix @ weights) / port_risk
                 return np.var(risk_contribs)  # Minimize variance of risk contributions
 
-            # Constraints
-            constraints = [
-                {"type": "eq", "fun": lambda x: np.sum(x) - 1},  # Weights sum to 1
-            ]
-            bounds = [(0, 1) for _ in range(n)]
-
-            # Initial guess
-            x0 = np.array([1 / n] * n)
-
-            # Optimize
-            result = minimize(
-                risk_parity_objective, x0, bounds=bounds, constraints=constraints
-            )
-
-            if result.success:
-                return dict(zip(strategy_names, result.x))
-            else:
+            optimized_weights = self._optimize_weights(risk_parity_objective, n)
+            if optimized_weights is None:
                 logger.warning("Risk parity optimization failed, using equal weight")
                 return self._equal_weight_allocation_from_dict(returns)
+            return dict(zip(strategy_names, optimized_weights))
 
         except Exception as e:
             logger.error(f"Risk parity allocation failed: {e}")
@@ -341,24 +327,15 @@ class BaseStrategyAllocator(IStrategyAllocator):
             def sharpe_objective(weights):
                 port_return = weights @ returns_array
                 port_risk = np.sqrt(weights.T @ cov_matrix @ weights)
+                if port_risk <= 0:
+                    return float("inf")
                 return -port_return / port_risk  # Negative for minimization
 
-            # Constraints
-            constraints = [
-                {"type": "eq", "fun": lambda x: np.sum(x) - 1},
-            ]
-            bounds = [(0, 1) for _ in range(n)]
-
-            x0 = np.array([1 / n] * n)
-            result = minimize(
-                sharpe_objective, x0, bounds=bounds, constraints=constraints
-            )
-
-            if result.success:
-                return dict(zip(strategy_names, result.x))
-            else:
+            optimized_weights = self._optimize_weights(sharpe_objective, n)
+            if optimized_weights is None:
                 logger.warning("Maximum Sharpe optimization failed, using equal weight")
                 return self._equal_weight_allocation_from_dict(returns)
+            return dict(zip(strategy_names, optimized_weights))
 
         except Exception as e:
             logger.error(f"Maximum Sharpe allocation failed: {e}")
@@ -384,37 +361,48 @@ class BaseStrategyAllocator(IStrategyAllocator):
             def variance_objective(weights):
                 return weights.T @ cov_matrix @ weights
 
-            constraints = [
-                {"type": "eq", "fun": lambda x: np.sum(x) - 1},
-            ]
-            bounds = [(0, 1) for _ in range(n)]
-
-            x0 = np.array([1 / n] * n)
-            result = minimize(
-                variance_objective, x0, bounds=bounds, constraints=constraints
-            )
-
-            if result.success:
-                return dict(zip(strategy_names, result.x))
-            else:
+            optimized_weights = self._optimize_weights(variance_objective, n)
+            if optimized_weights is None:
                 logger.warning(
                     "Minimum variance optimization failed, using equal weight"
                 )
                 return self._equal_weight_allocation_from_dict(returns)
+            return dict(zip(strategy_names, optimized_weights))
 
         except Exception as e:
             logger.error(f"Minimum variance allocation failed: {e}")
             return self._equal_weight_allocation_from_dict(returns)
 
+    @staticmethod
+    def _optimize_weights(
+        objective: Callable[[np.ndarray], float],
+        n_assets: int,
+    ) -> Optional[np.ndarray]:
+        """Solve bounded sum-to-1 optimization for portfolio weights."""
+        if n_assets <= 0:
+            return None
+        constraints = [{"type": "eq", "fun": lambda x: float(np.sum(x) - 1.0)}]
+        bounds = [(0.0, 1.0) for _ in range(n_assets)]
+        x0 = np.full(n_assets, 1.0 / n_assets)
+        result = minimize(objective, x0, bounds=bounds, constraints=constraints)
+        if not result.success:
+            return None
+        return np.asarray(result.x, dtype=float)
+
     def _equal_weight_allocation_from_dict(
         self, data: Dict[str, float]
     ) -> Dict[str, float]:
         """Equal weight allocation from dictionary."""
-        n = len(data)
+        return self._build_equal_weight_allocations(list(data.keys()))
+
+    @staticmethod
+    def _build_equal_weight_allocations(strategy_names: list[str]) -> Dict[str, float]:
+        """Create equal-weight allocation map for strategy names."""
+        n = len(strategy_names)
         if n == 0:
             return {}
         weight = 1.0 / n
-        return dict.fromkeys(data.keys(), weight)
+        return dict.fromkeys(strategy_names, weight)
 
     def _create_covariance_matrix(
         self, risks: Dict[str, float], correlations: pd.DataFrame
@@ -615,15 +603,14 @@ class BaseStrategyAllocator(IStrategyAllocator):
 
     def _create_empty_allocation(self, reason: str) -> PortfolioAllocation:
         """Create empty allocation result."""
+        logger.warning(f"Returning empty allocation: {reason}")
         return PortfolioAllocation(
             allocations={},
             expected_return=0.0,
-            expected_risk=0.0,
+            expected_volatility=0.0,
             sharpe_ratio=0.0,
             diversification_ratio=0.0,
-            rebalance_frequency=self.config.rebalance_frequency,
-            last_rebalance_time=time.time(),
-            metadata={"error": reason},
+            timestamp=time.time(),
         )
 
 
@@ -638,7 +625,7 @@ class AdvancedStrategyAllocator(BaseStrategyAllocator):
         self,
         strategy_performance: Dict[str, StrategyPerformance],
         risk_tolerance: float,
-        constraints: Dict[str, Any],
+        constraints: PayloadMap,
     ) -> PortfolioAllocation:
         """Advanced portfolio optimization with risk parity and constraints."""
         try:
@@ -757,14 +744,18 @@ class AdvancedStrategyAllocator(BaseStrategyAllocator):
             return dict.fromkeys(returns_data.columns, equal_weight)
 
     def _apply_allocation_constraints(
-        self, weights: Dict[str, float], constraints: Dict[str, Any]
+        self, weights: Dict[str, float], constraints: PayloadMap
     ) -> Dict[str, float]:
         """Apply allocation constraints to weights."""
         constrained_weights = weights.copy()
 
         # Apply minimum and maximum weight constraints
-        min_weight = constraints.get("min_weight", self.config.min_allocation_weight)
-        max_weight = constraints.get("max_weight", self.config.max_allocation_weight)
+        min_weight = self._coerce_float(
+            constraints.get("min_weight"), self.config.min_allocation_weight
+        )
+        max_weight = self._coerce_float(
+            constraints.get("max_weight"), self.config.max_allocation_weight
+        )
 
         for strategy, weight in constrained_weights.items():
             constrained_weights[strategy] = np.clip(weight, min_weight, max_weight)
@@ -834,12 +825,12 @@ class AdvancedStrategyAllocator(BaseStrategyAllocator):
     def allocate_strategies(
         self,
         strategy_performance: Dict[str, StrategyPerformance],
-        market_conditions: Dict[str, Any],
+        market_conditions: PayloadMap,
     ) -> PortfolioAllocation:
         """Advanced allocation using optimization methods."""
         # Use risk tolerance from config or market conditions
-        risk_tolerance = market_conditions.get(
-            "risk_tolerance", self.config.risk_tolerance
+        risk_tolerance = self._coerce_float(
+            market_conditions.get("risk_tolerance"), self.config.risk_tolerance
         )
 
         # Create constraints from config
@@ -857,13 +848,13 @@ class AdvancedStrategyAllocator(BaseStrategyAllocator):
     def _adjust_for_market_conditions(
         self,
         strategy_performance: Dict[str, StrategyPerformance],
-        market_conditions: Dict[str, Any],
+        market_conditions: PayloadMap,
     ) -> Dict[str, StrategyPerformance]:
         """Adjust strategy performance based on market conditions."""
         adjusted = {}
 
-        market_regime = market_conditions.get("regime", "neutral")
-        volatility = market_conditions.get("volatility", 0.2)
+        market_regime = str(market_conditions.get("regime", "neutral"))
+        volatility = self._coerce_float(market_conditions.get("volatility"), 0.2)
 
         for strategy_name, perf in strategy_performance.items():
             adjusted_perf = StrategyPerformance(
@@ -879,7 +870,7 @@ class AdvancedStrategyAllocator(BaseStrategyAllocator):
                 win_rate=perf.win_rate,
                 profit_factor=perf.profit_factor,
                 timestamp=perf.timestamp,
-                correlations=perf.correlations.copy(),
+                correlations=perf.correlations.copy() if perf.correlations else None,
             )
             adjusted[strategy_name] = adjusted_perf
 
@@ -898,6 +889,14 @@ class AdvancedStrategyAllocator(BaseStrategyAllocator):
         # Increase volatility in high market volatility periods
         adjustment_factor = 1 + (market_volatility - 0.2) * 0.5
         return base_volatility * adjustment_factor
+
+    @staticmethod
+    def _coerce_float(value: object, default: float) -> float:
+        """Coerce unknown payload values into float safely."""
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
 
 
 def create_strategy_allocator(

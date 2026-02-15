@@ -513,6 +513,17 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 5. `ztb/trading/strategies/action_signal_guide/ml_integration/pattern_optimizer.py` の `_append_performance_snapshot()` を helper 化し、手動 `del` トリムを `append_with_compaction()` へ置換。  
 6. `action_signal_guide` 配下 `any_type_debt_tokens` を `71 -> 58` へ削減し、repo 全体 `any_type_debt_tokens` を `2,917 -> 2,904` へ削減。  
 
+### Step49: 既存型への収束（`oscillator/strategy_allocator`）+ 最適化重複の抽出
+
+1. `ztb/trading/strategies/action_signal_guide/pattern_recognition/oscillator_patterns.py` を `PatternConfig` / `MultiTimeframeData` / `RegimeAdjustment` へ寄せ、`Any` を全撤去（当該ファイル `any_type_debt_tokens=0`）。  
+2. `oscillator_patterns.py` に `_iter_multi_timeframe_frames()` / `_coerce_level()` を追加し、各認識器で重複していた MTF dataframe 走査と threshold coercion を共通化。  
+3. `CCI/Stochastic/WilliamsR/MFI` の8箇所で同型だった `for timeframe in multi_timeframe_data` + `'data'` 存在判定を helper 経由へ置換し、重複分岐を削減。  
+4. `ztb/trading/strategies/action_signal_guide/portfolio_optimization/strategy_allocator.py` を `PayloadMap` ベースへ移行し、`Any` を全撤去（当該ファイル `any_type_debt_tokens=0`）。  
+5. `strategy_allocator.py` で `_optimize_weights()` を導入し、`risk_parity` / `maximum_sharpe` / `minimum_variance` の同型最適化セットアップ（境界・制約・初期値）を共通化。  
+6. `strategy_allocator.py` で `PortfolioAllocation` 生成時の非互換フィールド（`expected_risk`, `metadata` 等）を是正し、空配分/リバランス経路の実行時 `TypeError` リスクを解消。  
+7. `strategy_allocator.py` の配分履歴を `append_with_compaction()` で bounded 管理し、履歴肥大化を抑制。  
+8. `action_signal_guide` 配下 `any_type_debt_tokens` を `58 -> 39` へ削減し、repo 全体 `any_type_debt_tokens` を `2,904 -> 2,885` へ削減。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -565,6 +576,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step46時点 | repo全体 | 2,927 |
 | Step47時点 | repo全体 | 2,917 |
 | Step48時点 | repo全体 | 2,904 |
+| Step49時点 | repo全体 | 2,885 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -625,6 +637,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step47時点 | `ztb/trading/strategies/action_signal_guide/components/performance_tracker.py` | **0** |
 | Step47時点 | `ztb/trading/strategies/action_signal_guide/components/adaptive_pattern_selector.py` | **0** |
 | Step48時点 | `ztb/trading/strategies/action_signal_guide/analysis/signal_performance_analyzer.py` | **0** |
+| Step49時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/oscillator_patterns.py` | **0** |
+| Step49時点 | `ztb/trading/strategies/action_signal_guide/portfolio_optimization/strategy_allocator.py` | **0** |
 
 ---
 
@@ -640,8 +654,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - バリデーション結果 payload を `TypedDict` 化し、ルール評価の重複 map 操作を helper 化。  
 5. `ztb/utils/config.py`  
    - config merge/cast 系の `Any` を段階的に削減し、既存型別名へ集約。  
-6. `ztb/trading/strategies/action_signal_guide/pattern_recognition/oscillator_patterns.py`  
-   - recognizer 横断で重複している MTF 指標抽出ロジックを共通化し、同時に `Any` を削減。  
+6. `ztb/trading/strategies/action_signal_guide/pattern_recognition/trend_analyzer.py`  
+   - pivot/trend payload を型固定し、`Any` 削減と集計分岐の重複整理を進める。  
 
 ---
 
