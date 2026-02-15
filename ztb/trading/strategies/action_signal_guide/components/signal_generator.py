@@ -156,9 +156,32 @@ class SignalGenerator(ISignalGenerator):
 
         self.logger.info("Adaptive components initialized successfully")
 
+    def _close_recognizers(self) -> None:
+        """Close recognizers and release shared recognizer caches."""
+        for recognizer in self.all_recognizers:
+            close_method = getattr(recognizer, "close", None)
+            if callable(close_method):
+                try:
+                    close_method()
+                except Exception as exc:
+                    self.logger.debug(
+                        f"Recognizer close failed for {recognizer.__class__.__name__}: {exc}"
+                    )
+
+        self.all_recognizers = []
+
+        # Fibonacci cache is class-level; clear it when recognizers are released.
+        try:
+            from ..pattern_recognition.fibonacci_patterns import FibonacciAnalyzer
+
+            FibonacciAnalyzer.clear_retracement_cache()
+        except Exception:
+            pass
+
     def initialize_recognizers(self) -> None:
         """Initialize all pattern recognition systems."""
         start_time = time.time()
+        self._close_recognizers()
 
         try:
             # Import all recognizer classes
@@ -334,7 +357,7 @@ class SignalGenerator(ISignalGenerator):
 
         except Exception as e:
             self.logger.error(f"Failed to initialize recognizers: {e}")
-            self.all_recognizers = []
+            self._close_recognizers()
 
     def initialize_adaptive_components(
         self,
@@ -948,10 +971,18 @@ class SignalGenerator(ISignalGenerator):
     def close(self) -> None:
         """Release background resources held by the generator."""
         self._shutdown_parallel_executor()
+        self._close_recognizers()
+        self.pattern_performance_history.clear()
+        self.adaptive_weights.clear()
+        self._error_counts.clear()
+        self._current_data = pd.DataFrame()
+        self._current_multi_timeframe_data = None
+        self._current_market_regime = None
+        self._current_sac_decision = None
 
     def __del__(self) -> None:
         try:
-            self._shutdown_parallel_executor()
+            self.close()
         except Exception:
             pass
 

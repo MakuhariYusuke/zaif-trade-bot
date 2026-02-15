@@ -107,6 +107,10 @@ class HarmonicAnalyzer:
             del self._pivot_cache[oldest_key]
         self._pivot_cache[key] = value
 
+    def clear_cache(self) -> None:
+        """Clear cached pivot extraction results."""
+        self._pivot_cache.clear()
+
     @staticmethod
     def calculate_fibonacci_ratio(
         point1: float, point2: float, target_ratio: float
@@ -450,6 +454,12 @@ class _HarmonicPatternBase(CandlestickPatternRecognizer):
         while len(self._pattern_cache) > self._max_pattern_cache_size:
             oldest_key = next(iter(self._pattern_cache))
             self._pattern_cache.pop(oldest_key, None)
+
+    def clear_runtime_state(self) -> None:
+        """Release cached harmonic analysis state."""
+        super().clear_runtime_state()
+        self._pattern_cache.clear()
+        self.harmonic_analyzer.clear_cache()
 
     def _calculate_pattern_completeness(
         self, current_price: float, completion_price: float

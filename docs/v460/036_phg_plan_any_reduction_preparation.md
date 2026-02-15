@@ -539,6 +539,18 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 11. `ATR` の非MTF/MTF 経路を委譲構造に整理し、ブレイクアウト・トレンド判定の重複ロジックを削減。  
 12. `pattern_recognition` 配下 `any_type_debt_tokens` を `25 -> 13` へ削減し、repo 全体 `any_type_debt_tokens` を `2,885 -> 2,873` へ削減。  
 
+### Step51: メモリリーク防止策（認識器ライフサイクルの明示解放 + キャッシュ上限管理）
+
+1. `ztb/trading/strategies/action_signal_guide/pattern_recognition/base.py` の `PatternRecognizer` に `close()` / `clear_runtime_state()` / `__del__` を追加し、`_signal_cache` を明示解放できるように変更。  
+2. `recognize_with_cache()` に定期クリーンアップ（`_maybe_cleanup_signal_cache`）を追加し、長時間稼働で期限切れエントリが残留し続ける経路を抑制。  
+3. `TrendPatternRecognizer` の `_regression_cache` を無制限 `dict` から上限付き `OrderedDict`（LRU）へ変更し、可変 window 長が増える運用でのキャッシュ肥大化リスクを低減。  
+4. `ztb/trading/strategies/action_signal_guide/pattern_recognition/harmonic_patterns.py` に `HarmonicAnalyzer.clear_cache()` を追加し、`_HarmonicPatternBase.clear_runtime_state()` から pivot/pattern cache を明示解放。  
+5. `ztb/trading/strategies/action_signal_guide/pattern_recognition/fibonacci_patterns.py` に `FibonacciAnalyzer.clear_retracement_cache()` を追加し、共有 retracement cache を解放可能に。  
+6. `ztb/trading/strategies/action_signal_guide/components/signal_generator.py` に `_close_recognizers()` を追加し、`initialize_recognizers()` の再初期化時と `close()` 時に全 recognizer の `close()` を呼んでキャッシュを解放。  
+7. `SignalGenerator.close()` で recognizer 解放に加えて、`pattern_performance_history` / `adaptive_weights` / runtime context を clear するよう変更。  
+8. `SignalGenerator.__del__()` は `close()` 委譲へ統一し、スレッド停止とキャッシュ解放の後始末経路を単一化。  
+9. 今回は leak 防止が主目的のため `Any` 追加削減は無し（repo 全体 `any_type_debt_tokens` は `2,873` を維持）。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -593,6 +605,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step48時点 | repo全体 | 2,904 |
 | Step49時点 | repo全体 | 2,885 |
 | Step50時点 | repo全体 | 2,873 |
+| Step51時点 | repo全体 | 2,873 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |

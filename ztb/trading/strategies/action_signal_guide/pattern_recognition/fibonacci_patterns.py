@@ -49,6 +49,11 @@ class FibonacciAnalyzer:
     _retracement_cache: dict[str, FibonacciRetracementMatch | None] = {}
     _max_cache_size = 2048
 
+    @classmethod
+    def clear_retracement_cache(cls) -> None:
+        """Clear shared retracement cache to release memory."""
+        cls._retracement_cache.clear()
+
     @staticmethod
     def calculate_retracement_levels(high: float, low: float) -> dict[float, float]:
         """Calculate Fibonacci retracement levels between high and low."""

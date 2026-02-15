@@ -368,6 +368,11 @@ class PatternRecognizer(ABC):
         self._signal_cache: LRUCache[tuple[SignalResult, int]] = LRUCache(
             max_size=500, ttl_seconds=300
         )  # 500 entries, 5 minutes TTL
+        self._cache_cleanup_interval = max(
+            1, int(self.config.get("cache_cleanup_interval", 100))
+        )
+        self._cache_access_count = 0
+        self._closed = False
 
     def _validate_config(self) -> None:
         """Validate configuration parameters with runtime type checking."""
@@ -811,6 +816,8 @@ class PatternRecognizer(ABC):
             f"{self.name}_{resolved_index}_{float(data.iloc[resolved_index]['close']):.8f}"
         )
 
+        self._maybe_cleanup_signal_cache()
+
         # Check cache first
         cached_entry = self._signal_cache.get(cache_key)
         if cached_entry is not None:
@@ -828,6 +835,31 @@ class PatternRecognizer(ABC):
         if signal is not None:
             self._signal_cache.set(cache_key, (signal, resolved_index))
         return signal
+
+    def _maybe_cleanup_signal_cache(self) -> None:
+        """Periodically clean up expired cache entries during long-running sessions."""
+        self._cache_access_count += 1
+        if self._cache_access_count % self._cache_cleanup_interval != 0:
+            return
+        self._signal_cache.cleanup_expired()
+
+    def clear_runtime_state(self) -> None:
+        """Clear internal caches/state to release memory."""
+        self._signal_cache.clear()
+        self._cache_access_count = 0
+
+    def close(self) -> None:
+        """Release resources held by this recognizer."""
+        if self._closed:
+            return
+        self.clear_runtime_state()
+        self._closed = True
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
 
     def validate_data(self, data: pd.DataFrame) -> bool:
         """
@@ -1280,12 +1312,16 @@ class TrendPatternRecognizer(PatternRecognizer):
 
     def __init__(self, config: Optional[Dict[str, object]] = None) -> None:
         super().__init__(config)
-        self._regression_cache: Dict[int, tuple[np.ndarray, float]] = {}
+        self._regression_cache: OrderedDict[int, tuple[np.ndarray, float]] = OrderedDict()
+        self._max_regression_cache_entries = max(
+            8, int(self.config.get("max_regression_cache_entries", 64))
+        )
 
     def _get_regression_weights(self, length: int) -> tuple[np.ndarray, float]:
         """Return centered x values and denominator for slope regression."""
         cached = self._regression_cache.get(length)
         if cached is not None:
+            self._regression_cache.move_to_end(length)
             return cached
 
         x = np.arange(length, dtype=np.float64)
@@ -1296,7 +1332,13 @@ class TrendPatternRecognizer(PatternRecognizer):
 
         weights = (centered_x, denominator)
         self._regression_cache[length] = weights
+        if len(self._regression_cache) > self._max_regression_cache_entries:
+            self._regression_cache.popitem(last=False)
         return weights
+
+    def clear_runtime_state(self) -> None:
+        super().clear_runtime_state()
+        self._regression_cache.clear()
 
     def calculate_normalized_slope(self, prices: np.ndarray) -> float:
         """
