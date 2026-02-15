@@ -78,6 +78,10 @@ class FillRecord:
     skip_gate_skipped: Optional[bool] = None      # SkipGate によるスキップ判定
     skip_gate_score: Optional[float] = None       # SkipGate 予測スコア (AS確率 or PnL予測値)
     skip_gate_reason: Optional[str] = None        # SkipGate 判定理由
+    # 068# OB 品質 + SkipGate モデル使用ログ
+    ob_quality_ok: Optional[bool] = None          # OB 特徴量が品質基準を満たしたか
+    ob_age_ms: Optional[float] = None             # OB 取得からの経過ミリ秒
+    skip_gate_model_used: Optional[str] = None    # "primary" or "fallback"
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

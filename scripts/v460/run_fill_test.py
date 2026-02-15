@@ -160,6 +160,14 @@ class FillTestConfig:
     skip_gate_as_threshold: float = 0.6    # AS 確率スキップ閾値 (mode=as)
     skip_gate_pnl_threshold: float = 0.0   # PnL 予測スキップ閾値 (mode=pnl)
     skip_gate_max_skip_rate: float = 0.3   # 連続スキップ率上限 (安全弁)
+    # 068# §3.3: side 別閾値 (None は共通 as_threshold を使用)
+    skip_gate_as_threshold_buy: Optional[float] = None
+    skip_gate_as_threshold_sell: Optional[float] = None
+    # 068# §3.1: OB 鮮度上限 (秒)
+    skip_gate_ob_freshness_sec: float = 3.0
+    # 068# §3.4: OB 不良時安全運転
+    ob_fail_max_consecutive: int = 5       # 連続OB不良でサイクル停止
+    ob_fail_offset_boost: float = 1.5      # OB不良時の offset 倍率
 
     @classmethod
     def from_yaml(cls, yaml_cfg: dict) -> "FillTestConfig":
@@ -324,10 +332,20 @@ class FillTestConfig:
             "as_threshold": "skip_gate_as_threshold",
             "pnl_threshold": "skip_gate_pnl_threshold",
             "max_skip_rate": "skip_gate_max_skip_rate",
+            # 068# §3.3: side 別閾値
+            "as_threshold_buy": "skip_gate_as_threshold_buy",
+            "as_threshold_sell": "skip_gate_as_threshold_sell",
+            # 068# §3.1: OB 鮮度
+            "ob_freshness_sec": "skip_gate_ob_freshness_sec",
         }
         for yaml_key, config_key in sg_map.items():
-            if yaml_key in sg:
+            if yaml_key in sg and sg[yaml_key] is not None:
                 kwargs[config_key] = sg[yaml_key]
+        # 068# §3.4: OB 不良時安全運転
+        if "ob_max_consecutive_fail" in sg:
+            kwargs["ob_fail_max_consecutive"] = sg["ob_max_consecutive_fail"]
+        if "ob_fail_offset_boost" in sg:
+            kwargs["ob_fail_offset_boost"] = sg["ob_fail_offset_boost"]
 
         return cls(**kwargs)
 
@@ -443,6 +461,11 @@ class FillTestRunner:
                     self._skip_gate.config.as_threshold = config.skip_gate_as_threshold
                     self._skip_gate.config.threshold_bps = config.skip_gate_pnl_threshold
                     self._skip_gate.config.max_skip_rate = config.skip_gate_max_skip_rate
+                    # 068# §3.3: side 別閾値
+                    self._skip_gate.config.as_threshold_buy = config.skip_gate_as_threshold_buy
+                    self._skip_gate.config.as_threshold_sell = config.skip_gate_as_threshold_sell
+                    # 068# §3.1: OB 鮮度
+                    self._skip_gate.config.ob_freshness_sec = config.skip_gate_ob_freshness_sec
                     logger.info(
                         f"[skip_gate] Loaded: mode={config.skip_gate_mode}, "
                         f"as_threshold={config.skip_gate_as_threshold}, "
@@ -458,6 +481,9 @@ class FillTestRunner:
                         fallback.config.mode = config.skip_gate_mode
                         fallback.config.as_threshold = config.skip_gate_as_threshold
                         fallback.config.max_skip_rate = config.skip_gate_max_skip_rate
+                        # 068# §3.3: side 別閾値を fallback にも反映
+                        fallback.config.as_threshold_buy = config.skip_gate_as_threshold_buy
+                        fallback.config.as_threshold_sell = config.skip_gate_as_threshold_sell
                         self._skip_gate.set_fallback(fallback)
                     else:
                         logger.info(
@@ -469,6 +495,9 @@ class FillTestRunner:
 
         # 安全設計: atexit + signal で残存注文キャンセル + 未保存データ退避 + ロック解放
         atexit.register(self._cleanup_sync)
+
+        # 068# §3.4: OB 不良時安全運転カウンタ
+        self._consecutive_ob_failures: int = 0
 
         # 044# A-7: loss_cap 更新カウンタ (50サイクル毎に残高再取得)
         self._loss_cap_update_interval = 50  # サイクル数
@@ -975,15 +1004,22 @@ class FillTestRunner:
         skip_gate_skipped: Optional[bool] = None
         skip_gate_score: Optional[float] = None
         skip_gate_reason: Optional[str] = None
+        # 068# §3.2: OB 品質ログ
+        ob_quality_ok: Optional[bool] = None
+        ob_age_ms: Optional[float] = None
+        skip_gate_model_used: Optional[str] = None
         if self._skip_gate is not None:
             try:
                 from scripts.v460.ml.skip_gate import build_features_from_market_state
 
                 # OB データはすでに _compute_maker_price 内で取得済み
                 # → _last_imbalance, _last_bid_depth, _last_ask_depth を再利用
+                ob_fetch_time = time.time()
                 ob = await self.adapter.get_orderbook(
                     self.config.symbol, depth=self.config.imbalance_depth,
                 )
+                ob_age_sec = time.time() - ob_fetch_time
+                ob_age_ms = ob_age_sec * 1000.0
                 best_bid = ob.bids[0][0] if ob.bids else 0.0
                 best_ask = ob.asks[0][0] if ob.asks else 0.0
                 bid_vol = sum(qty for _, qty in ob.bids[:5]) if ob.bids else 0.0
@@ -1026,16 +1062,54 @@ class FillTestRunner:
                     market_timestamp=time.time(),
                 )
 
-                decision = self._skip_gate.evaluate(gate_features)
+                # 068# §3.1/§3.2: OB 品質判定 + side 引数
+                ob_quality_ok = self._skip_gate._check_ob_quality(
+                    gate_features, ob_age_sec=ob_age_sec,
+                )
+
+                # 068# §3.4: OB 不良時安全運転
+                if not ob_quality_ok:
+                    self._consecutive_ob_failures += 1
+                    if self._consecutive_ob_failures >= self.config.ob_fail_max_consecutive:
+                        logger.warning(
+                            f"[ob_safety] {self._consecutive_ob_failures} consecutive "
+                            f"OB failures → cycle skipped"
+                        )
+                        return FillRecord(
+                            cycle_id=cycle_id,
+                            timestamp=time.time(),
+                            side=side,
+                            order_price=order_price,
+                            order_quantity=self._current_lot,
+                            cancelled=True,
+                            cancel_reason="ob_safety_stop",
+                            spread_at_order=spread_at_order,
+                            spread_offset_ratio=effective_offset_ratio,
+                            ob_quality_ok=False,
+                            ob_age_ms=ob_age_ms,
+                        )
+                    # OB 不良だがまだ停止しない → offset 保守化
+                    effective_offset_ratio *= self.config.ob_fail_offset_boost
+                    logger.info(
+                        f"[ob_safety] OB quality poor (#{self._consecutive_ob_failures}) "
+                        f"→ offset boosted to {effective_offset_ratio:.4f}"
+                    )
+                else:
+                    self._consecutive_ob_failures = 0  # リセット
+
+                decision = self._skip_gate.evaluate(
+                    gate_features, side=side, ob_age_sec=ob_age_sec,
+                )
                 skip_gate_skipped = decision.should_skip
                 skip_gate_score = decision.predicted_pnl_bps
                 skip_gate_reason = decision.reason
+                skip_gate_model_used = decision.model_used
 
                 if decision.should_skip:
                     logger.info(
                         f"[skip_gate] SKIP: {side} order skipped "
                         f"(score={skip_gate_score:.3f}, reason={skip_gate_reason}, "
-                        f"features={decision.features_used})"
+                        f"model={skip_gate_model_used}, features={decision.features_used})"
                     )
                     return FillRecord(
                         cycle_id=cycle_id,
@@ -1050,6 +1124,9 @@ class FillTestRunner:
                         skip_gate_skipped=True,
                         skip_gate_score=skip_gate_score,
                         skip_gate_reason=skip_gate_reason,
+                        ob_quality_ok=ob_quality_ok,
+                        ob_age_ms=ob_age_ms,
+                        skip_gate_model_used=skip_gate_model_used,
                         orderbook_imbalance=self._last_imbalance if self.config.imbalance_enabled else None,
                         bid_depth_total=self._last_bid_depth if self.config.imbalance_enabled else None,
                         ask_depth_total=self._last_ask_depth if self.config.imbalance_enabled else None,
@@ -1057,7 +1134,8 @@ class FillTestRunner:
                 else:
                     logger.debug(
                         f"[skip_gate] PASS: {side} order allowed "
-                        f"(score={skip_gate_score:.3f}, reason={skip_gate_reason})"
+                        f"(score={skip_gate_score:.3f}, reason={skip_gate_reason}, "
+                        f"model={skip_gate_model_used})"
                     )
             except Exception as e:
                 logger.warning(f"[skip_gate] Evaluation failed (non-fatal): {e}")
@@ -1400,6 +1478,10 @@ class FillTestRunner:
             skip_gate_skipped=skip_gate_skipped,
             skip_gate_score=skip_gate_score,
             skip_gate_reason=skip_gate_reason,
+            # 068# OB 品質ログ
+            ob_quality_ok=ob_quality_ok,
+            ob_age_ms=ob_age_ms,
+            skip_gate_model_used=skip_gate_model_used,
         )
 
         logger.info(

@@ -69,6 +69,11 @@ class SkipGateConfig:
     # 061#: AS 分類器モード
     mode: str = "pnl"  # "pnl" (Ridge PnL) or "as" (AS probability)
     as_threshold: float = 0.6  # AS 確率がこれ以上ならスキップ (mode=as)
+    # 068# §3.3: side 別閾値 (None は共通 as_threshold を使用)
+    as_threshold_buy: Optional[float] = None
+    as_threshold_sell: Optional[float] = None
+    # 068# §3.1: OB 鮮度上限 (秒). OB取得からこの秒数以上経過したら品質不良判定
+    ob_freshness_sec: float = 3.0
 
 
 @dataclass
@@ -80,6 +85,7 @@ class SkipDecision:
     threshold_bps: float
     features_used: int
     reason: str = ""
+    model_used: str = ""  # 068# §3.2: "primary" or "fallback"
 
 
 class SkipGate:
@@ -97,8 +103,47 @@ class SkipGate:
     065# Two-tier: OB 不在時にフォールバックモデルへ切替.
     """
 
-    # OB 必須特徴量 — これらが全て NaN なら fallback モデルを使う
+    # OB 必須特徴量 — これらの品質が不良なら fallback モデルを使う
     OB_CRITICAL_FEATURES = {"depth_imbalance_ob", "spread_bps_ob"}
+
+    def _check_ob_quality(
+        self,
+        features: dict[str, float],
+        *,
+        ob_age_sec: float | None = None,
+    ) -> bool:
+        """068# §3.1: OB 特徴量の品質判定.
+
+        「キーがある」ではなく「値が有効」で OB 可用性を判断する。
+        build_features_from_market_state() は常にキーを生成するため、
+        キー有無ではなく値の有効性で判定する必要がある。
+
+        Args:
+            features: 特徴量辞書.
+            ob_age_sec: OB 取得からの経過秒数 (None は鮮度チェックしない).
+
+        Returns:
+            True if OB is usable for primary model.
+        """
+        spread = features.get("spread_bps_ob")
+        depth = features.get("depth_imbalance_ob")
+        # キーが存在しない
+        if spread is None or depth is None:
+            return False
+        # spread_bps_ob が有限かつ > 0 (mid=0 や bid=ask を弾く)
+        if not (np.isfinite(spread) and spread > 0):
+            return False
+        # depth_imbalance_ob が有限 (NaN/Inf を弾く)
+        if not np.isfinite(depth):
+            return False
+        # 鮮度チェック
+        if ob_age_sec is not None and ob_age_sec > self.config.ob_freshness_sec:
+            logger.debug(
+                f"SkipGate: OB stale ({ob_age_sec:.1f}s > "
+                f"{self.config.ob_freshness_sec:.1f}s)"
+            )
+            return False
+        return True
 
     def __init__(
         self,
@@ -129,11 +174,16 @@ class SkipGate:
     def evaluate(
         self,
         features: dict[str, float],
+        *,
+        side: str | None = None,
+        ob_age_sec: float | None = None,
     ) -> SkipDecision:
         """注文前にスキップ判定.
 
         Args:
             features: 特徴量辞書. GATE_FEATURE_COLS のキーを含む.
+            side: "buy" or "sell". 068# §3.3 side 別閾値に使用.
+            ob_age_sec: OB 取得からの経過秒数. 068# §3.1 鮮度判定に使用.
 
         Returns:
             SkipDecision.
@@ -164,13 +214,15 @@ class SkipGate:
                 reason="insufficient_features",
             )
 
-        # 065# Two-tier: OB 必須特徴量が全て欠損ならフォールバック
-        ob_available = any(
-            col in features for col in self.OB_CRITICAL_FEATURES
-        )
-        if not ob_available and self._fallback is not None:
-            logger.debug("SkipGate: OB features missing → fallback model")
-            return self._fallback.evaluate(features)
+        # 068# §3.1: OB 品質判定 (キー有無ではなく値の有効性)
+        ob_quality_ok = self._check_ob_quality(features, ob_age_sec=ob_age_sec)
+        if not ob_quality_ok and self._fallback is not None:
+            logger.debug("SkipGate: OB quality insufficient → fallback model")
+            decision = self._fallback.evaluate(
+                features, side=side, ob_age_sec=ob_age_sec,
+            )
+            decision.model_used = "fallback"
+            return decision
 
         # 予測 — 059# NEW-02: Pipeline 優先、後方互換あり
         x_df = pd.DataFrame([x], columns=self.feature_cols)
@@ -184,7 +236,13 @@ class SkipGate:
                 x_scaled = self.scaler.transform(x_df)
                 pred_prob = float(self.model.predict_proba(x_scaled)[0, 1])
             pred_pnl = -pred_prob * 10  # AS確率→疑似PnL (互換表示用)
-            should_skip = pred_prob >= self.config.as_threshold
+            # 068# §3.3: side 別閾値
+            threshold = self.config.as_threshold
+            if side == "buy" and self.config.as_threshold_buy is not None:
+                threshold = self.config.as_threshold_buy
+            elif side == "sell" and self.config.as_threshold_sell is not None:
+                threshold = self.config.as_threshold_sell
+            should_skip = pred_prob >= threshold
         else:
             # PnL 回帰モード (既存)
             if self._pipeline is not None:
@@ -217,6 +275,7 @@ class SkipGate:
             threshold_bps=self.config.threshold_bps,
             features_used=n_used,
             reason=reason,
+            model_used="primary",
         )
 
     def save(self, path: Optional[Path] = None) -> Path:

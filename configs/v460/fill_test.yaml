@@ -143,5 +143,10 @@ skip_gate:
   model_path: models/v460/skip_gate_as.pkl          # 065# A(k=12) primary
   fallback_path: models/v460/skip_gate_as_fallback.pkl  # 065# curated(k=5) OB不在時
   as_threshold: 0.65           # 065#: 保守的閾値 (0.6→0.65) で開始
+  as_threshold_buy: null       # 068# §3.3: buy 側閾値 (null=共通値使用)
+  as_threshold_sell: 0.60      # 068# §3.3: sell 側厳格化 (PnL -0.958 vs -0.301)
   pnl_threshold: 0.0           # PnL 予測スキップ閾値 (mode=pnl 時)
   max_skip_rate: 0.3           # 連続スキップ率の上限 (直近20注文中30%まで)
+  ob_freshness_sec: 3.0        # 068# §3.1: OB 鮮度上限 (秒)
+  ob_max_consecutive_fail: 5   # 068# §3.4: 連続OB不良でサイクル停止
+  ob_fail_offset_boost: 1.5    # 068# §3.4: OB不良時offset倍率

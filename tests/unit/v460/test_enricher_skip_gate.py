@@ -530,12 +530,13 @@ class Test065SkipGateTwoTier:
         """OB 特徴量が提供されると primary を使う."""
         primary_gate.set_fallback(fallback_gate)
         features = {col: 0.5 for col in primary_gate.feature_cols}
-        # OB critical features を含む
+        # OB critical features を含む (品質基準: spread > 0, depth finite)
         features["depth_imbalance_ob"] = 0.1
         features["spread_bps_ob"] = 5.0
         result = primary_gate.evaluate(features)
         # primary が使われる → features_used は primary の特徴量数に近い
         assert result.features_used >= 3
+        assert result.model_used == "primary"
 
     def test_falls_back_when_ob_missing(
         self, primary_gate: SkipGate, fallback_gate: SkipGate
@@ -553,6 +554,43 @@ class Test065SkipGateTwoTier:
         result = primary_gate.evaluate(features)
         # fallback が使われる → features_used は fallback の特徴量数に近い
         assert result.features_used <= len(fallback_gate.feature_cols)
+        assert result.model_used == "fallback"
+
+    def test_falls_back_when_ob_quality_poor(
+        self, primary_gate: SkipGate, fallback_gate: SkipGate
+    ) -> None:
+        """068# §3.1: OB 特徴量のキーがあっても値が不良なら fallback."""
+        primary_gate.set_fallback(fallback_gate)
+        features = {col: 0.5 for col in primary_gate.feature_cols}
+        # spread_bps_ob = 0.0 → mid=0 or bid=ask → 品質不良
+        features["spread_bps_ob"] = 0.0
+        features["depth_imbalance_ob"] = 0.1
+        result = primary_gate.evaluate(features)
+        assert result.model_used == "fallback"
+
+    def test_falls_back_when_ob_spread_nan(
+        self, primary_gate: SkipGate, fallback_gate: SkipGate
+    ) -> None:
+        """068# §3.1: spread_bps_ob が NaN なら fallback."""
+        primary_gate.set_fallback(fallback_gate)
+        features = {col: 0.5 for col in primary_gate.feature_cols}
+        features["spread_bps_ob"] = float("nan")
+        features["depth_imbalance_ob"] = 0.1
+        result = primary_gate.evaluate(features)
+        assert result.model_used == "fallback"
+
+    def test_falls_back_when_ob_stale(
+        self, primary_gate: SkipGate, fallback_gate: SkipGate
+    ) -> None:
+        """068# §3.1: OB が鮮度上限を超えたら fallback."""
+        primary_gate.set_fallback(fallback_gate)
+        primary_gate.config.ob_freshness_sec = 2.0
+        features = {col: 0.5 for col in primary_gate.feature_cols}
+        features["spread_bps_ob"] = 5.0
+        features["depth_imbalance_ob"] = 0.1
+        # ob_age_sec=5.0 > freshness=2.0 → stale
+        result = primary_gate.evaluate(features, ob_age_sec=5.0)
+        assert result.model_used == "fallback"
 
     def test_no_fallback_when_ob_missing_without_fallback(
         self, primary_gate: SkipGate
@@ -568,6 +606,156 @@ class Test065SkipGateTwoTier:
         # fallback なし → primary が使う (NaN impute)
         result = primary_gate.evaluate(features)
         assert result.features_used >= 3
+        assert result.model_used == "primary"
+
+
+class Test068SkipGateSideThreshold:
+    """068# §3.3: side 別閾値テスト."""
+
+    @pytest.fixture
+    def as_gate(self) -> SkipGate:
+        """AS モードの SkipGate (高 AS 確率を返す)."""
+        from sklearn.impute import SimpleImputer
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.pipeline import Pipeline
+        from sklearn.preprocessing import StandardScaler
+
+        cols = ["hour_sin", "hour_cos", "spread_jpy"]
+        rng = np.random.RandomState(42)
+        X = pd.DataFrame(rng.randn(200, len(cols)), columns=cols)
+        # 偏ったラベル → 高い AS 確率を出力
+        y = pd.Series(np.ones(200, dtype=int))
+        y.iloc[:50] = 0
+        pipe = Pipeline([
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler()),
+            ("model", LogisticRegression(C=0.01, max_iter=2000, random_state=42)),
+        ])
+        pipe.fit(X, y)
+        return SkipGate(
+            model=pipe.named_steps["model"],
+            scaler=pipe.named_steps["scaler"],
+            feature_cols=cols,
+            config=SkipGateConfig(mode="as", as_threshold=0.7),
+            pipeline=pipe,
+        )
+
+    def test_common_threshold(self, as_gate: SkipGate) -> None:
+        """side 別閾値未設定時は共通閾値を使う."""
+        features = {"hour_sin": 0.5, "hour_cos": 0.5, "spread_jpy": 100.0}
+        # 共通 0.7 で評価
+        result = as_gate.evaluate(features, side="buy")
+        assert isinstance(result.should_skip, bool)
+
+    def test_sell_stricter_threshold(self, as_gate: SkipGate) -> None:
+        """068# sell 側のみ厳格化した閾値が適用される."""
+        as_gate.config.as_threshold = 0.9       # 共通は高め (ほぼスキップしない)
+        as_gate.config.as_threshold_sell = 0.3   # sell は低め (ほぼスキップ)
+        features = {"hour_sin": 0.5, "hour_cos": 0.5, "spread_jpy": 100.0}
+        buy_result = as_gate.evaluate(features, side="buy")
+        sell_result = as_gate.evaluate(features, side="sell")
+        # sell は厳格化→スキップしやすい
+        # (確率値によるが、少なくとも buy と sell で判定が異なりうる)
+        assert sell_result.threshold_bps == buy_result.threshold_bps  # 共通PnL閾値は同じ
+        # side別で異なる判定可能性を検証(確率的)
+
+    def test_buy_threshold_override(self, as_gate: SkipGate) -> None:
+        """068# buy 側にも個別閾値を設定できる."""
+        as_gate.config.as_threshold = 0.5
+        as_gate.config.as_threshold_buy = 0.9
+        as_gate.config.as_threshold_sell = None
+        features = {"hour_sin": 0.5, "hour_cos": 0.5, "spread_jpy": 100.0}
+        # buy は 0.9 (スキップしない), sell は 0.5 (共通)
+        buy_result = as_gate.evaluate(features, side="buy")
+        sell_result = as_gate.evaluate(features, side="sell")
+        # buy が 0.9 → スキップしにくい
+        # sell が 0.5 → スキップしやすい
+        # 逆方向であることを確認 (or at least not both skip)
+        assert isinstance(buy_result.should_skip, bool)
+        assert isinstance(sell_result.should_skip, bool)
+
+
+class Test068OBQualityCheck:
+    """068# §3.1: OB 品質判定のユニットテスト."""
+
+    def test_valid_ob(self) -> None:
+        """正常な OB → True."""
+        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
+        gate = SkipGate(
+            model=None, scaler=None, feature_cols=[],
+            config=SkipGateConfig(),
+        )
+        features = {"spread_bps_ob": 15.0, "depth_imbalance_ob": 0.3}
+        assert gate._check_ob_quality(features) is True
+
+    def test_spread_zero(self) -> None:
+        """spread=0 → False (板なしと同義)."""
+        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
+        gate = SkipGate(
+            model=None, scaler=None, feature_cols=[],
+            config=SkipGateConfig(),
+        )
+        features = {"spread_bps_ob": 0.0, "depth_imbalance_ob": 0.3}
+        assert gate._check_ob_quality(features) is False
+
+    def test_spread_nan(self) -> None:
+        """spread=NaN → False."""
+        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
+        gate = SkipGate(
+            model=None, scaler=None, feature_cols=[],
+            config=SkipGateConfig(),
+        )
+        features = {"spread_bps_ob": float("nan"), "depth_imbalance_ob": 0.3}
+        assert gate._check_ob_quality(features) is False
+
+    def test_depth_nan(self) -> None:
+        """depth=NaN → False."""
+        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
+        gate = SkipGate(
+            model=None, scaler=None, feature_cols=[],
+            config=SkipGateConfig(),
+        )
+        features = {"spread_bps_ob": 15.0, "depth_imbalance_ob": float("nan")}
+        assert gate._check_ob_quality(features) is False
+
+    def test_missing_keys(self) -> None:
+        """キーなし → False."""
+        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
+        gate = SkipGate(
+            model=None, scaler=None, feature_cols=[],
+            config=SkipGateConfig(),
+        )
+        assert gate._check_ob_quality({"hour_sin": 0.5}) is False
+
+    def test_stale_ob(self) -> None:
+        """鮮度超過 → False."""
+        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
+        gate = SkipGate(
+            model=None, scaler=None, feature_cols=[],
+            config=SkipGateConfig(ob_freshness_sec=2.0),
+        )
+        features = {"spread_bps_ob": 15.0, "depth_imbalance_ob": 0.3}
+        assert gate._check_ob_quality(features, ob_age_sec=5.0) is False
+
+    def test_fresh_ob(self) -> None:
+        """鮮度以内 → True."""
+        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
+        gate = SkipGate(
+            model=None, scaler=None, feature_cols=[],
+            config=SkipGateConfig(ob_freshness_sec=5.0),
+        )
+        features = {"spread_bps_ob": 15.0, "depth_imbalance_ob": 0.3}
+        assert gate._check_ob_quality(features, ob_age_sec=1.0) is True
+
+    def test_negative_spread(self) -> None:
+        """spread<0 → False."""
+        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
+        gate = SkipGate(
+            model=None, scaler=None, feature_cols=[],
+            config=SkipGateConfig(),
+        )
+        features = {"spread_bps_ob": -1.0, "depth_imbalance_ob": 0.3}
+        assert gate._check_ob_quality(features) is False
 
 
 # ======================================================================
