@@ -162,6 +162,8 @@ class FillTestConfig:
     # 068# §3.3: side 別閾値 (None は共通 as_threshold を使用)
     skip_gate_as_threshold_buy: Optional[float] = None
     skip_gate_as_threshold_sell: Optional[float] = None
+    # 072# OB 特徴量トグル (ph2 通過後に True へ)
+    skip_gate_use_ob_features: bool = False
 
     @classmethod
     def from_yaml(cls, yaml_cfg: dict) -> "FillTestConfig":
@@ -328,6 +330,8 @@ class FillTestConfig:
             # 068# §3.3: side 別閾値
             "as_threshold_buy": "skip_gate_as_threshold_buy",
             "as_threshold_sell": "skip_gate_as_threshold_sell",
+            # 072# OB トグル
+            "use_ob_features": "skip_gate_use_ob_features",
         }
         for yaml_key, config_key in sg_map.items():
             if yaml_key in sg and sg[yaml_key] is not None:
@@ -450,9 +454,12 @@ class FillTestRunner:
                     # 068# §3.3: side 別閾値
                     self._skip_gate.config.as_threshold_buy = config.skip_gate_as_threshold_buy
                     self._skip_gate.config.as_threshold_sell = config.skip_gate_as_threshold_sell
+                    # 072# OB トグル
+                    self._skip_gate.config.use_ob_features = config.skip_gate_use_ob_features
                     logger.info(
                         f"[skip_gate] Loaded: mode={config.skip_gate_mode}, "
                         f"as_threshold={config.skip_gate_as_threshold}, "
+                        f"use_ob_features={config.skip_gate_use_ob_features}, "
                         f"features={len(self._skip_gate.feature_cols)}, "
                         f"path={gate_path}"
                     )
@@ -998,6 +1005,31 @@ class FillTestRunner:
                 except Exception:
                     pass  # 約定データ取得失敗は非致命的
 
+                # 072# OB トグル: use_ob_features 有効時のみ OB 取得
+                ob_bid: float | None = None
+                ob_ask: float | None = None
+                ob_bid_vol: float | None = None
+                ob_ask_vol: float | None = None
+                sg_use_ob = self._skip_gate.config.use_ob_features
+                if sg_use_ob:
+                    try:
+                        ob = await self.adapter.get_orderbook(
+                            self.config.symbol, depth=5,
+                        )
+                        if ob and ob.bids and ob.asks:
+                            ob_bid = ob.bids[0].price
+                            ob_ask = ob.asks[0].price
+                            ob_bid_vol = sum(
+                                lv.quantity for lv in ob.bids[:5]
+                            )
+                            ob_ask_vol = sum(
+                                lv.quantity for lv in ob.asks[:5]
+                            )
+                    except Exception as e:
+                        logger.debug(
+                            f"[skip_gate] OB fetch failed: {e}"
+                        )
+
                 gate_features = build_features_from_market_state(
                     side=side,
                     spread_jpy=spread_at_order or 0.0,
@@ -1005,6 +1037,11 @@ class FillTestRunner:
                     regime=sg_regime,
                     recent_trades=recent_trades_data,
                     market_timestamp=time.time(),
+                    best_bid=ob_bid,
+                    best_ask=ob_ask,
+                    bid_vol_5=ob_bid_vol,
+                    ask_vol_5=ob_ask_vol,
+                    use_ob_features=sg_use_ob,
                 )
 
                 decision = self._skip_gate.evaluate(

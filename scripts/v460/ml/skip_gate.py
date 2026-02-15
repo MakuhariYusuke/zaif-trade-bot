@@ -33,8 +33,8 @@ logger = logging.getLogger(__name__)
 _DEFAULT_MODEL_PATH = Path("models/v460/skip_gate.pkl")
 
 #: skip gate で使用する特徴量カラム (順序固定)
-#: 071# OB 特徴量を除去 — 価格ベースのみで判断
-GATE_FEATURE_COLS = [
+#: 071# OB 特徴量を除去 — 072# トグルで復元可能
+_BASE_FEATURE_COLS: list[str] = [
     # base features
     "side_buy",
     "hour_sin",
@@ -44,17 +44,44 @@ GATE_FEATURE_COLS = [
     "regime_trending",
     "regime_ranging",
     "regime_high_vol",
-    # trade-based micro features (OB 不使用)
+    # trade-based micro features
     "trade_count_60s",
     "buy_ratio",
     "trade_flow_imbalance_60s",
     "avg_trade_size",
     "price_velocity_60s",
     "vpin_60s",
-    # interaction features (trade-based only)
+    # interaction features (trade-based)
     "side_aligned_tfi",
     "side_aligned_velocity",
 ]
+
+#: 072# OB 復元時に追加される特徴量
+_OB_FEATURE_COLS: list[str] = [
+    "spread_bps_ob",
+    "depth_imbalance_ob",
+    "side_aligned_imbalance",
+]
+
+
+def get_gate_feature_cols(use_ob: bool = False) -> list[str]:
+    """072# SkipGate 特徴量カラムを取得.
+
+    Args:
+        use_ob: True で OB 特徴量 (spread_bps_ob, depth_imbalance_ob,
+                side_aligned_imbalance) を含める.
+
+    Returns:
+        特徴量カラム名のリスト.
+    """
+    cols = list(_BASE_FEATURE_COLS)
+    if use_ob:
+        cols.extend(_OB_FEATURE_COLS)
+    return cols
+
+
+# 後方互換: デフォルトは OB なし (071# 状態)
+GATE_FEATURE_COLS = get_gate_feature_cols(use_ob=False)
 
 
 @dataclass
@@ -70,6 +97,8 @@ class SkipGateConfig:
     # 068# §3.3: side 別閾値 (None は共通 as_threshold を使用)
     as_threshold_buy: Optional[float] = None
     as_threshold_sell: Optional[float] = None
+    # 072#: OB 特徴量トグル (ph2 通過後に True へ)
+    use_ob_features: bool = False
 
 
 @dataclass
@@ -97,6 +126,7 @@ class SkipGate:
     後方互換: 旧形式 (model+scaler) でも動作。
 
     071# OB 特徴量を除去 — 価格ベースのみで判断 (v459 方式回帰).
+    072# OB トグル追加 — use_ob_features=True で OB 特徴量を復元可能.
     """
 
     def __init__(
@@ -271,11 +301,19 @@ def build_features_from_market_state(
     recent_trades: list[dict] | None = None,
     trade_window_sec: int = 60,
     market_timestamp: float | None = None,
+    # 072# OB トグル: ph2 通過後に有効化
+    best_bid: float | None = None,
+    best_ask: float | None = None,
+    bid_vol_5: float | None = None,
+    ask_vol_5: float | None = None,
+    use_ob_features: bool = False,
 ) -> dict[str, float]:
     """現在のマーケット状態から skip gate 用特徴量を構築.
 
     071# OB 特徴量除去版: 価格と取引データのみで判断.
-    run_fill_test.py から呼び出される。
+    072# OB トグル追加: use_ob_features=True + best_bid/ask/vol 指定で
+         OB 特徴量 (spread_bps_ob, depth_imbalance_ob,
+         side_aligned_imbalance) を追加生成.
 
     Args:
         side: "buy" or "sell".
@@ -285,9 +323,14 @@ def build_features_from_market_state(
         recent_trades: 直近の約定リスト [{ts, price, amount, side}, ...].
         trade_window_sec: 約定統計のウィンドウ (秒). recent_trades をフィルタ.
         market_timestamp: UNIX timestamp (秒). 省略時は datetime.now() のローカル時刻.
+        best_bid: 最良買気配 (JPY). OB 特徴量生成に使用.
+        best_ask: 最良売気配 (JPY). OB 特徴量生成に使用.
+        bid_vol_5: bid 側 depth 5 の合計数量. OB 特徴量生成に使用.
+        ask_vol_5: ask 側 depth 5 の合計数量. OB 特徴量生成に使用.
+        use_ob_features: True で OB 特徴量を生成.
 
     Returns:
-        GATE_FEATURE_COLS に対応する特徴量辞書.
+        特徴量辞書. use_ob_features=False → 16 cols, True → 19 cols.
     """
     # 059# P1-5: 時刻特徴を明示的に制御
     if market_timestamp is not None:
@@ -364,6 +407,33 @@ def build_features_from_market_state(
     features["side_aligned_velocity"] = (
         features["price_velocity_60s"] * side_sign
     )
+
+    # 072# OB 特徴量 (トグル有効時のみ)
+    if use_ob_features:
+        if (
+            best_bid is not None
+            and best_ask is not None
+            and best_ask > best_bid > 0
+        ):
+            mid = (best_bid + best_ask) / 2
+            features["spread_bps_ob"] = (
+                (best_ask - best_bid) / mid * 10_000
+            )
+        else:
+            features["spread_bps_ob"] = float("nan")
+
+        if (
+            bid_vol_5 is not None
+            and ask_vol_5 is not None
+            and (bid_vol_5 + ask_vol_5) > 0
+        ):
+            depth_imb = (bid_vol_5 - ask_vol_5) / (bid_vol_5 + ask_vol_5)
+            features["depth_imbalance_ob"] = depth_imb
+        else:
+            depth_imb = 0.0
+            features["depth_imbalance_ob"] = float("nan")
+
+        features["side_aligned_imbalance"] = depth_imb * side_sign
 
     return features
 

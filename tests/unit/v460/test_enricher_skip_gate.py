@@ -590,6 +590,121 @@ class Test071OBRemoved:
             assert col not in ob_features, f"OB feature still in GATE_FEATURE_COLS: {col}"
 
 
+class Test072OBToggle:
+    """072# OB トグル: use_ob_features フラグで OB 特徴量の有無を切替."""
+
+    def test_get_gate_feature_cols_no_ob(self) -> None:
+        """use_ob=False で OB 特徴量を含まない (16 cols)."""
+        from scripts.v460.ml.skip_gate import get_gate_feature_cols
+        cols = get_gate_feature_cols(use_ob=False)
+        assert len(cols) == 16
+        assert "spread_bps_ob" not in cols
+        assert "depth_imbalance_ob" not in cols
+        assert "side_aligned_imbalance" not in cols
+
+    def test_get_gate_feature_cols_with_ob(self) -> None:
+        """use_ob=True で OB 特徴量を含む (19 cols)."""
+        from scripts.v460.ml.skip_gate import get_gate_feature_cols
+        cols = get_gate_feature_cols(use_ob=True)
+        assert len(cols) == 19
+        assert "spread_bps_ob" in cols
+        assert "depth_imbalance_ob" in cols
+        assert "side_aligned_imbalance" in cols
+
+    def test_build_features_without_ob(self) -> None:
+        """use_ob_features=False で OB 特徴量が生成されない."""
+        features = build_features_from_market_state(
+            side="buy",
+            spread_jpy=500.0,
+            offset_ratio=0.05,
+            regime="ranging",
+            use_ob_features=False,
+        )
+        assert "spread_bps_ob" not in features
+        assert "depth_imbalance_ob" not in features
+        assert "side_aligned_imbalance" not in features
+        assert "side_buy" in features  # base は健在
+
+    def test_build_features_with_ob(self) -> None:
+        """use_ob_features=True + OB データで OB 特徴量が生成される."""
+        features = build_features_from_market_state(
+            side="buy",
+            spread_jpy=500.0,
+            offset_ratio=0.05,
+            regime="ranging",
+            best_bid=14_500_000,
+            best_ask=14_500_500,
+            bid_vol_5=0.3,
+            ask_vol_5=0.2,
+            use_ob_features=True,
+        )
+        # OB 特徴量が存在
+        assert "spread_bps_ob" in features
+        assert "depth_imbalance_ob" in features
+        assert "side_aligned_imbalance" in features
+        # 値の妥当性
+        expected_spread_bps = (14_500_500 - 14_500_000) / 14_500_250 * 10_000
+        assert abs(features["spread_bps_ob"] - expected_spread_bps) < 0.01
+        expected_imb = (0.3 - 0.2) / (0.3 + 0.2)
+        assert abs(features["depth_imbalance_ob"] - expected_imb) < 1e-6
+        # side=buy → side_sign=1.0 → aligned = imb * 1.0
+        assert abs(features["side_aligned_imbalance"] - expected_imb) < 1e-6
+
+    def test_build_features_with_ob_sell_side(self) -> None:
+        """sell 側: side_aligned_imbalance の符号反転."""
+        features = build_features_from_market_state(
+            side="sell",
+            spread_jpy=500.0,
+            offset_ratio=0.05,
+            regime="ranging",
+            best_bid=14_500_000,
+            best_ask=14_500_500,
+            bid_vol_5=0.3,
+            ask_vol_5=0.2,
+            use_ob_features=True,
+        )
+        expected_imb = (0.3 - 0.2) / (0.3 + 0.2)
+        # sell → side_sign=-1 → aligned = imb * -1
+        assert abs(features["side_aligned_imbalance"] - (-expected_imb)) < 1e-6
+
+    def test_build_features_with_ob_missing_data(self) -> None:
+        """OB データなし + use_ob_features=True → NaN フォールバック."""
+        features = build_features_from_market_state(
+            side="buy",
+            spread_jpy=500.0,
+            offset_ratio=0.05,
+            regime="ranging",
+            use_ob_features=True,
+        )
+        assert np.isnan(features["spread_bps_ob"])
+        assert np.isnan(features["depth_imbalance_ob"])
+
+    def test_skip_gate_config_use_ob_default(self) -> None:
+        """SkipGateConfig.use_ob_features のデフォルトは False."""
+        from scripts.v460.ml.skip_gate import SkipGateConfig
+        cfg = SkipGateConfig()
+        assert cfg.use_ob_features is False
+
+    def test_feature_count_consistency(self) -> None:
+        """get_gate_feature_cols と build_features の出力が一致."""
+        from scripts.v460.ml.skip_gate import get_gate_feature_cols
+        # OB なし
+        cols_no_ob = get_gate_feature_cols(use_ob=False)
+        feats_no_ob = build_features_from_market_state(
+            side="buy", spread_jpy=500.0, offset_ratio=0.05,
+            regime="ranging", use_ob_features=False,
+        )
+        assert set(cols_no_ob) == set(feats_no_ob.keys())
+        # OB あり
+        cols_ob = get_gate_feature_cols(use_ob=True)
+        feats_ob = build_features_from_market_state(
+            side="buy", spread_jpy=500.0, offset_ratio=0.05,
+            regime="ranging", best_bid=14_500_000, best_ask=14_500_500,
+            bid_vol_5=0.3, ask_vol_5=0.2, use_ob_features=True,
+        )
+        assert set(cols_ob) == set(feats_ob.keys())
+
+
 # ======================================================================
 # build_features_from_market_state Tests
 # ======================================================================

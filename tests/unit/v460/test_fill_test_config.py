@@ -807,6 +807,33 @@ class Test062SkipGateConfig:
         assert not hasattr(config, "ob_fail_max_consecutive")
         assert not hasattr(config, "ob_fail_offset_boost")
 
+    def test_072_use_ob_features_default_false(self) -> None:
+        """072# use_ob_features のデフォルトは False."""
+        config = FillTestConfig.from_yaml({})
+        assert config.skip_gate_use_ob_features is False
+
+    def test_072_use_ob_features_from_yaml(self) -> None:
+        """072# use_ob_features が YAML から正しくマッピングされる."""
+        yaml_cfg = {
+            "skip_gate": {
+                "enabled": True,
+                "mode": "as",
+                "model_path": "models/v460/skip_gate_as.pkl",
+                "as_threshold": 0.65,
+                "use_ob_features": True,
+            },
+        }
+        config = FillTestConfig.from_yaml(yaml_cfg)
+        assert config.skip_gate_use_ob_features is True
+
+    def test_072_yaml_roundtrip_use_ob_features(self) -> None:
+        """072# fill_test.yaml の use_ob_features roundtrip."""
+        path = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
+        with open(path, "r", encoding="utf-8") as f:
+            cfg = yaml.safe_load(f)
+        config = FillTestConfig.from_yaml(cfg)
+        assert config.skip_gate_use_ob_features == cfg["skip_gate"]["use_ob_features"]
+
 
 class Test062SkipGateRunner:
     """062# S5: SkipGate の FillTestRunner 統合テスト."""

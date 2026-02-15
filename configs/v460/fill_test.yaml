@@ -136,6 +136,7 @@ spread_adaptive:
 
 # ---- 062# S5: SkipGate ML フィルター (AS 分類器ベース) ----
 # 071# OB 特徴量除去: 価格・取引データのみで判断 (v459 方式回帰)
+# 072# use_ob_features トグル追加: ph2 通過後に true へ切替で OB 特徴量復元
 skip_gate:
   enabled: true
   mode: as                     # "as" (AS 分類器) / "pnl" (PnL 回帰)
@@ -145,3 +146,4 @@ skip_gate:
   as_threshold_sell: 0.60      # 068# §3.3: sell 側厳格化
   pnl_threshold: 0.0
   max_skip_rate: 0.3
+  use_ob_features: false       # 072# OB トグル (ph2 通過後に true へ)
