@@ -248,6 +248,31 @@ class Test058EnrichFillRecords:
             assert X[micro_in_X].isna().any().any(), \
                 "Micro features should preserve NaN for CV-internal imputation"
 
+    def test_enriched_as_require_spread_filters(
+        self, synthetic_fill_df: pd.DataFrame
+    ) -> None:
+        """060# fix: require_spread=True でスプレッド欠損行を除外."""
+        df = synthetic_fill_df.copy()
+        for col in MICRO_FEATURE_COLS:
+            df[col] = np.random.RandomState(42).randn(len(df))
+
+        # 一部の行でスプレッドを NaN にする
+        nan_mask = df.index[:20]  # 最初の 20 行を NaN に
+        df.loc[nan_mask, "spread_at_order"] = np.nan
+        df.loc[nan_mask, "spread_offset_ratio"] = np.nan
+
+        # require_spread=True (default) → NaN 行が除外される
+        X_true, y_true = build_enriched_as_features(df, require_spread=True)
+        assert X_true["spread_jpy"].isna().sum() == 0, \
+            "require_spread=True should have no NaN in spread_jpy"
+
+        # require_spread=False → NaN 行が保持される
+        X_false, y_false = build_enriched_as_features(df, require_spread=False)
+        assert len(X_false) > len(X_true), \
+            "require_spread=False should keep more samples"
+        assert X_false["spread_jpy"].isna().sum() > 0, \
+            "require_spread=False should preserve NaN in spread_jpy"
+
     def test_pnl_features_shape(self, synthetic_fill_df: pd.DataFrame) -> None:
         """PnL 特徴量の shape と labels."""
         df = synthetic_fill_df.copy()

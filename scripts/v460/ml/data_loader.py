@@ -112,16 +112,13 @@ def build_as_features(
         features["edge_bps"] = (fill - mid) / mid * 10000 * side_sign
 
     # F5: spread_at_order (JPY, available for subset)
-    # NOTE: NaN は保持。補完は CV fold 内で SimpleImputer が行う (059# P0-1)
-    if "spread_at_order" in data.columns and not require_spread:
-        features["spread_jpy"] = data["spread_at_order"].astype(float)
-    elif require_spread:
+    # NOTE: require_spread=True → dropna 済なので全値 valid.
+    #       require_spread=False → NaN 保持。CV fold 内 SimpleImputer が補完 (059# P0-1).
+    if "spread_at_order" in data.columns:
         features["spread_jpy"] = data["spread_at_order"].astype(float)
 
     # F6: spread_offset_ratio
-    if "spread_offset_ratio" in data.columns and not require_spread:
-        features["offset_ratio"] = data["spread_offset_ratio"].astype(float)
-    elif require_spread:
+    if "spread_offset_ratio" in data.columns:
         features["offset_ratio"] = data["spread_offset_ratio"].astype(float)
 
     # F7: regime (one-hot, available for subset)
@@ -181,14 +178,9 @@ def build_fill_features(
     features["hour_sin"] = np.sin(2 * np.pi * hours / 24)
     features["hour_cos"] = np.cos(2 * np.pi * hours / 24)
 
-    # F3: spread_offset_ratio (if available)
-    # NOTE: NaN は保持。補完は CV fold 内で SimpleImputer が行う (059# P0-1)
-    if "spread_offset_ratio" in data.columns:
-        features["offset_ratio"] = data["spread_offset_ratio"].astype(float)
-
-    # F4: spread_at_order
-    if "spread_at_order" in data.columns:
-        features["spread_jpy"] = data["spread_at_order"].astype(float)
+    # 060# NOTE: spread_jpy / offset_ratio は Fill 分類器から除外.
+    # AS classifier 側で require_spread=True により対応済.
+    # Fill では時系列前半が全 NaN のため TSCV で無効化される.
 
     # F5: regime
     if "regime" in data.columns:

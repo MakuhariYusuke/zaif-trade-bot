@@ -67,18 +67,29 @@ def run_as_pipeline(
 
     results: dict = {}
 
-    # --- GradientBoosting ---
+    # 060# v2: Enriched (39+ features) → auto feature selection
+    # Tuning結果: k=15 for GB, k=8 for LR が最適
+    n_feat_gb = 15 if enriched and X.shape[1] > 20 else None
+    n_feat_lr = 8 if enriched and X.shape[1] > 20 else None
+    if n_feat_gb:
+        logger.info(
+            f"Feature selection: GB k={n_feat_gb}, LR k={n_feat_lr}"
+        )
+
+    # --- GradientBoosting (060# tuned: n=30, d=3, lr=0.05) ---
     logger.info("\n--- GradientBoosting ---")
     gb_metrics, gb_model, gb_scaler, gb_oof = train_as_classifier(
-        X, y, pnl, model_type="gb", n_splits=5
+        X, y, pnl, model_type="gb", n_splits=5,
+        n_features_select=n_feat_gb,
     )
     results["gb"] = asdict(gb_metrics)
     _print_as_metrics("GB", gb_metrics)
 
-    # --- LogisticRegression ---
+    # --- LogisticRegression (060# tuned: C=0.01, l2) ---
     logger.info("\n--- LogisticRegression ---")
     lr_metrics, lr_model, lr_scaler, lr_oof = train_as_classifier(
-        X, y, pnl, model_type="lr", n_splits=5
+        X, y, pnl, model_type="lr", n_splits=5,
+        n_features_select=n_feat_lr,
     )
     results["lr"] = asdict(lr_metrics)
     _print_as_metrics("LR", lr_metrics)

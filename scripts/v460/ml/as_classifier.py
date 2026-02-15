@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
@@ -61,6 +62,7 @@ def train_as_classifier(
     *,
     n_splits: int = 5,
     model_type: str = "gb",
+    n_features_select: int | None = None,
 ) -> tuple[ASModelMetrics, Any, Pipeline, np.ndarray]:
     """AS 分類器の学習と時系列 CV 評価.
 
@@ -70,6 +72,8 @@ def train_as_classifier(
         pnl: post_fill_30s_pnl (スキップ効果計算用, optional).
         n_splits: TimeSeriesSplit の fold 数.
         model_type: "lr" (LogisticRegression) or "gb" (GradientBoosting).
+        n_features_select: 060# v2: SelectKBest(f_classif) で選択する特徴量数.
+            None の場合は全特徴量を使用.
 
     Returns:
         (metrics, model, pipeline, oof_probs) タプル.
@@ -90,24 +94,37 @@ def train_as_classifier(
         y_test = y.iloc[test_idx]
 
         # 059# P0-1: Imputer+Scaler+Model を fold 内で fit (リーク防止)
+        # 060# tuned: LR C=0.01, GB n=30/d=3/lr=0.05 (feature selection時)
         if model_type == "lr":
+            # 060#: 強正則化 (C=0.01) — 高次元特徴量の過学習抑制
+            c_val = 0.01 if n_features_select else 1.0
             clf = LogisticRegression(
-                C=1.0, max_iter=1000, class_weight="balanced", random_state=42
+                C=c_val, max_iter=2000, class_weight="balanced", random_state=42
             )
         else:
+            # 060#: 小さい木 (n=30, lr=0.05) — 過学習防止
+            n_est = 30 if n_features_select else 100
+            lr_val = 0.05 if n_features_select else 0.1
             clf = GradientBoostingClassifier(
-                n_estimators=100,
+                n_estimators=n_est,
                 max_depth=3,
-                learning_rate=0.1,
+                learning_rate=lr_val,
                 subsample=0.8,
                 random_state=42,
             )
 
-        pipe = Pipeline([
+        # 060# v2: Feature selection (CV内で特徴量選択 → リーク防止)
+        k = min(n_features_select, X_train.shape[1]) if n_features_select else None
+        steps: list[tuple[str, Any]] = [
             ("imputer", SimpleImputer(strategy="median")),
+        ]
+        if k is not None:
+            steps.append(("selector", SelectKBest(f_classif, k=k)))
+        steps.extend([
             ("scaler", StandardScaler()),
             ("model", clf),
         ])
+        pipe = Pipeline(steps)
         pipe.fit(X_train, y_train)
         probs = pipe.predict_proba(X_test)[:, 1]
 
@@ -125,34 +142,50 @@ def train_as_classifier(
 
     # Final model on all data (for feature importance extraction only)
     if model_type == "lr":
+        c_val = 0.01 if n_features_select else 1.0
         final_clf = LogisticRegression(
-            C=1.0, max_iter=1000, class_weight="balanced", random_state=42
+            C=c_val, max_iter=2000, class_weight="balanced", random_state=42
         )
     else:
+        n_est = 30 if n_features_select else 100
+        lr_val = 0.05 if n_features_select else 0.1
         final_clf = GradientBoostingClassifier(
-            n_estimators=100,
+            n_estimators=n_est,
             max_depth=3,
-            learning_rate=0.1,
+            learning_rate=lr_val,
             subsample=0.8,
             random_state=42,
         )
-    final_pipe = Pipeline([
+    k_final = min(n_features_select, X.shape[1]) if n_features_select else None
+    final_steps: list[tuple[str, Any]] = [
         ("imputer", SimpleImputer(strategy="median")),
+    ]
+    if k_final is not None:
+        final_steps.append(("selector", SelectKBest(f_classif, k=k_final)))
+    final_steps.extend([
         ("scaler", StandardScaler()),
         ("model", final_clf),
     ])
+    final_pipe = Pipeline(final_steps)
     final_pipe.fit(X, y)
     final_model = final_pipe.named_steps["model"]
     scaler_final = final_pipe  # Return Pipeline instead of bare scaler
 
-    # Feature importances
+    # Feature importances (selected features only if selection is active)
+    if "selector" in final_pipe.named_steps:
+        selector = final_pipe.named_steps["selector"]
+        selected_mask = selector.get_support()
+        selected_cols = X.columns[selected_mask].tolist()
+    else:
+        selected_cols = X.columns.tolist()
+
     if hasattr(final_model, "feature_importances_"):
         importances = dict(
-            zip(X.columns, final_model.feature_importances_.tolist())
+            zip(selected_cols, final_model.feature_importances_.tolist())
         )
     elif hasattr(final_model, "coef_"):
         importances = dict(
-            zip(X.columns, np.abs(final_model.coef_[0]).tolist())
+            zip(selected_cols, np.abs(final_model.coef_[0]).tolist())
         )
     else:
         importances = None

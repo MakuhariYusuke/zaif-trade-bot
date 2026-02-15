@@ -236,6 +236,128 @@ def _find_nearest_ob(
     }
 
 
+# ----- 060# v2: Multi-timeframe & volatility features -----
+
+_MULTI_TF_WINDOWS = [30, 300]  # 秒 (primary 60s は既存)
+
+
+def _compute_multi_timeframe_trade_features(
+    trades_df: pd.DataFrame,
+    ts: float,
+    *,
+    _sorted_ts: np.ndarray | None = None,
+) -> dict[str, float]:
+    """060# v2: 30s/300s 窓の約定統計 (既存 60s を補完).
+
+    AS 予測には時間スケール間の差分が重要:
+    - 短期 (30s) vs 長期 (300s) の flow 乖離 → 情報トレーダー検知
+    - 加速度 (trade rate の変化) → urgency
+    """
+    result: dict[str, float] = {}
+
+    for w in _MULTI_TF_WINDOWS:
+        suffix = f"_{w}s"
+        feats = _compute_trade_features(
+            trades_df, ts, w, _sorted_ts=_sorted_ts
+        )
+        # 主要指標のみ追加 (全部入れると次元が爆発)
+        result[f"vpin{suffix}"] = feats["vpin_60s"]  # 命名は窓に合わせる
+        result[f"tfi{suffix}"] = feats["trade_flow_imbalance_60s"]
+        result[f"velocity{suffix}"] = feats["price_velocity_60s"]
+        result[f"trade_count{suffix}"] = feats["trade_count_60s"]
+
+    # Cross-timeframe: 30s vs 300s の加速度シグナル
+    vpin_30 = result.get("vpin_30s", 0.5)
+    vpin_300 = result.get("vpin_300s", 0.5)
+    tfi_30 = result.get("tfi_30s", 0.0)
+    tfi_300 = result.get("tfi_300s", 0.0)
+    tc_30 = result.get("trade_count_30s", 0.0)
+    tc_300 = result.get("trade_count_300s", 0.0)
+
+    # VPIN 加速: 短期 VPIN が長期より高い → 直近に informed trading
+    result["vpin_acceleration"] = vpin_30 - vpin_300
+
+    # TFI 加速: 短期 flow が長期より偏っている → 方向性圧力の急変
+    result["tfi_acceleration"] = tfi_30 - tfi_300
+
+    # Trade rate 加速: 30s rate vs 300s rate (normalized to per-second)
+    rate_30 = tc_30 / 30.0 if tc_30 > 0 else 0.0
+    rate_300 = tc_300 / 300.0 if tc_300 > 0 else 0.0
+    result["trade_rate_acceleration"] = rate_30 - rate_300
+
+    return result
+
+
+def _compute_return_momentum(
+    ob_df: pd.DataFrame,
+    ts: float,
+    *,
+    sorted_ts: np.ndarray | None = None,
+    windows: tuple[int, ...] = (30, 60, 300),
+) -> dict[str, float]:
+    """060# v2: OB mid price ベースのリターンモメンタム + ボラティリティ.
+
+    Args:
+        ob_df: load_raw_orderbook() の出力 (ts, mid_price 列必須).
+        ts: 基準時刻.
+        sorted_ts: ob_df["ts"].values (事前準備).
+        windows: lookback 窓 (秒).
+
+    Returns:
+        return_30s, return_60s, return_300s: 各窓のリターン (bps)
+        realized_vol_300s: 300s 窓の実現ボラティリティ (bps)
+        mid_price_at_order: 注文時mid (AS計算の基準)
+    """
+    default: dict[str, float] = {}
+    for w in windows:
+        default[f"return_{w}s"] = np.nan
+    default["realized_vol_300s"] = np.nan
+
+    if ob_df.empty or "ts" not in ob_df.columns:
+        return default
+
+    ts_arr = sorted_ts if sorted_ts is not None else ob_df["ts"].values
+    mid_arr = ob_df["mid_price"].values
+
+    # 現在の mid を取得 (最近傍)
+    idx_now = int(np.searchsorted(ts_arr, ts, side="right")) - 1
+    if idx_now < 0 or abs(ts_arr[idx_now] - ts) > 120:
+        return default
+
+    mid_now = mid_arr[idx_now]
+    if mid_now <= 0:
+        return default
+
+    result: dict[str, float] = {}
+
+    # 各窓のリターン (bps)
+    for w in windows:
+        t_past = ts - w
+        idx_past = int(np.searchsorted(ts_arr, t_past, side="left"))
+        if idx_past < len(ts_arr) and abs(ts_arr[idx_past] - t_past) < 120:
+            mid_past = mid_arr[idx_past]
+            if mid_past > 0:
+                result[f"return_{w}s"] = (mid_now - mid_past) / mid_past * 10000
+            else:
+                result[f"return_{w}s"] = np.nan
+        else:
+            result[f"return_{w}s"] = np.nan
+
+    # 実現ボラティリティ (300s 窓, returns の std)
+    vol_window = 300
+    t_start = ts - vol_window
+    i_start = int(np.searchsorted(ts_arr, t_start, side="left"))
+    i_end = int(np.searchsorted(ts_arr, ts, side="right"))
+    if i_end - i_start >= 5:  # 最低 5 snapshots
+        mids = mid_arr[i_start:i_end]
+        returns_bps = np.diff(mids) / mids[:-1] * 10000
+        result["realized_vol_300s"] = float(np.std(returns_bps))
+    else:
+        result["realized_vol_300s"] = np.nan
+
+    return result
+
+
 def enrich_fill_records(
     fill_df: pd.DataFrame,
     raw_dir: Optional[Path] = None,
@@ -254,7 +376,8 @@ def enrich_fill_records(
         enriched DataFrame. 新規カラム:
             spread_bps_ob, depth_imbalance_ob, bid_vol_5_ob, ask_vol_5_ob,
             trade_count_60s, buy_ratio, trade_flow_imbalance_60s,
-            avg_trade_size, price_velocity_60s, vpin_60s
+            avg_trade_size, price_velocity_60s, vpin_60s,
+            + 060# v2 features (multi-timeframe, volatility, momentum)
     """
     ob_df = load_raw_orderbook(raw_dir)
     trades_df = load_raw_trades(raw_dir)
@@ -266,6 +389,9 @@ def enrich_fill_records(
     else:
         sorted_ts = None
 
+    # 060#: OB ts も事前準備 (multi-timeframe momentum 計算用)
+    ob_sorted_ts = ob_df["ts"].values if not ob_df.empty else None
+
     enriched_rows: list[dict] = []
     for _, row in fill_df.iterrows():
         ts = float(row["timestamp"])
@@ -273,15 +399,31 @@ def enrich_fill_records(
         # Orderbook features (nearest snapshot)
         ob_features = _find_nearest_ob(ob_df, ts, ob_tolerance_sec)
 
-        # Trade features (rolling window)
+        # Trade features (rolling window — primary 60s)
         trade_features = _compute_trade_features(
             trades_df, ts, trade_window_sec, _sorted_ts=sorted_ts
         )
 
-        enriched_rows.append({**ob_features, **trade_features})
+        # 060# v2: Multi-timeframe trade features (30s, 300s)
+        multi_tf = _compute_multi_timeframe_trade_features(
+            trades_df, ts, _sorted_ts=sorted_ts
+        )
+
+        # 060# v2: Return momentum & volatility (from OB mid prices)
+        momentum = _compute_return_momentum(ob_df, ts, sorted_ts=ob_sorted_ts)
+
+        enriched_rows.append(
+            {**ob_features, **trade_features, **multi_tf, **momentum}
+        )
 
     enriched = pd.DataFrame(enriched_rows, index=fill_df.index)
     n_ob_matched = enriched["spread_bps_ob"].notna().sum()
+
+    logger.info(
+        f"Enriched {len(fill_df)} records: "
+        f"OB matched={n_ob_matched}/{len(fill_df)}, "
+        f"trades available={not trades_df.empty}"
+    )
 
     logger.info(
         f"Enriched {len(fill_df)} records: "
@@ -306,6 +448,29 @@ MICRO_FEATURE_COLS = [
     "vpin_60s",
 ]
 
+#: 060# v2: Multi-timeframe & momentum 特徴量
+V2_FEATURE_COLS = [
+    # Multi-timeframe
+    "vpin_30s",
+    "tfi_30s",
+    "velocity_30s",
+    "trade_count_30s",
+    "vpin_300s",
+    "tfi_300s",
+    "velocity_300s",
+    "trade_count_300s",
+    # Cross-timeframe acceleration
+    "vpin_acceleration",
+    "tfi_acceleration",
+    "trade_rate_acceleration",
+    # Return momentum
+    "return_30s",
+    "return_60s",
+    "return_300s",
+    # Realized volatility
+    "realized_vol_300s",
+]
+
 #: side とのインタラクション特徴量 (AS 予測の本丸)
 INTERACTION_FEATURE_COLS = [
     "side_aligned_imbalance",
@@ -316,6 +481,8 @@ INTERACTION_FEATURE_COLS = [
 
 def build_enriched_as_features(
     enriched_df: pd.DataFrame,
+    *,
+    require_spread: bool = True,
 ) -> tuple[pd.DataFrame, pd.Series]:
     """enriched fill records → AS 分類器用特徴量.
 
@@ -324,6 +491,7 @@ def build_enriched_as_features(
 
     Args:
         enriched_df: enrich_fill_records() の出力.
+        require_spread: True の場合 spread_at_order 必須 (件数減、全 fold で spread 有効).
 
     Returns:
         (X, y) タプル.
@@ -331,7 +499,8 @@ def build_enriched_as_features(
     from scripts.v460.ml.data_loader import build_as_features
 
     # 1. 既存特徴量
-    X_base, y = build_as_features(enriched_df)
+    # 060# fix: enriched path では spread 必須 → 全 TSCV fold で clean features
+    X_base, y = build_as_features(enriched_df, require_spread=require_spread)
 
     # 2. マイクロストラクチャ特徴量を追加
     # NOTE: NaN は保持。補完は CV fold 内で SimpleImputer が行う (059# P0-1)
@@ -365,16 +534,31 @@ def build_enriched_as_features(
         aligned_vel = vel * side_sign
         micro_features["side_aligned_velocity"] = aligned_vel.fillna(0.0)
 
+    # 4. 060# v2: Multi-timeframe & momentum 特徴量
+    for col in V2_FEATURE_COLS:
+        if col in enriched_df.columns:
+            micro_features[col] = enriched_df.loc[X_base.index, col].astype(float)
+
+    # 5. 060# v2: side-aligned momentum (AS 予測のコア)
+    #    リターンが自分に不利な方向 → AS リスク高
+    for ret_col in ["return_30s", "return_60s", "return_300s"]:
+        if ret_col in enriched_df.columns:
+            ret = enriched_df.loc[X_base.index, ret_col].astype(float)
+            # buy: 上昇 → 有利 (+), sell: 下降 → 有利 (+)
+            aligned_ret = ret * side_sign
+            micro_features[f"side_aligned_{ret_col}"] = aligned_ret
+
     if micro_features:
         X_micro = pd.DataFrame(micro_features, index=X_base.index)
         X = pd.concat([X_base, X_micro], axis=1)
     else:
         X = X_base
 
+    n_v2 = sum(1 for c in X.columns if c in V2_FEATURE_COLS or c.startswith("side_aligned_return"))
     logger.info(
         f"Enriched AS features: {X.shape[1]} features "
-        f"({X_base.shape[1]} base + {len(micro_features)} micro), "
-        f"{len(X)} samples"
+        f"({X_base.shape[1]} base + {len(micro_features)} micro "
+        f"[{n_v2} v2]), {len(X)} samples"
     )
     return X, y
 
@@ -416,12 +600,11 @@ def build_pnl_features(
     features["hour_sin"] = np.sin(2 * np.pi * hours / 24)
     features["hour_cos"] = np.cos(2 * np.pi * hours / 24)
 
-    if "spread_at_order" in data.columns:
-        # NOTE: NaN は保持。補完は CV fold 内 (059# P0-1)
-        features["spread_jpy"] = data["spread_at_order"].astype(float)
-
-    if "spread_offset_ratio" in data.columns:
-        features["offset_ratio"] = data["spread_offset_ratio"].astype(float)
+    # 060# NOTE: spread_jpy / offset_ratio は PnL パイプラインから除外.
+    # 理由: 時系列的に後半にしか存在せず (Q1-Q2 は全 NaN),
+    #   TSCV 初期 fold で SimpleImputer が全欠損→特徴量無効化.
+    #   AS classifier では require_spread=True で対応済.
+    #   PnL model の top features は velocity / vpin / hour 系であり影響なし.
 
     if "regime" in data.columns:
         regime = data["regime"].fillna("unknown")
@@ -446,6 +629,17 @@ def build_pnl_features(
     if "price_velocity_60s" in data.columns:
         vel = data["price_velocity_60s"].astype(float)
         features["side_aligned_velocity"] = (vel * side_sign).fillna(0.0)
+
+    # --- 060# v2: Multi-timeframe & momentum ---
+    for col in V2_FEATURE_COLS:
+        if col in data.columns:
+            features[col] = data[col].astype(float)
+
+    # side-aligned momentum
+    for ret_col in ["return_30s", "return_60s", "return_300s"]:
+        if ret_col in data.columns:
+            ret = data[ret_col].astype(float)
+            features[f"side_aligned_{ret_col}"] = ret * side_sign
 
     X = pd.DataFrame(features, index=data.index)
     y = data["post_fill_30s_pnl"].astype(float)
