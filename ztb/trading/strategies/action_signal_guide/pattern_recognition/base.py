@@ -8,25 +8,40 @@ import threading
 import time
 from abc import ABC, abstractmethod
 from collections import OrderedDict
+from collections.abc import Callable
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    TypeVar,
+    TypedDict,
+    Union,
+    cast,
+)
 
 import numpy as np
 import pandas as pd
 
 
-def timed(func: Any) -> Any:
+F = TypeVar("F", bound=Callable[..., object])
+T = TypeVar("T")
+
+
+def timed(func: F) -> F:
     """Simple timing decorator for performance monitoring."""
 
     @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
+    def wrapper(*args: object, **kwargs: object) -> object:
         start_time = time.time()
         result = func(*args, **kwargs)
         end_time = time.time()
         print(f"{func.__name__} took {end_time - start_time:.4f} seconds")
         return result
 
-    return wrapper
+    return cast(F, wrapper)
 
 
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
@@ -53,7 +68,7 @@ try:
 except ImportError:
     # Fallback if types module not available
     if TYPE_CHECKING:
-        MultiTimeframeData = Dict[str, Dict[str, Any]]
+        MultiTimeframeData = Dict[str, Dict[str, object]]
         PatternThresholds = Dict[str, Union[int, float, None]]
         PatternMetrics = Dict[str, Union[int, float, str]]
         PatternResult = Dict[str, Union[int, float, str, PatternMetrics]]
@@ -65,7 +80,7 @@ except ImportError:
         RegimeAdjustment = Dict[str, Union[int, float, str]]
     else:
         # Runtime fallbacks
-        MultiTimeframeData = Dict[str, Dict[str, Any]]
+        MultiTimeframeData = Dict[str, Dict[str, object]]
         PatternThresholds = Dict[str, Union[int, float, None]]
         PatternMetrics = Dict[str, Union[int, float, str]]
         PatternResult = Dict[str, Union[int, float, str, PatternMetrics]]
@@ -77,7 +92,7 @@ except ImportError:
         RegimeAdjustment = Dict[str, Union[int, float, str]]
 
 
-class LRUCache:
+class LRUCache(Generic[T]):
     """
     Simple LRU cache implementation with size limits.
 
@@ -87,11 +102,11 @@ class LRUCache:
     def __init__(self, max_size: int = 1000, ttl_seconds: Optional[int] = None):
         self.max_size = max_size
         self.ttl_seconds = ttl_seconds
-        self.cache: OrderedDict[str, Any] = OrderedDict()
+        self.cache: OrderedDict[str, T] = OrderedDict()
         self.timestamps: Dict[str, float] = {}
         self._lock = threading.Lock()
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Optional[T]:
         """Get value from cache, moving it to end (most recently used)."""
         with self._lock:
             # Check TTL if enabled
@@ -106,7 +121,7 @@ class LRUCache:
                 return self.cache[key]
             return None
 
-    def set(self, key: str, value: Any) -> None:
+    def set(self, key: str, value: T) -> None:
         """Set value in cache with LRU eviction."""
         with self._lock:
             if key in self.cache:
@@ -270,7 +285,7 @@ class SignalResult:
         strength: float,
         direction: float,  # Continuous value from -1.0 (strong sell) to 1.0 (strong buy), 0.0 for neutral
         description: str,
-        timestamp: Optional[Any] = None,
+        timestamp: object | None = None,
         confidence: Optional[
             float
         ] = None,  # Confidence in pattern recognition (0.0-1.0), defaults to strength
@@ -344,12 +359,12 @@ class PatternRecognizer(ABC):
     Provides common functionality and interface for pattern recognition.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.config = config or {}
+    def __init__(self, config: Optional[Dict[str, object]] = None):
+        self.config: Dict[str, object] = dict(config) if config else {}
         self.name = self.__class__.__name__
         self._validate_config()
         # Use LRU cache for signal results to prevent memory leaks and improve performance
-        self._signal_cache = LRUCache(
+        self._signal_cache: LRUCache[tuple[SignalResult, int]] = LRUCache(
             max_size=500, ttl_seconds=300
         )  # 500 entries, 5 minutes TTL
 
@@ -430,7 +445,7 @@ class PatternRecognizer(ABC):
                         f"Configuration validation failed for {self.name}: {e}"
                     )
 
-    def get_config_value(self, key: str, default: Any = None) -> Any:
+    def get_config_value(self, key: str, default: object = None) -> object:
         """Get configuration value with optional default."""
         return safe_config_get(self.config, key, default)
 
@@ -478,7 +493,7 @@ class PatternRecognizer(ABC):
         data: pd.DataFrame,
         index: int = -1,
         required_length: int = 1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+        multi_timeframe_data: Optional[MultiTimeframeData] = None,
     ) -> int:
         """
         Common validation for pattern recognition inputs.
@@ -532,17 +547,23 @@ class PatternRecognizer(ABC):
 
         return index
 
-    def _validate_multi_timeframe_data(
-        self, multi_timeframe_data: Dict[str, Any]
-    ) -> None:
+    def _validate_multi_timeframe_data(self, multi_timeframe_data: MultiTimeframeData) -> None:
         """Validate multi-timeframe data structure."""
         if not isinstance(multi_timeframe_data, dict):
             raise ValueError(
                 f"Multi-timeframe data must be a dictionary for {self.name}"
             )
 
-        # Basic validation - can be extended by subclasses
-        pass
+        # Basic schema validation - can be extended by subclasses.
+        for tf_key, tf_payload in multi_timeframe_data.items():
+            if not isinstance(tf_key, str):
+                raise ValueError(
+                    f"Multi-timeframe key must be str for {self.name}, got {type(tf_key).__name__}"
+                )
+            if not isinstance(tf_payload, dict):
+                raise ValueError(
+                    f"Multi-timeframe payload must be dict for {self.name}, got {type(tf_payload).__name__}"
+                )
 
     def preprocess_data(
         self,
@@ -781,14 +802,19 @@ class PatternRecognizer(ABC):
         Returns:
             Cached SignalResult if available and valid, otherwise new recognition
         """
+        resolved_index = index if index >= 0 else len(data) + index
+        if resolved_index < 0 or resolved_index >= len(data):
+            return None
+
         cache_key = (
-            f"{self.name}_{index}_{data.iloc[index]['close'] if index >= 0 else 0}"
+            f"{self.name}_{resolved_index}_{float(data.iloc[resolved_index]['close']):.8f}"
         )
 
         # Check cache first
-        cached_signal = self._signal_cache.get(cache_key)
-        if cached_signal is not None:
-            if not cached_signal.is_expired(index, index):
+        cached_entry = self._signal_cache.get(cache_key)
+        if cached_entry is not None:
+            cached_signal, signal_index = cached_entry
+            if not cached_signal.is_expired(resolved_index, signal_index):
                 return cached_signal
 
         # Preprocess data for better pattern recognition
@@ -796,10 +822,10 @@ class PatternRecognizer(ABC):
 
         # Calculate new signal
         signal: Optional[SignalResult] = self.recognize(
-            processed_data, index, multi_timeframe_data
-        )  # type: ignore
+            processed_data, resolved_index, multi_timeframe_data
+        )
         if signal is not None:
-            self._signal_cache.set(cache_key, signal)
+            self._signal_cache.set(cache_key, (signal, resolved_index))
         return signal
 
     def validate_data(self, data: pd.DataFrame) -> bool:
@@ -1110,7 +1136,7 @@ class CandlestickPatternRecognizer(PatternRecognizer):
         "doji": 0.5,
     }
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: Optional[Dict[str, object]] = None) -> None:
         super().__init__(config)
         self.body_ratio_threshold = self.config.get("body_ratio_threshold", 0.6)
         self.shadow_ratio_threshold = self.config.get("shadow_ratio_threshold", 0.3)
@@ -1229,9 +1255,18 @@ class CandlestickPatternRecognizer(PatternRecognizer):
             "is_marubozu": body_size / total_range > 0.95,  # Very large body
         }
 
+    class MultiCandleCharacteristics(TypedDict):
+        body_sizes: list[float]
+        body_ratios: list[float]
+        upper_shadow_ratios: list[float]
+        lower_shadow_ratios: list[float]
+        is_bullish: list[bool]
+        is_bearish: list[bool]
+        avg_body_size: float
+
     def analyze_multiple_candle_characteristics(
         self, data: pd.DataFrame, indices: List[int]
-    ) -> Dict[str, Any]:
+    ) -> MultiCandleCharacteristics:
         """
         Analyze characteristics for multiple candles.
 
@@ -1242,7 +1277,7 @@ class CandlestickPatternRecognizer(PatternRecognizer):
         Returns:
             Dictionary with lists of candle characteristics
         """
-        characteristics: Dict[str, Any] = {
+        characteristics: CandlestickPatternRecognizer.MultiCandleCharacteristics = {
             "body_sizes": [],
             "body_ratios": [],
             "upper_shadow_ratios": [],
@@ -1448,7 +1483,7 @@ class MultiCandlePatternRecognizer(PatternRecognizer):
     Base class for multi-candle pattern recognizers.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: Optional[Dict[str, object]] = None) -> None:
         super().__init__(config)
         self.min_trend_length = self.config.get("min_trend_length", 5)
 
