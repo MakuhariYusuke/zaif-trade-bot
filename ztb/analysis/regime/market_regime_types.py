@@ -7,7 +7,7 @@ market regime detection implementations.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Dict, List
 
 
 class MarketRegime(Enum):
@@ -45,7 +45,7 @@ class RegimeDetectionResult:
     regime: MarketRegime
     confidence: float
     indicators: Dict[str, float]
-    metadata: Dict[str, Any]
+    metadata: Dict[str, object]
     classification_path: List[
         str
     ] = None  # Optional: track which conditions led to this regime

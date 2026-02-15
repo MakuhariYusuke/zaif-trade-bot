@@ -7,8 +7,9 @@ to create a comprehensive dynamic adaptation system for trading signals.
 
 import re
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Set
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -17,6 +18,9 @@ from ztb.utils.logging_utils import get_logger
 
 from .adaptive_pattern_selector import AdaptivePatternSelector
 from .signal_quality_filter import SignalQualityFilter
+
+if TYPE_CHECKING:
+    from ..action_signal_guide import ActionSignal
 
 
 @dataclass
@@ -42,7 +46,7 @@ class DynamicAdapter:
     - Market regime-aware optimization
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Mapping[str, object] | None = None):
         """
         Initialize dynamic adapter.
 
@@ -50,22 +54,22 @@ class DynamicAdapter:
             config: Configuration dictionary
         """
         self.logger = get_logger("ztb.trading.strategies.dynamic_adapter")
-        self.config = config
+        self.config: dict[str, object] = dict(config) if config else {}
 
         # Core components
         self.pattern_selector = AdaptivePatternSelector(
-            config.get("pattern_selector", {})
+            self._get_config_section("pattern_selector")
         )
-        self.quality_filter = SignalQualityFilter(config.get("quality_filter", {}))
+        self.quality_filter = SignalQualityFilter(self._get_config_section("quality_filter"))
 
         # Adaptation state
-        self.active_patterns: Set[str] = set()
-        self.market_regime: Optional[MarketRegime] = None
+        self.active_patterns: set[str] = set()
+        self.market_regime: MarketRegime | None = None
         self.last_adaptation = time.time()
 
         # Performance tracking
-        self.adaptation_history = []
-        self.performance_metrics = {
+        self.adaptation_history: list[AdaptationMetrics] = []
+        self.performance_metrics: dict[str, float] = {
             "total_adaptations": 0,
             "successful_adaptations": 0,
             "avg_adaptation_time": 0,
@@ -74,10 +78,14 @@ class DynamicAdapter:
         }
 
         # Adaptation parameters
-        self.adaptation_interval = config.get("adaptation_interval", 300)  # 5 minutes
-        self.min_adaptation_signals = config.get("min_adaptation_signals", 10)
-        self.quality_improvement_threshold = config.get(
-            "quality_improvement_threshold", 0.05
+        self.adaptation_interval = self._to_int(
+            self.config.get("adaptation_interval"), 300
+        )  # 5 minutes
+        self.min_adaptation_signals = self._to_int(
+            self.config.get("min_adaptation_signals"), 10
+        )
+        self.quality_improvement_threshold = self._to_float(
+            self.config.get("quality_improvement_threshold"), 0.05
         )
 
         # Market regime tracking
@@ -88,12 +96,12 @@ class DynamicAdapter:
 
     def adapt_and_filter(
         self,
-        available_patterns: List[str],
-        signals: List[Any],
+        available_patterns: list[str],
+        signals: list["ActionSignal"],
         market_data: pd.DataFrame,
-        market_regime: MarketRegime,
+        market_regime: object,
         force_adaptation: bool = False,
-    ) -> List[Any]:
+    ) -> list["ActionSignal"]:
         """
         Perform dynamic adaptation and signal filtering.
 
@@ -110,7 +118,8 @@ class DynamicAdapter:
         start_time = time.time()
 
         # Update market regime
-        regime_changed = self._update_market_regime(market_regime)
+        resolved_regime = self._coerce_market_regime(market_regime)
+        regime_changed = self._update_market_regime(resolved_regime)
 
         # Check if adaptation is needed
         should_adapt = (
@@ -141,8 +150,10 @@ class DynamicAdapter:
 
         # Filter signals based on active patterns and quality
         # If active_patterns is empty, allow permissive mode (useful for backtests)
-        pattern_filtered_signals = []
-        permissive_on_empty = self.config.get("permissive_on_empty_patterns", True)
+        pattern_filtered_signals: list["ActionSignal"] = []
+        permissive_on_empty = bool(
+            self.config.get("permissive_on_empty_patterns", True)
+        )
         if not self.active_patterns and permissive_on_empty:
             # Treat as if all patterns are active when no patterns were selected
             pattern_filtered_signals = list(signals)
@@ -177,7 +188,7 @@ class DynamicAdapter:
 
         # Apply quality filtering
         quality_filtered_signals = self.quality_filter.filter_signals(
-            pattern_filtered_signals, market_data, market_regime
+            pattern_filtered_signals, market_data, resolved_regime
         )
 
         # Update performance tracking
@@ -187,7 +198,7 @@ class DynamicAdapter:
             len(quality_filtered_signals),
             self._calculate_avg_quality(quality_filtered_signals),
             adaptation_time,
-            market_regime,
+            resolved_regime,
         )
 
         # Periodic threshold adaptation
@@ -207,7 +218,7 @@ class DynamicAdapter:
         confidence: float,
         execution_time: float,
         memory_usage: float,
-    ):
+    ) -> None:
         """
         Update pattern performance metrics.
 
@@ -225,11 +236,11 @@ class DynamicAdapter:
 
     def update_market_condition(
         self,
-        regime: MarketRegime,
+        regime: object,
         volatility: float,
         trend_strength: float,
         volume_trend: float,
-    ):
+    ) -> None:
         """
         Update market condition for adaptation.
 
@@ -240,12 +251,15 @@ class DynamicAdapter:
             volume_trend: Current volume trend
         """
         self.pattern_selector.update_market_condition(
-            regime, volatility, trend_strength, volume_trend
+            self._coerce_market_regime(regime),
+            volatility,
+            trend_strength,
+            volume_trend,
         )
 
-    def get_adaptation_statistics(self) -> Dict[str, Any]:
+    def get_adaptation_statistics(self) -> dict[str, object]:
         """Get comprehensive adaptation statistics."""
-        stats = {
+        stats: dict[str, object] = {
             "performance_metrics": self.performance_metrics.copy(),
             "active_patterns": sorted(list(self.active_patterns)),
             "current_regime": str(self.market_regime)
@@ -279,14 +293,14 @@ class DynamicAdapter:
         return stats
 
     def force_adaptation(
-        self, available_patterns: List[str], market_regime: MarketRegime
-    ):
+        self, available_patterns: list[str], market_regime: object
+    ) -> None:
         """Force immediate pattern adaptation."""
         old_patterns = self.active_patterns.copy()
         self.active_patterns = self.pattern_selector.select_active_patterns(
             available_patterns
         )
-        self._update_market_regime(market_regime)
+        self._update_market_regime(self._coerce_market_regime(market_regime))
         self.last_adaptation = time.time()
 
         changed_patterns = old_patterns.symmetric_difference(self.active_patterns)
@@ -316,6 +330,40 @@ class DynamicAdapter:
         else:
             self.regime_stability_counter += 1
             return False
+
+    @staticmethod
+    def _coerce_market_regime(regime: object) -> MarketRegime:
+        """Coerce enum/string regime inputs to canonical MarketRegime."""
+        if isinstance(regime, MarketRegime):
+            return regime
+
+        regime_text = str(regime).strip()
+        if not regime_text:
+            return MarketRegime.MODERATE_VOLATILITY_RANGING
+
+        normalized = regime_text.lower()
+        if "." in normalized:
+            normalized = normalized.split(".")[-1]
+
+        for candidate in (regime_text, regime_text.upper(), normalized):
+            try:
+                return MarketRegime[candidate]  # type: ignore[index]
+            except Exception:
+                pass
+            try:
+                return MarketRegime(candidate)
+            except Exception:
+                pass
+
+        if "bull" in normalized or "buy_breakout" in normalized:
+            return MarketRegime.MODERATE_BULL_TREND
+        if "bear" in normalized or "sell_breakdown" in normalized:
+            return MarketRegime.MODERATE_BEAR_TREND
+        if any(k in normalized for k in ["volatile", "extreme"]):
+            return MarketRegime.HIGH_VOLATILITY_RANGING
+        if any(k in normalized for k in ["consolidation", "sideways", "rang"]):
+            return MarketRegime.MODERATE_VOLATILITY_RANGING
+        return MarketRegime.MODERATE_VOLATILITY_RANGING
 
     def _normalize_pattern_name(self, name: str) -> str:
         """Normalize pattern name to match active_patterns format."""
@@ -356,7 +404,7 @@ class DynamicAdapter:
         s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
         return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
-    def _get_signal_pattern_name(self, signal: Any) -> str:
+    def _get_signal_pattern_name(self, signal: object) -> str:
         """Extract pattern name from signal object."""
         # Try different attribute names
         for attr in ["pattern_name", "pattern", "type", "signal_type"]:
@@ -368,7 +416,7 @@ class DynamicAdapter:
         # Fallback to class name
         return signal.__class__.__name__.lower()
 
-    def _calculate_avg_quality(self, signals: List[Any]) -> float:
+    def _calculate_avg_quality(self, signals: list["ActionSignal"]) -> float:
         """Calculate average quality score of filtered signals."""
         if not signals:
             return 0.0
@@ -396,7 +444,7 @@ class DynamicAdapter:
         avg_quality_score: float,
         adaptation_time: float,
         market_regime: MarketRegime,
-    ):
+    ) -> None:
         """Update adaptation performance metrics."""
         # Create adaptation record
         metrics = AdaptationMetrics(
@@ -436,12 +484,12 @@ class DynamicAdapter:
         if len(self.adaptation_history) > 1000:
             self.adaptation_history = self.adaptation_history[-500:]
 
-    def get_optimal_config_suggestions(self) -> Dict[str, Any]:
+    def get_optimal_config_suggestions(self) -> dict[str, object]:
         """Get suggestions for optimal configuration based on adaptation history."""
         if len(self.adaptation_history) < 20:
             return {}
 
-        suggestions = {}
+        suggestions: dict[str, object] = {}
 
         # Analyze adaptation time
         adaptation_times = [a.adaptation_time for a in self.adaptation_history]
@@ -476,3 +524,21 @@ class DynamicAdapter:
                 suggestions["reduce_pattern_coverage"] = True
 
         return suggestions
+
+    def _get_config_section(self, key: str) -> dict[str, object]:
+        value = self.config.get(key, {})
+        return dict(value) if isinstance(value, Mapping) else {}
+
+    @staticmethod
+    def _to_int(value: object, default: int) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _to_float(value: object, default: float) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default

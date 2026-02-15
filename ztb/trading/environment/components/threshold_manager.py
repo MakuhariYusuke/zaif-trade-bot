@@ -475,14 +475,7 @@ class ThresholdManager:
             # Use advanced MarketRegimeDetector if sufficient data
             if len(data) >= 10:  # Reduced from 50 to match detector's capability
                 regime = self.regime_detector.detect_regime(data)
-                # Convert to our string format
-                regime_mapping = {
-                    "BULL": "trending_bull",
-                    "BEAR": "trending_bear",
-                    "SIDEWAYS": "ranging",
-                    "VOLATILE": "volatile",
-                }
-                detected_regime = regime_mapping.get(regime.value, "ranging")
+                detected_regime = self._normalize_regime_label(regime)
             else:
                 detected_regime = "ranging"
         except Exception as e:
@@ -503,6 +496,25 @@ class ThresholdManager:
         }
 
         return detected_regime
+
+    @staticmethod
+    def _normalize_regime_label(regime: object) -> str:
+        """Normalize diverse regime enum/string formats into threshold-manager labels."""
+        regime_text = str(getattr(regime, "value", regime)).lower()
+        if any(key in regime_text for key in ["bull", "buy_breakout", "buy_momentum"]):
+            return "trending_bull"
+        if any(
+            key in regime_text
+            for key in ["bear", "sell_breakdown", "sell_momentum", "breakdown"]
+        ):
+            return "trending_bear"
+        if any(key in regime_text for key in ["volatile", "volatility", "extreme"]):
+            return "volatile"
+        if any(key in regime_text for key in ["rang", "sideways", "consolidation"]):
+            return "ranging"
+        if "breakout" in regime_text:
+            return "trending_bull"
+        return "ranging"
 
     def get_regime_adjustments(self, regime: str) -> Dict[str, float]:
         """

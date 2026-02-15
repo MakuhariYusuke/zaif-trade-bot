@@ -71,8 +71,12 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         )
         self.percentile_threshold = float(percentile_threshold)
         self.current_regime: MarketRegime | None = None
+        # Compatibility for detectors used by reward shapers expecting rolling prices.
+        self.price_history: list[float] = []
 
-    def detect_regime(self, market_data: pd.DataFrame) -> MarketRegime:
+    def detect_regime(
+        self, market_data: pd.DataFrame | float, step: int | None = None
+    ) -> MarketRegime | str:
         """
         Detect current market regime from price data.
 
@@ -82,8 +86,22 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         Returns:
             Detected market regime
         """
-        if len(market_data) < 50 or "close" not in market_data.columns:
+        if isinstance(market_data, (int, float, np.integer, np.floating)):
+            return self._detect_regime_from_price(float(market_data), step)
+
+        if not isinstance(market_data, pd.DataFrame):
             return MarketRegime.MODERATE_VOLATILITY_RANGING
+
+        if len(market_data) < 50 or "close" not in market_data.columns:
+            self.current_regime = MarketRegime.MODERATE_VOLATILITY_RANGING
+            if len(market_data) > 0:
+                try:
+                    self.price_history.append(float(market_data["close"].iloc[-1]))
+                except Exception:
+                    pass
+                if len(self.price_history) > 2000:
+                    self.price_history = self.price_history[-1000:]
+            return self.current_regime
 
         # Calculate regime indicators
         trend_strength = self._calculate_trend_strength(market_data)
@@ -108,6 +126,9 @@ class MarketRegimeDetector(IMarketRegimeDetector):
                 logger.debug("Failed relative volatility percentile evaluation")
 
         # Store regime for stability analysis
+        self.price_history.append(float(market_data["close"].iloc[-1]))
+        if len(self.price_history) > 2000:
+            self.price_history = self.price_history[-1000:]
         self.regime_history.append(
             {
                 "timestamp": market_data.index[-1]
@@ -136,12 +157,14 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         """
         Compute the percentile rank (0-1) of the current volatility in a reference window.
         """
-        if len(data) < max(10, self.reference_window):
-            # Not enough history to compute robust percentile - fall back to simple behavior
+        if "close" not in data.columns:
+            return 0.0
+        if len(data) < 30:
+            # Not enough history to compute robust percentile.
             return 0.0
 
         # Compute volatility for sliding windows over the reference range
-        vols = []
+        vols: list[float] = []
         window = min(20, len(data))
         start_idx = max(0, len(data) - self.reference_window)
         for i in range(start_idx + window, len(data) + 1):
@@ -161,6 +184,38 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         percentile = float((vols_arr <= current_vol).sum()) / len(vols_arr)
         return percentile
 
+    def _detect_regime_from_price(self, current_price: float, step: int | None) -> str:
+        """
+        Compatibility path for detectors called via legacy `(current_price, step)` API.
+        """
+        self.price_history.append(current_price)
+        if len(self.price_history) > 2000:
+            self.price_history = self.price_history[-1000:]
+
+        if len(self.price_history) < 20:
+            return "sideways"
+
+        recent = self.price_history[-20:]
+        returns = [
+            (recent[i + 1] / recent[i] - 1.0) for i in range(len(recent) - 1) if recent[i]
+        ]
+        if not returns:
+            return "sideways"
+
+        volatility = float(np.std(returns))
+        if volatility > 0.03:
+            return "volatile"
+
+        start_price = recent[0]
+        if start_price == 0:
+            return "sideways"
+        trend = (recent[-1] - start_price) / start_price
+        if trend > 0.02:
+            return "bull"
+        if trend < -0.02:
+            return "bear"
+        return "sideways"
+
     def detect_regime_from_data(self, market_data: pd.DataFrame) -> str:
         """
         Detect current market regime (IMarketRegimeDetector interface).
@@ -173,7 +228,10 @@ class MarketRegimeDetector(IMarketRegimeDetector):
             Market regime: 'bull', 'bear', 'sideways', 'volatile'
         """
         if len(market_data) > 0 and "close" in market_data.columns:
-            return self.detect_regime(market_data).value
+            detected = self.detect_regime(market_data)
+            if isinstance(detected, MarketRegime):
+                return detected.value
+            return str(detected)
         if self.current_regime is not None:
             return self.current_regime.value
         return MarketRegime.MODERATE_VOLATILITY_RANGING.value
@@ -233,7 +291,7 @@ class MarketRegimeDetector(IMarketRegimeDetector):
             data: Market data
 
         Returns:
-            Volatility (0-1, higher = more volatile)
+            Volatility (raw std of returns, e.g. 0.02 = 2%)
         """
         if "close" not in data.columns:
             return 0.0
@@ -247,11 +305,10 @@ class MarketRegimeDetector(IMarketRegimeDetector):
             vol = calculate_volatility_util(
                 recent_returns, window=min(20, len(recent_returns)), method="std"
             )
-            scaled = min(1.0, float(vol) * 10)
-            return scaled
+            return max(0.0, float(vol))
         except (TypeError, ValueError):
             volatility = recent_returns.std()
-            return min(1.0, float(volatility) * 10)
+            return max(0.0, float(volatility))
 
     def _calculate_range_bound(self, data: pd.DataFrame) -> float:
         """
@@ -426,9 +483,10 @@ class RegimeAdaptiveSignalProcessor:
         Returns:
             Adapted signal or None if filtered out
         """
-        pattern_type = str(
+        pattern_type_raw = str(
             getattr(signal, "signal_type", getattr(signal, "pattern_type", "unknown"))
         )
+        pattern_type = self._normalize_pattern_family(pattern_type_raw)
         original_confidence = float(getattr(signal, "confidence", 0.5))
 
         # Regime-specific pattern preferences and adjustments
@@ -463,12 +521,69 @@ class RegimeAdaptiveSignalProcessor:
             "regime_stability": stability,
             "confidence_adjustment": confidence_adjustment,
             "regime_suitability": pattern_type in regime_config["preferred_patterns"],
+            "pattern_type_raw": pattern_type_raw,
+            "pattern_type_normalized": pattern_type,
         }
         signal.metadata["regime_analysis"] = regime_analysis
         # Keep legacy dynamic attribute for compatibility with external callers.
         signal.regime_analysis = regime_analysis
 
         return signal
+
+    @staticmethod
+    def _normalize_pattern_family(pattern_type: str) -> str:
+        """Map recognizer-specific signal types to regime-compat pattern families."""
+        normalized = pattern_type.lower().replace("_", "")
+
+        if "fibonacci" in normalized:
+            return "fibonacci"
+        if any(key in normalized for key in ["gartley", "butterfly", "crab", "bat", "harmonic"]):
+            return "harmonic"
+        if "gann" in normalized:
+            return "gann"
+        if "dow" in normalized:
+            return "dow_theory"
+        if "granville" in normalized:
+            return "granville"
+        if any(key in normalized for key in ["bollinger"]):
+            return "bollinger"
+        if any(
+            key in normalized
+            for key in [
+                "rsi",
+                "macd",
+                "stochastic",
+                "cci",
+                "williams",
+                "mfi",
+                "oscillator",
+            ]
+        ):
+            return "oscillator"
+        if any(
+            key in normalized
+            for key in [
+                "hammer",
+                "engulfing",
+                "morningstar",
+                "eveningstar",
+                "piercing",
+                "threewhite",
+                "threeblack",
+                "candlestick",
+            ]
+        ):
+            return "candlestick"
+        if any(key in normalized for key in ["chaikin", "volume"]):
+            return "volume"
+        if any(key in normalized for key in ["support", "resistance"]):
+            return "support_resistance"
+        if any(key in normalized for key in ["breakout", "breakdown"]):
+            return "breakout"
+        if any(key in normalized for key in ["wave", "trend", "heikin"]):
+            return "trend"
+
+        return normalized
 
     def _get_regime_config(self, regime: MarketRegime) -> RegimeConfig:
         """

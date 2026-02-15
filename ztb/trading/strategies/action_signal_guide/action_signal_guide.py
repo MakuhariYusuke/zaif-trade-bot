@@ -14,6 +14,7 @@ from typing import Dict, List, Optional, Tuple, cast
 import numpy as np
 import pandas as pd
 
+from ztb.analysis.regime.market_regime_types import MarketRegime
 from ztb.trading.signal.common.utilities import (
     calculate_volatility as calculate_volatility_util,
 )
@@ -497,6 +498,11 @@ class ActionSignalGuide:
             performance_tracker=self.performance_tracker,
             pattern_statistics=self.pattern_statistics,
         )
+        self.market_regime_detector = (
+            self.signal_generator.market_regime_detector
+            if self.signal_generator.market_regime_detector is not None
+            else None
+        )
 
         # Initialize dynamic adaptation system
         dynamic_config = {
@@ -574,24 +580,27 @@ class ActionSignalGuide:
             "ActionSignalGuide initialized with component-based architecture and dynamic adaptation"
         )
 
-    def _detect_market_regime(self, data: pd.DataFrame, current_index: int) -> object:
+    def _detect_market_regime(
+        self, data: pd.DataFrame, current_index: int
+    ) -> MarketRegime:
         """Detect current market regime for dynamic adaptation."""
         try:
-            # Use market regime detector from components
-            from .components.market_regime import MarketRegimeDetector
-
-            detector = MarketRegimeDetector()
+            if self.market_regime_detector is None:
+                from .components.market_regime import MarketRegimeDetector
+                self.market_regime_detector = MarketRegimeDetector()
 
             # Get recent data for regime detection
             start_idx = max(0, current_index - 50)
             regime_data = data.iloc[start_idx : current_index + 1]
 
-            return detector.detect_regime_from_data(regime_data)
+            detected = self.market_regime_detector.detect_regime(regime_data)
+            if isinstance(detected, MarketRegime):
+                return detected
+            # Legacy detector path may return string labels.
+            return MarketRegime.MODERATE_VOLATILITY_RANGING
         except Exception as e:
             self.logger.warning(f"Failed to detect market regime: {e}")
             # Default to moderate volatility ranging market
-            from ztb.analysis.regime.market_regime_types import MarketRegime
-
             return MarketRegime.MODERATE_VOLATILITY_RANGING
 
     def _get_available_pattern_names(self) -> List[str]:

@@ -318,13 +318,10 @@ class SignalQualityFilter:
             recent_data = market_data.tail(20)
 
             # Calculate trend alignment
-            if hasattr(market_regime, "name"):
-                regime_name = market_regime.name
-            else:
-                regime_name = str(market_regime)
+            regime_bucket = self._regime_bucket(market_regime)
 
             # Trend regime alignment
-            if regime_name == "TRENDING":
+            if regime_bucket == "TRENDING":
                 # In trending markets, prefer directional signals
                 if hasattr(signal, "direction"):
                     direction = getattr(signal, "direction", 0)
@@ -339,7 +336,7 @@ class SignalQualityFilter:
                         alignment_score -= 0.2
 
             # Ranging regime alignment
-            elif regime_name == "RANGING":
+            elif regime_bucket == "RANGING":
                 # In ranging markets, prefer mean-reversion signals
                 pattern_type = getattr(
                     signal, "pattern_type", getattr(signal, "signal_type", "")
@@ -347,6 +344,12 @@ class SignalQualityFilter:
                 pattern_type_str = str(pattern_type)
                 if (
                     "oscillator" in pattern_type_str.lower()
+                    or "rsi" in pattern_type_str.lower()
+                    or "stochastic" in pattern_type_str.lower()
+                    or "cci" in pattern_type_str.lower()
+                    or "williams" in pattern_type_str.lower()
+                    or "mfi" in pattern_type_str.lower()
+                    or "bollinger" in pattern_type_str.lower()
                     or "reversal" in pattern_type_str.lower()
                 ):
                     alignment_score += 0.15
@@ -497,12 +500,12 @@ class SignalQualityFilter:
 
             # Update market condition factor based on regime
             if market_regime:
-                regime_name = getattr(market_regime, "name", str(market_regime))
-                if regime_name == "VOLATILE":
+                regime_bucket = self._regime_bucket(market_regime)
+                if regime_bucket == "VOLATILE":
                     self.market_condition_factor = 0.9  # Stricter in volatile markets
-                elif regime_name == "TRENDING":
+                elif regime_bucket == "TRENDING":
                     self.market_condition_factor = 1.0  # Normal in trending markets
-                elif regime_name == "RANGING":
+                elif regime_bucket == "RANGING":
                     self.market_condition_factor = (
                         1.1  # More lenient in ranging markets
                     )
@@ -708,6 +711,20 @@ class SignalQualityFilter:
     def _clamp(value: float, min_value: float, max_value: float) -> float:
         return max(min_value, min(max_value, value))
 
+    @staticmethod
+    def _regime_bucket(market_regime: object) -> str:
+        """Normalize various regime enum/string representations into coarse buckets."""
+        regime_name = getattr(market_regime, "name", str(market_regime)).upper()
+        if any(key in regime_name for key in ["VOLATILE", "VOLATILITY", "EXTREME"]):
+            return "VOLATILE"
+        if any(
+            key in regime_name for key in ["TREND", "BULL", "BEAR", "BREAKOUT", "BREAKDOWN"]
+        ):
+            return "TRENDING"
+        if any(key in regime_name for key in ["RANG", "SIDEWAYS", "CONSOLIDATION"]):
+            return "RANGING"
+        return "UNKNOWN"
+
 
 class SignalQualityEvaluator:
     """Compatibility evaluator used by advanced SignalGenerator pipelines."""
@@ -765,11 +782,13 @@ class SignalQualityEvaluator:
         if market_regime is None:
             return 0.5
         direction = self._to_float(getattr(signal, "direction", 0.0))
-        regime_name = getattr(market_regime, "name", str(market_regime))
-        if regime_name == "TRENDING":
+        regime_bucket = SignalQualityFilter._regime_bucket(market_regime)
+        if regime_bucket == "TRENDING":
             return 0.8 if abs(direction) > 0.1 else 0.4
-        if regime_name == "RANGING":
+        if regime_bucket == "RANGING":
             return 0.7 if abs(direction) <= 0.5 else 0.5
+        if regime_bucket == "VOLATILE":
+            return 0.7 if abs(direction) > 0.3 else 0.45
         return 0.5
 
     def _calculate_sac_alignment(self, signal: object, sac_decision: object) -> float:

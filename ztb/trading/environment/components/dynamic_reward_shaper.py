@@ -130,6 +130,12 @@ class DynamicRewardShaper(IDynamicRewardShaper):
                         # Last resort: call with current_price only
                         regime = self.market_regime_detector.detect_regime(current_price)
 
+                if hasattr(regime, "value"):
+                    regime = getattr(regime, "value")
+                if not isinstance(regime, str):
+                    regime = str(regime)
+                regime = regime.lower()
+
                 if regime == "bull":
                     shaped_reward *= self.bull_market_bonus_coeff
                     self.logger.debug(
@@ -140,12 +146,16 @@ class DynamicRewardShaper(IDynamicRewardShaper):
                     self.logger.debug(
                         f"Applied bear market penalty: {self.bear_market_penalty_coeff}x"
                     )
-                elif regime == "sideways":
+                elif regime in ["sideways", "ranging", "moderate_volatility_ranging"]:
                     shaped_reward *= self.sideways_market_penalty_coeff
                     self.logger.debug(
                         f"Applied sideways market penalty: {self.sideways_market_penalty_coeff}x"
                     )
-                elif regime == "volatile":
+                elif regime in [
+                    "volatile",
+                    "high_volatility_ranging",
+                    "extreme_volatility",
+                ]:
                     shaped_reward *= self.volatile_market_bonus_coeff
                     self.logger.debug(
                         f"Applied volatile market bonus: {self.volatile_market_bonus_coeff}x"

@@ -413,6 +413,22 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 8. 市場データ欠損・ゼロ価格時のガードを追加し、`_analyze_momentum` / `_analyze_support_resistance` 等の例外・不正値リスクを低減。  
 9. repo 全体 `any_type_debt_tokens` を `3,017 -> 3,012` へ削減。  
 
+### Step41: レジーム運用の実効性修正（判定/連携の不整合解消）+ `Any` 追加削減
+
+1. `ztb/trading/strategies/action_signal_guide/components/market_regime.py` に legacy互換の価格ベース検出経路を追加し、`(current_price, step)` 呼び出しでも破綻しないよう修正。  
+2. `MarketRegimeDetector` に `price_history` を持たせ、環境側 reward shaper の検出器契約（価格履歴参照）との互換性を改善。  
+3. `_calculate_volatility()` の単位不整合（std*10 スケーリング）を解消し、`volatility_threshold=0.03` と整合する raw std ベースへ修正。  
+4. relative regime 判定の percentile 計算を修正し、`reference_window` 未満データ時でも利用可能な履歴範囲で評価するよう改善。  
+5. `RegimeAdaptiveSignalProcessor` で recognizer固有 `signal_type` をパターン family へ正規化し、regime適合判定が常時ミスマッチになる問題を修正。  
+6. `ztb/trading/strategies/action_signal_guide/action_signal_guide.py` の `_detect_market_regime()` を enum返却へ統一し、1回ごとの detector再生成を廃止（状態を維持）。  
+7. `ztb/trading/strategies/action_signal_guide/components/dynamic_adapter.py` を `Mapping[str, object]` ベースへ移行し、`Any` を全撤去（当該ファイル `any_type_debt_tokens=0`）。  
+8. `DynamicAdapter` に regime coercion を追加し、文字列/enum 混在入力でも `AdaptivePatternSelector` が正しく regime 別閾値を参照できるよう修正。  
+9. `ztb/trading/environment/components/threshold_manager.py` の regime label 変換を刷新し、`moderate_bull_trend` 等の新 regime でも `trending_bull/bear/ranging/volatile` へ正規化。  
+10. `ztb/trading/environment/components/dynamic_reward_shaper.py` で enum regime を文字列へ正規化し、`ranging` / `high_volatility_ranging` を正しく報酬調整へ反映。  
+11. `ztb/trading/strategies/action_signal_guide/components/signal_quality_filter.py` の regime判定を bucket 化し、`MODERATE_BULL_TREND` 等の新規 enum 名でも quality alignment が有効に働くよう修正。  
+12. `ztb/analysis/regime/market_regime_types.py` の `RegimeDetectionResult.metadata` を `Dict[str, object]` 化し、`Any` を全撤去（当該ファイル `any_type_debt_tokens=0`）。  
+13. repo 全体 `any_type_debt_tokens` を `3,012 -> 3,004` へ削減。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -457,6 +473,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step38時点 | repo全体 | 3,024 |
 | Step39時点 | repo全体 | 3,017 |
 | Step40時点 | repo全体 | 3,012 |
+| Step41時点 | repo全体 | 3,004 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -502,6 +519,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step38時点 | `ztb/trading/strategies/action_signal_guide/action_signal_guide.py` | **0** |
 | Step39時点 | `ztb/trading/strategies/action_signal_guide/components/signal_generator.py` | **0** |
 | Step40時点 | `ztb/trading/strategies/action_signal_guide/components/market_regime.py` | **0** |
+| Step41時点 | `ztb/trading/strategies/action_signal_guide/components/dynamic_adapter.py` | **0** |
+| Step41時点 | `ztb/analysis/regime/market_regime_types.py` | **0** |
 
 ---
 
@@ -511,9 +530,11 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - 生成パイプラインの result payload を段階的に型固定し、feature registry 連携の重複マップ操作を整理。  
 2. `ztb/evaluation/promotion.py`  
    - fallback 実装と `analysis/promotion` の責務境界を整理し、将来的な評価ロジック共通化（mixin/utility）に備える。  
-3. `ztb/trading/strategies/action_signal_guide/components/pattern_statistics.py`  
+3. `ztb/trading/environment/components/threshold_manager.py`  
+   - 残存 `Any`（主に履歴 payload）の `TypedDict` 化を進め、レジーム調整ロジックの入力契約を固定。  
+4. `ztb/trading/strategies/action_signal_guide/components/pattern_statistics.py`  
    - 集計 payload を TypedDict 化し、履歴構造と組み合わせ統計のキー存在保証を強化。  
-4. `ztb/trading/strategies/action_signal_guide/components/validation.py`  
+5. `ztb/trading/strategies/action_signal_guide/components/validation.py`  
    - validation/sanitize レポート構造を TypedDict へ寄せ、呼び出し側でのキー前提分岐を単純化。  
 
 ---
