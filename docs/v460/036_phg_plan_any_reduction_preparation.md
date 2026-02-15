@@ -308,6 +308,17 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 5. 連続足判定に 0除算ガード（`prev_close=0`, `high==low`）を追加し、異常OHLC入力で例外に依存して `None` へ落ちる経路を明示ガードへ置換。  
 6. 不使用の module-level 定数群と未使用 `base_strength` 算出を削除し、保守対象の責務を縮小（ファイル行数: 1,393 -> 1,007）。  
 
+### Step32: 水平展開検証（`wave_counting`）+ 継承導入 + `Any` 全撤去
+
+1. `ztb/trading/strategies/action_signal_guide/pattern_recognition/wave_counting.py` に `_WavePatternBase` を導入し、index解決・pivot抽出・confidence算出を共通化。  
+2. `Impulse/Corrective/WaveExtension/WaveI/WaveV/WaveY/WaveP/WaveN/WaveS` の 9 recognizer を共通基底へ移行し、初期化・前処理重複を削減。  
+3. `WaveStructure` (`TypedDict`) を追加し、`identify_wave_structure()` の返却契約を明示。  
+4. 既存不具合を修正:  
+   - `index=-1`（デフォルト）時に `if index < lookback_period` で早期 `None` になる経路を、共通 index 正規化で解消。  
+   - lookback 切り出し後のローカル pivot 位置をグローバル index と比較していた不整合（completion 判定が成立しにくい）を、共通 global pivot 変換で解消。  
+   - `wave_extension` metadata の `extension_ratio` で 0除算しうる経路を `EPSILON` ガードで解消。  
+5. 当該ファイルの `Any` を全撤去し、`any_type_debt_tokens=0` を達成。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -343,6 +354,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step29時点 | repo全体 | 3,304 |
 | Step30時点 | repo全体 | 3,281 |
 | Step31時点 | repo全体 | 3,258 |
+| Step32時点 | repo全体 | 3,240 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -378,6 +390,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step29時点 | `ztb/trading/environment/heavy_env/core.py` | **0** |
 | Step30時点 | `ztb/utils/env_metrics.py` | **0** |
 | Step31時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/candlestick_patterns.py` | **0** |
+| Step32時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/wave_counting.py` | **0** |
 
 ---
 
@@ -419,3 +432,5 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - marker 基底を軸に、必要箇所で protocol 化（read-only 属性契約）へ進める余地あり。  
 7. `ztb/trading/strategies/action_signal_guide/pattern_recognition/candlestick_patterns.py`  
    - Step31で導入した 4つの family base は、今後 `shooting_star` / `dark_cloud_cover` / `harami` 追加時にそのまま水平展開可能。  
+8. `ztb/trading/strategies/action_signal_guide/pattern_recognition/wave_counting.py`  
+   - Step32の `_WavePatternBase` は `harmonic_patterns.py` / `fibonacci_patterns.py` の「pivot抽出 + confidence合成」系の重複にも展開可能。  

@@ -7,13 +7,14 @@ and various wave patterns.
 """
 
 from enum import Enum
-from typing import Any, Dict, List, NamedTuple, Optional
+from typing import List, NamedTuple, TypedDict
 
 import pandas as pd
 
 from ztb.trading.environment.constants import EPSILON
+from ztb.types.common import ConfigSection
 
-from .base import CandlestickPatternRecognizer, SignalResult
+from .base import CandlestickPatternRecognizer, MultiTimeframeData, SignalResult
 
 
 class WaveType(Enum):
@@ -61,6 +62,17 @@ class WavePoint(NamedTuple):
     price: float
     wave_label: WaveLabel
     degree: WaveDegree
+
+
+class WaveStructure(TypedDict):
+    """Typed structure returned by wave structure identification."""
+
+    type: WaveType
+    degree: WaveDegree
+    waves: list[WavePoint]
+    direction: int
+    strength: float
+    completion_index: int
 
 
 class WaveAnalyzer:
@@ -125,7 +137,7 @@ class WaveAnalyzer:
         return all_pivots
 
     @staticmethod
-    def identify_wave_structure(pivots: List[WavePoint]) -> Optional[Dict]:
+    def identify_wave_structure(pivots: List[WavePoint]) -> WaveStructure | None:
         """Identify wave structure from pivot points."""
         if len(pivots) < 5:
             return None
@@ -195,42 +207,126 @@ class WaveAnalyzer:
         return None
 
 
-class ImpulseWaveRecognizer(CandlestickPatternRecognizer):
+class _WavePatternBase(CandlestickPatternRecognizer):
+    """Shared utilities for wave recognizers."""
+
+    pattern_type: str = "wave_pattern"
+
+    def __init__(
+        self,
+        config: ConfigSection | None,
+        *,
+        pattern_type: str,
+        default_lookback: int,
+        default_min_pivot_distance: int = 3,
+    ) -> None:
+        super().__init__(config)
+        self.pattern_type = pattern_type
+
+        lookback_period = self.config.get("lookback_period", default_lookback)
+        min_pivot_distance = self.config.get(
+            "min_pivot_distance", default_min_pivot_distance
+        )
+        self.lookback_period = int(lookback_period)
+        self.min_pivot_distance = int(min_pivot_distance)
+
+        # Keep base accessor (`get_lookback_period`) aligned with runtime value.
+        self.config.setdefault("lookback_period", self.lookback_period)
+        self.wave_analyzer = WaveAnalyzer()
+
+    def _resolve_index(
+        self,
+        data: pd.DataFrame,
+        index: int,
+        multi_timeframe_data: MultiTimeframeData | None,
+    ) -> int | None:
+        try:
+            validated_index = self.validate_recognition_inputs(
+                data,
+                index,
+                required_length=self.lookback_period + 1,
+                multi_timeframe_data=multi_timeframe_data,
+            )
+        except Exception:
+            return None
+
+        if validated_index < self.lookback_period:
+            return None
+        return validated_index
+
+    def _extract_global_pivots(
+        self, data: pd.DataFrame, index: int, lookback_divisor: int = 2
+    ) -> list[WavePoint]:
+        lookback_start = max(0, index - self.lookback_period)
+        lookback_data = data.iloc[lookback_start : index + 1]
+        pivot_lookback = max(2, self.lookback_period // max(1, lookback_divisor))
+
+        pivots = self.wave_analyzer.find_pivot_points(
+            lookback_data,
+            lookback=pivot_lookback,
+            min_distance=self.min_pivot_distance,
+        )
+        return [
+            WavePoint(
+                position=p.position + lookback_start,
+                price=float(p.price),
+                wave_label=p.wave_label,
+                degree=p.degree,
+            )
+            for p in pivots
+        ]
+
+    def _calculate_wave_confidence(
+        self,
+        data: pd.DataFrame,
+        index: int,
+        *,
+        base_confidence: float,
+        pattern_completeness: float,
+        trend_lookback: int,
+        candle_size_expected: float,
+        price_movement_expected: float,
+    ) -> float:
+        pattern_factors = {
+            "trend_strength": self._calculate_trend_strength(data, index, trend_lookback),
+            "candle_size": self._calculate_candle_size_confidence(
+                data, index, candle_size_expected
+            ),
+            "price_movement": self._calculate_price_movement_confidence(
+                data, index, price_movement_expected
+            ),
+            "pattern_completeness": max(0.0, min(1.0, pattern_completeness)),
+        }
+        return self._calculate_pattern_confidence(
+            data, index, pattern_factors, base_confidence=base_confidence
+        )
+
+
+class ImpulseWaveRecognizer(_WavePatternBase):
     """Recognizes Elliott Wave impulse patterns (5-wave structures)."""
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        super().__init__(config)
-        self.pattern_type = "impulse_wave"
-        self.lookback_period = config.get("lookback_period", 50) if config else 50
-        self.min_pivot_distance = config.get("min_pivot_distance", 3) if config else 3
-        self.wave_analyzer = WaveAnalyzer()
+    def __init__(self, config: ConfigSection | None = None) -> None:
+        super().__init__(
+            config,
+            pattern_type="impulse_wave",
+            default_lookback=50,
+            default_min_pivot_distance=3,
+        )
 
     def recognize(
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """Recognize impulse wave patterns at the given index."""
-        if index < self.lookback_period:
+        validated_index = self._resolve_index(data, index, multi_timeframe_data)
+        if validated_index is None:
             return None
+        index = validated_index
 
-        # Get pivot points in the lookback period
-        lookback_data = data.iloc[max(0, index - self.lookback_period) : index + 1]
-        pivots = self.wave_analyzer.find_pivot_points(
-            lookback_data,
-            lookback=self.lookback_period // 2,
-            min_distance=self.min_pivot_distance,
-        )
-
-        # Adjust pivot indices to global index
-        offset = max(0, index - self.lookback_period)
-        adjusted_pivots = [
-            WavePoint(p.position + offset, p.price, p.wave_label, p.degree)
-            for p in pivots
-        ]
-
-        wave_structure = self.wave_analyzer.identify_wave_structure(adjusted_pivots)
+        pivots = self._extract_global_pivots(data, index, lookback_divisor=2)
+        wave_structure = self.wave_analyzer.identify_wave_structure(pivots)
 
         if wave_structure and wave_structure["type"] == WaveType.IMPULSE:
             # Check if we're at or near the completion of wave 5
@@ -257,24 +353,16 @@ class ImpulseWaveRecognizer(CandlestickPatternRecognizer):
                     # Base confidence from wave structure quality
                     base_confidence = min(0.9, 0.7 + pattern_completeness * 0.2)
 
-                    # Use pattern confidence calculation
-                    pattern_factors = {
-                        "trend_strength": self._calculate_trend_strength(
-                            data, index, 20
-                        ),
-                        "candle_size": self._calculate_candle_size_confidence(
-                            data, index, 0.6
-                        ),  # Wave patterns are structural
-                        "price_movement": self._calculate_price_movement_confidence(
-                            data, index, 0.7
-                        ),  # Significant wave movement
-                        "pattern_completeness": pattern_completeness,  # How well the wave ratios fit ideal structure
-                    }
-
-                    confidence = self._calculate_pattern_confidence(
-                        data, index, pattern_factors, base_confidence=base_confidence
+                    confidence = self._calculate_wave_confidence(
+                        data,
+                        index,
+                        base_confidence=base_confidence,
+                        pattern_completeness=pattern_completeness,
+                        trend_lookback=20,
+                        candle_size_expected=0.6,
+                        price_movement_expected=0.7,
                     )
-                    direction = wave_structure["direction"] * confidence
+                    direction = float(wave_structure["direction"]) * confidence
 
                     signal_type = "impulse_wave_completion"
 
@@ -298,42 +386,31 @@ class ImpulseWaveRecognizer(CandlestickPatternRecognizer):
         return None
 
 
-class CorrectiveWaveRecognizer(CandlestickPatternRecognizer):
+class CorrectiveWaveRecognizer(_WavePatternBase):
     """Recognizes Elliott Wave corrective patterns (ABC structures)."""
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        super().__init__(config)
-        self.pattern_type = "corrective_wave"
-        self.lookback_period = config.get("lookback_period", 40) if config else 40
-        self.min_pivot_distance = config.get("min_pivot_distance", 3) if config else 3
-        self.wave_analyzer = WaveAnalyzer()
+    def __init__(self, config: ConfigSection | None = None) -> None:
+        super().__init__(
+            config,
+            pattern_type="corrective_wave",
+            default_lookback=40,
+            default_min_pivot_distance=3,
+        )
 
     def recognize(
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """Recognize corrective wave patterns at the given index."""
-        if index < self.lookback_period:
+        validated_index = self._resolve_index(data, index, multi_timeframe_data)
+        if validated_index is None:
             return None
+        index = validated_index
 
-        # Get pivot points in the lookback period
-        lookback_data = data.iloc[max(0, index - self.lookback_period) : index + 1]
-        pivots = self.wave_analyzer.find_pivot_points(
-            lookback_data,
-            lookback=self.lookback_period // 2,
-            min_distance=self.min_pivot_distance,
-        )
-
-        # Adjust pivot indices to global index
-        offset = max(0, index - self.lookback_period)
-        adjusted_pivots = [
-            WavePoint(p.position + offset, p.price, p.wave_label, p.degree)
-            for p in pivots
-        ]
-
-        wave_structure = self.wave_analyzer.identify_wave_structure(adjusted_pivots)
+        pivots = self._extract_global_pivots(data, index, lookback_divisor=2)
+        wave_structure = self.wave_analyzer.identify_wave_structure(pivots)
 
         if wave_structure and wave_structure["type"] == WaveType.CORRECTIVE:
             # Check if we're at or near the completion of wave C
@@ -366,24 +443,16 @@ class CorrectiveWaveRecognizer(CandlestickPatternRecognizer):
                     # Base confidence from pattern structure quality
                     base_confidence = min(0.85, 0.6 + pattern_completeness * 0.25)
 
-                    # Use pattern confidence calculation
-                    pattern_factors = {
-                        "trend_strength": self._calculate_trend_strength(
-                            data, index, 15
-                        ),
-                        "candle_size": self._calculate_candle_size_confidence(
-                            data, index, 0.5
-                        ),  # Corrective patterns are consolidation
-                        "price_movement": self._calculate_price_movement_confidence(
-                            data, index, 0.6
-                        ),  # Moderate movement in corrections
-                        "pattern_completeness": pattern_completeness,  # How well the ABC ratios fit ideal structure
-                    }
-
-                    confidence = self._calculate_pattern_confidence(
-                        data, index, pattern_factors, base_confidence=base_confidence
+                    confidence = self._calculate_wave_confidence(
+                        data,
+                        index,
+                        base_confidence=base_confidence,
+                        pattern_completeness=pattern_completeness,
+                        trend_lookback=15,
+                        candle_size_expected=0.5,
+                        price_movement_expected=0.6,
                     )
-                    direction = wave_structure["direction"] * confidence
+                    direction = float(wave_structure["direction"]) * confidence
 
                     signal_type = "corrective_wave_completion"
 
@@ -407,29 +476,30 @@ class CorrectiveWaveRecognizer(CandlestickPatternRecognizer):
         return None
 
 
-class WaveExtensionRecognizer(CandlestickPatternRecognizer):
+class WaveExtensionRecognizer(_WavePatternBase):
     """Recognizes wave extensions and truncations."""
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        super().__init__(config)
-        self.pattern_type = "wave_extension"
-        self.lookback_period = config.get("lookback_period", 60) if config else 60
-        self.wave_analyzer = WaveAnalyzer()
+    def __init__(self, config: ConfigSection | None = None) -> None:
+        super().__init__(
+            config,
+            pattern_type="wave_extension",
+            default_lookback=60,
+            default_min_pivot_distance=3,
+        )
 
     def recognize(
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """Recognize wave extensions or truncations at the given index."""
-        if index < self.lookback_period:
+        validated_index = self._resolve_index(data, index, multi_timeframe_data)
+        if validated_index is None:
             return None
+        index = validated_index
 
-        lookback_data = data.iloc[max(0, index - self.lookback_period) : index + 1]
-        pivots = self.wave_analyzer.find_pivot_points(
-            lookback_data, lookback=self.lookback_period // 3
-        )
+        pivots = self._extract_global_pivots(data, index, lookback_divisor=3)
 
         if len(pivots) < 3:
             return None
@@ -464,6 +534,7 @@ class WaveExtensionRecognizer(CandlestickPatternRecognizer):
                         1 if recent_pivots[-1].price > recent_pivots[0].price else -1
                     ) * strength
 
+                    dominant_base = max(wave_lengths[0], wave_lengths[2], EPSILON)
                     return SignalResult(
                         signal_type="wave_extension",
                         strength=strength,
@@ -472,8 +543,7 @@ class WaveExtensionRecognizer(CandlestickPatternRecognizer):
                         timestamp=data.index[index],
                         metadata={
                             "pattern": "wave_extension",
-                            "extension_ratio": wave_lengths[1]
-                            / max(wave_lengths[0], wave_lengths[2]),
+                            "extension_ratio": wave_lengths[1] / dominant_base,
                             "confidence": strength,
                         },
                     )
@@ -492,20 +562,14 @@ class WaveExtensionRecognizer(CandlestickPatternRecognizer):
                 )
                 base_confidence = min(0.8, 0.6 + truncation_ratio * 0.3)
 
-                # Use pattern confidence calculation
-                pattern_factors = {
-                    "trend_strength": self._calculate_trend_strength(data, index, 10),
-                    "candle_size": self._calculate_candle_size_confidence(
-                        data, index, 0.5
-                    ),  # Wave patterns are structural
-                    "price_movement": self._calculate_price_movement_confidence(
-                        data, index, 0.8
-                    ),  # Significant wave movement
-                    "pattern_completeness": truncation_ratio,  # How severe the truncation is
-                }
-
-                confidence = self._calculate_pattern_confidence(
-                    data, index, pattern_factors, base_confidence=base_confidence
+                confidence = self._calculate_wave_confidence(
+                    data,
+                    index,
+                    base_confidence=base_confidence,
+                    pattern_completeness=truncation_ratio,
+                    trend_lookback=10,
+                    candle_size_expected=0.5,
+                    price_movement_expected=0.8,
                 )
 
                 return SignalResult(
@@ -527,35 +591,30 @@ class WaveExtensionRecognizer(CandlestickPatternRecognizer):
         return None
 
 
-class WaveIRecognizer(CandlestickPatternRecognizer):
+class WaveIRecognizer(_WavePatternBase):
     """Recognizes Wave I (Initial impulse wave) - start of a new trend."""
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__(config)
-        self.pattern_type = "wave_i"
-        self.lookback_period = config.get("lookback_period", 30) if config else 30
-        self.min_pivot_distance = config.get("min_pivot_distance", 3) if config else 3
-        self.wave_analyzer = WaveAnalyzer()
+    def __init__(self, config: ConfigSection | None = None) -> None:
+        super().__init__(
+            config,
+            pattern_type="wave_i",
+            default_lookback=30,
+            default_min_pivot_distance=3,
+        )
 
     def recognize(
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """Recognize Wave I patterns at the given index."""
-        if index < self.lookback_period:
+        validated_index = self._resolve_index(data, index, multi_timeframe_data)
+        if validated_index is None:
             return None
+        index = validated_index
 
-        # Get recent pivot points
-        lookback_data = data.iloc[
-            max(0, index - self.lookback_period) : index + 1
-        ].copy()
-        pivots = self.wave_analyzer.find_pivot_points(
-            lookback_data,
-            lookback=self.lookback_period // 2,
-            min_distance=self.min_pivot_distance,
-        )
+        pivots = self._extract_global_pivots(data, index, lookback_divisor=2)
 
         if len(pivots) < 2:
             return None
@@ -590,20 +649,14 @@ class WaveIRecognizer(CandlestickPatternRecognizer):
                 # Base confidence from wave strength
                 base_confidence = min(0.85, 0.6 + pattern_completeness * 0.25)
 
-                # Use pattern confidence calculation
-                pattern_factors = {
-                    "trend_strength": self._calculate_trend_strength(data, index, 15),
-                    "candle_size": self._calculate_candle_size_confidence(
-                        data, index, 0.7
-                    ),  # Initial waves have larger candles
-                    "price_movement": self._calculate_price_movement_confidence(
-                        data, index, 0.8
-                    ),  # Strong directional movement
-                    "pattern_completeness": pattern_completeness,  # How strong the initial impulse is
-                }
-
-                confidence = self._calculate_pattern_confidence(
-                    data, index, pattern_factors, base_confidence=base_confidence
+                confidence = self._calculate_wave_confidence(
+                    data,
+                    index,
+                    base_confidence=base_confidence,
+                    pattern_completeness=pattern_completeness,
+                    trend_lookback=15,
+                    candle_size_expected=0.7,
+                    price_movement_expected=0.8,
                 )
                 direction = direction * confidence
 
@@ -627,35 +680,30 @@ class WaveIRecognizer(CandlestickPatternRecognizer):
         return None
 
 
-class WaveVRecognizer(CandlestickPatternRecognizer):
+class WaveVRecognizer(_WavePatternBase):
     """Recognizes Wave V (Final impulse wave) - completion of impulse sequence."""
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__(config)
-        self.pattern_type = "wave_v"
-        self.lookback_period = config.get("lookback_period", 50) if config else 50
-        self.min_pivot_distance = config.get("min_pivot_distance", 3) if config else 3
-        self.wave_analyzer = WaveAnalyzer()
+    def __init__(self, config: ConfigSection | None = None) -> None:
+        super().__init__(
+            config,
+            pattern_type="wave_v",
+            default_lookback=50,
+            default_min_pivot_distance=3,
+        )
 
     def recognize(
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """Recognize Wave V patterns at the given index."""
-        if index < self.lookback_period:
+        validated_index = self._resolve_index(data, index, multi_timeframe_data)
+        if validated_index is None:
             return None
+        index = validated_index
 
-        # Get pivot points in the lookback period
-        lookback_data = data.iloc[
-            max(0, index - self.lookback_period) : index + 1
-        ].copy()
-        pivots = self.wave_analyzer.find_pivot_points(
-            lookback_data,
-            lookback=self.lookback_period // 2,
-            min_distance=self.min_pivot_distance,
-        )
+        pivots = self._extract_global_pivots(data, index, lookback_divisor=2)
 
         if len(pivots) < 5:
             return None
@@ -693,22 +741,14 @@ class WaveVRecognizer(CandlestickPatternRecognizer):
                     # Base confidence from wave structure quality (slightly higher for final wave)
                     base_confidence = min(0.9, 0.75 + pattern_completeness * 0.15)
 
-                    # Use pattern confidence calculation
-                    pattern_factors = {
-                        "trend_strength": self._calculate_trend_strength(
-                            data, index, 20
-                        ),
-                        "candle_size": self._calculate_candle_size_confidence(
-                            data, index, 0.6
-                        ),  # Wave patterns are structural
-                        "price_movement": self._calculate_price_movement_confidence(
-                            data, index, 0.8
-                        ),  # Strong final wave movement
-                        "pattern_completeness": pattern_completeness,  # How well the wave ratios fit ideal structure
-                    }
-
-                    confidence = self._calculate_pattern_confidence(
-                        data, index, pattern_factors, base_confidence=base_confidence
+                    confidence = self._calculate_wave_confidence(
+                        data,
+                        index,
+                        base_confidence=base_confidence,
+                        pattern_completeness=pattern_completeness,
+                        trend_lookback=20,
+                        candle_size_expected=0.6,
+                        price_movement_expected=0.8,
                     )
                     direction = confidence  # Bullish completion
 
@@ -731,35 +771,30 @@ class WaveVRecognizer(CandlestickPatternRecognizer):
         return None
 
 
-class WaveYRecognizer(CandlestickPatternRecognizer):
+class WaveYRecognizer(_WavePatternBase):
     """Recognizes Wave Y (Terminal wave in complex corrections)."""
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        super().__init__(config)
-        self.pattern_type = "wave_y"
-        self.lookback_period = config.get("lookback_period", 60) if config else 60
-        self.min_pivot_distance = config.get("min_pivot_distance", 3) if config else 3
-        self.wave_analyzer = WaveAnalyzer()
+    def __init__(self, config: ConfigSection | None = None) -> None:
+        super().__init__(
+            config,
+            pattern_type="wave_y",
+            default_lookback=60,
+            default_min_pivot_distance=3,
+        )
 
     def recognize(
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """Recognize Wave Y patterns at the given index."""
-        if index < self.lookback_period:
+        validated_index = self._resolve_index(data, index, multi_timeframe_data)
+        if validated_index is None:
             return None
+        index = validated_index
 
-        # Get pivot points in the lookback period
-        lookback_data = data.iloc[
-            max(0, index - self.lookback_period) : index + 1
-        ].copy()
-        pivots = self.wave_analyzer.find_pivot_points(
-            lookback_data,
-            lookback=self.lookback_period // 2,
-            min_distance=self.min_pivot_distance,
-        )
+        pivots = self._extract_global_pivots(data, index, lookback_divisor=2)
 
         if len(pivots) < 7:
             return None
@@ -795,22 +830,14 @@ class WaveYRecognizer(CandlestickPatternRecognizer):
                     # Base confidence from complex correction structure
                     base_confidence = min(0.85, 0.7 + pattern_completeness * 0.15)
 
-                    # Use pattern confidence calculation
-                    pattern_factors = {
-                        "trend_strength": self._calculate_trend_strength(
-                            data, index, 25
-                        ),
-                        "candle_size": self._calculate_candle_size_confidence(
-                            data, index, 0.5
-                        ),  # Complex corrections are consolidation
-                        "price_movement": self._calculate_price_movement_confidence(
-                            data, index, 0.6
-                        ),  # Moderate movement in complex corrections
-                        "pattern_completeness": pattern_completeness,  # How well Y dominates the correction
-                    }
-
-                    confidence = self._calculate_pattern_confidence(
-                        data, index, pattern_factors, base_confidence=base_confidence
+                    confidence = self._calculate_wave_confidence(
+                        data,
+                        index,
+                        base_confidence=base_confidence,
+                        pattern_completeness=pattern_completeness,
+                        trend_lookback=25,
+                        candle_size_expected=0.5,
+                        price_movement_expected=0.6,
                     )
                     direction = direction * confidence
 
@@ -834,35 +861,30 @@ class WaveYRecognizer(CandlestickPatternRecognizer):
         return None
 
 
-class WavePRecognizer(CandlestickPatternRecognizer):
+class WavePRecognizer(_WavePatternBase):
     """Recognizes Wave P (Irregular correction wave)."""
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__(config)
-        self.pattern_type = "wave_p"
-        self.lookback_period = config.get("lookback_period", 40) if config else 40
-        self.min_pivot_distance = config.get("min_pivot_distance", 3) if config else 3
-        self.wave_analyzer = WaveAnalyzer()
+    def __init__(self, config: ConfigSection | None = None) -> None:
+        super().__init__(
+            config,
+            pattern_type="wave_p",
+            default_lookback=40,
+            default_min_pivot_distance=3,
+        )
 
     def recognize(
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """Recognize Wave P (irregular correction) patterns at the given index."""
-        if index < self.lookback_period:
+        validated_index = self._resolve_index(data, index, multi_timeframe_data)
+        if validated_index is None:
             return None
+        index = validated_index
 
-        # Get pivot points in the lookback period
-        lookback_data = data.iloc[
-            max(0, index - self.lookback_period) : index + 1
-        ].copy()
-        pivots = self.wave_analyzer.find_pivot_points(
-            lookback_data,
-            lookback=self.lookback_period // 2,
-            min_distance=self.min_pivot_distance,
-        )
+        pivots = self._extract_global_pivots(data, index, lookback_divisor=2)
 
         if len(pivots) < 3:
             return None
@@ -894,22 +916,14 @@ class WavePRecognizer(CandlestickPatternRecognizer):
                     # Base confidence from overshoot severity
                     base_confidence = min(0.8, 0.6 + pattern_completeness * 0.2)
 
-                    # Use pattern confidence calculation
-                    pattern_factors = {
-                        "trend_strength": self._calculate_trend_strength(
-                            data, index, 15
-                        ),
-                        "candle_size": self._calculate_candle_size_confidence(
-                            data, index, 0.5
-                        ),  # Irregular corrections vary
-                        "price_movement": self._calculate_price_movement_confidence(
-                            data, index, 0.7
-                        ),  # Significant overshoot movement
-                        "pattern_completeness": pattern_completeness,  # How severe the irregularity is
-                    }
-
-                    confidence = self._calculate_pattern_confidence(
-                        data, index, pattern_factors, base_confidence=base_confidence
+                    confidence = self._calculate_wave_confidence(
+                        data,
+                        index,
+                        base_confidence=base_confidence,
+                        pattern_completeness=pattern_completeness,
+                        trend_lookback=15,
+                        candle_size_expected=0.5,
+                        price_movement_expected=0.7,
                     )
                     direction = direction * confidence
 
@@ -935,35 +949,30 @@ class WavePRecognizer(CandlestickPatternRecognizer):
         return None
 
 
-class WaveNRecognizer(CandlestickPatternRecognizer):
+class WaveNRecognizer(_WavePatternBase):
     """Recognizes Wave N (Complex correction wave)."""
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__(config)
-        self.pattern_type = "wave_n"
-        self.lookback_period = config.get("lookback_period", 50) if config else 50
-        self.min_pivot_distance = config.get("min_pivot_distance", 3) if config else 3
-        self.wave_analyzer = WaveAnalyzer()
+    def __init__(self, config: ConfigSection | None = None) -> None:
+        super().__init__(
+            config,
+            pattern_type="wave_n",
+            default_lookback=50,
+            default_min_pivot_distance=3,
+        )
 
     def recognize(
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """Recognize Wave N (complex correction) patterns at the given index."""
-        if index < self.lookback_period:
+        validated_index = self._resolve_index(data, index, multi_timeframe_data)
+        if validated_index is None:
             return None
+        index = validated_index
 
-        # Get pivot points in the lookback period
-        lookback_data = data.iloc[
-            max(0, index - self.lookback_period) : index + 1
-        ].copy()
-        pivots = self.wave_analyzer.find_pivot_points(
-            lookback_data,
-            lookback=self.lookback_period // 2,
-            min_distance=self.min_pivot_distance,
-        )
+        pivots = self._extract_global_pivots(data, index, lookback_divisor=2)
 
         if len(pivots) < 5:
             return None
@@ -1001,22 +1010,14 @@ class WaveNRecognizer(CandlestickPatternRecognizer):
                     # Base confidence from complexity level
                     base_confidence = min(0.85, 0.65 + pattern_completeness * 0.2)
 
-                    # Use pattern confidence calculation
-                    pattern_factors = {
-                        "trend_strength": self._calculate_trend_strength(
-                            data, index, 20
-                        ),
-                        "candle_size": self._calculate_candle_size_confidence(
-                            data, index, 0.5
-                        ),  # Complex corrections vary
-                        "price_movement": self._calculate_price_movement_confidence(
-                            data, index, 0.6
-                        ),  # Moderate movement in complex patterns
-                        "pattern_completeness": pattern_completeness,  # How complex the correction is
-                    }
-
-                    confidence = self._calculate_pattern_confidence(
-                        data, index, pattern_factors, base_confidence=base_confidence
+                    confidence = self._calculate_wave_confidence(
+                        data,
+                        index,
+                        base_confidence=base_confidence,
+                        pattern_completeness=pattern_completeness,
+                        trend_lookback=20,
+                        candle_size_expected=0.5,
+                        price_movement_expected=0.6,
                     )
                     direction = direction * confidence
 
@@ -1041,35 +1042,30 @@ class WaveNRecognizer(CandlestickPatternRecognizer):
         return None
 
 
-class WaveSRecognizer(CandlestickPatternRecognizer):
+class WaveSRecognizer(_WavePatternBase):
     """Recognizes Wave S (Secondary correction wave)."""
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__(config)
-        self.pattern_type = "wave_s"
-        self.lookback_period = config.get("lookback_period", 35) if config else 35
-        self.min_pivot_distance = config.get("min_pivot_distance", 3) if config else 3
-        self.wave_analyzer = WaveAnalyzer()
+    def __init__(self, config: ConfigSection | None = None) -> None:
+        super().__init__(
+            config,
+            pattern_type="wave_s",
+            default_lookback=35,
+            default_min_pivot_distance=3,
+        )
 
     def recognize(
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """Recognize Wave S (secondary correction) patterns at the given index."""
-        if index < self.lookback_period:
+        validated_index = self._resolve_index(data, index, multi_timeframe_data)
+        if validated_index is None:
             return None
+        index = validated_index
 
-        # Get pivot points in the lookback period
-        lookback_data = data.iloc[
-            max(0, index - self.lookback_period) : index + 1
-        ].copy()
-        pivots = self.wave_analyzer.find_pivot_points(
-            lookback_data,
-            lookback=self.lookback_period // 2,
-            min_distance=self.min_pivot_distance,
-        )
+        pivots = self._extract_global_pivots(data, index, lookback_divisor=2)
 
         if len(pivots) < 3:
             return None
@@ -1110,22 +1106,14 @@ class WaveSRecognizer(CandlestickPatternRecognizer):
                     # Base confidence from correction depth quality
                     base_confidence = min(0.8, 0.6 + pattern_completeness * 0.2)
 
-                    # Use pattern confidence calculation
-                    pattern_factors = {
-                        "trend_strength": self._calculate_trend_strength(
-                            data, index, 15
-                        ),
-                        "candle_size": self._calculate_candle_size_confidence(
-                            data, index, 0.5
-                        ),  # Secondary corrections vary
-                        "price_movement": self._calculate_price_movement_confidence(
-                            data, index, 0.6
-                        ),  # Moderate movement in corrections
-                        "pattern_completeness": pattern_completeness,  # How close to ideal Fibonacci correction
-                    }
-
-                    confidence = self._calculate_pattern_confidence(
-                        data, index, pattern_factors, base_confidence=base_confidence
+                    confidence = self._calculate_wave_confidence(
+                        data,
+                        index,
+                        base_confidence=base_confidence,
+                        pattern_completeness=pattern_completeness,
+                        trend_lookback=15,
+                        candle_size_expected=0.5,
+                        price_movement_expected=0.6,
                     )
                     direction = direction * confidence
 
