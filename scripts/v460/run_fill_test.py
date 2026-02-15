@@ -1411,13 +1411,24 @@ class FillTestRunner:
             if result.changed:
                 old = self.config.spread_offset_ratio
                 self.config.spread_offset_ratio = result.new_offset
+                # 052#: side-specific offset も比例調整 (sell offset が独立設定されている場合)
+                if self.config.spread_offset_ratio_sell is not None and old > 0:
+                    ratio = result.new_offset / old
+                    old_sell = self.config.spread_offset_ratio_sell
+                    self.config.spread_offset_ratio_sell = min(
+                        old_sell * ratio, 0.30,
+                    )
                 regime_tag = (
                     self._regime_detector.current_regime.value
                     if self._regime_detector else "n/a"
                 )
+                sell_info = (
+                    f", sell {old_sell:.4f}→{self.config.spread_offset_ratio_sell:.4f}"
+                    if self.config.spread_offset_ratio_sell is not None else ""
+                )
                 logger.info(
                     f"[方策A] offset adapted: {old:.4f} → {result.new_offset:.4f} "
-                    f"({result.action}: {result.reason}) [regime={regime_tag}]"
+                    f"({result.action}: {result.reason}){sell_info} [regime={regime_tag}]"
                 )
             else:
                 logger.debug(

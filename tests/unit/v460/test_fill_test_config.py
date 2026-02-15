@@ -73,7 +73,7 @@ class TestFillTestConfigFromYaml:
         assert config.enable_time_filter is True
         assert config.loss_cap_auto is True
         assert config.loss_cap_ratio == 0.05
-        assert config.as_deadzone_bps == 2.0  # 041# 0.5→2.0
+        assert config.as_deadzone_bps == 2.5  # 052#: 2.0→2.5
 
     def test_from_yaml_custom_values(self) -> None:
         """カスタム値が正しくマッピングされる."""

@@ -2089,3 +2089,51 @@ class Test051MonitorExtensions:
             compute_regime_metrics,  # noqa: F401
             compute_round_trip_metrics,  # noqa: F401
         )
+
+
+# ======================================================================
+# 052# 方策A: sell offset 連動調整テスト
+# ======================================================================
+
+
+class Test052AdaptSellOffsetSync:
+    """052# 方策AがSell offsetも比例調整する."""
+
+    def test_adapt_syncs_sell_offset_in_code(self) -> None:
+        """_try_auto_adapt に sell offset 比例調整コードが含まれる."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner._try_auto_adapt)
+        assert "spread_offset_ratio_sell" in source
+        assert "ratio = result.new_offset / old" in source
+
+    def test_yaml_sell_offset_updated(self) -> None:
+        """052# で sell offset が 0.10 に更新されている."""
+        from pathlib import Path
+        import yaml  # type: ignore[import-untyped]
+
+        yaml_path = Path("configs/v460/fill_test.yaml")
+        with open(yaml_path) as f:
+            cfg = yaml.safe_load(f)
+        assert cfg["side_offset"]["sell"] == 0.10
+
+    def test_yaml_skip_utc_hours_includes_12(self) -> None:
+        """052# で UTC 12 が time_filter に追加されている."""
+        from pathlib import Path
+        import yaml  # type: ignore[import-untyped]
+
+        yaml_path = Path("configs/v460/fill_test.yaml")
+        with open(yaml_path) as f:
+            cfg = yaml.safe_load(f)
+        assert 12 in cfg["time_filter"]["skip_utc_hours"]
+
+    def test_yaml_deadzone_updated(self) -> None:
+        """052# で deadzone が 2.5 に更新されている."""
+        from pathlib import Path
+        import yaml  # type: ignore[import-untyped]
+
+        yaml_path = Path("configs/v460/fill_test.yaml")
+        with open(yaml_path) as f:
+            cfg = yaml.safe_load(f)
+        assert cfg["as_deadzone_bps"] == 2.5

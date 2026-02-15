@@ -28,7 +28,7 @@ max_order_retries: 2              # 041# 1→2: api_error 削減のため
 retry_delay_sec: 2.0
 
 # ---- AS 判定 (CM-3) ----
-as_deadzone_bps: 2.0          # 041# ±2.0 bps 以内は AS と判定しない (0.5→2.0: BTC/JPY spread ~14bps 対し 0.5 はノイズ域)
+as_deadzone_bps: 2.5          # 052#: 2.0→2.5 (AS 34.2% なお高い, spread中央値 2281JPY ≈ 16bps, ±2.5bpsは15%ノイズ帯)
 
 # ---- 保存 ----
 batch_size: 10                # バッチ保存サイクル数
@@ -71,12 +71,12 @@ regime:
   trend_threshold_pct: 0.5     # トレンド判定の価格変化率閾値 (%)
   high_vol_multiplier: 2.0     # 高ボラ判定倍率 (baseline 比)
   hysteresis_count: 3          # 状態確定までの連続一致数
-  min_confidence: 0.4          # この値未満は unknown 扱い
+  min_confidence: 0.3          # 052#: 0.4→0.3 (unknown 72% → レジーム判定感度向上)
 
 # ---- 時間帯フィルター (041#) ----
 time_filter:
   enabled: true               # 041#: 高 AS 時間帯のスキップ
-  skip_utc_hours: [8, 9, 14, 16, 17, 18, 19]  # JST 17-04 の高 AS 時間帯を回避
+  skip_utc_hours: [8, 9, 12, 14, 16, 17, 18, 19]  # 052#: UTC12追加 (AS 42.9%, PnL -1.5bps)
 
 # ---- 049# E3 サンプリング ----
 e3:
@@ -85,8 +85,8 @@ e3:
 # ---- 049# side 別 offset ----
 # buy は共通値 (0.05) を継承、sell のみ保守化
 side_offset:
-  # buy: 0.05                  # buy 側は共通値で十分 (PnL -0.26bps)
-  sell: 0.07                   # sell PnL -0.83bps → buy 比 3x 悪化のため保守化
+  # buy: 0.05                  # buy 側は共通値で十分 (PnL -0.10bps)
+  sell: 0.10                   # 052#: 0.07→0.10 (sell PnL -0.83bps, fast fill -1.19bps → 更に保守化)
 
 # ---- 049# 即約定防御 ----
 fast_fill_defense:
