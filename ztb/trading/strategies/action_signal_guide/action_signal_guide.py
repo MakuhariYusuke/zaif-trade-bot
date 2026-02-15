@@ -9,7 +9,7 @@ import logging
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Dict, List, Optional, Tuple, cast
 
 import numpy as np
 import pandas as pd
@@ -68,21 +68,21 @@ class MemoryError(ActionSignalGuideError):
     pass
 
 
-def _get_action_signal_guide_config() -> Any:
+def _get_action_signal_guide_config() -> type["ActionSignalGuideConfig"]:
     """Lazy import to avoid circular imports."""
     from .action_signal_guide import ActionSignalGuideConfig
 
     return ActionSignalGuideConfig
 
 
-def _get_guidance_level_enum() -> Any:
+def _get_guidance_level_enum() -> type["GuidanceLevel"]:
     """Lazy import to avoid circular imports."""
     from .action_signal_guide import GuidanceLevel
 
     return GuidanceLevel
 
 
-def _get_action_signal_class() -> Any:
+def _get_action_signal_class() -> type["ActionSignal"]:
     """Lazy import to avoid circular imports."""
     from .action_signal_guide import ActionSignal
 
@@ -121,7 +121,7 @@ class ActionSignalGuideConfig:
     cache_size: int = 1000
     lazy_loading: bool = False
     feature_names: Optional[List[str]] = None
-    value: Optional[Any] = None  # For backward compatibility
+    value: object | None = None  # For backward compatibility
 
     # Short / debug mode for fast unit tests and debugging
     debug_short_mode: bool = False
@@ -574,7 +574,7 @@ class ActionSignalGuide:
             "ActionSignalGuide initialized with component-based architecture and dynamic adaptation"
         )
 
-    def _detect_market_regime(self, data: pd.DataFrame, current_index: int) -> Any:
+    def _detect_market_regime(self, data: pd.DataFrame, current_index: int) -> object:
         """Detect current market regime for dynamic adaptation."""
         try:
             # Use market regime detector from components
@@ -803,7 +803,7 @@ class ActionSignalGuide:
                 )
 
         # Initialize caching (always initialize, but only use if enabled)
-        self._signal_cache: Dict[str, Any] = {}
+        self._signal_cache: Dict[str, object] = {}
         self._cache_timestamps: Dict[str, float] = {}
 
     def _ensure_recognizers_loaded(self) -> None:
@@ -1192,8 +1192,8 @@ class ActionSignalGuide:
         return signals
 
     def _apply_risk_adjustments(
-        self, signal: Any, data: pd.DataFrame, current_index: int
-    ) -> Optional[Any]:
+        self, signal: "ActionSignal", data: pd.DataFrame, current_index: int
+    ) -> Optional["ActionSignal"]:
         """Apply risk-based adjustments to individual signals."""
         try:
             # Calculate ATR for risk assessment
@@ -1596,8 +1596,8 @@ class ActionSignalGuide:
         self.logger.info("Statistics reset")
 
     def analyze_pattern_effectiveness(
-        self, trading_results: Optional[List[Dict[str, Any]]] = None
-    ) -> Dict[str, Any]:
+        self, trading_results: Optional[List[Dict[str, object]]] = None
+    ) -> Dict[str, object]:
         """
         Analyze the effectiveness of different pattern recognizers.
 
@@ -1746,9 +1746,9 @@ class ActionSignalGuide:
 
     def analyze_sac_learning_correlation(
         self,
-        sac_learning_logs: Optional[List[Dict[str, Any]]] = None,
+        sac_learning_logs: Optional[List[Dict[str, object]]] = None,
         correlation_window: int = 100,
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """
         Analyze correlation between SAC learning performance and signal quality.
 
@@ -1801,7 +1801,7 @@ class ActionSignalGuide:
             consistency_score,
         )
 
-    def generate_signal_performance_report(self) -> Dict[str, Any]:
+    def generate_signal_performance_report(self) -> Dict[str, object]:
         """
         Generate comprehensive signal performance report.
 
@@ -1875,12 +1875,14 @@ class ActionSignalGuide:
         return best_signal
 
     @property
-    def mode(self) -> Any:
+    def mode(self) -> GuidanceLevel:
         """Get guidance mode (backward compatibility)."""
         return self.guidance_level
 
-    def update_guidance_mode(self, mode: Any) -> None:
+    def update_guidance_mode(self, mode: GuidanceInput) -> None:
         """Update guidance mode (backward compatibility)."""
+        if mode is None:
+            return
         if hasattr(mode, "name"):
             # It's an enum, just assign it
             self.guidance_level = mode
@@ -1916,7 +1918,7 @@ class ActionSignalGuide:
             self.config.signal_threshold = 1.0
             self.config.max_signal_strength = 0.0
 
-    def get_guidance_stats(self) -> Dict[str, Any]:
+    def get_guidance_stats(self) -> Dict[str, object]:
         """Get guidance statistics (backward compatibility)."""
         return {
             "mode": self.guidance_level.name
@@ -2082,7 +2084,7 @@ class ActionSignalGuide:
         except Exception as e:
             raise MemoryError(f"Failed to cleanup memory: {e}") from e
 
-    def get_performance_stats(self) -> Dict[str, Any]:
+    def get_performance_stats(self) -> Dict[str, object]:
         """Get performance statistics for monitoring."""
         from ztb.utils.memory_utils import get_memory_usage
 
@@ -2121,7 +2123,7 @@ class ActionSignalGuide:
 
         return stats
 
-    def update_config(self, new_config: Dict[str, Any]) -> None:
+    def update_config(self, new_config: Dict[str, object]) -> None:
         """
         Update configuration dynamically.
 

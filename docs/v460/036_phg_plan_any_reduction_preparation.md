@@ -377,6 +377,30 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 7. `SignalResult.timestamp` / `PatternRecognizer` / `CandlestickPatternRecognizer` / `MultiCandlePatternRecognizer` の設定・返却注釈を `object`/具体型へ整理し、横断的な保守性を改善。  
 8. 当該ファイルの `Any` を全撤去し、`any_type_debt_tokens=0` を達成。  
 
+### Step38: `signal_quality_filter` + `action_signal_guide` の重複削減/互換修正 + `Any` 全撤去
+
+1. `ztb/trading/strategies/action_signal_guide/components/signal_quality_filter.py` の `Any` 注釈を全撤去し、`PatternQualityRecord` (`TypedDict`) と `Mapping[str, object]` ベースへ移行（当該ファイル `any_type_debt_tokens=0`）。  
+2. `signal_quality_filter` 内で重複していた composite score 算出ロジックを `_calculate_composite_score()` に集約し、`_rank_by_quality_score` と `_update_quality_statistics` の重複を削減。  
+3. 互換メソッド `filter_by_quality()` / `update_thresholds()` を追加し、`SignalGenerator` 側の旧API呼び出し不整合（メソッド未定義）を解消。  
+4. `SignalQualityEvaluator` を追加し、`SignalGenerator.initialize_adaptive_components()` で参照されるが未実装だった依存欠落を解消。  
+5. `SignalGenerator.initialize_adaptive_components()` を runtime import + config注入へ修正し、`SignalQualityFilter()` 無引数生成と `SignalQualityEvaluator` 未解決の NameError リスクを解消。  
+6. `SignalGenerator.__init__` で `signal_quality_filter` / `signal_quality_evaluator` を明示初期化し、属性未初期化参照リスクを低減。  
+7. `ztb/trading/strategies/action_signal_guide/action_signal_guide.py` の `Any` 注釈を全撤去し、`GuidanceInput` / `object` / 具体型へ統一（当該ファイル `any_type_debt_tokens=0`）。  
+8. `update_guidance_mode(None)` の安全早期 return を追加し、互換入力での不要警告・不定挙動を防止。  
+9. repo 全体 `any_type_debt_tokens` を `3,061 -> 3,024` へ削減。  
+
+### Step39: `signal_generator` の重複定義解消 + 不具合修正 + `Any` 全撤去
+
+1. `ztb/trading/strategies/action_signal_guide/components/signal_generator.py` の `Any` 注釈を全撤去し、当該ファイル `any_type_debt_tokens=0` を達成。  
+2. 同名メソッドの二重定義（`generate_signal` / `apply_adaptive_filtering` / `_filter_by_guidance_level`）を解消し、後半実装による前半実装の上書きバグを解消。  
+3. `generate_signal()` の早期 return 経路で未定義 `ActionSignal` を参照する不具合を修正（先頭で class 解決）。  
+4. `__init__` で `performance_tracker` を `None` で再上書きしていた不具合を修正し、注入依存を保持。  
+5. `_initialize_adaptive_weights()` の `self.recognizer_groups` 未定義参照を解消し、稼働 recognizer 群から重みを初期化する方式へ変更。  
+6. `RegimeAdaptiveSignalProcessor` の未実装API呼び出し（`adapt_for_regime` / `filter_signals_for_regime`）を廃止し、実装済み `process_signals_for_regime()` ベースへ統一。  
+7. recognizer 実行ロジックを `_process_recognizer` / `_build_action_signal` / `_record_generated_signal` に集約し、parallel/sequential 経路の重複を削減。  
+8. MTF入力の互換処理 `_extract_timeframe_alignment()` を追加し、`timeframe_alignment` 直接指定と nested payload の両方を受理。  
+9. repo 全体 `any_type_debt_tokens` を `3,024 -> 3,017` へ削減。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -418,6 +442,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step35時点 | repo全体 | 3,098 |
 | Step36時点 | repo全体 | 3,077 |
 | Step37時点 | repo全体 | 3,061 |
+| Step38時点 | repo全体 | 3,024 |
+| Step39時点 | repo全体 | 3,017 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -459,6 +485,9 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step35時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/harmonic_patterns.py` | **0** |
 | Step36時点 | `ztb/trading/strategies/action_signal_guide/ml_integration/pattern_optimizer.py` | **0** |
 | Step37時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/base.py` | **0** |
+| Step38時点 | `ztb/trading/strategies/action_signal_guide/components/signal_quality_filter.py` | **0** |
+| Step38時点 | `ztb/trading/strategies/action_signal_guide/action_signal_guide.py` | **0** |
+| Step39時点 | `ztb/trading/strategies/action_signal_guide/components/signal_generator.py` | **0** |
 
 ---
 
@@ -468,10 +497,10 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - 生成パイプラインの result payload を段階的に型固定し、feature registry 連携の重複マップ操作を整理。  
 2. `ztb/evaluation/promotion.py`  
    - fallback 実装と `analysis/promotion` の責務境界を整理し、将来的な評価ロジック共通化（mixin/utility）に備える。  
-3. `ztb/trading/strategies/action_signal_guide/action_signal_guide.py`  
-   - mode 管理と統計集計 payload の `Any` を段階的に型固定し、認識器統合部の重複分岐を整理。  
-4. `ztb/trading/strategies/action_signal_guide/components/signal_quality_filter.py`  
-   - signal payload 契約（`ActionSignal` 互換）を TypedDict/Protocol で明示し、品質判定パイプラインの `Any` を削減。  
+3. `ztb/trading/strategies/action_signal_guide/components/market_regime.py`  
+   - `Dict[str, Any]` 返却群を段階的に型固定し、`RegimeAdaptiveSignalProcessor` 側の payload 契約を明確化。  
+4. `ztb/trading/strategies/action_signal_guide/components/pattern_statistics.py`  
+   - 集計 payload を TypedDict 化し、履歴構造と組み合わせ統計のキー存在保証を強化。  
 
 ---
 

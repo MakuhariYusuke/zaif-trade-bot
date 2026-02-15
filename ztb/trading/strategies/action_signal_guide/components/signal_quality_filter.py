@@ -11,8 +11,9 @@ This component filters and ranks signals based on quality metrics:
 
 import time
 from collections import defaultdict, deque
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TypedDict
 
 import numpy as np
 import pandas as pd
@@ -35,7 +36,17 @@ class SignalQualityMetrics:
     market_alignment: float
     risk_adjusted_score: float
     timestamp: float
-    metadata: Dict[str, Any]
+    metadata: dict[str, object]
+
+
+class PatternQualityRecord(TypedDict):
+    composite_score: float
+    strength: float
+    confidence: float
+    reliability: float
+    market_alignment: float
+    risk_adjusted_score: float
+    timestamp: float
 
 
 @dataclass
@@ -60,7 +71,7 @@ class SignalQualityFilter:
     - Quality-based signal pruning
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Mapping[str, object] | None = None):
         """
         Initialize signal quality filter.
 
@@ -68,28 +79,44 @@ class SignalQualityFilter:
             config: Configuration dictionary
         """
         self.logger = get_logger("ztb.trading.strategies.signal_quality_filter")
-        self.config = config
+        self.config: dict[str, object] = dict(config) if config else {}
 
         # Quality tracking
-        self.signal_history = deque(maxlen=5000)
-        self.pattern_quality_stats = defaultdict(lambda: deque(maxlen=1000))
+        self.signal_history: deque[SignalQualityMetrics] = deque(maxlen=5000)
+        self.pattern_quality_stats: dict[str, deque[PatternQualityRecord]] = defaultdict(
+            lambda: deque(maxlen=1000)
+        )
 
         # Dynamic thresholds
         self.quality_thresholds = QualityThresholds(
-            min_strength=config.get("min_strength", 0.3),
-            min_confidence=config.get("min_confidence", 0.4),
-            min_reliability=config.get("min_reliability", 0.35),
-            min_market_alignment=config.get("min_market_alignment", 0.3),
-            max_signals_per_bar=config.get("max_signals_per_bar", 3),
+            min_strength=self._clamp(
+                self._to_float(self.config.get("min_strength"), 0.3), 0.0, 1.0
+            ),
+            min_confidence=self._clamp(
+                self._to_float(self.config.get("min_confidence"), 0.4), 0.0, 1.0
+            ),
+            min_reliability=self._clamp(
+                self._to_float(self.config.get("min_reliability"), 0.35), 0.0, 1.0
+            ),
+            min_market_alignment=self._clamp(
+                self._to_float(self.config.get("min_market_alignment"), 0.3), 0.0, 1.0
+            ),
+            max_signals_per_bar=max(
+                1, self._to_int(self.config.get("max_signals_per_bar"), 3)
+            ),
         )
 
         # Quality weights for composite scoring
         self.quality_weights = {
-            "strength": config.get("strength_weight", 0.25),
-            "confidence": config.get("confidence_weight", 0.25),
-            "reliability": config.get("reliability_weight", 0.2),
-            "market_alignment": config.get("market_alignment_weight", 0.2),
-            "risk_adjustment": config.get("risk_adjustment_weight", 0.1),
+            "strength": self._to_float(self.config.get("strength_weight"), 0.25),
+            "confidence": self._to_float(self.config.get("confidence_weight"), 0.25),
+            "reliability": self._to_float(self.config.get("reliability_weight"), 0.2),
+            "market_alignment": self._to_float(
+                self.config.get("market_alignment_weight"), 0.2
+            ),
+            "risk_adjustment": self._to_float(
+                self.config.get("risk_adjustment_weight"), 0.1
+            ),
         }
 
         # Market condition factors
@@ -97,14 +124,18 @@ class SignalQualityFilter:
         self.volatility_factor = 1.0
 
         # Adaptation parameters
-        self.adaptation_window = config.get("adaptation_window", 100)
-        self.quality_decay_factor = config.get("quality_decay_factor", 0.98)
+        self.adaptation_window = max(
+            10, self._to_int(self.config.get("adaptation_window"), 100)
+        )
+        self.quality_decay_factor = self._clamp(
+            self._to_float(self.config.get("quality_decay_factor"), 0.98), 0.0, 1.0
+        )
 
         self.logger.info("SignalQualityFilter initialized")
 
     def filter_signals(
-        self, signals: List[Any], market_data: pd.DataFrame, market_regime: Any
-    ) -> List[Any]:
+        self, signals: list[object], market_data: pd.DataFrame, market_regime: object
+    ) -> list[object]:
         """
         Filter and rank signals based on quality metrics.
 
@@ -120,7 +151,7 @@ class SignalQualityFilter:
             return []
 
         # Assess quality for each signal
-        quality_signals = []
+        quality_signals: list[tuple[object, SignalQualityMetrics]] = []
         for signal in signals:
             quality_metrics = self._assess_signal_quality(
                 signal, market_data, market_regime
@@ -151,9 +182,19 @@ class SignalQualityFilter:
         )
         return [signal for signal, _ in final_signals]
 
+    def filter_by_quality(
+        self, signals: list[object], market_data: pd.DataFrame
+    ) -> list[object]:
+        """
+        Compatibility wrapper for legacy callers.
+
+        Applies quality filtering without explicit regime context.
+        """
+        return self.filter_signals(signals, market_data, market_regime=None)
+
     def _assess_signal_quality(
-        self, signal: Any, market_data: pd.DataFrame, market_regime: Any
-    ) -> Optional[SignalQualityMetrics]:
+        self, signal: object, market_data: pd.DataFrame, market_regime: object
+    ) -> SignalQualityMetrics | None:
         """
         Assess comprehensive quality metrics for a signal.
 
@@ -167,24 +208,20 @@ class SignalQualityFilter:
         """
         try:
             # Basic validation
-            if not hasattr(signal, "strength") or not hasattr(signal, "confidence"):
+            strength_raw = getattr(signal, "strength", None)
+            confidence_raw = getattr(signal, "confidence", None)
+            if strength_raw is None or confidence_raw is None:
+                return None
+            strength_value = self._to_float(strength_raw, float("nan"))
+            confidence_value = self._to_float(confidence_raw, float("nan"))
+            if np.isnan(strength_value) or np.isnan(confidence_value):
                 return None
 
-            pattern_name = getattr(signal, "pattern_name", None)
-            if pattern_name is None:
-                # Fallback for legacy ActionSignal
-                if hasattr(signal, "source_patterns") and signal.source_patterns:
-                    pattern_name = signal.source_patterns[
-                        0
-                    ]  # Use first pattern as representative
-                elif hasattr(signal, "signal_type"):
-                    pattern_name = signal.signal_type
-                else:
-                    pattern_name = "unknown"
+            pattern_name = self._resolve_pattern_name(signal)
 
             # Calculate individual quality components
-            strength_score = self._calculate_strength_score(signal.strength)
-            confidence_score = self._calculate_confidence_score(signal.confidence)
+            strength_score = self._calculate_strength_score(strength_value)
+            confidence_score = self._calculate_confidence_score(confidence_value)
             reliability_score = self._calculate_reliability_score(pattern_name)
             market_alignment_score = self._calculate_market_alignment_score(
                 signal, market_data, market_regime
@@ -197,7 +234,7 @@ class SignalQualityFilter:
 
             # Create quality metrics
             quality_metrics = SignalQualityMetrics(
-                signal_id=getattr(signal, "signal_id", f"{pattern_name}_{time.time()}"),
+                signal_id=self._resolve_signal_id(signal, pattern_name),
                 pattern_name=pattern_name,
                 strength=strength_score,
                 confidence=confidence_score,
@@ -206,14 +243,14 @@ class SignalQualityFilter:
                 risk_adjusted_score=risk_adjusted_score,
                 timestamp=time.time(),
                 metadata={
-                    "original_strength": signal.strength,
-                    "original_confidence": signal.confidence,
+                    "original_strength": strength_value,
+                    "original_confidence": confidence_value,
                     "market_regime": str(market_regime) if market_regime else "unknown",
                 },
             )
 
             # DEBUG LOGGING
-            self.logger.info(
+            self.logger.debug(
                 f"DEBUG: Signal Quality - Pattern: {pattern_name}, Strength: {strength_score:.2f}, Confidence: {confidence_score:.2f}, Reliability: {reliability_score:.2f}, Alignment: {market_alignment_score:.2f}"
             )
 
@@ -262,13 +299,13 @@ class SignalQualityFilter:
 
         # Weight recent signals more heavily
         weights = np.linspace(0.5, 1.0, len(recent_history))
-        quality_scores = [h.get("composite_score", 0.5) for h in recent_history]
+        quality_scores = [h["composite_score"] for h in recent_history]
 
-        weighted_avg = np.average(quality_scores, weights=weights)
+        weighted_avg = float(np.average(quality_scores, weights=weights))
         return max(0.1, min(1.0, weighted_avg))
 
     def _calculate_market_alignment_score(
-        self, signal: Any, market_data: pd.DataFrame, market_regime: Any
+        self, signal: object, market_data: pd.DataFrame, market_regime: object
     ) -> float:
         """Calculate how well signal aligns with current market conditions."""
         if not market_regime or len(market_data) < 10:
@@ -307,9 +344,10 @@ class SignalQualityFilter:
                 pattern_type = getattr(
                     signal, "pattern_type", getattr(signal, "signal_type", "")
                 )
+                pattern_type_str = str(pattern_type)
                 if (
-                    "oscillator" in pattern_type.lower()
-                    or "reversal" in pattern_type.lower()
+                    "oscillator" in pattern_type_str.lower()
+                    or "reversal" in pattern_type_str.lower()
                 ):
                     alignment_score += 0.15
 
@@ -330,7 +368,7 @@ class SignalQualityFilter:
 
     def _calculate_risk_adjusted_score(
         self,
-        signal: Any,
+        _signal: object,
         market_data: pd.DataFrame,
         strength_score: float,
         confidence_score: float,
@@ -397,8 +435,8 @@ class SignalQualityFilter:
             return float(returns.std())
 
     def _apply_quality_filter(
-        self, quality_signals: List[Tuple[Any, SignalQualityMetrics]]
-    ) -> List[Tuple[Any, SignalQualityMetrics]]:
+        self, quality_signals: list[tuple[object, SignalQualityMetrics]]
+    ) -> list[tuple[object, SignalQualityMetrics]]:
         """Apply quality-based filtering to signals."""
         filtered = []
 
@@ -417,7 +455,7 @@ class SignalQualityFilter:
                 dropped_reason = f"Alignment {metrics.market_alignment:.2f} < {self.quality_thresholds.min_market_alignment}"
 
             if dropped_reason:
-                self.logger.info(
+                self.logger.debug(
                     f"DEBUG: Dropped signal {metrics.pattern_name}: {dropped_reason}"
                 )
             else:
@@ -426,29 +464,22 @@ class SignalQualityFilter:
         return filtered
 
     def _rank_by_quality_score(
-        self, quality_signals: List[Tuple[Any, SignalQualityMetrics]]
-    ) -> List[Tuple[Any, SignalQualityMetrics]]:
+        self, quality_signals: list[tuple[object, SignalQualityMetrics]]
+    ) -> list[tuple[object, SignalQualityMetrics]]:
         """Rank signals by composite quality score."""
-
-        def calculate_composite_score(metrics: SignalQualityMetrics) -> float:
-            return (
-                self.quality_weights["strength"] * metrics.strength
-                + self.quality_weights["confidence"] * metrics.confidence
-                + self.quality_weights["reliability"] * metrics.reliability
-                + self.quality_weights["market_alignment"] * metrics.market_alignment
-                + self.quality_weights["risk_adjustment"] * metrics.risk_adjusted_score
-            )
 
         # Sort by composite score descending
         ranked = sorted(
-            quality_signals, key=lambda x: calculate_composite_score(x[1]), reverse=True
+            quality_signals,
+            key=lambda x: self._calculate_composite_score(x[1]),
+            reverse=True,
         )
 
         return ranked
 
     def _limit_signals_per_bar(
-        self, ranked_signals: List[Tuple[Any, SignalQualityMetrics]]
-    ) -> List[Tuple[Any, SignalQualityMetrics]]:
+        self, ranked_signals: list[tuple[object, SignalQualityMetrics]]
+    ) -> list[tuple[object, SignalQualityMetrics]]:
         """Limit the number of signals per bar/timestamp."""
         if len(ranked_signals) <= self.quality_thresholds.max_signals_per_bar:
             return ranked_signals
@@ -456,7 +487,7 @@ class SignalQualityFilter:
         # Take top N signals
         return ranked_signals[: self.quality_thresholds.max_signals_per_bar]
 
-    def _update_market_factors(self, market_data: pd.DataFrame, market_regime: Any):
+    def _update_market_factors(self, market_data: pd.DataFrame, market_regime: object):
         """Update market condition factors for quality assessment."""
         try:
             # Update volatility factor
@@ -482,21 +513,14 @@ class SignalQualityFilter:
             self.logger.debug(f"Error updating market factors: {e}")
 
     def _update_quality_statistics(
-        self, final_signals: List[Tuple[Any, SignalQualityMetrics]]
-    ):
+        self, final_signals: list[tuple[object, SignalQualityMetrics]]
+    ) -> None:
         """Update quality statistics for pattern performance tracking."""
-        for signal, metrics in final_signals:
-            # Calculate composite score for this signal
-            composite_score = (
-                self.quality_weights["strength"] * metrics.strength
-                + self.quality_weights["confidence"] * metrics.confidence
-                + self.quality_weights["reliability"] * metrics.reliability
-                + self.quality_weights["market_alignment"] * metrics.market_alignment
-                + self.quality_weights["risk_adjustment"] * metrics.risk_adjusted_score
-            )
+        for _signal, metrics in final_signals:
+            composite_score = self._calculate_composite_score(metrics)
 
             # Store in pattern history
-            quality_record = {
+            quality_record: PatternQualityRecord = {
                 "composite_score": composite_score,
                 "strength": metrics.strength,
                 "confidence": metrics.confidence,
@@ -511,7 +535,7 @@ class SignalQualityFilter:
             # Store in general signal history
             self.signal_history.append(metrics)
 
-    def adapt_thresholds(self):
+    def adapt_thresholds(self) -> None:
         """Adapt quality thresholds based on recent performance."""
         if len(self.signal_history) < self.adaptation_window:
             return
@@ -530,16 +554,16 @@ class SignalQualityFilter:
         # Update thresholds based on percentile performance
         try:
             self.quality_thresholds.min_strength = max(
-                0.2, np.percentile(strengths, 25)
+                0.2, float(np.percentile(strengths, 25))
             )  # 25th percentile as minimum
             self.quality_thresholds.min_confidence = max(
-                0.3, np.percentile(confidences, 25)
+                0.3, float(np.percentile(confidences, 25))
             )
             self.quality_thresholds.min_reliability = max(
-                0.25, np.percentile(reliabilities, 25)
+                0.25, float(np.percentile(reliabilities, 25))
             )
             self.quality_thresholds.min_market_alignment = max(
-                0.2, np.percentile(market_alignments, 25)
+                0.2, float(np.percentile(market_alignments, 25))
             )
 
             # Adjust max signals based on signal density
@@ -561,9 +585,42 @@ class SignalQualityFilter:
         except Exception as e:
             self.logger.warning(f"Error adapting thresholds: {e}")
 
-    def get_quality_statistics(self) -> Dict[str, Any]:
+    def update_thresholds(
+        self,
+        market_data: pd.DataFrame,
+        recent_performance: Mapping[str, float] | None = None,
+    ) -> None:
+        """
+        Compatibility wrapper for older adaptive pipeline.
+
+        Args:
+            market_data: Latest market data used for context update.
+            recent_performance: Optional recent performance map by pattern.
+        """
+        self._update_market_factors(market_data, market_regime=None)
+        self.adapt_thresholds()
+
+        if recent_performance:
+            avg_perf = float(np.mean(list(recent_performance.values())))
+            if avg_perf < 0.3:
+                self.quality_thresholds.min_strength = max(
+                    0.2, self.quality_thresholds.min_strength - 0.05
+                )
+                self.quality_thresholds.min_confidence = max(
+                    0.3, self.quality_thresholds.min_confidence - 0.05
+                )
+            elif avg_perf > 0.7:
+                self.quality_thresholds.min_strength = min(
+                    0.8, self.quality_thresholds.min_strength + 0.03
+                )
+                self.quality_thresholds.min_confidence = min(
+                    0.9, self.quality_thresholds.min_confidence + 0.03
+                )
+
+    def get_quality_statistics(self) -> dict[str, object]:
         """Get comprehensive quality statistics."""
-        stats = {
+        pattern_quality_summary: dict[str, dict[str, float | int]] = {}
+        stats: dict[str, object] = {
             "total_signals_processed": len(self.signal_history),
             "current_thresholds": {
                 "min_strength": self.quality_thresholds.min_strength,
@@ -572,7 +629,7 @@ class SignalQualityFilter:
                 "min_market_alignment": self.quality_thresholds.min_market_alignment,
                 "max_signals_per_bar": self.quality_thresholds.max_signals_per_bar,
             },
-            "pattern_quality_summary": {},
+            "pattern_quality_summary": pattern_quality_summary,
             "market_factors": {
                 "market_condition_factor": self.market_condition_factor,
                 "volatility_factor": self.volatility_factor,
@@ -583,15 +640,154 @@ class SignalQualityFilter:
         for pattern_name, history in self.pattern_quality_stats.items():
             if history:
                 recent_history = list(history)[-min(50, len(history)) :]
-                stats["pattern_quality_summary"][pattern_name] = {
-                    "avg_composite_score": np.mean(
-                        [h["composite_score"] for h in recent_history]
+                pattern_quality_summary[pattern_name] = {
+                    "avg_composite_score": float(
+                        np.mean([h["composite_score"] for h in recent_history])
                     ),
-                    "avg_strength": np.mean([h["strength"] for h in recent_history]),
-                    "avg_confidence": np.mean(
-                        [h["confidence"] for h in recent_history]
+                    "avg_strength": float(np.mean([h["strength"] for h in recent_history])),
+                    "avg_confidence": float(
+                        np.mean([h["confidence"] for h in recent_history])
                     ),
                     "signal_count": len(recent_history),
                 }
 
         return stats
+
+    def _calculate_composite_score(self, metrics: SignalQualityMetrics) -> float:
+        """Calculate weighted composite quality score."""
+        return (
+            self.quality_weights["strength"] * metrics.strength
+            + self.quality_weights["confidence"] * metrics.confidence
+            + self.quality_weights["reliability"] * metrics.reliability
+            + self.quality_weights["market_alignment"] * metrics.market_alignment
+            + self.quality_weights["risk_adjustment"] * metrics.risk_adjusted_score
+        )
+
+    @staticmethod
+    def _resolve_pattern_name(signal: object) -> str:
+        pattern_name = getattr(signal, "pattern_name", None)
+        if isinstance(pattern_name, str) and pattern_name:
+            return pattern_name
+
+        source_patterns = getattr(signal, "source_patterns", None)
+        if (
+            isinstance(source_patterns, (list, tuple))
+            and len(source_patterns) > 0
+            and isinstance(source_patterns[0], str)
+        ):
+            return source_patterns[0]
+
+        signal_type = getattr(signal, "signal_type", None)
+        if isinstance(signal_type, str) and signal_type:
+            return signal_type
+
+        return "unknown"
+
+    @staticmethod
+    def _resolve_signal_id(signal: object, pattern_name: str) -> str:
+        signal_id = getattr(signal, "signal_id", None)
+        if isinstance(signal_id, str) and signal_id:
+            return signal_id
+        return f"{pattern_name}_{time.time()}"
+
+    @staticmethod
+    def _to_float(value: object, default: float) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _to_int(value: object, default: int) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _clamp(value: float, min_value: float, max_value: float) -> float:
+        return max(min_value, min(max_value, value))
+
+
+class SignalQualityEvaluator:
+    """Compatibility evaluator used by advanced SignalGenerator pipelines."""
+
+    def __init__(self, config: Mapping[str, object] | None = None) -> None:
+        cfg = dict(config) if config else {}
+        self.weights = {
+            "strength": float(cfg.get("strength_weight", 0.35)),
+            "confidence": float(cfg.get("confidence_weight", 0.35)),
+            "regime_alignment": float(cfg.get("regime_alignment_weight", 0.2)),
+            "sac_alignment": float(cfg.get("sac_alignment_weight", 0.1)),
+        }
+
+    def evaluate_signal_quality(
+        self,
+        signal: object,
+        market_data: pd.DataFrame,
+        sac_decision: object = None,
+        market_regime: object = None,
+    ) -> dict[str, float]:
+        """Evaluate signal quality components for ranking/filtering."""
+        strength = self._clamp(self._to_float(getattr(signal, "strength", 0.0)), 0.0, 1.0)
+        confidence = self._clamp(
+            self._to_float(getattr(signal, "confidence", 0.0)), 0.0, 1.0
+        )
+        regime_alignment = self._calculate_regime_alignment(signal, market_regime)
+        sac_alignment = self._calculate_sac_alignment(signal, sac_decision)
+
+        volatility = 0.0
+        if not market_data.empty and "close" in market_data.columns:
+            returns = market_data["close"].pct_change().dropna()
+            if not returns.empty:
+                volatility = self._clamp(float(returns.std()), 0.0, 1.0)
+
+        return {
+            "strength": strength,
+            "confidence": confidence,
+            "regime_alignment": regime_alignment,
+            "sac_alignment": sac_alignment,
+            "volatility_penalty": self._clamp(volatility, 0.0, 0.3),
+        }
+
+    def get_overall_quality_score(self, quality_scores: Mapping[str, float]) -> float:
+        """Aggregate component scores into a single quality score."""
+        score = (
+            self.weights["strength"] * quality_scores.get("strength", 0.0)
+            + self.weights["confidence"] * quality_scores.get("confidence", 0.0)
+            + self.weights["regime_alignment"] * quality_scores.get("regime_alignment", 0.0)
+            + self.weights["sac_alignment"] * quality_scores.get("sac_alignment", 0.0)
+        )
+        score -= quality_scores.get("volatility_penalty", 0.0)
+        return self._clamp(float(score), 0.0, 1.0)
+
+    def _calculate_regime_alignment(self, signal: object, market_regime: object) -> float:
+        if market_regime is None:
+            return 0.5
+        direction = self._to_float(getattr(signal, "direction", 0.0))
+        regime_name = getattr(market_regime, "name", str(market_regime))
+        if regime_name == "TRENDING":
+            return 0.8 if abs(direction) > 0.1 else 0.4
+        if regime_name == "RANGING":
+            return 0.7 if abs(direction) <= 0.5 else 0.5
+        return 0.5
+
+    def _calculate_sac_alignment(self, signal: object, sac_decision: object) -> float:
+        if sac_decision is None:
+            return 0.5
+        signal_direction = self._to_float(getattr(signal, "direction", 0.0))
+        sac_direction = self._to_float(getattr(sac_decision, "direction", 0.0))
+        if sac_direction == 0.0:
+            return 0.5
+        return 0.8 if signal_direction * sac_direction > 0 else 0.2
+
+    @staticmethod
+    def _to_float(value: object, default: float = 0.0) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _clamp(value: float, min_value: float = 0.0, max_value: float = 1.0) -> float:
+        return max(min_value, min(max_value, value))
