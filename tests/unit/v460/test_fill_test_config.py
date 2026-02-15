@@ -735,9 +735,9 @@ class Test062SkipGateConfig:
         """YAML に skip_gate セクションがある."""
         cfg = load_fill_test_config()
         assert "skip_gate" in cfg
-        assert cfg["skip_gate"]["enabled"] is False  # 初期は無効
+        assert cfg["skip_gate"]["enabled"] is True  # 065#: 学習済みモデルで有効化
         assert cfg["skip_gate"]["mode"] == "as"
-        assert cfg["skip_gate"]["as_threshold"] == 0.6
+        assert cfg["skip_gate"]["as_threshold"] == 0.65  # 065#: 保守的閾値
         assert cfg["skip_gate"]["max_skip_rate"] == 0.3
 
     def test_from_yaml_skip_gate(self) -> None:

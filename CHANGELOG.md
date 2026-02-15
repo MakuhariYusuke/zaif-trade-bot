@@ -14,6 +14,23 @@ v459 No-Go 確定を受け、マイクロストラクチャ特徴量ベースの
 
 #### Added
 
+- **065# 公式 G1 再評価** (`scripts/v460/run_065_g1_proper_eval.py`)
+  - 000# §3.2 / gate_thresholds.yaml 公式基準 (Holm-Bonferroni + Cliff's Delta + accuracy + significance)
+  - 064# 簡易 PASS → 公式基準で **FAIL** 確認
+  - Direction accuracy 全 <0.51、Cliff's Delta 全 <0.33
+  - `run_gate_check.py --gate G1` 互換 JSON 出力
+
+- **065# AS-LR SkipGate 学習** (`scripts/v460/run_065_as_lr_prep.py`)
+  - 166 labeled samples から LR(C=0.01, k=8) AS 分類器を学習
+  - Walk-forward 6-fold: Skip 20% improvement +0.230 bps
+  - Selected features: depth_imbalance_ob, vpin_300s, tfi_300s, velocity_300s, tfi_acceleration, return_60s, return_300s, side_aligned_return_30s
+  - `models/v460/skip_gate_as.pkl` 保存
+
+#### Changed
+
+- **fill_test.yaml**: SkipGate 有効化 (`enabled: true`, `as_threshold: 0.65`)
+- **テスト更新**: skip_gate YAML テスト assertion を新設定に合わせて更新
+
 - **PnL Monte Carlo シミュレータ** (`ztb/risk/pnl_monte_carlo.py`)
   - fill_test 実測データ (JSONL) から月次 PnL 信頼区間を Bootstrap MC で推定
   - 10,000 paths × 21,600 cycles/month、G1.1 判定指標同時出力
