@@ -7,7 +7,7 @@ Follows Single Responsibility Principle by focusing only on signal generation.
 
 import time
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
 
 import pandas as pd
@@ -124,6 +124,8 @@ class SignalGenerator(ISignalGenerator):
         self.max_workers = (
             min(4, len(self.all_recognizers) // 2) if self.enable_parallel else 1
         )
+        self._parallel_executor: Optional[ThreadPoolExecutor] = None
+        self._parallel_executor_workers = 0
 
     def _initialize_adaptive_components(self) -> None:
         """Initialize adaptive algorithm components."""
@@ -890,27 +892,66 @@ class SignalGenerator(ISignalGenerator):
         all_signals: list["ActionSignal"] = []
         pattern_signals: dict[str, list["ActionSignal"]] = defaultdict(list)
 
-        # Use ThreadPoolExecutor for parallel processing
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            futures = [
-                executor.submit(
-                    self._process_recognizer,
-                    recognizer,
-                    data,
-                    current_index,
-                    multi_timeframe_data,
-                    action_signal_cls,
-                )
-                for recognizer in recognizers
-            ]
+        executor = self._get_parallel_executor()
+        futures: list[Future[tuple[Optional["ActionSignal"], Optional[str]]]] = [
+            executor.submit(
+                self._process_recognizer,
+                recognizer,
+                data,
+                current_index,
+                multi_timeframe_data,
+                action_signal_cls,
+            )
+            for recognizer in recognizers
+        ]
 
-            for future in futures:
+        for future in as_completed(futures):
+            try:
                 action_signal, pattern_type = future.result()
-                self._record_generated_signal(
-                    all_signals, pattern_signals, action_signal, pattern_type
+            except Exception as exc:
+                self._record_error(
+                    f"Parallel recognizer execution failed: {exc}",
+                    error_category="parallel_processing_error",
                 )
+                continue
+            self._record_generated_signal(
+                all_signals, pattern_signals, action_signal, pattern_type
+            )
 
         return all_signals, dict(pattern_signals)
+
+    def _get_parallel_executor(self) -> ThreadPoolExecutor:
+        """Get or lazily create a reusable executor for signal generation."""
+        workers = max(1, int(self.max_workers))
+        if self._parallel_executor is None or self._parallel_executor_workers != workers:
+            self._shutdown_parallel_executor()
+            self._parallel_executor = ThreadPoolExecutor(
+                max_workers=workers, thread_name_prefix="signal-generator"
+            )
+            self._parallel_executor_workers = workers
+        return self._parallel_executor
+
+    def _shutdown_parallel_executor(self) -> None:
+        if self._parallel_executor is None:
+            return
+        try:
+            self._parallel_executor.shutdown(wait=False, cancel_futures=True)
+        except TypeError:
+            # Python < 3.9 does not support cancel_futures.
+            self._parallel_executor.shutdown(wait=False)
+        finally:
+            self._parallel_executor = None
+            self._parallel_executor_workers = 0
+
+    def close(self) -> None:
+        """Release background resources held by the generator."""
+        self._shutdown_parallel_executor()
+
+    def __del__(self) -> None:
+        try:
+            self._shutdown_parallel_executor()
+        except Exception:
+            pass
 
     def _generate_signals_sequential(
         self,
@@ -1111,6 +1152,7 @@ class SignalGenerator(ISignalGenerator):
             return signals
 
         evaluated_signals: list["ActionSignal"] = []
+        precomputed_volatility = self._compute_market_volatility(current_data)
 
         for signal in signals:
             # Evaluate signal quality
@@ -1119,6 +1161,7 @@ class SignalGenerator(ISignalGenerator):
                 market_data=current_data,
                 sac_decision=market_context.get("sac_decision"),
                 market_regime=market_context.get("regime"),
+                precomputed_volatility=precomputed_volatility,
             )
 
             # Calculate overall quality score
@@ -1142,3 +1185,13 @@ class SignalGenerator(ISignalGenerator):
         )
 
         return evaluated_signals
+
+    @staticmethod
+    def _compute_market_volatility(market_data: pd.DataFrame) -> float:
+        """Compute close-return volatility once per bar for quality evaluation."""
+        if market_data.empty or "close" not in market_data.columns:
+            return 0.0
+        returns = market_data["close"].pct_change().dropna()
+        if returns.empty:
+            return 0.0
+        return float(max(0.0, min(1.0, float(returns.std()))))

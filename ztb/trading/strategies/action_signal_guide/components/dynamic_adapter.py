@@ -7,6 +7,7 @@ to create a comprehensive dynamic adaptation system for trading signals.
 
 import re
 import time
+from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -68,7 +69,7 @@ class DynamicAdapter:
         self.last_adaptation = time.time()
 
         # Performance tracking
-        self.adaptation_history: list[AdaptationMetrics] = []
+        self.adaptation_history: deque[AdaptationMetrics] = deque(maxlen=1000)
         self.performance_metrics: dict[str, float] = {
             "total_adaptations": 0,
             "successful_adaptations": 0,
@@ -276,7 +277,7 @@ class DynamicAdapter:
 
         # Recent adaptation history
         if self.adaptation_history:
-            recent_adaptations = self.adaptation_history[
+            recent_adaptations = list(self.adaptation_history)[
                 -min(10, len(self.adaptation_history)) :
             ]
             stats["recent_adaptations"] = [
@@ -481,8 +482,7 @@ class DynamicAdapter:
                 )
 
         # Keep history bounded
-        if len(self.adaptation_history) > 1000:
-            self.adaptation_history = self.adaptation_history[-500:]
+        # Managed automatically by deque(maxlen=1000)
 
     def get_optimal_config_suggestions(self) -> dict[str, object]:
         """Get suggestions for optimal configuration based on adaptation history."""

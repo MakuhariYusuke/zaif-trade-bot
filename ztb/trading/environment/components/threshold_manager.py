@@ -14,7 +14,8 @@ behavior across ActionSignalGuide and backtesting components.
 
 import logging
 from collections import deque
-from typing import Any, Dict, List, Optional
+from collections.abc import Mapping
+from typing import Optional, TypedDict
 
 import numpy as np
 import pandas as pd
@@ -26,6 +27,30 @@ from ztb.types.common import ConfigDict
 from ztb.utils.data.outlier_detection import calculate_z_score_single
 
 logger = logging.getLogger(__name__)
+
+
+class PerformanceAdjustment(TypedDict):
+    confidence: float
+    strength: float
+
+
+class AdaptiveSignalThresholds(TypedDict):
+    confidence_threshold: float
+    signal_strength_threshold: float
+    regime: str
+    performance_adjustment: PerformanceAdjustment
+
+
+class RegimeCacheEntry(TypedDict):
+    cache_key: str
+    regime: str
+    timestamp: pd.Timestamp
+
+
+class ThresholdCacheEntry(TypedDict):
+    cache_key: str
+    thresholds: AdaptiveSignalThresholds
+    timestamp: pd.Timestamp
 
 
 class ThresholdManager:
@@ -106,7 +131,9 @@ class ThresholdManager:
         self.performance_memory = getattr(config, "performance_memory_size", 100)
 
         # Performance tracking for signal thresholds
-        self.signal_history: List[Dict[str, Any]] = []
+        self.signal_history: deque[dict[str, object]] = deque(
+            maxlen=self.performance_memory
+        )
 
         # Market regime detector for advanced analysis
         regime_config = getattr(config, "regime_detection_config", {}) or {}
@@ -120,8 +147,8 @@ class ThresholdManager:
         )
 
         # Caching for performance optimization
-        self._regime_cache: Optional[Dict[str, Any]] = None
-        self._threshold_cache: Optional[Dict[str, Any]] = None
+        self._regime_cache: RegimeCacheEntry | None = None
+        self._threshold_cache: ThresholdCacheEntry | None = None
 
         # Regime detection parameters (legacy compatibility)
         self.trend_threshold = getattr(config, "trend_detection_threshold", 0.001)
@@ -244,7 +271,7 @@ class ThresholdManager:
         if not regime:
             return base_threshold
 
-        hybrid_config: Any = None
+        hybrid_config: object | None = None
         if isinstance(self.config, dict):
             hybrid_config = self.config.get("hybrid_config")
         else:
@@ -437,7 +464,7 @@ class ThresholdManager:
 
         return float(final_threshold)
 
-    def get_state_info(self) -> Dict[str, Any]:
+    def get_state_info(self) -> dict[str, object]:
         """Return current state information for logging/debugging."""
         return {
             "current_threshold": self.last_threshold,
@@ -516,7 +543,7 @@ class ThresholdManager:
             return "trending_bull"
         return "ranging"
 
-    def get_regime_adjustments(self, regime: str) -> Dict[str, float]:
+    def get_regime_adjustments(self, regime: str) -> dict[str, float]:
         """
         Get threshold adjustments for a specific market regime.
 
@@ -549,7 +576,7 @@ class ThresholdManager:
         data: pd.DataFrame,
         base_confidence: float = 0.7,
         base_strength: float = 0.4,
-    ) -> Dict[str, float]:
+    ) -> AdaptiveSignalThresholds:
         """
         Calculate adaptive signal thresholds based on market regime and performance.
 
@@ -565,7 +592,10 @@ class ThresholdManager:
             Dictionary with adaptive thresholds and metadata
         """
         # Check cache
-        cache_key = f"{len(data)}_{base_confidence}_{base_strength}"
+        cache_key = (
+            f"{len(data)}_{data.index[-1] if len(data) > 0 else 'empty'}_"
+            f"{base_confidence:.6f}_{base_strength:.6f}"
+        )
         if (
             self._threshold_cache
             and self._threshold_cache.get("cache_key") == cache_key
@@ -588,10 +618,10 @@ class ThresholdManager:
         )
 
         # Ensure reasonable bounds
-        confidence_threshold = np.clip(confidence_threshold, 0.5, 0.9)
-        signal_strength_threshold = np.clip(signal_strength_threshold, 0.2, 0.7)
+        confidence_threshold = float(np.clip(confidence_threshold, 0.5, 0.9))
+        signal_strength_threshold = float(np.clip(signal_strength_threshold, 0.2, 0.7))
 
-        thresholds = {
+        thresholds: AdaptiveSignalThresholds = {
             "confidence_threshold": confidence_threshold,
             "signal_strength_threshold": signal_strength_threshold,
             "regime": regime,
@@ -613,7 +643,7 @@ class ThresholdManager:
         data: pd.DataFrame,
         base_confidence: float = 0.7,
         base_strength: float = 0.4,
-    ) -> Dict[str, float]:
+    ) -> AdaptiveSignalThresholds:
         """Backward-compatible alias for calculate_adaptive_signal_thresholds
         Some older tests or modules call calculate_adaptive_thresholds; maintain alias
         to avoid breaking older code while keeping new name for clarity.
@@ -622,7 +652,7 @@ class ThresholdManager:
             data, base_confidence, base_strength
         )
 
-    def _calculate_performance_adjustment(self) -> Dict[str, float]:
+    def _calculate_performance_adjustment(self) -> PerformanceAdjustment:
         """
         Calculate threshold adjustments based on recent performance.
 
@@ -632,8 +662,10 @@ class ThresholdManager:
         if len(self.signal_history) < 10:
             return {"confidence": 1.0, "strength": 1.0}
 
-        recent_signals = self.signal_history[-20:]  # Last 20 signals
-        win_rate = sum(1 for s in recent_signals if s.get("profitable", False)) / len(
+        recent_signals = list(self.signal_history)[-20:]  # Last 20 signals
+        win_rate = sum(
+            1 for s in recent_signals if bool(s.get("profitable", False))
+        ) / len(
             recent_signals
         )
 
@@ -647,18 +679,14 @@ class ThresholdManager:
 
         return {"confidence": adjustment, "strength": adjustment}
 
-    def update_performance(self, signal_result: Dict[str, Any]):
+    def update_performance(self, signal_result: Mapping[str, object]) -> None:
         """
         Update performance tracking with signal result.
 
         Args:
             signal_result: Result of executed signal
         """
-        self.signal_history.append(signal_result)
-
-        # Keep memory limited
-        if len(self.signal_history) > self.performance_memory:
-            self.signal_history = self.signal_history[-self.performance_memory :]
+        self.signal_history.append(dict(signal_result))
 
     def reset(self) -> None:
         """

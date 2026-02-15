@@ -60,6 +60,16 @@ class QualityThresholds:
     max_signals_per_bar: int
 
 
+@dataclass(frozen=True)
+class MarketQualityContext:
+    """Precomputed market context reused across per-signal quality scoring."""
+
+    regime_bucket: str
+    recent_trend: float
+    volatility: float
+    is_high_volatility: bool
+
+
 class SignalQualityFilter:
     """
     Filters and ranks signals based on comprehensive quality metrics.
@@ -150,20 +160,21 @@ class SignalQualityFilter:
         if not signals:
             return []
 
+        market_context = self._build_market_context(market_data, market_regime)
+        self._update_market_factors_from_context(market_context)
+
         # Assess quality for each signal
         quality_signals: list[tuple[object, SignalQualityMetrics]] = []
+        reliability_cache: dict[str, float] = {}
         for signal in signals:
             quality_metrics = self._assess_signal_quality(
-                signal, market_data, market_regime
+                signal, market_regime, market_context, reliability_cache
             )
             if quality_metrics:
                 quality_signals.append((signal, quality_metrics))
 
         if not quality_signals:
             return []
-
-        # Update market condition factors
-        self._update_market_factors(market_data, market_regime)
 
         # Apply quality filtering
         filtered_signals = self._apply_quality_filter(quality_signals)
@@ -193,15 +204,20 @@ class SignalQualityFilter:
         return self.filter_signals(signals, market_data, market_regime=None)
 
     def _assess_signal_quality(
-        self, signal: object, market_data: pd.DataFrame, market_regime: object
+        self,
+        signal: object,
+        market_regime: object,
+        market_context: MarketQualityContext,
+        reliability_cache: dict[str, float],
     ) -> SignalQualityMetrics | None:
         """
         Assess comprehensive quality metrics for a signal.
 
         Args:
             signal: Trading signal object
-            market_data: Current market data
             market_regime: Current market regime
+            market_context: Precomputed context for current bar
+            reliability_cache: Per-bar reliability cache by pattern
 
         Returns:
             SignalQualityMetrics if signal passes basic checks, None otherwise
@@ -222,14 +238,16 @@ class SignalQualityFilter:
             # Calculate individual quality components
             strength_score = self._calculate_strength_score(strength_value)
             confidence_score = self._calculate_confidence_score(confidence_value)
-            reliability_score = self._calculate_reliability_score(pattern_name)
+            reliability_score = self._get_cached_reliability_score(
+                pattern_name, reliability_cache
+            )
             market_alignment_score = self._calculate_market_alignment_score(
-                signal, market_data, market_regime
+                signal, market_context
             )
 
             # Calculate risk-adjusted score
             risk_adjusted_score = self._calculate_risk_adjusted_score(
-                signal, market_data, strength_score, confidence_score
+                signal, strength_score, confidence_score, market_context
             )
 
             # Create quality metrics
@@ -305,27 +323,23 @@ class SignalQualityFilter:
         return max(0.1, min(1.0, weighted_avg))
 
     def _calculate_market_alignment_score(
-        self, signal: object, market_data: pd.DataFrame, market_regime: object
+        self, signal: object, market_context: MarketQualityContext
     ) -> float:
         """Calculate how well signal aligns with current market conditions."""
-        if not market_regime or len(market_data) < 10:
+        if market_context.regime_bucket == "UNKNOWN":
             return 0.5
 
         alignment_score = 0.5  # Base score
 
         try:
-            # Get recent market data
-            recent_data = market_data.tail(20)
-
-            # Calculate trend alignment
-            regime_bucket = self._regime_bucket(market_regime)
+            regime_bucket = market_context.regime_bucket
 
             # Trend regime alignment
             if regime_bucket == "TRENDING":
                 # In trending markets, prefer directional signals
                 if hasattr(signal, "direction"):
                     direction = getattr(signal, "direction", 0)
-                    recent_trend = self._calculate_recent_trend(recent_data)
+                    recent_trend = market_context.recent_trend
                     if (direction > 0 and recent_trend > 0) or (
                         direction < 0 and recent_trend < 0
                     ):
@@ -342,21 +356,11 @@ class SignalQualityFilter:
                     signal, "pattern_type", getattr(signal, "signal_type", "")
                 )
                 pattern_type_str = str(pattern_type)
-                if (
-                    "oscillator" in pattern_type_str.lower()
-                    or "rsi" in pattern_type_str.lower()
-                    or "stochastic" in pattern_type_str.lower()
-                    or "cci" in pattern_type_str.lower()
-                    or "williams" in pattern_type_str.lower()
-                    or "mfi" in pattern_type_str.lower()
-                    or "bollinger" in pattern_type_str.lower()
-                    or "reversal" in pattern_type_str.lower()
-                ):
+                if self._is_mean_reversion_pattern(pattern_type_str):
                     alignment_score += 0.15
 
             # Volatility alignment
-            volatility = self._calculate_volatility(recent_data)
-            if volatility > 0.05:  # High volatility
+            if market_context.is_high_volatility:
                 # Prefer stronger signals in volatile markets
                 if hasattr(signal, "strength") and signal.strength > 0.7:
                     alignment_score += 0.1
@@ -372,15 +376,13 @@ class SignalQualityFilter:
     def _calculate_risk_adjusted_score(
         self,
         _signal: object,
-        market_data: pd.DataFrame,
         strength_score: float,
         confidence_score: float,
+        market_context: MarketQualityContext,
     ) -> float:
         """Calculate risk-adjusted quality score."""
         try:
-            # Get recent volatility as risk measure
-            recent_data = market_data.tail(20)
-            volatility = self._calculate_volatility(recent_data)
+            volatility = market_context.volatility
 
             # Risk adjustment factor (higher volatility = higher risk = lower score)
             risk_factor = max(0.5, 1.0 - volatility * 2.0)
@@ -402,7 +404,7 @@ class SignalQualityFilter:
 
     def _calculate_recent_trend(self, data: pd.DataFrame) -> float:
         """Calculate recent price trend."""
-        if len(data) < 5:
+        if len(data) < 5 or "close" not in data.columns:
             return 0.0
 
         prices = data["close"].values
@@ -493,27 +495,81 @@ class SignalQualityFilter:
     def _update_market_factors(self, market_data: pd.DataFrame, market_regime: object):
         """Update market condition factors for quality assessment."""
         try:
-            # Update volatility factor
-            volatility = self._calculate_volatility(market_data.tail(20))
-            # Higher volatility = more lenient quality thresholds
-            self.volatility_factor = max(0.8, min(1.2, 1.0 + volatility))
-
-            # Update market condition factor based on regime
-            if market_regime:
-                regime_bucket = self._regime_bucket(market_regime)
-                if regime_bucket == "VOLATILE":
-                    self.market_condition_factor = 0.9  # Stricter in volatile markets
-                elif regime_bucket == "TRENDING":
-                    self.market_condition_factor = 1.0  # Normal in trending markets
-                elif regime_bucket == "RANGING":
-                    self.market_condition_factor = (
-                        1.1  # More lenient in ranging markets
-                    )
-                else:
-                    self.market_condition_factor = 1.0
-
+            context = self._build_market_context(market_data, market_regime)
+            self._update_market_factors_from_context(context)
         except Exception as e:
             self.logger.debug(f"Error updating market factors: {e}")
+
+    def _build_market_context(
+        self, market_data: pd.DataFrame, market_regime: object
+    ) -> MarketQualityContext:
+        """Build per-bar market context once and reuse for all signals."""
+        if market_data.empty or "close" not in market_data.columns:
+            return MarketQualityContext(
+                regime_bucket="UNKNOWN",
+                recent_trend=0.0,
+                volatility=0.02,
+                is_high_volatility=False,
+            )
+
+        recent_data = market_data.tail(20)
+        volatility = self._calculate_volatility(recent_data)
+        regime_bucket = (
+            self._regime_bucket(market_regime) if market_regime else "UNKNOWN"
+        )
+        recent_trend = (
+            self._calculate_recent_trend(recent_data)
+            if regime_bucket == "TRENDING"
+            else 0.0
+        )
+        return MarketQualityContext(
+            regime_bucket=regime_bucket,
+            recent_trend=recent_trend,
+            volatility=volatility,
+            is_high_volatility=volatility > 0.05,
+        )
+
+    def _update_market_factors_from_context(
+        self, market_context: MarketQualityContext
+    ) -> None:
+        # Higher volatility = more lenient quality thresholds
+        self.volatility_factor = max(0.8, min(1.2, 1.0 + market_context.volatility))
+
+        if market_context.regime_bucket == "VOLATILE":
+            self.market_condition_factor = 0.9  # Stricter in volatile markets
+        elif market_context.regime_bucket == "TRENDING":
+            self.market_condition_factor = 1.0  # Normal in trending markets
+        elif market_context.regime_bucket == "RANGING":
+            self.market_condition_factor = 1.1  # More lenient in ranging markets
+        else:
+            self.market_condition_factor = 1.0
+
+    def _get_cached_reliability_score(
+        self, pattern_name: str, reliability_cache: dict[str, float]
+    ) -> float:
+        cached = reliability_cache.get(pattern_name)
+        if cached is not None:
+            return cached
+        score = self._calculate_reliability_score(pattern_name)
+        reliability_cache[pattern_name] = score
+        return score
+
+    @staticmethod
+    def _is_mean_reversion_pattern(pattern_type: str) -> bool:
+        normalized = pattern_type.lower()
+        return any(
+            key in normalized
+            for key in [
+                "oscillator",
+                "rsi",
+                "stochastic",
+                "cci",
+                "williams",
+                "mfi",
+                "bollinger",
+                "reversal",
+            ]
+        )
 
     def _update_quality_statistics(
         self, final_signals: list[tuple[object, SignalQualityMetrics]]
@@ -744,6 +800,7 @@ class SignalQualityEvaluator:
         market_data: pd.DataFrame,
         sac_decision: object = None,
         market_regime: object = None,
+        precomputed_volatility: float | None = None,
     ) -> dict[str, float]:
         """Evaluate signal quality components for ranking/filtering."""
         strength = self._clamp(self._to_float(getattr(signal, "strength", 0.0)), 0.0, 1.0)
@@ -753,11 +810,14 @@ class SignalQualityEvaluator:
         regime_alignment = self._calculate_regime_alignment(signal, market_regime)
         sac_alignment = self._calculate_sac_alignment(signal, sac_decision)
 
-        volatility = 0.0
-        if not market_data.empty and "close" in market_data.columns:
-            returns = market_data["close"].pct_change().dropna()
-            if not returns.empty:
-                volatility = self._clamp(float(returns.std()), 0.0, 1.0)
+        if precomputed_volatility is not None:
+            volatility = self._clamp(precomputed_volatility, 0.0, 1.0)
+        else:
+            volatility = 0.0
+            if not market_data.empty and "close" in market_data.columns:
+                returns = market_data["close"].pct_change().dropna()
+                if not returns.empty:
+                    volatility = self._clamp(float(returns.std()), 0.0, 1.0)
 
         return {
             "strength": strength,

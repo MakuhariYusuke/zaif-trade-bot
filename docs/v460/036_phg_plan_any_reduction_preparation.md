@@ -429,6 +429,22 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 12. `ztb/analysis/regime/market_regime_types.py` の `RegimeDetectionResult.metadata` を `Dict[str, object]` 化し、`Any` を全撤去（当該ファイル `any_type_debt_tokens=0`）。  
 13. repo 全体 `any_type_debt_tokens` を `3,012 -> 3,004` へ削減。  
 
+### Step42: 生成/品質評価の性能最適化 + `threshold_manager` の `Any` 全撤去
+
+1. `ztb/trading/strategies/action_signal_guide/components/signal_quality_filter.py` に `MarketQualityContext` を導入し、bar単位の trend/volatility/regime bucket を事前計算して各 signal 評価で再利用。  
+2. `filter_signals()` の評価順を見直し、現バーの market factor を先に反映してから risk-adjusted score を算出するよう修正（前バー係数混入リスクを低減）。  
+3. reliability 算出に per-bar cache（`_get_cached_reliability_score`）を追加し、同一 pattern の履歴集計重複を削減。  
+4. mean-reversion 判定の文字列分岐を `_is_mean_reversion_pattern()` へ抽出し、重複条件式を集約。  
+5. `SignalQualityEvaluator.evaluate_signal_quality()` に `precomputed_volatility` を追加し、`SignalGenerator` 側で volatility を1回だけ計算して使い回す構成へ変更。  
+6. `ztb/trading/strategies/action_signal_guide/components/signal_generator.py` の parallel 実行を persistent `ThreadPoolExecutor` 再利用へ変更し、barごとのスレッドプール生成/破棄オーバーヘッドを削減。  
+7. parallel future 回収を `as_completed` 化し、個別 future 失敗時も全体を継続できるよう例外処理を強化。  
+8. `SignalGenerator.close()` / `_shutdown_parallel_executor()` を追加し、明示的なリソース解放経路を整備。  
+9. `ztb/trading/strategies/action_signal_guide/components/dynamic_adapter.py` の `adaptation_history` を `deque(maxlen=1000)` 化し、長時間稼働時の履歴肥大化を抑制。  
+10. `ztb/trading/environment/components/threshold_manager.py` の `Any` を全撤去し、`TypedDict`（`AdaptiveSignalThresholds` / cache entry）と `Mapping[str, object]` ベースへ移行（当該ファイル `any_type_debt_tokens=0`）。  
+11. `threshold_manager` の `signal_history` を `deque(maxlen=performance_memory)` 化し、履歴トリムの重複処理を削除。  
+12. `calculate_adaptive_signal_thresholds()` の cache key にデータ終端 index を含め、同一長データでの誤キャッシュヒットを低減。  
+13. repo 全体 `any_type_debt_tokens` を `3,004 -> 3,000` へ削減。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -474,6 +490,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step39時点 | repo全体 | 3,017 |
 | Step40時点 | repo全体 | 3,012 |
 | Step41時点 | repo全体 | 3,004 |
+| Step42時点 | repo全体 | 3,000 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -521,6 +538,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step40時点 | `ztb/trading/strategies/action_signal_guide/components/market_regime.py` | **0** |
 | Step41時点 | `ztb/trading/strategies/action_signal_guide/components/dynamic_adapter.py` | **0** |
 | Step41時点 | `ztb/analysis/regime/market_regime_types.py` | **0** |
+| Step42時点 | `ztb/trading/environment/components/threshold_manager.py` | **0** |
 
 ---
 
@@ -530,12 +548,12 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - 生成パイプラインの result payload を段階的に型固定し、feature registry 連携の重複マップ操作を整理。  
 2. `ztb/evaluation/promotion.py`  
    - fallback 実装と `analysis/promotion` の責務境界を整理し、将来的な評価ロジック共通化（mixin/utility）に備える。  
-3. `ztb/trading/environment/components/threshold_manager.py`  
-   - 残存 `Any`（主に履歴 payload）の `TypedDict` 化を進め、レジーム調整ロジックの入力契約を固定。  
-4. `ztb/trading/strategies/action_signal_guide/components/pattern_statistics.py`  
+3. `ztb/trading/strategies/action_signal_guide/components/pattern_statistics.py`  
    - 集計 payload を TypedDict 化し、履歴構造と組み合わせ統計のキー存在保証を強化。  
-5. `ztb/trading/strategies/action_signal_guide/components/validation.py`  
+4. `ztb/trading/strategies/action_signal_guide/components/validation.py`  
    - validation/sanitize レポート構造を TypedDict へ寄せ、呼び出し側でのキー前提分岐を単純化。  
+5. `ztb/trading/strategies/action_signal_guide/pattern_recognition/dow_theory.py`  
+   - `Any` 削減と共通判定の抽出（base class / helper）を進め、candle/wave 系で行った重複削減パターンを横展開。  
 
 ---
 
