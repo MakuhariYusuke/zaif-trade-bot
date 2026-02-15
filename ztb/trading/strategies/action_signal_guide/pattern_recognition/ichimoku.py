@@ -4,7 +4,8 @@ Ichimoku Cloud Pattern Recognizer
 時間論・波動論・水準論の統合分析
 """
 
-from typing import Any, Dict, Optional
+import logging
+from typing import Optional, TypedDict
 
 import pandas as pd
 
@@ -31,75 +32,83 @@ from ztb.features.generators.technical.trend.ichimoku.ichimoku_wave_theory impor
     compute_ichimoku_wave_theory,
 )
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import (
-    PatternRecognizer,
+    IndicatorPatternRecognizer,
+    MultiTimeframeData,
     SignalResult,
 )
 
+LOGGER = logging.getLogger(__name__)
 
-class IchimokuPatternRecognizer(PatternRecognizer):
+
+class IchimokuSignals(TypedDict):
+    """Structured Ichimoku component values."""
+
+    diff_norm: float
+    cross: float
+    cloud_expansion: float
+    wave_theory: float
+    time_theory: float
+    value_measurement: float
+    momentum_confirmation: float
+    sanyaku_kouten: float
+
+
+DEFAULT_ICHIMOKU_SIGNALS: IchimokuSignals = {
+    "diff_norm": 0.0,
+    "cross": 0.0,
+    "cloud_expansion": 0.0,
+    "wave_theory": 0.0,
+    "time_theory": 0.0,
+    "value_measurement": 0.0,
+    "momentum_confirmation": 0.0,
+    "sanyaku_kouten": 0.0,
+}
+
+
+class IchimokuPatternRecognizer(IndicatorPatternRecognizer):
     """
     Ichimoku Cloud pattern recognition using existing Ichimoku feature classes.
     既存の一目均衡表特徴量クラスを使用したパターン認識
     時間論・波動論・水準論の統合分析
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[dict[str, object]] = None):
         super().__init__(config)
-        self.tenkan_kijun_threshold = self.config.get("tenkan_kijun_threshold", 0.02)
-        self.cloud_expansion_threshold = self.config.get(
-            "cloud_expansion_threshold", 0.1
+        self.tenkan_kijun_threshold = float(
+            self.config.get("tenkan_kijun_threshold", 0.02)
         )
-        self.wave_theory_threshold = self.config.get("wave_theory_threshold", 0.15)
-        self.time_theory_threshold = self.config.get("time_theory_threshold", 0.2)
-        self.value_measurement_threshold = self.config.get(
-            "value_measurement_threshold", 0.25
+        self.cloud_expansion_threshold = float(
+            self.config.get("cloud_expansion_threshold", 0.1)
         )
-        self.momentum_confirmation_threshold = self.config.get(
-            "momentum_confirmation_threshold", 0.3
+        self.wave_theory_threshold = float(self.config.get("wave_theory_threshold", 0.15))
+        self.time_theory_threshold = float(self.config.get("time_theory_threshold", 0.2))
+        self.value_measurement_threshold = float(
+            self.config.get("value_measurement_threshold", 0.25)
         )
-        self.sanyaku_kouten_threshold = self.config.get("sanyaku_kouten_threshold", 0.8)
+        self.momentum_confirmation_threshold = float(
+            self.config.get("momentum_confirmation_threshold", 0.3)
+        )
+        self.sanyaku_kouten_threshold = float(
+            self.config.get("sanyaku_kouten_threshold", 0.8)
+        )
 
     def recognize(
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+        multi_timeframe_data: Optional[MultiTimeframeData] = None,
     ) -> Optional[SignalResult]:
         """
         Recognize Ichimoku-based patterns using integrated theories.
         一目均衡表ベースのパターン認識（時間論・波動論・水準論の統合）
         """
-        if not self.validate_data(data):
-            return None
-
-        # Calculate market conditions for adaptive parameters
-        lookback_data = (
-            data.iloc[max(0, index - 50) : index + 1] if index >= 0 else data.iloc[-51:]
+        min_required_periods = 52  # Minimum periods needed for Ichimoku (26*2)
+        resolved_index = self.resolve_indicator_index(
+            data,
+            index,
+            min_required_periods=min_required_periods,
         )
-        returns = lookback_data["close"].pct_change().dropna()
-        current_volatility = returns.std()
-        avg_volatility = (
-            returns.rolling(20).std().mean()
-            if len(returns) >= 20
-            else current_volatility
-        )
-        volatility_ratio = (
-            current_volatility / avg_volatility if avg_volatility > 0 else 1.0
-        )
-
-        # Simple trend strength calculation
-        sma_20 = (
-            lookback_data["close"].rolling(20).mean().iloc[-1]
-            if len(lookback_data) >= 20
-            else lookback_data["close"].mean()
-        )
-        trend_strength = (
-            abs((lookback_data["close"].iloc[-1] - sma_20) / sma_20)
-            if sma_20 != 0
-            else 0.5
-        )
-
-        if len(data) < 52:  # Minimum periods needed for Ichimoku (26*2)
+        if resolved_index is None:
             return SignalResult(
                 signal_type="ichimoku_insufficient_data",
                 strength=0.0,
@@ -109,9 +118,45 @@ class IchimokuPatternRecognizer(PatternRecognizer):
                 risk_level="low",
             )
 
+        analysis_data, local_index = self.build_indicator_view(
+            data,
+            resolved_index,
+            min_required_periods=min_required_periods,
+            window_multiplier=12,
+            min_window=260,
+            max_window=1400,
+        )
+
+        lookback_data = analysis_data.iloc[max(0, local_index - 50) : local_index + 1]
+        returns = lookback_data["close"].pct_change().dropna()
+        current_volatility = float(returns.std()) if not returns.empty else 0.0
+        avg_volatility = (
+            float(returns.rolling(20).std().mean())
+            if len(returns) >= 20
+            else current_volatility
+        )
+        volatility_ratio = (
+            current_volatility / avg_volatility if avg_volatility > 0 else 1.0
+        )
+
+        # Simple trend strength calculation
+        sma_20 = (
+            float(lookback_data["close"].rolling(20).mean().iloc[-1])
+            if len(lookback_data) >= 20
+            else float(lookback_data["close"].mean())
+        )
+        trend_strength = (
+            abs((float(lookback_data["close"].iloc[-1]) - sma_20) / sma_20)
+            if sma_20 != 0
+            else 0.5
+        )
+
         # Calculate all Ichimoku components using existing features
         try:
-            ichimoku_signals = self._calculate_ichimoku_signals(data, index)
+            ichimoku_signals = self._calculate_ichimoku_signals(
+                analysis_data,
+                local_index,
+            )
         except Exception as e:
             return SignalResult(
                 signal_type="ichimoku_error",
@@ -124,94 +169,50 @@ class IchimokuPatternRecognizer(PatternRecognizer):
 
         # Analyze integrated signals with market adaptation
         return self._analyze_integrated_signals(
-            ichimoku_signals, data, index, volatility_ratio, trend_strength
+            ichimoku_signals,
+            analysis_data,
+            local_index,
+            volatility_ratio,
+            trend_strength,
         )
 
     def _calculate_ichimoku_signals(
         self, data: pd.DataFrame, index: int
-    ) -> Dict[str, float]:
+    ) -> IchimokuSignals:
         """
         Calculate all Ichimoku signals using existing feature functions.
         既存の特徴量関数を使用して全一目均衡表シグナルを計算
         """
-        signals = {}
-
         try:
+            def _series_value(series: pd.Series) -> float:
+                value = float(series.iloc[index])
+                return value if pd.notna(value) else 0.0
+
             # Time Theory - Tenkan/Kijun relationship
-            signals["diff_norm"] = float(
-                compute_ichimoku_diff_norm(data).iloc[index]
-                if index < len(data)
-                else compute_ichimoku_diff_norm(data).iloc[-1]
-            )
-            signals["cross"] = float(
-                compute_ichimoku_cross(data).iloc[index]
-                if index < len(data)
-                else compute_ichimoku_cross(data).iloc[-1]
-            )
-
-            # Wave Theory - Cloud wave patterns and momentum
-            signals["cloud_expansion"] = float(
-                compute_ichimoku_cloud_expansion(data).iloc[index]
-                if index < len(data)
-                else compute_ichimoku_cloud_expansion(data).iloc[-1]
-            )
-            signals["wave_theory"] = float(
-                compute_ichimoku_wave_theory(data).iloc[index]
-                if index < len(data)
-                else compute_ichimoku_wave_theory(data).iloc[-1]
-            )
-
-            # Time Theory - Temporal relationships
-            signals["time_theory"] = float(
-                compute_ichimoku_time_theory(data).iloc[index]
-                if index < len(data)
-                else compute_ichimoku_time_theory(data).iloc[-1]
-            )
-
-            # Value Measurement - Price fluctuation analysis
-            signals["value_measurement"] = float(
-                compute_ichimoku_value_measurement(data).iloc[index]
-                if index < len(data)
-                else compute_ichimoku_value_measurement(data).iloc[-1]
-            )
-
-            # Momentum Confirmation - Chikou span momentum
-            signals["momentum_confirmation"] = float(
-                compute_ichimoku_momentum_confirmation(data).iloc[index]
-                if index < len(data)
-                else compute_ichimoku_momentum_confirmation(data).iloc[-1]
-            )
-
-            # Sanyaku Kouten - Three roles reversal pattern
-            signals["sanyaku_kouten"] = float(
-                compute_ichimoku_sanyaku_kouten(data).iloc[index]
-                if index < len(data)
-                else compute_ichimoku_sanyaku_kouten(data).iloc[-1]
-            )
-
-        except Exception as e:
-            print(f"Debug: Exception in Ichimoku calculation: {e}")
-            import traceback
-
-            traceback.print_exc()
-            # If any calculation fails, return default values
-            print(f"Warning: Ichimoku calculation failed: {str(e)}")
-            signals = {
-                "diff_norm": 0.0,
-                "cross": 0.0,
-                "cloud_expansion": 0.0,
-                "wave_theory": 0.0,
-                "time_theory": 0.0,
-                "value_measurement": 0.0,
-                "momentum_confirmation": 0.0,
-                "sanyaku_kouten": 0.0,
+            signals: IchimokuSignals = {
+                "diff_norm": _series_value(compute_ichimoku_diff_norm(data)),
+                "cross": _series_value(compute_ichimoku_cross(data)),
+                "cloud_expansion": _series_value(compute_ichimoku_cloud_expansion(data)),
+                "wave_theory": _series_value(compute_ichimoku_wave_theory(data)),
+                "time_theory": _series_value(compute_ichimoku_time_theory(data)),
+                "value_measurement": _series_value(
+                    compute_ichimoku_value_measurement(data)
+                ),
+                "momentum_confirmation": _series_value(
+                    compute_ichimoku_momentum_confirmation(data)
+                ),
+                "sanyaku_kouten": _series_value(compute_ichimoku_sanyaku_kouten(data)),
             }
 
-        return signals
+            return signals
+
+        except Exception as e:
+            LOGGER.warning("Ichimoku calculation failed: %s", str(e))
+            return DEFAULT_ICHIMOKU_SIGNALS.copy()
 
     def _analyze_integrated_signals(
         self,
-        signals: Dict[str, float],
+        signals: IchimokuSignals,
         data: pd.DataFrame,
         index: int,
         volatility_ratio: float = 1.0,
@@ -267,7 +268,7 @@ class IchimokuPatternRecognizer(PatternRecognizer):
 
     def _analyze_time_theory(
         self,
-        signals: Dict[str, float],
+        signals: IchimokuSignals,
         current_price: float,
         volatility_ratio: float = 1.0,
         trend_strength: float = 0.5,
@@ -347,7 +348,7 @@ class IchimokuPatternRecognizer(PatternRecognizer):
 
     def _analyze_wave_theory(
         self,
-        signals: Dict[str, float],
+        signals: IchimokuSignals,
         current_price: float,
         volatility_ratio: float = 1.0,
         trend_strength: float = 0.5,
@@ -389,7 +390,7 @@ class IchimokuPatternRecognizer(PatternRecognizer):
 
     def _analyze_value_measurement(
         self,
-        signals: Dict[str, float],
+        signals: IchimokuSignals,
         data: pd.DataFrame,
         index: int,
         volatility_ratio: float = 1.0,
@@ -429,7 +430,7 @@ class IchimokuPatternRecognizer(PatternRecognizer):
 
     def _analyze_sanyaku_kouten(
         self,
-        signals: Dict[str, float],
+        signals: IchimokuSignals,
         current_price: float,
         volatility_ratio: float = 1.0,
         trend_strength: float = 0.5,
@@ -455,7 +456,7 @@ class IchimokuPatternRecognizer(PatternRecognizer):
 
     def _analyze_cloud_expansion(
         self,
-        signals: Dict[str, float],
+        signals: IchimokuSignals,
         current_price: float,
         volatility_ratio: float = 1.0,
         trend_strength: float = 0.5,

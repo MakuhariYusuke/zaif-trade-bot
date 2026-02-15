@@ -562,6 +562,21 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 7. `analysis_window` を各 oscillator recognizer に追加し、計算窓を config で調整可能にした（デフォルト 240）。  
 8. `Any` 負債は増減なし（repo 全体 `any_type_debt_tokens` は `2,873` を維持）。  
 
+### Step53: `pattern_recognition` 完全 `Any=0` 化 + レジーム/トレンド系の不具合修正 + 計算量削減
+
+1. `ztb/trading/strategies/action_signal_guide/pattern_recognition/trend_analyzer.py` を `TrendPatternRecognizer` 継承へ移行し、`Any` を全撤去（当該ファイル `any_type_debt_tokens=0`）。  
+2. `HierarchicalTrendAnalyzer.recognize()` の `index=-1` 既定時に常時 `None` を返しうる不具合を修正（index 正規化 + bounded window 化）。  
+3. `trend_analyzer.py` の ADX 計算で scalar 化後に `.rolling()` を呼んで例外に落ちる既存不具合を修正し、DI/DX/ADX の series 計算へ是正。  
+4. `trend_analyzer.py` の pivot 探索を二重ループから rolling ベースへ変更し、波動検出の計算コストを削減。  
+5. `ztb/trading/strategies/action_signal_guide/pattern_recognition/heikin_ashi.py` を `dict[str, object]` / `TypedDict` ベースへ移行し、`Any` を全撤去。  
+6. `heikin_ashi.py` は `index` 解決を共通化し、対象 index までのデータで判定する構造へ変更（将来データ参照を抑止）。  
+7. `ztb/trading/strategies/action_signal_guide/pattern_recognition/volume_patterns.py` を `IndicatorPatternRecognizer` 継承へ移行し、固定窓計算・`safe_ratio` ガード・`Any` 全撤去を実施。  
+8. `ztb/trading/strategies/action_signal_guide/pattern_recognition/ichimoku.py` を `IndicatorPatternRecognizer` 継承へ移行し、固定窓計算・重複 `compute_*` 呼び出し削減・debug print/traceback 除去を実施。  
+9. `ztb/trading/strategies/action_signal_guide/pattern_recognition/bollinger_patterns.py` を型統一し、index 正規化 + bounded analysis window を導入して計算量を削減。  
+10. `ztb/trading/strategies/action_signal_guide/recognizer_factory.py` の `Any` 注釈を全撤去し、factory map / create API を `dict[str, object] | None` に統一。  
+11. `pattern_recognition` 配下 `any_type_debt_tokens` を `13 -> 0` に削減。repo 全体 `any_type_debt_tokens` を `2,873 -> 2,858` に削減。  
+12. 回帰確認: `test_bollinger_adx_recognizers` (17 pass), `test_new_recognizers` (12 pass), `test_hierarchical_trend_analyzer` (3 pass, 新規), `test_ichimoku_recognizer` (2 pass), `test_enhanced_recognizers` (1 pass)。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -618,6 +633,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step50時点 | repo全体 | 2,873 |
 | Step51時点 | repo全体 | 2,873 |
 | Step52時点 | repo全体 | 2,873 |
+| Step53時点 | repo全体 | 2,858 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -683,6 +699,12 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step50時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/rsi.py` | **0** |
 | Step50時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/macd.py` | **0** |
 | Step50時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/atr.py` | **0** |
+| Step53時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/trend_analyzer.py` | **0** |
+| Step53時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/heikin_ashi.py` | **0** |
+| Step53時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/volume_patterns.py` | **0** |
+| Step53時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/ichimoku.py` | **0** |
+| Step53時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/bollinger_patterns.py` | **0** |
+| Step53時点 | `ztb/trading/strategies/action_signal_guide/recognizer_factory.py` | **0** |
 
 ---
 
@@ -698,8 +720,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - バリデーション結果 payload を `TypedDict` 化し、ルール評価の重複 map 操作を helper 化。  
 5. `ztb/utils/config.py`  
    - config merge/cast 系の `Any` を段階的に削減し、既存型別名へ集約。  
-6. `ztb/trading/strategies/action_signal_guide/pattern_recognition/trend_analyzer.py`  
-   - pivot/trend payload を型固定し、`Any` 削減と集計分岐の重複整理を進める。  
+6. `ztb/trading/strategies/action_signal_guide/types.py`  
+   - `MultiTimeframeData` / `StatisticsMetadata` など `Any` 依存 alias を段階的に TypedDict + object 系へ移行する。  
 
 ---
 

@@ -4,7 +4,7 @@ Recognizer Factory
 This module provides a factory for creating pattern recognizers.
 """
 
-from typing import Any, Callable, Dict, List
+from collections.abc import Callable
 
 from .pattern_recognition.adx_patterns import ADXRecognizer
 from .pattern_recognition.atr import ATRPatternRecognizer
@@ -69,7 +69,9 @@ class RecognizerFactory:
     """Factory for creating pattern recognizers."""
 
     def __init__(self) -> None:
-        self._factory_map: Dict[str, Callable[[Any], PatternRecognizer]] = {
+        self._factory_map: dict[
+            str, Callable[[dict[str, object] | None], PatternRecognizer]
+        ] = {
             # Candlestick patterns
             "sakata_five_methods": lambda config: SakataFiveMethodsRecognizer(config),
             "morning_star": lambda config: MorningStarRecognizer(config),
@@ -131,12 +133,14 @@ class RecognizerFactory:
             "dow_theory": lambda config: DowTheoryRecognizer(config),
         }
 
-    def create_recognizer(self, name: str, config: Any) -> PatternRecognizer:
+    def create_recognizer(
+        self, name: str, config: dict[str, object] | None
+    ) -> PatternRecognizer:
         """Create a recognizer by name."""
         if name not in self._factory_map:
             raise ValueError(f"Unknown recognizer: {name}")
         return self._factory_map[name](config)
 
-    def get_available_recognizers(self) -> List[str]:
+    def get_available_recognizers(self) -> list[str]:
         """Get list of available recognizer names."""
         return list(self._factory_map.keys())

@@ -5,7 +5,7 @@ Heikin-Ashi is a Japanese candlestick technique that modifies the traditional
 candlestick chart to better reflect the trend and momentum.
 """
 
-from typing import Any, Dict, Optional
+from typing import Optional, TypedDict
 
 import pandas as pd
 
@@ -13,9 +13,19 @@ import pandas as pd
 from ztb.features.generators.technical.trend.heikin_ashi import HeikinAshi
 
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import (
+    MultiTimeframeData,
     PatternRecognizer,
     SignalResult,
 )
+
+
+class HeikinAshiTrendSignal(TypedDict):
+    """Internal signal payload for Heikin-Ashi trend analysis."""
+
+    direction: float
+    strength: float
+    description: str
+    confidence: float
 
 
 class HeikinAshiRecognizer(PatternRecognizer):
@@ -27,15 +37,15 @@ class HeikinAshiRecognizer(PatternRecognizer):
     candlesticks and their color changes.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[dict[str, object]] = None):
         super().__init__(config)
         self.pattern_type = "heikin_ashi"
-        self.period = self.config.get("period", 1)  # Number of periods to look back
-        self.trend_threshold = self.config.get(
-            "trend_threshold", 0.001
+        self.period = int(self.config.get("period", 1))  # Number of periods to look back
+        self.trend_threshold = float(
+            self.config.get("trend_threshold", 0.001)
         )  # Minimum trend strength
-        self.volume_weighted = self.config.get(
-            "volume_weighted", False
+        self.volume_weighted = bool(
+            self.config.get("volume_weighted", False)
         )  # Use volume weighting
 
         # Use existing HeikinAshi feature class
@@ -45,7 +55,7 @@ class HeikinAshiRecognizer(PatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+        multi_timeframe_data: Optional[MultiTimeframeData] = None,
     ) -> Optional[SignalResult]:
         """
         Recognize Heikin-Ashi patterns in the data.
@@ -60,17 +70,21 @@ class HeikinAshiRecognizer(PatternRecognizer):
         if len(data) < 2:
             return None
 
-        # Calculate Heikin-Ashi values
-        ha_data = self._calculate_heikin_ashi(data)
-
-        if index == -1:
-            index = len(ha_data) - 1
-
-        if index < 1:
+        resolved_index = self.resolve_analysis_index(
+            len(data), index, min_required_index=1
+        )
+        if resolved_index is None:
             return None
 
-        current = ha_data.iloc[index]
-        previous = ha_data.iloc[index - 1]
+        analysis_data = data.iloc[: resolved_index + 1]
+        ha_data = self._calculate_heikin_ashi(analysis_data)
+        local_index = len(ha_data) - 1
+
+        if local_index < 1:
+            return None
+
+        current = ha_data.iloc[local_index]
+        previous = ha_data.iloc[local_index - 1]
 
         # Analyze trend based on Heikin-Ashi candles
         signal = self._analyze_trend(current, previous)
@@ -81,7 +95,7 @@ class HeikinAshiRecognizer(PatternRecognizer):
                 strength=abs(signal["strength"]),
                 direction=signal["direction"],
                 description=signal["description"],
-                confidence=signal["confidence"],
+                confidence=self.clamp(signal["confidence"], 0.0, 1.0),
             )
 
         return None
@@ -113,7 +127,7 @@ class HeikinAshiRecognizer(PatternRecognizer):
 
     def _analyze_trend(
         self, current: pd.Series, previous: pd.Series
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[HeikinAshiTrendSignal]:
         """
         Analyze trend based on Heikin-Ashi candle patterns using ratio-based measurements.
 
@@ -157,7 +171,7 @@ class HeikinAshiRecognizer(PatternRecognizer):
                         "direction": 1.0,  # Strong bullish signal
                         "strength": trend_strength,
                         "description": f"Heikin-Ashi: Strong bullish trend continuation (strength: {trend_strength:.4f})",
-                        "confidence": min(0.9, trend_strength * 100),
+                        "confidence": min(0.9, 0.35 + trend_strength * 0.55),
                     }
 
             # Bearish trend continuation (red candle after red)
@@ -167,7 +181,7 @@ class HeikinAshiRecognizer(PatternRecognizer):
                         "direction": -1.0,  # Strong bearish signal
                         "strength": trend_strength,
                         "description": f"Heikin-Ashi: Strong bearish trend continuation (strength: {trend_strength:.4f})",
-                        "confidence": min(0.9, trend_strength * 100),
+                        "confidence": min(0.9, 0.35 + trend_strength * 0.55),
                     }
 
         # Reversal signals
@@ -178,7 +192,7 @@ class HeikinAshiRecognizer(PatternRecognizer):
                     "direction": 0.7,  # Moderate bullish signal
                     "strength": trend_strength,
                     "description": f"Heikin-Ashi: Bullish reversal signal (strength: {trend_strength:.4f})",
-                    "confidence": min(0.7, trend_strength * 50),
+                    "confidence": min(0.7, 0.25 + trend_strength * 0.45),
                 }
 
         # Bearish reversal (red after green)
@@ -188,7 +202,7 @@ class HeikinAshiRecognizer(PatternRecognizer):
                     "direction": -0.7,  # Moderate bearish signal
                     "strength": trend_strength,
                     "description": f"Heikin-Ashi: Bearish reversal signal (strength: {trend_strength:.4f})",
-                    "confidence": min(0.7, trend_strength * 50),
+                    "confidence": min(0.7, 0.25 + trend_strength * 0.45),
                 }
 
         # Doji or weak signals - neutral

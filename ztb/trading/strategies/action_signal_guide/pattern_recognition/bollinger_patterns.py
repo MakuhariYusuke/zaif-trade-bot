@@ -3,7 +3,7 @@ Bollinger Bands Pattern Recognizer
 ボリンジャーバンドパターン認識 - ボラティリティベースのシグナル生成
 """
 
-from typing import Any, Dict, Optional
+from typing import Optional
 
 import pandas as pd
 
@@ -37,7 +37,7 @@ except ImportError:
 
 from ztb.trading.constants import ACTION_HOLD
 
-from .base import CandlestickPatternRecognizer, SignalResult
+from .base import CandlestickPatternRecognizer, MultiTimeframeData, SignalResult
 
 
 class BollingerBandsRecognizer(CandlestickPatternRecognizer):
@@ -47,26 +47,26 @@ class BollingerBandsRecognizer(CandlestickPatternRecognizer):
     価格のボラティリティとトレンドを分析
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[dict[str, object]] = None):
         super().__init__(config)
         self.pattern_type = "bollinger"
-        self.period = self.config.get("period", 20)
-        self.std_dev = self.config.get("std_dev", 2.0)
-        self.squeeze_threshold = self.config.get(
+        self.period = int(self.config.get("period", 20))
+        self.std_dev = float(self.config.get("std_dev", 2.0))
+        self.squeeze_threshold = float(self.config.get(
             "squeeze_threshold", 0.05
-        )  # バンド幅の収縮閾値
-        self.expansion_threshold = self.config.get(
+        ))  # バンド幅の収縮閾値
+        self.expansion_threshold = float(self.config.get(
             "expansion_threshold", 0.15
-        )  # バンド幅の拡大閾値
-        self.touch_distance = self.config.get(
+        ))  # バンド幅の拡大閾値
+        self.touch_distance = float(self.config.get(
             "touch_distance", 0.001
-        )  # バンドタッチの距離閾値
+        ))  # バンドタッチの距離閾値
 
     def recognize(
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+        multi_timeframe_data: Optional[MultiTimeframeData] = None,
     ) -> Optional[SignalResult]:
         """
         Recognize Bollinger Bands patterns.
@@ -81,18 +81,34 @@ class BollingerBandsRecognizer(CandlestickPatternRecognizer):
         if not self.validate_data(data):
             return None
 
-        # Calculate market conditions for adaptive parameters
-        lookback_data = (
-            data.iloc[max(0, index - 30) : index + 1] if index >= 0 else data.iloc[-31:]
+        resolved_index = self.resolve_analysis_index(
+            len(data),
+            index,
+            min_required_index=max(0, self.period - 1),
         )
+        if resolved_index is None:
+            return SignalResult(
+                signal_type="bb_insufficient_data",
+                strength=0.0,
+                direction=0.0,
+                description=f"Insufficient data for Bollinger Bands (need {self.period} periods)",
+                metadata={},
+                validity_period=1,
+                risk_level="low",
+            )
+
+        data, index = self._build_analysis_view(data, resolved_index)
+
+        # Calculate market conditions for adaptive parameters
+        lookback_data = data.iloc[max(0, index - 30) : index + 1]
         returns = lookback_data["close"].pct_change().dropna()
-        current_volatility = returns.std()
+        current_volatility = float(returns.std()) if not returns.empty else 0.0
 
         from ztb.features.generators.technical.trend.sma import compute_sma
 
         rolling_vol = returns.rolling(window=20).std()
         avg_volatility = (
-            rolling_vol.mean() if len(returns) >= 20 else current_volatility
+            float(rolling_vol.mean()) if len(returns) >= 20 else current_volatility
         )
         volatility_ratio = (
             current_volatility / avg_volatility if avg_volatility > 0 else 1.0
@@ -102,15 +118,15 @@ class BollingerBandsRecognizer(CandlestickPatternRecognizer):
         try:
             sma_series = compute_sma(lookback_data, period=20)
             sma_20 = (
-                sma_series.iloc[-1]
+                float(sma_series.iloc[-1])
                 if not sma_series.empty and not pd.isna(sma_series.iloc[-1])
                 else 0.0
             )
         except Exception:
-            sma_20 = lookback_data["close"].mean()
+            sma_20 = float(lookback_data["close"].mean())
 
         trend_strength = (
-            abs((lookback_data["close"].iloc[-1] - sma_20) / sma_20)
+            abs((float(lookback_data["close"].iloc[-1]) - sma_20) / sma_20)
             if sma_20 != 0
             else 0.5
         )
@@ -613,3 +629,27 @@ class BollingerBandsRecognizer(CandlestickPatternRecognizer):
                 validity_period=1,
                 risk_level="low",
             )
+
+    def _build_analysis_view(
+        self,
+        data: pd.DataFrame,
+        resolved_index: int,
+    ) -> tuple[pd.DataFrame, int]:
+        """Slice bounded history up to `resolved_index` for cheaper indicator recomputation."""
+        configured_window = self.config.get("analysis_window")
+        default_window = max(120, self.period * 8)
+        try:
+            window_size = (
+                int(configured_window)
+                if configured_window is not None
+                else default_window
+            )
+        except (TypeError, ValueError):
+            window_size = default_window
+
+        window_size = max(self.period, min(window_size, 1200))
+        start_idx = max(0, resolved_index - window_size + 1)
+        view = data.iloc[start_idx : resolved_index + 1]
+        if len(view) < self.period:
+            view = data.iloc[: resolved_index + 1]
+        return view, len(view) - 1
