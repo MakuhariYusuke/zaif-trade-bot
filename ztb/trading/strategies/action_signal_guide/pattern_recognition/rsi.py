@@ -3,102 +3,81 @@ RSI (Relative Strength Index) Pattern Recognizer
 既存のRSI特徴量クラスを使用したパターン認識
 """
 
-from typing import Any, Dict, Optional
+from typing import Optional, TypedDict
 
 import pandas as pd
 
 from ztb.features.generators.technical.momentum.rsi import compute_rsi
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import (
+    IndicatorPatternRecognizer,
     MultiTimeframeData,
-    PatternRecognizer,
     SignalResult,
 )
 
 
-class RSIPatternRecognizer(PatternRecognizer):
+class RSIRegimeThresholds(TypedDict):
+    """Regime-adjusted RSI threshold levels."""
+
+    overbought_level: float
+    oversold_level: float
+
+
+class RSIPatternRecognizer(IndicatorPatternRecognizer):
     """
     RSI-based pattern recognition using existing RSI feature class.
     既存のRSI特徴量クラスを使用したパターン認識
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Optional[dict[str, object]] = None):
         super().__init__(config)
-        self.rsi_period = self.config.get("rsi_period", 14)
-        self.overbought_level = self.config.get("overbought_level", 70)
-        self.oversold_level = self.config.get("oversold_level", 30)
-        self.divergence_lookback = self.config.get("divergence_lookback", 5)
-
-        # Multi-timeframe settings
-        self.enable_multi_timeframe = self.config.get("enable_multi_timeframe", True)
-        self.mtf_weight = self.config.get("mtf_weight", 0.3)
-        self.regime_aware = self.config.get("regime_aware", True)
+        self.rsi_period = int(self.config.get("rsi_period", 14))
+        self.overbought_level = float(self.config.get("overbought_level", 70))
+        self.oversold_level = float(self.config.get("oversold_level", 30))
+        self.divergence_lookback = int(self.config.get("divergence_lookback", 5))
 
     def recognize(
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+        multi_timeframe_data: Optional[MultiTimeframeData] = None,
     ) -> Optional[SignalResult]:
         """
         Recognize RSI-based patterns.
         RSIベースのパターン認識
         """
-        if not self.validate_data(data):
+        min_periods = self.rsi_period + self.divergence_lookback
+        resolved_index = self.resolve_indicator_index(
+            data, index, min_required_periods=min_periods
+        )
+        if resolved_index is None:
             return None
 
-        if len(data) < self.rsi_period + self.divergence_lookback:
-            return None
-
-        # Calculate market conditions for adaptive parameters
-        lookback_data = (
-            data.iloc[max(0, index - 20) : index + 1] if index >= 0 else data.iloc[-21:]
-        )
-        returns = lookback_data["close"].pct_change().dropna()
-        current_volatility = returns.std()
-        avg_volatility = (
-            returns.rolling(20).std().mean()
-            if len(returns) >= 20
-            else current_volatility
-        )
-        volatility_ratio = (
-            current_volatility / avg_volatility if avg_volatility > 0 else 1.0
-        )
-
-        # Simple trend strength calculation
-        sma_20 = (
-            lookback_data["close"].rolling(20).mean().iloc[-1]
-            if len(lookback_data) >= 20
-            else lookback_data["close"].mean()
-        )
-        trend_strength = (
-            abs((lookback_data["close"].iloc[-1] - sma_20) / sma_20)
-            if sma_20 != 0
-            else 0.5
-        )
-
-        # Calculate RSI using existing feature class
         rsi_values = compute_rsi(data, period=self.rsi_period)
-
         if rsi_values.empty or rsi_values.isna().all():
             return None
 
-        current_rsi = (
-            rsi_values.iloc[index] if index < len(rsi_values) else rsi_values.iloc[-1]
-        )
-        previous_rsi = (
-            rsi_values.iloc[index - 1]
-            if index > 0 and index - 1 < len(rsi_values)
-            else current_rsi
-        )
+        current_rsi = float(rsi_values.iloc[resolved_index])
+        previous_rsi = float(rsi_values.iloc[max(0, resolved_index - 1)])
+        if not pd.notna(current_rsi) or not pd.notna(previous_rsi):
+            return None
 
-        # Multi-timeframe analysis for enhanced signal reliability
+        market_context = self.calculate_market_context(
+            data, resolved_index, volatility_lookback=20, trend_window=20
+        )
+        volatility_ratio = market_context.volatility_ratio
+        trend_strength = market_context.trend_strength
+
         mtf_confidence = self._analyze_multi_timeframe_rsi_alignment(
             current_rsi, previous_rsi, multi_timeframe_data
         )
 
-        # Market regime awareness - adjust thresholds based on regime
-        regime_adjusted_thresholds = self._adjust_thresholds_for_regime(
-            multi_timeframe_data
+        regime_adjusted_thresholds = (
+            self._adjust_thresholds_for_regime(multi_timeframe_data)
+            if self.regime_aware
+            else {
+                "overbought_level": self.overbought_level,
+                "oversold_level": self.oversold_level,
+            }
         )
 
         # Check for overbought/oversold signals
@@ -106,21 +85,20 @@ class RSIPatternRecognizer(PatternRecognizer):
             current_rsi <= regime_adjusted_thresholds["oversold_level"]
             and previous_rsi > regime_adjusted_thresholds["oversold_level"]
         ):
-            # Fixed: Ensure base_strength is always positive (depth from oversold level)
-            oversold_depth = max(
-                0, (self.oversold_level - current_rsi) / self.oversold_level
+            oversold_depth = self.clamp(
+                self.safe_ratio(
+                    self.oversold_level - current_rsi,
+                    max(self.oversold_level, 1e-9),
+                    default=0.0,
+                ),
+                0.0,
+                1.0,
             )
-            base_strength = min(
-                1.0, oversold_depth * 0.8 + 0.2
-            )  # Scale to 0.2-1.0 range
+            base_strength = min(1.0, oversold_depth * 0.8 + 0.2)
 
-            # Adaptive direction based on oversold depth and market conditions
-            direction_factor = oversold_depth * (
-                0.8 + trend_strength * 0.2
-            )  # Amplify in strong trends
+            direction_factor = oversold_depth * (0.8 + trend_strength * 0.2)
             direction = min(1.0, direction_factor)
 
-            # Adaptive strength with volatility boost and MTF confidence
             volatility_boost = min(0.2, volatility_ratio * 0.1)
             strength = min(1.0, base_strength + volatility_boost) * mtf_confidence
 
@@ -145,21 +123,20 @@ class RSIPatternRecognizer(PatternRecognizer):
             current_rsi >= regime_adjusted_thresholds["overbought_level"]
             and previous_rsi < regime_adjusted_thresholds["overbought_level"]
         ):
-            # RSI crossed above overbought level - potential sell signal
-            base_strength = (current_rsi - self.overbought_level) / (
-                100 - self.overbought_level
+            overbought_depth = self.clamp(
+                self.safe_ratio(
+                    current_rsi - self.overbought_level,
+                    max(100.0 - self.overbought_level, 1e-9),
+                    default=0.0,
+                ),
+                0.0,
+                1.0,
             )
+            base_strength = overbought_depth
 
-            # Adaptive direction based on overbought depth and market conditions
-            overbought_depth = (current_rsi - self.overbought_level) / (
-                100 - self.overbought_level
-            )  # 0-1 scale
-            direction_factor = -overbought_depth * (
-                0.8 + trend_strength * 0.2
-            )  # Amplify in strong trends
+            direction_factor = -overbought_depth * (0.8 + trend_strength * 0.2)
             direction = max(-1.0, direction_factor)
 
-            # Adaptive strength with volatility boost and MTF confidence
             volatility_boost = min(0.2, volatility_ratio * 0.1)
             strength = min(1.0, base_strength + volatility_boost) * mtf_confidence
 
@@ -180,21 +157,24 @@ class RSIPatternRecognizer(PatternRecognizer):
                 risk_level="medium",
             )
 
-        # Check for divergence signals
         divergence_signal = self._check_divergence(
-            data, rsi_values, index, volatility_ratio, trend_strength, mtf_confidence
+            data,
+            rsi_values,
+            resolved_index,
+            volatility_ratio,
+            trend_strength,
+            mtf_confidence,
         )
         if divergence_signal:
             return divergence_signal
 
         # Center line cross signals
         if previous_rsi <= 50 and current_rsi > 50:
-            # Adaptive direction and strength for centerline cross
-            base_direction = 0.6  # Moderate bullish
+            base_direction = 0.6
             trend_amplification = trend_strength * 0.4
             direction = min(1.0, base_direction + trend_amplification)
 
-            base_strength = 0.5  # Increased from 0.3 to meet MODERATE threshold
+            base_strength = 0.5
             volatility_boost = min(0.1, volatility_ratio * 0.05)
             strength = min(0.8, base_strength + volatility_boost) * mtf_confidence
 
@@ -213,13 +193,13 @@ class RSIPatternRecognizer(PatternRecognizer):
                 validity_period=2,
                 risk_level="low",
             )
-        elif previous_rsi >= 50 and current_rsi < 50:
-            # Adaptive direction and strength for centerline cross
-            base_direction = -0.6  # Moderate bearish
+
+        if previous_rsi >= 50 and current_rsi < 50:
+            base_direction = -0.6
             trend_amplification = trend_strength * 0.4
             direction = max(-1.0, base_direction - trend_amplification)
 
-            base_strength = 0.5  # Increased from 0.3 to meet MODERATE threshold
+            base_strength = 0.5
             volatility_boost = min(0.1, volatility_ratio * 0.05)
             strength = min(0.8, base_strength + volatility_boost) * mtf_confidence
 
@@ -257,7 +237,6 @@ class RSIPatternRecognizer(PatternRecognizer):
         if len(rsi_values) < self.divergence_lookback + 2:
             return None
 
-        # Get recent data
         start_idx = max(0, index - self.divergence_lookback)
         recent_prices = data["close"].iloc[start_idx : index + 1]
         recent_rsi = rsi_values.iloc[start_idx : index + 1]
@@ -265,18 +244,16 @@ class RSIPatternRecognizer(PatternRecognizer):
         if len(recent_prices) < 2 or len(recent_rsi) < 2:
             return None
 
-        # Check for bullish divergence (price making lower low, RSI making higher low)
-        price_trend = recent_prices.iloc[-1] < recent_prices.iloc[0]
-        rsi_trend = recent_rsi.iloc[-1] > recent_rsi.iloc[0]
+        # Bullish divergence (price down, RSI up)
+        price_down = recent_prices.iloc[-1] < recent_prices.iloc[0]
+        rsi_up = recent_rsi.iloc[-1] > recent_rsi.iloc[0]
 
-        if price_trend and rsi_trend:
-            # Adaptive strength and direction for bullish divergence with MTF confidence
-            base_strength = 0.5  # Increased from 0.4 to meet MODERATE threshold
+        if price_down and rsi_up:
+            base_strength = 0.5
             volatility_boost = min(0.2, volatility_ratio * 0.1)
             strength = min(0.8, base_strength + volatility_boost) * mtf_confidence
 
-            # Direction amplified by trend strength
-            base_direction = 0.7  # Strong bullish divergence signal
+            base_direction = 0.7
             trend_amplification = trend_strength * 0.3
             direction = min(1.0, base_direction + trend_amplification)
 
@@ -296,18 +273,16 @@ class RSIPatternRecognizer(PatternRecognizer):
                 risk_level="medium",
             )
 
-        # Check for bearish divergence (price making higher high, RSI making lower high)
-        price_trend = recent_prices.iloc[-1] > recent_prices.iloc[0]
-        rsi_trend = recent_rsi.iloc[-1] < recent_rsi.iloc[0]
+        # Bearish divergence (price up, RSI down)
+        price_up = recent_prices.iloc[-1] > recent_prices.iloc[0]
+        rsi_down = recent_rsi.iloc[-1] < recent_rsi.iloc[0]
 
-        if price_trend and rsi_trend:
-            # Adaptive strength and direction for bearish divergence with MTF confidence
-            base_strength = 0.5  # Increased from 0.4 to meet MODERATE threshold
+        if price_up and rsi_down:
+            base_strength = 0.5
             volatility_boost = min(0.2, volatility_ratio * 0.1)
             strength = min(0.8, base_strength + volatility_boost) * mtf_confidence
 
-            # Direction amplified by trend strength
-            base_direction = -0.7  # Strong bearish divergence signal
+            base_direction = -0.7
             trend_amplification = trend_strength * 0.3
             direction = max(-1.0, base_direction - trend_amplification)
 
@@ -333,49 +308,22 @@ class RSIPatternRecognizer(PatternRecognizer):
         self,
         current_rsi: float,
         previous_rsi: float,
-        multi_timeframe_data: Optional[Dict[str, Any]],
+        multi_timeframe_data: Optional[MultiTimeframeData],
     ) -> float:
-        """
-        Analyze multi-timeframe RSI alignment for enhanced signal confidence.
-
-        Args:
-            current_rsi: Current RSI value
-            previous_rsi: Previous RSI value
-            multi_timeframe_data: Multi-timeframe data
-
-        Returns:
-            Confidence multiplier (0.5 to 1.5)
-        """
-        if not multi_timeframe_data:
-            return 1.0  # No multi-timeframe data, use base confidence
-
-        confidence: float = 1.0
-
-        # Higher timeframe momentum alignment
-        higher_momentum = multi_timeframe_data.get("higher_timeframe_momentum", 0)
+        """Analyze multi-timeframe RSI alignment for enhanced signal confidence."""
         rsi_change = current_rsi - previous_rsi
-
-        if higher_momentum > 0.7 and rsi_change > 0:
-            confidence *= 1.2  # Strong alignment with higher timeframe momentum
-        elif higher_momentum < 0.3 and rsi_change < 0:
-            confidence *= 1.1  # Alignment with lower momentum
-
-        # Timeframe alignment score
-        tf_alignment = multi_timeframe_data.get("timeframe_alignment", 0.5)
-        confidence *= 0.8 + tf_alignment * 0.4  # 0.8 to 1.2 range
-
-        # Market regime consideration
-        regime_cluster = multi_timeframe_data.get("regime_cluster", 1)
-        if regime_cluster == 0:  # Trending regime
-            confidence *= 1.1  # Increase confidence in trending markets
-
-        return min(1.5, max(0.5, confidence))
+        return self.calculate_mtf_confidence(
+            multi_timeframe_data,
+            momentum_key="higher_timeframe_momentum",
+            momentum_delta=rsi_change,
+            regime_boost_clusters=(0,),
+        )
 
     def _adjust_thresholds_for_regime(
         self,
         multi_timeframe_data: Optional[MultiTimeframeData],
         pattern_type: str = "general",
-    ) -> Dict[str, Any]:
+    ) -> RSIRegimeThresholds:
         """
         Adjust RSI thresholds based on market regime.
 
@@ -385,28 +333,27 @@ class RSIPatternRecognizer(PatternRecognizer):
         Returns:
             Adjusted thresholds dictionary
         """
-        base_thresholds = {
+        del pattern_type  # Reserved for future pattern-specific tuning.
+
+        base_thresholds: RSIRegimeThresholds = {
             "overbought_level": self.overbought_level,
             "oversold_level": self.oversold_level,
         }
 
-        if not multi_timeframe_data:
+        if not self.regime_aware or not multi_timeframe_data:
             return base_thresholds
 
-        # Adjust based on market regime (from regime clustering)
-        regime_cluster = multi_timeframe_data.get("regime_cluster", 1)
+        regime_cluster = self._extract_regime_cluster(multi_timeframe_data, default=1)
 
-        if regime_cluster == 0:  # Trending regime
-            # Tighter thresholds for trend-following in trending markets
+        if regime_cluster == 0:
             return {
-                "overbought_level": min(75, self.overbought_level + 5),
-                "oversold_level": max(25, self.oversold_level - 5),
+                "overbought_level": min(75.0, self.overbought_level + 5.0),
+                "oversold_level": max(25.0, self.oversold_level - 5.0),
             }
-        elif regime_cluster == 2:  # Volatile/high-risk regime
-            # Wider thresholds for more conservative signals
+        if regime_cluster == 2:
             return {
-                "overbought_level": max(80, self.overbought_level + 10),
-                "oversold_level": min(20, self.oversold_level - 10),
+                "overbought_level": max(80.0, self.overbought_level + 10.0),
+                "oversold_level": min(20.0, self.oversold_level - 10.0),
             }
-        else:  # Neutral/mixed regime (cluster 1)
-            return base_thresholds
+
+        return base_thresholds

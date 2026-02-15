@@ -524,6 +524,21 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 7. `strategy_allocator.py` の配分履歴を `append_with_compaction()` で bounded 管理し、履歴肥大化を抑制。  
 8. `action_signal_guide` 配下 `any_type_debt_tokens` を `58 -> 39` へ削減し、repo 全体 `any_type_debt_tokens` を `2,904 -> 2,885` へ削減。  
 
+### Step50: 指標系の共通基底導入（`RSI/MACD/ATR`）+ 既存不具合修正 + `Any` 追加削減
+
+1. `ztb/trading/strategies/action_signal_guide/pattern_recognition/base.py` に `IndicatorPatternRecognizer` / `IndicatorMarketContext` を追加し、指標系で重複していた `index` 解決・相場コンテキスト（volatility/trend）算出・MTF confidence 算出・regime cluster 抽出を継承で共通化。  
+2. `PatternRecognizer` へ `resolve_analysis_index` / `safe_ratio` / `clamp` を昇格し、`TrendPatternRecognizer` と指標系の共通ユーティリティを基底へ集約。  
+3. `rsi.py` を `IndicatorPatternRecognizer` 継承へ移行し、`Any` を全撤去（当該ファイル `any_type_debt_tokens=0`）。  
+4. `RSI` 認識で `index=-1` 時に previous 値参照が崩れてクロス判定が不正化する既存不具合を修正（`resolved_index` ベースへ統一）。  
+5. `macd.py` を `IndicatorPatternRecognizer` 継承へ移行し、`Any` を全撤去（当該ファイル `any_type_debt_tokens=0`）。  
+6. `MACD` 認識で `index=-1` 時に previous histogram が `0` 固定化する不具合を修正し、クロス判定を正常化。  
+7. `MACD` で regime 調整後の `histogram_threshold` が実際には未使用だった不整合を修正し、判定ロジックに反映。  
+8. `MACDPatternRecognizer.calculate()` を追加し、line/signal/histogram の算出 API を補完。  
+9. `atr.py` を `IndicatorPatternRecognizer` 継承へ移行し、`Any` を全撤去（当該ファイル `any_type_debt_tokens=0`）。  
+10. `ATR` の `avg_atr=0/NaN`・`recent_price=0`・`recent_atr=0` 由来の 0 除算/不正値混入リスクを `safe_ratio` ベースでガード。  
+11. `ATR` の非MTF/MTF 経路を委譲構造に整理し、ブレイクアウト・トレンド判定の重複ロジックを削減。  
+12. `pattern_recognition` 配下 `any_type_debt_tokens` を `25 -> 13` へ削減し、repo 全体 `any_type_debt_tokens` を `2,885 -> 2,873` へ削減。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -577,6 +592,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step47時点 | repo全体 | 2,917 |
 | Step48時点 | repo全体 | 2,904 |
 | Step49時点 | repo全体 | 2,885 |
+| Step50時点 | repo全体 | 2,873 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -639,6 +655,9 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step48時点 | `ztb/trading/strategies/action_signal_guide/analysis/signal_performance_analyzer.py` | **0** |
 | Step49時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/oscillator_patterns.py` | **0** |
 | Step49時点 | `ztb/trading/strategies/action_signal_guide/portfolio_optimization/strategy_allocator.py` | **0** |
+| Step50時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/rsi.py` | **0** |
+| Step50時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/macd.py` | **0** |
+| Step50時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/atr.py` | **0** |
 
 ---
 

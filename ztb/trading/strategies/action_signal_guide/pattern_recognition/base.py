@@ -8,7 +8,8 @@ import threading
 import time
 from abc import ABC, abstractmethod
 from collections import OrderedDict
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from functools import wraps
 from typing import (
     TYPE_CHECKING,
@@ -1102,19 +1103,11 @@ class PatternRecognizer(ABC):
             return 0.0
         return self.calculate_body_size(data, index) / total_range
 
-
-class TrendPatternRecognizer(PatternRecognizer):
-    """Base recognizer with shared helpers for trend-window analysis."""
-
-    def __init__(self, config: Optional[Dict[str, object]] = None) -> None:
-        super().__init__(config)
-        self._regression_cache: Dict[int, tuple[np.ndarray, float]] = {}
-
     @staticmethod
     def resolve_analysis_index(
         data_len: int, index: int, min_required_index: int = 0
     ) -> Optional[int]:
-        """Resolve -1 index and validate required bounds."""
+        """Resolve -1 style indices and validate bounds."""
         resolved = data_len - 1 if index < 0 else index
         if resolved < min_required_index or resolved >= data_len:
             return None
@@ -1127,6 +1120,167 @@ class TrendPatternRecognizer(PatternRecognizer):
             return default
         value = numerator / denominator
         return float(value) if np.isfinite(value) else default
+
+    @staticmethod
+    def clamp(value: float, lower: float, upper: float) -> float:
+        """Clamp value into [lower, upper]."""
+        return float(min(upper, max(lower, value)))
+
+
+@dataclass(frozen=True)
+class IndicatorMarketContext:
+    """Shared market-context values used by indicator recognizers."""
+
+    volatility_ratio: float = 1.0
+    trend_strength: float = 0.0
+
+
+class IndicatorPatternRecognizer(PatternRecognizer):
+    """Base recognizer for indicator-style patterns (RSI/MACD/ATR/ADX/etc.)."""
+
+    def __init__(self, config: Optional[Dict[str, object]] = None) -> None:
+        super().__init__(config)
+        self.enable_multi_timeframe = safe_config_get_bool(
+            self.config, "enable_multi_timeframe", True
+        )
+        self.mtf_weight = safe_config_get_float(self.config, "mtf_weight", 0.3)
+        self.regime_aware = safe_config_get_bool(self.config, "regime_aware", True)
+
+    def resolve_indicator_index(
+        self, data: pd.DataFrame, index: int, min_required_periods: int
+    ) -> Optional[int]:
+        """Resolve and validate index for indicator calculations."""
+        if not self.validate_data(data):
+            return None
+        min_required_index = max(0, min_required_periods - 1)
+        return self.resolve_analysis_index(
+            len(data), index, min_required_index=min_required_index
+        )
+
+    def calculate_market_context(
+        self,
+        data: pd.DataFrame,
+        index: int,
+        volatility_lookback: int = 30,
+        trend_window: int = 20,
+    ) -> IndicatorMarketContext:
+        """Compute shared volatility/trend context once per recognition call."""
+        if not self.validate_data(data):
+            return IndicatorMarketContext()
+
+        window_size = max(2, max(volatility_lookback, trend_window))
+        start_idx = max(0, index - window_size + 1)
+        close = data.iloc[start_idx : index + 1]["close"].astype(float)
+        if close.empty:
+            return IndicatorMarketContext()
+
+        returns = close.pct_change().dropna()
+        current_volatility = float(returns.std()) if not returns.empty else 0.0
+
+        rolling_window = min(20, len(returns))
+        if rolling_window >= 2:
+            rolling_vol = returns.rolling(rolling_window).std().dropna()
+            avg_volatility = (
+                float(rolling_vol.mean()) if not rolling_vol.empty else current_volatility
+            )
+        else:
+            avg_volatility = current_volatility
+
+        volatility_ratio = self.safe_ratio(current_volatility, avg_volatility, default=1.0)
+        if volatility_ratio <= 0 or not np.isfinite(volatility_ratio):
+            volatility_ratio = 1.0
+
+        trend_period = min(max(2, trend_window), len(close))
+        sma_value = float(close.tail(trend_period).mean())
+        latest_close = float(close.iloc[-1])
+        trend_strength = abs(self.safe_ratio(latest_close - sma_value, sma_value, default=0.0))
+
+        return IndicatorMarketContext(
+            volatility_ratio=self.clamp(volatility_ratio, 0.1, 3.0),
+            trend_strength=self.clamp(trend_strength, 0.0, 1.0),
+        )
+
+    @staticmethod
+    def _as_context(
+        multi_timeframe_data: Optional[MultiTimeframeData],
+    ) -> Optional[Mapping[str, object]]:
+        if isinstance(multi_timeframe_data, dict):
+            return cast(Mapping[str, object], multi_timeframe_data)
+        return None
+
+    @staticmethod
+    def _extract_context_scalar(
+        context: Optional[Mapping[str, object]], key: str, default: float = 0.0
+    ) -> float:
+        if context is None:
+            return default
+
+        value = context.get(key)
+        if isinstance(value, (int, float)):
+            numeric = float(value)
+            return numeric if np.isfinite(numeric) else default
+
+        if isinstance(value, Mapping):
+            nested = cast(Mapping[str, object], value)
+            for nested_key in ("value", "score", key):
+                nested_value = nested.get(nested_key)
+                if isinstance(nested_value, (int, float)):
+                    numeric = float(nested_value)
+                    if np.isfinite(numeric):
+                        return numeric
+
+        return default
+
+    def _extract_regime_cluster(
+        self, multi_timeframe_data: Optional[MultiTimeframeData], default: int = 1
+    ) -> int:
+        context = self._as_context(multi_timeframe_data)
+        cluster = int(self._extract_context_scalar(context, "regime_cluster", float(default)))
+        return cluster
+
+    def calculate_mtf_confidence(
+        self,
+        multi_timeframe_data: Optional[MultiTimeframeData],
+        *,
+        momentum_key: str,
+        momentum_delta: float,
+        high_threshold: float = 0.7,
+        low_threshold: float = 0.3,
+        high_boost: float = 1.2,
+        low_boost: float = 1.1,
+        regime_boost_clusters: tuple[int, ...] = (),
+    ) -> float:
+        """Shared MTF confidence calculation with configurable momentum semantics."""
+        if not self.enable_multi_timeframe:
+            return 1.0
+
+        context = self._as_context(multi_timeframe_data)
+        if context is None:
+            return 1.0
+
+        confidence = 1.0
+        higher_momentum = self._extract_context_scalar(context, momentum_key, 0.0)
+
+        if higher_momentum > high_threshold and momentum_delta > 0:
+            confidence *= high_boost
+        elif higher_momentum < low_threshold and momentum_delta < 0:
+            confidence *= low_boost
+
+        alignment_score = self._extract_context_scalar(context, "timeframe_alignment", 0.5)
+        confidence *= 0.8 + self.clamp(alignment_score, 0.0, 1.0) * 0.4
+
+        if self._extract_regime_cluster(multi_timeframe_data) in regime_boost_clusters:
+            confidence *= 1.1
+
+        return self.clamp(confidence, 0.5, 1.5)
+
+
+class TrendPatternRecognizer(PatternRecognizer):
+    """Base recognizer with shared helpers for trend-window analysis."""
+
+    def __init__(self, config: Optional[Dict[str, object]] = None) -> None:
+        super().__init__(config)
+        self._regression_cache: Dict[int, tuple[np.ndarray, float]] = {}
 
     def _get_regression_weights(self, length: int) -> tuple[np.ndarray, float]:
         """Return centered x values and denominator for slope regression."""
