@@ -13,6 +13,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     average_precision_score,
@@ -20,6 +21,7 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 from sklearn.model_selection import TimeSeriesSplit
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 logger = logging.getLogger(__name__)
@@ -65,55 +67,46 @@ def train_fill_classifier(
     pr_aucs: list[float] = []
     briers: list[float] = []
 
-    scaler = StandardScaler()
-
-    for fold, (train_idx, test_idx) in enumerate(tscv.split(X)):
-        X_train = X.iloc[train_idx]
-        y_train = y.iloc[train_idx]
-        X_test = X.iloc[test_idx]
-        y_test = y.iloc[test_idx]
-
-        X_train_s = scaler.fit_transform(X_train)
-        X_test_s = scaler.transform(X_test)
-
+    def _make_model() -> Any:
         if model_type == "lr":
-            model = LogisticRegression(
+            return LogisticRegression(
                 C=1.0, max_iter=1000, class_weight="balanced", random_state=42
             )
-        else:
-            model = GradientBoostingClassifier(
-                n_estimators=80,
-                max_depth=3,
-                learning_rate=0.1,
-                subsample=0.8,
-                random_state=42,
-            )
-
-        model.fit(X_train_s, y_train)
-        probs = model.predict_proba(X_test_s)[:, 1]
-
-        if len(np.unique(y_test)) > 1:
-            roc_aucs.append(roc_auc_score(y_test, probs))
-            pr_aucs.append(average_precision_score(y_test, probs))
-        briers.append(brier_score_loss(y_test, probs))
-
-    # Final model
-    scaler_final = StandardScaler()
-    X_scaled = scaler_final.fit_transform(X)
-
-    if model_type == "lr":
-        final_model = LogisticRegression(
-            C=1.0, max_iter=1000, class_weight="balanced", random_state=42
-        )
-    else:
-        final_model = GradientBoostingClassifier(
+        return GradientBoostingClassifier(
             n_estimators=80,
             max_depth=3,
             learning_rate=0.1,
             subsample=0.8,
             random_state=42,
         )
-    final_model.fit(X_scaled, y)
+
+    for fold, (train_idx, test_idx) in enumerate(tscv.split(X)):
+        # 059# P0-1: Pipeline化 — 補完・スケーリングを fold 内で実施
+        pipe = Pipeline([
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler()),
+            ("model", _make_model()),
+        ])
+        pipe.fit(X.iloc[train_idx], y.iloc[train_idx])
+
+        y_test = y.iloc[test_idx]
+        probs = pipe.predict_proba(X.iloc[test_idx])[:, 1]
+
+        if len(np.unique(y_test)) > 1:
+            roc_aucs.append(roc_auc_score(y_test, probs))
+            pr_aucs.append(average_precision_score(y_test, probs))
+        briers.append(brier_score_loss(y_test, probs))
+
+    # Final model — 059# P0-1: Pipeline化
+    final_pipe = Pipeline([
+        ("imputer", SimpleImputer(strategy="median")),
+        ("scaler", StandardScaler()),
+        ("model", _make_model()),
+    ])
+    final_pipe.fit(X, y)
+
+    final_model = final_pipe.named_steps["model"]
+    scaler_final = final_pipe.named_steps["scaler"]
 
     if hasattr(final_model, "feature_importances_"):
         importances = dict(
@@ -139,4 +132,4 @@ def train_fill_classifier(
         feature_importances=importances,
     )
 
-    return metrics, final_model, scaler_final
+    return metrics, final_pipe, scaler_final

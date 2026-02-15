@@ -69,7 +69,7 @@ def run_as_pipeline(
 
     # --- GradientBoosting ---
     logger.info("\n--- GradientBoosting ---")
-    gb_metrics, gb_model, gb_scaler = train_as_classifier(
+    gb_metrics, gb_model, gb_scaler, gb_oof = train_as_classifier(
         X, y, pnl, model_type="gb", n_splits=5
     )
     results["gb"] = asdict(gb_metrics)
@@ -77,19 +77,22 @@ def run_as_pipeline(
 
     # --- LogisticRegression ---
     logger.info("\n--- LogisticRegression ---")
-    lr_metrics, lr_model, lr_scaler = train_as_classifier(
+    lr_metrics, lr_model, lr_scaler, lr_oof = train_as_classifier(
         X, y, pnl, model_type="lr", n_splits=5
     )
     results["lr"] = asdict(lr_metrics)
     _print_as_metrics("LR", lr_metrics)
 
-    # --- Skip policy simulation (best model) ---
+    # --- Skip policy simulation (best model, OOF only — 059# P0-3) ---
     best = "gb" if gb_metrics.pr_auc_mean >= lr_metrics.pr_auc_mean else "lr"
     best_model = gb_model if best == "gb" else lr_model
     best_scaler = gb_scaler if best == "gb" else lr_scaler
+    best_oof = gb_oof if best == "gb" else lr_oof
     logger.info(f"\nBest model: {best.upper()}")
 
-    skip_df = evaluate_skip_policy(X, y, pnl, best_model, best_scaler)
+    skip_df = evaluate_skip_policy(
+        X, y, pnl, best_model, best_scaler, oof_probs=best_oof
+    )
     logger.info("\nSkip Policy Simulation:")
     logger.info(skip_df.to_string(index=False, float_format="%.4f"))
     results["skip_policy"] = skip_df.to_dict(orient="records")
@@ -190,7 +193,9 @@ def run_pnl_pipeline(
     import pandas as pd
     from sklearn.linear_model import Ridge
     from sklearn.ensemble import GradientBoostingRegressor
+    from sklearn.impute import SimpleImputer
     from sklearn.model_selection import TimeSeriesSplit
+    from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import StandardScaler
     from scipy.stats import spearmanr
     import numpy as np
@@ -227,15 +232,15 @@ def run_pnl_pipeline(
         oof_preds = np.full(len(X), np.nan)
 
         for fold, (train_idx, test_idx) in enumerate(tscv.split(X)):
-            scaler = StandardScaler()
-            X_tr = scaler.fit_transform(X.iloc[train_idx])
-            X_te = scaler.transform(X.iloc[test_idx])
-            y_tr = y.iloc[train_idx].values
+            # 059# P0-1: Pipeline化 — 補完・スケーリングを fold 内で実施
+            pipe = Pipeline([
+                ("imputer", SimpleImputer(strategy="median")),
+                ("scaler", StandardScaler()),
+                ("model", make_model()),
+            ])
+            pipe.fit(X.iloc[train_idx], y.iloc[train_idx].values)
+            preds = pipe.predict(X.iloc[test_idx])
             y_te = y.iloc[test_idx].values
-
-            model = make_model()
-            model.fit(X_tr, y_tr)
-            preds = model.predict(X_te)
 
             oof_preds[test_idx] = preds
             mae = float(np.mean(np.abs(preds - y_te)))
@@ -274,8 +279,11 @@ def run_pnl_pipeline(
         ic_mean = float(np.mean(ics)) if ics else 0.0
         mae_mean = float(np.mean(maes))
 
+        # 059# P1-4: OOF有効件数を報告
+        n_oof_valid = int(valid.sum())
         model_result = {
             "n_samples": len(X),
+            "n_oof_valid": n_oof_valid,
             "ic_mean": ic_mean,
             "ic_std": float(np.std(ics)) if ics else 0.0,
             "mae_mean": mae_mean,
@@ -287,11 +295,14 @@ def run_pnl_pipeline(
             "skip_neg_improvement_bps": pnl_improvement,
         }
 
-        # Feature importances
-        scaler_final = StandardScaler()
-        X_all = scaler_final.fit_transform(X)
-        final_model = make_model()
-        final_model.fit(X_all, y.values)
+        # Feature importances — 059# P0-1: Pipeline化
+        final_pipe = Pipeline([
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler()),
+            ("model", make_model()),
+        ])
+        final_pipe.fit(X, y.values)
+        final_model = final_pipe.named_steps["model"]
 
         if hasattr(final_model, "feature_importances_"):
             fi = dict(zip(X.columns, final_model.feature_importances_.tolist()))
@@ -304,6 +315,7 @@ def run_pnl_pipeline(
         results[model_name] = model_result
 
         logger.info(f"\n--- {model_name.upper()} ---")
+        logger.info(f"  Samples:       {len(X)} total, {n_oof_valid} OOF valid")
         logger.info(f"  IC (Spearman): {ic_mean:.4f}")
         logger.info(f"  MAE:           {mae_mean:.4f} bps")
         logger.info(f"  Baseline PnL:  {baseline_pnl:.4f} bps")

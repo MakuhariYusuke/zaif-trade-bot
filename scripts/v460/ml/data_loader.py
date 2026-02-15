@@ -14,8 +14,25 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 logger = logging.getLogger(__name__)
+
+
+def make_preprocessing_pipeline(
+    model: "Any",
+) -> Pipeline:
+    """Imputer + Scaler + Model の Pipeline を構築.
+
+    059# P0-1: 前処理リーク防止。fold 内で fit する。
+    """
+    return Pipeline([
+        ("imputer", SimpleImputer(strategy="median")),
+        ("scaler", StandardScaler()),
+        ("model", model),
+    ])
 
 _DEFAULT_RESULTS_DIR = Path("results/v460/fill_test")
 
@@ -77,9 +94,11 @@ def build_as_features(
     # F2: side (binary)
     features["side_buy"] = (data["side"] == "buy").astype(int)
 
-    # F3: hour_of_day (cyclic encoding)
+    # F3: hour_of_day (cyclic encoding) — 059# NEW-03: 小数時刻で統一
     ts = data["timestamp"].astype(float)
-    hours = ts.apply(lambda t: datetime.fromtimestamp(t).hour)
+    hours = ts.apply(
+        lambda t: (lambda d: d.hour + d.minute / 60.0)(datetime.fromtimestamp(t))
+    )
     features["hour_sin"] = np.sin(2 * np.pi * hours / 24)
     features["hour_cos"] = np.cos(2 * np.pi * hours / 24)
 
@@ -93,16 +112,15 @@ def build_as_features(
         features["edge_bps"] = (fill - mid) / mid * 10000 * side_sign
 
     # F5: spread_at_order (JPY, available for subset)
+    # NOTE: NaN は保持。補完は CV fold 内で SimpleImputer が行う (059# P0-1)
     if "spread_at_order" in data.columns and not require_spread:
-        spread = data["spread_at_order"].astype(float)
-        features["spread_jpy"] = spread.fillna(spread.median())
+        features["spread_jpy"] = data["spread_at_order"].astype(float)
     elif require_spread:
         features["spread_jpy"] = data["spread_at_order"].astype(float)
 
     # F6: spread_offset_ratio
     if "spread_offset_ratio" in data.columns and not require_spread:
-        ratio = data["spread_offset_ratio"].astype(float)
-        features["offset_ratio"] = ratio.fillna(ratio.median())
+        features["offset_ratio"] = data["spread_offset_ratio"].astype(float)
     elif require_spread:
         features["offset_ratio"] = data["spread_offset_ratio"].astype(float)
 
@@ -136,12 +154,15 @@ def build_fill_features(
     # cancelled=True でも cancel_reason を使い分ける
     data = df.copy()
     # cancel_reason が 'timeout' or filled のみ (error 系は除外)
-    valid_mask = data["filled"].astype(bool) | (
-        data.get("cancel_reason", pd.Series(dtype=str)).isin(
-            ["timeout", "order_timeout", None, float("nan")]
+    # 059# NEW-05: cancel_reason カラム不在時の安全な処理
+    if "cancel_reason" in data.columns:
+        cancel_reason = data["cancel_reason"]
+        valid_mask = data["filled"].astype(bool) | (
+            cancel_reason.isin(["timeout", "order_timeout"])
+            | cancel_reason.isna()
         )
-        | data.get("cancel_reason", pd.Series(dtype=str)).isna()
-    )
+    else:
+        valid_mask = pd.Series(True, index=data.index)
     data = data.loc[valid_mask]
 
     if len(data) < 20:
@@ -152,21 +173,22 @@ def build_fill_features(
     # F1: side
     features["side_buy"] = (data["side"] == "buy").astype(int)
 
-    # F2: hour
+    # F2: hour — 059# NEW-03: 小数時刻で統一
     ts = data["timestamp"].astype(float)
-    hours = ts.apply(lambda t: datetime.fromtimestamp(t).hour)
+    hours = ts.apply(
+        lambda t: (lambda d: d.hour + d.minute / 60.0)(datetime.fromtimestamp(t))
+    )
     features["hour_sin"] = np.sin(2 * np.pi * hours / 24)
     features["hour_cos"] = np.cos(2 * np.pi * hours / 24)
 
     # F3: spread_offset_ratio (if available)
+    # NOTE: NaN は保持。補完は CV fold 内で SimpleImputer が行う (059# P0-1)
     if "spread_offset_ratio" in data.columns:
-        ratio = data["spread_offset_ratio"].astype(float)
-        features["offset_ratio"] = ratio.fillna(ratio.median())
+        features["offset_ratio"] = data["spread_offset_ratio"].astype(float)
 
     # F4: spread_at_order
     if "spread_at_order" in data.columns:
-        spread = data["spread_at_order"].astype(float)
-        features["spread_jpy"] = spread.fillna(spread.median())
+        features["spread_jpy"] = data["spread_at_order"].astype(float)
 
     # F5: regime
     if "regime" in data.columns:

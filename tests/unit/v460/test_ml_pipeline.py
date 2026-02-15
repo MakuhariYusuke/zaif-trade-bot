@@ -146,23 +146,25 @@ class Test057ASClassifier:
     def test_train_returns_metrics(self, synthetic_fill_df: pd.DataFrame) -> None:
         """学習が完了し metrics を返す."""
         X, y = build_as_features(synthetic_fill_df)
-        metrics, model, scaler = train_as_classifier(X, y, model_type="lr", n_splits=3)
+        metrics, model, scaler, oof_probs = train_as_classifier(X, y, model_type="lr", n_splits=3)
         assert isinstance(metrics, ASModelMetrics)
         assert metrics.n_samples == len(X)
         assert 0 <= metrics.roc_auc_mean <= 1
+        assert oof_probs is not None
 
     def test_train_gb_model(self, synthetic_fill_df: pd.DataFrame) -> None:
         """GradientBoosting で学習."""
         X, y = build_as_features(synthetic_fill_df)
-        metrics, model, scaler = train_as_classifier(X, y, model_type="gb", n_splits=3)
+        metrics, model, scaler, _ = train_as_classifier(X, y, model_type="gb", n_splits=3)
         assert metrics.feature_importances is not None
         assert len(metrics.feature_importances) == X.shape[1]
 
     def test_model_predicts(self, synthetic_fill_df: pd.DataFrame) -> None:
         """学習済みモデルが predict_proba を返す."""
         X, y = build_as_features(synthetic_fill_df)
-        _, model, scaler = train_as_classifier(X, y, model_type="lr", n_splits=3)
-        probs = model.predict_proba(scaler.transform(X))
+        _, model, pipeline, _ = train_as_classifier(X, y, model_type="lr", n_splits=3)
+        # 059#: pipeline は完全な Pipeline (imputer + scaler + model)
+        probs = pipeline.predict_proba(X)
         assert probs.shape == (len(X), 2)
         assert np.all(probs >= 0) and np.all(probs <= 1)
 
@@ -170,7 +172,7 @@ class Test057ASClassifier:
         """PnL 付きでスキップ効果計算."""
         X, y = build_as_features(synthetic_fill_df)
         pnl = synthetic_fill_df.loc[X.index, "post_fill_30s_pnl"].astype(float)
-        metrics, model, scaler = train_as_classifier(
+        metrics, model, scaler, oof_probs = train_as_classifier(
             X, y, pnl, model_type="lr", n_splits=3
         )
         assert isinstance(metrics.skip_top20_pnl_improvement_bps, float)
@@ -179,8 +181,8 @@ class Test057ASClassifier:
         """スキップポリシーの DataFrame が返る."""
         X, y = build_as_features(synthetic_fill_df)
         pnl = synthetic_fill_df.loc[X.index, "post_fill_30s_pnl"].astype(float)
-        _, model, scaler = train_as_classifier(X, y, model_type="lr", n_splits=3)
-        result = evaluate_skip_policy(X, y, pnl, model, scaler)
+        _, model, scaler, oof_probs = train_as_classifier(X, y, model_type="lr", n_splits=3)
+        result = evaluate_skip_policy(X, y, pnl, model, scaler, oof_probs=oof_probs)
         assert isinstance(result, pd.DataFrame)
         assert "threshold" in result.columns
         assert "pnl_improvement_bps" in result.columns

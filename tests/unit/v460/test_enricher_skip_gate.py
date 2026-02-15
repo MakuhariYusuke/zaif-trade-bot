@@ -228,7 +228,25 @@ class Test058EnrichFillRecords:
         X, y = build_enriched_as_features(df)
         # base(10) + micro(8) + interaction(3) = 21
         assert X.shape[1] >= 18  # base + micro
-        assert not X.isna().any().any()
+
+    def test_enriched_as_features_preserves_nan(
+        self, synthetic_fill_df: pd.DataFrame
+    ) -> None:
+        """059# P0-1: enriched AS 特徴量が NaN を保持 (CV内補完のため)."""
+        df = synthetic_fill_df.copy()
+        for col in MICRO_FEATURE_COLS:
+            vals = np.random.RandomState(42).randn(len(df))
+            vals[0] = np.nan  # 意図的に NaN を入れる
+            df[col] = vals
+        df["bid_vol_5_ob"] = np.random.RandomState(43).randn(len(df))
+        df["ask_vol_5_ob"] = np.random.RandomState(44).randn(len(df))
+
+        X, y = build_enriched_as_features(df)
+        # micro特徴量由来の NaN がそのまま残る (interaction は fillna(0) だが micro は保持)
+        micro_in_X = [c for c in X.columns if c in MICRO_FEATURE_COLS]
+        if micro_in_X:
+            assert X[micro_in_X].isna().any().any(), \
+                "Micro features should preserve NaN for CV-internal imputation"
 
     def test_pnl_features_shape(self, synthetic_fill_df: pd.DataFrame) -> None:
         """PnL 特徴量の shape と labels."""
@@ -239,7 +257,7 @@ class Test058EnrichFillRecords:
         X, y = build_pnl_features(df)
         assert len(X) > 0
         assert len(X) == len(y)
-        assert not X.isna().any().any()
+        # 059# P0-1: NaN は CV 内で補完されるため、ここでは保持されうる
         # PnL は連続値
         assert y.dtype == float
 
@@ -508,3 +526,339 @@ class Test058Integration:
             )
             result = gate.evaluate(features)
             assert isinstance(result.predicted_pnl_bps, float)
+
+
+# ======================================================================
+# 059# P2-9: 追加テスト — リーク検知・skip率履歴・時刻整合
+# ======================================================================
+
+
+class Test059LeakDetection:
+    """059# P0-1: CV 外リークが修正されていることを検証."""
+
+    def test_data_loader_preserves_nan_in_spread(self) -> None:
+        """data_loader.build_as_features が spread_jpy の NaN を保持."""
+        from scripts.v460.ml.data_loader import build_as_features
+
+        n = 20
+        rng = np.random.RandomState(42)
+        spread = rng.uniform(500, 3000, n).astype(float)
+        spread[0] = np.nan
+        ratio = rng.uniform(0.03, 0.15, n).astype(float)
+        ratio[1] = np.nan
+
+        df = pd.DataFrame({
+            "timestamp": np.arange(1700000000.0, 1700000000.0 + n * 120, 120),
+            "side": rng.choice(["buy", "sell"], n),
+            "spread_at_order": spread,
+            "spread_offset_ratio": ratio,
+            "queue_wait_sec": rng.exponential(20, n) + 5,
+            "adverse_selected": rng.choice([True, False], n),
+            "adverse_selected_raw": rng.choice([True, False], n).astype(float),
+            "filled": np.ones(n, dtype=bool),
+            "regime": rng.choice(["trending", "ranging"], n),
+        })
+        X, y = build_as_features(df, require_spread=False)
+        # NaN が保持されているか (CV 内で SimpleImputer が補完する)
+        assert X["spread_jpy"].isna().any(), \
+            "spread_jpy NaN should be preserved for CV-internal imputation"
+        assert X["offset_ratio"].isna().any(), \
+            "offset_ratio NaN should be preserved for CV-internal imputation"
+
+    def test_pnl_features_preserve_nan_in_micro(
+        self, synthetic_fill_df: pd.DataFrame
+    ) -> None:
+        """build_pnl_features が micro 特徴量の NaN を保持."""
+        df = synthetic_fill_df.copy()
+        for col in MICRO_FEATURE_COLS:
+            vals = np.random.RandomState(42).randn(len(df))
+            vals[:5] = np.nan
+            df[col] = vals
+
+        X, y = build_pnl_features(df)
+        micro_cols = [c for c in X.columns if c in MICRO_FEATURE_COLS]
+        if micro_cols:
+            assert X[micro_cols].isna().any().any(), \
+                "Micro features should preserve NaN for CV-internal imputation"
+
+
+class Test059SkipRateHistory:
+    """059# P0-2: skip 率履歴が最終決定を記録することを検証."""
+
+    def test_skip_rate_records_final_decision(self) -> None:
+        """force-pass override 後の最終決定が _recent_skips に記録される."""
+        from sklearn.linear_model import Ridge
+        from sklearn.preprocessing import StandardScaler
+
+        # 常に negative PnL を予測するモデル
+        feature_cols = ["f1", "f2", "f3", "f4"]
+        scaler = StandardScaler()
+        X_dummy = np.ones((10, 4))
+        scaler.fit(X_dummy)
+
+        model = Ridge(alpha=1.0)
+        model.fit(X_dummy, np.full(10, -5.0))  # 常に負を予測
+
+        gate = SkipGate(
+            model=model,
+            scaler=scaler,
+            feature_cols=feature_cols,
+            config=SkipGateConfig(
+                threshold_bps=0.0,
+                max_skip_rate=0.3,  # 30% で制限
+                enabled=True,
+            ),
+        )
+
+        features = {c: 1.0 for c in feature_cols}
+
+        # 最初の数件はスキップ (rate < 0.3 なので)
+        results = []
+        for _ in range(25):
+            r = gate.evaluate(features)
+            results.append(r)
+
+        # force-pass が発動したら _recent_skips には False が記録される
+        force_pass_count = sum(
+            1 for r in results if "skip_rate_limit" in r.reason
+        )
+        assert force_pass_count > 0, "Rate limit should have fired"
+
+        # _recent_skips の True 率が max_skip_rate 以下に収束
+        recent_rate = sum(gate._recent_skips) / len(gate._recent_skips)
+        assert recent_rate <= 0.5, (
+            f"Rate {recent_rate:.2f} should converge below max_skip_rate "
+            f"because force-pass records False"
+        )
+
+    def test_skip_rate_does_not_oscillate(self) -> None:
+        """059# P0-2: skip 率がスパイクしないこと."""
+        from sklearn.linear_model import Ridge
+        from sklearn.preprocessing import StandardScaler
+
+        feature_cols = ["f1", "f2", "f3"]
+        scaler = StandardScaler()
+        scaler.fit(np.ones((5, 3)))
+        model = Ridge(alpha=1.0)
+        model.fit(np.ones((5, 3)), np.full(5, -10.0))
+
+        gate = SkipGate(
+            model=model,
+            scaler=scaler,
+            feature_cols=feature_cols,
+            config=SkipGateConfig(
+                threshold_bps=0.0,
+                max_skip_rate=0.4,
+                enabled=True,
+            ),
+        )
+
+        features = {c: 1.0 for c in feature_cols}
+        rates = []
+        for i in range(50):
+            gate.evaluate(features)
+            if gate._recent_skips:
+                rate = sum(gate._recent_skips) / len(gate._recent_skips)
+                rates.append(rate)
+
+        # 安定後のレートが max_skip_rate 近辺を超えないこと
+        if len(rates) > 20:
+            late_rates = rates[-10:]
+            assert max(late_rates) <= 0.6, (
+                f"Late skip rates should stabilize near max_skip_rate, "
+                f"got max={max(late_rates):.2f}"
+            )
+
+
+class Test059TimestampConsistency:
+    """059# P1-5: 時刻特徴の整合性テスト."""
+
+    def test_market_timestamp_matches_fromtimestamp(self) -> None:
+        """market_timestamp を指定した場合、fromtimestamp と同じ時刻特徴になる."""
+        from datetime import datetime as dt
+
+        ts = 1700000000.0
+        now = dt.fromtimestamp(ts)
+        expected_hour = now.hour + now.minute / 60.0
+
+        features = build_features_from_market_state(
+            side="buy",
+            spread_jpy=500.0,
+            offset_ratio=0.05,
+            regime="ranging",
+            best_bid=14_500_000,
+            best_ask=14_500_500,
+            bid_vol_5=0.3,
+            ask_vol_5=0.2,
+            market_timestamp=ts,
+        )
+
+        # hour_sin / hour_cos が fromtimestamp ベースと一致
+        expected_sin = float(np.sin(2 * np.pi * expected_hour / 24))
+        assert abs(features["hour_sin"] - expected_sin) < 1e-6
+
+    def test_trade_window_sec_filters_trades(self) -> None:
+        """059# P1-6: trade_window_sec がフィルタに使われる."""
+        market_ts = 200.0
+        trades_in_window = [
+            {"ts": 150.0, "price": 100, "amount": 1.0, "side": "buy"},
+            {"ts": 180.0, "price": 101, "amount": 1.0, "side": "sell"},
+        ]
+        trades_outside = [
+            {"ts": 50.0, "price": 99, "amount": 2.0, "side": "buy"},
+        ]
+        all_trades = trades_outside + trades_in_window
+
+        # window=60s → ts 50 は除外される
+        features_60 = build_features_from_market_state(
+            side="buy",
+            spread_jpy=500.0,
+            offset_ratio=0.05,
+            regime="ranging",
+            best_bid=14_500_000,
+            best_ask=14_500_500,
+            bid_vol_5=0.3,
+            ask_vol_5=0.2,
+            recent_trades=all_trades,
+            trade_window_sec=60,
+            market_timestamp=market_ts,
+        )
+        assert features_60["trade_count_60s"] == 2.0
+
+        # window=300s → ts 50 も含まれる
+        features_300 = build_features_from_market_state(
+            side="buy",
+            spread_jpy=500.0,
+            offset_ratio=0.05,
+            regime="ranging",
+            best_bid=14_500_000,
+            best_ask=14_500_500,
+            bid_vol_5=0.3,
+            ask_vol_5=0.2,
+            recent_trades=all_trades,
+            trade_window_sec=300,
+            market_timestamp=market_ts,
+        )
+        assert features_300["trade_count_60s"] == 3.0
+
+
+class Test059PickleHash:
+    """059# P2-8: pickle ハッシュ検証テスト."""
+
+    def test_save_creates_hash_file(self) -> None:
+        """save がハッシュファイルを作成する."""
+        from sklearn.linear_model import Ridge
+        from sklearn.preprocessing import StandardScaler
+
+        scaler = StandardScaler()
+        scaler.fit(np.ones((5, 3)))
+        model = Ridge()
+        model.fit(np.ones((5, 3)), np.ones(5))
+
+        gate = SkipGate(
+            model=model,
+            scaler=scaler,
+            feature_cols=["f1", "f2", "f3"],
+        )
+
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "gate.pkl"
+            gate.save(path)
+            hash_path = path.with_suffix(".pkl.sha256")
+            assert hash_path.exists()
+            digest = hash_path.read_text().strip()
+            assert len(digest) == 64  # SHA256 hex
+
+    def test_load_detects_corruption(self) -> None:
+        """改竄されたファイルを検出する."""
+        from sklearn.linear_model import Ridge
+        from sklearn.preprocessing import StandardScaler
+
+        scaler = StandardScaler()
+        scaler.fit(np.ones((5, 3)))
+        model = Ridge()
+        model.fit(np.ones((5, 3)), np.ones(5))
+
+        gate = SkipGate(
+            model=model,
+            scaler=scaler,
+            feature_cols=["f1", "f2", "f3"],
+        )
+
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "gate.pkl"
+            gate.save(path)
+
+            # ファイルを改竄
+            with open(path, "ab") as f:
+                f.write(b"CORRUPTED")
+
+            with pytest.raises(ValueError, match="hash mismatch"):
+                SkipGate.load(path)
+
+    def test_load_without_hash_file_succeeds(self) -> None:
+        """ハッシュファイルがない場合は警告なしでロード."""
+        from sklearn.linear_model import Ridge
+        from sklearn.preprocessing import StandardScaler
+
+        scaler = StandardScaler()
+        scaler.fit(np.ones((5, 3)))
+        model = Ridge()
+        model.fit(np.ones((5, 3)), np.ones(5))
+
+        gate = SkipGate(
+            model=model,
+            scaler=scaler,
+            feature_cols=["f1", "f2", "f3"],
+        )
+
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "gate.pkl"
+            gate.save(path)
+            # ハッシュファイルを削除
+            hash_path = path.with_suffix(".pkl.sha256")
+            hash_path.unlink()
+
+            # ロードは成功する (後方互換)
+            loaded = SkipGate.load(path)
+            assert loaded.feature_cols == ["f1", "f2", "f3"]
+
+
+class Test059SearchsortedOptimization:
+    """059# P1-7: searchsorted 最適化の正当性テスト."""
+
+    def test_searchsorted_matches_brute_force(
+        self, synthetic_trades_df: pd.DataFrame
+    ) -> None:
+        """searchsorted と従来のマスクフィルタが同じ結果を返す."""
+        sorted_df = synthetic_trades_df.sort_values("ts").reset_index(drop=True)
+        sorted_ts = sorted_df["ts"].values
+
+        ts = sorted_df["ts"].median()
+
+        # 従来方式 (brute force mask)
+        result_brute = _compute_trade_features(sorted_df, ts, window_sec=60)
+
+        # searchsorted 方式
+        result_fast = _compute_trade_features(
+            sorted_df, ts, window_sec=60, _sorted_ts=sorted_ts
+        )
+
+        for key in result_brute:
+            assert abs(result_brute[key] - result_fast[key]) < 1e-10, (
+                f"Mismatch in {key}: brute={result_brute[key]}, "
+                f"fast={result_fast[key]}"
+            )
+
+    def test_searchsorted_empty_window(
+        self, synthetic_trades_df: pd.DataFrame
+    ) -> None:
+        """searchsorted 方式でもウィンドウ外 → デフォルト値."""
+        sorted_df = synthetic_trades_df.sort_values("ts").reset_index(drop=True)
+        sorted_ts = sorted_df["ts"].values
+
+        result = _compute_trade_features(
+            sorted_df, 1600000000.0, window_sec=60, _sorted_ts=sorted_ts
+        )
+        assert result["trade_count_60s"] == 0.0
+        assert result["buy_ratio"] == 0.5

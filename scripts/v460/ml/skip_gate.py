@@ -15,13 +15,17 @@ from __future__ import annotations
 import json
 import logging
 import pickle
+import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
 import numpy as np
+import pandas as pd
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import Ridge
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 logger = logging.getLogger(__name__)
@@ -80,15 +84,19 @@ class SkipGate:
 
     Ridge 回帰で post_fill_30s_pnl (bps) を予測し、
     予測値が閾値以下ならスキップを推奨する。
+
+    059# NEW-02: Pipeline (Imputer+Scaler+Model) を保持。
+    後方互換: 旧形式 (model+scaler) でも動作。
     """
 
     def __init__(
         self,
         model: Ridge,
-        scaler: StandardScaler,
+        scaler: Any,
         feature_cols: list[str],
         config: SkipGateConfig | None = None,
         metadata: dict[str, Any] | None = None,
+        pipeline: Pipeline | None = None,
     ) -> None:
         self.model = model
         self.scaler = scaler
@@ -96,6 +104,7 @@ class SkipGate:
         self.config = config or SkipGateConfig()
         self.metadata = metadata or {}
         self._recent_skips: list[bool] = []
+        self._pipeline = pipeline  # 059# NEW-02: 完全 Pipeline
 
     def evaluate(
         self,
@@ -118,8 +127,8 @@ class SkipGate:
                 reason="gate_disabled",
             )
 
-        # 特徴量ベクトル構築
-        x = np.zeros(len(self.feature_cols))
+        # 059# NEW-04: 未提供特徴量は NaN (Pipeline の Imputer が処理)
+        x = np.full(len(self.feature_cols), np.nan)
         n_used = 0
         for i, col in enumerate(self.feature_cols):
             if col in features:
@@ -135,25 +144,33 @@ class SkipGate:
                 reason="insufficient_features",
             )
 
-        # 予測
-        import pandas as pd
+        # 予測 — 059# NEW-02: Pipeline 優先、後方互換あり
         x_df = pd.DataFrame([x], columns=self.feature_cols)
-        x_scaled = self.scaler.transform(x_df)
-        pred_pnl = float(self.model.predict(x_scaled)[0])
+        if self._pipeline is not None:
+            pred_pnl = float(self._pipeline.predict(x_df)[0])
+        else:
+            x_scaled = self.scaler.transform(x_df)
+            pred_pnl = float(self.model.predict(x_scaled)[0])
 
         # スキップ判定
         should_skip = pred_pnl < self.config.threshold_bps
 
-        # 連続スキップ率チェック
-        self._recent_skips.append(should_skip)
-        if len(self._recent_skips) > 20:
-            self._recent_skips = self._recent_skips[-20:]
-        recent_rate = sum(self._recent_skips) / len(self._recent_skips)
+        # 連続スキップ率チェック — 059# P0-2: 最終決定を記録
+        recent_rate = (
+            sum(self._recent_skips) / len(self._recent_skips)
+            if self._recent_skips
+            else 0.0
+        )
         if recent_rate > self.config.max_skip_rate and should_skip:
             should_skip = False
             reason = f"skip_rate_limit({recent_rate:.0%}>{self.config.max_skip_rate:.0%})"
         else:
             reason = "skip" if should_skip else "pass"
+
+        # 最終決定を履歴に記録 (force-pass 反映後)
+        self._recent_skips.append(should_skip)
+        if len(self._recent_skips) > 20:
+            self._recent_skips = self._recent_skips[-20:]
 
         return SkipDecision(
             should_skip=should_skip,
@@ -164,7 +181,7 @@ class SkipGate:
         )
 
     def save(self, path: Optional[Path] = None) -> Path:
-        """モデルを pickle 保存."""
+        """モデルを pickle 保存 (SHA256 ハッシュ付き)."""
         p = path or _DEFAULT_MODEL_PATH
         p.parent.mkdir(parents=True, exist_ok=True)
         payload = {
@@ -173,24 +190,42 @@ class SkipGate:
             "feature_cols": self.feature_cols,
             "config": self.config,
             "metadata": self.metadata,
+            "pipeline": self._pipeline,  # 059# NEW-02
         }
+        data = pickle.dumps(payload)
+        digest = hashlib.sha256(data).hexdigest()
         with open(p, "wb") as f:
-            pickle.dump(payload, f)
-        logger.info(f"SkipGate saved to {p}")
+            f.write(data)
+        # ハッシュファイル保存 — 059# P2-8
+        hash_path = p.with_suffix(p.suffix + ".sha256")
+        hash_path.write_text(digest)
+        logger.info(f"SkipGate saved to {p} (sha256={digest[:12]}...)")
         return p
 
     @classmethod
     def load(cls, path: Optional[Path] = None) -> "SkipGate":
-        """pickle からロード."""
+        """pickle からロード (ハッシュ検証付き)."""
         p = path or _DEFAULT_MODEL_PATH
         with open(p, "rb") as f:
-            payload = pickle.load(f)
+            data = f.read()
+        # 059# P2-8: ハッシュ検証
+        hash_path = p.with_suffix(p.suffix + ".sha256")
+        if hash_path.exists():
+            expected = hash_path.read_text().strip()
+            actual = hashlib.sha256(data).hexdigest()
+            if actual != expected:
+                raise ValueError(
+                    f"SkipGate pickle hash mismatch: expected={expected[:12]}... "
+                    f"actual={actual[:12]}... — ファイルが改竄された可能性"
+                )
+        payload = pickle.loads(data)  # noqa: S301
         gate = cls(
             model=payload["model"],
             scaler=payload["scaler"],
             feature_cols=payload["feature_cols"],
             config=payload.get("config", SkipGateConfig()),
             metadata=payload.get("metadata", {}),
+            pipeline=payload.get("pipeline"),  # 059# NEW-02: 後方互換
         )
         logger.info(f"SkipGate loaded from {p} ({len(gate.feature_cols)} features)")
         return gate
@@ -208,6 +243,7 @@ def build_features_from_market_state(
     ask_vol_5: float,
     recent_trades: list[dict] | None = None,
     trade_window_sec: int = 60,
+    market_timestamp: float | None = None,
 ) -> dict[str, float]:
     """現在のマーケット状態から skip gate 用特徴量を構築.
 
@@ -221,12 +257,17 @@ def build_features_from_market_state(
         best_bid, best_ask: 最良気配.
         bid_vol_5, ask_vol_5: 上位5レベルの板厚.
         recent_trades: 直近の約定リスト [{ts, price, amount, side}, ...].
-        trade_window_sec: 約定統計のウィンドウ (秒).
+        trade_window_sec: 約定統計のウィンドウ (秒). recent_trades をフィルタ.
+        market_timestamp: UNIX timestamp (秒). 省略時は datetime.now() のローカル時刻.
 
     Returns:
         GATE_FEATURE_COLS に対応する特徴量辞書.
     """
-    now = datetime.now()
+    # 059# P1-5: 時刻特徴を明示的に制御
+    if market_timestamp is not None:
+        now = datetime.fromtimestamp(market_timestamp)
+    else:
+        now = datetime.now()
     hour = now.hour + now.minute / 60.0
 
     features: dict[str, float] = {}
@@ -253,7 +294,12 @@ def build_features_from_market_state(
         (bid_vol_5 - ask_vol_5) / total_depth if total_depth > 0 else 0.0
     )
 
-    # Trade features
+    # Trade features — 059# P1-6: trade_window_sec でフィルタ
+    if recent_trades and market_timestamp is not None:
+        cutoff = market_timestamp - trade_window_sec
+        recent_trades = [
+            t for t in recent_trades if t.get("ts", 0) >= cutoff
+        ]
     if recent_trades:
         n_trades = len(recent_trades)
         buy_vol = sum(
@@ -341,11 +387,16 @@ def train_and_save_skip_gate(
     enriched_df = enrich_fill_records(df, raw_dir=raw_dir)
     X, y = build_pnl_features(enriched_df)
 
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+    # 059# P0-1: Pipeline化
+    pipe = Pipeline([
+        ("imputer", SimpleImputer(strategy="median")),
+        ("scaler", StandardScaler()),
+        ("model", Ridge(alpha=alpha)),
+    ])
+    pipe.fit(X, y.values)
 
-    model = Ridge(alpha=alpha)
-    model.fit(X_scaled, y.values)
+    model = pipe.named_steps["model"]
+    scaler = pipe.named_steps["scaler"]
 
     # Feature importances
     fi = dict(zip(X.columns.tolist(), np.abs(model.coef_).tolist()))
@@ -364,6 +415,7 @@ def train_and_save_skip_gate(
             "feature_importances": dict(sorted_fi),
             "trained_at": datetime.now().isoformat(),
         },
+        pipeline=pipe,  # 059# NEW-02: 完全 Pipeline を保存
     )
 
     p = gate.save(output_path)

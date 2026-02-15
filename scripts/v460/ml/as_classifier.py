@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     average_precision_score,
@@ -25,6 +26,7 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 from sklearn.model_selection import TimeSeriesSplit
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 logger = logging.getLogger(__name__)
@@ -59,7 +61,7 @@ def train_as_classifier(
     *,
     n_splits: int = 5,
     model_type: str = "gb",
-) -> tuple[ASModelMetrics, Any, StandardScaler]:
+) -> tuple[ASModelMetrics, Any, Pipeline, np.ndarray]:
     """AS 分類器の学習と時系列 CV 評価.
 
     Args:
@@ -70,7 +72,8 @@ def train_as_classifier(
         model_type: "lr" (LogisticRegression) or "gb" (GradientBoosting).
 
     Returns:
-        (metrics, model, scaler) タプル.
+        (metrics, model, pipeline, oof_probs) タプル.
+        pipeline は Imputer+Scaler+Model の完全 Pipeline.
     """
     tscv = TimeSeriesSplit(n_splits=n_splits)
 
@@ -80,25 +83,19 @@ def train_as_classifier(
     oof_probs = np.full(len(X), np.nan)
     oof_indices: list[int] = []
 
-    scaler = StandardScaler()
-
     for fold, (train_idx, test_idx) in enumerate(tscv.split(X)):
         X_train = X.iloc[train_idx]
         y_train = y.iloc[train_idx]
         X_test = X.iloc[test_idx]
         y_test = y.iloc[test_idx]
 
-        # Scale
-        X_train_s = scaler.fit_transform(X_train)
-        X_test_s = scaler.transform(X_test)
-
-        # Model
+        # 059# P0-1: Imputer+Scaler+Model を fold 内で fit (リーク防止)
         if model_type == "lr":
-            model = LogisticRegression(
+            clf = LogisticRegression(
                 C=1.0, max_iter=1000, class_weight="balanced", random_state=42
             )
         else:
-            model = GradientBoostingClassifier(
+            clf = GradientBoostingClassifier(
                 n_estimators=100,
                 max_depth=3,
                 learning_rate=0.1,
@@ -106,8 +103,13 @@ def train_as_classifier(
                 random_state=42,
             )
 
-        model.fit(X_train_s, y_train)
-        probs = model.predict_proba(X_test_s)[:, 1]
+        pipe = Pipeline([
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler()),
+            ("model", clf),
+        ])
+        pipe.fit(X_train, y_train)
+        probs = pipe.predict_proba(X_test)[:, 1]
 
         # Metrics
         if len(np.unique(y_test)) > 1:
@@ -121,23 +123,27 @@ def train_as_classifier(
     # Naive baseline (always predict mean)
     naive_pr_auc = float(y.mean())  # PR-AUC baseline for imbalanced
 
-    # Final model on all data
-    scaler_final = StandardScaler()
-    X_scaled = scaler_final.fit_transform(X)
-
+    # Final model on all data (for feature importance extraction only)
     if model_type == "lr":
-        final_model = LogisticRegression(
+        final_clf = LogisticRegression(
             C=1.0, max_iter=1000, class_weight="balanced", random_state=42
         )
     else:
-        final_model = GradientBoostingClassifier(
+        final_clf = GradientBoostingClassifier(
             n_estimators=100,
             max_depth=3,
             learning_rate=0.1,
             subsample=0.8,
             random_state=42,
         )
-    final_model.fit(X_scaled, y)
+    final_pipe = Pipeline([
+        ("imputer", SimpleImputer(strategy="median")),
+        ("scaler", StandardScaler()),
+        ("model", final_clf),
+    ])
+    final_pipe.fit(X, y)
+    final_model = final_pipe.named_steps["model"]
+    scaler_final = final_pipe  # Return Pipeline instead of bare scaler
 
     # Feature importances
     if hasattr(final_model, "feature_importances_"):
@@ -155,7 +161,8 @@ def train_as_classifier(
     skip_20_improvement = 0.0
     skip_10_improvement = 0.0
     if pnl is not None:
-        valid_mask = ~np.isnan(oof_probs)
+        # 059# NEW-07: PnL の NaN もフィルタ
+        valid_mask = ~np.isnan(oof_probs) & ~np.isnan(pnl.values)
         if valid_mask.sum() > 20:
             valid_probs = oof_probs[valid_mask]
             valid_pnl = pnl.values[valid_mask]
@@ -193,7 +200,7 @@ def train_as_classifier(
         improvement_over_naive=pr_auc_mean - naive_pr_auc,
     )
 
-    return metrics, final_model, scaler_final
+    return metrics, final_model, scaler_final, oof_probs
 
 
 def evaluate_skip_policy(
@@ -201,15 +208,20 @@ def evaluate_skip_policy(
     y: pd.Series,
     pnl: pd.Series,
     model: Any,
-    scaler: StandardScaler,
+    scaler: Any,
     thresholds: list[float] | None = None,
+    *,
+    oof_probs: np.ndarray | None = None,
 ) -> pd.DataFrame:
     """スキップ閾値ごとの効果をシミュレーション.
 
+    059# P0-3: OOF 予測のみで評価 (in-sample 評価廃止).
+
     Args:
         X, y, pnl: テストデータ.
-        model, scaler: 学習済みモデル.
-        thresholds: スキップ閾値のリスト (AS確率がこれ以上ならスキップ).
+        model, scaler: 学習済みモデル (OOF 非提供時のフォールバック用).
+        thresholds: スキップ閾値のリスト.
+        oof_probs: Out-of-Fold 予測確率 (推奨). None の場合 model で推論.
 
     Returns:
         閾値ごとの結果 DataFrame.
@@ -217,12 +229,28 @@ def evaluate_skip_policy(
     if thresholds is None:
         thresholds = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
 
-    X_scaled = scaler.transform(X)
-    probs = model.predict_proba(X_scaled)[:, 1]
+    if oof_probs is not None:
+        # OOF 予測を使用 (リークなし)
+        valid_mask = ~np.isnan(oof_probs)
+        probs = oof_probs[valid_mask]
+        pnl_valid = pnl.values[valid_mask]
+        y_valid = y.values[valid_mask]
+        eval_source = "OOF"
+    else:
+        # フォールバック: model で推論 (in-sample, 非推奨)
+        if hasattr(scaler, "transform"):
+            X_scaled = scaler.transform(X)
+        else:
+            X_scaled = X.values
+        probs = model.predict_proba(X_scaled)[:, 1]
+        pnl_valid = pnl.values
+        y_valid = y.values
+        eval_source = "in-sample"
+        logger.warning("evaluate_skip_policy: using in-sample (non-OOF) evaluation")
 
     results = []
-    baseline_pnl = float(np.mean(pnl))
-    baseline_as_rate = float(y.mean())
+    baseline_pnl = float(np.mean(pnl_valid))
+    baseline_as_rate = float(np.mean(y_valid))
 
     for th in thresholds:
         keep = probs < th
@@ -231,8 +259,8 @@ def evaluate_skip_policy(
         skip_rate = n_skip / len(probs) if len(probs) > 0 else 0
 
         if n_keep > 0:
-            kept_pnl = float(np.mean(pnl[keep]))
-            kept_as_rate = float(y[keep].mean())
+            kept_pnl = float(np.mean(pnl_valid[keep]))
+            kept_as_rate = float(np.mean(y_valid[keep]))
         else:
             kept_pnl = 0.0
             kept_as_rate = 0.0
@@ -246,6 +274,7 @@ def evaluate_skip_policy(
             "pnl_improvement_bps": kept_pnl - baseline_pnl,
             "kept_as_rate": kept_as_rate,
             "as_reduction": baseline_as_rate - kept_as_rate,
+            "eval_source": eval_source,
         })
 
     return pd.DataFrame(results)

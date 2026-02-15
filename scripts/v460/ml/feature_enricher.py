@@ -120,36 +120,43 @@ def _compute_trade_features(
     trades_df: pd.DataFrame,
     ts: float,
     window_sec: int = _TRADE_WINDOW_SEC,
+    *,
+    _sorted_ts: np.ndarray | None = None,
 ) -> dict[str, float]:
     """指定時点の直前 window_sec 秒間の約定統計を算出.
+
+    059# P1-7: searchsorted で O(log N) にフィルタ (呼び出し側で _sorted_ts を渡す).
 
     Returns:
         trade_count_60s, buy_ratio, trade_flow_imbalance_60s,
         avg_trade_size, price_velocity_60s, vpin_60s
     """
+    _default = {
+        "trade_count_60s": 0.0,
+        "buy_ratio": 0.5,
+        "trade_flow_imbalance_60s": 0.0,
+        "avg_trade_size": 0.0,
+        "price_velocity_60s": 0.0,
+        "vpin_60s": 0.5,
+    }
     if trades_df.empty:
-        return {
-            "trade_count_60s": 0.0,
-            "buy_ratio": 0.5,
-            "trade_flow_imbalance_60s": 0.0,
-            "avg_trade_size": 0.0,
-            "price_velocity_60s": 0.0,
-            "vpin_60s": 0.5,
-        }
+        return _default
 
     t0 = ts - window_sec
-    mask = (trades_df["ts"] >= t0) & (trades_df["ts"] < ts)
-    window = trades_df.loc[mask]
+
+    # 059# P1-7: searchsorted で O(log N) にスライス
+    if _sorted_ts is not None:
+        i_start = int(np.searchsorted(_sorted_ts, t0, side="left"))
+        i_end = int(np.searchsorted(_sorted_ts, ts, side="left"))
+        if i_start >= i_end:
+            return _default
+        window = trades_df.iloc[i_start:i_end]
+    else:
+        mask = (trades_df["ts"] >= t0) & (trades_df["ts"] < ts)
+        window = trades_df.loc[mask]
 
     if window.empty:
-        return {
-            "trade_count_60s": 0.0,
-            "buy_ratio": 0.5,
-            "trade_flow_imbalance_60s": 0.0,
-            "avg_trade_size": 0.0,
-            "price_velocity_60s": 0.0,
-            "vpin_60s": 0.5,
-        }
+        return _default
 
     n_trades = len(window)
     buy_mask = window["side"].str.lower() == "buy"
@@ -252,6 +259,13 @@ def enrich_fill_records(
     ob_df = load_raw_orderbook(raw_dir)
     trades_df = load_raw_trades(raw_dir)
 
+    # 059# P1-7: 事前ソート + searchsorted で O(N_fill × log N_trades)
+    if not trades_df.empty and "ts" in trades_df.columns:
+        trades_df = trades_df.sort_values("ts").reset_index(drop=True)
+        sorted_ts = trades_df["ts"].values
+    else:
+        sorted_ts = None
+
     enriched_rows: list[dict] = []
     for _, row in fill_df.iterrows():
         ts = float(row["timestamp"])
@@ -261,7 +275,7 @@ def enrich_fill_records(
 
         # Trade features (rolling window)
         trade_features = _compute_trade_features(
-            trades_df, ts, trade_window_sec
+            trades_df, ts, trade_window_sec, _sorted_ts=sorted_ts
         )
 
         enriched_rows.append({**ob_features, **trade_features})
@@ -320,14 +334,11 @@ def build_enriched_as_features(
     X_base, y = build_as_features(enriched_df)
 
     # 2. マイクロストラクチャ特徴量を追加
+    # NOTE: NaN は保持。補完は CV fold 内で SimpleImputer が行う (059# P0-1)
     micro_features: dict[str, pd.Series] = {}
     for col in MICRO_FEATURE_COLS:
         if col in enriched_df.columns:
-            vals = enriched_df.loc[X_base.index, col].astype(float)
-            median_val = vals.median()
-            if pd.isna(median_val):
-                median_val = 0.0
-            micro_features[col] = vals.fillna(median_val)
+            micro_features[col] = enriched_df.loc[X_base.index, col].astype(float)
 
     # 3. side-aligned インタラクション特徴量
     #    buy 側: side_sign = +1, sell 側: side_sign = -1
@@ -398,17 +409,19 @@ def build_pnl_features(
     features["side_buy"] = (data["side"] == "buy").astype(int)
 
     ts = data["timestamp"].astype(float)
-    hours = ts.apply(lambda t: datetime.fromtimestamp(t).hour)
+    # 059# NEW-03: 小数時刻で統一 (skip_gate 推論側と同一粒度)
+    hours = ts.apply(
+        lambda t: (lambda d: d.hour + d.minute / 60.0)(datetime.fromtimestamp(t))
+    )
     features["hour_sin"] = np.sin(2 * np.pi * hours / 24)
     features["hour_cos"] = np.cos(2 * np.pi * hours / 24)
 
     if "spread_at_order" in data.columns:
-        spread = data["spread_at_order"].astype(float)
-        features["spread_jpy"] = spread.fillna(spread.median())
+        # NOTE: NaN は保持。補完は CV fold 内 (059# P0-1)
+        features["spread_jpy"] = data["spread_at_order"].astype(float)
 
     if "spread_offset_ratio" in data.columns:
-        ratio = data["spread_offset_ratio"].astype(float)
-        features["offset_ratio"] = ratio.fillna(ratio.median())
+        features["offset_ratio"] = data["spread_offset_ratio"].astype(float)
 
     if "regime" in data.columns:
         regime = data["regime"].fillna("unknown")
@@ -416,13 +429,10 @@ def build_pnl_features(
             features[f"regime_{val}"] = (regime == val).astype(int)
 
     # --- マイクロストラクチャ特徴量 ---
+    # NOTE: NaN は保持。補完は CV fold 内 (059# P0-1)
     for col in MICRO_FEATURE_COLS:
         if col in data.columns:
-            vals = data[col].astype(float)
-            median_val = vals.median()
-            if pd.isna(median_val):
-                median_val = 0.0
-            features[col] = vals.fillna(median_val)
+            features[col] = data[col].astype(float)
 
     # --- インタラクション特徴量 ---
     side_sign = data["side"].map({"buy": 1.0, "sell": -1.0}).astype(float)
