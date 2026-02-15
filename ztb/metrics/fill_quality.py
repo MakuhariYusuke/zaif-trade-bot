@@ -67,6 +67,13 @@ class FillRecord:
     regime: Optional[str] = None  # FillTestRegime.value (trending/ranging/high_vol/unknown)
     regime_confidence: Optional[float] = None  # 0.0–1.0
     regime_stability: Optional[int] = None  # 連続同一レジーム数
+    # 054# AS 予測データ基盤 — orderbook imbalance + spread + mid trend
+    orderbook_imbalance: Optional[float] = None   # 板不均衡 [-1, +1] (+1=bid圧倒)
+    bid_depth_total: Optional[float] = None       # bid 側合計数量 (BTC)
+    ask_depth_total: Optional[float] = None       # ask 側合計数量 (BTC)
+    mid_price_trend_5s: Optional[float] = None    # 直前 5s の mid 変化率 (bps)
+    spread_bps: Optional[float] = None            # 発注時スプレッド (bps)
+    effective_offset_used: Optional[float] = None # 実際に適用された offset 比率
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

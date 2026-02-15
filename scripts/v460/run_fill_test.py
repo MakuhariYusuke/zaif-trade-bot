@@ -131,6 +131,27 @@ class FillTestConfig:
     fast_fill_defense_enabled: bool = False
     fast_fill_threshold_sec: float = 5.0   # この秒数以下で「速い約定」と判定
     fast_fill_offset_boost: float = 2.0    # 防御時の offset 倍率
+    # 054# S1: Orderbook Imbalance ベース AS 予測フィルター
+    imbalance_enabled: bool = False
+    imbalance_depth: int = 5               # 板深さ (上位 N 段)
+    imbalance_threshold: float = 0.3       # 偏り判定閾値 (|imbalance| > threshold)
+    imbalance_offset_boost: float = 1.5    # AS リスク時の offset 倍率
+    imbalance_skip_threshold: float = 0.7  # この閾値以上なら注文スキップ
+    # 054# S2: Smart Side Selection (機械的交互 → 条件付き)
+    smart_side_enabled: bool = False
+    smart_side_mode: str = "suppress"      # suppress / follow
+    smart_side_max_consecutive: int = 2    # 片側蓄積防止 (000# §3.3)
+    # 054# S3: テール損失カット (post-fill早期監視)
+    early_exit_enabled: bool = False
+    early_exit_threshold_bps: float = 5.0  # 損失閾値 (bps)
+    early_exit_monitor_interval_sec: float = 5.0  # 監視刻み (秒)
+    early_exit_rapid_interval_sec: float = 10.0   # rapid exit 時 cycle interval
+    # 054# S4: Spread-Responsive Offset (スプレッド適応型オフセット)
+    spread_adaptive_enabled: bool = False
+    narrow_spread_bps: float = 10.0        # 狭スプレッド閾値 (bps)
+    narrow_spread_boost: float = 2.0       # 狭い時の offset 倍率
+    wide_spread_bps: float = 25.0          # 広スプレッド閾値 (bps)
+    wide_spread_ratio: float = 0.5         # 広い時の offset 割引
 
     @classmethod
     def from_yaml(cls, yaml_cfg: dict) -> "FillTestConfig":
@@ -234,6 +255,56 @@ class FillTestConfig:
         if "offset_boost" in ffd:
             kwargs["fast_fill_offset_boost"] = ffd["offset_boost"]
 
+        # 054# S1: Orderbook Imbalance
+        imb = yaml_cfg.get("imbalance", {})
+        if imb.get("enabled") is not None:
+            kwargs["imbalance_enabled"] = imb["enabled"]
+        imb_map = {
+            "depth": "imbalance_depth",
+            "threshold": "imbalance_threshold",
+            "offset_boost": "imbalance_offset_boost",
+            "skip_threshold": "imbalance_skip_threshold",
+        }
+        for yaml_key, config_key in imb_map.items():
+            if yaml_key in imb:
+                kwargs[config_key] = imb[yaml_key]
+
+        # 054# S2: Smart Side
+        ss = yaml_cfg.get("smart_side", {})
+        if ss.get("enabled") is not None:
+            kwargs["smart_side_enabled"] = ss["enabled"]
+        if "mode" in ss:
+            kwargs["smart_side_mode"] = ss["mode"]
+        if "max_consecutive_same" in ss:
+            kwargs["smart_side_max_consecutive"] = ss["max_consecutive_same"]
+
+        # 054# S3: Early Exit (テール損失カット)
+        ee = yaml_cfg.get("early_exit", {})
+        if ee.get("enabled") is not None:
+            kwargs["early_exit_enabled"] = ee["enabled"]
+        ee_map = {
+            "threshold_bps": "early_exit_threshold_bps",
+            "monitoring_interval_sec": "early_exit_monitor_interval_sec",
+            "rapid_exit_interval_sec": "early_exit_rapid_interval_sec",
+        }
+        for yaml_key, config_key in ee_map.items():
+            if yaml_key in ee:
+                kwargs[config_key] = ee[yaml_key]
+
+        # 054# S4: Spread Adaptive Offset
+        sa = yaml_cfg.get("spread_adaptive", {})
+        if sa.get("enabled") is not None:
+            kwargs["spread_adaptive_enabled"] = sa["enabled"]
+        sa_map = {
+            "narrow_spread_bps": "narrow_spread_bps",
+            "narrow_spread_boost": "narrow_spread_boost",
+            "wide_spread_bps": "wide_spread_bps",
+            "wide_spread_ratio": "wide_spread_ratio",
+        }
+        for yaml_key, config_key in sa_map.items():
+            if yaml_key in sa:
+                kwargs[config_key] = sa[yaml_key]
+
         return cls(**kwargs)
 
 
@@ -287,6 +358,19 @@ class FillTestRunner:
         # 051# P2-3: Balance auto-shrink (残高不足時のロット一時縮小)
         self._balance_shrink_active: bool = False
         self._pre_shrink_lot: float = config.order_quantity
+        # 054# S1: Orderbook Imbalance — 直前計測値を保持 (S2 Smart Side で参照)
+        self._last_imbalance: float = 0.0
+        self._last_bid_depth: float = 0.0
+        self._last_ask_depth: float = 0.0
+        # 054# S2: Smart Side — 同一 side 連続カウンタ
+        self._consecutive_same_side: int = 0
+        # 054# S3: Early Exit — rapid exit フラグ
+        self._rapid_exit_pending: bool = False
+        self._rapid_exit_side: str | None = None
+        # 054# S1/S4: mid price 追跡 (trend 計算用)
+        self._prev_mid_price: float | None = None
+        self._prev_mid_time: float | None = None
+        self._last_mid_trend_bps: float | None = None
 
         # 037# レジーム検知 (035# §4)
         self._regime_detector: Optional["FillTestRegimeDetector"] = None
@@ -360,13 +444,72 @@ class FillTestRunner:
         return existing
 
     def _next_side(self) -> str:
-        """buy/sell を交互に返す.
+        """buy/sell を決定: 交互 or 054# S2 Smart Side.
 
         009# §4.2: 片側ポジション蓄積禁止.
+        054# S2: imbalance による side 抑制/追従.
         """
-        if self._last_side is None or self._last_side == "sell":
-            return "buy"
-        return "sell"
+        base_side = "buy" if (self._last_side is None or self._last_side == "sell") else "sell"
+
+        if not self.config.smart_side_enabled:
+            return base_side
+
+        imbalance = self._last_imbalance
+
+        if self.config.smart_side_mode == "suppress":
+            # 不利な side を抑制: buy を出そうとしているが売り圧力が強い → buy スキップ
+            should_suppress = False
+            if base_side == "buy" and imbalance < -self.config.imbalance_threshold:
+                should_suppress = True
+            elif base_side == "sell" and imbalance > self.config.imbalance_threshold:
+                should_suppress = True
+
+            if should_suppress:
+                # 連続同 side 制限チェック (000# §3.3: 片側蓄積防止)
+                if self._consecutive_same_side >= self.config.smart_side_max_consecutive:
+                    logger.debug(
+                        f"[smart_side] Max consecutive ({self._consecutive_same_side}) reached, "
+                        f"forcing {base_side}"
+                    )
+                    return base_side
+                alt_side = self._last_side or ("sell" if base_side == "buy" else "buy")
+                logger.info(
+                    f"[smart_side] Suppressing {base_side} (imb={imbalance:+.3f}), "
+                    f"continuing {alt_side}"
+                )
+                return alt_side
+
+        elif self.config.smart_side_mode == "follow":
+            # imbalance 方向に追従
+            if abs(imbalance) > self.config.imbalance_threshold:
+                follow_side = "buy" if imbalance > 0 else "sell"
+                # 連続同 side 制限チェック
+                if (
+                    follow_side == self._last_side
+                    and self._consecutive_same_side >= self.config.smart_side_max_consecutive
+                ):
+                    return base_side
+                return follow_side
+
+        return base_side
+
+    async def _compute_orderbook_imbalance(self, depth: int = 5) -> tuple[float, float, float]:
+        """054# S1: 板不均衡を計算.
+
+        Returns:
+            (imbalance, bid_total, ask_total) タプル.
+            imbalance ∈ [-1, +1].
+            +1 = bid 側が圧倒的 (買い圧力 = 価格上昇示唆).
+            -1 = ask 側が圧倒的 (売り圧力 = 価格下落示唆).
+        """
+        ob = await self.adapter.get_orderbook(self.config.symbol, depth=depth)
+        bid_volume = sum(qty for _, qty in ob.bids[:depth]) if ob.bids else 0.0
+        ask_volume = sum(qty for _, qty in ob.asks[:depth]) if ob.asks else 0.0
+        total = bid_volume + ask_volume
+        if total == 0:
+            return 0.0, 0.0, 0.0
+        imbalance = (bid_volume - ask_volume) / total
+        return imbalance, bid_volume, ask_volume
 
     async def _get_mid_price(self) -> float:
         """板の best bid/ask から mid price を算出."""
@@ -382,16 +525,41 @@ class FillTestRunner:
 
         009# §4.2: スプレッド内側に配置して maker 約定を狙う.
         CM-1: 固定 1 JPY → スプレッド比例 + post_only リジェクト防止.
+        054# S1: Imbalance ベース AS リスク補正.
+        054# S4: Spread 適応型 offset.
 
         Returns:
             (price, spread_at_order, effective_offset_ratio) タプル.
         """
+        # 054# S1: imbalance 計算 (depth>1 で板の深さを参照)
+        if self.config.imbalance_enabled:
+            imb, bid_d, ask_d = await self._compute_orderbook_imbalance(
+                depth=self.config.imbalance_depth,
+            )
+            self._last_imbalance = imb
+            self._last_bid_depth = bid_d
+            self._last_ask_depth = ask_d
+        else:
+            imb = 0.0
+
         ob = await self.adapter.get_orderbook(self.config.symbol, depth=1)
         if not ob.bids or not ob.asks:
             raise ValueError("Empty orderbook")
         best_bid = ob.bids[0][0]
         best_ask = ob.asks[0][0]
         spread = best_ask - best_bid
+        mid_price = (best_bid + best_ask) / 2.0
+
+        # 054# mid price trend 追跡
+        mid_trend_bps: float | None = None
+        now = time.time()
+        if self._prev_mid_price is not None and self._prev_mid_time is not None:
+            dt = now - self._prev_mid_time
+            if 0 < dt < 300:  # 5分以内のデータのみ有効
+                mid_trend_bps = (mid_price - self._prev_mid_price) / self._prev_mid_price * 10000
+        self._prev_mid_price = mid_price
+        self._prev_mid_time = now
+        self._last_mid_trend_bps = mid_trend_bps
 
         # 031# スプレッドフィルター: 狭すぎる場合はスキップ
         if spread < self.config.min_spread_jpy:
@@ -419,6 +587,55 @@ class FillTestRunner:
                 f"{effective_offset_ratio / self.config.regime_trending_offset_boost:.4f} "
                 f"→ {effective_offset_ratio:.4f}"
             )
+
+        # 054# S4: Spread 適応型 offset
+        if self.config.spread_adaptive_enabled:
+            spread_bps = spread / mid_price * 10000
+            if spread_bps < self.config.narrow_spread_bps:
+                effective_offset_ratio = min(
+                    effective_offset_ratio * self.config.narrow_spread_boost, 0.30,
+                )
+                logger.debug(
+                    f"[spread_adaptive] Narrow spread {spread_bps:.1f}bps "
+                    f"→ offset boosted to {effective_offset_ratio:.4f}"
+                )
+            elif spread_bps > self.config.wide_spread_bps:
+                effective_offset_ratio = max(
+                    effective_offset_ratio * self.config.wide_spread_ratio, 0.01,
+                )
+                logger.debug(
+                    f"[spread_adaptive] Wide spread {spread_bps:.1f}bps "
+                    f"→ offset reduced to {effective_offset_ratio:.4f}"
+                )
+
+        # 054# S1: Imbalance ベース AS リスク補正
+        imbalance_skipped = False
+        if self.config.imbalance_enabled and abs(imb) > self.config.imbalance_threshold:
+            # AS リスクが高い side かチェック
+            as_risk = (
+                (side == "buy" and imb < -self.config.imbalance_threshold)
+                or (side == "sell" and imb > self.config.imbalance_threshold)
+            )
+            if as_risk:
+                if abs(imb) >= self.config.imbalance_skip_threshold:
+                    # 極端な偏り → 注文自体をスキップ
+                    imbalance_skipped = True
+                    logger.info(
+                        f"[imbalance] Extreme AS risk: {side} imb={imb:+.3f} "
+                        f">= skip_threshold {self.config.imbalance_skip_threshold}. "
+                        f"Skipping order."
+                    )
+                    raise ValueError(
+                        f"Imbalance skip: {side} order suppressed (imb={imb:+.3f})"
+                    )
+                else:
+                    # 中程度の偏り → offset 拡大
+                    effective_offset_ratio *= self.config.imbalance_offset_boost
+                    effective_offset_ratio = min(effective_offset_ratio, 0.30)
+                    logger.info(
+                        f"[imbalance] {side} AS risk: imb={imb:+.3f}, "
+                        f"offset boosted to {effective_offset_ratio:.4f}"
+                    )
 
         offset = max(self.config.min_offset_jpy, spread * effective_offset_ratio)
 
@@ -633,6 +850,11 @@ class FillTestRunner:
         self._cycle_count += 1
         cycle_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
         side = self._next_side()
+        # 054# S2: 連続同 side カウンタ更新
+        if side == self._last_side:
+            self._consecutive_same_side += 1
+        else:
+            self._consecutive_same_side = 0
         self._last_side = side
 
         logger.info(f"=== Cycle {self._cycle_count} ({side}) ===")
@@ -847,9 +1069,38 @@ class FillTestRunner:
             except Exception:
                 pass
 
-            # 30 秒待機
-            logger.info(f"Waiting {self.config.post_fill_wait_sec}s for PnL measurement...")
-            await asyncio.sleep(self.config.post_fill_wait_sec)
+            # 054# S3: Early Exit 監視付き 30s 待機
+            early_exit_triggered = False
+            if self.config.early_exit_enabled and mid_at_fill is not None:
+                # 5s 刻みで 30s まで mid を監視
+                monitor_sec = self.config.early_exit_monitor_interval_sec
+                ticks = max(1, int(self.config.post_fill_wait_sec / monitor_sec))
+                for tick in range(ticks):
+                    await asyncio.sleep(monitor_sec)
+                    try:
+                        mid_now = await self._get_mid_price()
+                        if side == "buy":
+                            interim_pnl = (mid_now - mid_at_fill) / mid_at_fill * 10000
+                        else:
+                            interim_pnl = (mid_at_fill - mid_now) / mid_at_fill * 10000
+                        if interim_pnl < -self.config.early_exit_threshold_bps:
+                            logger.warning(
+                                f"[early_exit] Loss threshold hit at {(tick+1)*monitor_sec:.0f}s: "
+                                f"{interim_pnl:+.2f} bps < -{self.config.early_exit_threshold_bps}"
+                            )
+                            early_exit_triggered = True
+                            break
+                    except Exception:
+                        continue
+                # 残り時間を消化 (e.g. 15s で early exit → 残り 15s は不要)
+                elapsed_monitor = (tick + 1) * monitor_sec if early_exit_triggered else ticks * monitor_sec
+                remaining = self.config.post_fill_wait_sec - elapsed_monitor
+                if remaining > 0 and not early_exit_triggered:
+                    await asyncio.sleep(remaining)
+            else:
+                # 通常の 30s 待機
+                logger.info(f"Waiting {self.config.post_fill_wait_sec}s for PnL measurement...")
+                await asyncio.sleep(self.config.post_fill_wait_sec)
 
             try:
                 mid_30s_after = await self._get_mid_price()
@@ -872,6 +1123,11 @@ class FillTestRunner:
                     adverse_selected_raw = mid_30s_after > mid_at_fill
                     # CM-3: AS デッドゾーン
                     adverse_selected = post_fill_pnl < -self.config.as_deadzone_bps
+
+            # 054# S3: early exit → rapid exit フラグ (次サイクルの interval 短縮)
+            if early_exit_triggered:
+                self._rapid_exit_pending = True
+                self._rapid_exit_side = "sell" if side == "buy" else "buy"
 
             # 047# E3: +30s (=60s) 計測 — 049# サンプリング制御
             # e3_sampling_ratio < 1.0 の場合、確率的にスキップしてサイクル効率を回復
@@ -944,6 +1200,17 @@ class FillTestRunner:
             regime=regime_str,
             regime_confidence=regime_conf,
             regime_stability=regime_stab,
+            # 054# S5: AS 予測データ基盤
+            orderbook_imbalance=self._last_imbalance if self.config.imbalance_enabled else None,
+            bid_depth_total=self._last_bid_depth if self.config.imbalance_enabled else None,
+            ask_depth_total=self._last_ask_depth if self.config.imbalance_enabled else None,
+            mid_price_trend_5s=getattr(self, '_last_mid_trend_bps', None),
+            spread_bps=(
+                (spread_at_order / mid_at_fill * 10000)
+                if spread_at_order is not None and mid_at_fill is not None and mid_at_fill > 0
+                else None
+            ),
+            effective_offset_used=effective_offset_ratio,
         )
 
         logger.info(
@@ -1239,8 +1506,19 @@ class FillTestRunner:
                 self._try_auto_lot_size()
 
             # 次サイクルまで待機
+            # 054# S3: rapid exit 時は interval を短縮
             if time.time() < end_time and not self._shutdown_requested:
-                await asyncio.sleep(self.config.cycle_interval_sec)
+                if self._rapid_exit_pending:
+                    interval = self.config.early_exit_rapid_interval_sec
+                    logger.info(
+                        f"[early_exit] Rapid exit: interval shortened to "
+                        f"{interval:.0f}s (next side={self._rapid_exit_side})"
+                    )
+                    self._rapid_exit_pending = False
+                    self._rapid_exit_side = None
+                else:
+                    interval = self.config.cycle_interval_sec
+                await asyncio.sleep(interval)
 
         # 残りバッチを保存
         if batch:

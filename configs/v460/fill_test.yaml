@@ -102,3 +102,32 @@ safety:
   soft_loss_cap_ratio: 0.02    # 046#: 残高の 2% でソフトキャップ (ロット半減)
   loss_cap_jpy: 10000.0        # フォールバック値 (API 取得失敗時)
   loss_cap_warning_ratio: 0.7  # 上限の 70% で警告・ロット縮小
+
+# ---- 054# S1: Orderbook Imbalance ベース AS 予測フィルター ----
+imbalance:
+  enabled: true                # 板不均衡による AS リスク検知
+  depth: 5                     # 板深さ (上位 N 段の volume 合計)
+  threshold: 0.3               # |imbalance| がこれ以上で「偏り」判定
+  offset_boost: 1.5            # AS リスク時の offset 倍率
+  skip_threshold: 0.7          # 極端な偏りで注文自体をスキップ
+
+# ---- 054# S2: Smart Side Selection ----
+smart_side:
+  enabled: true                # 板不均衡に基づく Side 選択
+  mode: suppress               # suppress (不利 side 抑制) / follow (imbalance 追従)
+  max_consecutive_same: 2      # 片側蓄積防止 (000# §3.3)
+
+# ---- 054# S3: テール損失カット (Early Exit) ----
+early_exit:
+  enabled: true                # 約定後の早期損失検知
+  threshold_bps: 5.0           # この損失に達したら rapid exit フラグ
+  monitoring_interval_sec: 5.0 # 監視刻み (秒)
+  rapid_exit_interval_sec: 10.0 # rapid exit 時の cycle interval
+
+# ---- 054# S4: Spread 適応型 Offset ----
+spread_adaptive:
+  enabled: true                # スプレッド幅に応じた offset 動的調整
+  narrow_spread_bps: 10.0      # これ以下で「狭い」→ offset 拡大 (AS 回避)
+  narrow_spread_boost: 2.0     # 狭スプレッド時の offset 倍率
+  wide_spread_bps: 25.0        # これ以上で「広い」→ offset 縮小 (fill 優先)
+  wide_spread_ratio: 0.5       # 広スプレッド時の offset 割引
