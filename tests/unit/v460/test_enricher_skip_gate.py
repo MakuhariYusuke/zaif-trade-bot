@@ -450,163 +450,54 @@ class Test061SkipGateASMode:
             assert abs(r1.predicted_pnl_bps - r2.predicted_pnl_bps) < 1e-10
 
 
-class Test065SkipGateTwoTier:
-    """065# Two-Tier SkipGate フォールバックテスト."""
+class Test065SkipGateNoOB:
+    """071# OB 特徴量除去後の SkipGate テスト."""
 
     @pytest.fixture
-    def primary_gate(self, synthetic_fill_df: pd.DataFrame) -> SkipGate:
-        """OB 特徴量を含む primary SkipGate (Pipeline付き)."""
-        from sklearn.feature_selection import SelectKBest, f_classif
+    def trade_only_gate(self) -> SkipGate:
+        """Trade-only 特徴量の SkipGate (071# OB 除去後)."""
         from sklearn.impute import SimpleImputer
         from sklearn.linear_model import LogisticRegression
         from sklearn.pipeline import Pipeline
         from sklearn.preprocessing import StandardScaler
 
-        df = synthetic_fill_df.copy()
-        for col in MICRO_FEATURE_COLS:
-            df[col] = np.random.RandomState(42).randn(len(df))
-
-        X_as, y_as = build_enriched_as_features(df)
-        k = min(8, X_as.shape[1])
-        pipe = Pipeline([
-            ("imputer", SimpleImputer(strategy="median")),
-            ("selector", SelectKBest(f_classif, k=k)),
-            ("scaler", StandardScaler()),
-            ("model", LogisticRegression(
-                C=0.01, max_iter=2000, class_weight="balanced", random_state=42
-            )),
-        ])
-        pipe.fit(X_as, y_as.values)
-
-        return SkipGate(
-            model=pipe.named_steps["model"],
-            scaler=pipe.named_steps["scaler"],
-            feature_cols=X_as.columns.tolist(),
-            config=SkipGateConfig(mode="as", as_threshold=0.6),
-            metadata={"label": "primary_test"},
-            pipeline=pipe,
-        )
-
-    @pytest.fixture
-    def fallback_gate(self) -> SkipGate:
-        """OB 不要なフォールバック SkipGate (少数特徴量, Pipeline付き)."""
-        from sklearn.impute import SimpleImputer
-        from sklearn.linear_model import LogisticRegression
-        from sklearn.pipeline import Pipeline
-        from sklearn.preprocessing import StandardScaler
-
-        # 簡易的な trade-only features
-        fb_cols = ["log_queue_wait", "edge_bps", "vpin_60s", "hour_cos", "hour_sin"]
+        cols = ["side_buy", "hour_sin", "hour_cos", "spread_jpy", "trade_count_60s"]
         rng = np.random.RandomState(99)
-        X_fb = pd.DataFrame(rng.randn(100, len(fb_cols)), columns=fb_cols)
-        y_fb = pd.Series(rng.randint(0, 2, 100))
+        X = pd.DataFrame(rng.randn(100, len(cols)), columns=cols)
+        y = pd.Series(rng.randint(0, 2, 100))
         pipe = Pipeline([
             ("imputer", SimpleImputer(strategy="median")),
             ("scaler", StandardScaler()),
             ("model", LogisticRegression(C=0.01, max_iter=2000, random_state=42)),
         ])
-        pipe.fit(X_fb, y_fb)
+        pipe.fit(X, y)
 
         return SkipGate(
             model=pipe.named_steps["model"],
             scaler=pipe.named_steps["scaler"],
-            feature_cols=fb_cols,
+            feature_cols=cols,
             config=SkipGateConfig(mode="as", as_threshold=0.6),
-            metadata={"label": "fallback_test"},
+            metadata={"label": "trade_only_test"},
             pipeline=pipe,
         )
 
-    def test_set_fallback(
-        self, primary_gate: SkipGate, fallback_gate: SkipGate
-    ) -> None:
-        """set_fallback で fallback が設定される."""
-        assert primary_gate._fallback is None
-        primary_gate.set_fallback(fallback_gate)
-        assert primary_gate._fallback is fallback_gate
-
-    def test_uses_primary_when_ob_present(
-        self, primary_gate: SkipGate, fallback_gate: SkipGate
-    ) -> None:
-        """OB 特徴量が提供されると primary を使う."""
-        primary_gate.set_fallback(fallback_gate)
-        features = {col: 0.5 for col in primary_gate.feature_cols}
-        # OB critical features を含む (品質基準: spread > 0, depth finite)
-        features["depth_imbalance_ob"] = 0.1
-        features["spread_bps_ob"] = 5.0
-        result = primary_gate.evaluate(features)
-        # primary が使われる → features_used は primary の特徴量数に近い
+    def test_evaluate_without_ob(self, trade_only_gate: SkipGate) -> None:
+        """071# OB なしで正常に evaluate できる."""
+        features = {
+            "side_buy": 1.0,
+            "hour_sin": 0.5,
+            "hour_cos": 0.8,
+            "spread_jpy": 500.0,
+            "trade_count_60s": 5.0,
+        }
+        result = trade_only_gate.evaluate(features, side="buy")
         assert result.features_used >= 3
         assert result.model_used == "primary"
+        assert isinstance(result.should_skip, bool)
 
-    def test_falls_back_when_ob_missing(
-        self, primary_gate: SkipGate, fallback_gate: SkipGate
-    ) -> None:
-        """OB 特徴量が欠損するとフォールバックに委譲."""
-        primary_gate.set_fallback(fallback_gate)
-        # OB critical features を含まない trade-only features
-        features = {
-            "log_queue_wait": 1.0,
-            "edge_bps": 0.5,
-            "vpin_60s": 0.3,
-            "hour_cos": 0.8,
-            "hour_sin": 0.6,
-        }
-        result = primary_gate.evaluate(features)
-        # fallback が使われる → features_used は fallback の特徴量数に近い
-        assert result.features_used <= len(fallback_gate.feature_cols)
-        assert result.model_used == "fallback"
-
-    def test_falls_back_when_ob_quality_poor(
-        self, primary_gate: SkipGate, fallback_gate: SkipGate
-    ) -> None:
-        """068# §3.1: OB 特徴量のキーがあっても値が不良なら fallback."""
-        primary_gate.set_fallback(fallback_gate)
-        features = {col: 0.5 for col in primary_gate.feature_cols}
-        # spread_bps_ob = 0.0 → mid=0 or bid=ask → 品質不良
-        features["spread_bps_ob"] = 0.0
-        features["depth_imbalance_ob"] = 0.1
-        result = primary_gate.evaluate(features)
-        assert result.model_used == "fallback"
-
-    def test_falls_back_when_ob_spread_nan(
-        self, primary_gate: SkipGate, fallback_gate: SkipGate
-    ) -> None:
-        """068# §3.1: spread_bps_ob が NaN なら fallback."""
-        primary_gate.set_fallback(fallback_gate)
-        features = {col: 0.5 for col in primary_gate.feature_cols}
-        features["spread_bps_ob"] = float("nan")
-        features["depth_imbalance_ob"] = 0.1
-        result = primary_gate.evaluate(features)
-        assert result.model_used == "fallback"
-
-    def test_falls_back_when_ob_stale(
-        self, primary_gate: SkipGate, fallback_gate: SkipGate
-    ) -> None:
-        """068# §3.1: OB が鮮度上限を超えたら fallback."""
-        primary_gate.set_fallback(fallback_gate)
-        primary_gate.config.ob_freshness_sec = 2.0
-        features = {col: 0.5 for col in primary_gate.feature_cols}
-        features["spread_bps_ob"] = 5.0
-        features["depth_imbalance_ob"] = 0.1
-        # ob_age_sec=5.0 > freshness=2.0 → stale
-        result = primary_gate.evaluate(features, ob_age_sec=5.0)
-        assert result.model_used == "fallback"
-
-    def test_no_fallback_when_ob_missing_without_fallback(
-        self, primary_gate: SkipGate
-    ) -> None:
-        """Fallback 未設定時は OB 欠損でも primary が NaN impute で処理."""
-        features = {
-            "log_queue_wait": 1.0,
-            "edge_bps": 0.5,
-            "vpin_60s": 0.3,
-            "hour_cos": 0.8,
-            "hour_sin": 0.6,
-        }
-        # fallback なし → primary が使う (NaN impute)
-        result = primary_gate.evaluate(features)
-        assert result.features_used >= 3
-        assert result.model_used == "primary"
+    def test_no_fallback_attribute(self, trade_only_gate: SkipGate) -> None:
+        """071# _fallback 属性は存在しない."""
+        assert not hasattr(trade_only_gate, "_fallback")
 
 
 class Test068SkipGateSideThreshold:
@@ -675,87 +566,28 @@ class Test068SkipGateSideThreshold:
         assert isinstance(sell_result.should_skip, bool)
 
 
-class Test068OBQualityCheck:
-    """068# §3.1: OB 品質判定のユニットテスト."""
+class Test071OBRemoved:
+    """071# OB 品質判定が除去されたことの確認."""
 
-    def test_valid_ob(self) -> None:
-        """正常な OB → True."""
+    def test_no_ob_quality_method(self) -> None:
+        """_check_ob_quality メソッドが存在しない."""
         from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
         gate = SkipGate(
             model=None, scaler=None, feature_cols=[],
             config=SkipGateConfig(),
         )
-        features = {"spread_bps_ob": 15.0, "depth_imbalance_ob": 0.3}
-        assert gate._check_ob_quality(features) is True
+        assert not hasattr(gate, "_check_ob_quality")
 
-    def test_spread_zero(self) -> None:
-        """spread=0 → False (板なしと同義)."""
-        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
-        gate = SkipGate(
-            model=None, scaler=None, feature_cols=[],
-            config=SkipGateConfig(),
-        )
-        features = {"spread_bps_ob": 0.0, "depth_imbalance_ob": 0.3}
-        assert gate._check_ob_quality(features) is False
+    def test_no_ob_critical_features(self) -> None:
+        """OB_CRITICAL_FEATURES が存在しない."""
+        from scripts.v460.ml.skip_gate import SkipGate
+        assert not hasattr(SkipGate, "OB_CRITICAL_FEATURES")
 
-    def test_spread_nan(self) -> None:
-        """spread=NaN → False."""
-        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
-        gate = SkipGate(
-            model=None, scaler=None, feature_cols=[],
-            config=SkipGateConfig(),
-        )
-        features = {"spread_bps_ob": float("nan"), "depth_imbalance_ob": 0.3}
-        assert gate._check_ob_quality(features) is False
-
-    def test_depth_nan(self) -> None:
-        """depth=NaN → False."""
-        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
-        gate = SkipGate(
-            model=None, scaler=None, feature_cols=[],
-            config=SkipGateConfig(),
-        )
-        features = {"spread_bps_ob": 15.0, "depth_imbalance_ob": float("nan")}
-        assert gate._check_ob_quality(features) is False
-
-    def test_missing_keys(self) -> None:
-        """キーなし → False."""
-        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
-        gate = SkipGate(
-            model=None, scaler=None, feature_cols=[],
-            config=SkipGateConfig(),
-        )
-        assert gate._check_ob_quality({"hour_sin": 0.5}) is False
-
-    def test_stale_ob(self) -> None:
-        """鮮度超過 → False."""
-        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
-        gate = SkipGate(
-            model=None, scaler=None, feature_cols=[],
-            config=SkipGateConfig(ob_freshness_sec=2.0),
-        )
-        features = {"spread_bps_ob": 15.0, "depth_imbalance_ob": 0.3}
-        assert gate._check_ob_quality(features, ob_age_sec=5.0) is False
-
-    def test_fresh_ob(self) -> None:
-        """鮮度以内 → True."""
-        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
-        gate = SkipGate(
-            model=None, scaler=None, feature_cols=[],
-            config=SkipGateConfig(ob_freshness_sec=5.0),
-        )
-        features = {"spread_bps_ob": 15.0, "depth_imbalance_ob": 0.3}
-        assert gate._check_ob_quality(features, ob_age_sec=1.0) is True
-
-    def test_negative_spread(self) -> None:
-        """spread<0 → False."""
-        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
-        gate = SkipGate(
-            model=None, scaler=None, feature_cols=[],
-            config=SkipGateConfig(),
-        )
-        features = {"spread_bps_ob": -1.0, "depth_imbalance_ob": 0.3}
-        assert gate._check_ob_quality(features) is False
+    def test_gate_feature_cols_no_ob(self) -> None:
+        """GATE_FEATURE_COLS に OB 特徴量が含まれない."""
+        ob_features = {"spread_bps_ob", "depth_imbalance_ob", "side_aligned_imbalance"}
+        for col in GATE_FEATURE_COLS:
+            assert col not in ob_features, f"OB feature still in GATE_FEATURE_COLS: {col}"
 
 
 # ======================================================================
@@ -773,10 +605,6 @@ class Test058MarketStateFeatures:
             spread_jpy=500.0,
             offset_ratio=0.05,
             regime="ranging",
-            best_bid=14_500_000,
-            best_ask=14_500_500,
-            bid_vol_5=0.3,
-            ask_vol_5=0.2,
         )
         assert "side_buy" in features
         assert features["side_buy"] == 1.0
@@ -786,32 +614,25 @@ class Test058MarketStateFeatures:
         assert features["offset_ratio"] == 0.05
 
     def test_interaction_features(self) -> None:
-        """インタラクション特徴量が正しい符号."""
+        """071# OB 除去後: trade-based インタラクション特徴量."""
+        trades = [
+            {"ts": 100.0, "price": 14_500_000, "amount": 0.01, "side": "buy"},
+            {"ts": 101.0, "price": 14_500_100, "amount": 0.02, "side": "sell"},
+        ]
         features_buy = build_features_from_market_state(
             side="buy",
             spread_jpy=500.0,
             offset_ratio=0.05,
             regime="ranging",
-            best_bid=14_500_000,
-            best_ask=14_500_500,
-            bid_vol_5=0.3,  # bid > ask → positive imbalance
-            ask_vol_5=0.2,
+            recent_trades=trades,
         )
-        # buy + positive imbalance → positive aligned_imbalance
-        assert features_buy["side_aligned_imbalance"] > 0
-
-        features_sell = build_features_from_market_state(
-            side="sell",
-            spread_jpy=500.0,
-            offset_ratio=0.05,
-            regime="ranging",
-            best_bid=14_500_000,
-            best_ask=14_500_500,
-            bid_vol_5=0.3,
-            ask_vol_5=0.2,
-        )
-        # sell + positive imbalance → negative aligned_imbalance
-        assert features_sell["side_aligned_imbalance"] < 0
+        # buy + positive TFI → positive aligned_tfi
+        assert "side_aligned_tfi" in features_buy
+        assert "side_aligned_velocity" in features_buy
+        # OB 特徴量は存在しない
+        assert "spread_bps_ob" not in features_buy
+        assert "depth_imbalance_ob" not in features_buy
+        assert "side_aligned_imbalance" not in features_buy
 
     def test_with_recent_trades(self) -> None:
         """直近約定データ付きの特徴量."""
@@ -825,10 +646,6 @@ class Test058MarketStateFeatures:
             spread_jpy=500.0,
             offset_ratio=0.05,
             regime="trending",
-            best_bid=14_500_000,
-            best_ask=14_500_500,
-            bid_vol_5=0.3,
-            ask_vol_5=0.3,
             recent_trades=trades,
         )
         assert features["trade_count_60s"] == 3.0
@@ -842,10 +659,6 @@ class Test058MarketStateFeatures:
             spread_jpy=500.0,
             offset_ratio=0.05,
             regime="unknown",
-            best_bid=14_500_000,
-            best_ask=14_500_500,
-            bid_vol_5=0.3,
-            ask_vol_5=0.3,
         )
         assert features["trade_count_60s"] == 0.0
         assert features["buy_ratio"] == 0.5
@@ -858,10 +671,6 @@ class Test058MarketStateFeatures:
             spread_jpy=500.0,
             offset_ratio=0.05,
             regime="ranging",
-            best_bid=14_500_000,
-            best_ask=14_500_500,
-            bid_vol_5=0.3,
-            ask_vol_5=0.2,
             recent_trades=[
                 {"ts": 100.0, "price": 14_500_000, "amount": 0.01, "side": "buy"},
             ],
@@ -909,16 +718,12 @@ class Test058Integration:
             assert path.exists()
             assert gate.metadata["n_samples"] > 100
 
-            # 評価テスト
+            # 評価テスト (071# OB params removed)
             features = build_features_from_market_state(
                 side="buy",
                 spread_jpy=500.0,
                 offset_ratio=0.05,
                 regime="ranging",
-                best_bid=14_500_000,
-                best_ask=14_500_500,
-                bid_vol_5=0.3,
-                ask_vol_5=0.2,
             )
             result = gate.evaluate(features)
             assert isinstance(result.predicted_pnl_bps, float)
@@ -1082,10 +887,6 @@ class Test059TimestampConsistency:
             spread_jpy=500.0,
             offset_ratio=0.05,
             regime="ranging",
-            best_bid=14_500_000,
-            best_ask=14_500_500,
-            bid_vol_5=0.3,
-            ask_vol_5=0.2,
             market_timestamp=ts,
         )
 
@@ -1111,10 +912,6 @@ class Test059TimestampConsistency:
             spread_jpy=500.0,
             offset_ratio=0.05,
             regime="ranging",
-            best_bid=14_500_000,
-            best_ask=14_500_500,
-            bid_vol_5=0.3,
-            ask_vol_5=0.2,
             recent_trades=all_trades,
             trade_window_sec=60,
             market_timestamp=market_ts,
@@ -1127,10 +924,6 @@ class Test059TimestampConsistency:
             spread_jpy=500.0,
             offset_ratio=0.05,
             regime="ranging",
-            best_bid=14_500_000,
-            best_ask=14_500_500,
-            bid_vol_5=0.3,
-            ask_vol_5=0.2,
             recent_trades=all_trades,
             trade_window_sec=300,
             market_timestamp=market_ts,

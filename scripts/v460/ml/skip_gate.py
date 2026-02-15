@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_MODEL_PATH = Path("models/v460/skip_gate.pkl")
 
 #: skip gate で使用する特徴量カラム (順序固定)
+#: 071# OB 特徴量を除去 — 価格ベースのみで判断
 GATE_FEATURE_COLS = [
     # base features
     "side_buy",
@@ -43,17 +44,14 @@ GATE_FEATURE_COLS = [
     "regime_trending",
     "regime_ranging",
     "regime_high_vol",
-    # micro features
-    "spread_bps_ob",
-    "depth_imbalance_ob",
+    # trade-based micro features (OB 不使用)
     "trade_count_60s",
     "buy_ratio",
     "trade_flow_imbalance_60s",
     "avg_trade_size",
     "price_velocity_60s",
     "vpin_60s",
-    # interaction features
-    "side_aligned_imbalance",
+    # interaction features (trade-based only)
     "side_aligned_tfi",
     "side_aligned_velocity",
 ]
@@ -72,8 +70,6 @@ class SkipGateConfig:
     # 068# §3.3: side 別閾値 (None は共通 as_threshold を使用)
     as_threshold_buy: Optional[float] = None
     as_threshold_sell: Optional[float] = None
-    # 068# §3.1: OB 鮮度上限 (秒). OB取得からこの秒数以上経過したら品質不良判定
-    ob_freshness_sec: float = 3.0
 
 
 @dataclass
@@ -100,50 +96,8 @@ class SkipGate:
     059# NEW-02: Pipeline (Imputer+Scaler+Model) を保持。
     後方互換: 旧形式 (model+scaler) でも動作。
 
-    065# Two-tier: OB 不在時にフォールバックモデルへ切替.
+    071# OB 特徴量を除去 — 価格ベースのみで判断 (v459 方式回帰).
     """
-
-    # OB 必須特徴量 — これらの品質が不良なら fallback モデルを使う
-    OB_CRITICAL_FEATURES = {"depth_imbalance_ob", "spread_bps_ob"}
-
-    def _check_ob_quality(
-        self,
-        features: dict[str, float],
-        *,
-        ob_age_sec: float | None = None,
-    ) -> bool:
-        """068# §3.1: OB 特徴量の品質判定.
-
-        「キーがある」ではなく「値が有効」で OB 可用性を判断する。
-        build_features_from_market_state() は常にキーを生成するため、
-        キー有無ではなく値の有効性で判定する必要がある。
-
-        Args:
-            features: 特徴量辞書.
-            ob_age_sec: OB 取得からの経過秒数 (None は鮮度チェックしない).
-
-        Returns:
-            True if OB is usable for primary model.
-        """
-        spread = features.get("spread_bps_ob")
-        depth = features.get("depth_imbalance_ob")
-        # キーが存在しない
-        if spread is None or depth is None:
-            return False
-        # spread_bps_ob が有限かつ > 0 (mid=0 や bid=ask を弾く)
-        if not (np.isfinite(spread) and spread > 0):
-            return False
-        # depth_imbalance_ob が有限 (NaN/Inf を弾く)
-        if not np.isfinite(depth):
-            return False
-        # 鮮度チェック
-        if ob_age_sec is not None and ob_age_sec > self.config.ob_freshness_sec:
-            logger.debug(
-                f"SkipGate: OB stale ({ob_age_sec:.1f}s > "
-                f"{self.config.ob_freshness_sec:.1f}s)"
-            )
-            return False
-        return True
 
     def __init__(
         self,
@@ -161,29 +115,18 @@ class SkipGate:
         self.metadata = metadata or {}
         self._recent_skips: list[bool] = []
         self._pipeline = pipeline  # 059# NEW-02: 完全 Pipeline
-        self._fallback: Optional["SkipGate"] = None  # 065# two-tier
-
-    def set_fallback(self, fallback: "SkipGate") -> None:
-        """OB 不在時のフォールバックモデルを設定 (065#)."""
-        self._fallback = fallback
-        logger.info(
-            f"SkipGate fallback set: {len(fallback.feature_cols)} features, "
-            f"label={fallback.metadata.get('label', 'unknown')}"
-        )
 
     def evaluate(
         self,
         features: dict[str, float],
         *,
         side: str | None = None,
-        ob_age_sec: float | None = None,
     ) -> SkipDecision:
         """注文前にスキップ判定.
 
         Args:
             features: 特徴量辞書. GATE_FEATURE_COLS のキーを含む.
             side: "buy" or "sell". 068# §3.3 side 別閾値に使用.
-            ob_age_sec: OB 取得からの経過秒数. 068# §3.1 鮮度判定に使用.
 
         Returns:
             SkipDecision.
@@ -213,16 +156,6 @@ class SkipGate:
                 features_used=n_used,
                 reason="insufficient_features",
             )
-
-        # 068# §3.1: OB 品質判定 (キー有無ではなく値の有効性)
-        ob_quality_ok = self._check_ob_quality(features, ob_age_sec=ob_age_sec)
-        if not ob_quality_ok and self._fallback is not None:
-            logger.debug("SkipGate: OB quality insufficient → fallback model")
-            decision = self._fallback.evaluate(
-                features, side=side, ob_age_sec=ob_age_sec,
-            )
-            decision.model_used = "fallback"
-            return decision
 
         # 予測 — 059# NEW-02: Pipeline 優先、後方互換あり
         x_df = pd.DataFrame([x], columns=self.feature_cols)
@@ -335,16 +268,13 @@ def build_features_from_market_state(
     spread_jpy: float,
     offset_ratio: float,
     regime: str,
-    best_bid: float,
-    best_ask: float,
-    bid_vol_5: float,
-    ask_vol_5: float,
     recent_trades: list[dict] | None = None,
     trade_window_sec: int = 60,
     market_timestamp: float | None = None,
 ) -> dict[str, float]:
     """現在のマーケット状態から skip gate 用特徴量を構築.
 
+    071# OB 特徴量除去版: 価格と取引データのみで判断.
     run_fill_test.py から呼び出される。
 
     Args:
@@ -352,8 +282,6 @@ def build_features_from_market_state(
         spread_jpy: 現在のスプレッド (JPY).
         offset_ratio: spread_offset_ratio.
         regime: "trending", "ranging", "high_vol", etc.
-        best_bid, best_ask: 最良気配.
-        bid_vol_5, ask_vol_5: 上位5レベルの板厚.
         recent_trades: 直近の約定リスト [{ts, price, amount, side}, ...].
         trade_window_sec: 約定統計のウィンドウ (秒). recent_trades をフィルタ.
         market_timestamp: UNIX timestamp (秒). 省略時は datetime.now() のローカル時刻.
@@ -379,18 +307,6 @@ def build_features_from_market_state(
     features["regime_trending"] = 1.0 if regime == "trending" else 0.0
     features["regime_ranging"] = 1.0 if regime == "ranging" else 0.0
     features["regime_high_vol"] = 1.0 if regime == "high_vol" else 0.0
-
-    # Micro features from orderbook
-    mid = (best_bid + best_ask) / 2
-    if mid > 0:
-        features["spread_bps_ob"] = (best_ask - best_bid) / mid * 10000
-    else:
-        features["spread_bps_ob"] = 0.0
-
-    total_depth = bid_vol_5 + ask_vol_5
-    features["depth_imbalance_ob"] = (
-        (bid_vol_5 - ask_vol_5) / total_depth if total_depth > 0 else 0.0
-    )
 
     # Trade features — 059# P1-6: trade_window_sec でフィルタ
     if recent_trades and market_timestamp is not None:
@@ -440,11 +356,8 @@ def build_features_from_market_state(
         features["price_velocity_60s"] = 0.0
         features["vpin_60s"] = 0.5
 
-    # Interaction features
+    # Interaction features (trade-based only, 071# OB 除去)
     side_sign = 1.0 if side == "buy" else -1.0
-    features["side_aligned_imbalance"] = (
-        features["depth_imbalance_ob"] * side_sign
-    )
     features["side_aligned_tfi"] = (
         features["trade_flow_imbalance_60s"] * side_sign
     )
