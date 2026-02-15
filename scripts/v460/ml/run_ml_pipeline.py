@@ -1,7 +1,8 @@
-"""057# Run ML Pipeline: AS分類器 + Fill分類器のオフライン評価.
+"""058# Run ML Pipeline: AS分類器 + Fill分類器のオフライン評価.
 
 使い方:
     python scripts/v460/ml/run_ml_pipeline.py [--output-dir reports/v460/ml]
+    python scripts/v460/ml/run_ml_pipeline.py --enriched  # マイクロストラクチャ特徴量付き
 """
 
 from __future__ import annotations
@@ -35,15 +36,29 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def run_as_pipeline(df: "pd.DataFrame", output_dir: Path) -> dict:
+def run_as_pipeline(
+    df: "pd.DataFrame",
+    output_dir: Path,
+    *,
+    enriched: bool = False,
+    raw_dir: Path | None = None,
+) -> dict:
     """AS 分類器パイプライン."""
     import pandas as pd
 
     logger.info("=" * 60)
-    logger.info("ML-1: AS Classifier Pipeline")
+    logger.info(f"ML-1: AS Classifier Pipeline {'(ENRICHED)' if enriched else '(baseline)'}")
     logger.info("=" * 60)
 
-    X, y = build_as_features(df)
+    if enriched:
+        from scripts.v460.ml.feature_enricher import (
+            build_enriched_as_features,
+            enrich_fill_records,
+        )
+        enriched_df = enrich_fill_records(df, raw_dir=raw_dir)
+        X, y = build_enriched_as_features(enriched_df)
+    else:
+        X, y = build_as_features(df)
 
     # PnL for skip simulation
     filled_mask = df["filled"].astype(bool) & df["adverse_selected_raw"].notna()
@@ -161,8 +176,156 @@ def _print_fill_metrics(name: str, m: "FillModelMetrics") -> None:
         logger.info(f"  Top features: {sorted_fi[:5]}")
 
 
+def run_pnl_pipeline(
+    df: "pd.DataFrame",
+    output_dir: Path,
+    *,
+    raw_dir: Path | None = None,
+) -> dict:
+    """ML-1b: PnL 回帰パイプライン.
+
+    AS 分類の代わりに post_fill_30s_pnl (bps) を直接予測。
+    目的変数が連続値 → Ridge / GradientBoostingRegressor.
+    """
+    import pandas as pd
+    from sklearn.linear_model import Ridge
+    from sklearn.ensemble import GradientBoostingRegressor
+    from sklearn.model_selection import TimeSeriesSplit
+    from sklearn.preprocessing import StandardScaler
+    from scipy.stats import spearmanr
+    import numpy as np
+
+    from scripts.v460.ml.feature_enricher import (
+        build_pnl_features,
+        enrich_fill_records,
+    )
+
+    logger.info("=" * 60)
+    logger.info("ML-1b: PnL Regressor Pipeline")
+    logger.info("=" * 60)
+
+    enriched_df = enrich_fill_records(df, raw_dir=raw_dir)
+    X, y = build_pnl_features(enriched_df)
+
+    if len(X) < 30:
+        logger.warning(f"Too few PnL samples: {len(X)}, skipping")
+        return {}
+
+    tscv = TimeSeriesSplit(n_splits=5)
+    results: dict = {}
+
+    for model_name, make_model in [
+        ("ridge", lambda: Ridge(alpha=10.0)),
+        ("gbr", lambda: GradientBoostingRegressor(
+            n_estimators=50, max_depth=2, learning_rate=0.05,
+            subsample=0.8, random_state=42,
+        )),
+    ]:
+        ics: list[float] = []
+        maes: list[float] = []
+        skip_improvements: list[float] = []
+        oof_preds = np.full(len(X), np.nan)
+
+        for fold, (train_idx, test_idx) in enumerate(tscv.split(X)):
+            scaler = StandardScaler()
+            X_tr = scaler.fit_transform(X.iloc[train_idx])
+            X_te = scaler.transform(X.iloc[test_idx])
+            y_tr = y.iloc[train_idx].values
+            y_te = y.iloc[test_idx].values
+
+            model = make_model()
+            model.fit(X_tr, y_tr)
+            preds = model.predict(X_te)
+
+            oof_preds[test_idx] = preds
+            mae = float(np.mean(np.abs(preds - y_te)))
+            maes.append(mae)
+
+            # Spearman IC (signal quality)
+            if len(y_te) > 5:
+                ic, _ = spearmanr(preds, y_te)
+                if np.isnan(ic):
+                    ic = 0.0
+                ics.append(ic)
+
+        # OOF skip simulation: skip predicted PnL < 0
+        valid = ~np.isnan(oof_preds)
+        if valid.sum() > 20:
+            pnl_vals = y.values[valid]
+            pred_vals = oof_preds[valid]
+            baseline_pnl = float(np.mean(pnl_vals))
+
+            # Skip predicted negative PnL
+            keep_mask = pred_vals >= 0
+            n_keep = int(keep_mask.sum())
+            n_skip = int((~keep_mask).sum())
+            if n_keep > 0:
+                kept_pnl = float(np.mean(pnl_vals[keep_mask]))
+                pnl_improvement = kept_pnl - baseline_pnl
+            else:
+                kept_pnl = 0.0
+                pnl_improvement = 0.0
+        else:
+            n_keep, n_skip = len(X), 0
+            baseline_pnl = float(y.mean())
+            kept_pnl = baseline_pnl
+            pnl_improvement = 0.0
+
+        ic_mean = float(np.mean(ics)) if ics else 0.0
+        mae_mean = float(np.mean(maes))
+
+        model_result = {
+            "n_samples": len(X),
+            "ic_mean": ic_mean,
+            "ic_std": float(np.std(ics)) if ics else 0.0,
+            "mae_mean": mae_mean,
+            "mae_std": float(np.std(maes)),
+            "baseline_pnl_bps": baseline_pnl,
+            "skip_neg_keep": n_keep,
+            "skip_neg_skip": n_skip,
+            "skip_neg_kept_pnl_bps": kept_pnl,
+            "skip_neg_improvement_bps": pnl_improvement,
+        }
+
+        # Feature importances
+        scaler_final = StandardScaler()
+        X_all = scaler_final.fit_transform(X)
+        final_model = make_model()
+        final_model.fit(X_all, y.values)
+
+        if hasattr(final_model, "feature_importances_"):
+            fi = dict(zip(X.columns, final_model.feature_importances_.tolist()))
+        elif hasattr(final_model, "coef_"):
+            fi = dict(zip(X.columns, np.abs(final_model.coef_).tolist()))
+        else:
+            fi = {}
+
+        model_result["feature_importances"] = fi
+        results[model_name] = model_result
+
+        logger.info(f"\n--- {model_name.upper()} ---")
+        logger.info(f"  IC (Spearman): {ic_mean:.4f}")
+        logger.info(f"  MAE:           {mae_mean:.4f} bps")
+        logger.info(f"  Baseline PnL:  {baseline_pnl:.4f} bps")
+        logger.info(f"  Skip(PnL<0):   keep={n_keep}, skip={n_skip}")
+        logger.info(f"  Kept PnL:      {kept_pnl:.4f} bps")
+        logger.info(f"  Improvement:   {pnl_improvement:+.4f} bps")
+        if fi:
+            sorted_fi = sorted(fi.items(), key=lambda x: x[1], reverse=True)
+            logger.info(f"  Top features:  {sorted_fi[:5]}")
+
+    # Save
+    out_file = output_dir / "pnl_regressor_results.json"
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_file, "w") as f:
+        json.dump(results, f, indent=2, ensure_ascii=False, default=str)
+    logger.info(f"\nPnL results saved to {out_file}")
+
+    return results
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="057# ML Pipeline")
+    parser = argparse.ArgumentParser(description="058# ML Pipeline")
     parser.add_argument(
         "--output-dir",
         type=str,
@@ -175,25 +338,45 @@ def main() -> None:
         default=None,
         help="Fill records directory (default: results/v460/fill_test)",
     )
+    parser.add_argument(
+        "--enriched",
+        action="store_true",
+        help="Use microstructure-enriched features from raw data",
+    )
+    parser.add_argument(
+        "--raw-dir",
+        type=str,
+        default=None,
+        help="Raw data directory (default: data/v460/raw)",
+    )
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir)
     results_dir = Path(args.results_dir) if args.results_dir else None
+    raw_dir = Path(args.raw_dir) if args.raw_dir else None
 
     df = load_fill_records(results_dir)
     logger.info(f"Total records: {len(df)}")
 
     # ML-1: AS Classifier
-    as_results = run_as_pipeline(df, output_dir)
+    as_results = run_as_pipeline(
+        df, output_dir, enriched=args.enriched, raw_dir=raw_dir
+    )
 
     print()
+
+    # ML-1b: PnL Regressor (enriched only)
+    pnl_results: dict = {}
+    if args.enriched:
+        pnl_results = run_pnl_pipeline(df, output_dir, raw_dir=raw_dir)
+        print()
 
     # ML-2: Fill Classifier
     fill_results = run_fill_pipeline(df, output_dir)
 
     # Summary
     print("\n" + "=" * 60)
-    print("057# ML Pipeline Summary")
+    print(f"058# ML Pipeline Summary {'(ENRICHED)' if args.enriched else '(baseline)'}")
     print("=" * 60)
     print(f"  AS Classifier best:   {as_results['best_model'].upper()}")
     as_best = as_results[as_results["best_model"]]
