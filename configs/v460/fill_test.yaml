@@ -131,3 +131,15 @@ spread_adaptive:
   narrow_spread_boost: 2.0     # 狭スプレッド時の offset 倍率
   wide_spread_bps: 25.0        # これ以上で「広い」→ offset 縮小 (fill 優先)
   wide_spread_ratio: 0.5       # 広スプレッド時の offset 割引
+
+# ---- 062# S5: SkipGate ML フィルター (AS 分類器ベース) ----
+# 061# で学習した LR(C=0.01, k=8) AS分類器による注文前スキップ判定.
+# P(AS) >= as_threshold の注文をスキップし、fill 後 AS を低減.
+# walk-forward 検証済み: Skip20% で +0.230 bps 改善.
+skip_gate:
+  enabled: false               # 初回はモデル学習後に有効化 (models/v460/skip_gate_as.pkl 必要)
+  mode: as                     # "as" (AS 分類器, 推奨) / "pnl" (PnL 回帰)
+  model_path: models/v460/skip_gate_as.pkl  # 学習済みモデルファイル
+  as_threshold: 0.6            # AS 確率スキップ閾値 (mode=as 時)
+  pnl_threshold: 0.0           # PnL 予測スキップ閾値 (mode=pnl 時)
+  max_skip_rate: 0.3           # 連続スキップ率の上限 (直近20注文中30%まで)

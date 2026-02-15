@@ -152,6 +152,13 @@ class FillTestConfig:
     narrow_spread_boost: float = 2.0       # 狭い時の offset 倍率
     wide_spread_bps: float = 25.0          # 広スプレッド閾値 (bps)
     wide_spread_ratio: float = 0.5         # 広い時の offset 割引
+    # 062# S5: SkipGate ML フィルター (AS 分類器ベースの注文スキップ)
+    skip_gate_enabled: bool = False
+    skip_gate_mode: str = "as"             # "pnl" or "as" (061# AS 分類器推奨)
+    skip_gate_model_path: str = "models/v460/skip_gate_as.pkl"  # モデルファイル
+    skip_gate_as_threshold: float = 0.6    # AS 確率スキップ閾値 (mode=as)
+    skip_gate_pnl_threshold: float = 0.0   # PnL 予測スキップ閾値 (mode=pnl)
+    skip_gate_max_skip_rate: float = 0.3   # 連続スキップ率上限 (安全弁)
 
     @classmethod
     def from_yaml(cls, yaml_cfg: dict) -> "FillTestConfig":
@@ -305,6 +312,21 @@ class FillTestConfig:
             if yaml_key in sa:
                 kwargs[config_key] = sa[yaml_key]
 
+        # 062# S5: SkipGate ML フィルター
+        sg = yaml_cfg.get("skip_gate", {})
+        if sg.get("enabled") is not None:
+            kwargs["skip_gate_enabled"] = sg["enabled"]
+        sg_map = {
+            "mode": "skip_gate_mode",
+            "model_path": "skip_gate_model_path",
+            "as_threshold": "skip_gate_as_threshold",
+            "pnl_threshold": "skip_gate_pnl_threshold",
+            "max_skip_rate": "skip_gate_max_skip_rate",
+        }
+        for yaml_key, config_key in sg_map.items():
+            if yaml_key in sg:
+                kwargs[config_key] = sg[yaml_key]
+
         return cls(**kwargs)
 
 
@@ -397,6 +419,37 @@ class FillTestRunner:
         self._unsaved_batch: list[FillRecord] = []
         self._save_fail_count: int = 0
         self._max_save_retries: int = config.max_save_retries
+
+        # 062# S5: SkipGate ML フィルター
+        self._skip_gate: Optional["SkipGate"] = None
+        if config.skip_gate_enabled:
+            try:
+                from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
+
+                gate_path = Path(config.skip_gate_model_path)
+                if not gate_path.is_absolute():
+                    gate_path = _PROJECT_ROOT / gate_path
+                if not gate_path.exists():
+                    logger.warning(
+                        f"[skip_gate] Model not found: {gate_path}. "
+                        f"SkipGate disabled."
+                    )
+                else:
+                    self._skip_gate = SkipGate.load(gate_path)
+                    # ランタイム設定でオーバーライド
+                    self._skip_gate.config.mode = config.skip_gate_mode
+                    self._skip_gate.config.as_threshold = config.skip_gate_as_threshold
+                    self._skip_gate.config.threshold_bps = config.skip_gate_pnl_threshold
+                    self._skip_gate.config.max_skip_rate = config.skip_gate_max_skip_rate
+                    logger.info(
+                        f"[skip_gate] Loaded: mode={config.skip_gate_mode}, "
+                        f"as_threshold={config.skip_gate_as_threshold}, "
+                        f"features={len(self._skip_gate.feature_cols)}, "
+                        f"path={gate_path}"
+                    )
+            except Exception as e:
+                logger.error(f"[skip_gate] Failed to load: {e}. SkipGate disabled.")
+                self._skip_gate = None
 
         # 安全設計: atexit + signal で残存注文キャンセル + 未保存データ退避 + ロック解放
         atexit.register(self._cleanup_sync)
@@ -902,6 +955,98 @@ class FillTestRunner:
                 spread_offset_ratio=self.config.spread_offset_ratio,
             )
 
+        # 062# 1.5: SkipGate ML 判定 (注文前にスキップ判断)
+        skip_gate_skipped: Optional[bool] = None
+        skip_gate_score: Optional[float] = None
+        skip_gate_reason: Optional[str] = None
+        if self._skip_gate is not None:
+            try:
+                from scripts.v460.ml.skip_gate import build_features_from_market_state
+
+                # OB データはすでに _compute_maker_price 内で取得済み
+                # → _last_imbalance, _last_bid_depth, _last_ask_depth を再利用
+                ob = await self.adapter.get_orderbook(
+                    self.config.symbol, depth=self.config.imbalance_depth,
+                )
+                best_bid = ob.bids[0][0] if ob.bids else 0.0
+                best_ask = ob.asks[0][0] if ob.asks else 0.0
+                bid_vol = sum(qty for _, qty in ob.bids[:5]) if ob.bids else 0.0
+                ask_vol = sum(qty for _, qty in ob.asks[:5]) if ob.asks else 0.0
+
+                # レジーム情報
+                sg_regime = "unknown"
+                if self._regime_detector is not None:
+                    sg_regime = self._regime_detector.current_regime.value
+
+                # 直近約定データ取得 (利用可能な場合)
+                recent_trades_data: list[dict] | None = None
+                try:
+                    trades = await self.adapter.get_recent_trades(
+                        self.config.symbol, limit=50,
+                    )
+                    if trades:
+                        recent_trades_data = [
+                            {
+                                "ts": getattr(t, "timestamp", time.time()),
+                                "price": getattr(t, "price", 0.0),
+                                "amount": getattr(t, "amount", getattr(t, "quantity", 0.0)),
+                                "side": getattr(t, "side", "buy"),
+                            }
+                            for t in trades
+                        ]
+                except Exception:
+                    pass  # 約定データ取得失敗は非致命的
+
+                gate_features = build_features_from_market_state(
+                    side=side,
+                    spread_jpy=spread_at_order or 0.0,
+                    offset_ratio=effective_offset_ratio,
+                    regime=sg_regime,
+                    best_bid=best_bid,
+                    best_ask=best_ask,
+                    bid_vol_5=bid_vol,
+                    ask_vol_5=ask_vol,
+                    recent_trades=recent_trades_data,
+                    market_timestamp=time.time(),
+                )
+
+                decision = self._skip_gate.evaluate(gate_features)
+                skip_gate_skipped = decision.should_skip
+                skip_gate_score = decision.predicted_pnl_bps
+                skip_gate_reason = decision.reason
+
+                if decision.should_skip:
+                    logger.info(
+                        f"[skip_gate] SKIP: {side} order skipped "
+                        f"(score={skip_gate_score:.3f}, reason={skip_gate_reason}, "
+                        f"features={decision.features_used})"
+                    )
+                    return FillRecord(
+                        cycle_id=cycle_id,
+                        timestamp=time.time(),
+                        side=side,
+                        order_price=order_price,
+                        order_quantity=self._current_lot,
+                        cancelled=True,
+                        cancel_reason="skip_gate",
+                        spread_at_order=spread_at_order,
+                        spread_offset_ratio=effective_offset_ratio,
+                        skip_gate_skipped=True,
+                        skip_gate_score=skip_gate_score,
+                        skip_gate_reason=skip_gate_reason,
+                        orderbook_imbalance=self._last_imbalance if self.config.imbalance_enabled else None,
+                        bid_depth_total=self._last_bid_depth if self.config.imbalance_enabled else None,
+                        ask_depth_total=self._last_ask_depth if self.config.imbalance_enabled else None,
+                    )
+                else:
+                    logger.debug(
+                        f"[skip_gate] PASS: {side} order allowed "
+                        f"(score={skip_gate_score:.3f}, reason={skip_gate_reason})"
+                    )
+            except Exception as e:
+                logger.warning(f"[skip_gate] Evaluation failed (non-fatal): {e}")
+                skip_gate_reason = f"error:{e}"
+
         # 2. 発注 (CM-2: リトライ付き)
         t_submit = time.time()
         order = None
@@ -1235,6 +1380,10 @@ class FillTestRunner:
                 else None
             ),
             effective_offset_used=effective_offset_ratio,
+            # 062# SkipGate 判定情報 (PASS 時も記録 → 後続分析用)
+            skip_gate_skipped=skip_gate_skipped,
+            skip_gate_score=skip_gate_score,
+            skip_gate_reason=skip_gate_reason,
         )
 
         logger.info(

@@ -721,3 +721,171 @@ class Test055RoundTripBidirectional:
         assert metrics.total_pairs == 2
         assert metrics.unpaired_buys == 0
         assert metrics.unpaired_sells == 0
+
+
+# ======================================================================
+# 062# S5: SkipGate Config Tests
+# ======================================================================
+
+
+class Test062SkipGateConfig:
+    """062# S5: SkipGate 設定のテスト."""
+
+    def test_yaml_has_skip_gate_section(self) -> None:
+        """YAML に skip_gate セクションがある."""
+        cfg = load_fill_test_config()
+        assert "skip_gate" in cfg
+        assert cfg["skip_gate"]["enabled"] is False  # 初期は無効
+        assert cfg["skip_gate"]["mode"] == "as"
+        assert cfg["skip_gate"]["as_threshold"] == 0.6
+        assert cfg["skip_gate"]["max_skip_rate"] == 0.3
+
+    def test_from_yaml_skip_gate(self) -> None:
+        """SkipGate config が FillTestConfig に正しくマッピングされる."""
+        yaml_cfg = {
+            "skip_gate": {
+                "enabled": True,
+                "mode": "as",
+                "model_path": "models/v460/custom_gate.pkl",
+                "as_threshold": 0.5,
+                "pnl_threshold": -1.0,
+                "max_skip_rate": 0.2,
+            },
+        }
+        config = FillTestConfig.from_yaml(yaml_cfg)
+        assert config.skip_gate_enabled is True
+        assert config.skip_gate_mode == "as"
+        assert config.skip_gate_model_path == "models/v460/custom_gate.pkl"
+        assert config.skip_gate_as_threshold == 0.5
+        assert config.skip_gate_pnl_threshold == -1.0
+        assert config.skip_gate_max_skip_rate == 0.2
+
+    def test_from_yaml_skip_gate_defaults(self) -> None:
+        """SkipGate 未設定時のデフォルト値."""
+        config = FillTestConfig.from_yaml({})
+        assert config.skip_gate_enabled is False
+        assert config.skip_gate_mode == "as"
+        assert config.skip_gate_model_path == "models/v460/skip_gate_as.pkl"
+        assert config.skip_gate_as_threshold == 0.6
+        assert config.skip_gate_pnl_threshold == 0.0
+        assert config.skip_gate_max_skip_rate == 0.3
+
+    def test_from_yaml_skip_gate_partial(self) -> None:
+        """SkipGate 部分設定 + デフォルト混在."""
+        yaml_cfg = {
+            "skip_gate": {
+                "enabled": True,
+                "as_threshold": 0.7,
+            },
+        }
+        config = FillTestConfig.from_yaml(yaml_cfg)
+        assert config.skip_gate_enabled is True
+        assert config.skip_gate_as_threshold == 0.7
+        # 未指定フィールドはデフォルト
+        assert config.skip_gate_mode == "as"
+        assert config.skip_gate_model_path == "models/v460/skip_gate_as.pkl"
+
+    def test_yaml_roundtrip_skip_gate(self) -> None:
+        """YAML → FillTestConfig roundtrip for skip_gate."""
+        path = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
+        with open(path, "r", encoding="utf-8") as f:
+            cfg = yaml.safe_load(f)
+        config = FillTestConfig.from_yaml(cfg)
+        assert config.skip_gate_enabled == cfg["skip_gate"]["enabled"]
+        assert config.skip_gate_mode == cfg["skip_gate"]["mode"]
+        assert config.skip_gate_as_threshold == cfg["skip_gate"]["as_threshold"]
+
+
+class Test062SkipGateRunner:
+    """062# S5: SkipGate の FillTestRunner 統合テスト."""
+
+    def test_runner_skip_gate_disabled_by_default(self) -> None:
+        """SkipGate disabled ではロードされない."""
+        runner = _make_runner(skip_gate_enabled=False)
+        assert runner._skip_gate is None
+
+    def test_runner_skip_gate_model_not_found(self) -> None:
+        """モデルファイルが存在しない場合は None のまま."""
+        runner = _make_runner(
+            skip_gate_enabled=True,
+            skip_gate_model_path="models/v460/nonexistent.pkl",
+        )
+        assert runner._skip_gate is None
+
+    def test_fill_record_has_skip_gate_fields(self) -> None:
+        """FillRecord に skip_gate フィールドが存在する."""
+        record = FillRecord(
+            cycle_id="test",
+            timestamp=1.0,
+            side="buy",
+            order_price=10_000_000.0,
+            order_quantity=0.001,
+            skip_gate_skipped=True,
+            skip_gate_score=-0.5,
+            skip_gate_reason="skip",
+        )
+        assert record.skip_gate_skipped is True
+        assert record.skip_gate_score == -0.5
+        assert record.skip_gate_reason == "skip"
+
+    def test_fill_record_skip_gate_fields_default_none(self) -> None:
+        """FillRecord の skip_gate フィールドはデフォルト None."""
+        record = FillRecord(
+            cycle_id="test",
+            timestamp=1.0,
+            side="buy",
+            order_price=10_000_000.0,
+            order_quantity=0.001,
+        )
+        assert record.skip_gate_skipped is None
+        assert record.skip_gate_score is None
+        assert record.skip_gate_reason is None
+
+    def test_fill_record_to_dict_includes_skip_gate(self) -> None:
+        """FillRecord.to_dict() に skip_gate フィールドが含まれる."""
+        record = FillRecord(
+            cycle_id="test",
+            timestamp=1.0,
+            side="buy",
+            order_price=10_000_000.0,
+            order_quantity=0.001,
+            skip_gate_skipped=False,
+            skip_gate_score=0.3,
+            skip_gate_reason="pass",
+        )
+        d = record.to_dict()
+        assert "skip_gate_skipped" in d
+        assert d["skip_gate_skipped"] is False
+        assert d["skip_gate_score"] == 0.3
+        assert d["skip_gate_reason"] == "pass"
+
+    def test_fill_record_from_dict_with_skip_gate(self) -> None:
+        """FillRecord.from_dict() が skip_gate フィールドを復元."""
+        d = {
+            "cycle_id": "test",
+            "timestamp": 1.0,
+            "side": "buy",
+            "order_price": 10_000_000.0,
+            "order_quantity": 0.001,
+            "skip_gate_skipped": True,
+            "skip_gate_score": -2.5,
+            "skip_gate_reason": "skip",
+        }
+        record = FillRecord.from_dict(d)
+        assert record.skip_gate_skipped is True
+        assert record.skip_gate_score == -2.5
+        assert record.skip_gate_reason == "skip"
+
+    def test_fill_record_from_dict_backward_compat(self) -> None:
+        """旧フォーマット (skip_gate フィールドなし) からの後方互換."""
+        d = {
+            "cycle_id": "test",
+            "timestamp": 1.0,
+            "side": "buy",
+            "order_price": 10_000_000.0,
+            "order_quantity": 0.001,
+        }
+        record = FillRecord.from_dict(d)
+        assert record.skip_gate_skipped is None
+        assert record.skip_gate_score is None
+        assert record.skip_gate_reason is None
