@@ -63,9 +63,12 @@ GATE_FEATURE_COLS = [
 class SkipGateConfig:
     """Skip gate 設定."""
 
-    threshold_bps: float = 0.0  # PnL 予測がこれ以下ならスキップ
+    threshold_bps: float = 0.0  # PnL 予測がこれ以下ならスキップ (mode=pnl)
     enabled: bool = True
     max_skip_rate: float = 0.7  # 連続スキップ率の上限
+    # 061#: AS 分類器モード
+    mode: str = "pnl"  # "pnl" (Ridge PnL) or "as" (AS probability)
+    as_threshold: float = 0.6  # AS 確率がこれ以上ならスキップ (mode=as)
 
 
 @dataclass
@@ -80,10 +83,13 @@ class SkipDecision:
 
 
 class SkipGate:
-    """PnL 予測ベースのスキップゲート.
+    """予測ベースのスキップゲート.
 
-    Ridge 回帰で post_fill_30s_pnl (bps) を予測し、
-    予測値が閾値以下ならスキップを推奨する。
+    2つのモード:
+    - mode="pnl": Ridge 回帰で post_fill_30s_pnl (bps) を予測し、
+      予測値が閾値以下ならスキップ。
+    - mode="as" (061#): AS 分類器 (LR) で P(adverse_selection) を予測し、
+      確率が閾値以上ならスキップ。
 
     059# NEW-02: Pipeline (Imputer+Scaler+Model) を保持。
     後方互換: 旧形式 (model+scaler) でも動作。
@@ -146,14 +152,25 @@ class SkipGate:
 
         # 予測 — 059# NEW-02: Pipeline 優先、後方互換あり
         x_df = pd.DataFrame([x], columns=self.feature_cols)
-        if self._pipeline is not None:
-            pred_pnl = float(self._pipeline.predict(x_df)[0])
-        else:
-            x_scaled = self.scaler.transform(x_df)
-            pred_pnl = float(self.model.predict(x_scaled)[0])
 
-        # スキップ判定
-        should_skip = pred_pnl < self.config.threshold_bps
+        # 061#: mode に応じた予測・判定
+        if self.config.mode == "as":
+            # AS 分類器モード: P(AS) を予測
+            if self._pipeline is not None:
+                pred_prob = float(self._pipeline.predict_proba(x_df)[0, 1])
+            else:
+                x_scaled = self.scaler.transform(x_df)
+                pred_prob = float(self.model.predict_proba(x_scaled)[0, 1])
+            pred_pnl = -pred_prob * 10  # AS確率→疑似PnL (互換表示用)
+            should_skip = pred_prob >= self.config.as_threshold
+        else:
+            # PnL 回帰モード (既存)
+            if self._pipeline is not None:
+                pred_pnl = float(self._pipeline.predict(x_df)[0])
+            else:
+                x_scaled = self.scaler.transform(x_df)
+                pred_pnl = float(self.model.predict(x_scaled)[0])
+            should_skip = pred_pnl < self.config.threshold_bps
 
         # 連続スキップ率チェック — 059# P0-2: 最終決定を記録
         recent_rate = (
@@ -422,5 +439,90 @@ def train_and_save_skip_gate(
     logger.info(
         f"SkipGate trained: {len(X)} samples, "
         f"top features: {sorted_fi[:3]}"
+    )
+    return gate
+
+
+def train_and_save_as_skip_gate(
+    results_dir: Optional[Path] = None,
+    raw_dir: Optional[Path] = None,
+    output_path: Optional[Path] = None,
+    *,
+    as_threshold: float = 0.6,
+    k: int = 8,
+) -> SkipGate:
+    """061# AS 分類器ベースのスキップゲートを学習・保存.
+
+    LR(C=0.01, l2, k=8) で P(adverse_selection) を予測し、
+    確率が as_threshold 以上ならスキップを推奨する。
+
+    Args:
+        results_dir: fill_records_*.jsonl のディレクトリ.
+        raw_dir: raw data ディレクトリ.
+        output_path: 出力先 pkl.
+        as_threshold: AS 確率のスキップ閾値.
+        k: SelectKBest の k.
+
+    Returns:
+        学習済み SkipGate (mode=as).
+    """
+    from sklearn.feature_selection import SelectKBest, f_classif
+    from sklearn.linear_model import LogisticRegression
+
+    from scripts.v460.ml.data_loader import load_fill_records
+    from scripts.v460.ml.feature_enricher import (
+        build_enriched_as_features,
+        enrich_fill_records,
+    )
+
+    df = load_fill_records(results_dir)
+    enriched_df = enrich_fill_records(df, raw_dir=raw_dir)
+    X, y = build_enriched_as_features(enriched_df)
+
+    k_actual = min(k, X.shape[1])
+    pipe = Pipeline([
+        ("imputer", SimpleImputer(strategy="median")),
+        ("selector", SelectKBest(f_classif, k=k_actual)),
+        ("scaler", StandardScaler()),
+        ("model", LogisticRegression(
+            C=0.01, max_iter=2000, class_weight="balanced", random_state=42,
+        )),
+    ])
+    pipe.fit(X, y.values)
+
+    model = pipe.named_steps["model"]
+    scaler = pipe.named_steps["scaler"]
+
+    # Feature importances (selected features)
+    selector = pipe.named_steps["selector"]
+    selected_cols = X.columns[selector.get_support()].tolist()
+    fi = dict(zip(selected_cols, np.abs(model.coef_[0]).tolist()))
+    sorted_fi = sorted(fi.items(), key=lambda x: x[1], reverse=True)
+
+    out_path = output_path or Path("models/v460/skip_gate_as.pkl")
+    gate = SkipGate(
+        model=model,
+        scaler=scaler,
+        feature_cols=X.columns.tolist(),
+        config=SkipGateConfig(
+            mode="as",
+            as_threshold=as_threshold,
+            threshold_bps=0.0,
+        ),
+        metadata={
+            "n_samples": len(X),
+            "as_rate": float(y.mean()),
+            "k": k_actual,
+            "selected_features": selected_cols,
+            "feature_importances": dict(sorted_fi),
+            "trained_at": datetime.now().isoformat(),
+        },
+        pipeline=pipe,
+    )
+
+    p = gate.save(out_path)
+    logger.info(
+        f"AS SkipGate trained: {len(X)} samples, k={k_actual}, "
+        f"selected={selected_cols}, top features: {sorted_fi[:3]}"
     )
     return gate

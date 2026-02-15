@@ -387,6 +387,69 @@ class Test058SkipGate:
             assert abs(r1.predicted_pnl_bps - r2.predicted_pnl_bps) < 1e-10
 
 
+class Test061SkipGateASMode:
+    """061# AS 分類器モードの SkipGate テスト."""
+
+    @pytest.fixture
+    def as_gate(self, synthetic_fill_df: pd.DataFrame) -> SkipGate:
+        """合成データで AS モードの SkipGate を構築."""
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.preprocessing import StandardScaler
+
+        df = synthetic_fill_df.copy()
+        for col in MICRO_FEATURE_COLS:
+            df[col] = np.random.RandomState(42).randn(len(df))
+
+        X_as, y_as = build_enriched_as_features(df)
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X_as)
+        model = LogisticRegression(
+            C=0.01, max_iter=2000, class_weight="balanced", random_state=42
+        )
+        model.fit(X_scaled, y_as.values)
+
+        return SkipGate(
+            model=model,
+            scaler=scaler,
+            feature_cols=X_as.columns.tolist(),
+            config=SkipGateConfig(mode="as", as_threshold=0.6),
+        )
+
+    def test_as_mode_returns_decision(self, as_gate: SkipGate) -> None:
+        """AS モードで SkipDecision を返す."""
+        features = {col: 0.0 for col in as_gate.feature_cols}
+        result = as_gate.evaluate(features)
+        assert isinstance(result, SkipDecision)
+        assert isinstance(result.should_skip, bool)
+
+    def test_as_mode_config(self, as_gate: SkipGate) -> None:
+        """AS モードの config が正しい."""
+        assert as_gate.config.mode == "as"
+        assert as_gate.config.as_threshold == 0.6
+
+    def test_as_mode_disabled(self, as_gate: SkipGate) -> None:
+        """AS モードでも disabled で skip しない."""
+        as_gate.config.enabled = False
+        result = as_gate.evaluate({})
+        assert not result.should_skip
+        assert result.reason == "gate_disabled"
+
+    def test_as_mode_save_load(self, as_gate: SkipGate) -> None:
+        """AS モードの save → load roundtrip."""
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "test_as_gate.pkl"
+            as_gate.save(path)
+
+            loaded = SkipGate.load(path)
+            assert loaded.config.mode == "as"
+            assert loaded.config.as_threshold == 0.6
+
+            features = {col: 0.5 for col in as_gate.feature_cols}
+            r1 = as_gate.evaluate(features)
+            r2 = loaded.evaluate(features)
+            assert abs(r1.predicted_pnl_bps - r2.predicted_pnl_bps) < 1e-10
+
+
 # ======================================================================
 # build_features_from_market_state Tests
 # ======================================================================
