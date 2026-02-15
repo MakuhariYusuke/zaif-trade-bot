@@ -165,8 +165,13 @@ def run_walk_forward(
         fold_result["brier"] = float(brier_score_loss(y_test, probs))
 
         # Selected features
+        # SimpleImputer may drop all-NaN columns, so track surviving columns
+        imputer = pipe.named_steps["imputer"]
+        # imputer.statistics_ has NaN for dropped columns, finite for kept
+        survived_mask = np.isfinite(imputer.statistics_)
+        survived_cols = X.columns[survived_mask]
         selector = pipe.named_steps["selector"]
-        selected = X.columns[selector.get_support()].tolist()
+        selected = survived_cols[selector.get_support()].tolist()
         fold_result["selected_features"] = selected
 
         logger.info(

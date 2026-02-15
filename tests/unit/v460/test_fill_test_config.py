@@ -795,6 +795,33 @@ class Test062SkipGateConfig:
         assert config.skip_gate_mode == cfg["skip_gate"]["mode"]
         assert config.skip_gate_as_threshold == cfg["skip_gate"]["as_threshold"]
 
+    def test_from_yaml_skip_gate_fallback_path(self) -> None:
+        """065# fallback_path が YAML から正しくマッピングされる."""
+        yaml_cfg = {
+            "skip_gate": {
+                "enabled": True,
+                "mode": "as",
+                "model_path": "models/v460/skip_gate_as.pkl",
+                "fallback_path": "models/v460/skip_gate_as_fallback.pkl",
+                "as_threshold": 0.65,
+            },
+        }
+        config = FillTestConfig.from_yaml(yaml_cfg)
+        assert config.skip_gate_fallback_path == "models/v460/skip_gate_as_fallback.pkl"
+
+    def test_from_yaml_skip_gate_fallback_default(self) -> None:
+        """065# fallback_path 未設定時のデフォルト値."""
+        config = FillTestConfig.from_yaml({})
+        assert config.skip_gate_fallback_path == "models/v460/skip_gate_as_fallback.pkl"
+
+    def test_yaml_roundtrip_skip_gate_fallback(self) -> None:
+        """065# fill_test.yaml の fallback_path roundtrip."""
+        path = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
+        with open(path, "r", encoding="utf-8") as f:
+            cfg = yaml.safe_load(f)
+        config = FillTestConfig.from_yaml(cfg)
+        assert config.skip_gate_fallback_path == cfg["skip_gate"]["fallback_path"]
+
 
 class Test062SkipGateRunner:
     """062# S5: SkipGate の FillTestRunner 統合テスト."""

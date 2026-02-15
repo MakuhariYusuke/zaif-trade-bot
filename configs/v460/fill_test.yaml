@@ -136,11 +136,12 @@ spread_adaptive:
 # 061# で学習した LR(C=0.01, k=8) AS分類器による注文前スキップ判定.
 # P(AS) >= as_threshold の注文をスキップし、fill 後 AS を低減.
 # walk-forward 検証済み: Skip20% で +0.230 bps 改善.
-# 065#: 公式G1評価FAIL確認 → AS-LR を主軸にph2再開. 保守的閾値0.65で開始.
+# 065#: A(k=12) primary + curated(k=5) fallback の Two-Tier SkipGate
 skip_gate:
   enabled: true                # 065#: skip_gate_as.pkl 学習済み → 有効化
   mode: as                     # "as" (AS 分類器, 推奨) / "pnl" (PnL 回帰)
-  model_path: models/v460/skip_gate_as.pkl  # 065# 学習済みモデル
+  model_path: models/v460/skip_gate_as.pkl          # 065# A(k=12) primary
+  fallback_path: models/v460/skip_gate_as_fallback.pkl  # 065# curated(k=5) OB不在時
   as_threshold: 0.65           # 065#: 保守的閾値 (0.6→0.65) で開始
   pnl_threshold: 0.0           # PnL 予測スキップ閾値 (mode=pnl 時)
   max_skip_rate: 0.3           # 連続スキップ率の上限 (直近20注文中30%まで)

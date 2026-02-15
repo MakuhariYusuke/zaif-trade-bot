@@ -93,7 +93,12 @@ class SkipGate:
 
     059# NEW-02: Pipeline (Imputer+Scaler+Model) を保持。
     後方互換: 旧形式 (model+scaler) でも動作。
+
+    065# Two-tier: OB 不在時にフォールバックモデルへ切替.
     """
+
+    # OB 必須特徴量 — これらが全て NaN なら fallback モデルを使う
+    OB_CRITICAL_FEATURES = {"depth_imbalance_ob", "spread_bps_ob"}
 
     def __init__(
         self,
@@ -111,6 +116,15 @@ class SkipGate:
         self.metadata = metadata or {}
         self._recent_skips: list[bool] = []
         self._pipeline = pipeline  # 059# NEW-02: 完全 Pipeline
+        self._fallback: Optional["SkipGate"] = None  # 065# two-tier
+
+    def set_fallback(self, fallback: "SkipGate") -> None:
+        """OB 不在時のフォールバックモデルを設定 (065#)."""
+        self._fallback = fallback
+        logger.info(
+            f"SkipGate fallback set: {len(fallback.feature_cols)} features, "
+            f"label={fallback.metadata.get('label', 'unknown')}"
+        )
 
     def evaluate(
         self,
@@ -149,6 +163,14 @@ class SkipGate:
                 features_used=n_used,
                 reason="insufficient_features",
             )
+
+        # 065# Two-tier: OB 必須特徴量が全て欠損ならフォールバック
+        ob_available = any(
+            col in features for col in self.OB_CRITICAL_FEATURES
+        )
+        if not ob_available and self._fallback is not None:
+            logger.debug("SkipGate: OB features missing → fallback model")
+            return self._fallback.evaluate(features)
 
         # 予測 — 059# NEW-02: Pipeline 優先、後方互換あり
         x_df = pd.DataFrame([x], columns=self.feature_cols)
@@ -494,8 +516,12 @@ def train_and_save_as_skip_gate(
     scaler = pipe.named_steps["scaler"]
 
     # Feature importances (selected features)
+    # SimpleImputer may drop all-NaN columns, so track surviving columns
+    imputer = pipe.named_steps["imputer"]
+    survived_mask = np.isfinite(imputer.statistics_)
+    survived_cols = X.columns[survived_mask]
     selector = pipe.named_steps["selector"]
-    selected_cols = X.columns[selector.get_support()].tolist()
+    selected_cols = survived_cols[selector.get_support()].tolist()
     fi = dict(zip(selected_cols, np.abs(model.coef_[0]).tolist()))
     sorted_fi = sorted(fi.items(), key=lambda x: x[1], reverse=True)
 

@@ -174,8 +174,15 @@ def train_as_classifier(
     # Feature importances (selected features only if selection is active)
     if "selector" in final_pipe.named_steps:
         selector = final_pipe.named_steps["selector"]
+        # SimpleImputer may drop all-NaN columns — track surviving columns
+        if "imputer" in final_pipe.named_steps:
+            imp = final_pipe.named_steps["imputer"]
+            survived_mask = np.isfinite(imp.statistics_)
+            survived_cols = X.columns[survived_mask]
+        else:
+            survived_cols = X.columns
         selected_mask = selector.get_support()
-        selected_cols = X.columns[selected_mask].tolist()
+        selected_cols = survived_cols[selected_mask].tolist()
     else:
         selected_cols = X.columns.tolist()
 

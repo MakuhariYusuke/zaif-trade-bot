@@ -156,6 +156,7 @@ class FillTestConfig:
     skip_gate_enabled: bool = False
     skip_gate_mode: str = "as"             # "pnl" or "as" (061# AS 分類器推奨)
     skip_gate_model_path: str = "models/v460/skip_gate_as.pkl"  # モデルファイル
+    skip_gate_fallback_path: str = "models/v460/skip_gate_as_fallback.pkl"  # 065# OB不在時フォールバック
     skip_gate_as_threshold: float = 0.6    # AS 確率スキップ閾値 (mode=as)
     skip_gate_pnl_threshold: float = 0.0   # PnL 予測スキップ閾値 (mode=pnl)
     skip_gate_max_skip_rate: float = 0.3   # 連続スキップ率上限 (安全弁)
@@ -319,6 +320,7 @@ class FillTestConfig:
         sg_map = {
             "mode": "skip_gate_mode",
             "model_path": "skip_gate_model_path",
+            "fallback_path": "skip_gate_fallback_path",  # 065# two-tier
             "as_threshold": "skip_gate_as_threshold",
             "pnl_threshold": "skip_gate_pnl_threshold",
             "max_skip_rate": "skip_gate_max_skip_rate",
@@ -447,6 +449,20 @@ class FillTestRunner:
                         f"features={len(self._skip_gate.feature_cols)}, "
                         f"path={gate_path}"
                     )
+                    # 065# Two-tier: フォールバックモデルをロード
+                    fb_path = Path(config.skip_gate_fallback_path)
+                    if not fb_path.is_absolute():
+                        fb_path = _PROJECT_ROOT / fb_path
+                    if fb_path.exists():
+                        fallback = SkipGate.load(fb_path)
+                        fallback.config.mode = config.skip_gate_mode
+                        fallback.config.as_threshold = config.skip_gate_as_threshold
+                        fallback.config.max_skip_rate = config.skip_gate_max_skip_rate
+                        self._skip_gate.set_fallback(fallback)
+                    else:
+                        logger.info(
+                            f"[skip_gate] No fallback model at {fb_path}"
+                        )
             except Exception as e:
                 logger.error(f"[skip_gate] Failed to load: {e}. SkipGate disabled.")
                 self._skip_gate = None

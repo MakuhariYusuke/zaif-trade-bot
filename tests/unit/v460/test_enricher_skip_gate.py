@@ -450,6 +450,126 @@ class Test061SkipGateASMode:
             assert abs(r1.predicted_pnl_bps - r2.predicted_pnl_bps) < 1e-10
 
 
+class Test065SkipGateTwoTier:
+    """065# Two-Tier SkipGate フォールバックテスト."""
+
+    @pytest.fixture
+    def primary_gate(self, synthetic_fill_df: pd.DataFrame) -> SkipGate:
+        """OB 特徴量を含む primary SkipGate (Pipeline付き)."""
+        from sklearn.feature_selection import SelectKBest, f_classif
+        from sklearn.impute import SimpleImputer
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.pipeline import Pipeline
+        from sklearn.preprocessing import StandardScaler
+
+        df = synthetic_fill_df.copy()
+        for col in MICRO_FEATURE_COLS:
+            df[col] = np.random.RandomState(42).randn(len(df))
+
+        X_as, y_as = build_enriched_as_features(df)
+        k = min(8, X_as.shape[1])
+        pipe = Pipeline([
+            ("imputer", SimpleImputer(strategy="median")),
+            ("selector", SelectKBest(f_classif, k=k)),
+            ("scaler", StandardScaler()),
+            ("model", LogisticRegression(
+                C=0.01, max_iter=2000, class_weight="balanced", random_state=42
+            )),
+        ])
+        pipe.fit(X_as, y_as.values)
+
+        return SkipGate(
+            model=pipe.named_steps["model"],
+            scaler=pipe.named_steps["scaler"],
+            feature_cols=X_as.columns.tolist(),
+            config=SkipGateConfig(mode="as", as_threshold=0.6),
+            metadata={"label": "primary_test"},
+            pipeline=pipe,
+        )
+
+    @pytest.fixture
+    def fallback_gate(self) -> SkipGate:
+        """OB 不要なフォールバック SkipGate (少数特徴量, Pipeline付き)."""
+        from sklearn.impute import SimpleImputer
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.pipeline import Pipeline
+        from sklearn.preprocessing import StandardScaler
+
+        # 簡易的な trade-only features
+        fb_cols = ["log_queue_wait", "edge_bps", "vpin_60s", "hour_cos", "hour_sin"]
+        rng = np.random.RandomState(99)
+        X_fb = pd.DataFrame(rng.randn(100, len(fb_cols)), columns=fb_cols)
+        y_fb = pd.Series(rng.randint(0, 2, 100))
+        pipe = Pipeline([
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler()),
+            ("model", LogisticRegression(C=0.01, max_iter=2000, random_state=42)),
+        ])
+        pipe.fit(X_fb, y_fb)
+
+        return SkipGate(
+            model=pipe.named_steps["model"],
+            scaler=pipe.named_steps["scaler"],
+            feature_cols=fb_cols,
+            config=SkipGateConfig(mode="as", as_threshold=0.6),
+            metadata={"label": "fallback_test"},
+            pipeline=pipe,
+        )
+
+    def test_set_fallback(
+        self, primary_gate: SkipGate, fallback_gate: SkipGate
+    ) -> None:
+        """set_fallback で fallback が設定される."""
+        assert primary_gate._fallback is None
+        primary_gate.set_fallback(fallback_gate)
+        assert primary_gate._fallback is fallback_gate
+
+    def test_uses_primary_when_ob_present(
+        self, primary_gate: SkipGate, fallback_gate: SkipGate
+    ) -> None:
+        """OB 特徴量が提供されると primary を使う."""
+        primary_gate.set_fallback(fallback_gate)
+        features = {col: 0.5 for col in primary_gate.feature_cols}
+        # OB critical features を含む
+        features["depth_imbalance_ob"] = 0.1
+        features["spread_bps_ob"] = 5.0
+        result = primary_gate.evaluate(features)
+        # primary が使われる → features_used は primary の特徴量数に近い
+        assert result.features_used >= 3
+
+    def test_falls_back_when_ob_missing(
+        self, primary_gate: SkipGate, fallback_gate: SkipGate
+    ) -> None:
+        """OB 特徴量が欠損するとフォールバックに委譲."""
+        primary_gate.set_fallback(fallback_gate)
+        # OB critical features を含まない trade-only features
+        features = {
+            "log_queue_wait": 1.0,
+            "edge_bps": 0.5,
+            "vpin_60s": 0.3,
+            "hour_cos": 0.8,
+            "hour_sin": 0.6,
+        }
+        result = primary_gate.evaluate(features)
+        # fallback が使われる → features_used は fallback の特徴量数に近い
+        assert result.features_used <= len(fallback_gate.feature_cols)
+
+    def test_no_fallback_when_ob_missing_without_fallback(
+        self, primary_gate: SkipGate
+    ) -> None:
+        """Fallback 未設定時は OB 欠損でも primary が NaN impute で処理."""
+        features = {
+            "log_queue_wait": 1.0,
+            "edge_bps": 0.5,
+            "vpin_60s": 0.3,
+            "hour_cos": 0.8,
+            "hour_sin": 0.6,
+        }
+        # fallback なし → primary が使う (NaN impute)
+        result = primary_gate.evaluate(features)
+        assert result.features_used >= 3
+
+
 # ======================================================================
 # build_features_from_market_state Tests
 # ======================================================================
