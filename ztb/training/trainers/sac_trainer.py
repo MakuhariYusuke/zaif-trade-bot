@@ -3,6 +3,11 @@ SAC (Soft Actor-Critic) Algorithm Trainer.
 
 SACアルゴリズム専用のトレーナー。
 AlgorithmFactoryから生成されたSACAlgorithmを使用して訓練を実行する。
+
+.. deprecated:: v460 (063#)
+    このモジュールは非推奨です。新規コードでは
+    ``ztb.training.unified_trainer.algorithms.sac_trainer.SACTrainer``
+    を使用してください。既存の7箇所のimportがあるため残存しています。
 """
 
 import csv

@@ -107,7 +107,6 @@ from ztb.metrics.metrics import win_rate as calculate_win_rate
 
 if TYPE_CHECKING:
     # Import types for static checking only. Runtime imports are guarded.
-    from ztb.optimization.unified_optimizer import UnifiedOptimizer
     from ztb.training.unified_trainer.base.base_trainer import BaseAlgorithmTrainer
 
     # Type-only import to avoid name collision with runtime EnsemblePredictor
@@ -279,8 +278,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         self.world_size = world_size
         self.distributed_backend = distributed_backend
 
-        # V433 Adaptive Learning Components (archived in 030#)
-        self.enable_v433_adaptive = False
+        # V433 Adaptive Learning Components: archived in 030#, dead code removed in 063#
 
     @property
     def model(self) -> Optional[object]:
@@ -989,13 +987,6 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                     self.ui.print_error("Failed to setup ensemble training")
                     return False
 
-            # Check for V433 adaptive learning
-            if self.enable_v433_adaptive:
-                self.logger.info("V433 adaptive learning enabled")
-                if not self._setup_v433_adaptive_training():
-                    self.ui.print_error("Failed to setup V433 adaptive training")
-                    return False
-
             # Check for mixed precision training
             if self.config.get("enable_mixed_precision", False):
                 self.logger.info("Mixed precision training enabled")
@@ -1056,12 +1047,10 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             start_time = time.perf_counter()
             success = False
             with self._safe_memory_tracking():
-                # Execute training (federated, V433 adaptive, or regular)
+                # Execute training (federated or regular)
                 self.logger.info(f"Starting {algorithm.upper()} training...")
                 if self.config.get("enable_federated", False):
                     success = self._execute_federated_training()
-                elif self.enable_v433_adaptive:
-                    success = self._execute_v433_adaptive_training()
                 elif self.algorithm_trainer is not None:
                     # Get total_timesteps from config
                     total_timesteps = self.config.get("training", {}).get(
@@ -1923,254 +1912,10 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
         return market_configs
 
-    def _initialize_v433_components(self) -> None:
-        """V433適応型学習コンポーネントの初期化"""
-        try:
-            from ztb.optimization.unified_optimizer import (
-                OptimizationConfig,
-                UnifiedOptimizer,
-            )
-            from ztb.training.adaptive_sac_core import (
-                AdaptiveSACConfig,
-                AdaptiveSACCore,
-            )
-            from ztb.training.online_learning_engine import (
-                OnlineLearningConfig,
-                OnlineLearningEngine,
-            )
-
-            self.logger.info("Initializing V433 adaptive learning components")
-
-            # Adaptive SAC Config
-            v433_config = (
-                self.config.get("v433_adaptive_config", {})
-                if isinstance(self.config, dict)
-                else {}
-            )
-
-            self.adaptive_sac_config = AdaptiveSACConfig(
-                enable_market_regime_adaptation=v433_config.get(
-                    "enable_market_regime_adaptation", True
-                ),
-                enable_online_learning=v433_config.get("enable_online_learning", True),
-                adaptation_interval_steps=v433_config.get(
-                    "adaptation_interval_steps", 1000
-                ),
-                learning_rate=v433_config.get("learning_rate", 3e-4),
-                buffer_size=v433_config.get("buffer_size", 1000000),
-                performance_window_size=v433_config.get("performance_window_size", 100),
-            )
-
-            # 観測空間と行動空間の次元を取得（環境設定から）
-            # Extract environment config from multiple supported layouts:
-            # 1) top-level 'environment'
-            # 2) nested under 'training' -> 'environment' -> 'config'
-            if isinstance(self.config, dict):
-                env_config = self.config.get("environment", None)
-                if env_config is None:
-                    training_section = self.config.get("training", {})
-                    env_section = (
-                        training_section.get("environment", {})
-                        if isinstance(training_section, dict)
-                        else {}
-                    )
-                    # prefer inner 'config' dict if present
-                    env_config = (
-                        env_section.get("config", env_section)
-                        if isinstance(env_section, dict)
-                        else {}
-                    )
-            else:
-                env_config = {}
-            observation_dim = env_config.get("observation_dim", 10)  # デフォルト値
-            action_dim = env_config.get("action_dim", 3)  # デフォルト値
-
-            # Adaptive SAC Coreの初期化
-            self.adaptive_sac_core = AdaptiveSACCore(
-                self.adaptive_sac_config, observation_dim, action_dim
-            )
-
-            # Online Learning Config
-            self.online_learning_config = OnlineLearningConfig(
-                stream_buffer_size=v433_config.get("stream_buffer_size", 10000),
-                learning_batch_size=v433_config.get("learning_batch_size", 64),
-                experience_buffer_size=v433_config.get("experience_buffer_size", 50000),
-                adaptation_threshold=v433_config.get("adaptation_threshold", 0.1),
-                data_update_interval=v433_config.get("data_update_interval", 1.0),
-            )
-
-            # Online Learning Engineの初期化
-            self.online_learning_engine = OnlineLearningEngine(
-                self.online_learning_config, self.adaptive_sac_core
-            )
-
-            # Unified Optimizerの初期化
-            optimizer_config = OptimizationConfig(
-                enable_hyperparameter_optimization=v433_config.get(
-                    "enable_hyperparameter_optimization", True
-                ),
-                enable_system_optimization=v433_config.get(
-                    "enable_system_optimization", True
-                ),
-                enable_reward_optimization=v433_config.get(
-                    "enable_reward_optimization", True
-                ),
-                enable_adaptive_optimization=v433_config.get(
-                    "enable_adaptive_optimization", True
-                ),
-                max_trials=v433_config.get("max_trials", 100),
-                max_parallel_trials=v433_config.get("max_parallel_trials", 4),
-            )
-            self.unified_optimizer = UnifiedOptimizer(optimizer_config)
-
-            self.logger.info(
-                "V433 adaptive learning components initialized successfully"
-            )
-
-        except Exception as e:
-            self.logger.error(f"Failed to initialize V433 components: {e}")
-            self.enable_v433_adaptive = False
-
-    def _setup_v433_adaptive_training(self) -> bool:
-        """V433適応型トレーニングのセットアップ"""
-        try:
-            if not self.adaptive_sac_core:
-                self.logger.error("Adaptive SAC core not initialized")
-                return False
-
-            if not self.online_learning_engine:
-                self.logger.error("Online learning engine not initialized")
-                return False
-
-            if not self.unified_optimizer:
-                self.logger.error("Unified optimizer not initialized")
-                return False
-
-            # 環境の初期化確認
-            env_config = (
-                self.config.get("environment", {})
-                if isinstance(self.config, dict)
-                else {}
-            )
-            if not env_config:
-                self.logger.error(
-                    "Environment configuration missing for V433 adaptive training"
-                )
-                return False
-
-            # 適応型トレーニングのステータス表示
-            self.ui.print_info("Setting up V433 adaptive training components:")
-            self.ui.print_info(
-                f"  - Adaptive SAC Core: {'✓' if self.adaptive_sac_core else '✗'}"
-            )
-            self.ui.print_info(
-                f"  - Online Learning Engine: {'✓' if self.online_learning_engine else '✗'}"
-            )
-            self.ui.print_info(
-                f"  - Unified Optimizer: {'✓' if self.unified_optimizer else '✗'}"
-            )
-
-            # 市場レジーム検知の初期化
-            adaptive_core = self.adaptive_sac_core
-            if adaptive_core is not None:
-                if hasattr(adaptive_core, "market_regime_detector"):
-                    self.logger.info("Market regime detector initialized")
-
-                # 適応パラメータのログ（存在する場合のみ呼び出す）
-                get_status = getattr(adaptive_core, "get_adaptation_status", None)
-                adaptation_params = get_status() if callable(get_status) else {}
-                self.logger.info(f"V433 adaptation parameters: {adaptation_params}")
-
-            return True
-
-        except Exception as e:
-            self.logger.error(f"V433 adaptive training setup failed: {e}")
-            return False
-
-    def _execute_v433_adaptive_training(self) -> bool:
-        """V433適応型トレーニングを実行"""
-        try:
-            self.logger.info("Executing V433 adaptive training")
-
-            # 環境の作成
-            env = self._create_v433_training_environment()
-            if env is None:
-                self.logger.error("Failed to create V433 training environment")
-                return False
-
-            # 適応型SACモデルの初期化
-            adaptive_core = self.adaptive_sac_core
-            if adaptive_core is None:
-                self.logger.error("Adaptive SAC core not configured")
-                return False
-
-            init_fn = getattr(adaptive_core, "initialize_sac_model", None)
-            if not callable(init_fn):
-                self.logger.error(
-                    "Adaptive SAC core missing initialize_sac_model method"
-                )
-                return False
-
-            try:
-                sac_model = init_fn(env)
-            except Exception as e:
-                self.logger.error(f"Failed to initialize adaptive SAC model: {e}")
-                return False
-            if sac_model is None:
-                self.logger.error("Failed to initialize adaptive SAC model")
-                return False
-
-            # 総タイムステップの取得
-            total_timesteps = self.config.get("total_timesteps", 100000)
-            if self.total_timesteps is not None:
-                total_timesteps = self.total_timesteps
-
-            # 適応型トレーニングの実行
-            start_fn = getattr(adaptive_core, "start_adaptive_training", None)
-            if callable(start_fn):
-                try:
-                    start_fn(env, total_timesteps)
-                except Exception as e:
-                    self.logger.error(f"Adaptive training failed to start: {e}")
-                    return False
-            else:
-                self.logger.error(
-                    "Adaptive SAC core missing start_adaptive_training method"
-                )
-                return False
-
-            # オンライン学習エンジンの開始（非同期）
-            import asyncio
-            import threading
-
-            def run_online_learning() -> None:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                try:
-                    online_engine = self.online_learning_engine
-                    if online_engine is not None and hasattr(
-                        online_engine, "start_online_learning"
-                    ):
-                        loop.run_until_complete(online_engine.start_online_learning())
-                    else:
-                        self.logger.warning(
-                            "Online learning engine not available to start"
-                        )
-                except Exception as e:
-                    self.logger.error(f"Online learning failed: {e}")
-                finally:
-                    loop.close()
-
-            online_thread = threading.Thread(target=run_online_learning, daemon=True)
-            online_thread.start()
-
-            # トレーニング完了まで待機
-            self.logger.info("V433 adaptive training completed successfully")
-            return True
-
-        except Exception as e:
-            self.logger.error(f"V433 adaptive training failed: {e}")
-            return False
+    # --- V433 adaptive methods removed in 063# (dead code, enable_v433_adaptive=False) ---
+    # Removed: _initialize_v433_components, _setup_v433_adaptive_training,
+    #          _execute_v433_adaptive_training  (~246 lines)
+    # Source modules archived: adaptive_sac_core.py, online_learning_engine.py
 
     def _load_data_with_format_detection(self, data_path: str) -> pd.DataFrame:
         """
@@ -2226,8 +1971,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         else:
             self.logger.info(f"✅  v454 features validation passed for {data_path}")
 
-    def _create_v433_training_environment(self) -> Optional[object]:
-        """V433トレーニング環境を作成"""
+    def _create_training_environment(self) -> Optional[object]:
+        """トレーニング環境を作成 (renamed from _create_v433_training_environment in 063#)"""
         try:
             # Lazy import to avoid heavy runtime dependency and mypy import-untyped noise
             import importlib
@@ -2344,7 +2089,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             except Exception as e:
                 self.logger.warning(f"Failed to attach MarketRegimeClassifier: {e}")
 
-            self.logger.info("V433 training environment created successfully")
+            self.logger.info("Training environment created successfully")
             return env
 
         except Exception as e:
@@ -2738,8 +2483,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         """Create environment for backtesting."""
         try:
             # Use existing environment creation logic
-            if hasattr(self, "_create_v433_training_environment"):
-                return self._create_v433_training_environment()
+            if hasattr(self, "_create_training_environment"):
+                return self._create_training_environment()
             else:
                 # Fallback environment creation
                 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv

@@ -6,7 +6,7 @@ to enhance signal generation and validation.
 """
 
 import logging
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Optional, TypedDict
 
 import numpy as np
 import pandas as pd
@@ -470,7 +470,7 @@ class RegimeAdaptiveSignalProcessor:
         regime: MarketRegime,
         stability: float,
         market_data: pd.DataFrame,
-    ) -> "ActionSignal" | None:
+    ) -> Optional["ActionSignal"]:
         """
         Adapt individual signal for specific market regime.
 

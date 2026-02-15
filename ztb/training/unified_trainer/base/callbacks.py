@@ -21,7 +21,7 @@ from ztb.trading.constants import (
 )
 from ztb.trading.environment.constants import continuous_to_discrete_action
 from ztb.training.constants import ENV_EVAL_FREQUENCY, DEFAULT_CHECK_FREQ
-from ztb.training.sac_v430_training_optimizations import DynamicLRScheduler
+from ztb.training.unified_trainer.base.lr_scheduler import DynamicLRScheduler
 from ztb.training.system_optimizer import SystemOptimizer
 
 

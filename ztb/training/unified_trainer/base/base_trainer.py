@@ -16,7 +16,7 @@ from ztb.training.constants import DEFAULT_CHECK_FREQ, DEFAULT_MAX_MEMORY_GB
 from ztb.training.gradient_accumulation import GradientAccumulator
 from ztb.training.optimization.early_stopping import EarlyStopping
 from ztb.training.optimization.memory_efficient_loader import MemoryEfficientLoader
-from ztb.training.sac_v430_training_optimizations import DynamicLRScheduler
+from ztb.training.unified_trainer.base.lr_scheduler import DynamicLRScheduler
 from ztb.utils.errors import ZTBError
 from ztb.utils.logging_utils import get_logger
 

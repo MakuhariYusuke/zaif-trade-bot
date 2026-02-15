@@ -3,6 +3,10 @@
 """
 SAC Training Suite - Unified training tools for SAC models
 
+.. deprecated:: v460 (063#)
+    Facade layer. Delegates to UnifiedTrainer.
+    新規コードでは UnifiedTrainer を直接使用推奨。
+
 This script provides unified training capabilities for SAC trading models including:
 - Standard SAC training
 - Curriculum learning
