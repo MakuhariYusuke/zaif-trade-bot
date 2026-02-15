@@ -504,6 +504,15 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 10. helper の追加横展開として `market_regime.py` と `signal_generator.py` でも `append_with_compaction()` を適用し、履歴上限管理の重複を削減。  
 11. `components` 配下 `any_type_debt_tokens` を `10 -> 0` へ削減し、repo 全体 `any_type_debt_tokens` を `2,927 -> 2,917` へ削減。  
 
+### Step48: helper 横展開（`analysis/ml_integration`）+ 重複経路整理 + `Any` 追加削減
+
+1. `ztb/trading/strategies/action_signal_guide/analysis/signal_performance_analyzer.py` を `TypedDict`（`SignalQualityRecord` / `SACLearningLog` / `SACCorrelationRecord` など）ベースへ移行し、`Any` を全撤去（当該ファイル `any_type_debt_tokens=0`）。  
+2. 同ファイルで `append_with_compaction()` を導入し、`signal_quality_history` / `signal_sac_correlations` / `signal_contribution_scores` の履歴管理を共通化。  
+3. `analyze_sac_learning_correlation()` の return 後に残っていた未到達な重複ブロック（別形式の correlation result 生成）を削除し、分析経路を単一化。  
+4. rolling window 算出を `_rolling_windows()` に抽出し、window 生成の重複・0/1窓起因の例外ノイズを低減。  
+5. `ztb/trading/strategies/action_signal_guide/ml_integration/pattern_optimizer.py` の `_append_performance_snapshot()` を helper 化し、手動 `del` トリムを `append_with_compaction()` へ置換。  
+6. `action_signal_guide` 配下 `any_type_debt_tokens` を `71 -> 58` へ削減し、repo 全体 `any_type_debt_tokens` を `2,917 -> 2,904` へ削減。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -555,6 +564,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step45時点 | repo全体 | 2,953 |
 | Step46時点 | repo全体 | 2,927 |
 | Step47時点 | repo全体 | 2,917 |
+| Step48時点 | repo全体 | 2,904 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -614,6 +624,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step47時点 | `ztb/trading/strategies/action_signal_guide/components/advanced_signal_aggregator.py` | **0** |
 | Step47時点 | `ztb/trading/strategies/action_signal_guide/components/performance_tracker.py` | **0** |
 | Step47時点 | `ztb/trading/strategies/action_signal_guide/components/adaptive_pattern_selector.py` | **0** |
+| Step48時点 | `ztb/trading/strategies/action_signal_guide/analysis/signal_performance_analyzer.py` | **0** |
 
 ---
 
@@ -629,6 +640,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - バリデーション結果 payload を `TypedDict` 化し、ルール評価の重複 map 操作を helper 化。  
 5. `ztb/utils/config.py`  
    - config merge/cast 系の `Any` を段階的に削減し、既存型別名へ集約。  
+6. `ztb/trading/strategies/action_signal_guide/pattern_recognition/oscillator_patterns.py`  
+   - recognizer 横断で重複している MTF 指標抽出ロジックを共通化し、同時に `Any` を削減。  
 
 ---
 

@@ -7,13 +7,49 @@ signals and SAC learning outcomes, providing quantitative metrics for signal qua
 
 import time
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Union
+from collections.abc import Sequence
+from typing import Dict, List, Optional, TypedDict, Union
 
 import numpy as np
 import pandas as pd
 from scipy import stats
 
 from ztb.utils.logging_utils import get_logger
+
+from ..components.history_helpers import append_with_compaction
+
+
+class SignalQualityRecord(TypedDict):
+    timestamp: float
+    pattern_type: str
+    signal_strength: float
+    signal_confidence: float
+    historical_success_rate: float
+    consistency_score: float
+    quality_score: float
+
+
+class SACLearningLog(TypedDict, total=False):
+    reward: float
+    loss: float
+    timestep: int
+
+
+class ContributionAnalysis(TypedDict):
+    high_quality_avg_reward: float
+    low_quality_avg_reward: float
+    quality_threshold: float
+    high_quality_count: int
+    low_quality_count: int
+
+
+class SACCorrelationRecord(TypedDict):
+    timestamp: float
+    correlation: float
+    p_value: float
+    rolling_correlations: Dict[str, float]
+    contribution_analysis: ContributionAnalysis
+    data_points: int
 
 
 class SignalPerformanceAnalyzer:
@@ -27,7 +63,12 @@ class SignalPerformanceAnalyzer:
     - Performance metrics dashboard
     """
 
-    def __init__(self, performance_tracker: Any, pattern_statistics: Any, max_history_size: int = 10000):
+    def __init__(
+        self,
+        performance_tracker: object,
+        pattern_statistics: object,
+        max_history_size: int = 10000,
+    ):
         """
         Initialize SignalPerformanceAnalyzer.
 
@@ -44,23 +85,23 @@ class SignalPerformanceAnalyzer:
         self.pattern_statistics = pattern_statistics
 
         # Signal quality tracking
-        self.signal_quality_history: List[Dict[str, Any]] = []
-        self.signal_sac_correlations: List[Dict[str, Any]] = []
+        self.signal_quality_history: List[SignalQualityRecord] = []
+        self.signal_sac_correlations: List[SACCorrelationRecord] = []
 
         # SAC learning metrics
-        self.sac_learning_curves: List[Dict[str, Any]] = []
-        self.sac_action_distributions: List[Dict[str, Any]] = []
+        self.sac_learning_curves: List[SACLearningLog] = []
+        self.sac_action_distributions: List[dict[str, float]] = []
 
         # Performance correlation data
         self.signal_contribution_scores: Dict[str, List[float]] = defaultdict(list)
         self.regime_signal_effectiveness: Dict[str, Dict[str, float]] = defaultdict(dict)
 
         # Quality scoring parameters
-        self.quality_weights = {
-            'strength': 0.4,
-            'confidence': 0.3,
-            'success_rate': 0.2,
-            'consistency': 0.1
+        self.quality_weights: dict[str, float] = {
+            "strength": 0.4,
+            "confidence": 0.3,
+            "success_rate": 0.2,
+            "consistency": 0.1,
         }
 
     def calculate_signal_quality_score(
@@ -86,42 +127,44 @@ class SignalPerformanceAnalyzer:
         """
         # Weighted combination of quality factors
         quality_score = (
-            self.quality_weights['strength'] * signal_strength +
-            self.quality_weights['confidence'] * signal_confidence +
-            self.quality_weights['success_rate'] * historical_success_rate +
-            self.quality_weights['consistency'] * consistency_score
+            self.quality_weights["strength"] * signal_strength
+            + self.quality_weights["confidence"] * signal_confidence
+            + self.quality_weights["success_rate"] * historical_success_rate
+            + self.quality_weights["consistency"] * consistency_score
         )
 
         # Pattern type adjustment (some patterns are inherently more reliable)
         pattern_adjustments = {
-            'fibonacci': 1.1,    # Fibonacci patterns are generally reliable
-            'harmonic': 1.05,    # Harmonic patterns have good success rates
-            'dow_theory': 1.0,   # Dow theory is solid but conservative
-            'candlestick': 0.95, # Candlestick patterns can be noisy
-            'oscillator': 0.9    # Oscillators can be false signals
+            "fibonacci": 1.1,  # Fibonacci patterns are generally reliable
+            "harmonic": 1.05,  # Harmonic patterns have good success rates
+            "dow_theory": 1.0,  # Dow theory is solid but conservative
+            "candlestick": 0.95,  # Candlestick patterns can be noisy
+            "oscillator": 0.9,  # Oscillators can be false signals
         }
 
         adjustment = pattern_adjustments.get(pattern_type, 1.0)
         final_score = min(1.0, quality_score * adjustment)
 
         # Record quality metrics
-        quality_record = {
-            'timestamp': time.time(),
-            'pattern_type': pattern_type,
-            'signal_strength': signal_strength,
-            'signal_confidence': signal_confidence,
-            'historical_success_rate': historical_success_rate,
-            'consistency_score': consistency_score,
-            'quality_score': final_score
+        quality_record: SignalQualityRecord = {
+            "timestamp": time.time(),
+            "pattern_type": pattern_type,
+            "signal_strength": signal_strength,
+            "signal_confidence": signal_confidence,
+            "historical_success_rate": historical_success_rate,
+            "consistency_score": consistency_score,
+            "quality_score": final_score,
         }
-
-        self.signal_quality_history.append(quality_record)
-        if len(self.signal_quality_history) > self.max_history_size:
-            self.signal_quality_history = self.signal_quality_history[-self.max_history_size:]
+        append_with_compaction(
+            self.signal_quality_history,
+            quality_record,
+            high_water=self.max_history_size * 2,
+            retain=self.max_history_size,
+        )
 
         return final_score
 
-    def _calculate_trend(self, values: Union[List[float], pd.Series]) -> float:
+    def _calculate_trend(self, values: Union[Sequence[float], pd.Series]) -> float:
         """
         Calculate trend direction and strength.
 
@@ -154,9 +197,9 @@ class SignalPerformanceAnalyzer:
 
     def analyze_sac_learning_correlation(
         self,
-        sac_learning_logs: Optional[List[Dict[str, Any]]] = None,
-        correlation_window: int = 100
-    ) -> Dict[str, Any]:
+        sac_learning_logs: Optional[List[SACLearningLog]] = None,
+        correlation_window: int = 100,
+    ) -> dict[str, object]:
         """
         Analyze correlation between SAC learning performance and signal quality.
 
@@ -169,23 +212,24 @@ class SignalPerformanceAnalyzer:
         """
         # Get SAC learning data from logs or use stored data
         if sac_learning_logs:
-            sac_rewards = [log.get('reward', 0) for log in sac_learning_logs]
-            sac_losses = [log.get('loss', 0) for log in sac_learning_logs]
-            sac_timesteps = [log.get('timestep', i) for i, log in enumerate(sac_learning_logs)]
+            sac_rewards = [self._coerce_float(log.get("reward", 0.0)) for log in sac_learning_logs]
         else:
             # Use stored SAC learning curves if no logs provided
             if not self.sac_learning_curves:
                 return {"error": "No SAC learning data available"}
-            sac_rewards = [curve.get('reward', 0) for curve in self.sac_learning_curves]
-            sac_losses = [curve.get('loss', 0) for curve in self.sac_learning_curves]
-            sac_timesteps = list(range(len(sac_rewards)))
+            sac_rewards = [
+                self._coerce_float(curve.get("reward", 0.0))
+                for curve in self.sac_learning_curves
+            ]
 
         # Get signal quality data from history
         if not self.signal_quality_history:
             return {"error": "No signal quality data available"}
 
-        signal_qualities = [record.get('quality_score', 0) for record in self.signal_quality_history]
-        signal_timestamps = [record.get('timestamp', i) for i, record in enumerate(self.signal_quality_history)]
+        signal_qualities = [
+            self._coerce_float(record.get("quality_score", 0.0))
+            for record in self.signal_quality_history
+        ]
 
         # Align time series (simple approach: use available data points)
         min_length = min(len(sac_rewards), len(signal_qualities))
@@ -198,22 +242,28 @@ class SignalPerformanceAnalyzer:
         # Calculate Pearson correlation
         try:
             correlation, p_value = stats.pearsonr(sac_rewards, signal_qualities)
+            correlation = self._coerce_float(correlation)
+            p_value = self._coerce_float(p_value, default=1.0)
         except Exception as e:
             self.logger.error(f"Correlation calculation failed: {e}")
             correlation, p_value = 0.0, 1.0
 
         # Calculate rolling correlations
-        rolling_correlations = {}
-        for window_size in [correlation_window // 4, correlation_window // 2, correlation_window]:
+        rolling_correlations: Dict[str, float] = {}
+        for window_size in self._rolling_windows(correlation_window):
             if len(sac_rewards) >= window_size:
                 try:
                     rolling_corr = pd.Series(sac_rewards).rolling(window_size).corr(
                         pd.Series(signal_qualities)
                     ).dropna().mean()
-                    rolling_correlations[f'rolling_{window_size}'] = rolling_corr
+                    rolling_correlations[f"rolling_{window_size}"] = self._coerce_float(
+                        rolling_corr
+                    )
                 except Exception as e:
-                    self.logger.warning(f"Rolling correlation calculation failed for window {window_size}: {e}")
-                    rolling_correlations[f'rolling_{window_size}'] = 0.0
+                    self.logger.warning(
+                        f"Rolling correlation calculation failed for window {window_size}: {e}"
+                    )
+                    rolling_correlations[f"rolling_{window_size}"] = 0.0
 
         # Signal contribution analysis
         high_quality_threshold = np.percentile(signal_qualities, 75) if signal_qualities else 0.5
@@ -226,60 +276,49 @@ class SignalPerformanceAnalyzer:
             if quality < high_quality_threshold
         ]
 
-        contribution_analysis = {
-            'high_quality_avg_reward': np.mean(high_quality_rewards) if high_quality_rewards else 0,
-            'low_quality_avg_reward': np.mean(low_quality_rewards) if low_quality_rewards else 0,
-            'quality_threshold': high_quality_threshold,
-            'high_quality_count': len(high_quality_rewards),
-            'low_quality_count': len(low_quality_rewards)
+        contribution_analysis: ContributionAnalysis = {
+            "high_quality_avg_reward": (
+                self._coerce_float(np.mean(high_quality_rewards))
+                if high_quality_rewards
+                else 0.0
+            ),
+            "low_quality_avg_reward": (
+                self._coerce_float(np.mean(low_quality_rewards))
+                if low_quality_rewards
+                else 0.0
+            ),
+            "quality_threshold": self._coerce_float(high_quality_threshold, default=0.5),
+            "high_quality_count": len(high_quality_rewards),
+            "low_quality_count": len(low_quality_rewards),
         }
 
         # Store correlation results
-        correlation_record = {
-            'timestamp': pd.Timestamp.now(),
-            'correlation': correlation,
-            'p_value': p_value,
-            'rolling_correlations': rolling_correlations,
-            'contribution_analysis': contribution_analysis,
-            'data_points': len(sac_rewards)
+        correlation_record: SACCorrelationRecord = {
+            "timestamp": time.time(),
+            "correlation": correlation,
+            "p_value": p_value,
+            "rolling_correlations": rolling_correlations,
+            "contribution_analysis": contribution_analysis,
+            "data_points": len(sac_rewards),
         }
-        self.signal_sac_correlations.append(correlation_record)
-
-        # Keep history size manageable
-        if len(self.signal_sac_correlations) > self.max_history_size:
-            self.signal_sac_correlations = self.signal_sac_correlations[-self.max_history_size:]
+        append_with_compaction(
+            self.signal_sac_correlations,
+            correlation_record,
+            high_water=self.max_history_size * 2,
+            retain=self.max_history_size,
+        )
 
         return {
-            'correlation_coefficient': correlation,
-            'p_value': p_value,
-            'correlation_strength': self._interpret_correlation_strength(correlation),
-            'rolling_correlations': rolling_correlations,
-            'contribution_analysis': contribution_analysis,
-            'data_points': len(sac_rewards),
-            'correlation_trend': self._calculate_trend([c['correlation'] for c in self.signal_sac_correlations[-10:]])
+            "correlation_coefficient": correlation,
+            "p_value": p_value,
+            "correlation_strength": self._interpret_correlation_strength(correlation),
+            "rolling_correlations": rolling_correlations,
+            "contribution_analysis": contribution_analysis,
+            "data_points": len(sac_rewards),
+            "correlation_trend": self._calculate_trend(
+                [c["correlation"] for c in self.signal_sac_correlations[-10:]]
+            ),
         }
-
-        contribution_analysis = {
-            'high_quality_avg_reward': np.mean(high_quality_rewards) if high_quality_rewards else 0,
-            'low_quality_avg_reward': np.mean(low_quality_rewards) if low_quality_rewards else 0,
-            'reward_improvement': (
-                np.mean(high_quality_rewards) - np.mean(low_quality_rewards)
-                if high_quality_rewards and low_quality_rewards else 0
-            )
-        }
-
-        correlation_result = {
-            'overall_correlation': correlation,
-            'p_value': p_value,
-            'correlation_strength': self._interpret_correlation_strength(correlation),
-            'rolling_correlations': rolling_correlations,
-            'contribution_analysis': contribution_analysis,
-            'analysis_timestamp': time.time()
-        }
-
-        self.signal_sac_correlations.append(correlation_result)
-
-        return correlation_result
 
     def _interpret_correlation_strength(self, correlation: float) -> str:
         """Interpret correlation coefficient strength."""
@@ -343,12 +382,17 @@ class SignalPerformanceAnalyzer:
         contribution_score = min(1.0, base_contribution * regime_multiplier * pattern_multiplier)
 
         # Record contribution data
-        self.signal_contribution_scores[pattern_type].append(contribution_score)
+        append_with_compaction(
+            self.signal_contribution_scores[pattern_type],
+            contribution_score,
+            high_water=1000,
+            retain=500,
+        )
         self.regime_signal_effectiveness[market_regime][pattern_type] = contribution_score
 
         return contribution_score
 
-    def generate_performance_report(self) -> Dict[str, Any]:
+    def generate_performance_report(self) -> dict[str, object]:
         """
         Generate comprehensive performance report.
 
@@ -356,17 +400,17 @@ class SignalPerformanceAnalyzer:
             Performance report with all metrics
         """
         report = {
-            'timestamp': time.time(),
-            'signal_quality_metrics': self._analyze_signal_quality_metrics(),
-            'sac_correlation_analysis': self._analyze_sac_correlations(),
-            'pattern_effectiveness': self._analyze_pattern_effectiveness(),
-            'regime_performance': dict(self.regime_signal_effectiveness),
-            'recommendations': self._generate_recommendations()
+            "timestamp": time.time(),
+            "signal_quality_metrics": self._analyze_signal_quality_metrics(),
+            "sac_correlation_analysis": self._analyze_sac_correlations(),
+            "pattern_effectiveness": self._analyze_pattern_effectiveness(),
+            "regime_performance": dict(self.regime_signal_effectiveness),
+            "recommendations": self._generate_recommendations(),
         }
 
         return report
 
-    def _analyze_signal_quality_metrics(self) -> Dict[str, Any]:
+    def _analyze_signal_quality_metrics(self) -> dict[str, object]:
         """Analyze signal quality metrics from history."""
         if not self.signal_quality_history:
             return {}
@@ -374,47 +418,56 @@ class SignalPerformanceAnalyzer:
         df = pd.DataFrame(self.signal_quality_history)
 
         quality_metrics = {
-            'average_quality_score': df['quality_score'].mean(),
-            'quality_score_std': df['quality_score'].std(),
-            'quality_score_trend': self._calculate_trend(df['quality_score']),
-            'pattern_quality_ranking': df.groupby('pattern_type')['quality_score'].mean().to_dict(),
-            'quality_distribution': {
-                'excellent': (df['quality_score'] >= 0.8).sum(),
-                'good': ((df['quality_score'] >= 0.6) & (df['quality_score'] < 0.8)).sum(),
-                'fair': ((df['quality_score'] >= 0.4) & (df['quality_score'] < 0.6)).sum(),
-                'poor': (df['quality_score'] < 0.4).sum()
-            }
+            "average_quality_score": self._coerce_float(df["quality_score"].mean()),
+            "quality_score_std": self._coerce_float(df["quality_score"].std()),
+            "quality_score_trend": self._calculate_trend(df["quality_score"]),
+            "pattern_quality_ranking": df.groupby("pattern_type")["quality_score"]
+            .mean()
+            .to_dict(),
+            "quality_distribution": {
+                "excellent": int((df["quality_score"] >= 0.8).sum()),
+                "good": int(
+                    ((df["quality_score"] >= 0.6) & (df["quality_score"] < 0.8)).sum()
+                ),
+                "fair": int(
+                    ((df["quality_score"] >= 0.4) & (df["quality_score"] < 0.6)).sum()
+                ),
+                "poor": int((df["quality_score"] < 0.4).sum()),
+            },
         }
 
         return quality_metrics
 
-    def _analyze_sac_correlations(self) -> Dict[str, Any]:
+    def _analyze_sac_correlations(self) -> dict[str, object]:
         """Analyze SAC learning correlations."""
         if not self.signal_sac_correlations:
             return {}
 
         recent_correlations = self.signal_sac_correlations[-10:]  # Last 10 analyses
+        correlation_values = [c.get("correlation", 0.0) for c in recent_correlations]
 
         correlation_metrics = {
-            'average_correlation': np.mean([c.get('correlation', 0) for c in recent_correlations]),
-            'correlation_trend': self._calculate_trend([c.get('correlation', 0) for c in recent_correlations]),
-            'strongest_correlation': max(recent_correlations, key=lambda x: abs(x.get('correlation', 0))),
-            'correlation_stability': np.std([c.get('correlation', 0) for c in recent_correlations])
+            "average_correlation": self._coerce_float(np.mean(correlation_values)),
+            "correlation_trend": self._calculate_trend(correlation_values),
+            "strongest_correlation": max(
+                recent_correlations, key=lambda x: abs(x.get("correlation", 0.0))
+            ),
+            "correlation_stability": self._coerce_float(np.std(correlation_values)),
         }
 
         return correlation_metrics
 
-    def _analyze_pattern_effectiveness(self) -> Dict[str, Any]:
+    def _analyze_pattern_effectiveness(self) -> dict[str, object]:
         """Analyze pattern effectiveness across different metrics."""
         effectiveness = {}
 
         for pattern_type, scores in self.signal_contribution_scores.items():
             if scores:
                 effectiveness[pattern_type] = {
-                    'average_contribution': np.mean(scores),
-                    'contribution_consistency': np.std(scores),
-                    'total_signals': len(scores),
-                    'effectiveness_trend': self._calculate_trend(scores)
+                    "average_contribution": self._coerce_float(np.mean(scores)),
+                    "contribution_consistency": self._coerce_float(np.std(scores)),
+                    "total_signals": len(scores),
+                    "effectiveness_trend": self._calculate_trend(scores),
                 }
 
         return effectiveness
@@ -425,26 +478,33 @@ class SignalPerformanceAnalyzer:
 
         # Signal quality recommendations
         quality_metrics = self._analyze_signal_quality_metrics()
-        if quality_metrics.get('average_quality_score', 0) < 0.6:
-            recommendations.append("Signal quality is below optimal threshold. Consider adjusting pattern recognition parameters.")
+        if quality_metrics.get("average_quality_score", 0) < 0.6:
+            recommendations.append(
+                "Signal quality is below optimal threshold. Consider adjusting pattern recognition parameters."
+            )
 
         # Correlation recommendations
         correlation_metrics = self._analyze_sac_correlations()
-        if correlation_metrics.get('average_correlation', 0) < 0.3:
-            recommendations.append("SAC-signal correlation is weak. Consider improving signal features or SAC observation space.")
+        if correlation_metrics.get("average_correlation", 0) < 0.3:
+            recommendations.append(
+                "SAC-signal correlation is weak. Consider improving signal features or SAC observation space."
+            )
 
         # Pattern effectiveness recommendations
         effectiveness = self._analyze_pattern_effectiveness()
         underperforming_patterns = [
             pattern for pattern, metrics in effectiveness.items()
-            if metrics['average_contribution'] < 0.5
+            if metrics["average_contribution"] < 0.5
         ]
         if underperforming_patterns:
-            recommendations.append(f"Consider reducing weight for underperforming patterns: {', '.join(underperforming_patterns)}")
+            recommendations.append(
+                "Consider reducing weight for underperforming patterns: "
+                f"{', '.join(underperforming_patterns)}"
+            )
 
         return recommendations
 
-    def analyze_correlation(self) -> Dict[str, Any]:
+    def analyze_correlation(self) -> dict[str, object]:
         """
         Analyze correlation between signals and performance.
 
@@ -452,3 +512,20 @@ class SignalPerformanceAnalyzer:
             Correlation analysis results
         """
         return self.analyze_sac_learning_correlation()
+
+    @staticmethod
+    def _coerce_float(value: object, default: float = 0.0) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _rolling_windows(base_window: int) -> list[int]:
+        normalized_base = max(4, int(base_window))
+        windows = {
+            max(2, normalized_base // 4),
+            max(2, normalized_base // 2),
+            normalized_base,
+        }
+        return sorted(windows)

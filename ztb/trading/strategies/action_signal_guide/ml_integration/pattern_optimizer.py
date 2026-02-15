@@ -22,6 +22,7 @@ from sklearn.model_selection import TimeSeriesSplit, cross_val_score
 from sklearn.preprocessing import StandardScaler
 
 from ..config.asg_ml_config import MLIntegrationConfig, PatternOptimizerConfig
+from ..components.history_helpers import append_with_compaction
 from ..interfaces.ml_interfaces import (
     IPatternOptimizer,
     MLPredictionModel,
@@ -572,19 +573,18 @@ class AdvancedPatternOptimizer(BasePatternOptimizer):
 
     def _append_performance_snapshot(self, result: PatternOptimizationResult) -> None:
         """Store bounded performance history for long-running processes."""
-        self.performance_history.append(
+        history_limit = max(100, int(self.config.max_training_samples))
+        append_with_compaction(
+            self.performance_history,
             {
                 "timestamp": float(time.time()),
                 "model_accuracy": float(result.model_accuracy),
                 "optimization_score": float(result.optimization_score),
                 "validation_score": float(result.validation_score),
-            }
+            },
+            high_water=history_limit * 2,
+            retain=history_limit,
         )
-
-        history_limit = max(100, int(self.config.max_training_samples))
-        if len(self.performance_history) > history_limit:
-            excess = len(self.performance_history) - history_limit
-            del self.performance_history[:excess]
 
     def _extract_patterns(self, training_data: MLTrainingData) -> dict[str, object]:
         """Extract meaningful patterns from training data and models."""
