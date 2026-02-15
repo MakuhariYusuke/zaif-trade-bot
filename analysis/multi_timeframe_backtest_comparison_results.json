@@ -1,8 +1,0 @@
-{
-  "multi_timeframe_enabled": {
-    "error": "No module named 'numpy._core.numeric'"
-  },
-  "multi_timeframe_disabled": {
-    "error": "No module named 'numpy._core.numeric'"
-  }
-}
