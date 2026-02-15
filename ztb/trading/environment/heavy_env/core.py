@@ -6,7 +6,7 @@ import dataclasses
 import gc
 import logging
 from collections import deque
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, TypeAlias, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, TypeAlias, Union
 
 import gymnasium as gym
 import numpy as np
@@ -81,6 +81,7 @@ from ztb.trading.environment.heavy_env.mixins.streaming import (
 from ztb.trading.environment.types import StatisticsDict
 from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
 from ztb.trading.environment.utils.domain_randomizer import DomainRandomizer
+from ztb.types.common import ObjectMap
 from ztb.types.protocols import TradingEnvironment
 from ztb.utils.exceptions.custom_exceptions import ConfigurationError, ValidationError
 from ztb.utils.fee_model import ExchangeFeeModel
@@ -104,13 +105,16 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
-def deep_merge_dict(base: Dict[str, Any], update: Dict[str, Any]) -> Dict[str, Any]:
+def deep_merge_dict(base: ObjectMap, update: ObjectMap) -> ObjectMap:
     """Deep merge two dictionaries."""
-    result = base.copy()
+    result: ObjectMap = base.copy()
 
     for key, value in update.items():
-        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-            result[key] = deep_merge_dict(result[key], value)
+        base_value = result.get(key)
+        if isinstance(base_value, dict) and isinstance(value, dict):
+            nested_base = {str(k): v for k, v in base_value.items()}
+            nested_update = {str(k): v for k, v in value.items()}
+            result[key] = deep_merge_dict(nested_base, nested_update)
         else:
             result[key] = value
 
@@ -137,14 +141,14 @@ class HeavyTradingEnv(
     DEFAULT_PREPROCESS_CHUNK_SIZE = 32
 
     # --- START: Debug Methods ---
-    def enable_debug_mode(self, model: Optional[Any] = None) -> None:
+    def enable_debug_mode(self, model: Optional[object] = None) -> None:
         """Enable debug mode to get detailed info from the environment."""
         self._model = model
         self._debug_mode = True
         if hasattr(self, "logger"):
             self.logger.info("Debug mode enabled.")
 
-    def _get_debug_info(self, observation: np.ndarray) -> Dict[str, Any]:
+    def _get_debug_info(self, observation: np.ndarray) -> dict[str, object]:
         """モデルの内部状態を抽出してデバッグ情報を取得する。"""
         if (
             not self.config.debug_internal_state
@@ -273,7 +277,7 @@ class HeavyTradingEnv(
     _price_array: Optional[NDArray[np.float32]]
     _close_array: Optional[NDArray[np.float32]]
     _atr_array: Optional[NDArray[np.float32]]
-    _episode_id_array: Optional[NDArray[Any]]
+    _episode_id_array: Optional[NDArray[np.generic]]
     _timestamp_column: Optional[str]
     _episode_id_column: Optional[str]
     _stream_last_timestamp: Optional[pd.Timestamp]
@@ -346,7 +350,7 @@ class HeavyTradingEnv(
     def __init__(
         self,
         df: pd.DataFrame,
-        config: Union[Dict[str, Any], EnvironmentConfig],
+        config: Union[ObjectMap, EnvironmentConfig],
         initial_balance: float = 100_000.0,
         transaction_cost: float = 0.00075,
         max_position_size: float = 1.0,
@@ -355,7 +359,7 @@ class HeavyTradingEnv(
         streaming_pipeline: Optional["StreamingPipeline"] = None,
         stream_to_bars_converter: Optional["StreamToBarsConverter"] = None,
         fee_model: Optional[ExchangeFeeModel] = None,
-        **kwargs: Any,
+        **kwargs: object,
     ) -> None:
         """Initialize the trading environment."""
         super().__init__()
@@ -365,7 +369,7 @@ class HeavyTradingEnv(
             TypeValidator.validate_type(df, pd.DataFrame, "df")
 
         if config is not None and not isinstance(config, EnvironmentConfig):
-            TypeValidator.validate_type(config, Dict[str, Any], "config")
+            TypeValidator.validate_type(config, dict[str, object], "config")
 
         if isinstance(config, EnvironmentConfig):
             self.config = config
@@ -547,7 +551,7 @@ class HeavyTradingEnv(
 
         # Determine whether adaptation is enabled and extract classifier config
         enabled = False
-        classifier_config: Dict[str, Any] = {}
+        classifier_config: ObjectMap = {}
         try:
             if isinstance(advanced_regime_config, dict):
                 enabled = bool(advanced_regime_config.get("enabled", False))
@@ -617,8 +621,8 @@ class HeavyTradingEnv(
         self,
         *,
         seed: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[NDArray[np.float32], Dict[str, Any]]:
+        options: Optional[ObjectMap] = None,
+    ) -> Tuple[NDArray[np.float32], dict[str, object]]:
         super().reset(seed=seed)
 
         # Domain Randomization
@@ -712,8 +716,8 @@ class HeavyTradingEnv(
         self.total_slippage = pos_info.get("total_slippage", 0.0)
         self.trades_count = pos_info["trades_count"]
 
-    def get_legal_actions(self) -> Any:
-        market_regime: Any = None
+    def get_legal_actions(self) -> NDArray[np.int_]:
+        market_regime: Optional[str] = None
         try:
             regime_obj = self._get_current_market_regime()
             market_regime = (
@@ -736,10 +740,10 @@ class HeavyTradingEnv(
             hybrid_filters=getattr(self.config, "hybrid_config", None),
         )
 
-    def action_mask(self) -> Any:
+    def action_mask(self) -> NDArray[np.bool_]:
         return self.get_legal_actions().astype(np.bool_)
 
-    def get_action_masks(self) -> Any:
+    def get_action_masks(self) -> NDArray[np.bool_]:
         return self.action_mask()
 
     def _get_current_market_regime(self) -> V444RegimeType:
@@ -850,7 +854,7 @@ class HeavyTradingEnv(
         action: Union[
             int, np.ndarray
         ],  # Can be int (discrete) or np.ndarray (continuous)
-    ) -> Tuple[NDArray[np.float32], float, bool, bool, Dict[str, Any]]:
+    ) -> Tuple[NDArray[np.float32], float, bool, bool, dict[str, object]]:
         # Get current market regime
         # Use _get_current_market_regime to ensure consistency with PositionManager
         # and support V444RegimeClassifier if enabled
@@ -1498,7 +1502,7 @@ class HeavyTradingEnv(
 
         return next_obs, reward, done, False, info
 
-    def _get_observation(self) -> Any:
+    def _get_observation(self) -> NDArray[np.float32]:
         self.data_manager.ensure_data_available(self.current_step)
         obs = self.observation_builder.get_observation(
             self.current_step,
@@ -1544,7 +1548,7 @@ class HeavyTradingEnv(
 
         return obs
 
-    def _get_info(self) -> Any:
+    def _get_info(self) -> dict[str, object]:
         # 112# Perf: dataclasses.asdict(self.config) をキャッシュ化
         # 80+フィールドのネストdataclassを毎ステップ再帰変換するのは高コスト
         if not hasattr(self, '_config_dict_cache'):
@@ -1575,6 +1579,16 @@ class HeavyTradingEnv(
         # if self.current_step % 50 == 0:
         #      self.logger.warning(f"DEBUG: _get_info regime at step {self.current_step}: {market_regime}")
         return base_info
+
+    def _build_initial_regime_stats(self) -> dict[str, object]:
+        """Create bounded default structure for regime adaptation statistics."""
+        return {
+            "regime_counts": {},
+            "regime_rewards": {},
+            "regime_actions": {},
+            "current_regime": None,
+            "regime_transitions": deque(maxlen=500),
+        }
 
     def render(self, mode: str = "human") -> None:
         if mode == "human":
@@ -1644,7 +1658,7 @@ class HeavyTradingEnv(
     def enable_market_regime_adaptation(
         self,
         regime_classifier: Optional["MarketRegimeClassifier"] = None,
-        adaptation_config: Optional[Dict[str, Any]] = None,
+        adaptation_config: Optional[ObjectMap] = None,
     ) -> None:
         """
         Enable market regime adaptation for the environment
@@ -1662,13 +1676,7 @@ class HeavyTradingEnv(
             logger.info("Market regime adaptation config updated")
 
         # Initialize regime statistics tracking (C1: deque で上限制限 — OOM 防止)
-        self.regime_stats: Dict[str, Any] = {
-            "regime_counts": {},
-            "regime_rewards": {},
-            "regime_actions": {},
-            "current_regime": None,
-            "regime_transitions": deque(maxlen=500),
-        }
+        self.regime_stats = self._build_initial_regime_stats()
 
         # Alias for backward compatibility
         self.regime_statistics = self.regime_stats
@@ -1723,7 +1731,7 @@ class FlipHeavyTradingEnv(HeavyTradingEnv):
 
     def step(
         self, action: Union[int, np.ndarray]
-    ) -> Tuple[NDArray[np.float32], float, bool, bool, Dict[str, Any]]:
+    ) -> Tuple[NDArray[np.float32], float, bool, bool, dict[str, object]]:
         flipped_action = action
         if action == ACTION_BUY:
             flipped_action = ACTION_SELL
@@ -1740,7 +1748,7 @@ class FlipHeavyTradingEnv(HeavyTradingEnv):
 
         return obs, reward, done, truncated, info
 
-    def _get_info(self) -> Any:
+    def _get_info(self) -> dict[str, object]:
         info = super()._get_info()
         if "position" in info:
             info["position"] = -info["position"]
@@ -1749,7 +1757,7 @@ class FlipHeavyTradingEnv(HeavyTradingEnv):
     def enable_market_regime_adaptation(
         self,
         regime_classifier: Optional["MarketRegimeClassifier"] = None,
-        adaptation_config: Optional[Dict[str, Any]] = None,
+        adaptation_config: Optional[ObjectMap] = None,
     ) -> None:
         """
         FlipHeavyTradingEnv 用: 市場レジーム適応を有効化します。
@@ -1765,28 +1773,14 @@ class FlipHeavyTradingEnv(HeavyTradingEnv):
         """
         logger.debug("enable_market_regime_adaptation called")
         try:
-            if regime_classifier is not None:
-                self.regime_classifier = regime_classifier
-                logger.info("Market regime classifier set for environment adaptation")
-
-            if adaptation_config is not None:
-                self.regime_adaptation_config = adaptation_config
-                logger.info("Market regime adaptation config updated")
-
-            # Set adaptation enabled flag
-            self.market_regime_adaptation_enabled = True
-
-            # Initialize regime statistics tracking (C1: deque で上限制限)
-            self.regime_stats = {
-                "regime_counts": {},
-                "regime_rewards": {},
-                "regime_actions": {},
-                "current_regime": None,
-                "regime_transitions": deque(maxlen=500),
-            }
+            super().enable_market_regime_adaptation(
+                regime_classifier=regime_classifier,
+                adaptation_config=adaptation_config,
+            )
             logger.debug(f"Regime_stats set: {hasattr(self, 'regime_stats')}")
-
-            logger.info("Market regime adaptation enabled in FLIPPED environment")
+            logger.info(
+                "Market regime adaptation enabled in FLIPPED environment"
+            )
         except Exception as e:
             logger.debug(f"Exception in enable_market_regime_adaptation: {e}")
             raise

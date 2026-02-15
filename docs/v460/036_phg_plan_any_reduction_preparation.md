@@ -280,6 +280,16 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 5. 未使用のしきい値最適化メソッドを除去し、読み手が追う分岐数を削減。  
 6. `Any` 負債は維持（当該ファイル `any_type_debt_tokens=0` のまま）。  
 
+### Step29: `heavy_env/core` の `Any` 全撤去 + 継承重複削減 + 転用可否調査
+
+1. `ztb/trading/environment/heavy_env/core.py` の `Any` 注釈を全撤去し、当該ファイル `any_type_debt_tokens=0` を達成。  
+2. `deep_merge_dict` を `ObjectMap` ベースへ型固定し、再帰マージ時の key/value 取り回しを `object` 系へ統一。  
+3. `reset/step/_get_observation/_get_info/get_legal_actions/action_mask/get_action_masks` の返却型を具体化し、環境I/O契約を明確化。  
+4. `enable_market_regime_adaptation()` の `adaptation_config` と内部 `regime_stats` を `object` ベースへ統一し、設定 payload の型揺れを抑制。  
+5. `FlipHeavyTradingEnv.enable_market_regime_adaptation()` の重複実装を `super()` 委譲へ整理し、派生クラス側はデバッグ責務のみに縮小。  
+6. `HeavyTradingEnv._build_initial_regime_stats()` を導入し、`Heavy/Flip` 間での regime stats 初期化重複を削減。  
+7. **転用可否調査**: Step28 で分割した `promotion` の評価メソッド群は、現状コードベースでは `ztb/analysis/promotion.py` 以外に同等の実装先がなく、即時横展開先は限定的（`ztb/evaluation/promotion.py` は fallback wrapper 中心）。将来 2nd promotion engine 追加時に mixin 化での再利用が妥当。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -312,6 +322,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step26時点 | repo全体 | 3,350 |
 | Step27時点 | repo全体 | 3,327 |
 | Step28時点 | repo全体 | 3,327 |
+| Step29時点 | repo全体 | 3,304 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -344,19 +355,20 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step26時点 | `ztb/training/unified_trainer/ensemble_system.py` | **0** |
 | Step27時点 | `ztb/analysis/promotion.py` | **0** |
 | Step28時点 | `ztb/analysis/promotion.py` | **0** |
+| Step29時点 | `ztb/trading/environment/heavy_env/core.py` | **0** |
 
 ---
 
 ## 6. 次フェーズ（優先順）
 
-1. `ztb/trading/environment/heavy_env/core.py`  
-   - 環境状態 payload と feature 計算戻り値の `Any` を段階的に TypedDict/alias 化。  
-2. `ztb/utils/env_metrics.py`  
+1. `ztb/utils/env_metrics.py`  
    - metrics 集計 payload を `TypedDict` へ寄せ、動的 key 依存と `Any` を段階削減。  
-3. `ztb/trading/strategies/action_signal_guide/pattern_recognition/candlestick_patterns.py`  
+2. `ztb/trading/strategies/action_signal_guide/pattern_recognition/candlestick_patterns.py`  
    - 返却 payload と中間解析データの `Any` を `TypedDict` / `ObjectMap` ベースへ寄せ、判定ロジックのキー契約を固定。  
-4. `ztb/analysis/features/auto_feature_generator.py`  
+3. `ztb/analysis/features/auto_feature_generator.py`  
    - 生成パイプラインの result payload を段階的に型固定し、feature registry 連携の重複マップ操作を整理。  
+4. `ztb/evaluation/promotion.py`  
+   - fallback 実装と `analysis/promotion` の責務境界を整理し、将来的な評価ロジック共通化（mixin/utility）に備える。  
 
 ---
 
