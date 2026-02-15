@@ -1103,6 +1103,76 @@ class PatternRecognizer(ABC):
         return self.calculate_body_size(data, index) / total_range
 
 
+class TrendPatternRecognizer(PatternRecognizer):
+    """Base recognizer with shared helpers for trend-window analysis."""
+
+    def __init__(self, config: Optional[Dict[str, object]] = None) -> None:
+        super().__init__(config)
+        self._regression_cache: Dict[int, tuple[np.ndarray, float]] = {}
+
+    @staticmethod
+    def resolve_analysis_index(
+        data_len: int, index: int, min_required_index: int = 0
+    ) -> Optional[int]:
+        """Resolve -1 index and validate required bounds."""
+        resolved = data_len - 1 if index < 0 else index
+        if resolved < min_required_index or resolved >= data_len:
+            return None
+        return resolved
+
+    @staticmethod
+    def safe_ratio(numerator: float, denominator: float, default: float = 0.0) -> float:
+        """Safely divide while guarding against zero/NaN/inf values."""
+        if denominator == 0:
+            return default
+        value = numerator / denominator
+        return float(value) if np.isfinite(value) else default
+
+    def _get_regression_weights(self, length: int) -> tuple[np.ndarray, float]:
+        """Return centered x values and denominator for slope regression."""
+        cached = self._regression_cache.get(length)
+        if cached is not None:
+            return cached
+
+        x = np.arange(length, dtype=np.float64)
+        centered_x = x - float(np.mean(x))
+        denominator = float(np.dot(centered_x, centered_x))
+        if denominator <= 0:
+            denominator = 1.0
+
+        weights = (centered_x, denominator)
+        self._regression_cache[length] = weights
+        return weights
+
+    def calculate_normalized_slope(self, prices: np.ndarray) -> float:
+        """
+        Calculate normalized linear-regression slope for a close-price window.
+
+        This avoids repeated `np.polyfit` allocations for fixed window sizes.
+        """
+        if prices.size < 2:
+            return 0.0
+
+        values = np.asarray(prices, dtype=np.float64)
+        mean_price = float(np.mean(values))
+        if mean_price == 0.0:
+            return 0.0
+
+        centered_x, denominator = self._get_regression_weights(values.size)
+        centered_y = values - float(np.mean(values))
+        slope = float(np.dot(centered_x, centered_y) / denominator)
+        return self.safe_ratio(slope, mean_price, default=0.0)
+
+    @staticmethod
+    def slope_direction(slope: float, threshold: float) -> int:
+        """Map slope to {-1, 0, 1} by symmetric threshold."""
+        if slope > threshold:
+            return 1
+        if slope < -threshold:
+            return -1
+        return 0
+
+
 class CandlestickPatternRecognizer(PatternRecognizer):
     """
     Base class for candlestick pattern recognizers.

@@ -5,7 +5,8 @@ Joseph Granville's trading rules based on the relationship between price and vol
 This implementation focuses on the core principles while providing configurable parameters.
 """
 
-from typing import Any, Dict, Optional, Tuple
+from collections.abc import Mapping
+from typing import TypedDict
 
 import pandas as pd
 
@@ -18,12 +19,19 @@ except ImportError:
 
 
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import (
-    PatternRecognizer,
     SignalResult,
+    TrendPatternRecognizer,
 )
 
 
-class GranvilleLawRecognizer(PatternRecognizer):
+class GranvilleSignal(TypedDict):
+    direction: float
+    strength: float
+    description: str
+    confidence: float
+
+
+class GranvilleLawRecognizer(TrendPatternRecognizer):
     """
     Recognizes patterns using Granville's Law.
 
@@ -31,30 +39,31 @@ class GranvilleLawRecognizer(PatternRecognizer):
     This implementation provides the core rules with configurable parameters.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        super().__init__(config)
+    def __init__(self, config: Mapping[str, object] | None = None):
+        cfg: dict[str, object] = dict(config) if config else {}
+        super().__init__(cfg)
         self.pattern_type = "granville_law"
         # Price change thresholds
-        self.price_change_threshold = self.config.get(
-            "price_change_threshold", 0.005
-        )  # 0.5%
+        self.price_change_threshold = self._to_float(
+            cfg.get("price_change_threshold"), 0.005
+        )
         # Volume change thresholds
-        self.volume_change_threshold = self.config.get(
-            "volume_change_threshold", 0.1
-        )  # 10%
+        self.volume_change_threshold = self._to_float(
+            cfg.get("volume_change_threshold"), 0.1
+        )
         # Trend determination period
-        self.trend_period = self.config.get("trend_period", 20)  # 20 periods for trend
+        self.trend_period = self._to_int(cfg.get("trend_period"), 20)
         # Minimum volume for valid signals
-        self.min_volume = self.config.get("min_volume", 1000)
+        self.min_volume = self._to_float(cfg.get("min_volume"), 1000.0)
         # Use OBV for volume analysis
-        self.use_obv = self.config.get("use_obv", True)
+        self.use_obv = self._to_bool(cfg.get("use_obv"), True)
 
     def recognize(
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: dict[str, object] | None = None,
+    ) -> SignalResult | None:
         """
         Recognize Granville's Law patterns in the data.
 
@@ -65,17 +74,19 @@ class GranvilleLawRecognizer(PatternRecognizer):
         Returns:
             SignalResult if pattern detected, None otherwise
         """
+        del multi_timeframe_data
+
         if len(data) < self.trend_period + 2:
             return None
 
-        if index == -1:
-            index = len(data) - 1
-
-        if index < self.trend_period + 1:
+        resolved_index = self.resolve_analysis_index(
+            len(data), index, min_required_index=self.trend_period + 1
+        )
+        if resolved_index is None:
             return None
 
         # Get required data window
-        window_data = data.iloc[index - self.trend_period : index + 1]
+        window_data = data.iloc[resolved_index - self.trend_period : resolved_index + 1]
 
         # Calculate price and volume changes
         price_change, volume_change = self._calculate_changes(window_data)
@@ -99,7 +110,7 @@ class GranvilleLawRecognizer(PatternRecognizer):
 
         return None
 
-    def _calculate_changes(self, data: pd.DataFrame) -> Tuple[float, float]:
+    def _calculate_changes(self, data: pd.DataFrame) -> tuple[float, float]:
         """
         Calculate price and volume changes over the analysis period.
 
@@ -112,7 +123,9 @@ class GranvilleLawRecognizer(PatternRecognizer):
         # Price change (close to close)
         recent_close = data["close"].iloc[-1]
         previous_close = data["close"].iloc[-2]
-        price_change = (recent_close - previous_close) / previous_close
+        price_change = self.safe_ratio(
+            float(recent_close - previous_close), float(previous_close), default=0.0
+        )
 
         # Volume change - use OBV if enabled, otherwise raw volume
         if self.use_obv and len(data) >= 5:  # Need minimum data for OBV
@@ -120,28 +133,26 @@ class GranvilleLawRecognizer(PatternRecognizer):
                 obv_series = compute_obv(data)
                 recent_obv = obv_series.iloc[-1]
                 previous_obv = obv_series.iloc[-2]
-                volume_change = (
-                    (recent_obv - previous_obv) / abs(previous_obv)
-                    if previous_obv != 0
-                    else 0.0
+                volume_change = self.safe_ratio(
+                    float(recent_obv - previous_obv), abs(float(previous_obv)), default=0.0
                 )
             except Exception:
                 # Fallback to raw volume if OBV calculation fails
                 recent_volume = data["volume"].iloc[-1]
                 previous_volume = data["volume"].iloc[-2]
-                volume_change = (
-                    (recent_volume - previous_volume) / previous_volume
-                    if previous_volume != 0
-                    else 0.0
+                volume_change = self.safe_ratio(
+                    float(recent_volume - previous_volume),
+                    float(previous_volume),
+                    default=0.0,
                 )
         else:
             # Raw volume change
             recent_volume = data["volume"].iloc[-1]
             previous_volume = data["volume"].iloc[-2]
-            volume_change = (
-                (recent_volume - previous_volume) / previous_volume
-                if previous_volume != 0
-                else 0.0
+            volume_change = self.safe_ratio(
+                float(recent_volume - previous_volume),
+                float(previous_volume),
+                default=0.0,
             )
 
         return price_change, volume_change
@@ -183,7 +194,7 @@ class GranvilleLawRecognizer(PatternRecognizer):
         volume_change: float,
         market_trend: str,
         current_data: pd.Series,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> GranvilleSignal | None:
         """
         Apply Granville's Law rules to generate trading signals.
 
@@ -262,3 +273,31 @@ class GranvilleLawRecognizer(PatternRecognizer):
             }
 
         return None
+
+    @staticmethod
+    def _to_float(value: object, default: float) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _to_int(value: object, default: int) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _to_bool(value: object, default: bool) -> bool:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return bool(value)
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"1", "true", "yes", "on"}:
+                return True
+            if normalized in {"0", "false", "no", "off"}:
+                return False
+        return default

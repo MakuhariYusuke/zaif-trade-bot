@@ -445,6 +445,17 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 12. `calculate_adaptive_signal_thresholds()` の cache key にデータ終端 index を含め、同一長データでの誤キャッシュヒットを低減。  
 13. repo 全体 `any_type_debt_tokens` を `3,004 -> 3,000` へ削減。  
 
+### Step43: `TrendPatternRecognizer` 導入による継承ベース重複削減 + `dow/granville` 高速化 + `Any` 全撤去
+
+1. `ztb/trading/strategies/action_signal_guide/pattern_recognition/base.py` に `TrendPatternRecognizer` を追加し、`resolve_analysis_index` / `safe_ratio` / `calculate_normalized_slope` / `slope_direction` を共通化。  
+2. `TrendPatternRecognizer` に回帰用重みキャッシュ（window長ごと）を導入し、固定窓（10/20/50）での反復 slope 計算コストを削減。  
+3. `ztb/trading/strategies/action_signal_guide/pattern_recognition/dow_theory.py` を `TrendPatternRecognizer` 継承へ変更し、primary/secondary/short の重複 trend 解析を `_analyze_trend()` に統合。  
+4. `dow_theory` の slope 計算を `np.polyfit` 反復から共通の軽量回帰ロジックへ置換し、認識処理のオーバーヘッドを削減。  
+5. `dow_theory` の confidence 算出で `min(0.0001, ...)` により常時極小値へ潰れる不具合を修正し、下限付き上限制御（`max(0.0001, ...)` + cap）へ是正。  
+6. `ztb/trading/strategies/action_signal_guide/pattern_recognition/granville_law.py` を同基底へ移行し、index解決・比率計算の重複処理を削減。  
+7. `dow_theory.py` / `granville_law.py` の `Any` を全撤去し、`TypedDict` + `Mapping[str, object]` ベースへ移行（両ファイル `any_type_debt_tokens=0`）。  
+8. repo 全体 `any_type_debt_tokens` を `3,000 -> 2,980` へ削減。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -491,6 +502,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step40時点 | repo全体 | 3,012 |
 | Step41時点 | repo全体 | 3,004 |
 | Step42時点 | repo全体 | 3,000 |
+| Step43時点 | repo全体 | 2,980 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -539,6 +551,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step41時点 | `ztb/trading/strategies/action_signal_guide/components/dynamic_adapter.py` | **0** |
 | Step41時点 | `ztb/analysis/regime/market_regime_types.py` | **0** |
 | Step42時点 | `ztb/trading/environment/components/threshold_manager.py` | **0** |
+| Step43時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/dow_theory.py` | **0** |
+| Step43時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/granville_law.py` | **0** |
 
 ---
 
@@ -552,8 +566,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - 集計 payload を TypedDict 化し、履歴構造と組み合わせ統計のキー存在保証を強化。  
 4. `ztb/trading/strategies/action_signal_guide/components/validation.py`  
    - validation/sanitize レポート構造を TypedDict へ寄せ、呼び出し側でのキー前提分岐を単純化。  
-5. `ztb/trading/strategies/action_signal_guide/pattern_recognition/dow_theory.py`  
-   - `Any` 削減と共通判定の抽出（base class / helper）を進め、candle/wave 系で行った重複削減パターンを横展開。  
+5. `ztb/trading/strategies/action_signal_guide/pattern_recognition/gann_analysis.py`  
+   - Step43 で導入した `TrendPatternRecognizer` の回帰/比率 helper を横展開し、`Any` 削減と傾向計算重複の整理を進める。  
 
 ---
 
