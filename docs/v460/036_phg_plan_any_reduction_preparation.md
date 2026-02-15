@@ -456,6 +456,16 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 7. `dow_theory.py` / `granville_law.py` の `Any` を全撤去し、`TypedDict` + `Mapping[str, object]` ベースへ移行（両ファイル `any_type_debt_tokens=0`）。  
 8. repo 全体 `any_type_debt_tokens` を `3,000 -> 2,980` へ削減。  
 
+### Step44: `gann_analysis` の継承整理・重複削減・計算軽量化 + `Any` 全撤去
+
+1. `ztb/trading/strategies/action_signal_guide/pattern_recognition/gann_analysis.py` を `Any` 依存から `TypedDict` / `dataclass` / `Mapping[str, object]` ベースへ移行し、当該ファイル `any_type_debt_tokens=0` を達成。  
+2. `GannPatternBase`（`CandlestickPatternRecognizer` 継承）を追加し、`GannAngleRecognizer` / `GannSquareRecognizer` / `GannTimeClusterRecognizer` で重複していた index 解決・lookback 切り出し・市場コンテキスト計算を共通化。  
+3. `GannAnalyzer` に `calculate_gann_angle_prices_at_time()` と `calculate_gann_square_levels()` を追加し、認識時に不要な full-series 生成（配列構築・文字列キー分解）を回避。  
+4. `GannAngleRecognizer` の pivot 時刻算出を bars-ago ベースに是正し、直近 pivot を選んだ際の off-by-one リスクを低減。  
+5. `gann` 系 3 recognizer で `compute_sma` / volatility ratio / trend strength 計算の重複を `GannPatternBase._calculate_market_context()` に統合し、保守性と実行効率を改善。  
+6. 互換性維持のため `GannAnalyzer.calculate_gann_angles()` / `calculate_gann_square()` は残しつつ、内部に軽量 API を追加する構成へ整理。  
+7. repo 全体 `any_type_debt_tokens` を `2,980 -> 2,973` へ削減。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -503,6 +513,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step41時点 | repo全体 | 3,004 |
 | Step42時点 | repo全体 | 3,000 |
 | Step43時点 | repo全体 | 2,980 |
+| Step44時点 | repo全体 | 2,973 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -553,6 +564,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step42時点 | `ztb/trading/environment/components/threshold_manager.py` | **0** |
 | Step43時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/dow_theory.py` | **0** |
 | Step43時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/granville_law.py` | **0** |
+| Step44時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/gann_analysis.py` | **0** |
 
 ---
 
@@ -566,8 +578,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - 集計 payload を TypedDict 化し、履歴構造と組み合わせ統計のキー存在保証を強化。  
 4. `ztb/trading/strategies/action_signal_guide/components/validation.py`  
    - validation/sanitize レポート構造を TypedDict へ寄せ、呼び出し側でのキー前提分岐を単純化。  
-5. `ztb/trading/strategies/action_signal_guide/pattern_recognition/gann_analysis.py`  
-   - Step43 で導入した `TrendPatternRecognizer` の回帰/比率 helper を横展開し、`Any` 削減と傾向計算重複の整理を進める。  
+5. `ztb/analysis/features/auto_feature_generator.py`  
+   - 依然として `Any` 負債最大級（23）。parameter/result payload を段階的に型固定し、feature 生成器の共通 validator 契約へ統合。  
 
 ---
 
