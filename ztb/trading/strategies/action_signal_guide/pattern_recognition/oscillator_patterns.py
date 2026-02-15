@@ -63,6 +63,31 @@ def _coerce_level(value: object, default: float) -> float:
         return default
 
 
+def _resolve_index(data: pd.DataFrame, index: int, *, min_required_index: int = 20) -> int | None:
+    """Resolve negative indices and validate minimum history requirements."""
+    return PatternRecognizer.resolve_analysis_index(
+        len(data), index, min_required_index=min_required_index
+    )
+
+
+def _build_analysis_view(
+    data: pd.DataFrame,
+    resolved_index: int,
+    *,
+    min_required_periods: int = 20,
+    analysis_window: int = 240,
+) -> tuple[pd.DataFrame, int]:
+    """Slice a bounded historical window ending at `resolved_index`."""
+    window_size = max(min_required_periods, int(analysis_window))
+    start_idx = max(0, resolved_index - window_size + 1)
+    view = data.iloc[start_idx : resolved_index + 1]
+
+    if len(view) < min_required_periods:
+        view = data.iloc[: resolved_index + 1]
+
+    return view, len(view) - 1
+
+
 class CCIRecognizer(PatternRecognizer):
     """
     Commodity Channel Index (CCI) pattern recognizer.
@@ -74,6 +99,7 @@ class CCIRecognizer(PatternRecognizer):
         self.pattern_type = "cci"
         self.overbought_level = self.config.get("overbought_level", 100)
         self.oversold_level = self.config.get("oversold_level", -100)
+        self.analysis_window = int(self.config.get("analysis_window", 240))
 
         # Multi-timeframe settings
         self.enable_multi_timeframe = self.config.get("enable_multi_timeframe", True)
@@ -97,7 +123,8 @@ class CCIRecognizer(PatternRecognizer):
         Returns:
             SignalResult with CCI analysis
         """
-        if index < 20:  # Need sufficient data for CCI calculation
+        resolved_index = _resolve_index(data, index, min_required_index=20)
+        if resolved_index is None:  # Need sufficient data for CCI calculation
             return SignalResult(
                 signal_type="cci_neutral",
                 strength=0.0,
@@ -109,14 +136,20 @@ class CCIRecognizer(PatternRecognizer):
             )
 
         try:
-            cci_series = compute_cci(data)
-            current_cci = cci_series.iloc[index]
+            analysis_data, local_index = _build_analysis_view(
+                data,
+                resolved_index,
+                min_required_periods=20,
+                analysis_window=self.analysis_window,
+            )
+            cci_series = compute_cci(analysis_data)
+            current_cci = float(cci_series.iloc[local_index])
 
             # Multi-timeframe analysis
             mtf_confidence = 1.0
             if self.enable_multi_timeframe and multi_timeframe_data:
                 mtf_confidence = self._analyze_multi_timeframe_cci_alignment(
-                    data, index, multi_timeframe_data
+                    current_cci, multi_timeframe_data
                 )
 
             # Regime-aware threshold adjustment
@@ -194,23 +227,20 @@ class CCIRecognizer(PatternRecognizer):
 
     def _analyze_multi_timeframe_cci_alignment(
         self,
-        data: pd.DataFrame,
-        index: int,
+        current_cci: float,
         multi_timeframe_data: MultiTimeframeData,
     ) -> float:
         """
         Analyze CCI alignment across multiple timeframes.
 
         Args:
-            data: Current timeframe data
-            index: Current index
+            current_cci: Current timeframe CCI value
             multi_timeframe_data: Multi-timeframe data dictionary
 
         Returns:
             Confidence multiplier based on timeframe alignment
         """
         try:
-            base_cci = compute_cci(data).iloc[index]
             alignment_score = 1.0
             aligned_timeframes = 0
 
@@ -222,7 +252,7 @@ class CCIRecognizer(PatternRecognizer):
                         latest_tf_cci = tf_cci.iloc[-1]
 
                         # Check if signals align
-                        base_signal = 1 if base_cci > 0 else -1
+                        base_signal = 1 if current_cci > 0 else -1
                         tf_signal = 1 if latest_tf_cci > 0 else -1
 
                         if base_signal == tf_signal:
@@ -319,6 +349,7 @@ class StochasticRecognizer(PatternRecognizer):
         self.pattern_type = "stochastic"
         self.overbought_level = self.config.get("overbought_level", 80)
         self.oversold_level = self.config.get("oversold_level", 20)
+        self.analysis_window = int(self.config.get("analysis_window", 240))
 
         # Multi-timeframe settings
         self.enable_multi_timeframe = self.config.get("enable_multi_timeframe", True)
@@ -342,7 +373,8 @@ class StochasticRecognizer(PatternRecognizer):
         Returns:
             SignalResult with Stochastic analysis
         """
-        if index < 20:  # Need sufficient data for Stochastic calculation
+        resolved_index = _resolve_index(data, index, min_required_index=20)
+        if resolved_index is None:  # Need sufficient data for Stochastic calculation
             return SignalResult(
                 signal_type="stochastic_neutral",
                 strength=0.0,
@@ -354,15 +386,21 @@ class StochasticRecognizer(PatternRecognizer):
             )
 
         try:
-            stoch_data = compute_stochastic(data)
-            current_k = stoch_data["stoch_k"].iloc[index]
-            current_d = stoch_data["stoch_d"].iloc[index]
+            analysis_data, local_index = _build_analysis_view(
+                data,
+                resolved_index,
+                min_required_periods=20,
+                analysis_window=self.analysis_window,
+            )
+            stoch_data = compute_stochastic(analysis_data)
+            current_k = float(stoch_data["stoch_k"].iloc[local_index])
+            current_d = float(stoch_data["stoch_d"].iloc[local_index])
 
             # Multi-timeframe analysis
             mtf_confidence = 1.0
             if self.enable_multi_timeframe and multi_timeframe_data:
                 mtf_confidence = self._analyze_multi_timeframe_stochastic_alignment(
-                    data, index, multi_timeframe_data
+                    current_k, current_d, multi_timeframe_data
                 )
 
             # Regime-aware threshold adjustment
@@ -474,26 +512,22 @@ class StochasticRecognizer(PatternRecognizer):
 
     def _analyze_multi_timeframe_stochastic_alignment(
         self,
-        data: pd.DataFrame,
-        index: int,
+        base_k: float,
+        base_d: float,
         multi_timeframe_data: MultiTimeframeData,
     ) -> float:
         """
         Analyze Stochastic alignment across multiple timeframes.
 
         Args:
-            data: Current timeframe data
-            index: Current index
+            base_k: Current timeframe stochastic %K
+            base_d: Current timeframe stochastic %D
             multi_timeframe_data: Multi-timeframe data dictionary
 
         Returns:
             Confidence multiplier based on timeframe alignment
         """
         try:
-            base_stoch = compute_stochastic(data)
-            base_k = base_stoch["stoch_k"].iloc[index]
-            base_d = base_stoch["stoch_d"].iloc[index]
-
             alignment_score = 1.0
             aligned_timeframes = 0
 
@@ -609,6 +643,7 @@ class WilliamsRRecognizer(PatternRecognizer):
         self.pattern_type = "williams_r"
         self.overbought_level = self.config.get("overbought_level", -20)
         self.oversold_level = self.config.get("oversold_level", -80)
+        self.analysis_window = int(self.config.get("analysis_window", 240))
 
         # Multi-timeframe settings
         self.enable_multi_timeframe = self.config.get("enable_multi_timeframe", True)
@@ -632,7 +667,8 @@ class WilliamsRRecognizer(PatternRecognizer):
         Returns:
             SignalResult with Williams %R analysis
         """
-        if index < 20:  # Need sufficient data for Williams %R calculation
+        resolved_index = _resolve_index(data, index, min_required_index=20)
+        if resolved_index is None:  # Need sufficient data for Williams %R calculation
             return SignalResult(
                 signal_type="williams_r_neutral",
                 strength=0.0,
@@ -644,14 +680,20 @@ class WilliamsRRecognizer(PatternRecognizer):
             )
 
         try:
-            williams_r_series = compute_williams_r(data)
-            current_wr = williams_r_series.iloc[index]
+            analysis_data, local_index = _build_analysis_view(
+                data,
+                resolved_index,
+                min_required_periods=20,
+                analysis_window=self.analysis_window,
+            )
+            williams_r_series = compute_williams_r(analysis_data)
+            current_wr = float(williams_r_series.iloc[local_index])
 
             # Multi-timeframe analysis
             mtf_confidence = 1.0
             if self.enable_multi_timeframe and multi_timeframe_data:
                 mtf_confidence = self._analyze_multi_timeframe_williams_r_alignment(
-                    data, index, multi_timeframe_data
+                    current_wr, multi_timeframe_data
                 )
 
             # Regime-aware threshold adjustment
@@ -729,23 +771,20 @@ class WilliamsRRecognizer(PatternRecognizer):
 
     def _analyze_multi_timeframe_williams_r_alignment(
         self,
-        data: pd.DataFrame,
-        index: int,
+        base_wr: float,
         multi_timeframe_data: MultiTimeframeData,
     ) -> float:
         """
         Analyze Williams %R alignment across multiple timeframes.
 
         Args:
-            data: Current timeframe data
-            index: Current index
+            base_wr: Current timeframe Williams %R value
             multi_timeframe_data: Multi-timeframe data dictionary
 
         Returns:
             Confidence multiplier based on timeframe alignment
         """
         try:
-            base_wr = compute_williams_r(data).iloc[index]
             alignment_score = 1.0
             aligned_timeframes = 0
 
@@ -858,6 +897,7 @@ class MFIRecognizer(PatternRecognizer):
         self.pattern_type = "mfi"
         self.overbought_level = self.config.get("overbought_level", 80)
         self.oversold_level = self.config.get("oversold_level", 20)
+        self.analysis_window = int(self.config.get("analysis_window", 240))
 
         # Multi-timeframe settings
         self.enable_multi_timeframe = self.config.get("enable_multi_timeframe", True)
@@ -881,7 +921,8 @@ class MFIRecognizer(PatternRecognizer):
         Returns:
             SignalResult with MFI analysis
         """
-        if index < 20:  # Need sufficient data for MFI calculation
+        resolved_index = _resolve_index(data, index, min_required_index=20)
+        if resolved_index is None:  # Need sufficient data for MFI calculation
             return SignalResult(
                 signal_type="mfi_neutral",
                 strength=0.0,
@@ -893,14 +934,20 @@ class MFIRecognizer(PatternRecognizer):
             )
 
         try:
-            mfi_series = compute_mfi(data)
-            current_mfi = mfi_series.iloc[index]
+            analysis_data, local_index = _build_analysis_view(
+                data,
+                resolved_index,
+                min_required_periods=20,
+                analysis_window=self.analysis_window,
+            )
+            mfi_series = compute_mfi(analysis_data)
+            current_mfi = float(mfi_series.iloc[local_index])
 
             # Multi-timeframe analysis
             mtf_confidence = 1.0
             if self.enable_multi_timeframe and multi_timeframe_data:
                 mtf_confidence = self._analyze_multi_timeframe_mfi_alignment(
-                    data, index, multi_timeframe_data
+                    current_mfi, multi_timeframe_data
                 )
 
             # Regime-aware threshold adjustment
@@ -978,23 +1025,20 @@ class MFIRecognizer(PatternRecognizer):
 
     def _analyze_multi_timeframe_mfi_alignment(
         self,
-        data: pd.DataFrame,
-        index: int,
+        base_mfi: float,
         multi_timeframe_data: MultiTimeframeData,
     ) -> float:
         """
         Analyze MFI alignment across multiple timeframes.
 
         Args:
-            data: Current timeframe data
-            index: Current index
+            base_mfi: Current timeframe MFI value
             multi_timeframe_data: Multi-timeframe data dictionary
 
         Returns:
             Confidence multiplier based on timeframe alignment
         """
         try:
-            base_mfi = compute_mfi(data).iloc[index]
             alignment_score = 1.0
             aligned_timeframes = 0
 

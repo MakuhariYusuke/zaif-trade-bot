@@ -551,6 +551,17 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 8. `SignalGenerator.__del__()` は `close()` 委譲へ統一し、スレッド停止とキャッシュ解放の後始末経路を単一化。  
 9. 今回は leak 防止が主目的のため `Any` 追加削減は無し（repo 全体 `any_type_debt_tokens` は `2,873` を維持）。  
 
+### Step52: 特徴量計算コストの水平展開削減（`RSI/MACD/ATR/ADX/oscillator`）
+
+1. `pattern_recognition/base.py` の `IndicatorPatternRecognizer` に `build_indicator_view()` を追加し、指標計算を「対象 index までの固定窓」へ統一。  
+2. `rsi.py` / `macd.py` / `atr.py` を fixed-window 計算へ移行し、長系列での full-series 再計算を回避（O(N) -> O(W) 化）。  
+3. 上記 3 recognizer は `index` より後方データを使わない構造へ変更し、履歴評価時の将来データ混入リスクを低減。  
+4. `adx_patterns.py` を `IndicatorPatternRecognizer` 継承へ移行し、固定窓計算・index 正規化・`adx_change` 0除算ガードを適用。  
+5. `oscillator_patterns.py`（`CCI/Stochastic/WilliamsR/MFI`）で `index` 正規化と fixed-window 計算を導入。  
+6. `oscillator` 4 recognizer の MTF alignment で、base timeframe 指標の再計算（重複 `compute_*`）を廃止し、認識時に算出済みの current 値を再利用。  
+7. `analysis_window` を各 oscillator recognizer に追加し、計算窓を config で調整可能にした（デフォルト 240）。  
+8. `Any` 負債は増減なし（repo 全体 `any_type_debt_tokens` は `2,873` を維持）。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -606,6 +617,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step49時点 | repo全体 | 2,885 |
 | Step50時点 | repo全体 | 2,873 |
 | Step51時点 | repo全体 | 2,873 |
+| Step52時点 | repo全体 | 2,873 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |

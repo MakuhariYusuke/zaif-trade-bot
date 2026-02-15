@@ -3,7 +3,8 @@ ADX (Average Directional Index) Pattern Recognizer
 ADXパターン認識 - トレンド強度と方向性分析
 """
 
-from typing import Dict, Optional, Union
+from collections.abc import Mapping
+from typing import Optional
 
 import pandas as pd
 
@@ -22,35 +23,32 @@ except ImportError:
 
 from ztb.utils.performance_utils import timed
 
-from .base import PatternRecognizer, SignalResult
+from .base import IndicatorPatternRecognizer, MultiTimeframeData, SignalResult
 
 
-class ADXRecognizer(PatternRecognizer):
+class ADXRecognizer(IndicatorPatternRecognizer):
     """
     ADX (Average Directional Index) pattern recognizer.
     ADXベースのパターン認識 - トレンド強度と方向性分析
     """
 
-    def __init__(self, config: Optional[Dict[str, Union[int, float, bool, str, Dict]]] = None):
+    def __init__(self, config: Optional[dict[str, object]] = None):
         super().__init__(config)
         self.pattern_type = "adx"
-        self.period = self.config.get("period", 14)
-        self.strong_trend_threshold = self.config.get("strong_trend_threshold", 25)
-        self.weak_trend_threshold = self.config.get("weak_trend_threshold", 20)
-        self.di_cross_threshold = self.config.get(
-            "di_cross_threshold", 1.0
+        self.period = int(self.config.get("period", 14))
+        self.strong_trend_threshold = float(
+            self.config.get("strong_trend_threshold", 25)
+        )
+        self.weak_trend_threshold = float(self.config.get("weak_trend_threshold", 20))
+        self.di_cross_threshold = float(
+            self.config.get("di_cross_threshold", 1.0)
         )  # DIクロスの最小差
-
-        # Multi-timeframe settings
-        self.enable_multi_timeframe = self.config.get("enable_multi_timeframe", True)
-        self.mtf_weight = self.config.get("mtf_weight", 0.3)  # Weight for MTF confirmation
-        self.regime_aware = self.config.get("regime_aware", True)  # Adjust thresholds based on regime
 
     def recognize(
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Union[float, int, str, Dict, None]]] = None,
+        multi_timeframe_data: Optional[MultiTimeframeData] = None,
     ) -> Optional[SignalResult]:
         """
         Recognize ADX patterns with multi-timeframe support.
@@ -63,43 +61,49 @@ class ADXRecognizer(PatternRecognizer):
         Returns:
             SignalResult with ADX analysis
         """
-        if not self.validate_data(data):
-            return None
-
-        if len(data) < self.period * 2:  # Need sufficient data for ADX calculation
+        min_periods = self.period * 2
+        resolved_index = self.resolve_indicator_index(
+            data, index, min_required_periods=min_periods
+        )
+        if resolved_index is None:
             return SignalResult(
                 signal_type="adx_insufficient_data",
                 strength=0.0,
                 direction=0.0,
-                description=f"Insufficient data for ADX (need {self.period * 2} periods)",
+                description=f"Insufficient data for ADX (need {min_periods} periods)",
                 metadata={},
                 validity_period=1,
                 risk_level="low",
             )
 
+        analysis_data, local_index = self.build_indicator_view(
+            data,
+            resolved_index,
+            min_required_periods=min_periods,
+            window_multiplier=8,
+            min_window=max(120, self.period * 6),
+            max_window=1200,
+        )
+
         try:
             # Calculate ADX and DI values
-            adx_series = compute_adx(data, self.period)
-            plus_di_series = compute_plus_di(data, self.period)
-            minus_di_series = compute_minus_di(data, self.period)
+            adx_series = compute_adx(analysis_data, self.period)
+            plus_di_series = compute_plus_di(analysis_data, self.period)
+            minus_di_series = compute_minus_di(analysis_data, self.period)
 
-            current_adx = adx_series.iloc[index]
-            current_plus_di = plus_di_series.iloc[index]
-            current_minus_di = minus_di_series.iloc[index]
+            current_adx = float(adx_series.iloc[local_index])
+            current_plus_di = float(plus_di_series.iloc[local_index])
+            current_minus_di = float(minus_di_series.iloc[local_index])
 
             # Get previous values for trend analysis
-            if index > 0:
-                prev_adx = adx_series.iloc[index - 1]
-                prev_plus_di = plus_di_series.iloc[index - 1]
-                prev_minus_di = minus_di_series.iloc[index - 1]
-            else:
-                prev_adx = current_adx
-                prev_plus_di = current_plus_di
-                prev_minus_di = current_minus_di
+            prev_idx = max(0, local_index - 1)
+            prev_adx = float(adx_series.iloc[prev_idx])
+            prev_plus_di = float(plus_di_series.iloc[prev_idx])
+            prev_minus_di = float(minus_di_series.iloc[prev_idx])
 
             # Multi-timeframe analysis for enhanced signal reliability
             mtf_confidence = self._analyze_adx_multi_timeframe_alignment(
-                current_adx, current_plus_di, current_minus_di, multi_timeframe_data
+                current_adx, multi_timeframe_data
             )
 
             # Market regime awareness - adjust thresholds based on regime
@@ -259,8 +263,11 @@ class ADXRecognizer(PatternRecognizer):
                     )
 
             # 5. ADX Strengthening with regime context
-            if current_adx > prev_adx and current_adx > regime_adjusted_thresholds["weak_trend"]:
-                adx_change = (current_adx - prev_adx) / prev_adx
+            if (
+                current_adx > prev_adx
+                and current_adx > regime_adjusted_thresholds["weak_trend"]
+            ):
+                adx_change = self.safe_ratio(current_adx - prev_adx, prev_adx, default=0.0)
                 if adx_change > 0.05:  # 5% increase
                     strength = min(0.4, adx_change * 5.0) * mtf_confidence
                     return SignalResult(
@@ -313,49 +320,55 @@ class ADXRecognizer(PatternRecognizer):
     def _analyze_adx_multi_timeframe_alignment(
         self,
         current_adx: float,
-        current_plus_di: float,
-        current_minus_di: float,
-        multi_timeframe_data: Optional[Dict[str, Union[float, int, str, Dict, None]]]
+        multi_timeframe_data: Optional[MultiTimeframeData],
     ) -> float:
         """
         Analyze multi-timeframe alignment for enhanced signal confidence.
 
         Args:
             current_adx: Current ADX value
-            current_plus_di: Current +DI value
-            current_minus_di: Current -DI value
             multi_timeframe_data: Multi-timeframe data
 
         Returns:
             Confidence multiplier (0.5 to 1.5)
         """
-        if not multi_timeframe_data:
+        if not self.enable_multi_timeframe or not multi_timeframe_data:
             return 1.0  # No multi-timeframe data, use base confidence
 
         confidence: float = 1.0
 
-        # Higher timeframe trend strength alignment
-        higher_trend = multi_timeframe_data.get("higher_timeframe_trend", 0)
+        context = self._as_context(multi_timeframe_data)
+        if context is None:
+            return 1.0
+
+        # Higher timeframe trend strength alignment.
+        higher_trend = self._extract_context_scalar(
+            context, "higher_timeframe_trend", default=0.0
+        )
         if higher_trend > 0.7 and current_adx > 25:
             confidence *= 1.2  # Strong alignment with higher timeframe
         elif higher_trend < 0.3 and current_adx < 20:
             confidence *= 1.1  # Alignment with ranging market
 
         # Timeframe alignment score
-        tf_alignment = multi_timeframe_data.get("timeframe_alignment", 0.5)
+        tf_alignment = self._extract_context_scalar(
+            context, "timeframe_alignment", default=0.5
+        )
         confidence *= (0.8 + tf_alignment * 0.4)  # 0.8 to 1.2 range
 
         # Support/resistance alignment
-        support_resistance = multi_timeframe_data.get("multi_timeframe_support", {})
-        if support_resistance:
+        support_resistance = context.get("multi_timeframe_support")
+        if isinstance(support_resistance, Mapping) and support_resistance:
             # If we have support/resistance data, slightly increase confidence
             confidence *= 1.05
 
-        return min(1.5, max(0.5, confidence))
+        return self.clamp(confidence, 0.5, 1.5)
 
     def _adjust_thresholds_for_regime(
-        self, multi_timeframe_data: Optional[Dict[str, Union[float, int, str, Dict, None]]], pattern_type: str = "general"
-    ) -> Dict[str, Union[float, int]]:
+        self,
+        multi_timeframe_data: Optional[MultiTimeframeData],
+        pattern_type: str = "general",
+    ) -> dict[str, float]:
         """
         Adjust ADX thresholds based on market regime.
 
@@ -365,17 +378,17 @@ class ADXRecognizer(PatternRecognizer):
         Returns:
             Adjusted thresholds dictionary
         """
-        base_thresholds = {
+        del pattern_type  # Reserved for future pattern-specific tuning.
+        base_thresholds: dict[str, float] = {
             "strong_trend": self.strong_trend_threshold,
             "weak_trend": self.weak_trend_threshold,
             "di_cross": self.di_cross_threshold,
         }
 
-        if not multi_timeframe_data:
+        if not self.regime_aware or not multi_timeframe_data:
             return base_thresholds
 
-        # Adjust based on market regime (from regime clustering)
-        regime_cluster = multi_timeframe_data.get("regime_cluster", 1)
+        regime_cluster = self._extract_regime_cluster(multi_timeframe_data, default=1)
 
         if regime_cluster == 0:  # Trending regime
             # Lower thresholds for trend detection in trending markets

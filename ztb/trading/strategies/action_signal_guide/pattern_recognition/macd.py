@@ -51,27 +51,36 @@ class MACDPatternRecognizer(IndicatorPatternRecognizer):
         if resolved_index is None:
             return None
 
+        analysis_data, local_index = self.build_indicator_view(
+            data,
+            resolved_index,
+            min_required_periods=min_periods,
+            window_multiplier=10,
+            min_window=180,
+            max_window=1000,
+        )
+
         market_context = self.calculate_market_context(
-            data, resolved_index, volatility_lookback=30, trend_window=20
+            analysis_data, local_index, volatility_lookback=30, trend_window=20
         )
         volatility_ratio = market_context.volatility_ratio
         trend_strength = market_context.trend_strength
 
         try:
             macd_hist = compute_macd(
-                data,
+                analysis_data,
                 fast_period=self.fast_period,
                 slow_period=self.slow_period,
                 signal_period=self.signal_period,
             )
         except Exception:
-            macd_hist = self._calculate_macd_manual(data)
+            macd_hist = self._calculate_macd_manual(analysis_data)
 
         if macd_hist.empty or macd_hist.isna().all():
             return None
 
-        current_hist = float(macd_hist.iloc[resolved_index])
-        previous_hist = float(macd_hist.iloc[max(0, resolved_index - 1)])
+        current_hist = float(macd_hist.iloc[local_index])
+        previous_hist = float(macd_hist.iloc[max(0, local_index - 1)])
         if not pd.notna(current_hist) or not pd.notna(previous_hist):
             return None
 
@@ -203,7 +212,7 @@ class MACDPatternRecognizer(IndicatorPatternRecognizer):
                 )
 
         convergence_signal = self._check_convergence(
-            data, macd_hist, resolved_index, volatility_ratio, trend_strength
+            analysis_data, macd_hist, local_index, volatility_ratio, trend_strength
         )
         if convergence_signal:
             return convergence_signal

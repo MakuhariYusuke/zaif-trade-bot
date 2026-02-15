@@ -1189,6 +1189,40 @@ class IndicatorPatternRecognizer(PatternRecognizer):
             len(data), index, min_required_index=min_required_index
         )
 
+    def build_indicator_view(
+        self,
+        data: pd.DataFrame,
+        resolved_index: int,
+        *,
+        min_required_periods: int,
+        window_multiplier: int = 8,
+        min_window: int = 120,
+        max_window: int = 1024,
+    ) -> tuple[pd.DataFrame, int]:
+        """
+        Build a bounded view ending at `resolved_index` for indicator computation.
+
+        Using a fixed upper window reduces repeated full-series computation cost
+        during long backtests while preserving enough warmup context.
+        """
+        default_window = max(min_window, min_required_periods * max(1, window_multiplier))
+        configured_window = self.config.get("indicator_window")
+        try:
+            window_size = int(configured_window) if configured_window is not None else default_window
+        except (TypeError, ValueError):
+            window_size = default_window
+
+        window_size = max(min_required_periods, min(window_size, max_window))
+        start_idx = max(0, resolved_index - window_size + 1)
+        view = data.iloc[start_idx : resolved_index + 1]
+
+        # Guard against overly small slices from malformed inputs.
+        if len(view) < min_required_periods:
+            view = data.iloc[: resolved_index + 1]
+
+        local_index = len(view) - 1
+        return view, local_index
+
     def calculate_market_context(
         self,
         data: pd.DataFrame,

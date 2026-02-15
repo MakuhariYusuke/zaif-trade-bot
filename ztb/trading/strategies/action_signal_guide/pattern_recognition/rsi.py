@@ -52,17 +52,26 @@ class RSIPatternRecognizer(IndicatorPatternRecognizer):
         if resolved_index is None:
             return None
 
-        rsi_values = compute_rsi(data, period=self.rsi_period)
+        analysis_data, local_index = self.build_indicator_view(
+            data,
+            resolved_index,
+            min_required_periods=min_periods,
+            window_multiplier=10,
+            min_window=140,
+            max_window=800,
+        )
+
+        rsi_values = compute_rsi(analysis_data, period=self.rsi_period)
         if rsi_values.empty or rsi_values.isna().all():
             return None
 
-        current_rsi = float(rsi_values.iloc[resolved_index])
-        previous_rsi = float(rsi_values.iloc[max(0, resolved_index - 1)])
+        current_rsi = float(rsi_values.iloc[local_index])
+        previous_rsi = float(rsi_values.iloc[max(0, local_index - 1)])
         if not pd.notna(current_rsi) or not pd.notna(previous_rsi):
             return None
 
         market_context = self.calculate_market_context(
-            data, resolved_index, volatility_lookback=20, trend_window=20
+            analysis_data, local_index, volatility_lookback=20, trend_window=20
         )
         volatility_ratio = market_context.volatility_ratio
         trend_strength = market_context.trend_strength
@@ -158,9 +167,9 @@ class RSIPatternRecognizer(IndicatorPatternRecognizer):
             )
 
         divergence_signal = self._check_divergence(
-            data,
+            analysis_data,
             rsi_values,
-            resolved_index,
+            local_index,
             volatility_ratio,
             trend_strength,
             mtf_confidence,

@@ -51,15 +51,24 @@ class ATRPatternRecognizer(IndicatorPatternRecognizer):
         if resolved_index is None:
             return None
 
-        atr_values = compute_atr(data, period=self.atr_period)
+        analysis_data, local_index = self.build_indicator_view(
+            data,
+            resolved_index,
+            min_required_periods=min_periods,
+            window_multiplier=10,
+            min_window=160,
+            max_window=1000,
+        )
+
+        atr_values = compute_atr(analysis_data, period=self.atr_period)
         if atr_values.empty or atr_values.isna().all():
             return None
 
-        current_atr = float(atr_values.iloc[resolved_index])
+        current_atr = float(atr_values.iloc[local_index])
         if not pd.notna(current_atr):
             return None
 
-        avg_window = atr_values.iloc[max(0, resolved_index - 19) : resolved_index + 1].dropna()
+        avg_window = atr_values.iloc[max(0, local_index - 19) : local_index + 1].dropna()
         avg_atr = float(avg_window.mean()) if not avg_window.empty else current_atr
         if not pd.notna(avg_atr) or avg_atr <= 0:
             avg_atr = max(abs(current_atr), 1e-9)
@@ -82,10 +91,10 @@ class ATRPatternRecognizer(IndicatorPatternRecognizer):
         # Volatility breakout signals with multi-timeframe confirmation
         if current_atr > avg_atr * regime_adjusted_thresholds["volatility_threshold"]:
             breakout_signal = self._analyze_breakout_mtf(
-                data,
+                analysis_data,
                 current_atr,
                 avg_atr,
-                resolved_index,
+                local_index,
                 mtf_confidence,
                 regime_adjusted_thresholds,
             )
@@ -94,7 +103,7 @@ class ATRPatternRecognizer(IndicatorPatternRecognizer):
 
         # Trend strength analysis using ATR with multi-timeframe
         trend_signal = self._analyze_trend_strength_mtf(
-            data, atr_values, resolved_index, mtf_confidence
+            analysis_data, atr_values, local_index, mtf_confidence
         )
         if trend_signal:
             return trend_signal
