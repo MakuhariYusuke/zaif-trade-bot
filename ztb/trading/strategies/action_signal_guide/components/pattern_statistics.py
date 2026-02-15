@@ -5,10 +5,12 @@ This component is responsible for tracking pattern recognition statistics.
 Follows Single Responsibility Principle by focusing only on pattern statistics.
 """
 
+from __future__ import annotations
+
 import statistics
 import time
-from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from collections import defaultdict, deque
+from typing import TYPE_CHECKING, TypeVar, TypedDict, cast
 
 from ztb.utils.logging_utils import get_logger
 
@@ -17,6 +19,66 @@ from .interfaces import IPatternStatistics
 if TYPE_CHECKING:
     from ..action_signal_guide import ActionSignal
     from ..types import PatternStats, SignalMetadata
+
+
+T = TypeVar("T")
+
+
+def _append_with_compaction(
+    history: list[T],
+    value: T,
+    *,
+    high_water: int,
+    retain: int,
+) -> None:
+    """Append into history and compact when it exceeds the configured waterline."""
+    history.append(value)
+    if len(history) > high_water:
+        del history[:-retain]
+
+
+class DetectionHistoryEntry(TypedDict):
+    timestamp: float
+    pattern_type: str
+    detected: bool
+    metadata: "SignalMetadata"
+
+
+class PatternCombinationEntry(TypedDict):
+    patterns: tuple[str, ...]
+    frequency: int
+
+
+class PatternCombinationStats(TypedDict):
+    combinations: list[PatternCombinationEntry]
+    total_combinations: int
+    min_frequency: int
+
+
+class TemporalPatternStats(TypedDict):
+    pattern_type: str
+    window_hours: int
+    total_detections: int
+    success_rate: float
+    detection_frequency_per_hour: float
+    time_span_hours: float
+
+
+class TemporalPatternError(TypedDict):
+    error: str
+
+
+class OverallStatistics(TypedDict, total=False):
+    total_detections: int
+    total_successful_detections: int
+    overall_success_rate: float
+    unique_patterns: int
+    uptime_hours: float
+    detection_rate_per_hour: float
+    most_frequent_pattern: tuple[str, int] | None
+    least_frequent_pattern: tuple[str, int] | None
+    top_patterns_by_success: list[tuple[str, float]]
+    bottom_patterns_by_success: list[tuple[str, float]]
 
 
 class PatternStatistics(IPatternStatistics):
@@ -31,7 +93,7 @@ class PatternStatistics(IPatternStatistics):
     - Historical performance trends
     """
 
-    def __init__(self, max_history_size: int = 10000):
+    def __init__(self, max_history_size: int = 10000) -> None:
         """
         Initialize PatternStatistics.
 
@@ -42,24 +104,24 @@ class PatternStatistics(IPatternStatistics):
         self.logger = get_logger("ztb.trading.strategies.pattern_statistics")
 
         # Pattern detection statistics
-        self.pattern_counts: Dict[str, int] = defaultdict(int)
-        self.pattern_success_counts: Dict[str, int] = defaultdict(int)
-        self.pattern_failure_counts: Dict[str, int] = defaultdict(int)
+        self.pattern_counts: dict[str, int] = defaultdict(int)
+        self.pattern_success_counts: dict[str, int] = defaultdict(int)
+        self.pattern_failure_counts: dict[str, int] = defaultdict(int)
 
         # Signal quality tracking
-        self.pattern_strengths: Dict[str, List[float]] = defaultdict(list)
-        self.pattern_confidences: Dict[str, List[float]] = defaultdict(list)
-        self.pattern_accuracies: Dict[str, List[bool]] = defaultdict(list)
+        self.pattern_strengths: dict[str, list[float]] = defaultdict(list)
+        self.pattern_confidences: dict[str, list[float]] = defaultdict(list)
+        self.pattern_accuracies: dict[str, list[bool]] = defaultdict(list)
 
         # Pattern combinations
-        self.pattern_combinations: Dict[Tuple[str, ...], int] = defaultdict(int)
-        self.pattern_correlations: Dict[Tuple[str, str], float] = {}
+        self.pattern_combinations: dict[tuple[str, ...], int] = defaultdict(int)
+        self.pattern_correlations: dict[tuple[str, str], float] = {}
 
         # Historical data
-        self.detection_history: List[Dict[str, Any]] = []
-        self.temporal_patterns: Dict[str, List[Tuple[int, bool]]] = defaultdict(
-            list
-        )  # (timestamp, success)
+        self.detection_history: deque[DetectionHistoryEntry] = deque(
+            maxlen=max_history_size
+        )
+        self.temporal_patterns: dict[str, list[tuple[int, bool]]] = defaultdict(list)
 
         # Performance metrics
         self.start_time = time.time()
@@ -70,7 +132,7 @@ class PatternStatistics(IPatternStatistics):
         self,
         pattern_type: str,
         detected: bool,
-        metadata: Optional["SignalMetadata"] = None,
+        metadata: "SignalMetadata | None" = None,
     ) -> None:
         """
         Record pattern detection attempt.
@@ -89,28 +151,25 @@ class PatternStatistics(IPatternStatistics):
         else:
             self.pattern_failure_counts[pattern_type] += 1
 
+        now = time.time()
+        timestamp = int(now)
+
         # Record in history
-        history_entry = {
-            "timestamp": time.time(),
+        history_entry: DetectionHistoryEntry = {
+            "timestamp": now,
             "pattern_type": pattern_type,
             "detected": detected,
-            "metadata": metadata or {},
+            "metadata": cast("SignalMetadata", metadata or {}),
         }
         self.detection_history.append(history_entry)
 
-        # Maintain history size limit
-        if len(self.detection_history) > self.max_history_size:
-            self.detection_history = self.detection_history[-self.max_history_size :]
-
         # Record temporal pattern
-        timestamp = int(time.time())
-        self.temporal_patterns[pattern_type].append((timestamp, detected))
-
-        # Keep only recent temporal data (last 1000 entries per pattern)
-        if len(self.temporal_patterns[pattern_type]) > 1000:
-            self.temporal_patterns[pattern_type] = self.temporal_patterns[pattern_type][
-                -500:
-            ]
+        _append_with_compaction(
+            self.temporal_patterns[pattern_type],
+            (timestamp, detected),
+            high_water=1000,
+            retain=500,
+        )
 
     def record_pattern_signal(self, pattern_type: str, signal: "ActionSignal") -> None:
         """
@@ -121,24 +180,24 @@ class PatternStatistics(IPatternStatistics):
             signal: Signal object with strength and confidence
         """
         try:
-            strength = getattr(signal, "strength", 0.0)
-            confidence = getattr(signal, "confidence", 0.0)
+            strength = float(getattr(signal, "strength", 0.0))
+            confidence = float(getattr(signal, "confidence", 0.0))
 
-            self.pattern_strengths[pattern_type].append(strength)
-            self.pattern_confidences[pattern_type].append(confidence)
+            _append_with_compaction(
+                self.pattern_strengths[pattern_type],
+                strength,
+                high_water=500,
+                retain=250,
+            )
+            _append_with_compaction(
+                self.pattern_confidences[pattern_type],
+                confidence,
+                high_water=500,
+                retain=250,
+            )
 
-            # Keep only recent samples (last 500 per pattern)
-            if len(self.pattern_strengths[pattern_type]) > 500:
-                self.pattern_strengths[pattern_type] = self.pattern_strengths[
-                    pattern_type
-                ][-250:]
-            if len(self.pattern_confidences[pattern_type]) > 500:
-                self.pattern_confidences[pattern_type] = self.pattern_confidences[
-                    pattern_type
-                ][-250:]
-
-        except Exception as e:
-            self.logger.warning(f"Failed to record pattern signal metrics: {e}")
+        except Exception as exc:
+            self.logger.warning(f"Failed to record pattern signal metrics: {exc}")
 
     def update_pattern_strength_stats(self, pattern_type: str, strength: float) -> None:
         """
@@ -148,13 +207,12 @@ class PatternStatistics(IPatternStatistics):
             pattern_type: Type of pattern
             strength: Signal strength value
         """
-        self.pattern_strengths[pattern_type].append(strength)
-
-        # Keep only recent samples (last 500 per pattern)
-        if len(self.pattern_strengths[pattern_type]) > 500:
-            self.pattern_strengths[pattern_type] = self.pattern_strengths[pattern_type][
-                -250:
-            ]
+        _append_with_compaction(
+            self.pattern_strengths[pattern_type],
+            float(strength),
+            high_water=500,
+            retain=250,
+        )
 
     def record_pattern_accuracy(self, pattern_type: str, accurate: bool) -> None:
         """
@@ -164,15 +222,14 @@ class PatternStatistics(IPatternStatistics):
             pattern_type: Type of pattern
             accurate: Whether the pattern prediction was accurate
         """
-        self.pattern_accuracies[pattern_type].append(accurate)
+        _append_with_compaction(
+            self.pattern_accuracies[pattern_type],
+            bool(accurate),
+            high_water=1000,
+            retain=500,
+        )
 
-        # Keep only recent samples
-        if len(self.pattern_accuracies[pattern_type]) > 1000:
-            self.pattern_accuracies[pattern_type] = self.pattern_accuracies[
-                pattern_type
-            ][-500:]
-
-    def record_pattern_combination(self, pattern_types: List[str]) -> None:
+    def record_pattern_combination(self, pattern_types: list[str]) -> None:
         """
         Record combination of patterns detected together.
 
@@ -185,7 +242,7 @@ class PatternStatistics(IPatternStatistics):
             self.pattern_combinations[combination_key] += 1
 
     def get_pattern_statistics(
-        self, pattern_type: Optional[str] = None
+        self, pattern_type: str | None = None
     ) -> "PatternStats":
         """
         Get comprehensive pattern statistics.
@@ -197,14 +254,15 @@ class PatternStatistics(IPatternStatistics):
             Dictionary with pattern statistics
         """
         if pattern_type:
-            return self._get_single_pattern_stats(pattern_type)
-        else:
-            return {
-                pt: self._get_single_pattern_stats(pt)
-                for pt in self.pattern_counts.keys()
-            }
+            return cast("PatternStats", self._get_single_pattern_stats(pattern_type))
 
-    def get_detection_frequencies(self) -> Dict[str, float]:
+        all_stats = {
+            pattern_name: self._get_single_pattern_stats(pattern_name)
+            for pattern_name in self.pattern_counts.keys()
+        }
+        return cast("PatternStats", all_stats)
+
+    def get_detection_frequencies(self) -> dict[str, float]:
         """
         Get detection frequencies for all patterns.
 
@@ -219,14 +277,14 @@ class PatternStatistics(IPatternStatistics):
             for pattern_type, count in self.pattern_counts.items()
         }
 
-    def get_success_rates(self) -> Dict[str, float]:
+    def get_success_rates(self) -> dict[str, float]:
         """
         Get success rates for all patterns.
 
         Returns:
             Dictionary mapping pattern types to success rates
         """
-        success_rates = {}
+        success_rates: dict[str, float] = {}
         for pattern_type, total_count in self.pattern_counts.items():
             success_count = self.pattern_success_counts[pattern_type]
             success_rates[pattern_type] = (
@@ -235,14 +293,14 @@ class PatternStatistics(IPatternStatistics):
 
         return success_rates
 
-    def get_accuracy_rates(self) -> Dict[str, float]:
+    def get_accuracy_rates(self) -> dict[str, float]:
         """
         Get accuracy rates for all patterns.
 
         Returns:
             Dictionary mapping pattern types to accuracy rates
         """
-        accuracy_rates = {}
+        accuracy_rates: dict[str, float] = {}
         for pattern_type, accuracies in self.pattern_accuracies.items():
             if accuracies:
                 accuracy_rates[pattern_type] = sum(accuracies) / len(accuracies) * 100
@@ -251,7 +309,9 @@ class PatternStatistics(IPatternStatistics):
 
         return accuracy_rates
 
-    def get_pattern_combinations(self, min_frequency: int = 2) -> Dict[str, Any]:
+    def get_pattern_combinations(
+        self, min_frequency: int = 2
+    ) -> PatternCombinationStats:
         """
         Get frequently occurring pattern combinations.
 
@@ -262,20 +322,20 @@ class PatternStatistics(IPatternStatistics):
             Dictionary with pattern combination statistics
         """
         filtered_combinations = {
-            combo: freq
-            for combo, freq in self.pattern_combinations.items()
-            if freq >= min_frequency
+            combination: frequency
+            for combination, frequency in self.pattern_combinations.items()
+            if frequency >= min_frequency
         }
 
         # Sort by frequency
         sorted_combinations = sorted(
-            filtered_combinations.items(), key=lambda x: x[1], reverse=True
+            filtered_combinations.items(), key=lambda item: item[1], reverse=True
         )
 
         return {
             "combinations": [
-                {"patterns": combo, "frequency": freq}
-                for combo, freq in sorted_combinations
+                {"patterns": combination, "frequency": frequency}
+                for combination, frequency in sorted_combinations
             ],
             "total_combinations": len(filtered_combinations),
             "min_frequency": min_frequency,
@@ -283,7 +343,7 @@ class PatternStatistics(IPatternStatistics):
 
     def get_temporal_patterns(
         self, pattern_type: str, window_hours: int = 24
-    ) -> Dict[str, Any]:
+    ) -> TemporalPatternStats | TemporalPatternError:
         """
         Get temporal pattern analysis for a specific pattern.
 
@@ -307,12 +367,17 @@ class PatternStatistics(IPatternStatistics):
         window_start = current_time - window_seconds
 
         recent_data = [
-            (ts, success) for ts, success in temporal_data if ts >= window_start
+            (timestamp, success)
+            for timestamp, success in temporal_data
+            if timestamp >= window_start
         ]
 
         if not recent_data:
             return {
-                "error": f"No data in the last {window_hours} hours for pattern: {pattern_type}"
+                "error": (
+                    f"No data in the last {window_hours} hours "
+                    f"for pattern: {pattern_type}"
+                )
             }
 
         # Calculate temporal statistics
@@ -322,19 +387,19 @@ class PatternStatistics(IPatternStatistics):
         # Calculate detection frequency (detections per hour)
         time_span_hours = (max(timestamps) - min(timestamps)) / 3600
         detection_frequency = (
-            len(recent_data) / time_span_hours if time_span_hours > 0 else 0
+            len(recent_data) / time_span_hours if time_span_hours > 0 else 0.0
         )
 
         return {
             "pattern_type": pattern_type,
             "window_hours": window_hours,
             "total_detections": len(recent_data),
-            "success_rate": success_rate,
-            "detection_frequency_per_hour": detection_frequency,
-            "time_span_hours": time_span_hours,
+            "success_rate": float(success_rate),
+            "detection_frequency_per_hour": float(detection_frequency),
+            "time_span_hours": float(time_span_hours),
         }
 
-    def get_overall_statistics(self) -> Dict[str, Any]:
+    def get_overall_statistics(self) -> OverallStatistics:
         """
         Get overall pattern statistics summary.
 
@@ -343,26 +408,26 @@ class PatternStatistics(IPatternStatistics):
         """
         uptime_hours = (time.time() - self.start_time) / 3600
 
-        stats = {
+        stats: OverallStatistics = {
             "total_detections": self.total_detections,
             "total_successful_detections": self.total_successful_detections,
             "overall_success_rate": (
                 self.total_successful_detections / self.total_detections * 100
             )
             if self.total_detections > 0
-            else 0,
+            else 0.0,
             "unique_patterns": len(self.pattern_counts),
-            "uptime_hours": uptime_hours,
+            "uptime_hours": float(uptime_hours),
             "detection_rate_per_hour": self.total_detections / uptime_hours
             if uptime_hours > 0
-            else 0,
+            else 0.0,
             "most_frequent_pattern": max(
-                self.pattern_counts.items(), key=lambda x: x[1]
+                self.pattern_counts.items(), key=lambda item: item[1]
             )
             if self.pattern_counts
             else None,
             "least_frequent_pattern": min(
-                self.pattern_counts.items(), key=lambda x: x[1]
+                self.pattern_counts.items(), key=lambda item: item[1]
             )
             if self.pattern_counts
             else None,
@@ -372,10 +437,10 @@ class PatternStatistics(IPatternStatistics):
         success_rates = self.get_success_rates()
         if success_rates:
             stats["top_patterns_by_success"] = sorted(
-                success_rates.items(), key=lambda x: x[1], reverse=True
+                success_rates.items(), key=lambda item: item[1], reverse=True
             )[:5]
             stats["bottom_patterns_by_success"] = sorted(
-                success_rates.items(), key=lambda x: x[1]
+                success_rates.items(), key=lambda item: item[1]
             )[:5]
 
         return stats
@@ -401,7 +466,7 @@ class PatternStatistics(IPatternStatistics):
 
         self.logger.info("Pattern statistics reset")
 
-    def _get_single_pattern_stats(self, pattern_type: str) -> Dict[str, Any]:
+    def _get_single_pattern_stats(self, pattern_type: str) -> dict[str, object]:
         """
         Get statistics for a single pattern type.
 
@@ -414,20 +479,17 @@ class PatternStatistics(IPatternStatistics):
         total_count = self.pattern_counts.get(pattern_type, 0)
         success_count = self.pattern_success_counts.get(pattern_type, 0)
 
-        stats = {
+        stats: dict[str, object] = {
             "total_detections": total_count,
             "successful_detections": success_count,
             "failed_detections": self.pattern_failure_counts.get(pattern_type, 0),
             "success_rate": (success_count / total_count * 100)
             if total_count > 0
-            else 0,
+            else 0.0,
         }
 
         # Add signal quality metrics
-        if (
-            pattern_type in self.pattern_strengths
-            and self.pattern_strengths[pattern_type]
-        ):
+        if pattern_type in self.pattern_strengths and self.pattern_strengths[pattern_type]:
             strengths = self.pattern_strengths[pattern_type]
             stats["signal_strength"] = {
                 "avg": statistics.mean(strengths),
@@ -449,10 +511,7 @@ class PatternStatistics(IPatternStatistics):
             }
 
         # Add accuracy metrics
-        if (
-            pattern_type in self.pattern_accuracies
-            and self.pattern_accuracies[pattern_type]
-        ):
+        if pattern_type in self.pattern_accuracies and self.pattern_accuracies[pattern_type]:
             accuracies = self.pattern_accuracies[pattern_type]
             accuracy_rate = sum(accuracies) / len(accuracies) * 100
             stats["accuracy_rate"] = accuracy_rate

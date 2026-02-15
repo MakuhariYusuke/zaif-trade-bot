@@ -466,6 +466,18 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 6. 互換性維持のため `GannAnalyzer.calculate_gann_angles()` / `calculate_gann_square()` は残しつつ、内部に軽量 API を追加する構成へ整理。  
 7. repo 全体 `any_type_debt_tokens` を `2,980 -> 2,973` へ削減。  
 
+### Step45: `validation/pattern_statistics` の `Any` 全撤去 + レポート型固定 + 履歴管理整理
+
+1. `ztb/trading/strategies/action_signal_guide/components/validation.py` に `ValidationRuleResult` / `SanitizationResult` / `PerformanceRecord` などの `TypedDict` を導入し、当該ファイル `any_type_debt_tokens=0` を達成。  
+2. `SignalValidator` の rule registry / history payload を型固定し、`ValidationResult.metadata` を `ValidationMetadata` へ明示化。  
+3. `DataSanitizer._remove_outliers()` で「copy に書かず入力参照へ書いてしまう」不整合を修正し、実際に返却データへ外れ値置換が反映されるよう是正。  
+4. `DataSanitizer._normalize_data()` で datetime index 変換先が元 `data` へ向いていた不整合を修正し、`normalized_data` への反映に統一。  
+5. `PerformanceTracker` の cache key を tuple 化、標準偏差計算を `ddof=0` + `NaN` ガードへ整理し、少量サンプル時の `NaN` 混入リスクを低減。  
+6. `ztb/trading/strategies/action_signal_guide/components/pattern_statistics.py` に `DetectionHistoryEntry` / `PatternCombinationStats` / `TemporalPatternStats` などを追加し、当該ファイル `any_type_debt_tokens=0` を達成。  
+7. `pattern_statistics` の履歴圧縮ロジックを `_append_with_compaction()` に集約し、`strength/confidence/accuracy/temporal` の重複トリム処理を削減。  
+8. `detection_history` を `deque(maxlen=...)` 化し、長期稼働時の履歴肥大を抑止。  
+9. repo 全体 `any_type_debt_tokens` を `2,973 -> 2,953` へ削減。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -514,6 +526,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step42時点 | repo全体 | 3,000 |
 | Step43時点 | repo全体 | 2,980 |
 | Step44時点 | repo全体 | 2,973 |
+| Step45時点 | repo全体 | 2,953 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -565,6 +578,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step43時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/dow_theory.py` | **0** |
 | Step43時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/granville_law.py` | **0** |
 | Step44時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/gann_analysis.py` | **0** |
+| Step45時点 | `ztb/trading/strategies/action_signal_guide/components/validation.py` | **0** |
+| Step45時点 | `ztb/trading/strategies/action_signal_guide/components/pattern_statistics.py` | **0** |
 
 ---
 
@@ -574,12 +589,12 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - 生成パイプラインの result payload を段階的に型固定し、feature registry 連携の重複マップ操作を整理。  
 2. `ztb/evaluation/promotion.py`  
    - fallback 実装と `analysis/promotion` の責務境界を整理し、将来的な評価ロジック共通化（mixin/utility）に備える。  
-3. `ztb/trading/strategies/action_signal_guide/components/pattern_statistics.py`  
-   - 集計 payload を TypedDict 化し、履歴構造と組み合わせ統計のキー存在保証を強化。  
-4. `ztb/trading/strategies/action_signal_guide/components/validation.py`  
-   - validation/sanitize レポート構造を TypedDict へ寄せ、呼び出し側でのキー前提分岐を単純化。  
-5. `ztb/analysis/features/auto_feature_generator.py`  
-   - 依然として `Any` 負債最大級（23）。parameter/result payload を段階的に型固定し、feature 生成器の共通 validator 契約へ統合。  
+3. `ztb/trading/strategies/action_signal_guide/components/cache_manager.py`  
+   - cache entry payload を `TypedDict` 化し、期限判定 / miss fallback 分岐のキー存在保証を強化。  
+4. `ztb/trading/strategies/action_signal_guide/components/sac_integration.py`  
+   - signal-SAC 相関履歴の payload 契約を固定し、履歴上限管理を共通 helper へ寄せて重複トリム処理を削減。  
+5. `ztb/trading/strategies/action_signal_guide/components/plugin_manager.py`  
+   - plugin metadata を `Mapping[str, object]` ベースへ移行し、動的ロード時の設定/返却型揺れを吸収。  
 
 ---
 
