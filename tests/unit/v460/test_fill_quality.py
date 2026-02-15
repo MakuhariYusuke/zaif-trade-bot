@@ -2137,3 +2137,18 @@ class Test052AdaptSellOffsetSync:
         with open(yaml_path) as f:
             cfg = yaml.safe_load(f)
         assert cfg["as_deadzone_bps"] == 2.5
+
+    def test_dynamic_lot_shrink_in_balance_check(self) -> None:
+        """052# _check_balance_for_side にロット自動縮小が含まれる."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner._check_balance_for_side)
+        assert "_MIN_ORDER_BTC" in source
+        assert "affordable_lot" in source or "new_lot" in source
+
+    def test_min_order_btc_constant(self) -> None:
+        """052# _MIN_ORDER_BTC が 0.0005 に設定されている."""
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        assert FillTestRunner._MIN_ORDER_BTC == 0.0005

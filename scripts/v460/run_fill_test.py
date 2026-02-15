@@ -437,11 +437,15 @@ class FillTestRunner:
         current_utc_hour = datetime.now(timezone.utc).hour
         return current_utc_hour in self.config.skip_utc_hours
 
+    # 052#: Coincheck BTC 最小注文数量
+    _MIN_ORDER_BTC: float = 0.0005
+
     async def _check_balance_for_side(self, side: str) -> bool:
         """041# 残高 pre-flight check: 発注前に残高が十分か確認.
 
         不足時は True を返す (スキップすべき)。
-        _last_side を反転させないことで、次サイクルで反対サイドを試行する。
+        052#: 残高に基づくロット自動縮小 — 残高が現ロットに不足するが
+        最小ロット (0.0005 BTC) 以上なら自動的にロットを縮小して継続。
         """
         try:
             if side == "sell":
@@ -449,9 +453,21 @@ class FillTestRunner:
                 btc_balances = await self.adapter.get_balance("BTC")
                 btc_free = sum(b.free for b in btc_balances) if btc_balances else 0.0
                 if btc_free < self._current_lot:
+                    # 052#: 最小ロット以上の残高があれば縮小して継続
+                    if btc_free >= self._MIN_ORDER_BTC:
+                        # 0.0005 BTC 単位に切り捨て
+                        new_lot = int(btc_free / self._MIN_ORDER_BTC) * self._MIN_ORDER_BTC
+                        if new_lot >= self._MIN_ORDER_BTC:
+                            old_lot = self._current_lot
+                            self._current_lot = new_lot
+                            logger.info(
+                                f"[balance] BTC {btc_free:.6f} < {old_lot:.4f}. "
+                                f"ロット自動縮小: {old_lot:.4f} → {new_lot:.4f} BTC"
+                            )
+                            return False  # 縮小ロットで発注 OK
                     logger.warning(
                         f"[balance] Insufficient BTC for sell: "
-                        f"{btc_free:.6f} < {self._current_lot:.4f}. "
+                        f"{btc_free:.6f} < {self._MIN_ORDER_BTC:.4f}. "
                         f"Skipping sell → will retry buy next."
                     )
                     return True
@@ -463,9 +479,20 @@ class FillTestRunner:
                     jpy_balances = await self.adapter.get_balance("JPY")
                     jpy_free = sum(b.free for b in jpy_balances) if jpy_balances else 0.0
                     if jpy_free < jpy_needed:
+                        # 052#: JPY 残高から発注可能なロットを逆算
+                        affordable_lot = jpy_free / (price * 1.01)
+                        affordable_lot = int(affordable_lot / self._MIN_ORDER_BTC) * self._MIN_ORDER_BTC
+                        if affordable_lot >= self._MIN_ORDER_BTC:
+                            old_lot = self._current_lot
+                            self._current_lot = affordable_lot
+                            logger.info(
+                                f"[balance] JPY {jpy_free:.0f} < {jpy_needed:.0f}. "
+                                f"ロット自動縮小: {old_lot:.4f} → {affordable_lot:.4f} BTC"
+                            )
+                            return False  # 縮小ロットで発注 OK
                         logger.warning(
                             f"[balance] Insufficient JPY for buy: "
-                            f"{jpy_free:.0f} < {jpy_needed:.0f}. "
+                            f"{jpy_free:.0f} < min {self._MIN_ORDER_BTC * price * 1.01:.0f}. "
                             f"Skipping buy → will retry sell next."
                         )
                         return True
