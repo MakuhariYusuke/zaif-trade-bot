@@ -299,6 +299,15 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 5. optional 抽出で重複していた `gross_pnl/net_pnl/fees/slippage` の再設定を削除し、同一キーの上書き経路を整理。  
 6. `trainer.py` 経由の既存利用互換を維持したまま、型注釈負債を純減。  
 
+### Step31: `candlestick_patterns` の継承導入 + `Any` 全撤去 + 判定不整合修正
+
+1. `ztb/trading/strategies/action_signal_guide/pattern_recognition/candlestick_patterns.py` に `_CandlestickPatternBase` を導入し、共通処理（入力/トレンド検証、pattern factor 構築、MTF補正、`SignalResult` 生成）を基底化。  
+2. `_ThreeCandleStarBase` / `_LongShadowReversalBase` / `_ThreeConsecutiveReversalBase` / `_EngulfingPatternBase` を追加し、Morning/Evening・Hammer/Hanging・Three Crows/Soldiers・Bull/Bear Engulfing の重複ロジックを継承側へ集約。  
+3. `CandleCharacteristics` (`TypedDict`) を導入し、中間解析 payload のキー契約を明示。`Any` 注釈を全撤去し、当該ファイル `any_type_debt_tokens=0` を達成。  
+4. `ThreeBlackCrows` / `ThreeWhiteSoldiers` の candle 走査順を時系列順（oldest -> newest）へ修正し、進行方向判定が逆順解釈になる不具合可能性を解消。  
+5. 連続足判定に 0除算ガード（`prev_close=0`, `high==low`）を追加し、異常OHLC入力で例外に依存して `None` へ落ちる経路を明示ガードへ置換。  
+6. 不使用の module-level 定数群と未使用 `base_strength` 算出を削除し、保守対象の責務を縮小（ファイル行数: 1,393 -> 1,007）。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -333,6 +342,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step28時点 | repo全体 | 3,327 |
 | Step29時点 | repo全体 | 3,304 |
 | Step30時点 | repo全体 | 3,281 |
+| Step31時点 | repo全体 | 3,258 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -367,19 +377,20 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step28時点 | `ztb/analysis/promotion.py` | **0** |
 | Step29時点 | `ztb/trading/environment/heavy_env/core.py` | **0** |
 | Step30時点 | `ztb/utils/env_metrics.py` | **0** |
+| Step31時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/candlestick_patterns.py` | **0** |
 
 ---
 
 ## 6. 次フェーズ（優先順）
 
-1. `ztb/trading/strategies/action_signal_guide/pattern_recognition/candlestick_patterns.py`  
-   - 返却 payload と中間解析データの `Any` を `TypedDict` / `ObjectMap` ベースへ寄せ、判定ロジックのキー契約を固定。  
-2. `ztb/analysis/features/auto_feature_generator.py`  
+1. `ztb/analysis/features/auto_feature_generator.py`  
    - 生成パイプラインの result payload を段階的に型固定し、feature registry 連携の重複マップ操作を整理。  
-3. `ztb/evaluation/promotion.py`  
+2. `ztb/evaluation/promotion.py`  
    - fallback 実装と `analysis/promotion` の責務境界を整理し、将来的な評価ロジック共通化（mixin/utility）に備える。  
-4. `ztb/trading/strategies/action_signal_guide/realtime_adaptation/streaming_processor.py`  
+3. `ztb/trading/strategies/action_signal_guide/realtime_adaptation/streaming_processor.py`  
    - streaming payload と状態遷移の `Any` を段階削減し、処理分岐の型契約を固定。  
+4. `ztb/trading/strategies/action_signal_guide/pattern_recognition/base.py`  
+   - 既存 fallback alias (`MultiTimeframeData` など) と `analyze_*` 系返却型を段階的に具体化し、recognizer 横断の `Any` 依存を削減。  
 
 ---
 
@@ -406,3 +417,5 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - module-level 互換ラッパー（旧 API）を段階的に縮退し、class method 実装へ一本化する余地あり。  
 6. `ztb/trading/strategies/action_signal_guide/interfaces/common_types.py`  
    - marker 基底を軸に、必要箇所で protocol 化（read-only 属性契約）へ進める余地あり。  
+7. `ztb/trading/strategies/action_signal_guide/pattern_recognition/candlestick_patterns.py`  
+   - Step31で導入した 4つの family base は、今後 `shooting_star` / `dark_cloud_cover` / `harami` 追加時にそのまま水平展開可能。  
