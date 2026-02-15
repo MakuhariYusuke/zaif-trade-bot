@@ -442,18 +442,34 @@ def _quarantine_reason(r: FillRecord) -> str | None:
 
 @dataclass
 class RoundTripRecord:
-    """買い→売りの往復取引記録."""
+    """往復取引記録 (buy→sell / sell→buy 双方向対応).
 
-    buy_record: FillRecord
-    sell_record: FillRecord
-    pnl_bps: float  # (sell_fill - buy_fill) / buy_fill × 10000
+    055# Fix: sell先行ペアも対称的に評価.
+    """
+
+    entry_record: FillRecord
+    exit_record: FillRecord
+    pnl_bps: float  # エントリー基準の損益 (bps)
     pnl_jpy: float  # 実損益 (JPY)
-    hold_sec: float  # buy_fill → sell_fill の保持時間 (秒)
+    hold_sec: float  # 保持時間 (秒)
+    direction: str  # "buy_first" or "sell_first"
+
+    # 後方互換: buy_record/sell_record プロパティ
+    @property
+    def buy_record(self) -> FillRecord:
+        return self.entry_record if self.direction == "buy_first" else self.exit_record
+
+    @property
+    def sell_record(self) -> FillRecord:
+        return self.exit_record if self.direction == "buy_first" else self.entry_record
 
 
 @dataclass
 class RoundTripMetrics:
-    """Round-trip 集計指標."""
+    """Round-trip 集計指標.
+
+    055# Fix: unpaired_sells / net_inventory 追加.
+    """
 
     total_pairs: int = 0
     pnl_mean_bps: float = 0.0
@@ -463,15 +479,19 @@ class RoundTripMetrics:
     win_rate: float = 0.0  # pnl > 0 の割合
     hold_sec_median: float = 0.0
     unpaired_buys: int = 0  # ペアリング未完了の buy 件数
+    unpaired_sells: int = 0  # 055# ペアリング未完了の sell 件数
+    net_inventory: int = 0  # 055# 純在庫 (unpaired_buys - unpaired_sells)
 
 
 def compute_round_trip_metrics(
     records: list[FillRecord],
 ) -> tuple[RoundTripMetrics, list[RoundTripRecord]]:
-    """051# P2-2: 約定済み buy→sell の時系列ペアリングで往復損益を算出.
+    """051# P2-2 → 055# Fix: 双方向 FIFO ペアリングで往復損益を算出.
 
-    FIFO 方式: 時系列順に buy を蓄え、次の sell が来たらペアリング.
-    同一ロットサイズ前提 (fill_test は交互発注のため).
+    inventory-aware 方式:
+    - net inventory を追跡し、buy/sell どちらが先でもペアリング.
+    - buy 先行時: sell が来たら close. PnL = (sell - buy) / buy
+    - sell 先行時: buy が来たら close. PnL = (sell - buy) / buy (空売り利益)
 
     Args:
         records: FillRecord リスト (時系列ソート済み想定).
@@ -483,27 +503,53 @@ def compute_round_trip_metrics(
     filled.sort(key=lambda r: r.timestamp)
 
     pending_buys: list[FillRecord] = []
+    pending_sells: list[FillRecord] = []
     trips: list[RoundTripRecord] = []
 
     for r in filled:
         if r.side == "buy":
-            pending_buys.append(r)
-        elif r.side == "sell" and pending_buys:
-            buy = pending_buys.pop(0)  # FIFO
-            pnl_bps = (r.fill_price - buy.fill_price) / buy.fill_price * 10_000  # type: ignore[operator]
-            qty = min(r.order_quantity, buy.order_quantity)
-            pnl_jpy = (r.fill_price - buy.fill_price) * qty  # type: ignore[operator]
-            hold_sec = r.timestamp - buy.timestamp
-            trips.append(RoundTripRecord(
-                buy_record=buy,
-                sell_record=r,
-                pnl_bps=pnl_bps,
-                pnl_jpy=pnl_jpy,
-                hold_sec=hold_sec,
-            ))
+            if pending_sells:
+                # sell 先行 → buy で close
+                sell_entry = pending_sells.pop(0)  # FIFO
+                pnl_bps = (sell_entry.fill_price - r.fill_price) / r.fill_price * 10_000  # type: ignore[operator]
+                qty = min(r.order_quantity, sell_entry.order_quantity)
+                pnl_jpy = (sell_entry.fill_price - r.fill_price) * qty  # type: ignore[operator]
+                hold_sec = r.timestamp - sell_entry.timestamp
+                trips.append(RoundTripRecord(
+                    entry_record=sell_entry,
+                    exit_record=r,
+                    pnl_bps=pnl_bps,
+                    pnl_jpy=pnl_jpy,
+                    hold_sec=hold_sec,
+                    direction="sell_first",
+                ))
+            else:
+                pending_buys.append(r)
+        elif r.side == "sell":
+            if pending_buys:
+                # buy 先行 → sell で close
+                buy_entry = pending_buys.pop(0)  # FIFO
+                pnl_bps = (r.fill_price - buy_entry.fill_price) / buy_entry.fill_price * 10_000  # type: ignore[operator]
+                qty = min(r.order_quantity, buy_entry.order_quantity)
+                pnl_jpy = (r.fill_price - buy_entry.fill_price) * qty  # type: ignore[operator]
+                hold_sec = r.timestamp - buy_entry.timestamp
+                trips.append(RoundTripRecord(
+                    entry_record=buy_entry,
+                    exit_record=r,
+                    pnl_bps=pnl_bps,
+                    pnl_jpy=pnl_jpy,
+                    hold_sec=hold_sec,
+                    direction="buy_first",
+                ))
+            else:
+                pending_sells.append(r)
 
     if not trips:
-        return RoundTripMetrics(unpaired_buys=len(pending_buys)), []
+        return RoundTripMetrics(
+            unpaired_buys=len(pending_buys),
+            unpaired_sells=len(pending_sells),
+            net_inventory=len(pending_buys) - len(pending_sells),
+        ), []
 
     pnl_arr = [t.pnl_bps for t in trips]
     hold_arr = [t.hold_sec for t in trips]
@@ -517,6 +563,8 @@ def compute_round_trip_metrics(
         win_rate=sum(1 for p in pnl_arr if p > 0) / len(pnl_arr),
         hold_sec_median=float(np.median(hold_arr)),
         unpaired_buys=len(pending_buys),
+        unpaired_sells=len(pending_sells),
+        net_inventory=len(pending_buys) - len(pending_sells),
     ), trips
 
 

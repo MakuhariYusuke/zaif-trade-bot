@@ -448,7 +448,15 @@ class FillTestRunner:
 
         009# §4.2: 片側ポジション蓄積禁止.
         054# S2: imbalance による side 抑制/追従.
+        055# Fix: rapid_exit_side 優先返却.
         """
+        # 055# Fix #1: S3 rapid exit で決定された side を最優先で返却
+        if self._rapid_exit_side is not None:
+            forced_side = self._rapid_exit_side
+            self._rapid_exit_side = None  # 使用済みクリア
+            logger.info(f"[early_exit] Rapid exit forcing side={forced_side}")
+            return forced_side
+
         base_side = "buy" if (self._last_side is None or self._last_side == "sell") else "sell"
 
         if not self.config.smart_side_enabled:
@@ -846,9 +854,25 @@ class FillTestRunner:
 
         009# §4.2 の流れに準拠.
         041# 時間帯フィルター・残高チェック追加.
+        055# Fix: side 決定前に最新 imbalance を取得.
         """
         self._cycle_count += 1
         cycle_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
+
+        # 055# Fix #2: Smart Side 判定用に最新板 imbalance を事前取得
+        # (_compute_maker_price 内での取得では side 決定後 → 1サイクル遅延)
+        if self.config.imbalance_enabled and self.config.smart_side_enabled:
+            try:
+                imb, bid_d, ask_d = await self._compute_orderbook_imbalance(
+                    depth=self.config.imbalance_depth,
+                )
+                self._last_imbalance = imb
+                self._last_bid_depth = bid_d
+                self._last_ask_depth = ask_d
+            except Exception as e:
+                logger.warning(f"[smart_side] Pre-fetch imbalance failed, using last: {e}")
+                # フォールバック: 前回値を維持
+
         side = self._next_side()
         # 054# S2: 連続同 side カウンタ更新
         if side == self._last_side:
@@ -1507,6 +1531,7 @@ class FillTestRunner:
 
             # 次サイクルまで待機
             # 054# S3: rapid exit 時は interval を短縮
+            # 055# Fix: _rapid_exit_side は _next_side() で消費するため、ここではクリアしない
             if time.time() < end_time and not self._shutdown_requested:
                 if self._rapid_exit_pending:
                     interval = self.config.early_exit_rapid_interval_sec
@@ -1515,7 +1540,7 @@ class FillTestRunner:
                         f"{interval:.0f}s (next side={self._rapid_exit_side})"
                     )
                     self._rapid_exit_pending = False
-                    self._rapid_exit_side = None
+                    # _rapid_exit_side は _next_side() が消費するので保持
                 else:
                     interval = self.config.cycle_interval_sec
                 await asyncio.sleep(interval)

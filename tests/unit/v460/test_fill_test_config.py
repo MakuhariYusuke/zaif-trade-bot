@@ -1,16 +1,47 @@
-"""Tests for fill_test YAML config loading + FillTestConfig.from_yaml."""
+"""Tests for fill_test YAML config loading + FillTestConfig.from_yaml.
+
+055# Fix: 挙動テスト追加 (_next_side, round-trip 双方向).
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 import yaml
 
 from scripts.v460.lib.config_loader import load_fill_test_config
-from scripts.v460.run_fill_test import FillTestConfig
+from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+from ztb.metrics.fill_quality import (
+    FillRecord,
+    RoundTripRecord,
+    compute_round_trip_metrics,
+)
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+
+
+def _make_runner(
+    smart_side_enabled: bool = False,
+    smart_side_mode: str = "suppress",
+    smart_side_max_consecutive: int = 2,
+    imbalance_threshold: float = 0.3,
+    start_side: str = "buy",
+    **kwargs: object,
+) -> FillTestRunner:
+    """テスト用の FillTestRunner を構築 (adapter はモック)."""
+    config = FillTestConfig(
+        smart_side_enabled=smart_side_enabled,
+        smart_side_mode=smart_side_mode,
+        smart_side_max_consecutive=smart_side_max_consecutive,
+        imbalance_threshold=imbalance_threshold,
+        start_side=start_side,
+        enable_regime=False,  # テストでレジーム検知は不要
+        **kwargs,  # type: ignore[arg-type]
+    )
+    adapter = MagicMock()
+    return FillTestRunner(adapter=adapter, config=config)
 
 
 class TestLoadFillTestConfig:
@@ -427,3 +458,266 @@ class Test054SmartSideLogic:
             smart_side_mode="follow",
         )
         assert config.smart_side_mode == "follow"
+
+
+# ======================================================================
+# 055# Fix: 挙動テスト (_next_side + round-trip 双方向)
+# ======================================================================
+
+
+class Test055NextSideBehavior:
+    """055# Fix: _next_side() の挙動テスト (実際の FillTestRunner で検証)."""
+
+    # --- 基本交互ロジック ---
+
+    def test_alternates_buy_sell(self) -> None:
+        """Smart Side 無効時、buy → sell → buy の交互."""
+        runner = _make_runner(smart_side_enabled=False)
+        assert runner._next_side() == "buy"  # _last_side=None → buy
+        runner._last_side = "buy"
+        assert runner._next_side() == "sell"
+        runner._last_side = "sell"
+        assert runner._next_side() == "buy"
+
+    def test_start_side_sell(self) -> None:
+        """start_side=sell のとき最初は sell."""
+        runner = _make_runner(smart_side_enabled=False, start_side="sell")
+        assert runner._next_side() == "sell"
+
+    # --- 055# Fix #1: rapid_exit_side 優先返却 ---
+
+    def test_rapid_exit_side_forces_side(self) -> None:
+        """rapid_exit_side が設定されていれば、それを優先返却."""
+        runner = _make_runner(smart_side_enabled=False)
+        runner._last_side = "buy"  # 通常なら sell
+        runner._rapid_exit_side = "buy"  # しかし rapid exit は buy を強制
+        assert runner._next_side() == "buy"
+        # 使用後にクリアされる
+        assert runner._rapid_exit_side is None
+
+    def test_rapid_exit_side_overrides_smart_side(self) -> None:
+        """rapid_exit は Smart Side よりも優先."""
+        runner = _make_runner(smart_side_enabled=True, smart_side_mode="suppress")
+        runner._last_side = "buy"
+        runner._last_imbalance = +0.5  # sell を抑制する状況
+        runner._rapid_exit_side = "sell"  # rapid exit は sell を強制
+        assert runner._next_side() == "sell"
+        assert runner._rapid_exit_side is None
+
+    def test_rapid_exit_side_clears_after_use(self) -> None:
+        """rapid_exit_side は 1 回で消費される."""
+        runner = _make_runner(smart_side_enabled=False)
+        runner._rapid_exit_side = "sell"
+        result1 = runner._next_side()
+        assert result1 == "sell"
+        assert runner._rapid_exit_side is None
+        # 次回は通常ロジック
+        runner._last_side = "sell"
+        assert runner._next_side() == "buy"
+
+    # --- 054# S2: suppress mode 挙動テスト ---
+
+    def test_suppress_buy_on_strong_sell_pressure(self) -> None:
+        """売り圧力が強い (imbalance < -threshold) → buy を抑制."""
+        runner = _make_runner(
+            smart_side_enabled=True,
+            smart_side_mode="suppress",
+            imbalance_threshold=0.3,
+        )
+        runner._last_side = "sell"  # 通常次は buy
+        runner._last_imbalance = -0.5  # 売り圧力
+        assert runner._next_side() == "sell"  # buy が抑制され sell 継続
+
+    def test_suppress_sell_on_strong_buy_pressure(self) -> None:
+        """買い圧力が強い (imbalance > threshold) → sell を抑制."""
+        runner = _make_runner(
+            smart_side_enabled=True,
+            smart_side_mode="suppress",
+            imbalance_threshold=0.3,
+        )
+        runner._last_side = "buy"  # 通常次は sell
+        runner._last_imbalance = +0.5  # 買い圧力
+        assert runner._next_side() == "buy"  # sell が抑制され buy 継続
+
+    def test_suppress_no_action_below_threshold(self) -> None:
+        """imbalance が閾値以下なら抑制しない."""
+        runner = _make_runner(
+            smart_side_enabled=True,
+            smart_side_mode="suppress",
+            imbalance_threshold=0.3,
+        )
+        runner._last_side = "sell"
+        runner._last_imbalance = -0.2  # 閾値以下
+        assert runner._next_side() == "buy"  # 通常の交互
+
+    def test_suppress_max_consecutive_forces_base(self) -> None:
+        """連続同 side 上限に達したら base_side を強制."""
+        runner = _make_runner(
+            smart_side_enabled=True,
+            smart_side_mode="suppress",
+            smart_side_max_consecutive=2,
+            imbalance_threshold=0.3,
+        )
+        runner._last_side = "sell"
+        runner._last_imbalance = -0.5  # 売り圧力
+        runner._consecutive_same_side = 2  # 上限到達
+        assert runner._next_side() == "buy"  # 強制的に buy
+
+    # --- 054# S2: follow mode 挙動テスト ---
+
+    def test_follow_buy_on_positive_imbalance(self) -> None:
+        """正の imbalance → buy に追従."""
+        runner = _make_runner(
+            smart_side_enabled=True,
+            smart_side_mode="follow",
+            imbalance_threshold=0.3,
+        )
+        runner._last_side = "buy"  # 通常次は sell
+        runner._last_imbalance = +0.5  # 買い方向
+        assert runner._next_side() == "buy"  # 追従
+
+    def test_follow_sell_on_negative_imbalance(self) -> None:
+        """負の imbalance → sell に追従."""
+        runner = _make_runner(
+            smart_side_enabled=True,
+            smart_side_mode="follow",
+            imbalance_threshold=0.3,
+        )
+        runner._last_side = "sell"  # 通常次は buy
+        runner._last_imbalance = -0.5
+        assert runner._next_side() == "sell"  # 追従
+
+    def test_follow_max_consecutive_limits(self) -> None:
+        """follow mode でも連続上限を尊重."""
+        runner = _make_runner(
+            smart_side_enabled=True,
+            smart_side_mode="follow",
+            smart_side_max_consecutive=2,
+            imbalance_threshold=0.3,
+        )
+        runner._last_side = "buy"
+        runner._last_imbalance = +0.5  # buy 追従だが
+        runner._consecutive_same_side = 2  # 上限
+        assert runner._next_side() == "sell"  # base に戻る
+
+
+class Test055RoundTripBidirectional:
+    """055# Fix: Round-trip 双方向ペアリングの挙動テスト."""
+
+    @staticmethod
+    def _rec(side: str, fill_price: float, ts: float) -> FillRecord:
+        """テスト用 FillRecord を生成."""
+        return FillRecord(
+            cycle_id=f"test_{ts}",
+            timestamp=ts,
+            side=side,
+            order_price=fill_price,
+            order_quantity=0.001,
+            filled=True,
+            fill_price=fill_price,
+        )
+
+    def test_buy_sell_pair(self) -> None:
+        """標準的な buy→sell ペアリング."""
+        records = [
+            self._rec("buy", 10_000_000.0, 1.0),
+            self._rec("sell", 10_001_000.0, 2.0),
+        ]
+        metrics, trips = compute_round_trip_metrics(records)
+        assert metrics.total_pairs == 1
+        assert trips[0].direction == "buy_first"
+        assert trips[0].pnl_bps > 0  # 利益
+
+    def test_sell_buy_pair(self) -> None:
+        """sell→buy ペアリング (055# 新機能)."""
+        records = [
+            self._rec("sell", 10_001_000.0, 1.0),
+            self._rec("buy", 10_000_000.0, 2.0),
+        ]
+        metrics, trips = compute_round_trip_metrics(records)
+        assert metrics.total_pairs == 1
+        assert trips[0].direction == "sell_first"
+        assert trips[0].pnl_bps > 0  # sell 高→buy 安 = 利益
+
+    def test_mixed_directions(self) -> None:
+        """buy→sell, sell→buy の混在."""
+        records = [
+            self._rec("buy", 10_000_000.0, 1.0),
+            self._rec("sell", 10_001_000.0, 2.0),  # pair 1 (buy_first)
+            self._rec("sell", 10_002_000.0, 3.0),
+            self._rec("buy", 10_001_500.0, 4.0),  # pair 2 (sell_first)
+        ]
+        metrics, trips = compute_round_trip_metrics(records)
+        assert metrics.total_pairs == 2
+        assert trips[0].direction == "buy_first"
+        assert trips[1].direction == "sell_first"
+
+    def test_unpaired_sells_tracked(self) -> None:
+        """未ペア sell が追跡される."""
+        records = [
+            self._rec("sell", 10_000_000.0, 1.0),
+            self._rec("sell", 10_001_000.0, 2.0),
+        ]
+        metrics, trips = compute_round_trip_metrics(records)
+        assert metrics.total_pairs == 0
+        assert metrics.unpaired_sells == 2
+        assert metrics.net_inventory == -2
+
+    def test_unpaired_buys_tracked(self) -> None:
+        """未ペア buy が追跡される."""
+        records = [
+            self._rec("buy", 10_000_000.0, 1.0),
+        ]
+        metrics, trips = compute_round_trip_metrics(records)
+        assert metrics.total_pairs == 0
+        assert metrics.unpaired_buys == 1
+        assert metrics.net_inventory == 1
+
+    def test_net_inventory(self) -> None:
+        """純在庫の正確性."""
+        records = [
+            self._rec("buy", 10_000_000.0, 1.0),
+            self._rec("sell", 10_001_000.0, 2.0),  # pair
+            self._rec("buy", 10_000_000.0, 3.0),
+            self._rec("buy", 10_000_000.0, 4.0),
+        ]
+        metrics, trips = compute_round_trip_metrics(records)
+        assert metrics.total_pairs == 1
+        assert metrics.unpaired_buys == 2
+        assert metrics.unpaired_sells == 0
+        assert metrics.net_inventory == 2
+
+    def test_backward_compat_buy_sell_record_properties(self) -> None:
+        """後方互換: buy_record/sell_record プロパティが動作."""
+        records = [
+            self._rec("buy", 10_000_000.0, 1.0),
+            self._rec("sell", 10_001_000.0, 2.0),
+        ]
+        _, trips = compute_round_trip_metrics(records)
+        trip = trips[0]
+        assert trip.buy_record.side == "buy"
+        assert trip.sell_record.side == "sell"
+
+    def test_backward_compat_sell_first_properties(self) -> None:
+        """sell_first でも buy_record/sell_record が正しい."""
+        records = [
+            self._rec("sell", 10_001_000.0, 1.0),
+            self._rec("buy", 10_000_000.0, 2.0),
+        ]
+        _, trips = compute_round_trip_metrics(records)
+        trip = trips[0]
+        assert trip.buy_record.side == "buy"
+        assert trip.sell_record.side == "sell"
+
+    def test_consecutive_same_side_then_close(self) -> None:
+        """Smart Side で連続 sell → buy で全部ペアリング."""
+        records = [
+            self._rec("sell", 10_002_000.0, 1.0),
+            self._rec("sell", 10_001_000.0, 2.0),
+            self._rec("buy", 10_000_000.0, 3.0),  # 1st sell とペア
+            self._rec("buy", 10_000_500.0, 4.0),  # 2nd sell とペア
+        ]
+        metrics, trips = compute_round_trip_metrics(records)
+        assert metrics.total_pairs == 2
+        assert metrics.unpaired_buys == 0
+        assert metrics.unpaired_sells == 0

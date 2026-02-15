@@ -297,13 +297,13 @@ def print_report(
             print(f"  quarantine: {quarantine_count} ({1 - clean_rate:.1%})")
             print(f"  合計:       {total_all}")
 
-    # 051# P2-2: Round-trip 評価
+    # 051# P2-2 → 055# Fix: Round-trip 評価 (双方向ペアリング)
     if records:
         filled_recs_rt = [r for r in records if r.filled]
         if len(filled_recs_rt) >= 2:
             rt_metrics, _trips = compute_round_trip_metrics(records)
             if rt_metrics.total_pairs > 0:
-                print(f"\n🔄 Round-trip 評価 (buy→sell FIFO ペアリング):")
+                print(f"\n🔄 Round-trip 評価 (双方向 FIFO ペアリング):")
                 print("-" * 50)
                 print(f"  ペア数:     {rt_metrics.total_pairs}")
                 print(f"  PnL mean:   {_fmt_bps(rt_metrics.pnl_mean_bps)}")
@@ -314,6 +314,10 @@ def print_report(
                 print(f"  保持中央値: {rt_metrics.hold_sec_median:.0f}s")
                 if rt_metrics.unpaired_buys > 0:
                     print(f"  未ペア buy:  {rt_metrics.unpaired_buys}")
+                if rt_metrics.unpaired_sells > 0:
+                    print(f"  未ペア sell: {rt_metrics.unpaired_sells}")
+                if rt_metrics.net_inventory != 0:
+                    print(f"  純在庫:      {rt_metrics.net_inventory:+d}")
 
     # 051# P2-4: レジーム別メトリクス
     if records:
