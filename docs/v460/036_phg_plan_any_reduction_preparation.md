@@ -331,6 +331,18 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 8. `_enhance_processed_data()` の `enhanced.get(..., 0).rolling(...)` による型不整合（`int` に rolling が無く例外）を修正し、数値列チェック付きの安全な Series 処理へ置換。  
 9. 数値変換ヘルパ（`_as_float`）と payload 正規化（`_as_object_map`）を導入し、予期しない入力型での比較/演算例外を低減。  
 
+### Step34: `fibonacci_patterns` の継承導入 + `Any` 全撤去 + 既存不整合修正
+
+1. `ztb/trading/strategies/action_signal_guide/pattern_recognition/fibonacci_patterns.py` に `_FibonacciPatternBase` を導入し、index正規化・confidence算出・閾値判定・共通設定処理を集約。  
+2. `FibonacciRetracement/Extension/Projection` の3 recognizer を基底継承へ移行し、初期化・factor組立・confidence cap 処理の重複を削減。  
+3. `FibonacciRetracementMatch` (`TypedDict`) / `FibonacciLevelConfig` (`dataclass`) を導入し、返却 payload とレベル設定契約を明示。  
+4. `index=-1`（デフォルト）で `index < max_swing_length` により即 `None` となる経路を、`validate_recognition_inputs` ベースの index 正規化へ置換。  
+5. retracement cache key をデータ文脈込みへ変更し、異なる入力DataFrame間で `start_idx/end_idx` だけが一致した際の誤ヒットを抑制。  
+6. retracement cache を上限付き（`_max_cache_size=2048`）へ変更し、長時間稼働時の無制限メモリ増加を抑制。  
+7. extension/projection の tolerance 0 ケースで発生しうる 0除算をガード。  
+8. 互換補完として `find_support_resistance_levels()` と `thresholds` を実装し、既存テスト/呼び出し側の期待属性欠落リスクを解消。  
+9. 当該ファイルの `Any` を全撤去し、`any_type_debt_tokens=0` を達成。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -368,6 +380,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step31時点 | repo全体 | 3,258 |
 | Step32時点 | repo全体 | 3,240 |
 | Step33時点 | repo全体 | 3,218 |
+| Step34時点 | repo全体 | 3,209 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -405,6 +418,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step31時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/candlestick_patterns.py` | **0** |
 | Step32時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/wave_counting.py` | **0** |
 | Step33時点 | `ztb/trading/strategies/action_signal_guide/realtime_adaptation/streaming_processor.py` | **0** |
+| Step34時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/fibonacci_patterns.py` | **0** |
 
 ---
 

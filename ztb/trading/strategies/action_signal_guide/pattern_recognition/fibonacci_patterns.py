@@ -5,11 +5,36 @@ This module provides pattern recognition for Fibonacci-based technical analysis,
 including retracements, extensions, projections, and Fibonacci-based patterns.
 """
 
-from typing import Any, Dict, Optional
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import TypedDict, cast
 
 import pandas as pd
 
-from .base import CandlestickPatternRecognizer, SignalResult
+from ztb.types.common import ConfigSection, ObjectMap
+
+from .base import CandlestickPatternRecognizer, MultiTimeframeData, SignalMetadata, SignalResult
+
+
+class FibonacciRetracementMatch(TypedDict):
+    """Detected retracement information for a swing."""
+
+    level: float
+    actual_ratio: float
+    swing_high: float
+    swing_low: float
+    current_price: float
+    start_idx: int
+    end_idx: int
+
+
+@dataclass(frozen=True)
+class FibonacciLevelConfig:
+    """Per-level configuration for retracement interpretation."""
+
+    strength: float
+    direction_factor: float
 
 
 class FibonacciAnalyzer:
@@ -21,24 +46,22 @@ class FibonacciAnalyzer:
     PROJECTION_LEVELS = [0.618, 1.0, 1.236, 1.382, 1.618, 2.0, 2.618]
 
     # Class-level cache for retracement calculations
-    _retracement_cache: Dict[str, Optional[Dict[str, Any]]] = {}
+    _retracement_cache: dict[str, FibonacciRetracementMatch | None] = {}
+    _max_cache_size = 2048
 
     @staticmethod
-    def calculate_retracement_levels(high: float, low: float) -> Dict[float, float]:
+    def calculate_retracement_levels(high: float, low: float) -> dict[float, float]:
         """Calculate Fibonacci retracement levels between high and low."""
         diff = high - low
-        levels = {}
-        for ratio in FibonacciAnalyzer.RETRACEMENT_LEVELS:
-            levels[ratio] = low + diff * ratio
-        return levels
+        return {ratio: low + diff * ratio for ratio in FibonacciAnalyzer.RETRACEMENT_LEVELS}
 
     @staticmethod
     def calculate_extension_levels(
         high: float, low: float, direction: int = 1
-    ) -> Dict[float, float]:
+    ) -> dict[float, float]:
         """Calculate Fibonacci extension levels."""
         diff = high - low
-        levels = {}
+        levels: dict[float, float] = {}
         for ratio in FibonacciAnalyzer.EXTENSION_LEVELS:
             if direction == 1:  # Bullish extension from low
                 levels[ratio] = low + diff * ratio
@@ -47,124 +70,97 @@ class FibonacciAnalyzer:
         return levels
 
     @staticmethod
-    def calculate_deviation_from_ideal(
-        actual_ratio: float, target_level: float
-    ) -> float:
-        """
-        Calculate deviation from ideal Fibonacci level.
-
-        Args:
-            actual_ratio: Actual retracement/projection ratio
-            target_level: Target Fibonacci level (e.g., 0.618)
-
-        Returns:
-            Deviation score (0.0 = perfect alignment, 1.0 = maximum deviation)
-        """
+    def calculate_deviation_from_ideal(actual_ratio: float, target_level: float) -> float:
+        """Calculate deviation from ideal Fibonacci level."""
         deviation = abs(actual_ratio - target_level)
-
-        # Normalize deviation based on typical market noise
-        # Fibonacci levels have natural tolerance bands
         tolerance = 0.02  # 2% tolerance for major levels
 
         if deviation <= tolerance:
-            return 0.0  # Perfect alignment
-        elif deviation <= tolerance * 2:
-            return 0.3  # Good alignment
-        elif deviation <= tolerance * 4:
-            return 0.6  # Moderate deviation
-        else:
-            return 1.0  # Poor alignment
+            return 0.0
+        if deviation <= tolerance * 2:
+            return 0.3
+        if deviation <= tolerance * 4:
+            return 0.6
+        return 1.0
 
     @staticmethod
     def validate_with_multi_timeframe(
         actual_ratio: float,
         target_level: float,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
+        multi_timeframe_data: MultiTimeframeData | ObjectMap | None = None,
     ) -> float:
-        """
-        Validate Fibonacci level using multi-timeframe confirmation.
-
-        Args:
-            actual_ratio: Actual retracement/projection ratio
-            target_level: Target Fibonacci level
-            multi_timeframe_data: Multi-timeframe feature data
-
-        Returns:
-            Validation boost factor (0.0 to 1.0)
-        """
+        """Validate Fibonacci level using multi-timeframe confirmation."""
         if not multi_timeframe_data:
-            return 0.5  # Neutral boost without multi-timeframe data
+            return 0.5
 
         try:
-            # Check if higher timeframe supports the pattern
-            higher_tf_trend = multi_timeframe_data.get("higher_timeframe_trend", 0)
+            higher_tf_trend = 0.0
 
-            # Fibonacci levels are more reliable when aligned with higher timeframe
-            if abs(higher_tf_trend) > 0.5:  # Strong trend in higher timeframe
+            if isinstance(multi_timeframe_data, dict):
+                direct_value = multi_timeframe_data.get("higher_timeframe_trend")
+                if isinstance(direct_value, (int, float)):
+                    higher_tf_trend = float(direct_value)
+                else:
+                    # Fallback: infer from first timeframe payload containing dataframe.
+                    for payload in multi_timeframe_data.values():
+                        if isinstance(payload, dict) and "data" in payload:
+                            tf_df = payload["data"]
+                            if isinstance(tf_df, pd.DataFrame) and len(tf_df) > 1:
+                                prev_close = float(tf_df.iloc[-2]["close"])
+                                curr_close = float(tf_df.iloc[-1]["close"])
+                                higher_tf_trend = curr_close - prev_close
+                                break
+
+            if abs(higher_tf_trend) > 0.5:
                 deviation = abs(actual_ratio - target_level)
-                if deviation < 0.03:  # Close alignment
-                    return 0.8  # Strong validation boost
-                elif deviation < 0.06:  # Moderate alignment
-                    return 0.6  # Moderate validation boost
+                if deviation < 0.03:
+                    return 0.8
+                if deviation < 0.06:
+                    return 0.6
 
-            return 0.4  # Weak validation without strong higher timeframe support
-
+            return 0.4
         except Exception:
-            return 0.5  # Fallback to neutral
+            return 0.5
 
     @staticmethod
     def calculate_fibonacci_strength(
         actual_ratio: float, target_level: float, level_significance: float
     ) -> float:
-        """
-        Calculate overall Fibonacci pattern strength.
-
-        Args:
-            actual_ratio: Actual retracement/projection ratio
-            target_level: Target Fibonacci level
-            level_significance: Significance of the level (0.236=0.6, 0.382=0.7, etc.)
-
-        Returns:
-            Strength score (0.0 to 1.0)
-        """
+        """Calculate overall Fibonacci pattern strength."""
         deviation_score = FibonacciAnalyzer.calculate_deviation_from_ideal(
             actual_ratio, target_level
         )
-
-        # Base strength from level significance
-        base_strength = level_significance
-
-        # Apply deviation penalty
-        strength = base_strength * (1.0 - deviation_score * 0.5)
-
+        strength = level_significance * (1.0 - deviation_score * 0.5)
         return max(0.0, min(1.0, strength))
 
     @staticmethod
     def find_fibonacci_retracement(
         data: pd.DataFrame, start_idx: int, end_idx: int
-    ) -> Optional[Dict[str, Any]]:
-        if start_idx >= end_idx or end_idx >= len(data):
+    ) -> FibonacciRetracementMatch | None:
+        """Find retracement alignment for a swing range."""
+        if start_idx >= end_idx or end_idx >= len(data) or start_idx < 0:
             return None
 
-        # Check cache first
-        cache_key = f"{start_idx}_{end_idx}"
-        if cache_key in FibonacciAnalyzer._retracement_cache:
-            return FibonacciAnalyzer._retracement_cache[cache_key]
+        # Include context in key to avoid cross-dataset collisions.
+        key = (
+            f"{len(data)}_{start_idx}_{end_idx}_"
+            f"{float(data.iloc[start_idx]['high']):.8f}_"
+            f"{float(data.iloc[start_idx]['low']):.8f}_"
+            f"{float(data.iloc[end_idx]['close']):.8f}"
+        )
+        if key in FibonacciAnalyzer._retracement_cache:
+            return FibonacciAnalyzer._retracement_cache[key]
 
-        swing_high = data.iloc[start_idx : end_idx + 1]["high"].max()
-        swing_low = data.iloc[start_idx : end_idx + 1]["low"].min()
+        swing_high = float(data.iloc[start_idx : end_idx + 1]["high"].max())
+        swing_low = float(data.iloc[start_idx : end_idx + 1]["low"].min())
+        current_close = float(data.iloc[end_idx]["close"])
 
-        # Find the retracement point (current close)
-        current_close = data.iloc[end_idx]["close"]
-
-        # Calculate retracement ratio
         total_range = swing_high - swing_low
+        result: FibonacciRetracementMatch | None
         if total_range == 0:
             result = None
         else:
             retracement_ratio = (swing_high - current_close) / total_range
-
-            # Find closest Fibonacci level
             closest_level = min(
                 FibonacciAnalyzer.RETRACEMENT_LEVELS,
                 key=lambda x: abs(x - retracement_ratio),
@@ -173,8 +169,8 @@ class FibonacciAnalyzer:
             tolerance = 0.02  # 2% tolerance
             if abs(retracement_ratio - closest_level) <= tolerance:
                 result = {
-                    "level": closest_level,
-                    "actual_ratio": retracement_ratio,
+                    "level": float(closest_level),
+                    "actual_ratio": float(retracement_ratio),
                     "swing_high": swing_high,
                     "swing_low": swing_low,
                     "current_price": current_close,
@@ -184,157 +180,225 @@ class FibonacciAnalyzer:
             else:
                 result = None
 
-        # Cache the result
-        FibonacciAnalyzer._retracement_cache[cache_key] = result
+        # Bounded cache to avoid unbounded growth in long sessions.
+        FibonacciAnalyzer._retracement_cache[key] = result
+        while len(FibonacciAnalyzer._retracement_cache) > FibonacciAnalyzer._max_cache_size:
+            oldest_key = next(iter(FibonacciAnalyzer._retracement_cache))
+            FibonacciAnalyzer._retracement_cache.pop(oldest_key, None)
 
         return result
 
+    @staticmethod
+    def find_support_resistance_levels(prices: pd.Series | list[float]) -> dict[str, list[float]]:
+        """Compatibility helper for tests and legacy callers."""
+        if isinstance(prices, pd.Series):
+            series = prices.astype(float)
+        else:
+            series = pd.Series(prices, dtype=float)
 
-class FibonacciRetracementRecognizer(CandlestickPatternRecognizer):
+        if series.empty:
+            return {"support": [], "resistance": []}
+
+        high = float(series.max())
+        low = float(series.min())
+        retracements = FibonacciAnalyzer.calculate_retracement_levels(high, low)
+
+        pivot = float(series.iloc[-1])
+        support = sorted([level for level in retracements.values() if level <= pivot])
+        resistance = sorted([level for level in retracements.values() if level > pivot])
+        return {"support": support, "resistance": resistance}
+
+
+class _FibonacciPatternBase(CandlestickPatternRecognizer):
+    """Shared behavior for Fibonacci recognizers."""
+
+    pattern_type = "fibonacci"
+
+    def __init__(
+        self,
+        config: ConfigSection | None,
+        *,
+        pattern_type: str,
+        default_min_swing_length: int,
+        lookback_key: str,
+        default_lookback: int,
+    ) -> None:
+        super().__init__(config)
+        self.pattern_type = pattern_type
+        self.fib_analyzer = FibonacciAnalyzer()
+
+        self.min_swing_length = int(
+            self.config.get("min_swing_length", default_min_swing_length)
+        )
+        self.lookback_window = int(self.config.get(lookback_key, default_lookback))
+        self.confidence_cap = float(self.config.get("confidence_cap", 0.0001))
+        self.pattern_completeness_threshold = float(
+            self.config.get("pattern_completeness_threshold", 0.0)
+        )
+
+        # Compatibility for legacy tests/consumers.
+        self.thresholds: dict[str, float] = {
+            "retracement_threshold": float(self.config.get("retracement_threshold", 0.02)),
+            "pattern_completeness_threshold": self.pattern_completeness_threshold,
+            "confidence_cap": self.confidence_cap,
+        }
+
+    def _resolve_index(self, data: pd.DataFrame, index: int) -> int | None:
+        try:
+            resolved = self.validate_recognition_inputs(
+                data,
+                index,
+                required_length=max(self.lookback_window + 1, self.min_swing_length + 2),
+            )
+        except Exception:
+            return None
+
+        if resolved < self.lookback_window:
+            return None
+        return resolved
+
+    def _calculate_capped_confidence(
+        self,
+        data: pd.DataFrame,
+        index: int,
+        *,
+        base_confidence: float,
+        trend_lookback: int,
+        candle_size_expected: float,
+        price_movement_expected: float,
+        pattern_completeness: float,
+    ) -> float:
+        pattern_factors = {
+            "trend_strength": self._calculate_trend_strength(data, index, trend_lookback),
+            "candle_size": self._calculate_candle_size_confidence(
+                data, index, candle_size_expected
+            ),
+            "price_movement": self._calculate_price_movement_confidence(
+                data, index, price_movement_expected
+            ),
+            "pattern_completeness": max(0.0, min(1.0, pattern_completeness)),
+        }
+        confidence = self._calculate_pattern_confidence(
+            data, index, pattern_factors, base_confidence=base_confidence
+        )
+        return min(confidence, self.confidence_cap)
+
+    def _passes_pattern_threshold(self, pattern_completeness: float) -> bool:
+        return pattern_completeness >= self.pattern_completeness_threshold
+
+
+class FibonacciRetracementRecognizer(_FibonacciPatternBase):
     """Recognizes Fibonacci retracement levels in price action."""
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        super().__init__(config)
-        self.pattern_type = "fibonacci_retracement"
-        self.min_swing_length = config.get("min_swing_length", 5) if config else 5
-        self.max_swing_length = config.get("max_swing_length", 50) if config else 50
-        self.fib_analyzer = FibonacciAnalyzer()
+    _LEVEL_CONFIG: dict[float, FibonacciLevelConfig] = {
+        0.236: FibonacciLevelConfig(strength=0.4, direction_factor=0.6),
+        0.382: FibonacciLevelConfig(strength=0.6, direction_factor=0.7),
+        0.5: FibonacciLevelConfig(strength=0.8, direction_factor=0.8),
+        0.618: FibonacciLevelConfig(strength=0.9, direction_factor=0.9),
+        0.786: FibonacciLevelConfig(strength=0.7, direction_factor=0.8),
+    }
+
+    def __init__(self, config: ConfigSection | None = None) -> None:
+        super().__init__(
+            config,
+            pattern_type="fibonacci_retracement",
+            default_min_swing_length=5,
+            lookback_key="max_swing_length",
+            default_lookback=50,
+        )
+        self.max_swing_length = self.lookback_window
 
     def recognize(
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """Recognize Fibonacci retracement at the given index."""
-        if index < self.max_swing_length:
+        resolved_index = self._resolve_index(data, index)
+        if resolved_index is None:
             return None
 
-        # Look for swing points within the range
         for swing_length in range(
-            self.min_swing_length, min(self.max_swing_length, index + 1)
+            self.min_swing_length, min(self.max_swing_length, resolved_index + 1)
         ):
-            start_idx = index - swing_length
-
+            start_idx = resolved_index - swing_length
             fib_retracement = self.fib_analyzer.find_fibonacci_retracement(
-                data, start_idx, index
+                data, start_idx, resolved_index
+            )
+            if fib_retracement is None:
+                continue
+
+            level = fib_retracement["level"]
+            level_cfg = self._LEVEL_CONFIG.get(
+                level, FibonacciLevelConfig(strength=0.5, direction_factor=0.6)
             )
 
-            if fib_retracement:
-                level = fib_retracement["level"]
+            start_close = float(data.iloc[start_idx]["close"])
+            current_close = float(data.iloc[resolved_index]["close"])
+            price_movement = current_close - start_close
 
-                # Determine base direction and strength based on fibonacci level significance
-                level_config = {
-                    0.236: {"strength": 0.4, "direction_factor": 0.6},  # Weaker level
-                    0.382: {"strength": 0.6, "direction_factor": 0.7},  # Moderate level
-                    0.5: {
-                        "strength": 0.8,
-                        "direction_factor": 0.8,
-                    },  # Strong level (50%)
-                    0.618: {
-                        "strength": 0.9,
-                        "direction_factor": 0.9,
-                    },  # Very strong level
-                    0.786: {"strength": 0.7, "direction_factor": 0.8},  # Strong level
-                }
+            prior_idx = start_idx - swing_length
+            if prior_idx >= 0:
+                prior_close = float(data.iloc[prior_idx]["close"])
+                swing_size = abs(start_close - prior_close)
+            else:
+                swing_size = abs(price_movement)
 
-                config = level_config.get(
-                    level, {"strength": 0.5, "direction_factor": 0.6}
+            if swing_size > 0:
+                retracement_ratio = abs(price_movement) / swing_size
+                direction_scale = max(0.0, 1.0 - retracement_ratio * 0.5)
+                direction = (
+                    level_cfg.direction_factor * direction_scale
+                    if price_movement > 0
+                    else -level_cfg.direction_factor * direction_scale
                 )
-                base_strength = config["strength"]
-                direction_factor = config["direction_factor"]
+            else:
+                direction = 0.0
 
-                # Determine direction based on price movement relative to swing
-                price_movement = float(data.iloc[index]["close"]) - float(
-                    data.iloc[start_idx]["close"]
-                )
-                swing_size = abs(
-                    float(data.iloc[start_idx]["close"])
-                    - float(data.iloc[start_idx - swing_length]["close"])
-                    if start_idx - swing_length >= 0
-                    else abs(price_movement)
-                )
+            actual_ratio = fib_retracement["actual_ratio"]
+            strength = self.fib_analyzer.calculate_fibonacci_strength(
+                actual_ratio, level, level_cfg.strength
+            )
+            mtf_boost = self.fib_analyzer.validate_with_multi_timeframe(
+                actual_ratio, level, multi_timeframe_data
+            )
+            base_strength = min(1.0, strength * (1.0 + mtf_boost * 0.2))
 
-                if swing_size > 0:
-                    # Calculate continuous direction based on retracement position
-                    retracement_ratio = abs(price_movement) / swing_size
-                    if (
-                        price_movement > 0
-                    ):  # Price above swing low - bullish retracement
-                        direction = direction_factor * (
-                            1.0 - retracement_ratio * 0.5
-                        )  # Scale down as retracement deepens
-                    else:  # Price below swing high - bearish retracement
-                        direction = -direction_factor * (
-                            1.0 - retracement_ratio * 0.5
-                        )  # Scale down as retracement deepens
-                else:
-                    direction = 0.0
+            deviation_score = self.fib_analyzer.calculate_deviation_from_ideal(
+                actual_ratio, level
+            )
+            pattern_completeness = 1.0 - deviation_score
+            if not self._passes_pattern_threshold(pattern_completeness):
+                continue
 
-                # Use new deviation-based strength calculation
-                actual_ratio = fib_retracement["actual_ratio"]
-                base_strength = self.fib_analyzer.calculate_fibonacci_strength(
-                    actual_ratio, level, base_strength
-                )
+            confidence = self._calculate_capped_confidence(
+                data,
+                resolved_index,
+                base_confidence=base_strength,
+                trend_lookback=15,
+                candle_size_expected=0.6,
+                price_movement_expected=0.7,
+                pattern_completeness=pattern_completeness,
+            )
 
-                # Apply multi-timeframe validation boost
-                mtf_boost = self.fib_analyzer.validate_with_multi_timeframe(
-                    actual_ratio, level, multi_timeframe_data
-                )
-                base_strength = min(
-                    1.0, base_strength * (1.0 + mtf_boost * 0.2)
-                )  # 20% max boost
+            signal_type = (
+                "fib_retracement_support" if direction > 0 else "fib_retracement_resistance"
+            )
 
-                # Calculate deviation score for pattern completeness
-                deviation_score = self.fib_analyzer.calculate_deviation_from_ideal(
-                    actual_ratio, level
-                )
-                pattern_completeness = (
-                    1.0 - deviation_score
-                )  # Lower deviation = higher completeness
-
-                # Use pattern confidence calculation
-                pattern_factors = {
-                    "trend_strength": self._calculate_trend_strength(data, index, 15),
-                    "candle_size": self._calculate_candle_size_confidence(
-                        data, index, 0.6
-                    ),  # Fibonacci levels are structural
-                    "price_movement": self._calculate_price_movement_confidence(
-                        data, index, 0.7
-                    ),  # Price approaching key level
-                    "pattern_completeness": pattern_completeness,  # How close to ideal Fibonacci ratio
-                }
-
-                confidence = self._calculate_pattern_confidence(
-                    data, index, pattern_factors, base_confidence=base_strength
-                )
-
-                # Reduce confidence for Fibonacci patterns to prevent over-signaling
-                # Cap confidence to prevent excessive signals
-                confidence = min(
-                    confidence, 0.0001
-                )  # Very weak confidence to prevent over-performance
-
-                # Only generate signals for significant Fibonacci levels and good pattern completeness
-                # Removed strict conditions to allow weak signals for testing, but with very low confidence
-
-                # Clamp direction to [-1.0, 1.0]
-                direction = max(-1.0, min(1.0, direction))
-
-                signal_type = (
-                    "fib_retracement_support"
-                    if direction > 0
-                    else "fib_retracement_resistance"
-                )
-
-                return SignalResult(
-                    signal_type=signal_type,
-                    strength=confidence,
-                    direction=direction,
-                    description=f"Fibonacci Retracement at {level:.3f} level (deviation: {deviation_score:.2f})",
-                    timestamp=data.index[index],
-                    confidence=confidence,
-                    metadata={
+            return SignalResult(
+                signal_type=signal_type,
+                strength=confidence,
+                direction=max(-1.0, min(1.0, direction)),
+                description=(
+                    f"Fibonacci Retracement at {level:.3f} level "
+                    f"(deviation: {deviation_score:.2f})"
+                ),
+                timestamp=data.index[resolved_index],
+                confidence=confidence,
+                metadata=cast(
+                    SignalMetadata,
+                    {
                         "pattern": "fibonacci_retracement",
                         "level": level,
                         "actual_ratio": actual_ratio,
@@ -344,101 +408,95 @@ class FibonacciRetracementRecognizer(CandlestickPatternRecognizer):
                         "confidence": confidence,
                         "pattern_completeness": pattern_completeness,
                     },
-                )
+                ),
+            )
 
         return None
 
 
-class FibonacciExtensionRecognizer(CandlestickPatternRecognizer):
+class FibonacciExtensionRecognizer(_FibonacciPatternBase):
     """Recognizes Fibonacci extension targets."""
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        super().__init__(config)
-        self.pattern_type = "fibonacci_extension"
-        self.min_swing_length = config.get("min_swing_length", 5) if config else 5
-        self.max_swing_length = config.get("max_swing_length", 50) if config else 50
-        self.fib_analyzer = FibonacciAnalyzer()
+    def __init__(self, config: ConfigSection | None = None) -> None:
+        super().__init__(
+            config,
+            pattern_type="fibonacci_extension",
+            default_min_swing_length=5,
+            lookback_key="max_swing_length",
+            default_lookback=50,
+        )
+        self.max_swing_length = self.lookback_window
 
     def recognize(
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """Recognize Fibonacci extension targets at the given index."""
-        if index < self.max_swing_length:
+        _ = multi_timeframe_data  # Extension currently does not use MTF enhancement.
+        resolved_index = self._resolve_index(data, index)
+        if resolved_index is None:
             return None
 
-        current_price = data.iloc[index]["close"]
+        current_price = float(data.iloc[resolved_index]["close"])
 
-        # Look for completed swings to project extensions
         for swing_length in range(
-            self.min_swing_length, min(self.max_swing_length, index + 1)
+            self.min_swing_length, min(self.max_swing_length, resolved_index + 1)
         ):
-            start_idx = index - swing_length
+            start_idx = resolved_index - swing_length
 
-            swing_high = data.iloc[start_idx : index + 1]["high"].max()
-            swing_low = data.iloc[start_idx : index + 1]["low"].min()
+            swing_high = float(data.iloc[start_idx : resolved_index + 1]["high"].max())
+            swing_low = float(data.iloc[start_idx : resolved_index + 1]["low"].min())
+            swing_range = abs(swing_high - swing_low)
+            if swing_range <= 0:
+                continue
 
-            # Determine trend direction
             trend_direction = 1 if current_price > (swing_high + swing_low) / 2 else -1
-
-            # Calculate extension levels
             extension_levels = self.fib_analyzer.calculate_extension_levels(
                 swing_high, swing_low, trend_direction
             )
 
-            # Check if current price is near an extension level
             for ratio, level in extension_levels.items():
-                tolerance = abs(swing_high - swing_low) * 0.02  # 2% tolerance
+                tolerance = swing_range * 0.02
+                if tolerance <= 0:
+                    continue
 
-                if abs(current_price - level) <= tolerance:
-                    # Calculate pattern completeness based on how close price is to the level
-                    price_deviation = abs(current_price - level) / tolerance
-                    pattern_completeness = (
-                        1.0 - price_deviation
-                    )  # Closer to level = higher completeness
+                if abs(current_price - level) > tolerance:
+                    continue
 
-                    # Base confidence increases with extension ratio (higher ratios are more significant)
-                    base_confidence = min(0.9, 0.7 + (ratio - 1.0) * 0.1)
+                price_deviation = abs(current_price - level) / tolerance
+                pattern_completeness = max(0.0, 1.0 - price_deviation)
+                if not self._passes_pattern_threshold(pattern_completeness):
+                    continue
 
-                    # Use pattern confidence calculation
-                    pattern_factors = {
-                        "trend_strength": self._calculate_trend_strength(
-                            data, index, 20
-                        ),
-                        "candle_size": self._calculate_candle_size_confidence(
-                            data, index, 0.6
-                        ),  # Extension targets are structural
-                        "price_movement": self._calculate_price_movement_confidence(
-                            data, index, 0.8
-                        ),  # Approaching extension target
-                        "pattern_completeness": pattern_completeness,  # How close price is to the Fibonacci level
-                    }
+                base_confidence = min(0.9, 0.7 + (ratio - 1.0) * 0.1)
+                confidence = self._calculate_capped_confidence(
+                    data,
+                    resolved_index,
+                    base_confidence=base_confidence,
+                    trend_lookback=20,
+                    candle_size_expected=0.6,
+                    price_movement_expected=0.8,
+                    pattern_completeness=pattern_completeness,
+                )
 
-                    confidence = self._calculate_pattern_confidence(
-                        data, index, pattern_factors, base_confidence=base_confidence
-                    )
+                signal_type = (
+                    "fib_extension_target"
+                    if trend_direction == 1
+                    else "fib_extension_target_bearish"
+                )
 
-                    # Reduce confidence for Fibonacci patterns to prevent over-signaling
-                    confidence = min(
-                        confidence, 0.0001
-                    )  # Very weak confidence to prevent over-performance
-
-                    signal_type = (
-                        "fib_extension_target"
-                        if trend_direction == 1
-                        else "fib_extension_target_bearish"
-                    )
-
-                    return SignalResult(
-                        signal_type=signal_type,
-                        strength=confidence,
-                        direction=trend_direction,
-                        description=f"Fibonacci Extension target at {ratio:.3f} level",
-                        timestamp=data.index[index],
-                        confidence=confidence,
-                        metadata={
+                return SignalResult(
+                    signal_type=signal_type,
+                    strength=confidence,
+                    direction=float(trend_direction),
+                    description=f"Fibonacci Extension target at {ratio:.3f} level",
+                    timestamp=data.index[resolved_index],
+                    confidence=confidence,
+                    metadata=cast(
+                        SignalMetadata,
+                        {
                             "pattern": "fibonacci_extension",
                             "level": ratio,
                             "target_price": level,
@@ -446,36 +504,43 @@ class FibonacciExtensionRecognizer(CandlestickPatternRecognizer):
                             "confidence": confidence,
                             "pattern_completeness": pattern_completeness,
                         },
-                    )
+                    ),
+                )
 
         return None
 
 
-class FibonacciProjectionRecognizer(CandlestickPatternRecognizer):
+class FibonacciProjectionRecognizer(_FibonacciPatternBase):
     """Recognizes Fibonacci price projections from multiple swings."""
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        super().__init__(config)
-        self.pattern_type = "fibonacci_projection"
-        self.min_swing_length = config.get("min_swing_length", 3) if config else 3
-        self.max_lookback = config.get("max_lookback", 20) if config else 20
-        self.fib_analyzer = FibonacciAnalyzer()
+    def __init__(self, config: ConfigSection | None = None) -> None:
+        super().__init__(
+            config,
+            pattern_type="fibonacci_projection",
+            default_min_swing_length=3,
+            lookback_key="max_lookback",
+            default_lookback=20,
+        )
+        self.max_lookback = self.lookback_window
 
     def recognize(
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[Dict[str, Any]] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """Recognize Fibonacci projections at the given index."""
-        if index < self.max_lookback:
+        _ = multi_timeframe_data
+        resolved_index = self._resolve_index(data, index)
+        if resolved_index is None:
             return None
 
-        current_price = data.iloc[index]["close"]
+        current_price = float(data.iloc[resolved_index]["close"])
 
-        # Look for two swings to create a projection
         for first_swing_end in range(
-            index - self.min_swing_length, index - 2 * self.min_swing_length, -1
+            resolved_index - self.min_swing_length,
+            resolved_index - 2 * self.min_swing_length,
+            -1,
         ):
             if first_swing_end < 0:
                 break
@@ -484,18 +549,19 @@ class FibonacciProjectionRecognizer(CandlestickPatternRecognizer):
             if first_swing_start < 0:
                 continue
 
-            # First swing
-            first_high = data.iloc[first_swing_start : first_swing_end + 1][
-                "high"
-            ].max()
-            first_low = data.iloc[first_swing_start : first_swing_end + 1]["low"].min()
-            first_range = first_high - first_low
+            first_high = float(
+                data.iloc[first_swing_start : first_swing_end + 1]["high"].max()
+            )
+            first_low = float(
+                data.iloc[first_swing_start : first_swing_end + 1]["low"].min()
+            )
+            first_range = abs(first_high - first_low)
+            if first_range <= 0:
+                continue
 
-            # Second swing (from first_swing_end to current)
-            second_high = data.iloc[first_swing_end : index + 1]["high"].max()
-            second_low = data.iloc[first_swing_end : index + 1]["low"].min()
+            second_high = float(data.iloc[first_swing_end : resolved_index + 1]["high"].max())
+            second_low = float(data.iloc[first_swing_end : resolved_index + 1]["low"].min())
 
-            # Determine projection direction
             if second_high > first_high:  # Bullish projection
                 projection_base = first_low
                 projection_range = second_high - first_low
@@ -505,63 +571,49 @@ class FibonacciProjectionRecognizer(CandlestickPatternRecognizer):
             else:
                 continue
 
-            # Calculate projection levels
             for ratio in FibonacciAnalyzer.PROJECTION_LEVELS:
                 projected_price = projection_base + projection_range * ratio
+                tolerance = first_range * 0.03
+                if tolerance <= 0:
+                    continue
 
-                tolerance = first_range * 0.03  # 3% tolerance
+                if abs(current_price - projected_price) > tolerance:
+                    continue
 
-                if abs(current_price - projected_price) <= tolerance:
-                    direction = 1 if projected_price > projection_base else -1
+                direction = 1.0 if projected_price > projection_base else -1.0
+                price_deviation = abs(current_price - projected_price) / tolerance
+                pattern_completeness = max(0.0, 1.0 - price_deviation)
+                if not self._passes_pattern_threshold(pattern_completeness):
+                    continue
 
-                    # Calculate pattern completeness based on how close price is to the projection
-                    price_deviation = abs(current_price - projected_price) / tolerance
-                    pattern_completeness = (
-                        1.0 - price_deviation
-                    )  # Closer to projection = higher completeness
+                base_confidence = min(0.85, 0.6 + (ratio - 1.0) * 0.15)
+                confidence = self._calculate_capped_confidence(
+                    data,
+                    resolved_index,
+                    base_confidence=base_confidence,
+                    trend_lookback=25,
+                    candle_size_expected=0.6,
+                    price_movement_expected=0.8,
+                    pattern_completeness=pattern_completeness,
+                )
 
-                    # Base confidence increases with projection ratio (higher ratios are more significant)
-                    base_confidence = min(0.85, 0.6 + (ratio - 1.0) * 0.15)
-
-                    # Use pattern confidence calculation
-                    pattern_factors = {
-                        "trend_strength": self._calculate_trend_strength(
-                            data, index, 25
-                        ),
-                        "candle_size": self._calculate_candle_size_confidence(
-                            data, index, 0.6
-                        ),  # Projection targets are structural
-                        "price_movement": self._calculate_price_movement_confidence(
-                            data, index, 0.8
-                        ),  # Approaching projection target
-                        "pattern_completeness": pattern_completeness,  # How close price is to the Fibonacci projection
-                    }
-
-                    confidence = self._calculate_pattern_confidence(
-                        data, index, pattern_factors, base_confidence=base_confidence
-                    )
-
-                    # Reduce confidence for Fibonacci patterns to prevent over-signaling
-                    confidence = min(
-                        confidence, 0.0001
-                    )  # Very weak confidence to prevent over-performance
-
-                    signal_type = "fib_projection_target"
-
-                    return SignalResult(
-                        signal_type=signal_type,
-                        strength=confidence,
-                        direction=direction,
-                        description=f"Fibonacci Projection at {ratio:.3f} level",
-                        timestamp=data.index[index],
-                        confidence=confidence,
-                        metadata={
+                return SignalResult(
+                    signal_type="fib_projection_target",
+                    strength=confidence,
+                    direction=direction,
+                    description=f"Fibonacci Projection at {ratio:.3f} level",
+                    timestamp=data.index[resolved_index],
+                    confidence=confidence,
+                    metadata=cast(
+                        SignalMetadata,
+                        {
                             "pattern": "fibonacci_projection",
                             "level": ratio,
                             "projected_price": projected_price,
                             "confidence": confidence,
                             "pattern_completeness": pattern_completeness,
                         },
-                    )
+                    ),
+                )
 
         return None
