@@ -319,6 +319,18 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - `wave_extension` metadata の `extension_ratio` で 0除算しうる経路を `EPSILON` ガードで解消。  
 5. 当該ファイルの `Any` を全撤去し、`any_type_debt_tokens=0` を達成。  
 
+### Step33: `streaming_processor` の `Any` 全撤去 + 実行時不具合修正
+
+1. `ztb/trading/strategies/action_signal_guide/realtime_adaptation/streaming_processor.py` の `Any` を全撤去し、`ObjectMap` / `ObjectRecords` ベースへ統一（当該ファイル `any_type_debt_tokens=0`）。  
+2. `BaseStreamingProcessor` に `IStreamingProcessor` の不足実装（`process_streaming_data` / `register_data_handler` / `get_processed_data`）を追加し、抽象メソッド未実装での具象生成不能リスクを解消。  
+3. `AdvancedStreamingProcessor.get_processed_data()` が `super().get_processed_data()` を呼ぶ一方で基底未実装だった不整合を解消。  
+4. `data_handlers` / `processed_data_cache` を基底で初期化し、高度機能経路で `AttributeError` になりうる既存不具合を修正。  
+5. `config.max_cache_size` 参照（未定義属性）を廃止し、基底で `max_cache_size` を算出して一元管理。  
+6. 保存キーを `processing_timestamp` ベースへ変更し、`timestamp` 不在で cache key が衝突しうる問題を解消。  
+7. `feature_buffer` を `list.pop(0)` から `deque(maxlen=1000)` へ変更し、ホットパスでの O(n) 削除を回避。  
+8. `_enhance_processed_data()` の `enhanced.get(..., 0).rolling(...)` による型不整合（`int` に rolling が無く例外）を修正し、数値列チェック付きの安全な Series 処理へ置換。  
+9. 数値変換ヘルパ（`_as_float`）と payload 正規化（`_as_object_map`）を導入し、予期しない入力型での比較/演算例外を低減。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -355,6 +367,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step30時点 | repo全体 | 3,281 |
 | Step31時点 | repo全体 | 3,258 |
 | Step32時点 | repo全体 | 3,240 |
+| Step33時点 | repo全体 | 3,218 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -391,6 +404,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step30時点 | `ztb/utils/env_metrics.py` | **0** |
 | Step31時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/candlestick_patterns.py` | **0** |
 | Step32時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/wave_counting.py` | **0** |
+| Step33時点 | `ztb/trading/strategies/action_signal_guide/realtime_adaptation/streaming_processor.py` | **0** |
 
 ---
 
@@ -400,10 +414,10 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - 生成パイプラインの result payload を段階的に型固定し、feature registry 連携の重複マップ操作を整理。  
 2. `ztb/evaluation/promotion.py`  
    - fallback 実装と `analysis/promotion` の責務境界を整理し、将来的な評価ロジック共通化（mixin/utility）に備える。  
-3. `ztb/trading/strategies/action_signal_guide/realtime_adaptation/streaming_processor.py`  
-   - streaming payload と状態遷移の `Any` を段階削減し、処理分岐の型契約を固定。  
-4. `ztb/trading/strategies/action_signal_guide/pattern_recognition/base.py`  
+3. `ztb/trading/strategies/action_signal_guide/pattern_recognition/base.py`  
    - 既存 fallback alias (`MultiTimeframeData` など) と `analyze_*` 系返却型を段階的に具体化し、recognizer 横断の `Any` 依存を削減。  
+4. `ztb/trading/strategies/action_signal_guide/ml_integration/pattern_optimizer.py`  
+   - optimizer payload と feature importance 更新経路の `Any` を削減し、オンライン最適化の失敗時フォールバックを強化。  
 
 ---
 

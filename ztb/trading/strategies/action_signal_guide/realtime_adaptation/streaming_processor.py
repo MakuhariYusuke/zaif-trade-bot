@@ -9,13 +9,15 @@ import logging
 import queue
 import threading
 import time
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from queue import Queue
-from typing import Any, Callable, Dict, List, Optional
+from typing import Callable
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_numeric_dtype
 
 from ..config.asg_adaptation_config import (
     RealTimeAdaptationConfig,
@@ -27,6 +29,7 @@ from ..interfaces.adaptation_interfaces import (
     StreamingDataPoint,
     StreamingDataType,
 )
+from ztb.types.common import ObjectMap, ObjectRecords
 
 logger = logging.getLogger(__name__)
 
@@ -35,12 +38,29 @@ logger = logging.getLogger(__name__)
 class StreamProcessingResult:
     """Result of streaming data processing."""
 
-    processed_data: List[Dict[str, Any]] = field(default_factory=list)
-    performance_metrics: Dict[str, float] = field(default_factory=dict)
-    anomalies_detected: List[Dict[str, Any]] = field(default_factory=list)
+    processed_data: ObjectRecords = field(default_factory=list)
+    performance_metrics: dict[str, float] = field(default_factory=dict)
+    anomalies_detected: ObjectRecords = field(default_factory=list)
     processing_time: float = 0.0
     data_quality_score: float = 1.0
     throughput: float = 0.0
+
+
+def _as_object_map(value: object) -> ObjectMap:
+    """Safely convert arbitrary payloads into a mutable object map."""
+    if isinstance(value, dict):
+        return {str(key): item for key, item in value.items()}
+    return {}
+
+
+def _as_float(value: object, default: float = 0.0) -> float:
+    """Best-effort float conversion used by feature/meter calculations."""
+    try:
+        if isinstance(value, (int, float, np.number)):
+            return float(value)
+        return float(str(value))
+    except (TypeError, ValueError):
+        return default
 
 
 class BaseStreamingProcessor(IStreamingProcessor):
@@ -48,14 +68,23 @@ class BaseStreamingProcessor(IStreamingProcessor):
 
     def __init__(self, config: StreamingProcessorConfig):
         self.config = config
-        self.data_queue: queue.Queue = queue.Queue(maxsize=config.max_queue_size)
-        self.processed_data: List[StreamingDataPoint] = []
-        self.anomaly_detector = None
-        self.quality_monitor = None
+        self.data_queue: queue.Queue[StreamingDataPoint] = queue.Queue(
+            maxsize=config.max_queue_size
+        )
+        self.processed_data: deque[StreamingDataPoint] = deque(
+            maxlen=max(1, config.max_queue_size)
+        )
+        self.anomaly_detector: ObjectMap | None = None
+        self.quality_monitor: ObjectMap | None = None
         self.is_running = False
-        self.executor = None
-        self.processing_thread = None
-        self.metrics_collector = None
+        self.executor: ThreadPoolExecutor | None = None
+        self.processing_thread: threading.Thread | None = None
+        self.metrics_collector: ObjectMap | None = None
+        self.data_handlers: dict[
+            StreamingDataType, list[Callable[[StreamingDataPoint], None]]
+        ] = {}
+        self.processed_data_cache: dict[str, ObjectMap] = {}
+        self.max_cache_size = max(config.max_queue_size, config.buffer_size)
 
     def start_processing(self) -> bool:
         """Start the streaming data processing."""
@@ -129,7 +158,7 @@ class BaseStreamingProcessor(IStreamingProcessor):
             logger.error(f"Failed to add data point: {e}")
             return False
 
-    def process_batch(self, data_points: List[StreamingDataPoint]) -> ProcessingResult:
+    def process_batch(self, data_points: list[StreamingDataPoint]) -> ProcessingResult:
         """Process a batch of data points."""
         start_time = time.time()
 
@@ -144,8 +173,8 @@ class BaseStreamingProcessor(IStreamingProcessor):
                 )
 
             # Process data points
-            processed_data = []
-            anomalies = []
+            processed_data: ObjectRecords = []
+            anomalies: ObjectRecords = []
 
             for data_point in data_points:
                 if self.config.enable_parallel_processing and self.executor:
@@ -161,6 +190,8 @@ class BaseStreamingProcessor(IStreamingProcessor):
                 if result:
                     processed_data.append(result)
                     self.processed_data.append(data_point)
+                    self._store_processed_data(data_point.data_type, result)
+                    self._trigger_handlers(data_point)
 
                     # Check for anomalies
                     if self._is_anomaly(result):
@@ -215,7 +246,7 @@ class BaseStreamingProcessor(IStreamingProcessor):
                 metadata={"error": str(e)},
             )
 
-    def get_processing_status(self) -> Dict[str, Any]:
+    def get_processing_status(self) -> ObjectMap:
         """Get current processing status."""
         return {
             "is_running": self.is_running,
@@ -228,14 +259,18 @@ class BaseStreamingProcessor(IStreamingProcessor):
             "max_workers": self.config.max_workers,
         }
 
-    def get_recent_data(self, limit: int = 100) -> List[StreamingDataPoint]:
+    def get_recent_data(self, limit: int = 100) -> list[StreamingDataPoint]:
         """Get recently processed data points."""
-        return self.processed_data[-limit:] if self.processed_data else []
+        if not self.processed_data:
+            return []
+        data = list(self.processed_data)
+        return data[-limit:]
 
     def clear_buffer(self) -> bool:
         """Clear the processing buffer."""
         try:
             self.processed_data.clear()
+            self.processed_data_cache.clear()
             # Clear queue
             while not self.data_queue.empty():
                 try:
@@ -247,7 +282,100 @@ class BaseStreamingProcessor(IStreamingProcessor):
             logger.error(f"Failed to clear buffer: {e}")
             return False
 
-    def _initialize_components(self):
+    def process_streaming_data(self, data_queue: Queue[StreamingDataPoint]) -> None:
+        """Process streaming data from queue."""
+        try:
+            while not data_queue.empty():
+                data_point = data_queue.get_nowait()
+                if not self._validate_data_point(data_point):
+                    continue
+
+                processed = self._process_single_point(data_point)
+                if processed is None:
+                    continue
+
+                self.processed_data.append(data_point)
+                self._store_processed_data(data_point.data_type, processed)
+                self._trigger_handlers(data_point)
+        except Exception as e:
+            logger.error(f"Streaming data processing failed: {e}")
+
+    def register_data_handler(
+        self,
+        data_type: StreamingDataType,
+        handler: Callable[[StreamingDataPoint], None],
+    ) -> None:
+        """Register handler for specific data type."""
+        self.data_handlers.setdefault(data_type, []).append(handler)
+        logger.info(f"Registered handler for data type: {data_type}")
+
+    def get_processed_data(
+        self, data_type: StreamingDataType, lookback_period: int = 100
+    ) -> pd.DataFrame:
+        """Get processed data for specified type and period."""
+        try:
+            records = [
+                payload
+                for payload in self.processed_data_cache.values()
+                if str(payload.get("data_type", "")) == data_type.value
+            ]
+
+            # Fallback to raw stream points if cache is empty.
+            if not records:
+                for data_point in self.processed_data:
+                    if data_point.data_type != data_type:
+                        continue
+                    payload = _as_object_map(data_point.data)
+                    payload["timestamp"] = data_point.timestamp
+                    payload["data_type"] = data_point.data_type.value
+                    records.append(payload)
+
+            if not records:
+                return pd.DataFrame()
+
+            sorted_records = sorted(
+                records,
+                key=lambda item: _as_float(
+                    item.get("processing_timestamp", item.get("timestamp", 0.0)), 0.0
+                ),
+            )
+            return pd.DataFrame(sorted_records[-lookback_period:])
+        except Exception as e:
+            logger.error(f"Failed to get processed data for {data_type}: {e}")
+            return pd.DataFrame()
+
+    def _trigger_handlers(self, data_point: StreamingDataPoint) -> None:
+        """Trigger registered handlers for a data point."""
+        handlers = self.data_handlers.get(data_point.data_type, [])
+        for handler in handlers:
+            try:
+                handler(data_point)
+            except Exception as e:
+                logger.error(f"Handler execution failed: {e}")
+
+    def _store_processed_data(
+        self, data_type: StreamingDataType, processed_data: ObjectMap
+    ) -> None:
+        """Store processed data in an in-memory bounded cache."""
+        timestamp = _as_float(
+            processed_data.get("processing_timestamp", processed_data.get("timestamp", 0.0)),
+            time.time(),
+        )
+        storage_key = f"{data_type.value}_{timestamp:.6f}_{time.time_ns()}"
+
+        payload = dict(processed_data)
+        payload.setdefault("processing_timestamp", timestamp)
+        payload["data_type"] = data_type.value
+        self.processed_data_cache[storage_key] = payload
+
+        if len(self.processed_data_cache) > self.max_cache_size:
+            oldest_keys = sorted(self.processed_data_cache.keys())[
+                : len(self.processed_data_cache) - self.max_cache_size
+            ]
+            for key in oldest_keys:
+                del self.processed_data_cache[key]
+
+    def _initialize_components(self) -> None:
         """Initialize processing components."""
         # Initialize anomaly detector
         self.anomaly_detector = self._create_anomaly_detector()
@@ -258,9 +386,9 @@ class BaseStreamingProcessor(IStreamingProcessor):
         # Initialize metrics collector
         self.metrics_collector = self._create_metrics_collector()
 
-    def _processing_loop(self):
+    def _processing_loop(self) -> None:
         """Main processing loop for continuous streaming."""
-        buffer = []
+        buffer: list[StreamingDataPoint] = []
         last_process_time = time.time()
 
         while self.is_running:
@@ -321,7 +449,7 @@ class BaseStreamingProcessor(IStreamingProcessor):
 
     def _process_single_point(
         self, data_point: StreamingDataPoint
-    ) -> Optional[Dict[str, Any]]:
+    ) -> ObjectMap | None:
         """Process a single data point."""
         try:
             # Extract features
@@ -334,7 +462,7 @@ class BaseStreamingProcessor(IStreamingProcessor):
             derived_metrics = self._calculate_derived_metrics(transformed_features)
 
             # Combine results
-            processed_data = {
+            processed_data: ObjectMap = {
                 "original_data": data_point.data,
                 "features": features,
                 "transformed_features": transformed_features,
@@ -349,12 +477,12 @@ class BaseStreamingProcessor(IStreamingProcessor):
             logger.error(f"Failed to process data point: {e}")
             return None
 
-    def _extract_features(self, data_point: StreamingDataPoint) -> Dict[str, Any]:
+    def _extract_features(self, data_point: StreamingDataPoint) -> ObjectMap:
         """Extract features from data point."""
-        features = {}
+        features: ObjectMap = {}
 
         # Basic feature extraction
-        data = data_point.data
+        data = _as_object_map(data_point.data)
 
         # Price-based features
         if "price" in data:
@@ -369,34 +497,38 @@ class BaseStreamingProcessor(IStreamingProcessor):
 
         # Technical indicators
         if "indicators" in data:
-            indicators = data["indicators"]
+            indicators = _as_object_map(data["indicators"])
             features.update(
                 {
-                    "rsi": indicators.get("rsi", 50),
-                    "macd": indicators.get("macd", 0),
-                    "bollinger_upper": indicators.get("bollinger_upper", 0),
-                    "bollinger_lower": indicators.get("bollinger_lower", 0),
-                    "sma_20": indicators.get("sma_20", 0),
-                    "ema_12": indicators.get("ema_12", 0),
+                    "rsi": _as_float(indicators.get("rsi", 50.0), 50.0),
+                    "macd": _as_float(indicators.get("macd", 0.0), 0.0),
+                    "bollinger_upper": _as_float(
+                        indicators.get("bollinger_upper", 0.0), 0.0
+                    ),
+                    "bollinger_lower": _as_float(
+                        indicators.get("bollinger_lower", 0.0), 0.0
+                    ),
+                    "sma_20": _as_float(indicators.get("sma_20", 0.0), 0.0),
+                    "ema_12": _as_float(indicators.get("ema_12", 0.0), 0.0),
                 }
             )
 
         # Market data
         if "market_data" in data:
-            market = data["market_data"]
+            market = _as_object_map(data["market_data"])
             features.update(
                 {
-                    "market_volatility": market.get("volatility", 0),
-                    "market_trend": market.get("trend", 0),
-                    "market_volume": market.get("volume", 0),
+                    "market_volatility": _as_float(market.get("volatility", 0.0), 0.0),
+                    "market_trend": _as_float(market.get("trend", 0.0), 0.0),
+                    "market_volume": _as_float(market.get("volume", 0.0), 0.0),
                 }
             )
 
         return features
 
-    def _apply_transformations(self, features: Dict[str, Any]) -> Dict[str, Any]:
+    def _apply_transformations(self, features: ObjectMap) -> ObjectMap:
         """Apply data transformations."""
-        transformed = features.copy()
+        transformed: ObjectMap = dict(features)
 
         # Normalization (simple z-score)
         numeric_features = [
@@ -408,25 +540,27 @@ class BaseStreamingProcessor(IStreamingProcessor):
             "volume_change",
         ]
         for feature in numeric_features:
-            if feature in transformed and transformed[feature] is not None:
+            value = transformed.get(feature)
+            if value is not None:
                 # In practice, you'd use rolling statistics
-                transformed[f"{feature}_normalized"] = transformed[
-                    feature
-                ]  # Placeholder
+                transformed[f"{feature}_normalized"] = _as_float(value, 0.0)
 
         # Log transformations for skewed data
-        if "volume" in transformed and transformed["volume"] > 0:
-            transformed["volume_log"] = np.log(transformed["volume"])
+        volume_value = _as_float(transformed.get("volume"), 0.0)
+        if volume_value > 0:
+            transformed["volume_log"] = float(np.log(volume_value))
 
         # Difference transformations
         if "price" in transformed and "sma_20" in transformed:
-            transformed["price_sma_diff"] = transformed["price"] - transformed["sma_20"]
+            transformed["price_sma_diff"] = _as_float(
+                transformed.get("price"), 0.0
+            ) - _as_float(transformed.get("sma_20"), 0.0)
 
         return transformed
 
-    def _calculate_derived_metrics(self, features: Dict[str, Any]) -> Dict[str, Any]:
+    def _calculate_derived_metrics(self, features: ObjectMap) -> ObjectMap:
         """Calculate derived metrics."""
-        metrics = {}
+        metrics: ObjectMap = {}
 
         # Momentum indicators
         if "price_change" in features:
@@ -442,14 +576,16 @@ class BaseStreamingProcessor(IStreamingProcessor):
 
         # Composite indicators
         if "rsi" in features and "macd" in features:
-            metrics["composite_signal"] = (features["rsi"] - 50) * 0.01 + features[
-                "macd"
-            ] * 0.1
+            rsi_value = _as_float(features.get("rsi"), 50.0)
+            macd_value = _as_float(features.get("macd"), 0.0)
+            metrics["composite_signal"] = (rsi_value - 50.0) * 0.01 + macd_value * 0.1
 
         # Market regime indicators
         if "market_volatility" in features and "market_trend" in features:
-            metrics["regime_strength"] = abs(features["market_trend"]) / (
-                features["market_volatility"] + 0.001
+            volatility = _as_float(features.get("market_volatility"), 0.0)
+            trend = _as_float(features.get("market_trend"), 0.0)
+            metrics["regime_strength"] = abs(trend) / (
+                volatility + 0.001
             )
 
         return metrics
@@ -457,7 +593,7 @@ class BaseStreamingProcessor(IStreamingProcessor):
     def _assess_data_quality(self, data_point: StreamingDataPoint) -> float:
         """Assess data quality score."""
         score = 1.0
-        data = data_point.data
+        data = _as_object_map(data_point.data)
 
         # Check for missing values
         total_fields = len(data)
@@ -470,8 +606,8 @@ class BaseStreamingProcessor(IStreamingProcessor):
             score *= 1 - missing_fields / total_fields
 
         # Check for outliers (simple range check)
-        if "price" in data and isinstance(data["price"], (int, float)):
-            if not (0.1 < data["price"] < 1000000):  # Reasonable price range
+        price_value = _as_float(data.get("price"), 0.0)
+        if price_value > 0 and not (0.1 < price_value < 1000000):  # Reasonable price range
                 score *= 0.5
 
         # Check timestamp freshness
@@ -482,21 +618,22 @@ class BaseStreamingProcessor(IStreamingProcessor):
 
         return max(0.0, min(1.0, score))
 
-    def _is_anomaly(self, processed_data: Dict[str, Any]) -> bool:
+    def _is_anomaly(self, processed_data: ObjectMap) -> bool:
         """Check if processed data indicates an anomaly."""
         if not self.anomaly_detector:
             return False
 
         try:
             # Simple anomaly detection based on thresholds
-            metrics = processed_data.get("derived_metrics", {})
+            metrics = _as_object_map(processed_data.get("derived_metrics", {}))
 
             # Check for extreme values
-            if "momentum" in metrics and abs(metrics["momentum"]) > 0.05:  # 5% change
+            if "momentum" in metrics and abs(_as_float(metrics["momentum"], 0.0)) > 0.05:
                 return True
 
             if (
-                "volatility_ratio" in metrics and metrics["volatility_ratio"] > 0.1
+                "volatility_ratio" in metrics
+                and _as_float(metrics["volatility_ratio"], 0.0) > 0.1
             ):  # High volatility
                 return True
 
@@ -506,25 +643,25 @@ class BaseStreamingProcessor(IStreamingProcessor):
             logger.error(f"Anomaly detection failed: {e}")
             return False
 
-    def _calculate_data_quality(self, data_points: List[StreamingDataPoint]) -> float:
+    def _calculate_data_quality(self, data_points: list[StreamingDataPoint]) -> float:
         """Calculate overall data quality score."""
         if not data_points:
             return 1.0
 
         quality_scores = [self._assess_data_quality(dp) for dp in data_points]
-        return np.mean(quality_scores)
+        return float(np.mean(quality_scores))
 
-    def _create_anomaly_detector(self) -> Any:
+    def _create_anomaly_detector(self) -> ObjectMap:
         """Create anomaly detection component."""
         # Placeholder for anomaly detector implementation
         return {}
 
-    def _create_quality_monitor(self) -> Any:
+    def _create_quality_monitor(self) -> ObjectMap:
         """Create data quality monitoring component."""
         # Placeholder for quality monitor implementation
         return {}
 
-    def _create_metrics_collector(self) -> Any:
+    def _create_metrics_collector(self) -> ObjectMap:
         """Create metrics collection component."""
         # Placeholder for metrics collector implementation
         return {}
@@ -535,11 +672,11 @@ class AdvancedStreamingProcessor(BaseStreamingProcessor):
 
     def __init__(self, config: StreamingProcessorConfig):
         super().__init__(config)
-        self.feature_buffer: List[Dict[str, Any]] = []
-        self.pattern_detector = None
-        self.predictive_model = None
+        self.feature_buffer: deque[ObjectMap] = deque(maxlen=1000)
+        self.pattern_detector: ObjectMap | None = None
+        self.predictive_model: ObjectMap | None = None
 
-    def _initialize_components(self):
+    def _initialize_components(self) -> None:
         """Initialize advanced processing components."""
         super()._initialize_components()
 
@@ -551,7 +688,7 @@ class AdvancedStreamingProcessor(BaseStreamingProcessor):
 
     def _process_single_point(
         self, data_point: StreamingDataPoint
-    ) -> Optional[Dict[str, Any]]:
+    ) -> ObjectMap | None:
         """Enhanced single point processing."""
         # Get base processing
         result = super()._process_single_point(data_point)
@@ -567,53 +704,57 @@ class AdvancedStreamingProcessor(BaseStreamingProcessor):
 
             # Update feature buffer
             self.feature_buffer.append(result)
-            if len(self.feature_buffer) > 1000:  # Keep last 1000 points
-                self.feature_buffer.pop(0)
 
         return result
 
-    def _detect_patterns(self, processed_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _detect_patterns(self, processed_data: ObjectMap) -> ObjectRecords:
         """Detect patterns in the processed data."""
-        patterns = []
+        patterns: ObjectRecords = []
 
         try:
-            features = processed_data.get("features", {})
+            features = _as_object_map(processed_data.get("features", {}))
 
             # Trend pattern detection
             if "price_change" in features:
-                if features["price_change"] > 0.02:  # 2% increase
+                price_change = _as_float(features["price_change"], 0.0)
+                if price_change > 0.02:  # 2% increase
                     patterns.append(
                         {
                             "type": "uptrend",
-                            "strength": features["price_change"],
+                            "strength": price_change,
                             "confidence": 0.8,
                         }
                     )
-                elif features["price_change"] < -0.02:  # 2% decrease
+                elif price_change < -0.02:  # 2% decrease
                     patterns.append(
                         {
                             "type": "downtrend",
-                            "strength": abs(features["price_change"]),
+                            "strength": abs(price_change),
                             "confidence": 0.8,
                         }
                     )
 
             # Volatility pattern
-            if "price_volatility" in features and features["price_volatility"] > 0.05:
+            if (
+                "price_volatility" in features
+                and _as_float(features["price_volatility"], 0.0) > 0.05
+            ):
                 patterns.append(
                     {
                         "type": "high_volatility",
-                        "strength": features["price_volatility"],
+                        "strength": _as_float(features["price_volatility"], 0.0),
                         "confidence": 0.9,
                     }
                 )
 
             # Volume pattern
-            if "volume_change" in features and abs(features["volume_change"]) > 0.5:
+            if "volume_change" in features and abs(
+                _as_float(features["volume_change"], 0.0)
+            ) > 0.5:
                 patterns.append(
                     {
                         "type": "volume_spike",
-                        "strength": features["volume_change"],
+                        "strength": _as_float(features["volume_change"], 0.0),
                         "confidence": 0.7,
                     }
                 )
@@ -623,22 +764,24 @@ class AdvancedStreamingProcessor(BaseStreamingProcessor):
 
         return patterns
 
-    def _generate_predictions(self, processed_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_predictions(self, processed_data: ObjectMap) -> ObjectMap:
         """Generate predictions based on processed data."""
-        predictions = {}
+        predictions: ObjectMap = {}
 
         try:
             # Simple momentum-based predictions
-            metrics = processed_data.get("derived_metrics", {})
+            metrics = _as_object_map(processed_data.get("derived_metrics", {}))
 
             if "momentum" in metrics:
                 # Predict next momentum direction
-                predictions["next_momentum"] = metrics["momentum"] * 0.8  # Dampened
+                predictions["next_momentum"] = _as_float(metrics["momentum"], 0.0) * 0.8
                 predictions["momentum_confidence"] = 0.6
 
             if "composite_signal" in metrics:
                 # Predict signal strength
-                predictions["signal_strength"] = metrics["composite_signal"]
+                predictions["signal_strength"] = _as_float(
+                    metrics["composite_signal"], 0.0
+                )
                 predictions["signal_confidence"] = 0.7
 
         except Exception as e:
@@ -646,44 +789,15 @@ class AdvancedStreamingProcessor(BaseStreamingProcessor):
 
         return predictions
 
-    def _create_pattern_detector(self) -> Any:
+    def _create_pattern_detector(self) -> ObjectMap:
         """Create advanced pattern detection component."""
         # Placeholder for advanced pattern detector
         return {}
 
-    def _create_predictive_model(self) -> Any:
+    def _create_predictive_model(self) -> ObjectMap:
         """Create predictive modeling component."""
         # Placeholder for predictive model
         return {}
-
-    def process_streaming_data(self, data_queue: Queue) -> None:
-        """Process streaming data from queue with advanced features."""
-        try:
-            while not data_queue.empty():
-                data_point = data_queue.get_nowait()
-                processed = self._process_single_point(data_point)
-
-                if processed:
-                    # Store processed data
-                    self._store_processed_data(data_point.data_type, processed)
-
-                    # Trigger registered handlers
-                    self._trigger_handlers(data_point)
-
-        except Exception as e:
-            logger.error(f"Streaming data processing failed: {e}")
-
-    def register_data_handler(
-        self,
-        data_type: StreamingDataType,
-        handler: Callable[[StreamingDataPoint], None],
-    ) -> None:
-        """Register handler for specific data type."""
-        if data_type not in self.data_handlers:
-            self.data_handlers[data_type] = []
-
-        self.data_handlers[data_type].append(handler)
-        logger.info(f"Registered handler for data type: {data_type}")
 
     def get_processed_data(
         self, data_type: StreamingDataType, lookback_period: int = 100
@@ -711,58 +825,43 @@ class AdvancedStreamingProcessor(BaseStreamingProcessor):
         """Enhance processed data with advanced features."""
         try:
             enhanced = data.copy()
+            _ = data_type  # Reserved for future type-specific feature branches.
+
+            composite_signal = (
+                enhanced["composite_signal"]
+                if "composite_signal" in enhanced.columns
+                and is_numeric_dtype(enhanced["composite_signal"])
+                else pd.Series(0.0, index=enhanced.index)
+            )
+            price_volatility = (
+                enhanced["price_volatility"]
+                if "price_volatility" in enhanced.columns
+                and is_numeric_dtype(enhanced["price_volatility"])
+                else pd.Series(0.0, index=enhanced.index)
+            )
+            price_change = (
+                enhanced["price_change"]
+                if "price_change" in enhanced.columns
+                and is_numeric_dtype(enhanced["price_change"])
+                else pd.Series(0.0, index=enhanced.index)
+            )
 
             # Add pattern-based features
             if len(enhanced) > 10:
                 # Rolling pattern detection
-                enhanced["pattern_strength"] = (
-                    enhanced.get("composite_signal", 0).rolling(10).mean()
-                )
-                enhanced["volatility_regime"] = (
-                    enhanced.get("price_volatility", 0).rolling(20).std()
-                )
+                enhanced["pattern_strength"] = composite_signal.rolling(10).mean()
+                enhanced["volatility_regime"] = price_volatility.rolling(20).std()
 
             # Add predictive features
             if len(enhanced) > 5:
                 # Simple trend prediction
-                enhanced["predicted_trend"] = (
-                    enhanced.get("price_change", 0).shift(-1).fillna(0)
-                )
+                enhanced["predicted_trend"] = price_change.shift(-1).fillna(0.0)
 
             return enhanced
 
         except Exception as e:
             logger.warning(f"Data enhancement failed: {e}")
             return data
-
-    def _trigger_handlers(self, data_point: StreamingDataPoint) -> None:
-        """Trigger registered handlers for data point."""
-        handlers = self.data_handlers.get(data_point.data_type, [])
-
-        for handler in handlers:
-            try:
-                handler(data_point)
-            except Exception as e:
-                logger.error(f"Handler execution failed: {e}")
-
-    def _store_processed_data(
-        self, data_type: StreamingDataType, processed_data: Dict[str, Any]
-    ) -> None:
-        """Store processed data with advanced indexing."""
-        try:
-            # Enhanced storage with metadata
-            storage_key = f"{data_type.value}_{processed_data.get('timestamp', 0)}"
-            self.processed_data_cache[storage_key] = processed_data
-
-            # Maintain cache size
-            if len(self.processed_data_cache) > self.config.max_cache_size:
-                # Remove oldest entries
-                oldest_keys = sorted(self.processed_data_cache.keys())[:100]
-                for key in oldest_keys:
-                    del self.processed_data_cache[key]
-
-        except Exception as e:
-            logger.error(f"Data storage failed: {e}")
 
 
 def create_streaming_processor(config: RealTimeAdaptationConfig) -> IStreamingProcessor:
