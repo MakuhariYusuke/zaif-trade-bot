@@ -3,10 +3,34 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Optional
+from typing import Callable, Iterable, Optional
+
+from ztb.types.common import ObjectMap
+
+MetricCaster = Callable[[object], object]
+MetricSpec = tuple[str, tuple[str, ...], Optional[MetricCaster]]
+
+_BASE_METRIC_SPECS: tuple[MetricSpec, ...] = (
+    ("final_balance", ("balance", "portfolio_value"), float),
+    ("initial_balance", ("initial_balance", "initial_portfolio_value"), float),
+    ("total_trades", ("total_trades",), int),
+    ("gross_pnl", ("gross_pnl",), float),
+    ("total_fees", ("total_fees",), float),
+    ("total_slippage", ("total_slippage",), float),
+    ("net_pnl", ("net_pnl", "realized_pnl", "total_pnl"), float),
+)
+
+_OPTIONAL_METRIC_SPECS: tuple[MetricSpec, ...] = (
+    ("buy_count", ("buy_count",), int),
+    ("sell_count", ("sell_count",), int),
+    ("reward_scale", ("reward_scale",), float),
+    ("reward_clip_min", ("reward_clip_min",), float),
+    ("reward_clip_max", ("reward_clip_max",), float),
+    ("realized_pnl", ("realized_pnl",), float),
+)
 
 
-def resolve_env(source: Any) -> Optional[Any]:
+def resolve_env(source: object) -> Optional[object]:
     """Resolve an environment from a trainer, model, or env-like object."""
     if source is None:
         return None
@@ -37,7 +61,7 @@ def resolve_env(source: Any) -> Optional[Any]:
     return None
 
 
-def unwrap_env(env: Any, max_depth: int = 10) -> Optional[Any]:
+def unwrap_env(env: object, max_depth: int = 10) -> Optional[object]:
     """Unwrap VecEnv/Monitor-style wrappers to reach the base environment."""
     if env is None:
         return None
@@ -52,10 +76,10 @@ def unwrap_env(env: Any, max_depth: int = 10) -> Optional[Any]:
 
 
 def extract_env_metrics(
-    env: Any, include_optional: bool = False
-) -> Dict[str, Any]:
+    env: object, include_optional: bool = False
+) -> dict[str, object]:
     """Extract balance and trade metrics from an environment."""
-    metrics: Dict[str, Any] = {}
+    metrics: dict[str, object] = {}
     if env is None:
         return metrics
 
@@ -63,143 +87,25 @@ def extract_env_metrics(
     if unwrapped is None:
         return metrics
 
-    _set_first_attr(
-        metrics,
-        "final_balance",
-        unwrapped,
-        ("balance", "portfolio_value"),
-        caster=float,
-    )
-    _set_first_attr(
-        metrics,
-        "initial_balance",
-        unwrapped,
-        ("initial_balance", "initial_portfolio_value"),
-        caster=float,
-    )
-    _set_first_attr(
-        metrics,
-        "total_trades",
-        unwrapped,
-        ("total_trades",),
-        caster=int,
-    )
-    _set_first_attr(
-        metrics,
-        "gross_pnl",
-        unwrapped,
-        ("gross_pnl",),
-        caster=float,
-    )
-    _set_first_attr(
-        metrics,
-        "total_fees",
-        unwrapped,
-        ("total_fees",),
-        caster=float,
-    )
-    _set_first_attr(
-        metrics,
-        "total_slippage",
-        unwrapped,
-        ("total_slippage",),
-        caster=float,
-    )
-    _set_first_attr(
-        metrics,
-        "net_pnl",
-        unwrapped,
-        ("net_pnl", "realized_pnl", "total_pnl"),
-        caster=float,
-    )
+    _populate_metric_specs(metrics, unwrapped, _BASE_METRIC_SPECS)
 
     if include_optional:
-        _set_first_attr(
-            metrics,
-            "buy_count",
-            unwrapped,
-            ("buy_count",),
-            caster=int,
-        )
-        _set_first_attr(
-            metrics,
-            "sell_count",
-            unwrapped,
-            ("sell_count",),
-            caster=int,
-        )
+        _populate_metric_specs(metrics, unwrapped, _OPTIONAL_METRIC_SPECS)
         _set_sharpe_ratio(metrics, unwrapped)
-        _set_first_attr(
-            metrics,
-            "reward_scale",
-            unwrapped,
-            ("reward_scale",),
-            caster=float,
-        )
-        _set_first_attr(
-            metrics,
-            "reward_clip_min",
-            unwrapped,
-            ("reward_clip_min",),
-            caster=float,
-        )
-        _set_first_attr(
-            metrics,
-            "reward_clip_max",
-            unwrapped,
-            ("reward_clip_max",),
-            caster=float,
-        )
-        # P0: コスト分解メトリクスを追加（89# Phase 4.5）
-        _set_first_attr(
-            metrics,
-            "gross_pnl",
-            unwrapped,
-            ("gross_pnl",),
-            caster=float,
-        )
-        _set_first_attr(
-            metrics,
-            "net_pnl",
-            unwrapped,
-            ("net_pnl",),
-            caster=float,
-        )
-        _set_first_attr(
-            metrics,
-            "total_fees",
-            unwrapped,
-            ("total_fees",),
-            caster=float,
-        )
-        _set_first_attr(
-            metrics,
-            "total_slippage",
-            unwrapped,
-            ("total_slippage",),
-            caster=float,
-        )
-        _set_first_attr(
-            metrics,
-            "realized_pnl",
-            unwrapped,
-            ("realized_pnl",),
-            caster=float,
-        )
 
     return metrics
 
 
 def extract_trainer_env_metrics(
-    trainer: Any, include_optional: bool = False
-) -> Dict[str, Any]:
+    trainer: object, include_optional: bool = False
+) -> dict[str, object]:
     """Extract environment metrics from a trainer or algorithm wrapper."""
     env = resolve_env(trainer)
     return extract_env_metrics(env, include_optional=include_optional)
 
 
 def compute_balance_roi(
-    metrics: Dict[str, Any],
+    metrics: dict[str, object],
     final_key: str = "final_balance",
     initial_key: str = "initial_balance",
 ) -> Optional[float]:
@@ -216,14 +122,14 @@ def compute_balance_roi(
     return (final_balance - initial_balance) / initial_balance * 100
 
 
-def _safe_getattr(obj: Any, name: str) -> Optional[Any]:
+def _safe_getattr(obj: object, name: str) -> Optional[object]:
     try:
         return getattr(obj, name)
     except Exception:
         return None
 
 
-def _call_get_env(obj: Any) -> Optional[Any]:
+def _call_get_env(obj: object) -> Optional[object]:
     try:
         getter = getattr(obj, "get_env", None)
     except Exception:
@@ -237,7 +143,7 @@ def _call_get_env(obj: Any) -> Optional[Any]:
     return None
 
 
-def _looks_like_env(obj: Any) -> bool:
+def _looks_like_env(obj: object) -> bool:
     try:
         if hasattr(obj, "step") and hasattr(obj, "reset"):
             return True
@@ -248,7 +154,7 @@ def _looks_like_env(obj: Any) -> bool:
     return False
 
 
-def _unwrap_vec_env(env: Any) -> Any:
+def _unwrap_vec_env(env: object) -> object:
     try:
         envs = getattr(env, "envs", None)
         if envs:
@@ -258,7 +164,7 @@ def _unwrap_vec_env(env: Any) -> Any:
     return env
 
 
-def _next_wrapped_env(env: Any) -> Optional[Any]:
+def _next_wrapped_env(env: object) -> Optional[object]:
     try:
         if hasattr(env, "unwrapped"):
             unwrapped = getattr(env, "unwrapped")
@@ -276,16 +182,21 @@ def _next_wrapped_env(env: Any) -> Optional[Any]:
     return None
 
 
+def _populate_metric_specs(
+    metrics: dict[str, object], obj: object, specs: Iterable[MetricSpec]
+) -> None:
+    for key, attrs, caster in specs:
+        _set_first_attr(metrics, key, obj, attrs, caster)
+
+
 def _set_first_attr(
-    metrics: Dict[str, Any],
+    metrics: dict[str, object],
     key: str,
-    obj: Any,
+    obj: object,
     attr_names: Iterable[str],
-    caster: Optional[type] = None,
+    caster: Optional[MetricCaster] = None,
 ) -> None:
     for attr in attr_names:
-        if not hasattr(obj, attr):
-            continue
         try:
             value = getattr(obj, attr)
         except Exception:
@@ -301,7 +212,7 @@ def _set_first_attr(
         return
 
 
-def _set_sharpe_ratio(metrics: Dict[str, Any], env: Any) -> None:
+def _set_sharpe_ratio(metrics: dict[str, object], env: object) -> None:
     try:
         getter = getattr(env, "get_sharpe_ratio", None)
     except Exception:
