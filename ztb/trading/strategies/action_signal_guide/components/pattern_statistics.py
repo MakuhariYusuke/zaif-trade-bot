@@ -10,31 +10,16 @@ from __future__ import annotations
 import statistics
 import time
 from collections import defaultdict, deque
-from typing import TYPE_CHECKING, TypeVar, TypedDict, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 
 from ztb.utils.logging_utils import get_logger
 
+from .history_helpers import append_with_compaction
 from .interfaces import IPatternStatistics
 
 if TYPE_CHECKING:
     from ..action_signal_guide import ActionSignal
     from ..types import PatternStats, SignalMetadata
-
-
-T = TypeVar("T")
-
-
-def _append_with_compaction(
-    history: list[T],
-    value: T,
-    *,
-    high_water: int,
-    retain: int,
-) -> None:
-    """Append into history and compact when it exceeds the configured waterline."""
-    history.append(value)
-    if len(history) > high_water:
-        del history[:-retain]
 
 
 class DetectionHistoryEntry(TypedDict):
@@ -164,7 +149,7 @@ class PatternStatistics(IPatternStatistics):
         self.detection_history.append(history_entry)
 
         # Record temporal pattern
-        _append_with_compaction(
+        append_with_compaction(
             self.temporal_patterns[pattern_type],
             (timestamp, detected),
             high_water=1000,
@@ -183,13 +168,13 @@ class PatternStatistics(IPatternStatistics):
             strength = float(getattr(signal, "strength", 0.0))
             confidence = float(getattr(signal, "confidence", 0.0))
 
-            _append_with_compaction(
+            append_with_compaction(
                 self.pattern_strengths[pattern_type],
                 strength,
                 high_water=500,
                 retain=250,
             )
-            _append_with_compaction(
+            append_with_compaction(
                 self.pattern_confidences[pattern_type],
                 confidence,
                 high_water=500,
@@ -207,7 +192,7 @@ class PatternStatistics(IPatternStatistics):
             pattern_type: Type of pattern
             strength: Signal strength value
         """
-        _append_with_compaction(
+        append_with_compaction(
             self.pattern_strengths[pattern_type],
             float(strength),
             high_water=500,
@@ -222,7 +207,7 @@ class PatternStatistics(IPatternStatistics):
             pattern_type: Type of pattern
             accurate: Whether the pattern prediction was accurate
         """
-        _append_with_compaction(
+        append_with_compaction(
             self.pattern_accuracies[pattern_type],
             bool(accurate),
             high_water=1000,

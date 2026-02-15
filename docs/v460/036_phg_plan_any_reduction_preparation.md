@@ -478,6 +478,18 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 8. `detection_history` を `deque(maxlen=...)` 化し、長期稼働時の履歴肥大を抑止。  
 9. repo 全体 `any_type_debt_tokens` を `2,973 -> 2,953` へ削減。  
 
+### Step46: 既存ヘルパ拡張 + 水平展開（`cache/sac/plugin`）+ `Any` 全撤去
+
+1. `ztb/trading/strategies/action_signal_guide/components/history_helpers.py` を追加し、既存の履歴圧縮ヘルパを `append_with_compaction()` として共通化（`retain/high_water` ガード付き）。  
+2. `pattern_statistics.py` はローカル `_append_with_compaction` を削除し、新 helper へ委譲する構成へ変更（既存機能を維持しつつ重複を削減）。  
+3. `sac_integration.py` へ helper を水平展開し、`correlation_history` / `integration_history` / `performance_history` のトリム処理を共通化。  
+4. `sac_integration.py` に `SACDecisionPayload` / `SACValidationResult` / `IntegratedDecision` などの `TypedDict` を導入し、`Any` を全撤去（当該ファイル `any_type_debt_tokens=0`）。  
+5. `sac_integration.py` で action 正規化（enum/str 混在）と数値 coercion を追加し、`.upper()` 直接呼び出しや不正型混入での例外リスクを低減。  
+6. `sac_integration.py` で `market_data` の列存在ガード（`close`）を追加し、データ欠損時の KeyError リスクを低減。  
+7. `cache_manager.py` を generic cache (`TypeVar`) へ整理し、`signal_cache` の実データ契約（単体/複数 signal）を型注釈へ反映。`Any` を全撤去（当該ファイル `any_type_debt_tokens=0`）。  
+8. `plugin_manager.py` を `PluginMetadata` + `PluginType` で型固定し、metadata 生成を `_build_plugin_metadata()` へ集約。`Any` を全撤去（当該ファイル `any_type_debt_tokens=0`）。  
+9. `components` 配下 `any_type_debt_tokens` を `36 -> 10` へ削減し、repo 全体 `any_type_debt_tokens` を `2,953 -> 2,927` へ削減。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -527,6 +539,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step43時点 | repo全体 | 2,980 |
 | Step44時点 | repo全体 | 2,973 |
 | Step45時点 | repo全体 | 2,953 |
+| Step46時点 | repo全体 | 2,927 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -580,6 +593,9 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step44時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/gann_analysis.py` | **0** |
 | Step45時点 | `ztb/trading/strategies/action_signal_guide/components/validation.py` | **0** |
 | Step45時点 | `ztb/trading/strategies/action_signal_guide/components/pattern_statistics.py` | **0** |
+| Step46時点 | `ztb/trading/strategies/action_signal_guide/components/sac_integration.py` | **0** |
+| Step46時点 | `ztb/trading/strategies/action_signal_guide/components/plugin_manager.py` | **0** |
+| Step46時点 | `ztb/trading/strategies/action_signal_guide/components/cache_manager.py` | **0** |
 
 ---
 
@@ -589,12 +605,12 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - 生成パイプラインの result payload を段階的に型固定し、feature registry 連携の重複マップ操作を整理。  
 2. `ztb/evaluation/promotion.py`  
    - fallback 実装と `analysis/promotion` の責務境界を整理し、将来的な評価ロジック共通化（mixin/utility）に備える。  
-3. `ztb/trading/strategies/action_signal_guide/components/cache_manager.py`  
-   - cache entry payload を `TypedDict` 化し、期限判定 / miss fallback 分岐のキー存在保証を強化。  
-4. `ztb/trading/strategies/action_signal_guide/components/sac_integration.py`  
-   - signal-SAC 相関履歴の payload 契約を固定し、履歴上限管理を共通 helper へ寄せて重複トリム処理を削減。  
-5. `ztb/trading/strategies/action_signal_guide/components/plugin_manager.py`  
-   - plugin metadata を `Mapping[str, object]` ベースへ移行し、動的ロード時の設定/返却型揺れを吸収。  
+3. `ztb/trading/strategies/action_signal_guide/components/advanced_signal_aggregator.py`  
+   - aggregator payload を `TypedDict` 化し、集約スコア辞書のキー契約を明示（components 残 `Any` の主対象）。  
+4. `ztb/trading/strategies/action_signal_guide/components/performance_tracker.py`  
+   - SAC相関分析 payload と履歴配列を型固定し、`max_history_size` 未定義参照など既存不整合を解消。  
+5. `ztb/trading/strategies/action_signal_guide/components/adaptive_pattern_selector.py`  
+   - `defaultdict(deque)` 履歴と設定 payload の契約を型固定し、動的設定更新のキー前提分岐を整理。  
 
 ---
 
