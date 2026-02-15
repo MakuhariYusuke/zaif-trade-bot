@@ -12,7 +12,7 @@ import time
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Deque, Dict, List, Mapping, Optional, Set, Tuple, TypedDict
 
 import numpy as np
 
@@ -59,6 +59,15 @@ class MarketCondition:
     timestamp: float
 
 
+class PatternPerformanceSample(TypedDict):
+    success: float
+    strength: float
+    confidence: float
+    execution_time: float
+    memory_usage: float
+    timestamp: float
+
+
 class AdaptivePatternSelector:
     """
     Dynamically selects optimal patterns based on market conditions and performance.
@@ -70,7 +79,7 @@ class AdaptivePatternSelector:
     - Adaptive threshold adjustment
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Mapping[str, object]):
         """
         Initialize adaptive pattern selector.
 
@@ -78,25 +87,37 @@ class AdaptivePatternSelector:
             config: Configuration dictionary
         """
         self.logger = get_logger("ztb.trading.strategies.adaptive_selector")
-        self.config = config
+        self.config = dict(config)
 
         # Performance tracking
         self.pattern_performance: Dict[str, PatternPerformance] = {}
-        self.performance_history = defaultdict(lambda: deque(maxlen=1000))
+        self.performance_history: Dict[str, Deque[PatternPerformanceSample]] = defaultdict(
+            lambda: deque(maxlen=1000)
+        )
 
         # Market condition tracking
-        self.market_history = deque(maxlen=100)
+        self.market_history: Deque[MarketCondition] = deque(maxlen=100)
         self.current_condition: Optional[MarketCondition] = None
 
         # Selection parameters
-        self.min_success_rate = config.get("min_success_rate", 0.4)
-        self.max_patterns_per_category = config.get("max_patterns_per_category", 2)
-        self.performance_decay_factor = config.get("performance_decay_factor", 0.95)
-        self.adaptation_interval = config.get("adaptation_interval", 300)  # 5 minutes
+        self.min_success_rate = self._coerce_float(config.get("min_success_rate"), 0.4)
+        self.max_patterns_per_category = self._coerce_int(
+            config.get("max_patterns_per_category"), 2
+        )
+        self.performance_decay_factor = self._coerce_float(
+            config.get("performance_decay_factor"), 0.95
+        )
+        self.adaptation_interval = self._coerce_float(
+            config.get("adaptation_interval"), 300.0
+        )  # 5 minutes
 
         # Resource constraints
-        self.max_execution_time = config.get("max_execution_time", 1.0)  # seconds
-        self.max_memory_usage = config.get("max_memory_usage", 100)  # MB
+        self.max_execution_time = self._coerce_float(
+            config.get("max_execution_time"), 1.0
+        )  # seconds
+        self.max_memory_usage = self._coerce_float(
+            config.get("max_memory_usage"), 100.0
+        )  # MB
 
         # Pattern category mappings
         self.pattern_categories = self._initialize_pattern_categories()
@@ -106,6 +127,22 @@ class AdaptivePatternSelector:
 
         self.last_adaptation = time.time()
         self.logger.info("AdaptivePatternSelector initialized")
+
+    @staticmethod
+    def _coerce_float(value: object, default: float) -> float:
+        """Coerce config values to float with safe fallback."""
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _coerce_int(value: object, default: int) -> int:
+        """Coerce config values to int with safe fallback."""
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
 
     def _initialize_pattern_categories(self) -> Dict[str, PatternCategory]:
         """Initialize pattern to category mappings."""
@@ -334,7 +371,7 @@ class AdaptivePatternSelector:
         confidence: float,
         execution_time: float,
         memory_usage: float,
-    ):
+    ) -> None:
         """
         Update performance metrics for a pattern.
 
@@ -367,7 +404,7 @@ class AdaptivePatternSelector:
         # Update performance history
         self.performance_history[pattern_name].append(
             {
-                "success": success,
+                "success": 1.0 if success else 0.0,
                 "strength": strength,
                 "confidence": confidence,
                 "execution_time": execution_time,
@@ -377,13 +414,26 @@ class AdaptivePatternSelector:
         )
 
         # Recalculate metrics
-        history = list(self.performance_history[pattern_name])
+        history = self.performance_history[pattern_name]
         if history:
-            perf.success_rate = np.mean([h["success"] for h in history])
-            perf.avg_strength = np.mean([h["strength"] for h in history])
-            perf.avg_confidence = np.mean([h["confidence"] for h in history])
-            perf.execution_time = np.mean([h["execution_time"] for h in history])
-            perf.memory_usage = np.mean([h["memory_usage"] for h in history])
+            success_sum = 0.0
+            strength_sum = 0.0
+            confidence_sum = 0.0
+            execution_sum = 0.0
+            memory_sum = 0.0
+            for sample in history:
+                success_sum += sample["success"]
+                strength_sum += sample["strength"]
+                confidence_sum += sample["confidence"]
+                execution_sum += sample["execution_time"]
+                memory_sum += sample["memory_usage"]
+
+            sample_count = float(len(history))
+            perf.success_rate = success_sum / sample_count
+            perf.avg_strength = strength_sum / sample_count
+            perf.avg_confidence = confidence_sum / sample_count
+            perf.execution_time = execution_sum / sample_count
+            perf.memory_usage = memory_sum / sample_count
 
         perf.last_used = current_time
         perf.usage_count += 1
@@ -397,7 +447,7 @@ class AdaptivePatternSelector:
         volatility: float,
         trend_strength: float,
         volume_trend: float,
-    ):
+    ) -> None:
         """
         Update current market condition.
 
@@ -550,7 +600,7 @@ class AdaptivePatternSelector:
     def _select_within_constraints(
         self,
         ranked_patterns: List[Tuple[str, float]],
-        category: PatternCategory,
+        _category: PatternCategory,
         max_count: int,
     ) -> List[str]:
         """
@@ -568,7 +618,7 @@ class AdaptivePatternSelector:
         total_time = 0
         total_memory = 0
 
-        for pattern, score in ranked_patterns:
+        for pattern, _score in ranked_patterns:
             if len(selected) >= max_count:
                 break
 
@@ -614,12 +664,12 @@ class AdaptivePatternSelector:
 
         return selected
 
-    def _apply_performance_decay(self):
+    def _apply_performance_decay(self) -> None:
         """Apply time-based decay to pattern performance for unused patterns."""
         current_time = time.time()
         decay_threshold = 3600  # 1 hour
 
-        for pattern, perf in self.pattern_performance.items():
+        for _, perf in self.pattern_performance.items():
             time_since_used = current_time - perf.last_used
             if time_since_used > decay_threshold:
                 # Apply decay
@@ -630,7 +680,7 @@ class AdaptivePatternSelector:
                 perf.avg_strength *= decay_factor
                 perf.avg_confidence *= decay_factor
 
-    def _adapt_thresholds(self):
+    def _adapt_thresholds(self) -> None:
         """Adapt success thresholds based on recent performance."""
         if len(self.market_history) < 10:
             return
@@ -641,23 +691,10 @@ class AdaptivePatternSelector:
         for condition in self.market_history:
             regime_performance[condition.regime].append(condition)
 
-        # Adjust thresholds based on performance distribution
-        for regime, conditions in regime_performance.items():
-            if len(conditions) < 5:
-                continue
-
-            # Calculate average performance metrics
-            avg_volatility = np.mean([c.volatility for c in conditions])
-            avg_trend_strength = np.mean([c.trend_strength for c in conditions])
-
         # Adjust thresholds based on market conditions
         for regime, conditions in regime_performance.items():
             if len(conditions) < 5:
                 continue
-
-            # Calculate average performance metrics
-            avg_volatility = np.mean([c.volatility for c in conditions])
-            avg_trend_strength = np.mean([c.trend_strength for c in conditions])
 
             # Adjust thresholds based on market conditions
             regime_name = regime.name if hasattr(regime, "name") else str(regime)
@@ -668,48 +705,46 @@ class AdaptivePatternSelector:
                 self.success_thresholds[regime][PatternCategory.TREND] *= 0.9
                 self.success_thresholds[regime][PatternCategory.OSCILLATOR] *= 1.1
 
-    def get_pattern_statistics(self) -> Dict[str, Any]:
+    def get_pattern_statistics(self) -> dict[str, object]:
         """Get comprehensive pattern performance statistics."""
-        stats = {
-            "total_patterns": len(self.pattern_performance),
-            "active_patterns": len(
-                [p for p in self.pattern_performance.values() if p.usage_count > 0]
-            ),
-            "category_distribution": defaultdict(int),
-            "performance_summary": {},
-            "resource_usage": {
-                "avg_execution_time": 0,
-                "avg_memory_usage": 0,
-                "total_usage_count": 0,
-            },
-        }
+        total_patterns = len(self.pattern_performance)
+        active_patterns = 0
+        category_distribution: Dict[str, int] = defaultdict(int)
+        performance_summary: Dict[str, dict[str, float | int]] = {}
+        weighted_execution_time = 0.0
+        weighted_memory_usage = 0.0
+        total_usage_count = 0
 
         for perf in self.pattern_performance.values():
-            stats["category_distribution"][perf.category.value] += 1
+            category_distribution[perf.category.value] += 1
 
             if perf.usage_count > 0:
-                stats["performance_summary"][perf.pattern_name] = {
+                active_patterns += 1
+                performance_summary[perf.pattern_name] = {
                     "success_rate": perf.success_rate,
                     "avg_strength": perf.avg_strength,
                     "usage_count": perf.usage_count,
                     "execution_time": perf.execution_time,
                 }
+                weighted_execution_time += perf.execution_time * perf.usage_count
+                weighted_memory_usage += perf.memory_usage * perf.usage_count
+                total_usage_count += perf.usage_count
 
-                stats["resource_usage"]["avg_execution_time"] += (
-                    perf.execution_time * perf.usage_count
-                )
-                stats["resource_usage"]["avg_memory_usage"] += (
-                    perf.memory_usage * perf.usage_count
-                )
-                stats["resource_usage"]["total_usage_count"] += perf.usage_count
+        avg_execution_time = (
+            weighted_execution_time / total_usage_count if total_usage_count > 0 else 0.0
+        )
+        avg_memory_usage = (
+            weighted_memory_usage / total_usage_count if total_usage_count > 0 else 0.0
+        )
 
-        # Calculate averages
-        if stats["resource_usage"]["total_usage_count"] > 0:
-            stats["resource_usage"]["avg_execution_time"] /= stats["resource_usage"][
-                "total_usage_count"
-            ]
-            stats["resource_usage"]["avg_memory_usage"] /= stats["resource_usage"][
-                "total_usage_count"
-            ]
-
-        return dict(stats)
+        return {
+            "total_patterns": total_patterns,
+            "active_patterns": active_patterns,
+            "category_distribution": dict(category_distribution),
+            "performance_summary": performance_summary,
+            "resource_usage": {
+                "avg_execution_time": avg_execution_time,
+                "avg_memory_usage": avg_memory_usage,
+                "total_usage_count": total_usage_count,
+            },
+        }

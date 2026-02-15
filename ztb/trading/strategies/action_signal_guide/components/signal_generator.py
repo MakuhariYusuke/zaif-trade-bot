@@ -15,6 +15,7 @@ import pandas as pd
 from ztb.utils.errors import ValidationError
 from ztb.utils.logging_utils import get_logger
 
+from .history_helpers import append_with_compaction
 from .interfaces import ISignalGenerator
 
 if TYPE_CHECKING:
@@ -443,11 +444,12 @@ class SignalGenerator(ISignalGenerator):
         for pattern, performance in recent_performance.items():
             if pattern in self.adaptive_weights:
                 # Store performance history
-                self.pattern_performance_history[pattern].append(performance)
-
-                # Keep only recent history
-                if len(self.pattern_performance_history[pattern]) > 100:
-                    self.pattern_performance_history[pattern].pop(0)
+                append_with_compaction(
+                    self.pattern_performance_history[pattern],
+                    performance,
+                    high_water=120,
+                    retain=100,
+                )
 
                 # Update weight using exponential moving average
                 current_weight = self.adaptive_weights[pattern]

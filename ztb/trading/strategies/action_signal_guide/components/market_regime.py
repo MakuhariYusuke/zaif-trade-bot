@@ -16,6 +16,8 @@ from ztb.trading.signal.common.utilities import (
     calculate_volatility as calculate_volatility_util,
 )
 
+from .history_helpers import append_with_compaction
+
 logger = logging.getLogger(__name__)
 
 
@@ -74,6 +76,24 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         # Compatibility for detectors used by reward shapers expecting rolling prices.
         self.price_history: list[float] = []
 
+    def _append_price_history(self, price: float) -> None:
+        """Track recent prices with bounded history."""
+        append_with_compaction(
+            self.price_history,
+            price,
+            high_water=2000,
+            retain=1000,
+        )
+
+    def _append_regime_history(self, entry: RegimeHistoryEntry) -> None:
+        """Track recent regime states with bounded history."""
+        append_with_compaction(
+            self.regime_history,
+            entry,
+            high_water=100,
+            retain=50,
+        )
+
     def detect_regime(
         self, market_data: pd.DataFrame | float, step: int | None = None
     ) -> MarketRegime | str:
@@ -96,11 +116,9 @@ class MarketRegimeDetector(IMarketRegimeDetector):
             self.current_regime = MarketRegime.MODERATE_VOLATILITY_RANGING
             if len(market_data) > 0:
                 try:
-                    self.price_history.append(float(market_data["close"].iloc[-1]))
+                    self._append_price_history(float(market_data["close"].iloc[-1]))
                 except Exception:
                     pass
-                if len(self.price_history) > 2000:
-                    self.price_history = self.price_history[-1000:]
             return self.current_regime
 
         # Calculate regime indicators
@@ -126,10 +144,8 @@ class MarketRegimeDetector(IMarketRegimeDetector):
                 logger.debug("Failed relative volatility percentile evaluation")
 
         # Store regime for stability analysis
-        self.price_history.append(float(market_data["close"].iloc[-1]))
-        if len(self.price_history) > 2000:
-            self.price_history = self.price_history[-1000:]
-        self.regime_history.append(
+        self._append_price_history(float(market_data["close"].iloc[-1]))
+        self._append_regime_history(
             {
                 "timestamp": market_data.index[-1]
                 if hasattr(market_data.index, "__getitem__")
@@ -143,10 +159,6 @@ class MarketRegimeDetector(IMarketRegimeDetector):
                 },
             }
         )
-
-        # Keep only recent history
-        if len(self.regime_history) > 100:
-            self.regime_history = self.regime_history[-50:]
 
         self.current_regime = regime
         return regime
@@ -188,9 +200,7 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         """
         Compatibility path for detectors called via legacy `(current_price, step)` API.
         """
-        self.price_history.append(current_price)
-        if len(self.price_history) > 2000:
-            self.price_history = self.price_history[-1000:]
+        self._append_price_history(current_price)
 
         if len(self.price_history) < 20:
             return "sideways"
@@ -697,11 +707,12 @@ class RegimeAdaptiveSignalProcessor:
             regime: Market regime
             signal_performance: Performance of signal in this regime
         """
-        self.regime_performance[regime].append(signal_performance)
-
-        # Keep only recent performance data
-        if len(self.regime_performance[regime]) > 100:
-            self.regime_performance[regime] = self.regime_performance[regime][-50:]
+        append_with_compaction(
+            self.regime_performance[regime],
+            signal_performance,
+            high_water=100,
+            retain=50,
+        )
 
         # Update adaptation factors based on performance
         self._update_adaptation_factors()
@@ -752,9 +763,12 @@ class MarketConditionAnalyzer:
         }
 
         # Store analysis for historical context
-        self.analysis_history.append(analysis)
-        if len(self.analysis_history) > 50:
-            self.analysis_history = self.analysis_history[-25:]
+        append_with_compaction(
+            self.analysis_history,
+            analysis,
+            high_water=50,
+            retain=25,
+        )
 
         return analysis
 

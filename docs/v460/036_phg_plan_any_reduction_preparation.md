@@ -490,6 +490,20 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 8. `plugin_manager.py` を `PluginMetadata` + `PluginType` で型固定し、metadata 生成を `_build_plugin_metadata()` へ集約。`Any` を全撤去（当該ファイル `any_type_debt_tokens=0`）。  
 9. `components` 配下 `any_type_debt_tokens` を `36 -> 10` へ削減し、repo 全体 `any_type_debt_tokens` を `2,953 -> 2,927` へ削減。  
 
+### Step47: helper 横展開拡大（`performance/market_regime/signal_generator`）+ components `Any` 完全解消
+
+1. `ztb/trading/strategies/action_signal_guide/components/advanced_signal_aggregator.py` に `SACAggregationContext` (`TypedDict`) を導入し、`sac_context` の `Any` を撤去（当該ファイル `any_type_debt_tokens=0`）。  
+2. 同ファイルで SAC payload の action/reward coercion を追加し、型揺れ入力（str/float/int 混在）での集約失敗リスクを低減。  
+3. `weighted_direction == 0` で sell 側へ倒れていた分岐を neutral (`direction=0`) に是正し、閾値近傍での誤方向シグナルを抑制。  
+4. `ztb/trading/strategies/action_signal_guide/components/performance_tracker.py` を `dict[str, object]` / `TypedDict` ベースへ移行し、`Any` を全撤去（当該ファイル `any_type_debt_tokens=0`）。  
+5. `performance_tracker` の `max_history_size` 未定義参照を解消（`self.max_history_size=1000` + high-water 管理）し、長時間稼働時の実行時エラー要因を除去。  
+6. `performance_tracker` で `signal_generation/pattern/cache/memory/SAC correlation` の履歴トリムを `append_with_compaction()` に統一し、重複処理と `pop(0)` 系 O(n) コストを削減。  
+7. `ztb/trading/strategies/action_signal_guide/components/adaptive_pattern_selector.py` の `config` / 統計返却を型固定し、`Any` を全撤去（当該ファイル `any_type_debt_tokens=0`）。  
+8. `adaptive_pattern_selector` では performance 集計を単一ループ化し、`list(...)` + 複数 `np.mean` の重複計算を削減。  
+9. 同ファイル `_adapt_thresholds()` の重複ループ（未使用平均算出）を除去し、保守性を改善。  
+10. helper の追加横展開として `market_regime.py` と `signal_generator.py` でも `append_with_compaction()` を適用し、履歴上限管理の重複を削減。  
+11. `components` 配下 `any_type_debt_tokens` を `10 -> 0` へ削減し、repo 全体 `any_type_debt_tokens` を `2,927 -> 2,917` へ削減。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -540,6 +554,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step44時点 | repo全体 | 2,973 |
 | Step45時点 | repo全体 | 2,953 |
 | Step46時点 | repo全体 | 2,927 |
+| Step47時点 | repo全体 | 2,917 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -596,6 +611,9 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step46時点 | `ztb/trading/strategies/action_signal_guide/components/sac_integration.py` | **0** |
 | Step46時点 | `ztb/trading/strategies/action_signal_guide/components/plugin_manager.py` | **0** |
 | Step46時点 | `ztb/trading/strategies/action_signal_guide/components/cache_manager.py` | **0** |
+| Step47時点 | `ztb/trading/strategies/action_signal_guide/components/advanced_signal_aggregator.py` | **0** |
+| Step47時点 | `ztb/trading/strategies/action_signal_guide/components/performance_tracker.py` | **0** |
+| Step47時点 | `ztb/trading/strategies/action_signal_guide/components/adaptive_pattern_selector.py` | **0** |
 
 ---
 
@@ -605,12 +623,12 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - 生成パイプラインの result payload を段階的に型固定し、feature registry 連携の重複マップ操作を整理。  
 2. `ztb/evaluation/promotion.py`  
    - fallback 実装と `analysis/promotion` の責務境界を整理し、将来的な評価ロジック共通化（mixin/utility）に備える。  
-3. `ztb/trading/strategies/action_signal_guide/components/advanced_signal_aggregator.py`  
-   - aggregator payload を `TypedDict` 化し、集約スコア辞書のキー契約を明示（components 残 `Any` の主対象）。  
-4. `ztb/trading/strategies/action_signal_guide/components/performance_tracker.py`  
-   - SAC相関分析 payload と履歴配列を型固定し、`max_history_size` 未定義参照など既存不整合を解消。  
-5. `ztb/trading/strategies/action_signal_guide/components/adaptive_pattern_selector.py`  
-   - `defaultdict(deque)` 履歴と設定 payload の契約を型固定し、動的設定更新のキー前提分岐を整理。  
+3. `ztb/analysis/status.py`  
+   - 運用 status payload（通知/集計）を型固定し、`dict` 合成の重複を削減。  
+4. `ztb/data/data_validation.py`  
+   - バリデーション結果 payload を `TypedDict` 化し、ルール評価の重複 map 操作を helper 化。  
+5. `ztb/utils/config.py`  
+   - config merge/cast 系の `Any` を段階的に削減し、既存型別名へ集約。  
 
 ---
 
