@@ -109,6 +109,8 @@ class FillTestConfig:
     regime_high_vol_multiplier: float = 2.0
     regime_hysteresis_count: int = 3
     regime_min_confidence: float = 0.4
+    # 052#: トレンディング時のオフセットブースト (PnL -1.2bps)
+    regime_trending_offset_boost: float = 1.5  # トレンディング検出時に offset × 1.5
     # 041# 時間帯フィルター (AS 高リスク時間帯のスキップ)
     enable_time_filter: bool = False
     skip_utc_hours: list[int] | None = None
@@ -183,6 +185,7 @@ class FillTestConfig:
             "high_vol_multiplier": "regime_high_vol_multiplier",
             "hysteresis_count": "regime_hysteresis_count",
             "min_confidence": "regime_min_confidence",
+            "trending_offset_boost": "regime_trending_offset_boost",
         }
         for yaml_key, config_key in regime_map.items():
             if yaml_key in regime:
@@ -403,6 +406,20 @@ class FillTestRunner:
             effective_offset_ratio = self.config.spread_offset_ratio_buy
         elif side == "sell" and self.config.spread_offset_ratio_sell is not None:
             effective_offset_ratio = self.config.spread_offset_ratio_sell
+
+        # 052#: トレンディング時にオフセットをブースト (PnL -1.2bps 対策)
+        if (
+            self._regime_detector is not None
+            and self._regime_detector.current_regime.value == "trending"
+            and self.config.regime_trending_offset_boost > 1.0
+        ):
+            effective_offset_ratio *= self.config.regime_trending_offset_boost
+            logger.debug(
+                f"[regime] trending → offset boosted: "
+                f"{effective_offset_ratio / self.config.regime_trending_offset_boost:.4f} "
+                f"→ {effective_offset_ratio:.4f}"
+            )
+
         offset = max(self.config.min_offset_jpy, spread * effective_offset_ratio)
 
         if side == "buy":
@@ -437,15 +454,15 @@ class FillTestRunner:
         current_utc_hour = datetime.now(timezone.utc).hour
         return current_utc_hour in self.config.skip_utc_hours
 
-    # 052#: Coincheck BTC 最小注文数量
-    _MIN_ORDER_BTC: float = 0.0005
+    # 052#: Coincheck 取引所 BTC 最小注文数量 (板取引)
+    _MIN_ORDER_BTC: float = 0.001
 
     async def _check_balance_for_side(self, side: str) -> bool:
         """041# 残高 pre-flight check: 発注前に残高が十分か確認.
 
         不足時は True を返す (スキップすべき)。
         052#: 残高に基づくロット自動縮小 — 残高が現ロットに不足するが
-        最小ロット (0.0005 BTC) 以上なら自動的にロットを縮小して継続。
+        最小ロット (0.001 BTC) 以上なら自動的にロットを縮小して継続。
         """
         try:
             if side == "sell":
@@ -455,7 +472,7 @@ class FillTestRunner:
                 if btc_free < self._current_lot:
                     # 052#: 最小ロット以上の残高があれば縮小して継続
                     if btc_free >= self._MIN_ORDER_BTC:
-                        # 0.0005 BTC 単位に切り捨て
+                        # 0.001 BTC 単位に切り捨て
                         new_lot = int(btc_free / self._MIN_ORDER_BTC) * self._MIN_ORDER_BTC
                         if new_lot >= self._MIN_ORDER_BTC:
                             old_lot = self._current_lot
@@ -1015,14 +1032,16 @@ class FillTestRunner:
                 self._preflight_skip_count += 1
 
                 # 051# P2-3: Balance auto-shrink — 連続3回失敗でロット半減を試行
+                # 052#: 最低ロットを _MIN_ORDER_BTC に統一 (Coincheck 0.001 BTC)
+                min_lot = max(self.config.order_quantity, self._MIN_ORDER_BTC)
                 if (
                     self._preflight_skip_count >= 3
                     and not self._balance_shrink_active
-                    and self._current_lot > self.config.order_quantity
+                    and self._current_lot > min_lot
                 ):
                     old_lot = self._current_lot
                     self._current_lot = max(
-                        self.config.order_quantity,
+                        min_lot,
                         self._current_lot / 2,
                     )
                     self._balance_shrink_active = True

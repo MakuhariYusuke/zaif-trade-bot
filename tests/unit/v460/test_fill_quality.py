@@ -2148,7 +2148,54 @@ class Test052AdaptSellOffsetSync:
         assert "affordable_lot" in source or "new_lot" in source
 
     def test_min_order_btc_constant(self) -> None:
-        """052# _MIN_ORDER_BTC が 0.0005 に設定されている."""
+        """052# _MIN_ORDER_BTC が Coincheck 最小注文量 0.001 に設定されている."""
         from scripts.v460.run_fill_test import FillTestRunner
 
-        assert FillTestRunner._MIN_ORDER_BTC == 0.0005
+        assert FillTestRunner._MIN_ORDER_BTC == 0.001
+
+    def test_yaml_skip_utc_hours_includes_13_and_21(self) -> None:
+        """052# で UTC 1,2,13,21 が time_filter に追加されている."""
+        from pathlib import Path
+        import yaml  # type: ignore[import-untyped]
+
+        yaml_path = Path("configs/v460/fill_test.yaml")
+        with open(yaml_path) as f:
+            cfg = yaml.safe_load(f)
+        skip_hours = cfg["time_filter"]["skip_utc_hours"]
+        for h in [1, 2, 13, 21]:
+            assert h in skip_hours, f"UTC {h} should be in skip list"
+
+    def test_trending_offset_boost_in_code(self) -> None:
+        """052# _compute_maker_price にトレンディングブーストが含まれる."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner._compute_maker_price)
+        assert "trending" in source
+        assert "regime_trending_offset_boost" in source
+
+    def test_trending_offset_boost_config(self) -> None:
+        """052# regime_trending_offset_boost がConfigに存在し1.5."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        cfg = FillTestConfig()
+        assert hasattr(cfg, "regime_trending_offset_boost")
+        assert cfg.regime_trending_offset_boost == 1.5
+
+    def test_yaml_trending_offset_boost(self) -> None:
+        """052# で trending_offset_boost が YAML に設定されている."""
+        from pathlib import Path
+        import yaml  # type: ignore[import-untyped]
+
+        yaml_path = Path("configs/v460/fill_test.yaml")
+        with open(yaml_path) as f:
+            cfg = yaml.safe_load(f)
+        assert cfg["regime"]["trending_offset_boost"] == 1.5
+
+    def test_balance_shrink_uses_min_order_btc(self) -> None:
+        """052# balance_shrink の最低ロットが _MIN_ORDER_BTC を使用する."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner.run_continuous)
+        assert "_MIN_ORDER_BTC" in source

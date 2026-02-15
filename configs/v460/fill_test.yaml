@@ -72,11 +72,12 @@ regime:
   high_vol_multiplier: 2.0     # 高ボラ判定倍率 (baseline 比)
   hysteresis_count: 3          # 状態確定までの連続一致数
   min_confidence: 0.3          # 052#: 0.4→0.3 (unknown 72% → レジーム判定感度向上)
+  trending_offset_boost: 1.5   # 052#: trending PnL -1.2bps → offset ×1.5 で保守化
 
 # ---- 時間帯フィルター (041#) ----
 time_filter:
   enabled: true               # 041#: 高 AS 時間帯のスキップ
-  skip_utc_hours: [8, 9, 12, 14, 16, 17, 18, 19]  # 052#: UTC12追加 (AS 42.9%, PnL -1.5bps)
+  skip_utc_hours: [1, 2, 8, 9, 12, 13, 14, 16, 17, 18, 19, 21]  # 052#: UTC1,2,13,21追加 (全てPnL<-0.8bps or AS>40%)
 
 # ---- 049# E3 サンプリング ----
 e3:
