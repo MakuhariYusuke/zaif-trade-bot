@@ -948,7 +948,7 @@ class FillTestRunner:
         009# §4.2 の流れに準拠.
         041# 時間帯フィルター・残高チェック追加.
         055# Fix: side 決定前に最新 imbalance を取得.
-        074# Fix: side_override で run_continuous() が決定した side を強制適用.
+        075# Fix: side_override で run_continuous() が決定した side を強制適用.
         """
         self._cycle_count += 1
         cycle_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
@@ -967,7 +967,7 @@ class FillTestRunner:
                 logger.warning(f"[smart_side] Pre-fetch imbalance failed, using last: {e}")
                 # フォールバック: 前回値を維持
 
-        # 074# Fix: side_override があればそれを使い、_next_side() 二重呼出を防止
+        # 075# Fix: side_override があればそれを使い、_next_side() 二重呼出を防止
         if side_override is not None:
             side = side_override
         else:

@@ -1,4 +1,4 @@
-"""074# ph2 検証: レビュー指摘への対応と 50K ステップ検証.
+"""075# ph2 検証: レビュー指摘への対応と 50K ステップ検証.
 
 073# レビュー (074_ph2_rev_073.md) の重大指摘すべてに対応:
 - CRITICAL#2: clean/quarantine 分離適用
@@ -36,7 +36,7 @@ from ztb.metrics.gate_checks import cliffs_delta
 # --- 定数 ---
 PNL_COL = "post_fill_30s_pnl"
 RESULTS_DIR = _PROJECT_ROOT / "results" / "v460" / "fill_test"
-ARTIFACT_DIR = _PROJECT_ROOT / "results" / "v460" / "verification_074"
+ARTIFACT_DIR = _PROJECT_ROOT / "results" / "v460" / "verification_075"
 
 
 def load_clean_filled() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
@@ -213,9 +213,9 @@ def section_3_time_filter_impact(clean_filled: pd.DataFrame) -> dict:
         clean_filled["timestamp"], unit="s", utc=True,
     ).dt.hour
 
-    # 074# YAML の設定値 (clean データ再検証後)
+    # 075# YAML の設定値 (clean データ再検証後 + §8.2 批判反映)
     global_skip = {1, 2, 8, 9, 12, 13, 14, 16, 17, 18, 19, 21}
-    buy_skip = {1, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21}
+    buy_skip = {1, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 23}
     sell_skip = {3, 4, 5, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23}
 
     # 各時間帯の両 side ブロック / 片 side のみ / 両 side 通過
@@ -499,8 +499,8 @@ def section_5_monte_carlo_50k(clean_filled: pd.DataFrame) -> dict:
     N_BOOTSTRAP = 1000
     rng = np.random.default_rng(42)
 
-    # 074# YAML の設定値 (clean データ再検証後)
-    buy_skip = {1, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21}
+    # 075# YAML の設定値 (clean データ再検証後 + §8.2 批判反映)
+    buy_skip = {1, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 23}
     sell_skip = {3, 4, 5, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23}
     global_skip = {1, 2, 8, 9, 12, 13, 14, 16, 17, 18, 19, 21}
 
@@ -689,7 +689,7 @@ def save_artifact(all_results: dict) -> Path:
     """JSON artifact 保存 (MEDIUM#9 対応)."""
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    path = ARTIFACT_DIR / f"verification_074_{ts}.json"
+    path = ARTIFACT_DIR / f"verification_075_{ts}.json"
 
     # numpy の値を Python native に変換
     def convert(obj):  # type: ignore[no-untyped-def]
@@ -712,7 +712,7 @@ def save_artifact(all_results: dict) -> Path:
 
 def main() -> None:
     print("=" * 70)
-    print("074# ph2 検証: レビュー指摘対応 + 50K ステップ Monte Carlo")
+    print("075# ph2 検証: レビュー指摘対応 + 50K ステップ Monte Carlo")
     print("=" * 70)
     print()
 
@@ -752,7 +752,7 @@ def main() -> None:
     save_artifact(all_results)
 
     print("\n" + "=" * 70)
-    print("074# 検証完了")
+    print("075# 検証完了")
     print("=" * 70)
 
 

@@ -583,7 +583,7 @@ class TestTimeFilterNoRecord:
             assert runner._is_time_filtered() is False
 
     def test_yaml_side_specific_time_filter(self) -> None:
-        """074# YAML に side 別 time_filter が設定されている (clean データ再検証済み)."""
+        """075# YAML に side 別 time_filter が設定されている (clean データ再検証済み)."""
         from pathlib import Path
         import yaml  # type: ignore[import-untyped]
 
@@ -595,13 +595,15 @@ class TestTimeFilterNoRecord:
         assert "skip_utc_hours_sell" in tf
         # sell は UTC4 をブロック (sell PnL -5.558)
         assert 4 in tf["skip_utc_hours_sell"]
-        # 074# sell UTC15: clean データで -3.325 → quarantine 除去で正転は幻影 → 再ブロック
+        # 075# sell UTC15: clean データで -3.325 → quarantine 除去で正転は幻影 → 再ブロック
         assert 15 in tf["skip_utc_hours_sell"]
         # buy は UTC15 をブロック (buy PnL -0.252)
         assert 15 in tf["skip_utc_hours_buy"]
-        # 074# buy UTC04 (+3.993, buy 最強) → アンブロック
+        # 075# buy UTC04 (+3.993, buy 最強) → アンブロック
         assert 4 not in tf["skip_utc_hours_buy"]
-        # 074# sell UTC01 (+0.931 n=13) → アンブロック
+        # 075# buy UTC23: mean -0.216 → §8.2 批判により再ブロック
+        assert 23 in tf["skip_utc_hours_buy"]
+        # 075# sell UTC01 (+0.931 n=13) → アンブロック
         assert 1 not in tf["skip_utc_hours_sell"]
 
 
