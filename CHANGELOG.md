@@ -14,6 +14,16 @@ v459 No-Go 確定を受け、マイクロストラクチャ特徴量ベースの
 
 #### Added
 
+- **073# 戦略分析 & パラメータチューニング** (`docs/v460/073_ph2_rpt_strategy_analysis.md`)
+  - fill test 373 filled / 2 日の全データセグメント分析 (side×hour, queue_wait, spread, regime)
+  - Walk-Forward 4-fold で 14 戦略 (S0-S14) を検証 — 全戦略 4/4 fold 正達成なし (070# 整合)
+  - **side 別 time_filter 実装**: `skip_utc_hours_buy` / `skip_utc_hours_sell` 追加
+    - UTC04: buy +3.993 / sell -5.558 → buy のみ許可
+    - UTC15: sell +2.460 / buy -1.600 → sell のみ許可
+  - sell offset 0.10 → 0.12 (sell PnL -0.958、buy の 3.2 倍)
+  - E3 sampling 0.33 → 0.50 (120s horizon +0.101 bps データ蓄積加速)
+  - 662 passed, side 別 time_filter テスト 5 件追加
+
 - **065# 公式 G1 再評価** (`scripts/v460/run_065_g1_proper_eval.py`)
   - 000# §3.2 / gate_thresholds.yaml 公式基準 (Holm-Bonferroni + Cliff's Delta + accuracy + significance)
   - 064# 簡易 PASS → 公式基準で **FAIL** 確認

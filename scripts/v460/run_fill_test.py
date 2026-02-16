@@ -114,6 +114,9 @@ class FillTestConfig:
     # 041# 時間帯フィルター (AS 高リスク時間帯のスキップ)
     enable_time_filter: bool = False
     skip_utc_hours: list[int] | None = None
+    # 073# side 別時間帯フィルター: 指定時は side 固有リストを優先
+    skip_utc_hours_buy: list[int] | None = None
+    skip_utc_hours_sell: list[int] | None = None
     # 安全設計 (000# §3.9)
     loss_cap_jpy: float = 10_000.0
     loss_cap_warning_ratio: float = 0.7
@@ -245,6 +248,11 @@ class FillTestConfig:
             kwargs["enable_time_filter"] = tf["enabled"]
         if "skip_utc_hours" in tf:
             kwargs["skip_utc_hours"] = tf["skip_utc_hours"]
+        # 073# side 別時間帯フィルター
+        if "skip_utc_hours_buy" in tf:
+            kwargs["skip_utc_hours_buy"] = tf["skip_utc_hours_buy"]
+        if "skip_utc_hours_sell" in tf:
+            kwargs["skip_utc_hours_sell"] = tf["skip_utc_hours_sell"]
 
         # 049# E3 サンプリング
         e3 = yaml_cfg.get("e3", {})
@@ -737,15 +745,29 @@ class FillTestRunner:
                 )
             return price, spread, effective_offset_ratio
 
-    def _is_time_filtered(self) -> bool:
+    def _is_time_filtered(self, side: str | None = None) -> bool:
         """041# 時間帯フィルター: 高 AS 時間帯かどうかを判定.
+
+        073# side 別時間帯: skip_utc_hours_buy / skip_utc_hours_sell が
+        設定されている場合は side 固有リストを優先使用。
+        side=None の場合はグローバルリストのみで判定。
 
         Returns True の場合、呼び出し元は FillRecord を生成せずスリープする。
         レコード不生成により fill_rate メトリクスの汚染を防止。
         """
-        if not self.config.enable_time_filter or not self.config.skip_utc_hours:
+        if not self.config.enable_time_filter:
             return False
         current_utc_hour = datetime.now(timezone.utc).hour
+
+        # 073# side 別リスト優先
+        if side == "buy" and self.config.skip_utc_hours_buy is not None:
+            return current_utc_hour in self.config.skip_utc_hours_buy
+        if side == "sell" and self.config.skip_utc_hours_sell is not None:
+            return current_utc_hour in self.config.skip_utc_hours_sell
+
+        # グローバルフォールバック
+        if not self.config.skip_utc_hours:
+            return False
         return current_utc_hour in self.config.skip_utc_hours
 
     # 052#: Coincheck 取引所 BTC 最小注文数量 (板取引)
@@ -1487,25 +1509,42 @@ class FillTestRunner:
         logger.info(f"Starting fill test: {hours}h, interval={self.config.cycle_interval_sec}s")
 
         while time.time() < end_time and not self._shutdown_requested:
-            # 041# 時間帯フィルター: レコード不生成でスリープ (メトリクス汚染防止)
-            if self._is_time_filtered():
-                # 047# Issue12: 突入時のみログ出力 (2分毎のノイズ防止)
-                if not self._in_time_filter:
-                    self._in_time_filter = True
+            # 073# side 別時間帯フィルター: side 決定後にフィルタリング
+            # side 別リスト未設定時はグローバルリスト (041# 互換)
+            next_side = self._next_side()
+
+            # side 別チェック (073#): side固有リストがあれば side 別判定
+            side_filtered = self._is_time_filtered(side=next_side)
+            if side_filtered:
+                # 反対 side でもフィルタされるか確認
+                alt_side = "sell" if next_side == "buy" else "buy"
+                alt_filtered = self._is_time_filtered(side=alt_side)
+                if alt_filtered:
+                    # 両 side ともフィルタ → スリープ
+                    if not self._in_time_filter:
+                        self._in_time_filter = True
+                        utc_h = datetime.now(timezone.utc).hour
+                        logger.info(
+                            f"[time_filter] Entering High-AS zone (UTC {utc_h}h) "
+                            f"— both sides filtered, suppressing cycles"
+                        )
+                    await asyncio.sleep(self.config.cycle_interval_sec)
+                    continue
+                else:
+                    # 反対 side は通過 → side 切り替え
                     utc_h = datetime.now(timezone.utc).hour
-                    logger.info(
-                        f"[time_filter] Entering High-AS zone (UTC {utc_h}h) "
-                        f"— suppressing cycle logs until exit"
+                    logger.debug(
+                        f"[time_filter] {next_side} filtered at UTC {utc_h}h, "
+                        f"switching to {alt_side}"
                     )
-                await asyncio.sleep(self.config.cycle_interval_sec)
-                continue
+                    next_side = alt_side
+
             # 047# Issue12: 離脱時のみログ出力
             if self._in_time_filter:
                 self._in_time_filter = False
                 logger.info("[time_filter] Exiting High-AS zone — resuming cycles")
 
             # 041# 残高 pre-flight check: 不足サイドはスキップ
-            next_side = self._next_side()
             if await self._check_balance_for_side(next_side):
                 # 反対サイドを試す: _last_side を反転して次は反対サイド
                 self._last_side = next_side  # → 次の _next_side() が反対を返す

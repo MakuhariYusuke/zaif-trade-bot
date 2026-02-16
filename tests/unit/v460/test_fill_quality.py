@@ -2109,14 +2109,14 @@ class Test052AdaptSellOffsetSync:
         assert "ratio = result.new_offset / old" in source
 
     def test_yaml_sell_offset_updated(self) -> None:
-        """052# で sell offset が 0.10 に更新されている."""
+        """073# で sell offset が 0.12 に更新されている."""
         from pathlib import Path
         import yaml  # type: ignore[import-untyped]
 
         yaml_path = Path("configs/v460/fill_test.yaml")
         with open(yaml_path) as f:
             cfg = yaml.safe_load(f)
-        assert cfg["side_offset"]["sell"] == 0.10
+        assert cfg["side_offset"]["sell"] == 0.12
 
     def test_yaml_skip_utc_hours_includes_12(self) -> None:
         """052# で UTC 12 が time_filter に追加されている."""
