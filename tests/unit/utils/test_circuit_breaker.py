@@ -225,9 +225,10 @@ class TestCircuitBreaker(unittest.TestCase):
         self.assertIs(breaker1, breaker2)
         self.assertEqual(breaker1.name, "test")
 
-        # Try to get without config
-        with self.assertRaises(ValueError):
-            get_circuit_breaker("new_breaker")
+        # Get without config creates with defaults
+        breaker3 = get_circuit_breaker("new_breaker")
+        self.assertEqual(breaker3.name, "new_breaker")
+        self.assertEqual(breaker3.config.failure_threshold, 5)  # default
 
     def test_reset_all_circuit_breakers(self):
         """Test resetting all circuit breakers."""

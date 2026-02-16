@@ -40,16 +40,16 @@ class CircuitBreakerOpenException(Exception):
 class CircuitBreaker:
     """Circuit breaker implementation."""
 
-    def __init__(self, name: str, config: CircuitBreakerConfig) -> None:
+    def __init__(self, name: str, config: Optional[CircuitBreakerConfig] = None) -> None:
         """
         Initialize circuit breaker.
 
         Args:
             name: Name identifier for this breaker
-            config: Circuit breaker configuration
+            config: Circuit breaker configuration (defaults to CircuitBreakerConfig())
         """
         self.name = name
-        self.config = config
+        self.config = config or CircuitBreakerConfig()
         self.state = CircuitState.CLOSED
         self.failure_count = 0
         self.success_count = 0
@@ -216,11 +216,7 @@ def get_circuit_breaker(
         Circuit breaker instance
     """
     if name not in _circuit_breakers:
-        if config is None:
-            raise ValueError(
-                f"Circuit breaker '{name}' not found and no config provided"
-            )
-        _circuit_breakers[name] = CircuitBreaker(name, config)
+        _circuit_breakers[name] = CircuitBreaker(name, config or CircuitBreakerConfig())
 
     return _circuit_breakers[name]
 

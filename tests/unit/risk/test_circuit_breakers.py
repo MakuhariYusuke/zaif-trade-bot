@@ -38,7 +38,7 @@ class TestCircuitBreaker:
         assert cb.state == CircuitBreakerState.CLOSED
         assert cb.failure_count == 0
         assert cb.success_count == 0
-        assert cb.last_failure_time == 0.0
+        assert cb.last_failure_time is None
 
     def test_init_custom_config(self):
         """Test initialization with custom config."""

@@ -70,6 +70,11 @@ MarketRegime.WIDE_RANGE = MarketRegime.MODERATE_VOLATILITY_RANGING
 MarketRegime.VOLATILE_RANGE = MarketRegime.HIGH_VOLATILITY_RANGING
 MarketRegime.QUIET_RANGE = MarketRegime.LOW_VOLATILITY_RANGING
 
+# Short-name range aliases (without _ING suffix)
+MarketRegime.HIGH_VOLATILITY_RANGE = MarketRegime.HIGH_VOLATILITY_RANGING
+MarketRegime.MODERATE_VOLATILITY_RANGE = MarketRegime.MODERATE_VOLATILITY_RANGING
+MarketRegime.LOW_VOLATILITY_RANGE = MarketRegime.LOW_VOLATILITY_RANGING
+
 # Legacy/common naming compat used across older strategy components
 MarketRegime.RANGING = MarketRegime.MODERATE_VOLATILITY_RANGING
 MarketRegime.HIGH_VOLATILITY = MarketRegime.HIGH_VOLATILITY_RANGING

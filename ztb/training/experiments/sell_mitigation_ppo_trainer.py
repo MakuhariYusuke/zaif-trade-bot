@@ -17,119 +17,30 @@ from typing import Any, Dict, Optional
 import numpy as np
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
+from stable_baselines3.common.callbacks import CallbackList
 
 from ztb.io.data_loader import DataLoader
-# Import callbacks with a defensive fallback so test collection doesn't fail
-# if a lightweight stub or unusual import order leaves the callbacks module
-# temporarily without the expected symbols.
-try:
-    from stable_baselines3.common.callbacks import BaseCallback, CallbackList
-except Exception:
-    # Minimal fallbacks used only during collection or in environments where
-    # the real stable-baselines3 callbacks aren't available.
-    class BaseCallback:  # pragma: no cover - defensive stub
-        def __init__(self, *args, **kwargs):
-            self.n_calls = 0
-
-    class CallbackList(list):  # pragma: no cover - defensive stub
-        def __init__(self, *args, **kwargs):
-            super().__init__()
 
 from ztb.trading.environment.constants import EPSILON
 from ztb.trading.environment.environment import HeavyTradingEnv
+from ztb.training.callbacks_lib import SELLBiasMitigationCallback
 from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS
 from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG, PPOConfig
 from ztb.training.config.trainer_params import SELLMitigationParams
 from ztb.training.core.ppo_trainer import PPOTrainerAutoHalt as PPOTrainer
 from ztb.training.experiments.entropy_temperature import (
     TargetEntropyController,
-)  # New: Target Entropy
+)
 from ztb.training.models.custom_ppo import CustomPPO
-from ztb.training.optimization.adv_norm import PerActionAdvantageNormalizer  # New: PAN
+from ztb.training.optimization.adv_norm import PerActionAdvantageNormalizer
 from ztb.training.optimization.lagrange_constraint import LagrangeConstraint
-from ztb.training.optimization.stratified_sampler import (
-    StratifiedSampler,
-)  # New: Stratified Sampling
+from ztb.training.optimization.stratified_sampler import StratifiedSampler
 from ztb.training.utils.grad_probes import SELLGradientProbe, create_failsafe_dump
 from ztb.training.utils.weights import ActionWeightCalculator
 from ztb.utils.config import ZTBConfig
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
-
-class SELLBiasMitigationCallback(BaseCallback):
-    """Callback for SELL bias mitigation during training."""
-
-    def __init__(
-        self,
-        lagrange: Optional[LagrangeConstraint] = None,
-        probe: Optional[SELLGradientProbe] = None,
-        weight_calc: Optional[ActionWeightCalculator] = None,
-        pan_normalizer: Optional[PerActionAdvantageNormalizer] = None,  # New
-        entropy_controller: Optional[TargetEntropyController] = None,  # New
-        stratified_sampler: Optional[StratifiedSampler] = None,  # New
-        verbose: int = 0,
-    ):
-        super().__init__(verbose)
-        self.lagrange = lagrange
-        self.probe = probe
-        self.weight_calc = weight_calc
-        self.pan_normalizer = pan_normalizer
-        self.entropy_controller = entropy_controller
-        self.stratified_sampler = stratified_sampler
-        self.step_count = 0
-
-    def _on_step(self) -> bool:
-        """Called at each step. Returns False to stop training."""
-        self.step_count += 1
-
-        # Log Lagrange statistics
-        if self.lagrange is not None:
-            stats = self.lagrange.get_statistics()
-            for key, value in stats.items():
-                self.logger.record(f"lagrange/{key}", value)
-
-        # Log probe statistics
-        if self.probe is not None:
-            stats = self.probe.get_statistics()
-            for key, value in stats.items():
-                self.logger.record(f"probe/{key}", value)
-
-        # New: Log PAN statistics
-        if self.pan_normalizer is not None:
-            stats = self.pan_normalizer.get_statistics()
-            for key, value in stats.items():
-                self.logger.record(f"pan/{key}", value)
-
-        # New: Log Target Entropy statistics
-        if self.entropy_controller is not None:
-            stats = self.entropy_controller.get_statistics()
-            for key, value in stats.items():
-                self.logger.record(f"entropy/{key}", value)
-
-        # New: Log Stratified Sampler statistics
-        if self.stratified_sampler is not None:
-            sampler_stats: Dict[str, Any] = self.stratified_sampler.get_statistics()
-            # Log bucket distribution
-            if "bucket_counts" in sampler_stats:
-                bucket_counts = sampler_stats["bucket_counts"]
-                if isinstance(bucket_counts, np.ndarray):
-                    for regime in range(3):
-                        for action in range(3):
-                            self.logger.record(
-                                f"stratified/bucket_r{regime}_a{action}",
-                                int(bucket_counts[regime, action]),
-                            )
-
-        return True
-
-    def _on_rollout_end(self) -> None:
-        """Called at the end of each rollout."""
-        # This is where we could apply Lagrange constraint to the loss
-        # However, SB3 doesn't provide direct access to loss computation
-        # We would need to modify the PPO algorithm itself for full integration
-        pass
 
 
 class SELLBiasMitigationPPOTrainer(PPOTrainer):
