@@ -1,7 +1,7 @@
 # 080# PHG: 重複排除 & 継承ベース統合
 
-**日時**: 2025-02-24  
-**コミット**: `63c557e2b` (phase1), `22733338b` (phase2)  
+**日時**: 2025-02-24 (+ 2026-02-16 追補)  
+**コミット**: `63c557e2b` (phase1), `22733338b` (phase2), `(current)` (phase3追補)  
 **先行**: `6ed99506a` (dead file cleanup + type safety)
 
 ---
@@ -85,6 +85,32 @@ canonical: `ztb/analysis/regime/market_regime_types.py` の `MarketRegime(Enum)`
 
 plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 文字列比較の破壊リスクが高いため、段階的移行として保留。
+
+## Phase 3 追補: quality/indicators 継承整理 + 重複削減 (2026-02-16)
+
+### 1) `BaseTechnicalIndicator` 基底強化
+
+- `temporary_config()` を基底に導入し、サブクラスが設定の一時上書きを共通実装で利用できるよう統合。
+- `on_config_updated()` フックを導入し、設定変更時の派生属性同期を継承側へ集約。
+- `calculate()` は cache hit 時にもコピー返却へ変更し、呼び出し側更新でキャッシュ本体が破壊されるリスクを低減。
+
+### 2) `AdaptiveIndicator` の重複/不具合修正
+
+- `calculate()` / `calculate_adaptive()` の重複ロジックを `_calculate_with_regime()` へ統合。
+- base indicator の計算結果 dict を直接更新しないよう修正し、regime metadata が base 側キャッシュへ混入する不具合可能性を解消。
+- `temporary_config` 非対応の mock 指標向け fallback を追加し、既存テスト互換を維持。
+
+### 3) 水平展開 (`RSIIndicator`, `MACDIndicator`)
+
+- `on_config_updated()` を導入し、adaptive config 更新時に
+  `periods` / `fast_period` / `slow_period` / `signal_period` が即時反映されるよう統一。
+- `quality/indicators` 配下 (`base.py`, `rsi.py`, `macd.py`) を `Any=0` 化。
+
+### 4) 検証
+
+- `tests/unit/trading/signal/indicators/test_signal_indicators.py`
+- `tests/unit/trading/signal/test_modular_indicators.py`
+- 結果: `60 passed`
 
 ## テスト結果
 

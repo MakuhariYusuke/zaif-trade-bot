@@ -4,7 +4,8 @@ MACD (Moving Average Convergence Divergence) Indicator
 Calculates MACD for trend analysis and momentum signals.
 """
 
-from typing import Dict, Any, Optional
+from collections.abc import Mapping
+
 import pandas as pd
 
 from ztb.trading.signal.quality.indicators.base import BaseTrendIndicator
@@ -18,25 +19,31 @@ class MACDIndicator(BaseTrendIndicator):
     to identify momentum and trend changes.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Mapping[str, object] | None = None):
         super().__init__(config)
-        self.fast_period = self.config.get('fast_period', 12)
-        self.slow_period = self.config.get('slow_period', 26)
-        self.signal_period = self.config.get('signal_period', 9)
+        self.fast_period = self._get_config_int("fast_period", 12, minimum=1)
+        self.slow_period = self._get_config_int("slow_period", 26, minimum=1)
+        self.signal_period = self._get_config_int("signal_period", 9, minimum=1)
         # Override required columns - MACD only needs close prices
-        self.required_columns = ['close']
+        self.required_columns = ["close"]
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def on_config_updated(self) -> None:
+        """Sync derived period fields when config is updated dynamically."""
+        self.fast_period = self._get_config_int("fast_period", 12, minimum=1)
+        self.slow_period = self._get_config_int("slow_period", 26, minimum=1)
+        self.signal_period = self._get_config_int("signal_period", 9, minimum=1)
+
+    def _get_default_config(self) -> dict[str, object]:
         return {
-            'fast_period': 12,
-            'slow_period': 26,
-            'signal_period': 9,
-            'method': 'ema'  # Only EMA supported for MACD
+            "fast_period": 12,
+            "slow_period": 26,
+            "signal_period": 9,
+            "method": "ema",  # Only EMA supported for MACD
         }
 
-    def _calculate_indicator(self, data: pd.DataFrame) -> Dict[str, float]:
+    def _calculate_indicator(self, data: pd.DataFrame) -> dict[str, object]:
         """Calculate MACD values"""
-        close = data['close']
+        close = data["close"]
 
         # Calculate EMAs
         fast_ema = close.ewm(span=self.fast_period, adjust=False).mean()
@@ -73,35 +80,35 @@ class MACDIndicator(BaseTrendIndicator):
         bearish_crossover = (macd_prev >= signal_prev) and (current_macd < current_signal)
 
         return {
-            'macd_line': current_macd,
-            'signal_line': current_signal,  # Add signal_line key for compatibility
-            'macd_signal': current_signal,  # Keep original key
-            'histogram': current_histogram,  # Add histogram key for compatibility
-            'macd_histogram': current_histogram,
-            'macd_momentum': macd_momentum,
-            'trend_direction': trend_direction,
-            'signal_strength': min(100.0, signal_strength),
-            'bullish_crossover': bullish_crossover,
-            'bearish_crossover': bearish_crossover,
-            'fast_ema': fast_ema.iloc[-1] if not fast_ema.empty else close.iloc[-1],
-            'slow_ema': slow_ema.iloc[-1] if not slow_ema.empty else close.iloc[-1]
+            "macd_line": current_macd,
+            "signal_line": current_signal,  # Add signal_line key for compatibility
+            "macd_signal": current_signal,  # Keep original key
+            "histogram": current_histogram,  # Add histogram key for compatibility
+            "macd_histogram": current_histogram,
+            "macd_momentum": macd_momentum,
+            "trend_direction": trend_direction,
+            "signal_strength": min(100.0, signal_strength),
+            "bullish_crossover": bullish_crossover,
+            "bearish_crossover": bearish_crossover,
+            "fast_ema": fast_ema.iloc[-1] if not fast_ema.empty else close.iloc[-1],
+            "slow_ema": slow_ema.iloc[-1] if not slow_ema.empty else close.iloc[-1],
         }
 
-    def _get_default_values(self) -> Dict[str, float]:
+    def _get_default_values(self) -> dict[str, object]:
         """Get default values when calculation fails"""
         return {
-            'macd_line': 0.0,
-            'signal_line': 0.0,  # Add signal_line key for compatibility
-            'macd_signal': 0.0,
-            'histogram': 0.0,  # Add histogram key for compatibility
-            'macd_histogram': 0.0,
-            'macd_momentum': 0.0,
-            'trend_direction': 'sideways',
-            'signal_strength': 0.0,
-            'bullish_crossover': False,
-            'bearish_crossover': False,
-            'fast_ema': 0.0,
-            'slow_ema': 0.0
+            "macd_line": 0.0,
+            "signal_line": 0.0,  # Add signal_line key for compatibility
+            "macd_signal": 0.0,
+            "histogram": 0.0,  # Add histogram key for compatibility
+            "macd_histogram": 0.0,
+            "macd_momentum": 0.0,
+            "trend_direction": "sideways",
+            "signal_strength": 0.0,
+            "bullish_crossover": False,
+            "bearish_crossover": False,
+            "fast_ema": 0.0,
+            "slow_ema": 0.0,
         }
 
     def get_required_periods(self) -> int:

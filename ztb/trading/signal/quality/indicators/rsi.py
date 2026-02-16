@@ -4,7 +4,7 @@ RSI (Relative Strength Index) Indicator
 Calculates RSI oscillator for momentum analysis.
 """
 
-from typing import Any, Dict, Optional
+from collections.abc import Mapping
 
 import numpy as np
 import pandas as pd
@@ -23,14 +23,18 @@ class RSIIndicator(BaseOscillatorIndicator):
     overbought or oversold conditions.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: Mapping[str, object] | None = None):
         super().__init__(config)
-        self.periods = self.config.get("periods", 14)
+        self.periods = self._get_config_int("periods", 14, minimum=1)
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def on_config_updated(self) -> None:
+        """Sync derived fields when config is updated dynamically."""
+        self.periods = self._get_config_int("periods", 14, minimum=1)
+
+    def _get_default_config(self) -> dict[str, object]:
         return {"periods": 14, "smoothing": "ema"}  # 'ema' or 'sma'
 
-    def _calculate_indicator(self, data: pd.DataFrame) -> Dict[str, float]:
+    def _calculate_indicator(self, data: pd.DataFrame) -> dict[str, object]:
         """Calculate RSI values"""
         close = data["close"]
 
@@ -109,7 +113,7 @@ class RSIIndicator(BaseOscillatorIndicator):
             "avg_loss": avg_loss.iloc[-1] if not avg_loss.empty else 0.0,
         }
 
-    def _get_default_values(self) -> Dict[str, float]:
+    def _get_default_values(self) -> dict[str, object]:
         """Get default values when calculation fails"""
         return {
             "rsi": 50.0,

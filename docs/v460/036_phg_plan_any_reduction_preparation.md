@@ -617,6 +617,18 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 8. 回帰確認: `test_ensemble_signal_generator` + `test_signal_scorers` で `46 passed`。  
 9. 在庫更新: `ztb/trading/signal/ensemble_signal_generator.py` 単体 `any_type_debt_tokens=0`、repo 全体 `2,846 -> 2,817`。  
 
+### Step57: `quality/indicators` 基底の継承整理 + `Any=0` 化 + 適応ロジック修正
+
+1. `ztb/trading/signal/quality/indicators/base.py` の `Any` を全撤去し、`IndicatorConfig` / `IndicatorResult` を `object` ベースへ統一。  
+2. `BaseTechnicalIndicator` に `temporary_config()` / `on_config_updated()` を追加し、継承先が config 一時上書きロジックを共通利用できるよう整理。  
+3. `BaseTechnicalIndicator.calculate()` は cached result をコピー返却に変更し、呼び出し側更新でキャッシュ内容が破壊されるリスクを低減。  
+4. `AdaptiveIndicator` の重複していた適応計算経路を `_calculate_with_regime()` に統合し、`calculate()` / `calculate_adaptive()` の実装差分を解消。  
+5. `AdaptiveIndicator` は base indicator の結果 dict を直接更新しないよう修正し、base 側キャッシュ汚染（regime metadata 混入）不具合を解消。  
+6. `AdaptiveIndicator` は `temporary_config` 非対応の mock 指標でも動く fallback を追加し、既存テスト互換を維持。  
+7. `ztb/trading/signal/quality/indicators/rsi.py` / `macd.py` へ `on_config_updated()` を水平展開し、adaptive config 変更時に `periods` / `fast_period` / `slow_period` / `signal_period` が即時反映されるよう修正。  
+8. `quality/indicators` 配下 `any_type_debt_tokens` を `23 -> 0` に削減。repo 全体 `any_type_debt_tokens` は `2,817 -> 2,786`。  
+9. 回帰確認: `test_signal_indicators` + `test_modular_indicators` で `60 passed`。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -677,6 +689,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step54時点 | repo全体 | 2,858 |
 | Step55時点 | repo全体 | 2,846 |
 | Step56時点 | repo全体 | 2,817 |
+| Step57時点 | repo全体 | 2,786 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -753,6 +766,9 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step55時点 | `ztb/trading/strategies/action_signal_guide/config/asg_adaptation_config.py` | **0** |
 | Step55時点 | `ztb/trading/strategies/action_signal_guide/config/asg_ml_config.py` | **0** |
 | Step56時点 | `ztb/trading/signal/ensemble_signal_generator.py` | **0** |
+| Step57時点 | `ztb/trading/signal/quality/indicators/base.py` | **0** |
+| Step57時点 | `ztb/trading/signal/quality/indicators/rsi.py` | **0** |
+| Step57時点 | `ztb/trading/signal/quality/indicators/macd.py` | **0** |
 
 ---
 
@@ -768,8 +784,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - バリデーション結果 payload を `TypedDict` 化し、ルール評価の重複 map 操作を helper 化。  
 5. `ztb/utils/config.py`  
    - config merge/cast 系の `Any` を段階的に削減し、既存型別名へ集約。  
-6. `ztb/trading/signal/quality/indicators/base.py`  
-   - indicator 基底の `Any` を型固定し、各 indicator 実装で重複している入力検証/fallback を継承ヘルパへ集約する。  
+6. `ztb/trading/end_to_end_validation.py`  
+   - validation payload の `Any` を型固定し、stage 集計ロジックの重複と fallback 分岐を基底ヘルパへ寄せる。  
 
 ---
 
