@@ -1,9 +1,10 @@
-"""Minimal shim for SELL bias mitigation PPO trainer used in legacy smoke tests."""
+"""Re-export shim for SELLBiasMitigationPPOTrainer.
 
+Canonical location: ztb.training.experiments.sell_mitigation_ppo_trainer
+"""
 
-class SELLBiasMitigationPPOTrainer:
-    def __init__(self, *args, **kwargs):
-        pass
-
+from ztb.training.experiments.sell_mitigation_ppo_trainer import (  # noqa: F401
+    SELLBiasMitigationPPOTrainer,
+)
 
 __all__ = ["SELLBiasMitigationPPOTrainer"]

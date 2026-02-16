@@ -49,9 +49,14 @@ btc_jpy_* filter=lfs diff=lfs merge=lfs -text
 python_files.txt filter=lfs diff=lfs merge=lfs -text
 node_modules/** filter=lfs diff=lfs merge=lfs -text
 ztb/analysis/** filter=lfs diff=lfs merge=lfs -text
+ztb/analysis/**/*.py !filter !diff !merge text
+ztb/analysis/**/*.pyi !filter !diff !merge text
 ztb/evaluation/** filter=lfs diff=lfs merge=lfs -text
+ztb/evaluation/**/*.py !filter !diff !merge text
+ztb/evaluation/**/*.pyi !filter !diff !merge text
 backtest_results_*.json filter=lfs diff=lfs merge=lfs -text
 ml-dataset-*.pkl filter=lfs diff=lfs merge=lfs -text
 mypy_*.txt filter=lfs diff=lfs merge=lfs -text
 package-lock.json filter=lfs diff=lfs merge=lfs -text
 docs/** filter=lfs diff=lfs merge=lfs -text
+docs/**/*.md !filter !diff !merge text

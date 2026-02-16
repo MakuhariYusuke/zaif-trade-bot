@@ -492,7 +492,7 @@ class FastIntradayEnvV456(gym.Env):
         # Initialize entry system if configured
         entry_gate_config = self.config.get("environment", {}).get("entry_gate") if self.config else None
         if entry_gate_config:
-            from ztb.trading.entry_system import IntegratedEntrySystem
+            from ztb.trading.signal.entry_system import IntegratedEntrySystem
             self.entry_system = IntegratedEntrySystem(config=entry_gate_config)
             # Load calibration map if available
             if hasattr(self.entry_system, 'calibration_map') and self.entry_system.calibration_map:
