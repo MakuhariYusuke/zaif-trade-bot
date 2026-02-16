@@ -12,8 +12,9 @@ import gc
 import logging
 import threading
 import time
+from collections import deque
 from contextlib import contextmanager
-from typing import Callable, Dict, List
+from typing import Callable, Deque, Dict, List
 
 import numpy as np
 import psutil
@@ -73,8 +74,8 @@ class SystemOptimizer:
 
         # Tracking state
         self.step_counter = 0
-        self.memory_history: List[float] = []
-        self.performance_history: List[Dict[str, float]] = []
+        self.memory_history: Deque[float] = deque(maxlen=5000)
+        self.performance_history: Deque[Dict[str, float]] = deque(maxlen=5000)
         self.cache_hits = 0
         self.cache_misses = 0
 

@@ -5,7 +5,8 @@ Training callbacks for unified training system.
 
 import logging
 import time
-from typing import Any, List, Optional
+from collections import deque
+from typing import Any, Deque, List, Optional
 
 import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback
@@ -50,25 +51,25 @@ class TrainingProgressCallback(BaseCallback):
         self.checkpoint_manager = checkpoint_manager
 
         # Provide explicit type annotations so mypy can reason about these lists
-        self.continuous_actions: List[float] = []
-        self.discrete_actions: List[int] = []
-        self.reward_history: List[float] = []
+        self.continuous_actions: Deque[float] = deque(maxlen=10000)
+        self.discrete_actions: Deque[int] = deque(maxlen=10000)
+        self.reward_history: Deque[float] = deque(maxlen=10000)
         self.episode_rewards: List[float] = []
         self.start_time = time.time()
         self.last_log_time = self.start_time
 
         # Additional metrics tracking
-        self.actor_losses: List[float] = []
-        self.critic_losses: List[float] = []
-        self.ent_coefs: List[float] = []
-        self.learning_rates: List[float] = []
-        self.episode_lengths: List[int] = []
+        self.actor_losses: Deque[float] = deque(maxlen=10000)
+        self.critic_losses: Deque[float] = deque(maxlen=10000)
+        self.ent_coefs: Deque[float] = deque(maxlen=10000)
+        self.learning_rates: Deque[float] = deque(maxlen=10000)
+        self.episode_lengths: Deque[int] = deque(maxlen=10000)
 
         # Per-regime action tracking for debugging market regime adaptation
         self.regime_action_counts: dict = {}  # regime -> [BUY, SELL, HOLD]
 
         # Reward components tracking for AB analysis
-        self.reward_components_history: List[dict] = []
+        self.reward_components_history: Deque[dict] = deque(maxlen=10000)
 
         # Initialize optimizer feature tracker from trainer if available
         self.optimizer_tracker = None

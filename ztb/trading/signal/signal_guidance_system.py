@@ -4,6 +4,7 @@ Advanced Signal Guidance System
 Type-safe, high-performance signal guidance for SAC action conversion
 """
 
+from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Union
@@ -114,7 +115,7 @@ class SignalGuidanceSystem:
         threshold_manager: Optional[object] = None,
     ):
         self.config = config or GuidanceConfig()
-        self.signal_history: List[SignalType] = []
+        self.signal_history: deque[SignalType] = deque(maxlen=self.config.max_history)
         self.market_context = MarketContext()
         # Initialize quality scorer for deterministic scoring
         self.quality_scorer = SignalQualityScorer(threshold_manager=threshold_manager)
@@ -123,7 +124,7 @@ class SignalGuidanceSystem:
         # Initialize trend convergence calculator for Phase 2 enhancement
         self.convergence_calculator = TrendConvergenceCalculator()
         # Keep market data history for technical indicator calculations
-        self.market_data_history: List[pd.Series] = []
+        self.market_data_history: deque[pd.Series] = deque(maxlen=100)
         self.max_history_size = 100  # Keep last 100 data points for technical analysis
 
     def update_market_context(self, row: pd.Series, portfolio: Dict[str, Any]) -> None:
@@ -244,8 +245,6 @@ class SignalGuidanceSystem:
 
             # Add current market data to history for technical analysis
             self.market_data_history.append(row.copy())
-            if len(self.market_data_history) > self.max_history_size:
-                self.market_data_history.pop(0)
 
             # Create DataFrame from recent market data for technical analysis
             market_df = self._create_market_dataframe(row, portfolio)
@@ -285,8 +284,6 @@ class SignalGuidanceSystem:
             # Record signal
             signal_type = SignalType(guided_action)
             self.signal_history.append(signal_type)
-            if len(self.signal_history) > self.config.max_history:
-                self.signal_history.pop(0)
 
             return guided_action
 

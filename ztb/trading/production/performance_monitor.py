@@ -5,16 +5,18 @@ V433 Phase 5: Gradual Rollout Layer - Performance Monitor
 """
 
 import asyncio
+import inspect
 import json
 import logging
 import os
 import statistics
 import threading
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Deque, Dict, List, Optional
 
 from ztb.types.alert_types import AlertLevel
 
@@ -123,9 +125,9 @@ class ProductionPerformanceMonitor:
         self.monitored_systems: set[str] = set()
 
         # パフォーマンスデータ
-        self.performance_history: Dict[str, List[PerformanceSnapshot]] = {}
-        self.alerts_history: List[PerformanceAlert] = []
-        self.health_checks: List[HealthCheck] = []
+        self.performance_history: Dict[str, Deque[PerformanceSnapshot]] = {}
+        self.alerts_history: Deque[PerformanceAlert] = deque(maxlen=max_alerts_history)
+        self.health_checks: Deque[HealthCheck] = deque(maxlen=500)
 
         # アクティブアラート
         self.active_alerts: Dict[str, PerformanceAlert] = {}
@@ -174,7 +176,7 @@ class ProductionPerformanceMonitor:
             system_id: システムID
         """
         self.monitored_systems.add(system_id)
-        self.performance_history[system_id] = []
+        self.performance_history[system_id] = deque(maxlen=1000)
 
         self.logger.info(f"System added to monitoring: {system_id}")
 
@@ -231,12 +233,6 @@ class ProductionPerformanceMonitor:
         # 履歴保存
         self.performance_history[system_id].append(snapshot)
 
-        # 履歴サイズ制限（最新1000件）
-        if len(self.performance_history[system_id]) > 1000:
-            self.performance_history[system_id] = self.performance_history[system_id][
-                -1000:
-            ]
-
         # アラート処理
         for alert in alerts:
             self._process_alert(alert)
@@ -244,7 +240,16 @@ class ProductionPerformanceMonitor:
         # コールバック実行
         for callback in self.snapshot_callbacks:
             try:
-                asyncio.create_task(callback(snapshot))  # type: ignore
+                if asyncio.get_event_loop().is_running():
+                    asyncio.create_task(callback(snapshot))  # type: ignore
+                else:
+                    asyncio.get_event_loop().run_until_complete(callback(snapshot))
+            except RuntimeError:
+                # No running event loop — call synchronously if possible
+                if not inspect.iscoroutinefunction(callback):
+                    callback(snapshot)
+                else:
+                    self.logger.warning("Cannot invoke async callback without event loop")
             except Exception as e:
                 self.logger.error(f"Snapshot callback error: {e}")
 
@@ -408,10 +413,6 @@ class ProductionPerformanceMonitor:
         # アラート履歴保存
         self.alerts_history.append(alert)
 
-        # 履歴サイズ制限
-        if len(self.alerts_history) > self.max_alerts_history:
-            self.alerts_history = self.alerts_history[-self.max_alerts_history :]
-
         # アクティブアラート管理
         alert_key = f"{alert.system_id}:{alert.metric_name}"
         self.active_alerts[alert_key] = alert
@@ -419,7 +420,15 @@ class ProductionPerformanceMonitor:
         # コールバック実行
         for callback in self.alert_callbacks:
             try:
-                asyncio.create_task(callback(alert))  # type: ignore
+                if asyncio.get_event_loop().is_running():
+                    asyncio.create_task(callback(alert))  # type: ignore
+                else:
+                    asyncio.get_event_loop().run_until_complete(callback(alert))
+            except RuntimeError:
+                if not inspect.iscoroutinefunction(callback):
+                    callback(alert)
+                else:
+                    self.logger.warning("Cannot invoke async callback without event loop")
             except Exception as e:
                 self.logger.error(f"Alert callback error: {e}")
 
@@ -486,14 +495,18 @@ class ProductionPerformanceMonitor:
 
         self.health_checks.append(health_check)
 
-        # 履歴サイズ制限（最新500件）
-        if len(self.health_checks) > 500:
-            self.health_checks = self.health_checks[-500:]
-
         # コールバック実行
         for callback in self.health_callbacks:
             try:
-                asyncio.create_task(callback(health_check))  # type: ignore
+                if asyncio.get_event_loop().is_running():
+                    asyncio.create_task(callback(health_check))  # type: ignore
+                else:
+                    asyncio.get_event_loop().run_until_complete(callback(health_check))
+            except RuntimeError:
+                if not inspect.iscoroutinefunction(callback):
+                    callback(health_check)
+                else:
+                    self.logger.warning("Cannot invoke async callback without event loop")
             except Exception as e:
                 self.logger.error(f"Health callback error: {e}")
 

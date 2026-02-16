@@ -8,6 +8,7 @@ including parameter tuning, multi-objective optimization, and automated reward d
 
 import json
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -91,7 +92,7 @@ class RewardFunctionOptimizer:
         self.parameter_spaces = self._define_parameter_spaces()
 
         # Optimization history
-        self.optimization_history = []
+        self.optimization_history: deque = deque(maxlen=1000)
 
         # Evaluation cache for robustness
         self.evaluation_cache = {}

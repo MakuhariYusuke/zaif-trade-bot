@@ -631,6 +631,15 @@ class HierarchicalCheckpointManager:
             max_workers=max_workers, thread_name_prefix="checkpoint"
         )
 
+    def close(self) -> None:
+        """Shut down the executor to prevent thread leaks."""
+        if self.executor is not None:
+            self.executor.shutdown(wait=False)
+            self.executor = None
+
+    def __del__(self) -> None:
+        self.close()
+
     def should_save_light(self, step: int) -> bool:
         """Check if light checkpoint should be saved at this step"""
         if step in self.light_freq:

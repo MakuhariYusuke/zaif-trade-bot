@@ -13,6 +13,7 @@ Where:
 Dual update: λ ← clip(λ + η * (|r_target - r_actual| - tolerance), 0, λ_max)
 """
 
+from collections import deque
 from typing import Any, Dict, Literal, Tuple, Union
 
 import numpy as np
@@ -78,9 +79,9 @@ class LagrangeConstraint:
 
         # Statistics
         self.step_count = 0
-        self.action_rates: list[float] = []
-        self.penalties: list[float] = []
-        self.lambda_history: list[float] = []
+        self.action_rates: deque[float] = deque(maxlen=5000)
+        self.penalties: deque[float] = deque(maxlen=5000)
+        self.lambda_history: deque[float] = deque(maxlen=5000)
 
     def compute_penalty(
         self,

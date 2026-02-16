@@ -66,6 +66,10 @@ def _append_streaming_rows(self: Any) -> bool:
         return False
 
     self.df = pd.concat([self.df, prepared], ignore_index=True, copy=False)
+    # Rolling window: keep at most 50000 rows to prevent OOM
+    _max_streaming_rows = getattr(self, '_max_streaming_rows', 50000)
+    if len(self.df) > _max_streaming_rows:
+        self.df = self.df.iloc[-_max_streaming_rows:].reset_index(drop=True)
     self.n_steps = len(self.df)
     self._stream_rows_appended += len(prepared)
 

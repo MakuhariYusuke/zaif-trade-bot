@@ -7,7 +7,7 @@ V433 Unified Optimizer: 統合最適化システム
 import json
 import time
 from abc import ABC, abstractmethod
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -463,7 +463,7 @@ class UnifiedOptimizer:
         self.parallel_optimizer = ParallelOptimizer(config)
 
         # 最適化履歴
-        self.optimization_history = []
+        self.optimization_history: deque = deque(maxlen=1000)
         self.current_best_params = {}
 
         # ハイパーパラメータ最適化器の初期化（optimization_methodに従う）

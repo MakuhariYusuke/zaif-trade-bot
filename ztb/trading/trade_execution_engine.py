@@ -9,7 +9,8 @@ import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from collections import deque
+from typing import Any, Deque, Dict, List, Optional
 
 from ztb.trading.environment.constants import (
     BASIS_POINTS,
@@ -470,7 +471,7 @@ class TradeExecutionEngine(BaseComponent):
         # 状態管理
         self.positions: Dict[str, Position] = {}
         self.pending_orders: Dict[str, TradeOrder] = {}
-        self.completed_orders: List[TradeOrder] = []
+        self.completed_orders: Deque[TradeOrder] = deque(maxlen=10000)
 
         # パフォーマンス追跡
         self.total_capital = DEFAULT_TOTAL_CAPITAL  # 初期資本 (仮定)

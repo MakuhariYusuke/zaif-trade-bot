@@ -67,7 +67,7 @@ class DynamicQuantization:
 
                 try:
                     model(price_data, text_data, economic_data)
-                except:
+                except Exception:
                     # 単純なテンソル入力で試行
                     dummy_input = torch.randn(batch_size, 256)
                     model(dummy_input)
