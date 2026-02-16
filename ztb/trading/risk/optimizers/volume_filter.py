@@ -233,7 +233,7 @@ class VolumeFilter:
             # 平均出来高に対する相対的な傾き
             avg_volume = np.mean(y)
             return slope / avg_volume if avg_volume != 0 else 0.0
-        except:
+        except Exception:
             return 0.0
 
     def _analyze_volume_trend(self, historical_data: pd.DataFrame) -> str:

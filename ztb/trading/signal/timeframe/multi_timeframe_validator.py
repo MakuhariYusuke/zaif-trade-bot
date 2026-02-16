@@ -295,7 +295,7 @@ class MultiTimeframeSignalValidator:
             rsi_series = compute_rsi(df, period=period)
             last_val = rsi_series.iloc[-1]
             return float(last_val) if not pd.isna(last_val) else 50.0
-        except:
+        except Exception:
             return 50.0
 
     def _calculate_simple_trend_strength(
@@ -316,7 +316,7 @@ class MultiTimeframeSignalValidator:
             normalized_slope = slope / (avg_price * 0.001)  # 0.1%変化を基準
 
             return max(-1, min(1, normalized_slope))
-        except:
+        except Exception:
             return 0.0
 
     def get_validation_summary(

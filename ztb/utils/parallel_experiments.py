@@ -13,6 +13,7 @@ import signal
 import subprocess
 import sys
 import time
+from collections import deque
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime
@@ -520,12 +521,12 @@ class ResourceMonitor:
         self.peak_cpu_percent = 0.0
         self.peak_memory_mb = 0.0
         self.avg_cpu_percent = 0.0
-        self.measurements: List[float] = []
+        self.measurements: deque[float] = deque(maxlen=1000)
 
-        # メモリリーク監視 - 効率的なデータ構造
-        self.memory_history: List[float] = []
-        self.gc_stats: List[Tuple[int, int, int]] = []
-        self.object_counts: List[int] = []
+        # メモリリーク監視 - 有界データ構造
+        self.memory_history: deque[float] = deque(maxlen=1000)
+        self.gc_stats: deque[Tuple[int, int, int]] = deque(maxlen=1000)
+        self.object_counts: deque[int] = deque(maxlen=1000)
 
         # メモリリーク検知の閾値 - 設定可能に
         self.memory_leak_threshold_percent = 50.0

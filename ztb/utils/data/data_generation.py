@@ -115,7 +115,7 @@ class DataGenerator:
 
         return df
 
-    @lru_cache(maxsize=None)
+    @lru_cache(maxsize=64)
     def _generate_price_series_v2(self, n_samples: int, seed: int) -> np.ndarray:
         """Generate price series using v2 algorithm with latent factors."""
         np.random.seed(seed)

@@ -427,7 +427,7 @@ class MinuteDataPipeline:
             returns = data['close'].pct_change().abs()
             anomalies = (returns > 0.1).sum()  # 10%以上変動
             return int(anomalies)
-        except:
+        except Exception:
             return 0
 
     def _detect_volume_anomalies(self, data: pd.DataFrame) -> int:
@@ -437,7 +437,7 @@ class MinuteDataPipeline:
             volume_zscore = (data['volume'] - data['volume'].mean()) / data['volume'].std()
             anomalies = (volume_zscore.abs() > 3).sum()  # 3σ以上
             return int(anomalies)
-        except:
+        except Exception:
             return 0
 
     def _detect_time_gaps(self, data: pd.DataFrame) -> int:
@@ -450,7 +450,7 @@ class MinuteDataPipeline:
             expected_diff = data.index.to_series().diff().mode().iloc[0]
             gaps = (data.index.to_series().diff() > expected_diff * 2).sum()
             return int(gaps)
-        except:
+        except Exception:
             return 0
 
     def _calculate_quality_score(self, metrics: Dict[str, Any]) -> float:

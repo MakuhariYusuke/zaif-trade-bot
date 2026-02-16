@@ -93,7 +93,7 @@ class ActionSignalGuide:
             try:
                 if signal_func(observation, self.feature_names):
                     active_signals.append(signal_name)
-            except:
+            except Exception:
                 continue
 
         # Update confidence for active signals
@@ -145,7 +145,7 @@ class ActionSignalGuide:
                             (action == ACTION_SELL and signal_type == SignalType.SELL)):
                             confidence = self.signal_confidence.get(signal_name, 1.0)
                             confidence_multiplier *= confidence
-                except:
+                except Exception:
                     continue
 
             # Apply confidence adjustment (with dampening)

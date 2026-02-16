@@ -942,5 +942,5 @@ if __name__ == "__main__":
         # システム停止
         try:
             integration_manager.stop_system()
-        except:
+        except Exception:
             pass

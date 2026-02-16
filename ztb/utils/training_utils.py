@@ -203,13 +203,13 @@ def load_model(
 
                 model = MaskablePPO.load(model_path)
                 detected_alg = "ppo_maskable"
-            except:
+            except Exception:
                 try:
                     from stable_baselines3 import PPO
 
                     model = PPO.load(model_path)
                     detected_alg = "ppo"
-                except:
+                except Exception:
                     from stable_baselines3 import SAC
 
                     model = SAC.load(model_path)

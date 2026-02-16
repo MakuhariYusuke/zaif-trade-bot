@@ -463,7 +463,7 @@ class MarketRegimeClassifier(BaseSignalProcessor):
             bollinger_position = (
                 float(position.iloc[-1]) if not pd.isna(position.iloc[-1]) else 0.5
             )
-        except:
+        except Exception:
             bollinger_position = 0.5
 
         # Price range ratio

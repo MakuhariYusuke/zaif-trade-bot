@@ -108,28 +108,27 @@ class DataManager:
         if self.df is None:
             raise ValueError("Data not initialized")
 
-        # Build feature matrix
-        feature_data = []
-        nonfinite_rows = set()
+        # Build feature matrix — vectorized (no iterrows)
+        available_features = [f for f in self.features if f in self.df.columns]
+        missing_features = [f for f in self.features if f not in self.df.columns]
 
-        for idx, row in self.df.iterrows():
-            row_features = []
-            has_nonfinite = False
+        if available_features:
+            feature_df = self.df[available_features].astype(np.float64)
+            # Detect non-finite rows
+            nonfinite_mask = ~np.isfinite(feature_df.values).all(axis=1)
+            nonfinite_rows = set(self.df.index[nonfinite_mask].tolist())
+        else:
+            feature_df = pd.DataFrame(index=self.df.index)
+            nonfinite_rows = set()
 
-            for feature in self.features:
-                if feature in row:
-                    value = row.loc[feature]
-                    if not np.isfinite(value):
-                        has_nonfinite = True
-                    row_features.append(float(value))
-                else:
-                    row_features.append(0.0)
+        # Build full feature array in column order matching self.features
+        n_rows = len(self.df)
+        feature_data = np.zeros((n_rows, len(self.features)), dtype=np.float32)
+        for col_idx, feature in enumerate(self.features):
+            if feature in self.df.columns:
+                feature_data[:, col_idx] = self.df[feature].values.astype(np.float32)
 
-            feature_data.append(row_features)
-            if has_nonfinite:
-                nonfinite_rows.add(idx)
-
-        self._feature_matrix = np.array(feature_data, dtype=np.float32)
+        self._feature_matrix = feature_data
         self._nonfinite_rows = nonfinite_rows
 
         # Build price buffers
