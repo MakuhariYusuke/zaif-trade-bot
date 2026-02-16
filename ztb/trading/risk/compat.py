@@ -32,11 +32,13 @@ class GenericRiskManagerAdapter(RiskManagerProtocol):
         current_portfolio_value: float,
     ) -> bool:
         if self._has("should_open_position"):
-            return self.obj.should_open_position(
+            result: bool = self.obj.should_open_position(
                 signal_strength, market_volatility, current_portfolio_value
             )
+            return result
         if self._has("can_open_position"):
-            return self.obj.can_open_position(signal_strength, market_volatility)
+            result = self.obj.can_open_position(signal_strength, market_volatility)
+            return result
         # Conservative default: allow signals in test_mode, otherwise require medium strength
         if self.test_mode:
             return True
@@ -49,11 +51,13 @@ class GenericRiskManagerAdapter(RiskManagerProtocol):
         current_portfolio_value: float,
     ) -> Tuple[bool, str]:
         if self._has("should_close_position"):
-            return self.obj.should_close_position(
+            result: Tuple[bool, str] = self.obj.should_close_position(
                 position_data, current_price, current_portfolio_value
             )
+            return result
         if self._has("should_exit"):
-            return self.obj.should_exit(position_data, current_price)
+            result = self.obj.should_exit(position_data, current_price)
+            return result
         # Basic check based on stop / take_profit in position data
         stop = position_data.get("stop_loss")
         tp = position_data.get("take_profit")
@@ -67,11 +71,13 @@ class GenericRiskManagerAdapter(RiskManagerProtocol):
         self, signal_strength: float, market_volatility: float
     ) -> float:
         if self._has("get_risk_adjusted_position_size"):
-            return self.obj.get_risk_adjusted_position_size(
+            result: float = self.obj.get_risk_adjusted_position_size(
                 signal_strength, market_volatility
             )
+            return result
         if self._has("get_position_size"):
-            return self.obj.get_position_size(signal_strength)
+            result = self.obj.get_position_size(signal_strength)
+            return result
         # Fallback: scale with signal strength
         base = getattr(self.obj, "max_position_size", 0.05)
         return min(base, base * (0.5 + signal_strength / 2.0))
@@ -80,9 +86,13 @@ class GenericRiskManagerAdapter(RiskManagerProtocol):
         self, data: pd.DataFrame, entry_price: float, position_type: str
     ) -> Tuple[float, float]:
         if self._has("calculate_atr_stop_levels"):
-            return self.obj.calculate_atr_stop_levels(data, entry_price, position_type)
+            result: Tuple[float, float] = self.obj.calculate_atr_stop_levels(
+                data, entry_price, position_type
+            )
+            return result
         if self._has("calculate_stop_levels"):
-            return self.obj.calculate_stop_levels(entry_price, position_type)
+            result = self.obj.calculate_stop_levels(entry_price, position_type)
+            return result
         # Fallback: use 2% stop and 4% take profit
         return entry_price * 0.98, entry_price * 1.04
 
@@ -90,15 +100,18 @@ class GenericRiskManagerAdapter(RiskManagerProtocol):
         self, trade_result: Optional[Dict[str, Any]] = None
     ) -> None:
         if self._has("update_risk_metrics"):
-            return self.obj.update_risk_metrics(trade_result)
+            self.obj.update_risk_metrics(trade_result)
+            return
         if self._has("on_trade"):
-            return self.obj.on_trade(trade_result)
+            self.obj.on_trade(trade_result)
+            return
         # No-op fallback
         return None
 
     def reset(self) -> None:
         if self._has("reset"):
-            return self.obj.reset()
+            self.obj.reset()
+            return
         # Best-effort: set some properties
         try:
             setattr(

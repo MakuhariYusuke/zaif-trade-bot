@@ -57,10 +57,10 @@ def ensure_torch_dll_search_path(force: bool = False) -> Dict[str, Any]:
     global _DLL_SETUP_DONE, _DLL_SUMMARY
 
     if os.name != "nt":
-        summary = {"status": "non-windows"}
+        result: Dict[str, Any] = {"status": "non-windows"}
         _DLL_SETUP_DONE = True
-        _DLL_SUMMARY = summary
-        return summary
+        _DLL_SUMMARY = result
+        return result
 
     if _DLL_SETUP_DONE and not force and _DLL_SUMMARY is not None:
         return _DLL_SUMMARY
@@ -107,7 +107,7 @@ def _install_torch_stub() -> None:
 
     class _StubOptimizer:
         def __init__(self, *args: Any, **kwargs: Any) -> None:
-            self.param_groups = []
+            self.param_groups: List[Any] = []
 
         def step(self) -> None:  # pragma: no cover - trivial
             return None

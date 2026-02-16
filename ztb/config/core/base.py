@@ -12,5 +12,5 @@ class BaseConfigLoader(ABC):
     """Abstract base class for configuration loaders."""
 
     @abstractmethod
-    def load_config(self, *args, **kwargs) -> Dict[str, Any]:
+    def load_config(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         raise NotImplementedError

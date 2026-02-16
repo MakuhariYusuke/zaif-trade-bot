@@ -44,5 +44,3 @@ class WinRateBonusCalculator:
                 return -win_rate_bonus_base * 0.8
             else:  # HOLD
                 return -win_rate_bonus_base * 0.3
-
-        return 0.0

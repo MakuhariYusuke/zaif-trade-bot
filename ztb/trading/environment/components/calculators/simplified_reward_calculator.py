@@ -2,7 +2,7 @@
 from typing import Sequence
 
 
-def calculate_downside_risk_reward(*args, **kwargs):
+def calculate_downside_risk_reward(*args: object, **kwargs: object) -> float:
     # Delegates to metrics module in normal code; provide a trivial implementation
     returns = args[0] if args else []
     try:
@@ -22,7 +22,7 @@ class SimplifiedRewardCalculator:
     script-level tests. Delegates to the functional helpers above.
     """
 
-    def __init__(self, config=None, reward_settings=None, initial_balance: float = 0.0):
+    def __init__(self, config: object = None, reward_settings: object = None, initial_balance: float = 0.0) -> None:
         self.config = config
         self.reward_settings = reward_settings
         self.initial_balance = initial_balance
