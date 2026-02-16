@@ -361,6 +361,9 @@ class TestVolumeProfileScorer(unittest.TestCase):
         self.assertIsInstance(confidence, float)
         self.assertGreaterEqual(confidence, 0)
         self.assertLessEqual(confidence, 1)
+
+        no_volume_df = self.df.drop(columns=['volume'])
+        market_data_no_vol = self.market_data.copy()
         market_data_no_vol['df'] = no_volume_df
 
         confidence = self.scorer.get_confidence(market_data_no_vol)

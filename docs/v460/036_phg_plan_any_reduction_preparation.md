@@ -605,6 +605,18 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 8. `action_signal_guide` 配下 `any_type_debt_tokens` を `12 -> 0` に削減し、repo 全体 `any_type_debt_tokens` を `2,858 -> 2,846` へ削減。  
 9. 回帰確認: `test_fibonacci_recognizer` + `test_pattern_recognition -k Fibonacci` で `14 passed`。  
 
+### Step56: `ensemble_signal_generator` の `Any=0` 化 + 重複削減 + 不具合/性能改善
+
+1. `ztb/trading/signal/ensemble_signal_generator.py` の `Any` を全撤去し、`MarketData` / `SignalReliability` (`TypedDict`) と `SignalScorer` (`Protocol`) で入出力契約を型固定。  
+2. `generate_ensemble_signal()` と `get_signal_reliability()` で重複していた scorer 全走査を `_collect_scores_and_confidences()` に集約。信頼性計算時の二重計算を解消。  
+3. 重み計算を `_resolve_weights()` / `_calculate_weighted_score()` / `_calculate_final_confidence()` に分離し、責務を明確化。`normalize_weights()` を再利用して重複正規化実装を削減。  
+4. `PatternRecognitionScorer` のトレンド傾きを `np.polyfit` から centered 回帰（cache 付き）へ置換し、反復呼び出し時の割当と計算コストを削減。  
+5. 反転判定の参照窓を「直近5本（現足除外）」へ修正し、従来条件が成立しにくかったロジック不整合を解消。  
+6. `VolumeProfileScorer.get_confidence()` に平均出来高ゼロ/NaN/inf ガードを追加し、不正 confidence 値混入を抑止。  
+7. 既存テスト不具合として `tests/unit/trading/signal/scorers/test_signal_scorers.py` の未定義変数（`no_volume_df`）を修正。  
+8. 回帰確認: `test_ensemble_signal_generator` + `test_signal_scorers` で `46 passed`。  
+9. 在庫更新: `ztb/trading/signal/ensemble_signal_generator.py` 単体 `any_type_debt_tokens=0`、repo 全体 `2,846 -> 2,817`。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -664,6 +676,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step53時点 | repo全体 | 2,858 |
 | Step54時点 | repo全体 | 2,858 |
 | Step55時点 | repo全体 | 2,846 |
+| Step56時点 | repo全体 | 2,817 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -739,6 +752,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step55時点 | `ztb/trading/strategies/action_signal_guide/config/asg_portfolio_config.py` | **0** |
 | Step55時点 | `ztb/trading/strategies/action_signal_guide/config/asg_adaptation_config.py` | **0** |
 | Step55時点 | `ztb/trading/strategies/action_signal_guide/config/asg_ml_config.py` | **0** |
+| Step56時点 | `ztb/trading/signal/ensemble_signal_generator.py` | **0** |
 
 ---
 
@@ -754,8 +768,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - バリデーション結果 payload を `TypedDict` 化し、ルール評価の重複 map 操作を helper 化。  
 5. `ztb/utils/config.py`  
    - config merge/cast 系の `Any` を段階的に削減し、既存型別名へ集約。  
-6. `ztb/trading/signal/ensemble_signal_generator.py`  
-   - Signal payload の `Any` を段階的に型固定し、MTF集約と重み調整ロジックの重複分岐を整理する。  
+6. `ztb/trading/signal/quality/indicators/base.py`  
+   - indicator 基底の `Any` を型固定し、各 indicator 実装で重複している入力検証/fallback を継承ヘルパへ集約する。  
 
 ---
 
