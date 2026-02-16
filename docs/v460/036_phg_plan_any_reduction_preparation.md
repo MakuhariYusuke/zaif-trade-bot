@@ -593,6 +593,18 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 12. `Any` 負債は維持（`pattern_recognition any_type_debt_tokens=0`, repo 全体 `any_type_debt_tokens=2,858`）。  
 13. 回帰確認: `test_pattern_multi_timeframe_analyzer` (4 pass), `test_bollinger_adx_recognizers + test_new_recognizers + test_hierarchical_trend_analyzer` (32 pass)。  
 
+### Step55: `action_signal_guide` 全域 `Any=0` 化 + config型安全化 + Fibonacci互換修正
+
+1. `ztb/trading/strategies/action_signal_guide/types.py` を `ConfigSection` / `ObjectMap` ベースへ移行し、`Any` alias を全撤去。  
+2. `types.py` の `MultiTimeframeData` を `dict[str, dict[str, object]]` に統一し、各認識器の既存 payload 契約と整合。  
+3. `ztb/trading/strategies/action_signal_guide/config/asg_portfolio_config.py` の `Any` を全撤去し、`StressTestScenario` / `AllocationConstraintsPayload` / `RiskLimitsPayload` / `OptimizationSchedulePayload` (`TypedDict`) を導入。  
+4. `ztb/trading/strategies/action_signal_guide/config/asg_adaptation_config.py` の `Any` を全撤去し、trigger/processing/schedule の戻り値を `TypedDict` 化。  
+5. `ztb/trading/strategies/action_signal_guide/config/asg_ml_config.py` の `hyperparameters` を `dict[str, ConfigValue]` に型固定し、`Any` を全撤去。  
+6. `ztb/trading/strategies/action_signal_guide/pattern_recognition/fibonacci_patterns.py` で MTF dataframe 抽出を `PatternRecognizer.iter_multi_timeframe_frames()` へ統合（重複削減）。  
+7. `FibonacciAnalyzer.calculate_deviation_from_ideal()` に後方互換経路（`levels: dict[float, float]` 入力）を追加し、既存テスト互換を回復。  
+8. `action_signal_guide` 配下 `any_type_debt_tokens` を `12 -> 0` に削減し、repo 全体 `any_type_debt_tokens` を `2,858 -> 2,846` へ削減。  
+9. 回帰確認: `test_fibonacci_recognizer` + `test_pattern_recognition -k Fibonacci` で `14 passed`。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -651,6 +663,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step52時点 | repo全体 | 2,873 |
 | Step53時点 | repo全体 | 2,858 |
 | Step54時点 | repo全体 | 2,858 |
+| Step55時点 | repo全体 | 2,846 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -722,6 +735,10 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step53時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/ichimoku.py` | **0** |
 | Step53時点 | `ztb/trading/strategies/action_signal_guide/pattern_recognition/bollinger_patterns.py` | **0** |
 | Step53時点 | `ztb/trading/strategies/action_signal_guide/recognizer_factory.py` | **0** |
+| Step55時点 | `ztb/trading/strategies/action_signal_guide/types.py` | **0** |
+| Step55時点 | `ztb/trading/strategies/action_signal_guide/config/asg_portfolio_config.py` | **0** |
+| Step55時点 | `ztb/trading/strategies/action_signal_guide/config/asg_adaptation_config.py` | **0** |
+| Step55時点 | `ztb/trading/strategies/action_signal_guide/config/asg_ml_config.py` | **0** |
 
 ---
 
@@ -737,8 +754,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - バリデーション結果 payload を `TypedDict` 化し、ルール評価の重複 map 操作を helper 化。  
 5. `ztb/utils/config.py`  
    - config merge/cast 系の `Any` を段階的に削減し、既存型別名へ集約。  
-6. `ztb/trading/strategies/action_signal_guide/types.py`  
-   - `MultiTimeframeData` / `StatisticsMetadata` など `Any` 依存 alias を段階的に TypedDict + object 系へ移行する。  
+6. `ztb/trading/signal/ensemble_signal_generator.py`  
+   - Signal payload の `Any` を段階的に型固定し、MTF集約と重み調整ロジックの重複分岐を整理する。  
 
 ---
 

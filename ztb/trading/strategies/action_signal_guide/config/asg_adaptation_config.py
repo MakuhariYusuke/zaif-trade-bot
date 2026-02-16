@@ -5,9 +5,38 @@ This module provides configuration management for real-time adaptation component
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Tuple
+from typing import TypedDict
 
 from ..interfaces.adaptation_interfaces import AdaptationTrigger
+
+
+class TriggerConditionsPayload(TypedDict):
+    """Adaptation trigger conditions."""
+
+    performance_degradation: float
+    regime_stability: int
+    time_interval: int
+    signal_quality_drop: float
+    volatility_spike: float
+
+
+class ProcessingLimitsPayload(TypedDict):
+    """Processing/resource limits."""
+
+    buffer_size: int
+    max_queue_size: int
+    max_workers: int
+    max_memory: int
+    max_optimization_time: int
+
+
+class AdaptationSchedulePayload(TypedDict):
+    """Adaptation schedule details."""
+
+    processing_interval: float
+    threshold_reset_frequency: int
+    baseline_update_frequency: int
+    cooldown_period: int
 
 
 @dataclass
@@ -32,7 +61,7 @@ class AdaptiveThresholdsConfig:
     min_threshold_change: float = 0.01
     max_threshold_change: float = 0.2
     reset_frequency: int = 1000  # Reset every N updates
-    threshold_bounds: Dict[str, Tuple[float, float]] = field(
+    threshold_bounds: dict[str, tuple[float, float]] = field(
         default_factory=lambda: {
             "strength": (0.1, 0.9),
             "confidence": (0.2, 0.95),
@@ -48,7 +77,7 @@ class PerformanceMonitorConfig:
 
     enabled: bool = True
     monitoring_window: int = 100
-    alert_thresholds: Dict[str, float] = field(
+    alert_thresholds: dict[str, float] = field(
         default_factory=lambda: {
             "accuracy_drop": 0.05,
             "sharpe_ratio_drop": 0.2,
@@ -83,7 +112,7 @@ class RealTimeOptimizerConfig:
     max_iterations: int = 50
     convergence_threshold: float = 1e-4
     step_size: float = 0.01
-    bounds: Dict[str, Tuple[float, float]] = field(
+    bounds: dict[str, tuple[float, float]] = field(
         default_factory=lambda: {
             "learning_rate": (1e-5, 1e-1),
             "adaptation_rate": (1e-3, 1e-1),
@@ -98,7 +127,7 @@ class AdaptiveControllerConfig:
 
     enabled: bool = True
     control_algorithm: str = "pid"  # pid, lqr, adaptive
-    pid_gains: Dict[str, float] = field(
+    pid_gains: dict[str, float] = field(
         default_factory=lambda: {
             "kp": 0.5,  # Proportional gain
             "ki": 0.1,  # Integral gain
@@ -114,7 +143,7 @@ class AdaptiveControllerConfig:
 class AdaptationTriggerConfig:
     """Configuration for adaptation triggers."""
 
-    enabled_triggers: List[AdaptationTrigger] = field(
+    enabled_triggers: list[AdaptationTrigger] = field(
         default_factory=lambda: [
             AdaptationTrigger.PERFORMANCE_DEGRADATION,
             AdaptationTrigger.MARKET_REGIME_CHANGE,
@@ -189,7 +218,7 @@ class RealTimeAdaptationConfig:
         self.triggers.performance_degradation_threshold = 0.05
         self.feedback_loop.adaptation_confidence_threshold = 0.7
 
-    def get_trigger_conditions(self) -> Dict[str, Any]:
+    def get_trigger_conditions(self) -> TriggerConditionsPayload:
         """Get trigger conditions as dictionary."""
         return {
             "performance_degradation": self.triggers.performance_degradation_threshold,
@@ -199,7 +228,7 @@ class RealTimeAdaptationConfig:
             "volatility_spike": self.triggers.volatility_spike_threshold,
         }
 
-    def get_processing_limits(self) -> Dict[str, Any]:
+    def get_processing_limits(self) -> ProcessingLimitsPayload:
         """Get processing limits as dictionary."""
         return {
             "buffer_size": self.streaming_processor.buffer_size,
@@ -209,9 +238,9 @@ class RealTimeAdaptationConfig:
             "max_optimization_time": self.realtime_optimizer.max_iterations,
         }
 
-    def validate_config(self) -> List[str]:
+    def validate_config(self) -> list[str]:
         """Validate configuration and return list of issues."""
-        issues = []
+        issues: list[str] = []
 
         # Check learning rates
         if not 0 < self.feedback_loop.learning_rate <= 0.1:
@@ -248,7 +277,7 @@ class RealTimeAdaptationConfig:
 
         return issues
 
-    def get_adaptation_schedule(self) -> Dict[str, Any]:
+    def get_adaptation_schedule(self) -> AdaptationSchedulePayload:
         """Get adaptation schedule configuration."""
         return {
             "processing_interval": self.streaming_processor.processing_interval,

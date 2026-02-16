@@ -6,9 +6,10 @@ This module provides configuration management for ML-based components.
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
 from ..interfaces.ml_interfaces import MLPredictionModel, OptimizationTarget
+from ztb.types.common import ConfigValue
 
 
 class MLModelType(Enum):
@@ -26,7 +27,7 @@ class MLModelConfig:
 
     model_type: MLPredictionModel
     framework: MLModelType
-    hyperparameters: Dict[str, Any] = field(default_factory=dict)
+    hyperparameters: dict[str, ConfigValue] = field(default_factory=dict)
     feature_selection: bool = True
     cross_validation_folds: int = 5
     train_test_split: float = 0.2
@@ -44,7 +45,7 @@ class PatternOptimizerConfig:
     max_training_samples: int = 10000
     feature_importance_threshold: float = 0.01
     advanced_features: bool = True  # Enable advanced ML features
-    model_types: List[MLPredictionModel] = field(
+    model_types: list[MLPredictionModel] = field(
         default_factory=lambda: [
             MLPredictionModel.RANDOM_FOREST,
             MLPredictionModel.GRADIENT_BOOSTING,
@@ -56,7 +57,7 @@ class PatternOptimizerConfig:
     gradient_boosting_estimators: int = 100
     gradient_boosting_learning_rate: float = 0.1
     gradient_boosting_max_depth: int = 6
-    models: List[MLModelConfig] = field(
+    models: list[MLModelConfig] = field(
         default_factory=lambda: [
             MLModelConfig(
                 model_type=MLPredictionModel.RANDOM_FOREST,
@@ -107,7 +108,7 @@ class EnsemblePredictorConfig:
 
     enabled: bool = True
     ensemble_method: str = "weighted_average"  # weighted_average, stacking, blending
-    base_models: List[MLModelConfig] = field(
+    base_models: list[MLModelConfig] = field(
         default_factory=lambda: [
             MLModelConfig(MLPredictionModel.LINEAR_REGRESSION, MLModelType.SKLEARN),
             MLModelConfig(MLPredictionModel.RANDOM_FOREST, MLModelType.SKLEARN),
@@ -133,7 +134,7 @@ class FeatureEngineeringConfig:
     polynomial_degree: int = 2
     add_time_features: bool = True
     add_statistical_features: bool = True
-    rolling_windows: List[int] = field(default_factory=lambda: [5, 10, 20, 50])
+    rolling_windows: list[int] = field(default_factory=lambda: [5, 10, 20, 50])
 
 
 @dataclass
@@ -171,9 +172,9 @@ class MLIntegrationConfig:
                 framework=MLModelType.SKLEARN,
             )
 
-    def get_model_configs(self) -> Dict[str, MLModelConfig]:
+    def get_model_configs(self) -> dict[str, MLModelConfig]:
         """Get all model configurations in a dictionary."""
-        configs = {}
+        configs: dict[str, MLModelConfig] = {}
 
         # Pattern optimizer models
         for i, model in enumerate(self.pattern_optimizer.models):
@@ -188,9 +189,9 @@ class MLIntegrationConfig:
 
         return configs
 
-    def validate_config(self) -> List[str]:
+    def validate_config(self) -> list[str]:
         """Validate configuration and return list of issues."""
-        issues = []
+        issues: list[str] = []
 
         # Check memory limits
         if self.max_memory_usage < 256:

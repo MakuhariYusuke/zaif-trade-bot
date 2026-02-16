@@ -5,9 +5,48 @@ This module provides configuration management for portfolio-level optimization.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Optional, TypedDict
 
 from ..interfaces.portfolio_interfaces import AllocationStrategy, RiskMeasure
+
+
+class StressTestScenario(TypedDict, total=False):
+    """Stress-test scenario payload."""
+
+    name: str
+    shock: float
+    volatility_multiplier: float
+    correlation_increase: float
+
+
+class AllocationConstraintsPayload(TypedDict):
+    """Allocation constraints summary."""
+
+    max_weight: float
+    min_weight: float
+    max_total: float
+    min_total: float
+    max_strategies: int
+    sector_limits: dict[str, float]
+    region_limits: dict[str, float]
+
+
+class RiskLimitsPayload(TypedDict):
+    """Risk limit summary."""
+
+    max_portfolio_risk: float
+    risk_measure: str
+    confidence_level: float
+    risk_horizon: int
+
+
+class OptimizationSchedulePayload(TypedDict):
+    """Optimization schedule summary."""
+
+    rebalance_frequency: int
+    optimization_frequency: int
+    correlation_update_frequency: int
+    backtest_window: int
 
 
 @dataclass
@@ -24,10 +63,10 @@ class StrategyAllocatorConfig:
     target_return: Optional[float] = None
     max_strategies: int = 10
     advanced_features: bool = True  # Enable advanced portfolio features
-    min_allocation: Dict[str, float] = field(
+    min_allocation: dict[str, float] = field(
         default_factory=dict
     )  # Strategy-specific minimum allocations
-    max_allocation: Dict[str, float] = field(
+    max_allocation: dict[str, float] = field(
         default_factory=dict
     )  # Strategy-specific maximum allocations
 
@@ -94,7 +133,7 @@ class PortfolioRiskManagerConfig:
     risk_horizon: int = 1  # Days
     confidence_level: float = 0.95
     max_portfolio_risk: float = 0.02  # 2% max risk
-    stress_test_scenarios: List[Dict[str, Any]] = field(
+    stress_test_scenarios: list[StressTestScenario] = field(
         default_factory=lambda: [
             {"name": "market_crash", "shock": -0.1},
             {"name": "high_volatility", "volatility_multiplier": 2.0},
@@ -112,8 +151,8 @@ class PortfolioConstraints:
     max_total_weight: float = 1.0
     min_total_weight: float = 0.8
     max_strategies: int = 10
-    sector_constraints: Dict[str, float] = field(default_factory=dict)
-    region_constraints: Dict[str, float] = field(default_factory=dict)
+    sector_constraints: dict[str, float] = field(default_factory=dict)
+    region_constraints: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass
@@ -153,7 +192,7 @@ class PortfolioOptimizationConfig:
                 "oscillator_based": 0.3,
             }
 
-    def get_allocation_constraints(self) -> Dict[str, Any]:
+    def get_allocation_constraints(self) -> AllocationConstraintsPayload:
         """Get allocation constraints as dictionary."""
         return {
             "max_weight": self.constraints.max_weight_per_strategy,
@@ -165,7 +204,7 @@ class PortfolioOptimizationConfig:
             "region_limits": self.constraints.region_constraints,
         }
 
-    def get_risk_limits(self) -> Dict[str, Any]:
+    def get_risk_limits(self) -> RiskLimitsPayload:
         """Get risk limits as dictionary."""
         return {
             "max_portfolio_risk": self.risk_manager.max_portfolio_risk,
@@ -174,9 +213,9 @@ class PortfolioOptimizationConfig:
             "risk_horizon": self.risk_manager.risk_horizon,
         }
 
-    def validate_config(self) -> List[str]:
+    def validate_config(self) -> list[str]:
         """Validate configuration and return list of issues."""
-        issues = []
+        issues: list[str] = []
 
         # Check allocation constraints
         if (
@@ -206,7 +245,7 @@ class PortfolioOptimizationConfig:
 
         return issues
 
-    def get_optimization_schedule(self) -> Dict[str, Any]:
+    def get_optimization_schedule(self) -> OptimizationSchedulePayload:
         """Get optimization schedule configuration."""
         return {
             "rebalance_frequency": self.strategy_allocator.rebalance_frequency,

@@ -14,7 +14,13 @@ import pandas as pd
 
 from ztb.types.common import ConfigSection, ObjectMap
 
-from .base import CandlestickPatternRecognizer, MultiTimeframeData, SignalMetadata, SignalResult
+from .base import (
+    CandlestickPatternRecognizer,
+    MultiTimeframeData,
+    PatternRecognizer,
+    SignalMetadata,
+    SignalResult,
+)
 
 
 class FibonacciRetracementMatch(TypedDict):
@@ -75,8 +81,36 @@ class FibonacciAnalyzer:
         return levels
 
     @staticmethod
-    def calculate_deviation_from_ideal(actual_ratio: float, target_level: float) -> float:
-        """Calculate deviation from ideal Fibonacci level."""
+    def calculate_deviation_from_ideal(
+        actual_ratio: float,
+        target_level: float | dict[float, float],
+    ) -> float | dict[str, float]:
+        """
+        Calculate deviation from ideal Fibonacci level.
+
+        Backward compatibility:
+        - `(actual_ratio: float, target_level: float) -> float`
+        - `(current_price: float, levels: dict[float, float]) -> dict[...]`
+        """
+        if isinstance(target_level, dict):
+            if not target_level:
+                return {"level": 0.0, "deviation_pct": 0.0, "ideal_price": actual_ratio}
+
+            closest_level, ideal_price = min(
+                target_level.items(),
+                key=lambda item: abs(actual_ratio - item[1]),
+            )
+            if ideal_price == 0:
+                deviation_pct = 0.0
+            else:
+                deviation_pct = abs(actual_ratio - ideal_price) / abs(ideal_price) * 100.0
+
+            return {
+                "level": float(closest_level),
+                "deviation_pct": float(deviation_pct),
+                "ideal_price": float(ideal_price),
+            }
+
         deviation = abs(actual_ratio - target_level)
         tolerance = 0.02  # 2% tolerance for major levels
 
@@ -106,15 +140,17 @@ class FibonacciAnalyzer:
                 if isinstance(direct_value, (int, float)):
                     higher_tf_trend = float(direct_value)
                 else:
-                    # Fallback: infer from first timeframe payload containing dataframe.
-                    for payload in multi_timeframe_data.values():
-                        if isinstance(payload, dict) and "data" in payload:
-                            tf_df = payload["data"]
-                            if isinstance(tf_df, pd.DataFrame) and len(tf_df) > 1:
-                                prev_close = float(tf_df.iloc[-2]["close"])
-                                curr_close = float(tf_df.iloc[-1]["close"])
-                                higher_tf_trend = curr_close - prev_close
-                                break
+                    # Fallback: infer from the first available MTF dataframe payload.
+                    for tf_df in PatternRecognizer.iter_multi_timeframe_frames(
+                        multi_timeframe_data,
+                        min_length=2,
+                    ):
+                        if "close" not in tf_df.columns:
+                            continue
+                        prev_close = float(tf_df.iloc[-2]["close"])
+                        curr_close = float(tf_df.iloc[-1]["close"])
+                        higher_tf_trend = curr_close - prev_close
+                        break
 
             if abs(higher_tf_trend) > 0.5:
                 deviation = abs(actual_ratio - target_level)
@@ -132,9 +168,10 @@ class FibonacciAnalyzer:
         actual_ratio: float, target_level: float, level_significance: float
     ) -> float:
         """Calculate overall Fibonacci pattern strength."""
-        deviation_score = FibonacciAnalyzer.calculate_deviation_from_ideal(
+        deviation_result = FibonacciAnalyzer.calculate_deviation_from_ideal(
             actual_ratio, target_level
         )
+        deviation_score = float(deviation_result) if isinstance(deviation_result, (int, float)) else 0.0
         strength = level_significance * (1.0 - deviation_score * 0.5)
         return max(0.0, min(1.0, strength))
 
