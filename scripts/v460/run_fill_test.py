@@ -940,12 +940,15 @@ class FillTestRunner:
             logger.warning(f"[startup] Stale order check failed (non-fatal): {e}")
         return cancelled_count
 
-    async def run_single_cycle(self) -> FillRecord:
+    async def run_single_cycle(
+        self, side_override: str | None = None,
+    ) -> FillRecord:
         """1 サイクル: 発注 → 監視 → 結果記録.
 
         009# §4.2 の流れに準拠.
         041# 時間帯フィルター・残高チェック追加.
         055# Fix: side 決定前に最新 imbalance を取得.
+        074# Fix: side_override で run_continuous() が決定した side を強制適用.
         """
         self._cycle_count += 1
         cycle_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
@@ -964,7 +967,11 @@ class FillTestRunner:
                 logger.warning(f"[smart_side] Pre-fetch imbalance failed, using last: {e}")
                 # フォールバック: 前回値を維持
 
-        side = self._next_side()
+        # 074# Fix: side_override があればそれを使い、_next_side() 二重呼出を防止
+        if side_override is not None:
+            side = side_override
+        else:
+            side = self._next_side()
         # 054# S2: 連続同 side カウンタ更新
         if side == self._last_side:
             self._consecutive_same_side += 1
@@ -1598,7 +1605,7 @@ class FillTestRunner:
 
             # --- サイクル実行 ---
             try:
-                record = await self.run_single_cycle()
+                record = await self.run_single_cycle(side_override=next_side)
             except KeyboardInterrupt:
                 logger.info("KeyboardInterrupt — stopping gracefully")
                 self._shutdown_requested = True
