@@ -577,6 +577,22 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 11. `pattern_recognition` 配下 `any_type_debt_tokens` を `13 -> 0` に削減。repo 全体 `any_type_debt_tokens` を `2,873 -> 2,858` に削減。  
 12. 回帰確認: `test_bollinger_adx_recognizers` (17 pass), `test_new_recognizers` (12 pass), `test_hierarchical_trend_analyzer` (3 pass, 新規), `test_ichimoku_recognizer` (2 pass), `test_enhanced_recognizers` (1 pass)。  
 
+### Step54: 残タスク水平展開（`multi_timeframe_analyzer` + base/oscillator 重複削減）
+
+1. `pattern_recognition/base.py` に `PatternRecognizer.iter_multi_timeframe_frames()` を追加し、MTF payload から dataframe を抽出する重複ロジックを共通化。  
+2. `base.py` の `_analyze_multi_timeframe_alignment()` で `index<=0` 時に前足参照が末尾へ回り込む境界不具合を修正（neutral return へ変更）。  
+3. 同メソッドの trend 判定を 3値化（up/down/flat）し、flat な時間足を無理に逆張り扱いする誤差を抑制。  
+4. `base.py` の `_adjust_thresholds_for_regime()` を共通ヘルパベースへ置換し、`for tf in multi_timeframe_data` の重複分岐を削減。  
+5. 同メソッドの trend 強度計算を `np.polyfit` から first-last 比率へ変更し、軽量化。  
+6. `oscillator_patterns.py` からローカル `_iter_multi_timeframe_frames()` を削除し、基底共通ヘルパへ統一（重複削減）。  
+7. `multi_timeframe_analyzer.py` に回帰傾きキャッシュ（LRU）を導入し、`_calculate_trend_strength()` の反復 `np.polyfit` を削減。  
+8. `multi_timeframe_analyzer.py` の primary timeframe 参照を安全化し、`primary` が存在しても `data` 欠落時に `KeyError`/`TypeError` へ落ちる経路を解消。  
+9. `_calculate_level_consensus()` の多数決 tie を neutral 扱いへ修正し、同数拮抗時に bearish へ偏る既存挙動を解消。  
+10. `_is_consolidation()` の `avg_price=0` 0除算ガードを追加。  
+11. 新規テスト `test_pattern_multi_timeframe_analyzer.py` を追加（共通ヘルパ抽出、tie consensus、primary欠落、0価格ガード）。  
+12. `Any` 負債は維持（`pattern_recognition any_type_debt_tokens=0`, repo 全体 `any_type_debt_tokens=2,858`）。  
+13. 回帰確認: `test_pattern_multi_timeframe_analyzer` (4 pass), `test_bollinger_adx_recognizers + test_new_recognizers + test_hierarchical_trend_analyzer` (32 pass)。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -634,6 +650,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step51時点 | repo全体 | 2,873 |
 | Step52時点 | repo全体 | 2,873 |
 | Step53時点 | repo全体 | 2,858 |
+| Step54時点 | repo全体 | 2,858 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |

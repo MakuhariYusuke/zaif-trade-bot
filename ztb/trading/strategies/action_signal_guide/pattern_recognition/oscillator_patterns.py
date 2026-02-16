@@ -36,25 +36,6 @@ from ..types import PatternConfig
 from .base import MultiTimeframeData, PatternRecognizer, RegimeAdjustment, SignalResult
 
 
-def _iter_multi_timeframe_frames(
-    multi_timeframe_data: Optional[MultiTimeframeData],
-    *,
-    min_length: int = 20,
-) -> list[pd.DataFrame]:
-    """Yield valid timeframe DataFrames from multi-timeframe payloads."""
-    if not multi_timeframe_data:
-        return []
-
-    frames: list[pd.DataFrame] = []
-    for tf_data in multi_timeframe_data.values():
-        if not isinstance(tf_data, dict):
-            continue
-        tf_df = tf_data.get("data")
-        if isinstance(tf_df, pd.DataFrame) and len(tf_df) > min_length:
-            frames.append(tf_df)
-    return frames
-
-
 def _coerce_level(value: object, default: float) -> float:
     """Safely coerce threshold level values into float."""
     try:
@@ -245,7 +226,7 @@ class CCIRecognizer(PatternRecognizer):
             aligned_timeframes = 0
 
             # Check alignment with higher timeframes
-            for tf_df in _iter_multi_timeframe_frames(multi_timeframe_data):
+            for tf_df in PatternRecognizer.iter_multi_timeframe_frames(multi_timeframe_data, min_length=21):
                 try:
                     tf_cci = compute_cci(tf_df)
                     if len(tf_cci) > 0:
@@ -296,7 +277,7 @@ class CCIRecognizer(PatternRecognizer):
             if multi_timeframe_data:
                 volatility_indicators = []
 
-                for tf_df in _iter_multi_timeframe_frames(multi_timeframe_data):
+                for tf_df in PatternRecognizer.iter_multi_timeframe_frames(multi_timeframe_data, min_length=21):
                     try:
                         # Calculate ATR as volatility proxy
                         high_low = tf_df["high"] - tf_df["low"]
@@ -532,7 +513,7 @@ class StochasticRecognizer(PatternRecognizer):
             aligned_timeframes = 0
 
             # Check alignment with higher timeframes
-            for tf_df in _iter_multi_timeframe_frames(multi_timeframe_data):
+            for tf_df in PatternRecognizer.iter_multi_timeframe_frames(multi_timeframe_data, min_length=21):
                 try:
                     tf_stoch = compute_stochastic(tf_df)
                     if len(tf_stoch) > 0:
@@ -590,7 +571,7 @@ class StochasticRecognizer(PatternRecognizer):
             if multi_timeframe_data:
                 trend_indicators = []
 
-                for tf_df in _iter_multi_timeframe_frames(multi_timeframe_data):
+                for tf_df in PatternRecognizer.iter_multi_timeframe_frames(multi_timeframe_data, min_length=21):
                     try:
                         # Calculate trend strength using moving averages
                         sma_20 = tf_df["close"].rolling(20).mean()
@@ -789,7 +770,7 @@ class WilliamsRRecognizer(PatternRecognizer):
             aligned_timeframes = 0
 
             # Check alignment with higher timeframes
-            for tf_df in _iter_multi_timeframe_frames(multi_timeframe_data):
+            for tf_df in PatternRecognizer.iter_multi_timeframe_frames(multi_timeframe_data, min_length=21):
                 try:
                     tf_wr = compute_williams_r(tf_df)
                     if len(tf_wr) > 0:
@@ -846,7 +827,7 @@ class WilliamsRRecognizer(PatternRecognizer):
             if multi_timeframe_data:
                 momentum_indicators = []
 
-                for tf_df in _iter_multi_timeframe_frames(multi_timeframe_data):
+                for tf_df in PatternRecognizer.iter_multi_timeframe_frames(multi_timeframe_data, min_length=21):
                     try:
                         # Calculate momentum using ROC (Rate of Change)
                         roc = (
@@ -1043,7 +1024,7 @@ class MFIRecognizer(PatternRecognizer):
             aligned_timeframes = 0
 
             # Check alignment with higher timeframes
-            for tf_df in _iter_multi_timeframe_frames(multi_timeframe_data):
+            for tf_df in PatternRecognizer.iter_multi_timeframe_frames(multi_timeframe_data, min_length=21):
                 try:
                     tf_mfi = compute_mfi(tf_df)
                     if len(tf_mfi) > 0:
@@ -1100,7 +1081,7 @@ class MFIRecognizer(PatternRecognizer):
             if multi_timeframe_data:
                 volume_indicators = []
 
-                for tf_df in _iter_multi_timeframe_frames(multi_timeframe_data):
+                for tf_df in PatternRecognizer.iter_multi_timeframe_frames(multi_timeframe_data, min_length=21):
                     try:
                         # Calculate volume relative strength
                         avg_volume = tf_df["volume"].rolling(20).mean()

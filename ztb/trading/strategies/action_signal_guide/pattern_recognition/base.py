@@ -571,6 +571,25 @@ class PatternRecognizer(ABC):
                     f"Multi-timeframe payload must be dict for {self.name}, got {type(tf_payload).__name__}"
                 )
 
+    @staticmethod
+    def iter_multi_timeframe_frames(
+        multi_timeframe_data: Optional[MultiTimeframeData],
+        *,
+        min_length: int = 1,
+    ) -> list[pd.DataFrame]:
+        """Extract valid timeframe DataFrames from multi-timeframe payloads."""
+        if not isinstance(multi_timeframe_data, dict):
+            return []
+
+        frames: list[pd.DataFrame] = []
+        for tf_payload in multi_timeframe_data.values():
+            if not isinstance(tf_payload, dict):
+                continue
+            tf_df = tf_payload.get("data")
+            if isinstance(tf_df, pd.DataFrame) and len(tf_df) >= max(1, min_length):
+                frames.append(tf_df)
+        return frames
+
     def preprocess_data(
         self,
         data: pd.DataFrame,
@@ -645,34 +664,55 @@ class PatternRecognizer(ABC):
             Confidence multiplier based on timeframe alignment (0.5-1.5)
         """
         try:
+            if index <= 0 or index >= len(data):
+                return 1.0
+
+            if "close" not in data.columns:
+                return 1.0
+
             alignment_score = 1.0
-            aligned_timeframes = 0
+            compared_timeframes = 0
+
+            current_close = float(data.iloc[index]["close"])
+            prev_close = float(data.iloc[index - 1]["close"])
+            if current_close > prev_close:
+                current_trend = 1
+            elif current_close < prev_close:
+                current_trend = -1
+            else:
+                current_trend = 0
+
+            if current_trend == 0:
+                return 1.0
 
             # Check alignment with higher timeframes
-            for tf, tf_data in multi_timeframe_data.items():
-                if isinstance(tf_data, dict) and "data" in tf_data:
-                    tf_df = tf_data["data"]
-                    if len(tf_df) > 10:  # Minimum data requirement
-                        try:
-                            # Basic alignment check using price direction
-                            current_close = data.iloc[index]["close"]
-                            prev_close = data.iloc[index - 1]["close"]
-                            current_trend = 1 if current_close > prev_close else -1
-                            tf_current_close = tf_df.iloc[-1]["close"]
-                            tf_prev_close = tf_df.iloc[-2]["close"]
-                            tf_trend = 1 if tf_current_close > tf_prev_close else -1
+            for tf_df in self.iter_multi_timeframe_frames(multi_timeframe_data, min_length=2):
+                if "close" not in tf_df.columns:
+                    continue
+                try:
+                    tf_current_close = float(tf_df.iloc[-1]["close"])
+                    tf_prev_close = float(tf_df.iloc[-2]["close"])
+                    if tf_current_close > tf_prev_close:
+                        tf_trend = 1
+                    elif tf_current_close < tf_prev_close:
+                        tf_trend = -1
+                    else:
+                        tf_trend = 0
 
-                            if current_trend == tf_trend:
-                                alignment_score += 0.1
-                                aligned_timeframes += 1
-                            else:
-                                alignment_score -= 0.05
+                    if tf_trend == 0:
+                        continue
 
-                        except Exception:
-                            continue
+                    compared_timeframes += 1
+                    if current_trend == tf_trend:
+                        alignment_score += 0.1
+                    else:
+                        alignment_score -= 0.05
+
+                except Exception:
+                    continue
 
             # Normalize alignment score
-            if aligned_timeframes > 0:
+            if compared_timeframes > 0:
                 alignment_score = max(0.5, min(1.5, alignment_score))
 
             return alignment_score
@@ -707,42 +747,46 @@ class PatternRecognizer(ABC):
                 volatility_indicators = []
                 trend_indicators = []
 
-                for tf, tf_data in multi_timeframe_data.items():
-                    if isinstance(tf_data, dict) and "data" in tf_data:
-                        tf_df = tf_data["data"]
-                        if len(tf_df) > 20:
-                            try:
-                                # Calculate volatility (ATR proxy)
-                                high_low = tf_df["high"] - tf_df["low"]
-                                high_close = (
-                                    tf_df["high"] - tf_df["close"].shift(1)
-                                ).abs()
-                                low_close = (
-                                    tf_df["low"] - tf_df["close"].shift(1)
-                                ).abs()
-                                tr = pd.concat(
-                                    [high_low, high_close, low_close], axis=1
-                                ).max(axis=1)
-                                atr = tr.rolling(14).mean()
+                for tf_df in self.iter_multi_timeframe_frames(
+                    multi_timeframe_data, min_length=20
+                ):
+                    if not {"high", "low", "close"}.issubset(tf_df.columns):
+                        continue
+                    try:
+                        # Calculate volatility (ATR proxy)
+                        high_low = tf_df["high"] - tf_df["low"]
+                        high_close = (
+                            tf_df["high"] - tf_df["close"].shift(1)
+                        ).abs()
+                        low_close = (
+                            tf_df["low"] - tf_df["close"].shift(1)
+                        ).abs()
+                        tr = pd.concat(
+                            [high_low, high_close, low_close], axis=1
+                        ).max(axis=1)
+                        atr = tr.rolling(14).mean()
 
-                                if len(atr) > 0:
-                                    current_atr = atr.iloc[-1]
-                                    avg_price = tf_df["close"].iloc[-1]
-                                    volatility = (
-                                        current_atr / avg_price if avg_price > 0 else 0
-                                    )
-                                    volatility_indicators.append(volatility)
+                        if len(atr) > 0:
+                            current_atr = float(atr.iloc[-1]) if pd.notna(atr.iloc[-1]) else 0.0
+                            avg_price = float(tf_df["close"].iloc[-1])
+                            volatility = (
+                                current_atr / avg_price if avg_price > 0 else 0.0
+                            )
+                            volatility_indicators.append(volatility)
 
-                                # Calculate trend strength
-                                recent_prices = tf_df["close"].tail(20).values
-                                if len(recent_prices) >= 10:
-                                    x = np.arange(len(recent_prices))
-                                    slope, _ = np.polyfit(x, recent_prices, 1)
-                                    trend_strength = abs(slope) / np.mean(recent_prices)
-                                    trend_indicators.append(trend_strength)
+                        # Calculate trend strength (first-last slope proxy)
+                        recent_prices = tf_df["close"].tail(20).to_numpy(dtype=np.float64)
+                        if len(recent_prices) >= 10:
+                            start_price = float(recent_prices[0])
+                            end_price = float(recent_prices[-1])
+                            if start_price != 0.0:
+                                trend_strength = abs(
+                                    (end_price - start_price) / start_price
+                                ) / max(len(recent_prices), 1)
+                                trend_indicators.append(float(trend_strength))
 
-                            except Exception:
-                                continue
+                    except Exception:
+                        continue
 
                 # Calculate average regime indicators
                 avg_volatility = (
