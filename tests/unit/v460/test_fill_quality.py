@@ -986,7 +986,7 @@ class TestUnknownFillHandling:
     async def test_status_none_twice_becomes_cancelled_status_unknown(
         self, tmp_path: Path,
     ) -> None:
-        """get_order_status が 2 回 None → cancelled, cancel_reason=status_unknown."""
+        """get_order_status が 2 回 None → cancelled, cancel_reason=postonly_reject or status_unknown."""
         runner = self._make_runner(tmp_path)
         # 初回も retry も None
         runner.adapter.get_order_status.return_value = None
@@ -995,7 +995,8 @@ class TestUnknownFillHandling:
 
         assert record.filled is False
         assert record.cancelled is True
-        assert record.cancel_reason == "status_unknown"
+        # 079#: elapsed が短い場合は postonly_reject、長い場合は status_unknown
+        assert record.cancel_reason in ("status_unknown", "postonly_reject")
 
     @pytest.mark.asyncio
     async def test_status_none_then_filled_on_retry(

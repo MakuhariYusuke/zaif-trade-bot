@@ -87,10 +87,12 @@ class FillTestConfig:
     min_spread_jpy: float = 0.0  # 0 = フィルタなし
     # 保存
     batch_size: int = 10  # バッチ保存のサイクル数
+    batch_flush_interval_sec: float = 600.0  # 079# 時間ベース定期flush (秒)
     max_save_retries: int = 3  # 保存リトライ上限
     save_fail_threshold: int = 3  # 緊急ダンプ発動の連続失敗回数
     # ログ
     progress_log_interval: int = 50  # 進捗ログの出力間隔 (サイクル数)
+    heartbeat_interval_sec: float = 900.0  # 079# heartbeat 間隔 (秒, time_filter 抑制中)
     log_max_bytes: int = 10 * 1024 * 1024  # ログファイル上限 (10 MB)
     log_backup_count: int = 5  # ログバックアップ世代数
     # 方策 A: パラメータ適応
@@ -186,7 +188,9 @@ class FillTestConfig:
             "max_order_retries", "retry_delay_sec",
             "as_deadzone_bps", "min_spread_jpy",
             "batch_size", "max_save_retries", "save_fail_threshold",
-            "progress_log_interval", "log_max_bytes", "log_backup_count",
+            "batch_flush_interval_sec",
+            "progress_log_interval", "heartbeat_interval_sec",
+            "log_max_bytes", "log_backup_count",
             "min_adapt_samples",
         }
         for key in flat_keys:
@@ -390,6 +394,10 @@ class FillTestRunner:
         self._soft_loss_cap_triggered: bool = False
         # 047# Issue12: time_filter ログ throttle (突入/離脱のみ出力)
         self._in_time_filter: bool = False
+        # 079# heartbeat: time_filter 抑制中のプロセス生存ログ
+        self._last_heartbeat_time: float = 0.0
+        # 079# 時間ベースバッチflush
+        self._last_batch_flush_time: float = time.time()
         # 049# 即約定防御: 次サイクルの offset を一時的に増加
         self._fast_fill_boost_active: bool = False
         # 050# Bug#1 fix: boost 発動前の offset を保存 (解除時に復元)
@@ -1230,11 +1238,15 @@ class FillTestRunner:
                         )
                         break
                     # リトライ後も不明 → 保守的に cancelled 扱い
+                    # 079# post_only 即reject の識別: 発注直後 (< poll_interval × 2) なら
+                    # post_only rejection の可能性が高い
+                    is_likely_postonly_reject = elapsed < self.config.poll_interval_sec * 3
+                    reason = "postonly_reject" if is_likely_postonly_reject else "status_unknown"
                     logger.warning(
                         f"Order {order.order_id} status unknown after retry "
-                        f"— treating as cancelled (status_unknown)"
+                        f"— treating as cancelled ({reason}, elapsed={elapsed:.1f}s)"
                     )
-                    cancel_reason_poll = "status_unknown"
+                    cancel_reason_poll = reason
                     break
                 elif status_order.status == "filled":
                     filled = True
@@ -1530,11 +1542,44 @@ class FillTestRunner:
                     # 両 side ともフィルタ → スリープ
                     if not self._in_time_filter:
                         self._in_time_filter = True
+                        self._last_heartbeat_time = time.time()
                         utc_h = datetime.now(timezone.utc).hour
                         logger.info(
                             f"[time_filter] Entering High-AS zone (UTC {utc_h}h) "
                             f"— both sides filtered, suppressing cycles"
                         )
+                    else:
+                        # 079# heartbeat: 長時間抑制中にプロセス生存を定期ログ
+                        now_ts = time.time()
+                        if now_ts - self._last_heartbeat_time >= self.config.heartbeat_interval_sec:
+                            utc_h = datetime.now(timezone.utc).hour
+                            try:
+                                import psutil  # lazy import
+                                proc = psutil.Process()
+                                mem_mb = proc.memory_info().rss / (1024 * 1024)
+                                mem_info = f"mem={mem_mb:.1f}MB, "
+                            except Exception:
+                                mem_info = ""
+                            logger.info(
+                                f"[heartbeat] Still in time_filter zone "
+                                f"(UTC {utc_h}h), "
+                                f"{mem_info}"
+                                f"unsaved_batch={len(batch)}, "
+                                f"cycles={self._cycle_count}"
+                            )
+                            self._last_heartbeat_time = now_ts
+                        # 079# 時間ベースバッチflush: 抑制中でも定期的に保存
+                        if (
+                            batch
+                            and now_ts - self._last_batch_flush_time
+                            >= self.config.batch_flush_interval_sec
+                        ):
+                            if self._try_save_batch(batch):
+                                batch = []
+                                self._last_batch_flush_time = now_ts
+                                logger.info(
+                                    "[batch_flush] Periodic flush during time_filter"
+                                )
                     await asyncio.sleep(self.config.cycle_interval_sec)
                     continue
                 else:
@@ -1722,7 +1767,21 @@ class FillTestRunner:
             if len(batch) >= batch_size:
                 if self._try_save_batch(batch):
                     batch = []
+                    self._last_batch_flush_time = time.time()
                 # 失敗時: batch は保持 → 次回再試行
+            # 079# 時間ベース定期flush: batch_size 未満でも一定時間経過で保存
+            elif (
+                batch
+                and time.time() - self._last_batch_flush_time
+                >= self.config.batch_flush_interval_sec
+            ):
+                flush_count = len(batch)
+                if self._try_save_batch(batch):
+                    batch = []
+                    self._last_batch_flush_time = time.time()
+                    logger.info(
+                        f"[batch_flush] Periodic flush: {flush_count} records saved"
+                    )
 
             # 進捗ログ
             if self._cycle_count % self.config.progress_log_interval == 0:
