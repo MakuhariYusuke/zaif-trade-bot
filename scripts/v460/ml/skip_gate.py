@@ -111,6 +111,9 @@ class SkipDecision:
     features_used: int
     reason: str = ""
     model_used: str = ""  # 068# §3.2: "primary" or "fallback"
+    # 084# P(AS) 可観測性: 確率と使用閾値を直接記録
+    as_probability: Optional[float] = None   # AS 分類器の P(AS) (0.0-1.0)
+    threshold_used: Optional[float] = None   # 実際に適用された閾値 (side別含む)
 
 
 class SkipGate:
@@ -191,6 +194,8 @@ class SkipGate:
         x_df = pd.DataFrame([x], columns=self.feature_cols)
 
         # 061#: mode に応じた予測・判定
+        as_prob: Optional[float] = None  # 084# P(AS) 直接記録用
+        threshold_used: Optional[float] = None  # 084# 使用閾値記録用
         if self.config.mode == "as":
             # AS 分類器モード: P(AS) を予測
             if self._pipeline is not None:
@@ -199,12 +204,14 @@ class SkipGate:
                 x_scaled = self.scaler.transform(x_df)
                 pred_prob = float(self.model.predict_proba(x_scaled)[0, 1])
             pred_pnl = -pred_prob * 10  # AS確率→疑似PnL (互換表示用)
+            as_prob = pred_prob  # 084# 生の確率を保持
             # 068# §3.3: side 別閾値
             threshold = self.config.as_threshold
             if side == "buy" and self.config.as_threshold_buy is not None:
                 threshold = self.config.as_threshold_buy
             elif side == "sell" and self.config.as_threshold_sell is not None:
                 threshold = self.config.as_threshold_sell
+            threshold_used = threshold  # 084# side別解決後の閾値
             should_skip = pred_prob >= threshold
         else:
             # PnL 回帰モード (既存)
@@ -213,6 +220,7 @@ class SkipGate:
             else:
                 x_scaled = self.scaler.transform(x_df)
                 pred_pnl = float(self.model.predict(x_scaled)[0])
+            threshold_used = self.config.threshold_bps
             should_skip = pred_pnl < self.config.threshold_bps
 
         # 連続スキップ率チェック — 059# P0-2: 最終決定を記録
@@ -239,6 +247,8 @@ class SkipGate:
             features_used=n_used,
             reason=reason,
             model_used="primary",
+            as_probability=as_prob,
+            threshold_used=threshold_used,
         )
 
     def save(self, path: Optional[Path] = None) -> Path:

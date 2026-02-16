@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 import time
@@ -43,14 +44,35 @@ RESULTS_DIR = _PROJECT_ROOT / "results" / "v460" / "fill_test"
 ARTIFACT_DIR = _PROJECT_ROOT / "results" / "v460" / "verification_077"
 
 
-def load_clean_filled() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]:
+def load_clean_filled(
+    *,
+    run_ids: list[str] | None = None,
+    git_shas: list[str] | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]:
     """clean/quarantine 分離済みの filled records を返す.
+
+    Args:
+        run_ids: 指定時はこれらの run_id のレコードのみ使用 (084# 追加).
+        git_shas: 指定時はこれらの git_sha (前方一致) のレコードのみ使用.
 
     Returns:
         (clean_all_df, clean_filled_df, quarantine_df, stats_dict)
         clean_all_df には filled=False (cancelled含む) も含む.
     """
     all_records = load_fill_records_glob(RESULTS_DIR)
+
+    # 084# run_id / git_sha フィルタ
+    if run_ids:
+        _ids = set(run_ids)
+        all_records = [r for r in all_records if getattr(r, "run_id", None) in _ids]
+        print(f"  [filter] run_id={run_ids} → {len(all_records)} records")
+    if git_shas:
+        def _sha_match(rec: FillRecord) -> bool:
+            sha = getattr(rec, "git_sha", None) or ""
+            return any(sha.startswith(g) for g in git_shas)
+        all_records = [r for r in all_records if _sha_match(r)]
+        print(f"  [filter] git_sha={git_shas} → {len(all_records)} records")
+
     clean, quarantine = filter_clean_records(all_records, require_git_sha=True)
 
     def to_df(recs: list[FillRecord]) -> pd.DataFrame:
@@ -1158,13 +1180,31 @@ def save_artifact(all_results: dict) -> Path:
 
 
 def main() -> None:
+    # 084# CLI フィルタ対応
+    parser = argparse.ArgumentParser(description="075# ph2 検証")
+    parser.add_argument(
+        "--run-id", nargs="+", default=None,
+        help="対象 run_id を指定 (複数可). 例: --run-id run1 run2",
+    )
+    parser.add_argument(
+        "--git-sha", nargs="+", default=None,
+        help="対象 git_sha を前方一致で指定. 例: --git-sha abc1234",
+    )
+    args = parser.parse_args()
+
     print("=" * 70)
     print("075# ph2 検証: レビュー指摘対応 + 50K ステップ Monte Carlo")
     print("=" * 70)
+    if args.run_id:
+        print(f"  フィルタ: run_id = {args.run_id}")
+    if args.git_sha:
+        print(f"  フィルタ: git_sha = {args.git_sha}")
     print()
 
     # データロード (CRITICAL#2: clean/quarantine 分離)
-    clean_all, clean_filled, quarantine_df, data_stats = load_clean_filled()
+    clean_all, clean_filled, quarantine_df, data_stats = load_clean_filled(
+        run_ids=args.run_id, git_shas=args.git_sha,
+    )
 
     if len(clean_filled) == 0:
         print("ERROR: No clean filled records found.")

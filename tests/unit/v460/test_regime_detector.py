@@ -857,7 +857,9 @@ class TestBug10InsufficientFundsNoRetry:
         from scripts.v460.run_fill_test import FillTestRunner
 
         source = inspect.getsource(FillTestRunner.run_single_cycle)
-        assert 'cancel_reason == "insufficient_funds"' in source
+        # 084# 改修: 非リトライ対象をセットで管理
+        assert '"insufficient_funds"' in source
+        assert "not retriable" in source.lower() or "_non_retriable" in source
         assert "break" in source
 
     def test_cancel_reason_classification(self) -> None:

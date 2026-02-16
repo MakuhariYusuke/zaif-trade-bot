@@ -81,15 +81,16 @@ class TestComputeAdaptation:
         assert result.new_offset == pytest.approx(0.04)
         assert result.changed
 
-    def test_both_abnormal_as_priority(self) -> None:
-        """fill_rate 低 + AS 高 → AS 回避優先で decrease."""
+    def test_both_abnormal_hold_deadlock_prevention(self) -> None:
+        """fill_rate 低 + AS 高 → デッドロック防止で hold (084# 修正)."""
         config = self._make_config(current=0.05)
         result = compute_adaptation(
             fill_rate=0.70, as_ratio=0.25, sample_count=100, config=config,
         )
-        assert result.action == "decrease"
-        assert result.new_offset == pytest.approx(0.04)
-        assert "AS 回避優先" in result.reason
+        assert result.action == "hold"
+        assert result.new_offset == pytest.approx(0.05)  # 変更なし
+        assert "デッドロック防止" in result.reason
+        assert not result.changed
 
     def test_clamp_min(self) -> None:
         """offset がハードリミット下限に達する."""

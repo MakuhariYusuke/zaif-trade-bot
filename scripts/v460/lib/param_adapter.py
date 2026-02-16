@@ -102,16 +102,17 @@ def compute_adaptation(
     high_as = as_ratio > config.max_as_ratio
 
     if high_as and low_fill:
-        # 両方異常 → AS 回避を優先 (損失抑制 > 約定率向上)
-        new = max(config.min_offset_ratio, current - config.step_ratio)
+        # 084# 修正: 両方異常 → hold (デッドロック防止)
+        # 旧ロジック: AS 回避優先で offset 縮小 → fill rate さらに低下 → 負のスパイラル
+        # 新ロジック: 縮小も増加もせず hold — 別の対策 (time_filter, SkipGate) に委ねる
         return AdaptationResult(
             previous_offset=current,
-            new_offset=new,
-            action="decrease",
+            new_offset=current,
+            action="hold",
             reason=(
                 f"AS 超過 ({as_ratio:.1%} > {config.max_as_ratio:.0%}) "
                 f"& fill_rate 低下 ({fill_rate:.1%} < {config.min_fill_rate:.0%}) "
-                f"→ AS 回避優先で offset 縮小"
+                f"→ デッドロック防止のため hold (084#)"
             ),
             fill_rate=fill_rate,
             as_ratio=as_ratio,

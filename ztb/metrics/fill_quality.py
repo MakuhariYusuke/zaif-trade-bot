@@ -82,6 +82,9 @@ class FillRecord:
     ob_quality_ok: Optional[bool] = None          # OB 特徴量が品質基準を満たしたか
     ob_age_ms: Optional[float] = None             # OB 取得からの経過ミリ秒
     skip_gate_model_used: Optional[str] = None    # "primary" or "fallback"
+    # 084# SkipGate 可観測性改善: P(AS) と使用閾値を直接記録
+    skip_gate_as_prob: Optional[float] = None     # AS 確率 (0.0-1.0), mode="as" 時のみ
+    skip_gate_threshold_used: Optional[float] = None  # 実際に適用された閾値 (side別解決後)
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

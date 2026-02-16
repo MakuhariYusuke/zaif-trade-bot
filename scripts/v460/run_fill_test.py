@@ -79,8 +79,8 @@ class FillTestConfig:
     spread_offset_ratio: float = 0.05  # 031# 0.2→0.05: AS低減のため保守化
     min_offset_jpy: float = 1.0  # 最小オフセット (JPY)
     # CM-2: 注文失敗リトライ
-    max_order_retries: int = 1  # 失敗時のリトライ回数
-    retry_delay_sec: float = 2.0  # リトライ間隔
+    max_order_retries: int = 2  # 084# 1→2: api_error 28% 対策 (計3回試行)
+    retry_delay_sec: float = 2.0  # リトライ初回間隔 (指数バックオフ適用)
     # CM-3: AS 判定デッドゾーン (bps)
     as_deadzone_bps: float = 0.5  # ±0.5 bps 以内の逆行は AS と判定しない
     # 031# スプレッドフィルター
@@ -1014,6 +1014,9 @@ class FillTestRunner:
         skip_gate_score: Optional[float] = None
         skip_gate_reason: Optional[str] = None
         skip_gate_model_used: Optional[str] = None
+        # 084# P(AS) 可観測性改善
+        skip_gate_as_prob: Optional[float] = None
+        skip_gate_threshold_used: Optional[float] = None
         if self._skip_gate is not None:
             try:
                 from scripts.v460.ml.skip_gate import build_features_from_market_state
@@ -1088,6 +1091,9 @@ class FillTestRunner:
                 skip_gate_score = decision.predicted_pnl_bps
                 skip_gate_reason = decision.reason
                 skip_gate_model_used = decision.model_used
+                # 084# P(AS) と閾値を直接記録
+                skip_gate_as_prob = decision.as_probability
+                skip_gate_threshold_used = decision.threshold_used
 
                 if decision.should_skip:
                     logger.info(
@@ -1109,6 +1115,8 @@ class FillTestRunner:
                         skip_gate_score=skip_gate_score,
                         skip_gate_reason=skip_gate_reason,
                         skip_gate_model_used=skip_gate_model_used,
+                        skip_gate_as_prob=skip_gate_as_prob,
+                        skip_gate_threshold_used=skip_gate_threshold_used,
                         orderbook_imbalance=self._last_imbalance if self.config.imbalance_enabled else None,
                         bid_depth_total=self._last_bid_depth if self.config.imbalance_enabled else None,
                         ask_depth_total=self._last_ask_depth if self.config.imbalance_enabled else None,
@@ -1168,15 +1176,24 @@ class FillTestRunner:
                 )
 
                 # 046# Bug10: 残高不足はリトライ不要 (2s 待っても残高は回復しない)
-                if cancel_reason == "insufficient_funds":
+                # 084# post_only_reject もリトライ不要 (価格がスプレッド交差済み)
+                _non_retriable = {"insufficient_funds", "post_only_reject", "minimum_size"}
+                if cancel_reason in _non_retriable:
                     logger.info(
                         f"[Bug10] Skipping retry — {cancel_reason} is not retriable"
                     )
                     break
 
                 if attempt < self.config.max_order_retries:
-                    # リトライ: 板を再取得してより保守的な価格で再発注
-                    await asyncio.sleep(self.config.retry_delay_sec)
+                    # 084# 指数バックオフ: 2s → 4s → 8s (rate-limit 緩和)
+                    _backoff = self.config.retry_delay_sec * (2 ** attempt)
+                    # rate-limit 検出時はさらに延長
+                    if "rate" in err_lower or "limit" in err_lower or "too many" in err_lower:
+                        _backoff = max(_backoff, 5.0)
+                        logger.warning(f"Rate-limit detected, extended backoff: {_backoff:.1f}s")
+                    else:
+                        logger.info(f"Retry backoff: {_backoff:.1f}s")
+                    await asyncio.sleep(_backoff)
                     try:
                         ob = await self.adapter.get_orderbook(self.config.symbol, depth=1)
                         if ob.bids and ob.asks:
@@ -1465,6 +1482,9 @@ class FillTestRunner:
             skip_gate_score=skip_gate_score,
             skip_gate_reason=skip_gate_reason,
             skip_gate_model_used=skip_gate_model_used,
+            # 084# P(AS) 可観測性改善
+            skip_gate_as_prob=skip_gate_as_prob,
+            skip_gate_threshold_used=skip_gate_threshold_used,
         )
 
         logger.info(

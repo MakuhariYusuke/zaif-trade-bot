@@ -251,6 +251,15 @@ def print_report(
     # 補足統計
     print("\n📈 補足統計:")
     print("-" * 50)
+
+    # 084# AS_raw vs AS_deadzone 並行表示
+    if metrics.as_coverage > 0:
+        print(f"  AS(deadzone): {_fmt_pct(metrics.adverse_selection_ratio)} (n={metrics.as_coverage})")
+        if metrics.as_raw_coverage > 0:
+            print(f"  AS(raw):      {_fmt_pct(metrics.adverse_selection_ratio_raw)} (n={metrics.as_raw_coverage})")
+            gap_pp = (metrics.adverse_selection_ratio_raw - metrics.adverse_selection_ratio) * 100
+            print(f"  deadzone差分: {gap_pp:+.1f}pp マスキング")
+
     if records:
         filled_recs = [r for r in records if r.filled]
         pnls = [r.post_fill_30s_pnl for r in filled_recs if r.post_fill_30s_pnl is not None]
