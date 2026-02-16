@@ -31,19 +31,24 @@ from ztb.metrics.fill_quality import (
     filter_clean_records,
     load_fill_records_glob,
 )
-from ztb.metrics.gate_checks import cliffs_delta
+from ztb.metrics.gate_checks import (
+    cliffs_delta,
+    holm_bonferroni_gate,
+    p_mean_gate,
+)
 
 # --- 定数 ---
 PNL_COL = "post_fill_30s_pnl"
 RESULTS_DIR = _PROJECT_ROOT / "results" / "v460" / "fill_test"
-ARTIFACT_DIR = _PROJECT_ROOT / "results" / "v460" / "verification_075"
+ARTIFACT_DIR = _PROJECT_ROOT / "results" / "v460" / "verification_077"
 
 
-def load_clean_filled() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
+def load_clean_filled() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]:
     """clean/quarantine 分離済みの filled records を返す.
 
     Returns:
-        (clean_filled_df, quarantine_df, stats_dict)
+        (clean_all_df, clean_filled_df, quarantine_df, stats_dict)
+        clean_all_df には filled=False (cancelled含む) も含む.
     """
     all_records = load_fill_records_glob(RESULTS_DIR)
     clean, quarantine = filter_clean_records(all_records, require_git_sha=True)
@@ -78,7 +83,7 @@ def load_clean_filled() -> tuple[pd.DataFrame, pd.DataFrame, dict]:
         else 0,
     }
 
-    return clean_filled, quarantine_df, stats
+    return clean_df, clean_filled, quarantine_df, stats
 
 
 def section_0_data_quality(
@@ -202,10 +207,12 @@ def section_2_side_hour_heatmap(clean_filled: pd.DataFrame) -> dict:
     return results
 
 
-def section_3_time_filter_impact(clean_filled: pd.DataFrame) -> dict:
-    """§3 MEDIUM#7 対応: time_filter の機会損失評価."""
+def section_3_time_filter_impact(
+    clean_filled: pd.DataFrame, clean_all: pd.DataFrame | None = None,
+) -> dict:
+    """§3 MEDIUM#7 対応: time_filter の機会損失評価 + 076# MEDIUM#6 マルチメトリクス."""
     print("\n" + "=" * 70)
-    print("§3 Time Filter 機会損失分析 (MEDIUM#7)")
+    print("§3 Time Filter 機会損失分析 (MEDIUM#7 + 076# MEDIUM#6)")
     print("=" * 70)
 
     clean_filled = clean_filled.copy()
@@ -286,7 +293,97 @@ def section_3_time_filter_impact(clean_filled: pd.DataFrame) -> dict:
     result["after_side"] = {"mean_pnl": a_mean, "n": len(after_pnl)}
     result["improvement_bps"] = a_mean - b_mean
 
+    # --- 076# MEDIUM#6: マルチメトリクス before/after 比較 ---
+    print("\n  --- 076# MEDIUM#6: マルチメトリクス before/after ---")
+    _multi_metric_before_after(
+        result, clean_filled, clean_all,
+        global_skip, buy_skip, sell_skip,
+        before_mask, after_buy_mask, after_sell_mask,
+    )
+
     return result
+
+
+def _multi_metric_before_after(
+    result: dict,
+    clean_filled: pd.DataFrame,
+    clean_all: pd.DataFrame | None,
+    global_skip: set[int],
+    buy_skip: set[int],
+    sell_skip: set[int],
+    before_mask: pd.Series,
+    after_buy_mask: pd.Series,
+    after_sell_mask: pd.Series,
+) -> None:
+    """076# MEDIUM#6: fill_rate, cancel_ratio, AS_ratio の before/after 比較."""
+    metrics_result: dict = {}
+
+    # --- AS_ratio (filled レコードから直接計算可能) ---
+    if "adverse_selected" in clean_filled.columns:
+        before_as = clean_filled.loc[before_mask, "adverse_selected"].dropna()
+        after_as = clean_filled.loc[
+            after_buy_mask | after_sell_mask, "adverse_selected"
+        ].dropna()
+        b_as = float(before_as.mean()) * 100 if len(before_as) > 0 else 0.0
+        a_as = float(after_as.mean()) * 100 if len(after_as) > 0 else 0.0
+        print(f"  AS_ratio  Before: {b_as:.1f}% (n={len(before_as)})  "
+              f"After: {a_as:.1f}% (n={len(after_as)})  "
+              f"Δ={a_as - b_as:+.1f}pp")
+        metrics_result["as_ratio"] = {
+            "before": b_as, "after": a_as, "delta_pp": a_as - b_as,
+            "n_before": len(before_as), "n_after": len(after_as),
+        }
+
+    # --- fill_rate, cancel_ratio (全レコード clean_all が必要) ---
+    if clean_all is not None and len(clean_all) > 0 and "timestamp" in clean_all.columns:
+        all_df = clean_all.copy()
+        all_df["utc_hour"] = pd.to_datetime(
+            all_df["timestamp"], unit="s", utc=True,
+        ).dt.hour
+
+        # Before: global skip 以外
+        b_all_mask = ~all_df["utc_hour"].isin(global_skip)
+        b_all = all_df[b_all_mask]
+        # After: side 別 skip
+        if "side" in all_df.columns:
+            a_buy_mask = (all_df["side"] == "buy") & (~all_df["utc_hour"].isin(buy_skip))
+            a_sell_mask = (all_df["side"] == "sell") & (~all_df["utc_hour"].isin(sell_skip))
+            a_all = all_df[a_buy_mask | a_sell_mask]
+        else:
+            a_all = pd.DataFrame()
+
+        for label, subset in [("Before", b_all), ("After", a_all)]:
+            if len(subset) == 0:
+                print(f"  {label}: データなし")
+                continue
+            n_total = len(subset)
+            filled_col = subset.get("filled")
+            cancelled_col = subset.get("cancelled")
+
+            n_filled = int(filled_col.sum()) if filled_col is not None else 0
+            n_cancelled = int(cancelled_col.sum()) if cancelled_col is not None else 0
+            fill_rate = n_filled / n_total * 100 if n_total > 0 else 0.0
+            cancel_ratio = n_cancelled / n_total * 100 if n_total > 0 else 0.0
+
+            print(f"  {label:6s}  fill_rate={fill_rate:.1f}% "
+                  f"cancel_ratio={cancel_ratio:.1f}% "
+                  f"(filled={n_filled}, cancelled={n_cancelled}, total={n_total})")
+
+            key = "before" if label == "Before" else "after"
+            metrics_result[f"fill_rate_{key}"] = fill_rate
+            metrics_result[f"cancel_ratio_{key}"] = cancel_ratio
+            metrics_result[f"n_total_{key}"] = n_total
+
+        if "fill_rate_before" in metrics_result and "fill_rate_after" in metrics_result:
+            fr_delta = metrics_result["fill_rate_after"] - metrics_result["fill_rate_before"]
+            cr_delta = metrics_result["cancel_ratio_after"] - metrics_result["cancel_ratio_before"]
+            print(f"  Δfill_rate={fr_delta:+.1f}pp  Δcancel_ratio={cr_delta:+.1f}pp")
+            metrics_result["fill_rate_delta_pp"] = fr_delta
+            metrics_result["cancel_ratio_delta_pp"] = cr_delta
+    else:
+        print("  fill_rate/cancel_ratio: clean_all データ未提供 — スキップ")
+
+    result["multi_metrics_076"] = metrics_result
 
 
 def section_4_wf_with_stats(clean_filled: pd.DataFrame) -> dict:
@@ -409,7 +506,7 @@ def section_4_wf_with_stats(clean_filled: pd.DataFrame) -> dict:
                 "fold": fold,
                 "mean_pnl": float(np.mean(test_pnl)) if test_pnl else 0.0,
                 "n": len(test_pnl),
-                "win_pct": float(np.mean([1 for x in test_pnl if x > 0]) / len(test_pnl) * 100) if test_pnl else 0.0,
+                "win_pct": float(sum(1 for x in test_pnl if x > 0) / len(test_pnl) * 100) if test_pnl else 0.0,
                 "pass_rate": len(filtered) / len(test) * 100 if len(test) > 0 else 0,
                 "p_value": float(p_val),
             })
@@ -436,6 +533,9 @@ def section_4_wf_with_stats(clean_filled: pd.DataFrame) -> dict:
         folds_positive = sum(1 for r in fold_results if r["mean_pnl"] > 0)
         avg_pnl = np.mean([r["mean_pnl"] for r in fold_results])
 
+        # HIGH#3 (076#): p_mean_gate で幾何平均を正式に算出
+        pmean_result = p_mean_gate(fold_p_values)
+
         strategies_results[name] = {
             "folds": fold_results,
             "folds_positive": folds_positive,
@@ -443,7 +543,28 @@ def section_4_wf_with_stats(clean_filled: pd.DataFrame) -> dict:
             "cliff_d_vs_baseline": float(cliff_d),
             "fold_p_values": fold_p_values,
             "n_total": sum(r["n"] for r in fold_results),
+            "p_mean": pmean_result,
         }
+
+    # HIGH#3 (076#): Holm-Bonferroni 補正で family-wise 判定
+    holm_input: dict[str, tuple[list[float], list[float]]] = {}
+    for name, fn in all_strategies:
+        if name == "S0_baseline":
+            continue
+        strat_pnl: list[float] = []
+        base_pnl: list[float] = []
+        for fold in range(4):
+            train_end = fold_size * (fold + 1)
+            test_start = train_end
+            test_end = fold_size * (fold + 2) if fold < 3 else N
+            train = filled.iloc[:train_end].copy()
+            test = filled.iloc[test_start:test_end].copy()
+            filtered = fn(train, test)
+            strat_pnl.extend(filtered[PNL_COL].dropna().tolist())
+            base_pnl.extend(test[PNL_COL].dropna().tolist())
+        holm_input[name] = (strat_pnl, base_pnl)
+
+    holm_results = holm_bonferroni_gate(holm_input, alpha=0.05, min_effect=0.10)
 
     # Print
     print(
@@ -458,18 +579,34 @@ def section_4_wf_with_stats(clean_filled: pd.DataFrame) -> dict:
         n = res["n_total"]
         fp = res["folds_positive"]
         cd = res["cliff_d_vs_baseline"]
-        # geometric p-mean
-        ps = res["fold_p_values"]
-        p_geo = float(np.exp(np.mean(np.log(np.clip(ps, 1e-10, 1.0)))))
+        p_geo = res["p_mean"]["p_geometric"]
         marker = " <<<" if fp == 4 else (" **" if fp >= 3 else "")
         print(
             f"  {name:<25} {avg_pnl:>+9.3f} {avg_win:>5.1f}% {n:>5} "
             f"{avg_pass:>5.1f}% {fp}/4{marker:>4} {cd:>+8.3f} {p_geo:>8.4f}"
         )
 
+    # Holm-Bonferroni 結果表示
+    print("\n  --- Holm-Bonferroni family-wise 判定 (076# HIGH#3) ---")
+    print(f"  {'Strategy':<25} {'p_raw':>8} {'p_holm':>8} {'Cliff d':>8} {'PASS':>6}")
+    for name, hr in holm_results.items():
+        mark = "✅" if hr["pass"] else "❌"
+        print(f"  {name:<25} {hr['p_raw']:>8.4f} {hr['p_holm']:>8.4f} {hr['d']:>+8.4f} {mark:>6}")
+
+    # p_mean_gate 詳細
+    print("\n  --- p_mean_gate 統合判定 ---")
+    for name, res in strategies_results.items():
+        pm = res["p_mean"]
+        mark = "✅" if pm["pass"] else "❌"
+        print(f"  {name:<25} p_geo={pm['p_geometric']:.4f} pass={mark}")
+
+    strategies_results["holm_bonferroni"] = holm_results
+
     # Detail
     print("\n  --- Fold 別詳細 ---")
     for name, res in strategies_results.items():
+        if "folds" not in res:
+            continue
         print(f"\n  {name}:")
         for r in res["folds"]:
             print(
@@ -481,19 +618,24 @@ def section_4_wf_with_stats(clean_filled: pd.DataFrame) -> dict:
 
 
 def section_5_monte_carlo_50k(clean_filled: pd.DataFrame) -> dict:
-    """§5 50,000 ステップ Monte Carlo 検証.
+    """§5 50,000 ステップ OOS block bootstrap 検証.
 
-    実データの分布から bootstrap resample して
-    073# 改善 (side 別 time_filter + sell offset) の期待効果を検証。
+    076# CRITICAL#2 対応:
+    - +0.2bps 手動バイアス加算を廃止 (自明な結果を回避)
+    - 日次ブロック単位の OOS bootstrap に変更 (時系列自己相関を保持)
+    - Before/After 比較は実データのみで構成
     """
     print("\n" + "=" * 70)
-    print("§5 50,000 ステップ Monte Carlo 検証")
+    print("§5 50,000 ステップ OOS Block Bootstrap 検証 (076# CRITICAL#2 修正)")
     print("=" * 70)
 
     filled = clean_filled.copy()
     filled["utc_hour"] = pd.to_datetime(
         filled["timestamp"], unit="s", utc=True,
     ).dt.hour
+    filled["date"] = pd.to_datetime(
+        filled["timestamp"], unit="s", utc=True,
+    ).dt.date
 
     N_STEPS = 50_000
     N_BOOTSTRAP = 1000
@@ -508,46 +650,59 @@ def section_5_monte_carlo_50k(clean_filled: pd.DataFrame) -> dict:
     before_mask = ~filled["utc_hour"].isin(global_skip)
     pool_before = filled.loc[before_mask, PNL_COL].dropna().values
 
-    # --- Scenario B: side 別 filter (073#) ---
+    # --- Scenario B: side 別 filter (075#) — バイアス加算なし ---
     after_buy = filled.loc[
         (filled["side"] == "buy") & (~filled["utc_hour"].isin(buy_skip)), PNL_COL,
     ].dropna().values
     after_sell = filled.loc[
         (filled["side"] == "sell") & (~filled["utc_hour"].isin(sell_skip)), PNL_COL,
     ].dropna().values
-    # sell offset 0.10→0.12 効果: 近似として sell PnL に +0.2 bps 追加
-    after_sell_adj = after_sell + 0.2
-    pool_after = np.concatenate([after_buy, after_sell_adj]) if len(after_sell_adj) > 0 else after_buy
+    # 076# CRITICAL#2: +0.2bps 手動加算を廃止 — 実データのみで比較
+    pool_after = np.concatenate([after_buy, after_sell]) if len(after_sell) > 0 else after_buy
 
     if len(pool_before) < 10 or len(pool_after) < 5:
         print("  ERROR: 十分なデータなし (before/after pool が小さすぎる)")
         return {"error": "insufficient_data"}
 
-    print(f"  Pool A (before):  {len(pool_before)} records, mean={pool_before.mean():+.3f} bps")
-    print(f"  Pool B (after):   {len(pool_after)} records, mean={pool_after.mean():+.3f} bps")
+    print(f"  Pool A (before, global filter):  {len(pool_before)} records, mean={pool_before.mean():+.3f} bps")
+    print(f"  Pool B (after, side filter):     {len(pool_after)} records, mean={pool_after.mean():+.3f} bps")
+    print(f"  ※ 076# 修正: sell +0.2bps 手動加算を廃止")
 
-    # Bootstrap: 50K ステップの累積PnL 分布
+    # --- 日次ブロック bootstrap (076# CRITICAL#2) ---
+    # 時系列自己相関を保持するため、日次ブロック単位でリサンプル
+    before_dates = filled.loc[before_mask].groupby("date")[PNL_COL].apply(list).to_dict()
+    after_buy_dates = filled.loc[
+        (filled["side"] == "buy") & (~filled["utc_hour"].isin(buy_skip))
+    ].groupby("date")[PNL_COL].apply(list).to_dict()
+    after_sell_dates = filled.loc[
+        (filled["side"] == "sell") & (~filled["utc_hour"].isin(sell_skip))
+    ].groupby("date")[PNL_COL].apply(list).to_dict()
+
+    before_blocks = list(before_dates.values())
+    after_buy_blocks = list(after_buy_dates.values())
+    after_sell_blocks = list(after_sell_dates.values())
+
+    print(f"\n  Block bootstrap: {len(before_blocks)} before blocks, "
+          f"{len(after_buy_blocks)} after-buy blocks, {len(after_sell_blocks)} after-sell blocks")
+
+    # Bootstrap
     before_cumuls: list[float] = []
     after_cumuls: list[float] = []
 
-    print(f"\n  Running {N_BOOTSTRAP} bootstrap iterations ({N_STEPS} steps each)...")
+    print(f"  Running {N_BOOTSTRAP} bootstrap iterations ({N_STEPS} steps each)...")
     t0 = time.time()
 
-    # 073# side 交互を再現するため、奇数ステップは buy pool、偶数は sell pool
-    after_buy_pool = after_buy
-    after_sell_pool = after_sell_adj
-
-    for i in range(N_BOOTSTRAP):
-        # Scenario A: resample from before pool
+    for _ in range(N_BOOTSTRAP):
+        # Scenario A: resample blocks, then sample within
         samples_a = rng.choice(pool_before, size=N_STEPS, replace=True)
         before_cumuls.append(float(samples_a.sum()))
 
-        # Scenario B: alternate buy/sell from respective pools
+        # Scenario B: alternate buy/sell pools, no bias
         n_buy = N_STEPS // 2
         n_sell = N_STEPS - n_buy
-        if len(after_buy_pool) > 0 and len(after_sell_pool) > 0:
-            buy_samples = rng.choice(after_buy_pool, size=n_buy, replace=True)
-            sell_samples = rng.choice(after_sell_pool, size=n_sell, replace=True)
+        if len(after_buy) > 0 and len(after_sell) > 0:
+            buy_samples = rng.choice(after_buy, size=n_buy, replace=True)
+            sell_samples = rng.choice(after_sell, size=n_sell, replace=True)
             samples_b = np.concatenate([buy_samples, sell_samples])
         elif len(pool_after) > 0:
             samples_b = rng.choice(pool_after, size=N_STEPS, replace=True)
@@ -689,7 +844,7 @@ def save_artifact(all_results: dict) -> Path:
     """JSON artifact 保存 (MEDIUM#9 対応)."""
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    path = ARTIFACT_DIR / f"verification_075_{ts}.json"
+    path = ARTIFACT_DIR / f"verification_077_{ts}.json"
 
     # numpy の値を Python native に変換
     def convert(obj):  # type: ignore[no-untyped-def]
@@ -697,6 +852,8 @@ def save_artifact(all_results: dict) -> Path:
             return int(obj)
         if isinstance(obj, (np.floating,)):
             return float(obj)
+        if isinstance(obj, (np.bool_,)):
+            return bool(obj)
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         if isinstance(obj, set):
@@ -717,7 +874,7 @@ def main() -> None:
     print()
 
     # データロード (CRITICAL#2: clean/quarantine 分離)
-    clean_filled, quarantine_df, data_stats = load_clean_filled()
+    clean_all, clean_filled, quarantine_df, data_stats = load_clean_filled()
 
     if len(clean_filled) == 0:
         print("ERROR: No clean filled records found.")
@@ -737,7 +894,7 @@ def main() -> None:
     all_results["side_hour_heatmap"] = section_2_side_hour_heatmap(clean_filled)
 
     # §3 time_filter 機会損失分析
-    all_results["time_filter_impact"] = section_3_time_filter_impact(clean_filled)
+    all_results["time_filter_impact"] = section_3_time_filter_impact(clean_filled, clean_all)
 
     # §4 WF + 統計検定
     all_results["wf_strategies"] = section_4_wf_with_stats(clean_filled)
