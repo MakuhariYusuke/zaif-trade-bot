@@ -840,6 +840,288 @@ def section_6_multi_horizon(clean_filled: pd.DataFrame) -> dict:
     return result
 
 
+def section_7_permutation_test(clean_filled: pd.DataFrame) -> dict:
+    """§7 Permutation Test: filter ラベルをシャッフルして帰無仮説検定.
+
+    MC bootstrap (§5) は「同じ pool から繰り返しサンプリング」するため、
+    filter 効果の統計的有意性を直接示さない（pool が異なるため有意になりやすい）。
+    Permutation test は「filter ラベル (before/after) をランダム入替」することで
+    「filter ラベルは PnL に影響しない」という帰無仮説を直接検定する。
+    """
+    print("\n" + "=" * 70)
+    print("§7 Permutation Test (filter ラベルシャッフル帰無仮説検定)")
+    print("=" * 70)
+
+    filled = clean_filled.copy()
+    filled["utc_hour"] = pd.to_datetime(
+        filled["timestamp"], unit="s", utc=True,
+    ).dt.hour
+
+    buy_skip = {1, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 23}
+    sell_skip = {3, 4, 5, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23}
+    global_skip = {1, 2, 8, 9, 12, 13, 14, 16, 17, 18, 19, 21}
+
+    # Before group: global filter のみ通過
+    before_mask = ~filled["utc_hour"].isin(global_skip)
+    # After group: side 別 filter 通過
+    after_buy_mask = (filled["side"] == "buy") & (~filled["utc_hour"].isin(buy_skip))
+    after_sell_mask = (filled["side"] == "sell") & (~filled["utc_hour"].isin(sell_skip))
+    after_mask = after_buy_mask | after_sell_mask
+
+    before_pnl = filled.loc[before_mask, PNL_COL].dropna().values
+    after_pnl = filled.loc[after_mask, PNL_COL].dropna().values
+
+    observed_diff = float(after_pnl.mean() - before_pnl.mean())
+
+    # Combined pool
+    n_before = len(before_pnl)
+    n_after = len(after_pnl)
+    combined = np.concatenate([before_pnl, after_pnl])
+
+    N_PERMUTATIONS = 10_000
+    rng = np.random.default_rng(2026)
+    count_ge = 0
+    perm_diffs: list[float] = []
+
+    print(f"  Before: n={n_before}, mean={before_pnl.mean():+.3f} bps")
+    print(f"  After:  n={n_after}, mean={after_pnl.mean():+.3f} bps")
+    print(f"  観測差: {observed_diff:+.3f} bps")
+    print(f"  Permutations: {N_PERMUTATIONS}")
+
+    for _ in range(N_PERMUTATIONS):
+        perm = rng.permutation(combined)
+        perm_before = perm[:n_before]
+        perm_after = perm[n_before:n_before + n_after]
+        diff = float(perm_after.mean() - perm_before.mean())
+        perm_diffs.append(diff)
+        if diff >= observed_diff:
+            count_ge += 1
+
+    p_value = count_ge / N_PERMUTATIONS
+    perm_arr = np.array(perm_diffs)
+
+    result = {
+        "n_before": n_before,
+        "n_after": n_after,
+        "observed_diff_bps": observed_diff,
+        "n_permutations": N_PERMUTATIONS,
+        "p_value": p_value,
+        "perm_diff_mean": float(perm_arr.mean()),
+        "perm_diff_std": float(perm_arr.std()),
+        "perm_diff_p5": float(np.percentile(perm_arr, 5)),
+        "perm_diff_p95": float(np.percentile(perm_arr, 95)),
+    }
+
+    print(f"\n  --- Permutation Test 結果 ---")
+    print(f"  p-value (one-sided): {p_value:.4f}")
+    print(f"  帰無分布: mean={perm_arr.mean():+.4f}, std={perm_arr.std():.4f}")
+    print(f"  帰無 95%CI: [{np.percentile(perm_arr, 2.5):+.3f}, {np.percentile(perm_arr, 97.5):+.3f}]")
+    print(f"  観測差 {observed_diff:+.3f} vs 帰無 95% 上限 {np.percentile(perm_arr, 95):+.3f}")
+
+    if p_value < 0.05:
+        print(f"  → ✅ 有意 (p={p_value:.4f} < 0.05): filter 効果は偶然では説明困難")
+    elif p_value < 0.10:
+        print(f"  → ⚠️ 限界的 (p={p_value:.4f}): suggestive だが確定的でない")
+    else:
+        print(f"  → ❌ 非有意 (p={p_value:.4f} ≥ 0.10): 帰無仮説を棄却できない")
+
+    return result
+
+
+def section_8_temporal_stability(clean_filled: pd.DataFrame) -> dict:
+    """§8 時系列安定性分析: 日別 PnL、連続損失、filter 前後の安定性比較."""
+    print("\n" + "=" * 70)
+    print("§8 時系列安定性分析 (日別 PnL + 連続損失)")
+    print("=" * 70)
+
+    filled = clean_filled.copy()
+    filled["utc_dt"] = pd.to_datetime(filled["timestamp"], unit="s", utc=True)
+    filled["utc_hour"] = filled["utc_dt"].dt.hour
+    filled["date"] = filled["utc_dt"].dt.date
+
+    buy_skip = {1, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 23}
+    sell_skip = {3, 4, 5, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23}
+    global_skip = {1, 2, 8, 9, 12, 13, 14, 16, 17, 18, 19, 21}
+
+    before_mask = ~filled["utc_hour"].isin(global_skip)
+    after_buy_mask = (filled["side"] == "buy") & (~filled["utc_hour"].isin(buy_skip))
+    after_sell_mask = (filled["side"] == "sell") & (~filled["utc_hour"].isin(sell_skip))
+    after_mask = after_buy_mask | after_sell_mask
+
+    result: dict = {}
+
+    for label, mask in [("before", before_mask), ("after", after_mask), ("all", pd.Series(True, index=filled.index))]:
+        subset = filled.loc[mask].copy()
+        if len(subset) == 0:
+            result[label] = {"error": "no_data"}
+            continue
+
+        pnl = subset[PNL_COL].dropna()
+        cumulative = pnl.cumsum()
+
+        # 日別統計
+        daily = subset.groupby("date")[PNL_COL].agg(["mean", "count", "sum", "std"]).reset_index()
+        daily.columns = ["date", "mean_pnl", "n_trades", "total_pnl", "std_pnl"]
+
+        # 連続損失ストリーク
+        is_loss = (pnl < 0).values
+        max_streak = 0
+        current_streak = 0
+        for loss in is_loss:
+            if loss:
+                current_streak += 1
+                max_streak = max(max_streak, current_streak)
+            else:
+                current_streak = 0
+
+        # 累積 PnL の max drawdown (bps)
+        cumul_values = cumulative.values
+        peak = np.maximum.accumulate(cumul_values)
+        dd = peak - cumul_values
+        max_dd = float(dd.max()) if len(dd) > 0 else 0.0
+
+        # Sharpe-like ratio (trade-level)
+        pnl_mean = float(pnl.mean())
+        pnl_std = float(pnl.std())
+        sharpe_like = pnl_mean / pnl_std if pnl_std > 0 else 0.0
+
+        result[label] = {
+            "n_trades": len(pnl),
+            "mean_pnl": pnl_mean,
+            "cumulative_pnl": float(pnl.sum()),
+            "max_drawdown_bps": max_dd,
+            "max_loss_streak": max_streak,
+            "sharpe_like": sharpe_like,
+            "n_days": len(daily),
+            "daily_stats": daily.to_dict(orient="records"),
+        }
+
+        print(f"\n  [{label.upper()}] n={len(pnl)}, days={len(daily)}")
+        print(f"    mean PnL:           {pnl_mean:+.3f} bps")
+        print(f"    cumulative PnL:     {pnl.sum():+.1f} bps")
+        print(f"    max drawdown:       {max_dd:.1f} bps")
+        print(f"    max loss streak:    {max_streak} trades")
+        print(f"    sharpe-like ratio:  {sharpe_like:+.4f}")
+
+        print(f"    --- 日別 ---")
+        for _, row in daily.iterrows():
+            sign = "+" if row["total_pnl"] >= 0 else ""
+            print(f"    {row['date']}  n={int(row['n_trades']):>3}  "
+                  f"mean={row['mean_pnl']:>+7.3f}  total={sign}{row['total_pnl']:.1f}")
+
+    # Before vs After の安定性比較
+    if "before" in result and "after" in result and "error" not in result["before"] and "error" not in result["after"]:
+        print(f"\n  --- Before vs After 安定性比較 ---")
+        for metric in ["max_drawdown_bps", "max_loss_streak", "sharpe_like"]:
+            b_val = result["before"][metric]
+            a_val = result["after"][metric]
+            better = "After" if (metric == "sharpe_like" and a_val > b_val) or \
+                               (metric != "sharpe_like" and a_val < b_val) else "Before"
+            print(f"    {metric:<22} Before={b_val:>8.3f}  After={a_val:>8.3f}  → {better} が良好")
+
+    return result
+
+
+def section_9_power_analysis(clean_filled: pd.DataFrame) -> dict:
+    """§9 検出力分析: 現サンプル数で検出可能な効果サイズの推定."""
+    print("\n" + "=" * 70)
+    print("§9 検出力分析 (現サンプル数での効果検出限界)")
+    print("=" * 70)
+
+    filled = clean_filled.copy()
+    filled["utc_hour"] = pd.to_datetime(
+        filled["timestamp"], unit="s", utc=True,
+    ).dt.hour
+
+    buy_skip = {1, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 23}
+    sell_skip = {3, 4, 5, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23}
+    global_skip = {1, 2, 8, 9, 12, 13, 14, 16, 17, 18, 19, 21}
+
+    before_mask = ~filled["utc_hour"].isin(global_skip)
+    after_buy_mask = (filled["side"] == "buy") & (~filled["utc_hour"].isin(buy_skip))
+    after_sell_mask = (filled["side"] == "sell") & (~filled["utc_hour"].isin(sell_skip))
+    after_mask = after_buy_mask | after_sell_mask
+
+    before_pnl = filled.loc[before_mask, PNL_COL].dropna().values
+    after_pnl = filled.loc[after_mask, PNL_COL].dropna().values
+    all_pnl = filled[PNL_COL].dropna().values
+
+    n_before = len(before_pnl)
+    n_after = len(after_pnl)
+    pooled_std = float(all_pnl.std())
+
+    # Cohen's d for observed effect
+    observed_d = (after_pnl.mean() - before_pnl.mean()) / pooled_std if pooled_std > 0 else 0.0
+
+    # Power simulation via bootstrap under known effect sizes
+    N_SIM = 5000
+    rng = np.random.default_rng(42)
+    effect_sizes = [0.05, 0.10, 0.15, 0.20, 0.30, 0.50]  # Cohen's d
+    power_results: dict = {}
+
+    print(f"  現状: n_before={n_before}, n_after={n_after}, pooled_std={pooled_std:.3f}")
+    print(f"  観測 Cohen's d: {observed_d:+.3f}")
+    print(f"\n  --- 効果サイズ別検出力 (α=0.05, {N_SIM} simulations) ---")
+    print(f"  {'Cohen d':>8} {'Power':>8} {'必要 n (各群)':>15} {'追加日数 (est)':>15}")
+
+    trades_per_day = len(all_pnl) / 1.4  # 1.4 days for current data
+
+    for d in effect_sizes:
+        n_significant = 0
+        for _ in range(N_SIM):
+            sim_before = rng.choice(before_pnl, size=n_before, replace=True)
+            sim_after = rng.choice(before_pnl, size=n_after, replace=True) + d * pooled_std
+            _, p = scipy_stats.mannwhitneyu(sim_after, sim_before, alternative="greater")
+            if p < 0.05:
+                n_significant += 1
+
+        power = n_significant / N_SIM
+
+        z_alpha = 1.645  # one-sided α=0.05
+        z_beta = 0.842   # power=0.80
+        n_required = int(np.ceil(((z_alpha + z_beta) ** 2) * 2 / (d ** 2))) if d > 0 else 99999
+        additional_n_needed = max(0, n_required - min(n_before, n_after))
+        additional_days = additional_n_needed / trades_per_day if trades_per_day > 0 else float("inf")
+
+        power_results[f"d_{d:.2f}"] = {
+            "cohen_d": d,
+            "power": power,
+            "n_required_each": n_required,
+            "additional_n_needed": additional_n_needed,
+            "additional_days": additional_days,
+        }
+
+        print(f"  {d:>8.2f} {power:>7.1%} {n_required:>15} {additional_days:>14.1f}d")
+
+    # 現在の効果サイズでの検出力
+    if abs(observed_d) > 0.01:
+        n_significant = 0
+        for _ in range(N_SIM):
+            sim_before = rng.choice(before_pnl, size=n_before, replace=True)
+            sim_after = rng.choice(before_pnl, size=n_after, replace=True) + observed_d * pooled_std
+            _, p = scipy_stats.mannwhitneyu(sim_after, sim_before, alternative="greater")
+            if p < 0.05:
+                n_significant += 1
+        observed_power = n_significant / N_SIM
+        print(f"\n  現在の効果サイズ d={observed_d:+.3f} での検出力: {observed_power:.1%}")
+        power_results["observed"] = {
+            "cohen_d": observed_d,
+            "power": observed_power,
+        }
+    else:
+        print(f"\n  現在の効果サイズが極小 (d={observed_d:+.3f}) — 検出不能")
+
+    for d_key, pr in power_results.items():
+        if d_key.startswith("d_") and pr["power"] >= 0.80:
+            print(f"\n  → 80% power 到達: Cohen's d≥{pr['cohen_d']:.2f} "
+                  f"(必要 n≥{pr['n_required_each']}, 追加 {pr['additional_days']:.1f} 日)")
+            break
+    else:
+        print(f"\n  → 現サンプル数では全テスト効果サイズで 80% power 未達")
+
+    return power_results
+
+
 def save_artifact(all_results: dict) -> Path:
     """JSON artifact 保存 (MEDIUM#9 対応)."""
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
@@ -858,6 +1140,14 @@ def save_artifact(all_results: dict) -> Path:
             return obj.tolist()
         if isinstance(obj, set):
             return sorted(obj)
+        if isinstance(obj, (datetime,)):
+            return obj.isoformat()
+        # datetime.date (not datetime)
+        import datetime as _dt
+        if isinstance(obj, _dt.date):
+            return obj.isoformat()
+        if isinstance(obj, pd.Timestamp):
+            return obj.isoformat()
         raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
     with open(path, "w", encoding="utf-8") as f:
@@ -905,11 +1195,20 @@ def main() -> None:
     # §6 Multi-horizon
     all_results["multi_horizon"] = section_6_multi_horizon(clean_filled)
 
+    # §7 Permutation Test (078# 追加)
+    all_results["permutation_test"] = section_7_permutation_test(clean_filled)
+
+    # §8 時系列安定性 (078# 追加)
+    all_results["temporal_stability"] = section_8_temporal_stability(clean_filled)
+
+    # §9 検出力分析 (078# 追加)
+    all_results["power_analysis"] = section_9_power_analysis(clean_filled)
+
     # Artifact 保存
     save_artifact(all_results)
 
     print("\n" + "=" * 70)
-    print("075# 検証完了")
+    print("078# 検証完了 (§0-§9)")
     print("=" * 70)
 
 
