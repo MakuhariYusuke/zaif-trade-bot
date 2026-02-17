@@ -1,11 +1,11 @@
-# 103# Self-Review + SkipGate再訓練 + __post_init__バリデーション
+# 104# Self-Review + SkipGate再訓練 + __post_init__バリデーション
 
 | key | value |
 |---|---|
-| 番号 | 103 |
+| 番号 | 104 |
 | フェーズ | ph2 |
 | 種別 | fix / retrain |
-| 親文書 | `102_ph2_fix_yaml_externalization.md` |
+| 親文書 | `103_ph2_fix_yaml_externalization.md` |
 | 作成日 | 2026-02-17 |
 | テスト | 811 passed |
 
@@ -13,7 +13,7 @@
 
 ## §0 背景
 
-102# YAML外部化コミット後のCodex視点自己レビュー。
+103# YAML外部化コミット後のCodex視点自己レビュー。
 ログ分析 + JSONL PnL分析 + SkipGateモデル再訓練を併せて実施。
 
 ---
@@ -97,7 +97,7 @@
 
 ### Walk-Forward比較
 
-| 指標 | 097# (215 samples) | 103# (254 samples) |
+| 指標 | 097# (215 samples) | 104# (254 samples) |
 |---|---|---|
 | Folds | 8 | 10 |
 | ROC-AUC | 0.442 ± 0.120 | 0.450 ± 0.130 |

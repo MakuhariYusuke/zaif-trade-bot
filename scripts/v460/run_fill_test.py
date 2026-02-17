@@ -1423,6 +1423,13 @@ class FillTestRunner:
         order = None
         last_error: Optional[str] = None
         cancel_reason: str = "unknown"  # 032# #6: ループ未実行時の NameError 防止
+
+        # 105#: lot floor guard — 浮動小数点丸め誤差による API 400 防止
+        self._current_lot = max(
+            self._MIN_ORDER_BTC,
+            int(self._current_lot / self._MIN_ORDER_BTC) * self._MIN_ORDER_BTC,
+        )
+
         for attempt in range(1 + self.config.max_order_retries):
             try:
                 order = await self.adapter.place_order(
@@ -1702,10 +1709,15 @@ class FillTestRunner:
 
                         try:
                             new_price, new_spread, _ = await self._compute_maker_price(side)
+                            # 105#: reprice lot guard
+                            reprice_lot = max(
+                                self._MIN_ORDER_BTC,
+                                int(self._current_lot / self._MIN_ORDER_BTC) * self._MIN_ORDER_BTC,
+                            )
                             new_order = await self.adapter.place_order(
                                 symbol=self.config.symbol,
                                 side=side,
-                                quantity=self._current_lot,
+                                quantity=reprice_lot,
                                 price=new_price,
                                 order_type="limit",
                             )
@@ -2220,9 +2232,11 @@ class FillTestRunner:
                         and self._current_lot > min_lot
                     ):
                         old_lot = self._current_lot
+                        # 105#: 0.001 BTC 単位に切り捨て (浮動小数点丸め誤差 → API 400 防止)
+                        raw_shrunk = self._current_lot / self.config.balance_shrink_divisor
                         self._current_lot = max(
                             min_lot,
-                            self._current_lot / self.config.balance_shrink_divisor,
+                            int(raw_shrunk / self._MIN_ORDER_BTC) * self._MIN_ORDER_BTC,
                         )
                         self._balance_shrink_active = True
                         logger.warning(

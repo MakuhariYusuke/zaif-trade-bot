@@ -107,7 +107,7 @@ e3:
 # buy は共通値 (0.05) を継承、sell のみ保守化
 side_offset:
   # buy: 0.05                  # buy 側は共通値で十分 (PnL -0.10bps)
-  sell: 0.12                   # 073#: 0.10→0.12 (sell PnL -0.958 vs buy -0.301、sell側保守化強化)
+  sell: 0.14                   # 105#: 0.12→0.14 (sell PnL -0.85bps → AS% 25.8% 対策、sell側保守化強化)
 
 # ---- 049# 即約定防御 ----
 fast_fill_defense:
@@ -201,7 +201,7 @@ skip_gate:
 # ---- 088# sell 専用ハードガード ----
 sell_guard:
   max_spread_jpy: 4000.0       # スプレッド 4000 JPY 超で sell スキップ (085# で 4677 で -7.37bps)
-  offset_floor: 0.08           # sell offset 最低保証 (sell PnL -1.4bps 対策, 通常 0.12)
+  offset_floor: 0.10           # 105#: 0.08→0.10 sell offset 最低保証 (sell PnL -0.85bps 対策)
 
 # ---- 102# チューニングパラメータ (散在マジックナンバーの外部化) ----
 tuning:
