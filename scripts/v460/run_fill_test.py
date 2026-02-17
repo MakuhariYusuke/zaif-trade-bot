@@ -21,6 +21,7 @@ import logging
 import logging.handlers
 import os
 import platform
+import random as _rng
 import signal
 import subprocess
 import sys
@@ -852,7 +853,7 @@ class FillTestRunner:
         if self._prev_mid_price is not None and self._prev_mid_time is not None:
             dt = now - self._prev_mid_time
             if 0 < dt < self.config.mid_trend_validity_sec:  # 有効期間内のデータのみ
-                mid_trend_bps = (mid_price - self._prev_mid_price) / self._prev_mid_price * 10000
+                mid_trend_bps = (mid_price - self._prev_mid_price) / self._prev_mid_price * self._BPS_FACTOR
         self._prev_mid_price = mid_price
         self._prev_mid_time = now
         self._last_mid_trend_bps = mid_trend_bps
@@ -905,7 +906,7 @@ class FillTestRunner:
 
         # 054# S4: Spread 適応型 offset
         if self.config.spread_adaptive_enabled:
-            spread_bps = spread / mid_price * 10000
+            spread_bps = spread / mid_price * self._BPS_FACTOR
             if spread_bps < self.config.narrow_spread_bps:
                 # 093# side 別 boost: buy/sell で独立した倍率を適用
                 sa_boost = self.config.narrow_spread_boost
@@ -1032,6 +1033,8 @@ class FillTestRunner:
 
     # 052#: Coincheck 取引所 BTC 最小注文数量 (板取引)
     _MIN_ORDER_BTC: float = 0.001
+    # 106# R2: bps 換算定数 (1 bps = 1e-4)
+    _BPS_FACTOR: int = 10_000
 
     async def _check_balance_for_side(self, side: str) -> bool:
         """041# 残高 pre-flight check: 発注前に残高が十分か確認.
@@ -1637,7 +1640,7 @@ class FillTestRunner:
             ):
                 try:
                     current_mid = await self._get_mid_price()
-                    drift_bps = abs(current_mid - mid_at_order) / mid_at_order * 10000
+                    drift_bps = abs(current_mid - mid_at_order) / mid_at_order * self._BPS_FACTOR
                     # 方向チェック: 注文から離れる方向に動いたかを確認
                     # buy: mid が上昇 → 注文価格が取り残される
                     # sell: mid が下降 → 注文価格が取り残される
@@ -1807,9 +1810,9 @@ class FillTestRunner:
                     try:
                         mid_now = await self._get_mid_price()
                         if side == "buy":
-                            interim_pnl = (mid_now - mid_at_fill) / mid_at_fill * 10000
+                            interim_pnl = (mid_now - mid_at_fill) / mid_at_fill * self._BPS_FACTOR
                         else:
-                            interim_pnl = (mid_at_fill - mid_now) / mid_at_fill * 10000
+                            interim_pnl = (mid_at_fill - mid_now) / mid_at_fill * self._BPS_FACTOR
                         if interim_pnl < -self.config.early_exit_threshold_bps:
                             logger.warning(
                                 f"[early_exit] Loss threshold hit at {(tick+1)*monitor_sec:.0f}s: "
@@ -1841,14 +1844,14 @@ class FillTestRunner:
                 # PnL in bps (basis points)
                 if side == "buy":
                     # buy: 価格上昇が有利
-                    post_fill_pnl = (mid_30s_after - mid_at_fill) / mid_at_fill * 10000
+                    post_fill_pnl = (mid_30s_after - mid_at_fill) / mid_at_fill * self._BPS_FACTOR
                     # 020# O5: raw AS 判定 (deadzone 非適用)
                     adverse_selected_raw = mid_30s_after < mid_at_fill
                     # CM-3: AS デッドゾーン — ノイズ幅以内の逆行は AS と判定しない
                     adverse_selected = post_fill_pnl < -self.config.as_deadzone_bps
                 else:
                     # sell: 価格下落が有利
-                    post_fill_pnl = (mid_at_fill - mid_30s_after) / mid_at_fill * 10000
+                    post_fill_pnl = (mid_at_fill - mid_30s_after) / mid_at_fill * self._BPS_FACTOR
                     # 020# O5: raw AS 判定 (deadzone 非適用)
                     adverse_selected_raw = mid_30s_after > mid_at_fill
                     # CM-3: AS デッドゾーン
@@ -1861,7 +1864,6 @@ class FillTestRunner:
 
             # 047# E3: +30s (=60s) 計測 — 049# サンプリング制御
             # e3_sampling_ratio < 1.0 の場合、確率的にスキップしてサイクル効率を回復
-            import random as _rng
             do_e3 = mid_at_fill is not None and _rng.random() < self.config.e3_sampling_ratio
             if do_e3:
                 # 101# §1: E3 計測は fill 後の絶対時刻基準で待機
@@ -1875,9 +1877,9 @@ class FillTestRunner:
                 try:
                     mid_60s_after = await self._get_mid_price()
                     if side == "buy":
-                        post_fill_60s_pnl = (mid_60s_after - mid_at_fill) / mid_at_fill * 10000
+                        post_fill_60s_pnl = (mid_60s_after - mid_at_fill) / mid_at_fill * self._BPS_FACTOR
                     else:
-                        post_fill_60s_pnl = (mid_at_fill - mid_60s_after) / mid_at_fill * 10000
+                        post_fill_60s_pnl = (mid_at_fill - mid_60s_after) / mid_at_fill * self._BPS_FACTOR
                 except Exception:
                     pass
 
@@ -1891,9 +1893,9 @@ class FillTestRunner:
                 try:
                     mid_120s_after = await self._get_mid_price()
                     if side == "buy":
-                        post_fill_120s_pnl = (mid_120s_after - mid_at_fill) / mid_at_fill * 10000
+                        post_fill_120s_pnl = (mid_120s_after - mid_at_fill) / mid_at_fill * self._BPS_FACTOR
                     else:
-                        post_fill_120s_pnl = (mid_at_fill - mid_120s_after) / mid_at_fill * 10000
+                        post_fill_120s_pnl = (mid_at_fill - mid_120s_after) / mid_at_fill * self._BPS_FACTOR
                 except Exception:
                     pass
 
@@ -1957,7 +1959,7 @@ class FillTestRunner:
             ask_depth_total=self._last_ask_depth if self.config.imbalance_enabled else None,
             mid_price_trend_5s=getattr(self, '_last_mid_trend_bps', None),
             spread_bps=(
-                (spread_at_order / mid_at_fill * 10000)
+                (spread_at_order / mid_at_fill * self._BPS_FACTOR)
                 if spread_at_order is not None and mid_at_fill is not None and mid_at_fill > 0
                 else None
             ),
@@ -2045,7 +2047,7 @@ class FillTestRunner:
         for r in clean_records:
             if r.filled and r.post_fill_30s_pnl is not None and r.fill_price:
                 cumulative_pnl_jpy += (
-                    r.post_fill_30s_pnl * 1e-4 * r.fill_price * r.order_quantity
+                    r.post_fill_30s_pnl / self._BPS_FACTOR * r.fill_price * r.order_quantity
                 )
 
         # 101# §2: soft_loss_cap_triggered をレジューム復元
@@ -2075,7 +2077,8 @@ class FillTestRunner:
             warmup_window = self._regime_detector.config.window * self.config.regime_warmup_multiplier
             warmup_records = filled_with_mid[-warmup_window:]
             for r in warmup_records:
-                self._regime_detector.update(r.timestamp, r.mid_at_fill)  # type: ignore[arg-type]
+                assert r.mid_at_fill is not None  # filtered above
+                self._regime_detector.update(r.timestamp, r.mid_at_fill)
             if warmup_records:
                 logger.info(
                     f"[regime] warm-up: fed {len(warmup_records)} records, "
@@ -2290,7 +2293,7 @@ class FillTestRunner:
                 # 033# F4: 累積 PnL インクリメンタル追跡
                 if record.post_fill_30s_pnl is not None and record.fill_price:
                     cumulative_pnl_jpy += (
-                        record.post_fill_30s_pnl * 1e-4
+                        record.post_fill_30s_pnl / self._BPS_FACTOR
                         * record.fill_price * record.order_quantity
                     )
             batch.append(record)

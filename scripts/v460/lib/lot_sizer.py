@@ -206,8 +206,8 @@ def compute_cumulative_pnl_jpy(
     total = 0.0
     for r in records:
         if r.filled and r.post_fill_30s_pnl is not None and r.fill_price:
-            # bps → 実額: pnl_bps * 1e-4 * price * quantity
-            total += r.post_fill_30s_pnl * 1e-4 * r.fill_price * r.order_quantity
+            # bps → 実額: pnl_bps / BPS_FACTOR * price * quantity
+            total += r.post_fill_30s_pnl / 10_000 * r.fill_price * r.order_quantity
     return total
 
 
