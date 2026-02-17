@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from scripts.v460.ml.data_loader import load_fill_records
 from scripts.v460.ml.feature_enricher import (
-    build_enriched_as_features,
+    build_preorder_as_features,
     enrich_fill_records,
 )
 
@@ -270,7 +270,7 @@ def main() -> None:
     # --- Load data ---
     df = load_fill_records()
     enriched_df = enrich_fill_records(df)
-    X, y = build_enriched_as_features(enriched_df)
+    X, y = build_preorder_as_features(enriched_df)
 
     # PnL for skip simulation
     filled_mask = df["filled"].astype(bool) & df["adverse_selected_raw"].notna()

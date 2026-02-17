@@ -29,7 +29,7 @@ from scripts.v460.ml.feature_enricher import (
     INTERACTION_FEATURE_COLS,
     MICRO_FEATURE_COLS,
     V2_FEATURE_COLS,
-    build_enriched_as_features,
+    build_preorder_as_features,
     enrich_fill_records,
 )
 from scripts.v460.ml.skip_gate import train_and_save_as_skip_gate
@@ -184,7 +184,8 @@ def main() -> None:
     logger.info(f"Raw fill records: {len(df)}")
 
     enriched_df = enrich_fill_records(df)
-    X, y = build_enriched_as_features(enriched_df)
+    # 096# feature contract: 注文前に観測可能な特徴量のみで学習
+    X, y = build_preorder_as_features(enriched_df)
     logger.info(f"AS features: {X.shape[1]} features, {len(X)} samples")
     logger.info(f"AS rate: {y.mean():.3f}")
     logger.info(f"Feature columns: {X.columns.tolist()}")
