@@ -75,19 +75,29 @@ regime:
   trending_offset_boost: 1.5   # 052#: trending PnL -1.2bps → offset ×1.5 で保守化
 
 # ---- 時間帯フィルター (041#) ----
+# 089# 大幅削減: 16h→6h per side (088# SkipGate 動的較正 + sell_guard で補完)
+# 基準: mean ≤ -2.0 bps AND n ≥ 5 の統計的に確実な悪時間帯のみ残す
+# 旧: buy 16/24h, sell 16/24h ブロック → 両方 open 4/24h (17%)
+# 新: buy 6/24h, sell 6/24h ブロック → 両方 open 13/24h (54%)
 time_filter:
   enabled: true               # 041#: 高 AS 時間帯のスキップ
-  skip_utc_hours: [1, 2, 8, 9, 12, 13, 14, 16, 17, 18, 19, 21]  # 052#: グローバルフォールバック
-  # 073# side 別時間帯フィルター: セグメント分析による side×hour 最適化
-  # 075# CRITICAL#2 対応: clean データで再検証し修正
-  # buy: UTC10 (-0.946 clean), UTC11 (-2.784 clean n=8), UTC15 (-0.252 n=1) を追加ブロック
-  #      UTC23: mean -0.216 → §8.2 批判により再ブロック (mean 負の時間帯アンブロックは確証バイアス)
-  #      UTC03 (+1.478 clean n=8), UTC04 (+3.993 n=7) はアンブロック (buy 最強時間帯)
-  skip_utc_hours_buy: [1, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 23]
-  # sell: UTC04 (-5.558 clean n=7), UTC03 (+0.420 n=9→許容), UTC22 (-0.550 n=8), UTC23 (+0.022 n=8→微妙)
-  #       UTC15: clean で -3.325 (n=2)、073# の +2.460 は quarantine 汚染 → 再ブロック
-  #       UTC01 (+0.931 n=13), UTC02 (+0.239 n=8) をアンブロック (sell 好時間帯)
-  skip_utc_hours_sell: [3, 4, 5, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23]
+  skip_utc_hours: [16]        # 089#: グローバル = 両 side 共通ブロック (UTC16=JST1)
+  # 089# buy: mean ≤ -2.0 bps & n ≥ 5 のみ残す (旧 16h → 6h)
+  #   UTC01 (JST10): -2.43 bps n=14 | UTC02 (JST11): -2.78 bps n=8
+  #   UTC12 (JST21): -2.19 bps n=6  | UTC16 (JST01): -3.60 bps n=7
+  #   UTC18 (JST03): -3.24 bps n=8  | UTC21 (JST06): -2.19 bps n=13
+  # 解除: UTC8(-0.47 n=7), UTC9(+0.09 n=3), UTC10/11(n=0), UTC13(-0.22 n=15),
+  #        UTC14(+1.63! n=8), UTC15(+0.38! n=8), UTC17(-0.96 n=10),
+  #        UTC19(-1.29 n=6), UTC23(-0.22 n=9) → SkipGate adaptive で対応
+  skip_utc_hours_buy: [1, 2, 12, 16, 18, 21]
+  # 089# sell: mean ≤ -2.0 bps & n ≥ 5 のみ残す (旧 16h → 6h)
+  #   UTC04 (JST13): -5.56 bps n=7  | UTC08 (JST17): -6.72 bps n=8
+  #   UTC13 (JST22): -2.06 bps n=13 | UTC14 (JST23): -4.62 bps n=8
+  #   UTC16 (JST01): -2.13 bps n=8  | UTC17 (JST02): -2.11 bps n=7
+  # 解除: UTC3(+0.42! n=9), UTC5(-0.86 n=7), UTC9(n=0), UTC12(-0.03 n=6),
+  #        UTC15(+2.46! n=7), UTC18(+1.37! n=5), UTC19(-1.28 n=6),
+  #        UTC21(-1.10 n=13), UTC22(-0.55 n=8), UTC23(+0.02 n=8) → sell_guard で補完
+  skip_utc_hours_sell: [4, 8, 13, 14, 16, 17]
 
 # ---- 049# E3 サンプリング ----
 e3:
