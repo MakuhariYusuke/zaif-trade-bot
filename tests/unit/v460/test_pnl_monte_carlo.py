@@ -126,7 +126,13 @@ class TestLoadFillRecords:
 
     def test_load_from_directory(self, tmp_path: Path) -> None:
         recs1 = _make_records_typical(2, 1)
-        recs2 = _make_records_typical(3, 0)
+        # 101# §5: cycle_id をユニークにする (dedup 対応)
+        recs2_raw = _make_records_typical(3, 0)
+        recs2: list[FillRecord] = []
+        for r in recs2_raw:
+            d = r.to_dict()
+            d["cycle_id"] = f"day2_{d['cycle_id']}"
+            recs2.append(FillRecord.from_dict(d))
         _write_jsonl(recs1, tmp_path / "fill_records_day1.jsonl")
         _write_jsonl(recs2, tmp_path / "fill_records_day2.jsonl")
 
@@ -526,7 +532,14 @@ class TestEndToEnd:
     def test_multiple_files_merge(self, tmp_path: Path) -> None:
         """複数ファイルのマージ → 正しくシミュレート."""
         _write_jsonl(_make_records_typical(5, 1), tmp_path / "fill_records_d1.jsonl")
-        _write_jsonl(_make_records_typical(5, 1), tmp_path / "fill_records_d2.jsonl")
+        # 101# §5: cycle_id をユニークにする (dedup 対応)
+        recs2_raw = _make_records_typical(5, 1)
+        recs2: list[FillRecord] = []
+        for r in recs2_raw:
+            d = r.to_dict()
+            d["cycle_id"] = f"d2_{d['cycle_id']}"
+            recs2.append(FillRecord.from_dict(d))
+        _write_jsonl(recs2, tmp_path / "fill_records_d2.jsonl")
 
         loaded = PnLMonteCarloSimulator.load_fill_records(tmp_path)
         assert len(loaded) == 12

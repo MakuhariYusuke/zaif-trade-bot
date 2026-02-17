@@ -478,7 +478,10 @@ class FillTestRunner:
         # 033# 方策 B: 動的ロットの実行時数量 (config.order_quantity を初期値とする)
         self._current_lot: float = config.order_quantity
         # 046# soft loss_cap 発動済みフラグ (重複半減を防止)
+        # 101# §2: レジューム時に cumulative_pnl から復元する (run_continuous 内)
         self._soft_loss_cap_triggered: bool = False
+        # 101# §4: soft_cap スナップショット (起動時残高ベース、動的 loss_cap 連動しない)
+        self._soft_cap_jpy_snapshot: float | None = None
         # 047# Issue12: time_filter ログ throttle (突入/離脱のみ出力)
         self._in_time_filter: bool = False
         # 079# heartbeat: time_filter 抑制中のプロセス生存ログ
@@ -977,6 +980,9 @@ class FillTestRunner:
                         if new_lot >= self._MIN_ORDER_BTC:
                             old_lot = self._current_lot
                             self._current_lot = new_lot
+                            # 101# §3: balance 縮小時に _pre_shrink_lot も同期
+                            if not self._balance_shrink_active:
+                                self._pre_shrink_lot = old_lot
                             logger.info(
                                 f"[balance] BTC {btc_free:.6f} < {old_lot:.4f}. "
                                 f"ロット自動縮小: {old_lot:.4f} → {new_lot:.4f} BTC"
@@ -988,6 +994,18 @@ class FillTestRunner:
                         f"Skipping sell → will retry buy next."
                     )
                     return True
+                # 101# §6: 残高が十分な場合、以前の縮小から復元
+                if (
+                    not self._balance_shrink_active
+                    and self._current_lot < self._pre_shrink_lot
+                    and btc_free >= self._pre_shrink_lot
+                ):
+                    old_lot = self._current_lot
+                    self._current_lot = self._pre_shrink_lot
+                    logger.info(
+                        f"[balance] BTC 残高回復: ロット復元 "
+                        f"{old_lot:.4f} → {self._current_lot:.4f} BTC"
+                    )
             else:
                 # buy には JPY 残高が必要
                 price = await self.adapter.get_current_price(self.config.symbol)
@@ -1002,6 +1020,9 @@ class FillTestRunner:
                         if affordable_lot >= self._MIN_ORDER_BTC:
                             old_lot = self._current_lot
                             self._current_lot = affordable_lot
+                            # 101# §3: balance 縮小時に _pre_shrink_lot も同期
+                            if not self._balance_shrink_active:
+                                self._pre_shrink_lot = old_lot
                             logger.info(
                                 f"[balance] JPY {jpy_free:.0f} < {jpy_needed:.0f}. "
                                 f"ロット自動縮小: {old_lot:.4f} → {affordable_lot:.4f} BTC"
@@ -1013,6 +1034,19 @@ class FillTestRunner:
                             f"Skipping buy → will retry sell next."
                         )
                         return True
+                    # 101# §6: 残高が十分な場合、以前の縮小から復元 (buy 側)
+                    if (
+                        not self._balance_shrink_active
+                        and self._current_lot < self._pre_shrink_lot
+                    ):
+                        pre_lot_needed = self._pre_shrink_lot * price * 1.01
+                        if jpy_free >= pre_lot_needed:
+                            old_lot = self._current_lot
+                            self._current_lot = self._pre_shrink_lot
+                            logger.info(
+                                f"[balance] JPY 残高回復: ロット復元 "
+                                f"{old_lot:.4f} → {self._current_lot:.4f} BTC"
+                            )
         except Exception as e:
             logger.debug(f"[balance] Pre-flight check failed (non-fatal): {e}")
         return False
@@ -1745,7 +1779,14 @@ class FillTestRunner:
             import random as _rng
             do_e3 = mid_at_fill is not None and _rng.random() < self.config.e3_sampling_ratio
             if do_e3:
-                await asyncio.sleep(self.config.post_fill_wait_sec)  # +30s
+                # 101# §1: E3 計測は fill 後の絶対時刻基準で待機
+                # early_exit で 30s 計測が短縮された場合、E3 は「fill後60s」に到達
+                # するまでの残差分だけ sleep する (60s - actual_measurement_sec)
+                e3_target_60s = self.config.post_fill_wait_sec * 2  # 60s
+                e3_elapsed = time.time() - t_post_fill_start
+                e3_wait_60 = max(0.0, e3_target_60s - e3_elapsed)
+                if e3_wait_60 > 0:
+                    await asyncio.sleep(e3_wait_60)
                 try:
                     mid_60s_after = await self._get_mid_price()
                     if side == "buy":
@@ -1756,7 +1797,12 @@ class FillTestRunner:
                     pass
 
                 # 047# E3: +60s (=120s) 計測
-                await asyncio.sleep(self.config.post_fill_wait_sec * 2)  # +60s
+                # 101# §1: fill 後 120s を基準に残差 sleep
+                e3_target_120s = self.config.post_fill_wait_sec * 4  # 120s
+                e3_elapsed = time.time() - t_post_fill_start
+                e3_wait_120 = max(0.0, e3_target_120s - e3_elapsed)
+                if e3_wait_120 > 0:
+                    await asyncio.sleep(e3_wait_120)
                 try:
                     mid_120s_after = await self._get_mid_price()
                     if side == "buy":
@@ -1874,6 +1920,14 @@ class FillTestRunner:
         if self.config.loss_cap_auto:
             await self._update_dynamic_loss_cap()
 
+        # 101# §4: soft_cap スナップショット — 起動時の残高ベースで固定
+        # 動的 loss_cap_jpy が変動しても soft_cap は連動しない
+        self._soft_cap_jpy_snapshot = (
+            self.config.loss_cap_jpy
+            * self.config.soft_loss_cap_ratio
+            / self.config.loss_cap_ratio
+        )
+
         # 042# 起動時の滞留注文クリア (前回プロセスの残注文防止)
         await self._cancel_stale_orders()
 
@@ -1908,6 +1962,41 @@ class FillTestRunner:
                 cumulative_pnl_jpy += (
                     r.post_fill_30s_pnl * 1e-4 * r.fill_price * r.order_quantity
                 )
+
+        # 101# §2: soft_loss_cap_triggered をレジューム復元
+        # 前回 run 中に soft cap 発動していた場合、再起動で False に戻ると
+        # 二重ロット半減が発生する。cumulative_pnl_jpy から論理的に判定。
+        if existing_records and self.config.loss_cap_auto:
+            soft_cap_jpy = (
+                self.config.loss_cap_jpy
+                * self.config.soft_loss_cap_ratio
+                / self.config.loss_cap_ratio
+            )
+            if cumulative_pnl_jpy <= -soft_cap_jpy:
+                self._soft_loss_cap_triggered = True
+                logger.info(
+                    f"[resume] soft_loss_cap already triggered: "
+                    f"cumPnL={cumulative_pnl_jpy:.0f} JPY <= -{soft_cap_jpy:.0f} JPY"
+                )
+        # 101# P1-5: regime detector warm-up — 既存レコードの mid price で初期化
+        # window=20 に対して再起動後 20 サイクルは判定不安定になるため、
+        # レジューム時の既存レコード (直近 window*3 件) で事前投入する。
+        if self._regime_detector is not None and existing_records:
+            filled_with_mid = [
+                r for r in existing_records
+                if r.filled and r.mid_at_fill is not None
+            ]
+            # window*3 (バッファ上限に合わせる) の直近分だけ投入
+            warmup_window = self._regime_detector.config.window * 3
+            warmup_records = filled_with_mid[-warmup_window:]
+            for r in warmup_records:
+                self._regime_detector.update(r.timestamp, r.mid_at_fill)  # type: ignore[arg-type]
+            if warmup_records:
+                logger.info(
+                    f"[regime] warm-up: fed {len(warmup_records)} records, "
+                    f"regime={self._regime_detector.current_regime.value}"
+                )
+
         del existing_records, clean_records, quarantine_records  # メモリ解放
 
         batch: list[FillRecord] = list(self._unsaved_batch)  # 前回未保存分を引き継ぐ
@@ -2121,12 +2210,16 @@ class FillTestRunner:
 
             # --- 046# soft/hard 二段 loss_cap ---
             # soft cap: ロット半減 (一度だけ)
+            # 101# §4: _soft_cap_jpy_snapshot を使用 (動的 loss_cap_jpy に連動させない)
             if self.config.loss_cap_auto and not self._soft_loss_cap_triggered:
-                soft_cap_jpy = (
-                    self.config.loss_cap_jpy
-                    * self.config.soft_loss_cap_ratio
-                    / self.config.loss_cap_ratio
-                )
+                if self._soft_cap_jpy_snapshot is not None:
+                    soft_cap_jpy = self._soft_cap_jpy_snapshot
+                else:
+                    soft_cap_jpy = (
+                        self.config.loss_cap_jpy
+                        * self.config.soft_loss_cap_ratio
+                        / self.config.loss_cap_ratio
+                    )
                 if cumulative_pnl_jpy <= -soft_cap_jpy:
                     old_lot = self._current_lot
                     self._current_lot = max(

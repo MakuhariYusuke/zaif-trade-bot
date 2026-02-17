@@ -394,19 +394,27 @@ def load_fill_records(path: str | Path) -> list[FillRecord]:
     """JSONL ファイルから FillRecord を読み込み.
 
     032# #19: 破損行はスキップしてログ出力。
+    101# §5: cycle_id による重複排除 (SIGINT 中断時の partial+emergency 重複対策)。
     """
     p = Path(path)
     if not p.exists():
         return []
     records: list[FillRecord] = []
+    seen_ids: set[str] = set()
     skipped = 0
+    duplicates = 0
     with open(p, "r", encoding="utf-8") as f:
         for line_no, line in enumerate(f, 1):
             line = line.strip()
             if not line:
                 continue
             try:
-                records.append(FillRecord.from_dict(json.loads(line)))
+                rec = FillRecord.from_dict(json.loads(line))
+                if rec.cycle_id in seen_ids:
+                    duplicates += 1
+                    continue
+                seen_ids.add(rec.cycle_id)
+                records.append(rec)
             except (json.JSONDecodeError, TypeError, KeyError) as e:
                 skipped += 1
                 logger.warning(
@@ -414,16 +422,34 @@ def load_fill_records(path: str | Path) -> list[FillRecord]:
                 )
     if skipped:
         logger.warning(f"Total {skipped} corrupt lines skipped in {p.name}")
+    if duplicates:
+        logger.info(f"Deduplicated {duplicates} records in {p.name}")
     logger.info(f"Loaded {len(records)} fill records from {p}")
     return records
 
 
 def load_fill_records_glob(directory: str | Path) -> list[FillRecord]:
-    """ディレクトリ内の全 JSONL ファイルから FillRecord を読み込み."""
+    """ディレクトリ内の全 JSONL ファイルから FillRecord を読み込み.
+
+    101# §5: cross-file 重複排除 (emergency dump との重複対策)."""
     d = Path(directory)
     records: list[FillRecord] = []
+    seen_ids: set[str] = set()
     for p in sorted(d.glob("fill_records_*.jsonl")):
-        records.extend(load_fill_records(p))
+        file_records = load_fill_records(p)
+        for r in file_records:
+            if r.cycle_id not in seen_ids:
+                seen_ids.add(r.cycle_id)
+                records.append(r)
+    # emergency dump ディレクトリも統合 (重複は自動排除)
+    emergency_dir = d / "emergency"
+    if emergency_dir.exists():
+        for p in sorted(emergency_dir.glob("emergency_*.jsonl")):
+            file_records = load_fill_records(p)
+            for r in file_records:
+                if r.cycle_id not in seen_ids:
+                    seen_ids.add(r.cycle_id)
+                    records.append(r)
     return records
 
 
