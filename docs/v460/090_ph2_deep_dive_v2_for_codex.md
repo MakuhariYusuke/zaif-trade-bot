@@ -104,16 +104,18 @@
 2. Time Filter 判定 (UTC hour × side で skip)
 3. Regime Detection (trending/ranging 判定)
 4. Offset 計算:
-   a. base = spread × spread_offset_ratio (0.05)
-   b. sell 側: × side_offset.sell (0.12)
-   c. trending: × trending_offset_boost (1.5)
-   d. spread_adaptive: narrow(< 10 bps) なら ×2.0, wide(> 25 bps) なら ×0.5
-   e. sell_guard: offset 最低保証 0.08
+   a. base = spread_offset_ratio (0.05)
+   b. sell 側: ratio を side_offset.sell (0.12) に置換 (乗算ではない)
+   c. sell_guard: offset_floor 0.08 で最低保証 (b の結果と max)
+   d. trending: × trending_offset_boost (1.5)
+   e. spread_adaptive: narrow(< 10 bps) なら ×2.0, wide(> 25 bps) なら ×0.5
+   f. 091# sell floor 事後再適用: e で floor 割れした場合に再保証
+   g. 最終 offset = spread × effective_ratio
 5. SkipGate ML 判定 (AS 確率推定 → skip 可否)
 6. Maker limit order 発注 (最大 2 回リトライ)
 7. Fill 監視 (最大 300 秒待機, 5 秒ポーリング)
 8. Fill 後: mid_at_fill 記録, 30 秒後の mid 価格で PnL 計算
-9. Early Exit: fill 直後に ±5.0 bps で即キャンセル検討
+9. Early Exit: fill 後に ±5.0 bps 検知 → 次サイクルで反転注文 (当該注文キャンセルではない)
 10. Fast Fill Defense: queue_wait ≤ 5s で次サイクル offset ×2
 11. 結果を JSONL に保存
 ```
@@ -313,9 +315,11 @@ AS 率 39% は、「注文が約定した方向と逆に 2.5 bps 以上動く」
 
 **構造的仮説**: 売り側で即約定 = 価格が急上昇中に約定 → AS 発生。Fast fill defense (`enabled: true, threshold_sec: 5`) は次サイクルの offset を 2 倍にするだけで、**当該サイクルの損失は防げない**。
 
-### 🟡 WARNING-1: Early Exit 未発火
+### 🟡 WARNING-1: Early Exit
 
-設定 `threshold_bps: 5.0` だが、PnL の min は -31.4 bps。Early Exit は fill 後のキャンセルメカニズムであり、既に約定済みの指値注文には適用不能。Maker 注文の構造上、fill 後は反対売買で exit する以外にない。
+> **091# 修正**: Early Exit は「当該注文をキャンセル」ではなく「次サイクルの反転注文を高速化」する仕組み (`rapid_exit_pending` フラグ + `rapid_exit_interval_sec`)。fill 後の PnL が ±5.0 bps を超えると発火し、次サイクルの cycle_interval を 10 秒に短縮して反対売買を急ぐ。ログ上は発火実績あり (2026-02-17 07:06:48)。
+
+設定 `threshold_bps: 5.0` で発火はしているが、fill 後の Maker 注文である以上、即時的な損失回避には限界がある。
 
 ### 🟡 WARNING-2: データ品質 (歴史的問題)
 
@@ -606,6 +610,21 @@ results/v460/fill_test/fill_records_*.jsonl
 | 1771227270_eca8d769 | 2 | -2.200 | 50% |
 | 1771228012_ec0d219b | 4 | -0.632 | 25% |
 | 1771258270_75e34201 | 8 | -1.099 | 38% |
+
+---
+
+## 091# 修正記録
+
+> 以下は 091# レビューにより修正された事項。本ドキュメントの分析データ (512件) は
+> 088#/089# 適用前のデータが大半であり、「事前仮説」として位置づける。
+> 088#/089# 適用後の clean n ≥ 200 を満たした時点で再評価が必要。
+
+| # | 修正内容 |
+|---|---------|
+| 1 | §2 offset 計算フロー: sell 側は「乗算」ではなく「ratio を 0.12 に置換」に修正 |
+| 2 | §2 offset 計算フロー: 091# sell floor 事後再適用ステップ追加 |
+| 3 | §6 WARNING-1: Early Exit は「即キャンセル」ではなく「次サイクル高速反転」に修正。発火実績あり |
+| 4 | 本分析は 088#/089# 効果未反映データが大半であることを明記 |
 
 ---
 

@@ -756,6 +756,16 @@ class FillTestRunner:
                     f"→ offset reduced to {effective_offset_ratio:.4f}"
                 )
 
+        # 091# sell offset floor 事後再適用: spread_adaptive の wide 補正で
+        # floor を下回る場合があるため、最終段で再保証する
+        if side == "sell" and self.config.sell_offset_floor > 0:
+            if effective_offset_ratio < self.config.sell_offset_floor:
+                logger.debug(
+                    f"[sell_guard] Post-adaptive floor re-applied: "
+                    f"{effective_offset_ratio:.4f} → {self.config.sell_offset_floor:.4f}"
+                )
+                effective_offset_ratio = self.config.sell_offset_floor
+
         # 054# S1: Imbalance ベース AS リスク補正
         imbalance_skipped = False
         if self.config.imbalance_enabled and abs(imb) > self.config.imbalance_threshold:
@@ -1709,6 +1719,20 @@ class FillTestRunner:
                         if not self._in_time_filter:
                             self._in_time_filter = True
                             self._last_heartbeat_time = time.time()
+                        # 091# periodic flush: alt_side==last_side 分岐でも
+                        # 未保存バッチを定期的に書き出す (未保存レコード化防止)
+                        now_ts = time.time()
+                        if (
+                            batch
+                            and now_ts - self._last_batch_flush_time
+                            >= self.config.batch_flush_interval_sec
+                        ):
+                            if self._try_save_batch(batch):
+                                batch = []
+                                self._last_batch_flush_time = now_ts
+                                logger.info(
+                                    "[batch_flush] Periodic flush during alt_side==last_side wait"
+                                )
                         await asyncio.sleep(self.config.cycle_interval_sec)
                         continue
                     utc_h = datetime.now(timezone.utc).hour
@@ -1725,44 +1749,73 @@ class FillTestRunner:
 
             # 041# 残高 pre-flight check: 不足サイドはスキップ
             if await self._check_balance_for_side(next_side):
-                # 反対サイドを試す: _last_side を反転して次は反対サイド
-                self._last_side = next_side  # → 次の _next_side() が反対を返す
-                self._preflight_skip_count += 1
-
-                # 051# P2-3: Balance auto-shrink — 連続3回失敗でロット半減を試行
-                # 052#: 最低ロットを _MIN_ORDER_BTC に統一 (Coincheck 0.001 BTC)
-                min_lot = max(self.config.order_quantity, self._MIN_ORDER_BTC)
-                if (
-                    self._preflight_skip_count >= 3
-                    and not self._balance_shrink_active
-                    and self._current_lot > min_lot
-                ):
-                    old_lot = self._current_lot
-                    self._current_lot = max(
-                        min_lot,
-                        self._current_lot / 2,
+                # 091# 即座に反対 side を試す: time_filter との組合せで停滞するのを防止
+                opposite = "sell" if next_side == "buy" else "buy"
+                tried_opposite = False
+                if not await self._check_balance_for_side(opposite):
+                    # 反対 side は残高 OK → 即座に切替
+                    logger.info(
+                        f"[balance] {next_side} insufficient, "
+                        f"switching to {opposite} immediately (091#)"
                     )
-                    self._balance_shrink_active = True
-                    logger.warning(
-                        f"[balance_shrink] 連続 preflight 失敗 {self._preflight_skip_count} 回. "
-                        f"ロット縮小: {old_lot:.4f} → {self._current_lot:.4f} BTC"
-                    )
-                    # カウンタリセットして縮小ロットで再試行
+                    next_side = opposite
+                    self._last_side = opposite  # 次回は再び元の side
                     self._preflight_skip_count = 0
+                    tried_opposite = True
+
+                if not tried_opposite:
+                    # 両 side とも残高不足 → 従来通りの処理
+                    self._last_side = next_side  # → 次の _next_side() が反対を返す
+                    self._preflight_skip_count += 1
+
+                    # 091# 残高不足待機中でもバッチを flush
+                    now_ts = time.time()
+                    if (
+                        batch
+                        and now_ts - self._last_batch_flush_time
+                        >= self.config.batch_flush_interval_sec
+                    ):
+                        if self._try_save_batch(batch):
+                            batch = []
+                            self._last_batch_flush_time = now_ts
+                            logger.info(
+                                "[batch_flush] Periodic flush during preflight skip"
+                            )
+
+                    # 051# P2-3: Balance auto-shrink — 連続3回失敗でロット半減を試行
+                    # 052#: 最低ロットを _MIN_ORDER_BTC に統一 (Coincheck 0.001 BTC)
+                    min_lot = max(self.config.order_quantity, self._MIN_ORDER_BTC)
+                    if (
+                        self._preflight_skip_count >= 3
+                        and not self._balance_shrink_active
+                        and self._current_lot > min_lot
+                    ):
+                        old_lot = self._current_lot
+                        self._current_lot = max(
+                            min_lot,
+                            self._current_lot / 2,
+                        )
+                        self._balance_shrink_active = True
+                        logger.warning(
+                            f"[balance_shrink] 連続 preflight 失敗 {self._preflight_skip_count} 回. "
+                            f"ロット縮小: {old_lot:.4f} → {self._current_lot:.4f} BTC"
+                        )
+                        # カウンタリセットして縮小ロットで再試行
+                        self._preflight_skip_count = 0
+                        await asyncio.sleep(self.config.cycle_interval_sec)
+                        continue
+
+                    # 044# F8: 連続 preflight 失敗上限 → SAFE_STOP
+                    if self._preflight_skip_count >= self.config.max_preflight_skip:
+                        logger.error(
+                            f"SAFE_STOP: 連続 preflight スキップ {self._preflight_skip_count} 回 "
+                            f"(上限 {self.config.max_preflight_skip}). "
+                            f"buy/sell 両方で残高不足の可能性. 停止します."
+                        )
+                        self._shutdown_requested = True
+                        break
                     await asyncio.sleep(self.config.cycle_interval_sec)
                     continue
-
-                # 044# F8: 連続 preflight 失敗上限 → SAFE_STOP
-                if self._preflight_skip_count >= self.config.max_preflight_skip:
-                    logger.error(
-                        f"SAFE_STOP: 連続 preflight スキップ {self._preflight_skip_count} 回 "
-                        f"(上限 {self.config.max_preflight_skip}). "
-                        f"buy/sell 両方で残高不足の可能性. 停止します."
-                    )
-                    self._shutdown_requested = True
-                    break
-                await asyncio.sleep(self.config.cycle_interval_sec)
-                continue
 
             # preflight 成功 → カウンタリセット
             self._preflight_skip_count = 0
