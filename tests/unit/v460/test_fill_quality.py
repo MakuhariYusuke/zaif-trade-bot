@@ -1681,13 +1681,17 @@ class Test049SideOffset:
         assert cfg.spread_offset_ratio_sell == pytest.approx(0.08)
 
     def test_side_offset_used_in_price_calc(self) -> None:
-        """_compute_maker_price が side 別 offset を参照することをソースで確認."""
+        """_compute_maker_price が side 別 offset を参照することをソースで確認.
+
+        096# 状態分離: config.spread_offset_ratio_buy/sell ではなく
+        _base_offset_ratio_buy/sell を参照する設計に変更。
+        """
         import inspect
         from scripts.v460.run_fill_test import FillTestRunner
 
         source = inspect.getsource(FillTestRunner._compute_maker_price)
-        assert "spread_offset_ratio_buy" in source
-        assert "spread_offset_ratio_sell" in source
+        # 096# 状態分離: _base_offset_ratio* を使用
+        assert "_base_offset_ratio" in source
         assert "effective_offset_ratio" in source
 
 
@@ -1774,26 +1778,28 @@ class Test050SideOffsetSellOnly:
 class Test050FastFillDefenseRestore:
     """050# Bug#1-2: fast_fill_defense offset 復元 + side-specific 対応."""
 
-    def test_pre_boost_offset_field_exists(self) -> None:
-        """FillTestRunner に _pre_boost_offset フィールドが存在."""
+    def test_boost_multiplier_field_exists(self) -> None:
+        """096# FillTestRunner に _boost_multiplier フィールドが存在.
+
+        旧: _pre_boost_offset で config を保存/復元 → 競合リスク
+        新: _boost_multiplier × _base_offset_ratio で状態分離
+        """
         import inspect
         from scripts.v460.run_fill_test import FillTestRunner
 
         source = inspect.getsource(FillTestRunner.__init__)
-        assert "_pre_boost_offset" in source
-        assert "_pre_boost_offset_sell" in source
+        assert "_boost_multiplier" in source
+        assert "_base_offset_ratio" in source
 
     def test_offset_restore_logic_in_run_continuous(self) -> None:
-        """run_continuous に offset 復元ロジックが含まれる."""
+        """run_continuous に boost 解除ロジックが含まれる."""
         import inspect
         from scripts.v460.run_fill_test import FillTestRunner
 
         source = inspect.getsource(FillTestRunner.run_continuous)
-        # Bug#1 fix: 復元ロジック
-        assert "_pre_boost_offset" in source
+        # 096# multiplier ベースの解除
+        assert "_boost_multiplier" in source
         assert "Deactivated" in source
-        # Bug#2 fix: side-specific offset の boost
-        assert "spread_offset_ratio_sell" in source
 
 
 class Test050EffectiveOffsetRecord:
@@ -2101,12 +2107,16 @@ class Test052AdaptSellOffsetSync:
     """052# 方策AがSell offsetも比例調整する."""
 
     def test_adapt_syncs_sell_offset_in_code(self) -> None:
-        """_try_auto_adapt に sell offset 比例調整コードが含まれる."""
+        """_try_auto_adapt に sell offset 比例調整コードが含まれる.
+
+        096# 状態分離: _base_offset_ratio_sell を直接更新する設計に変更。
+        """
         import inspect
         from scripts.v460.run_fill_test import FillTestRunner
 
         source = inspect.getsource(FillTestRunner._try_auto_adapt)
-        assert "spread_offset_ratio_sell" in source
+        # 096# 状態分離: _base_offset_ratio_sell を使用
+        assert "_base_offset_ratio_sell" in source
         assert "ratio = result.new_offset / old" in source
 
     def test_yaml_sell_offset_updated(self) -> None:

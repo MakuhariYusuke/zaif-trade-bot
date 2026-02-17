@@ -593,8 +593,8 @@ class TestTimeFilterNoRecord:
         tf = cfg["time_filter"]
         assert "skip_utc_hours_buy" in tf
         assert "skip_utc_hours_sell" in tf
-        # 089# buy ブロック (6h): UTC 1, 2, 12, 16, 18, 21
-        assert set(tf["skip_utc_hours_buy"]) == {1, 2, 12, 16, 18, 21}
+        # 096# buy ブロック (7h): UTC 1, 2, 8, 12, 16, 18, 21 (UTC8=JST17: -3.81bps n=15 追加)
+        assert set(tf["skip_utc_hours_buy"]) == {1, 2, 8, 12, 16, 18, 21}
         # 089# sell ブロック (6h): UTC 4, 8, 13, 14, 16, 17
         assert set(tf["skip_utc_hours_sell"]) == {4, 8, 13, 14, 16, 17}
         # sell は UTC4 をブロック (sell PnL -5.558)

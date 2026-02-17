@@ -425,12 +425,6 @@ def enrich_fill_records(
         f"trades available={not trades_df.empty}"
     )
 
-    logger.info(
-        f"Enriched {len(fill_df)} records: "
-        f"OB matched={n_ob_matched}/{len(fill_df)}, "
-        f"trades available={not trades_df.empty}"
-    )
-
     return pd.concat([fill_df, enriched], axis=1)
 
 
@@ -479,6 +473,93 @@ INTERACTION_FEATURE_COLS = [
 ]
 
 
+def build_preorder_as_features(
+    enriched_df: pd.DataFrame,
+    *,
+    require_spread: bool = True,
+) -> tuple[pd.DataFrame, pd.Series]:
+    """096# 注文前に観測可能な特徴量のみで AS 分類器用データを構築.
+
+    build_features_from_market_state() (推論側) と完全に同じ特徴量契約。
+    log_queue_wait / edge_bps / return momentum 等の事後特徴量を排除し、
+    学習↔推論の不整合を解消する。
+
+    Args:
+        enriched_df: enrich_fill_records() の出力.
+        require_spread: True の場合 spread_at_order 必須.
+
+    Returns:
+        (X, y) タプル. X のカラム = skip_gate._BASE_FEATURE_COLS と一致.
+    """
+    from datetime import datetime as _dt
+
+    # filled かつ AS ラベル有りのみ
+    mask = enriched_df["filled"].astype(bool) & enriched_df["adverse_selected_raw"].notna()
+    data = enriched_df.loc[mask].copy()
+
+    if require_spread:
+        data = data.dropna(subset=["spread_at_order", "spread_offset_ratio"])
+
+    if len(data) < 10:
+        raise ValueError(f"Insufficient labeled samples: {len(data)}")
+
+    features: dict[str, pd.Series] = {}
+
+    # --- 注文前に観測可能な特徴量のみ ---
+    # F1: side (binary)
+    features["side_buy"] = (data["side"] == "buy").astype(int)
+
+    # F2: hour (cyclic) — 注文時刻
+    ts = data["timestamp"].astype(float)
+    hours = ts.apply(
+        lambda t: (lambda d: d.hour + d.minute / 60.0)(_dt.fromtimestamp(t))
+    )
+    features["hour_sin"] = np.sin(2 * np.pi * hours / 24)
+    features["hour_cos"] = np.cos(2 * np.pi * hours / 24)
+
+    # F3: spread_jpy — 注文時のスプレッド
+    if "spread_at_order" in data.columns:
+        features["spread_jpy"] = data["spread_at_order"].astype(float)
+
+    # F4: offset_ratio — 注文時の設定値
+    if "spread_offset_ratio" in data.columns:
+        features["offset_ratio"] = data["spread_offset_ratio"].astype(float)
+
+    # F5: regime (one-hot)
+    if "regime" in data.columns:
+        regime = data["regime"].fillna("unknown")
+        for val in ["trending", "ranging", "high_vol"]:
+            features[f"regime_{val}"] = (regime == val).astype(int)
+
+    # F6: trade-based micro features (注文前に算出可能)
+    for col in MICRO_FEATURE_COLS:
+        if col in enriched_df.columns and col not in ("spread_bps_ob", "depth_imbalance_ob"):
+            features[col] = enriched_df.loc[data.index, col].astype(float)
+
+    # F7: side-aligned interaction features (trade-based only)
+    side_sign = data["side"].map({"buy": 1.0, "sell": -1.0}).astype(float)
+
+    if "trade_flow_imbalance_60s" in enriched_df.columns:
+        tfi = enriched_df.loc[data.index, "trade_flow_imbalance_60s"].astype(float)
+        features["side_aligned_tfi"] = (tfi * side_sign).fillna(0.0)
+
+    if "price_velocity_60s" in enriched_df.columns:
+        vel = enriched_df.loc[data.index, "price_velocity_60s"].astype(float)
+        features["side_aligned_velocity"] = (vel * side_sign).fillna(0.0)
+
+    # NOTE: log_queue_wait, edge_bps は事後特徴量のため意図的に除外
+    # NOTE: V2_FEATURE_COLS, side_aligned_return_* も推論側未実装のため除外
+
+    X = pd.DataFrame(features, index=data.index)
+    y = data["adverse_selected_raw"].astype(int)
+
+    logger.info(
+        f"Preorder AS features: {X.shape[1]} features, {len(X)} samples, "
+        f"AS rate={y.mean():.1%} (096# feature contract aligned)"
+    )
+    return X, y
+
+
 def build_enriched_as_features(
     enriched_df: pd.DataFrame,
     *,
@@ -488,6 +569,9 @@ def build_enriched_as_features(
 
     既存 data_loader.build_as_features の出力 + マイクロストラクチャ特徴量
     + side-aligned インタラクション特徴量を返す.
+
+    WARNING: この関数は事後特徴量 (log_queue_wait, edge_bps) を含むため、
+    SkipGate の学習には build_preorder_as_features() を使用すること (096#)。
 
     Args:
         enriched_df: enrich_fill_records() の出力.

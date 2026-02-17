@@ -531,6 +531,62 @@ def build_features_from_market_state(
     return features
 
 
+def warm_start_skip_gate_thresholds(
+    gate: "SkipGate",
+    fill_records_dir: Path | str,
+    *,
+    window: int = 50,
+) -> None:
+    """096# SkipGate 閾値較正の warm start: 直近レコードから P(AS) 履歴を復元.
+
+    起動直後に adaptive_threshold が static fallback に固定される問題を解消。
+    直近の fill records から skip_gate_as_prob を読み取り、
+    _pas_history_buy / _pas_history_sell を初期化する。
+
+    Args:
+        gate: 初期化対象の SkipGate.
+        fill_records_dir: fill_records_*.jsonl のディレクトリ.
+        window: 復元するサンプル数 (直近 N 件).
+    """
+    import glob
+
+    prob_records: list[tuple[str, float]] = []  # (side, p_as)
+    files = sorted(glob.glob(str(Path(fill_records_dir) / "*.jsonl")))
+    # 096# パフォーマンス: 必要な件数に達したら早期終了（最新ファイルから逆順読み）
+    need = window * 2
+    for f in reversed(files):
+        with open(f) as fh:
+            file_records: list[tuple[str, float]] = []
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    r = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                p_as = r.get("skip_gate_as_prob")
+                side = r.get("side")
+                if p_as is not None and side in ("buy", "sell"):
+                    file_records.append((side, float(p_as)))
+            prob_records = file_records + prob_records
+        if len(prob_records) >= need:
+            break
+
+    # 直近 window 件を復元
+    recent = prob_records[-window * 2:] if len(prob_records) > window * 2 else prob_records
+    buy_probs = [p for s, p in recent if s == "buy"][-window:]
+    sell_probs = [p for s, p in recent if s == "sell"][-window:]
+
+    gate._pas_history_buy = buy_probs
+    gate._pas_history_sell = sell_probs
+
+    logger.info(
+        f"[skip_gate] 096# warm_start: restored buy={len(buy_probs)}, "
+        f"sell={len(sell_probs)} P(AS) samples for adaptive threshold"
+    )
+
+
 def train_and_save_skip_gate(
     results_dir: Optional[Path] = None,
     raw_dir: Optional[Path] = None,
@@ -628,13 +684,14 @@ def train_and_save_as_skip_gate(
 
     from scripts.v460.ml.data_loader import load_fill_records
     from scripts.v460.ml.feature_enricher import (
-        build_enriched_as_features,
+        build_preorder_as_features,
         enrich_fill_records,
     )
 
     df = load_fill_records(results_dir)
     enriched_df = enrich_fill_records(df, raw_dir=raw_dir)
-    X, y = build_enriched_as_features(enriched_df)
+    # 096# feature contract 統一: 注文前に観測可能な特徴量のみで学習
+    X, y = build_preorder_as_features(enriched_df)
 
     k_actual = min(k, X.shape[1])
     pipe = Pipeline([

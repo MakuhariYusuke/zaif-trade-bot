@@ -11,7 +11,7 @@
 symbol: btc_jpy
 order_quantity: 0.001         # 初期ロット (BTC) — Coincheck 最小
 cycle_interval_sec: 120.0     # サイクル間隔 (秒)
-order_timeout_sec: 300.0      # 注文タイムアウト (秒)
+order_timeout_sec: 90.0       # 096#: 300→90 (stale order + reprice で早期対応)
 poll_interval_sec: 5.0        # ポーリング間隔 (秒)
 post_fill_wait_sec: 30.0      # 約定後 PnL 計測待ち (秒)
 results_dir: results/v460/fill_test
@@ -50,6 +50,7 @@ adaptation:
   min_offset_ratio: 0.01      # offset 下限
   max_offset_ratio: 0.30      # offset 上限
   min_samples: 50             # 適応判定の最小サンプル数
+  recency_window: 120         # 096# 直近 N 件のみ使用 (0=全件)
 
 # ---- 方策 B: 動的ロットサイジング (033#) ----
 lot_sizing:
@@ -84,12 +85,11 @@ time_filter:
   skip_utc_hours: [16]        # 089#: グローバル = 両 side 共通ブロック (UTC16=JST1)
   # 089# buy: mean ≤ -2.0 bps & n ≥ 5 のみ残す (旧 16h → 6h)
   #   UTC01 (JST10): -2.43 bps n=14 | UTC02 (JST11): -2.78 bps n=8
-  #   UTC12 (JST21): -2.19 bps n=6  | UTC16 (JST01): -3.60 bps n=7
-  #   UTC18 (JST03): -3.24 bps n=8  | UTC21 (JST06): -2.19 bps n=13
-  # 解除: UTC8(-0.47 n=7), UTC9(+0.09 n=3), UTC10/11(n=0), UTC13(-0.22 n=15),
-  #        UTC14(+1.63! n=8), UTC15(+0.38! n=8), UTC17(-0.96 n=10),
-  #        UTC19(-1.29 n=6), UTC23(-0.22 n=9) → SkipGate adaptive で対応
-  skip_utc_hours_buy: [1, 2, 12, 16, 18, 21]
+  #   UTC08 (JST17): -3.81 bps n=15 | UTC12 (JST21): -2.19 bps n=6
+  #   UTC16 (JST01): -3.60 bps n=7  | UTC18 (JST03): -3.24 bps n=8
+  #   UTC21 (JST06): -2.19 bps n=13
+  # 096# UTC08 追加: -3.81bps n=15 は統計的に確実な悪時間帯
+  skip_utc_hours_buy: [1, 2, 8, 12, 16, 18, 21]
   # 089# sell: mean ≤ -2.0 bps & n ≥ 5 のみ残す (旧 16h → 6h)
   #   UTC04 (JST13): -5.56 bps n=7  | UTC08 (JST17): -6.72 bps n=8
   #   UTC13 (JST22): -2.06 bps n=13 | UTC14 (JST23): -4.62 bps n=8
@@ -122,10 +122,17 @@ fast_fill_defense:
 # ---- 094# stale order 検出 & cancel-replace ----
 stale_order:
   enabled: true                # 価格乖離した注文を検出して再発注
-  check_after_sec: 30.0        # 発注後この秒数以降でチェック開始
-  drift_bps: 5.0               # mid price がこの bps 以上乖離したら stale 判定
-  max_reprice: 2               # 1 サイクル内の最大再発注回数
+  check_after_sec: 30.0        # 発注後この秒数以降でチェック開始 (共通)
+  drift_bps: 5.0               # mid price がこの bps 以上乖離したら stale 判定 (共通)
+  max_reprice: 2               # 1 サイクル内の最大再発注回数 (共通)
   cooldown_sec: 10.0           # 再発注後のチェック猶予 (連続 reprice 防止)
+  # 096# side-specific: buy は早期介入 + reprice 1回限定
+  check_after_sec_buy: 15.0    # buy 側: 15s でチェック開始 (AS 回避の早期介入)
+  check_after_sec_sell: 30.0   # sell 側: 30s (fill rate 確保のため据え置き)
+  drift_bps_buy: 4.0           # buy 側: 4bps で stale 判定 (buy AS 狙い撃ち回避)
+  drift_bps_sell: 5.0          # sell 側: 5bps (据え置き)
+  max_reprice_buy: 1           # buy 側: 1回限定 (追随コスト制限)
+  max_reprice_sell: 2          # sell 側: 2回 (fill rate 重視)
 
 # ---- 安全設計 (000# §3.9) ----
 safety:

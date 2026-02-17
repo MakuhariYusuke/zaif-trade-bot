@@ -190,6 +190,15 @@ class FillTestConfig:
     stale_drift_bps: float = 5.0           # mid price がこの bps 以上乖離したら stale
     stale_max_reprice: int = 2             # 1 サイクル内の最大再発注回数
     stale_cooldown_sec: float = 10.0       # 再発注後チェック猶予（連続 reprice 防止）
+    # 096# stale order side 別パラメータ
+    stale_check_after_sec_buy: float | None = None   # buy 側乖離チェック開始 (None=共通値)
+    stale_check_after_sec_sell: float | None = None  # sell 側乖離チェック開始 (None=共通値)
+    stale_drift_bps_buy: float | None = None         # buy 側乖離閾値 (None=共通値)
+    stale_drift_bps_sell: float | None = None        # sell 側乖離閾値 (None=共通値)
+    stale_max_reprice_buy: int | None = None         # buy 側最大 reprice (None=共通値)
+    stale_max_reprice_sell: int | None = None        # sell 側最大 reprice (None=共通値)
+    # 096# adapter recency window (全履歴混合を停止)
+    adapt_recency_window: int = 0          # 0=全履歴, >0=直近 N clean records のみ
     # 088# sell 専用ハードガード
     sell_max_spread_jpy: float = 0.0       # 0 = 無制限, >0 でスプレッド超過時 sell スキップ
     sell_offset_floor: float = 0.0         # 0 = 無制限, >0 で sell offset 最低保証
@@ -402,10 +411,22 @@ class FillTestConfig:
             "drift_bps": "stale_drift_bps",
             "max_reprice": "stale_max_reprice",
             "cooldown_sec": "stale_cooldown_sec",
+            # 096# side-specific
+            "check_after_sec_buy": "stale_check_after_sec_buy",
+            "check_after_sec_sell": "stale_check_after_sec_sell",
+            "drift_bps_buy": "stale_drift_bps_buy",
+            "drift_bps_sell": "stale_drift_bps_sell",
+            "max_reprice_buy": "stale_max_reprice_buy",
+            "max_reprice_sell": "stale_max_reprice_sell",
         }
         for yaml_key, config_key in so_map.items():
             if yaml_key in so:
                 kwargs[config_key] = so[yaml_key]
+
+        # 096# adaptation recency window
+        adapt = yaml_cfg.get("adaptation", {})
+        if adapt.get("recency_window") is not None:
+            kwargs["adapt_recency_window"] = adapt["recency_window"]
 
         # 088# sell 専用ハードガード
         sell_guard = yaml_cfg.get("sell_guard", {})
@@ -465,9 +486,12 @@ class FillTestRunner:
         self._last_batch_flush_time: float = time.time()
         # 049# 即約定防御: 次サイクルの offset を一時的に増加
         self._fast_fill_boost_active: bool = False
-        # 050# Bug#1 fix: boost 発動前の offset を保存 (解除時に復元)
-        self._pre_boost_offset: float | None = None
-        self._pre_boost_offset_sell: float | None = None
+        # 096# 状態分離: base offset は adapter のみ変更、boost は乗数のみ変更
+        # config.spread_offset_ratio* は初期値として base に退避し、直接変更しない
+        self._base_offset_ratio: float = config.spread_offset_ratio
+        self._base_offset_ratio_buy: float | None = config.spread_offset_ratio_buy
+        self._base_offset_ratio_sell: float | None = config.spread_offset_ratio_sell
+        self._boost_multiplier: float = 1.0  # fast_fill_defense の一時乗数
         # 051# P2-3: Balance auto-shrink (残高不足時のロット一時縮小)
         self._balance_shrink_active: bool = False
         self._pre_shrink_lot: float = config.order_quantity
@@ -553,6 +577,21 @@ class FillTestRunner:
                         f"features={len(self._skip_gate.feature_cols)}, "
                         f"path={gate_path}"
                     )
+                    # 096# warm start: 直近 P(AS) 履歴を復元
+                    if config.skip_gate_adaptive_threshold:
+                        try:
+                            from scripts.v460.ml.skip_gate import (
+                                warm_start_skip_gate_thresholds,
+                            )
+                            warm_start_skip_gate_thresholds(
+                                self._skip_gate,
+                                config.results_dir,
+                                window=config.skip_gate_adaptive_window,
+                            )
+                        except Exception as ws_err:
+                            logger.warning(
+                                f"[skip_gate] Warm start failed (non-fatal): {ws_err}"
+                            )
             except Exception as e:
                 logger.error(f"[skip_gate] Failed to load: {e}. SkipGate disabled.")
                 self._skip_gate = None
@@ -736,11 +775,12 @@ class FillTestRunner:
 
         # スプレッド比例オフセット (最小保証付き)
         # 049# side 別 offset: buy/sell 独立設定がある場合はそちらを優先
-        effective_offset_ratio = self.config.spread_offset_ratio
-        if side == "buy" and self.config.spread_offset_ratio_buy is not None:
-            effective_offset_ratio = self.config.spread_offset_ratio_buy
-        elif side == "sell" and self.config.spread_offset_ratio_sell is not None:
-            effective_offset_ratio = self.config.spread_offset_ratio_sell
+        # 096# 状態分離: config ではなく _base_offset_ratio* を参照
+        effective_offset_ratio = self._base_offset_ratio
+        if side == "buy" and self._base_offset_ratio_buy is not None:
+            effective_offset_ratio = self._base_offset_ratio_buy
+        elif side == "sell" and self._base_offset_ratio_sell is not None:
+            effective_offset_ratio = self._base_offset_ratio_sell
 
         # 088# sell 専用ハードガード: offset floor (sell 側の最低保証)
         if side == "sell" and self.config.sell_offset_floor > 0:
@@ -841,11 +881,18 @@ class FillTestRunner:
 
         offset = max(self.config.min_offset_jpy, spread * effective_offset_ratio)
 
+        # 096# 状態分離: fast_fill_defense の一時乗数を最終段で適用
+        if self._boost_multiplier != 1.0:
+            offset *= self._boost_multiplier
+            effective_offset_ratio *= self._boost_multiplier
+
         if side == "buy":
             price = best_bid + offset
             # CM-1: post_only ガード — best_ask 以上にならないよう保護
             if price >= best_ask:
                 price = best_bid  # best bid に退避 (確実に maker)
+                # 096# 退避時の実効 offset を正確に記録
+                effective_offset_ratio = 0.0
                 logger.info(
                     f"Spread guard: buy price {best_bid + offset:.0f} >= ask {best_ask:.0f}, "
                     f"fallback to best_bid {best_bid:.0f} (spread={spread:.0f})"
@@ -856,6 +903,8 @@ class FillTestRunner:
             # CM-1: post_only ガード — best_bid 以下にならないよう保護
             if price <= best_bid:
                 price = best_ask  # best ask に退避 (確実に maker)
+                # 096# 退避時の実効 offset を正確に記録
+                effective_offset_ratio = 0.0
                 logger.info(
                     f"Spread guard: sell price {best_ask - offset:.0f} <= bid {best_bid:.0f}, "
                     f"fallback to best_ask {best_ask:.0f} (spread={spread:.0f})"
@@ -1114,7 +1163,7 @@ class FillTestRunner:
                 cancelled=True,
                 cancel_reason="orderbook_error",
                 error_message=str(e),
-                spread_offset_ratio=self.config.spread_offset_ratio,
+                spread_offset_ratio=self._base_offset_ratio,  # 096# 状態分離
                 run_id=self._run_id,       # 088# データ品質: 早期リターンにも必須
                 git_sha=self._git_sha,     # 088# quarantine 防止
             )
@@ -1328,7 +1377,7 @@ class FillTestRunner:
                 cancel_reason=cancel_reason,
                 error_message=last_error,  # 031# エラー詳細を記録
                 spread_at_order=spread_at_order,
-                spread_offset_ratio=self.config.spread_offset_ratio,
+                spread_offset_ratio=effective_offset_ratio,  # 096# 計算済み実効値
                 run_id=self._run_id,       # 088# データ品質: エラー時も必須
                 git_sha=self._git_sha,     # 088# quarantine 防止
             )
@@ -1345,8 +1394,8 @@ class FillTestRunner:
         if self.config.stale_order_enabled:
             try:
                 mid_at_order = await self._get_mid_price()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"[stale_order] mid_at_order 取得失敗 (stale 検出無効化): {e}")
         last_reprice_time = t_submit  # 094# cooldown 制御用
 
         while elapsed < self.config.order_timeout_sec and not self._shutdown_requested:
@@ -1429,13 +1478,29 @@ class FillTestRunner:
                 logger.warning(f"Poll error: {e}")
 
             # --- 094# stale order 検出 & cancel-replace ---
+            # 096# side-specific: buy/sell 別パラメータ (None=共通値 fallback)
+            _stale_check_sec = (
+                (self.config.stale_check_after_sec_buy if side == "buy" else self.config.stale_check_after_sec_sell)
+                if (self.config.stale_check_after_sec_buy if side == "buy" else self.config.stale_check_after_sec_sell) is not None
+                else self.config.stale_check_after_sec
+            )
+            _stale_drift = (
+                (self.config.stale_drift_bps_buy if side == "buy" else self.config.stale_drift_bps_sell)
+                if (self.config.stale_drift_bps_buy if side == "buy" else self.config.stale_drift_bps_sell) is not None
+                else self.config.stale_drift_bps
+            )
+            _stale_max_rp = (
+                (self.config.stale_max_reprice_buy if side == "buy" else self.config.stale_max_reprice_sell)
+                if (self.config.stale_max_reprice_buy if side == "buy" else self.config.stale_max_reprice_sell) is not None
+                else self.config.stale_max_reprice
+            )
             # 条件: enabled + 十分な経過時間 + 未約定 + reprice 回数未超過 + cooldown 経過
             if (
                 self.config.stale_order_enabled
                 and not filled
                 and mid_at_order is not None
-                and elapsed >= self.config.stale_check_after_sec
-                and reprice_count < self.config.stale_max_reprice
+                and elapsed >= _stale_check_sec
+                and reprice_count < _stale_max_rp
                 and (time.time() - last_reprice_time) >= self.config.stale_cooldown_sec
             ):
                 try:
@@ -1448,7 +1513,7 @@ class FillTestRunner:
                         (side == "buy" and current_mid > mid_at_order)
                         or (side == "sell" and current_mid < mid_at_order)
                     )
-                    if drift_bps >= self.config.stale_drift_bps and is_drifting_away:
+                    if drift_bps >= _stale_drift and is_drifting_away:
                         logger.info(
                             f"[stale_order] Price drifted {drift_bps:.1f}bps "
                             f"({side}: mid {mid_at_order:.0f}→{current_mid:.0f}). "
@@ -2019,6 +2084,7 @@ class FillTestRunner:
                 self._shutdown_requested = True
 
             # --- 049# 即約定防御: queue_wait が閾値以下 + 負エッジのとき次サイクルを保守化 ---
+            # 096# 状態分離: config.spread_offset_ratio を直接変更せず _boost_multiplier のみ操作
             if self.config.fast_fill_defense_enabled and record.filled:
                 # 093# side 別閾値: buy/sell で独立した判定秒数を適用
                 ff_threshold = self.config.fast_fill_threshold_sec
@@ -2045,52 +2111,34 @@ class FillTestRunner:
                             boost = self.config.fast_fill_offset_boost_buy
                         elif record.side == "sell" and self.config.fast_fill_offset_boost_sell is not None:
                             boost = self.config.fast_fill_offset_boost_sell
-                        # 050# Bug#1 fix: boost 前の値を保存
-                        self._pre_boost_offset = self.config.spread_offset_ratio
-                        self._pre_boost_offset_sell = self.config.spread_offset_ratio_sell
-                        old_common = self.config.spread_offset_ratio
-                        self.config.spread_offset_ratio = min(
-                            old_common * boost,
-                            0.30,  # max_offset_ratio ハードリミット
+                        # 096# 状態分離: 乗数のみ変更（base offset は adapter 管轄）
+                        old_mult = self._boost_multiplier
+                        self._boost_multiplier = min(boost, 0.30 / max(self._base_offset_ratio, 0.01))
+                        logger.info(
+                            f"[fast_fill_defense] Activated: {record.side} "
+                            f"wait={record.queue_wait_sec:.1f}s "
+                            f"(< {ff_threshold}s), "
+                            f"negative edge detected. "
+                            f"multiplier {old_mult:.2f}→{self._boost_multiplier:.2f}"
                         )
-                        # 050# Bug#2 fix: side-specific offset も boost
-                        if self.config.spread_offset_ratio_sell is not None:
-                            old_sell = self.config.spread_offset_ratio_sell
-                            self.config.spread_offset_ratio_sell = min(
-                                old_sell * boost, 0.30,
-                            )
-                            logger.info(
-                                f"[fast_fill_defense] Activated: {record.side} "
-                                f"wait={record.queue_wait_sec:.1f}s "
-                                f"(< {ff_threshold}s), "
-                                f"negative edge detected (boost={boost:.1f}×). "
-                                f"common {old_common:.4f}→{self.config.spread_offset_ratio:.4f}, "
-                                f"sell {old_sell:.4f}→{self.config.spread_offset_ratio_sell:.4f}"
-                            )
-                        else:
-                            logger.info(
-                                f"[fast_fill_defense] Activated: {record.side} "
-                                f"wait={record.queue_wait_sec:.1f}s "
-                                f"(< {ff_threshold}s), "
-                                f"negative edge detected (boost={boost:.1f}×). "
-                                f"offset {old_common:.4f}→{self.config.spread_offset_ratio:.4f}"
-                            )
                 elif self._fast_fill_boost_active:
-                    # 正常約定に戻った → boost 解除 + offset 復元
-                    old_val = self.config.spread_offset_ratio
-                    self.config.spread_offset_ratio = (
-                        self._pre_boost_offset
-                        if self._pre_boost_offset is not None
-                        else self.config.spread_offset_ratio
-                    )
-                    self.config.spread_offset_ratio_sell = self._pre_boost_offset_sell
+                    # 正常約定に戻った → boost 解除
+                    old_mult = self._boost_multiplier
+                    self._boost_multiplier = 1.0
                     self._fast_fill_boost_active = False
-                    self._pre_boost_offset = None
-                    self._pre_boost_offset_sell = None
                     logger.info(
                         "[fast_fill_defense] Deactivated: normal fill detected, "
-                        f"offset {old_val:.4f}→{self.config.spread_offset_ratio:.4f}"
+                        f"multiplier {old_mult:.2f}→1.00"
                     )
+            # 096# unfilled 時もブースト永続化を防止
+            elif self.config.fast_fill_defense_enabled and not record.filled and self._fast_fill_boost_active:
+                old_mult = self._boost_multiplier
+                self._boost_multiplier = 1.0
+                self._fast_fill_boost_active = False
+                logger.info(
+                    "[fast_fill_defense] Reset on unfilled: "
+                    f"multiplier {old_mult:.2f}→1.00"
+                )
             # --- バッチ保存 (024# R1: 独立 try/except) ---
             if len(batch) >= batch_size:
                 if self._try_save_batch(batch):
@@ -2364,6 +2412,9 @@ class FillTestRunner:
             all_records = load_fill_records_glob(str(self._results_dir))
             records, _q = filter_clean_records(all_records)
             del all_records
+            # 096# rolling window: 全履歴混合を停止、直近 N 件のみ使用
+            if self.config.adapt_recency_window > 0 and len(records) > self.config.adapt_recency_window:
+                records = records[-self.config.adapt_recency_window:]
             if len(records) < self.config.min_adapt_samples:
                 return
 
@@ -2377,10 +2428,11 @@ class FillTestRunner:
                 buy_metrics = compute_fill_metrics(buy_records)
                 sell_metrics = compute_fill_metrics(sell_records)
 
-                buy_offset = self.config.spread_offset_ratio
-                if self.config.spread_offset_ratio_buy is not None:
-                    buy_offset = self.config.spread_offset_ratio_buy
-                sell_offset = self.config.spread_offset_ratio_sell or self.config.spread_offset_ratio
+                # 096# 状態分離: config ではなく _base_offset_ratio* を参照
+                buy_offset = self._base_offset_ratio
+                if self._base_offset_ratio_buy is not None:
+                    buy_offset = self._base_offset_ratio_buy
+                sell_offset = self._base_offset_ratio_sell or self._base_offset_ratio
 
                 buy_config = AdaptationConfig(
                     current_offset_ratio=buy_offset,
@@ -2410,10 +2462,8 @@ class FillTestRunner:
                 if side_result.buy.changed:
                     old_buy = buy_offset
                     new_buy = side_result.buy.new_offset
-                    self.config.spread_offset_ratio_buy = new_buy
-                    # buy_offset_ratio が None だった場合は共通値も更新
-                    if self.config.spread_offset_ratio_buy is None:
-                        self.config.spread_offset_ratio = new_buy
+                    # 096# 状態分離: _base_offset_ratio_buy を更新
+                    self._base_offset_ratio_buy = new_buy
                     logger.info(
                         f"[方策A] buy offset: {old_buy:.4f} → {new_buy:.4f} "
                         f"({side_result.buy.action}) [regime={regime_tag}]"
@@ -2422,7 +2472,8 @@ class FillTestRunner:
                 if side_result.sell.changed:
                     old_sell = sell_offset
                     new_sell = side_result.sell.new_offset
-                    self.config.spread_offset_ratio_sell = new_sell
+                    # 096# 状態分離: _base_offset_ratio_sell を更新
+                    self._base_offset_ratio_sell = new_sell
                     logger.info(
                         f"[方策A] sell offset: {old_sell:.4f} → {new_sell:.4f} "
                         f"({side_result.sell.action}) [regime={regime_tag}]"
@@ -2439,8 +2490,9 @@ class FillTestRunner:
                 metrics = compute_fill_metrics(all_records_combined)
                 del all_records_combined
 
+                # 096# 状態分離: _base_offset_ratio を参照
                 adapt_config = AdaptationConfig(
-                    current_offset_ratio=self.config.spread_offset_ratio,
+                    current_offset_ratio=self._base_offset_ratio,
                     **self._build_adapt_kwargs(),
                 )
                 result = compute_adaptation(
@@ -2451,12 +2503,12 @@ class FillTestRunner:
                 )
 
                 if result.changed:
-                    old = self.config.spread_offset_ratio
-                    self.config.spread_offset_ratio = result.new_offset
-                    if self.config.spread_offset_ratio_sell is not None and old > 0:
+                    old = self._base_offset_ratio
+                    self._base_offset_ratio = result.new_offset
+                    if self._base_offset_ratio_sell is not None and old > 0:
                         ratio = result.new_offset / old
-                        old_sell = self.config.spread_offset_ratio_sell
-                        self.config.spread_offset_ratio_sell = min(
+                        old_sell = self._base_offset_ratio_sell
+                        self._base_offset_ratio_sell = min(
                             old_sell * ratio, 0.30,
                         )
                     logger.info(
