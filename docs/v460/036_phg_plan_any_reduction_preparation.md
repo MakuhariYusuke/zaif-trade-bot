@@ -629,6 +629,20 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 8. `quality/indicators` 配下 `any_type_debt_tokens` を `23 -> 0` に削減。repo 全体 `any_type_debt_tokens` は `2,817 -> 2,786`。  
 9. 回帰確認: `test_signal_indicators` + `test_modular_indicators` で `60 passed`。  
 
+### Step58: `end_to_end_validation` / `e2e_test_framework` の広域浅層改善（型安全 + 不具合修正）
+
+1. `ztb/trading/end_to_end_validation.py` の `Any` を全撤去し、`ObjectMap` / `FloatMap` / `StringMap` を導入して payload 型を統一。  
+2. `ComponentIntegrationTester` に `_get_component_manager()` を追加し、`component_manager` 未初期化時に `AttributeError` へ落ちる経路を各統合テストでガード。  
+3. `end_to_end_validation.py` の nested dict 参照を `_as_object_map()` / `_to_float()` 経由へ統一し、`KeyError` / 型揺れ起因の例外リスクを低減。  
+4. `end_to_end_validation.py` の performance 応答時間計測を `time.perf_counter()` 化し、短時間測定の精度を改善。  
+5. `ztb/trading/e2e_test_framework.py` の `Any` を全撤去し、`ExpectedPredicate` / `ExpectedValue` を導入して expected_results の契約を明確化。  
+6. `_validate_test_results()` は callable expected（`lambda x: ...`）を正しく評価するよう修正。従来は predicate が実質未検証だった不具合を解消。  
+7. 同メソッドで `bool` 判定を数値判定より先に実施するよう修正し、`bool` が `int` として扱われる誤判定を防止。  
+8. `e2e_test_framework.py` の `_test_signal_processing_rate()` で未定義 `send_signals` 呼び出し不具合を修正（async helper を復元）。  
+9. `_test_memory_pressure()` に `initial_memory=0` ガードを追加し、0除算リスクを解消。  
+10. 在庫更新: `end_to_end_validation.py` / `e2e_test_framework.py` はともに `any_type_debt_tokens=0`。repo 全体は `2,786 -> 2,747`、`ztb/trading` は `554 -> 515`。  
+11. 回帰確認: `py_compile`（2ファイル）通過。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -690,6 +704,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step55時点 | repo全体 | 2,846 |
 | Step56時点 | repo全体 | 2,817 |
 | Step57時点 | repo全体 | 2,786 |
+| Step58時点 | repo全体 | 2,747 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -769,6 +784,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step57時点 | `ztb/trading/signal/quality/indicators/base.py` | **0** |
 | Step57時点 | `ztb/trading/signal/quality/indicators/rsi.py` | **0** |
 | Step57時点 | `ztb/trading/signal/quality/indicators/macd.py` | **0** |
+| Step58時点 | `ztb/trading/end_to_end_validation.py` | **0** |
+| Step58時点 | `ztb/trading/e2e_test_framework.py` | **0** |
 
 ---
 
@@ -784,8 +801,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - バリデーション結果 payload を `TypedDict` 化し、ルール評価の重複 map 操作を helper 化。  
 5. `ztb/utils/config.py`  
    - config merge/cast 系の `Any` を段階的に削減し、既存型別名へ集約。  
-6. `ztb/trading/end_to_end_validation.py`  
-   - validation payload の `Any` を型固定し、stage 集計ロジックの重複と fallback 分岐を基底ヘルパへ寄せる。  
+6. `ztb/trading/backtest/integrated_backtest_runner.py`  
+   - backtest payload の `Any` を型固定し、集計/比較ロジックの重複分岐を helper へ集約する。  
 
 ---
 

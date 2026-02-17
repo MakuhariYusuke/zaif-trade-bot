@@ -6,10 +6,10 @@ V433 Phase 4: エンドツーエンドテストフレームワーク
 
 import asyncio
 import time
+from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -18,6 +18,12 @@ from ztb.trading.v433_integration_manager import V433IntegrationManager
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
+
+ObjectMap = dict[str, object]
+StepCallable = Callable[[], object]
+HookCallable = Callable[[], None]
+ExpectedPredicate = Callable[[object], bool]
+ExpectedValue = object | ExpectedPredicate
 
 
 @dataclass
@@ -29,11 +35,11 @@ class TestScenario:
     test_type: str  # "unit", "integration", "system", "performance", "stress"
     priority: str  # "critical", "high", "medium", "low"
     timeout_seconds: int = 300
-    setup_steps: List[Callable] = field(default_factory=list)
-    test_steps: List[Callable] = field(default_factory=list)
-    teardown_steps: List[Callable] = field(default_factory=list)
-    expected_results: Dict[str, Any] = field(default_factory=dict)
-    tags: List[str] = field(default_factory=list)
+    setup_steps: list[HookCallable] = field(default_factory=list)
+    test_steps: list[StepCallable] = field(default_factory=list)
+    teardown_steps: list[HookCallable] = field(default_factory=list)
+    expected_results: dict[str, ExpectedValue] = field(default_factory=dict)
+    tags: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -43,10 +49,10 @@ class TestExecutionResult:
     scenario_name: str
     success: bool
     execution_time: float
-    error_message: Optional[str] = None
-    actual_results: Dict[str, Any] = field(default_factory=dict)
-    performance_metrics: Dict[str, float] = field(default_factory=dict)
-    logs: List[str] = field(default_factory=list)
+    error_message: str | None = None
+    actual_results: ObjectMap = field(default_factory=dict)
+    performance_metrics: dict[str, float] = field(default_factory=dict)
+    logs: list[str] = field(default_factory=list)
     timestamp: datetime = field(default_factory=datetime.now)
 
 
@@ -60,7 +66,7 @@ class TestSuiteResult:
     failed_tests: int
     skipped_tests: int
     execution_time: float
-    results: List[TestExecutionResult] = field(default_factory=list)
+    results: list[TestExecutionResult] = field(default_factory=list)
     timestamp: datetime = field(default_factory=datetime.now)
 
     @property
@@ -92,7 +98,7 @@ class TestDataGenerator:
 
     def generate_price_series(
         self, symbol: str, periods: int = 1000, trend: str = "random"
-    ) -> List[float]:
+    ) -> list[float]:
         """価格系列を生成"""
         base_price = self.base_prices.get(symbol, 1000.0)
         volatility = self.volatilities.get(symbol, 0.02)
@@ -117,10 +123,10 @@ class TestDataGenerator:
 
     def generate_market_data_stream(
         self,
-        symbols: List[str],
+        symbols: list[str],
         duration_seconds: int = 60,
         update_interval: float = 1.0,
-    ) -> List[Tuple[str, float, float]]:
+    ) -> list[tuple[str, float, float]]:
         """市場データストリームを生成"""
         data_stream = []
 
@@ -138,7 +144,7 @@ class TestDataGenerator:
 
         return data_stream
 
-    def generate_trading_signals(self, count: int = 10) -> List[PositionSignal]:
+    def generate_trading_signals(self, count: int = 10) -> list[PositionSignal]:
         """取引シグナルを生成"""
         signals = []
         symbols = list(self.base_prices.keys())
@@ -164,7 +170,7 @@ class TestDataGenerator:
 
         return signals
 
-    def generate_stress_scenario(self, scenario_type: str) -> Dict[str, Any]:
+    def generate_stress_scenario(self, scenario_type: str) -> ObjectMap:
         """ストレスシナリオを生成"""
         if scenario_type == "flash_crash":
             return {
@@ -204,7 +210,7 @@ class EndToEndTestRunner:
         self.logger = get_logger(__name__)
 
         # テスト結果
-        self.test_results: List[TestExecutionResult] = []
+        self.test_results: list[TestExecutionResult] = []
 
         # テスト設定
         self.test_timeout = 300  # 5分
@@ -289,7 +295,7 @@ class EndToEndTestRunner:
             logs=logs,
         )
 
-    def run_test_suite(self, scenarios: List[TestScenario]) -> TestSuiteResult:
+    def run_test_suite(self, scenarios: list[TestScenario]) -> TestSuiteResult:
         """テストスイートを実行"""
         start_time = time.time()
         suite_name = f"e2e_test_suite_{int(start_time)}"
@@ -355,7 +361,7 @@ class EndToEndTestRunner:
         return suite_result
 
     def _validate_test_results(
-        self, expected: Dict[str, Any], actual: Dict[str, Any]
+        self, expected: Mapping[str, ExpectedValue], actual: Mapping[str, object]
     ) -> bool:
         """テスト結果を検証"""
         for key, expected_value in expected.items():
@@ -367,14 +373,43 @@ class EndToEndTestRunner:
 
             actual_value = actual[key]
 
-            # 型による検証
-            if isinstance(expected_value, (int, float)):
-                # 数値比較（許容誤差あり）
-                tolerance = expected_value * 0.1  # 10%許容
-                if abs(actual_value - expected_value) > tolerance:
+            # predicate-based validation (e.g. lambda x: x < threshold)
+            if callable(expected_value):
+                try:
+                    if not bool(expected_value(actual_value)):
+                        self.logger.warning(
+                            f"Predicate validation failed for {key}: got {actual_value}"
+                        )
+                        return False
+                except Exception as exc:
                     self.logger.warning(
-                        f"Value mismatch for {key}: expected {expected_value}, "
+                        f"Predicate validation errored for {key}: {exc}"
+                    )
+                    return False
+            # bool check must be before numeric check because bool is subclass of int
+            elif isinstance(expected_value, bool):
+                if not isinstance(actual_value, bool) or actual_value != expected_value:
+                    self.logger.warning(
+                        f"Boolean mismatch for {key}: expected {expected_value}, "
                         f"got {actual_value}"
+                    )
+                    return False
+            elif isinstance(expected_value, (int, float)):
+                # 数値比較（許容誤差あり）
+                if not isinstance(actual_value, (int, float)) or isinstance(
+                    actual_value, bool
+                ):
+                    self.logger.warning(
+                        f"Numeric type mismatch for {key}: expected numeric, got {type(actual_value).__name__}"
+                    )
+                    return False
+                expected_numeric = float(expected_value)
+                actual_numeric = float(actual_value)
+                tolerance = max(abs(expected_numeric) * 0.1, 1e-9)  # 10%許容
+                if abs(actual_numeric - expected_numeric) > tolerance:
+                    self.logger.warning(
+                        f"Value mismatch for {key}: expected {expected_numeric}, "
+                        f"got {actual_numeric}"
                     )
                     return False
             elif isinstance(expected_value, str):
@@ -385,16 +420,13 @@ class EndToEndTestRunner:
                         f"got '{actual_value}'"
                     )
                     return False
-            elif isinstance(expected_value, bool):
-                # ブール比較
-                if actual_value != expected_value:
-                    self.logger.warning(
-                        f"Boolean mismatch for {key}: expected {expected_value}, "
-                        f"got {actual_value}"
-                    )
-                    return False
             elif isinstance(expected_value, (list, tuple)):
                 # リスト比較（簡易版）
+                if not isinstance(actual_value, (list, tuple)):
+                    self.logger.warning(
+                        f"List type mismatch for {key}: expected list/tuple, got {type(actual_value).__name__}"
+                    )
+                    return False
                 if len(actual_value) != len(expected_value):
                     self.logger.warning(
                         f"List length mismatch for {key}: expected {len(expected_value)}, "
@@ -413,7 +445,7 @@ class ComprehensiveTestSuite:
         self.test_runner = EndToEndTestRunner(integration_manager)
         self.test_data_generator = TestDataGenerator()
 
-    def create_system_integration_tests(self) -> List[TestScenario]:
+    def create_system_integration_tests(self) -> list[TestScenario]:
         """システム統合テストを作成"""
         scenarios = []
 
@@ -487,7 +519,7 @@ class ComprehensiveTestSuite:
 
         return scenarios
 
-    def create_performance_tests(self) -> List[TestScenario]:
+    def create_performance_tests(self) -> list[TestScenario]:
         """パフォーマンステストを作成"""
         scenarios = []
 
@@ -537,7 +569,7 @@ class ComprehensiveTestSuite:
 
         return scenarios
 
-    def create_stress_tests(self) -> List[TestScenario]:
+    def create_stress_tests(self) -> list[TestScenario]:
         """ストレステストを作成"""
         scenarios = []
 
@@ -593,7 +625,7 @@ class ComprehensiveTestSuite:
 
         return scenarios
 
-    def run_comprehensive_test_suite(self) -> Dict[str, TestSuiteResult]:
+    def run_comprehensive_test_suite(self) -> dict[str, TestSuiteResult]:
         """包括的テストスイートを実行"""
         self.logger.info("Running comprehensive V433 test suite...")
 
@@ -683,17 +715,17 @@ class ComprehensiveTestSuite:
         self._teardown_system()
 
     # テストステップメソッド
-    def _test_component_initialization(self) -> Dict[str, Any]:
+    def _test_component_initialization(self) -> ObjectMap:
         """コンポーネント初期化テスト"""
         success = self.integration_manager.component_manager.initialize_components()
         return {"components_initialized": success}
 
-    def _test_component_startup(self) -> Dict[str, Any]:
+    def _test_component_startup(self) -> ObjectMap:
         """コンポーネント起動テスト"""
         success = self.integration_manager.component_manager.start_components()
         return {"components_started": success}
 
-    def _test_component_interaction(self) -> Dict[str, Any]:
+    def _test_component_interaction(self) -> ObjectMap:
         """コンポーネント相互作用テスト"""
         # 基本的な相互作用テスト
         try:
@@ -704,7 +736,7 @@ class ComprehensiveTestSuite:
         except Exception:
             return {"interaction_success": False}
 
-    def _test_market_data_ingestion(self) -> Dict[str, Any]:
+    def _test_market_data_ingestion(self) -> ObjectMap:
         """市場データ取り込みテスト"""
         try:
             # テストデータ投入
@@ -722,7 +754,7 @@ class ComprehensiveTestSuite:
         except Exception:
             return {"data_ingested": False}
 
-    def _test_data_propagation(self) -> Dict[str, Any]:
+    def _test_data_propagation(self) -> ObjectMap:
         """データ伝播テスト"""
         try:
             time.sleep(0.1)  # 伝播待機
@@ -744,7 +776,7 @@ class ComprehensiveTestSuite:
         except Exception:
             return {"data_propagated": False}
 
-    def _test_data_consistency(self) -> Dict[str, Any]:
+    def _test_data_consistency(self) -> ObjectMap:
         """データ整合性テスト"""
         try:
             # 複数データの整合性確認
@@ -758,7 +790,7 @@ class ComprehensiveTestSuite:
         except Exception:
             return {"data_consistent": False}
 
-    def _test_signal_generation(self) -> Dict[str, Any]:
+    def _test_signal_generation(self) -> ObjectMap:
         """シグナル生成テスト"""
         try:
             # テストシグナル生成
@@ -776,7 +808,7 @@ class ComprehensiveTestSuite:
         except Exception:
             return {"signal_generated": False}
 
-    def _test_order_execution(self) -> Dict[str, Any]:
+    def _test_order_execution(self) -> ObjectMap:
         """注文実行テスト"""
         try:
             # 注文実行確認（簡易版）
@@ -785,7 +817,7 @@ class ComprehensiveTestSuite:
         except Exception:
             return {"order_executed": False}
 
-    def _test_position_management(self) -> Dict[str, Any]:
+    def _test_position_management(self) -> ObjectMap:
         """ポジション管理テスト"""
         try:
             # ポジション状態確認
@@ -795,7 +827,7 @@ class ComprehensiveTestSuite:
         except Exception:
             return {"position_managed": False}
 
-    def _test_risk_management(self) -> Dict[str, Any]:
+    def _test_risk_management(self) -> ObjectMap:
         """リスク管理テスト"""
         try:
             # リスク指標確認
@@ -857,17 +889,23 @@ class ComprehensiveTestSuite:
         signals = self.test_data_generator.generate_trading_signals(50)
         start_time = time.time()
 
+        async def send_signals():
+            for signal in signals:
+                await self.integration_manager.component_manager.position_manager.submit_signal(
+                    signal
+                )
 
         asyncio.run(send_signals())
         end_time = time.time()
-        return len(signals) / (end_time - start_time)  # per second
+        elapsed = max(end_time - start_time, 1e-9)
+        return len(signals) / elapsed  # per second
 
     def _test_concurrent_operations(self) -> int:
         """並行操作テスト"""
         # 簡易版：並行して実行可能な操作数
         return 10  # 仮定値
 
-    def _test_high_frequency_data(self) -> Dict[str, Any]:
+    def _test_high_frequency_data(self) -> ObjectMap:
         """高頻度データテスト"""
         try:
             # 高頻度データ投入
@@ -884,7 +922,7 @@ class ComprehensiveTestSuite:
         except Exception:
             return {"system_stable": False}
 
-    def _test_burst_signals(self) -> Dict[str, Any]:
+    def _test_burst_signals(self) -> ObjectMap:
         """バーストシグナルテスト"""
         try:
             # バーストシグナル送信
@@ -903,7 +941,7 @@ class ComprehensiveTestSuite:
         except Exception:
             return {"no_crashes": False}
 
-    def _test_memory_pressure(self) -> Dict[str, Any]:
+    def _test_memory_pressure(self) -> ObjectMap:
         """メモリ負荷テスト"""
         try:
             # メモリ使用量確認
@@ -916,13 +954,14 @@ class ComprehensiveTestSuite:
                 )
 
             final_memory = self.integration_manager.performance_monitor.get_current_metrics().memory_usage_gb
-            memory_increase = (final_memory - initial_memory) / initial_memory
+            baseline = max(initial_memory, 1e-9)
+            memory_increase = (final_memory - initial_memory) / baseline
 
             return {"performance_degradation": memory_increase}
         except Exception:
             return {"performance_degradation": 1.0}
 
-    def _test_recovery_capability(self) -> Dict[str, Any]:
+    def _test_recovery_capability(self) -> ObjectMap:
         """回復能力テスト"""
         try:
             # システム停止

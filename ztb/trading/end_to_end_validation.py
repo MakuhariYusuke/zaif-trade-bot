@@ -9,7 +9,7 @@ import time
 import warnings
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
 import numpy as np
 
@@ -30,6 +30,25 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
+ObjectMap = dict[str, object]
+FloatMap = dict[str, float]
+StringMap = dict[str, str]
+CheckResultList = list[tuple[str, bool]]
+
+
+def _to_float(value: object, default: float = 0.0) -> float:
+    """Best-effort float conversion with safe fallback."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _as_object_map(value: object) -> ObjectMap:
+    """Return a dict-like object or empty mapping."""
+    return value if isinstance(value, dict) else {}
+
+
 @dataclass
 class IntegrationTestConfig:
     """統合テスト設定"""
@@ -46,13 +65,13 @@ class SystemHealthCheck:
     """システムヘルスチェック"""
 
     timestamp: datetime
-    component_status: Dict[str, str] = field(
+    component_status: StringMap = field(
         default_factory=dict
     )  # component -> status
-    performance_metrics: Dict[str, float] = field(default_factory=dict)
+    performance_metrics: FloatMap = field(default_factory=dict)
     error_count: int = 0
     warning_count: int = 0
-    critical_issues: List[str] = field(default_factory=list)
+    critical_issues: list[str] = field(default_factory=list)
     overall_health: str = "unknown"  # healthy, degraded, critical
 
 
@@ -60,7 +79,7 @@ class SystemHealthCheck:
 class ProductionReadinessAssessment:
     """本番対応評価"""
 
-    component_readiness: Dict[str, float] = field(
+    component_readiness: FloatMap = field(
         default_factory=dict
     )  # component -> readiness_score
     integration_score: float = 0.0
@@ -70,8 +89,8 @@ class ProductionReadinessAssessment:
     monitoring_score: float = 0.0
     documentation_score: float = 0.0
     overall_readiness: float = 0.0
-    blocking_issues: List[str] = field(default_factory=list)
-    recommendations: List[str] = field(default_factory=list)
+    blocking_issues: list[str] = field(default_factory=list)
+    recommendations: list[str] = field(default_factory=list)
     estimated_go_live_date: Optional[datetime] = None
 
 
@@ -83,14 +102,18 @@ class ComponentIntegrationTester:
         self.logger = get_logger(__name__)
 
         # テスト結果
-        self.test_results: Dict[str, Any] = {}
-        self.health_checks: List[SystemHealthCheck] = []
+        self.test_results: ObjectMap = {}
+        self.health_checks: list[SystemHealthCheck] = []
 
-    def run_component_integration_tests(self) -> Dict[str, Any]:
+    def _get_component_manager(self) -> object | None:
+        """Safely resolve component manager from integration manager."""
+        return getattr(self.integration_manager, "component_manager", None)
+
+    def run_component_integration_tests(self) -> ObjectMap:
         """コンポーネント統合テスト実行"""
         self.logger.info("Running component integration tests...")
 
-        test_results = {}
+        test_results: ObjectMap = {}
 
         # 1. 基本統合テスト
         test_results["basic_integration"] = self._test_basic_integration()
@@ -120,7 +143,7 @@ class ComponentIntegrationTester:
         self.logger.info("Component integration tests completed")
         return test_results
 
-    def _test_basic_integration(self) -> Dict[str, Any]:
+    def _test_basic_integration(self) -> ObjectMap:
         """基本統合テスト"""
         try:
             # システム初期化テスト
@@ -130,15 +153,16 @@ class ComponentIntegrationTester:
             start_success = self.integration_manager.start_system()
 
             # 基本コンポーネント存在確認
-            components_status = {}
-            if hasattr(self.integration_manager, "component_manager"):
+            component_manager = self._get_component_manager()
+            components_status: StringMap = {}
+            if component_manager is not None:
                 components_status["component_manager"] = "present"
-            if hasattr(self.integration_manager.component_manager, "v433_system"):
-                components_status["v433_system"] = "present"
-            if hasattr(self.integration_manager.component_manager, "position_manager"):
-                components_status["position_manager"] = "present"
-            if hasattr(self.integration_manager.component_manager, "risk_manager"):
-                components_status["risk_manager"] = "present"
+                if hasattr(component_manager, "v433_system"):
+                    components_status["v433_system"] = "present"
+                if hasattr(component_manager, "position_manager"):
+                    components_status["position_manager"] = "present"
+                if hasattr(component_manager, "risk_manager"):
+                    components_status["risk_manager"] = "present"
 
             # システム停止テスト
             stop_success = self.integration_manager.stop_system()
@@ -155,21 +179,23 @@ class ComponentIntegrationTester:
             self.logger.error(f"Basic integration test failed: {e}")
             return {"error": str(e), "overall_success": False}
 
-    def _test_component_communication(self) -> Dict[str, Any]:
+    def _test_component_communication(self) -> ObjectMap:
         """コンポーネント通信テスト"""
         try:
             # コンポーネント間メッセージングテスト
-            test_message = {"type": "test", "data": "integration_test"}
+            component_manager = self._get_component_manager()
+            if component_manager is None:
+                return {"error": "component_manager not available", "overall_success": False}
 
             # V433システムとの通信テスト
-            if hasattr(self.integration_manager.component_manager, "v433_system"):
+            v433_system = getattr(component_manager, "v433_system", None)
+            if v433_system is not None and hasattr(v433_system, "update_market_data"):
                 # 市場データ更新テスト
-                self.integration_manager.component_manager.v433_system.update_market_data(
-                    "btc_jpy", 5000000.0
-                )
+                v433_system.update_market_data("btc_jpy", 5000000.0)
 
             # ポジションマネージャーとの通信テスト
-            if hasattr(self.integration_manager.component_manager, "position_manager"):
+            position_manager = getattr(component_manager, "position_manager", None)
+            if position_manager is not None and hasattr(position_manager, "submit_signal"):
                 # シグナル送信テスト
                 from ztb.trading.position_manager import PositionSignal
 
@@ -183,9 +209,7 @@ class ComponentIntegrationTester:
                 )
 
                 async def test_signal_submission():
-                    await self.integration_manager.component_manager.position_manager.submit_signal(
-                        test_signal
-                    )
+                    await position_manager.submit_signal(test_signal)
 
                 asyncio.run(test_signal_submission())
 
@@ -200,19 +224,21 @@ class ComponentIntegrationTester:
             self.logger.error(f"Component communication test failed: {e}")
             return {"error": str(e), "overall_success": False}
 
-    def _test_data_flow_integration(self) -> Dict[str, Any]:
+    def _test_data_flow_integration(self) -> ObjectMap:
         """データフロー統合テスト"""
         try:
+            component_manager = self._get_component_manager()
+            v433_system = getattr(component_manager, "v433_system", None)
+            if component_manager is None or v433_system is None:
+                return {"error": "v433_system not available", "overall_success": False}
+
             # データフローテスト
-            data_flow_tests = []
+            data_flow_tests: CheckResultList = []
 
             # 1. 市場データフロー
-            self.integration_manager.component_manager.v433_system.update_market_data(
-                "btc_jpy", 5000000.0
-            )
-            current_price = self.integration_manager.component_manager.v433_system.current_prices.get(
-                "btc_jpy"
-            )
+            v433_system.update_market_data("btc_jpy", 5000000.0)
+            current_prices = getattr(v433_system, "current_prices", {})
+            current_price = _as_object_map(current_prices).get("btc_jpy")
             data_flow_tests.append(("market_data_flow", current_price is not None))
 
             # 2. ポジションデータフロー
@@ -230,15 +256,16 @@ class ComponentIntegrationTester:
             self.logger.error(f"Data flow integration test failed: {e}")
             return {"error": str(e), "overall_success": False}
 
-    def _test_error_handling_integration(self) -> Dict[str, Any]:
+    def _test_error_handling_integration(self) -> ObjectMap:
         """エラー処理統合テスト"""
         try:
             # エラーハンドリングテスト
-            error_tests = []
+            component_manager = self._get_component_manager()
+            v433_system = getattr(component_manager, "v433_system", None)
+            error_tests: CheckResultList = []
 
             # 1. 無効なシグナル処理
             try:
-                invalid_signal = {"invalid": "signal"}
                 # エラーが適切に処理されるかテスト
                 error_tests.append(("invalid_signal_handling", True))
             except Exception:
@@ -254,10 +281,11 @@ class ComponentIntegrationTester:
             # 3. データエラー処理
             try:
                 # 無効な市場データ処理テスト
-                self.integration_manager.component_manager.v433_system.update_market_data(
-                    "btc_jpy", None
-                )
-                error_tests.append(("data_error_handling", True))
+                if v433_system is not None and hasattr(v433_system, "update_market_data"):
+                    v433_system.update_market_data("btc_jpy", None)
+                    error_tests.append(("data_error_handling", True))
+                else:
+                    error_tests.append(("data_error_handling", False))
             except Exception:
                 error_tests.append(("data_error_handling", False))
 
@@ -270,18 +298,21 @@ class ComponentIntegrationTester:
             self.logger.error(f"Error handling integration test failed: {e}")
             return {"error": str(e), "overall_success": False}
 
-    def _test_performance_integration(self) -> Dict[str, Any]:
+    def _test_performance_integration(self) -> ObjectMap:
         """パフォーマンス統合テスト"""
         try:
+            component_manager = self._get_component_manager()
+            v433_system = getattr(component_manager, "v433_system", None)
+            if v433_system is None or not hasattr(v433_system, "update_market_data"):
+                return {"error": "v433_system not available", "overall_success": False}
+
             # パフォーマンス統合テスト
-            performance_tests = []
+            performance_tests: CheckResultList = []
 
             # 1. レスポンスタイムテスト
-            start_time = time.time()
-            self.integration_manager.component_manager.v433_system.update_market_data(
-                "btc_jpy", 5000000.0
-            )
-            response_time = time.time() - start_time
+            start_time = time.perf_counter()
+            v433_system.update_market_data("btc_jpy", 5000000.0)
+            response_time = time.perf_counter() - start_time
             performance_tests.append(
                 ("response_time", response_time < 0.1)
             )  # 100ms以内
@@ -311,20 +342,23 @@ class ComponentIntegrationTester:
             self.logger.error(f"Performance integration test failed: {e}")
             return {"error": str(e), "overall_success": False}
 
-    def _test_security_integration(self) -> Dict[str, Any]:
+    def _test_security_integration(self) -> ObjectMap:
         """セキュリティ統合テスト"""
         try:
+            component_manager = self._get_component_manager()
+            v433_system = getattr(component_manager, "v433_system", None)
             # セキュリティテスト
-            security_tests = []
+            security_tests: CheckResultList = []
 
             # 1. 入力検証テスト
             try:
                 # SQLインジェクションのような攻撃パターン
-                malicious_input = "'; DROP TABLE users; --"
-                self.integration_manager.component_manager.v433_system.update_market_data(
-                    "btc_jpy", malicious_input
-                )
-                security_tests.append(("input_validation", True))
+                if v433_system is not None and hasattr(v433_system, "update_market_data"):
+                    malicious_input = "'; DROP TABLE users; --"
+                    v433_system.update_market_data("btc_jpy", malicious_input)
+                    security_tests.append(("input_validation", True))
+                else:
+                    security_tests.append(("input_validation", False))
             except Exception:
                 security_tests.append(("input_validation", False))
 
@@ -344,8 +378,8 @@ class ComponentIntegrationTester:
             return {"error": str(e), "overall_success": False}
 
     def _assess_integration_quality(
-        self, test_results: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, test_results: ObjectMap
+    ) -> ObjectMap:
         """統合品質評価"""
         successful_tests = 0
         total_tests = 0
@@ -394,15 +428,15 @@ class EndToEndValidationSystem:
         self.integration_tester = ComponentIntegrationTester(integration_manager)
 
         # 検証結果
-        self.validation_results: Dict[str, Any] = {}
+        self.validation_results: ObjectMap = {}
 
     def run_end_to_end_validation(
         self, config: IntegrationTestConfig
-    ) -> Dict[str, Any]:
+    ) -> ObjectMap:
         """エンドツーエンド検証実行"""
         self.logger.info("Running end-to-end validation...")
 
-        validation_results = {}
+        validation_results: ObjectMap = {}
 
         try:
             # 1. システム初期化と統合テスト
@@ -449,7 +483,7 @@ class EndToEndValidationSystem:
         self.logger.info("End-to-end validation completed")
         return validation_results
 
-    def _validate_system_initialization(self) -> Dict[str, Any]:
+    def _validate_system_initialization(self) -> ObjectMap:
         """システム初期化検証"""
         try:
             # 統合テスト実行
@@ -461,20 +495,27 @@ class EndToEndValidationSystem:
             init_success = self.integration_manager.initialize_system()
             start_success = self.integration_manager.start_system()
 
+            overall_assessment = _as_object_map(
+                integration_results.get("overall_assessment", {})
+            )
+            integration_success_rate = _to_float(
+                overall_assessment.get("success_rate", 0.0), 0.0
+            )
+
             return {
                 "integration_tests": integration_results,
                 "system_initialization": init_success,
                 "system_startup": start_success,
                 "overall_success": init_success
                 and start_success
-                and integration_results["overall_assessment"]["success_rate"] > 0.8,
+                and integration_success_rate > 0.8,
             }
 
         except Exception as e:
             self.logger.error(f"System initialization validation failed: {e}")
             return {"error": str(e), "overall_success": False}
 
-    def _validate_performance_optimization(self) -> Dict[str, Any]:
+    def _validate_performance_optimization(self) -> ObjectMap:
         """パフォーマンス最適化検証"""
         try:
             # パフォーマンス最適化実行
@@ -487,27 +528,30 @@ class EndToEndValidationSystem:
                 self.performance_optimizer.benchmark_system_performance()
             )
 
+            optimization_summary = _as_object_map(optimization_results.get("summary", {}))
+            successful_optimizations = _to_float(
+                optimization_summary.get("successful_optimizations", 0.0), 0.0
+            )
+            target_achievement = _as_object_map(
+                benchmark_results.get("target_achievement", {})
+            )
+            overall_achievement_rate = _to_float(
+                target_achievement.get("overall_achievement_rate", 0.0), 0.0
+            )
+
             return {
                 "optimization_results": optimization_results,
                 "benchmark_results": benchmark_results,
-                "optimization_successful": optimization_results["summary"][
-                    "successful_optimizations"
-                ]
-                > 0,
-                "target_achievement": benchmark_results["target_achievement"][
-                    "overall_achievement_rate"
-                ],
-                "overall_success": benchmark_results["target_achievement"][
-                    "overall_achievement_rate"
-                ]
-                > 0.7,
+                "optimization_successful": successful_optimizations > 0.0,
+                "target_achievement": overall_achievement_rate,
+                "overall_success": overall_achievement_rate > 0.7,
             }
 
         except Exception as e:
             self.logger.error(f"Performance optimization validation failed: {e}")
             return {"error": str(e), "overall_success": False}
 
-    def _validate_backtesting(self) -> Dict[str, Any]:
+    def _validate_backtesting(self) -> ObjectMap:
         """バックテスト検証"""
         try:
             # バックテスト設定
@@ -544,7 +588,7 @@ class EndToEndValidationSystem:
             self.logger.error(f"Backtesting validation failed: {e}")
             return {"error": str(e), "overall_success": False}
 
-    def _validate_real_data(self) -> Dict[str, Any]:
+    def _validate_real_data(self) -> ObjectMap:
         """リアルデータ検証"""
         try:
             # ライブ検証設定
@@ -584,7 +628,7 @@ class EndToEndValidationSystem:
             self.logger.error(f"Real data validation failed: {e}")
             return {"error": str(e), "overall_success": False}
 
-    def _validate_stress_testing(self, config: IntegrationTestConfig) -> Dict[str, Any]:
+    def _validate_stress_testing(self, config: IntegrationTestConfig) -> ObjectMap:
         """ストレステスト検証"""
         try:
             # ストレスシナリオ実行
@@ -598,9 +642,10 @@ class EndToEndValidationSystem:
             )
 
             # ストレス耐性評価
-            resilience_score = stress_results["stress_resilience"][
-                "average_resilience_score"
-            ]
+            stress_resilience = _as_object_map(stress_results.get("stress_resilience", {}))
+            resilience_score = _to_float(
+                stress_resilience.get("average_resilience_score", 0.0), 0.0
+            )
 
             return {
                 "stress_results": stress_results,
@@ -628,20 +673,29 @@ class EndToEndValidationSystem:
 
             # 統合スコア
             integration_tests = self.integration_tester.test_results
-            assessment.integration_score = integration_tests.get(
-                "overall_assessment", {}
-            ).get("success_rate", 0)
+            integration_overall = _as_object_map(
+                integration_tests.get("overall_assessment", {})
+            )
+            assessment.integration_score = _to_float(
+                integration_overall.get("success_rate", 0.0), 0.0
+            )
 
             # パフォーマンススコア
             perf_benchmark = self.performance_optimizer.benchmark_system_performance()
-            assessment.performance_score = perf_benchmark["target_achievement"][
-                "overall_achievement_rate"
-            ]
+            target_achievement = _as_object_map(
+                _as_object_map(perf_benchmark).get("target_achievement", {})
+            )
+            assessment.performance_score = _to_float(
+                target_achievement.get("overall_achievement_rate", 0.0), 0.0
+            )
 
             # 信頼性スコア
             backtest_results = self.backtest_system.generate_backtest_report()
+            backtest_overall = _as_object_map(
+                _as_object_map(backtest_results).get("overall_assessment", {})
+            )
             assessment.reliability_score = (
-                backtest_results.get("overall_assessment", {}).get("overall_score", 0)
+                _to_float(backtest_overall.get("overall_score", 0.0), 0.0)
                 / 100.0
             )
 
@@ -655,7 +709,7 @@ class EndToEndValidationSystem:
             assessment.documentation_score = 0.6
 
             # 全体対応度
-            weights = {
+            weights: FloatMap = {
                 "component_readiness": 0.2,
                 "integration_score": 0.2,
                 "performance_score": 0.2,
@@ -706,9 +760,9 @@ class EndToEndValidationSystem:
 
     def _generate_readiness_recommendations(
         self, assessment: ProductionReadinessAssessment
-    ) -> List[str]:
+    ) -> list[str]:
         """対応度推奨事項生成"""
-        recommendations = []
+        recommendations: list[str] = []
 
         if assessment.integration_score < 0.8:
             recommendations.append(
@@ -750,8 +804,8 @@ class EndToEndValidationSystem:
         return recommendations
 
     def _generate_overall_assessment(
-        self, validation_results: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, validation_results: ObjectMap
+    ) -> ObjectMap:
         """総合評価生成"""
         assessment = {
             "validation_success_rate": 0.0,
@@ -817,7 +871,7 @@ class EndToEndValidationSystem:
 
         return assessment
 
-    def generate_final_report(self) -> Dict[str, Any]:
+    def generate_final_report(self) -> ObjectMap:
         """最終レポート生成"""
         self.logger.info("Generating final validation report...")
 
@@ -843,7 +897,7 @@ class EndToEndValidationSystem:
         # パフォーマンスサマリー
         performance_summary = {}
         if "performance_optimization" in self.validation_results:
-            perf = self.validation_results["performance_optimization"]
+            perf = _as_object_map(self.validation_results["performance_optimization"])
             performance_summary = {
                 "optimization_successful": perf.get("optimization_successful", False),
                 "target_achievement": perf.get("target_achievement", 0),
@@ -853,7 +907,7 @@ class EndToEndValidationSystem:
         # 信頼性サマリー
         reliability_summary = {}
         if "backtesting" in self.validation_results:
-            backtest = self.validation_results["backtesting"]
+            backtest = _as_object_map(self.validation_results["backtesting"])
             reliability_summary = {
                 "backtest_performance": backtest.get("basic_performance", 0),
                 "walk_forward_decay": backtest.get("walk_forward_decay", 0),
@@ -877,7 +931,9 @@ class EndToEndValidationSystem:
                 }
 
         # 総合評価
-        overall_assessment = self.validation_results.get("overall_assessment", {})
+        overall_assessment = _as_object_map(
+            self.validation_results.get("overall_assessment", {})
+        )
 
         return {
             "execution_summary": execution_summary,
