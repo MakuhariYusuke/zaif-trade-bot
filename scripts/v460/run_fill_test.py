@@ -68,7 +68,7 @@ class FillTestConfig:
     symbol: str = "btc_jpy"
     order_quantity: float = 0.001  # 初期ロット (Coincheck BTC 最小)
     cycle_interval_sec: float = 120.0  # サイクル間隔
-    order_timeout_sec: float = 300.0  # 注文タイムアウト
+    order_timeout_sec: float = 90.0  # 注文タイムアウト (096# 300→90)
     poll_interval_sec: float = 5.0  # ポーリング間隔
     post_fill_wait_sec: float = 30.0  # 約定後 PnL 計測待ち
     results_dir: str = "results/v460/fill_test"
@@ -83,7 +83,7 @@ class FillTestConfig:
     max_order_retries: int = 2  # 084# 1→2: api_error 28% 対策 (計3回試行)
     retry_delay_sec: float = 2.0  # リトライ初回間隔 (指数バックオフ適用)
     # CM-3: AS 判定デッドゾーン (bps)
-    as_deadzone_bps: float = 0.5  # ±0.5 bps 以内の逆行は AS と判定しない
+    as_deadzone_bps: float = 2.5  # 052# ±2.5 bps 以内の逆行は AS と判定しない
     # 031# スプレッドフィルター
     min_spread_jpy: float = 0.0  # 0 = フィルタなし
     # 保存
@@ -111,7 +111,7 @@ class FillTestConfig:
     regime_trend_threshold_pct: float = 0.5
     regime_high_vol_multiplier: float = 2.0
     regime_hysteresis_count: int = 3
-    regime_min_confidence: float = 0.4
+    regime_min_confidence: float = 0.3  # 052# 0.4→0.3
     # 052#: トレンディング時のオフセットブースト (PnL -1.2bps)
     regime_trending_offset_boost: float = 1.5  # トレンディング検出時に offset × 1.5
     # 041# 時間帯フィルター (AS 高リスク時間帯のスキップ)
@@ -182,7 +182,7 @@ class FillTestConfig:
     skip_gate_target_skip_rate_sell: float = 0.20
     skip_gate_adaptive_window: int = 50
     skip_gate_adaptive_min_samples: int = 20
-    skip_gate_adaptive_step: float = 0.02
+    skip_gate_adaptive_step: float = 0.05  # 100# 0.02→0.05
     skip_gate_adaptive_floor: float = 0.35
     skip_gate_adaptive_ceiling: float = 0.80
     # 094# stale order 検出 & cancel-replace (価格乖離した注文を再発注)
@@ -203,6 +203,38 @@ class FillTestConfig:
     # 088# sell 専用ハードガード
     sell_max_spread_jpy: float = 0.0       # 0 = 無制限, >0 でスプレッド超過時 sell スキップ
     sell_offset_floor: float = 0.0         # 0 = 無制限, >0 で sell offset 最低保証
+    # ---- 102# YAML化: 散在マジックナンバーの設定外部化 ----
+    # 共通 offset 上限 (spread_adaptive, imbalance, adapt の cap)
+    max_offset_ratio: float = 0.30
+    # offset下限 (wide spread 時の floor)
+    min_offset_ratio: float = 0.01
+    # loss_cap 残高再取得サイクル間隔
+    loss_cap_update_interval: int = 50
+    # 動的 loss_cap の最低保証額 (JPY)
+    min_loss_cap_jpy: float = 50.0
+    # mid price trend の有効判定秒数
+    mid_trend_validity_sec: float = 300.0
+    # buy 残高チェックの手数料マージン倍率 (1.01 = 1% マージン)
+    balance_margin_ratio: float = 1.01
+    # balance_shrink 発動の連続 preflight 失敗回数
+    balance_shrink_consecutive: int = 3
+    # balance_shrink ロット分割係数 (2 = 半減)
+    balance_shrink_divisor: int = 2
+    # SkipGate 直近約定取得件数
+    skip_gate_recent_trades_limit: int = 50
+    # ステータス不明時のリトライ遅延リスト (秒)
+    status_unknown_retry_delays: list[float] | None = None
+    # rate-limit 検出時の最低バックオフ秒数
+    rate_limit_min_backoff_sec: float = 5.0
+    # バッチ保存リトライの初期バックオフ秒数
+    save_retry_backoff_sec: float = 0.5
+    # regime warm-up のウィンドウ倍率
+    regime_warmup_multiplier: int = 3
+    # E3 計測の post_fill_wait_sec 倍率 (60s = ×2, 120s = ×4)
+    e3_60s_multiplier: float = 2.0
+    e3_120s_multiplier: float = 4.0
+    # side 別適応の最小サンプル数下限
+    adapt_min_side_samples: int = 20
 
     @classmethod
     def from_yaml(cls, yaml_cfg: dict) -> "FillTestConfig":
@@ -436,6 +468,32 @@ class FillTestConfig:
         if sell_guard.get("offset_floor") is not None:
             kwargs["sell_offset_floor"] = sell_guard["offset_floor"]
 
+        # 102# YAML 化: 散在マジックナンバーの設定外部化
+        tuning = yaml_cfg.get("tuning", {})
+        tuning_map = {
+            "max_offset_ratio": "max_offset_ratio",
+            "min_offset_ratio": "min_offset_ratio",
+            "loss_cap_update_interval": "loss_cap_update_interval",
+            "min_loss_cap_jpy": "min_loss_cap_jpy",
+            "mid_trend_validity_sec": "mid_trend_validity_sec",
+            "balance_margin_ratio": "balance_margin_ratio",
+            "balance_shrink_consecutive": "balance_shrink_consecutive",
+            "balance_shrink_divisor": "balance_shrink_divisor",
+            "skip_gate_recent_trades_limit": "skip_gate_recent_trades_limit",
+            "status_unknown_retry_delays": "status_unknown_retry_delays",
+            "rate_limit_min_backoff_sec": "rate_limit_min_backoff_sec",
+            "save_retry_backoff_sec": "save_retry_backoff_sec",
+            "regime_warmup_multiplier": "regime_warmup_multiplier",
+            "e3_60s_multiplier": "e3_60s_multiplier",
+            "e3_120s_multiplier": "e3_120s_multiplier",
+            "adapt_min_side_samples": "adapt_min_side_samples",
+            "batch_flush_interval_sec": "batch_flush_interval_sec",
+            "heartbeat_interval_sec": "heartbeat_interval_sec",
+        }
+        for yaml_key, config_key in tuning_map.items():
+            if yaml_key in tuning:
+                kwargs[config_key] = tuning[yaml_key]
+
         return cls(**kwargs)
 
 
@@ -499,6 +557,8 @@ class FillTestRunner:
                 offset_boost=config.fast_fill_offset_boost,
                 offset_boost_buy=config.fast_fill_offset_boost_buy,
                 offset_boost_sell=config.fast_fill_offset_boost_sell,
+                max_offset_ratio=config.max_offset_ratio,
+                min_offset_ratio=config.min_offset_ratio,
             ),
             base_offset_ratio=config.spread_offset_ratio,
             base_offset_ratio_buy=config.spread_offset_ratio_buy,
@@ -616,8 +676,8 @@ class FillTestRunner:
         # 安全設計: atexit + signal で残存注文キャンセル + 未保存データ退避 + ロック解放
         atexit.register(self._cleanup_sync)
 
-        # 044# A-7: loss_cap 更新カウンタ (50サイクル毎に残高再取得)
-        self._loss_cap_update_interval = 50  # サイクル数
+        # 044# A-7: loss_cap 更新カウンタ
+        self._loss_cap_update_interval = config.loss_cap_update_interval
 
     @staticmethod
     def _get_git_sha() -> Optional[str]:
@@ -778,7 +838,7 @@ class FillTestRunner:
         now = time.time()
         if self._prev_mid_price is not None and self._prev_mid_time is not None:
             dt = now - self._prev_mid_time
-            if 0 < dt < 300:  # 5分以内のデータのみ有効
+            if 0 < dt < self.config.mid_trend_validity_sec:  # 有効期間内のデータのみ
                 mid_trend_bps = (mid_price - self._prev_mid_price) / self._prev_mid_price * 10000
         self._prev_mid_price = mid_price
         self._prev_mid_time = now
@@ -841,7 +901,7 @@ class FillTestRunner:
                 elif side == "sell" and self.config.narrow_spread_boost_sell is not None:
                     sa_boost = self.config.narrow_spread_boost_sell
                 effective_offset_ratio = min(
-                    effective_offset_ratio * sa_boost, 0.30,
+                    effective_offset_ratio * sa_boost, self.config.max_offset_ratio,
                 )
                 logger.debug(
                     f"[spread_adaptive] Narrow spread {spread_bps:.1f}bps "
@@ -850,7 +910,7 @@ class FillTestRunner:
                 )
             elif spread_bps > self.config.wide_spread_bps:
                 effective_offset_ratio = max(
-                    effective_offset_ratio * self.config.wide_spread_ratio, 0.01,
+                    effective_offset_ratio * self.config.wide_spread_ratio, self.config.min_offset_ratio,
                 )
                 logger.debug(
                     f"[spread_adaptive] Wide spread {spread_bps:.1f}bps "
@@ -890,7 +950,7 @@ class FillTestRunner:
                 else:
                     # 中程度の偏り → offset 拡大
                     effective_offset_ratio *= self.config.imbalance_offset_boost
-                    effective_offset_ratio = min(effective_offset_ratio, 0.30)
+                    effective_offset_ratio = min(effective_offset_ratio, self.config.max_offset_ratio)
                     logger.info(
                         f"[imbalance] {side} AS risk: imb={imb:+.3f}, "
                         f"offset boosted to {effective_offset_ratio:.4f}"
@@ -1010,12 +1070,12 @@ class FillTestRunner:
                 # buy には JPY 残高が必要
                 price = await self.adapter.get_current_price(self.config.symbol)
                 if price:
-                    jpy_needed = self._current_lot * price * 1.01  # 1% margin
+                    jpy_needed = self._current_lot * price * self.config.balance_margin_ratio
                     jpy_balances = await self.adapter.get_balance("JPY")
                     jpy_free = sum(b.free for b in jpy_balances) if jpy_balances else 0.0
                     if jpy_free < jpy_needed:
                         # 052#: JPY 残高から発注可能なロットを逆算
-                        affordable_lot = jpy_free / (price * 1.01)
+                        affordable_lot = jpy_free / (price * self.config.balance_margin_ratio)
                         affordable_lot = int(affordable_lot / self._MIN_ORDER_BTC) * self._MIN_ORDER_BTC
                         if affordable_lot >= self._MIN_ORDER_BTC:
                             old_lot = self._current_lot
@@ -1030,7 +1090,7 @@ class FillTestRunner:
                             return False  # 縮小ロットで発注 OK
                         logger.warning(
                             f"[balance] Insufficient JPY for buy: "
-                            f"{jpy_free:.0f} < min {self._MIN_ORDER_BTC * price * 1.01:.0f}. "
+                            f"{jpy_free:.0f} < min {self._MIN_ORDER_BTC * price * self.config.balance_margin_ratio:.0f}. "
                             f"Skipping buy → will retry sell next."
                         )
                         return True
@@ -1039,7 +1099,7 @@ class FillTestRunner:
                         not self._balance_shrink_active
                         and self._current_lot < self._pre_shrink_lot
                     ):
-                        pre_lot_needed = self._pre_shrink_lot * price * 1.01
+                        pre_lot_needed = self._pre_shrink_lot * price * self.config.balance_margin_ratio
                         if jpy_free >= pre_lot_needed:
                             old_lot = self._current_lot
                             self._current_lot = self._pre_shrink_lot
@@ -1242,7 +1302,7 @@ class FillTestRunner:
                 recent_trades_data: list[dict] | None = None
                 try:
                     trades = await self.adapter.get_recent_trades(
-                        self.config.symbol, limit=50,
+                        self.config.symbol, limit=self.config.skip_gate_recent_trades_limit,
                     )
                     if trades:
                         recent_trades_data = [
@@ -1403,7 +1463,7 @@ class FillTestRunner:
                     _backoff = self.config.retry_delay_sec * (2 ** attempt)
                     # rate-limit 検出時はさらに延長
                     if "rate" in err_lower or "limit" in err_lower or "too many" in err_lower:
-                        _backoff = max(_backoff, 5.0)
+                        _backoff = max(_backoff, self.config.rate_limit_min_backoff_sec)
                         logger.warning(f"Rate-limit detected, extended backoff: {_backoff:.1f}s")
                     else:
                         logger.info(f"Retry backoff: {_backoff:.1f}s")
@@ -1460,7 +1520,7 @@ class FillTestRunner:
                     # 025# F6: open orders にも transactions にもない
                     # → API 一時障害の可能性があるため段階的リトライ
                     # 088# 強化: 1回→最大3回のリトライ (2s, 3s, 5s)
-                    _retry_delays = [2.0, 3.0, 5.0]
+                    _retry_delays = self.config.status_unknown_retry_delays or [2.0, 3.0, 5.0]
                     _recovered = False
                     for _retry_i, _delay in enumerate(_retry_delays):
                         logger.warning(
@@ -1782,7 +1842,7 @@ class FillTestRunner:
                 # 101# §1: E3 計測は fill 後の絶対時刻基準で待機
                 # early_exit で 30s 計測が短縮された場合、E3 は「fill後60s」に到達
                 # するまでの残差分だけ sleep する (60s - actual_measurement_sec)
-                e3_target_60s = self.config.post_fill_wait_sec * 2  # 60s
+                e3_target_60s = self.config.post_fill_wait_sec * self.config.e3_60s_multiplier
                 e3_elapsed = time.time() - t_post_fill_start
                 e3_wait_60 = max(0.0, e3_target_60s - e3_elapsed)
                 if e3_wait_60 > 0:
@@ -1798,7 +1858,7 @@ class FillTestRunner:
 
                 # 047# E3: +60s (=120s) 計測
                 # 101# §1: fill 後 120s を基準に残差 sleep
-                e3_target_120s = self.config.post_fill_wait_sec * 4  # 120s
+                e3_target_120s = self.config.post_fill_wait_sec * self.config.e3_120s_multiplier
                 e3_elapsed = time.time() - t_post_fill_start
                 e3_wait_120 = max(0.0, e3_target_120s - e3_elapsed)
                 if e3_wait_120 > 0:
@@ -1986,8 +2046,8 @@ class FillTestRunner:
                 r for r in existing_records
                 if r.filled and r.mid_at_fill is not None
             ]
-            # window*3 (バッファ上限に合わせる) の直近分だけ投入
-            warmup_window = self._regime_detector.config.window * 3
+            # window*multiplier (バッファ上限に合わせる) の直近分だけ投入
+            warmup_window = self._regime_detector.config.window * self.config.regime_warmup_multiplier
             warmup_records = filled_with_mid[-warmup_window:]
             for r in warmup_records:
                 self._regime_detector.update(r.timestamp, r.mid_at_fill)  # type: ignore[arg-type]
@@ -2138,18 +2198,18 @@ class FillTestRunner:
                                 "[batch_flush] Periodic flush during preflight skip"
                             )
 
-                    # 051# P2-3: Balance auto-shrink — 連続3回失敗でロット半減を試行
+                    # 051# P2-3: Balance auto-shrink — 連続失敗でロット縮小を試行
                     # 052#: 最低ロットを _MIN_ORDER_BTC に統一 (Coincheck 0.001 BTC)
                     min_lot = max(self.config.order_quantity, self._MIN_ORDER_BTC)
                     if (
-                        self._preflight_skip_count >= 3
+                        self._preflight_skip_count >= self.config.balance_shrink_consecutive
                         and not self._balance_shrink_active
                         and self._current_lot > min_lot
                     ):
                         old_lot = self._current_lot
                         self._current_lot = max(
                             min_lot,
-                            self._current_lot / 2,
+                            self._current_lot / self.config.balance_shrink_divisor,
                         )
                         self._balance_shrink_active = True
                         logger.warning(
@@ -2370,7 +2430,7 @@ class FillTestRunner:
                     f"failed: {e}",
                     exc_info=True,
                 )
-                time.sleep(0.5 * (2 ** attempt))  # 指数バックオフ
+                time.sleep(self.config.save_retry_backoff_sec * (2 ** attempt))  # 指数バックオフ
 
         # 全リトライ失敗
         self._save_fail_count += 1
@@ -2499,7 +2559,7 @@ class FillTestRunner:
 
             new_cap = total_jpy * self.config.loss_cap_ratio
             # 最低50円は保証 (極端に小さいキャップは運用不能)
-            new_cap = max(50.0, new_cap)
+            new_cap = max(self.config.min_loss_cap_jpy, new_cap)
             old_cap = self.config.loss_cap_jpy
             self.config.loss_cap_jpy = new_cap
             logger.info(
@@ -2543,7 +2603,7 @@ class FillTestRunner:
             sell_records = [r for r in records if r.side == "sell"]
             del records  # メモリ解放
 
-            min_side_samples = max(20, self.config.min_adapt_samples // 2)
+            min_side_samples = max(self.config.adapt_min_side_samples, self.config.min_adapt_samples // 2)
             if len(buy_records) >= min_side_samples and len(sell_records) >= min_side_samples:
                 buy_metrics = compute_fill_metrics(buy_records)
                 sell_metrics = compute_fill_metrics(sell_records)
@@ -2637,7 +2697,7 @@ class FillTestRunner:
                         ratio = result.new_offset / old
                         old_sell = self._base_offset_ratio_sell
                         self._base_offset_ratio_sell = min(
-                            old_sell * ratio, 0.30,
+                            old_sell * ratio, self.config.max_offset_ratio,
                         )
                     logger.info(
                         f"[方策A] offset adapted (combined): "

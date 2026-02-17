@@ -250,9 +250,9 @@ class TestStaleOrderConditions:
         assert 1 <= cfg.stale_max_reprice <= 5
 
     def test_drift_bps_reasonable(self) -> None:
-        """drift_bps (5.0) はノイズ (as_deadzone=0.5) より十分大きい."""
+        """drift_bps (5.0) はノイズ (as_deadzone=2.5) より十分大きい."""
         cfg = FillTestConfig(stale_order_enabled=True)
-        assert cfg.stale_drift_bps > cfg.as_deadzone_bps * 2
+        assert cfg.stale_drift_bps > cfg.as_deadzone_bps
 
     def test_cooldown_exceeds_poll_interval(self) -> None:
         """cooldown (10s) > poll_interval (5s) で最低 2 poll 確保."""

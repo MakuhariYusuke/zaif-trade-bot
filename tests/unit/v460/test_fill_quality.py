@@ -2049,12 +2049,11 @@ class Test051BalanceAutoShrink:
         assert "_pre_shrink_lot" in source
 
     def test_shrink_threshold_is_3(self) -> None:
-        """連続 3 回で shrink 発動."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
+        """連続 3 回で shrink 発動 (設定外部化済み)."""
+        from scripts.v460.run_fill_test import FillTestConfig
 
-        source = inspect.getsource(FillTestRunner.run_continuous)
-        assert "preflight_skip_count >= 3" in source
+        cfg = FillTestConfig()
+        assert cfg.balance_shrink_consecutive == 3
 
 
 # ======================================================================

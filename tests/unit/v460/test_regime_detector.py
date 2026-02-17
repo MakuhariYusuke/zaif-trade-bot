@@ -481,11 +481,11 @@ class TestFillTestConfigDeadzone:
         assert config.as_deadzone_bps == 2.0
 
     def test_deadzone_default(self) -> None:
-        """as_deadzone_bps のデフォルトは 0.5."""
+        """as_deadzone_bps のデフォルトは 2.5 (052# 修正後)."""
         from scripts.v460.run_fill_test import FillTestConfig
 
         config = FillTestConfig()
-        assert config.as_deadzone_bps == 0.5
+        assert config.as_deadzone_bps == 2.5
 
 
 class TestTimeFilterNoRecord:

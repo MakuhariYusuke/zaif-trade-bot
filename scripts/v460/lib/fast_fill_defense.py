@@ -28,6 +28,9 @@ class FastFillDefenseConfig:
     offset_boost: float = 2.0
     offset_boost_buy: Optional[float] = None
     offset_boost_sell: Optional[float] = None
+    # 102# YAML化: offset 上限・下限
+    max_offset_ratio: float = 0.30
+    min_offset_ratio: float = 0.01
 
 
 @dataclass
@@ -107,11 +110,11 @@ class FastFillDefense:
     def _compute_capped_multiplier(self, side: str, raw_boost: float) -> float:
         """boost 乗数を side 別 base_offset_ratio で cap する.
 
-        098# P1-2: cap = 0.30 / base_offset を side 別に計算。
+        098# P1-2: cap = max_offset_ratio / base_offset を side 別に計算。
         sell (base=0.12) → cap=2.5, buy (base=0.05) → cap=6.0
         """
         base = self._resolve_base_offset(side)
-        cap = 0.30 / max(base, 0.01)
+        cap = self._config.max_offset_ratio / max(base, self._config.min_offset_ratio)
         return min(raw_boost, cap)
 
     def evaluate_fill(

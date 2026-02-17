@@ -202,3 +202,24 @@ skip_gate:
 sell_guard:
   max_spread_jpy: 4000.0       # スプレッド 4000 JPY 超で sell スキップ (085# で 4677 で -7.37bps)
   offset_floor: 0.08           # sell offset 最低保証 (sell PnL -1.4bps 対策, 通常 0.12)
+
+# ---- 102# チューニングパラメータ (散在マジックナンバーの外部化) ----
+tuning:
+  max_offset_ratio: 0.30           # offset 比率の共通上限キャップ
+  min_offset_ratio: 0.01           # offset 比率の下限 (wide spread floor)
+  loss_cap_update_interval: 50     # loss_cap 残高再取得サイクル間隔
+  min_loss_cap_jpy: 50.0           # 動的 loss_cap の最低保証額 (JPY)
+  mid_trend_validity_sec: 300.0    # mid price trend の有効判定秒数 (5分)
+  balance_margin_ratio: 1.01       # buy 残高チェックの手数料マージン (1%)
+  balance_shrink_consecutive: 3    # balance_shrink 発動の連続 preflight 失敗回数
+  balance_shrink_divisor: 2        # balance_shrink のロット分割係数 (2=半減)
+  skip_gate_recent_trades_limit: 50  # SkipGate 直近約定取得件数
+  # status_unknown_retry_delays: [2.0, 3.0, 5.0]  # ステータス不明時のリトライ遅延 (秒, デフォルト使用)
+  rate_limit_min_backoff_sec: 5.0  # rate-limit 検出時の最低バックオフ (秒)
+  save_retry_backoff_sec: 0.5      # バッチ保存リトライの初期バックオフ (秒)
+  regime_warmup_multiplier: 3      # regime warm-up のウィンドウ倍率
+  e3_60s_multiplier: 2.0           # E3 60s 計測の post_fill_wait_sec 倍率
+  e3_120s_multiplier: 4.0          # E3 120s 計測の post_fill_wait_sec 倍率
+  adapt_min_side_samples: 20       # side 別適応の最小サンプル数下限
+  batch_flush_interval_sec: 600.0  # 時間ベース定期 flush (秒)
+  heartbeat_interval_sec: 900.0    # heartbeat 間隔 (秒, time_filter 抑制中)
