@@ -992,3 +992,20 @@ class TestBalanceCurrencyFilter:
         source = inspect.getsource(FillTestRunner._update_dynamic_loss_cap)
         assert "JPY_RESERVED" not in source, "Dead check should be removed"
         assert "BTC_RESERVED" not in source, "Dead check should be removed"
+
+
+class TestBug086TimeFilterPositionAccumulation:
+    """086# time_filter の side 切替が片側蓄積を引き起こすバグの修正検証."""
+
+    def test_source_has_position_accumulation_guard(self) -> None:
+        """run_continuous に片側蓄積防止ガードが含まれる."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner.run_continuous)
+        assert "alt_side == self._last_side" in source, (
+            "086# 片側蓄積防止ガードが必要"
+        )
+        assert "片側蓄積防止" in source, (
+            "086# 片側蓄積防止コメントが必要"
+        )

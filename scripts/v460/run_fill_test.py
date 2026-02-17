@@ -1604,6 +1604,21 @@ class FillTestRunner:
                     continue
                 else:
                     # 反対 side は通過 → side 切り替え
+                    # 086# Bug: alt_side が _last_side と同じ場合、片側蓄積が発生する
+                    # (例: _last_side=buy, next=sell がブロック, alt=buy → double buy)
+                    # この場合は両方ブロックと同じ扱いにして待機する
+                    if alt_side == self._last_side:
+                        utc_h = datetime.now(timezone.utc).hour
+                        logger.info(
+                            f"[time_filter] {next_side} filtered at UTC {utc_h}h, "
+                            f"alt={alt_side} would repeat last side → treating as both-filtered "
+                            f"(086# 片側蓄積防止)"
+                        )
+                        if not self._in_time_filter:
+                            self._in_time_filter = True
+                            self._last_heartbeat_time = time.time()
+                        await asyncio.sleep(self.config.cycle_interval_sec)
+                        continue
                     utc_h = datetime.now(timezone.utc).hour
                     logger.debug(
                         f"[time_filter] {next_side} filtered at UTC {utc_h}h, "
