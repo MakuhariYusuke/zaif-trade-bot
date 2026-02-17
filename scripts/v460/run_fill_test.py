@@ -184,6 +184,12 @@ class FillTestConfig:
     skip_gate_adaptive_step: float = 0.02
     skip_gate_adaptive_floor: float = 0.35
     skip_gate_adaptive_ceiling: float = 0.80
+    # 094# stale order 検出 & cancel-replace (価格乖離した注文を再発注)
+    stale_order_enabled: bool = False
+    stale_check_after_sec: float = 30.0    # 発注後この秒数以降で乖離チェック開始
+    stale_drift_bps: float = 5.0           # mid price がこの bps 以上乖離したら stale
+    stale_max_reprice: int = 2             # 1 サイクル内の最大再発注回数
+    stale_cooldown_sec: float = 10.0       # 再発注後チェック猶予（連続 reprice 防止）
     # 088# sell 専用ハードガード
     sell_max_spread_jpy: float = 0.0       # 0 = 無制限, >0 でスプレッド超過時 sell スキップ
     sell_offset_floor: float = 0.0         # 0 = 無制限, >0 で sell offset 最低保証
@@ -386,6 +392,20 @@ class FillTestConfig:
         for yaml_key, config_key in sg_map.items():
             if yaml_key in sg and sg[yaml_key] is not None:
                 kwargs[config_key] = sg[yaml_key]
+
+        # 094# stale order 検出 & cancel-replace
+        so = yaml_cfg.get("stale_order", {})
+        if so.get("enabled") is not None:
+            kwargs["stale_order_enabled"] = so["enabled"]
+        so_map = {
+            "check_after_sec": "stale_check_after_sec",
+            "drift_bps": "stale_drift_bps",
+            "max_reprice": "stale_max_reprice",
+            "cooldown_sec": "stale_cooldown_sec",
+        }
+        for yaml_key, config_key in so_map.items():
+            if yaml_key in so:
+                kwargs[config_key] = so[yaml_key]
 
         # 088# sell 専用ハードガード
         sell_guard = yaml_cfg.get("sell_guard", {})
@@ -1319,6 +1339,15 @@ class FillTestRunner:
         t_fill: Optional[float] = None
         cancel_reason_poll: Optional[str] = None  # 025# F6: poll 中の cancel 理由
         elapsed = 0.0
+        reprice_count = 0  # 094# stale order cancel-replace 回数
+        # 094# 発注時 mid price を stale 判定の基準にする
+        mid_at_order: Optional[float] = None
+        if self.config.stale_order_enabled:
+            try:
+                mid_at_order = await self._get_mid_price()
+            except Exception:
+                pass
+        last_reprice_time = t_submit  # 094# cooldown 制御用
 
         while elapsed < self.config.order_timeout_sec and not self._shutdown_requested:
             await asyncio.sleep(self.config.poll_interval_sec)
@@ -1398,6 +1427,85 @@ class FillTestRunner:
                     break
             except Exception as e:
                 logger.warning(f"Poll error: {e}")
+
+            # --- 094# stale order 検出 & cancel-replace ---
+            # 条件: enabled + 十分な経過時間 + 未約定 + reprice 回数未超過 + cooldown 経過
+            if (
+                self.config.stale_order_enabled
+                and not filled
+                and mid_at_order is not None
+                and elapsed >= self.config.stale_check_after_sec
+                and reprice_count < self.config.stale_max_reprice
+                and (time.time() - last_reprice_time) >= self.config.stale_cooldown_sec
+            ):
+                try:
+                    current_mid = await self._get_mid_price()
+                    drift_bps = abs(current_mid - mid_at_order) / mid_at_order * 10000
+                    # 方向チェック: 注文から離れる方向に動いたかを確認
+                    # buy: mid が上昇 → 注文価格が取り残される
+                    # sell: mid が下降 → 注文価格が取り残される
+                    is_drifting_away = (
+                        (side == "buy" and current_mid > mid_at_order)
+                        or (side == "sell" and current_mid < mid_at_order)
+                    )
+                    if drift_bps >= self.config.stale_drift_bps and is_drifting_away:
+                        logger.info(
+                            f"[stale_order] Price drifted {drift_bps:.1f}bps "
+                            f"({side}: mid {mid_at_order:.0f}→{current_mid:.0f}). "
+                            f"Cancelling & repricing (reprice #{reprice_count + 1})"
+                        )
+                        # 1) 既存注文キャンセル
+                        try:
+                            await self.adapter.cancel_order(order.order_id)
+                        except Exception as cancel_err:
+                            # cancel 失敗 = 既に約定の可能性
+                            if "Failed to cancel" in str(cancel_err) or "not found" in str(cancel_err).lower():
+                                try:
+                                    recheck = await self.adapter.get_order_status(order.order_id)
+                                    if recheck is not None and recheck.status == "filled":
+                                        filled = True
+                                        fill_price = recheck.price if recheck.price else order_price
+                                        t_fill = time.time()
+                                        logger.info(
+                                            f"[stale_order] Order actually filled during cancel @ "
+                                            f"{fill_price:.0f} JPY"
+                                        )
+                                except Exception:
+                                    pass
+                            if filled:
+                                break
+                            logger.warning(f"[stale_order] Cancel failed: {cancel_err}")
+                            continue  # cancel 失敗 → 次の poll へ
+
+                        # 2) 新価格で再発注
+                        try:
+                            new_price, new_spread, _ = await self._compute_maker_price(side)
+                            new_order = await self.adapter.place_order(
+                                symbol=self.config.symbol,
+                                side=side,
+                                quantity=self._current_lot,
+                                price=new_price,
+                                order_type="limit",
+                            )
+                            order = new_order
+                            order_price = new_price
+                            mid_at_order = current_mid
+                            last_reprice_time = time.time()
+                            reprice_count += 1
+                            self._pending_order_id = order.order_id
+                            logger.info(
+                                f"[stale_order] Repriced {side} @ {new_price:.0f} JPY "
+                                f"(id={order.order_id}, reprice #{reprice_count})"
+                            )
+                        except Exception as place_err:
+                            logger.warning(
+                                f"[stale_order] Reprice failed: {place_err}. "
+                                f"Treating as cancelled."
+                            )
+                            cancel_reason_poll = "stale_reprice_failed"
+                            break
+                except Exception as stale_err:
+                    logger.debug(f"[stale_order] Check failed (non-fatal): {stale_err}")
 
         # 4. 未約定 → キャンセル
         if not filled:
@@ -1600,6 +1708,8 @@ class FillTestRunner:
             # 084# P(AS) 可観測性改善
             skip_gate_as_prob=skip_gate_as_prob,
             skip_gate_threshold_used=skip_gate_threshold_used,
+            # 094# stale order cancel-replace 追跡
+            reprice_count=reprice_count,
         )
 
         logger.info(

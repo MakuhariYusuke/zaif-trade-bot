@@ -85,6 +85,8 @@ class FillRecord:
     # 084# SkipGate 可観測性改善: P(AS) と使用閾値を直接記録
     skip_gate_as_prob: Optional[float] = None     # AS 確率 (0.0-1.0), mode="as" 時のみ
     skip_gate_threshold_used: Optional[float] = None  # 実際に適用された閾値 (side別解決後)
+    # 094# stale order cancel-replace 追跡
+    reprice_count: int = 0                        # 1 サイクル内で再発注した回数
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

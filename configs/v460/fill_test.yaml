@@ -119,6 +119,14 @@ fast_fill_defense:
   offset_boost_buy: null       # 093# buy 側倍率 (null=共通値使用)
   offset_boost_sell: 2.5       # 093# sell 側強化: sell AS は構造的に悪い→強い防御
 
+# ---- 094# stale order 検出 & cancel-replace ----
+stale_order:
+  enabled: true                # 価格乖離した注文を検出して再発注
+  check_after_sec: 30.0        # 発注後この秒数以降でチェック開始
+  drift_bps: 5.0               # mid price がこの bps 以上乖離したら stale 判定
+  max_reprice: 2               # 1 サイクル内の最大再発注回数
+  cooldown_sec: 10.0           # 再発注後のチェック猶予 (連続 reprice 防止)
+
 # ---- 安全設計 (000# §3.9) ----
 safety:
   loss_cap_auto: true          # 041#: API残高から動的算出
