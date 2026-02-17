@@ -134,8 +134,12 @@ class FillTestConfig:
     spread_offset_ratio_sell: float | None = None   # None = 共通 offset を使用
     # 049# 即約定防御: queue_wait が閾値以下で負エッジの場合に保守化
     fast_fill_defense_enabled: bool = False
-    fast_fill_threshold_sec: float = 5.0   # この秒数以下で「速い約定」と判定
-    fast_fill_offset_boost: float = 2.0    # 防御時の offset 倍率
+    fast_fill_threshold_sec: float = 5.0   # この秒数以下で「速い約定」と判定 (共通)
+    fast_fill_threshold_sec_buy: float | None = None   # 093# buy 側閾値 (None=共通値)
+    fast_fill_threshold_sec_sell: float | None = None  # 093# sell 側閾値 (None=共通値)
+    fast_fill_offset_boost: float = 2.0    # 防御時の offset 倍率 (共通)
+    fast_fill_offset_boost_buy: float | None = None    # 093# buy 側倍率 (None=共通値)
+    fast_fill_offset_boost_sell: float | None = None   # 093# sell 側倍率 (None=共通値)
     # 054# S1: Orderbook Imbalance ベース AS 予測フィルター
     imbalance_enabled: bool = False
     imbalance_depth: int = 5               # 板深さ (上位 N 段)
@@ -154,7 +158,9 @@ class FillTestConfig:
     # 054# S4: Spread-Responsive Offset (スプレッド適応型オフセット)
     spread_adaptive_enabled: bool = False
     narrow_spread_bps: float = 10.0        # 狭スプレッド閾値 (bps)
-    narrow_spread_boost: float = 2.0       # 狭い時の offset 倍率
+    narrow_spread_boost: float = 2.0       # 狭い時の offset 倍率 (共通)
+    narrow_spread_boost_buy: float | None = None   # 093# buy 側 boost (None=共通値)
+    narrow_spread_boost_sell: float | None = None   # 093# sell 側 boost (None=共通値)
     wide_spread_bps: float = 25.0          # 広スプレッド閾値 (bps)
     wide_spread_ratio: float = 0.5         # 広い時の offset 割引
     # 062# S5: SkipGate ML フィルター (AS 分類器ベースの注文スキップ)
@@ -290,6 +296,15 @@ class FillTestConfig:
             kwargs["fast_fill_threshold_sec"] = ffd["threshold_sec"]
         if "offset_boost" in ffd:
             kwargs["fast_fill_offset_boost"] = ffd["offset_boost"]
+        # 093# side 別 fast_fill_defense
+        if "threshold_sec_buy" in ffd:
+            kwargs["fast_fill_threshold_sec_buy"] = ffd["threshold_sec_buy"]
+        if "threshold_sec_sell" in ffd:
+            kwargs["fast_fill_threshold_sec_sell"] = ffd["threshold_sec_sell"]
+        if "offset_boost_buy" in ffd:
+            kwargs["fast_fill_offset_boost_buy"] = ffd["offset_boost_buy"]
+        if "offset_boost_sell" in ffd:
+            kwargs["fast_fill_offset_boost_sell"] = ffd["offset_boost_sell"]
 
         # 054# S1: Orderbook Imbalance
         imb = yaml_cfg.get("imbalance", {})
@@ -334,6 +349,8 @@ class FillTestConfig:
         sa_map = {
             "narrow_spread_bps": "narrow_spread_bps",
             "narrow_spread_boost": "narrow_spread_boost",
+            "narrow_spread_boost_buy": "narrow_spread_boost_buy",    # 093#
+            "narrow_spread_boost_sell": "narrow_spread_boost_sell",  # 093#
             "wide_spread_bps": "wide_spread_bps",
             "wide_spread_ratio": "wide_spread_ratio",
         }
@@ -740,11 +757,18 @@ class FillTestRunner:
         if self.config.spread_adaptive_enabled:
             spread_bps = spread / mid_price * 10000
             if spread_bps < self.config.narrow_spread_bps:
+                # 093# side 別 boost: buy/sell で独立した倍率を適用
+                sa_boost = self.config.narrow_spread_boost
+                if side == "buy" and self.config.narrow_spread_boost_buy is not None:
+                    sa_boost = self.config.narrow_spread_boost_buy
+                elif side == "sell" and self.config.narrow_spread_boost_sell is not None:
+                    sa_boost = self.config.narrow_spread_boost_sell
                 effective_offset_ratio = min(
-                    effective_offset_ratio * self.config.narrow_spread_boost, 0.30,
+                    effective_offset_ratio * sa_boost, 0.30,
                 )
                 logger.debug(
                     f"[spread_adaptive] Narrow spread {spread_bps:.1f}bps "
+                    f"({side} boost={sa_boost:.2f}) "
                     f"→ offset boosted to {effective_offset_ratio:.4f}"
                 )
             elif spread_bps > self.config.wide_spread_bps:
@@ -1886,7 +1910,14 @@ class FillTestRunner:
 
             # --- 049# 即約定防御: queue_wait が閾値以下 + 負エッジのとき次サイクルを保守化 ---
             if self.config.fast_fill_defense_enabled and record.filled:
-                is_fast = record.queue_wait_sec <= self.config.fast_fill_threshold_sec
+                # 093# side 別閾値: buy/sell で独立した判定秒数を適用
+                ff_threshold = self.config.fast_fill_threshold_sec
+                if record.side == "buy" and self.config.fast_fill_threshold_sec_buy is not None:
+                    ff_threshold = self.config.fast_fill_threshold_sec_buy
+                elif record.side == "sell" and self.config.fast_fill_threshold_sec_sell is not None:
+                    ff_threshold = self.config.fast_fill_threshold_sec_sell
+
+                is_fast = record.queue_wait_sec <= ff_threshold
                 has_negative_edge = (
                     record.mid_at_fill is not None
                     and record.fill_price is not None
@@ -1898,7 +1929,12 @@ class FillTestRunner:
                 if is_fast and has_negative_edge:
                     if not self._fast_fill_boost_active:
                         self._fast_fill_boost_active = True
+                        # 093# side 別 boost 倍率
                         boost = self.config.fast_fill_offset_boost
+                        if record.side == "buy" and self.config.fast_fill_offset_boost_buy is not None:
+                            boost = self.config.fast_fill_offset_boost_buy
+                        elif record.side == "sell" and self.config.fast_fill_offset_boost_sell is not None:
+                            boost = self.config.fast_fill_offset_boost_sell
                         # 050# Bug#1 fix: boost 前の値を保存
                         self._pre_boost_offset = self.config.spread_offset_ratio
                         self._pre_boost_offset_sell = self.config.spread_offset_ratio_sell
@@ -1914,17 +1950,19 @@ class FillTestRunner:
                                 old_sell * boost, 0.30,
                             )
                             logger.info(
-                                f"[fast_fill_defense] Activated: wait={record.queue_wait_sec:.1f}s "
-                                f"(< {self.config.fast_fill_threshold_sec}s), "
-                                f"negative edge detected. "
+                                f"[fast_fill_defense] Activated: {record.side} "
+                                f"wait={record.queue_wait_sec:.1f}s "
+                                f"(< {ff_threshold}s), "
+                                f"negative edge detected (boost={boost:.1f}×). "
                                 f"common {old_common:.4f}→{self.config.spread_offset_ratio:.4f}, "
                                 f"sell {old_sell:.4f}→{self.config.spread_offset_ratio_sell:.4f}"
                             )
                         else:
                             logger.info(
-                                f"[fast_fill_defense] Activated: wait={record.queue_wait_sec:.1f}s "
-                                f"(< {self.config.fast_fill_threshold_sec}s), "
-                                f"negative edge detected. "
+                                f"[fast_fill_defense] Activated: {record.side} "
+                                f"wait={record.queue_wait_sec:.1f}s "
+                                f"(< {ff_threshold}s), "
+                                f"negative edge detected (boost={boost:.1f}×). "
                                 f"offset {old_common:.4f}→{self.config.spread_offset_ratio:.4f}"
                             )
                 elif self._fast_fill_boost_active:

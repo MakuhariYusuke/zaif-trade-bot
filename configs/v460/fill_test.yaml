@@ -111,9 +111,13 @@ side_offset:
 
 # ---- 049# 即約定防御 ----
 fast_fill_defense:
-  enabled: true                # queue_wait<=5s + 負エッジ時に次サイクル保守化
-  threshold_sec: 5.0           # この秒数以下で「速い約定」と判定
-  offset_boost: 2.0            # 防御時の offset 倍率
+  enabled: true                # queue_wait<=閾値 + 負エッジ時に次サイクル保守化
+  threshold_sec: 5.0           # 共通閾値 (この秒数以下で「速い約定」)
+  threshold_sec_buy: null      # 093# buy 側閾値 (null=共通値使用)
+  threshold_sec_sell: 15.0     # 093# sell 側閾値: 084# 盲点C Q1-Q2+α 防御 (sell fast fill は破滅的: 090# -1.66bps)
+  offset_boost: 2.0            # 共通防御時 offset 倍率
+  offset_boost_buy: null       # 093# buy 側倍率 (null=共通値使用)
+  offset_boost_sell: 2.5       # 093# sell 側強化: sell AS は構造的に悪い→強い防御
 
 # ---- 安全設計 (000# §3.9) ----
 safety:
@@ -150,7 +154,9 @@ early_exit:
 spread_adaptive:
   enabled: true                # スプレッド幅に応じた offset 動的調整
   narrow_spread_bps: 10.0      # これ以下で「狭い」→ offset 拡大 (AS 回避)
-  narrow_spread_boost: 2.0     # 狭スプレッド時の offset 倍率
+  narrow_spread_boost: 2.0     # 狭スプレッド時の offset 倍率 (共通フォールバック)
+  narrow_spread_boost_buy: 1.5 # 093# buy 側: 084# Tier2 #4 — 0.05→0.075 に軽減して fill 促進
+  narrow_spread_boost_sell: 2.0 # 093# sell 側: offset 増加の限界効果低い→据え置き (084#: AS 構造的要因)
   wide_spread_bps: 25.0        # これ以上で「広い」→ offset 縮小 (fill 優先)
   wide_spread_ratio: 0.5       # 広スプレッド時の offset 割引
 
