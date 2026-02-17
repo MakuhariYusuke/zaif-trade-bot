@@ -113,7 +113,7 @@ side_offset:
 fast_fill_defense:
   enabled: true                # queue_wait<=閾値 + 負エッジ時に次サイクル保守化
   threshold_sec: 5.0           # 共通閾値 (この秒数以下で「速い約定」)
-  threshold_sec_buy: null      # 093# buy 側閾値 (null=共通値使用)
+  threshold_sec_buy: 10.0      # 100# P0-4: buy 防御有効化 (旧 null=5s では実質無効)
   threshold_sec_sell: 15.0     # 093# sell 側閾値: 084# 盲点C Q1-Q2+α 防御 (sell fast fill は破滅的: 090# -1.66bps)
   offset_boost: 2.0            # 共通防御時 offset 倍率
   offset_boost_buy: null       # 093# buy 側倍率 (null=共通値使用)
@@ -182,9 +182,9 @@ skip_gate:
   enabled: true
   mode: as                     # "as" (AS 分類器) / "pnl" (PnL 回帰)
   model_path: models/v460/skip_gate_as.pkl
-  as_threshold: 0.65
-  as_threshold_buy: null       # 068# §3.3: buy 側閾値 (null=共通値使用)
-  as_threshold_sell: 0.60      # 068# §3.3: sell 側厳格化
+  as_threshold: 0.52           # 100# P0-2: P(AS) 分布 [0.42,0.56] に整合
+  as_threshold_buy: 0.52       # 100# P0-2: buy 側閾値 (旧 null=0.65 は過大)
+  as_threshold_sell: 0.50      # 100# P0-2: sell 側厳格化 (旧 0.60 → 0.50)
   pnl_threshold: 0.0
   max_skip_rate: 0.3
   use_ob_features: false       # 072# OB トグル (ph2 通過後に true へ)
@@ -194,7 +194,7 @@ skip_gate:
   target_skip_rate_sell: 0.20  # sell 側目標 skip 率 20% (sell 劣後補正)
   adaptive_window: 50          # 較正ウィンドウ (直近 N サイクル)
   adaptive_min_samples: 20     # ウォームアップ期間 (最初の N 件は静的閾値)
-  adaptive_step: 0.02          # 1 回の調整ステップ幅
+  adaptive_step: 0.05          # 100# P0-2: 0.02→0.05 (収束ラグ低減)
   adaptive_floor: 0.35         # 閾値下限 (過剰 skip 防止)
   adaptive_ceiling: 0.80       # 閾値上限
 

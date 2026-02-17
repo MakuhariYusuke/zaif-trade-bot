@@ -1725,21 +1725,21 @@ class Test049FastFillDefense:
         assert cfg.fast_fill_offset_boost == pytest.approx(1.5)
 
     def test_fast_fill_boost_flag_initialized(self) -> None:
-        """FillTestRunner が _fast_fill_boost_active フラグを持つ."""
+        """100# FillTestRunner が FastFillDefense インスタンスを持つ."""
         import inspect
         from scripts.v460.run_fill_test import FillTestRunner
 
         source = inspect.getsource(FillTestRunner.__init__)
-        assert "_fast_fill_boost_active" in source
+        assert "_fast_fill_defense" in source
 
     def test_fast_fill_defense_logic_in_run_continuous(self) -> None:
-        """run_continuous に即約定防御ロジックが含まれる."""
+        """run_continuous に即約定防御ロジックが含まれる (FastFillDefense 委譲)."""
         import inspect
         from scripts.v460.run_fill_test import FillTestRunner
 
         source = inspect.getsource(FillTestRunner.run_continuous)
         assert "fast_fill_defense" in source
-        assert "fast_fill_threshold_sec" in source
+        assert "evaluate_fill" in source
 
 
 # =====================================================================
@@ -1779,27 +1779,27 @@ class Test050FastFillDefenseRestore:
     """050# Bug#1-2: fast_fill_defense offset 復元 + side-specific 対応."""
 
     def test_boost_multiplier_field_exists(self) -> None:
-        """096# FillTestRunner に _boost_multiplier フィールドが存在.
+        """100# FillTestRunner に FastFillDefense が存在.
 
-        旧: _pre_boost_offset で config を保存/復元 → 競合リスク
-        新: _boost_multiplier × _base_offset_ratio で状態分離
+        旧: _boost_multiplier + _fast_fill_boost_active で inline 管理
+        新: FastFillDefense クラスに per-side 状態管理を委譲
         """
         import inspect
         from scripts.v460.run_fill_test import FillTestRunner
 
         source = inspect.getsource(FillTestRunner.__init__)
-        assert "_boost_multiplier" in source
+        assert "_fast_fill_defense" in source
         assert "_base_offset_ratio" in source
 
     def test_offset_restore_logic_in_run_continuous(self) -> None:
-        """run_continuous に boost 解除ロジックが含まれる."""
+        """run_continuous に boost 解除ロジックが含まれる (FastFillDefense)."""
         import inspect
         from scripts.v460.run_fill_test import FillTestRunner
 
         source = inspect.getsource(FillTestRunner.run_continuous)
-        # 096# multiplier ベースの解除
-        assert "_boost_multiplier" in source
-        assert "Deactivated" in source
+        # 100# FastFillDefense の evaluate_fill / reset_on_unfilled で管理
+        assert "fast_fill_defense" in source
+        assert "reset_on_unfilled" in source
 
 
 class Test050EffectiveOffsetRecord:

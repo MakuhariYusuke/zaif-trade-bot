@@ -230,7 +230,7 @@ class TestSkipGateConfig:
         assert cfg.target_skip_rate_sell == 0.20
         assert cfg.adaptive_window == 50
         assert cfg.adaptive_min_samples == 20
-        assert cfg.adaptive_step == 0.02
+        assert cfg.adaptive_step == 0.05  # 100# 0.02→0.05
         assert cfg.adaptive_floor == 0.35
         assert cfg.adaptive_ceiling == 0.80
 

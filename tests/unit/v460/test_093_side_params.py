@@ -220,27 +220,43 @@ class TestSpreadAdaptiveSideLogic:
 # =====================================================================
 
 class TestFastFillDefenseSideLogic:
-    """093# fast_fill_defense ロジックで side 別閾値・倍率が使われている."""
+    """100# fast_fill_defense ロジックは FastFillDefense クラスに抽出済み.
 
-    def test_run_continuous_uses_side_threshold(self) -> None:
-        """run_continuous に side 別閾値の参照がある."""
+    side 別閾値・倍率は FastFillDefense クラス内で処理される。
+    """
+
+    def test_fast_fill_defense_class_has_side_threshold(self) -> None:
+        """FastFillDefense が side 別閾値を解決する."""
+        from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
+        cfg = FastFillDefenseConfig(
+            enabled=True,
+            threshold_sec=5.0,
+            threshold_sec_buy=10.0,
+            threshold_sec_sell=15.0,
+        )
+        defense = FastFillDefense(cfg, base_offset_ratio=0.05)
+        assert defense._resolve_threshold_sec("buy") == 10.0
+        assert defense._resolve_threshold_sec("sell") == 15.0
+
+    def test_fast_fill_defense_class_has_side_boost(self) -> None:
+        """FastFillDefense が side 別 boost 倍率を解決する."""
+        from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
+        cfg = FastFillDefenseConfig(
+            enabled=True,
+            offset_boost=2.0,
+            offset_boost_buy=1.5,
+            offset_boost_sell=2.5,
+        )
+        defense = FastFillDefense(cfg, base_offset_ratio=0.05)
+        assert defense._resolve_boost("buy") == 1.5
+        assert defense._resolve_boost("sell") == 2.5
+
+    def test_run_continuous_delegates_to_fast_fill_defense(self) -> None:
+        """run_continuous が FastFillDefense に委譲している."""
         from scripts.v460.run_fill_test import FillTestRunner
         source = inspect.getsource(FillTestRunner.run_continuous)
-        assert "fast_fill_threshold_sec_buy" in source
-        assert "fast_fill_threshold_sec_sell" in source
-
-    def test_run_continuous_uses_side_boost(self) -> None:
-        """run_continuous に side 別 boost 倍率の参照がある."""
-        from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_continuous)
-        assert "fast_fill_offset_boost_buy" in source
-        assert "fast_fill_offset_boost_sell" in source
-
-    def test_ff_threshold_variable_name(self) -> None:
-        """093# で ff_threshold 変数を使ってサイド別分岐している."""
-        from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_continuous)
-        assert "ff_threshold" in source
+        assert "fast_fill_defense" in source
+        assert "evaluate_fill" in source
 
 
 # =====================================================================

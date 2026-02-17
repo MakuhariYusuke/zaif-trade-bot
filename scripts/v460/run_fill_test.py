@@ -45,6 +45,7 @@ from ztb.metrics.fill_quality import (
     save_fill_records,
 )
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 
 logging.basicConfig(
     level=logging.INFO,
@@ -167,7 +168,7 @@ class FillTestConfig:
     skip_gate_enabled: bool = False
     skip_gate_mode: str = "as"             # "pnl" or "as" (061# AS 分類器推奨)
     skip_gate_model_path: str = "models/v460/skip_gate_as.pkl"  # モデルファイル
-    skip_gate_as_threshold: float = 0.6    # AS 確率スキップ閾値 (mode=as)
+    skip_gate_as_threshold: float = 0.52   # 100# AS 確率スキップ閾値 (0.65→0.52)
     skip_gate_pnl_threshold: float = 0.0   # PnL 予測スキップ閾値 (mode=pnl)
     skip_gate_max_skip_rate: float = 0.3   # 連続スキップ率上限 (安全弁)
     # 068# §3.3: side 別閾値 (None は共通 as_threshold を使用)
@@ -485,13 +486,26 @@ class FillTestRunner:
         # 079# 時間ベースバッチflush
         self._last_batch_flush_time: float = time.time()
         # 049# 即約定防御: 次サイクルの offset を一時的に増加
-        self._fast_fill_boost_active: bool = False
+        # 100# God Object 分割: FastFillDefense クラスに委譲 (side-aware)
+        self._fast_fill_defense = FastFillDefense(
+            config=FastFillDefenseConfig(
+                enabled=config.fast_fill_defense_enabled,
+                threshold_sec=config.fast_fill_threshold_sec,
+                threshold_sec_buy=config.fast_fill_threshold_sec_buy,
+                threshold_sec_sell=config.fast_fill_threshold_sec_sell,
+                offset_boost=config.fast_fill_offset_boost,
+                offset_boost_buy=config.fast_fill_offset_boost_buy,
+                offset_boost_sell=config.fast_fill_offset_boost_sell,
+            ),
+            base_offset_ratio=config.spread_offset_ratio,
+            base_offset_ratio_buy=config.spread_offset_ratio_buy,
+            base_offset_ratio_sell=config.spread_offset_ratio_sell,
+        )
         # 096# 状態分離: base offset は adapter のみ変更、boost は乗数のみ変更
         # config.spread_offset_ratio* は初期値として base に退避し、直接変更しない
         self._base_offset_ratio: float = config.spread_offset_ratio
         self._base_offset_ratio_buy: float | None = config.spread_offset_ratio_buy
         self._base_offset_ratio_sell: float | None = config.spread_offset_ratio_sell
-        self._boost_multiplier: float = 1.0  # fast_fill_defense の一時乗数
         # 051# P2-3: Balance auto-shrink (残高不足時のロット一時縮小)
         self._balance_shrink_active: bool = False
         self._pre_shrink_lot: float = config.order_quantity
@@ -881,10 +895,11 @@ class FillTestRunner:
 
         offset = max(self.config.min_offset_jpy, spread * effective_offset_ratio)
 
-        # 096# 状態分離: fast_fill_defense の一時乗数を最終段で適用
-        if self._boost_multiplier != 1.0:
-            offset *= self._boost_multiplier
-            effective_offset_ratio *= self._boost_multiplier
+        # 100# FastFillDefense: per-side boost 乗数を適用
+        boost_mult = self._fast_fill_defense.get_boost_multiplier(side)
+        if boost_mult != 1.0:
+            offset *= boost_mult
+            effective_offset_ratio *= boost_mult
 
         if side == "buy":
             price = best_bid + offset
@@ -914,8 +929,8 @@ class FillTestRunner:
     def _is_time_filtered(self, side: str | None = None) -> bool:
         """041# 時間帯フィルター: 高 AS 時間帯かどうかを判定.
 
-        073# side 別時間帯: skip_utc_hours_buy / skip_utc_hours_sell が
-        設定されている場合は side 固有リストを優先使用。
+        100# fix: グローバル + side 別リストの union で判定。
+        旧実装は side 別リストがあると global リストを無視していた。
         side=None の場合はグローバルリストのみで判定。
 
         Returns True の場合、呼び出し元は FillRecord を生成せずスリープする。
@@ -925,16 +940,19 @@ class FillTestRunner:
             return False
         current_utc_hour = datetime.now(timezone.utc).hour
 
-        # 073# side 別リスト優先
+        # グローバルリスト
+        global_hours = set(self.config.skip_utc_hours or [])
+
+        # 100# P1-3: side 別リストを union (グローバルを無視しない)
         if side == "buy" and self.config.skip_utc_hours_buy is not None:
-            return current_utc_hour in self.config.skip_utc_hours_buy
+            side_hours = set(self.config.skip_utc_hours_buy)
+            return current_utc_hour in (global_hours | side_hours)
         if side == "sell" and self.config.skip_utc_hours_sell is not None:
-            return current_utc_hour in self.config.skip_utc_hours_sell
+            side_hours = set(self.config.skip_utc_hours_sell)
+            return current_utc_hour in (global_hours | side_hours)
 
         # グローバルフォールバック
-        if not self.config.skip_utc_hours:
-            return False
-        return current_utc_hour in self.config.skip_utc_hours
+        return current_utc_hour in global_hours
 
     # 052#: Coincheck 取引所 BTC 最小注文数量 (板取引)
     _MIN_ORDER_BTC: float = 0.001
@@ -1542,7 +1560,39 @@ class FillTestRunner:
                             logger.warning(f"[stale_order] Cancel failed: {cancel_err}")
                             continue  # cancel 失敗 → 次の poll へ
 
-                        # 2) 新価格で再発注
+                        # 2) 100# P0-6: SkipGate による reprice ガード
+                        # stale reprice は SkipGate を bypass していたため、
+                        # AS 予測が高い状態で再発注してしまう問題を修正
+                        reprice_gate_skipped = False
+                        if self._skip_gate is not None:
+                            try:
+                                from scripts.v460.ml.skip_gate import build_features_from_market_state
+                                sg_regime = None
+                                if self._regime_detector is not None:
+                                    sg_regime = self._regime_detector.current_regime.value
+                                rp_features = build_features_from_market_state(
+                                    side=side,
+                                    spread_jpy=spread_at_order or 0.0,
+                                    offset_ratio=effective_offset_ratio,
+                                    regime=sg_regime,
+                                    recent_trades=None,
+                                    market_timestamp=time.time(),
+                                )
+                                rp_decision = self._skip_gate.evaluate(rp_features, side=side)
+                                if rp_decision.should_skip:
+                                    reprice_gate_skipped = True
+                                    logger.info(
+                                        f"[stale_order] SkipGate blocked reprice: "
+                                        f"P(AS)={rp_decision.as_probability:.3f} "
+                                        f">= {rp_decision.threshold_used:.3f}"
+                                    )
+                            except Exception as sg_err:
+                                logger.debug(f"[stale_order] SkipGate check failed: {sg_err}")
+
+                        if reprice_gate_skipped:
+                            cancel_reason_poll = "stale_skip_gate_blocked"
+                            break
+
                         try:
                             new_price, new_spread, _ = await self._compute_maker_price(side)
                             new_order = await self.adapter.place_order(
@@ -1616,6 +1666,7 @@ class FillTestRunner:
         post_fill_120s_pnl: Optional[float] = None
         adverse_selected: Optional[bool] = None
         adverse_selected_raw: Optional[bool] = None
+        actual_measurement_sec: Optional[float] = None  # 100# P1-4
 
         if filled and fill_price is not None:
             try:
@@ -1625,6 +1676,9 @@ class FillTestRunner:
 
             # 054# S3: Early Exit 監視付き 30s 待機
             early_exit_triggered = False
+            # 100# P1-4: 実際の計測経過時間を記録 (early_exit 時のラベルノイズ対策)
+            t_post_fill_start = time.time()
+            actual_measurement_sec: Optional[float] = None
             if self.config.early_exit_enabled and mid_at_fill is not None:
                 # 5s 刻みで 30s まで mid を監視
                 monitor_sec = self.config.early_exit_monitor_interval_sec
@@ -1655,6 +1709,9 @@ class FillTestRunner:
                 # 通常の 30s 待機
                 logger.info(f"Waiting {self.config.post_fill_wait_sec}s for PnL measurement...")
                 await asyncio.sleep(self.config.post_fill_wait_sec)
+
+            # 100# P1-4: 実際の経過秒数を記録
+            actual_measurement_sec = time.time() - t_post_fill_start
 
             try:
                 mid_30s_after = await self._get_mid_price()
@@ -1714,12 +1771,21 @@ class FillTestRunner:
         regime_conf: Optional[float] = None
         regime_stab: Optional[int] = None
         if self._regime_detector is not None:
-            # mid_at_fill または order_price をレジーム検知の入力に使用
-            regime_price = mid_at_fill if mid_at_fill is not None else order_price
-            regime_result = self._regime_detector.update(t_submit, regime_price)
-            regime_str = regime_result.regime.value
-            regime_conf = regime_result.confidence
-            regime_stab = regime_result.stability
+            # 100# P1-6 fix: unfilled 時は order_price (offset 込み) ではなく
+            # 直近の真の mid price を使用。order_price は offset を含むため
+            # regime 検知のノイズ源となる。
+            if mid_at_fill is not None:
+                regime_price = mid_at_fill
+            elif self._prev_mid_price is not None:
+                regime_price = self._prev_mid_price
+            else:
+                regime_price = None  # データ不足: スキップ
+
+            if regime_price is not None:
+                regime_result = self._regime_detector.update(t_submit, regime_price)
+                regime_str = regime_result.regime.value
+                regime_conf = regime_result.confidence
+                regime_stab = regime_result.stability
 
         record = FillRecord(
             cycle_id=cycle_id,
@@ -1775,6 +1841,8 @@ class FillTestRunner:
             skip_gate_threshold_used=skip_gate_threshold_used,
             # 094# stale order cancel-replace 追跡
             reprice_count=reprice_count,
+            # 100# P1-4: 実際の PnL 計測経過秒数
+            actual_measurement_sec=actual_measurement_sec if filled else None,
         )
 
         logger.info(
@@ -2083,62 +2151,21 @@ class FillTestRunner:
                 )
                 self._shutdown_requested = True
 
-            # --- 049# 即約定防御: queue_wait が閾値以下 + 負エッジのとき次サイクルを保守化 ---
-            # 096# 状態分離: config.spread_offset_ratio を直接変更せず _boost_multiplier のみ操作
-            if self.config.fast_fill_defense_enabled and record.filled:
-                # 093# side 別閾値: buy/sell で独立した判定秒数を適用
-                ff_threshold = self.config.fast_fill_threshold_sec
-                if record.side == "buy" and self.config.fast_fill_threshold_sec_buy is not None:
-                    ff_threshold = self.config.fast_fill_threshold_sec_buy
-                elif record.side == "sell" and self.config.fast_fill_threshold_sec_sell is not None:
-                    ff_threshold = self.config.fast_fill_threshold_sec_sell
+            # --- 100# 即約定防御: FastFillDefense クラスに委譲 ---
+            # P0-5: side-aware (sell boost が buy に伝播しない)
+            # P0-3: two-layer neg_edge detection (即時 proxy + post-fill PnL)
+            # P1-2: side 別 base_offset_ratio による cap
+            if record.filled:
+                self._fast_fill_defense.evaluate_fill(
+                    side=record.side,
+                    queue_wait_sec=record.queue_wait_sec,
+                    fill_price=record.fill_price,
+                    mid_at_fill=record.mid_at_fill,
+                    post_fill_pnl_bps=record.post_fill_30s_pnl,
+                )
+            elif not record.filled:
+                self._fast_fill_defense.reset_on_unfilled(record.side)
 
-                is_fast = record.queue_wait_sec <= ff_threshold
-                has_negative_edge = (
-                    record.mid_at_fill is not None
-                    and record.fill_price is not None
-                    and (
-                        (record.side == "buy" and record.fill_price > record.mid_at_fill)
-                        or (record.side == "sell" and record.fill_price < record.mid_at_fill)
-                    )
-                )
-                if is_fast and has_negative_edge:
-                    if not self._fast_fill_boost_active:
-                        self._fast_fill_boost_active = True
-                        # 093# side 別 boost 倍率
-                        boost = self.config.fast_fill_offset_boost
-                        if record.side == "buy" and self.config.fast_fill_offset_boost_buy is not None:
-                            boost = self.config.fast_fill_offset_boost_buy
-                        elif record.side == "sell" and self.config.fast_fill_offset_boost_sell is not None:
-                            boost = self.config.fast_fill_offset_boost_sell
-                        # 096# 状態分離: 乗数のみ変更（base offset は adapter 管轄）
-                        old_mult = self._boost_multiplier
-                        self._boost_multiplier = min(boost, 0.30 / max(self._base_offset_ratio, 0.01))
-                        logger.info(
-                            f"[fast_fill_defense] Activated: {record.side} "
-                            f"wait={record.queue_wait_sec:.1f}s "
-                            f"(< {ff_threshold}s), "
-                            f"negative edge detected. "
-                            f"multiplier {old_mult:.2f}→{self._boost_multiplier:.2f}"
-                        )
-                elif self._fast_fill_boost_active:
-                    # 正常約定に戻った → boost 解除
-                    old_mult = self._boost_multiplier
-                    self._boost_multiplier = 1.0
-                    self._fast_fill_boost_active = False
-                    logger.info(
-                        "[fast_fill_defense] Deactivated: normal fill detected, "
-                        f"multiplier {old_mult:.2f}→1.00"
-                    )
-            # 096# unfilled 時もブースト永続化を防止
-            elif self.config.fast_fill_defense_enabled and not record.filled and self._fast_fill_boost_active:
-                old_mult = self._boost_multiplier
-                self._boost_multiplier = 1.0
-                self._fast_fill_boost_active = False
-                logger.info(
-                    "[fast_fill_defense] Reset on unfilled: "
-                    f"multiplier {old_mult:.2f}→1.00"
-                )
             # --- バッチ保存 (024# R1: 独立 try/except) ---
             if len(batch) >= batch_size:
                 if self._try_save_batch(batch):
@@ -2479,6 +2506,14 @@ class FillTestRunner:
                         f"({side_result.sell.action}) [regime={regime_tag}]"
                     )
 
+                # 100# FastFillDefense の base_offset を同期
+                if side_result.any_changed:
+                    self._fast_fill_defense.update_base_offsets(
+                        self._base_offset_ratio,
+                        self._base_offset_ratio_buy,
+                        self._base_offset_ratio_sell,
+                    )
+
                 if not side_result.any_changed:
                     logger.debug(
                         f"[方策A] offset unchanged: "
@@ -2515,6 +2550,12 @@ class FillTestRunner:
                         f"[方策A] offset adapted (combined): "
                         f"{old:.4f} → {result.new_offset:.4f} "
                         f"({result.action}: {result.reason})"
+                    )
+                    # 100# FastFillDefense の base_offset を同期
+                    self._fast_fill_defense.update_base_offsets(
+                        self._base_offset_ratio,
+                        self._base_offset_ratio_buy,
+                        self._base_offset_ratio_sell,
                     )
                 else:
                     logger.debug(f"[方策A] offset unchanged: {result.reason}")

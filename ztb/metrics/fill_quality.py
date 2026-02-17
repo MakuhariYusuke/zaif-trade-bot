@@ -87,6 +87,8 @@ class FillRecord:
     skip_gate_threshold_used: Optional[float] = None  # 実際に適用された閾値 (side別解決後)
     # 094# stale order cancel-replace 追跡
     reprice_count: int = 0                        # 1 サイクル内で再発注した回数
+    # 100# P1-4: 実際の PnL 計測経過秒数 (early_exit で 30s 未満になる場合の記録)
+    actual_measurement_sec: Optional[float] = None  # mid_30s_after の実計測秒数
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

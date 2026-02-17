@@ -928,10 +928,10 @@ class Test059SkipRateHistory:
 
         features = {c: 1.0 for c in feature_cols}
 
-        # 最初の数件はスキップ (rate < 0.3 なので)
+        # 100# per-side skip rate: side を指定して評価
         results = []
         for _ in range(25):
-            r = gate.evaluate(features)
+            r = gate.evaluate(features, side="buy")
             results.append(r)
 
         # force-pass が発動したら _recent_skips には False が記録される
@@ -940,8 +940,8 @@ class Test059SkipRateHistory:
         )
         assert force_pass_count > 0, "Rate limit should have fired"
 
-        # _recent_skips の True 率が max_skip_rate 以下に収束
-        recent_rate = sum(gate._recent_skips) / len(gate._recent_skips)
+        # 100# per-side: buy の skip 履歴で判定
+        recent_rate = sum(gate._recent_skips_buy) / len(gate._recent_skips_buy)
         assert recent_rate <= 0.5, (
             f"Rate {recent_rate:.2f} should converge below max_skip_rate "
             f"because force-pass records False"
@@ -972,9 +972,9 @@ class Test059SkipRateHistory:
         features = {c: 1.0 for c in feature_cols}
         rates = []
         for i in range(50):
-            gate.evaluate(features)
-            if gate._recent_skips:
-                rate = sum(gate._recent_skips) / len(gate._recent_skips)
+            gate.evaluate(features, side="sell")  # 100# per-side
+            if gate._recent_skips_sell:
+                rate = sum(gate._recent_skips_sell) / len(gate._recent_skips_sell)
                 rates.append(rate)
 
         # 安定後のレートが max_skip_rate 近辺を超えないこと

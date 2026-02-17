@@ -737,7 +737,7 @@ class Test062SkipGateConfig:
         assert "skip_gate" in cfg
         assert cfg["skip_gate"]["enabled"] is True  # 065#: 学習済みモデルで有効化
         assert cfg["skip_gate"]["mode"] == "as"
-        assert cfg["skip_gate"]["as_threshold"] == 0.65  # 065#: 保守的閾値
+        assert cfg["skip_gate"]["as_threshold"] == 0.52  # 100# P0-2: 0.65→0.52
         assert cfg["skip_gate"]["max_skip_rate"] == 0.3
 
     def test_from_yaml_skip_gate(self) -> None:
@@ -766,7 +766,7 @@ class Test062SkipGateConfig:
         assert config.skip_gate_enabled is False
         assert config.skip_gate_mode == "as"
         assert config.skip_gate_model_path == "models/v460/skip_gate_as.pkl"
-        assert config.skip_gate_as_threshold == 0.6
+        assert config.skip_gate_as_threshold == 0.52  # 100# default 0.6→0.52
         assert config.skip_gate_pnl_threshold == 0.0
         assert config.skip_gate_max_skip_rate == 0.3
 

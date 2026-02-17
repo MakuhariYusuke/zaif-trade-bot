@@ -105,7 +105,7 @@ class SkipGateConfig:
     target_skip_rate_sell: float = 0.20     # sell 側の目標 skip 率 (sell 劣後を補正)
     adaptive_window: int = 50               # 較正に使う直近サイクル数
     adaptive_min_samples: int = 20          # 較正開始に必要な最小サンプル数
-    adaptive_step: float = 0.02             # 1 回の閾値調整ステップ
+    adaptive_step: float = 0.05             # 100# 1 回の閾値調整ステップ (0.02→0.05)
     adaptive_floor: float = 0.35            # 閾値の下限 (過剰 skip 防止)
     adaptive_ceiling: float = 0.80          # 閾値の上限 (skip 無効化防止)
 
@@ -155,7 +155,9 @@ class SkipGate:
         self.feature_cols = feature_cols
         self.config = config or SkipGateConfig()
         self.metadata = metadata or {}
-        self._recent_skips: list[bool] = []
+        # 100# P1-1: per-side skip 履歴 (cross-side 干渉を排除)
+        self._recent_skips_buy: list[bool] = []
+        self._recent_skips_sell: list[bool] = []
         self._pipeline = pipeline  # 059# NEW-02: 完全 Pipeline
         # 088# 動的較正用: side 別 P(AS) 履歴
         self._pas_history_buy: list[float] = []
@@ -239,22 +241,29 @@ class SkipGate:
             threshold_used = self.config.threshold_bps
             should_skip = pred_pnl < self.config.threshold_bps
 
-        # 連続スキップ率チェック — 059# P0-2: 最終決定を記録
-        recent_rate = (
-            sum(self._recent_skips) / len(self._recent_skips)
-            if self._recent_skips
-            else 0.0
+        # 100# P1-1: side 別連続スキップ率チェック (cross-side 干渉排除)
+        side_skips = (
+            self._recent_skips_buy if side == "buy"
+            else self._recent_skips_sell if side == "sell"
+            else None
         )
+        if side_skips is not None:
+            recent_rate = (
+                sum(side_skips) / len(side_skips) if side_skips else 0.0
+            )
+        else:
+            recent_rate = 0.0
         if recent_rate > self.config.max_skip_rate and should_skip:
             should_skip = False
             reason = f"skip_rate_limit({recent_rate:.0%}>{self.config.max_skip_rate:.0%})"
         else:
             reason = "skip" if should_skip else "pass"
 
-        # 最終決定を履歴に記録 (force-pass 反映後)
-        self._recent_skips.append(should_skip)
-        if len(self._recent_skips) > 20:
-            self._recent_skips = self._recent_skips[-20:]
+        # 最終決定を side 別履歴に記録 (force-pass 反映後)
+        if side_skips is not None:
+            side_skips.append(should_skip)
+            if len(side_skips) > 20:
+                del side_skips[: len(side_skips) - 20]
 
         return SkipDecision(
             should_skip=should_skip,
@@ -580,6 +589,29 @@ def warm_start_skip_gate_thresholds(
 
     gate._pas_history_buy = buy_probs
     gate._pas_history_sell = sell_probs
+
+    # 100# P0-1: 復元した履歴から閾値を即座に較正
+    # warm_start 前は YAML 初期値 (0.65 等) が使われるが、
+    # P(AS) 分布 [0.42, 0.56] に対して高すぎて 6+ サイクル収束ラグが発生する。
+    # 履歴が十分あれば _calibrate_threshold で閾値を事前設定する。
+    if gate.config.adaptive_threshold:
+        if buy_probs and len(buy_probs) >= gate.config.adaptive_min_samples:
+            # 履歴の中央値を擬似的に使って較正を起動
+            _dummy_prob = buy_probs[-1]
+            base_th = gate.config.as_threshold_buy or gate.config.as_threshold
+            calibrated_buy = gate._calibrate_threshold("buy", _dummy_prob, base_th)
+            logger.info(
+                f"[skip_gate] 100# warm_start calibration: buy threshold "
+                f"{base_th:.3f}→{calibrated_buy:.3f}"
+            )
+        if sell_probs and len(sell_probs) >= gate.config.adaptive_min_samples:
+            _dummy_prob = sell_probs[-1]
+            base_th = gate.config.as_threshold_sell or gate.config.as_threshold
+            calibrated_sell = gate._calibrate_threshold("sell", _dummy_prob, base_th)
+            logger.info(
+                f"[skip_gate] 100# warm_start calibration: sell threshold "
+                f"{base_th:.3f}→{calibrated_sell:.3f}"
+            )
 
     logger.info(
         f"[skip_gate] 096# warm_start: restored buy={len(buy_probs)}, "
