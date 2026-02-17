@@ -5,7 +5,7 @@
 | 番号 | 103 |
 | フェーズ | ph2 |
 | 種別 | fix / retrain |
-| 親文書 | `102_yaml_externalization.md` |
+| 親文書 | `102_ph2_fix_yaml_externalization.md` |
 | 作成日 | 2026-02-17 |
 | テスト | 811 passed |
 
