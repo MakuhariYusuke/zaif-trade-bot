@@ -658,6 +658,19 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 11. 回帰確認: `py_compile`（対象ファイル）通過。`pytest` はこの環境で未導入のため未実施。  
 12. 在庫更新: repo 全体 `any_type_debt_tokens` は `2,747 -> 2,728`、`ztb/trading/backtest/integrated_backtest_runner.py` は `19 -> 0`。  
 
+### Step60: `data_validation` / `utils.config` の型固定 + 重複削減（`Any=0`）
+
+1. `ztb/data/data_validation.py` の `Any` を全撤去し、`SchemaValidationResult` / `RuleEvaluationResult` / `IntegrityCheckResult` などの `TypedDict` で結果payload契約を固定化（当該ファイル `any_type_debt_tokens=0`）。  
+2. 同ファイルで `_append_rule_messages()` / `_safe_ratio()` を導入し、ルール結果のメッセージ振り分け・除算ガードの重複処理を共通化。  
+3. `column_uniqueness` の分母 0（全欠損列）と統計検証の `expected_mean/std=0` で 0除算しうる経路を修正。  
+4. `DataIntegrityChecker._check_data_types()` の列メトリクス算出が「先行列のエラーに引きずられて後続列も 0 になる」不整合を修正し、列単位評価へ変更。  
+5. `ztb/utils/config.py` の `Any` を全撤去し、`ObjectMap` / `object` ベースへ型統一（当該ファイル `any_type_debt_tokens=0`）。  
+6. `utils.config` の環境変数変換ロジックを `_convert_env_value()` に集約し、`validate_config()` / `get_validated_config()` の重複分岐を解消。  
+7. `get_config_value()` の list/dict JSON 解析重複を `_parse_json_value()` / `_coerce_json_container()` に集約し、保守性を向上。  
+8. `TypedConfig.__init__()` の validator 実行を例外安全化し、型不整合入力時の曖昧な失敗経路を明示 `ValueError` へ統一。  
+9. 回帰確認: `py_compile`（2ファイル）通過。`pytest` はこの環境で未導入のため未実施。  
+10. 在庫更新: `data_validation.py` / `utils/config.py` はともに `any_type_debt_tokens=0`。repo 全体は `2,728 -> 2,687`（-41）。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -721,6 +734,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step57時点 | repo全体 | 2,786 |
 | Step58時点 | repo全体 | 2,747 |
 | Step59時点 | repo全体 | 2,728 |
+| Step60時点 | repo全体 | 2,687 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -803,6 +817,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step58時点 | `ztb/trading/end_to_end_validation.py` | **0** |
 | Step58時点 | `ztb/trading/e2e_test_framework.py` | **0** |
 | Step59時点 | `ztb/trading/backtest/integrated_backtest_runner.py` | **0** |
+| Step60時点 | `ztb/data/data_validation.py` | **0** |
+| Step60時点 | `ztb/utils/config.py` | **0** |
 
 ---
 
@@ -814,10 +830,10 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - fallback 実装と `analysis/promotion` の責務境界を整理し、将来的な評価ロジック共通化（mixin/utility）に備える。  
 3. `ztb/analysis/status.py`  
    - 運用 status payload（通知/集計）を型固定し、`dict` 合成の重複を削減。  
-4. `ztb/data/data_validation.py`  
-   - バリデーション結果 payload を `TypedDict` 化し、ルール評価の重複 map 操作を helper 化。  
-5. `ztb/utils/config.py`  
-   - config merge/cast 系の `Any` を段階的に削減し、既存型別名へ集約。  
+4. `ztb/utils/safety.py`  
+   - `safe_config_get*` 群の `Any` を段階的に型固定し、`utils.config` と重複する変換処理を共通 helper 化。  
+5. `ztb/analysis/features/re_evaluate_features.py`  
+   - 評価 result payload を型固定し、集計ループの重複（列挙/整形）を helper 化。  
 6. `ztb/training/algorithms/sac/sac_algorithm.py`  
    - 学習ループの result/config payload を段階的に型固定し、集計・ログ出力の重複分岐を helper 化する。  
 
@@ -850,3 +866,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - Step31で導入した 4つの family base は、今後 `shooting_star` / `dark_cloud_cover` / `harami` 追加時にそのまま水平展開可能。  
 8. `ztb/trading/strategies/action_signal_guide/pattern_recognition/wave_counting.py`  
    - Step32 の `_WavePatternBase` 横展開は `fibonacci_patterns.py`（Step34）/ `harmonic_patterns.py`（Step35）へ適用済み。次候補は `gann_analysis.py` の共通抽出。  
+9. `ztb/data/data_validation.py`  
+   - `DataValidator` / `DataIntegrityChecker` の payload 生成規約が共通化済み。次段階で基底（check pipeline）へ抽出するとテスト容易性が上がる。  
+10. `ztb/utils/config.py` / `ztb/utils/safety.py`  
+   - config 値の型変換ヘルパが分散しているため、共通 `config_cast` utility へ段階的統合余地あり。  

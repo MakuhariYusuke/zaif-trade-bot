@@ -4,8 +4,9 @@ config.py
 Central configuration management for ZTB system
 """
 
+import json
 import os
-from typing import Any, Dict, List, Optional, TypeVar, Union, cast, overload
+from typing import TypeVar, cast, overload
 
 try:
     import jsonschema
@@ -17,10 +18,57 @@ except ImportError:
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.safety import safe_config_get, safe_to_bool, safe_to_float, safe_to_int
 from ztb.io.json_io import read_json
+from ztb.types.common import ObjectMap
 
 logger = get_logger(__name__)
 
 T = TypeVar("T")
+
+_BOOL_ENV_KEYS = frozenset(
+    {"ZTB_MEM_PROFILE", "ZTB_TEST_ISOLATION", "ZTB_ENABLE_PROFILING"}
+)
+_FLOAT_ENV_KEYS = frozenset(
+    {"ZTB_CUDA_WARN_GB", "ZTB_MAX_MEMORY_GB", "ZTB_FLOAT_TOLERANCE"}
+)
+_INT_ENV_KEYS = frozenset({"ZTB_CHECKPOINT_INTERVAL", "ZTB_CACHE_SIZE"})
+
+
+def _parse_json_value(value: str) -> object | None:
+    """Parse JSON from text with safe fallback."""
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+def _coerce_json_container(
+    raw_value: object, container_type: type[list[object]] | type[ObjectMap]
+) -> object | None:
+    """Coerce string/object to a list/dict container."""
+    if isinstance(raw_value, container_type):
+        return raw_value
+    if isinstance(raw_value, str):
+        parsed = _parse_json_value(raw_value)
+        if isinstance(parsed, container_type):
+            return parsed
+    return None
+
+
+def _convert_env_value(key: str, value: str) -> object:
+    """Convert env-string to typed config value based on schema key."""
+    if key in _BOOL_ENV_KEYS:
+        return safe_to_bool(value, False)
+    if key in _FLOAT_ENV_KEYS:
+        try:
+            return float(value)
+        except ValueError as exc:
+            raise ValueError(f"Invalid float value for {key}: {value}") from exc
+    if key in _INT_ENV_KEYS:
+        try:
+            return int(value)
+        except ValueError as exc:
+            raise ValueError(f"Invalid integer value for {key}: {value}") from exc
+    return value
 
 
 class ZTBConfig:
@@ -60,7 +108,7 @@ class ZTBConfig:
 
     def get(self, key: str, default: str | T | None = None) -> str | T:
         """Get configuration value from environment variables"""
-        return cast(Union[str, T], os.getenv(key, default))
+        return cast(str | T, os.getenv(key, default))
 
     def get_bool(self, key: str, default: bool = False) -> bool:
         """Get boolean configuration value"""
@@ -108,36 +156,16 @@ class ZTBConfig:
             return True
 
         # Collect current configuration
-        config_dict: Dict[str, Any] = {}
-        properties = cast(Dict[str, Any], self.CONFIG_SCHEMA.get("properties", {}))
+        config_dict: ObjectMap = {}
+        properties = cast(ObjectMap, self.CONFIG_SCHEMA.get("properties", {}))
         for key in properties:
             value = os.getenv(key)
             if value is not None:
-                # Convert string values to appropriate types
-                if key in [
-                    "ZTB_MEM_PROFILE",
-                    "ZTB_TEST_ISOLATION",
-                    "ZTB_ENABLE_PROFILING",
-                ]:
-                    config_dict[key] = value.lower() in ("true", "1", "yes", "on")
-                elif key in [
-                    "ZTB_CUDA_WARN_GB",
-                    "ZTB_MAX_MEMORY_GB",
-                    "ZTB_FLOAT_TOLERANCE",
-                ]:
-                    try:
-                        config_dict[key] = float(value)
-                    except ValueError:
-                        logger.error(f"Invalid float value for {key}: {value}")
-                        return False
-                elif key in ["ZTB_CHECKPOINT_INTERVAL", "ZTB_CACHE_SIZE"]:
-                    try:
-                        config_dict[key] = int(value)
-                    except ValueError:
-                        logger.error(f"Invalid integer value for {key}: {value}")
-                        return False
-                else:
-                    config_dict[key] = value
+                try:
+                    config_dict[key] = _convert_env_value(key, value)
+                except ValueError as e:
+                    logger.error(str(e))
+                    return False
 
         try:
             jsonschema.validate(instance=config_dict, schema=self.CONFIG_SCHEMA)
@@ -150,7 +178,7 @@ class ZTBConfig:
             logger.error(f"Configuration validation error: {e}")
             return False
 
-    def get_validated_config(self) -> Dict[str, Any]:
+    def get_validated_config(self) -> ObjectMap:
         """
         Get validated configuration as a dictionary.
 
@@ -160,12 +188,16 @@ class ZTBConfig:
         if not self.validate_config():
             raise ValueError("Configuration validation failed")
 
-        config = {}
-        properties = cast(Dict[str, Any], self.CONFIG_SCHEMA.get("properties", {}))
+        config: ObjectMap = {}
+        properties = cast(ObjectMap, self.CONFIG_SCHEMA.get("properties", {}))
         for key in properties:
             value = os.getenv(key)
             if value is not None:
-                config[key] = value
+                try:
+                    config[key] = _convert_env_value(key, value)
+                except ValueError:
+                    # Should not happen after validate_config, keep robust fallback.
+                    config[key] = value
 
         return config
 
@@ -190,7 +222,7 @@ class ZTBConfig:
         """Check if running in production environment."""
         return self.get_environment() == "production"
 
-    def get_environment_config(self) -> Dict[str, Any]:
+    def get_environment_config(self) -> ObjectMap:
         """
         Get environment-specific configuration overrides.
 
@@ -200,7 +232,7 @@ class ZTBConfig:
         env = self.get_environment()
 
         # Base configuration for all environments
-        config: Dict[str, Any] = {
+        config: ObjectMap = {
             "debug": self.is_development(),
             "log_level": "DEBUG" if self.is_development() else "INFO",
             "enable_profiling": self.is_development(),
@@ -237,7 +269,7 @@ class ZTBConfig:
 
 
 def get_config_value(
-    config_dict: dict[str, Any], key: str, expected_type: type[T], default: T
+    config_dict: ObjectMap, key: str, expected_type: type[T], default: T
 ) -> T:
     """
     Safely extract and convert configuration values from dict with type validation.
@@ -272,41 +304,23 @@ def get_config_value(
             )
         elif expected_type is bool:
             if isinstance(raw_value, bool):
-                return raw_value  # type: ignore
+                return cast(T, raw_value)
             elif isinstance(raw_value, str):
-                return raw_value.lower() in ("true", "1", "yes", "on")  # type: ignore
+                return cast(T, raw_value.lower() in ("true", "1", "yes", "on"))
             else:
                 return default
         elif expected_type is list:
-            if isinstance(raw_value, list):
-                return raw_value  # type: ignore
-            elif isinstance(raw_value, str):
-                # Try to parse as JSON list
-                try:
-                    import json
-
-                    parsed = json.loads(raw_value)
-                    return parsed if isinstance(parsed, list) else default  # type: ignore
-                except (json.JSONDecodeError, TypeError):
-                    return default
-            else:
+            parsed_list = _coerce_json_container(raw_value, list)
+            if parsed_list is None:
                 return default
+            return cast(T, parsed_list)
         elif expected_type is dict:
-            if isinstance(raw_value, dict):
-                return raw_value  # type: ignore
-            elif isinstance(raw_value, str):
-                # Try to parse as JSON dict
-                try:
-                    import json
-
-                    parsed = json.loads(raw_value)
-                    return parsed if isinstance(parsed, dict) else default  # type: ignore
-                except (json.JSONDecodeError, TypeError):
-                    return default
-            else:
+            parsed_dict = _coerce_json_container(raw_value, dict)
+            if parsed_dict is None:
                 return default
+            return cast(T, parsed_dict)
         else:
-            return raw_value  # type: ignore
+            return cast(T, raw_value)
     except (ValueError, TypeError):
         logger.warning(
             f"Failed to convert config value for {key}: {raw_value}, using default {default}"
@@ -315,8 +329,8 @@ def get_config_value(
 
 
 def get_config_list(
-    config_dict: dict[str, Any], key: str, default: Optional[list[Any]] = None
-) -> list[Any]:
+    config_dict: ObjectMap, key: str, default: list[object] | None = None
+) -> list[object]:
     """
     Get a list configuration value.
 
@@ -334,8 +348,8 @@ def get_config_list(
 
 
 def get_config_dict(
-    config_dict: Dict[str, Any], key: str, default: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+    config_dict: ObjectMap, key: str, default: ObjectMap | None = None
+) -> ObjectMap:
     """
     Get a dict configuration value.
 
@@ -352,7 +366,7 @@ def get_config_dict(
     return get_config_value(config_dict, key, dict, default)
 
 
-def get_config_str(config_dict: dict[str, Any], key: str, default: str = "") -> str:
+def get_config_str(config_dict: ObjectMap, key: str, default: str = "") -> str:
     """
     Get a string configuration value.
 
@@ -367,7 +381,7 @@ def get_config_str(config_dict: dict[str, Any], key: str, default: str = "") -> 
     return get_config_value(config_dict, key, str, default)
 
 
-def get_config_int(config_dict: dict[str, Any], key: str, default: int = 0) -> int:
+def get_config_int(config_dict: ObjectMap, key: str, default: int = 0) -> int:
     """
     Get an integer configuration value.
 
@@ -383,7 +397,7 @@ def get_config_int(config_dict: dict[str, Any], key: str, default: int = 0) -> i
 
 
 def get_config_float(
-    config_dict: dict[str, Any], key: str, default: float = 0.0
+    config_dict: ObjectMap, key: str, default: float = 0.0
 ) -> float:
     """
     Get a float configuration value.
@@ -400,7 +414,7 @@ def get_config_float(
 
 
 def get_config_bool(
-    config_dict: dict[str, Any], key: str, default: bool = False
+    config_dict: ObjectMap, key: str, default: bool = False
 ) -> bool:
     """
     Get a boolean configuration value.
@@ -423,14 +437,18 @@ config = ZTBConfig()
 class TypedConfig:
     """型安全な設定管理クラス"""
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: object):
         """型安全な設定の初期化"""
         super().__init__()
         for key, value in kwargs.items():
             if hasattr(self, f"_validate_{key}"):
                 validator = getattr(self, f"_validate_{key}")
-                if not validator(value):
-                    raise ValueError(f"Invalid value for {key}: {value}")
+                if callable(validator):
+                    try:
+                        if not bool(validator(value)):
+                            raise ValueError(f"Invalid value for {key}: {value}")
+                    except Exception as exc:
+                        raise ValueError(f"Invalid value for {key}: {value}") from exc
             setattr(self, key, value)
 
     def _validate_learning_rate(self, value: float) -> bool:
@@ -449,7 +467,7 @@ class TypedConfig:
         """総タイムステップ数のバリデーション"""
         return value > 0
 
-    def get_models(self) -> List[Dict[str, Any]]:
+    def get_models(self) -> list[ObjectMap]:
         """Get ensemble model configurations."""
         # Default model configurations - can be overridden by config files
         return [
@@ -466,12 +484,12 @@ class TypedConfig:
         """Get the base directory for model files."""
         return cast(str, self.__dict__.get("model_dir", "models"))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> ObjectMap:
         """設定を辞書形式に変換"""
         return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TypedConfig":
+    def from_dict(cls, data: ObjectMap) -> "TypedConfig":
         """辞書から設定を復元"""
         return cls(**data)
 
@@ -493,7 +511,7 @@ class ValidatedConfig(TypedConfig):
         "additionalProperties": True,
     }
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs: object):
         """JSON Schema検証付き初期化"""
         super().__init__(**kwargs)
         self._validate_schema()

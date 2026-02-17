@@ -9,15 +9,72 @@
 """
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import TypedDict
 
 import numpy as np
 import pandas as pd
 from scipy import stats
 
+from ztb.types.common import MetricsDict, ObjectMap
+
 logger = logging.getLogger(__name__)
+
+StringList = list[str]
+SchemaRule = dict[str, object]
+SchemaDefinition = dict[str, SchemaRule]
+
+
+class RuleEvaluationResult(TypedDict):
+    """Result payload for individual validation rules."""
+
+    valid: bool
+    level: str
+    messages: StringList
+
+
+class RuleIssueResult(TypedDict):
+    """Container for collected errors/warnings."""
+
+    errors: StringList
+    warnings: StringList
+
+
+class SchemaValidationResult(TypedDict):
+    """Schema validation summary."""
+
+    errors: StringList
+    warnings: StringList
+    metrics: MetricsDict
+
+
+class AnomalyDetectionResult(TypedDict):
+    """Anomaly detection summary."""
+
+    warnings: StringList
+    details: ObjectMap
+
+
+class IntegrityCheckResult(TypedDict):
+    """Data integrity check summary."""
+
+    errors: StringList
+    warnings: StringList
+    metrics: MetricsDict
+    details: ObjectMap
+
+
+class AdditionalValidationRule(TypedDict, total=False):
+    """User-provided validation rule schema."""
+
+    type: str
+    columns: list[str]
+    params: ObjectMap
+
+
+ValidationRule = Callable[..., RuleEvaluationResult]
 
 
 @dataclass
@@ -25,10 +82,10 @@ class ValidationResult:
     """バリデーション結果を格納するデータクラス。"""
 
     is_valid: bool
-    errors: List[str]
-    warnings: List[str]
-    metrics: Dict[str, float]
-    details: Dict[str, Any]
+    errors: StringList
+    warnings: StringList
+    metrics: MetricsDict
+    details: ObjectMap
 
 
 @dataclass
@@ -52,7 +109,7 @@ class DataValidator:
 
     def __init__(self):
         """DataValidatorを初期化。"""
-        self.validation_rules: Dict[str, Callable] = {}
+        self.validation_rules: dict[str, ValidationRule] = {}
         self._register_default_rules()
 
     def _register_default_rules(self):
@@ -71,8 +128,8 @@ class DataValidator:
     def validate_data(
         self,
         data: pd.DataFrame,
-        schema: Dict[str, Dict[str, Any]],
-        additional_rules: Optional[List[Dict[str, Any]]] = None,
+        schema: SchemaDefinition,
+        additional_rules: list[AdditionalValidationRule] | None = None,
     ) -> ValidationResult:
         """
         データに対して包括的なバリデーションを実行。
@@ -94,10 +151,10 @@ class DataValidator:
             ... }
             >>> result = validator.validate_data(data, schema)
         """
-        errors = []
-        warnings = []
-        metrics = {}
-        details = {}
+        errors: StringList = []
+        warnings: StringList = []
+        metrics: MetricsDict = {}
+        details: ObjectMap = {}
 
         # スキーマベースのバリデーション
         schema_result = self._validate_schema(data, schema)
@@ -141,8 +198,8 @@ class DataValidator:
         )
 
     def _validate_schema(
-        self, data: pd.DataFrame, schema: Dict[str, Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, data: pd.DataFrame, schema: SchemaDefinition
+    ) -> SchemaValidationResult:
         """
         スキーマベースのバリデーションを実行。
 
@@ -153,9 +210,9 @@ class DataValidator:
         Returns:
             バリデーション結果
         """
-        errors = []
-        warnings = []
-        metrics = {}
+        errors: StringList = []
+        warnings: StringList = []
+        metrics: MetricsDict = {}
 
         for column, rules in schema.items():
             if column not in data.columns:
@@ -173,28 +230,32 @@ class DataValidator:
                             column_data, rule_value
                         )
                         if not rule_result["valid"]:
-                            if rule_result["level"] == "error":
-                                errors.extend(rule_result["messages"])
-                            else:
-                                warnings.extend(rule_result["messages"])
+                            self._append_rule_messages(
+                                rule_result, errors, warnings
+                            )
                     except Exception as e:
                         errors.append(
                             f"Validation failed for {column}.{rule_name}: {e}"
                         )
 
             # 列レベルのメトリクス計算
-            metrics[f"{column}_completeness"] = 1 - (
-                column_data.isnull().sum() / len(column_data)
+            row_count = float(len(column_data))
+            metrics[f"{column}_completeness"] = 1 - self._safe_ratio(
+                float(column_data.isnull().sum()),
+                row_count,
             )
-            metrics[f"{column}_uniqueness"] = column_data.nunique() / len(
-                column_data.dropna()
+            non_null_count = float(len(column_data.dropna()))
+            metrics[f"{column}_uniqueness"] = self._safe_ratio(
+                float(column_data.nunique()),
+                non_null_count,
+                default=1.0,
             )
 
         return {"errors": errors, "warnings": warnings, "metrics": metrics}
 
     def _apply_validation_rule(
-        self, data: pd.DataFrame, rule: Dict[str, Any]
-    ) -> Dict[str, List[str]]:
+        self, data: pd.DataFrame, rule: AdditionalValidationRule
+    ) -> RuleIssueResult:
         """
         カスタムバリデーションルールを適用。
 
@@ -205,12 +266,18 @@ class DataValidator:
         Returns:
             バリデーション結果
         """
-        errors = []
-        warnings = []
+        errors: StringList = []
+        warnings: StringList = []
 
-        rule_type = rule.get("type", "")
-        columns = rule.get("columns", [])
-        params = rule.get("params", {})
+        rule_type = str(rule.get("type", ""))
+        raw_columns = rule.get("columns", [])
+        columns = (
+            [str(col) for col in raw_columns]
+            if isinstance(raw_columns, list)
+            else []
+        )
+        raw_params = rule.get("params", {})
+        params = raw_params if isinstance(raw_params, dict) else {}
 
         if rule_type not in self.validation_rules:
             errors.append(f"Unknown validation rule type: {rule_type}")
@@ -224,11 +291,9 @@ class DataValidator:
             try:
                 result = self.validation_rules[rule_type](data[column], **params)
                 if not result["valid"]:
-                    messages = result["messages"]
-                    if result["level"] == "error":
-                        errors.extend([f"{column}: {msg}" for msg in messages])
-                    else:
-                        warnings.extend([f"{column}: {msg}" for msg in messages])
+                    self._append_rule_messages(
+                        result, errors, warnings, prefix=f"{column}: "
+                    )
             except Exception as e:
                 errors.append(f"Rule application failed for {column}.{rule_type}: {e}")
 
@@ -236,7 +301,7 @@ class DataValidator:
 
     def _validate_not_null(
         self, data: pd.Series, required: bool = True
-    ) -> Dict[str, Any]:
+    ) -> RuleEvaluationResult:
         """Null値チェック。"""
         null_count = data.isnull().sum()
         is_valid = not required or null_count == 0
@@ -253,7 +318,7 @@ class DataValidator:
 
     def _validate_data_type(
         self, data: pd.Series, expected_type: str
-    ) -> Dict[str, Any]:
+    ) -> RuleEvaluationResult:
         """データ型チェック。"""
         try:
             if expected_type == "int":
@@ -282,9 +347,9 @@ class DataValidator:
     def _validate_range(
         self,
         data: pd.Series,
-        min_val: Optional[float] = None,
-        max_val: Optional[float] = None,
-    ) -> Dict[str, Any]:
+        min_val: float | None = None,
+        max_val: float | None = None,
+    ) -> RuleEvaluationResult:
         """値範囲チェック。"""
         valid_data = data.dropna()
 
@@ -305,7 +370,7 @@ class DataValidator:
 
         return {"valid": is_valid, "level": "error", "messages": messages}
 
-    def _validate_pattern(self, data: pd.Series, pattern: str) -> Dict[str, Any]:
+    def _validate_pattern(self, data: pd.Series, pattern: str) -> RuleEvaluationResult:
         """パターン一致チェック。"""
 
         valid_data = data.dropna().astype(str)
@@ -322,7 +387,7 @@ class DataValidator:
 
     def _validate_uniqueness(
         self, data: pd.Series, should_be_unique: bool = True
-    ) -> Dict[str, Any]:
+    ) -> RuleEvaluationResult:
         """独自性チェック。"""
         unique_count = data.nunique()
         total_count = len(data.dropna())
@@ -338,8 +403,8 @@ class DataValidator:
         return {"valid": is_valid, "level": "warning", "messages": messages}
 
     def _validate_consistency(
-        self, data: pd.Series, related_column: str = None
-    ) -> Dict[str, Any]:
+        self, data: pd.Series, related_column: str | None = None
+    ) -> RuleEvaluationResult:
         """一貫性チェック（関連列との整合性）。"""
         # この実装は具体的なビジネスロジックによる
         # 例: 価格と出来高の相関関係チェック
@@ -364,7 +429,7 @@ class DataValidator:
 
     def _validate_temporal_order(
         self, data: pd.Series, is_datetime: bool = True
-    ) -> Dict[str, Any]:
+    ) -> RuleEvaluationResult:
         """時系列順序チェック。"""
         messages = []
         is_valid = True
@@ -385,10 +450,10 @@ class DataValidator:
     def _validate_statistical_properties(
         self,
         data: pd.Series,
-        expected_mean: Optional[float] = None,
-        expected_std: Optional[float] = None,
+        expected_mean: float | None = None,
+        expected_std: float | None = None,
         tolerance: float = 0.1,
-    ) -> Dict[str, Any]:
+    ) -> RuleEvaluationResult:
         """統計的特性チェック。"""
         messages = []
         is_valid = True
@@ -405,7 +470,10 @@ class DataValidator:
         actual_std = valid_data.std()
 
         if expected_mean is not None:
-            mean_diff = abs(actual_mean - expected_mean) / expected_mean
+            mean_diff = self._safe_ratio(
+                abs(actual_mean - expected_mean),
+                abs(expected_mean),
+            )
             if mean_diff > tolerance:
                 messages.append(
                     f"Mean deviation: expected {expected_mean}, got {actual_mean:.2f}"
@@ -413,7 +481,10 @@ class DataValidator:
                 is_valid = False
 
         if expected_std is not None:
-            std_diff = abs(actual_std - expected_std) / expected_std
+            std_diff = self._safe_ratio(
+                abs(actual_std - expected_std),
+                abs(expected_std),
+            )
             if std_diff > tolerance:
                 messages.append(
                     f"Std deviation: expected {expected_std}, got {actual_std:.2f}"
@@ -470,7 +541,7 @@ class DataValidator:
                     validity_scores.append(1.0)
                 else:
                     validity_scores.append(0.5)
-            except:
+            except Exception:
                 validity_scores.append(0.0)
 
         validity = np.mean(validity_scores) if validity_scores else 0.5
@@ -488,7 +559,7 @@ class DataValidator:
             uniqueness=uniqueness,
         )
 
-    def _detect_anomalies(self, data: pd.DataFrame) -> Dict[str, Any]:
+    def _detect_anomalies(self, data: pd.DataFrame) -> AnomalyDetectionResult:
         """
         データの異常を検知。
 
@@ -498,8 +569,8 @@ class DataValidator:
         Returns:
             異常検知結果
         """
-        warnings = []
-        details = {}
+        warnings: StringList = []
+        details: ObjectMap = {}
 
         # 欠損パターンの分析
         missing_pattern = data.isnull().sum(axis=1)
@@ -526,10 +597,31 @@ class DataValidator:
                                 "statistic": stat,
                                 "p_value": p_value,
                             }
-                    except:
-                        pass
+                    except Exception:
+                        continue
 
         return {"warnings": warnings, "details": details}
+
+    @staticmethod
+    def _safe_ratio(numerator: float, denominator: float, default: float = 0.0) -> float:
+        """Safely compute ratio without zero-division."""
+        if abs(denominator) < 1e-12:
+            return default
+        return numerator / denominator
+
+    @staticmethod
+    def _append_rule_messages(
+        result: RuleEvaluationResult,
+        errors: StringList,
+        warnings: StringList,
+        prefix: str = "",
+    ) -> None:
+        """Route rule messages to error/warning buckets."""
+        formatted_messages = [f"{prefix}{msg}" for msg in result["messages"]]
+        if result["level"] == "error":
+            errors.extend(formatted_messages)
+            return
+        warnings.extend(formatted_messages)
 
 
 class DataIntegrityChecker:
@@ -590,13 +682,14 @@ class DataIntegrityChecker:
             details=details,
         )
 
-    def _check_data_types(self, data: pd.DataFrame) -> Dict[str, Any]:
+    def _check_data_types(self, data: pd.DataFrame) -> IntegrityCheckResult:
         """データ型の整合性をチェック。"""
-        errors = []
-        warnings = []
-        metrics = {}
+        errors: StringList = []
+        warnings: StringList = []
+        metrics: MetricsDict = {}
 
         for col in data.columns:
+            previous_error_count = len(errors)
             dtype = data[col].dtype
 
             # 数値列のチェック
@@ -612,18 +705,19 @@ class DataIntegrityChecker:
             elif col.lower() in ["timestamp", "datetime", "time", "date"]:
                 try:
                     pd.to_datetime(data[col])
-                except:
+                except Exception:
                     errors.append(f"Column '{col}' is not a valid datetime column")
 
-            metrics[f"{col}_dtype_consistency"] = 1.0 if len(errors) == 0 else 0.0
+            had_column_error = len(errors) > previous_error_count
+            metrics[f"{col}_dtype_consistency"] = 0.0 if had_column_error else 1.0
 
-        return {"errors": errors, "warnings": warnings, "metrics": metrics}
+        return {"errors": errors, "warnings": warnings, "metrics": metrics, "details": {}}
 
-    def _check_index_integrity(self, data: pd.DataFrame) -> Dict[str, Any]:
+    def _check_index_integrity(self, data: pd.DataFrame) -> IntegrityCheckResult:
         """インデックスの整合性をチェック。"""
-        errors = []
-        warnings = []
-        metrics = {}
+        errors: StringList = []
+        warnings: StringList = []
+        metrics: MetricsDict = {}
 
         # 重複インデックスチェック
         if data.index.duplicated().any():
@@ -641,13 +735,13 @@ class DataIntegrityChecker:
 
         metrics["index_integrity"] = 1.0 if len(errors) == 0 else 0.0
 
-        return {"errors": errors, "warnings": warnings, "metrics": metrics}
+        return {"errors": errors, "warnings": warnings, "metrics": metrics, "details": {}}
 
-    def _check_column_consistency(self, data: pd.DataFrame) -> Dict[str, Any]:
+    def _check_column_consistency(self, data: pd.DataFrame) -> IntegrityCheckResult:
         """列間の整合性をチェック。"""
-        errors = []
-        warnings = []
-        metrics = {}
+        errors: StringList = []
+        warnings: StringList = []
+        metrics: MetricsDict = {}
 
         # 価格と出来高の相関関係チェック（取引データの場合）
         price_cols = [col for col in data.columns if "price" in col.lower()]
@@ -672,13 +766,13 @@ class DataIntegrityChecker:
 
         metrics["column_consistency"] = 1.0 if len(errors) == 0 else 0.5
 
-        return {"errors": errors, "warnings": warnings, "metrics": metrics}
+        return {"errors": errors, "warnings": warnings, "metrics": metrics, "details": {}}
 
-    def _check_value_ranges(self, data: pd.DataFrame) -> Dict[str, Any]:
+    def _check_value_ranges(self, data: pd.DataFrame) -> IntegrityCheckResult:
         """値範囲の妥当性をチェック。"""
-        errors = []
-        warnings = []
-        metrics = {}
+        errors: StringList = []
+        warnings: StringList = []
+        metrics: MetricsDict = {}
 
         numeric_cols = data.select_dtypes(include=[np.number]).columns
 
@@ -714,13 +808,13 @@ class DataIntegrityChecker:
 
         metrics["value_range_validity"] = 1.0 if len(errors) == 0 else 0.0
 
-        return {"errors": errors, "warnings": warnings, "metrics": metrics}
+        return {"errors": errors, "warnings": warnings, "metrics": metrics, "details": {}}
 
-    def _check_temporal_consistency(self, data: pd.DataFrame) -> Dict[str, Any]:
+    def _check_temporal_consistency(self, data: pd.DataFrame) -> IntegrityCheckResult:
         """時系列データの整合性をチェック。"""
-        errors = []
-        warnings = []
-        metrics = {}
+        errors: StringList = []
+        warnings: StringList = []
+        metrics: MetricsDict = {}
 
         # タイムスタンプ列の検出
         datetime_cols = []
@@ -765,13 +859,13 @@ class DataIntegrityChecker:
 
         metrics["temporal_consistency"] = 1.0 if len(errors) == 0 else 0.0
 
-        return {"errors": errors, "warnings": warnings, "metrics": metrics}
+        return {"errors": errors, "warnings": warnings, "metrics": metrics, "details": {}}
 
-    def _check_business_rules(self, data: pd.DataFrame) -> Dict[str, Any]:
+    def _check_business_rules(self, data: pd.DataFrame) -> IntegrityCheckResult:
         """ビジネスルールベースの整合性チェック。"""
-        errors = []
-        warnings = []
-        metrics = {}
+        errors: StringList = []
+        warnings: StringList = []
+        metrics: MetricsDict = {}
 
         # 取引データのビジネスルール（例）
         if "price" in data.columns and "volume" in data.columns:
@@ -806,10 +900,10 @@ class DataIntegrityChecker:
 
         metrics["business_rule_compliance"] = 1.0 if len(errors) == 0 else 0.0
 
-        return {"errors": errors, "warnings": warnings, "metrics": metrics}
+        return {"errors": errors, "warnings": warnings, "metrics": metrics, "details": {}}
 
     def _calculate_integrity_score(
-        self, errors: List[str], warnings: List[str], metrics: Dict[str, float]
+        self, errors: StringList, warnings: StringList, metrics: MetricsDict
     ) -> float:
         """
         全体的な整合性スコアを計算。
