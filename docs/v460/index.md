@@ -77,6 +77,11 @@
 | 077 | impl | [077_ph2_impl_076_review_response.md](077_ph2_impl_076_review_response.md) | 076# レビュー指摘対応 |
 | 078 | impl | [078_ph2_impl_deeper_verification.md](078_ph2_impl_deeper_verification.md) | 検証深化: Permutation Test / 時系列安定性 / 検出力分析 |
 | 079 | rpt | [079_ph2_rpt_inventory_and_restart.md](079_ph2_rpt_inventory_and_restart.md) | 情報棚卸し + fill_test 再開 + ph3 先行作業整理 |
+| 082 | rpt | [082_ph2_fill_test_deep_dive_for_codex.md](082_ph2_fill_test_deep_dive_for_codex.md) | Fill Test データ深掘り (Codex レビュー用) |
+| 083 | rev | [083_ph2_rev_082.md](083_ph2_rev_082.md) | レビュー: 082 Fill Test 深掘りの再点検 |
+| 084 | impl | [084_ph2_impl_083_review_response.md](084_ph2_impl_083_review_response.md) | 083# レビュー指摘対応 + 盲点 8 項目特定 |
+| 085 | impl | [085_ph2_084_blind_spot_impl.md](085_ph2_084_blind_spot_impl.md) | 084 盲点指摘の実装 |
+| 086 | rpt | [086_ph2_rpt_time_filter_bug_and_session_analysis.md](086_ph2_rpt_time_filter_bug_and_session_analysis.md) | time_filter 片側蓄積バグ修正 + 085# セッション考察 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
@@ -143,7 +148,7 @@ NNN_phX_TYPE_description.md
 
 ## 現在の重点課題
 
-1. **G1.1-exec gate 判定**: fill_test データ蓄積中 (n=494, clean=345, 目標 n≈700)
-2. **統計的検出力**: Permutation p=0.0953 (目標 < 0.05)、Cohen's d=0.126、power=68.5%
-3. **fill_test 稼働**: PID 63584 (168h, 2/16 16:42 〜 2/23 予定)
-4. **observation 稼働**: PID 58860 (168h, 2/15 15:33 〜 2/22 予定)
+1. **G1.1-exec gate 判定**: fill_test データ蓄積中 (n=512, clean=363, 目標 n≈700)
+2. **086# 修正済**: time_filter 片側蓄積バグ修正完了、fill_test 安全継続中
+3. **fill_test 稼働**: PID 74612 (168h, run_id `1771294686_f87dc6ed`)
+4. **time_filter 再考**: 有効取引窓 4h/24h — SkipGate との役割分担要検討
