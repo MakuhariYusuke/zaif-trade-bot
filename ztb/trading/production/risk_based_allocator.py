@@ -4,9 +4,7 @@ V433 Phase 5: Gradual Rollout Layer - Risk-based Allocator
 リスクベースの取引量配分と段階的移行を行う。
 """
 
-import json
 import logging
-import os
 import threading
 import time
 from dataclasses import dataclass, field
@@ -14,6 +12,11 @@ from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Awaitable, Callable, Dict, List, Optional
+
+from ztb.trading.production.state_persistence import (
+    read_state_payload,
+    write_state_payload,
+)
 
 
 class AllocationStrategy(Enum):
@@ -762,9 +765,7 @@ class RiskBasedAllocator:
             "last_reallocation": self.last_reallocation.isoformat(),
         }
 
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2, ensure_ascii=False)
+        write_state_payload(filepath, state)
 
         self.logger.info(f"Allocator state saved to {filepath}")
 
@@ -779,8 +780,7 @@ class RiskBasedAllocator:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                state = json.load(f)
+            state = read_state_payload(filepath)
 
             self.risk_threshold = RiskThreshold(state["risk_threshold"])
             self.max_single_system_allocation = state["max_single_system_allocation"]

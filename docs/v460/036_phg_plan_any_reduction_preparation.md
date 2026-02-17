@@ -685,6 +685,18 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 10. 回帰確認: `py_compile`（8ファイル）通過。`pytest` はこの環境で未導入のため未実施。  
 11. 在庫更新: 対象 6ファイル（`json_io.py`, `safety.py`, `candidate_evaluator.py`, `mtf_optimizer.py`, `mtf_scheduler.py`, `config_manager.py`）は `any_type_debt_tokens=0`。repo 全体は `2,687 -> 2,664`（-23）。  
 
+### Step62: `production` state 永続化の横断統合 + JSON 重複削減
+
+1. `ztb/trading/production/state_persistence.py` を追加し、`write_state_payload()` / `read_state_payload()` を新設。  
+2. `state_persistence` は `write_json()` / `read_json_object()` を内部利用し、`save_state/load_state` のファイルI/O重複を集約。  
+3. 以下13モジュールで `os.makedirs + open + json.dump/load` を helper 呼び出しへ置換し、実装重複を削減。  
+   `traffic_distributor.py`, `system_switcher.py`, `virtual_portfolio_manager.py`, `performance_monitor.py`, `health_checker.py`, `real_time_metrics.py`, `alert_system.py`, `emergency_stop.py`, `recovery_system.py`, `result_comparator.py`, `risk_based_allocator.py`, `rollback_manager.py`, `paper_trading_manager.py`  
+4. `real_time_metrics.py` の JSON エクスポートも `write_json()` へ統一し、`json.dump` 直接呼び出しを削除。  
+5. 横断調査: `trading/production` の `save_state/load_state` は 12コンポーネントで同型I/O重複を確認し、今回全て適用。  
+6. 追加調査: `save_state/load_state` の残存候補は `ztb/trading/signal/entry_system.py` と `ztb/training/callbacks/monitoring/metrics_collector.py`。次フェーズ対象として記録。  
+7. 回帰確認: `py_compile`（`state_persistence.py` + production 13ファイル）通過。  
+8. 在庫更新: 今回は重複削減が主目的であり `Any` 量は据え置き。repo 全体 `any_type_debt_tokens=2,664`（変化なし）。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -750,6 +762,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step59時点 | repo全体 | 2,728 |
 | Step60時点 | repo全体 | 2,687 |
 | Step61時点 | repo全体 | 2,664 |
+| Step62時点 | repo全体 | 2,664 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -840,6 +853,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step61時点 | `ztb/training/reward_function_optimizer/mtf_optimizer.py` | **0** |
 | Step61時点 | `ztb/training/reward_function_optimizer/mtf_scheduler.py` | **0** |
 | Step61時点 | `ztb/training/reward_function_optimizer/config_manager.py` | **0** |
+| Step62時点 | `ztb/trading/production/state_persistence.py` | **0** |
 
 ---
 
@@ -857,6 +871,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - 評価 result payload を型固定し、集計ループの重複（列挙/整形）を helper 化。  
 6. `ztb/training/algorithms/sac/sac_algorithm.py`  
    - 学習ループの result/config payload を段階的に型固定し、集計・ログ出力の重複分岐を helper 化する。  
+7. `ztb/trading/signal/entry_system.py` / `ztb/training/callbacks/monitoring/metrics_collector.py`  
+   - `state_persistence` の横展開で、state 保存/復元の JSON I/O 重複をさらに削減。  
 
 ---
 
@@ -891,3 +907,5 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - `DataValidator` / `DataIntegrityChecker` の payload 生成規約が共通化済み。次段階で基底（check pipeline）へ抽出するとテスト容易性が上がる。  
 10. `ztb/utils/config.py` / `ztb/utils/safety.py` / `ztb/io/json_io.py`  
    - config 値変換と JSON object/list 契約が整理されたため、次段階は `config_cast` / `json_contract` の共通 utility 化で責務分離を進める余地あり。  
+11. `ztb/trading/production/*`  
+   - state ファイルI/Oは `state_persistence` に統合済み。次段階は各コンポーネントの payload schema を `TypedDict` 化して復元時の契約不整合を抑止する余地あり。  

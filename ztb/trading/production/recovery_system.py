@@ -5,7 +5,6 @@ V433 Phase 5: Emergency Control Layer - Recovery System
 """
 
 import asyncio
-import json
 import logging
 import os
 import shutil
@@ -15,6 +14,11 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any, Awaitable, Callable, Dict, List, Optional
+
+from ztb.trading.production.state_persistence import (
+    read_state_payload,
+    write_state_payload,
+)
 
 
 class RecoveryPhase(Enum):
@@ -938,9 +942,7 @@ class RecoverySystem:
             "backup_schedule": self.backup_schedule,
         }
 
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2, ensure_ascii=False)
+        write_state_payload(filepath, state)
 
         self.logger.info(f"Recovery system state saved to {filepath}")
 
@@ -955,8 +957,7 @@ class RecoverySystem:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                state = json.load(f)
+            state = read_state_payload(filepath)
 
             self.system_name = state["system_name"]
             self.max_concurrent_recoveries = state["max_concurrent_recoveries"]

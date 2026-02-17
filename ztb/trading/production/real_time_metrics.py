@@ -5,9 +5,7 @@ V433 Phase 5: Production Monitoring Layer - Real-time Metrics
 """
 
 import asyncio
-import json
 import logging
-import os
 import statistics
 import threading
 import time
@@ -18,7 +16,12 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 import psutil
 
+from ztb.io.json_io import write_json
 from ztb.trading.environment.constants import BYTES_PER_MB
+from ztb.trading.production.state_persistence import (
+    read_state_payload,
+    write_state_payload,
+)
 
 
 class MetricType(Enum):
@@ -662,9 +665,7 @@ class RealTimeMetrics:
                     ],
                 }
 
-            os.makedirs(os.path.dirname(filepath), exist_ok=True)
-            with open(filepath, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
+            write_json(filepath, data, indent=2, ensure_ascii=False)
 
         self.logger.info(f"Metrics exported to {filepath}")
 
@@ -781,9 +782,7 @@ class RealTimeMetrics:
             },
         }
 
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2, ensure_ascii=False)
+        write_state_payload(filepath, state)
 
         self.logger.info(f"Metrics state saved to {filepath}")
 
@@ -798,8 +797,7 @@ class RealTimeMetrics:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                state = json.load(f)
+            state = read_state_payload(filepath)
 
             self.collection_interval_seconds = state["collection_interval_seconds"]
             self.retention_period_hours = state["retention_period_hours"]

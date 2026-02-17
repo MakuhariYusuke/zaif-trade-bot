@@ -4,9 +4,7 @@ V433 Phase 5: Parallel Running Layer - Result Comparator
 両システムの並行比較と統計的有意性検証を行う。
 """
 
-import json
 import logging
-import os
 import statistics
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -15,6 +13,10 @@ from enum import Enum
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
 import scipy.stats as stats
+from ztb.trading.production.state_persistence import (
+    read_state_payload,
+    write_state_payload,
+)
 
 # Mock classes for testing
 
@@ -876,9 +878,7 @@ class ResultComparator:
             ],
         }
 
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2, ensure_ascii=False)
+        write_state_payload(filepath, state)
 
         self.logger.info(f"Comparator state saved to {filepath}")
 
@@ -893,8 +893,7 @@ class ResultComparator:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                state = json.load(f)
+            state = read_state_payload(filepath)
 
             self.confidence_level = state.get("confidence_level", 0.95)
             self.min_sample_size = state.get("min_sample_size", 30)

@@ -6,9 +6,7 @@ V433 Phase 5: Gradual Rollout Layer - Performance Monitor
 
 import asyncio
 import inspect
-import json
 import logging
-import os
 import statistics
 import threading
 import time
@@ -19,6 +17,10 @@ from enum import Enum
 from typing import Any, Awaitable, Callable, Deque, Dict, List, Optional
 
 from ztb.types.alert_types import AlertLevel
+from ztb.trading.production.state_persistence import (
+    read_state_payload,
+    write_state_payload,
+)
 
 
 class MonitorFrequency(Enum):
@@ -819,9 +821,7 @@ class ProductionPerformanceMonitor:
             "last_monitoring": self.last_monitoring.isoformat(),
         }
 
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2, ensure_ascii=False)
+        write_state_payload(filepath, state)
 
         self.logger.info(f"Monitor state saved to {filepath}")
 
@@ -836,8 +836,7 @@ class ProductionPerformanceMonitor:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                state = json.load(f)
+            state = read_state_payload(filepath)
 
             self.monitor_frequency = MonitorFrequency(state["monitor_frequency"])
             self.alert_cooldown_minutes = state["alert_cooldown_minutes"]

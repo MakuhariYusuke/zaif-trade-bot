@@ -6,7 +6,6 @@ Paper Trading Layerの統合マネージャー。仮想ポートフォリオ、�
 """
 
 import asyncio
-import json
 import logging
 import os
 from dataclasses import dataclass, field
@@ -15,6 +14,10 @@ from decimal import Decimal
 from enum import Enum
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
+from ztb.trading.production.state_persistence import (
+    read_state_payload,
+    write_state_payload,
+)
 from market_data_simulator import MarketDataSimulator, SimulatedTick
 from performance_validator import PerformanceValidator, ValidationReport
 from virtual_portfolio_manager import VirtualPortfolioManager
@@ -513,9 +516,7 @@ class PaperTradingManager:
         self.portfolio_manager.save_state(portfolio_file)
 
         # セッション情報保存
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(session_data, f, indent=2, ensure_ascii=False)
+        write_state_payload(filepath, session_data)
 
         self.logger.info(f"Session saved to {filepath}")
 
@@ -530,8 +531,7 @@ class PaperTradingManager:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                session_data = json.load(f)
+            session_data = read_state_payload(filepath)
 
             # 設定復元
             config_data = session_data["config"]

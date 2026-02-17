@@ -5,7 +5,6 @@ V433 Phase 5: Parallel Running Layer - System Switcher
 """
 
 import asyncio
-import json
 import logging
 import threading
 import time
@@ -13,6 +12,11 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Awaitable, Callable, Dict, List, Optional
+
+from ztb.trading.production.state_persistence import (
+    read_state_payload,
+    write_state_payload,
+)
 
 
 class SystemType(Enum):
@@ -712,11 +716,7 @@ class SystemSwitcher:
             ],
         }
 
-        import os
-
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2, ensure_ascii=False)
+        write_state_payload(filepath, state)
 
         self.logger.info(f"Switcher state saved to {filepath}")
 
@@ -731,8 +731,7 @@ class SystemSwitcher:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                state = json.load(f)
+            state = read_state_payload(filepath)
 
             self.current_system = SystemType(state["current_system"])
             self.switch_mode = SwitchMode(state["switch_mode"])

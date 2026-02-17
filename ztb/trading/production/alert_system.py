@@ -7,7 +7,6 @@ V433 Phase 5: Production Monitoring Layer - Alert System
 import asyncio
 import json
 import logging
-import os
 import smtplib
 import threading
 import time
@@ -20,6 +19,10 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 import requests
 
+from ztb.trading.production.state_persistence import (
+    read_state_payload,
+    write_state_payload,
+)
 from ztb.types.alert_types import AlertLevel, AlertStatus
 
 
@@ -951,9 +954,7 @@ Labels: {json.dumps(alert.labels, indent=2)}
             },
         }
 
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2, ensure_ascii=False)
+        write_state_payload(filepath, state)
 
         self.logger.info(f"Alert system state saved to {filepath}")
 
@@ -968,8 +969,7 @@ Labels: {json.dumps(alert.labels, indent=2)}
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                state = json.load(f)
+            state = read_state_payload(filepath)
 
             self.alert_history_size = state["alert_history_size"]
             self.default_cooldown_minutes = state["default_cooldown_minutes"]

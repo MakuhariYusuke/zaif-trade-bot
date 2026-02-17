@@ -5,14 +5,17 @@ V433 Phase 5: Paper Trading Layer - Virtual Portfolio Manager
 リアルタイムでパフォーマンスを追跡する。
 """
 
-import json
 import logging
-import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Dict, List, Optional
+
+from ztb.trading.production.state_persistence import (
+    read_state_payload,
+    write_state_payload,
+)
 
 
 # Mock classes for testing
@@ -520,9 +523,7 @@ class VirtualPortfolioManager:
             "state": self.state.value,
         }
 
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2, ensure_ascii=False)
+        write_state_payload(filepath, state)
 
         self.logger.info(f"Portfolio state saved to {filepath}")
 
@@ -537,8 +538,7 @@ class VirtualPortfolioManager:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                state = json.load(f)
+            state = read_state_payload(filepath)
 
             self.initial_balance = Decimal(state["initial_balance"])
             self.cash_balance = Decimal(state["cash_balance"])

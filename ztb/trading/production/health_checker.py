@@ -5,9 +5,7 @@ V433 Phase 5: Production Monitoring Layer - Health Checker
 """
 
 import asyncio
-import json
 import logging
-import os
 import subprocess
 import threading
 import time
@@ -18,6 +16,11 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 import psutil
 import requests
+
+from ztb.trading.production.state_persistence import (
+    read_state_payload,
+    write_state_payload,
+)
 
 
 class HealthStatus(Enum):
@@ -898,9 +901,7 @@ class HealthChecker:
             ],
         }
 
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2, ensure_ascii=False)
+        write_state_payload(filepath, state)
 
         self.logger.info(f"Health checker state saved to {filepath}")
 
@@ -915,8 +916,7 @@ class HealthChecker:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                state = json.load(f)
+            state = read_state_payload(filepath)
 
             self.check_interval_seconds = state["check_interval_seconds"]
             self.report_retention_days = state["report_retention_days"]

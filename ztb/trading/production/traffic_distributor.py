@@ -5,9 +5,7 @@ V433 Phase 5: Parallel Running Layer - Traffic Distributor
 """
 
 import asyncio
-import json
 import logging
-import os
 import random
 import threading
 import time
@@ -16,6 +14,11 @@ from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Awaitable, Callable, Dict, List, Optional
+
+from ztb.trading.production.state_persistence import (
+    read_state_payload,
+    write_state_payload,
+)
 
 
 # Mock classes for testing
@@ -730,9 +733,7 @@ class TrafficDistributor:
             "order_counter": self.order_counter,
         }
 
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2, ensure_ascii=False)
+        write_state_payload(filepath, state)
 
         self.logger.info(f"Distributor state saved to {filepath}")
 
@@ -747,8 +748,7 @@ class TrafficDistributor:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                state = json.load(f)
+            state = read_state_payload(filepath)
 
             # 設定復元
             config_data = state["config"]

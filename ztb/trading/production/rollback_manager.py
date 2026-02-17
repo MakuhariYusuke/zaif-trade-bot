@@ -5,15 +5,18 @@ V433 Phase 5: Gradual Rollout Layer - Rollback Manager
 """
 
 import asyncio
-import json
 import logging
-import os
 import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Awaitable, Callable, Dict, List, Optional
+
+from ztb.trading.production.state_persistence import (
+    read_state_payload,
+    write_state_payload,
+)
 
 
 class RollbackTrigger(Enum):
@@ -795,9 +798,7 @@ class RollbackManager:
             },
         }
 
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2, ensure_ascii=False)
+        write_state_payload(filepath, state)
 
         self.logger.info(f"Rollback manager state saved to {filepath}")
 
@@ -812,8 +813,7 @@ class RollbackManager:
             bool: 読み込み成功フラグ
         """
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                state = json.load(f)
+            state = read_state_payload(filepath)
 
             self.max_checkpoints_per_system = state["max_checkpoints_per_system"]
             self.auto_rollback_threshold = state["auto_rollback_threshold"]
