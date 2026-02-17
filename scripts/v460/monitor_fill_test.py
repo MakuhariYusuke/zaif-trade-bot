@@ -380,6 +380,23 @@ def save_snapshot(
         "gate_result": gate_result,
         "stop_rules": stop_results,
     }
+    # 092# round-trip 指標をスナップショットに追加
+    checks = gate_result.get("checks", {})
+    if "E6_round_trip_pnl" in checks:
+        e6 = checks["E6_round_trip_pnl"]
+        snapshot["round_trip"] = {
+            "mean_bps": e6.get("value"),
+            "median_bps": e6.get("median"),
+            "total_jpy": e6.get("total_jpy"),
+            "pairs": e6.get("pairs"),
+        }
+    if "E7_net_inventory" in checks:
+        e7 = checks["E7_net_inventory"]
+        snapshot["inventory"] = {
+            "net": e7.get("net_inventory"),
+            "unpaired_buys": e7.get("unpaired_buys"),
+            "unpaired_sells": e7.get("unpaired_sells"),
+        }
     out_path = output_dir / f"monitor_snapshot_{ts}.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
@@ -415,7 +432,7 @@ def run_monitor(results_dir: Path, save_json: bool = True) -> dict[str, object]:
 
     # clean レコードのみでメトリクス算出
     metrics = compute_fill_metrics(clean_records)
-    gate_result = g1_1_judgment(metrics, thresholds)
+    gate_result = g1_1_judgment(metrics, thresholds, records=clean_records)  # 092# round-trip KPI
     stop_results = evaluate_stop_rules(metrics, clean_records)
 
     print_report(

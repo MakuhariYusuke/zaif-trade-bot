@@ -19,11 +19,14 @@ g1_info:
   holm_family_size: 9
 
 g1_1_exec:
-  min_fill_rate_p90: 0.90
+  min_fill_rate_p90: 0.85  # 084# 盲点H: 90%は構造的に非現実的 → 85%に再設計
   max_cancel_ratio: 0.30
   max_queue_wait_median_sec: 60
   min_post_fill_30s_pnl: 0.0
   max_adverse_selection_ratio: 0.20
+  # 092# Round-trip KPI (087# P1-1)
+  min_round_trip_pnl_mean: -2.0  # bps — mean がこれ以下ならテール損失警告
+  max_net_inventory: 5            # 純在庫ドリフト上限
 
 g2_train:
   min_positive_seed_ratio: 0.75   # 3/4

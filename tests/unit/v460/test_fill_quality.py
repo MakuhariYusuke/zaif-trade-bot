@@ -2119,15 +2119,16 @@ class Test052AdaptSellOffsetSync:
             cfg = yaml.safe_load(f)
         assert cfg["side_offset"]["sell"] == 0.12
 
-    def test_yaml_skip_utc_hours_includes_12(self) -> None:
-        """052# で UTC 12 が time_filter に追加されている."""
+    def test_yaml_skip_utc_hours_buy_includes_12(self) -> None:
+        """052# UTC12 は 089# で side別に移行: skip_utc_hours_buy に含まれる."""
         from pathlib import Path
         import yaml  # type: ignore[import-untyped]
 
         yaml_path = Path("configs/v460/fill_test.yaml")
         with open(yaml_path) as f:
             cfg = yaml.safe_load(f)
-        assert 12 in cfg["time_filter"]["skip_utc_hours"]
+        # 089# でグローバル skip_utc_hours は [16] のみ, UTC12 は buy 側に移行
+        assert 12 in cfg["time_filter"]["skip_utc_hours_buy"]
 
     def test_yaml_deadzone_updated(self) -> None:
         """052# で deadzone が 2.5 に更新されている."""
@@ -2154,17 +2155,21 @@ class Test052AdaptSellOffsetSync:
 
         assert FillTestRunner._MIN_ORDER_BTC == 0.001
 
-    def test_yaml_skip_utc_hours_includes_13_and_21(self) -> None:
-        """052# で UTC 1,2,13,21 が time_filter に追加されている."""
+    def test_yaml_skip_utc_hours_side_specific_089(self) -> None:
+        """089# time_filter 大幅削減後: UTC 1,2,21 は buy側、UTC 13 は sell側."""
         from pathlib import Path
         import yaml  # type: ignore[import-untyped]
 
         yaml_path = Path("configs/v460/fill_test.yaml")
         with open(yaml_path) as f:
             cfg = yaml.safe_load(f)
-        skip_hours = cfg["time_filter"]["skip_utc_hours"]
-        for h in [1, 2, 13, 21]:
-            assert h in skip_hours, f"UTC {h} should be in skip list"
+        buy_skip = cfg["time_filter"]["skip_utc_hours_buy"]
+        sell_skip = cfg["time_filter"]["skip_utc_hours_sell"]
+        # 089# buy ブロック: UTC 1, 2, 12, 16, 18, 21
+        for h in [1, 2, 21]:
+            assert h in buy_skip, f"UTC {h} should be in buy skip list"
+        # 089# sell ブロック: UTC 4, 8, 13, 14, 16, 17
+        assert 13 in sell_skip, "UTC 13 should be in sell skip list"
 
     def test_trending_offset_boost_in_code(self) -> None:
         """052# _compute_maker_price にトレンディングブーストが含まれる."""

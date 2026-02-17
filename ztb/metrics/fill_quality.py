@@ -243,14 +243,17 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
 def g1_1_judgment(
     metrics: FillMetrics,
     thresholds: dict,
+    records: Optional[list[FillRecord]] = None,
 ) -> dict:
     """G1.1 Gate 合否判定.
 
     009# §2.1 / 000# §3.3 準拠.
+    092# 追加: E6 (round-trip mean PnL), E7 (net inventory drift).
 
     Args:
         metrics: compute_fill_metrics() の出力.
         thresholds: gate_thresholds.yaml の ``g1_1_exec`` セクション.
+        records: round-trip KPI 算出用の FillRecord リスト (省略時は E6/E7 スキップ).
 
     Returns:
         dict with gate_result, per-check details.
@@ -312,6 +315,36 @@ def g1_1_judgment(
         "pass": metrics.adverse_selection_ratio_raw <= max_adverse,
         "informational": True,  # Gate 判定には影響しない (監視用)
     }
+
+    # 092# E6: round-trip mean PnL (087# P1-1 / 083# §4.2-3)
+    # mean が負でもテール損失管理の監視として重要
+    if records is not None:
+        filled_recs = [r for r in records if r.filled]
+        if len(filled_recs) >= 2:
+            rt_metrics, _ = compute_round_trip_metrics(records)
+            if rt_metrics.total_pairs > 0:
+                min_rt_pnl = thresholds.get("min_round_trip_pnl_mean", -2.0)
+                checks["E6_round_trip_pnl"] = {
+                    "value": rt_metrics.pnl_mean_bps,
+                    "threshold": min_rt_pnl,
+                    "pass": rt_metrics.pnl_mean_bps >= min_rt_pnl,
+                    "pairs": rt_metrics.total_pairs,
+                    "median": rt_metrics.pnl_median_bps,
+                    "total_jpy": rt_metrics.pnl_total_jpy,
+                    "informational": True,  # 当面は監視用、安定したら Gate 昇格
+                }
+
+                # E7: net inventory drift — 在庫偏り警告
+                max_inventory = thresholds.get("max_net_inventory", 5)
+                checks["E7_net_inventory"] = {
+                    "value": abs(rt_metrics.net_inventory),
+                    "threshold": max_inventory,
+                    "pass": abs(rt_metrics.net_inventory) <= max_inventory,
+                    "net_inventory": rt_metrics.net_inventory,
+                    "unpaired_buys": rt_metrics.unpaired_buys,
+                    "unpaired_sells": rt_metrics.unpaired_sells,
+                    "informational": True,  # 監視用
+                }
 
     # Gate 判定には informational=True のチェックは含めない
     gate_checks = {k: v for k, v in checks.items() if not v.get("informational")}
