@@ -118,10 +118,10 @@ class TestFillTestConfigFromYaml:
             "progress_log_interval": 100,
             "log_max_bytes": 5242880,
             "log_backup_count": 3,
-            "min_adapt_samples": 30,
             "adaptation": {
                 "enabled": True,
                 "interval_cycles": 30,
+                "min_samples": 30,
             },
             "lot_sizing": {
                 "enabled": True,
@@ -208,6 +208,70 @@ class TestFillTestYamlFile:
         assert config.order_quantity == cfg["order_quantity"]
         assert config.spread_offset_ratio == cfg["spread_offset_ratio"]
         assert config.loss_cap_jpy == cfg["safety"]["loss_cap_jpy"]
+
+    def test_yaml_tuning_roundtrip(self) -> None:
+        """103# tuning セクションの全 18 キーが FillTestConfig に正しくマッピングされる."""
+        path = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
+        with open(path, "r", encoding="utf-8") as f:
+            cfg = yaml.safe_load(f)
+        config = FillTestConfig.from_yaml(cfg)
+        tuning = cfg.get("tuning", {})
+        assert config.max_offset_ratio == tuning["max_offset_ratio"]
+        assert config.min_offset_ratio == tuning["min_offset_ratio"]
+        assert config.loss_cap_update_interval == tuning["loss_cap_update_interval"]
+        assert config.min_loss_cap_jpy == tuning["min_loss_cap_jpy"]
+        assert config.mid_trend_validity_sec == tuning["mid_trend_validity_sec"]
+        assert config.balance_margin_ratio == tuning["balance_margin_ratio"]
+        assert config.balance_shrink_consecutive == tuning["balance_shrink_consecutive"]
+        assert config.balance_shrink_divisor == tuning["balance_shrink_divisor"]
+        assert config.skip_gate_recent_trades_limit == tuning["skip_gate_recent_trades_limit"]
+        assert config.rate_limit_min_backoff_sec == tuning["rate_limit_min_backoff_sec"]
+        assert config.save_retry_backoff_sec == tuning["save_retry_backoff_sec"]
+        assert config.regime_warmup_multiplier == tuning["regime_warmup_multiplier"]
+        assert config.e3_60s_multiplier == tuning["e3_60s_multiplier"]
+        assert config.e3_120s_multiplier == tuning["e3_120s_multiplier"]
+        assert config.adapt_min_side_samples == tuning["adapt_min_side_samples"]
+        assert config.batch_flush_interval_sec == tuning["batch_flush_interval_sec"]
+        assert config.heartbeat_interval_sec == tuning["heartbeat_interval_sec"]
+
+    def test_tuning_custom_values(self) -> None:
+        """103# tuning カスタム値→FillTestConfig."""
+        yaml_cfg = {
+            "tuning": {
+                "max_offset_ratio": 0.25,
+                "min_offset_ratio": 0.02,
+                "min_loss_cap_jpy": 100.0,
+                "balance_shrink_divisor": 3,
+            },
+        }
+        config = FillTestConfig.from_yaml(yaml_cfg)
+        assert config.max_offset_ratio == 0.25
+        assert config.min_offset_ratio == 0.02
+        assert config.min_loss_cap_jpy == 100.0
+        assert config.balance_shrink_divisor == 3
+
+    def test_post_init_balance_shrink_divisor_zero(self) -> None:
+        """103# balance_shrink_divisor=0 → ValueError."""
+        import pytest
+        with pytest.raises(ValueError, match="balance_shrink_divisor"):
+            FillTestConfig(balance_shrink_divisor=0)
+
+    def test_post_init_offset_ratio_invariant(self) -> None:
+        """103# max_offset_ratio <= min_offset_ratio → ValueError."""
+        import pytest
+        with pytest.raises(ValueError, match="max_offset_ratio"):
+            FillTestConfig(max_offset_ratio=0.01, min_offset_ratio=0.01)
+
+    def test_adaptation_min_samples_mapping(self) -> None:
+        """103# adaptation.min_samples → min_adapt_samples."""
+        yaml_cfg = {
+            "adaptation": {
+                "enabled": True,
+                "min_samples": 80,
+            },
+        }
+        config = FillTestConfig.from_yaml(yaml_cfg)
+        assert config.min_adapt_samples == 80
 
 
 class Test054ImbalanceConfig:

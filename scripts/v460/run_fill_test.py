@@ -27,7 +27,7 @@ import sys
 import time
 import traceback
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -223,7 +223,7 @@ class FillTestConfig:
     # SkipGate 直近約定取得件数
     skip_gate_recent_trades_limit: int = 50
     # ステータス不明時のリトライ遅延リスト (秒)
-    status_unknown_retry_delays: list[float] | None = None
+    status_unknown_retry_delays: list[float] = field(default_factory=lambda: [2.0, 3.0, 5.0])
     # rate-limit 検出時の最低バックオフ秒数
     rate_limit_min_backoff_sec: float = 5.0
     # バッチ保存リトライの初期バックオフ秒数
@@ -235,6 +235,18 @@ class FillTestConfig:
     e3_120s_multiplier: float = 4.0
     # side 別適応の最小サンプル数下限
     adapt_min_side_samples: int = 20
+
+    def __post_init__(self) -> None:
+        """103# バリデーション: YAML 誤設定による本番クラッシュ防止."""
+        if self.balance_shrink_divisor < 1:
+            raise ValueError(
+                f"balance_shrink_divisor must be >= 1, got {self.balance_shrink_divisor}"
+            )
+        if self.max_offset_ratio <= self.min_offset_ratio:
+            raise ValueError(
+                f"max_offset_ratio ({self.max_offset_ratio}) must be > "
+                f"min_offset_ratio ({self.min_offset_ratio})"
+            )
 
     @classmethod
     def from_yaml(cls, yaml_cfg: dict) -> "FillTestConfig":
@@ -254,10 +266,8 @@ class FillTestConfig:
             "max_order_retries", "retry_delay_sec",
             "as_deadzone_bps", "min_spread_jpy",
             "batch_size", "max_save_retries", "save_fail_threshold",
-            "batch_flush_interval_sec",
-            "progress_log_interval", "heartbeat_interval_sec",
+            "progress_log_interval",
             "log_max_bytes", "log_backup_count",
-            "min_adapt_samples",
         }
         for key in flat_keys:
             if key in yaml_cfg:
@@ -460,6 +470,9 @@ class FillTestConfig:
         adapt = yaml_cfg.get("adaptation", {})
         if adapt.get("recency_window") is not None:
             kwargs["adapt_recency_window"] = adapt["recency_window"]
+        # 103# adaptation.min_samples → min_adapt_samples マッピング
+        if "min_samples" in adapt:
+            kwargs["min_adapt_samples"] = adapt["min_samples"]
 
         # 088# sell 専用ハードガード
         sell_guard = yaml_cfg.get("sell_guard", {})
@@ -1520,7 +1533,7 @@ class FillTestRunner:
                     # 025# F6: open orders にも transactions にもない
                     # → API 一時障害の可能性があるため段階的リトライ
                     # 088# 強化: 1回→最大3回のリトライ (2s, 3s, 5s)
-                    _retry_delays = self.config.status_unknown_retry_delays or [2.0, 3.0, 5.0]
+                    _retry_delays = self.config.status_unknown_retry_delays
                     _recovered = False
                     for _retry_i, _delay in enumerate(_retry_delays):
                         logger.warning(
