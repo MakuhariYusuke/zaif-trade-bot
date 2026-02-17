@@ -99,6 +99,15 @@ class SkipGateConfig:
     as_threshold_sell: Optional[float] = None
     # 072#: OB 特徴量トグル (ph2 通過後に True へ)
     use_ob_features: bool = False
+    # 088# 動的閾値較正: 目標 skip 率ベースで閾値を自動調整
+    adaptive_threshold: bool = False        # True で動的較正を有効化
+    target_skip_rate_buy: float = 0.10      # buy 側の目標 skip 率
+    target_skip_rate_sell: float = 0.20     # sell 側の目標 skip 率 (sell 劣後を補正)
+    adaptive_window: int = 50               # 較正に使う直近サイクル数
+    adaptive_min_samples: int = 20          # 較正開始に必要な最小サンプル数
+    adaptive_step: float = 0.02             # 1 回の閾値調整ステップ
+    adaptive_floor: float = 0.35            # 閾値の下限 (過剰 skip 防止)
+    adaptive_ceiling: float = 0.80          # 閾値の上限 (skip 無効化防止)
 
 
 @dataclass
@@ -148,6 +157,9 @@ class SkipGate:
         self.metadata = metadata or {}
         self._recent_skips: list[bool] = []
         self._pipeline = pipeline  # 059# NEW-02: 完全 Pipeline
+        # 088# 動的較正用: side 別 P(AS) 履歴
+        self._pas_history_buy: list[float] = []
+        self._pas_history_sell: list[float] = []
 
     def evaluate(
         self,
@@ -212,6 +224,10 @@ class SkipGate:
             elif side == "sell" and self.config.as_threshold_sell is not None:
                 threshold = self.config.as_threshold_sell
             threshold_used = threshold  # 084# side別解決後の閾値
+            # 088# 動的較正: 目標 skip 率ベースで閾値を自動調整
+            if self.config.adaptive_threshold and side is not None:
+                threshold = self._calibrate_threshold(side, pred_prob, threshold)
+                threshold_used = threshold  # 較正後の値で上書き
             should_skip = pred_prob >= threshold
         else:
             # PnL 回帰モード (既存)
@@ -250,6 +266,73 @@ class SkipGate:
             as_probability=as_prob,
             threshold_used=threshold_used,
         )
+
+    def _calibrate_threshold(
+        self, side: str, current_prob: float, base_threshold: float,
+    ) -> float:
+        """088# 動的閾値較正: 目標 skip 率を達成するよう閾値を調整.
+
+        直近 N 件の P(AS) 分布から、目標 skip 率に対応する分位点を推定し、
+        base_threshold をステップ幅で近づける。
+
+        Args:
+            side: "buy" or "sell".
+            current_prob: 今回の P(AS) 予測値 (履歴に追加).
+            base_threshold: 静的設定の閾値 (初期値 / フォールバック).
+
+        Returns:
+            較正後の閾値.
+        """
+        cfg = self.config
+        history = self._pas_history_buy if side == "buy" else self._pas_history_sell
+        target_rate = (
+            cfg.target_skip_rate_buy if side == "buy" else cfg.target_skip_rate_sell
+        )
+
+        # 履歴に追加
+        history.append(current_prob)
+        # ウィンドウ超過分を除去
+        max_len = cfg.adaptive_window
+        if len(history) > max_len:
+            del history[: len(history) - max_len]
+
+        # ウォームアップ: サンプル不足時は静的閾値を使用
+        if len(history) < cfg.adaptive_min_samples:
+            return base_threshold
+
+        # 目標 skip 率に対応する P(AS) 分位点を算出
+        # skip 率 = P(AS) >= threshold の割合 → threshold = (1 - target_rate) 分位点
+        sorted_probs = sorted(history)
+        quantile_idx = int(len(sorted_probs) * (1.0 - target_rate))
+        quantile_idx = min(quantile_idx, len(sorted_probs) - 1)
+        target_threshold = sorted_probs[quantile_idx]
+
+        # ステップ幅で段階的に近づける (急激な変動防止)
+        if base_threshold > target_threshold + cfg.adaptive_step:
+            new_threshold = base_threshold - cfg.adaptive_step
+        elif base_threshold < target_threshold - cfg.adaptive_step:
+            new_threshold = base_threshold + cfg.adaptive_step
+        else:
+            new_threshold = target_threshold
+
+        # クランプ: floor / ceiling で制約
+        new_threshold = max(cfg.adaptive_floor, min(cfg.adaptive_ceiling, new_threshold))
+
+        if abs(new_threshold - base_threshold) > 0.001:
+            logger.debug(
+                f"[skip_gate] 088# adaptive threshold: {side} "
+                f"{base_threshold:.3f}→{new_threshold:.3f} "
+                f"(target_skip={target_rate:.0%}, "
+                f"quantile={target_threshold:.3f}, n={len(history)})"
+            )
+
+        # side 別閾値を更新 (次回 evaluate で反映)
+        if side == "buy":
+            self.config.as_threshold_buy = new_threshold
+        else:
+            self.config.as_threshold_sell = new_threshold
+
+        return new_threshold
 
     def save(self, path: Optional[Path] = None) -> Path:
         """モデルを pickle 保存 (SHA256 ハッシュ付き)."""

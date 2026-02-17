@@ -157,3 +157,17 @@ skip_gate:
   pnl_threshold: 0.0
   max_skip_rate: 0.3
   use_ob_features: false       # 072# OB トグル (ph2 通過後に true へ)
+  # 088# 動的閾値較正: 目標 skip 率ベースで閾値を自動調整
+  adaptive_threshold: true     # P(AS) 分位点から閾値を動的設定
+  target_skip_rate_buy: 0.10   # buy 側目標 skip 率 10%
+  target_skip_rate_sell: 0.20  # sell 側目標 skip 率 20% (sell 劣後補正)
+  adaptive_window: 50          # 較正ウィンドウ (直近 N サイクル)
+  adaptive_min_samples: 20     # ウォームアップ期間 (最初の N 件は静的閾値)
+  adaptive_step: 0.02          # 1 回の調整ステップ幅
+  adaptive_floor: 0.35         # 閾値下限 (過剰 skip 防止)
+  adaptive_ceiling: 0.80       # 閾値上限
+
+# ---- 088# sell 専用ハードガード ----
+sell_guard:
+  max_spread_jpy: 4000.0       # スプレッド 4000 JPY 超で sell スキップ (085# で 4677 で -7.37bps)
+  offset_floor: 0.08           # sell offset 最低保証 (sell PnL -1.4bps 対策, 通常 0.12)

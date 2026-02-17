@@ -171,3 +171,71 @@ def clamp_offset(value: float, config: Optional[AdaptationConfig] = None) -> flo
     if config is None:
         config = AdaptationConfig()
     return max(config.min_offset_ratio, min(config.max_offset_ratio, value))
+
+
+@dataclass
+class SideAdaptationResult:
+    """088# side 分離適応の結果."""
+
+    buy: AdaptationResult
+    sell: AdaptationResult
+
+    @property
+    def any_changed(self) -> bool:
+        return self.buy.changed or self.sell.changed
+
+
+def compute_side_adaptation(
+    buy_fill_rate: float,
+    buy_as_ratio: float,
+    buy_sample_count: int,
+    sell_fill_rate: float,
+    sell_as_ratio: float,
+    sell_sample_count: int,
+    *,
+    buy_config: Optional[AdaptationConfig] = None,
+    sell_config: Optional[AdaptationConfig] = None,
+) -> SideAdaptationResult:
+    """088# side 分離適応: buy/sell を独立に最適化.
+
+    087# §3.2 P1-3 指摘: buy/sell 混合適応は sell 劣後を埋める速度が遅い。
+    side 別メトリクスで offset を別更新する。
+
+    Args:
+        buy_fill_rate: buy 側約定率.
+        buy_as_ratio: buy 側逆選択比率.
+        buy_sample_count: buy 側サンプル数.
+        sell_fill_rate: sell 側約定率.
+        sell_as_ratio: sell 側逆選択比率.
+        sell_sample_count: sell 側サンプル数.
+        buy_config: buy 側適応設定.
+        sell_config: sell 側適応設定.
+
+    Returns:
+        SideAdaptationResult with independent buy/sell recommendations.
+    """
+    buy_result = compute_adaptation(
+        fill_rate=buy_fill_rate,
+        as_ratio=buy_as_ratio,
+        sample_count=buy_sample_count,
+        config=buy_config,
+    )
+    sell_result = compute_adaptation(
+        fill_rate=sell_fill_rate,
+        as_ratio=sell_as_ratio,
+        sample_count=sell_sample_count,
+        config=sell_config,
+    )
+
+    if buy_result.changed:
+        logger.info(
+            f"[方策A] buy offset: {buy_result.previous_offset:.4f} → "
+            f"{buy_result.new_offset:.4f} ({buy_result.action}: {buy_result.reason})"
+        )
+    if sell_result.changed:
+        logger.info(
+            f"[方策A] sell offset: {sell_result.previous_offset:.4f} → "
+            f"{sell_result.new_offset:.4f} ({sell_result.action}: {sell_result.reason})"
+        )
+
+    return SideAdaptationResult(buy=buy_result, sell=sell_result)

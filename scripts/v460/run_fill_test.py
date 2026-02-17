@@ -169,6 +169,18 @@ class FillTestConfig:
     skip_gate_as_threshold_sell: Optional[float] = None
     # 072# OB 特徴量トグル (ph2 通過後に True へ)
     skip_gate_use_ob_features: bool = False
+    # 088# 動的閾値較正
+    skip_gate_adaptive_threshold: bool = False
+    skip_gate_target_skip_rate_buy: float = 0.10
+    skip_gate_target_skip_rate_sell: float = 0.20
+    skip_gate_adaptive_window: int = 50
+    skip_gate_adaptive_min_samples: int = 20
+    skip_gate_adaptive_step: float = 0.02
+    skip_gate_adaptive_floor: float = 0.35
+    skip_gate_adaptive_ceiling: float = 0.80
+    # 088# sell 専用ハードガード
+    sell_max_spread_jpy: float = 0.0       # 0 = 無制限, >0 でスプレッド超過時 sell スキップ
+    sell_offset_floor: float = 0.0         # 0 = 無制限, >0 で sell offset 最低保証
 
     @classmethod
     def from_yaml(cls, yaml_cfg: dict) -> "FillTestConfig":
@@ -344,10 +356,26 @@ class FillTestConfig:
             "as_threshold_sell": "skip_gate_as_threshold_sell",
             # 072# OB トグル
             "use_ob_features": "skip_gate_use_ob_features",
+            # 088# 動的閾値較正
+            "adaptive_threshold": "skip_gate_adaptive_threshold",
+            "target_skip_rate_buy": "skip_gate_target_skip_rate_buy",
+            "target_skip_rate_sell": "skip_gate_target_skip_rate_sell",
+            "adaptive_window": "skip_gate_adaptive_window",
+            "adaptive_min_samples": "skip_gate_adaptive_min_samples",
+            "adaptive_step": "skip_gate_adaptive_step",
+            "adaptive_floor": "skip_gate_adaptive_floor",
+            "adaptive_ceiling": "skip_gate_adaptive_ceiling",
         }
         for yaml_key, config_key in sg_map.items():
             if yaml_key in sg and sg[yaml_key] is not None:
                 kwargs[config_key] = sg[yaml_key]
+
+        # 088# sell 専用ハードガード
+        sell_guard = yaml_cfg.get("sell_guard", {})
+        if sell_guard.get("max_spread_jpy") is not None:
+            kwargs["sell_max_spread_jpy"] = sell_guard["max_spread_jpy"]
+        if sell_guard.get("offset_floor") is not None:
+            kwargs["sell_offset_floor"] = sell_guard["offset_floor"]
 
         return cls(**kwargs)
 
@@ -472,6 +500,15 @@ class FillTestRunner:
                     self._skip_gate.config.as_threshold_sell = config.skip_gate_as_threshold_sell
                     # 072# OB トグル
                     self._skip_gate.config.use_ob_features = config.skip_gate_use_ob_features
+                    # 088# 動的閾値較正
+                    self._skip_gate.config.adaptive_threshold = config.skip_gate_adaptive_threshold
+                    self._skip_gate.config.target_skip_rate_buy = config.skip_gate_target_skip_rate_buy
+                    self._skip_gate.config.target_skip_rate_sell = config.skip_gate_target_skip_rate_sell
+                    self._skip_gate.config.adaptive_window = config.skip_gate_adaptive_window
+                    self._skip_gate.config.adaptive_min_samples = config.skip_gate_adaptive_min_samples
+                    self._skip_gate.config.adaptive_step = config.skip_gate_adaptive_step
+                    self._skip_gate.config.adaptive_floor = config.skip_gate_adaptive_floor
+                    self._skip_gate.config.adaptive_ceiling = config.skip_gate_adaptive_ceiling
                     logger.info(
                         f"[skip_gate] Loaded: mode={config.skip_gate_mode}, "
                         f"as_threshold={config.skip_gate_as_threshold}, "
@@ -667,6 +704,24 @@ class FillTestRunner:
             effective_offset_ratio = self.config.spread_offset_ratio_buy
         elif side == "sell" and self.config.spread_offset_ratio_sell is not None:
             effective_offset_ratio = self.config.spread_offset_ratio_sell
+
+        # 088# sell 専用ハードガード: offset floor (sell 側の最低保証)
+        if side == "sell" and self.config.sell_offset_floor > 0:
+            effective_offset_ratio = max(effective_offset_ratio, self.config.sell_offset_floor)
+
+        # 088# sell 専用: max_spread 超過で sell スキップ
+        if (
+            side == "sell"
+            and self.config.sell_max_spread_jpy > 0
+            and spread > self.config.sell_max_spread_jpy
+        ):
+            logger.info(
+                f"[sell_guard] Spread {spread:.0f} JPY > max {self.config.sell_max_spread_jpy:.0f} "
+                f"— skipping sell order (088#)"
+            )
+            raise ValueError(
+                f"sell_guard: spread {spread:.0f} > max {self.config.sell_max_spread_jpy:.0f}"
+            )
 
         # 052#: トレンディング時にオフセットをブースト (PnL -1.2bps 対策)
         if (
@@ -1006,6 +1061,8 @@ class FillTestRunner:
                 cancel_reason="orderbook_error",
                 error_message=str(e),
                 spread_offset_ratio=self.config.spread_offset_ratio,
+                run_id=self._run_id,       # 088# データ品質: 早期リターンにも必須
+                git_sha=self._git_sha,     # 088# quarantine 防止
             )
 
         # 062# 1.5: SkipGate ML 判定 (注文前にスキップ判断)
@@ -1120,6 +1177,8 @@ class FillTestRunner:
                         orderbook_imbalance=self._last_imbalance if self.config.imbalance_enabled else None,
                         bid_depth_total=self._last_bid_depth if self.config.imbalance_enabled else None,
                         ask_depth_total=self._last_ask_depth if self.config.imbalance_enabled else None,
+                        run_id=self._run_id,       # 088# データ品質: skip 時も必須
+                        git_sha=self._git_sha,     # 088# quarantine 防止
                     )
                 else:
                     logger.debug(
@@ -1216,6 +1275,8 @@ class FillTestRunner:
                 error_message=last_error,  # 031# エラー詳細を記録
                 spread_at_order=spread_at_order,
                 spread_offset_ratio=self.config.spread_offset_ratio,
+                run_id=self._run_id,       # 088# データ品質: エラー時も必須
+                git_sha=self._git_sha,     # 088# quarantine 防止
             )
 
         # 3. ポーリング監視
@@ -1233,34 +1294,54 @@ class FillTestRunner:
                 status_order = await self.adapter.get_order_status(order.order_id)
                 if status_order is None:
                     # 025# F6: open orders にも transactions にもない
-                    # → API 一時障害の可能性があるため 1 回リトライ
-                    logger.warning(
-                        f"Order {order.order_id} not found — retrying after 2s"
-                    )
-                    await asyncio.sleep(2.0)
-                    status_order = await self.adapter.get_order_status(
-                        order.order_id,
-                    )
-                    if status_order is not None and status_order.status == "filled":
-                        filled = True
-                        fill_price = (
-                            status_order.price
-                            if status_order.price
-                            else order_price
+                    # → API 一時障害の可能性があるため段階的リトライ
+                    # 088# 強化: 1回→最大3回のリトライ (2s, 3s, 5s)
+                    _retry_delays = [2.0, 3.0, 5.0]
+                    _recovered = False
+                    for _retry_i, _delay in enumerate(_retry_delays):
+                        logger.warning(
+                            f"Order {order.order_id} not found — "
+                            f"retry {_retry_i + 1}/{len(_retry_delays)} after {_delay}s"
                         )
-                        t_fill = time.time()
-                        logger.info(
-                            f"Order confirmed filled on retry @ "
-                            f"{fill_price:.0f} JPY"
+                        await asyncio.sleep(_delay)
+                        status_order = await self.adapter.get_order_status(
+                            order.order_id,
                         )
+                        if status_order is not None and status_order.status == "filled":
+                            filled = True
+                            fill_price = (
+                                status_order.price
+                                if status_order.price
+                                else order_price
+                            )
+                            t_fill = time.time()
+                            logger.info(
+                                f"Order confirmed filled on retry {_retry_i + 1} @ "
+                                f"{fill_price:.0f} JPY"
+                            )
+                            _recovered = True
+                            break
+                        elif status_order is not None:
+                            # open/cancelled 等の明示ステータスが返った → 通常フローへ
+                            _recovered = True
+                            break
+                    if _recovered and filled:
                         break
-                    # リトライ後も不明 → 保守的に cancelled 扱い
+                    if _recovered and status_order is not None:
+                        # 非 filled ステータス → 通常分岐で処理
+                        if status_order.status in ("cancelled", "rejected"):
+                            cancel_reason_poll = f"exchange_{status_order.status}"
+                            logger.info(f"Order {status_order.status}: {order.order_id}")
+                            break
+                        continue  # open → 次の poll へ
+                    # 全リトライ後も不明 → 保守的に cancelled 扱い
                     # 079# post_only 即reject の識別: 発注直後 (< poll_interval × 2) なら
                     # post_only rejection の可能性が高い
                     is_likely_postonly_reject = elapsed < self.config.poll_interval_sec * 3
                     reason = "postonly_reject" if is_likely_postonly_reject else "status_unknown"
                     logger.warning(
-                        f"Order {order.order_id} status unknown after retry "
+                        f"Order {order.order_id} status unknown after "
+                        f"{len(_retry_delays)} retries "
                         f"— treating as cancelled ({reason}, elapsed={elapsed:.1f}s)"
                     )
                     cancel_reason_poll = reason
@@ -1527,6 +1608,17 @@ class FillTestRunner:
             logger.warning(
                 f"[quarantine] {len(quarantine_records)} records excluded from "
                 f"PnL computation (blank git_sha)"
+            )
+
+        # 088# schema health check: run_id / git_sha の自己検証
+        if not self._run_id or not self._run_id.strip():
+            logger.error("[schema_health] CRITICAL: run_id is empty — data quality at risk")
+        if not self._git_sha or not self._git_sha.strip():
+            logger.error("[schema_health] CRITICAL: git_sha is empty — records will be quarantined")
+        else:
+            logger.info(
+                f"[schema_health] OK: run_id={self._run_id}, git_sha={self._git_sha}, "
+                f"clean={len(clean_records)}, quarantine={len(quarantine_records)}"
             )
         # 024# O4: メモリ制御 — 全レコード保持ではなくカウンタのみ
         total_count = len(existing_records)  # 全件カウント (quarantine 含む)
@@ -2055,6 +2147,7 @@ class FillTestRunner:
     def _try_auto_adapt(self, total_count: int, filled_count: int) -> None:
         """032# P0: 方策 A — fill メトリクスに基づく spread_offset_ratio 自動適応.
 
+        088# side 分離: buy/sell を独立に最適化。
         run_continuous のサイクルループ内から呼ばれ、
         fill_rate / AS_ratio に応じて offset を段階調整する。
         """
@@ -2062,6 +2155,7 @@ class FillTestRunner:
             from scripts.v460.lib.param_adapter import (
                 AdaptationConfig,
                 compute_adaptation,
+                compute_side_adaptation,
             )
 
             # 直近のレコードからメトリクスを算出
@@ -2072,46 +2166,106 @@ class FillTestRunner:
             if len(records) < self.config.min_adapt_samples:
                 return
 
-            metrics = compute_fill_metrics(records)
+            # 088# side 分離: buy/sell 別にメトリクスを算出
+            buy_records = [r for r in records if r.side == "buy"]
+            sell_records = [r for r in records if r.side == "sell"]
             del records  # メモリ解放
 
-            adapt_config = AdaptationConfig(
-                current_offset_ratio=self.config.spread_offset_ratio,
-                **self._build_adapt_kwargs(),
-            )
-            result = compute_adaptation(
-                fill_rate=metrics.fill_rate_p90,
-                as_ratio=metrics.adverse_selection_ratio,
-                sample_count=metrics.total_orders,
-                config=adapt_config,
-            )
+            min_side_samples = max(20, self.config.min_adapt_samples // 2)
+            if len(buy_records) >= min_side_samples and len(sell_records) >= min_side_samples:
+                buy_metrics = compute_fill_metrics(buy_records)
+                sell_metrics = compute_fill_metrics(sell_records)
 
-            if result.changed:
-                old = self.config.spread_offset_ratio
-                self.config.spread_offset_ratio = result.new_offset
-                # 052#: side-specific offset も比例調整 (sell offset が独立設定されている場合)
-                if self.config.spread_offset_ratio_sell is not None and old > 0:
-                    ratio = result.new_offset / old
-                    old_sell = self.config.spread_offset_ratio_sell
-                    self.config.spread_offset_ratio_sell = min(
-                        old_sell * ratio, 0.30,
-                    )
+                buy_offset = self.config.spread_offset_ratio
+                if self.config.spread_offset_ratio_buy is not None:
+                    buy_offset = self.config.spread_offset_ratio_buy
+                sell_offset = self.config.spread_offset_ratio_sell or self.config.spread_offset_ratio
+
+                buy_config = AdaptationConfig(
+                    current_offset_ratio=buy_offset,
+                    **self._build_adapt_kwargs(),
+                )
+                sell_config = AdaptationConfig(
+                    current_offset_ratio=sell_offset,
+                    **self._build_adapt_kwargs(),
+                )
+
+                side_result = compute_side_adaptation(
+                    buy_fill_rate=buy_metrics.fill_rate_p90,
+                    buy_as_ratio=buy_metrics.adverse_selection_ratio,
+                    buy_sample_count=buy_metrics.total_orders,
+                    sell_fill_rate=sell_metrics.fill_rate_p90,
+                    sell_as_ratio=sell_metrics.adverse_selection_ratio,
+                    sell_sample_count=sell_metrics.total_orders,
+                    buy_config=buy_config,
+                    sell_config=sell_config,
+                )
+
                 regime_tag = (
                     self._regime_detector.current_regime.value
                     if self._regime_detector else "n/a"
                 )
-                sell_info = (
-                    f", sell {old_sell:.4f}→{self.config.spread_offset_ratio_sell:.4f}"
-                    if self.config.spread_offset_ratio_sell is not None else ""
-                )
-                logger.info(
-                    f"[方策A] offset adapted: {old:.4f} → {result.new_offset:.4f} "
-                    f"({result.action}: {result.reason}){sell_info} [regime={regime_tag}]"
-                )
+
+                if side_result.buy.changed:
+                    old_buy = buy_offset
+                    new_buy = side_result.buy.new_offset
+                    self.config.spread_offset_ratio_buy = new_buy
+                    # buy_offset_ratio が None だった場合は共通値も更新
+                    if self.config.spread_offset_ratio_buy is None:
+                        self.config.spread_offset_ratio = new_buy
+                    logger.info(
+                        f"[方策A] buy offset: {old_buy:.4f} → {new_buy:.4f} "
+                        f"({side_result.buy.action}) [regime={regime_tag}]"
+                    )
+
+                if side_result.sell.changed:
+                    old_sell = sell_offset
+                    new_sell = side_result.sell.new_offset
+                    self.config.spread_offset_ratio_sell = new_sell
+                    logger.info(
+                        f"[方策A] sell offset: {old_sell:.4f} → {new_sell:.4f} "
+                        f"({side_result.sell.action}) [regime={regime_tag}]"
+                    )
+
+                if not side_result.any_changed:
+                    logger.debug(
+                        f"[方策A] offset unchanged: "
+                        f"buy={side_result.buy.reason}, sell={side_result.sell.reason}"
+                    )
             else:
-                logger.debug(
-                    f"[方策A] offset unchanged: {result.reason}"
+                # side 別サンプル不足 → 全体で従来ロジック
+                all_records_combined = buy_records + sell_records
+                metrics = compute_fill_metrics(all_records_combined)
+                del all_records_combined
+
+                adapt_config = AdaptationConfig(
+                    current_offset_ratio=self.config.spread_offset_ratio,
+                    **self._build_adapt_kwargs(),
                 )
+                result = compute_adaptation(
+                    fill_rate=metrics.fill_rate_p90,
+                    as_ratio=metrics.adverse_selection_ratio,
+                    sample_count=metrics.total_orders,
+                    config=adapt_config,
+                )
+
+                if result.changed:
+                    old = self.config.spread_offset_ratio
+                    self.config.spread_offset_ratio = result.new_offset
+                    if self.config.spread_offset_ratio_sell is not None and old > 0:
+                        ratio = result.new_offset / old
+                        old_sell = self.config.spread_offset_ratio_sell
+                        self.config.spread_offset_ratio_sell = min(
+                            old_sell * ratio, 0.30,
+                        )
+                    logger.info(
+                        f"[方策A] offset adapted (combined): "
+                        f"{old:.4f} → {result.new_offset:.4f} "
+                        f"({result.action}: {result.reason})"
+                    )
+                else:
+                    logger.debug(f"[方策A] offset unchanged: {result.reason}")
+
         except Exception as e:
             logger.warning(f"[方策A] Auto-adapt failed (non-fatal): {e}")
 

@@ -1,7 +1,7 @@
 # v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-16 (080#追補)
+> 最終更新: 2026-02-17 (088#実装)
 
 ---
 
@@ -82,6 +82,8 @@
 | 084 | impl | [084_ph2_impl_083_review_response.md](084_ph2_impl_083_review_response.md) | 083# レビュー指摘対応 + 盲点 8 項目特定 |
 | 085 | impl | [085_ph2_084_blind_spot_impl.md](085_ph2_084_blind_spot_impl.md) | 084 盲点指摘の実装 |
 | 086 | rpt | [086_ph2_rpt_time_filter_bug_and_session_analysis.md](086_ph2_rpt_time_filter_bug_and_session_analysis.md) | time_filter 片側蓄積バグ修正 + 085# セッション考察 |
+| 087 | rev | [087_ph2_rev_086.md](087_ph2_rev_086.md) | レビュー: 086# 外部 Codex 分析 — 構造的損失原因の特定 |
+| 088 | impl | [088_ph2_impl_087_review_response.md](088_ph2_impl_087_review_response.md) | 087# レビュー対応: SkipGate 動的較正 + sell ガード + データ品質修正 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
@@ -148,7 +150,7 @@ NNN_phX_TYPE_description.md
 
 ## 現在の重点課題
 
-1. **G1.1-exec gate 判定**: fill_test データ蓄積中 (n=512, clean=363, 目標 n≈700)
-2. **086# 修正済**: time_filter 片側蓄積バグ修正完了、fill_test 安全継続中
-3. **fill_test 稼働**: PID 74612 (168h, run_id `1771294686_f87dc6ed`)
-4. **time_filter 再考**: 有効取引窓 4h/24h — SkipGate との役割分担要検討
+1. **088# 実装完了**: SkipGate 動的較正 + sell ガード + データ品質修正 + side 分離適応
+2. **fill_test 再起動**: 088# コード適用のため再起動が必要 (旧 PID 74612)
+3. **G1.1-exec gate 判定**: fill_test データ蓄積中 — 088# 改善効果の検証待ち
+4. **087# P1/P2 残課題**: round-trip KPI, time_filter event-driven 化, 2-stage model
