@@ -112,6 +112,31 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - `tests/unit/trading/signal/test_modular_indicators.py`
 - 結果: `60 passed`
 
+## Phase 4 追補: integrated_backtest_runner 集計最適化 + 重複削減 (2026-02-17)
+
+### 1) 戦略アダプタの重複整理
+
+- `_run_enhanced_backtest()` 内部のローカル `FunctionStrategyAdapter` を module-level `_FunctionStrategyAdapter` へ統合。
+- 呼び出しごとにクラス定義される重複コストを削減。
+- `signal` payload / `action` 文字列の両方を受ける後方互換アダプタへ拡張。
+
+### 2) 集計・検証の計算重複削減
+
+- `_aggregate_results()` を配列ベースへ再構成し、`mean/std` の再計算を排除。
+- `_validate_statistically()` の二重ループを単一ループに統合し、returns 再計算を削減。
+- `_calculate_returns_from_portfolio_values()` を `np.diff` ベクトル化し、ゼロ除算を `where` で安全処理。
+
+### 3) 不具合可能性の解消
+
+- `initial_capital` / `commission` 引数が実質無視される経路を修正し、`BacktestEngine` へ反映。
+- ATR の取引ごと再計算を廃止し、イテレーション単位の事前計算へ変更。
+- 空 `portfolio_values` 時の `[-1]` 参照と `n_iterations=0` の 0除算をガード。
+
+### 4) 型安全
+
+- `ztb/trading/backtest/integrated_backtest_runner.py` を `Any=0` 化 (`any_type_debt_tokens: 19 -> 0`)。
+- `Mapping[str, object]` / `ObjectMap` / `TradeList` / `IterationList` ベースへ統一。
+
 ## テスト結果
 
 - v460: 602 passed, 1 failed (xgboost 既知)

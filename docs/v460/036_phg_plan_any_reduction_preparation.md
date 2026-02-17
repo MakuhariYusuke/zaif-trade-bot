@@ -643,6 +643,21 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 10. 在庫更新: `end_to_end_validation.py` / `e2e_test_framework.py` はともに `any_type_debt_tokens=0`。repo 全体は `2,786 -> 2,747`、`ztb/trading` は `554 -> 515`。  
 11. 回帰確認: `py_compile`（2ファイル）通過。  
 
+### Step59: `integrated_backtest_runner` の集計最適化（計算量削減 + 不具合修正 + `Any=0`）
+
+1. `ztb/trading/backtest/integrated_backtest_runner.py` の `Any` を全撤去し、`ObjectMap` / `IterationList` / `TradeList` へ統一（当該ファイル `any_type_debt_tokens=0`）。  
+2. 内部クラス `FunctionStrategyAdapter` を module-level `_FunctionStrategyAdapter` へ昇格し、毎回生成されるクラス定義コストを削減。  
+3. 戦略出力の互換吸収を強化し、`signal` payload だけでなく `action` 文字列系出力も受理。`dict` 入力失敗時は DataFrame 入力へ後方互換フォールバック。  
+4. `_run_enhanced_backtest()` で `initial_capital` / `commission`（decimal or bps）を `BacktestEngine` へ反映するよう修正。従来の「引数が実質未反映」不整合を解消。  
+5. リスク管理統合で ATR を取引ごと再計算していた経路を修正し、イテレーションごと1回の事前計算へ変更（`precomputed_atr` 注入）。  
+6. `_aggregate_results()` を `numpy` 配列ベースへ最適化し、`std`/`mean` 再計算と `np.std(total_returns)` の重複呼び出しを解消。  
+7. `_validate_statistically()` は単一ループ化し、`portfolio_values -> returns` の重複計算（二重ループ）を解消。  
+8. `_calculate_returns_from_portfolio_values()` を `np.diff` + `np.divide(where=...)` でベクトル化し、ゼロ除算/NaN/inf を安全に無害化。  
+9. `_aggregate_results()` の空 `portfolio_values` 時 `[-1]` 参照クラッシュと、`n_iterations=0` 時の 0除算リスクをガード。  
+10. 設定で無効化されている場合は `risk_analysis` / `statistical_validation` の重い集計をスキップし、不要計算を抑制。  
+11. 回帰確認: `py_compile`（対象ファイル）通過。`pytest` はこの環境で未導入のため未実施。  
+12. 在庫更新: repo 全体 `any_type_debt_tokens` は `2,747 -> 2,728`、`ztb/trading/backtest/integrated_backtest_runner.py` は `19 -> 0`。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -705,6 +720,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step56時点 | repo全体 | 2,817 |
 | Step57時点 | repo全体 | 2,786 |
 | Step58時点 | repo全体 | 2,747 |
+| Step59時点 | repo全体 | 2,728 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -786,6 +802,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step57時点 | `ztb/trading/signal/quality/indicators/macd.py` | **0** |
 | Step58時点 | `ztb/trading/end_to_end_validation.py` | **0** |
 | Step58時点 | `ztb/trading/e2e_test_framework.py` | **0** |
+| Step59時点 | `ztb/trading/backtest/integrated_backtest_runner.py` | **0** |
 
 ---
 
@@ -801,8 +818,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - バリデーション結果 payload を `TypedDict` 化し、ルール評価の重複 map 操作を helper 化。  
 5. `ztb/utils/config.py`  
    - config merge/cast 系の `Any` を段階的に削減し、既存型別名へ集約。  
-6. `ztb/trading/backtest/integrated_backtest_runner.py`  
-   - backtest payload の `Any` を型固定し、集計/比較ロジックの重複分岐を helper へ集約する。  
+6. `ztb/training/algorithms/sac/sac_algorithm.py`  
+   - 学習ループの result/config payload を段階的に型固定し、集計・ログ出力の重複分岐を helper 化する。  
 
 ---
 
