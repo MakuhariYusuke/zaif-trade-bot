@@ -6,9 +6,11 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 from time import sleep
 from typing import Callable, Optional
 
+from ztb.io.json_io import read_json_object, write_json
 from ztb.training.reward_function_optimizer.mtf_optimizer import MTFOptimizer
 from ztb.types.common import CandidateConfig, StageChangeEvent
 
@@ -91,34 +93,39 @@ class MTFScheduler:
                 )
                 # Persist telemetry for applied candidate
                 try:
-                    import json
-                    from pathlib import Path
-
                     rpt_dir = Path("reports")
                     rpt_dir.mkdir(parents=True, exist_ok=True)
                     cid, ts = self.manager.get_last_applied_info()
                     applied_path = rpt_dir / f"applied_candidate_{cid}.json"
-                    cfg = json.loads(
-                        Path(best_candidate.config_path).read_text(encoding="utf-8")
-                    )
+                    cfg = read_json_object(Path(best_candidate.config_path))
                     from ztb.types.common import AppliedCandidateTelemetry
+
+                    multi_timeframe = cfg.get("multi_timeframe")
+                    feature_weights = (
+                        multi_timeframe.get("feature_weights")
+                        if isinstance(multi_timeframe, dict)
+                        else {}
+                    )
+                    if not isinstance(feature_weights, dict):
+                        feature_weights = {}
+                    numeric_weights: dict[str, float] = {}
+                    for key, value in feature_weights.items():
+                        try:
+                            numeric_weights[str(key)] = float(value)
+                        except (TypeError, ValueError):
+                            continue
 
                     applied_data: AppliedCandidateTelemetry = {
                         "candidate_id": cid,
                         "applied_at": ts,
-                        "weights": cfg.get("multi_timeframe", {}).get(
-                            "feature_weights", {}
-                        ),
+                        "weights": numeric_weights,
                         "composite_score": getattr(best_score, "composite_score", None),
                         "mean_sharpe": getattr(best_score, "mean_sharpe", None),
                         "mean_total_return": getattr(
                             best_score, "mean_total_return", None
                         ),
                     }
-                    applied_path.write_text(
-                        json.dumps(applied_data, indent=2, ensure_ascii=False),
-                        encoding="utf-8",
-                    )
+                    write_json(applied_path, applied_data, indent=2, ensure_ascii=False)
                 except Exception:
                     self.logger.exception("Failed to persist applied candidate info")
             else:

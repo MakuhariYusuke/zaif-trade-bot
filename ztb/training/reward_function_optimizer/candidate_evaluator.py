@@ -4,13 +4,13 @@ CandidateEvaluator: wrapper that runs `tools/ab_test_runner.py` for a candidate 
 This is a minimal wrapper for MVP: it supports dry_run and basic metric parsing.
 
 Return contract:
- - evaluate_candidate(...) -> Dict[str, float]
+ - evaluate_candidate(...) -> CandidateEvaluationResult
  - Common keys returned in the dict:
         - mean_sharpe: float - arithmetic mean of reported sharpe_ratio values across reported runs (0.0 if none)
         - mean_total_return: float - arithmetic mean of reported total_return values across reported runs (0.0 if none)
         - report_count: int - the number of successful reports (training_report_*.json) that matched the
-            candidate's `training.model_name`. This is useful to detect partial failures or timeouts — it is
-            recommended to gate on `report_count` >= `seeds` (or other tolerances) before trusting other metrics.
+            candidate's `training.model_name`. This is useful to detect partial failures or timeouts.
+        - run_artifacts: list[str] - matched report file paths for diagnostics.
 
 Notes:
  - If `report_count` is 0 the returned mean metrics will be zeros to indicate the run did not produce
@@ -20,17 +20,68 @@ Notes:
 
 Example:
  >>> evaluate_candidate('config/v448/mtf_candidate_0.json', seeds=3)
- {'mean_sharpe': 0.67, 'mean_total_return': 0.12, 'report_count': 3}
+ {'mean_sharpe': 0.67, 'mean_total_return': 0.12, 'report_count': 3, 'run_artifacts': ['reports/training_report_x.json']}
 """
+
 from __future__ import annotations
 
-import json
 import logging
 import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional, TypedDict
+
+from ztb.io.json_io import read_json_object
+
+
+class CandidateEvaluationResult(TypedDict):
+    mean_sharpe: float
+    mean_total_return: float
+    report_count: int
+    run_artifacts: list[str]
+
+
+def _empty_result() -> CandidateEvaluationResult:
+    return {
+        "mean_sharpe": 0.0,
+        "mean_total_return": 0.0,
+        "report_count": 0,
+        "run_artifacts": [],
+    }
+
+
+def _load_json_object(path: Path) -> dict[str, object] | None:
+    try:
+        return read_json_object(path)
+    except Exception:
+        return None
+
+
+def _safe_float(value: object, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _get_nested_str(payload: dict[str, object], keys: tuple[str, ...]) -> str | None:
+    current: object = payload
+    for key in keys:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    if isinstance(current, str) and current:
+        return current
+    return None
+
+
+def _extract_candidate_model_name(payload: dict[str, object]) -> str | None:
+    return _get_nested_str(payload, ("training", "model_name"))
+
+
+def _extract_report_model_name(payload: dict[str, object]) -> str | None:
+    return _get_nested_str(payload, ("configuration", "training", "model_name"))
 
 
 def evaluate_candidate(
@@ -41,14 +92,22 @@ def evaluate_candidate(
     retries: int = 2,
     timeout: Optional[int] = None,
     report_dir: Optional[str] = "reports",
-) -> Dict[str, float]:
+) -> CandidateEvaluationResult:
     if dry_run:
-        return {"mean_sharpe": 0.0, "mean_total_return": 0.0}
+        return _empty_result()
 
     log = logging.getLogger("CandidateEvaluator")
+    cfg_payload = _load_json_object(Path(cfg_path))
+    if cfg_payload is None:
+        raise ValueError(f"Invalid candidate config (not JSON object): {cfg_path}")
+
+    model_name = _extract_candidate_model_name(cfg_payload)
+    if model_name is None:
+        raise RuntimeError("Invalid candidate config: missing training.model_name")
+
     attempt = 0
     success = False
-    last_exc = None
+    last_exc: Exception | None = None
     cmd = [
         sys.executable,
         "tools/ab_test_runner.py",
@@ -59,108 +118,74 @@ def evaluate_candidate(
         "--timesteps",
         str(timesteps),
     ]
-    # Exponential backoff defaults
     base_delay = 1
 
     while attempt <= retries and not success:
         attempt += 1
         try:
-            log.info(f"Running candidate: {cfg_path} attempt {attempt}/{retries+1}")
-            p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-            if p.returncode != 0:
+            log.info("Running candidate: %s attempt %s/%s", cfg_path, attempt, retries + 1)
+            proc = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=timeout
+            )
+            if proc.returncode != 0:
                 raise RuntimeError(
-                    f"ab_test_runner failed (rc={p.returncode}): {p.stderr}"
+                    f"ab_test_runner failed (rc={proc.returncode}): {proc.stderr}"
                 )
             success = True
         except subprocess.TimeoutExpired as exc:
             last_exc = exc
-            log.warning(f"Candidate run attempt {attempt} timed out: {exc}")
-            # cleanup partial reports
-            try:
-                cfg = json.loads(Path(cfg_path).read_text(encoding="utf-8"))
-                model_name = cfg.get("training", {}).get("model_name")
-                if model_name:
-                    _cleanup_partial_reports(model_name, report_dir)
-            except Exception:
-                pass
+            log.warning("Candidate run attempt %s timed out: %s", attempt, exc)
+            _cleanup_partial_reports(model_name, report_dir)
             time.sleep(base_delay * attempt)
             continue
         except Exception as exc:
             last_exc = exc
-            log.warning(f"Candidate run attempt {attempt} failed: {exc}")
-            # cleanup any partial reports for candidate model_name to avoid mix
-            try:
-                cfg = json.loads(Path(cfg_path).read_text(encoding="utf-8"))
-                model_name = cfg.get("training", {}).get("model_name")
-                if not model_name:
-                    log.warning(
-                        "Candidate config is missing training.model_name; aborting evaluate_candidate."
-                    )
-                    raise RuntimeError(
-                        "Invalid candidate config: missing training.model_name"
-                    )
-                _cleanup_partial_reports(model_name, report_dir)
-            except Exception:
-                pass
-            # backoff - increase delay after each failed attempt
+            log.warning("Candidate run attempt %s failed: %s", attempt, exc)
+            _cleanup_partial_reports(model_name, report_dir)
             time.sleep(base_delay * attempt)
+
     if not success:
         raise RuntimeError(
             f"Candidate evaluation failed after {attempt} attempts: {last_exc}"
         )
 
-    # Parse reports for model_name
-    cfg = json.loads(Path(cfg_path).read_text(encoding="utf-8"))
-    model_name = cfg.get("training", {}).get("model_name")
-    if not model_name:
-        raise ValueError("Invalid candidate config: missing training.model_name")
-    rd_str = report_dir or "reports"
-    report_dir_path = Path(rd_str)
-    matches = list(report_dir_path.glob("training_report_*.json"))
-    relevant = []
-    for m in matches:
-        try:
-            obj = json.loads(m.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        name = obj.get("configuration", {}).get("training", {}).get("model_name")
-        if name == model_name:
-            # Attach the report path for artifact listing
-            obj["__file__"] = str(m)
-            relevant.append(obj)
-    if not relevant:
-        log.warning(
-            f"No reports found for candidate model_name={model_name}. Returning zeros."
-        )
-        return {"mean_sharpe": 0.0, "mean_total_return": 0.0}
-
+    report_dir_path = Path(report_dir or "reports")
     total_sharpe = 0.0
     total_return = 0.0
-    n = 0
+    report_count = 0
     report_paths: list[str] = []
-    for r in relevant:
-        ts = r.get("training_stats") or {}
-        try:
-            s = float(ts.get("sharpe_ratio", 0.0))
-        except Exception:
-            s = 0.0
-        try:
-            tr = float(ts.get("total_return", 0.0))
-        except Exception:
-            tr = 0.0
-        total_sharpe += s
-        total_return += tr
-        n += 1
-        # Add the path if available in the report object metadata
-        if isinstance(r.get("__file__"), str):
-            report_paths.append(r.get("__file__"))
-        mean_sharpe = total_sharpe / n if n > 0 else 0.0
-    mean_return = total_return / n if n > 0 else 0.0
-    # Also return paths of the relevant reports for debugging
+
+    for report_path in report_dir_path.glob("training_report_*.json"):
+        payload = _load_json_object(report_path)
+        if payload is None:
+            continue
+        if _extract_report_model_name(payload) != model_name:
+            continue
+
+        training_stats = payload.get("training_stats")
+        if isinstance(training_stats, dict):
+            sharpe = _safe_float(training_stats.get("sharpe_ratio"))
+            total_ret = _safe_float(training_stats.get("total_return"))
+        else:
+            sharpe = 0.0
+            total_ret = 0.0
+
+        total_sharpe += sharpe
+        total_return += total_ret
+        report_count += 1
+        report_paths.append(str(report_path))
+
+    if report_count == 0:
+        log.warning(
+            "No reports found for candidate model_name=%s. Returning zeros.",
+            model_name,
+        )
+        return _empty_result()
+
     return {
-        "mean_sharpe": mean_sharpe,
-        "mean_total_return": mean_return,
-        "report_count": n,
+        "mean_sharpe": total_sharpe / report_count,
+        "mean_total_return": total_return / report_count,
+        "report_count": report_count,
         "run_artifacts": report_paths,
     }
 
@@ -170,17 +195,14 @@ def _cleanup_partial_reports(
 ) -> None:
     if not model_name:
         return
-    rd = Path(report_dir or "reports")
-    for p in rd.glob("training_report_*.json"):
-        try:
-            obj = json.loads(p.read_text(encoding="utf-8"))
-        except Exception:
+    report_dir_path = Path(report_dir or "reports")
+    for report_path in report_dir_path.glob("training_report_*.json"):
+        payload = _load_json_object(report_path)
+        if payload is None:
             continue
-        if (
-            obj.get("configuration", {}).get("training", {}).get("model_name")
-            == model_name
-        ):
-            try:
-                p.unlink()
-            except Exception:
-                pass
+        if _extract_report_model_name(payload) != model_name:
+            continue
+        try:
+            report_path.unlink()
+        except OSError:
+            continue

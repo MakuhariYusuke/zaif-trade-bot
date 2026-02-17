@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 import importlib.util
 
+from ztb.io.json_io import read_json_object, write_json
 from ztb.metrics.metrics import calculate_autocorrelation, detect_outliers_iqr
 from ztb.training.hyperparameter_optimizer import ParameterSpace
 from ztb.utils.logging_utils import get_logger
@@ -791,8 +792,7 @@ class RewardFunctionOptimizer:
         try:
             config_file = Path(self.config_path)
             if config_file.exists():
-                with open(config_file, "r", encoding="utf-8") as f:
-                    config = json.load(f)
+                config = read_json_object(config_file)
                 self.logger.info(f"Loaded configuration from: {config_file}")
                 return config
             else:
@@ -816,8 +816,7 @@ class RewardFunctionOptimizer:
         if not config_path.exists():
             raise FileNotFoundError(f"Config file not found: {config_file_path}")
 
-        with open(config_path, "r", encoding="utf-8") as f:
-            config_data = json.load(f)
+        config_data = read_json_object(config_path)
 
         # Extract parameters from different sections
         parameters = {}
@@ -1577,8 +1576,7 @@ class RewardFunctionOptimizer:
         }
 
         # Save to file
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(result_dict, f, indent=2, ensure_ascii=False)
+        write_json(output_file, result_dict, indent=2, ensure_ascii=False)
 
         self.logger.info(f"Optimization result saved to: {output_file}")
 
@@ -1599,8 +1597,7 @@ class RewardFunctionOptimizer:
         if not input_file.exists():
             raise FileNotFoundError(f"Optimization result file not found: {input_file}")
 
-        with open(input_file, "r", encoding="utf-8") as f:
-            result_dict = json.load(f)
+        result_dict = read_json_object(input_file)
 
         # Convert back to RewardOptimizationResult
         result = RewardOptimizationResult(

@@ -5,14 +5,15 @@ Handles loading, validation, and management of reward function configurations.
 Separated from the main optimizer to follow Single Responsibility Principle.
 """
 
-import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Optional
 
+from ztb.io.json_io import read_json_object, write_json
 from ztb.utils.config_manager import ConfigManager
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
+ConfigObject = dict[str, object]
 
 
 class RewardFunctionConfigManager(ConfigManager):
@@ -26,7 +27,7 @@ class RewardFunctionConfigManager(ConfigManager):
         super().__init__(config_dir)
         self.logger = get_logger(__name__)
 
-    def load_base_config_from_file(self, config_file_path: str) -> Dict[str, Any]:
+    def load_base_config_from_file(self, config_file_path: str) -> ConfigObject:
         """
         Load base configuration from a JSON file.
 
@@ -38,25 +39,18 @@ class RewardFunctionConfigManager(ConfigManager):
 
         Raises:
             FileNotFoundError: If config file doesn't exist
-            json.JSONDecodeError: If config file is invalid JSON
+            TypeError: If config file does not contain a JSON object
         """
         config_path = Path(config_file_path)
 
         if not config_path.exists():
             raise FileNotFoundError(f"Configuration file not found: {config_file_path}")
 
-        try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                config = json.load(f)
+        config = read_json_object(config_path)
+        self.logger.info(f"Loaded configuration from {config_file_path}")
+        return config
 
-            self.logger.info(f"Loaded configuration from {config_file_path}")
-            return config
-
-        except json.JSONDecodeError as e:
-            self.logger.error(f"Invalid JSON in config file {config_file_path}: {e}")
-            raise
-
-    def validate_config(self, config: Dict[str, Any]) -> bool:
+    def validate_config(self, config: ConfigObject) -> bool:
         """
         Validate configuration structure.
 
@@ -74,18 +68,24 @@ class RewardFunctionConfigManager(ConfigManager):
                 return False
 
         # Validate optimization config
-        opt_config = config.get("optimization", {})
+        opt_config = config.get("optimization")
+        if not isinstance(opt_config, dict):
+            self.logger.error("optimization must be an object")
+            return False
         if not isinstance(opt_config.get("max_trials"), int):
             self.logger.warning("max_trials should be an integer")
 
         # Validate backtest config
-        bt_config = config.get("backtest", {})
+        bt_config = config.get("backtest")
+        if not isinstance(bt_config, dict):
+            self.logger.error("backtest must be an object")
+            return False
         if not isinstance(bt_config.get("initial_balance"), (int, float)):
             self.logger.warning("initial_balance should be a number")
 
         return True
 
-    def get_default_config(self) -> Dict[str, Any]:
+    def get_default_config(self) -> ConfigObject:
         """
         Get default configuration.
 
@@ -120,8 +120,8 @@ class RewardFunctionConfigManager(ConfigManager):
         }
 
     def merge_configs(
-        self, base_config: Dict[str, Any], override_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, base_config: ConfigObject, override_config: ConfigObject
+    ) -> ConfigObject:
         """
         Merge two configurations with override taking precedence.
 
@@ -134,9 +134,7 @@ class RewardFunctionConfigManager(ConfigManager):
         """
         merged = base_config.copy()
 
-        def deep_merge(
-            base: Dict[str, Any], override: Dict[str, Any]
-        ) -> Dict[str, Any]:
+        def deep_merge(base: ConfigObject, override: ConfigObject) -> ConfigObject:
             result = base.copy()
             for key, value in override.items():
                 if (
@@ -151,7 +149,7 @@ class RewardFunctionConfigManager(ConfigManager):
 
         return deep_merge(merged, override_config)
 
-    def save_config_to_file(self, config: Dict[str, Any], file_path: str) -> None:
+    def save_config_to_file(self, config: ConfigObject, file_path: str) -> None:
         """
         Save configuration to a JSON file.
 
@@ -161,8 +159,6 @@ class RewardFunctionConfigManager(ConfigManager):
         """
         config_path = Path(file_path)
         config_path.parent.mkdir(parents=True, exist_ok=True)
-
-        with open(config_path, "w", encoding="utf-8") as f:
-            json.dump(config, f, indent=2, ensure_ascii=False)
+        write_json(config_path, config, indent=2, ensure_ascii=False)
 
         self.logger.info(f"Saved configuration to {file_path}")

@@ -671,6 +671,20 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 9. 回帰確認: `py_compile`（2ファイル）通過。`pytest` はこの環境で未導入のため未実施。  
 10. 在庫更新: `data_validation.py` / `utils/config.py` はともに `any_type_debt_tokens=0`。repo 全体は `2,728 -> 2,687`（-41）。  
 
+### Step61: JSON 読み書き重複の共通化 + MTF 候補生成バグ修正（`Any=0`）
+
+1. `ztb/io/json_io.py` に `read_json_object()` / `read_json_array()` を追加し、JSONオブジェクト/配列前提の呼び出しで型契約を明示。  
+2. `ztb/io/__init__.py` から新 helper を re-export し、既存 import 経路で水平展開しやすい形へ整理。  
+3. `ztb/utils/safety.py` の `safe_open_json()` を `read_json_object()` 経由へ統一し、JSON 読み込み実装重複を削減。  
+4. 同ファイルの `safe_config_get*` / `safe_get_nested_value` / `safe_list_get` を `object` ベースへ型固定し、`Any` を全撤去（`any_type_debt_tokens=0`）。  
+5. `ztb/training/reward_function_optimizer/candidate_evaluator.py` の `json.loads(Path(...).read_text())` 重複を helper 化し、`CandidateEvaluationResult` を導入。  
+6. `candidate_evaluator` は candidate config を先読みして `training.model_name` を一度だけ抽出する流れに変更し、再読込重複と失敗時分岐の複雑性を削減。  
+7. `ztb/training/reward_function_optimizer/mtf_optimizer.py` を `read_json_object` / `write_json` へ統一し、JSON I/O 重複を解消。  
+8. `mtf_optimizer.propose_candidates()` の shallow copy を `deepcopy` に変更。これにより、候補生成ごとに base 設定が汚染される不具合（`model_name` 連結肥大化/weights 連鎖変形）を修正。  
+9. `ztb/training/reward_function_optimizer/mtf_scheduler.py` / `config_manager.py` / `reward_function_optimizer.py` へ同 helper を水平展開し、open/load/dump 実装を共通化。  
+10. 回帰確認: `py_compile`（8ファイル）通過。`pytest` はこの環境で未導入のため未実施。  
+11. 在庫更新: 対象 6ファイル（`json_io.py`, `safety.py`, `candidate_evaluator.py`, `mtf_optimizer.py`, `mtf_scheduler.py`, `config_manager.py`）は `any_type_debt_tokens=0`。repo 全体は `2,687 -> 2,664`（-23）。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -735,6 +749,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step58時点 | repo全体 | 2,747 |
 | Step59時点 | repo全体 | 2,728 |
 | Step60時点 | repo全体 | 2,687 |
+| Step61時点 | repo全体 | 2,664 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -819,6 +834,12 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step59時点 | `ztb/trading/backtest/integrated_backtest_runner.py` | **0** |
 | Step60時点 | `ztb/data/data_validation.py` | **0** |
 | Step60時点 | `ztb/utils/config.py` | **0** |
+| Step61時点 | `ztb/io/json_io.py` | **0** |
+| Step61時点 | `ztb/utils/safety.py` | **0** |
+| Step61時点 | `ztb/training/reward_function_optimizer/candidate_evaluator.py` | **0** |
+| Step61時点 | `ztb/training/reward_function_optimizer/mtf_optimizer.py` | **0** |
+| Step61時点 | `ztb/training/reward_function_optimizer/mtf_scheduler.py` | **0** |
+| Step61時点 | `ztb/training/reward_function_optimizer/config_manager.py` | **0** |
 
 ---
 
@@ -830,8 +851,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - fallback 実装と `analysis/promotion` の責務境界を整理し、将来的な評価ロジック共通化（mixin/utility）に備える。  
 3. `ztb/analysis/status.py`  
    - 運用 status payload（通知/集計）を型固定し、`dict` 合成の重複を削減。  
-4. `ztb/utils/safety.py`  
-   - `safe_config_get*` 群の `Any` を段階的に型固定し、`utils.config` と重複する変換処理を共通 helper 化。  
+4. `ztb/training/reward_function_optimizer/reward_function_optimizer.py`  
+   - 依然 `Any` debt が大きいため、result/config payload の型固定と `candidate_evaluator` 系 TypedDict の横展開を優先。  
 5. `ztb/analysis/features/re_evaluate_features.py`  
    - 評価 result payload を型固定し、集計ループの重複（列挙/整形）を helper 化。  
 6. `ztb/training/algorithms/sac/sac_algorithm.py`  
@@ -868,5 +889,5 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - Step32 の `_WavePatternBase` 横展開は `fibonacci_patterns.py`（Step34）/ `harmonic_patterns.py`（Step35）へ適用済み。次候補は `gann_analysis.py` の共通抽出。  
 9. `ztb/data/data_validation.py`  
    - `DataValidator` / `DataIntegrityChecker` の payload 生成規約が共通化済み。次段階で基底（check pipeline）へ抽出するとテスト容易性が上がる。  
-10. `ztb/utils/config.py` / `ztb/utils/safety.py`  
-   - config 値の型変換ヘルパが分散しているため、共通 `config_cast` utility へ段階的統合余地あり。  
+10. `ztb/utils/config.py` / `ztb/utils/safety.py` / `ztb/io/json_io.py`  
+   - config 値変換と JSON object/list 契約が整理されたため、次段階は `config_cast` / `json_contract` の共通 utility 化で責務分離を進める余地あり。  

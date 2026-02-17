@@ -1,9 +1,14 @@
-import json
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TypeVar
+
+from ztb.io.json_io import read_json_object
+
+ObjectMap = dict[str, object]
+TDefault = TypeVar("TDefault")
 
 
-def safe_open_json(path: Optional[Path]) -> Optional[Dict[str, Any]]:
+def safe_open_json(path: Path | None) -> ObjectMap | None:
     """安全に JSON ファイルを開いて dict を返す。失敗したら None を返す。
 
     Args:
@@ -15,28 +20,27 @@ def safe_open_json(path: Optional[Path]) -> Optional[Dict[str, Any]]:
     if path is None:
         return None
     try:
-        with open(str(path), "r", encoding="utf-8") as f:
-            data = json.load(f)
-            if isinstance(data, dict):
-                return data
-            return None
+        return read_json_object(path)
     except Exception:
         return None
 
 
-def ensure_dict(value: Optional[Any]) -> Dict[str, Any]:
+def ensure_dict(value: object | None) -> ObjectMap:
     """与えられた値を dict に正規化する。変換できなければ空 dict を返す。"""
     if value is None:
         return {}
     if isinstance(value, dict):
-        return value
+        return {str(k): v for k, v in value.items()}
+    if isinstance(value, Mapping):
+        return {str(k): v for k, v in value.items()}
     try:
-        return dict(value)
+        coerced = dict(value)  # type: ignore[arg-type]
+        return {str(k): v for k, v in coerced.items()}
     except Exception:
         return {}
 
 
-def safe_to_float(value: Any, default: float = 0.0) -> float:
+def safe_to_float(value: object, default: float = 0.0) -> float:
     """値を安全に float に変換する。失敗したら default を返す。"""
     try:
         return float(value)
@@ -44,7 +48,7 @@ def safe_to_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
-def safe_to_int(value: Any, default: int = 0) -> int:
+def safe_to_int(value: object, default: int = 0) -> int:
     """値を安全に int に変換する。失敗したら default を返す。"""
     try:
         return int(float(value))  # floatを経由して "1.0" なども扱えるように
@@ -52,7 +56,7 @@ def safe_to_int(value: Any, default: int = 0) -> int:
         return default
 
 
-def safe_to_bool(value: Any, default: bool = False) -> bool:
+def safe_to_bool(value: object, default: bool = False) -> bool:
     """値を安全に bool に変換する。失敗したら default を返す。"""
     if value is None:
         return default
@@ -67,8 +71,8 @@ def safe_to_bool(value: Any, default: bool = False) -> bool:
 
 
 def safe_get_nested_value(
-    data: Dict[str, Any], keys: List[str], default: Any = None
-) -> Any:
+    data: ObjectMap, keys: list[str], default: TDefault | None = None
+) -> object | TDefault | None:
     """
     ネストされた辞書から安全に値を取得する。
 
@@ -80,7 +84,7 @@ def safe_get_nested_value(
     Returns:
         取得した値またはデフォルト値
     """
-    current = data
+    current: object = data
     try:
         for key in keys:
             if isinstance(current, dict) and key in current:
@@ -110,7 +114,9 @@ def safe_divide(numerator: float, denominator: float, default: float = 0.0) -> f
         return default
 
 
-def safe_list_get(lst: List[Any], index: int, default: Any = None) -> Any:
+def safe_list_get(
+    lst: list[object], index: int, default: TDefault | None = None
+) -> object | TDefault | None:
     """
     リストから安全に要素を取得する。インデックスエラーを避ける。
 
@@ -144,8 +150,11 @@ def validate_range(value: float, min_val: float, max_val: float) -> bool:
 
 
 def safe_config_get(
-    config: Dict[str, Any], key: str, default: Any = None, required: bool = False
-) -> Any:
+    config: ObjectMap,
+    key: str,
+    default: TDefault | None = None,
+    required: bool = False,
+) -> object | TDefault | None:
     """
     設定から安全に値を取得する。ネストされたキーにも対応。
 
@@ -174,28 +183,28 @@ def safe_config_get(
 
 
 def safe_config_get_float(
-    config: Dict[str, Any], key: str, default: float = 0.0
+    config: ObjectMap, key: str, default: float = 0.0
 ) -> float:
     """設定からfloat値を安全に取得"""
     value = safe_config_get(config, key, default)
     return safe_to_float(value, default)
 
 
-def safe_config_get_int(config: Dict[str, Any], key: str, default: int = 0) -> int:
+def safe_config_get_int(config: ObjectMap, key: str, default: int = 0) -> int:
     """設定からint値を安全に取得"""
     value = safe_config_get(config, key, default)
     return safe_to_int(value, default)
 
 
 def safe_config_get_bool(
-    config: Dict[str, Any], key: str, default: bool = False
+    config: ObjectMap, key: str, default: bool = False
 ) -> bool:
     """設定からbool値を安全に取得"""
     value = safe_config_get(config, key, default)
     return safe_to_bool(value, default)
 
 
-def safe_config_get_str(config: Dict[str, Any], key: str, default: str = "") -> str:
+def safe_config_get_str(config: ObjectMap, key: str, default: str = "") -> str:
     """設定からstr値を安全に取得"""
     value = safe_config_get(config, key, default)
     return str(value) if value is not None else default

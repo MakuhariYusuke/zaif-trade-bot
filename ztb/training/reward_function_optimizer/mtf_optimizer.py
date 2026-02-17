@@ -3,15 +3,17 @@ MTFOptimizer MVP: Basic candidate generation and evaluation using ab_test_runner
 
 This module is intentionally lightweight and avoids importing heavy libs at module import time.
 """
+
 from __future__ import annotations
 
-import json
+import logging
 import random
-import sys
+from copy import deepcopy
 from pathlib import Path
-from typing import Dict, List, Optional
 
+from ztb.io.json_io import read_json_object, write_json
 from ztb.training.reward_function_optimizer.candidate_evaluator import (
+    CandidateEvaluationResult,
     evaluate_candidate,
 )
 from ztb.types.common import CandidateConfig, CandidateScore
@@ -47,73 +49,98 @@ class MTFOptimizer:
         self.seed = seed
         random.seed(self.seed)
 
-    def _load_base_config(self) -> Dict:
-        return json.loads(self.base_config_path.read_text(encoding="utf-8"))
+    def _load_base_config(self) -> dict[str, object]:
+        return read_json_object(self.base_config_path)
 
-    def propose_candidates(self) -> List[CandidateConfig]:
-        base = self._load_base_config()
-        mtf = base.get("multi_timeframe", {})
-        weights = mtf.get("feature_weights", {})
-        # Validate base config contains expected fields to avoid KeyErrors later
-        if not isinstance(weights, dict) or not weights:
+    @staticmethod
+    def _extract_feature_weights(config: dict[str, object]) -> dict[str, float]:
+        multi_timeframe = config.get("multi_timeframe")
+        if not isinstance(multi_timeframe, dict):
             raise ValueError(
-                f"Invalid base_config: 'multi_timeframe.feature_weights' missing or empty in {self.base_config_path}"
+                "Invalid base_config: missing 'multi_timeframe' section"
             )
-        # Expected keys: '1min', '5min', '15min'
+
+        raw_weights = multi_timeframe.get("feature_weights")
+        if not isinstance(raw_weights, dict) or not raw_weights:
+            raise ValueError(
+                "Invalid base_config: 'multi_timeframe.feature_weights' missing or empty"
+            )
+
+        normalized_weights: dict[str, float] = {}
+        for key, value in raw_weights.items():
+            normalized_weights[str(key)] = float(value)
+        return normalized_weights
+
+    @staticmethod
+    def _extract_model_name(config: dict[str, object]) -> str:
+        training = config.get("training")
+        if not isinstance(training, dict):
+            return "mtf_candidate"
+        model_name = training.get("model_name")
+        if isinstance(model_name, str) and model_name:
+            return model_name
+        return "mtf_candidate"
+
+    def propose_candidates(self) -> list[CandidateConfig]:
+        base = self._load_base_config()
+        weights = self._extract_feature_weights(base)
+        base_model_name = self._extract_model_name(base)
         keys = list(weights.keys())
-        candidates: List[CandidateConfig] = []
+
+        candidates: list[CandidateConfig] = []
         for i in range(self.candidates):
-            # perturb weights within +/- 0.1 but keep positive and sum normalized
-            perturbed = {}
+            # Perturb weights within +/- 0.1 but keep positive and sum normalized.
+            perturbed: dict[str, float] = {}
             total = 0.0
-            for k in keys:
-                base_val = float(weights.get(k, 0.0))
+            for key in keys:
+                base_val = weights.get(key, 0.0)
                 delta = random.uniform(-0.1, 0.1) * base_val
-                val = max(0.0, base_val + delta)
-                perturbed[k] = val
-                total += val
+                value = max(0.0, base_val + delta)
+                perturbed[key] = value
+                total += value
+
             if total <= 0:
-                # fallback: use base weights
-                perturbed = weights.copy()
+                perturbed = dict(weights)
             else:
-                # normalize
-                for k in keys:
-                    perturbed[k] = float(perturbed[k] / total)
-                # Adjust for rounding error by ensuring sum is 1.0
-                # Compute the sum and explicitly set the largest weight to account for rounding residual
-                largest = max(perturbed.keys(), key=lambda kk: perturbed[kk])
-                other_sum = sum(v for k, v in perturbed.items() if k != largest)
-                perturbed[largest] = round(1.0 - other_sum, 9)
-                # finally round to stable precision (6 decimals)
-                for k in keys:
-                    perturbed[k] = round(perturbed[k], 9)
-            # write candidate config - set unique model_name per candidate
-            cfg = base.copy()
-            # set model_name unique per candidate to be able to identify reports
-            base_model_name = cfg.get("training", {}).get("model_name", "mtf_candidate")
-            cfg["multi_timeframe"]["feature_weights"] = perturbed
-            cfg["training"]["model_name"] = f"{base_model_name}_candidate_{i}"
+                for key in keys:
+                    perturbed[key] = float(perturbed[key] / total)
+                largest_key = max(perturbed.keys(), key=lambda k: perturbed[k])
+                other_sum = sum(value for k, value in perturbed.items() if k != largest_key)
+                perturbed[largest_key] = round(1.0 - other_sum, 9)
+                for key in keys:
+                    perturbed[key] = round(perturbed[key], 9)
+
+            # Deep copy is required to avoid mutating base nested sections across candidates.
+            config_copy = deepcopy(base)
+            multi_timeframe = config_copy.get("multi_timeframe")
+            training = config_copy.get("training")
+            if not isinstance(multi_timeframe, dict) or not isinstance(training, dict):
+                raise ValueError(
+                    "Invalid base_config: 'multi_timeframe' or 'training' section missing"
+                )
+            multi_timeframe["feature_weights"] = perturbed
+            training["model_name"] = f"{base_model_name}_candidate_{i}"
+
             candidate_file = self.out_dir / f"mtf_candidate_{i}.json"
-            candidate_file.write_text(
-                json.dumps(cfg, indent=2, ensure_ascii=False), encoding="utf-8"
-            )
+            write_json(candidate_file, config_copy, indent=2, ensure_ascii=False)
             candidates.append(
                 CandidateConfig(
                     config_path=str(candidate_file), candidate_id=f"mtf_candidate_{i}"
                 )
             )
+
         return candidates
 
     def evaluate_candidates(
-        self, candidates: List[CandidateConfig], dry_run: bool = False
-    ) -> List[CandidateScore]:
-        results: List[CandidateScore] = []
-        # If dry_run, return placeholder scores
+        self, candidates: list[CandidateConfig], dry_run: bool = False
+    ) -> list[CandidateScore]:
+        results: list[CandidateScore] = []
+
         if dry_run:
-            for c in candidates:
+            for candidate in candidates:
                 results.append(
                     CandidateScore(
-                        candidate_id=c.candidate_id,
+                        candidate_id=candidate.candidate_id,
                         mean_sharpe=0.0,
                         mean_total_return=0.0,
                         composite_score=0.0,
@@ -123,92 +150,84 @@ class MTFOptimizer:
                 )
             return results
 
-        for c in candidates:
-            # Run ab_test_runner for candidate
-            [
-                sys.executable,
-                "tools/ab_test_runner.py",
-                "--configs",
-                c.config_path,
-                "--seeds",
-                str(self.per_seed),
-                "--timesteps",
-                str(self.timesteps),
-            ]
+        for candidate in candidates:
             try:
-                metrics = evaluate_candidate(
-                    c.config_path,
+                metrics: CandidateEvaluationResult = evaluate_candidate(
+                    candidate.config_path,
                     seeds=self.per_seed,
                     timesteps=self.timesteps,
                     dry_run=False,
                 )
-                # Enforce minimum report_count to trust metrics
-                rc = int(metrics.get("report_count", 0) or 0)
-                if rc < int(self.per_seed):
-                    # treat as invalid candidate (failed to produce enough reports)
+                report_count = int(metrics["report_count"])
+                if report_count < int(self.per_seed):
                     raise RuntimeError("Not enough reports produced for candidate")
-                mean_sharpe = metrics.get("mean_sharpe", 0.0)
-                mean_return = metrics.get("mean_total_return", 0.0)
+
+                mean_sharpe = float(metrics["mean_sharpe"])
+                mean_return = float(metrics["mean_total_return"])
                 composite = self._composite_score(mean_sharpe, mean_return)
                 results.append(
                     CandidateScore(
-                        candidate_id=c.candidate_id,
+                        candidate_id=candidate.candidate_id,
                         mean_sharpe=mean_sharpe,
                         mean_total_return=mean_return,
                         composite_score=composite,
-                        report_count=rc,
-                        run_artifacts=metrics.get("run_artifacts", []),
+                        report_count=report_count,
+                        run_artifacts=list(metrics["run_artifacts"]),
                     )
                 )
             except Exception:
-                results.append(CandidateScore(candidate_id=c.candidate_id))
+                results.append(CandidateScore(candidate_id=candidate.candidate_id))
+
         return results
 
     def _composite_score(self, sharpe: float, ret: float) -> float:
         # Simple composite: weighted by sharpe and return (norm)
         return round((0.6 * sharpe + 0.4 * min(1.0, ret)), 4)
 
-    def select_best(self, scores: List[CandidateScore]) -> CandidateScore:
-        best = max(scores, key=lambda s: s.composite_score)
-        return best
+    def select_best(self, scores: list[CandidateScore]) -> CandidateScore:
+        return max(scores, key=lambda score: score.composite_score)
 
     def run(
         self, dry_run: bool = False
-    ) -> tuple[Optional[CandidateConfig], Optional[CandidateScore]]:
+    ) -> tuple[CandidateConfig | None, CandidateScore | None]:
         candidates = self.propose_candidates()
         scores = self.evaluate_candidates(candidates, dry_run=dry_run)
         best_score = self.select_best(scores)
-        # Find matching candidate config by id
         best_candidate = next(
-            (c for c in candidates if c.candidate_id == best_score.candidate_id), None
+            (candidate for candidate in candidates if candidate.candidate_id == best_score.candidate_id),
+            None,
         )
         return best_candidate, best_score
 
-    def apply_candidate_to_manager(self, candidate: CandidateConfig, manager) -> bool:
+    def apply_candidate_to_manager(self, candidate: CandidateConfig, manager: object) -> bool:
         """Apply candidate weights parsed from candidate config into an MTFWeightManager instance.
 
         Args:
             candidate: CandidateConfig returned from propose_candidates
             manager: MTFWeightManager or similar object with set_weights(dict) method
         """
-        import logging
-
         logger = logging.getLogger(self.__class__.__name__)
-        cfg = json.loads(Path(candidate.config_path).read_text(encoding="utf-8"))
-        fw = cfg.get("multi_timeframe", {}).get("feature_weights", {})
+        payload = read_json_object(Path(candidate.config_path))
+        multi_timeframe = payload.get("multi_timeframe")
+        feature_weights = (
+            multi_timeframe.get("feature_weights")
+            if isinstance(multi_timeframe, dict)
+            else {}
+        )
+        if not isinstance(feature_weights, dict):
+            feature_weights = {}
+
         logger.info(
-            f"Applying candidate {candidate.candidate_id} to manager (weights={fw})"
+            "Applying candidate %s to manager (weights=%s)",
+            candidate.candidate_id,
+            feature_weights,
         )
         if hasattr(manager, "set_weights"):
             try:
-                # Attach candidate id for telemetry if supported by manager
+                update_payload = dict(feature_weights)
+                update_payload["_candidate_id"] = candidate.candidate_id
                 try:
-                    payload = dict(fw)
-                    payload["_candidate_id"] = candidate.candidate_id
-                except Exception:
-                    payload = fw
-                try:
-                    ok = manager.set_weights(payload)
+                    ok = manager.set_weights(update_payload)
                     if ok is False:
                         logger.warning(
                             "manager.set_weights returned False for candidate %s",
@@ -225,10 +244,9 @@ class MTFOptimizer:
         else:
             # fallback: try to set attributes if manager exposes `_weights`
             try:
-                manager._weights = fw
+                manager._weights = feature_weights  # type: ignore[attr-defined]
                 return True
             except Exception:
-                # silently ignore if manager doesn't support weight set
                 pass
         return False
 
@@ -242,8 +260,8 @@ if __name__ == "__main__":
     parser.add_argument("--candidates", type=int, default=10)
     args = parser.parse_args()
 
-    m = MTFOptimizer(base_config_path=args.config, candidates=args.candidates)
-    best_candidate, best_score = m.run(dry_run=args.dry_run)
+    optimizer = MTFOptimizer(base_config_path=args.config, candidates=args.candidates)
+    best_candidate, best_score = optimizer.run(dry_run=args.dry_run)
     if best_candidate is not None and best_score is not None:
         print(
             f"Best candidate: {best_candidate.candidate_id} composite={best_score.composite_score} sharpe={best_score.mean_sharpe} return={best_score.mean_total_return}"
