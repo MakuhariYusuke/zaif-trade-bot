@@ -236,4 +236,6 @@ time_filter は「平均的に悪い時間帯を遮断する」静的な手段�
 - [x] Phase 1: SkipGate 強化 (target_skip_rate 引上げ)
 - [x] Phase 2: Volatility Guard 実装 (velocity + VPIN → offset boost)
 - [x] SELL UTC17 即時解除
-- [ ] Phase 3 Step 1: time_filter を最悪時間帯のみに縮小 (次回以降)
+- [x] fill_test 再起動 — run_id=1771380856_b7d09bbf, PID=24884, git_sha=361c67f4e
+- [ ] 48h 観察 → Phase 3 Step 1 実施判断
+- [ ] Phase 3 Step 1: time_filter を最悪時間帯のみに縮小 (BUY 7h→3h, SELL 5h→3h)
