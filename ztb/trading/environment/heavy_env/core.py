@@ -690,6 +690,10 @@ class HeavyTradingEnv(
         # 112# config dict cache invalidation (DomainRandomization等でconfig変更時に再生成)
         if hasattr(self, '_config_dict_cache'):
             del self._config_dict_cache
+        # H3/108#: regime cache invalidation on reset
+        #   前エピソードのキャッシュされた regime 値が使い回されるのを防止
+        if hasattr(self, '_market_regime_cache'):
+            self._market_regime_cache = [None] * self.n_steps
         # Track the market regime that the currently-open position was entered in.
         # Used for optional regime-specific exit overrides (e.g., hold-until-TP/SL).
         self._entry_regime = None

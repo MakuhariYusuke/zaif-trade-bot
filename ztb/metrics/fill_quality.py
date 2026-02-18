@@ -381,12 +381,34 @@ def g1_1_judgment(
 
 
 def save_fill_records(records: list[FillRecord], path: str | Path) -> None:
-    """JSONL 形式で FillRecord を保存."""
+    """JSONL 形式で FillRecord を保存.
+
+    032#17: バッチ全体を tempfile に書き出してから append する。
+    SIGINT / ディスクフル時の不完全行混入を防止。
+    """
+    import os
+    import tempfile
+
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    with open(p, "a", encoding="utf-8") as f:
-        for r in records:
-            f.write(json.dumps(r.to_dict(), ensure_ascii=False) + "\n")
+    lines = [json.dumps(r.to_dict(), ensure_ascii=False) + "\n" for r in records]
+    # Atomic batch: write to temp, fsync, then append to target
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=str(p.parent), suffix=".tmp")
+    try:
+        with os.fdopen(tmp_fd, "w", encoding="utf-8") as tmp_f:
+            tmp_f.writelines(lines)
+            tmp_f.flush()
+            os.fsync(tmp_f.fileno())
+        with open(p, "a", encoding="utf-8") as f:
+            with open(tmp_path, "r", encoding="utf-8") as tmp_r:
+                f.write(tmp_r.read())
+            f.flush()
+            os.fsync(f.fileno())
+    finally:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
     logger.info(f"Saved {len(records)} fill records to {p}")
 
 

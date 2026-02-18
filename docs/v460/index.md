@@ -104,6 +104,7 @@
 | 021 | rpt | [021_ph3_rpt_code_duplication.md](021_ph3_rpt_code_duplication.md) | コード重複 & リファクタリング分析 | 018# 作業中に発見 |
 | 063 | impl | [063_ph3_sac_cleanup.md](063_ph3_sac_cleanup.md) | SAC 重複実装の整理 (246行削除) | 衛生管理・ph3 負荷軽減 |
 | 108 | fix | [108_ph3_fix_ahead_of_schedule.md](108_ph3_fix_ahead_of_schedule.md) | 018# 残課題前倒し (M5/C3/M1/DUP2) | fill test 待ち時間活用 |
+| 109 | fix | [109_ph3_phg_fix_resilience_and_any.md](109_ph3_phg_fix_resilience_and_any.md) | 耐障害性強化 + Any型完全撤去 (H3/032#16,17/036#) | fill test 待ち時間活用 |
 
 ### phg — フェーズ横断 (型安全・品質・分析)
 

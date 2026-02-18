@@ -164,8 +164,12 @@ class ManifestWriter:
         self._append(entry)
 
     def _append(self, entry: ManifestEntry) -> None:
+        import os
+
         with open(self.path, "a", encoding="utf-8") as f:
             f.write(entry.to_json() + "\n")
+            f.flush()
+            os.fsync(f.fileno())  # 032#16: ディスクフル時の部分書き込み防止
 
     def read_all(self) -> list[JSONDict]:
         """Read all manifest entries."""
