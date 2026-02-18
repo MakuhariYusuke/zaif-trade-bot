@@ -128,6 +128,28 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_NAMES, ACTION_SELL
 
 
+class LivePositionConfig:
+    """Configuration adapter for PositionManager in live trading.
+
+    Extracts relevant position management fields from the full config dict.
+    Defined once at module level to avoid duplicate inline definitions (018# M5).
+    """
+
+    def __init__(self, config_dict: Dict[str, Any]) -> None:
+        self.allow_reverse = config_dict.get("allow_reverse", False)
+        self.transaction_cost = config_dict.get("transaction_cost", 0.001)
+        self.max_position_size = config_dict.get(
+            "max_position_size",
+            config_dict.get("min_trade_amount", 0.001),
+        )
+        self.enforce_reverse_cooldown = config_dict.get(
+            "enforce_reverse_cooldown", False
+        )
+        self.initial_portfolio_value = config_dict.get(
+            "initial_portfolio_value", 200000.0
+        )
+
+
 class LiveTrader:
     """
     Live trading bot for BTC/JPY using trained PPO model.
@@ -220,26 +242,6 @@ class LiveTrader:
             # Initialize PositionManager for dry-run
             if position_manager_available:
                 try:
-                    # Create a simple config object for PositionManager
-                    class LivePositionConfig:
-                        """Configuration for PositionManager in live trading."""
-
-                        def __init__(self, config_dict: Dict[str, Any]) -> None:
-                            self.allow_reverse = config_dict.get("allow_reverse", False)
-                            self.transaction_cost = config_dict.get(
-                                "transaction_cost", 0.001
-                            )
-                            self.max_position_size = config_dict.get(
-                                "max_position_size",
-                                config_dict.get("min_trade_amount", 0.001),
-                            )
-                            self.enforce_reverse_cooldown = config_dict.get(
-                                "enforce_reverse_cooldown", False
-                            )
-                            self.initial_portfolio_value = config_dict.get(
-                                "initial_portfolio_value", 200000.0
-                            )
-
                     position_config = LivePositionConfig(self.config)
 
                     self.position_manager = PositionManager(  # type: ignore[name-defined]
@@ -421,27 +423,6 @@ class LiveTrader:
         logger.info(f"PositionManager available: {position_manager_available}")
         if position_manager_available:
             try:
-                # Create a simple config object for PositionManager
-                class LivePositionConfig:
-                    """Configuration for PositionManager in live trading."""
-
-                    def __init__(self, config_dict: Dict[str, Any]) -> None:
-                        self.allow_reverse = config_dict.get("allow_reverse", False)
-                        self.transaction_cost = config_dict.get(
-                            "transaction_cost", 0.001
-                        )
-                        # Bug #28 fix: Pass max_position_size to prevent scale mismatch
-                        self.max_position_size = config_dict.get(
-                            "max_position_size",
-                            config_dict.get("min_trade_amount", 0.001),
-                        )
-                        self.enforce_reverse_cooldown = config_dict.get(
-                            "enforce_reverse_cooldown", False
-                        )
-                        self.initial_portfolio_value = config_dict.get(
-                            "initial_portfolio_value", 200000.0
-                        )
-
                 position_config = LivePositionConfig(self.config)
 
                 self.position_manager = PositionManager(  # type: ignore[name-defined]

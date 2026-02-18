@@ -783,27 +783,10 @@ class HeavyTradingEnv(
                     # Avoid deep copying every step; regime_classifier is expected to be read-only.
                     price_data = self.df.iloc[start_idx:end_idx]
 
-                    # DEBUG: Check columns
-                    if self.current_step % 1000 == 0:
-                        # print(f"DEBUG: Step {self.current_step} | Columns: {price_data.columns.tolist()}")
-                        pass
-
                     if "close" in price_data.columns:
                         # Convert to DataFrame if it's a Series
                         if isinstance(price_data, pd.Series):
                             price_data = price_data.to_frame()
-
-                        # DEBUG: Print price data stats occasionally
-                        if self.current_step % 1000 == 0:
-                            closes = price_data["close"]
-                            returns = closes.pct_change().dropna()
-                            vol = returns.std()
-                            trend = (
-                                (closes.iloc[-1] - closes.iloc[0]) / closes.iloc[0]
-                                if len(closes) > 0
-                                else 0
-                            )
-                            # print(f"DEBUG: Step {self.current_step} | Price: {closes.iloc[-1]:.2f} | Vol: {vol:.8f} | Trend: {trend:.8f}")
 
                         regime_result = self.regime_classifier.detect_regime(price_data)
                         # Cast the result to the correct type

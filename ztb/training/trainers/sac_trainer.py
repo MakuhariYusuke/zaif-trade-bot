@@ -574,172 +574,178 @@ class SACAlgorithmTrainer(EnsembleMixin):
         config_obj = EnvironmentConfig.from_dict(env_config)
         env = HeavyTradingEnv(df=df, config=config_obj)
         vec_env = DummyVecEnv([lambda: env])
-        self.logger.info(
-            f"✅ Environment created with {len(df)} timesteps (continuous action space)"
-        )
-        self.logger.info(f"   Action space: {env.action_space}")
-
-        # データ情報を収集
-        total_timesteps = int(safe_to_float(cfg.get("total_timesteps", 100000)))
-        data_info = {
-            "Data Rows": len(df),
-            "Data Source": data_path,
-            "Action Space": str(env.action_space),
-            "Observation Dim": env.observation_space.shape[0]
-            if hasattr(env.observation_space, "shape")
-            else "N/A",
-        }
-
-        # 訓練開始バナーを表示
-        training_logger.print_training_start_banner(
-            config=unified_config, total_timesteps=total_timesteps, data_info=data_info
-        )
-
-        # 3. SACAlgorithmを作成
-        sac_algo = AlgorithmFactory.create("sac")
-        self.logger.info(f"✅ Algorithm created: {sac_algo}")
-
-        # 4. モデルを作成
-        model_name = unified_config.get("model_name", "sac_model")
-        session_id = unified_config.get("session_id", "sac_session")
-        log_dir = Path("checkpoints") / session_id
-        log_dir.mkdir(parents=True, exist_ok=True)
-
-        model = sac_algo.create_model(
-            env=vec_env, config=sac_config, tensorboard_log=str(log_dir)
-        )
-        self.logger.info(f"✅ Model created: {model}")
-
-        # 5. コールバックを作成
-        callbacks = []
-
-        # CSVメトリクスファイルのパスを準備
-        csv_metrics_path = log_dir / f"{model_name}_training_metrics.csv"
-
-        # メトリクス出力コールバック（拡張メトリクス対応）
-        metrics_log_interval = int(safe_to_float(cfg.get("metrics_log_interval", 100)))
-        metrics_callback = SACMetricsCallback(
-            log_interval=metrics_log_interval,
-            training_logger=training_logger,  # TrainingConsoleLoggerを渡す
-            csv_path=csv_metrics_path,  # CSVパスを渡す
-            verbose=1,
-        )
-        callbacks.append(metrics_callback)
-
-        self.logger.info(f"📊 Metrics will be logged to: {csv_metrics_path}")
-
-        # Early Stopping機能（オプション）
-        if cfg.get("enable_early_stopping", False):
-            early_stopping_config = cfg.get("early_stopping", {})
-            early_stopping_callback = EarlyStoppingCallback(
-                metric_name=early_stopping_config.get("metric", "critic_loss"),
-                min_delta=safe_to_float(early_stopping_config.get("min_delta", 0.0001)),
-                patience=int(
-                    safe_to_float(early_stopping_config.get("patience", 5000))
-                ),
-                check_interval=int(
-                    safe_to_float(early_stopping_config.get("check_interval", 1000))
-                ),
-                window_size=int(
-                    safe_to_float(early_stopping_config.get("window_size", 1000))
-                ),
-                cv_threshold=safe_to_float(
-                    early_stopping_config.get("cv_threshold", 0.05)
-                ),
-                verbose=int(safe_to_float(early_stopping_config.get("verbose", 1))),
-            )
-            callbacks.append(early_stopping_callback)
-            self.logger.info("🛑 Early Stopping enabled")
-
-        # Best Model保存機能（オプション）
-        if cfg.get("enable_best_model_saving", False):
-            best_model_config = cfg.get("best_model", {})
-            best_model_callback = BestModelCallback(
-                save_path=log_dir / "best_models",
-                model_name=model_name,
-                metric_name=best_model_config.get("metric", "critic_loss"),
-                mode=best_model_config.get("mode", "min"),
-                check_interval=int(
-                    safe_to_float(best_model_config.get("check_interval", 1000))
-                ),
-                verbose=int(safe_to_float(best_model_config.get("verbose", 1))),
-            )
-            callbacks.append(best_model_callback)
-            self.logger.info("🏆 Best Model saving enabled")
-
-        # チェックポイントコールバック (SB3標準とTrainingCheckpointManager経由の両方を使用)
-        checkpoint_interval = int(safe_to_float(cfg.get("checkpoint_interval", 10000)))
-        checkpoint_callback = create_checkpoint_callback(
-            save_freq=checkpoint_interval,
-            save_path=str(log_dir / "checkpoints"),
-            name_prefix=model_name,
-        )
-        callbacks.append(checkpoint_callback)
-
-        callback_list = CallbackList(callbacks)
-
-        # 6. 訓練実行
-        # Respect both layout styles: training.total_timesteps or top-level total_timesteps
-        total_timesteps = int(
-            safe_to_float(
-                cfg.get("training", {}).get("total_timesteps", cfg.get("total_timesteps", 100000))
-            )
-        )
-        self.logger.info(f"🏃 Training for {total_timesteps} timesteps...")
-
-        trained_model = sac_algo.train(
-            model=model, total_timesteps=total_timesteps, callback=callback_list
-        )
-
-        # 7. モデル保存
-        model_path = log_dir / f"{model_name}_final.zip"
-        sac_algo.save(trained_model, str(model_path))
-        self.logger.info(f"💾 Model saved to: {model_path}")
-
-        # 8. 最終メトリクスを取得（TensorBoardから）
-        final_metrics = {}
         try:
-            # SACメトリクスコールバックから最終値を取得
-            if hasattr(trained_model, "logger") and trained_model.logger is not None:
-                name_to_value = trained_model.logger.name_to_value
-                for key in name_to_value:
-                    if "train/critic_loss" in key:
-                        final_metrics["critic_loss"] = name_to_value[key]
-                    elif "train/actor_loss" in key:
-                        final_metrics["actor_loss"] = name_to_value[key]
-                    elif "train/ent_coef" in key:
-                        final_metrics["ent_coef"] = name_to_value[key]
-        except Exception as e:
-            self.logger.warning(f"Could not extract final metrics: {e}")
+            self.logger.info(
+                f"✅ Environment created with {len(df)} timesteps (continuous action space)"
+            )
+            self.logger.info(f"   Action space: {env.action_space}")
 
-        # 9. 結果を返す
-        result = {
-            "model_path": str(model_path),
-            "log_path": str(log_dir),
-            "total_timesteps": total_timesteps,
-            "algorithm": "sac",
-            "success": True,
-        }
+            # データ情報を収集
+            total_timesteps = int(safe_to_float(cfg.get("total_timesteps", 100000)))
+            data_info = {
+                "Data Rows": len(df),
+                "Data Source": data_path,
+                "Action Space": str(env.action_space),
+                "Observation Dim": env.observation_space.shape[0]
+                if hasattr(env.observation_space, "shape")
+                else "N/A",
+            }
 
-        # 訓練完了バナーを表示
-        training_logger.print_training_complete_banner(result, final_metrics)
+            # 訓練開始バナーを表示
+            training_logger.print_training_start_banner(
+                config=unified_config, total_timesteps=total_timesteps, data_info=data_info
+            )
 
-        # メトリクスをJSONで保存（最適化スクリプト用）
-        if final_metrics:
-            metrics_path = log_dir / f"{model_name}_final_metrics.json"
-            training_logger.save_metrics_json(final_metrics, metrics_path)
+            # 3. SACAlgorithmを作成
+            sac_algo = AlgorithmFactory.create("sac")
+            self.logger.info(f"✅ Algorithm created: {sac_algo}")
 
-        # Generate ensemble report if enabled
-        if self.ensemble_enabled:
+            # 4. モデルを作成
+            model_name = unified_config.get("model_name", "sac_model")
+            session_id = unified_config.get("session_id", "sac_session")
+            log_dir = Path("checkpoints") / session_id
+            log_dir.mkdir(parents=True, exist_ok=True)
+
+            model = sac_algo.create_model(
+                env=vec_env, config=sac_config, tensorboard_log=str(log_dir)
+            )
+            self.logger.info(f"✅ Model created: {model}")
+
+            # 5. コールバックを作成
+            callbacks = []
+
+            # CSVメトリクスファイルのパスを準備
+            csv_metrics_path = log_dir / f"{model_name}_training_metrics.csv"
+
+            # メトリクス出力コールバック（拡張メトリクス対応）
+            metrics_log_interval = int(safe_to_float(cfg.get("metrics_log_interval", 100)))
+            metrics_callback = SACMetricsCallback(
+                log_interval=metrics_log_interval,
+                training_logger=training_logger,
+                csv_path=csv_metrics_path,
+                verbose=1,
+            )
+            callbacks.append(metrics_callback)
+
+            self.logger.info(f"📊 Metrics will be logged to: {csv_metrics_path}")
+
+            # Early Stopping機能（オプション）
+            if cfg.get("enable_early_stopping", False):
+                early_stopping_config = cfg.get("early_stopping", {})
+                early_stopping_callback = EarlyStoppingCallback(
+                    metric_name=early_stopping_config.get("metric", "critic_loss"),
+                    min_delta=safe_to_float(early_stopping_config.get("min_delta", 0.0001)),
+                    patience=int(
+                        safe_to_float(early_stopping_config.get("patience", 5000))
+                    ),
+                    check_interval=int(
+                        safe_to_float(early_stopping_config.get("check_interval", 1000))
+                    ),
+                    window_size=int(
+                        safe_to_float(early_stopping_config.get("window_size", 1000))
+                    ),
+                    cv_threshold=safe_to_float(
+                        early_stopping_config.get("cv_threshold", 0.05)
+                    ),
+                    verbose=int(safe_to_float(early_stopping_config.get("verbose", 1))),
+                )
+                callbacks.append(early_stopping_callback)
+                self.logger.info("🛑 Early Stopping enabled")
+
+            # Best Model保存機能（オプション）
+            if cfg.get("enable_best_model_saving", False):
+                best_model_config = cfg.get("best_model", {})
+                best_model_callback = BestModelCallback(
+                    save_path=log_dir / "best_models",
+                    model_name=model_name,
+                    metric_name=best_model_config.get("metric", "critic_loss"),
+                    mode=best_model_config.get("mode", "min"),
+                    check_interval=int(
+                        safe_to_float(best_model_config.get("check_interval", 1000))
+                    ),
+                    verbose=int(safe_to_float(best_model_config.get("verbose", 1))),
+                )
+                callbacks.append(best_model_callback)
+                self.logger.info("🏆 Best Model saving enabled")
+
+            # チェックポイントコールバック
+            checkpoint_interval = int(safe_to_float(cfg.get("checkpoint_interval", 10000)))
+            checkpoint_callback = create_checkpoint_callback(
+                save_freq=checkpoint_interval,
+                save_path=str(log_dir / "checkpoints"),
+                name_prefix=model_name,
+            )
+            callbacks.append(checkpoint_callback)
+
+            callback_list = CallbackList(callbacks)
+
+            # 6. 訓練実行
+            total_timesteps = int(
+                safe_to_float(
+                    cfg.get("training", {}).get("total_timesteps", cfg.get("total_timesteps", 100000))
+                )
+            )
+            self.logger.info(f"🏃 Training for {total_timesteps} timesteps...")
+
+            trained_model = sac_algo.train(
+                model=model, total_timesteps=total_timesteps, callback=callback_list
+            )
+
+            # 7. モデル保存
+            model_path = log_dir / f"{model_name}_final.zip"
+            sac_algo.save(trained_model, str(model_path))
+            self.logger.info(f"💾 Model saved to: {model_path}")
+
+            # 8. 最終メトリクスを取得（TensorBoardから）
+            final_metrics = {}
             try:
-                reporter = TrainingReporter()
-                ui = TrainingUI()
-                ensemble_report_path = self.generate_ensemble_report(reporter, ui)
-                if ensemble_report_path:
-                    result["ensemble_report_path"] = str(ensemble_report_path)
-                    self.print_ensemble_status(ui)
+                if hasattr(trained_model, "logger") and trained_model.logger is not None:
+                    name_to_value = trained_model.logger.name_to_value
+                    for key in name_to_value:
+                        if "train/critic_loss" in key:
+                            final_metrics["critic_loss"] = name_to_value[key]
+                        elif "train/actor_loss" in key:
+                            final_metrics["actor_loss"] = name_to_value[key]
+                        elif "train/ent_coef" in key:
+                            final_metrics["ent_coef"] = name_to_value[key]
             except Exception as e:
-                self.logger.error(f"Ensemble report generation failed: {e}")
+                self.logger.warning(f"Could not extract final metrics: {e}")
+
+            # 9. 結果を返す
+            result = {
+                "model_path": str(model_path),
+                "log_path": str(log_dir),
+                "total_timesteps": total_timesteps,
+                "algorithm": "sac",
+                "success": True,
+            }
+
+            # 訓練完了バナーを表示
+            training_logger.print_training_complete_banner(result, final_metrics)
+
+            # メトリクスをJSONで保存
+            if final_metrics:
+                metrics_path = log_dir / f"{model_name}_final_metrics.json"
+                training_logger.save_metrics_json(final_metrics, metrics_path)
+
+            # Generate ensemble report if enabled
+            if self.ensemble_enabled:
+                try:
+                    reporter = TrainingReporter()
+                    ui = TrainingUI()
+                    ensemble_report_path = self.generate_ensemble_report(reporter, ui)
+                    if ensemble_report_path:
+                        result["ensemble_report_path"] = str(ensemble_report_path)
+                        self.print_ensemble_status(ui)
+                except Exception as e:
+                    self.logger.error(f"Ensemble report generation failed: {e}")
+
+        # 018# C3: 環境リソースを明示的に解放
+        finally:
+            try:
+                vec_env.close()
+            except Exception as e:
+                self.logger.warning(f"vec_env.close() failed: {e}")
 
         self.logger.info("🎉 SAC training completed successfully!")
         return result
