@@ -595,8 +595,9 @@ class TestTimeFilterNoRecord:
         assert "skip_utc_hours_sell" in tf
         # 096# buy ブロック (7h): UTC 1, 2, 8, 12, 16, 18, 21 (UTC8=JST17: -3.81bps n=15 追加)
         assert set(tf["skip_utc_hours_buy"]) == {1, 2, 8, 12, 16, 18, 21}
-        # 089# sell ブロック (6h): UTC 4, 8, 13, 14, 16, 17
-        assert set(tf["skip_utc_hours_sell"]) == {4, 8, 13, 14, 16, 17}
+        # 107# で UTC17 解除 (+0.65 bps を誤遮断していた)
+        # 089# → 107#: sell ブロック (5h): UTC 4, 8, 13, 14, 16
+        assert set(tf["skip_utc_hours_sell"]) == {4, 8, 13, 14, 16}
         # sell は UTC4 をブロック (sell PnL -5.558)
         assert 4 in tf["skip_utc_hours_sell"]
         # buy UTC04 は 089# でアンブロック

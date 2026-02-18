@@ -201,6 +201,12 @@ class FillTestConfig:
     stale_max_reprice_sell: int | None = None        # sell 側最大 reprice (None=共通値)
     # 096# adapter recency window (全履歴混合を停止)
     adapt_recency_window: int = 0          # 0=全履歴, >0=直近 N clean records のみ
+    # 107# Volatility Guard (リアルタイム急変検知)
+    volatility_guard_enabled: bool = False
+    volatility_guard_velocity_window_sec: float = 60.0
+    volatility_guard_velocity_threshold_bps: float = 15.0
+    volatility_guard_vpin_threshold: float = 0.70
+    volatility_guard_offset_boost_factor: float = 2.0
     # 088# sell 専用ハードガード
     sell_max_spread_jpy: float = 0.0       # 0 = 無制限, >0 でスプレッド超過時 sell スキップ
     sell_offset_floor: float = 0.0         # 0 = 無制限, >0 で sell offset 最低保証
@@ -475,6 +481,20 @@ class FillTestConfig:
         if "min_samples" in adapt:
             kwargs["min_adapt_samples"] = adapt["min_samples"]
 
+        # 107# Volatility Guard
+        vg = yaml_cfg.get("volatility_guard", {})
+        if vg.get("enabled") is not None:
+            kwargs["volatility_guard_enabled"] = vg["enabled"]
+        vg_map = {
+            "velocity_window_sec": "volatility_guard_velocity_window_sec",
+            "velocity_threshold_bps": "volatility_guard_velocity_threshold_bps",
+            "vpin_threshold": "volatility_guard_vpin_threshold",
+            "offset_boost_factor": "volatility_guard_offset_boost_factor",
+        }
+        for yaml_key, config_key in vg_map.items():
+            if yaml_key in vg:
+                kwargs[config_key] = vg[yaml_key]
+
         # 088# sell 専用ハードガード
         sell_guard = yaml_cfg.get("sell_guard", {})
         if sell_guard.get("max_spread_jpy") is not None:
@@ -599,6 +619,8 @@ class FillTestRunner:
         self._prev_mid_price: float | None = None
         self._prev_mid_time: float | None = None
         self._last_mid_trend_bps: float | None = None
+        # 107# Volatility Guard: VPIN キャッシュ (SkipGate 特徴量から取得)
+        self._last_vpin: float | None = None
 
         # 037# レジーム検知 (035# §4)
         self._regime_detector: Optional["FillTestRegimeDetector"] = None
@@ -940,6 +962,35 @@ class FillTestRunner:
                     f"{effective_offset_ratio:.4f} → {self.config.sell_offset_floor:.4f}"
                 )
                 effective_offset_ratio = self.config.sell_offset_floor
+
+        # 107# Volatility Guard: リアルタイム急変検知 → offset boost
+        if self.config.volatility_guard_enabled:
+            vg_triggered = False
+            vg_reason = ""
+            # 1) price_velocity: mid price trend の絶対値が閾値超過
+            if (
+                mid_trend_bps is not None
+                and abs(mid_trend_bps) > self.config.volatility_guard_velocity_threshold_bps
+            ):
+                vg_triggered = True
+                vg_reason = f"velocity={mid_trend_bps:.1f}bps"
+            # 2) VPIN: 直近の SkipGate 特徴量から取得 (存在する場合)
+            if hasattr(self, "_last_vpin") and self._last_vpin is not None:
+                if self._last_vpin > self.config.volatility_guard_vpin_threshold:
+                    vg_triggered = True
+                    vg_reason += (f"{'+' if vg_reason else ''}vpin="
+                                  f"{self._last_vpin:.2f}")
+            if vg_triggered:
+                pre_offset = effective_offset_ratio
+                effective_offset_ratio = min(
+                    effective_offset_ratio * self.config.volatility_guard_offset_boost_factor,
+                    self.config.max_offset_ratio,
+                )
+                logger.info(
+                    f"[volatility_guard] 107# {side} offset boosted: "
+                    f"{pre_offset:.4f}→{effective_offset_ratio:.4f} "
+                    f"({vg_reason})"
+                )
 
         # 054# S1: Imbalance ベース AS リスク補正
         imbalance_skipped = False
@@ -1371,6 +1422,9 @@ class FillTestRunner:
                     ask_vol_5=ob_ask_vol,
                     use_ob_features=sg_use_ob,
                 )
+
+                # 107# Volatility Guard: SkipGate 特徴量から VPIN をキャッシュ
+                self._last_vpin = gate_features.get("vpin_60s")
 
                 decision = self._skip_gate.evaluate(
                     gate_features, side=side,
@@ -2134,18 +2188,8 @@ class FillTestRunner:
                                 f"cycles={self._cycle_count}"
                             )
                             self._last_heartbeat_time = now_ts
-                        # 079# 時間ベースバッチflush: 抑制中でも定期的に保存
-                        if (
-                            batch
-                            and now_ts - self._last_batch_flush_time
-                            >= self.config.batch_flush_interval_sec
-                        ):
-                            if self._try_save_batch(batch):
-                                batch = []
-                                self._last_batch_flush_time = now_ts
-                                logger.info(
-                                    "[batch_flush] Periodic flush during time_filter"
-                                )
+                        # 107# R1: 重複 flush → _maybe_flush_batch 統合
+                        batch = self._maybe_flush_batch(batch, "time_filter")
                     await asyncio.sleep(self.config.cycle_interval_sec)
                     continue
                 else:
@@ -2163,20 +2207,8 @@ class FillTestRunner:
                         if not self._in_time_filter:
                             self._in_time_filter = True
                             self._last_heartbeat_time = time.time()
-                        # 091# periodic flush: alt_side==last_side 分岐でも
-                        # 未保存バッチを定期的に書き出す (未保存レコード化防止)
-                        now_ts = time.time()
-                        if (
-                            batch
-                            and now_ts - self._last_batch_flush_time
-                            >= self.config.batch_flush_interval_sec
-                        ):
-                            if self._try_save_batch(batch):
-                                batch = []
-                                self._last_batch_flush_time = now_ts
-                                logger.info(
-                                    "[batch_flush] Periodic flush during alt_side==last_side wait"
-                                )
+                        # 107# R1: 重複 flush → _maybe_flush_batch 統合
+                        batch = self._maybe_flush_batch(batch, "alt_side==last_side wait")
                         await asyncio.sleep(self.config.cycle_interval_sec)
                         continue
                     utc_h = datetime.now(timezone.utc).hour
@@ -2212,19 +2244,8 @@ class FillTestRunner:
                     self._last_side = next_side  # → 次の _next_side() が反対を返す
                     self._preflight_skip_count += 1
 
-                    # 091# 残高不足待機中でもバッチを flush
-                    now_ts = time.time()
-                    if (
-                        batch
-                        and now_ts - self._last_batch_flush_time
-                        >= self.config.batch_flush_interval_sec
-                    ):
-                        if self._try_save_batch(batch):
-                            batch = []
-                            self._last_batch_flush_time = now_ts
-                            logger.info(
-                                "[batch_flush] Periodic flush during preflight skip"
-                            )
+                    # 107# R1: 重複 flush → _maybe_flush_batch 統合
+                    batch = self._maybe_flush_batch(batch, "preflight skip")
 
                     # 051# P2-3: Balance auto-shrink — 連続失敗でロット縮小を試行
                     # 052#: 最低ロットを _MIN_ORDER_BTC に統一 (Coincheck 0.001 BTC)
@@ -2478,6 +2499,26 @@ class FillTestRunner:
         # batch は呼び出し元で保持 → 次回再試行
         self._unsaved_batch = list(batch)
         return False
+
+    def _maybe_flush_batch(self, batch: list[FillRecord], context: str) -> list[FillRecord]:
+        """107# R1: 時間ベース定期 flush (重複ロジック統合).
+
+        time_filter 抑制中・残高不足待機中など複数箇所で同一の
+        "batch_flush_interval_sec 経過でバッチ保存" パターンが出現するため、
+        ヘルパーに統合 (106# R1 分割の第一歩).
+
+        Returns:
+            flush 成功時は空リスト、それ以外は元の batch をそのまま返す.
+        """
+        if not batch:
+            return batch
+        now_ts = time.time()
+        if now_ts - self._last_batch_flush_time >= self.config.batch_flush_interval_sec:
+            if self._try_save_batch(batch):
+                self._last_batch_flush_time = now_ts
+                logger.info(f"[batch_flush] Periodic flush during {context}")
+                return []
+        return batch
 
     def _save_batch_by_date(self, batch: list[FillRecord]) -> None:
         """024# R4: record.timestamp 由来の日付でファイル分割保存."""

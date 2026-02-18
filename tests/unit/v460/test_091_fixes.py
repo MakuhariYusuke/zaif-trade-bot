@@ -25,7 +25,7 @@ class TestAltSideBatchFlush:
     """091# #2: alt_side==_last_side 分岐に batch_flush ロジックが存在する."""
 
     def test_alt_side_branch_has_batch_flush(self) -> None:
-        """alt_side == self._last_side 分岐内に _try_save_batch がある."""
+        """alt_side == self._last_side 分岐内に batch flush がある."""
         src = Path(
             _PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py"
         )
@@ -43,22 +43,20 @@ class TestAltSideBatchFlush:
             "alt_side == self._last_side 分岐が見つからない"
         )
 
-        # 分岐以降 30 行以内に batch_flush ロジックがある
+        # 107# R1: _maybe_flush_batch に統合済み
         block = "\n".join(lines[alt_side_line : alt_side_line + 35])
-        assert "_try_save_batch" in block, (
-            f"alt_side==last_side 分岐内に _try_save_batch がない:\n{block[:300]}"
-        )
-        assert "batch_flush_interval_sec" in block, (
-            "alt_side==last_side 分岐内に batch_flush_interval_sec チェックがない"
+        assert "_maybe_flush_batch" in block, (
+            f"alt_side==last_side 分岐内に _maybe_flush_batch がない:\n{block[:300]}"
         )
 
     def test_alt_side_branch_has_091_comment(self) -> None:
-        """091# の修正コメントが存在する."""
+        """107# R1 で flush ロジックが _maybe_flush_batch に統合されている."""
         src = Path(
             _PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py"
         )
         content = src.read_text(encoding="utf-8")
-        assert "091# periodic flush" in content
+        # 107# R1: 重複 flush → _maybe_flush_batch 統合
+        assert "107# R1" in content
 
 
 # =====================================================================
@@ -88,8 +86,9 @@ class TestPreflightOppositeSide:
         )
         content = src.read_text(encoding="utf-8")
 
-        # 「Periodic flush during preflight skip」が存在する
-        assert "Periodic flush during preflight skip" in content
+        # 107# R1: _maybe_flush_batch に統合、context に "insufficient" が含まれる
+        assert "_maybe_flush_batch" in content
+        assert "insufficient" in content
 
     def test_preflight_opposite_side_logic_order(self) -> None:
         """opposite side 即時切替が SAFE_STOP より前 (preflight 分岐内) に位置する."""

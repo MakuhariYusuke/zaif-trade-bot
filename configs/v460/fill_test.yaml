@@ -92,12 +92,11 @@ time_filter:
   skip_utc_hours_buy: [1, 2, 8, 12, 16, 18, 21]
   # 089# sell: mean ≤ -2.0 bps & n ≥ 5 のみ残す (旧 16h → 6h)
   #   UTC04 (JST13): -5.56 bps n=7  | UTC08 (JST17): -6.72 bps n=8
-  #   UTC13 (JST22): -2.06 bps n=13 | UTC14 (JST23): -4.62 bps n=8
-  #   UTC16 (JST01): -2.13 bps n=8  | UTC17 (JST02): -2.11 bps n=7
-  # 解除: UTC3(+0.42! n=9), UTC5(-0.86 n=7), UTC9(n=0), UTC12(-0.03 n=6),
-  #        UTC15(+2.46! n=7), UTC18(+1.37! n=5), UTC19(-1.28 n=6),
-  #        UTC21(-1.10 n=13), UTC22(-0.55 n=8), UTC23(+0.02 n=8) → sell_guard で補完
-  skip_utc_hours_sell: [4, 8, 13, 14, 16, 17]
+  #   UTC13 (JST22): -1.91 bps n=14 | UTC14 (JST23): -4.62 bps n=8
+  #   UTC16 (JST01): -2.13 bps n=8
+  # 107# UTC17 解除: 実測 +0.65 bps (n=8) → 誤遮断。Phase 3 段階的廃止の第一歩
+  # 107# UTC13 残留: -1.91 bps は閾値 -2.0 未満だが AS% 28.6% & n=14 で統計的に有意
+  skip_utc_hours_sell: [4, 8, 13, 14, 16]
 
 # ---- 049# E3 サンプリング ----
 e3:
@@ -190,13 +189,25 @@ skip_gate:
   use_ob_features: false       # 072# OB トグル (ph2 通過後に true へ)
   # 088# 動的閾値較正: 目標 skip 率ベースで閾値を自動調整
   adaptive_threshold: true     # P(AS) 分位点から閾値を動的設定
-  target_skip_rate_buy: 0.10   # buy 側目標 skip 率 10%
-  target_skip_rate_sell: 0.20  # sell 側目標 skip 率 20% (sell 劣後補正)
+  target_skip_rate_buy: 0.15   # 107# 0.10→0.15 (time_filter 代替強化: buy 7h遮断→SG に委譲)
+  target_skip_rate_sell: 0.25  # 107# 0.20→0.25 (time_filter 代替強化: sell 6h遮断→SG に委譲)
   adaptive_window: 50          # 較正ウィンドウ (直近 N サイクル)
   adaptive_min_samples: 20     # ウォームアップ期間 (最初の N 件は静的閾値)
   adaptive_step: 0.05          # 100# P0-2: 0.02→0.05 (収束ラグ低減)
   adaptive_floor: 0.35         # 閾値下限 (過剰 skip 防止)
   adaptive_ceiling: 0.80       # 閾値上限
+
+# ---- 107# Volatility Guard (リアルタイム急変検知) ----
+# time_filter の静的遮断では対応不能な「時間帯内の急変」に対応
+volatility_guard:
+  enabled: true
+  # 短期 price velocity: 直近60秒の mid price 変動率 (bps)
+  velocity_window_sec: 60       # ウィンドウ (秒)
+  velocity_threshold_bps: 15.0  # この bps 超で guard 発動
+  # VPIN (Volume-synchronized Probability of Informed Trading)
+  vpin_threshold: 0.70          # 0.70 超で guard 発動 (vpin_60s)
+  # 行動: offset を boost (skip は攻撃的すぎる→データ蓄積後に検討)
+  offset_boost_factor: 2.0      # guard 発動時の offset 倍率
 
 # ---- 088# sell 専用ハードガード ----
 sell_guard:

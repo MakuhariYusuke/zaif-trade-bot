@@ -1166,3 +1166,175 @@ class Test059SearchsortedOptimization:
         )
         assert result["trade_count_60s"] == 0.0
         assert result["buy_ratio"] == 0.5
+
+
+# ======================================================================
+# 106# R3 / 107#: SkipGate warm_start + adaptive threshold tests
+# ======================================================================
+
+
+class Test106R3AdaptiveThreshold:
+    """106# R3: SkipGate _calibrate_threshold の単体テスト."""
+
+    @pytest.fixture()
+    def adaptive_gate(self) -> SkipGate:
+        """adaptive_threshold=True の SkipGate."""
+        from sklearn.linear_model import Ridge
+        from sklearn.preprocessing import StandardScaler
+
+        from scripts.v460.ml.skip_gate import SkipGateConfig, _BASE_FEATURE_COLS
+
+        cfg = SkipGateConfig(
+            mode="as",
+            as_threshold=0.52,
+            as_threshold_buy=0.52,
+            as_threshold_sell=0.50,
+            adaptive_threshold=True,
+            target_skip_rate_buy=0.15,
+            target_skip_rate_sell=0.25,
+            adaptive_window=50,
+            adaptive_min_samples=5,  # テスト用に低く設定
+            adaptive_step=0.05,
+            adaptive_floor=0.35,
+            adaptive_ceiling=0.80,
+        )
+        model = Ridge(alpha=1.0)
+        feature_cols = list(_BASE_FEATURE_COLS)
+        n_features = len(feature_cols)
+        X_dummy = np.random.randn(20, n_features)
+        y_dummy = np.random.randint(0, 2, 20).astype(float)
+        model.fit(X_dummy, y_dummy)
+        scaler = StandardScaler().fit(X_dummy)
+        return SkipGate(model, scaler, feature_cols, config=cfg)
+
+    def test_calibrate_warmup_returns_base(self, adaptive_gate: SkipGate) -> None:
+        """ウォームアップ期間中は静的閾値をそのまま返す."""
+        # adaptive_min_samples=5 なので、4件ではまだウォーム中
+        for _ in range(4):
+            result = adaptive_gate._calibrate_threshold("buy", 0.50, 0.52)
+        assert result == 0.52
+
+    def test_calibrate_after_warmup_adjusts(self, adaptive_gate: SkipGate) -> None:
+        """ウォームアップ完了後は閾値が調整される."""
+        # 5件挿入 → 較正開始
+        for i in range(6):
+            adaptive_gate._calibrate_threshold("buy", 0.45 + i * 0.01, 0.52)
+        # 較正後の閾値が元の 0.52 から変化しているはず
+        th = adaptive_gate.config.as_threshold_buy
+        assert th is not None
+        assert th != 0.52  # 調整が入った
+
+    def test_calibrate_respects_floor_ceiling(self, adaptive_gate: SkipGate) -> None:
+        """閾値が floor/ceiling でクランプされる."""
+        # 全て P(AS)=0.01 → 閾値は下がる方向だが floor=0.35 で制限
+        for _ in range(10):
+            adaptive_gate._calibrate_threshold("sell", 0.01, 0.35)
+        th = adaptive_gate.config.as_threshold_sell
+        assert th is not None
+        assert th >= 0.35  # floor を下回らない
+
+    def test_calibrate_side_independence(self, adaptive_gate: SkipGate) -> None:
+        """buy と sell の calibration は独立."""
+        for _ in range(10):
+            adaptive_gate._calibrate_threshold("buy", 0.60, 0.52)
+            adaptive_gate._calibrate_threshold("sell", 0.40, 0.50)
+        # buy の履歴は buy だけ、sell の履歴は sell だけ
+        assert len(adaptive_gate._pas_history_buy) == 10
+        assert len(adaptive_gate._pas_history_sell) == 10
+
+    def test_calibrate_window_limit(self, adaptive_gate: SkipGate) -> None:
+        """履歴が adaptive_window を超えたら古いものが削除される."""
+        for i in range(100):
+            adaptive_gate._calibrate_threshold("buy", 0.50, 0.52)
+        assert len(adaptive_gate._pas_history_buy) == 50  # window=50
+
+
+class Test106R3WarmStart:
+    """106# R3: warm_start_skip_gate_thresholds の単体テスト."""
+
+    @pytest.fixture()
+    def adaptive_gate(self) -> SkipGate:
+        """adaptive_threshold=True の SkipGate (warmup 可能)."""
+        from sklearn.linear_model import Ridge
+        from sklearn.preprocessing import StandardScaler
+
+        from scripts.v460.ml.skip_gate import SkipGateConfig, _BASE_FEATURE_COLS
+
+        cfg = SkipGateConfig(
+            mode="as",
+            as_threshold=0.52,
+            as_threshold_buy=0.52,
+            as_threshold_sell=0.50,
+            adaptive_threshold=True,
+            target_skip_rate_buy=0.15,
+            target_skip_rate_sell=0.25,
+            adaptive_window=10,
+            adaptive_min_samples=5,
+            adaptive_step=0.05,
+            adaptive_floor=0.35,
+            adaptive_ceiling=0.80,
+        )
+        model = Ridge(alpha=1.0)
+        feature_cols = list(_BASE_FEATURE_COLS)
+        n_features = len(feature_cols)
+        X_dummy = np.random.randn(20, n_features)
+        y_dummy = np.random.randint(0, 2, 20).astype(float)
+        model.fit(X_dummy, y_dummy)
+        scaler = StandardScaler().fit(X_dummy)
+        return SkipGate(model, scaler, feature_cols, config=cfg)
+
+    def test_warm_start_restores_history(
+        self, adaptive_gate: SkipGate, tmp_path: Path,
+    ) -> None:
+        """fill_records から P(AS) 履歴を正しく復元する."""
+        from scripts.v460.ml.skip_gate import warm_start_skip_gate_thresholds
+
+        # テスト用 fill_records を作成
+        records = []
+        for i in range(15):
+            side = "buy" if i % 2 == 0 else "sell"
+            records.append(json.dumps({
+                "side": side,
+                "skip_gate_as_prob": 0.45 + i * 0.005,
+                "filled": True,
+                "timestamp": 1700000000 + i * 60,
+            }))
+        (tmp_path / "fill_records_20260101.jsonl").write_text("\n".join(records))
+
+        warm_start_skip_gate_thresholds(adaptive_gate, str(tmp_path), window=10)
+
+        # buy: i=0,2,4,6,8,10,12,14 → 8件、window=10 なので全部入る
+        assert len(adaptive_gate._pas_history_buy) > 0
+        assert len(adaptive_gate._pas_history_sell) > 0
+
+    def test_warm_start_empty_dir(
+        self, adaptive_gate: SkipGate, tmp_path: Path,
+    ) -> None:
+        """空のディレクトリでも例外なく動作する."""
+        from scripts.v460.ml.skip_gate import warm_start_skip_gate_thresholds
+
+        warm_start_skip_gate_thresholds(adaptive_gate, str(tmp_path), window=10)
+        assert len(adaptive_gate._pas_history_buy) == 0
+        assert len(adaptive_gate._pas_history_sell) == 0
+
+    def test_warm_start_triggers_calibration(
+        self, adaptive_gate: SkipGate, tmp_path: Path,
+    ) -> None:
+        """十分なサンプルがあれば warm_start 後に閾値較正が発動する."""
+        from scripts.v460.ml.skip_gate import warm_start_skip_gate_thresholds
+
+        records = []
+        for i in range(20):
+            records.append(json.dumps({
+                "side": "buy",
+                "skip_gate_as_prob": 0.48 + i * 0.001,
+                "filled": True,
+                "timestamp": 1700000000 + i * 60,
+            }))
+        (tmp_path / "fill_records_20260101.jsonl").write_text("\n".join(records))
+
+        original_buy_th = adaptive_gate.config.as_threshold_buy
+        warm_start_skip_gate_thresholds(adaptive_gate, str(tmp_path), window=10)
+
+        # 較正が入って閾値が変化しているはず
+        assert adaptive_gate.config.as_threshold_buy != original_buy_th

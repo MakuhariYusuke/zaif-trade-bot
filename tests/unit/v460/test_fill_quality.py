@@ -2214,3 +2214,93 @@ class Test052AdaptSellOffsetSync:
 
         source = inspect.getsource(FillTestRunner.run_continuous)
         assert "_MIN_ORDER_BTC" in source
+
+
+# ======================================================================
+# 107# Time filter dynamic gating + Volatility Guard tests
+# ======================================================================
+
+
+class Test107TimeFilterDynamicGating:
+    """107# time_filter 改善 + Volatility Guard テスト."""
+
+    def test_yaml_sell_utc17_unblocked(self) -> None:
+        """107# SELL UTC17 は +0.65 bps なのでブロック解除済み."""
+        from pathlib import Path
+        import yaml  # type: ignore[import-untyped]
+
+        yaml_path = Path("configs/v460/fill_test.yaml")
+        with open(yaml_path) as f:
+            cfg = yaml.safe_load(f)
+        sell_skip = cfg["time_filter"]["skip_utc_hours_sell"]
+        assert 17 not in sell_skip, "UTC17 SELL is +0.65 bps, should NOT be blocked"
+
+    def test_yaml_skip_gate_target_rates_raised(self) -> None:
+        """107# SkipGate target_skip_rate が引き上げられている."""
+        from pathlib import Path
+        import yaml  # type: ignore[import-untyped]
+
+        yaml_path = Path("configs/v460/fill_test.yaml")
+        with open(yaml_path) as f:
+            cfg = yaml.safe_load(f)
+        sg = cfg["skip_gate"]
+        assert sg["target_skip_rate_buy"] == 0.15, "buy rate should be 0.15"
+        assert sg["target_skip_rate_sell"] == 0.25, "sell rate should be 0.25"
+
+    def test_yaml_volatility_guard_section(self) -> None:
+        """107# volatility_guard セクションが YAML に存在する."""
+        from pathlib import Path
+        import yaml  # type: ignore[import-untyped]
+
+        yaml_path = Path("configs/v460/fill_test.yaml")
+        with open(yaml_path) as f:
+            cfg = yaml.safe_load(f)
+        vg = cfg["volatility_guard"]
+        assert vg["enabled"] is True
+        assert vg["velocity_window_sec"] == 60
+        assert vg["velocity_threshold_bps"] == 15.0
+        assert vg["vpin_threshold"] == 0.70
+        assert vg["offset_boost_factor"] == 2.0
+
+    def test_volatility_guard_config_fields(self) -> None:
+        """107# FillTestConfig に volatility_guard フィールドが存在する."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        cfg = FillTestConfig()
+        assert hasattr(cfg, "volatility_guard_enabled")
+        assert cfg.volatility_guard_enabled is False  # デフォルトは無効
+        assert cfg.volatility_guard_velocity_window_sec == 60.0
+        assert cfg.volatility_guard_velocity_threshold_bps == 15.0
+        assert cfg.volatility_guard_vpin_threshold == 0.70
+        assert cfg.volatility_guard_offset_boost_factor == 2.0
+
+    def test_volatility_guard_in_compute_maker_price(self) -> None:
+        """107# _compute_maker_price に volatility_guard ロジックが含まれる."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner._compute_maker_price)
+        assert "volatility_guard" in source
+        assert "velocity_threshold_bps" in source or "vpin_threshold" in source
+
+    def test_maybe_flush_batch_in_code(self) -> None:
+        """107# R1: _maybe_flush_batch ヘルパーが存在する."""
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        assert hasattr(FillTestRunner, "_maybe_flush_batch")
+
+    def test_maybe_flush_batch_used_in_run_continuous(self) -> None:
+        """107# R1: run_continuous 内で _maybe_flush_batch が使用されている."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner.run_continuous)
+        assert "_maybe_flush_batch" in source
+
+    def test_vpin_caching_in_code(self) -> None:
+        """107# VPIN が SkipGate features からキャッシュされている."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        assert "_last_vpin" in source
