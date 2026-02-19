@@ -22,7 +22,8 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 
 import psutil
 
-from ztb.trading.environment.constants import BYTES_PER_MB
+# 118# A-fix: Break circular import (utils → trading.environment → torch)
+BYTES_PER_MB = 1024 * 1024
 from ztb.types.common import ConfigDict
 from ztb.utils.config_helpers import get_string
 from ztb.utils.path_utils import ensure_dir

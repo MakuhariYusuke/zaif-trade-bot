@@ -10,7 +10,8 @@ import numpy as np
 import pandas as pd
 from pandas.api import types as ptypes
 
-from ztb.trading.environment.constants import BYTES_PER_MB
+# 118# A-fix: Break circular import (utils → trading.environment → torch)
+BYTES_PER_MB = 1024 * 1024
 
 
 @dataclass

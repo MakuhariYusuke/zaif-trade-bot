@@ -18,7 +18,8 @@ import psutil
 from pandas.api import types as ptypes
 
 from ztb.metrics.metrics import calculate_atr
-from ztb.trading.environment.constants import BYTES_PER_MB
+# 118# A-fix: Break circular import (features → trading.environment → torch)
+BYTES_PER_MB = 1024 * 1024
 from ztb.types.protocols import FeatureRegistryProtocol
 
 # Avoid importing `torch` at module import time to prevent ABI incompatibilities

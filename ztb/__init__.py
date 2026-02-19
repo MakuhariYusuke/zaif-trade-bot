@@ -55,14 +55,14 @@ else:
     _TORCH_IMPORT_ERROR = None
 
 if TYPE_CHECKING:
+    from .config import ConfigManager
     from .config.schema import GlobalConfig
 
-# Import main components for easy access
-# from .analysis import BacktestAnalyzer  # Temporarily disabled
-from .config import ConfigManager
-
-# Avoid importing heavy submodules at package import time; use lazy attribute access
+# Avoid importing heavy submodules at package import time; use lazy attribute access.
+# ConfigManager triggers ztb.config.schemas → ztb.trading.environment → torch,
+# so it MUST be lazily loaded (118# A-fix).
 __LAZY_MODULE_ATTRIBUTES__ = {
+    "ConfigManager": ("ztb.config", "ConfigManager"),
     "BTCDataAugmentor": ("ztb.data", "BTCDataAugmentor"),
     "BTCBiasDetector": ("ztb.data", "BTCBiasDetector"),
 }
@@ -104,4 +104,5 @@ def get_version() -> str:
 
 def get_config() -> "GlobalConfig":
     """Get the current configuration."""
-    return ConfigManager.get_instance().get_config()
+    from .config import ConfigManager as _CM
+    return _CM.get_instance().get_config()

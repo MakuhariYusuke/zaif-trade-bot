@@ -1718,7 +1718,14 @@ class FillTestRunner:
                     logger.debug(f"[stale_order] Check failed (non-fatal): {stale_err}")
 
         # 4. 未約定 → キャンセル
-        if not filled:
+        # 118# B-fix: stale_skip_gate_blocked / stale_reprice_failed の場合、
+        # 注文は stale_order 処理内で既にキャンセル済みなので再キャンセルを省略し
+        # 二重キャンセルによる 400 API エラーを防止する。
+        _already_cancelled = cancel_reason_poll in (
+            "stale_skip_gate_blocked",
+            "stale_reprice_failed",
+        )
+        if not filled and not _already_cancelled:
             try:
                 await self.adapter.cancel_order(order.order_id)
                 logger.info(f"Cancelled unfilled order after {elapsed:.1f}s")
@@ -2126,7 +2133,11 @@ class FillTestRunner:
             cancel_reason=(
                 cancel_reason_poll
                 if cancel_reason_poll
-                else ("timeout" if (not filled and queue_wait >= self.config.order_timeout_sec) else None)
+                else (
+                    "timeout"
+                    if (not filled and queue_wait >= self.config.order_timeout_sec)
+                    else ("unknown" if not filled else None)  # 118# C-fix: None 防止
+                )
             ),
             run_id=self._run_id,
             git_sha=self._git_sha,

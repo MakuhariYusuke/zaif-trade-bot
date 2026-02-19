@@ -14,7 +14,8 @@ import psutil
 from numpy.typing import NDArray
 
 from ztb.cache.memory_cache import default_memory_manager
-from ztb.trading.environment.constants import BYTES_PER_MB
+# 118# A-fix: Break circular import (utils → trading.environment → torch)
+BYTES_PER_MB = 1024 * 1024
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
