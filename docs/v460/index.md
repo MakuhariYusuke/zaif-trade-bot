@@ -1,7 +1,7 @@
 # v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-19 (121# God Object 分割 R3 + YAML 外部化)
+> 最終更新: 2026-02-19 (122# 残課題・未検討提案の深掘り考察)
 
 ---
 
@@ -139,6 +139,7 @@
 | 081 | fix | [081_phg_deep_scan_bug_memory_fix.md](081_phg_deep_scan_bug_memory_fix.md) | 深層スキャン — 不具合修正 & メモリ効率改善 |
 | 111 | rpt | [111_phg_rpt_legacy_asset_research.md](111_phg_rpt_legacy_asset_research.md) | v456–v459 レガシー資産・教訓 調査レポート |
 | 112 | rev | [112_phg_rev_111_legacy_asset.md](112_phg_rev_111_legacy_asset.md) | 111# レビュー + 追加提案 + 見落とし補完 |
+| 118 | rpt | [118_phg_rpt_backlog_deep_analysis.md](118_phg_rpt_backlog_deep_analysis.md) | 残課題・未検討提案の深掘り考察 (53 OPEN / 24 未検討提案) |
 
 ---
 
