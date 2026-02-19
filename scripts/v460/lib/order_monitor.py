@@ -330,7 +330,7 @@ class OrderMonitor:
                     logger.debug(f"[stale_order] Check failed (non-fatal): {stale_err}")
 
         # 4. 未約定 → キャンセル
-        # 118# B-fix: stale_skip_gate_blocked / stale_reprice_failed は既にキャンセル済み
+        # 117# B-fix: stale_skip_gate_blocked / stale_reprice_failed は既にキャンセル済み
         _already_cancelled = cancel_reason_poll in (
             "stale_skip_gate_blocked",
             "stale_reprice_failed",

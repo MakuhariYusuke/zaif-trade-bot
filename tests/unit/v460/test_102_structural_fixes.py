@@ -154,13 +154,13 @@ class TestPreShrinkLotSync:
     """§3: balance 縮小時に _pre_shrink_lot が保持される."""
 
     def test_pre_shrink_lot_initialized(self) -> None:
-        """_pre_shrink_lot が order_quantity で初期化される."""
+        """_pre_shrink_lot が order_quantity で初期化される (121# BalanceChecker に委譲)."""
         from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
 
         config = FillTestConfig(order_quantity=0.005)
         adapter = MagicMock()
         runner = FillTestRunner(adapter, config)
-        assert runner._pre_shrink_lot == 0.005
+        assert runner._balance_checker.pre_shrink_lot == 0.005
 
 
 # =====================================================================

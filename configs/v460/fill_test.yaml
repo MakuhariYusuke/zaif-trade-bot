@@ -238,3 +238,13 @@ tuning:
   adapt_min_side_samples: 20       # side 別適応の最小サンプル数下限
   batch_flush_interval_sec: 600.0  # 時間ベース定期 flush (秒)
   heartbeat_interval_sec: 900.0    # heartbeat 間隔 (秒, time_filter 抑制中)
+  # 121# 追加外部化パラメータ
+  min_order_btc: 0.001             # Coincheck BTC 最小注文数量 (板取引)
+  lock_acquire_retries: 2          # lockfile 取得リトライ回数
+  skip_gate_ob_depth: 5            # SkipGate 板情報取得深度
+  retry_backoff_base: 2            # 発注リトライ指数バックオフ底
+  soft_loss_cap_lot_divisor: 2     # soft_loss_cap ロット半減の除数
+  file_log_level: DEBUG            # ファイルログレベル (DEBUG / INFO / WARNING)
+  insufficient_funds_patterns:     # 残高不足エラー判定パターン (日本語含む)
+    - "所持金額"
+    - "足りません"

@@ -1623,14 +1623,14 @@ class TestTimeFilterLogThrottle:
     """047# Issue12: High-AS time filter のログが突入/離脱のみに制限される."""
 
     def test_in_time_filter_flag_init(self) -> None:
-        """_in_time_filter が False で初期化される."""
+        """_in_time_filter が False で初期化される (121# TimeFilter に委譲)."""
         from unittest.mock import AsyncMock
         from scripts.v460.run_fill_test import FillTestRunner, FillTestConfig
 
         adapter = AsyncMock()
         config = FillTestConfig(enable_time_filter=True, skip_utc_hours=[0, 1])
         runner = FillTestRunner(adapter, config)
-        assert runner._in_time_filter is False
+        assert runner._time_filter.in_filter is False
 
 
 # ======================================================================
@@ -2420,13 +2420,17 @@ class Test051BalanceAutoShrink:
     """051# P2-3: 残高不足時のロット一時縮小."""
 
     def test_balance_shrink_fields_exist(self) -> None:
-        """FillTestRunner に balance_shrink 関連フィールドがある."""
+        """BalanceChecker に balance_shrink 関連フィールドがある (121# 委譲)."""
         import inspect
         from scripts.v460.run_fill_test import FillTestRunner
+        from scripts.v460.lib.balance_checker import BalanceChecker
 
-        source = inspect.getsource(FillTestRunner.__init__)
+        source = inspect.getsource(BalanceChecker.__init__)
         assert "_balance_shrink_active" in source
         assert "_pre_shrink_lot" in source
+        # 121# FillTestRunner は BalanceChecker に委譲
+        runner_src = inspect.getsource(FillTestRunner.__init__)
+        assert "_balance_checker" in runner_src
 
     def test_balance_shrink_logic_in_run_continuous(self) -> None:
         """run_continuous に balance_shrink ロジックが含まれる."""
@@ -2435,8 +2439,8 @@ class Test051BalanceAutoShrink:
 
         source = inspect.getsource(FillTestRunner.run_continuous)
         assert "balance_shrink" in source
-        # 復元ロジックもある
-        assert "_pre_shrink_lot" in source
+        # 121# pre_shrink_lot は _balance_checker 経由
+        assert "pre_shrink_lot" in source
 
     def test_shrink_threshold_is_3(self) -> None:
         """連続 3 回で shrink 発動 (設定外部化済み)."""
@@ -2542,19 +2546,21 @@ class Test052AdaptSellOffsetSync:
         assert cfg["as_deadzone_bps"] == 2.5
 
     def test_dynamic_lot_shrink_in_balance_check(self) -> None:
-        """052# _check_balance_for_side にロット自動縮小が含まれる."""
+        """052# BalanceChecker にロット自動縮小が含まれる (121# 抽出)."""
         import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
+        from scripts.v460.lib.balance_checker import BalanceChecker
 
-        source = inspect.getsource(FillTestRunner._check_balance_for_side)
-        assert "_MIN_ORDER_BTC" in source
-        assert "affordable_lot" in source or "new_lot" in source
+        source = inspect.getsource(BalanceChecker._check_buy)
+        assert "_min_order_btc" in source
+        assert "affordable_lot" in source
 
     def test_min_order_btc_constant(self) -> None:
-        """052# _MIN_ORDER_BTC が Coincheck 最小注文量 0.001 に設定されている."""
-        from scripts.v460.run_fill_test import FillTestRunner
+        """052# min_order_btc が Coincheck 最小注文量 0.001 に設定されている (121# YAML 外部化)."""
+        from scripts.v460.lib.balance_checker import MIN_ORDER_BTC
+        from scripts.v460.run_fill_test import FillTestConfig
 
-        assert FillTestRunner._MIN_ORDER_BTC == 0.001
+        assert MIN_ORDER_BTC == 0.001
+        assert FillTestConfig().min_order_btc == 0.001
 
     def test_yaml_skip_utc_hours_side_specific_089(self) -> None:
         """089# time_filter 大幅削減後: UTC 1,2,21 は buy側、UTC 13 は sell側."""
@@ -2603,12 +2609,12 @@ class Test052AdaptSellOffsetSync:
         assert cfg["regime"]["trending_offset_boost"] == 1.5
 
     def test_balance_shrink_uses_min_order_btc(self) -> None:
-        """052# balance_shrink の最低ロットが _MIN_ORDER_BTC を使用する."""
+        """052# balance_shrink の最低ロットが min_order_btc を使用する (121# YAML 外部化)."""
         import inspect
         from scripts.v460.run_fill_test import FillTestRunner
 
         source = inspect.getsource(FillTestRunner.run_continuous)
-        assert "_MIN_ORDER_BTC" in source
+        assert "min_order_btc" in source
 
 
 # ======================================================================

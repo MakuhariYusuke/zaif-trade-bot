@@ -60,7 +60,7 @@ if TYPE_CHECKING:
 
 # Avoid importing heavy submodules at package import time; use lazy attribute access.
 # ConfigManager triggers ztb.config.schemas → ztb.trading.environment → torch,
-# so it MUST be lazily loaded (118# A-fix).
+# so it MUST be lazily loaded (117# A-fix).
 __LAZY_MODULE_ATTRIBUTES__ = {
     "ConfigManager": ("ztb.config", "ConfigManager"),
     "BTCDataAugmentor": ("ztb.data", "BTCDataAugmentor"),

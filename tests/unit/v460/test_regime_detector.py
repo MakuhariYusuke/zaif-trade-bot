@@ -489,39 +489,42 @@ class TestFillTestConfigDeadzone:
 
 
 class TestTimeFilterNoRecord:
-    """041# 時間帯フィルターがレコードを生成しないことを検証."""
+    """041# 時間帯フィルターがレコードを生成しないことを検証.
+
+    121# TimeFilter モジュールに委譲されたため、直接テスト。
+    """
 
     def test_is_time_filtered_disabled(self) -> None:
         """フィルター無効時は常に False."""
-        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
-        from unittest.mock import MagicMock
+        from scripts.v460.run_fill_test import FillTestConfig
+        from scripts.v460.lib.time_filter import TimeFilter
 
         config = FillTestConfig(enable_time_filter=False)
-        runner = FillTestRunner.__new__(FillTestRunner)
-        runner.config = config
-        assert runner._is_time_filtered() is False
+        tf = TimeFilter(config)
+        assert tf.is_filtered() is False
 
     def test_is_time_filtered_no_hours(self) -> None:
         """skip_utc_hours 未設定時は常に False."""
-        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+        from scripts.v460.run_fill_test import FillTestConfig
+        from scripts.v460.lib.time_filter import TimeFilter
 
         config = FillTestConfig(enable_time_filter=True, skip_utc_hours=None)
-        runner = FillTestRunner.__new__(FillTestRunner)
-        runner.config = config
-        assert runner._is_time_filtered() is False
+        tf = TimeFilter(config)
+        assert tf.is_filtered() is False
 
     def test_is_time_filtered_empty_hours(self) -> None:
         """skip_utc_hours 空リスト時は常に False."""
-        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+        from scripts.v460.run_fill_test import FillTestConfig
+        from scripts.v460.lib.time_filter import TimeFilter
 
         config = FillTestConfig(enable_time_filter=True, skip_utc_hours=[])
-        runner = FillTestRunner.__new__(FillTestRunner)
-        runner.config = config
-        assert runner._is_time_filtered() is False
+        tf = TimeFilter(config)
+        assert tf.is_filtered() is False
 
     def test_is_time_filtered_side_buy(self) -> None:
         """073# skip_utc_hours_buy 設定時は buy 側固有リストで判定."""
-        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+        from scripts.v460.run_fill_test import FillTestConfig
+        from scripts.v460.lib.time_filter import TimeFilter
         from unittest.mock import patch
         from datetime import datetime, timezone
 
@@ -530,19 +533,19 @@ class TestTimeFilterNoRecord:
             skip_utc_hours=[8, 9],         # グローバル
             skip_utc_hours_buy=[8, 9, 15],  # buy は UTC15 も追加ブロック
         )
-        runner = FillTestRunner.__new__(FillTestRunner)
-        runner.config = config
+        tf = TimeFilter(config)
 
         # UTC15: buy はフィルタ、sell はグローバル通過
-        with patch("scripts.v460.run_fill_test.datetime") as mock_dt:
+        with patch("scripts.v460.lib.time_filter.datetime") as mock_dt:
             mock_dt.now.return_value = datetime(2026, 1, 1, 15, 0, 0, tzinfo=timezone.utc)
             mock_dt.side_effect = lambda *a, **k: datetime(*a, **k)
-            assert runner._is_time_filtered(side="buy") is True
-            assert runner._is_time_filtered(side="sell") is False
+            assert tf.is_filtered(side="buy") is True
+            assert tf.is_filtered(side="sell") is False
 
     def test_is_time_filtered_side_sell(self) -> None:
         """073# skip_utc_hours_sell 設定時は sell 側固有リストで判定."""
-        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+        from scripts.v460.run_fill_test import FillTestConfig
+        from scripts.v460.lib.time_filter import TimeFilter
         from unittest.mock import patch
         from datetime import datetime, timezone
 
@@ -551,19 +554,19 @@ class TestTimeFilterNoRecord:
             skip_utc_hours=[8, 9],          # グローバル
             skip_utc_hours_sell=[3, 4, 8],  # sell は UTC3,4 追加ブロック
         )
-        runner = FillTestRunner.__new__(FillTestRunner)
-        runner.config = config
+        tf = TimeFilter(config)
 
         # UTC4: sell はフィルタ、buy はグローバル通過
-        with patch("scripts.v460.run_fill_test.datetime") as mock_dt:
+        with patch("scripts.v460.lib.time_filter.datetime") as mock_dt:
             mock_dt.now.return_value = datetime(2026, 1, 1, 4, 0, 0, tzinfo=timezone.utc)
             mock_dt.side_effect = lambda *a, **k: datetime(*a, **k)
-            assert runner._is_time_filtered(side="sell") is True
-            assert runner._is_time_filtered(side="buy") is False
+            assert tf.is_filtered(side="sell") is True
+            assert tf.is_filtered(side="buy") is False
 
     def test_is_time_filtered_side_none_uses_global(self) -> None:
         """073# side=None はグローバルリストにフォールバック."""
-        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+        from scripts.v460.run_fill_test import FillTestConfig
+        from scripts.v460.lib.time_filter import TimeFilter
         from unittest.mock import patch
         from datetime import datetime, timezone
 
@@ -572,15 +575,14 @@ class TestTimeFilterNoRecord:
             skip_utc_hours=[8, 9],
             skip_utc_hours_buy=[8, 9, 15],
         )
-        runner = FillTestRunner.__new__(FillTestRunner)
-        runner.config = config
+        tf = TimeFilter(config)
 
-        with patch("scripts.v460.run_fill_test.datetime") as mock_dt:
+        with patch("scripts.v460.lib.time_filter.datetime") as mock_dt:
             mock_dt.now.return_value = datetime(2026, 1, 1, 15, 0, 0, tzinfo=timezone.utc)
             mock_dt.side_effect = lambda *a, **k: datetime(*a, **k)
             # side=None → グローバルで判定 → UTC15 は含まれない → False
-            assert runner._is_time_filtered(side=None) is False
-            assert runner._is_time_filtered() is False
+            assert tf.is_filtered(side=None) is False
+            assert tf.is_filtered() is False
 
     def test_yaml_side_specific_time_filter(self) -> None:
         """089# YAML side 別 time_filter (大幅削減後)."""

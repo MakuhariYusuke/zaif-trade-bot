@@ -50,6 +50,7 @@ from ztb.metrics.fill_quality import (
 from ztb.risk.circuit_breakers import KillSwitch
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 from scripts.v460.lib.adaptation_engine import AdaptationEngine
+from scripts.v460.lib.balance_checker import BalanceChecker
 from scripts.v460.lib.batch_persistence import BatchPersistence
 from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.fill_config import (
@@ -75,6 +76,9 @@ from scripts.v460.lib.results_analyzer import (
     run_results_only,
     save_judgment,
 )
+from scripts.v460.lib.side_selector import SideSelector
+from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+from scripts.v460.lib.time_filter import TimeFilter
 
 logging.basicConfig(
     level=logging.INFO,
@@ -118,11 +122,8 @@ class FillTestRunner:
         self._results_dir = Path(config.results_dir)
         self._results_dir.mkdir(parents=True, exist_ok=True)
         self._cycle_count = 0
-        # start_side に応じて _last_side を設定 (交互ロジック用)
-        if config.start_side == "sell":
-            self._last_side = "buy"  # → _next_side() が "sell" を返す
-        else:
-            self._last_side = None  # → _next_side() が "buy" を返す
+        # 121# SideSelector に side 決定ロジックを委譲
+        self._side_selector = SideSelector(config)
         self._preflight_skip_count = 0  # 044# 連続 preflight スキップ計
         # 120# KillSwitch 統合: _shutdown_requested bool → KillSwitch (ztb.risk)
         self._kill_switch = KillSwitch("fill_test")
@@ -134,17 +135,14 @@ class FillTestRunner:
         self._git_sha = self._get_git_sha()
 
         # 033# 方策 B: 動的ロットの実行時数量 (config.order_quantity を初期値とする)
-        self._current_lot: float = config.order_quantity
+        # 121# BalanceChecker に残高チェック + ロット管理を委譲
+        self._balance_checker = BalanceChecker(config)
         # 046# soft loss_cap 発動済みフラグ (重複半減を防止)
         self._soft_loss_cap_triggered: bool = False
         # 101# §4: soft_cap スナップショット (起動時残高ベース、動的 loss_cap 連動しない)
         self._soft_cap_jpy_snapshot: float | None = None
-        # 047# Issue12: time_filter ログ throttle (突入/離脱のみ出力)
-        self._in_time_filter: bool = False
-        # 110# 086# デッドロック修正: 連続 both-filtered カウンタ
-        self._consecutive_086_wait: int = 0
-        # 079# heartbeat: time_filter 抑制中のプロセス生存ログ
-        self._last_heartbeat_time: float = 0.0
+        # 121# TimeFilter に時間帯フィルターを委譲
+        self._time_filter = TimeFilter(config)
         # 100# God Object 分割: FastFillDefense クラスに委譲 (side-aware)
         self._fast_fill_defense = FastFillDefense(
             config=FastFillDefenseConfig(
@@ -162,14 +160,6 @@ class FillTestRunner:
             base_offset_ratio_buy=config.spread_offset_ratio_buy,
             base_offset_ratio_sell=config.spread_offset_ratio_sell,
         )
-        # 051# P2-3: Balance auto-shrink (残高不足時のロット一時縮小)
-        self._balance_shrink_active: bool = False
-        self._pre_shrink_lot: float = config.order_quantity
-        # 054# S2: Smart Side — 同一 side 連続カウンタ
-        self._consecutive_same_side: int = 0
-        # 054# S3: Early Exit — rapid exit フラグ
-        self._rapid_exit_pending: bool = False
-        self._rapid_exit_side: str | None = None
 
         # 120# God Object 分割: MakerPriceCalculator に価格算出ロジックを委譲
         self._maker_price = MakerPriceCalculator(
@@ -226,66 +216,9 @@ class FillTestRunner:
             results_dir=self._results_dir,
         )
 
-        # 062# S5: SkipGate ML フィルター
-        self._skip_gate: Optional["SkipGate"] = None
-        if config.skip_gate_enabled:
-            try:
-                from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
-
-                gate_path = Path(config.skip_gate_model_path)
-                if not gate_path.is_absolute():
-                    gate_path = _PROJECT_ROOT / gate_path
-                if not gate_path.exists():
-                    logger.warning(
-                        f"[skip_gate] Model not found: {gate_path}. "
-                        f"SkipGate disabled."
-                    )
-                else:
-                    self._skip_gate = SkipGate.load(gate_path)
-                    # ランタイム設定でオーバーライド
-                    self._skip_gate.config.mode = config.skip_gate_mode
-                    self._skip_gate.config.as_threshold = config.skip_gate_as_threshold
-                    self._skip_gate.config.threshold_bps = config.skip_gate_pnl_threshold
-                    self._skip_gate.config.max_skip_rate = config.skip_gate_max_skip_rate
-                    # 068# §3.3: side 別閾値
-                    self._skip_gate.config.as_threshold_buy = config.skip_gate_as_threshold_buy
-                    self._skip_gate.config.as_threshold_sell = config.skip_gate_as_threshold_sell
-                    # 072# OB トグル
-                    self._skip_gate.config.use_ob_features = config.skip_gate_use_ob_features
-                    # 088# 動的閾値較正
-                    self._skip_gate.config.adaptive_threshold = config.skip_gate_adaptive_threshold
-                    self._skip_gate.config.target_skip_rate_buy = config.skip_gate_target_skip_rate_buy
-                    self._skip_gate.config.target_skip_rate_sell = config.skip_gate_target_skip_rate_sell
-                    self._skip_gate.config.adaptive_window = config.skip_gate_adaptive_window
-                    self._skip_gate.config.adaptive_min_samples = config.skip_gate_adaptive_min_samples
-                    self._skip_gate.config.adaptive_step = config.skip_gate_adaptive_step
-                    self._skip_gate.config.adaptive_floor = config.skip_gate_adaptive_floor
-                    self._skip_gate.config.adaptive_ceiling = config.skip_gate_adaptive_ceiling
-                    logger.info(
-                        f"[skip_gate] Loaded: mode={config.skip_gate_mode}, "
-                        f"as_threshold={config.skip_gate_as_threshold}, "
-                        f"use_ob_features={config.skip_gate_use_ob_features}, "
-                        f"features={len(self._skip_gate.feature_cols)}, "
-                        f"path={gate_path}"
-                    )
-                    # 096# warm start: 直近 P(AS) 履歴を復元
-                    if config.skip_gate_adaptive_threshold:
-                        try:
-                            from scripts.v460.ml.skip_gate import (
-                                warm_start_skip_gate_thresholds,
-                            )
-                            warm_start_skip_gate_thresholds(
-                                self._skip_gate,
-                                config.results_dir,
-                                window=config.skip_gate_adaptive_window,
-                            )
-                        except Exception as ws_err:
-                            logger.warning(
-                                f"[skip_gate] Warm start failed (non-fatal): {ws_err}"
-                            )
-            except Exception as e:
-                logger.error(f"[skip_gate] Failed to load: {e}. SkipGate disabled.")
-                self._skip_gate = None
+        # 121# God Object 分割: SkipGateEvaluator に ML 判定を委譲
+        self._skip_gate_evaluator = SkipGateEvaluator(config, _PROJECT_ROOT)
+        self._skip_gate = self._skip_gate_evaluator.skip_gate  # OrderMonitor 等互換用
 
         # 113# resilience: CircuitBreaker / HealthMonitor / StatePersistence
         self._circuit_breaker = create_api_circuit_breaker()
@@ -297,6 +230,24 @@ class FillTestRunner:
 
         # 044# A-7: loss_cap 更新カウンタ
         self._loss_cap_update_interval = config.loss_cap_update_interval
+
+    # 121# _current_lot プロパティ: BalanceChecker に委譲 (後方互換)
+    @property
+    def _current_lot(self) -> float:
+        return self._balance_checker.current_lot
+
+    @_current_lot.setter
+    def _current_lot(self, value: float) -> None:
+        self._balance_checker.current_lot = value
+
+    # 121# _last_side プロパティ: SideSelector に委譲 (後方互換)
+    @property
+    def _last_side(self) -> str | None:
+        return self._side_selector.last_side
+
+    @_last_side.setter
+    def _last_side(self, value: str | None) -> None:
+        self._side_selector.last_side = value
 
     @staticmethod
     def _get_git_sha() -> Optional[str]:
@@ -338,62 +289,10 @@ class FillTestRunner:
         return existing
 
     def _next_side(self) -> str:
-        """buy/sell を決定: 交互 or 054# S2 Smart Side.
-
-        009# §4.2: 片側ポジション蓄積禁止.
-        054# S2: imbalance による side 抑制/追従.
-        055# Fix: rapid_exit_side 優先返却.
-        """
-        # 055# Fix #1: S3 rapid exit で決定された side を最優先で返却
-        if self._rapid_exit_side is not None:
-            forced_side = self._rapid_exit_side
-            self._rapid_exit_side = None  # 使用済みクリア
-            logger.info(f"[early_exit] Rapid exit forcing side={forced_side}")
-            return forced_side
-
-        base_side = "buy" if (self._last_side is None or self._last_side == "sell") else "sell"
-
-        if not self.config.smart_side_enabled:
-            return base_side
-
-        imbalance = self._maker_price._last_imbalance
-
-        if self.config.smart_side_mode == "suppress":
-            # 不利な side を抑制: buy を出そうとしているが売り圧力が強い → buy スキップ
-            should_suppress = False
-            if base_side == "buy" and imbalance < -self.config.imbalance_threshold:
-                should_suppress = True
-            elif base_side == "sell" and imbalance > self.config.imbalance_threshold:
-                should_suppress = True
-
-            if should_suppress:
-                # 連続同 side 制限チェック (000# §3.3: 片側蓄積防止)
-                if self._consecutive_same_side >= self.config.smart_side_max_consecutive:
-                    logger.debug(
-                        f"[smart_side] Max consecutive ({self._consecutive_same_side}) reached, "
-                        f"forcing {base_side}"
-                    )
-                    return base_side
-                alt_side = self._last_side or ("sell" if base_side == "buy" else "buy")
-                logger.info(
-                    f"[smart_side] Suppressing {base_side} (imb={imbalance:+.3f}), "
-                    f"continuing {alt_side}"
-                )
-                return alt_side
-
-        elif self.config.smart_side_mode == "follow":
-            # imbalance 方向に追従
-            if abs(imbalance) > self.config.imbalance_threshold:
-                follow_side = "buy" if imbalance > 0 else "sell"
-                # 連続同 side 制限チェック
-                if (
-                    follow_side == self._last_side
-                    and self._consecutive_same_side >= self.config.smart_side_max_consecutive
-                ):
-                    return base_side
-                return follow_side
-
-        return base_side
+        """buy/sell を決定 — 121# SideSelector に委譲."""
+        return self._side_selector.next(
+            imbalance=self._maker_price._last_imbalance,
+        )
 
     async def _compute_orderbook_imbalance(self, depth: int = 5) -> tuple[float, float, float]:
         """054# S1: 板不均衡を計算 — 120# MakerPriceCalculator に委譲."""
@@ -410,128 +309,15 @@ class FillTestRunner:
         return r.price, r.spread, r.effective_offset_ratio
 
     def _is_time_filtered(self, side: str | None = None) -> bool:
-        """041# 時間帯フィルター: 高 AS 時間帯かどうかを判定.
+        """時間帯フィルター — 121# TimeFilter に委譲."""
+        return self._time_filter.is_filtered(side=side)
 
-        100# fix: グローバル + side 別リストの union で判定。
-        旧実装は side 別リストがあると global リストを無視していた。
-        side=None の場合はグローバルリストのみで判定。
-
-        Returns True の場合、呼び出し元は FillRecord を生成せずスリープする。
-        レコード不生成により fill_rate メトリクスの汚染を防止。
-        """
-        if not self.config.enable_time_filter:
-            return False
-        current_utc_hour = datetime.now(timezone.utc).hour
-
-        # グローバルリスト
-        global_hours = set(self.config.skip_utc_hours or [])
-
-        # 100# P1-3: side 別リストを union (グローバルを無視しない)
-        if side == "buy" and self.config.skip_utc_hours_buy is not None:
-            side_hours = set(self.config.skip_utc_hours_buy)
-            return current_utc_hour in (global_hours | side_hours)
-        if side == "sell" and self.config.skip_utc_hours_sell is not None:
-            side_hours = set(self.config.skip_utc_hours_sell)
-            return current_utc_hour in (global_hours | side_hours)
-
-        # グローバルフォールバック
-        return current_utc_hour in global_hours
-
-    # 052#: Coincheck 取引所 BTC 最小注文数量 (板取引)
-    _MIN_ORDER_BTC: float = 0.001
     # 106# R2: bps 換算定数 (1 bps = 1e-4)
     _BPS_FACTOR: int = 10_000
 
     async def _check_balance_for_side(self, side: str) -> bool:
-        """041# 残高 pre-flight check: 発注前に残高が十分か確認.
-
-        不足時は True を返す (スキップすべき)。
-        052#: 残高に基づくロット自動縮小 — 残高が現ロットに不足するが
-        最小ロット (0.001 BTC) 以上なら自動的にロットを縮小して継続。
-        """
-        try:
-            if side == "sell":
-                # sell には BTC 残高が必要
-                btc_balances = await self.adapter.get_balance("BTC")
-                btc_free = sum(b.free for b in btc_balances) if btc_balances else 0.0
-                if btc_free < self._current_lot:
-                    # 052#: 最小ロット以上の残高があれば縮小して継続
-                    if btc_free >= self._MIN_ORDER_BTC:
-                        # 0.001 BTC 単位に切り捨て
-                        new_lot = int(btc_free / self._MIN_ORDER_BTC) * self._MIN_ORDER_BTC
-                        if new_lot >= self._MIN_ORDER_BTC:
-                            old_lot = self._current_lot
-                            self._current_lot = new_lot
-                            # 101# §3: balance 縮小時に _pre_shrink_lot も同期
-                            if not self._balance_shrink_active:
-                                self._pre_shrink_lot = old_lot
-                            logger.info(
-                                f"[balance] BTC {btc_free:.6f} < {old_lot:.4f}. "
-                                f"ロット自動縮小: {old_lot:.4f} → {new_lot:.4f} BTC"
-                            )
-                            return False  # 縮小ロットで発注 OK
-                    logger.warning(
-                        f"[balance] Insufficient BTC for sell: "
-                        f"{btc_free:.6f} < {self._MIN_ORDER_BTC:.4f}. "
-                        f"Skipping sell → will retry buy next."
-                    )
-                    return True
-                # 101# §6: 残高が十分な場合、以前の縮小から復元
-                if (
-                    not self._balance_shrink_active
-                    and self._current_lot < self._pre_shrink_lot
-                    and btc_free >= self._pre_shrink_lot
-                ):
-                    old_lot = self._current_lot
-                    self._current_lot = self._pre_shrink_lot
-                    logger.info(
-                        f"[balance] BTC 残高回復: ロット復元 "
-                        f"{old_lot:.4f} → {self._current_lot:.4f} BTC"
-                    )
-            else:
-                # buy には JPY 残高が必要
-                price = await self.adapter.get_current_price(self.config.symbol)
-                if price:
-                    jpy_needed = self._current_lot * price * self.config.balance_margin_ratio
-                    jpy_balances = await self.adapter.get_balance("JPY")
-                    jpy_free = sum(b.free for b in jpy_balances) if jpy_balances else 0.0
-                    if jpy_free < jpy_needed:
-                        # 052#: JPY 残高から発注可能なロットを逆算
-                        affordable_lot = jpy_free / (price * self.config.balance_margin_ratio)
-                        affordable_lot = int(affordable_lot / self._MIN_ORDER_BTC) * self._MIN_ORDER_BTC
-                        if affordable_lot >= self._MIN_ORDER_BTC:
-                            old_lot = self._current_lot
-                            self._current_lot = affordable_lot
-                            # 101# §3: balance 縮小時に _pre_shrink_lot も同期
-                            if not self._balance_shrink_active:
-                                self._pre_shrink_lot = old_lot
-                            logger.info(
-                                f"[balance] JPY {jpy_free:.0f} < {jpy_needed:.0f}. "
-                                f"ロット自動縮小: {old_lot:.4f} → {affordable_lot:.4f} BTC"
-                            )
-                            return False  # 縮小ロットで発注 OK
-                        logger.warning(
-                            f"[balance] Insufficient JPY for buy: "
-                            f"{jpy_free:.0f} < min {self._MIN_ORDER_BTC * price * self.config.balance_margin_ratio:.0f}. "
-                            f"Skipping buy → will retry sell next."
-                        )
-                        return True
-                    # 101# §6: 残高が十分な場合、以前の縮小から復元 (buy 側)
-                    if (
-                        not self._balance_shrink_active
-                        and self._current_lot < self._pre_shrink_lot
-                    ):
-                        pre_lot_needed = self._pre_shrink_lot * price * self.config.balance_margin_ratio
-                        if jpy_free >= pre_lot_needed:
-                            old_lot = self._current_lot
-                            self._current_lot = self._pre_shrink_lot
-                            logger.info(
-                                f"[balance] JPY 残高回復: ロット復元 "
-                                f"{old_lot:.4f} → {self._current_lot:.4f} BTC"
-                            )
-        except Exception as e:
-            logger.debug(f"[balance] Pre-flight check failed (non-fatal): {e}")
-        return False
+        """残高 pre-flight check — 121# BalanceChecker に委譲."""
+        return await self._balance_checker.check(side, self.adapter, self.config.symbol)
 
     def _acquire_lock(self) -> None:
         """044# Bug7: 単一起動ロック (lockfile + PID + stale 回収).
@@ -575,7 +361,7 @@ class FillTestRunner:
 
         # 047# A4: open(path, 'x') で排他的にファイル作成 (atomic)
         # FileExistsError なら既存ロックを検証 → stale ならリトライ
-        for _attempt in range(2):
+        for _attempt in range(self.config.lock_acquire_retries):
             try:
                 fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
                 try:
@@ -588,7 +374,7 @@ class FillTestRunner:
                 return
             except FileExistsError:
                 _check_stale_and_reclaim()
-        # 2 回リトライ後もダメな場合
+        # リトライ後もダメな場合
         raise RuntimeError(f"ロックファイルの取得に失敗しました: {lock_path}")
 
     def _release_lock(self) -> None:
@@ -652,133 +438,30 @@ class FillTestRunner:
         spread_at_order: Optional[float],
         effective_offset_ratio: float,
     ) -> _SkipGateResult:
-        """062# SkipGate ML 判定 (run_single_cycle Phase 1.5).
-
-        113# R1: run_single_cycle から抽出.
-        """
-        result = _SkipGateResult()
-        if self._skip_gate is None:
-            return result
-
-        try:
-            from scripts.v460.ml.skip_gate import build_features_from_market_state
-
-            # レジーム情報
-            sg_regime = "unknown"
-            if self._regime_detector is not None:
-                sg_regime = self._regime_detector.current_regime.value
-
-            # 直近約定データ取得 (利用可能な場合)
-            recent_trades_data: list[dict] | None = None
-            try:
-                trades = await self.adapter.get_recent_trades(
-                    self.config.symbol, limit=self.config.skip_gate_recent_trades_limit,
-                )
-                if trades:
-                    recent_trades_data = [
-                        {
-                            "ts": getattr(t, "timestamp", time.time()),
-                            "price": getattr(t, "price", 0.0),
-                            "amount": getattr(t, "amount", getattr(t, "quantity", 0.0)),
-                            "side": getattr(t, "side", "buy"),
-                        }
-                        for t in trades
-                    ]
-            except Exception:
-                pass  # 約定データ取得失敗は非致命的
-
-            # 072# OB トグル: use_ob_features 有効時のみ OB 取得
-            ob_bid: float | None = None
-            ob_ask: float | None = None
-            ob_bid_vol: float | None = None
-            ob_ask_vol: float | None = None
-            sg_use_ob = self._skip_gate.config.use_ob_features
-            if sg_use_ob:
-                try:
-                    ob = await self.adapter.get_orderbook(
-                        self.config.symbol, depth=5,
-                    )
-                    if ob and ob.bids and ob.asks:
-                        ob_bid = ob.bids[0].price
-                        ob_ask = ob.asks[0].price
-                        ob_bid_vol = sum(
-                            lv.quantity for lv in ob.bids[:5]
-                        )
-                        ob_ask_vol = sum(
-                            lv.quantity for lv in ob.asks[:5]
-                        )
-                except Exception as e:
-                    logger.debug(
-                        f"[skip_gate] OB fetch failed: {e}"
-                    )
-
-            gate_features = build_features_from_market_state(
-                side=side,
-                spread_jpy=spread_at_order or 0.0,
-                offset_ratio=effective_offset_ratio,
-                regime=sg_regime,
-                recent_trades=recent_trades_data,
-                market_timestamp=time.time(),
-                best_bid=ob_bid,
-                best_ask=ob_ask,
-                bid_vol_5=ob_bid_vol,
-                ask_vol_5=ob_ask_vol,
-                use_ob_features=sg_use_ob,
-            )
-
-            # 107# Volatility Guard: SkipGate 特徴量から VPIN をキャッシュ
-            self._maker_price._last_vpin = gate_features.get("vpin_60s")
-
-            decision = self._skip_gate.evaluate(
-                gate_features, side=side,
-            )
-            result.skipped = decision.should_skip
-            result.score = decision.predicted_pnl_bps
-            result.reason = decision.reason
-            result.model_used = decision.model_used
-            # 084# P(AS) と閾値を直接記録
-            result.as_prob = decision.as_probability
-            result.threshold_used = decision.threshold_used
-
-            if decision.should_skip:
-                logger.info(
-                    f"[skip_gate] SKIP: {side} order skipped "
-                    f"(score={result.score:.3f}, reason={result.reason}, "
-                    f"model={result.model_used}, features={decision.features_used})"
-                )
-                result.early_return_record = FillRecord(
-                    cycle_id=cycle_id,
-                    timestamp=time.time(),
-                    side=side,
-                    order_price=order_price,
-                    order_quantity=self._current_lot,
-                    cancelled=True,
-                    cancel_reason="skip_gate",
-                    spread_at_order=spread_at_order,
-                    spread_offset_ratio=effective_offset_ratio,
-                    skip_gate_skipped=True,
-                    skip_gate_score=result.score,
-                    skip_gate_reason=result.reason,
-                    skip_gate_model_used=result.model_used,
-                    skip_gate_as_prob=result.as_prob,
-                    skip_gate_threshold_used=result.threshold_used,
-                    orderbook_imbalance=self._maker_price._last_imbalance if self.config.imbalance_enabled else None,
-                    bid_depth_total=self._maker_price._last_bid_depth if self.config.imbalance_enabled else None,
-                    ask_depth_total=self._maker_price._last_ask_depth if self.config.imbalance_enabled else None,
-                    run_id=self._run_id,
-                    git_sha=self._git_sha,
-                )
-            else:
-                logger.debug(
-                    f"[skip_gate] PASS: {side} order allowed "
-                    f"(score={result.score:.3f}, reason={result.reason}, "
-                    f"model={result.model_used})"
-                )
-        except Exception as e:
-            logger.warning(f"[skip_gate] Evaluation failed (non-fatal): {e}")
-            result.reason = f"error:{e}"
-
-        return result
+        """SkipGate ML 判定 — 121# SkipGateEvaluator に委譲."""
+        regime_value = (
+            self._regime_detector.current_regime.value
+            if self._regime_detector is not None
+            else None
+        )
+        return await self._skip_gate_evaluator.evaluate(
+            side=side,
+            cycle_id=cycle_id,
+            order_price=order_price,
+            spread_at_order=spread_at_order,
+            effective_offset_ratio=effective_offset_ratio,
+            adapter=self.adapter,
+            symbol=self.config.symbol,
+            current_lot=self._current_lot,
+            run_id=self._run_id,
+            git_sha=self._git_sha,
+            regime_value=regime_value,
+            last_imbalance=self._maker_price._last_imbalance,
+            last_bid_depth=self._maker_price._last_bid_depth,
+            last_ask_depth=self._maker_price._last_ask_depth,
+            imbalance_enabled=self.config.imbalance_enabled,
+            maker_price_vpin_setter=lambda v: setattr(self._maker_price, '_last_vpin', v),
+        )
 
     async def _monitor_fill_polling(
         self,
@@ -828,8 +511,7 @@ class FillTestRunner:
         )
         # 054# S3: early exit → rapid exit フラグ
         if pnl.early_exit_triggered:
-            self._rapid_exit_pending = True
-            self._rapid_exit_side = "sell" if side == "buy" else "buy"
+            self._side_selector.set_rapid_exit(side)
         return pnl
 
     async def run_single_cycle(
@@ -883,12 +565,8 @@ class FillTestRunner:
             side = side_override
         else:
             side = self._next_side()
-        # 054# S2: 連続同 side カウンタ更新
-        if side == self._last_side:
-            self._consecutive_same_side += 1
-        else:
-            self._consecutive_same_side = 0
-        self._last_side = side
+        # 054# S2: 連続同 side カウンタ更新 — 121# SideSelector に委譲
+        self._side_selector.update_after_decision(side)
 
         logger.info(f"=== Cycle {self._cycle_count} ({side}) ===")
 
@@ -932,11 +610,8 @@ class FillTestRunner:
         last_error: Optional[str] = None
         cancel_reason: str = "unknown"  # 032# #6: ループ未実行時の NameError 防止
 
-        # 105#: lot floor guard — 浮動小数点丸め誤差による API 400 防止
-        self._current_lot = max(
-            self._MIN_ORDER_BTC,
-            int(self._current_lot / self._MIN_ORDER_BTC) * self._MIN_ORDER_BTC,
-        )
+        # 105#: lot floor guard — 121# BalanceChecker に委譲
+        self._balance_checker.apply_lot_floor()
 
         for attempt in range(1 + self.config.max_order_retries):
             try:
@@ -963,9 +638,8 @@ class FillTestRunner:
                 elif (
                     "insufficient" in err_lower
                     or "balance" in err_lower
-                    # 042# Coincheck の日本語エラーメッセージ対応
-                    or "所持金額" in last_error
-                    or "足りません" in last_error
+                    # 042# Coincheck の日本語エラーメッセージ対応 — 121# YAML 外部化
+                    or any(p in last_error for p in self.config.insufficient_funds_patterns)
                 ):
                     cancel_reason = "insufficient_funds"
                 elif "minimum" in err_lower or "size" in err_lower:
@@ -987,8 +661,8 @@ class FillTestRunner:
                     break
 
                 if attempt < self.config.max_order_retries:
-                    # 084# 指数バックオフ: 2s → 4s → 8s (rate-limit 緩和)
-                    _backoff = self.config.retry_delay_sec * (2 ** attempt)
+                    # 084# 指数バックオフ: 2s → 4s → 8s (rate-limit 緩和) — 121# YAML 外部化
+                    _backoff = self.config.retry_delay_sec * (self.config.retry_backoff_base ** attempt)
                     # rate-limit 検出時はさらに延長
                     if "rate" in err_lower or "limit" in err_lower or "too many" in err_lower:
                         _backoff = max(_backoff, self.config.rate_limit_min_backoff_sec)
@@ -1094,7 +768,7 @@ class FillTestRunner:
                 else (
                     "timeout"
                     if (not filled and queue_wait >= self.config.order_timeout_sec)
-                    else ("unknown" if not filled else None)  # 118# C-fix: None 防止
+                    else ("unknown" if not filled else None)  # 117# C-fix: None 防止
                 )
             ),
             run_id=self._run_id,
@@ -1261,18 +935,12 @@ class FillTestRunner:
                 alt_filtered = self._is_time_filtered(side=alt_side)
                 if alt_filtered:
                     # 両 side ともフィルタ → スリープ
-                    if not self._in_time_filter:
-                        self._in_time_filter = True
-                        self._last_heartbeat_time = time.time()
-                        utc_h = datetime.now(timezone.utc).hour
-                        logger.info(
-                            f"[time_filter] Entering High-AS zone (UTC {utc_h}h) "
-                            f"— both sides filtered, suppressing cycles"
-                        )
+                    if not self._time_filter.in_filter:
+                        self._time_filter.on_enter()
                     else:
                         # 079# heartbeat: 長時間抑制中にプロセス生存を定期ログ
                         now_ts = time.time()
-                        if now_ts - self._last_heartbeat_time >= self.config.heartbeat_interval_sec:
+                        if now_ts - self._time_filter.last_heartbeat_time >= self.config.heartbeat_interval_sec:
                             utc_h = datetime.now(timezone.utc).hour
                             try:
                                 import psutil  # lazy import
@@ -1288,7 +956,7 @@ class FillTestRunner:
                                 f"unsaved_batch={len(batch)}, "
                                 f"cycles={self._cycle_count}"
                             )
-                            self._last_heartbeat_time = now_ts
+                            self._time_filter.last_heartbeat_time = now_ts
                         # 107# R1: 重複 flush → _maybe_flush_batch 統合
                         batch = self._batch_persistence.maybe_flush(batch, "time_filter")
                     await asyncio.sleep(self.config.cycle_interval_sec)
@@ -1299,18 +967,18 @@ class FillTestRunner:
                     # (例: _last_side=buy, next=sell がブロック, alt=buy → double buy)
                     # この場合は両方ブロックと同じ扱いにして待機する
                     if alt_side == self._last_side:
-                        self._consecutive_086_wait += 1
+                        self._time_filter.consecutive_086_wait += 1
                         max_wait = self.config.max_086_consecutive_wait
                         utc_h = datetime.now(timezone.utc).hour
                         # 110# デッドロック解除: 連続待機が上限を超えたら alt_side を許可
-                        if max_wait > 0 and self._consecutive_086_wait > max_wait:
+                        if max_wait > 0 and self._time_filter.consecutive_086_wait > max_wait:
                             logger.info(
                                 f"[time_filter] 086# deadlock break: "
-                                f"{self._consecutive_086_wait} consecutive waits "
+                                f"{self._time_filter.consecutive_086_wait} consecutive waits "
                                 f"exceeded max={max_wait}, allowing {alt_side} "
                                 f"(110# デッドロック解除)"
                             )
-                            self._consecutive_086_wait = 0
+                            self._time_filter.consecutive_086_wait = 0
                             next_side = alt_side
                             # ↓ alt_side 許可 → 通常フローに合流
                         else:
@@ -1318,18 +986,17 @@ class FillTestRunner:
                                 f"[time_filter] {next_side} filtered at UTC {utc_h}h, "
                                 f"alt={alt_side} would repeat last side → "
                                 f"treating as both-filtered "
-                                f"(086# 片側蓄積防止, wait={self._consecutive_086_wait}/{max_wait})"
+                                f"(086# 片側蓄積防止, wait={self._time_filter.consecutive_086_wait}/{max_wait})"
                             )
-                            if not self._in_time_filter:
-                                self._in_time_filter = True
-                                self._last_heartbeat_time = time.time()
+                            if not self._time_filter.in_filter:
+                                self._time_filter.on_enter()
                             # 107# R1: 重複 flush → _maybe_flush_batch 統合
                             batch = self._batch_persistence.maybe_flush(batch, "alt_side==last_side wait")
                             await asyncio.sleep(self.config.cycle_interval_sec)
                             continue
                     else:
                         # 086# ではない通常の side 切り替え → カウンタリセット
-                        self._consecutive_086_wait = 0
+                        self._time_filter.consecutive_086_wait = 0
                     utc_h = datetime.now(timezone.utc).hour
                     logger.debug(
                         f"[time_filter] {next_side} filtered at UTC {utc_h}h, "
@@ -1338,10 +1005,7 @@ class FillTestRunner:
                     next_side = alt_side
 
             # 047# Issue12: 離脱時のみログ出力
-            if self._in_time_filter:
-                self._in_time_filter = False
-                self._consecutive_086_wait = 0  # 110# カウンタリセット
-                logger.info("[time_filter] Exiting High-AS zone — resuming cycles")
+            self._time_filter.on_exit()
 
             # 041# 残高 pre-flight check: 不足サイドはスキップ
             if await self._check_balance_for_side(next_side):
@@ -1368,21 +1032,22 @@ class FillTestRunner:
                     batch = self._batch_persistence.maybe_flush(batch, "preflight skip")
 
                     # 051# P2-3: Balance auto-shrink — 連続失敗でロット縮小を試行
-                    # 052#: 最低ロットを _MIN_ORDER_BTC に統一 (Coincheck 0.001 BTC)
-                    min_lot = max(self.config.order_quantity, self._MIN_ORDER_BTC)
+                    # 052#: 最低ロットを min_order_btc に統一 (Coincheck 0.001 BTC)
+                    min_lot = max(self.config.order_quantity, self.config.min_order_btc)
                     if (
                         self._preflight_skip_count >= self.config.balance_shrink_consecutive
-                        and not self._balance_shrink_active
+                        and not self._balance_checker.balance_shrink_active
                         and self._current_lot > min_lot
                     ):
                         old_lot = self._current_lot
                         # 105#: 0.001 BTC 単位に切り捨て (浮動小数点丸め誤差 → API 400 防止)
                         raw_shrunk = self._current_lot / self.config.balance_shrink_divisor
+                        _mob = self.config.min_order_btc
                         self._current_lot = max(
                             min_lot,
-                            int(raw_shrunk / self._MIN_ORDER_BTC) * self._MIN_ORDER_BTC,
+                            int(raw_shrunk / _mob) * _mob,
                         )
-                        self._balance_shrink_active = True
+                        self._balance_checker.balance_shrink_active = True
                         logger.warning(
                             f"[balance_shrink] 連続 preflight 失敗 {self._preflight_skip_count} 回. "
                             f"ロット縮小: {old_lot:.4f} → {self._current_lot:.4f} BTC"
@@ -1407,13 +1072,7 @@ class FillTestRunner:
             # preflight 成功 → カウンタリセット
             self._preflight_skip_count = 0
             # 051# P2-3: 成功時に balance_shrink を解除し、ロットを原値に復元
-            if self._balance_shrink_active:
-                old_lot = self._current_lot
-                self._current_lot = self._pre_shrink_lot
-                self._balance_shrink_active = False
-                logger.info(
-                    f"[balance_shrink] 解除: ロット復元 {old_lot:.4f} → {self._current_lot:.4f} BTC"
-                )
+            self._balance_checker.restore_lot_on_success()
 
             # --- サイクル実行 ---
             try:
@@ -1455,11 +1114,11 @@ class FillTestRunner:
                     old_lot = self._current_lot
                     self._current_lot = max(
                         self.config.order_quantity,  # 最小ロットは下回らない
-                        self._current_lot / 2,
+                        self._current_lot / self.config.soft_loss_cap_lot_divisor,
                     )
                     self._soft_loss_cap_triggered = True
                     # 051# P2-3: shrink 復元先も更新
-                    self._pre_shrink_lot = self._current_lot
+                    self._balance_checker.pre_shrink_lot = self._current_lot
                     logger.warning(
                         f"[loss_cap] SOFT CAP: cumPnL={cumulative_pnl_jpy:.0f} JPY "
                         f"<= -{soft_cap_jpy:.0f} JPY "
@@ -1567,16 +1226,13 @@ class FillTestRunner:
 
             # 次サイクルまで待機
             # 054# S3: rapid exit 時は interval を短縮
-            # 055# Fix: _rapid_exit_side は _next_side() で消費するため、ここではクリアしない
             if time.time() < end_time and not self._kill_switch.is_killed():
-                if self._rapid_exit_pending:
+                if self._side_selector.rapid_exit_side is not None:
                     interval = self.config.early_exit_rapid_interval_sec
                     logger.info(
                         f"[early_exit] Rapid exit: interval shortened to "
-                        f"{interval:.0f}s (next side={self._rapid_exit_side})"
+                        f"{interval:.0f}s (next side={self._side_selector.rapid_exit_side})"
                     )
-                    self._rapid_exit_pending = False
-                    # _rapid_exit_side は _next_side() が消費するので保持
                 else:
                     interval = self.config.cycle_interval_sec
                 await asyncio.sleep(interval)
@@ -1822,7 +1478,7 @@ def main() -> None:
         backupCount=config.log_backup_count,
         encoding="utf-8",
     )
-    file_handler.setLevel(logging.DEBUG)
+    file_handler.setLevel(getattr(logging, config.file_log_level, logging.DEBUG))
     file_handler.setFormatter(
         logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s")
     )

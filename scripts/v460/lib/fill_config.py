@@ -187,6 +187,16 @@ class FillTestConfig:
     e3_60s_multiplier: float = 2.0
     e3_120s_multiplier: float = 4.0
     adapt_min_side_samples: int = 20
+    # 121# 追加外部化パラメータ
+    min_order_btc: float = 0.001           # Coincheck BTC 最小注文数量
+    lock_acquire_retries: int = 2          # lockfile 取得リトライ回数
+    skip_gate_ob_depth: int = 5            # SkipGate 板情報取得深度
+    retry_backoff_base: int = 2            # 発注リトライ指数バックオフ底
+    soft_loss_cap_lot_divisor: int = 2     # soft_loss_cap ロット半減の除数
+    file_log_level: str = "DEBUG"          # ファイルログレベル
+    insufficient_funds_patterns: list[str] = field(
+        default_factory=lambda: ["所持金額", "足りません"]
+    )
 
     def __post_init__(self) -> None:
         """103# バリデーション: YAML 誤設定による本番クラッシュ防止."""
@@ -471,6 +481,14 @@ class FillTestConfig:
             "adapt_min_side_samples": "adapt_min_side_samples",
             "batch_flush_interval_sec": "batch_flush_interval_sec",
             "heartbeat_interval_sec": "heartbeat_interval_sec",
+            # 121# 追加外部化
+            "min_order_btc": "min_order_btc",
+            "lock_acquire_retries": "lock_acquire_retries",
+            "skip_gate_ob_depth": "skip_gate_ob_depth",
+            "retry_backoff_base": "retry_backoff_base",
+            "soft_loss_cap_lot_divisor": "soft_loss_cap_lot_divisor",
+            "file_log_level": "file_log_level",
+            "insufficient_funds_patterns": "insufficient_funds_patterns",
         }
         for yaml_key, config_key in tuning_map.items():
             if yaml_key in tuning:

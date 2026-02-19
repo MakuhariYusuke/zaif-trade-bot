@@ -1,10 +1,10 @@
-# 118# Import Chain Fix + Fill Test 二重キャンセル防止
+# 117# Import Chain Fix + Fill Test 二重キャンセル防止
 
 | key | value |
 |-----|-------|
 | 日付 | 2026-02-19 |
 | 種別 | ph2 実装 / バグ修正 |
-| 依存 | 117# (cancel_reason_breakdown), 116# (two-stage gate) |
+| 依存 | 116# (two-stage gate) |
 | テスト | 878 passed (v460 unit, ベースライン維持) |
 
 ---

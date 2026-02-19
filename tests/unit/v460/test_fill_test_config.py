@@ -554,27 +554,27 @@ class Test055NextSideBehavior:
         """rapid_exit_side が設定されていれば、それを優先返却."""
         runner = _make_runner(smart_side_enabled=False)
         runner._last_side = "buy"  # 通常なら sell
-        runner._rapid_exit_side = "buy"  # しかし rapid exit は buy を強制
+        runner._side_selector.rapid_exit_side = "buy"  # しかし rapid exit は buy を強制
         assert runner._next_side() == "buy"
         # 使用後にクリアされる
-        assert runner._rapid_exit_side is None
+        assert runner._side_selector.rapid_exit_side is None
 
     def test_rapid_exit_side_overrides_smart_side(self) -> None:
         """rapid_exit は Smart Side よりも優先."""
         runner = _make_runner(smart_side_enabled=True, smart_side_mode="suppress")
         runner._last_side = "buy"
         runner._maker_price._last_imbalance = +0.5  # sell を抑制する状況
-        runner._rapid_exit_side = "sell"  # rapid exit は sell を強制
+        runner._side_selector.rapid_exit_side = "sell"  # rapid exit は sell を強制
         assert runner._next_side() == "sell"
-        assert runner._rapid_exit_side is None
+        assert runner._side_selector.rapid_exit_side is None
 
     def test_rapid_exit_side_clears_after_use(self) -> None:
         """rapid_exit_side は 1 回で消費される."""
         runner = _make_runner(smart_side_enabled=False)
-        runner._rapid_exit_side = "sell"
+        runner._side_selector.rapid_exit_side = "sell"
         result1 = runner._next_side()
         assert result1 == "sell"
-        assert runner._rapid_exit_side is None
+        assert runner._side_selector.rapid_exit_side is None
         # 次回は通常ロジック
         runner._last_side = "sell"
         assert runner._next_side() == "buy"
@@ -624,7 +624,7 @@ class Test055NextSideBehavior:
         )
         runner._last_side = "sell"
         runner._maker_price._last_imbalance = -0.5  # 売り圧力
-        runner._consecutive_same_side = 2  # 上限到達
+        runner._side_selector._consecutive_same_side = 2  # 上限到達
         assert runner._next_side() == "buy"  # 強制的に buy
 
     # --- 054# S2: follow mode 挙動テスト ---
@@ -661,7 +661,7 @@ class Test055NextSideBehavior:
         )
         runner._last_side = "buy"
         runner._maker_price._last_imbalance = +0.5  # buy 追従だが
-        runner._consecutive_same_side = 2  # 上限
+        runner._side_selector._consecutive_same_side = 2  # 上限
         assert runner._next_side() == "sell"  # base に戻る
 
 
@@ -1095,10 +1095,10 @@ class Test110DeadlockBreak:
         assert cfg.max_086_consecutive_wait == 3
 
     def test_runner_has_consecutive_086_counter(self) -> None:
-        """FillTestRunner が _consecutive_086_wait カウンタを持つ."""
+        """FillTestRunner が _time_filter.consecutive_086_wait カウンタを持つ (121# 委譲)."""
         runner = _make_runner()
-        assert hasattr(runner, "_consecutive_086_wait")
-        assert runner._consecutive_086_wait == 0
+        assert hasattr(runner, "_time_filter")
+        assert runner._time_filter.consecutive_086_wait == 0
 
     def test_consecutive_086_wait_zero_means_unlimited(self) -> None:
         """max_086_consecutive_wait=0 は無制限 (旧動作互換)."""
@@ -1111,8 +1111,8 @@ class Test110DeadlockBreak:
         from scripts.v460.run_fill_test import FillTestRunner
 
         source = inspect.getsource(FillTestRunner.run_continuous)
-        assert "_consecutive_086_wait" in source, (
-            "run_continuous must reference _consecutive_086_wait counter"
+        assert "consecutive_086_wait" in source, (
+            "run_continuous must reference consecutive_086_wait counter"
         )
         assert "110#" in source, (
             "run_continuous must contain 110# deadlock break comment"
