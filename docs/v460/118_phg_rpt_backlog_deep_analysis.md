@@ -631,21 +631,21 @@ SkipGate の AUC が 0.442 の状態で time_filter を廃止すると AS 率が
 
 ### Phase A: 即時 (fill_test 再起動前)
 
-| # | 施策 | 出典 | コスト | インパクト |
-|---|------|------|-------|----------|
-| A1 | fill_test 再起動 (残 23h) | — | 5 min | F7 PASS に必須 |
-| A2 | warm_start threshold 即復元 | 098# §3.2 | 数行 | +0.1bps |
-| A3 | sell SkipGate 無効化 (実験) | 098# §4.2 | YAML 1 行 | 逆選別解消 |
-| A4 | Volatility Guard 効果測定 | 107# | 分析スクリプト | 意思決定の基盤 |
+| # | 施策 | 出典 | コスト | インパクト | 状態 |
+|---|------|------|-------|----------|------|
+| A1 | fill_test 再起動 (残 23h) | — | 5 min | F7 PASS に必須 | ✅ 122# |
+| A2 | warm_start threshold 即復元 | 098# §3.2 | 数行 | +0.1bps | ✅ 122# `db41b7c57` |
+| A3 | sell SkipGate 無効化 (実験) | 098# §4.2 | YAML 1 行 | 逆選別解消 | ✅ 122# `db41b7c57` |
+| A4 | Volatility Guard 効果測定 | 107# | 分析スクリプト | 意思決定の基盤 | ❌ |
 
 ### Phase B: fill_test 168h完了 — Gate 判定
 
-| # | 施策 | 出典 | コスト |
-|---|------|------|-------|
-| B1 | G1.1-quick / G1.2-full 自動判定実行 | 116# | 中 |
-| B2 | Holm-Bonferroni 補正実装 | 000# §3.7 | 低 |
-| B3 | PnL30 / PnL120 の t 検定結果報告 | — | 低 |
-| B4 | AS rate の日別トレンド分析 | 新規 | 低 |
+| # | 施策 | 出典 | コスト | 状態 |
+|---|------|------|-------|------|
+| B1 | G1.1-quick / G1.2-full 自動判定実行 | 116# | 中 | ✅ 122# `8a27ce2af` gate_judgment.py |
+| B2 | Holm-Bonferroni 補正実装 | 000# §3.7 | 低 | ✅ 122# `8a27ce2af` F4/F4b/F4c 3TF |
+| B3 | PnL30 / PnL120 の t 検定結果報告 | — | 低 | ✅ 122# `8a27ce2af` FillMetrics 統合 |
+| B4 | AS rate の日別トレンド分析 | 新規 | 低 | ❌ |
 
 ### Phase C: Gate PASS 後 — ph3 準備
 

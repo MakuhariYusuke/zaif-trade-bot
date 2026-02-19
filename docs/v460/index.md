@@ -1,7 +1,7 @@
 # v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-19 (122# 残課題・未検討提案の深掘り考察)
+> 最終更新: 2026-02-20 (122# A2/A3 実装 + B1/B2/B3 Gate判定パイプライン)
 
 ---
 
@@ -191,9 +191,9 @@ NNN_phX_TYPE_description.md
 
 ### 最優先 (ph2 Gate 判定関連)
 
-1. **fill_test 168h 再実測**: 121# 改善版で 168h 蓄積中 → SLO/Gate 判定
-2. **G1.1-exec gate 判定**: SLO 閾値表 (111# §10) で最終判定
-3. **Holm-Bonferroni 補正**: G1 判定に統計的多重比較補正の実装 (111#)
+1. **fill_test 168h 再実測**: 121# 改善版で 168h 蓄積中 → SLO/Gate 判定 (現在 ~84%)
+2. **G1.1-exec gate 判定**: SLO 閾値表 (111# §10) で最終判定 → ✅ gate_judgment.py (122# B1)
+3. ~~**Holm-Bonferroni 補正**~~: ✅ 122# B2 で g1_2_full_judgment に実装済み (F4/F4b/F4c 3TF)
 
 ### 高優先 (収益性直結)
 
