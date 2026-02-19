@@ -1,7 +1,7 @@
 # v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-17 (099#レビュー)
+> 最終更新: 2026-02-19 (113# Resilience + R1 分割)
 
 ---
 
@@ -95,6 +95,7 @@
 | 098 | rpt | [098_ph2_post_097_deep_analysis.md](098_ph2_post_097_deep_analysis.md) | 097 後の構造診断 + 収益改善戦略 |
 | 099 | rev | [099_ph2_rev_098.md](099_ph2_rev_098.md) | 098 改善点レビュー（トレーダー視点込み） |
 | 110 | fix | [110_ph2_fix_086_time_filter_deadlock.md](110_ph2_fix_086_time_filter_deadlock.md) | 086# time_filter デッドロック修正 (49%アイドル解消) |
+| 113 | impl | [113_ph2_impl_resilience_r1_split.md](113_ph2_impl_resilience_r1_split.md) | Resilience 統合 + R1 God Method 分割 (755→307行) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
@@ -165,7 +166,8 @@ NNN_phX_TYPE_description.md
 
 ## 現在の重点課題
 
-1. **088# 実装完了**: SkipGate 動的較正 + sell ガード + データ品質修正 + side 分離適応
-2. **fill_test 再起動**: 088# コード適用のため再起動が必要 (旧 PID 74612)
-3. **G1.1-exec gate 判定**: fill_test データ蓄積中 — 088# 改善効果の検証待ち
-4. **087# P1/P2 残課題**: round-trip KPI, time_filter event-driven 化, 2-stage model
+1. **113# 完了**: Resilience 統合 (CircuitBreaker / HealthMonitor / StatePersistence) + R1 God Method 分割
+2. **fill_test 168h 再実測**: 113# 耐障害機能込みで 168h 再起動 → SLO/Gate 判定
+3. **G1.1-exec gate 判定**: fill_test データ蓄積中 — SLO 閾値表 (111# §10) で判定
+4. **111# Tier-2/3 残統合**: PnL Monte Carlo, RiskRuleEngine, watch_1m 等
+5. **106# R3-R7**: SkipGate テスト、ドキュメント命名、lib/ztb 統合、utils 分割

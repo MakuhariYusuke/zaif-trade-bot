@@ -17,7 +17,7 @@
 
 | # | 項目 | 判定 | 理由 |
 |---|------|------|------|
-| **R1** | `run_single_cycle` 分割 (~750行) | **後日** | 注文・ポーリング・stale order・E3計測・レジーム更新が混在。分割は大規模リファクタで再起動前にやるにはリスキー |
+| **R1** | `run_single_cycle` 分割 (~750行) | **✅ 113#で実施済** | 755→307行 (59%削減)。3メソッド+3 dataclass抽出。commit `cfb0d3a93` |
 | **R2** | `BPS_FACTOR = 10_000` 定数化 | **✅ 実施済** | `run_fill_test.py` 14箇所 + `lot_sizer.py` 1箇所 |
 | **R3** | SkipGate `evaluate()`/`warm_start` 単体テスト不足 | **後日** | 既存テスト: 38件 (test_enricher_skip_gate.py + test_088_features.py)。warm_start較正のunit testは有用だが再起動に影響なし |
 
@@ -84,7 +84,7 @@ cumulative_pnl_jpy += pnl_bps / self._BPS_FACTOR * price * qty
 
 | 優先 | # | 推奨タイミング |
 |------|---|---|
-| 1 | R1 | v461 移行時 or 大規模リファクタフェーズ |
+| ~~1~~ | ~~R1~~ | ~~v461 移行時~~ → **113# で完了** (2026-02-19) |
 | 2 | R3 | 次回 SkipGate 再訓練時 |
 | 3 | R5 | v461 設計時 |
 | 4 | R4 | ドキュメント整理一括作業時 |
@@ -92,4 +92,5 @@ cumulative_pnl_jpy += pnl_bps / self._BPS_FACTOR * price * qty
 
 ## テスト結果
 
-- 811 passed, 0 failed (v460 unit tests)
+- 811 passed, 0 failed (v460 unit tests, 106# 時点)
+- 857 passed, 0 failed (113# R1 分割後、2026-02-19)
