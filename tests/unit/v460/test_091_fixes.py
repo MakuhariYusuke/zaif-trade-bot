@@ -43,10 +43,10 @@ class TestAltSideBatchFlush:
             "alt_side == self._last_side 分岐が見つからない"
         )
 
-        # 107# R1: _maybe_flush_batch に統合済み
+        # 119# BatchPersistence 委譲: _batch_persistence.maybe_flush に統合済み
         block = "\n".join(lines[alt_side_line : alt_side_line + 35])
-        assert "_maybe_flush_batch" in block, (
-            f"alt_side==last_side 分岐内に _maybe_flush_batch がない:\n{block[:300]}"
+        assert "_batch_persistence.maybe_flush" in block, (
+            f"alt_side==last_side 分岐内に _batch_persistence.maybe_flush がない:\n{block[:300]}"
         )
 
     def test_alt_side_branch_has_091_comment(self) -> None:
@@ -86,8 +86,8 @@ class TestPreflightOppositeSide:
         )
         content = src.read_text(encoding="utf-8")
 
-        # 107# R1: _maybe_flush_batch に統合、context に "insufficient" が含まれる
-        assert "_maybe_flush_batch" in content
+        # 119# BatchPersistence 委譲: maybe_flush に統合、context に "insufficient" が含まれる
+        assert "_batch_persistence.maybe_flush" in content
         assert "insufficient" in content
 
     def test_preflight_opposite_side_logic_order(self) -> None:

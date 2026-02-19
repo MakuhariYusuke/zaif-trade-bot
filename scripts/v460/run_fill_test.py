@@ -48,7 +48,14 @@ from ztb.metrics.fill_quality import (
     save_fill_records,
 )
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+from scripts.v460.lib.batch_persistence import BatchPersistence
 from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
+from scripts.v460.lib.fill_config import (
+    FillTestConfig,
+    SkipGateResult as _SkipGateResult,
+    FillMonitorResult as _FillMonitorResult,
+    PnlMeasurement as _PnlMeasurement,
+)
 from scripts.v460.lib.resilience import (
     CircuitBreaker,
     CircuitBreakerOpenException,
@@ -59,6 +66,10 @@ from scripts.v460.lib.resilience import (
     HealthThresholds,
     create_api_circuit_breaker,
 )
+from scripts.v460.lib.results_analyzer import (
+    run_results_only,
+    save_judgment,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -68,531 +79,16 @@ logger = logging.getLogger(__name__)
 
 
 # ======================================================================
-# Configuration
+# Configuration — 119# fill_config.py に移動
+# FillTestConfig, SkipGateResult, FillMonitorResult, PnlMeasurement は
+# scripts.v460.lib.fill_config からインポート
 # ======================================================================
-
-@dataclass
-class FillTestConfig:
-    """Fill test runner の設定.
-
-    優先順位: CLI引数 > YAML > dataclass defaults.
-    """
-
-    symbol: str = "btc_jpy"
-    order_quantity: float = 0.001  # 初期ロット (Coincheck BTC 最小)
-    cycle_interval_sec: float = 120.0  # サイクル間隔
-    order_timeout_sec: float = 90.0  # 注文タイムアウト (096# 300→90)
-    poll_interval_sec: float = 5.0  # ポーリング間隔
-    post_fill_wait_sec: float = 30.0  # 約定後 PnL 計測待ち
-    results_dir: str = "results/v460/fill_test"
-    # 044# 連続 preflight 失敗上限 (buy/sell 両方不足で無限スキップ防止)
-    max_preflight_skip: int = 10
-    # 開始サイド: JPY 残高不足時は "sell" で開始すると自己資金循環できる
-    start_side: str = "buy"
-    # CM-1: スプレッド比例オフセット (post_only リジェクト防止)
-    spread_offset_ratio: float = 0.05  # 031# 0.2→0.05: AS低減のため保守化
-    min_offset_jpy: float = 1.0  # 最小オフセット (JPY)
-    # CM-2: 注文失敗リトライ
-    max_order_retries: int = 2  # 084# 1→2: api_error 28% 対策 (計3回試行)
-    retry_delay_sec: float = 2.0  # リトライ初回間隔 (指数バックオフ適用)
-    # CM-3: AS 判定デッドゾーン (bps)
-    as_deadzone_bps: float = 2.5  # 052# ±2.5 bps 以内の逆行は AS と判定しない
-    # 031# スプレッドフィルター
-    min_spread_jpy: float = 0.0  # 0 = フィルタなし
-    # 保存
-    batch_size: int = 10  # バッチ保存のサイクル数
-    batch_flush_interval_sec: float = 600.0  # 079# 時間ベース定期flush (秒)
-    max_save_retries: int = 3  # 保存リトライ上限
-    save_fail_threshold: int = 3  # 緊急ダンプ発動の連続失敗回数
-    # ログ
-    progress_log_interval: int = 50  # 進捗ログの出力間隔 (サイクル数)
-    heartbeat_interval_sec: float = 900.0  # 079# heartbeat 間隔 (秒, time_filter 抑制中)
-    log_max_bytes: int = 10 * 1024 * 1024  # ログファイル上限 (10 MB)
-    log_backup_count: int = 5  # ログバックアップ世代数
-    # 方策 A: パラメータ適応
-    enable_auto_adapt: bool = False
-    adapt_interval_cycles: int = 50
-    min_adapt_samples: int = 50  # 方策 A/B 発動の最小サンプル数
-    # 方策 B: 動的ロットサイジング
-    enable_dynamic_lot: bool = False
-    max_lot: float = 0.005
-    lot_adapt_interval_cycles: int = 50
-    recent_pnl_window: int = 50  # 方策 B 直近 PnL 計算ウィンドウ
-    # レジーム検知 (035# §4)
-    enable_regime: bool = True
-    regime_window: int = 20
-    regime_trend_threshold_pct: float = 0.5
-    regime_high_vol_multiplier: float = 2.0
-    regime_hysteresis_count: int = 3
-    regime_min_confidence: float = 0.3  # 052# 0.4→0.3
-    # 052#: トレンディング時のオフセットブースト (PnL -1.2bps)
-    regime_trending_offset_boost: float = 1.5  # トレンディング検出時に offset × 1.5
-    # 041# 時間帯フィルター (AS 高リスク時間帯のスキップ)
-    enable_time_filter: bool = False
-    skip_utc_hours: list[int] | None = None
-    # 073# side 別時間帯フィルター: 指定時は side 固有リストを優先
-    skip_utc_hours_buy: list[int] | None = None
-    skip_utc_hours_sell: list[int] | None = None
-    # 安全設計 (000# §3.9)
-    loss_cap_jpy: float = 10_000.0
-    loss_cap_warning_ratio: float = 0.7
-    # 041# 動的 loss_cap: API 残高から算出
-    loss_cap_auto: bool = False
-    loss_cap_ratio: float = 0.05  # 残高の 5% をキャップ (hard)
-    # 046# soft/hard 二段 loss_cap: soft 超過でロット半減、hard 超過で SAFE_STOP
-    soft_loss_cap_ratio: float = 0.02  # 残高の 2% で soft cap (ロット半減)
-    # 049# E3 サンプリング: 全約定ではなくサンプリングで multi-timeframe 計測
-    e3_sampling_ratio: float = 1.0  # 0.0-1.0, 1.0=全約定, 0.33=1/3 のみ
-    # 049# side 別 offset: buy/sell で独立に offset を設定
-    spread_offset_ratio_buy: float | None = None   # None = 共通 offset を使用
-    spread_offset_ratio_sell: float | None = None   # None = 共通 offset を使用
-    # 049# 即約定防御: queue_wait が閾値以下で負エッジの場合に保守化
-    fast_fill_defense_enabled: bool = False
-    fast_fill_threshold_sec: float = 5.0   # この秒数以下で「速い約定」と判定 (共通)
-    fast_fill_threshold_sec_buy: float | None = None   # 093# buy 側閾値 (None=共通値)
-    fast_fill_threshold_sec_sell: float | None = None  # 093# sell 側閾値 (None=共通値)
-    fast_fill_offset_boost: float = 2.0    # 防御時の offset 倍率 (共通)
-    fast_fill_offset_boost_buy: float | None = None    # 093# buy 側倍率 (None=共通値)
-    fast_fill_offset_boost_sell: float | None = None   # 093# sell 側倍率 (None=共通値)
-    # 054# S1: Orderbook Imbalance ベース AS 予測フィルター
-    imbalance_enabled: bool = False
-    imbalance_depth: int = 5               # 板深さ (上位 N 段)
-    imbalance_threshold: float = 0.3       # 偏り判定閾値 (|imbalance| > threshold)
-    imbalance_offset_boost: float = 1.5    # AS リスク時の offset 倍率
-    imbalance_skip_threshold: float = 0.7  # この閾値以上なら注文スキップ
-    # 054# S2: Smart Side Selection (機械的交互 → 条件付き)
-    smart_side_enabled: bool = False
-    smart_side_mode: str = "suppress"      # suppress / follow
-    smart_side_max_consecutive: int = 2    # 片側蓄積防止 (000# §3.3)
-    # 054# S3: テール損失カット (post-fill早期監視)
-    early_exit_enabled: bool = False
-    early_exit_threshold_bps: float = 5.0  # 損失閾値 (bps)
-    early_exit_monitor_interval_sec: float = 5.0  # 監視刻み (秒)
-    early_exit_rapid_interval_sec: float = 10.0   # rapid exit 時 cycle interval
-    # 054# S4: Spread-Responsive Offset (スプレッド適応型オフセット)
-    spread_adaptive_enabled: bool = False
-    narrow_spread_bps: float = 10.0        # 狭スプレッド閾値 (bps)
-    narrow_spread_boost: float = 2.0       # 狭い時の offset 倍率 (共通)
-    narrow_spread_boost_buy: float | None = None   # 093# buy 側 boost (None=共通値)
-    narrow_spread_boost_sell: float | None = None   # 093# sell 側 boost (None=共通値)
-    wide_spread_bps: float = 25.0          # 広スプレッド閾値 (bps)
-    wide_spread_ratio: float = 0.5         # 広い時の offset 割引
-    # 062# S5: SkipGate ML フィルター (AS 分類器ベースの注文スキップ)
-    skip_gate_enabled: bool = False
-    skip_gate_mode: str = "as"             # "pnl" or "as" (061# AS 分類器推奨)
-    skip_gate_model_path: str = "models/v460/skip_gate_as.pkl"  # モデルファイル
-    skip_gate_as_threshold: float = 0.52   # 100# AS 確率スキップ閾値 (0.65→0.52)
-    skip_gate_pnl_threshold: float = 0.0   # PnL 予測スキップ閾値 (mode=pnl)
-    skip_gate_max_skip_rate: float = 0.3   # 連続スキップ率上限 (安全弁)
-    # 068# §3.3: side 別閾値 (None は共通 as_threshold を使用)
-    skip_gate_as_threshold_buy: Optional[float] = None
-    skip_gate_as_threshold_sell: Optional[float] = None
-    # 072# OB 特徴量トグル (ph2 通過後に True へ)
-    skip_gate_use_ob_features: bool = False
-    # 088# 動的閾値較正
-    skip_gate_adaptive_threshold: bool = False
-    skip_gate_target_skip_rate_buy: float = 0.10
-    skip_gate_target_skip_rate_sell: float = 0.20
-    skip_gate_adaptive_window: int = 50
-    skip_gate_adaptive_min_samples: int = 20
-    skip_gate_adaptive_step: float = 0.05  # 100# 0.02→0.05
-    skip_gate_adaptive_floor: float = 0.35
-    skip_gate_adaptive_ceiling: float = 0.80
-    # 094# stale order 検出 & cancel-replace (価格乖離した注文を再発注)
-    stale_order_enabled: bool = False
-    stale_check_after_sec: float = 30.0    # 発注後この秒数以降で乖離チェック開始
-    stale_drift_bps: float = 5.0           # mid price がこの bps 以上乖離したら stale
-    stale_max_reprice: int = 2             # 1 サイクル内の最大再発注回数
-    stale_cooldown_sec: float = 10.0       # 再発注後チェック猶予（連続 reprice 防止）
-    # 096# stale order side 別パラメータ
-    stale_check_after_sec_buy: float | None = None   # buy 側乖離チェック開始 (None=共通値)
-    stale_check_after_sec_sell: float | None = None  # sell 側乖離チェック開始 (None=共通値)
-    stale_drift_bps_buy: float | None = None         # buy 側乖離閾値 (None=共通値)
-    stale_drift_bps_sell: float | None = None        # sell 側乖離閾値 (None=共通値)
-    stale_max_reprice_buy: int | None = None         # buy 側最大 reprice (None=共通値)
-    stale_max_reprice_sell: int | None = None        # sell 側最大 reprice (None=共通値)
-    # 096# adapter recency window (全履歴混合を停止)
-    adapt_recency_window: int = 0          # 0=全履歴, >0=直近 N clean records のみ
-    # 107# Volatility Guard (リアルタイム急変検知)
-    volatility_guard_enabled: bool = False
-    volatility_guard_velocity_window_sec: float = 60.0
-    volatility_guard_velocity_threshold_bps: float = 15.0
-    volatility_guard_vpin_threshold: float = 0.70
-    volatility_guard_offset_boost_factor: float = 2.0
-    # 110# 086# デッドロック修正: 連続 both-filtered 上限
-    # alt_side == _last_side 時に無限待機せず、上限超過で alt_side を許可
-    max_086_consecutive_wait: int = 3      # 0 = 無制限 (旧動作), >0 で N 回超過後 alt_side 許可
-    # 088# sell 専用ハードガード
-    sell_max_spread_jpy: float = 0.0       # 0 = 無制限, >0 でスプレッド超過時 sell スキップ
-    sell_offset_floor: float = 0.0         # 0 = 無制限, >0 で sell offset 最低保証
-    # ---- 102# YAML化: 散在マジックナンバーの設定外部化 ----
-    # 共通 offset 上限 (spread_adaptive, imbalance, adapt の cap)
-    max_offset_ratio: float = 0.30
-    # offset下限 (wide spread 時の floor)
-    min_offset_ratio: float = 0.01
-    # loss_cap 残高再取得サイクル間隔
-    loss_cap_update_interval: int = 50
-    # 動的 loss_cap の最低保証額 (JPY)
-    min_loss_cap_jpy: float = 50.0
-    # mid price trend の有効判定秒数
-    mid_trend_validity_sec: float = 300.0
-    # buy 残高チェックの手数料マージン倍率 (1.01 = 1% マージン)
-    balance_margin_ratio: float = 1.01
-    # balance_shrink 発動の連続 preflight 失敗回数
-    balance_shrink_consecutive: int = 3
-    # balance_shrink ロット分割係数 (2 = 半減)
-    balance_shrink_divisor: int = 2
-    # SkipGate 直近約定取得件数
-    skip_gate_recent_trades_limit: int = 50
-    # ステータス不明時のリトライ遅延リスト (秒)
-    status_unknown_retry_delays: list[float] = field(default_factory=lambda: [2.0, 3.0, 5.0])
-    # rate-limit 検出時の最低バックオフ秒数
-    rate_limit_min_backoff_sec: float = 5.0
-    # バッチ保存リトライの初期バックオフ秒数
-    save_retry_backoff_sec: float = 0.5
-    # regime warm-up のウィンドウ倍率
-    regime_warmup_multiplier: int = 3
-    # E3 計測の post_fill_wait_sec 倍率 (60s = ×2, 120s = ×4)
-    e3_60s_multiplier: float = 2.0
-    e3_120s_multiplier: float = 4.0
-    # side 別適応の最小サンプル数下限
-    adapt_min_side_samples: int = 20
-
-    def __post_init__(self) -> None:
-        """103# バリデーション: YAML 誤設定による本番クラッシュ防止."""
-        if self.balance_shrink_divisor < 1:
-            raise ValueError(
-                f"balance_shrink_divisor must be >= 1, got {self.balance_shrink_divisor}"
-            )
-        if self.max_offset_ratio <= self.min_offset_ratio:
-            raise ValueError(
-                f"max_offset_ratio ({self.max_offset_ratio}) must be > "
-                f"min_offset_ratio ({self.min_offset_ratio})"
-            )
-
-    @classmethod
-    def from_yaml(cls, yaml_cfg: dict) -> "FillTestConfig":
-        """YAML dict から FillTestConfig を構築.
-
-        YAML のフラットキー + ネスト (adaptation / lot_sizing / safety) を
-        dataclass フィールドにマッピングする.
-        """
-        kwargs: dict = {}
-
-        # フラットキー (YAML キー == dataclass フィールド名)
-        flat_keys = {
-            "symbol", "order_quantity", "cycle_interval_sec", "order_timeout_sec",
-            "poll_interval_sec", "post_fill_wait_sec", "results_dir",
-            "max_preflight_skip", "start_side",
-            "spread_offset_ratio", "min_offset_jpy",
-            "max_order_retries", "retry_delay_sec",
-            "as_deadzone_bps", "min_spread_jpy",
-            "batch_size", "max_save_retries", "save_fail_threshold",
-            "progress_log_interval",
-            "log_max_bytes", "log_backup_count",
-        }
-        for key in flat_keys:
-            if key in yaml_cfg:
-                kwargs[key] = yaml_cfg[key]
-
-        # adaptation セクション → 方策 A
-        adapt = yaml_cfg.get("adaptation", {})
-        if adapt.get("enabled") is not None:
-            kwargs["enable_auto_adapt"] = adapt["enabled"]
-        if "interval_cycles" in adapt:
-            kwargs["adapt_interval_cycles"] = adapt["interval_cycles"]
-
-        # lot_sizing セクション → 方策 B
-        lot = yaml_cfg.get("lot_sizing", {})
-        if lot.get("enabled") is not None:
-            kwargs["enable_dynamic_lot"] = lot["enabled"]
-        if "interval_cycles" in lot:
-            kwargs["lot_adapt_interval_cycles"] = lot["interval_cycles"]
-        if "max_lot" in lot:
-            kwargs["max_lot"] = lot["max_lot"]
-        if "recent_pnl_window" in lot:
-            kwargs["recent_pnl_window"] = lot["recent_pnl_window"]
-
-        # regime セクション → レジーム検知 (035# §4)
-        regime = yaml_cfg.get("regime", {})
-        if regime.get("enabled") is not None:
-            kwargs["enable_regime"] = regime["enabled"]
-        regime_map = {
-            "window": "regime_window",
-            "trend_threshold_pct": "regime_trend_threshold_pct",
-            "high_vol_multiplier": "regime_high_vol_multiplier",
-            "hysteresis_count": "regime_hysteresis_count",
-            "min_confidence": "regime_min_confidence",
-            "trending_offset_boost": "regime_trending_offset_boost",
-        }
-        for yaml_key, config_key in regime_map.items():
-            if yaml_key in regime:
-                kwargs[config_key] = regime[yaml_key]
-
-        # safety セクション → 損失キャップ
-        safety = yaml_cfg.get("safety", {})
-        if "loss_cap_jpy" in safety:
-            kwargs["loss_cap_jpy"] = safety["loss_cap_jpy"]
-        if "loss_cap_warning_ratio" in safety:
-            kwargs["loss_cap_warning_ratio"] = safety["loss_cap_warning_ratio"]
-        # 041# 動的 loss_cap
-        if safety.get("loss_cap_auto") is not None:
-            kwargs["loss_cap_auto"] = safety["loss_cap_auto"]
-        if "loss_cap_ratio" in safety:
-            kwargs["loss_cap_ratio"] = safety["loss_cap_ratio"]
-        # 046# soft/hard 二段 loss_cap
-        if "soft_loss_cap_ratio" in safety:
-            kwargs["soft_loss_cap_ratio"] = safety["soft_loss_cap_ratio"]
-
-        # 041# 時間帯フィルター
-        tf = yaml_cfg.get("time_filter", {})
-        if tf.get("enabled") is not None:
-            kwargs["enable_time_filter"] = tf["enabled"]
-        if "skip_utc_hours" in tf:
-            kwargs["skip_utc_hours"] = tf["skip_utc_hours"]
-        # 073# side 別時間帯フィルター
-        if "skip_utc_hours_buy" in tf:
-            kwargs["skip_utc_hours_buy"] = tf["skip_utc_hours_buy"]
-        if "skip_utc_hours_sell" in tf:
-            kwargs["skip_utc_hours_sell"] = tf["skip_utc_hours_sell"]
-        # 110# 086# デッドロック修正
-        if "max_086_consecutive_wait" in tf:
-            kwargs["max_086_consecutive_wait"] = tf["max_086_consecutive_wait"]
-
-        # 049# E3 サンプリング
-        e3 = yaml_cfg.get("e3", {})
-        if "sampling_ratio" in e3:
-            kwargs["e3_sampling_ratio"] = e3["sampling_ratio"]
-
-        # 049# side 別 offset
-        side_offset = yaml_cfg.get("side_offset", {})
-        if "buy" in side_offset:
-            kwargs["spread_offset_ratio_buy"] = side_offset["buy"]
-        if "sell" in side_offset:
-            kwargs["spread_offset_ratio_sell"] = side_offset["sell"]
-
-        # 049# 即約定防御
-        ffd = yaml_cfg.get("fast_fill_defense", {})
-        if ffd.get("enabled") is not None:
-            kwargs["fast_fill_defense_enabled"] = ffd["enabled"]
-        if "threshold_sec" in ffd:
-            kwargs["fast_fill_threshold_sec"] = ffd["threshold_sec"]
-        if "offset_boost" in ffd:
-            kwargs["fast_fill_offset_boost"] = ffd["offset_boost"]
-        # 093# side 別 fast_fill_defense
-        if "threshold_sec_buy" in ffd:
-            kwargs["fast_fill_threshold_sec_buy"] = ffd["threshold_sec_buy"]
-        if "threshold_sec_sell" in ffd:
-            kwargs["fast_fill_threshold_sec_sell"] = ffd["threshold_sec_sell"]
-        if "offset_boost_buy" in ffd:
-            kwargs["fast_fill_offset_boost_buy"] = ffd["offset_boost_buy"]
-        if "offset_boost_sell" in ffd:
-            kwargs["fast_fill_offset_boost_sell"] = ffd["offset_boost_sell"]
-
-        # 054# S1: Orderbook Imbalance
-        imb = yaml_cfg.get("imbalance", {})
-        if imb.get("enabled") is not None:
-            kwargs["imbalance_enabled"] = imb["enabled"]
-        imb_map = {
-            "depth": "imbalance_depth",
-            "threshold": "imbalance_threshold",
-            "offset_boost": "imbalance_offset_boost",
-            "skip_threshold": "imbalance_skip_threshold",
-        }
-        for yaml_key, config_key in imb_map.items():
-            if yaml_key in imb:
-                kwargs[config_key] = imb[yaml_key]
-
-        # 054# S2: Smart Side
-        ss = yaml_cfg.get("smart_side", {})
-        if ss.get("enabled") is not None:
-            kwargs["smart_side_enabled"] = ss["enabled"]
-        if "mode" in ss:
-            kwargs["smart_side_mode"] = ss["mode"]
-        if "max_consecutive_same" in ss:
-            kwargs["smart_side_max_consecutive"] = ss["max_consecutive_same"]
-
-        # 054# S3: Early Exit (テール損失カット)
-        ee = yaml_cfg.get("early_exit", {})
-        if ee.get("enabled") is not None:
-            kwargs["early_exit_enabled"] = ee["enabled"]
-        ee_map = {
-            "threshold_bps": "early_exit_threshold_bps",
-            "monitoring_interval_sec": "early_exit_monitor_interval_sec",
-            "rapid_exit_interval_sec": "early_exit_rapid_interval_sec",
-        }
-        for yaml_key, config_key in ee_map.items():
-            if yaml_key in ee:
-                kwargs[config_key] = ee[yaml_key]
-
-        # 054# S4: Spread Adaptive Offset
-        sa = yaml_cfg.get("spread_adaptive", {})
-        if sa.get("enabled") is not None:
-            kwargs["spread_adaptive_enabled"] = sa["enabled"]
-        sa_map = {
-            "narrow_spread_bps": "narrow_spread_bps",
-            "narrow_spread_boost": "narrow_spread_boost",
-            "narrow_spread_boost_buy": "narrow_spread_boost_buy",    # 093#
-            "narrow_spread_boost_sell": "narrow_spread_boost_sell",  # 093#
-            "wide_spread_bps": "wide_spread_bps",
-            "wide_spread_ratio": "wide_spread_ratio",
-        }
-        for yaml_key, config_key in sa_map.items():
-            if yaml_key in sa:
-                kwargs[config_key] = sa[yaml_key]
-
-        # 062# S5: SkipGate ML フィルター
-        sg = yaml_cfg.get("skip_gate", {})
-        if sg.get("enabled") is not None:
-            kwargs["skip_gate_enabled"] = sg["enabled"]
-        sg_map = {
-            "mode": "skip_gate_mode",
-            "model_path": "skip_gate_model_path",
-            "as_threshold": "skip_gate_as_threshold",
-            "pnl_threshold": "skip_gate_pnl_threshold",
-            "max_skip_rate": "skip_gate_max_skip_rate",
-            # 068# §3.3: side 別閾値
-            "as_threshold_buy": "skip_gate_as_threshold_buy",
-            "as_threshold_sell": "skip_gate_as_threshold_sell",
-            # 072# OB トグル
-            "use_ob_features": "skip_gate_use_ob_features",
-            # 088# 動的閾値較正
-            "adaptive_threshold": "skip_gate_adaptive_threshold",
-            "target_skip_rate_buy": "skip_gate_target_skip_rate_buy",
-            "target_skip_rate_sell": "skip_gate_target_skip_rate_sell",
-            "adaptive_window": "skip_gate_adaptive_window",
-            "adaptive_min_samples": "skip_gate_adaptive_min_samples",
-            "adaptive_step": "skip_gate_adaptive_step",
-            "adaptive_floor": "skip_gate_adaptive_floor",
-            "adaptive_ceiling": "skip_gate_adaptive_ceiling",
-        }
-        for yaml_key, config_key in sg_map.items():
-            if yaml_key in sg and sg[yaml_key] is not None:
-                kwargs[config_key] = sg[yaml_key]
-
-        # 094# stale order 検出 & cancel-replace
-        so = yaml_cfg.get("stale_order", {})
-        if so.get("enabled") is not None:
-            kwargs["stale_order_enabled"] = so["enabled"]
-        so_map = {
-            "check_after_sec": "stale_check_after_sec",
-            "drift_bps": "stale_drift_bps",
-            "max_reprice": "stale_max_reprice",
-            "cooldown_sec": "stale_cooldown_sec",
-            # 096# side-specific
-            "check_after_sec_buy": "stale_check_after_sec_buy",
-            "check_after_sec_sell": "stale_check_after_sec_sell",
-            "drift_bps_buy": "stale_drift_bps_buy",
-            "drift_bps_sell": "stale_drift_bps_sell",
-            "max_reprice_buy": "stale_max_reprice_buy",
-            "max_reprice_sell": "stale_max_reprice_sell",
-        }
-        for yaml_key, config_key in so_map.items():
-            if yaml_key in so:
-                kwargs[config_key] = so[yaml_key]
-
-        # 096# adaptation recency window
-        adapt = yaml_cfg.get("adaptation", {})
-        if adapt.get("recency_window") is not None:
-            kwargs["adapt_recency_window"] = adapt["recency_window"]
-        # 103# adaptation.min_samples → min_adapt_samples マッピング
-        if "min_samples" in adapt:
-            kwargs["min_adapt_samples"] = adapt["min_samples"]
-
-        # 107# Volatility Guard
-        vg = yaml_cfg.get("volatility_guard", {})
-        if vg.get("enabled") is not None:
-            kwargs["volatility_guard_enabled"] = vg["enabled"]
-        vg_map = {
-            "velocity_window_sec": "volatility_guard_velocity_window_sec",
-            "velocity_threshold_bps": "volatility_guard_velocity_threshold_bps",
-            "vpin_threshold": "volatility_guard_vpin_threshold",
-            "offset_boost_factor": "volatility_guard_offset_boost_factor",
-        }
-        for yaml_key, config_key in vg_map.items():
-            if yaml_key in vg:
-                kwargs[config_key] = vg[yaml_key]
-
-        # 088# sell 専用ハードガード
-        sell_guard = yaml_cfg.get("sell_guard", {})
-        if sell_guard.get("max_spread_jpy") is not None:
-            kwargs["sell_max_spread_jpy"] = sell_guard["max_spread_jpy"]
-        if sell_guard.get("offset_floor") is not None:
-            kwargs["sell_offset_floor"] = sell_guard["offset_floor"]
-
-        # 102# YAML 化: 散在マジックナンバーの設定外部化
-        tuning = yaml_cfg.get("tuning", {})
-        tuning_map = {
-            "max_offset_ratio": "max_offset_ratio",
-            "min_offset_ratio": "min_offset_ratio",
-            "loss_cap_update_interval": "loss_cap_update_interval",
-            "min_loss_cap_jpy": "min_loss_cap_jpy",
-            "mid_trend_validity_sec": "mid_trend_validity_sec",
-            "balance_margin_ratio": "balance_margin_ratio",
-            "balance_shrink_consecutive": "balance_shrink_consecutive",
-            "balance_shrink_divisor": "balance_shrink_divisor",
-            "skip_gate_recent_trades_limit": "skip_gate_recent_trades_limit",
-            "status_unknown_retry_delays": "status_unknown_retry_delays",
-            "rate_limit_min_backoff_sec": "rate_limit_min_backoff_sec",
-            "save_retry_backoff_sec": "save_retry_backoff_sec",
-            "regime_warmup_multiplier": "regime_warmup_multiplier",
-            "e3_60s_multiplier": "e3_60s_multiplier",
-            "e3_120s_multiplier": "e3_120s_multiplier",
-            "adapt_min_side_samples": "adapt_min_side_samples",
-            "batch_flush_interval_sec": "batch_flush_interval_sec",
-            "heartbeat_interval_sec": "heartbeat_interval_sec",
-        }
-        for yaml_key, config_key in tuning_map.items():
-            if yaml_key in tuning:
-                kwargs[config_key] = tuning[yaml_key]
-
-        return cls(**kwargs)
 
 
 # ======================================================================
 # 113# R1: run_single_cycle 分割用 内部データクラス
+# 119# fill_config.py に移動 → _SkipGateResult etc. としてインポート
 # ======================================================================
-
-@dataclass
-class _SkipGateResult:
-    """SkipGate ML 判定結果 (run_single_cycle 内部)."""
-
-    skipped: Optional[bool] = None
-    score: Optional[float] = None
-    reason: Optional[str] = None
-    model_used: Optional[str] = None
-    as_prob: Optional[float] = None
-    threshold_used: Optional[float] = None
-    early_return_record: Optional[FillRecord] = None
-
-
-@dataclass
-class _FillMonitorResult:
-    """約定監視結果 (run_single_cycle 内部)."""
-
-    filled: bool = False
-    fill_price: Optional[float] = None
-    t_fill: Optional[float] = None
-    cancel_reason: Optional[str] = None
-    queue_wait: float = 0.0
-    reprice_count: int = 0
-    final_order_price: float = 0.0
-
-
-@dataclass
-class _PnlMeasurement:
-    """PnL 計測結果 (run_single_cycle 内部)."""
-
-    mid_at_fill: Optional[float] = None
-    mid_30s_after: Optional[float] = None
-    mid_60s_after: Optional[float] = None
-    mid_120s_after: Optional[float] = None
-    post_fill_pnl: Optional[float] = None
-    post_fill_60s_pnl: Optional[float] = None
-    post_fill_120s_pnl: Optional[float] = None
-    adverse_selected: Optional[bool] = None
-    adverse_selected_raw: Optional[bool] = None
-    actual_measurement_sec: Optional[float] = None
 
 
 # ======================================================================
@@ -644,8 +140,7 @@ class FillTestRunner:
         self._consecutive_086_wait: int = 0
         # 079# heartbeat: time_filter 抑制中のプロセス生存ログ
         self._last_heartbeat_time: float = 0.0
-        # 079# 時間ベースバッチflush
-        self._last_batch_flush_time: float = time.time()
+        # 119# BatchPersistence: バッチ保存ロジック委譲 (God Object 分割)
         # 049# 即約定防御: 次サイクルの offset を一時的に増加
         # 100# God Object 分割: FastFillDefense クラスに委譲 (side-aware)
         self._fast_fill_defense = FastFillDefense(
@@ -709,10 +204,14 @@ class FillTestRunner:
                 f"hysteresis={regime_cfg.hysteresis_count}"
             )
 
-        # 024# R1: 保存失敗トラッキング
-        self._unsaved_batch: list[FillRecord] = []
-        self._save_fail_count: int = 0
-        self._max_save_retries: int = config.max_save_retries
+        # 119# BatchPersistence: 保存失敗トラッキング・リトライ・緊急ダンプ
+        self._batch_persistence = BatchPersistence(
+            results_dir=self._results_dir,
+            max_retries=config.max_save_retries,
+            save_fail_threshold=config.save_fail_threshold,
+            retry_backoff_sec=config.save_retry_backoff_sec,
+            flush_interval_sec=config.batch_flush_interval_sec,
+        )
 
         # 062# S5: SkipGate ML フィルター
         self._skip_gate: Optional["SkipGate"] = None
@@ -2285,8 +1784,7 @@ class FillTestRunner:
 
         del existing_records, clean_records, quarantine_records  # メモリ解放
 
-        batch: list[FillRecord] = list(self._unsaved_batch)  # 前回未保存分を引き継ぐ
-        self._unsaved_batch = []
+        batch: list[FillRecord] = self._batch_persistence.take_unsaved()  # 前回未保存分を引き継ぐ
         batch_size = self.config.batch_size  # 032# #18: 設定化
 
         logger.info(f"Starting fill test: {hours}h, interval={self.config.cycle_interval_sec}s")
@@ -2333,7 +1831,7 @@ class FillTestRunner:
                             )
                             self._last_heartbeat_time = now_ts
                         # 107# R1: 重複 flush → _maybe_flush_batch 統合
-                        batch = self._maybe_flush_batch(batch, "time_filter")
+                        batch = self._batch_persistence.maybe_flush(batch, "time_filter")
                     await asyncio.sleep(self.config.cycle_interval_sec)
                     continue
                 else:
@@ -2367,7 +1865,7 @@ class FillTestRunner:
                                 self._in_time_filter = True
                                 self._last_heartbeat_time = time.time()
                             # 107# R1: 重複 flush → _maybe_flush_batch 統合
-                            batch = self._maybe_flush_batch(batch, "alt_side==last_side wait")
+                            batch = self._batch_persistence.maybe_flush(batch, "alt_side==last_side wait")
                             await asyncio.sleep(self.config.cycle_interval_sec)
                             continue
                     else:
@@ -2408,7 +1906,7 @@ class FillTestRunner:
                     self._preflight_skip_count += 1
 
                     # 107# R1: 重複 flush → _maybe_flush_batch 統合
-                    batch = self._maybe_flush_batch(batch, "preflight skip")
+                    batch = self._batch_persistence.maybe_flush(batch, "preflight skip")
 
                     # 051# P2-3: Balance auto-shrink — 連続失敗でロット縮小を試行
                     # 052#: 最低ロットを _MIN_ORDER_BTC に統一 (Coincheck 0.001 BTC)
@@ -2535,23 +2033,13 @@ class FillTestRunner:
 
             # --- バッチ保存 (024# R1: 独立 try/except) ---
             if len(batch) >= batch_size:
-                if self._try_save_batch(batch):
+                if self._batch_persistence.try_save_batch(batch):
                     batch = []
-                    self._last_batch_flush_time = time.time()
+                    self._batch_persistence.reset_flush_timer()
                 # 失敗時: batch は保持 → 次回再試行
             # 079# 時間ベース定期flush: batch_size 未満でも一定時間経過で保存
-            elif (
-                batch
-                and time.time() - self._last_batch_flush_time
-                >= self.config.batch_flush_interval_sec
-            ):
-                flush_count = len(batch)
-                if self._try_save_batch(batch):
-                    batch = []
-                    self._last_batch_flush_time = time.time()
-                    logger.info(
-                        f"[batch_flush] Periodic flush: {flush_count} records saved"
-                    )
+            else:
+                batch = self._batch_persistence.maybe_flush(batch, "run_loop")
 
             # 進捗ログ
             if self._cycle_count % self.config.progress_log_interval == 0:
@@ -2588,9 +2076,9 @@ class FillTestRunner:
                     cumulative_pnl_jpy=cumulative_pnl_jpy,
                     current_lot=self._current_lot,
                     soft_loss_cap_triggered=self._soft_loss_cap_triggered,
-                    base_offset_ratio=self.config.base_offset_ratio,
-                    base_offset_ratio_buy=self.config.base_offset_ratio_buy,
-                    base_offset_ratio_sell=self.config.base_offset_ratio_sell,
+                    base_offset_ratio=self._base_offset_ratio,
+                    base_offset_ratio_buy=self._base_offset_ratio_buy,
+                    base_offset_ratio_sell=self._base_offset_ratio_sell,
                 ))
 
             # --- 044# A-7: loss_cap 定期更新 (残高変動を反映) ---
@@ -2635,9 +2123,9 @@ class FillTestRunner:
 
         # 残りバッチを保存
         if batch:
-            if not self._try_save_batch(batch):
+            if not self._batch_persistence.try_save_batch(batch):
                 # 最終手段: 緊急ダンプ
-                self._emergency_dump(batch, "final")
+                self._batch_persistence.emergency_dump(batch, "final")
 
         # 113# resilience: 最終状態保存
         self._state_persistence.save(FillTestState(
@@ -2648,9 +2136,9 @@ class FillTestRunner:
             cumulative_pnl_jpy=cumulative_pnl_jpy,
             current_lot=self._current_lot,
             soft_loss_cap_triggered=self._soft_loss_cap_triggered,
-            base_offset_ratio=self.config.base_offset_ratio,
-            base_offset_ratio_buy=self.config.base_offset_ratio_buy,
-            base_offset_ratio_sell=self.config.base_offset_ratio_sell,
+            base_offset_ratio=self._base_offset_ratio,
+            base_offset_ratio_buy=self._base_offset_ratio_buy,
+            base_offset_ratio_sell=self._base_offset_ratio_sell,
         ))
 
         logger.info(
@@ -2659,103 +2147,6 @@ class FillTestRunner:
         )
         # 024# O4: 集計用に全レコードをリロード
         return load_fill_records_glob(str(self._results_dir))
-
-    def _try_save_batch(self, batch: list[FillRecord]) -> bool:
-        """バッチ保存を試行。失敗時はリトライ + フォールバック.
-
-        024# R1: 保存専用 try/except を分離し、失敗を握り潰さない.
-        024# R4: record.timestamp 由来の日付でファイル分割.
-
-        Returns:
-            True if save succeeded, False otherwise.
-        """
-        last_error: Optional[Exception] = None
-        for attempt in range(self._max_save_retries):
-            try:
-                self._save_batch_by_date(batch)
-                self._save_fail_count = 0
-                return True
-            except Exception as e:
-                last_error = e
-                logger.warning(
-                    f"Batch save attempt {attempt + 1}/{self._max_save_retries} "
-                    f"failed: {e}",
-                    exc_info=True,
-                )
-                time.sleep(self.config.save_retry_backoff_sec * (2 ** attempt))  # 指数バックオフ
-
-        # 全リトライ失敗
-        self._save_fail_count += 1
-        logger.error(
-            f"Batch save FAILED after {self._max_save_retries} retries "
-            f"(consecutive failures: {self._save_fail_count}): {last_error}"
-        )
-
-        # 024# R1: 連続失敗時は緊急ダンプ
-        if self._save_fail_count >= self.config.save_fail_threshold:
-            self._emergency_dump(batch, "save_fail")
-            self._save_fail_count = 0
-            return True  # ダンプ成功ならバッチクリア
-
-        # batch は呼び出し元で保持 → 次回再試行
-        self._unsaved_batch = list(batch)
-        return False
-
-    def _maybe_flush_batch(self, batch: list[FillRecord], context: str) -> list[FillRecord]:
-        """107# R1: 時間ベース定期 flush (重複ロジック統合).
-
-        time_filter 抑制中・残高不足待機中など複数箇所で同一の
-        "batch_flush_interval_sec 経過でバッチ保存" パターンが出現するため、
-        ヘルパーに統合 (106# R1 分割の第一歩).
-
-        Returns:
-            flush 成功時は空リスト、それ以外は元の batch をそのまま返す.
-        """
-        if not batch:
-            return batch
-        now_ts = time.time()
-        if now_ts - self._last_batch_flush_time >= self.config.batch_flush_interval_sec:
-            if self._try_save_batch(batch):
-                self._last_batch_flush_time = now_ts
-                logger.info(f"[batch_flush] Periodic flush during {context}")
-                return []
-        return batch
-
-    def _save_batch_by_date(self, batch: list[FillRecord]) -> None:
-        """024# R4: record.timestamp 由来の日付でファイル分割保存."""
-        # レコードを UTC 日付ごとにグルーピング
-        by_date: dict[str, list[FillRecord]] = {}
-        for record in batch:
-            day_str = datetime.fromtimestamp(
-                record.timestamp, tz=timezone.utc
-            ).strftime("%Y%m%d")
-            by_date.setdefault(day_str, []).append(record)
-
-        for day_str, day_records in by_date.items():
-            path = self._results_dir / f"fill_records_{day_str}.jsonl"
-            save_fill_records(day_records, path)
-
-    def _emergency_dump(self, batch: list[FillRecord], reason: str) -> None:
-        """024# R1: 緊急ダンプ — 通常保存が不可能な場合のフォールバック."""
-        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        dump_dir = self._results_dir / "emergency"
-        dump_dir.mkdir(parents=True, exist_ok=True)
-        dump_path = dump_dir / f"emergency_{reason}_{ts}.jsonl"
-
-        try:
-            save_fill_records(batch, dump_path)
-            logger.warning(
-                f"Emergency dump: {len(batch)} records saved to {dump_path}"
-            )
-        except Exception as e:
-            # 最終手段: stderr に直接出力
-            import sys
-            print(
-                f"CRITICAL: Emergency dump also failed: {e}\n"
-                f"Unsaved records: {len(batch)}",
-                file=sys.stderr,
-            )
-            traceback.print_exc(file=sys.stderr)
 
     def _build_adapt_kwargs(self) -> dict:
         """YAML adaptation セクションから AdaptationConfig 用 kwargs を構築."""
@@ -3056,12 +2447,13 @@ class FillTestRunner:
         044# Bug7: ロックファイルを解放.
         """
         # 未保存バッチの退避
-        if self._unsaved_batch:
+        unsaved = self._batch_persistence.unsaved_batch
+        if unsaved:
             logger.warning(
-                f"Saving {len(self._unsaved_batch)} unsaved records on exit"
+                f"Saving {len(unsaved)} unsaved records on exit"
             )
-            self._emergency_dump(self._unsaved_batch, "atexit")
-            self._unsaved_batch = []
+            self._batch_persistence.emergency_dump(unsaved, "atexit")
+            self._batch_persistence.take_unsaved()  # クリア
 
         # 044# A-4: 残存注文のキャンセル (確実に await する)
         if self._pending_order_id:
@@ -3083,105 +2475,7 @@ class FillTestRunner:
         self._release_lock()
 
 
-# ======================================================================
-# Results-only mode: 既存データからメトリクス算出
-# ======================================================================
-
-def run_results_only(results_dir: str, thresholds_path: str | None = None) -> dict:
-    """既存の fill_records JSONL から G1.1 判定を実施.
-
-    116# 拡張: 旧 g1_1_judgment に加え、quick/full 二段階判定も返す。
-    """
-    from scripts.v460.lib.config_loader import load_gate_thresholds
-
-    all_records = load_fill_records_glob(results_dir)
-    if not all_records:
-        logger.error(f"No fill records found in {results_dir}")
-        return {"gate": "G1.1-exec", "gate_result": "NO_DATA", "error": "No records found"}
-
-    # 047# A2: quarantine レコードを除外し clean のみで Gate 判定
-    records, quarantine = filter_clean_records(all_records)
-    if quarantine:
-        logger.warning(
-            f"[results-only] {len(quarantine)} records quarantined, "
-            f"using {len(records)} clean records for judgment"
-        )
-    del all_records
-    if not records:
-        logger.error("All records are quarantined")
-        return {"gate": "G1.1-exec", "gate_result": "NO_DATA", "error": "All records quarantined"}
-
-    metrics = compute_fill_metrics(records)
-    gate_cfg = load_gate_thresholds()
-    thresholds = gate_cfg.get("g1_1_exec", {})
-    judgment = g1_1_judgment(metrics, thresholds)
-
-    # 116# 二段階判定 (115# レビュー反映)
-    quick_thresholds = gate_cfg.get("g1_1_quick_exec", {})
-    full_thresholds = gate_cfg.get("g1_2_full_exec", {})
-    quick_judgment = g1_1_quick_judgment(metrics, quick_thresholds)
-    full_judgment = g1_2_full_judgment(metrics, full_thresholds)
-
-    # 結果統合
-    judgment["two_stage"] = {
-        "g1_1_quick": quick_judgment,
-        "g1_2_full": full_judgment,
-    }
-
-    logger.info(f"G1.1 (legacy) Result: {judgment['gate_result']}")
-    logger.info(f"G1.1-quick  Result: {quick_judgment['gate_result']}")
-    logger.info(f"G1.2-full   Result: {full_judgment['gate_result']}")
-
-    for check_name, check_data in judgment["checks"].items():
-        status = "✓" if check_data["pass"] else "✗"
-        logger.info(f"  {status} {check_name}: {check_data['value']:.4f} (threshold: {check_data['threshold']})")
-
-    # 116# quick/full の各チェックも表示
-    logger.info("--- G1.1-quick checks ---")
-    for check_name, check_data in quick_judgment["checks"].items():
-        status = "✓" if check_data["pass"] else "✗"
-        val = check_data.get("value", "N/A")
-        thr = check_data.get("threshold", check_data.get("threshold_mean", "N/A"))
-        val_str = f"{val:.4f}" if isinstance(val, float) else str(val)
-        logger.info(f"  {status} {check_name}: {val_str} (threshold: {thr})")
-
-    logger.info("--- G1.2-full checks ---")
-    for check_name, check_data in full_judgment["checks"].items():
-        status = "✓" if check_data["pass"] else "✗"
-        val = check_data.get("value", "N/A")
-        thr = check_data.get("threshold", check_data.get("alpha", "N/A"))
-        val_str = f"{val:.4f}" if isinstance(val, float) else str(val)
-        logger.info(f"  {status} {check_name}: {val_str} (threshold: {thr})")
-
-    # 117# 3 系列同時出力 (115# Q10.6: 分母定義の不一致解消)
-    logger.info("--- 3-series fill rate summary (117#) ---")
-    logger.info(
-        f"  overall  (raw):      {metrics.overall_fill_rate:.4f} "
-        f"({metrics.filled_orders}/{metrics.total_orders})"
-    )
-    logger.info(
-        f"  clean    (quarantine removed): "
-        f"{metrics.filled_orders}/{len(records)} "
-        f"= {metrics.filled_orders / len(records):.4f}"
-    )
-    logger.info(
-        f"  attempted (skip_gate removed): {metrics.attempted_fill_rate:.4f} "
-        f"({metrics.filled_orders}/{metrics.attempted_orders})"
-    )
-
-    # 117# cancel reason breakdown (115# Q10.6)
-    if metrics.cancel_reason_breakdown:
-        logger.info("--- Cancel reason breakdown (117#) ---")
-        for reason, count in sorted(
-            metrics.cancel_reason_breakdown.items(),
-            key=lambda x: x[1],
-            reverse=True,
-        ):
-            pct = count / metrics.cancelled_orders * 100 if metrics.cancelled_orders > 0 else 0
-            logger.info(f"  {reason}: {count} ({pct:.1f}%)")
-
-    return judgment
-
+# 119# run_results_only / save_judgment は results_analyzer.py に移動済み
 
 # ======================================================================
 # CLI
@@ -3228,9 +2522,7 @@ def main() -> None:
         rd = args.results_dir or "results/v460/fill_test"
         result = run_results_only(rd)
         if args.output:
-            Path(args.output).parent.mkdir(parents=True, exist_ok=True)
-            with open(args.output, "w", encoding="utf-8") as f:
-                json.dump(result, f, indent=2, ensure_ascii=False)
+            save_judgment(result, args.output)
             logger.info(f"Saved judgment to {args.output}")
         print(json.dumps(result, indent=2, ensure_ascii=False))
         # 047# A3: FINAL PASS のみ exit 0。INTERIM/PROVISIONAL PASS は exit 2。
@@ -3385,9 +2677,7 @@ def main() -> None:
         print(out_str)
 
         if args.output:
-            Path(args.output).parent.mkdir(parents=True, exist_ok=True)
-            with open(args.output, "w", encoding="utf-8") as f:
-                f.write(out_str)
+            save_judgment(judgment, args.output)
             logger.info(f"Saved judgment to {args.output}")
 
         # 049# §4-#1: exit code を results-only と統一

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 119# God Object 分割 & ztb/ 活用 — run_fill_test.py リファクタリング
+
+- **run_fill_test.py**: 3411→2701 行 (-710 行, -20.8%)
+  - `FillTestConfig` + 3 helper dataclass → `scripts/v460/lib/fill_config.py` に移動
+  - `_try_save_batch` / `_save_batch_by_date` / `_emergency_dump` / `_maybe_flush_batch`
+    → `scripts/v460/lib/batch_persistence.py` (`BatchPersistence` クラス) に委譲
+  - `run_results_only` / judgment 保存 → `scripts/v460/lib/results_analyzer.py` に移動
+  - **Bug fix**: `self.config.base_offset_ratio` (存在しないフィールド参照)
+    → `self._base_offset_ratio` に修正 (状態永続化時の AttributeError 防止)
+- **ztb/ 活用**: `ztb.io.common.ensure_parent_dir` (BatchPersistence), `ztb.io.json_io.write_json` (atomic judgment 出力)
+- テスト: 878 passed (変更なし)
+
 ### [v460] Phase 2 (G1.1-exec) — 2026-02-13
 
 v460 "Microstructure Edge" — BTC/JPY maker-only (手数料 0%) 自動取引システム。
