@@ -183,6 +183,9 @@ spread_adaptive:
 # 072# use_ob_features トグル追加: ph2 通過後に true へ切替で OB 特徴量復元
 skip_gate:
   enabled: true
+  # 118# A3: sell 側 SkipGate 無効化 (098# §4.2 逆選別対策 — 実験的)
+  buy_enabled: true
+  sell_enabled: false            # sell は SkipGate skip すると逆に PnL 悪化するため無効化
   mode: as                     # "as" (AS 分類器) / "pnl" (PnL 回帰)
   model_path: models/v460/skip_gate_as.pkl
   as_threshold: 0.52           # 100# P0-2: P(AS) 分布 [0.42,0.56] に整合

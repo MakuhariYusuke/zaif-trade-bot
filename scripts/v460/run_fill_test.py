@@ -1467,9 +1467,8 @@ def main() -> None:
         f"loss_cap_auto={config.loss_cap_auto}"
     )
 
-    runner = FillTestRunner(adapter, config, yaml_cfg=yaml_cfg)
-
     # 024# O3: ログファイル出力 (ローテーション付き)
+    # 122# FileHandler を FillTestRunner 初期化前に設定 (warm_start 等のログが記録されるように)
     log_dir = Path(config.results_dir) / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     file_handler = logging.handlers.RotatingFileHandler(
@@ -1484,6 +1483,8 @@ def main() -> None:
     )
     logging.getLogger().addHandler(file_handler)
     logger.info(f"Log file: {log_dir / 'fill_test.log'}")
+
+    runner = FillTestRunner(adapter, config, yaml_cfg=yaml_cfg)
 
     # Signal handler for graceful shutdown
     def _signal_handler(signum: int, frame: object) -> None:

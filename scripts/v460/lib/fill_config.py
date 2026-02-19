@@ -125,6 +125,9 @@ class FillTestConfig:
     wide_spread_ratio: float = 0.5         # 広い時の offset 割引
     # 062# S5: SkipGate ML フィルター (AS 分類器ベースの注文スキップ)
     skip_gate_enabled: bool = False
+    # 118# A3: side 別有効/無効 (sell 逆選別対策)
+    skip_gate_buy_enabled: bool = True
+    skip_gate_sell_enabled: bool = True
     skip_gate_mode: str = "as"             # "pnl" or "as" (061# AS 分類器推奨)
     skip_gate_model_path: str = "models/v460/skip_gate_as.pkl"  # モデルファイル
     skip_gate_as_threshold: float = 0.52   # 100# AS 確率スキップ閾値 (0.65→0.52)
@@ -391,6 +394,9 @@ class FillTestConfig:
             "as_threshold": "skip_gate_as_threshold",
             "pnl_threshold": "skip_gate_pnl_threshold",
             "max_skip_rate": "skip_gate_max_skip_rate",
+            # 118# A3: side 別有効/無効
+            "buy_enabled": "skip_gate_buy_enabled",
+            "sell_enabled": "skip_gate_sell_enabled",
             # 068# §3.3: side 別閾値
             "as_threshold_buy": "skip_gate_as_threshold_buy",
             "as_threshold_sell": "skip_gate_as_threshold_sell",

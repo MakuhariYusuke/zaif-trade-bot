@@ -90,6 +90,9 @@ class SkipGateConfig:
 
     threshold_bps: float = 0.0  # PnL 予測がこれ以下ならスキップ (mode=pnl)
     enabled: bool = True
+    # 118# A3: side 別有効/無効 (sell 逆選別対策)
+    buy_enabled: bool = True
+    sell_enabled: bool = True
     max_skip_rate: float = 0.7  # 連続スキップ率の上限
     # 061#: AS 分類器モード
     mode: str = "pnl"  # "pnl" (Ridge PnL) or "as" (AS probability)
@@ -185,6 +188,20 @@ class SkipGate:
                 threshold_bps=self.config.threshold_bps,
                 features_used=0,
                 reason="gate_disabled",
+            )
+
+        # 118# A3: side 別無効化 (sell 逆選別対策)
+        if side == "buy" and not self.config.buy_enabled:
+            return SkipDecision(
+                should_skip=False, predicted_pnl_bps=0.0,
+                threshold_bps=self.config.threshold_bps,
+                features_used=0, reason="buy_gate_disabled",
+            )
+        if side == "sell" and not self.config.sell_enabled:
+            return SkipDecision(
+                should_skip=False, predicted_pnl_bps=0.0,
+                threshold_bps=self.config.threshold_bps,
+                features_used=0, reason="sell_gate_disabled",
             )
 
         # 059# NEW-04: 未提供特徴量は NaN (Pipeline の Imputer が処理)
@@ -595,22 +612,34 @@ def warm_start_skip_gate_thresholds(
     # P(AS) 分布 [0.42, 0.56] に対して高すぎて 6+ サイクル収束ラグが発生する。
     # 履歴が十分あれば _calibrate_threshold で閾値を事前設定する。
     if gate.config.adaptive_threshold:
-        if buy_probs and len(buy_probs) >= gate.config.adaptive_min_samples:
-            # 履歴の中央値を擬似的に使って較正を起動
-            _dummy_prob = buy_probs[-1]
-            base_th = gate.config.as_threshold_buy or gate.config.as_threshold
-            calibrated_buy = gate._calibrate_threshold("buy", _dummy_prob, base_th)
-            logger.info(
-                f"[skip_gate] 100# warm_start calibration: buy threshold "
-                f"{base_th:.3f}→{calibrated_buy:.3f}"
+        # 118# A2: warm_start で閾値を即座に収束させる
+        # (旧: _calibrate_threshold 1 回 → adaptive_step しか進まず 6+ cycle ラグ)
+        # 直接分位点を算出して閾値を即座設定 (_calibrate_threshold ループだと
+        # 履歴に重複追加される副作用があるため、直接計算に変更)
+        cfg = gate.config
+        for side_name, probs, target_rate in [
+            ("buy", buy_probs, cfg.target_skip_rate_buy),
+            ("sell", sell_probs, cfg.target_skip_rate_sell),
+        ]:
+            if not probs or len(probs) < cfg.adaptive_min_samples:
+                continue
+            prev_th = (
+                (cfg.as_threshold_buy if side_name == "buy" else cfg.as_threshold_sell)
+                or cfg.as_threshold
             )
-        if sell_probs and len(sell_probs) >= gate.config.adaptive_min_samples:
-            _dummy_prob = sell_probs[-1]
-            base_th = gate.config.as_threshold_sell or gate.config.as_threshold
-            calibrated_sell = gate._calibrate_threshold("sell", _dummy_prob, base_th)
+            sorted_probs = sorted(probs)
+            q_idx = min(int(len(sorted_probs) * (1.0 - target_rate)),
+                        len(sorted_probs) - 1)
+            target_th = sorted_probs[q_idx]
+            new_th = max(cfg.adaptive_floor, min(cfg.adaptive_ceiling, target_th))
+            if side_name == "buy":
+                cfg.as_threshold_buy = new_th
+            else:
+                cfg.as_threshold_sell = new_th
             logger.info(
-                f"[skip_gate] 100# warm_start calibration: sell threshold "
-                f"{base_th:.3f}→{calibrated_sell:.3f}"
+                f"[skip_gate] 118# warm_start calibration: {side_name} threshold "
+                f"{prev_th:.3f}→{new_th:.3f} (immediate, "
+                f"quantile={target_th:.3f}, n={len(probs)})"
             )
 
     logger.info(

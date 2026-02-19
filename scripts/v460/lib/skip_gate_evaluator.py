@@ -57,6 +57,9 @@ class SkipGateEvaluator:
             skip_gate.config.as_threshold = config.skip_gate_as_threshold
             skip_gate.config.threshold_bps = config.skip_gate_pnl_threshold
             skip_gate.config.max_skip_rate = config.skip_gate_max_skip_rate
+            # 118# A3: side 別有効/無効
+            skip_gate.config.buy_enabled = config.skip_gate_buy_enabled
+            skip_gate.config.sell_enabled = config.skip_gate_sell_enabled
             # 068# §3.3: side 別閾値
             skip_gate.config.as_threshold_buy = config.skip_gate_as_threshold_buy
             skip_gate.config.as_threshold_sell = config.skip_gate_as_threshold_sell
