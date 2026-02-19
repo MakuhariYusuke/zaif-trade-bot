@@ -1,8 +1,12 @@
 # 118# 残課題・未検討提案の深掘り考察
 
 **Date**: 2026-02-19  
+**Updated**: 2026-02-20 (追記: §5/§8 disposition, §9 実行, Appendix B/C/D2/F)  
 **Phase**: phg (フェーズ横断)  
 **前提文書**: 000#–117# 全 96 文書 + fill_test 144.8h 実測データ
+
+> **凡例**: 本文書内の「追記」「§9-A1」等のタグは、初版 (2/19) 以降のセッションで
+> 本文書に直接追加・更新した内容を指す。対応するコミットハッシュは Appendix B に記載。
 
 ---
 
@@ -19,10 +23,10 @@
 - [§8 新規考察: ドキュメントから見えない盲点](#8-新規考察-ドキュメントから見えない盲点)
 - [§9 提案: 次の行動計画](#9-提案-次の行動計画)
 - [Appendix A: 53 OPEN items 全件一覧](#appendix-a-53-open-items-全件一覧)
-- [Appendix B: 39 RESOLVED items](#appendix-b-22--39-resolved-items)
-- [Appendix C: §5 未検討提案 Disposition サマリ](#appendix-c-未検討提案-5-全件-disposition-サマリ-122)
-- [Appendix D2: §8 Disposition サマリ](#appendix-d2-8-全件-disposition-サマリ-122)
-- [Appendix F: SkipGate 再訓練計画](#appendix-f-skipgate-再訓練計画-122-特徴量統合)
+- [Appendix B: 42 RESOLVED items](#appendix-b-22--42-resolved-items)
+- [Appendix C: §5 未検討提案 Disposition サマリ (追記)](#appendix-c-未検討提案-5-全件-disposition-サマリ-追記)
+- [Appendix D2: §8 Disposition サマリ (追記)](#appendix-d2-8-全件-disposition-サマリ-追記)
+- [Appendix F: SkipGate 再訓練計画 (特徴量統合)](#appendix-f-skipgate-再訓練計画-特徴量統合)
 
 ---
 
@@ -54,7 +58,7 @@ F4 (PnL30 p ≥ 0.05) を PASS できるかが最大の焦点。
 特に AS_ratio 30.8% は閾値 30% を僅か 0.8pt 超過しており、
 改善施策の実効性次第で PASS/FAIL が分かれる。
 
-### 全体像: 53 OPEN / 22 RESOLVED / 24 提案未検討 → 122# **42 RESOLVED / 11 残留**
+### 全体像: 53 OPEN / 22 RESOLVED / 24 提案未検討 → 追記: **42 RESOLVED / 11 残留**
 
 | カテゴリ | OPEN | RESOLVED | 要点 |
 |---------|------|----------|------|
@@ -305,10 +309,10 @@ sell 専用特徴量候補 (098# §4.3):
 
 ---
 
-## §5 未検討のまま棚上げされた提案 — 122# Disposition
+## §5 未検討のまま棚上げされた提案 — Disposition (追記)
 
 以下は各ドキュメントで提案されながら、後続文書で明示的に検討・却下されていない項目。
-**122# で全件 disposition を確定:**
+**追記で全件 disposition を確定:**
 
 ### 5.1 AS 判定 horizon 30s → 60s 変更 [098# §6]
 
@@ -317,7 +321,7 @@ sell 専用特徴量候補 (098# §4.3):
 **提案内容**: 30s 時点の逆行で AS と判定するが、120s では回復するデータがある。
 AS 判定を 60s に延長すれば、AS_ratio が大幅に低下する可能性。
 
-**122# 実測データ**:
+**実測データ (追記)**:
 - PnL30 = +0.002bps (n=759) → 前回 -0.172bps から改善
 - PnL120 は正値を維持 (VG群 +1.735bps)
 - B2 で F4b (PnL60s) / F4c (PnL120s) を Gate に追加済
@@ -353,14 +357,14 @@ round-trip (buy→sell の往復) ベースに変更。
 
 ### 5.4 Volatility Guard [107# Phase 2]
 
-**状態**: ✅ **実装済み + 122# 効果測定完了**
+**状態**: ✅ **実装済み + 効果測定完了 (追記)**
 
 fill_test ログで `volatility_guard` 発動を確認:
 ```
 [volatility_guard] 107# buy offset boosted: 0.1125→0.2250 (vpin=0.95)
 ```
 
-**122# A4 効果測定結果** (`vg_and_trend.py`):
+**§9-A4 効果測定結果** (`vg_and_trend.py`):
 - VG 発動 135 サイクル (全体の 14.1%)
 - AS rate: VG群 **21.5%** vs 非VG群 **29.2%** → **-7.7pt 改善 (有効)**
 - PnL120: VG群 **+1.735bps** vs 非VG群 **-0.148bps** → VG 環境でも長期回復
@@ -374,7 +378,7 @@ fill_test ログで `volatility_guard` 発動を確認:
 **提案内容**: order book imbalance に基づく smart side selection を再有効化。
 現在は OB 取得無効化のため `_last_imbalance` が更新されず、dead code 化。
 
-**122# データによる考察**:
+**データによる考察 (追記)**:
 - buy PnL30 = **+0.222bps** vs sell PnL30 = **-0.678bps** → **BUY が明確に優位**
 - 071#/072# のOBトグル化で OB 特徴量不使用に移行済
 - price_velocity_60s は preorder 16特徴量に含まれ (097#)、
@@ -438,7 +442,7 @@ Gate FAIL なら AB テストの前に §3 の P0 施策を優先。
 **提案内容**: sell 30s PnL = -0.632bps だが、120s PnL はプラス転換するデータあり。
 sell 約定後の保持期間を延長する。
 
-**122# データ実績**:
+**データ実績 (追記)**:
 - sell PnL30 = **-0.678bps** (n=377) — 依然として負
 - VG群の PnL120 = **+1.735bps** → 120s で回復傾向は健在
 - BTC/JPY は平均回帰傾向あり (30s 逆行 → 120s 回復)
@@ -538,7 +542,7 @@ ph3 進入前の修正が必須。
 
 ### 8.1 Coincheck API の rate limit 実態
 
-**状態**: ✅ **122# 実測完了 — 問題なし**
+**状態**: ✅ **実測完了 (追記) — 問題なし**
 
 013# で Coincheck rate limit = 4 req/s と記載。fill_test ログ分析結果:
 
@@ -563,11 +567,11 @@ ph3 で lot を引き上げる際に自然解消。**対応不要**。
 
 ### 8.2 post_only reject 率の高さ
 
-**状態**: ✅ **122# 実測完了 — 原因特定済**
+**状態**: ✅ **実測完了 (追記) — 原因特定済**
 
 cancel 理由で `postonly_reject` = **47 件 (12.9%)** — 依然として高い。
 
-**122# spread 分析結果**:
+**spread 分析結果 (追記)**:
 | 区分 | spread_at_order 平均 | 中央値 | n |
 |---|---:|---:|---:|
 | postonly_reject | **1,915 JPY** | 2,035 JPY | 47 |
@@ -590,10 +594,10 @@ cancel 理由で `postonly_reject` = **47 件 (12.9%)** — 依然として高�
 
 **状態**: ⚠️ **部分解決。自動再起動は ph5 で実装**
 
-今回 PID 31236 が 144.8h で停止。122# A1 で手動再起動済。
+今回 PID 31236 が 144.8h で停止。§9-A1 で手動再起動済。
 113# の StatePersistence は実装済みだが、**自動再起動の仕組みがない**。
 
-**122# 実績**: 再起動後の fill_test は PID 51480 で安定稼働中 (Cycle 1123+)。
+**追記実績**: 再起動後の fill_test は PID 51480 で安定稼働中 (Cycle 1123+)。
 StatePersistence が機能し、param_adapter/SkipGate の warm_start が正常に完了。
 ただし、regime_detector の warm-up は 20 cycle の "unknown" が発生。
 
@@ -633,14 +637,14 @@ ph3 進入前の必須チェック。
 
 ### 8.6 時系列非定常性への対処
 
-**状態**: ✅ **122# B4 で実測完了 — 改善トレンド確認**
+**状態**: ✅ **§9-B4 で実測完了 — 改善トレンド確認**
 
-**122# vg_and_trend.py による日別 AS トレンド**:
+**vg_and_trend.py による日別 AS トレンド**:
 - 2/13: 40.5% → 2/14: 31.1% → 2/15: 34.7% → 2/17: 28.5% → 2/18: 18.8% → 2/19: 23.8%
 - **前半平均 35.4% → 後半 26.7% → 改善トレンド**
 - sell AS は A3 (sell SkipGate 無効化) 後に 41.7% → 23.0% → 22.2% と改善
 
-**122# regime 分布実測 (n=1123)**:
+**regime 分布実測 (追記, (n=1123)**:
 | regime | 件数 | 全体% | AS% | PnL30 |
 |---|---:|---:|---:|---:|
 | ranging | 267 | 32.2% | 50.2% | +0.097bps |
@@ -668,11 +672,11 @@ ph2 段階で bitFlyer への fail-over は不要だが、
 
 ### 8.8 SkipGate と time_filter の役割重複
 
-**状態**: 📋 **122# A4 で VG 有効性確認済。段階的統合計画は健全**
+**状態**: 📋 **§9-A4 で VG 有効性確認済。段階的統合計画は健全**
 
 SkipGate (ML) と time_filter (ルールベース) が同じ「高リスクサイクル除外」役割。
 
-**122# 特徴量分析による整理**:
+**特徴量分析による整理 (追記)**:
 - SkipGate preorder 16 特徴量に `hour_sin/cos` は既に含まれる (097#)
 - LR coeff 重要度: `hour_cos`=0.0406 (5位), `hour_sin`=0.0053 (10位)
   → 時間帯情報は既にモデルが学習中だが、AUC=0.442 では不十分
@@ -681,12 +685,12 @@ SkipGate (ML) と time_filter (ルールベース) が同じ「高リスクサ�
 
 **今後の統合ロードマップ** (107# Phase 3 踏襲):
 1. ✅ Phase 1: SkipGate target_skip_rate 引上げ (107# 実装済)
-2. ✅ Phase 2: Volatility Guard (107# 実装, 122# A4 有効性確認)
+2. ✅ Phase 2: Volatility Guard (107# 実装, §9-A4 有効性確認)
 3. ⏳ Phase 3 Step 1: BUY 7h→3h, SELL 5h→3h (VG 有効確認済のため実行可)
 4. ⏳ Phase 3 Step 2: 最悪時間帯のみ
 5. ⏳ Phase 3 Step 3: 全廃 (SkipGate 再訓練後)
 
-**結論**: 現行の Phase 3 計画は健全。VG 有効性が 122# で確認されたため、
+**結論**: 現行の Phase 3 計画は健全。VG 有効性が §9-A4 で確認されたため、
 **次回 fill_test で Step 1 を実行する根拠が揃った**。
 ただし SkipGate AUC が低いまま time_filter を縮小するので、
 **Step 1 実施前の SkipGate 再訓練が望ましい** (Appendix F 参照)。
@@ -699,19 +703,19 @@ SkipGate (ML) と time_filter (ルールベース) が同じ「高リスクサ�
 
 | # | 施策 | 出典 | コスト | インパクト | 状態 |
 |---|------|------|-------|----------|------|
-| A1 | fill_test 再起動 (残 23h) | — | 5 min | F7 PASS に必須 | ✅ 122# |
-| A2 | warm_start threshold 即復元 | 098# §3.2 | 数行 | +0.1bps | ✅ 122# `db41b7c57` |
-| A3 | sell SkipGate 無効化 (実験) | 098# §4.2 | YAML 1 行 | 逆選別解消 | ✅ 122# `db41b7c57` |
-| A4 | Volatility Guard 効果測定 | 107# | 分析スクリプト | 意思決定の基盤 | ✅ 122# vg_and_trend.py (AS -7.7pt, VG有効) |
+| A1 | fill_test 再起動 (残 23h) | — | 5 min | F7 PASS に必須 | ✅ 完了 |
+| A2 | warm_start threshold 即復元 | 098# §3.2 | 数行 | +0.1bps | ✅ `db41b7c57` |
+| A3 | sell SkipGate 無効化 (実験) | 098# §4.2 | YAML 1 行 | 逆選別解消 | ✅ `db41b7c57` |
+| A4 | Volatility Guard 効果測定 | 107# | 分析スクリプト | 意思決定の基盤 | ✅ vg_and_trend.py (AS -7.7pt, VG有効) |
 
 ### Phase B: fill_test 168h完了 — Gate 判定
 
 | # | 施策 | 出典 | コスト | 状態 |
 |---|------|------|-------|------|
-| B1 | G1.1-quick / G1.2-full 自動判定実行 | 116# | 中 | ✅ 122# `8a27ce2af` gate_judgment.py |
-| B2 | Holm-Bonferroni 補正実装 | 000# §3.7 | 低 | ✅ 122# `8a27ce2af` F4/F4b/F4c 3TF |
-| B3 | PnL30 / PnL120 の t 検定結果報告 | — | 低 | ✅ 122# `8a27ce2af` FillMetrics 統合 |
-| B4 | AS rate の日別トレンド分析 | 新規 | 低 | ✅ 122# vg_and_trend.py (前半35.4%→後半26.7%) |
+| B1 | G1.1-quick / G1.2-full 自動判定実行 | 116# | 中 | ✅ `8a27ce2af` gate_judgment.py |
+| B2 | Holm-Bonferroni 補正実装 | 000# §3.7 | 低 | ✅ `8a27ce2af` F4/F4b/F4c 3TF |
+| B3 | PnL30 / PnL120 の t 検定結果報告 | — | 低 | ✅ `8a27ce2af` FillMetrics 統合 |
+| B4 | AS rate の日別トレンド分析 | 新規 | 低 | ✅ vg_and_trend.py (前半35.4%→後半26.7%) |
 
 ### Phase C: Gate PASS 後 — ph3 準備
 
@@ -757,24 +761,24 @@ fill_test 再起動 (A1-A4)
 
 ### A. Gate 判定関連 (7 件)
 
-| ID | 文書 | 内容 | 優先度 | 122# 状態 |
+| ID | 文書 | 内容 | 優先度 | 追記 状態 |
 |----|------|------|--------|-----------|
 | A1 | 014# | G1.2-full 判定: 各指標の実測値 vs 閾値 | P0 | ✅ gate_judgment.py |
 | A2 | 092# | E1 閾値 (90%→85%) と G1.2 F1 (70%) の整合性確認 | P0 | Gate判定結果待ち |
 | A3 | 014# | 継続中止ルール (n≥200 fill_rate<70% → 中止) | P0 | 運用中 |
-| A4 | 111# | Holm-Bonferroni 補正の実装 | P1 | ✅ 122# B2 |
+| A4 | 111# | Holm-Bonferroni 補正の実装 | P1 | ✅ §9-B2 |
 | A5 | 107# | time_filter Phase 3 Step 1 (fill 数に影響) | P1 | VG有効確認→次回FT |
-| A6 | 112# | SLO/Gate 自動判定パイプライン | P1 | ✅ 122# B1 |
+| A6 | 112# | SLO/Gate 自動判定パイプライン | P1 | ✅ §9-B1 |
 | A7 | 092# | Round-trip/Net Inventory の Gate 昇格検討 | P2 | 棚上げ妥当 |
 
 ### B. 収益性直結 (10 件)
 
-| ID | 文書 | 内容 | 優先度 | 122# 状態 |
+| ID | 文書 | 内容 | 優先度 | 追記 状態 |
 |----|------|------|--------|-----------|
 | B1 | 095# | SkipGate ランダム分類器問題 | P0 | sell無効化+buy継続 (A3) |
 | B2 | 095# | fast_fill / param_adapter 状態競合 | P0 | ✅ 100# side分離で解消 |
 | B3 | 098# | fast_fill has_negative_edge 検出漏れ 50% | P0 | ✅ 100# L2実装済 |
-| B4 | 098# | SkipGate warm_start 閾値未復元 | P0 | ✅ 122# A2 直接quantile |
+| B4 | 098# | SkipGate warm_start 閾値未復元 | P0 | ✅ §9-A2 直接quantile |
 | B5 | 098# | Regime Detector warm-up (全件 unknown) | P1 | ✅ 101# P1-5 warm-up (window×3=60件) で update() フル実行。hysteresis含め状態復元済。unknown 93件は初回起動20cycle |
 | B6 | 095# | param_adapter 全レコード使用 (dilution) | P1 | ✅ 096# window=120 |
 | B7 | 098# | Offset vs PnL 因果分析未着手 | P1 | Gate PASS後 AB テスト |
@@ -799,20 +803,20 @@ fill_test 再起動 (A1-A4)
 
 ### D. SkipGate/ML (8 件)
 
-| ID | 文書 | 内容 | 優先度 | 122# 状態 |
+| ID | 文書 | 内容 | 優先度 | 追記 状態 |
 |----|------|------|--------|-----------|
 | D1 | 097# | データ 500 蓄積で再訓練 | P1 | ✅ filled 759件→可能。Appendix F に再訓練計画 |
-| D2 | 097# | regime 特徴量全 fold 定数 0 | P1 | ✅ 122# 実測: regime分布 ranging=32%/trending=16%/unknown=10% → 定数0問題は097#の13サイクル限定。再訓練で自然解消 |
+| D2 | 097# | regime 特徴量全 fold 定数 0 | P1 | ✅ 実測: regime分布 ranging=32%/trending=16%/unknown=10% → 定数0問題は097#の13サイクル限定。再訓練で自然解消 |
 | D3 | 097# | Skip10% 効果なし → 15-25% が妥当 | INFO | YAML target 20-25% 設定済 |
-| D4 | 098# | sell SkipGate 逆選別 | P0 | ✅ 122# A3 sell無効化 |
+| D4 | 098# | sell SkipGate 逆選別 | P0 | ✅ §9-A3 sell無効化 |
 | D5 | 098# | sell 専用追加特徴量候補 | P2 | ✅ 過去資料統合完了: spread_bps(058# §3, 097# coeff=0.0494), hour_cos(097# coeff=0.0406), recent_sell_pnl_mean(098# §4.3)。Appendix F で整理 |
 | D6 | 095# | SkipGate 抜本見直し | P0 | A3暫定+再訓練(Appendix F)で本格対応 |
 | D7 | 099# | sell 専用 SkipGate モデル | P2 | ✅ 098# §4.2 で sell P(AS) 逆効果実証。再訓練で buy/sell 分離推奨。buy 382件, sell 377件で分割可能 |
-| D8 | 106# | SkipGate evaluate/warm_start テスト不足 | P2 | ✅ 122# test_skip_gate_d8.py 30テスト: A3 side無効化7件 + A2 warm_start即収束6件 + build_features 10件 + save/load 2件 + evaluate edge 5件 |
+| D8 | 106# | SkipGate evaluate/warm_start テスト不足 | P2 | ✅ test_skip_gate_d8.py 30テスト: A3 side無効化7件 + A2 warm_start即収束6件 + build_features 10件 + save/load 2件 + evaluate edge 5件 |
 
 ### E. インフラ/コード品質 (12 件)
 
-| ID | 文書 | 内容 | 優先度 | 122# 状態 |
+| ID | 文書 | 内容 | 優先度 | 追記 状態 |
 |----|------|------|--------|-----------|
 | E1 | 106# | run_fill_test.py God Object | ✅ 完了 (121#) | — |
 | E2 | 106# | ドキュメント命名違反 28 件 | LOW | 棚上げ |
@@ -823,13 +827,13 @@ fill_test 再起動 (A1-A4)
 | E7 | 013# | StreamBuffer v460 組込み | 将来 | 棚上げ |
 | E8 | 111# | Dead code 整理 (adaptation/) | LOW | 棚上げ |
 | E9 | 113# | 運用失敗モードテスト | MEDIUM | ph3 前に実施。§8.3 参照 |
-| E10 | 113# | PnL Monte Carlo 定期実行 | MEDIUM | ✅ 122# gate_judgment.py に --monte-carlo フラグで統合。19テスト (test_gate_judgment.py) |
+| E10 | 113# | PnL Monte Carlo 定期実行 | MEDIUM | ✅ gate_judgment.py に --monte-carlo フラグで統合。19テスト (test_gate_judgment.py) |
 | E11 | 106# | type: ignore 残 2 箇所 | N/A | 正当→維持 |
 | E12 | 112# | God Object 再発リスク監視 | INFO | 1568行で安定 |
 
 ---
 
-## Appendix B: 22 → 39 RESOLVED items
+## Appendix B: 22 → 42 RESOLVED items
 
 | 元 ID | 文書 | 内容 | 解決時期 |
 |--------|------|------|---------|
@@ -856,28 +860,28 @@ fill_test 再起動 (A1-A4)
 | — | 092# E6 | Round-trip KPI (informational) 追加 | 092# |
 | — | 092# E7 | Net Inventory (informational) 追加 | 092# |
 | B3 | 098# | fast_fill has_negative_edge 50% → L2 対応 | 100# |
-| B4 | 098# | warm_start 閾値即復元 | 122# `db41b7c57` |
+| B4 | 098# | warm_start 閾値即復元 | `db41b7c57` (§9-A2) |
 | B6 | 095# | param_adapter recency window | 096# window=120 |
-| D4 | 098# | sell SkipGate 逆選別 | 122# `db41b7c57` A3 |
-| A4(§9) | 111# | Holm-Bonferroni 3TF 補正 | 122# `8a27ce2af` B2 |
-| A6(§9) | 112# | Gate 自動判定パイプライン | 122# `8a27ce2af` B1 |
-| §9 A4 | 107# | Volatility Guard 効果測定 | 122# vg_and_trend.py |
-| §9 B4 | 新規 | AS 日別トレンド分析 | 122# vg_and_trend.py |
+| D4 | 098# | sell SkipGate 逆選別 | `db41b7c57` (§9-A3) |
+| A4(§9) | 111# | Holm-Bonferroni 3TF 補正 | `8a27ce2af` (§9-B2) |
+| A6(§9) | 112# | Gate 自動判定パイプライン | `8a27ce2af` (§9-B1) |
+| §9 A4 | 107# | Volatility Guard 効果測定 | §9-A4 vg_and_trend.py |
+| §9 B4 | 新規 | AS 日別トレンド分析 | §9-A4 vg_and_trend.py |
 | D5(§9) | 095# | order timeout 300→90s | 096# |
 | B2 | 095# | fast_fill/param_adapter 状態競合 | 100# side分離 |
-| §5.1 | 098# | AS判定 horizon → E3 Gate追加で代替 | 122# B2 PnL120 |
-| §5.5 | 091# | Smart Side → side_aligned_velocity で代替 | 122# 分析 |
-| §8.1 | 013# | API rate limit 実測: 429=0件 | 122# ログ分析 |
-| §8.2 | 013# | post_only reject: narrow spread起因特定 | 122# spread分析 |
-| §8.6 | 新規 | 時系列非定常性 → B4改善トレンド確認 | 122# vg_and_trend |
-| D2 | 097# | regime特徴量定数0 → 759件で自然解消 | 122# regime分布実測 |
-| B5 | 098# | Regime warm-up → 101# P1-5 warm-up で解決 | 122# update()フル実行確認 |
-| D8 | 106# | SkipGate テスト不足 → 30テスト追加 | 122# test_skip_gate_d8.py |
-| E10 | 113# | MC定期実行 → gate_judgment.py統合+19テスト | 122# test_gate_judgment.py |
+| §5.1 | 098# | AS判定 horizon → E3 Gate追加で代替 | §9-B2 PnL120 |
+| §5.5 | 091# | Smart Side → side_aligned_velocity で代替 | 追記分析 |
+| §8.1 | 013# | API rate limit 実測: 429=0件 | 追記ログ分析 |
+| §8.2 | 013# | post_only reject: narrow spread起因特定 | 追記spread分析 |
+| §8.6 | 新規 | 時系列非定常性 → B4改善トレンド確認 | §9-B4 vg_and_trend |
+| D2 | 097# | regime特徴量定数0 → 759件で自然解消 | 追記regime分布実測 |
+| B5 | 098# | Regime warm-up → 101# P1-5 warm-up で解決 | 追記update()フル実行確認 |
+| D8 | 106# | SkipGate テスト不足 → 30テスト追加 | test_skip_gate_d8.py |
+| E10 | 113# | MC定期実行 → gate_judgment.py統合+19テスト | test_gate_judgment.py |
 
 ---
 
-## Appendix C: 未検討提案 §5 全件 Disposition サマリ (122#)
+## Appendix C: 未検討提案 §5 全件 Disposition サマリ (追記)
 
 | §5 項 | 提案内容 | 出典 | Disposition | 根拠 |
 |-------|---------|------|------------|------|
@@ -894,7 +898,7 @@ fill_test 再起動 (A1-A4)
 
 ---
 
-## Appendix D2: §8 全件 Disposition サマリ (122#)
+## Appendix D2: §8 全件 Disposition サマリ (追記)
 
 | §8 項 | 内容 | Disposition | 根拠 |
 |-------|------|------------|------|
@@ -909,11 +913,11 @@ fill_test 再起動 (A1-A4)
 
 ---
 
-## Appendix F: SkipGate 再訓練計画 (122# 特徴量統合)
+## Appendix F: SkipGate 再訓練計画 (特徴量統合)
 
 ### F1. データ準備状況
 
-| 指標 | 097# 訓練時 | 122# 現在 | 改善 |
+| 指標 | 097# 訓練時 | 現在 | 改善 |
 |------|-----------|----------|------|
 | filled records | 215 | **759** | 3.5x |
 | buy / sell | ~110/~105 | **382 / 377** | 各3.5x |
@@ -951,11 +955,11 @@ fill_test 再起動 (A1-A4)
 
 #### 再訓練時の特徴量変更提案
 
-**期待改善点** (097#→122# の差分):
+**期待改善点** (097#→現在の差分):
 
 1. **regime 特徴量の復活** (D2):
    - 097# では 13 cycle / 全件 unknown → regime 特徴量が定数 0 → SelectKBest で除外
-   - 122#: ranging=267件(32%), trending=132件(16%), unknown=93件(10%)
+   - 現在: ranging=267件(32%), trending=132件(16%), unknown=93件(10%)
    - **unknown regime の AS=60.2%, PnL=-0.891bps は最悪** → regime 特徴量に情報量あり
    - 推奨: `regime_trending`, `regime_ranging` を**強制 include** (SelectKBest で除外させない)
 
@@ -1019,4 +1023,4 @@ Step 5: 評価・デプロイ
 | 065# | 16 (preorder-only) | Always selected 4特徴量特定 |
 | 070# | 72+構成×3セット | **全 ROC-AUC ≤ 0.54。SNR=0.11** |
 | 097# | 16→10 (SelectKBest) | preorder 統一。Skip20%=+0.405bps |
-| **122#** | **16 (regime 復活見込)** | **759 samples。regime/sell分離が鍵** |
+| **現在** | **16 (regime 復活見込)** | **759 samples。regime/sell分離が鍵** |
