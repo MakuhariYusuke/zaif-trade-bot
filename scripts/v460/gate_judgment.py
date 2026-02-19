@@ -97,6 +97,115 @@ def _format_check(name: str, check: dict) -> str:
     return "  ".join(parts)
 
 
+def run_gate_judgment(
+    records: list[FillRecord],
+    gate_cfg: dict,
+    *,
+    side_breakdown: bool = False,
+    monte_carlo: bool = False,
+    mc_simulations: int = 10_000,
+    mc_lot: float = 0.001,
+) -> dict:
+    """Gate 判定のコアロジック.
+
+    Args:
+        records: 全 FillRecord リスト
+        gate_cfg: gate_thresholds YAML から読んだ設定 dict
+        side_breakdown: buy/sell 別メトリクスを含めるか
+        monte_carlo: Monte Carlo シミュレーションを実行するか
+        mc_simulations: MC シミュレーション回数
+        mc_lot: MC lot size (BTC)
+
+    Returns:
+        判定結果の dict (JSON-safe)
+    """
+    # Clean/quarantine filter
+    clean, quarantine = filter_clean_records(records)
+
+    # Compute metrics
+    metrics = compute_fill_metrics(clean)
+
+    # Gate judgments
+    quick_thresholds = gate_cfg.get("g1_1_quick_exec", {})
+    full_thresholds = gate_cfg.get("g1_2_full_exec", {})
+    quick = g1_1_quick_judgment(metrics, quick_thresholds)
+    full = g1_2_full_judgment(metrics, full_thresholds)
+
+    # Elapsed hours estimation
+    if clean:
+        ts_min = min(r.timestamp for r in clean)
+        ts_max = max(r.timestamp for r in clean)
+        elapsed_h = (ts_max - ts_min) / 3600
+    else:
+        elapsed_h = 0.0
+
+    # Build result
+    result: dict = {
+        "data_summary": {
+            "total_records": len(records),
+            "clean_records": len(clean),
+            "quarantine_records": len(quarantine),
+            "elapsed_hours": round(elapsed_h, 1),
+            "measurement_days": metrics.measurement_days,
+        },
+        "metrics": {
+            "attempted_fill_rate": round(metrics.attempted_fill_rate, 4),
+            "overall_fill_rate": round(metrics.overall_fill_rate, 4),
+            "attempted_cancel_ratio": round(metrics.attempted_cancel_ratio, 4),
+            "queue_wait_median_sec": round(metrics.queue_wait_median_sec, 2),
+            "pnl_30s_mean": round(metrics.post_fill_30s_pnl_mean, 4),
+            "pnl_30s_pvalue": round(metrics.post_fill_30s_pnl_pvalue, 6),
+            "pnl_60s_mean": round(metrics.post_fill_60s_pnl_mean, 4),
+            "pnl_60s_pvalue": round(metrics.post_fill_60s_pnl_pvalue, 6),
+            "pnl_120s_mean": round(metrics.post_fill_120s_pnl_mean, 4),
+            "pnl_120s_pvalue": round(metrics.post_fill_120s_pnl_pvalue, 6),
+            "pnl_ci_upper": round(metrics.post_fill_30s_pnl_ci_upper, 4),
+            "as_ratio": round(metrics.adverse_selection_ratio, 4),
+            "skip_gate_ratio": round(metrics.skip_gate_ratio, 4),
+        },
+        "g1_1_quick": quick,
+        "g1_2_full": full,
+    }
+
+    if side_breakdown:
+        result["side_breakdown"] = {
+            "buy": _side_metrics(clean, "buy"),
+            "sell": _side_metrics(clean, "sell"),
+        }
+
+    # E10: Monte Carlo PnL シミュレーション (014# T5 → 122# gate_judgment 統合)
+    mc_result_obj = None
+    if monte_carlo:
+        try:
+            from ztb.risk.pnl_monte_carlo import (
+                MonteCarloConfig,
+                PnLMonteCarloSimulator,
+            )
+
+            filled_prices = [
+                r.order_price for r in clean
+                if r.filled and r.order_price is not None
+            ]
+            btc_price = (
+                sum(filled_prices) / len(filled_prices)
+                if filled_prices
+                else 10_300_000.0
+            )
+
+            mc_config = MonteCarloConfig(
+                n_simulations=mc_simulations,
+                lot_size_btc=mc_lot,
+                btc_price_jpy=btc_price,
+            )
+            sim = PnLMonteCarloSimulator(clean, mc_config)
+            mc_result_obj = sim.run()
+            result["monte_carlo"] = mc_result_obj.to_dict()
+        except Exception as e:
+            result["monte_carlo"] = {"error": str(e)}
+
+    return result
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="122# B1: Gate 自動判定")
     parser.add_argument(
@@ -124,6 +233,23 @@ def main() -> None:
         action="store_true",
         help="JSON のみ出力 (人間可読レポートなし)",
     )
+    parser.add_argument(
+        "--monte-carlo",
+        action="store_true",
+        help="Monte Carlo PnL シミュレーションを実行 (E10)",
+    )
+    parser.add_argument(
+        "--mc-simulations",
+        type=int,
+        default=10_000,
+        help="Monte Carlo シミュレーション回数 (default: 10,000)",
+    )
+    parser.add_argument(
+        "--mc-lot",
+        type=float,
+        default=0.001,
+        help="Monte Carlo lot size BTC (default: 0.001)",
+    )
     args = parser.parse_args()
 
     results_dir = Path(args.results_dir)
@@ -140,59 +266,19 @@ def main() -> None:
         print(f"ERROR: No fill records found in {results_dir}", file=sys.stderr)
         sys.exit(1)
 
-    # Clean/quarantine filter
-    clean, quarantine = filter_clean_records(all_records)
+    # Run judgment via core function
+    result = run_gate_judgment(
+        all_records,
+        gate_cfg,
+        side_breakdown=args.side_breakdown,
+        monte_carlo=args.monte_carlo,
+        mc_simulations=args.mc_simulations,
+        mc_lot=args.mc_lot,
+    )
 
-    # Compute metrics
-    metrics = compute_fill_metrics(clean)
-
-    # Gate judgments
-    quick_thresholds = gate_cfg.get("g1_1_quick_exec", {})
-    full_thresholds = gate_cfg.get("g1_2_full_exec", {})
-    quick = g1_1_quick_judgment(metrics, quick_thresholds)
-    full = g1_2_full_judgment(metrics, full_thresholds)
-
-    # Elapsed hours estimation
-    if clean:
-        ts_min = min(r.timestamp for r in clean)
-        ts_max = max(r.timestamp for r in clean)
-        elapsed_h = (ts_max - ts_min) / 3600
-    else:
-        elapsed_h = 0.0
-
-    # Build result
-    result = {
-        "data_summary": {
-            "total_records": len(all_records),
-            "clean_records": len(clean),
-            "quarantine_records": len(quarantine),
-            "elapsed_hours": round(elapsed_h, 1),
-            "measurement_days": metrics.measurement_days,
-        },
-        "metrics": {
-            "attempted_fill_rate": round(metrics.attempted_fill_rate, 4),
-            "overall_fill_rate": round(metrics.overall_fill_rate, 4),
-            "attempted_cancel_ratio": round(metrics.attempted_cancel_ratio, 4),
-            "queue_wait_median_sec": round(metrics.queue_wait_median_sec, 2),
-            "pnl_30s_mean": round(metrics.post_fill_30s_pnl_mean, 4),
-            "pnl_30s_pvalue": round(metrics.post_fill_30s_pnl_pvalue, 6),
-            "pnl_60s_mean": round(metrics.post_fill_60s_pnl_mean, 4),
-            "pnl_60s_pvalue": round(metrics.post_fill_60s_pnl_pvalue, 6),
-            "pnl_120s_mean": round(metrics.post_fill_120s_pnl_mean, 4),
-            "pnl_120s_pvalue": round(metrics.post_fill_120s_pnl_pvalue, 6),
-            "pnl_ci_upper": round(metrics.post_fill_30s_pnl_ci_upper, 4),
-            "as_ratio": round(metrics.adverse_selection_ratio, 4),
-            "skip_gate_ratio": round(metrics.skip_gate_ratio, 4),
-        },
-        "g1_1_quick": quick,
-        "g1_2_full": full,
-    }
-
-    if args.side_breakdown:
-        result["side_breakdown"] = {
-            "buy": _side_metrics(clean, "buy"),
-            "sell": _side_metrics(clean, "sell"),
-        }
+    # Extract quick/full from result for report display
+    quick = result["g1_1_quick"]
+    full = result["g1_2_full"]
 
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -256,6 +342,30 @@ def main() -> None:
             print(_format_check(name, check))
         print()
         print("=" * 60)
+
+        # Monte Carlo section
+        mc_data = result.get("monte_carlo")
+        if mc_data is not None and "error" not in mc_data:
+            print()
+            print("--- Monte Carlo PnL Simulation (E10, 014# T5) ---")
+            print(f"  Simulations:  {mc_data['n_simulations']:,}")
+            print(f"  Cycles/month: {mc_data['cycles_per_month']:,}")
+            print()
+            print(f"  E[PnL]:      {mc_data['pnl_mean_jpy']:+,.0f} JPY/mo")
+            print(f"  σ[PnL]:      {mc_data['pnl_std_jpy']:,.0f} JPY/mo")
+            for k, v in mc_data.get("pnl_percentiles_jpy", {}).items():
+                print(f"    {k}: {v:+,.0f} JPY")
+            print()
+            print(f"  VaR 95%:     {mc_data['var_95_jpy']:+,.0f} JPY")
+            print(f"  CVaR 95%:    {mc_data['cvar_95_jpy']:+,.0f} JPY")
+            print(f"  P(loss):     {mc_data['prob_loss']:.1%}")
+            print(f"  P(profit):   {mc_data['prob_profit']:.1%}")
+            print()
+            print(f"  Break-even fill rate: {mc_data['breakeven_fill_rate']:.0%}")
+            print("=" * 60)
+        elif mc_data is not None and "error" in mc_data:
+            print()
+            print(f"--- Monte Carlo: ERROR: {mc_data['error']} ---")
 
     # Save if requested
     if args.output:

@@ -54,15 +54,15 @@ F4 (PnL30 p ≥ 0.05) を PASS できるかが最大の焦点。
 特に AS_ratio 30.8% は閾値 30% を僅か 0.8pt 超過しており、
 改善施策の実効性次第で PASS/FAIL が分かれる。
 
-### 全体像: 53 OPEN / 22 RESOLVED / 24 提案未検討 → 122# **39 RESOLVED / 14 残留**
+### 全体像: 53 OPEN / 22 RESOLVED / 24 提案未検討 → 122# **42 RESOLVED / 11 残留**
 
 | カテゴリ | OPEN | RESOLVED | 要点 |
 |---------|------|----------|------|
 | A. Gate 判定関連 | 7 | 3→5 | F4/F5 Gate待ち。Holm/auto-judgment ✅ |
-| B. 収益性直結 | 10 | 4→7 | warm_start/sell SG/L2/window ✅ |
+| B. 収益性直結 | 10 | 4→8 | warm_start/sell SG/L2/window/regime warm-up ✅ |
 | C. 本番前必須 | 10 | 6 | ph3 ブロッカー: WF/Oracle/execute |
-| D. SkipGate/ML | 8 | 3→6 | regime復活/sell分離/特徴量統合 (Appendix F) |
-| E. インフラ/コード | 12 | 4→6 | API/post_only/非定常性実測✅ |
+| D. SkipGate/ML | 8 | 3→7 | regime復活/sell分離/特徴量統合 (Appendix F) + D8テスト |
+| E. インフラ/コード | 12 | 4→7 | API/post_only/非定常性実測/MC統合✅ |
 | F. 未検討提案 | 24 | —→**10** | §5 全 10 件 disposition 完了 (App C) |
 | G. v461+ | 13 | 2 | 棚上げ確認済 |
 
@@ -775,7 +775,7 @@ fill_test 再起動 (A1-A4)
 | B2 | 095# | fast_fill / param_adapter 状態競合 | P0 | ✅ 100# side分離で解消 |
 | B3 | 098# | fast_fill has_negative_edge 検出漏れ 50% | P0 | ✅ 100# L2実装済 |
 | B4 | 098# | SkipGate warm_start 閾値未復元 | P0 | ✅ 122# A2 直接quantile |
-| B5 | 098# | Regime Detector warm-up (全件 unknown) | P1 | 再起動時のみ影響、許容 |
+| B5 | 098# | Regime Detector warm-up (全件 unknown) | P1 | ✅ 101# P1-5 warm-up (window×3=60件) で update() フル実行。hysteresis含め状態復元済。unknown 93件は初回起動20cycle |
 | B6 | 095# | param_adapter 全レコード使用 (dilution) | P1 | ✅ 096# window=120 |
 | B7 | 098# | Offset vs PnL 因果分析未着手 | P1 | Gate PASS後 AB テスト |
 | B8 | 098# | AS 判定 horizon 30s→60s 検討 | P2 | 棚上げ妥当 (B3 PnL120で代替) |
@@ -808,7 +808,7 @@ fill_test 再起動 (A1-A4)
 | D5 | 098# | sell 専用追加特徴量候補 | P2 | ✅ 過去資料統合完了: spread_bps(058# §3, 097# coeff=0.0494), hour_cos(097# coeff=0.0406), recent_sell_pnl_mean(098# §4.3)。Appendix F で整理 |
 | D6 | 095# | SkipGate 抜本見直し | P0 | A3暫定+再訓練(Appendix F)で本格対応 |
 | D7 | 099# | sell 専用 SkipGate モデル | P2 | ✅ 098# §4.2 で sell P(AS) 逆効果実証。再訓練で buy/sell 分離推奨。buy 382件, sell 377件で分割可能 |
-| D8 | 106# | SkipGate evaluate/warm_start テスト不足 | P2 | 122# A2 で warm_start 修正時にカバレッジ向上 |
+| D8 | 106# | SkipGate evaluate/warm_start テスト不足 | P2 | ✅ 122# test_skip_gate_d8.py 30テスト: A3 side無効化7件 + A2 warm_start即収束6件 + build_features 10件 + save/load 2件 + evaluate edge 5件 |
 
 ### E. インフラ/コード品質 (12 件)
 
@@ -823,7 +823,7 @@ fill_test 再起動 (A1-A4)
 | E7 | 013# | StreamBuffer v460 組込み | 将来 | 棚上げ |
 | E8 | 111# | Dead code 整理 (adaptation/) | LOW | 棚上げ |
 | E9 | 113# | 運用失敗モードテスト | MEDIUM | ph3 前に実施。§8.3 参照 |
-| E10 | 113# | PnL Monte Carlo 定期実行 | MEDIUM | gate_judgment.py に統合可能 |
+| E10 | 113# | PnL Monte Carlo 定期実行 | MEDIUM | ✅ 122# gate_judgment.py に --monte-carlo フラグで統合。19テスト (test_gate_judgment.py) |
 | E11 | 106# | type: ignore 残 2 箇所 | N/A | 正当→維持 |
 | E12 | 112# | God Object 再発リスク監視 | INFO | 1568行で安定 |
 
@@ -871,6 +871,9 @@ fill_test 再起動 (A1-A4)
 | §8.2 | 013# | post_only reject: narrow spread起因特定 | 122# spread分析 |
 | §8.6 | 新規 | 時系列非定常性 → B4改善トレンド確認 | 122# vg_and_trend |
 | D2 | 097# | regime特徴量定数0 → 759件で自然解消 | 122# regime分布実測 |
+| B5 | 098# | Regime warm-up → 101# P1-5 warm-up で解決 | 122# update()フル実行確認 |
+| D8 | 106# | SkipGate テスト不足 → 30テスト追加 | 122# test_skip_gate_d8.py |
+| E10 | 113# | MC定期実行 → gate_judgment.py統合+19テスト | 122# test_gate_judgment.py |
 
 ---
 
