@@ -922,6 +922,54 @@ class TestComputeFillMetricsAttempted:
         assert m.attempted_fill_rate == pytest.approx(1.0)
         assert m.overall_fill_rate == pytest.approx(1.0)
 
+    def test_cancel_reason_breakdown(self) -> None:
+        """117# cancel reason 内訳が正しく集計される."""
+        from ztb.metrics.fill_quality import FillRecord, compute_fill_metrics
+        import time
+        base_ts = time.time()
+        records = []
+        # 5 filled
+        for i in range(5):
+            records.append(FillRecord(
+                cycle_id=f"fill_{i}", timestamp=base_ts + i * 120,
+                side="buy", order_price=100.0, order_quantity=0.001,
+                filled=True,
+            ))
+        # 3 timeout
+        for i in range(3):
+            records.append(FillRecord(
+                cycle_id=f"timeout_{i}", timestamp=base_ts + (5 + i) * 120,
+                side="buy", order_price=100.0, order_quantity=0.001,
+                filled=False, cancelled=True, cancel_reason="timeout",
+            ))
+        # 2 skip_gate
+        for i in range(2):
+            records.append(FillRecord(
+                cycle_id=f"skip_{i}", timestamp=base_ts + (8 + i) * 120,
+                side="buy", order_price=100.0, order_quantity=0.001,
+                filled=False, cancelled=True, cancel_reason="skip_gate",
+                skip_gate_skipped=True,
+            ))
+        # 1 postonly_reject
+        records.append(FillRecord(
+            cycle_id="reject_0", timestamp=base_ts + 10 * 120,
+            side="sell", order_price=100.0, order_quantity=0.001,
+            filled=False, cancelled=True, cancel_reason="postonly_reject",
+        ))
+        # 1 unknown (cancel_reason=None)
+        records.append(FillRecord(
+            cycle_id="unk_0", timestamp=base_ts + 11 * 120,
+            side="sell", order_price=100.0, order_quantity=0.001,
+            filled=False, cancelled=True,
+        ))
+
+        m = compute_fill_metrics(records)
+        assert m.cancel_reason_breakdown["timeout"] == 3
+        assert m.cancel_reason_breakdown["skip_gate"] == 2
+        assert m.cancel_reason_breakdown["postonly_reject"] == 1
+        assert m.cancel_reason_breakdown["unknown"] == 1
+        assert sum(m.cancel_reason_breakdown.values()) == m.cancelled_orders
+
 
 # =====================================================================
 # I/O

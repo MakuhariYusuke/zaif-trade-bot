@@ -141,6 +141,34 @@ SkipGate 導入後の実測データ分析により、G1.1-quick (Kill) + G1.2-f
 - F4/F5 FAIL → SkipGate / sell_guard の再設計
 - F6 FAIL → SkipGate 閾値の緩和
 
+#### 分母定義 (117# / 115# Q10.6)
+
+Gate 指標の算出に用いる 3 つの母集団定義。判定出力では常に 3 系列を並記する。
+
+| 系列 | 定義 | 分母 | 用途 |
+|------|------|------|------|
+| **raw (全体)** | 全注文サイクル | `total_orders` | overall_fill_rate, skip_gate_ratio |
+| **clean** | quarantine 除外済み (データ品質フィルタ適用後) | `total_orders - quarantine_count` | legacy E1-E5 判定 |
+| **attempted** | clean のうち skip_gate 除外 (実際に発注したもの) | `total_orders - quarantine - skip_gate` | K1-K2, F1-F2 判定 |
+
+**注意**:
+- `quarantine`: データ不整合レコード (047# A2)。run_id 欠損, 異常 timestamp 等。
+- `skip_gate`: SkipGate ML 分類器が「高リスク」と判断し **意図的にスキップ** したサイクル。
+- attempted ベースの正当性は SkipGate 有効性 (S0) に依存。F6/K6 の skip_gate_ratio 上限が暫定ガード。
+
+#### cancel reason 内訳 (117# / 115# Q10.6)
+
+cancel レコードの `cancel_reason` フィールドで分類。判定出力に内訳を付記。
+
+| reason | 発生原因 | 改善アクション |
+|--------|---------|--------------|
+| `timeout` | 300s 以内に約定せず | offset 調整 / timeout 短縮検討 |
+| `skip_gate` | SkipGate が高リスクと判断 | SkipGate 閾値 / 特徴量見直し |
+| `postonly_reject` | Post-only 注文が即約定扱いで拒否 | offset 引き上げ |
+| `status_unknown` | API 応答不明 | リトライ / API 安定性確認 |
+| `stale_reprice_max` | stale order reprice 上限到達 | reprice_max / drift_bps 見直し |
+| `unknown` (null) | cancel_reason 未設定 | データ品質改善 |
+
 **測定期間**: デフォルト 7 日間。ただし n ≥ 200 サイクル かつ 3 暦日以上をカバーしていれば暫定判定可。最終判定は 7 日間データで確定する。
 
 ### §3.4 G2-train
@@ -324,3 +352,4 @@ NNN_phX_type_subject.md
 | 2026-02-14 | §3.3, §4 | fill_test 全設定を configs/v460/fill_test.yaml に外部化。FillTestConfig.from_yaml() + CLI>YAML>defaults 優先チェーン。v459反省 (config形骸化) 解消。10テスト追加 (396 total) | 034# |
 | 2026-02-15 | §5 | アーカイブ方針改定: 「40文書以内」数値基準を廃止。被代替・rev/resp完結・命名違反の3基準に変更。重要文書はアーカイブしない方針を明記 | 065# 整理時 |
 | 2026-02-19 | §3.3, §6 | G1.1-exec を二段階化: G1.1-quick (72h Kill) + G1.2-full (168h Qualification)。SkipGate attempted ベース導入、PnL Kill 複合条件、Watch 層追加。115# 外部レビュー反映 | 114#, 115#, 116# |
+| 2026-02-19 | §3.3 | 分母定義 (raw/clean/attempted) 一覧表追加。cancel reason 内訳表追加。3 系列同時出力ルール明記。115# Q10.6 対応 | 117# |

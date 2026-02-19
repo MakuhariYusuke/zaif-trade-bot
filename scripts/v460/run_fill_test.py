@@ -3142,6 +3142,33 @@ def run_results_only(results_dir: str, thresholds_path: str | None = None) -> di
         val_str = f"{val:.4f}" if isinstance(val, float) else str(val)
         logger.info(f"  {status} {check_name}: {val_str} (threshold: {thr})")
 
+    # 117# 3 系列同時出力 (115# Q10.6: 分母定義の不一致解消)
+    logger.info("--- 3-series fill rate summary (117#) ---")
+    logger.info(
+        f"  overall  (raw):      {metrics.overall_fill_rate:.4f} "
+        f"({metrics.filled_orders}/{metrics.total_orders})"
+    )
+    logger.info(
+        f"  clean    (quarantine removed): "
+        f"{metrics.filled_orders}/{len(records)} "
+        f"= {metrics.filled_orders / len(records):.4f}"
+    )
+    logger.info(
+        f"  attempted (skip_gate removed): {metrics.attempted_fill_rate:.4f} "
+        f"({metrics.filled_orders}/{metrics.attempted_orders})"
+    )
+
+    # 117# cancel reason breakdown (115# Q10.6)
+    if metrics.cancel_reason_breakdown:
+        logger.info("--- Cancel reason breakdown (117#) ---")
+        for reason, count in sorted(
+            metrics.cancel_reason_breakdown.items(),
+            key=lambda x: x[1],
+            reverse=True,
+        ):
+            pct = count / metrics.cancelled_orders * 100 if metrics.cancelled_orders > 0 else 0
+            logger.info(f"  {reason}: {count} ({pct:.1f}%)")
+
     return judgment
 
 

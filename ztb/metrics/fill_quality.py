@@ -140,6 +140,9 @@ class FillMetrics:
     # 116# PnL CI (Kill Gate 複合条件用)
     post_fill_30s_pnl_ci_upper: float = 0.0  # 95% CI 上限
 
+    # 117# cancel reason 内訳 (115# Q10.6: cancel 理由の内訳管理)
+    cancel_reason_breakdown: dict[str, int] = field(default_factory=dict)
+
     def to_dict(self) -> dict:
         """JSON serializable dict."""
         return asdict(self)
@@ -229,6 +232,12 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
     # 047# Finding3: 3日ではなく 7日を要求 (000# §3.3 準拠)
     sample_sufficient = total >= 200 and len(daily_fill_rates) >= 7
 
+    # --- 117# cancel reason 内訳 (115# Q10.6) ---
+    cancel_reason_breakdown: dict[str, int] = {}
+    for r in cancelled:
+        reason = getattr(r, "cancel_reason", None) or "unknown"
+        cancel_reason_breakdown[reason] = cancel_reason_breakdown.get(reason, 0) + 1
+
     # --- 116# attempted ベース指標 ---
     skip_gate_records = [
         r for r in records
@@ -278,6 +287,7 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
         attempted_cancel_ratio=attempted_cancel_ratio,
         overall_fill_rate=overall_fill_rate,
         post_fill_30s_pnl_ci_upper=pnl_ci_upper,
+        cancel_reason_breakdown=cancel_reason_breakdown,
     )
 
 
