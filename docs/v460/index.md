@@ -1,7 +1,7 @@
 # v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-19 (113# Resilience + R1 分割)
+> 最終更新: 2026-02-19 (121# God Object 分割 R3 + YAML 外部化)
 
 ---
 
@@ -62,6 +62,8 @@
 | 054 | plan | [054_ph2_plan_profitability_improvement.md](054_ph2_plan_profitability_improvement.md) | 収益性改善計画: AS 低減 + 最適エントリー・エグジット |
 | 057 | impl | [057_ph2_ml_baseline.md](057_ph2_ml_baseline.md) | ML-1/ML-2 ベースライン分類器 |
 | 058 | impl | [058_ph2_ml_enrichment_skip_gate.md](058_ph2_ml_enrichment_skip_gate.md) | ML 強化: マイクロストラクチャ特徴量 + PnL 回帰 Skip Gate |
+| 059 | impl | [059_impl_summary.md](059_impl_summary.md) | 058# レビュー対応 + 追加見落とし修正 |
+| 060 | impl | [060_ph2_ml_improvement.md](060_ph2_ml_improvement.md) | ML パイプライン改善: バグ修正 + 特徴量 v2 + チューニング |
 | 061 | rpt | [061_ph2_rpt_ml_improvement.md](061_ph2_rpt_ml_improvement.md) | ML パイプライン改善: バグ修正 + 特徴量 v2 + チューニング |
 | 062 | impl | [062_ph2_skip_gate_fill_test_integration.md](062_ph2_skip_gate_fill_test_integration.md) | AS SkipGate → fill_test ライブ統合 |
 | 066 | rpt | [066_ph2_rpt_trade_only_two_tier.md](066_ph2_rpt_trade_only_two_tier.md) | Trade-Only 比較検証 + Two-Tier SkipGate |
@@ -77,25 +79,38 @@
 | 077 | impl | [077_ph2_impl_076_review_response.md](077_ph2_impl_076_review_response.md) | 076# レビュー指摘対応 |
 | 078 | impl | [078_ph2_impl_deeper_verification.md](078_ph2_impl_deeper_verification.md) | 検証深化: Permutation Test / 時系列安定性 / 検出力分析 |
 | 079 | rpt | [079_ph2_rpt_inventory_and_restart.md](079_ph2_rpt_inventory_and_restart.md) | 情報棚卸し + fill_test 再開 + ph3 先行作業整理 |
-| 082 | rpt | [082_ph2_fill_test_deep_dive_for_codex.md](082_ph2_fill_test_deep_dive_for_codex.md) | Fill Test データ深掘り (Codex レビュー用) |
+| 082 | ext | [082_ph2_fill_test_deep_dive_for_codex.md](082_ph2_fill_test_deep_dive_for_codex.md) | Fill Test データ深掘り (Codex レビュー用) |
 | 083 | rev | [083_ph2_rev_082.md](083_ph2_rev_082.md) | レビュー: 082 Fill Test 深掘りの再点検 |
 | 084 | impl | [084_ph2_impl_083_review_response.md](084_ph2_impl_083_review_response.md) | 083# レビュー指摘対応 + 盲点 8 項目特定 |
 | 085 | impl | [085_ph2_084_blind_spot_impl.md](085_ph2_084_blind_spot_impl.md) | 084 盲点指摘の実装 |
 | 086 | rpt | [086_ph2_rpt_time_filter_bug_and_session_analysis.md](086_ph2_rpt_time_filter_bug_and_session_analysis.md) | time_filter 片側蓄積バグ修正 + 085# セッション考察 |
 | 087 | rev | [087_ph2_rev_086.md](087_ph2_rev_086.md) | レビュー: 086# 外部 Codex 分析 — 構造的損失原因の特定 |
 | 088 | impl | [088_ph2_impl_087_review_response.md](088_ph2_impl_087_review_response.md) | 087# レビュー対応: SkipGate 動的較正 + sell ガード + データ品質修正 |
-| 090 | rpt | [090_ph2_deep_dive_v2_for_codex.md](090_ph2_deep_dive_v2_for_codex.md) | fill_test 深掘り分析 v2 — Codex レビュー用資料 |
+| 090 | ext | [090_ph2_deep_dive_v2_for_codex.md](090_ph2_deep_dive_v2_for_codex.md) | fill_test 深掘り分析 v2 — Codex レビュー用資料 |
 | 091 | rev | [091_ph2_rev_090.md](091_ph2_rev_090.md) | 090 深掘り分析 v2 の整合レビューと修正提案 |
 | 092 | impl | [092_ph2_impl_gap_analysis.md](092_ph2_impl_gap_analysis.md) | 対応漏れ点検と先行実装 |
 | 093 | impl | [093_ph2_spread_adaptive_fast_fill.md](093_ph2_spread_adaptive_fast_fill.md) | spread_adaptive / fast_fill_defense サイド別パラメータ追加 |
 | 094 | impl | [094_ph2_stale_order_cancel_replace.md](094_ph2_stale_order_cancel_replace.md) | stale order 検出 & cancel-replace |
 | 095 | ext | [095_ph2_codex_review_v3.md](095_ph2_codex_review_v3.md) | fill_test Codex レビュー v3 — 構造損失の根本原因と状態管理バグ |
-| 096 | rev | [096_ph2_rev_095.md](096_ph2_rev_095.md) | 095 事後諸葛亮レビュー（ログ逆算 + 収益改善） |
+| 096a | rev | [096_ph2_rev_095.md](096_ph2_rev_095.md) | 095 事後諸葛亮レビュー（ログ逆算 + 収益改善） |
+| 096b | impl | [096_ph2_impl.md](096_ph2_impl.md) | 095# Codex Review Response 実装 |
 | 097 | impl | [097_ph2_skipgate_retrain_preorder.md](097_ph2_skipgate_retrain_preorder.md) | SkipGate AS モデル再訓練（preorder-only features） |
 | 098 | rpt | [098_ph2_post_097_deep_analysis.md](098_ph2_post_097_deep_analysis.md) | 097 後の構造診断 + 収益改善戦略 |
 | 099 | rev | [099_ph2_rev_098.md](099_ph2_rev_098.md) | 098 改善点レビュー（トレーダー視点込み） |
+| 100 | impl | [100_ph2_impl_codex_review_fixes.md](100_ph2_impl_codex_review_fixes.md) | 098#/099# Review Implementation — Post-Review Fix Bundle |
+| 101 | rpt | [101_ph2_rpt_additional_structural_issues.md](101_ph2_rpt_additional_structural_issues.md) | 追加構造問題（098/099 未カバー） |
+| 102 | fix | [102_ph2_fix_structural_fixes.md](102_ph2_fix_structural_fixes.md) | Structural Fixes Implementation |
+| 103 | fix | [103_ph2_fix_yaml_externalization.md](103_ph2_fix_yaml_externalization.md) | YAML 設定外部化 — マジックナンバー一掃 |
+| 104 | fix | [104_ph2_fix_self_review_retrain.md](104_ph2_fix_self_review_retrain.md) | Self-Review + SkipGate 再訓練 + \_\_post_init\_\_ バリデーション |
+| 105 | fix | [105_ph2_fix_sell_offset_balance.md](105_ph2_fix_sell_offset_balance.md) | SELL offset 引上げ + balance insufficient 削減 |
+| 106 | fix | [106_ph2_fix_refactoring_r1_r10.md](106_ph2_fix_refactoring_r1_r10.md) | リファクタリング調査 + 即時修正 (R1–R10) |
+| 107 | rpt | [107_ph2_analysis_time_filter_dynamic_gating.md](107_ph2_analysis_time_filter_dynamic_gating.md) | Time Filter 分析 — 動的ゲーティングへの移行提案 |
 | 110 | fix | [110_ph2_fix_086_time_filter_deadlock.md](110_ph2_fix_086_time_filter_deadlock.md) | 086# time_filter デッドロック修正 (49%アイドル解消) |
 | 113 | impl | [113_ph2_impl_resilience_r1_split.md](113_ph2_impl_resilience_r1_split.md) | Resilience 統合 + R1 God Method 分割 (755→307行) |
+| 114 | ext | [114_ph2_ext_gate_redesign_review.md](114_ph2_ext_gate_redesign_review.md) | G1.1 二段階ゲート再設計 — 外部 AI レビュー依頼 |
+| 115 | resp | [115_ph2_ext_gate_redesign_review_response.md](115_ph2_ext_gate_redesign_review_response.md) | G1.1 二段階ゲート再設計 — 外部レビュー回答 |
+| 116 | impl | [116_ph2_impl_two_stage_gate.md](116_ph2_impl_two_stage_gate.md) | 二段階ゲート実装 — 115# レビュー反映 |
+| 117 | impl | [117_ph2_impl_import_chain_fix.md](117_ph2_impl_import_chain_fix.md) | Import Chain Fix + Fill Test 二重キャンセル防止 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
@@ -121,6 +136,7 @@
 | 038 | rpt | [038_phg_rpt_any_cleanup_step3_completion.md](038_phg_rpt_any_cleanup_step3_completion.md) | 統合済み通知 (036へ集約) |
 | 042 | fix | [042_phg_fix_fill_test_3bugs_3improvements.md](042_phg_fix_fill_test_3bugs_3improvements.md) | fill test 3バグ修正 + 3追加改善 + ゾンビプロセス発見 |
 | 080 | rpt | [080_phg_dedup_and_inheritance.md](080_phg_dedup_and_inheritance.md) | 重複排除 & 継承ベース統合 (~3,000行削減) |
+| 081 | fix | [081_phg_deep_scan_bug_memory_fix.md](081_phg_deep_scan_bug_memory_fix.md) | 深層スキャン — 不具合修正 & メモリ効率改善 |
 | 111 | rpt | [111_phg_rpt_legacy_asset_research.md](111_phg_rpt_legacy_asset_research.md) | v456–v459 レガシー資産・教訓 調査レポート |
 | 112 | rev | [112_phg_rev_111_legacy_asset.md](112_phg_rev_111_legacy_asset.md) | 111# レビュー + 追加提案 + 見落とし補完 |
 
@@ -145,10 +161,16 @@
 以下の番号はスキップまたは統合済み:
 
 002–004, 006–008, 011–012, 016–017, 020, 024–027, 029–030, 035, 037, 039,
-044–045, 049, 055–056, 059–060
+044–045, 049, 055–056, 089
 
 > 欠番は主にセッション内作業ノートの非文書化、番号統合 (038→036)、
 > または Copilot セッション間の連番断絶により発生。
+
+### 旧番ファイル (非索引)
+
+| ファイル | 備考 |
+|---|---|
+| [065_as_lr_prep.md](065_as_lr_prep.md) | 065_ph1_impl_as_lr_prep.md の旧名 |
 
 ---
 
@@ -166,8 +188,29 @@ NNN_phX_TYPE_description.md
 
 ## 現在の重点課題
 
-1. **113# 完了**: Resilience 統合 (CircuitBreaker / HealthMonitor / StatePersistence) + R1 God Method 分割
-2. **fill_test 168h 再実測**: 113# 耐障害機能込みで 168h 再起動 → SLO/Gate 判定
-3. **G1.1-exec gate 判定**: fill_test データ蓄積中 — SLO 閾値表 (111# §10) で判定
-4. **111# Tier-2/3 残統合**: PnL Monte Carlo, RiskRuleEngine, watch_1m 等
-5. **106# R3-R7**: SkipGate テスト、ドキュメント命名、lib/ztb 統合、utils 分割
+### 最優先 (ph2 Gate 判定関連)
+
+1. **fill_test 168h 再実測**: 121# 改善版で 168h 蓄積中 → SLO/Gate 判定
+2. **G1.1-exec gate 判定**: SLO 閾値表 (111# §10) で最終判定
+3. **Holm-Bonferroni 補正**: G1 判定に統計的多重比較補正の実装 (111#)
+
+### 高優先 (収益性直結)
+
+4. **SkipGate 再訓練/見直し**: データ 500 到達時に preorder features で再訓練 (097#/095# M1)
+5. **spread_adaptive AB テスト**: narrow_spread_bps 探索 (093#/092#)
+6. **Volatility Guard**: 107# Phase 2 提案の動的ゲーティング
+
+### 中期 (ph5 本番前に必須)
+
+7. **013# D-1**: `OrderManager.execute_trade()` — 実取引パス実装
+8. **013# D-3**: `post_only` 対応 — maker 保証
+9. **013# C-4**: `asyncio.to_thread` 残 5 メソッド
+10. **Tier-2/3 統合**: PnL Monte Carlo, RiskRuleEngine, Reconciliation (113#)
+
+### 低優先 (v461+)
+
+11. **106# R3**: SkipGate 単体テスト拡充
+12. **106# R5**: lib → ztb 移動 (残 4 モジュール)
+13. **106# R6**: utils 70+ ファイル分割
+14. **106# R7**: config/ vs configs/ 重複ディレクトリ整理
+15. **109# DUP3**: UnifiedTrainer God Object (2835行)
