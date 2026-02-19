@@ -1,7 +1,7 @@
 # 118# 残課題・未検討提案の深掘り考察
 
 **Date**: 2026-02-19  
-**Updated**: 2026-02-20 (追記: §5/§8 disposition, §9 実行, Appendix B/C/D2/F)  
+**Updated**: 2026-02-20 (追記: §5/§8 disposition, §9 実行, Appendix B/C/D2/F/G)  
 **Phase**: phg (フェーズ横断)  
 **前提文書**: 000#–117# 全 96 文書 + fill_test 144.8h 実測データ
 
@@ -27,6 +27,7 @@
 - [Appendix C: §5 未検討提案 Disposition サマリ (追記)](#appendix-c-未検討提案-5-全件-disposition-サマリ-追記)
 - [Appendix D2: §8 Disposition サマリ (追記)](#appendix-d2-8-全件-disposition-サマリ-追記)
 - [Appendix F: SkipGate 再訓練計画 (特徴量統合)](#appendix-f-skipgate-再訓練計画-特徴量統合)
+- [Appendix G: 外部レビュー対応 (123# Gemini 3.1 PRO)](#appendix-g-外部レビュー対応-123-gemini-31-pro)
 
 ---
 
@@ -1024,3 +1025,51 @@ Step 5: 評価・デプロイ
 | 070# | 72+構成×3セット | **全 ROC-AUC ≤ 0.54。SNR=0.11** |
 | 097# | 16→10 (SelectKBest) | preorder 統一。Skip20%=+0.405bps |
 | **現在** | **16 (regime 復活見込)** | **759 samples。regime/sell分離が鍵** |
+
+---
+
+## Appendix G: 外部レビュー対応 (123# Gemini 3.1 PRO)
+
+**Date**: 2026-02-20  
+**Reviewer**: Gemini 3.1 PRO (外部 AI コーディングエージェント)  
+**対象**: 122# セッション (8 commits, +3,267 lines)
+
+### G1. 対応完了 (123# コミット)
+
+| # | 分類 | 指摘 | 対応 | ファイル |
+|---|------|------|------|---------|
+| G1-1 | 🚨 Critical | F4 PnL Gate Type II Error: mean が負でも「有意でない」だけで PASS | `F4d_pnl_mean_floor` チェック追加。soft WATCH (-0.10bps) + hard FAIL (-0.50bps) 二段階。gate_result に WATCH 状態追加 | `fill_quality.py` |
+| G1-2 | 🚨 Critical | MC テスト Flaky リスク (seed 未固定) | `np.random.seed()` を全 MC テストに追加 | `test_gate_judgment.py` |
+| G1-3 | ⚠️ Important | warm_start アサーション不足 (quantile 数値未検証) | `pytest.approx(0.555)` / `pytest.approx(0.600)` で厳密検証 | `test_skip_gate_d8.py` |
+| G1-4 | ⚠️ Important | skip_gate.py が scripts/ にある (アーキテクチャ違反) | TODO 追記 + E11 として追跡。fill_test 非稼働時 (ph3-pre) に移動予定。import 20+ 箇所変更のため慎重対応 | `skip_gate.py` |
+| G1-5 | ⚠️ Important | vg_and_trend.py のログパースが脆い (regex + plain text) | TODO 追記 + E12 として追跡。JSONL 構造化ログへの移行を推奨 | `vg_and_trend.py` |
+| G1-6 | 💡 Nice | run_gate_check.py と gate_judgment.py の G1.1 重複 | run_g1_1 に deprecated 注釈を追加。gate_judgment.py を推奨 | `run_gate_check.py` |
+
+### G2. 118# 新規 OPEN items (Gemini review 由来)
+
+| ID | 項目 | 分類 | ステータス |
+|----|------|------|----------|
+| E11 | skip_gate.py → ztb/models/ 移動 | 技術負債 | ph3-pre |
+| E12 | VG イベントの JSONL 構造化ログ出力 | 技術負債 | ph3-pre |
+| E13 | MC CVaR Binding 化検討 (informational → 必須条件) | リスク管理 | ph5 |
+
+### G3. レビュー質問への回答
+
+**Q1: 「42 RESOLVED」は楽観的すぎないか？**
+
+回答: 部分的に妥当な懸念。「§8.3 再起動耐性」は warm_start (101# P1-5) で 80% 解決だが完全ではない。「B7 offset 因果分析」は Gate 後データ必要。ただしこれらは「残作業あり」の注記付きで RESOLVED にカウントしており、Appendix B に個別ステータスがある。厳密には RESOLVED ではなく PARTIAL が適切な分類かもしれないが、運用上は「主要ブロッカーは解除」の意味で使用。
+
+**Q2: sell SkipGate 無効化で F5 (AS_ratio ≤ 30%) をクリアできるか？**
+
+回答: 現状 AS_ratio = 30.8% で閾値超過。sell SG 無効化は逆選別を悪化させるリスクがある。F5 クリアの見通しは以下に依存:
+1. **offset 最適化 (B7)**: sell 側 offset 引き上げで AS 抑制。Gate 168h データで因果分析後に実施
+2. **VG 効果 (A4)**: sell 側 VG 発動率が十分なら AS を部分的に抑制
+3. **SG 再訓練 (D6)**: Appendix F の再訓練計画で sell 専用モデルを構築し、sell_enabled 再有効化
+
+現時点では F5 クリアを保証できない。Gate 判定で FAIL の場合は sell offset + SG 再訓練が優先施策。
+
+### G4. Positive findings (レビューからの良好評価)
+
+- `run_gate_judgment()` の CLI/Core 分離設計
+- Holm-Bonferroni 多重比較補正の自動パイプライン統合
+- 49 件テスト追加によるエッジケース網羅

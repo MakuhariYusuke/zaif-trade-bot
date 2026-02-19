@@ -788,6 +788,7 @@ class TestG12FullJudgment:
             "max_skip_gate_ratio": 0.20,
             "min_calendar_days": 7,
             "min_attempted_samples": 500,
+            "pnl_mean_floor_bps": -0.20,  # 123# metrics mean=-0.196 > -0.20 → PASS
         }
         result = g1_2_full_judgment(metrics, thresholds)
         assert result["gate_result"] == "PASS"
@@ -2966,3 +2967,97 @@ class TestVGAndTrendAnalysis:
 
         matched = _match_vg_to_records(activations, records, tolerance_sec=10)
         assert len(matched) == 0
+
+
+# =====================================================================
+# 123# Gemini review: F4d PnL mean floor テスト
+# =====================================================================
+
+
+class TestF4dPnLMeanFloor:
+    """123# Gemini review Critical 1: PnL 平均が許容フロア未満なら WATCH/FAIL."""
+
+    def _make_metrics(self, **overrides) -> "FillMetrics":
+        from ztb.metrics.fill_quality import FillMetrics
+        defaults = dict(
+            total_orders=1000,
+            filled_orders=700,
+            cancelled_orders=300,
+            fill_rate_p90=0.65,
+            cancel_ratio=0.30,
+            queue_wait_median_sec=15.0,
+            post_fill_30s_pnl_mean=0.1,
+            post_fill_30s_pnl_pvalue=0.40,
+            post_fill_30s_pnl_ci_upper=0.3,
+            post_fill_60s_pnl_mean=0.05,
+            post_fill_60s_pnl_pvalue=0.45,
+            post_fill_120s_pnl_mean=0.02,
+            post_fill_120s_pnl_pvalue=0.48,
+            adverse_selection_ratio=0.25,
+            attempted_orders=900,
+            skip_gate_count=100,
+            skip_gate_ratio=0.10,
+            attempted_fill_rate=0.778,
+            attempted_cancel_ratio=0.222,
+            overall_fill_rate=0.70,
+            measurement_days=7,
+            sample_sufficient=True,
+        )
+        defaults.update(overrides)
+        return FillMetrics(**defaults)
+
+    def test_positive_pnl_passes(self) -> None:
+        """PnL > 0 → F4d PASS, gate_result PASS."""
+        from ztb.metrics.fill_quality import g1_2_full_judgment
+        metrics = self._make_metrics(post_fill_30s_pnl_mean=0.1)
+        result = g1_2_full_judgment(metrics, {"pnl_mean_floor_bps": -0.10})
+        assert result["checks"]["F4d_pnl_mean_floor"]["pass"] is True
+        assert result["checks"]["F4d_pnl_mean_floor"]["watch"] is False
+        assert result["gate_result"] == "PASS"
+
+    def test_mild_negative_watch(self) -> None:
+        """floor < mean < 0 → F4d WATCH, gate_result WATCH."""
+        from ztb.metrics.fill_quality import g1_2_full_judgment
+        metrics = self._make_metrics(
+            post_fill_30s_pnl_mean=-0.15,
+            post_fill_30s_pnl_pvalue=0.20,  # 有意でない
+        )
+        result = g1_2_full_judgment(metrics, {
+            "pnl_mean_floor_bps": -0.10,
+            "pnl_mean_hard_floor_bps": -0.50,
+        })
+        assert result["checks"]["F4d_pnl_mean_floor"]["pass"] is True
+        assert result["checks"]["F4d_pnl_mean_floor"]["watch"] is True
+        assert result["gate_result"] == "WATCH"
+
+    def test_severe_negative_fails(self) -> None:
+        """mean < hard_floor → F4d FAIL, gate_result FAIL."""
+        from ztb.metrics.fill_quality import g1_2_full_judgment
+        metrics = self._make_metrics(
+            post_fill_30s_pnl_mean=-0.80,
+            post_fill_30s_pnl_pvalue=0.20,
+        )
+        result = g1_2_full_judgment(metrics, {
+            "pnl_mean_floor_bps": -0.10,
+            "pnl_mean_hard_floor_bps": -0.50,
+        })
+        assert result["checks"]["F4d_pnl_mean_floor"]["pass"] is False
+        assert result["gate_result"] == "FAIL"
+
+    def test_exactly_at_floor_passes(self) -> None:
+        """mean == floor → PASS (境界条件)."""
+        from ztb.metrics.fill_quality import g1_2_full_judgment
+        metrics = self._make_metrics(post_fill_30s_pnl_mean=-0.10)
+        result = g1_2_full_judgment(metrics, {"pnl_mean_floor_bps": -0.10})
+        assert result["checks"]["F4d_pnl_mean_floor"]["pass"] is True
+        assert result["checks"]["F4d_pnl_mean_floor"]["watch"] is False
+
+    def test_default_floor_applied(self) -> None:
+        """floor 未指定 → デフォルト -0.10 bps が適用される."""
+        from ztb.metrics.fill_quality import g1_2_full_judgment
+        metrics = self._make_metrics(post_fill_30s_pnl_mean=-0.05)
+        result = g1_2_full_judgment(metrics, {})
+        f4d = result["checks"]["F4d_pnl_mean_floor"]
+        assert f4d["floor"] == -0.10
+        assert f4d["hard_floor"] == -0.50
+        assert f4d["pass"] is True

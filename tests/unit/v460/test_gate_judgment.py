@@ -111,6 +111,8 @@ def _default_gate_cfg() -> dict:
             "skip_gate_ratio": 0.20,
             "calendar_coverage_days": 7,
             "n_attempted_min": 500,
+            "pnl_mean_floor_bps": -1.0,  # 123# テスト用: 緩い floor
+            "pnl_mean_hard_floor_bps": -5.0,
         },
     }
 
@@ -260,7 +262,10 @@ class TestGateJudgmentMonteCarlo:
 
     def test_monte_carlo_pnl_consistency(self) -> None:
         """MC の PnL mean が observed mean と整合性がある."""
+        import numpy as np
         from scripts.v460.gate_judgment import run_gate_judgment
+
+        np.random.seed(42)  # 123# Gemini review: seed 固定で Flaky 防止
 
         # 正 PnL のデータ
         records = [
@@ -281,7 +286,10 @@ class TestGateJudgmentMonteCarlo:
 
     def test_monte_carlo_risk_metrics(self) -> None:
         """MC の risk metrics が妥当な範囲."""
+        import numpy as np
         from scripts.v460.gate_judgment import run_gate_judgment
+
+        np.random.seed(77)  # 123# Gemini review: seed 固定で Flaky 防止
 
         records = _make_records_mixed(n_filled=50, n_cancelled=10)
         result = run_gate_judgment(
@@ -297,7 +305,10 @@ class TestGateJudgmentMonteCarlo:
 
     def test_monte_carlo_custom_lot(self) -> None:
         """mc_lot パラメータが反映される."""
+        import numpy as np
         from scripts.v460.gate_judgment import run_gate_judgment
+
+        np.random.seed(123)  # 123# Gemini review: seed 固定で Flaky 防止
 
         records = _make_records_mixed(n_filled=50, n_cancelled=10)
         result_small = run_gate_judgment(

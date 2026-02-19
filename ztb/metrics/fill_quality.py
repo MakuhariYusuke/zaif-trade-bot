@@ -661,6 +661,28 @@ def g1_2_full_judgment(
             check_data["ci_upper"] = ci_upper
         checks[name] = check_data
 
+    # F4d: PnL mean floor — 期待値がマイナスならリスク警告 (123# Gemini review Critical 1)
+    # 「有意に負でない」だけでなく、平均自体が許容範囲内であることを要求
+    pnl_mean_floor = thresholds.get("pnl_mean_floor_bps", -0.10)  # default: -0.10 bps
+    pnl_mean_hard_floor = thresholds.get("pnl_mean_hard_floor_bps", -0.50)  # hard FAIL
+    pnl_30s_mean = metrics.post_fill_30s_pnl_mean
+    if pnl_30s_mean >= pnl_mean_floor:
+        f4d_pass = True
+        f4d_watch = False
+    elif pnl_30s_mean >= pnl_mean_hard_floor:
+        f4d_pass = True  # soft WATCH — 統計的に有意でなくても注意
+        f4d_watch = True
+    else:
+        f4d_pass = False  # hard FAIL — 許容損失を超過
+        f4d_watch = False
+    checks["F4d_pnl_mean_floor"] = {
+        "value": pnl_30s_mean,
+        "floor": pnl_mean_floor,
+        "hard_floor": pnl_mean_hard_floor,
+        "pass": f4d_pass,
+        "watch": f4d_watch,
+    }
+
     # 後方互換: F4_pnl キーも維持 (旧テスト参照用)
     checks["F4_pnl"] = {
         "value": metrics.post_fill_30s_pnl_mean,
@@ -703,11 +725,20 @@ def g1_2_full_judgment(
     }
 
     all_pass = all(c["pass"] for c in checks.values())
+    is_watch = any(c.get("watch", False) for c in checks.values())
+
+    if not all_pass:
+        gate_result = "FAIL"
+    elif is_watch:
+        gate_result = "WATCH"
+    else:
+        gate_result = "PASS"
 
     return {
         "gate": "G1.2-full",
-        "gate_result": "PASS" if all_pass else "FAIL",
+        "gate_result": gate_result,
         "checks": checks,
+        "watch": is_watch,
         "metrics_summary": metrics.to_dict(),
     }
 

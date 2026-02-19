@@ -207,6 +207,11 @@ def run_g1_1(
     000# §3.3 / 009# §2.1 準拠.
     fill_records JSONL からメトリクスを算出し、閾値照合を行う.
 
+    .. deprecated:: 123#
+        G1.1 + G1.2 統合判定は ``scripts/v460/gate_judgment.py`` の
+        ``run_gate_judgment()`` を使用してください。このエンドポイントは
+        後方互換のために維持されていますが、新規利用は非推奨です。
+
     Args:
         results_dir: fill_records JSONL ディレクトリ.
         thresholds: Gate 閾値 (None → gate_thresholds.yaml).

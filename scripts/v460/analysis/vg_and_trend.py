@@ -47,6 +47,10 @@ from ztb.metrics.fill_quality import (
 # A4: Volatility Guard effectiveness
 # ======================================================================
 
+# TODO(123# Gemini review): プレーンテキストログの regex パースは脆い。
+#   VG 発動等の重要イベントは JSONL 構造化ログとして出力・保存する設計に
+#   変更することを推奨。→ 118# E12 として追跡。
+
 # Log format: 2026-02-18 12:18:47,674 INFO [...] [volatility_guard] 107# sell offset boosted: 0.2800→0.3000 (vpin=0.98)
 _VG_PATTERN = re.compile(
     r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}),\d+ \w+ \[.*?\] "

@@ -205,14 +205,17 @@ class TestWarmStartImmediateConvergence:
             )
             warm_start_skip_gate_thresholds(gate, tmpdir_path, window=50)
 
-            # buy: P(AS) range [0.42, 0.565], target 10% → 90th percentile ≈ 0.556
+            # buy: P(AS) range [0.42, 0.565], target 10% → 90th percentile
+            # q_idx = min(int(30 * 0.90), 29) = 27 → sorted[27] = 0.42 + 27*0.005 = 0.555
             assert gate.config.as_threshold_buy != 0.65  # 初期値から変更されている
             assert gate.config.as_threshold_buy is not None
-            assert gate.config.as_threshold_buy < 0.65  # YAML 初期値 0.65 より下がっている
+            assert gate.config.as_threshold_buy == pytest.approx(0.555, abs=1e-6)
 
-            # sell: P(AS) range [0.48, 0.625], target 20% → 80th percentile ≈ 0.596
+            # sell: P(AS) range [0.48, 0.625], target 20% → 80th percentile
+            # q_idx = min(int(30 * 0.80), 29) = 24 → sorted[24] = 0.48 + 24*0.005 = 0.600
             assert gate.config.as_threshold_sell != 0.65
             assert gate.config.as_threshold_sell is not None
+            assert gate.config.as_threshold_sell == pytest.approx(0.600, abs=1e-6)
 
     def test_warm_start_restores_history(self) -> None:
         """warm_start が P(AS) 履歴を正しく復元する."""

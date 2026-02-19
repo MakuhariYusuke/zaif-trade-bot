@@ -3,6 +3,10 @@
 Ridge PnL regressor を使って注文前に期待 PnL を予測し、
 負のPnLが見込まれる注文をスキップする。
 
+TODO(123# Gemini review): 取引コアロジック（ML判定）のため ztb/models/ への
+  移動を推奨。ただし 20+ ファイル import 変更が伴うため fill_test 非稼働の
+  タイミング (ph3-pre) で実施。→ 118# E11 として追跡。
+
 Usage:
     from scripts.v460.ml.skip_gate import SkipGate
 
