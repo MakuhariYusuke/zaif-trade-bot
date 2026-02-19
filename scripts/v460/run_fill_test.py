@@ -42,6 +42,8 @@ from ztb.metrics.fill_quality import (
     compute_fill_metrics,
     filter_clean_records,
     g1_1_judgment,
+    g1_1_quick_judgment,
+    g1_2_full_judgment,
     load_fill_records_glob,
     save_fill_records,
 )
@@ -3075,7 +3077,10 @@ class FillTestRunner:
 # ======================================================================
 
 def run_results_only(results_dir: str, thresholds_path: str | None = None) -> dict:
-    """既存の fill_records JSONL から G1.1 判定を実施."""
+    """既存の fill_records JSONL から G1.1 判定を実施.
+
+    116# 拡張: 旧 g1_1_judgment に加え、quick/full 二段階判定も返す。
+    """
     from scripts.v460.lib.config_loader import load_gate_thresholds
 
     all_records = load_fill_records_glob(results_dir)
@@ -3096,13 +3101,46 @@ def run_results_only(results_dir: str, thresholds_path: str | None = None) -> di
         return {"gate": "G1.1-exec", "gate_result": "NO_DATA", "error": "All records quarantined"}
 
     metrics = compute_fill_metrics(records)
-    thresholds = load_gate_thresholds().get("g1_1_exec", {})
+    gate_cfg = load_gate_thresholds()
+    thresholds = gate_cfg.get("g1_1_exec", {})
     judgment = g1_1_judgment(metrics, thresholds)
 
-    logger.info(f"G1.1 Result: {judgment['gate_result']}")
+    # 116# 二段階判定 (115# レビュー反映)
+    quick_thresholds = gate_cfg.get("g1_1_quick_exec", {})
+    full_thresholds = gate_cfg.get("g1_2_full_exec", {})
+    quick_judgment = g1_1_quick_judgment(metrics, quick_thresholds)
+    full_judgment = g1_2_full_judgment(metrics, full_thresholds)
+
+    # 結果統合
+    judgment["two_stage"] = {
+        "g1_1_quick": quick_judgment,
+        "g1_2_full": full_judgment,
+    }
+
+    logger.info(f"G1.1 (legacy) Result: {judgment['gate_result']}")
+    logger.info(f"G1.1-quick  Result: {quick_judgment['gate_result']}")
+    logger.info(f"G1.2-full   Result: {full_judgment['gate_result']}")
+
     for check_name, check_data in judgment["checks"].items():
         status = "✓" if check_data["pass"] else "✗"
         logger.info(f"  {status} {check_name}: {check_data['value']:.4f} (threshold: {check_data['threshold']})")
+
+    # 116# quick/full の各チェックも表示
+    logger.info("--- G1.1-quick checks ---")
+    for check_name, check_data in quick_judgment["checks"].items():
+        status = "✓" if check_data["pass"] else "✗"
+        val = check_data.get("value", "N/A")
+        thr = check_data.get("threshold", check_data.get("threshold_mean", "N/A"))
+        val_str = f"{val:.4f}" if isinstance(val, float) else str(val)
+        logger.info(f"  {status} {check_name}: {val_str} (threshold: {thr})")
+
+    logger.info("--- G1.2-full checks ---")
+    for check_name, check_data in full_judgment["checks"].items():
+        status = "✓" if check_data["pass"] else "✗"
+        val = check_data.get("value", "N/A")
+        thr = check_data.get("threshold", check_data.get("alpha", "N/A"))
+        val_str = f"{val:.4f}" if isinstance(val, float) else str(val)
+        logger.info(f"  {status} {check_name}: {val_str} (threshold: {thr})")
 
     return judgment
 
@@ -3282,6 +3320,17 @@ def main() -> None:
         metrics = compute_fill_metrics(clean_records)
         thresholds = load_gate_thresholds().get("g1_1_exec", {})
         judgment = g1_1_judgment(metrics, thresholds)
+
+        # 116# 二段階判定 (115# レビュー反映)
+        gate_cfg = load_gate_thresholds()
+        quick_thresholds = gate_cfg.get("g1_1_quick_exec", {})
+        full_thresholds = gate_cfg.get("g1_2_full_exec", {})
+        quick_judgment = g1_1_quick_judgment(metrics, quick_thresholds)
+        full_judgment = g1_2_full_judgment(metrics, full_thresholds)
+        judgment["two_stage"] = {
+            "g1_1_quick": quick_judgment,
+            "g1_2_full": full_judgment,
+        }
 
         # 049# §6.1-#4: clean/quarantine/coverage を judgment に追加
         judgment["data_quality"] = {

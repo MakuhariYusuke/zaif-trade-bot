@@ -130,6 +130,16 @@ class FillMetrics:
     as_coverage: int = 0       # adverse_selected != None の件数
     as_raw_coverage: int = 0   # adverse_selected_raw != None の件数
 
+    # 116# attempted ベース指標 (skip_gate 除外)
+    attempted_orders: int = 0          # skip_gate 除外後のサイクル数
+    skip_gate_count: int = 0           # skip_gate でスキップされた件数
+    skip_gate_ratio: float = 0.0       # skip_gate_count / total_orders
+    attempted_fill_rate: float = 0.0   # filled / attempted_orders
+    attempted_cancel_ratio: float = 0.0  # (attempted - filled) / attempted
+    overall_fill_rate: float = 0.0     # filled / total_orders (全体ベース)
+    # 116# PnL CI (Kill Gate 複合条件用)
+    post_fill_30s_pnl_ci_upper: float = 0.0  # 95% CI 上限
+
     def to_dict(self) -> dict:
         """JSON serializable dict."""
         return asdict(self)
@@ -219,6 +229,30 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
     # 047# Finding3: 3日ではなく 7日を要求 (000# §3.3 準拠)
     sample_sufficient = total >= 200 and len(daily_fill_rates) >= 7
 
+    # --- 116# attempted ベース指標 ---
+    skip_gate_records = [
+        r for r in records
+        if getattr(r, "skip_gate_skipped", None) is True
+        or getattr(r, "cancel_reason", None) == "skip_gate"
+    ]
+    skip_gate_count = len(skip_gate_records)
+    attempted_orders = total - skip_gate_count
+    skip_gate_ratio = skip_gate_count / total if total > 0 else 0.0
+    attempted_fill_rate = len(filled) / attempted_orders if attempted_orders > 0 else 0.0
+    attempted_cancel_ratio = (
+        (attempted_orders - len(filled)) / attempted_orders
+        if attempted_orders > 0
+        else 0.0
+    )
+    overall_fill_rate = len(filled) / total if total > 0 else 0.0
+
+    # --- 116# PnL CI 上限 (Kill Gate 複合条件用) ---
+    pnl_ci_upper = 0.0
+    if pnl_values and len(pnl_values) >= 2:
+        se = float(np.std(pnl_values, ddof=1)) / np.sqrt(len(pnl_values))
+        t_crit = float(stats.t.ppf(0.975, df=len(pnl_values) - 1))
+        pnl_ci_upper = pnl_mean + t_crit * se
+
     return FillMetrics(
         total_orders=total,
         filled_orders=len(filled),
@@ -236,6 +270,14 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
         # 047# Finding4: AS coverage
         as_coverage=len(adverse_records),
         as_raw_coverage=len(adverse_raw_records),
+        # 116# attempted
+        attempted_orders=attempted_orders,
+        skip_gate_count=skip_gate_count,
+        skip_gate_ratio=skip_gate_ratio,
+        attempted_fill_rate=attempted_fill_rate,
+        attempted_cancel_ratio=attempted_cancel_ratio,
+        overall_fill_rate=overall_fill_rate,
+        post_fill_30s_pnl_ci_upper=pnl_ci_upper,
     )
 
 
@@ -370,6 +412,230 @@ def g1_1_judgment(
         "gate_result": "PASS" if all_pass else "FAIL",
         "judgment_type": judgment_type,  # 020# O1 / 047# Finding3
         "sample_sufficient": metrics.sample_sufficient,
+        "checks": checks,
+        "metrics_summary": metrics.to_dict(),
+    }
+
+
+# ======================================================================
+# 116# Two-Stage Gate Judgment (115# review)
+# ======================================================================
+
+
+def g1_1_quick_judgment(
+    metrics: FillMetrics,
+    thresholds: dict,
+    cumulative_loss_jpy: float = 0.0,
+) -> dict:
+    """G1.1-quick (72h Kill Gate) 判定.
+
+    116# 実装 / 115# レビュー反映.
+    明らかに不成立な戦略を早期棄却する。
+
+    Args:
+        metrics: compute_fill_metrics() の出力.
+        thresholds: gate_thresholds.yaml の ``g1_1_quick_exec`` セクション.
+        cumulative_loss_jpy: fill_test の累積実損 (JPY, 正値=損失).
+
+    Returns:
+        dict with gate_result (PASS/FAIL/WATCH), per-check details.
+    """
+    checks: dict[str, dict] = {}
+
+    # K1: attempted_fill_rate
+    min_att_fill = thresholds.get("min_attempted_fill_rate", 0.60)
+    checks["K1_attempted_fill_rate"] = {
+        "value": metrics.attempted_fill_rate,
+        "threshold": min_att_fill,
+        "pass": metrics.attempted_fill_rate >= min_att_fill,
+    }
+
+    # K2: attempted_cancel_ratio
+    max_att_cancel = thresholds.get("max_attempted_cancel_ratio", 0.40)
+    checks["K2_attempted_cancel_ratio"] = {
+        "value": metrics.attempted_cancel_ratio,
+        "threshold": max_att_cancel,
+        "pass": metrics.attempted_cancel_ratio <= max_att_cancel,
+    }
+
+    # K3: queue_wait_median
+    max_wait = thresholds.get("max_queue_wait_median_sec", 120)
+    checks["K3_queue_wait_median"] = {
+        "value": metrics.queue_wait_median_sec,
+        "threshold": max_wait,
+        "pass": metrics.queue_wait_median_sec <= max_wait,
+    }
+
+    # K4: PnL 複合条件 — p < threshold かつ mean <= threshold で FAIL
+    # 115# Q10.2(C): 単独 p 値判定は不十分。効果量条件を併設。
+    pnl_kill_p = thresholds.get("pnl_kill_p_threshold", 0.02)
+    pnl_kill_mean = thresholds.get("pnl_kill_mean_threshold", -0.8)
+    pnl_is_significant = metrics.post_fill_30s_pnl_pvalue < pnl_kill_p
+    pnl_is_large_loss = metrics.post_fill_30s_pnl_mean <= pnl_kill_mean
+    # FAIL = 両条件同時成立
+    k4_pass = not (pnl_is_significant and pnl_is_large_loss)
+    checks["K4_pnl_kill"] = {
+        "value": metrics.post_fill_30s_pnl_mean,
+        "pvalue": metrics.post_fill_30s_pnl_pvalue,
+        "threshold_p": pnl_kill_p,
+        "threshold_mean": pnl_kill_mean,
+        "significant": pnl_is_significant,
+        "large_loss": pnl_is_large_loss,
+        "pass": k4_pass,
+    }
+
+    # K5: 累積実損
+    max_loss = thresholds.get("max_cumulative_loss_jpy", 10000)
+    checks["K5_cumulative_loss"] = {
+        "value": cumulative_loss_jpy,
+        "threshold": max_loss,
+        "pass": cumulative_loss_jpy < max_loss,
+    }
+
+    # K6: skip_gate_ratio
+    max_skip = thresholds.get("max_skip_gate_ratio", 0.25)
+    checks["K6_skip_gate_ratio"] = {
+        "value": metrics.skip_gate_ratio,
+        "threshold": max_skip,
+        "pass": metrics.skip_gate_ratio <= max_skip,
+    }
+
+    all_pass = all(c["pass"] for c in checks.values())
+
+    # 115# Q10.4: Watch 層 — Kill には至らないが黄信号
+    pnl_watch_p = thresholds.get("pnl_watch_p_threshold", 0.05)
+    pnl_watch_mean = thresholds.get("pnl_watch_mean_threshold", -0.3)
+    is_watch = (
+        all_pass
+        and metrics.post_fill_30s_pnl_pvalue < pnl_watch_p
+        and metrics.post_fill_30s_pnl_mean < pnl_watch_mean
+    )
+
+    if not all_pass:
+        gate_result = "FAIL"
+    elif is_watch:
+        gate_result = "WATCH"
+    else:
+        gate_result = "PASS"
+
+    return {
+        "gate": "G1.1-quick",
+        "gate_result": gate_result,
+        "checks": checks,
+        "watch": is_watch,
+        "watch_detail": {
+            "pnl_mean": metrics.post_fill_30s_pnl_mean,
+            "pnl_pvalue": metrics.post_fill_30s_pnl_pvalue,
+            "watch_thresholds": {"p": pnl_watch_p, "mean": pnl_watch_mean},
+        } if is_watch else None,
+        "metrics_summary": metrics.to_dict(),
+    }
+
+
+def g1_2_full_judgment(
+    metrics: FillMetrics,
+    thresholds: dict,
+) -> dict:
+    """G1.2-full (168h Qualification Gate) 判定.
+
+    116# 実装 / 115# レビュー反映.
+    完全な品質適格性の確認。
+
+    Args:
+        metrics: compute_fill_metrics() の出力.
+        thresholds: gate_thresholds.yaml の ``g1_2_full_exec`` セクション.
+
+    Returns:
+        dict with gate_result (PASS/FAIL), per-check details.
+    """
+    checks: dict[str, dict] = {}
+
+    # F1: attempted_fill_rate
+    min_att_fill = thresholds.get("min_attempted_fill_rate", 0.70)
+    checks["F1_attempted_fill_rate"] = {
+        "value": metrics.attempted_fill_rate,
+        "threshold": min_att_fill,
+        "pass": metrics.attempted_fill_rate >= min_att_fill,
+    }
+
+    # F1b: overall_fill_rate (115# Q10.2(A): SkipGate 過剰回避)
+    min_overall_fill = thresholds.get("min_overall_fill_rate", 0.62)
+    checks["F1b_overall_fill_rate"] = {
+        "value": metrics.overall_fill_rate,
+        "threshold": min_overall_fill,
+        "pass": metrics.overall_fill_rate >= min_overall_fill,
+    }
+
+    # F2: attempted_cancel_ratio
+    max_att_cancel = thresholds.get("max_attempted_cancel_ratio", 0.30)
+    checks["F2_attempted_cancel_ratio"] = {
+        "value": metrics.attempted_cancel_ratio,
+        "threshold": max_att_cancel,
+        "pass": metrics.attempted_cancel_ratio <= max_att_cancel,
+    }
+
+    # F3: queue_wait_median
+    max_wait = thresholds.get("max_queue_wait_median_sec", 60)
+    checks["F3_queue_wait_median"] = {
+        "value": metrics.queue_wait_median_sec,
+        "threshold": max_wait,
+        "pass": metrics.queue_wait_median_sec <= max_wait,
+    }
+
+    # F4: PnL — 有意に負でないこと (原初 E4 維持)
+    pnl_alpha = thresholds.get("pnl_alpha", 0.05)
+    f4_pass: bool
+    if metrics.post_fill_30s_pnl_mean >= 0:
+        f4_pass = True
+    elif metrics.post_fill_30s_pnl_pvalue >= pnl_alpha:
+        f4_pass = True  # 負だが統計的に有意でない
+    else:
+        f4_pass = False
+    checks["F4_pnl"] = {
+        "value": metrics.post_fill_30s_pnl_mean,
+        "pvalue": metrics.post_fill_30s_pnl_pvalue,
+        "ci_upper": metrics.post_fill_30s_pnl_ci_upper,
+        "alpha": pnl_alpha,
+        "pass": f4_pass,
+    }
+
+    # F5: AS_ratio (115# Q10.2(B): 35→30)
+    max_as = thresholds.get("max_adverse_selection_ratio", 0.30)
+    checks["F5_adverse_selection"] = {
+        "value": metrics.adverse_selection_ratio,
+        "threshold": max_as,
+        "pass": metrics.adverse_selection_ratio <= max_as,
+    }
+
+    # F6: skip_gate_ratio
+    max_skip = thresholds.get("max_skip_gate_ratio", 0.20)
+    checks["F6_skip_gate_ratio"] = {
+        "value": metrics.skip_gate_ratio,
+        "threshold": max_skip,
+        "pass": metrics.skip_gate_ratio <= max_skip,
+    }
+
+    # F7: calendar_days
+    min_days = thresholds.get("min_calendar_days", 7)
+    checks["F7_calendar_days"] = {
+        "value": metrics.measurement_days,
+        "threshold": min_days,
+        "pass": metrics.measurement_days >= min_days,
+    }
+
+    # F8: n_attempted
+    min_n = thresholds.get("min_attempted_samples", 500)
+    checks["F8_n_attempted"] = {
+        "value": metrics.attempted_orders,
+        "threshold": min_n,
+        "pass": metrics.attempted_orders >= min_n,
+    }
+
+    all_pass = all(c["pass"] for c in checks.values())
+
+    return {
+        "gate": "G1.2-full",
+        "gate_result": "PASS" if all_pass else "FAIL",
         "checks": checks,
         "metrics_summary": metrics.to_dict(),
     }

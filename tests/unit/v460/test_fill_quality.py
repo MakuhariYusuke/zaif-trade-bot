@@ -603,6 +603,327 @@ class TestG11Judgment:
 
 
 # =====================================================================
+# 116# Two-Stage Gate Tests
+# =====================================================================
+
+
+class TestG11QuickJudgment:
+    """G1.1-quick (72h Kill Gate) テスト — 116# / 115# レビュー反映."""
+
+    def _make_metrics(self, **overrides) -> "FillMetrics":
+        from ztb.metrics.fill_quality import FillMetrics
+        defaults = dict(
+            total_orders=400,
+            filled_orders=280,
+            cancelled_orders=120,
+            fill_rate_p90=0.65,
+            cancel_ratio=0.30,
+            queue_wait_median_sec=12.0,
+            post_fill_30s_pnl_mean=-0.1,
+            post_fill_30s_pnl_pvalue=0.3,
+            post_fill_30s_pnl_ci_upper=0.2,
+            adverse_selection_ratio=0.28,
+            attempted_orders=360,
+            skip_gate_count=40,
+            skip_gate_ratio=0.10,
+            attempted_fill_rate=0.778,
+            attempted_cancel_ratio=0.222,
+            overall_fill_rate=0.70,
+            measurement_days=4,
+            sample_sufficient=False,
+        )
+        defaults.update(overrides)
+        return FillMetrics(**defaults)
+
+    def test_all_pass(self) -> None:
+        from ztb.metrics.fill_quality import g1_1_quick_judgment
+        metrics = self._make_metrics()
+        thresholds = {
+            "min_attempted_fill_rate": 0.60,
+            "max_attempted_cancel_ratio": 0.40,
+            "max_queue_wait_median_sec": 120,
+            "pnl_kill_p_threshold": 0.02,
+            "pnl_kill_mean_threshold": -0.8,
+            "max_cumulative_loss_jpy": 10000,
+            "max_skip_gate_ratio": 0.25,
+        }
+        result = g1_1_quick_judgment(metrics, thresholds)
+        assert result["gate_result"] == "PASS"
+        assert result["gate"] == "G1.1-quick"
+        assert all(c["pass"] for c in result["checks"].values())
+
+    def test_k1_fill_rate_fail(self) -> None:
+        from ztb.metrics.fill_quality import g1_1_quick_judgment
+        metrics = self._make_metrics(attempted_fill_rate=0.50)
+        result = g1_1_quick_judgment(metrics, {"min_attempted_fill_rate": 0.60})
+        assert result["gate_result"] == "FAIL"
+        assert result["checks"]["K1_attempted_fill_rate"]["pass"] is False
+
+    def test_k4_pnl_compound_both_conditions_fail(self) -> None:
+        """K4: p < 0.02 かつ mean <= -0.8 で FAIL (115# 複合条件)."""
+        from ztb.metrics.fill_quality import g1_1_quick_judgment
+        metrics = self._make_metrics(
+            post_fill_30s_pnl_mean=-1.2,
+            post_fill_30s_pnl_pvalue=0.005,
+        )
+        thresholds = {"pnl_kill_p_threshold": 0.02, "pnl_kill_mean_threshold": -0.8}
+        result = g1_1_quick_judgment(metrics, thresholds)
+        assert result["gate_result"] == "FAIL"
+        assert result["checks"]["K4_pnl_kill"]["pass"] is False
+        assert result["checks"]["K4_pnl_kill"]["significant"] is True
+        assert result["checks"]["K4_pnl_kill"]["large_loss"] is True
+
+    def test_k4_pnl_significant_but_small_loss_passes(self) -> None:
+        """K4: p < 0.02 だが mean > -0.8 → PASS (効果量不足)."""
+        from ztb.metrics.fill_quality import g1_1_quick_judgment
+        metrics = self._make_metrics(
+            post_fill_30s_pnl_mean=-0.3,
+            post_fill_30s_pnl_pvalue=0.01,
+        )
+        thresholds = {"pnl_kill_p_threshold": 0.02, "pnl_kill_mean_threshold": -0.8}
+        result = g1_1_quick_judgment(metrics, thresholds)
+        assert result["checks"]["K4_pnl_kill"]["pass"] is True
+
+    def test_k4_pnl_large_loss_but_not_significant_passes(self) -> None:
+        """K4: mean <= -0.8 だが p >= 0.02 → PASS (統計的に不確実)."""
+        from ztb.metrics.fill_quality import g1_1_quick_judgment
+        metrics = self._make_metrics(
+            post_fill_30s_pnl_mean=-1.5,
+            post_fill_30s_pnl_pvalue=0.06,
+        )
+        thresholds = {"pnl_kill_p_threshold": 0.02, "pnl_kill_mean_threshold": -0.8}
+        result = g1_1_quick_judgment(metrics, thresholds)
+        assert result["checks"]["K4_pnl_kill"]["pass"] is True
+
+    def test_k5_cumulative_loss_fail(self) -> None:
+        from ztb.metrics.fill_quality import g1_1_quick_judgment
+        metrics = self._make_metrics()
+        result = g1_1_quick_judgment(
+            metrics,
+            {"max_cumulative_loss_jpy": 10000},
+            cumulative_loss_jpy=12000,
+        )
+        assert result["gate_result"] == "FAIL"
+        assert result["checks"]["K5_cumulative_loss"]["pass"] is False
+
+    def test_k6_skip_gate_ratio_fail(self) -> None:
+        from ztb.metrics.fill_quality import g1_1_quick_judgment
+        metrics = self._make_metrics(skip_gate_ratio=0.30)
+        result = g1_1_quick_judgment(metrics, {"max_skip_gate_ratio": 0.25})
+        assert result["gate_result"] == "FAIL"
+        assert result["checks"]["K6_skip_gate_ratio"]["pass"] is False
+
+    def test_watch_layer(self) -> None:
+        """115# Q10.4: PASS だが PnL が黄信号 → WATCH."""
+        from ztb.metrics.fill_quality import g1_1_quick_judgment
+        metrics = self._make_metrics(
+            post_fill_30s_pnl_mean=-0.5,
+            post_fill_30s_pnl_pvalue=0.03,
+        )
+        thresholds = {
+            "min_attempted_fill_rate": 0.60,
+            "max_attempted_cancel_ratio": 0.40,
+            "max_queue_wait_median_sec": 120,
+            "pnl_kill_p_threshold": 0.02,
+            "pnl_kill_mean_threshold": -0.8,
+            "max_cumulative_loss_jpy": 10000,
+            "max_skip_gate_ratio": 0.25,
+            "pnl_watch_p_threshold": 0.05,
+            "pnl_watch_mean_threshold": -0.3,
+        }
+        result = g1_1_quick_judgment(metrics, thresholds)
+        assert result["gate_result"] == "WATCH"
+        assert result["watch"] is True
+        assert result["watch_detail"] is not None
+
+    def test_no_watch_when_pnl_ok(self) -> None:
+        from ztb.metrics.fill_quality import g1_1_quick_judgment
+        metrics = self._make_metrics(
+            post_fill_30s_pnl_mean=0.5,
+            post_fill_30s_pnl_pvalue=0.8,
+        )
+        result = g1_1_quick_judgment(metrics, {})
+        assert result["gate_result"] == "PASS"
+        assert result["watch"] is False
+
+
+class TestG12FullJudgment:
+    """G1.2-full (168h Qualification Gate) テスト — 116# / 115# レビュー反映."""
+
+    def _make_metrics(self, **overrides) -> "FillMetrics":
+        from ztb.metrics.fill_quality import FillMetrics
+        defaults = dict(
+            total_orders=1057,
+            filled_orders=714,
+            cancelled_orders=343,
+            fill_rate_p90=0.62,
+            cancel_ratio=0.325,
+            queue_wait_median_sec=12.8,
+            post_fill_30s_pnl_mean=-0.196,
+            post_fill_30s_pnl_pvalue=0.161,
+            post_fill_30s_pnl_ci_upper=0.192,
+            adverse_selection_ratio=0.28,
+            attempted_orders=971,
+            skip_gate_count=86,
+            skip_gate_ratio=0.081,
+            attempted_fill_rate=0.735,
+            attempted_cancel_ratio=0.265,
+            overall_fill_rate=0.675,
+            measurement_days=7,
+            sample_sufficient=True,
+        )
+        defaults.update(overrides)
+        return FillMetrics(**defaults)
+
+    def test_all_pass(self) -> None:
+        from ztb.metrics.fill_quality import g1_2_full_judgment
+        metrics = self._make_metrics()
+        thresholds = {
+            "min_attempted_fill_rate": 0.70,
+            "min_overall_fill_rate": 0.62,
+            "max_attempted_cancel_ratio": 0.30,
+            "max_queue_wait_median_sec": 60,
+            "pnl_alpha": 0.05,
+            "max_adverse_selection_ratio": 0.30,
+            "max_skip_gate_ratio": 0.20,
+            "min_calendar_days": 7,
+            "min_attempted_samples": 500,
+        }
+        result = g1_2_full_judgment(metrics, thresholds)
+        assert result["gate_result"] == "PASS"
+        assert result["gate"] == "G1.2-full"
+        assert all(c["pass"] for c in result["checks"].values())
+
+    def test_f1_attempted_fill_rate_fail(self) -> None:
+        from ztb.metrics.fill_quality import g1_2_full_judgment
+        metrics = self._make_metrics(attempted_fill_rate=0.65)
+        result = g1_2_full_judgment(metrics, {"min_attempted_fill_rate": 0.70})
+        assert result["gate_result"] == "FAIL"
+        assert result["checks"]["F1_attempted_fill_rate"]["pass"] is False
+
+    def test_f1b_overall_fill_rate_fail(self) -> None:
+        """115# Q10.2(A): overall 下限の併設チェック."""
+        from ztb.metrics.fill_quality import g1_2_full_judgment
+        metrics = self._make_metrics(overall_fill_rate=0.55)
+        result = g1_2_full_judgment(metrics, {"min_overall_fill_rate": 0.62})
+        assert result["gate_result"] == "FAIL"
+        assert result["checks"]["F1b_overall_fill_rate"]["pass"] is False
+
+    def test_f4_pnl_negative_not_significant_passes(self) -> None:
+        from ztb.metrics.fill_quality import g1_2_full_judgment
+        metrics = self._make_metrics(
+            post_fill_30s_pnl_mean=-0.2,
+            post_fill_30s_pnl_pvalue=0.16,
+        )
+        result = g1_2_full_judgment(metrics, {"pnl_alpha": 0.05})
+        assert result["checks"]["F4_pnl"]["pass"] is True
+
+    def test_f4_pnl_negative_significant_fails(self) -> None:
+        from ztb.metrics.fill_quality import g1_2_full_judgment
+        metrics = self._make_metrics(
+            post_fill_30s_pnl_mean=-0.8,
+            post_fill_30s_pnl_pvalue=0.01,
+        )
+        result = g1_2_full_judgment(metrics, {"pnl_alpha": 0.05})
+        assert result["checks"]["F4_pnl"]["pass"] is False
+
+    def test_f5_adverse_selection_fail(self) -> None:
+        """115# Q10.2(B): AS 30% 閾値チェック."""
+        from ztb.metrics.fill_quality import g1_2_full_judgment
+        metrics = self._make_metrics(adverse_selection_ratio=0.35)
+        result = g1_2_full_judgment(metrics, {"max_adverse_selection_ratio": 0.30})
+        assert result["gate_result"] == "FAIL"
+        assert result["checks"]["F5_adverse_selection"]["pass"] is False
+
+    def test_f6_skip_gate_ratio_fail(self) -> None:
+        from ztb.metrics.fill_quality import g1_2_full_judgment
+        metrics = self._make_metrics(skip_gate_ratio=0.25)
+        result = g1_2_full_judgment(metrics, {"max_skip_gate_ratio": 0.20})
+        assert result["gate_result"] == "FAIL"
+        assert result["checks"]["F6_skip_gate_ratio"]["pass"] is False
+
+    def test_f7_calendar_days_fail(self) -> None:
+        from ztb.metrics.fill_quality import g1_2_full_judgment
+        metrics = self._make_metrics(measurement_days=5)
+        result = g1_2_full_judgment(metrics, {"min_calendar_days": 7})
+        assert result["gate_result"] == "FAIL"
+        assert result["checks"]["F7_calendar_days"]["pass"] is False
+
+    def test_f8_n_attempted_fail(self) -> None:
+        from ztb.metrics.fill_quality import g1_2_full_judgment
+        metrics = self._make_metrics(attempted_orders=400)
+        result = g1_2_full_judgment(metrics, {"min_attempted_samples": 500})
+        assert result["gate_result"] == "FAIL"
+        assert result["checks"]["F8_n_attempted"]["pass"] is False
+
+
+# =====================================================================
+# 116# compute_fill_metrics attempted field tests
+# =====================================================================
+
+
+class TestComputeFillMetricsAttempted:
+    """116# attempted ベース指標の compute_fill_metrics テスト."""
+
+    def test_skip_gate_fields_populated(self) -> None:
+        """skip_gate_skipped=True のレコードが正しく除外される."""
+        from ztb.metrics.fill_quality import FillRecord, compute_fill_metrics
+        import time
+        base_ts = time.time()
+        records = []
+        # 10 filled
+        for i in range(10):
+            records.append(FillRecord(
+                cycle_id=f"fill_{i}", timestamp=base_ts + i * 120,
+                side="buy", order_price=100.0, order_quantity=0.001,
+                filled=True, skip_gate_skipped=False,
+            ))
+        # 3 skip_gate
+        for i in range(3):
+            records.append(FillRecord(
+                cycle_id=f"skip_{i}", timestamp=base_ts + (10 + i) * 120,
+                side="buy", order_price=100.0, order_quantity=0.001,
+                filled=False, cancelled=True, cancel_reason="skip_gate",
+                skip_gate_skipped=True,
+            ))
+        # 2 timeout
+        for i in range(2):
+            records.append(FillRecord(
+                cycle_id=f"timeout_{i}", timestamp=base_ts + (13 + i) * 120,
+                side="buy", order_price=100.0, order_quantity=0.001,
+                filled=False, cancelled=True, cancel_reason="timeout",
+            ))
+
+        m = compute_fill_metrics(records)
+        assert m.total_orders == 15
+        assert m.skip_gate_count == 3
+        assert m.attempted_orders == 12  # 15 - 3
+        assert m.skip_gate_ratio == pytest.approx(3 / 15)
+        assert m.attempted_fill_rate == pytest.approx(10 / 12)
+        assert m.attempted_cancel_ratio == pytest.approx(2 / 12)
+        assert m.overall_fill_rate == pytest.approx(10 / 15)
+
+    def test_no_skip_gate_records(self) -> None:
+        """skip_gate なし → attempted = total."""
+        from ztb.metrics.fill_quality import FillRecord, compute_fill_metrics
+        import time
+        base_ts = time.time()
+        records = [
+            FillRecord(
+                cycle_id=f"r_{i}", timestamp=base_ts + i * 120,
+                side="buy", order_price=100.0, order_quantity=0.001,
+                filled=True,
+            )
+            for i in range(5)
+        ]
+        m = compute_fill_metrics(records)
+        assert m.skip_gate_count == 0
+        assert m.attempted_orders == 5
+        assert m.attempted_fill_rate == pytest.approx(1.0)
+        assert m.overall_fill_rate == pytest.approx(1.0)
+
+
+# =====================================================================
 # I/O
 # =====================================================================
 

@@ -19,6 +19,7 @@ g1_info:
   holm_family_size: 9
 
 g1_1_exec:
+  # 116# 後方互換: 旧単一ゲート (g1_1_judgment() から参照)
   min_fill_rate_p90: 0.85  # 084# 盲点H: 90%は構造的に非現実的 → 85%に再設計
   max_cancel_ratio: 0.30
   max_queue_wait_median_sec: 60
@@ -27,6 +28,35 @@ g1_1_exec:
   # 092# Round-trip KPI (087# P1-1)
   min_round_trip_pnl_mean: -2.0  # bps — mean がこれ以下ならテール損失警告
   max_net_inventory: 5            # 純在庫ドリフト上限
+
+# 116# 二段階ゲート (115# レビュー反映)
+g1_1_quick_exec:
+  # G1.1-quick (72h Kill Gate) — 明らかに不成立な戦略の早期棄却
+  # 判定時点: 72h or n_attempted >= 300 の早い方
+  min_attempted_fill_rate: 0.60         # K1: attempted (skip_gate 除外) ベース
+  max_attempted_cancel_ratio: 0.40      # K2: attempted ベース
+  max_queue_wait_median_sec: 120        # K3: 300s timeout の半分
+  # K4: PnL 複合条件 — p < 0.02 かつ mean <= -0.8 bps の同時成立で FAIL
+  pnl_kill_p_threshold: 0.02            # 115# Q10.2(C): 単独 p 値判定は不十分
+  pnl_kill_mean_threshold: -0.8         # bps — 効果量条件を併設
+  max_cumulative_loss_jpy: 10000        # K5: 000# §3.9 実損キャップ
+  max_skip_gate_ratio: 0.25             # K6: SkipGate 過剰ブレーキ防止
+  # Watch 層 (FAIL ではなく黄信号 — 115# Q10.4)
+  pnl_watch_p_threshold: 0.05           # p < 0.05 かつ mean < -0.3 bps → WATCH
+  pnl_watch_mean_threshold: -0.3        # bps
+
+g1_2_full_exec:
+  # G1.2-full (168h Qualification Gate) — 完全な品質適格性の確認
+  # 判定時点: 168h (7 暦日) 完了後
+  min_attempted_fill_rate: 0.70         # F1: attempted ベース
+  min_overall_fill_rate: 0.62           # F1b: 115# Q10.2(A) overall 下限併設
+  max_attempted_cancel_ratio: 0.30      # F2: 原初 E2 を attempted ベースで維持
+  max_queue_wait_median_sec: 60         # F3: 原初 E3 維持
+  pnl_alpha: 0.05                       # F4: 有意に負でないこと
+  max_adverse_selection_ratio: 0.30     # F5: 115# Q10.2(B) 35→30 に厳格化
+  max_skip_gate_ratio: 0.20             # F6: SkipGate 過剰スキップ監視
+  min_calendar_days: 7                  # F7: 全曜日カバレッジ
+  min_attempted_samples: 500            # F8: 統計的検出力保証 (MDE ≈ ±0.5 bps)
 
 g2_train:
   min_positive_seed_ratio: 0.75   # 3/4
