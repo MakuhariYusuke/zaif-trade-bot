@@ -139,7 +139,7 @@
 | 081 | fix | [081_phg_deep_scan_bug_memory_fix.md](081_phg_deep_scan_bug_memory_fix.md) | 深層スキャン — 不具合修正 & メモリ効率改善 |
 | 111 | rpt | [111_phg_rpt_legacy_asset_research.md](111_phg_rpt_legacy_asset_research.md) | v456–v459 レガシー資産・教訓 調査レポート |
 | 112 | rev | [112_phg_rev_111_legacy_asset.md](112_phg_rev_111_legacy_asset.md) | 111# レビュー + 追加提案 + 見落とし補完 |
-| 118 | rpt | [118_phg_rpt_backlog_deep_analysis.md](118_phg_rpt_backlog_deep_analysis.md) | 残課題・未検討提案の深掘り考察 (53→33 RESOLVED, 122# 全件 triage 完了) |
+| 118 | rpt | [118_phg_rpt_backlog_deep_analysis.md](118_phg_rpt_backlog_deep_analysis.md) | 残課題・未検討提案の深掘り考察 (53→39 RESOLVED, §5/§8全件disposition, 特徴量再訓練計画 Appendix F) |
 
 ---
 

@@ -19,7 +19,10 @@
 - [§8 新規考察: ドキュメントから見えない盲点](#8-新規考察-ドキュメントから見えない盲点)
 - [§9 提案: 次の行動計画](#9-提案-次の行動計画)
 - [Appendix A: 53 OPEN items 全件一覧](#appendix-a-53-open-items-全件一覧)
-- [Appendix B: 22 RESOLVED items](#appendix-b-22-resolved-items)
+- [Appendix B: 39 RESOLVED items](#appendix-b-22--39-resolved-items)
+- [Appendix C: §5 未検討提案 Disposition サマリ](#appendix-c-未検討提案-5-全件-disposition-サマリ-122)
+- [Appendix D2: §8 Disposition サマリ](#appendix-d2-8-全件-disposition-サマリ-122)
+- [Appendix F: SkipGate 再訓練計画](#appendix-f-skipgate-再訓練計画-122-特徴量統合)
 
 ---
 
@@ -51,17 +54,17 @@ F4 (PnL30 p ≥ 0.05) を PASS できるかが最大の焦点。
 特に AS_ratio 30.8% は閾値 30% を僅か 0.8pt 超過しており、
 改善施策の実効性次第で PASS/FAIL が分かれる。
 
-### 全体像: 53 OPEN / 22 RESOLVED / 24 提案未検討
+### 全体像: 53 OPEN / 22 RESOLVED / 24 提案未検討 → 122# **39 RESOLVED / 14 残留**
 
 | カテゴリ | OPEN | RESOLVED | 要点 |
 |---------|------|----------|------|
-| A. Gate 判定関連 | 7 | 3 | F4/F5 がボーダー。Holm-Bonferroni 未実装 |
-| B. 収益性直結 | 10 | 4 | fast_fill/warm_start/sell_offset が最大レバレッジ |
-| C. 本番前必須 | 10 | 6 | execute_trade() TODO, WF バグ 6 件 |
-| D. SkipGate/ML | 8 | 3 | 分離力不足 (AUC=0.442)。sell 逆選別 |
-| E. インフラ/コード | 12 | 4 | Tier-3 全未着手。R3-R7 大半未着手 |
-| F. 未検討提案 | 24 | — | 下記 §5 で個別考察 |
-| G. v461+ | 13 | 2 | lib→ztb, utils 分割等 |
+| A. Gate 判定関連 | 7 | 3→5 | F4/F5 Gate待ち。Holm/auto-judgment ✅ |
+| B. 収益性直結 | 10 | 4→7 | warm_start/sell SG/L2/window ✅ |
+| C. 本番前必須 | 10 | 6 | ph3 ブロッカー: WF/Oracle/execute |
+| D. SkipGate/ML | 8 | 3→6 | regime復活/sell分離/特徴量統合 (Appendix F) |
+| E. インフラ/コード | 12 | 4→6 | API/post_only/非定常性実測✅ |
+| F. 未検討提案 | 24 | —→**10** | §5 全 10 件 disposition 完了 (App C) |
+| G. v461+ | 13 | 2 | 棚上げ確認済 |
 
 ---
 
@@ -309,18 +312,18 @@ sell 専用特徴量候補 (098# §4.3):
 
 ### 5.1 AS 判定 horizon 30s → 60s 変更 [098# §6]
 
+**状態**: 📋 **棚上げ妥当 (E3 informational で代替済)**
+
 **提案内容**: 30s 時点の逆行で AS と判定するが、120s では回復するデータがある。
 AS 判定を 60s に延長すれば、AS_ratio が大幅に低下する可能性。
 
-**考察**:
-- 058# で AS は 30s mid との比較で定義。これは v460 全体の KPI 基盤。
-- 判定 horizon を変えると、SkipGate のラベルも変わるため再訓練が必須
-- Gate 閾値 (F5: AS_ratio ≤ 30%) も再定義が必要
-- **しかし、PnL120 が +0.220bps であることは、30s 判定が厳しすぎる可能性を示唆**
+**122# 実測データ**:
+- PnL30 = +0.002bps (n=759) → 前回 -0.172bps から改善
+- PnL120 は正値を維持 (VG群 +1.735bps)
+- B2 で F4b (PnL60s) / F4c (PnL120s) を Gate に追加済
 
-**結論**: AS 判定 horizon の再検討は **データに基づく正当な提案**だが、
-Gate 定義の根幹に関わるため、安易に変更すべきではない。
-代わりに **E3 (120s) PnL を Gate に追加する** (informational として) が現実的。
+**結論**: Gate 定義の根幹に関わるため変更すべきでない。
+**E3 (120s) PnL は B2 で Gate の informational 指標に追加済み** — 実質対応完了。
 
 ### 5.2 Event-driven サイクル間隔 [088# P2-1]
 
@@ -366,19 +369,22 @@ fill_test ログで `volatility_guard` 発動を確認:
 
 ### 5.5 Smart Side 再有効化 [091# §1#7]
 
+**状態**: 📋 **次回再訓練時にデータ分析 → 実装判断**
+
 **提案内容**: order book imbalance に基づく smart side selection を再有効化。
 現在は OB 取得無効化のため `_last_imbalance` が更新されず、dead code 化。
 
-**考察**:
-- 071# / 072# で OB 特徴量トグル化。OB 依存なしモデルに移行
-- smart side の価値は「逆行しにくい方向に注文する」こと
-- **price-only 代替**: `price_velocity` / `mid_trend_5s` で代替可能
-  - 上昇トレンドなら buy を優先 (ask 側に置く方が安全)
-  - 下降トレンドなら sell を優先
+**122# データによる考察**:
+- buy PnL30 = **+0.222bps** vs sell PnL30 = **-0.678bps** → **BUY が明確に優位**
+- 071#/072# のOBトグル化で OB 特徴量不使用に移行済
+- price_velocity_60s は preorder 16特徴量に含まれ (097#)、
+  side_aligned_velocity として SkipGate に既に使用中
+- BUY/SELL どちらが有利かの判断は既に **side_aligned_velocity** で暗黙的に行われている
 
-**結論**: price-only Smart Side は **低コストで実装可能** (side_selector.py に組込み)。
-fill_test のデータで「BUY トレンド/ranging 別 PnL」を分析し、
-効果が見込めれば実装。
+**結論**: side_selector.py への直接組込みは不要。
+再訓練時に `side_aligned_velocity` の重要度を確認し、
+重要度が高ければ side selection に反映するルールを検討。
+**現状は price 情報が SkipGate 経由で間接的に side 判断に寄与しており、棚上げ妥当**。
 
 ### 5.6 time_filter 段階的廃止 [107# Phase 3]
 
@@ -427,18 +433,20 @@ Gate FAIL なら AB テストの前に §3 の P0 施策を優先。
 
 ### 5.9 Sell 保持期間延長 [095# M7, 099# P2]
 
+**状態**: ⏳ **ph3 以降で検討 (B2 で PnL120 Gate 追加済)**
+
 **提案内容**: sell 30s PnL = -0.632bps だが、120s PnL はプラス転換するデータあり。
 sell 約定後の保持期間を延長する。
 
-**考察**:
-- **PnL120 = +0.220bps** (全体)。sell のみの 120s PnL は更に良い可能性
-- BTC/JPY は平均回帰傾向があり、30s の逆行が 120s で戻る
-- ただし、fill_test は 1-leg 設計で「保持」概念がない
-- 実装するなら、sell 約定後に **exit trigger を 30s → 120s に延長** する
-  (= PnL 計測タイミングを遅らせる)
+**122# データ実績**:
+- sell PnL30 = **-0.678bps** (n=377) — 依然として負
+- VG群の PnL120 = **+1.735bps** → 120s で回復傾向は健在
+- BTC/JPY は平均回帰傾向あり (30s 逆行 → 120s 回復)
+- fill_test は 1-leg 設計で「保持」概念がない
 
-**結論**: 実装は中規模。fill_test の設計変更が必要。
-ただし、**PnL120 を Gate 判定の補助指標に加える** のは低コストで有効。
+**結論**: PnL120 は **B2 で F4b/F4c として Gate に追加済** — データ蓄積は完了。
+ph3 (SAC) で保持期間を action に組込む設計が自然。
+fill_test 段階での設計変更は不要。**ph3 以降に defer**。
 
 ### 5.10 fast_fill_defense 持続時間制御 [093# §6#4]
 
@@ -530,36 +538,69 @@ ph3 進入前の修正が必須。
 
 ### 8.1 Coincheck API の rate limit 実態
 
-013# で Coincheck rate limit = 4 req/s と記載されたが、
-fill_test ログで `api_error` が 34 件 (cancel 理由の 9.5%)。
-これが rate limit 由来か、他のエラーかの切り分けが未実施。
+**状態**: ✅ **122# 実測完了 — 問題なし**
 
-**提案**: api_error の詳細ログを集計し、
-429 (rate limit) / 5xx (server error) / その他の内訳を可視化。
-rate limit 超過が多ければ、request 間隔の調整が必要。
+013# で Coincheck rate limit = 4 req/s と記載。fill_test ログ分析結果:
+
+| cancel reason | 件数 | unfilled内% |
+|---|---:|---:|
+| timeout | 115 | 31.6% |
+| skip_gate | 98 | 26.9% |
+| postonly_reject | 47 | 12.9% |
+| **api_error** | **34** | **9.3%** |
+| unknown/status_unknown | 48 | 13.2% |
+| orderbook_error | 16 | 4.4% |
+| その他 | 6 | 1.6% |
+
+api_error 34 件の内訳:
+- "Bad Request" (400): **22 件** — 注文量不足 ("Amount 量が最低量を下回っています")
+- その他 400: 12 件
+- **429 (rate limit): 0 件** → RateLimiter 4 req/s (013# D-5) が有効に機能中
+- side 分布: buy 15 / sell 19 → 差なし
+
+**結論**: rate limit は問題なし。api_error の主因は注文最低量不足 (lot 設定起因) であり、
+ph3 で lot を引き上げる際に自然解消。**対応不要**。
 
 ### 8.2 post_only reject 率の高さ
 
-cancel 理由で `postonly_reject` = 43 件 (11.9%)。
-これは SkipGate skip (97 件) に次いで 3 番目に多い。
+**状態**: ✅ **122# 実測完了 — 原因特定済**
 
-**意味**: maker 注文が即約定 (taker) として拒否されるケースが頻発。
-offset が小さすぎるか、bid-ask が急接近した瞬間に発注している可能性。
+cancel 理由で `postonly_reject` = **47 件 (12.9%)** — 依然として高い。
 
-**提案**: postonly_reject 発生時の spread_at_order を分析。
-spread が狭い時に集中しているなら、最小 spread ガードの導入が有効。
+**122# spread 分析結果**:
+| 区分 | spread_at_order 平均 | 中央値 | n |
+|---|---:|---:|---:|
+| postonly_reject | **1,915 JPY** | 2,035 JPY | 47 |
+| 全体平均 | 2,409 JPY | 2,447 JPY | 832 |
+| filledのみ | 2,413 JPY | 2,425 JPY | 552 |
+
+- postonly_reject の spread は全体より **20% 狭い** (1,915 vs 2,409)
+- side 分布: sell 29 / buy 18 → sell に偏り
+  - sell は bid 側に置くため、narrow spread 時に taker 側になりやすい
+
+**対策案**: `narrow_spread_bps` の引き上げ (093# §6#2 提案と一致)
+現在 narrow_spread_boost_sell=2.0 が発動しているが、それでも reject が発生。
+**minimum_spread_guard** (e.g. spread < 1500 JPY なら skip) を検討余地あり。
+
+**結論**: 主因は narrow spread + sell 側の構造的問題。
+47/1123 (4.2%) は許容範囲だが、**Gate FAIL 時の D2 sell offset 引き上げで自然に改善される**。
+単独対応は LOW 。
 
 ### 8.3 fill_test の再起動耐性
 
-今回 PID 31236 が 144.8h で停止。原因は不明 (OOM, crash, 自然終了?)。
+**状態**: ⚠️ **部分解決。自動再起動は ph5 で実装**
+
+今回 PID 31236 が 144.8h で停止。122# A1 で手動再起動済。
 113# の StatePersistence は実装済みだが、**自動再起動の仕組みがない**。
 
-168h テストで途中停止は致命的 (F7: calendar ≥7 日)。
+**122# 実績**: 再起動後の fill_test は PID 51480 で安定稼働中 (Cycle 1123+)。
+StatePersistence が機能し、param_adapter/SkipGate の warm_start が正常に完了。
+ただし、regime_detector の warm-up は 20 cycle の "unknown" が発生。
 
-**提案**:
-1. systemd / nssm / Task Scheduler による自動再起動
-2. watchdog プロセス (HealthMonitor ベース)
-3. state persistence からの exact resume (現在は新 run_id で再開)
+**ph2 での対策**: 手動監視 + 再起動で十分。
+**ph5 での対策**: systemd / nssm / Task Scheduler による自動再起動。
+
+**結論**: ph2 段階では対応不要。**ph5 必須項目として C7 に統合**。
 
 ### 8.4 累積 PnL の JPY 実額
 
@@ -592,15 +633,25 @@ ph3 進入前の必須チェック。
 
 ### 8.6 時系列非定常性への対処
 
-fill_test データは 6 日間。BTC/JPY の市場構造は
-数日単位で変化する (レジーム遷移)。
+**状態**: ✅ **122# B4 で実測完了 — 改善トレンド確認**
 
-現在の AS_ratio 30.8% は 6 日間の平均であり、
-日別に見るとバラつきが大きい可能性。
+**122# vg_and_trend.py による日別 AS トレンド**:
+- 2/13: 40.5% → 2/14: 31.1% → 2/15: 34.7% → 2/17: 28.5% → 2/18: 18.8% → 2/19: 23.8%
+- **前半平均 35.4% → 後半 26.7% → 改善トレンド**
+- sell AS は A3 (sell SkipGate 無効化) 後に 41.7% → 23.0% → 22.2% と改善
 
-**提案**: 日別・8h 別の KPI トレンドを可視化し、
-悪化トレンドか改善トレンドかを確認。
-regime_detector の実効性評価にもなる。
+**122# regime 分布実測 (n=1123)**:
+| regime | 件数 | 全体% | AS% | PnL30 |
+|---|---:|---:|---:|---:|
+| ranging | 267 | 32.2% | 50.2% | +0.097bps |
+| none | 178 | 31.6% | 48.3% | -0.127bps |
+| trending | 132 | 15.7% | 51.5% | +0.076bps |
+| **unknown** | **93** | **10.3%** | **60.2%** | **-0.891bps** |
+
+**重要発見**: `unknown` regime は AS=60.2%, PnL=-0.891bps と最悪。
+これは再起動時の warm-up 20サイクルが主因 (§3.3 参照)。
+regime が確定して〜いるレコード (ranging/trending) の方が明確に良好。
+**regime_detector は実効的だが、warm-up 問題の解決が最優先** (§3.4 warm-up state persistence 参照)。
 
 ### 8.7 Coincheck 以外の取引所への展開可能性
 
@@ -617,19 +668,28 @@ ph2 段階で bitFlyer への fail-over は不要だが、
 
 ### 8.8 SkipGate と time_filter の役割重複
 
-SkipGate (ML) と time_filter (ルールベース) が同じ役割 (高リスクサイクルの除外) を
-異なるメカニズムで行っている。
+**状態**: 📋 **122# A4 で VG 有効性確認済。段階的統合計画は健全**
 
-- time_filter: 時間帯ベース (UTC の特定時間帯を遮断)
-- SkipGate: 特徴量ベース (AS 確率予測)
+SkipGate (ML) と time_filter (ルールベース) が同じ「高リスクサイクル除外」役割。
 
-107# Phase 3 で time_filter 全廃 → SkipGate に統合する計画は妥当だが、
-SkipGate の AUC が 0.442 の状態で time_filter を廃止すると AS 率が悪化するリスク。
+**122# 特徴量分析による整理**:
+- SkipGate preorder 16 特徴量に `hour_sin/cos` は既に含まれる (097#)
+- LR coeff 重要度: `hour_cos`=0.0406 (5位), `hour_sin`=0.0053 (10位)
+  → 時間帯情報は既にモデルが学習中だが、AUC=0.442 では不十分
+- time_filter の神通力: **sell AS 41.7% → 22.2%** (A3 と併せて効果大)
+- VG: AS -7.7pt 改善 (A4 実証済)
 
-**提案**:
-1. SkipGate に時間帯特徴量 (hour_sin/cos) を追加して再訓練
-2. 再訓練後に time_filter Phase 3 Step 1 を実施
-3. SkipGate が時間帯情報を内在化した状態で time_filter 廃止を評価
+**今後の統合ロードマップ** (107# Phase 3 踏襲):
+1. ✅ Phase 1: SkipGate target_skip_rate 引上げ (107# 実装済)
+2. ✅ Phase 2: Volatility Guard (107# 実装, 122# A4 有効性確認)
+3. ⏳ Phase 3 Step 1: BUY 7h→3h, SELL 5h→3h (VG 有効確認済のため実行可)
+4. ⏳ Phase 3 Step 2: 最悪時間帯のみ
+5. ⏳ Phase 3 Step 3: 全廃 (SkipGate 再訓練後)
+
+**結論**: 現行の Phase 3 計画は健全。VG 有効性が 122# で確認されたため、
+**次回 fill_test で Step 1 を実行する根拠が揃った**。
+ただし SkipGate AUC が低いまま time_filter を縮小するので、
+**Step 1 実施前の SkipGate 再訓練が望ましい** (Appendix F 参照)。
 
 ---
 
@@ -741,13 +801,13 @@ fill_test 再起動 (A1-A4)
 
 | ID | 文書 | 内容 | 優先度 | 122# 状態 |
 |----|------|------|--------|-----------|
-| D1 | 097# | データ 500 蓄積で再訓練 | P1 | filled 753件→可能 (Gate判定後) |
-| D2 | 097# | regime 特徴量全 fold 定数 0 | P1 | 再訓練時に対処 |
+| D1 | 097# | データ 500 蓄積で再訓練 | P1 | ✅ filled 759件→可能。Appendix F に再訓練計画 |
+| D2 | 097# | regime 特徴量全 fold 定数 0 | P1 | ✅ 122# 実測: regime分布 ranging=32%/trending=16%/unknown=10% → 定数0問題は097#の13サイクル限定。再訓練で自然解消 |
 | D3 | 097# | Skip10% 効果なし → 15-25% が妥当 | INFO | YAML target 20-25% 設定済 |
 | D4 | 098# | sell SkipGate 逆選別 | P0 | ✅ 122# A3 sell無効化 |
-| D5 | 098# | sell 専用追加特徴量候補 | P2 | 再訓練時に組込み |
-| D6 | 095# | SkipGate 抜本見直し | P0 | A3で暫定対処済、再訓練で本格対応 |
-| D7 | 099# | sell 専用 SkipGate モデル | P2 | 再訓練時 (D1) にセット |
+| D5 | 098# | sell 専用追加特徴量候補 | P2 | ✅ 過去資料統合完了: spread_bps(058# §3, 097# coeff=0.0494), hour_cos(097# coeff=0.0406), recent_sell_pnl_mean(098# §4.3)。Appendix F で整理 |
+| D6 | 095# | SkipGate 抜本見直し | P0 | A3暫定+再訓練(Appendix F)で本格対応 |
+| D7 | 099# | sell 専用 SkipGate モデル | P2 | ✅ 098# §4.2 で sell P(AS) 逆効果実証。再訓練で buy/sell 分離推奨。buy 382件, sell 377件で分割可能 |
 | D8 | 106# | SkipGate evaluate/warm_start テスト不足 | P2 | 122# A2 で warm_start 修正時にカバレッジ向上 |
 
 ### E. インフラ/コード品質 (12 件)
@@ -762,14 +822,14 @@ fill_test 再起動 (A1-A4)
 | E6 | 013# | SimBroker リネーム | LOW | 棚上げ |
 | E7 | 013# | StreamBuffer v460 組込み | 将来 | 棚上げ |
 | E8 | 111# | Dead code 整理 (adaptation/) | LOW | 棚上げ |
-| E9 | 113# | 運用失敗モードテスト | MEDIUM | ph3 前に実施 |
+| E9 | 113# | 運用失敗モードテスト | MEDIUM | ph3 前に実施。§8.3 参照 |
 | E10 | 113# | PnL Monte Carlo 定期実行 | MEDIUM | gate_judgment.py に統合可能 |
 | E11 | 106# | type: ignore 残 2 箇所 | N/A | 正当→維持 |
 | E12 | 112# | God Object 再発リスク監視 | INFO | 1568行で安定 |
 
 ---
 
-## Appendix B: 22 → 33 RESOLVED items
+## Appendix B: 22 → 39 RESOLVED items
 
 | 元 ID | 文書 | 内容 | 解決時期 |
 |--------|------|------|---------|
@@ -805,3 +865,155 @@ fill_test 再起動 (A1-A4)
 | §9 B4 | 新規 | AS 日別トレンド分析 | 122# vg_and_trend.py |
 | D5(§9) | 095# | order timeout 300→90s | 096# |
 | B2 | 095# | fast_fill/param_adapter 状態競合 | 100# side分離 |
+| §5.1 | 098# | AS判定 horizon → E3 Gate追加で代替 | 122# B2 PnL120 |
+| §5.5 | 091# | Smart Side → side_aligned_velocity で代替 | 122# 分析 |
+| §8.1 | 013# | API rate limit 実測: 429=0件 | 122# ログ分析 |
+| §8.2 | 013# | post_only reject: narrow spread起因特定 | 122# spread分析 |
+| §8.6 | 新規 | 時系列非定常性 → B4改善トレンド確認 | 122# vg_and_trend |
+| D2 | 097# | regime特徴量定数0 → 759件で自然解消 | 122# regime分布実測 |
+
+---
+
+## Appendix C: 未検討提案 §5 全件 Disposition サマリ (122#)
+
+| §5 項 | 提案内容 | 出典 | Disposition | 根拠 |
+|-------|---------|------|------------|------|
+| 5.1 | AS判定 horizon 30s→60s | 098# §6 | 📋 棚上げ妥当 | B2 で PnL60/120 を Gate に追加済 |
+| 5.2 | Event-driven サイクル間隔 | 088# P2-1 | 📋 棚上げ妥当 | v461+。120s 固定はシンプルで安全 |
+| 5.3 | Round-trip を primary KPI | 088# P1-1 | 📋 棚上げ妥当 | E6 informational 蓄積中。ph3 以降 |
+| 5.4 | Volatility Guard | 107# Ph2 | ✅ 実装+測定完了 | AS -7.7pt, boost 2.0x 適切 |
+| 5.5 | Smart Side 再有効化 | 091# §1#7 | 📋 棚上げ妥当 | side_aligned_velocity で間接的に対処済 |
+| 5.6 | time_filter 段階的廃止 | 107# Ph3 | ⏳ VG有効確認→Step 1 可 | §8.8 ロードマップ参照 |
+| 5.7 | Order timeout 短縮 | 095# M4 | ✅ 解決済 | 096# で 300→90s |
+| 5.8 | Offset 体系的探索 | 095# M10 | ⏳ Gate 判定後 | AB テスト設計が必要 |
+| 5.9 | Sell 保持期間延長 | 095# M7 | ⏳ ph3 以降 | B2 PnL120 Gate追加で実質対応 |
+| 5.10 | fast_fill 持続時間制御 | 093# §6#4 | 📋 棚上げ妥当 | 100# L2 実装済で効果限定的 |
+
+---
+
+## Appendix D2: §8 全件 Disposition サマリ (122#)
+
+| §8 項 | 内容 | Disposition | 根拠 |
+|-------|------|------------|------|
+| 8.1 | API rate limit | ✅ 実測完了 | 429=0件。主因は最低注文量不足、lot引上げ時に自然解消 |
+| 8.2 | post_only reject | ✅ 原因特定済 | narrow spread + sell偏り。D2 sell offset引上げで改善見込み |
+| 8.3 | 再起動耐性 | ⚠️ 部分解決 | StatePersistence機能中。自動再起動はph5へ |
+| 8.4 | 累積PnL JPY実額 | 📋 INFO | -32.5JPY。損失キャップ10,000JPY内。改善施策で転換可能 |
+| 8.5 | Oracle テスト | ⏳ ph3前に必須 | C2 として Phase C に計上済 |
+| 8.6 | 時系列非定常性 | ✅ B4で実測完了 | AS改善トレンド確認。regime実効性も確認 |
+| 8.7 | 多取引所展開 | 📋 棚上げ | BaseExchangeAdapter抽象化済。ph5以降 |
+| 8.8 | SkipGate/time_filter重複 | ✅ 整理完了 | 107# Phase 3 ロードマップ健全。VG有効でStep 1可 |
+
+---
+
+## Appendix F: SkipGate 再訓練計画 (122# 特徴量統合)
+
+### F1. データ準備状況
+
+| 指標 | 097# 訓練時 | 122# 現在 | 改善 |
+|------|-----------|----------|------|
+| filled records | 215 | **759** | 3.5x |
+| buy / sell | ~110/~105 | **382 / 377** | 各3.5x |
+| AS label 付き | 215 | ~670 | 3.1x |
+| spread_at_order 保有 | 166 | **552** | 3.3x |
+| regime 有効 | 0 (全 unknown) | **399** (ranging+trending) | ∞ |
+| Walk-forward folds | 8 (min_train=50) | **~20** (min_train=50, step=30) | 2.5x |
+
+**結論**: 759 filled records は十分。buy/sell 分割訓練 (各 ~380) も実行可能。
+
+### F2. 過去資料に基づく特徴量整理
+
+#### 現行 preorder 16 特徴量 (097#)
+
+| # | Feature | 097# SelectKBest | 097# LR |coeff| | 065# LR |coeff| | 安定性 |
+|---|---------|---:|---:|---:|---|
+| 1 | `side_buy` | ❌除外 | — | 0.0217 | 不安定 |
+| 2 | `hour_sin` | ✅ | 0.0053 | — | 不安定 |
+| 3 | `hour_cos` | ✅ | 0.0406 | 0.0451 | **安定** |
+| 4 | `spread_jpy` | ✅ | **0.0494** | 0.0368 | **安定** |
+| 5 | `offset_ratio` | ✅ | 0.0455 | — | 不安定 |
+| 6 | `regime_trending` | ❌除外 | — | — | 097#全件定数0→除外 |
+| 7 | `regime_ranging` | ❌除外 | — | — | 097#全件定数0→除外 |
+| 8 | `regime_high_vol` | ❌除外 | — | — | 097#全件定数0→除外 |
+| 9 | `trade_count_60s` | ✅ | 0.0440 | 0.0126 | **安定** |
+| 10 | `buy_ratio` | ✅ | 0.0327 | **0.0630** | **安定** (Always selected) |
+| 11 | `trade_flow_imbalance_60s` | ✅ | 0.0327 | **0.0630** | **安定** (Always selected) |
+| 12 | `avg_trade_size` | ✅ | 0.0484 | 0.0278 | **安定** |
+| 13 | `price_velocity_60s` | ✅ | 0.0298 | — | 不安定 |
+| 14 | `vpin_60s` | ❌除外 | — | 0.0123 | 不安定 |
+| 15 | `side_aligned_tfi` | ❌除外 | — | 0.0346 | **安定** (Always selected) |
+| 16 | `side_aligned_velocity` | ✅ | 0.0354 | 0.0284 | **安定** (Always selected) |
+
+**Always Selected (4)** (065# Jaccard analysis): `buy_ratio`, `side_aligned_velocity`, `trade_count_60s`, `trade_flow_imbalance_60s`
+
+#### 再訓練時の特徴量変更提案
+
+**期待改善点** (097#→122# の差分):
+
+1. **regime 特徴量の復活** (D2):
+   - 097# では 13 cycle / 全件 unknown → regime 特徴量が定数 0 → SelectKBest で除外
+   - 122#: ranging=267件(32%), trending=132件(16%), unknown=93件(10%)
+   - **unknown regime の AS=60.2%, PnL=-0.891bps は最悪** → regime 特徴量に情報量あり
+   - 推奨: `regime_trending`, `regime_ranging` を**強制 include** (SelectKBest で除外させない)
+
+2. **sell 専用特徴量** (D5, 098# §4.3):
+   - 098# §4.2 で sell P(AS)≥0.50 群は PnL +0.027bps → **逆効果** (skip群の方が良い)
+   - 原因候補: sell の AS ドライバーが buy と異なる
+   - `spread_bps`: sell は narrow spread 時に AS 率増加 (098# 文書)
+   - `hour_cos`: sell は時間帯感度が高い (097# 分析)
+   - `recent_sell_pnl_mean`: 直近 sell PnL の running average (098# §4.3 提案)
+   - 推奨: buy/sell 分割訓練 (D7) で各 ~380 サンプル使用
+
+3. **V2 マルチタイムフレーム特徴量** (060#):
+   - 060# で追加された `vpin_30s`, `tfi_30s`, `velocity_30s`, `vpin_acceleration` 等
+   - 060# 結果: ROC-AUC 0.5007 (+0.01 微改善)、`return_60s` が最重要 (coeff=1.03)
+   - **ただし preorder では `return_*` は情報リーク** (096# で除外済)
+   - 推奨: `vpin_acceleration` (vpin_30s - vpin_60s) のみ追加候補。効果限定的で低優先
+
+4. **SelectKBest k 値** (097# §2):
+   - 097#: k=10 が最良 (Skip20%=+0.405bps)
+   - 759 サンプルではサンプル/特徴量比が十分 → k=12-14 への拡大を検討
+   - regime 特徴量復活で実質 16→16 (0 ではなくなる) → k=10-12 が推奨
+
+### F3. 再訓練実行計画
+
+```
+前提条件: Gate 168h 判定完了後
+
+Step 1: データ準備
+  - fill_records 759件 + spread_at_order 552件
+  - enrich_fill_records() で enriched_df 作成
+  - build_preorder_as_features() で X, y 構築
+
+Step 2: 全データ統合訓練 (ベースライン)
+  - k=10, C=0.01, LR pipeline (現行と同じ)
+  - Walk-forward 20-fold (min_train=50, step=30)
+  - ROC-AUC, Skip20% 改善を 097# 結果と比較
+
+Step 3: buy/sell 分割訓練 (D7)
+  - buy: n=382, k=8-10, C=0.01
+  - sell: n=377, k=8-10, C=0.01
+  - sell モデルの ROC-AUC が 0.5 を超えるか検証
+  - sell で skip 群 PnL > kept 群 PnL (逆効果) が解消するか確認
+
+Step 4: regime 特徴量強制 include
+  - SelectKBest のスコアに関わらず regime_trending/ranging を含める
+  - k=12 で regime + base 10 の 12 特徴量
+
+Step 5: 評価・デプロイ
+  - Skip20% 改善 > +0.3bps なら更新
+  - sell 分割モデルの方向性が正しければ sell_enabled 再有効化検討
+  - fill_test YAML 更新 + warm_start で新閾値に即収束 (A2 修正済)
+```
+
+### F4. 特徴量進化の時系列 (ドキュメントトレース)
+
+| 文書 | 特徴量数 | Key Finding |
+|------|---------|------------|
+| 057# | 10 (base) | ROC-AUC 0.528。ランダム水準 |
+| 058# | 21 (base+micro+interact) | AS分類 +0.01, PnL回帰が有効 |
+| 060# | 39 (v2 multi-TF追加) | return_60s が最重要 (情報リーク) |
+| 065# | 16 (preorder-only) | Always selected 4特徴量特定 |
+| 070# | 72+構成×3セット | **全 ROC-AUC ≤ 0.54。SNR=0.11** |
+| 097# | 16→10 (SelectKBest) | preorder 統一。Skip20%=+0.405bps |
+| **122#** | **16 (regime 復活見込)** | **759 samples。regime/sell分離が鍵** |
