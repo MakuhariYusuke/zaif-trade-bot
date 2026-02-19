@@ -984,11 +984,14 @@ class TestBalanceCurrencyFilter:
             assert suffix in source, f"{suffix} should be excluded in get_balance"
 
     def test_loss_cap_no_dead_reserved_check(self) -> None:
-        """_update_dynamic_loss_cap に JPY_RESERVED/BTC_RESERVED は不要."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
+        """AdaptationEngine.update_dynamic_loss_cap に JPY_RESERVED/BTC_RESERVED は不要.
 
-        source = inspect.getsource(FillTestRunner._update_dynamic_loss_cap)
+        120#: adaptation_engine.py に抽出済み。
+        """
+        import inspect
+        from scripts.v460.lib.adaptation_engine import AdaptationEngine
+
+        source = inspect.getsource(AdaptationEngine.update_dynamic_loss_cap)
         assert "JPY_RESERVED" not in source, "Dead check should be removed"
         assert "BTC_RESERVED" not in source, "Dead check should be removed"
 

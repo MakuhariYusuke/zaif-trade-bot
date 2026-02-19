@@ -523,3 +523,5 @@ class PnlMeasurement:
     adverse_selected: Optional[bool] = None
     adverse_selected_raw: Optional[bool] = None
     actual_measurement_sec: Optional[float] = None
+    # 120# PnlMeasurer: early_exit_triggered を戻り値に含める
+    early_exit_triggered: bool = False

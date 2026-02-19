@@ -116,8 +116,9 @@ class TestSellOffsetFloorPostAdaptive:
 
     def test_post_adaptive_floor_exists_in_code(self) -> None:
         """spread_adaptive の後に sell floor 再適用ロジックがある."""
+        # 120# _compute_maker_price は maker_price.py に抽出済み
         src = Path(
-            _PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py"
+            _PROJECT_ROOT / "scripts" / "v460" / "lib" / "maker_price.py"
         )
         content = src.read_text(encoding="utf-8")
 
@@ -126,8 +127,9 @@ class TestSellOffsetFloorPostAdaptive:
 
     def test_post_adaptive_floor_after_spread_adaptive(self) -> None:
         """091# floor 再適用が spread_adaptive より後にある."""
+        # 120# maker_price.py に抽出済み
         src = Path(
-            _PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py"
+            _PROJECT_ROOT / "scripts" / "v460" / "lib" / "maker_price.py"
         )
         content = src.read_text(encoding="utf-8")
 
@@ -139,10 +141,14 @@ class TestSellOffsetFloorPostAdaptive:
 
     def test_first_and_post_floor_both_exist(self) -> None:
         """sell_offset_floor が 2 箇所 (初期適用 + 事後再適用) 存在する."""
-        src = Path(
+        # 120# maker_price.py + run_fill_test.py 合算で検証
+        mp = Path(
+            _PROJECT_ROOT / "scripts" / "v460" / "lib" / "maker_price.py"
+        )
+        rft = Path(
             _PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py"
         )
-        content = src.read_text(encoding="utf-8")
+        content = mp.read_text(encoding="utf-8") + rft.read_text(encoding="utf-8")
 
         # sell_offset_floor の参照箇所をカウント
         # 088# 初期適用 + 091# 事後再適用 + config 定義 で少なくとも 3 箇所以上

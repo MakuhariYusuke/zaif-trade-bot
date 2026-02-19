@@ -47,7 +47,9 @@ from ztb.metrics.fill_quality import (
     load_fill_records_glob,
     save_fill_records,
 )
+from ztb.risk.circuit_breakers import KillSwitch
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+from scripts.v460.lib.adaptation_engine import AdaptationEngine
 from scripts.v460.lib.batch_persistence import BatchPersistence
 from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.fill_config import (
@@ -56,6 +58,9 @@ from scripts.v460.lib.fill_config import (
     FillMonitorResult as _FillMonitorResult,
     PnlMeasurement as _PnlMeasurement,
 )
+from scripts.v460.lib.maker_price import MakerPriceCalculator
+from scripts.v460.lib.order_monitor import OrderMonitor
+from scripts.v460.lib.pnl_measurer import PnlMeasurer
 from scripts.v460.lib.resilience import (
     CircuitBreaker,
     CircuitBreakerOpenException,
@@ -119,7 +124,8 @@ class FillTestRunner:
         else:
             self._last_side = None  # → _next_side() が "buy" を返す
         self._preflight_skip_count = 0  # 044# 連続 preflight スキップ計
-        self._shutdown_requested = False
+        # 120# KillSwitch 統合: _shutdown_requested bool → KillSwitch (ztb.risk)
+        self._kill_switch = KillSwitch("fill_test")
         self._pending_order_id: Optional[str] = None
         self._lockfile_path: Optional[Path] = None  # 044# 単一起動ロック
 
@@ -130,7 +136,6 @@ class FillTestRunner:
         # 033# 方策 B: 動的ロットの実行時数量 (config.order_quantity を初期値とする)
         self._current_lot: float = config.order_quantity
         # 046# soft loss_cap 発動済みフラグ (重複半減を防止)
-        # 101# §2: レジューム時に cumulative_pnl から復元する (run_continuous 内)
         self._soft_loss_cap_triggered: bool = False
         # 101# §4: soft_cap スナップショット (起動時残高ベース、動的 loss_cap 連動しない)
         self._soft_cap_jpy_snapshot: float | None = None
@@ -140,8 +145,6 @@ class FillTestRunner:
         self._consecutive_086_wait: int = 0
         # 079# heartbeat: time_filter 抑制中のプロセス生存ログ
         self._last_heartbeat_time: float = 0.0
-        # 119# BatchPersistence: バッチ保存ロジック委譲 (God Object 分割)
-        # 049# 即約定防御: 次サイクルの offset を一時的に増加
         # 100# God Object 分割: FastFillDefense クラスに委譲 (side-aware)
         self._fast_fill_defense = FastFillDefense(
             config=FastFillDefenseConfig(
@@ -159,29 +162,30 @@ class FillTestRunner:
             base_offset_ratio_buy=config.spread_offset_ratio_buy,
             base_offset_ratio_sell=config.spread_offset_ratio_sell,
         )
-        # 096# 状態分離: base offset は adapter のみ変更、boost は乗数のみ変更
-        # config.spread_offset_ratio* は初期値として base に退避し、直接変更しない
-        self._base_offset_ratio: float = config.spread_offset_ratio
-        self._base_offset_ratio_buy: float | None = config.spread_offset_ratio_buy
-        self._base_offset_ratio_sell: float | None = config.spread_offset_ratio_sell
         # 051# P2-3: Balance auto-shrink (残高不足時のロット一時縮小)
         self._balance_shrink_active: bool = False
         self._pre_shrink_lot: float = config.order_quantity
-        # 054# S1: Orderbook Imbalance — 直前計測値を保持 (S2 Smart Side で参照)
-        self._last_imbalance: float = 0.0
-        self._last_bid_depth: float = 0.0
-        self._last_ask_depth: float = 0.0
         # 054# S2: Smart Side — 同一 side 連続カウンタ
         self._consecutive_same_side: int = 0
         # 054# S3: Early Exit — rapid exit フラグ
         self._rapid_exit_pending: bool = False
         self._rapid_exit_side: str | None = None
-        # 054# S1/S4: mid price 追跡 (trend 計算用)
-        self._prev_mid_price: float | None = None
-        self._prev_mid_time: float | None = None
-        self._last_mid_trend_bps: float | None = None
-        # 107# Volatility Guard: VPIN キャッシュ (SkipGate 特徴量から取得)
-        self._last_vpin: float | None = None
+
+        # 120# God Object 分割: MakerPriceCalculator に価格算出ロジックを委譲
+        self._maker_price = MakerPriceCalculator(
+            config=config,
+            fast_fill_defense=self._fast_fill_defense,
+            regime_detector=None,  # _regime_detector 初期化後に設定
+            base_offset_ratio=config.spread_offset_ratio,
+            base_offset_ratio_buy=config.spread_offset_ratio_buy,
+            base_offset_ratio_sell=config.spread_offset_ratio_sell,
+        )
+
+        # 120# God Object 分割: OrderMonitor に約定ポーリングを委譲
+        self._order_monitor = OrderMonitor(config)
+
+        # 120# God Object 分割: PnlMeasurer に PnL 計測を委譲
+        self._pnl_measurer = PnlMeasurer(config)
 
         # 037# レジーム検知 (035# §4)
         self._regime_detector: Optional["FillTestRegimeDetector"] = None
@@ -199,6 +203,8 @@ class FillTestRunner:
                 min_confidence=config.regime_min_confidence,
             )
             self._regime_detector = FillTestRegimeDetector(regime_cfg)
+            # MakerPriceCalculator に regime detector を設定
+            self._maker_price._regime_detector = self._regime_detector
             logger.info(
                 f"[Regime] detector enabled: window={regime_cfg.window}, "
                 f"hysteresis={regime_cfg.hysteresis_count}"
@@ -211,6 +217,13 @@ class FillTestRunner:
             save_fail_threshold=config.save_fail_threshold,
             retry_backoff_sec=config.save_retry_backoff_sec,
             flush_interval_sec=config.batch_flush_interval_sec,
+        )
+
+        # 120# God Object 分割: AdaptationEngine に適応ロジックを委譲
+        self._adaptation_engine = AdaptationEngine(
+            config=config,
+            yaml_cfg=self._yaml_cfg,
+            results_dir=self._results_dir,
         )
 
         # 062# S5: SkipGate ML フィルター
@@ -343,7 +356,7 @@ class FillTestRunner:
         if not self.config.smart_side_enabled:
             return base_side
 
-        imbalance = self._last_imbalance
+        imbalance = self._maker_price._last_imbalance
 
         if self.config.smart_side_mode == "suppress":
             # 不利な side を抑制: buy を出そうとしているが売り圧力が強い → buy スキップ
@@ -383,246 +396,18 @@ class FillTestRunner:
         return base_side
 
     async def _compute_orderbook_imbalance(self, depth: int = 5) -> tuple[float, float, float]:
-        """054# S1: 板不均衡を計算.
-
-        Returns:
-            (imbalance, bid_total, ask_total) タプル.
-            imbalance ∈ [-1, +1].
-            +1 = bid 側が圧倒的 (買い圧力 = 価格上昇示唆).
-            -1 = ask 側が圧倒的 (売り圧力 = 価格下落示唆).
-        """
-        ob = await self.adapter.get_orderbook(self.config.symbol, depth=depth)
-        bid_volume = sum(qty for _, qty in ob.bids[:depth]) if ob.bids else 0.0
-        ask_volume = sum(qty for _, qty in ob.asks[:depth]) if ob.asks else 0.0
-        total = bid_volume + ask_volume
-        if total == 0:
-            return 0.0, 0.0, 0.0
-        imbalance = (bid_volume - ask_volume) / total
-        return imbalance, bid_volume, ask_volume
+        """054# S1: 板不均衡を計算 — 120# MakerPriceCalculator に委譲."""
+        r = await self._maker_price.compute_imbalance(self.adapter, self.config.symbol, depth=depth)
+        return r.imbalance, r.bid_total, r.ask_total
 
     async def _get_mid_price(self) -> float:
-        """板の best bid/ask から mid price を算出."""
-        ob = await self.adapter.get_orderbook(self.config.symbol, depth=1)
-        if not ob.bids or not ob.asks:
-            raise ValueError("Empty orderbook — cannot compute mid price")
-        best_bid = ob.bids[0][0]
-        best_ask = ob.asks[0][0]
-        return (best_bid + best_ask) / 2.0
+        """板の best bid/ask から mid price を算出 — 120# MakerPriceCalculator に委譲."""
+        return await self._maker_price.get_mid_price(self.adapter, self.config.symbol)
 
     async def _compute_maker_price(self, side: str) -> tuple[float, float, float]:
-        """maker limit 価格を算出: スプレッド比例オフセット + post_only 安全策.
-
-        009# §4.2: スプレッド内側に配置して maker 約定を狙う.
-        CM-1: 固定 1 JPY → スプレッド比例 + post_only リジェクト防止.
-        054# S1: Imbalance ベース AS リスク補正.
-        054# S4: Spread 適応型 offset.
-
-        Returns:
-            (price, spread_at_order, effective_offset_ratio) タプル.
-        """
-        # 054# S1: imbalance 計算 (depth>1 で板の深さを参照)
-        if self.config.imbalance_enabled:
-            imb, bid_d, ask_d = await self._compute_orderbook_imbalance(
-                depth=self.config.imbalance_depth,
-            )
-            self._last_imbalance = imb
-            self._last_bid_depth = bid_d
-            self._last_ask_depth = ask_d
-        else:
-            imb = 0.0
-
-        ob = await self.adapter.get_orderbook(self.config.symbol, depth=1)
-        if not ob.bids or not ob.asks:
-            raise ValueError("Empty orderbook")
-        best_bid = ob.bids[0][0]
-        best_ask = ob.asks[0][0]
-        spread = best_ask - best_bid
-        mid_price = (best_bid + best_ask) / 2.0
-
-        # 054# mid price trend 追跡
-        mid_trend_bps: float | None = None
-        now = time.time()
-        if self._prev_mid_price is not None and self._prev_mid_time is not None:
-            dt = now - self._prev_mid_time
-            if 0 < dt < self.config.mid_trend_validity_sec:  # 有効期間内のデータのみ
-                mid_trend_bps = (mid_price - self._prev_mid_price) / self._prev_mid_price * self._BPS_FACTOR
-        self._prev_mid_price = mid_price
-        self._prev_mid_time = now
-        self._last_mid_trend_bps = mid_trend_bps
-
-        # 031# スプレッドフィルター: 狭すぎる場合はスキップ
-        if spread < self.config.min_spread_jpy:
-            raise ValueError(
-                f"Spread too narrow: {spread:.0f} JPY < min {self.config.min_spread_jpy:.0f}"
-            )
-
-        # スプレッド比例オフセット (最小保証付き)
-        # 049# side 別 offset: buy/sell 独立設定がある場合はそちらを優先
-        # 096# 状態分離: config ではなく _base_offset_ratio* を参照
-        effective_offset_ratio = self._base_offset_ratio
-        if side == "buy" and self._base_offset_ratio_buy is not None:
-            effective_offset_ratio = self._base_offset_ratio_buy
-        elif side == "sell" and self._base_offset_ratio_sell is not None:
-            effective_offset_ratio = self._base_offset_ratio_sell
-
-        # 088# sell 専用ハードガード: offset floor (sell 側の最低保証)
-        if side == "sell" and self.config.sell_offset_floor > 0:
-            effective_offset_ratio = max(effective_offset_ratio, self.config.sell_offset_floor)
-
-        # 088# sell 専用: max_spread 超過で sell スキップ
-        if (
-            side == "sell"
-            and self.config.sell_max_spread_jpy > 0
-            and spread > self.config.sell_max_spread_jpy
-        ):
-            logger.info(
-                f"[sell_guard] Spread {spread:.0f} JPY > max {self.config.sell_max_spread_jpy:.0f} "
-                f"— skipping sell order (088#)"
-            )
-            raise ValueError(
-                f"sell_guard: spread {spread:.0f} > max {self.config.sell_max_spread_jpy:.0f}"
-            )
-
-        # 052#: トレンディング時にオフセットをブースト (PnL -1.2bps 対策)
-        if (
-            self._regime_detector is not None
-            and self._regime_detector.current_regime.value == "trending"
-            and self.config.regime_trending_offset_boost > 1.0
-        ):
-            effective_offset_ratio *= self.config.regime_trending_offset_boost
-            logger.debug(
-                f"[regime] trending → offset boosted: "
-                f"{effective_offset_ratio / self.config.regime_trending_offset_boost:.4f} "
-                f"→ {effective_offset_ratio:.4f}"
-            )
-
-        # 054# S4: Spread 適応型 offset
-        if self.config.spread_adaptive_enabled:
-            spread_bps = spread / mid_price * self._BPS_FACTOR
-            if spread_bps < self.config.narrow_spread_bps:
-                # 093# side 別 boost: buy/sell で独立した倍率を適用
-                sa_boost = self.config.narrow_spread_boost
-                if side == "buy" and self.config.narrow_spread_boost_buy is not None:
-                    sa_boost = self.config.narrow_spread_boost_buy
-                elif side == "sell" and self.config.narrow_spread_boost_sell is not None:
-                    sa_boost = self.config.narrow_spread_boost_sell
-                effective_offset_ratio = min(
-                    effective_offset_ratio * sa_boost, self.config.max_offset_ratio,
-                )
-                logger.debug(
-                    f"[spread_adaptive] Narrow spread {spread_bps:.1f}bps "
-                    f"({side} boost={sa_boost:.2f}) "
-                    f"→ offset boosted to {effective_offset_ratio:.4f}"
-                )
-            elif spread_bps > self.config.wide_spread_bps:
-                effective_offset_ratio = max(
-                    effective_offset_ratio * self.config.wide_spread_ratio, self.config.min_offset_ratio,
-                )
-                logger.debug(
-                    f"[spread_adaptive] Wide spread {spread_bps:.1f}bps "
-                    f"→ offset reduced to {effective_offset_ratio:.4f}"
-                )
-
-        # 091# sell offset floor 事後再適用: spread_adaptive の wide 補正で
-        # floor を下回る場合があるため、最終段で再保証する
-        if side == "sell" and self.config.sell_offset_floor > 0:
-            if effective_offset_ratio < self.config.sell_offset_floor:
-                logger.debug(
-                    f"[sell_guard] Post-adaptive floor re-applied: "
-                    f"{effective_offset_ratio:.4f} → {self.config.sell_offset_floor:.4f}"
-                )
-                effective_offset_ratio = self.config.sell_offset_floor
-
-        # 107# Volatility Guard: リアルタイム急変検知 → offset boost
-        if self.config.volatility_guard_enabled:
-            vg_triggered = False
-            vg_reason = ""
-            # 1) price_velocity: mid price trend の絶対値が閾値超過
-            if (
-                mid_trend_bps is not None
-                and abs(mid_trend_bps) > self.config.volatility_guard_velocity_threshold_bps
-            ):
-                vg_triggered = True
-                vg_reason = f"velocity={mid_trend_bps:.1f}bps"
-            # 2) VPIN: 直近の SkipGate 特徴量から取得 (存在する場合)
-            if hasattr(self, "_last_vpin") and self._last_vpin is not None:
-                if self._last_vpin > self.config.volatility_guard_vpin_threshold:
-                    vg_triggered = True
-                    vg_reason += (f"{'+' if vg_reason else ''}vpin="
-                                  f"{self._last_vpin:.2f}")
-            if vg_triggered:
-                pre_offset = effective_offset_ratio
-                effective_offset_ratio = min(
-                    effective_offset_ratio * self.config.volatility_guard_offset_boost_factor,
-                    self.config.max_offset_ratio,
-                )
-                logger.info(
-                    f"[volatility_guard] 107# {side} offset boosted: "
-                    f"{pre_offset:.4f}→{effective_offset_ratio:.4f} "
-                    f"({vg_reason})"
-                )
-
-        # 054# S1: Imbalance ベース AS リスク補正
-        imbalance_skipped = False
-        if self.config.imbalance_enabled and abs(imb) > self.config.imbalance_threshold:
-            # AS リスクが高い side かチェック
-            as_risk = (
-                (side == "buy" and imb < -self.config.imbalance_threshold)
-                or (side == "sell" and imb > self.config.imbalance_threshold)
-            )
-            if as_risk:
-                if abs(imb) >= self.config.imbalance_skip_threshold:
-                    # 極端な偏り → 注文自体をスキップ
-                    imbalance_skipped = True
-                    logger.info(
-                        f"[imbalance] Extreme AS risk: {side} imb={imb:+.3f} "
-                        f">= skip_threshold {self.config.imbalance_skip_threshold}. "
-                        f"Skipping order."
-                    )
-                    raise ValueError(
-                        f"Imbalance skip: {side} order suppressed (imb={imb:+.3f})"
-                    )
-                else:
-                    # 中程度の偏り → offset 拡大
-                    effective_offset_ratio *= self.config.imbalance_offset_boost
-                    effective_offset_ratio = min(effective_offset_ratio, self.config.max_offset_ratio)
-                    logger.info(
-                        f"[imbalance] {side} AS risk: imb={imb:+.3f}, "
-                        f"offset boosted to {effective_offset_ratio:.4f}"
-                    )
-
-        offset = max(self.config.min_offset_jpy, spread * effective_offset_ratio)
-
-        # 100# FastFillDefense: per-side boost 乗数を適用
-        boost_mult = self._fast_fill_defense.get_boost_multiplier(side)
-        if boost_mult != 1.0:
-            offset *= boost_mult
-            effective_offset_ratio *= boost_mult
-
-        if side == "buy":
-            price = best_bid + offset
-            # CM-1: post_only ガード — best_ask 以上にならないよう保護
-            if price >= best_ask:
-                price = best_bid  # best bid に退避 (確実に maker)
-                # 096# 退避時の実効 offset を正確に記録
-                effective_offset_ratio = 0.0
-                logger.info(
-                    f"Spread guard: buy price {best_bid + offset:.0f} >= ask {best_ask:.0f}, "
-                    f"fallback to best_bid {best_bid:.0f} (spread={spread:.0f})"
-                )
-            return price, spread, effective_offset_ratio
-        else:
-            price = best_ask - offset
-            # CM-1: post_only ガード — best_bid 以下にならないよう保護
-            if price <= best_bid:
-                price = best_ask  # best ask に退避 (確実に maker)
-                # 096# 退避時の実効 offset を正確に記録
-                effective_offset_ratio = 0.0
-                logger.info(
-                    f"Spread guard: sell price {best_ask - offset:.0f} <= bid {best_bid:.0f}, "
-                    f"fallback to best_ask {best_ask:.0f} (spread={spread:.0f})"
-                )
-            return price, spread, effective_offset_ratio
+        """maker limit 価格を算出 — 120# MakerPriceCalculator に委譲."""
+        r = await self._maker_price.compute(side, self.adapter, self.config.symbol)
+        return r.price, r.spread, r.effective_offset_ratio
 
     def _is_time_filtered(self, side: str | None = None) -> bool:
         """041# 時間帯フィルター: 高 AS 時間帯かどうかを判定.
@@ -942,7 +727,7 @@ class FillTestRunner:
             )
 
             # 107# Volatility Guard: SkipGate 特徴量から VPIN をキャッシュ
-            self._last_vpin = gate_features.get("vpin_60s")
+            self._maker_price._last_vpin = gate_features.get("vpin_60s")
 
             decision = self._skip_gate.evaluate(
                 gate_features, side=side,
@@ -977,9 +762,9 @@ class FillTestRunner:
                     skip_gate_model_used=result.model_used,
                     skip_gate_as_prob=result.as_prob,
                     skip_gate_threshold_used=result.threshold_used,
-                    orderbook_imbalance=self._last_imbalance if self.config.imbalance_enabled else None,
-                    bid_depth_total=self._last_bid_depth if self.config.imbalance_enabled else None,
-                    ask_depth_total=self._last_ask_depth if self.config.imbalance_enabled else None,
+                    orderbook_imbalance=self._maker_price._last_imbalance if self.config.imbalance_enabled else None,
+                    bid_depth_total=self._maker_price._last_bid_depth if self.config.imbalance_enabled else None,
+                    ask_depth_total=self._maker_price._last_ask_depth if self.config.imbalance_enabled else None,
                     run_id=self._run_id,
                     git_sha=self._git_sha,
                 )
@@ -997,270 +782,35 @@ class FillTestRunner:
 
     async def _monitor_fill_polling(
         self,
-        order: Any,
+        order: object,
         order_price: float,
         side: str,
         t_submit: float,
         spread_at_order: Optional[float],
         effective_offset_ratio: float,
     ) -> _FillMonitorResult:
-        """約定ポーリング監視 + stale order cancel-replace (run_single_cycle Phase 3-4).
+        """約定ポーリング監視 — 120# OrderMonitor に委譲.
 
-        113# R1: run_single_cycle から抽出.
+        120# 型安全: order: Any → object (OrderLike Protocol 準拠)。
         """
-        filled = False
-        fill_price: Optional[float] = None
-        t_fill: Optional[float] = None
-        cancel_reason_poll: Optional[str] = None
-        elapsed = 0.0
-        reprice_count = 0
-        # 094# 発注時 mid price を stale 判定の基準にする
-        mid_at_order: Optional[float] = None
-        if self.config.stale_order_enabled:
-            try:
-                mid_at_order = await self._get_mid_price()
-            except Exception as e:
-                logger.debug(f"[stale_order] mid_at_order 取得失敗 (stale 検出無効化): {e}")
-        last_reprice_time = t_submit
+        def _set_pending(oid: str | None) -> None:
+            self._pending_order_id = oid
 
-        while elapsed < self.config.order_timeout_sec and not self._shutdown_requested:
-            await asyncio.sleep(self.config.poll_interval_sec)
-            elapsed = time.time() - t_submit
-
-            try:
-                status_order = await self.adapter.get_order_status(order.order_id)
-                if status_order is None:
-                    _retry_delays = self.config.status_unknown_retry_delays
-                    _recovered = False
-                    for _retry_i, _delay in enumerate(_retry_delays):
-                        logger.warning(
-                            f"Order {order.order_id} not found — "
-                            f"retry {_retry_i + 1}/{len(_retry_delays)} after {_delay}s"
-                        )
-                        await asyncio.sleep(_delay)
-                        status_order = await self.adapter.get_order_status(
-                            order.order_id,
-                        )
-                        if status_order is not None and status_order.status == "filled":
-                            filled = True
-                            fill_price = (
-                                status_order.price
-                                if status_order.price
-                                else order_price
-                            )
-                            t_fill = time.time()
-                            logger.info(
-                                f"Order confirmed filled on retry {_retry_i + 1} @ "
-                                f"{fill_price:.0f} JPY"
-                            )
-                            _recovered = True
-                            break
-                        elif status_order is not None:
-                            _recovered = True
-                            break
-                    if _recovered and filled:
-                        break
-                    if _recovered and status_order is not None:
-                        if status_order.status in ("cancelled", "rejected"):
-                            cancel_reason_poll = f"exchange_{status_order.status}"
-                            logger.info(f"Order {status_order.status}: {order.order_id}")
-                            break
-                        continue
-                    is_likely_postonly_reject = elapsed < self.config.poll_interval_sec * 3
-                    reason = "postonly_reject" if is_likely_postonly_reject else "status_unknown"
-                    logger.warning(
-                        f"Order {order.order_id} status unknown after "
-                        f"{len(_retry_delays)} retries "
-                        f"— treating as cancelled ({reason}, elapsed={elapsed:.1f}s)"
-                    )
-                    cancel_reason_poll = reason
-                    break
-                elif status_order.status == "filled":
-                    filled = True
-                    fill_price = (
-                        status_order.price if status_order.price else order_price
-                    )
-                    t_fill = time.time()
-                    logger.info(
-                        f"Order filled @ {fill_price:.0f} JPY, "
-                        f"wait={elapsed:.1f}s"
-                    )
-                    break
-                elif status_order.status in ("cancelled", "rejected"):
-                    cancel_reason_poll = f"exchange_{status_order.status}"
-                    logger.info(f"Order {status_order.status}: {order.order_id}")
-                    break
-            except Exception as e:
-                logger.warning(f"Poll error: {e}")
-
-            # --- 094# stale order 検出 & cancel-replace ---
-            _stale_check_sec = (
-                (self.config.stale_check_after_sec_buy if side == "buy" else self.config.stale_check_after_sec_sell)
-                if (self.config.stale_check_after_sec_buy if side == "buy" else self.config.stale_check_after_sec_sell) is not None
-                else self.config.stale_check_after_sec
-            )
-            _stale_drift = (
-                (self.config.stale_drift_bps_buy if side == "buy" else self.config.stale_drift_bps_sell)
-                if (self.config.stale_drift_bps_buy if side == "buy" else self.config.stale_drift_bps_sell) is not None
-                else self.config.stale_drift_bps
-            )
-            _stale_max_rp = (
-                (self.config.stale_max_reprice_buy if side == "buy" else self.config.stale_max_reprice_sell)
-                if (self.config.stale_max_reprice_buy if side == "buy" else self.config.stale_max_reprice_sell) is not None
-                else self.config.stale_max_reprice
-            )
-            if (
-                self.config.stale_order_enabled
-                and not filled
-                and mid_at_order is not None
-                and elapsed >= _stale_check_sec
-                and reprice_count < _stale_max_rp
-                and (time.time() - last_reprice_time) >= self.config.stale_cooldown_sec
-            ):
-                try:
-                    current_mid = await self._get_mid_price()
-                    drift_bps = abs(current_mid - mid_at_order) / mid_at_order * self._BPS_FACTOR
-                    is_drifting_away = (
-                        (side == "buy" and current_mid > mid_at_order)
-                        or (side == "sell" and current_mid < mid_at_order)
-                    )
-                    if drift_bps >= _stale_drift and is_drifting_away:
-                        logger.info(
-                            f"[stale_order] Price drifted {drift_bps:.1f}bps "
-                            f"({side}: mid {mid_at_order:.0f}→{current_mid:.0f}). "
-                            f"Cancelling & repricing (reprice #{reprice_count + 1})"
-                        )
-                        # 1) 既存注文キャンセル
-                        try:
-                            await self.adapter.cancel_order(order.order_id)
-                        except Exception as cancel_err:
-                            if "Failed to cancel" in str(cancel_err) or "not found" in str(cancel_err).lower():
-                                try:
-                                    recheck = await self.adapter.get_order_status(order.order_id)
-                                    if recheck is not None and recheck.status == "filled":
-                                        filled = True
-                                        fill_price = recheck.price if recheck.price else order_price
-                                        t_fill = time.time()
-                                        logger.info(
-                                            f"[stale_order] Order actually filled during cancel @ "
-                                            f"{fill_price:.0f} JPY"
-                                        )
-                                except Exception:
-                                    pass
-                            if filled:
-                                break
-                            logger.warning(f"[stale_order] Cancel failed: {cancel_err}")
-                            continue
-
-                        # 2) 100# P0-6: SkipGate による reprice ガード
-                        reprice_gate_skipped = False
-                        if self._skip_gate is not None:
-                            try:
-                                from scripts.v460.ml.skip_gate import build_features_from_market_state
-                                sg_regime = None
-                                if self._regime_detector is not None:
-                                    sg_regime = self._regime_detector.current_regime.value
-                                rp_features = build_features_from_market_state(
-                                    side=side,
-                                    spread_jpy=spread_at_order or 0.0,
-                                    offset_ratio=effective_offset_ratio,
-                                    regime=sg_regime,
-                                    recent_trades=None,
-                                    market_timestamp=time.time(),
-                                )
-                                rp_decision = self._skip_gate.evaluate(rp_features, side=side)
-                                if rp_decision.should_skip:
-                                    reprice_gate_skipped = True
-                                    logger.info(
-                                        f"[stale_order] SkipGate blocked reprice: "
-                                        f"P(AS)={rp_decision.as_probability:.3f} "
-                                        f">= {rp_decision.threshold_used:.3f}"
-                                    )
-                            except Exception as sg_err:
-                                logger.debug(f"[stale_order] SkipGate check failed: {sg_err}")
-
-                        if reprice_gate_skipped:
-                            cancel_reason_poll = "stale_skip_gate_blocked"
-                            break
-
-                        try:
-                            new_price, new_spread, _ = await self._compute_maker_price(side)
-                            reprice_lot = max(
-                                self._MIN_ORDER_BTC,
-                                int(self._current_lot / self._MIN_ORDER_BTC) * self._MIN_ORDER_BTC,
-                            )
-                            new_order = await self.adapter.place_order(
-                                symbol=self.config.symbol,
-                                side=side,
-                                quantity=reprice_lot,
-                                price=new_price,
-                                order_type="limit",
-                            )
-                            order = new_order
-                            order_price = new_price
-                            mid_at_order = current_mid
-                            last_reprice_time = time.time()
-                            reprice_count += 1
-                            self._pending_order_id = order.order_id
-                            logger.info(
-                                f"[stale_order] Repriced {side} @ {new_price:.0f} JPY "
-                                f"(id={order.order_id}, reprice #{reprice_count})"
-                            )
-                        except Exception as place_err:
-                            logger.warning(
-                                f"[stale_order] Reprice failed: {place_err}. "
-                                f"Treating as cancelled."
-                            )
-                            cancel_reason_poll = "stale_reprice_failed"
-                            break
-                except Exception as stale_err:
-                    logger.debug(f"[stale_order] Check failed (non-fatal): {stale_err}")
-
-        # 4. 未約定 → キャンセル
-        # 118# B-fix: stale_skip_gate_blocked / stale_reprice_failed の場合、
-        # 注文は stale_order 処理内で既にキャンセル済みなので再キャンセルを省略し
-        # 二重キャンセルによる 400 API エラーを防止する。
-        _already_cancelled = cancel_reason_poll in (
-            "stale_skip_gate_blocked",
-            "stale_reprice_failed",
-        )
-        if not filled and not _already_cancelled:
-            try:
-                await self.adapter.cancel_order(order.order_id)
-                logger.info(f"Cancelled unfilled order after {elapsed:.1f}s")
-            except Exception as e:
-                logger.warning(f"Cancel failed: {e}")
-                if "Failed to cancel" in str(e) or "not found" in str(e).lower():
-                    try:
-                        recheck = await self.adapter.get_order_status(order.order_id)
-                        if recheck is not None and recheck.status == "filled":
-                            filled = True
-                            fill_price = (
-                                recheck.price if recheck.price else order_price
-                            )
-                            t_fill = time.time()
-                            cancel_reason_poll = None
-                            logger.info(
-                                f"[Bug11] Order was actually filled @ "
-                                f"{fill_price:.0f} JPY (detected on cancel failure)"
-                            )
-                        else:
-                            logger.info(
-                                f"[Bug11] Recheck: order not found in transactions either"
-                            )
-                    except Exception as recheck_err:
-                        logger.warning(f"[Bug11] Recheck failed: {recheck_err}")
-
-        self._pending_order_id = None
-
-        return _FillMonitorResult(
-            filled=filled,
-            fill_price=fill_price,
-            t_fill=t_fill,
-            cancel_reason=cancel_reason_poll,
-            queue_wait=elapsed,
-            reprice_count=reprice_count,
-            final_order_price=order_price,
+        return await self._order_monitor.monitor(
+            adapter=self.adapter,
+            order=order,  # type: ignore[arg-type]
+            order_price=order_price,
+            side=side,
+            t_submit=t_submit,
+            spread_at_order=spread_at_order,
+            effective_offset_ratio=effective_offset_ratio,
+            shutdown_check=self._kill_switch,
+            pending_order_setter=_set_pending,
+            get_mid_price=self._get_mid_price,
+            compute_maker_price=self._compute_maker_price,
+            skip_gate=self._skip_gate,
+            regime_detector=self._regime_detector,
+            current_lot=self._current_lot,
         )
 
     async def _measure_post_fill_pnl(
@@ -1269,109 +819,18 @@ class FillTestRunner:
         fill_price: Optional[float],
         side: str,
     ) -> _PnlMeasurement:
-        """約定後 PnL 計測 — 30s/60s/120s (run_single_cycle Phase 5).
-
-        113# R1: run_single_cycle から抽出.
-        047# E3: multi-timeframe 計測.
-        054# S3: Early Exit 監視.
-        """
-        m = _PnlMeasurement()
-
-        if not filled or fill_price is None:
-            return m
-
-        try:
-            m.mid_at_fill = await self._get_mid_price()
-        except Exception:
-            pass
-
-        # 054# S3: Early Exit 監視付き 30s 待機
-        early_exit_triggered = False
-        t_post_fill_start = time.time()
-
-        if self.config.early_exit_enabled and m.mid_at_fill is not None:
-            monitor_sec = self.config.early_exit_monitor_interval_sec
-            ticks = max(1, int(self.config.post_fill_wait_sec / monitor_sec))
-            tick = 0
-            for tick in range(ticks):
-                await asyncio.sleep(monitor_sec)
-                try:
-                    mid_now = await self._get_mid_price()
-                    if side == "buy":
-                        interim_pnl = (mid_now - m.mid_at_fill) / m.mid_at_fill * self._BPS_FACTOR
-                    else:
-                        interim_pnl = (m.mid_at_fill - mid_now) / m.mid_at_fill * self._BPS_FACTOR
-                    if interim_pnl < -self.config.early_exit_threshold_bps:
-                        logger.warning(
-                            f"[early_exit] Loss threshold hit at {(tick+1)*monitor_sec:.0f}s: "
-                            f"{interim_pnl:+.2f} bps < -{self.config.early_exit_threshold_bps}"
-                        )
-                        early_exit_triggered = True
-                        break
-                except Exception:
-                    continue
-            elapsed_monitor = (tick + 1) * monitor_sec if early_exit_triggered else ticks * monitor_sec
-            remaining = self.config.post_fill_wait_sec - elapsed_monitor
-            if remaining > 0 and not early_exit_triggered:
-                await asyncio.sleep(remaining)
-        else:
-            logger.info(f"Waiting {self.config.post_fill_wait_sec}s for PnL measurement...")
-            await asyncio.sleep(self.config.post_fill_wait_sec)
-
-        m.actual_measurement_sec = time.time() - t_post_fill_start
-
-        try:
-            m.mid_30s_after = await self._get_mid_price()
-        except Exception:
-            pass
-
-        if m.mid_at_fill is not None and m.mid_30s_after is not None:
-            if side == "buy":
-                m.post_fill_pnl = (m.mid_30s_after - m.mid_at_fill) / m.mid_at_fill * self._BPS_FACTOR
-                m.adverse_selected_raw = m.mid_30s_after < m.mid_at_fill
-                m.adverse_selected = m.post_fill_pnl < -self.config.as_deadzone_bps
-            else:
-                m.post_fill_pnl = (m.mid_at_fill - m.mid_30s_after) / m.mid_at_fill * self._BPS_FACTOR
-                m.adverse_selected_raw = m.mid_30s_after > m.mid_at_fill
-                m.adverse_selected = m.post_fill_pnl < -self.config.as_deadzone_bps
-
+        """約定後 PnL 計測 — 120# PnlMeasurer に委譲."""
+        pnl = await self._pnl_measurer.measure(
+            filled=filled,
+            fill_price=fill_price,
+            side=side,
+            get_mid_price=self._get_mid_price,
+        )
         # 054# S3: early exit → rapid exit フラグ
-        if early_exit_triggered:
+        if pnl.early_exit_triggered:
             self._rapid_exit_pending = True
             self._rapid_exit_side = "sell" if side == "buy" else "buy"
-
-        # 047# E3: +30s (=60s) 計測 — 049# サンプリング制御
-        do_e3 = m.mid_at_fill is not None and _rng.random() < self.config.e3_sampling_ratio
-        if do_e3:
-            e3_target_60s = self.config.post_fill_wait_sec * self.config.e3_60s_multiplier
-            e3_elapsed = time.time() - t_post_fill_start
-            e3_wait_60 = max(0.0, e3_target_60s - e3_elapsed)
-            if e3_wait_60 > 0:
-                await asyncio.sleep(e3_wait_60)
-            try:
-                m.mid_60s_after = await self._get_mid_price()
-                if side == "buy":
-                    m.post_fill_60s_pnl = (m.mid_60s_after - m.mid_at_fill) / m.mid_at_fill * self._BPS_FACTOR
-                else:
-                    m.post_fill_60s_pnl = (m.mid_at_fill - m.mid_60s_after) / m.mid_at_fill * self._BPS_FACTOR
-            except Exception:
-                pass
-
-            e3_target_120s = self.config.post_fill_wait_sec * self.config.e3_120s_multiplier
-            e3_elapsed = time.time() - t_post_fill_start
-            e3_wait_120 = max(0.0, e3_target_120s - e3_elapsed)
-            if e3_wait_120 > 0:
-                await asyncio.sleep(e3_wait_120)
-            try:
-                m.mid_120s_after = await self._get_mid_price()
-                if side == "buy":
-                    m.post_fill_120s_pnl = (m.mid_120s_after - m.mid_at_fill) / m.mid_at_fill * self._BPS_FACTOR
-                else:
-                    m.post_fill_120s_pnl = (m.mid_at_fill - m.mid_120s_after) / m.mid_at_fill * self._BPS_FACTOR
-            except Exception:
-                pass
-
-        return m
+        return pnl
 
     async def run_single_cycle(
         self, side_override: str | None = None,
@@ -1412,9 +871,9 @@ class FillTestRunner:
                 imb, bid_d, ask_d = await self._compute_orderbook_imbalance(
                     depth=self.config.imbalance_depth,
                 )
-                self._last_imbalance = imb
-                self._last_bid_depth = bid_d
-                self._last_ask_depth = ask_d
+                self._maker_price._last_imbalance = imb
+                self._maker_price._last_bid_depth = bid_d
+                self._maker_price._last_ask_depth = ask_d
             except Exception as e:
                 logger.warning(f"[smart_side] Pre-fetch imbalance failed, using last: {e}")
                 # フォールバック: 前回値を維持
@@ -1449,7 +908,7 @@ class FillTestRunner:
                 cancelled=True,
                 cancel_reason="orderbook_error",
                 error_message=str(e),
-                spread_offset_ratio=self._base_offset_ratio,  # 096# 状態分離
+                spread_offset_ratio=self._maker_price.base_offset_ratio,  # 096# 状態分離
                 run_id=self._run_id,       # 088# データ品質: 早期リターンにも必須
                 git_sha=self._git_sha,     # 088# quarantine 防止
             )
@@ -1599,8 +1058,8 @@ class FillTestRunner:
             # regime 検知のノイズ源となる。
             if mid_at_fill is not None:
                 regime_price = mid_at_fill
-            elif self._prev_mid_price is not None:
-                regime_price = self._prev_mid_price
+            elif self._maker_price._prev_mid_price is not None:
+                regime_price = self._maker_price._prev_mid_price
             else:
                 regime_price = None  # データ不足: スキップ
 
@@ -1648,10 +1107,10 @@ class FillTestRunner:
             regime_confidence=regime_conf,
             regime_stability=regime_stab,
             # 054# S5: AS 予測データ基盤
-            orderbook_imbalance=self._last_imbalance if self.config.imbalance_enabled else None,
-            bid_depth_total=self._last_bid_depth if self.config.imbalance_enabled else None,
-            ask_depth_total=self._last_ask_depth if self.config.imbalance_enabled else None,
-            mid_price_trend_5s=getattr(self, '_last_mid_trend_bps', None),
+            orderbook_imbalance=self._maker_price._last_imbalance if self.config.imbalance_enabled else None,
+            bid_depth_total=self._maker_price._last_bid_depth if self.config.imbalance_enabled else None,
+            ask_depth_total=self._maker_price._last_ask_depth if self.config.imbalance_enabled else None,
+            mid_price_trend_5s=self._maker_price._last_mid_trend_bps,
             spread_bps=(
                 (spread_at_order / mid_at_fill * self._BPS_FACTOR)
                 if spread_at_order is not None and mid_at_fill is not None and mid_at_fill > 0
@@ -1789,7 +1248,7 @@ class FillTestRunner:
 
         logger.info(f"Starting fill test: {hours}h, interval={self.config.cycle_interval_sec}s")
 
-        while time.time() < end_time and not self._shutdown_requested:
+        while time.time() < end_time and not self._kill_switch.is_killed():
             # 073# side 別時間帯フィルター: side 決定後にフィルタリング
             # side 別リスト未設定時はグローバルリスト (041# 互換)
             next_side = self._next_side()
@@ -1940,7 +1399,7 @@ class FillTestRunner:
                             f"(上限 {self.config.max_preflight_skip}). "
                             f"buy/sell 両方で残高不足の可能性. 停止します."
                         )
-                        self._shutdown_requested = True
+                        self._kill_switch.kill("preflight_skip_exceeded")
                         break
                     await asyncio.sleep(self.config.cycle_interval_sec)
                     continue
@@ -1961,7 +1420,7 @@ class FillTestRunner:
                 record = await self.run_single_cycle(side_override=next_side)
             except KeyboardInterrupt:
                 logger.info("KeyboardInterrupt — stopping gracefully")
-                self._shutdown_requested = True
+                self._kill_switch.kill("keyboard_interrupt")
                 break
             except Exception as e:
                 # 024# R2: 例外分類 — サイクル実行エラーは継続可能
@@ -2014,7 +1473,7 @@ class FillTestRunner:
                     f"LOSS CAP REACHED (HARD): cumulative PnL = {cumulative_pnl_jpy:.0f} JPY "
                     f"(cap = -{self.config.loss_cap_jpy:.0f} JPY). Stopping fill test."
                 )
-                self._shutdown_requested = True
+                self._kill_switch.kill("hard_loss_cap")
 
             # --- 100# 即約定防御: FastFillDefense クラスに委譲 ---
             # P0-5: side-aware (sell boost が buy に伝播しない)
@@ -2036,6 +1495,7 @@ class FillTestRunner:
                 if self._batch_persistence.try_save_batch(batch):
                     batch = []
                     self._batch_persistence.reset_flush_timer()
+                    self._adaptation_engine.invalidate_cache()  # 120# TTL キャッシュ無効化
                 # 失敗時: batch は保持 → 次回再試行
             # 079# 時間ベース定期flush: batch_size 未満でも一定時間経過で保存
             else:
@@ -2076,9 +1536,9 @@ class FillTestRunner:
                     cumulative_pnl_jpy=cumulative_pnl_jpy,
                     current_lot=self._current_lot,
                     soft_loss_cap_triggered=self._soft_loss_cap_triggered,
-                    base_offset_ratio=self._base_offset_ratio,
-                    base_offset_ratio_buy=self._base_offset_ratio_buy,
-                    base_offset_ratio_sell=self._base_offset_ratio_sell,
+                    base_offset_ratio=self._maker_price.base_offset_ratio,
+                    base_offset_ratio_buy=self._maker_price.base_offset_ratio_buy,
+                    base_offset_ratio_sell=self._maker_price.base_offset_ratio_sell,
                 ))
 
             # --- 044# A-7: loss_cap 定期更新 (残高変動を反映) ---
@@ -2108,7 +1568,7 @@ class FillTestRunner:
             # 次サイクルまで待機
             # 054# S3: rapid exit 時は interval を短縮
             # 055# Fix: _rapid_exit_side は _next_side() で消費するため、ここではクリアしない
-            if time.time() < end_time and not self._shutdown_requested:
+            if time.time() < end_time and not self._kill_switch.is_killed():
                 if self._rapid_exit_pending:
                     interval = self.config.early_exit_rapid_interval_sec
                     logger.info(
@@ -2136,9 +1596,9 @@ class FillTestRunner:
             cumulative_pnl_jpy=cumulative_pnl_jpy,
             current_lot=self._current_lot,
             soft_loss_cap_triggered=self._soft_loss_cap_triggered,
-            base_offset_ratio=self._base_offset_ratio,
-            base_offset_ratio_buy=self._base_offset_ratio_buy,
-            base_offset_ratio_sell=self._base_offset_ratio_sell,
+            base_offset_ratio=self._maker_price.base_offset_ratio,
+            base_offset_ratio_buy=self._maker_price.base_offset_ratio_buy,
+            base_offset_ratio_sell=self._maker_price.base_offset_ratio_sell,
         ))
 
         logger.info(
@@ -2149,295 +1609,46 @@ class FillTestRunner:
         return load_fill_records_glob(str(self._results_dir))
 
     def _build_adapt_kwargs(self) -> dict:
-        """YAML adaptation セクションから AdaptationConfig 用 kwargs を構築."""
-        adapt_yaml = self._yaml_cfg.get("adaptation", {})
-        kwargs: dict = {}
-        key_map = {
-            "min_fill_rate": "min_fill_rate",
-            "max_as_ratio": "max_as_ratio",
-            "step_ratio": "step_ratio",
-            "min_offset_ratio": "min_offset_ratio",
-            "max_offset_ratio": "max_offset_ratio",
-            "min_samples": "min_samples",
-        }
-        for yaml_key, config_key in key_map.items():
-            if yaml_key in adapt_yaml:
-                kwargs[config_key] = adapt_yaml[yaml_key]
-        return kwargs
+        """120# AdaptationEngine に委譲."""
+        return self._adaptation_engine._build_adapt_kwargs()
 
     def _build_lot_kwargs(self) -> dict:
-        """YAML lot_sizing セクションから LotSizingConfig 用 kwargs を構築."""
-        lot_yaml = self._yaml_cfg.get("lot_sizing", {})
-        safety_yaml = self._yaml_cfg.get("safety", {})
-        kwargs: dict = {}
-        key_map = {
-            "min_lot": "min_lot",
-            "lot_step": "lot_step",
-            "min_fill_rate": "min_fill_rate",
-            "max_as_ratio": "max_as_ratio",
-            "min_recent_pnl_bps": "min_recent_pnl_bps",
-            "min_samples": "min_samples",
-        }
-        for yaml_key, config_key in key_map.items():
-            if yaml_key in lot_yaml:
-                kwargs[config_key] = lot_yaml[yaml_key]
-        # safety セクションから損失キャップ
-        if "loss_cap_jpy" in safety_yaml:
-            kwargs["loss_cap_jpy"] = safety_yaml["loss_cap_jpy"]
-        if "loss_cap_warning_ratio" in safety_yaml:
-            kwargs["loss_cap_warning_ratio"] = safety_yaml["loss_cap_warning_ratio"]
-        return kwargs
+        """120# AdaptationEngine に委譲."""
+        return self._adaptation_engine._build_lot_kwargs()
 
     async def _update_dynamic_loss_cap(self) -> None:
-        """041# 動的 loss_cap: API から口座残高を取得し、残高×比率でキャップを算出.
-
-        失敗時はフォールバック値 (YAML/デフォルト) を維持.
-        """
-        try:
-            btc_price = await self.adapter.get_current_price(self.config.symbol)
-            if btc_price is None:
-                logger.warning(
-                    "[loss_cap] BTC価格取得失敗 — フォールバック値を維持: "
-                    f"{self.config.loss_cap_jpy:.0f} JPY"
-                )
-                return
-
-            balances = await self.adapter.get_balance()
-            total_jpy = 0.0
-            for b in balances:
-                currency = b.currency.upper()
-                # 046# E-4 修正後: free+locked=total が正しく解析されるため
-                # reserved は total に含まれている (個別チェック不要)
-                if currency == "JPY":
-                    total_jpy += b.total
-                elif currency == "BTC":
-                    total_jpy += b.total * btc_price
-
-            if total_jpy <= 0:
-                logger.warning(
-                    "[loss_cap] 残高ゼロまたは取得不可 — フォールバック値を維持: "
-                    f"{self.config.loss_cap_jpy:.0f} JPY"
-                )
-                return
-
-            new_cap = total_jpy * self.config.loss_cap_ratio
-            # 最低50円は保証 (極端に小さいキャップは運用不能)
-            new_cap = max(self.config.min_loss_cap_jpy, new_cap)
-            old_cap = self.config.loss_cap_jpy
-            self.config.loss_cap_jpy = new_cap
-            logger.info(
-                f"[loss_cap] 動的キャップ算出: 残高={total_jpy:.0f} JPY "
-                f"× {self.config.loss_cap_ratio:.0%} = {new_cap:.0f} JPY "
-                f"(旧: {old_cap:.0f} JPY)"
-            )
-        except Exception as e:
-            logger.warning(
-                f"[loss_cap] 残高取得失敗 — フォールバック値を維持: "
-                f"{self.config.loss_cap_jpy:.0f} JPY. error={e}"
-            )
+        """041# 動的 loss_cap — 120# AdaptationEngine に委譲."""
+        await self._adaptation_engine.update_dynamic_loss_cap(
+            self.adapter, self.config.symbol,
+        )
 
     def _try_auto_adapt(self, total_count: int, filled_count: int) -> None:
-        """032# P0: 方策 A — fill メトリクスに基づく spread_offset_ratio 自動適応.
-
-        088# side 分離: buy/sell を独立に最適化。
-        run_continuous のサイクルループ内から呼ばれ、
-        fill_rate / AS_ratio に応じて offset を段階調整する。
-        """
-        try:
-            from scripts.v460.lib.param_adapter import (
-                AdaptationConfig,
-                compute_adaptation,
-                compute_side_adaptation,
+        """032# P0: 方策 A — 120# AdaptationEngine に委譲."""
+        result = self._adaptation_engine.try_auto_adapt(
+            total_count=total_count,
+            filled_count=filled_count,
+            base_offset_ratio=self._maker_price.base_offset_ratio,
+            base_offset_ratio_buy=self._maker_price.base_offset_ratio_buy,
+            base_offset_ratio_sell=self._maker_price.base_offset_ratio_sell,
+            regime_detector=self._regime_detector,
+            fast_fill_defense=self._fast_fill_defense,
+        )
+        # offset 変更を MakerPriceCalculator に反映
+        if result.base_offset_changed or result.buy_offset_changed or result.sell_offset_changed:
+            self._maker_price.update_base_offsets(
+                result.new_base_offset,
+                result.new_buy_offset,
+                result.new_sell_offset,
             )
-
-            # 直近のレコードからメトリクスを算出
-            # 047# A1: quarantine レコードを除外し clean のみで適応判断
-            all_records = load_fill_records_glob(str(self._results_dir))
-            records, _q = filter_clean_records(all_records)
-            del all_records
-            # 096# rolling window: 全履歴混合を停止、直近 N 件のみ使用
-            if self.config.adapt_recency_window > 0 and len(records) > self.config.adapt_recency_window:
-                records = records[-self.config.adapt_recency_window:]
-            if len(records) < self.config.min_adapt_samples:
-                return
-
-            # 088# side 分離: buy/sell 別にメトリクスを算出
-            buy_records = [r for r in records if r.side == "buy"]
-            sell_records = [r for r in records if r.side == "sell"]
-            del records  # メモリ解放
-
-            min_side_samples = max(self.config.adapt_min_side_samples, self.config.min_adapt_samples // 2)
-            if len(buy_records) >= min_side_samples and len(sell_records) >= min_side_samples:
-                buy_metrics = compute_fill_metrics(buy_records)
-                sell_metrics = compute_fill_metrics(sell_records)
-
-                # 096# 状態分離: config ではなく _base_offset_ratio* を参照
-                buy_offset = self._base_offset_ratio
-                if self._base_offset_ratio_buy is not None:
-                    buy_offset = self._base_offset_ratio_buy
-                sell_offset = self._base_offset_ratio_sell or self._base_offset_ratio
-
-                buy_config = AdaptationConfig(
-                    current_offset_ratio=buy_offset,
-                    **self._build_adapt_kwargs(),
-                )
-                sell_config = AdaptationConfig(
-                    current_offset_ratio=sell_offset,
-                    **self._build_adapt_kwargs(),
-                )
-
-                side_result = compute_side_adaptation(
-                    buy_fill_rate=buy_metrics.fill_rate_p90,
-                    buy_as_ratio=buy_metrics.adverse_selection_ratio,
-                    buy_sample_count=buy_metrics.total_orders,
-                    sell_fill_rate=sell_metrics.fill_rate_p90,
-                    sell_as_ratio=sell_metrics.adverse_selection_ratio,
-                    sell_sample_count=sell_metrics.total_orders,
-                    buy_config=buy_config,
-                    sell_config=sell_config,
-                )
-
-                regime_tag = (
-                    self._regime_detector.current_regime.value
-                    if self._regime_detector else "n/a"
-                )
-
-                if side_result.buy.changed:
-                    old_buy = buy_offset
-                    new_buy = side_result.buy.new_offset
-                    # 096# 状態分離: _base_offset_ratio_buy を更新
-                    self._base_offset_ratio_buy = new_buy
-                    logger.info(
-                        f"[方策A] buy offset: {old_buy:.4f} → {new_buy:.4f} "
-                        f"({side_result.buy.action}) [regime={regime_tag}]"
-                    )
-
-                if side_result.sell.changed:
-                    old_sell = sell_offset
-                    new_sell = side_result.sell.new_offset
-                    # 096# 状態分離: _base_offset_ratio_sell を更新
-                    self._base_offset_ratio_sell = new_sell
-                    logger.info(
-                        f"[方策A] sell offset: {old_sell:.4f} → {new_sell:.4f} "
-                        f"({side_result.sell.action}) [regime={regime_tag}]"
-                    )
-
-                # 100# FastFillDefense の base_offset を同期
-                if side_result.any_changed:
-                    self._fast_fill_defense.update_base_offsets(
-                        self._base_offset_ratio,
-                        self._base_offset_ratio_buy,
-                        self._base_offset_ratio_sell,
-                    )
-
-                if not side_result.any_changed:
-                    logger.debug(
-                        f"[方策A] offset unchanged: "
-                        f"buy={side_result.buy.reason}, sell={side_result.sell.reason}"
-                    )
-            else:
-                # side 別サンプル不足 → 全体で従来ロジック
-                all_records_combined = buy_records + sell_records
-                metrics = compute_fill_metrics(all_records_combined)
-                del all_records_combined
-
-                # 096# 状態分離: _base_offset_ratio を参照
-                adapt_config = AdaptationConfig(
-                    current_offset_ratio=self._base_offset_ratio,
-                    **self._build_adapt_kwargs(),
-                )
-                result = compute_adaptation(
-                    fill_rate=metrics.fill_rate_p90,
-                    as_ratio=metrics.adverse_selection_ratio,
-                    sample_count=metrics.total_orders,
-                    config=adapt_config,
-                )
-
-                if result.changed:
-                    old = self._base_offset_ratio
-                    self._base_offset_ratio = result.new_offset
-                    if self._base_offset_ratio_sell is not None and old > 0:
-                        ratio = result.new_offset / old
-                        old_sell = self._base_offset_ratio_sell
-                        self._base_offset_ratio_sell = min(
-                            old_sell * ratio, self.config.max_offset_ratio,
-                        )
-                    logger.info(
-                        f"[方策A] offset adapted (combined): "
-                        f"{old:.4f} → {result.new_offset:.4f} "
-                        f"({result.action}: {result.reason})"
-                    )
-                    # 100# FastFillDefense の base_offset を同期
-                    self._fast_fill_defense.update_base_offsets(
-                        self._base_offset_ratio,
-                        self._base_offset_ratio_buy,
-                        self._base_offset_ratio_sell,
-                    )
-                else:
-                    logger.debug(f"[方策A] offset unchanged: {result.reason}")
-
-        except Exception as e:
-            logger.warning(f"[方策A] Auto-adapt failed (non-fatal): {e}")
 
     def _try_auto_lot_size(self) -> None:
-        """033# 方策 B — fill メトリクスに基づくロットサイズ自動適応.
-
-        run_continuous のサイクルループ内から呼ばれ、
-        fill_rate / AS_ratio / PnL に応じてロットサイズを段階調整する。
-        """
-        try:
-            from scripts.v460.lib.lot_sizer import (
-                LotSizingConfig,
-                compute_cumulative_pnl_jpy,
-                compute_lot_size,
-                compute_recent_pnl_bps,
-            )
-
-            # 047# A1: quarantine レコードを除外し clean のみでロット判断
-            all_records = load_fill_records_glob(str(self._results_dir))
-            records, _q = filter_clean_records(all_records)
-            del all_records
-            if len(records) < self.config.min_adapt_samples:
-                return
-
-            metrics = compute_fill_metrics(records)
-            cum_pnl = compute_cumulative_pnl_jpy(records)
-            recent_pnl = compute_recent_pnl_bps(
-                records, window=self.config.recent_pnl_window
-            )
-            del records  # メモリ解放
-
-            lot_config = LotSizingConfig(
-                current_lot=self._current_lot,
-                max_lot=self.config.max_lot,
-                **self._build_lot_kwargs(),
-            )
-            result = compute_lot_size(
-                fill_rate=metrics.fill_rate_p90,
-                as_ratio=metrics.adverse_selection_ratio,
-                recent_pnl_bps=recent_pnl,
-                cumulative_pnl_jpy=cum_pnl,
-                sample_count=metrics.total_orders,
-                config=lot_config,
-            )
-
-            if result.changed:
-                old = self._current_lot
-                self._current_lot = result.new_lot
-                regime_tag = (
-                    self._regime_detector.current_regime.value
-                    if self._regime_detector else "n/a"
-                )
-                logger.info(
-                    f"[方策B] lot adapted: {old:.4f} → {result.new_lot:.4f} BTC "
-                    f"({result.action}: {result.reason}) [regime={regime_tag}]"
-                )
-            else:
-                logger.debug(
-                    f"[方策B] lot unchanged: {result.reason}"
-                )
-        except Exception as e:
-            logger.warning(f"[方策B] Auto lot-size failed (non-fatal): {e}")
+        """033# 方策 B — 120# AdaptationEngine に委譲."""
+        changed, new_lot = self._adaptation_engine.try_auto_lot_size(
+            self._current_lot,
+            regime_detector=self._regime_detector,
+        )
+        if changed:
+            self._current_lot = new_lot
 
     def _cleanup_sync(self) -> None:
         """atexit: 残存注文キャンセル + 未保存データ退避 + ロック解放 (同期 wrapper).
@@ -2621,7 +1832,7 @@ def main() -> None:
     # Signal handler for graceful shutdown
     def _signal_handler(signum: int, frame: object) -> None:
         logger.info(f"Signal {signum} received — requesting shutdown")
-        runner._shutdown_requested = True
+        runner._kill_switch.kill(f"signal_{signum}")
 
     signal.signal(signal.SIGINT, _signal_handler)
     # 044# A-1: Windows では SIGTERM が未サポート → SIGBREAK を使用

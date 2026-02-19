@@ -1,4 +1,4 @@
-"""Tests for fill_test YAML config loading + FillTestConfig.from_yaml.
+﻿"""Tests for fill_test YAML config loading + FillTestConfig.from_yaml.
 
 055# Fix: 挙動テスト追加 (_next_side, round-trip 双方向).
 """
@@ -563,7 +563,7 @@ class Test055NextSideBehavior:
         """rapid_exit は Smart Side よりも優先."""
         runner = _make_runner(smart_side_enabled=True, smart_side_mode="suppress")
         runner._last_side = "buy"
-        runner._last_imbalance = +0.5  # sell を抑制する状況
+        runner._maker_price._last_imbalance = +0.5  # sell を抑制する状況
         runner._rapid_exit_side = "sell"  # rapid exit は sell を強制
         assert runner._next_side() == "sell"
         assert runner._rapid_exit_side is None
@@ -589,7 +589,7 @@ class Test055NextSideBehavior:
             imbalance_threshold=0.3,
         )
         runner._last_side = "sell"  # 通常次は buy
-        runner._last_imbalance = -0.5  # 売り圧力
+        runner._maker_price._last_imbalance = -0.5  # 売り圧力
         assert runner._next_side() == "sell"  # buy が抑制され sell 継続
 
     def test_suppress_sell_on_strong_buy_pressure(self) -> None:
@@ -600,7 +600,7 @@ class Test055NextSideBehavior:
             imbalance_threshold=0.3,
         )
         runner._last_side = "buy"  # 通常次は sell
-        runner._last_imbalance = +0.5  # 買い圧力
+        runner._maker_price._last_imbalance = +0.5  # 買い圧力
         assert runner._next_side() == "buy"  # sell が抑制され buy 継続
 
     def test_suppress_no_action_below_threshold(self) -> None:
@@ -611,7 +611,7 @@ class Test055NextSideBehavior:
             imbalance_threshold=0.3,
         )
         runner._last_side = "sell"
-        runner._last_imbalance = -0.2  # 閾値以下
+        runner._maker_price._last_imbalance = -0.2  # 閾値以下
         assert runner._next_side() == "buy"  # 通常の交互
 
     def test_suppress_max_consecutive_forces_base(self) -> None:
@@ -623,7 +623,7 @@ class Test055NextSideBehavior:
             imbalance_threshold=0.3,
         )
         runner._last_side = "sell"
-        runner._last_imbalance = -0.5  # 売り圧力
+        runner._maker_price._last_imbalance = -0.5  # 売り圧力
         runner._consecutive_same_side = 2  # 上限到達
         assert runner._next_side() == "buy"  # 強制的に buy
 
@@ -637,7 +637,7 @@ class Test055NextSideBehavior:
             imbalance_threshold=0.3,
         )
         runner._last_side = "buy"  # 通常次は sell
-        runner._last_imbalance = +0.5  # 買い方向
+        runner._maker_price._last_imbalance = +0.5  # 買い方向
         assert runner._next_side() == "buy"  # 追従
 
     def test_follow_sell_on_negative_imbalance(self) -> None:
@@ -648,7 +648,7 @@ class Test055NextSideBehavior:
             imbalance_threshold=0.3,
         )
         runner._last_side = "sell"  # 通常次は buy
-        runner._last_imbalance = -0.5
+        runner._maker_price._last_imbalance = -0.5
         assert runner._next_side() == "sell"  # 追従
 
     def test_follow_max_consecutive_limits(self) -> None:
@@ -660,7 +660,7 @@ class Test055NextSideBehavior:
             imbalance_threshold=0.3,
         )
         runner._last_side = "buy"
-        runner._last_imbalance = +0.5  # buy 追従だが
+        runner._maker_price._last_imbalance = +0.5  # buy 追従だが
         runner._consecutive_same_side = 2  # 上限
         assert runner._next_side() == "sell"  # base に戻る
 

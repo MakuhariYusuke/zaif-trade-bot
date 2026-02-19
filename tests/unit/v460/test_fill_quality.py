@@ -2034,10 +2034,10 @@ class Test049E3Sampling:
     def test_e3_sampling_ratio_zero_skips_all(self) -> None:
         """e3_sampling_ratio=0.0 で E3 計測がスキップされる (ソース確認)."""
         import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
+        from scripts.v460.lib.pnl_measurer import PnlMeasurer
 
-        # 113# R1: E3 logic extracted to _measure_post_fill_pnl
-        source = inspect.getsource(FillTestRunner._measure_post_fill_pnl)
+        # 120#: E3 logic extracted to PnlMeasurer.measure
+        source = inspect.getsource(PnlMeasurer.measure)
         assert "e3_sampling_ratio" in source
 
 
@@ -2065,17 +2065,18 @@ class Test049SideOffset:
         assert cfg.spread_offset_ratio_sell == pytest.approx(0.08)
 
     def test_side_offset_used_in_price_calc(self) -> None:
-        """_compute_maker_price が side 別 offset を参照することをソースで確認.
+        """MakerPriceCalculator.compute が side 別 offset を参照することをソースで確認.
 
         096# 状態分離: config.spread_offset_ratio_buy/sell ではなく
-        _base_offset_ratio_buy/sell を参照する設計に変更。
+        base_offset_ratio_buy/sell を参照する設計に変更。
+        120#: maker_price.py に抽出済み。
         """
         import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
 
-        source = inspect.getsource(FillTestRunner._compute_maker_price)
-        # 096# 状態分離: _base_offset_ratio* を使用
-        assert "_base_offset_ratio" in source
+        source = inspect.getsource(MakerPriceCalculator.compute)
+        # 096# 状態分離: base_offset_ratio* を使用
+        assert "base_offset_ratio" in source
         assert "effective_offset_ratio" in source
 
 
@@ -2167,13 +2168,15 @@ class Test050FastFillDefenseRestore:
 
         旧: _boost_multiplier + _fast_fill_boost_active で inline 管理
         新: FastFillDefense クラスに per-side 状態管理を委譲
+        120#: offset 管理は MakerPriceCalculator に移動
         """
         import inspect
         from scripts.v460.run_fill_test import FillTestRunner
 
         source = inspect.getsource(FillTestRunner.__init__)
         assert "_fast_fill_defense" in source
-        assert "_base_offset_ratio" in source
+        # 120#: offset は _maker_price 経由で管理
+        assert "_maker_price" in source
 
     def test_offset_restore_logic_in_run_continuous(self) -> None:
         """run_continuous に boost 解除ロジックが含まれる (FastFillDefense)."""
@@ -2190,14 +2193,17 @@ class Test050EffectiveOffsetRecord:
     """050# Bug#3: FillRecord に実効 offset を記録."""
 
     def test_compute_maker_price_returns_3_values(self) -> None:
-        """_compute_maker_price の戻り値が 3 タプルであることをソースで確認."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
+        """MakerPriceCalculator.compute の戻り値が price/spread/offset を含むことをソースで確認.
 
-        source = inspect.getsource(FillTestRunner._compute_maker_price)
+        120#: maker_price.py に抽出済み。MakerPriceResult NamedTuple で返却。
+        """
+        import inspect
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+
+        source = inspect.getsource(MakerPriceCalculator.compute)
         assert "effective_offset_ratio" in source
-        # 戻り値が 3 要素: price, spread, effective_offset_ratio
-        assert "return price, spread, effective_offset_ratio" in source
+        # MakerPriceResult に price, spread, effective_offset_ratio を格納
+        assert "MakerPriceResult" in source
 
     def test_run_single_cycle_unpacks_3_values(self) -> None:
         """run_single_cycle が 3 値展開を行う."""
@@ -2490,17 +2496,19 @@ class Test052AdaptSellOffsetSync:
     """052# 方策AがSell offsetも比例調整する."""
 
     def test_adapt_syncs_sell_offset_in_code(self) -> None:
-        """_try_auto_adapt に sell offset 比例調整コードが含まれる.
+        """AdaptationEngine.try_auto_adapt に sell offset 比例調整コードが含まれる.
 
         096# 状態分離: _base_offset_ratio_sell を直接更新する設計に変更。
+        120#: adaptation_engine.py に抽出済み。
         """
         import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
+        from scripts.v460.lib.adaptation_engine import AdaptationEngine
 
-        source = inspect.getsource(FillTestRunner._try_auto_adapt)
-        # 096# 状態分離: _base_offset_ratio_sell を使用
-        assert "_base_offset_ratio_sell" in source
-        assert "ratio = result.new_offset / old" in source
+        source = inspect.getsource(AdaptationEngine.try_auto_adapt)
+        # 096# 状態分離: base_offset_ratio_sell を使用
+        assert "base_offset_ratio_sell" in source
+        # 120#: 比例調整 ratio = new_base / base_offset_ratio
+        assert "ratio" in source and "new_sell" in source
 
     def test_yaml_sell_offset_updated(self) -> None:
         """105# で sell offset が 0.14 に更新されている."""
@@ -2565,11 +2573,14 @@ class Test052AdaptSellOffsetSync:
         assert 13 in sell_skip, "UTC 13 should be in sell skip list"
 
     def test_trending_offset_boost_in_code(self) -> None:
-        """052# _compute_maker_price にトレンディングブーストが含まれる."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
+        """052# MakerPriceCalculator.compute にトレンディングブーストが含まれる.
 
-        source = inspect.getsource(FillTestRunner._compute_maker_price)
+        120#: maker_price.py に抽出済み。
+        """
+        import inspect
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+
+        source = inspect.getsource(MakerPriceCalculator.compute)
         assert "trending" in source
         assert "regime_trending_offset_boost" in source
 
@@ -2659,11 +2670,14 @@ class Test107TimeFilterDynamicGating:
         assert cfg.volatility_guard_offset_boost_factor == 2.0
 
     def test_volatility_guard_in_compute_maker_price(self) -> None:
-        """107# _compute_maker_price に volatility_guard ロジックが含まれる."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
+        """107# MakerPriceCalculator.compute に volatility_guard ロジックが含まれる.
 
-        source = inspect.getsource(FillTestRunner._compute_maker_price)
+        120#: maker_price.py に抽出済み。
+        """
+        import inspect
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+
+        source = inspect.getsource(MakerPriceCalculator.compute)
         assert "volatility_guard" in source
         assert "velocity_threshold_bps" in source or "vpin_threshold" in source
 

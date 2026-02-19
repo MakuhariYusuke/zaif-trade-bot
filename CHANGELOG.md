@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 120# God Object 分割 Phase 2 — 型安全・メモリリーク修正・KillSwitch 統合
+
+- **run_fill_test.py**: 2701→1912 行 (-789 行, -29.2% / 119# からの累積: 3411→1912, -43.9%)
+  - `_compute_maker_price` / `_compute_orderbook_imbalance` / `_get_mid_price`
+    → `scripts/v460/lib/maker_price.py` (`MakerPriceCalculator` クラス, ~320L) に抽出
+  - `_monitor_fill_polling` (stale order 検知, cancel-replace, SkipGate reprice guard)
+    → `scripts/v460/lib/order_monitor.py` (`OrderMonitor` クラス, ~310L) に抽出
+  - `_measure_post_fill_pnl` (30s/60s/120s マルチタイムフレーム計測, Early Exit)
+    → `scripts/v460/lib/pnl_measurer.py` (`PnlMeasurer` クラス, ~150L) に抽出
+  - `_try_auto_adapt` / `_try_auto_lot_size` / `_build_adapt_kwargs` / `_build_lot_kwargs` / `_update_dynamic_loss_cap`
+    → `scripts/v460/lib/adaptation_engine.py` (`AdaptationEngine` クラス, ~340L) に抽出
+- **メモリリーク修正**: `AdaptationEngine` に TTL キャッシュ (10s) 導入
+  - 旧: `_try_auto_adapt` と `_try_auto_lot_size` が毎サイクル独立に `load_fill_records_glob()` 全レコードロード
+  - 新: 単一キャッシュ + `invalidate_cache()` でバッチ保存後に明示的無効化
+- **KillSwitch 統合** (`ztb.risk.circuit_breakers.KillSwitch`):
+  - `_shutdown_requested: bool` → `_kill_switch: KillSwitch("fill_test")`
+  - `run_continuous` ループ条件, SAFE_STOP, signal handler すべて移行
+- **型安全向上**:
+  - `OrderLike` / `OrderStatusLike` / `ExchangeAdapter` / `OrderbookProvider` Protocol (Any 排除)
+  - `ztb.trading.orders.state_machine.OrderState` enum (文字列比較 → 型安全 enum)
+  - 全新モジュールに `__slots__`, `NamedTuple` 戻り値, `Final` 定数
+- テスト: 878 passed (source-grep テスト 14 件を抽出先モジュールに更新)
+
 ### 119# God Object 分割 & ztb/ 活用 — run_fill_test.py リファクタリング
 
 - **run_fill_test.py**: 3411→2701 行 (-710 行, -20.8%)
