@@ -47,6 +47,16 @@ from ztb.metrics.fill_quality import (
 )
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
+from scripts.v460.lib.resilience import (
+    CircuitBreaker,
+    CircuitBreakerOpenException,
+    CircuitState,
+    FillTestHealthMonitor,
+    FillTestStatePersistence,
+    FillTestState,
+    HealthThresholds,
+    create_api_circuit_breaker,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -538,6 +548,52 @@ class FillTestConfig:
 
 
 # ======================================================================
+# 113# R1: run_single_cycle 分割用 内部データクラス
+# ======================================================================
+
+@dataclass
+class _SkipGateResult:
+    """SkipGate ML 判定結果 (run_single_cycle 内部)."""
+
+    skipped: Optional[bool] = None
+    score: Optional[float] = None
+    reason: Optional[str] = None
+    model_used: Optional[str] = None
+    as_prob: Optional[float] = None
+    threshold_used: Optional[float] = None
+    early_return_record: Optional[FillRecord] = None
+
+
+@dataclass
+class _FillMonitorResult:
+    """約定監視結果 (run_single_cycle 内部)."""
+
+    filled: bool = False
+    fill_price: Optional[float] = None
+    t_fill: Optional[float] = None
+    cancel_reason: Optional[str] = None
+    queue_wait: float = 0.0
+    reprice_count: int = 0
+    final_order_price: float = 0.0
+
+
+@dataclass
+class _PnlMeasurement:
+    """PnL 計測結果 (run_single_cycle 内部)."""
+
+    mid_at_fill: Optional[float] = None
+    mid_30s_after: Optional[float] = None
+    mid_60s_after: Optional[float] = None
+    mid_120s_after: Optional[float] = None
+    post_fill_pnl: Optional[float] = None
+    post_fill_60s_pnl: Optional[float] = None
+    post_fill_120s_pnl: Optional[float] = None
+    adverse_selected: Optional[bool] = None
+    adverse_selected_raw: Optional[bool] = None
+    actual_measurement_sec: Optional[float] = None
+
+
+# ======================================================================
 # Fill Test Runner
 # ======================================================================
 
@@ -716,6 +772,11 @@ class FillTestRunner:
             except Exception as e:
                 logger.error(f"[skip_gate] Failed to load: {e}. SkipGate disabled.")
                 self._skip_gate = None
+
+        # 113# resilience: CircuitBreaker / HealthMonitor / StatePersistence
+        self._circuit_breaker = create_api_circuit_breaker()
+        self._health_monitor = FillTestHealthMonitor()
+        self._state_persistence = FillTestStatePersistence(self._results_dir)
 
         # 安全設計: atexit + signal で残存注文キャンセル + 未保存データ退避 + ロック解放
         atexit.register(self._cleanup_sync)
@@ -1293,6 +1354,517 @@ class FillTestRunner:
             logger.warning(f"[startup] Stale order check failed (non-fatal): {e}")
         return cancelled_count
 
+    # ==================================================================
+    # 113# R1: run_single_cycle から抽出したサブメソッド
+    # ==================================================================
+
+    async def _evaluate_skip_gate(
+        self,
+        side: str,
+        cycle_id: str,
+        order_price: float,
+        spread_at_order: Optional[float],
+        effective_offset_ratio: float,
+    ) -> _SkipGateResult:
+        """062# SkipGate ML 判定 (run_single_cycle Phase 1.5).
+
+        113# R1: run_single_cycle から抽出.
+        """
+        result = _SkipGateResult()
+        if self._skip_gate is None:
+            return result
+
+        try:
+            from scripts.v460.ml.skip_gate import build_features_from_market_state
+
+            # レジーム情報
+            sg_regime = "unknown"
+            if self._regime_detector is not None:
+                sg_regime = self._regime_detector.current_regime.value
+
+            # 直近約定データ取得 (利用可能な場合)
+            recent_trades_data: list[dict] | None = None
+            try:
+                trades = await self.adapter.get_recent_trades(
+                    self.config.symbol, limit=self.config.skip_gate_recent_trades_limit,
+                )
+                if trades:
+                    recent_trades_data = [
+                        {
+                            "ts": getattr(t, "timestamp", time.time()),
+                            "price": getattr(t, "price", 0.0),
+                            "amount": getattr(t, "amount", getattr(t, "quantity", 0.0)),
+                            "side": getattr(t, "side", "buy"),
+                        }
+                        for t in trades
+                    ]
+            except Exception:
+                pass  # 約定データ取得失敗は非致命的
+
+            # 072# OB トグル: use_ob_features 有効時のみ OB 取得
+            ob_bid: float | None = None
+            ob_ask: float | None = None
+            ob_bid_vol: float | None = None
+            ob_ask_vol: float | None = None
+            sg_use_ob = self._skip_gate.config.use_ob_features
+            if sg_use_ob:
+                try:
+                    ob = await self.adapter.get_orderbook(
+                        self.config.symbol, depth=5,
+                    )
+                    if ob and ob.bids and ob.asks:
+                        ob_bid = ob.bids[0].price
+                        ob_ask = ob.asks[0].price
+                        ob_bid_vol = sum(
+                            lv.quantity for lv in ob.bids[:5]
+                        )
+                        ob_ask_vol = sum(
+                            lv.quantity for lv in ob.asks[:5]
+                        )
+                except Exception as e:
+                    logger.debug(
+                        f"[skip_gate] OB fetch failed: {e}"
+                    )
+
+            gate_features = build_features_from_market_state(
+                side=side,
+                spread_jpy=spread_at_order or 0.0,
+                offset_ratio=effective_offset_ratio,
+                regime=sg_regime,
+                recent_trades=recent_trades_data,
+                market_timestamp=time.time(),
+                best_bid=ob_bid,
+                best_ask=ob_ask,
+                bid_vol_5=ob_bid_vol,
+                ask_vol_5=ob_ask_vol,
+                use_ob_features=sg_use_ob,
+            )
+
+            # 107# Volatility Guard: SkipGate 特徴量から VPIN をキャッシュ
+            self._last_vpin = gate_features.get("vpin_60s")
+
+            decision = self._skip_gate.evaluate(
+                gate_features, side=side,
+            )
+            result.skipped = decision.should_skip
+            result.score = decision.predicted_pnl_bps
+            result.reason = decision.reason
+            result.model_used = decision.model_used
+            # 084# P(AS) と閾値を直接記録
+            result.as_prob = decision.as_probability
+            result.threshold_used = decision.threshold_used
+
+            if decision.should_skip:
+                logger.info(
+                    f"[skip_gate] SKIP: {side} order skipped "
+                    f"(score={result.score:.3f}, reason={result.reason}, "
+                    f"model={result.model_used}, features={decision.features_used})"
+                )
+                result.early_return_record = FillRecord(
+                    cycle_id=cycle_id,
+                    timestamp=time.time(),
+                    side=side,
+                    order_price=order_price,
+                    order_quantity=self._current_lot,
+                    cancelled=True,
+                    cancel_reason="skip_gate",
+                    spread_at_order=spread_at_order,
+                    spread_offset_ratio=effective_offset_ratio,
+                    skip_gate_skipped=True,
+                    skip_gate_score=result.score,
+                    skip_gate_reason=result.reason,
+                    skip_gate_model_used=result.model_used,
+                    skip_gate_as_prob=result.as_prob,
+                    skip_gate_threshold_used=result.threshold_used,
+                    orderbook_imbalance=self._last_imbalance if self.config.imbalance_enabled else None,
+                    bid_depth_total=self._last_bid_depth if self.config.imbalance_enabled else None,
+                    ask_depth_total=self._last_ask_depth if self.config.imbalance_enabled else None,
+                    run_id=self._run_id,
+                    git_sha=self._git_sha,
+                )
+            else:
+                logger.debug(
+                    f"[skip_gate] PASS: {side} order allowed "
+                    f"(score={result.score:.3f}, reason={result.reason}, "
+                    f"model={result.model_used})"
+                )
+        except Exception as e:
+            logger.warning(f"[skip_gate] Evaluation failed (non-fatal): {e}")
+            result.reason = f"error:{e}"
+
+        return result
+
+    async def _monitor_fill_polling(
+        self,
+        order: Any,
+        order_price: float,
+        side: str,
+        t_submit: float,
+        spread_at_order: Optional[float],
+        effective_offset_ratio: float,
+    ) -> _FillMonitorResult:
+        """約定ポーリング監視 + stale order cancel-replace (run_single_cycle Phase 3-4).
+
+        113# R1: run_single_cycle から抽出.
+        """
+        filled = False
+        fill_price: Optional[float] = None
+        t_fill: Optional[float] = None
+        cancel_reason_poll: Optional[str] = None
+        elapsed = 0.0
+        reprice_count = 0
+        # 094# 発注時 mid price を stale 判定の基準にする
+        mid_at_order: Optional[float] = None
+        if self.config.stale_order_enabled:
+            try:
+                mid_at_order = await self._get_mid_price()
+            except Exception as e:
+                logger.debug(f"[stale_order] mid_at_order 取得失敗 (stale 検出無効化): {e}")
+        last_reprice_time = t_submit
+
+        while elapsed < self.config.order_timeout_sec and not self._shutdown_requested:
+            await asyncio.sleep(self.config.poll_interval_sec)
+            elapsed = time.time() - t_submit
+
+            try:
+                status_order = await self.adapter.get_order_status(order.order_id)
+                if status_order is None:
+                    _retry_delays = self.config.status_unknown_retry_delays
+                    _recovered = False
+                    for _retry_i, _delay in enumerate(_retry_delays):
+                        logger.warning(
+                            f"Order {order.order_id} not found — "
+                            f"retry {_retry_i + 1}/{len(_retry_delays)} after {_delay}s"
+                        )
+                        await asyncio.sleep(_delay)
+                        status_order = await self.adapter.get_order_status(
+                            order.order_id,
+                        )
+                        if status_order is not None and status_order.status == "filled":
+                            filled = True
+                            fill_price = (
+                                status_order.price
+                                if status_order.price
+                                else order_price
+                            )
+                            t_fill = time.time()
+                            logger.info(
+                                f"Order confirmed filled on retry {_retry_i + 1} @ "
+                                f"{fill_price:.0f} JPY"
+                            )
+                            _recovered = True
+                            break
+                        elif status_order is not None:
+                            _recovered = True
+                            break
+                    if _recovered and filled:
+                        break
+                    if _recovered and status_order is not None:
+                        if status_order.status in ("cancelled", "rejected"):
+                            cancel_reason_poll = f"exchange_{status_order.status}"
+                            logger.info(f"Order {status_order.status}: {order.order_id}")
+                            break
+                        continue
+                    is_likely_postonly_reject = elapsed < self.config.poll_interval_sec * 3
+                    reason = "postonly_reject" if is_likely_postonly_reject else "status_unknown"
+                    logger.warning(
+                        f"Order {order.order_id} status unknown after "
+                        f"{len(_retry_delays)} retries "
+                        f"— treating as cancelled ({reason}, elapsed={elapsed:.1f}s)"
+                    )
+                    cancel_reason_poll = reason
+                    break
+                elif status_order.status == "filled":
+                    filled = True
+                    fill_price = (
+                        status_order.price if status_order.price else order_price
+                    )
+                    t_fill = time.time()
+                    logger.info(
+                        f"Order filled @ {fill_price:.0f} JPY, "
+                        f"wait={elapsed:.1f}s"
+                    )
+                    break
+                elif status_order.status in ("cancelled", "rejected"):
+                    cancel_reason_poll = f"exchange_{status_order.status}"
+                    logger.info(f"Order {status_order.status}: {order.order_id}")
+                    break
+            except Exception as e:
+                logger.warning(f"Poll error: {e}")
+
+            # --- 094# stale order 検出 & cancel-replace ---
+            _stale_check_sec = (
+                (self.config.stale_check_after_sec_buy if side == "buy" else self.config.stale_check_after_sec_sell)
+                if (self.config.stale_check_after_sec_buy if side == "buy" else self.config.stale_check_after_sec_sell) is not None
+                else self.config.stale_check_after_sec
+            )
+            _stale_drift = (
+                (self.config.stale_drift_bps_buy if side == "buy" else self.config.stale_drift_bps_sell)
+                if (self.config.stale_drift_bps_buy if side == "buy" else self.config.stale_drift_bps_sell) is not None
+                else self.config.stale_drift_bps
+            )
+            _stale_max_rp = (
+                (self.config.stale_max_reprice_buy if side == "buy" else self.config.stale_max_reprice_sell)
+                if (self.config.stale_max_reprice_buy if side == "buy" else self.config.stale_max_reprice_sell) is not None
+                else self.config.stale_max_reprice
+            )
+            if (
+                self.config.stale_order_enabled
+                and not filled
+                and mid_at_order is not None
+                and elapsed >= _stale_check_sec
+                and reprice_count < _stale_max_rp
+                and (time.time() - last_reprice_time) >= self.config.stale_cooldown_sec
+            ):
+                try:
+                    current_mid = await self._get_mid_price()
+                    drift_bps = abs(current_mid - mid_at_order) / mid_at_order * self._BPS_FACTOR
+                    is_drifting_away = (
+                        (side == "buy" and current_mid > mid_at_order)
+                        or (side == "sell" and current_mid < mid_at_order)
+                    )
+                    if drift_bps >= _stale_drift and is_drifting_away:
+                        logger.info(
+                            f"[stale_order] Price drifted {drift_bps:.1f}bps "
+                            f"({side}: mid {mid_at_order:.0f}→{current_mid:.0f}). "
+                            f"Cancelling & repricing (reprice #{reprice_count + 1})"
+                        )
+                        # 1) 既存注文キャンセル
+                        try:
+                            await self.adapter.cancel_order(order.order_id)
+                        except Exception as cancel_err:
+                            if "Failed to cancel" in str(cancel_err) or "not found" in str(cancel_err).lower():
+                                try:
+                                    recheck = await self.adapter.get_order_status(order.order_id)
+                                    if recheck is not None and recheck.status == "filled":
+                                        filled = True
+                                        fill_price = recheck.price if recheck.price else order_price
+                                        t_fill = time.time()
+                                        logger.info(
+                                            f"[stale_order] Order actually filled during cancel @ "
+                                            f"{fill_price:.0f} JPY"
+                                        )
+                                except Exception:
+                                    pass
+                            if filled:
+                                break
+                            logger.warning(f"[stale_order] Cancel failed: {cancel_err}")
+                            continue
+
+                        # 2) 100# P0-6: SkipGate による reprice ガード
+                        reprice_gate_skipped = False
+                        if self._skip_gate is not None:
+                            try:
+                                from scripts.v460.ml.skip_gate import build_features_from_market_state
+                                sg_regime = None
+                                if self._regime_detector is not None:
+                                    sg_regime = self._regime_detector.current_regime.value
+                                rp_features = build_features_from_market_state(
+                                    side=side,
+                                    spread_jpy=spread_at_order or 0.0,
+                                    offset_ratio=effective_offset_ratio,
+                                    regime=sg_regime,
+                                    recent_trades=None,
+                                    market_timestamp=time.time(),
+                                )
+                                rp_decision = self._skip_gate.evaluate(rp_features, side=side)
+                                if rp_decision.should_skip:
+                                    reprice_gate_skipped = True
+                                    logger.info(
+                                        f"[stale_order] SkipGate blocked reprice: "
+                                        f"P(AS)={rp_decision.as_probability:.3f} "
+                                        f">= {rp_decision.threshold_used:.3f}"
+                                    )
+                            except Exception as sg_err:
+                                logger.debug(f"[stale_order] SkipGate check failed: {sg_err}")
+
+                        if reprice_gate_skipped:
+                            cancel_reason_poll = "stale_skip_gate_blocked"
+                            break
+
+                        try:
+                            new_price, new_spread, _ = await self._compute_maker_price(side)
+                            reprice_lot = max(
+                                self._MIN_ORDER_BTC,
+                                int(self._current_lot / self._MIN_ORDER_BTC) * self._MIN_ORDER_BTC,
+                            )
+                            new_order = await self.adapter.place_order(
+                                symbol=self.config.symbol,
+                                side=side,
+                                quantity=reprice_lot,
+                                price=new_price,
+                                order_type="limit",
+                            )
+                            order = new_order
+                            order_price = new_price
+                            mid_at_order = current_mid
+                            last_reprice_time = time.time()
+                            reprice_count += 1
+                            self._pending_order_id = order.order_id
+                            logger.info(
+                                f"[stale_order] Repriced {side} @ {new_price:.0f} JPY "
+                                f"(id={order.order_id}, reprice #{reprice_count})"
+                            )
+                        except Exception as place_err:
+                            logger.warning(
+                                f"[stale_order] Reprice failed: {place_err}. "
+                                f"Treating as cancelled."
+                            )
+                            cancel_reason_poll = "stale_reprice_failed"
+                            break
+                except Exception as stale_err:
+                    logger.debug(f"[stale_order] Check failed (non-fatal): {stale_err}")
+
+        # 4. 未約定 → キャンセル
+        if not filled:
+            try:
+                await self.adapter.cancel_order(order.order_id)
+                logger.info(f"Cancelled unfilled order after {elapsed:.1f}s")
+            except Exception as e:
+                logger.warning(f"Cancel failed: {e}")
+                if "Failed to cancel" in str(e) or "not found" in str(e).lower():
+                    try:
+                        recheck = await self.adapter.get_order_status(order.order_id)
+                        if recheck is not None and recheck.status == "filled":
+                            filled = True
+                            fill_price = (
+                                recheck.price if recheck.price else order_price
+                            )
+                            t_fill = time.time()
+                            cancel_reason_poll = None
+                            logger.info(
+                                f"[Bug11] Order was actually filled @ "
+                                f"{fill_price:.0f} JPY (detected on cancel failure)"
+                            )
+                        else:
+                            logger.info(
+                                f"[Bug11] Recheck: order not found in transactions either"
+                            )
+                    except Exception as recheck_err:
+                        logger.warning(f"[Bug11] Recheck failed: {recheck_err}")
+
+        self._pending_order_id = None
+
+        return _FillMonitorResult(
+            filled=filled,
+            fill_price=fill_price,
+            t_fill=t_fill,
+            cancel_reason=cancel_reason_poll,
+            queue_wait=elapsed,
+            reprice_count=reprice_count,
+            final_order_price=order_price,
+        )
+
+    async def _measure_post_fill_pnl(
+        self,
+        filled: bool,
+        fill_price: Optional[float],
+        side: str,
+    ) -> _PnlMeasurement:
+        """約定後 PnL 計測 — 30s/60s/120s (run_single_cycle Phase 5).
+
+        113# R1: run_single_cycle から抽出.
+        047# E3: multi-timeframe 計測.
+        054# S3: Early Exit 監視.
+        """
+        m = _PnlMeasurement()
+
+        if not filled or fill_price is None:
+            return m
+
+        try:
+            m.mid_at_fill = await self._get_mid_price()
+        except Exception:
+            pass
+
+        # 054# S3: Early Exit 監視付き 30s 待機
+        early_exit_triggered = False
+        t_post_fill_start = time.time()
+
+        if self.config.early_exit_enabled and m.mid_at_fill is not None:
+            monitor_sec = self.config.early_exit_monitor_interval_sec
+            ticks = max(1, int(self.config.post_fill_wait_sec / monitor_sec))
+            tick = 0
+            for tick in range(ticks):
+                await asyncio.sleep(monitor_sec)
+                try:
+                    mid_now = await self._get_mid_price()
+                    if side == "buy":
+                        interim_pnl = (mid_now - m.mid_at_fill) / m.mid_at_fill * self._BPS_FACTOR
+                    else:
+                        interim_pnl = (m.mid_at_fill - mid_now) / m.mid_at_fill * self._BPS_FACTOR
+                    if interim_pnl < -self.config.early_exit_threshold_bps:
+                        logger.warning(
+                            f"[early_exit] Loss threshold hit at {(tick+1)*monitor_sec:.0f}s: "
+                            f"{interim_pnl:+.2f} bps < -{self.config.early_exit_threshold_bps}"
+                        )
+                        early_exit_triggered = True
+                        break
+                except Exception:
+                    continue
+            elapsed_monitor = (tick + 1) * monitor_sec if early_exit_triggered else ticks * monitor_sec
+            remaining = self.config.post_fill_wait_sec - elapsed_monitor
+            if remaining > 0 and not early_exit_triggered:
+                await asyncio.sleep(remaining)
+        else:
+            logger.info(f"Waiting {self.config.post_fill_wait_sec}s for PnL measurement...")
+            await asyncio.sleep(self.config.post_fill_wait_sec)
+
+        m.actual_measurement_sec = time.time() - t_post_fill_start
+
+        try:
+            m.mid_30s_after = await self._get_mid_price()
+        except Exception:
+            pass
+
+        if m.mid_at_fill is not None and m.mid_30s_after is not None:
+            if side == "buy":
+                m.post_fill_pnl = (m.mid_30s_after - m.mid_at_fill) / m.mid_at_fill * self._BPS_FACTOR
+                m.adverse_selected_raw = m.mid_30s_after < m.mid_at_fill
+                m.adverse_selected = m.post_fill_pnl < -self.config.as_deadzone_bps
+            else:
+                m.post_fill_pnl = (m.mid_at_fill - m.mid_30s_after) / m.mid_at_fill * self._BPS_FACTOR
+                m.adverse_selected_raw = m.mid_30s_after > m.mid_at_fill
+                m.adverse_selected = m.post_fill_pnl < -self.config.as_deadzone_bps
+
+        # 054# S3: early exit → rapid exit フラグ
+        if early_exit_triggered:
+            self._rapid_exit_pending = True
+            self._rapid_exit_side = "sell" if side == "buy" else "buy"
+
+        # 047# E3: +30s (=60s) 計測 — 049# サンプリング制御
+        do_e3 = m.mid_at_fill is not None and _rng.random() < self.config.e3_sampling_ratio
+        if do_e3:
+            e3_target_60s = self.config.post_fill_wait_sec * self.config.e3_60s_multiplier
+            e3_elapsed = time.time() - t_post_fill_start
+            e3_wait_60 = max(0.0, e3_target_60s - e3_elapsed)
+            if e3_wait_60 > 0:
+                await asyncio.sleep(e3_wait_60)
+            try:
+                m.mid_60s_after = await self._get_mid_price()
+                if side == "buy":
+                    m.post_fill_60s_pnl = (m.mid_60s_after - m.mid_at_fill) / m.mid_at_fill * self._BPS_FACTOR
+                else:
+                    m.post_fill_60s_pnl = (m.mid_at_fill - m.mid_60s_after) / m.mid_at_fill * self._BPS_FACTOR
+            except Exception:
+                pass
+
+            e3_target_120s = self.config.post_fill_wait_sec * self.config.e3_120s_multiplier
+            e3_elapsed = time.time() - t_post_fill_start
+            e3_wait_120 = max(0.0, e3_target_120s - e3_elapsed)
+            if e3_wait_120 > 0:
+                await asyncio.sleep(e3_wait_120)
+            try:
+                m.mid_120s_after = await self._get_mid_price()
+                if side == "buy":
+                    m.post_fill_120s_pnl = (m.mid_120s_after - m.mid_at_fill) / m.mid_at_fill * self._BPS_FACTOR
+                else:
+                    m.post_fill_120s_pnl = (m.mid_at_fill - m.mid_120s_after) / m.mid_at_fill * self._BPS_FACTOR
+            except Exception:
+                pass
+
+        return m
+
     async def run_single_cycle(
         self, side_override: str | None = None,
     ) -> FillRecord:
@@ -1305,6 +1877,25 @@ class FillTestRunner:
         """
         self._cycle_count += 1
         cycle_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
+
+        # 113# resilience: CircuitBreaker ガード — OPEN 中は API 呼出しを回避
+        if self._circuit_breaker.state == CircuitState.OPEN:
+            if not self._circuit_breaker._should_attempt_reset():
+                logger.warning(
+                    f"[circuit_breaker] OPEN — skipping cycle {self._cycle_count} "
+                    f"(recovery in {self._circuit_breaker.config.recovery_timeout}s)"
+                )
+                return FillRecord(
+                    cycle_id=cycle_id,
+                    timestamp=time.time(),
+                    side=side_override or "buy",
+                    order_price=0.0,
+                    order_quantity=self._current_lot,
+                    cancelled=True,
+                    cancel_reason="circuit_breaker_open",
+                    run_id=self._run_id,
+                    git_sha=self._git_sha,
+                )
 
         # 055# Fix #2: Smart Side 判定用に最新板 imbalance を事前取得
         # (_compute_maker_price 内での取得では side 決定後 → 1サイクル遅延)
@@ -1355,133 +1946,18 @@ class FillTestRunner:
                 git_sha=self._git_sha,     # 088# quarantine 防止
             )
 
-        # 062# 1.5: SkipGate ML 判定 (注文前にスキップ判断)
-        # 071# OB 特徴量除去: 価格と取引データのみで判定
-        skip_gate_skipped: Optional[bool] = None
-        skip_gate_score: Optional[float] = None
-        skip_gate_reason: Optional[str] = None
-        skip_gate_model_used: Optional[str] = None
-        # 084# P(AS) 可観測性改善
-        skip_gate_as_prob: Optional[float] = None
-        skip_gate_threshold_used: Optional[float] = None
-        if self._skip_gate is not None:
-            try:
-                from scripts.v460.ml.skip_gate import build_features_from_market_state
-
-                # レジーム情報
-                sg_regime = "unknown"
-                if self._regime_detector is not None:
-                    sg_regime = self._regime_detector.current_regime.value
-
-                # 直近約定データ取得 (利用可能な場合)
-                recent_trades_data: list[dict] | None = None
-                try:
-                    trades = await self.adapter.get_recent_trades(
-                        self.config.symbol, limit=self.config.skip_gate_recent_trades_limit,
-                    )
-                    if trades:
-                        recent_trades_data = [
-                            {
-                                "ts": getattr(t, "timestamp", time.time()),
-                                "price": getattr(t, "price", 0.0),
-                                "amount": getattr(t, "amount", getattr(t, "quantity", 0.0)),
-                                "side": getattr(t, "side", "buy"),
-                            }
-                            for t in trades
-                        ]
-                except Exception:
-                    pass  # 約定データ取得失敗は非致命的
-
-                # 072# OB トグル: use_ob_features 有効時のみ OB 取得
-                ob_bid: float | None = None
-                ob_ask: float | None = None
-                ob_bid_vol: float | None = None
-                ob_ask_vol: float | None = None
-                sg_use_ob = self._skip_gate.config.use_ob_features
-                if sg_use_ob:
-                    try:
-                        ob = await self.adapter.get_orderbook(
-                            self.config.symbol, depth=5,
-                        )
-                        if ob and ob.bids and ob.asks:
-                            ob_bid = ob.bids[0].price
-                            ob_ask = ob.asks[0].price
-                            ob_bid_vol = sum(
-                                lv.quantity for lv in ob.bids[:5]
-                            )
-                            ob_ask_vol = sum(
-                                lv.quantity for lv in ob.asks[:5]
-                            )
-                    except Exception as e:
-                        logger.debug(
-                            f"[skip_gate] OB fetch failed: {e}"
-                        )
-
-                gate_features = build_features_from_market_state(
-                    side=side,
-                    spread_jpy=spread_at_order or 0.0,
-                    offset_ratio=effective_offset_ratio,
-                    regime=sg_regime,
-                    recent_trades=recent_trades_data,
-                    market_timestamp=time.time(),
-                    best_bid=ob_bid,
-                    best_ask=ob_ask,
-                    bid_vol_5=ob_bid_vol,
-                    ask_vol_5=ob_ask_vol,
-                    use_ob_features=sg_use_ob,
-                )
-
-                # 107# Volatility Guard: SkipGate 特徴量から VPIN をキャッシュ
-                self._last_vpin = gate_features.get("vpin_60s")
-
-                decision = self._skip_gate.evaluate(
-                    gate_features, side=side,
-                )
-                skip_gate_skipped = decision.should_skip
-                skip_gate_score = decision.predicted_pnl_bps
-                skip_gate_reason = decision.reason
-                skip_gate_model_used = decision.model_used
-                # 084# P(AS) と閾値を直接記録
-                skip_gate_as_prob = decision.as_probability
-                skip_gate_threshold_used = decision.threshold_used
-
-                if decision.should_skip:
-                    logger.info(
-                        f"[skip_gate] SKIP: {side} order skipped "
-                        f"(score={skip_gate_score:.3f}, reason={skip_gate_reason}, "
-                        f"model={skip_gate_model_used}, features={decision.features_used})"
-                    )
-                    return FillRecord(
-                        cycle_id=cycle_id,
-                        timestamp=time.time(),
-                        side=side,
-                        order_price=order_price,
-                        order_quantity=self._current_lot,
-                        cancelled=True,
-                        cancel_reason="skip_gate",
-                        spread_at_order=spread_at_order,
-                        spread_offset_ratio=effective_offset_ratio,
-                        skip_gate_skipped=True,
-                        skip_gate_score=skip_gate_score,
-                        skip_gate_reason=skip_gate_reason,
-                        skip_gate_model_used=skip_gate_model_used,
-                        skip_gate_as_prob=skip_gate_as_prob,
-                        skip_gate_threshold_used=skip_gate_threshold_used,
-                        orderbook_imbalance=self._last_imbalance if self.config.imbalance_enabled else None,
-                        bid_depth_total=self._last_bid_depth if self.config.imbalance_enabled else None,
-                        ask_depth_total=self._last_ask_depth if self.config.imbalance_enabled else None,
-                        run_id=self._run_id,       # 088# データ品質: skip 時も必須
-                        git_sha=self._git_sha,     # 088# quarantine 防止
-                    )
-                else:
-                    logger.debug(
-                        f"[skip_gate] PASS: {side} order allowed "
-                        f"(score={skip_gate_score:.3f}, reason={skip_gate_reason}, "
-                        f"model={skip_gate_model_used})"
-                    )
-            except Exception as e:
-                logger.warning(f"[skip_gate] Evaluation failed (non-fatal): {e}")
-                skip_gate_reason = f"error:{e}"
+        # 113# R1: SkipGate 判定を _evaluate_skip_gate() に委譲
+        sg = await self._evaluate_skip_gate(
+            side, cycle_id, order_price, spread_at_order, effective_offset_ratio,
+        )
+        skip_gate_skipped = sg.skipped
+        skip_gate_score = sg.score
+        skip_gate_reason = sg.reason
+        skip_gate_model_used = sg.model_used
+        skip_gate_as_prob = sg.as_prob
+        skip_gate_threshold_used = sg.threshold_used
+        if sg.early_return_record is not None:
+            return sg.early_return_record
 
         # 2. 発注 (CM-2: リトライ付き)
         t_submit = time.time()
@@ -1564,6 +2040,8 @@ class FillTestRunner:
 
         if order is None:
             logger.error(f"All order attempts failed: {last_error}")
+            # 113# resilience: API 失敗を CircuitBreaker に記録
+            await self._circuit_breaker._on_failure()
             return FillRecord(
                 cycle_id=cycle_id,
                 timestamp=t_submit,
@@ -1579,387 +2057,29 @@ class FillTestRunner:
                 git_sha=self._git_sha,     # 088# quarantine 防止
             )
 
-        # 3. ポーリング監視
-        filled = False
-        fill_price: Optional[float] = None
-        t_fill: Optional[float] = None
-        cancel_reason_poll: Optional[str] = None  # 025# F6: poll 中の cancel 理由
-        elapsed = 0.0
-        reprice_count = 0  # 094# stale order cancel-replace 回数
-        # 094# 発注時 mid price を stale 判定の基準にする
-        mid_at_order: Optional[float] = None
-        if self.config.stale_order_enabled:
-            try:
-                mid_at_order = await self._get_mid_price()
-            except Exception as e:
-                logger.debug(f"[stale_order] mid_at_order 取得失敗 (stale 検出無効化): {e}")
-        last_reprice_time = t_submit  # 094# cooldown 制御用
+        # 113# R1: ポーリング監視 + 未約定キャンセルを _monitor_fill_polling() に委譲
+        monitor = await self._monitor_fill_polling(
+            order, order_price, side, t_submit, spread_at_order, effective_offset_ratio,
+        )
+        filled = monitor.filled
+        fill_price = monitor.fill_price
+        queue_wait = monitor.queue_wait
+        cancel_reason_poll = monitor.cancel_reason
+        reprice_count = monitor.reprice_count
+        order_price = monitor.final_order_price  # stale reprice で変更される場合
 
-        while elapsed < self.config.order_timeout_sec and not self._shutdown_requested:
-            await asyncio.sleep(self.config.poll_interval_sec)
-            elapsed = time.time() - t_submit
-
-            try:
-                status_order = await self.adapter.get_order_status(order.order_id)
-                if status_order is None:
-                    # 025# F6: open orders にも transactions にもない
-                    # → API 一時障害の可能性があるため段階的リトライ
-                    # 088# 強化: 1回→最大3回のリトライ (2s, 3s, 5s)
-                    _retry_delays = self.config.status_unknown_retry_delays
-                    _recovered = False
-                    for _retry_i, _delay in enumerate(_retry_delays):
-                        logger.warning(
-                            f"Order {order.order_id} not found — "
-                            f"retry {_retry_i + 1}/{len(_retry_delays)} after {_delay}s"
-                        )
-                        await asyncio.sleep(_delay)
-                        status_order = await self.adapter.get_order_status(
-                            order.order_id,
-                        )
-                        if status_order is not None and status_order.status == "filled":
-                            filled = True
-                            fill_price = (
-                                status_order.price
-                                if status_order.price
-                                else order_price
-                            )
-                            t_fill = time.time()
-                            logger.info(
-                                f"Order confirmed filled on retry {_retry_i + 1} @ "
-                                f"{fill_price:.0f} JPY"
-                            )
-                            _recovered = True
-                            break
-                        elif status_order is not None:
-                            # open/cancelled 等の明示ステータスが返った → 通常フローへ
-                            _recovered = True
-                            break
-                    if _recovered and filled:
-                        break
-                    if _recovered and status_order is not None:
-                        # 非 filled ステータス → 通常分岐で処理
-                        if status_order.status in ("cancelled", "rejected"):
-                            cancel_reason_poll = f"exchange_{status_order.status}"
-                            logger.info(f"Order {status_order.status}: {order.order_id}")
-                            break
-                        continue  # open → 次の poll へ
-                    # 全リトライ後も不明 → 保守的に cancelled 扱い
-                    # 079# post_only 即reject の識別: 発注直後 (< poll_interval × 2) なら
-                    # post_only rejection の可能性が高い
-                    is_likely_postonly_reject = elapsed < self.config.poll_interval_sec * 3
-                    reason = "postonly_reject" if is_likely_postonly_reject else "status_unknown"
-                    logger.warning(
-                        f"Order {order.order_id} status unknown after "
-                        f"{len(_retry_delays)} retries "
-                        f"— treating as cancelled ({reason}, elapsed={elapsed:.1f}s)"
-                    )
-                    cancel_reason_poll = reason
-                    break
-                elif status_order.status == "filled":
-                    filled = True
-                    fill_price = (
-                        status_order.price if status_order.price else order_price
-                    )
-                    t_fill = time.time()
-                    logger.info(
-                        f"Order filled @ {fill_price:.0f} JPY, "
-                        f"wait={elapsed:.1f}s"
-                    )
-                    break
-                elif status_order.status in ("cancelled", "rejected"):
-                    # 031# 取引所キャンセル/リジェクトの理由を明示的に記録
-                    cancel_reason_poll = f"exchange_{status_order.status}"
-                    logger.info(f"Order {status_order.status}: {order.order_id}")
-                    break
-            except Exception as e:
-                logger.warning(f"Poll error: {e}")
-
-            # --- 094# stale order 検出 & cancel-replace ---
-            # 096# side-specific: buy/sell 別パラメータ (None=共通値 fallback)
-            _stale_check_sec = (
-                (self.config.stale_check_after_sec_buy if side == "buy" else self.config.stale_check_after_sec_sell)
-                if (self.config.stale_check_after_sec_buy if side == "buy" else self.config.stale_check_after_sec_sell) is not None
-                else self.config.stale_check_after_sec
-            )
-            _stale_drift = (
-                (self.config.stale_drift_bps_buy if side == "buy" else self.config.stale_drift_bps_sell)
-                if (self.config.stale_drift_bps_buy if side == "buy" else self.config.stale_drift_bps_sell) is not None
-                else self.config.stale_drift_bps
-            )
-            _stale_max_rp = (
-                (self.config.stale_max_reprice_buy if side == "buy" else self.config.stale_max_reprice_sell)
-                if (self.config.stale_max_reprice_buy if side == "buy" else self.config.stale_max_reprice_sell) is not None
-                else self.config.stale_max_reprice
-            )
-            # 条件: enabled + 十分な経過時間 + 未約定 + reprice 回数未超過 + cooldown 経過
-            if (
-                self.config.stale_order_enabled
-                and not filled
-                and mid_at_order is not None
-                and elapsed >= _stale_check_sec
-                and reprice_count < _stale_max_rp
-                and (time.time() - last_reprice_time) >= self.config.stale_cooldown_sec
-            ):
-                try:
-                    current_mid = await self._get_mid_price()
-                    drift_bps = abs(current_mid - mid_at_order) / mid_at_order * self._BPS_FACTOR
-                    # 方向チェック: 注文から離れる方向に動いたかを確認
-                    # buy: mid が上昇 → 注文価格が取り残される
-                    # sell: mid が下降 → 注文価格が取り残される
-                    is_drifting_away = (
-                        (side == "buy" and current_mid > mid_at_order)
-                        or (side == "sell" and current_mid < mid_at_order)
-                    )
-                    if drift_bps >= _stale_drift and is_drifting_away:
-                        logger.info(
-                            f"[stale_order] Price drifted {drift_bps:.1f}bps "
-                            f"({side}: mid {mid_at_order:.0f}→{current_mid:.0f}). "
-                            f"Cancelling & repricing (reprice #{reprice_count + 1})"
-                        )
-                        # 1) 既存注文キャンセル
-                        try:
-                            await self.adapter.cancel_order(order.order_id)
-                        except Exception as cancel_err:
-                            # cancel 失敗 = 既に約定の可能性
-                            if "Failed to cancel" in str(cancel_err) or "not found" in str(cancel_err).lower():
-                                try:
-                                    recheck = await self.adapter.get_order_status(order.order_id)
-                                    if recheck is not None and recheck.status == "filled":
-                                        filled = True
-                                        fill_price = recheck.price if recheck.price else order_price
-                                        t_fill = time.time()
-                                        logger.info(
-                                            f"[stale_order] Order actually filled during cancel @ "
-                                            f"{fill_price:.0f} JPY"
-                                        )
-                                except Exception:
-                                    pass
-                            if filled:
-                                break
-                            logger.warning(f"[stale_order] Cancel failed: {cancel_err}")
-                            continue  # cancel 失敗 → 次の poll へ
-
-                        # 2) 100# P0-6: SkipGate による reprice ガード
-                        # stale reprice は SkipGate を bypass していたため、
-                        # AS 予測が高い状態で再発注してしまう問題を修正
-                        reprice_gate_skipped = False
-                        if self._skip_gate is not None:
-                            try:
-                                from scripts.v460.ml.skip_gate import build_features_from_market_state
-                                sg_regime = None
-                                if self._regime_detector is not None:
-                                    sg_regime = self._regime_detector.current_regime.value
-                                rp_features = build_features_from_market_state(
-                                    side=side,
-                                    spread_jpy=spread_at_order or 0.0,
-                                    offset_ratio=effective_offset_ratio,
-                                    regime=sg_regime,
-                                    recent_trades=None,
-                                    market_timestamp=time.time(),
-                                )
-                                rp_decision = self._skip_gate.evaluate(rp_features, side=side)
-                                if rp_decision.should_skip:
-                                    reprice_gate_skipped = True
-                                    logger.info(
-                                        f"[stale_order] SkipGate blocked reprice: "
-                                        f"P(AS)={rp_decision.as_probability:.3f} "
-                                        f">= {rp_decision.threshold_used:.3f}"
-                                    )
-                            except Exception as sg_err:
-                                logger.debug(f"[stale_order] SkipGate check failed: {sg_err}")
-
-                        if reprice_gate_skipped:
-                            cancel_reason_poll = "stale_skip_gate_blocked"
-                            break
-
-                        try:
-                            new_price, new_spread, _ = await self._compute_maker_price(side)
-                            # 105#: reprice lot guard
-                            reprice_lot = max(
-                                self._MIN_ORDER_BTC,
-                                int(self._current_lot / self._MIN_ORDER_BTC) * self._MIN_ORDER_BTC,
-                            )
-                            new_order = await self.adapter.place_order(
-                                symbol=self.config.symbol,
-                                side=side,
-                                quantity=reprice_lot,
-                                price=new_price,
-                                order_type="limit",
-                            )
-                            order = new_order
-                            order_price = new_price
-                            mid_at_order = current_mid
-                            last_reprice_time = time.time()
-                            reprice_count += 1
-                            self._pending_order_id = order.order_id
-                            logger.info(
-                                f"[stale_order] Repriced {side} @ {new_price:.0f} JPY "
-                                f"(id={order.order_id}, reprice #{reprice_count})"
-                            )
-                        except Exception as place_err:
-                            logger.warning(
-                                f"[stale_order] Reprice failed: {place_err}. "
-                                f"Treating as cancelled."
-                            )
-                            cancel_reason_poll = "stale_reprice_failed"
-                            break
-                except Exception as stale_err:
-                    logger.debug(f"[stale_order] Check failed (non-fatal): {stale_err}")
-
-        # 4. 未約定 → キャンセル
-        if not filled:
-            try:
-                await self.adapter.cancel_order(order.order_id)
-                logger.info(f"Cancelled unfilled order after {elapsed:.1f}s")
-            except Exception as e:
-                logger.warning(f"Cancel failed: {e}")
-                # 047# Bug11: cancel 失敗 = 既に約定済みの可能性
-                # "Failed to cancel" は Coincheck がキャンセル不可を返す場合
-                # → get_order_status で再確認し、約定済みなら filled に修正
-                if "Failed to cancel" in str(e) or "not found" in str(e).lower():
-                    try:
-                        recheck = await self.adapter.get_order_status(order.order_id)
-                        if recheck is not None and recheck.status == "filled":
-                            filled = True
-                            fill_price = (
-                                recheck.price if recheck.price else order_price
-                            )
-                            t_fill = time.time()
-                            cancel_reason_poll = None  # status_unknown を取り消し
-                            logger.info(
-                                f"[Bug11] Order was actually filled @ "
-                                f"{fill_price:.0f} JPY (detected on cancel failure)"
-                            )
-                        else:
-                            logger.info(
-                                f"[Bug11] Recheck: order not found in transactions either"
-                            )
-                    except Exception as recheck_err:
-                        logger.warning(f"[Bug11] Recheck failed: {recheck_err}")
-
-        self._pending_order_id = None
-        queue_wait = elapsed
-
-        # 5. 約定後 mid price 計測 (047# E3: 30/60/120s multi-timeframe)
-        mid_at_fill: Optional[float] = None
-        mid_30s_after: Optional[float] = None
-        mid_60s_after: Optional[float] = None
-        mid_120s_after: Optional[float] = None
-        post_fill_pnl: Optional[float] = None
-        post_fill_60s_pnl: Optional[float] = None
-        post_fill_120s_pnl: Optional[float] = None
-        adverse_selected: Optional[bool] = None
-        adverse_selected_raw: Optional[bool] = None
-        actual_measurement_sec: Optional[float] = None  # 100# P1-4
-
-        if filled and fill_price is not None:
-            try:
-                mid_at_fill = await self._get_mid_price()
-            except Exception:
-                pass
-
-            # 054# S3: Early Exit 監視付き 30s 待機
-            early_exit_triggered = False
-            # 100# P1-4: 実際の計測経過時間を記録 (early_exit 時のラベルノイズ対策)
-            t_post_fill_start = time.time()
-            actual_measurement_sec: Optional[float] = None
-            if self.config.early_exit_enabled and mid_at_fill is not None:
-                # 5s 刻みで 30s まで mid を監視
-                monitor_sec = self.config.early_exit_monitor_interval_sec
-                ticks = max(1, int(self.config.post_fill_wait_sec / monitor_sec))
-                for tick in range(ticks):
-                    await asyncio.sleep(monitor_sec)
-                    try:
-                        mid_now = await self._get_mid_price()
-                        if side == "buy":
-                            interim_pnl = (mid_now - mid_at_fill) / mid_at_fill * self._BPS_FACTOR
-                        else:
-                            interim_pnl = (mid_at_fill - mid_now) / mid_at_fill * self._BPS_FACTOR
-                        if interim_pnl < -self.config.early_exit_threshold_bps:
-                            logger.warning(
-                                f"[early_exit] Loss threshold hit at {(tick+1)*monitor_sec:.0f}s: "
-                                f"{interim_pnl:+.2f} bps < -{self.config.early_exit_threshold_bps}"
-                            )
-                            early_exit_triggered = True
-                            break
-                    except Exception:
-                        continue
-                # 残り時間を消化 (e.g. 15s で early exit → 残り 15s は不要)
-                elapsed_monitor = (tick + 1) * monitor_sec if early_exit_triggered else ticks * monitor_sec
-                remaining = self.config.post_fill_wait_sec - elapsed_monitor
-                if remaining > 0 and not early_exit_triggered:
-                    await asyncio.sleep(remaining)
-            else:
-                # 通常の 30s 待機
-                logger.info(f"Waiting {self.config.post_fill_wait_sec}s for PnL measurement...")
-                await asyncio.sleep(self.config.post_fill_wait_sec)
-
-            # 100# P1-4: 実際の経過秒数を記録
-            actual_measurement_sec = time.time() - t_post_fill_start
-
-            try:
-                mid_30s_after = await self._get_mid_price()
-            except Exception:
-                pass
-
-            if mid_at_fill is not None and mid_30s_after is not None:
-                # PnL in bps (basis points)
-                if side == "buy":
-                    # buy: 価格上昇が有利
-                    post_fill_pnl = (mid_30s_after - mid_at_fill) / mid_at_fill * self._BPS_FACTOR
-                    # 020# O5: raw AS 判定 (deadzone 非適用)
-                    adverse_selected_raw = mid_30s_after < mid_at_fill
-                    # CM-3: AS デッドゾーン — ノイズ幅以内の逆行は AS と判定しない
-                    adverse_selected = post_fill_pnl < -self.config.as_deadzone_bps
-                else:
-                    # sell: 価格下落が有利
-                    post_fill_pnl = (mid_at_fill - mid_30s_after) / mid_at_fill * self._BPS_FACTOR
-                    # 020# O5: raw AS 判定 (deadzone 非適用)
-                    adverse_selected_raw = mid_30s_after > mid_at_fill
-                    # CM-3: AS デッドゾーン
-                    adverse_selected = post_fill_pnl < -self.config.as_deadzone_bps
-
-            # 054# S3: early exit → rapid exit フラグ (次サイクルの interval 短縮)
-            if early_exit_triggered:
-                self._rapid_exit_pending = True
-                self._rapid_exit_side = "sell" if side == "buy" else "buy"
-
-            # 047# E3: +30s (=60s) 計測 — 049# サンプリング制御
-            # e3_sampling_ratio < 1.0 の場合、確率的にスキップしてサイクル効率を回復
-            do_e3 = mid_at_fill is not None and _rng.random() < self.config.e3_sampling_ratio
-            if do_e3:
-                # 101# §1: E3 計測は fill 後の絶対時刻基準で待機
-                # early_exit で 30s 計測が短縮された場合、E3 は「fill後60s」に到達
-                # するまでの残差分だけ sleep する (60s - actual_measurement_sec)
-                e3_target_60s = self.config.post_fill_wait_sec * self.config.e3_60s_multiplier
-                e3_elapsed = time.time() - t_post_fill_start
-                e3_wait_60 = max(0.0, e3_target_60s - e3_elapsed)
-                if e3_wait_60 > 0:
-                    await asyncio.sleep(e3_wait_60)
-                try:
-                    mid_60s_after = await self._get_mid_price()
-                    if side == "buy":
-                        post_fill_60s_pnl = (mid_60s_after - mid_at_fill) / mid_at_fill * self._BPS_FACTOR
-                    else:
-                        post_fill_60s_pnl = (mid_at_fill - mid_60s_after) / mid_at_fill * self._BPS_FACTOR
-                except Exception:
-                    pass
-
-                # 047# E3: +60s (=120s) 計測
-                # 101# §1: fill 後 120s を基準に残差 sleep
-                e3_target_120s = self.config.post_fill_wait_sec * self.config.e3_120s_multiplier
-                e3_elapsed = time.time() - t_post_fill_start
-                e3_wait_120 = max(0.0, e3_target_120s - e3_elapsed)
-                if e3_wait_120 > 0:
-                    await asyncio.sleep(e3_wait_120)
-                try:
-                    mid_120s_after = await self._get_mid_price()
-                    if side == "buy":
-                        post_fill_120s_pnl = (mid_120s_after - mid_at_fill) / mid_at_fill * self._BPS_FACTOR
-                    else:
-                        post_fill_120s_pnl = (mid_at_fill - mid_120s_after) / mid_at_fill * self._BPS_FACTOR
-                except Exception:
-                    pass
+        # 113# R1: PnL 計測を _measure_post_fill_pnl() に委譲
+        pnl = await self._measure_post_fill_pnl(filled, fill_price, side)
+        mid_at_fill = pnl.mid_at_fill
+        mid_30s_after = pnl.mid_30s_after
+        mid_60s_after = pnl.mid_60s_after
+        mid_120s_after = pnl.mid_120s_after
+        post_fill_pnl = pnl.post_fill_pnl
+        post_fill_60s_pnl = pnl.post_fill_60s_pnl
+        post_fill_120s_pnl = pnl.post_fill_120s_pnl
+        adverse_selected = pnl.adverse_selected
+        adverse_selected_raw = pnl.adverse_selected_raw
+        actual_measurement_sec = pnl.actual_measurement_sec
 
         # 037# レジーム検知更新 (035# §7 Week 1)
         regime_str: Optional[str] = None
@@ -2046,6 +2166,9 @@ class FillTestRunner:
             f"pnl={post_fill_pnl:.2f}bps" if post_fill_pnl is not None
             else f"Cycle {self._cycle_count} result: filled={filled}, wait={queue_wait:.1f}s"
         )
+
+        # 113# resilience: API 成功を CircuitBreaker に記録
+        await self._circuit_breaker._on_success()
 
         return record
 
@@ -2433,6 +2556,30 @@ class FillTestRunner:
                     f"unsaved_batch={len(batch)}"
                 )
 
+            # 113# resilience: HealthMonitor 定期チェック + GC
+            health_status = self._health_monitor.maybe_check(self._cycle_count)
+            if health_status and health_status.get("level") == "critical":
+                logger.error(
+                    f"[resilience] Health CRITICAL at cycle {self._cycle_count}: "
+                    f"{health_status}"
+                )
+            self._health_monitor.maybe_gc()
+
+            # 113# resilience: 状態永続化 (progress_log_interval ごと)
+            if self._cycle_count % self.config.progress_log_interval == 0:
+                self._state_persistence.save(FillTestState(
+                    run_id=self._run_id,
+                    cycle_count=self._cycle_count,
+                    total_count=total_count,
+                    filled_count=filled_count,
+                    cumulative_pnl_jpy=cumulative_pnl_jpy,
+                    current_lot=self._current_lot,
+                    soft_loss_cap_triggered=self._soft_loss_cap_triggered,
+                    base_offset_ratio=self.config.base_offset_ratio,
+                    base_offset_ratio_buy=self.config.base_offset_ratio_buy,
+                    base_offset_ratio_sell=self.config.base_offset_ratio_sell,
+                ))
+
             # --- 044# A-7: loss_cap 定期更新 (残高変動を反映) ---
             if (
                 self.config.loss_cap_auto
@@ -2478,6 +2625,20 @@ class FillTestRunner:
             if not self._try_save_batch(batch):
                 # 最終手段: 緊急ダンプ
                 self._emergency_dump(batch, "final")
+
+        # 113# resilience: 最終状態保存
+        self._state_persistence.save(FillTestState(
+            run_id=self._run_id,
+            cycle_count=self._cycle_count,
+            total_count=total_count,
+            filled_count=filled_count,
+            cumulative_pnl_jpy=cumulative_pnl_jpy,
+            current_lot=self._current_lot,
+            soft_loss_cap_triggered=self._soft_loss_cap_triggered,
+            base_offset_ratio=self.config.base_offset_ratio,
+            base_offset_ratio_buy=self.config.base_offset_ratio_buy,
+            base_offset_ratio_sell=self.config.base_offset_ratio_sell,
+        ))
 
         logger.info(
             f"Fill test completed: {total_count} cycles, "

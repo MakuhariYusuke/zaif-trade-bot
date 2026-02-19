@@ -279,16 +279,20 @@ v456–v459 の 4 バージョン（合計 ~230 文書、~120 スクリプト）
 
 ## §4 Dead Code / 未統合モジュール
 
-### §4.1 完全Dead (参照ゼロ、v460で不使用)
+### §4.1 fill_test 経路では未活用 (112# §2.2 修正: 「完全Dead」から言い換え)
+
+> **注**: 以下は fill_test 経路では使用されていないが、`unified_trainer.py` や
+> `test_ab_test_framework.py` 等から import 参照が存在するモジュールを含む。
+> 「参照ゼロ」は fill_test スコープでの評価。
 
 | モジュール | パス | 理由 |
 |-----------|------|------|
 | OnlineLearningPipeline | `ztb/adaptation/online_learning/` | circular import で disabled |
 | RetrainingTrigger | `ztb/adaptation/retraining/` | 型定義のみ |
 | ConceptDriftDetector | `ztb/adaptation/concept_drift/` | 設定のみ |
-| AB Testing (adaptation) | `ztb/adaptation/ab_testing/` | 参照ゼロ |
-| Safety (adaptation) | `ztb/adaptation/safety/` | 参照ゼロ |
-| Operations (adaptation) | `ztb/adaptation/operations/` | 参照ゼロ |
+| AB Testing (adaptation) | `ztb/adaptation/ab_testing/` | fill_test では未使用 (test 参照あり) |
+| Safety (adaptation) | `ztb/adaptation/safety/` | fill_test では未使用 |
+| Operations (adaptation) | `ztb/adaptation/operations/` | fill_test では未使用 |
 | OnlineLearningEngine (V433) | `ztb/training/online_learning_engine.py` (808L) | `enable_v433_adaptive=False` デフォルト |
 | V433 Adaptive Training | `unified_trainer.py` 内 | 246行削除済 (063# SAC cleanup) |
 
@@ -473,13 +477,31 @@ Priority E (収益分析): PnL Monte Carlo (014# T5)
 
 ### 即時 (ph2 進行中)
 
-| # | アクション | 根拠 | 実装見込み |
-|---|-----------|------|-----------|
-| 1 | **Priority A 安全基盤4点** を fill_test に統合 | API障害自動遮断 + 多重停止 + プリトレードチェック + プロファイル適用 | ~150行の統合コード |
-| 2 | **Priority B 監視通報4点** を fill_test に統合 | 168h長時間稼働の無人監視。DiscordでGate結果・障害を即時通知 | ~100行の統合コード |
-| 3 | **Priority C データ品質3点** を統合 | ポジションドリフト検出 + 入力データ品質保証 + メモリリーク防止 | ~80行の統合コード |
-| 4 | **StatePersistence** で再起動時状態復元 | 079# で棚卸し済。HWM, offset, adaptation state の永続化 | ~100行 |
-| 5 | **PnL Monte Carlo** を定期実行 (1日1回) | 014# T5 → fill_test 実測データから G1.1 月次収益予測を更新 | ~30行の呼出し追加 |
+> **112# §3.1 反映**: 実装難易度を加味した Tier 分類を併記。
+
+| # | アクション | 根拠 | Tier | 実装見込み |
+|---|-----------|------|------|----------|
+| 1 | **CircuitBreaker** を API 通信ラッパとして統合 | API障害自動遮断。2xx系以外の応答でOPEN化 | Tier-1 | ~30行 |
+| 2 | **HealthMonitor** を fill_test に統合 | RSS/ディスク/CPU 定期監視 + 定期 GC | Tier-1 | ~20行 |
+| 3 | **StatePersistence** で再起動時状態復元 | 079# で棚卸し済。HWM, offset, adaptation state | Tier-2 | ~80行 |
+| 4 | **PnL Monte Carlo** を定期実行 (1日1回) | 014# T5 → fill_test 実測データから G1.1 月次収益予測を更新 | Tier-2 | ~30行 |
+| 5 | **R1 run_single_cycle 分割** | 106# R1: ~750行 God method → 4サブメソッド分割 | Tier-1 | 純リファクタ |
+
+### 168h fill_test SLO/Gate 閾値表 (112# §3.2 反映)
+
+| カテゴリ | 指標 | 閾値 | 判定 | 根拠 |
+|----------|------|------|------|------|
+| 可用性 | uptime_ratio | ≥ 99.0% | FAIL < 99% | 168h 中の正常サイクル比率 |
+| 可用性 | downtime_minutes/day | ≤ 15 min | WARN > 10min | API障害+time_filter外 |
+| 注文健全性 | api_error_rate | ≤ 2.0% | FAIL > 5% | 5xx/429 率 |
+| 注文健全性 | cancel_timeout_rate | ≤ 35% | WARN > 40% | タイムアウトキャンセル率 |
+| 注文健全性 | orphan_order_count | 0 | FAIL > 0 | 残留注文 |
+| 執行品質 | fill_rate | ≥ 65% | FAIL < 50% | maker 約定率 |
+| 執行品質 | median_queue_wait_sec | ≤ 30s | WARN > 45s | 約定待機時間 |
+| 執行品質 | adverse_selection_bps | ≤ 1.5 | FAIL > 3.0 | AS 中央値 |
+| 経済性 | avg_net_bps | ≥ -0.5 | FAIL < -2.0 | 平均純PnL |
+| 経済性 | daily_loss_cap_breach | 0 | FAIL > 0 | 日次損失キャップ抵触 |
+| 再現性 | restart_recovery_ok | 100% | FAIL < 100% | 状態復元成功率 |
 
 ### ph2 完了前
 

@@ -180,9 +180,10 @@ class TestStaleOrderLogic:
     """094# stale order ロジックがコードに存在."""
 
     def test_run_single_cycle_has_stale_order_logic(self) -> None:
-        """run_single_cycle に stale_order 関連ロジックがある."""
+        """run_single_cycle (or delegated _monitor_fill_polling) に stale_order 関連ロジックがある."""
         from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        # 113# R1: stale order logic extracted to _monitor_fill_polling
+        source = inspect.getsource(FillTestRunner._monitor_fill_polling)
         assert "stale_order" in source
         assert "stale_drift_bps" in source
         assert "reprice_count" in source
@@ -190,27 +191,26 @@ class TestStaleOrderLogic:
     def test_stale_order_checks_direction(self) -> None:
         """stale 判定で乖離方向 (is_drifting_away) を検証している."""
         from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        source = inspect.getsource(FillTestRunner._monitor_fill_polling)
         assert "is_drifting_away" in source
 
     def test_stale_order_respects_max_reprice(self) -> None:
         """max_reprice のチェックがある."""
         from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        source = inspect.getsource(FillTestRunner._monitor_fill_polling)
         assert "stale_max_reprice" in source
 
     def test_stale_order_has_cooldown(self) -> None:
         """cooldown の制御がある."""
         from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        source = inspect.getsource(FillTestRunner._monitor_fill_polling)
         assert "stale_cooldown_sec" in source
         assert "last_reprice_time" in source
 
     def test_stale_order_cancel_before_replace(self) -> None:
         """cancel → place の順序になっている."""
         from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
-        pos_cancel = source.find("cancel_order(order.order_id)")
+        source = inspect.getsource(FillTestRunner._monitor_fill_polling)
         # stale セクション内の cancel は後半にある
         stale_section = source[source.find("[stale_order]"):]
         pos_cancel_stale = stale_section.find("cancel_order")
@@ -222,7 +222,7 @@ class TestStaleOrderLogic:
     def test_stale_order_updates_mid_at_order(self) -> None:
         """reprice 時に mid_at_order を更新している."""
         from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        source = inspect.getsource(FillTestRunner._monitor_fill_polling)
         # mid_at_order = current_mid
         assert "mid_at_order = current_mid" in source
 

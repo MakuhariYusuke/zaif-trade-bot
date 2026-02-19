@@ -1653,7 +1653,8 @@ class Test049E3Sampling:
         import inspect
         from scripts.v460.run_fill_test import FillTestRunner
 
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        # 113# R1: E3 logic extracted to _measure_post_fill_pnl
+        source = inspect.getsource(FillTestRunner._measure_post_fill_pnl)
         assert "e3_sampling_ratio" in source
 
 
@@ -2302,5 +2303,6 @@ class Test107TimeFilterDynamicGating:
         import inspect
         from scripts.v460.run_fill_test import FillTestRunner
 
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        # 113# R1: VPIN caching moved to _evaluate_skip_gate
+        source = inspect.getsource(FillTestRunner._evaluate_skip_gate)
         assert "_last_vpin" in source

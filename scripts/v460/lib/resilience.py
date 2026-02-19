@@ -1,0 +1,230 @@
+"""
+fill_test 耐障害性モジュール — 113# CircuitBreaker / HealthMonitor / StatePersistence 統合.
+
+112# §3.1 Tier-1/Tier-2 を fill_test に低侵襲で導入するためのファサード.
+既存の ztb/ モジュールを再利用し、fill_test 固有のロジックのみをここに定義.
+"""
+
+from __future__ import annotations
+
+import gc
+import json
+import logging
+import time
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# §1  CircuitBreaker  — API 通信ラッパー
+# ---------------------------------------------------------------------------
+# ztb/utils/circuit_breaker.py の CircuitBreaker を直接使う.
+# fill_test では 1 個の breaker (coincheck_api) で全 REST 呼出しを保護.
+
+from ztb.utils.circuit_breaker import (
+    CircuitBreaker,
+    CircuitBreakerConfig,
+    CircuitBreakerOpenException,
+    CircuitState,
+)
+
+# re-export
+__all__ = [
+    "CircuitBreaker",
+    "CircuitBreakerConfig",
+    "CircuitBreakerOpenException",
+    "CircuitState",
+    "FillTestHealthMonitor",
+    "FillTestStatePersistence",
+    "create_api_circuit_breaker",
+]
+
+
+def create_api_circuit_breaker(
+    failure_threshold: int = 5,
+    recovery_timeout: float = 120.0,
+    success_threshold: int = 2,
+    timeout: float = 30.0,
+) -> CircuitBreaker:
+    """fill_test 用 API サーキットブレーカーを生成.
+
+    デフォルト: 5 連続失敗 → 120s OPEN → 2 連続成功で CLOSE.
+    """
+    cfg = CircuitBreakerConfig(
+        failure_threshold=failure_threshold,
+        recovery_timeout=recovery_timeout,
+        success_threshold=success_threshold,
+        timeout=timeout,
+    )
+    return CircuitBreaker("coincheck_api", cfg)
+
+
+# ---------------------------------------------------------------------------
+# §2  HealthMonitor  — RSS / ディスク / GC 定期チェック
+# ---------------------------------------------------------------------------
+
+@dataclass
+class HealthThresholds:
+    """ヘルスチェック閾値."""
+
+    rss_warn_mb: float = 1500.0      # RSS 警告 (MB)
+    rss_critical_mb: float = 2500.0   # RSS 危険 (MB) — OOM 回避
+    disk_free_warn_gb: float = 2.0    # ディスク空き警告 (GB)
+    gc_interval_cycles: int = 100     # GC 実行間隔 (サイクル数)
+    check_interval_sec: float = 300.0  # ヘルスチェック間隔 (秒)
+
+
+class FillTestHealthMonitor:
+    """fill_test 向け軽量ヘルスモニター.
+
+    psutil が利用できない環境では gracefully degrade.
+    """
+
+    def __init__(self, thresholds: Optional[HealthThresholds] = None) -> None:
+        self._thresholds = thresholds or HealthThresholds()
+        self._gc_counter = 0
+        self._last_check_time = 0.0
+        self._start_time = time.time()
+        self._psutil_available = False
+        try:
+            import psutil  # type: ignore[import-untyped]
+            self._psutil_available = True
+            self._process = psutil.Process()
+        except ImportError:
+            logger.info("[health] psutil not available — RSS monitoring disabled")
+
+    def maybe_check(self, cycle_count: int) -> Optional[dict[str, Any]]:
+        """定期チェック. 閾値超過時は警告ログ + ステータス辞書を返す."""
+        now = time.time()
+        if now - self._last_check_time < self._thresholds.check_interval_sec:
+            return None
+        self._last_check_time = now
+
+        status: dict[str, Any] = {
+            "uptime_sec": now - self._start_time,
+            "cycle_count": cycle_count,
+        }
+
+        if self._psutil_available:
+            import psutil  # type: ignore[import-untyped]
+
+            rss_mb = self._process.memory_info().rss / (1024 * 1024)
+            status["rss_mb"] = round(rss_mb, 1)
+            status["cpu_percent"] = self._process.cpu_percent()
+            status["threads"] = self._process.num_threads()
+
+            try:
+                disk = psutil.disk_usage(".")
+                status["disk_free_gb"] = round(disk.free / (1024**3), 2)
+            except Exception:
+                pass
+
+            if rss_mb >= self._thresholds.rss_critical_mb:
+                logger.error(
+                    f"[health] CRITICAL: RSS={rss_mb:.0f}MB >= "
+                    f"{self._thresholds.rss_critical_mb:.0f}MB — OOM risk"
+                )
+                status["level"] = "critical"
+            elif rss_mb >= self._thresholds.rss_warn_mb:
+                logger.warning(
+                    f"[health] WARNING: RSS={rss_mb:.0f}MB >= "
+                    f"{self._thresholds.rss_warn_mb:.0f}MB"
+                )
+                status["level"] = "warning"
+            else:
+                status["level"] = "ok"
+
+            disk_free = status.get("disk_free_gb")
+            if disk_free is not None and disk_free < self._thresholds.disk_free_warn_gb:
+                logger.warning(
+                    f"[health] WARNING: disk_free={disk_free:.2f}GB < "
+                    f"{self._thresholds.disk_free_warn_gb:.1f}GB"
+                )
+                status["level"] = "warning"
+        else:
+            status["level"] = "unknown"
+
+        return status
+
+    def maybe_gc(self) -> None:
+        """定期 GC. gc_interval_cycles ごとに gc.collect() を実行."""
+        self._gc_counter += 1
+        if self._gc_counter >= self._thresholds.gc_interval_cycles:
+            collected = gc.collect()
+            self._gc_counter = 0
+            if collected > 0:
+                logger.debug(f"[health] GC collected {collected} objects")
+
+
+# ---------------------------------------------------------------------------
+# §3  StatePersistence  — fill_test 状態の JSON 永続化
+# ---------------------------------------------------------------------------
+
+@dataclass
+class FillTestState:
+    """fill_test の永続化対象状態."""
+
+    # 基本
+    run_id: str = ""
+    cycle_count: int = 0
+    total_count: int = 0
+    filled_count: int = 0
+    cumulative_pnl_jpy: float = 0.0
+    # ロット
+    current_lot: float = 0.001
+    soft_loss_cap_triggered: bool = False
+    # 適応パラメータ
+    base_offset_ratio: float = 0.0010
+    base_offset_ratio_buy: Optional[float] = None
+    base_offset_ratio_sell: Optional[float] = None
+    # タイムスタンプ
+    saved_at: float = 0.0
+    saved_at_iso: str = ""
+
+
+class FillTestStatePersistence:
+    """fill_test 状態の JSON 永続化.
+
+    ztb/trading/production/state_persistence.py を利用し、
+    fill_test 固有のフィールドを FillTestState として管理.
+    """
+
+    def __init__(self, state_dir: Path) -> None:
+        self._state_dir = state_dir
+        self._state_dir.mkdir(parents=True, exist_ok=True)
+        self._state_file = self._state_dir / "fill_test_state.json"
+
+    def save(self, state: FillTestState) -> None:
+        """状態を JSON に保存."""
+        state.saved_at = time.time()
+        state.saved_at_iso = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        try:
+            data = asdict(state)
+            tmp = self._state_file.with_suffix(".tmp")
+            tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+            tmp.replace(self._state_file)
+            logger.debug(f"[state] Saved: cycle={state.cycle_count}, pnl={state.cumulative_pnl_jpy:.1f}")
+        except Exception as e:
+            logger.warning(f"[state] Failed to save: {e}")
+
+    def load(self) -> Optional[FillTestState]:
+        """状態を JSON から復元. ファイルなし/パースエラーは None."""
+        if not self._state_file.exists():
+            return None
+        try:
+            data = json.loads(self._state_file.read_text(encoding="utf-8"))
+            # dataclass フィールドのみ取得 (後方互換)
+            import dataclasses
+            valid_fields = {f.name for f in dataclasses.fields(FillTestState)}
+            filtered = {k: v for k, v in data.items() if k in valid_fields}
+            return FillTestState(**filtered)
+        except Exception as e:
+            logger.warning(f"[state] Failed to load: {e}")
+            return None
+
+    @property
+    def state_file(self) -> Path:
+        """状態ファイルパス."""
+        return self._state_file
