@@ -140,6 +140,12 @@ class FillMetrics:
     # 116# PnL CI (Kill Gate 複合条件用)
     post_fill_30s_pnl_ci_upper: float = 0.0  # 95% CI 上限
 
+    # 122# B3: multi-timeframe PnL 統計 (047# データ基盤活用)
+    post_fill_60s_pnl_mean: float = 0.0
+    post_fill_60s_pnl_pvalue: float = 1.0
+    post_fill_120s_pnl_mean: float = 0.0
+    post_fill_120s_pnl_pvalue: float = 1.0
+
     # 117# cancel reason 内訳 (115# Q10.6: cancel 理由の内訳管理)
     cancel_reason_breakdown: dict[str, int] = field(default_factory=dict)
 
@@ -262,6 +268,22 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
         t_crit = float(stats.t.ppf(0.975, df=len(pnl_values) - 1))
         pnl_ci_upper = pnl_mean + t_crit * se
 
+    # --- 122# B3: multi-timeframe PnL (047# データ基盤活用) ---
+    def _pnl_stats(attr: str) -> tuple[float, float]:
+        vals = [getattr(r, attr) for r in filled if getattr(r, attr, None) is not None]
+        if not vals:
+            return 0.0, 1.0
+        mean_val = float(np.mean(vals))
+        if len(vals) >= 2:
+            t_s, two_p = stats.ttest_1samp(vals, 0.0)
+            p_one = float(two_p / 2) if t_s < 0 else 1.0 - float(two_p / 2)
+        else:
+            p_one = 1.0
+        return mean_val, p_one
+
+    pnl60_mean, pnl60_pvalue = _pnl_stats("post_fill_60s_pnl")
+    pnl120_mean, pnl120_pvalue = _pnl_stats("post_fill_120s_pnl")
+
     return FillMetrics(
         total_orders=total,
         filled_orders=len(filled),
@@ -287,6 +309,11 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
         attempted_cancel_ratio=attempted_cancel_ratio,
         overall_fill_rate=overall_fill_rate,
         post_fill_30s_pnl_ci_upper=pnl_ci_upper,
+        # 122# B3: multi-timeframe PnL
+        post_fill_60s_pnl_mean=pnl60_mean,
+        post_fill_60s_pnl_pvalue=pnl60_pvalue,
+        post_fill_120s_pnl_mean=pnl120_mean,
+        post_fill_120s_pnl_pvalue=pnl120_pvalue,
         cancel_reason_breakdown=cancel_reason_breakdown,
     )
 
@@ -594,19 +621,53 @@ def g1_2_full_judgment(
 
     # F4: PnL — 有意に負でないこと (原初 E4 維持)
     pnl_alpha = thresholds.get("pnl_alpha", 0.05)
-    f4_pass: bool
-    if metrics.post_fill_30s_pnl_mean >= 0:
-        f4_pass = True
-    elif metrics.post_fill_30s_pnl_pvalue >= pnl_alpha:
-        f4_pass = True  # 負だが統計的に有意でない
-    else:
-        f4_pass = False
+
+    # 122# B2: multi-timeframe PnL + Holm-Bonferroni 補正
+    # 3 タイムフレーム (30s, 60s, 120s) の p値を収集し Holm 補正
+    pnl_tests = [
+        ("F4_pnl_30s", metrics.post_fill_30s_pnl_mean, metrics.post_fill_30s_pnl_pvalue,
+         metrics.post_fill_30s_pnl_ci_upper),
+        ("F4b_pnl_60s", metrics.post_fill_60s_pnl_mean, metrics.post_fill_60s_pnl_pvalue,
+         None),
+        ("F4c_pnl_120s", metrics.post_fill_120s_pnl_mean, metrics.post_fill_120s_pnl_pvalue,
+         None),
+    ]
+    # Holm-Bonferroni: p値を昇順ソートし α/(m-rank) で比較
+    # 「有意に負でない」ことを確認 → 有意に負 = FAIL
+    raw_pvals = [(name, p) for name, _, p, _ in pnl_tests]
+    sorted_pvals = sorted(raw_pvals, key=lambda x: x[1])
+    m = len(sorted_pvals)
+    holm_adjusted: dict[str, float] = {}
+    for rank, (name, p_raw) in enumerate(sorted_pvals):
+        # Holm 補正済み p値 = min(p_raw * (m - rank), 1.0)
+        holm_adjusted[name] = min(p_raw * (m - rank), 1.0)
+
+    for name, mean_val, p_raw, ci_upper in pnl_tests:
+        p_holm = holm_adjusted[name]
+        if mean_val >= 0:
+            f_pass = True
+        elif p_holm >= pnl_alpha:
+            f_pass = True  # 負だが Holm 補正後も有意でない
+        else:
+            f_pass = False
+        check_data: dict = {
+            "value": mean_val,
+            "pvalue_raw": p_raw,
+            "pvalue_holm": round(p_holm, 6),
+            "alpha": pnl_alpha,
+            "pass": f_pass,
+        }
+        if ci_upper is not None:
+            check_data["ci_upper"] = ci_upper
+        checks[name] = check_data
+
+    # 後方互換: F4_pnl キーも維持 (旧テスト参照用)
     checks["F4_pnl"] = {
         "value": metrics.post_fill_30s_pnl_mean,
         "pvalue": metrics.post_fill_30s_pnl_pvalue,
         "ci_upper": metrics.post_fill_30s_pnl_ci_upper,
         "alpha": pnl_alpha,
-        "pass": f4_pass,
+        "pass": checks["F4_pnl_30s"]["pass"],
     }
 
     # F5: AS_ratio (115# Q10.2(B): 35→30)

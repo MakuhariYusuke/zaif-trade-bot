@@ -1,0 +1,272 @@
+#!/usr/bin/env python3
+"""122# B1: Gate 自動判定スクリプト.
+
+fill_records JSONL から G1.1-quick / G1.2-full 判定を実行し、
+結果を構造化レポートとして出力する。
+
+118# §2.4 で提案された自動判定パイプライン。
+116# g1_1_quick_judgment / g1_2_full_judgment を活用し、
+122# B2 Holm-Bonferroni 補正済み PnL 多重比較を統合。
+
+Usage:
+  python scripts/v460/gate_judgment.py
+  python scripts/v460/gate_judgment.py --results-dir results/v460/fill_test
+  python scripts/v460/gate_judgment.py --output results/v460/fill_test/judgment.json
+  python scripts/v460/gate_judgment.py --side-breakdown
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+# プロジェクトルート解決
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_PROJECT_ROOT = _SCRIPT_DIR.parent.parent
+sys.path.insert(0, str(_PROJECT_ROOT))
+
+from ztb.metrics.fill_quality import (
+    FillRecord,
+    compute_fill_metrics,
+    filter_clean_records,
+    g1_1_quick_judgment,
+    g1_2_full_judgment,
+    load_fill_records,
+)
+
+
+def _load_all_records(results_dir: Path) -> list[FillRecord]:
+    """JSONL ファイルから全レコードを読み込み."""
+    import glob
+
+    pattern = str(results_dir / "fill_records_*.jsonl")
+    files = sorted(glob.glob(pattern))
+    all_records: list[FillRecord] = []
+    for f in files:
+        records = load_fill_records(f)
+        all_records.extend(records)
+    return all_records
+
+
+def _side_metrics(records: list[FillRecord], side: str) -> dict:
+    """side別メトリクス算出."""
+    side_recs = [r for r in records if r.side == side]
+    if not side_recs:
+        return {"n": 0}
+    m = compute_fill_metrics(side_recs)
+    return {
+        "n": m.total_orders,
+        "filled": m.filled_orders,
+        "fill_rate": round(m.attempted_fill_rate, 4),
+        "pnl_30s_mean": round(m.post_fill_30s_pnl_mean, 4),
+        "pnl_30s_pvalue": round(m.post_fill_30s_pnl_pvalue, 4),
+        "pnl_60s_mean": round(m.post_fill_60s_pnl_mean, 4),
+        "pnl_60s_pvalue": round(m.post_fill_60s_pnl_pvalue, 4),
+        "pnl_120s_mean": round(m.post_fill_120s_pnl_mean, 4),
+        "pnl_120s_pvalue": round(m.post_fill_120s_pnl_pvalue, 4),
+        "as_ratio": round(m.adverse_selection_ratio, 4),
+        "skip_gate_ratio": round(m.skip_gate_ratio, 4),
+    }
+
+
+def _format_check(name: str, check: dict) -> str:
+    """チェック結果を1行フォーマット."""
+    status = "PASS" if check.get("pass") else "FAIL"
+    icon = "✓" if check.get("pass") else "✗"
+    parts = [f"  {icon} {name}: {status}"]
+
+    if "value" in check:
+        val = check["value"]
+        if isinstance(val, float):
+            parts.append(f"value={val:.4f}")
+        else:
+            parts.append(f"value={val}")
+
+    if "threshold" in check:
+        parts.append(f"threshold={check['threshold']}")
+    if "pvalue_holm" in check:
+        parts.append(f"p_raw={check.get('pvalue_raw', 'N/A'):.4f}")
+        parts.append(f"p_holm={check['pvalue_holm']:.4f}")
+    elif "pvalue" in check:
+        parts.append(f"p={check['pvalue']:.4f}")
+    if "alpha" in check:
+        parts.append(f"α={check['alpha']}")
+
+    return "  ".join(parts)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="122# B1: Gate 自動判定")
+    parser.add_argument(
+        "--results-dir",
+        default="results/v460/fill_test",
+        help="fill_records JSONL ディレクトリ",
+    )
+    parser.add_argument(
+        "--gate-config",
+        default=None,
+        help="gate_thresholds.yaml パス (default: configs/v460/gate_thresholds.yaml)",
+    )
+    parser.add_argument(
+        "--output", "-o",
+        default=None,
+        help="判定結果の JSON 出力先",
+    )
+    parser.add_argument(
+        "--side-breakdown",
+        action="store_true",
+        help="buy/sell 別のメトリクスを出力",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="JSON のみ出力 (人間可読レポートなし)",
+    )
+    args = parser.parse_args()
+
+    results_dir = Path(args.results_dir)
+    if not results_dir.is_absolute():
+        results_dir = _PROJECT_ROOT / results_dir
+
+    # Gate thresholds
+    from scripts.v460.lib.config_loader import load_gate_thresholds
+    gate_cfg = load_gate_thresholds(args.gate_config)
+
+    # Load records
+    all_records = _load_all_records(results_dir)
+    if not all_records:
+        print(f"ERROR: No fill records found in {results_dir}", file=sys.stderr)
+        sys.exit(1)
+
+    # Clean/quarantine filter
+    clean, quarantine = filter_clean_records(all_records)
+
+    # Compute metrics
+    metrics = compute_fill_metrics(clean)
+
+    # Gate judgments
+    quick_thresholds = gate_cfg.get("g1_1_quick_exec", {})
+    full_thresholds = gate_cfg.get("g1_2_full_exec", {})
+    quick = g1_1_quick_judgment(metrics, quick_thresholds)
+    full = g1_2_full_judgment(metrics, full_thresholds)
+
+    # Elapsed hours estimation
+    if clean:
+        ts_min = min(r.timestamp for r in clean)
+        ts_max = max(r.timestamp for r in clean)
+        elapsed_h = (ts_max - ts_min) / 3600
+    else:
+        elapsed_h = 0.0
+
+    # Build result
+    result = {
+        "data_summary": {
+            "total_records": len(all_records),
+            "clean_records": len(clean),
+            "quarantine_records": len(quarantine),
+            "elapsed_hours": round(elapsed_h, 1),
+            "measurement_days": metrics.measurement_days,
+        },
+        "metrics": {
+            "attempted_fill_rate": round(metrics.attempted_fill_rate, 4),
+            "overall_fill_rate": round(metrics.overall_fill_rate, 4),
+            "attempted_cancel_ratio": round(metrics.attempted_cancel_ratio, 4),
+            "queue_wait_median_sec": round(metrics.queue_wait_median_sec, 2),
+            "pnl_30s_mean": round(metrics.post_fill_30s_pnl_mean, 4),
+            "pnl_30s_pvalue": round(metrics.post_fill_30s_pnl_pvalue, 6),
+            "pnl_60s_mean": round(metrics.post_fill_60s_pnl_mean, 4),
+            "pnl_60s_pvalue": round(metrics.post_fill_60s_pnl_pvalue, 6),
+            "pnl_120s_mean": round(metrics.post_fill_120s_pnl_mean, 4),
+            "pnl_120s_pvalue": round(metrics.post_fill_120s_pnl_pvalue, 6),
+            "pnl_ci_upper": round(metrics.post_fill_30s_pnl_ci_upper, 4),
+            "as_ratio": round(metrics.adverse_selection_ratio, 4),
+            "skip_gate_ratio": round(metrics.skip_gate_ratio, 4),
+        },
+        "g1_1_quick": quick,
+        "g1_2_full": full,
+    }
+
+    if args.side_breakdown:
+        result["side_breakdown"] = {
+            "buy": _side_metrics(clean, "buy"),
+            "sell": _side_metrics(clean, "sell"),
+        }
+
+    if args.json:
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    else:
+        # Human-readable report
+        print("=" * 60)
+        print("  v460 Gate 自動判定レポート (122# B1)")
+        print("=" * 60)
+        print()
+        ds = result["data_summary"]
+        print(f"  Records: {ds['clean_records']} clean / {ds['quarantine_records']} quarantine")
+        print(f"  Elapsed: {ds['elapsed_hours']:.1f}h / 168h ({ds['elapsed_hours']/168*100:.0f}%)")
+        print(f"  Days:    {ds['measurement_days']}")
+        print()
+
+        # Metrics summary
+        ms = result["metrics"]
+        print("--- Key Metrics ---")
+        print(f"  Fill Rate (attempted): {ms['attempted_fill_rate']:.1%}")
+        print(f"  Fill Rate (overall):   {ms['overall_fill_rate']:.1%}")
+        print(f"  AS Ratio:              {ms['as_ratio']:.1%}")
+        print(f"  SkipGate Ratio:        {ms['skip_gate_ratio']:.1%}")
+        print(f"  Queue Wait Median:     {ms['queue_wait_median_sec']:.1f}s")
+        print()
+        print("--- PnL Multi-Timeframe (Holm-Bonferroni 補正済み) ---")
+        print(f"  PnL 30s:  mean={ms['pnl_30s_mean']:+.3f} bps  p={ms['pnl_30s_pvalue']:.4f}")
+        print(f"  PnL 60s:  mean={ms['pnl_60s_mean']:+.3f} bps  p={ms['pnl_60s_pvalue']:.4f}")
+        print(f"  PnL 120s: mean={ms['pnl_120s_mean']:+.3f} bps  p={ms['pnl_120s_pvalue']:.4f}")
+        print(f"  PnL CI upper: {ms['pnl_ci_upper']:+.3f} bps")
+        print()
+
+        # Side breakdown
+        if args.side_breakdown and "side_breakdown" in result:
+            print("--- Side Breakdown ---")
+            for side in ["buy", "sell"]:
+                sb = result["side_breakdown"][side]
+                if sb["n"] == 0:
+                    print(f"  {side.upper()}: no records")
+                    continue
+                print(f"  {side.upper()}: n={sb['n']}, filled={sb['filled']}, "
+                      f"fill_rate={sb['fill_rate']:.1%}, "
+                      f"PnL30={sb['pnl_30s_mean']:+.3f}bps (p={sb['pnl_30s_pvalue']:.4f}), "
+                      f"AS={sb['as_ratio']:.1%}")
+            print()
+
+        # G1.1-quick
+        print("--- G1.1-quick (72h Kill Gate) ---")
+        q_result = quick.get("gate_result", "N/A")
+        q_icon = "✓" if q_result == "PASS" else ("⚠" if q_result == "WATCH" else "✗")
+        print(f"  Result: {q_icon} {q_result}")
+        for name, check in quick.get("checks", {}).items():
+            print(_format_check(name, check))
+        print()
+
+        # G1.2-full
+        print("--- G1.2-full (168h Qualification Gate) ---")
+        f_result = full.get("gate_result", "N/A")
+        f_icon = "✓" if f_result == "PASS" else "✗"
+        print(f"  Result: {f_icon} {f_result}")
+        for name, check in full.get("checks", {}).items():
+            print(_format_check(name, check))
+        print()
+        print("=" * 60)
+
+    # Save if requested
+    if args.output:
+        out_path = Path(args.output)
+        if not out_path.is_absolute():
+            out_path = _PROJECT_ROOT / out_path
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=2, ensure_ascii=False)
+        print(f"Saved to: {out_path}")
+
+
+if __name__ == "__main__":
+    main()

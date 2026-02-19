@@ -2709,3 +2709,139 @@ class Test107TimeFilterDynamicGating:
         # 113# R1: VPIN caching moved to _evaluate_skip_gate
         source = inspect.getsource(FillTestRunner._evaluate_skip_gate)
         assert "_last_vpin" in source
+
+
+# =====================================================================
+# 122# B2: Holm-Bonferroni multi-timeframe PnL tests
+# =====================================================================
+
+
+class TestHolmBonferroniPnL:
+    """122# B2: g1_2_full_judgment の Holm-Bonferroni 補正テスト."""
+
+    def _make_metrics(self, **overrides) -> "FillMetrics":
+        from ztb.metrics.fill_quality import FillMetrics
+        defaults = dict(
+            total_orders=1000,
+            filled_orders=700,
+            cancelled_orders=300,
+            fill_rate_p90=0.65,
+            cancel_ratio=0.30,
+            queue_wait_median_sec=15.0,
+            post_fill_30s_pnl_mean=-0.2,
+            post_fill_30s_pnl_pvalue=0.16,
+            post_fill_30s_pnl_ci_upper=0.1,
+            post_fill_60s_pnl_mean=-0.1,
+            post_fill_60s_pnl_pvalue=0.30,
+            post_fill_120s_pnl_mean=-0.05,
+            post_fill_120s_pnl_pvalue=0.40,
+            adverse_selection_ratio=0.25,
+            attempted_orders=900,
+            skip_gate_count=100,
+            skip_gate_ratio=0.10,
+            attempted_fill_rate=0.778,
+            attempted_cancel_ratio=0.222,
+            overall_fill_rate=0.70,
+            measurement_days=7,
+            sample_sufficient=True,
+        )
+        defaults.update(overrides)
+        return FillMetrics(**defaults)
+
+    def test_holm_keys_present(self) -> None:
+        """Holm 補正済み F4_pnl_30s/F4b/F4c キーが存在する."""
+        from ztb.metrics.fill_quality import g1_2_full_judgment
+        metrics = self._make_metrics()
+        result = g1_2_full_judgment(metrics, {"pnl_alpha": 0.05})
+        checks = result["checks"]
+        assert "F4_pnl_30s" in checks
+        assert "F4b_pnl_60s" in checks
+        assert "F4c_pnl_120s" in checks
+        assert "pvalue_holm" in checks["F4_pnl_30s"]
+        assert "pvalue_raw" in checks["F4_pnl_30s"]
+
+    def test_holm_backward_compat_f4_pnl(self) -> None:
+        """後方互換: F4_pnl キーが維持される."""
+        from ztb.metrics.fill_quality import g1_2_full_judgment
+        metrics = self._make_metrics()
+        result = g1_2_full_judgment(metrics, {"pnl_alpha": 0.05})
+        f4 = result["checks"]["F4_pnl"]
+        assert "pvalue" in f4
+        assert "pass" in f4
+        assert f4["pass"] == result["checks"]["F4_pnl_30s"]["pass"]
+
+    def test_holm_correction_loosens_threshold(self) -> None:
+        """Holm 補正で p_holm > p_raw (多重比較補正は厳格化方向)."""
+        from ztb.metrics.fill_quality import g1_2_full_judgment
+        metrics = self._make_metrics(
+            post_fill_30s_pnl_mean=-0.5,
+            post_fill_30s_pnl_pvalue=0.03,
+            post_fill_60s_pnl_mean=-0.3,
+            post_fill_60s_pnl_pvalue=0.08,
+            post_fill_120s_pnl_mean=-0.1,
+            post_fill_120s_pnl_pvalue=0.15,
+        )
+        result = g1_2_full_judgment(metrics, {"pnl_alpha": 0.05})
+        f4_30 = result["checks"]["F4_pnl_30s"]
+        # p_raw=0.03 → p_holm = min(0.03 * 3, 1.0) = 0.09 >= 0.05 → PASS
+        assert f4_30["pvalue_holm"] > f4_30["pvalue_raw"]
+        assert f4_30["pvalue_holm"] >= 0.05
+        assert f4_30["pass"] is True
+
+    def test_holm_strongly_significant_still_fails(self) -> None:
+        """非常に小さい p値は Holm 補正後も FAIL."""
+        from ztb.metrics.fill_quality import g1_2_full_judgment
+        metrics = self._make_metrics(
+            post_fill_30s_pnl_mean=-1.0,
+            post_fill_30s_pnl_pvalue=0.005,
+        )
+        result = g1_2_full_judgment(metrics, {"pnl_alpha": 0.05})
+        f4_30 = result["checks"]["F4_pnl_30s"]
+        # p_holm = min(0.005 * 3, 1.0) = 0.015 < 0.05 → FAIL
+        assert f4_30["pvalue_holm"] <= 0.015 + 1e-9
+        assert f4_30["pass"] is False
+
+
+class TestComputeMultiTimeframePnL:
+    """122# B3: multi-timeframe PnL の compute_fill_metrics テスト."""
+
+    def test_pnl_60s_120s_populated(self) -> None:
+        """PnL 60s/120s の mean/pvalue が算出される."""
+        import time
+        from ztb.metrics.fill_quality import FillRecord, compute_fill_metrics
+        base_ts = time.time()
+        records = [
+            FillRecord(
+                cycle_id=f"c_{i}", timestamp=base_ts + i * 120,
+                side="buy", order_price=10000000, order_quantity=0.001,
+                filled=True, post_fill_30s_pnl=0.5,
+                post_fill_60s_pnl=0.3, post_fill_120s_pnl=0.1,
+            )
+            for i in range(30)
+        ]
+        m = compute_fill_metrics(records)
+        assert m.post_fill_60s_pnl_mean > 0
+        assert m.post_fill_120s_pnl_mean > 0
+        # 正の PnL → p値は大きい (有意に負ではない)
+        assert m.post_fill_60s_pnl_pvalue > 0.5
+        assert m.post_fill_120s_pnl_pvalue > 0.5
+
+    def test_pnl_60s_120s_defaults_when_missing(self) -> None:
+        """PnL 60s/120s データがない場合のデフォルト値."""
+        import time
+        from ztb.metrics.fill_quality import FillRecord, compute_fill_metrics
+        base_ts = time.time()
+        records = [
+            FillRecord(
+                cycle_id=f"c_{i}", timestamp=base_ts + i * 120,
+                side="buy", order_price=10000000, order_quantity=0.001,
+                filled=True, post_fill_30s_pnl=0.5,
+                # 60s/120s は None (未計測)
+            )
+            for i in range(10)
+        ]
+        m = compute_fill_metrics(records)
+        assert m.post_fill_60s_pnl_mean == 0.0
+        assert m.post_fill_60s_pnl_pvalue == 1.0
+        assert m.post_fill_120s_pnl_mean == 0.0
+        assert m.post_fill_120s_pnl_pvalue == 1.0
