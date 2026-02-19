@@ -2845,3 +2845,124 @@ class TestComputeMultiTimeframePnL:
         assert m.post_fill_60s_pnl_pvalue == 1.0
         assert m.post_fill_120s_pnl_mean == 0.0
         assert m.post_fill_120s_pnl_pvalue == 1.0
+
+
+# =====================================================================
+# 122# A4+B4: VG effectiveness + daily trend analysis
+# =====================================================================
+
+
+class TestVGAndTrendAnalysis:
+    """122# A4/B4: vg_and_trend.py の分析関数テスト."""
+
+    def _make_records(self, n: int = 20, base_ts: float = 1708000000.0) -> list:
+        """テスト用 FillRecord リストを生成."""
+        from ztb.metrics.fill_quality import FillRecord
+        records = []
+        for i in range(n):
+            records.append(FillRecord(
+                cycle_id=f"vg_test_{i}",
+                timestamp=base_ts + i * 120,
+                side="buy" if i % 2 == 0 else "sell",
+                order_price=10_000_000,
+                order_quantity=0.001,
+                filled=True,
+                fill_price=10_000_000.0,
+                mid_at_fill=10_000_050.0,
+                post_fill_30s_pnl=0.5 if i % 3 != 0 else -1.0,
+                post_fill_120s_pnl=0.3 if i % 3 != 0 else -0.5,
+                adverse_selected=(i % 3 == 0),
+                effective_offset_used=0.15 if i < 15 else 0.30,
+                run_id="test_run",
+                git_sha="abc123",
+            ))
+        return records
+
+    def test_analyze_vg_effectiveness_basic(self) -> None:
+        """VG 効果分析が VG/非VG 群を正しく分離."""
+        from scripts.v460.analysis.vg_and_trend import analyze_vg_effectiveness
+
+        records = self._make_records(20)
+        vg_ids = {records[0].cycle_id, records[5].cycle_id, records[10].cycle_id}
+
+        result = analyze_vg_effectiveness(records, vg_ids)
+        assert result["vg_filled"]["n"] == 3
+        assert result["non_vg_filled"]["n"] == 17
+        assert "interpretation" in result
+
+    def test_analyze_vg_empty_vg(self) -> None:
+        """VG 発動 0 件でもエラーにならない."""
+        from scripts.v460.analysis.vg_and_trend import analyze_vg_effectiveness
+
+        records = self._make_records(10)
+        result = analyze_vg_effectiveness(records, set())
+        assert result["vg_filled"]["n"] == 0
+        assert result["non_vg_filled"]["n"] == 10
+
+    def test_analyze_daily_trend(self) -> None:
+        """日別トレンドが正しく分割される."""
+        from scripts.v460.analysis.vg_and_trend import analyze_daily_trend
+
+        records = self._make_records(20, base_ts=1708000000.0)
+        daily = analyze_daily_trend(records)
+        assert len(daily) >= 1
+        assert "date" in daily[0]
+        assert "as_rate" in daily[0]
+        assert "buy_as_rate" in daily[0]
+        assert "sell_as_rate" in daily[0]
+
+    def test_analyze_8h_trend(self) -> None:
+        """8h帯別トレンドが出力される."""
+        from scripts.v460.analysis.vg_and_trend import analyze_8h_trend
+
+        records = self._make_records(20, base_ts=1708000000.0)
+        periods = analyze_8h_trend(records)
+        assert len(periods) >= 1
+        assert "period" in periods[0]
+        assert "as_rate" in periods[0]
+
+    def test_parse_vg_activations_empty(self) -> None:
+        """存在しないログで空リスト."""
+        from scripts.v460.analysis.vg_and_trend import _parse_vg_activations
+
+        result = _parse_vg_activations(Path("/nonexistent/log_file.log"))
+        assert result == []
+
+    def test_match_vg_to_records(self) -> None:
+        """VG タイムスタンプが records と正しくマッチ."""
+        from scripts.v460.analysis.vg_and_trend import _match_vg_to_records
+        from ztb.metrics.fill_quality import FillRecord
+
+        ts = 1708000000.0
+        records = [
+            FillRecord(
+                cycle_id="r1", timestamp=ts, side="buy",
+                order_price=10000000, order_quantity=0.001,
+            ),
+            FillRecord(
+                cycle_id="r2", timestamp=ts + 120, side="sell",
+                order_price=10000000, order_quantity=0.001,
+            ),
+        ]
+        activations = [{"timestamp": ts + 2, "side": "buy"}]  # 2秒差 → マッチ
+
+        matched = _match_vg_to_records(activations, records, tolerance_sec=10)
+        assert "r1" in matched
+        assert "r2" not in matched
+
+    def test_match_vg_side_mismatch(self) -> None:
+        """VG side が record side と異なる場合はマッチしない."""
+        from scripts.v460.analysis.vg_and_trend import _match_vg_to_records
+        from ztb.metrics.fill_quality import FillRecord
+
+        ts = 1708000000.0
+        records = [
+            FillRecord(
+                cycle_id="r1", timestamp=ts, side="buy",
+                order_price=10000000, order_quantity=0.001,
+            ),
+        ]
+        activations = [{"timestamp": ts + 1, "side": "sell"}]  # side不一致
+
+        matched = _match_vg_to_records(activations, records, tolerance_sec=10)
+        assert len(matched) == 0
