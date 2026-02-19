@@ -106,6 +106,7 @@
 | 108 | fix | [108_ph3_fix_ahead_of_schedule.md](108_ph3_fix_ahead_of_schedule.md) | 018# 残課題前倒し (M5/C3/M1/DUP2) | fill test 待ち時間活用 |
 | 109 | fix | [109_ph3_phg_fix_resilience_and_any.md](109_ph3_phg_fix_resilience_and_any.md) | 耐障害性強化 + Any型完全撤去 (H3/032#16,17/036#) | fill test 待ち時間活用 |
 | 110 | fix | [110_086_time_filter_deadlock_fix.md](110_086_time_filter_deadlock_fix.md) | 086# time_filter デッドロック修正 (49%アイドル解消) | fill test ログ分析から発見 |
+| 111 | rpt | [111_legacy_asset_research_report.md](111_legacy_asset_research_report.md) | v456–v459 レガシー資産・教訓 調査レポート | 再利用可能モジュール22件棚卸し |
 
 ### phg — フェーズ横断 (型安全・品質・分析)
 
