@@ -1063,3 +1063,89 @@ class TestSideOverride:
         assert "side_override" in source_sc, (
             "run_single_cycle must accept side_override parameter"
         )
+
+
+class Test110DeadlockBreak:
+    """110# 086# デッドロック修正のテスト."""
+
+    def test_config_default_max_086(self) -> None:
+        """max_086_consecutive_wait のデフォルト値は 3."""
+        cfg = FillTestConfig(enable_regime=False)
+        assert cfg.max_086_consecutive_wait == 3
+
+    def test_config_from_yaml_max_086(self) -> None:
+        """YAML から max_086_consecutive_wait を読み込める."""
+        yaml_dict = {
+            "time_filter": {
+                "enabled": True,
+                "max_086_consecutive_wait": 5,
+            },
+        }
+        cfg = FillTestConfig.from_yaml(yaml_dict)
+        assert cfg.max_086_consecutive_wait == 5
+
+    def test_config_from_yaml_no_086_uses_default(self) -> None:
+        """YAML で未指定時はデフォルト値 3 を使用."""
+        yaml_dict = {
+            "time_filter": {
+                "enabled": True,
+            },
+        }
+        cfg = FillTestConfig.from_yaml(yaml_dict)
+        assert cfg.max_086_consecutive_wait == 3
+
+    def test_runner_has_consecutive_086_counter(self) -> None:
+        """FillTestRunner が _consecutive_086_wait カウンタを持つ."""
+        runner = _make_runner()
+        assert hasattr(runner, "_consecutive_086_wait")
+        assert runner._consecutive_086_wait == 0
+
+    def test_consecutive_086_wait_zero_means_unlimited(self) -> None:
+        """max_086_consecutive_wait=0 は無制限 (旧動作互換)."""
+        cfg = FillTestConfig(enable_regime=False, max_086_consecutive_wait=0)
+        assert cfg.max_086_consecutive_wait == 0
+
+    def test_deadlock_break_logic_in_source(self) -> None:
+        """run_continuous 内に 110# デッドロック解除ロジックが存在."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner.run_continuous)
+        assert "_consecutive_086_wait" in source, (
+            "run_continuous must reference _consecutive_086_wait counter"
+        )
+        assert "110#" in source, (
+            "run_continuous must contain 110# deadlock break comment"
+        )
+        assert "max_086_consecutive_wait" in source, (
+            "run_continuous must reference max_086_consecutive_wait config"
+        )
+
+    def test_is_time_filtered_unchanged(self) -> None:
+        """110# は _is_time_filtered ロジック自体は変更しない."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner._is_time_filtered)
+        # 086# / 110# ロジックは _is_time_filtered ではなく main loop にある
+        assert "_consecutive_086_wait" not in source, (
+            "_is_time_filtered should not contain deadlock counter logic"
+        )
+
+    def test_yaml_roundtrip_max_086(self) -> None:
+        """YAML → FillTestConfig → 値の保持を確認."""
+        yaml_text = """
+time_filter:
+  enabled: true
+  skip_utc_hours: [16]
+  skip_utc_hours_buy: [1, 2]
+  skip_utc_hours_sell: [4]
+  max_086_consecutive_wait: 7
+"""
+        yaml_dict = yaml.safe_load(yaml_text)
+        cfg = FillTestConfig.from_yaml(yaml_dict)
+        assert cfg.enable_time_filter is True
+        assert cfg.skip_utc_hours == [16]
+        assert cfg.skip_utc_hours_buy == [1, 2]
+        assert cfg.skip_utc_hours_sell == [4]
+        assert cfg.max_086_consecutive_wait == 7

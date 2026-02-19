@@ -207,6 +207,9 @@ class FillTestConfig:
     volatility_guard_velocity_threshold_bps: float = 15.0
     volatility_guard_vpin_threshold: float = 0.70
     volatility_guard_offset_boost_factor: float = 2.0
+    # 110# 086# デッドロック修正: 連続 both-filtered 上限
+    # alt_side == _last_side 時に無限待機せず、上限超過で alt_side を許可
+    max_086_consecutive_wait: int = 3      # 0 = 無制限 (旧動作), >0 で N 回超過後 alt_side 許可
     # 088# sell 専用ハードガード
     sell_max_spread_jpy: float = 0.0       # 0 = 無制限, >0 でスプレッド超過時 sell スキップ
     sell_offset_floor: float = 0.0         # 0 = 無制限, >0 で sell offset 最低保証
@@ -340,6 +343,9 @@ class FillTestConfig:
             kwargs["skip_utc_hours_buy"] = tf["skip_utc_hours_buy"]
         if "skip_utc_hours_sell" in tf:
             kwargs["skip_utc_hours_sell"] = tf["skip_utc_hours_sell"]
+        # 110# 086# デッドロック修正
+        if "max_086_consecutive_wait" in tf:
+            kwargs["max_086_consecutive_wait"] = tf["max_086_consecutive_wait"]
 
         # 049# E3 サンプリング
         e3 = yaml_cfg.get("e3", {})
@@ -576,6 +582,8 @@ class FillTestRunner:
         self._soft_cap_jpy_snapshot: float | None = None
         # 047# Issue12: time_filter ログ throttle (突入/離脱のみ出力)
         self._in_time_filter: bool = False
+        # 110# 086# デッドロック修正: 連続 both-filtered カウンタ
+        self._consecutive_086_wait: int = 0
         # 079# heartbeat: time_filter 抑制中のプロセス生存ログ
         self._last_heartbeat_time: float = 0.0
         # 079# 時間ベースバッチflush
@@ -2198,19 +2206,37 @@ class FillTestRunner:
                     # (例: _last_side=buy, next=sell がブロック, alt=buy → double buy)
                     # この場合は両方ブロックと同じ扱いにして待機する
                     if alt_side == self._last_side:
+                        self._consecutive_086_wait += 1
+                        max_wait = self.config.max_086_consecutive_wait
                         utc_h = datetime.now(timezone.utc).hour
-                        logger.info(
-                            f"[time_filter] {next_side} filtered at UTC {utc_h}h, "
-                            f"alt={alt_side} would repeat last side → treating as both-filtered "
-                            f"(086# 片側蓄積防止)"
-                        )
-                        if not self._in_time_filter:
-                            self._in_time_filter = True
-                            self._last_heartbeat_time = time.time()
-                        # 107# R1: 重複 flush → _maybe_flush_batch 統合
-                        batch = self._maybe_flush_batch(batch, "alt_side==last_side wait")
-                        await asyncio.sleep(self.config.cycle_interval_sec)
-                        continue
+                        # 110# デッドロック解除: 連続待機が上限を超えたら alt_side を許可
+                        if max_wait > 0 and self._consecutive_086_wait > max_wait:
+                            logger.info(
+                                f"[time_filter] 086# deadlock break: "
+                                f"{self._consecutive_086_wait} consecutive waits "
+                                f"exceeded max={max_wait}, allowing {alt_side} "
+                                f"(110# デッドロック解除)"
+                            )
+                            self._consecutive_086_wait = 0
+                            next_side = alt_side
+                            # ↓ alt_side 許可 → 通常フローに合流
+                        else:
+                            logger.info(
+                                f"[time_filter] {next_side} filtered at UTC {utc_h}h, "
+                                f"alt={alt_side} would repeat last side → "
+                                f"treating as both-filtered "
+                                f"(086# 片側蓄積防止, wait={self._consecutive_086_wait}/{max_wait})"
+                            )
+                            if not self._in_time_filter:
+                                self._in_time_filter = True
+                                self._last_heartbeat_time = time.time()
+                            # 107# R1: 重複 flush → _maybe_flush_batch 統合
+                            batch = self._maybe_flush_batch(batch, "alt_side==last_side wait")
+                            await asyncio.sleep(self.config.cycle_interval_sec)
+                            continue
+                    else:
+                        # 086# ではない通常の side 切り替え → カウンタリセット
+                        self._consecutive_086_wait = 0
                     utc_h = datetime.now(timezone.utc).hour
                     logger.debug(
                         f"[time_filter] {next_side} filtered at UTC {utc_h}h, "
@@ -2221,6 +2247,7 @@ class FillTestRunner:
             # 047# Issue12: 離脱時のみログ出力
             if self._in_time_filter:
                 self._in_time_filter = False
+                self._consecutive_086_wait = 0  # 110# カウンタリセット
                 logger.info("[time_filter] Exiting High-AS zone — resuming cycles")
 
             # 041# 残高 pre-flight check: 不足サイドはスキップ
