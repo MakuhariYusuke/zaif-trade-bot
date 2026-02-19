@@ -170,4 +170,4 @@ max_086_consecutive_wait: 3  # 3回×120s=6分待機後に解除
 | `scripts/v460/run_fill_test.py` | Config 新パラメータ、カウンタ、デッドロック解除ロジック、YAML パーサー |
 | `configs/v460/fill_test.yaml` | `max_086_consecutive_wait: 3` 追加 |
 | `tests/unit/v460/test_fill_test_config.py` | `Test110DeadlockBreak` 8 テスト追加 |
-| `docs/v460/110_086_time_filter_deadlock_fix.md` | 本ドキュメント |
+| `docs/v460/110_ph2_fix_086_time_filter_deadlock.md` | 本ドキュメント |

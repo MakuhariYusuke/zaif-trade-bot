@@ -94,6 +94,7 @@
 | 097 | impl | [097_ph2_skipgate_retrain_preorder.md](097_ph2_skipgate_retrain_preorder.md) | SkipGate AS モデル再訓練（preorder-only features） |
 | 098 | rpt | [098_ph2_post_097_deep_analysis.md](098_ph2_post_097_deep_analysis.md) | 097 後の構造診断 + 収益改善戦略 |
 | 099 | rev | [099_ph2_rev_098.md](099_ph2_rev_098.md) | 098 改善点レビュー（トレーダー視点込み） |
+| 110 | fix | [110_ph2_fix_086_time_filter_deadlock.md](110_ph2_fix_086_time_filter_deadlock.md) | 086# time_filter デッドロック修正 (49%アイドル解消) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
@@ -105,8 +106,6 @@
 | 063 | impl | [063_ph3_sac_cleanup.md](063_ph3_sac_cleanup.md) | SAC 重複実装の整理 (246行削除) | 衛生管理・ph3 負荷軽減 |
 | 108 | fix | [108_ph3_fix_ahead_of_schedule.md](108_ph3_fix_ahead_of_schedule.md) | 018# 残課題前倒し (M5/C3/M1/DUP2) | fill test 待ち時間活用 |
 | 109 | fix | [109_ph3_phg_fix_resilience_and_any.md](109_ph3_phg_fix_resilience_and_any.md) | 耐障害性強化 + Any型完全撤去 (H3/032#16,17/036#) | fill test 待ち時間活用 |
-| 110 | fix | [110_086_time_filter_deadlock_fix.md](110_086_time_filter_deadlock_fix.md) | 086# time_filter デッドロック修正 (49%アイドル解消) | fill test ログ分析から発見 |
-| 111 | rpt | [111_legacy_asset_research_report.md](111_legacy_asset_research_report.md) | v456–v459 レガシー資産・教訓 調査レポート | 再利用可能モジュール22件棚卸し |
 
 ### phg — フェーズ横断 (型安全・品質・分析)
 
@@ -121,6 +120,8 @@
 | 038 | rpt | [038_phg_rpt_any_cleanup_step3_completion.md](038_phg_rpt_any_cleanup_step3_completion.md) | 統合済み通知 (036へ集約) |
 | 042 | fix | [042_phg_fix_fill_test_3bugs_3improvements.md](042_phg_fix_fill_test_3bugs_3improvements.md) | fill test 3バグ修正 + 3追加改善 + ゾンビプロセス発見 |
 | 080 | rpt | [080_phg_dedup_and_inheritance.md](080_phg_dedup_and_inheritance.md) | 重複排除 & 継承ベース統合 (~3,000行削減) |
+| 111 | rpt | [111_phg_rpt_legacy_asset_research.md](111_phg_rpt_legacy_asset_research.md) | v456–v459 レガシー資産・教訓 調査レポート |
+| 112 | rev | [112_phg_rev_111_legacy_asset.md](112_phg_rev_111_legacy_asset.md) | 111# レビュー + 追加提案 + 見落とし補完 |
 
 ---
 
