@@ -196,3 +196,35 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 
 - `ztb/ops/health/performance_monitor.py` の履歴 I/O を helper 化し、壊れた履歴行を parser でスキップ。
 - `ztb/features/feature_set_config.py` の config load/save を helper 化し、`open + json.load/dump` 重複を削減。
+
+## Phase 7 追補: multi_task/meta callback 継承統合 + 不具合修正 (2026-02-20)
+
+### 1) 継承導入による重複削減
+
+- `ztb/training/callbacks/multi_task/multi_task_callbacks.py` に
+  `_BaseFrequencyCallback`（`NoOpMemoryOptimizedCallback` 継承）を導入。
+- `TaskBalancingCallback` / `SharedRepresentationCallback` /
+  `TaskInterferenceCallback` の共通処理（frequency gating / logger / lifecycle no-op）を基底化。
+- `ztb/training/callbacks/meta/meta_callbacks.py` に
+  `_BaseMetaCallback`（`NoOpMemoryOptimizedCallback` 継承）を導入。
+- `MAMLCallback` / `FewShotCallback` / `MetaAdaptationCallback` の同型処理を継承で共通化。
+
+### 2) 既存不具合の解消
+
+- `SharedRepresentationCallback` と `MetaAdaptationCallback` の
+  `super().__init__` 未実行を修正（cache/frequency 初期化欠落を解消）。
+- `MetaAdaptationCallback` の `adaptation_steps` / `stability_threshold` /
+  `compute_frequency` 未設定不具合を修正。
+- `TaskInterferenceCallback` に欠落していた
+  `task_interference_scores` / `interference_events` を追加し、
+  実行時 `AttributeError` リスクを除去。
+- `TaskInterferenceCallback.on_epoch_end` に `logs is None` ガードと
+  frequency gating を追加し、無効入力時の不安定挙動を抑制。
+
+### 3) 型安全と保守性
+
+- `multi_task_callbacks.py` / `meta_callbacks.py` の `Any` を全撤去し、
+  `ObjectMap` + `object` ベースへ統一（両ファイル `any_type_debt_tokens=0`）。
+- 変換・履歴更新 helper（`_as_float`, `_append_bounded` など）を追加し、
+  callback 間の重複実装を削減。
+- repo 全体 `any_type_debt_tokens` は `2,571 -> 2,537`（-34）。

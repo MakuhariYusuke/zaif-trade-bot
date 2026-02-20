@@ -742,6 +742,20 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 10. 回帰確認: `py_compile`（5ファイル + Step65対象）通過。  
 11. 在庫更新: repo 全体 `any_type_debt_tokens=2,610 -> 2,571`（-39）。`budget_rollup.py` / `multi_timeframe/config.py` / `run_manifest.py` / `analysis/common/data_loaders.py` / `experiments/run_sac_experiments.py` は `any_type_debt_tokens=0`。  
 
+### Step66: `multi_task/meta` への継承導入 + 重複削減 + 不具合修正（`Any=0`）
+
+1. `ztb/training/callbacks/multi_task/multi_task_callbacks.py` に `_BaseFrequencyCallback`（`NoOpMemoryOptimizedCallback` 継承）を導入し、`TaskBalancing` / `SharedRepresentation` / `TaskInterference` の共通処理（`compute_frequency` gating + logger + no-op lifecycle）を基底化。  
+2. 同ファイルで `super().__init__` 未実行だった `SharedRepresentationCallback` を修正し、`compute_frequency` / `representation_layers` 初期化欠落による実行時エラーを解消。  
+3. `TaskInterferenceCallback` の未初期化属性（`task_interference_scores`, `interference_events`）を追加し、`on_epoch_end` での `AttributeError` リスクを解消。  
+4. `TaskInterferenceCallback` に logs `None` ガードと frequency gating を追加し、空 payload での例外・不要計算を抑制。  
+5. `multi_task` 内の no-op lifecycle メソッド重複を削除し、継承で吸収。  
+6. `ztb/training/callbacks/meta/meta_callbacks.py` に `_BaseMetaCallback`（`NoOpMemoryOptimizedCallback` 継承）を導入し、`MAML` / `FewShot` / `MetaAdaptation` の共通 frequency 処理を集約。  
+7. `MetaAdaptationCallback` の `super().__init__` と `compute_frequency` / `adaptation_steps` / `stability_threshold` 初期化欠落を修正し、設定未反映不具合を解消。  
+8. `meta` 内で重複していた no-op lifecycle 実装を削除し、基底継承で統一。  
+9. 両ファイルに `_as_float` / `_append_bounded` 等の共通 helper を導入し、履歴更新と型変換の重複ロジックを削減。  
+10. 回帰確認: `py_compile`（2ファイル）通過。`pytest` は本環境で `numpy` 非導入のため未実施。  
+11. 在庫更新: repo 全体 `any_type_debt_tokens=2,571 -> 2,537`（-34）。`multi_task_callbacks.py` / `meta_callbacks.py` は `any_type_debt_tokens=0`。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -811,6 +825,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step63時点 | repo全体 | 2,620 |
 | Step64時点 | repo全体 | 2,610 |
 | Step65時点 | repo全体 | 2,571 |
+| Step66時点 | repo全体 | 2,537 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -913,6 +928,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step65時点 | `ztb/utils/run_manifest.py` | **0** |
 | Step65時点 | `ztb/analysis/common/data_loaders.py` | **0** |
 | Step65時点 | `ztb/experiments/run_sac_experiments.py` | **0** |
+| Step66時点 | `ztb/training/callbacks/multi_task/multi_task_callbacks.py` | **0** |
+| Step66時点 | `ztb/training/callbacks/meta/meta_callbacks.py` | **0** |
 
 ---
 
@@ -934,6 +951,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - `manifest/result` 永続化と read 経路の `Any` 型を `run_manifest` 側の object-map 契約へ寄せ、`json.load/dump` の分散実装を統合する。  
 8. `ztb/utils/results_utils.py`  
    - training/backtest の result payload schema を `TypedDict` 化し、`analysis/common/data_loaders.py` とキー契約を統一して重複整形コードを削減する。  
+9. `ztb/training/callbacks/distributed/worker.py` / `ztb/training/callbacks/performance/memory_optimizer.py`  
+   - Step66 と同様に `NoOpMemoryOptimizedCallback` 継承で lifecycle 重複を圧縮し、callback 状態更新の helper を共通化する。  
 
 ---
 

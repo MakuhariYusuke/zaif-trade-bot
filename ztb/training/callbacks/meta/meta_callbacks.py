@@ -6,18 +6,81 @@ This module provides callbacks optimized for meta learning
 tasks including MAML, few-shot learning, and adaptation monitoring.
 """
 
+from __future__ import annotations
+
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
 import numpy as np
 
 from ztb.training.callbacks.shared.base.learning_callback import (
     LearningContext,
-    MemoryOptimizedCallback,
+    NoOpMemoryOptimizedCallback,
 )
+from ztb.types.common import ObjectMap
 
 
-class MAMLCallback(MemoryOptimizedCallback):
+_HISTORY_LIMIT = 1_000
+_EPSILON = 1e-8
+
+
+def _as_float(value: object) -> Optional[float]:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float, np.integer, np.floating)):
+        return float(value)
+    return None
+
+
+def _as_float_list(value: object) -> list[float]:
+    if not isinstance(value, list):
+        return []
+    parsed: list[float] = []
+    for item in value:
+        parsed_item = _as_float(item)
+        if parsed_item is not None:
+            parsed.append(parsed_item)
+    return parsed
+
+
+def _as_float_map(value: object) -> dict[str, float]:
+    if not isinstance(value, dict):
+        return {}
+    parsed: dict[str, float] = {}
+    for key, raw in value.items():
+        if not isinstance(key, str):
+            continue
+        val = _as_float(raw)
+        if val is None:
+            continue
+        parsed[key] = val
+    return parsed
+
+
+def _append_bounded(history: list[float], value: float, max_len: int = _HISTORY_LIMIT) -> None:
+    history.append(value)
+    overflow = len(history) - max_len
+    if overflow > 0:
+        del history[:overflow]
+
+
+class _BaseMetaCallback(NoOpMemoryOptimizedCallback):
+    """Shared base for meta callbacks with frequency gating."""
+
+    def __init__(self, compute_frequency: int = 1):
+        super().__init__(cache_size=1000)
+        self.compute_frequency = max(1, int(compute_frequency))
+        self.logger = logging.getLogger(__name__)
+
+    def _should_process(
+        self, context: LearningContext, logs: Optional[ObjectMap]
+    ) -> bool:
+        if logs is None:
+            return False
+        return context.epoch % self.compute_frequency == 0
+
+
+class MAMLCallback(_BaseMetaCallback):
     """
     MAML (Model-Agnostic Meta-Learning) monitoring callback.
 
@@ -31,143 +94,106 @@ class MAMLCallback(MemoryOptimizedCallback):
         num_inner_steps: int = 5,
         adaptation_lr: float = 0.01,
     ):
-        super().__init__(cache_size=1000)
-        self.compute_frequency = compute_frequency
-        self.num_inner_steps = num_inner_steps
-        self.adaptation_lr = adaptation_lr
+        super().__init__(compute_frequency=compute_frequency)
+        self.num_inner_steps = max(1, int(num_inner_steps))
+        self.adaptation_lr = float(adaptation_lr)
 
-        # MAML-specific metrics
-        self.inner_losses: List[List[float]] = []  # Losses for each inner step
-        self.meta_losses: List[float] = []
-        self.adaptation_accuracies: List[
-            List[float]
-        ] = []  # Accuracies after each inner step
+        self.inner_losses: list[list[float]] = []
+        self.meta_losses: list[float] = []
+        self.adaptation_accuracies: list[list[float]] = []
 
-        # Task generalization
-        self.task_generalization_scores: List[float] = []
-        self.meta_gradient_norms: List[float] = []
+        self.task_generalization_scores: list[float] = []
+        self.meta_gradient_norms: list[float] = []
 
-        # Adaptation monitoring
-        self.adaptation_speeds: List[float] = []
-        self.overfitting_indicators: List[float] = []
-
-        self.logger = logging.getLogger(__name__)
+        self.adaptation_speeds: list[float] = []
+        self.overfitting_indicators: list[float] = []
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
         """Monitor MAML training progress."""
-        if context.epoch % self.compute_frequency != 0:
+        if not self._should_process(context, logs):
             return
-
-        if logs is None:
-            return
+        assert logs is not None
 
         try:
-            # Track inner-loop losses
-            if "inner_losses" in logs:
-                inner_loss_history = logs["inner_losses"]
-                if isinstance(inner_loss_history, list):
-                    self.inner_losses.append(
-                        [float(loss) for loss in inner_loss_history]
-                    )
+            inner_loss_history = _as_float_list(logs.get("inner_losses"))
+            if inner_loss_history:
+                self.inner_losses.append(inner_loss_history)
 
-            # Track meta loss
-            if "meta_loss" in logs:
-                meta_loss = float(logs["meta_loss"])
-                self.meta_losses.append(meta_loss)
+            meta_loss = _as_float(logs.get("meta_loss"))
+            if meta_loss is not None:
+                _append_bounded(self.meta_losses, meta_loss)
 
-            # Track adaptation accuracies
-            if "adaptation_accuracies" in logs:
-                adaptation_acc_history = logs["adaptation_accuracies"]
-                if isinstance(adaptation_acc_history, list):
-                    self.adaptation_accuracies.append(
-                        [float(acc) for acc in adaptation_acc_history]
-                    )
+            adaptation_acc_history = _as_float_list(logs.get("adaptation_accuracies"))
+            if adaptation_acc_history:
+                self.adaptation_accuracies.append(adaptation_acc_history)
 
-            # Track meta gradient norm
-            if "meta_grad_norm" in logs:
-                grad_norm = float(logs["meta_grad_norm"])
-                self.meta_gradient_norms.append(grad_norm)
+            grad_norm = _as_float(logs.get("meta_grad_norm"))
+            if grad_norm is not None:
+                _append_bounded(self.meta_gradient_norms, grad_norm)
 
-            # Compute adaptation metrics
             self._compute_adaptation_metrics()
-
-            # Compute task generalization
             self._compute_task_generalization()
 
-            # Cache MAML metrics
-            metrics_key = f"maml_epoch_{context.epoch}"
-            metrics_data = {
+            metrics_data: ObjectMap = {
                 "epoch": context.epoch,
                 "num_inner_steps": self.num_inner_steps,
                 "adaptation_lr": self.adaptation_lr,
             }
-
-            # Add current metrics
             if self.meta_losses:
                 metrics_data["meta_loss"] = self.meta_losses[-1]
             if self.meta_gradient_norms:
                 metrics_data["meta_grad_norm"] = self.meta_gradient_norms[-1]
             if self.task_generalization_scores:
-                metrics_data["task_generalization"] = self.task_generalization_scores[
-                    -1
-                ]
+                metrics_data["task_generalization"] = self.task_generalization_scores[-1]
             if self.adaptation_speeds:
                 metrics_data["adaptation_speed"] = self.adaptation_speeds[-1]
 
-            self.cache_metrics(metrics_key, metrics_data)
+            self.cache_metrics(f"maml_epoch_{context.epoch}", metrics_data)
+            self.logger.debug("MAML metrics updated for epoch %s", context.epoch)
 
-            self.logger.debug(f"MAML metrics updated for epoch {context.epoch}")
-
-        except Exception as e:
-            self.logger.error(f"Failed to monitor MAML training: {e}")
+        except Exception as exc:
+            self.logger.error("Failed to monitor MAML training: %s", exc)
 
     def _compute_adaptation_metrics(self) -> None:
         """Compute adaptation speed and related metrics."""
         if not self.inner_losses or not self.adaptation_accuracies:
             return
 
-        # Compute adaptation speed (improvement per inner step)
-        if len(self.inner_losses[-1]) >= 2 and len(self.adaptation_accuracies[-1]) >= 2:
-            initial_loss = self.inner_losses[-1][0]
-            final_loss = self.inner_losses[-1][-1]
+        last_losses = self.inner_losses[-1]
+        last_accs = self.adaptation_accuracies[-1]
+        if len(last_losses) >= 2 and len(last_accs) >= 2:
+            initial_loss = last_losses[0]
+            final_loss = last_losses[-1]
 
-            if initial_loss > 0:
+            if initial_loss > _EPSILON:
                 loss_improvement = (initial_loss - final_loss) / initial_loss
-                adaptation_speed = loss_improvement / len(self.inner_losses[-1])
-                self.adaptation_speeds.append(float(adaptation_speed))
+                adaptation_speed = loss_improvement / len(last_losses)
+                _append_bounded(self.adaptation_speeds, float(adaptation_speed))
 
-            # Compute overfitting indicator (train vs validation performance gap)
-            if len(self.adaptation_accuracies[-1]) >= 2:
-                initial_acc = self.adaptation_accuracies[-1][0]
-                final_acc = self.adaptation_accuracies[-1][-1]
-                overfitting = final_acc - initial_acc  # Negative indicates overfitting
-                self.overfitting_indicators.append(float(overfitting))
+            initial_acc = last_accs[0]
+            final_acc = last_accs[-1]
+            _append_bounded(self.overfitting_indicators, float(final_acc - initial_acc))
 
     def _compute_task_generalization(self) -> None:
         """Compute task generalization score."""
         if len(self.meta_losses) < 2:
             return
 
-        # Simple generalization metric: stability of meta loss
-        recent_losses = (
-            self.meta_losses[-5:] if len(self.meta_losses) >= 5 else self.meta_losses
-        )
-        loss_stability = 1.0 / (1.0 + np.std(recent_losses))
+        recent_losses = self.meta_losses[-5:]
+        loss_stability = 1.0 / (1.0 + float(np.std(recent_losses)))
+        _append_bounded(self.task_generalization_scores, loss_stability)
 
-        self.task_generalization_scores.append(float(loss_stability))
-
-    def get_maml_stats(self) -> Dict[str, Any]:
+    def get_maml_stats(self) -> ObjectMap:
         """Get MAML training statistics."""
-        stats = {
+        stats: ObjectMap = {
             "num_inner_steps": self.num_inner_steps,
             "adaptation_lr": self.adaptation_lr,
             "epochs_monitored": len(self.meta_losses),
             "adaptation_sessions": len(self.inner_losses),
         }
 
-        # Meta loss stats
         if self.meta_losses:
             stats.update(
                 {
@@ -181,28 +207,18 @@ class MAMLCallback(MemoryOptimizedCallback):
                 }
             )
 
-        # Inner loss stats
         if self.inner_losses:
-            avg_inner_losses = np.mean(
-                [losses for losses in self.inner_losses if losses], axis=0
-            )
-            stats.update(
-                {
-                    "avg_initial_inner_loss": float(avg_inner_losses[0])
-                    if len(avg_inner_losses) > 0
-                    else 0,
-                    "avg_final_inner_loss": float(avg_inner_losses[-1])
-                    if len(avg_inner_losses) > 0
-                    else 0,
-                    "inner_loss_improvement": float(
-                        avg_inner_losses[0] - avg_inner_losses[-1]
-                    )
-                    if len(avg_inner_losses) > 1
-                    else 0,
-                }
-            )
+            avg_inner_losses = np.mean(self.inner_losses, axis=0)
+            if len(avg_inner_losses) > 0:
+                stats["avg_initial_inner_loss"] = float(avg_inner_losses[0])
+                stats["avg_final_inner_loss"] = float(avg_inner_losses[-1])
+            if len(avg_inner_losses) > 1:
+                stats["inner_loss_improvement"] = float(
+                    avg_inner_losses[0] - avg_inner_losses[-1]
+                )
+            else:
+                stats["inner_loss_improvement"] = 0.0
 
-        # Adaptation stats
         if self.adaptation_speeds:
             stats.update(
                 {
@@ -223,38 +239,8 @@ class MAMLCallback(MemoryOptimizedCallback):
 
         return stats
 
-    def on_training_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of training."""
-        pass
 
-    def on_training_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the end of training."""
-        pass
-
-    def on_epoch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of each epoch."""
-        pass
-
-    def on_batch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of each batch."""
-        pass
-
-    def on_batch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the end of each batch."""
-        pass
-
-
-class FewShotCallback(MemoryOptimizedCallback):
+class FewShotCallback(_BaseMetaCallback):
     """
     Few-shot learning monitoring callback.
 
@@ -269,96 +255,75 @@ class FewShotCallback(MemoryOptimizedCallback):
         compute_frequency: int = 1,
         num_episodes: Optional[int] = None,
     ):
-        super().__init__(cache_size=1000)
-        self.n_way = n_way
-        self.k_shot = k_shot
-        self.compute_frequency = compute_frequency
+        super().__init__(compute_frequency=compute_frequency)
+        self.n_way = max(1, int(n_way))
+        self.k_shot = max(1, int(k_shot))
         self.num_episodes = num_episodes
 
-        # Few-shot performance metrics
-        self.episode_accuracies: List[float] = []
-        self.episode_losses: List[float] = []
-        self.prototype_distances: List[float] = []
-
-        # Query set performance
-        self.query_accuracies: List[float] = []
-        self.query_confidences: List[float] = []
-
-        # Episode statistics
-        self.episode_stats: List[Dict[str, Any]] = []
-
-        self.logger = logging.getLogger(__name__)
+        self.episode_accuracies: list[float] = []
+        self.episode_losses: list[float] = []
+        self.prototype_distances: list[float] = []
+        self.query_accuracies: list[float] = []
+        self.query_confidences: list[float] = []
+        self.episode_stats: list[ObjectMap] = []
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
         """Monitor few-shot learning progress."""
-        if context.epoch % self.compute_frequency != 0:
+        if not self._should_process(context, logs):
             return
-
-        if logs is None:
-            return
+        assert logs is not None
 
         try:
-            # Track episode accuracy
-            if "episode_accuracy" in logs:
-                accuracy = float(logs["episode_accuracy"])
-                self.episode_accuracies.append(accuracy)
+            episode_accuracy = _as_float(logs.get("episode_accuracy"))
+            if episode_accuracy is not None:
+                _append_bounded(self.episode_accuracies, episode_accuracy)
 
-            # Track episode loss
-            if "episode_loss" in logs:
-                loss = float(logs["episode_loss"])
-                self.episode_losses.append(loss)
+            episode_loss = _as_float(logs.get("episode_loss"))
+            if episode_loss is not None:
+                _append_bounded(self.episode_losses, episode_loss)
 
-            # Track prototype quality
-            if "prototype_distances" in logs:
-                distances = logs["prototype_distances"]
-                if isinstance(distances, (list, np.ndarray)):
-                    avg_distance = float(np.mean(distances))
-                    self.prototype_distances.append(avg_distance)
+            distances = logs.get("prototype_distances")
+            if isinstance(distances, (list, np.ndarray)):
+                dist_array = np.asarray(distances, dtype=float)
+                if dist_array.size > 0:
+                    _append_bounded(self.prototype_distances, float(np.mean(dist_array)))
 
-            # Track query performance
-            if "query_accuracy" in logs:
-                query_acc = float(logs["query_accuracy"])
-                self.query_accuracies.append(query_acc)
+            query_acc = _as_float(logs.get("query_accuracy"))
+            if query_acc is not None:
+                _append_bounded(self.query_accuracies, query_acc)
 
-            if "query_confidence" in logs:
-                confidence = float(logs["query_confidence"])
-                self.query_confidences.append(confidence)
+            query_confidence = _as_float(logs.get("query_confidence"))
+            if query_confidence is not None:
+                _append_bounded(self.query_confidences, query_confidence)
 
-            # Store episode statistics
-            episode_stat = {
+            episode_stat: ObjectMap = {
                 "epoch": context.epoch,
                 "n_way": self.n_way,
                 "k_shot": self.k_shot,
             }
-
             for key in [
                 "episode_accuracy",
                 "episode_loss",
                 "query_accuracy",
-                "prototype_distances",
                 "query_confidence",
             ]:
-                if key in logs:
-                    episode_stat[key] = (
-                        float(logs[key])
-                        if not isinstance(logs[key], (list, np.ndarray))
-                        else logs[key]
-                    )
-
+                val = _as_float(logs.get(key))
+                if val is not None:
+                    episode_stat[key] = val
+            if isinstance(distances, (list, np.ndarray)):
+                episode_stat["prototype_distances"] = np.asarray(distances).tolist()
             self.episode_stats.append(episode_stat)
+            if len(self.episode_stats) > _HISTORY_LIMIT:
+                del self.episode_stats[: len(self.episode_stats) - _HISTORY_LIMIT]
 
-            # Cache few-shot metrics
-            metrics_key = f"few_shot_epoch_{context.epoch}"
-            metrics_data = {
+            metrics_data: ObjectMap = {
                 "epoch": context.epoch,
                 "n_way": self.n_way,
                 "k_shot": self.k_shot,
                 "num_episodes": self.num_episodes,
             }
-
-            # Add current metrics
             if self.episode_accuracies:
                 metrics_data["episode_accuracy"] = self.episode_accuracies[-1]
             if self.episode_losses:
@@ -368,16 +333,15 @@ class FewShotCallback(MemoryOptimizedCallback):
             if self.prototype_distances:
                 metrics_data["prototype_distance"] = self.prototype_distances[-1]
 
-            self.cache_metrics(metrics_key, metrics_data)
+            self.cache_metrics(f"few_shot_epoch_{context.epoch}", metrics_data)
+            self.logger.debug("Few-shot metrics updated for epoch %s", context.epoch)
 
-            self.logger.debug(f"Few-shot metrics updated for epoch {context.epoch}")
+        except Exception as exc:
+            self.logger.error("Failed to monitor few-shot learning: %s", exc)
 
-        except Exception as e:
-            self.logger.error(f"Failed to monitor few-shot learning: {e}")
-
-    def get_few_shot_stats(self) -> Dict[str, Any]:
+    def get_few_shot_stats(self) -> ObjectMap:
         """Get few-shot learning statistics."""
-        stats = {
+        stats: ObjectMap = {
             "n_way": self.n_way,
             "k_shot": self.k_shot,
             "num_episodes": self.num_episodes,
@@ -385,7 +349,6 @@ class FewShotCallback(MemoryOptimizedCallback):
             "total_episodes": len(self.episode_stats),
         }
 
-        # Episode accuracy stats
         if self.episode_accuracies:
             stats.update(
                 {
@@ -396,7 +359,6 @@ class FewShotCallback(MemoryOptimizedCallback):
                 }
             )
 
-        # Episode loss stats
         if self.episode_losses:
             stats.update(
                 {
@@ -407,7 +369,6 @@ class FewShotCallback(MemoryOptimizedCallback):
                 }
             )
 
-        # Query performance stats
         if self.query_accuracies:
             stats.update(
                 {
@@ -416,7 +377,6 @@ class FewShotCallback(MemoryOptimizedCallback):
                 }
             )
 
-        # Prototype quality stats
         if self.prototype_distances:
             stats.update(
                 {
@@ -428,22 +388,8 @@ class FewShotCallback(MemoryOptimizedCallback):
 
         return stats
 
-    def on_training_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the end of training."""
-        pass
-        pass
 
-    def on_batch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of each batch."""
-        """Called at the end of each batch."""
-        pass
-
-
-class MetaAdaptationCallback(MemoryOptimizedCallback):
+class MetaAdaptationCallback(_BaseMetaCallback):
     """
     Meta adaptation monitoring callback.
 
@@ -457,66 +403,49 @@ class MetaAdaptationCallback(MemoryOptimizedCallback):
         adaptation_steps: int = 10,
         stability_threshold: float = 0.01,
     ):
-        # Adaptation tracking
-        self.adaptation_curves: List[
-            List[float]
-        ] = []  # Performance over adaptation steps
-        self.adaptation_speeds: List[float] = []
-        self.convergence_steps: List[int] = []
+        super().__init__(compute_frequency=compute_frequency)
+        self.adaptation_steps = max(1, int(adaptation_steps))
+        self.stability_threshold = float(stability_threshold)
 
-        # Stability metrics
-        self.adaptation_stability: List[float] = []
-        self.task_similarity_scores: List[float] = []
-
-        # Generalization metrics
-        self.cross_task_performance: Dict[str, List[float]] = {}
-        self.adaptation_generalization: List[float] = []
-
-        self.logger = logging.getLogger(__name__)
+        self.adaptation_curves: list[list[float]] = []
+        self.adaptation_speeds: list[float] = []
+        self.convergence_steps: list[int] = []
+        self.adaptation_stability: list[float] = []
+        self.task_similarity_scores: list[float] = []
+        self.cross_task_performance: dict[str, list[float]] = {}
+        self.adaptation_generalization: list[float] = []
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
+        self, context: LearningContext, logs: Optional[ObjectMap] = None
     ) -> None:
         """Monitor meta adaptation progress."""
-        if context.epoch % self.compute_frequency != 0:
+        if not self._should_process(context, logs):
             return
-
-        if logs is None:
-            return
+        assert logs is not None
 
         try:
-            # Track adaptation curves
-            if "adaptation_curve" in logs:
-                curve = logs["adaptation_curve"]
-                if isinstance(curve, list):
-                    self.adaptation_curves.append([float(val) for val in curve])
+            curve = _as_float_list(logs.get("adaptation_curve"))
+            if curve:
+                self.adaptation_curves.append(curve)
 
-            # Track convergence information
-            if "convergence_step" in logs:
-                conv_step = int(logs["convergence_step"])
-                self.convergence_steps.append(conv_step)
+            convergence_step = logs.get("convergence_step")
+            if isinstance(convergence_step, int):
+                self.convergence_steps.append(convergence_step)
 
-            # Track cross-task performance
-            if "cross_task_performance" in logs:
-                cross_perf = logs["cross_task_performance"]
-                if isinstance(cross_perf, dict):
-                    for task, perf in cross_perf.items():
-                        if task not in self.cross_task_performance:
-                            self.cross_task_performance[task] = []
-                        self.cross_task_performance[task].append(float(perf))
+            cross_perf = _as_float_map(logs.get("cross_task_performance"))
+            for task, perf in cross_perf.items():
+                _append_bounded(
+                    self.cross_task_performance.setdefault(task, []),
+                    perf,
+                )
 
-            # Compute adaptation metrics
             self._compute_adaptation_metrics()
 
-            # Cache adaptation metrics
-            metrics_key = f"meta_adaptation_epoch_{context.epoch}"
-            metrics_data = {
+            metrics_data: ObjectMap = {
                 "epoch": context.epoch,
                 "adaptation_steps": self.adaptation_steps,
                 "stability_threshold": self.stability_threshold,
             }
-
-            # Add current metrics
             if self.adaptation_speeds:
                 metrics_data["adaptation_speed"] = self.adaptation_speeds[-1]
             if self.convergence_steps:
@@ -524,18 +453,15 @@ class MetaAdaptationCallback(MemoryOptimizedCallback):
             if self.adaptation_stability:
                 metrics_data["adaptation_stability"] = self.adaptation_stability[-1]
             if self.adaptation_generalization:
-                metrics_data[
-                    "adaptation_generalization"
-                ] = self.adaptation_generalization[-1]
+                metrics_data["adaptation_generalization"] = self.adaptation_generalization[-1]
 
-            self.cache_metrics(metrics_key, metrics_data)
-
+            self.cache_metrics(f"meta_adaptation_epoch_{context.epoch}", metrics_data)
             self.logger.debug(
-                f"Meta adaptation metrics updated for epoch {context.epoch}"
+                "Meta adaptation metrics updated for epoch %s", context.epoch
             )
 
-        except Exception as e:
-            self.logger.error(f"Failed to monitor meta adaptation: {e}")
+        except Exception as exc:
+            self.logger.error("Failed to monitor meta adaptation: %s", exc)
 
     def _compute_adaptation_metrics(self) -> None:
         """Compute adaptation speed, stability, and generalization."""
@@ -543,25 +469,19 @@ class MetaAdaptationCallback(MemoryOptimizedCallback):
             return
 
         current_curve = self.adaptation_curves[-1]
-
         if len(current_curve) >= 2:
-            # Compute adaptation speed (initial improvement rate)
             initial_perf = current_curve[0]
             early_perf = current_curve[min(2, len(current_curve) - 1)]
-
-            if initial_perf != 0:
+            if abs(initial_perf) > _EPSILON:
                 adaptation_speed = (early_perf - initial_perf) / abs(initial_perf)
-                self.adaptation_speeds.append(float(adaptation_speed))
+                _append_bounded(self.adaptation_speeds, float(adaptation_speed))
 
-            # Compute stability (performance variance during adaptation)
             if len(current_curve) > 3:
                 recent_perfs = current_curve[-3:]
-                stability = 1.0 / (1.0 + np.std(recent_perfs))
-                self.adaptation_stability.append(float(stability))
+                stability = 1.0 / (1.0 + float(np.std(recent_perfs)))
+                _append_bounded(self.adaptation_stability, float(stability))
 
-        # Compute convergence step if not provided
         if not self.convergence_steps and len(current_curve) >= 3:
-            # Find when performance stabilizes
             for i in range(2, len(current_curve)):
                 recent_changes = [
                     abs(current_curve[j] - current_curve[j - 1])
@@ -571,28 +491,27 @@ class MetaAdaptationCallback(MemoryOptimizedCallback):
                     self.convergence_steps.append(i)
                     break
 
-        # Compute adaptation generalization
         if self.cross_task_performance:
-            # Average performance across different tasks
-            current_perfs = []
-            for task_perfs in self.cross_task_performance.values():
-                if task_perfs:
-                    current_perfs.append(task_perfs[-1])
-
+            current_perfs = [
+                task_perf[-1]
+                for task_perf in self.cross_task_performance.values()
+                if task_perf
+            ]
             if current_perfs:
-                generalization = np.mean(current_perfs)
-                self.adaptation_generalization.append(float(generalization))
+                _append_bounded(
+                    self.adaptation_generalization,
+                    float(np.mean(current_perfs)),
+                )
 
-    def get_meta_adaptation_stats(self) -> Dict[str, Any]:
+    def get_meta_adaptation_stats(self) -> ObjectMap:
         """Get meta adaptation statistics."""
-        stats = {
+        stats: ObjectMap = {
             "adaptation_steps": self.adaptation_steps,
             "stability_threshold": self.stability_threshold,
             "epochs_monitored": len(self.adaptation_curves),
             "cross_tasks_tracked": len(self.cross_task_performance),
         }
 
-        # Adaptation speed stats
         if self.adaptation_speeds:
             stats.update(
                 {
@@ -602,7 +521,6 @@ class MetaAdaptationCallback(MemoryOptimizedCallback):
                 }
             )
 
-        # Convergence stats
         if self.convergence_steps:
             stats.update(
                 {
@@ -612,7 +530,6 @@ class MetaAdaptationCallback(MemoryOptimizedCallback):
                 }
             )
 
-        # Stability stats
         if self.adaptation_stability:
             stats.update(
                 {
@@ -623,55 +540,41 @@ class MetaAdaptationCallback(MemoryOptimizedCallback):
                 }
             )
 
-        # Generalization stats
         if self.adaptation_generalization:
             stats.update(
                 {
                     "adaptation_generalization_mean": float(
                         np.mean(self.adaptation_generalization)
                     ),
-                    "adaptation_generalization_latest": self.adaptation_generalization[
-                        -1
-                    ],
+                    "adaptation_generalization_latest": self.adaptation_generalization[-1],
                 }
             )
 
         return stats
 
-    def on_training_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of training."""
-        pass
-        pass
-
-    def on_epoch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of each epoch."""
-        pass
-
-    def on_batch_start(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> None:
-        """Called at the start of each batch."""
-        pass
-
 
 # Factory functions for easy instantiation
-def create_maml(**kwargs) -> MAMLCallback:
+def create_maml(**kwargs: object) -> MAMLCallback:
     """Create MAML callback with default settings."""
-    defaults = {"compute_frequency": 1, "num_inner_steps": 5, "adaptation_lr": 0.01}
-    defaults.update(kwargs)
-    return MAMLCallback(**defaults)
+    compute_frequency = kwargs.get("compute_frequency", 1)
+    num_inner_steps = kwargs.get("num_inner_steps", 5)
+    adaptation_lr = kwargs.get("adaptation_lr", 0.01)
+    return MAMLCallback(
+        compute_frequency=int(compute_frequency) if isinstance(compute_frequency, int) else 1,
+        num_inner_steps=int(num_inner_steps) if isinstance(num_inner_steps, int) else 5,
+        adaptation_lr=float(adaptation_lr) if isinstance(adaptation_lr, (int, float)) else 0.01,
+    )
 
 
-def create_meta_adaptation(**kwargs) -> MetaAdaptationCallback:
+def create_meta_adaptation(**kwargs: object) -> MetaAdaptationCallback:
     """Create meta adaptation callback with default settings."""
-    defaults = {
-        "compute_frequency": 1,
-        "adaptation_steps": 10,
-        "stability_threshold": 0.01,
-    }
-    defaults.update(kwargs)
-    return MetaAdaptationCallback(**defaults)
+    compute_frequency = kwargs.get("compute_frequency", 1)
+    adaptation_steps = kwargs.get("adaptation_steps", 10)
+    stability_threshold = kwargs.get("stability_threshold", 0.01)
+    return MetaAdaptationCallback(
+        compute_frequency=int(compute_frequency) if isinstance(compute_frequency, int) else 1,
+        adaptation_steps=int(adaptation_steps) if isinstance(adaptation_steps, int) else 10,
+        stability_threshold=float(stability_threshold)
+        if isinstance(stability_threshold, (int, float))
+        else 0.01,
+    )
