@@ -1527,11 +1527,11 @@ def main() -> None:
                 f"records excluded from final metrics"
             )
         metrics = compute_fill_metrics(clean_records)
-        thresholds = load_gate_thresholds().get("g1_1_exec", {})
+        gate_cfg = load_gate_thresholds()
+        thresholds = gate_cfg.get("g1_1_exec", {})
         judgment = g1_1_judgment(metrics, thresholds)
 
         # 116# 二段階判定 (115# レビュー反映)
-        gate_cfg = load_gate_thresholds()
         quick_thresholds = gate_cfg.get("g1_1_quick_exec", {})
         full_thresholds = gate_cfg.get("g1_2_full_exec", {})
         quick_judgment = g1_1_quick_judgment(metrics, quick_thresholds)
@@ -1542,15 +1542,17 @@ def main() -> None:
         }
 
         # 049# §6.1-#4: clean/quarantine/coverage を judgment に追加
+        n_total = len(records)
         judgment["data_quality"] = {
-            "total_records": len(records),
+            "total_records": n_total,
             "clean_records": len(clean_records),
             "quarantine_records": len(quarantine_records),
-            "clean_rate": len(clean_records) / len(records) if records else 0.0,
-            "quarantine_rate": len(quarantine_records) / len(records) if records else 0.0,
+            "clean_rate": len(clean_records) / n_total if n_total else 0.0,
+            "quarantine_rate": len(quarantine_records) / n_total if n_total else 0.0,
             "as_coverage": metrics.as_coverage,
             "as_raw_coverage": metrics.as_raw_coverage,
         }
+        del records, quarantine_records  # メモリ早期解放
 
         # 120# A2: run 別二系統分析 (Simpson 逆転リスク対策)
         from scripts.v460.lib.results_analyzer import (

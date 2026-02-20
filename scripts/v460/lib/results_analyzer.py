@@ -17,7 +17,9 @@ from ztb.io.json_io import write_json
 from ztb.metrics.fill_quality import (
     FillMetrics,
     FillRecord,
+    RegimeMetrics,
     compute_fill_metrics,
+    compute_regime_metrics,
     filter_clean_records,
     g1_1_judgment,
     g1_1_quick_judgment,
@@ -389,6 +391,7 @@ def compute_regime_breakdown(
 
     120# P2-2: 「同一 regime 条件下の比較基盤」。
     run 混在でなくレジーム条件を揃えた比較を可能にする。
+    ztb/metrics/fill_quality.compute_regime_metrics を活用し重複排除。
 
     Returns:
         {
@@ -397,31 +400,16 @@ def compute_regime_breakdown(
             ...
         }
     """
-    regime_groups: dict[str, list[FillRecord]] = defaultdict(list)
-    for r in records:
-        key = r.regime if r.regime else "unknown"
-        regime_groups[key].append(r)
-
+    regime_list: list[RegimeMetrics] = compute_regime_metrics(records)
     result: dict = {}
-    for regime, recs in sorted(regime_groups.items()):
-        filled = [r for r in recs if r.filled]
-        pnl_vals = [
-            r.post_fill_30s_pnl for r in filled
-            if r.post_fill_30s_pnl is not None
-        ]
-        as_records = [r for r in filled if r.adverse_selected is not None]
-        n_as = sum(1 for r in as_records if r.adverse_selected)
-
-        result[regime] = {
-            "n_total": len(recs),
-            "n_filled": len(filled),
-            "fill_rate": round(len(filled) / len(recs), 4) if recs else 0.0,
-            "pnl_mean": round(_safe_mean(pnl_vals), 3),
-            "pnl_n": len(pnl_vals),
-            "as_ratio": round(n_as / len(as_records), 4) if as_records else 0.0,
-            "as_n": len(as_records),
+    for rm in regime_list:
+        result[rm.regime] = {
+            "n_total": rm.count,
+            "n_filled": rm.filled,
+            "fill_rate": round(rm.fill_rate, 4),
+            "pnl_mean": round(rm.pnl_mean_bps, 3),
+            "as_ratio": round(rm.as_ratio, 4),
         }
-
     return result
 
 
