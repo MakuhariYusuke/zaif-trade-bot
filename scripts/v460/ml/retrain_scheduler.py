@@ -3,6 +3,15 @@
 fill_test 稼働中にバックグラウンドで定期的にモデルを再学習し、
 アトミックにモデルファイルを差し替える。
 
+127# レビュー反映:
+  - C1: model_path / mode / use_ob_features を skip_gate: セクションから継承
+  - H1: PnL 用特徴量ビルダー (AS ラベル非依存)
+  - H2: run_id フィルタ (latest_run_only)
+  - M1: absolute_min_score (初回モデル品質保証)
+  - M2: target 命名 pnl30/pnl120 に統一
+  - X1: module-level FileHandler レース修正
+  - X2: モデル二重ロード解消
+
 設計:
   - fill_records_*.jsonl の蓄積データで定期的に再学習
   - Walk-Forward OOS 評価で品質チェック (regression gate)
@@ -52,28 +61,22 @@ from scripts.v460.ml.skip_gate import (
     get_gate_feature_cols,
 )
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler("logs/retrain_scheduler.log", encoding="utf-8"),
-    ],
-)
+# 127# X1: module-level FileHandler を廃止。main() 内で初期化する。
 logger = logging.getLogger(__name__)
 
-# デフォルト設定
-_DEFAULT_CONFIG = {
+# デフォルト設定 (127# C1: model_path/mode/use_ob は skip_gate: から継承)
+_DEFAULT_CONFIG: dict[str, Any] = {
     "interval_sec": 3600,           # 再学習間隔 (秒) — 1時間
     "min_new_samples": 30,          # 再学習に必要な最小新規サンプル数
     "min_total_samples": 100,       # 再学習に必要な最小合計サンプル数
-    "model_path": "models/v460/skip_gate_lgbm_pnl120.pkl",
-    "results_dir": "results/v460/fill_test",
-    "target": "pnl120",            # "pnl120" or "as30"
-    "use_ob_features": True,
+    "target": "pnl120",            # 127# M2: "pnl120" or "pnl30"
+    # 127# H2: run_id 分離
+    "latest_run_only": True,        # 最新 run_id のみ学習
+    "exclude_missing_run_id": True, # run_id 欠損行除外
     # Walk-Forward 品質ゲート
     "quality_gate_enabled": True,
     "min_score_improvement": -0.05,  # 前モデル比でこれ以下なら棄却
+    "absolute_min_score": -0.10,    # 127# M1: prev_score 不在時の絶対最低 score
     "wf_test_ratio": 0.2,           # WF テスト比率
     # LGBM ハイパーパラメータ
     "lgbm_n_estimators": 150,
@@ -89,7 +92,11 @@ _DEFAULT_CONFIG = {
 
 
 def load_retrain_config(config_path: Path | None = None) -> dict[str, Any]:
-    """YAML retrain セクションから設定を読み込む."""
+    """YAML retrain + skip_gate セクションから設定を読み込む.
+
+    127# C1: model_path / mode / use_ob_features は skip_gate: から継承。
+    retrain: セクションで重複定義せずに single source of truth を保証。
+    """
     cfg = dict(_DEFAULT_CONFIG)
     yaml_path = config_path or Path("configs/v460/fill_test.yaml")
     if yaml_path.exists():
@@ -97,15 +104,53 @@ def load_retrain_config(config_path: Path | None = None) -> dict[str, Any]:
             import yaml
             with open(yaml_path) as f:
                 yaml_data = yaml.safe_load(f) or {}
+
+            # 127# C1: skip_gate セクションから model_path / mode / use_ob_features を継承
+            sg_cfg = yaml_data.get("skip_gate", {})
+            cfg["model_path"] = sg_cfg.get("model_path", "models/v460/skip_gate_lgbm_pnl120.pkl")
+            cfg["mode"] = sg_cfg.get("mode", "pnl")
+            cfg["use_ob_features"] = sg_cfg.get("use_ob_features", True)
+            # results_dir はトップレベルから継承
+            cfg["results_dir"] = yaml_data.get("results_dir", "results/v460/fill_test")
+
             retrain_cfg = yaml_data.get("retrain", {})
             if retrain_cfg:
-                for key in cfg:
+                for key in _DEFAULT_CONFIG:
                     if key in retrain_cfg:
                         cfg[key] = retrain_cfg[key]
                 logger.info(f"Retrain config loaded from {yaml_path}")
         except Exception as e:
             logger.warning(f"Failed to load retrain config: {e}, using defaults")
+
+    # 127# C1: フォールバック (YAML に skip_gate セクションがない場合)
+    cfg.setdefault("model_path", "models/v460/skip_gate_lgbm_pnl120.pkl")
+    cfg.setdefault("mode", "pnl")
+    cfg.setdefault("use_ob_features", True)
+    cfg.setdefault("results_dir", "results/v460/fill_test")
+
+    # 127# C1: mode/target 整合性バリデーション
+    _validate_config(cfg)
     return cfg
+
+
+def _validate_config(cfg: dict[str, Any]) -> None:
+    """127# C1: 設定の整合性を検証 (fail-fast)."""
+    mode = cfg.get("mode", "pnl")
+    target = cfg.get("target", "pnl120")
+
+    if mode != "pnl":
+        raise ValueError(
+            f"retrain_scheduler requires skip_gate.mode='pnl' but got '{mode}'. "
+            f"retrain は PnL 回帰モデルのみ対応。skip_gate.mode を 'pnl' に変更してください。"
+        )
+    if target not in ("pnl120", "pnl30"):
+        raise ValueError(
+            f"retrain.target must be 'pnl120' or 'pnl30', got '{target}'. "
+            f"127# M2: 'as30' は廃止。PnL 回帰 target を指定してください。"
+        )
+    model_path = cfg.get("model_path", "")
+    if not model_path:
+        raise ValueError("model_path is empty. skip_gate.model_path を設定してください。")
 
 
 def _build_full_features(
@@ -227,6 +272,12 @@ def _evaluate_wf(
 def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
     """モデル再学習 → 品質評価 → アトミック差し替え.
 
+    127# レビュー反映:
+      - H1: PnL 向け特徴量抽出 (AS ラベル非依存)
+      - H2: run_id フィルタリング
+      - M1: absolute_min_score
+      - X2: モデル二重ロード解消
+
     Returns:
         再学習結果のサマリー dict。
         "status" が "deployed" ならモデルが差し替えられた。
@@ -250,17 +301,61 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
         "status": "pending",
     }
 
+    # 127# H2: run_id フィルタリング
+    run_id_filter: str | list[str] | None = cfg.get("run_id_filter")
+    exclude_missing = cfg.get("exclude_missing_run_id", True)
+    latest_run_only = cfg.get("latest_run_only", True)
+
     # Step 1: データロード
     try:
-        records = load_fill_records(results_dir)
+        records = load_fill_records(
+            results_dir,
+            exclude_missing_run_id=exclude_missing,
+        )
     except FileNotFoundError:
         return {**result, "status": "skipped", "reason": "no fill_records found"}
 
+    # 127# H2: latest_run_only — 最新 run_id に絞り込み
+    if latest_run_only and "run_id" in records.columns:
+        valid_runs = records["run_id"].dropna()
+        if len(valid_runs) > 0:
+            latest_run = valid_runs.iloc[-1]
+            records = records[records["run_id"] == latest_run]
+            result["run_id"] = str(latest_run)
+            logger.info(f"H2: Filtered to latest run_id={latest_run} ({len(records)} records)")
+    elif run_id_filter is not None and "run_id" in records.columns:
+        if isinstance(run_id_filter, str):
+            run_id_filter = [run_id_filter]
+        records = records[records["run_id"].isin(run_id_filter)]
+
     enriched = enrich_fill_records(records)
+
+    # 127# H1: PnL 回帰向け特徴量抽出 (AS ラベル非依存)
+    # filled かつ spread 有りのみ (AS ラベルは不要)
+    pnl_mask = enriched["filled"].astype(bool)
+    if "spread_at_order" in enriched.columns:
+        pnl_mask = pnl_mask & enriched["spread_at_order"].notna()
+    if "spread_offset_ratio" in enriched.columns:
+        pnl_mask = pnl_mask & enriched["spread_offset_ratio"].notna()
+    pnl_data = enriched.loc[pnl_mask]
+
+    if len(pnl_data) < 10:
+        return {**result, "status": "skipped", "reason": f"Insufficient filled samples: {len(pnl_data)}"}
+
+    # 特徴量構築 (build_preorder_as_features の特徴量ロジックを再利用)
     try:
-        X_base, y_as = build_preorder_as_features(enriched)
-    except ValueError as exc:
-        return {**result, "status": "skipped", "reason": str(exc)}
+        X_base, _ = build_preorder_as_features(
+            enriched.assign(
+                # H1: pnl_mask 行のみ使う。AS ラベルを一時的に全行に付与して
+                # build_preorder_as_features の filter を通す
+                adverse_selected_raw=lambda df: df["adverse_selected_raw"].fillna(0),
+            ),
+            require_spread=True,
+        )
+    except ValueError:
+        # AS ラベル補完後でもサンプル不足
+        return {**result, "status": "skipped", "reason": "Insufficient samples after feature build"}
+
     X_full = _build_full_features(enriched, X_base, use_ob=use_ob)
 
     # ターゲット選定
@@ -280,6 +375,11 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
     result["total_samples"] = int(len(X_full))
     result["valid_target_samples"] = int(len(X_valid))
 
+    # H1: ドロップ統計記録
+    n_original_filled = int(pnl_mask.sum())
+    result["filled_records"] = n_original_filled
+    result["dropped_by_feature_build"] = n_original_filled - int(len(X_full))
+
     # Step 2: 最小サンプルチェック
     min_total = cfg.get("min_total_samples", 100)
     if len(X_valid) < min_total:
@@ -289,15 +389,23 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
             "reason": f"insufficient samples: {len(X_valid)} < {min_total}",
         }
 
-    # Step 3: 新規サンプルチェック (前回学習時の n_samples と比較)
-    min_new = cfg.get("min_new_samples", 30)
+    # 127# X2: 前モデルを一度だけロード (n_samples + WF score を取得)
     prev_n_samples = 0
+    prev_score = 0.0
+    prev_gate_loaded = False
     if model_path.exists():
         try:
             prev_gate = SkipGate.load(model_path)
             prev_n_samples = prev_gate.metadata.get("n_samples", 0)
+            prev_wf = prev_gate.metadata.get("wf_results", {})
+            prev_score = prev_wf.get("profit_score", 0.0)
+            prev_gate_loaded = True
+            del prev_gate  # メモリ早期解放
         except Exception:
             pass
+
+    # Step 3: 新規サンプルチェック
+    min_new = cfg.get("min_new_samples", 30)
     new_samples = len(X_valid) - prev_n_samples
     result["new_samples"] = int(new_samples)
 
@@ -323,20 +431,22 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
             f"pnl120_imp={wf_result['pnl120_improvement']:.4f}"
         )
 
-        # 品質ゲート: 前モデルの score と比較
+        # 127# M1: 前モデル不在時の絶対最低 score チェック
+        absolute_min = cfg.get("absolute_min_score", -0.10)
+        if not prev_gate_loaded and wf_result["score"] < absolute_min:
+            logger.warning(
+                f"Quality gate REJECT (no prev model): "
+                f"score={wf_result['score']:.4f} < absolute_min={absolute_min}. "
+            )
+            return {**result, "status": "rejected", "reason": "absolute_min_score"}
+
+        # 品質ゲート: 前モデルの score と比較 (127# X2: prev_score は Step 3 で取得済み)
         min_improvement = cfg.get("min_score_improvement", -0.05)
-        prev_score = 0.0
-        if model_path.exists():
-            try:
-                prev_gate = SkipGate.load(model_path)
-                prev_wf = prev_gate.metadata.get("wf_results", {})
-                prev_score = prev_wf.get("profit_score", 0.0)
-            except Exception:
-                pass
 
         improvement = wf_result["score"] - prev_score
         result["score_improvement"] = improvement
-        if improvement < min_improvement:
+        result["prev_score"] = prev_score
+        if prev_gate_loaded and improvement < min_improvement:
             logger.warning(
                 f"Quality gate REJECT: improvement={improvement:.4f} < {min_improvement}. "
                 f"Keeping existing model."
@@ -366,9 +476,9 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
     ])
     pipeline.fit(X_valid, y_valid)
 
-    # SkipGateConfig
+    # SkipGateConfig — 127# C1: mode を設定から取得
     sg_config = SkipGateConfig(
-        mode="pnl",
+        mode=cfg.get("mode", "pnl"),
         enabled=True,
         buy_enabled=True,
         sell_enabled=True,
@@ -487,7 +597,18 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    Path("logs").mkdir(exist_ok=True)
+    # 127# X1: logging 初期化を main() 内に移動 (module-level FileHandler レース防止)
+    log_dir = Path("logs")
+    log_dir.mkdir(exist_ok=True)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler(log_dir / "retrain_scheduler.log", encoding="utf-8"),
+        ],
+    )
+
     cfg = load_retrain_config(Path(args.config))
 
     if args.once:

@@ -1537,7 +1537,9 @@ def main() -> None:
 
     # Run
     # 126# retrain_scheduler を子プロセスとして自動起動
+    # 127# H3: stderr をログファイルにリダイレクト + ヘルスチェック
     retrain_proc: subprocess.Popen | None = None  # type: ignore[type-arg]
+    retrain_stderr_fh = None  # ファイルハンドル
     retrain_cfg = yaml_cfg.get("retrain", {})
     if retrain_cfg.get("enabled", True):
         retrain_script = _PROJECT_ROOT / "scripts" / "v460" / "ml" / "retrain_scheduler.py"
@@ -1549,14 +1551,29 @@ def main() -> None:
                 str(args.config or _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"),
             ]
             try:
+                # 127# H3: stderr をファイルにリダイレクト (可観測性向上)
+                retrain_log_dir = Path(config.results_dir) / "logs"
+                retrain_log_dir.mkdir(parents=True, exist_ok=True)
+                retrain_stderr_path = retrain_log_dir / "retrain_scheduler_stderr.log"
+                retrain_stderr_fh = open(retrain_stderr_path, "a", encoding="utf-8")
                 retrain_proc = subprocess.Popen(
                     retrain_cmd,
                     stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
+                    stderr=retrain_stderr_fh,
                 )
                 logger.info(
-                    f"[126#] retrain_scheduler started (PID {retrain_proc.pid})"
+                    f"[126#] retrain_scheduler started (PID {retrain_proc.pid}), "
+                    f"stderr → {retrain_stderr_path}"
                 )
+                # 127# H3: 10秒後にヘルスチェック
+                time.sleep(10)
+                if retrain_proc.poll() is not None:
+                    logger.error(
+                        f"[127#] retrain_scheduler DIED immediately "
+                        f"(exit code {retrain_proc.returncode}). "
+                        f"Check {retrain_stderr_path}"
+                    )
+                    retrain_proc = None
             except Exception as e:
                 logger.warning(f"[126#] retrain_scheduler start failed: {e}")
 
@@ -1571,6 +1588,8 @@ def main() -> None:
             except subprocess.TimeoutExpired:
                 retrain_proc.kill()
             logger.info(f"[126#] retrain_scheduler stopped (PID {retrain_proc.pid})")
+        if retrain_stderr_fh is not None:
+            retrain_stderr_fh.close()
 
     # Compute metrics & judgment
     if records:

@@ -1,7 +1,7 @@
 # v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-28 (126# 定期再学習 + Hot-Reload, 125# LGBM PnL120, S1 時間フィルタ適用)
+> 最終更新: 2026-02-21 (127# レビュー対応 C1/H1-H4/M1-M3, 126# 定期再学習 + Hot-Reload)
 
 ---
 
@@ -119,6 +119,8 @@
 | 124 | rev | [124_ph2_rev_123.md](124_ph2_rev_123.md) | 123# Sell 構造分析レビュー — 外部 AI 検証 |
 | 125 | impl | [125_ph2_impl_lgbm_pnl120_model.md](125_ph2_impl_lgbm_pnl120_model.md) | LGBM PnL120 回帰モデル構築・S1 適用 (S125.1#) |
 | 126 | impl | [126_ph2_impl_retrain_hot_reload.md](126_ph2_impl_retrain_hot_reload.md) | SkipGate 定期再学習 + Hot-Reload (S125.1#) |
+| 127 | rev | [127_ph2_rev_126.md](127_ph2_rev_126.md) | 126# レビュー — 契約統一・AS 非依存・run_id 分離 (S127.1#) |
+| 127 | rev | [127_ph2_rev_126.md](127_ph2_rev_126.md) | 126# レビュー: 取引中再学習 + Hot-Reload の整合性点検 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

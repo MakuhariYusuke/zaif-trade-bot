@@ -163,9 +163,13 @@ class SkipGateEvaluator:
             self._model_file_hash = new_hash
             n_samples = new_gate.metadata.get("n_samples", "?")
             version = new_gate.metadata.get("version", "?")
+            n_features = len(new_gate.feature_cols) if hasattr(new_gate, "feature_cols") else "?"
             logger.info(
                 f"[skip_gate] 126# Hot-reload success: "
-                f"version={version}, n_samples={n_samples}"
+                f"version={version}, n_samples={n_samples}, "
+                f"n_features={n_features}, "
+                f"mode={new_gate.config.mode}, "  # type: ignore[union-attr]
+                f"use_ob={new_gate.config.use_ob_features}"  # type: ignore[union-attr]
             )
         except Exception as e:
             logger.error(

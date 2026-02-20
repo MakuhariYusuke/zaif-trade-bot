@@ -234,14 +234,27 @@ class TestRetrainConfig:
         assert cfg["min_new_samples"] == 30
         assert cfg["target"] == "pnl120"
         assert cfg["quality_gate_enabled"] is True
+        # 127# C1: skip_gate 由来のデフォルト
+        assert "model_path" in cfg
+        assert "mode" in cfg
+        assert "use_ob_features" in cfg
+        # 127# M1
+        assert "absolute_min_score" in cfg
+        # 127# H2
+        assert cfg["latest_run_only"] is True
 
     def test_yaml_override(self) -> None:
-        """YAML の retrain セクションがデフォルトを上書きする."""
+        """YAML の retrain + skip_gate セクションが統合される."""
         from scripts.v460.ml.retrain_scheduler import load_retrain_config
 
         with tempfile.TemporaryDirectory() as tmpdir:
             yaml_path = Path(tmpdir) / "test.yaml"
             yaml_path.write_text(
+                "results_dir: /tmp/test_results\n"
+                "skip_gate:\n"
+                "  mode: pnl\n"
+                "  model_path: /tmp/test_model.pkl\n"
+                "  use_ob_features: false\n"
                 "retrain:\n"
                 "  interval_sec: 7200\n"
                 "  min_new_samples: 50\n",
@@ -250,8 +263,45 @@ class TestRetrainConfig:
             cfg = load_retrain_config(yaml_path)
             assert cfg["interval_sec"] == 7200
             assert cfg["min_new_samples"] == 50
+            # 127# C1: skip_gate から継承
+            assert cfg["model_path"] == "/tmp/test_model.pkl"
+            assert cfg["mode"] == "pnl"
+            assert cfg["use_ob_features"] is False
+            assert cfg["results_dir"] == "/tmp/test_results"
             # 未指定のキーはデフォルト
             assert cfg["target"] == "pnl120"
+
+    def test_validation_rejects_non_pnl_mode(self) -> None:
+        """127# C1: mode != pnl なら起動拒否."""
+        from scripts.v460.ml.retrain_scheduler import load_retrain_config
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yaml_path = Path(tmpdir) / "test.yaml"
+            yaml_path.write_text(
+                "skip_gate:\n"
+                "  mode: as\n"
+                "  model_path: /tmp/model.pkl\n",
+                encoding="utf-8",
+            )
+            with pytest.raises(ValueError, match="requires skip_gate.mode='pnl'"):
+                load_retrain_config(yaml_path)
+
+    def test_validation_rejects_bad_target(self) -> None:
+        """127# M2: 不正な target は拒否."""
+        from scripts.v460.ml.retrain_scheduler import load_retrain_config
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yaml_path = Path(tmpdir) / "test.yaml"
+            yaml_path.write_text(
+                "skip_gate:\n"
+                "  mode: pnl\n"
+                "  model_path: /tmp/model.pkl\n"
+                "retrain:\n"
+                "  target: as30\n",
+                encoding="utf-8",
+            )
+            with pytest.raises(ValueError, match="pnl120.*pnl30"):
+                load_retrain_config(yaml_path)
 
 
 class TestBuildFullFeatures:
@@ -330,6 +380,9 @@ class TestRetrainModel:
 
         cfg = dict(_DEFAULT_CONFIG)
         cfg["results_dir"] = "/nonexistent_dir_12345"
+        cfg["model_path"] = "/nonexistent_model.pkl"
+        cfg["mode"] = "pnl"
+        cfg["use_ob_features"] = True
         result = retrain_model(cfg)
         assert result["status"] == "skipped"
         assert "no fill_records" in result["reason"]
@@ -352,6 +405,7 @@ class TestRetrainModel:
                     "spread_offset_ratio": 0.05,
                     "adverse_selected_raw": i % 2,
                     "post_fill_120s_pnl": 0.5 * (i - 2),
+                    "run_id": "test_run",
                 }))
             (records_dir / "fill_records_20260220.jsonl").write_text(
                 "\n".join(records), encoding="utf-8",
@@ -359,7 +413,12 @@ class TestRetrainModel:
 
             cfg = dict(_DEFAULT_CONFIG)
             cfg["results_dir"] = str(records_dir)
+            cfg["model_path"] = str(Path(tmpdir) / "nonexistent.pkl")
+            cfg["mode"] = "pnl"
+            cfg["use_ob_features"] = True
             cfg["min_total_samples"] = 100  # 5 < 100
+            cfg["latest_run_only"] = False
+            cfg["exclude_missing_run_id"] = False
             result = retrain_model(cfg)
             assert result["status"] == "skipped"
 
@@ -387,6 +446,7 @@ class TestRetrainModel:
                     "post_fill_30s_pnl": 0.5 * (i - 75),
                     "post_fill_120s_pnl": 0.8 * (i - 75),
                     "regime": "ranging",
+                    "run_id": "test_run",
                 }))
             (records_dir / "fill_records_20260220.jsonl").write_text(
                 "\n".join(records), encoding="utf-8",
@@ -400,8 +460,114 @@ class TestRetrainModel:
             cfg = dict(_DEFAULT_CONFIG)
             cfg["results_dir"] = str(records_dir)
             cfg["model_path"] = str(model_path)
+            cfg["mode"] = "pnl"
+            cfg["use_ob_features"] = True
             cfg["min_new_samples"] = 30
             cfg["min_total_samples"] = 10
+            cfg["latest_run_only"] = False
+            cfg["exclude_missing_run_id"] = False
             result = retrain_model(cfg)
             assert result["status"] == "skipped"
             assert "insufficient new samples" in result.get("reason", "")
+
+
+# =====================================================================
+# 127# M3: E2E 成功テスト (retrain → deploy → hot-reload → evaluate)
+# =====================================================================
+
+class TestE2ERetrainHotReload:
+    """127# M3: 再学習→配置→hot-reload→評価の統合テスト."""
+
+    def test_retrain_deploy_and_hot_reload(self) -> None:
+        """E2E: 十分なデータで retrain → deploy → SkipGateEvaluator が hot-reload."""
+        from scripts.v460.ml.retrain_scheduler import retrain_model, _DEFAULT_CONFIG
+        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            records_dir = Path(tmpdir) / "results"
+            records_dir.mkdir()
+            model_dir = Path(tmpdir) / "models"
+            model_dir.mkdir()
+            model_path = model_dir / "gate.pkl"
+
+            # 200件の fill records を生成 (十分なサンプル数)
+            rng = np.random.RandomState(42)
+            records = []
+            for i in range(200):
+                records.append(json.dumps({
+                    "cycle_id": f"e2e_{i}",
+                    "side": "buy" if i % 2 == 0 else "sell",
+                    "filled": True,
+                    "timestamp": 1771502400.0 + i * 120,
+                    "spread_at_order": 2500.0 + rng.randn() * 500,
+                    "spread_offset_ratio": 0.05 + rng.randn() * 0.01,
+                    "adverse_selected_raw": int(rng.random() > 0.5),
+                    "post_fill_30s_pnl": float(rng.randn() * 2),
+                    "post_fill_120s_pnl": float(rng.randn() * 3),
+                    "regime": rng.choice(["trending", "ranging", "high_vol"]),
+                    "run_id": "e2e_run",
+                }))
+            (records_dir / "fill_records_20260220.jsonl").write_text(
+                "\n".join(records), encoding="utf-8",
+            )
+
+            # retrain_model 実行
+            cfg = dict(_DEFAULT_CONFIG)
+            cfg["results_dir"] = str(records_dir)
+            cfg["model_path"] = str(model_path)
+            cfg["mode"] = "pnl"
+            cfg["use_ob_features"] = False  # テスト高速化
+            cfg["min_new_samples"] = 1
+            cfg["min_total_samples"] = 50
+            cfg["quality_gate_enabled"] = False  # E2E テストでは品質ゲート無効
+            cfg["latest_run_only"] = False
+            cfg["exclude_missing_run_id"] = False
+
+            result = retrain_model(cfg)
+            assert result["status"] == "deployed", f"Expected deployed, got {result}"
+            assert model_path.exists()
+
+            # SkipGateEvaluator で hot-reload テスト
+            eval_cfg = MagicMock()
+            eval_cfg.skip_gate_enabled = True
+            eval_cfg.skip_gate_model_path = str(model_path)
+            eval_cfg.skip_gate_mode = "pnl"
+            eval_cfg.skip_gate_as_threshold = 0.50
+            eval_cfg.skip_gate_pnl_threshold = 0.0
+            eval_cfg.skip_gate_max_skip_rate = 0.3
+            eval_cfg.skip_gate_buy_enabled = True
+            eval_cfg.skip_gate_sell_enabled = True
+            eval_cfg.skip_gate_as_threshold_buy = 0.50
+            eval_cfg.skip_gate_as_threshold_sell = 0.50
+            eval_cfg.skip_gate_use_ob_features = False
+            eval_cfg.skip_gate_adaptive_threshold = False
+            eval_cfg.skip_gate_target_skip_rate_buy = 0.15
+            eval_cfg.skip_gate_target_skip_rate_sell = 0.20
+            eval_cfg.skip_gate_adaptive_window = 50
+            eval_cfg.skip_gate_adaptive_min_samples = 20
+            eval_cfg.skip_gate_adaptive_step = 0.05
+            eval_cfg.skip_gate_adaptive_floor = 0.35
+            eval_cfg.skip_gate_adaptive_ceiling = 0.80
+            eval_cfg.skip_sell_unknown_regime = False
+            eval_cfg.results_dir = str(records_dir)
+
+            evaluator = SkipGateEvaluator(eval_cfg, Path(tmpdir))
+            assert evaluator._skip_gate is not None
+            initial_hash = evaluator._model_file_hash
+
+            # モデルを再 retrain して上書き (v2)
+            cfg["min_new_samples"] = 0  # 新規サンプルチェック無効化
+            result2 = retrain_model(cfg)
+            assert result2["status"] == "deployed"
+
+            # hot-reload トリガー (interval リセット)
+            evaluator._last_reload_check = 0
+            evaluator._check_and_reload_model()
+
+            # モデルが更新されていること
+            assert evaluator._model_file_hash != initial_hash
+            assert evaluator._skip_gate is not None
+            # retrain されたモデルのメタデータ確認
+            meta = evaluator._skip_gate.metadata  # type: ignore[union-attr]
+            assert meta.get("retrained") is True
+            assert meta.get("n_samples", 0) > 0

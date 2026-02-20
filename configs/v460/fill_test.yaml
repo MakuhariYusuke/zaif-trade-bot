@@ -193,14 +193,15 @@ skip_gate:
   # 124# v3: 逆選別なし → 両 side 再有効化 (118# A3 sell_enabled: false を解除)
   buy_enabled: true
   sell_enabled: true             # 124#: GBM really_bad30 は逆選別なし → sell も有効化
-  mode: as                     # "as" (AS 分類器) / "pnl" (PnL 回帰) — 124# P(really_bad) を P(AS) として扱う
-  model_path: models/v460/skip_gate_rb30.pkl  # 124# v3: GBM really_bad30 モデル
+  # 127# C1: mode/model_path/use_ob_features を retrain と統一 (single source of truth)
+  mode: pnl                    # 127# as→pnl: 125# LGBM PnL120 回帰モデルに切替
+  model_path: models/v460/skip_gate_lgbm_pnl120.pkl  # 127# retrain と統一 (C1)
   as_threshold: 0.50           # 120# 0.52→0.50: P(AS)=0.50 が変曲点 (AS 18.1%→36.7%)
   as_threshold_buy: 0.50       # 120# A3: [0.50,0.52) 帯 n=60 PnL=-0.247 AS=36.7% → skip 対象化
   as_threshold_sell: 0.50      # 100# P0-2: sell 側厳格化 (旧 0.60 → 0.50)
   pnl_threshold: 0.0
   max_skip_rate: 0.3
-  use_ob_features: false       # 072# OB トグル (ph2 通過後に true へ)
+  use_ob_features: true        # 127# H4: retrain と統一 (false→true)
   # 088# 動的閾値較正: 目標 skip 率ベースで閾値を自動調整
   adaptive_threshold: true     # P(AS) 分位点から閾値を動的設定
   target_skip_rate_buy: 0.15   # 107# 0.10→0.15 (time_filter 代替強化: buy 7h遮断→SG に委譲)
@@ -263,19 +264,21 @@ tuning:
 
 # ---- 126# SkipGate 定期再学習 ----
 # retrain_scheduler.py がバックグラウンドで実行、fill_test とは別プロセス
+# 127# C1: model_path / mode / use_ob_features は skip_gate: から継承 (single source)
 # Usage: .venv\Scripts\python.exe scripts/v460/ml/retrain_scheduler.py
 retrain:
   enabled: true                    # fill_test 起動時に retrain_scheduler を自動起動
   interval_sec: 3600               # 再学習チェック間隔 (秒) — 1時間
   min_new_samples: 30              # 再学習に必要な最小新規サンプル数
   min_total_samples: 100           # 再学習に必要な最小合計サンプル数
-  model_path: models/v460/skip_gate_lgbm_pnl120.pkl
-  results_dir: results/v460/fill_test
-  target: pnl120                   # "pnl120" or "as30"
-  use_ob_features: true
+  target: pnl120                   # 127# M2: "pnl120" or "pnl30" (回帰 target)
+  # 127# H2: run_id 分離 (異なる設定の run を混在させない)
+  latest_run_only: true            # 最新 run_id のみ学習 (因果崩壊防止)
+  exclude_missing_run_id: true     # run_id 欠損行を除外
   # Walk-Forward 品質ゲート
   quality_gate_enabled: true       # 品質ゲート有効化 (新モデルが劣化していたら棄却)
   min_score_improvement: -0.05     # 前モデル比でこの score 以下なら棄却
+  absolute_min_score: -0.10        # 127# M1: prev_score 不在時の絶対最低 score
   wf_test_ratio: 0.2              # WF テスト比率 (直近 20% をテスト)
   # LGBM ハイパーパラメータ
   lgbm_n_estimators: 150
