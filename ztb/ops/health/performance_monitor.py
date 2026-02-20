@@ -5,14 +5,14 @@ This module provides historical performance tracking, trend analysis,
 and predictive monitoring for system resources and trading performance.
 """
 
-import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Optional, TypedDict
 
 import psutil
 
+from ztb.io.json_io import read_json_array, write_json
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -44,6 +44,19 @@ class PerformanceTrend:
     trend_strength: float  # 0-1, strength of trend
     is_concerning: bool
     analysis: str
+
+
+class PerformanceHistoryEntry(TypedDict):
+    """Serialized performance snapshot stored on disk."""
+
+    timestamp: str
+    cpu_percent: float
+    memory_percent: float
+    disk_usage_percent: float
+    network_bytes_sent: int
+    network_bytes_recv: int
+    gpu_memory_used_mb: float | None
+    gpu_utilization_percent: float | None
 
 
 class HealthPerformanceMonitor:
@@ -123,40 +136,84 @@ class HealthPerformanceMonitor:
             # Clean old data (keep only last 30 days)
             cutoff_date = datetime.now() - timedelta(days=self.max_history_days)
             history = [
-                entry
-                for entry in history
-                if datetime.fromisoformat(entry["timestamp"]) > cutoff_date
+                entry for entry in history if self._is_recent_entry(entry, cutoff_date)
             ]
 
             # Save back to file
-            with open(self.history_file, "w") as f:
-                json.dump(history, f, indent=2)
+            write_json(self.history_file, history, indent=2)
 
         except Exception as e:
             logger.error(f"Failed to save performance snapshot: {e}")
 
-    def _load_history(self) -> List[Dict[str, Any]]:
+    @staticmethod
+    def _is_recent_entry(entry: PerformanceHistoryEntry, cutoff_date: datetime) -> bool:
+        """Return True when history entry timestamp is valid and recent enough."""
+        try:
+            return datetime.fromisoformat(entry["timestamp"]) > cutoff_date
+        except ValueError:
+            return False
+
+    @staticmethod
+    def _parse_history_entry(entry: object) -> Optional[PerformanceHistoryEntry]:
+        """Parse one serialized history entry, returning None if invalid."""
+        if not isinstance(entry, dict):
+            return None
+        timestamp = entry.get("timestamp")
+        if not isinstance(timestamp, str):
+            return None
+
+        try:
+            parsed: PerformanceHistoryEntry = {
+                "timestamp": timestamp,
+                "cpu_percent": float(entry.get("cpu_percent", 0.0)),
+                "memory_percent": float(entry.get("memory_percent", 0.0)),
+                "disk_usage_percent": float(entry.get("disk_usage_percent", 0.0)),
+                "network_bytes_sent": int(entry.get("network_bytes_sent", 0)),
+                "network_bytes_recv": int(entry.get("network_bytes_recv", 0)),
+                "gpu_memory_used_mb": (
+                    float(entry["gpu_memory_used_mb"])
+                    if isinstance(entry.get("gpu_memory_used_mb"), (int, float))
+                    else None
+                ),
+                "gpu_utilization_percent": (
+                    float(entry["gpu_utilization_percent"])
+                    if isinstance(entry.get("gpu_utilization_percent"), (int, float))
+                    else None
+                ),
+            }
+        except (TypeError, ValueError):
+            return None
+
+        return parsed
+
+    def _load_history(self) -> list[PerformanceHistoryEntry]:
         """Load performance history from file."""
         if not self.history_file.exists():
             return []
 
         try:
-            with open(self.history_file, "r") as f:
-                return cast(List[Dict[str, Any]], json.load(f))
+            raw_history = read_json_array(self.history_file)
+            history: list[PerformanceHistoryEntry] = []
+            for entry in raw_history:
+                parsed = self._parse_history_entry(entry)
+                if parsed is None:
+                    continue
+                history.append(parsed)
+            return history
         except Exception as e:
             logger.error(f"Failed to load performance history: {e}")
             return []
 
-    def analyze_trends(self) -> List[PerformanceTrend]:
+    def analyze_trends(self) -> list[PerformanceTrend]:
         """Analyze performance trends over different time periods."""
         history = self._load_history()
         if len(history) < 2:
             return []
 
-        trends = []
+        trends: list[PerformanceTrend] = []
 
         # Convert history to PerformanceSnapshot objects
-        snapshots = []
+        snapshots: list[PerformanceSnapshot] = []
         for entry in history:
             try:
                 snapshots.append(
@@ -190,7 +247,7 @@ class HealthPerformanceMonitor:
         return trends
 
     def _analyze_metric_trend(
-        self, snapshots: List[PerformanceSnapshot], metric_attr: str, metric_name: str
+        self, snapshots: list[PerformanceSnapshot], metric_attr: str, metric_name: str
     ) -> Optional[PerformanceTrend]:
         """Analyze trend for a specific metric."""
         if len(snapshots) < 2:
@@ -283,7 +340,7 @@ class HealthPerformanceMonitor:
             analysis=analysis,
         )
 
-    def _calculate_trend_slope(self, values: List[float]) -> float:
+    def _calculate_trend_slope(self, values: list[float]) -> float:
         """Calculate the slope of a trend line."""
         if len(values) < 2:
             return 0.0
@@ -301,7 +358,7 @@ class HealthPerformanceMonitor:
         slope = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x)
         return slope
 
-    def get_performance_report(self) -> Dict[str, Any]:
+    def get_performance_report(self) -> dict[str, object]:
         """Generate a comprehensive performance report."""
         trends = self.analyze_trends()
         current_snapshot = self.take_snapshot()
@@ -340,7 +397,7 @@ class HealthPerformanceMonitor:
 
 
 # Global performance monitor instance
-_performance_monitor = None
+_performance_monitor: Optional[HealthPerformanceMonitor] = None
 
 
 def get_performance_monitor() -> HealthPerformanceMonitor:
@@ -351,7 +408,7 @@ def get_performance_monitor() -> HealthPerformanceMonitor:
     return _performance_monitor
 
 
-def run_performance_check() -> Dict[str, Any]:
+def run_performance_check() -> dict[str, object]:
     """Run a performance check and return results."""
     monitor = get_performance_monitor()
     return monitor.get_performance_report()

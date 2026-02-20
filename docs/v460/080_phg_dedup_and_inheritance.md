@@ -178,3 +178,21 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - `get_performance_stats()` の `pool_size` 属性参照ミスを修正。
 - `WeakRefRegistry` に `registry` property を追加し、統計取得時の属性不一致例外を回避。
 - 危険な pooled object 再利用経路を撤去し、履歴 series 参照破壊リスクを排除。
+
+## Phase 6 追補: io 契約の追加統合 + 復元耐障害性の改善 (2026-02-20)
+
+### 1) training/trading の io 統合
+
+- `ztb/training/components/regime_adaptive_trainer.py` の state I/O を `read_state_payload` / `write_state_payload` に統一。
+- `ztb/trading/cost/venue_transaction_cost_manager.py` の config I/O を `read_json_object` / `write_json` に統一。
+
+### 2) 例外契約と入力正規化
+
+- `regime_adaptive_trainer` は復元 payload を型検証し、無効値をスキップする設計へ変更。
+- `venue_transaction_cost_manager` は venue 名を lowercase 正規化し、lookup の取りこぼしを防止。
+- 同 manager のロードは「不正レコード1件で全体失敗」から「不正だけスキップ」へ改善。
+
+### 3) ops/features への水平展開
+
+- `ztb/ops/health/performance_monitor.py` の履歴 I/O を helper 化し、壊れた履歴行を parser でスキップ。
+- `ztb/features/feature_set_config.py` の config load/save を helper 化し、`open + json.load/dump` 重複を削減。

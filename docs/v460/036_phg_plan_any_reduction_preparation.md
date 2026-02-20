@@ -714,6 +714,20 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 13. 回帰確認: `py_compile`（7ファイル）通過。`pytest` は本環境で未導入のため未実施。  
 14. 在庫更新: repo 全体 `any_type_debt_tokens=2,664 -> 2,620`（-44）。`ztb/io/state_persistence.py` / `ztb/trading/production/state_persistence.py` / `ztb/trading/signal/types.py` は `any_type_debt_tokens=0`。  
 
+### Step64: `io` 横展開の追加圧縮（training/trading/ops/features）
+
+1. `ztb/training/components/regime_adaptive_trainer.py` の JSON state I/O を `read_state_payload` / `write_state_payload` へ統合。  
+2. 同ファイルで `max_history` / `adaptation_frequency` / `performance_tracking_window` の数値変換を共通化し、無効設定値で例外化しうる経路を修正。  
+3. `regime_performance` 復元時に payload バリデーションを追加し、壊れた履歴データで全復元失敗する不具合リスクを低減。  
+4. `ztb/trading/cost/venue_transaction_cost_manager.py` の JSON I/O を `read_json_object` / `write_json` へ統一。  
+5. 同ファイルで venue 名を正規化（lowercase）して保存/検索契約を統一し、設定ファイル内の大文字混在で `get_cost_config()` が取りこぼす不整合を修正。  
+6. 設定ロードは1件不正で全体失敗しないようレコード単位にバリデーションし、無効レコードはスキップする設計へ変更。  
+7. `ztb/ops/health/performance_monitor.py` の履歴保存/読込を `write_json` / `read_json_array` へ統一。  
+8. 同ファイルで履歴エントリ parser を追加し、timestamp/数値型の壊れた行をスキップする復元経路へ改善（履歴1件不正で全件失敗しない）。  
+9. `ztb/features/feature_set_config.py` の config load/save を `read_json_object` / `write_json` へ統一し、`open + json.load/dump` 重複を削減。  
+10. 回帰確認: `py_compile`（4ファイル）通過。`feature_set_config` は importlib 経由 smoke で save/load 往復を確認。  
+11. 在庫更新: repo 全体 `any_type_debt_tokens=2,620 -> 2,610`（-10）。`regime_adaptive_trainer.py` / `venue_transaction_cost_manager.py` / `ops/health/performance_monitor.py` / `feature_set_config.py` は `any_type_debt_tokens=0`。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -781,6 +795,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step61時点 | repo全体 | 2,664 |
 | Step62時点 | repo全体 | 2,664 |
 | Step63時点 | repo全体 | 2,620 |
+| Step64時点 | repo全体 | 2,610 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -874,6 +889,10 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step62時点 | `ztb/trading/production/state_persistence.py` | **0** |
 | Step63時点 | `ztb/io/state_persistence.py` | **0** |
 | Step63時点 | `ztb/trading/signal/types.py` | **0** |
+| Step64時点 | `ztb/training/components/regime_adaptive_trainer.py` | **0** |
+| Step64時点 | `ztb/trading/cost/venue_transaction_cost_manager.py` | **0** |
+| Step64時点 | `ztb/ops/health/performance_monitor.py` | **0** |
+| Step64時点 | `ztb/features/feature_set_config.py` | **0** |
 
 ---
 
@@ -891,8 +910,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - 評価 result payload を型固定し、集計ループの重複（列挙/整形）を helper 化。  
 6. `ztb/training/algorithms/sac/sac_algorithm.py`  
    - 学習ループの result/config payload を段階的に型固定し、集計・ログ出力の重複分岐を helper 化する。  
-7. `ztb/training/components/regime_adaptive_trainer.py` / `ztb/trading/cost/venue_transaction_cost_manager.py`  
-   - 残存する `open + json.load/dump` の state/config I/O を `read_json_object` / `write_json` へ統一し、例外契約を揃える。  
+7. `ztb/ops/costs/budget_rollup.py` / `ztb/features/generators/multi_timeframe/config.py`  
+   - 残存する `open + json.load/dump` の config I/O を `read_json_object` / `write_json` へ統一し、ロード失敗時の契約（skip/fallback）を明確化する。  
 
 ---
 

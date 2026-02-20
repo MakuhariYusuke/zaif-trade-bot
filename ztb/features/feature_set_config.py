@@ -4,9 +4,10 @@ Feature Set Configuration for SAC v427
 Configurable feature sets for easy swapping and customization.
 """
 
-import json
 from pathlib import Path
 from typing import Dict, List, Optional, cast
+
+from ztb.io.json_io import read_json_object, write_json
 
 
 class FeatureSetConfig:
@@ -152,9 +153,8 @@ class FeatureSetConfig:
         """Load configuration from JSON file."""
         try:
             if self.config_path and self.config_path.exists():
-                with open(self.config_path, "r", encoding="utf-8") as f:
-                    loaded_config = json.load(f)
-                    self.current_config.update(loaded_config)
+                loaded_config = read_json_object(self.config_path)
+                self.current_config.update(loaded_config)
         except Exception as e:
             print(f"Warning: Could not load config from {self.config_path}: {e}")
 
@@ -162,8 +162,7 @@ class FeatureSetConfig:
         """Save current configuration to JSON file."""
         if self.config_path:
             self.config_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.config_path, "w", encoding="utf-8") as f:
-                json.dump(self.current_config, f, indent=2, ensure_ascii=False)
+            write_json(self.config_path, self.current_config, indent=2, ensure_ascii=False)
 
     def set_feature_set(self, set_name: str) -> None:
         """Set predefined feature set."""

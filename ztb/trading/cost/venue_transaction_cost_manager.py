@@ -3,13 +3,60 @@
 各交易所に応じた取引コストを動的に設定可能にする
 """
 
-import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Optional, TypedDict
+
+from ztb.io.common import PathLike
+from ztb.io.json_io import read_json_object, write_json
 
 logger = logging.getLogger(__name__)
+
+
+class TransactionCostConfigRecord(TypedDict):
+    """Serializable transaction cost config."""
+
+    venue_name: str
+    maker_fee: float
+    taker_fee: float
+    min_fee: float
+    max_fee: float
+    currency: str
+    last_updated: str
+
+
+class TransactionCostConfigFile(TypedDict):
+    """Top-level config payload."""
+
+    venues: list[TransactionCostConfigRecord]
+
+
+class VenueRecommendation(TypedDict):
+    """Venue recommendation payload."""
+
+    venue_name: str
+    taker_fee_percent: float
+    daily_cost_estimate: float
+    score: float
+
+
+class PortfolioImpact(TypedDict):
+    """Portfolio cost impact payload."""
+
+    venue_name: str
+    avg_cost_per_trade_percent: float
+    daily_cost_jpy: float
+    annual_cost_jpy: float
+    daily_cost_ratio_percent: float
+    annual_cost_ratio_percent: float
+    break_even_trades: int
+
+
+class ErrorPayload(TypedDict):
+    """Error payload."""
+
+    error: str
 
 
 @dataclass
@@ -45,7 +92,9 @@ class VenueTransactionCostManager:
     取引所取引コスト管理クラス
     """
 
-    def __init__(self, config_file: str = "config/venue_transaction_costs.json"):
+    def __init__(
+        self, config_file: PathLike = "config/venue_transaction_costs.json"
+    ) -> None:
         """
         初期化
 
@@ -53,8 +102,58 @@ class VenueTransactionCostManager:
             config_file: 設定ファイルパス
         """
         self.config_file = Path(config_file)
-        self.venue_configs: Dict[str, TransactionCostConfig] = {}
+        self.venue_configs: dict[str, TransactionCostConfig] = {}
         self.load_configs()
+
+    @staticmethod
+    def _normalize_venue_name(venue_name: str) -> str:
+        """Normalize venue key for consistent lookup."""
+        return venue_name.strip().lower()
+
+    @classmethod
+    def _parse_config_record(cls, record: object) -> Optional[TransactionCostConfig]:
+        """Parse and validate one config record."""
+        if not isinstance(record, dict):
+            return None
+
+        venue_name_raw = record.get("venue_name")
+        currency_raw = record.get("currency", "")
+        last_updated_raw = record.get("last_updated", "")
+
+        if not isinstance(venue_name_raw, str):
+            return None
+        venue_name = cls._normalize_venue_name(venue_name_raw)
+        if not venue_name:
+            return None
+
+        if not isinstance(currency_raw, str) or not isinstance(last_updated_raw, str):
+            return None
+
+        try:
+            return TransactionCostConfig(
+                venue_name=venue_name,
+                maker_fee=float(record.get("maker_fee", 0.0)),
+                taker_fee=float(record.get("taker_fee", 0.0)),
+                min_fee=float(record.get("min_fee", 0.0)),
+                max_fee=float(record.get("max_fee", 0.0)),
+                currency=currency_raw,
+                last_updated=last_updated_raw,
+            )
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _to_record(config: TransactionCostConfig) -> TransactionCostConfigRecord:
+        """Serialize in-memory config into JSON record."""
+        return {
+            "venue_name": config.venue_name,
+            "maker_fee": config.maker_fee,
+            "taker_fee": config.taker_fee,
+            "min_fee": config.min_fee,
+            "max_fee": config.max_fee,
+            "currency": config.currency,
+            "last_updated": config.last_updated,
+        }
 
     def load_configs(self) -> None:
         """
@@ -65,12 +164,26 @@ class VenueTransactionCostManager:
                 self.create_default_configs()
                 return
 
-            with open(self.config_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
+            data = read_json_object(self.config_file)
+            self.venue_configs.clear()
 
-            for venue_data in data.get("venues", []):
-                config = TransactionCostConfig(**venue_data)
+            venues_payload = data.get("venues", [])
+            if not isinstance(venues_payload, list):
+                raise TypeError("'venues' must be a list")
+
+            for venue_data in venues_payload:
+                config = self._parse_config_record(venue_data)
+                if config is None:
+                    logger.warning(f"無効な取引コスト設定をスキップ: {venue_data}")
+                    continue
                 self.venue_configs[config.venue_name] = config
+
+            if not self.venue_configs:
+                logger.warning(
+                    "取引コスト設定ファイルに有効な会場がないため、デフォルト設定を作成します"
+                )
+                self.create_default_configs()
+                return
 
             logger.info(
                 f"取引コスト設定を読み込みました: {len(self.venue_configs)}会場"
@@ -84,7 +197,7 @@ class VenueTransactionCostManager:
         """
         デフォルト設定を作成
         """
-        default_configs = [
+        default_configs: list[TransactionCostConfigRecord] = [
             {
                 "venue_name": "zaif",
                 "maker_fee": 0.001,  # 0.1%
@@ -141,8 +254,11 @@ class VenueTransactionCostManager:
             },
         ]
 
+        self.venue_configs.clear()
         for config_data in default_configs:
-            config = TransactionCostConfig(**config_data)
+            config = self._parse_config_record(config_data)
+            if config is None:
+                continue
             self.venue_configs[config.venue_name] = config
 
         self.save_configs()
@@ -155,23 +271,15 @@ class VenueTransactionCostManager:
         try:
             self.config_file.parent.mkdir(parents=True, exist_ok=True)
 
-            data = {
+            data: TransactionCostConfigFile = {
                 "venues": [
-                    {
-                        "venue_name": config.venue_name,
-                        "maker_fee": config.maker_fee,
-                        "taker_fee": config.taker_fee,
-                        "min_fee": config.min_fee,
-                        "max_fee": config.max_fee,
-                        "currency": config.currency,
-                        "last_updated": config.last_updated,
-                    }
-                    for config in self.venue_configs.values()
+                    self._to_record(config)
+                    for config in sorted(
+                        self.venue_configs.values(), key=lambda item: item.venue_name
+                    )
                 ]
             }
-
-            with open(self.config_file, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
+            write_json(self.config_file, data, indent=2, ensure_ascii=False)
 
             logger.info(f"設定を保存しました: {self.config_file}")
 
@@ -188,7 +296,7 @@ class VenueTransactionCostManager:
         Returns:
             コスト設定（見つからない場合はNone）
         """
-        return self.venue_configs.get(venue_name.lower())
+        return self.venue_configs.get(self._normalize_venue_name(venue_name))
 
     def add_or_update_venue(self, config: TransactionCostConfig) -> None:
         """
@@ -200,11 +308,12 @@ class VenueTransactionCostManager:
         from datetime import datetime
 
         config.last_updated = datetime.now().strftime("%Y-%m-%d")
-        self.venue_configs[config.venue_name.lower()] = config
+        config.venue_name = self._normalize_venue_name(config.venue_name)
+        self.venue_configs[config.venue_name] = config
         self.save_configs()
         logger.info(f"取引所設定を更新しました: {config.venue_name}")
 
-    def get_all_venues(self) -> List[str]:
+    def get_all_venues(self) -> list[str]:
         """
         設定済み取引所一覧を取得
 
@@ -219,7 +328,7 @@ class VenueTransactionCostManager:
         portfolio_value: float,
         daily_trades: int,
         is_maker_ratio: float = 0.5,
-    ) -> Dict[str, float]:
+    ) -> PortfolioImpact | ErrorPayload:
         """
         ポートフォリオへのコスト影響を計算
 
@@ -317,7 +426,7 @@ class AdaptiveCostEnvironment:
             return self.current_cost_config.get_effective_cost(is_maker)
         return 0.001  # デフォルト0.1%
 
-    def get_cost_presets(self) -> Dict[str, Dict[str, float]]:
+    def get_cost_presets(self) -> dict[str, dict[str, float]]:
         """
         コストプリセットを取得
 
@@ -337,7 +446,7 @@ class AdaptiveCostEnvironment:
 
     def recommend_venue_for_strategy(
         self, strategy_type: str, expected_daily_trades: int
-    ) -> List[Dict[str, Any]]:
+    ) -> list[VenueRecommendation]:
         """
         戦略タイプに応じた取引所を推奨
 
@@ -348,7 +457,7 @@ class AdaptiveCostEnvironment:
         Returns:
             推奨取引所リスト（コスト順）
         """
-        recommendations = []
+        recommendations: list[VenueRecommendation] = []
 
         for venue_name, config in self.cost_manager.venue_configs.items():
             taker_cost = config.get_effective_cost(False)
