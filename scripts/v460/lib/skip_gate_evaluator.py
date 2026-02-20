@@ -226,9 +226,10 @@ class SkipGateEvaluator:
                     skip_gate_model_used=result.model_used,
                     skip_gate_as_prob=result.as_prob,
                     skip_gate_threshold_used=result.threshold_used,
-                    orderbook_imbalance=last_imbalance if imbalance_enabled else None,
-                    bid_depth_total=last_bid_depth if imbalance_enabled else None,
-                    ask_depth_total=last_ask_depth if imbalance_enabled else None,
+                    # 122# R5: OB 記録を imbalance_enabled と独立させ常時記録
+                    orderbook_imbalance=last_imbalance,
+                    bid_depth_total=last_bid_depth,
+                    ask_depth_total=last_ask_depth,
                     run_id=run_id,
                     git_sha=git_sha,
                 )

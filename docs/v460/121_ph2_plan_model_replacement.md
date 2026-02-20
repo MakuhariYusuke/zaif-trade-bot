@@ -58,7 +58,7 @@
 これは ph2 の運用 Gate を通過したことを意味するが、PnL30s mean = **-0.161bps** が
 依然として負であり、**大義（短期間での高収益性システム）に到達するには改善が必須**。
 
-改善は **3 つの Track** で並行推進する:
+改善は **4 つの Track** で並行推進する:
 
 | Track | 内容 | コスト | 期待効果 | 所要期間 |
 |-------|------|--------|---------|---------|
@@ -77,6 +77,10 @@
 ### §2.1 168h Gate 判定結果の要約
 
 **G1.2-full: WATCH** (全 12 チェック PASS)
+
+> **注 (122# R3)**: Gate 判定は `g1_2_full` を**唯一の正式基準**とする。
+> `judgment_168h.json` の top-level `gate_result: "FAIL"` は legacy (sub-gate 集約) であり、
+> 121# 以降のフェーズ判定には `g1_2_full.gate_result` のみを参照する。
 
 | 指標 | 値 | 閾値 | 判定 | 備考 |
 |------|-----|------|------|------|
@@ -370,37 +374,38 @@ state_persistence.register("regime_detector", regime_detector.get_state)
 
 ### §5.5 訓練パイプライン実行手順
 
+> **修正 (122# R4)**: 当初記載の `train_skip_gate.py` は存在しない。
+> 現行の訓練基盤は `scripts/v460/ml/walk_forward_as.py` であり、以下はこれに準拠する。
+
 ```powershell
 # Step 0: fill_test 停止 (差し替え作業中)
 # ※ または別ディレクトリで訓練のみ実行 (fill_test は止めずに可能)
 
-# Step 1: データ準備
-.venv\Scripts\python.exe scripts/v460/train_skip_gate.py `
+# Step 1: Walk-Forward AS 訓練 (ベースライン)
+.venv\Scripts\python.exe scripts/v460/ml/walk_forward_as.py `
     --data-dir results/v460/fill_test `
-    --output models/v460/skip_gate_as_v2.pkl `
-    --mode baseline
+    --output models/v460/skip_gate_as_v2.pkl
 
 # Step 2: regime 特徴量強制 include
-.venv\Scripts\python.exe scripts/v460/train_skip_gate.py `
+.venv\Scripts\python.exe scripts/v460/ml/walk_forward_as.py `
     --data-dir results/v460/fill_test `
     --output models/v460/skip_gate_as_v2_regime.pkl `
-    --mode regime-force --k 12
+    --force-regime --k 12
 
-# Step 3: buy/sell 分割
-.venv\Scripts\python.exe scripts/v460/train_skip_gate.py `
+# Step 3: buy/sell 分割 — tune_as_classifier.py でハイパーパラメータ探索
+.venv\Scripts\python.exe scripts/v460/ml/tune_as_classifier.py `
     --data-dir results/v460/fill_test `
     --output-buy models/v460/skip_gate_buy_v2.pkl `
-    --output-sell models/v460/skip_gate_sell_v2.pkl `
-    --mode split
+    --output-sell models/v460/skip_gate_sell_v2.pkl
 
 # Step 4: 評価比較
-.venv\Scripts\python.exe scripts/v460/train_skip_gate.py `
+.venv\Scripts\python.exe scripts/v460/ml/walk_forward_as.py `
     --data-dir results/v460/fill_test `
     --evaluate --compare models/v460/skip_gate_as.pkl
 ```
 
-**注**: `train_skip_gate.py` は既存の 097# 訓練スクリプトを拡張する形で整備。
-既存の `scripts/v460/` 内に enrich / build_features ロジックがあれば再利用。
+**注**: `scripts/v460/ml/` 配下に `walk_forward_as.py`, `tune_as_classifier.py`,
+`as_classifier.py`, `feature_enricher.py` 等が存在。訓練は Walk-Forward ベースで実施。
 
 ### §5.6 デプロイ判定基準
 
@@ -443,6 +448,7 @@ Track A/B による fill_test 改善後、以下の条件を満たしてから�
 3. Oracle テスト完了 (§6.3)
 4. execute_trade() 実装 (013# D-1)
 5. ph3 Stop 条件の明文化 (112# §3.4)
+6. **Oracle テストで正の PnL を証明** (122# R8: Oracle PnL30s > 0 or PnL120s > 0)
 
 **SAC の action space**: {buy, sell, hold} の 3 値。
 fill_test の maker-only 戦略を SAC のアクション実行関数にラップして使用。
@@ -470,6 +476,17 @@ ph3 に数週間投資する前に「天井があるか」を確認する。
 
 **実装**: `backtest/` 内の既存フレームワークを活用。
 Oracle agent = 将来の mid_price を完全に知っている前提で、buy/sell/hold を決定。
+
+**Kill Switch 基準 (122# R7)**:
+
+| 結果 | 判断 | アクション |
+|------|------|--------|
+| Oracle PnL30s > +1.0bps | ✅ 天井は十分高い | ph3 SAC 訓練を進行 |
+| 0 < Oracle PnL30s ≤ +1.0bps | ⚠️ 天井が低い | SAC action space に 120s 保持を**必須**で含める |
+| Oracle PnL30s ≤ 0 | ❌ maker-only 30s に理論限界 | **maker-only 戦略のピボット検討** (000# R2) |
+| Oracle PnL120s ≤ 0 | ❌❌ 致命的 | **戦略全体の再評価** — テイカー or マルチ取引所 |
+
+**決定時期**: Oracle テスト完了時 (168h 再測定の待ち期間内に実施)。
 
 ---
 
@@ -550,6 +567,16 @@ orderbook_imbalance=self._maker_price._last_imbalance,  # 常時記録
 bid_depth_total=self._maker_price._last_bid_depth,       # 常時記録
 ask_depth_total=self._maker_price._last_ask_depth,        # 常時記録
 ```
+
+> **追記 (122# R5)**: 同様の `imbalance_enabled` ゲーティングが
+> `scripts/v460/lib/skip_gate_evaluator.py` L229-231 にも存在する。
+> 方法 2 適用時はこちらも同時に修正が必要:
+> ```python
+> # skip_gate_evaluator.py L229-231 — 同様に常時記録に変更
+> orderbook_imbalance=last_imbalance,   # was: ... if imbalance_enabled else None
+> bid_depth_total=last_bid_depth,        # was: ... if imbalance_enabled else None
+> ask_depth_total=last_ask_depth,         # was: ... if imbalance_enabled else None
+> ```
 
 **推奨**: 方法 2。OB データ記録とフィルタリングロジックを分離。
 imbalance/smart_side は引き続き disabled に保ち、記録のみ行う。
@@ -654,15 +681,16 @@ fill_test 再測定の 168h 待ち期間を有効活用。
 
 168h データで postonly_reject=65 件の spread 平均=1,915 JPY (全体平均 2,409 JPY の 79%)。
 
+> **修正 (122# R6)**: `fill_test.yaml` L24 に既存パラメータ `min_spread_jpy: 0.0` が
+> 存在するため、新規セクション追加ではなく既存値の変更で対応する。
+
 ```yaml
-# fill_test.yaml に新規追加
-minimum_spread_guard:
-  enabled: true
-  min_spread_jpy: 1500     # spread < 1500 JPY → skip (postonly_reject 回避)
+# fill_test.yaml — 既存パラメータを変更 (新規追加不要)
+min_spread_jpy: 1500     # 0.0 → 1500。spread < 1500 JPY → skip (postonly_reject 回避)
 ```
 
-**実装**: `run_single_cycle()` の preflight check に spread 下限判定を追加。
-既に `_compute_maker_price()` で spread を取得しているため、追加コストはゼロ。
+**実装**: 既存の `min_spread_jpy` パラメータは `run_single_cycle()` の preflight check で
+既に参照されている。値を 0.0→1500 に変更するだけで機能する。追加コード変更不要。
 
 ### §8.3 棚上げ妥当だが再訪タイミング注意
 
@@ -794,6 +822,37 @@ stale order 検出 (094#) のドリフト判定精度に影響。
 
 **対策優先度**: 中。ph3-pre (WF バグ修正と並行) での検討を推奨。
 D12 として §8.4 にリスト済み。
+
+### E9: 因果分離の崩壊リスク — `adaptation.enabled: true` 干渉 (Critical)
+
+> **追加 (122# R10)**: GPT 5.3 Codex レビュー指摘 E9、Gemini 3.1 Pro が独立に同一指摘。
+
+**問題**: `configs/v460/fill_test.yaml` L44-53 で `adaptation.enabled: true` が設定されている。
+これは 50 サイクルごとに offset を自動調整する機能であり、
+Track A の sell offset 変更 (§4.2) と**干渉する**。
+
+**影響**:
+- A/B/D 同時投入 + adaptation 自動調整 → **何が PnL 改善に寄与したか帰属不能**
+- adaptation が offset を変動させながら Track A も offset を変える → 二重制御
+- 168h 再測定結果の解釈が不可能になる
+
+**対策 (P0)**: 次回 fill_test 再起動時に `adaptation.enabled: false` に設定。
+→ Appendix B チェックリストに反映済。
+
+### E10: Gate 判定系の二重運用 (Important)
+
+> **追加 (122# R10)**: GPT 5.3 Codex レビュー指摘 E10。
+
+**問題**: `judgment_168h.json` には 2 つの Gate 判定が並存している:
+- top-level `"gate_result": "FAIL"` (L3) — legacy (sub-gate 集約)
+- `"g1_2_full": { "gate_result": "WATCH" }` (L175-177) — 現行正式基準
+
+121# は g1_2_full のみを参照しているが、legacy 判定との関係を明示していなかった。
+
+**影響**: 覆審者や将来の自分が top-level `FAIL` を見て混乱するリスク。
+
+**対策**: §2.1 に Gate 基準を明示する注記を追加済 (R3)。
+legacy `gate_result` は将来的に JSON から削除するか deprecated ラベルを付与することを検討。
 
 ---
 
@@ -927,6 +986,12 @@ G1.2-full 再判定
          └── F1 (fill_rate) FAIL → time_filter ロールバック + offset 下げ
 ```
 
+> **注意 (122# R9)**: SG FAIL → 代替策投入時、及び FAIL/WATCH 復旧時は、
+> **因果分離のため 1 変数ずつ変更する**原則を徒底すること。
+> 複数施策の同時投入は効果帰属を崩壊させ、何が効いたか不明になる。
+> 例外: Track A (param) + Track D (OB記録) は副作用なしで同時投入可。
+> Track B (SG再訓練) は A+D の効果測定後に投入。
+
 ---
 
 ## Appendix A: 168h 判定 JSON 主要値
@@ -958,25 +1023,27 @@ Track A+B+D デプロイ時に変更する fill_test.yaml の項目一覧:
 
 | パラメータ | 現行値 | 変更後 | Track | 備考 |
 |-----------|--------|--------|-------|------|
+| `adaptation.enabled` | true | **false** | **P0** | **122# R2: 因果分離のため無効化必須** |
 | `time_filter.skip_utc_hours_buy` | [1,2,8,12,16,18,21] | [8,16,18] | A1 | 7h→3h |
 | `time_filter.skip_utc_hours_sell` | [4,8,13,14,16] | [8,14,16] | A1 | 5h→3h |
 | `side_offset.sell` | 0.14 | 0.18 | A2 | sell AS 抑制 |
 | `spread_adaptive.narrow_spread_bps` | 2.0 | 2.5 | A3 | postonly_reject 抑制 |
+| `min_spread_jpy` | 0.0 | **1500** | A4b | **122# R6: 既存パラメータ活用** |
 | `skip_gate.model_path` | skip_gate_as.pkl | skip_gate_as_v2.pkl | B1-B3 | 再訓練モデル |
 | `skip_gate.sell_enabled` | false | (判定次第) | B3 | 逆選別解消なら true |
-| (OB 記録常時有効化) | imbalance_enabled 依存 | 常時記録 | D1 | コード変更 |
-| (minimum_spread_guard) | なし | min_spread_jpy: 1500 | A4b | 新規追加 |
+| (OB 記録常時有効化) | imbalance_enabled 依存 | 常時記録 | D1 | コード変更 (§7.3 方法2) |
 | (regime state persistence) | — | コード変更 | A4 | StatePersistence 拡張 |
 
 **変更手順**:
 1. fill_test 停止
-2. OB 記録常時有効化のコード変更 (§7.3 方法 2)
-3. regime state persistence のコード変更 + テスト (§4.4)
-4. minimum_spread_guard のコード変更 + テスト (§8.2 B7)
-5. YAML 更新 (上表の変更を適用)
-6. 新 SkipGate モデルを `models/v460/` に配置 (Track B 完了後)
-7. fill_test 再起動 (`--hours 168`)
-8. 48h 後に中間チェック (AS/PnL の急変がないか confirm)
+2. `adaptation.enabled: false` に設定 (**P0 — 最優先**)
+3. OB 記録常時有効化のコード変更 (§7.3 方法 2 — `run_fill_test.py` + `skip_gate_evaluator.py`)
+4. `min_spread_jpy: 0.0` → `1500` に変更 (§8.2 B7)
+5. regime state persistence のコード変更 + テスト (§4.4)
+6. YAML 更新 (上表の残りの変更を適用)
+7. 新 SkipGate モデルを `models/v460/` に配置 (Track B 完了後)
+8. fill_test 再起動 (`--hours 168`)
+9. 48h 後に中間チェック (AS/PnL の急変がないか confirm)
 
 ## Appendix C: 全先送り項目一覧
 

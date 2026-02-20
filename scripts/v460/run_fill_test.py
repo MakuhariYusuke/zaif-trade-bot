@@ -543,17 +543,17 @@ class FillTestRunner:
 
         # 055# Fix #2: Smart Side 判定用に最新板 imbalance を事前取得
         # (_compute_maker_price 内での取得では side 決定後 → 1サイクル遅延)
-        if self.config.imbalance_enabled and self.config.smart_side_enabled:
-            try:
-                imb, bid_d, ask_d = await self._compute_orderbook_imbalance(
-                    depth=self.config.imbalance_depth,
-                )
-                self._maker_price._last_imbalance = imb
-                self._maker_price._last_bid_depth = bid_d
-                self._maker_price._last_ask_depth = ask_d
-            except Exception as e:
-                logger.warning(f"[smart_side] Pre-fetch imbalance failed, using last: {e}")
-                # フォールバック: 前回値を維持
+        # 122# §7.3 方法 2: OB データ記録のため常時計算 (smart_side 無効時もデータ蓄積)
+        try:
+            imb, bid_d, ask_d = await self._compute_orderbook_imbalance(
+                depth=self.config.imbalance_depth,
+            )
+            self._maker_price._last_imbalance = imb
+            self._maker_price._last_bid_depth = bid_d
+            self._maker_price._last_ask_depth = ask_d
+        except Exception as e:
+            logger.warning(f"[ob_prefetch] Pre-fetch imbalance failed, using last: {e}")
+            # フォールバック: 前回値を維持
 
         # 075# Fix: side_override があればそれを使い、_next_side() 二重呼出を防止
         if side_override is not None:
@@ -776,9 +776,10 @@ class FillTestRunner:
             regime_confidence=regime_conf,
             regime_stability=regime_stab,
             # 054# S5: AS 予測データ基盤
-            orderbook_imbalance=self._maker_price._last_imbalance if self.config.imbalance_enabled else None,
-            bid_depth_total=self._maker_price._last_bid_depth if self.config.imbalance_enabled else None,
-            ask_depth_total=self._maker_price._last_ask_depth if self.config.imbalance_enabled else None,
+            # 122# R5/§7.3 方法 2: OB 記録を imbalance_enabled と独立させ常時記録
+            orderbook_imbalance=self._maker_price._last_imbalance,
+            bid_depth_total=self._maker_price._last_bid_depth,
+            ask_depth_total=self._maker_price._last_ask_depth,
             mid_price_trend_5s=self._maker_price._last_mid_trend_bps,
             spread_bps=(
                 (spread_at_order / mid_at_fill * self._BPS_FACTOR)

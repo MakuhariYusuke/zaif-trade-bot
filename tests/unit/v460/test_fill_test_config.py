@@ -76,7 +76,7 @@ class TestLoadFillTestConfig:
         assert "log_max_bytes" in cfg
         assert "log_backup_count" in cfg
         # ネストセクション
-        assert cfg["adaptation"]["enabled"] is True  # 041# false→true
+        assert cfg["adaptation"]["enabled"] is False  # 122# R2: 因果分離のため無効化
         assert cfg["lot_sizing"]["enabled"] is False
         assert cfg["lot_sizing"]["recent_pnl_window"] == 50
         assert cfg["safety"]["loss_cap_jpy"] == 10000.0
@@ -96,7 +96,7 @@ class TestFillTestConfigFromYaml:
         assert config.symbol == "btc_jpy"
         assert config.order_quantity == 0.001
         assert config.spread_offset_ratio == 0.05
-        assert config.enable_auto_adapt is True  # 041# false→true
+        assert config.enable_auto_adapt is False  # 122# R2: 因果分離のため無効化
         assert config.enable_dynamic_lot is False
         assert config.loss_cap_jpy == 10000.0
         assert config.loss_cap_warning_ratio == 0.7

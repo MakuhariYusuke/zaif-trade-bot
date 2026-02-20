@@ -21,7 +21,7 @@ max_preflight_skip: 10        # 046# 連続 preflight 失敗上限 (SAFE_STOP)
 # ---- スプレッド比例オフセット (CM-1) ----
 spread_offset_ratio: 0.05     # 031# 0.2→0.05: AS 低減のため保守化
 min_offset_jpy: 1.0           # 最小オフセット (JPY)
-min_spread_jpy: 0.0           # 最小スプレッドフィルター (0=なし)
+min_spread_jpy: 1500           # 122# R6: 0→1500 postonly_reject 回避 (168h reject 65件の spread平均=1915)
 
 # ---- リトライ (CM-2) ----
 max_order_retries: 2              # 041# 1→2: api_error 削減のため
@@ -42,7 +42,7 @@ log_backup_count: 5           # ログバックアップ世代数
 
 # ---- 方策 A: パラメータ適応 (032# P0) ----
 adaptation:
-  enabled: true               # 041# false→true: 335件のデータから自動適応を開始
+  enabled: false              # 122# R2 (P0): 因果分離のため無効化 (was: true)
   interval_cycles: 50         # 適応判定の間隔
   min_fill_rate: 0.80         # fill_rate 下限 (下回ると offset 増)
   max_as_ratio: 0.15          # AS_ratio 上限 (上回ると offset 減)

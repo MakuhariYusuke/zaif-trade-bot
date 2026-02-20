@@ -210,11 +210,10 @@ class MakerPriceCalculator:
         cfg = self._config
 
         # 054# S1: imbalance 計算
+        # 122# §7.3: pre-fetch で常時計算済みのため、キャッシュ値を使用
         if cfg.imbalance_enabled:
-            imb_result = await self.compute_imbalance(
-                adapter, symbol, depth=cfg.imbalance_depth,
-            )
-            imb = imb_result.imbalance
+            # imbalance_enabled 時は offset 補正に使う (キャッシュ値は pre-fetch 済み)
+            imb = self._last_imbalance
         else:
             imb = 0.0
 
