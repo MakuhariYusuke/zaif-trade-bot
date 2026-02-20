@@ -10,12 +10,32 @@ import json
 import subprocess
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Optional, cast
 
+from ztb.io.json_io import read_json_object, write_json
 from ztb.types.common import ConfigDict
 
 
-def inference_config_to_dict(config: Any) -> Dict[str, Any]:
+def _as_object_map(value: object) -> dict[str, object]:
+    """Safely coerce object to mapping."""
+    return value if isinstance(value, dict) else {}
+
+
+def _as_string_list(value: object) -> list[str]:
+    """Safely coerce object to list[str]."""
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str)]
+
+
+def _as_short_text(value: object, limit: int = 16) -> str:
+    """Convert value to a short printable text."""
+    if isinstance(value, str):
+        return value[:limit]
+    return "N/A"
+
+
+def inference_config_to_dict(config: object) -> dict[str, object]:
     """
     Convert InferenceConfig to dictionary for serialization.
 
@@ -29,13 +49,20 @@ def inference_config_to_dict(config: Any) -> Dict[str, Any]:
         return {}
 
     if isinstance(config, dict):
-        return config
+        return {str(k): v for k, v in config.items() if isinstance(k, str)}
 
     if is_dataclass(config):
-        return asdict(cast(Any, config))
+        return cast(dict[str, object], asdict(config))
 
     # Fallback: try to extract attributes
-    return {k: v for k, v in config.__dict__.items() if not k.startswith("_")}
+    config_dict = getattr(config, "__dict__", None)
+    if not isinstance(config_dict, dict):
+        return {}
+    return {
+        str(k): v
+        for k, v in config_dict.items()
+        if isinstance(k, str) and not k.startswith("_")
+    }
 
 
 def get_git_sha() -> str:
@@ -96,7 +123,7 @@ def compute_file_hash(file_path: Path) -> str:
     return sha256.hexdigest()
 
 
-def compute_dataset_metadata(dataset_path: Path) -> Dict[str, Any]:
+def compute_dataset_metadata(dataset_path: Path) -> dict[str, object]:
     """
     Compute dataset metadata for reproducibility.
 
@@ -162,15 +189,15 @@ def compute_dataset_metadata(dataset_path: Path) -> Dict[str, Any]:
 def generate_manifest(
     model_dir: Path,
     config: ConfigDict,
-    feature_names: List[str],
+    feature_names: list[str],
     warmup: int,
     schema_hash: Optional[str] = None,
     scaler_hash: Optional[str] = None,
     fingerprint: Optional[str] = None,
-    additional_metadata: Optional[Dict[str, Any]] = None,
-    inference_config: Optional[Dict[str, Any]] = None,
-    dataset_metadata: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    additional_metadata: Optional[dict[str, object]] = None,
+    inference_config: Optional[dict[str, object]] = None,
+    dataset_metadata: Optional[dict[str, object]] = None,
+) -> dict[str, object]:
     """
     Generate complete manifest for a training run.
 
@@ -249,7 +276,7 @@ def generate_manifest(
     return manifest
 
 
-def save_manifest(manifest: Dict[str, Any], output_path: Path) -> None:
+def save_manifest(manifest: dict[str, object], output_path: Path) -> None:
     """
     Save manifest to JSON file.
 
@@ -257,13 +284,10 @@ def save_manifest(manifest: Dict[str, Any], output_path: Path) -> None:
         manifest: Manifest dictionary
         output_path: Path to save manifest.json
     """
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(output_path, "w") as f:
-        json.dump(manifest, f, indent=2)
+    write_json(output_path, manifest, indent=2)
 
 
-def load_manifest(manifest_path: Path) -> Dict[str, Any]:
+def load_manifest(manifest_path: Path) -> dict[str, object]:
     """
     Load manifest from JSON file.
 
@@ -277,11 +301,10 @@ def load_manifest(manifest_path: Path) -> Dict[str, Any]:
         FileNotFoundError: If manifest file does not exist
         json.JSONDecodeError: If manifest file is invalid JSON
     """
-    with open(manifest_path, "r") as f:
-        return cast(Dict[str, Any], json.load(f))
+    return read_json_object(manifest_path)
 
 
-def validate_manifest(manifest: Dict[str, Any]) -> tuple[bool, List[str]]:
+def validate_manifest(manifest: dict[str, object]) -> tuple[bool, list[str]]:
     """
     Validate manifest structure and required fields.
 
@@ -291,37 +314,40 @@ def validate_manifest(manifest: Dict[str, Any]) -> tuple[bool, List[str]]:
     Returns:
         Tuple of (is_valid, list_of_errors)
     """
-    errors = []
+    errors: list[str] = []
 
     # Check version
     if "version" not in manifest:
         errors.append("Missing 'version' field")
 
     # Check git info
-    if "git" not in manifest:
+    git_info = _as_object_map(manifest.get("git"))
+    if not git_info:
         errors.append("Missing 'git' field")
     else:
-        if "sha" not in manifest["git"]:
+        if "sha" not in git_info:
             errors.append("Missing 'git.sha' field")
-        if "dirty" not in manifest["git"]:
+        if "dirty" not in git_info:
             errors.append("Missing 'git.dirty' field")
 
     # Check hashes
-    if "hashes" not in manifest:
+    hashes = _as_object_map(manifest.get("hashes"))
+    if not hashes:
         errors.append("Missing 'hashes' field")
     else:
         required_hashes = ["schema", "scaler", "config_fingerprint"]
         for hash_type in required_hashes:
-            if hash_type not in manifest["hashes"]:
+            if hash_type not in hashes:
                 errors.append(f"Missing 'hashes.{hash_type}' field")
 
     # Check training info
-    if "training" not in manifest:
+    training = _as_object_map(manifest.get("training"))
+    if not training:
         errors.append("Missing 'training' field")
     else:
         required_training = ["config", "feature_names", "warmup", "n_features"]
         for field in required_training:
-            if field not in manifest["training"]:
+            if field not in training:
                 errors.append(f"Missing 'training.{field}' field")
 
     is_valid = len(errors) == 0
@@ -329,10 +355,10 @@ def validate_manifest(manifest: Dict[str, Any]) -> tuple[bool, List[str]]:
 
 
 def compare_manifests(
-    manifest1: Dict[str, Any],
-    manifest2: Dict[str, Any],
+    manifest1: dict[str, object],
+    manifest2: dict[str, object],
     ignore_git: bool = True,
-) -> tuple[bool, List[str]]:
+) -> tuple[bool, list[str]]:
     """
     Compare two manifests for compatibility.
 
@@ -344,37 +370,37 @@ def compare_manifests(
     Returns:
         Tuple of (are_compatible, list_of_differences)
     """
-    differences = []
+    differences: list[str] = []
+    hashes1 = _as_object_map(manifest1.get("hashes"))
+    hashes2 = _as_object_map(manifest2.get("hashes"))
 
     # Compare hashes
-    if manifest1.get("hashes", {}).get("schema") != manifest2.get("hashes", {}).get(
-        "schema"
-    ):
+    if hashes1.get("schema") != hashes2.get("schema"):
         differences.append("Schema hash mismatch")
 
-    if manifest1.get("hashes", {}).get("scaler") != manifest2.get("hashes", {}).get(
-        "scaler"
-    ):
+    if hashes1.get("scaler") != hashes2.get("scaler"):
         differences.append("Scaler hash mismatch")
 
     # Compare feature names
-    features1 = set(manifest1.get("training", {}).get("feature_names", []))
-    features2 = set(manifest2.get("training", {}).get("feature_names", []))
+    training1 = _as_object_map(manifest1.get("training"))
+    training2 = _as_object_map(manifest2.get("training"))
+    features1 = set(_as_string_list(training1.get("feature_names", [])))
+    features2 = set(_as_string_list(training2.get("feature_names", [])))
 
     if features1 != features2:
         differences.append(f"Feature names mismatch: {features1 ^ features2}")
 
     # Compare warmup
-    warmup1 = manifest1.get("training", {}).get("warmup")
-    warmup2 = manifest2.get("training", {}).get("warmup")
+    warmup1 = training1.get("warmup")
+    warmup2 = training2.get("warmup")
 
     if warmup1 != warmup2:
         differences.append(f"Warmup mismatch: {warmup1} vs {warmup2}")
 
     # Compare git (optional)
     if not ignore_git:
-        git1 = manifest1.get("git", {}).get("sha")
-        git2 = manifest2.get("git", {}).get("sha")
+        git1 = _as_object_map(manifest1.get("git")).get("sha")
+        git2 = _as_object_map(manifest2.get("git")).get("sha")
 
         if git1 != git2:
             differences.append(f"Git SHA mismatch: {git1} vs {git2}")
@@ -385,9 +411,9 @@ def compare_manifests(
 
 def preflight_dataset_check(
     dataset_path: Path,
-    expected_manifest: Dict[str, Any],
+    expected_manifest: dict[str, object],
     strict: bool = True,
-) -> tuple[bool, List[str]]:
+) -> tuple[bool, list[str]]:
     """
     Preflight check: Verify dataset matches expected manifest.
 
@@ -399,15 +425,14 @@ def preflight_dataset_check(
     Returns:
         Tuple of (is_valid, list_of_errors)
     """
-    errors = []
+    errors: list[str] = []
 
     # Check if dataset metadata exists in manifest
-    if "dataset" not in expected_manifest:
+    expected_dataset = _as_object_map(expected_manifest.get("dataset"))
+    if not expected_dataset:
         if strict:
             errors.append("No dataset metadata in manifest (strict mode)")
         return not strict, errors
-
-    expected_dataset = expected_manifest["dataset"]
 
     # Compute current dataset metadata
     try:
@@ -422,8 +447,8 @@ def preflight_dataset_check(
     if expected_sha != current_sha:
         errors.append(
             f"Dataset SHA256 mismatch: "
-            f"expected={expected_sha[:16] if expected_sha else 'N/A'}..., "
-            f"actual={current_sha[:16] if current_sha else 'N/A'}..."
+            f"expected={_as_short_text(expected_sha)}..., "
+            f"actual={_as_short_text(current_sha)}..."
         )
 
     # Compare row count
@@ -436,11 +461,13 @@ def preflight_dataset_check(
 
     # Compare time range (if exists)
     if expected_dataset.get("time_range") and current_metadata.get("time_range"):
-        if expected_dataset["time_range"] != current_metadata["time_range"]:
+        expected_time_range = expected_dataset.get("time_range")
+        current_time_range = current_metadata.get("time_range")
+        if expected_time_range != current_time_range:
             errors.append(
                 f"Dataset time range mismatch: "
-                f"expected={expected_dataset['time_range']}, "
-                f"actual={current_metadata['time_range']}"
+                f"expected={expected_time_range}, "
+                f"actual={current_time_range}"
             )
 
     is_valid = len(errors) == 0

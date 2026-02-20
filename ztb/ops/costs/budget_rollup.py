@@ -11,90 +11,108 @@ Usage:
 """
 
 import argparse
-import json
 import sys
 from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Optional, TypedDict
+
+from ztb.io.json_io import read_json_object
+from ztb.io.text_io import write_text
+
+
+class RunSummary(TypedDict):
+    run_dir: str
+    cost_jpy: float
+    gpu_hours: float
+    start_time: str
 
 
 class DailyTotal(TypedDict):
     total_cost_jpy: float
     gpu_hours: float
-    runs: List[Dict[str, Any]]
+    runs: list[RunSummary]
     run_count: int
 
 
-def load_run_metadata(runs_dir: Path) -> List[Dict[str, Any]]:
-    """Load run metadata from runs directory."""
-    metadata_list: List[Dict[str, Any]] = []
+def _iter_run_dirs(runs_dir: Path) -> list[Path]:
+    """Return run subdirectories under runs_dir."""
     if not runs_dir.exists():
-        return metadata_list
+        return []
+    return [run_dir for run_dir in runs_dir.iterdir() if run_dir.is_dir()]
 
-    for run_dir in runs_dir.iterdir():
-        if run_dir.is_dir():
-            metadata_file = run_dir / "run_metadata.json"
-            if metadata_file.exists():
-                try:
-                    with open(metadata_file, "r", encoding="utf-8") as f:
-                        metadata = json.load(f)
-                        metadata["run_dir"] = str(run_dir)
-                        metadata_list.append(metadata)
-                except (json.JSONDecodeError, IOError):
-                    continue
 
+def _load_run_json_file(run_dir: Path, filename: str) -> dict[str, object] | None:
+    """Load one JSON object under a run directory."""
+    target_file = run_dir / filename
+    if not target_file.exists():
+        return None
+    try:
+        return read_json_object(target_file)
+    except (ValueError, TypeError, OSError):
+        return None
+
+
+def _to_float(value: object, default: float = 0.0) -> float:
+    """Convert arbitrary value to float with safe fallback."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def load_run_metadata(runs_dir: Path) -> list[dict[str, object]]:
+    """Load run metadata from runs directory."""
+    metadata_list: list[dict[str, object]] = []
+    for run_dir in _iter_run_dirs(runs_dir):
+        metadata = _load_run_json_file(run_dir, "run_metadata.json")
+        if metadata is None:
+            continue
+        metadata["run_dir"] = str(run_dir)
+        metadata_list.append(metadata)
     return metadata_list
 
 
-def load_cost_estimates(runs_dir: Path) -> Dict[str, Dict[str, Any]]:
+def load_cost_estimates(runs_dir: Path) -> dict[str, dict[str, object]]:
     """Load cost estimates from runs directory."""
-    cost_estimates: Dict[str, Dict[str, Any]] = {}
-    if not runs_dir.exists():
-        return cost_estimates
-
-    for run_dir in runs_dir.iterdir():
-        if run_dir.is_dir():
-            cost_file = run_dir / "cost_estimate.json"
-            if cost_file.exists():
-                try:
-                    with open(cost_file, "r", encoding="utf-8") as f:
-                        cost_data = json.load(f)
-                        cost_estimates[str(run_dir)] = cost_data
-                except (json.JSONDecodeError, IOError):
-                    continue
-
+    cost_estimates: dict[str, dict[str, object]] = {}
+    for run_dir in _iter_run_dirs(runs_dir):
+        cost_data = _load_run_json_file(run_dir, "cost_estimate.json")
+        if cost_data is None:
+            continue
+        cost_estimates[str(run_dir)] = cost_data
     return cost_estimates
 
 
 def aggregate_by_date(
-    metadata_list: List[Dict[str, Any]],
-    cost_estimates: Dict[str, Dict[str, Any]],
+    metadata_list: list[dict[str, object]],
+    cost_estimates: dict[str, dict[str, object]],
     target_date: Optional[date] = None,
-) -> Dict[str, DailyTotal]:
+) -> dict[str, DailyTotal]:
     """Aggregate costs by date."""
-    daily_totals: Dict[str, DailyTotal] = defaultdict(
+    daily_totals: dict[str, DailyTotal] = defaultdict(
         lambda: {"total_cost_jpy": 0.0, "gpu_hours": 0.0, "runs": [], "run_count": 0}
     )
 
     for metadata in metadata_list:
-        run_dir = metadata["run_dir"]
-        start_time = metadata.get("start_time")
-        if not start_time:
+        run_dir_value = metadata.get("run_dir")
+        start_time_value = metadata.get("start_time")
+        if not isinstance(run_dir_value, str) or not isinstance(start_time_value, str):
             continue
 
         try:
-            run_date = datetime.fromisoformat(start_time).date()
+            run_date = datetime.fromisoformat(start_time_value).date()
             if target_date and run_date != target_date:
                 continue
         except (ValueError, TypeError):
             continue
 
+        run_dir = run_dir_value
         date_key = run_date.isoformat()
         cost_data = cost_estimates.get(run_dir, {})
 
-        total_cost = cost_data.get("total_cost_jpy", 0.0)
-        gpu_hours = cost_data.get("gpu_hours", 0.0)
+        total_cost = _to_float(cost_data.get("total_cost_jpy"), 0.0)
+        gpu_hours = _to_float(cost_data.get("gpu_hours"), 0.0)
 
         daily_totals[date_key]["total_cost_jpy"] += total_cost
         daily_totals[date_key]["gpu_hours"] += gpu_hours
@@ -104,14 +122,14 @@ def aggregate_by_date(
                 "run_dir": run_dir,
                 "cost_jpy": total_cost,
                 "gpu_hours": gpu_hours,
-                "start_time": start_time,
+                "start_time": start_time_value,
             }
         )
 
     return dict(daily_totals)
 
 
-def generate_markdown_report(daily_totals: Dict[str, DailyTotal]) -> str:
+def generate_markdown_report(daily_totals: dict[str, DailyTotal]) -> str:
     """Generate markdown report from daily totals."""
     lines = ["# Daily Budget Report\n"]
 
@@ -183,8 +201,7 @@ def main() -> None:
 
         if args.output:
             args.output.parent.mkdir(parents=True, exist_ok=True)
-            with open(args.output, "w", encoding="utf-8") as f:
-                f.write(markdown_report)
+            write_text(args.output, markdown_report, encoding="utf-8")
             print(f"Budget report written to {args.output}")
         else:
             print(markdown_report)

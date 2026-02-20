@@ -5,23 +5,162 @@ SAC v434.2 複数実験自動化スクリプト
 """
 
 import argparse
-import json
 import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import NotRequired, TypedDict
+
+from ztb.io.common import PathLike
+from ztb.io.json_io import read_json_object, write_json
 
 
-def load_experiment_config(config_path: str) -> Dict[str, Any]:
+class HyperParams(TypedDict):
+    learning_rate: float
+    batch_size: int
+    gamma: float
+    tau: float
+
+
+class ExperimentConfig(TypedDict):
+    version: str
+    description: str
+    hyperparams: HyperParams
+
+
+class CommonConfig(TypedDict):
+    output_base_dir: str
+    backtest_output_base_dir: str
+    data_path: str
+    timesteps: int
+
+
+class ExperimentSuiteConfig(TypedDict):
+    experiments: list[ExperimentConfig]
+    common_config: CommonConfig
+
+
+class ExperimentResult(TypedDict):
+    version: str
+    description: str
+    hyperparams: HyperParams
+    status: str
+    output_dir: NotRequired[str]
+    backtest_output_dir: NotRequired[str]
+    stdout: NotRequired[str]
+    stderr: NotRequired[str]
+    returncode: NotRequired[int]
+    error: NotRequired[str]
+    backtest_result: NotRequired[dict[str, object]]
+
+
+def _as_object_map(value: object) -> dict[str, object]:
+    """Safely coerce object into dict."""
+    return value if isinstance(value, dict) else {}
+
+
+def _as_float(value: object, default: float = 0.0) -> float:
+    """Convert object to float with fallback."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _as_int(value: object, default: int = 0) -> int:
+    """Convert object to int with fallback."""
+    if isinstance(value, bool):
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _parse_hyperparams(value: object) -> HyperParams | None:
+    """Parse hyper parameter section."""
+    payload = _as_object_map(value)
+    learning_rate = _as_float(payload.get("learning_rate"), -1.0)
+    batch_size = _as_int(payload.get("batch_size"), -1)
+    gamma = _as_float(payload.get("gamma"), -1.0)
+    tau = _as_float(payload.get("tau"), -1.0)
+
+    if learning_rate <= 0 or batch_size <= 0 or gamma <= 0 or tau <= 0:
+        return None
+
+    return {
+        "learning_rate": learning_rate,
+        "batch_size": batch_size,
+        "gamma": gamma,
+        "tau": tau,
+    }
+
+
+def _parse_experiment(value: object) -> ExperimentConfig | None:
+    """Parse single experiment payload."""
+    payload = _as_object_map(value)
+    version = payload.get("version")
+    description = payload.get("description")
+    hyperparams = _parse_hyperparams(payload.get("hyperparams"))
+    if not isinstance(version, str) or not isinstance(description, str):
+        return None
+    if hyperparams is None:
+        return None
+    return {
+        "version": version,
+        "description": description,
+        "hyperparams": hyperparams,
+    }
+
+
+def _parse_common_config(value: object) -> CommonConfig | None:
+    """Parse common config payload."""
+    payload = _as_object_map(value)
+    output_base_dir = payload.get("output_base_dir")
+    backtest_output_base_dir = payload.get("backtest_output_base_dir")
+    data_path = payload.get("data_path")
+    timesteps = _as_int(payload.get("timesteps"), -1)
+    if (
+        not isinstance(output_base_dir, str)
+        or not isinstance(backtest_output_base_dir, str)
+        or not isinstance(data_path, str)
+        or timesteps <= 0
+    ):
+        return None
+    return {
+        "output_base_dir": output_base_dir,
+        "backtest_output_base_dir": backtest_output_base_dir,
+        "data_path": data_path,
+        "timesteps": timesteps,
+    }
+
+
+def load_experiment_config(config_path: PathLike) -> ExperimentSuiteConfig:
     """実験設定ファイルを読み込み"""
-    with open(config_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    payload = read_json_object(config_path)
+    raw_experiments = payload.get("experiments")
+    experiments: list[ExperimentConfig] = []
+    if isinstance(raw_experiments, list):
+        for item in raw_experiments:
+            experiment = _parse_experiment(item)
+            if experiment is not None:
+                experiments.append(experiment)
+
+    common_config = _parse_common_config(payload.get("common_config"))
+    if common_config is None:
+        raise ValueError("Invalid or missing common_config in experiment config")
+    if not experiments:
+        raise ValueError("No valid experiments found in experiment config")
+
+    return {
+        "experiments": experiments,
+        "common_config": common_config,
+    }
 
 
 def run_single_experiment(
-    experiment: Dict[str, Any], common_config: Dict[str, Any]
-) -> Dict[str, Any]:
+    experiment: ExperimentConfig, common_config: CommonConfig
+) -> ExperimentResult:
     """単一の実験を実行"""
     version = experiment["version"]
     description = experiment["description"]
@@ -33,11 +172,10 @@ def run_single_experiment(
     print(f"{'='*60}")
 
     # 出力ディレクトリ作成
-    output_dir = f"{common_config['output_base_dir']}/{version}"
-    backtest_output_dir = f"{common_config['backtest_output_base_dir']}/{version}"
-
-    os.makedirs(output_dir, exist_ok=True)
-    os.makedirs(backtest_output_dir, exist_ok=True)
+    output_dir = Path(common_config["output_base_dir"]) / version
+    backtest_output_dir = Path(common_config["backtest_output_base_dir"]) / version
+    output_dir.mkdir(parents=True, exist_ok=True)
+    backtest_output_dir.mkdir(parents=True, exist_ok=True)
 
     # トレーニングコマンド作成
     cmd = [
@@ -46,7 +184,7 @@ def run_single_experiment(
         "--data",
         common_config["data_path"],
         "--output",
-        output_dir,
+        str(output_dir),
         "--timesteps",
         str(common_config["timesteps"]),
         "--learning-rate",
@@ -88,19 +226,16 @@ def run_single_experiment(
                 "description": description,
                 "hyperparams": hyperparams,
                 "status": "success",
-                "output_dir": output_dir,
-                "backtest_output_dir": backtest_output_dir,
+                "output_dir": str(output_dir),
+                "backtest_output_dir": str(backtest_output_dir),
                 "stdout": result.stdout,
                 "stderr": result.stderr,
             }
 
             # バックテスト結果ファイルが存在するか確認
-            backtest_results_path = os.path.join(
-                backtest_output_dir, "backtest_results.json"
-            )
-            if os.path.exists(backtest_results_path):
-                with open(backtest_results_path, "r", encoding="utf-8") as f:
-                    backtest_data = json.load(f)
+            backtest_results_path = backtest_output_dir / "backtest_results.json"
+            if backtest_results_path.exists():
+                backtest_data = read_json_object(backtest_results_path)
                 experiment_result["backtest_result"] = backtest_data
                 print(f"バックテスト結果読み込み完了: {backtest_data}")
 
@@ -137,14 +272,22 @@ def run_single_experiment(
         }
 
 
-def save_experiment_results(results: List[Dict[str, Any]], output_path: str):
+def save_experiment_results(
+    results: list[ExperimentResult], output_path: PathLike
+) -> None:
     """実験結果を保存"""
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
+    write_json(output_path, results, indent=2, ensure_ascii=False)
     print(f"実験結果を保存: {output_path}")
 
 
-def generate_summary_report(results: List[Dict[str, Any]], output_path: str):
+def _extract_backtest_result(result: ExperimentResult) -> dict[str, object]:
+    """Get backtest payload if present."""
+    return _as_object_map(result.get("backtest_result", {}))
+
+
+def generate_summary_report(
+    results: list[ExperimentResult], output_path: PathLike
+) -> None:
     """サマリーレポート生成"""
     successful_experiments = [r for r in results if r.get("status") == "success"]
     failed_experiments = [r for r in results if r.get("status") != "success"]
@@ -165,17 +308,19 @@ def generate_summary_report(results: List[Dict[str, Any]], output_path: str):
 
     # 成功した実験の詳細
     for exp in successful_experiments:
-        backtest = exp.get("backtest_result", {})
+        backtest = _extract_backtest_result(exp)
         summary = {
             "version": exp["version"],
             "description": exp["description"],
             "hyperparams": exp["hyperparams"],
             "backtest_metrics": {
-                "total_reward": backtest.get("total_reward", 0),
-                "win_rate": backtest.get("win_rate", 0),
-                "sharpe_ratio": backtest.get("sharpe_ratio", 0),
-                "max_drawdown": backtest.get("max_drawdown", 0),
-                "final_portfolio_value": backtest.get("final_portfolio_value", 0),
+                "total_reward": _as_float(backtest.get("total_reward", 0.0), 0.0),
+                "win_rate": _as_float(backtest.get("win_rate", 0.0), 0.0),
+                "sharpe_ratio": _as_float(backtest.get("sharpe_ratio", 0.0), 0.0),
+                "max_drawdown": _as_float(backtest.get("max_drawdown", 0.0), 0.0),
+                "final_portfolio_value": _as_float(
+                    backtest.get("final_portfolio_value", 0.0), 0.0
+                ),
             },
         }
         report["successful_experiments"].append(summary)
@@ -184,18 +329,19 @@ def generate_summary_report(results: List[Dict[str, Any]], output_path: str):
     if successful_experiments:
         best_exp = max(
             successful_experiments,
-            key=lambda x: x.get("backtest_result", {}).get("total_reward", 0),
+            key=lambda x: _as_float(
+                _extract_backtest_result(x).get("total_reward", 0.0), 0.0
+            ),
         )
         report["best_experiment"] = {
             "version": best_exp["version"],
             "description": best_exp["description"],
             "hyperparams": best_exp["hyperparams"],
-            "backtest_result": best_exp.get("backtest_result", {}),
+            "backtest_result": _extract_backtest_result(best_exp),
         }
 
     # レポート保存
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(report, f, indent=2, ensure_ascii=False)
+    write_json(output_path, report, indent=2, ensure_ascii=False)
 
     print(f"サマリーレポート生成: {output_path}")
     print(
@@ -230,11 +376,12 @@ def main():
     print("=== SAC v434.2 複数実験自動化開始 ===")
 
     # 設定読み込み
-    if not os.path.exists(args.config):
+    config_path = Path(args.config)
+    if not config_path.exists():
         print(f"設定ファイルが見つかりません: {args.config}")
         return 1
 
-    config = load_experiment_config(args.config)
+    config = load_experiment_config(config_path)
     experiments = config["experiments"]
     common_config = config["common_config"]
 

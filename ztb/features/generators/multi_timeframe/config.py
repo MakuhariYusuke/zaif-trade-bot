@@ -7,11 +7,12 @@ including timeframe-specific parameters and feature set management.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
 from ztb.features.timeframe import Timeframe
+from ztb.io.common import PathLike
+from ztb.io.json_io import read_json_object, write_json
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -25,25 +26,43 @@ class MultiTimeframeConfig:
     and feature generation settings.
     """
 
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: Optional[PathLike] = None):
         """
         Initialize multi-timeframe configuration.
 
         Args:
             config_path: Path to configuration file
         """
-        self.config_path = config_path or self._get_default_config_path()
+        self.config_path = (
+            str(config_path) if config_path is not None else self._get_default_config_path()
+        )
         self.config = self._load_config()
+        self._valid_timeframe_values = {tf.value for tf in Timeframe}
 
     def _get_default_config_path(self) -> str:
         """Get default configuration path."""
         return str(Path(__file__).parent / "config" / "multi_timeframe_config.json")
 
-    def _load_config(self) -> Dict[str, Any]:
+    @staticmethod
+    def _as_object_map(value: object) -> dict[str, object]:
+        """Safely coerce value into object map."""
+        return value if isinstance(value, dict) else {}
+
+    @staticmethod
+    def _as_string_list(value: object) -> list[str]:
+        """Safely coerce value into list[str]."""
+        if not isinstance(value, list):
+            return []
+        return [item for item in value if isinstance(item, str)]
+
+    def _get_section(self, key: str) -> dict[str, object]:
+        """Get top-level config section as object map."""
+        return self._as_object_map(self.config.get(key, {}))
+
+    def _load_config(self) -> dict[str, object]:
         """Load configuration from file."""
         try:
-            with open(self.config_path, "r", encoding="utf-8") as f:
-                config = json.load(f)
+            config = read_json_object(self.config_path)
             logger.info(f"Loaded multi-timeframe config from {self.config_path}")
             return config
         except FileNotFoundError:
@@ -55,7 +74,7 @@ class MultiTimeframeConfig:
             logger.error(f"Failed to load config: {e}, using defaults")
             return self._get_default_config()
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, object]:
         """Get default configuration."""
         return {
             "enabled_timeframes": ["1min", "5min", "15min", "1hour", "4hour", "1day"],
@@ -111,58 +130,65 @@ class MultiTimeframeConfig:
             },
         }
 
-    def get_enabled_timeframes(self) -> List[Timeframe]:
+    def get_enabled_timeframes(self) -> list[Timeframe]:
         """Get list of enabled timeframes."""
-        enabled = self.config.get("enabled_timeframes", [])
-        return [Timeframe(tf) for tf in enabled if tf in [tf.value for tf in Timeframe]]
+        enabled = self._as_string_list(self.config.get("enabled_timeframes", []))
+        return [
+            Timeframe(tf) for tf in enabled if tf in self._valid_timeframe_values
+        ]
 
     def get_base_timeframe(self) -> Timeframe:
         """Get base timeframe for the system."""
-        base_tf = self.config.get("base_timeframe", "5min")
+        base_tf_obj = self.config.get("base_timeframe", "5min")
+        base_tf = (
+            base_tf_obj
+            if isinstance(base_tf_obj, str) and base_tf_obj in self._valid_timeframe_values
+            else "5min"
+        )
         return Timeframe(base_tf)
 
-    def get_timeframe_config(self, timeframe: Timeframe) -> Dict[str, Any]:
+    def get_timeframe_config(self, timeframe: Timeframe) -> dict[str, object]:
         """Get configuration for specific timeframe."""
-        feature_sets = self.config.get("feature_sets", {})
-        return feature_sets.get(timeframe.value, {})
+        feature_sets = self._get_section("feature_sets")
+        return self._as_object_map(feature_sets.get(timeframe.value, {}))
 
-    def get_integration_config(self) -> Dict[str, Any]:
+    def get_integration_config(self) -> dict[str, object]:
         """Get integration configuration."""
-        return self.config.get("integration", {})
+        return self._get_section("integration")
 
-    def get_quality_config(self) -> Dict[str, Any]:
+    def get_quality_config(self) -> dict[str, object]:
         """Get quality control configuration."""
-        return self.config.get("quality_control", {})
+        return self._get_section("quality_control")
 
-    def get_performance_config(self) -> Dict[str, Any]:
+    def get_performance_config(self) -> dict[str, object]:
         """Get performance configuration."""
-        return self.config.get("performance", {})
+        return self._get_section("performance")
 
     def update_timeframe_config(
-        self, timeframe: Timeframe, config_updates: Dict[str, Any]
+        self, timeframe: Timeframe, config_updates: dict[str, object]
     ) -> None:
         """Update configuration for specific timeframe."""
-        if "feature_sets" not in self.config:
-            self.config["feature_sets"] = {}
-
-        if timeframe.value not in self.config["feature_sets"]:
-            self.config["feature_sets"][timeframe.value] = {}
-
-        self.config["feature_sets"][timeframe.value].update(config_updates)
+        feature_sets = self._get_section("feature_sets")
+        timeframe_config = self._as_object_map(feature_sets.get(timeframe.value, {}))
+        timeframe_config.update(config_updates)
+        feature_sets[timeframe.value] = timeframe_config
+        self.config["feature_sets"] = feature_sets
         logger.info(f"Updated config for {timeframe.value}: {config_updates}")
 
     def enable_timeframe(self, timeframe: Timeframe) -> None:
         """Enable a timeframe."""
-        enabled = self.config.setdefault("enabled_timeframes", [])
+        enabled = self._as_string_list(self.config.get("enabled_timeframes", []))
         if timeframe.value not in enabled:
             enabled.append(timeframe.value)
+            self.config["enabled_timeframes"] = enabled
             logger.info(f"Enabled timeframe: {timeframe.value}")
 
     def disable_timeframe(self, timeframe: Timeframe) -> None:
         """Disable a timeframe."""
-        enabled = self.config.get("enabled_timeframes", [])
+        enabled = self._as_string_list(self.config.get("enabled_timeframes", []))
         if timeframe.value in enabled:
             enabled.remove(timeframe.value)
+            self.config["enabled_timeframes"] = enabled
             logger.info(f"Disabled timeframe: {timeframe.value}")
 
     def set_base_timeframe(self, timeframe: Timeframe) -> None:
@@ -170,27 +196,28 @@ class MultiTimeframeConfig:
         self.config["base_timeframe"] = timeframe.value
         logger.info(f"Set base timeframe to: {timeframe.value}")
 
-    def save_config(self, path: Optional[str] = None) -> None:
+    def save_config(self, path: Optional[PathLike] = None) -> None:
         """Save configuration to file."""
-        save_path = path or self.config_path
+        save_path = Path(path) if path is not None else Path(self.config_path)
 
         # Ensure directory exists
-        Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            with open(save_path, "w", encoding="utf-8") as f:
-                json.dump(self.config, f, indent=2, ensure_ascii=False)
+            write_json(save_path, self.config, indent=2, ensure_ascii=False)
             logger.info(f"Saved config to {save_path}")
         except Exception as e:
             logger.error(f"Failed to save config: {e}")
 
-    def validate_config(self) -> List[str]:
+    def validate_config(self) -> list[str]:
         """Validate configuration and return list of issues."""
-        issues = []
+        issues: list[str] = []
 
         # Check enabled timeframes
-        enabled_timeframes = self.config.get("enabled_timeframes", [])
-        valid_timeframes = [tf.value for tf in Timeframe]
+        enabled_timeframes = self._as_string_list(
+            self.config.get("enabled_timeframes", [])
+        )
+        valid_timeframes = self._valid_timeframe_values
 
         for tf in enabled_timeframes:
             if tf not in valid_timeframes:
@@ -204,7 +231,7 @@ class MultiTimeframeConfig:
             issues.append(f"Base timeframe {base_tf} not in enabled timeframes")
 
         # Check feature sets
-        feature_sets = self.config.get("feature_sets", {})
+        feature_sets = self._get_section("feature_sets")
         for tf in enabled_timeframes:
             if tf not in feature_sets:
                 issues.append(f"Missing feature set config for: {tf}")

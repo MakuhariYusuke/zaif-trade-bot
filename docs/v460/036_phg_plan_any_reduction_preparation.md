@@ -728,6 +728,20 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 10. 回帰確認: `py_compile`（4ファイル）通過。`feature_set_config` は importlib 経由 smoke で save/load 往復を確認。  
 11. 在庫更新: repo 全体 `any_type_debt_tokens=2,620 -> 2,610`（-10）。`regime_adaptive_trainer.py` / `venue_transaction_cost_manager.py` / `ops/health/performance_monitor.py` / `feature_set_config.py` は `any_type_debt_tokens=0`。  
 
+### Step65: JSON/state helper の追加横展開（ops/features/utils/analysis/experiments）+ `Any` 追加削減
+
+1. `ztb/ops/costs/budget_rollup.py` の JSON I/O を `read_json_object` / `write_text` へ統一し、`_iter_run_dirs` / `_load_run_json_file` / `_to_float` を追加して run 走査と数値変換の重複を削減。  
+2. 同ファイルに `RunSummary` (`TypedDict`) を導入し、`aggregate_by_date` の payload 契約を明示。`cost_estimate` 欠損時の安全フォールバックを強化。  
+3. `ztb/features/generators/multi_timeframe/config.py` の config load/save を `read_json_object` / `write_json` へ統一。  
+4. 同ファイルで `_as_object_map` / `_as_string_list` / `_get_section` を導入し、section 取得の重複ロジックを共通化。`base_timeframe` 無効値は `"5min"` へ明示フォールバック。  
+5. `ztb/utils/run_manifest.py` の manifest load/save を `read_json_object` / `write_json` へ統一し、`Dict[str, Any]` を `dict[str, object]` ベースへ移行。  
+6. 同ファイルで `_as_object_map` / `_as_string_list` を追加し、`validate_manifest` / `compare_manifests` / `preflight_dataset_check` の nested dict 参照を安全化。  
+7. `ztb/analysis/common/data_loaders.py` を `read_json_object` ベースへ寄せ、`Any` 注釈を全撤去（`dict[str, object]` に統一）。  
+8. `ztb/experiments/run_sac_experiments.py` の設定/結果 I/O を `read_json_object` / `write_json` へ統一し、`HyperParams` / `ExperimentConfig` / `CommonConfig` / `ExperimentResult` (`TypedDict`) で契約を固定。  
+9. 同スクリプトで config parser を追加し、無効な hyperparam / common config を早期検知するよう改善。summary 作成時の数値 coercion を共通化し、型揺れ入力での実行時例外リスクを低減。  
+10. 回帰確認: `py_compile`（5ファイル + Step65対象）通過。  
+11. 在庫更新: repo 全体 `any_type_debt_tokens=2,610 -> 2,571`（-39）。`budget_rollup.py` / `multi_timeframe/config.py` / `run_manifest.py` / `analysis/common/data_loaders.py` / `experiments/run_sac_experiments.py` は `any_type_debt_tokens=0`。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -796,6 +810,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step62時点 | repo全体 | 2,664 |
 | Step63時点 | repo全体 | 2,620 |
 | Step64時点 | repo全体 | 2,610 |
+| Step65時点 | repo全体 | 2,571 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -893,6 +908,11 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step64時点 | `ztb/trading/cost/venue_transaction_cost_manager.py` | **0** |
 | Step64時点 | `ztb/ops/health/performance_monitor.py` | **0** |
 | Step64時点 | `ztb/features/feature_set_config.py` | **0** |
+| Step65時点 | `ztb/ops/costs/budget_rollup.py` | **0** |
+| Step65時点 | `ztb/features/generators/multi_timeframe/config.py` | **0** |
+| Step65時点 | `ztb/utils/run_manifest.py` | **0** |
+| Step65時点 | `ztb/analysis/common/data_loaders.py` | **0** |
+| Step65時点 | `ztb/experiments/run_sac_experiments.py` | **0** |
 
 ---
 
@@ -910,8 +930,10 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - 評価 result payload を型固定し、集計ループの重複（列挙/整形）を helper 化。  
 6. `ztb/training/algorithms/sac/sac_algorithm.py`  
    - 学習ループの result/config payload を段階的に型固定し、集計・ログ出力の重複分岐を helper 化する。  
-7. `ztb/ops/costs/budget_rollup.py` / `ztb/features/generators/multi_timeframe/config.py`  
-   - 残存する `open + json.load/dump` の config I/O を `read_json_object` / `write_json` へ統一し、ロード失敗時の契約（skip/fallback）を明確化する。  
+7. `ztb/experiments/base.py`  
+   - `manifest/result` 永続化と read 経路の `Any` 型を `run_manifest` 側の object-map 契約へ寄せ、`json.load/dump` の分散実装を統合する。  
+8. `ztb/utils/results_utils.py`  
+   - training/backtest の result payload schema を `TypedDict` 化し、`analysis/common/data_loaders.py` とキー契約を統一して重複整形コードを削減する。  
 
 ---
 
