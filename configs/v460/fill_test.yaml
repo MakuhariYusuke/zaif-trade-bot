@@ -260,3 +260,29 @@ tuning:
   insufficient_funds_patterns:     # 残高不足エラー判定パターン (日本語含む)
     - "所持金額"
     - "足りません"
+
+# ---- 126# SkipGate 定期再学習 ----
+# retrain_scheduler.py がバックグラウンドで実行、fill_test とは別プロセス
+# Usage: .venv\Scripts\python.exe scripts/v460/ml/retrain_scheduler.py
+retrain:
+  interval_sec: 3600               # 再学習チェック間隔 (秒) — 1時間
+  min_new_samples: 30              # 再学習に必要な最小新規サンプル数
+  min_total_samples: 100           # 再学習に必要な最小合計サンプル数
+  model_path: models/v460/skip_gate_lgbm_pnl120.pkl
+  results_dir: results/v460/fill_test
+  target: pnl120                   # "pnl120" or "as30"
+  use_ob_features: true
+  # Walk-Forward 品質ゲート
+  quality_gate_enabled: true       # 品質ゲート有効化 (新モデルが劣化していたら棄却)
+  min_score_improvement: -0.05     # 前モデル比でこの score 以下なら棄却
+  wf_test_ratio: 0.2              # WF テスト比率 (直近 20% をテスト)
+  # LGBM ハイパーパラメータ
+  lgbm_n_estimators: 150
+  lgbm_max_depth: 4
+  lgbm_learning_rate: 0.05
+  lgbm_num_leaves: 15
+  lgbm_min_child_samples: 20
+  # SkipGate 動的較正
+  adaptive_threshold: true
+  target_skip_rate_buy: 0.15
+  target_skip_rate_sell: 0.20

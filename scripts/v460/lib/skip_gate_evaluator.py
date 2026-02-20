@@ -2,15 +2,18 @@
 
 FillTestRunner から SkipGate 初期化 + 評価ロジックを分離。
 062# SkipGate ML フィルター / 088# 動的閾値較正 / 096# warm start を統合。
+126# モデル hot-reload: retrain_scheduler によるモデル差替を自動検出・ロード。
 
 責務:
   - SkipGate モデルの読み込み・設定オーバーライド
   - 特徴量構築 (build_features_from_market_state)
   - evaluate() 呼び出し + 早期リターン FillRecord 生成
+  - 126# モデルファイルの変更検出 + アトミック hot-reload
 """
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import time
 from pathlib import Path
@@ -25,7 +28,10 @@ logger = logging.getLogger(__name__)
 
 
 class SkipGateEvaluator:
-    """SkipGate ML フィルター (062# / 088# / 096# 統合)."""
+    """SkipGate ML フィルター (062# / 088# / 096# / 126# 統合)."""
+
+    # 126# hot-reload: モデルファイルのチェック間隔 (秒)
+    _HOT_RELOAD_CHECK_INTERVAL_SEC = 120.0  # 2分 (cycle_interval と同程度)
 
     def __init__(
         self,
@@ -33,7 +39,12 @@ class SkipGateEvaluator:
         project_root: Path,
     ) -> None:
         self._config = config
+        self._project_root = project_root
         self._skip_gate: object | None = None  # SkipGate instance
+        # 126# hot-reload 状態
+        self._gate_path: Path | None = None
+        self._model_file_hash: str = ""
+        self._last_reload_check: float = 0.0
 
         if not config.skip_gate_enabled:
             return
@@ -51,56 +62,116 @@ class SkipGateEvaluator:
                 )
                 return
 
+            self._gate_path = gate_path
             skip_gate = SkipGate.load(gate_path)
-            # ランタイム設定でオーバーライド
-            skip_gate.config.mode = config.skip_gate_mode
-            skip_gate.config.as_threshold = config.skip_gate_as_threshold
-            skip_gate.config.threshold_bps = config.skip_gate_pnl_threshold
-            skip_gate.config.max_skip_rate = config.skip_gate_max_skip_rate
-            # 118# A3: side 別有効/無効
-            skip_gate.config.buy_enabled = config.skip_gate_buy_enabled
-            skip_gate.config.sell_enabled = config.skip_gate_sell_enabled
-            # 068# §3.3: side 別閾値
-            skip_gate.config.as_threshold_buy = config.skip_gate_as_threshold_buy
-            skip_gate.config.as_threshold_sell = config.skip_gate_as_threshold_sell
-            # 072# OB トグル
-            skip_gate.config.use_ob_features = config.skip_gate_use_ob_features
-            # 088# 動的閾値較正
-            skip_gate.config.adaptive_threshold = config.skip_gate_adaptive_threshold
-            skip_gate.config.target_skip_rate_buy = config.skip_gate_target_skip_rate_buy
-            skip_gate.config.target_skip_rate_sell = config.skip_gate_target_skip_rate_sell
-            skip_gate.config.adaptive_window = config.skip_gate_adaptive_window
-            skip_gate.config.adaptive_min_samples = config.skip_gate_adaptive_min_samples
-            skip_gate.config.adaptive_step = config.skip_gate_adaptive_step
-            skip_gate.config.adaptive_floor = config.skip_gate_adaptive_floor
-            skip_gate.config.adaptive_ceiling = config.skip_gate_adaptive_ceiling
-            logger.info(
-                f"[skip_gate] Loaded: mode={config.skip_gate_mode}, "
-                f"as_threshold={config.skip_gate_as_threshold}, "
-                f"use_ob_features={config.skip_gate_use_ob_features}, "
-                f"features={len(skip_gate.feature_cols)}, "
-                f"path={gate_path}"
-            )
-            # 096# warm start: 直近 P(AS) 履歴を復元
-            if config.skip_gate_adaptive_threshold:
-                try:
-                    from scripts.v460.ml.skip_gate import (
-                        warm_start_skip_gate_thresholds,
-                    )
-                    warm_start_skip_gate_thresholds(
-                        skip_gate,
-                        config.results_dir,
-                        window=config.skip_gate_adaptive_window,
-                    )
-                except Exception as ws_err:
-                    logger.warning(
-                        f"[skip_gate] Warm start failed (non-fatal): {ws_err}"
-                    )
-
+            self._apply_config_overrides(skip_gate)
+            self._apply_warm_start(skip_gate)
             self._skip_gate = skip_gate
+            self._model_file_hash = self._compute_file_hash(gate_path)
+            self._last_reload_check = time.monotonic()
         except Exception as e:
             logger.error(f"[skip_gate] Failed to load: {e}. SkipGate disabled.")
             self._skip_gate = None
+
+    def _apply_config_overrides(self, skip_gate: object) -> None:
+        """YAML 設定でモデル内 config をオーバーライド."""
+        config = self._config
+        sg = skip_gate  # type: ignore[assignment]
+        sg.config.mode = config.skip_gate_mode
+        sg.config.as_threshold = config.skip_gate_as_threshold
+        sg.config.threshold_bps = config.skip_gate_pnl_threshold
+        sg.config.max_skip_rate = config.skip_gate_max_skip_rate
+        # 118# A3: side 別有効/無効
+        sg.config.buy_enabled = config.skip_gate_buy_enabled
+        sg.config.sell_enabled = config.skip_gate_sell_enabled
+        # 068# §3.3: side 別閾値
+        sg.config.as_threshold_buy = config.skip_gate_as_threshold_buy
+        sg.config.as_threshold_sell = config.skip_gate_as_threshold_sell
+        # 072# OB トグル
+        sg.config.use_ob_features = config.skip_gate_use_ob_features
+        # 088# 動的閾値較正
+        sg.config.adaptive_threshold = config.skip_gate_adaptive_threshold
+        sg.config.target_skip_rate_buy = config.skip_gate_target_skip_rate_buy
+        sg.config.target_skip_rate_sell = config.skip_gate_target_skip_rate_sell
+        sg.config.adaptive_window = config.skip_gate_adaptive_window
+        sg.config.adaptive_min_samples = config.skip_gate_adaptive_min_samples
+        sg.config.adaptive_step = config.skip_gate_adaptive_step
+        sg.config.adaptive_floor = config.skip_gate_adaptive_floor
+        sg.config.adaptive_ceiling = config.skip_gate_adaptive_ceiling
+        logger.info(
+            f"[skip_gate] Loaded: mode={config.skip_gate_mode}, "
+            f"as_threshold={config.skip_gate_as_threshold}, "
+            f"use_ob_features={config.skip_gate_use_ob_features}, "
+            f"features={len(sg.feature_cols)}, "  # type: ignore[attr-defined]
+            f"path={self._gate_path}"
+        )
+
+    def _apply_warm_start(self, skip_gate: object) -> None:
+        """096# warm_start: 直近 P(AS) 履歴を復元."""
+        if not self._config.skip_gate_adaptive_threshold:
+            return
+        try:
+            from scripts.v460.ml.skip_gate import warm_start_skip_gate_thresholds
+            warm_start_skip_gate_thresholds(
+                skip_gate,
+                self._config.results_dir,
+                window=self._config.skip_gate_adaptive_window,
+            )
+        except Exception as ws_err:
+            logger.warning(f"[skip_gate] Warm start failed (non-fatal): {ws_err}")
+
+    @staticmethod
+    def _compute_file_hash(path: Path) -> str:
+        """ファイルの SHA256 ハッシュを算出 (126# hot-reload 用)."""
+        try:
+            return hashlib.sha256(path.read_bytes()).hexdigest()
+        except Exception:
+            return ""
+
+    def _check_and_reload_model(self) -> None:
+        """126# モデルファイル変更を検出してリロード.
+
+        retrain_scheduler がアトミックに pkl を差し替えた場合、
+        次の evaluate() 呼び出し時にこのメソッドで検出・リロードする。
+        """
+        # __init__ がモック/スキップされた場合は何もしない
+        if not hasattr(self, "_last_reload_check"):
+            return
+        now = time.monotonic()
+        if now - self._last_reload_check < self._HOT_RELOAD_CHECK_INTERVAL_SEC:
+            return
+        self._last_reload_check = now
+
+        if self._gate_path is None or not self._gate_path.exists():
+            return
+
+        new_hash = self._compute_file_hash(self._gate_path)
+        if new_hash == self._model_file_hash or not new_hash:
+            return
+
+        # モデルファイルが変更された — リロード
+        logger.info(
+            f"[skip_gate] 126# Model file changed detected "
+            f"(hash {self._model_file_hash[:8]}→{new_hash[:8]}). Reloading..."
+        )
+        try:
+            from scripts.v460.ml.skip_gate import SkipGate
+            new_gate = SkipGate.load(self._gate_path)
+            self._apply_config_overrides(new_gate)
+            self._apply_warm_start(new_gate)
+            self._skip_gate = new_gate
+            self._model_file_hash = new_hash
+            n_samples = new_gate.metadata.get("n_samples", "?")
+            version = new_gate.metadata.get("version", "?")
+            logger.info(
+                f"[skip_gate] 126# Hot-reload success: "
+                f"version={version}, n_samples={n_samples}"
+            )
+        except Exception as e:
+            logger.error(
+                f"[skip_gate] 126# Hot-reload FAILED: {e}. "
+                f"Keeping previous model."
+            )
 
     @property
     def skip_gate(self) -> object | None:
@@ -134,6 +205,9 @@ class SkipGateEvaluator:
         result = SkipGateResult()
         if self._skip_gate is None:
             return result
+
+        # 126# hot-reload: モデルファイル変更を検出してリロード
+        self._check_and_reload_model()
 
         # 124# Rule: unknown regime での sell スキップ
         # WF結果: S20%_30=+0.198, S20%_120=+0.140 (両 horizon 改善)

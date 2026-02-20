@@ -1,0 +1,407 @@
+"""126# SkipGate 再学習スケジューラ + hot-reload テスト.
+
+retrain_scheduler.py の retrain_model() と
+SkipGateEvaluator の hot-reload 機構をテスト。
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import pickle
+import tempfile
+import time
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import numpy as np
+import pytest
+
+from scripts.v460.ml.skip_gate import (
+    SkipGate,
+    SkipGateConfig,
+)
+
+
+# ---------------------------------------------------------------------------
+# Fixture helpers
+# ---------------------------------------------------------------------------
+
+def _make_picklable_gate(
+    *,
+    n_samples: int = 100,
+    version: str = "test",
+    mode: str = "pnl",
+) -> SkipGate:
+    """pickle 可能な SkipGate を作成."""
+    from sklearn.linear_model import SGDClassifier
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    config = SkipGateConfig(mode=mode)
+    model = SGDClassifier()
+    scaler = StandardScaler()
+    feature_cols = ["spread_jpy", "offset_ratio", "regime_trending"]
+    pipeline = Pipeline([("scaler", StandardScaler()), ("clf", SGDClassifier())])
+    gate = SkipGate(
+        model=model, scaler=scaler, feature_cols=feature_cols,
+        config=config, pipeline=pipeline,
+        metadata={
+            "version": version,
+            "n_samples": n_samples,
+            "trained_at": "2026-02-21T12:00:00",
+        },
+    )
+    return gate
+
+
+def _save_gate_to(gate: SkipGate, path: Path) -> None:
+    """SkipGate を指定パスに保存."""
+    gate.save(path)
+
+
+# =====================================================================
+# Hot-Reload テスト
+# =====================================================================
+
+class TestHotReload:
+    """126# SkipGateEvaluator hot-reload テスト."""
+
+    def _make_config(self, model_path: str) -> MagicMock:
+        """テスト用 FillTestConfig モック."""
+        cfg = MagicMock()
+        cfg.skip_gate_enabled = True
+        cfg.skip_gate_model_path = model_path
+        cfg.skip_gate_mode = "pnl"
+        cfg.skip_gate_as_threshold = 0.50
+        cfg.skip_gate_pnl_threshold = 0.0
+        cfg.skip_gate_max_skip_rate = 0.3
+        cfg.skip_gate_buy_enabled = True
+        cfg.skip_gate_sell_enabled = True
+        cfg.skip_gate_as_threshold_buy = 0.50
+        cfg.skip_gate_as_threshold_sell = 0.50
+        cfg.skip_gate_use_ob_features = False
+        cfg.skip_gate_adaptive_threshold = False
+        cfg.skip_gate_target_skip_rate_buy = 0.15
+        cfg.skip_gate_target_skip_rate_sell = 0.20
+        cfg.skip_gate_adaptive_window = 50
+        cfg.skip_gate_adaptive_min_samples = 20
+        cfg.skip_gate_adaptive_step = 0.05
+        cfg.skip_gate_adaptive_floor = 0.35
+        cfg.skip_gate_adaptive_ceiling = 0.80
+        cfg.skip_sell_unknown_regime = False
+        cfg.results_dir = "results/v460/fill_test"
+        return cfg
+
+    def test_initial_hash_stored(self) -> None:
+        """初期ロード時にモデルファイルのハッシュが保存される."""
+        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = Path(tmpdir) / "gate.pkl"
+            gate = _make_picklable_gate(version="v1")
+            _save_gate_to(gate, model_path)
+
+            cfg = self._make_config(str(model_path))
+            evaluator = SkipGateEvaluator(cfg, Path(tmpdir))
+
+            assert evaluator._model_file_hash != ""
+            assert len(evaluator._model_file_hash) == 64  # SHA256 hex
+
+    def test_no_reload_when_unchanged(self) -> None:
+        """ファイル未変更時はリロードしない."""
+        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = Path(tmpdir) / "gate.pkl"
+            gate = _make_picklable_gate(version="v1")
+            _save_gate_to(gate, model_path)
+
+            cfg = self._make_config(str(model_path))
+            evaluator = SkipGateEvaluator(cfg, Path(tmpdir))
+            original_gate = evaluator._skip_gate
+            original_hash = evaluator._model_file_hash
+
+            # 即座にチェックを強制 (interval を 0 に)
+            evaluator._last_reload_check = 0
+            evaluator._check_and_reload_model()
+
+            assert evaluator._skip_gate is original_gate
+            assert evaluator._model_file_hash == original_hash
+
+    def test_reload_on_file_change(self) -> None:
+        """ファイル変更時にリロードされる."""
+        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = Path(tmpdir) / "gate.pkl"
+            gate_v1 = _make_picklable_gate(version="v1", n_samples=100)
+            _save_gate_to(gate_v1, model_path)
+
+            cfg = self._make_config(str(model_path))
+            evaluator = SkipGateEvaluator(cfg, Path(tmpdir))
+            original_hash = evaluator._model_file_hash
+
+            # v2 で上書き
+            gate_v2 = _make_picklable_gate(version="v2", n_samples=200)
+            _save_gate_to(gate_v2, model_path)
+
+            # 強制チェック
+            evaluator._last_reload_check = 0
+            evaluator._check_and_reload_model()
+
+            assert evaluator._model_file_hash != original_hash
+            assert evaluator._skip_gate is not None
+            assert evaluator._skip_gate.metadata["version"] == "v2"  # type: ignore[union-attr]
+            assert evaluator._skip_gate.metadata["n_samples"] == 200  # type: ignore[union-attr]
+
+    def test_reload_failure_keeps_old_model(self) -> None:
+        """リロード失敗時は旧モデルを維持."""
+        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = Path(tmpdir) / "gate.pkl"
+            gate = _make_picklable_gate(version="v1")
+            _save_gate_to(gate, model_path)
+
+            cfg = self._make_config(str(model_path))
+            evaluator = SkipGateEvaluator(cfg, Path(tmpdir))
+            original_gate = evaluator._skip_gate
+            original_hash = evaluator._model_file_hash
+
+            # 不正なデータで上書き
+            model_path.write_bytes(b"corrupted data")
+
+            evaluator._last_reload_check = 0
+            evaluator._check_and_reload_model()
+
+            # 旧モデルが維持される
+            assert evaluator._skip_gate is original_gate
+            # ハッシュも旧のまま (更新失敗)
+            assert evaluator._model_file_hash == original_hash
+
+    def test_check_interval_respected(self) -> None:
+        """チェック間隔内ではファイル変更を検出しない."""
+        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = Path(tmpdir) / "gate.pkl"
+            gate = _make_picklable_gate(version="v1")
+            _save_gate_to(gate, model_path)
+
+            cfg = self._make_config(str(model_path))
+            evaluator = SkipGateEvaluator(cfg, Path(tmpdir))
+
+            # v2 で上書き
+            gate_v2 = _make_picklable_gate(version="v2")
+            _save_gate_to(gate_v2, model_path)
+
+            # last_reload_check を更新しない → interval 内
+            evaluator._check_and_reload_model()
+
+            # まだ v1 のまま
+            assert evaluator._skip_gate.metadata["version"] == "v1"  # type: ignore[union-attr]
+
+    def test_compute_file_hash(self) -> None:
+        """_compute_file_hash で SHA256 が正しく計算される."""
+        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            p = Path(tmpdir) / "test.bin"
+            p.write_bytes(b"hello world")
+            expected = hashlib.sha256(b"hello world").hexdigest()
+            assert SkipGateEvaluator._compute_file_hash(p) == expected
+
+    def test_compute_file_hash_missing_file(self) -> None:
+        """存在しないファイルのハッシュは空文字."""
+        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+        result = SkipGateEvaluator._compute_file_hash(Path("/nonexistent"))
+        assert result == ""
+
+
+# =====================================================================
+# Retrain Scheduler テスト
+# =====================================================================
+
+class TestRetrainConfig:
+    """126# retrain 設定ロードテスト."""
+
+    def test_default_config(self) -> None:
+        """デフォルト設定が正しく読み込まれる."""
+        from scripts.v460.ml.retrain_scheduler import load_retrain_config
+        cfg = load_retrain_config(Path("/nonexistent.yaml"))
+        assert cfg["interval_sec"] == 3600
+        assert cfg["min_new_samples"] == 30
+        assert cfg["target"] == "pnl120"
+        assert cfg["quality_gate_enabled"] is True
+
+    def test_yaml_override(self) -> None:
+        """YAML の retrain セクションがデフォルトを上書きする."""
+        from scripts.v460.ml.retrain_scheduler import load_retrain_config
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yaml_path = Path(tmpdir) / "test.yaml"
+            yaml_path.write_text(
+                "retrain:\n"
+                "  interval_sec: 7200\n"
+                "  min_new_samples: 50\n",
+                encoding="utf-8",
+            )
+            cfg = load_retrain_config(yaml_path)
+            assert cfg["interval_sec"] == 7200
+            assert cfg["min_new_samples"] == 50
+            # 未指定のキーはデフォルト
+            assert cfg["target"] == "pnl120"
+
+
+class TestBuildFullFeatures:
+    """126# _build_full_features テスト."""
+
+    def test_base_features_only(self) -> None:
+        """use_ob=False → base features のみ."""
+        from scripts.v460.ml.retrain_scheduler import _build_full_features
+        import pandas as pd
+
+        X_base = pd.DataFrame({
+            "side_buy": [1.0, 0.0],
+            "hour_sin": [0.5, -0.5],
+            "hour_cos": [0.866, 0.866],
+            "spread_jpy": [3000.0, 2500.0],
+            "offset_ratio": [0.05, 0.10],
+            "regime_trending": [1.0, 0.0],
+            "regime_ranging": [0.0, 1.0],
+            "regime_high_vol": [0.0, 0.0],
+            "trade_count_60s": [10.0, 5.0],
+            "buy_ratio": [0.6, 0.4],
+            "trade_flow_imbalance_60s": [0.2, -0.2],
+            "avg_trade_size": [0.1, 0.05],
+            "price_velocity_60s": [1.0, -1.0],
+            "vpin_60s": [0.3, 0.7],
+            "side_aligned_tfi": [0.2, 0.2],
+            "side_aligned_velocity": [1.0, 1.0],
+        })
+        enriched = pd.DataFrame({"side": ["buy", "sell"]}, index=X_base.index)
+
+        result = _build_full_features(enriched, X_base, use_ob=False)
+        assert result.shape[1] == 16  # base のみ
+
+    def test_full_features_with_ob(self) -> None:
+        """use_ob=True → base + OB features."""
+        from scripts.v460.ml.retrain_scheduler import _build_full_features
+        import pandas as pd
+
+        X_base = pd.DataFrame({
+            "side_buy": [1.0],
+            "hour_sin": [0.5],
+            "hour_cos": [0.866],
+            "spread_jpy": [3000.0],
+            "offset_ratio": [0.05],
+            "regime_trending": [1.0],
+            "regime_ranging": [0.0],
+            "regime_high_vol": [0.0],
+            "trade_count_60s": [10.0],
+            "buy_ratio": [0.6],
+            "trade_flow_imbalance_60s": [0.2],
+            "avg_trade_size": [0.1],
+            "price_velocity_60s": [1.0],
+            "vpin_60s": [0.3],
+            "side_aligned_tfi": [0.2],
+            "side_aligned_velocity": [1.0],
+        })
+        enriched = pd.DataFrame({
+            "side": ["buy"],
+            "spread_bps_ob": [30.0],
+            "depth_imbalance_ob": [0.5],
+        }, index=X_base.index)
+
+        result = _build_full_features(enriched, X_base, use_ob=True)
+        assert result.shape[1] == 19  # base + OB(3)
+        assert "spread_bps_ob" in result.columns
+        assert "depth_imbalance_ob" in result.columns
+        assert "side_aligned_imbalance" in result.columns
+
+
+class TestRetrainModel:
+    """126# retrain_model() テスト."""
+
+    def test_skip_when_no_fill_records(self) -> None:
+        """fill_records が存在しない場合スキップ."""
+        from scripts.v460.ml.retrain_scheduler import retrain_model, _DEFAULT_CONFIG
+
+        cfg = dict(_DEFAULT_CONFIG)
+        cfg["results_dir"] = "/nonexistent_dir_12345"
+        result = retrain_model(cfg)
+        assert result["status"] == "skipped"
+        assert "no fill_records" in result["reason"]
+
+    def test_skip_when_insufficient_samples(self) -> None:
+        """サンプル不足時はスキップ."""
+        from scripts.v460.ml.retrain_scheduler import retrain_model, _DEFAULT_CONFIG
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # 少数の fill records を作成
+            records_dir = Path(tmpdir)
+            records = []
+            for i in range(5):
+                records.append(json.dumps({
+                    "cycle_id": f"test_{i}",
+                    "side": "buy",
+                    "filled": True,
+                    "timestamp": 1771502400.0 + i * 120,
+                    "spread_at_order": 3000.0,
+                    "spread_offset_ratio": 0.05,
+                    "adverse_selected_raw": i % 2,
+                    "post_fill_120s_pnl": 0.5 * (i - 2),
+                }))
+            (records_dir / "fill_records_20260220.jsonl").write_text(
+                "\n".join(records), encoding="utf-8",
+            )
+
+            cfg = dict(_DEFAULT_CONFIG)
+            cfg["results_dir"] = str(records_dir)
+            cfg["min_total_samples"] = 100  # 5 < 100
+            result = retrain_model(cfg)
+            assert result["status"] == "skipped"
+
+    def test_skip_when_insufficient_new_samples(self) -> None:
+        """新規サンプル不足時はスキップ."""
+        from scripts.v460.ml.retrain_scheduler import retrain_model, _DEFAULT_CONFIG
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # 十分な fill records を作成
+            records_dir = Path(tmpdir) / "results"
+            records_dir.mkdir()
+            model_dir = Path(tmpdir) / "models"
+            model_dir.mkdir()
+
+            records = []
+            for i in range(150):
+                records.append(json.dumps({
+                    "cycle_id": f"test_{i}",
+                    "side": "buy" if i % 2 == 0 else "sell",
+                    "filled": True,
+                    "timestamp": 1771502400.0 + i * 120,
+                    "spread_at_order": 3000.0,
+                    "spread_offset_ratio": 0.05,
+                    "adverse_selected_raw": i % 3,
+                    "post_fill_30s_pnl": 0.5 * (i - 75),
+                    "post_fill_120s_pnl": 0.8 * (i - 75),
+                    "regime": "ranging",
+                }))
+            (records_dir / "fill_records_20260220.jsonl").write_text(
+                "\n".join(records), encoding="utf-8",
+            )
+
+            # 既存モデルを配置 (n_samples=150 → 新規 0 件)
+            model_path = model_dir / "gate.pkl"
+            gate = _make_picklable_gate(n_samples=150)
+            _save_gate_to(gate, model_path)
+
+            cfg = dict(_DEFAULT_CONFIG)
+            cfg["results_dir"] = str(records_dir)
+            cfg["model_path"] = str(model_path)
+            cfg["min_new_samples"] = 30
+            cfg["min_total_samples"] = 10
+            result = retrain_model(cfg)
+            assert result["status"] == "skipped"
+            assert "insufficient new samples" in result.get("reason", "")
