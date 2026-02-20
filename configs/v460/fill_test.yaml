@@ -89,14 +89,14 @@ time_filter:
   #   UTC16 (JST01): -3.60 bps n=7  | UTC18 (JST03): -3.24 bps n=8
   #   UTC21 (JST06): -2.19 bps n=13
   # 096# UTC08 追加: -3.81bps n=15 は統計的に確実な悪時間帯
-  skip_utc_hours_buy: [1, 2, 8, 12, 16, 18, 21]
+  skip_utc_hours_buy: [8, 16, 18]                   # 121# A1: 7h→3h (mean≤-3.0bps のみ残留: UTC08=-3.81, UTC16=-3.60, UTC18=-3.24)
   # 089# sell: mean ≤ -2.0 bps & n ≥ 5 のみ残す (旧 16h → 6h)
   #   UTC04 (JST13): -5.56 bps n=7  | UTC08 (JST17): -6.72 bps n=8
   #   UTC13 (JST22): -1.91 bps n=14 | UTC14 (JST23): -4.62 bps n=8
   #   UTC16 (JST01): -2.13 bps n=8
   # 107# UTC17 解除: 実測 +0.65 bps (n=8) → 誤遮断。Phase 3 段階的廃止の第一歩
   # 107# UTC13 残留: -1.91 bps は閾値 -2.0 未満だが AS% 28.6% & n=14 で統計的に有意
-  skip_utc_hours_sell: [4, 8, 13, 14, 16]
+  skip_utc_hours_sell: [8, 14, 16]                   # 121# A1: 5h→3h (mean≤-3.0bps のみ残留: UTC08=-6.72, UTC14=-4.62, UTC16=-2.13)
   # 110# 086# デッドロック修正: alt_side==_last_side 時の連続待機上限
   # 0=旧動作(無制限), >0 で N 回超過後 alt_side を許可
   # 3回 × 120s = 6分待機後に解除 → 理論上 49%→~8% のアイドル削減
@@ -110,7 +110,7 @@ e3:
 # buy は共通値 (0.05) を継承、sell のみ保守化
 side_offset:
   # buy: 0.05                  # buy 側は共通値で十分 (PnL -0.10bps)
-  sell: 0.14                   # 105#: 0.12→0.14 (sell PnL -0.85bps → AS% 25.8% 対策、sell側保守化強化)
+  sell: 0.18                   # 121# A2: 0.14→0.18 (sell PnL -0.632bps対策, AS -3~5pt期待, fill_rate 8.3ptマージン内)
 
 # ---- 049# 即約定防御 ----
 fast_fill_defense:
@@ -175,7 +175,7 @@ early_exit:
 #   分布に合わせて narrow=P75(3.0), wide=P95(4.5) で再設計
 spread_adaptive:
   enabled: true                # スプレッド幅に応じた offset 動的調整
-  narrow_spread_bps: 2.0       # 120# 10.0→2.0: P35相当。median(2.43)未満のみ narrow boost
+  narrow_spread_bps: 2.5       # 121# A3: 2.0→2.5 P50近辺に引上げ→postonly_reject -20~30%削減 (168h 65件→~45件)
   narrow_spread_boost: 2.0     # 狭スプレッド時の offset 倍率 (共通フォールバック)
   narrow_spread_boost_buy: 1.5 # 093# buy 側: 084# Tier2 #4 — 0.05→0.075 に軽減して fill 促進
   narrow_spread_boost_sell: 2.0 # 093# sell 側: offset 増加の限界効果低い→据え置き (084#: AS 構造的要因)

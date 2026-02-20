@@ -585,7 +585,7 @@ class TestTimeFilterNoRecord:
             assert tf.is_filtered() is False
 
     def test_yaml_side_specific_time_filter(self) -> None:
-        """089# YAML side 別 time_filter (大幅削減後)."""
+        """121# A1 YAML side 別 time_filter (段階的緩和後)."""
         from pathlib import Path
         import yaml  # type: ignore[import-untyped]
 
@@ -595,16 +595,15 @@ class TestTimeFilterNoRecord:
         tf = cfg["time_filter"]
         assert "skip_utc_hours_buy" in tf
         assert "skip_utc_hours_sell" in tf
-        # 096# buy ブロック (7h): UTC 1, 2, 8, 12, 16, 18, 21 (UTC8=JST17: -3.81bps n=15 追加)
-        assert set(tf["skip_utc_hours_buy"]) == {1, 2, 8, 12, 16, 18, 21}
-        # 107# で UTC17 解除 (+0.65 bps を誤遮断していた)
-        # 089# → 107#: sell ブロック (5h): UTC 4, 8, 13, 14, 16
-        assert set(tf["skip_utc_hours_sell"]) == {4, 8, 13, 14, 16}
-        # sell は UTC4 をブロック (sell PnL -5.558)
-        assert 4 in tf["skip_utc_hours_sell"]
-        # buy UTC04 は 089# でアンブロック
+        # 121# A1: buy ブロック 7h→3h (mean ≤ -3.0bps のみ残留)
+        assert set(tf["skip_utc_hours_buy"]) == {8, 16, 18}
+        # 121# A1: sell ブロック 5h→3h (mean ≤ -3.0bps のみ残留)
+        assert set(tf["skip_utc_hours_sell"]) == {8, 14, 16}
+        # 121# A1: sell UTC4 は n=7 で統計的に不確実 → 解除
+        assert 4 not in tf["skip_utc_hours_sell"]
+        # buy UTC04 は 089# でアンブロック (そのまま維持)
         assert 4 not in tf["skip_utc_hours_buy"]
-        # sell UTC01 は 089# でアンブロック
+        # sell UTC01 は 089# でアンブロック (そのまま維持)
         assert 1 not in tf["skip_utc_hours_sell"]
 
 

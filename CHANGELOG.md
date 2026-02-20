@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 124.1# Track A/B/D 実行 — パラメータ適用 + SG再訓練(不採用) + Regime永続化
+
+- **Track A (YAML パラメータ変更)**: 全4項目適用済
+  - A1: `skip_utc_hours_buy` 7h→3h, `skip_utc_hours_sell` 5h→3h (time_filter 緩和)
+  - A2: `side_offset.sell` 0.14→0.18 (sell AS 抑制)
+  - A3: `narrow_spread_bps` 2.0→2.5 (postonly_reject 抑制)
+- **Track A4 (regime state persistence)**: 実装済
+  - `FillTestState` に regime 4 フィールド追加 (confirmed, stability, prices, raw_history)
+  - `FillTestRegimeDetector` に `get_state()` / `restore_state()` メソッド追加
+  - `run_fill_test.py` の両 `_state_persistence.save()` で regime 状態保存
+  - 再起動時に `restore_state()` → 失敗時のみ旧 warm-up にフォールバック
+- **Track B (SG 再訓練)**: 7 実験実行、**全てデプロイ見送り**
+  - B1 baseline (AUC=0.5293), B2 regime (0.5271), B2b (0.5297)
+  - B3 buy-only (0.5281), sell-only (0.5093)
+  - D2 with-OB (0.5224), D2b (0.5208)
+  - 全実験で逆選別 (Skip20% 負)。AUC は 097# の 0.442→0.53 に改善も deploy 基準未達
+  - 現行 `skip_gate_as.pkl` 据置、`sell_enabled: false` 継続
+- **Track D (OB 特徴量評価)**: OB は LR ベース SG では効果限定的
+- **テスト**: 950 passed (945 既存 + 5 新規 A4 テスト)
+- **121# ドキュメント更新**: §13 (実行結果) 追加、Appendix B/C ステータス更新
+
 ### 120# God Object 分割 Phase 2 — 型安全・メモリリーク修正・KillSwitch 統合
 
 - **run_fill_test.py**: 2701→1912 行 (-789 行, -29.2% / 119# からの累積: 3411→1912, -43.9%)

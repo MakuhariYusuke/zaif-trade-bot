@@ -179,6 +179,11 @@ class FillTestState:
     base_offset_ratio: float = 0.0010
     base_offset_ratio_buy: Optional[float] = None
     base_offset_ratio_sell: Optional[float] = None
+    # 121# A4: regime state persistence — 再起動時 warm-up 不要化
+    regime_confirmed: str = "unknown"  # FillTestRegime.value
+    regime_stability: int = 0
+    regime_prices: Optional[list[list[float]]] = None  # [[ts, price], ...]
+    regime_raw_history: Optional[list[str]] = None  # [regime_value, ...]
     # タイムスタンプ
     saved_at: float = 0.0
     saved_at_iso: str = ""

@@ -382,8 +382,8 @@ class Test054SpreadAdaptiveConfig:
         cfg = load_fill_test_config()
         assert "spread_adaptive" in cfg
         assert cfg["spread_adaptive"]["enabled"] is True
-        # 120# A1: 実データ分布に基づき閾値切り下げ (10→2.0)
-        assert cfg["spread_adaptive"]["narrow_spread_bps"] == 2.0
+        # 121# A3: postonly_reject 抑制のため P50 近辺に引き上げ (2.0→2.5)
+        assert cfg["spread_adaptive"]["narrow_spread_bps"] == 2.5
 
     def test_from_yaml_spread_adaptive(self) -> None:
         """Spread Adaptive config が正しくマッピングされる."""

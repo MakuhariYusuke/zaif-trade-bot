@@ -1,7 +1,7 @@
 # 121# モデル差し替え・次期改善計画
 
 **Date**: 2026-02-20
-**Session**: 124.1#
+**Session**: 124.1# (Track A/B/D 実行: 124.1#)
 **Phase**: ph2 (G1.1-exec) → ph3 (G2-train) 移行準備
 **前提**: 168h Gate 判定完了 — G1.2-full **WATCH** (全 12 チェック PASS)
 
@@ -48,6 +48,12 @@
 - [§12 意思決定フロー](#12-意思決定フロー)
 - [Appendix A: 168h 判定 JSON 主要値](#appendix-a-168h-判定-json-主要値)
 - [Appendix B: YAML パラメータ変更チェックリスト](#appendix-b-yaml-パラメータ変更チェックリスト)
+- [§13 Track A/B/D 実行結果 (124.1#)](#13-track-abd-実行結果)
+  - [§13.1 Track A パラメータ変更 — 適用済](#131-track-a-パラメータ変更)
+  - [§13.2 Track A4 Regime State Persistence — 実装済](#132-track-a4-regime-state-persistence)
+  - [§13.3 Track B SkipGate 再訓練 — デプロイ見送り](#133-track-b-skipgate-再訓練)
+  - [§13.4 Track D OB 特徴量評価 — 効果限定的](#134-track-d-ob-特徴量評価)
+  - [§13.5 総合判断と次のアクション](#135-総合判断と次のアクション)
 - [Appendix C: 全先送り項目一覧](#appendix-c-全先送り項目一覧)
 
 ---
@@ -152,22 +158,24 @@ postonly_reject (18.9%) は narrow spread 時の構造的問題 (118# §8.2)。
 ### §2.3 現行パラメータ構成 (fill_test.yaml)
 
 ```yaml
-# 主要パラメータ抜粋
+# 主要パラメータ抜粋 (124.1# Track A 適用後)
 cycle_interval_sec: 120.0
 order_timeout_sec: 90.0
 spread_offset_ratio: 0.05
-side_offset.sell: 0.14
+side_offset.sell: 0.18                                       # ← A2: 0.14→0.18
 skip_gate.buy_enabled: true
-skip_gate.sell_enabled: false      # 118# A3: sell 逆選別対策で無効化
+skip_gate.sell_enabled: false      # 118# A3: sell 逆選別対策で無効化 (B3 結果で継続)
 skip_gate.as_threshold_buy: 0.50
 skip_gate.target_skip_rate_buy: 0.15
 skip_gate.target_skip_rate_sell: 0.25
-skip_gate.model_path: models/v460/skip_gate_as.pkl
-spread_adaptive.narrow_spread_bps: 2.0
+skip_gate.model_path: models/v460/skip_gate_as.pkl           # ← B1-B3 で v2 不採用、据置
+spread_adaptive.narrow_spread_bps: 2.5                       # ← A3: 2.0→2.5
 volatility_guard.vpin_threshold: 0.70
-time_filter.skip_utc_hours_buy: [1, 2, 8, 12, 16, 18, 21]   # 7時間
-time_filter.skip_utc_hours_sell: [4, 8, 13, 14, 16]          # 5時間
+time_filter.skip_utc_hours_buy: [8, 16, 18]                  # ← A1: 7h→3h
+time_filter.skip_utc_hours_sell: [8, 14, 16]                 # ← A1: 5h→3h
 regime.window: 20
+adaptation.enabled: false                                    # ← 122# R2
+min_spread_jpy: 1500                                         # ← 122# R6
 ```
 
 ---
@@ -1005,6 +1013,93 @@ G1.2-full 再判定
 
 ---
 
+## §13 Track A/B/D 実行結果 (124.1#)
+
+124.1# セッションで Track A (パラメータ), Track B (SG再訓練), Track D (OB評価) を一括実行した。  
+テスト: **950 passed** (945 既存 + 5 新規 A4 テスト)。
+
+### §13.1 Track A パラメータ変更 — 適用済 ✅
+
+| 項目 | Before | After | ステータス |
+|------|--------|-------|----------|
+| A1: skip_utc_hours_buy | [1,2,8,12,16,18,21] (7h) | [8,16,18] (3h) | ✅ YAML 適用済 |
+| A1: skip_utc_hours_sell | [4,8,13,14,16] (5h) | [8,14,16] (3h) | ✅ YAML 適用済 |
+| A2: side_offset.sell | 0.14 | 0.18 | ✅ YAML 適用済 |
+| A3: narrow_spread_bps | 2.0 | 2.5 | ✅ YAML 適用済 |
+| A4b: min_spread_jpy | 0.0 | 1500 | ✅ 前回コミット済 |
+| R2: adaptation.enabled | true | false | ✅ 前回コミット済 |
+
+### §13.2 Track A4 Regime State Persistence — 実装済 ✅
+
+`FillTestState` dataclass に 4 フィールド追加:
+- `regime_confirmed: str` — 確定レジーム名
+- `regime_stability: int` — 安定性カウンタ
+- `regime_prices: Optional[list[list[float]]]` — 価格ウィンドウ
+- `regime_raw_history: Optional[list[str]]` — raw 判定履歴
+
+`FillTestRegimeDetector` に `get_state()` / `restore_state()` メソッド追加。  
+`run_fill_test.py` の両 `_state_persistence.save()` 呼び出しで regime 状態を保存。  
+再起動時に `restore_state()` → 失敗時のみ旧 warm-up にフォールバック。
+
+**期待効果**: unknown regime の 20 cycle warm-up 解消 → PnL +0.05〜0.10bps。
+
+### §13.3 Track B SkipGate 再訓練 — デプロイ見送り ❌
+
+`scripts/v460/ml/train_sg_v2.py` で 7 実験を Walk-Forward 評価:
+
+| 実験 | k | AUC | Skip20% (bps) | Reverse? | Deploy? |
+|------|---|-----|---------------|----------|--------|
+| B1_baseline_k10 | 10 | 0.5293 | -0.066 | YES | ❌ |
+| B2_regime_k12 | 12 | 0.5271 | -0.097 | YES | ❌ |
+| B2b_regime_k14 | 14 | 0.5297 | -0.117 | YES | ❌ |
+| B3_buy_only_k10 | 10 | 0.5281 | -0.082 | YES | ❌ |
+| B3_sell_only_k10 | 10 | 0.5093 | -0.223 | YES | ❌ |
+| D2_with_ob_k12 | 12 | 0.5224 | -0.091 | YES | ❌ |
+| D2b_with_ob_k14 | 14 | 0.5208 | -0.089 | YES | ❌ |
+
+**デプロイ基準** (§5.6): AUC > 0.55 AND Skip20% > +0.3bps AND 逆選別なし → **全実験で未達**。
+
+**主要知見**:
+1. AUC は 097# の 0.442 → ~0.53 に改善 (サンプル増加で SNR 向上)
+2. しかし**全実験が逆選別** (Skip20% 負 = スキップ対象の方が PnL が良い)
+3. Regime 特徴量 (B2): AUC 改善なし。Regime 情報は LR には効かない
+4. Buy/Sell 分割 (B3): sell_only が最悪 (AUC=0.5093)。sell 側の根本的困難を再確認
+5. OB 特徴量 (D2): マッチ率 69% で十分だが AUC/Skip20% 改善なし
+
+**決定**: 現行 `skip_gate_as.pkl` を**据置**。v2 モデルはデプロイしない。  
+`skip_gate.sell_enabled: false` も継続 (B3 結果から、sell 側は救えない)。
+
+**レポート**: `reports/v460/ml_121/sg_v2_comparison.json`, `sg_v2_wf_details.json`
+
+### §13.4 Track D OB 特徴量評価 — 効果限定的 ⚠️
+
+D2 実験で OB 特徴量 (`spread_bps_ob`, `depth_imbalance_ob`, `side_aligned_imbalance`) を
+`feature_enricher.py` の `_find_nearest_ob()` で fill record に事後付与し評価。
+
+- OB マッチ率: ~69% (raw OB 70,522 件、5 秒 tolerance)
+- AUC: 0.5224 (baseline 0.5293 より **劣化**)
+- Skip20%: -0.091bps (改善なし)
+
+**結論**: 板情報は LR ベースの SkipGate では有効活用できない。  
+**ただし D1 (OB 記録常時有効化) は前回コミット済** → 今後のデータ蓄積は継続。  
+ph3 SAC の observation space に組み込む際に真価を発揮する可能性は残る。
+
+### §13.5 総合判断と次のアクション
+
+| 項目 | 結果 | 次のアクション |
+|------|------|---------------|
+| Track A (param) | ✅ 全適用 | fill_test 再起動で即時反映 |
+| Track A4 (regime) | ✅ 実装済 | fill_test 再起動で即時反映 |
+| Track B (SG) | ❌ 全て逆選別 | 現行モデル据置。§8.2 B8 ルールベース代替を将来検討 |
+| Track D (OB) | ⚠️ 効果限定 | D1 記録は継続。LR→SAC で再評価 |
+
+**§12 意思決定フローへの反映**:
+- SG デプロイ判定 → **FAIL** → ルールベース代替 (§8.2 B8) を将来オプションとして保持
+- fill_test 再起動 → Track A パラメータのみで再起動 (SG モデル据置)
+- 168h 再測定 → Track A の効果のみを測定 (因果分離: 122# R9 遵守)
+
+---
+
 ## Appendix A: 168h 判定 JSON 主要値
 
 ```json
@@ -1032,18 +1127,18 @@ G1.2-full 再判定
 
 Track A+B+D デプロイ時に変更する fill_test.yaml の項目一覧:
 
-| パラメータ | 現行値 | 変更後 | Track | 備考 |
-|-----------|--------|--------|-------|------|
-| `adaptation.enabled` | true | **false** | **P0** | **122# R2: 因果分離のため無効化必須** |
-| `time_filter.skip_utc_hours_buy` | [1,2,8,12,16,18,21] | [8,16,18] | A1 | 7h→3h |
-| `time_filter.skip_utc_hours_sell` | [4,8,13,14,16] | [8,14,16] | A1 | 5h→3h |
-| `side_offset.sell` | 0.14 | 0.18 | A2 | sell AS 抑制 |
-| `spread_adaptive.narrow_spread_bps` | 2.0 | 2.5 | A3 | postonly_reject 抑制 |
-| `min_spread_jpy` | 0.0 | **1500** | A4b | **122# R6: 既存パラメータ活用** |
-| `skip_gate.model_path` | skip_gate_as.pkl | skip_gate_as_v2.pkl | B1-B3 | 再訓練モデル |
-| `skip_gate.sell_enabled` | false | (判定次第) | B3 | 逆選別解消なら true |
-| (OB 記録常時有効化) | imbalance_enabled 依存 | 常時記録 | D1 | コード変更 (§7.3 方法2) |
-| (regime state persistence) | — | コード変更 | A4 | StatePersistence 拡張 |
+| パラメータ | 現行値 | 変更後 | Track | 備考 | 124.1# |
+|-----------|--------|--------|-------|------|--------|
+| `adaptation.enabled` | true | **false** | **P0** | **122# R2: 因果分離のため無効化必須** | ✅ 済 |
+| `time_filter.skip_utc_hours_buy` | [1,2,8,12,16,18,21] | [8,16,18] | A1 | 7h→3h | ✅ 済 |
+| `time_filter.skip_utc_hours_sell` | [4,8,13,14,16] | [8,14,16] | A1 | 5h→3h | ✅ 済 |
+| `side_offset.sell` | 0.14 | 0.18 | A2 | sell AS 抑制 | ✅ 済 |
+| `spread_adaptive.narrow_spread_bps` | 2.0 | 2.5 | A3 | postonly_reject 抑制 | ✅ 済 |
+| `min_spread_jpy` | 0.0 | **1500** | A4b | **122# R6: 既存パラメータ活用** | ✅ 済 |
+| `skip_gate.model_path` | skip_gate_as.pkl | ~~skip_gate_as_v2.pkl~~ | B1-B3 | **デプロイ見送り (§13.3)** | ❌ 据置 |
+| `skip_gate.sell_enabled` | false | ~~(判定次第)~~ | B3 | **逆選別未解消→false 継続 (§13.3)** | ❌ 据置 |
+| (OB 記録常時有効化) | imbalance_enabled 依存 | 常時記録 | D1 | コード変更 (§7.3 方法2) | ✅ 済 |
+| (regime state persistence) | — | コード変更 | A4 | StatePersistence 拡張 | ✅ 済 |
 
 **変更手順**:
 1. fill_test 停止
@@ -1062,16 +1157,16 @@ Track A+B+D デプロイ時に変更する fill_test.yaml の項目一覧:
 
 | 118# ID | 項目 | 本書での配置 | ステータス |
 |---------|------|------------|----------|
-| B10 | sell offset 引き上げ | §4.2 Track A | ⏳ 計画済 |
-| D1 | データ 500 蓄積で再訓練 | §5 Track B | ⏳ 759 filled 達成→実行可 |
-| D6 | SkipGate 抜本見直し | §5 Track B + §7 Track D | ⏳ 計画済 |
-| D7 | sell 専用 SkipGate モデル | §5.4 Track B | ⏳ 計画済 |
-| A5 | time_filter Phase 3 Step 1 | §4.1 Track A | ⏳ 計画済 |
+| B10 | sell offset 引き上げ | §4.2 Track A | ✅ 0.14→0.18 適用済 (124.1#) |
+| D1 | データ 500 蓄積で再訓練 | §5 Track B | ❌ 実行済・**デプロイ見送り** (§13.3) |
+| D6 | SkipGate 抜本見直し | §5 Track B + §7 Track D | ❌ 全実験逆選別 (§13.3) |
+| D7 | sell 専用 SkipGate モデル | §5.4 Track B | ❌ AUC=0.5093, 最悪 (§13.3) |
+| A5 | time_filter Phase 3 Step 1 | §4.1 Track A | ✅ 7h→3h / 5h→3h 適用済 (124.1#) |
 | C5 | v458 WF バグ 6 件 | §6.2 + §8.1 | ❌ 未着手 |
 | C8 | ph3 Stop 条件明文化 | §8.1 A-SC | ❌ 未着手 |
 | E9 | 運用失敗モードテスト | §8.1 A-FM | ⚠️ 実装済・テスト未実施 |
-| — | OB 記録常時有効化 | §7.3 Track D (新規) | ❌ 未着手 |
-| — | minimum_spread_guard | §8.2 B7 (新規) | ❌ 未着手 |
+| — | OB 記録常時有効化 | §7.3 Track D (新規) | ✅ 前回コミット済 (122# E12) |
+| — | minimum_spread_guard | §8.2 B7 (新規) | ✅ 1500 JPY 適用済 (122# R6) |
 | — | Oracle テスト | §6.3 + §8.1 A-OT | ❌ 未着手 |
 
 ---
@@ -1079,4 +1174,5 @@ Track A+B+D デプロイ時に変更する fill_test.yaml の項目一覧:
 *本ドキュメントは 000# (プロジェクト提案)、118# (バックログ深層分析)、及び*
 *070#-072# (OB 特徴量経緯)、097#-098# (SkipGate 再訓練)、119# (161h 分析) に基づき、*
 *168h Gate 判定結果を踏まえて作成。*
+*124.1# で Track A/B/D 実行結果 (§13) を追記。*
 *次回 fill_test の結果に応じて §12 の意思決定フローに従い更新する。*

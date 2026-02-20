@@ -137,6 +137,80 @@ class TestStatePersistence:
             # tmp ファイルが残っていないことを確認
             assert not (Path(tmp) / "fill_test_state.tmp").exists()
 
+    def test_regime_state_save_and_load(self) -> None:
+        """121# A4: regime state がシリアライズ/デシリアライズされる."""
+        from scripts.v460.lib.resilience import FillTestStatePersistence, FillTestState
+
+        with tempfile.TemporaryDirectory() as tmp:
+            sp = FillTestStatePersistence(Path(tmp))
+            state = FillTestState(
+                run_id="regime_test",
+                cycle_count=100,
+                regime_confirmed="ranging",
+                regime_stability=5,
+                regime_prices=[[1000.0, 14500000.0], [1120.0, 14510000.0]],
+                regime_raw_history=["ranging", "ranging", "ranging"],
+            )
+            sp.save(state)
+            loaded = sp.load()
+            assert loaded is not None
+            assert loaded.regime_confirmed == "ranging"
+            assert loaded.regime_stability == 5
+            assert loaded.regime_prices == [[1000.0, 14500000.0], [1120.0, 14510000.0]]
+            assert loaded.regime_raw_history == ["ranging", "ranging", "ranging"]
+
+    def test_regime_state_backward_compatible(self) -> None:
+        """121# A4: regime フィールドなしの旧 JSON からも load できる."""
+        from scripts.v460.lib.resilience import FillTestStatePersistence
+
+        with tempfile.TemporaryDirectory() as tmp:
+            sp = FillTestStatePersistence(Path(tmp))
+            # 旧形式 (regime フィールドなし)
+            old_json = json.dumps({"run_id": "old", "cycle_count": 50, "saved_at": 1.0})
+            (Path(tmp) / "fill_test_state.json").write_text(old_json, encoding="utf-8")
+            loaded = sp.load()
+            assert loaded is not None
+            assert loaded.run_id == "old"
+            assert loaded.regime_confirmed == "unknown"  # デフォルト
+            assert loaded.regime_prices is None
+
+
+class TestRegimeDetectorPersistence:
+    """121# A4: FillTestRegimeDetector の get_state/restore_state テスト."""
+
+    def test_get_state_returns_dict(self) -> None:
+        from scripts.v460.lib.regime_detector import FillTestRegimeDetector
+
+        det = FillTestRegimeDetector()
+        state = det.get_state()
+        assert state["confirmed"] == "unknown"
+        assert state["stability"] == 0
+        assert state["prices"] == []
+        assert state["raw_history"] == []
+
+    def test_restore_state_roundtrip(self) -> None:
+        from scripts.v460.lib.regime_detector import FillTestRegimeDetector
+
+        det = FillTestRegimeDetector()
+        # 20 回 update してレジームを確定させる
+        base_price = 14_500_000.0
+        for i in range(25):
+            det.update(1000.0 + i * 120, base_price + i * 100)
+        saved = det.get_state()
+        assert saved["confirmed"] != "unknown" or len(saved["prices"]) >= 20
+
+        # 新インスタンスに復元
+        det2 = FillTestRegimeDetector()
+        assert det2.restore_state(saved)
+        assert det2.current_regime.value == saved["confirmed"]
+        assert det2.observation_count == len(saved["prices"])
+
+    def test_restore_state_invalid_returns_false(self) -> None:
+        from scripts.v460.lib.regime_detector import FillTestRegimeDetector
+
+        det = FillTestRegimeDetector()
+        assert not det.restore_state({"confirmed": "INVALID_VALUE"})
+
 
 # =====================================================================
 # B. R1 run_single_cycle 分割 — 構造テスト

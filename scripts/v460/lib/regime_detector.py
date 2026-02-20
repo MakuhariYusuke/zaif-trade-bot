@@ -257,3 +257,46 @@ class FillTestRegimeDetector:
         self._raw_history.clear()
         self._confirmed_regime = FillTestRegime.UNKNOWN
         self._stability_count = 0
+
+    # --- 121# A4: state persistence support ---
+
+    def get_state(self) -> dict:
+        """永続化用の状態辞書を返す.
+
+        FillTestStatePersistence に保存して再起動時の warm-up を省略.
+        """
+        return {
+            "confirmed": self._confirmed_regime.value,
+            "stability": self._stability_count,
+            "prices": list(self._prices),  # [(ts, price), ...]
+            "raw_history": [r.value for r in self._raw_history],
+        }
+
+    def restore_state(self, state: dict) -> bool:
+        """永続化された状態から復元. 成功時 True.
+
+        Args:
+            state: get_state() で保存した辞書.
+
+        Returns:
+            復元に成功した場合 True.
+        """
+        try:
+            confirmed_val = state.get("confirmed", "unknown")
+            self._confirmed_regime = FillTestRegime(confirmed_val)
+            self._stability_count = int(state.get("stability", 0))
+
+            prices = state.get("prices", [])
+            self._prices = [(float(p[0]), float(p[1])) for p in prices]
+
+            raw_history = state.get("raw_history", [])
+            self._raw_history = [FillTestRegime(v) for v in raw_history]
+
+            logger.info(
+                f"[Regime] state restored: regime={self._confirmed_regime.value}, "
+                f"stability={self._stability_count}, prices={len(self._prices)}"
+            )
+            return True
+        except (ValueError, KeyError, IndexError, TypeError) as e:
+            logger.warning(f"[Regime] state restore failed: {e}")
+            return False

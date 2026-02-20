@@ -235,6 +235,18 @@ class FillTestRunner:
     def _current_lot(self, value: float) -> None:
         self._balance_checker.current_lot = value
 
+    def _get_regime_state_fields(self) -> dict:
+        """121# A4: regime state persistence — FillTestState に渡す regime 関連フィールド."""
+        if self._regime_detector is None:
+            return {}
+        st = self._regime_detector.get_state()
+        return {
+            "regime_confirmed": st["confirmed"],
+            "regime_stability": st["stability"],
+            "regime_prices": st["prices"],
+            "regime_raw_history": st["raw_history"],
+        }
+
     # 121# _last_side プロパティ: SideSelector に委譲 (後方互換)
     @property
     def _last_side(self) -> str | None:
@@ -901,7 +913,20 @@ class FillTestRunner:
         # 101# P1-5: regime detector warm-up — 既存レコードの mid price で初期化
         # window=20 に対して再起動後 20 サイクルは判定不安定になるため、
         # レジューム時の既存レコード (直近 window*3 件) で事前投入する。
-        if self._regime_detector is not None and existing_records:
+        # 121# A4: StatePersistence から regime state を優先復元 (warm-up より正確)
+        regime_restored = False
+        if self._regime_detector is not None:
+            saved_state = self._state_persistence.load()
+            if saved_state is not None and saved_state.regime_prices:
+                regime_restored = self._regime_detector.restore_state({
+                    "confirmed": saved_state.regime_confirmed,
+                    "stability": saved_state.regime_stability,
+                    "prices": saved_state.regime_prices,
+                    "raw_history": saved_state.regime_raw_history or [],
+                })
+
+        if self._regime_detector is not None and existing_records and not regime_restored:
+            # fallback: 旧方式の warm-up (state 復元失敗時)
             filled_with_mid = [
                 r for r in existing_records
                 if r.filled and r.mid_at_fill is not None
@@ -914,7 +939,7 @@ class FillTestRunner:
                 self._regime_detector.update(r.timestamp, r.mid_at_fill)
             if warmup_records:
                 logger.info(
-                    f"[regime] warm-up: fed {len(warmup_records)} records, "
+                    f"[regime] warm-up (fallback): fed {len(warmup_records)} records, "
                     f"regime={self._regime_detector.current_regime.value}"
                 )
 
@@ -1205,6 +1230,7 @@ class FillTestRunner:
                     base_offset_ratio=self._maker_price.base_offset_ratio,
                     base_offset_ratio_buy=self._maker_price.base_offset_ratio_buy,
                     base_offset_ratio_sell=self._maker_price.base_offset_ratio_sell,
+                    **self._get_regime_state_fields(),
                 ))
 
             # --- 044# A-7: loss_cap 定期更新 (残高変動を反映) ---
@@ -1262,6 +1288,7 @@ class FillTestRunner:
             base_offset_ratio=self._maker_price.base_offset_ratio,
             base_offset_ratio_buy=self._maker_price.base_offset_ratio_buy,
             base_offset_ratio_sell=self._maker_price.base_offset_ratio_sell,
+            **self._get_regime_state_fields(),
         ))
 
         logger.info(
