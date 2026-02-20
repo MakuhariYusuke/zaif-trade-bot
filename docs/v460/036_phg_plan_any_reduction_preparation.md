@@ -697,6 +697,23 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 7. 回帰確認: `py_compile`（`state_persistence.py` + production 13ファイル）通過。  
 8. 在庫更新: 今回は重複削減が主目的であり `Any` 量は据え置き。repo 全体 `any_type_debt_tokens=2,664`（変化なし）。  
 
+### Step63: `signal/training` への state helper 水平展開 + metrics 不具合修正
+
+1. 汎用 helper `ztb/io/state_persistence.py` を追加し、`write_state_payload()` / `read_state_payload()` を `ztb.io` から再利用可能に整理。  
+2. 既存 `ztb/trading/production/state_persistence.py` は互換ラッパー化し、production 側 import 互換を保ったまま汎用 helper へ委譲。  
+3. `ztb/trading/signal/entry_system.py` の `save_state/load_state` を helper 統合し、`open + json.dump/load` を除去。  
+4. 同ファイルの正規化ロジック重複を `_normalize_action()` に抽出し、`process_signal()` と `update_outcome()` の重複分岐を一本化。  
+5. `update_outcome()` は `threshold` にデフォルト `0.2` を追加し、旧呼び出し（4引数）との互換を維持。  
+6. `ztb/training/callbacks/monitoring/metrics_collector.py` の `_export_json()` / `load_state()` を helper 統合し、`_serialize_metrics_payload()` / `_restore_metrics_payload()` に責務分離。  
+7. `register_metric()` で `max_series_size` を実際の deque 上限へ反映し、設定と実体の不整合によるメモリ増加余地を解消。  
+8. `get_latest_metrics()` キャッシュの無効化漏れ（`add_metric_value` / `_cleanup_old_data` / `load_state`）を修正し、更新後に古い値を返し続ける不具合を解消。  
+9. `metrics_collector.get_performance_stats()` の `value_pool.pool_size` 参照不整合を `max_pool_size` へ修正。  
+10. `metrics_collector` の危険な pooled object 再利用経路を撤去し、時系列データ参照破壊の潜在不具合を防止。  
+11. `WeakRefRegistry` に `registry` property を追加し、統計取得時の属性不一致による例外を回避。  
+12. 型更新: `ztb/trading/signal/types.py` の `GateResult` に `normalized_action: NotRequired[float]` を追加して契約を明示。  
+13. 回帰確認: `py_compile`（7ファイル）通過。`pytest` は本環境で未導入のため未実施。  
+14. 在庫更新: repo 全体 `any_type_debt_tokens=2,664 -> 2,620`（-44）。`ztb/io/state_persistence.py` / `ztb/trading/production/state_persistence.py` / `ztb/trading/signal/types.py` は `any_type_debt_tokens=0`。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -763,6 +780,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step60時点 | repo全体 | 2,687 |
 | Step61時点 | repo全体 | 2,664 |
 | Step62時点 | repo全体 | 2,664 |
+| Step63時点 | repo全体 | 2,620 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -854,6 +872,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step61時点 | `ztb/training/reward_function_optimizer/mtf_scheduler.py` | **0** |
 | Step61時点 | `ztb/training/reward_function_optimizer/config_manager.py` | **0** |
 | Step62時点 | `ztb/trading/production/state_persistence.py` | **0** |
+| Step63時点 | `ztb/io/state_persistence.py` | **0** |
+| Step63時点 | `ztb/trading/signal/types.py` | **0** |
 
 ---
 
@@ -871,8 +891,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - 評価 result payload を型固定し、集計ループの重複（列挙/整形）を helper 化。  
 6. `ztb/training/algorithms/sac/sac_algorithm.py`  
    - 学習ループの result/config payload を段階的に型固定し、集計・ログ出力の重複分岐を helper 化する。  
-7. `ztb/trading/signal/entry_system.py` / `ztb/training/callbacks/monitoring/metrics_collector.py`  
-   - `state_persistence` の横展開で、state 保存/復元の JSON I/O 重複をさらに削減。  
+7. `ztb/training/components/regime_adaptive_trainer.py` / `ztb/trading/cost/venue_transaction_cost_manager.py`  
+   - 残存する `open + json.load/dump` の state/config I/O を `read_json_object` / `write_json` へ統一し、例外契約を揃える。  
 
 ---
 
@@ -909,3 +929,5 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - config 値変換と JSON object/list 契約が整理されたため、次段階は `config_cast` / `json_contract` の共通 utility 化で責務分離を進める余地あり。  
 11. `ztb/trading/production/*`  
    - state ファイルI/Oは `state_persistence` に統合済み。次段階は各コンポーネントの payload schema を `TypedDict` 化して復元時の契約不整合を抑止する余地あり。  
+12. `ztb/training/callbacks/monitoring/metrics_collector.py`  
+   - 現在導入した payload serialize/restore を `TypedDict` 化し、`Any` が残る `metrics`/`metadata` の復元契約を段階的に固定化可能。  

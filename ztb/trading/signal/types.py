@@ -1,4 +1,4 @@
-from typing import Optional, TypedDict
+from typing import NotRequired, Optional, TypedDict
 
 
 class CalibrationStats(TypedDict):
@@ -39,3 +39,4 @@ class GateResult(TypedDict):
     cost: float
     stats: CalibrationStats
     stats_fallback: CalibrationStats
+    normalized_action: NotRequired[float]

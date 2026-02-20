@@ -375,6 +375,12 @@ class WeakRefRegistry:
         with self._lock:
             self._refs.pop(name, None)
 
+    @property
+    def registry(self) -> Dict[str, weakref.ReferenceType]:
+        """Public snapshot of registered weak references."""
+        with self._lock:
+            return dict(self._refs)
+
 
 # Global instances
 _global_memory_monitor = None

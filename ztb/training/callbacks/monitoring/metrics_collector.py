@@ -16,6 +16,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
 
+from ztb.io.state_persistence import read_state_payload, write_state_payload
+
 from ..performance.memory_optimizer import LRUCache, MemoryPool, WeakRefRegistry
 
 
@@ -110,7 +112,9 @@ class MetricsCollector:
         self.metrics_cache = LRUCache(
             max_size=2000
         )  # Cache for frequently accessed metrics
-        self.value_pool = MemoryPool(pool_size=500)  # Pool for metric value objects
+        self.value_pool = MemoryPool(
+            pool_size=500
+        )  # Reserved for short-lived objects only
         self.weak_ref_registry = WeakRefRegistry()
 
         # Threading and synchronization
@@ -137,11 +141,21 @@ class MetricsCollector:
                 self.logger.warning(
                     f"Metric '{definition.name}' already registered, updating"
                 )
+                self.metric_definitions[definition.name] = definition
+                if definition.name in self.metric_series:
+                    self.metric_series[definition.name].definition = definition
+                else:
+                    self.metric_series[definition.name] = MetricSeries(
+                        definition=definition,
+                        values=deque(maxlen=self.max_series_size),
+                    )
             else:
                 self.logger.info(f"Registered metric: {definition.name}")
-
-            self.metric_definitions[definition.name] = definition
-            self.metric_series[definition.name] = MetricSeries(definition)
+                self.metric_definitions[definition.name] = definition
+                self.metric_series[definition.name] = MetricSeries(
+                    definition=definition,
+                    values=deque(maxlen=self.max_series_size),
+                )
 
     def add_metric_value(
         self,
@@ -156,34 +170,19 @@ class MetricsCollector:
                 # Auto-register unknown metrics
                 self.register_metric(MetricDefinition(name=name))
 
-            # Try to get a pooled object first
-            pooled_value = self.value_pool.acquire()
-            if pooled_value:
-                # Reuse pooled object
-                pooled_value.name = name
-                pooled_value.value = value
-                pooled_value.timestamp = datetime.now()
-                pooled_value.tags = tags or {}
-                pooled_value.metadata = metadata or {}
-                metric_value = pooled_value
-                self.performance_stats["objects_pooled"] += 1
-            else:
-                # Create new object
-                metric_value = MetricValue(
-                    name=name,
-                    value=value,
-                    timestamp=datetime.now(),
-                    tags=tags or {},
-                    metadata=metadata or {},
-                )
-                self.performance_stats["objects_created"] += 1
+            # Values stored in a series must remain immutable by reference.
+            # Reusing pooled instances here would corrupt historical values.
+            metric_value = MetricValue(
+                name=name,
+                value=value,
+                timestamp=datetime.now(),
+                tags=tags or {},
+                metadata=metadata or {},
+            )
+            self.performance_stats["objects_created"] += 1
 
             self.metric_series[name].add_value(metric_value)
-
-            # Return object to pool after use (will be reused on next add)
-            if pooled_value:
-                # Reset object for reuse
-                self.value_pool.release(metric_value)
+            self._invalidate_latest_metrics_cache()
 
     def add_custom_collector(self, collector: Callable[[], List[MetricValue]]) -> None:
         """Add a custom metrics collector function."""
@@ -289,13 +288,127 @@ class MetricsCollector:
     def _cleanup_old_data(self) -> None:
         """Clean up old metric data based on retention policy."""
         cutoff_time = datetime.now() - timedelta(hours=self.retention_hours)
+        pruned = False
 
         with self._lock:
             for series in self.metric_series.values():
                 # Remove old values
                 while series.values and series.values[0].timestamp < cutoff_time:
                     series.values.popleft()
+                    pruned = True
                 series._update_aggregations()
+            if pruned:
+                self._invalidate_latest_metrics_cache()
+
+    def _invalidate_latest_metrics_cache(self) -> None:
+        """Invalidate derived cache after state mutations."""
+        self.metrics_cache.remove("latest_metrics")
+
+    @staticmethod
+    def _coerce_str_dict(value: object) -> Dict[str, str]:
+        """Coerce a JSON object into a `dict[str, str]`."""
+        if not isinstance(value, dict):
+            return {}
+        return {str(k): str(v) for k, v in value.items()}
+
+    @staticmethod
+    def _coerce_object_dict(value: object) -> Dict[str, Any]:
+        """Coerce a JSON object into a `dict[str, Any]`."""
+        if not isinstance(value, dict):
+            return {}
+        return {str(k): v for k, v in value.items()}
+
+    def _serialize_metrics_payload(self) -> Dict[str, Any]:
+        """Build serializable metrics payload used for export and state."""
+        data: Dict[str, Any] = {
+            "export_time": datetime.now().isoformat(),
+            "retention_hours": self.retention_hours,
+            "metrics": {},
+        }
+
+        with self._lock:
+            for name, series in self.metric_series.items():
+                data["metrics"][name] = {
+                    "definition": {
+                        "name": series.definition.name,
+                        "description": series.definition.description,
+                        "unit": series.definition.unit,
+                        "type": series.definition.metric_type,
+                        "tags": series.definition.tags,
+                    },
+                    "values": [
+                        {
+                            "timestamp": v.timestamp.isoformat(),
+                            "value": v.value,
+                            "tags": v.tags,
+                            "metadata": v.metadata,
+                        }
+                        for v in series.values
+                    ],
+                    "aggregations": series.aggregations,
+                }
+        return data
+
+    def _restore_metrics_payload(self, payload: Dict[str, Any]) -> None:
+        """Restore metric state from a serialized payload."""
+        metrics_payload = payload.get("metrics", {})
+        if not isinstance(metrics_payload, dict):
+            return
+
+        with self._lock:
+            self.metric_definitions.clear()
+            self.metric_series.clear()
+
+            for metric_name, metric_data in metrics_payload.items():
+                if not isinstance(metric_name, str) or not isinstance(metric_data, dict):
+                    continue
+
+                definition_data = metric_data.get("definition", {})
+                if not isinstance(definition_data, dict):
+                    continue
+
+                definition = MetricDefinition(
+                    name=str(definition_data.get("name", metric_name)),
+                    description=str(definition_data.get("description", "")),
+                    unit=str(definition_data.get("unit", "")),
+                    metric_type=str(definition_data.get("type", "gauge")),
+                    tags=self._coerce_str_dict(definition_data.get("tags", {})),
+                )
+                self.register_metric(definition)
+                series_name = definition.name
+
+                value_entries = metric_data.get("values", [])
+                if not isinstance(value_entries, list):
+                    continue
+
+                for value_data in value_entries:
+                    if not isinstance(value_data, dict):
+                        continue
+
+                    timestamp_raw = value_data.get("timestamp")
+                    value_raw = value_data.get("value")
+                    if not isinstance(timestamp_raw, str) or not isinstance(
+                        value_raw, (int, float)
+                    ):
+                        continue
+
+                    try:
+                        timestamp = datetime.fromisoformat(timestamp_raw)
+                    except ValueError:
+                        continue
+
+                    metric_value = MetricValue(
+                        name=series_name,
+                        value=value_raw,
+                        timestamp=timestamp,
+                        tags=self._coerce_str_dict(value_data.get("tags", {})),
+                        metadata=self._coerce_object_dict(
+                            value_data.get("metadata", {})
+                        ),
+                    )
+                    self.metric_series[series_name].add_value(metric_value)
+
+            self._invalidate_latest_metrics_cache()
 
     def get_metric_series(self, name: str) -> Optional[MetricSeries]:
         """Get a metric series by name."""
@@ -342,36 +455,8 @@ class MetricsCollector:
 
     def _export_json(self, filepath: Path) -> None:
         """Export metrics as JSON."""
-        data = {
-            "export_time": datetime.now().isoformat(),
-            "retention_hours": self.retention_hours,
-            "metrics": {},
-        }
-
-        with self._lock:
-            for name, series in self.metric_series.items():
-                data["metrics"][name] = {
-                    "definition": {
-                        "name": series.definition.name,
-                        "description": series.definition.description,
-                        "unit": series.definition.unit,
-                        "type": series.definition.metric_type,
-                        "tags": series.definition.tags,
-                    },
-                    "values": [
-                        {
-                            "timestamp": v.timestamp.isoformat(),
-                            "value": v.value,
-                            "tags": v.tags,
-                            "metadata": v.metadata,
-                        }
-                        for v in series.values
-                    ],
-                    "aggregations": series.aggregations,
-                }
-
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+        data = self._serialize_metrics_payload()
+        write_state_payload(filepath, data)
 
         self.logger.info(f"Exported metrics to {filepath}")
 
@@ -421,32 +506,8 @@ class MetricsCollector:
             return
 
         try:
-            with open(state_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-
-            # Restore metric definitions
-            for name, metric_data in data.get("metrics", {}).items():
-                definition_data = metric_data["definition"]
-                definition = MetricDefinition(
-                    name=definition_data["name"],
-                    description=definition_data.get("description", ""),
-                    unit=definition_data.get("unit", ""),
-                    metric_type=definition_data.get("type", "gauge"),
-                    tags=definition_data.get("tags", {}),
-                )
-                self.register_metric(definition)
-
-                # Restore values
-                for value_data in metric_data.get("values", []):
-                    timestamp = datetime.fromisoformat(value_data["timestamp"])
-                    metric_value = MetricValue(
-                        name=name,
-                        value=value_data["value"],
-                        timestamp=timestamp,
-                        tags=value_data.get("tags", {}),
-                        metadata=value_data.get("metadata", {}),
-                    )
-                    self.metric_series[name].add_value(metric_value)
+            payload = read_state_payload(state_file)
+            self._restore_metrics_payload(payload)
 
             self.logger.info(f"Loaded metrics state from {state_file}")
 
@@ -506,7 +567,7 @@ class MetricsCollector:
                 },
                 "pool_stats": {
                     "pool_size": len(self.value_pool.pool),
-                    "max_pool_size": self.value_pool.pool_size,
+                    "max_pool_size": self.value_pool.max_pool_size,
                     "objects_pooled": self.performance_stats["objects_pooled"],
                     "objects_created": self.performance_stats["objects_created"],
                 },
@@ -525,7 +586,7 @@ class MetricsCollector:
 
 
 # Global metrics collector instance
-_global_metrics_collector = None
+_global_metrics_collector: Optional[MetricsCollector] = None
 
 
 def get_global_metrics_collector() -> MetricsCollector:
@@ -534,7 +595,7 @@ def get_global_metrics_collector() -> MetricsCollector:
     if _global_metrics_collector is None:
         _global_metrics_collector = MetricsCollector()
     return _global_metrics_collector
-    
+
 
 
 def collect_metric(

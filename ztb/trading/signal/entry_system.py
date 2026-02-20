@@ -1,5 +1,7 @@
 from typing import Any, Dict, Optional
 
+from ztb.io.common import PathLike
+from ztb.io.state_persistence import read_state_payload, write_state_payload
 from ztb.trading.signal.calibration_map import CalibrationGate, CalibrationMap
 from ztb.trading.signal.types import FusedSignal, GateResult
 from ztb.trading.types import MarketState
@@ -19,6 +21,13 @@ class IntegratedEntrySystem:
         self.calibration_map = CalibrationMap(config)
         self.gate = CalibrationGate(config, self.calibration_map)
 
+    @staticmethod
+    def _normalize_action(action: float, threshold: float) -> float:
+        """Normalize action into the calibration map range."""
+        denom = max(abs(threshold), 1e-6)
+        normalized_action = (action / denom) * 0.2
+        return max(min(normalized_action, 0.8), -0.8)
+
     def process_signal(
         self,
         rl_action: float,
@@ -31,22 +40,7 @@ class IntegratedEntrySystem:
         """
         Process a raw signal through the Calibration Gate.
         """
-        # Relative Binning Logic
-        # Normalize action so that threshold maps to 0.2 (Buy boundary)
-        denom = max(abs(threshold), 1e-6)
-        ratio = rl_action / denom
-
-        # If action is negative (Sell), ratio will be negative (assuming threshold is positive magnitude)
-        # If threshold is passed as negative for Sell, ratio is positive.
-        # We want Sell action to map to negative values.
-        # So we should use abs(threshold) for denom.
-        # If rl_action is negative, ratio is negative.
-
-        normalized_action = ratio * 0.2
-
-        # Clip for robustness (e.g. +/- 3.0 ratio -> +/- 0.6)
-        # 3.0 * 0.2 = 0.6 (Strong Buy/Sell boundary)
-        normalized_action = max(min(normalized_action, 0.8), -0.8)
+        normalized_action = self._normalize_action(rl_action, threshold)
 
         fused_signal: FusedSignal = {
             "rl_action": normalized_action,
@@ -63,33 +57,30 @@ class IntegratedEntrySystem:
         return gate_result
 
     def update_outcome(
-        self, regime: str, action: float, gross_pnl: float, step: int, threshold: float
-    ):
+        self,
+        regime: str,
+        action: float,
+        gross_pnl: float,
+        step: int,
+        threshold: float = 0.2,
+    ) -> None:
         """
         Update calibration stats with trade outcome.
         """
-        # Relative Binning Logic
-        denom = max(abs(threshold), 1e-6)
-        ratio = action / denom
-        normalized_action = ratio * 0.2
-        normalized_action = max(min(normalized_action, 0.8), -0.8)
+        normalized_action = self._normalize_action(action, threshold)
 
         self.calibration_map.update(regime, normalized_action, gross_pnl, step)
 
-    def save_state(self, path: str):
+    def save_state(self, path: PathLike) -> None:
         """Save calibration state to file."""
-        import json
-
         state = self.calibration_map.get_state()
-        with open(path, "w") as f:
-            json.dump(state, f, indent=2)
+        write_state_payload(path, state)
 
-    def load_state(self, path: str):
+    def load_state(self, path: PathLike) -> bool:
         """Load calibration state from file."""
-        import json
-        import os
-
-        if os.path.exists(path):
-            with open(path, "r") as f:
-                state = json.load(f)
-            self.calibration_map.load_state(state)
+        try:
+            state = read_state_payload(path)
+        except FileNotFoundError:
+            return False
+        self.calibration_map.load_state(state)
+        return True

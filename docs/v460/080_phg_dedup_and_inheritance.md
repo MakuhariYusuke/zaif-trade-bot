@@ -157,3 +157,24 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - `MarketRegimeDetector` 内部クラス重複 (P3)
 - `PPOTrainer` / `SACTrainer` archive版 (低優先)
 - `RiskManager` 5箇所 (低優先)
+
+## Phase 5 追補: JSON/state helper 水平展開 + metrics 安定化 (2026-02-20)
+
+### 1) helper の共通化範囲拡張
+
+- `ztb/io/state_persistence.py` を追加し、state JSON I/O の canonical helper を `ztb.io` に昇格。
+- `ztb/trading/production/state_persistence.py` は互換ラッパーとして維持し、既存 import を壊さずに共通 helper へ委譲。
+
+### 2) signal/training への水平展開
+
+- `ztb/trading/signal/entry_system.py` の `save_state/load_state` を helper 統合。
+- 正規化ロジックを `_normalize_action()` に抽出し、`process_signal` / `update_outcome` 重複を削減。
+- `ztb/training/callbacks/monitoring/metrics_collector.py` の `_export_json` / `load_state` を helper 統合。
+
+### 3) 不具合可能性の解消
+
+- `metrics_collector` の latest cache 無効化漏れを修正（新規追加・cleanup・load 後）。
+- `register_metric()` が `max_series_size` を反映しない不整合を修正（メモリ上限を実効化）。
+- `get_performance_stats()` の `pool_size` 属性参照ミスを修正。
+- `WeakRefRegistry` に `registry` property を追加し、統計取得時の属性不一致例外を回避。
+- 危険な pooled object 再利用経路を撤去し、履歴 series 参照破壊リスクを排除。
