@@ -87,12 +87,15 @@ class PnlMeasurer:
                             f"{interim_pnl:+.2f} bps < -{cfg.early_exit_threshold_bps}"
                         )
                         early_exit_triggered = True
+                        # 120# A4-2: 中断時点の PnL を保存
+                        m.pnl_at_exit_bps = interim_pnl
                         break
                 except Exception:
                     continue
             elapsed_monitor = (tick + 1) * monitor_sec if early_exit_triggered else ticks * monitor_sec
             remaining = cfg.post_fill_wait_sec - elapsed_monitor
-            if remaining > 0 and not early_exit_triggered:
+            # 120# A4-2: EE 発動でも固定30s まで待機して真の post_fill_pnl を取得
+            if remaining > 0:
                 await asyncio.sleep(remaining)
         else:
             logger.info(f"Waiting {cfg.post_fill_wait_sec}s for PnL measurement...")

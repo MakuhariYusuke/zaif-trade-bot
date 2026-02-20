@@ -549,3 +549,5 @@ class PnlMeasurement:
     actual_measurement_sec: Optional[float] = None
     # 120# PnlMeasurer: early_exit_triggered を戻り値に含める
     early_exit_triggered: bool = False
+    # 120# A4-2: EE 発動時の中断時点 PnL (post_fill_pnl は常に固定30s)
+    pnl_at_exit_bps: Optional[float] = None

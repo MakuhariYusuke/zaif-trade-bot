@@ -805,6 +805,11 @@ class FillTestRunner:
             actual_measurement_sec=actual_measurement_sec if filled else None,
             # 120# A4: Early Exit 明示フラグ
             early_exit_triggered=pnl.early_exit_triggered if filled else None,
+            # 120# A4-2: EE 中断時点 PnL (計測バイアス分離)
+            pnl_at_exit_bps=pnl.pnl_at_exit_bps if filled else None,
+            # 120# P2-1: 寄与分解基盤 — FFD/VG イベントフラグ
+            ffd_boost_active=self._fast_fill_defense.is_boost_active(side),
+            vg_triggered=self._maker_price.last_vg_triggered,
         )
 
         logger.info(
@@ -1546,6 +1551,29 @@ def main() -> None:
             "as_coverage": metrics.as_coverage,
             "as_raw_coverage": metrics.as_raw_coverage,
         }
+
+        # 120# A2: run 別二系統分析 (Simpson 逆転リスク対策)
+        from scripts.v460.lib.results_analyzer import (
+            compute_event_contribution,
+            compute_multi_track_analysis,
+            compute_regime_breakdown,
+            log_event_contribution,
+            log_multi_track_summary,
+            log_regime_breakdown,
+        )
+        multi_track = compute_multi_track_analysis(clean_records)
+        log_multi_track_summary(multi_track)
+        judgment["multi_track"] = multi_track
+
+        # 120# P2-1: FFD/VG/SG 寄与分解
+        event_contrib = compute_event_contribution(clean_records)
+        log_event_contribution(event_contrib)
+        judgment["event_contribution"] = event_contrib
+
+        # 120# P2-2: regime 別比較基盤
+        regime_breakdown = compute_regime_breakdown(clean_records)
+        log_regime_breakdown(regime_breakdown)
+        judgment["regime_breakdown"] = regime_breakdown
 
         out_str = json.dumps(judgment, indent=2, ensure_ascii=False)
         print(out_str)

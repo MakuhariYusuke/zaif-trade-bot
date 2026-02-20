@@ -74,6 +74,7 @@ class MakerPriceCalculator:
         "_last_bid_depth",
         "_last_ask_depth",
         "_last_vpin",
+        "_last_vg_triggered",
     )
 
     def __init__(
@@ -102,6 +103,8 @@ class MakerPriceCalculator:
         self._last_ask_depth: float = 0.0
         # 107# Volatility Guard: VPIN キャッシュ
         self._last_vpin: float | None = None
+        # 120# P2-1: VG 発動状態追跡 (寄与分解基盤)
+        self._last_vg_triggered: bool = False
 
     # ------------------------------------------------------------------
     # offset 同期 (adaptation 後に呼ばれる)
@@ -139,6 +142,11 @@ class MakerPriceCalculator:
     @base_offset_ratio.setter
     def base_offset_ratio(self, value: float) -> None:
         self._base_offset_ratio = value
+
+    @property
+    def last_vg_triggered(self) -> bool:
+        """120# P2-1: 直近の compute() で VG が発動したか."""
+        return self._last_vg_triggered
 
     # ------------------------------------------------------------------
     # 板不均衡 (054# S1)
@@ -336,6 +344,10 @@ class MakerPriceCalculator:
                     f"{pre_offset:.4f}→{effective_offset_ratio:.4f} "
                     f"({vg_reason})"
                 )
+            # 120# P2-1: VG 発動状態を追跡
+            self._last_vg_triggered = vg_triggered
+        else:
+            self._last_vg_triggered = False
 
         # 054# S1: Imbalance ベース AS リスク補正
         if cfg.imbalance_enabled and abs(imb) > cfg.imbalance_threshold:

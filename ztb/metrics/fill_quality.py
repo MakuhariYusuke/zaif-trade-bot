@@ -91,6 +91,11 @@ class FillRecord:
     actual_measurement_sec: Optional[float] = None  # mid_30s_after の実計測秒数
     # 120# A4: Early Exit 明示フラグ (推定ではなく PnlMeasurer の判定値を直接保存)
     early_exit_triggered: Optional[bool] = None     # EE 発火したか (True/False/None=計測前)
+    # 120# A4-2: EE 中断時点 PnL (post_fill_30s_pnl は固定30s、計測バイアス分離用)
+    pnl_at_exit_bps: Optional[float] = None          # EE 発動時の中断時点 PnL (bps)
+    # 120# P2-1: 寄与分解基盤 — FFD/VG イベントフラグ
+    ffd_boost_active: Optional[bool] = None          # FastFillDefense boost 中だったか
+    vg_triggered: Optional[bool] = None              # VolatilityGuard 発動したか
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""
