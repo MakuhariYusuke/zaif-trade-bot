@@ -39,8 +39,17 @@ _DEFAULT_RESULTS_DIR = Path("results/v460/fill_test")
 
 def load_fill_records(
     results_dir: Optional[Path] = None,
+    *,
+    run_id_filter: Optional[str | list[str]] = None,
+    exclude_missing_run_id: bool = False,
 ) -> pd.DataFrame:
     """fill_records_*.jsonl を読み込んで DataFrame に変換.
+
+    Args:
+        results_dir: JSONL ファイルのディレクトリ.
+        run_id_filter: 指定した run_id のみに絞り込む (122# E13).
+            str なら単一 run_id, list なら複数 run_id でフィルタ.
+        exclude_missing_run_id: True で run_id が None/欠損のレコードを除外.
 
     Returns:
         全レコードの DataFrame (cancelled 含む).
@@ -57,7 +66,20 @@ def load_fill_records(
                 rows.append(json.loads(line))
 
     df = pd.DataFrame(rows)
-    logger.info(f"Loaded {len(df)} records from {len(files)} files")
+    total = len(df)
+
+    # 122# E13: run_id フィルタリング (異なるラン設定の混在による交絡防止)
+    if exclude_missing_run_id and "run_id" in df.columns:
+        df = df[df["run_id"].notna() & (df["run_id"] != "")]
+    if run_id_filter is not None and "run_id" in df.columns:
+        if isinstance(run_id_filter, str):
+            run_id_filter = [run_id_filter]
+        df = df[df["run_id"].isin(run_id_filter)]
+
+    logger.info(
+        f"Loaded {len(df)} records from {len(files)} files"
+        + (f" (filtered from {total})" if len(df) != total else "")
+    )
     return df
 
 

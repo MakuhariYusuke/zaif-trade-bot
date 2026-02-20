@@ -309,6 +309,11 @@ state_persistence.register("regime_detector", regime_detector.get_state)
 - `build_preorder_as_features()` で特徴量 X, ラベル y を生成
 - 759 filled records + spread_at_order 552 件
 
+> **注意 (122# E13)**: 現行データには 17 個の `run_id` が混在しており、
+> 各 run で `adaptation.enabled`, `min_spread_jpy` 等の設定が異なる可能性がある。
+> `load_fill_records(run_id_filter=...)` で最新 run に絞るか、
+> `exclude_missing_run_id=True` で欠損を除外し、設定変更の交絡を排除すること。
+
 **Step 2: ベースライン再訓練**
 - 現行と同じ構成: k=10, C=0.01, Logistic Regression
 - Walk-Forward 20-fold (min_train=50, step=30)
@@ -595,6 +600,12 @@ Track B (SG 再訓練) と統合した 3 段階の OB 復活計画:
 **Stage 2: 学習パイプラインの OB 統合 (Track B と同時)**
 - SG 再訓練時に `feature_enricher.py` の `enrich_fill_records()` で OB データを結合
 - raw OB アーカイブ (`data/v460/raw/orderbook/`) からの時系列マッチングも活用
+
+> **補足 (122# §4.6-2 検証結果)**: 168h データへの事後 OB 付与は既存パイプラインで実行可能。
+> `_find_nearest_ob()` (5 秒 tolerance) で raw OB 70,522 件 → fill 928/1,344 件 (69%) マッチ。
+> 2/16〜2/18 は 100% カバー。`enrich_fill_records(fill_df)` を呼ぶだけで追加コード不要。
+> 欠損 31% は OB Collector 停止期間 (2/14 18:00〜2/15 15:33, 2/19 16:31 以降) に該当。
+
 - 特徴量候補:
 
 | 特徴量 | 算出元 | 根拠 | 期待寄与 |

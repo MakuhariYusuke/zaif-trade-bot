@@ -176,8 +176,21 @@ class OrderMonitor:
                             logger.info(f"Order {status_order.status}: {order.order_id}")
                             break
                         continue
-                    is_likely_postonly_reject = elapsed < cfg.poll_interval_sec * 3
-                    reason = "postonly_reject" if is_likely_postonly_reject else "status_unknown"
+                    # 122# E12 Fix: postonly_reject 推定の精度向上
+                    # elapsed だけでなく spread_at_order も条件に含めて
+                    # status_unknown との誤分類を低減
+                    is_fast_cancel = elapsed < cfg.poll_interval_sec * 3
+                    is_narrow_spread = (
+                        spread_at_order is not None
+                        and cfg.min_spread_jpy > 0
+                        and spread_at_order < cfg.min_spread_jpy * 2
+                    )
+                    if is_fast_cancel and is_narrow_spread:
+                        reason = "postonly_reject"
+                    elif is_fast_cancel:
+                        reason = "status_unknown_fast"
+                    else:
+                        reason = "status_unknown"
                     logger.warning(
                         f"Order {order.order_id} status unknown after "
                         f"{len(_retry_delays)} retries "
