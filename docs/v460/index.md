@@ -1,7 +1,7 @@
 # v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-20 (122# A2/A3 実装 + B1/B2/B3 Gate判定パイプライン)
+> 最終更新: 2026-02-22 (123# Sell 構造問題分析, 119–122# 索引追加)
 
 ---
 
@@ -111,6 +111,11 @@
 | 115 | resp | [115_ph2_ext_gate_redesign_review_response.md](115_ph2_ext_gate_redesign_review_response.md) | G1.1 二段階ゲート再設計 — 外部レビュー回答 |
 | 116 | impl | [116_ph2_impl_two_stage_gate.md](116_ph2_impl_two_stage_gate.md) | 二段階ゲート実装 — 115# レビュー反映 |
 | 117 | impl | [117_ph2_impl_import_chain_fix.md](117_ph2_impl_import_chain_fix.md) | Import Chain Fix + Fill Test 二重キャンセル防止 |
+| 119 | rpt | [119_fill_test_161h_analysis.md](119_fill_test_161h_analysis.md) | Fill Test 161h 中間分析レポート |
+| 120 | rev | [120_ph2_rev_119.md](120_ph2_rev_119.md) | 119 Fill Test 161h 分析の妥当性検証と追加改善提案 |
+| 121 | plan | [121_ph2_plan_model_replacement.md](121_ph2_plan_model_replacement.md) | モデル差し替え・次期改善計画 |
+| 122 | rev | [122_ph2_rev_121.md](122_ph2_rev_121.md) | 121# モデル差し替え計画 — 外部レビュー |
+| 123 | rpt | [123_ph2_rpt_sell_structural_analysis.md](123_ph2_rpt_sell_structural_analysis.md) | Sell 構造問題分析と改善提案 (S125.1#) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
