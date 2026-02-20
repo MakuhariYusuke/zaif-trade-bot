@@ -147,6 +147,8 @@ class FillTestConfig:
     skip_gate_adaptive_step: float = 0.05  # 100# 0.02→0.05
     skip_gate_adaptive_floor: float = 0.35
     skip_gate_adaptive_ceiling: float = 0.80
+    # 124# Rule: unknown regime での sell スキップ
+    skip_sell_unknown_regime: bool = False
     # 094# stale order 検出 & cancel-replace (価格乖離した注文を再発注)
     stale_order_enabled: bool = False
     stale_check_after_sec: float = 30.0    # 発注後この秒数以降で乖離チェック開始
@@ -411,6 +413,8 @@ class FillTestConfig:
             "adaptive_step": "skip_gate_adaptive_step",
             "adaptive_floor": "skip_gate_adaptive_floor",
             "adaptive_ceiling": "skip_gate_adaptive_ceiling",
+            # 124# Rule: unknown regime sell skip
+            "skip_sell_unknown_regime": "skip_sell_unknown_regime",
         }
         for yaml_key, config_key in sg_map.items():
             if yaml_key in sg and sg[yaml_key] is not None:

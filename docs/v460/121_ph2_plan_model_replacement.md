@@ -54,6 +54,14 @@
   - [§13.3 Track B SkipGate 再訓練 — デプロイ見送り](#133-track-b-skipgate-再訓練)
   - [§13.4 Track D OB 特徴量評価 — 効果限定的](#134-track-d-ob-特徴量評価)
   - [§13.5 総合判断と次のアクション](#135-総合判断と次のアクション)
+- [§14 SkipGate v3: 多角的探索とデプロイ (124.2#)](#14-skipgate-v3-多角的探索とデプロイ)
+  - [§14.1 問題分析](#141-問題分析)
+  - [§14.2 探索軸 (5軸)](#142-探索軸)
+  - [§14.3 実行結果 (117 experiments)](#143-実行結果)
+  - [§14.4 デプロイ判定](#144-デプロイ判定)
+  - [§14.5 変更一覧](#145-変更一覧)
+  - [§14.6 YAML 変更詳細](#146-yaml-変更詳細)
+  - [§14.7 期待効果](#147-期待効果)
 - [Appendix C: 全先送り項目一覧](#appendix-c-全先送り項目一覧)
 
 ---
@@ -1135,8 +1143,8 @@ Track A+B+D デプロイ時に変更する fill_test.yaml の項目一覧:
 | `side_offset.sell` | 0.14 | 0.18 | A2 | sell AS 抑制 | ✅ 済 |
 | `spread_adaptive.narrow_spread_bps` | 2.0 | 2.5 | A3 | postonly_reject 抑制 | ✅ 済 |
 | `min_spread_jpy` | 0.0 | **1500** | A4b | **122# R6: 既存パラメータ活用** | ✅ 済 |
-| `skip_gate.model_path` | skip_gate_as.pkl | ~~skip_gate_as_v2.pkl~~ | B1-B3 | **デプロイ見送り (§13.3)** | ❌ 据置 |
-| `skip_gate.sell_enabled` | false | ~~(判定次第)~~ | B3 | **逆選別未解消→false 継続 (§13.3)** | ❌ 据置 |
+| `skip_gate.model_path` | skip_gate_as.pkl | skip_gate_rb30.pkl | B1-B3 → 124.2# §14 | **GBM really_bad30 デプロイ (§14.4)** | ✅ 適用 |
+| `skip_gate.sell_enabled` | false | true | B3 → 124.2# §14 | **逆選別解消→true 復活 (§14.4)** | ✅ 適用 |
 | (OB 記録常時有効化) | imbalance_enabled 依存 | 常時記録 | D1 | コード変更 (§7.3 方法2) | ✅ 済 |
 | (regime state persistence) | — | コード変更 | A4 | StatePersistence 拡張 | ✅ 済 |
 
@@ -1171,8 +1179,106 @@ Track A+B+D デプロイ時に変更する fill_test.yaml の項目一覧:
 
 ---
 
+## §14 SkipGate v3: 多角的探索とデプロイ (124.2#)
+
+**Date**: 2026-02-20
+**動機**: §13.3 Track B の全 7 実験が逆選別 → LR + AS30 ターゲットの限界が確定。
+ターゲット変数・モデルクラス・特徴量を根本から再設計する多角探索を実施。
+
+### §14.1 問題分析
+
+| 問題 | 詳細 |
+|------|------|
+| PnL30 = -0.248 bps | 30s horizon は負 — 現行 AS30 ターゲットは間違ったホライズンを最適化 |
+| PnL120 = +0.186 bps | 120s horizon は正 — 真のエッジは 120s にある |
+| LR 線形制約 | 非線形パターンを捉えられない |
+| AS30 二値ターゲット | 連続的な PnL の情報を捨てている |
+
+### §14.2 探索軸 (5軸)
+
+1. **非線形モデル**: LightGBM, XGBoost, RandomForest, GBM (sklearn)
+2. **ターゲット再設計**: profitable30, profitable120, profitable_both, really_bad30, PnL30/120 回帰
+3. **逆転 SG**: 逆選別を逆手に取り、低確率を skip
+4. **特徴量工学**: インタラクション (hour×spread, regime×spread), ローリング統計
+5. **Dual-horizon 評価**: PnL30 + PnL120 両方の改善を計測
+
+### §14.3 実行結果 (117 experiments)
+
+**データ**: 1344 records, 712 filled with labels, 16 base features → 31 engineered → 34 with OB
+
+**Non-reverse selection (S20%_30 > 0 AND S20%_120 > 0):**
+
+| Rank | Experiment | S20%_30 | S20%_120 | Score |
+|------|-----------|---------|----------|-------|
+| 1 | LGBM_reg_pnl120_regression_base | +0.040 | +0.146 | +0.211 |
+| **2** | **GBM_sklearn_really_bad30_base** | **+0.114** | **+0.224** | **+0.191** |
+| 3 | LGBM_reg_pnl120_regression_full | +0.065 | +0.234 | +0.183 |
+| 4 | LGBM_conservative_profitable30_base | +0.010 | +0.249 | +0.177 |
+| 5 | GBM_sklearn_profitable30_base | +0.028 | +0.228 | +0.176 |
+| **6** | **Rule_skip_unknown_sell** | **+0.198** | **+0.140** | **+0.157** |
+
+**Inverted SG top:**
+- LR_C001_profitable_both_base (inverted): Inv120=+0.610, score=+0.443
+
+### §14.4 デプロイ判定
+
+**GBM_sklearn_really_bad30_base** を選定:
+- 両 horizon 正 (逆選別**なし**) — Track B 全滅の課題を解消
+- 最高の PnL30 改善 (+0.114 bps) + 強い PnL120 改善 (+0.224 bps)
+- 逆転不要 (inversion はマイナス) — モデルが正しい方向で学習
+- ターゲット: `really_bad30` = PnL30 < -1.0 bps → 壊滅的トレードだけを回避
+- GradientBoostingClassifier: sklearn 標準, 追加依存なし
+
+**Rule_skip_unknown_sell** を補完デプロイ:
+- unknown regime での sell をスキップ (最高の PnL30 改善 +0.198 bps)
+- ML 不要の heuristic → `skip_sell_unknown_regime` YAML フラグで制御
+
+**LGBM_reg_pnl120 を見送った理由**:
+- profit_score は最高だが PnL30 改善が小さい (+0.040)
+- LightGBM は追加依存 (本番環境で要インストール)
+- really_bad30 の方がリスク管理として直感的
+
+### §14.5 変更一覧
+
+| ファイル | 変更 |
+|---------|------|
+| `scripts/v460/ml/train_sg_v3.py` | 新規: 117 実験探索パイプライン |
+| `scripts/v460/ml/deploy_sg_v3.py` | 新規: 最終モデル訓練・保存 |
+| `models/v460/skip_gate_rb30.pkl` | 新規: GBM really_bad30 モデル |
+| `configs/v460/fill_test.yaml` | SG: model_path, sell_enabled=true, skip_sell_unknown_regime=true |
+| `scripts/v460/lib/fill_config.py` | `skip_sell_unknown_regime` フィールド追加 |
+| `scripts/v460/lib/skip_gate_evaluator.py` | unknown regime sell rule 追加 |
+| `tests/unit/v460/test_skip_gate_v3.py` | 新規: 14 テスト |
+| `reports/v460/ml_124/sg_v3_comprehensive.json` | 全実験結果 |
+| `reports/v460/ml_124/deploy_rb30_report.json` | デプロイレポート |
+
+### §14.6 YAML 変更詳細
+
+```yaml
+skip_gate:
+  model_path: models/v460/skip_gate_rb30.pkl  # 旧: skip_gate_as.pkl
+  sell_enabled: true                           # 旧: false (逆選別解消)
+  target_skip_rate_sell: 0.20                  # 旧: 0.25 (sell再有効化で保守化)
+  skip_sell_unknown_regime: true               # 新規: unknown regime sell skip
+```
+
+### §14.7 期待効果
+
+WF OOS 評価における改善幅:
+
+| 指標 | 旧 (LR+AS30) | 新 (GBM+RB30+ルール) | 改善 |
+|------|-------------|---------------------|------|
+| PnL30 改善 | 逆選別 (負) | +0.114 bps (ML) + 0.198 bps (rule) | 完全解消 |
+| PnL120 改善 | 逆選別 (負) | +0.224 bps (ML) + 0.140 bps (rule) | 完全解消 |
+| sell SG | 無効 (逆選別) | 有効 (逆選別なし) | 復活 |
+
+**注意**: ML と rule の改善幅は加算不可 (重複あり)。rule は ML skip 前のプレフィルター。
+
+---
+
 *本ドキュメントは 000# (プロジェクト提案)、118# (バックログ深層分析)、及び*
 *070#-072# (OB 特徴量経緯)、097#-098# (SkipGate 再訓練)、119# (161h 分析) に基づき、*
 *168h Gate 判定結果を踏まえて作成。*
 *124.1# で Track A/B/D 実行結果 (§13) を追記。*
+*124.2# で SkipGate v3 多角探索・デプロイ結果 (§14) を追記。*
 *次回 fill_test の結果に応じて §12 の意思決定フローに従い更新する。*

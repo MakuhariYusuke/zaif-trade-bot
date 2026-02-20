@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 124.2# SkipGate v3 — 多角的モデル探索・新モデルデプロイ
+
+- **117 experiments**: 7 models × 7 targets × 3 feature sets + regression + rules
+  - 探索軸: 非線形モデル (LightGBM/XGBoost/GBM/RF), ターゲット再設計, 逆転SG, 特徴量工学
+  - **10 experiments** で両 horizon 正 (逆選別なし) を達成 — Track B 全滅の突破口
+- **新モデル `GBM_sklearn_really_bad30` デプロイ**:
+  - GradientBoostingClassifier targeting really_bad30 (PnL30 < -1.0 bps)
+  - WF OOS: S20%_30=+0.114 bps, S20%_120=+0.224 bps (**逆選別なし**)
+  - `models/v460/skip_gate_rb30.pkl` として保存
+  - `sell_enabled: true` 復活 (118# A3 以来の sell SG 再有効化)
+- **Rule: skip_sell_unknown_regime** 実装:
+  - unknown regime での sell スキップ (WF: S20%_30=+0.198, S20%_120=+0.140)
+  - YAML フラグ `skip_sell_unknown_regime: true` で制御
+- **YAML 変更**: model_path→rb30.pkl, sell_enabled→true, target_skip_rate_sell 0.25→0.20
+- **テスト**: 964 passed (950 + 14 新規 v3 テスト)
+- **ドキュメント**: 121# §14 追記 (探索結果・デプロイ判定・変更一覧)
+
 ### 124.1# Track A/B/D 実行 — パラメータ適用 + SG再訓練(不採用) + Regime永続化
 
 - **Track A (YAML パラメータ変更)**: 全4項目適用済

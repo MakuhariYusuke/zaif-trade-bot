@@ -185,13 +185,16 @@ spread_adaptive:
 # ---- 062# S5: SkipGate ML フィルター (AS 分類器ベース) ----
 # 071# OB 特徴量除去: 価格・取引データのみで判断 (v459 方式回帰)
 # 072# use_ob_features トグル追加: ph2 通過後に true へ切替で OB 特徴量復元
+# 124# v3: モデル交代 — LR+AS30 → GBM+really_bad30 (catastrophe avoidance)
+#   GBM_sklearn_really_bad30_base WF結果: S20%_30=+0.114, S20%_120=+0.224 (逆選別なし)
+#   P(really_bad30) > threshold → skip (mode=as 互換: 高確率 = skip)
 skip_gate:
   enabled: true
-  # 118# A3: sell 側 SkipGate 無効化 (098# §4.2 逆選別対策 — 実験的)
+  # 124# v3: 逆選別なし → 両 side 再有効化 (118# A3 sell_enabled: false を解除)
   buy_enabled: true
-  sell_enabled: false            # sell は SkipGate skip すると逆に PnL 悪化するため無効化
-  mode: as                     # "as" (AS 分類器) / "pnl" (PnL 回帰)
-  model_path: models/v460/skip_gate_as.pkl
+  sell_enabled: true             # 124#: GBM really_bad30 は逆選別なし → sell も有効化
+  mode: as                     # "as" (AS 分類器) / "pnl" (PnL 回帰) — 124# P(really_bad) を P(AS) として扱う
+  model_path: models/v460/skip_gate_rb30.pkl  # 124# v3: GBM really_bad30 モデル
   as_threshold: 0.50           # 120# 0.52→0.50: P(AS)=0.50 が変曲点 (AS 18.1%→36.7%)
   as_threshold_buy: 0.50       # 120# A3: [0.50,0.52) 帯 n=60 PnL=-0.247 AS=36.7% → skip 対象化
   as_threshold_sell: 0.50      # 100# P0-2: sell 側厳格化 (旧 0.60 → 0.50)
@@ -201,12 +204,14 @@ skip_gate:
   # 088# 動的閾値較正: 目標 skip 率ベースで閾値を自動調整
   adaptive_threshold: true     # P(AS) 分位点から閾値を動的設定
   target_skip_rate_buy: 0.15   # 107# 0.10→0.15 (time_filter 代替強化: buy 7h遮断→SG に委譲)
-  target_skip_rate_sell: 0.25  # 107# 0.20→0.25 (time_filter 代替強化: sell 6h遮断→SG に委譲)
+  target_skip_rate_sell: 0.20  # 124# 0.25→0.20 (sell再有効化に伴い保守化, 逆選別なし前提)
   adaptive_window: 50          # 較正ウィンドウ (直近 N サイクル)
   adaptive_min_samples: 20     # ウォームアップ期間 (最初の N 件は静的閾値)
   adaptive_step: 0.05          # 100# P0-2: 0.02→0.05 (収束ラグ低減)
   adaptive_floor: 0.35         # 閾値下限 (過剰 skip 防止)
   adaptive_ceiling: 0.80       # 閾値上限
+  # 124# Rule: unknown regime での sell スキップ (WF: S20%_30=+0.198, S20%_120=+0.140)
+  skip_sell_unknown_regime: true
 
 # ---- 107# Volatility Guard (リアルタイム急変検知) ----
 # time_filter の静的遮断では対応不能な「時間帯内の急変」に対応

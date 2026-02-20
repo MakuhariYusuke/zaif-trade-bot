@@ -135,6 +135,45 @@ class SkipGateEvaluator:
         if self._skip_gate is None:
             return result
 
+        # 124# Rule: unknown regime での sell スキップ
+        # WF結果: S20%_30=+0.198, S20%_120=+0.140 (両 horizon 改善)
+        if (
+            self._config.skip_sell_unknown_regime
+            and side == "sell"
+            and (regime_value is None or regime_value == "unknown")
+        ):
+            from ztb.metrics.fill_quality import FillRecord
+
+            logger.info(
+                f"[skip_gate] SKIP: sell in unknown regime "
+                f"(124# rule_skip_unknown_sell)"
+            )
+            result.skipped = True
+            result.score = 0.0
+            result.reason = "rule_skip_unknown_sell"
+            result.model_used = "rule"
+            result.early_return_record = FillRecord(
+                cycle_id=cycle_id,
+                timestamp=time.time(),
+                side=side,
+                order_price=order_price,
+                order_quantity=current_lot,
+                cancelled=True,
+                cancel_reason="skip_gate_rule_unknown_sell",
+                spread_at_order=spread_at_order,
+                spread_offset_ratio=effective_offset_ratio,
+                skip_gate_skipped=True,
+                skip_gate_score=0.0,
+                skip_gate_reason="rule_skip_unknown_sell",
+                skip_gate_model_used="rule",
+                orderbook_imbalance=last_imbalance,
+                bid_depth_total=last_bid_depth,
+                ask_depth_total=last_ask_depth,
+                run_id=run_id,
+                git_sha=git_sha,
+            )
+            return result
+
         try:
             from scripts.v460.ml.skip_gate import build_features_from_market_state
 
