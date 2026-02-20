@@ -6,6 +6,8 @@ This module provides memory-efficient data structures and cleanup mechanisms
 to prevent memory leaks and optimize performance in the callback system.
 """
 
+from __future__ import annotations
+
 import gc
 import logging
 import os
@@ -14,11 +16,20 @@ import time
 import weakref
 from collections import OrderedDict, deque
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional
+from typing import Callable, Generic, Optional, TypeVar, cast
 
 import psutil
 
 from ztb.trading.environment.constants import BYTES_PER_MB
+
+K = TypeVar("K")
+V = TypeVar("V")
+T = TypeVar("T")
+RefGetter = Callable[[], object | None]
+
+
+def _default_pool_object() -> object:
+    return {}
 
 
 @dataclass
@@ -34,7 +45,20 @@ class MemoryConfig:
     enable_gc_optimization: bool = True
 
 
-class LRUCache:
+class _ThreadSafeStatsBase:
+    """Shared lock/rate helpers for memory utility components."""
+
+    def __init__(self) -> None:
+        self._lock = threading.RLock()
+
+    @staticmethod
+    def _safe_ratio(numerator: float, denominator: float) -> float:
+        if denominator <= 0:
+            return 0.0
+        return numerator / denominator
+
+
+class LRUCache(_ThreadSafeStatsBase, Generic[K, V]):
     """
     Thread-safe LRU (Least Recently Used) cache with memory limits.
 
@@ -45,17 +69,17 @@ class LRUCache:
     """
 
     def __init__(self, max_size: int = 1000, enable_weak_refs: bool = True):
+        super().__init__()
         self.max_size = max_size
         self.enable_weak_refs = enable_weak_refs
-        self._cache: OrderedDict = OrderedDict()
+        self._cache: OrderedDict[K, V] = OrderedDict()
         # Public alias expected by tests
         self.cache = self._cache
-        self._lock = threading.RLock()
-        self._access_times: Dict[Any, float] = {}
+        self._access_times: dict[K, float] = {}
         self._hit_count = 0
         self._miss_count = 0
 
-    def get(self, key: Any) -> Optional[Any]:
+    def get(self, key: K) -> Optional[V]:
         """Get an item from the cache."""
         with self._lock:
             if key in self._cache:
@@ -67,7 +91,7 @@ class LRUCache:
             self._miss_count += 1
             return None
 
-    def put(self, key: Any, value: Any) -> None:
+    def put(self, key: K, value: V) -> None:
         """Put an item in the cache."""
         with self._lock:
             if key in self._cache:
@@ -83,7 +107,7 @@ class LRUCache:
             self._cache[key] = value
             self._access_times[key] = time.time()
 
-    def remove(self, key: Any) -> bool:
+    def remove(self, key: K) -> bool:
         """Remove an item from the cache."""
         with self._lock:
             if key in self._cache:
@@ -105,11 +129,11 @@ class LRUCache:
         with self._lock:
             return len(self._cache)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, float | int]:
         """Get cache statistics."""
         with self._lock:
             total_requests = self._hit_count + self._miss_count
-            hit_rate = self._hit_count / total_requests if total_requests > 0 else 0.0
+            hit_rate = self._safe_ratio(float(self._hit_count), float(total_requests))
             return {
                 "size": len(self._cache),
                 "max_size": self.max_size,
@@ -125,7 +149,7 @@ class LRUCache:
         return len(self._cache) * 0.001  # Assume ~1KB per entry
 
 
-class MemoryPool:
+class MemoryPool(_ThreadSafeStatsBase, Generic[T]):
     """
     Memory pool for reusing objects to reduce allocation overhead.
 
@@ -135,61 +159,65 @@ class MemoryPool:
     - Memory usage monitoring
     """
 
-    def __init__(self, pool_size: int = 100, object_factory: Optional[Callable] = None):
-        # Accept either (object_factory, max_pool_size) or (pool_size=..)
-        self.object_factory = object_factory or (lambda: {})
+    def __init__(
+        self, pool_size: int = 100, object_factory: Optional[Callable[[], T]] = None
+    ):
+        super().__init__()
+        self.object_factory = object_factory or cast(
+            Callable[[], T], _default_pool_object
+        )
         self.max_pool_size = pool_size
-        self._pool: deque = deque(maxlen=pool_size)
-        self._lock = threading.RLock()
+        self._pool: deque[T] = deque(maxlen=pool_size)
         self._created_count = 0
         self._reused_count = 0
 
-    def acquire(self) -> Any:
+    def acquire(self) -> T:
         """Acquire an object from the pool."""
         with self._lock:
             if self._pool:
                 # LIFO reuse to favor recently released objects (better cache locality)
                 self._reused_count += 1
                 return self._pool.pop()
-            else:
-                self._created_count += 1
-                return self.object_factory()
 
-    def release(self, obj: Any) -> None:
+            self._created_count += 1
+            return self.object_factory()
+
+    def release(self, obj: T) -> None:
         """Release an object back to the pool."""
         with self._lock:
             if len(self._pool) < self.max_pool_size:
                 # Reset object if it has a reset method
                 if hasattr(obj, "reset"):
                     try:
-                        obj.reset()
+                        reset_fn = getattr(obj, "reset")
+                        if callable(reset_fn):
+                            reset_fn()
                     except Exception:
                         pass  # Ignore reset errors
                 # Use append (right side) and pop() in acquire to implement LIFO
                 self._pool.append(obj)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, float | int]:
         """Get pool statistics."""
         with self._lock:
+            total = self._created_count + self._reused_count
+            reuse_rate = self._safe_ratio(float(self._reused_count), float(total))
             return {
                 "pool_size": len(self._pool),
                 "max_pool_size": self.max_pool_size,
                 "created_count": self._created_count,
                 "reused_count": self._reused_count,
-                "reuse_rate": self._reused_count
-                / (self._created_count + self._reused_count)
-                if (self._created_count + self._reused_count) > 0
-                else 0.0,
+                "reuse_rate": reuse_rate,
             }
 
     @property
-    def pool(self):
+    def pool(self) -> list[T]:
         """Public alias to inspect the current pool contents (for tests)."""
         with self._lock:
             return list(self._pool)
 
 
-class MemoryMonitor:
+class MemoryMonitor(_ThreadSafeStatsBase):
     """
     Memory usage monitor with automatic cleanup triggers.
 
@@ -200,18 +228,18 @@ class MemoryMonitor:
     """
 
     def __init__(self, config: Optional[MemoryConfig] = None):
+        super().__init__()
         self.config = config or MemoryConfig()
         self.logger = logging.getLogger(__name__)
-        self._lock = threading.RLock()
         self._monitoring = False
         self._monitor_thread: Optional[threading.Thread] = None
         self._last_memory_mb = 0.0
-        self._memory_history: deque = deque(maxlen=100)
-        self._cleanup_callbacks: List[Callable] = []
+        self._memory_history: deque[float] = deque(maxlen=100)
+        self._cleanup_callbacks: list[Callable[[], None]] = []
 
     def start_monitoring(self) -> None:
         """Start memory monitoring."""
-        if self._monitoring:
+        if self._monitoring and self._monitor_thread and self._monitor_thread.is_alive():
             return
 
         self._monitoring = True
@@ -226,41 +254,52 @@ class MemoryMonitor:
         self._monitoring = False
         if self._monitor_thread and self._monitor_thread.is_alive():
             self._monitor_thread.join(timeout=5.0)
+        self._monitor_thread = None
         self.logger.info("Memory monitoring stopped")
 
-    def add_cleanup_callback(self, callback: Callable) -> None:
+    def add_cleanup_callback(self, callback: Callable[[], None]) -> None:
         """Add a callback to be called during cleanup."""
         with self._lock:
             self._cleanup_callbacks.append(callback)
 
-    def get_memory_stats(self) -> Dict[str, Any]:
+    def get_memory_stats(self) -> dict[str, object]:
         """Get current memory statistics."""
         try:
             process = psutil.Process(os.getpid())
             memory_info = process.memory_info()
-            memory_mb = memory_info.rss / BYTES_PER_MB
+            memory_mb = float(memory_info.rss) / BYTES_PER_MB
 
             with self._lock:
                 self._memory_history.append(memory_mb)
                 self._last_memory_mb = memory_mb
+                peak_mb = max(self._memory_history) if self._memory_history else 0.0
+                average_mb = (
+                    sum(self._memory_history) / len(self._memory_history)
+                    if self._memory_history
+                    else 0.0
+                )
+
+            threshold = float(self.config.memory_threshold_mb)
+            exceeded = memory_mb > threshold
+            pressure = self._safe_ratio(memory_mb, threshold)
 
             return {
                 "current_mb": memory_mb,
-                "peak_mb": max(self._memory_history) if self._memory_history else 0,
-                "average_mb": sum(self._memory_history) / len(self._memory_history)
-                if self._memory_history
-                else 0,
-                "threshold_mb": self.config.memory_threshold_mb,
-                "exceeded_threshold": memory_mb > self.config.memory_threshold_mb,
+                "peak_mb": peak_mb,
+                "average_mb": average_mb,
+                "threshold_mb": threshold,
+                "exceeded_threshold": exceeded,
+                "memory_pressure": pressure,
             }
         except Exception as e:
             self.logger.error(f"Error getting memory stats: {e}")
             return {
-                "current_mb": 0,
-                "peak_mb": 0,
-                "average_mb": 0,
-                "threshold_mb": self.config.memory_threshold_mb,
+                "current_mb": 0.0,
+                "peak_mb": 0.0,
+                "average_mb": 0.0,
+                "threshold_mb": float(self.config.memory_threshold_mb),
                 "exceeded_threshold": False,
+                "memory_pressure": 0.0,
                 "error": str(e),
             }
 
@@ -268,39 +307,44 @@ class MemoryMonitor:
         """Force immediate cleanup."""
         self.logger.info("Forcing memory cleanup")
 
-        # Call cleanup callbacks
         with self._lock:
-            for callback in self._cleanup_callbacks:
-                try:
-                    callback()
-                except Exception as e:
-                    self.logger.error(f"Error in cleanup callback: {e}")
+            callbacks = list(self._cleanup_callbacks)
+
+        for callback in callbacks:
+            try:
+                callback()
+            except Exception as e:
+                self.logger.error(f"Error in cleanup callback: {e}")
 
         # Run garbage collection
         if self.config.enable_gc_optimization:
             collected = gc.collect()
             self.logger.info(f"Garbage collection collected {collected} objects")
 
+    def emergency_cleanup(self) -> None:
+        """Compatibility alias used by distributed integration paths."""
+        self.force_cleanup()
+
     def _monitor_loop(self) -> None:
         """Main monitoring loop."""
         while self._monitoring:
             try:
                 stats = self.get_memory_stats()
-
-                if stats["exceeded_threshold"]:
+                if bool(stats.get("exceeded_threshold", False)):
                     self.logger.warning(
-                        f"Memory threshold exceeded: {stats['current_mb']:.1f}MB > {stats['threshold_mb']}MB"
+                        "Memory threshold exceeded: "
+                        f"{stats.get('current_mb', 0.0):.1f}MB > {stats.get('threshold_mb', 0.0)}MB"
                     )
                     self.force_cleanup()
 
-                time.sleep(self.config.cleanup_interval)
+                time.sleep(max(0.1, self.config.cleanup_interval))
 
             except Exception as e:
                 self.logger.error(f"Error in memory monitor loop: {e}")
                 time.sleep(60.0)  # Back off on errors
 
 
-class WeakRefRegistry:
+class WeakRefRegistry(_ThreadSafeStatsBase):
     """
     Registry for weak references to prevent memory leaks.
 
@@ -311,22 +355,22 @@ class WeakRefRegistry:
     """
 
     def __init__(self):
-        self._refs: Dict[str, weakref.ReferenceType] = {}
-        self._lock = threading.RLock()
+        super().__init__()
+        self._refs: dict[str, RefGetter] = {}
 
-    def register(self, name: str, obj: Any) -> None:
+    def register(self, name: object, obj: object | None = None) -> None:
         """Register an object with weak reference.
 
         Accept both signatures for compatibility with existing tests:
-        - register(name: str, obj: Any)
-        - register(obj: Any, name: str)
+        - register(name: str, obj: object)
+        - register(obj: object, name: str)
         """
         with self._lock:
             # Accept either signature: register(name, obj) or register(obj, name)
             if isinstance(name, str) and obj is not None:
                 key = name
                 value = obj
-            elif isinstance(obj, str) and name is not None:
+            elif isinstance(obj, str):
                 # Passed (obj, name)
                 value = name
                 key = obj
@@ -337,10 +381,14 @@ class WeakRefRegistry:
 
             try:
                 # Store a weakref where possible; otherwise store a callable returning the value
-                self._refs[key] = weakref.ref(value, lambda ref, k=key: self._cleanup_dead_ref(k))
+                ref = weakref.ref(
+                    value,
+                    lambda _ref, ref_name=key: self._cleanup_dead_ref(ref_name),
+                )
+                self._refs[key] = ref
             except TypeError:
-                # Unweakrefable (e.g., list of primitives); store a lambda to mimic retrieval
-                self._refs[key] = (lambda v=value: v)
+                # Unweakrefable (e.g., list of primitives); store a callable provider
+                self._refs[key] = lambda captured=value: captured
 
     def cleanup(self) -> int:
         """Alias for cleanup_dead_refs used by tests."""
@@ -351,7 +399,7 @@ class WeakRefRegistry:
         with self._lock:
             self._refs.pop(name, None)
 
-    def get(self, name: str) -> Optional[Any]:
+    def get(self, name: str) -> object | None:
         """Get an object by name."""
         with self._lock:
             ref = self._refs.get(name)
@@ -360,7 +408,7 @@ class WeakRefRegistry:
     def cleanup_dead_refs(self) -> int:
         """Clean up dead references and return count of cleaned refs."""
         with self._lock:
-            dead_names = []
+            dead_names: list[str] = []
             for name, ref in self._refs.items():
                 if ref() is None:
                     dead_names.append(name)
@@ -376,15 +424,15 @@ class WeakRefRegistry:
             self._refs.pop(name, None)
 
     @property
-    def registry(self) -> Dict[str, weakref.ReferenceType]:
+    def registry(self) -> dict[str, RefGetter]:
         """Public snapshot of registered weak references."""
         with self._lock:
             return dict(self._refs)
 
 
 # Global instances
-_global_memory_monitor = None
-_global_weak_registry = None
+_global_memory_monitor: Optional[MemoryMonitor] = None
+_global_weak_registry: Optional[WeakRefRegistry] = None
 
 
 def get_global_memory_monitor() -> MemoryMonitor:

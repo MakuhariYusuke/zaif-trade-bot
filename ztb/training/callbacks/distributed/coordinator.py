@@ -18,6 +18,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, Optional
 
+from .threading_mixin import BackgroundThreadController
+
 
 @dataclass
 class DistributedConfig:
@@ -85,7 +87,7 @@ class Message:
         )
 
 
-class DistributedCoordinator:
+class DistributedCoordinator(BackgroundThreadController):
     """
     Coordinator for distributed training operations.
 
@@ -145,17 +147,18 @@ class DistributedCoordinator:
                 max_workers=self.config.num_workers * 2
             )
 
-        # Start coordination thread
-        self._coordinator_thread = threading.Thread(
-            target=self._coordination_loop, name="distributed-coordinator", daemon=True
+        self._start_background_thread(
+            attr_name="_coordinator_thread",
+            target=self._coordination_loop,
+            name="distributed-coordinator",
+            daemon=True,
         )
-        self._coordinator_thread.start()
-
-        # Start heartbeat thread
-        self._heartbeat_thread = threading.Thread(
-            target=self._heartbeat_loop, name="heartbeat-monitor", daemon=True
+        self._start_background_thread(
+            attr_name="_heartbeat_thread",
+            target=self._heartbeat_loop,
+            name="heartbeat-monitor",
+            daemon=True,
         )
-        self._heartbeat_thread.start()
 
     def stop_coordination(self) -> None:
         """Stop the distributed coordination."""
@@ -171,11 +174,8 @@ class DistributedCoordinator:
         if self.thread_pool:
             self.thread_pool.shutdown(wait=True)
 
-        # Wait for threads
-        threads = [self._coordinator_thread, self._heartbeat_thread]
-        for thread in threads:
-            if thread and thread.is_alive():
-                thread.join(timeout=5.0)
+        self._join_background_thread(attr_name="_coordinator_thread", timeout=5.0)
+        self._join_background_thread(attr_name="_heartbeat_thread", timeout=5.0)
 
     def register_worker(self, worker_info: WorkerInfo) -> bool:
         """Register a worker with the coordinator."""

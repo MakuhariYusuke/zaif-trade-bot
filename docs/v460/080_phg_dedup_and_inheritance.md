@@ -1,7 +1,7 @@
 # 080# PHG: 重複排除 & 継承ベース統合
 
-**日時**: 2025-02-24 (+ 2026-02-16 追補)  
-**コミット**: `63c557e2b` (phase1), `22733338b` (phase2), `(current)` (phase3追補)  
+**日時**: 2025-02-24 (+ 2026-02-16 / 2026-02-20 追補)  
+**コミット**: `63c557e2b` (phase1), `22733338b` (phase2), `3655e17d3` (phase7), `(current)` (phase8追補)  
 **先行**: `6ed99506a` (dead file cleanup + type safety)
 
 ---
@@ -228,3 +228,31 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - 変換・履歴更新 helper（`_as_float`, `_append_bounded` など）を追加し、
   callback 間の重複実装を削減。
 - repo 全体 `any_type_debt_tokens` は `2,571 -> 2,537`（-34）。
+
+## Phase 8 追補: distributed/performance 継承統合 + 並行実行安定化 (2026-02-20)
+
+### 1) 継承導入で thread lifecycle を共通化
+
+- `ztb/training/callbacks/distributed/threading_mixin.py` を追加し、`BackgroundThreadController` を導入。
+- `DistributedCoordinator` / `WorkerPool` / `DistributedTrainingManager` を同基底継承へ変更。
+- 背景 thread の start/join 重複を基底 API（`_start_background_thread`, `_join_background_thread`）へ集約。
+
+### 2) distributed 実行系の不具合・性能改善
+
+- `WorkerPool` の task ごと thread 生成を廃止し、`ThreadPoolExecutor(max_workers=num_workers)` へ置換（スレッド増殖抑制）。
+- 先頭 worker 固定になっていた疑似 round-robin を修正し、実際のローテーション選択へ変更。
+- dispatch callback の late-binding 問題（`task_info`/`worker` 取り違え）を `_on_task_done` 経由で解消。
+- `result_queue` を bounded 化し、満杯時に古い結果を落とすことでメモリ増加を抑制。
+- `DistributedWorker.send_task()` を task lock で直列化し、`heartbeat/sync_ack` 混入時の誤判定を解消。
+- `DistributedTrainingManager` の同期 thread 起動タイミングを修正（`initialize` で即終了していた不具合を解消）。
+
+### 3) memory monitor 契約の整合化
+
+- `memory_optimizer.py` に `_ThreadSafeStatsBase` を導入し、`LRUCache` / `MemoryPool` / `MemoryMonitor` / `WeakRefRegistry` の統計計算重複を削減。
+- `MemoryMonitor.get_memory_stats()` に `memory_pressure` を追加し、`real_time_monitor` / `distributed` 側の判定契約と整合。
+- `MemoryMonitor.emergency_cleanup()` 互換 alias を追加し、`integration` 側の呼び出し不整合を解消（実装は `force_cleanup()` に統一）。
+
+### 4) 型安全の進捗
+
+- `ztb/training/callbacks/distributed/worker.py` / `integration.py` / `threading_mixin.py` / `ztb/training/callbacks/performance/memory_optimizer.py` を `Any=0` 化。
+- repo 全体 `any_type_debt_tokens` は `2,537 -> 2,502`（-35）。

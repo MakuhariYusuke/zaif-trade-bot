@@ -756,6 +756,23 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 10. 回帰確認: `py_compile`（2ファイル）通過。`pytest` は本環境で `numpy` 非導入のため未実施。  
 11. 在庫更新: repo 全体 `any_type_debt_tokens=2,571 -> 2,537`（-34）。`multi_task_callbacks.py` / `meta_callbacks.py` は `any_type_debt_tokens=0`。  
 
+### Step67: `distributed/performance` の継承導入 + 並行実行安定化 + `Any` 追加削減
+
+1. `ztb/training/callbacks/distributed/threading_mixin.py` を追加し、`BackgroundThreadController`（背景スレッド start/join 共通基底）を導入。  
+2. `DistributedCoordinator` / `WorkerPool` / `DistributedTrainingManager` に同基底を適用し、重複していた thread lifecycle 処理を継承で集約。  
+3. `WorkerPool` は task ごとの無制限 thread 生成を廃止し、`ThreadPoolExecutor(max_workers=num_workers)` へ変更（スレッド増殖抑制）。  
+4. `WorkerPool` の「round-robin 実装だが先頭 worker 固定」の不整合を修正し、実際にローテーションする選択へ変更。  
+5. `WorkerPool` 内 callback closure の late-binding（`task_info`/`worker` 取り違え）リスクを `_on_task_done` 経由で解消。  
+6. `result_queue` を bounded 化し、満杯時の古い結果破棄 (`_enqueue_result`) を追加して長時間運用時のメモリ膨張を抑制。  
+7. `DistributedWorker.send_task()` を task lock で直列化し、`heartbeat/sync_ack` 混入時に task 結果待機を継続する方式へ修正（誤 `None` 返却リスク低減）。  
+8. 同 worker で parent 側 status/stats 更新を lock 保護し、pool 側の可用判定・統計が実態から乖離しにくいよう改善。  
+9. `DistributedTrainingManager` の同期 thread が `initialize()` 時点で即終了する不具合を修正し、`start_distributed_training()` で起動する設計へ変更。  
+10. `distributed/integration.py` の `memory_monitor.emergency_cleanup()` 不整合を修正（`force_cleanup()` へ統一）。  
+11. `ztb/training/callbacks/performance/memory_optimizer.py` を再構成し、`_ThreadSafeStatsBase` 継承導入、`memory_pressure` 追加、`emergency_cleanup` 互換 alias を導入。  
+12. `Any` 削減: `worker.py` / `integration.py` / `memory_optimizer.py` / `threading_mixin.py` は `any_type_debt_tokens=0`。  
+13. 回帰確認: `py_compile`（5ファイル）通過。`pytest` は本環境で未導入のため未実施。  
+14. 在庫更新: repo 全体 `any_type_debt_tokens=2,537 -> 2,502`（-35）。`ztb/training` は `630 -> 595`。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -826,6 +843,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step64時点 | repo全体 | 2,610 |
 | Step65時点 | repo全体 | 2,571 |
 | Step66時点 | repo全体 | 2,537 |
+| Step67時点 | repo全体 | 2,502 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -930,6 +948,10 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step65時点 | `ztb/experiments/run_sac_experiments.py` | **0** |
 | Step66時点 | `ztb/training/callbacks/multi_task/multi_task_callbacks.py` | **0** |
 | Step66時点 | `ztb/training/callbacks/meta/meta_callbacks.py` | **0** |
+| Step67時点 | `ztb/training/callbacks/distributed/worker.py` | **0** |
+| Step67時点 | `ztb/training/callbacks/distributed/integration.py` | **0** |
+| Step67時点 | `ztb/training/callbacks/performance/memory_optimizer.py` | **0** |
+| Step67時点 | `ztb/training/callbacks/distributed/threading_mixin.py` | **0** |
 
 ---
 
@@ -951,8 +973,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - `manifest/result` 永続化と read 経路の `Any` 型を `run_manifest` 側の object-map 契約へ寄せ、`json.load/dump` の分散実装を統合する。  
 8. `ztb/utils/results_utils.py`  
    - training/backtest の result payload schema を `TypedDict` 化し、`analysis/common/data_loaders.py` とキー契約を統一して重複整形コードを削減する。  
-9. `ztb/training/callbacks/distributed/worker.py` / `ztb/training/callbacks/performance/memory_optimizer.py`  
-   - Step66 と同様に `NoOpMemoryOptimizedCallback` 継承で lifecycle 重複を圧縮し、callback 状態更新の helper を共通化する。  
+9. `ztb/training/callbacks/distributed/coordinator.py` / `ztb/training/callbacks/monitoring/real_time_monitor.py`  
+   - `WorkerInfo` / `Message` payload の `Any` を `object` ベースへ寄せ、message handler 分岐の重複を helper 化。`memory_pressure` 判定契約を両者で統一する。  
 
 ---
 

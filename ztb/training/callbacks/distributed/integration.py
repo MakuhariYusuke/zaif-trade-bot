@@ -6,11 +6,13 @@ This module provides integration between the distributed training
 system and the existing training callbacks and monitoring systems.
 """
 
+from __future__ import annotations
+
 import logging
 import threading
 import time
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Callable, Mapping, Optional
 
 from ..monitoring.metrics_collector import MetricsCollector
 from ..monitoring.real_time_monitor import RealTimeMonitor
@@ -21,10 +23,31 @@ from .coordinator import (
     DistributedCoordinator,
     WorkerInfo,
 )
-from .worker import WorkerPool
+from .threading_mixin import BackgroundThreadController
+from .worker import TaskCallback, WorkerPool
 
 
-class DistributedTrainingManager:
+def _as_object_map(payload: object) -> dict[str, object]:
+    if isinstance(payload, dict):
+        normalized: dict[str, object] = {}
+        for key, value in payload.items():
+            normalized[str(key)] = value
+        return normalized
+    return {}
+
+
+def _safe_int(value: object, default: int = 0) -> int:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float)):
+        return int(value)
+    try:
+        return int(str(value))
+    except (TypeError, ValueError):
+        return default
+
+
+class DistributedTrainingManager(BackgroundThreadController):
     """
     Manager for distributed training operations.
 
@@ -49,13 +72,14 @@ class DistributedTrainingManager:
         self.is_initialized = False
         self.training_active = False
         self.distributed_mode = self.config.enable_distributed
+        self.training_config: dict[str, object] = {}
 
         # Synchronization
         self.sync_lock = threading.RLock()
         self._sync_thread: Optional[threading.Thread] = None
 
         # Callbacks
-        self.training_callbacks: List[Callable] = []
+        self.training_callbacks: list[Callable[..., object]] = []
 
     def initialize(
         self,
@@ -77,15 +101,8 @@ class DistributedTrainingManager:
                 # Start worker pool
                 if not self.worker_pool.start_pool():
                     self.logger.error("Failed to start worker pool")
+                    self.coordinator.stop_coordination()
                     return False
-
-                # Start synchronization thread
-                self._sync_thread = threading.Thread(
-                    target=self._synchronization_loop,
-                    name="distributed-sync",
-                    daemon=True,
-                )
-                self._sync_thread.start()
 
             # Start memory monitoring
             self.memory_monitor.start_monitoring()
@@ -102,11 +119,9 @@ class DistributedTrainingManager:
         """Shutdown the distributed training manager."""
         self.logger.info("Shutting down distributed training manager")
 
+        self.stop_distributed_training()
         self.training_active = False
-
-        # Stop synchronization
-        if self._sync_thread and self._sync_thread.is_alive():
-            self._sync_thread.join(timeout=5.0)
+        self._join_background_thread(attr_name="_sync_thread", timeout=5.0)
 
         # Stop worker pool
         self.worker_pool.stop_pool()
@@ -119,7 +134,7 @@ class DistributedTrainingManager:
 
         self.is_initialized = False
 
-    def start_distributed_training(self, training_config: Dict[str, Any]) -> bool:
+    def start_distributed_training(self, training_config: Mapping[str, object]) -> bool:
         """Start distributed training session."""
         if not self.is_initialized:
             self.logger.error("Distributed training manager not initialized")
@@ -148,6 +163,8 @@ class DistributedTrainingManager:
                 if self.metrics_collector:
                     self.metrics_collector.start_collection()
 
+                self._start_sync_thread()
+
             self.logger.info("Distributed training session started")
             return True
 
@@ -164,6 +181,7 @@ class DistributedTrainingManager:
 
         with self.sync_lock:
             self.training_active = False
+            self._join_background_thread(attr_name="_sync_thread", timeout=5.0)
 
             # Stop monitoring
             if self.real_time_monitor:
@@ -178,27 +196,27 @@ class DistributedTrainingManager:
     def submit_training_task(
         self,
         task_type: str,
-        task_data: Dict[str, Any],
-        callback: Optional[Callable] = None,
+        task_data: Mapping[str, object],
+        callback: Optional[TaskCallback] = None,
     ) -> Optional[str]:
         """Submit a training task to the distributed system."""
         if not self.training_active:
             return None
 
-        # Add distributed metadata
-        task_data["distributed"] = True
-        task_data["timestamp"] = datetime.now().isoformat()
-        task_data["memory_info"] = self.memory_monitor.get_memory_stats()
+        task_payload = dict(task_data)
+        task_payload["distributed"] = True
+        task_payload["timestamp"] = datetime.now().isoformat()
+        task_payload["memory_info"] = self.memory_monitor.get_memory_stats()
 
-        return self.worker_pool.submit_task(task_type, task_data, callback)
+        return self.worker_pool.submit_task(task_type, task_payload, callback)
 
-    def get_training_status(self) -> Dict[str, Any]:
+    def get_training_status(self) -> dict[str, object]:
         """Get comprehensive training status."""
         if not self.is_initialized:
             return {"status": "not_initialized"}
 
         with self.sync_lock:
-            status = {
+            status: dict[str, object] = {
                 "training_active": self.training_active,
                 "distributed_mode": self.distributed_mode,
                 "coordinator_status": self.coordinator.get_worker_stats()
@@ -211,25 +229,20 @@ class DistributedTrainingManager:
 
             # Add monitoring data if available
             if self.real_time_monitor:
-                status[
-                    "real_time_metrics"
-                ] = self.real_time_monitor.get_current_metrics()
+                status["real_time_metrics"] = self.real_time_monitor.get_current_metrics()
 
             if self.metrics_collector:
-                status[
-                    "collected_metrics"
-                ] = self.metrics_collector.get_latest_metrics()
+                status["collected_metrics"] = self.metrics_collector.get_latest_metrics()
 
             return status
 
-    def register_training_callback(self, callback: Callable) -> None:
+    def register_training_callback(self, callback: Callable[..., object]) -> None:
         """Register a training callback."""
         self.training_callbacks.append(callback)
 
-    def _initialize_training_state(self, config: Dict[str, Any]) -> None:
+    def _initialize_training_state(self, config: Mapping[str, object]) -> None:
         """Initialize training state for distributed session."""
-        # Set up distributed training parameters
-        self.training_config = config
+        self.training_config = dict(config)
 
         # Initialize worker states
         if self.distributed_mode:
@@ -266,31 +279,60 @@ class DistributedTrainingManager:
                 "epoch_complete", self._handle_epoch_complete
             )
 
-    def _handle_training_progress(self, metrics: Dict[str, Any]) -> None:
+    def _start_sync_thread(self) -> None:
+        """Start periodic synchronization thread for active distributed sessions."""
+        if not (self.training_active and self.distributed_mode):
+            return
+
+        self._start_background_thread(
+            attr_name="_sync_thread",
+            target=self._synchronization_loop,
+            name="distributed-sync",
+            daemon=True,
+        )
+
+    @staticmethod
+    def _memory_pressure(memory_stats: Mapping[str, object]) -> float:
+        pressure = memory_stats.get("memory_pressure")
+        if isinstance(pressure, (int, float)):
+            return max(0.0, float(pressure))
+
+        current_mb = memory_stats.get("current_mb")
+        threshold_mb = memory_stats.get("threshold_mb")
+        if (
+            isinstance(current_mb, (int, float))
+            and isinstance(threshold_mb, (int, float))
+            and threshold_mb > 0
+        ):
+            return max(0.0, float(current_mb) / float(threshold_mb))
+        return 0.0
+
+    def _handle_training_progress(self, metrics: Mapping[str, object]) -> None:
         """Handle training progress updates."""
         if not self.training_active:
             return
 
         # Distribute metrics to coordinator
-        self.coordinator.aggregate_metrics({0: metrics})  # Worker 0 = master
+        self.coordinator.aggregate_metrics({0: dict(metrics)})  # Worker 0 = master
 
         # Check for memory issues
         memory_stats = self.memory_monitor.get_memory_stats()
-        if memory_stats.get("memory_pressure", 0) > 0.8:  # 80% memory usage
+        if self._memory_pressure(memory_stats) > 0.8:  # 80% memory usage
             self.logger.warning("High memory usage detected, triggering cleanup")
             self.memory_monitor.force_cleanup()
 
-    def _handle_epoch_complete(self, metrics: Dict[str, Any]) -> None:
+    def _handle_epoch_complete(self, metrics: Mapping[str, object]) -> None:
         """Handle epoch completion."""
         if not self.training_active:
             return
 
         # Synchronize weights across workers
         if self.distributed_mode:
-            sync_task = {
-                "epoch": metrics.get("epoch", 0),
-                "weights": metrics.get("model_weights", {}),
-                "metrics": metrics,
+            logs = _as_object_map(metrics.get("model_weights"))
+            sync_task: dict[str, object] = {
+                "epoch": _safe_int(metrics.get("epoch"), default=0),
+                "weights": logs,
+                "metrics": dict(metrics),
             }
             self.submit_training_task("sync_weights", sync_task)
 
@@ -299,10 +341,10 @@ class DistributedTrainingManager:
         while self.training_active and self.distributed_mode:
             try:
                 # Synchronize metrics
-                worker_metrics = {}
+                worker_metrics: dict[int, dict[str, object]] = {}
                 for worker_id, worker in self.coordinator.workers.items():
                     if worker.metrics:
-                        worker_metrics[worker_id] = worker.metrics
+                        worker_metrics[worker_id] = dict(worker.metrics)
 
                 if worker_metrics:
                     aggregated = self.coordinator.aggregate_metrics(worker_metrics)
@@ -318,11 +360,11 @@ class DistributedTrainingManager:
 
                 # Memory synchronization
                 memory_stats = self.memory_monitor.get_memory_stats()
-                if memory_stats.get("memory_pressure", 0) > 0.9:  # 90% memory usage
+                if self._memory_pressure(memory_stats) > 0.9:  # 90% memory usage
                     self.logger.warning(
                         "Critical memory usage, triggering emergency cleanup"
                     )
-                    self.memory_monitor.emergency_cleanup()
+                    self.memory_monitor.force_cleanup()
 
                 time.sleep(self.config.sync_interval)
 
@@ -340,7 +382,7 @@ class DistributedCallbackAdapter(DistributedCallbackMixin):
     """
 
     def __init__(
-        self, base_callback: Any, coordinator: Optional[DistributedCoordinator] = None
+        self, base_callback: object, coordinator: Optional[DistributedCoordinator] = None
     ):
         super().__init__(coordinator)
         self.base_callback = base_callback
@@ -363,27 +405,32 @@ class DistributedCallbackAdapter(DistributedCallbackMixin):
         for method_name in original_methods:
             if hasattr(self.base_callback, method_name):
                 original_method = getattr(self.base_callback, method_name)
-                wrapped_method = self._create_wrapped_method(
-                    method_name, original_method
-                )
-                setattr(self, method_name, wrapped_method)
-            else:
-                # Create default method that does nothing
-                setattr(self, method_name, lambda *args, **kwargs: None)
+                if callable(original_method):
+                    wrapped_method = self._create_wrapped_method(
+                        method_name, original_method
+                    )
+                    setattr(self, method_name, wrapped_method)
+                    continue
+
+            setattr(self, method_name, self._noop_callback)
+
+    @staticmethod
+    def _noop_callback(*_args: object, **_kwargs: object) -> None:
+        return None
 
     def _create_wrapped_method(
-        self, method_name: str, original_method: Callable
-    ) -> Callable:
+        self, method_name: str, original_method: Callable[..., object]
+    ) -> Callable[..., object]:
         """Create a wrapped method that adds distributed functionality."""
 
-        def wrapped_method(*args, **kwargs):
+        def wrapped_method(*args: object, **kwargs: object) -> object:
             try:
                 # Call original method
                 result = original_method(*args, **kwargs)
 
                 # Add distributed functionality
                 if self.is_distributed:
-                    self._handle_distributed_event(method_name, args, kwargs, result)
+                    self._handle_distributed_event(method_name, kwargs, result)
 
                 return result
 
@@ -396,14 +443,16 @@ class DistributedCallbackAdapter(DistributedCallbackMixin):
         return wrapped_method
 
     def _handle_distributed_event(
-        self, event_type: str, args: tuple, kwargs: dict, result: Any
+        self, event_type: str, kwargs: Mapping[str, object], result: object
     ) -> None:
         """Handle distributed event processing."""
+        _ = result
+
         # Send heartbeat
         self.heartbeat_to_coordinator()
 
         # Send relevant metrics
-        metrics = {
+        metrics: dict[str, object] = {
             "event_type": event_type,
             "timestamp": datetime.now().isoformat(),
             "worker_id": self.worker_id,
@@ -412,18 +461,18 @@ class DistributedCallbackAdapter(DistributedCallbackMixin):
         # Add event-specific metrics
         if event_type == "on_epoch_end":
             metrics.update(
-                {"epoch": kwargs.get("epoch", 0), "logs": kwargs.get("logs", {})}
+                {"epoch": _safe_int(kwargs.get("epoch"), 0), "logs": kwargs.get("logs", {})}
             )
         elif event_type == "on_batch_end":
             metrics.update(
-                {"batch": kwargs.get("batch", 0), "logs": kwargs.get("logs", {})}
+                {"batch": _safe_int(kwargs.get("batch"), 0), "logs": kwargs.get("logs", {})}
             )
 
         self.send_metrics_to_coordinator(metrics)
 
 
 # Global instance
-_global_distributed_manager = None
+_global_distributed_manager: Optional[DistributedTrainingManager] = None
 
 
 def get_distributed_manager() -> DistributedTrainingManager:
