@@ -162,20 +162,24 @@ smart_side:
   max_consecutive_same: 2
 
 # ---- 054# S3: テール損失カット (Early Exit) ----
+# 120# P0: 119# 分析で EE 48件=-345.5bps が全損失の137%を生成。
+# EE 除去で +218.8bps の正期待値。計測止めバイアスがリバージョン利益を破壊。
 early_exit:
-  enabled: true                # 約定後の早期損失検知
+  enabled: false               # 120# true→false: 119#/120# 分析に基づき無効化
   threshold_bps: 5.0           # この損失に達したら rapid exit フラグ
   monitoring_interval_sec: 5.0 # 監視刻み (秒)
   rapid_exit_interval_sec: 10.0 # rapid exit 時の cycle interval
 
 # ---- 054# S4: Spread 適応型 Offset ----
+# 120# A1: 実測 spread_bps median=2.43, max=5.03 → 旧閾値(10/25)では全件 narrow 判定
+#   分布に合わせて narrow=P75(3.0), wide=P95(4.5) で再設計
 spread_adaptive:
   enabled: true                # スプレッド幅に応じた offset 動的調整
-  narrow_spread_bps: 10.0      # これ以下で「狭い」→ offset 拡大 (AS 回避)
+  narrow_spread_bps: 2.0       # 120# 10.0→2.0: P35相当。median(2.43)未満のみ narrow boost
   narrow_spread_boost: 2.0     # 狭スプレッド時の offset 倍率 (共通フォールバック)
   narrow_spread_boost_buy: 1.5 # 093# buy 側: 084# Tier2 #4 — 0.05→0.075 に軽減して fill 促進
   narrow_spread_boost_sell: 2.0 # 093# sell 側: offset 増加の限界効果低い→据え置き (084#: AS 構造的要因)
-  wide_spread_bps: 25.0        # これ以上で「広い」→ offset 縮小 (fill 優先)
+  wide_spread_bps: 4.5         # 120# 25.0→4.5: P95相当。max(5.03)に近い帯で wide 判定
   wide_spread_ratio: 0.5       # 広スプレッド時の offset 割引
 
 # ---- 062# S5: SkipGate ML フィルター (AS 分類器ベース) ----
@@ -188,8 +192,8 @@ skip_gate:
   sell_enabled: false            # sell は SkipGate skip すると逆に PnL 悪化するため無効化
   mode: as                     # "as" (AS 分類器) / "pnl" (PnL 回帰)
   model_path: models/v460/skip_gate_as.pkl
-  as_threshold: 0.52           # 100# P0-2: P(AS) 分布 [0.42,0.56] に整合
-  as_threshold_buy: 0.52       # 100# P0-2: buy 側閾値 (旧 null=0.65 は過大)
+  as_threshold: 0.50           # 120# 0.52→0.50: P(AS)=0.50 が変曲点 (AS 18.1%→36.7%)
+  as_threshold_buy: 0.50       # 120# A3: [0.50,0.52) 帯 n=60 PnL=-0.247 AS=36.7% → skip 対象化
   as_threshold_sell: 0.50      # 100# P0-2: sell 側厳格化 (旧 0.60 → 0.50)
   pnl_threshold: 0.0
   max_skip_rate: 0.3

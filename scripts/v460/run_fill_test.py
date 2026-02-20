@@ -803,6 +803,8 @@ class FillTestRunner:
             reprice_count=reprice_count,
             # 100# P1-4: 実際の PnL 計測経過秒数
             actual_measurement_sec=actual_measurement_sec if filled else None,
+            # 120# A4: Early Exit 明示フラグ
+            early_exit_triggered=pnl.early_exit_triggered if filled else None,
         )
 
         logger.info(
@@ -1018,6 +1020,8 @@ class FillTestRunner:
                         f"[balance] {next_side} insufficient, "
                         f"switching to {opposite} immediately (091#)"
                     )
+                    # 120# A5: 不足 side を 3 サイクル凍結 (API 呼出し節約)
+                    self._side_selector.freeze_side(next_side, cycles=3)
                     next_side = opposite
                     self._last_side = opposite  # 次回は再び元の side
                     self._preflight_skip_count = 0
@@ -1073,6 +1077,8 @@ class FillTestRunner:
             self._preflight_skip_count = 0
             # 051# P2-3: 成功時に balance_shrink を解除し、ロットを原値に復元
             self._balance_checker.restore_lot_on_success()
+            # 120# A5: 残高回復 → freeze 解除
+            self._side_selector.unfreeze_side()
 
             # --- サイクル実行 ---
             try:

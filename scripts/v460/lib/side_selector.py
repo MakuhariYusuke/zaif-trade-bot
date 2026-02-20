@@ -19,7 +19,10 @@ logger = logging.getLogger(__name__)
 
 
 class SideSelector:
-    """009# §4.2: buy/sell 交互 + 054# S2 Smart Side."""
+    """009# §4.2: buy/sell 交互 + 054# S2 Smart Side.
+
+    120# A5: inventory-aware side hint — 残高不足 side を一時的に回避。
+    """
 
     def __init__(self, config: FillTestConfig) -> None:
         self._config = config
@@ -32,6 +35,9 @@ class SideSelector:
         self._consecutive_same_side: int = 0
         # 054# S3: Early Exit — rapid exit
         self._rapid_exit_side: str | None = None
+        # 120# A5: 残高不足 side の一時凍結 (inventory-aware)
+        self._frozen_side: str | None = None
+        self._frozen_remaining: int = 0
 
     @property
     def last_side(self) -> str | None:
@@ -56,6 +62,7 @@ class SideSelector:
     def next(self, imbalance: float = 0.0) -> str:
         """次の side を決定: 交互 or Smart Side.
 
+        120# A5: frozen_side に該当する side は自動的に反対に迂回。
         Args:
             imbalance: 現在の板不均衡 (Smart Side 用)
         """
@@ -67,6 +74,19 @@ class SideSelector:
             return forced_side
 
         base_side = "buy" if (self._last_side is None or self._last_side == "sell") else "sell"
+
+        # 120# A5: inventory-aware — frozen side は反対に迂回
+        if self._frozen_side is not None and self._frozen_remaining > 0:
+            if base_side == self._frozen_side:
+                alt = "sell" if base_side == "buy" else "buy"
+                self._frozen_remaining -= 1
+                logger.debug(
+                    f"[side_selector] Frozen {self._frozen_side} → "
+                    f"diverting to {alt} (remaining={self._frozen_remaining})"
+                )
+                if self._frozen_remaining <= 0:
+                    self._frozen_side = None
+                return alt
 
         if not self._config.smart_side_enabled:
             return base_side
@@ -115,3 +135,24 @@ class SideSelector:
     def set_rapid_exit(self, current_side: str) -> None:
         """054# S3: early exit → 反対 side を設定."""
         self._rapid_exit_side = "sell" if current_side == "buy" else "buy"
+
+    def freeze_side(self, side: str, cycles: int = 3) -> None:
+        """120# A5: 残高不足 side を一時凍結 (inventory-aware).
+
+        Args:
+            side: 凍結する side ("buy" or "sell")
+            cycles: 凍結サイクル数 (デフォルト 3)
+        """
+        self._frozen_side = side
+        self._frozen_remaining = cycles
+        logger.info(
+            f"[side_selector] Freezing {side} for {cycles} cycles "
+            f"(120# inventory-aware)"
+        )
+
+    def unfreeze_side(self) -> None:
+        """120# A5: side 凍結を解除."""
+        if self._frozen_side is not None:
+            logger.debug(f"[side_selector] Unfreezing {self._frozen_side}")
+            self._frozen_side = None
+            self._frozen_remaining = 0

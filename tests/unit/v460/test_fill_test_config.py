@@ -353,7 +353,8 @@ class Test054EarlyExitConfig:
         """YAML に early_exit セクションがある."""
         cfg = load_fill_test_config()
         assert "early_exit" in cfg
-        assert cfg["early_exit"]["enabled"] is True
+        # 120# P0: EE は 119# 分析結果に基づき無効化
+        assert cfg["early_exit"]["enabled"] is False
         assert cfg["early_exit"]["threshold_bps"] == 5.0
 
     def test_from_yaml_early_exit(self) -> None:
@@ -381,7 +382,8 @@ class Test054SpreadAdaptiveConfig:
         cfg = load_fill_test_config()
         assert "spread_adaptive" in cfg
         assert cfg["spread_adaptive"]["enabled"] is True
-        assert cfg["spread_adaptive"]["narrow_spread_bps"] == 10.0
+        # 120# A1: 実データ分布に基づき閾値切り下げ (10→2.0)
+        assert cfg["spread_adaptive"]["narrow_spread_bps"] == 2.0
 
     def test_from_yaml_spread_adaptive(self) -> None:
         """Spread Adaptive config が正しくマッピングされる."""
@@ -413,8 +415,8 @@ class Test054SpreadAdaptiveConfig:
         # S2 (071# disabled — OB無視)
         assert config.smart_side_enabled is False
         assert config.smart_side_mode == cfg["smart_side"]["mode"]
-        # S3
-        assert config.early_exit_enabled is True
+        # S3 — 120# P0: EE disabled
+        assert config.early_exit_enabled is False
         assert config.early_exit_threshold_bps == cfg["early_exit"]["threshold_bps"]
         # S4
         assert config.spread_adaptive_enabled is True
@@ -801,7 +803,7 @@ class Test062SkipGateConfig:
         assert "skip_gate" in cfg
         assert cfg["skip_gate"]["enabled"] is True  # 065#: 学習済みモデルで有効化
         assert cfg["skip_gate"]["mode"] == "as"
-        assert cfg["skip_gate"]["as_threshold"] == 0.52  # 100# P0-2: 0.65→0.52
+        assert cfg["skip_gate"]["as_threshold"] == 0.50  # 120# A3: 0.52→0.50 (変曲点)
         assert cfg["skip_gate"]["max_skip_rate"] == 0.3
 
     def test_from_yaml_skip_gate(self) -> None:

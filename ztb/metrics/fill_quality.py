@@ -89,6 +89,8 @@ class FillRecord:
     reprice_count: int = 0                        # 1 サイクル内で再発注した回数
     # 100# P1-4: 実際の PnL 計測経過秒数 (early_exit で 30s 未満になる場合の記録)
     actual_measurement_sec: Optional[float] = None  # mid_30s_after の実計測秒数
+    # 120# A4: Early Exit 明示フラグ (推定ではなく PnlMeasurer の判定値を直接保存)
+    early_exit_triggered: Optional[bool] = None     # EE 発火したか (True/False/None=計測前)
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""
