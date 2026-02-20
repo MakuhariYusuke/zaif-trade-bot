@@ -259,8 +259,12 @@ class SkipGate:
             else:
                 x_scaled = self.scaler.transform(x_df)
                 pred_pnl = float(self.model.predict(x_scaled)[0])
-            threshold_used = self.config.threshold_bps
-            should_skip = pred_pnl < self.config.threshold_bps
+            # 125# 動的較正: mode=pnl でも target_skip_rate にあわせて閾値を調整
+            if self.config.adaptive_threshold and side is not None:
+                threshold_used = self._calibrate_pnl_threshold(side, pred_pnl)
+            else:
+                threshold_used = self.config.threshold_bps
+            should_skip = pred_pnl < threshold_used
 
         # 100# P1-1: side 別連続スキップ率チェック (cross-side 干渉排除)
         side_skips = (
@@ -361,6 +365,98 @@ class SkipGate:
             self.config.as_threshold_buy = new_threshold
         else:
             self.config.as_threshold_sell = new_threshold
+
+        return new_threshold
+
+    # 125# PnL 回帰用の per-side 閾値キャッシュ
+    _pnl_threshold_buy: float | None = None
+    _pnl_threshold_sell: float | None = None
+    # 125# PnL 回帰用の per-side 予測値履歴
+    _pred_pnl_history_buy: list[float] | None = None
+    _pred_pnl_history_sell: list[float] | None = None
+
+    def _calibrate_pnl_threshold(
+        self, side: str, current_pnl: float,
+    ) -> float:
+        """125# PnL 回帰用の動的閾値較正.
+
+        mode=pnl で target_skip_rate を達成するよう threshold_bps を調整する。
+        ロジック: 直近 N 件の予測 PnL 分布で target_skip_rate に対応する
+        分位点 (下位) を閾値とする。
+
+        Args:
+            side: "buy" or "sell".
+            current_pnl: 今回の予測 PnL (bps).
+
+        Returns:
+            較正後の閾値 (bps). predicted_pnl < threshold → skip.
+        """
+        cfg = self.config
+        base_threshold = cfg.threshold_bps
+        target_rate = (
+            cfg.target_skip_rate_buy if side == "buy" else cfg.target_skip_rate_sell
+        )
+
+        # 遅延初期化 (pickleの後方互換性)
+        if self._pred_pnl_history_buy is None:
+            self._pred_pnl_history_buy = []
+        if self._pred_pnl_history_sell is None:
+            self._pred_pnl_history_sell = []
+        if self._pnl_threshold_buy is None:
+            self._pnl_threshold_buy = base_threshold
+        if self._pnl_threshold_sell is None:
+            self._pnl_threshold_sell = base_threshold
+
+        history = (
+            self._pred_pnl_history_buy if side == "buy"
+            else self._pred_pnl_history_sell
+        )
+
+        # 履歴に追加
+        history.append(current_pnl)
+        max_len = cfg.adaptive_window
+        if len(history) > max_len:
+            del history[: len(history) - max_len]
+
+        # ウォームアップ: サンプル不足時は静的閾値を使用
+        if len(history) < cfg.adaptive_min_samples:
+            return base_threshold
+
+        # target_skip_rate に対応する PnL 分位点 (下位)
+        # skip 率 = predicted_pnl < threshold → threshold = target_rate 分位点
+        sorted_pnls = sorted(history)
+        quantile_idx = int(len(sorted_pnls) * target_rate)
+        quantile_idx = min(quantile_idx, len(sorted_pnls) - 1)
+        target_threshold = sorted_pnls[quantile_idx]
+
+        # 既存の side 閾値をベースに段階的に近づける
+        current_th = (
+            self._pnl_threshold_buy if side == "buy" else self._pnl_threshold_sell
+        )
+        if current_th is None:
+            current_th = base_threshold
+
+        step = cfg.adaptive_step  # bps 単位のステップ (PnL 空間)
+        if current_th > target_threshold + step:
+            new_threshold = current_th - step
+        elif current_th < target_threshold - step:
+            new_threshold = current_th + step
+        else:
+            new_threshold = target_threshold
+
+        if abs(new_threshold - current_th) > 0.001:
+            logger.debug(
+                f"[skip_gate] 125# adaptive pnl threshold: {side} "
+                f"{current_th:.3f}→{new_threshold:.3f} bps "
+                f"(target_skip={target_rate:.0%}, "
+                f"quantile={target_threshold:.3f}, n={len(history)})"
+            )
+
+        # side 別閾値を更新
+        if side == "buy":
+            self._pnl_threshold_buy = new_threshold
+        else:
+            self._pnl_threshold_sell = new_threshold
 
         return new_threshold
 

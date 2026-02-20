@@ -590,3 +590,158 @@ class TestSkipGateEvaluateEdgeCases:
         decision = gate.evaluate(features, side="buy")
         assert decision.should_skip is False
         assert "skip_rate_limit" in decision.reason
+
+
+# =====================================================================
+# 125# mode=pnl + adaptive threshold テスト
+# =====================================================================
+
+class TestPnlAdaptiveThreshold:
+    """125# _calibrate_pnl_threshold のテスト."""
+
+    def test_pnl_adaptive_warmup_uses_static(self) -> None:
+        """adaptive_min_samples 未満では static threshold を使用."""
+        gate = _make_gate(
+            mode="pnl",
+            adaptive_threshold=True,
+            adaptive_min_samples=20,
+        )
+        gate.config.threshold_bps = -1.0
+        gate._pipeline.predict.return_value = np.array([-0.5])  # > -1.0 → pass
+        features = _make_features()
+        # ウォームアップ中は threshold_bps = -1.0 が使われる
+        decision = gate.evaluate(features, side="sell")
+        assert decision.should_skip is False  # -0.5 > -1.0 → pass
+        assert decision.threshold_used == pytest.approx(-1.0)
+
+    def test_pnl_adaptive_calibrates_after_min_samples(self) -> None:
+        """min_samples 到達後は分位点ベースの閾値に切り替わる."""
+        gate = _make_gate(
+            mode="pnl",
+            adaptive_threshold=True,
+            adaptive_min_samples=5,
+        )
+        gate.config.threshold_bps = 0.0
+        gate.config.target_skip_rate_sell = 0.20
+        gate.config.adaptive_step = 100.0  # 即収束させる
+        features = _make_features()
+
+        # 5件の PnL 予測を蓄積 (sell)
+        pnl_values = [-3.0, -1.0, 0.0, 1.0, 2.0]
+        for pnl in pnl_values:
+            gate._pipeline.predict.return_value = np.array([pnl])
+            gate.evaluate(features, side="sell")
+
+        # 6件目: 較正が有効に (5 >= adaptive_min_samples=5)
+        # 分布 [-3, -1, 0, 1, 2] の 20% 分位点
+        # idx = int(5 * 0.20) = 1, sorted[1] = -1.0
+        gate._pipeline.predict.return_value = np.array([0.5])
+        decision = gate.evaluate(features, side="sell")
+        # threshold は -1.0 付近に較正される (step=100 で即収束)
+        assert decision.threshold_used is not None
+        assert decision.threshold_used < 0.0  # 0.0 より下の分位点
+
+    def test_pnl_adaptive_per_side_independence(self) -> None:
+        """buy/sell 側の PnL 履歴が独立して管理される."""
+        gate = _make_gate(
+            mode="pnl",
+            adaptive_threshold=True,
+            adaptive_min_samples=3,
+        )
+        gate.config.threshold_bps = 0.0
+        gate.config.adaptive_step = 100.0
+        features = _make_features()
+
+        # buy 側に正の PnL を蓄積
+        for pnl in [1.0, 2.0, 3.0, 4.0]:
+            gate._pipeline.predict.return_value = np.array([pnl])
+            gate.evaluate(features, side="buy")
+
+        # sell 側に負の PnL を蓄積
+        for pnl in [-4.0, -3.0, -2.0, -1.0]:
+            gate._pipeline.predict.return_value = np.array([pnl])
+            gate.evaluate(features, side="sell")
+
+        # buy/sell の閾値が異なることを確認
+        assert gate._pnl_threshold_buy != gate._pnl_threshold_sell
+        # buy 側はプラスの分位点, sell 側はマイナスの分位点
+        assert gate._pnl_threshold_buy is not None
+        assert gate._pnl_threshold_sell is not None
+        assert gate._pnl_threshold_buy > gate._pnl_threshold_sell
+
+    def test_pnl_adaptive_disabled_uses_fixed_threshold(self) -> None:
+        """adaptive_threshold=False → 固定 threshold_bps を使用."""
+        gate = _make_gate(
+            mode="pnl",
+            adaptive_threshold=False,
+        )
+        gate.config.threshold_bps = -2.0
+        gate._pipeline.predict.return_value = np.array([-1.5])  # > -2.0 → pass
+        features = _make_features()
+        decision = gate.evaluate(features, side="sell")
+        assert decision.should_skip is False
+        assert decision.threshold_used == pytest.approx(-2.0)
+
+    def test_pnl_adaptive_side_none_uses_fixed(self) -> None:
+        """side=None + adaptive → 固定 threshold を使用."""
+        gate = _make_gate(
+            mode="pnl",
+            adaptive_threshold=True,
+        )
+        gate.config.threshold_bps = 0.0
+        gate._pipeline.predict.return_value = np.array([-0.5])
+        features = _make_features()
+        decision = gate.evaluate(features, side=None)
+        # side=None → adaptive 不使用 → threshold_bps=0.0
+        assert decision.threshold_used == pytest.approx(0.0)
+        assert decision.should_skip is True  # -0.5 < 0.0
+
+    def test_pnl_adaptive_step_gradual(self) -> None:
+        """step が小さいと閾値は段階的に変化する."""
+        gate = _make_gate(
+            mode="pnl",
+            adaptive_threshold=True,
+            adaptive_min_samples=3,
+        )
+        gate.config.threshold_bps = 0.0
+        gate.config.adaptive_step = 0.01  # 非常に小さいステップ
+        gate.config.target_skip_rate_sell = 0.20
+        features = _make_features()
+
+        # 4件蓄積 (min_samples=3 到達)
+        for pnl in [-5.0, -3.0, 1.0, 2.0]:
+            gate._pipeline.predict.return_value = np.array([pnl])
+            gate.evaluate(features, side="sell")
+
+        # 5件目で較正
+        gate._pipeline.predict.return_value = np.array([0.0])
+        decision = gate.evaluate(features, side="sell")
+        # step=0.01 × 複数回較正 → 0.0 から少し動く（大幅変動なし）
+        assert decision.threshold_used is not None
+        assert abs(decision.threshold_used - 0.0) <= 0.05  # step 近傍
+
+    def test_pnl_lazy_init_backward_compat(self) -> None:
+        """pickle 後方互換: _pred_pnl_history 属性が None でも動作."""
+        gate = _make_gate(
+            mode="pnl",
+            adaptive_threshold=True,
+            adaptive_min_samples=3,
+        )
+        # 属性を削除して pickle 後の状態をシミュレート
+        gate._pred_pnl_history_buy = None  # type: ignore[assignment]
+        gate._pred_pnl_history_sell = None  # type: ignore[assignment]
+        gate._pnl_threshold_buy = None
+        gate._pnl_threshold_sell = None
+
+        gate.config.threshold_bps = 0.0
+        gate.config.adaptive_step = 100.0
+        features = _make_features()
+
+        # 遅延初期化が正常に動作
+        for pnl in [-2.0, 0.0, 1.0, 2.0]:
+            gate._pipeline.predict.return_value = np.array([pnl])
+            decision = gate.evaluate(features, side="buy")
+            assert decision is not None
+        # 履歴が蓄積されている
+        assert gate._pred_pnl_history_buy is not None
+        assert len(gate._pred_pnl_history_buy) == 4
