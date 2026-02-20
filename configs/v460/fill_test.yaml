@@ -265,6 +265,7 @@ tuning:
 # retrain_scheduler.py がバックグラウンドで実行、fill_test とは別プロセス
 # Usage: .venv\Scripts\python.exe scripts/v460/ml/retrain_scheduler.py
 retrain:
+  enabled: true                    # fill_test 起動時に retrain_scheduler を自動起動
   interval_sec: 3600               # 再学習チェック間隔 (秒) — 1時間
   min_new_samples: 30              # 再学習に必要な最小新規サンプル数
   min_total_samples: 100           # 再学習に必要な最小合計サンプル数

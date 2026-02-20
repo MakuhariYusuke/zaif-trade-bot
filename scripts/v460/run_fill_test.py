@@ -1536,7 +1536,41 @@ def main() -> None:
         signal.signal(signal.SIGTERM, _signal_handler)
 
     # Run
-    records = asyncio.run(runner.run_continuous(args.hours))
+    # 126# retrain_scheduler を子プロセスとして自動起動
+    retrain_proc: subprocess.Popen | None = None  # type: ignore[type-arg]
+    retrain_cfg = yaml_cfg.get("retrain", {})
+    if retrain_cfg.get("enabled", True):
+        retrain_script = _PROJECT_ROOT / "scripts" / "v460" / "ml" / "retrain_scheduler.py"
+        if retrain_script.exists():
+            retrain_cmd = [
+                sys.executable,
+                str(retrain_script),
+                "--config",
+                str(args.config or _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"),
+            ]
+            try:
+                retrain_proc = subprocess.Popen(
+                    retrain_cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                logger.info(
+                    f"[126#] retrain_scheduler started (PID {retrain_proc.pid})"
+                )
+            except Exception as e:
+                logger.warning(f"[126#] retrain_scheduler start failed: {e}")
+
+    try:
+        records = asyncio.run(runner.run_continuous(args.hours))
+    finally:
+        # 126# fill_test 終了時に retrain_scheduler を停止
+        if retrain_proc is not None and retrain_proc.poll() is None:
+            retrain_proc.terminate()
+            try:
+                retrain_proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                retrain_proc.kill()
+            logger.info(f"[126#] retrain_scheduler stopped (PID {retrain_proc.pid})")
 
     # Compute metrics & judgment
     if records:
