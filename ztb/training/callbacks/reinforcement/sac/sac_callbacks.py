@@ -18,26 +18,18 @@ from ztb.training.callbacks.shared.base.learning_callback import (
     LearningContext,
     NoOpMemoryOptimizedCallback,
 )
+from ztb.training.callbacks.shared.utils.value_utils import (
+    append_bounded as _append_bounded_value,
+    as_optional_float as _as_float,
+)
 from ztb.types.common import ObjectMap
 
 
 _HISTORY_LIMIT = 1_000
 
 
-def _as_float(value: object) -> Optional[float]:
-    """Best-effort conversion for scalar numeric values."""
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, (int, float, np.integer, np.floating)):
-        return float(value)
-    return None
-
-
 def _append_bounded(history: list[float], value: float, max_len: int) -> None:
-    history.append(value)
-    overflow = len(history) - max_len
-    if overflow > 0:
-        del history[:overflow]
+    _append_bounded_value(history, value, max_len)
 
 
 class SACTemperatureScheduler(NoOpMemoryOptimizedCallback):

@@ -17,19 +17,15 @@ from ztb.training.callbacks.shared.base.learning_callback import (
     LearningContext,
     NoOpMemoryOptimizedCallback,
 )
+from ztb.training.callbacks.shared.utils.value_utils import (
+    append_bounded as _append_bounded_value,
+    as_optional_float as _as_float,
+)
 from ztb.types.common import ObjectMap
 
 
 _HISTORY_LIMIT = 1_000
 _EPSILON = 1e-8
-
-
-def _as_float(value: object) -> Optional[float]:
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, (int, float, np.integer, np.floating)):
-        return float(value)
-    return None
 
 
 def _as_float_list(value: object) -> list[float]:
@@ -58,10 +54,7 @@ def _as_float_map(value: object) -> dict[str, float]:
 
 
 def _append_bounded(history: list[float], value: float, max_len: int = _HISTORY_LIMIT) -> None:
-    history.append(value)
-    overflow = len(history) - max_len
-    if overflow > 0:
-        del history[:overflow]
+    _append_bounded_value(history, value, max_len)
 
 
 class _BaseMetaCallback(NoOpMemoryOptimizedCallback):

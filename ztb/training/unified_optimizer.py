@@ -2345,8 +2345,7 @@ class OptimizationResultPersistence:
             "total_versions": len(self._list_versions())
         }
 
-        with open(self.version_file, 'w', encoding='utf-8') as f:
-            safe_json_dump(version_data, self.version_file, indent=2, ensure_ascii=False)
+        safe_json_dump(version_data, self.version_file, indent=2, ensure_ascii=False)
 
     def save_optimization_result(
         self,
@@ -2386,8 +2385,7 @@ class OptimizationResultPersistence:
         filename = f"{result_type}_{version_id}_{timestamp_str}.json"
         filepath = self.base_dir / filename
 
-        with open(filepath, 'w', encoding='utf-8') as f:
-            safe_json_dump(result_data, filepath, indent=2, ensure_ascii=False, default=str)
+        safe_json_dump(result_data, filepath, indent=2, ensure_ascii=False, default=str)
 
         # バージョン情報を更新
         self._save_current_version()

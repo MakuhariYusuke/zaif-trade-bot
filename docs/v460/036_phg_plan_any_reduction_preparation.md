@@ -773,6 +773,18 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 13. 回帰確認: `py_compile`（5ファイル）通過。`pytest` は本環境で未導入のため未実施。  
 14. 在庫更新: repo 全体 `any_type_debt_tokens=2,537 -> 2,502`（-35）。`ztb/training` は `630 -> 595`。  
 
+### Step68: callback 共通ヘルパ横展開 + coordinator 不具合修正 + I/O 微最適化
+
+1. `ztb/training/callbacks/shared/utils/value_utils.py` を追加し、`as_optional_float` / `as_optional_array` / `append_bounded` を共通化。  
+2. `supervised/sac/transfer/unsupervised/meta/multi_task` の6 callback ファイルで、重複していた `_as_float` / `_as_array(_to_array)` / `_append_bounded` の本体実装を共通 helper に統合。  
+3. `ztb/training/callbacks/distributed/coordinator.py` に worker 状態アクセス helper（status/metrics/heartbeat）を導入し、dict/dataclass 分岐の重複を集約。  
+4. 同 coordinator で `register_worker` の payload 正規化を追加し、`worker_id` 不正値受理や型揺れに起因する運用時不整合を低減。  
+5. `coordinator._handle_error` / `_heartbeat_loop` を helper 経由へ統一し、worker 表現差異時に `status/last_heartbeat` 参照が崩れる潜在バグを解消。  
+6. `ztb/training/unified_optimizer.py` の `safe_json_dump` 周辺で重複していた `open(..., 'w')` 包装を削除し、不要 I/O を削減。  
+7. 回帰確認: `py_compile`（9ファイル）通過。`pytest` は本環境で未導入のため未実施。  
+8. 在庫確認: Step68 対象 callback ファイル（7ファイル）は `any_type_debt_tokens=0` を維持。  
+9. repo 全体在庫は `2,516`（前回 `2,502` から +14）。同時進行の別差分により `scanned_files: 1,280 -> 1,286` へ変動しており、今回対象ファイル起因の増加は確認されず。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -844,6 +856,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step65時点 | repo全体 | 2,571 |
 | Step66時点 | repo全体 | 2,537 |
 | Step67時点 | repo全体 | 2,502 |
+| Step68時点 | repo全体 | 2,516 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -952,6 +965,13 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step67時点 | `ztb/training/callbacks/distributed/integration.py` | **0** |
 | Step67時点 | `ztb/training/callbacks/performance/memory_optimizer.py` | **0** |
 | Step67時点 | `ztb/training/callbacks/distributed/threading_mixin.py` | **0** |
+| Step68時点 | `ztb/training/callbacks/shared/utils/value_utils.py` | **0** |
+| Step68時点 | `ztb/training/callbacks/supervised/supervised_callbacks.py` | **0** |
+| Step68時点 | `ztb/training/callbacks/reinforcement/sac/sac_callbacks.py` | **0** |
+| Step68時点 | `ztb/training/callbacks/transfer/transfer_callbacks.py` | **0** |
+| Step68時点 | `ztb/training/callbacks/unsupervised/unsupervised_callbacks.py` | **0** |
+| Step68時点 | `ztb/training/callbacks/meta/meta_callbacks.py` | **0** |
+| Step68時点 | `ztb/training/callbacks/multi_task/multi_task_callbacks.py` | **0** |
 
 ---
 
@@ -973,8 +993,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - `manifest/result` 永続化と read 経路の `Any` 型を `run_manifest` 側の object-map 契約へ寄せ、`json.load/dump` の分散実装を統合する。  
 8. `ztb/utils/results_utils.py`  
    - training/backtest の result payload schema を `TypedDict` 化し、`analysis/common/data_loaders.py` とキー契約を統一して重複整形コードを削減する。  
-9. `ztb/training/callbacks/distributed/coordinator.py` / `ztb/training/callbacks/monitoring/real_time_monitor.py`  
-   - `WorkerInfo` / `Message` payload の `Any` を `object` ベースへ寄せ、message handler 分岐の重複を helper 化。`memory_pressure` 判定契約を両者で統一する。  
+9. `ztb/experiments/base.py` / `ztb/utils/results_utils.py` / `ztb/training/run_optimization.py`  
+   - `json.load/dump` の分散実装を `ztb.io.json_io` へ統合し、I/O 例外契約の共通化と重複削減を進める。  
 
 ---
 

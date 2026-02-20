@@ -16,7 +16,7 @@ import time
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Mapping, Optional
 
 from .threading_mixin import BackgroundThreadController
 
@@ -131,6 +131,95 @@ class DistributedCoordinator(BackgroundThreadController):
             "worker_failures": 0,
         }
 
+    @staticmethod
+    def _normalize_worker_info(worker_info: object, default_port: int) -> Optional[WorkerInfo]:
+        """Normalize worker registration input into WorkerInfo."""
+        if isinstance(worker_info, WorkerInfo):
+            return worker_info
+
+        if isinstance(worker_info, Mapping):
+            worker_id = worker_info.get("worker_id")
+            if not isinstance(worker_id, int):
+                return None
+            host_value = worker_info.get("host", "localhost")
+            port_value = worker_info.get("port", default_port)
+            status_value = worker_info.get("status", "idle")
+            metrics_value = worker_info.get("metrics", {})
+            return WorkerInfo(
+                worker_id=worker_id,
+                host=str(host_value),
+                port=int(port_value) if isinstance(port_value, (int, float)) else default_port,
+                status=str(status_value),
+                metrics=metrics_value if isinstance(metrics_value, dict) else {},
+            )
+
+        if hasattr(worker_info, "worker_id"):
+            worker_id = getattr(worker_info, "worker_id", None)
+            if not isinstance(worker_id, int):
+                return None
+            host = str(getattr(worker_info, "host", "localhost"))
+            raw_port = getattr(worker_info, "port", default_port)
+            port = int(raw_port) if isinstance(raw_port, (int, float)) else default_port
+            status = str(getattr(worker_info, "status", "idle"))
+            metrics = getattr(worker_info, "metrics", {})
+            if not isinstance(metrics, dict):
+                metrics = {}
+            last_heartbeat = getattr(worker_info, "last_heartbeat", datetime.now())
+            if not isinstance(last_heartbeat, datetime):
+                last_heartbeat = datetime.now()
+            return WorkerInfo(
+                worker_id=worker_id,
+                host=host,
+                port=port,
+                status=status,
+                last_heartbeat=last_heartbeat,
+                metrics=metrics,
+            )
+
+        return None
+
+    @staticmethod
+    def _worker_status(worker: WorkerInfo | dict[str, object]) -> str:
+        if isinstance(worker, dict):
+            status = worker.get("status", "idle")
+            return str(status)
+        return worker.status
+
+    @staticmethod
+    def _set_worker_status(worker: WorkerInfo | dict[str, object], status: str) -> None:
+        if isinstance(worker, dict):
+            worker["status"] = status
+        else:
+            worker.status = status
+
+    @staticmethod
+    def _worker_metrics(worker: WorkerInfo | dict[str, object]) -> dict[str, object]:
+        if isinstance(worker, dict):
+            metrics = worker.get("metrics")
+            if not isinstance(metrics, dict):
+                metrics = {}
+                worker["metrics"] = metrics
+            return metrics
+        return worker.metrics
+
+    @staticmethod
+    def _set_worker_last_heartbeat(
+        worker: WorkerInfo | dict[str, object], timestamp: datetime
+    ) -> None:
+        if isinstance(worker, dict):
+            worker["last_heartbeat"] = timestamp
+        else:
+            worker.last_heartbeat = timestamp
+
+    @staticmethod
+    def _worker_last_heartbeat(worker: WorkerInfo | dict[str, object]) -> datetime:
+        if isinstance(worker, dict):
+            value = worker.get("last_heartbeat")
+            if isinstance(value, datetime):
+                return value
+            return datetime.now()
+        return worker.last_heartbeat
+
     def start_coordination(self) -> None:
         """Start the distributed coordination."""
         if self._running:
@@ -177,29 +266,23 @@ class DistributedCoordinator(BackgroundThreadController):
         self._join_background_thread(attr_name="_coordinator_thread", timeout=5.0)
         self._join_background_thread(attr_name="_heartbeat_thread", timeout=5.0)
 
-    def register_worker(self, worker_info: WorkerInfo) -> bool:
+    def register_worker(self, worker_info: WorkerInfo | Mapping[str, object] | object) -> bool:
         """Register a worker with the coordinator."""
         with self.worker_lock:
-            # Allow either a WorkerInfo instance or a plain dict for registration
-            if not hasattr(worker_info, "worker_id") and isinstance(worker_info, dict):
-                worker_info = WorkerInfo(
-                    worker_id=worker_info.get("worker_id"),
-                    host=worker_info.get("host", "localhost"),
-                    port=worker_info.get("port", self.master_port),
-                )
+            normalized = self._normalize_worker_info(worker_info, self.master_port)
+            if normalized is None:
+                self.logger.warning(f"Invalid worker registration payload: {worker_info!r}")
+                return False
 
-            if worker_info.worker_id in self.workers:
+            if normalized.worker_id in self.workers:
                 self.logger.warning(
-                    f"Worker {worker_info.worker_id} already registered"
+                    f"Worker {normalized.worker_id} already registered"
                 )
                 return False
 
-            self.workers[worker_info.worker_id] = worker_info
-            self.response_queues[worker_info.worker_id] = mp.Queue()
-            # Ensure worker_info has status attribute for compatibility
-            if not hasattr(self.workers[worker_info.worker_id], "status"):
-                setattr(self.workers[worker_info.worker_id], "status", "idle")
-            self.logger.info(f"Registered worker {worker_info.worker_id}")
+            self.workers[normalized.worker_id] = normalized
+            self.response_queues[normalized.worker_id] = mp.Queue()
+            self.logger.info(f"Registered worker {normalized.worker_id}")
             return True
 
     def unregister_worker(self, worker_id: int) -> bool:
@@ -226,19 +309,19 @@ class DistributedCoordinator(BackgroundThreadController):
             if worker_id is None:
                 # Simple load balancing - pick least busy worker
                 available_workers = [
-                    w for w in self.workers.values() if w.status == "idle"
+                    w for w in self.workers.values() if self._worker_status(w) == "idle"
                 ]
                 if not available_workers:
                     self.logger.warning("All workers are busy")
                     return None
                 selected_worker = min(
                     available_workers,
-                    key=lambda w: len(w.metrics.get("active_tasks", [])),
+                    key=lambda w: len(self._worker_metrics(w).get("active_tasks", [])),
                 )
                 worker_id = selected_worker.worker_id
             elif (
                 worker_id not in self.workers
-                or self.workers[worker_id].status != "idle"
+                or self._worker_status(self.workers[worker_id]) != "idle"
             ):
                 self.logger.warning(f"Worker {worker_id} not available")
                 return None
@@ -247,7 +330,7 @@ class DistributedCoordinator(BackgroundThreadController):
             try:
                 message = Message("task", 0, task_data)  # sender_id 0 = master
                 self.message_queue.put(message, timeout=1.0)
-                self.workers[worker_id].status = "busy"
+                self._set_worker_status(self.workers[worker_id], "busy")
                 self.stats["tasks_distributed"] += 1
                 self.logger.debug(f"Distributed task to worker {worker_id}")
                 return worker_id
@@ -258,25 +341,26 @@ class DistributedCoordinator(BackgroundThreadController):
     def get_worker_stats(self) -> Dict[str, Any]:
         """Get statistics about all workers."""
         with self.worker_lock:
+            worker_snapshots = {
+                wid: {
+                    "status": self._worker_status(w),
+                    "last_heartbeat": self._worker_last_heartbeat(w).isoformat(),
+                    "metrics": self._worker_metrics(w),
+                }
+                for wid, w in self.workers.items()
+            }
             return {
                 "total_workers": len(self.workers),
                 "active_workers": len(
-                    [w for w in self.workers.values() if w.status == "busy"]
+                    [w for w in self.workers.values() if self._worker_status(w) == "busy"]
                 ),
                 "idle_workers": len(
-                    [w for w in self.workers.values() if w.status == "idle"]
+                    [w for w in self.workers.values() if self._worker_status(w) == "idle"]
                 ),
                 "failed_workers": len(
-                    [w for w in self.workers.values() if w.status == "error"]
+                    [w for w in self.workers.values() if self._worker_status(w) == "error"]
                 ),
-                "workers": {
-                    wid: {
-                        "status": w.status,
-                        "last_heartbeat": w.last_heartbeat.isoformat(),
-                        "metrics": w.metrics,
-                    }
-                    for wid, w in self.workers.items()
-                },
+                "workers": worker_snapshots,
             }
 
     def aggregate_metrics(
@@ -366,13 +450,8 @@ class DistributedCoordinator(BackgroundThreadController):
         with self.worker_lock:
             if worker_id in self.workers:
                 w = self.workers[worker_id]
-                # Support both dataclass and plain-dict worker representations
-                if isinstance(w, dict):
-                    w["last_heartbeat"] = message.timestamp
-                    w["status"] = "idle"
-                else:
-                    w.last_heartbeat = message.timestamp
-                    w.status = "idle"  # Reset status on heartbeat
+                self._set_worker_last_heartbeat(w, message.timestamp)
+                self._set_worker_status(w, "idle")  # Reset status on heartbeat
 
     def _handle_task_result(self, message: Message) -> None:
         """Handle task result from worker."""
@@ -380,10 +459,7 @@ class DistributedCoordinator(BackgroundThreadController):
         with self.worker_lock:
             if worker_id in self.workers:
                 w = self.workers[worker_id]
-                if isinstance(w, dict):
-                    w["status"] = "idle"
-                else:
-                    w.status = "idle"
+                self._set_worker_status(w, "idle")
                 self.stats["tasks_completed"] += 1
 
     def _handle_metrics(self, message: Message) -> None:
@@ -392,17 +468,16 @@ class DistributedCoordinator(BackgroundThreadController):
         with self.worker_lock:
             if worker_id in self.workers:
                 w = self.workers[worker_id]
-                if isinstance(w, dict):
-                    w.setdefault("metrics", {}).update(message.data)
-                else:
-                    w.metrics.update(message.data)
+                metrics = self._worker_metrics(w)
+                if isinstance(message.data, dict):
+                    metrics.update(message.data)
 
     def _handle_error(self, message: Message) -> None:
         """Handle error message from worker."""
         worker_id = message.sender_id
         with self.worker_lock:
             if worker_id in self.workers:
-                self.workers[worker_id].status = "error"
+                self._set_worker_status(self.workers[worker_id], "error")
                 self.stats["worker_failures"] += 1
                 self.logger.error(f"Worker {worker_id} reported error: {message.data}")
 
@@ -423,15 +498,13 @@ class DistributedCoordinator(BackgroundThreadController):
                 current_time = datetime.now()
 
                 with self.worker_lock:
-                    failed_workers = []
                     for worker_id, worker in self.workers.items():
                         time_since_heartbeat = (
-                            current_time - worker.last_heartbeat
+                            current_time - self._worker_last_heartbeat(worker)
                         ).total_seconds()
                         if time_since_heartbeat > self.config.heartbeat_interval * 3:
                             # Worker is considered failed
-                            worker.status = "error"
-                            failed_workers.append(worker_id)
+                            self._set_worker_status(worker, "error")
                             self.stats["worker_failures"] += 1
                             self.logger.error(
                                 f"Worker {worker_id} failed (no heartbeat for {time_since_heartbeat:.1f}s)"

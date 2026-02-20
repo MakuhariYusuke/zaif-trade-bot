@@ -256,3 +256,31 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 
 - `ztb/training/callbacks/distributed/worker.py` / `integration.py` / `threading_mixin.py` / `ztb/training/callbacks/performance/memory_optimizer.py` を `Any=0` 化。
 - repo 全体 `any_type_debt_tokens` は `2,537 -> 2,502`（-35）。
+
+## Phase 9 追補: callback helper 横展開 + coordinator 分岐統合 (2026-02-20)
+
+### 1) callback 共通ヘルパの抽出
+
+- `ztb/training/callbacks/shared/utils/value_utils.py` を追加し、
+  `as_optional_float` / `as_optional_array` / `append_bounded` を共通実装化。
+- `supervised/sac/transfer/unsupervised/meta/multi_task` の6モジュールで、
+  重複していた helper 実装本体を共通化（モジュール側は薄い wrapper のみ維持）。
+
+### 2) distributed coordinator の重複削減 + 不具合低減
+
+- `DistributedCoordinator` に worker 状態アクセサ helper 群を追加し、
+  `status/metrics/last_heartbeat` の dict/dataclass 分岐重複を集約。
+- `register_worker` で入力 payload を正規化し、`worker_id` 不正値や
+  属性欠落での登録不整合を早期 reject するよう改善。
+- `_handle_error` / `_heartbeat_loop` を helper 経由へ統一し、
+  worker 表現差異時の `status`/heartbeat 更新崩れリスクを解消。
+
+### 3) その他改善（I/O）
+
+- `ztb/training/unified_optimizer.py` の `safe_json_dump` 呼び出しで
+  重複していた `open(..., 'w')` 包装を削除し、不要ファイル I/O を削減。
+
+### 4) 検証
+
+- `py_compile`（9ファイル）通過。
+- 本環境は `pytest`/依存不足のため、ユニットテストは未実施。
