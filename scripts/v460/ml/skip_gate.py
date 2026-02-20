@@ -573,6 +573,10 @@ def warm_start_skip_gate_thresholds(
     直近の fill records から skip_gate_as_prob を読み取り、
     _pas_history_buy / _pas_history_sell を初期化する。
 
+    124# モデル世代検証: metadata.trained_at 以降のレコードのみ使用し、
+    旧モデルの P(AS) が新モデルの P(target) 分布と混在するのを防止。
+    モデル交代直後は新レコードが不足するため静的閾値から再較正される。
+
     Args:
         gate: 初期化対象の SkipGate.
         fill_records_dir: fill_records_*.jsonl のディレクトリ.
@@ -580,10 +584,21 @@ def warm_start_skip_gate_thresholds(
     """
     import glob
 
+    # 124# モデル世代検証: trained_at 以前のレコードは旧モデル由来。
+    # 旧 P(AS) を新 P(target) の adaptive calibrator に注入すると closed_form 誤較正。
+    model_trained_ts: float | None = None
+    trained_at_str = gate.metadata.get("trained_at", "")
+    if trained_at_str:
+        try:
+            model_trained_ts = datetime.fromisoformat(str(trained_at_str)).timestamp()
+        except (ValueError, TypeError):
+            pass
+
     prob_records: list[tuple[str, float]] = []  # (side, p_as)
     files = sorted(glob.glob(str(Path(fill_records_dir) / "*.jsonl")))
     # 096# パフォーマンス: 必要な件数に達したら早期終了（最新ファイルから逆順読み）
     need = window * 2
+    stale_skipped = 0
     for f in reversed(files):
         with open(f) as fh:
             file_records: list[tuple[str, float]] = []
@@ -598,10 +613,23 @@ def warm_start_skip_gate_thresholds(
                 p_as = r.get("skip_gate_as_prob")
                 side = r.get("side")
                 if p_as is not None and side in ("buy", "sell"):
+                    # 124# モデル世代フィルタ: trained_at 以前のレコードを除外
+                    if model_trained_ts is not None:
+                        rec_ts = r.get("timestamp")
+                        if rec_ts is not None and float(rec_ts) < model_trained_ts:
+                            stale_skipped += 1
+                            continue
                     file_records.append((side, float(p_as)))
             prob_records = file_records + prob_records
         if len(prob_records) >= need:
             break
+
+    if stale_skipped > 0:
+        logger.info(
+            f"[skip_gate] 124# warm_start: skipped {stale_skipped} stale records "
+            f"from previous model (trained_at={trained_at_str}). "
+            f"Usable records: {len(prob_records)}"
+        )
 
     # 直近 window 件を復元
     recent = prob_records[-window * 2:] if len(prob_records) > window * 2 else prob_records

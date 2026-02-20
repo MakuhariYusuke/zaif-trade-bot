@@ -280,6 +280,68 @@ class TestWarmStartImmediateConvergence:
             assert len(gate._pas_history_buy) > 0
             assert gate.config.as_threshold_buy == 0.65
 
+    def test_warm_start_filters_stale_records_by_trained_at(self) -> None:
+        """124# モデル交代時: trained_at 以前のレコードが除外される."""
+        from datetime import datetime as _dt
+
+        gate = _make_gate(
+            adaptive_threshold=True,
+            as_threshold_buy=0.50,
+            as_threshold_sell=0.50,
+            adaptive_min_samples=5,
+        )
+        # trained_at をタイムスタンプ中間点から生成 (TZ 問題を回避)
+        boundary_ts = 1771450000.0
+        trained_at_str = _dt.fromtimestamp(boundary_ts).isoformat()
+        gate.metadata = {
+            "version": "v3_really_bad30",
+            "trained_at": trained_at_str,
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+            old_ts = boundary_ts - 100000.0  # clearly before trained_at
+            new_ts = boundary_ts + 100000.0  # clearly after trained_at
+            records: list[str] = []
+            # 旧レコード 20件 (trained_at 前 → フィルタされるべき)
+            for i in range(20):
+                records.append(json.dumps({
+                    "side": "buy",
+                    "skip_gate_as_prob": 0.45 + i * 0.005,
+                    "timestamp": old_ts + i * 120,
+                }))
+            # 新レコード 5件 (trained_at 後 → 使用されるべき)
+            for i in range(5):
+                records.append(json.dumps({
+                    "side": "buy",
+                    "skip_gate_as_prob": 0.30 + i * 0.01,
+                    "timestamp": new_ts + i * 120,
+                }))
+            (tmpdir_path / "fill_records_20260220.jsonl").write_text(
+                "\n".join(records), encoding="utf-8",
+            )
+
+            warm_start_skip_gate_thresholds(gate, tmpdir_path, window=50)
+
+            # 旧 20件がフィルタされ、新 5件のみ復元
+            assert len(gate._pas_history_buy) == 5
+            # 新レコードの値は 0.30〜0.34
+            assert all(0.29 <= p <= 0.35 for p in gate._pas_history_buy)
+
+    def test_warm_start_no_trained_at_uses_all_records(self) -> None:
+        """metadata に trained_at がないモデルでは全レコードを使用 (後方互換)."""
+        gate = _make_gate(adaptive_threshold=True, adaptive_min_samples=5)
+        gate.metadata = {}  # trained_at なし
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+            self._write_fill_records(tmpdir_path, n_buy=25, n_sell=25)
+            warm_start_skip_gate_thresholds(gate, tmpdir_path, window=50)
+
+            # 全レコードが使用される (後方互換)
+            assert len(gate._pas_history_buy) == 25
+            assert len(gate._pas_history_sell) == 25
+
 
 # =====================================================================
 # build_features_from_market_state テスト
