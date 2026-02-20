@@ -21,14 +21,11 @@ import logging
 import logging.handlers
 import os
 import platform
-import random as _rng
 import signal
 import subprocess
 import sys
 import time
-import traceback
 import uuid
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -64,12 +61,10 @@ from scripts.v460.lib.order_monitor import OrderMonitor
 from scripts.v460.lib.pnl_measurer import PnlMeasurer
 from scripts.v460.lib.resilience import (
     CircuitBreaker,
-    CircuitBreakerOpenException,
     CircuitState,
     FillTestHealthMonitor,
     FillTestStatePersistence,
     FillTestState,
-    HealthThresholds,
     create_api_circuit_breaker,
 )
 from scripts.v460.lib.results_analyzer import (
@@ -529,7 +524,7 @@ class FillTestRunner:
 
         # 113# resilience: CircuitBreaker ガード — OPEN 中は API 呼出しを回避
         if self._circuit_breaker.state == CircuitState.OPEN:
-            if not self._circuit_breaker._should_attempt_reset():
+            if not self._circuit_breaker.should_attempt_reset():
                 logger.warning(
                     f"[circuit_breaker] OPEN — skipping cycle {self._cycle_count} "
                     f"(recovery in {self._circuit_breaker.config.recovery_timeout}s)"
@@ -682,7 +677,7 @@ class FillTestRunner:
         if order is None:
             logger.error(f"All order attempts failed: {last_error}")
             # 113# resilience: API 失敗を CircuitBreaker に記録
-            await self._circuit_breaker._on_failure()
+            await self._circuit_breaker.async_on_failure()
             return FillRecord(
                 cycle_id=cycle_id,
                 timestamp=t_submit,
@@ -820,7 +815,7 @@ class FillTestRunner:
         )
 
         # 113# resilience: API 成功を CircuitBreaker に記録
-        await self._circuit_breaker._on_success()
+        await self._circuit_breaker.async_on_success()
 
         return record
 

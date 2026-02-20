@@ -179,6 +179,27 @@ class CircuitBreaker:
         self.last_failure_time = None
         logger.info(f"Circuit breaker '{self.name}' manually reset")
 
+    async def async_on_success(self) -> None:
+        """Record a successful operation (async, awaitable).
+
+        124#: private _on_success への直接アクセスを回避する public API.
+        """
+        await self._on_success()
+
+    async def async_on_failure(self) -> None:
+        """Record a failed operation (async, awaitable).
+
+        124#: private _on_failure への直接アクセスを回避する public API.
+        """
+        await self._on_failure()
+
+    def should_attempt_reset(self) -> bool:
+        """Check if enough time has passed to attempt reset (public API).
+
+        124#: private _should_attempt_reset への直接アクセスを回避.
+        """
+        return self._should_attempt_reset()
+
     def record_success(self) -> None:
         """Record a successful operation (synchronous version)."""
         try:

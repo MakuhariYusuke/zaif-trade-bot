@@ -12,14 +12,13 @@ FillTestRunner から残高 pre-flight チェック + ロット自動縮小を�
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from scripts.v460.lib.fill_config import FillTestConfig
 
 logger = logging.getLogger(__name__)
 
 # Coincheck 板取引 BTC 最小注文数量
-MIN_ORDER_BTC: float = 0.001
+MIN_ORDER_BTC: float = 0.001  # フォールバック定数 (config 優先)
 
 
 class BalanceChecker:
@@ -68,7 +67,7 @@ class BalanceChecker:
             else:
                 return await self._check_buy(adapter, symbol)
         except Exception as e:
-            logger.debug(f"[balance] Pre-flight check failed (non-fatal): {e}")
+            logger.warning(f"[balance] Pre-flight check failed — proceeding: {e}")
         return False
 
     async def _check_sell(self, adapter: object, symbol: str) -> bool:

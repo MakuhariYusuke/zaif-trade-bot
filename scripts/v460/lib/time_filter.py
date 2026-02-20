@@ -11,6 +11,7 @@ FillTestRunner から時間帯フィルター判定を分離。
 from __future__ import annotations
 
 import logging
+import time as _time
 from datetime import datetime, timezone
 
 from scripts.v460.lib.fill_config import FillTestConfig
@@ -78,7 +79,7 @@ class TimeFilter:
         """フィルタ突入."""
         if not self._in_filter:
             self._in_filter = True
-            self._last_heartbeat_time = __import__("time").time()
+            self._last_heartbeat_time = _time.time()
             utc_h = datetime.now(timezone.utc).hour
             logger.info(
                 f"[time_filter] Entering High-AS zone (UTC {utc_h}h) "

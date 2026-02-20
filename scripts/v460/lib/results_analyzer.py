@@ -8,7 +8,6 @@ ztb/io/json_io の write_json (atomic write) を活用.
 
 from __future__ import annotations
 
-import json
 import logging
 from collections import defaultdict
 from pathlib import Path
