@@ -258,3 +258,73 @@ append_jsonl_gz(path, self._buffer)
 - [ ] trades_health: UTC 日付境界のタイムゾーン一貫性
 - [ ] gate_judgment per-run: run_id が None/blank の旧レコード混在時の挙動
 - [ ] run_g1_1() deprecation: 既存スクリプト/CI からの呼び出し箇所の棚卸し
+
+---
+
+## §9 外部レビュー追記 (2026-02-22)
+
+### §9.1 重大度付きレビュー結果
+
+| # | 重大度 | 対象 | 問題 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | HIGH | `ztb/data/trades_recorder.py` | flush 跨ぎ dedup が API 降順レスポンスで破綻。`_last_trade_key` を buffer 最終要素で更新しているため、旧 trade が再流入する。 | watermark を `last` ではなく `max(ts,price,amount,side)` で更新。`record_from_adapter()` 側で timestamp 昇順正規化。 |
+| 2 | MEDIUM | `ztb/data/trades_recorder.py` | flush 失敗時に buffer を破棄するため、I/O 一時障害で trade データ欠損が確定する。 | flush 失敗時は buffer 保持 + 次回再試行。必要なら emergency dump 経路を追加。 |
+| 3 | MEDIUM | `scripts/v460/run_fill_test.py` | trades 収集が orderbook prefetch の外側 try に従属し、OB 失敗時に trades 収集までスキップされる。 | OB 収集と trades 収集を独立 try に分離し、片系障害でも記録継続。 |
+| 4 | LOW | `scripts/v460/gate_judgment.py` | `--latest-run` 指定時、run_id 有効データが無いと silently ALL にフォールバックし誤読を招く。 | fallback 時に WARNING + `run_scope=ALL_FALLBACK` を明示、またはエラー終了。 |
+| 5 | LOW | `scripts/v460/run_gate_check.py` | `run_g1_1()` は成功時 `G1.1-quick`、NO_DATA 時 `G1.1-exec` を返し、互換 API の戻り値契約が不安定。 | `gate` 名を常に統一。未使用 `thresholds` 引数は削除または活用。 |
+| 6 | LOW | `scripts/v460/run_fill_test.py` | trades 健全性 warning が `run_observation.py` 再起動を推奨しており、135# 方針（fill_test 内蔵 recorder）と運用メッセージが不整合。 | 運用メッセージを「fill_test 内 recorder 状態確認」に更新。 |
+
+### §9.2 追加見落とし点 (再点検)
+
+| # | 重大度 | 対象 | 問題 | 推奨対応 |
+|---|---|---|---|---|
+| A | MEDIUM | `ztb/data/trades_recorder.py` | flush 跨ぎ判定が `key[:3]` 比較で `side` を無視しており、同一 ts/price/amount で side が異なる正当 trade を取りこぼす可能性。 | dedup 方針を「完全 key」または `trade_id` 基準に統一し、仕様として明文化。 |
+| B | LOW | `ztb/data/trades_health.py` | `lookback_days` 自動生成が「当日(UTC)含む」ため、日跨ぎ直後の起動で false warning が出やすい。 | 運用上は「昨日まで N 日」モードを追加し、起動直後の誤警報を抑制。 |
+| C | LOW | `tests/unit/v460/test_135_trades_and_gate.py` | 降順レスポンス + flush 跨ぎ重複、flush 失敗時再試行のテストが未カバー。 | 回帰テストを 2-3 ケース追加し、今回指摘の再発を防止。 |
+
+### §9.3 再検証ログ (このレビュー時点)
+
+- `tests/unit/v460/test_135_trades_and_gate.py`: **22 passed**
+- `tests/unit/v460/test_gate_check.py -k "run_g1_1 or g1_1"`: **6 passed**
+- 全体 `pytest -q`: 本環境では依存不足 (`stable_baselines3`, `torch`, 他) により収集エラー。  
+  したがって「1082 passed」は当該実装時の環境前提として扱うのが妥当。
+
+### §9.4 優先修正順 (提案)
+
+1. P0: TradesRecorder watermark 修正 + 降順/flush 跨ぎ回帰テスト追加  
+2. P1: flush 失敗時のデータ保全 (再試行 or dump)  
+3. P1: run_fill_test の OB/trades 収集を障害分離  
+4. P2: Gate CLI fallback 表示整備 + `run_g1_1` 戻り値契約統一
+
+---
+
+## §10 レビュー対応結果 (2026-02-22)
+
+**コミット**: `b96ac2ef3` — テスト 1089 passed (1082→+7)
+
+### §10.1 対応一覧
+
+| §9 # | 重大度 | 対応内容 | 状態 |
+|---|---|---|---|
+| 1 | HIGH | `_last_trade_key` → `_watermark` に改名。`max()` で更新。`sorted(trades, key=ts)` で API 降順レスポンスを昇順正規化。 | ✅ |
+| A | MEDIUM | `key[:3]` 比較 → 完全 key (`key <= self._watermark`) に変更。side 含む NamedTuple 比較で正当 trade の取りこぼし解消。 | ✅ |
+| 2 | MEDIUM | flush 失敗時 buffer 保持 + 次回再試行。`_flush_fail_count` で 3 連続失敗 → 緊急 drop (OOM 防止)。 | ✅ |
+| 3 | MEDIUM | `run_fill_test.py`: OB/trades 取得を独立 try block に分離。OB 失敗でも trades 記録継続。 | ✅ |
+| 4 | LOW | `gate_judgment.py`: `_filter_by_run_id(latest=True)` で有効 run_id なし時、WARNING ログ + `run_scope=ALL_FALLBACK` 明示。 | ✅ |
+| 5 | LOW | `run_gate_check.py`: NO_DATA 時 gate 名を `G1.1-exec` → `G1.1-quick` に統一。 | ✅ |
+| 6 | LOW | `run_fill_test.py`: 健全性 warning を「fill_test 内蔵 TradesRecorder の動作状態を確認」に更新。 | ✅ |
+| B | LOW | `trades_health.py`: lookback を `days=i` → `days=i+1` (昨日起算) に変更。UTC 日付境界での偽警告を防止。 | ✅ |
+| C | LOW | テスト 8 件追加: 降順 sort・flush 跨ぎ dedup・side 非 dedup・flush retry/emergency drop・lookback yesterday・fallback warning。 | ✅ |
+
+### §10.2 補足修正
+
+- `gate_judgment.py`: `import logging` + `logger = logging.getLogger(__name__)` 追加 (§9.1 #4 の WARNING 出力に必要)
+- 既存 health テスト 2 件 (`test_healthy_when_all_present`, `test_unhealthy_when_missing`) を lookback 昨日起算に合わせて更新
+
+### §10.3 §8 チェックリスト解消状況
+
+- [x] TradesRecorder dedup: 降順ケース対応完了 (sorted + watermark max)
+- [x] trades_health: UTC 日付境界 → 昨日起算で解消
+- [x] gate_judgment per-run: None/blank run_id → WARNING + ALL_FALLBACK
+- [ ] `ztb/io/jsonl_gz.py`: 大量レコード append mode gzip 正常性 (未追加テスト、既存運用で問題なし)
+- [ ] `run_g1_1()` deprecation: CI 棚卸し (既存呼び出し箇所なし、当面維持)
