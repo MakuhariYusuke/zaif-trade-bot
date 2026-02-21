@@ -22,8 +22,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # プロジェクトルート解決
 _SCRIPT_DIR = Path(__file__).resolve().parent
@@ -75,6 +78,11 @@ def _filter_by_run_id(
         # 最新 run_id = 最大 timestamp のレコードの run_id
         valid = [r for r in records if r.run_id and r.run_id.strip()]
         if not valid:
+            # §9.1 #4: run_id 有効データなし → 明示的 WARNING + 全件返却
+            logger.warning(
+                "[per-run] --latest-run 指定だが run_id 有効データなし。"
+                "全レコードで評価 (run_scope=ALL_FALLBACK)"
+            )
             return records
         latest_record = max(valid, key=lambda r: r.timestamp)
         target_id = latest_record.run_id

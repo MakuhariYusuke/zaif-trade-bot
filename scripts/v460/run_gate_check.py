@@ -224,7 +224,7 @@ def run_g1_1(
     if not records:
         logger.error(f"No fill records found in {results_dir}")
         return {
-            "gate": "G1.1-exec",
+            "gate": "G1.1-quick",
             "gate_result": "NO_DATA",
             "error": f"No fill records in {results_dir}",
         }
@@ -233,8 +233,8 @@ def run_g1_1(
     result = run_gate_judgment(
         records, gate_cfg, monte_carlo=with_mc,
     )
-    # 後方互換: G1.1 部分のみ返す
-    return result.get("g1_1_quick", {"gate_result": "FAIL"})
+    # 後方互換: G1.1 部分のみ返す (§9.1 #5: gate 名を G1.1-quick で統一)
+    return result.get("g1_1_quick", {"gate": "G1.1-quick", "gate_result": "FAIL"})
 
 
 # ======================================================================

@@ -661,15 +661,16 @@ class FillTestRunner:
             ob = self._maker_price._last_ob_snapshot
             if ob is not None:
                 self._ob_recorder.record(ob.bids, ob.asks, ob.timestamp)
-            # 135# P0-04: trades recorder — サイクルごとに約定データを記録
-            try:
-                recent = await self.adapter.get_recent_trades(self.config.symbol, limit=100)
-                self._trades_recorder.record_from_adapter(recent)
-            except Exception as te:
-                logger.debug(f"Trades fetch for recording skipped: {te}")
         except Exception as e:
             logger.warning(f"[ob_prefetch] Pre-fetch imbalance failed, using last: {e}")
             # フォールバック: 前回値を維持
+
+        # 135# P0-04: trades recorder — OB とは独立した try で障害分離 (§9.1 #3)
+        try:
+            recent = await self.adapter.get_recent_trades(self.config.symbol, limit=100)
+            self._trades_recorder.record_from_adapter(recent)
+        except Exception as te:
+            logger.debug(f"Trades fetch for recording skipped: {te}")
 
         # 075# Fix: side_override があればそれを使い、_next_side() 二重呼出を防止
         if side_override is not None:
@@ -999,8 +1000,8 @@ class FillTestRunner:
                 logger.warning(f"[trades_health] {th.message}")
                 if th.missing_days:
                     logger.warning(
-                        f"[trades_health] retrain 品質が低下する可能性あり。"
-                        f"run_observation.py の再起動を推奨"
+                        "[trades_health] retrain 品質が低下する可能性あり。"
+                        "fill_test 内蔵 TradesRecorder の動作状態を確認してください"
                     )
             else:
                 logger.info(f"[trades_health] {th.message}")

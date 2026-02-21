@@ -65,10 +65,12 @@ def check_trades_health(
                 available.append(stem)
 
     # 期待日リスト
+    # §9.2 #B: 当日 UTC を除外し「昨日から N 日遡り」で生成。
+    # 日跨ぎ直後 (00:00-01:00 UTC) に当日ファイル未生成で false warning を防止。
     if expected_days is None:
         now = datetime.now(timezone.utc)
         expected_days = [
-            (now - timedelta(days=i)).strftime("%Y%m%d")
+            (now - timedelta(days=i + 1)).strftime("%Y%m%d")
             for i in range(lookback_days)
         ]
 

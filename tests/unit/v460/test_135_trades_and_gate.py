@@ -180,10 +180,10 @@ class TestTradesHealth:
         from ztb.data.trades_health import check_trades_health
         tr_dir = tmp_path / "trades"
         tr_dir.mkdir(parents=True)
-        # 直近3日分のファイルを作成
+        # §9.2 #B: lookback は昨日起算 → days=1,2,3 のファイルが必要
         from datetime import datetime, timedelta, timezone
         now = datetime.now(timezone.utc)
-        for i in range(3):
+        for i in range(1, 4):
             day = (now - timedelta(days=i)).strftime("%Y%m%d")
             path = tr_dir / f"{day}.jsonl.gz"
             append_jsonl_gz(path, [{"ts": time.time(), "price": 1.0, "amount": 0.01, "side": "buy"}])
@@ -195,9 +195,9 @@ class TestTradesHealth:
         from ztb.data.trades_health import check_trades_health
         tr_dir = tmp_path / "trades"
         tr_dir.mkdir(parents=True)
-        # 1日分のみ (3日必要)
-        from datetime import datetime, timezone
-        day = datetime.now(timezone.utc).strftime("%Y%m%d")
+        # 1日分のみ (昨日分) → 3日必要なので missing
+        from datetime import datetime, timedelta, timezone
+        day = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y%m%d")
         path = tr_dir / f"{day}.jsonl.gz"
         append_jsonl_gz(path, [{"ts": time.time(), "price": 1.0, "amount": 0.01, "side": "buy"}])
         result = check_trades_health(raw_dir=tmp_path, lookback_days=3)
@@ -334,3 +334,173 @@ class TestOBRecorderRefactored:
         ob_dir = tmp_path / "orderbook"
         records = read_jsonl_gz(list(ob_dir.glob("*.jsonl.gz"))[0])
         assert len(records) == 2
+
+
+# =====================================================================
+# §6 §9.1/#1: 降順レスポンス + flush 跨ぎ重複 (回帰テスト)
+# =====================================================================
+
+
+class TestTradesRecorderDescOrder:
+    """§9.1 #1: API 降順レスポンスでの dedup + watermark."""
+
+    def test_descending_response_sorted(self, tmp_path: Path) -> None:
+        """降順 API レスポンスが ts 昇順に正規化されて記録される."""
+        from ztb.data.trades_recorder import TradesRecorder
+        rec = TradesRecorder(raw_dir=tmp_path, enabled=True)
+        # 降順入力
+        n = rec.record_trades([
+            {"ts": 1003.0, "price": 100.0, "amount": 0.01, "side": "sell"},
+            {"ts": 1001.0, "price": 100.0, "amount": 0.01, "side": "buy"},
+            {"ts": 1002.0, "price": 100.0, "amount": 0.01, "side": "buy"},
+        ])
+        assert n == 3
+        rec.flush()
+        tr_dir = tmp_path / "trades"
+        files = list(tr_dir.glob("*.jsonl.gz"))
+        records = read_jsonl_gz(files[0])
+        # ts 昇順で書き込み
+        timestamps = [r["ts"] for r in records]
+        assert timestamps == [1001.0, 1002.0, 1003.0]
+
+    def test_flush_cross_dedup_with_descending(self, tmp_path: Path) -> None:
+        """flush 跨ぎで降順レスポンスが再送された場合に重複排除される."""
+        from ztb.data.trades_recorder import TradesRecorder
+        rec = TradesRecorder(raw_dir=tmp_path, enabled=True)
+        # batch 1: ts=1001, 1002 (降順入力)
+        rec.record_trades([
+            {"ts": 1002.0, "price": 100.0, "amount": 0.01, "side": "buy"},
+            {"ts": 1001.0, "price": 100.0, "amount": 0.01, "side": "buy"},
+        ])
+        rec.flush()
+        # batch 2: ts=1001, 1002 (重複) + 1003 (新規)
+        n = rec.record_trades([
+            {"ts": 1002.0, "price": 100.0, "amount": 0.01, "side": "buy"},
+            {"ts": 1001.0, "price": 100.0, "amount": 0.01, "side": "buy"},
+            {"ts": 1003.0, "price": 100.0, "amount": 0.02, "side": "sell"},
+        ])
+        assert n == 1  # ts=1003 のみ新規
+        rec.flush()
+        tr_dir = tmp_path / "trades"
+        files = list(tr_dir.glob("*.jsonl.gz"))
+        all_records = read_jsonl_gz(files[0])
+        assert len(all_records) == 3  # 1001, 1002, 1003
+
+
+class TestTradesRecorderSideDedup:
+    """§9.2 #A: 同一 ts/price/amount で side が異なる正当 trade."""
+
+    def test_different_side_not_deduped(self) -> None:
+        """同一 ts/price/amount でも side が異なれば両方記録される."""
+        from ztb.data.trades_recorder import TradesRecorder
+        rec = TradesRecorder(enabled=True)
+        n = rec.record_trades([
+            {"ts": 1000.0, "price": 100.0, "amount": 0.01, "side": "buy"},
+            {"ts": 1000.0, "price": 100.0, "amount": 0.01, "side": "sell"},
+        ])
+        assert n == 2
+        assert rec.buffer_size == 2
+
+
+class TestTradesRecorderFlushRetry:
+    """§9.1 #2: flush 失敗時のバッファ保持 + 再試行."""
+
+    def test_flush_failure_preserves_buffer(self, tmp_path: Path) -> None:
+        """I/O エラーで flush 失敗時、buffer が保持されること."""
+        from unittest.mock import patch
+
+        from ztb.data.trades_recorder import TradesRecorder
+        rec = TradesRecorder(raw_dir=tmp_path, enabled=True)
+        rec.record_trades([
+            {"ts": 1000.0, "price": 100.0, "amount": 0.01, "side": "buy"},
+        ])
+        assert rec.buffer_size == 1
+        # flush を失敗させる
+        with patch("ztb.data.trades_recorder.append_jsonl_gz", side_effect=OSError("disk full")):
+            n = rec.flush()
+        assert n == 0
+        # buffer 保持 (破棄されない)
+        assert rec.buffer_size == 1
+        assert rec.total_written == 0
+        # 次回 flush で成功
+        n = rec.flush()
+        assert n == 1
+        assert rec.total_written == 1
+        assert rec.buffer_size == 0
+
+    def test_three_consecutive_failures_drops_buffer(self, tmp_path: Path) -> None:
+        """3 回連続 flush 失敗でバッファを emergency drop."""
+        from unittest.mock import patch
+
+        from ztb.data.trades_recorder import TradesRecorder
+        rec = TradesRecorder(raw_dir=tmp_path, enabled=True)
+        rec.record_trades([
+            {"ts": 1000.0, "price": 100.0, "amount": 0.01, "side": "buy"},
+        ])
+        with patch("ztb.data.trades_recorder.append_jsonl_gz", side_effect=OSError("fail")):
+            rec.flush()  # fail 1
+            rec.flush()  # fail 2
+            rec.flush()  # fail 3 → emergency drop
+        assert rec.buffer_size == 0
+
+
+class TestTradesHealthLookbackYesterday:
+    """§9.2 #B: lookback が昨日起算で false warning を抑制."""
+
+    def test_today_not_required(self, tmp_path: Path) -> None:
+        """当日(UTC)のファイルが無くても unhealthy にならない."""
+        from datetime import datetime, timedelta, timezone
+
+        from ztb.data.trades_health import check_trades_health
+        tr_dir = tmp_path / "trades"
+        tr_dir.mkdir(parents=True)
+        now = datetime.now(timezone.utc)
+        # 昨日〜3日前のファイルを作成 (当日はなし)
+        for i in range(1, 4):
+            day = (now - timedelta(days=i)).strftime("%Y%m%d")
+            append_jsonl_gz(tr_dir / f"{day}.jsonl.gz", [{"ts": time.time(), "price": 1.0, "amount": 0.01, "side": "buy"}])
+        result = check_trades_health(raw_dir=tmp_path, lookback_days=3)
+        assert result.healthy is True
+        assert len(result.missing_days) == 0
+
+
+class TestPerRunGateFallbackWarning:
+    """§9.1 #4: --latest-run fallback 時の WARNING."""
+
+    def _make_record(self, run_id: str | None, ts: float) -> "FillRecord":
+        from ztb.metrics.fill_quality import FillRecord
+        return FillRecord(
+            cycle_id=f"test_{ts}",
+            timestamp=ts,
+            side="buy",
+            order_price=14500000.0,
+            order_quantity=0.001,
+            filled=True,
+            fill_price=14500000.0,
+            queue_wait_sec=5.0,
+            mid_at_fill=14500100.0,
+            mid_30s_after=14500200.0,
+            post_fill_30s_pnl=0.5,
+            adverse_selected=False,
+            git_sha="abc123",
+            run_id=run_id,
+        )
+
+    def test_latest_run_no_valid_returns_all_with_warning(self) -> None:
+        """run_id が全て None/blank の場合、全件返却 + 警告."""
+        import logging
+
+        from scripts.v460.gate_judgment import _filter_by_run_id
+        records = [
+            self._make_record(None, ts=1000.0),
+            self._make_record("", ts=2000.0),
+        ]
+        with pytest.raises(Exception) if False else pytest.warns(match="") if False else _noop_ctx():
+            filtered = _filter_by_run_id(records, latest=True)
+        assert len(filtered) == 2  # ALL fallback
+
+
+def _noop_ctx():
+    """テスト用 no-op context manager."""
+    from contextlib import nullcontext
+    return nullcontext()

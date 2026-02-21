@@ -4,7 +4,9 @@ OBRecorder (129#) と対称的な設計。fill_test サイクルごとに adapte
 取得した recent trades を data/v460/raw/trades/YYYYMMDD.jsonl.gz に蓄積する。
 
 - バッファリング + 定期 flush で I/O 負荷を軽減
-- 重複排除 (ts+price+amount+side の composite key)
+- 重複排除 (ts+price+amount+side の完全 composite key)
+- API 降順レスポンス対応 (timestamp 昇順正規化 + max watermark)
+- flush 失敗時はバッファ保持 (次回再試行)
 - メモリ保護 (バッファ上限)
 - feature_enricher / retrain_scheduler が参照する trades JSONL.gz と同一フォーマット
 
@@ -53,7 +55,8 @@ class TradesRecorder:
         "_last_flush",
         "_total_written",
         "_seen_keys",
-        "_last_trade_key",
+        "_watermark",
+        "_flush_fail_count",
     )
 
     def __init__(
@@ -69,10 +72,12 @@ class TradesRecorder:
         self._buffer: list[dict[str, object]] = []
         self._last_flush: float = time.time()
         self._total_written: int = 0
-        # 重複排除: 直近の trade key で前方比較
-        self._last_trade_key: TradeEntry | None = None
+        # 重複排除: watermark = 既出 trade の max key (flush 跨ぎ対応)
+        self._watermark: TradeEntry | None = None
         # 同一 flush 内の重複防止用 set (flush ごとにリセット)
         self._seen_keys: set[TradeEntry] = set()
+        # flush 失敗カウンタ (連続失敗時の emergency dump 用)
+        self._flush_fail_count: int = 0
 
     @property
     def enabled(self) -> bool:
@@ -95,6 +100,7 @@ class TradesRecorder:
         Args:
             trades: [{"ts": float, "price": float, "amount": float, "side": str}, ...]
                 MarketDataCollector / adapter.get_recent_trades と同一形式.
+                API 降順レスポンスも受け付ける (内部で ts 昇順にソート).
 
         Returns:
             新規追加されたレコード数.
@@ -102,16 +108,19 @@ class TradesRecorder:
         if not self._enabled or not trades:
             return 0
 
+        # §9.1 #1: API 降順レスポンス対応 — timestamp 昇順正規化
+        sorted_trades = sorted(trades, key=lambda t: float(t.get("ts", 0)))
+
         added = 0
-        for t in trades:
+        for t in sorted_trades:
             key = TradeEntry(
                 ts=float(t.get("ts", 0)),
                 price=float(t.get("price", 0)),
                 amount=float(t.get("amount", 0)),
                 side=str(t.get("side", "")),
             )
-            # 時系列順で古いものはスキップ
-            if self._last_trade_key is not None and key[:3] <= self._last_trade_key[:3]:
+            # §9.2 #A: 完全 key (ts+price+amount+side) で watermark 比較
+            if self._watermark is not None and key <= self._watermark:
                 continue
             # 同一 flush バッチ内の重複
             if key in self._seen_keys:
@@ -139,6 +148,8 @@ class TradesRecorder:
     ) -> int:
         """adapter.get_recent_trades() の TradeRecord リストから記録.
 
+        §9.1 #1: timestamp 昇順正規化は record_trades 内で実施。
+
         Args:
             trade_records: list[TradeRecord] (broker_interfaces.TradeRecord 互換).
                 各要素は .timestamp, .price, .amount, .side 属性を持つ.
@@ -162,6 +173,9 @@ class TradesRecorder:
     def flush(self) -> int:
         """バッファを JSONL.gz にフラッシュ.
 
+        §9.1 #1: watermark は buffer 内 max key で更新 (降順レスポンス対応).
+        §9.1 #2: flush 失敗時は buffer 保持 → 次回再試行.
+
         Returns:
             フラッシュしたレコード数.
         """
@@ -175,19 +189,35 @@ class TradesRecorder:
         try:
             append_jsonl_gz(path, self._buffer)
             self._total_written += n
-            # 最新 key を更新
-            last = self._buffer[-1]
-            self._last_trade_key = TradeEntry(
-                ts=float(last["ts"]),
-                price=float(last["price"]),
-                amount=float(last["amount"]),
-                side=str(last["side"]),
+            # §9.1 #1: watermark = buffer 内の max key で更新
+            max_key = max(
+                TradeEntry(
+                    ts=float(r["ts"]),
+                    price=float(r["price"]),
+                    amount=float(r["amount"]),
+                    side=str(r["side"]),
+                )
+                for r in self._buffer
             )
+            if self._watermark is None or max_key > self._watermark:
+                self._watermark = max_key
             logger.debug(f"Trades recorder: flushed {n} trades → {day}")
+            self._flush_fail_count = 0
         except (OSError, TypeError, ValueError) as e:
-            logger.error(f"Trades recorder flush failed: {e}")
-            self._buffer.clear()
-            self._seen_keys.clear()
+            # §9.1 #2: flush 失敗 → buffer 保持して次回再試行
+            self._flush_fail_count += 1
+            logger.error(
+                f"Trades recorder flush failed (attempt {self._flush_fail_count}): {e}"
+            )
+            if self._flush_fail_count >= 3:
+                # 3 回連続失敗: emergency — buffer 破棄してメモリ保護
+                logger.error(
+                    f"Trades recorder: {self._flush_fail_count} consecutive flush failures, "
+                    f"dropping {len(self._buffer)} records to prevent memory leak"
+                )
+                self._buffer.clear()
+                self._seen_keys.clear()
+                self._flush_fail_count = 0
             return 0
         self._buffer.clear()
         self._seen_keys.clear()
