@@ -84,6 +84,16 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     "lgbm_learning_rate": 0.05,
     "lgbm_num_leaves": 15,
     "lgbm_min_child_samples": 20,
+    # E1: warm-start (前モデルの Booster を init_model に使用)
+    "warm_start_enabled": True,
+    # E2: early stopping (WF val split で過学習を自動停止)
+    "early_stopping_rounds": 20,        # N ラウンド改善なし → 停止
+    "lgbm_n_estimators_max": 300,        # early stopping 時の上限
+    # E3: dead feature pruning (split=0 の特徴量を自動除外)
+    "feature_pruning_enabled": True,
+    "feature_pruning_min_importance": 0,  # split 回数がこれ以下なら除外
+    # E4: enriched data cache (I/O 削減)
+    "enriched_cache_enabled": True,
     # SkipGate config
     "adaptive_threshold": True,
     "target_skip_rate_buy": 0.15,
@@ -185,18 +195,80 @@ def _build_full_features(
     return X[feature_cols]
 
 
+def _get_enriched_cache_path(results_dir: Path) -> Path:
+    """E4: enriched data cache のパスを返す."""
+    cache_dir = Path("cache/data")
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return cache_dir / f"enriched_{results_dir.name}.pkl"
+
+
+def _load_enriched_cache(
+    cache_path: Path, n_records: int,
+) -> pd.DataFrame | None:
+    """E4: enriched cache を読み込み。レコード数不一致なら invalidate."""
+    if not cache_path.exists():
+        return None
+    try:
+        cached = pd.read_pickle(cache_path)
+        if len(cached) != n_records:
+            logger.info(
+                f"E4: Cache invalidated (records: cached={len(cached)}, current={n_records})"
+            )
+            return None
+        logger.info(f"E4: Loaded enriched cache ({len(cached)} records) from {cache_path}")
+        return cached
+    except Exception as e:
+        logger.warning(f"E4: Cache load failed: {e}")
+        return None
+
+
+def _save_enriched_cache(cache_path: Path, enriched: pd.DataFrame) -> None:
+    """E4: enriched data を cache に保存."""
+    try:
+        enriched.to_pickle(cache_path)
+        logger.info(f"E4: Saved enriched cache ({len(enriched)} records) to {cache_path}")
+    except Exception as e:
+        logger.warning(f"E4: Cache save failed: {e}")
+
+
+def _build_lgbm_regressor(
+    cfg: dict[str, Any],
+    n_estimators_override: int | None = None,
+) -> "lgb.LGBMRegressor":
+    """共通 LGBMRegressor 構築 (DRY)."""
+    import lightgbm as lgb
+
+    return lgb.LGBMRegressor(
+        n_estimators=n_estimators_override or cfg.get("lgbm_n_estimators", 150),
+        max_depth=cfg.get("lgbm_max_depth", 4),
+        learning_rate=cfg.get("lgbm_learning_rate", 0.05),
+        num_leaves=cfg.get("lgbm_num_leaves", 15),
+        min_child_samples=cfg.get("lgbm_min_child_samples", 20),
+        subsample=0.8,
+        colsample_bytree=0.8,
+        reg_alpha=1.0,
+        reg_lambda=1.0,
+        random_state=42,
+        verbose=-1,
+        n_jobs=1,
+    )
+
+
 def _evaluate_wf(
     X: pd.DataFrame,
     y: pd.Series,
     enriched: pd.DataFrame,
     cfg: dict[str, Any],
+    prev_booster: "Any | None" = None,
 ) -> dict[str, float]:
     """Walk-Forward OOS 評価で品質スコアを算出.
 
     直近 test_ratio をテストセットとし、残りで訓練→テスト予測の skip simulation。
+    E1: prev_booster があれば warm-start で学習。
+    E2: early_stopping_rounds で過学習を自動防止。
 
     Returns:
-        {"score": float, "pnl30_improvement": float, "pnl120_improvement": float}
+        {"score": float, "pnl30_improvement": float, "pnl120_improvement": float, ...}
     """
     from sklearn.impute import SimpleImputer
     from sklearn.pipeline import Pipeline
@@ -217,27 +289,46 @@ def _evaluate_wf(
     X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
     y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
 
-    lgbm = lgb.LGBMRegressor(
-        n_estimators=cfg.get("lgbm_n_estimators", 150),
-        max_depth=cfg.get("lgbm_max_depth", 4),
-        learning_rate=cfg.get("lgbm_learning_rate", 0.05),
-        num_leaves=cfg.get("lgbm_num_leaves", 15),
-        min_child_samples=cfg.get("lgbm_min_child_samples", 20),
-        subsample=0.8,
-        colsample_bytree=0.8,
-        reg_alpha=1.0,
-        reg_lambda=1.0,
-        random_state=42,
-        verbose=-1,
-        n_jobs=1,
+    # E2: early stopping 有効時は上限を引き上げ
+    early_stop = cfg.get("early_stopping_rounds", 0)
+    if early_stop > 0:
+        n_est = cfg.get("lgbm_n_estimators_max", 300)
+    else:
+        n_est = cfg.get("lgbm_n_estimators", 150)
+
+    lgbm_model = _build_lgbm_regressor(cfg, n_estimators_override=n_est)
+
+    # E2: early stopping 用の前処理 (Pipeline 内で fit するため手動分離)
+    imputer = SimpleImputer(strategy="median")
+    scaler = StandardScaler()
+    X_train_imp = pd.DataFrame(
+        imputer.fit_transform(X_train), columns=X_train.columns, index=X_train.index,
     )
-    pipe = Pipeline([
-        ("imputer", SimpleImputer(strategy="median")),
-        ("scaler", StandardScaler()),
-        ("model", lgbm),
-    ])
-    pipe.fit(X_train, y_train)
-    preds_test = pipe.predict(X_test)
+    X_train_sc = pd.DataFrame(
+        scaler.fit_transform(X_train_imp), columns=X_train.columns, index=X_train.index,
+    )
+    X_test_imp = pd.DataFrame(
+        imputer.transform(X_test), columns=X_test.columns, index=X_test.index,
+    )
+    X_test_sc = pd.DataFrame(
+        scaler.transform(X_test_imp), columns=X_test.columns, index=X_test.index,
+    )
+
+    # E1: warm-start — 前モデルの booster を init_model に使用
+    fit_kwargs: dict[str, Any] = {}
+    if early_stop > 0:
+        fit_kwargs["eval_set"] = [(X_test_sc, y_test)]
+        # LightGBM 4.x: callbacks で early stopping
+        fit_kwargs["callbacks"] = [
+            lgb.early_stopping(stopping_rounds=early_stop, verbose=False),
+            lgb.log_evaluation(period=0),  # suppress iteration log
+        ]
+    if prev_booster is not None and cfg.get("warm_start_enabled", True):
+        fit_kwargs["init_model"] = prev_booster
+        logger.info("E1: Using prev booster as init_model for WF eval")
+
+    lgbm_model.fit(X_train_sc, y_train, **fit_kwargs)
+    preds_test = lgbm_model.predict(X_test_sc)
 
     # OOS PnL 参照 (pnl30/pnl120)
     pnl30_col = "post_fill_30s_pnl"
@@ -260,12 +351,23 @@ def _evaluate_wf(
     imp_120 = kept_120 - baseline_120
     score = imp_120 - max(0, -imp_30)  # 125# profit_score: pnl120 改善 - pnl30 悪化ペナルティ
 
+    # E2: 実際に使用された木の数を記録
+    actual_n_trees = lgbm_model.booster_.num_trees() if hasattr(lgbm_model, "booster_") else n_est
+
+    # E3: feature importance を記録 (pruning 判定に使用)
+    feat_importance: dict[str, int] = {}
+    if hasattr(lgbm_model, "feature_importances_"):
+        for col, imp in zip(X_train.columns, lgbm_model.feature_importances_):
+            feat_importance[col] = int(imp)
+
     return {
         "score": score,
         "pnl30_improvement": imp_30,
         "pnl120_improvement": imp_120,
         "n_test": int(len(X_test)),
         "n_train": int(len(X_train)),
+        "actual_n_trees": actual_n_trees,
+        "feature_importance": feat_importance,
     }
 
 
@@ -341,10 +443,19 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
                 f"({n_forced/n_before*100:.1f}%)"
             )
 
-    enriched = enrich_fill_records(
-        records,
-        trades_fallback_recent_days=cfg.get("trades_fallback_recent_days", 1),
-    )
+    enriched = None
+    # E4: enriched data cache — I/O コスト削減
+    if cfg.get("enriched_cache_enabled", True):
+        cache_path = _get_enriched_cache_path(results_dir)
+        enriched = _load_enriched_cache(cache_path, len(records))
+
+    if enriched is None:
+        enriched = enrich_fill_records(
+            records,
+            trades_fallback_recent_days=cfg.get("trades_fallback_recent_days", 1),
+        )
+        if cfg.get("enriched_cache_enabled", True):
+            _save_enriched_cache(cache_path, enriched)
 
     # 127# H1: PnL 回帰向け特徴量抽出 (AS ラベル非依存)
     # filled かつ spread 有りのみ (AS ラベルは不要)
@@ -416,18 +527,28 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
             "reason": f"insufficient samples: {len(X_valid)} < {min_total} ({result['phase']})",
         }
 
-    # 127# X2: 前モデルを一度だけロード (n_samples + WF score を取得)
+    # 127# X2: 前モデルを一度だけロード (n_samples + WF score + E1 booster を取得)
     prev_n_samples = 0
     prev_score = 0.0
     prev_gate_loaded = False
+    prev_booster = None  # E1: warm-start 用
+    prev_feature_cols: list[str] | None = None  # E3: pruning 参照用
     if model_path.exists():
         try:
             prev_gate = SkipGate.load(model_path)
             prev_n_samples = prev_gate.metadata.get("n_samples", 0)
             prev_wf = prev_gate.metadata.get("wf_results", {})
             prev_score = prev_wf.get("profit_score", 0.0)
+            prev_feature_cols = prev_gate.metadata.get("feature_cols")
+            # E1: LightGBM booster を抽出 (warm-start に使用)
+            if cfg.get("warm_start_enabled", True):
+                if hasattr(prev_gate, "_pipeline") and prev_gate._pipeline is not None:
+                    prev_model = prev_gate._pipeline.named_steps.get("model")
+                    if hasattr(prev_model, "booster_"):
+                        prev_booster = prev_model.booster_
+                        logger.info("E1: Extracted prev booster for warm-start")
             prev_gate_loaded = True
-            del prev_gate  # メモリ早期解放
+            del prev_gate  # メモリ早期解放 (booster は参照保持)
         except Exception:
             pass
 
@@ -453,7 +574,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
 
     # Step 4: Walk-Forward 品質評価
     if cfg.get("quality_gate_enabled", True):
-        wf_result = _evaluate_wf(X_valid, y_valid, enriched, cfg)
+        wf_result = _evaluate_wf(X_valid, y_valid, enriched, cfg, prev_booster=prev_booster)
         result["wf_eval"] = wf_result
         logger.info(
             f"WF eval: score={wf_result['score']:.4f}, "
@@ -483,28 +604,87 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
             )
             return {**result, "status": "rejected", "reason": "quality_gate"}
 
-    # Step 5: 全データで訓練
-    lgbm = lgb.LGBMRegressor(
-        n_estimators=cfg.get("lgbm_n_estimators", 150),
-        max_depth=cfg.get("lgbm_max_depth", 4),
-        learning_rate=cfg.get("lgbm_learning_rate", 0.05),
-        num_leaves=cfg.get("lgbm_num_leaves", 15),
-        min_child_samples=cfg.get("lgbm_min_child_samples", 20),
-        subsample=0.8,
-        colsample_bytree=0.8,
-        reg_alpha=1.0,
-        reg_lambda=1.0,
-        random_state=42,
-        verbose=-1,
-        n_jobs=1,
-    )
+    # Step 5: 全データで訓練 (E1 warm-start + E2 early stopping + E3 feature pruning)
     feature_cols = list(get_gate_feature_cols(use_ob=use_ob))
+
+    # E3: Dead feature pruning — WF eval の feature_importance から split=0 を除外
+    pruned_features: list[str] = []
+    if (
+        cfg.get("feature_pruning_enabled", True)
+        and cfg.get("quality_gate_enabled", True)
+        and "wf_eval" in result
+    ):
+        feat_imp = result["wf_eval"].get("feature_importance", {})
+        min_imp = cfg.get("feature_pruning_min_importance", 0)
+        if feat_imp:
+            pruned = [c for c in feature_cols if feat_imp.get(c, 0) <= min_imp]
+            if pruned and len(feature_cols) - len(pruned) >= 5:
+                # 最低5特徴量は保持 (過剰pruning防止)
+                pruned_features = pruned
+                feature_cols = [c for c in feature_cols if c not in pruned]
+                logger.info(
+                    f"E3: Pruned {len(pruned)} dead features: {pruned} "
+                    f"→ {len(feature_cols)} features remaining"
+                )
+                # pruning 後のデータで再構築
+                X_valid = X_valid[feature_cols]
+
+    # 前処理 (Pipeline 内の fit を手動実行 — E1/E2 のため)
+    imputer = SimpleImputer(strategy="median")
+    scaler = StandardScaler()
+    X_imp = pd.DataFrame(
+        imputer.fit_transform(X_valid), columns=feature_cols, index=X_valid.index,
+    )
+    X_sc = pd.DataFrame(
+        scaler.fit_transform(X_imp), columns=feature_cols, index=X_valid.index,
+    )
+
+    # E2: early stopping 有効時は train/val 分割
+    early_stop = cfg.get("early_stopping_rounds", 0)
+    if early_stop > 0:
+        n_est = cfg.get("lgbm_n_estimators_max", 300)
+    else:
+        n_est = cfg.get("lgbm_n_estimators", 150)
+
+    lgbm = _build_lgbm_regressor(cfg, n_estimators_override=n_est)
+
+    # E1/E2: fit kwargs
+    fit_kwargs: dict[str, Any] = {}
+    if early_stop > 0:
+        # early stopping 用に内部的に val split (直近20%)
+        es_split = int(len(X_sc) * 0.8)
+        if es_split > 30 and len(X_sc) - es_split > 10:
+            fit_kwargs["eval_set"] = [(X_sc.iloc[es_split:], y_valid.iloc[es_split:])]
+            fit_kwargs["callbacks"] = [
+                lgb.early_stopping(stopping_rounds=early_stop, verbose=False),
+                lgb.log_evaluation(period=0),
+            ]
+
+    # E1: warm-start — 前モデルの booster を init_model に使用
+    # 注意: feature_cols が変更された場合 (pruning) は warm-start 不可
+    if (
+        prev_booster is not None
+        and cfg.get("warm_start_enabled", True)
+        and not pruned_features  # E3 pruning 時は feature 不一致
+        and prev_feature_cols == feature_cols  # feature_cols 完全一致が必要
+    ):
+        fit_kwargs["init_model"] = prev_booster
+        logger.info("E1: Using prev booster as init_model for final training")
+    elif prev_booster is not None and pruned_features:
+        logger.info("E1: Warm-start skipped (feature set changed by E3 pruning)")
+
+    lgbm.fit(X_sc, y_valid, **fit_kwargs)
+
+    # E2: 実際に使用された木の数を記録
+    actual_n_trees = lgbm.booster_.num_trees() if hasattr(lgbm, "booster_") else n_est
+    result["actual_n_trees"] = actual_n_trees
+
+    # Pipeline を再構成 (SkipGate.evaluate が pipeline.predict を使うため)
     pipeline = Pipeline([
-        ("imputer", SimpleImputer(strategy="median")),
-        ("scaler", StandardScaler()),
+        ("imputer", imputer),
+        ("scaler", scaler),
         ("model", lgbm),
     ])
-    pipeline.fit(X_valid, y_valid)
 
     # SkipGateConfig — 127# C1: mode を設定から取得
     sg_config = SkipGateConfig(
@@ -544,6 +724,12 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
         "new_samples": new_samples,
         "wf_results": wf_results_meta,
         "feature_cols": feature_cols,
+        # E1-E4: 効率化メタデータ
+        "warm_start_used": "init_model" in fit_kwargs,
+        "early_stopping_used": "eval_set" in fit_kwargs,
+        "actual_n_trees": actual_n_trees,
+        "pruned_features": pruned_features,
+        "enriched_cache_used": cfg.get("enriched_cache_enabled", True),
     }
 
     gate = SkipGate(

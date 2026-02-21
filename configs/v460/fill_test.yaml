@@ -293,6 +293,16 @@ retrain:
   lgbm_learning_rate: 0.05
   lgbm_num_leaves: 15
   lgbm_min_child_samples: 20
+  # E1: warm-start (前モデルの Booster を初期値として学習継続)
+  warm_start_enabled: true
+  # E2: early stopping (WF val split で過学習を自動停止)
+  early_stopping_rounds: 20          # N ラウンド改善なし → 停止
+  lgbm_n_estimators_max: 300         # early stopping 時の上限
+  # E3: dead feature pruning (split=0 の特徴量を自動除外)
+  feature_pruning_enabled: true
+  feature_pruning_min_importance: 0   # split 回数がこれ以下なら除外
+  # E4: enriched data cache (I/O 削減)
+  enriched_cache_enabled: true
   # SkipGate 動的較正
   adaptive_threshold: true
   target_skip_rate_buy: 0.15

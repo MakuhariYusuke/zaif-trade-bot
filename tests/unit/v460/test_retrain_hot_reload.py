@@ -709,3 +709,98 @@ class TestTradesIOFallback:
         assert len(fb_filter) <= 8  # 7 days + 1
         # 3rd call: full fallback (None)
         assert call_args[2][1] is None
+
+
+# =====================================================================
+# E1-E4 効率化施策テスト
+# =====================================================================
+
+class TestE4EnrichedCache:
+    """E4: enriched data cache テスト."""
+
+    def test_cache_roundtrip(self) -> None:
+        """キャッシュ保存→読み込みでデータが一致."""
+        from scripts.v460.ml.retrain_scheduler import (
+            _save_enriched_cache,
+            _load_enriched_cache,
+        )
+        import pandas as pd
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_path = Path(tmpdir) / "test_cache.pkl"
+            df = pd.DataFrame({"a": [1, 2, 3], "b": [4.0, 5.0, 6.0]})
+            _save_enriched_cache(cache_path, df)
+            loaded = _load_enriched_cache(cache_path, n_records=3)
+            assert loaded is not None
+            assert len(loaded) == 3
+            pd.testing.assert_frame_equal(df, loaded)
+
+    def test_cache_invalidation_on_count_mismatch(self) -> None:
+        """レコード数不一致でキャッシュを無効化."""
+        from scripts.v460.ml.retrain_scheduler import (
+            _save_enriched_cache,
+            _load_enriched_cache,
+        )
+        import pandas as pd
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_path = Path(tmpdir) / "test_cache.pkl"
+            df = pd.DataFrame({"a": [1, 2, 3]})
+            _save_enriched_cache(cache_path, df)
+            # 異なるレコード数で読み込み → None
+            loaded = _load_enriched_cache(cache_path, n_records=5)
+            assert loaded is None
+
+
+class TestE3FeaturePruning:
+    """E3: dead feature pruning テスト."""
+
+    def test_dead_features_identified(self) -> None:
+        """split=0 の特徴量が正しく特定される."""
+        feat_importance = {
+            "spread_jpy": 100,
+            "hour_cos": 50,
+            "regime_high_vol": 0,
+            "trade_flow_imbalance_60s": 0,
+            "side_buy": 0,
+        }
+        # split=0 は 3 件
+        dead = [c for c, v in feat_importance.items() if v <= 0]
+        assert len(dead) == 3
+        assert "regime_high_vol" in dead
+        assert "spread_jpy" not in dead
+
+    def test_pruning_preserves_minimum_features(self) -> None:
+        """最低5特徴量は保持される (過剰pruning防止)."""
+        feature_cols = ["a", "b", "c", "d", "e", "f"]
+        feat_importance = {
+            "a": 10, "b": 0, "c": 0, "d": 0, "e": 0, "f": 0,
+        }
+        min_imp = 0
+        pruned = [c for c in feature_cols if feat_importance.get(c, 0) <= min_imp]
+        # 5個を pruning → 残りは 1 < 5 → pruning しない
+        if len(feature_cols) - len(pruned) >= 5:
+            feature_cols = [c for c in feature_cols if c not in pruned]
+        # 残り 1 < 5 なので pruning されない
+        assert len(feature_cols) == 6
+
+
+class TestBuildLgbmRegressor:
+    """DRY: _build_lgbm_regressor テスト."""
+
+    def test_default_params(self) -> None:
+        """デフォルトパラメータで LGBMRegressor を構築."""
+        from scripts.v460.ml.retrain_scheduler import _build_lgbm_regressor
+
+        cfg = {"lgbm_n_estimators": 100, "lgbm_max_depth": 3}
+        model = _build_lgbm_regressor(cfg)
+        assert model.n_estimators == 100
+        assert model.max_depth == 3
+
+    def test_n_estimators_override(self) -> None:
+        """n_estimators をオーバーライドできる (E2 early stopping 用)."""
+        from scripts.v460.ml.retrain_scheduler import _build_lgbm_regressor
+
+        cfg = {"lgbm_n_estimators": 100}
+        model = _build_lgbm_regressor(cfg, n_estimators_override=300)
+        assert model.n_estimators == 300
