@@ -5,6 +5,8 @@ Run metadata capture for trading bot executions.
 Captures environment and system information for reproducibility.
 """
 
+from __future__ import annotations
+
 import hashlib
 import json
 import os
@@ -12,24 +14,56 @@ import platform
 import subprocess
 import sys
 from datetime import datetime
+from importlib.metadata import Distribution, distributions
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import TypedDict
 
-import pkg_resources
+# Allow direct script execution: `python ztb/utils/run_metadata.py ...`
+if __package__ is None or __package__ == "":
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from ztb.utils.file_utils import safe_json_load
+from ztb.io.json_io import read_json_object, write_json
+from ztb.utils.git_utils import (
+    get_git_branch,
+    get_git_remote_url,
+    get_git_sha,
+    get_git_status_lines,
+)
+
+
+class PackageInfo(TypedDict):
+    version: str
+    hash: str | None
+
+
+class GitInfo(TypedDict):
+    sha: str
+    branch: str
+    status: str
+    remote_url: str
+    is_dirty: str
 
 
 class RunMetadata:
     """Captures and manages run metadata."""
 
-    def __init__(self, random_seed: int = 42):
-        self.random_seed = random_seed
-        self.metadata: Dict[str, Any] = {}
+    _HASHABLE_SUFFIXES = {".py", ".pyi", ".so", ".pyd", ".dll", ".dylib"}
 
-    def capture_system_info(self) -> Dict[str, Any]:
+    def __init__(
+        self,
+        random_seed: int = 42,
+        include_package_hashes: bool = False,
+        package_hash_file_limit: int = 200,
+    ):
+        self.random_seed = random_seed
+        self.include_package_hashes = include_package_hashes
+        self.package_hash_file_limit = max(int(package_hash_file_limit), 1)
+        self.metadata: dict[str, object] = {}
+
+    def capture_system_info(self) -> dict[str, object]:
         """Capture system and environment information."""
-        info = {
+        now = datetime.now().astimezone()
+        return {
             "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
             "python_executable": sys.executable,
             "platform": platform.platform(),
@@ -40,23 +74,21 @@ class RunMetadata:
             "cpu_model": self._get_cpu_model(),
             "hostname": platform.node(),
             "random_seed": self.random_seed,
-            "timestamp": datetime.now().isoformat(),
-            "timezone": str(datetime.now().astimezone().tzinfo),
+            "timestamp": now.isoformat(),
+            "timezone": str(now.tzinfo),
             "working_directory": os.getcwd(),
             "environment_variables": self._get_relevant_env_vars(),
         }
-
-        return info
 
     def _get_cpu_model(self) -> str:
         """Get CPU model information."""
         try:
             if platform.system() == "Linux":
-                with open("/proc/cpuinfo", "r") as f:
+                with open("/proc/cpuinfo", "r", encoding="utf-8") as f:
                     for line in f:
                         if line.startswith("model name"):
-                            return line.split(":")[1].strip()
-            elif platform.system() == "Darwin":  # macOS
+                            return line.split(":", maxsplit=1)[1].strip()
+            elif platform.system() == "Darwin":
                 result = subprocess.run(
                     ["sysctl", "-n", "machdep.cpu.brand_string"],
                     capture_output=True,
@@ -66,16 +98,15 @@ class RunMetadata:
                 if result.returncode == 0:
                     return result.stdout.strip()
             elif platform.system() == "Windows":
-                # Skip slow wmic command
                 return "Windows CPU"
         except Exception:
             pass
 
         return "Unknown"
 
-    def _get_relevant_env_vars(self) -> Dict[str, str]:
+    def _get_relevant_env_vars(self) -> dict[str, str]:
         """Get relevant environment variables (without sensitive data)."""
-        relevant_vars = [
+        relevant_vars = (
             "PYTHONPATH",
             "PATH",
             "HOME",
@@ -84,59 +115,153 @@ class RunMetadata:
             "LANG",
             "LC_ALL",
             "TZ",
-        ]
+        )
 
-        env_vars = {}
+        env_vars: dict[str, str] = {}
         for var in relevant_vars:
             value = os.environ.get(var)
-            if value:
-                # Truncate long paths
-                if len(value) > 200:
-                    value = value[:197] + "..."
-                env_vars[var] = value
-
+            if not value:
+                continue
+            if len(value) > 200:
+                value = value[:197] + "..."
+            env_vars[var] = value
         return env_vars
 
-    def capture_package_info(self) -> Dict[str, Any]:
-        """Capture installed package versions and hashes."""
-        packages = {}
+    def _distribution_name(self, dist: Distribution) -> str:
+        name = dist.metadata.get("Name")
+        if isinstance(name, str) and name.strip():
+            return name.strip()
+        fallback = getattr(dist, "name", "")
+        return str(fallback).strip() if fallback else ""
+
+    def _distribution_sort_key(self, dist: Distribution) -> str:
+        return self._distribution_name(dist).lower()
+
+    def _distribution_paths(self, dist: Distribution, package_name: str) -> list[Path]:
+        base_path = Path(dist.locate_file(""))
+
+        top_level_names: list[str] = []
+        top_level = dist.read_text("top_level.txt")
+        if top_level:
+            top_level_names.extend(
+                line.strip() for line in top_level.splitlines() if line.strip()
+            )
+
+        if not top_level_names:
+            top_level_names.append(package_name.replace("-", "_"))
+
+        paths: list[Path] = []
+        seen: set[Path] = set()
+        for name in top_level_names:
+            for candidate in (base_path / name, base_path / f"{name}.py"):
+                if candidate.exists() and candidate not in seen:
+                    paths.append(candidate)
+                    seen.add(candidate)
+
+        return paths
+
+    def _iter_hash_files(self, path: Path):
+        if path.is_file():
+            yield path
+            return
+        for file_path in path.rglob("*"):
+            if not file_path.is_file():
+                continue
+            if file_path.suffix not in self._HASHABLE_SUFFIXES:
+                continue
+            yield file_path
+
+    def _get_package_hash(self, dist: Distribution, package_name: str) -> str | None:
+        """Generate a lightweight package hash from path + file metadata."""
+        paths = self._distribution_paths(dist, package_name)
+        if not paths:
+            return None
+
+        hasher = hashlib.sha256()
+        files_hashed = 0
+
+        for root_path in paths:
+            for file_path in self._iter_hash_files(root_path):
+                try:
+                    stat = file_path.stat()
+                except OSError:
+                    continue
+
+                try:
+                    rel_path = str(file_path.relative_to(root_path.parent))
+                except ValueError:
+                    rel_path = file_path.name
+                hasher.update(rel_path.encode("utf-8", errors="ignore"))
+                hasher.update(str(stat.st_size).encode("ascii", errors="ignore"))
+                hasher.update(str(stat.st_mtime_ns).encode("ascii", errors="ignore"))
+
+                files_hashed += 1
+                if files_hashed >= self.package_hash_file_limit:
+                    return hasher.hexdigest()[:16]
+
+        if files_hashed == 0:
+            return None
+        return hasher.hexdigest()[:16]
+
+    def _capture_package_info_via_pip(self) -> dict[str, PackageInfo]:
+        packages: dict[str, PackageInfo] = {}
+        try:
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "list", "--format=json"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode != 0:
+                return packages
+            payload = json.loads(result.stdout)
+            if not isinstance(payload, list):
+                return packages
+            for item in payload:
+                if not isinstance(item, dict):
+                    continue
+                name_obj = item.get("name")
+                version_obj = item.get("version")
+                if not isinstance(name_obj, str) or not name_obj:
+                    continue
+                version = version_obj if isinstance(version_obj, str) else "unknown"
+                packages[name_obj] = {"version": version, "hash": None}
+        except Exception:
+            pass
+        return packages
+
+    def capture_package_info(self) -> dict[str, PackageInfo]:
+        """Capture installed package versions and optional hashes."""
+        packages: dict[str, PackageInfo] = {}
 
         try:
-            # Get all installed packages
-            for dist in pkg_resources.working_set:
-                package_name = dist.project_name
-                version = dist.version
+            for dist in sorted(distributions(), key=self._distribution_sort_key):
+                package_name = self._distribution_name(dist)
+                if not package_name:
+                    continue
 
-                # Create a hash of the package files for change detection
-                try:
-                    package_hash = self._get_package_hash(dist)
-                    packages[package_name] = {"version": version, "hash": package_hash}
-                except Exception:
-                    # Fallback to just version
-                    packages[package_name] = {"version": version, "hash": None}
+                info: PackageInfo = {
+                    "version": dist.version or "unknown",
+                    "hash": None,
+                }
+                if self.include_package_hashes:
+                    info["hash"] = self._get_package_hash(dist, package_name)
+                packages[package_name] = info
         except Exception:
-            # If pkg_resources fails, try pip
-            try:
-                result = subprocess.run(
-                    [sys.executable, "-m", "pip", "list", "--format=json"],
-                    capture_output=True,
-                    text=True,
-                )
-                if result.returncode == 0:
-                    pip_packages = json.loads(result.stdout)
-                    for pkg in pip_packages:
-                        packages[pkg["name"]] = {
-                            "version": pkg["version"],
-                            "hash": None,
-                        }
-            except Exception:
-                pass
+            return self._capture_package_info_via_pip()
 
         return packages
 
+    def _sha256_short(self, file_path: Path) -> str:
+        hasher = hashlib.sha256()
+        with file_path.open("rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 64), b""):
+                hasher.update(chunk)
+        return hasher.hexdigest()[:16]
+
     def capture_config_hashes(
-        self, config_files: Optional[list[str]] = None
-    ) -> Dict[str, str]:
+        self, config_files: list[str] | None = None
+    ) -> dict[str, str]:
         """Capture hashes of configuration files."""
         if config_files is None:
             config_files = [
@@ -146,116 +271,44 @@ class RunMetadata:
                 "venues/coincheck.yaml",
             ]
 
-        config_hashes = {}
+        config_hashes: dict[str, str] = {}
         for config_file in config_files:
-            if os.path.exists(config_file):
-                try:
-                    with open(config_file, "rb") as f:
-                        hasher = hashlib.sha256()
-                        hasher.update(f.read())
-                        config_hashes[config_file] = hasher.hexdigest()[:16]
-                except Exception:
-                    config_hashes[config_file] = "error"
+            path = Path(config_file)
+            if not path.exists():
+                continue
+            try:
+                config_hashes[config_file] = self._sha256_short(path)
+            except Exception:
+                config_hashes[config_file] = "error"
 
         return config_hashes
 
-    def _get_package_hash(self, dist: pkg_resources.Distribution) -> str:
-        """Generate hash of package files."""
-        hasher = hashlib.sha256()
-
-        try:
-            # Get package location
-            location = dist.location
-            if location and os.path.isdir(location):
-                # Walk through package files
-                for root, _dirs, files in os.walk(location):
-                    for file in files:
-                        if file.endswith((".py", ".pyc", ".pyo")):
-                            file_path = os.path.join(root, file)
-                            try:
-                                with open(file_path, "rb") as f:
-                                    hasher.update(f.read())
-                            except Exception:
-                                continue
-        except Exception:
-            pass
-
-        return hasher.hexdigest()[:16]  # Short hash
-
-    def capture_git_info(self) -> Dict[str, str]:
+    def capture_git_info(self) -> GitInfo:
         """Capture git repository information."""
-        git_info: Dict[str, str] = {
-            "sha": "unknown",
-            "branch": "unknown",
-            "status": "unknown",
-            "remote_url": "unknown",
-            "is_dirty": "unknown",
+        cwd = Path.cwd()
+        status_lines = get_git_status_lines(cwd=cwd)
+        status_summary = "\n".join(status_lines)
+        if len(status_summary) > 200:
+            status_summary = status_summary[:200]
+
+        return {
+            "sha": get_git_sha(cwd=cwd),
+            "branch": get_git_branch(cwd=cwd),
+            "status": status_summary,
+            "remote_url": get_git_remote_url(cwd=cwd),
+            "is_dirty": "true" if status_lines else "false",
         }
 
-        try:
-            # Get current commit SHA
-            result = subprocess.run(
-                ["git", "rev-parse", "HEAD"],
-                capture_output=True,
-                text=True,
-                cwd=os.getcwd(),
-            )
-            if result.returncode == 0:
-                git_info["sha"] = result.stdout.strip()
-
-            # Get current branch
-            result = subprocess.run(
-                ["git", "branch", "--show-current"],
-                capture_output=True,
-                text=True,
-                cwd=os.getcwd(),
-            )
-            if result.returncode == 0:
-                git_info["branch"] = result.stdout.strip()
-
-            # Check if working directory is dirty
-            result = subprocess.run(
-                ["git", "status", "--porcelain"],
-                capture_output=True,
-                text=True,
-                cwd=os.getcwd(),
-            )
-            git_info["is_dirty"] = "true" if len(result.stdout.strip()) > 0 else "false"
-
-            # Get remote URL
-            result = subprocess.run(
-                ["git", "remote", "get-url", "origin"],
-                capture_output=True,
-                text=True,
-                cwd=os.getcwd(),
-            )
-            if result.returncode == 0:
-                git_info["remote_url"] = result.stdout.strip()
-
-            # Get status summary
-            result = subprocess.run(
-                ["git", "status", "--short"],
-                capture_output=True,
-                text=True,
-                cwd=os.getcwd(),
-            )
-            if result.returncode == 0:
-                git_info["status"] = result.stdout.strip()[:200]  # Truncate
-
-        except Exception:
-            pass
-
-        return git_info
-
-    def capture_all_metadata(self) -> Dict[str, Any]:
+    def capture_all_metadata(self) -> dict[str, object]:
         """Capture all metadata."""
-        metadata = {
+        metadata: dict[str, object] = {
             "system": self.capture_system_info(),
             "packages": self.capture_package_info(),
             "git": self.capture_git_info(),
             "run_config": {
                 "random_seed": self.random_seed,
                 "captured_at": datetime.now().isoformat(),
+                "include_package_hashes": self.include_package_hashes,
             },
         }
 
@@ -264,14 +317,16 @@ class RunMetadata:
 
     def save_to_file(self, file_path: str) -> None:
         """Save metadata to JSON file."""
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(self.metadata, f, indent=2, ensure_ascii=False)
+        write_json(file_path, self.metadata, indent=2, ensure_ascii=False)
 
     @classmethod
     def load_from_file(cls, file_path: str) -> "RunMetadata":
         """Load metadata from JSON file."""
         instance = cls()
-        instance.metadata = safe_json_load(Path(file_path))
+        try:
+            instance.metadata = read_json_object(Path(file_path))
+        except Exception:
+            instance.metadata = {}
         return instance
 
     def get_summary(self) -> str:
@@ -279,27 +334,31 @@ class RunMetadata:
         if not self.metadata:
             return "No metadata captured"
 
-        system = self.metadata.get("system", {})
-        git = self.metadata.get("git", {})
-        packages = self.metadata.get("packages", {})
+        system_obj = self.metadata.get("system")
+        git_obj = self.metadata.get("git")
+        packages_obj = self.metadata.get("packages")
 
-        summary = []
-        summary.append(f"Python: {system.get('python_version', 'Unknown')}")
-        summary.append(
-            f"OS: {system.get('os', 'Unknown')} {system.get('os_version', 'Unknown')}"
-        )
-        summary.append(f"CPU: {system.get('cpu_model', 'Unknown')}")
-        summary.append(
-            f"Git SHA: {git.get('sha', 'Unknown')[:8] if git.get('sha') else 'Unknown'}"
-        )
-        summary.append(f"Branch: {git.get('branch', 'Unknown')}")
-        summary.append(f"Packages: {len(packages)} installed")
-        summary.append(f"Random Seed: {system.get('random_seed', 'Unknown')}")
-        summary.append(f"Timestamp: {system.get('timestamp', 'Unknown')}")
+        system = system_obj if isinstance(system_obj, dict) else {}
+        git = git_obj if isinstance(git_obj, dict) else {}
+        packages = packages_obj if isinstance(packages_obj, dict) else {}
+
+        git_sha_obj = git.get("sha")
+        git_sha = git_sha_obj[:8] if isinstance(git_sha_obj, str) else "Unknown"
+
+        summary = [
+            f"Python: {system.get('python_version', 'Unknown')}",
+            f"OS: {system.get('os', 'Unknown')} {system.get('os_version', 'Unknown')}",
+            f"CPU: {system.get('cpu_model', 'Unknown')}",
+            f"Git SHA: {git_sha}",
+            f"Branch: {git.get('branch', 'Unknown')}",
+            f"Packages: {len(packages)} installed",
+            f"Random Seed: {system.get('random_seed', 'Unknown')}",
+            f"Timestamp: {system.get('timestamp', 'Unknown')}",
+        ]
 
         return "\n".join(summary)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, object]:
         """Convert metadata to dictionary for JSON serialization."""
         return {
             "random_seed": self.random_seed,
@@ -307,9 +366,18 @@ class RunMetadata:
         }
 
 
-def capture_run_metadata(output_path: str, random_seed: int = 42) -> RunMetadata:
+def capture_run_metadata(
+    output_path: str,
+    random_seed: int = 42,
+    include_package_hashes: bool = False,
+    package_hash_file_limit: int = 200,
+) -> RunMetadata:
     """Convenience function to capture and save run metadata."""
-    metadata = RunMetadata(random_seed=random_seed)
+    metadata = RunMetadata(
+        random_seed=random_seed,
+        include_package_hashes=include_package_hashes,
+        package_hash_file_limit=package_hash_file_limit,
+    )
     metadata.capture_all_metadata()
     metadata.save_to_file(output_path)
     return metadata
@@ -328,9 +396,25 @@ if __name__ == "__main__":
         default=42,
         help=CLIFormatter.format_help("Random seed", 42),
     )
+    parser.add_argument(
+        "--include-package-hashes",
+        action="store_true",
+        help="Enable package hash capture (disabled by default for performance)",
+    )
+    parser.add_argument(
+        "--package-hash-file-limit",
+        type=lambda x: CLIValidator.validate_positive_int(x, "package_hash_file_limit"),
+        default=200,
+        help=CLIFormatter.format_help("Max files to sample per package hash", 200),
+    )
 
     args = parser.parse_args()
 
-    metadata = capture_run_metadata(args.output, args.seed)
+    metadata = capture_run_metadata(
+        args.output,
+        args.seed,
+        include_package_hashes=args.include_package_hashes,
+        package_hash_file_limit=args.package_hash_file_limit,
+    )
     print("Run metadata captured:")
     print(metadata.get_summary())

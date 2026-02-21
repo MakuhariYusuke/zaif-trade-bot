@@ -899,6 +899,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step69時点 | repo全体 | 2,494 |
 | Step70時点 | repo全体 | 2,494 |
 | Step71時点 | repo全体 | 2,501 |
+| Step72時点 | repo全体 | 2,505 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -1020,31 +1021,74 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step71時点 | `ztb/experiments/job_manager.py` | **0** |
 | Step71時点 | `ztb/experiments/run_sac_experiments.py` | **0** |
 | Step71時点 | `ztb/utils/run_manifest.py` | **0** |
+| Step72時点 | `ztb/training/utils/sac_utils.py` | **0** |
+| Step72時点 | `ztb/utils/run_metadata.py` | **0** |
+| Step72時点 | `ztb/utils/git_utils.py` | **0** |
+| Step72時点 | `ztb/utils/run_manifest.py` | **0** |
 
 ---
 
+## Step72 追補: SAC utility 復旧 + metadata 収集軽量化 + git helper 統合 (2026-02-22)
+
+### 1) `ztb/training/utils/sac_utils.py` の機能復旧と安全化
+
+- 構文/初期化不整合を解消し、CLI サブコマンド (`check-config`, `validate-data`, `quality-checks`, `clean`, `fix-common`) を安定化。
+- `clean` に `max_scan_seconds` 上限制御を追加し、大規模リポジトリでも実行時間を制御可能化。
+- `fix-common` に `max_files` 上限制御を追加し、全走査の過負荷を抑止。
+- `check-config` に `max_details` を追加し、巨大 JSON 出力による I/O コストと可読性低下を抑制。
+
+### 2) `ztb/utils/run_metadata.py` の性能改善・型契約整理
+
+- package hash を **opt-in** (`--include-package-hashes`) 化し、通常実行のメタデータ収集時間を削減。
+- package hash は distribution location 全再帰を廃止し、対象 package path + file stat ベースへ変更（高コスト経路を除去）。
+- `save/load` を `write_json` / `read_json_object` へ統一し、JSON I/O 契約を明確化。
+- direct script 実行時の import 問題を回避する `sys.path` fallback を追加。
+
+### 3) git subprocess 重複統合
+
+- `ztb/utils/git_utils.py` を新設し、git 情報取得処理を共通化（LFS 依存環境でも失敗しにくい実装）。
+- `ztb/utils/run_manifest.py` の `get_git_sha` / `get_git_dirty_status` を同 helper 委譲へ置換。
+- `run_metadata` も同 helper を利用し、git 情報取得の分散実装を縮退。
+
+### 4) 検証
+
+- `py_compile`:
+  - `ztb/training/utils/sac_utils.py`
+  - `ztb/utils/run_metadata.py`
+  - `ztb/utils/run_manifest.py`
+  - `ztb/utils/git_utils.py`
+- 実行確認:
+  - `python3 ztb/training/utils/sac_utils.py --help`
+  - `python3 ztb/training/utils/sac_utils.py check-config --max-details 20`
+  - `python3 ztb/training/utils/sac_utils.py fix-common --max-files 50`
+  - `python3 ztb/utils/run_metadata.py --output /tmp/run_metadata_test.json`
+  - `python3 ztb/utils/run_metadata.py --output /tmp/run_metadata_hash_test.json --include-package-hashes --package-hash-file-limit 10`
+- `any_inventory`（Step72）:
+  - repo 全体 `any_type_debt_tokens=2,505`（`scanned_files=1,292`）
+  - 変更対象4ファイルは `any_type_debt_tokens=0` を維持
+
 ## 6. 次フェーズ（優先順）
 
-1. `ztb/training/utils/sac_utils.py`  
-   - まず構文エラーと初期化不整合を修正し import 可能状態へ復旧したうえで、I/O/subprocess 重複を helper 化する。  
-2. `ztb/experiments/job_manager.py`  
+1. `ztb/experiments/job_manager.py`  
    - 並列実行の timeout 後キャンセル/状態遷移競合を解消し、`ProcessPoolExecutor` での pickling 依存を下げる実行設計へ整理。  
-3. `ztb/utils/run_metadata.py`  
-   - package hash 全走査の高コスト経路を段階的に軽量化（対象パッケージ限定 or lazy/opt-in 化）し、git 情報取得の subprocess 重複を統合。  
-4. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py` / `ztb/trading/strategies/action_signal_guide/realtime_adaptation/streaming_processor.py`  
+2. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py` / `ztb/trading/strategies/action_signal_guide/realtime_adaptation/streaming_processor.py`  
    - 残存する `_as_object_map` / `_as_float` 実装を `safety.ensure_dict` / `safe_to_float` へ統合し、Step71 の util 抽出を横展開。  
-5. `ztb/training/reward_function_optimizer/reward_function_optimizer.py`  
+3. `ztb/training/reward_function_optimizer/reward_function_optimizer.py`  
    - `Any` debt 上位のため、result/config payload 型固定と evaluator 系 `TypedDict` の横展開を優先。  
-6. `ztb/training/algorithms/sac/sac_algorithm.py`  
+4. `ztb/training/algorithms/sac/sac_algorithm.py`  
    - 学習ループ payload を型固定し、ログ/集計の重複分岐を helper 化。  
-7. `ztb/training/checkpoint/checkpoint_manager.py`  
+5. `ztb/training/checkpoint/checkpoint_manager.py`  
    - 上位 debt を対象に、checkpoint metadata/payload の型契約と I/O 例外契約を整理。  
-8. `ztb/training/core/config_builder.py`  
+6. `ztb/training/core/config_builder.py`  
    - `UnifiedConfig` / `get_config_value` の `Any` 流出点を typed config alias + type guard へ段階移行。  
-9. `ztb/utils/file_utils.py`  
+7. `ztb/utils/file_utils.py`  
    - `safe_json_load/dump` の戻り値契約を明確化し、`read_json_object/read_json_array` ベースの型付き helper を追加。  
-10. `ztb/analysis/features/re_evaluate_features.py`  
+8. `ztb/analysis/features/re_evaluate_features.py`  
    - 評価 result payload の型固定と集計ループ helper 化を進め、重複整形コードを削減。  
+9. `ztb/training/utils/sac_utils.py`
+   - `check-config` / `validate-data` の詳細 payload を `TypedDict` 化し、結果 JSON の契約を固定。  
+10. `ztb/utils/run_metadata.py`
+   - package hash 対象 package の allow-list 指定 (`--package-hash-target`) を追加し、hash 実行時の時間をさらに圧縮。  
 
 ---
 

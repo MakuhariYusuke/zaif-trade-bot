@@ -7,13 +7,16 @@ about training runs, including git state, configuration, and data fingerprints.
 
 import hashlib
 import json
-import subprocess
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Optional, cast
 
 from ztb.io.json_io import read_json_object, write_json
 from ztb.types.common import ConfigDict
+from ztb.utils.git_utils import (
+    get_git_dirty_status as _get_git_dirty_status,
+    get_git_sha as _get_git_sha,
+)
 from ztb.utils.safety import ensure_dict
 
 
@@ -73,16 +76,7 @@ def get_git_sha() -> str:
     Returns:
         Git SHA (40-character hex string) or "unknown" if not in git repo
     """
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return result.stdout.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return "unknown"
+    return _get_git_sha()
 
 
 def get_git_dirty_status() -> bool:
@@ -92,16 +86,7 @@ def get_git_dirty_status() -> bool:
     Returns:
         True if there are uncommitted changes, False otherwise
     """
-    try:
-        result = subprocess.run(
-            ["git", "status", "--porcelain"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return len(result.stdout.strip()) > 0
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+    return _get_git_dirty_status()
 
 
 def compute_file_hash(file_path: Path) -> str:

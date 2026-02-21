@@ -376,3 +376,39 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 
 - `py_compile`（`run_optimization.py`, `job_manager.py`, `run_sac_experiments.py`, `run_manifest.py`）通過。
 - `any_inventory`: repo 全体 `any_type_debt_tokens=2,501`（`scanned_files=1,289`、同時進行差分による母数変動あり）。
+
+## Phase 13 追補: SAC utility 復旧 + git helper 抽出 + metadata 軽量化 (2026-02-22)
+
+### 1) `sac_utils` の復旧と出力/走査負荷の抑制
+
+- `ztb/training/utils/sac_utils.py` の構文崩れ/初期化不整合を解消し、CLI サブコマンド群を実行可能状態へ復旧。
+- `clean_project_files()` に scan timeout (`max_scan_seconds`) を導入し、大規模 tree 走査の時間上限を明確化。
+- `fix_common_issues()` に `max_files` を導入し、不要な全走査を抑止。
+- `check_config_consistency()` に `max_details` を導入し、巨大 report 出力の I/O コストを削減。
+
+### 2) `run_metadata` の高コスト経路を縮退
+
+- `ztb/utils/run_metadata.py` の package hash 計算を opt-in (`--include-package-hashes`) 化。
+- 従来の site-packages 全再帰を廃止し、distribution 配下 path + file stat ベース hash に変更。
+- JSON I/O を `read_json_object` / `write_json` に統一し、I/O 契約を `ztb/io/json_io.py` へ集約。
+- direct script 実行時の import 失敗を避ける path fallback を追加。
+
+### 3) git 情報取得の重複統合（横展開）
+
+- `ztb/utils/git_utils.py` を追加し、git SHA/branch/dirty/status/remote 取得を共通 helper 化。
+- git-lfs 不在環境で失敗しにくい `git -c filter.lfs.*` 設定を helper 側へ集約。
+- `ztb/utils/run_manifest.py` の git 取得実装を同 helper 委譲へ置換。
+- `run_metadata` も同 helper へ寄せ、重複 subprocess 実装を削減。
+
+### 4) 型安全・検証
+
+- `any_inventory`（変更対象）:
+  - `ztb/training/utils/sac_utils.py`: `any_type_debt_tokens=0`
+  - `ztb/utils/run_metadata.py`: `any_type_debt_tokens=0`
+  - `ztb/utils/run_manifest.py`: `any_type_debt_tokens=0`
+  - `ztb/utils/git_utils.py`: `any_type_debt_tokens=0`
+- `py_compile`:
+  - `ztb/training/utils/sac_utils.py`
+  - `ztb/utils/run_metadata.py`
+  - `ztb/utils/run_manifest.py`
+  - `ztb/utils/git_utils.py`
