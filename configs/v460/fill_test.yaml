@@ -278,7 +278,7 @@ retrain:
   bootstrap_min_total_samples: 30  # Bootstrap 段階での最小合計 (安定期の 1/3)
   bootstrap_min_new_samples: 10    # Bootstrap 段階での最小新規
   bootstrap_threshold: 100         # total < この値なら Bootstrap 段階と判定
-  target: pnl120                   # 127# M2: "pnl120" or "pnl30" (回帰 target)
+  target: pnl30                    # 131# L1: pnl120→pnl30 (e3_sampling_ratio=0.50 で pnl120 カバレッジ 40% → pnl30 は 100%。訓練データ 2.5x)
   # 127# H2: run_id 分離 (異なる設定の run を混在させない)
   latest_run_only: true            # 最新 run_id のみ学習 (因果崩壊防止)
   exclude_missing_run_id: true     # run_id 欠損行を除外

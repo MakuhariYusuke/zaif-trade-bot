@@ -568,8 +568,11 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def run_scheduler(cfg: dict[str, Any]) -> None:
-    """定期再学習ループ."""
+def run_scheduler(cfg: dict[str, Any], config_path: Path | None = None) -> None:
+    """定期再学習ループ.
+
+    131# L2: サイクルごとに YAML を再読み込みし、YAML 変更を再起動なしで反映。
+    """
     interval = cfg.get("interval_sec", 3600)
     logger.info(
         f"=== 126# Retrain Scheduler started ===\n"
@@ -577,7 +580,8 @@ def run_scheduler(cfg: dict[str, Any]) -> None:
         f"  model_path: {cfg['model_path']}\n"
         f"  target: {cfg['target']}\n"
         f"  min_new_samples: {cfg['min_new_samples']}\n"
-        f"  quality_gate: {cfg.get('quality_gate_enabled', True)}"
+        f"  quality_gate: {cfg.get('quality_gate_enabled', True)}\n"
+        f"  config_hot_reload: {config_path is not None}"
     )
 
     log_dir = Path("logs")
@@ -585,6 +589,18 @@ def run_scheduler(cfg: dict[str, Any]) -> None:
     history_path = log_dir / "retrain_history.jsonl"
 
     while True:
+        # 131# L2: サイクルごとに YAML からリロード (閾値・ターゲット変更を反映)
+        if config_path is not None:
+            try:
+                new_cfg = load_retrain_config(config_path)
+                # interval は起動時のみ有効 (loop 途中変更は次回起動で反映)
+                for key in new_cfg:
+                    if key != "interval_sec":
+                        cfg[key] = new_cfg[key]
+                logger.debug("131# Config reloaded from YAML")
+            except Exception as e:
+                logger.warning(f"131# Config reload failed (using previous): {e}")
+
         try:
             result = retrain_model(cfg)
             logger.info(f"Retrain cycle: status={result['status']}")
@@ -630,7 +646,7 @@ def main() -> None:
         result = retrain_model(cfg)
         logger.info(f"Result: {json.dumps(result, indent=2, default=str)}")
     else:
-        run_scheduler(cfg)
+        run_scheduler(cfg, config_path=Path(args.config))
 
 
 if __name__ == "__main__":
