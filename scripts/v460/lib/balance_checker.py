@@ -2,11 +2,13 @@
 
 FillTestRunner から残高 pre-flight チェック + ロット自動縮小を分離。
 041# 残高チェック / 052# ロット縮小 / 101# 残高回復ロジックを統合。
+128# dust_sweep: 端数 BTC 一掃売却 (sell 時に全BTC売却で最小取引金額未満の残留を解消)。
 
 責務:
   - buy/sell 残高の事前検証
   - 残高不足時のロット自動縮小 (0.001 BTC 単位)
   - 残高回復時のロット復元
+  - 128# sell 時 dust 込み全額売却
 """
 
 from __future__ import annotations
@@ -30,6 +32,9 @@ class BalanceChecker:
         self._current_lot: float = config.order_quantity
         self._pre_shrink_lot: float = config.order_quantity
         self._balance_shrink_active: bool = False
+        # 128# dust sweep 状態
+        self._dust_sweep_active: bool = False
+        self._pre_dust_lot: float = config.order_quantity
 
     @property
     def current_lot(self) -> float:
@@ -46,6 +51,11 @@ class BalanceChecker:
     @balance_shrink_active.setter
     def balance_shrink_active(self, value: bool) -> None:
         self._balance_shrink_active = value
+
+    @property
+    def dust_sweep_active(self) -> bool:
+        """128# dust sweep がアクティブか."""
+        return self._dust_sweep_active
 
     @property
     def pre_shrink_lot(self) -> float:
@@ -88,7 +98,8 @@ class BalanceChecker:
                         f"[balance] BTC {btc_free:.6f} < {old_lot:.4f}. "
                         f"ロット自動縮小: {old_lot:.4f} → {new_lot:.4f} BTC"
                     )
-                    return False
+                    # 128# 縮小後も dust sweep 判定を通過させる
+                    return self._maybe_dust_sweep(btc_free)
             logger.warning(
                 f"[balance] Insufficient BTC for sell: "
                 f"{btc_free:.6f} < {self._min_order_btc:.4f}. "
@@ -108,7 +119,9 @@ class BalanceChecker:
                 f"[balance] BTC 残高回復: ロット復元 "
                 f"{old_lot:.4f} → {self._current_lot:.4f} BTC"
             )
-        return False
+
+        # 128# dust sweep: 残高十分でも dust があれば全額売却
+        return self._maybe_dust_sweep(btc_free)
 
     async def _check_buy(self, adapter: object, symbol: str) -> bool:
         """buy 残高チェック (JPY)."""
@@ -156,12 +169,55 @@ class BalanceChecker:
                 )
         return False
 
+    def _maybe_dust_sweep(self, btc_free: float) -> bool:
+        """128# sell 時に dust があれば全BTC残高を売却して一掃.
+
+        dust = btc_free のうち min_order_btc 単位に切り捨てた端数部分。
+        dust > 0 の場合、_current_lot を btc_free 全額に拡張して
+        sell 後に残留ゼロにする。
+
+        Returns:
+            False (= sell 続行) を返す。
+        """
+        if not self._config.dust_sweep_enabled:
+            return False
+        dust = btc_free - int(btc_free / self._min_order_btc) * self._min_order_btc
+        if dust > 1e-9:
+            self._pre_dust_lot = self._current_lot
+            self._current_lot = round(btc_free, 8)
+            self._dust_sweep_active = True
+            logger.info(
+                f"[dust_sweep] BTC {btc_free:.8f} has dust {dust:.8f}. "
+                f"Selling full balance: {self._current_lot:.8f} BTC"
+            )
+        return False
+
     def apply_lot_floor(self) -> None:
-        """105#: lot floor guard — 浮動小数点丸め誤差による API 400 防止."""
+        """105#: lot floor guard — 浮動小数点丸め誤差による API 400 防止.
+
+        128#: dust sweep アクティブ時はフロア処理をスキップ
+        (端数込みの正確な数量を保持する必要があるため)。
+        """
+        if self._dust_sweep_active:
+            return
         self._current_lot = max(
             self._min_order_btc,
             int(self._current_lot / self._min_order_btc) * self._min_order_btc,
         )
+
+    def restore_lot_after_dust_sweep(self) -> None:
+        """128# dust sweep 後のロット復元.
+
+        sell サイクル完了後に呼び出し、通常ロットに戻す。
+        dust sweep が非アクティブなら no-op。
+        """
+        if self._dust_sweep_active:
+            old_lot = self._current_lot
+            self._current_lot = self._pre_dust_lot
+            self._dust_sweep_active = False
+            logger.info(
+                f"[dust_sweep] Lot restored: {old_lot:.8f} → {self._current_lot:.4f} BTC"
+            )
 
     def restore_lot_on_success(self) -> None:
         """051# P2-3: 成功時に balance_shrink を解除し、ロットを原値に復元."""

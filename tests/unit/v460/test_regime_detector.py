@@ -597,10 +597,8 @@ class TestTimeFilterNoRecord:
         assert "skip_utc_hours_sell" in tf
         # 121# A1: buy ブロック 7h→3h (mean ≤ -3.0bps のみ残留)
         assert set(tf["skip_utc_hours_buy"]) == {8, 16, 18}
-        # 121# A1: sell ブロック 5h→3h (mean ≤ -3.0bps のみ残留)
-        assert set(tf["skip_utc_hours_sell"]) == {8, 14, 16}
-        # 121# A1: sell UTC4 は n=7 で統計的に不確実 → 解除
-        assert 4 not in tf["skip_utc_hours_sell"]
+        # 125# S1: sell ブロック [4, 8, 14, 15, 16] (UTC04/UTC15 追加)
+        assert set(tf["skip_utc_hours_sell"]) == {4, 8, 14, 15, 16}
         # buy UTC04 は 089# でアンブロック (そのまま維持)
         assert 4 not in tf["skip_utc_hours_buy"]
         # sell UTC01 は 089# でアンブロック (そのまま維持)

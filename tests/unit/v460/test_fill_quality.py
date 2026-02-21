@@ -2568,7 +2568,7 @@ class Test052AdaptSellOffsetSync:
         assert FillTestConfig().min_order_btc == 0.001
 
     def test_yaml_skip_utc_hours_side_specific_089(self) -> None:
-        """121# A1: time_filter 緩和後: buy=[8,16,18], sell=[8,14,16]."""
+        """125# S1: time_filter 更新後: buy=[8,16,18], sell=[4,8,14,15,16]."""
         from pathlib import Path
         import yaml  # type: ignore[import-untyped]
 
@@ -2579,8 +2579,8 @@ class Test052AdaptSellOffsetSync:
         sell_skip = cfg["time_filter"]["skip_utc_hours_sell"]
         # 121# A1: buy = [8, 16, 18] (mean ≤ -3.0bps のみ残留)
         assert buy_skip == [8, 16, 18], f"Expected [8,16,18], got {buy_skip}"
-        # 121# A1: sell = [8, 14, 16] (mean ≤ -3.0bps のみ残留)
-        assert sell_skip == [8, 14, 16], f"Expected [8,14,16], got {sell_skip}"
+        # 125# S1: sell = [4, 8, 14, 15, 16] (UTC04/UTC15 追加)
+        assert sell_skip == [4, 8, 14, 15, 16], f"Expected [4,8,14,15,16], got {sell_skip}"
         # 旧 UTC13 (sell) は -1.91bps で閾値未満 → 解除
         assert 13 not in sell_skip
 

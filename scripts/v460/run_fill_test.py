@@ -1116,8 +1116,13 @@ class FillTestRunner:
             except Exception as e:
                 # 024# R2: 例外分類 — サイクル実行エラーは継続可能
                 logger.error(f"Cycle execution error: {e}", exc_info=True)
+                # 128# 例外時も dust sweep ロットを復元
+                self._balance_checker.restore_lot_after_dust_sweep()
                 await asyncio.sleep(self.config.cycle_interval_sec)
                 continue
+
+            # 128# dust sweep 後のロット復元 (サイクル完了ごとに確実に実行)
+            self._balance_checker.restore_lot_after_dust_sweep()
 
             total_count += 1
             if record.filled:

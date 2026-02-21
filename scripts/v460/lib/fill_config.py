@@ -194,6 +194,7 @@ class FillTestConfig:
     adapt_min_side_samples: int = 20
     # 121# 追加外部化パラメータ
     min_order_btc: float = 0.001           # Coincheck BTC 最小注文数量
+    dust_sweep_enabled: bool = True        # 128# 端数BTC一掃: sell時にdust込みで全額売却
     lock_acquire_retries: int = 2          # lockfile 取得リトライ回数
     skip_gate_ob_depth: int = 5            # SkipGate 板情報取得深度
     retry_backoff_base: int = 2            # 発注リトライ指数バックオフ底
@@ -493,6 +494,7 @@ class FillTestConfig:
             "heartbeat_interval_sec": "heartbeat_interval_sec",
             # 121# 追加外部化
             "min_order_btc": "min_order_btc",
+            "dust_sweep_enabled": "dust_sweep_enabled",  # 128#
             "lock_acquire_retries": "lock_acquire_retries",
             "skip_gate_ob_depth": "skip_gate_ob_depth",
             "retry_backoff_base": "retry_backoff_base",

@@ -253,6 +253,7 @@ tuning:
   heartbeat_interval_sec: 900.0    # heartbeat 間隔 (秒, time_filter 抑制中)
   # 121# 追加外部化パラメータ
   min_order_btc: 0.001             # Coincheck BTC 最小注文数量 (板取引)
+  dust_sweep_enabled: true         # 128# 端数BTC一掃: sell時にdust込みで全額売却
   lock_acquire_retries: 2          # lockfile 取得リトライ回数
   skip_gate_ob_depth: 5            # SkipGate 板情報取得深度
   retry_backoff_base: 2            # 発注リトライ指数バックオフ底
