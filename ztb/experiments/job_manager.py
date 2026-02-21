@@ -22,6 +22,7 @@ import numpy as np
 from ztb.ops.monitoring.monitoring import get_exporter
 from ztb.types.common import ObjectMap, ObjectRecords
 from ztb.utils.file_utils import safe_json_load
+from ztb.utils.safety import ensure_dict, safe_to_float
 
 logger = logging.getLogger(__name__)
 
@@ -73,16 +74,11 @@ def _json_default(value: object) -> object:
 
 
 def _as_object_map(value: object) -> ObjectMap:
-    if not isinstance(value, dict):
-        return {}
-    return {str(k): v for k, v in value.items() if isinstance(k, str)}
+    return ensure_dict(value)
 
 
 def _as_float(value: object, default: float = 0.0) -> float:
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
+    return safe_to_float(value, default)
 
 
 class JobStateDB:

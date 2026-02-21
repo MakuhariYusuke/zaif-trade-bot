@@ -40,6 +40,7 @@ from ztb.optimization.hyperparameter_optimizer import (
 )
 from ztb.types.common import ObjectMap
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.safety import ensure_dict, safe_to_float
 
 logger = get_logger(__name__)
 
@@ -82,15 +83,11 @@ class OptimizationOrchestrator:
 
     @staticmethod
     def _as_object_map(value: object) -> ObjectMap:
-        if isinstance(value, dict):
-            return dict(value)
-        return {}
+        return ensure_dict(value)
 
     @staticmethod
     def _as_float(value: object, default: float = 0.0) -> float:
-        if isinstance(value, (int, float)):
-            return float(value)
-        return default
+        return safe_to_float(value, default)
 
     def _write_temp_config(self, config: ObjectMap) -> Path:
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:

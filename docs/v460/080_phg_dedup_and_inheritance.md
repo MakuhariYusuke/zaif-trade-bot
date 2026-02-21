@@ -351,3 +351,28 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 
 - 先に `sac_utils` を復旧（構文/初期化/責務分離）してから、
   `job_manager` の timeout/cancel 契約と並列実行設計を修正する順序が安全。
+
+## Phase 12 追補: 既存 safety util への coercion 統合 (2026-02-21)
+
+### 1) util 抽出の水平展開
+
+- `ztb/utils/safety.py` の `ensure_dict` / `safe_to_float` を
+  `dict/float` coercion の canonical helper として再利用。
+- `ztb/training/run_optimization.py` の `_as_object_map` / `_as_float` を
+  上記 helper へ委譲。
+- `ztb/experiments/job_manager.py` の `_as_object_map` / `_as_float` を
+  上記 helper へ委譲。
+- `ztb/experiments/run_sac_experiments.py` の `_as_object_map` / `_as_float` を
+  上記 helper へ委譲。
+- `ztb/utils/run_manifest.py` の `_as_object_map` を `ensure_dict` 委譲へ置換。
+
+### 2) 効果
+
+- 4モジュールで重複していた coercion 実装を既存 util に統合し、
+  振る舞い修正時の変更点を `safety` 側へ集約可能な構造に整理。
+- 対象ファイルは `Any=0` を維持。
+
+### 3) 検証
+
+- `py_compile`（`run_optimization.py`, `job_manager.py`, `run_sac_experiments.py`, `run_manifest.py`）通過。
+- `any_inventory`: repo 全体 `any_type_debt_tokens=2,501`（`scanned_files=1,289`、同時進行差分による母数変動あり）。

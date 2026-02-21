@@ -14,11 +14,12 @@ from typing import Optional, cast
 
 from ztb.io.json_io import read_json_object, write_json
 from ztb.types.common import ConfigDict
+from ztb.utils.safety import ensure_dict
 
 
 def _as_object_map(value: object) -> dict[str, object]:
     """Safely coerce object to mapping."""
-    return value if isinstance(value, dict) else {}
+    return ensure_dict(value)
 
 
 def _as_string_list(value: object) -> list[str]:

@@ -813,6 +813,17 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 9. 回帰確認: `py_compile`（`ztb/training/utils`, `ztb/experiments`, `ztb/training/config` の33ファイル）を実施し、失敗は `sac_utils.py` のみ。  
 10. 在庫確認: repo 全体 `any_type_debt_tokens=2,494`（Step69から変化なし）。本Stepは探索のみでコード変更なし。  
 
+### Step71: 既存 `safety` helper への統合（util 抽出の水平展開）
+
+1. `ztb/utils/safety.py` の `ensure_dict` / `safe_to_float` を canonical helper とし、重複していた局所変換ロジックの統合先を明確化。  
+2. `ztb/training/run_optimization.py` の `_as_object_map` / `_as_float` 実装本体を `ensure_dict` / `safe_to_float` 委譲へ置換。  
+3. `ztb/experiments/job_manager.py` の `_as_object_map` / `_as_float` 実装本体を同 helper 委譲へ置換。  
+4. `ztb/experiments/run_sac_experiments.py` の `_as_object_map` / `_as_float` 実装本体を同 helper 委譲へ置換。  
+5. `ztb/utils/run_manifest.py` の `_as_object_map` 実装本体を `ensure_dict` 委譲へ置換。  
+6. これにより `dict/float` coercion の実装差異を減らし、今後の挙動修正時に `safety` 側だけ更新すれば水平展開できる構造へ整理。  
+7. 回帰確認: `py_compile`（`run_optimization.py` / `job_manager.py` / `run_sac_experiments.py` / `run_manifest.py`）通過。  
+8. 在庫確認: 対象4ファイルはいずれも `any_type_debt_tokens=0` を維持。repo 全体は `2,501`（`scanned_files: 1,289`）で、同時進行差分による母数変動を確認。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -887,6 +898,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step68時点 | repo全体 | 2,516 |
 | Step69時点 | repo全体 | 2,494 |
 | Step70時点 | repo全体 | 2,494 |
+| Step71時点 | repo全体 | 2,501 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -1005,6 +1017,9 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step69時点 | `ztb/experiments/base.py` | **0** |
 | Step69時点 | `ztb/utils/results_utils.py` | **0** |
 | Step69時点 | `ztb/training/run_optimization.py` | **0** |
+| Step71時点 | `ztb/experiments/job_manager.py` | **0** |
+| Step71時点 | `ztb/experiments/run_sac_experiments.py` | **0** |
+| Step71時点 | `ztb/utils/run_manifest.py` | **0** |
 
 ---
 
@@ -1016,17 +1031,19 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - 並列実行の timeout 後キャンセル/状態遷移競合を解消し、`ProcessPoolExecutor` での pickling 依存を下げる実行設計へ整理。  
 3. `ztb/utils/run_metadata.py`  
    - package hash 全走査の高コスト経路を段階的に軽量化（対象パッケージ限定 or lazy/opt-in 化）し、git 情報取得の subprocess 重複を統合。  
-4. `ztb/training/reward_function_optimizer/reward_function_optimizer.py`  
+4. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py` / `ztb/trading/strategies/action_signal_guide/realtime_adaptation/streaming_processor.py`  
+   - 残存する `_as_object_map` / `_as_float` 実装を `safety.ensure_dict` / `safe_to_float` へ統合し、Step71 の util 抽出を横展開。  
+5. `ztb/training/reward_function_optimizer/reward_function_optimizer.py`  
    - `Any` debt 上位のため、result/config payload 型固定と evaluator 系 `TypedDict` の横展開を優先。  
-5. `ztb/training/algorithms/sac/sac_algorithm.py`  
+6. `ztb/training/algorithms/sac/sac_algorithm.py`  
    - 学習ループ payload を型固定し、ログ/集計の重複分岐を helper 化。  
-6. `ztb/training/checkpoint/checkpoint_manager.py`  
+7. `ztb/training/checkpoint/checkpoint_manager.py`  
    - 上位 debt を対象に、checkpoint metadata/payload の型契約と I/O 例外契約を整理。  
-7. `ztb/training/core/config_builder.py`  
+8. `ztb/training/core/config_builder.py`  
    - `UnifiedConfig` / `get_config_value` の `Any` 流出点を typed config alias + type guard へ段階移行。  
-8. `ztb/utils/file_utils.py`  
+9. `ztb/utils/file_utils.py`  
    - `safe_json_load/dump` の戻り値契約を明確化し、`read_json_object/read_json_array` ベースの型付き helper を追加。  
-9. `ztb/analysis/features/re_evaluate_features.py`  
+10. `ztb/analysis/features/re_evaluate_features.py`  
    - 評価 result payload の型固定と集計ループ helper 化を進め、重複整形コードを削減。  
 
 ---

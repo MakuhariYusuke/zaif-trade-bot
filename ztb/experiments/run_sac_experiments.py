@@ -13,6 +13,7 @@ from typing import NotRequired, TypedDict
 
 from ztb.io.common import PathLike
 from ztb.io.json_io import read_json_object, write_json
+from ztb.utils.safety import ensure_dict, safe_to_float
 
 
 class HyperParams(TypedDict):
@@ -56,15 +57,12 @@ class ExperimentResult(TypedDict):
 
 def _as_object_map(value: object) -> dict[str, object]:
     """Safely coerce object into dict."""
-    return value if isinstance(value, dict) else {}
+    return ensure_dict(value)
 
 
 def _as_float(value: object, default: float = 0.0) -> float:
     """Convert object to float with fallback."""
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
+    return safe_to_float(value, default)
 
 
 def _as_int(value: object, default: int = 0) -> int:
