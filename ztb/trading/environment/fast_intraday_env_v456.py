@@ -275,11 +275,17 @@ class FastIntradayEnvV456(gym.Env):
         if entry_gate_config.get("enabled", False):
             from ztb.trading.signal.entry_system import IntegratedEntrySystem
             self.entry_system = IntegratedEntrySystem(entry_gate_config)
-            # Load calibration state if path provided
+            # ★ Z1 P1-3: CalibrationMap の防御的ロード
             calibration_path = entry_gate_config.get("calibration_map_path")
             if calibration_path:
-                self.entry_system.load_state(calibration_path)
-                logger.info(f"Loaded entry gate calibration from {calibration_path}")
+                try:
+                    self.entry_system.load_state(calibration_path)
+                    logger.info(f"Loaded entry gate calibration from {calibration_path}")
+                except Exception as e:
+                    logger.warning(
+                        f"P1-3: CalibrationMap load failed ({e}), "
+                        f"continuing without calibration"
+                    )
             logger.info("Entry gate system enabled")
         else:
             self.entry_system = None
@@ -489,16 +495,15 @@ class FastIntradayEnvV456(gym.Env):
             "seed": seed,
         }
         
-        # Initialize entry system if configured
-        entry_gate_config = self.config.get("environment", {}).get("entry_gate") if self.config else None
-        if entry_gate_config:
-            from ztb.trading.signal.entry_system import IntegratedEntrySystem
-            self.entry_system = IntegratedEntrySystem(config=entry_gate_config)
-            # Load calibration map if available
-            if hasattr(self.entry_system, 'calibration_map') and self.entry_system.calibration_map:
-                self.entry_system.calibration_map.load()
-        else:
-            self.entry_system = None
+        # ★ Z1 P1-3: entry_system は __init__ で作成済み。reset() では再作成せず、
+        # calibration_map のリロードのみ行う (config パス不整合修正)
+        if self.entry_system is not None:
+            try:
+                if hasattr(self.entry_system, 'calibration_map') and self.entry_system.calibration_map:
+                    if hasattr(self.entry_system.calibration_map, 'load'):
+                        self.entry_system.calibration_map.load()
+            except Exception as e:
+                logger.debug(f"P1-3: CalibrationMap reload skipped: {e}")
         
         return self._get_observation(), info
     
@@ -562,34 +567,44 @@ class FastIntradayEnvV456(gym.Env):
             is_entry = self._is_entry_action(target_pos_fraction, position_prev)
             
             if is_entry:
-                # エントリー/拡大のみゲートチェック
-                from ztb.trading.types import MarketState
-                market_state = MarketState(
-                    high=self.high_prices[self.current_step],
-                    low=self.low_prices[self.current_step],
-                    close=self.close_prices[self.current_step],
-                    atr=self.atr_values[self.current_step],
-                    volume=self.volume[self.current_step],
-                    spread=0.0,
-                    timestamp=None,
-                )
-                current_regime_data = self.regime_data.iloc[self.current_step]
-                regime = current_regime_data.idxmax() if current_regime_data.sum() > 0 else "UNKNOWN"
-                gate_result = self.entry_system.process_signal(
-                    rl_action=action[0],
-                    market_data=market_state,
-                    regime=regime,
-                    threshold=self.min_action_threshold,
-                )
-                if not gate_result["should_enter"]:
-                    # エントリーブロック → HOLDに変換
-                    action = self._convert_to_hold_action()
-                    action_result = self.action_processor.parse_action(action)
-                    target_pos_fraction = 0.0
+                # ★ Z1 P0-1: NaN guard — atr/spread が NaN の場合はゲートスキップ
+                atr_val = self.atr_values[self.current_step]
+                if np.isnan(atr_val) or atr_val <= 0:
                     logger.debug(
-                        f"Gate blocked entry: original_action={action[0]:.3f}, "
-                        f"regime={regime}, threshold={self.min_action_threshold:.3f}"
+                        f"P0-1: Entry gate skipped (atr={atr_val}), allowing entry"
                     )
+                else:
+                    # エントリー/拡大のみゲートチェック
+                    from ztb.trading.types import MarketState
+                    market_state = MarketState(
+                        high=self.high_prices[self.current_step],
+                        low=self.low_prices[self.current_step],
+                        close=self.close_prices[self.current_step],
+                        atr=atr_val,
+                        volume=self.volume[self.current_step],
+                        spread=0.0,
+                        timestamp=None,
+                    )
+                    current_regime_data = self.regime_data.iloc[self.current_step]
+                    regime = current_regime_data.idxmax() if current_regime_data.sum() > 0 else "UNKNOWN"
+                    try:
+                        gate_result = self.entry_system.process_signal(
+                            rl_action=action[0],
+                            market_data=market_state,
+                            regime=regime,
+                            threshold=self.min_action_threshold,
+                        )
+                    except (ZeroDivisionError, FloatingPointError, ValueError):
+                        gate_result = {"should_enter": True}
+                    if not gate_result["should_enter"]:
+                        # エントリーブロック → HOLDに変換
+                        action = self._convert_to_hold_action()
+                        action_result = self.action_processor.parse_action(action)
+                        target_pos_fraction = 0.0
+                        logger.debug(
+                            f"Gate blocked entry: original_action={action[0]:.3f}, "
+                            f"regime={regime}, threshold={self.min_action_threshold:.3f}"
+                        )
             # else: exit/close/reduceは常に許可（ゲートチェックなし）
         
         # Position transition

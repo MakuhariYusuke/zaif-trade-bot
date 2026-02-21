@@ -638,6 +638,11 @@ def main() -> None:
         help="ワンショット実行 (スケジューラループなし)",
     )
     parser.add_argument(
+        "--all-runs", action="store_true",
+        help="Y3: 全 run_id のデータを使用 (latest_run_only を無効化)。"
+             "過去蓄積データ (1048+) を含むオフライン再訓練用。",
+    )
+    parser.add_argument(
         "--config", type=str, default="configs/v460/fill_test.yaml",
         help="YAML 設定ファイルパス",
     )
@@ -656,6 +661,22 @@ def main() -> None:
     )
 
     cfg = load_retrain_config(Path(args.config))
+
+    # Y3: --all-runs — 全 run のデータを学習に使用 (118# Appendix F)
+    if args.all_runs:
+        cfg["latest_run_only"] = False
+        cfg["exclude_missing_run_id"] = False
+        # Bootstrap 閾値を無効化 (十分なデータがある前提)
+        cfg["min_total_samples"] = 30
+        cfg["min_new_samples"] = 0  # 新規サンプル要件を緩和
+        # Y3: relative quality gate を無効化 (既存モデルと target が異なる可能性)
+        # absolute_min_score チェックは維持 (-0.10 以下は棄却)
+        cfg["min_score_improvement"] = -999.0
+        logger.info(
+            "Y3: --all-runs enabled → latest_run_only=False, "
+            "exclude_missing_run_id=False, min_new_samples=0, "
+            "relative quality gate bypassed (absolute_min retained)"
+        )
 
     if args.once:
         logger.info("=== One-shot retrain ===")
