@@ -195,14 +195,14 @@ fill_test 再起動 (新コード: Y5/Y7/番号修正)
 | Y5 | balance filter in retrain | ✅ (コード) | — | 再起動で反映 |
 | Y6 | Appendix B キー名修正 | ✅ | — | 129# Appendix E |
 | Y7 | trades I/O 7日 window | ✅ (コード) | — | 再起動で反映 |
-| **Y3** | **SkipGate 再訓練** | ⬜ | **高** | AUC≈0.5。§2.4 で段階的移行を推奨 |
+| **Y3** | **SkipGate 再訓練** | ✅ | **高** | `--all-runs` CLI追加。pnl120モデルデプロイ (852件, WF score +0.297) |
 
 ### 4.2 Phase Z — ph3 準備 (Gate 判定後)
 
 | # | 施策 | 状態 | ph3 ブロッカー? |
 |---|------|------|---------------|
-| Z1 | v458 Walk-Forward バグ 6 件修正 | ⬜ | **Yes** |
-| Z2 | Oracle テスト (maker 0% 理論上限) | ⬜ | **Yes** |
+| Z1 | v458 Walk-Forward バグ 6 件修正 | ✅ | **Yes** | P0-1 NaN guard, P0-2 gross_pnl fix, P0-3 val/test embargo, P1-1 total_trades, P1-2 import統一, P1-3 CalibrationMap defense |
+| Z2 | Oracle テスト (maker 0% 理論上限) | ✅ | **Yes** | PnL30s=+3.08bps, PnL120s=+5.59bps — 両方 PASS (>1.0bps) |
 | Z3 | ph3 Stop 条件明文化 | ⬜ | Yes |
 | Z4 | `execute_trade()` 実装 | ⬜ | ph4 ブロッカー |
 | Z5 | `skip_gate.py` → `ztb/models/` 移動 | ⬜ | No |
@@ -215,7 +215,7 @@ fill_test 再起動 (新コード: Y5/Y7/番号修正)
 |-------|------|------|
 | A (即時) | ✅ 全完了 | A1-A4: fill_test 再起動, warm_start, sell SG, VG 効果 |
 | B (Gate 判定) | ✅ 全完了 | B1-B4: 自動判定, Holm, t検定, 日別 AS |
-| **C (ph3 準備)** | ⬜ **全件未着手** | C1-C4: WF バグ, Oracle, Stop 条件, execute_trade |
+| **C (ph3 準備)** | 🔄 **C1-C2 完了** | C1 WF バグ ✅, C2 Oracle ✅, C3 Stop 条件 ⬜, C4 execute_trade ⬜ |
 | D (Gate FAIL 施策) | 🔄 部分進行 | D1/D3/D5 解決済。D2/D4/D6 は Gate 結果待ち |
 
 ---
@@ -227,8 +227,9 @@ fill_test 再起動 (新コード: Y5/Y7/番号修正)
 | test_enricher_skip_gate.py | 64 | ✅ all passed |
 | test_retrain_hot_reload.py | 20 | ✅ all passed |
 | test_fill_quality.py | 176 | ✅ all passed (1 fix: vpin_threshold assertion) |
-| **新規テスト** | 3 | ✅ Y5 balance filter (2) + F7 trades I/O fallback (1) |
-| **合計** | **260** | ✅ **0 failed** |
+| 新規テスト (Y5/Y7) | 3 | ✅ Y5 balance filter (2) + F7 trades I/O fallback (1) |
+| **Z1 関連テスト** | **112** | ✅ **112 passed** (3 failed は既存不整合: obs shape, drawdown, Doc21 PnL配賦) |
+| **合計** | **372** | ✅ **0 新規リグレッション** |
 
 ---
 
@@ -246,6 +247,7 @@ fill_test 再起動 (新コード: Y5/Y7/番号修正)
 | `e8af70aad` | 02/21 18:05 | 129.2# | 129# Appendix E (Codex レビュー回答) |
 | `8b466d555` | 02/21 18:28 | 129.3# | YAML tuning + balance filter + trades I/O (Y1-Y7) |
 | *(本書)* | 02/21 | 129.3# | 130# 作成 + 番号是正 |
+| `e94bdd420` | 02/22 | 130# | Y3 --all-runs + Z1 WF 6bugs + Z2 Oracle test |
 
 ---
 
@@ -296,6 +298,10 @@ JPY 12,749 円 + BTC 0.001 での極限運用。入金以外の技術的解決�
 | `configs/v460/fill_test.yaml` | S1, Y1, Y2, Y4 | §1.1, §1.3 |
 | `tests/unit/v460/test_fill_quality.py` | Y4 assertion | §5 |
 | `tests/unit/v460/test_retrain_hot_reload.py` | Y5, Y7 テスト | §5 |
+| `ztb/evaluation/walk_forward/evaluator.py` | Z1 P0-3, P1-2 | §4.2 |
+| `ztb/evaluation/walk_forward/reporter.py` | Z1 P0-2, P1-1 | §4.2 |
+| `ztb/trading/environment/fast_intraday_env_v456.py` | Z1 P0-1, P1-3 | §4.2 |
+| `scripts/v460/analysis/oracle_test.py` | Z2 Oracle test | §4.2 |
 
 ## Appendix B: 番号是正 diff サマリ
 
