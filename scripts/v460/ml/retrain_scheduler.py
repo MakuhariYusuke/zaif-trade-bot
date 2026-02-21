@@ -93,6 +93,7 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     "feature_pruning_enabled": True,
     "feature_pruning_min_importance": 0,  # split 回数がこれ以下なら除外
     "feature_pruning_min_trees": 20,      # 131# A.1 #7: WF eval 木数がこれ未満なら pruning 不安定のためスキップ
+    "feature_pruning_require_consecutive": True,  # 131# B: 連続 dead のみ prune (振動防止)
     # E4: enriched data cache (I/O 削減)
     "enriched_cache_enabled": True,
     # SkipGate config
@@ -598,6 +599,10 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
             prev_wf = prev_gate.metadata.get("wf_results", {})
             prev_score = prev_wf.get("profit_score", 0.0)
             prev_feature_cols = prev_gate.metadata.get("feature_cols")
+            # 131# B: 連続 dead pruning 用 — 前回 WF dead features を取得
+            result["_prev_wf_dead_features"] = prev_gate.metadata.get(
+                "wf_dead_features", [],
+            )
             # E1: LightGBM booster を抽出 (warm-start に使用)
             if cfg.get("warm_start_enabled", True):
                 if hasattr(prev_gate, "_pipeline") and prev_gate._pipeline is not None:
@@ -685,7 +690,9 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
 
     # E3: Dead feature pruning — WF eval の feature_importance から split=0 を除外
     # 131# A.1 #7: WF eval の木数が少なすぎる場合は pruning 不安定のためスキップ
+    # 131# B: 連続 dead = 前モデルでも dead だった特徴量のみ prune (振動防止)
     pruned_features: list[str] = []
+    wf_dead_features: list[str] = []  # 今回 WF で dead な全特徴量 (metadata 記録用)
     min_trees_for_pruning = cfg.get("feature_pruning_min_trees", 20)
     wf_actual_trees = result.get("wf_eval", {}).get("actual_n_trees", 0)
     if (
@@ -697,7 +704,32 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
         feat_imp = result["wf_eval"].get("feature_importance", {})
         min_imp = cfg.get("feature_pruning_min_importance", 0)
         if feat_imp:
-            pruned = [c for c in feature_cols if feat_imp.get(c, 0) <= min_imp]
+            wf_dead_features = [c for c in feature_cols if feat_imp.get(c, 0) <= min_imp]
+            # 131# B: 連続 dead — 前モデルで dead or pruned だった特徴量と交差
+            # require_consecutive=True (default) なら prev でも dead だった特徴量のみ prune
+            prev_dead: set[str] = set()
+            if prev_feature_cols is not None and prev_gate_loaded:
+                # 前回 pruning 済み = 前モデル feature_cols に含まれない特徴量
+                all_possible = set(get_gate_feature_cols(use_ob=use_ob))
+                prev_pruned_set = all_possible - set(prev_feature_cols)
+                # 前回 metadata に記録された wf_dead_features
+                prev_wf_dead = set()
+                if model_path.exists():
+                    prev_wf_dead = set(result.get("_prev_wf_dead_features", []))
+                prev_dead = prev_pruned_set | prev_wf_dead
+
+            require_consecutive = cfg.get("feature_pruning_require_consecutive", True)
+            if require_consecutive and prev_dead:
+                pruned = [c for c in wf_dead_features if c in prev_dead]
+                if pruned != wf_dead_features:
+                    newly_dead = [c for c in wf_dead_features if c not in prev_dead]
+                    logger.info(
+                        f"E3: {len(newly_dead)} newly-dead features deferred "
+                        f"(require consecutive): {newly_dead}"
+                    )
+            else:
+                pruned = list(wf_dead_features)
+
             if pruned and len(feature_cols) - len(pruned) >= 5:
                 # 最低5特徴量は保持 (過剰pruning防止)
                 pruned_features = pruned
@@ -708,6 +740,11 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
                 )
                 # pruning 後のデータで再構築
                 X_valid = X_valid[feature_cols]
+            elif pruned:
+                logger.info(
+                    f"E3: Pruning blocked — would leave only "
+                    f"{len(feature_cols) - len(pruned)} features (min=5)"
+                )
     elif (
         cfg.get("feature_pruning_enabled", True)
         and wf_actual_trees < min_trees_for_pruning
@@ -818,6 +855,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
         "early_stopping_used": "eval_set" in fit_kwargs,
         "actual_n_trees": actual_n_trees,
         "pruned_features": pruned_features,
+        "wf_dead_features": wf_dead_features,  # 131# B: 次回 consecutive-dead 参照用
         "enriched_cache_used": cfg.get("enriched_cache_enabled", True),
     }
 
@@ -866,9 +904,35 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
 
     result["status"] = "deployed"
     result["model_path"] = str(model_path)
+
+    # 131# B: Post-deploy 自己検証 — SkipGate.load() で hash 一致を確認
+    # A.2 逆行リスク対策: deployed (ファイル保存) と activated (hot-reload) の区別
+    try:
+        verify_gate = SkipGate.load(model_path)
+        verify_n = verify_gate.metadata.get("n_samples", 0)
+        del verify_gate
+        if verify_n == len(X_valid):
+            result["status"] = "deployed_verified"
+            logger.info(
+                f"Post-deploy verification PASSED: "
+                f"SkipGate.load() succeeded, n_samples={verify_n}"
+            )
+        else:
+            logger.warning(
+                f"Post-deploy verification WARNING: "
+                f"n_samples mismatch (expected={len(X_valid)}, got={verify_n})"
+            )
+    except Exception as e:
+        logger.error(
+            f"Post-deploy verification FAILED: {e}. "
+            f"Model file may be corrupt — hot-reload will also fail."
+        )
+        result["deploy_verify_error"] = str(e)
+
     logger.info(
         f"Retrain complete: {len(X_valid)} samples → {model_path} "
-        f"(+{new_samples} new, score={wf_results_meta.get('profit_score', 'N/A')})"
+        f"(+{new_samples} new, score={wf_results_meta.get('profit_score', 'N/A')}, "
+        f"status={result['status']})"
     )
     return result
 

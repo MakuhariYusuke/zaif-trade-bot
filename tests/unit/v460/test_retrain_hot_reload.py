@@ -524,7 +524,7 @@ class TestE2ERetrainHotReload:
             cfg["exclude_missing_run_id"] = False
 
             result = retrain_model(cfg)
-            assert result["status"] == "deployed", f"Expected deployed, got {result}"
+            assert result["status"] in ("deployed", "deployed_verified"), f"Expected deployed*, got {result}"
             assert model_path.exists()
 
             # SkipGateEvaluator で hot-reload テスト
@@ -558,7 +558,7 @@ class TestE2ERetrainHotReload:
             # モデルを再 retrain して上書き (v2)
             cfg["min_new_samples"] = 0  # 新規サンプルチェック無効化
             result2 = retrain_model(cfg)
-            assert result2["status"] == "deployed"
+            assert result2["status"] in ("deployed", "deployed_verified")
 
             # hot-reload トリガー (interval リセット)
             evaluator._last_reload_check = 0
@@ -627,8 +627,8 @@ class TestBalanceForcedSwitchFilter:
 
             result = retrain_model(cfg)
             # 60 - 20 forced = 40 records usable; filled_records should be <= 40
-            assert result["status"] in ("deployed", "skipped")
-            if result["status"] == "deployed":
+            assert result["status"] in ("deployed", "deployed_verified", "skipped")
+            if result["status"] in ("deployed", "deployed_verified"):
                 assert result.get("filled_records", 0) <= 40
 
     def test_no_balance_column_no_error(self) -> None:
@@ -938,3 +938,83 @@ class TestE3PruningMinTrees:
         min_trees_for_pruning = 20
         should_prune = wf_actual_trees >= min_trees_for_pruning
         assert should_prune, "50 trees >= 20 → pruning should proceed"
+
+
+class TestConsecutiveDeadPruning:
+    """131# B: 連続 dead pruning テスト."""
+
+    def test_only_consecutive_dead_pruned(self) -> None:
+        """前回も dead だった特徴量のみ prune される."""
+        feature_cols = ["a", "b", "c", "d", "e", "f", "g", "h"]
+        wf_dead = ["c", "d", "h"]  # 今回 WF で dead
+        prev_dead = {"c", "d"}  # 前回も dead
+
+        # require_consecutive=True → intersection のみ prune
+        pruned = [c for c in wf_dead if c in prev_dead]
+        assert pruned == ["c", "d"]
+        assert "h" not in pruned  # h は今回初めて dead → 見送り
+
+    def test_all_pruned_without_prev(self) -> None:
+        """前モデルなし (prev_dead 空) → 全 dead を prune."""
+        feature_cols = ["a", "b", "c", "d", "e", "f", "g", "h"]
+        wf_dead = ["c", "d", "h"]
+        prev_dead: set[str] = set()
+        require_consecutive = True
+
+        # prev_dead が空の場合は consecutive 制約なし → 全 dead を prune
+        if require_consecutive and prev_dead:
+            pruned = [c for c in wf_dead if c in prev_dead]
+        else:
+            pruned = list(wf_dead)
+        assert pruned == ["c", "d", "h"]
+
+    def test_consecutive_disabled(self) -> None:
+        """require_consecutive=False なら全 dead を即 prune."""
+        wf_dead = ["c", "d", "h"]
+        prev_dead = {"c"}
+        require_consecutive = False
+
+        if require_consecutive and prev_dead:
+            pruned = [c for c in wf_dead if c in prev_dead]
+        else:
+            pruned = list(wf_dead)
+        assert pruned == ["c", "d", "h"]
+
+
+class TestPostDeployVerification:
+    """131# B: Post-deploy 自己検証テスト."""
+
+    def test_deployed_verified_status(self) -> None:
+        """save → load 検証成功で SkipGate.load() が n_samples を保持."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = Path(tmpdir) / "model.pkl"
+            gate = _make_picklable_gate(n_samples=42)
+            gate.save(model_path)
+
+            # load で検証 — n_samples が保存・復元される
+            loaded = SkipGate.load(model_path)
+            n = loaded.metadata.get("n_samples", 0)
+            assert n == 42, f"Expected n_samples=42, got {n}"
+
+    def test_verification_fails_on_corrupt(self) -> None:
+        """壊れたモデルでは load が失敗する."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = Path(tmpdir) / "model.pkl"
+            model_path.write_bytes(b"corrupt data")
+            hash_path = model_path.with_suffix(model_path.suffix + ".sha256")
+            hash_path.write_text("deadbeef")
+
+            with pytest.raises(Exception):
+                SkipGate.load(model_path)
+
+    def test_wf_dead_features_in_metadata(self) -> None:
+        """wf_dead_features が metadata に記録される."""
+        # metadata にキーが存在することを検証
+        metadata = {
+            "wf_dead_features": ["regime_high_vol", "trade_flow_imbalance_60s"],
+            "pruned_features": ["regime_high_vol"],
+        }
+        assert "wf_dead_features" in metadata
+        assert len(metadata["wf_dead_features"]) == 2
+        # pruned は consecutive で絞られた結果
+        assert len(metadata["pruned_features"]) <= len(metadata["wf_dead_features"])

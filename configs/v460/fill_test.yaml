@@ -302,6 +302,7 @@ retrain:
   feature_pruning_enabled: true
   feature_pruning_min_importance: 0   # split 回数がこれ以下なら除外
   feature_pruning_min_trees: 20       # 131# A.1 #7: WF eval 木数がこれ未満なら pruning スキップ (重要度信号不安定のため)
+  feature_pruning_require_consecutive: true  # 131# B: 連続 dead (prev+current WF) のみ prune (振動防止)
   # E4: enriched data cache (I/O 削減)
   enriched_cache_enabled: true
   # SkipGate 動的較正

@@ -359,10 +359,10 @@ Final model : 298 trees, 13 features → models/v460/skip_gate_lgbm_pnl120.pkl
 |------|------|------|
 | 過去資産の未活用 | `ztb/evaluation/walk_forward/splitter.py` — embargo\_days 付き multi-window 分割が retrain 未使用 | §9 P2。次セッションで `_evaluate_wf()` multi-window 化 |
 | 過去資産の未活用 | 000# §3.7 統計検定仕様 (Holm-Bonferroni, Cliff's Delta) — retrain deploy 判定に未導入 | §9 P2 |
-| 観測一貫性 | deploy 成功 = ファイル書き込み成功のみ。activation = hot-reload 成功は別途確認要 | §0 注記で対応 |
-| E2+E3 相互作用 | early stopping で木数 5 → importance 不安定 → 誤 prune | `min_trees=20` ガードで解決 |
+| 観測一貫性 | deploy 成功 = ファイル書き込み成功のみ。activation = hot-reload 成功は別途確認要 | §0 注記 → **B.5 で post-deploy 自己検証を実装** |
+| E2+E3 相互作用 | early stopping で木数 5 → importance 不安定 → 誤 prune | `min_trees=20` ガード → **B.5 で連続 dead pruning も実装** |
 
-### B.4 変更ファイル一覧
+### B.4 変更ファイル一覧 (Appendix B 初版)
 
 | ファイル | 変更内容 |
 |---------|---------|
@@ -370,3 +370,62 @@ Final model : 298 trees, 13 features → models/v460/skip_gate_lgbm_pnl120.pkl
 | `configs/v460/fill_test.yaml` | `feature_pruning_min_trees: 20` 追加 |
 | `tests/unit/v460/test_retrain_hot_reload.py` | 8 テスト追加 (34 total) |
 | `docs/v460/131_ph2_rpt_y3_retrain_efficiency.md` | §0 注記, §9 改訂, Appendix B 追加 |
+
+---
+
+### B.5 レビュー深掘り対応 (2回目)
+
+**対応日時**: 2026-02-21 (Appendix B 直後)
+**方針**: A.1 の「ガード追加にとどまっていた」項目を本質的に強化
+
+#### B.5.1 Post-deploy 自己検証 (A.2 逆行リスク / A.3 P0)
+
+**問題**: `status=deployed` はファイル書き込み成功のみを意味し、hash 一致や pickle 健全性は未検証。
+hot-reload 側 (SkipGateEvaluator) で初めて失敗に気付く「観測不能状態」が残存していた。
+
+**対応**: deploy 完了直後に `SkipGate.load(model_path)` を実行し:
+- hash 検証 + pickle load + n\_samples 一致 → `status="deployed_verified"`
+- load 失敗 → `status="deployed"` のまま + `deploy_verify_error` に記録 + ERROR ログ
+- n\_samples 不一致 → WARNING ログ (deploy 自体は成功)
+
+**効果**: retrain\_scheduler 側で「hot-reload が成功し得るか」を即時判定。v459 観測一貫性ポリシーとの整合を回復。
+
+#### B.5.2 連続 dead pruning (A.1 #7 深掘り)
+
+**問題**: single WF split の feature importance は不安定。サンプル数やデータ分布の変化で
+「前回重要→今回 dead」の振動が発生し、feature set が cycle ごとに変動するリスク。
+
+**A.1 #7 推奨**: "pruning は「連続N回でdead」または「3-fold平均importance」で実行"
+
+**対応**: `feature_pruning_require_consecutive=True` (デフォルト有効)
+- metadata に `wf_dead_features` (今回 WF で dead な全特徴量) を記録
+- 次回 retrain 時: `prev_gate.metadata["wf_dead_features"]` と前回 `feature_cols` から `prev_dead` を構築
+- `wf_dead ∩ prev_dead` の交差のみ実際に prune (連続 dead 条件)
+- 前モデルなし or prev\_dead 空の場合: 従来通り単回 dead で prune (初回 bootstrap)
+
+**効果**: feature set の振動を抑制。データ規模変化時の過剰 pruning を防止。
+
+#### B.5.3 残存コード品質スキャン
+
+| 検査項目 | 結果 |
+|---------|------|
+| `except:pass` / `except Exception: pass` 残存 | ✅ retrain\_scheduler.py 内に残存なし |
+| `with_suffix` 誤用 (二重 suffix) | ✅ 全ファイルで修正確認済み |
+| bare `except:` (scripts/v460) | ✅ なし (全て型指定 except) |
+
+#### B.5.4 変更ファイル一覧 (2回目)
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `scripts/v460/ml/retrain_scheduler.py` | post-deploy 検証, 連続 dead pruning, wf\_dead\_features metadata |
+| `configs/v460/fill_test.yaml` | `feature_pruning_require_consecutive: true` 追加 |
+| `tests/unit/v460/test_retrain_hot_reload.py` | 6 テスト追加 (40 total): ConsecutiveDeadPruning×3, PostDeployVerification×3 |
+
+#### B.5.5 テスト結果 (2回目)
+
+| テストスイート | 件数 |
+|--------------|------|
+| 既存 + B.1 テスト | 34 |
+| TestConsecutiveDeadPruning | 3 |
+| TestPostDeployVerification | 3 |
+| **合計** | **40 passed, 0 failed** |
