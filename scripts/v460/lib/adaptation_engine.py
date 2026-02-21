@@ -144,6 +144,13 @@ class AdaptationEngine:
             kwargs["loss_cap_jpy"] = safety_yaml["loss_cap_jpy"]
         if "loss_cap_warning_ratio" in safety_yaml:
             kwargs["loss_cap_warning_ratio"] = safety_yaml["loss_cap_warning_ratio"]
+        # 131# D1: レジーム連動ガード
+        if "regime_guard_enabled" in lot_yaml:
+            kwargs["regime_guard_enabled"] = lot_yaml["regime_guard_enabled"]
+        if "regime_hold_regimes" in lot_yaml:
+            kwargs["regime_hold_regimes"] = tuple(lot_yaml["regime_hold_regimes"])
+        if "regime_decrease_regimes" in lot_yaml:
+            kwargs["regime_decrease_regimes"] = tuple(lot_yaml["regime_decrease_regimes"])
         return kwargs
 
     # ------------------------------------------------------------------
@@ -365,6 +372,10 @@ class AdaptationEngine:
                 max_lot=cfg.max_lot,
                 **self._build_lot_kwargs(),
             )
+            # 131# D1: レジームタグを取得して compute_lot_size に渡す
+            regime_tag = "n/a"
+            if regime_detector is not None and hasattr(regime_detector, "current_regime"):
+                regime_tag = regime_detector.current_regime.value
             lot_result = compute_lot_size(
                 fill_rate=metrics.fill_rate_p90,
                 as_ratio=metrics.adverse_selection_ratio,
@@ -372,12 +383,10 @@ class AdaptationEngine:
                 cumulative_pnl_jpy=cum_pnl,
                 sample_count=metrics.total_orders,
                 config=lot_config,
+                regime_tag=regime_tag,
             )
 
             if lot_result.changed:
-                regime_tag = "n/a"
-                if regime_detector is not None and hasattr(regime_detector, "current_regime"):
-                    regime_tag = regime_detector.current_regime.value
                 logger.info(
                     f"[方策B] lot adapted: {current_lot:.4f} → {lot_result.new_lot:.4f} BTC "
                     f"({lot_result.action}: {lot_result.reason}) [regime={regime_tag}]"

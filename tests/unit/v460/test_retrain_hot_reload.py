@@ -1344,3 +1344,276 @@ class TestRedundancyPruning:
         else:
             pruned = []
         assert pruned == [], "Should not prune when it would leave < 5 features"
+
+
+# ====================================================================
+# 131# D1: Regime-aware lot sizing
+# ====================================================================
+
+class TestRegimeAwareLotSizing:
+    """131# D1: レジーム連動ロット制御テスト."""
+
+    def test_unknown_regime_blocks_increase(self) -> None:
+        """unknown レジームでは全条件クリアでも増量が hold される."""
+        from scripts.v460.lib.lot_sizer import LotSizingConfig, compute_lot_size
+
+        config = LotSizingConfig(
+            current_lot=0.001,
+            min_lot=0.001,
+            max_lot=0.005,
+            lot_step=0.001,
+            min_fill_rate=0.70,
+            max_as_ratio=0.30,
+            min_samples=10,
+            regime_guard_enabled=True,
+            regime_hold_regimes=("unknown",),
+        )
+        result = compute_lot_size(
+            fill_rate=0.80,
+            as_ratio=0.20,
+            recent_pnl_bps=1.0,
+            cumulative_pnl_jpy=0.0,
+            sample_count=100,
+            config=config,
+            regime_tag="unknown",
+        )
+        assert result.action == "hold"
+        assert not result.changed
+        assert "レジーム増量抑制" in result.reason
+
+    def test_ranging_regime_allows_increase(self) -> None:
+        """ranging レジームでは通常通り増量が許可される."""
+        from scripts.v460.lib.lot_sizer import LotSizingConfig, compute_lot_size
+
+        config = LotSizingConfig(
+            current_lot=0.001,
+            min_lot=0.001,
+            max_lot=0.005,
+            lot_step=0.001,
+            min_fill_rate=0.70,
+            max_as_ratio=0.30,
+            min_samples=10,
+            regime_guard_enabled=True,
+            regime_hold_regimes=("unknown",),
+        )
+        result = compute_lot_size(
+            fill_rate=0.80,
+            as_ratio=0.20,
+            recent_pnl_bps=1.0,
+            cumulative_pnl_jpy=0.0,
+            sample_count=100,
+            config=config,
+            regime_tag="ranging",
+        )
+        assert result.action == "increase"
+        assert result.changed
+        assert result.new_lot == 0.002
+
+    def test_decrease_regime_forces_decrease(self) -> None:
+        """regime_decrease_regimes に含まれるレジームでは強制減量."""
+        from scripts.v460.lib.lot_sizer import LotSizingConfig, compute_lot_size
+
+        config = LotSizingConfig(
+            current_lot=0.003,
+            min_lot=0.001,
+            max_lot=0.005,
+            lot_step=0.001,
+            min_fill_rate=0.70,
+            max_as_ratio=0.30,
+            min_samples=10,
+            regime_guard_enabled=True,
+            regime_hold_regimes=("unknown",),
+            regime_decrease_regimes=("high_vol",),
+        )
+        # 全条件クリアでも high_vol なら減量
+        result = compute_lot_size(
+            fill_rate=0.80,
+            as_ratio=0.20,
+            recent_pnl_bps=1.0,
+            cumulative_pnl_jpy=0.0,
+            sample_count=100,
+            config=config,
+            regime_tag="high_vol",
+        )
+        assert result.action == "decrease"
+        assert result.changed
+        assert result.new_lot == 0.002
+
+    def test_regime_guard_disabled_allows_increase(self) -> None:
+        """regime_guard_enabled=False では unknown でも増量可能."""
+        from scripts.v460.lib.lot_sizer import LotSizingConfig, compute_lot_size
+
+        config = LotSizingConfig(
+            current_lot=0.001,
+            min_lot=0.001,
+            max_lot=0.005,
+            lot_step=0.001,
+            min_fill_rate=0.70,
+            max_as_ratio=0.30,
+            min_samples=10,
+            regime_guard_enabled=False,
+        )
+        result = compute_lot_size(
+            fill_rate=0.80,
+            as_ratio=0.20,
+            recent_pnl_bps=1.0,
+            cumulative_pnl_jpy=0.0,
+            sample_count=100,
+            config=config,
+            regime_tag="unknown",
+        )
+        assert result.action == "increase"
+        assert result.changed
+
+    def test_na_regime_bypasses_guard(self) -> None:
+        """regime_tag='n/a' (検出器なし) ではガードが無効."""
+        from scripts.v460.lib.lot_sizer import LotSizingConfig, compute_lot_size
+
+        config = LotSizingConfig(
+            current_lot=0.001,
+            min_lot=0.001,
+            max_lot=0.005,
+            lot_step=0.001,
+            min_fill_rate=0.70,
+            max_as_ratio=0.30,
+            min_samples=10,
+            regime_guard_enabled=True,
+            regime_hold_regimes=("unknown",),
+        )
+        result = compute_lot_size(
+            fill_rate=0.80,
+            as_ratio=0.20,
+            recent_pnl_bps=1.0,
+            cumulative_pnl_jpy=0.0,
+            sample_count=100,
+            config=config,
+            regime_tag="n/a",
+        )
+        assert result.action == "increase"
+
+    def test_cap_shrink_overrides_regime_guard(self) -> None:
+        """損失キャップ接近は regime guard より優先."""
+        from scripts.v460.lib.lot_sizer import LotSizingConfig, compute_lot_size
+
+        config = LotSizingConfig(
+            current_lot=0.003,
+            min_lot=0.001,
+            max_lot=0.005,
+            loss_cap_jpy=10_000,
+            loss_cap_warning_ratio=0.7,
+            min_samples=10,
+            regime_guard_enabled=True,
+            regime_hold_regimes=("unknown",),
+        )
+        result = compute_lot_size(
+            fill_rate=0.80,
+            as_ratio=0.20,
+            recent_pnl_bps=1.0,
+            cumulative_pnl_jpy=-8000,  # > 70% of cap
+            sample_count=100,
+            config=config,
+            regime_tag="ranging",
+        )
+        assert result.action == "cap_shrink"
+        assert result.new_lot == config.min_lot
+
+
+# ====================================================================
+# 131# D2: Oracle PnL Baseline
+# ====================================================================
+
+class TestOracleBaseline:
+    """131# D2: Oracle PnL 基準線テスト."""
+
+    def _make_mock_record(
+        self,
+        side: str = "buy",
+        filled: bool = True,
+        pnl_30s: float | None = 0.5,
+        pnl_60s: float | None = None,
+        pnl_120s: float | None = None,
+        regime: str | None = "ranging",
+    ) -> object:
+        """テスト用 FillRecord モック."""
+        from ztb.metrics.fill_quality import FillRecord
+        return FillRecord(
+            cycle_id="test",
+            timestamp=1700000000.0,
+            side=side,
+            order_price=15_000_000,
+            order_quantity=0.001,
+            fill_price=15_000_000 if filled else None,
+            filled=filled,
+            post_fill_30s_pnl=pnl_30s,
+            post_fill_60s_pnl=pnl_60s,
+            post_fill_120s_pnl=pnl_120s,
+            regime=regime,
+        )
+
+    def test_oracle_filters_negative_pnl(self) -> None:
+        """Oracle は PnL < 0 の取引をスキップする."""
+        from scripts.v460.analysis.oracle_baseline import compute_oracle_metrics
+
+        records = [
+            self._make_mock_record(pnl_30s=2.0),
+            self._make_mock_record(pnl_30s=-1.0),
+            self._make_mock_record(pnl_30s=3.0),
+            self._make_mock_record(pnl_30s=-2.0),
+        ]
+        m = compute_oracle_metrics(records, "test")
+        assert m.n_total == 4
+        assert m.n_positive == 2
+        assert m.n_negative == 2
+        assert m.oracle_skip_rate == 0.5
+        assert m.oracle_pnl_mean == 2.5  # (2 + 3) / 2
+        assert m.actual_pnl_mean == 0.5  # (2 - 1 + 3 - 2) / 4
+
+    def test_oracle_empty_records(self) -> None:
+        """空レコードでエラーにならない."""
+        from scripts.v460.analysis.oracle_baseline import compute_oracle_metrics
+
+        m = compute_oracle_metrics([], "empty")
+        assert m.n_total == 0
+        assert m.oracle_pnl_mean == 0.0
+
+    def test_oracle_all_positive(self) -> None:
+        """全取引が正の場合、Oracle skip_rate = 0."""
+        from scripts.v460.analysis.oracle_baseline import compute_oracle_metrics
+
+        records = [
+            self._make_mock_record(pnl_30s=1.0),
+            self._make_mock_record(pnl_30s=2.0),
+        ]
+        m = compute_oracle_metrics(records, "all_pos")
+        assert m.oracle_skip_rate == 0.0
+        assert m.n_positive == 2
+
+    def test_oracle_multi_timeframe(self) -> None:
+        """60s/120s PnL も正しく計算される."""
+        from scripts.v460.analysis.oracle_baseline import compute_oracle_metrics
+
+        records = [
+            self._make_mock_record(pnl_30s=1.0, pnl_60s=2.0, pnl_120s=3.0),
+            self._make_mock_record(pnl_30s=-1.0, pnl_60s=-0.5, pnl_120s=0.5),
+        ]
+        m = compute_oracle_metrics(records, "multi")
+        assert m.pnl_60s_mean is not None
+        assert abs(m.pnl_60s_mean - 0.75) < 0.01  # (2.0 + -0.5) / 2
+        assert m.pnl_120s_mean is not None
+        assert abs(m.pnl_120s_mean - 1.75) < 0.01  # (3.0 + 0.5) / 2
+
+    def test_oracle_jpy_conversion(self) -> None:
+        """JPY 換算が正しく算出される."""
+        from scripts.v460.analysis.oracle_baseline import compute_oracle_metrics
+
+        records = [
+            self._make_mock_record(pnl_30s=1.0),
+        ]
+        m = compute_oracle_metrics(
+            records, "jpy_test",
+            lot_btc=0.001,
+            btc_price_jpy=15_000_000,
+        )
+        # 1.0 bps × 0.001 × 15,000,000 / 10,000 = 1.5 JPY
+        assert m.actual_jpy_per_cycle is not None
+        assert abs(m.actual_jpy_per_cycle - 1.5) < 0.01

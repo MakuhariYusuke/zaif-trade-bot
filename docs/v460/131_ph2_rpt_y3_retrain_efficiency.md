@@ -536,3 +536,172 @@ P1 (即時適用可能) の 3 アセットを retrain_scheduler.py に統合し�
 | TestStatisticalGate (C2) | 4 |
 | TestRedundancyPruning (C3) | 3 |
 | **合計** | **51 passed, 0 failed** |
+
+---
+
+## Appendix D: 動的ロットサイズ調査 + ph3 先行実装
+
+> ユーザ要求: 「今現在は基本的に1mBTCで回すしかありませんが、動的に変更する仕組みについて調査して下さい。
+> その他ph3以降で先行して実施可能なタスクを探し出し、実装して下さい。」
+
+### D.1 動的ロットサイズ機構の調査結果
+
+#### D.1.1 現状: 既に完全実装されているが **無効** (方策 B)
+
+| コンポーネント | ファイル | 役割 |
+|--------------|---------|------|
+| コアアルゴリズム | `scripts/v460/lib/lot_sizer.py` (~258行) | ステップベース増減、損失キャップ統合 |
+| 統合レイヤー | `scripts/v460/lib/adaptation_engine.py` (~451行) | TTL キャッシュ、fill_record 統計集約 |
+| 安全装置 | `scripts/v460/lib/balance_checker.py` | 残高ベースのリアルタイム縮小 |
+| 設定 | `scripts/v460/lib/fill_config.py` + `configs/v460/fill_test.yaml` | `enable_dynamic_lot: false` |
+| Kelly基準 | `ztb/trading/trade_execution_engine.py` | `_calculate_kelly_size()` 存在するが fill_test 未接続 |
+
+#### D.1.2 有効化条件 (`compute_lot_size()`)
+
+```
+増量 (increase):
+  fill_rate ≥ 70% AND as_ratio ≤ 30% AND recent_pnl_bps ≥ 0
+  → current_lot + lot_step (0.001)
+
+減量 (decrease):
+  fill_rate < 60% OR as_ratio > 40% OR recent_pnl_bps < -1.0
+  → current_lot - lot_step
+
+損失キャップ (cap_shrink):
+  cumulative_pnl_jpy < -(loss_cap_jpy × loss_cap_warning_ratio)
+  → min_lot へ強制リセット
+
+適用契機:
+  lot_adapt_interval_cycles(50) サイクル毎 AND total_count ≥ min_adapt_samples(50)
+```
+
+#### D.1.3 無効化の理由
+
+| 指標 | 現在値 | 増量閾値 |
+|------|--------|---------|
+| fill_rate | ~67% | ≥ 70% |
+| AS ratio | ~28% | ≤ 30% |
+| PnL (30s) | -0.172 bps | ≥ 0 bps |
+
+**PnL が負の状態でロットを増やすと損失が拡大するため、方策 B を有効化する前に PnL ≥ +0.3 bps を達成する必要がある。**
+
+#### D.1.4 スケーリング試算 (118# §8.4)
+
+| ロット (BTC) | bps | JPY/cycle | 月間 JPY |
+|-------------|-----|-----------|---------|
+| 0.001 | -0.172 | -0.002 | -37 |
+| 0.01 | +0.3 | +0.03 | +648 |
+| 0.1 | +1.0 | +1.0 | +21,600 |
+| 1.0 | +1.0 | +10.0 | +216,000 |
+
+**大義達成のロードマップ**: PnL 改善 → 方策 B 有効化 → max_lot 段階的引き上げ → Kelly 基準統合
+
+---
+
+### D.2 実装: D1 レジーム連動ロット制御
+
+#### D.2.1 背景
+
+方策 B を将来有効化する際、市場レジームが不明確（unknown）な状態でロット増量を許可すると
+リスクが過大になる。レジーム検出器 (`RegimeDetector`) の判定結果を `compute_lot_size()` に
+フィードバックし、レジーム別の増減制御を追加。
+
+#### D.2.2 変更内容
+
+**`LotSizingConfig` 拡張** (lot_sizer.py):
+```python
+regime_guard_enabled: bool = True      # レジームガード有効化
+regime_hold_regimes: tuple = ("unknown",)  # 増量ブロック対象
+regime_decrease_regimes: tuple = ()    # 強制減量対象
+```
+
+**`compute_lot_size()` 拡張**:
+- `regime_tag: str = "n/a"` パラメータ追加
+- 損失キャップ判定後、条件判定前にレジームガードを挿入:
+  - `regime_tag in regime_hold_regimes` → hold（増量ブロック）
+  - `regime_tag in regime_decrease_regimes` → decrease（強制減量）
+  - `regime_tag == "n/a"` → ガード無効（検出器不在時の安全デフォルト）
+
+**`adaptation_engine.py` 連携**:
+- `_build_lot_kwargs()` で YAML の 3 キーをマッピング
+- `try_auto_lot_size()` で `regime_tag` を `regime_detector` から取得して渡す
+
+**fill_test.yaml 追加キー**:
+```yaml
+lot_sizing:
+  regime_guard_enabled: true
+  regime_hold_regimes: [unknown]
+  regime_decrease_regimes: []
+```
+
+---
+
+### D.3 実装: D2 Oracle PnL 基準線スクリプト
+
+#### D.3.1 背景 (118# §8.5)
+
+ph3 進入前に「理論上の最大 PnL（全損益を完全予測し、PnL < 0 の取引をスキップした場合）」を
+計算しておくことが必須とされている。この **Oracle PnL baseline** が ph3 Gate の前提条件。
+
+#### D.3.2 スクリプト概要
+
+**ファイル**: `scripts/v460/analysis/oracle_baseline.py` (~280行)
+
+**主要機能**:
+- `OracleMetrics` データクラス: actual/oracle PnL 統計、skip_rate、JPY 換算
+- `compute_oracle_metrics()`: FillRecord リストから Oracle 指標を算出
+  - 全体 / side 別 / regime 別ブレークダウン
+  - 30s / 60s / 120s マルチタイムフレーム
+  - ロットサイズシナリオ (0.001 → 0.1 BTC) × BTC 価格で月間 JPY 換算
+- CLI: `--results-dir`, `--output`, `--lot-btc`, `--btc-price`
+- JSON 出力対応
+
+**用途**:
+```powershell
+# Oracle PnL 算出
+python scripts/v460/analysis/oracle_baseline.py --results-dir results/ --lot-btc 0.001 --btc-price 15000000
+```
+
+**ph3 進入判定ロジック**:
+- oracle_skip_rate < 0.7 → PASS（7割以上スキップなら改善余地大きすぎてまだ早い）
+- oracle_pnl_mean > 0 → PASS（理論上プラスになる可能性あり）
+- actual_pnl_mean > -0.5 → PASS（実績が大幅マイナスでない）
+
+---
+
+### D.4 ph3 先行タスク探索結果
+
+| # | 候補 (118#/015# 等) | 状態 | 備考 |
+|---|---------------------|------|------|
+| §3.1 | fast_fill_defense sell-side 二層化 | **未着手** | P0, +0.2bps 期待, 中コスト → ph3 本体で実施 |
+| §3.2 | warm_start 閾値即座収束 | ✅ 118# A2 で完了 | skip_gate.py L746-767 |
+| §3.3 | regime warm-up state persistence | ✅ 121# A4 で完了 | resilience.py FillTestState |
+| §5.6 | time_filter step 1 | config 変更のみ | 次回再起動時に適用可能 |
+| §8.5 | Oracle baseline | ✅ **D2 で実装** | ph3 前提条件クリア |
+| R3 | SkipGate warm_start テスト | LOW | 既に warm_start は安定動作中 |
+| 015# §8.2 | SAC prerequisites | 大規模 | ModelRegistry, dim fix 等 → ph3 本体 |
+
+**結論**: 前倒し可能な高価値タスクは D1 (レジーム連動ロット) と D2 (Oracle baseline) の 2 件。
+残りは ph3 本体の一部として実施すべき規模。
+
+---
+
+### D.5 変更ファイル一覧
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `scripts/v460/lib/lot_sizer.py` | D1: `LotSizingConfig` に 3 属性追加, `compute_lot_size()` に `regime_tag` パラメータ + ガードロジック |
+| `scripts/v460/lib/adaptation_engine.py` | D1: `_build_lot_kwargs()` で YAML キーマッピング, `regime_tag` 連携 |
+| `configs/v460/fill_test.yaml` | D1: `lot_sizing` セクションに 3 キー追加 |
+| `scripts/v460/analysis/oracle_baseline.py` | D2: **新規** — Oracle PnL 基準線スクリプト |
+| `tests/unit/v460/test_retrain_hot_reload.py` | D1: TestRegimeAwareLotSizing×6, D2: TestOracleBaseline×5 追加 |
+| `docs/v460/131_ph2_rpt_y3_retrain_efficiency.md` | Appendix D 追加 |
+
+### D.6 テスト結果
+
+| テストスイート | 件数 |
+|--------------|------|
+| 既存テスト (C.6) | 51 |
+| TestRegimeAwareLotSizing (D1) | 6 |
+| TestOracleBaseline (D2) | 5 |
+| **合計** | **62 passed, 0 failed** |

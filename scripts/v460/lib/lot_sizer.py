@@ -55,6 +55,12 @@ class LotSizingConfig:
     # 適応判定に必要な最小サンプル数
     min_samples: int = 50
 
+    # 131# D1: レジーム連動ロット制御
+    # unknown/trending レジームでは増量を抑制 (118# §8.6: unknown AS=60.2%)
+    regime_guard_enabled: bool = True
+    regime_hold_regimes: tuple[str, ...] = ("unknown",)  # 増量を hold するレジーム
+    regime_decrease_regimes: tuple[str, ...] = ()  # 減量を強制するレジーム
+
 
 @dataclass
 class LotSizingResult:
@@ -82,6 +88,7 @@ def compute_lot_size(
     cumulative_pnl_jpy: float,
     sample_count: int,
     config: Optional[LotSizingConfig] = None,
+    regime_tag: str = "n/a",
 ) -> LotSizingResult:
     """fill_test メトリクスに基づきロットサイズの推奨値を算出.
 
@@ -92,6 +99,7 @@ def compute_lot_size(
         cumulative_pnl_jpy: 累積実損益 (JPY). 負値 = 損失.
         sample_count: 総約定数.
         config: サイジング設定.
+        regime_tag: 131# D1 レジームタグ ("ranging", "trending", "unknown" 等).
 
     Returns:
         LotSizingResult with recommended new_lot.
@@ -134,6 +142,28 @@ def compute_lot_size(
             "hold",
             f"サンプル不足 ({sample_count} < {config.min_samples})",
         )
+
+    # --- 131# D1: レジーム連動ガード ---
+    if config.regime_guard_enabled and regime_tag != "n/a":
+        if regime_tag in config.regime_decrease_regimes:
+            if current > config.min_lot:
+                new = current - config.lot_step
+                return _make_result(
+                    new,
+                    "decrease",
+                    f"レジーム減量ガード (regime={regime_tag}) → ロット減量",
+                )
+            return _make_result(
+                current,
+                "hold",
+                f"レジーム減量ガード (regime={regime_tag}) だが既に最小ロット",
+            )
+        if regime_tag in config.regime_hold_regimes:
+            return _make_result(
+                current,
+                "hold",
+                f"レジーム増量抑制 (regime={regime_tag}) → hold",
+            )
 
     # --- 条件判定 ---
     good_fill = fill_rate >= config.min_fill_rate

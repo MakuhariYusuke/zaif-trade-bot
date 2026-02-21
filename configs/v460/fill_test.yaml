@@ -64,6 +64,11 @@ lot_sizing:
   min_recent_pnl_bps: 0.0     # 増量に必要な直近平均 PnL (bps)
   min_samples: 50             # 判定の最小サンプル数
   recent_pnl_window: 50       # 直近 PnL 計算ウィンドウ (件数)
+  # 131# D1: レジーム連動ロット制御
+  regime_guard_enabled: true   # レジームによるロット増量抑制
+  regime_hold_regimes:         # 増量を hold するレジーム (AS リスク高)
+    - unknown
+  regime_decrease_regimes: []  # 減量を強制するレジーム (空=なし)
 
 # ---- レジーム検知 (035# §4) ----
 regime:
