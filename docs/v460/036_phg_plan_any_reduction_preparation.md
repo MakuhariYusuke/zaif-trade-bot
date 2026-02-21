@@ -900,6 +900,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step70時点 | repo全体 | 2,494 |
 | Step71時点 | repo全体 | 2,501 |
 | Step72時点 | repo全体 | 2,505 |
+| Step73時点 | repo全体 | 2,505 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -1025,6 +1026,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step72時点 | `ztb/utils/run_metadata.py` | **0** |
 | Step72時点 | `ztb/utils/git_utils.py` | **0** |
 | Step72時点 | `ztb/utils/run_manifest.py` | **0** |
+| Step73時点 | `ztb/experiments/job_manager.py` | **0** |
+| Step73時点 | `tests/unit/experiments/test_job_manager.py` | **0** |
 
 ---
 
@@ -1067,28 +1070,60 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - repo 全体 `any_type_debt_tokens=2,505`（`scanned_files=1,292`）
   - 変更対象4ファイルは `any_type_debt_tokens=0` を維持
 
+## Step73 追補: job_manager 競合対策（timeout/cancel）+ 並列実行安定化 (2026-02-22)
+
+### 1) 競合原因の整理
+
+- 旧実装は worker 側 (`execute_job`) が output/manifest/state を直接更新していたため、
+  親側で timeout 判定した後に worker 完了結果で上書きされる競合が発生し得た。
+- `ProcessPoolExecutor + bound method` 依存により、環境依存の pickling 失敗リスクも残存。
+
+### 2) 修正内容
+
+- worker 実行を副作用なしの `_execute_training_job()` に分離し、**永続化は親プロセスの `_finalize_job()` に一本化**。
+- `run_all_jobs()` は `parallel_backend` を導入し、既定を `thread` へ変更（pickling 依存を低減）。
+- parallel scheduler を `wait(FIRST_COMPLETED)` + timeout 監視ループへ再構成し、
+  timeout 到達 job は親側で `timeout` 確定・永続化し、以降の遅延完了結果は無視。
+- `executor.shutdown(wait=False, cancel_futures=True)` で timeout job 待機による scheduler 停滞を回避。
+- polling 間隔は `timeout_seconds` に応じた動的値へ調整（小さい timeout でも即応）。
+- `job_manager` の code hash 取得は `git_utils.get_git_sha` に統合し、git subprocess 重複を削減。
+
+### 3) 検証
+
+- `py_compile`:
+  - `ztb/experiments/job_manager.py`
+  - `tests/unit/experiments/test_job_manager.py`
+- 追加テスト:
+  - `tests/unit/experiments/test_job_manager.py`
+    - default thread backend で local callable が実行可能なこと
+    - timeout 後に遅延完了が発生しても `status=timeout` が上書きされないこと
+- `pytest` は実行環境に未導入のため未実施（`pytest: command not found`）。
+- `any_inventory`（Step73）:
+  - repo 全体 `any_type_debt_tokens=2,505`（`scanned_files=1,294`）
+  - `job_manager.py` / 追加テストとも `Any=0`
+
 ## 6. 次フェーズ（優先順）
 
-1. `ztb/experiments/job_manager.py`  
-   - 並列実行の timeout 後キャンセル/状態遷移競合を解消し、`ProcessPoolExecutor` での pickling 依存を下げる実行設計へ整理。  
-2. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py` / `ztb/trading/strategies/action_signal_guide/realtime_adaptation/streaming_processor.py`  
+1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py` / `ztb/trading/strategies/action_signal_guide/realtime_adaptation/streaming_processor.py`  
    - 残存する `_as_object_map` / `_as_float` 実装を `safety.ensure_dict` / `safe_to_float` へ統合し、Step71 の util 抽出を横展開。  
-3. `ztb/training/reward_function_optimizer/reward_function_optimizer.py`  
+2. `ztb/training/reward_function_optimizer/reward_function_optimizer.py`  
    - `Any` debt 上位のため、result/config payload 型固定と evaluator 系 `TypedDict` の横展開を優先。  
-4. `ztb/training/algorithms/sac/sac_algorithm.py`  
+3. `ztb/training/algorithms/sac/sac_algorithm.py`  
    - 学習ループ payload を型固定し、ログ/集計の重複分岐を helper 化。  
-5. `ztb/training/checkpoint/checkpoint_manager.py`  
+4. `ztb/training/checkpoint/checkpoint_manager.py`  
    - 上位 debt を対象に、checkpoint metadata/payload の型契約と I/O 例外契約を整理。  
-6. `ztb/training/core/config_builder.py`  
+5. `ztb/training/core/config_builder.py`  
    - `UnifiedConfig` / `get_config_value` の `Any` 流出点を typed config alias + type guard へ段階移行。  
-7. `ztb/utils/file_utils.py`  
+6. `ztb/utils/file_utils.py`  
    - `safe_json_load/dump` の戻り値契約を明確化し、`read_json_object/read_json_array` ベースの型付き helper を追加。  
-8. `ztb/analysis/features/re_evaluate_features.py`  
+7. `ztb/analysis/features/re_evaluate_features.py`  
    - 評価 result payload の型固定と集計ループ helper 化を進め、重複整形コードを削減。  
-9. `ztb/training/utils/sac_utils.py`
+8. `ztb/training/utils/sac_utils.py`
    - `check-config` / `validate-data` の詳細 payload を `TypedDict` 化し、結果 JSON の契約を固定。  
-10. `ztb/utils/run_metadata.py`
+9. `ztb/utils/run_metadata.py`
    - package hash 対象 package の allow-list 指定 (`--package-hash-target`) を追加し、hash 実行時の時間をさらに圧縮。  
+10. `ztb/experiments/job_manager.py`
+   - `parallel_backend=process` の強制終了戦略（job isolation + watchdog）を設計し、timeout 時のリソース占有をさらに低減。  
 
 ---
 

@@ -10,9 +10,15 @@ import hashlib
 import json
 import logging
 import sqlite3
-import subprocess
 import time
-from concurrent.futures import ProcessPoolExecutor, TimeoutError
+from concurrent.futures import (
+    FIRST_COMPLETED,
+    Future,
+    ProcessPoolExecutor,
+    ThreadPoolExecutor,
+    TimeoutError,
+    wait,
+)
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional, TypedDict, cast
@@ -22,6 +28,7 @@ import numpy as np
 from ztb.ops.monitoring.monitoring import get_exporter
 from ztb.types.common import ObjectMap, ObjectRecords
 from ztb.utils.file_utils import safe_json_load
+from ztb.utils.git_utils import get_git_sha
 from ztb.utils.safety import ensure_dict, safe_to_float
 
 logger = logging.getLogger(__name__)
@@ -79,6 +86,41 @@ def _as_object_map(value: object) -> ObjectMap:
 
 def _as_float(value: object, default: float = 0.0) -> float:
     return safe_to_float(value, default)
+
+
+def _execute_training_job(
+    job_config: JobConfig,
+    train_function: Callable[[JobConfig], ObjectMap],
+) -> JobResult:
+    """Execute training payload without side effects (file/db writes)."""
+    started_at = time.time()
+    job_id = job_config["job_id"]
+
+    try:
+        result = _as_object_map(train_function(job_config))
+        return {
+            "job_id": job_id,
+            "status": "completed",
+            "execution_time": time.time() - started_at,
+            "result": result,
+            "timestamp": datetime.now().isoformat(),
+        }
+    except TimeoutError:
+        return {
+            "job_id": job_id,
+            "status": "timeout",
+            "execution_time": time.time() - started_at,
+            "error": "Timeout",
+            "timestamp": datetime.now().isoformat(),
+        }
+    except Exception as exc:
+        return {
+            "job_id": job_id,
+            "status": "failed",
+            "execution_time": time.time() - started_at,
+            "error": str(exc),
+            "timestamp": datetime.now().isoformat(),
+        }
 
 
 class JobStateDB:
@@ -220,17 +262,10 @@ class JobManager:
 
     def _get_code_hash(self) -> str:
         """Get current code hash using git rev-parse HEAD."""
-        try:
-            result = subprocess.run(
-                ["git", "rev-parse", "HEAD"],
-                capture_output=True,
-                text=True,
-                cwd=Path(__file__).parent.parent.parent,
-            )
-            if result.returncode == 0:
-                return result.stdout.strip()
-        except Exception:
-            pass
+        project_root = Path(__file__).resolve().parents[2]
+        git_sha = get_git_sha(cwd=project_root)
+        if git_sha != "unknown":
+            return git_sha
         return self._hash_directory(Path(__file__).parent.parent)
 
     def _hash_directory(self, path: Path) -> str:
@@ -328,15 +363,8 @@ class JobManager:
         with open(output_file, "w", encoding="utf-8") as file:
             json.dump(job_result, file, indent=2, default=_json_default)
 
-    def execute_job(
-        self,
-        job_config: JobConfig,
-        train_function: Callable[[JobConfig], ObjectMap],
-    ) -> JobResult:
-        """Execute a single training job."""
+    def _mark_job_running(self, job_config: JobConfig, start_time: float) -> None:
         job_id = job_config["job_id"]
-        start_time = time.time()
-
         logger.info("Starting job %s", job_id)
         self._record_monitor("record_job_start")
         self.state_db.save_job_state(job_id, "running", start_time=start_time)
@@ -346,91 +374,91 @@ class JobManager:
         manifest["started_at"] = datetime.now().isoformat()
         self._save_manifest(manifest)
 
-        try:
-            result = _as_object_map(train_function(job_config))
-            execution_time = time.time() - start_time
-            job_result: JobResult = {
-                "job_id": job_id,
-                "status": "completed",
-                "execution_time": execution_time,
-                "result": result,
-                "timestamp": datetime.now().isoformat(),
-            }
-            self._record_monitor("record_job_completion", "success", execution_time)
-        except TimeoutError:
-            execution_time = time.time() - start_time
-            logger.warning("Job %s timed out after %.1fs", job_id, execution_time)
-            job_result = {
-                "job_id": job_id,
-                "status": "timeout",
-                "execution_time": execution_time,
-                "error": "Timeout",
-                "timestamp": datetime.now().isoformat(),
-            }
-            self._record_monitor("record_job_completion", "timeout", execution_time)
-        except Exception as exc:
-            execution_time = time.time() - start_time
-            logger.error("Job %s failed: %s", job_id, exc)
-            job_result = {
-                "job_id": job_id,
-                "status": "failed",
-                "execution_time": execution_time,
-                "error": str(exc),
-                "timestamp": datetime.now().isoformat(),
-            }
-            self._record_monitor("record_job_completion", "failed", execution_time)
-            self._record_monitor("record_error", "job_execution")
+    def _normalize_job_result(
+        self,
+        job_config: JobConfig,
+        start_time: float,
+        raw_result: JobResult,
+    ) -> JobResult:
+        status_value = raw_result.get("status")
+        status = str(status_value) if status_value is not None else "failed"
+        if status not in {"completed", "failed", "timeout"}:
+            status = "failed"
 
+        timestamp = raw_result.get("timestamp")
+        timestamp_text = timestamp if isinstance(timestamp, str) else datetime.now().isoformat()
+
+        normalized: JobResult = {
+            "job_id": job_config["job_id"],
+            "status": status,
+            "execution_time": _as_float(
+                raw_result.get("execution_time"), time.time() - start_time
+            ),
+            "timestamp": timestamp_text,
+        }
+
+        if status == "completed":
+            normalized["result"] = _as_object_map(raw_result.get("result"))
+        else:
+            error_value = raw_result.get("error")
+            normalized["error"] = (
+                str(error_value) if error_value is not None else "Unknown error"
+            )
+
+        return normalized
+
+    def _finalize_job(
+        self,
+        job_config: JobConfig,
+        start_time: float,
+        raw_result: JobResult,
+    ) -> JobResult:
+        job_result = self._normalize_job_result(job_config, start_time, raw_result)
         self._write_job_result(job_config["output_file"], job_result)
+
+        job_id = job_config["job_id"]
+        manifest = self._load_manifest(job_id) or self._create_job_manifest(job_config)
         manifest["status"] = job_result["status"]
         manifest["completed_at"] = datetime.now().isoformat()
         if "error" in job_result:
             manifest["error"] = job_result["error"]
+        else:
+            manifest.pop("error", None)
         self._save_manifest(manifest)
 
-        end_time = time.time()
-        metrics = job_result.get("result") if isinstance(job_result.get("result"), dict) else None
+        metrics = (
+            job_result.get("result") if isinstance(job_result.get("result"), dict) else None
+        )
+        execution_time = _as_float(job_result.get("execution_time"))
+        status = str(job_result.get("status", "failed"))
+
         self.state_db.save_job_state(
             job_id,
-            str(job_result["status"]),
+            status,
             start_time=start_time,
-            end_time=end_time,
-            checkpoint_path=str(job_config.get("output_file", "")),
+            end_time=time.time(),
+            checkpoint_path=str(job_config["output_file"]),
             metrics=cast(Optional[ObjectMap], metrics),
         )
 
-        logger.info("Job %s finished with status: %s", job_id, job_result["status"])
+        monitor_status = "success" if status == "completed" else status
+        self._record_monitor("record_job_completion", monitor_status, execution_time)
+        if status != "completed":
+            self._record_monitor("record_error", "job_execution")
+
+        logger.info("Job %s finished with status: %s", job_id, status)
         return job_result
 
-    def _register_async_failure(
-        self, job_config: JobConfig, status: str, error: str
+    def execute_job(
+        self,
+        job_config: JobConfig,
+        train_function: Callable[[JobConfig], ObjectMap],
     ) -> JobResult:
-        now_iso = datetime.now().isoformat()
-        result: JobResult = {
-            "job_id": job_config["job_id"],
-            "status": status,
-            "error": error,
-            "timestamp": now_iso,
-        }
-        self._write_job_result(job_config["output_file"], result)
-
-        manifest = self._load_manifest(job_config["job_id"]) or self._create_job_manifest(
-            job_config
-        )
-        manifest["status"] = status
-        manifest["completed_at"] = now_iso
-        manifest["error"] = error
-        self._save_manifest(manifest)
-
-        self.state_db.save_job_state(
-            job_config["job_id"],
-            status,
-            end_time=time.time(),
-            checkpoint_path=str(job_config["output_file"]),
-        )
-        self._record_monitor("record_job_completion", status, 0.0)
-        self._record_monitor("record_error", "job_execution")
-        return result
+        """Execute a single training job."""
+        start_time = time.time()
+        self._mark_job_running(job_config, start_time)
+        raw_result = _execute_training_job(job_config, train_function)
+        return self._finalize_job(job_config, start_time, raw_result)
 
     def _try_load_completed_result(self, job_config: JobConfig) -> Optional[JobResult]:
         try:
@@ -445,6 +473,7 @@ class JobManager:
         self,
         train_function: Callable[[JobConfig], ObjectMap],
         max_workers: int = 4,
+        parallel_backend: str = "thread",
     ) -> ObjectMap:
         """Run all jobs in parallel and aggregate results."""
         jobs = self.split_jobs()
@@ -484,42 +513,20 @@ class JobManager:
 
         def execute_sequential(jobs_to_run: list[JobConfig]) -> None:
             for job in jobs_to_run:
-                result = self._execute_job_with_timeout(job, train_function)
+                result = self.execute_job(job, train_function)
                 collect_result_for_job(job, result)
 
         if max_workers <= 1:
             execute_sequential(executable_jobs)
         else:
             try:
-                with ProcessPoolExecutor(max_workers=max_workers) as executor:
-                    future_to_job = {
-                        executor.submit(
-                            self._execute_job_with_timeout, job, train_function
-                        ): job
-                        for job in executable_jobs
-                    }
-
-                    # Apply per-job timeout from collection point to avoid
-                    # blocking indefinitely on hung workers.
-                    for future, job in future_to_job.items():
-                        try:
-                            result = cast(
-                                JobResult, future.result(timeout=self.timeout_seconds)
-                            )
-                            collect_result_for_job(job, result)
-                        except TimeoutError:
-                            logger.error("Job %s future timed out", job["job_id"])
-                            collect_result_for_job(
-                                job,
-                                self._register_async_failure(
-                                    job, "timeout", "Future timeout"
-                                ),
-                            )
-                        except Exception as exc:
-                            logger.error("Job %s future failed: %s", job["job_id"], exc)
-                            collect_result_for_job(
-                                job, self._register_async_failure(job, "failed", str(exc))
-                            )
+                self._run_parallel_jobs(
+                    executable_jobs=executable_jobs,
+                    train_function=train_function,
+                    max_workers=max_workers,
+                    parallel_backend=parallel_backend,
+                    collect_result_for_job=collect_result_for_job,
+                )
             except Exception as exc:
                 logger.error(
                     "Parallel execution setup failed; fallback to sequential mode: %s",
@@ -538,22 +545,93 @@ class JobManager:
         logger.info("Job execution completed. Summary saved to %s", summary_file)
         return summary
 
-    def _execute_job_with_timeout(
+    def _run_parallel_jobs(
         self,
-        job_config: JobConfig,
+        executable_jobs: list[JobConfig],
         train_function: Callable[[JobConfig], ObjectMap],
-    ) -> JobResult:
-        """Execute job with timeout handling (Windows-compatible wrapper)."""
+        max_workers: int,
+        parallel_backend: str,
+        collect_result_for_job: Callable[[JobConfig, JobResult], None],
+    ) -> None:
+        if not executable_jobs:
+            return
+
+        backend = parallel_backend.lower()
+        if backend not in {"thread", "process"}:
+            logger.warning("Unknown parallel backend '%s'; using thread", parallel_backend)
+            backend = "thread"
+
+        executor_class = (
+            ProcessPoolExecutor if backend == "process" else ThreadPoolExecutor
+        )
+        executor = executor_class(max_workers=max_workers)
+        pending: dict[Future[JobResult], tuple[JobConfig, float]] = {}
+
         try:
-            return self.execute_job(job_config, train_function)
-        except Exception as exc:
-            logging.error("Job execution failed: %s", exc)
-            return {
-                "job_id": job_config.get("job_id", "unknown"),
-                "status": "failed",
-                "error": str(exc),
-                "timestamp": datetime.now().isoformat(),
-            }
+            for job in executable_jobs:
+                start_time = time.time()
+                self._mark_job_running(job, start_time)
+                try:
+                    future = executor.submit(_execute_training_job, job, train_function)
+                    pending[future] = (job, start_time)
+                except Exception as exc:
+                    logger.error("Job %s submit failed: %s", job["job_id"], exc)
+                    submit_failed: JobResult = {
+                        "job_id": job["job_id"],
+                        "status": "failed",
+                        "error": str(exc),
+                        "execution_time": time.time() - start_time,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                    final_result = self._finalize_job(job, start_time, submit_failed)
+                    collect_result_for_job(job, final_result)
+
+            poll_interval = min(0.5, max(self.timeout_seconds / 10.0, 0.05))
+            while pending:
+                done, _ = wait(
+                    set(pending.keys()),
+                    timeout=poll_interval,
+                    return_when=FIRST_COMPLETED,
+                )
+                now = time.time()
+
+                for future in done:
+                    job, start_time = pending.pop(future)
+                    try:
+                        raw_result = cast(JobResult, future.result())
+                    except Exception as exc:
+                        logger.error("Job %s worker failed: %s", job["job_id"], exc)
+                        raw_result = {
+                            "job_id": job["job_id"],
+                            "status": "failed",
+                            "error": str(exc),
+                            "execution_time": now - start_time,
+                            "timestamp": datetime.now().isoformat(),
+                        }
+                    final_result = self._finalize_job(job, start_time, raw_result)
+                    collect_result_for_job(job, final_result)
+
+                timed_out: list[tuple[Future[JobResult], JobConfig, float]] = []
+                for future, (job, start_time) in pending.items():
+                    if now - start_time > self.timeout_seconds:
+                        timed_out.append((future, job, start_time))
+
+                for future, job, start_time in timed_out:
+                    pending.pop(future, None)
+                    future.cancel()
+                    logger.error("Job %s timed out in scheduler", job["job_id"])
+                    timeout_result: JobResult = {
+                        "job_id": job["job_id"],
+                        "status": "timeout",
+                        "error": f"Execution exceeded timeout ({self.timeout_seconds:.1f}s)",
+                        "execution_time": now - start_time,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                    final_result = self._finalize_job(job, start_time, timeout_result)
+                    collect_result_for_job(job, final_result)
+        finally:
+            # Do not wait on timed-out jobs to avoid scheduler lockup.
+            executor.shutdown(wait=False, cancel_futures=True)
 
     def _aggregate_results(
         self, completed_jobs: list[JobResult], failed_jobs: list[JobResult]

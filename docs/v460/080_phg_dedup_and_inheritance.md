@@ -412,3 +412,42 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
   - `ztb/utils/run_metadata.py`
   - `ztb/utils/run_manifest.py`
   - `ztb/utils/git_utils.py`
+
+## Phase 14 追補: job_manager の timeout/cancel 競合対策 + 並列安定化 (2026-02-22)
+
+### 1) 競合の根本原因
+
+- 旧 `run_all_jobs()` は timeout 判定を親側で行う一方、
+  worker 側 `execute_job()` が output/manifest/state を直接更新していたため、
+  timeout 後の遅延完了で `timeout -> completed` 上書きが起き得た。
+- `ProcessPoolExecutor + bound method` 実行で、環境依存の pickling 失敗リスクが高かった。
+
+### 2) 実装改善（重複削減 + 不具合排除）
+
+- worker 処理を副作用なしの `_execute_training_job()` に分離し、
+  永続化を `_finalize_job()`（親側）へ一本化。
+- `execute_job()` / parallel 実行の終了処理を `_normalize_job_result()` / `_finalize_job()` に集約し、
+  status/manifest/state 更新の重複を削減。
+- `run_all_jobs()` に `parallel_backend` を追加し、既定を `thread` に変更
+  （local callable を含む実行で pickling 依存を低減）。
+- scheduler を `wait(FIRST_COMPLETED)` ループへ置換し、
+  timeout 判定済み job は親側で即 `timeout` 確定して遅延完了結果を無視。
+- `executor.shutdown(wait=False, cancel_futures=True)` で、
+  timeout job 待機による scheduler 停滞を回避。
+- polling 間隔を `timeout_seconds` 連動の動的値へ変更し、小さい timeout でも追従性を確保。
+
+### 3) 水平展開（既存 helper 活用）
+
+- `job_manager._get_code_hash()` の git 取得を `ztb/utils/git_utils.py` へ統合し、
+  git subprocess 実装の重複を削減。
+
+### 4) 検証
+
+- `py_compile`:
+  - `ztb/experiments/job_manager.py`
+  - `tests/unit/experiments/test_job_manager.py`
+- 追加テスト:
+  - `tests/unit/experiments/test_job_manager.py`
+    - default backend（thread）で local callable が実行可能
+    - timeout 後に遅延完了しても `status=timeout` が上書きされない
+- `pytest` は実行環境に未導入のため未実施（`pytest: command not found`）。
