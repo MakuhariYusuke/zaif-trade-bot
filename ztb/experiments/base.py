@@ -12,7 +12,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
-    Any,
     Dict,
     List,
     Optional,
@@ -24,7 +23,9 @@ from typing import (
 
 import numpy as np
 
+from ztb.io.json_io import read_json_object, write_json
 from ztb.metrics import sharpe_ratio
+from ztb.types.common import ObjectMap
 from ztb.utils.checkpoint import CheckpointManager
 from ztb.utils.run_metadata import RunMetadata
 
@@ -54,11 +55,11 @@ class AggregationResult:
     aggregation_timestamp: str
     experiment_pattern: str
     total_experiments: int
-    results: List[Dict[str, Any]]
-    summary: Dict[str, Any]
+    results: List[ObjectMap]
+    summary: ObjectMap
 
 
-MetricsValue = Union[int, float, str, List[float], List[int], Dict[str, Any]]
+MetricsValue = Union[int, float, str, List[float], List[int], Dict[str, object]]
 ExperimentMetrics = Dict[str, MetricsValue]
 
 
@@ -92,7 +93,7 @@ class ExperimentResult:
     error_message: Optional[str] = None
     execution_time_seconds: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, object]:
         return asdict(self)
 
 
@@ -125,7 +126,7 @@ class ExperimentBase(ABC):
         )
 
         self.streaming_pipeline: Optional["StreamingPipeline"] = None
-        self._streaming_metadata: Dict[str, Any] = {}
+        self._streaming_metadata: Dict[str, object] = {}
 
     @classmethod
     def _default_experiment_name(cls) -> str:
@@ -146,7 +147,7 @@ class ExperimentBase(ABC):
         self,
         pipeline: "StreamingPipeline",
         *,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, object]] = None,
     ) -> None:
         """Register a streaming pipeline for the experiment lifecycle."""
         self.streaming_pipeline = pipeline
@@ -163,12 +164,12 @@ class ExperimentBase(ABC):
             return None
         return self.streaming_pipeline.stats()
 
-    def _collect_streaming_metrics(self) -> Dict[str, Any]:
+    def _collect_streaming_metrics(self) -> Dict[str, object]:
         if not self.streaming_pipeline:
             return {}
 
         stats = self.streaming_pipeline.stats()
-        metrics: Dict[str, Any] = {
+        metrics: Dict[str, object] = {
             "stream_buffer_rows": stats.buffer.rows,
             "stream_buffer_capacity": stats.buffer.capacity,
             "stream_buffer_memory_bytes": stats.buffer.memory_bytes,
@@ -187,6 +188,10 @@ class ExperimentBase(ABC):
         result.metrics.update(metrics)
         if self._streaming_metadata:
             result.metrics.setdefault("stream_metadata", dict(self._streaming_metadata))
+
+    @staticmethod
+    def _serialize_run_metadata(metadata: object) -> str:
+        return json.dumps(metadata, ensure_ascii=False, default=str)
 
     def execute(self) -> ExperimentResult:
         """
@@ -208,7 +213,7 @@ class ExperimentBase(ABC):
             result = self.run()
             result.status = "success"
             # 実行メタデータをartifactsに追加
-            result.artifacts["run_metadata"] = json.dumps(metadata, ensure_ascii=False)
+            result.artifacts["run_metadata"] = self._serialize_run_metadata(metadata)
             self.logger.info(
                 f"Experiment completed successfully: {self.experiment_name}"
             )
@@ -232,7 +237,7 @@ class ExperimentBase(ABC):
                 status="failed",
                 config=self.config,
                 metrics={},
-                artifacts={"run_metadata": json.dumps(metadata, ensure_ascii=False)},
+                artifacts={"run_metadata": self._serialize_run_metadata(metadata)},
                 error_message=str(e),
             )
         finally:
@@ -307,7 +312,7 @@ class ExperimentBase(ABC):
 
         # 結果を集約
         results = []
-        summary: Dict[str, Any] = {
+        summary: ObjectMap = {
             "success_count": 0,
             "failed_count": 0,
             "total_execution_time": 0.0,
@@ -319,8 +324,7 @@ class ExperimentBase(ABC):
 
         for file_path in result_files:
             try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+                data = read_json_object(file_path)
 
                 results.append(data)
 
@@ -405,8 +409,7 @@ class ExperimentBase(ABC):
             summary=summary,
         )
 
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(aggregated.__dict__, f, indent=2, ensure_ascii=False)
+        write_json(output_path, aggregated.__dict__, indent=2, ensure_ascii=False)
 
         print(f"Aggregated results saved to: {output_path}")
 
@@ -448,8 +451,7 @@ class ExperimentBase(ABC):
         filename = f"{self.experiment_name}_{timestamp}.json"
         filepath = self.results_dir / filename
 
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(result.to_dict(), f, indent=2, ensure_ascii=False)
+        write_json(filepath, result.to_dict(), indent=2, ensure_ascii=False)
 
         self.logger.info(f"Results saved to: {filepath}")
         return str(filepath)
@@ -539,7 +541,7 @@ class ScalingExperiment(ExperimentBase):
             raise
 
     @abstractmethod
-    def step(self, step_num: int) -> Any:
+    def step(self, step_num: int) -> object:
         """
         単一ステップの実行
         サブクラスで実装必須
@@ -556,11 +558,11 @@ class ScalingExperiment(ExperimentBase):
         self.checkpoint_save(checkpoint_data, self.current_step, metadata)
 
     @abstractmethod
-    def get_checkpoint_data(self) -> Any:
+    def get_checkpoint_data(self) -> object:
         """チェックポイント保存用のデータを返す"""
 
     @abstractmethod
-    def load_from_checkpoint(self, data: Any) -> None:
+    def load_from_checkpoint(self, data: object) -> None:
         """チェックポイントデータから状態を復元"""
 
     @abstractmethod
@@ -578,7 +580,7 @@ class ScalingExperiment(ExperimentBase):
             artifacts["results"] = str(self.results_dir)
         return artifacts
 
-    def checkpoint_load(self) -> Tuple[Optional[Any], int, Dict[str, Any]]:
+    def checkpoint_load(self) -> Tuple[Optional[object], int, Dict[str, object]]:
         """最新のチェックポイントを読み込み"""
         try:
             return self.checkpoint_manager.load_latest()
@@ -587,7 +589,7 @@ class ScalingExperiment(ExperimentBase):
             return None, 0, {}
 
     def checkpoint_save(
-        self, obj: Any, step: int, metadata: Optional[Dict[str, Any]] = None
+        self, obj: object, step: int, metadata: Optional[Dict[str, object]] = None
     ) -> None:
         """チェックポイントを非同期保存"""
         self.checkpoint_manager.save_async(obj, step, metadata)

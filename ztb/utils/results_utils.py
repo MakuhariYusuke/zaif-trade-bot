@@ -6,12 +6,12 @@ Unified utilities for saving and loading training/backtest results.
 Provides consistent result storage format across the project.
 """
 
-import json
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Optional, TypedDict, Union
 
 import pandas as pd
 
+from ztb.io.json_io import read_json_object
 from ztb.utils.data_utils import load_csv_data
 from ztb.utils.file_utils import safe_json_dump, save_csv_data
 from ztb.utils.logging_utils import get_logger
@@ -19,11 +19,25 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
+class TrainingResultsPayload(TypedDict):
+    results: dict[str, object]
+    timestamp: str
+    metadata: dict[str, object]
+
+
+class BacktestMetricsPayload(TypedDict):
+    metrics: dict[str, object]
+    timestamp: str
+    metadata: dict[str, object]
+    portfolio_points: int
+    total_trades: int
+
+
 def save_training_results(
-    results: Dict[str, Any],
+    results: dict[str, object],
     output_dir: Union[str, Path],
     filename: str = "training_results.json",
-    metadata: Optional[Dict[str, Any]] = None,
+    metadata: Optional[dict[str, object]] = None,
     overwrite: bool = True,
 ) -> str:
     """
@@ -49,22 +63,23 @@ def save_training_results(
         return str(filepath)
 
     # Prepare results data
-    results_data = {
+    results_data: TrainingResultsPayload = {
         "results": results,
         "timestamp": pd.Timestamp.now().isoformat(),
-        "metadata": metadata or {},
+        "metadata": dict(metadata or {}),
     }
 
     # Save to JSON
-    safe_json_dump(results_data, filepath, default=str)
+    if not safe_json_dump(results_data, filepath, default=str):
+        raise OSError(f"Failed to save training results: {filepath}")
 
     logger.info(f"Training results saved to {filepath}")
     return str(filepath)
 
 
 def load_training_results(
-    filepath: Union[str, Path], validate_keys: Optional[list] = None
-) -> Dict[str, Any]:
+    filepath: Union[str, Path], validate_keys: Optional[list[str]] = None
+) -> dict[str, object]:
     """
     Load training results from JSON file.
 
@@ -84,16 +99,14 @@ def load_training_results(
     if not filepath.exists():
         raise FileNotFoundError(f"Results file not found: {filepath}")
 
-    with open(filepath, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    data = read_json_object(filepath)
 
     # Validate structure
-    if "results" not in data:
+    results = data.get("results")
+    if not isinstance(results, dict):
         raise ValueError(
-            f"Invalid results file format: missing 'results' key in {filepath}"
+            f"Invalid results file format: missing object 'results' key in {filepath}"
         )
-
-    results = data["results"]
 
     # Validate required keys
     if validate_keys:
@@ -108,11 +121,11 @@ def load_training_results(
 def save_backtest_results(
     portfolio_values: list,
     trade_history: list,
-    metrics: Dict[str, Any],
+    metrics: dict[str, object],
     output_dir: Union[str, Path],
     filename_prefix: str = "backtest",
-    metadata: Optional[Dict[str, Any]] = None,
-) -> Dict[str, str]:
+    metadata: Optional[dict[str, object]] = None,
+) -> dict[str, str]:
     """
     Save backtest results with consistent format.
 
@@ -146,16 +159,17 @@ def save_backtest_results(
         saved_files["trades"] = str(trade_path)
 
     # Save metrics
-    metrics_data = {
+    metrics_data: BacktestMetricsPayload = {
         "metrics": metrics,
         "timestamp": pd.Timestamp.now().isoformat(),
-        "metadata": metadata or {},
+        "metadata": dict(metadata or {}),
         "portfolio_points": len(portfolio_values),
         "total_trades": len(trade_history) if trade_history else 0,
     }
 
     metrics_path = output_dir / f"{filename_prefix}_metrics.json"
-    safe_json_dump(metrics_data, metrics_path, default=str)
+    if not safe_json_dump(metrics_data, metrics_path, default=str):
+        raise OSError(f"Failed to save backtest metrics: {metrics_path}")
     saved_files["metrics"] = str(metrics_path)
 
     logger.info(f"Backtest results saved to {output_dir}")
@@ -164,7 +178,7 @@ def save_backtest_results(
 
 def load_backtest_results(
     results_dir: Union[str, Path], filename_prefix: str = "backtest"
-) -> Dict[str, Any]:
+) -> dict[str, object]:
     """
     Load backtest results from directory.
 
@@ -194,10 +208,12 @@ def load_backtest_results(
     # Load metrics
     metrics_path = results_dir / f"{filename_prefix}_metrics.json"
     if metrics_path.exists():
-        with open(metrics_path, "r", encoding="utf-8") as f:
-            metrics_data = json.load(f)
-        results["metrics"] = metrics_data["metrics"]
-        results["metadata"] = metrics_data.get("metadata", {})
+        metrics_data = read_json_object(metrics_path)
+        metrics = metrics_data.get("metrics")
+        if isinstance(metrics, dict):
+            results["metrics"] = metrics
+        metadata = metrics_data.get("metadata")
+        results["metadata"] = metadata if isinstance(metadata, dict) else {}
 
     logger.info(f"Backtest results loaded from {results_dir}")
     return results

@@ -785,6 +785,21 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 8. 在庫確認: Step68 対象 callback ファイル（7ファイル）は `any_type_debt_tokens=0` を維持。  
 9. repo 全体在庫は `2,516`（前回 `2,502` から +14）。同時進行の別差分により `scanned_files: 1,280 -> 1,286` へ変動しており、今回対象ファイル起因の増加は確認されず。  
 
+### Step69: JSON I/O 統合（experiments/results/optimization）+ 型安全化 + 潜在不具合修正
+
+1. `ztb/training/run_optimization.py` の設定/結果I/Oを `read_json_object` / `write_json` へ統一し、`open + json.load/dump` の重複を削減。  
+2. 同ファイルで `_write_temp_config` / `_run_unified_trainer` を追加し、一時 JSON 設定ファイル生成 + subprocess 実行の重複実装を共通化。  
+3. `run_extended_backtest()` 内の `DataLoader` import インデント崩れ（実行時構文不整合リスク）を修正。  
+4. `optimize_hyperparameters()` は `self.config.copy()` 由来の浅いコピー汚染を `deepcopy` 化で解消し、trial 間で設定が汚染される潜在不具合を排除。  
+5. 同ファイルで `np.random.default_rng()` を導入し、乱数生成呼び出しを集約（可読性/軽量化を改善）。  
+6. `ztb/utils/results_utils.py` の JSON 読み込みを `read_json_object` に統一し、`TrainingResultsPayload` / `BacktestMetricsPayload`（`TypedDict`）を導入して schema を固定。  
+7. 同ファイルで `safe_json_dump` の失敗戻り値を検査し、保存失敗を成功扱いして処理継続する不具合余地を `OSError` 送出で解消。  
+8. `ztb/experiments/base.py` の結果集約/保存を `read_json_object` / `write_json` へ統一し、`json.load/dump` の分散実装を整理。  
+9. 同ファイルで `run_metadata` 文字列化を `_serialize_run_metadata()` に抽出して重複を削減し、`Any` 注釈を `object`/`ObjectMap` に置換。  
+10. `checkpoint` 関連メソッド（step/get_checkpoint_data/load/checkpoint_save/load）の契約を `Any` から `object` ベースへ寄せ、型安全性を改善。  
+11. 回帰確認: `py_compile`（`ztb/experiments/base.py` / `ztb/utils/results_utils.py` / `ztb/training/run_optimization.py`）通過。  
+12. 在庫更新: repo 全体 `any_type_debt_tokens=2,516 -> 2,494`（-22）。`ztb/experiments/base.py` / `ztb/utils/results_utils.py` / `ztb/training/run_optimization.py` は `any_type_debt_tokens=0`。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -857,6 +872,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step66時点 | repo全体 | 2,537 |
 | Step67時点 | repo全体 | 2,502 |
 | Step68時点 | repo全体 | 2,516 |
+| Step69時点 | repo全体 | 2,494 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -972,6 +988,9 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step68時点 | `ztb/training/callbacks/unsupervised/unsupervised_callbacks.py` | **0** |
 | Step68時点 | `ztb/training/callbacks/meta/meta_callbacks.py` | **0** |
 | Step68時点 | `ztb/training/callbacks/multi_task/multi_task_callbacks.py` | **0** |
+| Step69時点 | `ztb/experiments/base.py` | **0** |
+| Step69時点 | `ztb/utils/results_utils.py` | **0** |
+| Step69時点 | `ztb/training/run_optimization.py` | **0** |
 
 ---
 
@@ -989,12 +1008,12 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - 評価 result payload を型固定し、集計ループの重複（列挙/整形）を helper 化。  
 6. `ztb/training/algorithms/sac/sac_algorithm.py`  
    - 学習ループの result/config payload を段階的に型固定し、集計・ログ出力の重複分岐を helper 化する。  
-7. `ztb/experiments/base.py`  
-   - `manifest/result` 永続化と read 経路の `Any` 型を `run_manifest` 側の object-map 契約へ寄せ、`json.load/dump` の分散実装を統合する。  
-8. `ztb/utils/results_utils.py`  
-   - training/backtest の result payload schema を `TypedDict` 化し、`analysis/common/data_loaders.py` とキー契約を統一して重複整形コードを削減する。  
-9. `ztb/experiments/base.py` / `ztb/utils/results_utils.py` / `ztb/training/run_optimization.py`  
-   - `json.load/dump` の分散実装を `ztb.io.json_io` へ統合し、I/O 例外契約の共通化と重複削減を進める。  
+7. `ztb/training/utils/sac_utils.py`  
+   - `open + json.load/dump` と subprocess 実行の重複が多く、関数境界の崩れも残るため、I/O helper 統合と責務分離（設定検証/修復/実行）を優先。  
+8. `ztb/utils/file_utils.py`  
+   - `safe_json_load/dump` 依存の `Any` 契約を `read_json_object/read_json_array` ベースの型付き helper に段階移行し、失敗時の戻り値契約を明確化。  
+9. `ztb/experiments/job_manager.py` / `ztb/training/run_optimization.py`  
+   - 一時 config 生成 + subprocess 実行の共通 runner 抽出を検討し、訓練系スクリプト間の重複削減と失敗時ハンドリング統一を進める。  
 
 ---
 

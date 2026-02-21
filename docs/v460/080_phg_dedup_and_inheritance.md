@@ -284,3 +284,39 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 
 - `py_compile`（9ファイル）通過。
 - 本環境は `pytest`/依存不足のため、ユニットテストは未実施。
+
+## Phase 10 追補: experiments/results/optimization の JSON 統合 + 不具合修正 (2026-02-21)
+
+### 1) JSON I/O の分散実装を統合
+
+- `ztb/experiments/base.py` の集約/保存経路を `read_json_object` / `write_json` へ統一。
+- `ztb/utils/results_utils.py` の読込経路を `read_json_object` に統一し、`json.load` 直書きを削減。
+- `ztb/training/run_optimization.py` の config/result 読み書きを `read_json_object` / `write_json` に統一。
+
+### 2) 重複削減と保守性向上
+
+- `run_optimization.py` に `_write_temp_config` / `_run_unified_trainer` を追加し、
+  一時 JSON 作成 + subprocess 実行の重複コードを共通化。
+- `experiments/base.py` で run metadata 文字列化を `_serialize_run_metadata()` に抽出し、
+  成功/失敗経路の重複を削減。
+- `results_utils.py` へ `TrainingResultsPayload` / `BacktestMetricsPayload` (`TypedDict`) を導入し、
+  payload 契約を明示。
+
+### 3) 不具合可能性の解消
+
+- `run_optimization.py` の `DataLoader` import インデント崩れを修正（実行時不整合リスク解消）。
+- `optimize_hyperparameters()` の `self.config.copy()` 起因 trial 間設定汚染を
+  `deepcopy` 化で解消。
+- `results_utils.py` の保存処理で `safe_json_dump` 失敗を見逃す経路を修正し、
+  失敗時は `OSError` を送出するよう改善。
+
+### 4) 型安全と在庫
+
+- `ztb/experiments/base.py` / `ztb/utils/results_utils.py` /
+  `ztb/training/run_optimization.py` は `Any=0` を維持。
+- repo 全体 `any_type_debt_tokens`: `2,516 -> 2,494`（-22）。
+
+### 5) 検証
+
+- `py_compile`（`base.py`, `results_utils.py`, `run_optimization.py`）通過。
+- 本環境は `pytest`/依存不足のため、ユニットテストは未実施。

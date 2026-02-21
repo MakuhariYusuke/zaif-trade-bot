@@ -13,10 +13,14 @@ Usage:
 
 import argparse
 import json
+import subprocess
+import sys
+import tempfile
 import time
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -27,11 +31,14 @@ from ztb.analysis.comparative.regime_performance_analyzer import (
 from ztb.analysis.specialized.market.market_regime_classifier import (
     MarketRegimeClassifier,
 )
+from ztb.io.data_loader import DataLoader
+from ztb.io.json_io import read_json_object, write_json
 from ztb.optimization.hyperparameter_optimizer import (
     REGIME_SPECIFIC_SPACES,
     SAC_PARAMETER_SPACE,
     HyperparameterOptimizer,
 )
+from ztb.types.common import ObjectMap
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -50,6 +57,7 @@ class OptimizationOrchestrator:
             config_path: Path to configuration file
         """
         self.config_path = config_path
+        self.project_root = Path(config_path).resolve().parent.parent
         self.config = self._load_config()
         self.logger = get_logger(f"{self.__class__.__name__}")
 
@@ -72,12 +80,47 @@ class OptimizationOrchestrator:
             self.results_dir.mkdir(parents=True, exist_ok=True)
             self.logger.info(f"Created new results directory: {self.results_dir}")
 
-    def _load_config(self) -> Dict[str, Any]:
-        """Load configuration from file."""
-        with open(self.config_path, "r") as f:
-            return json.load(f)
+    @staticmethod
+    def _as_object_map(value: object) -> ObjectMap:
+        if isinstance(value, dict):
+            return dict(value)
+        return {}
 
-    def run_extended_backtest(self) -> Dict[str, Any]:
+    @staticmethod
+    def _as_float(value: object, default: float = 0.0) -> float:
+        if isinstance(value, (int, float)):
+            return float(value)
+        return default
+
+    def _write_temp_config(self, config: ObjectMap) -> Path:
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
+            temp_config_path = Path(tmp.name)
+        write_json(temp_config_path, config, indent=2)
+        return temp_config_path
+
+    def _run_unified_trainer(self, config: ObjectMap) -> subprocess.CompletedProcess[str]:
+        temp_config_path = self._write_temp_config(config)
+        try:
+            cmd = [
+                sys.executable,
+                "ztb/training/unified_trainer.py",
+                "--config",
+                str(temp_config_path),
+            ]
+            return subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                cwd=self.project_root,
+            )
+        finally:
+            temp_config_path.unlink(missing_ok=True)
+
+    def _load_config(self) -> ObjectMap:
+        """Load configuration from file."""
+        return read_json_object(self.config_path)
+
+    def run_extended_backtest(self) -> ObjectMap:
         """
         Run extended duration backtest.
 
@@ -87,14 +130,16 @@ class OptimizationOrchestrator:
         self.logger.info("Starting extended duration backtest...")
 
         # Load extended dataset
-        dataset_path = self.config.get("data_path", "data/btc_jpy_extended_dataset.csv")
+        dataset_path = str(
+            self.config.get("data_path", "data/btc_jpy_extended_dataset.csv")
+        )
         dataset_file = Path(dataset_path)
         if not dataset_file.exists():
             raise FileNotFoundError(f"Dataset not found: {dataset_path}")
 
         # Update config for extended backtest
-        backtest_config = self.config.get("backtest_config", {})
-        extended_config = self.config.copy()
+        backtest_config = self._as_object_map(self.config.get("backtest_config"))
+        extended_config = dict(self.config)
         extended_config.update(
             {
                 "data_path": dataset_path,
@@ -104,130 +149,95 @@ class OptimizationOrchestrator:
             }
         )
 
-        # Run backtest using unified_trainer.py script
-        import json
-        import subprocess
-        import sys
-        import tempfile
+        result = self._run_unified_trainer(extended_config)
+        if result.returncode != 0:
+            raise RuntimeError(f"Training failed: {result.stderr}")
 
-        # Save extended config to temporary file
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            json.dump(extended_config, f, indent=2)
-            temp_config_path = f.name
+        # Try to load results from the expected output location
+        # For now, since training doesn't save structured results, generate mock trading data
+        # that can be used for market regime analysis
+        self.logger.info(
+            "Training completed, generating mock trading data for regime analysis..."
+        )
 
-        try:
-            # Run unified_trainer.py with the extended config
-            cmd = [
-                sys.executable,
-                "ztb/training/unified_trainer.py",
-                "--config",
-                temp_config_path,
-            ]
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                cwd=Path(self.config_path).parent.parent,
+        market_data = DataLoader.load_csv_strict(dataset_path)
+        rng = np.random.default_rng()
+
+        if "timestamp" in market_data.columns:
+            # Use actual market data timestamps for alignment
+            market_timestamps = pd.to_datetime(market_data["timestamp"])
+            start_date = market_timestamps.min()
+            end_date = market_timestamps.max()
+            # Sample timestamps from market data - ensure we have enough data points
+            num_samples = min(100, len(market_timestamps))
+            sample_indices = rng.choice(
+                len(market_timestamps), size=num_samples, replace=False
             )
-
-            if result.returncode != 0:
-                raise RuntimeError(f"Training failed: {result.stderr}")
-
-            # Try to load results from the expected output location
-            # For now, since training doesn't save structured results, generate mock trading data
-            # that can be used for market regime analysis
+            trade_timestamps = market_timestamps.iloc[sample_indices].sort_values()
             self.logger.info(
-                "Training completed, generating mock trading data for regime analysis..."
+                f"Sampled {len(trade_timestamps)} timestamps from market data range: {start_date} to {end_date}"
             )
+        else:
+            # Fallback to date range
+            start_date = pd.Timestamp("2022-01-01")
+            end_date = pd.Timestamp("2024-01-01")
+            trade_timestamps = pd.date_range(start_date, end_date, freq="D")[
+                :100
+            ]  # Limit to 100 trades
 
-            # Load market data to align timestamps
-from ztb.io.data_loader import DataLoader
+        # Generate mock trades aligned with market data timestamps
+        trades: list[ObjectMap] = []
+        current_balance = 200000.0  # Initial balance from config
 
-            market_data = DataLoader.load_csv_strict(dataset_path)
-            if "timestamp" in market_data.columns:
-                # Use actual market data timestamps for alignment
-                market_timestamps = pd.to_datetime(market_data["timestamp"])
-                start_date = market_timestamps.min()
-                end_date = market_timestamps.max()
-                # Sample timestamps from market data - ensure we have enough data points
-                num_samples = min(100, len(market_timestamps))
-                sample_indices = np.random.choice(
-                    len(market_timestamps), size=num_samples, replace=False
-                )
-                trade_timestamps = market_timestamps.iloc[sample_indices].sort_values()
-                self.logger.info(
-                    f"Sampled {len(trade_timestamps)} timestamps from market data range: {start_date} to {end_date}"
-                )
-            else:
-                # Fallback to date range
-                start_date = pd.Timestamp("2022-01-01")
-                end_date = pd.Timestamp("2024-01-01")
-                trade_timestamps = pd.date_range(start_date, end_date, freq="D")[
-                    :100
-                ]  # Limit to 100 trades
+        for timestamp in trade_timestamps:
+            # Random trade type with some bias toward realistic patterns
+            action = str(rng.choice(["buy", "sell"], p=[0.6, 0.4]))
+            price = 3000000 + rng.normal(0, 500000)  # BTC price around 3M JPY
+            size = rng.uniform(0.001, 0.01)  # Small position sizes
 
-            # Generate mock trades aligned with market data timestamps
-            trades = []
-            current_balance = 200000.0  # Initial balance from config
+            # Calculate P&L with some market-aware logic
+            pnl_multiplier = -1.0 if action == "sell" else 1.0
+            pnl = rng.normal(0, 10000) * pnl_multiplier
+            fee = abs(price * size * 0.001)  # 0.1% fee
 
-            for i, timestamp in enumerate(trade_timestamps):
-                # Random trade type with some bias toward realistic patterns
-                action = np.random.choice(
-                    ["buy", "sell"], p=[0.6, 0.4]
-                )  # Slightly more buys
-                price = 3000000 + np.random.normal(0, 500000)  # BTC price around 3M JPY
-                size = np.random.uniform(0.001, 0.01)  # Small position sizes
-
-                # Calculate P&L with some market-aware logic
-                pnl_multiplier = 1.0
-                if action == "sell":
-                    pnl_multiplier = -1.0  # Sells have opposite P&L
-
-                pnl = np.random.normal(0, 10000) * pnl_multiplier
-                fee = abs(price * size * 0.001)  # 0.1% fee
-
-                trade = {
-                    "timestamp": timestamp.isoformat(),
-                    "action": action,
-                    "price": float(price),
-                    "size": float(size),
-                    "balance_before": current_balance,
-                    "balance_after": current_balance + pnl - fee,
-                    "pnl": float(pnl),
-                    "fees": float(fee),
-                }
-
-                current_balance = trade["balance_after"]
-                trades.append(trade)
-
-            results = {
-                "evaluation": {
-                    "total_return": 0.05,  # 5% return
-                    "sharpe_ratio": 1.2,
-                    "max_drawdown": -0.08,
-                    "win_rate": 0.52,
-                    "total_trades": len(trades),
-                    "profit_factor": 1.15,
-                },
-                "training_time": 120.0,
-                "total_timesteps": self.config["training"]["total_timesteps"],
-                "trades": trades,
+            trade: ObjectMap = {
+                "timestamp": timestamp.isoformat(),
+                "action": action,
+                "price": float(price),
+                "size": float(size),
+                "balance_before": current_balance,
+                "balance_after": current_balance + pnl - fee,
+                "pnl": float(pnl),
+                "fees": float(fee),
             }
 
-            self.logger.info(
-                f"Generated {len(trades)} mock trades aligned with market data timestamps"
-            )
+            current_balance = float(trade["balance_after"])
+            trades.append(trade)
 
-        finally:
-            # Clean up temporary file
-            import os
+        training_config = self._as_object_map(self.config.get("training"))
+        total_timesteps = int(self._as_float(training_config.get("total_timesteps"), 0.0))
 
-            os.unlink(temp_config_path)
+        results: ObjectMap = {
+            "evaluation": {
+                "total_return": 0.05,  # 5% return
+                "sharpe_ratio": 1.2,
+                "max_drawdown": -0.08,
+                "win_rate": 0.52,
+                "total_trades": len(trades),
+                "profit_factor": 1.15,
+            },
+            "training_time": 120.0,
+            "total_timesteps": total_timesteps,
+            "trades": trades,
+        }
+
+        self.logger.info(
+            f"Generated {len(trades)} mock trades aligned with market data timestamps"
+        )
 
         # Save results
         results_file = self.results_dir / "extended_backtest_results.json"
-        with open(results_file, "w") as f:
-            json.dump(results, f, indent=2, default=str)
+        write_json(results_file, results, indent=2, default=str)
 
         self.logger.info(
             f"Extended backtest completed. Results saved to {results_file}"
@@ -235,8 +245,8 @@ from ztb.io.data_loader import DataLoader
         return results
 
     def analyze_market_conditions(
-        self, backtest_results: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, backtest_results: ObjectMap
+    ) -> ObjectMap:
         """
         Analyze market conditions and performance by regime.
 
@@ -249,12 +259,12 @@ from ztb.io.data_loader import DataLoader
         self.logger.info("Analyzing market conditions...")
 
         # Load dataset for regime classification
-        dataset_path = self.config["data_path"]
+        dataset_path = str(self.config.get("data_path", ""))
 
         data = DataLoader.load_csv_strict(dataset_path)
 
         # Filter data by date range if specified
-        backtest_config = self.config.get("backtest_config", {})
+        backtest_config = self._as_object_map(self.config.get("backtest_config"))
         start_date = backtest_config.get("start_date")
         end_date = backtest_config.get("end_date")
 
@@ -275,9 +285,10 @@ from ztb.io.data_loader import DataLoader
         self.logger.info(f"Classified {len(market_conditions)} market conditions")
 
         # Debug: Check trades data
-        trades = backtest_results.get("trades", [])
+        raw_trades = backtest_results.get("trades", [])
+        trades = raw_trades if isinstance(raw_trades, list) else []
         self.logger.info(f"Found {len(trades)} trades in backtest results")
-        if trades:
+        if trades and isinstance(trades[0], dict):
             self.logger.info(
                 f"Sample trade timestamp: {trades[0].get('timestamp', 'N/A')}"
             )
@@ -286,20 +297,23 @@ from ztb.io.data_loader import DataLoader
             )
 
         # Analyze performance by regime
-        regime_analysis = self.performance_analyzer.analyze_performance_by_regime(
+        raw_regime_analysis = self.performance_analyzer.analyze_performance_by_regime(
             backtest_results, market_conditions
         )
+        regime_analysis: ObjectMap
+        if isinstance(raw_regime_analysis, dict):
+            regime_analysis = raw_regime_analysis
+        else:
+            regime_analysis = {"analysis": raw_regime_analysis}
 
         # Save analysis results
         analysis_file = self.results_dir / "market_condition_analysis.json"
-        with open(analysis_file, "w") as f:
-            json.dump(regime_analysis, f, indent=2, default=str)
+        write_json(analysis_file, regime_analysis, indent=2, default=str)
 
         # Generate regime statistics
         regime_stats = self.regime_classifier.get_regime_statistics(market_conditions)
         stats_file = self.results_dir / "regime_statistics.json"
-        with open(stats_file, "w") as f:
-            json.dump(regime_stats, f, indent=2, default=str)
+        write_json(stats_file, regime_stats, indent=2, default=str)
 
         self.logger.info(
             f"Market condition analysis completed. Results saved to {analysis_file}"
@@ -307,8 +321,8 @@ from ztb.io.data_loader import DataLoader
         return regime_analysis
 
     def optimize_hyperparameters(
-        self, regime_analysis: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, regime_analysis: Optional[ObjectMap] = None
+    ) -> ObjectMap:
         """
         Run hyperparameter and reward function optimization.
 
@@ -321,71 +335,56 @@ from ztb.io.data_loader import DataLoader
         self.logger.info("Starting hyperparameter and reward function optimization...")
 
         # Define objective function
-        def objective_function(params):
+        def objective_function(params: dict[str, object]) -> float:
             """Objective function for optimization."""
             try:
                 # Create config with optimized parameters
-                test_config = self.config.copy()
-                test_config["sac_hyperparameters"].update(params)
+                test_config = deepcopy(self.config)
+                sac_hyperparameters = self._as_object_map(
+                    test_config.get("sac_hyperparameters")
+                )
+                sac_hyperparameters.update(params)
+                test_config["sac_hyperparameters"] = sac_hyperparameters
 
                 # Update reward function parameters if provided
-                if "reward_settings" not in test_config:
-                    test_config["reward_settings"] = {}
+                reward_settings = self._as_object_map(test_config.get("reward_settings"))
                 reward_params = {
                     k: v
                     for k, v in params.items()
                     if k.startswith("reward_") or k == "use_simple_reward"
                 }
                 if reward_params:
-                    test_config["reward_settings"].update(reward_params)
+                    reward_settings.update(reward_params)
+                test_config["reward_settings"] = reward_settings
 
                 # Run quick test training using subprocess like in train_sac_v428.py
-                import subprocess
-                import sys
-                import tempfile
+                run_result = self._run_unified_trainer(test_config)
+                if run_result.returncode != 0:
+                    raise RuntimeError(f"Training failed: {run_result.stderr}")
 
-                with tempfile.NamedTemporaryFile(
-                    mode="w", suffix=".json", delete=False
-                ) as f:
-                    json.dump(test_config, f, indent=2)
-                    temp_config_path = f.name
-
-                try:
-                    cmd = [
-                        sys.executable,
-                        "ztb/training/unified_trainer.py",
-                        "--config",
-                        temp_config_path,
-                    ]
-                    result = subprocess.run(
-                        cmd,
-                        capture_output=True,
-                        text=True,
-                        cwd=Path(self.config_path).parent.parent,
-                    )
-
-                    if result.returncode != 0:
-                        raise RuntimeError(f"Training failed: {result.stderr}")
-
-                    # For optimization, return a mock score since we can't easily parse training output
-                    return 1.0  # Mock positive score for optimization
-
-                finally:
-                    import os
-
-                    os.unlink(temp_config_path)
+                # For optimization, return a mock score since we can't easily parse training output
+                return 1.0  # Mock positive score for optimization
 
             except Exception as e:
                 self.logger.warning(f"Training failed with params {params}: {e}")
-                return -999
+                return -999.0
 
         # Choose parameter space based on regime analysis
-        if regime_analysis and "regime_performance" in regime_analysis:
+        regime_performance = {}
+        if regime_analysis:
+            raw_regime_performance = regime_analysis.get("regime_performance")
+            if isinstance(raw_regime_performance, dict):
+                regime_performance = raw_regime_performance
+
+        if regime_performance:
             # Use regime-specific optimization if available
             best_regime = max(
-                regime_analysis["regime_performance"].keys(),
-                key=lambda r: regime_analysis["regime_performance"][r].get(
-                    "sharpe_ratio", 0
+                regime_performance.keys(),
+                key=lambda regime: self._as_float(
+                    self._as_object_map(regime_performance.get(regime)).get(
+                        "sharpe_ratio"
+                    ),
+                    0.0,
                 ),
             )
             param_space = REGIME_SPECIFIC_SPACES.get(
@@ -413,18 +412,17 @@ from ztb.io.data_loader import DataLoader
 
         # Save optimization results
         opt_file = self.results_dir / "hyperparameter_optimization.json"
-        with open(opt_file, "w") as f:
-            json.dump(
-                {
-                    "best_params": optimization_result.best_params,
-                    "best_score": optimization_result.best_score,
-                    "optimization_time": optimization_result.optimization_time,
-                    "n_trials": len(optimization_result.trials),
-                },
-                f,
-                indent=2,
-                default=str,
-            )
+        write_json(
+            opt_file,
+            {
+                "best_params": optimization_result.best_params,
+                "best_score": optimization_result.best_score,
+                "optimization_time": optimization_result.optimization_time,
+                "n_trials": len(optimization_result.trials),
+            },
+            indent=2,
+            default=str,
+        )
 
         self.logger.info(
             f"Hyperparameter and reward function optimization completed. Best score: {optimization_result.best_score:.4f}"
@@ -435,7 +433,7 @@ from ztb.io.data_loader import DataLoader
             "optimization_time": optimization_result.optimization_time,
         }
 
-    def run_complete_optimization(self) -> Dict[str, Any]:
+    def run_complete_optimization(self) -> ObjectMap:
         """
         Run the complete optimization pipeline.
 
@@ -457,6 +455,12 @@ from ztb.io.data_loader import DataLoader
 
         total_time = time.time() - start_time
 
+        evaluation = self._as_object_map(backtest_results.get("evaluation"))
+        regime_performance = self._as_object_map(regime_analysis.get("regime_performance"))
+        recommendations = regime_analysis.get("recommendations", [])
+        if not isinstance(recommendations, list):
+            recommendations = []
+
         # Compile final results
         final_results = {
             "pipeline_completed": True,
@@ -464,19 +468,13 @@ from ztb.io.data_loader import DataLoader
             "phases": {
                 "extended_backtest": {
                     "completed": True,
-                    "total_return": backtest_results.get("evaluation", {}).get(
-                        "total_return"
-                    ),
-                    "sharpe_ratio": backtest_results.get("evaluation", {}).get(
-                        "sharpe_ratio"
-                    ),
+                    "total_return": evaluation.get("total_return"),
+                    "sharpe_ratio": evaluation.get("sharpe_ratio"),
                 },
                 "market_analysis": {
                     "completed": True,
-                    "regimes_identified": len(
-                        regime_analysis.get("regime_performance", {})
-                    ),
-                    "recommendations": regime_analysis.get("recommendations", []),
+                    "regimes_identified": len(regime_performance),
+                    "recommendations": recommendations,
                 },
                 "hyperparameter_optimization": {
                     "completed": True,
@@ -489,8 +487,7 @@ from ztb.io.data_loader import DataLoader
 
         # Save final summary
         summary_file = self.results_dir / "optimization_summary.json"
-        with open(summary_file, "w") as f:
-            json.dump(final_results, f, indent=2, default=str)
+        write_json(summary_file, final_results, indent=2, default=str)
 
         self.logger.info(
             f"Complete optimization pipeline finished in {total_time:.2f} seconds"
@@ -522,44 +519,53 @@ from ztb.io.data_loader import DataLoader
         if not summary_file.exists():
             return f"No optimization summary found in {self.results_dir}. Run optimization first."
 
-        with open(summary_file, "r") as f:
-            results = json.load(f)
+        results = read_json_object(summary_file)
+        phases = self._as_object_map(results.get("phases"))
+        extended_backtest = self._as_object_map(phases.get("extended_backtest"))
+        market_analysis = self._as_object_map(phases.get("market_analysis"))
+        hyperparameter_optimization = self._as_object_map(
+            phases.get("hyperparameter_optimization")
+        )
+        recommendations = market_analysis.get("recommendations", [])
+        if not isinstance(recommendations, list):
+            recommendations = []
+        best_params = self._as_object_map(hyperparameter_optimization.get("best_params"))
 
         report = f"""
 # SAC v428 Advanced Optimization Report
 
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-Results Directory: {results['results_directory']}
+Results Directory: {results.get('results_directory', self.results_dir)}
 
 ## Pipeline Overview
-- Total Time: {results['total_time']:.2f} seconds
-- Pipeline Status: {'✅ Completed' if results['pipeline_completed'] else '❌ Failed'}
+- Total Time: {self._as_float(results.get('total_time')):.2f} seconds
+- Pipeline Status: {'✅ Completed' if bool(results.get('pipeline_completed')) else '❌ Failed'}
 
 ## Phase Results
 
 ### 1. Extended Duration Backtest
-- Status: {'✅ Completed' if results['phases']['extended_backtest']['completed'] else '❌ Failed'}
-- Total Return: {results['phases']['extended_backtest'].get('total_return', 'N/A')}
-- Sharpe Ratio: {results['phases']['extended_backtest'].get('sharpe_ratio', 'N/A')}
+- Status: {'✅ Completed' if bool(extended_backtest.get('completed')) else '❌ Failed'}
+- Total Return: {extended_backtest.get('total_return', 'N/A')}
+- Sharpe Ratio: {extended_backtest.get('sharpe_ratio', 'N/A')}
 
 ### 2. Market Condition Analysis
-- Status: {'✅ Completed' if results['phases']['market_analysis']['completed'] else '❌ Failed'}
-- Regimes Identified: {results['phases']['market_analysis']['regimes_identified']}
+- Status: {'✅ Completed' if bool(market_analysis.get('completed')) else '❌ Failed'}
+- Regimes Identified: {market_analysis.get('regimes_identified', 0)}
 - Recommendations:
 """
 
-        for rec in results["phases"]["market_analysis"].get("recommendations", []):
+        for rec in recommendations:
             report += f"  - {rec}\n"
 
         report += f"""
 ### 3. Hyperparameter Optimization
-- Status: {'✅ Completed' if results['phases']['hyperparameter_optimization']['completed'] else '❌ Failed'}
-- Best Score: {results['phases']['hyperparameter_optimization']['best_score']:.4f}
-- Optimization Time: {results['phases']['hyperparameter_optimization'].get('optimization_time', 'N/A')} seconds
+- Status: {'✅ Completed' if bool(hyperparameter_optimization.get('completed')) else '❌ Failed'}
+- Best Score: {self._as_float(hyperparameter_optimization.get('best_score')):.4f}
+- Optimization Time: {hyperparameter_optimization.get('optimization_time', 'N/A')} seconds
 
 ## Best Parameters
 ```json
-{json.dumps(results['phases']['hyperparameter_optimization']['best_params'], indent=2)}
+{json.dumps(best_params, indent=2)}
 ```
 
 ## Next Steps
@@ -623,8 +629,7 @@ def main():
         # Run only market analysis (requires backtest results)
         backtest_file = orchestrator.results_dir / "extended_backtest_results.json"
         if backtest_file.exists():
-            with open(backtest_file, "r") as f:
-                backtest_results = json.load(f)
+            backtest_results = read_json_object(backtest_file)
             analysis = orchestrator.analyze_market_conditions(backtest_results)
             print(f"Market analysis completed. Results: {analysis}")
         else:
@@ -646,8 +651,7 @@ def main():
         # Generate report
         report = orchestrator.generate_optimization_report()
         report_file = orchestrator.results_dir / "optimization_report.md"
-        with open(report_file, "w") as f:
-            f.write(report)
+        report_file.write_text(report, encoding="utf-8")
         print(f"Report generated: {report_file}")
 
     else:
