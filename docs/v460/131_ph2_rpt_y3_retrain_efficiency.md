@@ -34,6 +34,8 @@
 
 130# で Y3 SkipGate を再訓練・デプロイした。本書ではそのモデルと訓練パイプラインを分析し、過去成果を活用した 4 施策を設計・実装した。
 
+> **重要**: 初版 (§0-§9) でのモデルデプロイは「ファイル保存成功」(deployed) までの確認であり、「実運用プロセスでの hot-reload 成功」(activated) は未確認だった。Appendix A レビューで hash 移送バグ (A.1 #1) が発覚し、Appendix B で修正・確認済み。
+
 | 施策 | 概要 | 効果 |
 |------|------|------|
 | **E1: Warm-start** | 前モデルの LightGBM Booster を `init_model` に使用 | 収束高速化 + 知識転移 |
@@ -273,7 +275,98 @@ Final model : 298 trees, 13 features → models/v460/skip_gate_lgbm_pnl120.pkl
 
 | 施策 | 優先度 | 説明 |
 |------|--------|------|
+| `ztb/evaluation/walk_forward` 接続 | **高** | 既存 WalkForwardSplitter (embargo 付き multi-window) を retrain gate に導入。single-split → 3-fold expanding CV。v458 資産の直接活用 |
+| v459 統計 gate 導入 | 高 | Holm/p-mean, 効果量 (Cliff's Delta) 併用を retrain deploy 判定に導入。000# §3.7 の統計検定仕様を活用 |
 | Optuna ベイズ最適化 | 中 | `--all-runs` 時に max_depth/num_leaves/learning_rate を自動探索 |
 | Time-weighted sampling | 中 | 古いサンプルに減衰重みを付与。市場構造変化への追従性向上 |
 | Feature engineering v2 | 低 | E3 で除外された dead features の代替候補探索 |
-| Expanding window CV | 低 | 単一 WF split → 3-fold expanding window CV でスコアの安定化 |
+
+---
+
+## Appendix A: Codex 追記レビュー (2026-02-21 22:22 JST)
+
+### A.1 重大度付き指摘
+
+| # | 重大度 | 対象 | 問題 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | **CRITICAL** | `scripts/v460/ml/retrain_scheduler.py:744` / `scripts/v460/ml/skip_gate.py:480` | アトミック保存時の hash ファイル移動先計算が不整合で、`*.pkl` と `*.pkl.sha256` が不一致化。結果、`fill_test.log` で hot-reload が恒常失敗し、新モデルが実運用に反映されていない。 | `tmp_hash` 計算を `tmp_path.with_suffix(tmp_path.suffix + '.sha256')` に修正。既存 `models/v460/skip_gate_lgbm_pnl120.pkl.sha256` を再生成。 |
+| 2 | **HIGH** | `docs/v460/131_ph2_rpt_y3_retrain_efficiency.md:35` / `results/v460/fill_test/logs/fill_test.log` | 131# は「Y3効率化モデルを創出」としているが、実運用側は hash mismatch により旧モデルを保持し続けている（reload失敗が連続）。成果の実運用反映にギャップ。 | 文書に「deployed=保存成功」と「activated=運用反映成功」を分離記載し、activation確認ログを必須化。 |
+| 3 | **HIGH** | `scripts/v460/ml/retrain_scheduler.py:536` | 前モデル読み込み失敗を `except: pass` で握り潰しており、品質ゲートが「no prev model」分岐に誤って入る。`absolute_min_score` 判定が過敏化/誤判定化。 | 例外を警告ログ出力し、`result['prev_model_load_error']` に記録。hash mismatch は即 `status=error` 返却も検討。 |
+| 4 | **HIGH** | `logs/retrain_scheduler.log` (2026-02-21 20:01) | `--all-runs --once` で `WF score=-0.3007` のモデルが deploy されている。相対ゲート無効化中で、負の期待値モデル投入リスクが現実化。 | `--all-runs` 時でも `absolute_min_score` に加えて `pnl120_improvement >= 0` のハード制約を追加。 |
+| 5 | **MEDIUM** | `docs/v460/131_ph2_rpt_y3_retrain_efficiency.md:57` / `logs/retrain_scheduler.log` | 文書は「ターゲット pnl120 回帰」を主軸記述だが、実行ログは `target=pnl30`。モデル名 (`*_pnl120.pkl`) と target 意味が乖離し運用誤認を誘発。 | モデルパス命名を target と同期 (`skip_gate_lgbm_pnl30.pkl`) するか、metadataの `target` を運用表示の主キーに。 |
+| 6 | **MEDIUM** | `scripts/v460/ml/retrain_scheduler.py:205` | E4 cache の invalidation 条件が「行数一致のみ」。同件数でも run混在・設定変更・ソース更新時に stale cache を再利用する危険。 | cache key に `run_id集合hash + target + feature_cols + config digest` を追加。 |
+| 7 | **MEDIUM** | `docs/v460/131_ph2_rpt_y3_retrain_efficiency.md:134` | E3 pruning が single WF split 由来で不安定。データ増加時に split=0 になる特徴量が頻繁に変動し、feature set が振動。 | pruning は「連続N回でdead」または「3-fold平均importance」で実行。 |
+| 8 | **MEDIUM** | `docs/v460/131_ph2_rpt_y3_retrain_efficiency.md:272` | 「Expanding window CV」は将来課題扱いだが、`ztb/evaluation/walk_forward/splitter.py` など既存資産があり、再利用で即導入可能。vXXX資産の活用が不十分。 | `ztb/evaluation/walk_forward` を retrain WF に接続し、embargo付き multi-window score を quality gate に昇格。 |
+
+### A.2 過去 vXXX 成果の活用評価
+
+| 分類 | 評価 | 内容 |
+|---|---|---|
+| 活用できている | ✅ | 126#/127# の run_id分離・品質ゲート・metadata拡張、118# Appendix F の `--all-runs` 運用思想を継承。 |
+| 活用不足 | ⚠️ | v458 系の walk-forward 分割資産（embargo/複数窓）を再訓練判定に未接続。 |
+| 活用不足 | ⚠️ | v459 系の統計 gate 思想（Holm/p-mean, 効果量併用）を retrain deploy 判定に未導入。 |
+| 逆行リスク | ⚠️ | 「log上 deploy 成功でも運用未反映」という観測不能状態を許容しており、v459で強化した観測一貫性ポリシーと齟齬。 |
+
+### A.3 次に何をすべきか (優先順)
+
+1. **P0 (即時)**: hash 移送バグ修正 + `.sha256` 再生成 + hot-reload 成功確認（1回でなく3連続成功まで）。
+2. **P0 (即時)**: `except: pass` を廃止し、前モデル読み込み失敗を明示ログ化。quality gate分岐の誤動作を止める。
+3. **P1 (同日)**: `--all-runs` の deploy 条件を強化（`pnl120_improvement>=0` と `score>=absolute_min` のAND）。
+4. **P1 (同日)**: cache key を config/run依存に拡張し、行数一致のみ invalidation を廃止。
+5. **P2 (次セッション)**: `ztb/evaluation/walk_forward` を使った 3-fold expanding/embargo WF を retrain gate に導入。
+
+### A.4 補足（今回の再検証）
+
+- `tests/unit/v460/test_retrain_hot_reload.py` は 26/26 PASS を再確認。
+- `scripts/v460/ml/retrain_scheduler.py --all-runs --once` 実行で、現時点は `score=-0.2745` で `absolute_min_score` reject を確認（prev model load失敗分岐）。
+- 131# の主張は方向性として妥当だが、**「実運用反映まで含めた完了判定」** が不足している。
+
+---
+
+## Appendix B: レビュー対応結果
+
+**対応日時**: 2025-02-21
+**対象**: Appendix A の全 8 件 + 追加盲点分析
+**Git 範囲**: `e4c4b2edf`..`HEAD`
+
+### B.1 対応一覧
+
+| A.1 # | 重大度 | 対応 | 詳細 |
+|-------|--------|------|------|
+| **1** | CRITICAL | ✅ 修正済 | `tmp_hash` パス計算を `tmp_path.with_suffix(tmp_path.suffix + ".sha256")` に修正。`with_suffix` は最終 suffix のみ置換するため旧コードは `.pkl.tmp` → `.pkl.pkl.tmp.sha256` (二重 `.pkl`) を生成。hash 未移動 → hot-reload 常時失敗。SHA256 再生成済み。テスト 3 件追加 |
+| **2** | HIGH | ✅ 修正済 | §0 に deployed/activated の区別を明示注記 |
+| **3** | HIGH | ✅ 修正済 | `except Exception: pass` → `except Exception as e:` + `logger.warning(...)` + `result["prev_model_load_error"]`。テスト 1 件追加 |
+| **4** | HIGH | ✅ 修正済 | `--all-runs` 時に `all_runs_require_positive_pnl=True` 設定。target PnL 改善が負なら棄却 |
+| **5** | MEDIUM | ✅ 修正済 | `_validate_config()` に target/model\_path 命名不整合の警告ログ追加 |
+| **6** | MEDIUM | ✅ 修正済 | `cache_key = md5(target\|features\|run_ids)[:16]` 追加。行数+key 二重検証。旧フォーマット後方互換確保。テスト 2 件追加 |
+| **7** | MEDIUM | ✅ 修正済 | `feature_pruning_min_trees=20` ガード追加。WF 木数 < 20 で pruning スキップ。テスト 2 件追加 |
+| **8** | MEDIUM | ✅ 対応済 | §9 に WF 資産活用・v459 統計 gate を **高** 優先度で記載 |
+
+### B.2 テスト結果
+
+| テストスイート | 件数 |
+|--------------|------|
+| 既存テスト | 26 |
+| TestAtomicHashMove (#1) | 3 |
+| TestPrevModelLoadError (#3) | 1 |
+| TestE4EnrichedCache (#6) | 2 |
+| TestE3PruningMinTrees (#7) | 2 |
+| **合計** | **34 passed, 0 failed** |
+
+### B.3 追加盲点分析
+
+| 分類 | 盲点 | 対応 |
+|------|------|------|
+| 過去資産の未活用 | `ztb/evaluation/walk_forward/splitter.py` — embargo\_days 付き multi-window 分割が retrain 未使用 | §9 P2。次セッションで `_evaluate_wf()` multi-window 化 |
+| 過去資産の未活用 | 000# §3.7 統計検定仕様 (Holm-Bonferroni, Cliff's Delta) — retrain deploy 判定に未導入 | §9 P2 |
+| 観測一貫性 | deploy 成功 = ファイル書き込み成功のみ。activation = hot-reload 成功は別途確認要 | §0 注記で対応 |
+| E2+E3 相互作用 | early stopping で木数 5 → importance 不安定 → 誤 prune | `min_trees=20` ガードで解決 |
+
+### B.4 変更ファイル一覧
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `scripts/v460/ml/retrain_scheduler.py` | #1 hash, #3 except, #4 pnl gate, #5 target 警告, #6 cache\_key, #7 min\_trees |
+| `configs/v460/fill_test.yaml` | `feature_pruning_min_trees: 20` 追加 |
+| `tests/unit/v460/test_retrain_hot_reload.py` | 8 テスト追加 (34 total) |
+| `docs/v460/131_ph2_rpt_y3_retrain_efficiency.md` | §0 注記, §9 改訂, Appendix B 追加 |

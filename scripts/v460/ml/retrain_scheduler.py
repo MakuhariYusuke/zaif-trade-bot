@@ -92,6 +92,7 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     # E3: dead feature pruning (split=0 の特徴量を自動除外)
     "feature_pruning_enabled": True,
     "feature_pruning_min_importance": 0,  # split 回数がこれ以下なら除外
+    "feature_pruning_min_trees": 20,      # 131# A.1 #7: WF eval 木数がこれ未満なら pruning 不安定のためスキップ
     # E4: enriched data cache (I/O 削減)
     "enriched_cache_enabled": True,
     # SkipGate config
@@ -161,6 +162,21 @@ def _validate_config(cfg: dict[str, Any]) -> None:
     model_path = cfg.get("model_path", "")
     if not model_path:
         raise ValueError("model_path is empty. skip_gate.model_path を設定してください。")
+    # 131# A.1 #5: target と model_path の命名不整合警告
+    if model_path and target:
+        path_has_pnl120 = "pnl120" in model_path
+        path_has_pnl30 = "pnl30" in model_path
+        if (target == "pnl30" and path_has_pnl120 and not path_has_pnl30):
+            logger.warning(
+                f"131# A.1 #5: target='{target}' but model_path contains 'pnl120': "
+                f"{model_path}. 運用上の誤認に注意。"
+                f"metadata.target を確認してください。"
+            )
+        elif (target == "pnl120" and path_has_pnl30 and not path_has_pnl120):
+            logger.warning(
+                f"131# A.1 #5: target='{target}' but model_path contains 'pnl30': "
+                f"{model_path}. 運用上の誤認に注意。"
+            )
 
 
 def _build_full_features(
@@ -204,15 +220,37 @@ def _get_enriched_cache_path(results_dir: Path) -> Path:
 
 def _load_enriched_cache(
     cache_path: Path, n_records: int,
+    cache_key: str | None = None,
 ) -> pd.DataFrame | None:
-    """E4: enriched cache を読み込み。レコード数不一致なら invalidate."""
+    """E4: enriched cache を読み込み。レコード数不一致 or cache_key 不一致なら invalidate.
+
+    131# A.1 #6: 行数のみの invalidation を廃止。
+    cache_key (target + feature_cols + config digest) を併用。
+    """
     if not cache_path.exists():
         return None
     try:
-        cached = pd.read_pickle(cache_path)
-        if len(cached) != n_records:
+        import pickle
+        with open(cache_path, "rb") as f:
+            payload = pickle.load(f)  # noqa: S301
+        # 後方互換: 旧 cache は DataFrame 直接
+        if isinstance(payload, pd.DataFrame):
+            cached = payload
+            stored_key = None
+        elif isinstance(payload, dict):
+            cached = payload.get("data")
+            stored_key = payload.get("cache_key")
+        else:
+            logger.info("E4: Cache format unrecognized, invalidated")
+            return None
+        if cached is None or len(cached) != n_records:
             logger.info(
-                f"E4: Cache invalidated (records: cached={len(cached)}, current={n_records})"
+                f"E4: Cache invalidated (records: cached={len(cached) if cached is not None else 0}, current={n_records})"
+            )
+            return None
+        if cache_key is not None and stored_key != cache_key:
+            logger.info(
+                f"E4: Cache invalidated (key mismatch: stored={stored_key}, current={cache_key})"
             )
             return None
         logger.info(f"E4: Loaded enriched cache ({len(cached)} records) from {cache_path}")
@@ -222,11 +260,22 @@ def _load_enriched_cache(
         return None
 
 
-def _save_enriched_cache(cache_path: Path, enriched: pd.DataFrame) -> None:
-    """E4: enriched data を cache に保存."""
+def _save_enriched_cache(
+    cache_path: Path,
+    enriched: pd.DataFrame,
+    cache_key: str | None = None,
+) -> None:
+    """E4: enriched data を cache に保存 (cache_key 付き)."""
     try:
-        enriched.to_pickle(cache_path)
-        logger.info(f"E4: Saved enriched cache ({len(enriched)} records) to {cache_path}")
+        import pickle
+        payload = {
+            "data": enriched,
+            "cache_key": cache_key,
+            "n_records": len(enriched),
+        }
+        with open(cache_path, "wb") as f:
+            pickle.dump(payload, f)
+        logger.info(f"E4: Saved enriched cache ({len(enriched)} records, key={cache_key}) to {cache_path}")
     except Exception as e:
         logger.warning(f"E4: Cache save failed: {e}")
 
@@ -445,9 +494,18 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
 
     enriched = None
     # E4: enriched data cache — I/O コスト削減
+    # 131# A.1 #6: cache_key = target + feature_cols + run_ids で stale cache 防止
     if cfg.get("enriched_cache_enabled", True):
         cache_path = _get_enriched_cache_path(results_dir)
-        enriched = _load_enriched_cache(cache_path, len(records))
+        feature_cols_str = ",".join(sorted(get_gate_feature_cols(use_ob=use_ob)))
+        run_ids_str = ""
+        if "run_id" in records.columns:
+            run_ids_str = ",".join(sorted(records["run_id"].dropna().unique().astype(str)))
+        import hashlib as _hl
+        cache_key = _hl.md5(
+            f"{target}|{feature_cols_str}|{run_ids_str}".encode()
+        ).hexdigest()[:16]
+        enriched = _load_enriched_cache(cache_path, len(records), cache_key=cache_key)
 
     if enriched is None:
         enriched = enrich_fill_records(
@@ -455,7 +513,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
             trades_fallback_recent_days=cfg.get("trades_fallback_recent_days", 1),
         )
         if cfg.get("enriched_cache_enabled", True):
-            _save_enriched_cache(cache_path, enriched)
+            _save_enriched_cache(cache_path, enriched, cache_key=cache_key)
 
     # 127# H1: PnL 回帰向け特徴量抽出 (AS ラベル非依存)
     # filled かつ spread 有りのみ (AS ラベルは不要)
@@ -549,8 +607,13 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
                         logger.info("E1: Extracted prev booster for warm-start")
             prev_gate_loaded = True
             del prev_gate  # メモリ早期解放 (booster は参照保持)
-        except Exception:
-            pass
+        except Exception as e:
+            # 131# A.1 #3: 例外を握り潰さず明示ログ化
+            logger.warning(
+                f"Prev model load failed: {e}. "
+                f"Proceeding without prev model (no warm-start, absolute_min_score gate only)."
+            )
+            result["prev_model_load_error"] = str(e)
 
     # Step 3: 新規サンプルチェック (130# Bootstrap 2段化)
     if is_bootstrap:
@@ -604,15 +667,32 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
             )
             return {**result, "status": "rejected", "reason": "quality_gate"}
 
+        # 131# A.1 #4: --all-runs 時も target PnL improvement >= 0 をハード制約
+        if cfg.get("all_runs_require_positive_pnl", False):
+            target = cfg.get("target", "pnl120")
+            pnl_key = f"{target}_improvement"  # "pnl120_improvement" or "pnl30_improvement"
+            pnl_imp = wf_result.get(pnl_key, 0.0)
+            if pnl_imp < 0:
+                logger.warning(
+                    f"Quality gate REJECT (--all-runs positive pnl): "
+                    f"{pnl_key}={pnl_imp:.4f} < 0. "
+                    f"Negative expected PnL model deployment blocked."
+                )
+                return {**result, "status": "rejected", "reason": "negative_pnl_improvement"}
+
     # Step 5: 全データで訓練 (E1 warm-start + E2 early stopping + E3 feature pruning)
     feature_cols = list(get_gate_feature_cols(use_ob=use_ob))
 
     # E3: Dead feature pruning — WF eval の feature_importance から split=0 を除外
+    # 131# A.1 #7: WF eval の木数が少なすぎる場合は pruning 不安定のためスキップ
     pruned_features: list[str] = []
+    min_trees_for_pruning = cfg.get("feature_pruning_min_trees", 20)
+    wf_actual_trees = result.get("wf_eval", {}).get("actual_n_trees", 0)
     if (
         cfg.get("feature_pruning_enabled", True)
         and cfg.get("quality_gate_enabled", True)
         and "wf_eval" in result
+        and wf_actual_trees >= min_trees_for_pruning
     ):
         feat_imp = result["wf_eval"].get("feature_importance", {})
         min_imp = cfg.get("feature_pruning_min_importance", 0)
@@ -628,6 +708,15 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
                 )
                 # pruning 後のデータで再構築
                 X_valid = X_valid[feature_cols]
+    elif (
+        cfg.get("feature_pruning_enabled", True)
+        and wf_actual_trees < min_trees_for_pruning
+        and wf_actual_trees > 0
+    ):
+        logger.info(
+            f"E3: Pruning skipped — WF eval used only {wf_actual_trees} trees "
+            f"(min={min_trees_for_pruning}). Importance signal too weak."
+        )
 
     # 前処理 (Pipeline 内の fit を手動実行 — E1/E2 のため)
     imputer = SimpleImputer(strategy="median")
@@ -749,14 +838,28 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
         # アトミック rename (Windows: os.replace)
         os.replace(str(tmp_path), str(model_path))
         # SHA256 も更新 (save が tmp に書いたハッシュを本体パスに移動)
-        tmp_hash = tmp_path.with_suffix(".pkl.tmp.sha256")
-        real_hash = model_path.with_suffix(".pkl.sha256")
+        # 131# A.1 #1 fix: with_suffix は最終 suffix のみ置換。
+        # 旧コードは ".pkl.tmp.sha256" で二重 .pkl が発生していた。
+        tmp_hash = tmp_path.with_suffix(tmp_path.suffix + ".sha256")
+        real_hash = model_path.with_suffix(model_path.suffix + ".sha256")
         if tmp_hash.exists():
             os.replace(str(tmp_hash), str(real_hash))
+            logger.info(f"SHA256 hash atomically moved to {real_hash}")
+        else:
+            # hash ファイルが見つからない場合は再計算して直接書き込み
+            import hashlib
+            model_data = model_path.read_bytes()
+            digest = hashlib.sha256(model_data).hexdigest()
+            real_hash.write_text(digest)
+            logger.warning(
+                f"SHA256 hash file not found at {tmp_hash}, "
+                f"regenerated from deployed model (sha256={digest[:12]}...)"
+            )
         logger.info(f"Model atomically deployed to {model_path}")
     except Exception as e:
         # tmp 残留防止
-        for p in [tmp_path, tmp_path.with_suffix(".pkl.tmp.sha256")]:
+        tmp_hash_cleanup = tmp_path.with_suffix(tmp_path.suffix + ".sha256")
+        for p in [tmp_path, tmp_hash_cleanup]:
             if p.exists():
                 p.unlink()
         return {**result, "status": "error", "reason": f"atomic_write_failed: {e}"}
@@ -855,13 +958,15 @@ def main() -> None:
         # Bootstrap 閾値を無効化 (十分なデータがある前提)
         cfg["min_total_samples"] = 30
         cfg["min_new_samples"] = 0  # 新規サンプル要件を緩和
-        # Y3: relative quality gate を無効化 (既存モデルと target が異なる可能性)
+        # Y3: relative quality gate を緩和 (既存モデルと target が異なる可能性)
         # absolute_min_score チェックは維持 (-0.10 以下は棄却)
+        # 131# A.1 #4: 加えて pnl_improvement >= 0 のハード制約を追加
         cfg["min_score_improvement"] = -999.0
+        cfg["all_runs_require_positive_pnl"] = True  # 131# A.1 #4
         logger.info(
             "Y3: --all-runs enabled → latest_run_only=False, "
             "exclude_missing_run_id=False, min_new_samples=0, "
-            "relative quality gate bypassed (absolute_min retained)"
+            "relative quality gate bypassed (absolute_min + positive pnl retained)"
         )
 
     if args.once:
