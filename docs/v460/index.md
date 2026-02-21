@@ -1,7 +1,7 @@
 # v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-21 (128# ログ分析と改善方策の妥当性検証追記, 127# レビュー対応, 126# 定期再学習 + Hot-Reload)
+> 最終更新: 2026-02-21 (129# ログ分析・残課題統合レビュー, 131# retrain 学習改善, 130# 6 施策実装)
 
 ---
 
@@ -121,6 +121,7 @@
 | 126 | impl | [126_ph2_impl_retrain_hot_reload.md](126_ph2_impl_retrain_hot_reload.md) | SkipGate 定期再学習 + Hot-Reload (S125.1#) |
 | 127 | rev | [127_ph2_rev_126.md](127_ph2_rev_126.md) | 126# レビュー — 契約統一・AS 非依存・run_id 分離 (S127.1#) |
 | 128 | rpt | [128_ph2_rpt_log_review_and_strategy.md](128_ph2_rpt_log_review_and_strategy.md) | ログレビュー分析と改善方策（妥当性検証 + 追加提案追記） |
+| 129 | rpt | [129_ph2_rpt_log_analysis_and_backlog.md](129_ph2_rpt_log_analysis_and_backlog.md) | ログ分析・改善指針・残課題統合レビュー (131# 外部レビュー用) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
