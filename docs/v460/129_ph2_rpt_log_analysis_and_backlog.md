@@ -3,7 +3,7 @@
 > **セッション**: 131# (文書番号: 129#)  
 > **日付**: 2026-02-21  
 > **分析対象**: fill_test 全レコード (02/13~02/21) + retrain_scheduler.log + fill_test_state.json  
-> **Git HEAD**: `7cb39ebb5` (131# trades date_filter fallback fix)  
+> **Git HEAD**: `0e5dcf71b` (132# lock heartbeat + balance_forced_switch)  
 > **前提文書**: 118# (残課題深掘り考察) + 128# (ログレビューと方策) + 130#/131# 実装結果  
 > **目的**: 外部 AI コーディングエージェントによるクロスレビュー用
 
@@ -235,10 +235,10 @@ state file の `saved_at_iso` が `2026-02-21T16:34:22` で止まっている。
 
 | ID | 内容 | 出典 | 現況 | 推奨アクション |
 |----|------|------|------|-------------|
-| **NEW-1** | trades available=False (date_filter 副作用) | §2.2 | retrain 品質悪化 | trades 取得方法の修正 (日付限定を trades には非適用 or OB recorder に trades 追加) |
-| **NEW-2** | 131# fill records 未出力 | §3.1 | 新 run で fills 記録されず | fill_test stdout/stderr 確認。loop 停止の有無を検証 |
+| ~~**NEW-1**~~ | ~~trades available=False (date_filter 副作用)~~ | §2.2 | ✅ **解決** `7cb39ebb5` | trades fallback 実装。retrain log で `trades available=True` 確認済 |
+| ~~**NEW-2**~~ | ~~131# fill records 未出力~~ | §3.1 | ✅ **解決** X1 | .venv crash → system python 空回り。kill + .venv 再起動 |
 | **B3** | fast_fill has_negative_edge sell 側実効性 | 098# | 100# L2 で部分解決 | sell 側の二層化検証 (Layer 2: 30s 後 PnL フィードバック) |
-| **D1/D6** | SkipGate 再訓練 (759 filled) | 097#/Appendix F | データ十分。未実行 | Gate 判定後 or 130# データ蓄積後に実行 |
+| **D1/D6** | SkipGate 再訓練 (1048 filled) | 097#/Appendix F | データ十分。未実行 | **Phase Y3: Gate 判定前に実行推奨** |
 
 #### P1 — 次サイクル対応
 
@@ -441,14 +441,18 @@ StatePersistence が機能していなければ、次の再起動で warm_start 
 | X1 | 131# fill records 未出力の調査・修正 | 低 | fill_test 正常稼働の確認 | ✅ 原因: .venv fill_test が Exit Code 1 で死亡、system python が lock 取得し空回り。全プロセス kill → .venv で再起動 (`7cb39ebb5`) |
 | X2 | trades date_filter 問題の修正 | 低 | retrain 特徴量品質回復 | ✅ `feature_enricher.py` に trades fallback 追加 (`7cb39ebb5`)。retrain log で `trades available=True` 確認済 |
 
-### Phase Y: 次セッション
+### Phase Y: 次セッション (132# レビュー反映で再優先化)
 
-| # | 施策 | コスト | 効果 |
-|---|------|-------|------|
-| Y1 | bootstrap_min_total 引き下げ (30→25) | 極低 (YAML) | 初回 retrain deploy 加速 |
-| Y2 | min_spread_jpy 緩和 (1500→1000) | 極低 (YAML) | fill rate +10~15% |
-| Y3 | SkipGate 再訓練 (Appendix F 計画) | 高 | AS 予測精度向上。P0 level |
-| Y4 | VG 感度引上げ | 低 (YAML) | AS -3~5pt |
+| # | 施策 | コスト | 効果 | 備考 |
+|---|------|-------|------|------|
+| Y0 | lock heartbeat 強化 | 低 | stale lock 自動回収精度向上 | ✅ `0e5dcf71b` (132#) |
+| Y0b | `balance_forced_switch` フラグ追加 | 低 | 評価/学習での残高交絡分離 | ✅ `0e5dcf71b` (132#) |
+| Y1 | `bootstrap_min_total_samples` 引き下げ (30→25) | 極低 (YAML) | 初回 retrain deploy 加速 | hot-reload で即反映可 |
+| Y2 | `min_spread_jpy` 緩和 (1500→1200) | 極低 (YAML) | fill rate +10~15% | D.3 Q4 検討結果: 1000は攻め過ぎ、1200で段階緩和 |
+| Y3 | SkipGate 再訓練 (Appendix F 計画) | 高 | AS 予測精度向上。P0 level | 1048 filled で全条件超過 |
+| Y4 | VG 感度引上げ (`vpin_threshold` -10%) | 低 (YAML) | AS -3~5pt | hot-reload 対応 |
+| Y5 | retrain で `balance_forced_switch=True` レコード除外 | 低 | 学習品質向上 | feature_enricher or retrain_scheduler |
+| Y6 | Appendix B キー名修正 + 130#/131# commit 注記 | 極低 | 文書監査可能性回復 | D.1 指摘 |
 
 ### Phase Z: ph3 準備 (Gate 判定後)
 
@@ -541,19 +545,21 @@ F1 (attempted_fill_rate ≥ 70%) は全期間でギリギリ。130# 単体では
 | unknown_buy_offset_boost | 2.0 | 130# | VG 相当 |
 | retrain.target | pnl30 | 131# | pnl120→pnl30 |
 | retrain.min_total_samples | 100 | 初期 | bootstrap で 30 に緩和 |
-| bootstrap_min_total | 30 | 130# | |
-| bootstrap_threshold | 100 | 130# | total < 100 → bootstrap |
+| retrain.bootstrap_min_total_samples | 30 | 130# | |
+| retrain.bootstrap_threshold | 100 | 130# | total < 100 → bootstrap |
 
 ---
 
-## Appendix C: プロセス状態
+## Appendix C: プロセス状態 (132# 更新)
 
-| PID | 種別 | 開始時刻 | 状態 | Git SHA |
-|-----|------|---------|------|---------|
-| 98372 | fill_test (parent) | 17:11:09 | alive | `2780f80b0` |
-| 98780 | fill_test (worker) | 17:11:09 | alive | `2780f80b0` |
-| 62812 | retrain_scheduler | 17:11:14 | alive | `2780f80b0` |
-| 96640 | retrain child | 17:11:14 | alive | `2780f80b0` |
+| PID | 種別 | 開始時刻 | 状態 | Git SHA | 備考 |
+|-----|------|---------|------|---------|------|
+| ~~98372~~ | ~~fill_test (parent)~~ | ~~17:11:09~~ | ❌ killed | `2780f80b0` | X1: system python が lock 取得。kill済 |
+| ~~98780~~ | ~~fill_test (worker)~~ | ~~17:11:09~~ | ❌ killed | `2780f80b0` | X1: 空回り。kill済 |
+| ~~62812~~ | ~~retrain_scheduler~~ | ~~17:11:14~~ | ❌ killed | `2780f80b0` | kill済 |
+| ~~96640~~ | ~~retrain child~~ | ~~17:11:14~~ | ❌ killed | `2780f80b0` | kill済 |
+| 65464/97568 | fill_test (new) | 17:45:48 | ✅ alive | `7cb39ebb5` | .venv → system python (Windows venv shim 正常動作) |
+| 17716/99272 | retrain_scheduler (new) | 17:45:49 | ✅ alive | `7cb39ebb5` | 子プロセス自動起動。bootstrap 20/30 |
 
 ---
 
@@ -586,3 +592,81 @@ F1 (attempted_fill_rate ≥ 70%) は全期間でギリギリ。130# 単体では
 | P0 | lockfile に PID 生存確認 + stale 自動回収を追加 | 死亡プロセス由来の停止/誤起動を防ぐ |
 | P1 | `balance_constrained` フラグを fill_records に追加し、評価/学習で分離 | 残高不足による擬似性能悪化を除去 |
 | P1 | Appendix B のキー名と文書参照を修正 (130#/131# は doc 化または commit 注記化) | 文書の再現性と監査可能性を回復 |
+
+---
+
+## Appendix E: 132# レビュー対応結果 (2026-02-21 18:10 JST)
+
+### E.1 D.1 事実照合への対応
+
+| D.1 指摘 | 対応 | コミット |
+|---|---|---|
+| ⚠️ fill loop 停止断定は早い | §3.1 の表現は維持 (129# 時点での推定として整合)。実態は time_filter zone によるサイクル抑止。根本原因は .venv crash + system python 空回りの複合 | X1 で解決済 |
+| ⚠️ プロセス alive 表 | Appendix C を更新: 旧 PID を取消線、新 PID を追記 | 本 Appendix |
+| ⚠️ bootstrap パラメータ名不一致 | Appendix B 修正: `bootstrap_min_total` → `retrain.bootstrap_min_total_samples` 等 | 本 Appendix |
+| ⚠️ 130#/131# 文書不在 | 対応方針: commit ベース追跡で運用 (130#=`b525b3a8a`, 131#=`2780f80b0`, 132#=`0e5dcf71b`)。standalone doc は ph3 進入時に統合版を作成予定 | — |
+
+### E.2 D.2 重要論点への対応
+
+#### 1. 残高制約の交絡 (D.2 #1) — ✅ 対策実装済
+
+**定量調査結果**: 全 1609 cycles 中 **705 件 (43.8%)** で balance insufficient イベント発生。
+- sell insufficient → buy 切替: **168 回**
+- buy insufficient → sell 切替: **147 回**
+- 計 315 回の side 強制切替。残り 390 回は両側不足でスキップ。
+
+**影響**: side 配分が残高制約に歪められ、PnL/AS の side 別評価が信頼できない。
+特に sell 側の BTC 不足が頻発 (0.001 BTC = 最低注文量で余裕ゼロ)。
+
+**対策 (`0e5dcf71b`)**:
+- `FillRecord` に `balance_forced_switch: Optional[bool]` フィールド追加
+- `run_single_cycle()` に `balance_forced_switch` パラメータ追加、balance切替時に自動記録
+- **未実装**: retrain の feature_enricher でこのフラグによるフィルタリング (Y5)
+- **根本解決**: lot 0.001 BTC では相場変動で容易に残高不足。JPY 残高 12,749 円で BTC ~10.5M の往復は極限運用
+
+#### 2. time_filter vs 異常の切り分け (D.2 #2) — ✅ lock heartbeat で対策
+
+**問題**: time_filter zone 中は fill records が出ないのが正常。「未出力=異常」の即断はリスク。
+
+**対策 (`0e5dcf71b`)**: lock ファイルに heartbeat timestamp を追加。
+- フォーマット: `PID|created_ts|run_id|heartbeat_ts`
+- heartbeat 更新: time_filter heartbeat ログ (900s 間隔) + state 保存 (progress_log_interval) の両方で実行
+- stale 判定: PID alive でも `heartbeat_age > lock_stale_heartbeat_sec (1800s)` なら stale と判定 → 自動回収
+- **効果**: X1 のような「PID alive だが non-functional」を 30 分以内に自動検出可能
+
+#### 3. stale lock 回収 (D.2 #3) — ✅ 心拍ベース stale 判定実装
+
+既存の `_acquire_lock()` は PID alive + cmdline 一致で排他判定していたが、
+PID alive でも heartbeat が stale な場合は lock を回収する追加ロジックを実装。
+
+### E.3 D.3 優先アクション対応状況
+
+| D.3 項目 | 対応状況 | 備考 |
+|---|---|---|
+| P0: trades backfill | ❌ 不要 | X2 で fallback 実装済。backfill 不要。trades は全量 fallback |
+| P0: feature_enricher trades fallback | ✅ `7cb39ebb5` | `date_filter=None` fallback。retrain log で確認済 |
+| P0: lockfile heartbeat + stale 回収 | ✅ `0e5dcf71b` | 心拍ベース stale 判定。1800s 閾値 |
+| P1: `balance_constrained` フラグ | ✅ `0e5dcf71b` | `balance_forced_switch` として実装 |
+| P1: Appendix B キー名修正 | ✅ 本 Appendix | `bootstrap_min_total` → `bootstrap_min_total_samples` |
+
+### E.4 Q2-Q6 検討結果
+
+| Q | 結論 | 根拠 |
+|---|---|---|
+| Q2: SkipGate 再訓練優先度 | **Gate 判定前に実行推奨** | AUC≈0.5 のまま Gate 判定するのは無意味。1048 filled で全条件超過。Phase Y3 で実行 |
+| Q3: fill rate 低下の許容度 | **39.2% は一時的** | 130# run は 51 cycles のみ。orderbook_error 21.6% の主因は min_spread 1500 JPY。Y2 で 1200 に緩和すれば +10pt 程度回復見込み |
+| Q4: min_spread_jpy 1000 のリスク | **1200 に段階緩和** | 1000 は黒字帯 (<2 bps) の下限に近すぎる。1200 JPY ≈ 1.14 bps で安全マージン維持 |
+| Q5: bootstrap 閾値 | **30→25 に引き下げ** (Y1) | 短期高収益の大義。bootstrap 段階なので品質は本格 retrain で補正 |
+| Q6: 8 施策同時投入のリスク | **「全体で良くなれば良い」で進行** | 個別分離は 120# multi_track_analysis で対応可能。AS 率 5.0% + PnL -0.10 bps の改善トレンドは全体として正の方向 |
+
+### E.5 見落とし事項の拾い上げ
+
+| # | 見落とし項目 | 影響度 | 詳細 |
+|---|---|---|---|
+| F1 | Windows venv shim のプロセスツリー二重化 | 中 | `.venv\python.exe` は shim で system python を子プロセスとして起動。PID が 2 つになり、`os.getpid()` は子PID。lock には子PID が記録されるため stale 判定は正常動作するが、プロセス一覧で混乱を招く |
+| F2 | `_release_lock` の os.getpid() 不一致リスク | 低 | atexit 時の `_release_lock()` は `os.getpid()` でPID照合。正常終了時は問題ないが、子プロセス fork がある場合に不一致の可能性 (現状 fill_test は fork しないため実害なし) |
+| F3 | retrain_scheduler に heartbeat/lock なし | 中 | retrain は fill_test の子プロセスだが、独自の生存確認機構なし。fill_test が retrain 10s後にヘルスチェックしているが、長時間動作中のハングは検出不可 |
+| F4 | quarantine 224/1609 (13.9%) の削減余地 | 中 | blank git_sha が quarantine 原因。旧 run (git_sha 未記録時代) のレコード。新 run 開始で自然解消するが、quarantine 率が高いと Gate 判定サンプル数に影響 |
+| F5 | `cycle_interval_sec=120` で time_filter exit 後の復帰遅延 | 低 | time_filter zone 終了後、最大 120s の遅延でサイクル再開。interval 90s への短縮 (§6.4 案2) で改善可能 |
+| F6 | 残高 12,749 JPY での持続可能性 | 高 | 0.001 BTC ≈ 10,500 JPY で JPY 残高ほぼ枯渇。1 回の buy で JPY がほぼゼロに → 次の sell で BTC 全量を売る必要。**残高制約ループの根本原因。入金または lot 極小化 (BTC=0.0005 は Coincheck 最低未満) が必要** |
+| F7 | retrain stderr に trades 全量ロード 4.4M 行 | 中 | fallback で `date_filter=None` → 全 trades (4,396,171 行) ロード。retrain cycle ごとに ~30s のI/O。trades が蓄積するにつれ悪化。直近 N 日 window (例: 7 日) による制限を検討すべき |
