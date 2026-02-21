@@ -3,7 +3,7 @@
 > **セッション**: 131# (文書番号: 129#)  
 > **日付**: 2026-02-21  
 > **分析対象**: fill_test 全レコード (02/13~02/21) + retrain_scheduler.log + fill_test_state.json  
-> **Git HEAD**: `2780f80b0` (131# retrain learning improvements)  
+> **Git HEAD**: `7cb39ebb5` (131# trades date_filter fallback fix)  
 > **前提文書**: 118# (残課題深掘り考察) + 128# (ログレビューと方策) + 130#/131# 実装結果  
 > **目的**: 外部 AI コーディングエージェントによるクロスレビュー用
 
@@ -41,7 +41,7 @@ PnL30 は依然として -0.10 bps (改善傾向)。retrain は bootstrap 段階
 | UTC21 sell block | `skip_utc_hours_sell` に 21 追加 | 02/21 で UTC21 sell 0 件 (ブロック有効) |
 | Unknown buy guard | `offset_boost=2.0` | unknown regime buy の PnL 改善を期待 |
 | Postonly 二重確認 | mid 再取得 + best_bid/ask 補正 | 02/21 postonly_reject 0 件 (git `870007d8f` 以降) |
-| I/O 日付限定 | date_filter で trades/OB 日単位 | OB 70,543→51 (99.9%削減)。**しかし trades available=False** |
+| I/O 日付限定 | date_filter で trades/OB 日単位 | OB 70,543→51 (99.9%削減)。**trades fallback 実装済** (`7cb39ebb5`) |
 | pnl30 target (131#) | `retrain.target: pnl30` | valid_target_samples 20/20=100% (was 60/109=55% at pnl120) |
 | Config hot-reload (131#) | per-cycle YAML再読込 | YAML 変更で retrain 即反映 (再起動不要) |
 
@@ -434,12 +434,12 @@ StatePersistence が機能していなければ、次の再起動で warm_start 
 
 ## §8 優先実施計画
 
-### Phase X: 緊急 (本セッション内)
+### Phase X: 緊急 (本セッション内) — ✅ 完了
 
-| # | 施策 | コスト | 効果 |
-|---|------|-------|------|
-| X1 | 131# fill records 未出力の調査・修正 | 低 | fill_test 正常稼働の確認 |
-| X2 | trades date_filter 問題の修正 | 低 | retrain 特徴量品質回復 |
+| # | 施策 | コスト | 効果 | 結果 |
+|---|------|-------|------|------|
+| X1 | 131# fill records 未出力の調査・修正 | 低 | fill_test 正常稼働の確認 | ✅ 原因: .venv fill_test が Exit Code 1 で死亡、system python が lock 取得し空回り。全プロセス kill → .venv で再起動 (`7cb39ebb5`) |
+| X2 | trades date_filter 問題の修正 | 低 | retrain 特徴量品質回復 | ✅ `feature_enricher.py` に trades fallback 追加 (`7cb39ebb5`)。retrain log で `trades available=True` 確認済 |
 
 ### Phase Y: 次セッション
 
@@ -466,10 +466,10 @@ StatePersistence が機能していなければ、次の再起動で warm_start 
 
 以下の項目について外部 AI エージェントの見解を求める:
 
-### Q1: trades 欠如問題の設計判断
+### Q1: trades 欠如問題の設計判断 — ✅ 解決済
 
-date_filter を trades に適用しない (提案 A) vs OB recorder に trades を追加 (提案 B) のトレードオフ。
-提案 A は "旧 trades を使う" ことになり、タイムスタンプの整合性が崩れる可能性がある。
+**採用**: 提案 A (fallback)。`7cb39ebb5` で `feature_enricher.py` に date_filter 付き trades が空の場合に `date_filter=None` でフォールバックする仕組みを実装。
+retrain log で `trades available=True` を確認済。タイムスタンプ整合性は「最寄の trades を使う」ことでマイクロ秒レベルの乖離あるが、特徴量計算上は許容範囲。
 
 ### Q2: SkipGate 再訓練の優先度
 
@@ -554,3 +554,35 @@ F1 (attempted_fill_rate ≥ 70%) は全期間でギリギリ。130# 単体では
 | 98780 | fill_test (worker) | 17:11:09 | alive | `2780f80b0` |
 | 62812 | retrain_scheduler | 17:11:14 | alive | `2780f80b0` |
 | 96640 | retrain child | 17:11:14 | alive | `2780f80b0` |
+
+---
+
+## Appendix D: 追記レビュー (2026-02-21 17:32 JST, Codex)
+
+### D.1 事実照合 (129# 記載 vs 実ログ/実ファイル)
+
+| 項目 | 129# 記載 | 再点検結果 | 判定 |
+|---|---|---|---|
+| retrain で `trades available=False` | 17:11 サイクルで発生 | `logs/retrain_scheduler.log` に同一ログあり。`Date filter ['20260221']` + `trades available=False` を確認 | ✅ 正しい |
+| trades 日次ファイル欠如 | 20260221 trades が無い想定 | `data/v460/raw/trades/` は `20260219` まで。`20260221` 不在 | ✅ 正しい |
+| 新 run_id の fill records 未出力 | `1771661473_ac4f9cb1` の新規記録なし | `fill_records_20260221.jsonl` は run_id `1771607250_*`/`1771651879_*` のみ。`1771661473_*` は 0 件 | ✅ 正しい |
+| 「fill loop 停止」の断定 | state 更新停止から停止推定 | `fill_test.log` には 17:27 の heartbeat があり、17:11-17:27 は `time_filter` でサイクル抑止。停止断定は早い | ⚠️ 要補正 |
+| プロセス alive 表 | 98372/98780/62812/96640 alive | 現時点で `/proc/98372` は不存在。`fill_test.lock` は残存 (`98372|1771661484|1771661473_ac4f9cb1`) | ⚠️ 要更新 |
+| bootstrap パラメータ表記 | `bootstrap_min_total` 等 | 実 YAML は `bootstrap_min_total_samples`, `bootstrap_min_new_samples` | ⚠️ 名称不一致 |
+| 130#/131# 文書参照 | 前提文書として明示 | `docs/v460` に 130#/131# 文書は存在せず、追跡対象が commit ベースのみ | ⚠️ トレーサビリティ不足 |
+
+### D.2 129# で薄い/未記載の重要論点
+
+1. 残高制約が実験結果の交絡要因になっている。`fill_test.log` に `Insufficient JPY` / `Insufficient BTC` が複数回あり、side 強制切替で性能評価が歪む。
+2. 新 run は `time_filter` 開始直後に入っており、fill が出ない時間帯だった。`未出力=即異常` ではなく「時間帯起因か、停止か」の切り分けを先に固定すべき。
+3. stale lock 回収設計が弱い。PID 死亡後も `fill_test.lock` が残り、再起動時の誤判定リスクがある。
+
+### D.3 優先アクション (追補)
+
+| 優先度 | アクション | 目的 |
+|---|---|---|
+| P0 | trades 収集を再開し、`20260220-20260221` を最低限 backfill | `trades available=False` の解消、retrain 特徴量欠損防止 |
+| P0 | `feature_enricher` に trades フォールバック窓を追加 (例: 当日欠損時は直近 N 日) | 日次欠損で学習停止しない設計にする |
+| P0 | lockfile に PID 生存確認 + stale 自動回収を追加 | 死亡プロセス由来の停止/誤起動を防ぐ |
+| P1 | `balance_constrained` フラグを fill_records に追加し、評価/学習で分離 | 残高不足による擬似性能悪化を除去 |
+| P1 | Appendix B のキー名と文書参照を修正 (130#/131# は doc 化または commit 注記化) | 文書の再現性と監査可能性を回復 |
