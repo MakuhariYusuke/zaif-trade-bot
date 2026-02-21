@@ -57,6 +57,7 @@ from scripts.v460.lib.fill_config import (
     PnlMeasurement as _PnlMeasurement,
 )
 from scripts.v460.lib.maker_price import MakerPriceCalculator
+from scripts.v460.lib.ob_recorder import OBRecorder
 from scripts.v460.lib.order_monitor import OrderMonitor
 from scripts.v460.lib.pnl_measurer import PnlMeasurer
 from scripts.v460.lib.resilience import (
@@ -219,6 +220,9 @@ class FillTestRunner:
         self._circuit_breaker = create_api_circuit_breaker()
         self._health_monitor = FillTestHealthMonitor()
         self._state_persistence = FillTestStatePersistence(self._results_dir)
+
+        # 129# OB recorder: 板スナップショットを raw JSONL.gz に蓄積 (retrain_scheduler 用)
+        self._ob_recorder = OBRecorder(enabled=True)
 
         # 安全設計: atexit + signal で残存注文キャンセル + 未保存データ退避 + ロック解放
         atexit.register(self._cleanup_sync)
@@ -563,6 +567,10 @@ class FillTestRunner:
             self._maker_price._last_imbalance = imb
             self._maker_price._last_bid_depth = bid_d
             self._maker_price._last_ask_depth = ask_d
+            # 129# OB recorder: サイクルごとに板スナップショットを記録
+            ob = self._maker_price._last_ob_snapshot
+            if ob is not None:
+                self._ob_recorder.record(ob.bids, ob.asks, ob.timestamp)
         except Exception as e:
             logger.warning(f"[ob_prefetch] Pre-fetch imbalance failed, using last: {e}")
             # フォールバック: 前回値を維持
@@ -1351,7 +1359,16 @@ class FillTestRunner:
         024# R1: 未保存バッチを緊急ダンプに退避.
         044# A-4: 残存注文キャンセルを確実に実行.
         044# Bug7: ロックファイルを解放.
+        129# OB recorder: 最終 flush.
         """
+        # 129# OB recorder: バッファ残を書き出し
+        try:
+            n = self._ob_recorder.flush()
+            if n:
+                logger.info(f"OB recorder: flushed {n} snapshots on exit")
+        except Exception as e:
+            logger.error(f"OB recorder final flush failed: {e}")
+
         # 未保存バッチの退避
         unsaved = self._batch_persistence.unsaved_batch
         if unsaved:

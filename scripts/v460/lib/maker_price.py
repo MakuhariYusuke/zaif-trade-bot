@@ -75,6 +75,7 @@ class MakerPriceCalculator:
         "_last_ask_depth",
         "_last_vpin",
         "_last_vg_triggered",
+        "_last_ob_snapshot",
     )
 
     def __init__(
@@ -105,6 +106,8 @@ class MakerPriceCalculator:
         self._last_vpin: float | None = None
         # 120# P2-1: VG 発動状態追跡 (寄与分解基盤)
         self._last_vg_triggered: bool = False
+        # 129# OB recorder: 生スナップショットキャッシュ
+        self._last_ob_snapshot: object | None = None
 
     # ------------------------------------------------------------------
     # offset 同期 (adaptation 後に呼ばれる)
@@ -164,6 +167,8 @@ class MakerPriceCalculator:
             imbalance ∈ [-1, +1].
         """
         ob = await adapter.get_orderbook(symbol, depth=depth)  # type: ignore[attr-defined]
+        # 129# OB recorder: 生スナップショットをキャッシュ
+        self._last_ob_snapshot = ob
         bid_volume = sum(qty for _, qty in ob.bids[:depth]) if ob.bids else 0.0
         ask_volume = sum(qty for _, qty in ob.asks[:depth]) if ob.asks else 0.0
         total = bid_volume + ask_volume
