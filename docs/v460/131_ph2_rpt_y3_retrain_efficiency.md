@@ -429,3 +429,110 @@ hot-reload 側 (SkipGateEvaluator) で初めて失敗に気付く「観測不能
 | TestConsecutiveDeadPruning | 3 |
 | TestPostDeployVerification | 3 |
 | **合計** | **40 passed, 0 failed** |
+
+---
+
+## Appendix C: ztb アセット統合 (C1-C3)
+
+**対応日時**: 2026-02-22
+
+レビュー (Appendix A) で提案された ztb/ 既存資産の活用について、
+P1 (即時適用可能) の 3 アセットを retrain_scheduler.py に統合した。
+
+### C.1 WF Multi-Window 評価 (C1)
+
+**統合アセット**: `ztb.evaluation.walk_forward.splitter.WalkForwardSplitter`
+
+**課題**: 従来の `_evaluate_wf()` は単一の train/test 分割 (80/20) で評価しており、
+テスト期間の偏りに脆弱だった。
+
+**対応**:
+- `_evaluate_wf_multi()` を新設。`WalkForwardSplitter` で複数 WF ウィンドウを生成し、
+  各ウィンドウで独立に train→predict→PnL 評価を実行。
+- `_evaluate_wf()` をディスパッチ関数化: `wf_multi_window_enabled=True` (default) なら
+  multi-window → データ不足時は single-window にフォールバック。
+- per-window fold-level PnL データを返却 (C2 統計ゲートへの入力)。
+
+**設定キー** (`configs/v460/fill_test.yaml`):
+
+| キー | デフォルト | 説明 |
+|------|-----------|------|
+| `wf_multi_window_enabled` | `true` | multi-window 有効 |
+| `wf_initial_train_pct` | 0.50 | 初期訓練割合 |
+| `wf_val_pct` | 0.10 | 検証割合 |
+| `wf_test_pct` | 0.15 | テスト割合 |
+| `wf_step_pct` | 0.20 | ウィンドウシフト |
+| `wf_embargo_rows` | 0 | エンバーゴ行数 |
+| `wf_min_window_train` | 30 | 最小訓練サンプル/window |
+| `wf_min_window_test` | 10 | 最小テストサンプル/window |
+
+### C.2 統計的品質ゲート (C2)
+
+**統合アセット**: `ztb.metrics.gate_checks` (`g1_judgment`, `holm_bonferroni_gate`)
+
+**課題**: 品質ゲートが `score - prev_score > threshold` の単純比較であり、
+サンプルサイズやランダム変動を考慮していなかった。
+
+**対応**:
+- `_apply_statistical_gate()` を新設。
+  - Multi-window (≥2): `g1_judgment()` を適用 (001# §5.3 準拠の p-mean → Holm → AND)
+  - Single-window: `holm_bonferroni_gate()` を適用 (per-sample PnL 比較)
+  - テストサンプル < `min_test_samples` 時: スキップ (統計的検出力不足)
+- 既存のスコアベースゲートに**追加**する形で統計ゲートを挿入 (and 条件)。
+- `result["statistical_gate"]` にゲート結果を記録 → metadata にも保存。
+
+**設定キー**:
+
+| キー | デフォルト | 説明 |
+|------|-----------|------|
+| `statistical_gate_enabled` | `true` | 統計ゲート有効 |
+| `statistical_gate_alpha` | 0.05 | FWER |
+| `statistical_gate_min_effect` | 0.147 | Cliff's Delta 最小閾値 (small effect) |
+| `statistical_gate_min_test_samples` | 40 | 最小テストサンプル |
+
+### C.3 冗長特徴量除去 (C3)
+
+**統合アセット**: `ztb.analysis.redundancy` (`calculate_feature_correlations`, `find_highly_correlated_features`)
+
+**課題**: E3 dead-feature pruning は split=0 の特徴量のみ除去するが、
+高相関ペア (r>0.85) が残存 → 次元の呪い・学習効率低下を抑制できない。
+
+**対応**:
+- E3 dead-feature pruning の**直後**に相関ベースの冗長除去を挿入。
+- `find_highly_correlated_features(corr_matrix, threshold)` で高相関ペアを検出。
+- ペアのうち WF feature\_importance が低い方を除去 (同値なら名前順で決定的)。
+- 最低 5 特徴量は保持 (過剰 pruning 防止)。
+- E1 warm-start: C3 pruning 実施時は feature set 不一致のため warm-start スキップ。
+
+**設定キー**:
+
+| キー | デフォルト | 説明 |
+|------|-----------|------|
+| `redundancy_pruning_enabled` | `true` | 冗長除去有効 |
+| `redundancy_correlation_threshold` | 0.85 | 相関閾値 |
+
+### C.4 循環参照対策: `_safe_import_ztb_module()`
+
+`ztb.analysis.__init__` → `ztb.trading` 間の循環参照により、
+通常の `import` では ztb サブモジュールがロード不可になる場合がある。
+`_safe_import_ztb_module()` を新設し、`importlib.util.spec_from_file_location()` で
+直接ファイルロードするフォールバックを実装。
+
+### C.5 変更ファイル一覧
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `scripts/v460/ml/retrain_scheduler.py` | `_safe_import_ztb_module()`, `_evaluate_wf_multi()`, `_apply_statistical_gate()`, C3 冗長除去, metadata 拡張 |
+| `configs/v460/fill_test.yaml` | C1-C3 設定キー追加 (12 keys) |
+| `tests/unit/v460/test_retrain_hot_reload.py` | 11 テスト追加: TestMultiWindowWF×4, TestStatisticalGate×4, TestRedundancyPruning×3 |
+| `docs/v460/131_ph2_rpt_y3_retrain_efficiency.md` | Appendix C 追加 |
+
+### C.6 テスト結果
+
+| テストスイート | 件数 |
+|--------------|------|
+| 既存テスト (A.1 + B.5) | 40 |
+| TestMultiWindowWF (C1) | 4 |
+| TestStatisticalGate (C2) | 4 |
+| TestRedundancyPruning (C3) | 3 |
+| **合計** | **51 passed, 0 failed** |

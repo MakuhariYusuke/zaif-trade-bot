@@ -305,6 +305,23 @@ retrain:
   feature_pruning_require_consecutive: true  # 131# B: 連続 dead (prev+current WF) のみ prune (振動防止)
   # E4: enriched data cache (I/O 削減)
   enriched_cache_enabled: true
+  # 131# C1: WF multi-window evaluation (WalkForwardSplitter 統合)
+  wf_multi_window_enabled: true        # multi-window WF 評価を有効化
+  wf_initial_train_pct: 0.50           # 初期訓練期間の割合
+  wf_val_pct: 0.10                     # 検証期間の割合 (early stopping 用)
+  wf_test_pct: 0.15                    # テスト期間の割合
+  wf_step_pct: 0.20                    # ウィンドウシフト比率
+  wf_embargo_rows: 0                   # fill records は日次でない → 行数ベース (min=1)
+  wf_min_window_train: 30              # window 当たり最低訓練サンプル数
+  wf_min_window_test: 10               # window 当たり最低テストサンプル数
+  # 131# C2: 統計的品質ゲート (gate_checks 統合)
+  statistical_gate_enabled: true       # Holm-Bonferroni / g1_judgment 統計検定
+  statistical_gate_alpha: 0.05         # Family-wise error rate
+  statistical_gate_min_effect: 0.147   # Cliff's Delta 最小閾値 (small effect)
+  statistical_gate_min_test_samples: 40 # テストサンプル < これなら統計ゲートスキップ
+  # 131# C3: 冗長特徴量除去 (redundancy 統合)
+  redundancy_pruning_enabled: true     # 高相関特徴量ペアの除去
+  redundancy_correlation_threshold: 0.85 # 相関閾値 (これ超えで冗長判定)
   # SkipGate 動的較正
   adaptive_threshold: true
   target_skip_rate_buy: 0.15

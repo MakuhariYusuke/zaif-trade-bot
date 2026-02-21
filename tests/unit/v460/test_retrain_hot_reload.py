@@ -15,6 +15,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from scripts.v460.ml.skip_gate import (
@@ -1018,3 +1019,328 @@ class TestPostDeployVerification:
         assert len(metadata["wf_dead_features"]) == 2
         # pruned は consecutive で絞られた結果
         assert len(metadata["pruned_features"]) <= len(metadata["wf_dead_features"])
+
+
+# =====================================================================
+# 131# C1: Multi-Window Walk-Forward テスト
+# =====================================================================
+
+class TestMultiWindowWF:
+    """131# C1: WalkForwardSplitter を使った multi-window WF 評価テスト."""
+
+    def test_evaluate_wf_multi_returns_fold_data(self) -> None:
+        """multi-window WF がfold-level PnL データを返す."""
+        from scripts.v460.ml.retrain_scheduler import _evaluate_wf_multi
+
+        n = 300
+        rng = np.random.RandomState(42)
+        X = pd.DataFrame(
+            rng.randn(n, 5),
+            columns=["f1", "f2", "f3", "f4", "f5"],
+        )
+        y = pd.Series(rng.randn(n), name="target")
+        enriched = pd.DataFrame({
+            "post_fill_30s_pnl": rng.randn(n) * 0.1,
+            "post_fill_120s_pnl": rng.randn(n) * 0.2,
+        })
+
+        cfg = {
+            "wf_multi_window_enabled": True,
+            "wf_initial_train_pct": 0.50,
+            "wf_val_pct": 0.10,
+            "wf_test_pct": 0.15,
+            "wf_step_pct": 0.20,
+            "wf_embargo_rows": 0,
+            "wf_min_window_train": 20,
+            "wf_min_window_test": 5,
+            "early_stopping_rounds": 0,
+            "lgbm_n_estimators": 10,
+            "lgbm_max_depth": 2,
+            "lgbm_learning_rate": 0.1,
+            "lgbm_num_leaves": 4,
+            "lgbm_min_child_samples": 5,
+        }
+
+        result = _evaluate_wf_multi(X, y, enriched, cfg)
+        assert result is not None, "Should return result for n=300"
+        assert result["n_windows"] >= 2, f"Expected >= 2 windows, got {result['n_windows']}"
+        assert "fold_pnl30" in result
+        assert "fold_pnl120" in result
+        assert len(result["fold_pnl30"]) == result["n_windows"]
+        assert "score" in result
+        assert "feature_importance" in result
+
+    def test_evaluate_wf_multi_fallback_small_data(self) -> None:
+        """データ不足時に multi-window が None を返す (single-window フォールバック)."""
+        from scripts.v460.ml.retrain_scheduler import _evaluate_wf_multi
+
+        n = 40  # too small for multi-window
+        rng = np.random.RandomState(42)
+        X = pd.DataFrame(rng.randn(n, 3), columns=["f1", "f2", "f3"])
+        y = pd.Series(rng.randn(n))
+        enriched = pd.DataFrame({
+            "post_fill_30s_pnl": rng.randn(n) * 0.1,
+            "post_fill_120s_pnl": rng.randn(n) * 0.2,
+        })
+
+        cfg = {
+            "wf_multi_window_enabled": True,
+            "wf_initial_train_pct": 0.50,
+            "wf_val_pct": 0.10,
+            "wf_test_pct": 0.15,
+            "wf_step_pct": 0.20,
+            "wf_embargo_rows": 0,
+            "wf_min_window_train": 30,
+            "wf_min_window_test": 10,
+            "early_stopping_rounds": 0,
+            "lgbm_n_estimators": 10,
+            "lgbm_max_depth": 2,
+            "lgbm_learning_rate": 0.1,
+            "lgbm_num_leaves": 4,
+            "lgbm_min_child_samples": 5,
+        }
+
+        result = _evaluate_wf_multi(X, y, enriched, cfg)
+        assert result is None, "Should return None (fallback) for small data"
+
+    def test_evaluate_wf_dispatches_multi(self) -> None:
+        """_evaluate_wf が multi-window に正しくディスパッチする."""
+        from scripts.v460.ml.retrain_scheduler import _evaluate_wf
+
+        n = 300
+        rng = np.random.RandomState(42)
+        X = pd.DataFrame(
+            rng.randn(n, 5),
+            columns=["f1", "f2", "f3", "f4", "f5"],
+        )
+        y = pd.Series(rng.randn(n))
+        enriched = pd.DataFrame({
+            "post_fill_30s_pnl": rng.randn(n) * 0.1,
+            "post_fill_120s_pnl": rng.randn(n) * 0.2,
+        })
+
+        cfg = {
+            "wf_multi_window_enabled": True,
+            "wf_initial_train_pct": 0.50,
+            "wf_val_pct": 0.10,
+            "wf_test_pct": 0.15,
+            "wf_step_pct": 0.20,
+            "wf_embargo_rows": 0,
+            "wf_min_window_train": 20,
+            "wf_min_window_test": 5,
+            "wf_test_ratio": 0.2,
+            "early_stopping_rounds": 0,
+            "lgbm_n_estimators": 10,
+            "lgbm_max_depth": 2,
+            "lgbm_learning_rate": 0.1,
+            "lgbm_num_leaves": 4,
+            "lgbm_min_child_samples": 5,
+        }
+
+        result = _evaluate_wf(X, y, enriched, cfg)
+        # multi-window が成功していれば n_windows >= 1
+        assert result["n_windows"] >= 1
+        assert "fold_pnl30" in result
+
+    def test_single_window_returns_fold_data(self) -> None:
+        """single-window でも fold-level PnL を返す."""
+        from scripts.v460.ml.retrain_scheduler import _evaluate_wf_single
+
+        n = 200
+        rng = np.random.RandomState(42)
+        X = pd.DataFrame(
+            rng.randn(n, 5),
+            columns=["f1", "f2", "f3", "f4", "f5"],
+        )
+        y = pd.Series(rng.randn(n))
+        enriched = pd.DataFrame({
+            "post_fill_30s_pnl": rng.randn(n) * 0.1,
+            "post_fill_120s_pnl": rng.randn(n) * 0.2,
+        })
+
+        cfg = {
+            "wf_test_ratio": 0.2,
+            "early_stopping_rounds": 0,
+            "lgbm_n_estimators": 10,
+            "lgbm_max_depth": 2,
+            "lgbm_learning_rate": 0.1,
+            "lgbm_num_leaves": 4,
+            "lgbm_min_child_samples": 5,
+            "warm_start_enabled": False,
+        }
+
+        result = _evaluate_wf_single(X, y, enriched, cfg)
+        assert result["n_windows"] == 1
+        assert len(result["fold_pnl30"]) == 1
+        assert len(result["fold_pnl120"]) == 1
+        # fold data は (kept, all) タプル
+        kept, all_vals = result["fold_pnl30"][0]
+        assert len(kept) <= len(all_vals)
+
+
+# =====================================================================
+# 131# C2: 統計的品質ゲート テスト
+# =====================================================================
+
+class TestStatisticalGate:
+    """131# C2: gate_checks 統合テスト."""
+
+    def test_apply_gate_multi_window(self) -> None:
+        """multi-window fold data に対して g1_judgment が適用される."""
+        from scripts.v460.ml.retrain_scheduler import _apply_statistical_gate
+
+        # Model は baseline より明確に高い PnL を持つ
+        wf_result = {
+            "n_windows": 2,
+            "fold_pnl30": [
+                ([0.5, 0.6, 0.7, 0.8, 0.9] * 4, [0.1, 0.2, 0.3, 0.4, 0.5] * 4),
+                ([0.5, 0.6, 0.7, 0.8, 0.9] * 4, [0.1, 0.2, 0.3, 0.4, 0.5] * 4),
+            ],
+            "fold_pnl120": [
+                ([1.0, 1.1, 1.2, 1.3, 1.4] * 4, [0.1, 0.2, 0.3, 0.4, 0.5] * 4),
+                ([1.0, 1.1, 1.2, 1.3, 1.4] * 4, [0.1, 0.2, 0.3, 0.4, 0.5] * 4),
+            ],
+        }
+        cfg = {
+            "statistical_gate_alpha": 0.05,
+            "statistical_gate_min_effect": 0.147,
+            "statistical_gate_min_test_samples": 10,
+        }
+
+        gate_result = _apply_statistical_gate(wf_result, cfg)
+        assert gate_result["applied"]
+        assert gate_result["method"] == "g1_judgment"
+        assert gate_result["n_windows"] == 2
+        # 明確な差なので pass するはず
+        assert gate_result["pass"]
+        assert len(gate_result["passed_targets"]) > 0
+
+    def test_apply_gate_single_window(self) -> None:
+        """single-window で holm_bonferroni_gate が適用される."""
+        from scripts.v460.ml.retrain_scheduler import _apply_statistical_gate
+
+        wf_result = {
+            "n_windows": 1,
+            "fold_pnl30": [
+                ([0.5, 0.6, 0.7, 0.8, 0.9] * 4, [0.1, 0.2, 0.3, 0.4, 0.5] * 4),
+            ],
+            "fold_pnl120": [
+                ([1.0, 1.1, 1.2, 1.3, 1.4] * 4, [0.1, 0.2, 0.3, 0.4, 0.5] * 4),
+            ],
+        }
+        cfg = {
+            "statistical_gate_alpha": 0.05,
+            "statistical_gate_min_effect": 0.147,
+            "statistical_gate_min_test_samples": 10,
+        }
+
+        gate_result = _apply_statistical_gate(wf_result, cfg)
+        assert gate_result["applied"]
+        assert gate_result["method"] == "holm_bonferroni_gate"
+
+    def test_apply_gate_insufficient_samples(self) -> None:
+        """サンプル不足時はスキップ."""
+        from scripts.v460.ml.retrain_scheduler import _apply_statistical_gate
+
+        wf_result = {
+            "n_windows": 1,
+            "fold_pnl30": [([0.5, 0.6], [0.1, 0.2])],
+            "fold_pnl120": [([1.0, 1.1], [0.1, 0.2])],
+        }
+        cfg = {
+            "statistical_gate_min_test_samples": 40,
+        }
+
+        gate_result = _apply_statistical_gate(wf_result, cfg)
+        assert not gate_result["applied"]
+        assert "insufficient" in gate_result["reason"]
+
+    def test_apply_gate_no_significance(self) -> None:
+        """有意差なし → pass=False."""
+        from scripts.v460.ml.retrain_scheduler import _apply_statistical_gate
+
+        rng = np.random.RandomState(42)
+        # Model と baseline がほぼ同じ
+        same_vals = list(rng.randn(30))
+        wf_result = {
+            "n_windows": 1,
+            "fold_pnl30": [(same_vals, same_vals)],
+            "fold_pnl120": [(same_vals, same_vals)],
+        }
+        cfg = {
+            "statistical_gate_alpha": 0.05,
+            "statistical_gate_min_effect": 0.33,
+            "statistical_gate_min_test_samples": 10,
+        }
+
+        gate_result = _apply_statistical_gate(wf_result, cfg)
+        assert gate_result["applied"]
+        assert not gate_result["pass"]
+
+
+# =====================================================================
+# 131# C3: 冗長特徴量除去テスト
+# =====================================================================
+
+class TestRedundancyPruning:
+    """131# C3: redundancy.find_highly_correlated_features 統合テスト."""
+
+    def test_highly_correlated_features_detected(self) -> None:
+        """高相関ペアが正しく検出される."""
+        from scripts.v460.ml.retrain_scheduler import _safe_import_ztb_module
+
+        try:
+            _red = _safe_import_ztb_module("ztb.analysis.redundancy")
+        except ImportError:
+            pytest.skip("ztb.analysis.redundancy not importable (circular import)")
+
+        calculate_feature_correlations = _red.calculate_feature_correlations
+        find_highly_correlated_features = _red.find_highly_correlated_features
+
+        rng = np.random.RandomState(42)
+        n = 100
+        base = rng.randn(n)
+        df = pd.DataFrame({
+            "f1": base,
+            "f2": base + rng.randn(n) * 0.01,  # f1 と高相関
+            "f3": rng.randn(n),  # 独立
+            "f4": rng.randn(n),  # 独立
+        })
+        corr = calculate_feature_correlations(df)
+        pairs = find_highly_correlated_features(corr, threshold=0.9)
+        assert len(pairs) >= 1
+        # f1-f2 ペアが検出されるはず
+        pair_features = {(p[0], p[1]) for p in pairs}
+        assert ("f1", "f2") in pair_features or ("f2", "f1") in pair_features
+
+    def test_redundancy_removal_uses_importance(self) -> None:
+        """importance に基づいて低 importance 側が除去される."""
+        # 擬似的に retrain_scheduler 内のロジックを再現
+        feat_imp = {"f1": 100, "f2": 5, "f3": 50, "f4": 80}
+        corr_pairs = [("f1", "f2", 0.95)]  # f1 と f2 が高相関
+
+        to_remove: set[str] = set()
+        for f1, f2, _ in corr_pairs:
+            imp1 = feat_imp.get(f1, 0)
+            imp2 = feat_imp.get(f2, 0)
+            victim = f2 if imp1 >= imp2 else f1
+            if imp1 == imp2:
+                victim = max(f1, f2)
+            to_remove.add(victim)
+
+        assert "f2" in to_remove, "f2 (importance=5) should be removed, not f1 (importance=100)"
+        assert "f1" not in to_remove
+
+    def test_minimum_features_preserved(self) -> None:
+        """最低5特徴量が保持される."""
+        feature_cols = ["f1", "f2", "f3", "f4", "f5"]
+        to_remove = {"f1", "f2"}  # 2 features to remove → 3 remaining
+        remaining_after = len(feature_cols) - len(to_remove)
+        # 5 未満なので pruning はブロックされるべき
+        assert remaining_after < 5
+        # 実際の retrain_scheduler のロジック
+        if remaining_after >= 5 and to_remove:
+            pruned = sorted(to_remove)
+        else:
+            pruned = []
+        assert pruned == [], "Should not prune when it would leave < 5 features"

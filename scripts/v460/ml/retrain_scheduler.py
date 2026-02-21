@@ -60,6 +60,58 @@ from scripts.v460.ml.skip_gate import (
 # 127# X1: module-level FileHandler を廃止。main() 内で初期化する。
 logger = logging.getLogger(__name__)
 
+
+def _safe_import_ztb_module(dotted_path: str) -> Any:
+    """ztb サブモジュールを circular import を回避して読み込む.
+
+    ztb.analysis/__init__.py → ztb.trading 間の循環参照があるため、
+    通常の import ではサブモジュール (redundancy, gate_checks, splitter) が
+    ロード不可になる場合がある。importlib.util で直接ロードすることで回避する。
+    """
+    import importlib.util
+    import types as _builtin_types
+
+    # まず通常 import を試行 (循環が解消されている場合はこちらが速い)
+    try:
+        parts = dotted_path.rsplit(".", 1)
+        mod = __import__(dotted_path, fromlist=[parts[-1]] if len(parts) > 1 else [])
+        return mod
+    except ImportError:
+        pass
+
+    # フォールバック: importlib.util で直接ファイルロード
+    file_path = Path(dotted_path.replace(".", "/") + ".py")
+    if not file_path.exists():
+        raise ImportError(f"{dotted_path} not found at {file_path}")
+
+    # 親パッケージが必要な場合 (relative import 解決用) sys.modules にスタブ登録
+    parts = dotted_path.split(".")
+    for i in range(1, len(parts)):
+        pkg_name = ".".join(parts[:i])
+        if pkg_name not in sys.modules:
+            pkg_dir = Path("/".join(parts[:i]))
+            pkg = _builtin_types.ModuleType(pkg_name)
+            pkg.__path__ = [str(pkg_dir)]
+            pkg.__package__ = pkg_name
+            sys.modules[pkg_name] = pkg
+            # 既にロード済みの子を親に紐付け
+            for child_name, child_mod in list(sys.modules.items()):
+                if child_name.startswith(pkg_name + "."):
+                    short = child_name[len(pkg_name) + 1:].split(".")[0]
+                    setattr(pkg, short, child_mod)
+
+    spec = importlib.util.spec_from_file_location(dotted_path, str(file_path))
+    mod = importlib.util.module_from_spec(spec)
+    mod.__package__ = ".".join(parts[:-1])
+    sys.modules[dotted_path] = mod
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    # 親パッケージにアトリビュート設定
+    if len(parts) > 1:
+        parent_name = ".".join(parts[:-1])
+        if parent_name in sys.modules:
+            setattr(sys.modules[parent_name], parts[-1], mod)
+    return mod
+
 # デフォルト設定 (127# C1: model_path/mode/use_ob は skip_gate: から継承)
 _DEFAULT_CONFIG: dict[str, Any] = {
     "interval_sec": 3600,           # 再学習間隔 (秒) — 1時間
@@ -96,6 +148,23 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     "feature_pruning_require_consecutive": True,  # 131# B: 連続 dead のみ prune (振動防止)
     # E4: enriched data cache (I/O 削減)
     "enriched_cache_enabled": True,
+    # C1: WF multi-window evaluation (131# WalkForwardSplitter 統合)
+    "wf_multi_window_enabled": True,
+    "wf_initial_train_pct": 0.50,
+    "wf_val_pct": 0.10,
+    "wf_test_pct": 0.15,
+    "wf_step_pct": 0.20,
+    "wf_embargo_rows": 0,            # fill records は日次でない → 行数ベース (splitter min=1)
+    "wf_min_window_train": 30,       # window 当たり最低訓練サンプル数
+    "wf_min_window_test": 10,        # window 当たり最低テストサンプル数
+    # C2: 統計的品質ゲート (131# gate_checks 統合)
+    "statistical_gate_enabled": True,
+    "statistical_gate_alpha": 0.05,
+    "statistical_gate_min_effect": 0.147,   # retrain は少量サンプル → small effect
+    "statistical_gate_min_test_samples": 40, # 合計テストサンプル < これなら統計ゲートスキップ
+    # C3: 冗長特徴量除去 (131# redundancy 統合)
+    "redundancy_pruning_enabled": True,
+    "redundancy_correlation_threshold": 0.85,
     # SkipGate config
     "adaptive_threshold": True,
     "target_skip_rate_buy": 0.15,
@@ -310,6 +379,224 @@ def _evaluate_wf(
     enriched: pd.DataFrame,
     cfg: dict[str, Any],
     prev_booster: "Any | None" = None,
+) -> dict[str, Any]:
+    """Walk-Forward OOS 評価ディスパッチ.
+
+    131# C1: wf_multi_window_enabled=True なら WalkForwardSplitter で
+    multi-window 評価を実行。データ不足時は single-window にフォールバック。
+    """
+    if cfg.get("wf_multi_window_enabled", True):
+        try:
+            result = _evaluate_wf_multi(X, y, enriched, cfg, prev_booster)
+            if result is not None:
+                return result
+        except Exception as e:
+            logger.warning(f"C1: Multi-window WF failed ({e}), falling back to single")
+    return _evaluate_wf_single(X, y, enriched, cfg, prev_booster)
+
+
+def _evaluate_wf_multi(
+    X: pd.DataFrame,
+    y: pd.Series,
+    enriched: pd.DataFrame,
+    cfg: dict[str, Any],
+    prev_booster: "Any | None" = None,
+) -> dict[str, Any] | None:
+    """131# C1: Multi-window Walk-Forward 評価 (WalkForwardSplitter 統合).
+
+    複数の WF ウィンドウで独立に train→predict し、per-window PnL を収集。
+    g1_judgment / holm_bonferroni_gate 用の fold-level データを返す。
+
+    Returns:
+        評価結果 dict。ウィンドウが 2 未満なら None (single-window フォールバック)。
+    """
+    from sklearn.impute import SimpleImputer
+    from sklearn.preprocessing import StandardScaler
+
+    try:
+        import lightgbm as lgb
+    except ImportError:
+        return None
+
+    try:
+        _splitter_mod = _safe_import_ztb_module("ztb.evaluation.walk_forward.splitter")
+        WalkForwardSplitter = _splitter_mod.WalkForwardSplitter
+    except ImportError:
+        logger.info("C1: WalkForwardSplitter not available, skipping multi-window")
+        return None
+
+    n = len(X)
+    # Splitter にはダミー DataFrame を渡す (行数さえ合えばよい)
+    dummy_df = pd.DataFrame(index=range(n))
+    splitter = WalkForwardSplitter(
+        initial_train_pct=cfg.get("wf_initial_train_pct", 0.50),
+        val_pct=cfg.get("wf_val_pct", 0.10),
+        test_pct=cfg.get("wf_test_pct", 0.15),
+        step_pct=cfg.get("wf_step_pct", 0.20),
+        embargo_days=cfg.get("wf_embargo_rows", 0),
+    )
+
+    try:
+        windows = splitter.split(dummy_df)
+    except ValueError as e:
+        logger.info(f"C1: WalkForwardSplitter could not split (n={n}): {e}")
+        return None
+
+    min_train = cfg.get("wf_min_window_train", 30)
+    min_test = cfg.get("wf_min_window_test", 10)
+
+    # 有効ウィンドウのみ選択
+    valid_windows = [
+        w for w in windows
+        if (w.train_end - w.train_start) >= min_train
+        and (w.test_end - w.test_start) >= min_test
+    ]
+    if len(valid_windows) < 2:
+        logger.info(
+            f"C1: Only {len(valid_windows)} valid window(s) from {len(windows)} total "
+            f"(min_train={min_train}, min_test={min_test}), falling back to single-window"
+        )
+        return None
+
+    logger.info(f"C1: Multi-window WF with {len(valid_windows)} windows (n={n})")
+
+    # Per-window 評価
+    window_scores: list[float] = []
+    window_imp30: list[float] = []
+    window_imp120: list[float] = []
+    fold_pnl30: list[tuple[list[float], list[float]]] = []
+    fold_pnl120: list[tuple[list[float], list[float]]] = []
+    all_feat_importance: dict[str, int] = {}
+    total_n_trees = 0
+    total_n_test = 0
+    total_n_train = 0
+
+    early_stop = cfg.get("early_stopping_rounds", 0)
+    n_est = cfg.get("lgbm_n_estimators_max", 300) if early_stop > 0 else cfg.get("lgbm_n_estimators", 150)
+
+    for win in valid_windows:
+        X_train = X.iloc[win.train_start:win.train_end]
+        y_train = y.iloc[win.train_start:win.train_end]
+        X_val = X.iloc[win.val_start:win.val_end]
+        y_val = y.iloc[win.val_start:win.val_end]
+        X_test = X.iloc[win.test_start:win.test_end]
+        y_test = y.iloc[win.test_start:win.test_end]
+
+        # 前処理
+        imputer = SimpleImputer(strategy="median")
+        scaler = StandardScaler()
+        X_train_sc = pd.DataFrame(
+            scaler.fit_transform(imputer.fit_transform(X_train)),
+            columns=X_train.columns, index=X_train.index,
+        )
+        X_val_sc = pd.DataFrame(
+            scaler.transform(imputer.transform(X_val)),
+            columns=X_val.columns, index=X_val.index,
+        )
+        X_test_sc = pd.DataFrame(
+            scaler.transform(imputer.transform(X_test)),
+            columns=X_test.columns, index=X_test.index,
+        )
+
+        lgbm_model = _build_lgbm_regressor(cfg, n_estimators_override=n_est)
+
+        fit_kwargs: dict[str, Any] = {}
+        if early_stop > 0 and len(X_val) >= 5:
+            fit_kwargs["eval_set"] = [(X_val_sc, y_val)]
+            fit_kwargs["callbacks"] = [
+                lgb.early_stopping(stopping_rounds=early_stop, verbose=False),
+                lgb.log_evaluation(period=0),
+            ]
+
+        lgbm_model.fit(X_train_sc, y_train, **fit_kwargs)
+        preds_test = lgbm_model.predict(X_test_sc)
+
+        # OOS PnL 参照
+        test_idx = X_test.index
+        pnl30_col = "post_fill_30s_pnl"
+        pnl120_col = "post_fill_120s_pnl"
+        pnl30 = (
+            enriched.loc[test_idx, pnl30_col].astype(float).values
+            if pnl30_col in enriched.columns
+            else np.full(len(test_idx), np.nan)
+        )
+        pnl120 = (
+            enriched.loc[test_idx, pnl120_col].astype(float).values
+            if pnl120_col in enriched.columns
+            else np.full(len(test_idx), np.nan)
+        )
+
+        # Skip bottom 20% predicted PnL
+        threshold = np.percentile(preds_test, 20)
+        keep_mask = preds_test >= threshold
+
+        baseline_30 = float(np.nanmean(pnl30))
+        baseline_120 = float(np.nanmean(pnl120))
+        kept_30 = float(np.nanmean(pnl30[keep_mask]))
+        kept_120 = float(np.nanmean(pnl120[keep_mask]))
+
+        imp_30 = kept_30 - baseline_30
+        imp_120 = kept_120 - baseline_120
+        score = imp_120 - max(0, -imp_30)
+
+        window_scores.append(score)
+        window_imp30.append(imp_30)
+        window_imp120.append(imp_120)
+
+        # NaN を除外した fold-level PnL データ (statistical gate 用)
+        kept_pnl30_clean = [float(v) for v in pnl30[keep_mask] if not np.isnan(v)]
+        all_pnl30_clean = [float(v) for v in pnl30 if not np.isnan(v)]
+        kept_pnl120_clean = [float(v) for v in pnl120[keep_mask] if not np.isnan(v)]
+        all_pnl120_clean = [float(v) for v in pnl120 if not np.isnan(v)]
+        fold_pnl30.append((kept_pnl30_clean, all_pnl30_clean))
+        fold_pnl120.append((kept_pnl120_clean, all_pnl120_clean))
+
+        # Feature importance 集計
+        if hasattr(lgbm_model, "feature_importances_"):
+            for col, imp in zip(X_train.columns, lgbm_model.feature_importances_):
+                all_feat_importance[col] = all_feat_importance.get(col, 0) + int(imp)
+
+        n_trees = lgbm_model.booster_.num_trees() if hasattr(lgbm_model, "booster_") else n_est
+        total_n_trees += n_trees
+        total_n_test += len(X_test)
+        total_n_train += len(X_train)
+
+    if not window_scores:
+        logger.warning("C1: All windows failed, falling back to single-window")
+        return None
+
+    n_windows = len(window_scores)
+    avg_score = float(np.mean(window_scores))
+    avg_imp30 = float(np.mean(window_imp30))
+    avg_imp120 = float(np.mean(window_imp120))
+
+    logger.info(
+        f"C1: Multi-window results: {n_windows} windows, "
+        f"avg_score={avg_score:.4f}, avg_imp30={avg_imp30:.4f}, avg_imp120={avg_imp120:.4f}"
+    )
+
+    return {
+        "score": avg_score,
+        "pnl30_improvement": avg_imp30,
+        "pnl120_improvement": avg_imp120,
+        "n_test": total_n_test,
+        "n_train": total_n_train,
+        "actual_n_trees": total_n_trees // max(n_windows, 1),
+        "feature_importance": all_feat_importance,
+        # C1/C2: fold-level data for statistical gate
+        "n_windows": n_windows,
+        "fold_pnl30": fold_pnl30,
+        "fold_pnl120": fold_pnl120,
+        "window_scores": window_scores,
+    }
+
+
+def _evaluate_wf_single(
+    X: pd.DataFrame,
+    y: pd.Series,
+    enriched: pd.DataFrame,
+    cfg: dict[str, Any],
+    prev_booster: "Any | None" = None,
 ) -> dict[str, float]:
     """Walk-Forward OOS 評価で品質スコアを算出.
 
@@ -410,6 +697,12 @@ def _evaluate_wf(
         for col, imp in zip(X_train.columns, lgbm_model.feature_importances_):
             feat_importance[col] = int(imp)
 
+    # C2: single-window でも fold-level PnL を記録 (holm_bonferroni_gate 用)
+    kept_pnl30_clean = [float(v) for v in pnl30[keep_mask] if not np.isnan(v)]
+    all_pnl30_clean = [float(v) for v in pnl30 if not np.isnan(v)]
+    kept_pnl120_clean = [float(v) for v in pnl120[keep_mask] if not np.isnan(v)]
+    all_pnl120_clean = [float(v) for v in pnl120 if not np.isnan(v)]
+
     return {
         "score": score,
         "pnl30_improvement": imp_30,
@@ -418,7 +711,94 @@ def _evaluate_wf(
         "n_train": int(len(X_train)),
         "actual_n_trees": actual_n_trees,
         "feature_importance": feat_importance,
+        # C2: statistical gate 用 per-sample data
+        "n_windows": 1,
+        "fold_pnl30": [(kept_pnl30_clean, all_pnl30_clean)],
+        "fold_pnl120": [(kept_pnl120_clean, all_pnl120_clean)],
     }
+
+
+def _apply_statistical_gate(
+    wf_result: dict[str, Any],
+    cfg: dict[str, Any],
+) -> dict[str, Any]:
+    """131# C2: 統計的品質ゲート.
+
+    WF 評価の per-window / per-sample PnL データに対して
+    gate_checks の統計検定を適用する。
+
+    - Multi-window (n_windows >= 2): g1_judgment (fold p-mean → Holm → AND)
+    - Single-window: holm_bonferroni_gate (per-sample PnL)
+    - データ不足: スキップ (applied=False)
+
+    Returns:
+        {"applied": bool, "pass": bool, "method": str, ...}
+    """
+    try:
+        _gc_mod = _safe_import_ztb_module("ztb.metrics.gate_checks")
+        g1_judgment = _gc_mod.g1_judgment
+        holm_bonferroni_gate = _gc_mod.holm_bonferroni_gate
+    except ImportError:
+        return {"applied": False, "reason": "gate_checks not importable"}
+
+    alpha = cfg.get("statistical_gate_alpha", 0.05)
+    min_effect = cfg.get("statistical_gate_min_effect", 0.147)
+    min_test = cfg.get("statistical_gate_min_test_samples", 40)
+
+    fold_pnl30 = wf_result.get("fold_pnl30", [])
+    fold_pnl120 = wf_result.get("fold_pnl120", [])
+    n_windows = wf_result.get("n_windows", 0)
+
+    # 合計テストサンプル数チェック
+    total_test = sum(len(b) for _, b in fold_pnl30) if fold_pnl30 else 0
+    if total_test < min_test:
+        return {
+            "applied": False,
+            "reason": f"insufficient_test_samples ({total_test} < {min_test})",
+        }
+
+    # fold-level data 構築
+    fold_results: dict[str, list[tuple[list[float], list[float]]]] = {}
+    if fold_pnl30:
+        fold_results["pnl30"] = fold_pnl30
+    if fold_pnl120:
+        fold_results["pnl120"] = fold_pnl120
+
+    if not fold_results:
+        return {"applied": False, "reason": "no_fold_data"}
+
+    if n_windows >= 2:
+        # Multi-window: g1_judgment (§5.3 準拠)
+        g1 = g1_judgment(fold_results, alpha=alpha, min_effect=min_effect)
+        return {
+            "applied": True,
+            "pass": g1["g1_pass"],
+            "method": "g1_judgment",
+            "n_windows": n_windows,
+            "passed_targets": g1["passed_targets"],
+            "details": g1["details"],
+            "alpha": alpha,
+            "min_effect": min_effect,
+        }
+    else:
+        # Single-window: holm_bonferroni_gate (per-sample)
+        hb_input: dict[str, tuple[list[float], list[float]]] = {}
+        for key, folds in fold_results.items():
+            if folds:
+                hb_input[key] = folds[0]  # single window → first fold
+        hb = holm_bonferroni_gate(hb_input, alpha=alpha, min_effect=min_effect)
+        any_pass = any(v.get("pass", False) for v in hb.values())
+        passed_targets = [k for k, v in hb.items() if v.get("pass", False)]
+        return {
+            "applied": True,
+            "pass": any_pass,
+            "method": "holm_bonferroni_gate",
+            "n_windows": 1,
+            "passed_targets": passed_targets,
+            "details": hb,
+            "alpha": alpha,
+            "min_effect": min_effect,
+        }
 
 
 def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
@@ -685,6 +1065,26 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
                 )
                 return {**result, "status": "rejected", "reason": "negative_pnl_improvement"}
 
+        # 131# C2: 統計的品質ゲート (gate_checks 統合)
+        if cfg.get("statistical_gate_enabled", True):
+            stat_gate_result = _apply_statistical_gate(wf_result, cfg)
+            result["statistical_gate"] = stat_gate_result
+            if stat_gate_result.get("applied"):
+                if not stat_gate_result["pass"]:
+                    logger.warning(
+                        f"C2: Statistical gate REJECT: {stat_gate_result.get('reason', 'unknown')}. "
+                        f"details={stat_gate_result.get('details', {})}"
+                    )
+                    return {**result, "status": "rejected", "reason": "statistical_gate"}
+                logger.info(
+                    f"C2: Statistical gate PASS: {stat_gate_result.get('method', 'unknown')}, "
+                    f"passed_targets={stat_gate_result.get('passed_targets', [])}"
+                )
+            else:
+                logger.info(
+                    f"C2: Statistical gate skipped: {stat_gate_result.get('reason', 'unknown')}"
+                )
+
     # Step 5: 全データで訓練 (E1 warm-start + E2 early stopping + E3 feature pruning)
     feature_cols = list(get_gate_feature_cols(use_ob=use_ob))
 
@@ -755,6 +1155,56 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
             f"(min={min_trees_for_pruning}). Importance signal too weak."
         )
 
+    # 131# C3: 冗長特徴量除去 (redundancy.find_highly_correlated_features 統合)
+    redundancy_pruned: list[str] = []
+    if cfg.get("redundancy_pruning_enabled", True) and len(feature_cols) >= 5:
+        try:
+            _red_mod = _safe_import_ztb_module("ztb.analysis.redundancy")
+            calculate_feature_correlations = _red_mod.calculate_feature_correlations
+            find_highly_correlated_features = _red_mod.find_highly_correlated_features
+
+            corr_threshold = cfg.get("redundancy_correlation_threshold", 0.85)
+            corr_matrix = calculate_feature_correlations(X_valid[feature_cols])
+            corr_pairs = find_highly_correlated_features(corr_matrix, corr_threshold)
+
+            if corr_pairs:
+                # WF feature_importance を使って、ペアの低 importance 側を除去
+                feat_imp = result.get("wf_eval", {}).get("feature_importance", {})
+                to_remove: set[str] = set()
+                for f1, f2, corr_val in corr_pairs:
+                    imp1 = feat_imp.get(f1, 0)
+                    imp2 = feat_imp.get(f2, 0)
+                    # importance が低い方を除去 (同値なら特徴量名で決定的に)
+                    victim = f2 if imp1 >= imp2 else f1
+                    if imp1 == imp2:
+                        victim = max(f1, f2)  # 名前順で後を除去 (決定的)
+                    to_remove.add(victim)
+
+                # 最低5特徴量は保持
+                remaining_after = len(feature_cols) - len(to_remove)
+                if remaining_after >= 5 and to_remove:
+                    redundancy_pruned = sorted(to_remove)
+                    feature_cols = [c for c in feature_cols if c not in to_remove]
+                    X_valid = X_valid[feature_cols]
+                    logger.info(
+                        f"C3: Removed {len(redundancy_pruned)} redundant features "
+                        f"(corr>{corr_threshold}): {redundancy_pruned} "
+                        f"→ {len(feature_cols)} features remaining"
+                    )
+                elif to_remove:
+                    logger.info(
+                        f"C3: Redundancy pruning blocked — would leave only "
+                        f"{remaining_after} features (min=5)"
+                    )
+                else:
+                    logger.info(f"C3: No redundant features found (threshold={corr_threshold})")
+            else:
+                logger.info(f"C3: No highly correlated pairs (threshold={corr_threshold})")
+        except ImportError:
+            logger.info("C3: redundancy module not available, skipping")
+        except Exception as e:
+            logger.warning(f"C3: Redundancy pruning failed: {e}")
+
     # 前処理 (Pipeline 内の fit を手動実行 — E1/E2 のため)
     imputer = SimpleImputer(strategy="median")
     scaler = StandardScaler()
@@ -792,12 +1242,13 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
         prev_booster is not None
         and cfg.get("warm_start_enabled", True)
         and not pruned_features  # E3 pruning 時は feature 不一致
+        and not redundancy_pruned  # C3 redundancy pruning 時も feature 不一致
         and prev_feature_cols == feature_cols  # feature_cols 完全一致が必要
     ):
         fit_kwargs["init_model"] = prev_booster
         logger.info("E1: Using prev booster as init_model for final training")
-    elif prev_booster is not None and pruned_features:
-        logger.info("E1: Warm-start skipped (feature set changed by E3 pruning)")
+    elif prev_booster is not None and (pruned_features or redundancy_pruned):
+        logger.info("E1: Warm-start skipped (feature set changed by E3/C3 pruning)")
 
     lgbm.fit(X_sc, y_valid, **fit_kwargs)
 
@@ -857,6 +1308,10 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
         "pruned_features": pruned_features,
         "wf_dead_features": wf_dead_features,  # 131# B: 次回 consecutive-dead 参照用
         "enriched_cache_used": cfg.get("enriched_cache_enabled", True),
+        # 131# C1-C3: ztb asset 統合メタデータ
+        "wf_multi_window": wf_result.get("n_windows", 1) if cfg.get("quality_gate_enabled") else 0,
+        "redundancy_pruned_features": redundancy_pruned,
+        "statistical_gate": result.get("statistical_gate", {}),
     }
 
     gate = SkipGate(
