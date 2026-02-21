@@ -571,3 +571,141 @@ class TestE2ERetrainHotReload:
             meta = evaluator._skip_gate.metadata  # type: ignore[union-attr]
             assert meta.get("retrained") is True
             assert meta.get("n_samples", 0) > 0
+
+
+# =====================================================================
+# 133# Y5: balance_forced_switch フィルタリングテスト
+# =====================================================================
+
+class TestBalanceForcedSwitchFilter:
+    """133# Y5: retrain_model() が balance_forced_switch=True を除外する."""
+
+    def test_balance_forced_records_excluded(self) -> None:
+        """balance_forced_switch=True のレコードが学習データから除外される."""
+        from scripts.v460.ml.retrain_scheduler import retrain_model, _DEFAULT_CONFIG
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            records_dir = Path(tmpdir) / "results"
+            records_dir.mkdir()
+
+            rng = np.random.RandomState(123)
+            records = []
+            for i in range(60):
+                # 最初の 20 件は balance_forced_switch=True
+                forced = i < 20
+                records.append(json.dumps({
+                    "cycle_id": f"bf_{i}",
+                    "side": "buy" if i % 2 == 0 else "sell",
+                    "filled": True,
+                    "timestamp": 1771502400.0 + i * 120,
+                    "spread_at_order": 2500.0 + rng.randn() * 300,
+                    "spread_offset_ratio": 0.05,
+                    "adverse_selected_raw": int(rng.random() > 0.5),
+                    "post_fill_30s_pnl": float(rng.randn() * 2),
+                    "post_fill_120s_pnl": float(rng.randn() * 3),
+                    "regime": "ranging",
+                    "run_id": "bf_run",
+                    "balance_forced_switch": forced,
+                }))
+            (records_dir / "fill_records_20260220.jsonl").write_text(
+                "\n".join(records), encoding="utf-8",
+            )
+
+            cfg = dict(_DEFAULT_CONFIG)
+            cfg["results_dir"] = str(records_dir)
+            cfg["model_path"] = str(Path(tmpdir) / "model.pkl")
+            cfg["mode"] = "pnl"
+            cfg["target"] = "pnl30"
+            cfg["use_ob_features"] = False
+            cfg["min_total_samples"] = 10
+            cfg["min_new_samples"] = 1
+            cfg["bootstrap_min_total_samples"] = 10
+            cfg["bootstrap_min_new_samples"] = 1
+            cfg["quality_gate_enabled"] = False
+            cfg["latest_run_only"] = False
+            cfg["exclude_missing_run_id"] = False
+
+            result = retrain_model(cfg)
+            # 60 - 20 forced = 40 records usable; filled_records should be <= 40
+            assert result["status"] in ("deployed", "skipped")
+            if result["status"] == "deployed":
+                assert result.get("filled_records", 0) <= 40
+
+    def test_no_balance_column_no_error(self) -> None:
+        """balance_forced_switch カラムがなくてもエラーにならない."""
+        from scripts.v460.ml.retrain_scheduler import retrain_model, _DEFAULT_CONFIG
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            records_dir = Path(tmpdir) / "results"
+            records_dir.mkdir()
+
+            records = []
+            for i in range(5):
+                records.append(json.dumps({
+                    "cycle_id": f"no_bf_{i}",
+                    "side": "buy",
+                    "filled": True,
+                    "timestamp": 1771502400.0 + i * 120,
+                    "spread_at_order": 3000.0,
+                    "spread_offset_ratio": 0.05,
+                    "run_id": "no_bf_run",
+                }))
+            (records_dir / "fill_records_20260220.jsonl").write_text(
+                "\n".join(records), encoding="utf-8",
+            )
+
+            cfg = dict(_DEFAULT_CONFIG)
+            cfg["results_dir"] = str(records_dir)
+            cfg["model_path"] = str(Path(tmpdir) / "model.pkl")
+            cfg["mode"] = "pnl"
+            cfg["use_ob_features"] = False
+            cfg["latest_run_only"] = False
+            cfg["exclude_missing_run_id"] = False
+            # Should not raise
+            result = retrain_model(cfg)
+            assert result["status"] in ("skipped", "deployed")
+
+
+# =====================================================================
+# 133# F7: trades I/O 7 日 fallback テスト
+# =====================================================================
+
+class TestTradesIOFallback:
+    """133# F7: trades fallback が全量ではなく直近 7 日でフォールバックする."""
+
+    def test_fallback_uses_7day_window(self) -> None:
+        """date_filter で空→全量ではなく 7 日 window が先に試行される."""
+        from scripts.v460.ml.feature_enricher import enrich_fill_records, load_raw_trades
+        import pandas as pd
+
+        # enrich_fill_records 内の load_raw_trades 呼び出しを追跡
+        call_args: list[tuple] = []
+        original_load = load_raw_trades
+
+        def _tracking_load(raw_dir=None, date_filter=None):
+            call_args.append((raw_dir, date_filter))
+            # 常に空を返して fallback チェーン全体をテスト
+            return pd.DataFrame()
+
+        fill_df = pd.DataFrame({
+            "timestamp": [1771502400.0],
+            "side": ["buy"],
+            "filled": [True],
+        })
+
+        with patch(
+            "scripts.v460.ml.feature_enricher.load_raw_trades",
+            side_effect=_tracking_load,
+        ):
+            enrich_fill_records(fill_df)
+
+        # 呼び出し順: (1) date_filter あり → (2) 7日 window → (3) 全量
+        assert len(call_args) == 3, f"Expected 3 calls, got {len(call_args)}"
+        # 1st call: original date_filter
+        assert call_args[0][1] is not None
+        # 2nd call: 7-day fallback (set of date strings)
+        fb_filter = call_args[1][1]
+        assert fb_filter is not None
+        assert len(fb_filter) <= 8  # 7 days + 1
+        # 3rd call: full fallback (None)
+        assert call_args[2][1] is None

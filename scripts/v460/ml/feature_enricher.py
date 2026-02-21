@@ -417,8 +417,22 @@ def enrich_fill_records(
     # 当日分の trades ファイルが存在しないケースがある.
     trades_df = load_raw_trades(raw_dir, date_filter=date_filter)
     if trades_df.empty and date_filter is not None:
-        logger.info("131# trades empty with date_filter, falling back to all trades")
-        trades_df = load_raw_trades(raw_dir, date_filter=None)
+        # 133# F7: 全量ロードではなく直近 7 日にフォールバック (4.4M行→~50万行).
+        # 古い trades は特徴量計算に寄与しないため I/O 削減が大きい.
+        from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+        _now = _dt.now(tz=_tz.utc)
+        _fallback_days = 7
+        _fb_filter: set[str] = set()
+        for _i in range(_fallback_days + 1):
+            _fb_filter.add((_now - _td(days=_i)).strftime("%Y%m%d"))
+        logger.info(
+            f"133# F7: trades empty with date_filter, "
+            f"falling back to recent {_fallback_days} days: {sorted(_fb_filter)}"
+        )
+        trades_df = load_raw_trades(raw_dir, date_filter=_fb_filter)
+        if trades_df.empty:
+            logger.info("133# F7: still empty after 7-day fallback, loading all trades")
+            trades_df = load_raw_trades(raw_dir, date_filter=None)
 
     # 059# P1-7: 事前ソート + searchsorted で O(N_fill × log N_trades)
     if not trades_df.empty and "ts" in trades_df.columns:

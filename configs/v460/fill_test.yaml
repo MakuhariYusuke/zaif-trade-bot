@@ -21,7 +21,7 @@ max_preflight_skip: 10        # 046# 連続 preflight 失敗上限 (SAFE_STOP)
 # ---- スプレッド比例オフセット (CM-1) ----
 spread_offset_ratio: 0.05     # 031# 0.2→0.05: AS 低減のため保守化
 min_offset_jpy: 1.0           # 最小オフセット (JPY)
-min_spread_jpy: 1500           # 122# R6: 0→1500 postonly_reject 回避 (168h reject 65件の spread平均=1915)
+min_spread_jpy: 1200           # 133# Y2: 1500→1200 段階緩和 (D.3 Q4: 1000は攻め過ぎ、1200≈1.14bps で安全マージン維持。fill_rate +10~15pt 期待)
 
 # ---- リトライ (CM-2) ----
 max_order_retries: 2              # 041# 1→2: api_error 削減のため
@@ -224,7 +224,7 @@ volatility_guard:
   velocity_window_sec: 60       # ウィンドウ (秒)
   velocity_threshold_bps: 15.0  # この bps 超で guard 発動
   # VPIN (Volume-synchronized Probability of Informed Trading)
-  vpin_threshold: 0.70          # 0.70 超で guard 発動 (vpin_60s)
+  vpin_threshold: 0.63          # 133# Y4: 0.70→0.63 (-10% 感度引上げ。AS -3~5pt 期待。118# §9-A4 VG有効性確認済)
   # 行動: offset を boost (skip は攻撃的すぎる→データ蓄積後に検討)
   offset_boost_factor: 2.0      # guard 発動時の offset 倍率
 
@@ -275,7 +275,7 @@ retrain:
   min_new_samples: 30              # 再学習に必要な最小新規サンプル数
   min_total_samples: 100           # 再学習に必要な最小合計サンプル数
   # 130# Bootstrap Phase: run切替直後のスタベーション回避
-  bootstrap_min_total_samples: 30  # Bootstrap 段階での最小合計 (安定期の 1/3)
+  bootstrap_min_total_samples: 25  # 133# Y1: 30→25 (初回 deploy 加速。短期高収益の大義優先。品質は本格 retrain で補正)
   bootstrap_min_new_samples: 10    # Bootstrap 段階での最小新規
   bootstrap_threshold: 100         # total < この値なら Bootstrap 段階と判定
   target: pnl30                    # 131# L1: pnl120→pnl30 (e3_sampling_ratio=0.50 で pnl120 カバレッジ 40% → pnl30 は 100%。訓練データ 2.5x)

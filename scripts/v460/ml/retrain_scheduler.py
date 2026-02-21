@@ -328,6 +328,19 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
             run_id_filter = [run_id_filter]
         records = records[records["run_id"].isin(run_id_filter)]
 
+    # 133# Y5: balance_forced_switch=True のレコードを学習対象から除外
+    # 残高制約による強制 side 切替はノイズ — PnL/AS 評価を歪める
+    if "balance_forced_switch" in records.columns:
+        n_before = len(records)
+        balance_mask = records["balance_forced_switch"].fillna(False).astype(bool)
+        n_forced = int(balance_mask.sum())
+        if n_forced > 0:
+            records = records[~balance_mask].reset_index(drop=True)
+            logger.info(
+                f"133# Y5: Excluded {n_forced}/{n_before} balance_forced_switch records "
+                f"({n_forced/n_before*100:.1f}%)"
+            )
+
     enriched = enrich_fill_records(records)
 
     # 127# H1: PnL 回帰向け特徴量抽出 (AS ラベル非依存)

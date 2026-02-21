@@ -3,7 +3,7 @@
 > **セッション**: 131# (文書番号: 129#)  
 > **日付**: 2026-02-21  
 > **分析対象**: fill_test 全レコード (02/13~02/21) + retrain_scheduler.log + fill_test_state.json  
-> **Git HEAD**: `0e5dcf71b` (132# lock heartbeat + balance_forced_switch)  
+> **Git HEAD**: `0e5dcf71b` (132# lock heartbeat + balance_forced_switch) → 133# Y1/Y2/Y4/Y5/Y7 実装  
 > **前提文書**: 118# (残課題深掘り考察) + 128# (ログレビューと方策) + 130#/131# 実装結果  
 > **目的**: 外部 AI コーディングエージェントによるクロスレビュー用
 
@@ -447,12 +447,13 @@ StatePersistence が機能していなければ、次の再起動で warm_start 
 |---|------|-------|------|------|
 | Y0 | lock heartbeat 強化 | 低 | stale lock 自動回収精度向上 | ✅ `0e5dcf71b` (132#) |
 | Y0b | `balance_forced_switch` フラグ追加 | 低 | 評価/学習での残高交絡分離 | ✅ `0e5dcf71b` (132#) |
-| Y1 | `bootstrap_min_total_samples` 引き下げ (30→25) | 極低 (YAML) | 初回 retrain deploy 加速 | hot-reload で即反映可 |
-| Y2 | `min_spread_jpy` 緩和 (1500→1200) | 極低 (YAML) | fill rate +10~15% | D.3 Q4 検討結果: 1000は攻め過ぎ、1200で段階緩和 |
+| Y1 | `bootstrap_min_total_samples` 引き下げ (30→25) | 極低 (YAML) | 初回 retrain deploy 加速 | ✅ 133# hot-reload で即反映 |
+| Y2 | `min_spread_jpy` 緩和 (1500→1200) | 極低 (YAML) | fill rate +10~15% | ✅ 133# D.3 Q4: 1200≈1.14bps で安全マージン維持 |
 | Y3 | SkipGate 再訓練 (Appendix F 計画) | 高 | AS 予測精度向上。P0 level | 1048 filled で全条件超過 |
-| Y4 | VG 感度引上げ (`vpin_threshold` -10%) | 低 (YAML) | AS -3~5pt | hot-reload 対応 |
-| Y5 | retrain で `balance_forced_switch=True` レコード除外 | 低 | 学習品質向上 | feature_enricher or retrain_scheduler |
-| Y6 | Appendix B キー名修正 + 130#/131# commit 注記 | 極低 | 文書監査可能性回復 | D.1 指摘 |
+| Y4 | VG 感度引上げ (`vpin_threshold` 0.70→0.63) | 低 (YAML) | AS -3~5pt | ✅ 133# hot-reload 対応 |
+| Y5 | retrain で `balance_forced_switch=True` レコード除外 | 低 | 学習品質向上 | ✅ 133# retrain_scheduler.py に実装 |
+| Y6 | Appendix B キー名修正 + 130#/131# commit 注記 | 極低 | 文書監査可能性回復 | ✅ 132# Appendix E で対応済 |
+| Y7 | trades I/O 7日window fallback (F7) | 低 | retrain cycle 30s→数秒 | ✅ 133# feature_enricher.py に実装 |
 
 ### Phase Z: ph3 準備 (Gate 判定後)
 
@@ -538,14 +539,15 @@ F1 (attempted_fill_rate ≥ 70%) は全期間でギリギリ。130# 単体では
 | order_quantity | 0.001 BTC | 初期 | Coincheck 最小 |
 | cycle_interval_sec | 120.0 | 初期 | |
 | order_timeout_sec | 90.0 | 096# | 300→90s |
-| min_spread_jpy | 1500 | 122# | postonly 回避 |
+| min_spread_jpy | 1200 | 133# | 122# 1500→133# 1200 段階緩和 (fill_rate +10~15pt) |
 | side_offset.sell | 0.18 | 121# | 0.14→0.18 |
 | adaptation.enabled | false | 122# | 因果分離 |
 | skip_utc_hours_sell | [4,8,14,15,16,21] | 130# | UTC21 追加 |
 | unknown_buy_offset_boost | 2.0 | 130# | VG 相当 |
+| volatility_guard.vpin_threshold | 0.63 | 133# | 0.70→0.63 (-10% 感度引上げ) |
 | retrain.target | pnl30 | 131# | pnl120→pnl30 |
-| retrain.min_total_samples | 100 | 初期 | bootstrap で 30 に緩和 |
-| retrain.bootstrap_min_total_samples | 30 | 130# | |
+| retrain.min_total_samples | 100 | 初期 | bootstrap で 25 に緩和 |
+| retrain.bootstrap_min_total_samples | 25 | 133# | 130# 30→133# 25 (deploy 加速) |
 | retrain.bootstrap_threshold | 100 | 130# | total < 100 → bootstrap |
 
 ---
