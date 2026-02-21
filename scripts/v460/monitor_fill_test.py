@@ -30,7 +30,8 @@ from ztb.metrics.fill_quality import (
     compute_regime_metrics,
     compute_round_trip_metrics,
     filter_clean_records,
-    g1_1_judgment,
+    g1_1_quick_judgment,
+    g1_2_full_judgment,
     load_fill_records_glob,
 )
 
@@ -186,6 +187,7 @@ def print_report(
     *,
     clean_count: int | None = None,
     quarantine_count: int | None = None,
+    full_result: GateResult | None = None,
 ) -> None:
     """コンソールにモニタリングレポートを出力."""
     n = metrics.total_orders
@@ -207,28 +209,59 @@ def print_report(
     print(f"  期間: {time_range}")
     print("=" * 70)
 
-    # G1.1 Gate メトリクス
-    print("\n📊 G1.1 Gate メトリクス:")
+    # 130# G1.1-quick Gate メトリクス (116# 二段階ゲート)
+    print("\n📊 G1.1-quick (72h Kill Gate):")
     print("-" * 50)
     checks = gate_result.get("checks", {})
     for check_id, detail in checks.items():
         icon = "✅" if detail["pass"] else "❌"
-        val = detail["value"]
-        thr = detail["threshold"]
-        if "pnl" in check_id.lower():
+        val = detail.get("value", 0.0)
+        # K4 は複合条件 (threshold_p + threshold_mean)
+        if "threshold" in detail:
+            thr = detail["threshold"]
+            if "pnl" in check_id.lower():
+                val_str = _fmt_bps(val)
+                thr_str = _fmt_bps(thr)
+            elif "ratio" in check_id.lower() or "rate" in check_id.lower():
+                val_str = _fmt_pct(val)
+                thr_str = _fmt_pct(thr)
+            else:
+                val_str = f"{val:.1f}"
+                thr_str = f"{thr:.1f}"
+            print(f"  {icon} {check_id}: {val_str} (閾値: {thr_str})")
+        elif "threshold_p" in detail:  # K4 PnL kill 複合条件
             val_str = _fmt_bps(val)
-            thr_str = _fmt_bps(thr)
-        elif "ratio" in check_id.lower() or "rate" in check_id.lower():
-            val_str = _fmt_pct(val)
-            thr_str = _fmt_pct(thr)
+            p_val = detail.get("pvalue", 1.0)
+            print(f"  {icon} {check_id}: mean={val_str}, p={p_val:.4f}")
         else:
-            val_str = f"{val:.1f}"
-            thr_str = f"{thr:.1f}"
-        print(f"  {icon} {check_id}: {val_str} (閾値: {thr_str})")
+            print(f"  {icon} {check_id}: {val:.3f}")
 
     gate_verdict = gate_result.get("gate_result", "???")
-    gate_icon = "✅" if gate_verdict == "PASS" else "❌"
-    print(f"\n  {gate_icon} G1.1 総合: {gate_verdict}")
+    gate_icon = {"PASS": "✅", "WATCH": "⚠️", "FAIL": "❌"}.get(gate_verdict, "❓")
+    print(f"\n  {gate_icon} G1.1-quick: {gate_verdict}")
+
+    # 130# G1.2-full 判定表示
+    if full_result is not None:
+        full_verdict = full_result.get("gate_result", "???")
+        full_icon = {"PASS": "✅", "WATCH": "⚠️", "FAIL": "❌"}.get(full_verdict, "❓")
+        print(f"\n📊 G1.2-full (168h Qualification):")
+        print("-" * 50)
+        full_checks = full_result.get("checks", {})
+        for check_id, detail in full_checks.items():
+            icon = "✅" if detail.get("pass", False) else "❌"
+            val = detail.get("value", 0.0)
+            thr = detail.get("threshold", 0.0)
+            if "pnl" in check_id.lower():
+                val_str = _fmt_bps(val)
+                thr_str = _fmt_bps(thr)
+            elif "ratio" in check_id.lower() or "rate" in check_id.lower():
+                val_str = _fmt_pct(val)
+                thr_str = _fmt_pct(thr)
+            else:
+                val_str = f"{val:.1f}"
+                thr_str = f"{thr:.1f}"
+            print(f"  {icon} {check_id}: {val_str} (閾値: {thr_str})")
+        print(f"\n  {full_icon} G1.2-full: {full_verdict}")
 
     # §3.9 中止ルール
     print("\n🚦 §3.9 継続中止ルール:")
@@ -426,19 +459,25 @@ def run_monitor(results_dir: Path, save_json: bool = True) -> dict[str, object]:
         import yaml  # type: ignore[import-untyped]
         with open(thresholds_path, "r") as f:
             cfg = yaml.safe_load(f)
-        thresholds = cfg.get("g1_1_exec", {})
+        quick_thresholds = cfg.get("g1_1_quick_exec", {})
+        full_thresholds = cfg.get("g1_2_full_exec", {})
     else:
-        thresholds = {}
+        quick_thresholds = {}
+        full_thresholds = {}
 
     # clean レコードのみでメトリクス算出
     metrics = compute_fill_metrics(clean_records)
-    gate_result = g1_1_judgment(metrics, thresholds, records=clean_records)  # 092# round-trip KPI
+
+    # 130# 判定統一: g1_1_quick + g1_2_full を正とする (gate_judgment.py と同一系統)
+    gate_result = g1_1_quick_judgment(metrics, quick_thresholds)
+    full_result = g1_2_full_judgment(metrics, full_thresholds)
     stop_results = evaluate_stop_rules(metrics, clean_records)
 
     print_report(
         metrics, clean_records, gate_result, stop_results,
         clean_count=clean_count,
         quarantine_count=quarantine_count,
+        full_result=full_result,
     )
 
     if save_json:
@@ -448,6 +487,7 @@ def run_monitor(results_dir: Path, save_json: bool = True) -> dict[str, object]:
     return {
         "metrics": metrics,
         "gate_result": gate_result,
+        "full_result": full_result,
         "stop_results": stop_results,
     }
 

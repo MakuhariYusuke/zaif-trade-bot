@@ -592,6 +592,18 @@ class FillTestRunner:
             order_price, spread_at_order, effective_offset_ratio = await self._compute_maker_price(side)
         except Exception as e:
             logger.error(f"Failed to compute maker price: {e}")
+            # 130# orderbook_error 細分化
+            err_msg = str(e).lower()
+            if "timeout" in err_msg or "timed out" in err_msg:
+                ob_cancel_reason = "orderbook_timeout"
+            elif "rate" in err_msg or "limit" in err_msg or "too many" in err_msg:
+                ob_cancel_reason = "orderbook_rate_limit"
+            elif "empty" in err_msg or "no bid" in err_msg or "no ask" in err_msg:
+                ob_cancel_reason = "orderbook_empty"
+            elif "sell_guard" in err_msg:
+                ob_cancel_reason = "sell_guard_reject"
+            else:
+                ob_cancel_reason = "orderbook_error"
             return FillRecord(
                 cycle_id=cycle_id,
                 timestamp=time.time(),
@@ -599,7 +611,7 @@ class FillTestRunner:
                 order_price=0.0,
                 order_quantity=self._current_lot,
                 cancelled=True,
-                cancel_reason="orderbook_error",
+                cancel_reason=ob_cancel_reason,
                 error_message=str(e),
                 spread_offset_ratio=self._maker_price.base_offset_ratio,  # 096# 状態分離
                 run_id=self._run_id,       # 088# データ品質: 早期リターンにも必須
@@ -630,6 +642,32 @@ class FillTestRunner:
 
         for attempt in range(1 + self.config.max_order_retries):
             try:
+                # 130# E1: postonly 二重確認 — 発注直前に mid price を再取得し
+                # テイカー側になっていないか確認 (postonly_reject 低減)
+                try:
+                    _pre_ob = await self.adapter.get_orderbook(self.config.symbol, depth=1)
+                    if _pre_ob and _pre_ob.bids and _pre_ob.asks:
+                        _pre_best_bid = _pre_ob.bids[0].price if hasattr(_pre_ob.bids[0], 'price') else _pre_ob.bids[0][0]
+                        _pre_best_ask = _pre_ob.asks[0].price if hasattr(_pre_ob.asks[0], 'price') else _pre_ob.asks[0][0]
+                        # buy の指値が best_ask 以上 → テイカー側
+                        if side == "buy" and order_price >= _pre_best_ask:
+                            _safe_price = _pre_best_bid
+                            logger.info(
+                                f"[postonly_guard] 130# buy price {order_price:.0f} >= best_ask "
+                                f"{_pre_best_ask:.0f}, adjusted to best_bid {_safe_price:.0f}"
+                            )
+                            order_price = _safe_price
+                        # sell の指値が best_bid 以下 → テイカー側
+                        elif side == "sell" and order_price <= _pre_best_bid:
+                            _safe_price = _pre_best_ask
+                            logger.info(
+                                f"[postonly_guard] 130# sell price {order_price:.0f} <= best_bid "
+                                f"{_pre_best_bid:.0f}, adjusted to best_ask {_safe_price:.0f}"
+                            )
+                            order_price = _safe_price
+                except Exception as _pre_e:
+                    logger.debug(f"[postonly_guard] Pre-check failed (non-fatal): {_pre_e}")
+
                 order = await self.adapter.place_order(
                     symbol=self.config.symbol,
                     side=side,

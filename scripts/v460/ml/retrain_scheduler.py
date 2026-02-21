@@ -30,14 +30,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import logging
 import os
-import pickle
-import shutil
 import sys
-import tempfile
 import time
 from datetime import datetime
 from pathlib import Path
@@ -69,6 +65,10 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     "interval_sec": 3600,           # 再学習間隔 (秒) — 1時間
     "min_new_samples": 30,          # 再学習に必要な最小新規サンプル数
     "min_total_samples": 100,       # 再学習に必要な最小合計サンプル数
+    # 130# Bootstrap Phase: run切替直後のスタベーション回避
+    "bootstrap_min_total_samples": 30,   # Bootstrap 段階での最小合計
+    "bootstrap_min_new_samples": 10,     # Bootstrap 段階での最小新規
+    "bootstrap_threshold": 100,          # total < この値なら Bootstrap 段階と判定
     "target": "pnl120",            # 127# M2: "pnl120" or "pnl30"
     # 127# H2: run_id 分離
     "latest_run_only": True,        # 最新 run_id のみ学習
@@ -380,13 +380,24 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
     result["filled_records"] = n_original_filled
     result["dropped_by_feature_build"] = n_original_filled - int(len(X_full))
 
-    # Step 2: 最小サンプルチェック
-    min_total = cfg.get("min_total_samples", 100)
+    # Step 2: 最小サンプルチェック (130# Bootstrap 2段化)
+    bootstrap_threshold = cfg.get("bootstrap_threshold", 100)
+    is_bootstrap = len(X_valid) < bootstrap_threshold
+    if is_bootstrap:
+        min_total = cfg.get("bootstrap_min_total_samples", 30)
+        result["phase"] = "bootstrap"
+        logger.info(
+            f"130# Bootstrap phase: {len(X_valid)} < {bootstrap_threshold}, "
+            f"using min_total={min_total}"
+        )
+    else:
+        min_total = cfg.get("min_total_samples", 100)
+        result["phase"] = "stable"
     if len(X_valid) < min_total:
         return {
             **result,
             "status": "skipped",
-            "reason": f"insufficient samples: {len(X_valid)} < {min_total}",
+            "reason": f"insufficient samples: {len(X_valid)} < {min_total} ({result['phase']})",
         }
 
     # 127# X2: 前モデルを一度だけロード (n_samples + WF score を取得)
@@ -404,8 +415,11 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
         except Exception:
             pass
 
-    # Step 3: 新規サンプルチェック
-    min_new = cfg.get("min_new_samples", 30)
+    # Step 3: 新規サンプルチェック (130# Bootstrap 2段化)
+    if is_bootstrap:
+        min_new = cfg.get("bootstrap_min_new_samples", 10)
+    else:
+        min_new = cfg.get("min_new_samples", 30)
     new_samples = len(X_valid) - prev_n_samples
     result["new_samples"] = int(new_samples)
 
@@ -413,7 +427,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
         return {
             **result,
             "status": "skipped",
-            "reason": f"insufficient new samples: {new_samples} < {min_new}",
+            "reason": f"insufficient new samples: {new_samples} < {min_new} ({result['phase']})",
         }
 
     logger.info(

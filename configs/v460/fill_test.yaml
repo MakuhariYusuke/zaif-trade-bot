@@ -96,7 +96,7 @@ time_filter:
   #   UTC16 (JST01): -2.13 bps n=8
   # 107# UTC17 解除: 実測 +0.65 bps (n=8) → 誤遮断。Phase 3 段階的廃止の第一歩
   # 107# UTC13 残留: -1.91 bps は閾値 -2.0 未満だが AS% 28.6% & n=14 で統計的に有意
-  skip_utc_hours_sell: [4, 8, 14, 15, 16]             # 125# S1: UTC04 (JST13 -2.842bps n=11), UTC15 (JST00 -1.403bps n=24) 追加。123#/124# 合意。
+  skip_utc_hours_sell: [4, 8, 14, 15, 16, 21]          # 130# UTC21 (JST06 -1.136bps n=42) 追加。125# S1 継続。128# 分析合意。
   # 110# 086# デッドロック修正: alt_side==_last_side 時の連続待機上限
   # 0=旧動作(無制限), >0 で N 回超過後 alt_side を許可
   # 3回 × 120s = 6分待機後に解除 → 理論上 49%→~8% のアイドル削減
@@ -213,6 +213,8 @@ skip_gate:
   adaptive_ceiling: 0.80       # 閾値上限
   # 124# Rule: unknown regime での sell スキップ (WF: S20%_30=+0.198, S20%_120=+0.140)
   skip_sell_unknown_regime: true
+  # 130# unknown regime buy offset boost (128# 分析: unknown buy -1.384bps)
+  unknown_buy_offset_boost: 2.0  # VG 相当の 2x boost (1.0 = 無効)
 
 # ---- 107# Volatility Guard (リアルタイム急変検知) ----
 # time_filter の静的遮断では対応不能な「時間帯内の急変」に対応
@@ -272,6 +274,10 @@ retrain:
   interval_sec: 3600               # 再学習チェック間隔 (秒) — 1時間
   min_new_samples: 30              # 再学習に必要な最小新規サンプル数
   min_total_samples: 100           # 再学習に必要な最小合計サンプル数
+  # 130# Bootstrap Phase: run切替直後のスタベーション回避
+  bootstrap_min_total_samples: 30  # Bootstrap 段階での最小合計 (安定期の 1/3)
+  bootstrap_min_new_samples: 10    # Bootstrap 段階での最小新規
+  bootstrap_threshold: 100         # total < この値なら Bootstrap 段階と判定
   target: pnl120                   # 127# M2: "pnl120" or "pnl30" (回帰 target)
   # 127# H2: run_id 分離 (異なる設定の run を混在させない)
   latest_run_only: true            # 最新 run_id のみ学習 (因果崩壊防止)

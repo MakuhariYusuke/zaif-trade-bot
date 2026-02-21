@@ -287,6 +287,28 @@ class MakerPriceCalculator:
                 f"→ {effective_offset_ratio:.4f}"
             )
 
+        # 130# unknown regime buy guard: offset boost で AS 回避
+        if (
+            cfg.unknown_buy_offset_boost > 1.0
+            and side == "buy"
+            and self._regime_detector is not None
+            and hasattr(self._regime_detector, "current_regime")
+            and (
+                self._regime_detector.current_regime is None
+                or self._regime_detector.current_regime.value == "unknown"
+            )
+        ):
+            pre_offset = effective_offset_ratio
+            effective_offset_ratio = min(
+                effective_offset_ratio * cfg.unknown_buy_offset_boost,
+                cfg.max_offset_ratio,
+            )
+            logger.info(
+                f"[unknown_buy_guard] 130# buy offset boosted: "
+                f"{pre_offset:.4f}→{effective_offset_ratio:.4f} "
+                f"(regime=unknown, boost={cfg.unknown_buy_offset_boost:.2f})"
+            )
+
         # 054# S4: Spread 適応型 offset
         if cfg.spread_adaptive_enabled:
             spread_bps = spread / mid_price * _BPS_FACTOR

@@ -278,3 +278,126 @@ spread < 2 bps でのみ黒字。spread ≥ 2 bps で参入すると期待値が
 3. **retrain 未稼働が OB データ欠損に起因** (129# で解決済)。新 run の蓄積後、モデル改善が期待される。
 4. **spread < 2 bps 帯でのみ黒字** — 流動性条件による参入フィルタが有効。
 5. **immediate wins** は YAML 変更 (sell offset, UTC21 ブロック, sell timeout) で +50~100 bps の改善を見込む。
+
+---
+
+## §11 128# 提案の妥当性チェック（最新状態反映）
+
+評価時点: **2026-02-21 06:20 UTC** (`monitor_fill_test.py`), **2026-02-21 15:21 UTC** (`retrain_scheduler --once`)
+
+### 11.1 まず現況の再確認
+
+- `gate_judgment.py`:
+  - G1.1-quick: **PASS**
+  - G1.2-full: **WATCH**
+  - attempted_fill_rate=76.8%, AS_ratio=26.8%, PnL30=-0.172bps (p_holm=0.3737)
+- `retrain_scheduler --once`:
+  - latest run: `1771651879_16001dc3`
+  - `OB matched=15/15`（129# 効果確認）
+  - ただし `Insufficient filled samples: 5` で再学習は未実行
+
+### 11.2 方策A-Fの判定
+
+| 方策 | 妥当性 | コメント |
+|---|---|---|
+| A1/A2 (時間帯フィルタ強化) | 条件付きで妥当 | UTC21 悪化は再現しており A2 は実施価値あり。A1 の「±30分」は現行実装が時間単位のため追加実装が必要。 |
+| A3 (profitable hours only) | 見送り推奨 | サンプル偏りが強く、レジーム変化時に脆い。000# の Gate 検証目的とも衝突。 |
+| B1 (閾値厳格化) | 条件付きで妥当 | 現在 mode=pnl なので「AS閾値」ではなく `pnl_threshold` 側で設計し直す必要あり。 |
+| B2 (spread 条件を SkipGate へ) | 一部重複 | `spread_jpy` は既に SkipGate 特徴量に含まれる。追加は「ルール併設」か「閾値再学習」。 |
+| B3 (retrain 待ち) | 妥当 | 方向は正しい。ただし latest_run_only + min_total_samples=100 で起動直後に学習が進みにくい。 |
+| C1 (sell offset 0.45 など大幅拡大) | 現設定では不適 | `max_offset_ratio=0.30` キャップがあるためそのままは効かない。まずキャップ設計を見直すべき。 |
+| C3 (sell timeout 短縮) | 条件付きで妥当 | AS削減の可能性はあるが fill率低下とのトレードオフ大。A/B比較で確認必須。 |
+| D2 (unknown時VG強制) | 妥当 | unknown帯の悪化対策として筋が良い。まず buy 側で限定導入が安全。 |
+| E1 (発注直前二重確認) | 妥当 | postonly_reject 減少の即効施策。実装コストに対し効果が見込める。 |
+| F2/F3 (spread統合) | 一部実施済み | `spread_adaptive` が既にある。新規価値は「閾値再推定」と「SkipGate連携の一貫化」。 |
+
+---
+
+## §12 テスト・品質確認（.venv 実行）
+
+`.venv/Scripts/python.exe` で実行:
+
+- `tests/unit/v460/test_retrain_hot_reload.py`
+- `tests/unit/v460/test_fill_test_config.py`
+- `tests/unit/v460/test_skip_gate_v3.py`
+  - **114 passed, 1 warning**
+- `tests/unit/v460/test_ob_recorder.py`
+  - **12 passed, 1 warning**
+
+結論: 126/127/129 系の基盤変更は、単体テスト上は整合している。
+
+---
+
+## §13 追加提案（過去成果の活用込み）
+
+### 13.1 P0: 再学習の「起動直後スタベーション」解消
+
+現状は `latest_run_only=true` で run 切替直後に学習データ不足になりやすい。  
+`v459` 系の「段階ゲート」思想を再利用し、再学習も 2 段に分ける。
+
+- Phase-Bootstrap: `min_total_samples=30`, `min_new_samples=10`（暫定）
+- Phase-Stable: `min_total_samples=100`, `min_new_samples=30`（本番）
+
+これにより「新 run でいつまでも未学習」を回避する。
+
+### 13.2 P0: retrain の I/O 重さ削減（毎時 440万 trades 読み込みの抑制）
+
+`retrain_scheduler.log` 上、毎サイクル `trades=4,396,171` を読んでおり重い。  
+`v456` での I/O 削減（111#）の教訓を適用し、対象日限定ロードにする。
+
+- fill_records の対象 timestamp から必要日だけ算出
+- `data/v460/raw/trades/YYYYMMDD.jsonl.gz` を日単位選択で読む
+
+### 13.3 P0: monitor と gate_judgment の判定体系を一本化
+
+`monitor_fill_test.py` は legacy E1-E8 で FAIL 表示、`gate_judgment.py` は G1.2 WATCH。  
+運用判断が割れるので、ph2 では G1.2 系を正とする表示へ統一する。
+
+### 13.4 P1: unknown regime の buy 側ガード追加
+
+現状は `skip_sell_unknown_regime=true` のみ。  
+buy unknown が悪化しているため、buy 側にも段階ルールを追加する。
+
+- step1: unknown buy は `offset_boost_factor` を強制適用
+- step2: それでも悪化なら unknown buy skip を部分導入
+
+### 13.5 P1: `orderbook_error` の内訳を分離
+
+`orderbook_error` が原因追跡を難しくしている。  
+`timeout/rate_limit/empty_book/parse_error` に細分化し、時間帯別に施策を分ける。
+
+### 13.6 P1-P2: 過去資産の実戦投入（111#/112#）
+
+1. `GatesToAlerts` を fill_test 判定に接続（WATCH/FAIL 即通知）
+2. `RiskRuleEngine + AdvancedAutoStop` を ph2 ガードに段階導入
+3. `run_pnl_monte_carlo.py` を日次自動化し、施策比較を期待値分布で判定
+4. `v459/116` の counterfactual 発想を再利用し、「コスト0・完全執行仮定」の上限を定期再計算
+
+---
+
+## §14 更新後の優先順位（実装順）
+
+1. **P0**: retrain bootstrap 2段化（13.1）
+2. **P0**: monitor/gate 判定統一（13.3）
+3. **P0**: UTC21 sell block の短期 A/B（11.2 A2）
+4. **P1**: unknown buy ガード（13.4）
+5. **P1**: postonly 二重確認 + orderbook_error 細分化（11.2 E1, 13.5）
+6. **P1**: retrain I/O の日付限定ロード（13.2）
+
+---
+
+## §15 実装結果 (130# セッション)
+
+全 6 項目を実装。1016 passed, 0 failed。
+
+| # | 項目 | 変更ファイル | 内容 |
+|---|---|---|---|
+| 1 | retrain bootstrap 2段化 | `retrain_scheduler.py`, `fill_test.yaml` | `bootstrap_min_total=30, bootstrap_min_new=10, bootstrap_threshold=100` — total < 100 なら Bootstrap Phase で緩い閾値を適用 |
+| 2 | monitor/gate 判定統一 | `monitor_fill_test.py` | `g1_1_judgment` → `g1_1_quick_judgment` + `g1_2_full_judgment` に切替。K1-K6 + F1-F8 の二段表示 |
+| 3 | UTC21 sell block | `fill_test.yaml` | `skip_utc_hours_sell: [4,8,14,15,16,21]` — UTC21 (JST06) -1.136bps n=42 |
+| 4 | unknown buy guard | `maker_price.py`, `fill_config.py`, `fill_test.yaml` | `unknown_buy_offset_boost: 2.0` — unknown regime buy 時に offset 2x (VG 相当) |
+| 5a | postonly 二重確認 | `run_fill_test.py` | `place_order` 直前に mid price 再取得、テイカー側なら best_bid/ask に補正 |
+| 5b | orderbook_error 細分化 | `run_fill_test.py` | `orderbook_timeout`, `orderbook_rate_limit`, `orderbook_empty`, `sell_guard_reject` に分離 |
+| 6 | retrain I/O 日付限定 | `feature_enricher.py` | fill records の timestamp から必要日を算出、`date_filter` で trades/OB を日単位ロード |
+
+テスト修正: `test_fill_quality.py`, `test_regime_detector.py` — skip_utc_hours_sell アサート更新

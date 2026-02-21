@@ -40,8 +40,15 @@ def _read_jsonl_gz(path: Path) -> list[dict]:
     return records
 
 
-def load_raw_orderbook(raw_dir: Optional[Path] = None) -> pd.DataFrame:
-    """全日の板スナップショットを読み込み.
+def load_raw_orderbook(
+    raw_dir: Optional[Path] = None,
+    date_filter: Optional[set[str]] = None,
+) -> pd.DataFrame:
+    """板スナップショットを読み込み.
+
+    Args:
+        raw_dir: raw data ディレクトリ.
+        date_filter: 130# 日付限定ロード. {"20260220", "20260221"} 形式.
 
     Returns:
         columns: ts, best_bid, best_ask, mid_price, spread_bps,
@@ -54,6 +61,11 @@ def load_raw_orderbook(raw_dir: Optional[Path] = None) -> pd.DataFrame:
 
     all_records: list[dict] = []
     for f in sorted(ob_dir.glob("*.jsonl.gz")):
+        # 130# 日付限定ロード
+        if date_filter is not None:
+            stem = f.stem.replace(".jsonl", "")
+            if stem not in date_filter:
+                continue
         all_records.extend(_read_jsonl_gz(f))
 
     if not all_records:
@@ -92,8 +104,16 @@ def load_raw_orderbook(raw_dir: Optional[Path] = None) -> pd.DataFrame:
     return df
 
 
-def load_raw_trades(raw_dir: Optional[Path] = None) -> pd.DataFrame:
-    """全日の約定データを読み込み.
+def load_raw_trades(
+    raw_dir: Optional[Path] = None,
+    date_filter: Optional[set[str]] = None,
+) -> pd.DataFrame:
+    """約定データを読み込み.
+
+    Args:
+        raw_dir: raw data ディレクトリ.
+        date_filter: 130# 日付限定ロード. {"20260220", "20260221"} 形式.
+            None の場合は全日読み込み (後方互換).
 
     Returns:
         columns: ts, price, amount, side
@@ -105,6 +125,11 @@ def load_raw_trades(raw_dir: Optional[Path] = None) -> pd.DataFrame:
 
     all_records: list[dict] = []
     for f in sorted(tr_dir.glob("*.jsonl.gz")):
+        # 130# 日付限定ロード: ファイル名 YYYYMMDD.jsonl.gz から日付抽出
+        if date_filter is not None:
+            stem = f.stem.replace(".jsonl", "")  # "20260220" etc.
+            if stem not in date_filter:
+                continue
         all_records.extend(_read_jsonl_gz(f))
 
     if not all_records:
@@ -112,7 +137,8 @@ def load_raw_trades(raw_dir: Optional[Path] = None) -> pd.DataFrame:
 
     df = pd.DataFrame(all_records)
     df = df.sort_values("ts").reset_index(drop=True)
-    logger.info(f"Loaded {len(df)} trades")
+    n_days = len(date_filter) if date_filter else "all"
+    logger.info(f"Loaded {len(df)} trades (days={n_days})")
     return df
 
 
@@ -379,8 +405,27 @@ def enrich_fill_records(
             avg_trade_size, price_velocity_60s, vpin_60s,
             + 060# v2 features (multi-timeframe, volatility, momentum)
     """
-    ob_df = load_raw_orderbook(raw_dir)
-    trades_df = load_raw_trades(raw_dir)
+    # 130# 日付限定ロード: fill records のタイムスタンプから必要日を算出
+    date_filter: set[str] | None = None
+    if "timestamp" in fill_df.columns and len(fill_df) > 0:
+        from datetime import datetime, timezone
+        ts_min = float(fill_df["timestamp"].min())
+        ts_max = float(fill_df["timestamp"].max())
+        # 前後 trade_window_sec 分のマージンを確保
+        margin = max(trade_window_sec, 300)
+        d_start = datetime.fromtimestamp(ts_min - margin, tz=timezone.utc)
+        d_end = datetime.fromtimestamp(ts_max + margin, tz=timezone.utc)
+        # 日付セットを生成
+        from datetime import timedelta
+        date_filter = set()
+        d = d_start.date()
+        while d <= d_end.date():
+            date_filter.add(d.strftime("%Y%m%d"))
+            d += timedelta(days=1)
+        logger.info(f"130# Date filter: {sorted(date_filter)} ({len(date_filter)} days)")
+
+    ob_df = load_raw_orderbook(raw_dir, date_filter=date_filter)
+    trades_df = load_raw_trades(raw_dir, date_filter=date_filter)
 
     # 059# P1-7: 事前ソート + searchsorted で O(N_fill × log N_trades)
     if not trades_df.empty and "ts" in trades_df.columns:
