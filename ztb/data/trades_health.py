@@ -3,9 +3,16 @@
 run 開始時に trades raw データの存在を検証し、欠損日を検出する。
 retrain が全量 fallback して特徴量の時間整合性が崩れるのを早期に防ぐ。
 
+136# P1-02: feature staleness monitor 追加。
+trades + OB データの鮮度を包括的に判定し、retrain 前ガードとして使用。
+
 Usage (ライブラリとして):
     from ztb.data.trades_health import check_trades_health, TradesHealthResult
     result = check_trades_health(expected_days=["20260220", "20260221"])
+
+    # P1-02: feature 鮮度チェック
+    from ztb.data.trades_health import check_feature_freshness
+    fresh = check_feature_freshness(raw_dir=Path("data/v460/raw"))
 
 Usage (CLI):
     python -m ztb.data.trades_health --days 3
@@ -105,6 +112,96 @@ def check_trades_health(
         available_days=available,
         missing_days=missing,
         stale_hours=stale_hours,
+        message=msg,
+    )
+
+
+# ---------------------------------------------------------------------------
+# 136# P1-02: Feature Staleness Monitor
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class FeatureFreshnessResult:
+    """trades + OB データの鮮度チェック結果."""
+
+    fresh: bool
+    trades_stale_hours: float
+    ob_stale_hours: float
+    details: dict[str, str]
+    message: str
+
+
+def _latest_mtime_hours(directory: Path, glob_pattern: str = "*.jsonl.gz") -> float:
+    """ディレクトリ内の最新ファイル mtime から経過時間を返す."""
+    if not directory.exists():
+        return float("inf")
+    latest_mtime = 0.0
+    for p in directory.glob(glob_pattern):
+        try:
+            mt = p.stat().st_mtime
+            if mt > latest_mtime:
+                latest_mtime = mt
+        except OSError:
+            continue
+    if latest_mtime == 0.0:
+        return float("inf")
+    return (datetime.now(timezone.utc).timestamp() - latest_mtime) / 3600
+
+
+def check_feature_freshness(
+    raw_dir: Path | None = None,
+    *,
+    trades_stale_hours: float = 6.0,
+    ob_stale_hours: float = 6.0,
+) -> FeatureFreshnessResult:
+    """trades + OB データの鮮度を包括チェック.
+
+    retrain_scheduler の事前ガードとして、データが十分新鮮かを判定する。
+    fill_test が動作中なら両方のデータは継続的に更新されるはず。
+
+    Args:
+        raw_dir: raw data ディレクトリ (default: data/v460/raw).
+        trades_stale_hours: trades データの許容経過時間.
+        ob_stale_hours: OB データの許容経過時間.
+
+    Returns:
+        FeatureFreshnessResult
+    """
+    d = raw_dir or _DEFAULT_RAW_DIR
+
+    tr_hours = _latest_mtime_hours(d / "trades")
+    ob_hours = _latest_mtime_hours(d / "orderbook")
+
+    details: dict[str, str] = {}
+    issues: list[str] = []
+
+    if tr_hours > trades_stale_hours:
+        issues.append(f"trades stale ({tr_hours:.1f}h > {trades_stale_hours}h)")
+        details["trades"] = f"stale ({tr_hours:.1f}h)"
+    else:
+        details["trades"] = f"fresh ({tr_hours:.1f}h)"
+
+    if ob_hours > ob_stale_hours:
+        issues.append(f"OB stale ({ob_hours:.1f}h > {ob_stale_hours}h)")
+        details["ob"] = f"stale ({ob_hours:.1f}h)"
+    else:
+        details["ob"] = f"fresh ({ob_hours:.1f}h)"
+
+    fresh = len(issues) == 0
+    if fresh:
+        msg = f"FRESH: trades={tr_hours:.1f}h, OB={ob_hours:.1f}h"
+    else:
+        msg = "STALE: " + "; ".join(issues)
+
+    if not fresh:
+        logger.warning(f"[136# P1-02] Feature freshness: {msg}")
+
+    return FeatureFreshnessResult(
+        fresh=fresh,
+        trades_stale_hours=tr_hours,
+        ob_stale_hours=ob_hours,
+        details=details,
         message=msg,
     )
 

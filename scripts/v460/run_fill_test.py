@@ -229,9 +229,14 @@ class FillTestRunner:
         # 135# P0-04: trades recorder — 約定データを raw JSONL.gz に蓄積
         self._trades_recorder = TradesRecorder(enabled=True)
 
-        # 133# P0-10: sell 動的 kill 用の rolling PnL 追跡
-        self._sell_pnl_history: list[float] = []
-        self._sell_kill_cooldown: int = 0  # 停止後再評価までのカウントダウン
+        # 136# P1-03: sell 動的 kill — 独立マネージャに委譲
+        from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
+        self._sell_kill_mgr = SellDynamicKillManager(SellKillConfig(
+            enabled=config.sell_dynamic_kill_enabled,
+            window=config.sell_dynamic_kill_window,
+            threshold_bps=config.sell_dynamic_kill_threshold_bps,
+            resume_window=config.sell_dynamic_kill_resume_window,
+        ))
 
         # 安全設計: atexit + signal で残存注文キャンセル + 未保存データ退避 + ロック解放
         atexit.register(self._cleanup_sync)
@@ -315,42 +320,18 @@ class FillTestRunner:
         )
 
     def _is_sell_killed(self) -> bool:
-        """133# P0-10: sell 動的 kill 判定.
-
-        直近 N sell fill の rolling mean PnL が閾値以下なら True を返す。
-        停止後は resume_window サイクル経過まで kill を維持する。
-        """
-        if self._sell_kill_cooldown > 0:
-            self._sell_kill_cooldown -= 1
-            return True
-        window = self.config.sell_dynamic_kill_window
-        if len(self._sell_pnl_history) < window:
-            return False
-        recent = self._sell_pnl_history[-window:]
-        rolling_mean = sum(recent) / len(recent)
-        if rolling_mean < self.config.sell_dynamic_kill_threshold_bps:
-            self._sell_kill_cooldown = self.config.sell_dynamic_kill_resume_window
-            logger.warning(
-                f"[133# P0-10] sell dynamic kill activated: "
-                f"rolling{window} mean={rolling_mean:.3f}bps < "
-                f"{self.config.sell_dynamic_kill_threshold_bps}bps, "
-                f"cooldown={self.config.sell_dynamic_kill_resume_window} cycles"
-            )
-            return True
-        return False
+        """133# P0-10 / 136# P1-03: sell 動的 kill 判定 — SellDynamicKillManager に委譲."""
+        killed, _telemetry = self._sell_kill_mgr.check_kill()
+        return killed
 
     def _track_sell_pnl(self, record: "FillRecord") -> None:
-        """133# P0-10: sell fill の PnL を追跡。"""
+        """133# P0-10 / 136# P1-03: sell fill の PnL を追跡 — SellDynamicKillManager に委譲."""
         if (
             record.filled
             and record.side == "sell"
             and record.post_fill_30s_pnl is not None
         ):
-            self._sell_pnl_history.append(record.post_fill_30s_pnl)
-            # メモリ制限: 最大 window*3 保持
-            max_keep = self.config.sell_dynamic_kill_window * 3
-            if len(self._sell_pnl_history) > max_keep:
-                self._sell_pnl_history = self._sell_pnl_history[-max_keep:]
+            self._sell_kill_mgr.track(record.post_fill_30s_pnl)
 
     async def _compute_orderbook_imbalance(self, depth: int = 5) -> tuple[float, float, float]:
         """054# S1: 板不均衡を計算 — 120# MakerPriceCalculator に委譲."""

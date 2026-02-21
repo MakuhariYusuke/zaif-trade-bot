@@ -1,0 +1,287 @@
+"""136# P1-01/02/03 テスト.
+
+- RetainTrigger: fill_records mtime チェック、trades health ガード、バックオフ
+- FeatureFreshness: trades/OB 鮮度チェック
+- SellDynamicKillManager: rolling kill、cooldown、レジーム別閾値、テレメトリ
+"""
+
+from __future__ import annotations
+
+import gzip
+import json
+import time
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
+
+# ===== P1-01: RetainTrigger =====
+
+class TestRetainTrigger:
+    """RetainTriggerの事前チェック."""
+
+    def test_skip_when_no_fill_records_updated(self, tmp_path: Path) -> None:
+        """fill_records 存在するが mtime 変化なし → 2回目はスキップ."""
+        from ztb.ml.retrain_trigger import RetainTrigger, RetainTriggerConfig
+
+        cfg = RetainTriggerConfig(check_trades_health=False)
+        trigger = RetainTrigger(results_dir=tmp_path, config=cfg)
+
+        # ファイル作成
+        fr = tmp_path / "fill_records_test.jsonl"
+        fr.write_text('{"x":1}\n')
+
+        # 初回: mtime 取得 → 通過
+        ok, reason = trigger.should_retrain()
+        assert ok is True
+
+        # 2回目: mtime 変化なし → スキップ
+        ok2, reason2 = trigger.should_retrain()
+        assert ok2 is False
+        assert "unchanged" in reason2
+
+    def test_pass_when_fill_records_updated(self, tmp_path: Path) -> None:
+        """fill_records 更新 → 通過."""
+        from ztb.ml.retrain_trigger import RetainTrigger, RetainTriggerConfig
+
+        cfg = RetainTriggerConfig(check_trades_health=False)
+        trigger = RetainTrigger(results_dir=tmp_path, config=cfg)
+
+        # ファイル作成
+        fr = tmp_path / "fill_records_test.jsonl"
+        fr.write_text('{"x":1}\n')
+        ok, _ = trigger.should_retrain()
+        assert ok is True
+
+        # ファイル更新
+        import os
+        os.utime(str(fr), (time.time() + 10, time.time() + 10))
+        ok2, _ = trigger.should_retrain()
+        assert ok2 is True
+
+    def test_skip_when_trades_unhealthy(self, tmp_path: Path) -> None:
+        """trades 欠損 → blocked."""
+        from ztb.ml.retrain_trigger import RetainTrigger, RetainTriggerConfig
+
+        cfg = RetainTriggerConfig(
+            check_fill_records_mtime=False,
+            check_trades_health=True,
+            trades_lookback_days=1,
+        )
+        trigger = RetainTrigger(results_dir=tmp_path, raw_dir=tmp_path, config=cfg)
+        # trades ディレクトリなし → unhealthy
+        ok, reason = trigger.should_retrain()
+        assert ok is False
+        assert "unhealthy" in reason
+
+    def test_backoff_increases_interval(self) -> None:
+        """連続スキップでバックオフ倍増."""
+        from ztb.ml.retrain_trigger import RetainTrigger, RetainTriggerConfig
+
+        cfg = RetainTriggerConfig(
+            base_interval_sec=100,
+            backoff_multiplier=2.0,
+            backoff_max_interval_sec=1000,
+        )
+        trigger = RetainTrigger(results_dir=Path("/nonexistent"), config=cfg)
+        assert trigger.get_effective_interval() == 100
+
+        trigger.record_result("skipped")
+        assert trigger.get_effective_interval() == 200  # 100 * 2^1
+
+        trigger.record_result("skipped")
+        assert trigger.get_effective_interval() == 400  # 100 * 2^2
+
+        trigger.record_result("skipped")
+        assert trigger.get_effective_interval() == 800  # 100 * 2^3
+
+        trigger.record_result("skipped")
+        assert trigger.get_effective_interval() == 1000  # capped
+
+    def test_backoff_resets_on_deploy(self) -> None:
+        """deploy 成功でバックオフリセット."""
+        from ztb.ml.retrain_trigger import RetainTrigger, RetainTriggerConfig
+
+        cfg = RetainTriggerConfig(base_interval_sec=100, backoff_multiplier=2.0)
+        trigger = RetainTrigger(results_dir=Path("/nonexistent"), config=cfg)
+        trigger.record_result("skipped")
+        trigger.record_result("skipped")
+        assert trigger.consecutive_skips == 2
+
+        trigger.record_result("deployed")
+        assert trigger.consecutive_skips == 0
+        assert trigger.get_effective_interval() == 100
+
+
+# ===== P1-02: Feature Freshness =====
+
+class TestFeatureFreshness:
+    """FeatureFreshnessResult のチェック."""
+
+    def test_fresh_when_recent_files(self, tmp_path: Path) -> None:
+        """trades/OB ファイルが新しい → fresh."""
+        from ztb.data.trades_health import check_feature_freshness
+
+        trades_dir = tmp_path / "trades"
+        ob_dir = tmp_path / "orderbook"
+        trades_dir.mkdir()
+        ob_dir.mkdir()
+
+        # 最近のファイルを作成
+        (trades_dir / "20260222.jsonl.gz").write_bytes(
+            gzip.compress(b'{"ts":1}\n')
+        )
+        (ob_dir / "20260222.jsonl.gz").write_bytes(
+            gzip.compress(b'{"ts":1}\n')
+        )
+
+        result = check_feature_freshness(raw_dir=tmp_path, trades_stale_hours=24.0, ob_stale_hours=24.0)
+        assert result.fresh is True
+        assert result.trades_stale_hours < 24.0
+        assert result.ob_stale_hours < 24.0
+        assert "FRESH" in result.message
+
+    def test_stale_when_no_files(self, tmp_path: Path) -> None:
+        """trades/OB ファイルなし → stale."""
+        from ztb.data.trades_health import check_feature_freshness
+
+        result = check_feature_freshness(raw_dir=tmp_path)
+        assert result.fresh is False
+        assert result.trades_stale_hours == float("inf")
+        assert "STALE" in result.message
+
+    def test_partial_stale(self, tmp_path: Path) -> None:
+        """trades OK、OB なし → stale."""
+        from ztb.data.trades_health import check_feature_freshness
+
+        trades_dir = tmp_path / "trades"
+        trades_dir.mkdir()
+        (trades_dir / "20260222.jsonl.gz").write_bytes(
+            gzip.compress(b'{"ts":1}\n')
+        )
+
+        result = check_feature_freshness(
+            raw_dir=tmp_path, trades_stale_hours=24.0, ob_stale_hours=24.0
+        )
+        assert result.fresh is False
+        assert "OB stale" in result.message
+
+
+# ===== P1-03: SellDynamicKillManager =====
+
+class TestSellDynamicKillManager:
+    """SellDynamicKillManager の単体テスト."""
+
+    def test_not_killed_when_insufficient_data(self) -> None:
+        """データ不足 → kill しない."""
+        from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
+
+        mgr = SellDynamicKillManager(SellKillConfig(window=5, threshold_bps=-1.0))
+        for _ in range(3):
+            mgr.track(pnl_bps=-2.0)
+        killed, tel = mgr.check_kill()
+        assert killed is False
+        assert tel.rolling_mean is None  # insufficient data
+
+    def test_killed_when_below_threshold(self) -> None:
+        """rolling mean < threshold → kill."""
+        from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
+
+        mgr = SellDynamicKillManager(SellKillConfig(
+            window=3, threshold_bps=-0.5, resume_window=2,
+        ))
+        for _ in range(3):
+            mgr.track(pnl_bps=-1.0)
+
+        killed, tel = mgr.check_kill()
+        assert killed is True
+        assert tel.rolling_mean == pytest.approx(-1.0)
+        assert tel.total_kills == 1
+        assert tel.cooldown_remaining == 2
+
+    def test_cooldown_decrements(self) -> None:
+        """cooldown 中は killed を返し、カウントダウンする."""
+        from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
+
+        mgr = SellDynamicKillManager(SellKillConfig(
+            window=2, threshold_bps=-0.5, resume_window=3,
+        ))
+        mgr.track(-1.0)
+        mgr.track(-1.0)
+        killed, _ = mgr.check_kill()  # kill activated, cooldown=3
+        assert killed is True
+
+        # cooldown 消化
+        k1, t1 = mgr.check_kill()  # cooldown 2
+        assert k1 is True
+        assert t1.cooldown_remaining == 2
+        k2, t2 = mgr.check_kill()  # cooldown 1
+        assert k2 is True
+        assert t2.cooldown_remaining == 1
+        k3, t3 = mgr.check_kill()  # cooldown 0 → 再評価
+        assert k3 is True
+        assert t3.cooldown_remaining == 0
+        # cooldown 終了後、データがまだ悪ければ再 kill
+        k4, t4 = mgr.check_kill()
+        assert k4 is True  # still below threshold
+        assert t4.total_kills == 2
+
+    def test_not_killed_when_above_threshold(self) -> None:
+        """rolling mean >= threshold → OK."""
+        from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
+
+        mgr = SellDynamicKillManager(SellKillConfig(
+            window=3, threshold_bps=-0.5,
+        ))
+        mgr.track(0.1)
+        mgr.track(0.2)
+        mgr.track(-0.3)
+
+        killed, tel = mgr.check_kill()
+        assert killed is False
+        assert tel.rolling_mean == pytest.approx(0.0, abs=0.01)
+
+    def test_regime_threshold_override(self) -> None:
+        """レジーム別閾値が適用される."""
+        from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
+
+        mgr = SellDynamicKillManager(SellKillConfig(
+            window=3,
+            threshold_bps=-0.5,
+            regime_thresholds={"volatile": -2.0},  # volatile は緩い
+        ))
+        for _ in range(3):
+            mgr.track(-1.0)
+
+        # default threshold (-0.5) → killed
+        killed_default, tel_d = mgr.check_kill(regime=None)
+        assert killed_default is True
+        assert tel_d.threshold_used == -0.5
+
+        # reset and retry with volatile regime
+        mgr.reset()
+        for _ in range(3):
+            mgr.track(-1.0)
+        killed_vol, tel_v = mgr.check_kill(regime="volatile")
+        assert killed_vol is False  # -1.0 > -2.0
+        assert tel_v.threshold_used == -2.0
+
+    def test_disabled(self) -> None:
+        """enabled=False → 常に not killed."""
+        from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
+
+        mgr = SellDynamicKillManager(SellKillConfig(enabled=False))
+        for _ in range(100):
+            mgr.track(-5.0)
+        killed, _ = mgr.check_kill()
+        assert killed is False
+
+    def test_memory_limit(self) -> None:
+        """window*3 超過で古いデータが切り捨てられる."""
+        from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
+
+        mgr = SellDynamicKillManager(SellKillConfig(window=3))
+        for i in range(20):
+            mgr.track(float(i))
+        assert len(mgr._pnl_history) <= 9  # window*3

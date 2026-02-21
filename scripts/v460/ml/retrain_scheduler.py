@@ -1411,8 +1411,24 @@ def run_scheduler(cfg: dict[str, Any], config_path: Path | None = None) -> None:
     """定期再学習ループ.
 
     130# L2: サイクルごとに YAML を再読み込みし、YAML 変更を再起動なしで反映。
+    136# P1-01: RetainTrigger で事前チェック + 適応的バックオフ。
     """
+    from ztb.ml.retrain_trigger import RetainTrigger, RetainTriggerConfig
+
     interval = cfg.get("interval_sec", 3600)
+
+    # 136# P1-01: トリガー初期化
+    trigger_cfg = RetainTriggerConfig(
+        base_interval_sec=interval,
+        check_trades_health=cfg.get("trigger_check_trades_health", True),
+        trades_lookback_days=cfg.get("trigger_trades_lookback_days", 3),
+    )
+    trigger = RetainTrigger(
+        results_dir=Path(cfg["results_dir"]),
+        raw_dir=Path(cfg.get("raw_dir", "data/v460/raw")),
+        config=trigger_cfg,
+    )
+
     logger.info(
         f"=== 126# Retrain Scheduler started ===\n"
         f"  interval: {interval}s ({interval / 3600:.1f}h)\n"
@@ -1420,7 +1436,10 @@ def run_scheduler(cfg: dict[str, Any], config_path: Path | None = None) -> None:
         f"  target: {cfg['target']}\n"
         f"  min_new_samples: {cfg['min_new_samples']}\n"
         f"  quality_gate: {cfg.get('quality_gate_enabled', True)}\n"
-        f"  config_hot_reload: {config_path is not None}"
+        f"  config_hot_reload: {config_path is not None}\n"
+        f"  136# trigger: fill_mtime={trigger_cfg.check_fill_records_mtime}, "
+        f"trades_health={trigger_cfg.check_trades_health}, "
+        f"backoff_mul={trigger_cfg.backoff_multiplier}"
     )
 
     log_dir = Path("logs")
@@ -1440,17 +1459,41 @@ def run_scheduler(cfg: dict[str, Any], config_path: Path | None = None) -> None:
             except Exception as e:
                 logger.warning(f"130# Config reload failed (using previous): {e}")
 
+        # 136# P1-01: 事前トリガーチェック
+        should_run, trigger_reason = trigger.should_retrain()
+        if not should_run:
+            effective_interval = trigger.get_effective_interval()
+            logger.info(
+                f"[136# P1-01] Trigger skip ({trigger_reason}). "
+                f"consecutive_skips={trigger.consecutive_skips}, "
+                f"next_check_in={effective_interval}s ({effective_interval / 3600:.1f}h)"
+            )
+            # 履歴にトリガースキップも記録
+            skip_result = {
+                "timestamp": datetime.now().isoformat(),
+                "status": "skipped_trigger",
+                "reason": trigger_reason,
+                "consecutive_skips": trigger.consecutive_skips,
+            }
+            with open(history_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(skip_result, default=str) + "\n")
+            time.sleep(effective_interval)
+            continue
+
         try:
             result = retrain_model(cfg)
             logger.info(f"Retrain cycle: status={result['status']}")
+            trigger.record_result(result["status"])
             # 履歴ファイルに記録
             with open(history_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(result, default=str) + "\n")
         except Exception as e:
             logger.error(f"Retrain cycle failed: {e}", exc_info=True)
+            trigger.record_result("error")
 
-        logger.info(f"Next retrain in {interval}s ({interval / 3600:.1f}h)")
-        time.sleep(interval)
+        effective_interval = trigger.get_effective_interval()
+        logger.info(f"Next retrain in {effective_interval}s ({effective_interval / 3600:.1f}h)")
+        time.sleep(effective_interval)
 
 
 def main() -> None:
