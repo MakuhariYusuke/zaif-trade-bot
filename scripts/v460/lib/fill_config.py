@@ -198,6 +198,7 @@ class FillTestConfig:
     min_order_btc: float = 0.001           # Coincheck BTC 最小注文数量
     dust_sweep_enabled: bool = True        # 128# 端数BTC一掃: sell時にdust込みで全額売却
     lock_acquire_retries: int = 2          # lockfile 取得リトライ回数
+    lock_stale_heartbeat_sec: float = 1800.0  # 132# lock heartbeat 陳腐化閾値 (秒)
     skip_gate_ob_depth: int = 5            # SkipGate 板情報取得深度
     retry_backoff_base: int = 2            # 発注リトライ指数バックオフ底
     soft_loss_cap_lot_divisor: int = 2     # soft_loss_cap ロット半減の除数
