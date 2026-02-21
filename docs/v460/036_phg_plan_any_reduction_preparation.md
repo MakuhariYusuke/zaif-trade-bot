@@ -800,6 +800,19 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 11. 回帰確認: `py_compile`（`ztb/experiments/base.py` / `ztb/utils/results_utils.py` / `ztb/training/run_optimization.py`）通過。  
 12. 在庫更新: repo 全体 `any_type_debt_tokens=2,516 -> 2,494`（-22）。`ztb/experiments/base.py` / `ztb/utils/results_utils.py` / `ztb/training/run_optimization.py` は `any_type_debt_tokens=0`。  
 
+### Step70: 課題探索バッチ（広く浅く）- 不具合/重複/性能の優先度整理
+
+1. `ztb/training/utils/sac_utils.py` を `py_compile` で検査し、構文エラー（未閉鎖 docstring）で import 不可を確認。  
+2. 同ファイルで `self.project_root` の未初期化参照と `config_dir` / `data_dir` 名称不整合を確認し、実行時 `NameError` 発生リスクを特定。  
+3. `ztb/experiments/job_manager.py` の並列実行経路を確認し、`ProcessPoolExecutor` で bound method + 任意 `train_function` を渡す設計が pickling 失敗しやすい構造であることを確認。  
+4. 同ファイルで `future.result(timeout=...)` の timeout 時に `cancel()` が呼ばれず worker が継続実行しうるため、`_register_async_failure` との状態競合（timeout 扱いと後続 completed 書き込みの競合）リスクを特定。  
+5. `ztb/utils/run_metadata.py` は package hash 取得時に `site-packages` を再帰走査し `.py/.pyc/.pyo` 全読込を行うため、起動時メタデータ収集の高コスト要因であることを確認。  
+6. 同ファイルの git 情報取得は `subprocess.run` を5回直列実行しており、同種コマンドの重複呼び出しを統合できる余地を確認。  
+7. `ztb/training/core/config_builder.py` は `UnifiedConfig = Dict[str, Any]` を含む `Any` 流出点で、`get_config_value` の戻り値 `Any` が下流型を弱める主因であることを確認。  
+8. `any_inventory` の上位 debt を再確認し、次の高効果対象を `sac_algorithm.py(19)` / `reward_function_optimizer.py(19)` / `checkpoint_manager.py(18)` に設定。  
+9. 回帰確認: `py_compile`（`ztb/training/utils`, `ztb/experiments`, `ztb/training/config` の33ファイル）を実施し、失敗は `sac_utils.py` のみ。  
+10. 在庫確認: repo 全体 `any_type_debt_tokens=2,494`（Step69から変化なし）。本Stepは探索のみでコード変更なし。  
+
 ---
 
 ## 5. 進捗サマリー
@@ -873,6 +886,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step67時点 | repo全体 | 2,502 |
 | Step68時点 | repo全体 | 2,516 |
 | Step69時点 | repo全体 | 2,494 |
+| Step70時点 | repo全体 | 2,494 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -996,24 +1010,24 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 
 ## 6. 次フェーズ（優先順）
 
-1. `ztb/analysis/features/auto_feature_generator.py`  
-   - 生成パイプラインの result payload を段階的に型固定し、feature registry 連携の重複マップ操作を整理。  
-2. `ztb/evaluation/promotion.py`  
-   - fallback 実装と `analysis/promotion` の責務境界を整理し、将来的な評価ロジック共通化（mixin/utility）に備える。  
-3. `ztb/analysis/status.py`  
-   - 運用 status payload（通知/集計）を型固定し、`dict` 合成の重複を削減。  
+1. `ztb/training/utils/sac_utils.py`  
+   - まず構文エラーと初期化不整合を修正し import 可能状態へ復旧したうえで、I/O/subprocess 重複を helper 化する。  
+2. `ztb/experiments/job_manager.py`  
+   - 並列実行の timeout 後キャンセル/状態遷移競合を解消し、`ProcessPoolExecutor` での pickling 依存を下げる実行設計へ整理。  
+3. `ztb/utils/run_metadata.py`  
+   - package hash 全走査の高コスト経路を段階的に軽量化（対象パッケージ限定 or lazy/opt-in 化）し、git 情報取得の subprocess 重複を統合。  
 4. `ztb/training/reward_function_optimizer/reward_function_optimizer.py`  
-   - 依然 `Any` debt が大きいため、result/config payload の型固定と `candidate_evaluator` 系 TypedDict の横展開を優先。  
-5. `ztb/analysis/features/re_evaluate_features.py`  
-   - 評価 result payload を型固定し、集計ループの重複（列挙/整形）を helper 化。  
-6. `ztb/training/algorithms/sac/sac_algorithm.py`  
-   - 学習ループの result/config payload を段階的に型固定し、集計・ログ出力の重複分岐を helper 化する。  
-7. `ztb/training/utils/sac_utils.py`  
-   - `open + json.load/dump` と subprocess 実行の重複が多く、関数境界の崩れも残るため、I/O helper 統合と責務分離（設定検証/修復/実行）を優先。  
+   - `Any` debt 上位のため、result/config payload 型固定と evaluator 系 `TypedDict` の横展開を優先。  
+5. `ztb/training/algorithms/sac/sac_algorithm.py`  
+   - 学習ループ payload を型固定し、ログ/集計の重複分岐を helper 化。  
+6. `ztb/training/checkpoint/checkpoint_manager.py`  
+   - 上位 debt を対象に、checkpoint metadata/payload の型契約と I/O 例外契約を整理。  
+7. `ztb/training/core/config_builder.py`  
+   - `UnifiedConfig` / `get_config_value` の `Any` 流出点を typed config alias + type guard へ段階移行。  
 8. `ztb/utils/file_utils.py`  
-   - `safe_json_load/dump` 依存の `Any` 契約を `read_json_object/read_json_array` ベースの型付き helper に段階移行し、失敗時の戻り値契約を明確化。  
-9. `ztb/experiments/job_manager.py` / `ztb/training/run_optimization.py`  
-   - 一時 config 生成 + subprocess 実行の共通 runner 抽出を検討し、訓練系スクリプト間の重複削減と失敗時ハンドリング統一を進める。  
+   - `safe_json_load/dump` の戻り値契約を明確化し、`read_json_object/read_json_array` ベースの型付き helper を追加。  
+9. `ztb/analysis/features/re_evaluate_features.py`  
+   - 評価 result payload の型固定と集計ループ helper 化を進め、重複整形コードを削減。  
 
 ---
 

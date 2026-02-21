@@ -320,3 +320,34 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 
 - `py_compile`（`base.py`, `results_utils.py`, `run_optimization.py`）通過。
 - 本環境は `pytest`/依存不足のため、ユニットテストは未実施。
+
+## Phase 11 追補: 横断課題探索（不具合・重複・性能）(2026-02-21)
+
+### 1) P0 不具合候補
+
+- `ztb/training/utils/sac_utils.py` は `py_compile` で構文エラー（未閉鎖 docstring）を確認し、
+  現状 import 不可。
+- 同ファイルで `self.project_root` 未初期化参照と `config_dir` / `data_dir` 名称不整合を確認し、
+  実行時 `NameError` リスクを特定。
+
+### 2) P1 実行安定性・性能候補
+
+- `ztb/experiments/job_manager.py` は `ProcessPoolExecutor` で bound method +
+  任意 `train_function` を渡す設計のため、環境依存で pickling 失敗しやすい。
+- timeout 経路で future のキャンセル/停止制御がなく、
+  timeout 扱い後に worker が継続実行して結果を上書きする競合リスクがある。
+- `ztb/utils/run_metadata.py` は package hash 取得で site-packages を再帰全走査するため、
+  メタデータ収集の高コスト要因になっている。
+
+### 3) P1-P2 型安全候補（Any debt 上位）
+
+- `ztb/training/algorithms/sac/sac_algorithm.py` (`type_debt=19`)
+- `ztb/training/reward_function_optimizer/reward_function_optimizer.py` (`type_debt=19`)
+- `ztb/training/checkpoint/checkpoint_manager.py` (`type_debt=18`)
+- `ztb/training/core/config_builder.py` は `UnifiedConfig = Dict[str, Any]` と
+  `get_config_value -> Any` が下流へ型曖昧性を伝播。
+
+### 4) 次アクション指針
+
+- 先に `sac_utils` を復旧（構文/初期化/責務分離）してから、
+  `job_manager` の timeout/cancel 契約と並列実行設計を修正する順序が安全。
