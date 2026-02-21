@@ -412,7 +412,13 @@ def enrich_fill_records(
         logger.info(f"130# Date filter: {sorted(date_filter)} ({len(date_filter)} days)")
 
     ob_df = load_raw_orderbook(raw_dir, date_filter=date_filter)
+    # 131# trades は date_filter 適用後にデータが空の場合は全量にフォールバック.
+    # OB recorder は板情報のみ記録し trades ファイルは別系統のため、
+    # 当日分の trades ファイルが存在しないケースがある.
     trades_df = load_raw_trades(raw_dir, date_filter=date_filter)
+    if trades_df.empty and date_filter is not None:
+        logger.info("131# trades empty with date_filter, falling back to all trades")
+        trades_df = load_raw_trades(raw_dir, date_filter=None)
 
     # 059# P1-7: 事前ソート + searchsorted で O(N_fill × log N_trades)
     if not trades_df.empty and "ts" in trades_df.columns:
