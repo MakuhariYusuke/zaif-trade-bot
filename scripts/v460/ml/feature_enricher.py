@@ -9,14 +9,14 @@ v459 K2 の非 RL 上限検証 + v460 マイクロストラクチャ特徴量を
 
 from __future__ import annotations
 
-import gzip
-import json
 import logging
 from pathlib import Path
 from typing import Optional
 
 import numpy as np
 import pandas as pd
+
+from ztb.data.market_data_collector import _read_jsonl_gz
 
 logger = logging.getLogger(__name__)
 
@@ -25,19 +25,6 @@ _DEFAULT_RAW_DIR = Path("data/v460/raw")
 # 特徴量ウィンドウ (秒)
 _TRADE_WINDOW_SEC = 60  # 直近 60 秒の約定統計
 _OB_MATCH_TOLERANCE_SEC = 5  # 板スナップショットの許容誤差
-
-
-def _read_jsonl_gz(path: Path) -> list[dict]:
-    """gzip JSONL を読み込み."""
-    records: list[dict] = []
-    if not path.exists():
-        return records
-    with gzip.open(path, "rt", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                records.append(json.loads(line))
-    return records
 
 
 def load_raw_orderbook(
