@@ -328,7 +328,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
             run_id_filter = [run_id_filter]
         records = records[records["run_id"].isin(run_id_filter)]
 
-    # 133# Y5: balance_forced_switch=True のレコードを学習対象から除外
+    # 130# Y5: balance_forced_switch=True のレコードを学習対象から除外
     # 残高制約による強制 side 切替はノイズ — PnL/AS 評価を歪める
     if "balance_forced_switch" in records.columns:
         n_before = len(records)
@@ -337,7 +337,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
         if n_forced > 0:
             records = records[~balance_mask].reset_index(drop=True)
             logger.info(
-                f"133# Y5: Excluded {n_forced}/{n_before} balance_forced_switch records "
+                f"130# Y5: Excluded {n_forced}/{n_before} balance_forced_switch records "
                 f"({n_forced/n_before*100:.1f}%)"
             )
 
@@ -584,7 +584,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
 def run_scheduler(cfg: dict[str, Any], config_path: Path | None = None) -> None:
     """定期再学習ループ.
 
-    131# L2: サイクルごとに YAML を再読み込みし、YAML 変更を再起動なしで反映。
+    130# L2: サイクルごとに YAML を再読み込みし、YAML 変更を再起動なしで反映。
     """
     interval = cfg.get("interval_sec", 3600)
     logger.info(
@@ -602,7 +602,7 @@ def run_scheduler(cfg: dict[str, Any], config_path: Path | None = None) -> None:
     history_path = log_dir / "retrain_history.jsonl"
 
     while True:
-        # 131# L2: サイクルごとに YAML からリロード (閾値・ターゲット変更を反映)
+        # 130# L2: サイクルごとに YAML からリロード (閾値・ターゲット変更を反映)
         if config_path is not None:
             try:
                 new_cfg = load_retrain_config(config_path)
@@ -610,9 +610,9 @@ def run_scheduler(cfg: dict[str, Any], config_path: Path | None = None) -> None:
                 for key in new_cfg:
                     if key != "interval_sec":
                         cfg[key] = new_cfg[key]
-                logger.debug("131# Config reloaded from YAML")
+                logger.debug("130# Config reloaded from YAML")
             except Exception as e:
-                logger.warning(f"131# Config reload failed (using previous): {e}")
+                logger.warning(f"130# Config reload failed (using previous): {e}")
 
         try:
             result = retrain_model(cfg)

@@ -96,7 +96,7 @@ class FillRecord:
     # 120# P2-1: 寄与分解基盤 — FFD/VG イベントフラグ
     ffd_boost_active: Optional[bool] = None          # FastFillDefense boost 中だったか
     vg_triggered: Optional[bool] = None              # VolatilityGuard 発動したか
-    # 132# D.2: 残高制約による side 強制切替フラグ (評価/学習での交絡分離用)
+    # 129# D.2: 残高制約による side 強制切替フラグ (評価/学習での交絡分離用)
     balance_forced_switch: Optional[bool] = None     # 残高不足で side が強制切替されたか
 
     def to_dict(self) -> dict:

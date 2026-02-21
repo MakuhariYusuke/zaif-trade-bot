@@ -336,7 +336,7 @@ class FillTestRunner:
         047# A4: TOCTOU race 対策 — open(path, 'x') で排他的作成。
         同一 results_dir に対して複数プロセスが並行動作することを防止。
         ロックファイルに PID を記録し、起動時に既存ロックの生死を検証する。
-        132# D.3: heartbeat timestamp をロックファイルに記録し、
+        129# D.3: heartbeat timestamp をロックファイルに記録し、
         PID alive でも heartbeat 陳腐化で stale と判定する。
         """
         lock_path = self._results_dir / "fill_test.lock"
@@ -350,7 +350,7 @@ class FillTestRunner:
                 content = lock_path.read_text(encoding="utf-8").strip()
                 parts = content.split("|")
                 existing_pid = int(parts[0])
-                # 132# heartbeat age 検査 (4番目フィールド)
+                # 129# heartbeat age 検査 (4番目フィールド)
                 heartbeat_ts = int(parts[3]) if len(parts) >= 4 else int(parts[1])
                 heartbeat_age = time.time() - heartbeat_ts
                 import psutil  # type: ignore[import-untyped]
@@ -359,7 +359,7 @@ class FillTestRunner:
                         proc = psutil.Process(existing_pid)
                         cmdline = " ".join(proc.cmdline())
                         if "fill_test" in cmdline or "run_fill_test" in cmdline:
-                            # 132# heartbeat stale 検査: PID alive でも
+                            # 129# heartbeat stale 検査: PID alive でも
                             # heartbeat が閾値超なら non-functional と判定
                             if heartbeat_age > self.config.lock_stale_heartbeat_sec:
                                 logger.warning(
@@ -418,7 +418,7 @@ class FillTestRunner:
                 logger.warning(f"[lock] Failed to release lockfile: {e}")
 
     def _update_lock_heartbeat(self) -> None:
-        """132# D.3: lock ファイルの heartbeat timestamp を更新.
+        """129# D.3: lock ファイルの heartbeat timestamp を更新.
 
         PID alive だが non-functional な状態を検出可能にする。
         フォーマット: PID|created_ts|run_id|heartbeat_ts
@@ -576,7 +576,7 @@ class FillTestRunner:
         041# 時間帯フィルター・残高チェック追加.
         055# Fix: side 決定前に最新 imbalance を取得.
         075# Fix: side_override で run_continuous() が決定した side を強制適用.
-        132# D.2: balance_forced_switch フラグを FillRecord に記録.
+        129# D.2: balance_forced_switch フラグを FillRecord に記録.
         """
         self._cycle_count += 1
         cycle_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
@@ -907,7 +907,7 @@ class FillTestRunner:
             # 120# P2-1: 寄与分解基盤 — FFD/VG イベントフラグ
             ffd_boost_active=self._fast_fill_defense.is_boost_active(side),
             vg_triggered=self._maker_price.last_vg_triggered,
-            # 132# D.2: 残高制約による side 強制切替フラグ
+            # 129# D.2: 残高制約による side 強制切替フラグ
             balance_forced_switch=balance_forced_switch or None,
         )
 
@@ -1042,7 +1042,7 @@ class FillTestRunner:
         logger.info(f"Starting fill test: {hours}h, interval={self.config.cycle_interval_sec}s")
 
         while time.time() < end_time and not self._kill_switch.is_killed():
-            # 132# D.2: 残高制約による side 強制切替追跡
+            # 129# D.2: 残高制約による side 強制切替追跡
             _balance_forced = False
             # 073# side 別時間帯フィルター: side 決定後にフィルタリング
             # side 別リスト未設定時はグローバルリスト (041# 互換)
@@ -1078,7 +1078,7 @@ class FillTestRunner:
                                 f"cycles={self._cycle_count}"
                             )
                             self._time_filter.last_heartbeat_time = now_ts
-                            # 132# lock heartbeat 更新
+                            # 129# lock heartbeat 更新
                             self._update_lock_heartbeat()
                         # 107# R1: 重複 flush → _maybe_flush_batch 統合
                         batch = self._batch_persistence.maybe_flush(batch, "time_filter")
@@ -1147,7 +1147,7 @@ class FillTestRunner:
                     self._last_side = opposite  # 次回は再び元の side
                     self._preflight_skip_count = 0
                     tried_opposite = True
-                    _balance_forced = True  # 132# D.2
+                    _balance_forced = True  # 129# D.2
 
                 if not tried_opposite:
                     # 両 side とも残高不足 → 従来通りの処理
@@ -1323,7 +1323,7 @@ class FillTestRunner:
 
             # 113# resilience: 状態永続化 (progress_log_interval ごと)
             if self._cycle_count % self.config.progress_log_interval == 0:
-                # 132# lock heartbeat 更新 (state 保存と同期)
+                # 129# lock heartbeat 更新 (state 保存と同期)
                 self._update_lock_heartbeat()
                 self._state_persistence.save(FillTestState(
                     run_id=self._run_id,

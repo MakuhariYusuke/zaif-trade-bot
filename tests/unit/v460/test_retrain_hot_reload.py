@@ -574,11 +574,11 @@ class TestE2ERetrainHotReload:
 
 
 # =====================================================================
-# 133# Y5: balance_forced_switch フィルタリングテスト
+# 130# Y5: balance_forced_switch フィルタリングテスト
 # =====================================================================
 
 class TestBalanceForcedSwitchFilter:
-    """133# Y5: retrain_model() が balance_forced_switch=True を除外する."""
+    """130# Y5: retrain_model() が balance_forced_switch=True を除外する."""
 
     def test_balance_forced_records_excluded(self) -> None:
         """balance_forced_switch=True のレコードが学習データから除外される."""
@@ -667,11 +667,11 @@ class TestBalanceForcedSwitchFilter:
 
 
 # =====================================================================
-# 133# F7: trades I/O 7 日 fallback テスト
+# 130# F7: trades I/O 7 日 fallback テスト
 # =====================================================================
 
 class TestTradesIOFallback:
-    """133# F7: trades fallback が全量ではなく直近 7 日でフォールバックする."""
+    """130# F7: trades fallback が全量ではなく直近 7 日でフォールバックする."""
 
     def test_fallback_uses_7day_window(self) -> None:
         """date_filter で空→全量ではなく 7 日 window が先に試行される."""
