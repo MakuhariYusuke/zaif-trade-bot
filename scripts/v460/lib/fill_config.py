@@ -177,6 +177,15 @@ class FillTestConfig:
     # 088# sell 専用ハードガード
     sell_max_spread_jpy: float = 0.0       # 0 = 無制限, >0 でスプレッド超過時 sell スキップ
     sell_offset_floor: float = 0.0         # 0 = 無制限, >0 で sell offset 最低保証
+    # ---- 133# P0-08: 残高制約による強制 side 切替時の発注抑制 ----
+    skip_balance_forced: bool = False      # True で強制切替時スキップ (平均 -1.98bps の損失回避)
+    # ---- 133# P0-09: unknown レジームでの buy スキップ ----
+    skip_buy_unknown_regime: bool = False  # True で unknown レジーム時 buy もスキップ (-1.384bps)
+    # ---- 133# P0-10: sell 動的 kill (rolling PnL ベースの自動停止) ----
+    sell_dynamic_kill_enabled: bool = False  # True で sell rolling PnL 監視有効
+    sell_dynamic_kill_window: int = 50       # rolling ウィンドウ (fill 数)
+    sell_dynamic_kill_threshold_bps: float = -0.5  # この値以下で sell 停止
+    sell_dynamic_kill_resume_window: int = 20     # 停止後、N サイクル後に再評価
     # ---- 102# YAML化: 散在マジックナンバーの設定外部化 ----
     max_offset_ratio: float = 0.30
     min_offset_ratio: float = 0.01
@@ -475,6 +484,23 @@ class FillTestConfig:
             kwargs["sell_max_spread_jpy"] = sell_guard["max_spread_jpy"]
         if sell_guard.get("offset_floor") is not None:
             kwargs["sell_offset_floor"] = sell_guard["offset_floor"]
+
+        # 133# P0-08/09/10: 止血施策
+        止血 = yaml_cfg.get("止血", yaml_cfg.get("loss_control", {}))
+        if 止血.get("skip_balance_forced") is not None:
+            kwargs["skip_balance_forced"] = 止血["skip_balance_forced"]
+        if 止血.get("skip_buy_unknown_regime") is not None:
+            kwargs["skip_buy_unknown_regime"] = 止血["skip_buy_unknown_regime"]
+        sell_kill = 止血.get("sell_dynamic_kill", {})
+        if sell_kill.get("enabled") is not None:
+            kwargs["sell_dynamic_kill_enabled"] = sell_kill["enabled"]
+        for yk, ck in {
+            "window": "sell_dynamic_kill_window",
+            "threshold_bps": "sell_dynamic_kill_threshold_bps",
+            "resume_window": "sell_dynamic_kill_resume_window",
+        }.items():
+            if yk in sell_kill:
+                kwargs[ck] = sell_kill[yk]
 
         # 102# YAML 化: 散在マジックナンバーの設定外部化
         tuning = yaml_cfg.get("tuning", {})

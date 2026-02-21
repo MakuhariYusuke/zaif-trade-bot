@@ -77,29 +77,30 @@ def main() -> None:
         print(f"  {rid}: n={s['total']}, FR={fr:.0f}%, PnL30s={pnl_mean:.3f}bps (filled={n})")
 
     # Offset ratio distribution
-    offsets = [r.get("offset_ratio", 0) for r in filled if r.get("offset_ratio") is not None]
+    offsets = [r.get("effective_offset_used", 0) for r in filled if r.get("effective_offset_used") is not None]
     if offsets:
         offsets.sort()
         print(f"\nOffset ratio: min={offsets[0]:.4f}, median={offsets[len(offsets)//2]:.4f}, max={offsets[-1]:.4f}")
 
-    # Spread distribution
-    spreads = [r.get("spread_jpy", 0) for r in filled if r.get("spread_jpy") is not None]
+    # Spread distribution (bps)
+    spreads = [r.get("spread_bps", 0) for r in filled if r.get("spread_bps") is not None]
     if spreads:
         spreads.sort()
-        print(f"Spread JPY: min={spreads[0]:.0f}, P25={spreads[len(spreads)//4]:.0f}, median={spreads[len(spreads)//2]:.0f}, P75={spreads[3*len(spreads)//4]:.0f}, max={spreads[-1]:.0f}")
+        print(f"Spread bps: min={spreads[0]:.1f}, P25={spreads[len(spreads)//4]:.1f}, median={spreads[len(spreads)//2]:.1f}, P75={spreads[3*len(spreads)//4]:.1f}, max={spreads[-1]:.1f}")
 
     # SkipGate skip analysis
-    sg_skipped = [r for r in all_recs if r.get("cancel_reason", "").startswith("skip_gate")]
-    sg_regime_skip = [r for r in all_recs if r.get("cancel_reason", "").startswith("skip_sell_unknown")]
+    # 133# P0-06: cancel_reason=None 時の startswith クラッシュを修正
+    sg_skipped = [r for r in all_recs if (r.get("cancel_reason") or "").startswith("skip_gate")]
+    sg_regime_skip = [r for r in all_recs if (r.get("cancel_reason") or "").startswith("skip_sell_unknown")]
     print(f"\nSkipGate skips: {len(sg_skipped)}")
     print(f"Regime sell skip (unknown): {len(sg_regime_skip)}")
 
     # Time filter skips
-    tf_skipped = [r for r in all_recs if "time_filter" in r.get("cancel_reason", "")]
+    tf_skipped = [r for r in all_recs if "time_filter" in (r.get("cancel_reason") or "")]
     print(f"Time filter skips: {len(tf_skipped)}")
 
     # VG / fast_fill defense
-    vg_skips = [r for r in all_recs if "volatility" in r.get("cancel_reason", "").lower() or r.get("vg_triggered")]
+    vg_skips = [r for r in all_recs if "volatility" in (r.get("cancel_reason") or "").lower() or r.get("vg_triggered")]
     ff_boost = [r for r in filled if r.get("ffd_boost_active")]
     print(f"Volatility guard skips: {len(vg_skips)}")
     print(f"Fast fill defense active: {len(ff_boost)}")

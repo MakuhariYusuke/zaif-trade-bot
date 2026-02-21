@@ -238,6 +238,19 @@ sell_guard:
   max_spread_jpy: 4000.0       # スプレッド 4000 JPY 超で sell スキップ (085# で 4677 で -7.37bps)
   offset_floor: 0.10           # 105#: 0.08→0.10 sell offset 最低保証 (sell PnL -0.85bps 対策)
 
+# ---- 133# 止血施策 (P0-08/09/10) ----
+loss_control:
+  # P0-08: balance_forced_switch 時の発注抑制 (強制fill平均 -1.98bps)
+  skip_balance_forced: true
+  # P0-09: unknown レジーム時の buy スキップ (unknown-buy 平均 -1.384bps)
+  skip_buy_unknown_regime: true
+  # P0-10: sell 動的 kill (rolling PnL ベースの自動停止)
+  sell_dynamic_kill:
+    enabled: true
+    window: 50                     # rolling ウィンドウ (sell fill 数)
+    threshold_bps: -0.5            # この bps 以下で sell 停止
+    resume_window: 20              # 停止後の再評価待機サイクル数
+
 # ---- 102# チューニングパラメータ (散在マジックナンバーの外部化) ----
 tuning:
   max_offset_ratio: 0.30           # offset 比率の共通上限キャップ
@@ -298,6 +311,15 @@ retrain:
   lgbm_learning_rate: 0.05
   lgbm_num_leaves: 15
   lgbm_min_child_samples: 20
+  # 133# Y1-Y6: LGBM ハイパラ YAML 外部化 (旧: ハードコード)
+  lgbm_subsample: 0.8
+  lgbm_colsample_bytree: 0.8
+  lgbm_reg_alpha: 1.0
+  lgbm_reg_lambda: 1.0
+  lgbm_random_state: 42
+  lgbm_n_jobs: 1
+  # 133# Y7: skip percentile (bottom N% skip)
+  skip_percentile: 20
   # E1: warm-start (前モデルの Booster を初期値として学習継続)
   warm_start_enabled: true
   # E2: early stopping (WF val split で過学習を自動停止)

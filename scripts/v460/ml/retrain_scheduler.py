@@ -363,13 +363,14 @@ def _build_lgbm_regressor(
         learning_rate=cfg.get("lgbm_learning_rate", 0.05),
         num_leaves=cfg.get("lgbm_num_leaves", 15),
         min_child_samples=cfg.get("lgbm_min_child_samples", 20),
-        subsample=0.8,
-        colsample_bytree=0.8,
-        reg_alpha=1.0,
-        reg_lambda=1.0,
-        random_state=42,
+        # 133# Y1-Y6: YAML 外部化 (旧: ハードコード)
+        subsample=cfg.get("lgbm_subsample", 0.8),
+        colsample_bytree=cfg.get("lgbm_colsample_bytree", 0.8),
+        reg_alpha=cfg.get("lgbm_reg_alpha", 1.0),
+        reg_lambda=cfg.get("lgbm_reg_lambda", 1.0),
+        random_state=cfg.get("lgbm_random_state", 42),
         verbose=-1,
-        n_jobs=1,
+        n_jobs=cfg.get("lgbm_n_jobs", 1),
     )
 
 
@@ -526,8 +527,9 @@ def _evaluate_wf_multi(
             else np.full(len(test_idx), np.nan)
         )
 
-        # Skip bottom 20% predicted PnL
-        threshold = np.percentile(preds_test, 20)
+        # Skip bottom N% predicted PnL (133# Y7: YAML 外部化)
+        _skip_pct = cfg.get("skip_percentile", 20)
+        threshold = np.percentile(preds_test, _skip_pct)
         keep_mask = preds_test >= threshold
 
         baseline_30 = float(np.nanmean(pnl30))
@@ -678,8 +680,9 @@ def _evaluate_wf_single(
     baseline_30 = float(np.nanmean(pnl30))
     baseline_120 = float(np.nanmean(pnl120))
 
-    # Skip bottom 20% predicted PnL
-    threshold = np.percentile(preds_test, 20)
+    # Skip bottom N% predicted PnL (133# Y7: YAML 外部化)
+    _skip_pct = cfg.get("skip_percentile", 20)
+    threshold = np.percentile(preds_test, _skip_pct)
     keep_mask = preds_test >= threshold
     kept_30 = float(np.nanmean(pnl30[keep_mask]))
     kept_120 = float(np.nanmean(pnl120[keep_mask]))
@@ -1005,8 +1008,20 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
         min_new = cfg.get("bootstrap_min_new_samples", 10)
     else:
         min_new = cfg.get("min_new_samples", 30)
-    new_samples = len(X_valid) - prev_n_samples
+    # 133# P0-01: latest_run_only=true の場合、現 run のサンプル数が
+    # 前回モデル学習時 (別 run) の n_samples を下回り負値になるバグを修正。
+    # max(0, ...) で負値を防止し、current_n を記録して次回比較可能にする。
+    raw_new_samples = len(X_valid) - prev_n_samples
+    new_samples = max(0, raw_new_samples)
+    if raw_new_samples < 0:
+        logger.warning(
+            f"133# P0-01: new_samples went negative ({raw_new_samples}). "
+            f"current={len(X_valid)}, prev_n_samples={prev_n_samples}. "
+            f"Clamped to 0. This typically happens when latest_run_only=true "
+            f"and current run is smaller than previous model's training set."
+        )
     result["new_samples"] = int(new_samples)
+    result["raw_new_samples"] = int(raw_new_samples)  # 133# 診断用
 
     if new_samples < min_new:
         return {
@@ -1492,6 +1507,17 @@ def main() -> None:
         logger.info("=== One-shot retrain ===")
         result = retrain_model(cfg)
         logger.info(f"Result: {json.dumps(result, indent=2, default=str)}")
+        # 133# P0-02: --once でも retrain_history.jsonl に記録
+        # (run_scheduler 経由時のみ記録されていた監査ログ欠落を修正)
+        log_dir = Path("logs")
+        log_dir.mkdir(exist_ok=True)
+        history_path = log_dir / "retrain_history.jsonl"
+        try:
+            with open(history_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(result, default=str) + "\n")
+            logger.info(f"133# P0-02: One-shot result appended to {history_path}")
+        except Exception as e:
+            logger.warning(f"133# P0-02: Failed to write one-shot history: {e}")
     else:
         run_scheduler(cfg, config_path=Path(args.config))
 
