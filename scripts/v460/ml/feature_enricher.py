@@ -376,6 +376,8 @@ def enrich_fill_records(
     raw_dir: Optional[Path] = None,
     ob_tolerance_sec: int = _OB_MATCH_TOLERANCE_SEC,
     trade_window_sec: int = _TRADE_WINDOW_SEC,
+    trades_fallback_recent_days: int = 1,
+    **kwargs: object,
 ) -> pd.DataFrame:
     """fill records にマイクロストラクチャ特徴量を付与.
 
@@ -384,6 +386,7 @@ def enrich_fill_records(
         raw_dir: raw data のディレクトリ.
         ob_tolerance_sec: 板スナップショットの許容誤差 (秒).
         trade_window_sec: 約定統計のウィンドウ (秒).
+        trades_fallback_recent_days: 130# Q3: trades fallback の窓幅 (±N日, default 1).
 
     Returns:
         enriched DataFrame. 新規カラム:
@@ -417,21 +420,23 @@ def enrich_fill_records(
     # 当日分の trades ファイルが存在しないケースがある.
     trades_df = load_raw_trades(raw_dir, date_filter=date_filter)
     if trades_df.empty and date_filter is not None:
-        # 130# F7: 全量ロードではなく直近 7 日にフォールバック (4.4M行→~50万行).
-        # 古い trades は特徴量計算に寄与しないため I/O 削減が大きい.
+        # 130# F7 + D.1 Q3: ±N日にフォールバック (デフォルト ±1日)。
+        # 特徴量 window は 60s/300s なので、大きな窓は I/O の無駄。
+        # trades_fallback_recent_days は YAML からオーバーライド可能。
         from datetime import datetime as _dt, timedelta as _td, timezone as _tz
         _now = _dt.now(tz=_tz.utc)
-        _fallback_days = 7
+        _fallback_days = trades_fallback_recent_days
         _fb_filter: set[str] = set()
         for _i in range(_fallback_days + 1):
             _fb_filter.add((_now - _td(days=_i)).strftime("%Y%m%d"))
+            _fb_filter.add((_now + _td(days=_i)).strftime("%Y%m%d"))  # 未来日付も含む (TZ 差分)
         logger.info(
             f"130# F7: trades empty with date_filter, "
-            f"falling back to recent {_fallback_days} days: {sorted(_fb_filter)}"
+            f"falling back to recent ±{_fallback_days} days: {sorted(_fb_filter)}"
         )
         trades_df = load_raw_trades(raw_dir, date_filter=_fb_filter)
         if trades_df.empty:
-            logger.info("130# F7: still empty after 7-day fallback, loading all trades")
+            logger.info("130# F7: still empty after ±day fallback, loading all trades")
             trades_df = load_raw_trades(raw_dir, date_filter=None)
 
     # 059# P1-7: 事前ソート + searchsorted で O(N_fill × log N_trades)

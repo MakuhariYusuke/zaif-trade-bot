@@ -341,7 +341,10 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
                 f"({n_forced/n_before*100:.1f}%)"
             )
 
-    enriched = enrich_fill_records(records)
+    enriched = enrich_fill_records(
+        records,
+        trades_fallback_recent_days=cfg.get("trades_fallback_recent_days", 1),
+    )
 
     # 127# H1: PnL 回帰向け特徴量抽出 (AS ラベル非依存)
     # filled かつ spread 有りのみ (AS ラベルは不要)

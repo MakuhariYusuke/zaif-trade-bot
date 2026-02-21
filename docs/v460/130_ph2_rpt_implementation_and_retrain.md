@@ -57,7 +57,7 @@
 | S8 | DRY: `_read_jsonl_gz` 統合 | — | `feature_enricher.py` | `market_data_collector` から import |
 | S9 | retrain target: pnl30 | 118# §4 | `retrain_scheduler.py`, `fill_test.yaml` | pnl120 coverage 40% → pnl30 100%。データ量 2.5x |
 | S10 | Config hot-reload | 118# §8.3 | `retrain_scheduler.py` | per-cycle YAML 再読込。YAML 変更で再起動不要 |
-| S11 | Trades date_filter fallback | 130# S6 副作用 | `feature_enricher.py` | 当日 trades ファイル不在時に `date_filter=None` でフォールバック |
+| S11 | Trades date_filter fallback | 130# S6 副作用 | `feature_enricher.py` | 当日 trades ファイル不在時に ±1日→空なら全量の 2 段フォールバック |
 
 ### 1.2 セッション 129.2# — 129# Appendix D (Codex レビュー) 対応
 
@@ -80,34 +80,38 @@
 | Y2 | `min_spread_jpy` | 1500→**1200** | 129# D.3 Q4: 1200≈1.14bps で安全マージン維持。fill_rate +10~15pt |
 | Y4 | `vpin_threshold` | 0.70→**0.63** | VG 有効性確認済 (118# §9-A4)。-10% で AS -3~5pt 期待 |
 | Y5 | balance filter | 新規 | retrain_scheduler で `balance_forced_switch=True` レコード除外 |
-| Y7 | trades I/O 最適化 | 全量→7日 window→全量の 3 段階 | 4.4M 行 → ~50 万行。retrain cycle I/O 30s→数秒 |
+| Y7 | trades I/O 最適化 | 全量→±1日 fallback→全量の 3 段階 | 4.4M 行 → 期待値 ~数十万行 (実測は `recent_days` 設定と trades 分布に依存) |
 
 ---
 
 ## §2 retrain 運用状況と課題
 
-### 2.1 現在の retrain 状態
+### 2.1 現在の retrain 状態 (as_of 2026-02-21 19:12 JST → E.1 参照)
 
 | 項目 | 値 |
 |------|-----|
 | 稼働プロセス | PID 17716/99272 (retrain_scheduler) |
-| Git SHA | `7cb39ebb5` |
-| 最新 run records | **13 件** (run_id `1771663547_044513cf`) |
+| Git SHA | `7cb39ebb5` **(旧 — R1/Y5/Y7 未反映)** |
+| 最新 run records | **24 件** (run_id `1771663547_044513cf`) — E.1 実測値 |
 | Bootstrap 閾値 | 25 (YAML hot-reload で 30→25 に反映済予定) |
-| Bootstrap 状態 | 13/25 → **あと 12 records で初回 deploy** |
+| Bootstrap 状態 | 24/25 → **あと 1 record で bootstrap deploy** |
 | `latest_run_only` | `true` → 旧 1048 filled は **学習から除外** |
-| trades fallback | 全量 4.4M 行ロード (~27 秒/cycle) |
+| trades fallback | 全量 4.4M 行ロード (~27 秒/cycle) — Y7 は旧コードで未反映 |
 
-### 2.2 コード変更の反映状況
+### 2.2 反映マトリクス v2 (D.1 #1/#2 是正)
 
-| 変更 | hot-reload? | 稼働中プロセスへの反映 |
-|------|------------|---------------------|
-| Y1 (bootstrap 25) | ✅ YAML | 次 retrain cycle で反映 |
-| Y2 (spread 1200) | ✅ YAML | 次 fill cycle で反映 |
-| Y4 (vpin 0.63) | ✅ YAML | 次 fill cycle で反映 |
-| **Y5 (balance filter)** | ❌ コード | **再起動が必要** |
-| **Y7 (trades 7日window)** | ❌ コード | **再起動が必要** |
-| 番号修正 (130#/129#) | ❌ コメントのみ | 影響なし |
+> **重要**: YAML hot-reload は `retrain_scheduler` のみ対応。`run_fill_test.py` は起動時に YAML を一度だけ読み込みであり、**fill_test の YAML 変更は再起動が必須**。
+
+| 変更 | 対象プロセス | 反映トリガー | 稼働中プロセスへの反映 |
+|------|-------------|-------------|---------------------|
+| Y1 (bootstrap 25) | retrain | YAML auto-reload | ✅ 次 retrain cycle で反映 |
+| Y2 (spread 1200) | **fill_test** | **restart required** | ❌ **再起動必須** (実ログで `< min 1500` 継続確認) |
+| Y4 (vpin 0.63) | **fill_test** | **restart required** | ❌ **再起動必須** |
+| Y5 (balance filter) | retrain | restart required (コード変更) | ❌ 再起動が必要 |
+| Y7 (trades ±1日window) | retrain | restart required (コード変更) | ❌ 再起動が必要 |
+| R1 (lock heartbeat) | fill_test | restart required (コード変更) | ❌ 再起動が必要 |
+| R3 (balance flag) | fill_test | restart required (コード変更) | ❌ 再起動が必要 |
+| 番号修正 (130#/129#) | — | — | コメントのみ、影響なし |
 
 ### 2.3 Y3 (SkipGate 再訓練) の検討
 
@@ -186,7 +190,8 @@ fill_test 再起動 (新コード: Y5/Y7/番号修正)
 | # | 施策 | 状態 | コスト | 備考 |
 |---|------|------|--------|------|
 | Y0/Y0b | lock heartbeat + balance flag | ✅ | — | R1-R3 |
-| Y1/Y2/Y4 | YAML tuning 3件 | ✅ | — | hot-reload 反映可 |
+| Y1 | YAML: bootstrap 25 | ✅ | — | retrain: auto-reload |
+| Y2/Y4 | YAML: spread 1200 / vpin 0.63 | ✅ | — | **fill_test: 再起動必須** (D.1 #1/#2) |
 | Y5 | balance filter in retrain | ✅ (コード) | — | 再起動で反映 |
 | Y6 | Appendix B キー名修正 | ✅ | — | 129# Appendix E |
 | Y7 | trades I/O 7日 window | ✅ (コード) | — | 再起動で反映 |
@@ -219,7 +224,7 @@ fill_test 再起動 (新コード: Y5/Y7/番号修正)
 
 | テストスイート | 件数 | 結果 |
 |--------------|------|------|
-| test_enricher_skip_gate.py | 81 | ✅ all passed |
+| test_enricher_skip_gate.py | 64 | ✅ all passed |
 | test_retrain_hot_reload.py | 20 | ✅ all passed |
 | test_fill_quality.py | 176 | ✅ all passed (1 fix: vpin_threshold assertion) |
 | **新規テスト** | 3 | ✅ Y5 balance filter (2) + F7 trades I/O fallback (1) |
@@ -254,7 +259,7 @@ Bootstrap 25 samples で一旦 deploy → 再起動 → 新データで本格 re
 
 ### Q2: balance_forced_switch 除外 (Y5) の学習への影響
 
-全 1609 cycles 中 705 件 (43.8%) が balance 制約の影響を受けていた。これを除外することで学習データが大幅に減少する。除外すべきか、それとも「balance_forced_switch」を特徴量として組み込むべきか。
+全 1609 cycles 中 推定 705 件 (43.8%, 旧 run 由来の推定値 — R3 反映後 run で再集計予定) が balance 制約の影響を受けていた。これを除外することで学習データが大幅に減少する。除外すべきか、それとも「balance_forced_switch」を特徴量として組み込むべきか。
 
 ### Q3: trades I/O 7 日 window (Y7) の妥当性
 
@@ -311,3 +316,80 @@ JPY 12,749 円 + BTC 0.001 での極限運用。入金以外の技術的解決�
 > - **原則**: 参照はドキュメント番号を使用する。セッション番号は経緯の追跡が必要な場合のみ記載。
 
 **教訓**: コミットメッセージでセッション番号を使用する場合、ドキュメント番号と混同しないよう `S129.1#` (セッション) vs `D130#` (ドキュメント) のような接頭辞を付けるか、ドキュメント番号のみを使用する。
+
+---
+
+## Appendix D: Codex 追記レビュー (2026-02-21 19:02 JST)
+
+### D.1 Findings (重大度順)
+
+| # | 重大度 | 対象 | 指摘 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | HIGH | `130_ph2_rpt_implementation_and_retrain.md:103` | Y2/Y4 を「次 fill cycle で反映」と記載しているが、`run_fill_test.py` は YAML を起動時に一度しか読まない。実ログでも 18:33 以降に `Spread too narrow ... < min 1500` が継続し、`min_spread_jpy: 1200` は未反映。 | 130# の反映表を「fill_test は再起動必須」に修正。`hot-reload` は retrain_scheduler 限定と明記。 |
+| 2 | HIGH | `130_ph2_rpt_implementation_and_retrain.md:189` | Phase Y 表で Y1/Y2/Y4 を `hot-reload 反映可` としているが、少なくとも Y2/Y4 は現行 fill_test プロセスで自動反映されない。運用判断を誤らせる。 | Y1 (retrain) と Y2/Y4 (fill_test) を分離記載し、反映条件を `retrain:自動 / fill:再起動` に更新。 |
+| 3 | MEDIUM | `130_ph2_rpt_implementation_and_retrain.md:83` | Y7 の効果を `4.4M→~50万 / 30s→数秒` と断定しているが、現ログでは 7日フォールバック後も `Loaded 4396171 trades` が継続。データ分布次第で効果が出ない。 | 「期待値」表現に下げ、実測列（before/after）を別表で追加。`recent_days` を YAML 化し可変に。 |
+| 4 | MEDIUM | `130_ph2_rpt_implementation_and_retrain.md:95` | 「最新 run records 13件」は作成時点では正しいが、現時点では 20件まで進行済み。運用判断に使う数値が陳腐化しやすい。 | KPI 表に `as_of` 時刻を追加し、固定値ではなく集計スクリプトの出力を貼る運用へ変更。 |
+| 5 | MEDIUM | `130_ph2_rpt_implementation_and_retrain.md:257` | `balance_forced_switch 705件 (43.8%)` は現行 fill_records では再現不能（全 1629 レコードで当該カラム未記録）。現在稼働 run が旧コード (`git_sha=7cb39ebb5`) のため。 | 「推定値/旧run由来」を明記。R3 反映後 run で再集計して更新。 |
+| 6 | LOW | `130_ph2_rpt_implementation_and_retrain.md:60` | S11 の説明が `date_filter=None` 直接フォールバックになっているが、現実装は「7日フォールバック→空なら全量」の2段構成。 | S11 説明を現コードに合わせて修正。 |
+| 7 | LOW | `130_ph2_rpt_implementation_and_retrain.md:222` | テスト件数の内訳で `test_enricher_skip_gate.py=81` とあるが、現行 collect は 64。合計 260 は整合。 | 件数内訳を現行値へ更新（64/20/176=260）。 |
+
+### D.2 追加提案 (短期)
+
+1. 130# の §2.2 を「反映マトリクス v2」に差し替え、`反映トリガー` 列を追加（`auto-reload/restart required`）。
+2. `scripts/v460/status_snapshot.py` のような軽量集計スクリプトを作り、`run_id, n_records, filled, skip, last_ts` を文書へ自動貼付。
+3. 次回 run 開始時は `git_sha` を `0e5dcf71b` 以降に揃え、R1/R3/Y5/Y7 が実稼働で有効かを最優先で検証する。
+
+---
+
+## Appendix E: 次アクション判断材料 + Q1-Q6検証 (2026-02-21 19:12 JST)
+
+### E.1 現況スナップショット (as_of 2026-02-21 19:12 JST)
+
+| 項目 | 実測 |
+|---|---|
+| 最新 run_id | `1771663547_044513cf` |
+| 最新 run レコード | 24 |
+| latest fill/cancel | filled 9 / cancel 15 (fill_rate 37.5%) |
+| latest pnl30 | sum -9.3558 bps / mean -1.0395 bps (n=9) |
+| cancel 内訳 | skip_gate 6, timeout 4, orderbook_error 4, stale_skip_gate_blocked 1 |
+| spread narrow 内訳 | `<1500` が4件、うち `<1200` は2件（=1200化で2件は通る見込み） |
+| 稼働コード | fill records の `git_sha` は `7cb39ebb5`（旧） |
+| lock 形式 | `PID|created|run_id` の3要素（R1のheartbeat付き4要素ではない） |
+| retrain 最新結果 | `2026-02-21 18:46` に `Insufficient filled samples: 5` で skip |
+
+### E.2 意思決定 (結論)
+
+1. **D0: 旧runの継続は中止し、HEADで controlled restart を即実施**  
+理由: 現runは `7cb39ebb5` ベースで、Y2/Y4/Y5/R1が実稼働検証できない。`min_spread_jpy=1200` の効果も未評価のまま。
+2. **D1: `latest_run_only: true` は維持**  
+理由: 現run混在データでの短期deployは因果崩壊リスクが高い。まず新runの同一設定データを確保。
+3. **D2: 「25到達まで待つ」方針は旧runには適用しない**  
+理由: 今の24レコードは検証目的としては使えるが、モデル更新対象としては設定不一致が大きい。
+
+### E.3 直近24時間アクションプラン (実行順)
+
+| Step | アクション | 完了条件 |
+|---|---|---|
+| 1 | fill_test / retrain_scheduler を停止し、HEADで再起動 | 起動ログ `schema_health` の `git_sha` が `01c151f37` 以降 |
+| 2 | 起動健全性チェック | lock が `PID|created|run_id|heartbeat` の4要素で更新される |
+| 3 | YAML反映チェック | `orderbook_error` メッセージが `min 1200` を基準に出る（1500が出ない） |
+| 4 | retrain反映チェック | logに `130# Y5: Excluded ... balance_forced_switch` が出る |
+| 5 | 30サイクル評価 | `orderbook_error率`, `skip率`, `fill_rate`, `pnl30_mean` を再集計 |
+| 6 | 25 filled 到達後の判断 | bootstrap deploy が出るか、quality_gateで棄却かを判定記録 |
+
+### E.4 Q1-Q6 検証回答
+
+| Q | 結論 | 根拠 |
+|---|---|---|
+| Q1 retrain段階移行 | **E案を修正して採用**: 「旧runで25待ち」ではなく「新runで25待ち」 | 現runが旧SHAで設定不一致。検証価値はあるが学習母集団として不適 |
+| Q2 balance_forced_switch | **主モデルでは除外** + 別途監視指標で保持 | 口座制約は市場構造ではなく運用制約。特徴量に入れるとモデルが口座状態へ過適応しやすい |
+| Q3 trades 7日window | **現状の固定7日は過大**。`date_filter ±1日` を第1fallbackに変更推奨 | 特徴量窓は 60s/300s。実ログでは7日fallbackでも全量4.4Mを読んでおり効果が限定 |
+| Q4 ph3先行着手 | **Z1のみ着手可、Z2はtimebox**。ph2の実行品質回復を優先 | ph2実行基盤が未安定のままph3へ進むと再現不能データを拡大 |
+| Q5 番号付与 | **コードは実装ID、文書はdoc番号**の二層管理を推奨 | doc番号は将来変動し得る。`IMPL-v460-PH2-Y2` の固定IDが追跡しやすい |
+| Q6 残高持続可能性 | **入金なし前提では「片側偏在時の発注停止」を強化** | 実ログで `Insufficient JPY/BTC` が頻発。無理なside切替が性能劣化と学習ノイズを増幅 |
+
+### E.5 追加の実務ガード (短文)
+
+1. `status_snapshot` を定期出力し、文書の固定値を廃止する。
+2. `min_spread_jpy` / `vpin_threshold` は「反映済み」ではなく「反映確認済み」で管理する。
+3. Gate判定前に「同一SHA・同一YAMLで連続72h」を満たすことを前提条件にする。

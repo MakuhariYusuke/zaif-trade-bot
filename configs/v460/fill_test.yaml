@@ -297,3 +297,6 @@ retrain:
   adaptive_threshold: true
   target_skip_rate_buy: 0.15
   target_skip_rate_sell: 0.20
+  # 130# D.1 Q3: trades I/O fallback の窓幅 (日数)
+  # 特徴量 window は 60s/300s なので ±1日が適正。過大な窓は I/O 無駄。
+  trades_fallback_recent_days: 1  # date_filter 空振り時のフォールバック窓 (±N日)
