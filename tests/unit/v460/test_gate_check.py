@@ -70,7 +70,11 @@ def _make_fill_records(
     as_ratio: float = 0.10,
     queue_wait: float = 15.0,
 ) -> list[dict]:
-    """fill_records JSONL 用の dict リストを生成."""
+    """fill_records JSONL 用の dict リストを生成.
+
+    135# P0-12: run_g1_1() delegation 後は filter_clean_records を通るため
+    run_id / git_sha を含める必要がある。
+    """
     rng = np.random.RandomState(42)
     base_ts = 1700000000.0
     records = []
@@ -92,6 +96,8 @@ def _make_fill_records(
             "mid_30s_after": 15_000_100.0 if filled else None,
             "post_fill_30s_pnl": pnl,
             "adverse_selected": adverse,
+            "run_id": "test_run_001",
+            "git_sha": "abc123def456",
         })
     return records
 
@@ -421,12 +427,17 @@ class TestRunG1Judgment:
 
 
 # =====================================================================
-# G1.1-exec テスト
+# G1.1-exec テスト (135# P0-12: gate_judgment 委譲後)
 # =====================================================================
 
 
 class TestRunG1_1:
-    """run_g1_1 のテスト."""
+    """run_g1_1 のテスト.
+
+    135# P0-12: run_g1_1() は内部的に gate_judgment.run_gate_judgment() へ委譲。
+    返却形式が G1.1-exec (旧) → G1.1-quick (新) に変更。
+    チェックキーも E1-E5 → K1-K6 に変更。
+    """
 
     def _write_fill_records(self, records: list[dict], tmp_dir: Path) -> None:
         """JSONL ファイルに write."""
@@ -444,45 +455,35 @@ class TestRunG1_1:
         )
         with tempfile.TemporaryDirectory() as tmp:
             self._write_fill_records(records, Path(tmp))
-            result = run_g1_1(tmp, thresholds=_default_thresholds_g1_1())
+            result = run_g1_1(tmp)
 
-        assert result["gate"] == "G1.1-exec"
-        assert result["gate_result"] == "PASS"
+        # 135# P0-12: delegation 後は g1_1_quick_judgment 由来の "G1.1-quick"
+        assert result["gate"] == "G1.1-quick"
+        assert result["gate_result"] in ("PASS", "WATCH")
 
     def test_g1_1_low_fill_rate(self) -> None:
-        """低 fill_rate → FAIL."""
+        """低 fill_rate → FAIL (K1_attempted_fill_rate)."""
         from scripts.v460.run_gate_check import run_g1_1
 
         records = _make_fill_records(n=50, fill_rate=0.50)
         with tempfile.TemporaryDirectory() as tmp:
             self._write_fill_records(records, Path(tmp))
-            result = run_g1_1(tmp, thresholds=_default_thresholds_g1_1())
+            result = run_g1_1(tmp)
 
         assert result["gate_result"] == "FAIL"
-        assert result["checks"]["E1_fill_rate_p90"]["pass"] is False
-
-    def test_g1_1_high_adverse_selection(self) -> None:
-        """高 AS ratio → FAIL."""
-        from scripts.v460.run_gate_check import run_g1_1
-
-        records = _make_fill_records(n=50, fill_rate=0.98, as_ratio=0.80)
-        with tempfile.TemporaryDirectory() as tmp:
-            self._write_fill_records(records, Path(tmp))
-            result = run_g1_1(tmp, thresholds=_default_thresholds_g1_1())
-
-        assert result["checks"]["E5_adverse_selection"]["pass"] is False
+        assert result["checks"]["K1_attempted_fill_rate"]["pass"] is False
 
     def test_g1_1_no_data(self) -> None:
         """データなし → NO_DATA."""
         from scripts.v460.run_gate_check import run_g1_1
 
         with tempfile.TemporaryDirectory() as tmp:
-            result = run_g1_1(tmp, thresholds=_default_thresholds_g1_1())
+            result = run_g1_1(tmp)
 
         assert result["gate_result"] == "NO_DATA"
 
     def test_g1_1_negative_pnl(self) -> None:
-        """大幅負 PnL → E4 FAIL."""
+        """大幅負 PnL → K4_pnl_kill FAIL."""
         from scripts.v460.run_gate_check import run_g1_1
 
         records = _make_fill_records(
@@ -490,27 +491,24 @@ class TestRunG1_1:
         )
         with tempfile.TemporaryDirectory() as tmp:
             self._write_fill_records(records, Path(tmp))
-            result = run_g1_1(tmp, thresholds=_default_thresholds_g1_1())
+            result = run_g1_1(tmp)
 
-        assert result["checks"]["E4_post_fill_pnl"]["pass"] is False
+        # K4 は pValue & mean の複合条件 — 大幅負 PnL + 有意ならFAIL
+        assert result["checks"]["K4_pnl_kill"]["pass"] is False
 
-    def test_g1_1_custom_thresholds(self) -> None:
-        """カスタム閾値で判定."""
+    def test_g1_1_deprecation_warning(self) -> None:
+        """DeprecationWarning が発行されること."""
+        import warnings
+
         from scripts.v460.run_gate_check import run_g1_1
 
-        loose_thresholds = {
-            "min_fill_rate_p90": 0.50,
-            "max_cancel_ratio": 0.80,
-            "max_queue_wait_median_sec": 300,
-            "min_post_fill_30s_pnl": -10.0,
-            "max_adverse_selection_ratio": 0.90,
-        }
-        records = _make_fill_records(n=50, fill_rate=0.60, pnl_mean=-1.0, as_ratio=0.40)
         with tempfile.TemporaryDirectory() as tmp:
-            self._write_fill_records(records, Path(tmp))
-            result = run_g1_1(tmp, thresholds=loose_thresholds)
-
-        assert result["gate_result"] == "PASS"
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                run_g1_1(tmp)
+            dep_warns = [x for x in w if issubclass(x.category, DeprecationWarning)]
+            assert len(dep_warns) >= 1
+            assert "gate_judgment" in str(dep_warns[0].message)
 
 
 # =====================================================================

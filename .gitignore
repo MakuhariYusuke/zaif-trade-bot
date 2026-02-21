@@ -75,6 +75,7 @@ tensorboard/
 
 # Large/archived data
 data/
+!ztb/data/
 data/*.csv
 data/*.parquet
 data/*.zip

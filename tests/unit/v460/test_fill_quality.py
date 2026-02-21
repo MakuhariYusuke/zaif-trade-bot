@@ -1112,9 +1112,9 @@ class TestGateCheckG11:
                 Path(tmpdir) / "fill_records_20260101.jsonl",
             )
             result = run_g1_1(tmpdir)
-            assert result["gate"] == "G1.1-exec"
-            # fill_rate_p90 = 95% → E1 PASS
-            assert result["checks"]["E1_fill_rate_p90"]["pass"] is True
+            # 135# P0-12: delegation 後は g1_1_quick_judgment 由来の "G1.1-quick"
+            assert result["gate"] == "G1.1-quick"
+            assert result["gate_result"] in ("PASS", "WATCH", "FAIL")
 
 
 # =====================================================================

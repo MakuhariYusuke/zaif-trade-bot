@@ -59,6 +59,8 @@ from scripts.v460.lib.fill_config import (
 from scripts.v460.lib.maker_price import MakerPriceCalculator
 from scripts.v460.lib.ob_recorder import OBRecorder
 from scripts.v460.lib.order_monitor import OrderMonitor
+from ztb.data.trades_recorder import TradesRecorder
+from ztb.data.trades_health import check_trades_health
 from scripts.v460.lib.pnl_measurer import PnlMeasurer
 from scripts.v460.lib.resilience import (
     CircuitBreaker,
@@ -223,6 +225,9 @@ class FillTestRunner:
 
         # 129# OB recorder: 板スナップショットを raw JSONL.gz に蓄積 (retrain_scheduler 用)
         self._ob_recorder = OBRecorder(enabled=True)
+
+        # 135# P0-04: trades recorder — 約定データを raw JSONL.gz に蓄積
+        self._trades_recorder = TradesRecorder(enabled=True)
 
         # 133# P0-10: sell 動的 kill 用の rolling PnL 追跡
         self._sell_pnl_history: list[float] = []
@@ -656,6 +661,12 @@ class FillTestRunner:
             ob = self._maker_price._last_ob_snapshot
             if ob is not None:
                 self._ob_recorder.record(ob.bids, ob.asks, ob.timestamp)
+            # 135# P0-04: trades recorder — サイクルごとに約定データを記録
+            try:
+                recent = await self.adapter.get_recent_trades(self.config.symbol, limit=100)
+                self._trades_recorder.record_from_adapter(recent)
+            except Exception as te:
+                logger.debug(f"Trades fetch for recording skipped: {te}")
         except Exception as e:
             logger.warning(f"[ob_prefetch] Pre-fetch imbalance failed, using last: {e}")
             # フォールバック: 前回値を維持
@@ -980,6 +991,21 @@ class FillTestRunner:
 
         # 044# 単一起動ロック取得
         self._acquire_lock()
+
+        # 135# P2-09→P1: trades データ健全性チェック
+        try:
+            th = check_trades_health(lookback_days=3, stale_threshold_hours=36.0)
+            if not th.healthy:
+                logger.warning(f"[trades_health] {th.message}")
+                if th.missing_days:
+                    logger.warning(
+                        f"[trades_health] retrain 品質が低下する可能性あり。"
+                        f"run_observation.py の再起動を推奨"
+                    )
+            else:
+                logger.info(f"[trades_health] {th.message}")
+        except Exception as e:
+            logger.warning(f"[trades_health] check failed: {e}")
 
         # 041# 動的 loss_cap: API 残高から算出
         if self.config.loss_cap_auto:
@@ -1585,6 +1611,14 @@ class FillTestRunner:
                 logger.info(f"OB recorder: flushed {n} snapshots on exit")
         except Exception as e:
             logger.error(f"OB recorder final flush failed: {e}")
+
+        # 135# P0-04: trades recorder 最終 flush
+        try:
+            n_tr = self._trades_recorder.flush()
+            if n_tr:
+                logger.info(f"Trades recorder: flushed {n_tr} trades on exit")
+        except Exception as e:
+            logger.error(f"Trades recorder final flush failed: {e}")
 
         # 未保存バッチの退避
         unsaved = self._batch_persistence.unsaved_batch

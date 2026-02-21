@@ -7,10 +7,13 @@ fill_records JSONL から G1.1-quick / G1.2-full 判定を実行し、
 118# §2.4 で提案された自動判定パイプライン。
 116# g1_1_quick_judgment / g1_2_full_judgment を活用し、
 122# B2 Holm-Bonferroni 補正済み PnL 多重比較を統合。
+135# P0-07: per-run Gate 評価 + P0-12: CLI 統一.
 
 Usage:
   python scripts/v460/gate_judgment.py
   python scripts/v460/gate_judgment.py --results-dir results/v460/fill_test
+  python scripts/v460/gate_judgment.py --latest-run
+  python scripts/v460/gate_judgment.py --run-id 1771669596_481369d6
   python scripts/v460/gate_judgment.py --output results/v460/fill_test/judgment.json
   python scripts/v460/gate_judgment.py --side-breakdown
 """
@@ -48,6 +51,46 @@ def _load_all_records(results_dir: Path) -> list[FillRecord]:
         records = load_fill_records(f)
         all_records.extend(records)
     return all_records
+
+
+def _filter_by_run_id(
+    records: list[FillRecord],
+    run_id: str | None = None,
+    *,
+    latest: bool = False,
+) -> list[FillRecord]:
+    """135# P0-07: run_id でレコードをフィルタ.
+
+    Args:
+        records: 全 FillRecord.
+        run_id: 特定の run_id でフィルタ. None の場合は latest が優先.
+        latest: True の場合、最新の run_id のレコードのみ返す.
+
+    Returns:
+        フィルタ済みレコードリスト.
+    """
+    if run_id:
+        return [r for r in records if r.run_id == run_id]
+    if latest:
+        # 最新 run_id = 最大 timestamp のレコードの run_id
+        valid = [r for r in records if r.run_id and r.run_id.strip()]
+        if not valid:
+            return records
+        latest_record = max(valid, key=lambda r: r.timestamp)
+        target_id = latest_record.run_id
+        return [r for r in records if r.run_id == target_id]
+    return records
+
+
+def _get_unique_run_ids(records: list[FillRecord]) -> list[str]:
+    """135# P0-07: ユニークな run_id をタイムスタンプ昇順で返す."""
+    seen: dict[str, float] = {}  # run_id -> min_timestamp
+    for r in records:
+        rid = r.run_id
+        if rid and rid.strip():
+            if rid not in seen or r.timestamp < seen[rid]:
+                seen[rid] = r.timestamp
+    return sorted(seen, key=lambda k: seen[k])
 
 
 def _side_metrics(records: list[FillRecord], side: str) -> dict:
@@ -229,6 +272,16 @@ def main() -> None:
         help="buy/sell 別のメトリクスを出力",
     )
     parser.add_argument(
+        "--run-id",
+        default=None,
+        help="135# P0-07: 特定 run_id のレコードのみで判定",
+    )
+    parser.add_argument(
+        "--latest-run",
+        action="store_true",
+        help="135# P0-07: 最新 run のレコードのみで判定 (全体との対比表示)",
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="JSON のみ出力 (人間可読レポートなし)",
@@ -266,15 +319,48 @@ def main() -> None:
         print(f"ERROR: No fill records found in {results_dir}", file=sys.stderr)
         sys.exit(1)
 
+    # 135# P0-07: per-run フィルタリング
+    target_records = all_records
+    run_scope = "ALL"
+    if args.run_id:
+        target_records = _filter_by_run_id(all_records, run_id=args.run_id)
+        run_scope = f"run={args.run_id}"
+        if not target_records:
+            print(f"ERROR: No records for run_id={args.run_id}", file=sys.stderr)
+            available = _get_unique_run_ids(all_records)
+            print(f"Available run_ids: {available}", file=sys.stderr)
+            sys.exit(1)
+    elif args.latest_run:
+        target_records = _filter_by_run_id(all_records, latest=True)
+        if target_records and target_records[0].run_id:
+            run_scope = f"LATEST({target_records[0].run_id})"
+
     # Run judgment via core function
     result = run_gate_judgment(
-        all_records,
+        target_records,
         gate_cfg,
         side_breakdown=args.side_breakdown,
         monte_carlo=args.monte_carlo,
         mc_simulations=args.mc_simulations,
         mc_lot=args.mc_lot,
     )
+    result["run_scope"] = run_scope
+
+    # 135# P0-07: --latest-run の場合、全体判定も並列実行して対比
+    all_result = None
+    if args.latest_run and len(target_records) < len(all_records):
+        all_result = run_gate_judgment(
+            all_records,
+            gate_cfg,
+            side_breakdown=args.side_breakdown,
+        )
+        all_result["run_scope"] = "ALL"
+        result["comparison"] = {
+            "all_g1_2": all_result["g1_2_full"].get("gate_result", "N/A"),
+            "latest_g1_2": result["g1_2_full"].get("gate_result", "N/A"),
+            "all_records": len(all_records),
+            "latest_records": len(target_records),
+        }
 
     # Extract quick/full from result for report display
     quick = result["g1_1_quick"]
@@ -285,10 +371,11 @@ def main() -> None:
     else:
         # Human-readable report
         print("=" * 60)
-        print("  v460 Gate 自動判定レポート (122# B1)")
+        print(f"  v460 Gate 自動判定レポート (122# B1)  [{run_scope}]")
         print("=" * 60)
         print()
         ds = result["data_summary"]
+        print(f"  Scope:   {run_scope}")
         print(f"  Records: {ds['clean_records']} clean / {ds['quarantine_records']} quarantine")
         print(f"  Elapsed: {ds['elapsed_hours']:.1f}h / 168h ({ds['elapsed_hours']/168*100:.0f}%)")
         print(f"  Days:    {ds['measurement_days']}")
@@ -341,6 +428,19 @@ def main() -> None:
         for name, check in full.get("checks", {}).items():
             print(_format_check(name, check))
         print()
+
+        # 135# P0-07: ALL vs LATEST 対比表示
+        cmp = result.get("comparison")
+        if cmp:
+            print("--- 135# P0-07: ALL vs LATEST 対比 (Simpson 型リスク検出) ---")
+            all_icon = "✓" if cmp["all_g1_2"] == "PASS" else ("⚠" if cmp["all_g1_2"] == "WATCH" else "✗")
+            lat_icon = "✓" if cmp["latest_g1_2"] == "PASS" else ("⚠" if cmp["latest_g1_2"] == "WATCH" else "✗")
+            print(f"  [ALL]    G1.2={all_icon} {cmp['all_g1_2']}  (n={cmp['all_records']})")
+            print(f"  [LATEST] G1.2={lat_icon} {cmp['latest_g1_2']}  (n={cmp['latest_records']})")
+            if cmp["all_g1_2"] != "FAIL" and cmp["latest_g1_2"] == "FAIL":
+                print("  ⚠ WARNING: 全体は WATCH/PASS だが最新 run は FAIL — ドリフト悪化の兆候")
+            print()
+
         print("=" * 60)
 
         # Monte Carlo section

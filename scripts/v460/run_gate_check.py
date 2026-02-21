@@ -205,28 +205,22 @@ def run_g1_1(
     """G1.1-exec Gate チェック.
 
     000# §3.3 / 009# §2.1 準拠.
-    fill_records JSONL からメトリクスを算出し、閾値照合を行う.
 
     .. deprecated:: 123#
         G1.1 + G1.2 統合判定は ``scripts/v460/gate_judgment.py`` の
         ``run_gate_judgment()`` を使用してください。このエンドポイントは
         後方互換のために維持されていますが、新規利用は非推奨です。
-
-    Args:
-        results_dir: fill_records JSONL ディレクトリ.
-        thresholds: Gate 閾値 (None → gate_thresholds.yaml).
-        with_mc: True → PnL モンテカルロシミュレーション結果を付加.
+        135# P0-12: 内部実装を gate_judgment.run_gate_judgment() に委譲。
     """
-    from ztb.metrics.fill_quality import (
-        compute_fill_metrics,
-        g1_1_judgment,
-        load_fill_records_glob,
+    import warnings
+    warnings.warn(
+        "run_g1_1() is deprecated. Use gate_judgment.run_gate_judgment() instead. (135# P0-12)",
+        DeprecationWarning,
+        stacklevel=2,
     )
+    from scripts.v460.gate_judgment import _load_all_records, run_gate_judgment
 
-    if thresholds is None:
-        thresholds = load_gate_thresholds().get("g1_1_exec", {})
-
-    records = load_fill_records_glob(results_dir)
+    records = _load_all_records(Path(results_dir))
     if not records:
         logger.error(f"No fill records found in {results_dir}")
         return {
@@ -235,30 +229,12 @@ def run_g1_1(
             "error": f"No fill records in {results_dir}",
         }
 
-    metrics = compute_fill_metrics(records)
-    judgment = g1_1_judgment(metrics, thresholds)
-
-    # Monte Carlo PnL シミュレーション (014# T5 統合)
-    # 027# 型統合: FillRecord 共通化によりフィールド変換不要
-    if with_mc:
-        try:
-            from ztb.risk.pnl_monte_carlo import (
-                MonteCarloConfig,
-                PnLMonteCarloSimulator,
-            )
-
-            sim = PnLMonteCarloSimulator(records, MonteCarloConfig())
-            mc_result = sim.run()
-            judgment["monte_carlo"] = mc_result.to_dict()
-            logger.info(
-                f"MC: monthly PnL mean={mc_result.pnl_mean_jpy:+,.0f} JPY, "
-                f"P(loss)={mc_result.prob_loss:.1%}"
-            )
-        except Exception as e:
-            logger.warning(f"Monte Carlo simulation failed: {e}")
-            judgment["monte_carlo"] = {"error": str(e)}
-
-    return judgment
+    gate_cfg = load_gate_thresholds()
+    result = run_gate_judgment(
+        records, gate_cfg, monte_carlo=with_mc,
+    )
+    # 後方互換: G1.1 部分のみ返す
+    return result.get("g1_1_quick", {"gate_result": "FAIL"})
 
 
 # ======================================================================

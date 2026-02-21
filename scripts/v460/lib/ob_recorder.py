@@ -9,12 +9,12 @@ retrain_scheduler が参照する OB JSONL.gz を直接蓄積する。
 
 from __future__ import annotations
 
-import gzip
-import json
 import logging
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+
+from ztb.io.jsonl_gz import append_jsonl_gz
 
 logger = logging.getLogger(__name__)
 
@@ -93,9 +93,7 @@ class OBRecorder:
         path = ob_dir / f"{day}.jsonl.gz"
         n = len(self._buffer)
         try:
-            with gzip.open(path, "at", encoding="utf-8") as f:
-                for r in self._buffer:
-                    f.write(json.dumps(r, ensure_ascii=False) + "\n")
+            append_jsonl_gz(path, self._buffer)
             self._total_written += n
             logger.debug(f"OB recorder: flushed {n} snapshots → {day}")
         except (OSError, TypeError, ValueError) as e:
