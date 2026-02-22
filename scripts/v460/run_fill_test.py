@@ -78,6 +78,7 @@ from scripts.v460.lib.results_analyzer import (
 from scripts.v460.lib.side_selector import SideSelector
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 from scripts.v460.lib.time_filter import TimeFilter
+from scripts.v460.lib.abstract_cycle_runner import AbstractCycleRunner
 
 logging.basicConfig(
     level=logging.INFO,
@@ -103,10 +104,11 @@ logger = logging.getLogger(__name__)
 # Fill Test Runner
 # ======================================================================
 
-class FillTestRunner:
+class FillTestRunner(AbstractCycleRunner):
     """Maker 注文の fill quality を実測する.
 
     009# §4.2 の設計に準拠.
+    145# §10.1-#2: AbstractCycleRunner を継承 (共通インタフェース定義).
     """
 
     def __init__(
@@ -867,8 +869,8 @@ class FillTestRunner:
                 try:
                     _pre_ob = await self.adapter.get_orderbook(self.config.symbol, depth=1)
                     if _pre_ob and _pre_ob.bids and _pre_ob.asks:
-                        _pre_best_bid = _pre_ob.bids[0].price if hasattr(_pre_ob.bids[0], 'price') else _pre_ob.bids[0][0]
-                        _pre_best_ask = _pre_ob.asks[0].price if hasattr(_pre_ob.asks[0], 'price') else _pre_ob.asks[0][0]
+                        from scripts.v460.lib.ob_utils import best_bid_ask
+                        _pre_best_bid, _pre_best_ask = best_bid_ask(_pre_ob)
                         # buy の指値が best_ask 以上 → テイカー側
                         if side == "buy" and order_price >= _pre_best_ask:
                             _safe_price = _pre_best_bid

@@ -803,41 +803,50 @@ class TestWindowsSignalHandler:
 
 
 class TestRateLimitDoubleCheck:
-    """044# E-1: get_order_status の二重 rate limit チェック."""
+    """044# E-1: get_order_status の二重 rate limit チェック.
+
+    145# §13: BaseExchangeAdapter 継承後は _get_order_status_real を検査.
+    """
 
     def test_rate_limit_called_before_transactions(self) -> None:
-        """get_order_status のソースに2回の _check_rate_limit がある."""
+        """_get_order_status_real のソースに _check_rate_limit がある."""
         import inspect
         from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
-        source = inspect.getsource(CoincheckAdapter.get_order_status)
+        source = inspect.getsource(CoincheckAdapter._get_order_status_real)
         count = source.count("_check_rate_limit")
-        assert count >= 2, f"Expected ≥2 rate limit checks, found {count}"
+        assert count >= 1, f"Expected ≥1 rate limit checks in _get_order_status_real, found {count}"
 
 
 class TestPriceRounding:
-    """044# E-3: price int()→round() 修正."""
+    """044# E-3: price int()→round() 修正.
+
+    145# §13: BaseExchangeAdapter 継承後は _place_order_real を検査.
+    """
 
     def test_price_uses_round_not_int(self) -> None:
-        """place_order のソースに round(price) が使われている."""
+        """_place_order_real のソースに round(price) が使われている."""
         import inspect
         from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
-        source = inspect.getsource(CoincheckAdapter.place_order)
+        source = inspect.getsource(CoincheckAdapter._place_order_real)
         assert "round(price)" in source, "price should use round() not int()"
         assert "int(price)" not in source, "int(price) should be replaced by round(price)"
 
 
 class TestBalanceLocked:
-    """044# E-4: get_balance が reserved を locked として解析."""
+    """044# E-4: get_balance が reserved を locked として解析.
+
+    145# §13: BaseExchangeAdapter 継承後は _get_balance_real を検査.
+    """
 
     def test_balance_source_has_reserved_handling(self) -> None:
-        """get_balance のソースに _reserved の処理が含まれる."""
+        """_get_balance_real のソースに _reserved の処理が含まれる."""
         import inspect
         from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
-        source = inspect.getsource(CoincheckAdapter.get_balance)
-        assert "_reserved" in source, "get_balance should handle *_reserved keys"
+        source = inspect.getsource(CoincheckAdapter._get_balance_real)
+        assert "_reserved" in source, "_get_balance_real should handle *_reserved keys"
         assert "locked=0.0" not in source, "locked should not be hardcoded to 0.0"
 
 
@@ -971,16 +980,19 @@ class TestCleanQuarantineFilter:
 
 
 class TestBalanceCurrencyFilter:
-    """046# balance 解析のゴミ通貨除外."""
+    """046# balance 解析のゴミ通貨除外.
+
+    145# §13: BaseExchangeAdapter 継承後は _get_balance_real を検査.
+    """
 
     def test_ignore_suffixes_in_source(self) -> None:
-        """get_balance のソースに _lending 等の除外ロジックがある."""
+        """_get_balance_real のソースに _lending 等の除外ロジックがある."""
         import inspect
         from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
-        source = inspect.getsource(CoincheckAdapter.get_balance)
+        source = inspect.getsource(CoincheckAdapter._get_balance_real)
         for suffix in ["_lending", "_lend_in_use", "_lent", "_debt", "_tsumitate"]:
-            assert suffix in source, f"{suffix} should be excluded in get_balance"
+            assert suffix in source, f"{suffix} should be excluded in _get_balance_real"
 
     def test_loss_cap_no_dead_reserved_check(self) -> None:
         """AdaptationEngine.update_dynamic_loss_cap に JPY_RESERVED/BTC_RESERVED は不要.

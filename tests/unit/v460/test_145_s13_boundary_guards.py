@@ -220,13 +220,19 @@ class TestBitflyerDocstringCleanup:
 
 
 class TestCoincheckAdapterInheritance:
-    """CoincheckAdapter の継承構造を検証 (段階的移行の基盤)."""
+    """CoincheckAdapter の継承構造を検証 (145# §14 移行完了)."""
 
     def test_implements_ibroker(self) -> None:
         """CoincheckAdapter が IBroker を実装していること."""
         from ztb.trading.live.exchanges.base.broker_interfaces import IBroker
         from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
         assert issubclass(CoincheckAdapter, IBroker)
+
+    def test_coincheck_uses_base_adapter(self) -> None:
+        """CoincheckAdapter が BaseExchangeAdapter 継承であること (145# §14)."""
+        from ztb.trading.live.exchanges.base.adapter import BaseExchangeAdapter
+        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+        assert issubclass(CoincheckAdapter, BaseExchangeAdapter)
 
     def test_bitflyer_uses_base_adapter(self) -> None:
         """BitFlyerAdapter が BaseExchangeAdapter 継承であること."""

@@ -116,30 +116,35 @@ class TestC3SignatureConsistency:
 # ---------------------------------------------------------------------------
 
 class TestC4AsyncUnification:
-    """C-4: All private API methods must use asyncio.to_thread."""
+    """C-4: All private API methods must use asyncio.to_thread.
 
-    def test_place_order_uses_asyncio_to_thread(self):
-        """place_order real path must use asyncio.to_thread."""
+    145# §13: CoincheckAdapter → BaseExchangeAdapter migration.
+    public methods (place_order etc.) are now inherited from base;
+    asyncio.to_thread は _xxx_real() に移動済み.
+    """
+
+    def test_place_order_real_uses_asyncio_to_thread(self):
+        """_place_order_real must use asyncio.to_thread."""
         from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-        source = inspect.getsource(CoincheckAdapter.place_order)
+        source = inspect.getsource(CoincheckAdapter._place_order_real)
         assert "asyncio.to_thread" in source, (
-            "place_order must use asyncio.to_thread for sync requests"
+            "_place_order_real must use asyncio.to_thread for sync requests"
         )
 
-    def test_cancel_order_uses_asyncio_to_thread(self):
-        """cancel_order real path must use asyncio.to_thread."""
+    def test_cancel_order_real_uses_asyncio_to_thread(self):
+        """_cancel_order_real must use asyncio.to_thread."""
         from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-        source = inspect.getsource(CoincheckAdapter.cancel_order)
+        source = inspect.getsource(CoincheckAdapter._cancel_order_real)
         assert "asyncio.to_thread" in source, (
-            "cancel_order must use asyncio.to_thread for sync requests"
+            "_cancel_order_real must use asyncio.to_thread for sync requests"
         )
 
-    def test_get_balance_uses_asyncio_to_thread(self):
-        """get_balance real path must use asyncio.to_thread."""
+    def test_get_balance_real_uses_asyncio_to_thread(self):
+        """_get_balance_real must use asyncio.to_thread."""
         from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-        source = inspect.getsource(CoincheckAdapter.get_balance)
+        source = inspect.getsource(CoincheckAdapter._get_balance_real)
         assert "asyncio.to_thread" in source, (
-            "get_balance must use asyncio.to_thread for sync requests"
+            "_get_balance_real must use asyncio.to_thread for sync requests"
         )
 
 
@@ -267,9 +272,9 @@ class TestC7OrderTypeMapping:
         assert "market_buy_amount" not in captured_data
 
     def test_no_limit_buy_limit_sell_values(self):
-        """'limit_buy'/'limit_sell' must NOT appear in source."""
+        """'limit_buy'/'limit_sell' must NOT appear in source (145# _place_order_real)."""
         from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-        source = inspect.getsource(CoincheckAdapter.place_order)
+        source = inspect.getsource(CoincheckAdapter._place_order_real)
         assert "limit_buy" not in source
         assert "limit_sell" not in source
 
@@ -340,10 +345,10 @@ class TestD3PostOnly:
     """D-3: Limit orders must include time_in_force='post_only'."""
 
     def test_place_order_source_contains_post_only(self):
-        """place_order source must reference post_only."""
+        """_place_order_real source must reference post_only (145# §13)."""
         from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-        source = inspect.getsource(CoincheckAdapter.place_order)
-        assert "post_only" in source, "post_only must be in place_order"
+        source = inspect.getsource(CoincheckAdapter._place_order_real)
+        assert "post_only" in source, "post_only must be in _place_order_real"
 
 
 # ---------------------------------------------------------------------------
