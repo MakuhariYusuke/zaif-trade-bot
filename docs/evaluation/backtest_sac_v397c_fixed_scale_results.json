@@ -1,3 +1,57 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:20150cefab8994f1354758b352775037b2a0651d3116d7ed2eb2816ac921b13d
-size 1523
+{
+  "backtest_info": {
+    "model": "sac_v397c_fixed_scale",
+    "steps": 4999,
+    "data_file": "C:\\Users\\Admin\\dev\\zaif-trade-bot\\btc_jpy_real_dataset.csv"
+  },
+  "action_distribution": {
+    "BUY": 6.781356271254251,
+    "HOLD": 76.11522304460892,
+    "SELL": 17.10342068413683
+  },
+  "action_counts": {
+    "BUY": 339,
+    "HOLD": 3805,
+    "SELL": 855
+  },
+  "trade_count": 1194,
+  "executed_trades": 745,
+  "performance": {
+    "final_balance": 109593.35393941577,
+    "initial_balance": 200000.0,
+    "total_return_pct": -45.20332303029211
+  },
+  "pnl_breakdown": {
+    "realized_pnl": -90576.07139865102,
+    "unrealized_pnl": 0.0,
+    "step_pnl_mean": -18.118838047339676,
+    "step_pnl_std": 153.9400439163627,
+    "step_pnl_min": -6265.593795106869,
+    "step_pnl_max": 3660.9940950810287
+  },
+  "reward_stats": {
+    "mean": -0.14033365315050678,
+    "std": 0.6999374611792434,
+    "min": -9.996656980342376,
+    "max": 10.003556796127189,
+    "negative_count": 4123,
+    "negative_pct": 82.47649529905982,
+    "positive_count": 55,
+    "positive_pct": 1.100220044008802,
+    "zero_count": 821,
+    "zero_pct": 16.423284656931386
+  },
+  "position_stats": {
+    "mean": -0.006645273827841433,
+    "std": 0.02512658005314351,
+    "min": -0.03650589805282945,
+    "max": 0.036566237177646434,
+    "zero_position_pct": 0.060012002400480095
+  },
+  "position_change_stats": {
+    "mean": 0.0038824539995022727,
+    "std": 0.01393032289047028,
+    "max": 0.07307213523047588,
+    "significant_changes": 373
+  }
+}

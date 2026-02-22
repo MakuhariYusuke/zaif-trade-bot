@@ -1,3 +1,292 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:fd5c8b0170b853bc9fe0bc97774002fad0e84c4a3984524cd82c2e3799ef5aac
-size 7429
+{
+  "config": {
+    "min_train": 50,
+    "step": 20,
+    "embargo": 2,
+    "k": 10,
+    "model": "LR(C=0.01, l2)"
+  },
+  "folds": [
+    {
+      "fold": 0,
+      "n_train": 50,
+      "n_test": 20,
+      "train_range": "[0:49]",
+      "test_range": "[52:71]",
+      "as_rate_train": 0.54,
+      "as_rate_test": 0.65,
+      "roc_auc": 0.46153846153846156,
+      "pr_auc": 0.6499565103071889,
+      "brier": 0.24708081538049104,
+      "selected_features": [
+        "side_buy",
+        "hour_cos",
+        "spread_jpy",
+        "trade_count_60s",
+        "buy_ratio",
+        "trade_flow_imbalance_60s",
+        "price_velocity_60s",
+        "vpin_60s",
+        "side_aligned_tfi",
+        "side_aligned_velocity"
+      ]
+    },
+    {
+      "fold": 1,
+      "n_train": 70,
+      "n_test": 20,
+      "train_range": "[0:69]",
+      "test_range": "[72:91]",
+      "as_rate_train": 0.5428571428571428,
+      "as_rate_test": 0.6,
+      "roc_auc": 0.5,
+      "pr_auc": 0.6,
+      "brier": 0.24821024455109858,
+      "selected_features": [
+        "side_buy",
+        "offset_ratio",
+        "trade_count_60s",
+        "buy_ratio",
+        "trade_flow_imbalance_60s",
+        "avg_trade_size",
+        "price_velocity_60s",
+        "vpin_60s",
+        "side_aligned_tfi",
+        "side_aligned_velocity"
+      ]
+    },
+    {
+      "fold": 2,
+      "n_train": 90,
+      "n_test": 20,
+      "train_range": "[0:89]",
+      "test_range": "[92:111]",
+      "as_rate_train": 0.5666666666666667,
+      "as_rate_test": 0.6,
+      "roc_auc": 0.34375,
+      "pr_auc": 0.5391972549867287,
+      "brier": 0.2539651667831425,
+      "selected_features": [
+        "side_buy",
+        "hour_cos",
+        "regime_trending",
+        "regime_ranging",
+        "trade_count_60s",
+        "buy_ratio",
+        "trade_flow_imbalance_60s",
+        "avg_trade_size",
+        "side_aligned_tfi",
+        "side_aligned_velocity"
+      ]
+    },
+    {
+      "fold": 3,
+      "n_train": 110,
+      "n_test": 20,
+      "train_range": "[0:109]",
+      "test_range": "[112:131]",
+      "as_rate_train": 0.5636363636363636,
+      "as_rate_test": 0.5,
+      "roc_auc": 0.46,
+      "pr_auc": 0.5762573099415205,
+      "brier": 0.25213691428164486,
+      "selected_features": [
+        "side_buy",
+        "hour_cos",
+        "spread_jpy",
+        "regime_trending",
+        "regime_ranging",
+        "trade_count_60s",
+        "buy_ratio",
+        "trade_flow_imbalance_60s",
+        "avg_trade_size",
+        "side_aligned_velocity"
+      ]
+    },
+    {
+      "fold": 4,
+      "n_train": 130,
+      "n_test": 20,
+      "train_range": "[0:129]",
+      "test_range": "[132:151]",
+      "as_rate_train": 0.5615384615384615,
+      "as_rate_test": 0.65,
+      "roc_auc": 0.2417582417582418,
+      "pr_auc": 0.5599060683039011,
+      "brier": 0.26102331023155007,
+      "selected_features": [
+        "side_buy",
+        "hour_cos",
+        "regime_trending",
+        "regime_ranging",
+        "trade_count_60s",
+        "buy_ratio",
+        "trade_flow_imbalance_60s",
+        "avg_trade_size",
+        "side_aligned_tfi",
+        "side_aligned_velocity"
+      ]
+    },
+    {
+      "fold": 5,
+      "n_train": 150,
+      "n_test": 20,
+      "train_range": "[0:149]",
+      "test_range": "[152:171]",
+      "as_rate_train": 0.5666666666666667,
+      "as_rate_test": 0.5,
+      "roc_auc": 0.6,
+      "pr_auc": 0.6705103668261562,
+      "brier": 0.2598947196701181,
+      "selected_features": [
+        "side_buy",
+        "hour_cos",
+        "offset_ratio",
+        "trade_count_60s",
+        "buy_ratio",
+        "trade_flow_imbalance_60s",
+        "avg_trade_size",
+        "vpin_60s",
+        "side_aligned_tfi",
+        "side_aligned_velocity"
+      ]
+    },
+    {
+      "fold": 6,
+      "n_train": 170,
+      "n_test": 20,
+      "train_range": "[0:169]",
+      "test_range": "[172:191]",
+      "as_rate_train": 0.5647058823529412,
+      "as_rate_test": 0.55,
+      "roc_auc": 0.6464646464646464,
+      "pr_auc": 0.644438671845089,
+      "brier": 0.2432503916240239,
+      "selected_features": [
+        "side_buy",
+        "hour_cos",
+        "spread_jpy",
+        "offset_ratio",
+        "trade_count_60s",
+        "buy_ratio",
+        "trade_flow_imbalance_60s",
+        "avg_trade_size",
+        "vpin_60s",
+        "side_aligned_velocity"
+      ]
+    },
+    {
+      "fold": 7,
+      "n_train": 190,
+      "n_test": 20,
+      "train_range": "[0:189]",
+      "test_range": "[192:211]",
+      "as_rate_train": 0.5631578947368421,
+      "as_rate_test": 0.5,
+      "roc_auc": 0.32,
+      "pr_auc": 0.41738095238095235,
+      "brier": 0.2610304177624557,
+      "selected_features": [
+        "side_buy",
+        "hour_cos",
+        "spread_jpy",
+        "offset_ratio",
+        "trade_count_60s",
+        "buy_ratio",
+        "trade_flow_imbalance_60s",
+        "avg_trade_size",
+        "vpin_60s",
+        "side_aligned_velocity"
+      ]
+    },
+    {
+      "fold": 8,
+      "n_train": 210,
+      "n_test": 20,
+      "train_range": "[0:209]",
+      "test_range": "[212:231]",
+      "as_rate_train": 0.5571428571428572,
+      "as_rate_test": 0.7,
+      "roc_auc": 0.3333333333333333,
+      "pr_auc": 0.6491194689751744,
+      "brier": 0.2759274510364812,
+      "selected_features": [
+        "hour_sin",
+        "hour_cos",
+        "spread_jpy",
+        "offset_ratio",
+        "trade_count_60s",
+        "buy_ratio",
+        "trade_flow_imbalance_60s",
+        "avg_trade_size",
+        "price_velocity_60s",
+        "side_aligned_velocity"
+      ]
+    },
+    {
+      "fold": 9,
+      "n_train": 230,
+      "n_test": 20,
+      "train_range": "[0:229]",
+      "test_range": "[232:251]",
+      "as_rate_train": 0.5695652173913044,
+      "as_rate_test": 0.6,
+      "roc_auc": 0.59375,
+      "pr_auc": 0.70971095110027,
+      "brier": 0.24445826655088987,
+      "selected_features": [
+        "hour_cos",
+        "spread_jpy",
+        "trade_count_60s",
+        "buy_ratio",
+        "trade_flow_imbalance_60s",
+        "avg_trade_size",
+        "price_velocity_60s",
+        "vpin_60s",
+        "side_aligned_tfi",
+        "side_aligned_velocity"
+      ]
+    }
+  ],
+  "aggregate": {
+    "n_folds": 10,
+    "roc_auc_mean": 0.45005946830946836,
+    "roc_auc_std": 0.130253723181752,
+    "pr_auc_mean": 0.6016477554666981,
+    "brier_mean": 0.2546977697871896
+  },
+  "skip_simulation": {
+    "skip20_improvement_bps": 0.26931844934585836,
+    "skip10_improvement_bps": -0.08528943680785617,
+    "baseline_pnl_bps": -0.8392240846394167,
+    "n_valid": 200
+  },
+  "feature_stability": {
+    "jaccard_stability": 0.26666666666666666,
+    "always_selected": [
+      "buy_ratio",
+      "side_aligned_velocity",
+      "trade_count_60s",
+      "trade_flow_imbalance_60s"
+    ],
+    "ever_selected": [
+      "avg_trade_size",
+      "buy_ratio",
+      "hour_cos",
+      "hour_sin",
+      "offset_ratio",
+      "price_velocity_60s",
+      "regime_ranging",
+      "regime_trending",
+      "side_aligned_tfi",
+      "side_aligned_velocity",
+      "side_buy",
+      "spread_jpy",
+      "trade_count_60s",
+      "trade_flow_imbalance_60s",
+      "vpin_60s"
+    ],
+    "n_always": 4,
+    "n_ever": 15
+  }
+}

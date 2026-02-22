@@ -1,3 +1,44 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:73c531bf2819e2e69be23071f3cf2e5f2b1f0db486e16e43647d2c787840707b
-size 1227
+{
+  "reward_totals": {
+    "pnl_component_sum": -605.3532699810969,
+    "inactivity_penalty_sum": -97.63000000000001,
+    "opportunity_penalty_sum": 0.0,
+    "trade_bonus_sum": 1.4553378817134268
+  },
+  "reward_total_sum": -701.5279320993834,
+  "reward_component_ratios": {
+    "pnl_component_sum": 86.29068669718175,
+    "inactivity_penalty_sum": 13.91676589524151,
+    "opportunity_penalty_sum": -0.0,
+    "trade_bonus_sum": -0.20745259242325553
+  },
+  "action_distribution": {
+    "HOLD": 76.11522304460892,
+    "BUY": 6.781356271254251,
+    "SELL": 17.10342068413683
+  },
+  "continuous_action_stats": {
+    "mean": -0.10343045584080958,
+    "std": 0.2978136488828177,
+    "min": -0.9926046133041382,
+    "max": 0.49484264850616455
+  },
+  "pnl_stats": {
+    "mean": -18.118838047339676,
+    "std": 153.9554433105808,
+    "min": -6265.593795106869,
+    "max": 3660.9940950810287,
+    "total": -90576.07139865104
+  },
+  "position_stats": {
+    "mean": -0.006645273827841433,
+    "std": 0.025129093590893322,
+    "min": -0.03650589805282945,
+    "max": 0.036566237177646434
+  },
+  "position_change_stats": {
+    "mean": 0.0038816773533731463,
+    "trades_over_threshold": 373
+  },
+  "max_drawdown_reward": -701.5279320993081
+}

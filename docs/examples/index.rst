@@ -1,3 +1,15 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:11576b2eeeb699185cf9f6f738b5474e3ddb9eb7ceca9dbdb4a4a914dd15cf3a
-size 334
+Examples
+========
+
+This section contains code examples and usage patterns for the Zaif Trade Bot.
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Examples:
+
+   test-utilities.md
+   test_content.txt
+
+.. note::
+   Examples demonstrate common usage patterns and integration scenarios.
+   Each example includes complete code and explanations.

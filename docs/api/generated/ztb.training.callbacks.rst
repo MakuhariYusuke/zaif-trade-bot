@@ -1,3 +1,45 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:ae783b816deaf8890df173b50b5ddb8c7c280d33a5544ee77028fca6c08dc5e3
-size 1036
+ztb.training.callbacks package
+==============================
+
+Submodules
+----------
+
+ztb.training.callbacks.advanced\_callbacks module
+-------------------------------------------------
+
+.. automodule:: ztb.training.callbacks.advanced_callbacks
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.training.callbacks.callbacks module
+---------------------------------------
+
+.. automodule:: ztb.training.callbacks.callbacks
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.training.callbacks.callbacks\_legacy module
+-----------------------------------------------
+
+.. automodule:: ztb.training.callbacks.callbacks_legacy
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.training.callbacks.evaluation\_callback module
+--------------------------------------------------
+
+.. automodule:: ztb.training.callbacks.evaluation_callback
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: ztb.training.callbacks
+   :members:
+   :show-inheritance:
+   :undoc-members:

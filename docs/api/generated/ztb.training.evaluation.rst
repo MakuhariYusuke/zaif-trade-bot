@@ -1,3 +1,21 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:76baf84689c84775716631837fd245a53ba5e3aeaaae04ec06a03de3cf450deb
-size 408
+ztb.training.evaluation package
+===============================
+
+Submodules
+----------
+
+ztb.training.evaluation.eval\_gates module
+------------------------------------------
+
+.. automodule:: ztb.training.evaluation.eval_gates
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: ztb.training.evaluation
+   :members:
+   :show-inheritance:
+   :undoc-members:

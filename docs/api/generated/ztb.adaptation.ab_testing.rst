@@ -1,3 +1,29 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:bc0ca12f0d10e937657fc9cc1ab5b0c9c08a0125f4c3b0bd63a6b6114e9c8dd2
-size 594
+ztb.adaptation.ab\_testing package
+==================================
+
+Submodules
+----------
+
+ztb.adaptation.ab\_testing.config module
+----------------------------------------
+
+.. automodule:: ztb.adaptation.ab_testing.config
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.adaptation.ab\_testing.types module
+---------------------------------------
+
+.. automodule:: ztb.adaptation.ab_testing.types
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: ztb.adaptation.ab_testing
+   :members:
+   :show-inheritance:
+   :undoc-members:

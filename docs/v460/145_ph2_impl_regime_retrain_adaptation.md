@@ -240,7 +240,7 @@ retrain:
 | `ztb/ml/retrain_trigger.py` | R-2b: `regime_interval_multipliers`, `update_regime()`, `get_effective_interval()` 倍率 |
 | `tests/unit/v460/test_retrain_hot_reload.py` | R-2a: `TestRegimeSampleWeights` (7 tests) |
 | `tests/unit/v460/test_136_p1_retrain_kill.py` | R-2b: `TestRetrainTriggerRegimeInterval` (7 tests) |
-| `docs/v460/145_r2_regime_retrain_adaptation.md` | 本ドキュメント |
+| `docs/v460/145_ph2_impl_regime_retrain_adaptation.md` | 本ドキュメント |
 
 ---
 
@@ -329,7 +329,7 @@ queue_wait >= (_effective_timeout or self.config.order_timeout_sec)
 | 2 | MEDIUM | `scripts/v460/ml/retrain_scheduler.py` | `regime_current_lookback=0` の設定時、`if len(X_valid) >= _regime_lookback` が空データでも真になり、`value_counts().index[0]` で `IndexError` を起こす余地がある (`current_regime` 推定部)。 | `lookback = max(1, safe_to_int(...))` に正規化、または `len(X_valid) > 0` を先に判定してから `index[0]` を参照する。 |
 | 3 | MEDIUM | `ztb/ml/retrain_trigger.py` | `get_effective_interval()` が `int(base * regime_mul)` をそのまま返すため、設定値次第で `0` 秒 interval が発生しうる (特に小さい `base_interval_sec` や `regime_mul<=0`)。結果として busy-loop 化のリスク。 | `interval = max(1, int(base * regime_mul))` を適用し、`regime_interval_multipliers` のロード時に `>0` バリデーションを追加。 |
 | 4 | MEDIUM | `tests/unit/v460/test_113_resilience.py`, `tests/unit/v460/test_139_review_fixes.py` | `tests/unit/v460` 全体実行で 3 件失敗。失敗原因は実装バグというより、`cancel_reason` 文字列をソース文字列として固定比較しているテストが、`cancel_reasons` 定数参照化 (`CR.*`) 後のコードと齟齬を起こしている点。 | ソース文字列の直比較を廃止し、`CR` 定数の利用確認または実行挙動 (生成 FillRecord の `cancel_reason`) を検証する形へ更新。 |
-| 5 | LOW | `docs/v460/145_r2_regime_retrain_adaptation.md` | §5 の「1270 passed」記述が現状と乖離。現時点の全体実行は `1282 passed, 3 failed`、145関連の対象 3 ファイルは `147 passed`。 | 総数の固定値を記述する場合は実行日時を併記。推奨は「対象テスト群のみ件数明記 + 全体は latest CI 参照」に変更。 |
+| 5 | LOW | `docs/v460/145_ph2_impl_regime_retrain_adaptation.md` | §5 の「1270 passed」記述が現状と乖離。現時点の全体実行は `1282 passed, 3 failed`、145関連の対象 3 ファイルは `147 passed`。 | 総数の固定値を記述する場合は実行日時を併記。推奨は「対象テスト群のみ件数明記 + 全体は latest CI 参照」に変更。 |
 | 6 | LOW | `ztb/trading/live/exchanges/coincheck/adapter.py`, `ztb/trading/live/exchanges/bitflyer/adapter.py` | 継承構造が非対称。`BitFlyerAdapter` は `BaseExchangeAdapter` 継承だが、`CoincheckAdapter` は `IBroker` 直実装で重複責務が残る。今後の保守で差分ドリフトを生みやすい。 | `CoincheckAdapter` を段階的に `BaseExchangeAdapter` へ寄せる移行タスクを作成し、`_check_rate_limit`/dry-run 共通部を統合。 |
 | 7 | LOW | `ztb/trading/live/exchanges/bitflyer/adapter.py` | `_make_request()` に重複 docstring が残存し、レビュー/保守のノイズになっている。 | docstring を 1 つに整理して差分可読性を改善。 |
 
@@ -440,16 +440,11 @@ run_continuous:
 
 ### §13.2 見送り事項 (§14+ スコープ)
 
-| 指摘元 | 内容 | 理由 |
-|---|---|---|
-| §10.1-#1 | CoincheckAdapter → BaseExchangeAdapter 継承移行 | 853 行クラスの大規模リファクタ。段階的移行タスクとして計画。本番影響リスク大 |
-| §10.1-#2 | FillTestRunner 分割 (AbstractCycleRunner) | 2k 行超の設計変更。R-2 完了後の構造整備フェーズで対応 |
-| §10.1-#3 | MarketDataAccessorBase 導入 | ob_utils.py で部分的に対応済み。追加抽象化は次期アーキテクチャ整備 |
-| §11-#5 | doc テスト件数更新 | 本セクションで記載 |
+→ **§14 で全件対応完了** (下記参照)
 
 ### §13.3 新規テストファイル
 
-`tests/unit/v460/test_145_s13_boundary_guards.py` — 18 tests
+`tests/unit/v460/test_145_s13_boundary_guards.py` — 19 tests (+1: coincheck BaseExchangeAdapter 検証追加)
 
 | テストクラス | テスト数 | 検証内容 |
 |---|---|---|
@@ -457,9 +452,83 @@ run_continuous:
 | `TestLookbackZeroGuard` | 4 | lookback=0 / IndexError 回避 / 負値クランプ / ソース検証 |
 | `TestBusyLoopIntervalGuard` | 7 | small base / tiny mul / 正常値 / config reject 0/負値/base=0 / ソース検証 |
 | `TestBitflyerDocstringCleanup` | 1 | 重複 docstring 不在確認 |
-| `TestCoincheckAdapterInheritance` | 3 | IBroker 実装 / BaseExchangeAdapter 継承 / 共通メソッド |
+| `TestCoincheckAdapterInheritance` | 4 | IBroker 実装 / BaseExchangeAdapter 継承 (both adapters) / 共通メソッド |
 
 ### §13.4 テスト結果
 
-- 新規: 18 passed
-- 全体: **1357 passed** (全緑)
+- 新規: 19 passed
+- 全体: **1357 passed** (§13 時点)
+
+---
+
+## §14 構造リファクタ (§10.1 全件対応)
+
+**前提**: §13 commit (`48ea58505`) 完了後、§10.1 の 3 件を実装。
+
+### §14.1 §10.1-#1: CoincheckAdapter → BaseExchangeAdapter 継承移行
+
+**変更内容**:
+- `class CoincheckAdapter(IBroker)` → `class CoincheckAdapter(BaseExchangeAdapter)`
+- `super().__init__(..., requests_per_second=4.0)` で共通インフラ (dry-run, rate-limit) を継承
+- 7 つの `_xxx_real()` 抽象メソッドを実装 (既存 real-mode コードを抽出)
+- `_generate_order_id()` を override (UUID 形式を維持)
+- `get_current_price()` を override (mixed real+dry-run behavior を保持)
+- ~200 行の重複 dry-run コードを削除
+- Coincheck 固有: `_create_signature`, `_make_api_request`, `get_orderbook`, `get_recent_trades` を保持
+
+**テスト影響**: source-inspection テスト 8 件を `_xxx_real()` メソッド参照に更新
+- `test_013_fixes.py`: C-4 (3 件) / D-3 (1 件) / C-7 (1 件)
+- `test_regime_detector.py`: E-1/E-3/E-4/046 (4 件)
+
+### §14.2 §10.1-#2: FillTestRunner → AbstractCycleRunner 継承
+
+**変更内容**:
+- `scripts/v460/lib/abstract_cycle_runner.py` (NEW) — ABC 定義
+  - `run_single_cycle()` / `run_continuous()` — 抽象メソッド
+  - `on_cycle_start()` / `on_cycle_end()` / `should_skip_cycle()` — フック
+  - `_new_cycle_id()` / `_get_git_sha()` — 共通ユーティリティ
+- `FillTestRunner(AbstractCycleRunner)` に変更 (全メソッドは FillTestRunner に残存)
+- 30+ の `inspect.getsource` テスト互換を維持
+
+### §14.3 §10.1-#3: MarketDataAccessor 導入
+
+**変更内容**:
+- `scripts/v460/lib/ob_utils.py` に `MarketDataAccessor` クラスを追加
+  - adapter ラッパー: `best_bid_ask()`, `spread()`, `mid_price()`, `bid_depth_volume()`, `ask_depth_volume()`
+  - Protocol ベースの型安全な adapter 参照
+- `run_fill_test.py` L870-871 の inline dual-format OB アクセスを `ob_utils.best_bid_ask()` に置換
+
+### §14.4 その他
+
+- `145_r2_regime_retrain_adaptation.md` → `145_ph2_impl_regime_retrain_adaptation.md` にリネーム (000# §5 命名規則準拠)
+
+### §14.5 新規テストファイル
+
+`tests/unit/v460/test_145_s14_structural_refactors.py` — 28 tests
+
+| テストクラス | テスト数 | 検証内容 |
+|---|---|---|
+| `TestCoincheckBaseExchangeInheritance` | 10 | BaseExchangeAdapter 継承 / IBroker / dry-run 動作 / real メソッド存在 / UUID / rate-limit / override / 固有メソッド |
+| `TestFillTestRunnerAbstractInheritance` | 7 | AbstractCycleRunner 継承 / 抽象メソッド実装 / hook / utility / cycle_id format |
+| `TestMarketDataAccessor` | 6 | import / best_bid_ask / spread / mid_price / API failure / depth_volume |
+| `TestOBInlineElimination` | 2 | hasattr pattern 不在 / best_bid_ask import 存在 |
+| `TestCoincheckAdapterTestCompat` | 3 | _make_api_request / _create_signature / post_only 互換 |
+
+### §14.6 テスト結果
+
+- 新規: 28 passed (+ §13 boundary guards 1 追加 = 29 増)
+- 全体: **1386 passed** (1357 + 29, 全緑)
+
+### §14.7 変更ファイル一覧
+
+| ファイル | 変更種別 | 内容 |
+|---|---|---|
+| `ztb/trading/live/exchanges/coincheck/adapter.py` | リファクタ | §10.1-#1 BaseExchangeAdapter 継承、~200 行削減 |
+| `scripts/v460/lib/abstract_cycle_runner.py` | 新規 | §10.1-#2 AbstractCycleRunner ABC |
+| `scripts/v460/lib/ob_utils.py` | 拡張 | §10.1-#3 MarketDataAccessor クラス追加 |
+| `scripts/v460/run_fill_test.py` | リファクタ | AbstractCycleRunner 継承 + OB inline 解消 |
+| `tests/unit/v460/test_145_s14_structural_refactors.py` | 新規 | 28 テスト |
+| `tests/unit/v460/test_145_s13_boundary_guards.py` | 更新 | CoincheckAdapter BaseExchangeAdapter 検証追加 |
+| `tests/unit/v460/test_013_fixes.py` | 更新 | source-inspection → `_xxx_real()` 参照 |
+| `tests/unit/v460/test_regime_detector.py` | 更新 | source-inspection → `_xxx_real()` 参照 |
+| `docs/v460/145_ph2_impl_regime_retrain_adaptation.md` | 更新 | §14 追記 + リネーム |

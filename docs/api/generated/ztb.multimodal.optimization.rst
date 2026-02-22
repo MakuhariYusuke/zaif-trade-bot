@@ -1,3 +1,37 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:f47aa67fa9204f7535d683b9ee6bdedb68733fb0c8cb3a606a0dedf0ac81b53a
-size 842
+ztb.multimodal.optimization package
+===================================
+
+Submodules
+----------
+
+ztb.multimodal.optimization.compression module
+----------------------------------------------
+
+.. automodule:: ztb.multimodal.optimization.compression
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.multimodal.optimization.inference module
+--------------------------------------------
+
+.. automodule:: ztb.multimodal.optimization.inference
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.multimodal.optimization.quantization module
+-----------------------------------------------
+
+.. automodule:: ztb.multimodal.optimization.quantization
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: ztb.multimodal.optimization
+   :members:
+   :show-inheritance:
+   :undoc-members:

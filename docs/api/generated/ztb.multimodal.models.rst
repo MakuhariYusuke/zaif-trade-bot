@@ -1,3 +1,20 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:cbafe927236973c397d92b4e081822ab7f2a6b9a3ce1bba1c5ef400b7d8c8d1c
-size 349
+ztb.multimodal.models package
+=============================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ztb.multimodal.models.agents
+   ztb.multimodal.models.architectures
+   ztb.multimodal.models.components
+
+Module contents
+---------------
+
+.. automodule:: ztb.multimodal.models
+   :members:
+   :show-inheritance:
+   :undoc-members:

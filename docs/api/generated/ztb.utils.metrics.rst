@@ -1,3 +1,21 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:ead50e0a1541a65eafe2e3402add5b5c89e3be9afb62d1d641f37794ab15872d
-size 387
+ztb.utils.metrics package
+=========================
+
+Submodules
+----------
+
+ztb.utils.metrics.trading\_metrics module
+-----------------------------------------
+
+.. automodule:: ztb.utils.metrics.trading_metrics
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: ztb.utils.metrics
+   :members:
+   :show-inheritance:
+   :undoc-members:

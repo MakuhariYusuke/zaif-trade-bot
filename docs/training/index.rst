@@ -1,3 +1,20 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:aed3d293acbedaeff935d0034ec2d16dfe87006be1491f91163871646522bb53
-size 515
+Training Documentation
+======================
+
+This section contains documentation related to model training and optimization.
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Training Reports:
+
+   V392_TRAINING_REPORT.md
+   v394a_quick_report.md
+   v394_complete_comparison.md
+   v394_final_report.md
+   v394_next_steps.md
+   v394_series_comparison.md
+   v394_training_summary.md
+
+.. note::
+   Training reports are organized by version number.
+   Refer to the latest reports for current training procedures and results.

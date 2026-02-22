@@ -1,3 +1,19 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:f7670bcc5f4d9fc65718ffd33c68a3ddf9894b34ff49b4a32160e18036bdc78d
-size 402
+Reference
+=========
+
+This section contains reference documentation and specifications.
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
+
+   configuration.md
+   CONFIGURATION_GUIDE.md
+   operations_manual.md
+   runbook.md
+   ops.md
+   DISCLAIMER.md
+
+.. note::
+   Reference documentation includes configuration options, operational procedures,
+   and technical specifications for the Zaif Trade Bot.

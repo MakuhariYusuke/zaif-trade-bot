@@ -201,3 +201,101 @@ Phase E (P1 group)        : ✅ 137#-141# (全 9 項目完了)
 **R-1 全サブタスク完了**: R-1a (offset), R-1b (lot), R-1c (reprice), R-1d (timeout)
 
 **次ステップ**: P2 グループ (P2-01〜P2-12) / Phase C 24h 実測 / R-2 retrain 重み付け
+
+---
+
+## §8 Codexレビュー追記 (2026-02-22)
+
+### §8.1 重大度付き指摘
+
+| # | 重大度 | 対象ファイル | 問題 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | CRITICAL | `scripts/v460/run_fill_test.py:1298`, `scripts/v460/run_fill_test.py:804` | 144# §2.1 では「preflight 前に regime lot を反映」とあるが、実際は preflight (`_check_balance_for_side`) が先に実行され、`_regime_adjusted_lot()` は `run_single_cycle` 内で後段実行。ドキュメント主張と実装が不一致。 | preflight 前に「今回の発注予定 lot」を算出して残高判定に渡す。`BalanceChecker.check(..., required_lot=...)` 形式に拡張し、`run` ループ側で判定する。 |
+| 2 | HIGH | `scripts/v460/run_fill_test.py:281`, `scripts/v460/run_fill_test.py:809` | `_regime_adjusted_lot()` の基準が `_current_lot` で、さらに `_current_lot = _order_lot` を永続化しているため、`trending` 連続時にロットがサイクルごとに乗算的に増える。R-1b の「一時調整」仕様と不整合。 | 基準ロットを「永続状態」と「一時発注量」に分離する。`_current_lot` は更新せず、`_order_lot` だけを発注/記録に使う。 |
+| 3 | HIGH | `scripts/v460/run_fill_test.py:809`, `scripts/v460/run_fill_test.py:1298` | 上方向のみ `_current_lot` を更新する片側ロジックのため、`high_vol` など縮小レジームでは preflight が過大ロット基準のままになり、不要な `preflight_insufficient` を誘発し得る。 | 増減どちらも「今回発注量」で preflight 判定する。永続ロットを直接変更する設計は避ける。 |
+| 4 | LOW | `ztb/metrics/fill_quality.py:910`, `docs/v460/144_ph2_impl_regime_reprice_timeout.md:56` | 「監査系 reason 限定」自体は反映済み。残論点は、監査 reason の side 許容範囲 (`none` のみか、`buy/sell` も含むか) が仕様として未明確な点。 | 設計意図をドキュメントに明記し、テスト名・期待値をその仕様に揃える。 |
+| 5 | MEDIUM | `tests/unit/v460/test_143_regime_utilization.py:586`, `tests/unit/v460/test_143_regime_utilization.py:655`, `tests/unit/v460/test_143_regime_utilization.py:671` | 「動作テスト強化」とあるが、重要部分の多くが source inspection で、実際の制御フロー・残高判定・reprice回数・timeout変化を直接検証していない。 | Integration寄りの async テストを追加し、`preflight -> place_order` の数量整合、regime別 `reprice_count` 上限、`effective_timeout` の実時間挙動を検証する。 |
+| 6 | MEDIUM | `scripts/v460/lib/fill_config.py:257`, `scripts/v460/lib/order_monitor.py:133` | `regime_timeout_multipliers` / `regime_reprice_adjustments` の値域バリデーションがなく、負値や極端値で意図しない挙動（即timeout等）を招く余地がある。 | `__post_init__` で `timeout_multiplier > 0`、`abs(reprice_adjustment)` 上限などを検証し、異常値を早期に reject する。 |
+
+### §8.2 実行確認
+
+- `tests/unit/v460` を実行し、`1263 passed, 0 failed` を確認（警告 91 件）。
+- テスト総数の主張（1244→1263）は整合。
+
+### §8.3 次ステップ提案 (優先順)
+
+1. #1/#2/#3 を同時に修正して、lot の「永続値」と「1注文値」を分離する。
+2. #5 の実挙動テストを追加し、今回の不整合が再発しない回帰ガードを入れる。
+3. #4/#6 を反映して、doc-impl 整合と設定安全性を固める。
+
+---
+
+## §9 深掘りレビュー (改善点・重複排除)
+
+### §9.1 追加指摘 (重大度順)
+
+| # | 重大度 | 対象ファイル | 問題 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | CRITICAL | `scripts/v460/run_fill_test.py:622`, `scripts/v460/lib/order_monitor.py:333`, `scripts/v460/run_fill_test.py:805` | 初回発注は `_order_lot` だが、reprice 時の数量は `current_lot` を使うため、縮小レジームで再発注量が初回より大きくなり得る。 | `OrderMonitor.monitor(..., order_lot=...)` を導入し、reprice は常に初回発注量を維持する。 |
+| 2 | HIGH | `scripts/v460/run_fill_test.py:990`, `scripts/v460/lib/order_monitor.py:134` | timeout 判定は monitor 側でレジーム倍率適用済みなのに、FillRecord の `cancel_reason` は `config.order_timeout_sec` 基準。高/低ボラで timeout ラベルが誤判定になる。 | monitor が `timeout_reached` または `effective_timeout_sec` を返し、record 側はその値で判定する。 |
+| 3 | HIGH | `scripts/v460/lib/skip_gate_evaluator.py:465`, `scripts/v460/lib/skip_gate_evaluator.py:467`, `ztb/trading/live/exchanges/base/broker_interfaces.py:65` | SkipGate の OB 取得で `.price/.quantity` 前提だが、実 adapter の `OrderBookSnapshot` は tuple list。例外で握り潰され、OB 特徴量が実質無効化される。 | OB レベル抽出を共通 utility 化し、tuple/object 双方を正規化してから特徴量化する。 |
+| 4 | MEDIUM | `scripts/v460/run_fill_test.py:573`, `scripts/v460/run_fill_test.py:805`, `scripts/v460/lib/skip_gate_evaluator.py:519` | SkipGate 判定は lot 適応前に実行され、skip レコードの `order_quantity` は `current_lot`。実発注量と監査ログの数量整合が崩れる。 | lot 解決を先に行い、SkipGateEvaluator へ `planned_order_lot` を渡す。 |
+| 5 | MEDIUM | `scripts/v460/run_fill_test.py:1202`, `scripts/v460/run_fill_test.py:1269`, `scripts/v460/run_fill_test.py:1322`, `scripts/v460/run_fill_test.py:1378`, `scripts/v460/run_fill_test.py:1420`, `scripts/v460/run_fill_test.py:1449`, `scripts/v460/run_fill_test.py:1477` | skip/監査系 `FillRecord` 生成が多重重複し、項目追加時に更新漏れが出やすい。 | `build_skip_record()` ヘルパを導入し、`run_id/git_sha/cycle_id/timestamp` を一元生成する。 |
+| 6 | MEDIUM | `scripts/v460/run_fill_test.py:673`, `scripts/v460/run_fill_test.py:774`, `ztb/metrics/fill_quality.py:903`, `tests/unit/v460/test_143_regime_utilization.py:472` | cancel_reason 文字列が実装・集計・テストで散在し、命名変更時のドリフトリスクが高い。 | `ztb/metrics/cancel_reasons.py` 等に定数/Enum を集約し、全レイヤで同一参照に統一する。 |
+| 7 | LOW | `scripts/v460/run_fill_test.py:657`, `scripts/v460/run_fill_test.py:1203`, `scripts/v460/run_fill_test.py:1270`, `scripts/v460/run_fill_test.py:1323`, `scripts/v460/run_fill_test.py:1421`, `scripts/v460/run_fill_test.py:1450`, `scripts/v460/run_fill_test.py:1478` | `cycle_id` 生成式が多箇所重複。形式変更時の一括修正が困難。 | `_new_cycle_id(prefix: str | None)` を追加し、生成規約を一元化する。 |
+
+### §9.2 重複排除リファクタ案 (実装順)
+
+1. **D1: RecordFactory 導入**  
+`scripts/v460/lib/fill_record_factory.py` を作成し、`build_skip_record` / `build_error_record` / `build_fill_record` を統一。
+
+2. **D2: OrderIntent 導入**  
+`side`, `planned_lot`, `effective_timeout`, `reprice_limit` を 1 オブジェクト化して `run -> run_single_cycle -> order_monitor` に受け渡し。lot/timeout のズレを構造的に防止。
+
+3. **D3: CancelReason Enum 化**  
+監査 reason・執行 reason・保護 reason をカテゴリ付きで定義し、`fill_quality` 側の quarantine ルールも Enum ベースにする。
+
+4. **D4: Top-of-book 正規化 utility**  
+tuple/object 両対応の `extract_best_bid_ask()` / `extract_depth_totals()` を追加し、`maker_price`・`run_fill_test`・`skip_gate_evaluator` の重複ロジックを統合。
+
+### §9.3 最短で利益に効く順序
+
+1. §9.1 #1/#2/#3 を先に修正（数量不整合・誤ラベル・OB無効化は損失/誤判断に直結）。
+2. その後 D1/D2 で lot/timeout の責務を整理して再発防止。
+3. 最後に D3/D4 で運用保守コストを下げる。
+
+---
+
+## §10 追加レビュー (継承・範囲外・自己点検)
+
+### §10.1 継承導入で整理できる事項
+
+| # | 重大度 | 対象ファイル | 指摘 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | HIGH | `ztb/trading/live/exchanges/coincheck/adapter.py:70`, `ztb/trading/live/exchanges/base/adapter.py:61` | `CoincheckAdapter` が `IBroker` 直実装で、`BitFlyerAdapter` が `BaseExchangeAdapter` 継承。dry-run/rate-limit/state 管理の実装方針が分岐している。 | `CoincheckAdapter` も `BaseExchangeAdapter` 継承へ寄せ、共通責務（dry-run、rate-limit、order state）を統一する。 |
+| 2 | MEDIUM | `scripts/v460/run_fill_test.py:105` | `FillTestRunner` が 2k 行超の単一クラスで、execution policy と orchestration が混在。 | `AbstractCycleRunner` (テンプレートメソッド) を作り、`v460` 固有ロジックは派生クラスへ分離。 |
+| 3 | MEDIUM | `scripts/v460/lib/order_monitor.py:91`, `scripts/v460/lib/skip_gate_evaluator.py:358` | orderbook 取り扱いの抽象化が不足し、tuple/object の実装差を各所で吸収している。 | `MarketDataAccessorBase` を導入し、`best_bid/ask`・depth 集計を継承側で共通化する。 |
+
+### §10.2 範囲外だが直したほうが良い事項
+
+| # | 重大度 | 対象ファイル | 問題 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | HIGH | `scripts/v460/lib/skip_gate_evaluator.py:465`, `scripts/v460/lib/skip_gate_evaluator.py:467`, `ztb/trading/live/exchanges/base/broker_interfaces.py:65` | SkipGate の OB 特徴量で `.price/.quantity` 前提。実 adapter は tuple 返却なので例外で握り潰され、OB 特徴量が欠落しやすい。 | 形式正規化 utility を導入して tuple/object 両対応にする。 |
+| 2 | MEDIUM | `ztb/trading/live/exchanges/bitflyer/adapter.py:138` | `_make_request` の docstring が重複しており、レビュー/保守時にノイズが大きい。 | docstring を 1 つに整理し、API エラー方針も統一記述する。 |
+| 3 | MEDIUM | `scripts/v460/run_fill_test.py:666`, `scripts/v460/run_fill_test.py:732`, `scripts/v460/run_fill_test.py:767`, `scripts/v460/run_fill_test.py:907`, `scripts/v460/run_fill_test.py:1202`, `scripts/v460/run_fill_test.py:1269`, `scripts/v460/run_fill_test.py:1322`, `scripts/v460/run_fill_test.py:1378`, `scripts/v460/run_fill_test.py:1420`, `scripts/v460/run_fill_test.py:1449`, `scripts/v460/run_fill_test.py:1477` | `FillRecord` 組み立て重複が多く、項目追加時の更新漏れリスクが高い。 | builder/factory に統一し、reason 別最小差分だけ上書きする。 |
+| 4 | LOW | `scripts/v460/run_fill_test.py:657`, `scripts/v460/run_fill_test.py:1203`, `scripts/v460/run_fill_test.py:1270`, `scripts/v460/run_fill_test.py:1323`, `scripts/v460/run_fill_test.py:1421`, `scripts/v460/run_fill_test.py:1450`, `scripts/v460/run_fill_test.py:1478` | `cycle_id` 生成式が重複。 | `_new_cycle_id()` ヘルパで一元化。 |
+
+### §10.3 レビュー自己点検 (前回指摘の再評価)
+
+| 前回指摘 | 再評価 | コメント |
+|---|---|---|
+| §8-#1 preflight と lot 適用順の不一致 | **維持** | 実装確認済み。`run` 側 preflight が先、`run_single_cycle` 側 lot 計算が後。 |
+| §8-#2 `_current_lot` 永続更新による乗算増加 | **維持** | `self._current_lot = _order_lot` が残っており、一時調整仕様と不一致。 |
+| §8-#3 片側更新による縮小時 preflight 過大化 | **維持** | 上方向のみ更新のため、縮小局面で過大判定が残る。 |
+| §8-#4 「side=none 限定」の記述不一致 | **修正** | 私の記載が過剰。実ドキュメントは「監査系 reason 限定」が主旨で、`side=none` 限定は明記されていない。重大度は下げ、設計選択として扱うのが妥当。 |
+| §8-#5 source inspection 偏重 | **維持** | テストは増えたが、重要経路は依然として実挙動検証が不足。 |
+| §8-#6 新規レジーム設定の値域バリデーション不足 | **維持** | `__post_init__` に該当チェックは未追加。 |
+
+### §10.4 レビュー方針補足
+
+- 今後は「実装不一致」「収益影響」「回帰再発性」を優先して、提案ではなく検証可能な指摘を主軸にレビューを継続する。

@@ -1,3 +1,39 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:3fba4b6f65b13ee158a9a69522026ee7e9f8017d47394441e7bc200dd3a9c09f
-size 1045
+{
+  "model": "v397f_balanced_middle",
+  "timestamp": "2025-10-12T04:55:59.537745",
+  "steps": 4999,
+  "action_distribution": {
+    "buy_count": 0,
+    "buy_percentage": 0.0,
+    "sell_count": 231,
+    "sell_percentage": 4.6209241848369675,
+    "hold_count": 4768,
+    "hold_percentage": 95.37907581516303,
+    "total_trades": 231,
+    "significant_changes": 3
+  },
+  "reward_stats": {
+    "mean": -0.012040785505369321,
+    "std": 0.1395272522579853,
+    "min": -9.857859337584483,
+    "max": 0.0,
+    "positive_count": 0,
+    "positive_percentage": 0.0,
+    "negative_count": 3328,
+    "negative_percentage": 66.57331466293259,
+    "zero_count": 1671,
+    "zero_percentage": 33.42668533706741
+  },
+  "performance": {
+    "initial_portfolio_value": 200000.0,
+    "final_portfolio_value": 192102.88670409963,
+    "total_return_percentage": -3.948556647950187,
+    "realized_pnl": -9913.149590169092
+  },
+  "position_stats": {
+    "mean": -0.01155569093915499,
+    "std": 0.01630965813297063,
+    "min": -0.03553516560387931,
+    "max": 0.0
+  }
+}

@@ -1,3 +1,129 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:973ebd2378c3e82dc98413734b45744daae35d5837055d5db94a887582a8039e
-size 3558
+[
+  {
+    "category": "configs",
+    "total_files": 12,
+    "success": 2,
+    "skipped": 10,
+    "errors": 0,
+    "operations": [
+      {
+        "action": "move",
+        "source": ".eslintrc.json",
+        "destination": "configs\\linting\\.eslintrc.json"
+      },
+      {
+        "action": "move",
+        "source": ".markdownlint.json",
+        "destination": "configs\\linting\\.markdownlint.json"
+      }
+    ]
+  },
+  {
+    "category": "docs",
+    "total_files": 30,
+    "success": 6,
+    "skipped": 24,
+    "errors": 0,
+    "operations": [
+      {
+        "action": "move",
+        "source": "CHANGELOG.md",
+        "destination": "docs\\development\\CHANGELOG.md"
+      },
+      {
+        "action": "move",
+        "source": "CHECKPOINT_INTERVAL_EXTENSION.md",
+        "destination": "docs\\reports\\CHECKPOINT_INTERVAL_EXTENSION.md"
+      },
+      {
+        "action": "move",
+        "source": "CHECKPOINT_INTERVAL_INTEGRATION_SUMMARY.md",
+        "destination": "docs\\reports\\CHECKPOINT_INTERVAL_INTEGRATION_SUMMARY.md"
+      },
+      {
+        "action": "move",
+        "source": "CUSTOM_PPO_ROLLOUT_REPORT.md",
+        "destination": "docs\\reports\\CUSTOM_PPO_ROLLOUT_REPORT.md"
+      },
+      {
+        "action": "move",
+        "source": "CUSTOM_PPO_SUCCESS_REPORT.md",
+        "destination": "docs\\reports\\CUSTOM_PPO_SUCCESS_REPORT.md"
+      },
+      {
+        "action": "move",
+        "source": "integration_failure_diagnosis.md",
+        "destination": "docs\\reports\\integration_failure_diagnosis.md"
+      }
+    ]
+  },
+  {
+    "category": "scripts",
+    "total_files": 27,
+    "success": 12,
+    "skipped": 15,
+    "errors": 0,
+    "operations": [
+      {
+        "action": "move",
+        "source": "analyze_feature_selection.py",
+        "destination": "scripts\\analysis\\analyze_feature_selection.py"
+      },
+      {
+        "action": "move",
+        "source": "analyze_features_quality.py",
+        "destination": "scripts\\analysis\\analyze_features_quality.py"
+      },
+      {
+        "action": "move",
+        "source": "analyze_reward_function.py",
+        "destination": "scripts\\analysis\\analyze_reward_function.py"
+      },
+      {
+        "action": "move",
+        "source": "analyze_reward_improvements.py",
+        "destination": "scripts\\analysis\\analyze_reward_improvements.py"
+      },
+      {
+        "action": "move",
+        "source": "analyze_risk_metrics.py",
+        "destination": "scripts\\analysis\\analyze_risk_metrics.py"
+      },
+      {
+        "action": "move",
+        "source": "analyze_v364_console.py",
+        "destination": "scripts\\analysis\\analyze_v364_console.py"
+      },
+      {
+        "action": "move",
+        "source": "analyze_v365_result.py",
+        "destination": "scripts\\analysis\\analyze_v365_result.py"
+      },
+      {
+        "action": "move",
+        "source": "analyze_v366_bugs.py",
+        "destination": "scripts\\analysis\\analyze_v366_bugs.py"
+      },
+      {
+        "action": "move",
+        "source": "analyze_v394_training.py",
+        "destination": "scripts\\analysis\\analyze_v394_training.py"
+      },
+      {
+        "action": "move",
+        "source": "backtest_model.py",
+        "destination": "scripts\\training\\backtest_model.py"
+      },
+      {
+        "action": "move",
+        "source": "live_trade.py",
+        "destination": "scripts\\training\\live_trade.py"
+      },
+      {
+        "action": "move",
+        "source": "debug_action_masking.py",
+        "destination": "scripts\\debugging\\debug_action_masking.py"
+      }
+    ]
+  }
+]

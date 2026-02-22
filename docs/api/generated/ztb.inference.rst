@@ -1,3 +1,21 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:2d0b699ba0929f0b88cf0fd186331003ab9b9015d5184f3f1531a79097be04e7
-size 334
+ztb.inference package
+=====================
+
+Submodules
+----------
+
+ztb.inference.decode module
+---------------------------
+
+.. automodule:: ztb.inference.decode
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: ztb.inference
+   :members:
+   :show-inheritance:
+   :undoc-members:

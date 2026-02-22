@@ -1,3 +1,20 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:8814f0831b953aaeda192321180e640f2d456764738c869bb1bd68ca3302c961
-size 371
+ztb.multimodal.evaluation package
+=================================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ztb.multimodal.evaluation.explainers
+   ztb.multimodal.evaluation.metrics
+   ztb.multimodal.evaluation.validators
+
+Module contents
+---------------
+
+.. automodule:: ztb.multimodal.evaluation
+   :members:
+   :show-inheritance:
+   :undoc-members:

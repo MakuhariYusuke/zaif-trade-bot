@@ -1,3 +1,37 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:59662f855c0e0b663c32ac5708a1b3ee4ec6c881cd9ac73815bc96ac4500d0c9
-size 776
+ztb.adaptation.operations package
+=================================
+
+Submodules
+----------
+
+ztb.adaptation.operations.config module
+---------------------------------------
+
+.. automodule:: ztb.adaptation.operations.config
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.adaptation.operations.manager module
+----------------------------------------
+
+.. automodule:: ztb.adaptation.operations.manager
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.adaptation.operations.types module
+--------------------------------------
+
+.. automodule:: ztb.adaptation.operations.types
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: ztb.adaptation.operations
+   :members:
+   :show-inheritance:
+   :undoc-members:

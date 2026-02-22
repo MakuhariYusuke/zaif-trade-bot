@@ -1,3 +1,27 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:0b6bcfa82df537b9e5eb69aff7a65205bf2a77ec8f68fcb4bab9498e2d082179
-size 485
+ztb.multimodal package
+======================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ztb.multimodal.config
+   ztb.multimodal.core
+   ztb.multimodal.data
+   ztb.multimodal.evaluation
+   ztb.multimodal.features
+   ztb.multimodal.models
+   ztb.multimodal.optimization
+   ztb.multimodal.pretraining
+   ztb.multimodal.training
+   ztb.multimodal.utils
+
+Module contents
+---------------
+
+.. automodule:: ztb.multimodal
+   :members:
+   :show-inheritance:
+   :undoc-members:

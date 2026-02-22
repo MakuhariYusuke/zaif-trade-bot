@@ -1,3 +1,37 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:bd8de0cb782ce6736dbfad96c985ef2228a2517b58c4a22e5daf5e80936ce891
-size 764
+ztb.evaluation.evaluator package
+================================
+
+Submodules
+----------
+
+ztb.evaluation.evaluator.evaluator module
+-----------------------------------------
+
+.. automodule:: ztb.evaluation.evaluator.evaluator
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.evaluation.evaluator.main module
+------------------------------------
+
+.. automodule:: ztb.evaluation.evaluator.main
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.evaluation.evaluator.types module
+-------------------------------------
+
+.. automodule:: ztb.evaluation.evaluator.types
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: ztb.evaluation.evaluator
+   :members:
+   :show-inheritance:
+   :undoc-members:

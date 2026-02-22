@@ -1,3 +1,45 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:a6d6bbc9d101ff44ec481885cfe8239b85f540f461a1c6bf6f29e90f8102474a
-size 762
+ztb.config package
+==================
+
+Submodules
+----------
+
+ztb.config.legacy\_schema module
+--------------------------------
+
+.. automodule:: ztb.config.legacy_schema
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.config.loader module
+------------------------
+
+.. automodule:: ztb.config.loader
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.config.manager module
+-------------------------
+
+.. automodule:: ztb.config.manager
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.config.schema module
+------------------------
+
+.. automodule:: ztb.config.schema
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: ztb.config
+   :members:
+   :show-inheritance:
+   :undoc-members:

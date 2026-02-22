@@ -1,3 +1,17 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:4725116a57a1c19b718207d3775544063963c140079a88015ce0c0aacff2fdf0
-size 417
+Design Documents
+================
+
+This section contains design documents and specifications for various components.
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Design Documents:
+
+   sac_v397h_design.md
+   sac_v397i_hold_reduction.md
+   reward_function_optimization.md
+   reward_symmetry.md
+
+.. note::
+   Design documents detail the specifications and rationale for specific features
+   and algorithm implementations.

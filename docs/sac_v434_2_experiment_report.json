@@ -1,3 +1,175 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:1ff42dda5e47b85b038e761cd59cabfdbe68dd59a786286395651751a21b04a2
-size 4044
+{
+  "summary": {
+    "total_experiments": 9,
+    "successful": 9,
+    "failed": 0,
+    "success_rate": 100.0
+  },
+  "successful_experiments": [
+    {
+      "version": "v434.2.1",
+      "description": "ベースライン設定",
+      "hyperparams": {
+        "learning_rate": 0.0003,
+        "batch_size": 64,
+        "gamma": 0.99,
+        "tau": 0.005
+      },
+      "backtest_metrics": {
+        "total_reward": 0,
+        "win_rate": 0,
+        "sharpe_ratio": 0,
+        "max_drawdown": 0,
+        "final_portfolio_value": 0
+      }
+    },
+    {
+      "version": "v434.2.2",
+      "description": "高い学習率",
+      "hyperparams": {
+        "learning_rate": 0.001,
+        "batch_size": 64,
+        "gamma": 0.99,
+        "tau": 0.005
+      },
+      "backtest_metrics": {
+        "total_reward": 0,
+        "win_rate": 0,
+        "sharpe_ratio": 0,
+        "max_drawdown": 0,
+        "final_portfolio_value": 0
+      }
+    },
+    {
+      "version": "v434.2.3",
+      "description": "低い学習率",
+      "hyperparams": {
+        "learning_rate": 0.0001,
+        "batch_size": 64,
+        "gamma": 0.99,
+        "tau": 0.005
+      },
+      "backtest_metrics": {
+        "total_reward": 0,
+        "win_rate": 0,
+        "sharpe_ratio": 0,
+        "max_drawdown": 0,
+        "final_portfolio_value": 0
+      }
+    },
+    {
+      "version": "v434.2.4",
+      "description": "大きいバッチサイズ",
+      "hyperparams": {
+        "learning_rate": 0.0003,
+        "batch_size": 128,
+        "gamma": 0.99,
+        "tau": 0.005
+      },
+      "backtest_metrics": {
+        "total_reward": 0,
+        "win_rate": 0,
+        "sharpe_ratio": 0,
+        "max_drawdown": 0,
+        "final_portfolio_value": 0
+      }
+    },
+    {
+      "version": "v434.2.5",
+      "description": "非常に大きいバッチサイズ",
+      "hyperparams": {
+        "learning_rate": 0.0003,
+        "batch_size": 256,
+        "gamma": 0.99,
+        "tau": 0.005
+      },
+      "backtest_metrics": {
+        "total_reward": 0,
+        "win_rate": 0,
+        "sharpe_ratio": 0,
+        "max_drawdown": 0,
+        "final_portfolio_value": 0
+      }
+    },
+    {
+      "version": "v434.2.6",
+      "description": "低い割引率",
+      "hyperparams": {
+        "learning_rate": 0.0003,
+        "batch_size": 64,
+        "gamma": 0.95,
+        "tau": 0.005
+      },
+      "backtest_metrics": {
+        "total_reward": 0,
+        "win_rate": 0,
+        "sharpe_ratio": 0,
+        "max_drawdown": 0,
+        "final_portfolio_value": 0
+      }
+    },
+    {
+      "version": "v434.2.7",
+      "description": "非常に低い割引率",
+      "hyperparams": {
+        "learning_rate": 0.0003,
+        "batch_size": 64,
+        "gamma": 0.9,
+        "tau": 0.005
+      },
+      "backtest_metrics": {
+        "total_reward": 0,
+        "win_rate": 0,
+        "sharpe_ratio": 0,
+        "max_drawdown": 0,
+        "final_portfolio_value": 0
+      }
+    },
+    {
+      "version": "v434.2.8",
+      "description": "高いターゲット更新率",
+      "hyperparams": {
+        "learning_rate": 0.0003,
+        "batch_size": 64,
+        "gamma": 0.99,
+        "tau": 0.01
+      },
+      "backtest_metrics": {
+        "total_reward": 0,
+        "win_rate": 0,
+        "sharpe_ratio": 0,
+        "max_drawdown": 0,
+        "final_portfolio_value": 0
+      }
+    },
+    {
+      "version": "v434.2.9",
+      "description": "非常に高いターゲット更新率",
+      "hyperparams": {
+        "learning_rate": 0.0003,
+        "batch_size": 64,
+        "gamma": 0.99,
+        "tau": 0.02
+      },
+      "backtest_metrics": {
+        "total_reward": 0,
+        "win_rate": 0,
+        "sharpe_ratio": 0,
+        "max_drawdown": 0,
+        "final_portfolio_value": 0
+      }
+    }
+  ],
+  "failed_experiments": [],
+  "best_experiment": {
+    "version": "v434.2.1",
+    "description": "ベースライン設定",
+    "hyperparams": {
+      "learning_rate": 0.0003,
+      "batch_size": 64,
+      "gamma": 0.99,
+      "tau": 0.005
+    },
+    "backtest_result": {}
+  }
+}

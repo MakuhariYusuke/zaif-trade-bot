@@ -1,3 +1,20 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:05f6286ad80b4a484a664d2fcab0f34077799bd87da1c1e8a121f578e8f121f1
-size 356
+ztb.multimodal.training package
+===============================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ztb.multimodal.training.losses
+   ztb.multimodal.training.optimizers
+   ztb.multimodal.training.trainers
+
+Module contents
+---------------
+
+.. automodule:: ztb.multimodal.training
+   :members:
+   :show-inheritance:
+   :undoc-members:

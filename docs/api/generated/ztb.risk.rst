@@ -1,3 +1,69 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:475726b74b72eb69289fe2b8291a0eafaa090f572ec9d1f4b122bcb34069927d
-size 1267
+ztb.risk package
+================
+
+Submodules
+----------
+
+ztb.risk.advanced\_auto\_stop module
+------------------------------------
+
+.. automodule:: ztb.risk.advanced_auto_stop
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.risk.checks module
+----------------------
+
+.. automodule:: ztb.risk.checks
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.risk.circuit\_breakers module
+---------------------------------
+
+.. automodule:: ztb.risk.circuit_breakers
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.risk.circuit\_breakers\_compat module
+-----------------------------------------
+
+.. automodule:: ztb.risk.circuit_breakers_compat
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.risk.position\_sizing module
+--------------------------------
+
+.. automodule:: ztb.risk.position_sizing
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.risk.profiles module
+------------------------
+
+.. automodule:: ztb.risk.profiles
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.risk.rules module
+---------------------
+
+.. automodule:: ztb.risk.rules
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: ztb.risk
+   :members:
+   :show-inheritance:
+   :undoc-members:

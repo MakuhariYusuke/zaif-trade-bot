@@ -1,3 +1,21 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:5966e31a3e3f87ded21e6609105460308599240ff141dd3f77b82215c64f92b0
-size 456
+ztb.multimodal.data.collectors package
+======================================
+
+Submodules
+----------
+
+ztb.multimodal.data.collectors.data\_sources module
+---------------------------------------------------
+
+.. automodule:: ztb.multimodal.data.collectors.data_sources
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: ztb.multimodal.data.collectors
+   :members:
+   :show-inheritance:
+   :undoc-members:

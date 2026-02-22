@@ -1,3 +1,37 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:4eef1d3614d313364ceae9635f6981178f9ee002f33b1a5fbec036600da7130b
-size 769
+ztb.utils.notify package
+========================
+
+Submodules
+----------
+
+ztb.utils.notify.discord module
+-------------------------------
+
+.. automodule:: ztb.utils.notify.discord
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.utils.notify.notification\_manager module
+---------------------------------------------
+
+.. automodule:: ztb.utils.notify.notification_manager
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.utils.notify.notify\_1k\_test\_results module
+-------------------------------------------------
+
+.. automodule:: ztb.utils.notify.notify_1k_test_results
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: ztb.utils.notify
+   :members:
+   :show-inheritance:
+   :undoc-members:

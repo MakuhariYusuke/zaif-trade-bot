@@ -1,3 +1,24 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:61ae62087dd26ba311b9fca7f2d17ac326569fa1ce4d5fe4ea137a0e5740403b
-size 415
+{
+  "t_statistic": NaN,
+  "p_value": NaN,
+  "significant": "False",
+  "alpha": 0.05,
+  "model_a": {
+    "mean": 2500.0,
+    "std": NaN,
+    "n": 1,
+    "values": [
+      2500
+    ]
+  },
+  "model_b": {
+    "mean": 200000.0,
+    "std": NaN,
+    "n": 1,
+    "values": [
+      200000
+    ]
+  },
+  "effect_size": 0,
+  "interpretation": "The difference is not significant (p=nan) with negligible effect size (d=0.000)"
+}

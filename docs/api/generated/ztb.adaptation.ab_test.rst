@@ -1,3 +1,61 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:d59aadae52ec90a6e927d83ef99f89a8920fd1fb2713b4057022516008abbfa3
-size 1294
+ztb.adaptation.ab\_test package
+===============================
+
+Submodules
+----------
+
+ztb.adaptation.ab\_test.analyzer module
+---------------------------------------
+
+.. automodule:: ztb.adaptation.ab_test.analyzer
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.adaptation.ab\_test.config module
+-------------------------------------
+
+.. automodule:: ztb.adaptation.ab_test.config
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.adaptation.ab\_test.executor module
+---------------------------------------
+
+.. automodule:: ztb.adaptation.ab_test.executor
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.adaptation.ab\_test.selector module
+---------------------------------------
+
+.. automodule:: ztb.adaptation.ab_test.selector
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.adaptation.ab\_test.tests module
+------------------------------------
+
+.. automodule:: ztb.adaptation.ab_test.tests
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.adaptation.ab\_test.types module
+------------------------------------
+
+.. automodule:: ztb.adaptation.ab_test.types
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: ztb.adaptation.ab_test
+   :members:
+   :show-inheritance:
+   :undoc-members:

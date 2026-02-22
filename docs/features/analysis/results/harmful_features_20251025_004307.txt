@@ -1,3 +1,33 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:ab3c64582e1fe644361e31059b34ef51e8ee44779936c3f50f71075bba6bb312
-size 860
+# Harmful Features Requiring Removal
+# Generated: 20251025_004307
+# Total harmful: 6
+
+open
+  Severity: minor
+  Issues: over_correlated:4_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+high
+  Severity: minor
+  Issues: over_correlated:4_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+low
+  Severity: minor
+  Issues: over_correlated:4_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+close
+  Severity: minor
+  Issues: over_correlated:4_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+constant_feature
+  Severity: moderate
+  Issues: low_variance:0.00e+00
+  Recommendation: 検討推奨 - 品質改善のために削除を検討
+
+highly_correlated_feature
+  Severity: minor
+  Issues: over_correlated:4_features
+  Recommendation: 注意 - 状況に応じて削除を検討

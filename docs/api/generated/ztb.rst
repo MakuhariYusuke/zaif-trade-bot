@@ -1,3 +1,45 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:94568238dd236b824c0ddf0fa3699db7b9925f4ed4e25f6149eaa2ba46f2b149
-size 696
+ztb package
+===========
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   ztb.adaptation
+   ztb.analysis
+   ztb.benchmarks
+   ztb.config
+   ztb.data
+   ztb.evaluation
+   ztb.experiments
+   ztb.features
+   ztb.inference
+   ztb.multimodal
+   ztb.optimization
+   ztb.risk
+   ztb.sac_v426_improvement
+   ztb.tests
+   ztb.trading
+   ztb.training
+   ztb.utils
+
+Submodules
+----------
+
+ztb.sac\_v427\_market\_adaptive\_system module
+----------------------------------------------
+
+.. automodule:: ztb.sac_v427_market_adaptive_system
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: ztb
+   :members:
+   :show-inheritance:
+   :undoc-members:

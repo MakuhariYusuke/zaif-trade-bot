@@ -1,3 +1,27 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:55364bee07be43f9dfb451da731299dcd25b6800ba45b60edb2b9de6b91f3f6f
-size 1621
+# v452 TODO List
+
+## 優先度: 高 (Immediate Actions)
+
+- [ ] **設定値の恒久対応**
+    - `config.py` のデフォルト値を修正し、`max_action_threshold` が 1.0 になるようにコミットする。
+    - `adapters.py` などのバックテスト用アダプター内のハードコード値も修正する。
+    - バリデーションロジック (`ThresholdManager._validate_config`) を見直し、勝手なクランプを行う場合は ERROR ログを出すか、例外を投げるように変更を検討する。
+
+- [ ] **Market Regime Detector の精度検証**
+    - 現在の `ThresholdManager` は `MarketRegimeDetector` の結果に依存している。
+    - レンジ判定（Ranging）が適切に行われているか、可視化ツール等で検証する。
+
+## 優先度: 中 (Optimization)
+
+- [ ] **動的閾値パラメータのチューニング**
+    - 現在は「10倍」という極端な値で成功しているが、これが最適値とは限らない。
+    - 3倍、5倍、10倍などで比較検証を行い、機会損失とリスク回避のバランスを探る。
+
+- [ ] **ロギングの適正化**
+    - デバッグのために `INFO` レベルで大量のログを出している箇所を整理し、本番運用に耐えうるログ設計にする。
+
+## 優先度: 低 (Future Features)
+
+- [ ] **転移学習 (Fine-tuning) の検討**
+    - 現在のモデルを親モデルとして、直近の相場データのみで短期間の追加学習を行うパイプラインの構築。
+    - ステップ数を抑えつつ、最新の相場に対応させる。

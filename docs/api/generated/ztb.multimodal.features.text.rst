@@ -1,3 +1,21 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:fa42027ef6ce51e3cede3830097b969bf51d9473b40b083293536d2a32f11b42
-size 447
+ztb.multimodal.features.text package
+====================================
+
+Submodules
+----------
+
+ztb.multimodal.features.text.nlp\_processor module
+--------------------------------------------------
+
+.. automodule:: ztb.multimodal.features.text.nlp_processor
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: ztb.multimodal.features.text
+   :members:
+   :show-inheritance:
+   :undoc-members:

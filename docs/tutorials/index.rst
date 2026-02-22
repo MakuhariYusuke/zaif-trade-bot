@@ -1,3 +1,16 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:342facdc1001399fd028ba3aaf2decb10acaf5014b6de6b2ac66923f7be9b504
-size 361
+Tutorials
+=========
+
+This section contains tutorials and guides for using the Zaif Trade Bot.
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
+
+   ../guides/index
+   ../training/index
+   ../quickstart/index
+
+.. note::
+   Start with the Quick Start guide if you're new to the project.
+   The guides section contains detailed tutorials for specific features.

@@ -1,3 +1,45 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:f1cea50bf84d532733d0ab917802a2ad6c6e89382d83cf64ea4ffa6200256926
-size 895
+ztb.trading.backtest package
+============================
+
+Submodules
+----------
+
+ztb.trading.backtest.adapters module
+------------------------------------
+
+.. automodule:: ztb.trading.backtest.adapters
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.trading.backtest.metrics module
+-----------------------------------
+
+.. automodule:: ztb.trading.backtest.metrics
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.trading.backtest.report module
+----------------------------------
+
+.. automodule:: ztb.trading.backtest.report
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+ztb.trading.backtest.runner module
+----------------------------------
+
+.. automodule:: ztb.trading.backtest.runner
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: ztb.trading.backtest
+   :members:
+   :show-inheritance:
+   :undoc-members:

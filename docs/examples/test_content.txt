@@ -1,3 +1,22 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:56f16e9e4f60c73dc5efdb50b259b514a0f29eb3f8d53685fc7e7b7eb8988a93
-size 943
+Unit tests for venue health checker
+取引所ヘルスチェックの単体テスト
+
+import socket
+from unittest.mock import patch
+from ztb.ops.health.check_venue_health import VenueHealthChecker
+
+class TestVenueHealthChecker:
+    def test_initialization_coincheck(self):
+        checker = VenueHealthChecker('coincheck', 'BTC_JPY')
+        assert checker.venue == 'coincheck'
+        assert checker.symbol == 'BTC_JPY'
+        assert checker.rest_base == 'https://coincheck.com'
+        assert checker.ws_url == 'wss://ws-api.coincheck.com/'
+
+    @patch('socket.gethostbyname')
+    def test_check_internet_connectivity_failure(self, mock_gethostbyname):
+        mock_gethostbyname.side_effect = OSError('Network unreachable')
+        checker = VenueHealthChecker('coincheck', 'BTC_JPY')
+        result = checker.check_internet_connectivity()
+        assert result is False
+        assert checker.results['connectivity']['internet'] is False

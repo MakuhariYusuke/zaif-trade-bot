@@ -1,3 +1,338 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:4d41a0077f7cd65580e3889a6fa93fc11d2c3b8e3d035bf500f919cea5464330
-size 8901
+# Harmful Features Requiring Removal
+# Generated: 20251025_004717
+# Total harmful: 67
+
+open
+  Severity: minor
+  Issues: over_correlated:7_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+high
+  Severity: minor
+  Issues: over_correlated:7_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+low
+  Severity: minor
+  Issues: over_correlated:7_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+close
+  Severity: minor
+  Issues: over_correlated:7_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+volume
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+dividends
+  Severity: critical
+  Issues: low_variance:0.00e+00, excessive_zeros:100.00%
+  Recommendation: 即時削除推奨 - 学習に悪影響を及ぼす可能性が高い
+
+stock splits
+  Severity: critical
+  Issues: low_variance:0.00e+00, excessive_zeros:100.00%
+  Recommendation: 即時削除推奨 - 学習に悪影響を及ぼす可能性が高い
+
+returns
+  Severity: minor
+  Issues: over_correlated:4_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+log_returns
+  Severity: minor
+  Issues: over_correlated:4_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+volatility
+  Severity: minor
+  Issues: over_correlated:2_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+sma_20
+  Severity: minor
+  Issues: over_correlated:4_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+sma_50
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+rsi
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+price_change_1d
+  Severity: minor
+  Issues: over_correlated:4_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+price_change_3d
+  Severity: minor
+  Issues: over_correlated:2_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+price_change_5d
+  Severity: minor
+  Issues: over_correlated:3_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+price_change_10d
+  Severity: minor
+  Issues: over_correlated:2_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+log_return_1d
+  Severity: minor
+  Issues: over_correlated:4_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+log_return_3d
+  Severity: minor
+  Issues: over_correlated:2_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+log_return_5d
+  Severity: minor
+  Issues: over_correlated:3_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+price_position
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+high_low_ratio
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+sma_5
+  Severity: minor
+  Issues: over_correlated:8_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+price_ma_5_diff
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+sma_10
+  Severity: minor
+  Issues: over_correlated:9_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+price_ma_10_diff
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+price_ma_20_diff
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+price_ma_50_diff
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+volatility_20d
+  Severity: minor
+  Issues: over_correlated:2_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+daily_range
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+gap_up
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+gap_down
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+rsi_14
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+macd
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+macd_signal
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+stoch_k_14
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+stoch_k_21
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+williams_r_14
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+williams_r_21
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+roc_5
+  Severity: minor
+  Issues: over_correlated:3_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+roc_10
+  Severity: minor
+  Issues: over_correlated:2_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+support_level
+  Severity: minor
+  Issues: over_correlated:2_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+resistance_level
+  Severity: minor
+  Issues: over_correlated:4_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+higher_highs
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+higher_lows
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+lower_highs
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+lower_lows
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+sma_short
+  Severity: minor
+  Issues: over_correlated:4_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+trend_strength_short
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+volatility_short
+  Severity: minor
+  Issues: over_correlated:2_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+sma_medium
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+trend_strength_medium
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+sma_long
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+volatility_long
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+risk_score_volatile
+  Severity: minor
+  Issues: extreme_outliers:7.39%
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+regime_change
+  Severity: minor
+  Issues: excessive_zeros:88.07%
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+regime_persistence
+  Severity: minor
+  Issues: regime_out_of_bounds
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+close_zscore
+  Severity: minor
+  Issues: over_correlated:7_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+volume_zscore
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+price_change_1d_zscore
+  Severity: minor
+  Issues: over_correlated:4_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+price_change_3d_zscore
+  Severity: minor
+  Issues: over_correlated:2_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+price_change_5d_zscore
+  Severity: minor
+  Issues: over_correlated:3_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+price_change_10d_zscore
+  Severity: minor
+  Issues: over_correlated:2_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+price_position_zscore
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+price_ma_5_diff_zscore
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+price_ma_10_diff_zscore
+  Severity: minor
+  Issues: over_correlated:1_features
+  Recommendation: 注意 - 状況に応じて削除を検討
+
+close_percentile
+  Severity: minor
+  Issues: over_correlated:6_features
+  Recommendation: 注意 - 状況に応じて削除を検討

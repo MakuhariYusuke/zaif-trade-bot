@@ -1,3 +1,28 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:3e2f7cf8c4f473c0362036803e8e0aaba72569060c8fbe329e532f913e129efd
-size 770
+SAC v427 Enhanced Feature Analysis Summary
+==================================================
+Generated: 20251025_004307
+Data Source: sample_sac_v427_features.csv
+
+📊 OVERVIEW
+Total Features: 18
+Harmful Features: 6
+Excellent Quality: 12
+Poor Quality: 0
+
+⚠️  HARMFUL FEATURES
+• open (minor)
+  Issues: over_correlated:4_features
+• high (minor)
+  Issues: over_correlated:4_features
+• low (minor)
+  Issues: over_correlated:4_features
+• close (minor)
+  Issues: over_correlated:4_features
+• constant_feature (moderate)
+  Issues: low_variance:0.00e+00
+• highly_correlated_feature (minor)
+  Issues: over_correlated:4_features
+
+💡 RECOMMENDATIONS
+• Remove 6 harmful features (0 critical, 1 moderate)
+  Impact: Improve model stability and reduce overfitting

@@ -1,3 +1,348 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:27b62344c5c4ea48704d8e991694fb0ba11cd3479ddd9e6c547c979ac84c25c5
-size 8117
+{
+  "metrics": {
+    "total_return": "20.080801",
+    "sharpe_ratio": 2.5360664058551277,
+    "max_drawdown": -11.637669051343494,
+    "win_rate": 63.888888888888886,
+    "total_trades": 36,
+    "avg_trade_return": "55.78",
+    "profit_factor": "1.4148793",
+    "final_capital": "12008.08",
+    "gross_profit": "6848.235",
+    "gross_loss": "4840.155"
+  },
+  "trades": [
+    {
+      "entry_time": 4,
+      "exit_time": 28,
+      "entry_price": "5.0089925e+06",
+      "exit_price": "4.970778e+06",
+      "pnl": "381.76285",
+      "position": -0.01,
+      "duration": 24
+    },
+    {
+      "entry_time": 28,
+      "exit_time": 213,
+      "entry_price": "4.970778e+06",
+      "exit_price": "5.003497e+06",
+      "pnl": "326.86282",
+      "position": 0.01,
+      "duration": 185
+    },
+    {
+      "entry_time": 213,
+      "exit_time": 220,
+      "entry_price": "5.003497e+06",
+      "exit_price": "5.010215e+06",
+      "pnl": "-67.11282",
+      "position": -0.01,
+      "duration": 7
+    },
+    {
+      "entry_time": 220,
+      "exit_time": 254,
+      "entry_price": "5.010215e+06",
+      "exit_price": "5.000343e+06",
+      "pnl": "-98.621284",
+      "position": 0.01,
+      "duration": 34
+    },
+    {
+      "entry_time": 254,
+      "exit_time": 258,
+      "entry_price": "5.000343e+06",
+      "exit_price": "5.0029315e+06",
+      "pnl": "-25.859116",
+      "position": -0.01,
+      "duration": 4
+    },
+    {
+      "entry_time": 258,
+      "exit_time": 260,
+      "entry_price": "5.0029315e+06",
+      "exit_price": "5.002166e+06",
+      "pnl": "-7.647345",
+      "position": 0.01,
+      "duration": 2
+    },
+    {
+      "entry_time": 260,
+      "exit_time": 269,
+      "entry_price": "5.002166e+06",
+      "exit_price": "4.972533e+06",
+      "pnl": "296.03366",
+      "position": -0.01,
+      "duration": 9
+    },
+    {
+      "entry_time": 269,
+      "exit_time": 315,
+      "entry_price": "4.972533e+06",
+      "exit_price": "5.013178e+06",
+      "pnl": "406.04355",
+      "position": 0.01,
+      "duration": 46
+    },
+    {
+      "entry_time": 315,
+      "exit_time": 357,
+      "entry_price": "5.013178e+06",
+      "exit_price": "5.0022085e+06",
+      "pnl": "109.585304",
+      "position": -0.01,
+      "duration": 42
+    },
+    {
+      "entry_time": 357,
+      "exit_time": 364,
+      "entry_price": "5.0022085e+06",
+      "exit_price": "5.0148735e+06",
+      "pnl": "126.523346",
+      "position": 0.01,
+      "duration": 7
+    },
+    {
+      "entry_time": 364,
+      "exit_time": 519,
+      "entry_price": "5.0148735e+06",
+      "exit_price": "5.00463e+06",
+      "pnl": "102.332565",
+      "position": -0.01,
+      "duration": 155
+    },
+    {
+      "entry_time": 519,
+      "exit_time": 848,
+      "entry_price": "5.00463e+06",
+      "exit_price": "4.9969535e+06",
+      "pnl": "-76.68823",
+      "position": 0.01,
+      "duration": 329
+    },
+    {
+      "entry_time": 848,
+      "exit_time": 849,
+      "entry_price": "4.9969535e+06",
+      "exit_price": "4.9943e+06",
+      "pnl": "26.508465",
+      "position": -0.01,
+      "duration": 1
+    },
+    {
+      "entry_time": 849,
+      "exit_time": 858,
+      "entry_price": "4.9943e+06",
+      "exit_price": "4.990838e+06",
+      "pnl": "-34.58538",
+      "position": 0.01,
+      "duration": 9
+    },
+    {
+      "entry_time": 858,
+      "exit_time": 878,
+      "entry_price": "4.990838e+06",
+      "exit_price": "5.0073735e+06",
+      "pnl": "-165.18964",
+      "position": -0.01,
+      "duration": 20
+    },
+    {
+      "entry_time": 878,
+      "exit_time": 884,
+      "entry_price": "5.0073735e+06",
+      "exit_price": "5.0295355e+06",
+      "pnl": "221.39838",
+      "position": 0.01,
+      "duration": 6
+    },
+    {
+      "entry_time": 884,
+      "exit_time": 1027,
+      "entry_price": "5.0295355e+06",
+      "exit_price": "5.159538e+06",
+      "pnl": "-1298.725",
+      "position": -0.01,
+      "duration": 143
+    },
+    {
+      "entry_time": 1027,
+      "exit_time": 1147,
+      "entry_price": "5.159538e+06",
+      "exit_price": "5.2354495e+06",
+      "pnl": "758.3559",
+      "position": 0.01,
+      "duration": 120
+    },
+    {
+      "entry_time": 1147,
+      "exit_time": 1209,
+      "entry_price": "5.2354495e+06",
+      "exit_price": "5.22703e+06",
+      "pnl": "84.11081",
+      "position": -0.01,
+      "duration": 62
+    },
+    {
+      "entry_time": 1209,
+      "exit_time": 1333,
+      "entry_price": "5.22703e+06",
+      "exit_price": "5.2604985e+06",
+      "pnl": "334.3503",
+      "position": 0.01,
+      "duration": 124
+    },
+    {
+      "entry_time": 1333,
+      "exit_time": 1363,
+      "entry_price": "5.2604985e+06",
+      "exit_price": "5.208824e+06",
+      "pnl": "516.2283",
+      "position": -0.01,
+      "duration": 30
+    },
+    {
+      "entry_time": 1363,
+      "exit_time": 1413,
+      "entry_price": "5.208824e+06",
+      "exit_price": "5.2647225e+06",
+      "pnl": "558.426",
+      "position": 0.01,
+      "duration": 50
+    },
+    {
+      "entry_time": 1413,
+      "exit_time": 1460,
+      "entry_price": "5.2647225e+06",
+      "exit_price": "5.333495e+06",
+      "pnl": "-687.03723",
+      "position": -0.01,
+      "duration": 47
+    },
+    {
+      "entry_time": 1460,
+      "exit_time": 1498,
+      "entry_price": "5.333495e+06",
+      "exit_price": "5.371927e+06",
+      "pnl": "383.93567",
+      "position": 0.01,
+      "duration": 38
+    },
+    {
+      "entry_time": 1498,
+      "exit_time": 1576,
+      "entry_price": "5.371927e+06",
+      "exit_price": "5.342407e+06",
+      "pnl": "294.9048",
+      "position": -0.01,
+      "duration": 78
+    },
+    {
+      "entry_time": 1576,
+      "exit_time": 1648,
+      "entry_price": "5.342407e+06",
+      "exit_price": "5.3692685e+06",
+      "pnl": "268.34637",
+      "position": 0.01,
+      "duration": 72
+    },
+    {
+      "entry_time": 1648,
+      "exit_time": 3166,
+      "entry_price": "5.3692685e+06",
+      "exit_price": "5.357541e+06",
+      "pnl": "117.15772",
+      "position": -0.01,
+      "duration": 1518
+    },
+    {
+      "entry_time": 3166,
+      "exit_time": 3222,
+      "entry_price": "5.357541e+06",
+      "exit_price": "5.3761865e+06",
+      "pnl": "186.26855",
+      "position": 0.01,
+      "duration": 56
+    },
+    {
+      "entry_time": 3222,
+      "exit_time": 3876,
+      "entry_price": "5.3761865e+06",
+      "exit_price": "5.3672015e+06",
+      "pnl": "89.76015",
+      "position": -0.01,
+      "duration": 654
+    },
+    {
+      "entry_time": 3876,
+      "exit_time": 3936,
+      "entry_price": "5.3672015e+06",
+      "exit_price": "5.3819185e+06",
+      "pnl": "147.02283",
+      "position": 0.01,
+      "duration": 60
+    },
+    {
+      "entry_time": 3936,
+      "exit_time": 4012,
+      "entry_price": "5.3819185e+06",
+      "exit_price": "5.352122e+06",
+      "pnl": "297.66702",
+      "position": -0.01,
+      "duration": 76
+    },
+    {
+      "entry_time": 4012,
+      "exit_time": 4207,
+      "entry_price": "5.352122e+06",
+      "exit_price": "5.2723245e+06",
+      "pnl": "-797.177",
+      "position": 0.01,
+      "duration": 195
+    },
+    {
+      "entry_time": 4207,
+      "exit_time": 4311,
+      "entry_price": "5.2723245e+06",
+      "exit_price": "5.190778e+06",
+      "pnl": "814.64954",
+      "position": -0.01,
+      "duration": 104
+    },
+    {
+      "entry_time": 4311,
+      "exit_time": 4449,
+      "entry_price": "5.190778e+06",
+      "exit_price": "5.118215e+06",
+      "pnl": "-724.90436",
+      "position": 0.01,
+      "duration": 138
+    },
+    {
+      "entry_time": 4449,
+      "exit_time": 4473,
+      "entry_price": "5.118215e+06",
+      "exit_price": "5.154865e+06",
+      "pnl": "-366.1335",
+      "position": -0.01,
+      "duration": 24
+    },
+    {
+      "entry_time": 4473,
+      "exit_time": 4801,
+      "entry_price": "5.154865e+06",
+      "exit_price": "5.1057685e+06",
+      "pnl": "-490.47403",
+      "position": 0.01,
+      "duration": 328
+    }
+  ],
+  "config": {
+    "model_path": "checkpoints/sac_session/sac_v396_50k_final.zip",
+    "data_path": "btc_jpy_real_dataset.csv",
+    "initial_capital": 10000.0,
+    "transaction_cost": 0.0005,
+    "max_steps": 5000,
+    "deterministic": true
+  }
+}
