@@ -1676,7 +1676,7 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - 以下を `readlines()[-100:]` から `read_last_lines(..., count=100)` へ置換:
   - `ztb/ops/monitoring/watch_1m.py`
   - `ztb/ops/status/progress_eta.py`
-- これにより巨大ログでの全件読込を避け、監視系の常駐時メモリ負荷を低減。
+- これにより巨大ログでの全行配列化を避け、監視系の常駐時メモリ負荷を低減。
 
 ### 3) 不具合可能性の排除
 
