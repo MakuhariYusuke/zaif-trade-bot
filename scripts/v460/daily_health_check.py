@@ -20,12 +20,11 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TypedDict
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
@@ -37,7 +36,20 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def _run_trades_health(days: int = 3) -> dict[str, Any]:
+from ztb.io.json_io import write_json
+
+
+CheckReport = dict[str, object]
+
+
+class DailyHealthReport(TypedDict):
+    timestamp_utc: str
+    date: str
+    checks: list[CheckReport]
+    overall_healthy: bool
+
+
+def _run_trades_health(days: int = 3) -> CheckReport:
     """P2-09/P0-03: trades データ健全性チェック."""
     from ztb.data.trades_health import check_trades_health
 
@@ -52,7 +64,7 @@ def _run_trades_health(days: int = 3) -> dict[str, Any]:
     }
 
 
-def _run_feature_freshness() -> dict[str, Any]:
+def _run_feature_freshness() -> CheckReport:
     """136# P1-02: feature 鮮度チェック."""
     from ztb.data.trades_health import check_feature_freshness
 
@@ -71,20 +83,31 @@ def _run_gate_judgment(
     results_dir: str,
     latest_run: bool = True,
     monte_carlo: bool = True,
-) -> dict[str, Any]:
+) -> CheckReport:
     """P0-07: Gate 判定 (per-run + optional Monte Carlo)."""
-    from scripts.v460.gate_judgment import run_gate_judgment
+    from scripts.v460.gate_judgment import run_gate_judgment_for_results_dir
 
-    report: dict[str, Any] = {"check": "gate_judgment"}
+    report: CheckReport = {"check": "gate_judgment"}
     try:
-        result = run_gate_judgment(
+        result = run_gate_judgment_for_results_dir(
             results_dir=results_dir,
             latest_run=latest_run,
+            monte_carlo=False,  # 日次 MC は本関数後段で実行
         )
-        report["verdict"] = result.get("verdict", "UNKNOWN")
-        report["g12_overall"] = result.get("g12_overall", {})
-        if "latest_run" in result:
-            report["latest_run"] = result["latest_run"]
+        g12 = result.get("g1_2_full")
+        g11 = result.get("g1_1_quick")
+        if isinstance(g12, dict):
+            report["verdict"] = g12.get("gate_result", "UNKNOWN")
+            report["g1_2_full"] = g12
+        elif isinstance(g11, dict):
+            report["verdict"] = g11.get("gate_result", "UNKNOWN")
+        else:
+            report["verdict"] = "UNKNOWN"
+        if isinstance(g11, dict):
+            report["g1_1_quick"] = g11
+        report["run_scope"] = result.get("run_scope", "ALL")
+        if "comparison" in result:
+            report["comparison"] = result["comparison"]
     except Exception as e:
         logger.warning("gate_judgment failed: %s", e)
         report["verdict"] = "ERROR"
@@ -115,9 +138,9 @@ def _run_gate_judgment(
     return report
 
 
-def _run_oracle_baseline(results_dir: str) -> dict[str, Any]:
+def _run_oracle_baseline(results_dir: str) -> CheckReport:
     """P2-04: Oracle 日次 KPI."""
-    report: dict[str, Any] = {"check": "oracle_baseline"}
+    report: CheckReport = {"check": "oracle_baseline"}
     try:
         from scripts.v460.analysis.oracle_baseline import run_oracle_baseline
 
@@ -142,14 +165,14 @@ def run_daily_health_check(
     skip_monte_carlo: bool = False,
     skip_oracle: bool = False,
     output_path: str | None = None,
-) -> dict[str, Any]:
+) -> DailyHealthReport:
     """日次ヘルスチェック実行.
 
     Returns:
         全チェック結果の統合 dict.
     """
     now = datetime.now(timezone.utc)
-    report: dict[str, Any] = {
+    report: DailyHealthReport = {
         "timestamp_utc": now.isoformat(),
         "date": now.strftime("%Y-%m-%d"),
         "checks": [],
@@ -211,7 +234,7 @@ def run_daily_health_check(
     if output_path:
         out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+        write_json(out, report, indent=2, ensure_ascii=False)
         logger.info("Report saved to: %s", out)
 
     return report

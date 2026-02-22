@@ -11,44 +11,53 @@ best_bid_ask / depth_volume / spread 等の市場データ取得を型安全に�
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Optional, Protocol, Sequence
-
-if TYPE_CHECKING:
-    from ztb.trading.live.exchanges.base.broker_interfaces import OrderBookSnapshot
+from typing import Optional, Protocol, Sequence, cast
 
 logger = logging.getLogger(__name__)
 
 
-def extract_price(level: Any) -> float:
+def extract_price(level: object) -> float:
     """板レベルから price を抽出 (tuple / object 両対応)."""
     if isinstance(level, (list, tuple)):
+        if not level:
+            return 0.0
         return float(level[0])
     return float(getattr(level, "price", 0.0))
 
 
-def extract_size(level: Any) -> float:
+def extract_size(level: object) -> float:
     """板レベルから size (quantity) を抽出 (tuple / object 両対応)."""
     if isinstance(level, (list, tuple)):
+        if len(level) < 2:
+            return 0.0
         return float(level[1])
     return float(getattr(level, "quantity", getattr(level, "size", 0.0)))
 
 
 def best_bid_ask(
-    ob: Any,
+    ob: object,
 ) -> tuple[float | None, float | None]:
     """OrderBookSnapshot から best bid/ask を安全に抽出.
 
     Returns:
         (best_bid, best_ask) — データ不足時は None.
     """
-    bid = extract_price(ob.bids[0]) if ob and ob.bids else None
-    ask = extract_price(ob.asks[0]) if ob and ob.asks else None
+    bids = _coerce_levels(getattr(ob, "bids", None))
+    asks = _coerce_levels(getattr(ob, "asks", None))
+    bid = extract_price(bids[0]) if bids else None
+    ask = extract_price(asks[0]) if asks else None
     return bid, ask
 
 
-def depth_volume(levels: Sequence[Any], depth: int = 5) -> float:
+def depth_volume(levels: Sequence[object], depth: int = 5) -> float:
     """板の指定深さまでの合計出来高を計算."""
     return sum(extract_size(lv) for lv in levels[:depth])
+
+
+def _coerce_levels(levels: object) -> Sequence[object]:
+    if isinstance(levels, Sequence):
+        return cast(Sequence[object], levels)
+    return ()
 
 
 # ---------------------------------------------------------------------------
@@ -58,7 +67,7 @@ def depth_volume(levels: Sequence[Any], depth: int = 5) -> float:
 class _HasGetOrderbook(Protocol):
     """Protocol for adapter with get_orderbook method."""
 
-    async def get_orderbook(self, symbol: str, depth: int = ...) -> Any: ...
+    async def get_orderbook(self, symbol: str, depth: int = ...) -> object: ...
 
 
 class MarketDataAccessor:
@@ -105,7 +114,8 @@ class MarketDataAccessor:
         """Bid-side depth volume up to *depth* levels."""
         try:
             ob = await self._adapter.get_orderbook(self._symbol, depth=depth)
-            return depth_volume(ob.bids, depth) if ob and ob.bids else 0.0
+            bids = _coerce_levels(getattr(ob, "bids", None))
+            return depth_volume(bids, depth) if bids else 0.0
         except Exception:
             return 0.0
 
@@ -113,6 +123,7 @@ class MarketDataAccessor:
         """Ask-side depth volume up to *depth* levels."""
         try:
             ob = await self._adapter.get_orderbook(self._symbol, depth=depth)
-            return depth_volume(ob.asks, depth) if ob and ob.asks else 0.0
+            asks = _coerce_levels(getattr(ob, "asks", None))
+            return depth_volume(asks, depth) if asks else 0.0
         except Exception:
             return 0.0

@@ -20,7 +20,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
 from pathlib import Path
@@ -41,6 +40,7 @@ from scripts.v460.lib.evaluator import (
 from scripts.v460.lib.manifest import ManifestWriter
 from scripts.v460.lib.tasks.feature_info import task_feature_info
 from scripts.v460.lib.tasks.sac_train import task_sac_train
+from ztb.io.json_io import write_json
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -120,8 +120,7 @@ def run(config_path: str, seed_override: int | None = None) -> dict:
         results_dir.mkdir(parents=True, exist_ok=True)
 
         out_path = results_dir / f"{entry.run_id}.json"
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(results_to_save, f, indent=2, ensure_ascii=False, default=str)
+        write_json(out_path, results_to_save, indent=2, ensure_ascii=False, default=str)
         logger.info(f"Results saved: {out_path}")
 
         manifest.finish_run(

@@ -1141,3 +1141,57 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - 回帰確認:
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/reporting/services/test_catalog.py`
     - 結果: `9 passed`（warning 1）
+
+## Phase 32 追補: v460 gate系の不具合修正 + I/O/型安全の横展開 (2026-02-23)
+
+### 1) gate 判定呼び出しの共通化（重複削減）
+
+- `scripts/v460/gate_judgment.py`
+  - `run_gate_judgment_for_results_dir()` を追加し、
+    `results_dir` からの record load / run_scope 判定 / gate config 読込を共通 API 化。
+  - CLI (`main`) の run_id/latest 分岐ロジック重複を上記 API へ集約。
+  - JSON 出力を `write_json()` に統一。
+- `scripts/v460/run_gate_check.py`
+  - `run_g1_1()` が private helper (`_load_all_records`) に依存していた経路を、
+    `run_gate_judgment_for_results_dir()` 呼び出しへ置換。
+  - G1.1 の NO_DATA 判定は既存互換のまま維持。
+
+### 2) 実不具合の解消（daily health）
+
+- `scripts/v460/daily_health_check.py`
+  - 既存の `run_gate_judgment(results_dir=..., latest_run=...)` 呼び出しは
+    関数シグネチャ不一致で例外化しうるため修正。
+  - `run_gate_judgment_for_results_dir()` を使う構成へ変更し、
+    `g1_2_full.gate_result` を verdict として明示的に採用。
+  - `g1_1_quick` / `g1_2_full` / `run_scope` / `comparison` を report に保存。
+  - `Any` を `CheckReport` / `DailyHealthReport`（`TypedDict`）へ置換。
+  - 出力保存を `write_json()` に統一。
+
+### 3) 追加の水平展開（I/O + パフォーマンス + Any削減）
+
+- `scripts/v460/monitor_fill_test.py`
+  - スナップショット保存を `write_json()` へ統一。
+  - 閾値読込を `load_gate_thresholds()` 経由に統一。
+  - watch ループで再読込しないよう `@lru_cache(maxsize=1)` を導入
+    （YAML parse の反復コストを削減）。
+- `scripts/v460/run_experiment.py`
+  - 結果保存を `write_json()` へ統一。
+- `scripts/v460/lib/ob_utils.py`
+  - `extract_price` / `extract_size` / `best_bid_ask` / `depth_volume` の
+    `Any` を `object` / `Sequence[object]` へ置換。
+  - dual-format 板データの正規化を `_coerce_levels()` に集約。
+
+### 4) 検証
+
+- `py_compile`:
+  - `scripts/v460/daily_health_check.py`
+  - `scripts/v460/gate_judgment.py`
+  - `scripts/v460/lib/ob_utils.py`
+  - `scripts/v460/monitor_fill_test.py`
+  - `scripts/v460/run_experiment.py`
+  - `scripts/v460/run_gate_check.py`
+- 回帰確認:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_gate_check.py tests/unit/v460/test_146_multi_exchange.py tests/unit/v460/test_145_structural_fixes.py tests/unit/v460/test_145_s14_structural_refactors.py`
+    - 結果: `180 passed`（warning 5）
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/reporting/services/test_catalog.py`
+    - 結果: `9 passed`（warning 1）

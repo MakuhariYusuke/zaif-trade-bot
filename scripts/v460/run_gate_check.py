@@ -223,21 +223,20 @@ def run_g1_1(
         DeprecationWarning,
         stacklevel=2,
     )
-    from scripts.v460.gate_judgment import _load_all_records, run_gate_judgment
+    from scripts.v460.gate_judgment import run_gate_judgment_for_results_dir
 
-    records = _load_all_records(Path(results_dir))
-    if not records:
-        logger.error(f"No fill records found in {results_dir}")
+    try:
+        result = run_gate_judgment_for_results_dir(
+            results_dir=results_dir,
+            monte_carlo=with_mc,
+        )
+    except ValueError:
+        logger.error("No fill records found in %s", results_dir)
         return {
             "gate": "G1.1-quick",
             "gate_result": "NO_DATA",
             "error": f"No fill records in {results_dir}",
         }
-
-    gate_cfg = load_gate_thresholds()
-    result = run_gate_judgment(
-        records, gate_cfg, monte_carlo=with_mc,
-    )
     # 後方互換: G1.1 部分のみ返す (§9.1 #5: gate 名を G1.1-quick で統一)
     return result.get("g1_1_quick", {"gate": "G1.1-quick", "gate_result": "FAIL"})
 

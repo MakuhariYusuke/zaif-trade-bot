@@ -41,6 +41,7 @@ from ztb.metrics.fill_quality import (
     g1_2_full_judgment,
     load_fill_records,
 )
+from ztb.io.json_io import write_json
 
 
 def _load_all_records(results_dir: Path) -> list[FillRecord]:
@@ -99,6 +100,78 @@ def _get_unique_run_ids(records: list[FillRecord]) -> list[str]:
             if rid not in seen or r.timestamp < seen[rid]:
                 seen[rid] = r.timestamp
     return sorted(seen, key=lambda k: seen[k])
+
+
+def _resolve_results_dir(results_dir: str | Path) -> Path:
+    """結果ディレクトリを絶対パス化."""
+    path = Path(results_dir)
+    if not path.is_absolute():
+        path = _PROJECT_ROOT / path
+    return path
+
+
+def run_gate_judgment_for_results_dir(
+    results_dir: str | Path,
+    *,
+    gate_config_path: str | Path | None = None,
+    run_id: str | None = None,
+    latest_run: bool = False,
+    side_breakdown: bool = False,
+    monte_carlo: bool = False,
+    mc_simulations: int = 10_000,
+    mc_lot: float = 0.001,
+) -> dict[str, object]:
+    """results_dir 入力版の Gate 判定ラッパー.
+
+    daily_health_check.py / run_gate_check.py から再利用する公開 API.
+    """
+    from scripts.v460.lib.config_loader import load_gate_thresholds
+
+    resolved_dir = _resolve_results_dir(results_dir)
+    all_records = _load_all_records(resolved_dir)
+    if not all_records:
+        raise ValueError(f"No fill records found in {resolved_dir}")
+
+    target_records = _filter_by_run_id(all_records, run_id=run_id, latest=latest_run)
+    if not target_records:
+        if run_id:
+            available = _get_unique_run_ids(all_records)
+            raise ValueError(f"No records for run_id={run_id}. available_run_ids={available}")
+        raise ValueError(f"No records available in scope for {resolved_dir}")
+
+    gate_cfg = load_gate_thresholds(gate_config_path)
+    result = run_gate_judgment(
+        target_records,
+        gate_cfg,
+        side_breakdown=side_breakdown,
+        monte_carlo=monte_carlo,
+        mc_simulations=mc_simulations,
+        mc_lot=mc_lot,
+    )
+
+    run_scope = "ALL"
+    if run_id:
+        run_scope = f"run={run_id}"
+    elif latest_run and target_records[0].run_id:
+        run_scope = f"LATEST({target_records[0].run_id})"
+    result["run_scope"] = run_scope
+
+    # 135# P0-07: --latest-run の場合、全体判定も並列実行して対比
+    if latest_run and len(target_records) < len(all_records):
+        all_result = run_gate_judgment(
+            all_records,
+            gate_cfg,
+            side_breakdown=side_breakdown,
+        )
+        all_result["run_scope"] = "ALL"
+        result["comparison"] = {
+            "all_g1_2": all_result["g1_2_full"].get("gate_result", "N/A"),
+            "latest_g1_2": result["g1_2_full"].get("gate_result", "N/A"),
+            "all_records": len(all_records),
+            "latest_records": len(target_records),
+        }
+
+    return result
 
 
 def _side_metrics(records: list[FillRecord], side: str) -> dict:
@@ -313,62 +386,22 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    results_dir = Path(args.results_dir)
-    if not results_dir.is_absolute():
-        results_dir = _PROJECT_ROOT / results_dir
-
-    # Gate thresholds
-    from scripts.v460.lib.config_loader import load_gate_thresholds
-    gate_cfg = load_gate_thresholds(args.gate_config)
-
-    # Load records
-    all_records = _load_all_records(results_dir)
-    if not all_records:
-        print(f"ERROR: No fill records found in {results_dir}", file=sys.stderr)
+    try:
+        result = run_gate_judgment_for_results_dir(
+            args.results_dir,
+            gate_config_path=args.gate_config,
+            run_id=args.run_id,
+            latest_run=args.latest_run,
+            side_breakdown=args.side_breakdown,
+            monte_carlo=args.monte_carlo,
+            mc_simulations=args.mc_simulations,
+            mc_lot=args.mc_lot,
+        )
+    except ValueError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    # 135# P0-07: per-run フィルタリング
-    target_records = all_records
-    run_scope = "ALL"
-    if args.run_id:
-        target_records = _filter_by_run_id(all_records, run_id=args.run_id)
-        run_scope = f"run={args.run_id}"
-        if not target_records:
-            print(f"ERROR: No records for run_id={args.run_id}", file=sys.stderr)
-            available = _get_unique_run_ids(all_records)
-            print(f"Available run_ids: {available}", file=sys.stderr)
-            sys.exit(1)
-    elif args.latest_run:
-        target_records = _filter_by_run_id(all_records, latest=True)
-        if target_records and target_records[0].run_id:
-            run_scope = f"LATEST({target_records[0].run_id})"
-
-    # Run judgment via core function
-    result = run_gate_judgment(
-        target_records,
-        gate_cfg,
-        side_breakdown=args.side_breakdown,
-        monte_carlo=args.monte_carlo,
-        mc_simulations=args.mc_simulations,
-        mc_lot=args.mc_lot,
-    )
-    result["run_scope"] = run_scope
-
-    # 135# P0-07: --latest-run の場合、全体判定も並列実行して対比
-    all_result = None
-    if args.latest_run and len(target_records) < len(all_records):
-        all_result = run_gate_judgment(
-            all_records,
-            gate_cfg,
-            side_breakdown=args.side_breakdown,
-        )
-        all_result["run_scope"] = "ALL"
-        result["comparison"] = {
-            "all_g1_2": all_result["g1_2_full"].get("gate_result", "N/A"),
-            "latest_g1_2": result["g1_2_full"].get("gate_result", "N/A"),
-            "all_records": len(all_records),
-            "latest_records": len(target_records),
-        }
+    run_scope = str(result.get("run_scope", "ALL"))
 
     # Extract quick/full from result for report display
     quick = result["g1_1_quick"]
@@ -481,8 +514,7 @@ def main() -> None:
         if not out_path.is_absolute():
             out_path = _PROJECT_ROOT / out_path
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(result, f, indent=2, ensure_ascii=False)
+        write_json(out_path, result, indent=2, ensure_ascii=False)
         print(f"Saved to: {out_path}")
 
 

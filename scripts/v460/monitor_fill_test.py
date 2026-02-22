@@ -11,11 +11,11 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import Callable, TypedDict
 
@@ -34,6 +34,8 @@ from ztb.metrics.fill_quality import (
     g1_2_full_judgment,
     load_fill_records_glob,
 )
+from ztb.io.json_io import write_json
+from scripts.v460.lib.config_loader import load_gate_thresholds
 
 
 # ======================================================================
@@ -69,6 +71,17 @@ GateCheckDetail = TypedDict(
 class GateResult(TypedDict, total=False):
     checks: dict[str, GateCheckDetail]
     gate_result: str
+
+
+@lru_cache(maxsize=1)
+def _gate_thresholds() -> tuple[dict[str, object], dict[str, object]]:
+    """閾値 YAML は watch ループで再利用する."""
+    cfg = load_gate_thresholds()
+    quick = cfg.get("g1_1_quick_exec", {})
+    full = cfg.get("g1_2_full_exec", {})
+    quick_dict = quick if isinstance(quick, dict) else {}
+    full_dict = full if isinstance(full, dict) else {}
+    return quick_dict, full_dict
 
 
 @dataclass(frozen=True)
@@ -432,8 +445,7 @@ def save_snapshot(
         }
     out_path = output_dir / f"monitor_snapshot_{ts}.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(snapshot, f, ensure_ascii=False, indent=2)
+    write_json(out_path, snapshot, ensure_ascii=False, indent=2)
     return out_path
 
 
@@ -453,17 +465,8 @@ def run_monitor(results_dir: Path, save_json: bool = True) -> dict[str, object]:
     clean_count = len(clean_records)
     quarantine_count = len(quarantine_records)
 
-    # G1.1 閾値読み込み
-    thresholds_path = _PROJECT_ROOT / "configs" / "v460" / "gate_thresholds.yaml"
-    if thresholds_path.exists():
-        import yaml  # type: ignore[import-untyped]
-        with open(thresholds_path, "r") as f:
-            cfg = yaml.safe_load(f)
-        quick_thresholds = cfg.get("g1_1_quick_exec", {})
-        full_thresholds = cfg.get("g1_2_full_exec", {})
-    else:
-        quick_thresholds = {}
-        full_thresholds = {}
+    # G1.1/G1.2 閾値読み込み (watch ループでキャッシュ)
+    quick_thresholds, full_thresholds = _gate_thresholds()
 
     # clean レコードのみでメトリクス算出
     metrics = compute_fill_metrics(clean_records)
