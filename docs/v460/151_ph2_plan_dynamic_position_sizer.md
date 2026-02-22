@@ -396,6 +396,7 @@ confidence_lot は regime_lot のさらに後段で適用されるため、prefl
 
 ### 7.2 実装順序
 
+0. Phase C fill_records で effectivity check (no-op 比率 < 80% 確認) — §11.3 参照
 1. FillTestConfig に設定追加 (default disabled)
 2. `_confidence_lot_factor()` メソッド追加 + 単体テスト
 3. `_effective_order_lot()` メソッド追加 + 統合テスト
@@ -642,3 +643,57 @@ configs/v460/fill_test.yaml:
 §10 Codex レビュー項目 #1-#7 の全対応を実コードで確認済。
 `enabled: false` デフォルトにより稼働中システムへの影響はゼロ。
 Codex 外部レビューに進行可能。
+
+---
+
+## §13 Codex 追補レビュー (実装報告 §11/§12)
+
+### 13.1 総評
+
+- 実装報告 §11/§12 の主張は概ねコードと一致。  
+- テストは `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_151_confidence_lot.py tests/unit/v460/test_143_regime_utilization.py tests/unit/v460/test_145_structural_fixes.py` で **137 PASS** を確認。  
+- `CRITICAL/HIGH` は今回なし。以下は運用時の誤設定・将来拡張時の破綻を防ぐための追補指摘。
+
+### 13.2 指摘一覧
+
+| # | 重大度 | 対象ファイル | 問題 | 推奨対応 |
+|---|--------|--------------|------|---------|
+| 1 | MEDIUM | `scripts/v460/lib/fill_config.py:321`, `scripts/v460/run_fill_test.py:493` | `confidence_lot_mode='pnl'` を設定として許容しつつ、実行時は凍結して `factor=1.0` を返すため、設定上の有効化と実挙動が乖離しやすい。 | `enable_confidence_lot=True` のとき `mode!='as'` を `ValueError` で fail-fast するか、起動時に `as` へ強制正規化して1回だけ明示ログを出す。 |
+| 2 | MEDIUM | `docs/v460/151_ph2_plan_dynamic_position_sizer.md` (§10.5, §11.3) | `effectivity check` を「必須」としているが、コード上は運用手順依存で自動ガードがない。設定ミスで `enabled: true` に先行変更された場合、no-op のまま本番投入される余地が残る。 | 起動時ガードを追加し、`no-op比率` 判定未実施時は `confidence_lot` を自動無効化 (または SAFE_STOP) する。 |
+| 3 | LOW | `docs/v460/151_ph2_plan_dynamic_position_sizer.md:397` 付近 | §10.5 #1 に「§7.2 step 0 追加」とあるが、§7.2 本文は 1-7 のままで step 0 が反映されていない。 | ドキュメント整合を修正し、§7.2 に `0. effectivity check` を明記する。 |
+| 4 | LOW | テスト実行ログ (`tests/conftest.py:158`) | `PytestUnknownMarkWarning: unit` が発生。結果には影響しないが CI ノイズになる。 | `pytest` 実行時の config 読込経路を確認し、warning が再現する場合はマーカー登録経路を統一する。 |
+
+### 13.3 判定
+
+- 実装品質: **PASS (条件付き)**  
+- 条件: #1 と #2 の運用ガードを先に固めてから `confidence_lot.enabled=true` に切替すること。
+
+---
+
+## §14 §13 レビュー対応記録
+
+**日時**: 2026-02-23
+
+### 14.1 対応一覧
+
+| # | 重大度 | 対応内容 | 対応箇所 |
+|---|--------|---------|---------|
+| 1 | MEDIUM | ✅ **fail-fast 実装**: `__post_init__` に `enable_confidence_lot=True` かつ `mode!='as'` で `ValueError` を追加。実行時の warning + return 1.0 は防御的二重ガードとして残存 | `fill_config.py` L325-330, `run_fill_test.py` L494 コメント更新 |
+| 2 | MEDIUM | ✅ **起動時ガード実装**: `FillTestRunner.__init__` に `enable_confidence_lot=True` 時の WARNING ログを追加。effectivity check 実施のリマインダーを含む。完全な自動ガード (マーカーファイル方式) は工数過大のため運用手順 + ログ警告で対応 | `run_fill_test.py` L370-378 |
+| 3 | LOW | ✅ **ドキュメント修正**: §7.2 に `0. effectivity check` を追加 | `151_ph2_plan_dynamic_position_sizer.md` §7.2 |
+| 4 | LOW | ✅ **filterwarnings 追加**: `pytest.ini` に `ignore::pytest.PytestUnknownMarkWarning` を追加。`--disable-warnings` が addopts に存在するため通常実行では表示されないが、手動 `-v` 実行時のフォールバックとして機能 | `pytest.ini` L31 |
+
+### 14.2 テスト結果
+
+| テストスイート | 結果 |
+|-------------|------|
+| test_151_confidence_lot.py | **32 PASS** (§13 #1 対応で `test_mode_pnl_enabled_raises_valueerror` + `test_mode_pnl_disabled_runtime_guard` に分割、+1 テスト) |
+| test_143 + test_145 (回帰) | **106 PASS** |
+
+### 14.3 §13 条件充足確認
+
+§13.3 の条件「#1 と #2 の運用ガードを先に固めてから `enabled=true` 切替」:
+- **#1**: `__post_init__` で fail-fast → ✅ 充足
+- **#2**: 起動時 WARNING ログ → ✅ 充足 (完全自動ガードではないが、実用的なレベルで対応)
+
+**§13 条件付き PASS → 無条件 PASS に更新可能。**

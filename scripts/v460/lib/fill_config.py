@@ -322,6 +322,12 @@ class FillTestConfig:
             raise ValueError(
                 f"confidence_lot_mode must be 'as' or 'pnl', got '{self.confidence_lot_mode}'"
             )
+        # §13 #1: enable=True + mode!=as は設定乖離 → fail-fast
+        if self.enable_confidence_lot and self.confidence_lot_mode != "as":
+            raise ValueError(
+                f"confidence_lot_mode must be 'as' when enabled, "
+                f"got '{self.confidence_lot_mode}' (mode='pnl' is frozen)"
+            )
 
     @classmethod
     def from_yaml(cls, yaml_cfg: dict) -> "FillTestConfig":

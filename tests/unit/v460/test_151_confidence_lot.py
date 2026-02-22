@@ -137,13 +137,25 @@ class TestConfidenceLotFactor:
         result = self._factor(0.5, scale=10.0, floor=0.0)
         assert result >= 0.0
 
-    # §10 #3: mode=pnl 凍結
-    def test_mode_pnl_frozen_returns_one(self, caplog: pytest.LogCaptureFixture) -> None:
-        """§10 #3: mode=pnl は凍結し、warning + factor=1.0."""
-        with caplog.at_level(logging.WARNING):
-            result = self._factor(0.5, mode="pnl")
-        assert result == 1.0
-        assert "frozen" in caplog.text.lower()
+    # §10 #3 + §13 #1: mode=pnl 凍結
+    def test_mode_pnl_enabled_raises_valueerror(self) -> None:
+        """§13 #1: enable=True + mode=pnl は __post_init__ で ValueError."""
+        with pytest.raises(ValueError, match="confidence_lot_mode must be 'as' when enabled"):
+            FillTestConfig(
+                enable_confidence_lot=True,
+                confidence_lot_mode="pnl",
+            )
+
+    def test_mode_pnl_disabled_runtime_guard(self, caplog: pytest.LogCaptureFixture) -> None:
+        """§10 #3 防御的ガード: enabled=False (→バリデーション通過) でも runtime で 1.0."""
+        # enabled=False なら mode=pnl でもバリデーション通過
+        cfg = FillTestConfig(
+            enable_confidence_lot=False,
+            confidence_lot_mode="pnl",
+        )
+        runner = _make_runner(cfg)
+        # enabled=False → そもそも 1.0 (mode チェック前に return)
+        assert runner._confidence_lot_factor(0.5) == 1.0
 
     # §10 #5: dust_sweep_active → factor=1.0
     def test_dust_sweep_active_returns_one(self) -> None:

@@ -363,3 +363,61 @@ PS> .\ops\windows\fill_test_watchdog.ps1
 | 3 | **修正済**: §8.1 の記載を `Get-WmiObject Win32_Process` + `CommandLine` フィルタに修正 |
 | 4 | **受容**: watchdog ログの品質改善は 150# P2-B 実装時に併せて対応 |
 | 5 | **受容**: 144# CRITICAL は Phase C 後に対応。設定ガードのみ先行する方針は Phase C データ汚染回避のため合理的 |
+
+---
+
+## §10 §3.3 非推奨項目 再検討 (2026-02-23)
+
+### 10.1 検討対象
+
+§3.3 に列挙した Phase C 後回し項目:
+
+| ID | 施策 | 当初理由 |
+|----|------|---------|
+| P2-01 | WalkForward → retrain | SAC/PPO 前提、工数大 |
+| P2-07 | execution trace 因果ログ標準化 | 大改修、Phase C 完了後に検討 |
+| P2-08 | shadow model A/B | hot-reload 安定後に検討 |
+
+### 10.2 各項目の再評価
+
+#### P2-01 WalkForward → retrain
+
+| 観点 | 評価 |
+|------|------|
+| **収益直結度** | ❌ 低い — 現行 LGBM SkipGate は `retrain_scheduler.py` で定期再学習済み。WalkForward は SAC/PPO 用の枠組みであり、LGBM アダプタ層がない |
+| **工数** | ~1日 (LGBM adapter + walk_forward evaluator 統合) |
+| **既存基盤** | `ztb/evaluation/walk_forward/` + `v4xx_unified_trainer.py` に WF インフラは存在するが SAC/PPO 前提 |
+| **プロジェクト大義整合** | ❌ SAC/PPO への移行は現時点で計画外。LGBM SkipGate の retrain は既に自動化済みで追加 WF の ROI 低い |
+| **判定** | **❌ 見送り継続** — SAC/PPO 移行が具体化するまで不要 |
+
+#### P2-07 execution trace 因果ログ標準化
+
+| 観点 | 評価 |
+|------|------|
+| **収益直結度** | ❌ 間接的 — 因果分析の効率化により施策評価速度は上がるが、PnL への直接貢献なし |
+| **工数** | ~2日 (FillRecord 30+ フィールドの因果チェーン標準化 + decision→fill→pnl パイプライン再設計) |
+| **既存カバレッジ** | 151# P3-03 で 4 フィールド追加し FillRecord は 40+ フィールドに到達。decision (skip_gate_*)→fill (filled, queue_wait)→pnl (post_fill_30s_pnl) は既にトレース可能 |
+| **プロジェクト大義整合** | ❌ 大改修の工数はロットサイジング等の直接的収益改善に充てるべき |
+| **判定** | **❌ 見送り継続** — FillRecord の現行カバレッジで Phase C 分析には十分 |
+
+#### P2-08 shadow model A/B
+
+| 観点 | 評価 |
+|------|------|
+| **収益直結度** | ⚠️ 間接的 — SkipGate モデル更新の安全なオンライン評価に有用。ただし即時の PnL 改善ではない |
+| **工数** | ~1.5日 (影の inference パイプライン + 比較ログ + swap 判定ロジック) |
+| **既存カバレッジ** | hot-reload のアトミック性確保済み (148#)。retrain_scheduler に AUC/calibration の検証ステップあり |
+| **プロジェクト大義整合** | ⚠️ モデル更新頻度が低い現状では ROI が低い。更新頻度が上がった段階で再検討 |
+| **判定** | **⚠️ 条件付き見送り** — retrain 頻度が週1回以上に増えた場合のみ再検討。現状は retrain_scheduler の検証ステップで十分 |
+
+### 10.3 結論と代替優先施策
+
+**§3.3 の 3 項目はいずれも現時点で着手非推奨を維持。**
+
+代わりに以下を優先（収益直結度順）:
+
+| 優先度 | 施策 | 収益影響 | 工数 | 根拠 |
+|--------|------|---------|------|------|
+| **1** | 144# CRITICAL (preflight-lot 整合) | 高 — PnL 計測精度向上 | 0.6日 | §5 で設計済み。正確性バグの修正 |
+| **2** | P3-03 effectivity check + 有効化 | 高 — sell 側 PnL 改善期待 | 0.2日 | 151# 実装済み。Phase C データで判断可能 |
+| **3** | §3.2 B1: P3-02 advanced_regime_detector | 中 — unknown 削減→ロット/offset 最適化 | 0.3日 | unknown レジーム比率削減は全体 PnL に寄与 |

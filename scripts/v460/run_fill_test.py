@@ -357,6 +357,17 @@ class FillTestRunner(AbstractCycleRunner):
         # 安全設計: atexit + signal で残存注文キャンセル + 未保存データ退避 + ロック解放
         atexit.register(self._cleanup_sync)
 
+        # 151# §13 #2: confidence_lot 起動時ガード — 有効化告知 + effectivity check 注意喚起
+        if config.enable_confidence_lot:
+            logger.warning(
+                "[confidence_lot] ENABLED: scale=%.2f, floor=%.2f, mode=%s. "
+                "Ensure effectivity check (no-op ratio < 80%%) was performed "
+                "before production use. See 151# §11.3.",
+                config.confidence_lot_scale,
+                config.confidence_lot_floor,
+                config.confidence_lot_mode,
+            )
+
         # 137# P1-08: narrow spread pause 連続カウンタ
         self._narrow_spread_consecutive: int = 0
 
@@ -492,7 +503,7 @@ class FillTestRunner(AbstractCycleRunner):
 
         mode = self.config.confidence_lot_mode
         if mode == "pnl":
-            # §10 #3/#6: mode=pnl は凍結。警告して 1.0 返却
+            # §10 #3/#6 + §13 #1: mode=pnl は凍結。__post_init__ で弾くが防御的二重ガード
             logger.warning("[confidence_lot] mode='pnl' is frozen; treating as 1.0")
             return 1.0
         # mode == "as"
