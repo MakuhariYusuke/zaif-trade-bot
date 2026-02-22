@@ -12,7 +12,6 @@ Usage:
 
 from __future__ import annotations
 
-import json
 import logging
 import sys
 from pathlib import Path
@@ -33,6 +32,7 @@ from scripts.v460.lib.evaluator import (
     walk_forward_eval,
 )
 from ztb.features.microstructure import MICROSTRUCTURE_FEATURES
+from ztb.io.json_io import write_json
 from ztb.metrics.gate_checks import cliffs_delta, g1_judgment, holm_bonferroni_gate
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -507,10 +507,7 @@ def main() -> None:
         "raw_ic": ic_df.to_dict(orient="records"),
     }
     json_path = RESULTS_DIR / "065_g1_proper_eval.json"
-    json_path.write_text(
-        json.dumps(gate_json, indent=2, ensure_ascii=False, default=str),
-        encoding="utf-8",
-    )
+    write_json(json_path, gate_json, indent=2, ensure_ascii=False, default=str)
     logger.info(f"JSON saved: {json_path}")
 
     print(f"\n{'='*60}")

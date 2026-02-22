@@ -19,7 +19,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import sys
 import warnings
@@ -54,6 +53,7 @@ from scripts.v460.ml.feature_enricher import (
     enrich_fill_records,
 )
 from scripts.v460.ml.walk_forward_as import expanding_window_splits
+from ztb.io.json_io import write_json
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -684,8 +684,7 @@ def main() -> None:
     }
 
     out_file = output_dir / "model_search_results.json"
-    with open(out_file, "w") as f:
-        json.dump(all_results, f, indent=2, ensure_ascii=False, default=str)
+    write_json(out_file, all_results, indent=2, ensure_ascii=False, default=str)
     logger.info(f"\nAll results saved to {out_file}")
 
 

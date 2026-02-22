@@ -15,7 +15,6 @@ Usage:
 
 from __future__ import annotations
 
-import json
 import logging
 import pickle
 import sys
@@ -35,6 +34,7 @@ from scripts.v460.ml.feature_enricher import (
 )
 from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
 from scripts.v460.ml.walk_forward_as import expanding_window_splits, run_walk_forward
+from ztb.io.json_io import write_json
 
 logging.basicConfig(
     level=logging.INFO,
@@ -404,17 +404,18 @@ def main() -> None:
         ],
     }
     report_path = REPORT_DIR / "sg_v2_comparison.json"
-    with open(report_path, "w", encoding="utf-8") as f:
-        json.dump(report, f, indent=2, ensure_ascii=False, default=str)
+    write_json(report_path, report, indent=2, ensure_ascii=False, default=str)
     logger.info(f"\nReport saved to {report_path}")
 
     # 詳細 WF 結果も保存
     detail_path = REPORT_DIR / "sg_v2_wf_details.json"
-    with open(detail_path, "w", encoding="utf-8") as f:
-        json.dump(
-            {exp["name"]: exp["wf_detail"] for exp in experiments},
-            f, indent=2, ensure_ascii=False, default=str,
-        )
+    write_json(
+        detail_path,
+        {exp["name"]: exp["wf_detail"] for exp in experiments},
+        indent=2,
+        ensure_ascii=False,
+        default=str,
+    )
     logger.info(f"WF details saved to {detail_path}")
 
 

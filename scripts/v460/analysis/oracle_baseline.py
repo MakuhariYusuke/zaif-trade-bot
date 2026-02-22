@@ -25,7 +25,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -40,6 +39,7 @@ from ztb.metrics.fill_quality import (
     filter_clean_records,
     load_fill_records_glob,
 )
+from ztb.io.json_io import write_json
 
 
 # ======================================================================
@@ -294,7 +294,7 @@ def run_oracle_baseline(
     if output_path:
         out = Path(output_path)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+        write_json(out, report, indent=2, ensure_ascii=False)
         print(f"\n  Report saved to: {out}")
 
     return report

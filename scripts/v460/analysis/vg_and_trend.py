@@ -41,6 +41,7 @@ from ztb.metrics.fill_quality import (
     filter_clean_records,
     load_fill_records,
 )
+from ztb.io.json_io import write_json
 
 
 # ======================================================================
@@ -521,13 +522,13 @@ def main() -> None:
 
     # Output
     if args.json:
-        output_str = json.dumps(output_data, indent=2, ensure_ascii=False, default=str)
         if args.output:
-            Path(args.output).parent.mkdir(parents=True, exist_ok=True)
-            Path(args.output).write_text(output_str, encoding="utf-8")
+            output_path = Path(args.output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            write_json(output_path, output_data, indent=2, ensure_ascii=False, default=str)
             print(f"Written to {args.output}")
         else:
-            print(output_str)
+            print(json.dumps(output_data, indent=2, ensure_ascii=False, default=str))
     elif args.output:
         # テキストレポートをファイルに保存
         import io

@@ -13,7 +13,6 @@ Usage:
 
 from __future__ import annotations
 
-import json
 import logging
 import sys
 from itertools import product
@@ -31,6 +30,7 @@ from scripts.v460.ml.feature_enricher import (
     enrich_fill_records,
 )
 from scripts.v460.ml.walk_forward_as import run_walk_forward
+from ztb.io.json_io import write_json
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -181,10 +181,7 @@ def main() -> None:
     out_dir = _PROJECT_ROOT / "docs/v460"
     out_dir.mkdir(parents=True, exist_ok=True)
     json_path = out_dir / "065_hp_sweep.json"
-    json_path.write_text(
-        json.dumps(results, indent=2, default=str, ensure_ascii=False),
-        encoding="utf-8",
-    )
+    write_json(json_path, results, indent=2, ensure_ascii=False, default=str)
     logger.info(f"Saved: {json_path}")
 
 

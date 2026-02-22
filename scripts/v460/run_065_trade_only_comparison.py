@@ -18,7 +18,6 @@ Usage:
 
 from __future__ import annotations
 
-import json
 import logging
 import sys
 from pathlib import Path
@@ -38,6 +37,7 @@ from scripts.v460.ml.feature_enricher import (
     enrich_fill_records,
 )
 from scripts.v460.ml.walk_forward_as import run_walk_forward
+from ztb.io.json_io import write_json
 
 logging.basicConfig(
     level=logging.INFO,
@@ -366,10 +366,7 @@ def main() -> None:
 
     # JSON
     json_path = REPORT_DIR / "065_trade_only_comparison.json"
-    json_path.write_text(
-        json.dumps(results, indent=2, default=str, ensure_ascii=False),
-        encoding="utf-8",
-    )
+    write_json(json_path, results, indent=2, ensure_ascii=False, default=str)
     logger.info(f"JSON: {json_path}")
 
     # --- Best model recommendation ---

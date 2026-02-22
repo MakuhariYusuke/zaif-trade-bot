@@ -13,7 +13,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 import time
 from collections import defaultdict
@@ -37,6 +36,7 @@ from ztb.metrics.gate_checks import (
     holm_bonferroni_gate,
     p_mean_gate,
 )
+from ztb.io.json_io import write_json
 
 # --- 定数 ---
 PNL_COL = "post_fill_30s_pnl"
@@ -1151,7 +1151,7 @@ def save_artifact(all_results: dict) -> Path:
     path = ARTIFACT_DIR / f"verification_077_{ts}.json"
 
     # numpy の値を Python native に変換
-    def convert(obj):  # type: ignore[no-untyped-def]
+    def convert(obj: object) -> object:
         if isinstance(obj, (np.integer,)):
             return int(obj)
         if isinstance(obj, (np.floating,)):
@@ -1172,8 +1172,7 @@ def save_artifact(all_results: dict) -> Path:
             return obj.isoformat()
         raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(all_results, f, indent=2, ensure_ascii=False, default=convert)
+    write_json(path, all_results, indent=2, ensure_ascii=False, default=convert)
 
     print(f"\n[artifact] Saved: {path}")
     return path

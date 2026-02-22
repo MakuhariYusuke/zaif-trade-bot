@@ -10,7 +10,6 @@ Part 1/2 で判明した知見を基に:
 
 from __future__ import annotations
 
-import json
 import logging
 import pickle
 import sys
@@ -37,6 +36,7 @@ from scripts.v460.ml.feature_enricher import (
     enrich_fill_records,
 )
 from scripts.v460.ml.walk_forward_as import expanding_window_splits
+from ztb.io.json_io import write_json
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -465,8 +465,7 @@ def main() -> None:
 
     # Save results
     out_file = output_dir / "final_analysis_results.json"
-    with open(out_file, "w") as f:
-        json.dump(all_results, f, indent=2, ensure_ascii=False, default=str)
+    write_json(out_file, all_results, indent=2, ensure_ascii=False, default=str)
     logger.info(f"\nResults saved to {out_file}")
 
 

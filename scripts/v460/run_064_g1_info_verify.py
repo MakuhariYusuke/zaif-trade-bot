@@ -11,7 +11,6 @@ Usage:
 
 from __future__ import annotations
 
-import json
 import logging
 import sys
 from pathlib import Path
@@ -23,6 +22,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 from ztb.features.microstructure import MICROSTRUCTURE_FEATURES
+from ztb.io.json_io import write_json
 from scripts.v460.lib.evaluator import (
     make_xgboost_classifier,
     make_xgboost_regressor,
@@ -242,7 +242,7 @@ def main() -> None:
         "g1_info_pass": pass_criteria,
         "avg_direction_ic": round(avg_direction_ic, 6),
     }
-    json_path.write_text(json.dumps(json_data, indent=2, default=str), encoding="utf-8")
+    write_json(json_path, json_data, indent=2, ensure_ascii=False, default=str)
     logger.info(f"JSON saved: {json_path}")
 
     # Final print

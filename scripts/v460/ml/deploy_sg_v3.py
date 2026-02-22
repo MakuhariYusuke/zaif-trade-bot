@@ -17,8 +17,6 @@ Usage:
 
 from __future__ import annotations
 
-import hashlib
-import json
 import logging
 import pickle
 import sys
@@ -44,6 +42,7 @@ from scripts.v460.ml.skip_gate import (
     SkipGateConfig,
     _BASE_FEATURE_COLS,
 )
+from ztb.io.json_io import write_json
 
 logging.basicConfig(
     level=logging.INFO,
@@ -302,8 +301,7 @@ def main() -> None:
         },
     }
     report_path = REPORT_DIR / "deploy_rb30_report.json"
-    with open(report_path, "w") as f:
-        json.dump(report, f, indent=2, default=str)
+    write_json(report_path, report, indent=2, ensure_ascii=False, default=str)
     logger.info(f"Report saved to {report_path}")
 
     logger.info("=== Deploy complete ===")

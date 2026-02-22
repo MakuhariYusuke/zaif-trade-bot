@@ -21,7 +21,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
 from pathlib import Path
@@ -33,6 +32,7 @@ from ztb.risk.pnl_monte_carlo import (
     MonteCarloConfig,
     PnLMonteCarloSimulator,
 )
+from ztb.io.json_io import write_json
 
 logging.basicConfig(
     level=logging.INFO,
@@ -114,10 +114,7 @@ def main() -> None:
         result_dict = result.to_dict()
         if args.sensitivity:
             result_dict["sensitivity"] = sim.sensitivity_analysis()
-        output_path.write_text(
-            json.dumps(result_dict, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
+        write_json(output_path, result_dict, indent=2, ensure_ascii=False, default=str)
         logger.info(f"Results saved to {output_path}")
 
 

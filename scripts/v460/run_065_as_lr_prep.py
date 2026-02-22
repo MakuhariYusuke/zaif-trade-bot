@@ -13,7 +13,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
 from pathlib import Path
@@ -34,6 +33,7 @@ from scripts.v460.ml.feature_enricher import (
 )
 from scripts.v460.ml.skip_gate import train_and_save_as_skip_gate
 from scripts.v460.ml.walk_forward_as import expanding_window_splits, run_walk_forward
+from ztb.io.json_io import write_json
 
 logging.basicConfig(
     level=logging.INFO,
@@ -255,10 +255,7 @@ def main() -> None:
 
     # Save walk-forward JSON
     json_path = REPORT_DIR / "065_as_lr_wf_results.json"
-    json_path.write_text(
-        json.dumps(wf_results, indent=2, default=str, ensure_ascii=False),
-        encoding="utf-8",
-    )
+    write_json(json_path, wf_results, indent=2, ensure_ascii=False, default=str)
     logger.info(f"WF results JSON saved: {json_path}")
 
     print(f"\n{'='*60}")

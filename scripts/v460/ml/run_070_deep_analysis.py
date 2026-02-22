@@ -6,7 +6,6 @@ Part A で発見された時間帯構造の walk-forward 安定性を検証し�
 
 from __future__ import annotations
 
-import json
 import glob
 import logging
 import sys
@@ -24,6 +23,7 @@ from scripts.v460.ml.feature_enricher import (
     build_enriched_as_features,
     enrich_fill_records,
 )
+from ztb.io.json_io import write_json
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -442,8 +442,7 @@ def main() -> None:
 
     # Save
     out_file = output_dir / "deep_analysis_results.json"
-    with open(out_file, "w") as f:
-        json.dump(all_results, f, indent=2, ensure_ascii=False, default=str)
+    write_json(out_file, all_results, indent=2, ensure_ascii=False, default=str)
     logger.info(f"\nResults saved to {out_file}")
 
 

@@ -1532,3 +1532,64 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - Any inventory:
   - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460 --top 10`
     - 結果: `any_type_debt_tokens=0`（`scripts/v460`）
+
+## Phase 41 追補: JSON I/O helper の大規模水平展開 + 解析系型安全化 (2026-02-22)
+
+### 1) ztb JSON helper への統一（重複削減）
+
+- 以下の手書き `json.dump` / `Path.write_text(json.dumps(...))` を
+  `ztb.io.json_io.write_json` へ統一:
+  - `scripts/v460/run_064_g1_info_verify.py`
+  - `scripts/v460/analysis/oracle_baseline.py`
+  - `scripts/v460/run_065_trade_only_comparison.py`
+  - `scripts/v460/run_065_hp_sweep.py`
+  - `scripts/v460/run_pnl_monte_carlo.py`
+  - `scripts/v460/run_065_as_lr_prep.py`
+  - `scripts/v460/run_065_g1_proper_eval.py`
+  - `scripts/v460/ml/run_070_model_search.py`
+  - `scripts/v460/ml/run_070_deep_analysis.py`
+  - `scripts/v460/ml/run_070_final_analysis.py`
+  - `scripts/v460/ml/train_sg_v2.py`
+  - `scripts/v460/ml/deploy_sg_v3.py`
+  - `scripts/v460/ml/deploy_sg_v4.py`
+  - `scripts/v460/ml/run_075_verification.py`
+  - `scripts/v460/analysis/vg_and_trend.py`（`--json --output` 経路）
+
+### 2) 付随改善（保守性・型安全）
+
+- `deploy_sg_v3.py` / `deploy_sg_v4.py` の未使用 `hashlib` import を削除。
+- `run_075_verification.py` の artifact encoder を
+  `convert(obj: object) -> object` に明示し、
+  `# type: ignore[no-untyped-def]` を撤去。
+
+### 3) 効果
+
+- JSON 保存の実装契約を `write_json` に集約し、
+  atomic write/エンコーディング/default encoder の扱いを共通化。
+- v460 解析・学習系で散在していた保存重複を削減し、
+  仕様変更時の修正点を I/O helper 側へ寄せやすい構造に整理。
+
+### 4) 検証（まとめ実行）
+
+- `py_compile`:
+  - `scripts/v460/run_064_g1_info_verify.py`
+  - `scripts/v460/analysis/oracle_baseline.py`
+  - `scripts/v460/run_065_trade_only_comparison.py`
+  - `scripts/v460/run_065_hp_sweep.py`
+  - `scripts/v460/run_pnl_monte_carlo.py`
+  - `scripts/v460/run_065_as_lr_prep.py`
+  - `scripts/v460/run_065_g1_proper_eval.py`
+  - `scripts/v460/analysis/vg_and_trend.py`
+  - `scripts/v460/ml/run_070_model_search.py`
+  - `scripts/v460/ml/run_070_deep_analysis.py`
+  - `scripts/v460/ml/run_070_final_analysis.py`
+  - `scripts/v460/ml/train_sg_v2.py`
+  - `scripts/v460/ml/deploy_sg_v3.py`
+  - `scripts/v460/ml/deploy_sg_v4.py`
+  - `scripts/v460/ml/run_075_verification.py`
+- 回帰確認（一括）:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_v460_core.py tests/unit/v460/test_gate_check.py tests/unit/v460/test_build_features_pipeline.py tests/unit/v460/test_145_s14_structural_refactors.py tests/unit/v460/test_148_fill_test_events.py`
+    - 結果: `158 passed`
+- Any inventory:
+  - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460 --top 10`
+    - 結果: `any_type_debt_tokens=0`（`scripts/v460`）
