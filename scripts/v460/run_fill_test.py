@@ -63,6 +63,7 @@ from scripts.v460.lib.ob_recorder import OBRecorder
 from scripts.v460.lib.order_monitor import OrderMonitor
 from ztb.data.trades_recorder import TradesRecorder
 from ztb.data.trades_health import check_trades_health
+from ztb.utils.git_utils import get_git_sha as _get_shared_git_sha
 from scripts.v460.lib.pnl_measurer import PnlMeasurer
 from scripts.v460.lib.resilience import (
     CircuitBreaker,
@@ -566,19 +567,10 @@ class FillTestRunner(AbstractCycleRunner):
     @staticmethod
     def _get_git_sha() -> Optional[str]:
         """現在の git commit short hash を取得."""
-        try:
-            result = subprocess.run(
-                ["git", "rev-parse", "--short", "HEAD"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                cwd=str(_PROJECT_ROOT),
-            )
-            if result.returncode == 0:
-                return result.stdout.strip()
-        except Exception:
-            pass
-        return None
+        sha = _get_shared_git_sha(cwd=_PROJECT_ROOT)
+        if sha == "unknown":
+            return None
+        return sha[:12]
 
     def resume_from_existing(self) -> list[FillRecord]:
         """既存 fill_records から状態を復元する (レジューム対応).

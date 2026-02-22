@@ -5,8 +5,6 @@ fill_records_*.jsonl を読み込み、AS/Fill 分類用の特徴量を生成す
 
 from __future__ import annotations
 
-import glob
-import json
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -17,6 +15,7 @@ import pandas as pd
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from ztb.io.jsonl import read_jsonl_objects
 
 logger = logging.getLogger(__name__)
 
@@ -55,15 +54,13 @@ def load_fill_records(
         全レコードの DataFrame (cancelled 含む).
     """
     d = results_dir or _DEFAULT_RESULTS_DIR
-    files = sorted(glob.glob(str(d / "fill_records_*.jsonl")))
+    files = sorted(d.glob("fill_records_*.jsonl"))
     if not files:
         raise FileNotFoundError(f"No fill_records_*.jsonl in {d}")
 
-    rows: list[dict] = []
+    rows: list[dict[str, object]] = []
     for f in files:
-        with open(f) as fh:
-            for line in fh:
-                rows.append(json.loads(line))
+        rows.extend(read_jsonl_objects(f))
 
     df = pd.DataFrame(rows)
     total = len(df)

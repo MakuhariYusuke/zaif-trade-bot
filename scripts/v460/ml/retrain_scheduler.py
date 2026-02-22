@@ -56,6 +56,7 @@ from scripts.v460.ml.skip_gate import (
     _OB_FEATURE_COLS,
     get_gate_feature_cols,
 )
+from ztb.io.jsonl import append_jsonl
 from ztb.utils.safety import ensure_dict, safe_to_bool, safe_to_float, safe_to_int
 
 # 127# X1: module-level FileHandler を廃止。main() 内で初期化する。
@@ -306,9 +307,7 @@ def _validate_side_target_path_mismatch(cfg: ConfigMap, side: str) -> None:
 
 def _append_jsonl_record(path: Path, payload: object) -> None:
     """JSONL に 1 レコードを追記."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(payload, default=str, ensure_ascii=False) + "\n")
+    append_jsonl(path, [payload], ensure_ascii=False, default=str)
 
 
 def _extract_numeric_column(df: pd.DataFrame, index: pd.Index, column: str) -> np.ndarray:

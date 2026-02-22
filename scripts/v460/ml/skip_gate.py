@@ -31,6 +31,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.linear_model import Ridge
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from ztb.io.jsonl import iter_jsonl_objects
 
 from scripts.v460.ml.model_protocols import (
     FeatureTransformer,
@@ -749,38 +750,30 @@ def warm_start_skip_gate_thresholds(
     need = window * 2
     stale_skipped = 0
     for f in reversed(files):
-        with open(f) as fh:
-            file_records: list[tuple[str, float]] = []
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
+        file_records: list[tuple[str, float]] = []
+        for r in iter_jsonl_objects(Path(f)):
+            p_as = r.get("skip_gate_as_prob")
+            side = r.get("side")
+            if p_as is not None and side in ("buy", "sell"):
                 try:
-                    r = json.loads(line)
-                except json.JSONDecodeError:
+                    p_as_val = float(p_as)
+                except (TypeError, ValueError):
                     continue
-                p_as = r.get("skip_gate_as_prob")
-                side = r.get("side")
-                if p_as is not None and side in ("buy", "sell"):
-                    try:
-                        p_as_val = float(p_as)
-                    except (TypeError, ValueError):
-                        continue
-                    if not np.isfinite(p_as_val):
-                        continue
-                    # 124# モデル世代フィルタ: trained_at 以前のレコードを除外
-                    if model_trained_ts is not None:
-                        rec_ts = r.get("timestamp")
-                        if rec_ts is not None:
-                            try:
-                                rec_ts_val = float(rec_ts)
-                            except (TypeError, ValueError):
-                                continue
-                            if rec_ts_val < model_trained_ts:
-                                stale_skipped += 1
-                                continue
-                    file_records.append((side, p_as_val))
-            prob_records = file_records + prob_records
+                if not np.isfinite(p_as_val):
+                    continue
+                # 124# モデル世代フィルタ: trained_at 以前のレコードを除外
+                if model_trained_ts is not None:
+                    rec_ts = r.get("timestamp")
+                    if rec_ts is not None:
+                        try:
+                            rec_ts_val = float(rec_ts)
+                        except (TypeError, ValueError):
+                            continue
+                        if rec_ts_val < model_trained_ts:
+                            stale_skipped += 1
+                            continue
+                file_records.append((side, p_as_val))
+        prob_records = file_records + prob_records
         if len(prob_records) >= need:
             break
 

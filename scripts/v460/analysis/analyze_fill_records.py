@@ -1,20 +1,16 @@
 """132# 用 fill_records 分析スクリプト."""
-import json
 import glob
 from collections import defaultdict
 from pathlib import Path
 
+from ztb.io.jsonl import read_jsonl_objects
+
 
 def main() -> None:
     files = sorted(glob.glob("results/v460/fill_test/fill_records_*.jsonl"))
-    all_records: list[dict] = []
+    all_records: list[dict[str, object]] = []
     for f in files:
-        with open(f) as fh:
-            for line in fh:
-                try:
-                    all_records.append(json.loads(line.strip()))
-                except Exception:
-                    pass
+        all_records.extend(read_jsonl_objects(Path(f)))
 
     print(f"Total records: {len(all_records)}")
     first_date = Path(files[0]).stem.split("_")[-1]
@@ -133,15 +129,10 @@ def main() -> None:
     if retrain_path.exists():
         statuses: dict[str, int] = defaultdict(int)
         last_deployed = None
-        with open(retrain_path) as fh:
-            for line in fh:
-                try:
-                    entry = json.loads(line.strip())
-                    statuses[entry.get("status", "unknown")] += 1
-                    if entry.get("status") == "deployed":
-                        last_deployed = entry.get("timestamp")
-                except Exception:
-                    pass
+        for entry in read_jsonl_objects(retrain_path):
+            statuses[str(entry.get("status", "unknown"))] += 1
+            if entry.get("status") == "deployed":
+                last_deployed = entry.get("timestamp")
         print(f"\nRetrain history:")
         for status, count in sorted(statuses.items(), key=lambda x: -x[1]):
             print(f"  {status}: {count}")

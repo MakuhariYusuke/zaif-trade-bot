@@ -8,13 +8,13 @@
 
 from __future__ import annotations
 
-import json
 import sys
 from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from ztb.io.jsonl import read_jsonl_objects
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT))
@@ -23,17 +23,10 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 def load_all_records() -> pd.DataFrame:
     """全 fill_records_*.jsonl + emergency を読み込み."""
     results_dir = _PROJECT_ROOT / "results" / "v460" / "fill_test"
-    records: list[dict] = []
+    records: list[dict[str, object]] = []
     for pattern in ["fill_records_*.jsonl", "emergency/*.jsonl"]:
         for f in sorted(results_dir.glob(pattern)):
-            with open(f, "r", encoding="utf-8") as fh:
-                for line in fh:
-                    line = line.strip()
-                    if line:
-                        try:
-                            records.append(json.loads(line))
-                        except json.JSONDecodeError:
-                            pass
+            records.extend(read_jsonl_objects(f))
     df = pd.DataFrame(records)
     # 重複排除 (cycle_id ベース)
     if "cycle_id" in df.columns:

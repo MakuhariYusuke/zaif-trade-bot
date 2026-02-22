@@ -26,6 +26,7 @@ from typing import TypedDict
 
 import numpy as np
 import pandas as pd
+from ztb.io.jsonl import append_jsonl
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
@@ -283,9 +284,7 @@ def main() -> None:
 
     # JSONL ログ出力
     log_path = Path("logs") / "oracle_test.jsonl"
-    log_path.parent.mkdir(exist_ok=True)
-    with open(log_path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(result, default=str) + "\n")
+    append_jsonl(log_path, [result], ensure_ascii=False, default=str)
     print(f"\n  Result logged to {log_path}")
 
     # 全結果 JSON

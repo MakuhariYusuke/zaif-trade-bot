@@ -1593,3 +1593,67 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - Any inventory:
   - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460 --top 10`
     - 結果: `any_type_debt_tokens=0`（`scripts/v460`）
+
+## Phase 42 追補: plain JSONL helper 新設 + 読込/追記ロジック統合 (2026-02-22)
+
+### 1) ztb helper 追加（重複削減の受け皿）
+
+- `ztb/io/jsonl.py` を追加:
+  - `iter_jsonl_objects()`
+  - `read_jsonl_objects()`
+  - `append_jsonl()`
+  - いずれも「空行スキップ」「malformed 行スキップ」「object 行のみ採用」を標準化。
+- `ztb/io/__init__.py` に上記 helper を export 追加。
+
+### 2) v460 への水平展開（読込）
+
+- `scripts/v460/ml/data_loader.py`
+  - `fill_records_*.jsonl` 読込を `read_jsonl_objects()` へ統一。
+- `scripts/v460/ml/skip_gate.py`
+  - warm start 復元の JSONL 走査を `iter_jsonl_objects()` へ統一。
+- `scripts/v460/ml/run_073_strategy_analysis.py`
+  - 複数 JSONL 読込ループを `read_jsonl_objects()` に置換。
+- `scripts/v460/analysis/analyze_fill_records.py`
+  - fill_records 読込 + retrain history 読込を `read_jsonl_objects()` に統一。
+- `scripts/v460/analysis/analyze_fill_detail.py`
+  - fill_records 読込を `read_jsonl_objects()` に統一。
+
+### 3) v460 への水平展開（追記）
+
+- `scripts/v460/ml/retrain_scheduler.py`
+  - `_append_jsonl_record()` を `append_jsonl()` 委譲へ変更。
+- `scripts/v460/analysis/oracle_test.py`
+  - `oracle_test.jsonl` 追記を `append_jsonl()` へ統一。
+
+### 4) git helper の追加水平展開
+
+- `scripts/v460/run_fill_test.py`
+  - `_get_git_sha()` の手書き `subprocess git rev-parse` 実装を
+    `ztb.utils.git_utils.get_git_sha` へ統一（`unknown` は `None` 維持）。
+- これにより `scripts/v460` 配下の `git rev-parse` 直実装は解消。
+
+### 5) 付随リファクタリング
+
+- `skip_gate.warm_start_skip_gate_thresholds()` の
+  「`with open` + 手書き `json.loads` + 行スキップ」重複を除去し、
+  helper 経由の1経路へ整理（保守点数を削減）。
+
+### 6) 検証（まとめ実行）
+
+- `py_compile`:
+  - `ztb/io/jsonl.py`, `ztb/io/__init__.py`
+  - `scripts/v460/ml/data_loader.py`
+  - `scripts/v460/ml/skip_gate.py`
+  - `scripts/v460/ml/run_073_strategy_analysis.py`
+  - `scripts/v460/analysis/analyze_fill_records.py`
+  - `scripts/v460/analysis/analyze_fill_detail.py`
+  - `scripts/v460/ml/retrain_scheduler.py`
+  - `scripts/v460/analysis/oracle_test.py`
+- 回帰確認（一括）:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_v460_core.py tests/unit/v460/test_skip_gate_d8.py tests/unit/v460/test_skip_gate_v3.py tests/unit/v460/test_enricher_skip_gate.py tests/unit/v460/test_retrain_hot_reload.py tests/unit/v460/test_145_s14_structural_refactors.py tests/unit/v460/test_148_fill_test_events.py`
+    - 結果: `287 passed`
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_145_structural_fixes.py tests/unit/v460/test_145_s14_structural_refactors.py tests/unit/v460/test_148_fill_test_events.py`
+    - 結果: `97 passed`
+- Any inventory:
+  - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460 --top 10`
+    - 結果: `any_type_debt_tokens=0`（`scripts/v460`）

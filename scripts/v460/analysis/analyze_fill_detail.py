@@ -1,21 +1,17 @@
 """132# 追加分析: daily, run_id, reprice 等."""
-import json
 import glob
 import datetime
 from collections import defaultdict
 from pathlib import Path
 
+from ztb.io.jsonl import read_jsonl_objects
+
 
 def main() -> None:
     files = sorted(glob.glob("results/v460/fill_test/fill_records_*.jsonl"))
-    all_recs: list[dict] = []
+    all_recs: list[dict[str, object]] = []
     for f in files:
-        with open(f) as fh:
-            for line in fh:
-                try:
-                    all_recs.append(json.loads(line.strip()))
-                except Exception:
-                    pass
+        all_recs.extend(read_jsonl_objects(Path(f)))
 
     filled = [r for r in all_recs if r.get("filled")]
 
