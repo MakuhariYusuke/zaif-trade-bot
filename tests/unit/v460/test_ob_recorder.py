@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import gzip
 import json
+import math
 import time
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
@@ -46,6 +47,40 @@ class TestOBRecorderBasic:
         rec.flush()
         assert rec.total_written == 2
         assert rec.buffer_size == 0
+
+    def test_record_preserves_zero_timestamp(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.ob_recorder import OBRecorder
+
+        rec = OBRecorder(raw_dir=tmp_path, enabled=True)
+        rec.record([[100, 1.0]], [[101, 1.0]], timestamp=0.0)
+        rec.flush()
+
+        ob_dir = tmp_path / "orderbook"
+        out_path = list(ob_dir.glob("*.jsonl.gz"))[0]
+        with gzip.open(out_path, "rt", encoding="utf-8") as f:
+            data = json.loads(f.readline())
+        assert data["ts"] == 0.0
+
+    def test_record_ignores_malformed_snapshot(self) -> None:
+        from scripts.v460.lib.ob_recorder import OBRecorder
+
+        rec = OBRecorder(enabled=True)
+        rec.record([MagicMock()], [[101, 1.0]], timestamp=1000.0)
+        assert rec.buffer_size == 0
+
+    def test_record_sanitizes_magicmock_timestamp(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.ob_recorder import OBRecorder
+
+        rec = OBRecorder(raw_dir=tmp_path, enabled=True)
+        rec.record([[100, 1.0]], [[101, 1.0]], timestamp=MagicMock())
+        rec.flush()
+
+        ob_dir = tmp_path / "orderbook"
+        out_path = list(ob_dir.glob("*.jsonl.gz"))[0]
+        with gzip.open(out_path, "rt", encoding="utf-8") as f:
+            data = json.loads(f.readline())
+        assert isinstance(data["ts"], float)
+        assert math.isfinite(data["ts"])
 
 
 class TestOBRecorderFlush:

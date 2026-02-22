@@ -1294,3 +1294,38 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - 回帰確認:
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_skip_gate_d8.py tests/unit/v460/test_skip_gate_v3.py tests/unit/v460/test_train_sg_v3.py`
     - 結果: `57 passed`
+
+## Phase 35 追補: OBRecorder の入力正規化 + flush失敗抑止 (2026-02-22)
+
+### 1) 潜在不具合の修正（MagicMock/壊れた板入力）
+
+- `scripts/v460/lib/ob_recorder.py`
+  - `record()` の入力を防御的に正規化:
+    - `timestamp` は有限 `float` のみ採用し、不正値は `time.time()` にフォールバック。
+    - `bids/asks` は `[price, size]` の有限数値ペアだけ通し、壊れたレベルは除外。
+  - `timestamp=0.0` が `or` 評価で現在時刻へ潰れる不具合を解消。
+  - 正常な板が片側でも欠けるスナップショットはバッファ投入前に破棄し、
+    flush時の JSON serialize 失敗連鎖を防止。
+  - `__slots__` を追加し、レコーダ常駐時のオブジェクトオーバーヘッドを削減。
+  - `_OBSnapshot` (`TypedDict`) を導入し、`list[dict]` の曖昧型を整理。
+
+### 2) 追加テスト
+
+- `tests/unit/v460/test_ob_recorder.py`
+  - `test_record_preserves_zero_timestamp`
+  - `test_record_ignores_malformed_snapshot`
+  - `test_record_sanitizes_magicmock_timestamp`
+  - 既存の flush/format/integration テストは回帰通過。
+
+### 3) 検証
+
+- `py_compile`:
+  - `scripts/v460/lib/ob_recorder.py`
+  - `tests/unit/v460/test_ob_recorder.py`
+- 回帰確認:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_ob_recorder.py`
+    - 結果: `15 passed`
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_fill_quality.py -k "UnknownFillHandling or cleanup_sync_saves_unsaved_batch or cleanup_sync_no_unsaved_no_dump"`
+    - 結果: `5 passed`
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460 --maxfail=20`
+    - 結果: `1463 passed`

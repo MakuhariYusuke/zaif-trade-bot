@@ -10,9 +10,12 @@ retrain_scheduler が参照する OB JSONL.gz を直接蓄積する。
 from __future__ import annotations
 
 import logging
+import math
 import time
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TypedDict
 
 from ztb.io.jsonl_gz import append_jsonl_gz
 
@@ -23,6 +26,54 @@ _FLUSH_INTERVAL_SEC = 60  # 60 秒ごとにバッファ flush
 _BUFFER_CAP = 10_000  # 146# §13: メモリ保護上限 (TradesRecorder と対称)
 
 
+class _OBSnapshot(TypedDict):
+    ts: float
+    bids: list[list[float]]
+    asks: list[list[float]]
+    exchange: str
+
+
+def _to_finite_float(value: object) -> float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        parsed = float(value)
+    elif isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return None
+        try:
+            parsed = float(stripped)
+        except ValueError:
+            return None
+    else:
+        return None
+    if not math.isfinite(parsed):
+        return None
+    return parsed
+
+
+def _normalize_levels(levels: object) -> list[list[float]]:
+    if not isinstance(levels, Sequence) or isinstance(levels, (str, bytes, bytearray)):
+        return []
+    normalized: list[list[float]] = []
+    for level in levels:
+        if isinstance(level, (list, tuple)):
+            if len(level) < 2:
+                continue
+            price = _to_finite_float(level[0])
+            size = _to_finite_float(level[1])
+        else:
+            price = _to_finite_float(getattr(level, "price", None))
+            size = _to_finite_float(
+                getattr(level, "quantity", getattr(level, "size", None))
+            )
+        if price is None or size is None:
+            continue
+        normalized.append([price, size])
+    return normalized
+
+
 class OBRecorder:
     """fill_test サイクルごとの板スナップショットを JSONL.gz で蓄積.
 
@@ -30,6 +81,16 @@ class OBRecorder:
     flush_interval 秒ごと、または明示的 flush() 呼び出しで書き出し。
     146# §13: BUFFER_CAP 超過時は強制 flush してメモリ保護。
     """
+
+    __slots__ = (
+        "_raw_dir",
+        "_flush_interval",
+        "_enabled",
+        "_buffer",
+        "_last_flush",
+        "_total_written",
+        "_flush_fail_count",
+    )
 
     def __init__(
         self,
@@ -41,7 +102,7 @@ class OBRecorder:
         self._raw_dir = raw_dir or _DEFAULT_RAW_DIR
         self._flush_interval = flush_interval
         self._enabled = enabled
-        self._buffer: list[dict] = []
+        self._buffer: list[_OBSnapshot] = []
         self._last_flush: float = time.time()
         self._total_written: int = 0
         self._flush_fail_count: int = 0  # 146# §13: consecutive-fail counter
@@ -60,10 +121,10 @@ class OBRecorder:
 
     def record(
         self,
-        bids: list[list[float]] | list[tuple[float, float]],
-        asks: list[list[float]] | list[tuple[float, float]],
-        timestamp: float | None = None,
-        exchange: str = "coincheck",
+        bids: object,
+        asks: object,
+        timestamp: object | None = None,
+        exchange: object = "coincheck",
     ) -> None:
         """1 件の板スナップショットをバッファに追加.
 
@@ -71,14 +132,23 @@ class OBRecorder:
         """
         if not self._enabled:
             return
-        ts = timestamp or time.time()
-        # bids/asks を list[list] に正規化 (tuple → list for JSON serialization)
-        self._buffer.append({
-            "ts": ts,
-            "bids": [list(b) for b in bids],
-            "asks": [list(a) for a in asks],
-            "exchange": exchange,
-        })
+        ts = _to_finite_float(timestamp)
+        if ts is None:
+            ts = time.time()
+        norm_bids = _normalize_levels(bids)
+        norm_asks = _normalize_levels(asks)
+        # 不完全なスナップショットは捨てる (flush 失敗の連鎖を防ぐ)
+        if not norm_bids or not norm_asks:
+            logger.debug("OB recorder: skipped malformed snapshot")
+            return
+        self._buffer.append(
+            {
+                "ts": ts,
+                "bids": norm_bids,
+                "asks": norm_asks,
+                "exchange": str(exchange),
+            }
+        )
         # 146# §13: バッファ上限 or flush_interval のいずれかで flush
         if len(self._buffer) >= _BUFFER_CAP:
             logger.warning(
