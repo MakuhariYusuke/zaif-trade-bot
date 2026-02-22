@@ -286,6 +286,23 @@ class FillTestConfig:
             raise ValueError(
                 f"skip_gate_calibrator_refit_interval must be >= 1, got {self.skip_gate_calibrator_refit_interval}"
             )
+        # 145# §8-#6: レジーム設定の値域バリデーション
+        for k, v in self.regime_timeout_multipliers.items():
+            if v <= 0:
+                raise ValueError(
+                    f"regime_timeout_multipliers['{k}'] must be > 0, got {v}"
+                )
+        for k, v in self.regime_lot_multipliers.items():
+            if v <= 0:
+                raise ValueError(
+                    f"regime_lot_multipliers['{k}'] must be > 0, got {v}"
+                )
+        _MAX_REPRICE_ADJ = 10
+        for k, v in self.regime_reprice_adjustments.items():
+            if abs(v) > _MAX_REPRICE_ADJ:
+                raise ValueError(
+                    f"regime_reprice_adjustments['{k}'] abs value must be <= {_MAX_REPRICE_ADJ}, got {v}"
+                )
 
     @classmethod
     def from_yaml(cls, yaml_cfg: dict) -> "FillTestConfig":

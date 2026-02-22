@@ -270,7 +270,8 @@ class TestR1CircuitBreakerInRunSingleCycle:
         from scripts.v460.run_fill_test import FillTestRunner
         source = inspect.getsource(FillTestRunner.run_single_cycle)
         assert "circuit_breaker" in source
-        assert "circuit_breaker_open" in source
+        # 145# §9-#6: CR.CIRCUIT_BREAKER_OPEN 定数に移行済み
+        assert "CIRCUIT_BREAKER_OPEN" in source
 
     def test_circuit_breaker_success_recording(self) -> None:
         from scripts.v460.run_fill_test import FillTestRunner

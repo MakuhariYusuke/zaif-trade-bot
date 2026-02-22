@@ -295,8 +295,12 @@ class TestRegimeAdjustedLot:
             runner._regime_detector = None
 
         # _regime_adjusted_lot を実装からバインド
+        # 145#: _regime_lot_multiplier も必要 (_regime_adjusted_lot が内部呼出し)
         from scripts.v460.run_fill_test import FillTestRunner
         import types
+        runner._regime_lot_multiplier = types.MethodType(
+            FillTestRunner._regime_lot_multiplier, runner,
+        )
         runner._regime_adjusted_lot = types.MethodType(
             FillTestRunner._regime_adjusted_lot, runner,
         )
@@ -572,6 +576,9 @@ class TestMinLotUnification:
         runner._regime_detector = det
 
         from scripts.v460.run_fill_test import FillTestRunner
+        runner._regime_lot_multiplier = types.MethodType(
+            FillTestRunner._regime_lot_multiplier, runner,
+        )
         runner._regime_adjusted_lot = types.MethodType(
             FillTestRunner._regime_adjusted_lot, runner,
         )
@@ -588,10 +595,14 @@ class TestPreflightLotAlignment:
         _current_lot への永続化コードが除去されている."""
         from scripts.v460.run_fill_test import FillTestRunner
         source = inspect.getsource(FillTestRunner.run_single_cycle)
-        # apply_lot_floor → _regime_adjusted_lot の順序は維持
+        # apply_lot_floor → _order_lot = self._regime_adjusted_lot() の順序を検証
+        # (145# §9-#4: SkipGate にも _regime_adjusted_lot を渡すため複数出現。
+        #  発注直前の「_order_lot = self._regime_adjusted_lot()」が lot_floor の後にあればよい)
         floor_idx = source.index("apply_lot_floor")
-        regime_idx = source.index("_regime_adjusted_lot")
-        assert floor_idx < regime_idx
+        order_lot_assign_idx = source.index("_order_lot = self._regime_adjusted_lot()")
+        assert floor_idx < order_lot_assign_idx, (
+            "apply_lot_floor must occur before _order_lot assignment"
+        )
         # 145# fix: 永続化コード「_order_lot > self._current_lot」は除去済み
         assert "_order_lot > self._current_lot" not in source, (
             "§8-#2/#3 fix: _current_lot への永続化コードが残っている"
@@ -797,6 +808,9 @@ class TestLotNoCompounding:
 
         from scripts.v460.run_fill_test import FillTestRunner
         import types
+        runner._regime_lot_multiplier = types.MethodType(
+            FillTestRunner._regime_lot_multiplier, runner,
+        )
         runner._regime_adjusted_lot = types.MethodType(
             FillTestRunner._regime_adjusted_lot, runner,
         )

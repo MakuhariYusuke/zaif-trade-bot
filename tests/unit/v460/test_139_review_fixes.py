@@ -154,12 +154,13 @@ class TestPreflightPauseAuditRecord:
     """139# §8-#4: preflight_pause 前に FillRecord が記録される."""
 
     def test_source_has_audit_record(self) -> None:
-        """run_fill_test.py の preflight pause ブロックに _append_fill_record がある."""
+        """run_fill_test.py の preflight pause ブロックに _make_skip_record がある."""
         import inspect
         import scripts.v460.run_fill_test as rft
         source = inspect.getsource(rft)
-        # preflight_pause による FillRecord 追記確認
-        assert 'cancel_reason="preflight_pause"' in source
+        # 145# §9-#5: CR.PREFLIGHT_PAUSE 定数に移行済み
+        assert "PREFLIGHT_PAUSE" in source
+        assert "_make_skip_record" in source
 
 
 # ---------------------------------------------------------------------------
@@ -479,8 +480,8 @@ class TestRunContinuousBranchExecution:
         import inspect
         import scripts.v460.run_fill_test as rft
         source = inspect.getsource(rft.FillTestRunner.run_continuous)
-        # preflight_pause の cancel_reason が batch.append 経由で記録される
-        assert 'cancel_reason="preflight_pause"' in source
+        # 145# §9-#5: CR.PREFLIGHT_PAUSE 定数 + _make_skip_record に移行済み
+        assert "CR.PREFLIGHT_PAUSE" in source
         assert 'maybe_flush(batch, "preflight_pause")' in source
 
     def test_time_filter_both_sides_generates_record(self) -> None:
@@ -488,32 +489,37 @@ class TestRunContinuousBranchExecution:
         import inspect
         import scripts.v460.run_fill_test as rft
         source = inspect.getsource(rft.FillTestRunner.run_continuous)
-        assert 'cancel_reason="time_filter_both_sides"' in source
+        # 145# §9-#6: CR 定数に移行済み
+        assert "CR.TIME_FILTER_BOTH_SIDES" in source
 
     def test_preflight_insufficient_generates_record(self) -> None:
         """140# §8.1-#2: preflight 残高不足で FillRecord が生成される."""
         import inspect
         import scripts.v460.run_fill_test as rft
         source = inspect.getsource(rft.FillTestRunner.run_continuous)
-        assert 'cancel_reason="preflight_insufficient"' in source
+        # 145# §9-#6: CR 定数に移行済み
+        assert "CR.PREFLIGHT_INSUFFICIENT" in source
 
     def test_all_skip_paths_have_cancel_reason(self) -> None:
-        """全 skip 分岐が cancel_reason 付き FillRecord を持つことを確認."""
+        """全 skip 分岐が cancel_reason 付き FillRecord を持つことを確認.
+
+        145# §9-#5/6: cancel_reasons モジュールの CR 定数に移行済み。
+        """
         import inspect
         import scripts.v460.run_fill_test as rft
         source = inspect.getsource(rft.FillTestRunner.run_continuous)
-        expected_reasons = [
-            "time_filter_both_sides",
-            "time_filter_086_deadlock",
-            "preflight_insufficient",
-            "preflight_pause",
-            "balance_forced_skip",
-            "unknown_regime_buy_skip",
-            "sell_dynamic_kill",
+        expected_cr_constants = [
+            "CR.TIME_FILTER_BOTH_SIDES",
+            "CR.TIME_FILTER_086_DEADLOCK",
+            "CR.PREFLIGHT_INSUFFICIENT",
+            "CR.PREFLIGHT_PAUSE",
+            "CR.BALANCE_FORCED_SKIP",
+            "CR.UNKNOWN_REGIME_BUY_SKIP",
+            "CR.SELL_DYNAMIC_KILL",
         ]
-        for reason in expected_reasons:
-            assert f'cancel_reason="{reason}"' in source, \
-                f'cancel_reason="{reason}" not found in run_continuous'
+        for cr_const in expected_cr_constants:
+            assert cr_const in source, \
+                f'{cr_const} not found in run_continuous'
 
 
 # ---------------------------------------------------------------------------

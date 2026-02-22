@@ -426,9 +426,10 @@ class TestCalibrateThresholdEdgeCases:
 class TestDataQualityFillRecord:
     """088# P0-4: FillRecord 早期 return パスのフィールド検証.
 
-    run_fill_test.py 内の 3 つの早期 return で
-    FillRecord(run_id=..., git_sha=...) が設定されていることを
-    ソースコードレベルで検証する。
+    145# §9-#5: _make_skip_record に一元化されたため、
+    (a) ヘルパ内の FillRecord に run_id/git_sha が含まれること、
+    (b) cancel_reason を含む全 FillRecord 生成箇所に run_id が存在すること
+    の 2 段階で検証する。
     """
 
     def test_early_return_paths_have_run_id(self) -> None:
@@ -455,8 +456,9 @@ class TestDataQualityFillRecord:
 
         # 早期 return パス = cancel_reason を含む FillRecord
         early_returns = [b for b in fill_record_blocks if "cancel_reason" in b]
-        assert len(early_returns) >= 3, (
-            f"Expected ≥3 early-return FillRecord with cancel_reason, "
+        # 145# §9-#5: _make_skip_record に集約済み → 最低 1 箇所 (_make_skip_record 内)
+        assert len(early_returns) >= 1, (
+            f"Expected ≥1 FillRecord with cancel_reason (in _make_skip_record), "
             f"found {len(early_returns)}"
         )
 
@@ -467,3 +469,14 @@ class TestDataQualityFillRecord:
             assert "git_sha=" in block, (
                 f"FillRecord (cancel_reason) missing git_sha: ...{block[:100]}..."
             )
+
+    def test_make_skip_record_used_for_all_skips(self) -> None:
+        """145# §9-#5: cancel_reason 付きスキップは _make_skip_record 経由であること."""
+        import re
+        src = Path(_PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py")
+        content = src.read_text(encoding="utf-8")
+        # _make_skip_record 呼出し回数 ≥ 散在する cancel_reason 定数参照数
+        skip_calls = len(re.findall(r"_make_skip_record\(", content))
+        assert skip_calls >= 8, (
+            f"Expected ≥8 _make_skip_record calls, found {skip_calls}"
+        )

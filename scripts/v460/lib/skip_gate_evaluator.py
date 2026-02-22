@@ -460,12 +460,14 @@ class SkipGateEvaluator:
             sg_use_ob = active_gate_for_ob.config.use_ob_features  # type: ignore[union-attr]
             if sg_use_ob:
                 try:
+                    from scripts.v460.lib.ob_utils import extract_price, depth_volume
                     ob = await adapter.get_orderbook(symbol, depth=self._config.skip_gate_ob_depth)  # type: ignore[union-attr]
                     if ob and ob.bids and ob.asks:
-                        ob_bid = ob.bids[0].price
-                        ob_ask = ob.asks[0].price
-                        ob_bid_vol = sum(lv.quantity for lv in ob.bids[:self._config.skip_gate_ob_depth])
-                        ob_ask_vol = sum(lv.quantity for lv in ob.asks[:self._config.skip_gate_ob_depth])
+                        # 145# §9-#3: tuple/object 両対応 (ob_utils 使用)
+                        ob_bid = extract_price(ob.bids[0])
+                        ob_ask = extract_price(ob.asks[0])
+                        ob_bid_vol = depth_volume(ob.bids, self._config.skip_gate_ob_depth)
+                        ob_ask_vol = depth_volume(ob.asks, self._config.skip_gate_ob_depth)
                 except Exception as e:
                     logger.debug(f"[skip_gate] OB fetch failed: {e}")
 

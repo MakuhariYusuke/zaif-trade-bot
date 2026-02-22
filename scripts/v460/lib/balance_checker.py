@@ -65,53 +65,72 @@ class BalanceChecker:
     def pre_shrink_lot(self, value: float) -> None:
         self._pre_shrink_lot = value
 
-    async def check(self, side: str, adapter: object, symbol: str) -> bool:
+    async def check(
+        self,
+        side: str,
+        adapter: object,
+        symbol: str,
+        *,
+        regime_mult: float = 1.0,
+    ) -> bool:
         """残高 pre-flight check.
 
         不足時は True を返す (スキップすべき)。
         052#: 残高に基づくロット自動縮小。
+        145# §8-#1: regime_mult を加味して実際の注文ロットで判定。
         """
         try:
             if side == "sell":
-                return await self._check_sell(adapter, symbol)
+                return await self._check_sell(adapter, symbol, regime_mult=regime_mult)
             else:
-                return await self._check_buy(adapter, symbol)
+                return await self._check_buy(adapter, symbol, regime_mult=regime_mult)
         except Exception as e:
             logger.warning(f"[balance] Pre-flight check failed — proceeding: {e}")
         return False
 
-    async def _check_sell(self, adapter: object, symbol: str) -> bool:
-        """sell 残高チェック (BTC)."""
+    async def _check_sell(
+        self, adapter: object, symbol: str, *, regime_mult: float = 1.0,
+    ) -> bool:
+        """sell 残高チェック (BTC).
+
+        145# §8-#1: regime_mult 対応 — 実効ロット (base × mult) で比較し、
+        自動縮小時もレジーム倍率を考慮して base ロットを調整する。
+        """
         btc_balances = await adapter.get_balance("BTC")  # type: ignore[union-attr]
         btc_free = sum(b.free for b in btc_balances) if btc_balances else 0.0
 
-        if btc_free < self._current_lot:
+        effective_lot = self._current_lot * regime_mult
+        if btc_free < effective_lot:
             # 052#: 最小ロット以上の残高があれば縮小して継続
-            if btc_free >= self._min_order_btc:
-                new_lot = int(btc_free / self._min_order_btc) * self._min_order_btc
-                if new_lot >= self._min_order_btc:
-                    old_lot = self._current_lot
-                    self._current_lot = new_lot
-                    if not self._balance_shrink_active:
-                        self._pre_shrink_lot = old_lot
-                    logger.info(
-                        f"[balance] BTC {btc_free:.6f} < {old_lot:.4f}. "
-                        f"ロット自動縮小: {old_lot:.4f} → {new_lot:.4f} BTC"
-                    )
-                    # 128# 縮小後も dust sweep 判定を通過させる
-                    return self._maybe_dust_sweep(btc_free)
+            # 145# §8-#1: base ロット = btc_free / regime_mult として算出
+            max_base = btc_free / regime_mult if regime_mult > 0 else btc_free
+            new_lot = int(max_base / self._min_order_btc) * self._min_order_btc
+            if new_lot >= self._min_order_btc:
+                old_lot = self._current_lot
+                self._current_lot = new_lot
+                if not self._balance_shrink_active:
+                    self._pre_shrink_lot = old_lot
+                logger.info(
+                    f"[balance] BTC {btc_free:.6f} < {effective_lot:.4f} "
+                    f"(base {self._current_lot:.4f}×{regime_mult:.2f}). "
+                    f"ロット自動縮小: {old_lot:.4f} → {new_lot:.4f} BTC"
+                )
+                # 128# 縮小後も dust sweep 判定を通過させる
+                return self._maybe_dust_sweep(btc_free)
             logger.warning(
                 f"[balance] Insufficient BTC for sell: "
-                f"{btc_free:.6f} < {self._min_order_btc:.4f}. "
+                f"{btc_free:.6f} < {self._min_order_btc:.4f} "
+                f"(regime_mult={regime_mult:.2f}). "
                 f"Skipping sell → will retry buy next."
             )
             return True
 
         # 101# §6: 残高が十分な場合、以前の縮小から復元
+        # 145# §8-#1: 復元時もレジーム倍率を考慮
         if (
             not self._balance_shrink_active
             and self._current_lot < self._pre_shrink_lot
-            and btc_free >= self._pre_shrink_lot
+            and btc_free >= self._pre_shrink_lot * regime_mult
         ):
             old_lot = self._current_lot
             self._current_lot = self._pre_shrink_lot
@@ -123,43 +142,54 @@ class BalanceChecker:
         # 128# dust sweep: 残高十分でも dust があれば全額売却
         return self._maybe_dust_sweep(btc_free)
 
-    async def _check_buy(self, adapter: object, symbol: str) -> bool:
-        """buy 残高チェック (JPY)."""
+    async def _check_buy(
+        self, adapter: object, symbol: str, *, regime_mult: float = 1.0,
+    ) -> bool:
+        """buy 残高チェック (JPY).
+
+        145# §8-#1: regime_mult 対応 — 実効ロット (base × mult) で判定。
+        """
         price = await adapter.get_current_price(symbol)  # type: ignore[union-attr]
         if not price:
             return False
 
-        jpy_needed = self._current_lot * price * self._config.balance_margin_ratio
+        effective_lot = self._current_lot * regime_mult
+        jpy_needed = effective_lot * price * self._config.balance_margin_ratio
         jpy_balances = await adapter.get_balance("JPY")  # type: ignore[union-attr]
         jpy_free = sum(b.free for b in jpy_balances) if jpy_balances else 0.0
 
         if jpy_free < jpy_needed:
             # 052#: JPY 残高から発注可能なロットを逆算
-            affordable_lot = jpy_free / (price * self._config.balance_margin_ratio)
-            affordable_lot = int(affordable_lot / self._min_order_btc) * self._min_order_btc
+            # 145# §8-#1: レジーム倍率込みで逆算: base = affordable / regime_mult
+            affordable_effective = jpy_free / (price * self._config.balance_margin_ratio)
+            affordable_base = affordable_effective / regime_mult if regime_mult > 0 else affordable_effective
+            affordable_lot = int(affordable_base / self._min_order_btc) * self._min_order_btc
             if affordable_lot >= self._min_order_btc:
                 old_lot = self._current_lot
                 self._current_lot = affordable_lot
                 if not self._balance_shrink_active:
                     self._pre_shrink_lot = old_lot
                 logger.info(
-                    f"[balance] JPY {jpy_free:.0f} < {jpy_needed:.0f}. "
+                    f"[balance] JPY {jpy_free:.0f} < {jpy_needed:.0f} "
+                    f"(base {old_lot:.4f}×{regime_mult:.2f}). "
                     f"ロット自動縮小: {old_lot:.4f} → {affordable_lot:.4f} BTC"
                 )
                 return False
             logger.warning(
                 f"[balance] Insufficient JPY for buy: "
-                f"{jpy_free:.0f} < min {self._min_order_btc * price * self._config.balance_margin_ratio:.0f}. "
+                f"{jpy_free:.0f} < min {self._min_order_btc * regime_mult * price * self._config.balance_margin_ratio:.0f} "
+                f"(regime_mult={regime_mult:.2f}). "
                 f"Skipping buy → will retry sell next."
             )
             return True
 
         # 101# §6: 残高が十分な場合、以前の縮小から復元 (buy 側)
+        # 145# §8-#1: 復元時もレジーム倍率を考慮
         if (
             not self._balance_shrink_active
             and self._current_lot < self._pre_shrink_lot
         ):
-            pre_lot_needed = self._pre_shrink_lot * price * self._config.balance_margin_ratio
+            pre_lot_needed = self._pre_shrink_lot * regime_mult * price * self._config.balance_margin_ratio
             if jpy_free >= pre_lot_needed:
                 old_lot = self._current_lot
                 self._current_lot = self._pre_shrink_lot

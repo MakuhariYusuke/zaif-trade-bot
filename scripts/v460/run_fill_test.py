@@ -48,6 +48,7 @@ from ztb.risk.circuit_breakers import KillSwitch
 from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 from scripts.v460.lib.adaptation_engine import AdaptationEngine
 from scripts.v460.lib.balance_checker import BalanceChecker
+from scripts.v460.lib import cancel_reasons as CR  # 145# §9-#6
 from scripts.v460.lib.batch_persistence import BatchPersistence
 from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.fill_config import (
@@ -260,6 +261,51 @@ class FillTestRunner:
     def _current_lot(self, value: float) -> None:
         self._balance_checker.current_lot = value
 
+    # ──────────────────────────────────────────────────────────────────
+    # 145# §9-#5/7: skip_record / cycle_id ヘルパ (DRY)
+    # ──────────────────────────────────────────────────────────────────
+    @staticmethod
+    def _new_cycle_id(prefix: str | None = None) -> str:
+        """145# §9-#7: cycle_id 一元生成."""
+        base = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
+        return f"{prefix}_{base}" if prefix else base
+
+    def _make_skip_record(
+        self,
+        *,
+        side: str,
+        cancel_reason: str,
+        cycle_id: str | None = None,
+        order_quantity: float | None = None,
+        order_price: float = 0.0,
+        spread_at_order: float | None = None,
+        spread_offset_ratio: float | None = None,
+        regime: str | None = None,
+        balance_forced_switch: bool = False,
+        **extra: object,
+    ) -> FillRecord:
+        """145# §9-#5: skip/監査系 FillRecord 一元生成.
+
+        run_id, git_sha, timestamp は自動設定。
+        cancel_reason 文字列は cancel_reasons モジュールの定数を使うこと。
+        """
+        return FillRecord(
+            cycle_id=cycle_id or self._new_cycle_id(),
+            timestamp=time.time(),
+            side=side,
+            order_price=order_price,
+            order_quantity=order_quantity if order_quantity is not None else self._current_lot,
+            cancelled=True,
+            cancel_reason=cancel_reason,
+            run_id=self._run_id,
+            git_sha=self._git_sha,
+            spread_at_order=spread_at_order,
+            spread_offset_ratio=spread_offset_ratio,
+            regime=regime,
+            balance_forced_switch=balance_forced_switch,
+            **extra,  # type: ignore[arg-type]
+        )
+
     def _get_regime_state_fields(self) -> dict:
         """121# A4: regime state persistence — FillTestState に渡す regime 関連フィールド."""
         if self._regime_detector is None:
@@ -272,6 +318,19 @@ class FillTestRunner:
             "regime_raw_history": st["raw_history"],
         }
 
+    def _regime_lot_multiplier(self) -> float:
+        """145# §8-#1: 現在のレジームに対応するロット倍率を返す.
+
+        倍率辞書が空 / レジーム未検出 / 該当なしの場合は 1.0 を返す.
+        """
+        multipliers = self.config.regime_lot_multipliers
+        if not multipliers or self._regime_detector is None:
+            return 1.0
+        regime = self._regime_detector.current_regime
+        if regime is None:
+            return 1.0
+        return multipliers.get(regime.value, 1.0)
+
     def _regime_adjusted_lot(self) -> float:
         """143# R-1b: レジーム別ロット倍率を適用した注文ロットを返す.
 
@@ -279,15 +338,8 @@ class FillTestRunner:
         倍率適用後も config.min_order_btc 以上を保証.
         """
         base_lot = self._current_lot
-        multipliers = self.config.regime_lot_multipliers
-        if not multipliers or self._regime_detector is None:
-            return base_lot
-        regime = self._regime_detector.current_regime
-        if regime is None:
-            return base_lot
-        regime_name = regime.value
-        mult = multipliers.get(regime_name)
-        if mult is None or mult == 1.0:
+        mult = self._regime_lot_multiplier()
+        if mult == 1.0:
             return base_lot
         # 倍率適用 + 安全クランプ (144# #2: config.min_order_btc に統一)
         min_lot = self.config.min_order_btc
@@ -295,7 +347,7 @@ class FillTestRunner:
         adjusted = min(adjusted, self.config.max_lot) if self.config.max_lot > 0 else adjusted
         if adjusted != base_lot:
             logger.debug(
-                f"[regime_lot] {regime_name} → lot adjusted: "
+                f"[regime_lot] mult={mult:.2f} → lot adjusted: "
                 f"{base_lot:.4f} × {mult:.2f} = {adjusted:.4f}"
             )
         return adjusted
@@ -401,9 +453,17 @@ class FillTestRunner:
     # 106# R2: bps 換算定数 (1 bps = 1e-4)
     _BPS_FACTOR: int = 10_000
 
-    async def _check_balance_for_side(self, side: str) -> bool:
-        """残高 pre-flight check — 121# BalanceChecker に委譲."""
-        return await self._balance_checker.check(side, self.adapter, self.config.symbol)
+    async def _check_balance_for_side(
+        self, side: str, *, regime_mult: float = 1.0,
+    ) -> bool:
+        """残高 pre-flight check — 121# BalanceChecker に委譲.
+
+        145# §8-#1: regime_mult を渡してレジーム倍率込みで残高判定.
+        """
+        return await self._balance_checker.check(
+            side, self.adapter, self.config.symbol,
+            regime_mult=regime_mult,
+        )
 
     def _acquire_lock(self) -> None:
         """044# Bug7: 単一起動ロック (lockfile + PID + stale 回収).
@@ -563,13 +623,19 @@ class FillTestRunner:
         order_price: float,
         spread_at_order: Optional[float],
         effective_offset_ratio: float,
+        *,
+        order_lot: float | None = None,
     ) -> _SkipGateResult:
-        """SkipGate ML 判定 — 121# SkipGateEvaluator に委譲."""
+        """SkipGate ML 判定 — 121# SkipGateEvaluator に委譲.
+
+        145# §9-#4: order_lot を渡してレジーム倍率適用後のロットで記録.
+        """
         regime_value = (
             self._regime_detector.current_regime.value
             if self._regime_detector is not None
             else None
         )
+        _lot = order_lot if order_lot is not None else self._current_lot
         return await self._skip_gate_evaluator.evaluate(
             side=side,
             cycle_id=cycle_id,
@@ -578,7 +644,7 @@ class FillTestRunner:
             effective_offset_ratio=effective_offset_ratio,
             adapter=self.adapter,
             symbol=self.config.symbol,
-            current_lot=self._current_lot,
+            current_lot=_lot,
             run_id=self._run_id,
             git_sha=self._git_sha,
             regime_value=regime_value,
@@ -659,7 +725,7 @@ class FillTestRunner:
         129# D.2: balance_forced_switch フラグを FillRecord に記録.
         """
         self._cycle_count += 1
-        cycle_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
+        cycle_id = self._new_cycle_id()
 
         # 113# resilience: CircuitBreaker ガード — OPEN 中は API 呼出しを回避
         if self._circuit_breaker.state == CircuitState.OPEN:
@@ -668,16 +734,10 @@ class FillTestRunner:
                     f"[circuit_breaker] OPEN — skipping cycle {self._cycle_count} "
                     f"(recovery in {self._circuit_breaker.config.recovery_timeout}s)"
                 )
-                return FillRecord(
-                    cycle_id=cycle_id,
-                    timestamp=time.time(),
+                return self._make_skip_record(
                     side=side_override or "buy",
-                    order_price=0.0,
-                    order_quantity=self._current_lot,
-                    cancelled=True,
-                    cancel_reason="circuit_breaker_open",
-                    run_id=self._run_id,
-                    git_sha=self._git_sha,
+                    cancel_reason=CR.CIRCUIT_BREAKER_OPEN,
+                    cycle_id=cycle_id,
                 )
 
         # 055# Fix #2: Smart Side 判定用に最新板 imbalance を事前取得
@@ -734,18 +794,12 @@ class FillTestRunner:
                 ob_cancel_reason = "sell_guard_reject"
             else:
                 ob_cancel_reason = "orderbook_error"
-            return FillRecord(
-                cycle_id=cycle_id,
-                timestamp=time.time(),
+            return self._make_skip_record(
                 side=side,
-                order_price=0.0,
-                order_quantity=self._current_lot,
-                cancelled=True,
                 cancel_reason=ob_cancel_reason,
+                cycle_id=cycle_id,
+                spread_offset_ratio=self._maker_price.base_offset_ratio,
                 error_message=str(e),
-                spread_offset_ratio=self._maker_price.base_offset_ratio,  # 096# 状態分離
-                run_id=self._run_id,       # 088# データ品質: 早期リターンにも必須
-                git_sha=self._git_sha,     # 088# quarantine 防止
             )
 
         # 113# R1: SkipGate 判定を _evaluate_skip_gate() に委譲
@@ -769,24 +823,20 @@ class FillTestRunner:
                     )
                     # 139# §9-#3: 実際に待機してから FillRecord を返す
                     await asyncio.sleep(pause_sec)
-                    return FillRecord(
-                        cycle_id=cycle_id,
-                        timestamp=time.time(),
+                    return self._make_skip_record(
                         side=side,
+                        cancel_reason=CR.NARROW_SPREAD_PAUSE,
+                        cycle_id=cycle_id,
                         order_price=order_price,
-                        order_quantity=self._current_lot,
-                        cancelled=True,
-                        cancel_reason="narrow_spread_pause",
                         spread_at_order=spread_at_order,
                         spread_offset_ratio=effective_offset_ratio,
-                        run_id=self._run_id,
-                        git_sha=self._git_sha,
                     )
             else:
                 self._narrow_spread_consecutive = 0
 
         sg = await self._evaluate_skip_gate(
             side, cycle_id, order_price, spread_at_order, effective_offset_ratio,
+            order_lot=self._regime_adjusted_lot(),
         )
         skip_gate_skipped = sg.skipped
         skip_gate_score = sg.score
@@ -1204,16 +1254,10 @@ class FillTestRunner:
                     # 140# §8.1-#2: skip record を生成し可観測性確保 (132# F4)
                     if not self._time_filter.in_filter:
                         self._time_filter.on_enter()
-                        batch.append(FillRecord(
-                            cycle_id=f"{int(time.time())}_{uuid.uuid4().hex[:8]}",
-                            timestamp=time.time(),
+                        batch.append(self._make_skip_record(
                             side=next_side,
-                            order_price=0.0,
+                            cancel_reason=CR.TIME_FILTER_BOTH_SIDES,
                             order_quantity=0.0,
-                            cancelled=True,
-                            cancel_reason="time_filter_both_sides",
-                            run_id=self._run_id,
-                            git_sha=self._git_sha,
                         ))
                     else:
                         # 079# heartbeat: 長時間抑制中にプロセス生存を定期ログ
@@ -1271,16 +1315,10 @@ class FillTestRunner:
                             if not self._time_filter.in_filter:
                                 self._time_filter.on_enter()
                                 # 140# §8.1-#2: 086 deadlock 進入時も record 生成
-                                batch.append(FillRecord(
-                                    cycle_id=f"{int(time.time())}_{uuid.uuid4().hex[:8]}",
-                                    timestamp=time.time(),
+                                batch.append(self._make_skip_record(
                                     side=next_side,
-                                    order_price=0.0,
+                                    cancel_reason=CR.TIME_FILTER_086_DEADLOCK,
                                     order_quantity=0.0,
-                                    cancelled=True,
-                                    cancel_reason="time_filter_086_deadlock",
-                                    run_id=self._run_id,
-                                    git_sha=self._git_sha,
                                 ))
                             # 107# R1: 重複 flush → _maybe_flush_batch 統合
                             batch = self._batch_persistence.maybe_flush(batch, "alt_side==last_side wait")
@@ -1300,11 +1338,13 @@ class FillTestRunner:
             self._time_filter.on_exit()
 
             # 041# 残高 pre-flight check: 不足サイドはスキップ
-            if await self._check_balance_for_side(next_side):
+            # 145# §8-#1: レジーム倍率込みで残高判定 (preflight-lot alignment)
+            _regime_mult = self._regime_lot_multiplier()
+            if await self._check_balance_for_side(next_side, regime_mult=_regime_mult):
                 # 091# 即座に反対 side を試す: time_filter との組合せで停滞するのを防止
                 opposite = "sell" if next_side == "buy" else "buy"
                 tried_opposite = False
-                if not await self._check_balance_for_side(opposite):
+                if not await self._check_balance_for_side(opposite, regime_mult=_regime_mult):
                     # 反対 side は残高 OK → 即座に切替
                     logger.info(
                         f"[balance] {next_side} insufficient, "
@@ -1324,16 +1364,11 @@ class FillTestRunner:
                     self._preflight_skip_count += 1
 
                     # 140# §8.1-#2: preflight skip record 生成 (132# F4)
-                    batch.append(FillRecord(
-                        cycle_id=f"{int(time.time())}_{uuid.uuid4().hex[:8]}",
-                        timestamp=time.time(),
+                    # 145# §9-#5: _make_skip_record DRY 化
+                    batch.append(self._make_skip_record(
                         side=next_side,
-                        order_price=0.0,
+                        cancel_reason=CR.PREFLIGHT_INSUFFICIENT,
                         order_quantity=self._current_lot,
-                        cancelled=True,
-                        cancel_reason="preflight_insufficient",
-                        run_id=self._run_id,
-                        git_sha=self._git_sha,
                     ))
                     # 107# R1: 重複 flush → _maybe_flush_batch 統合
                     batch = self._batch_persistence.maybe_flush(batch, "preflight skip")
@@ -1380,16 +1415,12 @@ class FillTestRunner:
                         )
                         # 140# §8.1-#1: batch.append 導線に統一 (undefined _append_fill_record 修正)
                         # 143# 140§7 #2: cycle_id に timestamp 付与で一意化
-                        batch.append(FillRecord(
-                            cycle_id=f"preflight_pause_{self._preflight_pause_count}_{int(time.time())}",
-                            timestamp=time.time(),
+                        # 145# §9-#5: _make_skip_record DRY 化
+                        batch.append(self._make_skip_record(
                             side="none",
-                            order_price=0.0,
+                            cancel_reason=CR.PREFLIGHT_PAUSE,
+                            cycle_id=f"preflight_pause_{self._preflight_pause_count}_{int(time.time())}",
                             order_quantity=0.0,
-                            cancelled=True,
-                            cancel_reason="preflight_pause",
-                            run_id=self._run_id,
-                            git_sha=self._git_sha,
                         ))
                         batch = self._batch_persistence.maybe_flush(batch, "preflight_pause")
                         self._preflight_skip_count = 0
@@ -1422,16 +1453,11 @@ class FillTestRunner:
                     f"[133# P0-08] Skipping cycle — balance_forced_switch=True "
                     f"(avg -1.98bps loss). side={next_side}"
                 )
-                _skip_record = FillRecord(
-                    cycle_id=f"{int(time.time())}_{uuid.uuid4().hex[:8]}",
-                    timestamp=time.time(),
+                # 145# §9-#5: _make_skip_record DRY 化
+                _skip_record = self._make_skip_record(
                     side=next_side,
-                    order_price=0.0,
+                    cancel_reason=CR.BALANCE_FORCED_SKIP,
                     order_quantity=self._current_lot,
-                    cancelled=True,
-                    cancel_reason="balance_forced_skip",
-                    run_id=self._run_id,
-                    git_sha=self._git_sha,
                     balance_forced_switch=True,
                 )
                 batch.append(_skip_record)
@@ -1451,16 +1477,11 @@ class FillTestRunner:
                     f"[133# P0-09] Skipping buy — unknown regime "
                     f"(avg -1.384bps loss)"
                 )
-                _skip_record = FillRecord(
-                    cycle_id=f"{int(time.time())}_{uuid.uuid4().hex[:8]}",
-                    timestamp=time.time(),
+                # 145# §9-#5: _make_skip_record DRY 化
+                _skip_record = self._make_skip_record(
                     side="buy",
-                    order_price=0.0,
+                    cancel_reason=CR.UNKNOWN_REGIME_BUY_SKIP,
                     order_quantity=self._current_lot,
-                    cancelled=True,
-                    cancel_reason="unknown_regime_buy_skip",
-                    run_id=self._run_id,
-                    git_sha=self._git_sha,
                     regime="unknown",
                 )
                 batch.append(_skip_record)
@@ -1479,16 +1500,11 @@ class FillTestRunner:
                     f"[133# P0-10] Skipping sell — rolling PnL below "
                     f"{self.config.sell_dynamic_kill_threshold_bps}bps"
                 )
-                _skip_record = FillRecord(
-                    cycle_id=f"{int(time.time())}_{uuid.uuid4().hex[:8]}",
-                    timestamp=time.time(),
+                # 145# §9-#5: _make_skip_record DRY 化
+                _skip_record = self._make_skip_record(
                     side="sell",
-                    order_price=0.0,
+                    cancel_reason=CR.SELL_DYNAMIC_KILL,
                     order_quantity=self._current_lot,
-                    cancelled=True,
-                    cancel_reason="sell_dynamic_kill",
-                    run_id=self._run_id,
-                    git_sha=self._git_sha,
                 )
                 batch.append(_skip_record)
                 total_count += 1
