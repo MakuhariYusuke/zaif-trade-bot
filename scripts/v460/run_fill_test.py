@@ -272,6 +272,34 @@ class FillTestRunner:
             "regime_raw_history": st["raw_history"],
         }
 
+    def _regime_adjusted_lot(self) -> float:
+        """143# R-1b: レジーム別ロット倍率を適用した注文ロットを返す.
+
+        regime_lot_multipliers が空の場合は _current_lot をそのまま返す.
+        倍率適用後も min_lot (Coincheck BTC: 0.001) 以上を保証.
+        """
+        base_lot = self._current_lot
+        multipliers = self.config.regime_lot_multipliers
+        if not multipliers or self._regime_detector is None:
+            return base_lot
+        regime = self._regime_detector.current_regime
+        if regime is None:
+            return base_lot
+        regime_name = regime.value
+        mult = multipliers.get(regime_name)
+        if mult is None or mult == 1.0:
+            return base_lot
+        # 倍率適用 + 安全クランプ
+        min_lot = 0.001  # Coincheck BTC 最小
+        adjusted = max(base_lot * mult, min_lot)
+        adjusted = min(adjusted, self.config.max_lot) if self.config.max_lot > 0 else adjusted
+        if adjusted != base_lot:
+            logger.debug(
+                f"[regime_lot] {regime_name} → lot adjusted: "
+                f"{base_lot:.4f} × {mult:.2f} = {adjusted:.4f}"
+            )
+        return adjusted
+
     # 121# _last_side プロパティ: SideSelector に委譲 (後方互換)
     @property
     def _last_side(self) -> str | None:
@@ -773,6 +801,9 @@ class FillTestRunner:
         # 105#: lot floor guard — 121# BalanceChecker に委譲
         self._balance_checker.apply_lot_floor()
 
+        # 143# R-1b: レジーム別ロット倍率を適用
+        _order_lot = self._regime_adjusted_lot()
+
         for attempt in range(1 + self.config.max_order_retries):
             try:
                 # 130# E1: postonly 二重確認 — 発注直前に mid price を再取得し
@@ -804,14 +835,14 @@ class FillTestRunner:
                 order = await self.adapter.place_order(
                     symbol=self.config.symbol,
                     side=side,
-                    quantity=self._current_lot,
+                    quantity=_order_lot,
                     price=order_price,
                     order_type="limit",
                 )
                 self._pending_order_id = order.order_id
                 logger.info(
                     f"Placed {side} limit @ {order_price:.0f} JPY, "
-                    f"qty={self._current_lot}, id={order.order_id}"
+                    f"qty={_order_lot}, id={order.order_id}"
                     + (f" (retry {attempt})" if attempt > 0 else "")
                 )
                 break
@@ -874,7 +905,7 @@ class FillTestRunner:
                 timestamp=t_submit,
                 side=side,
                 order_price=order_price,
-                order_quantity=self._current_lot,
+                order_quantity=_order_lot,
                 cancelled=True,
                 cancel_reason=cancel_reason,
                 error_message=last_error,  # 031# エラー詳細を記録
@@ -934,7 +965,7 @@ class FillTestRunner:
             timestamp=t_submit,
             side=side,
             order_price=order_price,
-            order_quantity=self._current_lot,
+            order_quantity=_order_lot,
             fill_price=fill_price,
             filled=filled,
             cancelled=not filled,
@@ -1339,8 +1370,9 @@ class FillTestRunner:
                             f"→ {pause_sec:.0f}s 待機後に再開"
                         )
                         # 140# §8.1-#1: batch.append 導線に統一 (undefined _append_fill_record 修正)
+                        # 143# 140§7 #2: cycle_id に timestamp 付与で一意化
                         batch.append(FillRecord(
-                            cycle_id=f"preflight_pause_{self._preflight_pause_count}",
+                            cycle_id=f"preflight_pause_{self._preflight_pause_count}_{int(time.time())}",
                             timestamp=time.time(),
                             side="none",
                             order_price=0.0,

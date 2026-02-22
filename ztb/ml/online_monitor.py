@@ -122,8 +122,20 @@ class OnlineMonitor:
         if records is None or len(records) == 0:
             return result
 
+        # 143# A.1 #3: 評価対象レコードのみにフィルタ (unfilled 監査レコードを除外)
+        # skip_gate_skipped=True (skip 判定) または filled=True (約定済み) のみ
+        skip_col = "skip_gate_skipped"
+        if skip_col in records.columns:
+            skip_mask = records[skip_col].fillna(False).astype(bool)
+            filled_mask = records.get(
+                "filled", pd.Series(True, index=records.index)
+            ).fillna(False).astype(bool)
+            evaluable = records[skip_mask | filled_mask]
+        else:
+            evaluable = records
+
         # 直近 window 件に絞り込み
-        recent = records.tail(cfg.window).copy()
+        recent = evaluable.tail(cfg.window).copy()
         result.n_total = len(recent)
 
         if result.n_total < cfg.min_samples:

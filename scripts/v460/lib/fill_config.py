@@ -64,6 +64,9 @@ class FillTestConfig:
     max_lot: float = 0.005
     lot_adapt_interval_cycles: int = 50
     recent_pnl_window: int = 50  # 方策 B 直近 PnL 計算ウィンドウ
+    # 143# R-1b: レジーム別ロット倍率 (regime_name -> multiplier)
+    # high_vol: 0.7 (リスク縮小), trending: 1.2 (トレンド追従), ranging: 1.0 (デフォルト)
+    regime_lot_multipliers: dict[str, float] = field(default_factory=dict)
     # レジーム検知 (035# §4)
     enable_regime: bool = True
     regime_window: int = 20
@@ -73,6 +76,9 @@ class FillTestConfig:
     regime_min_confidence: float = 0.3  # 052# 0.4→0.3
     # 052#: トレンディング時のオフセットブースト (PnL -1.2bps)
     regime_trending_offset_boost: float = 1.5  # トレンディング検出時に offset × 1.5
+    # 143# R-1a: レジーム別 offset 調整
+    regime_high_vol_offset_boost: float = 1.2   # high_vol 時に offset × 1.2 (+20% 拡張)
+    regime_ranging_offset_discount: float = 1.0 # ranging 時に offset × N (1.0=無効, <1.0で縮小)
     # 041# 時間帯フィルター (AS 高リスク時間帯のスキップ)
     enable_time_filter: bool = False
     skip_utc_hours: list[int] | None = None
@@ -329,10 +335,17 @@ class FillTestConfig:
             "hysteresis_count": "regime_hysteresis_count",
             "min_confidence": "regime_min_confidence",
             "trending_offset_boost": "regime_trending_offset_boost",
+            "high_vol_offset_boost": "regime_high_vol_offset_boost",       # 143# R-1a
+            "ranging_offset_discount": "regime_ranging_offset_discount",   # 143# R-1a
         }
         for yaml_key, config_key in regime_map.items():
             if yaml_key in regime:
                 kwargs[config_key] = regime[yaml_key]
+        # 143# R-1b: レジーム別 lot 倍率
+        if "lot_multipliers" in regime and isinstance(regime["lot_multipliers"], dict):
+            kwargs["regime_lot_multipliers"] = {
+                str(k): float(v) for k, v in regime["lot_multipliers"].items()
+            }
 
         # safety セクション → 損失キャップ
         safety = yaml_cfg.get("safety", {})

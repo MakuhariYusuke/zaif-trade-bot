@@ -8,7 +8,7 @@
 | 対象 | 134# Phase E 残 P1 タスク (P1-01/02, P1-04, P1-12) |
 | 作成日 | 2026-02-23 |
 | 前提 | Git `83962ec88` (140# commit), テスト 1171 baseline |
-| 結論 | **P1-01/02 (buy/sell 分離モデル) + P1-04 (regime 別閾値) + P1-12 (online monitor) を実装。134# Phase E P1 群を全完了。テスト 1171→1213 (+42)。** |
+| 結論 | **P1-01/02 (buy/sell 分離モデル) + P1-04 (regime 別閾値) + P1-12 (online monitor) を実装。134# Phase E P1 群を全完了。テスト 1171→1218 (+47, 142# 修正含む)。** |
 
 ---
 
@@ -261,6 +261,35 @@ retrain:
 2. **regime_thresholds は adaptive_threshold との共存** — regime で base を決定後、adaptive がさらに動的調整。
 3. **online_monitor は non-fatal** — load_fill_records 失敗やモジュールエラーでも retrain は中断しない。
 4. **warm_start は side 別モデルで無効** — unified モデルの Booster は feature 空間が異なる可能性があるため。
+
+---
+
+## Appendix A 実装レビュー追記 (2026-02-22)
+
+### A.1 重大度付きレビュー結果
+
+| # | 重大度 | 対象 | 指摘 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | HIGH | `scripts/v460/lib/skip_gate_evaluator.py` | side モデル hot-reload が unified モデル更新に従属している。`_check_and_reload_model()` は unified hash 不変時に early return し、その下の `_check_and_reload_side_models()` に到達しないため、`buy/sell` モデル単独更新を検知できない。 | `_check_and_reload_side_models()` を interval ごとに独立実行する（unified hash 判定の前段へ移動）。 |
+| 2 | MEDIUM | `scripts/v460/lib/skip_gate_evaluator.py` | unified モデルが見つからないと `__init__` で return するため、side モデルのみ存在していても SkipGate 全体が無効化される。 | unified 非在時でも side モデル読込を試行し、side-only モードを許可するか、仕様として「unified 必須」を明文化する。 |
+| 3 | MEDIUM | `ztb/ml/online_monitor.py`, `scripts/v460/ml/retrain_scheduler.py` | 「直近 N fill 評価」を掲げる一方、実装は `records.tail(window)` で全レコード窓を切っており、未約定/監査レコードを含む。`n_total` と監視意味が乖離し得る。 | 先に `filled==True` で絞り、`tail(window)` を適用する。必要なら `window_mode=records|fills` を設定化。 |
+| 4 | LOW | `docs/v460/141_ph2_impl_side_separation_regime_monitor.md` | 本文の「42 テスト」記載と現行実装（`test_141_side_specific_models.py` は 47 テスト）が不一致。 | ドキュメントを実測値に更新し、増減理由（追加回帰テスト）を明記する。 |
+
+### A.2 132/133/134 との整合性
+
+| 起点 | 論点 | 判定 | コメント |
+|---|---|---|---|
+| 132# F2 | retrain 停滞 | ✅ | run_id 比較導入で改善方向は妥当。 |
+| 132# F4 | skip 可観測性 | ⚠️ | 記録量は増えたが、clean/quarantine 境界との整合は追加設計が必要。 |
+| 133# P1-01/02 | side 分離 + target 二層化 | ✅ | 実装済み。ただし運用側 hot-reload 導線に #1 の課題が残る。 |
+| 134# Phase C | 24h 再計測 | ⬜ | 実装準備は進んだが、まだ運用検証フェーズ。 |
+
+### A.3 範囲外を含む改善提案
+
+1. side モデルの「昇格条件」を追加（例: 直近Nで unified より優位な場合のみ side モデルを有効化）。  
+2. `online_monitor` 結果を JSONL へ永続化し、`run_id` 単位で時系列比較できるようにする。  
+3. `skip_gate.regime_thresholds` は typo を warning ではなく fail-fast オプション化し、設定事故を抑止する。  
+4. side モデルごとに `source_run_id` と学習サンプル統計を運用ログへ定期出力し、劣化要因の切り分けを容易にする。  
 
 ---
 

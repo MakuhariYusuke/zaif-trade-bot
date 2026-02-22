@@ -65,8 +65,11 @@ class SkipGateEvaluator:
             if not gate_path.exists():
                 logger.warning(
                     f"[skip_gate] Model not found: {gate_path}. "
-                    f"SkipGate disabled."
+                    f"SkipGate disabled (unified). Trying side models..."
                 )
+                # 143# A.1 #2: unified 不在でも side モデルのロードを試行
+                self._load_side_models(SkipGate)
+                self._last_reload_check = time.monotonic()
                 return
 
             self._gate_path = gate_path
@@ -239,6 +242,9 @@ class SkipGateEvaluator:
             return
         self._last_reload_check = now
 
+        # 143# A.1 #1: side 別モデルは unified 更新とは独立にチェック
+        self._check_and_reload_side_models()
+
         if self._gate_path is None or not self._gate_path.exists():
             return
 
@@ -276,8 +282,7 @@ class SkipGateEvaluator:
                 f"Keeping previous model."
             )
 
-        # 141# P1-01: side 別モデルの hot-reload チェック
-        self._check_and_reload_side_models()
+        # 143# A.1 #1: (moved to top of _check_and_reload_model)
 
     def _check_and_reload_side_models(self) -> None:
         """141# side 別モデルの変更検出 + リロード."""
@@ -375,7 +380,8 @@ class SkipGateEvaluator:
             maker_price_vpin_setter: callable(vpin) — MakerPriceCalculator._last_vpin を設定
         """
         result = SkipGateResult()
-        if self._skip_gate is None:
+        # 143# A.1 #2: unified 不在でも side モデルが使える場合は続行
+        if self._skip_gate is None and getattr(self, "_gate_buy", None) is None and getattr(self, "_gate_sell", None) is None:
             return result
 
         # 126# hot-reload: モデルファイル変更を検出してリロード

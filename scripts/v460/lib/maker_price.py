@@ -287,6 +287,42 @@ class MakerPriceCalculator:
                 f"→ {effective_offset_ratio:.4f}"
             )
 
+        # 143# R-1a: high_vol 時にオフセットをブースト (AS リスク上昇に対応)
+        if (
+            self._regime_detector is not None
+            and hasattr(self._regime_detector, "current_regime")
+            and self._regime_detector.current_regime.value == "high_vol"
+            and cfg.regime_high_vol_offset_boost > 1.0
+        ):
+            pre_offset = effective_offset_ratio
+            effective_offset_ratio = min(
+                effective_offset_ratio * cfg.regime_high_vol_offset_boost,
+                cfg.max_offset_ratio,
+            )
+            logger.debug(
+                f"[regime] high_vol → offset boosted: "
+                f"{pre_offset:.4f} → {effective_offset_ratio:.4f} "
+                f"(boost={cfg.regime_high_vol_offset_boost:.2f})"
+            )
+
+        # 143# R-1a: ranging 時にオフセットを縮小 (安定市場で利幅確保)
+        if (
+            self._regime_detector is not None
+            and hasattr(self._regime_detector, "current_regime")
+            and self._regime_detector.current_regime.value == "ranging"
+            and cfg.regime_ranging_offset_discount < 1.0
+        ):
+            pre_offset = effective_offset_ratio
+            effective_offset_ratio = max(
+                effective_offset_ratio * cfg.regime_ranging_offset_discount,
+                cfg.min_offset_ratio,
+            )
+            logger.debug(
+                f"[regime] ranging → offset discounted: "
+                f"{pre_offset:.4f} → {effective_offset_ratio:.4f} "
+                f"(discount={cfg.regime_ranging_offset_discount:.2f})"
+            )
+
         # 130# unknown regime buy guard: offset boost で AS 回避
         if (
             cfg.unknown_buy_offset_boost > 1.0

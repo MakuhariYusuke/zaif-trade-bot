@@ -900,11 +900,18 @@ def _quarantine_reason(r: FillRecord) -> str | None:
     if not (r.run_id and r.run_id.strip()):
         return "blank_run_id"
     if r.side not in ("buy", "sell"):
+        # 143# 140§7 #1: cancel_reason 付き監査レコード (preflight_pause 等) は
+        # side="none" でも quarantine しない — 可観測性維持
+        if getattr(r, "cancel_reason", None):
+            return None  # 監査レコードは clean 扱い
         return f"invalid_side={r.side}"
     if not r.order_price or r.order_price <= 0:
-        return "invalid_order_price"
+        # 143# 140§7 #1: cancel_reason 付きレコードは order_price=0 を許容
+        if not getattr(r, "cancel_reason", None):
+            return "invalid_order_price"
     if not r.order_quantity or r.order_quantity <= 0:
-        return "invalid_order_quantity"
+        if not getattr(r, "cancel_reason", None):
+            return "invalid_order_quantity"
     return None
 
 

@@ -93,3 +93,21 @@ self._append_fill_record 呼び出し → ソース内に存在しない ✅
 ## §6 次ステップ
 
 → **141# へ**: P1-01/02 (side 別モデル分離) + P1-04 (regime 別閾値) + P1-12 (online monitor) を実装
+
+---
+
+## §7 実装レビュー追記 (2026-02-22)
+
+### §7.1 重大度付きレビュー結果
+
+| # | 重大度 | 対象 | 指摘 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | MEDIUM | `scripts/v460/run_fill_test.py`, `ztb/metrics/fill_quality.py` | 140# で追加した skip FillRecord (`time_filter_*`, `preflight_*`) は `order_price=0` / `order_quantity=0`（`preflight_pause` は `side=\"none\"`）のため、`filter_clean_records()` で quarantine される。結果として Gate 集計上の可観測性には未反映。 | 非発注イベント用のレコード種別を分離するか、`cancel_reason` が監査系の場合は clean 判定ルールを拡張して別集計に載せる。 |
+| 2 | LOW | `scripts/v460/run_fill_test.py` | `preflight_pause` の `cycle_id` が `preflight_pause_{count}` 固定で run 内再利用される。長期解析で ID 一意性を前提にすると衝突し得る。 | `uuid` を suffix 付与して一意化する。 |
+| 3 | LOW | `docs/v460/140_ph2_fix_critical_fillrecord.md` | テスト件数の記述は 140# 時点としては妥当だが、現時点の実測は `tests/unit/v460 = 1218 passed` まで進んでおり、参照時に誤解を生みやすい。 | 「140# 時点値」を明示し、最新値は別章で追記する。 |
+
+### §7.2 範囲外を含む改善提案
+
+1. `FillRecord` とは別に `RunEventRecord`（time_filter/preflight/pause など）を新設し、発注イベントと監査イベントを分離する。  
+2. `gate_judgment` 側で `run_event` 集計を併記し、`latest-run` 判定時に「未発注による見かけ改善/悪化」を分離表示する。  
+3. `cancel_reason` を enum 化し、分析スクリプト側の表記ゆれ再発を防止する。  
