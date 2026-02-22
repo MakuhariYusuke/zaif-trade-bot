@@ -672,3 +672,28 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
     - 結果: `2 passed`（warning 1）
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/reward/test_reward_optimization.py`
     - 結果: `5 passed`（warning 1）
+
+## Phase 20 追補: 大規模Git整理（履歴可読性 + EOL再発防止） (2026-02-22)
+
+### 1) コミット整理（用途別分離）
+
+- 大量差分（`1099 files`）を以下 2 つへ分離コミットして履歴の追跡性を改善:
+  - `40eacd2f3`: docs/analysis artifact バッチ
+  - `b060005ba`: source/tests/config バッチ
+
+### 2) blame ノイズ低減
+
+- `.git-blame-ignore-revs` を追加し、
+  大規模 snapshot commit（`40eacd2f3`, `b060005ba`）を blame 対象から除外可能化。
+
+### 3) EOL/改行の再発防止
+
+- `.gitattributes` に LF 強制ルールを追記:
+  - `*.py`, `*.pyi`, `*.md`, `*.rst`, `*.yaml`, `*.yml`, `*.toml`, `*.sh`, `docs/**/*.md`
+- 目的: Windows 環境での CRLF 混入による「全体差分化」再発の抑止。
+
+### 4) リポジトリ保守
+
+- `git gc --prune=now` 実行で pack サイズを圧縮:
+  - `size-pack: 241.47 MiB -> 47.18 MiB`
+- `git fsck --full` 実行（dangling object はあるが破損なし）。

@@ -64,3 +64,14 @@ docs/**/*.md !filter !diff !merge text
 # Source files should never be LFS-managed.
 *.py !filter !diff !merge text
 *.pyi !filter !diff !merge text
+
+# Enforce LF for source/docs to prevent cross-platform CRLF churn.
+*.py !filter !diff !merge text eol=lf
+*.pyi !filter !diff !merge text eol=lf
+*.md !filter !diff !merge text eol=lf
+*.rst !filter !diff !merge text eol=lf
+*.yaml !filter !diff !merge text eol=lf
+*.yml !filter !diff !merge text eol=lf
+*.toml !filter !diff !merge text eol=lf
+*.sh !filter !diff !merge text eol=lf
+docs/**/*.md !filter !diff !merge text eol=lf
