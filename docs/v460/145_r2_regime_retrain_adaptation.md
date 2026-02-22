@@ -421,3 +421,45 @@ run_continuous:
 
 §11.1 の #1 (empty sample crash), #2 (lookback=0), #3 (busy-loop interval) は
 本バッチのスコープ外。次回 §13 で対応予定。
+
+---
+
+## §13 144# §10 / 145# §11 残項目修正
+
+§12.5 で保留した境界値ガード + 144# §10 の追加指摘を修正。
+
+### §13.1 修正一覧
+
+| 指摘元 | 修正内容 | 変更ファイル | 影響度 |
+|---|---|---|---|
+| §11-#1 HIGH | **empty valid_index crash guard**: `_compute_regime_sample_weights()` 先頭で `len(valid_index)==0` 判定 → 早期 return (空 ndarray + uniform メタ)。`np.min/np.max` の `ValueError` を回避 | `retrain_scheduler.py` | HIGH |
+| §11-#2 MEDIUM | **lookback=0 IndexError guard**: `_compute_regime_sample_weights()` + `retrain_model()` 内で `max(1, safe_to_int(...))` を適用。`value_counts().index[0]` の `IndexError` を防止。空 Series の場合も `"unknown"` フォールバック追加 | `retrain_scheduler.py` | MEDIUM |
+| §11-#3 MEDIUM | **busy-loop interval guard**: `get_effective_interval()` で `max(1, int(base * max(regime_mul, 0.0)))` を適用。`RetrainTriggerConfig.__post_init__` で `regime_interval_multipliers > 0` + `base_interval_sec >= 1` をバリデーション | `retrain_trigger.py` | MEDIUM |
+| §10.2-#2 / §11-#7 | **bitflyer duplicate docstring**: `_make_request()` の 3 重 docstring を 1 つに整理 | `bitflyer/adapter.py` | LOW |
+| §10.1-#1 / §11-#6 | **CoincheckAdapter 継承**: 現状 `IBroker` 直実装。段階的移行は §14 以降。テストで継承構造の差異を記録 | (doc-only + test) | LOW (planned) |
+
+### §13.2 見送り事項 (§14+ スコープ)
+
+| 指摘元 | 内容 | 理由 |
+|---|---|---|
+| §10.1-#1 | CoincheckAdapter → BaseExchangeAdapter 継承移行 | 853 行クラスの大規模リファクタ。段階的移行タスクとして計画。本番影響リスク大 |
+| §10.1-#2 | FillTestRunner 分割 (AbstractCycleRunner) | 2k 行超の設計変更。R-2 完了後の構造整備フェーズで対応 |
+| §10.1-#3 | MarketDataAccessorBase 導入 | ob_utils.py で部分的に対応済み。追加抽象化は次期アーキテクチャ整備 |
+| §11-#5 | doc テスト件数更新 | 本セクションで記載 |
+
+### §13.3 新規テストファイル
+
+`tests/unit/v460/test_145_s13_boundary_guards.py` — 18 tests
+
+| テストクラス | テスト数 | 検証内容 |
+|---|---|---|
+| `TestEmptyValidIndexNocrash` | 3 | 空 index / numpy エラーなし / 1 件 index |
+| `TestLookbackZeroGuard` | 4 | lookback=0 / IndexError 回避 / 負値クランプ / ソース検証 |
+| `TestBusyLoopIntervalGuard` | 7 | small base / tiny mul / 正常値 / config reject 0/負値/base=0 / ソース検証 |
+| `TestBitflyerDocstringCleanup` | 1 | 重複 docstring 不在確認 |
+| `TestCoincheckAdapterInheritance` | 3 | IBroker 実装 / BaseExchangeAdapter 継承 / 共通メソッド |
+
+### §13.4 テスト結果
+
+- 新規: 18 passed
+- 全体: **1357 passed** (全緑)

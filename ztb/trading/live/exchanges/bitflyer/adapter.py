@@ -135,20 +135,6 @@ class BitFlyerAdapter(BaseExchangeAdapter):
         Raises:
             Exception: For API errors
         """
-        """Make authenticated API request to bitFlyer.
-
-        Args:
-            method: HTTP method
-            path: API endpoint path
-            data: Request data for POST requests
-
-        Returns:
-            API response
-
-        Raises:
-            Exception: For API errors
-        """
-        """Make authenticated API request to bitFlyer."""
         url = self.BASE_URL + path
         body = json.dumps(data) if data else ""
 

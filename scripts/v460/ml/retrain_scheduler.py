@@ -878,8 +878,17 @@ def _compute_regime_sample_weights(
     regime_weights_raw = ensure_dict(cfg.get("regime_sample_weights"))
     regime_weights_map = {str(k): safe_to_float(v, 1.0) for k, v in regime_weights_raw.items()}
     current_boost = safe_to_float(cfg.get("regime_current_boost", 1.5), 1.5)
-    lookback = safe_to_int(cfg.get("regime_current_lookback", 10), 10)
+    # §11-#2: lookback=0 ガード
+    lookback = max(1, safe_to_int(cfg.get("regime_current_lookback", 10), 10))
     weight_floor = safe_to_float(cfg.get("regime_weight_floor", 0.1), 0.1)
+
+    # §11-#1: empty valid_index ガード — 空配列の np.min/np.max で ValueError を回避
+    if len(valid_index) == 0:
+        logger.info("R-2a: empty valid_index, returning uniform weights")
+        return np.ones(0, dtype=np.float64), {
+            "regime_weighting": "uniform",
+            "reason": "empty_valid_index",
+        }
 
     # regime 列がなければ均一重み
     if "regime" not in enriched.columns:
@@ -1111,15 +1120,22 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
 
     # 145# R-2b: 現在レジーム検出 (R-2a weighting の有無に関わらず常に実行)
     # 直近 N 件の多数決で推定し、result に記録 → run_scheduler で trigger に伝搬
-    _regime_lookback = safe_to_int(cfg.get("regime_current_lookback", 10), 10)
+    # §11-#2: lookback=0 ガード (max(1,...) で IndexError 回避)
+    _regime_lookback = max(1, safe_to_int(cfg.get("regime_current_lookback", 10), 10))
     if "regime" in enriched.columns and len(X_valid) >= _regime_lookback:
         _recent_regimes = enriched.loc[X_valid.index, "regime"].fillna("unknown").iloc[-_regime_lookback:]
         _regime_counts = _recent_regimes.value_counts()
-        result["current_regime"] = str(_regime_counts.index[0])
+        if len(_regime_counts) > 0:
+            result["current_regime"] = str(_regime_counts.index[0])
+        else:
+            result["current_regime"] = "unknown"
     elif "regime" in enriched.columns and len(X_valid) > 0:
         _all_regimes = enriched.loc[X_valid.index, "regime"].fillna("unknown")
         _regime_counts = _all_regimes.value_counts()
-        result["current_regime"] = str(_regime_counts.index[0])
+        if len(_regime_counts) > 0:
+            result["current_regime"] = str(_regime_counts.index[0])
+        else:
+            result["current_regime"] = "unknown"
     else:
         result["current_regime"] = "unknown"
 

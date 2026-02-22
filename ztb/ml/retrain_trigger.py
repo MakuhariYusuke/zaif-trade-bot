@@ -58,6 +58,18 @@ class RetrainTriggerConfig:
         "unknown": 1.0,
     })
 
+    def __post_init__(self) -> None:
+        """§11-#3: regime_interval_multipliers の値域バリデーション."""
+        for regime, mul in self.regime_interval_multipliers.items():
+            if mul <= 0:
+                raise ValueError(
+                    f"regime_interval_multipliers[{regime!r}] must be > 0, got {mul}"
+                )
+        if self.base_interval_sec < 1:
+            raise ValueError(
+                f"base_interval_sec must be >= 1, got {self.base_interval_sec}"
+            )
+
 
 @dataclass
 class RetrainTrigger:
@@ -184,6 +196,7 @@ class RetrainTrigger:
         skips=0 → base, skips=1 → base*mul, skips=2 → base*mul^2, ...
         最大 backoff_max_interval_sec で打ち止め。
         145# R-2b: レジーム別 interval 倍率を追加適用。
+        §11-#3: 最低 1 秒を保証し busy-loop を防止。
         """
         if self._consecutive_skips == 0 or self.config.backoff_multiplier <= 1.0:
             base = self.config.base_interval_sec
@@ -195,7 +208,8 @@ class RetrainTrigger:
         regime_mul = self.config.regime_interval_multipliers.get(
             self._current_regime, 1.0,
         )
-        interval = int(base * regime_mul)
+        # §11-#3: max(1,...) で 0 秒 interval (busy-loop) を防止
+        interval = max(1, int(base * max(regime_mul, 0.0)))
         return min(interval, self.config.backoff_max_interval_sec)
 
     @property
