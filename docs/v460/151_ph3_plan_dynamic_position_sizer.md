@@ -1,8 +1,8 @@
 # 151# P3-03 設計: dynamic_position_sizer (AS 確率連動ロットサイジング)
 
 **日時**: 2026-02-23  
-**種別**: design (設計)  
-**Phase**: P3 (効率改善)  
+**種別**: plan (設計)  
+**Phase**: ph3 (効率改善)  
 **前提**: 149# §2 P3-03, 143# R-1b (regime_lot), 084# P(AS) 可観測性
 
 ---
@@ -468,3 +468,54 @@ scripts/v460/ml/skip_gate.py:
 configs/v460/fill_test.yaml:
   L56-70: lot_sizing セクション — confidence_lot 追加先
 ```
+
+---
+
+## §10 Codex レビュー追記 (実装突合)
+
+### 10.1 総評
+
+案 A (線形スケーリング) は Phase C の第一歩として妥当です。  
+ただし現状コード/設定に照らすと、**このまま実装しても効果がほぼ出ない可能性**と、  
+**前提を崩す設定ミスで逆にリスクが増える可能性**があるため、先に設計ガードを入れるべきです。
+
+### 10.2 指摘一覧 (重大度順)
+
+| # | 重大度 | 指摘 | 根拠 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | HIGH | **現行設定だと confidence_lot が実質 no-op になりやすい** | `configs/v460/fill_test.yaml:12` で `order_quantity=0.001`、`scripts/v460/lib/fill_config.py:245` で `min_order_btc=0.001`。設計の `max(min_order_btc, lot)` クランプにより縮小が吸収される。`lot_sizing.enabled=false` (`configs/v460/fill_test.yaml:57`) も重なり、base が最小ロットに張り付きやすい。 | 151実装前に「effectivity check」を追加。`regime_lot * factor >= min_order_btc` を満たすサイクル比率を先に試算し、閾値未満なら `confidence_lot` ではなく「skip 強化/時間間引き」へ切替。 |
+| 2 | HIGH | **「confidence_lot は縮小専用」の不変条件が未固定** | §4.5 は「縮小方向のみ」を safety 前提にしているが、設計案の新規パラメータ (`floor` 等) には値域バリデーション方針が未定義。`floor>1` などで拡大が入り得る。 | `FillTestConfig.__post_init__` に境界チェックを追加: `0<=floor<=1`, `scale>=0`, `mode in {as,pnl}`, `pnl_max>0`。さらに `_confidence_lot_factor()` 最終行で `factor=min(1.0,max(0.0,factor))` を強制。 |
+| 3 | HIGH | **`skip_gate_score` を `pred_pnl` とみなす設計はモード依存で危険** | `scripts/v460/lib/skip_gate_evaluator.py:573` で `result.score=predicted_pnl_bps`。一方 `scripts/v460/ml/skip_gate.py:262` では `mode="as"` 時に `pred_pnl=-pred_prob*10` (疑似値)。`as_prob` は別フィールド (`scripts/v460/lib/skip_gate_evaluator.py:582`)。 | `confidence_lot_mode="pnl"` を使う場合は `skip_gate_mode="pnl"` を必須化。もしくは `SkipGateResult` を `pred_pnl_bps` と `as_prob` に明示分離し、`score` を confidence 算出で参照しない。 |
+| 4 | MEDIUM | **ロット算出が二重経路で乖離しやすい** | `scripts/v460/run_fill_test.py:953` (SkipGate 用) と `scripts/v460/run_fill_test.py:975` (発注用) で `self._regime_adjusted_lot()` を別々に呼ぶ構造。間に `apply_lot_floor()` (`scripts/v460/run_fill_test.py:971`) もあり、監査値と実発注値のズレ余地がある。 | `regime_lot_for_cycle` を 1回だけ計算し、SkipGate/発注/記録へ共通引き回し。`_effective_order_lot()` は `regime_lot` 引数を受ける形にして再計算を禁止。 |
+| 5 | MEDIUM | **dust_sweep と競合する可能性** | `scripts/v460/lib/balance_checker.py:202-223` の dust sweep は「全量売却で端数掃除」が目的。confidence_lot が sell ロットを縮小すると端数解消が失敗する恐れ。 | `dust_sweep_active=True` のサイクルは `confidence_factor=1.0` 固定。最低でも Phase 1 は confidence_lot を buy 限定で開始。 |
+| 6 | MEDIUM | **`pnl_zero_factor` の仕様と式が未整合** | §3.2/§3.3 で `confidence_lot_pnl_zero` (`pnl_zero_factor`) を定義しているが、§3.4 の `mode=pnl` 式では未使用。 | 仕様を一本化。例: `pred<=0 -> pnl_zero_factor`, `0<pred<pnl_max -> 線形補間`, `pred>=pnl_max ->1.0`。未使用ならパラメータ削除。 |
+| 7 | LOW | **可観測性が不足し、後で因果分解しづらい** | §3.7 は `confidence_lot_factor` のみ追加。現状 FillRecord は lot 内訳を持たない。 | `FillRecord` に `order_lot_regime`, `order_lot_effective`, `confidence_lot_mode` を追加し、分析で「どこで縮小されたか」を追跡可能にする。 |
+
+### 10.3 §9 質問への回答
+
+- **9.1 案 A は妥当か**: 妥当。ただし上記 #1〜#3 を満たさない限り、効果検証が歪む。  
+- **9.1 `floor=0.3` は妥当か**: 現状ロット条件では下限クランプで効きにくいため、`0.3` の良し悪し以前に有効サンプル率を先に確認すべき。  
+- **9.1 校正不十分時のフォールバック**: `as_prob` の reliability が悪い期間は `confidence_factor=1.0` に自動退避 (Kill/Warning 条件を設定)。  
+- **9.2 因果逆転回避設計**: 方向性は正しい。skip 判定と lot 調整を分ける設計は維持すべき。  
+- **9.2 `_effective_order_lot()` の配置**: `run_fill_test.py` が既に肥大化しているため、`scripts/v460/lib/lot_sizer.py` への抽出を推奨。  
+- **9.2 144# CRITICAL 相互作用**: 「縮小専用」不変条件が守られるなら安全側。守れないと preflight 不整合が再燃する。  
+
+### 10.4 実装着手前の最小チェックリスト
+
+1. `confidence_lot` 設定バリデーションを先に追加 (値域 + mode 整合)。  
+2. `skip_gate_mode` と `confidence_lot_mode` の組合せ制約を明文化。  
+3. 直近ログで `order_quantity==min_order_btc` の比率を算出し、no-op リスクを定量確認。  
+4. dust_sweep との優先順位 (sweep 優先) を仕様に固定。  
+5. lot 決定値を1経路化して FillRecord に内訳を保存。
+
+### 10.5 対応結果
+
+| # | 対応 |
+|---|------|
+| 1 | **受容**: 実装前に effectivity check (min_order_btc クランプ比率の試算) を必須化。§7.2 step 0 に追加。no-op 率 > 80% なら skip 強化に方針転換 |
+| 2 | **受容**: §3.2 FillTestConfig に `__post_init__` バリデーション追加。`_confidence_lot_factor()` 末尾で `min(1.0, max(0.0, factor))` 強制。仕様として「縮小専用 (factor ≤ 1.0)」を不変条件に固定 |
+| 3 | **受容**: §3.4/§3.6 を修正: confidence_lot は `sg.as_prob` のみ使用へ一本化。`sg.score` (疑似 PnL) は参照しない。`mode=pnl` は将来検討で削除ではなく凍結 (config 読み込みは残す) |
+| 4 | **受容**: §3.6 を修正: `regime_lot_for_cycle` を 1 回算出して SkipGate/発注/記録へ共通引き回し。`_effective_order_lot()` は `regime_lot` を引数で受ける |
+| 5 | **受容**: §3.6 に dust_sweep 優先ルール追加: `dust_sweep_active` サイクルは `confidence_factor=1.0` 固定 |
+| 6 | **受容**: `confidence_lot_pnl_zero` / `confidence_lot_pnl_max` パラメータを §3.2/§3.3 から削除。mode=pnl 凍結に伴い不要 |
+| 7 | **受容**: §3.7 FillRecord フィールドを拡充: `confidence_lot_factor` + `order_lot_regime` + `order_lot_effective` + `confidence_lot_mode` |

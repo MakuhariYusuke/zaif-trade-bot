@@ -1,7 +1,7 @@
 # 150# fill_test 自動再起動設計 (P2-B)
 
 **日時**: 2026-02-23  
-**種別**: design (設計)  
+**種別**: plan (設計)  
 **Phase**: ph2 (maker 執行可能性検証)  
 **前提**: 147# P2-B, 148# §4 #1/#2, 149# §8
 
@@ -325,7 +325,7 @@ ops/windows/trading_service.bat:
 
 | ファイル | 変更内容 |
 |----------|----------|
-| `docs/v460/150_ph2_design_fill_test_auto_restart.md` | NEW: 本ドキュメント |
+| `docs/v460/150_ph2_plan_fill_test_auto_restart.md` | NEW: 本ドキュメント |
 
 ---
 
@@ -337,10 +337,10 @@ ops/windows/trading_service.bat:
 |---|---|---|---|---|
 | 1 | **HIGH** | `ops/windows/fill_test_watchdog.ps1` 現行実装 | 設計で前提にしている `-AutoRestart / -MaxRestarts / -CooldownMinutes` が未実装。設計と実体のギャップがある。 | 実装前提を「設計段階」と明記し、最小実装（AutoRestart + restart event 記録）を先に切る。 |
 | 2 | **HIGH** | `ops/windows/fill_test_watchdog.ps1:72` | stale 判定閾値が `300` 秒ハードコード。`fill_test` 側設定と乖離しうる。 | watchdog が `configs/v460/fill_test.yaml` か lock metadata を読む形に統一。 |
-| 3 | **HIGH** | `docs/v460/150_ph2_design_fill_test_auto_restart.md:151-157` | 再起動コマンドが固定 `--hours/--config` で、起動時の `--exchange`/`--dry-run`/運用モード差分を引き継がない。 | 最後の start event から起動パラメータを復元するか、watchdog 側に明示設定を持つ。 |
-| 4 | **MEDIUM** | `docs/v460/150_ph2_design_fill_test_auto_restart.md:123-147` | crash loop 判定は `watchdog_restart` イベント依存だが、現行イベント流には同名イベントが存在しない。 | 先にイベント契約（schema）を定義し、`watchdog_alert` と `watchdog_restart` を厳密に分離。 |
-| 5 | **MEDIUM** | `docs/v460/150_ph2_design_fill_test_auto_restart.md:124-139` | lock 判定→再起動の間に並行実行が入る TOCTOU が残る。Task Scheduler 設定だけでは完全防止できない。 | watchdog 側にも `restart.lock`（短寿命）を導入し、再起動処理の排他を取る。 |
-| 6 | **LOW** | `docs/v460/150_ph2_design_fill_test_auto_restart.md:169-177` | `_cancel_stale_orders()` を主緩和策にしているが、取引所 API 異常時の未キャンセル残存ケースが明示されていない。 | 再起動直後 N サイクルは lot 縮小＋発注抑制のセーフモードを追加。 |
+| 3 | **HIGH** | `docs/v460/150_ph2_plan_fill_test_auto_restart.md:151-157` | 再起動コマンドが固定 `--hours/--config` で、起動時の `--exchange`/`--dry-run`/運用モード差分を引き継がない。 | 最後の start event から起動パラメータを復元するか、watchdog 側に明示設定を持つ。 |
+| 4 | **MEDIUM** | `docs/v460/150_ph2_plan_fill_test_auto_restart.md:123-147` | crash loop 判定は `watchdog_restart` イベント依存だが、現行イベント流には同名イベントが存在しない。 | 先にイベント契約（schema）を定義し、`watchdog_alert` と `watchdog_restart` を厳密に分離。 |
+| 5 | **MEDIUM** | `docs/v460/150_ph2_plan_fill_test_auto_restart.md:124-139` | lock 判定→再起動の間に並行実行が入る TOCTOU が残る。Task Scheduler 設定だけでは完全防止できない。 | watchdog 側にも `restart.lock`（短寿命）を導入し、再起動処理の排他を取る。 |
+| 6 | **LOW** | `docs/v460/150_ph2_plan_fill_test_auto_restart.md:169-177` | `_cancel_stale_orders()` を主緩和策にしているが、取引所 API 異常時の未キャンセル残存ケースが明示されていない。 | 再起動直後 N サイクルは lot 縮小＋発注抑制のセーフモードを追加。 |
 
 ### 9.2 総評
 

@@ -97,7 +97,7 @@
 | P1: trades stale | `run_fill_test.py:1219-1231` (`trades_health_alert` event) | `a02dd9337` | 140 passed |
 | P2: watchdog | `ops/windows/fill_test_watchdog.ps1` | `4b91e2f7f` | 手動確認済 |
 
-**次ステップ**: P2-B 自動再起動は [150#](150_ph2_design_fill_test_auto_restart.md) で設計完了。実装は Phase C 完了後。
+**次ステップ**: P2-B 自動再起動は [150#](150_ph2_plan_fill_test_auto_restart.md) で設計完了。実装は Phase C 完了後。
 
 ---
 
