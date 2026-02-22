@@ -18,19 +18,20 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Dict, List, Optional, Tuple, cast
 
 import psutil
 
 # 117# A-fix: Break circular import (utils → trading.environment → torch)
 BYTES_PER_MB = 1024 * 1024
-from ztb.types.common import ConfigDict
+from ztb.io.jsonl import append_jsonl
+from ztb.types.common import ConfigDict, ObjectMap
 from ztb.utils.config_helpers import get_string
 from ztb.utils.path_utils import ensure_dir
 
 # Type definitions for better type safety
 ExperimentConfig = ConfigDict
-ProcessInfo = Dict[str, Any]  # Process information dictionary
+ProcessInfo = ObjectMap  # Process information dictionary
 
 # Local imports
 sys.path.append(str(Path(__file__).parent.parent))
@@ -83,7 +84,7 @@ class ParallelExperimentRunner:
         self._gpu_cache_ttl: float = 5.0  # キャッシュ有効期間（秒）
 
         # Shared data cache
-        self.shared_data: Dict[str, Any] = {}
+        self.shared_data: ObjectMap = {}
         if config.shared_data_cache:
             self._load_shared_data()
 
@@ -157,7 +158,7 @@ class ParallelExperimentRunner:
 
             # Final summary
             success_count = sum(1 for r in results if r.status == "success")
-            summary: Dict[str, Any] = {
+            summary: ObjectMap = {
                 "total_experiments": len(results),
                 "successful": success_count,
                 "failed": len(results) - success_count,
@@ -208,7 +209,7 @@ class ParallelExperimentRunner:
             return []
 
         results = []
-        active_processes: Dict[int, Dict[str, Any]] = {}  # pid -> experiment_info
+        active_processes: dict[int, ObjectMap] = {}  # pid -> experiment_info
 
         with ProcessPoolExecutor(max_workers=self.config.max_workers) as executor:
             # Submit batch experiments
@@ -222,7 +223,7 @@ class ParallelExperimentRunner:
                     and model_type in self.config.priority_configs
                 ):
                     priority_level = self.config.priority_configs[model_type]
-                    cast(Dict[str, Any], config)["_priority_level"] = priority_level
+                    cast(ObjectMap, config)["_priority_level"] = priority_level
 
                 future = executor.submit(
                     self._run_single_experiment, config, global_index
@@ -266,7 +267,7 @@ class ParallelExperimentRunner:
         return results
 
     def _force_checkpoint_save(
-        self, active_processes: Dict[int, Dict[str, Any]]
+        self, active_processes: dict[int, ObjectMap]
     ) -> None:
         """実行中の実験にチェックポイント保存を強制"""
         try:
@@ -448,28 +449,25 @@ class ParallelExperimentRunner:
                 # Also write a PID marker to logs for easier OS-level verification
                 try:
                     pidlog = Path("logs") / "parallel_worker_pids.jsonl"
-                    pidlog.parent.mkdir(exist_ok=True)
-                    import json
-
-                    with open(pidlog, "a", encoding="utf-8") as f:
-                        f.write(
-                            json.dumps(
-                                {
-                                    "index": index,
-                                    "pid": pid,
-                                    "config": config.get("config_path", ""),
-                                    "time": datetime.now().isoformat(),
-                                }
-                            )
-                            + "\n"
-                        )
+                    append_jsonl(
+                        pidlog,
+                        [
+                            {
+                                "index": index,
+                                "pid": pid,
+                                "config": config.get("config_path", ""),
+                                "time": datetime.now().isoformat(),
+                            }
+                        ],
+                        ensure_ascii=False,
+                    )
                 except Exception:
                     pass
             except Exception:
                 pass
 
             # Set process priority（効率化: 必要な場合のみ）
-            priority_level = cast(Dict[str, Any], config).pop(
+            priority_level = cast(ObjectMap, config).pop(
                 "_priority_level", "normal"
             )
             if priority_level and priority_level != "normal":
@@ -562,7 +560,7 @@ class ResourceMonitor:
 
             # メモリリーク警告: 設定された閾値を超えた場合（計算効率化）
             if len(self.memory_history) >= 10:
-                recent_memory = self.memory_history[-10:]
+                recent_memory = list(self.memory_history)[-10:]
                 memory_ratio = (
                     recent_memory[-1] / recent_memory[0]
                     if recent_memory[0] > 0
@@ -576,7 +574,7 @@ class ResourceMonitor:
                     )
 
                 # オブジェクト数の増加もチェック
-                recent_objects = self.object_counts[-10:]
+                recent_objects = list(self.object_counts)[-10:]
                 object_increase = recent_objects[-1] - recent_objects[0]
                 if object_increase > self.object_leak_threshold:
                     self.logger.warning(
@@ -602,13 +600,8 @@ class ResourceMonitor:
                 - (self.memory_history[0] if self.memory_history else 0),
             }
 
-            # Log to JSONL file directly
-            import json
-
             jsonl_path = Path("logs") / "resource_monitor.jsonl"
-            jsonl_path.parent.mkdir(exist_ok=True)
-            with open(jsonl_path, "a") as f:
-                f.write(json.dumps(resources) + "\n")
+            append_jsonl(jsonl_path, [resources], ensure_ascii=False)
 
             # Update peak and average values
             self.peak_cpu_percent = max(self.peak_cpu_percent, cpu_percent)
@@ -620,7 +613,7 @@ class ResourceMonitor:
         except Exception as e:
             self.logger.error(f"Resource monitoring error: {e}")
 
-    def get_memory_leak_summary(self) -> Dict[str, Any]:
+    def get_memory_leak_summary(self) -> ObjectMap:
         """Get summary of memory usage and potential leaks（効率化）"""
         if not self.memory_history:
             return {"status": "no_data"}
@@ -669,7 +662,7 @@ class ResourceMonitor:
 
 def run_parallel_experiments(
     experiment_class: type,
-    configs: List[Dict[str, Any]],
+    configs: List[ConfigDict],
     max_workers: int = 2,
     shared_data_cache: Optional[str] = None,
     enable_monitoring: bool = True,
@@ -689,7 +682,7 @@ def run_parallel_experiments(
     """
     config = ParallelExperimentConfig(
         experiment_class=experiment_class,
-        configs=cast(List[ConfigDict], configs),
+        configs=configs,
         max_workers=max_workers,
         shared_data_cache=shared_data_cache,
         enable_resource_monitoring=enable_monitoring,

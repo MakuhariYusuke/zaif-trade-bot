@@ -22,10 +22,11 @@ import time
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import requests
 
+from ztb.io.jsonl import append_jsonl
 from ztb.types.common import ConfigDict
 from ztb.utils.types import LoggerProtocol
 
@@ -40,7 +41,7 @@ class AsyncNotifier:
         experiment_type: str = "standard",
     ):
         self.logger_manager = logger_manager
-        self.q: queue.Queue[Any] = queue.Queue()
+        self.q: queue.Queue[object] = queue.Queue()
         # 実験タイプに応じた通知間隔調整
         if experiment_type == "100k":
             # 100k実験では通知頻度を下げる
@@ -53,10 +54,10 @@ class AsyncNotifier:
         self.experiment_type = experiment_type
         self.last_heartbeat = time.time()
         # メトリクス追跡用
-        self.metrics_callback: Optional[Callable[[], Any]] = None
+        self.metrics_callback: Optional[Callable[[], object]] = None
         threading.Thread(target=self._loop, daemon=True).start()
 
-    def set_metrics_callback(self, callback_func: Callable[[], Any]) -> None:
+    def set_metrics_callback(self, callback_func: Callable[[], object]) -> None:
         """メトリクス取得コールバックを設定"""
         self.metrics_callback = callback_func
 
@@ -241,7 +242,7 @@ class LoggerManager(LoggerProtocol):
                 return
             search_path = search_path.parent
 
-    def _log_to_jsonl(self, event: str, data: Dict[str, Any]) -> None:
+    def _log_to_jsonl(self, event: str, data: Dict[str, object]) -> None:
         """Log structured event to jsonl file"""
         log_entry = {
             "timestamp": datetime.now().isoformat(),
@@ -249,11 +250,10 @@ class LoggerManager(LoggerProtocol):
             "event": event,
             **data,
         }
-        with open(self.jsonl_log_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
+        append_jsonl(self.jsonl_log_path, [log_entry], ensure_ascii=False)
 
     def _send_discord(
-        self, message: str, embed_data: Optional[Dict[str, Any]] = None
+        self, message: str, embed_data: Optional[Dict[str, object]] = None
     ) -> bool:
         """Send message to Discord with exponential backoff retry"""
         if not self.discord_webhook:
@@ -266,7 +266,7 @@ class LoggerManager(LoggerProtocol):
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                payload: Dict[str, Any] = {
+                payload: Dict[str, object] = {
                     "content": message,
                     "embeds": [embed_data] if embed_data else [],
                     "username": "Trading RL Bot",
@@ -326,7 +326,7 @@ class LoggerManager(LoggerProtocol):
 
     def end_session(
         self,
-        results: Dict[str, Any],
+        results: Dict[str, object],
         session_type: str = "training",
         notify_on_winrate_below_threshold: bool = True,
     ) -> None:
@@ -400,17 +400,17 @@ class LoggerManager(LoggerProtocol):
                 f"Win rate {win_rate_percent:.1f}% is above threshold {win_rate_threshold}%, skipping notification"
             )
 
-    def info(self, message: str, **kwargs: Any) -> None:
+    def info(self, message: str, **kwargs: object) -> None:
         """Log info message"""
         self.logger.info(message)
         self._log_to_jsonl("info", {"message": message, **kwargs})
 
-    def warning(self, message: str, **kwargs: Any) -> None:
+    def warning(self, message: str, **kwargs: object) -> None:
         """Log warning message"""
         self.logger.warning(message)
         self._log_to_jsonl("warning", {"message": message, **kwargs})
 
-    def error(self, message: str, **kwargs: Any) -> None:
+    def error(self, message: str, **kwargs: object) -> None:
         """Log error message"""
         self.logger.error(message)
         self._log_to_jsonl("error", {"message": message, **kwargs})
@@ -433,7 +433,7 @@ class LoggerManager(LoggerProtocol):
             },
         )
 
-    def log_experiment_end(self, results: Dict[str, Any]) -> None:
+    def log_experiment_end(self, results: Dict[str, object]) -> None:
         """Log experiment end"""
         # Use session management for detailed results
         self.end_session(results, "experiment")
@@ -497,7 +497,7 @@ class LoggerManager(LoggerProtocol):
         self._send_discord(content, {"color": 0xFF0000})  # Red
 
 
-def log_config_summary(logger: logging.Logger, config: Dict[str, Any], prefix: str = "Config") -> None:
+def log_config_summary(logger: logging.Logger, config: Dict[str, object], prefix: str = "Config") -> None:
     """
     設定のサマリーをログ出力する共通関数。
 
@@ -516,7 +516,7 @@ def log_config_summary(logger: logging.Logger, config: Dict[str, Any], prefix: s
             logger.info(f"  {key}: {value}")
 
 
-def log_metrics(logger: logging.Logger, metrics: Dict[str, Any], prefix: str = "Metrics") -> None:
+def log_metrics(logger: logging.Logger, metrics: Dict[str, object], prefix: str = "Metrics") -> None:
     """
     メトリクスをログ出力する共通関数。
 
@@ -533,7 +533,7 @@ def log_metrics(logger: logging.Logger, metrics: Dict[str, Any], prefix: str = "
             logger.info(f"  {key}: {value}")
 
 
-def log_training_progress(logger: logging.Logger, step: int, total_steps: int, metrics: Dict[str, Any]) -> None:
+def log_training_progress(logger: logging.Logger, step: int, total_steps: int, metrics: Dict[str, object]) -> None:
     """
     訓練進捗をログ出力する共通関数。
 

@@ -1657,3 +1657,61 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - Any inventory:
   - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460 --top 10`
     - 結果: `any_type_debt_tokens=0`（`scripts/v460`）
+
+## Phase 43 追補: ops/utils JSONL統一 + ログ読取最適化 + 不具合修正 (2026-02-22)
+
+### 1) JSONL helper の水平展開（重複削減）
+
+- `ztb/io/jsonl.append_jsonl` に統一:
+  - `ztb/utils/core/logger.py` (`LoggerManager._log_to_jsonl`)
+  - `ztb/ops/monitoring/watch_1m.py` (`TrainingWatcher.emit_alert`)
+  - `ztb/ops/monitoring/disk_health.py` (`write_alerts`)
+  - `ztb/utils/parallel_experiments.py`
+    - worker PID log (`parallel_worker_pids.jsonl`)
+    - resource monitor log (`resource_monitor.jsonl`)
+
+### 2) ログI/Oの性能改善（メモリ使用量抑制）
+
+- `ztb/io/text_io.py` に `read_last_lines()` を追加し、末尾 N 行の取得を bounded memory 化。
+- 以下を `readlines()[-100:]` から `read_last_lines(..., count=100)` へ置換:
+  - `ztb/ops/monitoring/watch_1m.py`
+  - `ztb/ops/status/progress_eta.py`
+- これにより巨大ログでの全件読込を避け、監視系の常駐時メモリ負荷を低減。
+
+### 3) 不具合可能性の排除
+
+- `ztb/ops/monitoring/disk_health.py`
+  - `measure_io_latency()` の `os.fsync()` 呼び出し位置を修正。
+  - 以前は file close 後の fd 参照で例外化し得る経路だったため、`with open(...)` 内で `flush+fsync` に修正。
+- `ztb/utils/parallel_experiments.py`
+  - `deque` に対する `[-10:]` スライス誤用（`TypeError`）を修正。
+  - `list(deque)[-10:]` 化でリーク検知ロジックを正常化。
+
+### 4) 型安全（Any削減）
+
+- `watch_1m.py` / `disk_health.py` / `logger.py` / `parallel_experiments.py` を中心に
+  `Dict[str, Any]` を `dict[str, object]` / `ObjectMap` へ移行。
+- 対象 6 ファイルの `any_type_debt_tokens` を `22 -> 0` 化。
+
+### 5) テスト・検証
+
+- `py_compile`:
+  - `ztb/io/text_io.py`, `ztb/io/__init__.py`
+  - `ztb/ops/monitoring/watch_1m.py`
+  - `ztb/ops/status/progress_eta.py`
+  - `ztb/ops/monitoring/disk_health.py`
+  - `ztb/utils/core/logger.py`
+  - `ztb/utils/parallel_experiments.py`
+  - `tests/unit/utils/test_text_io.py`
+  - `tests/unit/core/test_disk_health.py`
+  - `tests/unit/core/test_watch_1m_runtime.py`
+- 追加テスト:
+  - `tests/unit/utils/test_text_io.py`（新規）
+  - `tests/unit/core/test_disk_health.py`（新規）
+  - `tests/unit/core/test_watch_1m_runtime.py`（新規）
+- 回帰確認:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/utils/test_text_io.py tests/unit/core/test_disk_health.py tests/unit/core/test_watch_1m_runtime.py tests/unit/core/test_supervise_1m.py`
+    - 結果: `6 passed, 1 skipped`
+- Any inventory:
+  - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots ztb/utils/core/logger.py ztb/utils/parallel_experiments.py ztb/ops/monitoring/watch_1m.py ztb/ops/monitoring/disk_health.py ztb/ops/status/progress_eta.py ztb/io/text_io.py --top 10`
+    - 結果: `any_type_debt_tokens=0`（対象6ファイル）

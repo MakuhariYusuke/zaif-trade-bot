@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Tuple
 
+from ztb.io.text_io import read_last_lines
 from ztb.utils.file_utils import safe_json_dump, safe_json_load
 
 
@@ -48,8 +49,7 @@ def estimate_steps_per_sec_from_logs(log_dir: Path) -> Optional[float]:
 
     for log_file in log_files:
         try:
-            with open(log_file, "r") as f:
-                lines = f.readlines()[-100:]  # Last 100 lines for recent progress
+            lines = read_last_lines(log_file, count=100)
 
             for line in lines:
                 step_match = step_pattern.search(line)

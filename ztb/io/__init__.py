@@ -7,7 +7,7 @@ from ztb.io.json_io import read_json, read_json_array, read_json_object, write_j
 from ztb.io.jsonl import append_jsonl, iter_jsonl_objects, read_jsonl_objects
 from ztb.io.jsonl_gz import append_jsonl_gz, read_jsonl_gz
 from ztb.io.state_persistence import read_state_payload, write_state_payload
-from ztb.io.text_io import read_text, write_text
+from ztb.io.text_io import read_last_lines, read_text, write_text
 from ztb.io.yaml_io import read_yaml, write_yaml
 
 __all__ = [
@@ -26,5 +26,6 @@ __all__ = [
     "write_yaml",
     "read_text",
     "write_text",
+    "read_last_lines",
     "write_csv_dicts",
 ]

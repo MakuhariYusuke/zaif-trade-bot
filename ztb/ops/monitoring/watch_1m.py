@@ -21,11 +21,13 @@ import sys
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Dict, List, Optional, Tuple, cast
 
+from ztb.io.jsonl import append_jsonl
 from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.utils.config import ZTBConfig
 from ztb.io.json_io import read_json
+from ztb.io.text_io import read_last_lines
 
 try:
     import psutil
@@ -82,7 +84,7 @@ class TrainingWatcher:
         level: str,
         alert_type: str,
         message: str,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[Dict[str, object]] = None,
     ) -> None:
         """Emit structured JSON alert to file and stdout."""
         alert = {
@@ -93,8 +95,7 @@ class TrainingWatcher:
             "message": message,
             "details": details or {},
         }
-        with open(self.log_file, "a") as f:
-            f.write(json.dumps(alert) + "\n")
+        append_jsonl(self.log_file, [alert], ensure_ascii=False)
         print(json.dumps(alert, indent=None))
 
     def get_current_step(self) -> Optional[int]:
@@ -114,12 +115,11 @@ class TrainingWatcher:
         if log_files:
             latest_log = max(log_files, key=lambda p: p.stat().st_mtime)
             try:
-                with open(latest_log, "r") as f:
-                    lines = f.readlines()[-100:]  # Last 100 lines
-                    for line in reversed(lines):
-                        match = self.step_pattern.search(line)
-                        if match:
-                            return int(match.group(1))
+                lines = read_last_lines(latest_log, count=100)
+                for line in reversed(lines):
+                    match = self.step_pattern.search(line)
+                    if match:
+                        return int(match.group(1))
             except Exception:
                 pass
 

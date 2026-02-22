@@ -13,10 +13,12 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Optional
+
+from ztb.io.jsonl import append_jsonl
 
 
-def get_disk_usage(path: Path) -> Dict[str, Any]:
+def get_disk_usage(path: Path) -> dict[str, object]:
     """Get disk usage stats."""
     try:
         stat = shutil.disk_usage(path)
@@ -30,7 +32,7 @@ def get_disk_usage(path: Path) -> Dict[str, Any]:
         return {"error": str(e)}
 
 
-def get_inode_usage(path: Path) -> Optional[Dict[str, Any]]:
+def get_inode_usage(path: Path) -> Optional[dict[str, object]]:
     """Get inode usage if available."""
     try:
         statvfs = os.statvfs(path)  # type: ignore[attr-defined]
@@ -61,7 +63,8 @@ def measure_io_latency(path: Path, test_size: int = 1024) -> Optional[float]:
         start = time.time()
         with open(test_file, "wb") as f:
             f.write(data)
-        os.fsync(f.fileno())  # Force write to disk
+            f.flush()
+            os.fsync(f.fileno())  # Force write to disk
 
         # Read test
         with open(test_file, "rb") as rf:
@@ -78,7 +81,7 @@ def measure_io_latency(path: Path, test_size: int = 1024) -> Optional[float]:
 
 def check_health(
     path: Path, min_free_gb: float, max_inode_usage: float, check_io: bool = False
-) -> list[Dict[str, Any]]:
+) -> list[dict[str, object]]:
     """Check disk health and return alerts."""
     alerts = []
 
@@ -139,12 +142,9 @@ def check_health(
     return alerts
 
 
-def write_alerts(alerts: list[Dict[str, Any]], log_path: Path) -> None:
+def write_alerts(alerts: list[dict[str, object]], log_path: Path) -> None:
     """Write alerts to JSONL file."""
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(log_path, "a") as f:
-        for alert in alerts:
-            f.write(json.dumps(alert) + "\n")
+    append_jsonl(log_path, alerts, ensure_ascii=False)
 
 
 def main() -> None:
