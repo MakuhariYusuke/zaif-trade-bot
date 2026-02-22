@@ -1087,3 +1087,154 @@ class TestOnlineMonitorRetrain:
         assert "online_monitor_enabled" in _DEFAULT_CONFIG
         assert "online_monitor_window" in _DEFAULT_CONFIG
         assert _DEFAULT_CONFIG["online_monitor_enabled"] is True
+
+
+# ---------------------------------------------------------------------------
+# §8: 142# 自己チェック修正 — C-1 regime + adaptive_threshold 統合テスト
+# ---------------------------------------------------------------------------
+class TestRegimeAdaptiveThresholdIntegration:
+    """142# C-1 回帰テスト: regime_thresholds と adaptive_threshold の共存."""
+
+    def _make_gate_adaptive(
+        self,
+        threshold_bps: float = 0.0,
+        regime_thresholds: dict[str, float] | None = None,
+        target_skip_rate_buy: float = 0.5,
+        adaptive_window: int = 10,
+        adaptive_min_samples: int = 5,
+    ) -> Any:
+        """adaptive_threshold=True の SkipGate を構築."""
+        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
+
+        cfg = SkipGateConfig(
+            mode="pnl",
+            threshold_bps=threshold_bps,
+            enabled=True,
+            regime_thresholds=regime_thresholds or {},
+            adaptive_threshold=True,
+            target_skip_rate_buy=target_skip_rate_buy,
+            target_skip_rate_sell=0.5,
+            adaptive_window=adaptive_window,
+            adaptive_min_samples=adaptive_min_samples,
+            adaptive_step=0.05,
+        )
+        mock_pipeline = MagicMock()
+        gate = SkipGate(
+            model=MagicMock(),
+            scaler=MagicMock(),
+            feature_cols=["side_buy", "spread_bps", "offset_ratio"],
+            config=cfg,
+            pipeline=mock_pipeline,
+        )
+        return gate
+
+    def test_calibrate_receives_regime_base_threshold(self) -> None:
+        """142# C-1: _calibrate_pnl_threshold に regime 後の base_threshold が渡される."""
+        gate = self._make_gate_adaptive(
+            threshold_bps=0.0,
+            regime_thresholds={"high_vol": 0.5},
+            adaptive_min_samples=100,  # warmup 未達で base_threshold が返る
+        )
+        gate._pipeline.predict.return_value = np.array([0.3])
+
+        # adaptive min_samples 未達 → warmup → base_threshold がそのまま返る
+        # regime=high_vol → base_threshold=0.5 (not 0.0)
+        decision = gate.evaluate(
+            {"side_buy": 1.0, "spread_bps": 10.0, "offset_ratio": 0.01},
+            side="buy",
+            regime="high_vol",
+        )
+        # pred=0.3, threshold_used=0.5 → 0.3 < 0.5 → skip
+        assert decision.should_skip is True
+        assert decision.threshold_used == pytest.approx(0.5)
+
+    def test_calibrate_without_regime_uses_config_threshold(self) -> None:
+        """regime=None + adaptive 未達 → config.threshold_bps が使われる."""
+        gate = self._make_gate_adaptive(
+            threshold_bps=0.0,
+            regime_thresholds={"high_vol": 0.5},
+            adaptive_min_samples=100,
+        )
+        gate._pipeline.predict.return_value = np.array([0.3])
+
+        decision = gate.evaluate(
+            {"side_buy": 1.0, "spread_bps": 10.0, "offset_ratio": 0.01},
+            side="buy",
+            regime=None,
+        )
+        # pred=0.3, threshold_used=0.0 → 0.3 > 0.0 → pass
+        assert decision.should_skip is False
+        assert decision.threshold_used == pytest.approx(0.0)
+
+    def test_adaptive_calibrated_with_regime_base(self) -> None:
+        """142# regime base_threshold が adaptive 較正の初期値になること."""
+        gate = self._make_gate_adaptive(
+            threshold_bps=0.0,
+            regime_thresholds={"high_vol": 0.5},
+            adaptive_window=10,
+            adaptive_min_samples=3,
+        )
+        # warmup: 3件投入して calibration を有効化
+        for pnl in [0.1, 0.2, 0.3]:
+            gate._pipeline.predict.return_value = np.array([pnl])
+            gate.evaluate(
+                {"side_buy": 1.0, "spread_bps": 10.0, "offset_ratio": 0.01},
+                side="buy",
+                regime="high_vol",
+            )
+
+        # calibrate が動いた → pnl_threshold_buy が regime ベースから調整済み
+        assert gate._pnl_threshold_buy is not None
+        # regime=None では config.threshold_bps=0.0 ベースになる
+        gate._pnl_threshold_buy = None  # reset
+        gate._pred_pnl_history_buy = None  # reset
+        for pnl in [0.1, 0.2, 0.3]:
+            gate._pipeline.predict.return_value = np.array([pnl])
+            gate.evaluate(
+                {"side_buy": 1.0, "spread_bps": 10.0, "offset_ratio": 0.01},
+                side="buy",
+                regime=None,
+            )
+        # base=0.0 から調整されるため、threshold は regime=high_vol 時とは異なる
+        assert gate._pnl_threshold_buy is not None
+
+    def test_regime_key_typo_warning(self) -> None:
+        """142# M-3: 未知の regime キーで WARNING が出ること."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+        import logging
+
+        config = FillTestConfig(
+            skip_gate_enabled=False,
+            skip_gate_regime_thresholds={"hig_vol": 0.2},  # typo
+        )
+        evaluator = SkipGateEvaluator.__new__(SkipGateEvaluator)
+        evaluator._config = config
+        evaluator._gate_path = None
+        mock_gate = MagicMock()
+        mock_gate.feature_cols = ["a", "b"]
+
+        with patch(
+            "scripts.v460.lib.skip_gate_evaluator.logger"
+        ) as mock_logger:
+            evaluator._apply_config_overrides(mock_gate)
+            # WARNING が 1 回出る
+            warn_calls = [
+                c for c in mock_logger.warning.call_args_list
+                if "unknown regime key" in str(c)
+            ]
+            assert len(warn_calls) == 1
+            assert "hig_vol" in str(warn_calls[0])
+
+    def test_select_gate_no_attr(self) -> None:
+        """142# M-1: _gate_buy/_gate_sell 属性がない場合も安全."""
+        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+
+        evaluator = SkipGateEvaluator.__new__(SkipGateEvaluator)
+        evaluator._skip_gate = MagicMock()
+        # _gate_buy, _gate_sell 属性を設定しない
+
+        gate = evaluator._select_gate_for_side("buy")
+        assert gate is evaluator._skip_gate
+        gate = evaluator._select_gate_for_side("sell")
+        assert gate is evaluator._skip_gate

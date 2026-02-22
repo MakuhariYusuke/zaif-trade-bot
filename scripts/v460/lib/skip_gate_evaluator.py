@@ -112,6 +112,14 @@ class SkipGateEvaluator:
         sg.config.adaptive_ceiling = config.skip_gate_adaptive_ceiling
         # 141# P1-04: regime 別閾値
         sg.config.regime_thresholds = config.skip_gate_regime_thresholds
+        # 142# M-3: regime_thresholds キーバリデーション
+        _valid_regimes = {"trending", "ranging", "high_vol", "unknown"}
+        for key in config.skip_gate_regime_thresholds:
+            if key not in _valid_regimes:
+                logger.warning(
+                    f"[skip_gate] 142# unknown regime key in regime_thresholds: "
+                    f"'{key}'. Valid: {sorted(_valid_regimes)}"
+                )
         logger.info(
             f"[skip_gate] Loaded: mode={config.skip_gate_mode}, "
             f"as_threshold={config.skip_gate_as_threshold}, "
@@ -336,9 +344,9 @@ class SkipGateEvaluator:
         side 別モデルが存在する場合はそちらを優先し、
         なければ統一モデルにフォールバック。
         """
-        if side == "buy" and self._gate_buy is not None:
+        if side == "buy" and getattr(self, "_gate_buy", None) is not None:
             return self._gate_buy
-        if side == "sell" and self._gate_sell is not None:
+        if side == "sell" and getattr(self, "_gate_sell", None) is not None:
             return self._gate_sell
         return self._skip_gate  # type: ignore[return-value]
 

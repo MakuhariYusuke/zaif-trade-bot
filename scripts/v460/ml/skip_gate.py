@@ -280,7 +280,9 @@ class SkipGate:
                 )
             # 125# 動的較正: mode=pnl でも target_skip_rate にあわせて閾値を調整
             if self.config.adaptive_threshold and side is not None:
-                threshold_used = self._calibrate_pnl_threshold(side, pred_pnl)
+                threshold_used = self._calibrate_pnl_threshold(
+                    side, pred_pnl, base_threshold=base_threshold,
+                )
             else:
                 threshold_used = base_threshold
             should_skip = pred_pnl < threshold_used
@@ -396,6 +398,7 @@ class SkipGate:
 
     def _calibrate_pnl_threshold(
         self, side: str, current_pnl: float,
+        base_threshold: float | None = None,
     ) -> float:
         """125# PnL 回帰用の動的閾値較正.
 
@@ -406,12 +409,15 @@ class SkipGate:
         Args:
             side: "buy" or "sell".
             current_pnl: 今回の予測 PnL (bps).
+            base_threshold: 142# 起点閾値 (regime 別オーバーライド後の値)。
+                None の場合は config.threshold_bps を使用。
 
         Returns:
             較正後の閾値 (bps). predicted_pnl < threshold → skip.
         """
         cfg = self.config
-        base_threshold = cfg.threshold_bps
+        if base_threshold is None:
+            base_threshold = cfg.threshold_bps
         target_rate = (
             cfg.target_skip_rate_buy if side == "buy" else cfg.target_skip_rate_sell
         )

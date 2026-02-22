@@ -261,3 +261,40 @@ retrain:
 2. **regime_thresholds は adaptive_threshold との共存** — regime で base を決定後、adaptive がさらに動的調整。
 3. **online_monitor は non-fatal** — load_fill_records 失敗やモジュールエラーでも retrain は中断しない。
 4. **warm_start は side 別モデルで無効** — unified モデルの Booster は feature 空間が異なる可能性があるため。
+
+---
+
+## §8 142# 自己チェック修正 (2026-02-23)
+
+141# 実装をセルフレビューした結果、**CRITICAL 1 件 + MEDIUM 2 件** を検出し即時修正。
+
+### §8.1 修正内容
+
+| # | 重大度 | 問題 | 修正 |
+|---|---|---|---|
+| C-1 | **CRITICAL** | `regime_thresholds` で上書きした `base_threshold` が `_calibrate_pnl_threshold()` に渡されず、`adaptive_threshold=True` 時に P1-04 が事実上の死コードになる | `_calibrate_pnl_threshold(side, pnl, base_threshold=base_threshold)` に引数追加。C-1 テスト 3 件追加 |
+| M-1 | MEDIUM | `_select_gate_for_side()` が `self._gate_buy` に直接アクセス — `__init__` バイパス時の `AttributeError` リスク | `getattr(self, "_gate_buy", None)` ガードに変更。テスト 1 件追加 |
+| M-3 | MEDIUM | `regime_thresholds` に未知キー (typo) が無警告で無視される | `_apply_config_overrides` でキーバリデーション + WARNING ログ追加。テスト 1 件追加 |
+
+### §8.2 テスト追加
+
+| テストクラス | テスト数 | 内容 |
+|---|---|---|
+| `TestRegimeAdaptiveThresholdIntegration` | 5 | C-1 回帰テスト (regime + warmup), M-1 属性欠損テスト, M-3 typo WARNING テスト |
+
+### §8.3 検証
+
+```
+test_141_side_specific_models.py: 47 passed (42→47, +5)
+tests/unit/v460: 1218 passed (1213→1218, +5)
+```
+
+### §8.4 残存課題 (低優先度)
+
+| # | 重大度 | 内容 | 対応方針 |
+|---|---|---|---|
+| M-2 | LOW | `_run_online_monitor` が全 run のデータをロード (latest_run_only 未適用) | 次回改善候補 |
+| M-4 | LOW | side 別モデルに `_apply_warm_start` が呼ばれない (意図的だがコメント不足) | ドキュメント化で対応 |
+| L-1 | LOW | `_check_and_reload_side_models` でメソッド内 import | パフォーマンス影響なし、将来リファクタ |
+| L-2 | LOW | online_monitor テストが 141 テストファイルに統合 | 独立テストファイル化は将来対応 |
+
