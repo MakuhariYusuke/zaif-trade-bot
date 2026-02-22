@@ -115,6 +115,9 @@ class SkipGateConfig:
     adaptive_step: float = 0.05             # 100# 1 回の閾値調整ステップ (0.02→0.05)
     adaptive_floor: float = 0.35            # 閾値の下限 (過剰 skip 防止)
     adaptive_ceiling: float = 0.80          # 閾値の上限 (skip 無効化防止)
+    # 141# P1-04: regime 別 PnL 閾値オーバーライド (regime_name -> threshold_bps)
+    # 例: {"high_vol": 0.2, "unknown": 0.3} — 指定なしのレジームは threshold_bps を使用
+    regime_thresholds: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass
@@ -178,12 +181,14 @@ class SkipGate:
         features: dict[str, float],
         *,
         side: str | None = None,
+        regime: str | None = None,
     ) -> SkipDecision:
         """注文前にスキップ判定.
 
         Args:
             features: 特徴量辞書. GATE_FEATURE_COLS のキーを含む.
             side: "buy" or "sell". 068# §3.3 side 別閾値に使用.
+            regime: 141# P1-04 レジーム名. regime_thresholds に一致すればオーバーライド.
 
         Returns:
             SkipDecision.
@@ -267,11 +272,17 @@ class SkipGate:
                 cal = self._score_calibrator
                 if hasattr(cal, "is_fitted") and cal.is_fitted:
                     pred_pnl = cal.calibrate(pred_pnl)
+            # 141# P1-04: regime 別 PnL 閾値オーバーライド
+            base_threshold = self.config.threshold_bps
+            if regime and self.config.regime_thresholds:
+                base_threshold = self.config.regime_thresholds.get(
+                    regime, base_threshold
+                )
             # 125# 動的較正: mode=pnl でも target_skip_rate にあわせて閾値を調整
             if self.config.adaptive_threshold and side is not None:
                 threshold_used = self._calibrate_pnl_threshold(side, pred_pnl)
             else:
-                threshold_used = self.config.threshold_bps
+                threshold_used = base_threshold
             should_skip = pred_pnl < threshold_used
 
         # 100# P1-1: side 別連続スキップ率チェック (cross-side 干渉排除)

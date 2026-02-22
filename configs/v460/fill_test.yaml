@@ -204,6 +204,9 @@ skip_gate:
   # 127# C1: mode/model_path/use_ob_features を retrain と統一 (single source of truth)
   mode: pnl                    # 127# as→pnl: 125# LGBM PnL120 回帰モデルに切替
   model_path: models/v460/skip_gate_lgbm_pnl120.pkl  # 127# retrain と統一 (C1)
+  # 141# P1-01: side 別モデルパス (null=統一モデルにフォールバック)
+  model_path_buy: models/v460/skip_gate_lgbm_pnl30_buy.pkl
+  model_path_sell: models/v460/skip_gate_lgbm_pnl120_sell.pkl
   as_threshold: 0.50           # 120# 0.52→0.50: P(AS)=0.50 が変曲点 (AS 18.1%→36.7%)
   as_threshold_buy: 0.50       # 120# A3: [0.50,0.52) 帯 n=60 PnL=-0.247 AS=36.7% → skip 対象化
   as_threshold_sell: 0.50      # 100# P0-2: sell 側厳格化 (旧 0.60 → 0.50)
@@ -224,6 +227,11 @@ skip_gate:
   calibrator_path: null        # calibrator pkl パス (null=インメモリ)
   calibrator_min_samples: 30   # 校正に必要な最小サンプル数
   calibrator_refit_interval: 100  # 自動 refit 間隔 (新レコード数)
+  # 141# P1-04: regime 別 PnL 閾値オーバーライド (未指定レジームは pnl_threshold を使用)
+  regime_thresholds:
+    high_vol: 0.2              # 高ボラ: 厳格化 (予測精度低下を補正)
+    ranging: 0.1               # レンジ: やや厳格化
+    trending: -0.1             # トレンド: 緩和 (トレンド追従に優位性あり)
   # 124# Rule: unknown regime での sell スキップ (WF: S20%_30=+0.198, S20%_120=+0.140)
   skip_sell_unknown_regime: true
   # 130# unknown regime buy offset boost (128# 分析: unknown buy -1.384bps)
@@ -327,6 +335,16 @@ retrain:
   bootstrap_min_new_samples: 10    # Bootstrap 段階での最小新規
   bootstrap_threshold: 100         # total < この値なら Bootstrap 段階と判定
   target: pnl30                    # 130# L1: pnl120→pnl30 (e3_sampling_ratio=0.50 で pnl120 カバレッジ 40% → pnl30 は 100%。訓練データ 2.5x)
+  # 141# P1-01/02: side 分離モデル + target 二層化
+  side_specific_enabled: true        # side 別モデルを追加学習
+  target_buy: pnl30                  # buy 側ターゲット (30s で即座に平均回帰)
+  target_sell: pnl120                # sell 側ターゲット (120s の回復 horizon で評価)
+  side_min_samples: 50               # side 別学習の最小サンプル数
+  # 141# P1-12: オンラインパフォーマンスモニター
+  online_monitor_enabled: true       # 直近 N fill で skip gate 品質を online 評価
+  online_monitor_window: 100         # 評価ウィンドウ (直近 N fill)
+  online_monitor_pnl_column: post_fill_30s_pnl  # PnL カラム
+  online_monitor_degraded_threshold_bps: -0.3    # pass 平均 PnL がこれ以下で degraded
   # 127# H2: run_id 分離 (異なる設定の run を混在させない)
   latest_run_only: true            # 最新 run_id のみ学習 (因果崩壊防止)
   exclude_missing_run_id: true     # run_id 欠損行を除外

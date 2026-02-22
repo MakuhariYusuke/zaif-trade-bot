@@ -169,6 +169,16 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     "adaptive_threshold": True,
     "target_skip_rate_buy": 0.15,
     "target_skip_rate_sell": 0.20,
+    # 141# P1-01/02: side 分離モデル + target 二層化
+    "side_specific_enabled": False,       # side 別モデル追加学習を有効化
+    "target_buy": "pnl30",               # buy 側ターゲット
+    "target_sell": "pnl30",              # sell 側ターゲット (YAML で pnl120 に上書き)
+    "side_min_samples": 50,              # side 別学習の最小サンプル数
+    # 141# P1-12: オンラインパフォーマンスモニター
+    "online_monitor_enabled": True,       # P1-12 online monitor を有効化
+    "online_monitor_window": 100,         # 評価ウィンドウ (直近 N fill)
+    "online_monitor_pnl_column": "post_fill_30s_pnl",
+    "online_monitor_degraded_threshold_bps": -0.3,
 }
 
 
@@ -191,6 +201,9 @@ def load_retrain_config(config_path: Path | None = None) -> dict[str, Any]:
             cfg["model_path"] = sg_cfg.get("model_path", "models/v460/skip_gate_lgbm_pnl120.pkl")
             cfg["mode"] = sg_cfg.get("mode", "pnl")
             cfg["use_ob_features"] = sg_cfg.get("use_ob_features", True)
+            # 141# P1-01: side 別モデルパスを skip_gate セクションから継承
+            cfg["model_path_buy"] = sg_cfg.get("model_path_buy", "")
+            cfg["model_path_sell"] = sg_cfg.get("model_path_sell", "")
             # results_dir はトップレベルから継承
             cfg["results_dir"] = yaml_data.get("results_dir", "results/v460/fill_test")
 
@@ -876,6 +889,23 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
                 f"({n_forced/n_before*100:.1f}%)"
             )
 
+    # 141# P1-01: side 別モデル — 指定 side のみにフィルタリング
+    side_filter = cfg.get("side_filter")
+    if side_filter and "side" in records.columns:
+        n_before_side = len(records)
+        records = records[records["side"] == side_filter].reset_index(drop=True)
+        logger.info(
+            f"141# Side filter: {side_filter} → {len(records)}/{n_before_side} records"
+        )
+        if len(records) < cfg.get("side_min_samples", 50):
+            return {
+                **result,
+                "status": "skipped",
+                "reason": f"Insufficient {side_filter} samples: {len(records)} < {cfg.get('side_min_samples', 50)}",
+                "side_filter": side_filter,
+            }
+        result["side_filter"] = side_filter
+
     enriched = None
     # E4: enriched data cache — I/O コスト削減
     # 131# A.1 #6: cache_key = target + feature_cols + run_ids で stale cache 防止
@@ -887,7 +917,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
             run_ids_str = ",".join(sorted(records["run_id"].dropna().unique().astype(str)))
         import hashlib as _hl
         cache_key = _hl.md5(
-            f"{target}|{feature_cols_str}|{run_ids_str}".encode()
+            f"{target}|{feature_cols_str}|{run_ids_str}|{side_filter or 'all'}".encode()
         ).hexdigest()[:16]
         enriched = _load_enriched_cache(cache_path, len(records), cache_key=cache_key)
 
@@ -1426,6 +1456,105 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def _run_online_monitor(cfg: dict[str, Any]) -> dict[str, Any] | None:
+    """141# P1-12: 直近 N fill でオンラインパフォーマンスを評価.
+
+    retrain サイクルの最後に呼び出し、skip gate の判定品質を
+    直近 window 件のみで評価する。結果をログ + dict で返却。
+    """
+    try:
+        from ztb.ml.online_monitor import (
+            OnlineMonitor,
+            OnlineMonitorConfig,
+            log_online_monitor_summary,
+        )
+
+        window = cfg.get("online_monitor_window", 100)
+        pnl_col = cfg.get("online_monitor_pnl_column", "post_fill_30s_pnl")
+        degraded_threshold = cfg.get("online_monitor_degraded_threshold_bps", -0.3)
+
+        if not cfg.get("online_monitor_enabled", True):
+            return None
+
+        results_dir = Path(cfg.get("results_dir", "results/v460"))
+        try:
+            records = load_fill_records(results_dir, exclude_missing_run_id=False)
+        except FileNotFoundError:
+            return None
+
+        if len(records) == 0:
+            return None
+
+        monitor = OnlineMonitor(OnlineMonitorConfig(
+            window=window,
+            pnl_column=pnl_col,
+            degraded_threshold_bps=degraded_threshold,
+        ))
+        result = monitor.evaluate(records)
+        log_online_monitor_summary(result)
+        return result.to_dict()
+    except Exception as e:
+        logger.warning(f"141# P1-12: Online monitor failed (non-fatal): {e}")
+        return None
+
+
+def _retrain_side_specific(
+    cfg: dict[str, Any],
+    history_path: Path,
+) -> list[dict[str, Any]]:
+    """141# P1-01/02: buy/sell 分離モデルを追加学習.
+
+    統一モデル retrain 後に呼び出される。各 side のデータだけを使い、
+    side 固有のターゲット (buy=pnl30, sell=pnl120) で個別学習。
+    十分なサンプルがない side はスキップ。
+
+    Args:
+        cfg: retrain 設定 dict.
+        history_path: 履歴 JSONL パス.
+
+    Returns:
+        side 別 retrain 結果リスト.
+    """
+    results: list[dict[str, Any]] = []
+    model_path_map = {
+        "buy": cfg.get("model_path_buy", ""),
+        "sell": cfg.get("model_path_sell", ""),
+    }
+    target_map = {
+        "buy": cfg.get("target_buy", cfg.get("target", "pnl30")),
+        "sell": cfg.get("target_sell", cfg.get("target", "pnl30")),
+    }
+
+    for side in ("buy", "sell"):
+        side_model_path = model_path_map[side]
+        if not side_model_path:
+            logger.debug(f"141# Side model {side}: no model_path configured, skipping")
+            continue
+
+        side_cfg = {**cfg}
+        side_cfg["side_filter"] = side
+        side_cfg["target"] = target_map[side]
+        side_cfg["model_path"] = side_model_path
+        # side 学習では warm_start は unified モデルと feature set が異なり得るため無効化
+        side_cfg["warm_start_enabled"] = False
+
+        try:
+            side_result = retrain_model(side_cfg)
+            side_result["side_model"] = side
+            logger.info(
+                f"141# Side model {side}: status={side_result['status']}, "
+                f"target={target_map[side]}, path={side_model_path}"
+            )
+            with open(history_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(side_result, default=str) + "\n")
+            results.append(side_result)
+        except Exception as e:
+            logger.error(f"141# Side model {side} failed: {e}", exc_info=True)
+            results.append({"side_model": side, "status": "error", "reason": str(e)})
+
+    return results
+
+
 def run_scheduler(cfg: dict[str, Any], config_path: Path | None = None) -> None:
     """定期再学習ループ.
 
@@ -1512,6 +1641,13 @@ def run_scheduler(cfg: dict[str, Any], config_path: Path | None = None) -> None:
             # 履歴ファイルに記録
             with open(history_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(result, default=str) + "\n")
+
+            # 141# P1-01/02: side 別モデル追加学習
+            if cfg.get("side_specific_enabled"):
+                _retrain_side_specific(cfg, history_path)
+
+            # 141# P1-12: オンラインパフォーマンスモニター
+            _run_online_monitor(cfg)
         except Exception as e:
             logger.error(f"Retrain cycle failed: {e}", exc_info=True)
             trigger.record_result("error")
@@ -1586,6 +1722,13 @@ def main() -> None:
             logger.info(f"133# P0-02: One-shot result appended to {history_path}")
         except Exception as e:
             logger.warning(f"133# P0-02: Failed to write one-shot history: {e}")
+
+        # 141# P1-01/02: --once でも side 別モデル追加学習
+        if cfg.get("side_specific_enabled"):
+            _retrain_side_specific(cfg, history_path)
+
+        # 141# P1-12: オンラインパフォーマンスモニター
+        _run_online_monitor(cfg)
     else:
         run_scheduler(cfg, config_path=Path(args.config))
 

@@ -130,6 +130,9 @@ class FillTestConfig:
     skip_gate_sell_enabled: bool = True
     skip_gate_mode: str = "as"             # "pnl" or "as" (061# AS 分類器推奨)
     skip_gate_model_path: str = "models/v460/skip_gate_as.pkl"  # モデルファイル
+    # 141# P1-01: side 別モデルパス (None=統一モデルにフォールバック)
+    skip_gate_model_path_buy: str | None = None
+    skip_gate_model_path_sell: str | None = None
     skip_gate_as_threshold: float = 0.52   # 100# AS 確率スキップ閾値 (0.65→0.52)
     skip_gate_pnl_threshold: float = 0.0   # PnL 予測スキップ閾値 (mode=pnl)
     skip_gate_max_skip_rate: float = 0.3   # 連続スキップ率上限 (安全弁)
@@ -152,6 +155,8 @@ class FillTestConfig:
     skip_gate_calibrator_path: str | None = None   # calibrator pkl パス (None=インメモリ)
     skip_gate_calibrator_min_samples: int = 30     # 校正に必要な最小サンプル数
     skip_gate_calibrator_refit_interval: int = 100 # 自動 refit 間隔 (新規レコード数)
+    # 141# P1-04: regime 別 PnL 閾値オーバーライド
+    skip_gate_regime_thresholds: dict[str, float] = field(default_factory=dict)
     # 124# Rule: unknown regime での sell スキップ
     skip_sell_unknown_regime: bool = False
     # 130# unknown regime での buy offset boost (AS 回避)
@@ -448,6 +453,9 @@ class FillTestConfig:
         sg_map = {
             "mode": "skip_gate_mode",
             "model_path": "skip_gate_model_path",
+            # 141# P1-01: side 別モデルパス
+            "model_path_buy": "skip_gate_model_path_buy",
+            "model_path_sell": "skip_gate_model_path_sell",
             "as_threshold": "skip_gate_as_threshold",
             "pnl_threshold": "skip_gate_pnl_threshold",
             "max_skip_rate": "skip_gate_max_skip_rate",
@@ -472,6 +480,8 @@ class FillTestConfig:
             "skip_sell_unknown_regime": "skip_sell_unknown_regime",
             # 130# unknown buy offset boost
             "unknown_buy_offset_boost": "unknown_buy_offset_boost",
+            # 141# P1-04: regime thresholds
+            "regime_thresholds": "skip_gate_regime_thresholds",
             # 138# P1-03: score calibration
             "score_calibration": "skip_gate_score_calibration",
             "calibrator_path": "skip_gate_calibrator_path",

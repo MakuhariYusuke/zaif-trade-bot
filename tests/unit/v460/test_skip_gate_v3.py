@@ -286,6 +286,17 @@ class TestSkipSellUnknownRegime:
             evaluator = SkipGateEvaluator.__new__(SkipGateEvaluator)
             evaluator._config = config
             evaluator._skip_gate = MagicMock()
+            # 141# P1-01: side 別モデル属性
+            evaluator._gate_buy = None
+            evaluator._gate_sell = None
+            evaluator._gate_path_buy = None
+            evaluator._gate_path_sell = None
+            evaluator._model_file_hash_buy = ""
+            evaluator._model_file_hash_sell = ""
+            evaluator._last_reload_check = 0.0
+            evaluator._gate_path = None
+            evaluator._model_file_hash = ""
+            evaluator._project_root = Path("/tmp")
 
         # build_features_from_market_state → mock
         mock_decision = MagicMock()
@@ -333,6 +344,17 @@ class TestSkipSellUnknownRegime:
             evaluator = SkipGateEvaluator.__new__(SkipGateEvaluator)
             evaluator._config = config
             evaluator._skip_gate = MagicMock()
+            # 141# P1-01: side 別モデル属性
+            evaluator._gate_buy = None
+            evaluator._gate_sell = None
+            evaluator._gate_path_buy = None
+            evaluator._gate_path_sell = None
+            evaluator._model_file_hash_buy = ""
+            evaluator._model_file_hash_sell = ""
+            evaluator._last_reload_check = 0.0
+            evaluator._gate_path = None
+            evaluator._model_file_hash = ""
+            evaluator._project_root = Path("/tmp")
 
         mock_decision = MagicMock()
         mock_decision.should_skip = False

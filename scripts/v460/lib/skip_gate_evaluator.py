@@ -41,6 +41,13 @@ class SkipGateEvaluator:
         self._config = config
         self._project_root = project_root
         self._skip_gate: object | None = None  # SkipGate instance
+        # 141# P1-01: side 別 SkipGate インスタンス (フォールバック用に unified も保持)
+        self._gate_buy: object | None = None
+        self._gate_sell: object | None = None
+        self._gate_path_buy: Path | None = None
+        self._gate_path_sell: Path | None = None
+        self._model_file_hash_buy: str = ""
+        self._model_file_hash_sell: str = ""
         # 126# hot-reload 状態
         self._gate_path: Path | None = None
         self._model_file_hash: str = ""
@@ -71,6 +78,9 @@ class SkipGateEvaluator:
             self._skip_gate = skip_gate
             self._model_file_hash = self._compute_file_hash(gate_path)
             self._last_reload_check = time.monotonic()
+
+            # 141# P1-01: side 別モデルロード
+            self._load_side_models(SkipGate)
         except Exception as e:
             logger.error(f"[skip_gate] Failed to load: {e}. SkipGate disabled.")
             self._skip_gate = None
@@ -100,6 +110,8 @@ class SkipGateEvaluator:
         sg.config.adaptive_step = config.skip_gate_adaptive_step
         sg.config.adaptive_floor = config.skip_gate_adaptive_floor
         sg.config.adaptive_ceiling = config.skip_gate_adaptive_ceiling
+        # 141# P1-04: regime 別閾値
+        sg.config.regime_thresholds = config.skip_gate_regime_thresholds
         logger.info(
             f"[skip_gate] Loaded: mode={config.skip_gate_mode}, "
             f"as_threshold={config.skip_gate_as_threshold}, "
@@ -154,6 +166,48 @@ class SkipGateEvaluator:
         except Exception as e:
             skip_gate._score_calibrator = None  # type: ignore[attr-defined]
             logger.warning(f"[skip_gate] ScoreCalibrator load failed: {e}")
+
+    def _load_side_models(self, skip_gate_cls: type) -> None:
+        """141# P1-01: side 別モデルをロード.
+
+        model_path_buy/sell が設定されていてファイルが存在する場合にロード。
+        存在しない場合は unified モデルにフォールバック（_gate_buy/_gate_sell は None のまま）。
+        """
+        config = self._config
+        for side, attr_gate, attr_path, attr_hash in (
+            ("buy", "_gate_buy", "_gate_path_buy", "_model_file_hash_buy"),
+            ("sell", "_gate_sell", "_gate_path_sell", "_model_file_hash_sell"),
+        ):
+            model_path_str = getattr(config, f"skip_gate_model_path_{side}", None)
+            if not model_path_str:
+                continue
+            gate_path = Path(model_path_str)
+            if not gate_path.is_absolute():
+                gate_path = self._project_root / gate_path
+            if not gate_path.exists():
+                logger.info(
+                    f"[skip_gate] 141# {side} model not found: {gate_path}. "
+                    f"Will use unified model."
+                )
+                continue
+            try:
+                side_gate = skip_gate_cls.load(gate_path)
+                self._apply_config_overrides(side_gate)
+                self._inject_calibrator(side_gate)
+                setattr(self, attr_gate, side_gate)
+                setattr(self, attr_path, gate_path)
+                setattr(self, attr_hash, self._compute_file_hash(gate_path))
+                n_features = len(side_gate.feature_cols) if hasattr(side_gate, "feature_cols") else "?"
+                target = side_gate.metadata.get("target", "?") if hasattr(side_gate, "metadata") else "?"
+                logger.info(
+                    f"[skip_gate] 141# {side} model loaded: {gate_path}, "
+                    f"features={n_features}, target={target}"
+                )
+            except Exception as e:
+                logger.warning(
+                    f"[skip_gate] 141# {side} model load failed: {e}. "
+                    f"Will use unified model."
+                )
 
     @staticmethod
     def _compute_file_hash(path: Path) -> str:
@@ -214,10 +268,79 @@ class SkipGateEvaluator:
                 f"Keeping previous model."
             )
 
+        # 141# P1-01: side 別モデルの hot-reload チェック
+        self._check_and_reload_side_models()
+
+    def _check_and_reload_side_models(self) -> None:
+        """141# side 別モデルの変更検出 + リロード."""
+        from scripts.v460.ml.skip_gate import SkipGate
+
+        for side, attr_gate, attr_path, attr_hash in (
+            ("buy", "_gate_buy", "_gate_path_buy", "_model_file_hash_buy"),
+            ("sell", "_gate_sell", "_gate_path_sell", "_model_file_hash_sell"),
+        ):
+            gate_path: Path | None = getattr(self, attr_path, None)
+            if gate_path is None:
+                # パス未設定の場合: config から新規ロード試行
+                model_path_str = getattr(self._config, f"skip_gate_model_path_{side}", None)
+                if not model_path_str:
+                    continue
+                gate_path = Path(model_path_str)
+                if not gate_path.is_absolute():
+                    gate_path = self._project_root / gate_path
+                if not gate_path.exists():
+                    continue
+                # 新規モデルファイル出現 → ロード
+                try:
+                    new_gate = SkipGate.load(gate_path)
+                    self._apply_config_overrides(new_gate)
+                    self._inject_calibrator(new_gate)
+                    setattr(self, attr_gate, new_gate)
+                    setattr(self, attr_path, gate_path)
+                    setattr(self, attr_hash, self._compute_file_hash(gate_path))
+                    logger.info(f"[skip_gate] 141# {side} model first load via hot-reload: {gate_path}")
+                except Exception as e:
+                    logger.warning(f"[skip_gate] 141# {side} model first load failed: {e}")
+                continue
+
+            if not gate_path.exists():
+                continue
+            old_hash = getattr(self, attr_hash, "")
+            new_hash = self._compute_file_hash(gate_path)
+            if new_hash == old_hash or not new_hash:
+                continue
+            try:
+                new_gate = SkipGate.load(gate_path)
+                self._apply_config_overrides(new_gate)
+                self._inject_calibrator(new_gate)
+                setattr(self, attr_gate, new_gate)
+                setattr(self, attr_hash, new_hash)
+                logger.info(
+                    f"[skip_gate] 141# {side} model hot-reloaded: "
+                    f"{old_hash[:8]}→{new_hash[:8]}"
+                )
+            except Exception as e:
+                logger.warning(
+                    f"[skip_gate] 141# {side} model hot-reload failed: {e}. "
+                    f"Keeping previous."
+                )
+
     @property
     def skip_gate(self) -> object | None:
         """内部 SkipGate インスタンスへのアクセス (OrderMonitor 等で使用)."""
         return self._skip_gate
+
+    def _select_gate_for_side(self, side: str) -> object:
+        """141# P1-01: side に適合する SkipGate を返す.
+
+        side 別モデルが存在する場合はそちらを優先し、
+        なければ統一モデルにフォールバック。
+        """
+        if side == "buy" and self._gate_buy is not None:
+            return self._gate_buy
+        if side == "sell" and self._gate_sell is not None:
+            return self._gate_sell
+        return self._skip_gate  # type: ignore[return-value]
 
     async def evaluate(
         self,
@@ -318,7 +441,9 @@ class SkipGateEvaluator:
             ob_ask: float | None = None
             ob_bid_vol: float | None = None
             ob_ask_vol: float | None = None
-            sg_use_ob = self._skip_gate.config.use_ob_features  # type: ignore[union-attr]
+            # 141# P1-01: side 別モデルの use_ob_features を参照
+            active_gate_for_ob = self._select_gate_for_side(side)
+            sg_use_ob = active_gate_for_ob.config.use_ob_features  # type: ignore[union-attr]
             if sg_use_ob:
                 try:
                     ob = await adapter.get_orderbook(symbol, depth=self._config.skip_gate_ob_depth)  # type: ignore[union-attr]
@@ -348,11 +473,19 @@ class SkipGateEvaluator:
             if maker_price_vpin_setter is not None and callable(maker_price_vpin_setter):
                 maker_price_vpin_setter(gate_features.get("vpin_60s"))
 
-            decision = self._skip_gate.evaluate(gate_features, side=side)  # type: ignore[union-attr]
+            # 141# P1-01: side 別モデルにディスパッチ (フォールバック: unified)
+            active_gate = self._select_gate_for_side(side)
+            decision = active_gate.evaluate(gate_features, side=side, regime=sg_regime)  # type: ignore[union-attr]
             result.skipped = decision.should_skip
             result.score = decision.predicted_pnl_bps
             result.reason = decision.reason
-            result.model_used = decision.model_used
+            # 141#: model_used にどのモデルが使われたかを示す
+            is_side_model = (
+                (side == "buy" and self._gate_buy is not None)
+                or (side == "sell" and self._gate_sell is not None)
+            )
+            model_tag = f"side_{side}" if is_side_model else "unified"
+            result.model_used = f"{decision.model_used}:{model_tag}"
             result.as_prob = decision.as_probability
             result.threshold_used = decision.threshold_used
 
