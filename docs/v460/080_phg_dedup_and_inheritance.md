@@ -1195,3 +1195,57 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
     - 結果: `180 passed`（warning 5）
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/reporting/services/test_catalog.py`
     - 結果: `9 passed`（warning 1）
+
+## Phase 33 追補: v460 ML の Any削減 + JSON統一 + CV計算最適化 (2026-02-23)
+
+### 1) 型安全（Any削減）と重複削減
+
+- `scripts/v460/ml/model_protocols.py` を追加し、
+  `ProbabilisticEstimator` / `RegressorEstimator` / `FeatureTransformer` /
+  `PipelineStep` を共通定義。
+- `scripts/v460/ml/as_classifier.py`
+  - `Any` を Protocol ベースへ置換。
+  - 分類器生成ロジックを `_build_classifier()` に抽出し、
+    fold学習と最終学習の重複を削減。
+- `scripts/v460/ml/fill_classifier.py`
+  - `Any` を Protocol ベースへ置換。
+- `scripts/v460/ml/train_sg_v3.py`
+  - `Any` を `object` + Protocol/cast に置換し、型を明確化。
+- `scripts/v460/ml/data_loader.py`
+  - `make_preprocessing_pipeline(model: "Any")` を `model: object` へ修正。
+
+### 2) JSON I/O 共通化（json.dump 直書きの削減）
+
+- `write_json()` へ統一:
+  - `scripts/v460/ml/train_sg_v3.py`
+  - `scripts/v460/ml/run_ml_pipeline.py`
+  - `scripts/v460/ml/walk_forward_as.py`
+  - `scripts/v460/ml/tune_as_classifier.py`
+
+### 3) メモリ節約・実行時間短縮
+
+- `as_classifier.py` / `fill_classifier.py` / `train_sg_v3.py` /
+  `walk_forward_as.py` / `tune_as_classifier.py` で
+  fold ごとの DataFrame スライスを NumPy 配列ベースへ変更。
+  - 目的: fold ごとの DataFrame 再構築コスト削減、GC負荷軽減。
+- `train_sg_v3.py`
+  - `pnl120 = pnl30.copy()` を参照共有に変更し、不要コピーを削減。
+  - 大規模 sweep 実行中に `gc.collect()` を定期実行し、
+    長時間実行時のメモリ膨張を抑制。
+- `tune_as_classifier.py`
+  - `TimeSeriesSplit` の split 生成を全構成で使い回し、反復コストを削減。
+
+### 4) 検証
+
+- `py_compile`:
+  - `scripts/v460/ml/model_protocols.py`
+  - `scripts/v460/ml/as_classifier.py`
+  - `scripts/v460/ml/fill_classifier.py`
+  - `scripts/v460/ml/train_sg_v3.py`
+  - `scripts/v460/ml/run_ml_pipeline.py`
+  - `scripts/v460/ml/walk_forward_as.py`
+  - `scripts/v460/ml/tune_as_classifier.py`
+  - `scripts/v460/ml/data_loader.py`
+- 回帰確認:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_ml_pipeline.py`
+    - 結果: `16 passed`（warning 1）

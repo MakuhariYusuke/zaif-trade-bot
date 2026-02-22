@@ -10,7 +10,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
 from pathlib import Path
@@ -31,6 +30,7 @@ from scripts.v460.ml.feature_enricher import (
     build_preorder_as_features,
     enrich_fill_records,
 )
+from ztb.io.json_io import write_json
 
 logging.basicConfig(
     level=logging.INFO,
@@ -114,6 +114,8 @@ def run_walk_forward(
     splits = expanding_window_splits(
         len(X), min_train=min_train, step=step, embargo=embargo
     )
+    X_values = X.to_numpy(dtype=np.float32, copy=False)
+    y_values = y.to_numpy(copy=False)
 
     if not splits:
         logger.warning("Not enough data for walk-forward validation")
@@ -126,13 +128,13 @@ def run_walk_forward(
     oof_probs = np.full(len(X), np.nan)
 
     for fold_i, (train_idx, test_idx) in enumerate(splits):
-        X_train = X.iloc[train_idx]
-        y_train = y.iloc[train_idx]
-        X_test = X.iloc[test_idx]
-        y_test = y.iloc[test_idx]
+        X_train = X_values[train_idx]
+        y_train = y_values[train_idx]
+        X_test = X_values[test_idx]
+        y_test = y_values[test_idx]
 
         # 061# tuned: LR(C=0.01, l2, k=8)
-        k_actual = min(k, X_train.shape[1])
+        k_actual = min(k, X_values.shape[1])
         pipe = Pipeline([
             ("imputer", SimpleImputer(strategy="median")),
             ("selector", SelectKBest(f_classif, k=k_actual)),
@@ -316,8 +318,7 @@ def main() -> None:
     # --- Save ---
     output_dir.mkdir(parents=True, exist_ok=True)
     out_file = output_dir / "walk_forward_as_results.json"
-    with open(out_file, "w") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False, default=str)
+    write_json(out_file, results, indent=2, ensure_ascii=False, default=str)
     logger.info(f"\nResults saved to {out_file}")
 
 

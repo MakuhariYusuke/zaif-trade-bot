@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -23,6 +23,11 @@ from sklearn.metrics import (
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+
+from scripts.v460.ml.model_protocols import (
+    FeatureTransformer,
+    ProbabilisticEstimator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +54,7 @@ def train_fill_classifier(
     *,
     n_splits: int = 5,
     model_type: str = "gb",
-) -> tuple[FillModelMetrics, Any, StandardScaler]:
+) -> tuple[FillModelMetrics, ProbabilisticEstimator, FeatureTransformer]:
     """Fill/Timeout 分類器の学習と時系列 CV 評価.
 
     Args:
@@ -62,12 +67,14 @@ def train_fill_classifier(
         (metrics, model, scaler) タプル.
     """
     tscv = TimeSeriesSplit(n_splits=n_splits)
+    X_values = X.to_numpy(dtype=np.float32, copy=False)
+    y_values = y.to_numpy(copy=False)
 
     roc_aucs: list[float] = []
     pr_aucs: list[float] = []
     briers: list[float] = []
 
-    def _make_model() -> Any:
+    def _make_model() -> ProbabilisticEstimator:
         if model_type == "lr":
             return LogisticRegression(
                 C=1.0, max_iter=1000, class_weight="balanced", random_state=42
@@ -80,22 +87,23 @@ def train_fill_classifier(
             random_state=42,
         )
 
-    for fold, (train_idx, test_idx) in enumerate(tscv.split(X)):
+    for train_idx, test_idx in tscv.split(X_values):
         # 059# P0-1: Pipeline化 — 補完・スケーリングを fold 内で実施
         pipe = Pipeline([
             ("imputer", SimpleImputer(strategy="median")),
             ("scaler", StandardScaler()),
             ("model", _make_model()),
         ])
-        pipe.fit(X.iloc[train_idx], y.iloc[train_idx])
+        pipe.fit(X_values[train_idx], y_values[train_idx])
 
-        y_test = y.iloc[test_idx]
-        probs = pipe.predict_proba(X.iloc[test_idx])[:, 1]
+        y_test = y_values[test_idx]
+        probs = pipe.predict_proba(X_values[test_idx])[:, 1]
 
         if len(np.unique(y_test)) > 1:
             roc_aucs.append(roc_auc_score(y_test, probs))
             pr_aucs.append(average_precision_score(y_test, probs))
         briers.append(brier_score_loss(y_test, probs))
+        del pipe
 
     # Final model — 059# P0-1: Pipeline化
     final_pipe = Pipeline([
@@ -105,8 +113,8 @@ def train_fill_classifier(
     ])
     final_pipe.fit(X, y)
 
-    final_model = final_pipe.named_steps["model"]
-    scaler_final = final_pipe.named_steps["scaler"]
+    final_model = cast(ProbabilisticEstimator, final_pipe.named_steps["model"])
+    scaler_final = cast(FeatureTransformer, final_pipe.named_steps["scaler"])
 
     if hasattr(final_model, "feature_importances_"):
         importances = dict(
@@ -128,8 +136,8 @@ def train_fill_classifier(
         pr_auc_std=float(np.std(pr_aucs)) if pr_aucs else 0.0,
         brier_mean=float(np.mean(briers)),
         brier_std=float(np.std(briers)),
-        fill_rate=float(y.mean()),
+        fill_rate=float(np.mean(y_values)),
         feature_importances=importances,
     )
 
-    return metrics, final_pipe, scaler_final
+    return metrics, cast(ProbabilisticEstimator, final_pipe), scaler_final

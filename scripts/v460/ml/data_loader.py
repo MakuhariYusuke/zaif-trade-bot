@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 def make_preprocessing_pipeline(
-    model: "Any",
+    model: object,
 ) -> Pipeline:
     """Imputer + Scaler + Model の Pipeline を構築.
 

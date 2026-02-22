@@ -8,9 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
-import json
 import logging
-from itertools import product
 
 import numpy as np
 import pandas as pd
@@ -28,6 +26,7 @@ from scripts.v460.ml.feature_enricher import (
     build_enriched_as_features,
     enrich_fill_records,
 )
+from ztb.io.json_io import write_json
 
 logging.basicConfig(
     level=logging.WARNING,
@@ -40,6 +39,7 @@ def evaluate_config(
     X: pd.DataFrame,
     y: pd.Series,
     pnl: pd.Series,
+    splits: list[tuple[np.ndarray, np.ndarray]],
     *,
     model_type: str,
     C: float | None = None,
@@ -50,12 +50,14 @@ def evaluate_config(
     penalty: str = "l2",
 ) -> dict:
     """単一構成の TSCV 評価."""
-    tscv = TimeSeriesSplit(n_splits=5)
+    X_values = X.to_numpy(dtype=np.float32, copy=False)
+    y_values = y.to_numpy(copy=False)
+    pnl_values = pnl.to_numpy(dtype=np.float64, copy=False)
     roc_aucs: list[float] = []
     pr_aucs: list[float] = []
     oof_probs = np.full(len(X), np.nan)
 
-    for fold, (train_idx, test_idx) in enumerate(tscv.split(X)):
+    for train_idx, test_idx in splits:
         if model_type == "lr":
             clf = LogisticRegression(
                 C=C or 1.0,
@@ -74,9 +76,9 @@ def evaluate_config(
                 random_state=42,
             )
 
-        steps: list = [("imputer", SimpleImputer(strategy="median"))]
+        steps: list[tuple[str, object]] = [("imputer", SimpleImputer(strategy="median"))]
         if k_select is not None:
-            k = min(k_select, X.shape[1])
+            k = min(k_select, X_values.shape[1])
             steps.append(("selector", SelectKBest(f_classif, k=k)))
         steps.extend([
             ("scaler", StandardScaler()),
@@ -84,20 +86,28 @@ def evaluate_config(
         ])
 
         pipe = Pipeline(steps)
-        pipe.fit(X.iloc[train_idx], y.iloc[train_idx])
-        probs = pipe.predict_proba(X.iloc[test_idx])[:, 1]
+        pipe.fit(X_values[train_idx], y_values[train_idx])
+        probs = pipe.predict_proba(X_values[test_idx])[:, 1]
 
-        y_test = y.iloc[test_idx]
+        y_test = y_values[test_idx]
         if len(np.unique(y_test)) > 1:
             roc_aucs.append(roc_auc_score(y_test, probs))
             pr_aucs.append(average_precision_score(y_test, probs))
         oof_probs[test_idx] = probs
+        del pipe
 
     # Skip policy simulation on OOF
-    valid_mask = ~np.isnan(oof_probs)
+    valid_mask = ~np.isnan(oof_probs) & ~np.isnan(pnl_values)
+    if valid_mask.sum() <= 1:
+        return {
+            "roc_auc": float(np.mean(roc_aucs)) if roc_aucs else 0.0,
+            "pr_auc": float(np.mean(pr_aucs)) if pr_aucs else 0.0,
+            "skip20_improvement": 0.0,
+            "skip10_improvement": 0.0,
+        }
+
     oof_valid = oof_probs[valid_mask]
-    y_valid = y.values[valid_mask]
-    pnl_valid = pnl.values[valid_mask]
+    pnl_valid = pnl_values[valid_mask]
 
     # Skip 20%
     n_skip_20 = max(1, int(len(oof_valid) * 0.2))
@@ -140,6 +150,9 @@ def main() -> None:
     print(f"AS rate: {y.mean():.1%}, Baseline PnL: {pnl.mean():.3f} bps")
     print()
 
+    # CV split は全構成で共通: 毎回生成し直さない
+    splits = list(TimeSeriesSplit(n_splits=5).split(X))
+
     configs = []
 
     # LR configs
@@ -180,7 +193,7 @@ def main() -> None:
     for cfg in configs:
         label = cfg.pop("label")
         try:
-            r = evaluate_config(X, y, pnl, **cfg)
+            r = evaluate_config(X, y, pnl, splits, **cfg)
         except Exception as e:
             cfg["label"] = label
             continue
@@ -208,8 +221,7 @@ def main() -> None:
 
     out = Path("reports/v460/ml_060e")
     out.mkdir(parents=True, exist_ok=True)
-    with open(out / "tuning_results.json", "w") as f:
-        json.dump(results, f, indent=2)
+    write_json(out / "tuning_results.json", results, indent=2)
     print(f"\nResults saved to {out / 'tuning_results.json'}")
 
 

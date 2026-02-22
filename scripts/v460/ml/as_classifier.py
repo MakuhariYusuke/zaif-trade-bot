@@ -7,15 +7,12 @@ fill records から特徴量を構築し、AS 発生確率を推定する。
 
 from __future__ import annotations
 
-import json
 import logging
-from dataclasses import asdict, dataclass
-from pathlib import Path
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import cast
 
 import numpy as np
 import pandas as pd
-from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.impute import SimpleImputer
@@ -23,12 +20,13 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     average_precision_score,
     brier_score_loss,
-    classification_report,
     roc_auc_score,
 )
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+
+from scripts.v460.ml.model_protocols import PipelineStep, ProbabilisticEstimator
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +61,7 @@ def train_as_classifier(
     n_splits: int = 5,
     model_type: str = "gb",
     n_features_select: int | None = None,
-) -> tuple[ASModelMetrics, Any, Pipeline, np.ndarray]:
+) -> tuple[ASModelMetrics, ProbabilisticEstimator, Pipeline, np.ndarray]:
     """AS 分類器の学習と時系列 CV 評価.
 
     Args:
@@ -80,42 +78,26 @@ def train_as_classifier(
         pipeline は Imputer+Scaler+Model の完全 Pipeline.
     """
     tscv = TimeSeriesSplit(n_splits=n_splits)
+    X_values = X.to_numpy(dtype=np.float32, copy=False)
+    y_values = y.to_numpy(copy=False)
+    pnl_values = pnl.to_numpy(dtype=np.float64, copy=False) if pnl is not None else None
 
     roc_aucs: list[float] = []
     pr_aucs: list[float] = []
     briers: list[float] = []
     oof_probs = np.full(len(X), np.nan)
-    oof_indices: list[int] = []
 
-    for fold, (train_idx, test_idx) in enumerate(tscv.split(X)):
-        X_train = X.iloc[train_idx]
-        y_train = y.iloc[train_idx]
-        X_test = X.iloc[test_idx]
-        y_test = y.iloc[test_idx]
+    for train_idx, test_idx in tscv.split(X_values):
+        y_train = y_values[train_idx]
+        y_test = y_values[test_idx]
 
         # 059# P0-1: Imputer+Scaler+Model を fold 内で fit (リーク防止)
         # 060# tuned: LR C=0.01, GB n=30/d=3/lr=0.05 (feature selection時)
-        if model_type == "lr":
-            # 060#: 強正則化 (C=0.01) — 高次元特徴量の過学習抑制
-            c_val = 0.01 if n_features_select else 1.0
-            clf = LogisticRegression(
-                C=c_val, max_iter=2000, class_weight="balanced", random_state=42
-            )
-        else:
-            # 060#: 小さい木 (n=30, lr=0.05) — 過学習防止
-            n_est = 30 if n_features_select else 100
-            lr_val = 0.05 if n_features_select else 0.1
-            clf = GradientBoostingClassifier(
-                n_estimators=n_est,
-                max_depth=3,
-                learning_rate=lr_val,
-                subsample=0.8,
-                random_state=42,
-            )
+        clf = _build_classifier(model_type, n_features_select)
 
         # 060# v2: Feature selection (CV内で特徴量選択 → リーク防止)
-        k = min(n_features_select, X_train.shape[1]) if n_features_select else None
-        steps: list[tuple[str, Any]] = [
+        k = min(n_features_select, X_values.shape[1]) if n_features_select else None
+        steps: list[PipelineStep] = [
             ("imputer", SimpleImputer(strategy="median")),
         ]
         if k is not None:
@@ -125,8 +107,8 @@ def train_as_classifier(
             ("model", clf),
         ])
         pipe = Pipeline(steps)
-        pipe.fit(X_train, y_train)
-        probs = pipe.predict_proba(X_test)[:, 1]
+        pipe.fit(X_values[train_idx], y_train)
+        probs = pipe.predict_proba(X_values[test_idx])[:, 1]
 
         # Metrics
         if len(np.unique(y_test)) > 1:
@@ -135,29 +117,15 @@ def train_as_classifier(
         briers.append(brier_score_loss(y_test, probs))
 
         oof_probs[test_idx] = probs
-        oof_indices.extend(test_idx.tolist())
+        del pipe
 
     # Naive baseline (always predict mean)
-    naive_pr_auc = float(y.mean())  # PR-AUC baseline for imbalanced
+    naive_pr_auc = float(np.mean(y_values))  # PR-AUC baseline for imbalanced
 
     # Final model on all data (for feature importance extraction only)
-    if model_type == "lr":
-        c_val = 0.01 if n_features_select else 1.0
-        final_clf = LogisticRegression(
-            C=c_val, max_iter=2000, class_weight="balanced", random_state=42
-        )
-    else:
-        n_est = 30 if n_features_select else 100
-        lr_val = 0.05 if n_features_select else 0.1
-        final_clf = GradientBoostingClassifier(
-            n_estimators=n_est,
-            max_depth=3,
-            learning_rate=lr_val,
-            subsample=0.8,
-            random_state=42,
-        )
+    final_clf = _build_classifier(model_type, n_features_select)
     k_final = min(n_features_select, X.shape[1]) if n_features_select else None
-    final_steps: list[tuple[str, Any]] = [
+    final_steps: list[PipelineStep] = [
         ("imputer", SimpleImputer(strategy="median")),
     ]
     if k_final is not None:
@@ -168,7 +136,7 @@ def train_as_classifier(
     ])
     final_pipe = Pipeline(final_steps)
     final_pipe.fit(X, y)
-    final_model = final_pipe.named_steps["model"]
+    final_model = cast(ProbabilisticEstimator, final_pipe.named_steps["model"])
     scaler_final = final_pipe  # Return Pipeline instead of bare scaler
 
     # Feature importances (selected features only if selection is active)
@@ -200,13 +168,12 @@ def train_as_classifier(
     # Skip simulation on OOF predictions
     skip_20_improvement = 0.0
     skip_10_improvement = 0.0
-    if pnl is not None:
+    if pnl_values is not None:
         # 059# NEW-07: PnL の NaN もフィルタ
-        valid_mask = ~np.isnan(oof_probs) & ~np.isnan(pnl.values)
+        valid_mask = ~np.isnan(oof_probs) & ~np.isnan(pnl_values)
         if valid_mask.sum() > 20:
             valid_probs = oof_probs[valid_mask]
-            valid_pnl = pnl.values[valid_mask]
-            valid_y = y.values[valid_mask]
+            valid_pnl = pnl_values[valid_mask]
 
             baseline_pnl = float(np.mean(valid_pnl))
 
@@ -247,8 +214,8 @@ def evaluate_skip_policy(
     X: pd.DataFrame,
     y: pd.Series,
     pnl: pd.Series,
-    model: Any,
-    scaler: Any,
+    model: ProbabilisticEstimator,
+    scaler: object,
     thresholds: list[float] | None = None,
     *,
     oof_probs: np.ndarray | None = None,
@@ -278,11 +245,15 @@ def evaluate_skip_policy(
         eval_source = "OOF"
     else:
         # フォールバック: model で推論 (in-sample, 非推奨)
-        if hasattr(scaler, "transform"):
-            X_scaled = scaler.transform(X)
+        X_values = X.to_numpy(dtype=np.float32, copy=False)
+        if hasattr(scaler, "predict_proba"):
+            # Pipeline 全体が渡されるケース
+            probs = scaler.predict_proba(X_values)[:, 1]
+        elif hasattr(scaler, "transform"):
+            X_scaled = scaler.transform(X_values)
+            probs = model.predict_proba(X_scaled)[:, 1]
         else:
-            X_scaled = X.values
-        probs = model.predict_proba(X_scaled)[:, 1]
+            probs = model.predict_proba(X_values)[:, 1]
         pnl_valid = pnl.values
         y_valid = y.values
         eval_source = "in-sample"
@@ -318,3 +289,26 @@ def evaluate_skip_policy(
         })
 
     return pd.DataFrame(results)
+
+
+def _build_classifier(
+    model_type: str,
+    n_features_select: int | None,
+) -> ProbabilisticEstimator:
+    """model_type と設定に応じた分類器インスタンスを生成."""
+    if model_type == "lr":
+        # 060#: 強正則化 (C=0.01) — 高次元特徴量の過学習抑制
+        c_val = 0.01 if n_features_select else 1.0
+        return LogisticRegression(
+            C=c_val, max_iter=2000, class_weight="balanced", random_state=42
+        )
+    # 060#: 小さい木 (n=30, lr=0.05) — 過学習防止
+    n_est = 30 if n_features_select else 100
+    lr_val = 0.05 if n_features_select else 0.1
+    return GradientBoostingClassifier(
+        n_estimators=n_est,
+        max_depth=3,
+        learning_rate=lr_val,
+        subsample=0.8,
+        random_state=42,
+    )

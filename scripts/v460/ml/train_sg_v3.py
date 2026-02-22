@@ -15,24 +15,22 @@ Usage:
 
 from __future__ import annotations
 
-import json
 import logging
-import pickle
 import sys
 import warnings
+import gc
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import cast
 
 import numpy as np
 import pandas as pd
+from sklearn.base import clone
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.metrics import roc_auc_score
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
 
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -44,7 +42,9 @@ from scripts.v460.ml.feature_enricher import (
     build_preorder_as_features,
     enrich_fill_records,
 )
+from scripts.v460.ml.model_protocols import ProbabilisticEstimator, RegressorEstimator
 from scripts.v460.ml.walk_forward_as import expanding_window_splits
+from ztb.io.json_io import write_json
 
 logging.basicConfig(
     level=logging.INFO,
@@ -184,9 +184,9 @@ def build_targets(
 # 3. モデル定義
 # ============================================================
 
-def get_models() -> dict[str, Any]:
+def get_models() -> dict[str, object]:
     """評価するモデル候補を返す."""
-    models: dict[str, Any] = {}
+    models: dict[str, object] = {}
 
     # M1: 現行 LR (baseline)
     models["LR_C001"] = LogisticRegression(
@@ -277,9 +277,9 @@ def get_models() -> dict[str, Any]:
     return models
 
 
-def get_regression_models() -> dict[str, Any]:
+def get_regression_models() -> dict[str, object]:
     """回帰モデル候補."""
-    models: dict[str, Any] = {}
+    models: dict[str, object] = {}
 
     models["Ridge"] = Ridge(alpha=10.0)
 
@@ -403,7 +403,7 @@ def run_classification_wf(
     y: pd.Series,
     pnl30: pd.Series,
     pnl120: pd.Series,
-    model: Any,
+    model: object,
     *,
     experiment: str,
     model_name: str,
@@ -416,8 +416,8 @@ def run_classification_wf(
     """分類モデルの Walk-Forward 評価."""
     # y と pnl のインデックスを同期
     common_idx = y.dropna().index.intersection(pnl30.dropna().index)
-    X_wf = X.loc[common_idx]
-    y_wf = y.loc[common_idx]
+    X_wf = X.loc[common_idx].to_numpy(dtype=np.float32, copy=False)
+    y_wf = y.loc[common_idx].to_numpy(copy=False)
     pnl30_wf = pnl30.loc[common_idx]
     pnl120_wf = pnl120.reindex(common_idx)
 
@@ -442,23 +442,18 @@ def run_classification_wf(
     fold_aucs: list[float] = []
 
     for fold_i, (train_idx, test_idx) in enumerate(splits):
-        X_tr = X_wf.iloc[train_idx]
-        y_tr = y_wf.iloc[train_idx]
-        X_te = X_wf.iloc[test_idx]
-        y_te = y_wf.iloc[test_idx]
+        X_tr = X_wf[train_idx]
+        y_tr = y_wf[train_idx]
+        X_te = X_wf[test_idx]
+        y_te = y_wf[test_idx]
 
         # NaN 処理
         imputer = SimpleImputer(strategy="median")
-        X_tr_imp = pd.DataFrame(
-            imputer.fit_transform(X_tr), columns=X_tr.columns, index=X_tr.index,
-        )
-        X_te_imp = pd.DataFrame(
-            imputer.transform(X_te), columns=X_te.columns, index=X_te.index,
-        )
+        X_tr_imp = imputer.fit_transform(X_tr)
+        X_te_imp = imputer.transform(X_te)
 
         try:
-            from sklearn.base import clone
-            m = clone(model)
+            m = cast(ProbabilisticEstimator, clone(model))
             m.fit(X_tr_imp, y_tr)
             probs = m.predict_proba(X_te_imp)[:, 1]
             oof_probs[test_idx] = probs
@@ -468,6 +463,8 @@ def run_classification_wf(
         except Exception as e:
             logger.warning(f"  Fold {fold_i} failed: {e}")
             continue
+        finally:
+            del X_tr_imp, X_te_imp
 
     # Skip simulation (dual horizon)
     pnl30_arr = pnl30_wf.values.astype(float)
@@ -519,7 +516,7 @@ def run_regression_wf(
     y_reg: pd.Series,
     pnl30: pd.Series,
     pnl120: pd.Series,
-    model: Any,
+    model: object,
     *,
     experiment: str,
     model_name: str,
@@ -534,8 +531,8 @@ def run_regression_wf(
     予測値を確率に変換: 高い予測 PnL = keep (低い確率), 低い予測 PnL = skip (高い確率)
     """
     common_idx = y_reg.dropna().index.intersection(pnl30.dropna().index)
-    X_wf = X.loc[common_idx]
-    y_wf = y_reg.loc[common_idx]
+    X_wf = X.loc[common_idx].to_numpy(dtype=np.float32, copy=False)
+    y_wf = y_reg.loc[common_idx].to_numpy(dtype=np.float64, copy=False)
     pnl30_wf = pnl30.loc[common_idx]
     pnl120_wf = pnl120.reindex(common_idx)
 
@@ -559,27 +556,24 @@ def run_regression_wf(
     oof_preds = np.full(len(X_wf), np.nan)
 
     for fold_i, (train_idx, test_idx) in enumerate(splits):
-        X_tr = X_wf.iloc[train_idx]
-        y_tr = y_wf.iloc[train_idx]
-        X_te = X_wf.iloc[test_idx]
+        X_tr = X_wf[train_idx]
+        y_tr = y_wf[train_idx]
+        X_te = X_wf[test_idx]
 
         imputer = SimpleImputer(strategy="median")
-        X_tr_imp = pd.DataFrame(
-            imputer.fit_transform(X_tr), columns=X_tr.columns, index=X_tr.index,
-        )
-        X_te_imp = pd.DataFrame(
-            imputer.transform(X_te), columns=X_te.columns, index=X_te.index,
-        )
+        X_tr_imp = imputer.fit_transform(X_tr)
+        X_te_imp = imputer.transform(X_te)
 
         try:
-            from sklearn.base import clone
-            m = clone(model)
+            m = cast(RegressorEstimator, clone(model))
             m.fit(X_tr_imp, y_tr)
             preds = m.predict(X_te_imp)
             oof_preds[test_idx] = preds
         except Exception as e:
             logger.warning(f"  Fold {fold_i} failed: {e}")
             continue
+        finally:
+            del X_tr_imp, X_te_imp
 
     # 回帰予測 → "skip probability" 変換
     # 低い予測 PnL = 高い skip probability (悪い trade = skip したい)
@@ -751,7 +745,7 @@ def main() -> None:
         pnl120 = enriched_df.loc[filled_mask, pnl120_col].astype(float).reindex(X_base.index)
     else:
         logger.warning("post_fill_120s_pnl not found, using pnl30 as fallback")
-        pnl120 = pnl30.copy()
+        pnl120 = pnl30
 
     logger.info(f"PnL30 baseline: {pnl30.mean():.3f} bps (n={pnl30.notna().sum()})")
     logger.info(f"PnL120 baseline: {pnl120.mean():.3f} bps (n={pnl120.notna().sum()})")
@@ -843,6 +837,8 @@ def main() -> None:
                     )
                 except Exception as e:
                     logger.error(f"  FAILED: {e}")
+                if experiment_count % 25 == 0:
+                    gc.collect()
 
     # 4b. Regression experiments
     for feat_name, X_feat in feature_sets.items():
@@ -874,6 +870,8 @@ def main() -> None:
                     )
                 except Exception as e:
                     logger.error(f"  FAILED: {e}")
+                if experiment_count % 25 == 0:
+                    gc.collect()
 
     # 4c. Rule-based experiments
     logger.info("\n--- Rule-based experiments ---")
@@ -989,8 +987,7 @@ def main() -> None:
     }
 
     report_path = REPORT_DIR / "sg_v3_comprehensive.json"
-    with open(report_path, "w", encoding="utf-8") as f:
-        json.dump(report, f, indent=2, ensure_ascii=False, default=str)
+    write_json(report_path, report, indent=2, ensure_ascii=False, default=str)
     logger.info(f"\nReport saved to {report_path}")
 
     # --- 最良モデルの判定 ---

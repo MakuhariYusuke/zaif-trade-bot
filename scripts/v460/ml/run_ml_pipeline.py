@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
 from dataclasses import asdict
@@ -28,6 +27,7 @@ from scripts.v460.ml.data_loader import (
     load_fill_records,
 )
 from scripts.v460.ml.fill_classifier import train_fill_classifier
+from ztb.io.json_io import write_json
 
 logging.basicConfig(
     level=logging.INFO,
@@ -112,9 +112,11 @@ def run_as_pipeline(
     # 保存
     out_file = output_dir / "as_classifier_results.json"
     out_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(out_file, "w") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False, default=str)
+    write_json(out_file, results, indent=2, ensure_ascii=False, default=str)
     logger.info(f"\nResults saved to {out_file}")
+
+    # 後段のパイプライン実行前に不要オブジェクトを開放
+    del gb_model, gb_scaler, lr_model, lr_scaler, best_model, best_scaler
 
     return results
 
@@ -152,9 +154,10 @@ def run_fill_pipeline(df: "pd.DataFrame", output_dir: Path) -> dict:
     # 保存
     out_file = output_dir / "fill_classifier_results.json"
     out_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(out_file, "w") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False, default=str)
+    write_json(out_file, results, indent=2, ensure_ascii=False, default=str)
     logger.info(f"\nResults saved to {out_file}")
+
+    del gb_model, gb_scaler, lr_model, lr_scaler
 
     return results
 
@@ -340,8 +343,7 @@ def run_pnl_pipeline(
     # Save
     out_file = output_dir / "pnl_regressor_results.json"
     out_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(out_file, "w") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False, default=str)
+    write_json(out_file, results, indent=2, ensure_ascii=False, default=str)
     logger.info(f"\nPnL results saved to {out_file}")
 
     return results
