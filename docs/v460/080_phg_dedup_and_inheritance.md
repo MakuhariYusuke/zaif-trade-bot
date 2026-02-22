@@ -1474,12 +1474,17 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
     malformed 行・非 object 行をスキップして継続。
   - 読み込み時に `errors="replace"` を使い、文字化け混入時も
     全体失敗せず復元可能な行だけを回収。
+- `ManifestWriter.start_run()` の `data_hash` 計算を `_compute_data_hash()` に分離し、
+  `data_path=""`（`Path("") == "."`）やディレクトリパスで
+  `compute_file_hash()` が失敗する潜在クラッシュ経路を解消。
 
 ### 3) 追加テスト
 
 - `tests/unit/v460/test_v460_core.py`
   - `test_read_all_skips_malformed_lines` を追加し、
     壊れた行が混在する `manifest.jsonl` でも有効行のみ読めることを検証。
+  - `test_start_run_with_empty_data_path_is_pending` を追加。
+  - `test_start_run_with_directory_data_path_is_pending` を追加。
 
 ### 4) 検証
 
@@ -1488,4 +1493,6 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
   - `tests/unit/v460/test_v460_core.py`
 - 回帰確認:
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_v460_core.py`
-    - 結果: `53 passed`
+    - 結果: `55 passed`
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_v460_core.py tests/unit/v460/test_gate_check.py`
+    - 結果: `100 passed`

@@ -318,6 +318,32 @@ class TestManifest:
         run_ids = [str(entry.get("run_id")) for entry in entries]
         assert run_ids == ["ok1", "ok2"]
 
+    def test_start_run_with_empty_data_path_is_pending(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.manifest import ManifestWriter
+
+        mw = ManifestWriter(path=tmp_path / "manifest.jsonl")
+        entry = mw.start_run(
+            config_path="test.yaml",
+            config={"seed": 7},
+            data_path="",
+            gate="G1-info",
+            seed=7,
+        )
+        assert entry.data_hash == "pending"
+
+    def test_start_run_with_directory_data_path_is_pending(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.manifest import ManifestWriter
+
+        mw = ManifestWriter(path=tmp_path / "manifest.jsonl")
+        entry = mw.start_run(
+            config_path="test.yaml",
+            config={"seed": 8},
+            data_path=str(tmp_path),
+            gate="G1-info",
+            seed=8,
+        )
+        assert entry.data_hash == "pending"
+
 
 # =====================================================================
 # microstructure

@@ -67,6 +67,17 @@ def compute_config_hash(config: ConfigSection) -> str:
     return hashlib.sha256(s.encode()).hexdigest()[:16]
 
 
+def _compute_data_hash(data_path: str) -> str:
+    path = Path(data_path).expanduser()
+    if not data_path or not path.exists() or not path.is_file():
+        return "pending"
+    try:
+        return compute_file_hash(path)
+    except OSError:
+        logger.warning("Failed to hash data file: %s", path)
+        return "pending"
+
+
 @dataclass
 class ManifestEntry:
     """Single run entry for manifest.jsonl — §4.3 schema."""
@@ -115,7 +126,7 @@ class ManifestWriter:
         gate_short = gate.lower().replace("-", "")
         run_id = f"v460_{gate_short}_seed{seed}_{now}"
 
-        data_hash = compute_file_hash(Path(data_path)) if Path(data_path).exists() else "pending"
+        data_hash = _compute_data_hash(data_path)
 
         entry = ManifestEntry(
             run_id=run_id,
