@@ -89,6 +89,50 @@ logger = logging.getLogger(__name__)
 
 
 # ======================================================================
+# 148# Event Logger — 停止理由の永続化
+# ======================================================================
+
+def _log_event(
+    event: str,
+    results_dir: str | Path,
+    run_id: str = "",
+    git_sha: str = "",
+    reason: str | None = None,
+    details: dict | None = None,
+) -> None:
+    """fill_test_events.jsonl にイベントを記録.
+
+    148# P0: 停止理由を推定でなく事実として記録するため、
+    start/stop/crash/signal イベントを永続化する。
+
+    Args:
+        event: イベント種別 (start, stop, crash, signal)
+        results_dir: 結果ディレクトリ
+        run_id: 実行 ID
+        git_sha: Git SHA
+        reason: 停止理由 (stop/crash/signal の場合)
+        details: 追加詳細情報
+    """
+    try:
+        events_path = Path(results_dir) / "fill_test_events.jsonl"
+        events_path.parent.mkdir(parents=True, exist_ok=True)
+        record = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "event": event,
+            "run_id": run_id,
+            "git_sha": git_sha,
+            "pid": os.getpid(),
+            "reason": reason,
+            "details": details or {},
+        }
+        with open(events_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        logger.info(f"[event] {event}: reason={reason}")
+    except Exception as e:
+        logger.warning(f"[event] Failed to log event: {e}")
+
+
+# ======================================================================
 # Configuration — 119# fill_config.py に移動
 # FillTestConfig, SkipGateResult, FillMonitorResult, PnlMeasurement は
 # scripts.v460.lib.fill_config からインポート
@@ -1237,6 +1281,15 @@ class FillTestRunner(AbstractCycleRunner):
         batch: list[FillRecord] = self._batch_persistence.take_unsaved()  # 前回未保存分を引き継ぐ
         batch_size = self.config.batch_size  # 032# #18: 設定化
 
+        # 148# P0: heartbeat 更新タスク — stale 誤判定防止
+        async def _heartbeat_loop() -> None:
+            """lock heartbeat を周期的に更新."""
+            while not self._kill_switch.is_killed():
+                self._update_lock_heartbeat()
+                await asyncio.sleep(self.config.lock_heartbeat_period_sec)
+
+        heartbeat_task = asyncio.create_task(_heartbeat_loop())
+
         logger.info(f"Starting fill test: {hours}h, interval={self.config.cycle_interval_sec}s")
 
         while time.time() < end_time and not self._kill_switch.is_killed():
@@ -1711,6 +1764,13 @@ class FillTestRunner(AbstractCycleRunner):
             **self._get_regime_state_fields(),
         ))
 
+        # 148# heartbeat タスク終了
+        heartbeat_task.cancel()
+        try:
+            await heartbeat_task
+        except asyncio.CancelledError:
+            pass
+
         logger.info(
             f"Fill test completed: {total_count} cycles, "
             f"{filled_count} filled"
@@ -1967,9 +2027,26 @@ def main() -> None:
 
     runner = FillTestRunner(adapter, config, yaml_cfg=yaml_cfg)
 
+    # 148# P0: start イベント記録
+    _log_event(
+        "start",
+        config.results_dir,
+        run_id=runner._run_id,
+        git_sha=runner._git_sha,
+        details={"hours": args.hours, "config": args.config},
+    )
+
     # Signal handler for graceful shutdown
     def _signal_handler(signum: int, frame: object) -> None:
         logger.info(f"Signal {signum} received — requesting shutdown")
+        # 148# P0: signal イベント記録
+        _log_event(
+            "signal",
+            config.results_dir,
+            run_id=runner._run_id,
+            git_sha=runner._git_sha,
+            reason=f"signal_{signum}",
+        )
         runner._kill_switch.kill(f"signal_{signum}")
 
     signal.signal(signal.SIGINT, _signal_handler)
@@ -2024,9 +2101,40 @@ def main() -> None:
             except Exception as e:
                 logger.warning(f"[126#] retrain_scheduler start failed: {e}")
 
+    # 148# P0: top-level except で crash を捕捉
+    stop_reason: str | None = None
+    records: list = []
     try:
         records = asyncio.run(runner.run_continuous(args.hours))
+        # 正常終了: kill_switch の reason を取得
+        stop_reason = runner._kill_switch.reason if runner._kill_switch.is_killed() else "completed"
+    except KeyboardInterrupt:
+        stop_reason = "keyboard_interrupt"
+        logger.info("KeyboardInterrupt — stopping gracefully")
+    except Exception as e:
+        # 148# P0: crash イベント記録
+        import traceback
+        stop_reason = f"crash:{type(e).__name__}"
+        _log_event(
+            "crash",
+            config.results_dir,
+            run_id=runner._run_id,
+            git_sha=runner._git_sha,
+            reason=stop_reason,
+            details={"traceback": traceback.format_exc()},
+        )
+        logger.error(f"[148#] Unhandled exception: {e}", exc_info=True)
+        raise
     finally:
+        # 148# P0: stop イベント記録 (crash 時は上で記録済み)
+        if stop_reason and not stop_reason.startswith("crash:"):
+            _log_event(
+                "stop",
+                config.results_dir,
+                run_id=runner._run_id,
+                git_sha=runner._git_sha,
+                reason=stop_reason,
+            )
         # 126# fill_test 終了時に retrain_scheduler を停止
         if retrain_proc is not None and retrain_proc.poll() is None:
             retrain_proc.terminate()

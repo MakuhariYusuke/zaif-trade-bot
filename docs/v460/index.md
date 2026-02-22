@@ -140,7 +140,7 @@
 | 145 | impl | [145_ph2_impl_regime_retrain_adaptation.md](145_ph2_impl_regime_retrain_adaptation.md) | Regime retrain adaptation (R-2a config) |
 | 146 | impl | [146_ph2_impl_multi_exchange_registry.md](146_ph2_impl_multi_exchange_registry.md) | Multi-exchange registry 分離 |
 | 147 | rpt | [147_ph2_rpt_phase_c_24h_run_start.md](147_ph2_rpt_phase_c_24h_run_start.md) | Phase C 24h 連続 run 開始・停止原因調査 |
-| 148 | rev | (予約: 147# レビュー) | 147# 停止原因・Phase C 設計レビュー |
+| 148 | rev | [148_ph2_rev_147_phase_c_stop_cause_and_side_issues.md](148_ph2_rev_147_phase_c_stop_cause_and_side_issues.md) | 147# 補足レビュー: 停止原因再点検 + lock heartbeat 修正 |
 | 149 | plan | [149_ph2_plan_phase_c_parallel_work.md](149_ph2_plan_phase_c_parallel_work.md) | Phase C 並行作業計画 (P2/P3 残項目検討) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)

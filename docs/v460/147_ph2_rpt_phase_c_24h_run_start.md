@@ -112,11 +112,14 @@ regime_weight_floor: 0.1
 
 | 可能性 | 確度 | 根拠 |
 |--------|------|------|
-| **外部要因 (PC再起動/電源断/ターミナル終了)** | 高 | 明示的停止ログなし、正常処理中に停止 |
+| **外部要因 (PC再起動/電源断/ターミナル終了)** | 中高 | 明示的停止ログなし、正常処理中に停止 |
+| **未捕捉例外停止** | 中 | 148# 指摘: main() に top-level except なし、stderr に traceback が残る可能性 |
 | hours 経過 | ❌ | 168h 設定に対し 31h で停止 |
 | hard_loss_cap 到達 | ❌ | `LOSS CAP REACHED` ログなし |
 | KillSwitch 発動 | ❌ | `preflight_skip_exceeded` 等のログなし |
 | time_filter による停止 | ❌ | time_filter は sleep only、プロセス終了しない |
+
+**148# レビュー追記**: 「外部要因が主因」の確度は **高→中高** に下げ、未捕捉例外停止を同列候補に置く。
 
 ### 3.4 本番稼働への影響評価
 
@@ -129,13 +132,21 @@ regime_weight_floor: 0.1
 | 停止通知なし | 中 | Slack/Discord webhook |
 | 累積データ消失リスク | 低 | batch_flush で緩和済 (107#) |
 
-### 3.5 推奨アクション (P2 優先度)
+### 3.5 推奨アクション
+
+**148# レビュー対応で P0 実装済み:**
+
+| ID | 施策 | 工数 | 状態 |
+|----|------|------|------|
+| P0-A | 停止理由イベント永続化 (`fill_test_events.jsonl`) | 0.3日 | ✅ 実装済 |
+| P0-B | lock heartbeat 周期更新 (60s) | 0.2日 | ✅ 実装済 |
+
+**P2 (本番前に検討):**
 
 | ID | 施策 | 工数 | 備考 |
 |----|------|------|------|
 | P2-A | プロセス死活監視 cron | 0.2日 | `ps aux | grep fill_test` → Slack 通知 |
 | P2-B | Windows Task Scheduler 自動再起動 | 0.3日 | 異常終了時のみ再起動 |
-| P2-C | 起動/停止イベントログ永続化 | 0.1日 | `fill_test_events.jsonl` |
 
 ---
 
@@ -157,6 +168,7 @@ regime_weight_floor: 0.1
 | fill_records 件数 | ≥ 200 (新規) | `wc -l fill_records_20260223.jsonl` |
 | 異常終了なし | 0 | `KillSwitch` / `Exception` ログなし |
 | Gate 判定実行 | 1回以上 | `run_gate_check.py` 実行ログ |
+| stop reason 記録 | あり | `fill_test_events.jsonl` に stop イベント存在 (148# 追加) |
 
 ---
 
