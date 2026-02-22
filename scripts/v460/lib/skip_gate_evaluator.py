@@ -66,6 +66,8 @@ class SkipGateEvaluator:
             skip_gate = SkipGate.load(gate_path)
             self._apply_config_overrides(skip_gate)
             self._apply_warm_start(skip_gate)
+            # 139# §8-#1: ScoreCalibrator 注入
+            self._inject_calibrator(skip_gate)
             self._skip_gate = skip_gate
             self._model_file_hash = self._compute_file_hash(gate_path)
             self._last_reload_check = time.monotonic()
@@ -120,6 +122,39 @@ class SkipGateEvaluator:
         except Exception as ws_err:
             logger.warning(f"[skip_gate] Warm start failed (non-fatal): {ws_err}")
 
+    def _inject_calibrator(self, skip_gate: object) -> None:
+        """139# §8-#1: ScoreCalibrator を SkipGate に注入.
+
+        config.skip_gate_score_calibration=True かつ calibrator_path が有効な場合、
+        pkl からロードして SkipGate._score_calibrator に設定する。
+        無効時は明示的に None を設定し、ログで可視化。
+        """
+        config = self._config
+        if not config.skip_gate_score_calibration:
+            skip_gate._score_calibrator = None  # type: ignore[attr-defined]
+            logger.debug("[skip_gate] Score calibration disabled")
+            return
+
+        cal_path = config.skip_gate_calibrator_path
+        if not cal_path:
+            skip_gate._score_calibrator = None  # type: ignore[attr-defined]
+            logger.info("[skip_gate] Score calibration enabled but no calibrator_path set")
+            return
+
+        try:
+            from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
+
+            path = Path(cal_path)
+            if not path.is_absolute():
+                path = self._project_root / path
+            cal = ScoreCalibrator.load(path)
+            skip_gate._score_calibrator = cal  # type: ignore[attr-defined]
+            status = f"fitted={cal.is_fitted}, n={cal.sample_count}"
+            logger.info(f"[skip_gate] 139# ScoreCalibrator injected: {status}")
+        except Exception as e:
+            skip_gate._score_calibrator = None  # type: ignore[attr-defined]
+            logger.warning(f"[skip_gate] ScoreCalibrator load failed: {e}")
+
     @staticmethod
     def _compute_file_hash(path: Path) -> str:
         """ファイルの SHA256 ハッシュを算出 (126# hot-reload 用)."""
@@ -159,6 +194,8 @@ class SkipGateEvaluator:
             new_gate = SkipGate.load(self._gate_path)
             self._apply_config_overrides(new_gate)
             self._apply_warm_start(new_gate)
+            # 139# §8-#1: hot-reload 後も calibrator 再注入
+            self._inject_calibrator(new_gate)
             self._skip_gate = new_gate
             self._model_file_hash = new_hash
             n_samples = new_gate.metadata.get("n_samples", "?")

@@ -258,6 +258,11 @@ loss_control:
     window: 50                     # rolling ウィンドウ (sell fill 数)
     threshold_bps: -0.5            # この bps 以下で sell 停止
     resume_window: 20              # 停止後の再評価待機サイクル数
+    # 139# §9-#2: レジーム別閾値 (regime_name -> threshold_bps)
+    regime_thresholds:
+      trending_up: -0.3            # 上昇トレンド時は sell への許容を縮小
+      trending_down: -1.0          # 下降トレンド時は sell に寛容
+      ranging: -0.5                # レンジ時はデフォルト同等
   # 137# P1-08: spread 狭小時 pause (too_narrow 拡張)
   narrow_spread_pause:
     enabled: false                 # true で有効化 (AB テスト)
@@ -387,6 +392,6 @@ retrain:
   trigger_trades_stale_threshold_hours: 36.0   # trades stale 閾値 (h)
   trigger_backoff_multiplier: 2.0       # 連続skip バックオフ倍率
   trigger_backoff_max_interval_sec: 14400  # バックオフ最大 interval (4h)
-  trigger_check_feature_freshness: false  # feature 鮮度チェック (本番安定後に true)
+  trigger_check_feature_freshness: true   # 139# §9-#7: feature 鮮度チェック有効化
   trigger_feature_trades_stale_hours: 6.0  # feature trades stale (h)
   trigger_feature_ob_stale_hours: 6.0     # feature OB stale (h)

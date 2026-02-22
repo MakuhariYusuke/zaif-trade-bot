@@ -153,6 +153,9 @@ class PnlMeasurer:
                 pass
 
         # 137# P1-11: fee 控除統一 — PnL bps から maker fee を一律控除
+        # 139# §9-#4: 仕様確定 — maker fee のみ控除 (現行は maker 注文のみ)。
+        # taker_fee_bps は将来の taker/IOC 注文導入時に使用する予約フィールド。
+        # slippage 控除は queue_wait 等のデータ蓄積後に別 P1 課題として対応予定。
         if cfg.pnl_fee_deduction_enabled and cfg.maker_fee_bps > 0:
             fee = cfg.maker_fee_bps
             if m.post_fill_pnl is not None:

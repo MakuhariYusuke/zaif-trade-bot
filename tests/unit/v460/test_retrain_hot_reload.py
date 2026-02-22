@@ -700,16 +700,15 @@ class TestTradesIOFallback:
         ):
             enrich_fill_records(fill_df)
 
-        # 呼び出し順: (1) date_filter あり → (2) 7日 window → (3) 全量
-        assert len(call_args) == 3, f"Expected 3 calls, got {len(call_args)}"
+        # 139# §9-#5: 全量フォールバック廃止により 2 コールに変更
+        # 呼び出し順: (1) date_filter あり → (2) 7日 window
+        assert len(call_args) == 2, f"Expected 2 calls, got {len(call_args)}"
         # 1st call: original date_filter
         assert call_args[0][1] is not None
         # 2nd call: 7-day fallback (set of date strings)
         fb_filter = call_args[1][1]
         assert fb_filter is not None
         assert len(fb_filter) <= 8  # 7 days + 1
-        # 3rd call: full fallback (None)
-        assert call_args[2][1] is None
 
 
 # =====================================================================

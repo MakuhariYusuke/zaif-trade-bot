@@ -1008,18 +1008,21 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
         min_new = cfg.get("bootstrap_min_new_samples", 10)
     else:
         min_new = cfg.get("min_new_samples", 30)
-    # 133# P0-01: latest_run_only=true の場合、現 run のサンプル数が
-    # 前回モデル学習時 (別 run) の n_samples を下回り負値になるバグを修正。
-    # max(0, ...) で負値を防止し、current_n を記録して次回比較可能にする。
+    # 139# §9-#1: run 切替時の new_samples 計算修正 (133# P0-01 改良)
+    # latest_run_only=true で現 run のサンプル数が前モデル (別 run) の n_samples を
+    # 下回る場合、run が切り替わったと判断し全サンプルを新規扱いにする。
+    # 133# の max(0, ...) clamp では new_samples=0 で永久スキップになっていた。
     raw_new_samples = len(X_valid) - prev_n_samples
-    new_samples = max(0, raw_new_samples)
     if raw_new_samples < 0:
-        logger.warning(
-            f"133# P0-01: new_samples went negative ({raw_new_samples}). "
-            f"current={len(X_valid)}, prev_n_samples={prev_n_samples}. "
-            f"Clamped to 0. This typically happens when latest_run_only=true "
-            f"and current run is smaller than previous model's training set."
+        # run 切替検出: prev_n_samples は別 run のモデル由来で無効
+        new_samples = len(X_valid)
+        logger.info(
+            f"139# Run switch detected: prev_n_samples={prev_n_samples} > "
+            f"current={len(X_valid)}. Treating all {new_samples} as new. "
+            f"(raw_delta={raw_new_samples})"
         )
+    else:
+        new_samples = raw_new_samples
     result["new_samples"] = int(new_samples)
     result["raw_new_samples"] = int(raw_new_samples)  # 133# 診断用
 

@@ -236,6 +236,7 @@ class FillTestRunner:
             window=config.sell_dynamic_kill_window,
             threshold_bps=config.sell_dynamic_kill_threshold_bps,
             resume_window=config.sell_dynamic_kill_resume_window,
+            regime_thresholds=config.sell_dynamic_kill_regime_thresholds,  # 139# §9-#2
         ))
 
         # 安全設計: atexit + signal で残存注文キャンセル + 未保存データ退避 + ロック解放
@@ -726,12 +727,15 @@ class FillTestRunner:
             if spread_bps_val < self.config.narrow_spread_pause_bps:
                 self._narrow_spread_consecutive += 1
                 if self._narrow_spread_consecutive <= self.config.narrow_spread_pause_max_consecutive:
+                    pause_sec = self.config.narrow_spread_pause_sec
                     logger.info(
                         f"[137# P1-08] Spread too narrow ({spread_bps_val:.1f}bps "
                         f"< {self.config.narrow_spread_pause_bps}bps). "
-                        f"Pausing {self.config.narrow_spread_pause_sec}s "
+                        f"Pausing {pause_sec}s "
                         f"({self._narrow_spread_consecutive}/{self.config.narrow_spread_pause_max_consecutive})"
                     )
+                    # 139# §9-#3: 実際に待機してから FillRecord を返す
+                    await asyncio.sleep(pause_sec)
                     return FillRecord(
                         cycle_id=cycle_id,
                         timestamp=time.time(),
@@ -1298,6 +1302,18 @@ class FillTestRunner:
                             f"pause #{self._preflight_pause_count}/{self.config.preflight_max_pauses} "
                             f"→ {pause_sec:.0f}s 待機後に再開"
                         )
+                        # 139# §8-#4: 監査レコードを残して検証可能にする
+                        self._append_fill_record(FillRecord(
+                            cycle_id=f"preflight_pause_{self._preflight_pause_count}",
+                            timestamp=time.time(),
+                            side="none",
+                            order_price=0.0,
+                            order_quantity=0.0,
+                            cancelled=True,
+                            cancel_reason="preflight_pause",
+                            run_id=self._run_id,
+                            git_sha=self._git_sha,
+                        ))
                         self._preflight_skip_count = 0
                         await asyncio.sleep(pause_sec)
                         continue

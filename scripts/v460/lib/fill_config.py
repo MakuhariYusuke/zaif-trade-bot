@@ -191,6 +191,8 @@ class FillTestConfig:
     sell_dynamic_kill_window: int = 50       # rolling ウィンドウ (fill 数)
     sell_dynamic_kill_threshold_bps: float = -0.5  # この値以下で sell 停止
     sell_dynamic_kill_resume_window: int = 20     # 停止後、N サイクル後に再評価
+    # 139# §9-#2: レジーム別閾値 (regime_name -> threshold_bps)
+    sell_dynamic_kill_regime_thresholds: dict[str, float] = field(default_factory=dict)
     # ---- 137# P1-08: spread 狭小時の「休む」判定 ----
     narrow_spread_pause_enabled: bool = False     # True で spread 狭小時にサイクルスキップ
     narrow_spread_pause_bps: float = 3.0          # spread < この bps で狭小とみなす
@@ -245,6 +247,27 @@ class FillTestConfig:
             raise ValueError(
                 f"max_offset_ratio ({self.max_offset_ratio}) must be > "
                 f"min_offset_ratio ({self.min_offset_ratio})"
+            )
+        # 139# §8-#6: 新規パラメータの境界バリデーション
+        if self.preflight_pause_threshold < 1:
+            raise ValueError(
+                f"preflight_pause_threshold must be >= 1, got {self.preflight_pause_threshold}"
+            )
+        if self.preflight_max_pauses < 0:
+            raise ValueError(
+                f"preflight_max_pauses must be >= 0, got {self.preflight_max_pauses}"
+            )
+        if self.preflight_pause_sec < 0:
+            raise ValueError(
+                f"preflight_pause_sec must be >= 0, got {self.preflight_pause_sec}"
+            )
+        if self.skip_gate_calibrator_min_samples < 1:
+            raise ValueError(
+                f"skip_gate_calibrator_min_samples must be >= 1, got {self.skip_gate_calibrator_min_samples}"
+            )
+        if self.skip_gate_calibrator_refit_interval < 1:
+            raise ValueError(
+                f"skip_gate_calibrator_refit_interval must be >= 1, got {self.skip_gate_calibrator_refit_interval}"
             )
 
     @classmethod
@@ -525,6 +548,9 @@ class FillTestConfig:
         }.items():
             if yk in sell_kill:
                 kwargs[ck] = sell_kill[yk]
+        # 139# §9-#2: regime_thresholds YAML 配線
+        if "regime_thresholds" in sell_kill:
+            kwargs["sell_dynamic_kill_regime_thresholds"] = sell_kill["regime_thresholds"]
 
         # 137# P1-08: narrow spread pause
         narrow_pause = 止血.get("narrow_spread_pause", {})

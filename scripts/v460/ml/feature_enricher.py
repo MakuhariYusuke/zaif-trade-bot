@@ -436,8 +436,13 @@ def enrich_fill_records(
         )
         trades_df = load_raw_trades(raw_dir, date_filter=_fb_filter)
         if trades_df.empty:
-            logger.info("130# F7: still empty after ±day fallback, loading all trades")
-            trades_df = load_raw_trades(raw_dir, date_filter=None)
+            # 139# §9-#5: 全量フォールバックを廃止 (I/O爆発 + 時間整合リスク)。
+            # 代わりに WARNING で検知可能にし、trades_df は空のまま進める。
+            logger.warning(
+                "139# trades still empty after ±day fallback. "
+                "Skipping trades features (date_filter=None全量ロード廃止). "
+                "trades データ収集系を確認してください。"
+            )
 
     # 059# P1-7: 事前ソート + searchsorted で O(N_fill × log N_trades)
     if not trades_df.empty and "ts" in trades_df.columns:

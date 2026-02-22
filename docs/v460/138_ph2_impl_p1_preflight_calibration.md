@@ -280,4 +280,31 @@ v460 unit tests: **1134 passed** (1118→1134, +16)
 
 ## §8 外部レビュー追記欄
 
-(レビュー結果はここに追記)
+### §8.1 重大度付きレビュー結果 (2026-02-22)
+
+| # | 重大度 | 対象 | 問題 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | HIGH | `scripts/v460/lib/skip_gate_evaluator.py`, `scripts/v460/lib/fill_config.py` | P1-03 の設定値 (`skip_gate_score_calibration`, `skip_gate_calibrator_*`) は YAML/Config までしか配線されておらず、実行時に `ScoreCalibrator` が生成/注入されない。`SkipGate.evaluate()` 側に校正呼び出しはあるが、通常経路で `self._score_calibrator` は `None` のまま。 | `SkipGateEvaluator.__init__()` と hot-reload 経路で `ScoreCalibrator` をロード/生成して `SkipGate` に注入する。`enabled=false` 時は明示的に無効化ログを出して挙動を可視化。 |
+| 2 | MEDIUM | `scripts/v460/ml/skip_gate.py` | `SkipGate.save()/load()` の payload に calibrator 状態が含まれない。将来、学習済み calibrator を `SkipGate` インスタンスに保持しても、保存/再読込・hot-reload で脱落する。 | `SkipGate` 側で calibrator の永続化方針を統一する。`SkipGate` payload に含めるか、外部 `calibrator_path` を唯一の正として reload 時に必ず再注入する。 |
+| 3 | MEDIUM | `ztb/ml/score_calibrator.py` | `ScoreCalibratorConfig.mode` は宣言されているが実装で実質未使用。`from_fill_records()` は常に `post_fill_30s_pnl` を使うため、仕様文の `"pnl" or "as"` と乖離。 | `mode=="as"` では `actual_as` ラベルを学習対象にする分岐を実装するか、現段階では `mode` を削除して仕様を PnL 専用に縮退。 |
+| 4 | MEDIUM | `scripts/v460/run_fill_test.py` | preflight pause 発動時に `FillRecord` が残らないため、`pause が何回効いたか / 収益に寄与したか` を後から検証しづらい。`134#` 以降で重視している run 単位監査の観点で観測性が不足。 | `cancel_reason=\"preflight_pause\"` の監査レコードを追加し、`preflight_skip_count` と `pause_count` を run summary に集計する。 |
+| 5 | LOW | `tests/unit/v460/test_138_p1_preflight_calibration.py` | 16 件は通過しているが、preflight は主に config 検証、calibration は `ScoreCalibrator` 単体中心。`SkipGateEvaluator` 配線・hot-reload を通した統合経路を検証していない。 | 2件追加: (a) `skip_gate.score_calibration=true` 時に evaluator が calibrator を注入すること、(b) hot-reload 後も注入が維持されること。 |
+| 6 | LOW | `scripts/v460/lib/fill_config.py` | 新規導入パラメータの境界バリデーション不足 (`preflight_pause_threshold/max_preflight_skip` 関係、`calibrator_min_samples/refit_interval` の正値制約)。誤設定時に静かに機能不全となる。 | `__post_init__()` に範囲チェックを追加し、矛盾設定は起動時に `ValueError` で停止させる。 |
+
+### §8.2 追加見落とし (運用・収益観点)
+
+- P1-03 は「実装完了」と記載されているが、現状は **ライブラリ実装完了** であり **運用配線は未完**。ドキュメント上は「部分完了」と明示した方が意思決定ミスを防げる。  
+- preflight pause は kill を遅延させる施策として有効だが、pause 中は機会損失が発生するため、`pause 発動前後の fill rate / pnl` を最低限ロギングしないと最適値探索ができない。  
+- `ScoreCalibrator` は増分蓄積のみで上限が無く、長時間運用時にメモリ増加しうる。`max_samples` のリングバッファ化を先に入れておくと安定運用しやすい。  
+
+### §8.3 再検証ログ (このレビュー時点)
+
+- `tests/unit/v460/test_138_p1_preflight_calibration.py`: **16 passed, 1 warning**
+- `tests/unit/v460` 全体: **1134 passed, 91 warnings**（138# 記載値と一致）
+
+### §8.4 優先アクション提案
+
+1. P0: `SkipGateEvaluator` に calibration 実配線を追加し、`enabled` ON/OFF で動作差をテストで固定。  
+2. P1: preflight pause の監査レコード化（`FillRecord` + run summary 指標追加）。  
+3. P1: `fill_config.__post_init__()` に境界バリデーションを追加。  
+4. P2: `ScoreCalibrator.mode` を実装に合わせて整理（AS対応を実装するか、仕様をPnL専用へ縮退）。  

@@ -47,8 +47,8 @@ class ScoreCalibratorConfig:
 
     enabled: bool = False
     min_samples: int = _MIN_SAMPLES_DEFAULT
-    # 校正対象: "pnl" (predicted_pnl_bps → actual_pnl_bps) or "as" (P(AS) → actual_as_rate)
-    mode: str = "pnl"
+    # 139# §8-#3: mode を廃止 — 現実装は PnL (predicted_pnl_bps → actual_pnl_bps) 専用。
+    # AS 校正は将来 P(AS) 蓄積データに基づき別途検討。
     # 増分更新: True で fit() に新データを追加、False で全置換
     incremental: bool = True
     # 自動再学習間隔 (新規レコード数)
