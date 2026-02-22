@@ -169,39 +169,67 @@ if not balance_ok:
 
 - §3 の作業優先度は適切か
 - Phase C 実行中に避けるべき作業はあるか
+- §8 で実施した P2 作業は Phase C に悪影響を与えていないか
 
 ### 6.2 daily_health_check 運用
 
 - §4.2 のタスクスケジューラ設定は適切か
-- 追加すべきヘルスチェック項目はあるか
+- §8.2 の初回実行で判明した gate_judgment エラー (`run_gate_judgment() got an unexpected keyword argument 'results_dir'`) の修正優先度
+- trades_health missing_days の根本原因調査要否
 
 ### 6.3 144# CRITICAL 対応
 
 - §5.2 の設計方針は妥当か
 - 他に考慮すべき点はあるか
 
-### 6.4 コードベース確認依頼
+### 6.4 148# 実装レビュー
+
+§8 で 148# P0-P2 を実装完了。以下の観点でレビューを依頼:
+
+- `_TeeWriter` (run_fill_test.py:139-157): write/flush の例外抑制は適切か
+- `_log_event()` (run_fill_test.py:95-132): events.jsonl 書き込みの原子性は十分か
+- `_heartbeat_loop` (run_fill_test.py:1337-1343): 60s 間隔は heartbeat stale=300s に対して十分か (5:1 ratio)
+- `_validate_side_target_path_mismatch` (retrain_scheduler.py:285-305): ファイル名ベースの検出では不十分なケースはないか
+- `fill_test_watchdog.ps1`: WMI による CommandLine 検索のパフォーマンス・信頼性
+
+### 6.5 P2-B 自動再起動設計
+
+- [150#](150_ph2_design_fill_test_auto_restart.md) で設計書を作成済み
+- 案 A (watchdog 拡張) の選定妥当性
+- crash loop 防止パラメータの適切さ
+
+### 6.6 コードベース確認依頼
 
 ```
+scripts/v460/run_fill_test.py:
+  L95-132:    _log_event() — P0: イベント記録
+  L139-170:   _TeeWriter / _setup_stderr_mirror — P1: stderr ミラー
+  L1219-1231: trades_health_alert — P1: trades stale 通知
+  L1337-1343: _heartbeat_loop — P0: heartbeat 60s
+  L2159-2195: top-level except — P0: crash 捕捉
+  L281, L809, L1298: 144# §8.1 CRITICAL (preflight-lot 整合)
+
+scripts/v460/ml/retrain_scheduler.py:
+  L280-305: _validate_side_target_path_mismatch — P1: target/path guard
+
 scripts/v460/daily_health_check.py:
-  - 全体構造とエラーハンドリング
-  - Monte Carlo の n=10 下限の妥当性
+  全体構造 + Monte Carlo n=10 下限の妥当性
+
+ops/windows/fill_test_watchdog.ps1:
+  全体: WMI プロセス検出、lock parse、アラート
 
 ztb/features/advanced_regime_detector.py:
-  - P3-02 評価のための現状確認
-  - unknown 判定ロジック
-
-scripts/v460/run_fill_test.py:L281, L809, L1298:
-  - 144# §8.1 指摘箇所の詳細確認
+  P3-02 評価のための unknown 判定ロジック
 ```
 
 ---
 
 ## §7 次ステップ
 
-1. **即時**: A1 (タスクスケジューラ登録) + A2 (初回実行)
+1. ~~**即時**: A1 (タスクスケジューラ登録) + A2 (初回実行)~~ → **✅ §8.2 で完了**
 2. **Phase C 中**: B1-B3 の調査・分析
 3. **Phase C 後**: 144# §8.1 CRITICAL 対応
+4. **Phase C 後**: 150# P2-B 自動再起動実装 → [150#](150_ph2_design_fill_test_auto_restart.md)
 
 ---
 
@@ -284,7 +312,8 @@ PS> .\ops\windows\fill_test_watchdog.ps1
 | ID | 施策 | 状態 |
 |----|------|------|
 | P2-A | プロセス死活監視 | ✅ 実装完了 `fill_test_watchdog.ps1` |
-| P2-B | Task Scheduler 自動再起動 | ❌ 未着手 (要設計検討) |
+| P2-B | Task Scheduler 自動再起動 | 📐 設計完了 [150#](150_ph2_design_fill_test_auto_restart.md) |
+
 ---
 
 ## 変更履歴
@@ -293,12 +322,14 @@ PS> .\ops\windows\fill_test_watchdog.ps1
 |------|----------|
 | 2026-02-23 04:00 | 初版作成 |
 | 2026-02-23 04:31 | §8 追加: 148# P2 実装ログ (watchdog, daily_health_check結果) |
+| 2026-02-23 04:45 | §6 Codex レビュー依頼拡充、§7 次ステップ更新、150# 参照追加 |
 
 ## 変更ファイル (更新)
 
 | ファイル | 変更内容 |
 |----------|----------|
-| `docs/v460/149_ph2_plan_phase_c_parallel_work.md` | §8 追加: P2 実装ログ |
+| `docs/v460/149_ph2_plan_phase_c_parallel_work.md` | §6 Codex レビュー拡充、§7-8 更新、150# 参照 |
 | `docs/v460/147_ph2_rpt_phase_c_24h_run_start.md` | P2-A ステータス更新 |
-| `docs/v460/148_ph2_rev_147_phase_c_stop_cause_and_side_issues.md` | P2 追加 |
-| `ops/windows/fill_test_watchdog.ps1` | NEW: 死活監視スクリプト |
+| `docs/v460/148_ph2_rev_147_phase_c_stop_cause_and_side_issues.md` | §4 実装トレース追加、§6 実施済マーク、§7-8 新規 |
+| `docs/v460/150_ph2_design_fill_test_auto_restart.md` | NEW: P2-B 自動再起動設計書 |
+| `ops/windows/fill_test_watchdog.ps1` | P2-A: 死活監視スクリプト |
