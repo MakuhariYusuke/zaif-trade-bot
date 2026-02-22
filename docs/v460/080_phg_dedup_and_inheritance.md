@@ -738,3 +738,44 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
     - 結果: `3 passed`（warning 1）
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/reward/test_reward_optimization.py`
     - 結果: `5 passed`（warning 1）
+
+## Phase 22 追補: candidate evaluator の報告集計健全化 + 重複処理整理 (2026-02-23)
+
+### 1) 不具合可能性の解消
+
+- `ztb/training/reward_function_optimizer/candidate_evaluator.py` で
+  実行前の report baseline（`mtime_ns + size`）をスナップショットし、
+  実行後は「今回新規/更新された report」のみを集計対象に変更。
+- これにより、同一 `model_name` の過去 report 混入で評価値が歪むリスクを低減。
+- retry 時の partial cleanup も baseline 差分だけ削除するよう変更し、
+  既存 report の誤削除を回避。
+
+### 2) 重複削減・型安全
+
+- `safe` helper へ統合:
+  - `_safe_float` の重複実装を廃止し `safe_to_float` を利用
+  - JSON 読み込みは `safe_open_json` + `ensure_dict` 経由へ統一
+- report 収集/スナップショット/差分抽出を helper 化:
+  - `_find_reports_for_model()`
+  - `_snapshot_report_state()`
+  - `_is_new_or_updated_report()`
+  - `_collect_current_run_reports()`
+
+### 3) テスト整備（回帰防止）
+
+- `tests/unit/training/reward_function_optimizer/test_candidate_evaluator.py` を再整理:
+  - dry-run / report parsing / retry / timeout / missing model_name
+  - pre-existing report 保持と current-run のみ集計されること
+  - retry cleanup が新規 partial のみ削除すること
+- 既存テスト内のモック不備（retry時 returncode 取り扱い、monkeypatch 漏れ）も修正。
+
+### 4) 検証
+
+- `py_compile`:
+  - `ztb/training/reward_function_optimizer/candidate_evaluator.py`
+  - `tests/unit/training/reward_function_optimizer/test_candidate_evaluator.py`
+- venv test:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/training/reward_function_optimizer/test_candidate_evaluator.py`
+    - 結果: `6 passed`（warning 1）
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/training/reward_function_optimizer/test_mtf_optimizer.py tests/unit/training/reward_function_optimizer/test_mtf_optimizer_score_report.py`
+    - 結果: `6 passed`（warning 1）
