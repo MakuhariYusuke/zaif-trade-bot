@@ -515,3 +515,122 @@ class TestRegistryInit:
 
         assert BrokerRegistry is not None
         assert callable(get_broker_registry)
+
+
+# ---------------------------------------------------------------------------
+# 146# §11 review fixes
+# ---------------------------------------------------------------------------
+
+
+class TestS11ReviewFixes:
+    """§11 レビュー指摘修正の回帰テスト."""
+
+    def test_create_adapter_custom_broker_dry_run_without_credential_env(self) -> None:
+        """§11 #1 (HIGH): credential_env 未登録のカスタム取引所で dry-run 生成可能."""
+        from ztb.trading.live.exchanges.base.adapter import BaseExchangeAdapter
+        from ztb.trading.live.exchanges.base.broker_interfaces import Order
+        from ztb.trading.live.registry.broker_registry import BrokerRegistry
+
+        class _NoCredStub(BaseExchangeAdapter):
+            async def _get_balance_real(self, currency=None): return []
+            async def _place_order_real(self, *a, **k): return Order("x","s","b",1)
+            async def _cancel_order_real(self, oid): return True
+            async def _get_order_status_real(self, oid): return None
+            async def _get_open_orders_real(self, s=None): return []
+            async def _get_positions_real(self): return []
+            async def _get_current_price_real(self, s): return 1.0
+
+        reg = BrokerRegistry()
+        # credential_env を指定せずに登録
+        reg.register_broker("custom_dry", _NoCredStub)
+        # dry_run=True なら credential_env なしでも生成可能
+        adapter = reg.create_adapter("custom_dry", dry_run=True)
+        assert adapter is not None
+        assert adapter.dry_run  # type: ignore[attr-defined]
+
+    def test_create_adapter_custom_broker_live_without_creds_raises(self) -> None:
+        """§11 #1 補完: credential_env 未登録 + live → ValueError."""
+        from ztb.trading.live.exchanges.base.adapter import BaseExchangeAdapter
+        from ztb.trading.live.exchanges.base.broker_interfaces import Order
+        from ztb.trading.live.registry.broker_registry import BrokerRegistry
+
+        class _NoCredStub2(BaseExchangeAdapter):
+            async def _get_balance_real(self, currency=None): return []
+            async def _place_order_real(self, *a, **k): return Order("x","s","b",1)
+            async def _cancel_order_real(self, oid): return True
+            async def _get_order_status_real(self, oid): return None
+            async def _get_open_orders_real(self, s=None): return []
+            async def _get_positions_real(self): return []
+            async def _get_current_price_real(self, s): return 1.0
+
+        reg = BrokerRegistry()
+        reg.register_broker("custom_live", _NoCredStub2)
+        with pytest.raises(ValueError, match="API credentials required"):
+            reg.create_adapter("custom_live", dry_run=False)
+
+    def test_run_observation_exchange_lowercase(self) -> None:
+        """§11 #2: run_observation.py が exchange 引数を lowercase 正規化する."""
+        src = (_PROJECT_ROOT / "scripts" / "v460" / "run_observation.py").read_text(
+            encoding="utf-8"
+        )
+        # .lower() が呼ばれていること
+        assert ".lower()" in src
+        # has_broker() 事前チェック
+        assert "has_broker" in src
+
+    def test_run_observation_unknown_exchange_exit(self) -> None:
+        """§11 #2: 未知 exchange 時に sys.exit(1)."""
+        src = (_PROJECT_ROOT / "scripts" / "v460" / "run_observation.py").read_text(
+            encoding="utf-8"
+        )
+        assert "sys.exit(1)" in src
+
+
+# ---------------------------------------------------------------------------
+# 146# P2-04/P3-04: daily_health_check
+# ---------------------------------------------------------------------------
+
+
+class TestDailyHealthCheck:
+    """daily_health_check.py の構造テスト."""
+
+    def test_module_importable(self) -> None:
+        """daily_health_check.py がインポート可能."""
+        import importlib
+        mod = importlib.import_module("scripts.v460.daily_health_check")
+        assert hasattr(mod, "run_daily_health_check")
+        assert hasattr(mod, "main")
+
+    def test_run_daily_health_check_signature(self) -> None:
+        """run_daily_health_check の引数シグネチャ."""
+        import inspect
+        from scripts.v460.daily_health_check import run_daily_health_check
+        sig = inspect.signature(run_daily_health_check)
+        params = list(sig.parameters.keys())
+        assert "results_dir" in params
+        assert "skip_monte_carlo" in params
+        assert "skip_oracle" in params
+        assert "output_path" in params
+
+    def test_trades_health_integration(self) -> None:
+        """_run_trades_health が呼び出し可能."""
+        from scripts.v460.daily_health_check import _run_trades_health
+        result = _run_trades_health(days=1)
+        assert "check" in result
+        assert result["check"] == "trades_health"
+        assert "healthy" in result
+        assert "stale_hours" in result
+
+    def test_feature_freshness_integration(self) -> None:
+        """_run_feature_freshness が呼び出し可能."""
+        from scripts.v460.daily_health_check import _run_feature_freshness
+        result = _run_feature_freshness()
+        assert "check" in result
+        assert result["check"] == "feature_freshness"
+        assert "fresh" in result
+        assert "trades_stale_hours" in result
+
+    def test_ps1_runner_exists(self) -> None:
+        """ops/windows/daily_health_check.ps1 が存在."""
+        ps1 = _PROJECT_ROOT / "ops" / "windows" / "daily_health_check.ps1"
+        assert ps1.exists()

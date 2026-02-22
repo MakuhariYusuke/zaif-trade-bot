@@ -144,15 +144,21 @@ class BrokerRegistry:
 
         # Credential resolution: explicit > env var
         if api_key is None or api_secret is None:
-            env_key, env_secret = self.resolve_credentials(name)
-            api_key = api_key or env_key
-            api_secret = api_secret or env_secret
+            if name in self._credential_env:
+                env_key, env_secret = self.resolve_credentials(name)
+                api_key = api_key or env_key
+                api_secret = api_secret or env_secret
 
         if not dry_run and not (api_key and api_secret):
-            key_var, secret_var = self.get_credential_env_vars(name)
+            if name in self._credential_env:
+                key_var, secret_var = self.get_credential_env_vars(name)
+                raise ValueError(
+                    f"API credentials required for live mode on {name}. "
+                    f"Set {key_var}/{secret_var} in .env or pass explicitly."
+                )
             raise ValueError(
                 f"API credentials required for live mode on {name}. "
-                f"Set {key_var}/{secret_var} in .env or pass explicitly."
+                f"Pass api_key/api_secret explicitly."
             )
 
         return self._brokers[name](

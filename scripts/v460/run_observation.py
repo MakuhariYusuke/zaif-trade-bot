@@ -103,7 +103,13 @@ def cli() -> None:
         help="Exchange name (coincheck/bitflyer etc., default: coincheck)",
     )
     args = parser.parse_args()
-    asyncio.run(main(args.hours, args.interval, args.auto_aggregate, args.ws, args.exchange))
+    exchange = args.exchange.strip().lower()
+    registry = get_broker_registry()
+    if not registry.has_broker(exchange):
+        available = ", ".join(registry.list_brokers())
+        print(f"Error: unknown exchange {exchange!r}. Available: {available}", file=sys.stderr)
+        sys.exit(1)
+    asyncio.run(main(args.hours, args.interval, args.auto_aggregate, args.ws, exchange))
 
 
 if __name__ == "__main__":
