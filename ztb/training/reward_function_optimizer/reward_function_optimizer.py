@@ -1210,6 +1210,7 @@ class RewardFunctionOptimizer:
         if isinstance(history, list):
             for record in history:
                 self.optimization_history.append(ensure_dict(record))
+            self._update_dynamic_weights_from_history()
 
         # Convert to RewardOptimizationResult
         return RewardOptimizationResult(
