@@ -1104,3 +1104,40 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - 回帰確認:
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/reporting/services/test_catalog.py`
     - 結果: `9 passed`（warning 1）
+
+## Phase 31 追補: v459 analysis の helper統合 + v460 gate check 重複I/O削減 (2026-02-22)
+
+### 1) v459（利用頻度高）への適用
+
+- `scripts/v459/json_compat.py` を新規追加し、
+  NumPy/Pandas/Path/datetime を含む payload を JSON 互換へ変換する
+  `to_json_compatible()` / `write_json_compatible()` を共通化。
+- `scripts/v459/analyze_consistency.py`
+  - report 取得を `get_recent_training_reports()` + `load_training_report()` へ統一。
+  - action distribution 抽出を `extract_action_distribution_from_payload()` へ統一。
+  - dict 参照を `ensure_dict` / `safe_to_float` / `safe_to_bool` に寄せ、
+    欠損キー時の `KeyError` リスクを低減。
+  - JSON 保存の NumPy/Pandas 変換ロジックを `json_compat` へ統合。
+- `scripts/v459/analyze_single_experiment.py`
+  - report 取得/読み込み/アクション抽出を catalog helper 化。
+  - `ActionAnalysis` / `PerformanceAnalysis` / `StabilityAnalysis` (`TypedDict`) を導入。
+  - report 欠損時の defensive 分岐を追加し、`max()`/除算の例外リスクを低減。
+  - JSON 保存の重複変換ロジックを `json_compat` へ統合。
+
+### 2) v460 の追加点検・適用
+
+- `scripts/v460/run_gate_check.py`
+  - `open + json.load` が4箇所で重複していたため `_load_results_payload()` に統合。
+  - 読み込みを `read_json_object()`、書き込みを `write_json()` へ統一。
+  - G1/G2/G3/G4 の判定ロジック本体は維持しつつ、I/O 契約を共通化。
+
+### 3) 検証
+
+- `py_compile`:
+  - `scripts/v459/json_compat.py`
+  - `scripts/v459/analyze_consistency.py`
+  - `scripts/v459/analyze_single_experiment.py`
+  - `scripts/v460/run_gate_check.py`
+- 回帰確認:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/reporting/services/test_catalog.py`
+    - 結果: `9 passed`（warning 1）

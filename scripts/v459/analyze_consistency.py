@@ -4,61 +4,84 @@ Phase 3 Day 4-5: Multi-Experiment Consistency Analysis
 複数の実験レポートを比較して再現性を検証
 """
 
-import json
 import sys
 from pathlib import Path
-from typing import Dict, Any, List
-import numpy as np
+from typing import TypedDict
 import pandas as pd
 from datetime import datetime
 
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+from scripts.v459.json_compat import write_json_compatible
+from ztb.reporting.services.catalog import (
+    extract_action_distribution_from_payload,
+    get_recent_training_reports,
+    load_training_report,
+)
+from ztb.utils.safety import ensure_dict, safe_to_bool, safe_to_float
 
-def load_recent_reports(n: int = 5) -> List[Dict[str, Any]]:
+
+class ConsistencyMetric(TypedDict):
+    mean: float
+    std: float
+    min: float
+    max: float
+    range: float
+    cv_pct: float
+
+
+class EvaluationResult(TypedDict):
+    cv_pct: float
+    level: str
+    emoji: str
+
+
+def load_recent_reports(n: int = 5) -> list[dict[str, object]]:
     """最近のN個のトレーニングレポートをロード"""
     reports_dir = project_root / "reports"
-    report_files = sorted(reports_dir.glob("training_report_*.json"), reverse=True)[:n]
+    report_files = get_recent_training_reports(limit=n, reports_dir=reports_dir)
     
-    reports = []
+    reports: list[dict[str, object]] = []
     for report_file in report_files:
-        with open(report_file, "r", encoding="utf-8") as f:
-            report = json.load(f)
-            report["_filename"] = report_file.name
-            reports.append(report)
+        report = load_training_report(report_file)
+        if report is None:
+            continue
+        report["_filename"] = report_file.name
+        reports.append(report)
     
     print(f"📁 Loaded {len(reports)} reports")
     return reports
 
 
-def extract_metrics(reports: List[Dict[str, Any]]) -> pd.DataFrame:
+def extract_metrics(reports: list[dict[str, object]]) -> pd.DataFrame:
     """全レポートからメトリクスを抽出"""
-    data = []
+    data: list[dict[str, object]] = []
     
     for report in reports:
-        stats = report["training_stats"]
-        action_dist = stats["action_distribution"]
-        perf = report["performance_metrics"]
+        metadata = ensure_dict(report.get("metadata"))
+        stats = ensure_dict(report.get("training_stats"))
+        action_dist = extract_action_distribution_from_payload(report)
+        perf = ensure_dict(report.get("performance_metrics"))
         
         data.append({
-            "timestamp": report["metadata"]["timestamp"],
-            "filename": report["_filename"],
-            "success": report["metadata"]["success"],
-            "total_time_min": stats["training_time"] / 60,
-            "steps_per_sec": stats["steps_per_second"],
-            "final_reward": float(stats["final_reward"]),
-            "hold_pct": action_dist["HOLD"] * 100,
-            "buy_pct": action_dist["BUY"] * 100,
-            "sell_pct": action_dist["SELL"] * 100,
-            "action_diversity": perf["action_diversity"],
-            "feature_time_sec": stats.get("feature_generation_time_s", 0)
+            "timestamp": str(metadata.get("timestamp", "")),
+            "filename": str(report.get("_filename", "")),
+            "success": safe_to_bool(metadata.get("success"), False),
+            "total_time_min": safe_to_float(stats.get("training_time"), 0.0) / 60.0,
+            "steps_per_sec": safe_to_float(stats.get("steps_per_second"), 0.0),
+            "final_reward": safe_to_float(stats.get("final_reward"), 0.0),
+            "hold_pct": safe_to_float(action_dist.get("HOLD"), 0.0) * 100.0,
+            "buy_pct": safe_to_float(action_dist.get("BUY"), 0.0) * 100.0,
+            "sell_pct": safe_to_float(action_dist.get("SELL"), 0.0) * 100.0,
+            "action_diversity": safe_to_float(perf.get("action_diversity"), 0.0),
+            "feature_time_sec": safe_to_float(stats.get("feature_generation_time_s"), 0.0),
         })
     
     return pd.DataFrame(data)
 
 
-def calculate_consistency(df: pd.DataFrame) -> Dict[str, Any]:
+def calculate_consistency(df: pd.DataFrame) -> dict[str, ConsistencyMetric]:
     """再現性メトリクスを計算"""
     
     # Key metrics for consistency
@@ -67,7 +90,7 @@ def calculate_consistency(df: pd.DataFrame) -> Dict[str, Any]:
         "action_diversity", "steps_per_sec"
     ]
     
-    consistency = {}
+    consistency: dict[str, ConsistencyMetric] = {}
     for metric in metrics:
         values = df[metric]
         consistency[metric] = {
@@ -76,13 +99,15 @@ def calculate_consistency(df: pd.DataFrame) -> Dict[str, Any]:
             "min": float(values.min()),
             "max": float(values.max()),
             "range": float(values.max() - values.min()),
-            "cv_pct": float(values.std() / values.mean() * 100) if values.mean() != 0 else 0
+            "cv_pct": float(values.std() / values.mean() * 100) if values.mean() != 0 else 0.0
         }
     
     return consistency
 
 
-def evaluate_reproducibility(consistency: Dict[str, Any]) -> Dict[str, Any]:
+def evaluate_reproducibility(
+    consistency: dict[str, ConsistencyMetric]
+) -> dict[str, EvaluationResult]:
     """再現性を評価"""
     
     # Coefficient of Variation (CV) thresholds for "good" reproducibility
@@ -92,7 +117,7 @@ def evaluate_reproducibility(consistency: Dict[str, Any]) -> Dict[str, Any]:
         "acceptable": 10.0 # CV < 10%
     }
     
-    evaluations = {}
+    evaluations: dict[str, EvaluationResult] = {}
     for metric, stats in consistency.items():
         cv = stats["cv_pct"]
         
@@ -118,8 +143,11 @@ def evaluate_reproducibility(consistency: Dict[str, Any]) -> Dict[str, Any]:
     return evaluations
 
 
-def print_analysis(df: pd.DataFrame, consistency: Dict[str, Any], 
-                  evaluations: Dict[str, Any]):
+def print_analysis(
+    df: pd.DataFrame,
+    consistency: dict[str, ConsistencyMetric],
+    evaluations: dict[str, EvaluationResult],
+) -> None:
     """分析結果を出力"""
     print("\n" + "=" * 80)
     print("📊 MULTI-EXPERIMENT CONSISTENCY ANALYSIS")
@@ -196,29 +224,14 @@ def print_analysis(df: pd.DataFrame, consistency: Dict[str, Any],
     print("\n" + "=" * 80)
 
 
-def save_analysis(df: pd.DataFrame, consistency: Dict[str, Any],
-                 evaluations: Dict[str, Any], output_path: Path):
+def save_analysis(
+    df: pd.DataFrame,
+    consistency: dict[str, ConsistencyMetric],
+    evaluations: dict[str, EvaluationResult],
+    output_path: Path,
+) -> None:
     """分析結果を保存"""
-    
-    # Convert to native Python types for JSON
-    def convert_to_native(obj):
-        if isinstance(obj, (np.integer, np.int32, np.int64)):
-            return int(obj)
-        elif isinstance(obj, (np.floating, np.float32, np.float64)):
-            return float(obj)
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        elif isinstance(obj, np.bool_):
-            return bool(obj)
-        elif isinstance(obj, dict):
-            return {k: convert_to_native(v) for k, v in obj.items()}
-        elif isinstance(obj, (list, tuple)):
-            return [convert_to_native(item) for item in obj]
-        elif pd.isna(obj):
-            return None
-        else:
-            return obj
-    
+
     result = {
         "timestamp": datetime.now().isoformat(),
         "n_experiments": len(df),
@@ -226,12 +239,9 @@ def save_analysis(df: pd.DataFrame, consistency: Dict[str, Any],
         "consistency_metrics": consistency,
         "reproducibility_evaluation": evaluations
     }
-    
-    result = convert_to_native(result)
-    
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, indent=2, ensure_ascii=False)
+    write_json_compatible(output_path, result)
     
     print(f"\n📁 Analysis saved to: {output_path}")
 

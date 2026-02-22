@@ -30,9 +30,15 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 from scripts.v460.lib.config_loader import load_gate_thresholds
 from scripts.v460.lib.data_loader import check_nan_ratio, compute_data_hash, load_parquet
 from scripts.v460.lib.manifest import ManifestWriter
+from ztb.io.json_io import read_json_object, write_json
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
+
+
+def _load_results_payload(results_path: str) -> dict[str, object]:
+    payload = read_json_object(Path(results_path))
+    return payload
 
 
 # ======================================================================
@@ -120,8 +126,7 @@ def run_g1_judgment(results_path: str, thresholds: dict | None = None) -> dict:
     if thresholds is None:
         thresholds = load_gate_thresholds().get("g1_info", {})
 
-    with open(results_path, "r", encoding="utf-8") as f:
-        exp_results = json.load(f)
+    exp_results = _load_results_payload(results_path)
 
     # 007# F5: g1_judgment_cache があればそれを使用 (stats-only JSON 互換)
     # fold_results が生配列でない場合、g1_judgment() は構造不一致でクラッシュする
@@ -255,8 +260,7 @@ def run_g2_judgment(results_path: str, thresholds: dict | None = None) -> dict:
     if thresholds is None:
         thresholds = load_gate_thresholds().get("g2_train", {})
 
-    with open(results_path, "r", encoding="utf-8") as f:
-        exp_results = json.load(f)
+    exp_results = _load_results_payload(results_path)
 
     seed_results = exp_results.get("seed_results", [])
     if not seed_results:
@@ -330,8 +334,7 @@ def run_g3_judgment(results_path: str, thresholds: dict | None = None) -> dict:
     if thresholds is None:
         thresholds = load_gate_thresholds().get("g3_pnl", {})
 
-    with open(results_path, "r", encoding="utf-8") as f:
-        exp_results = json.load(f)
+    exp_results = _load_results_payload(results_path)
 
     seed_metrics = exp_results.get("seed_metrics", [])
     if not seed_metrics:
@@ -413,8 +416,7 @@ def run_g4_judgment(results_path: str, thresholds: dict | None = None) -> dict:
     if thresholds is None:
         thresholds = load_gate_thresholds().get("g4_live", {})
 
-    with open(results_path, "r", encoding="utf-8") as f:
-        exp_results = json.load(f)
+    exp_results = _load_results_payload(results_path)
 
     checks: dict[str, dict] = {}
 
@@ -525,8 +527,7 @@ def main() -> None:
 
     if args.output:
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
-        with open(args.output, "w", encoding="utf-8") as f:
-            f.write(out_str)
+        write_json(args.output, result, indent=2, ensure_ascii=False)
         logger.info(f"Saved: {args.output}")
 
     # Exit code
