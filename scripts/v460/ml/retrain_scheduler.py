@@ -972,6 +972,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
     # 127# X2: 前モデルを一度だけロード (n_samples + WF score + E1 booster を取得)
     prev_n_samples = 0
     prev_score = 0.0
+    prev_source_run_id = ""  # 140# §8.1-#3: 前モデルの source_run_id
     prev_gate_loaded = False
     prev_booster = None  # E1: warm-start 用
     prev_feature_cols: list[str] | None = None  # E3: pruning 参照用
@@ -979,6 +980,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
         try:
             prev_gate = SkipGate.load(model_path)
             prev_n_samples = prev_gate.metadata.get("n_samples", 0)
+            prev_source_run_id = prev_gate.metadata.get("source_run_id", "")
             prev_wf = prev_gate.metadata.get("wf_results", {})
             prev_score = prev_wf.get("profit_score", 0.0)
             prev_feature_cols = prev_gate.metadata.get("feature_cols")
@@ -1008,21 +1010,33 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
         min_new = cfg.get("bootstrap_min_new_samples", 10)
     else:
         min_new = cfg.get("min_new_samples", 30)
-    # 139# §9-#1: run 切替時の new_samples 計算修正 (133# P0-01 改良)
-    # latest_run_only=true で現 run のサンプル数が前モデル (別 run) の n_samples を
-    # 下回る場合、run が切り替わったと判断し全サンプルを新規扱いにする。
-    # 133# の max(0, ...) clamp では new_samples=0 で永久スキップになっていた。
+    # 140# §8.1-#3: run_id 直接比較で run 切替を検出 (139# のヒューリスティックを補強)
+    # latest_run_only=true で現 run の run_id と前モデルの source_run_id を比較。
+    # 不一致 or prev_source_run_id が空 (旧モデル) かつ raw < 0 なら run 切替。
+    current_run_id = result.get("run_id", "")
     raw_new_samples = len(X_valid) - prev_n_samples
-    if raw_new_samples < 0:
-        # run 切替検出: prev_n_samples は別 run のモデル由来で無効
+    run_switched = False
+    if prev_source_run_id and current_run_id and prev_source_run_id != current_run_id:
+        # 明示的な run_id 不一致 → run 切替確定
+        run_switched = True
         new_samples = len(X_valid)
         logger.info(
-            f"139# Run switch detected: prev_n_samples={prev_n_samples} > "
+            f"140# Run switch by run_id: prev={prev_source_run_id} != "
+            f"current={current_run_id}. Treating all {new_samples} as new. "
+            f"(raw_delta={raw_new_samples})"
+        )
+    elif raw_new_samples < 0:
+        # 139# フォールバック: run_id がない旧モデルでも負値なら run 切替と推定
+        run_switched = True
+        new_samples = len(X_valid)
+        logger.info(
+            f"139# Run switch detected (fallback): prev_n_samples={prev_n_samples} > "
             f"current={len(X_valid)}. Treating all {new_samples} as new. "
             f"(raw_delta={raw_new_samples})"
         )
     else:
         new_samples = raw_new_samples
+    result["run_switched"] = run_switched
     result["new_samples"] = int(new_samples)
     result["raw_new_samples"] = int(raw_new_samples)  # 133# 診断用
 
@@ -1325,6 +1339,8 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
         "actual_n_trees": actual_n_trees,
         "pruned_features": pruned_features,
         "wf_dead_features": wf_dead_features,  # 131# B: 次回 consecutive-dead 参照用
+        "source_run_id": result.get("run_id", ""),  # 140# §8.1-#3: run_id 直接比較用
+        "run_switched": result.get("run_switched", False),  # 140# run 切替フラグ
         "enriched_cache_used": cfg.get("enriched_cache_enabled", True),
         # 131# C1-C3: ztb asset 統合メタデータ
         "wf_multi_window": wf_result.get("n_windows", 1) if cfg.get("quality_gate_enabled") else 0,

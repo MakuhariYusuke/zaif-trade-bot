@@ -8,13 +8,13 @@
 | 対象 | `docs/v460/137_ph2_impl_review_fixes_p1.md` §9, `docs/v460/138_ph2_impl_p1_preflight_calibration.md` §8 |
 | 作成日 | 2026-02-23 |
 | 前提 | Git `d9285beb9` (138# commit) |
-| 結論 | **137# §9 全 11 件 + 138# §8 全 6 件 = 計 17 件対応完了。retrain new_samples 致命バグ修正。テスト 1147→1161 (+14)。** |
+| 結論 | **137# §9 全 11 件 + 138# §8 全 6 件 + §8.1 再レビュー 5 件 = 計 22 件対応完了。retrain new_samples 致命バグ修正 + preflight_pause AttributeError 修正。テスト 1147→1171 (+24)。** |
 
 ---
 
 ## §0 エグゼクティブサマリ
 
-137# 外部レビュー §9 の 7 件 + 追加 4 件 (#A-#D) を全件対応。**最重要はretrain new_samples が -765 で永久停止していたバグの修正** (§9 #1/A)。138# §8 の 6 件はcalibrator 注入、mode 廃止、監査レコード、境界値バリデーション等。
+137# 外部レビュー §9 の 7 件 + 追加 4 件 (#A-#D) を全件対応。**最重要はretrain new_samples が -765 で永久停止していたバグの修正** (§9 #1/A)。138# §8 の 6 件はcalibrator 注入、mode 廃止、監査レコード、境界値バリデーション等。§8.1 再レビューで発覚した CRITICAL (`_append_fill_record` 未定義メソッド) + HIGH (skip 系 FillRecord 不在) を 140# として即時修正。
 
 ### ログ診断結果
 
@@ -162,16 +162,17 @@
 
 | ファイル | 変更内容 |
 |---|---|
-| `scripts/v460/ml/retrain_scheduler.py` | §9 #1/A: new_samples run 切替検出 |
+| `scripts/v460/ml/retrain_scheduler.py` | §9 #1/A: new_samples run 切替検出, §8.1 #3: source_run_id metadata + run_id 直接比較 |
 | `scripts/v460/lib/fill_config.py` | §9 #2: regime_thresholds, §8 #6: バリデーション |
-| `scripts/v460/run_fill_test.py` | §9 #2/#3: regime 配線 + sleep, §8 #4: 監査レコード |
+| `scripts/v460/run_fill_test.py` | §9 #2/#3: regime 配線 + sleep, §8 #4→§8.1 #1: batch.append 統一, §8.1 #2: skip FillRecord 化 (4分岐) |
 | `scripts/v460/lib/skip_gate_evaluator.py` | §8 #1: _inject_calibrator 追加 |
 | `scripts/v460/lib/pnl_measurer.py` | §9 #4: fee コメント明確化 |
 | `scripts/v460/ml/feature_enricher.py` | §9 #5: trades 全量フォールバック廃止 |
 | `ztb/ml/score_calibrator.py` | §8 #3: mode 廃止 |
 | `configs/v460/fill_test.yaml` | §9 #2/#7: thresholds + freshness |
-| `tests/unit/v460/test_139_review_fixes.py` | 新規 27 テスト |
+| `tests/unit/v460/test_139_review_fixes.py` | 新規 37 テスト (§9: 13, §8: 14, §8.1: 10) |
 | `tests/unit/v460/test_113_resilience.py` | 行数 assertion 修正 |
+| `tests/unit/v460/test_091_fixes.py` | §8.1 #2: 086 deadlock FillRecord 追加に伴う行数拡張 |
 | `tests/unit/v460/test_retrain_hot_reload.py` | fallback 回数修正 |
 
 ---
@@ -179,15 +180,16 @@
 ## §5 テスト結果
 
 ```
-tests/unit/v460: 1161 passed, 0 failed
-test_139_review_fixes.py: 27 passed (§9: 13, §8: 14)
+tests/unit/v460: 1171 passed, 0 failed
+test_139_review_fixes.py: 37 passed (§9: 13, §8: 14, §8.1: 10)
 ```
 
 | 区間 | テスト数 |
 |---|---|
 | 138# (前回) | 1147 |
-| 139# (今回) | 1161 |
-| 差分 | +14 (§8 #5/#6 テスト追加) |
+| 139# (対応) | 1161 |
+| 140# (§8.1 対応) | 1171 |
+| 差分 | +24 (§8 14 + §8.1 10) |
 
 ---
 
@@ -206,3 +208,43 @@ test_139_review_fixes.py: 27 passed (§9: 13, §8: 14)
 - [ ] §9 #3/C: narrow_spread_pause — ログに sleep 時間記録確認
 - [ ] §8 #1: calibrator 注入 — score_calibration=True 時 ログに "ScoreCalibrator injected" 確認
 - [ ] §8 #6: バリデーション — 不正値でアプリ起動エラー確認
+
+---
+
+## §8 外部再レビュー追記 (2026-02-22)
+
+### §8.1 実装済み点検 (重大度付き) → **140# 対応済み**
+
+| # | 重大度 | 対象 | 点検結果 | 対応内容 |
+|---|---|---|---|---|
+| 1 | CRITICAL | `run_fill_test.py` | `_append_fill_record()` が `FillTestRunner` に未定義 → `AttributeError` | **140# 修正済み**: `batch.append()` + `maybe_flush()` に統一。`_append_fill_record` 呼び出し全廃。 |
+| 2 | HIGH | `run_fill_test.py` | time_filter/preflight skip の FillRecord 化未完 | **140# 修正済み**: `time_filter_both_sides`, `time_filter_086_deadlock`, `preflight_insufficient` の 3 分岐に FillRecord 生成追加。全 7 skip パスが cancel_reason 付き。 |
+| 3 | MEDIUM | `retrain_scheduler.py` | `new_samples` 負値対策がヒューリスティック | **140# 改善済み**: metadata に `source_run_id` 保存。run_id 直接比較を優先し、旧モデル (source_run_id 未保存) は負値フォールバックで後方互換維持。 |
+| 4 | MEDIUM | `test_139_review_fixes.py` | ソース文字列検査中心でランタイム不整合を検出不能 | **140# 追加済み**: `TestRunContinuousBranchExecution` (5テスト) + `TestRetrainRunIdComparison` (5テスト) 計 10 テスト追加。`hasattr(FillTestRunner, "_append_fill_record") == False` のランタイム検証含む。 |
+| 5 | LOW | ドキュメント | 「17件対応完了」結論が過大 | **140# 修正済み**: 結論を「22件対応完了」に更新し、CRITICAL 修正を含む正確な記述に。 |
+
+### §8.2 132/133/134 との整合性点検
+
+| 起点 | 論点 | 現状 | 整合判定 |
+|---|---|---|---|
+| 132# F2 | retrain `new_samples` 停滞 | 負値永久停止は緩和済み + run_id 直接比較追加 | ✅ 整合 |
+| 132# F4 | skip 系可観測性欠損 | 全 7 skip パスに cancel_reason 付き FillRecord 生成 | ✅ 整合 (140# で完了) |
+| 133# P0-03/04 | trades 供給復旧 + recorder 二重化 | `check_trades_health` + `TradesRecorder` 導入済み | ✅ 整合 |
+| 133# P0-07/12 | per-run gate + CLI 統一 | `gate_judgment --run-id/--latest-run`、`run_gate_check` 委譲済み | ✅ 整合 |
+| 134# Phase C | 24h再計測 + latest-run 判定運用 | 実装基盤はあるが運用実行はこれから | ⬜ 未完了 |
+| 134# Phase E | P1-01/02 side 分離モデル | 139#時点では未着手 | ⬜ 未完了 (次フェーズ候補) |
+
+### §8.3 検証ログ
+
+- `tests/unit/v460/test_139_review_fixes.py`: **37 passed, 1 warning** (27→37, +10)
+- `tests/unit/v460`: **1171 passed, 91 warnings** (1161→1171, +10)
+- ランタイム点検: `hasattr(FillTestRunner, "_append_fill_record")` → **False** (テストで検証済み)
+- `self._append_fill_record` 呼び出し → **source 内に存在しない** (テストで検証済み)
+
+### §8.4 次ステップ提案 (優先順) → **140# 対応状況**
+
+1. ~~P0: `preflight_pause` の未定義メソッド不具合を修正~~ → **140# 完了**
+2. ~~P0: `time_filter / preflight_insufficient / preflight_pause` を全て FillRecord 化~~ → **140# 完了** (+ `time_filter_086_deadlock`)
+3. ~~P0: run_continuous の分岐実行型テストを追加~~ → **140# 完了** (10テスト追加)
+4. ~~P1: `new_samples` を run_id 直接比較へ変更~~ → **140# 完了** (`source_run_id` metadata 保存 + 比較)
+5. P1: 24h 固定設定 run → `--latest-run` で gate 判定 → P1-01/02 進行 → **運用タスク (コード完了)**  

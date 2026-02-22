@@ -1161,8 +1161,20 @@ class FillTestRunner:
                 alt_filtered = self._is_time_filtered(side=alt_side)
                 if alt_filtered:
                     # 両 side ともフィルタ → スリープ
+                    # 140# §8.1-#2: skip record を生成し可観測性確保 (132# F4)
                     if not self._time_filter.in_filter:
                         self._time_filter.on_enter()
+                        batch.append(FillRecord(
+                            cycle_id=f"{int(time.time())}_{uuid.uuid4().hex[:8]}",
+                            timestamp=time.time(),
+                            side=next_side,
+                            order_price=0.0,
+                            order_quantity=0.0,
+                            cancelled=True,
+                            cancel_reason="time_filter_both_sides",
+                            run_id=self._run_id,
+                            git_sha=self._git_sha,
+                        ))
                     else:
                         # 079# heartbeat: 長時間抑制中にプロセス生存を定期ログ
                         now_ts = time.time()
@@ -1218,6 +1230,18 @@ class FillTestRunner:
                             )
                             if not self._time_filter.in_filter:
                                 self._time_filter.on_enter()
+                                # 140# §8.1-#2: 086 deadlock 進入時も record 生成
+                                batch.append(FillRecord(
+                                    cycle_id=f"{int(time.time())}_{uuid.uuid4().hex[:8]}",
+                                    timestamp=time.time(),
+                                    side=next_side,
+                                    order_price=0.0,
+                                    order_quantity=0.0,
+                                    cancelled=True,
+                                    cancel_reason="time_filter_086_deadlock",
+                                    run_id=self._run_id,
+                                    git_sha=self._git_sha,
+                                ))
                             # 107# R1: 重複 flush → _maybe_flush_batch 統合
                             batch = self._batch_persistence.maybe_flush(batch, "alt_side==last_side wait")
                             await asyncio.sleep(self.config.cycle_interval_sec)
@@ -1259,6 +1283,18 @@ class FillTestRunner:
                     self._last_side = next_side  # → 次の _next_side() が反対を返す
                     self._preflight_skip_count += 1
 
+                    # 140# §8.1-#2: preflight skip record 生成 (132# F4)
+                    batch.append(FillRecord(
+                        cycle_id=f"{int(time.time())}_{uuid.uuid4().hex[:8]}",
+                        timestamp=time.time(),
+                        side=next_side,
+                        order_price=0.0,
+                        order_quantity=self._current_lot,
+                        cancelled=True,
+                        cancel_reason="preflight_insufficient",
+                        run_id=self._run_id,
+                        git_sha=self._git_sha,
+                    ))
                     # 107# R1: 重複 flush → _maybe_flush_batch 統合
                     batch = self._batch_persistence.maybe_flush(batch, "preflight skip")
 
@@ -1302,8 +1338,8 @@ class FillTestRunner:
                             f"pause #{self._preflight_pause_count}/{self.config.preflight_max_pauses} "
                             f"→ {pause_sec:.0f}s 待機後に再開"
                         )
-                        # 139# §8-#4: 監査レコードを残して検証可能にする
-                        self._append_fill_record(FillRecord(
+                        # 140# §8.1-#1: batch.append 導線に統一 (undefined _append_fill_record 修正)
+                        batch.append(FillRecord(
                             cycle_id=f"preflight_pause_{self._preflight_pause_count}",
                             timestamp=time.time(),
                             side="none",
@@ -1314,6 +1350,7 @@ class FillTestRunner:
                             run_id=self._run_id,
                             git_sha=self._git_sha,
                         ))
+                        batch = self._batch_persistence.maybe_flush(batch, "preflight_pause")
                         self._preflight_skip_count = 0
                         await asyncio.sleep(pause_sec)
                         continue

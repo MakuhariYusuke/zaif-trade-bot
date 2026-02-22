@@ -44,7 +44,8 @@ class TestAltSideBatchFlush:
         )
 
         # 119# BatchPersistence 委譲: _batch_persistence.maybe_flush に統合済み
-        block = "\n".join(lines[alt_side_line : alt_side_line + 35])
+        # 140# §8.1-#2 で FillRecord 追加により行数増加→検索範囲拡張
+        block = "\n".join(lines[alt_side_line : alt_side_line + 50])
         assert "_batch_persistence.maybe_flush" in block, (
             f"alt_side==last_side 分岐内に _batch_persistence.maybe_flush がない:\n{block[:300]}"
         )
