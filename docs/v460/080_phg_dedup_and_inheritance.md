@@ -1037,3 +1037,42 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - 回帰確認:
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/reporting/services/test_catalog.py`
     - 結果: `9 passed`（warning 1）
+
+## Phase 29 追補: JSONユーティリティ横展開 + duplicate削除処理の安全化 (2026-02-22)
+
+### 1) JSON I/O 共通化の追加適用
+
+- `tools/analyze_v447_configs.py`
+  - `json.load` 直呼びを `read_json_object()` + `ensure_dict()` へ置換。
+  - `ConfigSummary` (`TypedDict`) を導入し、設定要約の契約を明示。
+- `tools/inspect_env.py`
+  - config 読込を `read_json_object()` へ統一し、
+    `environment.config` 取得を `ensure_dict()` で正規化。
+- `tools/check_signals.py`
+  - `read_json_object` + `ensure_dict/safe_to_int/safe_to_float` へ統一し、
+    欠損キー時の参照例外を回避。
+- `tools/compare_results.py`
+  - 比較対象 JSON を `read_json_object` で読み込み、
+    数値項目を `safe_to_float` 経由で差分計算。
+
+### 2) 不具合可能性の解消（重複除去ツール）
+
+- `tools/remove_duplicates.py` を再構成:
+  - report 読込を `read_json_object()` へ統一。
+  - `DuplicateOccurrence` / `RemovalRange` (`TypedDict`) を導入。
+  - 旧実装の「同一ファイルを逐次編集して行番号がずれる」問題に対応し、
+    file 単位に removal を集約して **降順削除** する方式へ変更。
+  - path 解決時に root 外パスを reject するガードを追加。
+  - ファイルごとの read/write を1回化し、I/O 重複も削減。
+
+### 3) 検証
+
+- `py_compile`:
+  - `tools/analyze_v447_configs.py`
+  - `tools/inspect_env.py`
+  - `tools/check_signals.py`
+  - `tools/compare_results.py`
+  - `tools/remove_duplicates.py`
+- 回帰確認:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/reporting/services/test_catalog.py`
+    - 結果: `9 passed`（warning 1）

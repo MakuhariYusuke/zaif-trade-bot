@@ -1,54 +1,62 @@
 #!/usr/bin/env python3
 """Validate and analyze v447 config files."""
-import json
 from pathlib import Path
-from typing import Dict, Any
+from typing import TypedDict
+
+from ztb.io.json_io import read_json_object
+from ztb.utils.safety import ensure_dict
+
+
+class ConfigSummary(TypedDict):
+    model_name: object
+    total_timesteps: object
+    learning_rate: object
+    ent_coef: object
+    balance_penalty: object
+    entropy_regularization: object
+    action_balance_target: object
 
 
 def validate_json(file_path: Path) -> tuple[bool, str]:
     """Validate JSON file."""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            json.load(f)
+        read_json_object(file_path)
         return True, "OK"
-    except json.JSONDecodeError as e:
-        return False, f"JSON Error: {e}"
     except Exception as e:
         return False, f"Error: {e}"
 
 
-def extract_config_summary(file_path: Path) -> Dict[str, Any]:
+def extract_config_summary(file_path: Path) -> ConfigSummary | dict[str, str]:
     """Extract key configuration parameters."""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            config = json.load(f)
-        
-        training = config.get('training', {})
-        env = training.get('environment', {})
-        behavior = env.get('behavior_optimization', {})
-        sac = training.get('sac_hyperparameters', {})
-        
+        config = read_json_object(file_path)
+
+        training = ensure_dict(config.get("training"))
+        env = ensure_dict(training.get("environment"))
+        behavior = ensure_dict(env.get("behavior_optimization"))
+        sac = ensure_dict(training.get("sac_hyperparameters"))
+
         return {
-            'model_name': training.get('model_name', 'N/A'),
-            'total_timesteps': training.get('total_timesteps', 'N/A'),
-            'learning_rate': sac.get('learning_rate', 'N/A'),
-            'ent_coef': sac.get('ent_coef', 'N/A'),
-            'balance_penalty': behavior.get('balance_penalty', 'N/A'),
-            'entropy_regularization': behavior.get('entropy_regularization', 'N/A'),
-            'action_balance_target': behavior.get('action_balance_target', 'N/A'),
+            "model_name": training.get("model_name", "N/A"),
+            "total_timesteps": training.get("total_timesteps", "N/A"),
+            "learning_rate": sac.get("learning_rate", "N/A"),
+            "ent_coef": sac.get("ent_coef", "N/A"),
+            "balance_penalty": behavior.get("balance_penalty", "N/A"),
+            "entropy_regularization": behavior.get("entropy_regularization", "N/A"),
+            "action_balance_target": behavior.get("action_balance_target", "N/A"),
         }
     except Exception as e:
-        return {'error': str(e)}
+        return {"error": str(e)}
 
 
 def main():
-    v447_dir = Path('config/v447')
+    v447_dir = Path("config/v447")
     
     if not v447_dir.exists():
         print(f"Directory not found: {v447_dir}")
         return
     
-    json_files = sorted(v447_dir.glob('*.json'))
+    json_files = sorted(v447_dir.glob("*.json"))
     
     print("="*80)
     print("V447 Configuration Files Validation & Analysis")
