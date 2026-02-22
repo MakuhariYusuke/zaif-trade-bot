@@ -277,3 +277,45 @@ PowerShell ラッパー: `ops/windows/daily_health_check.ps1` — タスクス�
 ```
 f6d4029bc 146# §11 review fixes + P2-04/P3-04 daily_health_check [1440 tests]
 ```
+
+---
+
+## §13 追加レビュー対応 (2026-02-23)
+
+### §13.1 §11.4 レビュー指摘への対応
+
+| # | 重要度 | 対象 | 指摘内容 | 対応 |
+|---|---|---|---|---|
+| 1 | CRITICAL | `coincheck/adapter.py` | top-level `from requests.adapters` がテスト stub を破壊 | lazy import 化（`_create_session()` 内で import） |
+| 2 | HIGH | `coincheck/adapter.py` | `_create_session()` 未実装 → AttributeError | 実装追加、3-retry + 0.5s backoff |
+| 3 | MEDIUM | `coincheck/adapter.py` | HTTP 呼び出しが `self._session` を使用せず | `_get_session().get/post/delete` に統一 |
+| 4 | LOW | `scripts/v460/lib/ob_recorder.py` | flush 失敗時の即時 discard | TradesRecorder 同様の 3連続失敗リトライパターン追加 |
+
+### §13.2 追加改善（サブエージェント調査より）
+
+| # | 重要度 | 対象 | 内容 |
+|---|---|---|---|
+| 5 | HIGH | `tests/conftest.py` | `_Session` stub に `post/delete/close` 追加、`_Resp` に `raise_for_status/text` 追加、`HTTPError` 追加 |
+| 6 | HIGH | `base/adapter.py` + `coincheck/adapter.py` | `close()` ライフサイクルメソッド追加（Session リソースリーク防止） |
+| 7 | MEDIUM | `coincheck/adapter.py` | 未使用 `import json, random` 削除 |
+| 8 | MEDIUM | `coincheck/adapter.py` | `_parse_timestamp(value: Any)` → `Union[int, float, str, None]` に型絞り込み |
+| 9 | - | `tests/unit/v460/test_013_fixes.py` | `requests` モジュール mock → `_get_session()` mock に修正 |
+
+### §13.3 ドキュメント命名修正
+
+```
+146_multi_exchange_registry.md → 146_ph2_impl_multi_exchange_registry.md
+```
+000# §5 命名規則 (`NNN_phX_type_subject.md`) に準拠。
+
+### §13.4 テスト結果
+
+- test_146_multi_exchange.py: **54 passed**
+- test_013_fixes.py: **3 passed** (修正後)
+- 全体: **1440 passed** (回帰なし)
+
+### §13.5 コミット
+
+```
+9c2e69aa8 146# §11.4 review fixes + improvements: Session retry, OBRecorder flush retry, close(), test stub
+```
