@@ -1,7 +1,7 @@
 # v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-23 (147# Phase C 24h run 開始・停止原因調査)
+> 最終更新: 2026-02-23 (147# Phase C 開始, 149# 並行作業計画)
 
 ---
 
@@ -140,6 +140,8 @@
 | 145 | impl | [145_ph2_impl_regime_retrain_adaptation.md](145_ph2_impl_regime_retrain_adaptation.md) | Regime retrain adaptation (R-2a config) |
 | 146 | impl | [146_ph2_impl_multi_exchange_registry.md](146_ph2_impl_multi_exchange_registry.md) | Multi-exchange registry 分離 |
 | 147 | rpt | [147_ph2_rpt_phase_c_24h_run_start.md](147_ph2_rpt_phase_c_24h_run_start.md) | Phase C 24h 連続 run 開始・停止原因調査 |
+| 148 | rev | (予約: 147# レビュー) | 147# 停止原因・Phase C 設計レビュー |
+| 149 | plan | [149_ph2_plan_phase_c_parallel_work.md](149_ph2_plan_phase_c_parallel_work.md) | Phase C 並行作業計画 (P2/P3 残項目検討) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

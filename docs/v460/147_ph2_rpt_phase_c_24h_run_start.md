@@ -14,12 +14,14 @@
 ### Phase C の位置付け (134# §7 より)
 
 ```
-Phase A: データインフラ復旧 (Day 0-1) ← 完了
-Phase B: 観測性強化 (Day 1-2)         ← 完了
-Phase C: 再計測 (Day 2-3)             ← 本ドキュメント
-Phase D: retrain 再始動 (Day 3-5)
-Phase E: P1 群着手 (Day 5+)
+Phase A: データインフラ復旧 (Day 0-1) ← ✅ 135# 完了
+Phase B: 観測性強化 (Day 1-2)         ← ✅ 135# 完了
+Phase C: 再計測 (Day 2-3)             ← 🔄 本ドキュメント (24h run 中)
+Phase D: retrain 再始動 (Day 3-5)     ← ✅ 136# 先行実施済み
+Phase E: P1 群着手 (Day 5+)           ← ✅ 137#-141# 先行実施済み (全 9 項目)
 ```
+
+**注**: Phase D/E は Phase C に先行して実施済み。詳細は [144# §7](144_ph2_impl_regime_reprice_timeout.md#7-134-ロードマップ位置確認) 参照。
 
 ---
 
