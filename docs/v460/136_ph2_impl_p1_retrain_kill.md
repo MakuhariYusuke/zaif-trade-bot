@@ -138,6 +138,8 @@ tests/unit/v460/test_136_p1_retrain_kill.py: 15 passed
 
 v460 全体: 1104 passed, 0 failed, 91 warnings
 テスト増分: +15 (1089 → 1104)
+
+> **§9 #C 注記:** フルスイートのテスト数は実装環境の依存パッケージ構成に依存する。上記数値は実装時環境で確認。別環境では対象テスト (`test_136_p1_retrain_kill.py`) のみの再確認を推奨。
 ```
 
 ---
