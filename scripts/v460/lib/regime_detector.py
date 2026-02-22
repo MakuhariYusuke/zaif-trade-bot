@@ -217,6 +217,8 @@ class FillTestRegimeDetector:
         """ヒステリシス: raw 判定が N 回連続で一致して初めて状態遷移.
 
         035# §4.2 #2: 連続 N サイクル一致で状態確定.
+        152# A: UNKNOWN → first regime は (N-1) 連続で確定 (初回遷移の加速).
+        152# B: UNKNOWN が長期化した場合、直近 raw の最頻分類で仮確定.
         """
         self._raw_history.append(raw_regime)
         # raw_history もバウンド
@@ -236,16 +238,43 @@ class FillTestRegimeDetector:
             self._stability_count = consecutive
             return self._confirmed_regime
 
-        if consecutive >= self.config.hysteresis_count:
+        # 152# A: 初回遷移 (UNKNOWN →) は閾値を 1 下げて高速確定
+        if self._confirmed_regime == FillTestRegime.UNKNOWN:
+            threshold = max(2, self.config.hysteresis_count - 1)
+        else:
+            threshold = self.config.hysteresis_count
+
+        if consecutive >= threshold:
             # 新レジームが十分な連続一致 → 遷移
             old = self._confirmed_regime
             self._confirmed_regime = raw_regime
             self._stability_count = consecutive
             logger.info(
                 f"[Regime] transition: {old.value} → {raw_regime.value} "
-                f"(consecutive={consecutive})"
+                f"(consecutive={consecutive}, threshold={threshold})"
             )
             return raw_regime
+
+        # 152# B: UNKNOWN が長期化 → 最頻分類フォールバック
+        if (
+            self._confirmed_regime == FillTestRegime.UNKNOWN
+            and len(self._raw_history) >= self.config.hysteresis_count * 2
+        ):
+            from collections import Counter
+
+            recent_raw = self._raw_history[-self.config.hysteresis_count * 2 :]
+            non_unknown = [r for r in recent_raw if r != FillTestRegime.UNKNOWN]
+            if non_unknown:
+                majority, majority_count = Counter(non_unknown).most_common(1)[0]
+                # 過半数以上の一致を要求
+                if majority_count > len(recent_raw) // 2:
+                    self._confirmed_regime = majority
+                    self._stability_count = majority_count
+                    logger.info(
+                        f"[Regime] majority fallback: unknown → {majority.value} "
+                        f"(count={majority_count}/{len(recent_raw)})"
+                    )
+                    return majority
 
         # 遷移未確定 → 旧レジーム維持
         self._stability_count += 1  # 旧が暫定的に続く

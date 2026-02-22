@@ -71,8 +71,10 @@ lot_sizing:
   regime_decrease_regimes: []  # 減量を強制するレジーム (空=なし)
 
 # ---- 151# P3-03: AS 確率連動ロットサイジング (confidence_lot) ----
+# 152# 検証結果: order_quantity == min_order_btc が 99.7% → 完全 no-op のため有効化見送り
+# 有効化条件: order_quantity > min_order_btc (例: 0.003 BTC) に引き上げ後に再検討
 confidence_lot:
-  enabled: false              # 有効化 (Phase C データ検証後に true)
+  enabled: false              # 152#: 有効化見送り (order_quantity=min_order_btc で no-op)
   scale: 1.0                  # AS prob → lot 縮小傾斜
   floor: 0.3                  # 最小 lot 倍率 [0, 1]
   mode: "as"                  # "as" only ("pnl" は凍結)
@@ -84,7 +86,7 @@ regime:
   trend_threshold_pct: 0.5     # トレンド判定の価格変化率閾値 (%)
   high_vol_multiplier: 2.0     # 高ボラ判定倍率 (baseline 比)
   hysteresis_count: 3          # 状態確定までの連続一致数
-  min_confidence: 0.3          # 052#: 0.4→0.3 (unknown 72% → レジーム判定感度向上)
+  min_confidence: 0.2          # 152#: 0.3→0.2 (classify最低値0.4で不発のため引き下げ)
   trending_offset_boost: 1.5   # 052#: trending PnL -1.2bps → offset ×1.5 で保守化
 
 # ---- 時間帯フィルター (041#) ----

@@ -142,6 +142,9 @@
 | 147 | rpt | [147_ph2_rpt_phase_c_24h_run_start.md](147_ph2_rpt_phase_c_24h_run_start.md) | Phase C 24h 連続 run 開始・停止原因調査 |
 | 148 | rev | [148_ph2_rev_147_phase_c_stop_cause_and_side_issues.md](148_ph2_rev_147_phase_c_stop_cause_and_side_issues.md) | 147# 補足レビュー: 停止原因再点検 + lock heartbeat 修正 |
 | 149 | plan | [149_ph2_plan_phase_c_parallel_work.md](149_ph2_plan_phase_c_parallel_work.md) | Phase C 並行作業計画 (P2/P3 残項目検討) |
+| 150 | plan | [150_ph2_plan_fill_test_auto_restart.md](150_ph2_plan_fill_test_auto_restart.md) | P2-B 自動再起動設計 |
+| 151 | impl | [151_ph2_plan_dynamic_position_sizer.md](151_ph2_plan_dynamic_position_sizer.md) | P3-03 confidence_lot 実装 |
+| 152 | plan | [152_ph2_plan_priority_improvements.md](152_ph2_plan_priority_improvements.md) | 代替優先施策: 144# CRITICAL検証 + P3-03判定 + P3-02 unknown削減 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

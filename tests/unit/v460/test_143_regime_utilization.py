@@ -979,3 +979,160 @@ class TestEffectiveTimeout:
             )
         )
         assert old_cancel_reason == "unknown"  # 旧ロジックの欠陥を証明
+
+
+# ======================================================================
+# 152# Regime detector unknown reduction tests
+# ======================================================================
+
+
+class TestAcceleratedHysteresis:
+    """152# A: UNKNOWN → first regime は accelerated hysteresis で高速確定."""
+
+    def test_unknown_to_first_regime_needs_fewer_consecutive(self) -> None:
+        """UNKNOWN からの初回遷移は hysteresis_count - 1 で確定する.
+
+        window=5 の場合、5 回目の update で初回分類が走り raw_history に 1 件追加。
+        6 回目の update で 2 連続 → accelerated threshold (max(2, 3-1)=2) を満たし確定。
+        旧ロジックでは 3 連続 (8 回目) が必要だった。
+        """
+        from scripts.v460.lib.regime_detector import (
+            FillTestRegimeDetector,
+            FillTestRegime,
+            RegimeConfig,
+        )
+
+        config = RegimeConfig(window=5, hysteresis_count=3, min_confidence=0.0)
+        det = FillTestRegimeDetector(config)
+
+        # window 充填: 4 回は early return、5 回目で初回分類 (raw_history=[RANGING])
+        base_price = 10_000_000.0
+        for i in range(5):
+            det.update(float(i), base_price + i * 10)  # ≈0% 変動
+
+        # 5 回目で分類済みだが 1 連続 < threshold(2) → まだ UNKNOWN
+        assert det.current_regime == FillTestRegime.UNKNOWN
+
+        # 6 回目: 2 連続 RANGING → accelerated threshold (2) を満たし確定
+        det.update(5.0, base_price + 50)
+        assert det.current_regime == FillTestRegime.RANGING
+
+    def test_normal_transition_still_needs_full_hysteresis(self) -> None:
+        """UNKNOWN 以外 → 別レジームへの遷移は通常の hysteresis_count を使う."""
+        from scripts.v460.lib.regime_detector import (
+            FillTestRegimeDetector,
+            FillTestRegime,
+            RegimeConfig,
+        )
+
+        config = RegimeConfig(
+            window=5, hysteresis_count=3, min_confidence=0.0,
+            trend_threshold_pct=0.3,
+        )
+        det = FillTestRegimeDetector(config)
+
+        # まず RANGING を確定させる
+        base = 10_000_000.0
+        for i in range(5):
+            det.update(float(i), base + i * 10)
+        det.update(5.0, base + 50)
+        det.update(6.0, base + 60)
+        assert det.current_regime == FillTestRegime.RANGING
+
+        # 強いトレンドを投入: 2 連続では遷移しない (threshold=3)
+        for i in range(2):
+            price = base + 60 + (i + 1) * 50_000  # 大きな値動き
+            det.update(float(7 + i), price)
+        assert det.current_regime == FillTestRegime.RANGING  # まだ遷移しない
+
+        # 3 連続で遷移
+        det.update(9.0, base + 60 + 3 * 50_000)
+        assert det.current_regime == FillTestRegime.TRENDING
+
+
+class TestMajorityFallback:
+    """152# B: UNKNOWN 長期化時の最頻分類フォールバック."""
+
+    def test_choppy_market_triggers_majority_fallback(self) -> None:
+        """choppy な市場で連続一致が成立しなくても、最頻分類で仮確定する."""
+        from scripts.v460.lib.regime_detector import (
+            FillTestRegimeDetector,
+            FillTestRegime,
+            RegimeConfig,
+        )
+
+        config = RegimeConfig(
+            window=5, hysteresis_count=3, min_confidence=0.0,
+            trend_threshold_pct=0.3,
+            high_vol_multiplier=2.0,
+        )
+        det = FillTestRegimeDetector(config)
+
+        # window を満たす
+        base = 10_000_000.0
+        for i in range(5):
+            det.update(float(i), base + i * 10)
+
+        # choppy: RANGINGとTRENDINGが交互 → 連続一致しない
+        # 但し RANGING のほうが多い
+        prices = [
+            base + 50,     # ranging
+            base + 50_100, # trending (大きな値動き)
+            base + 50_110, # ranging (戻り)
+            base + 50_120, # ranging
+            base + 100_000, # trending
+            base + 100_010, # ranging
+        ]
+        for i, price in enumerate(prices):
+            det.update(float(5 + i), price)
+
+        # hysteresis_count * 2 = 6 回の raw_history が溜まった
+        # 過半数が同一分類なら majority fallback が発動
+        # 結果は RANGING か TRENDING のいずれか (not UNKNOWN が重要)
+        assert det.current_regime != FillTestRegime.UNKNOWN
+
+    def test_no_fallback_when_insufficient_raw_history(self) -> None:
+        """raw_history が hysteresis_count * 2 未満なら fallback しない."""
+        from scripts.v460.lib.regime_detector import (
+            FillTestRegimeDetector,
+            FillTestRegime,
+            RegimeConfig,
+        )
+
+        # hysteresis_count=4 → accelerated threshold = max(2, 3) = 3
+        # fallback requires raw_history >= 8
+        config = RegimeConfig(window=5, hysteresis_count=4, min_confidence=0.0)
+        det = FillTestRegimeDetector(config)
+
+        # window 充填: 5 回 (5 回目で分類、raw_history=[RANGING])
+        base = 10_000_000.0
+        for i in range(5):
+            det.update(float(i), base + i * 10)
+
+        # 1 回追加: raw_history=[RANGING, RANGING], len=2 < 8 → fallback なし
+        # consecutive=2 < threshold=3 → accelerated 未確定
+        det.update(5.0, base + 50)
+
+        assert det.current_regime == FillTestRegime.UNKNOWN
+
+    def test_accelerated_takes_priority_over_fallback(self) -> None:
+        """accelerated hysteresis が先に確定すれば fallback は不要."""
+        from scripts.v460.lib.regime_detector import (
+            FillTestRegimeDetector,
+            FillTestRegime,
+            RegimeConfig,
+        )
+
+        config = RegimeConfig(window=5, hysteresis_count=3, min_confidence=0.0)
+        det = FillTestRegimeDetector(config)
+
+        # window を満たす
+        base = 10_000_000.0
+        for i in range(5):
+            det.update(float(i), base + i * 10)
+
+        # 2 連続同一分類 → accelerated で確定 (fallback 不要)
+        det.update(5.0, base + 50)
+        det.update(6.0, base + 60)
+        assert det.current_regime == FillTestRegime.RANGING  # accelerated 確定
+
