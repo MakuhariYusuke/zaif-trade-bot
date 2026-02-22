@@ -597,11 +597,16 @@ class FillTestRunner:
         t_submit: float,
         spread_at_order: Optional[float],
         effective_offset_ratio: float,
+        *,
+        order_lot: float | None = None,
     ) -> _FillMonitorResult:
         """約定ポーリング監視 — 120# OrderMonitor に委譲.
 
         120# 型安全: order: Any → object (OrderLike Protocol 準拠)。
+        145# fix §9-#1: current_lot → order_lot (regime 調整済みの正しいロット)。
         """
+        _lot = order_lot if order_lot is not None else self._current_lot
+
         def _set_pending(oid: str | None) -> None:
             self._pending_order_id = oid
 
@@ -619,7 +624,7 @@ class FillTestRunner:
             compute_maker_price=self._compute_maker_price,
             skip_gate=self._skip_gate,
             regime_detector=self._regime_detector,
-            current_lot=self._current_lot,
+            current_lot=_lot,
         )
 
     async def _measure_post_fill_pnl(
@@ -801,12 +806,9 @@ class FillTestRunner:
         # 105#: lot floor guard — 121# BalanceChecker に委譲
         self._balance_checker.apply_lot_floor()
 
-        # 144# #1: レジーム別ロット → preflight 前に計算して残高チェックに反映
+        # 143# R-1b: レジーム別ロット (per-cycle, _current_lot には永続化しない)
+        # 145# fix: §8-#2 乗法的複利と §8-#3 片側更新を修正
         _order_lot = self._regime_adjusted_lot()
-        # preflight は _current_lot ベースだが、regime 増量時に不足を起こさないよう
-        # _current_lot を一時的に _order_lot に合わせる (発注後に復元不要: 次サイクルで再計算)
-        if _order_lot > self._current_lot:
-            self._current_lot = _order_lot
 
         for attempt in range(1 + self.config.max_order_retries):
             try:
@@ -922,6 +924,7 @@ class FillTestRunner:
         # 113# R1: ポーリング監視 + 未約定キャンセルを _monitor_fill_polling() に委譲
         monitor = await self._monitor_fill_polling(
             order, order_price, side, t_submit, spread_at_order, effective_offset_ratio,
+            order_lot=_order_lot,
         )
         filled = monitor.filled
         fill_price = monitor.fill_price
@@ -929,6 +932,7 @@ class FillTestRunner:
         cancel_reason_poll = monitor.cancel_reason
         reprice_count = monitor.reprice_count
         order_price = monitor.final_order_price  # stale reprice で変更される場合
+        _effective_timeout = monitor.effective_timeout  # 145# §9-#2
 
         # 113# R1: PnL 計測を _measure_post_fill_pnl() に委譲
         pnl = await self._measure_post_fill_pnl(filled, fill_price, side)
@@ -988,7 +992,8 @@ class FillTestRunner:
                 if cancel_reason_poll
                 else (
                     "timeout"
-                    if (not filled and queue_wait >= self.config.order_timeout_sec)
+                    # 145# §9-#2: regime 調整済みの effective_timeout を使用
+                    if (not filled and queue_wait >= (_effective_timeout or self.config.order_timeout_sec))
                     else ("unknown" if not filled else None)  # 117# C-fix: None 防止
                 )
             ),

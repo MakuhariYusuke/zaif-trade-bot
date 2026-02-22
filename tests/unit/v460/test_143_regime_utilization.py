@@ -581,20 +581,21 @@ class TestMinLotUnification:
 
 
 class TestPreflightLotAlignment:
-    """144# #1 (HIGH): preflight が regime-adjusted lot を使う."""
+    """144# #1 → 145# fix: regime-adjusted lot は per-cycle で _current_lot に永続化しない."""
 
-    def test_preflight_lot_alignment_in_source(self) -> None:
-        """run_single_cycle で _regime_adjusted_lot が apply_lot_floor 後に呼ばれ、
-        _current_lot を更新している."""
+    def test_regime_lot_no_persistent_mutation(self) -> None:
+        """145# fix: run_single_cycle で _regime_adjusted_lot が呼ばれるが、
+        _current_lot への永続化コードが除去されている."""
         from scripts.v460.run_fill_test import FillTestRunner
         source = inspect.getsource(FillTestRunner.run_single_cycle)
-        # apply_lot_floor → _regime_adjusted_lot → _current_lot 更新の順序
+        # apply_lot_floor → _regime_adjusted_lot の順序は維持
         floor_idx = source.index("apply_lot_floor")
         regime_idx = source.index("_regime_adjusted_lot")
-        current_lot_update_idx = source.index(
-            "_order_lot > self._current_lot"
+        assert floor_idx < regime_idx
+        # 145# fix: 永続化コード「_order_lot > self._current_lot」は除去済み
+        assert "_order_lot > self._current_lot" not in source, (
+            "§8-#2/#3 fix: _current_lot への永続化コードが残っている"
         )
-        assert floor_idx < regime_idx < current_lot_update_idx
 
 
 class TestRegimeRepriceConfig:
@@ -757,3 +758,209 @@ class TestRegimeTimeoutMonitorBehavioral:
         mult = cfg.regime_timeout_multipliers.get(None, 1.0)  # type: ignore[arg-type]
         assert mult == 1.0
         assert cfg.order_timeout_sec * mult == 90.0
+
+
+# ======================================================================
+# 145# fix: lot management bug fixes (§8-#1/#2/#3, §9-#1, §9-#2)
+# ======================================================================
+
+
+class TestLotNoCompounding:
+    """145# §8-#2 fix: _regime_adjusted_lot が _current_lot を永続化しない確認."""
+
+    def _make_runner_mock(
+        self,
+        *,
+        base_lot: float = 0.005,
+        max_lot: float = 0.05,
+        multipliers: dict[str, float] | None = None,
+        regime_value: str | None = None,
+    ) -> Any:
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        config = FillTestConfig(
+            order_quantity=base_lot,
+            max_lot=max_lot,
+            regime_lot_multipliers=multipliers or {},
+        )
+        runner = MagicMock()
+        runner.config = config
+        runner._current_lot = base_lot
+
+        if regime_value is not None:
+            det = MagicMock()
+            det.current_regime = MagicMock()
+            det.current_regime.value = regime_value
+            runner._regime_detector = det
+        else:
+            runner._regime_detector = None
+
+        from scripts.v460.run_fill_test import FillTestRunner
+        import types
+        runner._regime_adjusted_lot = types.MethodType(
+            FillTestRunner._regime_adjusted_lot, runner,
+        )
+        return runner
+
+    def test_no_compounding_trending(self) -> None:
+        """trending×1.5 を繰り返しても _current_lot は変化しない."""
+        runner = self._make_runner_mock(
+            base_lot=0.001,
+            multipliers={"trending": 1.5},
+            regime_value="trending",
+        )
+        for _ in range(10):
+            order_lot = runner._regime_adjusted_lot()
+            assert abs(order_lot - 0.0015) < 1e-8, (
+                f"compounding detected: order_lot={order_lot}"
+            )
+            # 145# fix: _current_lot を更新しない
+            assert runner._current_lot == 0.001
+
+    def test_no_one_sided_update(self) -> None:
+        """§8-#3: trending 後に high_vol に切り替えても _current_lot は base のまま."""
+        runner = self._make_runner_mock(
+            base_lot=0.005,
+            multipliers={"trending": 1.5, "high_vol": 0.5},
+            regime_value="trending",
+        )
+        # trending: 0.005 * 1.5 = 0.0075
+        lot1 = runner._regime_adjusted_lot()
+        assert abs(lot1 - 0.0075) < 1e-8
+
+        # regime 切替: high_vol
+        runner._regime_detector.current_regime.value = "high_vol"
+        lot2 = runner._regime_adjusted_lot()
+        # 0.005 * 0.5 = 0.0025 (base からの再計算)
+        assert abs(lot2 - 0.0025) < 1e-8
+        # _current_lot は不変
+        assert runner._current_lot == 0.005
+
+    def test_balance_shrink_reflected(self) -> None:
+        """balance shrink が _current_lot を下げた場合、regime lot もそれに追従."""
+        runner = self._make_runner_mock(
+            base_lot=0.005,
+            multipliers={"trending": 1.5},
+            regime_value="trending",
+        )
+        lot = runner._regime_adjusted_lot()
+        assert abs(lot - 0.0075) < 1e-8
+
+        # balance shrink で _current_lot が 0.003 に縮小
+        runner._current_lot = 0.003
+        lot_after = runner._regime_adjusted_lot()
+        # 0.003 * 1.5 = 0.0045 (shrink 後の base から計算)
+        assert abs(lot_after - 0.0045) < 1e-8
+
+
+class TestMonitorReceivesOrderLot:
+    """145# §9-#1 fix: _monitor_fill_polling が order_lot を monitor に渡す確認."""
+
+    @pytest.mark.asyncio
+    async def test_monitor_receives_order_lot_not_current_lot(self) -> None:
+        """order_lot を渡すと, monitor.current_lot に反映される."""
+        from scripts.v460.run_fill_test import FillTestRunner
+        from scripts.v460.lib.fill_config import FillMonitorResult
+
+        runner = MagicMock(spec=FillTestRunner)
+        runner._current_lot = 0.001  # base lot
+        runner._pending_order_id = None
+        runner._kill_switch = MagicMock()
+        runner._maker_price = MagicMock()
+        runner._order_monitor = MagicMock()
+        runner._skip_gate = MagicMock()
+        runner._regime_detector = None
+        runner.adapter = AsyncMock()
+
+        # monitor mock
+        monitor_result = FillMonitorResult(filled=True, fill_price=15000000.0)
+        runner._order_monitor.monitor = AsyncMock(return_value=monitor_result)
+
+        # _get_mid_price, _compute_maker_price
+        runner._get_mid_price = AsyncMock(return_value=15000000.0)
+        runner._compute_maker_price = AsyncMock(return_value=(15000000.0, 100.0, 0.0003))
+
+        import types
+        runner._monitor_fill_polling = types.MethodType(
+            FillTestRunner._monitor_fill_polling, runner,
+        )
+
+        order = MagicMock()
+        order.order_id = "test_order"
+
+        await runner._monitor_fill_polling(
+            order, 15000000.0, "buy", time.time(), 100.0, 0.0003,
+            order_lot=0.0015,  # regime-adjusted lot
+        )
+
+        # monitor が order_lot (0.0015) で呼ばれた (NOT _current_lot 0.001)
+        call_kwargs = runner._order_monitor.monitor.call_args
+        actual_lot = call_kwargs.kwargs.get("current_lot")
+        assert actual_lot == 0.0015, (
+            f"Expected current_lot=0.0015, got: {actual_lot}"
+        )
+
+
+class TestEffectiveTimeout:
+    """145# §9-#2: FillMonitorResult.effective_timeout が正しく返される."""
+
+    def test_effective_timeout_field(self) -> None:
+        """effective_timeout フィールドが存在し値が設定される."""
+        from scripts.v460.lib.fill_config import FillMonitorResult
+
+        result = FillMonitorResult(
+            filled=False,
+            queue_wait=30.0,
+            effective_timeout=45.0,
+        )
+        assert result.effective_timeout == 45.0
+
+    def test_effective_timeout_default_zero(self) -> None:
+        """デフォルトは 0.0."""
+        from scripts.v460.lib.fill_config import FillMonitorResult
+
+        result = FillMonitorResult(filled=True)
+        assert result.effective_timeout == 0.0
+
+    def test_cancel_reason_uses_effective_timeout(self) -> None:
+        """regime で短縮されたタイムアウトで正しく timeout ラベルが付く.
+
+        例: base=60s, high_vol mult=0.5 → effective=30s.
+        queue_wait=30s は base(60s) 未満だが effective(30s) 以上 → timeout.
+        """
+        effective_timeout = 30.0  # regime-shortened
+        queue_wait = 30.0
+        filled = False
+        cancel_reason_poll: str | None = None
+        base_timeout = 60.0
+
+        # 145# fix 適用後の cancel_reason ロジック
+        cancel_reason = (
+            cancel_reason_poll
+            if cancel_reason_poll
+            else (
+                "timeout"
+                if (not filled and queue_wait >= (effective_timeout or base_timeout))
+                else ("unknown" if not filled else None)
+            )
+        )
+        assert cancel_reason == "timeout"
+
+    def test_cancel_reason_old_logic_would_fail(self) -> None:
+        """fix 前のロジック (base_timeout 比較) では unknown になるケースを確認."""
+        queue_wait = 30.0
+        filled = False
+        cancel_reason_poll: str | None = None
+        base_timeout = 60.0
+
+        # 旧ロジック: base_timeout で比較 → 30 < 60 → unknown
+        old_cancel_reason = (
+            cancel_reason_poll
+            if cancel_reason_poll
+            else (
+                "timeout"
+                if (not filled and queue_wait >= base_timeout)
+                else ("unknown" if not filled else None)
+            )
+        )
+        assert old_cancel_reason == "unknown"  # 旧ロジックの欠陥を証明

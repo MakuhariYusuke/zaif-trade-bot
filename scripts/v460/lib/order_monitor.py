@@ -404,4 +404,5 @@ class OrderMonitor:
             queue_wait=elapsed,
             reprice_count=reprice_count,
             final_order_price=order_price,
+            effective_timeout=_effective_timeout,
         )

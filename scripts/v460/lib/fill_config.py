@@ -690,6 +690,8 @@ class FillMonitorResult:
     queue_wait: float = 0.0
     reprice_count: int = 0
     final_order_price: float = 0.0
+    # 145# §9-#2: regime 調整済みの実効タイムアウト (cancel_reason 判定で使用)
+    effective_timeout: float = 0.0
 
 
 @dataclass

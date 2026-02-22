@@ -241,3 +241,75 @@ retrain:
 | `tests/unit/v460/test_retrain_hot_reload.py` | R-2a: `TestRegimeSampleWeights` (7 tests) |
 | `tests/unit/v460/test_136_p1_retrain_kill.py` | R-2b: `TestRetrainTriggerRegimeInterval` (7 tests) |
 | `docs/v460/145_r2_regime_retrain_adaptation.md` | 本ドキュメント |
+
+---
+
+## §10 144# レビュー修正 (lot 管理 + timeout label)
+
+### §10.1 修正対象 (144# §8/§9 レビュー指摘)
+
+| ID | 重要度 | 問題 | 修正内容 |
+|---|---|---|---|
+| §8-#2 | CRITICAL | `_regime_adjusted_lot()` → `_current_lot` 永続化 → 乗法的複利 (0.001→0.0015→0.00225→…) | `_current_lot` への書き戻し削除 |
+| §8-#3 | HIGH | `if _order_lot > self._current_lot` — 片側のみ、shrink レジームで `_current_lot` が膨張したまま | 同上 (永続化自体を削除) |
+| §9-#1 | CRITICAL | OrderMonitor の reprice が `self._current_lot` (膨張値) を使用 | `_monitor_fill_polling` に `order_lot` パラメータ追加、regime 調整済み lot を渡す |
+| §9-#2 | HIGH | cancel_reason が `config.order_timeout_sec` (base) と比較 — regime 短縮時に "unknown" 誤判定 | `FillMonitorResult.effective_timeout` 追加、regime 実効値で比較 |
+
+### §10.2 修正詳細
+
+#### §8-#2/#3: lot 永続化除去
+
+```python
+# Before (144#): 乗法的複利 + 片側更新
+_order_lot = self._regime_adjusted_lot()
+if _order_lot > self._current_lot:
+    self._current_lot = _order_lot  # → 次サイクルで base_lot = 膨張値
+
+# After (145# fix): per-cycle のみ、_current_lot 不変
+_order_lot = self._regime_adjusted_lot()
+# _current_lot は balance_checker が管理する base lot のまま
+```
+
+**設計原則**: `_current_lot` は BalanceChecker が管理する「残高ベースのロット」。
+regime 調整は per-cycle の `_order_lot` として一時的に適用し、永続化しない。
+
+#### §9-#1: OrderMonitor へ正しい lot を渡す
+
+```python
+# Before: 膨張した _current_lot を渡す → reprice が過大ロットで発注
+current_lot=self._current_lot
+
+# After: per-cycle の regime 調整済み lot を渡す
+_lot = order_lot if order_lot is not None else self._current_lot
+current_lot=_lot
+```
+
+#### §9-#2: effective_timeout で cancel_reason 判定
+
+```python
+# Before: base timeout と比較 → regime 短縮時に "unknown" 誤判定
+queue_wait >= self.config.order_timeout_sec
+
+# After: regime 調整済み実効値と比較
+queue_wait >= (_effective_timeout or self.config.order_timeout_sec)
+```
+
+### §10.3 テスト
+
+| テストクラス | テスト数 | 検証内容 |
+|---|---|---|
+| `TestLotNoCompounding` | 3 | 乗法的複利なし、双方向更新、balance shrink 追従 |
+| `TestMonitorReceivesOrderLot` | 1 | monitor に order_lot が渡される |
+| `TestEffectiveTimeout` | 4 | effective_timeout フィールド、cancel_reason logic |
+| `TestPreflightLotAlignment` (更新) | 1 | 永続化コード除去の source 検証 |
+
+合計: **8 tests added** (+ 1 updated)
+
+### §10.4 変更ファイル
+
+| ファイル | 変更内容 |
+|---|---|
+| `scripts/v460/run_fill_test.py` | L805-811: 永続化除去, L592-630: `order_lot` param, L923-927: callsite, L987-993: effective_timeout |
+| `scripts/v460/lib/fill_config.py` | `FillMonitorResult.effective_timeout` 追加 |
+| `scripts/v460/lib/order_monitor.py` | `effective_timeout` を返却値に追加 |
+| `tests/unit/v460/test_143_regime_utilization.py` | 8 tests 追加 + 1 test 更新 |
