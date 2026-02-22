@@ -218,7 +218,7 @@ scripts/v460/daily_health_check.py:
 ops/windows/fill_test_watchdog.ps1:
   全体: WMI プロセス検出、lock parse、アラート
 
-ztb/features/advanced_regime_detector.py:
+ztb/analysis/regime/advanced_regime_detector.py:
   P3-02 評価のための unknown 判定ロジック
 ```
 
@@ -248,7 +248,7 @@ ztb/features/advanced_regime_detector.py:
 **実装**: `ops/windows/fill_test_watchdog.ps1`
 
 機能:
-- プロセス存在確認 (`Get-Process` で `run_fill_test` を検索)
+- プロセス存在確認 (`Get-WmiObject Win32_Process` + `CommandLine` フィルタで `run_fill_test` を検索)
 - lock heartbeat 鮮度確認 (300s stale 閾値)
 - 最新 fill_record タイムスタンプ確認
 - `fill_test_events.jsonl` へのアラートイベント記録
@@ -280,7 +280,7 @@ cd C:\Users\Admin\dev\zaif-trade-bot
 |---------|------|------|
 | trades_health | ⚠️ UNHEALTHY | missing_days=['20260221', '20260220'] |
 | feature_freshness | ✅ OK | - |
-| gate_judgment | ❌ ERROR | API 引数不整合 (既知) |
+| gate_judgment | ❌ ERROR | API 引数不整合 (既知) ※後日検証で再現せず。当時の未修正コード由来の可能性。課題外し |
 | oracle_baseline | ✅ done | mean=0.000 bps |
 
 **Oracle レポートサマリ**:
@@ -333,3 +333,32 @@ PS> .\ops\windows\fill_test_watchdog.ps1
 | `docs/v460/148_ph2_rev_147_phase_c_stop_cause_and_side_issues.md` | §4 実装トレース追加、§6 実施済マーク、§7-8 新規 |
 | `docs/v460/150_ph2_design_fill_test_auto_restart.md` | NEW: P2-B 自動再起動設計書 |
 | `ops/windows/fill_test_watchdog.ps1` | P2-A: 死活監視スクリプト |
+
+---
+
+## §9 Codex 深掘りレビュー追記 (2026-02-23)
+
+### 9.1 指摘事項 (重大度順)
+
+| # | 重大度 | 対象 | 指摘 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | **HIGH** | `docs/v460/149_ph2_plan_phase_c_parallel_work.md:176-178` | `gate_judgment` の `results_dir` 引数エラーを blocker として記載しているが、現行 `scripts/v460/gate_judgment.py:113-123` では `run_gate_judgment_for_results_dir(results_dir=..., monte_carlo=...)` を受理する。記述が古い可能性。 | 事象再現手順（実行コマンド・commit SHA・時刻）を明記し、再現しない場合は課題リストから外す。 |
+| 2 | **HIGH** | `docs/v460/149_ph2_plan_phase_c_parallel_work.md:221-222` | 参照先に `ztb/features/advanced_regime_detector.py` を指定しているが当該パスは存在しない。 | `scripts/v460/lib/regime_detector.py` と `ztb/analysis/regime/advanced_regime_detector.py` に参照を修正。 |
+| 3 | **MEDIUM** | `docs/v460/149_ph2_plan_phase_c_parallel_work.md:251-252` | 文書では「Get-Process で run_fill_test 検索」と記載だが、実装は `Get-WmiObject Win32_Process` + `CommandLine` フィルタ (`ops/windows/fill_test_watchdog.ps1:29-31`)。 | 文書を実装準拠へ修正し、検出方法の性能/権限要件を明記。 |
+| 4 | **MEDIUM** | `results/v460/fill_test/logs/watchdog.log` | 実運用ログに `UNKNOWN` や lock parse error が残っており、監視品質が揺れている。 | watchdog 側に「異常系の再現テスト結果」を追加し、誤検知率を計測してから自動再起動へ進む。 |
+| 5 | **MEDIUM** | `docs/v460/149_ph2_plan_phase_c_parallel_work.md:230-232` | 収益影響の大きい 144# CRITICAL 対応を Phase C 後ろ倒しにしている。計測期間の交絡要因を温存する可能性。 | Phase C 中でも副作用が小さい修正（設定不整合・ガード追加）だけ先行する方針に分割。 |
+
+### 9.2 補足所見
+
+- §8 の実装ログは有益だが、**「コード状態」と「当時ログ状態」が混在**しているため、検証再現性が落ちている。  
+- 149 は「計画」なので、次版では「再現済み課題」「未再現課題」「仕様差分」を分離して記載するのが望ましい。
+
+### 9.3 対応結果
+
+| # | 対応 |
+|---|------|
+| 1 | **対応済**: gate_judgment エラーは現行コードで再現せず。§8.2 の記載に「後日検証で再現せず、課題外し」を追記 |
+| 2 | **修正済**: `ztb/features/advanced_regime_detector.py` → `ztb/analysis/regime/advanced_regime_detector.py` に参照パス修正 |
+| 3 | **修正済**: §8.1 の記載を `Get-WmiObject Win32_Process` + `CommandLine` フィルタに修正 |
+| 4 | **受容**: watchdog ログの品質改善は 150# P2-B 実装時に併せて対応 |
+| 5 | **受容**: 144# CRITICAL は Phase C 後に対応。設定ガードのみ先行する方針は Phase C データ汚染回避のため合理的 |

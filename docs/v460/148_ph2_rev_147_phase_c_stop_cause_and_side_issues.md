@@ -146,3 +146,32 @@ ops/windows/fill_test_watchdog.ps1:
 | `scripts/v460/lib/fill_config.py` | P0: heartbeat 設定値 |
 | `scripts/v460/ml/retrain_scheduler.py` | P1: target/path mismatch guard |
 | `ops/windows/fill_test_watchdog.ps1` | P2-A: 死活監視スクリプト |
+
+---
+
+## §9 Codex 深掘りレビュー追記 (2026-02-23)
+
+### 9.1 指摘事項 (重大度順)
+
+| # | 重大度 | 対象 | 指摘 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | **CRITICAL** | `scripts/v460/run_fill_test.py:2165` | `runner._kill_switch.reason` を参照しているが、`KillSwitch` に `reason` プロパティは存在しない (`get_reason()` のみ)。kill 経路で `AttributeError` → `crash` 扱いになる。 | `runner._kill_switch.get_reason()` に修正し、`signal/hard_loss_cap/preflight_stop` の回帰テスト追加。 |
+| 2 | **HIGH** | `scripts/v460/lib/fill_config.py:647-675` | `lock_heartbeat_period_sec` / `lock_stale_heartbeat_sec` が YAML マッピング対象外。`configs/v460/fill_test.yaml` から調整できず、運用で閾値変更不能。 | `tuning_map` に両キーを追加し、`fill_test.yaml` に明示値を追加。 |
+| 3 | **HIGH** | `scripts/v460/run_fill_test.py:161-170` | 追記文書で「stdout/stderr 分離保存」と読めるが、実装は stderr のみ。stdout は起動方法依存。 | 仕様文言を「stderr ミラー」に修正、または stdout も同等実装。 |
+| 4 | **MEDIUM** | `scripts/v460/run_fill_test.py:95-132`, `ops/windows/fill_test_watchdog.ps1:135-150` | `fill_test_events.jsonl` に複数プロセスが単純 append。競合時の行破損・順序逆転を排除していない。 | append 前の短時間 lock（`msvcrt`/lockfile）か、writer を 1 系統に統一。 |
+| 5 | **MEDIUM** | `tests/unit/v460` 全体 | 148# 追加機能（event logger / stderr mirror / kill reason / watchdog 連携）の専用テストが見当たらない。 | `test_run_fill_test_events.py` を新設し、start/stop/crash/signal 各イベントを検証。 |
+
+### 9.2 総評
+
+- 148# の方向性（停止原因の可観測化）は妥当だが、**#1（kill reason 参照バグ）で可観測化自体が壊れるリスク**があるため最優先修正が必要。  
+- 149/150 へ進む前に、#1 と #2 を先に塞ぐ方がデバッグ効率・運用品質ともに高い。
+
+### 9.3 対応結果
+
+| # | 対応 |
+|---|------|
+| 1 | **修正済**: `runner._kill_switch.reason` → `runner._kill_switch.get_reason()` (run_fill_test.py:2165) |
+| 2 | **修正済**: `tuning_map` に `lock_heartbeat_period_sec`/`lock_stale_heartbeat_sec` 追加 + `fill_test.yaml` に明示値追加 |
+| 3 | **修正済**: `_TeeWriter` docstring を「stderr ミラー専用」に修正 |
+| 4 | **修正済**: `_log_event()` に `msvcrt.locking` によるファイルロックを追加 |
+| 5 | **修正済**: `tests/unit/v460/test_148_fill_test_events.py` 新設 (16 テスト — event logger, TeeWriter, stderr mirror, KillSwitch reason 回帰) |

@@ -672,6 +672,9 @@ class FillTestConfig:
             "soft_loss_cap_lot_divisor": "soft_loss_cap_lot_divisor",
             "file_log_level": "file_log_level",
             "insufficient_funds_patterns": "insufficient_funds_patterns",
+            # 148# §9 #2: heartbeat 設定を YAML から調整可能に
+            "lock_heartbeat_period_sec": "lock_heartbeat_period_sec",
+            "lock_stale_heartbeat_sec": "lock_stale_heartbeat_sec",
         }
         for yaml_key, config_key in tuning_map.items():
             if yaml_key in tuning:

@@ -125,8 +125,14 @@ def _log_event(
             "reason": reason,
             "details": details or {},
         }
+        import msvcrt
         with open(events_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+            msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
+            try:
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
+            finally:
+                f.seek(0, 2)  # EOF
+                msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
         logger.info(f"[event] {event}: reason={reason}")
     except Exception as e:
         logger.warning(f"[event] Failed to log event: {e}")
@@ -137,7 +143,7 @@ def _log_event(
 # ======================================================================
 
 class _TeeWriter:
-    """stdout/stderr を複数出力先に同時書き込み."""
+    """stderr を複数出力先に同時書き込み (148# P1: stderr ミラー専用)."""
 
     def __init__(self, *writers):
         self.writers = writers
@@ -2161,8 +2167,8 @@ def main() -> None:
     records: list = []
     try:
         records = asyncio.run(runner.run_continuous(args.hours))
-        # 正常終了: kill_switch の reason を取得
-        stop_reason = runner._kill_switch.reason if runner._kill_switch.is_killed() else "completed"
+        # 正常終了: kill_switch の reason を取得 (148# §9 #1: get_reason() に修正)
+        stop_reason = runner._kill_switch.get_reason() if runner._kill_switch.is_killed() else "completed"
     except KeyboardInterrupt:
         stop_reason = "keyboard_interrupt"
         logger.info("KeyboardInterrupt — stopping gracefully")

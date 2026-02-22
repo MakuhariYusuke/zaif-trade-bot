@@ -111,6 +111,8 @@ NSSM (Non-Sucking Service Manager) で fill_test を Windows サービスとし�
 
 ### 3.1 watchdog 拡張仕様
 
+> **注**: 以下は設計段階。`fill_test_watchdog.ps1` の現行実装は監視のみ (P2-A)。P2-B 実装で追加予定。
+
 ```
 fill_test_watchdog.ps1 -AutoRestart [-MaxRestarts 3] [-CooldownMinutes 10]
 ```
@@ -122,41 +124,66 @@ fill_test_watchdog.ps1 -AutoRestart [-MaxRestarts 3] [-CooldownMinutes 10]
 | `-CooldownMinutes` | `60` | crash loop 判定ウィンドウ (分) |
 | `-Hours` | `168` | 再起動時の `--hours` パラメータ |
 | `-Config` | `configs/v460/fill_test.yaml` | 再起動時の `--config` パラメータ |
+| `-Exchange` | `coincheck` | 再起動時の `--exchange` パラメータ |
+| `-DryRun` | `$false` | 再起動時の `--dry-run` フラグ |
 
-### 3.2 再起動判定フロー
+### 3.2 イベント契約 (schema)
+
+`fill_test_events.jsonl` のイベント種別を厳密に定義:
+
+| event | 発行元 | 説明 |
+|-------|--------|------|
+| `start` | fill_test | プロセス開始 (起動パラメータ含む) |
+| `stop` | fill_test | 正常終了 |
+| `crash` | fill_test | 未捕捉例外による停止 |
+| `signal` | fill_test | シグナル受信 (SIGINT 等) |
+| `watchdog_alert` | watchdog | 監視異常検出 (プロセス不在、heartbeat stale 等) |
+| `watchdog_restart` | watchdog | 自動再起動実行 |
+| `trades_health_alert` | fill_test | trades データ鮮度劣化 |
+
+`start` イベントには `details.args` として起動パラメータ (`--hours`, `--config`, `--exchange`, `--dry-run`) を記録し、watchdog が復元可能にする。
+
+### 3.3 再起動判定フロー
 
 ```
-1. プロセス存在確認
-   ├─ RUNNING → ログ出力 → exit 0
-   └─ NOT_RUNNING → 2 へ
+1. restart.lock 取得 (短寿命、TOCTOU 防止)
+   ├─ 取得失敗 → 別の watchdog が再起動中 → exit 0
+   └─ 取得成功 → 2 へ
 
-2. crash loop 判定
+2. プロセス存在確認
+   ├─ RUNNING → ログ出力 → restart.lock 解放 → exit 0
+   └─ NOT_RUNNING → 3 へ
+
+3. crash loop 判定
    - fill_test_events.jsonl の直近 CooldownMinutes 内の
      "watchdog_restart" イベント数をカウント
-   ├─ >= MaxRestarts → アラート "crash loop detected" → exit 2
-   └─ < MaxRestarts → 3 へ
+   ├─ >= MaxRestarts → アラート "crash loop detected" → restart.lock 解放 → exit 2
+   └─ < MaxRestarts → 4 へ
 
-3. lock ファイル確認
-   ├─ lock あり & PID alive → 矛盾 (WMI 検出漏れ?) → exit 1
-   ├─ lock あり & PID dead → stale lock → lock 削除 → 4 へ
-   └─ lock なし → 4 へ
+4. lock ファイル確認
+   ├─ lock あり & PID alive → 矛盾 (WMI 検出漏れ?) → restart.lock 解放 → exit 1
+   ├─ lock あり & PID dead → stale lock → lock 削除 → 5 へ
+   └─ lock なし → 5 へ
 
-4. 再起動実行
+5. 再起動実行
    - fill_test_events.jsonl に "watchdog_restart" イベント記録
    - Start-Process で新プロセスをバックグラウンド起動
    - Discord 通知
+   - restart.lock 解放
    - exit 0
 ```
 
-### 3.3 再起動コマンド
+### 3.4 再起動コマンド
 
 ```powershell
 $pythonExe = Join-Path $RootDir ".venv\Scripts\python.exe"
 $arguments = @(
     "-m", "scripts.v460.run_fill_test",
     "--hours", $Hours,
-    "--config", $Config
+    "--config", $Config,
+    "--exchange", $Exchange
 )
+if ($DryRun) { $arguments += "--dry-run" }
 Start-Process -FilePath $pythonExe `
     -ArgumentList $arguments `
     -WorkingDirectory $RootDir `
@@ -165,7 +192,9 @@ Start-Process -FilePath $pythonExe `
     -RedirectStandardError (Join-Path $ResultsDir "logs\fill_test_stderr.log")
 ```
 
-### 3.4 crash loop 防止
+**起動パラメータ復元**: watchdog は `fill_test_events.jsonl` の最新 `start` イベントの `details.args` から `--exchange`, `--dry-run` 等を復元可能。明示パラメータがない場合のフォールバックとして使用。
+
+### 3.5 crash loop 防止
 
 `fill_test_events.jsonl` 内の `watchdog_restart` イベントのタイムスタンプを走査し、直近 `CooldownMinutes` 分以内に `MaxRestarts` 回以上の再起動が発生していた場合は再起動を抑止。
 
@@ -177,11 +206,19 @@ CooldownMinutes=60, MaxRestarts=3 の場合:
   05:01 restart → count=2 (04:00 は 60分超で失効) → OK
 ```
 
-### 3.5 warm_start との整合
+### 3.6 warm_start との整合
 
 `run_fill_test.py` は起動時に `resume_from_existing()` で既存 fill_records を読み込むため、再起動後も累積データは自動復元される。`--hours` は新プロセスの起動時点からのカウントになるため、元の残り時間とは独立する。
 
 **注意**: 連続稼働時間の評価は `fill_test_events.jsonl` の start/stop/restart イベント列から計算する必要がある。
+
+### 3.7 再起動直後セーフモード
+
+再起動直後は取引所 API 状態が不明なため、以下のセーフモードを適用:
+
+- 再起動後 N サイクル (デフォルト: 5) は lot を 50% に縮小
+- `_cancel_stale_orders()` 失敗時は発注を抑止し、watchdog_alert イベントを記録
+- セーフモード解除条件: 連続 N 回の正常サイクル完了
 
 ---
 
@@ -233,7 +270,7 @@ Register-ScheduledTask `
 | リスク | 影響 | 緩和策 |
 |--------|------|--------|
 | watchdog 自体の障害 | 再起動不可 | タスクスケジューラのエラー通知 + 手動復旧手順を明文化 |
-| 再起動時の未決済ポジション | 損失拡大 | `_cancel_stale_orders()` が起動時に実行される (既存設計) |
+| 再起動時の未決済ポジション | 損失拡大 | `_cancel_stale_orders()` が起動時に実行される (既存設計)。API 異常時の残注文リスクは §3.7 セーフモードで緩和 |
 | crash loop false negative | 復旧不可 | `MaxRestarts` を保守的に設定 (3回/60分) |
 | 5分の復旧空白期間 | 取引機会の逸失 | 許容範囲 (fill_test は ~20s/cycle のため ~15 cycle 分) |
 | `--hours` と実際の連続稼働乖離 | 評価誤り | events.jsonl で実効稼働時間を計算する運用 |
@@ -289,3 +326,35 @@ ops/windows/trading_service.bat:
 | ファイル | 変更内容 |
 |----------|----------|
 | `docs/v460/150_ph2_design_fill_test_auto_restart.md` | NEW: 本ドキュメント |
+
+---
+
+## §9 Codex 深掘りレビュー追記 (2026-02-23)
+
+### 9.1 指摘事項 (重大度順)
+
+| # | 重大度 | 対象 | 指摘 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | **HIGH** | `ops/windows/fill_test_watchdog.ps1` 現行実装 | 設計で前提にしている `-AutoRestart / -MaxRestarts / -CooldownMinutes` が未実装。設計と実体のギャップがある。 | 実装前提を「設計段階」と明記し、最小実装（AutoRestart + restart event 記録）を先に切る。 |
+| 2 | **HIGH** | `ops/windows/fill_test_watchdog.ps1:72` | stale 判定閾値が `300` 秒ハードコード。`fill_test` 側設定と乖離しうる。 | watchdog が `configs/v460/fill_test.yaml` か lock metadata を読む形に統一。 |
+| 3 | **HIGH** | `docs/v460/150_ph2_design_fill_test_auto_restart.md:151-157` | 再起動コマンドが固定 `--hours/--config` で、起動時の `--exchange`/`--dry-run`/運用モード差分を引き継がない。 | 最後の start event から起動パラメータを復元するか、watchdog 側に明示設定を持つ。 |
+| 4 | **MEDIUM** | `docs/v460/150_ph2_design_fill_test_auto_restart.md:123-147` | crash loop 判定は `watchdog_restart` イベント依存だが、現行イベント流には同名イベントが存在しない。 | 先にイベント契約（schema）を定義し、`watchdog_alert` と `watchdog_restart` を厳密に分離。 |
+| 5 | **MEDIUM** | `docs/v460/150_ph2_design_fill_test_auto_restart.md:124-139` | lock 判定→再起動の間に並行実行が入る TOCTOU が残る。Task Scheduler 設定だけでは完全防止できない。 | watchdog 側にも `restart.lock`（短寿命）を導入し、再起動処理の排他を取る。 |
+| 6 | **LOW** | `docs/v460/150_ph2_design_fill_test_auto_restart.md:169-177` | `_cancel_stale_orders()` を主緩和策にしているが、取引所 API 異常時の未キャンセル残存ケースが明示されていない。 | 再起動直後 N サイクルは lot 縮小＋発注抑制のセーフモードを追加。 |
+
+### 9.2 総評
+
+- 案 A（watchdog 拡張）自体は妥当。  
+- ただし **「イベント契約の確定」と「起動パラメータ継承」** を先に固めないと、再起動しても評価汚染や誤起動のリスクが残る。  
+- 実装順は `イベント契約` → `AutoRestart最小実装` → `crash loop` → `通知強化` が安全。
+
+### 9.3 対応結果
+
+| # | 対応 |
+|---|------|
+| 1 | §3.1 に「設計段階」明記済み |
+| 2 | 実装時に YAML/lock metadata 参照に統一予定 |
+| 3 | §3.1 に `-Exchange`/`-DryRun` 追加、§3.4 で start event からのパラメータ復元設計追加 |
+| 4 | §3.2 にイベント契約 (schema) を新設、`watchdog_alert` と `watchdog_restart` を分離定義 |
+| 5 | §3.3 に `restart.lock` 取得ステップを追加 (TOCTOU 防止) |
+| 6 | §3.7 に再起動直後セーフモード (lot 縮小 + 発注抑止) を追加、§6 リスク表も更新 |
