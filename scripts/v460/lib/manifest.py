@@ -9,6 +9,7 @@ JSONL 形式へ変換し、依存ハッシュ・Python/CUDA バージョン等�
 
 from __future__ import annotations
 
+import logging
 import hashlib
 import json
 import subprocess
@@ -19,21 +20,17 @@ from pathlib import Path
 from typing import Optional, cast
 
 from ztb.types.common import ConfigSection, JSONDict
+from ztb.utils.git_utils import get_git_sha as _get_shared_git_sha
+from ztb.utils.run_manifest import compute_file_hash as _compute_shared_file_hash
 
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+logger = logging.getLogger(__name__)
 
 
 def _get_git_sha() -> str:
     """Current git commit SHA."""
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            capture_output=True, text=True, check=True, cwd=str(_PROJECT_ROOT),
-        )
-        return result.stdout.strip()[:12]
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return "unknown"
+    return _get_shared_git_sha(cwd=_PROJECT_ROOT)[:12]
 
 
 def _get_deps_hash() -> str:
@@ -61,11 +58,7 @@ def _get_cuda_version() -> Optional[str]:
 
 def compute_file_hash(path: Path) -> str:
     """SHA-256 of a file."""
-    sha = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
-            sha.update(chunk)
-    return sha.hexdigest()
+    return _compute_shared_file_hash(path)
 
 
 def compute_config_hash(config: ConfigSection) -> str:
@@ -172,15 +165,37 @@ class ManifestWriter:
             os.fsync(f.fileno())  # 032#16: ディスクフル時の部分書き込み防止
 
     def read_all(self) -> list[JSONDict]:
-        """Read all manifest entries."""
+        """Read all manifest entries, skipping malformed lines."""
         if not self.path.exists():
             return []
         entries: list[JSONDict] = []
-        with open(self.path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line:
-                    loaded = json.loads(line)
-                    if isinstance(loaded, dict):
-                        entries.append(cast(JSONDict, loaded))
+        with open(self.path, "r", encoding="utf-8", errors="replace") as f:
+            for line_no, line in enumerate(f, 1):
+                parsed = _parse_manifest_line(
+                    line,
+                    path=self.path,
+                    line_no=line_no,
+                )
+                if parsed is not None:
+                    entries.append(parsed)
         return entries
+
+
+def _parse_manifest_line(
+    line: str,
+    *,
+    path: Path,
+    line_no: int,
+) -> JSONDict | None:
+    stripped = line.strip()
+    if not stripped:
+        return None
+    try:
+        loaded = json.loads(stripped)
+    except json.JSONDecodeError:
+        logger.warning("Skipping malformed manifest line: %s:%d", path, line_no)
+        return None
+    if not isinstance(loaded, dict):
+        logger.warning("Skipping non-object manifest line: %s:%d", path, line_no)
+        return None
+    return cast(JSONDict, loaded)

@@ -303,6 +303,21 @@ class TestManifest:
         assert h1 == h2
         assert len(h1) == 16
 
+    def test_read_all_skips_malformed_lines(self, tmp_path: Path) -> None:
+        from scripts.v460.lib.manifest import ManifestWriter
+
+        manifest_path = tmp_path / "manifest.jsonl"
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            f.write('{"run_id":"ok1","status":"running"}\n')
+            f.write('{"run_id":"broken",\n')
+            f.write('["not","object"]\n')
+            f.write('{"run_id":"ok2","status":"completed"}\n')
+
+        mw = ManifestWriter(path=manifest_path)
+        entries = mw.read_all()
+        run_ids = [str(entry.get("run_id")) for entry in entries]
+        assert run_ids == ["ok1", "ok2"]
+
 
 # =====================================================================
 # microstructure

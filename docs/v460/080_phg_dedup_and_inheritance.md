@@ -1452,3 +1452,40 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
     - 結果: `104 passed`
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_141_side_specific_models.py tests/unit/v460/test_skip_gate_v3.py tests/unit/v460/test_retrain_hot_reload.py tests/unit/v460/test_143_regime_utilization.py`
     - 結果: `184 passed`
+
+## Phase 39 追補: manifest の共通化 + 破損JSONL耐性強化 (2026-02-22)
+
+### 1) 重複削減（既存 helper の再利用）
+
+- `scripts/v460/lib/manifest.py`
+  - `_get_git_sha()` を手書き `subprocess git rev-parse` から
+    `ztb.utils.git_utils.get_git_sha` に統一。
+  - `compute_file_hash()` を手書き `hashlib` ループから
+    `ztb.utils.run_manifest.compute_file_hash` に統一。
+  - これにより git/hash 取得ロジックを ztb canonical 実装へ寄せ、
+    v460 側の重複実装を削減。
+
+### 2) 不具合可能性の排除
+
+- `ManifestWriter.read_all()` を強化:
+  - 壊れた JSON 行（途中書き込み・破損）で
+    `json.loads` 例外が全体読み込みを停止していた問題を修正。
+  - 行単位 parser（`_parse_manifest_line`）を導入し、
+    malformed 行・非 object 行をスキップして継続。
+  - 読み込み時に `errors="replace"` を使い、文字化け混入時も
+    全体失敗せず復元可能な行だけを回収。
+
+### 3) 追加テスト
+
+- `tests/unit/v460/test_v460_core.py`
+  - `test_read_all_skips_malformed_lines` を追加し、
+    壊れた行が混在する `manifest.jsonl` でも有効行のみ読めることを検証。
+
+### 4) 検証
+
+- `py_compile`:
+  - `scripts/v460/lib/manifest.py`
+  - `tests/unit/v460/test_v460_core.py`
+- 回帰確認:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_v460_core.py`
+    - 結果: `53 passed`
