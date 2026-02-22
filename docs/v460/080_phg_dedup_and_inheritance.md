@@ -831,3 +831,35 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
     - 結果: `5 passed`（warning 1）
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/training/reward_function_optimizer/test_candidate_evaluator.py tests/unit/training/reward_function_optimizer/test_mtf_optimizer.py tests/unit/training/reward_function_optimizer/test_mtf_optimizer_score_report.py`
     - 結果: `12 passed`（warning 1）
+
+## Phase 24 追補: catalog cache stale-key 抑止 + lookup 軽量化 (2026-02-23)
+
+### 1) メモリリーク防止の追加対策
+
+- `ztb/reporting/services/catalog.py` の model-name cache で、
+  同一 report path の旧キー（旧 mtime/size）を新規格納前に削除する処理を追加。
+- これにより、同一ファイルが頻繁更新される運用でも
+  stale key が蓄積し続ける状態を抑止。
+
+### 2) 実行時間短縮
+
+- `find_reports_for_model()` の `sorted(glob(...))` を外し、
+  大量 report 走査時の不要ソートコストを削減。
+- 最新選択は `get_latest_report_for_model()` 側で `mtime_ns` 基準判定を維持。
+
+### 3) テスト
+
+- `tests/unit/reporting/services/test_catalog.py` を拡張:
+  - `test_cache_does_not_accumulate_stale_entries_for_same_path`
+  - 既存 5 テストと合わせて `6 passed`
+
+### 4) 検証
+
+- `py_compile`:
+  - `ztb/reporting/services/catalog.py`
+  - `tests/unit/reporting/services/test_catalog.py`
+- venv test:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/reporting/services/test_catalog.py`
+    - 結果: `6 passed`（warning 1）
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/training/reward_function_optimizer/test_candidate_evaluator.py tests/unit/training/reward_function_optimizer/test_mtf_optimizer.py tests/unit/training/reward_function_optimizer/test_mtf_optimizer_score_report.py`
+    - 結果: `12 passed`（warning 1）

@@ -136,3 +136,27 @@ def test_report_model_name_cache_is_bounded(
 
     catalog.find_reports_for_model("model_1", reports_dir=reports_dir)
     assert len(catalog._REPORT_MODEL_NAME_CACHE) <= 2
+
+
+def test_cache_does_not_accumulate_stale_entries_for_same_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    reports_dir = tmp_path / "reports"
+    report = _write_report(reports_dir, "training_report_1.json", "model_1")
+    monkeypatch.setattr(catalog, "REPORT_MODEL_NAME_CACHE_MAX_SIZE", 32)
+
+    assert len(catalog.find_reports_for_model("model_1", reports_dir=reports_dir)) == 1
+    initial_cache_size = len(catalog._REPORT_MODEL_NAME_CACHE)
+    assert initial_cache_size == 1
+
+    report.write_text(
+        json.dumps(
+            {
+                "configuration": {"training": {"model_name": "model_2"}},
+                "training_stats": {"action_distribution": {}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert len(catalog.find_reports_for_model("model_2", reports_dir=reports_dir)) == 1
+    assert len(catalog._REPORT_MODEL_NAME_CACHE) == 1

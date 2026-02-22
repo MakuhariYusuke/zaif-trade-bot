@@ -37,12 +37,19 @@ def _make_report_cache_key(report_path: Path, state: _ReportFileState) -> Report
     return (str(report_path.resolve()), state["mtime_ns"], state["size"])
 
 
+def _drop_stale_cache_entries_for_path(resolved_path: str) -> None:
+    stale_keys = [key for key in _REPORT_MODEL_NAME_CACHE if key[0] == resolved_path]
+    for key in stale_keys:
+        _REPORT_MODEL_NAME_CACHE.pop(key, None)
+
+
 def _extract_report_model_name(report_path: Path) -> str | None:
     state = _get_report_file_state(report_path)
     if state is None:
         return None
 
     cache_key = _make_report_cache_key(report_path, state)
+    resolved_path = cache_key[0]
     cached_model_name = _REPORT_MODEL_NAME_CACHE.get(cache_key)
     if cached_model_name is not None or cache_key in _REPORT_MODEL_NAME_CACHE:
         _REPORT_MODEL_NAME_CACHE.move_to_end(cache_key)
@@ -58,6 +65,8 @@ def _extract_report_model_name(report_path: Path) -> str | None:
         raw_model_name = training.get("model_name")
         model_name = raw_model_name if isinstance(raw_model_name, str) else None
 
+    # Keep only the latest cache entry for a report path to avoid stale-key accumulation.
+    _drop_stale_cache_entries_for_path(resolved_path)
     _REPORT_MODEL_NAME_CACHE[cache_key] = model_name
     _REPORT_MODEL_NAME_CACHE.move_to_end(cache_key)
     while len(_REPORT_MODEL_NAME_CACHE) > REPORT_MODEL_NAME_CACHE_MAX_SIZE:
@@ -74,7 +83,7 @@ def find_reports_for_model(
     reports_root = reports_dir or Path("reports")
     matches: List[Path] = []
 
-    for path in sorted(reports_root.glob("training_report_*.json")):
+    for path in reports_root.glob("training_report_*.json"):
         if _extract_report_model_name(path) == model_name:
             matches.append(path)
 
