@@ -80,8 +80,8 @@ _CREDENTIAL_ENV_MAP: Dict[str, Tuple[str, str]] = {
 
 ## §6 テスト結果
 
-- 新規: 45 passed (test_146_multi_exchange.py)
-- 全体: **1386 passed** (回帰なし)
+- 新規: 54 passed (test_146_multi_exchange.py, §12 時点)
+- 全体: **1440 passed** (§12 時点、回帰なし)
 
 ## §7 変更ファイル一覧
 
@@ -130,4 +130,125 @@ CLI 側は `--exchange <name>` で自動的に利用可能。
 
 ```
 1423b96c5 146# multi-exchange registry decoupling: BrokerRegistry credential resolution + create_adapter, --exchange CLI, exchanges __init__.py [1386 tests]
+```
+
+---
+
+## §11 追補レビュー (2026-02-22)
+
+145# の残項目対応と 146# 実装をコード/テストで再点検した。
+
+### §11.1 検証結果サマリ
+
+- 145/146 関連の主要テスト群: **356 passed**
+  - `test_retrain_hot_reload.py`
+  - `test_136_p1_retrain_kill.py`
+  - `test_143_regime_utilization.py`
+  - `test_145_structural_fixes.py`
+  - `test_145_s13_boundary_guards.py`
+  - `test_145_s14_structural_refactors.py`
+  - `test_146_multi_exchange.py`
+  - `test_113_resilience.py`
+  - `test_139_review_fixes.py`
+- `tests/unit/v460` 全体: **1431 passed**
+- 145# で指摘した境界値ガード (empty index / lookback=0 / busy-loop interval) は実装済み。
+
+### §11.2 重大度付き指摘 (146#)
+
+| # | 重大度 | 対象ファイル | 問題 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | HIGH | `ztb/trading/live/registry/broker_registry.py` | `create_adapter()` が `dry_run=True` でも `resolve_credentials()` を必ず呼ぶため、`credential_env` 未登録のカスタム取引所は dry-run でも生成不可。`register_broker(..., credential_env=None)` の契約と不整合。 | `not dry_run` のときのみ credential map を必須化する。dry-run は `api_key/api_secret=None` で生成可能にする。回帰テスト `test_create_adapter_custom_broker_dry_run_without_credential_env` を追加。 |
+| 2 | MEDIUM | `scripts/v460/run_observation.py` | `--exchange` が小文字正規化されず、未知取引所時の `ValueError` も未捕捉。`run_fill_test.py` と UX が不一致で、入力揺れで即例外終了しやすい。 | `exchange = args.exchange.lower()` を適用し、`registry.has_broker()` 事前チェック + `try/except ValueError` で `exit(1)` に統一。 |
+| 3 | LOW | `docs/v460/146_multi_exchange_registry.md` | §6 の全体テスト数 `1386 passed` は現状と乖離 (現在は `1431 passed`)。 | 件数表記に実行日を併記し、最新値に更新するか「最新 CI 参照」に変更。 |
+
+### §11.3 補足
+
+- 146# の中核方針 (Registry 経由の adapter 生成、run_fill_test/run_observation の脱 Coincheck 依存) 自体は妥当。
+- 上記 #1 を先に修正すると「新取引所を軽量に dry-run 検証する」運用が実際に回しやすくなる。
+
+---
+
+## §12 §11 レビュー対応 + P2/P3 実装 (2026-02-23)
+
+### §12.1 §11 レビュー修正
+
+| # | 重大度 | 対応内容 | ステータス |
+|---|---|---|---|
+| 1 | HIGH | `create_adapter()` — dry-run時は `credential_env` 未登録でも生成可能に修正。`name in self._credential_env` で条件分岐。テスト `test_create_adapter_custom_broker_dry_run_without_credential_env` + `test_create_adapter_custom_broker_live_without_creds_raises` 追加 | ✅ |
+| 2 | MEDIUM | `run_observation.py` — `.strip().lower()` 正規化 + `registry.has_broker()` 事前チェック + `sys.exit(1)` エラー出力。テスト `test_run_observation_exchange_lowercase` + `test_run_observation_unknown_exchange_exit` 追加 | ✅ |
+| 3 | LOW | テスト数は実行タイミングで変動するため、以降はコミットメッセージで最新値を記録 | ✅ |
+
+### §12.2 134# Phase A/B 実態確認
+
+| Phase | 内容 | 実装状況 |
+|---|---|---|
+| **Phase A (P0-03/04)** | TradesRecorder fill_test 内蔵化 | ✅ 135# で完全実装 — `trades_recorder.py` (226行), `run_fill_test.py` L64/234/767/1781 統合済み |
+| Phase A (P2-09→P1) | run 開始時 trades 健全性チェック | ✅ 135# で実装 — `trades_health.py` (223行), `run_fill_test.py` L1127-1138 統合, config `trigger_check_trades_health` |
+| **Phase B (P0-07)** | per-run Gate 評価 | ✅ 135# で完全実装 — `gate_judgment.py` L60-99 (`_filter_by_run_id`, `_get_unique_run_ids`), `--run-id`/`--latest-run` CLI |
+| Phase B (P0-12+P2-10) | gate_check 統一 + latest-run hard floor | ✅ 135# — `run_gate_check.py` G1.1 deprecated → `gate_judgment.py` 委譲 |
+
+**結論**: Phase A/B は全て 135#-136# で実装完了済み。追加作業不要。
+
+### §12.3 P2/P3 着手可能項目の実装
+
+| ID | 施策 | 対応 |
+|---|---|---|
+| **P2-04** | Oracle 日次 KPI 自動実行 | ✅ `daily_health_check.py` に統合。`_run_oracle_baseline()` で `oracle_baseline.run_oracle_baseline()` を呼び出し |
+| **P3-04→P2** | PnL Monte Carlo 日次実行 | ✅ `daily_health_check.py` に統合。`gate_judgment` 内の MC + スタンドアロン `PnLMonteCarloSimulator` 活用 |
+| **P2-09** | run 開始時 trades 健全性チェック | ✅ 既実装 (135# trades_health 統合) |
+| **P2-10** | latest-run hard floor | ✅ 既実装 (135# --latest-run) |
+
+### §12.4 daily_health_check.py
+
+日次バッチランナー: trades_health + feature_freshness + gate_judgment (per-run + MC) + oracle_baseline の4チェックを一括実行。
+
+```
+python scripts/v460/daily_health_check.py
+python scripts/v460/daily_health_check.py --output reports/daily/2026-02-23.json
+python scripts/v460/daily_health_check.py --skip-monte-carlo --skip-oracle
+```
+
+PowerShell ラッパー: `ops/windows/daily_health_check.ps1` — タスクスケジューラ対応、7日以上古いレポート自動削除。
+
+### §12.5 P2/P3 残項目ステータス
+
+| ID | 施策 | 判定 | 理由 |
+|---|---|---|---|
+| P2-01 | WalkForward → retrain | ⚠️ 保留 | SAC/PPO 用。LGBM アダプタ層が必要。工数 ~1日 |
+| P2-02 | v459 統計 gate 常時化 | ❌ 不要 | 既に fill_quality.py 内で Holm-Bonferroni 使用中 |
+| P2-03 | run_observation 同時運転 | ✅ 解決済 | P0-04 TradesRecorder で fill_test 内蔵化により二重系化 |
+| P2-06 | worst hour-side ルール | ⚠️ P1-04 統合 | regime×時間帯分析が先 |
+| P2-07 | execution trace 因果ログ | ⚠️ 保留 | FillRecord で部分対応済み。完全標準化は大改修 |
+| P2-08 | shadow model A/B | ⚠️ P2 維持 | hot-reload アトミック性確保済み。工数大 |
+| P3-01 | hft_proxies boardless fallback | ❌ 優先度低 | fill_test は tick 板データ直接保有 |
+| P3-02 | advanced_regime_detector AB | ⚠️ P3 維持 | unknown レジーム削減に有望だが P0-09 で応急対応済み |
+| P3-03 | dynamic_position_sizer | ⚠️ 保留 | 固定ロット設計との整合要検討 |
+| P3-05 | venue 横断比較 | ⚠️ P3 維持 | 146# multi-exchange で基盤は整備済み |
+
+### §12.6 新規テスト
+
+| テストクラス | テスト数 | 検証内容 |
+|---|---|---|
+| `TestS11ReviewFixes` | 4 | custom dry-run / custom live raises / observation lowercase / observation exit |
+| `TestDailyHealthCheck` | 5 | module importable / signature / trades_health / feature_freshness / ps1 exists |
+
+### §12.7 テスト結果
+
+- test_146_multi_exchange.py: **54 passed** (45 + 9 new)
+- 全体: **1440 passed** (回帰なし)
+
+### §12.8 変更ファイル一覧
+
+| ファイル | 変更種別 | 内容 |
+|---|---|---|
+| `ztb/trading/live/registry/broker_registry.py` | 修正 | §11 #1: dry-run 時 credential_env 不要化 |
+| `scripts/v460/run_observation.py` | 修正 | §11 #2: exchange lowercase + has_broker + sys.exit(1) |
+| `scripts/v460/daily_health_check.py` | 新規 | P2-04/P3-04: 日次ヘルスチェック + KPI バッチ |
+| `ops/windows/daily_health_check.ps1` | 新規 | PS ラッパー (タスクスケジューラ対応) |
+| `tests/unit/v460/test_146_multi_exchange.py` | 拡張 | +9 tests (§11 fixes + daily_health_check) |
+
+### §12.9 コミット
+
+```
+f6d4029bc 146# §11 review fixes + P2-04/P3-04 daily_health_check [1440 tests]
 ```
