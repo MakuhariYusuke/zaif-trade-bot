@@ -555,3 +555,90 @@ configs/v460/fill_test.yaml:
 1. Phase C fill_records で `order_quantity == min_order_btc` の比率を確認 (no-op risk)
 2. 比率 < 80% なら `configs/v460/fill_test.yaml` の `confidence_lot.enabled: true` に切替
 3. `scale`/`floor` は Phase C データの AS prob vs PnL 中央値から決定
+
+---
+
+## §12 自己レビュー (実装前 Codex レビュー準備)
+
+**日時**: 2026-02-24  
+**対象コミット**: `ec65a2251` (§11), `d299f70ce` (docs)
+
+### 12.1 レビュー観点と結果
+
+#### A. 正確性 (Correctness)
+
+| 検証項目 | 結果 | 根拠 |
+|----------|--------|------|
+| A1: 基本数式 `1.0 - scale × as_prob` | ✅ OK | `run_fill_test.py` L505: `raw = 1.0 - scale * as_prob` |
+| A2: factor ∈ [0, 1] クランプ | ✅ OK | L507: `max(floor, min(1.0, max(0.0, raw)))` — 三重ガード |
+| A3: NaN/inf ガード | ✅ OK | L503-504: `math.isfinite(as_prob)` で NaN/±inf を 1.0 返却 |
+| A4: None ガード | ✅ OK | L501-502: `as_prob is None → return 1.0` |
+| A5: 乗法的合成 `regime × confidence` | ✅ OK | L536: `lot = regime_lot * conf_factor` |
+| A6: min_order_btc 保証 | ✅ OK | L538: `lot = max(lot, min_lot)` |
+| A7: max_lot 上限 | ✅ OK | L539-540: `if self.config.max_lot > 0: lot = min(lot, …)` |
+
+#### B. 安全性 (Safety)
+
+| 検証項目 | 結果 | 根拠 |
+|----------|--------|------|
+| B1: `enabled: false` デフォルト | ✅ OK | `fill_config.py` L67: `enable_confidence_lot: bool = False`, YAML L76: `enabled: false` |
+| B2: mode=pnl 凍結 | ✅ OK | L497-499: `logger.warning(…); return 1.0` |
+| B3: dust_sweep → 1.0 | ✅ OK | L494-495: `if dust_sweep_active: return 1.0` |
+| B4: `_regime_lot` 1 回算出 | ✅ OK | L1029: `_regime_lot = self._regime_adjusted_lot()`、以降引き回し |
+| B5: `_current_lot` 非汚染 | ✅ OK | `_effective_order_lot` は引数受取のみ、`self._current_lot` への書込なし |
+| B6: __post_init__ バリデーション | ✅ OK | L313-324: floor ∈ [0,1], scale ≥ 0, mode ∈ {as, pnl} |
+
+#### C. 可観測性 (Observability)
+
+| 検証項目 | 結果 | 根拠 |
+|----------|--------|------|
+| C1: FillRecord 4 新フィールド | ✅ OK | `fill_quality.py` L104-107 |
+| C2: 無効時は None 記録 | ✅ OK | L1292-1293: `if self.config.enable_confidence_lot else None` |
+| C3: regime_lot は常に記録 | ✅ OK | L1294: `order_lot_regime=_regime_lot` (条件分岐なし) |
+| C4: effective_lot は常に記録 | ✅ OK | L1295: `order_lot_effective=_order_lot` (条件分岐なし) |
+| C5: debug ログ出力 | ✅ OK | L542-545: `conf_factor < 1.0` 時にのみ debug ログ |
+
+#### D. YAML ⇔ Config 整合性
+
+| 検証項目 | 結果 | 根拠 |
+|----------|--------|------|
+| D1: YAML キー → Config フィールドマッピング | ✅ OK | `fill_config.py` L373-381: `enabled→enable_confidence_lot`, `scale/floor/mode` |
+| D2: YAML 未指定時デフォルト値 | ✅ OK | テスト `test_confidence_lot_absent_uses_defaults` PASS |
+| D3: YAML 位置 (lot_sizing ↔ regime 間) | ✅ OK | YAML L74-78: confidence_lot セクション |
+
+#### E. テストカバレッジ
+
+| カテゴリ | テスト数 | カバー範囲 |
+|----------|----------|-----------|
+| _confidence_lot_factor | 15 | T1-T6 + NaN/inf/neg_inf + scale 変更 + floor=0 + factor 上下限 + pnl凍結 + dust_sweep |
+| _effective_order_lot | 6 | T7 合成 + T8 min保証 + T9 max上限 + 無効パス + dust_sweep + tuple型 |
+| Config validation | 5 | floor範囲外 + scale負 + mode不正 + 正常値 |
+| from_yaml | 2 | 正常読込 + 未指定デフォルト |
+| FillRecord | 3 | フィールド存在 + デフォルトNone + to_dict含有 |
+| **合計** | **31** | §5 T1-T9 全カバー + §10 #1-#7 全カバー |
+
+**回帰テスト**: test_143 (36件) + test_145 (70件) = **106 PASS**, 0 FAIL
+
+#### F. 型安全 (mypy)
+
+| 結果 | 詳細 |
+|------|------|
+| ✅ P3-03 新コードにエラー無し | L473-549, L1028-1060, L1292-1298 にゼロエラー |
+| ⚠️ 既存エラー (非関連) | `_log_event` の `git_sha: str | None`, `TradesHealthResult` 属性 etc. (pre-existing) |
+
+### 12.2 懸念事項・改善候補
+
+| # | 重要度 | 内容 | 現状判断 |
+|---|--------|------|----------|
+| F1 | 低 | `import math` が関数内 (L503) | パフォーマンス影響は無視可能 (Python importlib キャッシュ)。トップレベル移動は整理時に対応可 |
+| F2 | 低 | `_confidence_lot_factor` に型ヒント `float | None` を使うが `from __future__ import annotations` がファイル先頭にない | Python 3.11 では `float | None` は実行時にも有効なため問題なし |
+| F3 | 中 | scale > 1.0 かつ as_prob 小 (例: scale=2, prob=0.2) → factor=0.6 は意図通りだが、scale 上限が未設定 | `__post_init__` で `scale < 0` のみチェック。実運用では YAML 制御で十分だが、上限警告の追加を検討可 |
+| F4 | 情報 | `order_lot_effective` は confidence × regime だが、BalanceChecker の `apply_lot_floor` が前段で適用済 | `apply_lot_floor` は `_current_lot` のフロア引上のみ (0.001 BTC)。`_effective_order_lot` 内の `max(lot, min_lot)` と二重ガードで安全側 |
+| F5 | 情報 | Phase C 24h ラン (PID 108148) は `enabled: false` で稼働中 | confidence_lot は完全バイパス。fill_records に `order_lot_regime` と `order_lot_effective` が記録されるため、有効化前の基線データ収集として機能 |
+
+### 12.3 結論
+
+**自己レビュー判定: PASS** — 全 31 テスト PASS、回帰 106 テスト PASS、mypy 新規エラーゼロ。
+§10 Codex レビュー項目 #1-#7 の全対応を実コードで確認済。
+`enabled: false` デフォルトにより稼働中システムへの影響はゼロ。
+Codex 外部レビューに進行可能。
