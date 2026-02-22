@@ -11,7 +11,7 @@ Example:
     >>> unified = builder.build_unified_config()
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Optional, TypeVar
 
 from ztb.trading.constants import SAC_CONTINUOUS_THRESHOLD
 from ztb.trading.environment.utils.config import (
@@ -20,15 +20,17 @@ from ztb.trading.environment.utils.config import (
 from ztb.training.config.ppo_config import PPOConfig
 from ztb.training.core.config_manager import TrainingConfigManager
 from ztb.utils.logging_utils import get_logger
-from ztb.utils.safety import safe_config_get
+from ztb.utils.safety import ensure_dict, safe_config_get
 
 logger = get_logger(__name__)
 
 # Type aliases
-MemoryOptimizationConfig = Dict[str, Optional[int]]
+ConfigMap = dict[str, object]
+MemoryOptimizationConfig = dict[str, int | None]
 EnvironmentConfig = TradingEnvironmentConfig
 PPOCoreConfig = PPOConfig
-UnifiedConfig = Dict[str, Any]  # TODO: Define proper UnifiedConfig type
+UnifiedConfig = ConfigMap
+TDefault = TypeVar("TDefault")
 
 
 class ConfigBuilder:
@@ -43,14 +45,14 @@ class ConfigBuilder:
         config_manager: TrainingConfigManagerインスタンス（遅延初期化）
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: ConfigMap):
         """
         初期化。
 
         Args:
             config: 設定辞書（JSON設定ファイルから読み込んだもの）
         """
-        self.config = config
+        self.config = ensure_dict(config)
         self._config_manager: Optional[TrainingConfigManager] = None
 
     @property
@@ -63,8 +65,11 @@ class ConfigBuilder:
         return self._config_manager
 
     def get_config_value(
-        self, key: str, sections: Optional[List[str]] = None, default: Any = None
-    ) -> Any:
+        self,
+        key: str,
+        sections: list[str] | None = None,
+        default: TDefault | None = None,
+    ) -> object | TDefault | None:
         """
         設定値を優先順位付きで取得。
 
@@ -93,7 +98,7 @@ class ConfigBuilder:
         # 指定されたセクションを順番にチェック
         if sections:
             for section in sections:
-                section_data = safe_config_get(self.config, section, {})
+                section_data = ensure_dict(safe_config_get(self.config, section, {}))
                 if safe_config_get(section_data, key) is not None:
                     return safe_config_get(section_data, key, default)
 
@@ -116,7 +121,7 @@ class ConfigBuilder:
             "max_features": self.get_config_value("max_features"),
         }
 
-    def get_environment_config(self) -> Dict[str, Any]:
+    def get_environment_config(self) -> dict[str, object]:
         """
         環境設定を抽出。
 
@@ -221,7 +226,7 @@ class ConfigBuilder:
             ),
         }
 
-    def get_feature_config(self) -> Dict[str, Any]:
+    def get_feature_config(self) -> dict[str, object]:
         """
         特徴量関連の設定を抽出。
 
@@ -271,7 +276,7 @@ class ConfigBuilder:
             total_timesteps_override=total_timesteps_override,
         )
 
-    def get_sac_core_config(self) -> Dict[str, Any]:
+    def get_sac_core_config(self) -> dict[str, object]:
         """
         SAC（Soft Actor-Critic）アルゴリズム固有の設定を抽出。
 
@@ -309,6 +314,14 @@ class ConfigBuilder:
 
     def __repr__(self) -> str:
         """ConfigBuilderの文字列表現"""
-        algorithm = self.config.get("algorithm", "unknown")
-        model_name = self.config.get("model_name", "unnamed")
-        return f"ConfigBuilder(algorithm='{algorithm}', model='{model_name}')"
+        algorithm = self.config.get("algorithm")
+        model_name = self.config.get("model_name")
+        algorithm_text = algorithm if isinstance(algorithm, str) else "unknown"
+        model_name_text = model_name if isinstance(model_name, str) else "unnamed"
+        if not algorithm_text:
+            algorithm_text = "unknown"
+        if not model_name_text:
+            model_name_text = "unnamed"
+        return (
+            f"ConfigBuilder(algorithm='{algorithm_text}', model='{model_name_text}')"
+        )

@@ -451,3 +451,45 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
     - default backend（thread）で local callable が実行可能
     - timeout 後に遅延完了しても `status=timeout` が上書きされない
 - `pytest` は実行環境に未導入のため未実施（`pytest: command not found`）。
+
+## Phase 15 追補: streaming helper 統合 + config/checkpoint 型固定 + replay metadata 正常化 (2026-02-22)
+
+### 1) helper 横展開（重複削減）
+
+- `ztb/trading/strategies/action_signal_guide/realtime_adaptation/streaming_processor.py`
+  の `_as_object_map/_as_float` を `safety` helper 委譲へ統一。
+- `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py` については、
+  現在 git-lfs pointer 管理の差分運用で全体置換差分が発生するため、運用整理後に再適用する方針。
+
+### 2) `config_builder` の型契約整理
+
+- `ztb/training/core/config_builder.py` の `Any` 注釈を撤去し、
+  `ConfigMap` + generic default (`TypeVar`) ベースの getter 契約へ移行。
+- section 取得値に `ensure_dict()` を適用し、非dict混入時の取得不整合を解消。
+- `UnifiedConfig` を `dict[str, object]` へ縮退して `Any` 伝播を抑止。
+
+### 3) `checkpoint_manager` の payload/schema 型固定
+
+- `ztb/training/checkpoint/checkpoint_manager.py` に
+  `CheckpointPayload` / `CheckpointMetadata` / `RNGStatePayload` /
+  `CheckpointValidationResult` を導入。
+- `BaseAlgorithm = Any` fallback を `Protocol` へ置換し、
+  runtime import 回避を維持しつつ `Any` alias を排除。
+- `_build_payload()` の policy state 収集を防御的実装へ更新し、
+  state 取得失敗時の復旧不能リスクを低減。
+
+### 4) 追加の機能改善（運用信頼性）
+
+- `ztb/trading/live/simulation/paper_trader.py` の replay metadata を
+  dummy JSON から `RunMetadata.capture_all_metadata()` + `save_to_file()` へ置換し、
+  実運用に近い実行メタデータを保存するよう改善。
+
+### 5) 検証
+
+- `py_compile`:
+  - `ztb/trading/strategies/action_signal_guide/realtime_adaptation/streaming_processor.py`
+  - `ztb/training/core/config_builder.py`
+  - `ztb/training/checkpoint/checkpoint_manager.py`
+  - `ztb/trading/live/simulation/paper_trader.py`
+- `any_inventory`（対象）:
+  - `streaming_processor.py` / `config_builder.py` / `checkpoint_manager.py` は `Any=0`

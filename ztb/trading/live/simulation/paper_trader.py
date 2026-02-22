@@ -202,19 +202,11 @@ class PaperTrader:
 
         # Capture run metadata
         metadata_path = output_dir / "run_metadata.json"
-        # capture_run_metadata(str(metadata_path))
-        # Create dummy metadata for canary test
         from ztb.utils.run_metadata import RunMetadata
 
         metadata_capturer = RunMetadata(random_seed=42)
-        dummy_metadata = {
-            "correlation_id": "dummy",
-            "system": metadata_capturer.capture_system_info(),
-            "git": {"sha": "dummy"},
-            "run_config": {"random_seed": 42},
-        }
-        with open(metadata_path, "w") as f:
-            json.dump(dummy_metadata, f, indent=2)
+        metadata_capturer.capture_all_metadata()
+        metadata_capturer.save_to_file(str(metadata_path))
 
         print(f"Starting replay simulation for {self.duration_minutes} minutes...")
 

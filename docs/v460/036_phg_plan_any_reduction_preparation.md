@@ -901,6 +901,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step71時点 | repo全体 | 2,501 |
 | Step72時点 | repo全体 | 2,505 |
 | Step73時点 | repo全体 | 2,505 |
+| Step74時点 | repo全体 | 2,488 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -1028,6 +1029,9 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step72時点 | `ztb/utils/run_manifest.py` | **0** |
 | Step73時点 | `ztb/experiments/job_manager.py` | **0** |
 | Step73時点 | `tests/unit/experiments/test_job_manager.py` | **0** |
+| Step74時点 | `ztb/trading/strategies/action_signal_guide/realtime_adaptation/streaming_processor.py` | **0** |
+| Step74時点 | `ztb/training/core/config_builder.py` | **0** |
+| Step74時点 | `ztb/training/checkpoint/checkpoint_manager.py` | **0** |
 
 ---
 
@@ -1102,28 +1106,71 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - repo 全体 `any_type_debt_tokens=2,505`（`scanned_files=1,294`）
   - `job_manager.py` / 追加テストとも `Any=0`
 
+## Step74 追補: streaming helper 統合 + config/checkpoint 型固定 + replay metadata 正常化 (2026-02-22)
+
+### 1) helper 横展開（重複削減）
+
+- `ztb/trading/strategies/action_signal_guide/realtime_adaptation/streaming_processor.py` の
+  `_as_object_map/_as_float` を `safety.ensure_dict/safe_to_float` 委譲へ統一。
+- `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py` も同方針で実施予定だが、
+  現在は git-lfs pointer 管理ファイルのため差分が全体置換化する状態を確認し、
+  先に他ファイルの安全な改善を優先。
+
+### 2) `config_builder` の型固定
+
+- `ztb/training/core/config_builder.py` から `Any` を撤去し、
+  `ConfigMap` / generic default (`TypeVar`) を使った `get_config_value()` 契約へ変更。
+- `get_config_value()` で section 取得時に `ensure_dict()` 正規化を挟み、
+  非dict値混入時の `safe_config_get` 呼び出し不整合リスクを解消。
+- `UnifiedConfig = dict[str, object]` へ更新し、`Any` 流出起点を縮退。
+
+### 3) `checkpoint_manager` の payload/metadata 契約整理
+
+- `ztb/training/checkpoint/checkpoint_manager.py` に
+  `CheckpointPayload` / `CheckpointMetadata` / `RNGStatePayload` /
+  `CheckpointValidationResult` を導入し、`Any` ベース注釈を撤去。
+- `BaseAlgorithm` の runtime fallback を `Protocol` 化し、`BaseAlgorithm = Any` alias を除去。
+- `_build_payload()` を型付き payload 構築へ更新し、`policy_state` 取得失敗時の防御を追加。
+
+### 4) 追加の機能改善
+
+- `ztb/trading/live/simulation/paper_trader.py` の replay metadata を
+  dummy JSON から `RunMetadata.capture_all_metadata()` + `save_to_file()` に置換し、
+  監査/再現用メタデータの実効性を回復。
+
+### 5) 検証
+
+- `py_compile`:
+  - `ztb/trading/strategies/action_signal_guide/realtime_adaptation/streaming_processor.py`
+  - `ztb/training/core/config_builder.py`
+  - `ztb/training/checkpoint/checkpoint_manager.py`
+  - `ztb/trading/live/simulation/paper_trader.py`
+- `any_inventory`（Step74）:
+  - repo 全体 `any_type_debt_tokens=2,488`（`scanned_files=1,300`）
+  - `streaming_processor.py` / `config_builder.py` / `checkpoint_manager.py` は `Any=0`
+
 ## 6. 次フェーズ（優先順）
 
-1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py` / `ztb/trading/strategies/action_signal_guide/realtime_adaptation/streaming_processor.py`  
-   - 残存する `_as_object_map` / `_as_float` 実装を `safety.ensure_dict` / `safe_to_float` へ統合し、Step71 の util 抽出を横展開。  
+1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
+   - git-lfs pointer 管理下の差分運用を整理したうえで、`_as_object_map` / `_as_float` の `safety` 統合を再適用。  
 2. `ztb/training/reward_function_optimizer/reward_function_optimizer.py`  
    - `Any` debt 上位のため、result/config payload 型固定と evaluator 系 `TypedDict` の横展開を優先。  
 3. `ztb/training/algorithms/sac/sac_algorithm.py`  
    - 学習ループ payload を型固定し、ログ/集計の重複分岐を helper 化。  
-4. `ztb/training/checkpoint/checkpoint_manager.py`  
-   - 上位 debt を対象に、checkpoint metadata/payload の型契約と I/O 例外契約を整理。  
-5. `ztb/training/core/config_builder.py`  
-   - `UnifiedConfig` / `get_config_value` の `Any` 流出点を typed config alias + type guard へ段階移行。  
-6. `ztb/utils/file_utils.py`  
+4. `ztb/utils/file_utils.py`  
    - `safe_json_load/dump` の戻り値契約を明確化し、`read_json_object/read_json_array` ベースの型付き helper を追加。  
-7. `ztb/analysis/features/re_evaluate_features.py`  
+5. `ztb/analysis/features/re_evaluate_features.py`  
    - 評価 result payload の型固定と集計ループ helper 化を進め、重複整形コードを削減。  
-8. `ztb/training/utils/sac_utils.py`
+6. `ztb/training/utils/sac_utils.py`
    - `check-config` / `validate-data` の詳細 payload を `TypedDict` 化し、結果 JSON の契約を固定。  
-9. `ztb/utils/run_metadata.py`
+7. `ztb/utils/run_metadata.py`
    - package hash 対象 package の allow-list 指定 (`--package-hash-target`) を追加し、hash 実行時の時間をさらに圧縮。  
-10. `ztb/experiments/job_manager.py`
+8. `ztb/experiments/job_manager.py`
    - `parallel_backend=process` の強制終了戦略（job isolation + watchdog）を設計し、timeout 時のリソース占有をさらに低減。  
+9. `ztb/trading/live/simulation/paper_trader.py`
+   - `run_replay` 返却 payload と state snapshot を `TypedDict` 化し、残存 `Any` を段階削減。  
+10. `scripts/v460/ml/retrain_scheduler.py`
+   - repo 最大の type debt (`27`) を優先削減し、再学習ジョブ設定の型契約を明示。  
 
 ---
 

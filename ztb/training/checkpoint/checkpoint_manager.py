@@ -10,14 +10,23 @@ import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Optional, Protocol, TypedDict, cast
 
 import numpy as np
 
 if TYPE_CHECKING:
-    from stable_baselines3.common.base_class import BaseAlgorithm
+    from stable_baselines3.common.base_class import BaseAlgorithm as BaseAlgorithmType
 else:
-    BaseAlgorithm = Any  # avoid importing stable_baselines3 at module import time
+    # Avoid importing stable_baselines3 at module import time while keeping
+    # annotations free from raw Any.
+    class BaseAlgorithmType(Protocol):
+        policy: object
+
+        def save_replay_buffer(self, path: str) -> None: ...
+
+        def load_replay_buffer(self, path: str) -> None: ...
+
+        def get_vec_normalize_env(self) -> object: ...
 
 from ztb.utils.checkpoint import CheckpointManager
 from ztb.utils.errors import handle_error
@@ -25,6 +34,44 @@ from ztb.utils.observability import ObservabilityClient
 from ztb.utils.path_utils import ensure_dir
 
 logger = logging.getLogger(__name__)
+
+CheckpointMap = dict[str, object]
+CheckpointMetrics = dict[str, object]
+
+
+class CheckpointMetadata(TypedDict, total=False):
+    timestamp: str
+    schema_version: int
+    correlation_id: str | None
+    metrics: dict[str, float]
+
+
+class RNGStatePayload(TypedDict, total=False):
+    python: object
+    numpy: object
+    torch: object
+    torch_cuda: object
+
+
+class CheckpointPayload(TypedDict, total=False):
+    schema_version: int
+    timestamp: str
+    policy_state: CheckpointMap
+    optimizer_state: object
+    buffer_kind: str | None
+    buffer_bytes: bytes | None
+    metrics: CheckpointMetrics
+    extra: CheckpointMap
+    stream_state: CheckpointMap
+    rng_state: RNGStatePayload
+    vec_normalize_stats: CheckpointMap
+    checksum: str
+
+
+class CheckpointValidationResult(TypedDict):
+    valid: bool
+    errors: list[str]
+    warnings: list[str]
 
 
 @dataclass
@@ -49,12 +96,12 @@ class TrainingCheckpointSnapshot:
     """In-memory representation of a checkpoint suitable for resuming."""
 
     step: int
-    payload: Dict[str, Any]
-    metadata: Dict[str, Any]
+    payload: CheckpointPayload
+    metadata: CheckpointMetadata
 
     @property
-    def metrics(self) -> Dict[str, Any]:
-        return cast(Dict[str, Any], self.payload.get("metrics", {}))
+    def metrics(self) -> CheckpointMetrics:
+        return cast(CheckpointMetrics, self.payload.get("metrics", {}))
 
 
 class TrainingCheckpointManager:
@@ -92,10 +139,10 @@ class TrainingCheckpointManager:
         self,
         *,
         step: int,
-        model: BaseAlgorithm,
-        metrics: Optional[Dict[str, Any]] = None,
-        extra: Optional[Dict[str, Any]] = None,
-        stream_state: Optional[Dict[str, Any]] = None,
+        model: BaseAlgorithmType,
+        metrics: Optional[CheckpointMetrics] = None,
+        extra: Optional[CheckpointMap] = None,
+        stream_state: Optional[CheckpointMap] = None,
         async_save: Optional[bool] = None,
     ) -> None:
         payload = self._build_payload(
@@ -104,7 +151,7 @@ class TrainingCheckpointManager:
             extra=extra or {},
             stream_state=stream_state or {},
         )
-        metadata = {
+        metadata: CheckpointMetadata = {
             "timestamp": payload["timestamp"],
             "schema_version": payload["schema_version"],
             "correlation_id": self.correlation_id,
@@ -166,7 +213,7 @@ class TrainingCheckpointManager:
         return snapshot
 
     def apply_snapshot(
-        self, model: BaseAlgorithm, snapshot: TrainingCheckpointSnapshot
+        self, model: BaseAlgorithmType, snapshot: TrainingCheckpointSnapshot
     ) -> None:
         payload = snapshot.payload
         model.policy.load_state_dict(payload["policy_state"], strict=False)
@@ -208,8 +255,8 @@ class TrainingCheckpointManager:
     def validate_checkpoint_integrity(
         self,
         snapshot: TrainingCheckpointSnapshot,
-        model: Optional[BaseAlgorithm] = None,
-    ) -> Dict[str, Any]:
+        model: Optional[BaseAlgorithmType] = None,
+    ) -> CheckpointValidationResult:
         """
         Validate the integrity of a checkpoint snapshot.
 
@@ -220,7 +267,7 @@ class TrainingCheckpointManager:
         Returns:
             Dict containing validation results with 'valid', 'errors', and 'warnings' keys
         """
-        validation_result = {
+        validation_result: CheckpointValidationResult = {
             "valid": True,
             "errors": [],
             "warnings": [],
@@ -318,19 +365,28 @@ class TrainingCheckpointManager:
     def _build_payload(
         self,
         *,
-        model: BaseAlgorithm,
-        metrics: Dict[str, Any],
-        extra: Dict[str, Any],
-        stream_state: Dict[str, Any],
-    ) -> Dict[str, Any]:
-        payload: Dict[str, Any] = {
+        model: BaseAlgorithmType,
+        metrics: CheckpointMetrics,
+        extra: CheckpointMap,
+        stream_state: CheckpointMap,
+    ) -> CheckpointPayload:
+        policy_state: CheckpointMap = {}
+        policy_obj = getattr(model, "policy", None)
+        if hasattr(policy_obj, "state_dict"):
+            try:
+                state = cast(object, policy_obj.state_dict())
+                policy_state = (
+                    cast(CheckpointMap, state)
+                    if isinstance(state, dict)
+                    else {"state": state}
+                )
+            except Exception:
+                logger.exception("Failed to serialize policy state")
+
+        payload: CheckpointPayload = {
             "schema_version": self.SCHEMA_VERSION,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            # Be defensive: model.policy may be a mock or a lightweight object
-            # that doesn't implement state_dict; fall back to an empty dict
-            "policy_state": (model.policy.state_dict()
-                             if hasattr(getattr(model, "policy", None), "state_dict")
-                             else {}),
+            "policy_state": policy_state,
             "optimizer_state": None,
             "buffer_kind": None,
             "buffer_bytes": None,
@@ -341,7 +397,7 @@ class TrainingCheckpointManager:
         }
 
         if self.config.include_optimizer:
-            optimizer = getattr(model.policy, "optimizer", None)
+            optimizer = getattr(policy_obj, "optimizer", None)
             if optimizer is not None:
                 try:
                     opt_state = optimizer.state_dict()
@@ -387,7 +443,7 @@ class TrainingCheckpointManager:
         payload["checksum"] = self._compute_checksum(payload)
         return payload
 
-    def _compute_checksum(self, payload: Dict[str, Any]) -> str:
+    def _compute_checksum(self, payload: CheckpointPayload) -> str:
         payload_copy = {k: v for k, v in payload.items() if k != "checksum"}
 
         # Ensure we can pickle the payload for a stable checksum. If pickling
@@ -415,7 +471,7 @@ class TrainingCheckpointManager:
         blob = pickle.dumps(safe_copy, protocol=pickle.HIGHEST_PROTOCOL)
         return hashlib.sha256(blob).hexdigest()
 
-    def _validate_payload(self, payload: Dict[str, Any]) -> None:
+    def _validate_payload(self, payload: CheckpointPayload) -> None:
         expected = payload.get("checksum")
         if not expected:
             raise ValueError("Checkpoint payload missing checksum")
@@ -456,8 +512,8 @@ class TrainingCheckpointManager:
             raise ValueError(f"Unsupported checkpoint schema version: {schema}")
 
     def _capture_buffer(
-        self, model: BaseAlgorithm
-    ) -> Tuple[Optional[str], Optional[bytes]]:
+        self, model: BaseAlgorithmType
+    ) -> tuple[str | None, bytes | None]:
         if not self.config.include_replay_buffer:
             return None, None
 
@@ -489,7 +545,7 @@ class TrainingCheckpointManager:
         return None, None
 
     def _restore_buffer(
-        self, model: BaseAlgorithm, kind: Optional[str], data: Optional[bytes]
+        self, model: BaseAlgorithmType, kind: str | None, data: bytes | None
     ) -> None:
         if not kind or not data:
             return
@@ -513,8 +569,8 @@ class TrainingCheckpointManager:
         except Exception:
             logger.exception("Failed to restore buffer kind %s", kind)
 
-    def _collect_rng_state(self) -> Dict[str, Any]:
-        state: Dict[str, Any] = {
+    def _collect_rng_state(self) -> RNGStatePayload:
+        state: RNGStatePayload = {
             "python": random.getstate(),
             "numpy": np.random.get_state(),
         }
@@ -528,7 +584,7 @@ class TrainingCheckpointManager:
             logger.debug("Torch RNG state could not be captured", exc_info=True)
         return state
 
-    def _restore_rng_state(self, rng_state: Optional[Dict[str, Any]]) -> None:
+    def _restore_rng_state(self, rng_state: Optional[RNGStatePayload]) -> None:
         if not rng_state:
             return
         try:

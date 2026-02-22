@@ -30,6 +30,7 @@ from ..interfaces.adaptation_interfaces import (
     StreamingDataType,
 )
 from ztb.types.common import ObjectMap, ObjectRecords
+from ztb.utils.safety import ensure_dict, safe_to_float
 
 logger = logging.getLogger(__name__)
 
@@ -48,19 +49,12 @@ class StreamProcessingResult:
 
 def _as_object_map(value: object) -> ObjectMap:
     """Safely convert arbitrary payloads into a mutable object map."""
-    if isinstance(value, dict):
-        return {str(key): item for key, item in value.items()}
-    return {}
+    return ensure_dict(value)
 
 
 def _as_float(value: object, default: float = 0.0) -> float:
     """Best-effort float conversion used by feature/meter calculations."""
-    try:
-        if isinstance(value, (int, float, np.number)):
-            return float(value)
-        return float(str(value))
-    except (TypeError, ValueError):
-        return default
+    return safe_to_float(value, default)
 
 
 class BaseStreamingProcessor(IStreamingProcessor):
