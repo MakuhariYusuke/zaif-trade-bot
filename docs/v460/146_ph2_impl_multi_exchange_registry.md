@@ -159,12 +159,37 @@ CLI 側は `--exchange <name>` で自動的に利用可能。
 |---|---|---|---|---|
 | 1 | HIGH | `ztb/trading/live/registry/broker_registry.py` | `create_adapter()` が `dry_run=True` でも `resolve_credentials()` を必ず呼ぶため、`credential_env` 未登録のカスタム取引所は dry-run でも生成不可。`register_broker(..., credential_env=None)` の契約と不整合。 | `not dry_run` のときのみ credential map を必須化する。dry-run は `api_key/api_secret=None` で生成可能にする。回帰テスト `test_create_adapter_custom_broker_dry_run_without_credential_env` を追加。 |
 | 2 | MEDIUM | `scripts/v460/run_observation.py` | `--exchange` が小文字正規化されず、未知取引所時の `ValueError` も未捕捉。`run_fill_test.py` と UX が不一致で、入力揺れで即例外終了しやすい。 | `exchange = args.exchange.lower()` を適用し、`registry.has_broker()` 事前チェック + `try/except ValueError` で `exit(1)` に統一。 |
-| 3 | LOW | `docs/v460/146_multi_exchange_registry.md` | §6 の全体テスト数 `1386 passed` は現状と乖離 (現在は `1431 passed`)。 | 件数表記に実行日を併記し、最新値に更新するか「最新 CI 参照」に変更。 |
+| 3 | LOW | `docs/v460/146_ph2_impl_multi_exchange_registry.md` | §6 の全体テスト数 `1386 passed` は現状と乖離 (現在は `1431 passed`)。 | 件数表記に実行日を併記し、最新値に更新するか「最新 CI 参照」に変更。 |
 
 ### §11.3 補足
 
 - 146# の中核方針 (Registry 経由の adapter 生成、run_fill_test/run_observation の脱 Coincheck 依存) 自体は妥当。
 - 上記 #1 を先に修正すると「新取引所を軽量に dry-run 検証する」運用が実際に回しやすくなる。
+
+---
+
+## §11.4 追加実装レビュー (2026-02-22)
+
+146# 追加実装差分:
+- `scripts/v460/lib/ob_recorder.py`
+- `ztb/trading/live/exchanges/coincheck/adapter.py`
+
+### §11.4.1 重大度付き指摘
+
+| # | 重大度 | 対象ファイル | 問題 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | CRITICAL | `ztb/trading/live/exchanges/coincheck/adapter.py` | `from requests.adapters import HTTPAdapter` により、test 環境の requests stub (`tests/conftest.py`) と非互換になり import 時点で `ModuleNotFoundError`。結果として coincheck import 依存のテストが連鎖崩壊。 | import をトップレベル固定にせず、`_create_session()` 内で遅延 import + fallback 実装にする。requests stub 環境では retry 無効で通常 Session を使う分岐を追加。 |
+| 2 | HIGH | `ztb/trading/live/exchanges/coincheck/adapter.py` | `self._session = self._create_session()` を呼んでいるが `_create_session` が未実装で、通常実行では `CoincheckAdapter(dry_run=True)` 初期化時に `AttributeError`。 | `_create_session()` を実装するか、実装完了まで当該呼び出しを削除。最低限 `hasattr` ガードではなく明示実装を推奨。 |
+| 3 | MEDIUM | `ztb/trading/live/exchanges/coincheck/adapter.py` | retry 強化の意図に反して、実 HTTP 呼び出しが依然 `requests.get/post/delete` 直呼び (`_make_api_request`, `get_orderbook`, `get_recent_trades`, `_get_current_price_real`) で `self._session` 未使用。改善が機能していない。 | HTTP I/O を `self._session` 経由に統一し、公開 API 呼び出しも同じ経路へ寄せる。 |
+| 4 | LOW | `scripts/v460/lib/ob_recorder.py` | `_BUFFER_CAP` 追加は妥当。ただし flush 失敗時に即 buffer 破棄する既存仕様のままのため、上限到達 flush が増えるとデータ欠損機会が増える。 | `TradesRecorder` と同様に flush 失敗時は buffer 保持＋再試行、連続失敗でのみ破棄に寄せる。 |
+
+### §11.4.2 実行結果
+
+- `tests/unit/v460/test_ob_recorder.py`: **12 passed**
+- `tests/unit/v460/test_013_fixes.py tests/unit/v460/test_146_multi_exchange.py`: **45 failed / 40 passed**  
+  主要失敗原因は §11.4.1 #1 (`requests.adapters` import failure)。
+- 補足確認:
+  - 通常 Python 実行で `CoincheckAdapter(dry_run=True)` → `AttributeError: ... _create_session` を再現 (§11.4.1 #2)。
 
 ---
 

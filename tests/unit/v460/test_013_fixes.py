@@ -33,21 +33,22 @@ class TestC3SignatureConsistency:
         data = {"pair": "btc_jpy", "order_type": "buy", "amount": "0.01", "rate": "5000000"}
         url = "https://coincheck.com/api/exchange/orders"
 
-        # Patch requests at the adapter module level
-        with patch("ztb.trading.live.exchanges.coincheck.adapter.requests") as mock_requests:
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_response.json.return_value = {"success": True, "id": 12345}
-            mock_response.raise_for_status = MagicMock()
-            mock_response.text = '{"success": true, "id": 12345}'
-            mock_requests.post.return_value = mock_response
-            mock_requests.exceptions.RequestException = Exception
+        # 146# §13: Mock the session returned by _get_session()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"success": True, "id": 12345}
+        mock_response.raise_for_status = MagicMock()
+        mock_response.text = '{"success": true, "id": 12345}'
 
+        mock_session = MagicMock()
+        mock_session.post.return_value = mock_response
+
+        with patch.object(adapter, "_get_session", return_value=mock_session):
             adapter._make_api_request("POST", url, data)
 
             # Verify POST was called
-            mock_requests.post.assert_called_once()
-            call_kwargs = mock_requests.post.call_args
+            mock_session.post.assert_called_once()
+            call_kwargs = mock_session.post.call_args
 
             # The data sent must be urlencode format
             sent_data = call_kwargs.kwargs.get("data") or call_kwargs[1].get("data")
@@ -80,18 +81,20 @@ class TestC3SignatureConsistency:
 
         url = "https://coincheck.com/api/accounts/balance"
 
-        with patch("ztb.trading.live.exchanges.coincheck.adapter.requests") as mock_requests:
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_response.json.return_value = {"success": True, "jpy": "1000"}
-            mock_response.raise_for_status = MagicMock()
-            mock_response.text = '{"success": true}'
-            mock_requests.get.return_value = mock_response
-            mock_requests.exceptions.RequestException = Exception
+        # 146# §13: Mock the session returned by _get_session()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"success": True, "jpy": "1000"}
+        mock_response.raise_for_status = MagicMock()
+        mock_response.text = '{"success": true}'
 
+        mock_session = MagicMock()
+        mock_session.get.return_value = mock_response
+
+        with patch.object(adapter, "_get_session", return_value=mock_session):
             adapter._make_api_request("GET", url)
 
-            headers = mock_requests.get.call_args.kwargs.get("headers") or mock_requests.get.call_args[1].get("headers")
+            headers = mock_session.get.call_args.kwargs.get("headers") or mock_session.get.call_args[1].get("headers")
             nonce = headers["ACCESS-NONCE"]
             signature = headers["ACCESS-SIGNATURE"]
 

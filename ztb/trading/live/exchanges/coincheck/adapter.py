@@ -12,13 +12,11 @@ order_type mapping, post_only support, rate limit correction.
 
 import hashlib
 import hmac
-import json
 import logging
-import random
 import time
 import urllib.parse
 import uuid
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Dict, List, Literal, Optional, Union
 
 import requests
 
@@ -40,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 # ---- Helpers ----
 
-def _parse_timestamp(value: Any) -> float:
+def _parse_timestamp(value: Union[int, float, str, None]) -> float:
     """Parse timestamp from epoch float/int or ISO 8601 string.
 
     Coincheck created_at can be either epoch or ISO 8601 (e.g. "2025-01-01T00:00:00.000Z").
@@ -123,10 +121,59 @@ class CoincheckAdapter(BaseExchangeAdapter):
         self.request_timeout = request_timeout
         # Override default prices for Coincheck
         self._current_prices: Dict[str, float] = {"btc_jpy": 5000000.0}
+        # 146# §13: lazy-init Session with retry (see _get_session)
+        self._session: Optional[requests.Session] = None
 
     def _generate_order_id(self) -> str:
         """Generate unique order ID using UUID (Coincheck convention)."""
         return str(uuid.uuid4())
+
+    # ------------------------------------------------------------------
+    # HTTP session (lazy-init with retry)
+    # ------------------------------------------------------------------
+
+    def close(self) -> None:
+        """Close HTTP session and release resources."""
+        if self._session is not None:
+            try:
+                self._session.close()
+            except Exception:  # noqa: BLE001
+                pass
+            self._session = None
+        super().close()
+
+    def _get_session(self) -> requests.Session:
+        """Return lazily-created persistent HTTP session."""
+        if self._session is None:
+            self._session = self._create_session()
+        return self._session
+
+    def _create_session(self) -> requests.Session:
+        """Create ``requests.Session`` with retry/back-off.
+
+        Imports are **lazy** to avoid breaking test environments where
+        ``requests`` is stubbed without ``adapters`` / ``urllib3`` sub-modules.
+
+        146# §13: 3-retry, 0.5 s back-off, 5xx forcelist.
+        """
+        session = requests.Session()
+        try:
+            from requests.adapters import HTTPAdapter  # noqa: WPS433
+            from urllib3.util.retry import Retry  # noqa: WPS433
+
+            retry = Retry(
+                total=3,
+                backoff_factor=0.5,
+                status_forcelist=[500, 502, 503, 504],
+                allowed_methods=["GET", "POST", "DELETE"],
+            )
+            adapter = HTTPAdapter(max_retries=retry)
+            session.mount("https://", adapter)
+            session.mount("http://", adapter)
+        except (ImportError, AttributeError):
+            # Test env: stub requests has no adapters sub-module
+            logger.debug("requests.adapters unavailable; using plain Session")
+        return session
 
     # ------------------------------------------------------------------
     # Coincheck API helpers (authentication, signing, HTTP)
@@ -152,12 +199,12 @@ class CoincheckAdapter(BaseExchangeAdapter):
         self,
         method: Literal["GET", "POST", "DELETE"],
         url: str,
-        data: Optional[Dict[str, Any]] = None,
+        data: Optional[Dict[str, str]] = None,
     ) -> Union[
         CoincheckOrderResponse,
         CoincheckBalanceResponse,
         CoincheckErrorResponse,
-        Dict[str, Any],
+        Dict[str, object],
     ]:
         """Make authenticated API request to Coincheck.
 
@@ -194,19 +241,20 @@ class CoincheckAdapter(BaseExchangeAdapter):
         }
 
         try:
+            session = self._get_session()
             if method.upper() == "GET":
-                response = requests.get(
+                response = session.get(
                     url, headers=headers, timeout=self.request_timeout
                 )
             elif method.upper() == "POST":
-                response = requests.post(
+                response = session.post(
                     url,
                     headers=headers,
                     data=request_body,
                     timeout=self.request_timeout,
                 )
             elif method.upper() == "DELETE":
-                response = requests.delete(
+                response = session.delete(
                     url, headers=headers, timeout=self.request_timeout
                 )
             else:
@@ -549,7 +597,7 @@ class CoincheckAdapter(BaseExchangeAdapter):
 
         try:
             response = await asyncio.to_thread(
-                requests.get,
+                self._get_session().get,
                 f"{self.api_base_url}/api/ticker",
                 timeout=self.request_timeout,
                 headers={"User-Agent": "ZaifTradeBot/1.0"},
@@ -623,7 +671,7 @@ class CoincheckAdapter(BaseExchangeAdapter):
         url = f"{self.api_base_url}/api/order_books"
         try:
             response = await asyncio.to_thread(
-                requests.get, url, timeout=self.request_timeout,
+                self._get_session().get, url, timeout=self.request_timeout,
             )
             response.raise_for_status()
             data = response.json()
@@ -662,7 +710,7 @@ class CoincheckAdapter(BaseExchangeAdapter):
             import asyncio
 
             response = await asyncio.to_thread(
-                requests.get, url, timeout=self.request_timeout,
+                self._get_session().get, url, timeout=self.request_timeout,
             )
             response.raise_for_status()
             data = response.json()

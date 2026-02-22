@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_RAW_DIR = Path("data/v460/raw")
 _FLUSH_INTERVAL_SEC = 60  # 60 秒ごとにバッファ flush
+_BUFFER_CAP = 10_000  # 146# §13: メモリ保護上限 (TradesRecorder と対称)
 
 
 class OBRecorder:
@@ -27,6 +28,7 @@ class OBRecorder:
 
     バッファリング + 定期 flush で I/O 負荷を軽減。
     flush_interval 秒ごと、または明示的 flush() 呼び出しで書き出し。
+    146# §13: BUFFER_CAP 超過時は強制 flush してメモリ保護。
     """
 
     def __init__(
@@ -42,6 +44,7 @@ class OBRecorder:
         self._buffer: list[dict] = []
         self._last_flush: float = time.time()
         self._total_written: int = 0
+        self._flush_fail_count: int = 0  # 146# §13: consecutive-fail counter
 
     @property
     def enabled(self) -> bool:
@@ -76,7 +79,13 @@ class OBRecorder:
             "asks": [list(a) for a in asks],
             "exchange": exchange,
         })
-        if time.time() - self._last_flush >= self._flush_interval:
+        # 146# §13: バッファ上限 or flush_interval のいずれかで flush
+        if len(self._buffer) >= _BUFFER_CAP:
+            logger.warning(
+                f"OB recorder: buffer cap reached ({_BUFFER_CAP}), forcing flush"
+            )
+            self.flush()
+        elif time.time() - self._last_flush >= self._flush_interval:
             self.flush()
 
     def flush(self) -> int:
@@ -95,10 +104,20 @@ class OBRecorder:
         try:
             append_jsonl_gz(path, self._buffer)
             self._total_written += n
-            logger.debug(f"OB recorder: flushed {n} snapshots → {day}")
+            self._flush_fail_count = 0
+            logger.debug(f"OB recorder: flushed {n} snapshots \u2192 {day}")
         except (OSError, TypeError, ValueError) as e:
-            logger.error(f"OB recorder flush failed: {e}")
-            self._buffer.clear()
+            self._flush_fail_count += 1
+            logger.error(
+                f"OB recorder flush failed ({self._flush_fail_count}/3): {e}"
+            )
+            if self._flush_fail_count >= 3:
+                logger.error(
+                    f"OB recorder: 3 consecutive flush failures \u2014 "
+                    f"dropping {n} buffered snapshots"
+                )
+                self._buffer.clear()
+                self._flush_fail_count = 0
             return 0
         self._buffer.clear()
         self._last_flush = time.time()

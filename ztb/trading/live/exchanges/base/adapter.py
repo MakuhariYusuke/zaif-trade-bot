@@ -111,6 +111,19 @@ class BaseExchangeAdapter(IBroker, ABC):
         self._order_counter = 0
         self._current_prices: Dict[str, float] = {"btc_jpy": 5000000.0}  # Default price
 
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    def close(self) -> None:
+        """Release resources held by the adapter.
+
+        Subclasses holding HTTP sessions or persistent connections should
+        override this and call ``super().close()``.
+
+        146# §13: lifecycle hook for resource cleanup.
+        """
+
     async def _simulate_delay(self) -> None:
         """Simulate API call delay."""
         if not self.dry_run:

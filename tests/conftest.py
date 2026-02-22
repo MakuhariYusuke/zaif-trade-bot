@@ -1494,25 +1494,40 @@ except Exception:
 def _requests_get(*args, **kwargs):
     class _Resp:
         status_code = 200
+        text = "{}"
 
         def json(self):
             return {}
+
+        def raise_for_status(self):
+            pass
 
     return _Resp()
 
 
 _requests.get = _requests_get
+_requests.post = _requests_get
+_requests.delete = _requests_get
 
 
 class _Session:
     def get(self, *args, **kwargs):
         return _requests_get(*args, **kwargs)
 
+    def post(self, *args, **kwargs):
+        return _requests_get(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        return _requests_get(*args, **kwargs)
+
+    def close(self):
+        pass
+
 
 _requests.Session = _Session
 # Provide exceptions submodule used by some parts
 _requests.exceptions = types.SimpleNamespace(
-    RequestException=Exception, Timeout=Exception
+    RequestException=Exception, Timeout=Exception, HTTPError=Exception,
 )
 sys.modules["requests"] = _requests
 
