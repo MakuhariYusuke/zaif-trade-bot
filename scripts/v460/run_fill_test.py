@@ -133,6 +133,44 @@ def _log_event(
 
 
 # ======================================================================
+# 148# P1: stderr をファイルにもミラーリング
+# ======================================================================
+
+class _TeeWriter:
+    """stdout/stderr を複数出力先に同時書き込み."""
+
+    def __init__(self, *writers):
+        self.writers = writers
+
+    def write(self, s: str) -> int:
+        for w in self.writers:
+            try:
+                w.write(s)
+            except Exception:
+                pass
+        return len(s)
+
+    def flush(self) -> None:
+        for w in self.writers:
+            try:
+                w.flush()
+            except Exception:
+                pass
+
+
+def _setup_stderr_mirror(results_dir: str | Path) -> None:
+    """148# P1: stderr をファイルにもミラーリング."""
+    try:
+        stderr_path = Path(results_dir) / "logs" / "fill_test_stderr.log"
+        stderr_path.parent.mkdir(parents=True, exist_ok=True)
+        stderr_file = open(stderr_path, "a", encoding="utf-8")
+        sys.stderr = _TeeWriter(sys.__stderr__, stderr_file)
+        logger.info(f"[148#] stderr mirroring to {stderr_path}")
+    except Exception as e:
+        logger.warning(f"[148#] Failed to setup stderr mirror: {e}")
+
+
+# ======================================================================
 # Configuration — 119# fill_config.py に移動
 # FillTestConfig, SkipGateResult, FillMonitorResult, PnlMeasurement は
 # scripts.v460.lib.fill_config からインポート
@@ -1176,6 +1214,20 @@ class FillTestRunner(AbstractCycleRunner):
                         "[trades_health] retrain 品質が低下する可能性あり。"
                         "fill_test 内蔵 TradesRecorder の動作状態を確認してください"
                     )
+                # 148# P1: trades stale 自動イベント記録
+                _log_event(
+                    "trades_health_alert",
+                    self._results_dir,
+                    run_id=self._run_id,
+                    git_sha=self._git_sha,
+                    reason=f"trades unhealthy: {th.message}",
+                    details={
+                        "healthy": th.healthy,
+                        "latest_ts": str(th.latest_ts) if th.latest_ts else None,
+                        "missing_days": th.missing_days,
+                        "age_hours": round(th.age_hours, 1) if th.age_hours else None,
+                    },
+                )
             else:
                 logger.info(f"[trades_health] {th.message}")
         except Exception as e:
@@ -2024,6 +2076,9 @@ def main() -> None:
     )
     logging.getLogger().addHandler(file_handler)
     logger.info(f"Log file: {log_dir / 'fill_test.log'}")
+
+    # 148# P1: stderr をファイルにもミラーリング
+    _setup_stderr_mirror(config.results_dir)
 
     runner = FillTestRunner(adapter, config, yaml_cfg=yaml_cfg)
 

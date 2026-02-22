@@ -277,6 +277,31 @@ def _validate_config(cfg: ConfigMap) -> None:
                 f"131# A.1 #5: target='{target}' but model_path contains 'pnl30': "
                 f"{model_path}. 運用上の誤認に注意。"
             )
+    # 148# P1: side 別 target/model_path ミスマッチ警告
+    _validate_side_target_path_mismatch(cfg, "buy")
+    _validate_side_target_path_mismatch(cfg, "sell")
+
+
+def _validate_side_target_path_mismatch(cfg: ConfigMap, side: str) -> None:
+    """148# P1: side 別 target と model_path のミスマッチ警告."""
+    target_key = f"target_{side}"
+    path_key = f"model_path_{side}"
+    target = str(cfg.get(target_key, ""))
+    model_path = str(cfg.get(path_key, ""))
+    if not target or not model_path:
+        return  # どちらかが未設定なら skip_gate は統一モデルにフォールバック
+    path_has_pnl120 = "pnl120" in model_path
+    path_has_pnl30 = "pnl30" in model_path
+    if target == "pnl30" and path_has_pnl120 and not path_has_pnl30:
+        logger.warning(
+            f"148# P1: {side} target='{target}' but model_path contains 'pnl120': "
+            f"{model_path}. side ごとの target/path ミスマッチに注意。"
+        )
+    elif target == "pnl120" and path_has_pnl30 and not path_has_pnl120:
+        logger.warning(
+            f"148# P1: {side} target='{target}' but model_path contains 'pnl30': "
+            f"{model_path}. side ごとの target/path ミスマッチに注意。"
+        )
 
 
 def _append_jsonl_record(path: Path, payload: object) -> None:
