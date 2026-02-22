@@ -1,6 +1,6 @@
 # 143# レジーム活用 R-1 実装 + 140#/141# レビュー対応
 
-**作成日**: 2025-02-24  
+**作成日**: 2026-02-22  
 **前提**: 142# ph2_plan_regime_utilization (R-1 計画)  
 **テスト**: 1218 → 1244 (+26)
 
@@ -166,3 +166,28 @@ Phase E (P1 group)        : ✅ 137#-141# (全 9 項目完了)
 ```
 
 **次ステップ**: R-1c (reprice), R-1d (timeout), P2 グループ
+
+---
+
+## §7 Codexレビュー追記 (2026-02-22)
+
+### §7.1 検証サマリ
+
+- 実装照合対象: `scripts/v460/lib/fill_config.py`, `scripts/v460/lib/maker_price.py`, `scripts/v460/run_fill_test.py`, `scripts/v460/lib/skip_gate_evaluator.py`, `ztb/ml/online_monitor.py`, `ztb/metrics/fill_quality.py`, `tests/unit/v460/test_143_regime_utilization.py`
+- テスト実行結果: `tests/unit/v460/test_143_regime_utilization.py` は **26 passed**、`tests/unit/v460` 全体は **1244 passed**。
+
+### §7.2 指摘事項 (重大度順)
+
+| # | 重大度 | 対象 | 指摘 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | HIGH | `scripts/v460/run_fill_test.py:1293`, `scripts/v460/run_fill_test.py:805` | preflight 残高チェックは `_current_lot` 基準だが、実発注量は後段で `_regime_adjusted_lot()` により増減される。`trending` 増量時に preflight をすり抜け、`insufficient_funds` を誘発しやすい。 | `_regime_adjusted_lot()` を preflight 前に計算し、`BalanceChecker.check()` へ「今回発注量」を渡す設計へ変更する。 |
+| 2 | MEDIUM | `scripts/v460/run_fill_test.py:293`, `scripts/v460/lib/fill_config.py:239` | `_regime_adjusted_lot()` が `min_lot=0.001` をハードコードしており、`config.min_order_btc` と二重管理。 | `min_lot = self.config.min_order_btc` に統一し、最小数量の単一ソース化を行う。 |
+| 3 | MEDIUM | `ztb/metrics/fill_quality.py:902` | `cancel_reason` があれば side/price/quantity の妥当性チェックを広くバイパスするため、監査用途以外の壊れたレコードも clean 扱いになり得る。 | バイパス条件を監査系 reason (`preflight_pause` など) かつ `side=\"none\"` のみに限定する。 |
+| 4 | MEDIUM | `tests/unit/v460/test_143_regime_utilization.py:425`, `tests/unit/v460/test_143_regime_utilization.py:436`, `tests/unit/v460/test_143_regime_utilization.py:452` | 一部の重要修正が「ソース文字列検査」に寄っており、動作回帰を十分に捕捉できない。 | side-only evaluate 実行、online_monitor の窓圧迫防止、hot-reload 実挙動をモックI/O付きで追加検証する。 |
+| 5 | LOW | `docs/v460/143_ph2_impl_regime_utilization.md:3` | 作成日が `2025-02-24` となっており、142/141 系の時系列と不整合。 | 文書メタデータ日付を系列に合わせて補正する。 |
+
+### §7.3 優先修正順
+
+1. #1 (preflight と regime lot の整合) を最優先で修正。
+2. #2 (min lot 一元化) と #4 (挙動テスト追加) を同一PRで実施。
+3. #3 (quarantine バイパス条件の限定) を監査 reason リスト定義とセットで適用。

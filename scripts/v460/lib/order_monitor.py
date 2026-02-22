@@ -121,7 +121,24 @@ class OrderMonitor:
         cancel_reason_poll: Optional[str] = None
         elapsed = 0.0
         reprice_count = 0
-        min_order_btc: Final[float] = 0.001
+        min_order_btc: Final[float] = cfg.min_order_btc
+
+        # ------ 144# R-1c/R-1d: レジーム別 reprice/timeout 調整 ------
+        _regime_name: str | None = None
+        if regime_detector is not None and hasattr(regime_detector, "current_regime"):
+            _rr = regime_detector.current_regime  # type: ignore[union-attr]
+            if _rr is not None:
+                _regime_name = _rr.value
+        # R-1d: effective timeout (base × regime multiplier)
+        _timeout_mult = cfg.regime_timeout_multipliers.get(_regime_name, 1.0) if _regime_name else 1.0  # type: ignore[arg-type]
+        _effective_timeout = cfg.order_timeout_sec * _timeout_mult
+        if _timeout_mult != 1.0:
+            logger.debug(
+                f"[regime_timeout] {_regime_name} → timeout "
+                f"{cfg.order_timeout_sec:.0f}s × {_timeout_mult:.2f} = {_effective_timeout:.0f}s"
+            )
+        # R-1c: reprice offset (applied after side-specific resolution)
+        _regime_reprice_offset = cfg.regime_reprice_adjustments.get(_regime_name, 0) if _regime_name else 0  # type: ignore[arg-type]
 
         # 094# 発注時 mid price を stale 判定の基準にする
         mid_at_order: Optional[float] = None
@@ -132,7 +149,7 @@ class OrderMonitor:
                 logger.debug(f"[stale_order] mid_at_order 取得失敗 (stale 検出無効化): {e}")
         last_reprice_time = t_submit
 
-        while elapsed < cfg.order_timeout_sec and not shutdown_check.is_killed():  # type: ignore[union-attr]
+        while elapsed < _effective_timeout and not shutdown_check.is_killed():  # type: ignore[union-attr]
             await asyncio.sleep(cfg.poll_interval_sec)
             elapsed = time.time() - t_submit
 
@@ -229,11 +246,13 @@ class OrderMonitor:
                 if (cfg.stale_drift_bps_buy if side == "buy" else cfg.stale_drift_bps_sell) is not None
                 else cfg.stale_drift_bps
             )
-            _stale_max_rp = (
+            _stale_max_rp_base = (
                 (cfg.stale_max_reprice_buy if side == "buy" else cfg.stale_max_reprice_sell)
                 if (cfg.stale_max_reprice_buy if side == "buy" else cfg.stale_max_reprice_sell) is not None
                 else cfg.stale_max_reprice
             )
+            # 144# R-1c: レジーム別 reprice オフセット (最低0でクランプ)
+            _stale_max_rp = max(0, _stale_max_rp_base + _regime_reprice_offset)
             if (
                 cfg.stale_order_enabled
                 and not filled

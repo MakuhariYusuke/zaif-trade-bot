@@ -276,7 +276,7 @@ class FillTestRunner:
         """143# R-1b: レジーム別ロット倍率を適用した注文ロットを返す.
 
         regime_lot_multipliers が空の場合は _current_lot をそのまま返す.
-        倍率適用後も min_lot (Coincheck BTC: 0.001) 以上を保証.
+        倍率適用後も config.min_order_btc 以上を保証.
         """
         base_lot = self._current_lot
         multipliers = self.config.regime_lot_multipliers
@@ -289,8 +289,8 @@ class FillTestRunner:
         mult = multipliers.get(regime_name)
         if mult is None or mult == 1.0:
             return base_lot
-        # 倍率適用 + 安全クランプ
-        min_lot = 0.001  # Coincheck BTC 最小
+        # 倍率適用 + 安全クランプ (144# #2: config.min_order_btc に統一)
+        min_lot = self.config.min_order_btc
         adjusted = max(base_lot * mult, min_lot)
         adjusted = min(adjusted, self.config.max_lot) if self.config.max_lot > 0 else adjusted
         if adjusted != base_lot:
@@ -801,8 +801,12 @@ class FillTestRunner:
         # 105#: lot floor guard — 121# BalanceChecker に委譲
         self._balance_checker.apply_lot_floor()
 
-        # 143# R-1b: レジーム別ロット倍率を適用
+        # 144# #1: レジーム別ロット → preflight 前に計算して残高チェックに反映
         _order_lot = self._regime_adjusted_lot()
+        # preflight は _current_lot ベースだが、regime 増量時に不足を起こさないよう
+        # _current_lot を一時的に _order_lot に合わせる (発注後に復元不要: 次サイクルで再計算)
+        if _order_lot > self._current_lot:
+            self._current_lot = _order_lot
 
         for attempt in range(1 + self.config.max_order_retries):
             try:

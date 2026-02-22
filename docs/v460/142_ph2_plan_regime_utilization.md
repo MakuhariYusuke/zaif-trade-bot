@@ -18,7 +18,7 @@
 
 | コンポーネント | 場所 | 出力 | 特徴 |
 |---|---|---|---|
-| **MarketRegimeClassifier** | `ztb/analysis/regime/market_regime_classifier.py` | `MarketRegime` (40+ 値) | RL 環境用の精緻な分類。v444 由来 |
+| **MarketRegimeClassifier** | `ztb/analysis/regime/market_regime_classifier.py` | `MarketRegime` (多値: 20+ alias) | RL 環境用の精綻な分類。v444 由来 |
 | **BasicRegimeDetector** | `ztb/analysis/regime/basic_regime_detector.py` | 基本分類 | 軽量版 |
 | **AdvancedRegimeDetector** | `ztb/analysis/regime/advanced_regime_detector.py` | 拡張分類 | マルチシグナル |
 | **RegimeAdaptiveTrainer** | `ztb/training/components/regime_adaptive_trainer.py` | regime 別学習 | レジーム重み付き学習 |
@@ -27,7 +27,7 @@
 
 ### §1.3 ギャップ
 
-- `FillTestRegime` (4値) と `MarketRegime` (40+値) の**マッピング層がない**
+- `FillTestRegime` (4値) と `MarketRegime` (多値: 20+ alias) の**マッピング層がない**
 - regime 情報は skip_gate 閾値のみ影響 — **lot/offset/reprice は regime 無関係**
 - retrain データはレジーム重み付けなし — **全レジーム均等**
 - `RegimePerformanceAnalyzer` はバッチ分析用 — **リアルタイム未接続**
@@ -43,7 +43,7 @@
 | 施策 | 対象 | 現状 | 提案 | 期待効果 |
 |---|---|---|---|---|
 | **R-1a** | offset_ratio | 固定値 (YAML) | high_vol: +20%, trending: -15% | ボラ上昇時の約定率改善、トレンド時の利幅確保 |
-| **R-1b** | lot サイズ | 固定値 | high_vol: ×0.7, ranging: ×1.0, trending: ×1.2 | リスク管理 + トレンド追従 |
+| **R-1b** | lot サイズ | 固定値 | high_vol: ×0.7, ranging: ×1.0, trending: ×1.2 ※ preflight は調整後 lot 基準 | リスク管理 + トレンド追従 |
 | **R-1c** | reprice 上限 | sell=1, buy=2 | 共に regime 連動 (high_vol: +1) | ボラ時の粘り強さ |
 | **R-1d** | timeout | 固定 120s | trending: 90s, ranging: 150s | トレンド逃し防止、レンジでの忍耐 |
 
@@ -58,9 +58,9 @@
 |---|---|---|
 | **R-2a** | **retrain データのレジーム重み付け**: 現在のレジームに近いサンプルを upweight | 現行レジームへの特化 (特に sell の high_vol 対策) |
 | **R-2b** | **レジーム別 retrain 頻度**: high_vol では retrain 間隔短縮 (市場変化が速い) | 適応速度改善 |
-| **R-2c** | **RegimeAdaptiveTrainer 連携**: 既存の `ztb/training/components/regime_adaptive_trainer.py` を retrain_scheduler から呼び出し | 既存資産活用 |
+| **R-2c** | **RegimeAdaptiveTrainer 設計資産の再利用**: 既存の `ztb/training/components/regime_adaptive_trainer.py` の特徴量・重み付け仕様を retrain_scheduler 用に adapter 層で再利用 (SAC Mixin のため XGBoost 直結は不可) | 既存設計の活用 |
 
-**実装コスト**: 中 (`retrain_model()` に `sample_weight` エンリッチ)  
+**実装コスト**: 中 (`retrain_model()` に `sample_weight` エンリッチ、R-2c は adapter 層追加が必要)  
 **リスク**: 中 (過学習リスク — 重み付けの減衰係数が必要)
 
 ### Phase R-3: 精緻分類へのアップグレード (即効性: 低/長期)
@@ -74,7 +74,7 @@
 | **R-3c** | **OB 特徴量連携**: `MarketRegimeClassifier` に OB micro-feature を入力して分類精度向上 | P2-10 (OB micro-feature) 完了後 |
 
 **実装コスト**: 高 (MarketRegimeClassifier の fill_test 統合、状態管理)  
-**リスク**: 高 (40+値に対するパラメータチューニングの組合せ爆発)
+**リスク**: 高 (多値 (20+ alias) に対するパラメータチューニングの組合せ爆発)
 
 ---
 
@@ -96,12 +96,23 @@
 
 ## §4 検証基準
 
-| Phase | 成功指標 | 測定方法 |
-|---|---|---|
-| R-1 | sell PnL 改善 (high_vol 時) ≥ +0.1bps | regime 別 PnL 集計 (FillRecord.regime フィールド) |
-| R-1 | 全体 PnL ≥ 現状維持 | 24h 連続 run の total_pnl |
-| R-2 | retrain 後 skip_precision 改善 ≥ 5% | OnlineMonitor.skip_precision |
-| R-3 | サブレジーム別 PnL 分散の縮小 | RegimePerformanceAnalyzer |
+| Phase | 成功指標 | 測定方法 | 統計ゲート |
+|---|---|---|---|
+| R-1 | sell PnL 改善 (high_vol 時) ≥ +0.1bps | regime 別 PnL 集計 (FillRecord.regime フィールド) | bootstrap 95% CI が 0 跨ぎない / 各レジーム最低 50 samples / fee控除後指標 |
+| R-1 | 全体 PnL ≥ 現状維持 | 24h 連続 run の total_pnl | 同上 |
+| R-2 | retrain 後 skip_precision 改善 ≥ 5% | OnlineMonitor.skip_precision | 同上 |
+| R-3 | サブレジーム別 PnL 分散の縮小 | RegimePerformanceAnalyzer | 同上 |
+
+### §4.1 段階導入方針 (142# §6 #3 対応)
+
+R-1a/b/c/d は同時投入ではなく **1 変更ずつ A/B 実施** し、寄与分解を行う:
+
+```
+Step 1: R-1a (offset) → 24h 実測 → 統計ゲート確認
+Step 2: R-1b (lot)    → 24h 実測 → 統計ゲート確認
+Step 3: R-1c (reprice)→ 24h 実測 → 統計ゲート確認
+Step 4: R-1d (timeout)→ 24h 実測 → 統計ゲート確認
+```
 
 ---
 
@@ -111,3 +122,28 @@
 2. **レジーム変更のレイテンシ**: `FillTestRegimeDetector` のヒステリシス (3 サイクル連続一致) があるため、急激な市場変化への追従に ~6 分のラグがある。R-1 で offset/lot を急変させすぎないよう変動幅にクランプを設ける
 3. **unknown レジームの扱い**: 信頼度低時は unknown → 全パラメータをデフォルト値に固定する安全策を維持
 4. **バックテスト不可**: fill_test はリアルタイム実測。R-1 の効果検証は live dry-run で行う必要がある
+
+---
+
+## §6 Codexレビュー追記 (2026-02-22)
+
+### §6.1 総評
+
+- R-1 を先に進める方針は妥当です。既存の `FillTestRegimeDetector` を使って execution パラメータへ反映する方が、R-3 先行より ROI が高いです。
+- ただし R-2/R-3 には「既存資産をそのまま接続できる」という前提ズレがあり、ここを放置すると実装コスト見積もりを誤る可能性があります。
+
+### §6.2 指摘事項 (重大度順)
+
+| # | 重大度 | 対象 | 指摘 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | HIGH | `docs/v460/142_ph2_plan_regime_utilization.md:61`, `ztb/training/components/regime_adaptive_trainer.py:68` | R-2c で `RegimeAdaptiveTrainer` 連携を想定しているが、実体は SAC 向け Mixin であり、fill test の XGBoost retrain へ直結できない。 | R-2c は「直接流用」ではなく「特徴量・重み付け仕様のみ再利用」に再定義し、`retrain_scheduler` 用の adapter 層を別タスク化する。 |
+| 2 | MEDIUM | `docs/v460/142_ph2_plan_regime_utilization.md:101` | 成功指標が平均値中心で、統計的有意性や分散を考慮していない。+0.1bps はノイズに埋もれる可能性が高い。 | ブートストラップ CI、side/regime 別サンプル下限、fee 控除後指標を R-1 から必須化する。 |
+| 3 | MEDIUM | `docs/v460/142_ph2_plan_regime_utilization.md:45` | R-1a/b/c/d は同時に効く execution パラメータで、同時投入すると寄与分解が困難。 | 1変更ずつ A/B 実施し、`offset -> lot -> timeout -> reprice` の順で段階導入する。 |
+| 4 | LOW | `docs/v460/142_ph2_plan_regime_utilization.md:21`, `ztb/analysis/regime/market_regime_types.py:13` | `MarketRegime` を「40+値」としているが、現コードの正規 enum は約20種 + 互換 alias。 | ドキュメント表現を「多値（20+ alias）」へ修正し、マッピング設計の複雑度見積もりを更新する。 |
+| 5 | MEDIUM | `docs/v460/142_ph2_plan_regime_utilization.md:46` | lot 適応で buy 側を増量する場合、preflight 残高チェックとの整合が未定義。実装側で不足エラーを増やしやすい。 | R-1b の受け入れ条件に「調整後 lot で preflight 判定する」を明記する。 |
+
+### §6.3 次アクション (短期)
+
+1. R-1b 仕様に「preflight は調整後 lot 基準」を追記して実装拘束を入れる。
+2. R-2c を「SAC資産の直接流用」から「設計資産の再利用」へ表現修正する。
+3. R-1 検証基準へ統計ゲート (CI/最小サンプル/fee控除後PnL) を追加する。

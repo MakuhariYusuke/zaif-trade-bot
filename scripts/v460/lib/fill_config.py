@@ -67,6 +67,12 @@ class FillTestConfig:
     # 143# R-1b: レジーム別ロット倍率 (regime_name -> multiplier)
     # high_vol: 0.7 (リスク縮小), trending: 1.2 (トレンド追従), ranging: 1.0 (デフォルト)
     regime_lot_multipliers: dict[str, float] = field(default_factory=dict)
+    # 144# R-1c: レジーム別 reprice 上限調整 (regime_name -> int オフセット)
+    # high_vol: +1 (乗遅れリスクあるが復帰期待), trending: +2 (積極的reprice), ranging: 0 (デフォルト)
+    regime_reprice_adjustments: dict[str, int] = field(default_factory=dict)
+    # 144# R-1d: レジーム別 timeout 倍率 (regime_name -> float multiplier)
+    # high_vol: 0.7 (早めに撤退), trending: 1.3 (トレンドに乗るため待機), ranging: 1.0
+    regime_timeout_multipliers: dict[str, float] = field(default_factory=dict)
     # レジーム検知 (035# §4)
     enable_regime: bool = True
     regime_window: int = 20
@@ -345,6 +351,16 @@ class FillTestConfig:
         if "lot_multipliers" in regime and isinstance(regime["lot_multipliers"], dict):
             kwargs["regime_lot_multipliers"] = {
                 str(k): float(v) for k, v in regime["lot_multipliers"].items()
+            }
+        # 144# R-1c: レジーム別 reprice 上限調整
+        if "reprice_adjustments" in regime and isinstance(regime["reprice_adjustments"], dict):
+            kwargs["regime_reprice_adjustments"] = {
+                str(k): int(v) for k, v in regime["reprice_adjustments"].items()
+            }
+        # 144# R-1d: レジーム別 timeout 倍率
+        if "timeout_multipliers" in regime and isinstance(regime["timeout_multipliers"], dict):
+            kwargs["regime_timeout_multipliers"] = {
+                str(k): float(v) for k, v in regime["timeout_multipliers"].items()
             }
 
         # safety セクション → 損失キャップ
