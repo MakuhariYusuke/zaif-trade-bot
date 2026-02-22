@@ -51,7 +51,7 @@ Phase E (P1 group)        : ✅ 137#-141# で先行実施済み (全 9 項目完
 | P2-08 | shadow model A/B | ⚠️ P2 維持 | hot-reload アトミック性確保済み。工数大 | ❌ 工数大 |
 | P3-01 | hft_proxies boardless fallback | ❌ 優先度低 | fill_test は tick 板データ直接保有 | N/A |
 | P3-02 | advanced_regime_detector AB | ⚠️ P3 維持 | unknown レジーム削減に有望だが P0-09 で応急対応済み | ⚠️ 調査可 |
-| P3-03 | dynamic_position_sizer | ⚠️ 保留 | 固定ロット設計との整合要検討 | ❌ 設計検討必要 |
+| P3-03 | dynamic_position_sizer | 📐 設計中 | [151#](151_p3_design_dynamic_position_sizer.md) AS 確率連動ロット設計 | ✅ 設計完了 |
 | P3-04 | pnl_monte_carlo 日次実行 | ✅ **実装済** | 146# `daily_health_check.py` に統合 | ✅ タスク登録のみ |
 | P3-05 | venue 横断比較 | ⚠️ P3 維持 | 146# multi-exchange で基盤は整備済み | ⚠️ 調査可 |
 
@@ -81,7 +81,7 @@ Phase E (P1 group)        : ✅ 137#-141# で先行実施済み (全 9 項目完
 | P2-01 WalkForward | SAC/PPO 前提、工数大 |
 | P2-07 因果ログ標準化 | 大改修、Phase C 完了後に検討 |
 | P2-08 shadow model | hot-reload 安定後に検討 |
-| P3-03 dynamic_position_sizer | 固定ロット設計との整合検討必要 |
+| ~~P3-03 dynamic_position_sizer~~ | ~~固定ロット設計との整合検討必要~~ → 151# で設計完了 |
 
 ---
 
@@ -229,7 +229,8 @@ ztb/analysis/regime/advanced_regime_detector.py:
 1. ~~**即時**: A1 (タスクスケジューラ登録) + A2 (初回実行)~~ → **✅ §8.2 で完了**
 2. **Phase C 中**: B1-B3 の調査・分析
 3. **Phase C 後**: 144# §8.1 CRITICAL 対応
-4. **Phase C 後**: 150# P2-B 自動再起動実装 → [150#](150_ph2_design_fill_test_auto_restart.md)
+4. ~~**Phase C 後**: 150# P2-B 自動再起動実装~~ → **✅ 実装完了** [150#](150_ph2_design_fill_test_auto_restart.md)
+5. **Phase C 後**: 151# P3-03 AS 確率連動ロット実装 → [151#](151_p3_design_dynamic_position_sizer.md)
 
 ---
 
