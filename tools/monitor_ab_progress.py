@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 """Monitor ongoing AB tests and report progress."""
 
-import json
 import time
 from pathlib import Path
 from datetime import datetime
+
+from ztb.reporting.services.catalog import (
+    extract_action_distribution_from_payload,
+    list_training_reports,
+    load_training_report,
+)
 from ztb.trading.environment.components.rewards.utils import RewardUtils
+from ztb.utils.safety import ensure_dict
 
 
 def check_recent_reports(minutes=10):
@@ -14,8 +20,12 @@ def check_recent_reports(minutes=10):
     cutoff_time = time.time() - (minutes * 60)
     
     recent_reports = []
-    for report_file in reports_dir.glob("training_report_*.json"):
-        if report_file.stat().st_mtime > cutoff_time:
+    for report_file in list_training_reports(reports_dir=reports_dir):
+        try:
+            modified = report_file.stat().st_mtime
+        except OSError:
+            continue
+        if modified > cutoff_time:
             recent_reports.append(report_file)
     
     return sorted(recent_reports, key=lambda x: x.stat().st_mtime, reverse=True)
@@ -24,11 +34,12 @@ def check_recent_reports(minutes=10):
 def analyze_report(report_path):
     """Extract key metrics from a report."""
     try:
-        with open(report_path, encoding='utf-8') as f:
-            data = json.load(f)
+        data = load_training_report(report_path)
+        if data is None:
+            return None
         
-        ts = data.get("training_stats", {})
-        actions = ts.get("action_distribution", {})
+        ts = ensure_dict(data.get("training_stats"))
+        actions = extract_action_distribution_from_payload(data)
         
         # Calculate balance score (distance from 33/33/33)
         buy = actions.get("BUY", 0)

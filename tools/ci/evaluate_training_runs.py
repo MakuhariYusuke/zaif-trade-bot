@@ -10,34 +10,54 @@ Usage:
     python tools/ci/evaluate_training_runs.py --out reports/mtf_optimizer_summary.json
 """
 import argparse
-import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import TypedDict
+
+from ztb.io.json_io import write_json
+from ztb.reporting.services.catalog import list_training_reports, load_training_report
+from ztb.utils.safety import ensure_dict, safe_to_float
 
 
-def find_training_reports() -> List[Path]:
-    p = Path("reports")
-    if not p.exists():
-        return []
-    return list(p.glob("training_report_*.json"))
+class ReportMetrics(TypedDict):
+    file: str
+    model_name: str
+    sharpe_ratio: float
+    total_return: float
 
 
-def extract_metrics_from_report(path: Path) -> Dict[str, Any]:
-    try:
-        obj = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+class ModelSummary(TypedDict):
+    model_name: str
+    files: list[str]
+    report_count: int
+    mean_sharpe: float
+    mean_total_return: float
+
+
+def find_training_reports() -> list[Path]:
+    return list_training_reports(reports_dir=Path("reports"))
+
+
+def extract_metrics_from_report(path: Path) -> ReportMetrics | None:
+    obj = load_training_report(path)
+    if obj is None:
+        return None
     # Report may store metrics under 'training_stats' or 'metrics'
-    metrics = obj.get("training_stats") or obj.get("metrics") or {}
+    metrics = ensure_dict(obj.get("training_stats"))
+    if not metrics:
+        metrics = ensure_dict(obj.get("metrics"))
+
+    configuration = ensure_dict(obj.get("configuration"))
+    training = ensure_dict(configuration.get("training"))
+    raw_model_name = training.get("model_name")
+    model_name = raw_model_name if isinstance(raw_model_name, str) and raw_model_name else "unknown"
+
     # Extract useful fields if present
-    out = {
+    return {
         "file": str(path),
-        "model_name": obj.get("configuration", {})
-        .get("training", {})
-        .get("model_name"),
+        "model_name": model_name,
+        "sharpe_ratio": safe_to_float(metrics.get("sharpe_ratio"), 0.0),
+        "total_return": safe_to_float(metrics.get("total_return"), 0.0),
     }
-    out.update({k: v for k, v in metrics.items() if isinstance(v, (int, float))})
-    return out
 
 
 def main():
@@ -46,56 +66,37 @@ def main():
     args = parser.parse_args()
 
     reports = find_training_reports()
-    results = []
+    results: list[ModelSummary] = []
     # Group results by model_name
-    grouped: Dict[str, List[Dict[str, Any]]] = {}
+    grouped: dict[str, list[ReportMetrics]] = {}
     for r in reports:
         mt = extract_metrics_from_report(r)
-        if not mt:
+        if mt is None:
             continue
-        name = mt.get("model_name") or "unknown"
+        name = mt["model_name"]
         grouped.setdefault(name, []).append(mt)
 
     # Aggregate each group into a single summary entry
     for name, items in grouped.items():
-        agg: Dict[str, Any] = {
+        sharpe_vals = [item["sharpe_ratio"] for item in items]
+        tr_vals = [item["total_return"] for item in items]
+
+        agg: ModelSummary = {
             "model_name": name,
-            "files": [it.get("file") for it in items],
+            "files": [item["file"] for item in items],
+            "report_count": len(items),
+            "mean_sharpe": sum(sharpe_vals) / len(sharpe_vals) if sharpe_vals else 0.0,
+            "mean_total_return": sum(tr_vals) / len(tr_vals) if tr_vals else 0.0,
         }
-        # compute averages for known metrics
-        # We specifically care about sharpe_ratio and total_return
-        sharpe_vals = [
-            float(it.get("sharpe_ratio"))
-            for it in items
-            if it.get("sharpe_ratio") is not None
-        ]
-        tr_vals = [
-            float(it.get("total_return"))
-            for it in items
-            if it.get("total_return") is not None
-        ]
-        agg["report_count"] = len(items)
-        agg["mean_sharpe"] = sum(sharpe_vals) / len(sharpe_vals) if sharpe_vals else 0.0
-        agg["mean_total_return"] = sum(tr_vals) / len(tr_vals) if tr_vals else 0.0
         results.append(agg)
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(
-        json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    write_json(out_path, results, indent=2, ensure_ascii=False)
 
     # Print summary
-    print(f"Found {len(results)} training reports")
-    best_sharpe = None
-    for r in results:
-        if "sharpe_ratio" in r:
-            try:
-                s = float(r["sharpe_ratio"])
-                if best_sharpe is None or s > best_sharpe:
-                    best_sharpe = s
-            except Exception:
-                pass
+    print(f"Found {len(reports)} training reports across {len(results)} model groups")
+    best_sharpe = max((r["mean_sharpe"] for r in results), default=None)
     if best_sharpe is not None:
         print(f"Best sharpe found: {best_sharpe:.4f}")
     else:

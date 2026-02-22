@@ -124,6 +124,56 @@ def test_extract_action_distribution_normalizes_values(tmp_path: Path) -> None:
     assert distribution["HOLD"] == pytest.approx(0.0)
 
 
+def test_get_recent_training_reports_returns_latest_limit(tmp_path: Path) -> None:
+    reports_dir = tmp_path / "reports"
+    oldest = _write_report(reports_dir, "training_report_old.json", "model_a")
+    middle = _write_report(reports_dir, "training_report_mid.json", "model_a")
+    newest = _write_report(reports_dir, "training_report_new.json", "model_a")
+
+    base_ns = 1_700_000_000_000_000_000
+    os.utime(oldest, ns=(base_ns, base_ns))
+    os.utime(middle, ns=(base_ns + 1_000_000, base_ns + 1_000_000))
+    os.utime(newest, ns=(base_ns + 2_000_000, base_ns + 2_000_000))
+
+    recent = catalog.get_recent_training_reports(limit=2, reports_dir=reports_dir)
+    assert [path.name for path in recent] == [
+        "training_report_new.json",
+        "training_report_mid.json",
+    ]
+
+
+def test_load_training_report_returns_none_for_invalid_json(tmp_path: Path) -> None:
+    reports_dir = tmp_path / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    broken = reports_dir / "training_report_broken.json"
+    broken.write_text("{invalid json", encoding="utf-8")
+
+    assert catalog.load_training_report(broken) is None
+
+
+def test_extract_reward_components_supports_nested_and_normalizes_values(
+    tmp_path: Path,
+) -> None:
+    reports_dir = tmp_path / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    report = reports_dir / "training_report_nested.json"
+    report.write_text(
+        json.dumps(
+            {
+                "configuration": {"training": {"model_name": "model_a"}},
+                "training_stats": {
+                    "reward_components": {"balance_penalty": "0.25", "invalid": "x"}
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    components = catalog.extract_reward_components(report)
+    assert components["balance_penalty"] == pytest.approx(0.25)
+    assert components["invalid"] == pytest.approx(0.0)
+
+
 def test_report_model_name_cache_is_bounded(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

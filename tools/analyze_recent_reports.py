@@ -1,33 +1,43 @@
 """最近のトレーニングレポートを分析するスクリプト"""
-import json
-import glob
-from typing import List, Dict, Any
+from typing import TypedDict
 from pathlib import Path
-from ztb.trading.environment.components.rewards.utils import RewardUtils
 
-def analyze_reports(limit: int = 20) -> List[Dict[str, Any]]:
+from ztb.reporting.services.catalog import (
+    extract_action_distribution_from_payload,
+    get_recent_training_reports,
+    load_training_report,
+)
+from ztb.trading.environment.components.rewards.utils import RewardUtils
+from ztb.utils.safety import ensure_dict, safe_to_float
+
+
+class RecentReportAnalysis(TypedDict):
+    file: str
+    reward: float
+    buy: float
+    sell: float
+    hold: float
+    buy_sell_diff: float
+
+
+def analyze_reports(limit: int = 20) -> list[RecentReportAnalysis]:
     """最近のレポートを分析"""
-    reports = sorted(glob.glob('reports/training_report_*.json'), reverse=True)[:limit]
+    reports = get_recent_training_reports(limit=limit, reports_dir=Path("reports"))
     
-    results = []
+    results: list[RecentReportAnalysis] = []
     for report_path in reports:
         try:
-            with open(report_path, encoding='utf-8') as f:
-                data = json.load(f)
+            data = load_training_report(report_path)
+            if data is None:
+                raise ValueError("Could not load JSON payload")
             
-            stats = data.get('training_stats', {})
-            actions = stats.get('action_distribution', {})
+            stats = ensure_dict(data.get('training_stats'))
+            actions = extract_action_distribution_from_payload(data)
             
-            reward = stats.get('final_reward', 0)
-            # Handle string rewards
-            if isinstance(reward, str):
-                try:
-                    reward = float(reward)
-                except:
-                    reward = 0.0
+            reward = safe_to_float(stats.get('final_reward'), 0.0)
             
             results.append({
-                'file': Path(report_path).name,
+                'file': report_path.name,
                 'reward': reward,
                 'buy': actions.get('BUY', 0),
                 'sell': actions.get('SELL', 0),
@@ -41,8 +51,12 @@ def analyze_reports(limit: int = 20) -> List[Dict[str, Any]]:
     
     return results
 
-def print_analysis(results: List[Dict[str, Any]]):
+def print_analysis(results: list[RecentReportAnalysis]) -> None:
     """分析結果を表示"""
+    if not results:
+        print("\nNo valid reports found")
+        return
+
     print("\n" + "="*80)
     print("最近のトレーニングレポート分析")
     print("="*80)

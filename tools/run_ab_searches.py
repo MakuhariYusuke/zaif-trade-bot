@@ -6,12 +6,20 @@ This script runs multiple AB searches with different grids and analyzes reward_c
 to understand which parameters contribute to better action balance.
 """
 import argparse
-import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, Any
+from typing import Optional
+
+from ztb.io.json_io import read_json_object, write_json
+from ztb.reporting.services.catalog import (
+    extract_action_distribution_from_payload,
+    extract_reward_components_from_payload,
+    list_training_reports,
+    load_training_report,
+)
 from ztb.trading.environment.components.rewards.utils import RewardUtils
+from ztb.utils.safety import ensure_dict, safe_to_float
 
 
 def run_ab_search(
@@ -22,8 +30,8 @@ def run_ab_search(
     jobs: int,
     objective: str,
     fast_mode: bool = False,
-    output_path: str = None,
-) -> Dict[str, Any]:
+    output_path: Optional[str] = None,
+) -> dict[str, object]:
     """Run a single AB parameter search."""
     cmd = [
         sys.executable,
@@ -51,74 +59,68 @@ def run_ab_search(
     
     # Load results if output path specified
     if output_path and Path(output_path).exists():
-        with open(output_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        return read_json_object(Path(output_path))
     
     return {"success": True}
 
 
-def analyze_reward_components(reports_dir: Path) -> Dict[str, Any]:
+def analyze_reward_components(reports_dir: Path) -> dict[str, object]:
     """Analyze reward_components from training reports."""
-    reports = list(reports_dir.glob("training_report_*.json"))
-    
-    analysis = {
-        "total_reports": len(reports),
-        "with_reward_components": 0,
-        "component_stats": {},
-        "best_balanced_config": None,
-        "best_balance_score": float("inf"),
-    }
+    reports = list_training_reports(reports_dir=reports_dir)
+
+    with_reward_components = 0
+    component_values: dict[str, list[float]] = {}
+    best_balanced_config: dict[str, object] | None = None
+    best_balance_score = float("inf")
     
     for report_path in reports:
-        try:
-            with open(report_path, "r", encoding="utf-8") as f:
-                report = json.load(f)
-            
-            # Extract reward_components
-            components = report.get("reward_components")
-            if not components:
-                components = report.get("training_stats", {}).get("reward_components")
-            
-            if components:
-                analysis["with_reward_components"] += 1
-                
-                # Aggregate component statistics
-                for key, value in components.items():
-                    if key not in analysis["component_stats"]:
-                        analysis["component_stats"][key] = []
-                    analysis["component_stats"][key].append(float(value))
-                
-                # Calculate balance score
-                action_dist = report.get("training_stats", {}).get("action_distribution", {})
-                if action_dist:
-                    buy = action_dist.get("BUY", 0)
-                    sell = action_dist.get("SELL", 0)
-                    # Use canonical deviation helper (target 50/50 for BUY/SELL)
-                    balance_score = RewardUtils.calculate_balance_deviation_from_ratios([buy, sell], [0.5, 0.5])
-                    
-                    if balance_score < analysis["best_balance_score"]:
-                        analysis["best_balance_score"] = balance_score
-                        analysis["best_balanced_config"] = {
-                            "report": report_path.name,
-                            "action_distribution": action_dist,
-                            "reward_components": components,
-                            "config": report.get("configuration", {})
-                        }
-        
-        except Exception as e:
-            print(f"Error analyzing {report_path}: {e}")
-    
-    # Calculate averages
-    for key, values in analysis["component_stats"].items():
+        report = load_training_report(report_path)
+        if report is None:
+            print(f"Error analyzing {report_path}: could not load JSON")
+            continue
+
+        components = extract_reward_components_from_payload(report)
+        if not components:
+            continue
+
+        with_reward_components += 1
+        for key, value in components.items():
+            component_values.setdefault(key, []).append(safe_to_float(value, 0.0))
+
+        action_dist = extract_action_distribution_from_payload(report)
+        if action_dist:
+            buy = safe_to_float(action_dist.get("BUY"), 0.0)
+            sell = safe_to_float(action_dist.get("SELL"), 0.0)
+            # Use canonical deviation helper (target 50/50 for BUY/SELL)
+            balance_score = RewardUtils.calculate_balance_deviation_from_ratios(
+                [buy, sell], [0.5, 0.5]
+            )
+            if balance_score < best_balance_score:
+                best_balance_score = balance_score
+                best_balanced_config = {
+                    "report": report_path.name,
+                    "action_distribution": action_dist,
+                    "reward_components": components,
+                    "config": ensure_dict(report.get("configuration")),
+                }
+
+    component_stats: dict[str, dict[str, object]] = {}
+    for key, values in component_values.items():
         if values:
-            analysis["component_stats"][key] = {
+            component_stats[key] = {
                 "mean": sum(values) / len(values),
                 "min": min(values),
                 "max": max(values),
-                "count": len(values)
+                "count": len(values),
             }
-    
-    return analysis
+
+    return {
+        "total_reports": len(reports),
+        "with_reward_components": with_reward_components,
+        "component_stats": component_stats,
+        "best_balanced_config": best_balanced_config,
+        "best_balance_score": best_balance_score if best_balanced_config else 0.0,
+    }
 
 
 def main():
@@ -148,7 +150,7 @@ def main():
     print(f"Running {len(grid_paths)} AB searches...")
     
     # Run each grid search
-    results = {}
+    results: dict[str, dict[str, object]] = {}
     for grid_path in grid_paths:
         grid_name = grid_path.stem
         output_path = output_dir / f"{grid_name}_results.json"
@@ -179,8 +181,7 @@ def main():
     
     # Save analysis
     analysis_path = output_dir / "reward_components_analysis.json"
-    with open(analysis_path, "w", encoding="utf-8") as f:
-        json.dump(analysis, f, indent=2, ensure_ascii=False)
+    write_json(analysis_path, analysis, indent=2, ensure_ascii=False)
     
     print(f"\nAnalysis saved to: {analysis_path}")
     

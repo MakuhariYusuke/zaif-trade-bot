@@ -892,3 +892,59 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
     - 結果: `7 passed`（warning 1）
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/reward/test_reward_optimization.py`
     - 結果: `5 passed`（warning 1）
+
+## Phase 26 追補: report helper の水平展開 + tools 集計重複削減 (2026-02-22)
+
+### 1) report helper の共通化拡張（catalog）
+
+- `ztb/reporting/services/catalog.py` に以下を追加:
+  - `list_training_reports()`
+  - `get_recent_training_reports()`
+  - `load_training_report()`
+  - `extract_action_distribution_from_payload()`
+  - `extract_reward_components_from_payload()`
+  - `extract_reward_components()`
+- 既存の model_name 抽出処理は `load_training_report()` 経由へ寄せ、
+  JSON load + dict化の重複を削減。
+- `ztb/utils/report_utils.py` の re-export を拡張し、既存 import 互換を維持。
+
+### 2) 水平展開（tools）
+
+- `tools/check_recent_reports.py`
+  - report 走査/JSON load/分布抽出を catalog helper 経由へ統一。
+- `tools/analyze_recent_reports.py`
+  - `glob + open + json.load` を helper 経由へ置換。
+  - `RecentReportAnalysis` (`TypedDict`) を導入し、`Any` 依存を削減。
+  - report 0件時の統計計算で落ちる経路をガード。
+- `tools/monitor_ab_progress.py`
+  - report 列挙/JSON load/action_distribution 抽出を helper 経由へ統一。
+- `tools/run_ab_searches.py`
+  - reward/action 抽出を helper へ統合し、重複 JSON パースを削減。
+  - `read_json_object` / `write_json` へ I/O を統一。
+- `tools/ci/evaluate_training_runs.py`
+  - helper 統合 + `TypedDict` 導入で型を明確化。
+  - summary 表示の不整合（group数を report数扱い、`sharpe_ratio` 未参照）を修正。
+
+### 3) 性能・保守性観点の効果
+
+- 最近N件取得を `heapq.nlargest` ベースへ統一し、
+  全件ソートの常時コストを削減。
+- report payload の安全ロード窓口を1箇所へ集約し、
+  不正JSON/型揺れ時の扱いを共通化。
+- 同種の report 解析スクリプト間での重複実装を削減し、
+  今後の仕様変更時の修正箇所を縮小。
+
+### 4) 検証
+
+- `py_compile`:
+  - `ztb/reporting/services/catalog.py`
+  - `ztb/utils/report_utils.py`
+  - `tools/check_recent_reports.py`
+  - `tools/analyze_recent_reports.py`
+  - `tools/monitor_ab_progress.py`
+  - `tools/run_ab_searches.py`
+  - `tools/ci/evaluate_training_runs.py`
+  - `tests/unit/reporting/services/test_catalog.py`
+- venv test:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/reporting/services/test_catalog.py`
+    - 結果: `9 passed`（warning 1）
