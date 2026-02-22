@@ -70,6 +70,13 @@ lot_sizing:
     - unknown
   regime_decrease_regimes: []  # 減量を強制するレジーム (空=なし)
 
+# ---- 151# P3-03: AS 確率連動ロットサイジング (confidence_lot) ----
+confidence_lot:
+  enabled: false              # 有効化 (Phase C データ検証後に true)
+  scale: 1.0                  # AS prob → lot 縮小傾斜
+  floor: 0.3                  # 最小 lot 倍率 [0, 1]
+  mode: "as"                  # "as" only ("pnl" は凍結)
+
 # ---- レジーム検知 (035# §4) ----
 regime:
   enabled: true               # レジーム判定の有効化

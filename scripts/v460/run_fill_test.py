@@ -466,6 +466,83 @@ class FillTestRunner(AbstractCycleRunner):
             )
         return adjusted
 
+    # ------------------------------------------------------------------
+    # 151# P3-03: AS 確率連動ロットサイジング (confidence_lot)
+    # ------------------------------------------------------------------
+
+    def _confidence_lot_factor(
+        self,
+        as_prob: float | None,
+        *,
+        dust_sweep_active: bool = False,
+    ) -> float:
+        """151# P3-03: AS 確率に基づくロット倍率.
+
+        §10 #5: dust_sweep_active 時は factor=1.0 (端数掃除を妨げない).
+        §10 #3: sg.as_prob のみ使用 (mode=pnl は凍結).
+        §10 #2: 戻り値は [0, 1] にクランプ (縮小専用の不変条件).
+
+        Returns:
+            1.0 (無効時 / 確率なし / dust_sweep) or [floor, 1.0] の倍率.
+        """
+        if not self.config.enable_confidence_lot:
+            return 1.0
+        if dust_sweep_active:
+            return 1.0
+
+        mode = self.config.confidence_lot_mode
+        if mode == "pnl":
+            # §10 #3/#6: mode=pnl は凍結。警告して 1.0 返却
+            logger.warning("[confidence_lot] mode='pnl' is frozen; treating as 1.0")
+            return 1.0
+        # mode == "as"
+        if as_prob is None:
+            return 1.0
+        import math
+        if not math.isfinite(as_prob):
+            return 1.0
+        scale = self.config.confidence_lot_scale
+        floor = self.config.confidence_lot_floor
+        raw = 1.0 - scale * as_prob
+        # §10 #2: 縮小専用不変条件 — factor ∈ [0, 1]
+        return max(floor, min(1.0, max(0.0, raw)))
+
+    def _effective_order_lot(
+        self,
+        regime_lot: float,
+        as_prob: float | None = None,
+        *,
+        dust_sweep_active: bool = False,
+    ) -> tuple[float, float]:
+        """151# 統合ロット算出: regime_lot × confidence_factor.
+
+        §10 #4: regime_lot は呼び出し元から1回算出して渡す (二重経路回避).
+
+        Args:
+            regime_lot: _regime_adjusted_lot() の結果.
+            as_prob: SkipGate の AS 確率.
+            dust_sweep_active: dust sweep アクティブフラグ.
+
+        Returns:
+            (effective_lot, confidence_factor) のタプル.
+        """
+        conf_factor = self._confidence_lot_factor(
+            as_prob, dust_sweep_active=dust_sweep_active,
+        )
+        lot = regime_lot * conf_factor
+
+        min_lot = self.config.min_order_btc
+        lot = max(lot, min_lot)
+        if self.config.max_lot > 0:
+            lot = min(lot, self.config.max_lot)
+
+        if conf_factor < 1.0:
+            logger.debug(
+                f"[confidence_lot] as_prob={as_prob}, factor={conf_factor:.2f} "
+                f"→ lot={lot:.4f} (regime={regime_lot:.4f})"
+            )
+        return lot, conf_factor
+
     # 121# _last_side プロパティ: SideSelector に委譲 (後方互換)
     @property
     def _last_side(self) -> str | None:
@@ -948,9 +1025,12 @@ class FillTestRunner(AbstractCycleRunner):
             else:
                 self._narrow_spread_consecutive = 0
 
+        # 151# §10 #4: regime_lot を1回だけ算出し、SkipGate/発注/記録へ共通引き回し
+        _regime_lot = self._regime_adjusted_lot()
+
         sg = await self._evaluate_skip_gate(
             side, cycle_id, order_price, spread_at_order, effective_offset_ratio,
-            order_lot=self._regime_adjusted_lot(),
+            order_lot=_regime_lot,
         )
         skip_gate_skipped = sg.skipped
         skip_gate_score = sg.score
@@ -970,9 +1050,14 @@ class FillTestRunner(AbstractCycleRunner):
         # 105#: lot floor guard — 121# BalanceChecker に委譲
         self._balance_checker.apply_lot_floor()
 
-        # 143# R-1b: レジーム別ロット (per-cycle, _current_lot には永続化しない)
+        # 143# R-1b + 151# P3-03: regime × confidence (per-cycle, _current_lot には永続化しない)
         # 145# fix: §8-#2 乗法的複利と §8-#3 片側更新を修正
-        _order_lot = self._regime_adjusted_lot()
+        # §10 #5: dust_sweep 時は confidence_factor=1.0
+        _order_lot, _confidence_factor = self._effective_order_lot(
+            _regime_lot,
+            as_prob=skip_gate_as_prob,
+            dust_sweep_active=self._balance_checker.dust_sweep_active,
+        )
 
         for attempt in range(1 + self.config.max_order_retries):
             try:
@@ -1203,6 +1288,11 @@ class FillTestRunner(AbstractCycleRunner):
             vg_triggered=self._maker_price.last_vg_triggered,
             # 129# D.2: 残高制約による side 強制切替フラグ
             balance_forced_switch=balance_forced_switch or None,
+            # 151# P3-03: confidence lot 可観測性 (§10 #7)
+            confidence_lot_factor=_confidence_factor if self.config.enable_confidence_lot else None,
+            order_lot_regime=_regime_lot,
+            order_lot_effective=_order_lot,
+            confidence_lot_mode=self.config.confidence_lot_mode if self.config.enable_confidence_lot else None,
         )
 
         logger.info(

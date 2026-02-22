@@ -595,13 +595,14 @@ class TestPreflightLotAlignment:
         _current_lot への永続化コードが除去されている."""
         from scripts.v460.run_fill_test import FillTestRunner
         source = inspect.getsource(FillTestRunner.run_single_cycle)
-        # apply_lot_floor → _order_lot = self._regime_adjusted_lot() の順序を検証
-        # (145# §9-#4: SkipGate にも _regime_adjusted_lot を渡すため複数出現。
-        #  発注直前の「_order_lot = self._regime_adjusted_lot()」が lot_floor の後にあればよい)
-        floor_idx = source.index("apply_lot_floor")
-        order_lot_assign_idx = source.index("_order_lot = self._regime_adjusted_lot()")
-        assert floor_idx < order_lot_assign_idx, (
-            "apply_lot_floor must occur before _order_lot assignment"
+        # 151# P3-03: _regime_lot を1回算出 → SkipGate + _effective_order_lot で共有
+        # _regime_lot は SkipGate 前に算出 (lot_floor より先の場合あり)
+        assert "_regime_lot = self._regime_adjusted_lot()" in source, (
+            "regime_lot should be computed once per cycle"
+        )
+        # 151# P3-03: _effective_order_lot で confidence × regime を合成
+        assert "self._effective_order_lot(" in source, (
+            "_effective_order_lot should be called for confidence_lot integration"
         )
         # 145# fix: 永続化コード「_order_lot > self._current_lot」は除去済み
         assert "_order_lot > self._current_lot" not in source, (

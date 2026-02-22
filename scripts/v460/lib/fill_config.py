@@ -64,6 +64,11 @@ class FillTestConfig:
     max_lot: float = 0.005
     lot_adapt_interval_cycles: int = 50
     recent_pnl_window: int = 50  # 方策 B 直近 PnL 計算ウィンドウ
+    # 151# P3-03: AS 確率連動ロットサイジング (confidence_lot)
+    enable_confidence_lot: bool = False
+    confidence_lot_scale: float = 1.0       # AS prob → lot 縮小の傾斜
+    confidence_lot_floor: float = 0.3       # lot 倍率の下限 [0, 1]
+    confidence_lot_mode: str = "as"         # "as" only ("pnl" は凍結)
     # 143# R-1b: レジーム別ロット倍率 (regime_name -> multiplier)
     # high_vol: 0.7 (リスク縮小), trending: 1.2 (トレンド追従), ranging: 1.0 (デフォルト)
     regime_lot_multipliers: dict[str, float] = field(default_factory=dict)
@@ -304,6 +309,19 @@ class FillTestConfig:
                 raise ValueError(
                     f"regime_reprice_adjustments['{k}'] abs value must be <= {_MAX_REPRICE_ADJ}, got {v}"
                 )
+        # 151# P3-03: confidence_lot バリデーション (§10 #2 対応)
+        if not (0.0 <= self.confidence_lot_floor <= 1.0):
+            raise ValueError(
+                f"confidence_lot_floor must be in [0, 1], got {self.confidence_lot_floor}"
+            )
+        if self.confidence_lot_scale < 0:
+            raise ValueError(
+                f"confidence_lot_scale must be >= 0, got {self.confidence_lot_scale}"
+            )
+        if self.confidence_lot_mode not in ("as", "pnl"):
+            raise ValueError(
+                f"confidence_lot_mode must be 'as' or 'pnl', got '{self.confidence_lot_mode}'"
+            )
 
     @classmethod
     def from_yaml(cls, yaml_cfg: dict) -> "FillTestConfig":
@@ -347,6 +365,19 @@ class FillTestConfig:
             kwargs["max_lot"] = lot["max_lot"]
         if "recent_pnl_window" in lot:
             kwargs["recent_pnl_window"] = lot["recent_pnl_window"]
+
+        # 151# P3-03: confidence_lot セクション (AS 確率連動ロットサイジング)
+        cl = yaml_cfg.get("confidence_lot", {})
+        if cl.get("enabled") is not None:
+            kwargs["enable_confidence_lot"] = cl["enabled"]
+        cl_map = {
+            "scale": "confidence_lot_scale",
+            "floor": "confidence_lot_floor",
+            "mode": "confidence_lot_mode",
+        }
+        for yaml_key, config_key in cl_map.items():
+            if yaml_key in cl:
+                kwargs[config_key] = cl[yaml_key]
 
         # regime セクション → レジーム検知 (035# §4)
         regime = yaml_cfg.get("regime", {})

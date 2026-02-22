@@ -537,13 +537,17 @@ class TestSkipGateLotConsistency:
         assert params["order_lot"].default is None
 
     def test_skip_gate_call_passes_regime_lot(self) -> None:
-        """run_single_cycle 内の SkipGate 呼出しで order_lot= が渡されていることを確認."""
+        """run_single_cycle 内の SkipGate 呼出しで order_lot= が渡されていることを確認.
+
+        151# P3-03: regime_lot を1回算出し、SkipGate/発注/記録へ共通引き回し.
+        """
         import inspect
         from scripts.v460.run_fill_test import FillTestRunner
 
         source = inspect.getsource(FillTestRunner.run_single_cycle)
-        assert "order_lot=self._regime_adjusted_lot()" in source, (
-            "SkipGate call should pass regime-adjusted lot"
+        # 151# P3-03: 単一算出した _regime_lot を SkipGate に渡す
+        assert "order_lot=_regime_lot" in source, (
+            "SkipGate call should pass pre-computed _regime_lot (151# §10 #4)"
         )
 
 

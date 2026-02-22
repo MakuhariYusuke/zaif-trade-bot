@@ -98,6 +98,11 @@ class FillRecord:
     vg_triggered: Optional[bool] = None              # VolatilityGuard 発動したか
     # 129# D.2: 残高制約による side 強制切替フラグ (評価/学習での交絡分離用)
     balance_forced_switch: Optional[bool] = None     # 残高不足で side が強制切替されたか
+    # 151# P3-03: confidence lot 情報 (§10 #7 可観測性)
+    confidence_lot_factor: Optional[float] = None    # 適用された倍率 [0, 1]
+    order_lot_regime: Optional[float] = None         # regime_adjusted_lot (confidence 未適用)
+    order_lot_effective: Optional[float] = None      # 最終発注ロット (= order_quantity)
+    confidence_lot_mode: Optional[str] = None        # "as" / "pnl" / None (無効時)
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""
