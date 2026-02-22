@@ -23,7 +23,7 @@ import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional, cast
 
 import numpy as np
 import pandas as pd
@@ -31,6 +31,12 @@ from sklearn.impute import SimpleImputer
 from sklearn.linear_model import Ridge
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+
+from scripts.v460.ml.model_protocols import (
+    FeatureTransformer,
+    ProbabilisticEstimator,
+    RegressorEstimator,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -153,13 +159,13 @@ class SkipGate:
 
     def __init__(
         self,
-        model: Ridge,
-        scaler: Any,
+        model: object,
+        scaler: object,
         feature_cols: list[str],
         config: SkipGateConfig | None = None,
-        metadata: dict[str, Any] | None = None,
+        metadata: dict[str, object] | None = None,
         pipeline: Pipeline | None = None,
-        score_calibrator: Any | None = None,
+        score_calibrator: object | None = None,
     ) -> None:
         self.model = model
         self.scaler = scaler
@@ -178,7 +184,7 @@ class SkipGate:
 
     def evaluate(
         self,
-        features: dict[str, float],
+        features: dict[str, object],
         *,
         side: str | None = None,
         regime: str | None = None,
@@ -221,8 +227,13 @@ class SkipGate:
         n_used = 0
         for i, col in enumerate(self.feature_cols):
             if col in features:
-                x[i] = features[col]
-                n_used += 1
+                try:
+                    value = float(features[col])
+                except (TypeError, ValueError):
+                    continue
+                if np.isfinite(value):
+                    x[i] = value
+                    n_used += 1
 
         if n_used < 3:
             return SkipDecision(
@@ -244,8 +255,10 @@ class SkipGate:
             if self._pipeline is not None:
                 pred_prob = float(self._pipeline.predict_proba(x_df)[0, 1])
             else:
-                x_scaled = self.scaler.transform(x_df)
-                pred_prob = float(self.model.predict_proba(x_scaled)[0, 1])
+                x_scaled = cast(FeatureTransformer, self.scaler).transform(x_df)
+                pred_prob = float(
+                    cast(ProbabilisticEstimator, self.model).predict_proba(x_scaled)[0, 1]
+                )
             pred_pnl = -pred_prob * 10  # AS確率→疑似PnL (互換表示用)
             as_prob = pred_prob  # 084# 生の確率を保持
             # 068# §3.3: side 別閾値
@@ -265,8 +278,10 @@ class SkipGate:
             if self._pipeline is not None:
                 pred_pnl = float(self._pipeline.predict(x_df)[0])
             else:
-                x_scaled = self.scaler.transform(x_df)
-                pred_pnl = float(self.model.predict(x_scaled)[0])
+                x_scaled = cast(FeatureTransformer, self.scaler).transform(x_df)
+                pred_pnl = float(
+                    cast(RegressorEstimator, self.model).predict(x_scaled)[0]
+                )
             # 138# P1-03: score calibration — isotonic regression で校正
             if self._score_calibrator is not None:
                 cal = self._score_calibrator
@@ -339,15 +354,18 @@ class SkipGate:
             較正後の閾値.
         """
         cfg = self.config
+        if not np.isfinite(current_prob):
+            return base_threshold
         history = self._pas_history_buy if side == "buy" else self._pas_history_sell
         target_rate = (
             cfg.target_skip_rate_buy if side == "buy" else cfg.target_skip_rate_sell
         )
+        target_rate = min(max(float(target_rate), 0.0), 1.0)
 
         # 履歴に追加
         history.append(current_prob)
         # ウィンドウ超過分を除去
-        max_len = cfg.adaptive_window
+        max_len = max(1, int(cfg.adaptive_window))
         if len(history) > max_len:
             del history[: len(history) - max_len]
 
@@ -363,15 +381,20 @@ class SkipGate:
         target_threshold = sorted_probs[quantile_idx]
 
         # ステップ幅で段階的に近づける (急激な変動防止)
-        if base_threshold > target_threshold + cfg.adaptive_step:
-            new_threshold = base_threshold - cfg.adaptive_step
-        elif base_threshold < target_threshold - cfg.adaptive_step:
-            new_threshold = base_threshold + cfg.adaptive_step
+        step = abs(float(cfg.adaptive_step))
+        if step == 0.0:
+            step = 0.01
+        if base_threshold > target_threshold + step:
+            new_threshold = base_threshold - step
+        elif base_threshold < target_threshold - step:
+            new_threshold = base_threshold + step
         else:
             new_threshold = target_threshold
 
         # クランプ: floor / ceiling で制約
-        new_threshold = max(cfg.adaptive_floor, min(cfg.adaptive_ceiling, new_threshold))
+        floor = min(float(cfg.adaptive_floor), float(cfg.adaptive_ceiling))
+        ceiling = max(float(cfg.adaptive_floor), float(cfg.adaptive_ceiling))
+        new_threshold = max(floor, min(ceiling, new_threshold))
 
         if abs(new_threshold - base_threshold) > 0.001:
             logger.debug(
@@ -416,11 +439,14 @@ class SkipGate:
             較正後の閾値 (bps). predicted_pnl < threshold → skip.
         """
         cfg = self.config
+        if not np.isfinite(current_pnl):
+            return cfg.threshold_bps if base_threshold is None else base_threshold
         if base_threshold is None:
             base_threshold = cfg.threshold_bps
         target_rate = (
             cfg.target_skip_rate_buy if side == "buy" else cfg.target_skip_rate_sell
         )
+        target_rate = min(max(float(target_rate), 0.0), 1.0)
 
         # 遅延初期化 (pickleの後方互換性)
         if self._pred_pnl_history_buy is None:
@@ -439,7 +465,7 @@ class SkipGate:
 
         # 履歴に追加
         history.append(current_pnl)
-        max_len = cfg.adaptive_window
+        max_len = max(1, int(cfg.adaptive_window))
         if len(history) > max_len:
             del history[: len(history) - max_len]
 
@@ -461,7 +487,9 @@ class SkipGate:
         if current_th is None:
             current_th = base_threshold
 
-        step = cfg.adaptive_step  # bps 単位のステップ (PnL 空間)
+        step = abs(float(cfg.adaptive_step))  # bps 単位のステップ (PnL 空間)
+        if step == 0.0:
+            step = 0.01
         if current_th > target_threshold + step:
             new_threshold = current_th - step
         elif current_th < target_threshold - step:
@@ -734,13 +762,24 @@ def warm_start_skip_gate_thresholds(
                 p_as = r.get("skip_gate_as_prob")
                 side = r.get("side")
                 if p_as is not None and side in ("buy", "sell"):
+                    try:
+                        p_as_val = float(p_as)
+                    except (TypeError, ValueError):
+                        continue
+                    if not np.isfinite(p_as_val):
+                        continue
                     # 124# モデル世代フィルタ: trained_at 以前のレコードを除外
                     if model_trained_ts is not None:
                         rec_ts = r.get("timestamp")
-                        if rec_ts is not None and float(rec_ts) < model_trained_ts:
-                            stale_skipped += 1
-                            continue
-                    file_records.append((side, float(p_as)))
+                        if rec_ts is not None:
+                            try:
+                                rec_ts_val = float(rec_ts)
+                            except (TypeError, ValueError):
+                                continue
+                            if rec_ts_val < model_trained_ts:
+                                stale_skipped += 1
+                                continue
+                    file_records.append((side, p_as_val))
             prob_records = file_records + prob_records
         if len(prob_records) >= need:
             break

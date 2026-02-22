@@ -368,8 +368,8 @@ def _dual_horizon_skip_sim(
     p30 = pnl30[valid]
     p120_all = pnl120[valid]
 
-    baseline_30 = float(np.nanmean(p30))
-    baseline_120 = float(np.nanmean(p120_all))
+    baseline_30 = _safe_nanmean(p30)
+    baseline_120 = _safe_nanmean(p120_all)
 
     result: dict[str, float] = {
         "baseline_pnl30": baseline_30,
@@ -387,8 +387,8 @@ def _dual_horizon_skip_sim(
             keep = p < threshold
 
         if keep.sum() > 0:
-            kept_30 = float(np.nanmean(p30[keep]))
-            kept_120 = float(np.nanmean(p120_all[keep]))
+            kept_30 = _safe_nanmean(p30[keep])
+            kept_120 = _safe_nanmean(p120_all[keep])
             result[f"{label}_pnl30"] = kept_30 - baseline_30
             result[f"{label}_pnl120"] = kept_120 - baseline_120
         else:
@@ -396,6 +396,16 @@ def _dual_horizon_skip_sim(
             result[f"{label}_pnl120"] = 0.0
 
     return result
+
+
+def _safe_nanmean(values: np.ndarray) -> float:
+    """NaN/inf のみの場合でも 0.0 を返す安全 mean."""
+    if values.size == 0:
+        return 0.0
+    finite = values[np.isfinite(values)]
+    if finite.size == 0:
+        return 0.0
+    return float(np.mean(finite))
 
 
 def run_classification_wf(

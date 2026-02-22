@@ -342,6 +342,26 @@ class TestWarmStartImmediateConvergence:
             assert len(gate._pas_history_buy) == 25
             assert len(gate._pas_history_sell) == 25
 
+    def test_warm_start_ignores_malformed_timestamp(self) -> None:
+        """timestamp が壊れた行を含んでも warm_start が継続する."""
+        gate = _make_gate(adaptive_threshold=True, adaptive_min_samples=3)
+        gate.metadata = {"trained_at": "2026-02-01T00:00:00"}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+            records = [
+                json.dumps({"side": "buy", "skip_gate_as_prob": 0.40, "timestamp": "bad"}),
+                json.dumps({"side": "buy", "skip_gate_as_prob": 0.45, "timestamp": 1771451000.0}),
+                json.dumps({"side": "buy", "skip_gate_as_prob": 0.50, "timestamp": 1771451200.0}),
+            ]
+            (tmpdir_path / "fill_records_20260220.jsonl").write_text(
+                "\n".join(records), encoding="utf-8",
+            )
+
+            warm_start_skip_gate_thresholds(gate, tmpdir_path, window=50)
+
+            assert len(gate._pas_history_buy) == 2
+
 
 # =====================================================================
 # build_features_from_market_state テスト
@@ -590,6 +610,16 @@ class TestSkipGateEvaluateEdgeCases:
         decision = gate.evaluate(features, side="buy")
         assert decision.should_skip is False
         assert "skip_rate_limit" in decision.reason
+
+    def test_invalid_feature_value_is_tolerated(self) -> None:
+        """非数値特徴量が来てもクラッシュせず insufficient_features 扱い."""
+        gate = _make_gate()
+        decision = gate.evaluate(
+            {"spread_jpy": "bad", "offset_ratio": None, "regime_trending": "x"},
+            side="buy",
+        )
+        assert decision.should_skip is False
+        assert "insufficient_features" in decision.reason
 
 
 # =====================================================================

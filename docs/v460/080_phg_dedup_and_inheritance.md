@@ -1249,3 +1249,48 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - 回帰確認:
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_ml_pipeline.py`
     - 結果: `16 passed`（warning 1）
+
+## Phase 34 追補: skip_gate/train_sg_v3 の不具合耐性強化 (2026-02-23)
+
+### 1) skip_gate の潜在不具合対策
+
+- `scripts/v460/ml/skip_gate.py`
+  - `evaluate()` で特徴量値を安全に `float` 化し、
+    非数値/NaN/inf を無視する防御を追加（入力揺れでのクラッシュ防止）。
+  - `mode=as/pnl` の fallback 予測経路を Protocol ベースで明示化し、
+    型契約を整理（`Any` 依存を削減）。
+  - `_calibrate_threshold()` / `_calibrate_pnl_threshold()` に以下を追加:
+    - 非有限値ガード
+    - `target_skip_rate` の `[0,1]` clamp
+    - `adaptive_window` の最小値ガード
+    - `adaptive_step<=0` のフォールバック
+    - `adaptive_floor/ceiling` 逆転時の正規化
+  - `warm_start_skip_gate_thresholds()` で
+    壊れた `timestamp` / `skip_gate_as_prob` 行を安全にスキップするよう改善。
+
+### 2) train_sg_v3 の NaN 伝播バグ対策
+
+- `scripts/v460/ml/train_sg_v3.py`
+  - `_dual_horizon_skip_sim()` に `_safe_nanmean()` を導入し、
+    `pnl120` が全欠損/部分欠損でも改善値が `NaN` にならないよう修正。
+  - これにより profit score 集計での NaN 伝播・ソート不安定化リスクを低減。
+
+### 3) 追加テスト
+
+- `tests/unit/v460/test_skip_gate_d8.py`
+  - 非数値特徴量が来た場合の evaluate 防御テストを追加。
+  - warm_start の malformed timestamp スキップ継続テストを追加。
+- `tests/unit/v460/test_train_sg_v3.py`（新規）
+  - `pnl120` 全欠損時でも `_dual_horizon_skip_sim` が有限値を返すことを検証。
+  - `pnl120` 部分欠損時の有限値維持を検証。
+
+### 4) 検証
+
+- `py_compile`:
+  - `scripts/v460/ml/skip_gate.py`
+  - `scripts/v460/ml/train_sg_v3.py`
+  - `tests/unit/v460/test_skip_gate_d8.py`
+  - `tests/unit/v460/test_train_sg_v3.py`
+- 回帰確認:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_skip_gate_d8.py tests/unit/v460/test_skip_gate_v3.py tests/unit/v460/test_train_sg_v3.py`
+    - 結果: `57 passed`
