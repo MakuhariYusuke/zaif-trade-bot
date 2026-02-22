@@ -32,6 +32,7 @@ import time
 from pathlib import Path
 from typing import Optional, TypedDict
 
+from ztb.reporting.services.catalog import find_reports_for_model as _find_reports_from_catalog
 from ztb.utils.safety import ensure_dict, safe_open_json, safe_to_float
 
 ReportSignature = tuple[int, int]
@@ -74,11 +75,6 @@ def _get_nested_str(payload: dict[str, object], keys: tuple[str, ...]) -> str | 
 def _extract_candidate_model_name(payload: dict[str, object]) -> str | None:
     return _get_nested_str(payload, ("training", "model_name"))
 
-
-def _extract_report_model_name(payload: dict[str, object]) -> str | None:
-    return _get_nested_str(payload, ("configuration", "training", "model_name"))
-
-
 def _report_signature(report_path: Path) -> ReportSignature | None:
     try:
         stat = report_path.stat()
@@ -88,15 +84,7 @@ def _report_signature(report_path: Path) -> ReportSignature | None:
 
 
 def _find_reports_for_model(model_name: str, report_dir_path: Path) -> list[Path]:
-    matches: list[Path] = []
-    for report_path in report_dir_path.glob("training_report_*.json"):
-        payload = _load_json_object(report_path)
-        if payload is None:
-            continue
-        if _extract_report_model_name(payload) != model_name:
-            continue
-        matches.append(report_path)
-    return matches
+    return _find_reports_from_catalog(model_name, reports_dir=report_dir_path)
 
 
 def _snapshot_report_state(report_paths: list[Path]) -> dict[Path, ReportSignature]:

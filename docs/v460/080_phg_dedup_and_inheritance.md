@@ -779,3 +779,55 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
     - 結果: `6 passed`（warning 1）
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/training/reward_function_optimizer/test_mtf_optimizer.py tests/unit/training/reward_function_optimizer/test_mtf_optimizer_score_report.py`
     - 結果: `6 passed`（warning 1）
+
+## Phase 23 追補: report catalog 高速化（キャッシュ）+ メモリ上限制御 (2026-02-23)
+
+### 1) 実行時間短縮
+
+- `ztb/reporting/services/catalog.py` に report model-name キャッシュを導入:
+  - key: `(resolved_path, mtime_ns, size)`
+  - 変更なしファイルは JSON 再読み込みを回避。
+- `find_reports_for_model()` は cache 経由で一致判定し、反復呼び出し時の
+  `training_report_*.json` 全件 parse コストを削減。
+- `candidate_evaluator` 側の report 探索も
+  catalog の `find_reports_for_model()` へ委譲し、改善効果を水平展開。
+
+### 2) メモリリーク防止
+
+- キャッシュは `REPORT_MODEL_NAME_CACHE_MAX_SIZE=2048` の上限付き
+  `OrderedDict` で管理し、古いエントリを自動evict。
+- `clear_report_cache()` を追加し、長時間実行プロセスで
+  明示解放できるようにした（`ztb/utils/report_utils.py` 経由でも公開）。
+
+### 3) 追加の健全化
+
+- `extract_action_distribution()` は `safe_to_float` 正規化を通し、
+  文字列/不正値混入時の型揺れを抑制。
+- `get_latest_report_for_model()` は辞書順ではなく
+  `mtime_ns` 基準で最新 report を返すよう修正。
+
+### 4) テスト
+
+- 新規: `tests/unit/reporting/services/test_catalog.py`
+  - cache ヒットで再parseされないこと
+  - report 更新時に cache が更新されること
+  - latest report が mtime 基準で選ばれること
+  - action distribution の数値正規化
+  - cache 上限制御
+- 既存回帰:
+  - `tests/unit/training/reward_function_optimizer/test_candidate_evaluator.py`
+  - `tests/unit/training/reward_function_optimizer/test_mtf_optimizer.py`
+  - `tests/unit/training/reward_function_optimizer/test_mtf_optimizer_score_report.py`
+
+### 5) 検証
+
+- `py_compile`:
+  - `ztb/reporting/services/catalog.py`
+  - `ztb/utils/report_utils.py`
+  - `ztb/training/reward_function_optimizer/candidate_evaluator.py`
+  - `tests/unit/reporting/services/test_catalog.py`
+- venv test:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/reporting/services/test_catalog.py`
+    - 結果: `5 passed`（warning 1）
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/training/reward_function_optimizer/test_candidate_evaluator.py tests/unit/training/reward_function_optimizer/test_mtf_optimizer.py tests/unit/training/reward_function_optimizer/test_mtf_optimizer_score_report.py`
+    - 結果: `12 passed`（warning 1）
