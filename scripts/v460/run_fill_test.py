@@ -125,14 +125,37 @@ def _log_event(
             "reason": reason,
             "details": details or {},
         }
-        import msvcrt
-        with open(events_path, "a", encoding="utf-8") as f:
-            msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
-            try:
-                f.write(json.dumps(record, ensure_ascii=False) + "\n")
-            finally:
-                f.seek(0, 2)  # EOF
-                msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+        line = json.dumps(record, ensure_ascii=False) + "\n"
+        if os.name == "nt":
+            # §11 #2: lock/unlock を byte 0 固定で対称化
+            # §11 #3: Windows 専用パス (非 Windows は else へ)
+            import msvcrt
+
+            with open(events_path, "a", encoding="utf-8") as f:
+                f.seek(0)
+                msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
+                try:
+                    f.seek(0, 2)  # EOF for append
+                    f.write(line)
+                    f.flush()
+                finally:
+                    f.seek(0)  # back to locked byte 0
+                    msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            # 非 Windows: fcntl があれば使用、なければ無ロックで追記
+            with open(events_path, "a", encoding="utf-8") as f:
+                try:
+                    import fcntl
+
+                    fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                    try:
+                        f.write(line)
+                        f.flush()
+                    finally:
+                        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                except ImportError:
+                    f.write(line)
+                    f.flush()
         logger.info(f"[event] {event}: reason={reason}")
     except Exception as e:
         logger.warning(f"[event] Failed to log event: {e}")

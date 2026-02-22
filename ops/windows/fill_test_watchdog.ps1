@@ -295,7 +295,7 @@ if ($status -eq "RUNNING") {
 # ======================================================================
 # 7. NOT_RUNNING / UNKNOWN → アラート
 # ======================================================================
-$shouldAlert = ($status -eq "NOT_RUNNING") -or $heartbeatStale
+$shouldAlert = ($status -eq "NOT_RUNNING") -or ($status -eq "UNKNOWN") -or $heartbeatStale
 
 if ($shouldAlert) {
     Write-Warning $message
@@ -318,6 +318,11 @@ if (-not $AutoRestart) {
     exit 0
 }
 
+if ($status -eq "UNKNOWN") {
+    # §11 #1: UNKNOWN は再起動不可 (状態不確定)、アラートのみ
+    Write-WatchdogLog "SKIP" "[watchdog] status=UNKNOWN, restart skipped (state unconfirmed)"
+    exit 1
+}
 if ($status -ne "NOT_RUNNING") {
     Write-WatchdogLog "SKIP" "[watchdog] status=$status, AutoRestart skipped (not NOT_RUNNING)"
     exit 1
@@ -353,11 +358,17 @@ $effectiveConfig = $Config
 $effectiveExchange = $Exchange
 $effectiveDryRun = $DryRun.IsPresent
 
-# 明示されていない場合、最新 start event から復元を試みる
+# 明示されていない場合、最新 start event から復元を試みる (§11 #4: hours/config も復元対象)
 $lastArgs = Get-LastStartArgs
 if ($lastArgs) {
     Write-Host "[watchdog] Last start event args found: $($lastArgs | ConvertTo-Json -Compress)"
-    # Hours/Config はコマンドライン明示を優先
+    # デフォルト値の場合のみ start event から復元 (明示パラメータ優先)
+    if ($lastArgs.hours -and $Hours -eq 168) {
+        $effectiveHours = $lastArgs.hours
+    }
+    if ($lastArgs.config -and $Config -eq "configs/v460/fill_test.yaml") {
+        $effectiveConfig = $lastArgs.config
+    }
     if ($lastArgs.exchange -and $Exchange -eq "coincheck") {
         $effectiveExchange = $lastArgs.exchange
     }

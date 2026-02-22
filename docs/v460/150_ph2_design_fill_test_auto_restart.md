@@ -390,3 +390,33 @@ ops/windows/trading_service.bat:
 | AutoRestart + RUNNING | ✅ exit 0 | 再起動せず正常終了 |
 | restart.lock 排他 | ✅ exit 0 SKIP | 別インスタンスの lock を検出、スキップ |
 | Python テスト (16件) | ✅ ALL PASS | start event args 含む全テスト OK |
+
+---
+
+## §12 Codex 再確認 §11 対応 (2026-02-23)
+
+| # | 対応 |
+|---|------|
+| 1 | **修正済**: `$shouldAlert` に `UNKNOWN` を追加。AutoRestart 時は UNKNOWN を明示スキップ (再起動不可、アラートのみ) |
+| 2 | **修正済**: `_log_event()` の msvcrt.locking を byte 0 固定で lock/unlock 対称化 (`f.seek(0)` パターン) |
+| 3 | **修正済**: `os.name == "nt"` 分岐。非 Windows は `fcntl.flock`、fcntl なしは無ロックフォールバック |
+| 4 | **修正済**: `Get-LastStartArgs` で `hours`/`config` もデフォルト値の場合に start event から復元 |
+
+---
+
+## §11 Codex 再確認レビュー追記 (2026-02-23)
+
+実装確認の結果、前回指摘の主要項目は解消済み。ただし以下 4 点は残課題。
+
+| # | 重大度 | 対象 | 指摘 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | HIGH | `ops/windows/fill_test_watchdog.ps1:298`, `ops/windows/fill_test_watchdog.ps1:316`, `ops/windows/fill_test_watchdog.ps1:321` | `status=UNKNOWN` かつ `heartbeatStale=false` の場合、アラート/再起動ともに走らず監視失敗を取りこぼす可能性。 | `UNKNOWN` をアラート条件に含め、`AutoRestart` 時の扱いを明示 (再試行/通知/失敗終了)。 |
+| 2 | MEDIUM | `scripts/v460/run_fill_test.py:130`, `scripts/v460/run_fill_test.py:135` | `_log_event()` の `msvcrt.locking` で lock/unlock 位置が一致していない。 | lock 取得位置を保持し、同一位置で unlock する実装へ修正。 |
+| 3 | MEDIUM | `scripts/v460/run_fill_test.py:128` | `_log_event()` が `msvcrt` 前提で、非 Windows 実行時にイベント記録失敗の余地。 | OS 分岐を入れ、非 Windows はフォールバック方式で追記。 |
+| 4 | MEDIUM | `ops/windows/fill_test_watchdog.ps1:350-367` | start event からの引数復元が `exchange/dry_run` 中心で、`hours/config` の復元方針が曖昧。 | `hours/config` も復元対象にするか、仕様として非復元を明文化。 |
+
+### §11.1 判定
+
+- P2-B の骨格は実用レベルに到達。  
+- 本番相当運用前に上表 1-2 は優先修正が望ましい。  
+- 3-4 は運用方針の明文化でも許容可能だが、再現性重視なら実装修正を推奨。
