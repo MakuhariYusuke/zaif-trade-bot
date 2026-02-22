@@ -179,6 +179,18 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     "online_monitor_window": 100,         # 評価ウィンドウ (直近 N fill)
     "online_monitor_pnl_column": "post_fill_30s_pnl",
     "online_monitor_degraded_threshold_bps": -0.3,
+    # 145# R-2a: レジーム重み付き再学習
+    # レジーム別 sample_weight で現レジームに近いサンプルを upweight
+    "regime_weighting_enabled": False,     # 安全デフォルト: 無効
+    "regime_sample_weights": {             # レジーム → weight マッピング
+        "high_vol": 1.0,
+        "trending": 1.0,
+        "ranging": 1.0,
+        "unknown": 1.0,
+    },
+    "regime_current_boost": 1.5,          # 直近レジームに一致するサンプルの追加ブースト倍率
+    "regime_current_lookback": 10,        # 直近 N 件から「現在レジーム」を多数決で推定
+    "regime_weight_floor": 0.1,           # weight の最低値 (0近接回避)
 }
 
 
@@ -393,20 +405,22 @@ def _evaluate_wf(
     enriched: pd.DataFrame,
     cfg: dict[str, Any],
     prev_booster: "Any | None" = None,
+    sample_weight: np.ndarray | None = None,
 ) -> dict[str, Any]:
     """Walk-Forward OOS 評価ディスパッチ.
 
     131# C1: wf_multi_window_enabled=True なら WalkForwardSplitter で
     multi-window 評価を実行。データ不足時は single-window にフォールバック。
+    145# R-2a: sample_weight 対応 (レジーム重み付き学習)。
     """
     if cfg.get("wf_multi_window_enabled", True):
         try:
-            result = _evaluate_wf_multi(X, y, enriched, cfg, prev_booster)
+            result = _evaluate_wf_multi(X, y, enriched, cfg, prev_booster, sample_weight)
             if result is not None:
                 return result
         except Exception as e:
             logger.warning(f"C1: Multi-window WF failed ({e}), falling back to single")
-    return _evaluate_wf_single(X, y, enriched, cfg, prev_booster)
+    return _evaluate_wf_single(X, y, enriched, cfg, prev_booster, sample_weight)
 
 
 def _evaluate_wf_multi(
@@ -415,11 +429,13 @@ def _evaluate_wf_multi(
     enriched: pd.DataFrame,
     cfg: dict[str, Any],
     prev_booster: "Any | None" = None,
+    sample_weight: np.ndarray | None = None,
 ) -> dict[str, Any] | None:
     """131# C1: Multi-window Walk-Forward 評価 (WalkForwardSplitter 統合).
 
     複数の WF ウィンドウで独立に train→predict し、per-window PnL を収集。
     g1_judgment / holm_bonferroni_gate 用の fold-level データを返す。
+    145# R-2a: sample_weight 対応。
 
     Returns:
         評価結果 dict。ウィンドウが 2 未満なら None (single-window フォールバック)。
@@ -522,6 +538,10 @@ def _evaluate_wf_multi(
                 lgb.log_evaluation(period=0),
             ]
 
+        # 145# R-2a: レジーム重み付き学習 — train window 分の weight を切り出し
+        if sample_weight is not None:
+            fit_kwargs["sample_weight"] = sample_weight[win.train_start:win.train_end]
+
         lgbm_model.fit(X_train_sc, y_train, **fit_kwargs)
         preds_test = lgbm_model.predict(X_test_sc)
 
@@ -612,12 +632,14 @@ def _evaluate_wf_single(
     enriched: pd.DataFrame,
     cfg: dict[str, Any],
     prev_booster: "Any | None" = None,
+    sample_weight: np.ndarray | None = None,
 ) -> dict[str, float]:
     """Walk-Forward OOS 評価で品質スコアを算出.
 
     直近 test_ratio をテストセットとし、残りで訓練→テスト予測の skip simulation。
     E1: prev_booster があれば warm-start で学習。
     E2: early_stopping_rounds で過学習を自動防止。
+    145# R-2a: sample_weight 対応。
 
     Returns:
         {"score": float, "pnl30_improvement": float, "pnl120_improvement": float, ...}
@@ -678,6 +700,10 @@ def _evaluate_wf_single(
     if prev_booster is not None and cfg.get("warm_start_enabled", True):
         fit_kwargs["init_model"] = prev_booster
         logger.info("E1: Using prev booster as init_model for WF eval")
+
+    # 145# R-2a: レジーム重み付き学習 — train 分の weight を切り出し
+    if sample_weight is not None:
+        fit_kwargs["sample_weight"] = sample_weight[:split_idx]
 
     lgbm_model.fit(X_train_sc, y_train, **fit_kwargs)
     preds_test = lgbm_model.predict(X_test_sc)
@@ -815,6 +841,90 @@ def _apply_statistical_gate(
             "alpha": alpha,
             "min_effect": min_effect,
         }
+
+
+def _compute_regime_sample_weights(
+    enriched: pd.DataFrame,
+    valid_index: pd.Index,
+    cfg: dict[str, Any],
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """145# R-2a: レジーム別 sample_weight を算出.
+
+    各サンプルの regime 列を参照し、cfg の weight マッピングで重み付け。
+    直近 N 件から多数決で「現在レジーム」を推定し、追加ブーストを適用。
+
+    Args:
+        enriched: enriched DataFrame (regime 列を含む).
+        valid_index: X_valid / y_valid のインデックス (enriched の部分集合).
+        cfg: retrain 設定 dict.
+
+    Returns:
+        (sample_weight 配列, メタデータ dict)
+    """
+    regime_weights_map: dict[str, float] = cfg.get("regime_sample_weights", {})
+    current_boost: float = cfg.get("regime_current_boost", 1.5)
+    lookback: int = cfg.get("regime_current_lookback", 10)
+    weight_floor: float = cfg.get("regime_weight_floor", 0.1)
+
+    # regime 列がなければ均一重み
+    if "regime" not in enriched.columns:
+        logger.info("R-2a: regime column not found, using uniform weights")
+        return np.ones(len(valid_index), dtype=np.float64), {
+            "regime_weighting": "uniform",
+            "reason": "no_regime_column",
+        }
+
+    regimes = enriched.loc[valid_index, "regime"].fillna("unknown")
+
+    # Step 1: 基本重み (config マッピング)
+    weights = regimes.map(
+        lambda r: max(regime_weights_map.get(r, 1.0), weight_floor)
+    ).astype(np.float64).values
+
+    # Step 2: 直近 N 件から「現在レジーム」を推定 (多数決)
+    current_regime = "unknown"
+    if lookback > 0 and len(regimes) >= lookback:
+        recent = regimes.iloc[-lookback:]
+        regime_counts = recent.value_counts()
+        current_regime = regime_counts.index[0]
+        # 現在レジーム一致サンプルにブースト適用
+        boost_mask = (regimes == current_regime).values
+        weights[boost_mask] *= current_boost
+        logger.info(
+            f"R-2a: current_regime={current_regime} "
+            f"(from last {lookback}, confidence={regime_counts.iloc[0]}/{lookback}), "
+            f"boost={current_boost}x applied to {int(boost_mask.sum())} samples"
+        )
+    elif lookback > 0:
+        logger.info(
+            f"R-2a: Insufficient data for current regime detection "
+            f"({len(regimes)} < {lookback}), boost skipped"
+        )
+
+    # Step 3: 正規化 (mean=1.0 に保つことで学習率スケールへの影響を抑制)
+    mean_w = float(np.mean(weights))
+    if mean_w > 0:
+        weights = weights / mean_w
+
+    # weight_floor 再適用 (正規化後)
+    weights = np.maximum(weights, weight_floor)
+
+    # 統計情報収集
+    regime_dist = regimes.value_counts().to_dict()
+    weight_stats = {
+        "regime_weighting": "applied",
+        "current_regime": current_regime,
+        "regime_distribution": {str(k): int(v) for k, v in regime_dist.items()},
+        "weight_mean": round(float(np.mean(weights)), 4),
+        "weight_std": round(float(np.std(weights)), 4),
+        "weight_min": round(float(np.min(weights)), 4),
+        "weight_max": round(float(np.max(weights)), 4),
+        "config_weights": regime_weights_map,
+        "current_boost": current_boost,
+        "lookback": lookback,
+    }
+
+    return weights, weight_stats
 
 
 def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
@@ -979,6 +1089,36 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
     result["filled_records"] = n_original_filled
     result["dropped_by_feature_build"] = n_original_filled - int(len(X_full))
 
+    # 145# R-2b: 現在レジーム検出 (R-2a weighting の有無に関わらず常に実行)
+    # 直近 N 件の多数決で推定し、result に記録 → run_scheduler で trigger に伝搬
+    _regime_lookback = cfg.get("regime_current_lookback", 10)
+    if "regime" in enriched.columns and len(X_valid) >= _regime_lookback:
+        _recent_regimes = enriched.loc[X_valid.index, "regime"].fillna("unknown").iloc[-_regime_lookback:]
+        _regime_counts = _recent_regimes.value_counts()
+        result["current_regime"] = str(_regime_counts.index[0])
+    elif "regime" in enriched.columns and len(X_valid) > 0:
+        _all_regimes = enriched.loc[X_valid.index, "regime"].fillna("unknown")
+        _regime_counts = _all_regimes.value_counts()
+        result["current_regime"] = str(_regime_counts.index[0])
+    else:
+        result["current_regime"] = "unknown"
+
+    # 145# R-2a: レジーム重み付きサンプルウェイト計算
+    regime_sample_weight: np.ndarray | None = None
+    if cfg.get("regime_weighting_enabled", False):
+        regime_sample_weight, weight_stats = _compute_regime_sample_weights(
+            enriched, X_valid.index, cfg,
+        )
+        result["regime_weighting"] = weight_stats
+        logger.info(
+            f"R-2a: Regime weighting enabled — "
+            f"mean={weight_stats['weight_mean']}, "
+            f"std={weight_stats['weight_std']}, "
+            f"current={weight_stats.get('current_regime', 'N/A')}"
+        )
+    else:
+        result["regime_weighting"] = {"regime_weighting": "disabled"}
+
     # Step 2: 最小サンプルチェック (130# Bootstrap 2段化)
     bootstrap_threshold = cfg.get("bootstrap_threshold", 100)
     is_bootstrap = len(X_valid) < bootstrap_threshold
@@ -1084,7 +1224,11 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
 
     # Step 4: Walk-Forward 品質評価
     if cfg.get("quality_gate_enabled", True):
-        wf_result = _evaluate_wf(X_valid, y_valid, enriched, cfg, prev_booster=prev_booster)
+        wf_result = _evaluate_wf(
+            X_valid, y_valid, enriched, cfg,
+            prev_booster=prev_booster,
+            sample_weight=regime_sample_weight,
+        )
         result["wf_eval"] = wf_result
         logger.info(
             f"WF eval: score={wf_result['score']:.4f}, "
@@ -1312,6 +1456,11 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
     elif prev_booster is not None and (pruned_features or redundancy_pruned):
         logger.info("E1: Warm-start skipped (feature set changed by E3/C3 pruning)")
 
+    # 145# R-2a: レジーム重み付き学習 — 全データ fit に sample_weight 注入
+    if regime_sample_weight is not None:
+        # E3/C3 pruning で X_valid の行数は変わらない (列のみ) → weight はそのまま使用
+        fit_kwargs["sample_weight"] = regime_sample_weight
+
     lgbm.fit(X_sc, y_valid, **fit_kwargs)
 
     # E2: 実際に使用された木の数を記録
@@ -1376,6 +1525,8 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
         "wf_multi_window": wf_result.get("n_windows", 1) if cfg.get("quality_gate_enabled") else 0,
         "redundancy_pruned_features": redundancy_pruned,
         "statistical_gate": result.get("statistical_gate", {}),
+        # 145# R-2a: レジーム重み付き学習メタデータ
+        "regime_weighting": result.get("regime_weighting", {}),
     }
 
     gate = SkipGate(
@@ -1576,6 +1727,13 @@ def run_scheduler(cfg: dict[str, Any], config_path: Path | None = None) -> None:
         check_feature_freshness=cfg.get("trigger_check_feature_freshness", False),
         feature_trades_stale_hours=cfg.get("trigger_feature_trades_stale_hours", 6.0),
         feature_ob_stale_hours=cfg.get("trigger_feature_ob_stale_hours", 6.0),
+        # 145# R-2b: レジーム別 interval 倍率
+        regime_interval_multipliers=cfg.get("trigger_regime_interval_multipliers", {
+            "high_vol": 0.5,
+            "trending": 0.75,
+            "ranging": 1.5,
+            "unknown": 1.0,
+        }),
     )
     trigger = RetrainTrigger(
         results_dir=Path(cfg["results_dir"]),
@@ -1637,7 +1795,11 @@ def run_scheduler(cfg: dict[str, Any], config_path: Path | None = None) -> None:
         try:
             result = retrain_model(cfg)
             logger.info(f"Retrain cycle: status={result['status']}")
-            trigger.record_result(result["status"])
+            # 145# R-2b: current_regime を trigger に伝搬
+            trigger.record_result(
+                result["status"],
+                current_regime=result.get("current_regime", "unknown"),
+            )
             # 履歴ファイルに記録
             with open(history_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(result, default=str) + "\n")

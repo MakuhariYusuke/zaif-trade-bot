@@ -1616,3 +1616,139 @@ class TestOracleBaseline:
         # 1.0 bps × 0.001 × 15,000,000 / 10,000 = 1.5 JPY
         assert m.actual_jpy_per_cycle is not None
         assert abs(m.actual_jpy_per_cycle - 1.5) < 0.01
+
+
+# =====================================================================
+# 145# R-2a: レジーム重み付き再学習テスト
+# =====================================================================
+
+class TestRegimeSampleWeights:
+    """145# R-2a: _compute_regime_sample_weights 単体テスト."""
+
+    def test_uniform_when_no_regime_col(self) -> None:
+        """regime 列がない → 均一重み."""
+        from scripts.v460.ml.retrain_scheduler import _compute_regime_sample_weights
+
+        enriched = pd.DataFrame({"side": ["buy", "sell", "buy"]})
+        idx = enriched.index
+        cfg = {"regime_weighting_enabled": True, "regime_sample_weights": {"high_vol": 2.0}}
+        weights, meta = _compute_regime_sample_weights(enriched, idx, cfg)
+        assert len(weights) == 3
+        assert np.allclose(weights, 1.0)
+        assert meta["regime_weighting"] == "uniform"
+
+    def test_config_weights_applied(self) -> None:
+        """config の regime_sample_weights が正しく適用される."""
+        from scripts.v460.ml.retrain_scheduler import _compute_regime_sample_weights
+
+        enriched = pd.DataFrame({
+            "regime": ["high_vol", "trending", "ranging", "unknown"] * 10,
+        })
+        idx = enriched.index
+        cfg = {
+            "regime_weighting_enabled": True,
+            "regime_sample_weights": {
+                "high_vol": 2.0,
+                "trending": 1.5,
+                "ranging": 0.5,
+                "unknown": 0.5,
+            },
+            "regime_current_boost": 1.0,  # ブースト無効
+            "regime_current_lookback": 10,
+            "regime_weight_floor": 0.1,
+        }
+        weights, meta = _compute_regime_sample_weights(enriched, idx, cfg)
+        assert len(weights) == 40
+        assert meta["regime_weighting"] == "applied"
+        # high_vol サンプルは trending よりも大きい重み
+        hw = weights[0]  # high_vol
+        tw = weights[1]  # trending
+        rw = weights[2]  # ranging
+        assert hw > tw   # 2.0 > 1.5
+        assert tw > rw   # 1.5 > 0.5
+
+    def test_current_regime_boost(self) -> None:
+        """直近 N 件から推定した現在レジームにブースト倍率が適用される."""
+        from scripts.v460.ml.retrain_scheduler import _compute_regime_sample_weights
+
+        # 直近 5 件が全て high_vol → current_regime=high_vol
+        regimes = ["ranging"] * 15 + ["high_vol"] * 5
+        enriched = pd.DataFrame({"regime": regimes})
+        idx = enriched.index
+        cfg = {
+            "regime_weighting_enabled": True,
+            "regime_sample_weights": {"high_vol": 1.0, "ranging": 1.0},
+            "regime_current_boost": 2.0,
+            "regime_current_lookback": 5,
+            "regime_weight_floor": 0.1,
+        }
+        weights, meta = _compute_regime_sample_weights(enriched, idx, cfg)
+        assert meta["current_regime"] == "high_vol"
+        # high_vol サンプル (idx 15-19) はブースト適用 → ranging より大きい
+        assert weights[15] > weights[0]  # boosted high_vol > ranging
+
+    def test_weights_normalized_mean_1(self) -> None:
+        """重みの平均は正規化後 ≈ 1.0."""
+        from scripts.v460.ml.retrain_scheduler import _compute_regime_sample_weights
+
+        enriched = pd.DataFrame({
+            "regime": ["high_vol"] * 30 + ["ranging"] * 70,
+        })
+        idx = enriched.index
+        cfg = {
+            "regime_weighting_enabled": True,
+            "regime_sample_weights": {"high_vol": 3.0, "ranging": 1.0},
+            "regime_current_boost": 1.0,
+            "regime_current_lookback": 10,
+            "regime_weight_floor": 0.1,
+        }
+        weights, meta = _compute_regime_sample_weights(enriched, idx, cfg)
+        # 正規化でも floor が再適用されるので厳密に1.0ではないが、近い
+        assert 0.5 < np.mean(weights) < 2.0
+
+    def test_weight_floor_respected(self) -> None:
+        """weight_floor より小さい重みは切り上げ."""
+        from scripts.v460.ml.retrain_scheduler import _compute_regime_sample_weights
+
+        enriched = pd.DataFrame({
+            "regime": ["unknown"] * 10,
+        })
+        idx = enriched.index
+        cfg = {
+            "regime_weighting_enabled": True,
+            "regime_sample_weights": {"unknown": 0.01},
+            "regime_current_boost": 1.0,
+            "regime_current_lookback": 5,
+            "regime_weight_floor": 0.3,
+        }
+        weights, meta = _compute_regime_sample_weights(enriched, idx, cfg)
+        assert np.all(weights >= 0.3)
+
+    def test_nan_regime_treated_as_unknown(self) -> None:
+        """NaN regime は 'unknown' として扱われる."""
+        from scripts.v460.ml.retrain_scheduler import _compute_regime_sample_weights
+
+        enriched = pd.DataFrame({
+            "regime": [None, np.nan, "high_vol"],
+        })
+        idx = enriched.index
+        cfg = {
+            "regime_weighting_enabled": True,
+            "regime_sample_weights": {"unknown": 0.5, "high_vol": 2.0},
+            "regime_current_boost": 1.0,
+            "regime_current_lookback": 10,
+            "regime_weight_floor": 0.1,
+        }
+        weights, meta = _compute_regime_sample_weights(enriched, idx, cfg)
+        assert len(weights) == 3
+        # high_vol サンプルは unknown より大きい重み
+        assert weights[2] > weights[0]
+
+    def test_default_config_disabled(self) -> None:
+        """デフォルト config は regime_weighting_enabled=False."""
+        from scripts.v460.ml.retrain_scheduler import _DEFAULT_CONFIG
+
+        assert _DEFAULT_CONFIG["regime_weighting_enabled"] is False
+        assert isinstance(_DEFAULT_CONFIG["regime_sample_weights"], dict)
+        assert _DEFAULT_CONFIG["regime_current_boost"] == 1.5
+        assert _DEFAULT_CONFIG["regime_weight_floor"] == 0.1

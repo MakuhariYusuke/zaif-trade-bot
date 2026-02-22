@@ -358,3 +358,113 @@ class TestSellDynamicKillManager:
         for i in range(20):
             mgr.track(float(i))
         assert len(mgr._pnl_history) <= 9  # window*3
+
+
+# =====================================================================
+# 145# R-2b: レジーム別 retrain interval テスト
+# =====================================================================
+
+class TestRetrainTriggerRegimeInterval:
+    """145# R-2b: レジーム別 interval 倍率テスト."""
+
+    def test_high_vol_shortens_interval(self) -> None:
+        """high_vol レジーム → 基本 interval の 50%."""
+        from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
+
+        cfg = RetrainTriggerConfig(
+            base_interval_sec=1000,
+            backoff_multiplier=1.0,
+            regime_interval_multipliers={"high_vol": 0.5, "ranging": 1.5},
+        )
+        trigger = RetrainTrigger(results_dir=Path("/nonexistent"), config=cfg)
+        trigger.update_regime("high_vol")
+        assert trigger.get_effective_interval() == 500  # 1000 * 0.5
+
+    def test_ranging_lengthens_interval(self) -> None:
+        """ranging レジーム → 基本 interval の 150%."""
+        from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
+
+        cfg = RetrainTriggerConfig(
+            base_interval_sec=1000,
+            backoff_multiplier=1.0,
+            regime_interval_multipliers={"ranging": 1.5},
+        )
+        trigger = RetrainTrigger(results_dir=Path("/nonexistent"), config=cfg)
+        trigger.update_regime("ranging")
+        assert trigger.get_effective_interval() == 1500
+
+    def test_regime_with_backoff_combined(self) -> None:
+        """バックオフとレジーム倍率の組み合わせ."""
+        from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
+
+        cfg = RetrainTriggerConfig(
+            base_interval_sec=100,
+            backoff_multiplier=2.0,
+            backoff_max_interval_sec=10000,
+            regime_interval_multipliers={"high_vol": 0.5},
+        )
+        trigger = RetrainTrigger(results_dir=Path("/nonexistent"), config=cfg)
+        trigger.update_regime("high_vol")
+        # skip 0 → 100 * 0.5 = 50
+        assert trigger.get_effective_interval() == 50
+
+        trigger.record_result("skipped")
+        # skip 1 → 100 * 2^1 * 0.5 = 100
+        assert trigger.get_effective_interval() == 100
+
+        trigger.record_result("skipped")
+        # skip 2 → 100 * 2^2 * 0.5 = 200
+        assert trigger.get_effective_interval() == 200
+
+    def test_record_result_updates_regime(self) -> None:
+        """record_result で current_regime が更新される."""
+        from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
+
+        cfg = RetrainTriggerConfig(
+            base_interval_sec=1000,
+            backoff_multiplier=1.0,
+            regime_interval_multipliers={"trending": 0.75},
+        )
+        trigger = RetrainTrigger(results_dir=Path("/nonexistent"), config=cfg)
+        assert trigger._current_regime == "unknown"
+
+        trigger.record_result("deployed", current_regime="trending")
+        assert trigger._current_regime == "trending"
+        assert trigger.get_effective_interval() == 750  # 1000 * 0.75
+
+    def test_unknown_regime_default_multiplier(self) -> None:
+        """未知レジーム → 倍率 1.0 (デフォルト)."""
+        from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
+
+        cfg = RetrainTriggerConfig(
+            base_interval_sec=1000,
+            backoff_multiplier=1.0,
+            regime_interval_multipliers={"high_vol": 0.5},
+        )
+        trigger = RetrainTrigger(results_dir=Path("/nonexistent"), config=cfg)
+        trigger.update_regime("some_new_regime")
+        assert trigger.get_effective_interval() == 1000  # 1.0x
+
+    def test_regime_capped_at_max_interval(self) -> None:
+        """ranging でも max_interval を超えない."""
+        from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
+
+        cfg = RetrainTriggerConfig(
+            base_interval_sec=10000,
+            backoff_multiplier=1.0,
+            backoff_max_interval_sec=12000,
+            regime_interval_multipliers={"ranging": 2.0},
+        )
+        trigger = RetrainTrigger(results_dir=Path("/nonexistent"), config=cfg)
+        trigger.update_regime("ranging")
+        # 10000 * 2.0 = 20000, but capped at 12000
+        assert trigger.get_effective_interval() == 12000
+
+    def test_default_config_has_regime_multipliers(self) -> None:
+        """デフォルト config にレジーム倍率が設定されている."""
+        from ztb.ml.retrain_trigger import RetrainTriggerConfig
+
+        cfg = RetrainTriggerConfig()
+        assert "high_vol" in cfg.regime_interval_multipliers
+        assert cfg.regime_interval_multipliers["high_vol"] == 0.5
+        assert cfg.regime_interval_multipliers["ranging"] == 1.5

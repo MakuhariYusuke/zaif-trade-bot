@@ -48,6 +48,15 @@ class RetrainTriggerConfig:
     feature_trades_stale_hours: float = 6.0
     #: feature OB stale 閾値 (時間)
     feature_ob_stale_hours: float = 6.0
+    #: 145# R-2b: レジーム別 interval 倍率
+    #: high_vol → 短い間隔 (市場変動が激しいので頻繁に retrain)
+    #: ranging → 長い間隔 (安定レジームでは低頻度で十分)
+    regime_interval_multipliers: dict[str, float] = field(default_factory=lambda: {
+        "high_vol": 0.5,
+        "trending": 0.75,
+        "ranging": 1.5,
+        "unknown": 1.0,
+    })
 
 
 @dataclass
@@ -66,6 +75,7 @@ class RetrainTrigger:
     _last_fill_mtime: float = 0.0
     _consecutive_skips: int = 0
     _last_check_time: float = 0.0
+    _current_regime: str = "unknown"  # 145# R-2b
 
     def _get_fill_records_latest_mtime(self) -> float:
         """fill_records_*.jsonl の最新 mtime を返す."""
@@ -150,24 +160,42 @@ class RetrainTrigger:
 
         return True, "ok"
 
-    def record_result(self, status: str) -> None:
-        """retrain 結果を記録し、バックオフ状態を更新."""
+    def record_result(self, status: str, current_regime: str | None = None) -> None:
+        """retrain 結果を記録し、バックオフ状態を更新.
+
+        145# R-2b: current_regime を渡すと interval 計算で使用。
+        """
         if status in ("deployed", "error"):
             # deploy or error → バックオフリセット
             self._consecutive_skips = 0
         else:
             self._consecutive_skips += 1
+        # 145# R-2b: レジーム情報更新
+        if current_regime is not None:
+            self._current_regime = current_regime
+
+    def update_regime(self, regime: str) -> None:
+        """145# R-2b: 現在レジームを外部から更新."""
+        self._current_regime = regime
 
     def get_effective_interval(self) -> int:
         """連続スキップに応じた適応的 interval (秒) を返す.
 
         skips=0 → base, skips=1 → base*mul, skips=2 → base*mul^2, ...
         最大 backoff_max_interval_sec で打ち止め。
+        145# R-2b: レジーム別 interval 倍率を追加適用。
         """
         if self._consecutive_skips == 0 or self.config.backoff_multiplier <= 1.0:
-            return self.config.base_interval_sec
-        factor = self.config.backoff_multiplier ** self._consecutive_skips
-        interval = int(self.config.base_interval_sec * factor)
+            base = self.config.base_interval_sec
+        else:
+            factor = self.config.backoff_multiplier ** self._consecutive_skips
+            base = int(self.config.base_interval_sec * factor)
+
+        # 145# R-2b: レジーム倍率
+        regime_mul = self.config.regime_interval_multipliers.get(
+            self._current_regime, 1.0,
+        )
+        interval = int(base * regime_mul)
         return min(interval, self.config.backoff_max_interval_sec)
 
     @property
