@@ -345,6 +345,16 @@ retrain:
   online_monitor_window: 100         # 評価ウィンドウ (直近 N fill)
   online_monitor_pnl_column: post_fill_30s_pnl  # PnL カラム
   online_monitor_degraded_threshold_bps: -0.3    # pass 平均 PnL がこれ以下で degraded
+  # 145# Phase C: R-2a レジーム重み付き再学習
+  regime_weighting_enabled: true     # 145# Phase C: 有効化 (R-2a)
+  regime_sample_weights:             # レジーム → weight マッピング
+    high_vol: 1.2                    # 高ボラはリスク考慮で upweight
+    trending: 0.8                    # トレンドは順張り有利で downweight
+    ranging: 1.0                     # レンジはニュートラル
+    unknown: 0.5                     # unknown は信頼度低で downweight
+  regime_current_boost: 1.5          # 直近レジーム一致サンプルへのブースト
+  regime_current_lookback: 10        # 直近 N 件から現在レジーム推定
+  regime_weight_floor: 0.1           # 重み最低値
   # 127# H2: run_id 分離 (異なる設定の run を混在させない)
   latest_run_only: true            # 最新 run_id のみ学習 (因果崩壊防止)
   exclude_missing_run_id: true     # run_id 欠損行を除外
