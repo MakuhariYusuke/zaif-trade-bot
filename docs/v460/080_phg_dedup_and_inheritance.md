@@ -617,3 +617,52 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - venv test:
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/reward/test_reward_optimization.py`
   - 結果: `5 passed`（warning 1）
+
+## Phase 19 追補: SACハイパーパラメータ反映不具合修正 + 設定ブリッジ統合 (2026-02-22)
+
+### 1) 不具合修正（評価実効性）
+
+- `ztb/training/reward_function_optimizer/reward_function_optimizer.py` で
+  `optimize_hyperparameters_from_config()` が探索する SAC 値
+  (`learning_rate` / `batch_size` / `buffer_size` / `gamma` / `tau` / `ent_coef` / `reward_scale`)
+  を `create_backtest_config()` に確実反映する経路を追加。
+- これにより、従来「SAC探索しても synthetic 評価にほぼ効かない」状態を解消。
+- `_update_dynamic_weights_from_history()` の drawdown 判定符号を修正し、
+  正の drawdown 入力で常時 `low risk` になる誤判定を解消。
+
+### 2) 重複削減・保守性向上
+
+- パラメータ分類と設定反映を helper 化:
+  - `_split_sac_and_reward_params()`
+  - `_extract_reward_settings_from_params()`
+  - `_apply_sac_hyperparameters()`
+  - `_extract_sac_inputs_from_config()`
+  - `_compute_sac_adjustment_factors()`
+- `create_backtest_config()` は base config を保持しつつ差分適用する形へ整理し、
+  SAC 更新時に既存 `reward_settings` が失われるリスクを回避。
+- `optimize_hyperparameters_from_config()` で
+  固定 reward 設定の `base_backtest_config` を再利用し、
+  trial ごとの不要な設定再構築を削減（軽量化）。
+
+### 3) 性能/品質改善
+
+- `run_backtest_evaluation()` に SAC 品質係数を導入し、
+  reward 設定に加えて SAC 設定差分もスコアへ反映。
+- `total_trades` を `max(0, ...)` へ変更し、低品質設定時の負値混入を防止。
+
+### 4) 追加テスト（回帰防止）
+
+- 新規: `tests/unit/reward/test_reward_optimizer_sac_bridge.py`
+  - base config 利用時に reward 設定を保持したまま SAC 値を更新できること
+  - SAC 設定品質差で `profit/max_drawdown` が変化すること
+
+### 5) 検証
+
+- `py_compile`:
+  - `ztb/training/reward_function_optimizer/reward_function_optimizer.py`
+  - `tests/unit/reward/test_reward_optimizer_sac_bridge.py`
+- venv test:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/reward/test_reward_optimizer_sac_bridge.py`
+    - 結果: `2 passed`（warning 1）
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/reward/test_reward_optimization.py`
+    - 結果: `5 passed`（warning 1）

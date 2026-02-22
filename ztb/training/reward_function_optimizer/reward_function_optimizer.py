@@ -7,6 +7,7 @@ including parameter tuning, multi-objective optimization, and automated reward d
 """
 
 import json
+import math
 import time
 from copy import deepcopy
 from collections import deque
@@ -33,6 +34,35 @@ logger = get_logger(__name__)
 ConfigMap = dict[str, object]
 ScoreMap = dict[str, float]
 HistoryRecord = dict[str, object]
+
+SAC_HYPERPARAMETER_KEYS: tuple[str, ...] = (
+    "learning_rate",
+    "batch_size",
+    "buffer_size",
+    "gamma",
+    "tau",
+    "ent_coef",
+    "reward_scale",
+)
+SAC_INTEGER_HYPERPARAMETER_KEYS: tuple[str, ...] = ("batch_size", "buffer_size")
+REWARD_SCALAR_SETTING_KEYS: tuple[str, ...] = (
+    "trading_bonus",
+    "trading_bonus_multiplier",
+    "base_profit_bonus_atr_coeff",
+    "base_profit_bonus_portfolio_coeff",
+    "momentum_weight",
+    "volatility_weight",
+    "time_decay_weight",
+)
+DEFAULT_SYNTHETIC_SAC_HYPERPARAMETERS: dict[str, float | int] = {
+    "learning_rate": 3e-4,
+    "batch_size": 256,
+    "buffer_size": 50_000,
+    "ent_coef": 0.01,
+    "tau": 0.005,
+    "gamma": 0.99,
+    "reward_scale": 1.0,
+}
 
 OPTUNA_AVAILABLE = importlib.util.find_spec("optuna") is not None
 if not OPTUNA_AVAILABLE:
@@ -199,6 +229,156 @@ class RewardFunctionOptimizer:
             volatility_weight,
         )
 
+    @staticmethod
+    def _split_sac_and_reward_params(
+        params: ConfigMap,
+    ) -> tuple[ConfigMap, ConfigMap]:
+        sac_params: ConfigMap = {}
+        reward_params: ConfigMap = {}
+        for key, value in params.items():
+            if key in SAC_HYPERPARAMETER_KEYS:
+                sac_params[key] = value
+            else:
+                reward_params[key] = value
+        return sac_params, reward_params
+
+    def _extract_reward_settings_from_params(self, params: ConfigMap) -> ConfigMap:
+        reward_settings: ConfigMap = {}
+        if any(k.startswith("profit_bonus_multiplier_") for k in params):
+            reward_settings["profit_bonus_multipliers"] = (
+                self._extract_profit_bonus_multipliers(params)
+            )
+        for key in REWARD_SCALAR_SETTING_KEYS:
+            if key in params:
+                reward_settings[key] = params[key]
+        reward_settings.update(
+            {
+                k: v
+                for k, v in params.items()
+                if k.endswith("_weight") and k not in SAC_HYPERPARAMETER_KEYS
+            }
+        )
+        return reward_settings
+
+    def _apply_sac_hyperparameters(self, config: ConfigMap, params: ConfigMap) -> None:
+        sac_hyperparameters = ensure_dict(config.get("sac_hyperparameters"))
+        if not sac_hyperparameters:
+            sac_hyperparameters = {}
+
+        for key, default_value in DEFAULT_SYNTHETIC_SAC_HYPERPARAMETERS.items():
+            sac_hyperparameters.setdefault(key, default_value)
+
+        for key in SAC_HYPERPARAMETER_KEYS:
+            if key not in params:
+                continue
+            raw_value = params[key]
+            if key in SAC_INTEGER_HYPERPARAMETER_KEYS:
+                fallback_int = safe_to_int(
+                    sac_hyperparameters.get(key, DEFAULT_SYNTHETIC_SAC_HYPERPARAMETERS[key]),
+                    safe_to_int(DEFAULT_SYNTHETIC_SAC_HYPERPARAMETERS[key], 1),
+                )
+                normalized_int = safe_to_int(raw_value, fallback_int)
+                if normalized_int > 0:
+                    sac_hyperparameters[key] = normalized_int
+                continue
+
+            fallback_float = safe_to_float(
+                sac_hyperparameters.get(key, DEFAULT_SYNTHETIC_SAC_HYPERPARAMETERS[key]),
+                safe_to_float(DEFAULT_SYNTHETIC_SAC_HYPERPARAMETERS[key], 0.0),
+            )
+            normalized_float = safe_to_float(raw_value, fallback_float)
+            if normalized_float > 0:
+                sac_hyperparameters[key] = normalized_float
+
+        config["sac_hyperparameters"] = sac_hyperparameters
+
+    @staticmethod
+    def _extract_sac_inputs_from_config(
+        config: ConfigMap,
+    ) -> tuple[float, int, int, float, float, float, float]:
+        sac_hyperparameters = ensure_dict(config.get("sac_hyperparameters"))
+        learning_rate = safe_to_float(
+            sac_hyperparameters.get("learning_rate", 3e-4),
+            3e-4,
+        )
+        batch_size = max(
+            1,
+            safe_to_int(
+                sac_hyperparameters.get("batch_size", 256),
+                256,
+            ),
+        )
+        buffer_size = max(
+            1,
+            safe_to_int(
+                sac_hyperparameters.get("buffer_size", 50_000),
+                50_000,
+            ),
+        )
+        gamma = safe_to_float(sac_hyperparameters.get("gamma", 0.99), 0.99)
+        tau = safe_to_float(sac_hyperparameters.get("tau", 0.005), 0.005)
+        ent_coef = safe_to_float(sac_hyperparameters.get("ent_coef", 0.01), 0.01)
+        reward_scale = safe_to_float(sac_hyperparameters.get("reward_scale", 1.0), 1.0)
+
+        return learning_rate, batch_size, buffer_size, gamma, tau, ent_coef, reward_scale
+
+    @staticmethod
+    def _clamp(value: float, low: float, high: float) -> float:
+        return max(low, min(high, value))
+
+    @classmethod
+    def _compute_sac_adjustment_factors(
+        cls,
+        learning_rate: float,
+        batch_size: int,
+        buffer_size: int,
+        gamma: float,
+        tau: float,
+        ent_coef: float,
+        reward_scale: float,
+    ) -> tuple[float, float, float]:
+        log_lr_distance = abs(math.log10(max(learning_rate, 1e-8)) - math.log10(3e-4))
+        lr_factor = 1.0 - min(log_lr_distance, 2.0) * 0.08
+
+        batch_distance = abs(math.log2(max(float(batch_size), 1.0)) - math.log2(256.0))
+        batch_factor = 1.0 - min(batch_distance, 4.0) * 0.015
+
+        buffer_distance = abs(
+            math.log10(max(float(buffer_size), 1.0)) - math.log10(50_000.0)
+        )
+        buffer_factor = 1.0 - min(buffer_distance, 2.0) * 0.02
+
+        gamma_factor = 1.0 - min(abs(gamma - 0.99), 0.1) * 1.0
+        tau_factor = 1.0 - min(abs(tau - 0.005), 0.02) * 10.0
+        entropy_factor = 1.0 - min(abs(ent_coef - 0.01), 0.09) * 2.0
+        reward_scale_factor = 1.0 + cls._clamp((reward_scale - 1.0) * 0.04, -0.08, 0.08)
+
+        profit_factor = cls._clamp(
+            lr_factor
+            * batch_factor
+            * buffer_factor
+            * gamma_factor
+            * tau_factor
+            * entropy_factor
+            * reward_scale_factor,
+            0.75,
+            1.2,
+        )
+        risk_factor = cls._clamp(
+            1.0
+            + (1.0 - lr_factor) * 0.5
+            + (1.0 - gamma_factor) * 0.4
+            + (reward_scale_factor - 1.0) * 0.3,
+            0.8,
+            1.35,
+        )
+        consistency_factor = cls._clamp(
+            (batch_factor + buffer_factor + gamma_factor + tau_factor) / 4.0,
+            0.8,
+            1.1,
+        )
+        return profit_factor, risk_factor, consistency_factor
+
     def _store_evaluation_cache(self, cache_key: str, scores: ScoreMap) -> None:
         if cache_key not in self.evaluation_cache:
             self._evaluation_cache_order.append(cache_key)
@@ -238,9 +418,9 @@ class RewardFunctionOptimizer:
         ]
         if drawdown_scores:
             avg_drawdown = sum(drawdown_scores) / len(drawdown_scores)
-            if avg_drawdown < -0.1:  # High risk
+            if avg_drawdown > 0.15:  # High risk
                 self.dynamic_weights["risk_level"] = "high"
-            elif avg_drawdown < -0.05:  # Moderate risk
+            elif avg_drawdown > 0.05:  # Moderate risk
                 self.dynamic_weights["risk_level"] = "moderate"
             else:  # Low risk
                 self.dynamic_weights["risk_level"] = "low"
@@ -732,23 +912,10 @@ class RewardFunctionOptimizer:
             self._handle_error(e, f"loading config file {config_file_path}")
             raise
 
-        # Extract SAC hyperparameters
-        sac_params = {}
-        reward_params = {}
-
-        for key, value in base_config["parameters"].items():
-            if key in [
-                "learning_rate",
-                "batch_size",
-                "buffer_size",
-                "gamma",
-                "tau",
-                "ent_coef",
-                "reward_scale",
-            ]:
-                sac_params[key] = value
-            else:
-                reward_params[key] = value
+        # Split parameters by concern to avoid accidental cross-contamination.
+        sac_params, reward_params = self._split_sac_and_reward_params(
+            ensure_dict(base_config.get("parameters"))
+        )
 
         # Print header
         self._print_header(
@@ -767,6 +934,7 @@ class RewardFunctionOptimizer:
         sac_param_space = self.create_parameter_space_from_config(
             sac_params, exploration_range
         )
+        base_backtest_config = self.create_backtest_config(reward_params)
 
         # Define objective function for SAC hyperparameter optimization
         def sac_objective(trial):
@@ -775,10 +943,11 @@ class RewardFunctionOptimizer:
                 trial, sac_param_space
             )
 
-            # Create backtest config with optimized SAC params and fixed reward params
+            # Reuse fixed reward settings and only apply trial-specific SAC updates.
             try:
                 backtest_config = self.create_backtest_config(
-                    {**params, **reward_params}
+                    params,
+                    base_config=base_backtest_config,
                 )
                 scores = self.run_backtest_evaluation(backtest_config)
             except Exception as e:
@@ -809,7 +978,10 @@ class RewardFunctionOptimizer:
 
         # Create final backtest config and get full scores
         try:
-            final_config = self.create_backtest_config({**best_params, **reward_params})
+            final_config = self.create_backtest_config(
+                best_params,
+                base_config=base_backtest_config,
+            )
             final_scores = self.run_backtest_evaluation(final_config)
         except Exception as e:
             self._handle_error(e, "final SAC evaluation")
@@ -860,41 +1032,14 @@ class RewardFunctionOptimizer:
             "total_timesteps": 50000,
             "eval_freq": 10000,
             "n_eval_episodes": 10,
-            "sac_hyperparameters": {
-                "learning_rate": 3e-4,
-                "batch_size": 256,
-                "ent_coef": 0.01,
-                "tau": 0.005,
-                "gamma": 0.99,
-            },
+            "sac_hyperparameters": dict(DEFAULT_SYNTHETIC_SAC_HYPERPARAMETERS),
         }
 
-        # Apply reward function parameters
-        reward_settings: ConfigMap = {}
+        normalized_params = ensure_dict(reward_params)
+        self._apply_sac_hyperparameters(config, normalized_params)
 
-        if any(k.startswith("profit_bonus_multiplier_") for k in reward_params):
-            reward_settings["profit_bonus_multipliers"] = self._extract_profit_bonus_multipliers(
-                reward_params
-            )
-
-        scalar_keys = (
-            "trading_bonus",
-            "trading_bonus_multiplier",
-            "base_profit_bonus_atr_coeff",
-            "base_profit_bonus_portfolio_coeff",
-            "momentum_weight",
-            "volatility_weight",
-            "time_decay_weight",
-        )
-        for key in scalar_keys:
-            if key in reward_params:
-                reward_settings[key] = reward_params[key]
-
-        # Multi-objective weights
-        reward_settings.update(
-            {k: v for k, v in reward_params.items() if k.endswith("_weight")}
-        )
-
+        reward_settings = ensure_dict(config.get("reward_settings"))
+        reward_settings.update(self._extract_reward_settings_from_params(normalized_params))
         config["reward_settings"] = reward_settings
         return config
 
@@ -923,6 +1068,28 @@ class RewardFunctionOptimizer:
                 momentum_weight,
                 volatility_weight,
             ) = self._extract_reward_inputs_from_settings(reward_settings)
+            (
+                learning_rate,
+                batch_size,
+                buffer_size,
+                gamma,
+                tau,
+                ent_coef,
+                reward_scale,
+            ) = self._extract_sac_inputs_from_config(config)
+            (
+                sac_profit_factor,
+                sac_risk_factor,
+                sac_consistency_factor,
+            ) = self._compute_sac_adjustment_factors(
+                learning_rate=learning_rate,
+                batch_size=batch_size,
+                buffer_size=buffer_size,
+                gamma=gamma,
+                tau=tau,
+                ent_coef=ent_coef,
+                reward_scale=reward_scale,
+            )
 
             # Simulate performance based on parameter combinations
             # Higher profit multipliers generally lead to higher returns but higher risk
@@ -935,18 +1102,11 @@ class RewardFunctionOptimizer:
             base_risk = (profit_mult_buy + profit_mult_sell) * 0.2
             base_risk *= risk_weight
 
-            # Sharpe ratio considers both return and risk
-            sharpe = base_profit / max(base_risk, 0.1)
-
             # Win rate influenced by consistency and balanced multipliers
             win_rate = 0.5 + (consistency_weight - 1.0) * 0.1
             win_rate += (
                 1.0 - abs(profit_mult_buy - profit_mult_sell)
             ) * 0.1  # Balance bonus
-            win_rate = min(max(win_rate, 0.1), 0.9)
-
-            # Max drawdown increases with risk
-            max_drawdown = base_risk * 0.5
 
             # Consistency score
             consistency = (
@@ -958,13 +1118,26 @@ class RewardFunctionOptimizer:
             advanced_bonus = (momentum_weight + volatility_weight) * 0.05
             base_profit += advanced_bonus
 
+            # SAC hyperparameters influence synthetic score surfaces as secondary factors.
+            base_profit *= sac_profit_factor
+            base_risk *= sac_risk_factor
+            consistency *= sac_consistency_factor
+            win_rate += (sac_consistency_factor - 1.0) * 0.1
+            win_rate = min(max(win_rate, 0.1), 0.9)
+
+            # Sharpe ratio considers both return and risk
+            sharpe = base_profit / max(base_risk, 0.1)
+
+            # Max drawdown increases with risk
+            max_drawdown = base_risk * 0.5
+
             return {
                 "profit": float(base_profit),
                 "sharpe": float(sharpe),
                 "win_rate": float(win_rate),
                 "max_drawdown": float(max_drawdown),
                 "consistency": float(consistency),
-                "total_trades": int(base_profit * 100),  # Simulated trade count
+                "total_trades": max(0, int(round(base_profit * 100))),  # Simulated trade count
                 "avg_trade_return": float(base_profit / max(base_risk, 0.1)),
             }
 
