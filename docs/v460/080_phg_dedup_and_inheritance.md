@@ -1366,3 +1366,48 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - 回帰確認:
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_113_resilience.py`
     - 結果: `28 passed`
+
+## Phase 37 追補: skip_gate_evaluator の重複削減 + side-only不具合防止 (2026-02-22)
+
+### 1) 重複削減（既存 evaluator 内の共通化）
+
+- `scripts/v460/lib/skip_gate_evaluator.py`
+  - `_resolve_model_path()` を追加し、`Path` 解決ロジックの重複を統合。
+  - `_load_gate_from_path()` を追加し、
+    `load → config override → (optional) warm_start → calibrator` の
+    重複シーケンスを統合。
+  - 上記を `__init__` / `_load_side_models` /
+    `_check_and_reload_model` / `_check_and_reload_side_models` に適用。
+  - side モデルスロット定義を `_SIDE_MODEL_SLOTS` に集約し、
+    buy/sell ループの重複を削減。
+
+### 2) 型安全化（Any/ignore の削減）
+
+- `scripts/v460/lib/skip_gate_evaluator.py`
+  - `_SkipGateLike` / `_SkipDecisionLike` / `_SkipGateConfigLike` /
+    `_SkipGateClassLike` の Protocol を導入し、
+    `object` 依存の曖昧型を整理。
+  - これにより `type: ignore` を削減し、属性契約を明示化。
+
+### 3) 不具合可能性の排除
+
+- side-only 構成（例: buy モデルのみ、unified/sell なし）で
+  `evaluate(side="sell")` すると内部例外経由で `error:*` になり得たため、
+  `no_model_for_side:{side}` を返す明示分岐を追加。
+  - `skipped=False`, `score=0.0`, `model_used="none"` で非致命継続。
+
+### 4) 追加テスト
+
+- `tests/unit/v460/test_141_side_specific_models.py`
+  - `test_evaluate_side_only_missing_side_returns_reason` を追加。
+
+### 5) 検証
+
+- `py_compile`:
+  - `scripts/v460/lib/skip_gate_evaluator.py`
+  - `tests/unit/v460/test_141_side_specific_models.py`
+- 回帰確認:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_141_side_specific_models.py tests/unit/v460/test_skip_gate_v3.py tests/unit/v460/test_retrain_hot_reload.py tests/unit/v460/test_143_regime_utilization.py`
+    - 結果: `184 passed`
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_145_structural_fixes.py`
+    - 結果: `53 passed`

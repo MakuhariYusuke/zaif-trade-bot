@@ -532,6 +532,52 @@ class TestSideModelEvaluateIntegration:
         )
         assert "unified" in result.model_used
 
+    def test_evaluate_side_only_missing_side_returns_reason(self, tmp_path: Path) -> None:
+        """unified無し + buy-only で sell 評価時は例外化せず理由を返す."""
+        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        buy_path = _create_mock_gate(tmp_path, "buy.pkl", "pnl30")
+
+        config = FillTestConfig(
+            skip_gate_enabled=True,
+            skip_gate_model_path=str(tmp_path / "missing_unified.pkl"),
+            skip_gate_model_path_buy=str(buy_path),
+            skip_gate_mode="pnl",
+            skip_gate_use_ob_features=False,
+            skip_gate_adaptive_threshold=False,
+        )
+        evaluator = SkipGateEvaluator(config, tmp_path)
+        assert evaluator._skip_gate is None
+        assert evaluator._gate_buy is not None
+        assert evaluator._gate_sell is None
+
+        adapter = MagicMock()
+        adapter.get_recent_trades = AsyncMock(return_value=[])
+        adapter.get_orderbook = AsyncMock(return_value=None)
+
+        result = asyncio.run(
+            evaluator.evaluate(
+                side="sell",
+                cycle_id="test_side_missing",
+                order_price=14000000.0,
+                spread_at_order=3000.0,
+                effective_offset_ratio=0.25,
+                adapter=adapter,
+                symbol="btc_jpy",
+                current_lot=0.001,
+                run_id="run_side_missing",
+                git_sha="abc123",
+                regime_value="trending",
+                last_imbalance=0.5,
+                last_bid_depth=10.0,
+                last_ask_depth=10.0,
+                imbalance_enabled=False,
+            )
+        )
+        assert result.reason == "no_model_for_side:sell"
+        assert result.skipped is False
+
 
 class TestSideModelHotReload:
     """141# §5: side 別モデルの hot-reload テスト."""

@@ -17,7 +17,7 @@ import hashlib
 import logging
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Protocol, cast
 
 from scripts.v460.lib.fill_config import FillTestConfig, SkipGateResult
 
@@ -27,11 +27,67 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class _SkipGateConfigLike(Protocol):
+    mode: str
+    as_threshold: float
+    threshold_bps: float
+    max_skip_rate: float
+    buy_enabled: bool
+    sell_enabled: bool
+    as_threshold_buy: float | None
+    as_threshold_sell: float | None
+    use_ob_features: bool
+    adaptive_threshold: bool
+    target_skip_rate_buy: float
+    target_skip_rate_sell: float
+    adaptive_window: int
+    adaptive_min_samples: int
+    adaptive_step: float
+    adaptive_floor: float
+    adaptive_ceiling: float
+    regime_thresholds: dict[str, float]
+
+
+class _SkipDecisionLike(Protocol):
+    should_skip: bool
+    predicted_pnl_bps: float
+    reason: str
+    model_used: str
+    as_probability: float | None
+    threshold_used: float | None
+    features_used: int
+
+
+class _SkipGateLike(Protocol):
+    config: _SkipGateConfigLike
+    metadata: dict[str, object]
+    feature_cols: list[str]
+
+    def evaluate(
+        self,
+        features: dict[str, object],
+        *,
+        side: str | None = None,
+        regime: str | None = None,
+    ) -> _SkipDecisionLike:
+        ...
+
+
+class _SkipGateClassLike(Protocol):
+    @staticmethod
+    def load(path: Path) -> _SkipGateLike:
+        ...
+
+
 class SkipGateEvaluator:
     """SkipGate ML フィルター (062# / 088# / 096# / 126# 統合)."""
 
     # 126# hot-reload: モデルファイルのチェック間隔 (秒)
     _HOT_RELOAD_CHECK_INTERVAL_SEC = 120.0  # 2分 (cycle_interval と同程度)
+    _SIDE_MODEL_SLOTS: tuple[tuple[str, str, str, str], ...] = (
+        ("buy", "_gate_buy", "_gate_path_buy", "_model_file_hash_buy"),
+        ("sell", "_gate_sell", "_gate_path_sell", "_model_file_hash_sell"),
+    )
 
     def __init__(
         self,
@@ -40,10 +96,10 @@ class SkipGateEvaluator:
     ) -> None:
         self._config = config
         self._project_root = project_root
-        self._skip_gate: object | None = None  # SkipGate instance
+        self._skip_gate: _SkipGateLike | None = None  # SkipGate instance
         # 141# P1-01: side 別 SkipGate インスタンス (フォールバック用に unified も保持)
-        self._gate_buy: object | None = None
-        self._gate_sell: object | None = None
+        self._gate_buy: _SkipGateLike | None = None
+        self._gate_sell: _SkipGateLike | None = None
         self._gate_path_buy: Path | None = None
         self._gate_path_sell: Path | None = None
         self._model_file_hash_buy: str = ""
@@ -58,40 +114,59 @@ class SkipGateEvaluator:
 
         try:
             from scripts.v460.ml.skip_gate import SkipGate
+            skip_gate_cls = cast(_SkipGateClassLike, SkipGate)
 
-            gate_path = Path(config.skip_gate_model_path)
-            if not gate_path.is_absolute():
-                gate_path = project_root / gate_path
+            gate_path = self._resolve_model_path(config.skip_gate_model_path)
             if not gate_path.exists():
                 logger.warning(
                     f"[skip_gate] Model not found: {gate_path}. "
                     f"SkipGate disabled (unified). Trying side models..."
                 )
                 # 143# A.1 #2: unified 不在でも side モデルのロードを試行
-                self._load_side_models(SkipGate)
+                self._load_side_models(skip_gate_cls)
                 self._last_reload_check = time.monotonic()
                 return
 
             self._gate_path = gate_path
-            skip_gate = SkipGate.load(gate_path)
-            self._apply_config_overrides(skip_gate)
-            self._apply_warm_start(skip_gate)
-            # 139# §8-#1: ScoreCalibrator 注入
-            self._inject_calibrator(skip_gate)
+            skip_gate = self._load_gate_from_path(
+                skip_gate_cls,
+                gate_path,
+                apply_warm_start=True,
+            )
             self._skip_gate = skip_gate
             self._model_file_hash = self._compute_file_hash(gate_path)
             self._last_reload_check = time.monotonic()
 
             # 141# P1-01: side 別モデルロード
-            self._load_side_models(SkipGate)
+            self._load_side_models(skip_gate_cls)
         except Exception as e:
             logger.error(f"[skip_gate] Failed to load: {e}. SkipGate disabled.")
             self._skip_gate = None
 
-    def _apply_config_overrides(self, skip_gate: object) -> None:
+    def _resolve_model_path(self, model_path: str) -> Path:
+        path = Path(model_path)
+        if not path.is_absolute():
+            path = self._project_root / path
+        return path
+
+    def _load_gate_from_path(
+        self,
+        skip_gate_cls: _SkipGateClassLike,
+        gate_path: Path,
+        *,
+        apply_warm_start: bool = False,
+    ) -> _SkipGateLike:
+        gate = skip_gate_cls.load(gate_path)
+        self._apply_config_overrides(gate)
+        if apply_warm_start:
+            self._apply_warm_start(gate)
+        self._inject_calibrator(gate)
+        return gate
+
+    def _apply_config_overrides(self, skip_gate: _SkipGateLike) -> None:
         """YAML 設定でモデル内 config をオーバーライド."""
         config = self._config
-        sg = skip_gate  # type: ignore[assignment]
+        sg = skip_gate
         sg.config.mode = config.skip_gate_mode
         sg.config.as_threshold = config.skip_gate_as_threshold
         sg.config.threshold_bps = config.skip_gate_pnl_threshold
@@ -127,11 +202,11 @@ class SkipGateEvaluator:
             f"[skip_gate] Loaded: mode={config.skip_gate_mode}, "
             f"as_threshold={config.skip_gate_as_threshold}, "
             f"use_ob_features={config.skip_gate_use_ob_features}, "
-            f"features={len(sg.feature_cols)}, "  # type: ignore[attr-defined]
+            f"features={len(sg.feature_cols)}, "
             f"path={self._gate_path}"
         )
 
-    def _apply_warm_start(self, skip_gate: object) -> None:
+    def _apply_warm_start(self, skip_gate: _SkipGateLike) -> None:
         """096# warm_start: 直近 P(AS) 履歴を復元."""
         if not self._config.skip_gate_adaptive_threshold:
             return
@@ -145,7 +220,7 @@ class SkipGateEvaluator:
         except Exception as ws_err:
             logger.warning(f"[skip_gate] Warm start failed (non-fatal): {ws_err}")
 
-    def _inject_calibrator(self, skip_gate: object) -> None:
+    def _inject_calibrator(self, skip_gate: _SkipGateLike) -> None:
         """139# §8-#1: ScoreCalibrator を SkipGate に注入.
 
         config.skip_gate_score_calibration=True かつ calibrator_path が有効な場合、
@@ -154,47 +229,40 @@ class SkipGateEvaluator:
         """
         config = self._config
         if not config.skip_gate_score_calibration:
-            skip_gate._score_calibrator = None  # type: ignore[attr-defined]
+            setattr(skip_gate, "_score_calibrator", None)
             logger.debug("[skip_gate] Score calibration disabled")
             return
 
         cal_path = config.skip_gate_calibrator_path
         if not cal_path:
-            skip_gate._score_calibrator = None  # type: ignore[attr-defined]
+            setattr(skip_gate, "_score_calibrator", None)
             logger.info("[skip_gate] Score calibration enabled but no calibrator_path set")
             return
 
         try:
-            from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
+            from ztb.ml.score_calibrator import ScoreCalibrator
 
-            path = Path(cal_path)
-            if not path.is_absolute():
-                path = self._project_root / path
+            path = self._resolve_model_path(cal_path)
             cal = ScoreCalibrator.load(path)
-            skip_gate._score_calibrator = cal  # type: ignore[attr-defined]
+            setattr(skip_gate, "_score_calibrator", cal)
             status = f"fitted={cal.is_fitted}, n={cal.sample_count}"
             logger.info(f"[skip_gate] 139# ScoreCalibrator injected: {status}")
         except Exception as e:
-            skip_gate._score_calibrator = None  # type: ignore[attr-defined]
+            setattr(skip_gate, "_score_calibrator", None)
             logger.warning(f"[skip_gate] ScoreCalibrator load failed: {e}")
 
-    def _load_side_models(self, skip_gate_cls: type) -> None:
+    def _load_side_models(self, skip_gate_cls: _SkipGateClassLike) -> None:
         """141# P1-01: side 別モデルをロード.
 
         model_path_buy/sell が設定されていてファイルが存在する場合にロード。
         存在しない場合は unified モデルにフォールバック（_gate_buy/_gate_sell は None のまま）。
         """
         config = self._config
-        for side, attr_gate, attr_path, attr_hash in (
-            ("buy", "_gate_buy", "_gate_path_buy", "_model_file_hash_buy"),
-            ("sell", "_gate_sell", "_gate_path_sell", "_model_file_hash_sell"),
-        ):
+        for side, attr_gate, attr_path, attr_hash in self._SIDE_MODEL_SLOTS:
             model_path_str = getattr(config, f"skip_gate_model_path_{side}", None)
             if not model_path_str:
                 continue
-            gate_path = Path(model_path_str)
-            if not gate_path.is_absolute():
-                gate_path = self._project_root / gate_path
+            gate_path = self._resolve_model_path(model_path_str)
             if not gate_path.exists():
                 logger.info(
                     f"[skip_gate] 141# {side} model not found: {gate_path}. "
@@ -202,14 +270,12 @@ class SkipGateEvaluator:
                 )
                 continue
             try:
-                side_gate = skip_gate_cls.load(gate_path)
-                self._apply_config_overrides(side_gate)
-                self._inject_calibrator(side_gate)
+                side_gate = self._load_gate_from_path(skip_gate_cls, gate_path)
                 setattr(self, attr_gate, side_gate)
                 setattr(self, attr_path, gate_path)
                 setattr(self, attr_hash, self._compute_file_hash(gate_path))
-                n_features = len(side_gate.feature_cols) if hasattr(side_gate, "feature_cols") else "?"
-                target = side_gate.metadata.get("target", "?") if hasattr(side_gate, "metadata") else "?"
+                n_features = len(side_gate.feature_cols)
+                target = side_gate.metadata.get("target", "?")
                 logger.info(
                     f"[skip_gate] 141# {side} model loaded: {gate_path}, "
                     f"features={n_features}, target={target}"
@@ -259,22 +325,23 @@ class SkipGateEvaluator:
         )
         try:
             from scripts.v460.ml.skip_gate import SkipGate
-            new_gate = SkipGate.load(self._gate_path)
-            self._apply_config_overrides(new_gate)
-            self._apply_warm_start(new_gate)
-            # 139# §8-#1: hot-reload 後も calibrator 再注入
-            self._inject_calibrator(new_gate)
+            skip_gate_cls = cast(_SkipGateClassLike, SkipGate)
+            new_gate = self._load_gate_from_path(
+                skip_gate_cls,
+                self._gate_path,
+                apply_warm_start=True,
+            )
             self._skip_gate = new_gate
             self._model_file_hash = new_hash
             n_samples = new_gate.metadata.get("n_samples", "?")
             version = new_gate.metadata.get("version", "?")
-            n_features = len(new_gate.feature_cols) if hasattr(new_gate, "feature_cols") else "?"
+            n_features = len(new_gate.feature_cols)
             logger.info(
                 f"[skip_gate] 126# Hot-reload success: "
                 f"version={version}, n_samples={n_samples}, "
                 f"n_features={n_features}, "
-                f"mode={new_gate.config.mode}, "  # type: ignore[union-attr]
-                f"use_ob={new_gate.config.use_ob_features}"  # type: ignore[union-attr]
+                f"mode={new_gate.config.mode}, "
+                f"use_ob={new_gate.config.use_ob_features}"
             )
         except Exception as e:
             logger.error(
@@ -287,27 +354,21 @@ class SkipGateEvaluator:
     def _check_and_reload_side_models(self) -> None:
         """141# side 別モデルの変更検出 + リロード."""
         from scripts.v460.ml.skip_gate import SkipGate
+        skip_gate_cls = cast(_SkipGateClassLike, SkipGate)
 
-        for side, attr_gate, attr_path, attr_hash in (
-            ("buy", "_gate_buy", "_gate_path_buy", "_model_file_hash_buy"),
-            ("sell", "_gate_sell", "_gate_path_sell", "_model_file_hash_sell"),
-        ):
+        for side, attr_gate, attr_path, attr_hash in self._SIDE_MODEL_SLOTS:
             gate_path: Path | None = getattr(self, attr_path, None)
             if gate_path is None:
                 # パス未設定の場合: config から新規ロード試行
                 model_path_str = getattr(self._config, f"skip_gate_model_path_{side}", None)
                 if not model_path_str:
                     continue
-                gate_path = Path(model_path_str)
-                if not gate_path.is_absolute():
-                    gate_path = self._project_root / gate_path
+                gate_path = self._resolve_model_path(model_path_str)
                 if not gate_path.exists():
                     continue
                 # 新規モデルファイル出現 → ロード
                 try:
-                    new_gate = SkipGate.load(gate_path)
-                    self._apply_config_overrides(new_gate)
-                    self._inject_calibrator(new_gate)
+                    new_gate = self._load_gate_from_path(skip_gate_cls, gate_path)
                     setattr(self, attr_gate, new_gate)
                     setattr(self, attr_path, gate_path)
                     setattr(self, attr_hash, self._compute_file_hash(gate_path))
@@ -323,9 +384,7 @@ class SkipGateEvaluator:
             if new_hash == old_hash or not new_hash:
                 continue
             try:
-                new_gate = SkipGate.load(gate_path)
-                self._apply_config_overrides(new_gate)
-                self._inject_calibrator(new_gate)
+                new_gate = self._load_gate_from_path(skip_gate_cls, gate_path)
                 setattr(self, attr_gate, new_gate)
                 setattr(self, attr_hash, new_hash)
                 logger.info(
@@ -339,11 +398,11 @@ class SkipGateEvaluator:
                 )
 
     @property
-    def skip_gate(self) -> object | None:
+    def skip_gate(self) -> _SkipGateLike | None:
         """内部 SkipGate インスタンスへのアクセス (OrderMonitor 等で使用)."""
         return self._skip_gate
 
-    def _select_gate_for_side(self, side: str) -> object:
+    def _select_gate_for_side(self, side: str) -> _SkipGateLike | None:
         """141# P1-01: side に適合する SkipGate を返す.
 
         side 別モデルが存在する場合はそちらを優先し、
@@ -353,7 +412,7 @@ class SkipGateEvaluator:
             return self._gate_buy
         if side == "sell" and getattr(self, "_gate_sell", None) is not None:
             return self._gate_sell
-        return self._skip_gate  # type: ignore[return-value]
+        return self._skip_gate
 
     async def evaluate(
         self,
@@ -426,27 +485,43 @@ class SkipGateEvaluator:
             )
             return result
 
+        # side 固有モデルのみ存在し、要求 side にはモデルがないケースを明示処理
+        active_gate = self._select_gate_for_side(side)
+        if active_gate is None:
+            result.skipped = False
+            result.score = 0.0
+            result.reason = f"no_model_for_side:{side}"
+            result.model_used = "none"
+            logger.info(
+                f"[skip_gate] No model available for side={side}. "
+                f"unified={'yes' if self._skip_gate is not None else 'no'}"
+            )
+            return result
+
         try:
             from scripts.v460.ml.skip_gate import build_features_from_market_state
 
             sg_regime = regime_value or "unknown"
 
             # 直近約定データ取得
-            recent_trades_data: list[dict] | None = None
+            recent_trades_data: list[dict[str, object]] | None = None
             try:
-                trades = await adapter.get_recent_trades(  # type: ignore[union-attr]
-                    symbol, limit=self._config.skip_gate_recent_trades_limit,
-                )
-                if trades:
-                    recent_trades_data = [
-                        {
-                            "ts": getattr(t, "timestamp", time.time()),
-                            "price": getattr(t, "price", 0.0),
-                            "amount": getattr(t, "amount", getattr(t, "quantity", 0.0)),
-                            "side": getattr(t, "side", "buy"),
-                        }
-                        for t in trades
-                    ]
+                get_recent_trades = getattr(adapter, "get_recent_trades", None)
+                if callable(get_recent_trades):
+                    trades = await get_recent_trades(
+                        symbol,
+                        limit=self._config.skip_gate_recent_trades_limit,
+                    )
+                    if trades:
+                        recent_trades_data = [
+                            {
+                                "ts": getattr(t, "timestamp", time.time()),
+                                "price": getattr(t, "price", 0.0),
+                                "amount": getattr(t, "amount", getattr(t, "quantity", 0.0)),
+                                "side": getattr(t, "side", "buy"),
+                            }
+                            for t in trades
+                        ]
             except Exception:
                 pass
 
@@ -456,18 +531,24 @@ class SkipGateEvaluator:
             ob_bid_vol: float | None = None
             ob_ask_vol: float | None = None
             # 141# P1-01: side 別モデルの use_ob_features を参照
-            active_gate_for_ob = self._select_gate_for_side(side)
-            sg_use_ob = active_gate_for_ob.config.use_ob_features  # type: ignore[union-attr]
+            sg_use_ob = active_gate.config.use_ob_features
             if sg_use_ob:
                 try:
                     from scripts.v460.lib.ob_utils import extract_price, depth_volume
-                    ob = await adapter.get_orderbook(symbol, depth=self._config.skip_gate_ob_depth)  # type: ignore[union-attr]
-                    if ob and ob.bids and ob.asks:
-                        # 145# §9-#3: tuple/object 両対応 (ob_utils 使用)
-                        ob_bid = extract_price(ob.bids[0])
-                        ob_ask = extract_price(ob.asks[0])
-                        ob_bid_vol = depth_volume(ob.bids, self._config.skip_gate_ob_depth)
-                        ob_ask_vol = depth_volume(ob.asks, self._config.skip_gate_ob_depth)
+                    get_orderbook = getattr(adapter, "get_orderbook", None)
+                    if callable(get_orderbook):
+                        ob = await get_orderbook(
+                            symbol,
+                            depth=self._config.skip_gate_ob_depth,
+                        )
+                        if ob and getattr(ob, "bids", None) and getattr(ob, "asks", None):
+                            bids = getattr(ob, "bids")
+                            asks = getattr(ob, "asks")
+                            # 145# §9-#3: tuple/object 両対応 (ob_utils 使用)
+                            ob_bid = extract_price(bids[0])
+                            ob_ask = extract_price(asks[0])
+                            ob_bid_vol = depth_volume(bids, self._config.skip_gate_ob_depth)
+                            ob_ask_vol = depth_volume(asks, self._config.skip_gate_ob_depth)
                 except Exception as e:
                     logger.debug(f"[skip_gate] OB fetch failed: {e}")
 
@@ -490,8 +571,7 @@ class SkipGateEvaluator:
                 maker_price_vpin_setter(gate_features.get("vpin_60s"))
 
             # 141# P1-01: side 別モデルにディスパッチ (フォールバック: unified)
-            active_gate = self._select_gate_for_side(side)
-            decision = active_gate.evaluate(gate_features, side=side, regime=sg_regime)  # type: ignore[union-attr]
+            decision = active_gate.evaluate(gate_features, side=side, regime=sg_regime)
             result.skipped = decision.should_skip
             result.score = decision.predicted_pnl_bps
             result.reason = decision.reason
