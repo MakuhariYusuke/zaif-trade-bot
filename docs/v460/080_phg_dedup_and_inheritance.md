@@ -863,3 +863,32 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
     - 結果: `6 passed`（warning 1）
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/training/reward_function_optimizer/test_candidate_evaluator.py tests/unit/training/reward_function_optimizer/test_mtf_optimizer.py tests/unit/training/reward_function_optimizer/test_mtf_optimizer_score_report.py`
     - 結果: `12 passed`（warning 1）
+
+## Phase 25 追補: reward optimizer cache の省メモリ化 + eviction検証 (2026-02-23)
+
+### 1) メモリ節約
+
+- `ztb/training/reward_function_optimizer/reward_function_optimizer.py` の
+  `_build_evaluation_cache_key()` を、巨大 JSON 文字列キー保持から
+  `SHA-1(40文字)` ハッシュキーへ変更。
+- 効果: 評価キャッシュ (`evaluation_cache`) の key メモリ使用量を削減し、
+  長時間最適化時のメモリ圧迫を抑制。
+
+### 2) 品質担保（回帰防止）
+
+- 新規テスト: `tests/unit/reward/test_reward_optimizer_cache.py`
+  - cache key が順序非依存で安定して生成されること
+  - パラメータ差分で key が変わること
+  - `_store_evaluation_cache()` が `max_evaluation_cache_size` 超過時に
+    oldest を eviction すること
+
+### 3) 検証
+
+- `py_compile`:
+  - `ztb/training/reward_function_optimizer/reward_function_optimizer.py`
+  - `tests/unit/reward/test_reward_optimizer_cache.py`
+- venv test:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/reward/test_reward_optimizer_cache.py tests/unit/reward/test_reward_optimizer_dynamic_weights.py tests/unit/reward/test_reward_optimizer_sac_bridge.py`
+    - 結果: `7 passed`（warning 1）
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/reward/test_reward_optimization.py`
+    - 結果: `5 passed`（warning 1）

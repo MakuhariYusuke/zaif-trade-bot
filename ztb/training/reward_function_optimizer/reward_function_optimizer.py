@@ -7,6 +7,7 @@ including parameter tuning, multi-objective optimization, and automated reward d
 """
 
 import json
+import hashlib
 import math
 import time
 from copy import deepcopy
@@ -173,7 +174,9 @@ class RewardFunctionOptimizer:
             "params": {str(k): params[k] for k in sorted(params.keys())},
             "objectives": sorted(str(obj) for obj in objectives),
         }
-        return json.dumps(payload, sort_keys=True, default=str, ensure_ascii=False)
+        payload_json = json.dumps(payload, sort_keys=True, default=str, ensure_ascii=False)
+        payload_bytes = payload_json.encode("utf-8")
+        return hashlib.sha1(payload_bytes).hexdigest()
 
     def _normalize_scores(self, raw_scores: object, objectives: list[str]) -> ScoreMap:
         score_map = ensure_dict(raw_scores)
