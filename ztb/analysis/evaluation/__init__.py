@@ -1,3 +1,32 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:fb4e790f5172416ce2afffd403571e36aa61741d4bc26b87e92b75d7833ce766
-size 883
+"""
+統合評価フレームワーク
+
+バックテスト、Walk-Forward、クロスバリデーション等の
+包括的評価を提供するモジュール。
+"""
+
+import warnings
+
+from .unified_evaluation import EvaluationMetric, EvaluationType, UnifiedEvaluator
+from .walk_forward_adapter import (
+    WalkForwardAggregationStats,
+    WalkForwardUnifiedEvaluator,
+)
+from .walk_forward_integration_pipeline import WalkForwardEvaluationPipeline
+
+warnings.warn(
+    "ztb.analysis.evaluation is legacy for unified evaluation; "
+    "prefer ztb.evaluation for core evaluators. "
+    "Walk-forward adapters remain here for compatibility.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+__all__ = [
+    "UnifiedEvaluator",
+    "EvaluationMetric",
+    "EvaluationType",
+    "WalkForwardUnifiedEvaluator",
+    "WalkForwardAggregationStats",
+    "WalkForwardEvaluationPipeline",
+]

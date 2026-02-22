@@ -1,3 +1,26 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:95dd48f15b028dbc44ebe08dc2033e90d1f923bc394ca2d58334350123b91000
-size 547
+#!/usr/bin/env python3
+"""
+Trading Evaluator module for Zaif Trade Bot.
+"""
+
+import warnings
+
+from ztb.analysis.evaluator.evaluator import TradingEvaluator
+from ztb.analysis.evaluator.types import (
+    EvaluationResult,
+    SingleEpisodeResultDict,
+)
+from ztb.types.common import ConfigDict
+
+__all__ = [
+    "TradingEvaluator",
+    "EvaluationResult",
+    "ConfigDict",
+    "SingleEpisodeResultDict",
+]
+
+warnings.warn(
+    "ztb.analysis.evaluator is deprecated; use ztb.evaluation.unified_evaluation",
+    DeprecationWarning,
+    stacklevel=2,
+)

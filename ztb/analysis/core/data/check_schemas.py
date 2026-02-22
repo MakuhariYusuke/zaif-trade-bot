@@ -1,3 +1,6 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:3dcd5cc2afa364d0e52f980cf109feb0ddb936c33fd8c44fec7393d562502dd7
-size 215
+#!/usr/bin/env python3
+"""Quick script to check schema status"""
+from ztb.training.core.feature_schema_manager import FeatureSchemaManager
+
+if __name__ == "__main__":
+    FeatureSchemaManager.print_schema_summary()

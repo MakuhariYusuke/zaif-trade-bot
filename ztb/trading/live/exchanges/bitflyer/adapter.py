@@ -72,8 +72,9 @@ class BitFlyerAdapter(BaseExchangeAdapter):
             requests_per_second=2.0,  # bitFlyer allows 200 calls per minute = ~3.33 per second
         )
 
-        # Override default prices for bitFlyer
-        self._current_prices: Dict[str, float] = {"BTC_JPY": 5000000.0}
+        # Internal symbol convention is lowercase (normalize_symbol).
+        # API calls convert to uppercase via .upper() as needed.
+        self._current_prices: Dict[str, float] = {"btc_jpy": 5000000.0}
 
     def _generate_signature(
         self, timestamp: str, method: str, path: str, body: str = ""
@@ -124,35 +125,34 @@ class BitFlyerAdapter(BaseExchangeAdapter):
     ) -> Any:
         """Make authenticated API request to bitFlyer.
 
-        Args:
-            method: HTTP method
-            path: API endpoint path
-            data: Request data for POST requests
-
-        Returns:
-            API response
+        Uses ``asyncio.to_thread`` to avoid blocking the event loop
+        with synchronous ``requests`` calls.
 
         Raises:
-            Exception: For API errors
+            NetworkError: On HTTP / connection errors.
         """
+        import asyncio
+
         url = self.BASE_URL + path
         body = json.dumps(data) if data else ""
 
         headers = self._get_headers(method, path, body)
 
-        try:
+        def _sync_request() -> Any:
             if method == "GET":
-                response = requests.get(url, headers=headers, timeout=10)
+                resp = requests.get(url, headers=headers, timeout=10)
             elif method == "POST":
-                response = requests.post(url, headers=headers, data=body, timeout=10)
+                resp = requests.post(url, headers=headers, data=body, timeout=10)
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
+            resp.raise_for_status()
+            return resp.json()
 
-            response.raise_for_status()
-            return response.json()
+        try:
+            return await asyncio.to_thread(_sync_request)
         except requests.exceptions.RequestException as e:
             logger.error(f"bitFlyer API request failed: {e}")
-            raise
+            raise NetworkError(f"bitFlyer API error: {e}") from e
 
     # Abstract method implementations
     async def _get_balance_real(self, currency: Optional[str] = None) -> List[Balance]:

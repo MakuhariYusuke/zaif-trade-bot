@@ -1,3 +1,8 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:a18dd4423d5820c5e6791fddbcf0cfa37524de372466fe41eac2f92bd07e53c2
-size 336
+=== Action Analysis for sac_v435.7b ===
+Sample size: 252
+Raw actions - Mean: 0.0000, Std: 0.0000, Min: 0.0000, Max: 0.0000
+Mapped actions - Mean: -1.0000, Std: 0.0000, Min: -1.0000, Max: -1.0000
+Action distribution - BUY: 0, HOLD: 0, SELL: 252
+Buy threshold: 0.3333, Sell threshold: -0.3333
+Unique raw values: 1
+Unique mapped values: 1

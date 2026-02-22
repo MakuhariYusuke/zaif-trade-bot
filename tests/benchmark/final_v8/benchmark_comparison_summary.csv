@@ -1,3 +1,2 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:03872c2822c70cf7a006f2fc134d33b3f002fd275c289f34f50e775fb0e61fc5
-size 220
+Model,Type,Total Return,Avg Return,Win Rate,Sharpe,Sortino,Calmar,Max DD,Total Trades,Buy Actions,Sell Actions,Hold Actions
+single_model,single,14618.9013,1461.8901,100.00%,0.0000,0.0000,0.0000,0.0000,2720,1880,840,7270

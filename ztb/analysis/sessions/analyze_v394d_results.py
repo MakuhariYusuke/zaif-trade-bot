@@ -1,3 +1,10 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:334a020f6c7a5bc90e3a29fc44ad49898ece62dfc7b71d763d521dcbb5236be6
-size 166
+"""
+v394d訓練結果の詳細分析
+100,352 timestepsで完了したが、HOLD 89%に収束
+"""
+
+
+
+
+if __name__ == "__main__":
+    analyze_v394d_results()

@@ -1,3 +1,20 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:82f20e64cb2bc763c8c3a81b8a25fa2067b17bb37eeb8f7ccb5deca5d791f331
-size 494
+"""Compatibility shim for market_regime_classifier
+
+Re-export symbols from the internal `regime` package so older import paths
+keep working for tests and external scripts.
+"""
+from .regime.market_regime_classifier import (
+    MarketRegimeClassifier,
+    RegimeType,
+    RegimeDefinition,
+    RegimeDetectionResult,
+    RegimeMetrics,
+)
+
+__all__ = [
+    "MarketRegimeClassifier",
+    "RegimeType",
+    "RegimeDefinition",
+    "RegimeDetectionResult",
+    "RegimeMetrics",
+]

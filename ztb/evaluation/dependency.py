@@ -1,3 +1,15 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:45198ffc2d0445ed34156cf7c16a9a6e1181db739534d6c701ad75c75e3ee14c
-size 374
+"""Minimal compatibility stubs for evaluation dependency utilities used by legacy tests."""
+from typing import Any, Dict
+
+
+class DependencyGraph:
+    def __init__(self, *args, **kwargs):
+        self.graph = {}
+
+
+class FeatureDependencyManager:
+    def __init__(self, *args, **kwargs):
+        pass
+
+
+__all__ = ["DependencyGraph", "FeatureDependencyManager"]

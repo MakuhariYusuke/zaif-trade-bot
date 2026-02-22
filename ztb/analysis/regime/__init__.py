@@ -1,3 +1,18 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:181a5475008e1aa7115a9af16a392a428ebbcb1745a7d200d858a7aefa3982ef
-size 498
+"""
+Market Regime Detection Package.
+
+This package provides various market regime detection capabilities
+for adaptive trading strategies.
+"""
+
+from .market_regime_types import MarketRegime, RegimeDetectionResult
+from .advanced_regime_detector import AdvancedRegimeDetector, TechnicalIndicators
+from .basic_regime_detector import MarketRegimeDetector
+
+__all__ = [
+    'AdvancedRegimeDetector',
+    'MarketRegime',
+    'TechnicalIndicators',
+    'RegimeDetectionResult',
+    'MarketRegimeDetector'
+]

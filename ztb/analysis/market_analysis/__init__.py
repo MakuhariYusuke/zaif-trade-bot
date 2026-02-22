@@ -1,3 +1,29 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:52cd942e72c30cac3eeb181429dfce88a4fbc1de330afb37de7481e7b8e9c090
-size 744
+"""
+Market Analysis Package for ZAIF Trade Bot.
+
+This package provides advanced market analysis capabilities including:
+- Enhanced regime detection with statistical validation
+- Technical indicator calculations
+- Performance analysis and validation
+"""
+
+from ztb.analysis.regime.market_regime_types import MarketRegime, RegimeDetectionResult
+from .regime_analyzer import EnhancedRegimeAnalyzer
+
+from .statistical_analyzer import (
+    StatisticalAnalyzer,
+    StatisticalTestResult,
+    RegimeValidationMetrics
+)
+
+__all__ = [
+    # Regime Analysis
+    "EnhancedRegimeAnalyzer",
+    "MarketRegime",
+    "RegimeDetectionResult",
+
+    # Statistical Analysis
+    "StatisticalAnalyzer",
+    "StatisticalTestResult",
+    "RegimeValidationMetrics",
+]

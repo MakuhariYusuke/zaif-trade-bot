@@ -1,3 +1,14 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:00947566cc1ba2f9eb6ca0c55bb23abfcdc2bcdc478c643bd34d9146d8cade68
-size 440
+import pandas as pd
+
+from ztb.io.data_loader import DataLoader
+
+df = DataLoader.load_csv_strict("data/btc_jpy_yahoo_real_20251021_featured.csv")
+print("Total columns:", len(df.columns))
+print("Numeric columns:", len(df.select_dtypes(include=["number"]).columns))
+print(
+    "Sample numeric columns:",
+    df.select_dtypes(include=["number"]).columns[:10].tolist(),
+)
+print("Data shape:", df.shape)
+print("First few rows:")
+print(df.head())

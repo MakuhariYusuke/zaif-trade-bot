@@ -85,12 +85,17 @@ class IBroker(ABC):
 - Configurable trading costs
 - Deterministic for testing
 
-### ZaifAdapter (Stub)
+### Exchange Adapters
 
-- Interface defined for future implementation
-- Raises `NotImplementedError` for safety
-- Same interface as SimBroker
-- Easy production swap
+All exchange adapters inherit from `BaseExchangeAdapter` which provides:
+- Dry-run simulation (balance, order, position management)
+- Rate limiting
+- Common IBroker interface routing
+
+Available adapters:
+- **CoincheckAdapter** — Primary production adapter (BTC/JPY)
+- **BitFlyerAdapter** — Secondary adapter (BTC/JPY)
+- New exchanges: implement 7 `_*_real()` methods + register in `BrokerRegistry`
 
 ## Risk Integration
 

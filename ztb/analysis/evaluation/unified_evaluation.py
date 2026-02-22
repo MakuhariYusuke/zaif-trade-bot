@@ -1,3 +1,30 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:302df762701d626a6f0ad631d27a88c71507c53dcdd3d59773f22d676b2a8614
-size 594
+"""
+Deprecated shim for unified evaluation.
+
+Use ztb.evaluation.unified_evaluation as the source of truth.
+"""
+
+from __future__ import annotations
+
+import warnings
+
+from ztb.evaluation.unified_evaluation import (
+    ComprehensiveEvaluation,
+    EvaluationMetric,
+    EvaluationType,
+    UnifiedEvaluator,
+)
+
+warnings.warn(
+    "ztb.analysis.evaluation.unified_evaluation is deprecated; "
+    "use ztb.evaluation.unified_evaluation",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+__all__ = [
+    "ComprehensiveEvaluation",
+    "EvaluationMetric",
+    "EvaluationType",
+    "UnifiedEvaluator",
+]
