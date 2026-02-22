@@ -152,6 +152,53 @@ class RewardFunctionOptimizer:
                 normalized[key] = safe_to_float(score_map.get(key, 0.0), 0.0)
         return normalized
 
+    def _evaluate_reward_params(self, params: ConfigMap) -> ScoreMap:
+        """Evaluate reward parameters through the backtest config bridge."""
+        return self.run_backtest_evaluation(self.create_backtest_config(params))
+
+    @staticmethod
+    def _extract_profit_bonus_multipliers(params: ConfigMap) -> list[float]:
+        """Extract BUY/SELL/HOLD multipliers with safe defaults."""
+        return [
+            safe_to_float(params.get("profit_bonus_multiplier_buy", 1.0), 1.0),
+            safe_to_float(params.get("profit_bonus_multiplier_sell", 1.0), 1.0),
+            safe_to_float(params.get("profit_bonus_multiplier_hold", 1.0), 1.0),
+        ]
+
+    @staticmethod
+    def _extract_reward_inputs_from_settings(
+        reward_settings: ConfigMap,
+    ) -> tuple[float, float, float, float, float, float, float, float]:
+        """Normalize reward settings used by synthetic evaluation."""
+        profit_weight = safe_to_float(reward_settings.get("profit_weight", 1.0), 1.0)
+        risk_weight = safe_to_float(reward_settings.get("risk_weight", 1.0), 1.0)
+        consistency_weight = safe_to_float(
+            reward_settings.get("consistency_weight", 1.0), 1.0
+        )
+
+        multipliers_obj = reward_settings.get("profit_bonus_multipliers", [1.0, 1.0, 1.0])
+        multipliers = multipliers_obj if isinstance(multipliers_obj, list) else [1.0, 1.0, 1.0]
+        padded = [1.0, 1.0, 1.0]
+        for i in range(min(3, len(multipliers))):
+            padded[i] = safe_to_float(multipliers[i], 1.0)
+        profit_mult_buy, profit_mult_sell, profit_mult_hold = padded
+
+        momentum_weight = safe_to_float(reward_settings.get("momentum_weight", 0.0), 0.0)
+        volatility_weight = safe_to_float(
+            reward_settings.get("volatility_weight", 0.0), 0.0
+        )
+
+        return (
+            profit_weight,
+            risk_weight,
+            consistency_weight,
+            profit_mult_buy,
+            profit_mult_sell,
+            profit_mult_hold,
+            momentum_weight,
+            volatility_weight,
+        )
+
     def _store_evaluation_cache(self, cache_key: str, scores: ScoreMap) -> None:
         if cache_key not in self.evaluation_cache:
             self._evaluation_cache_order.append(cache_key)
@@ -238,9 +285,7 @@ class RewardFunctionOptimizer:
             return dict(cached)
 
         if evaluation_function is None:
-            evaluation_function = lambda p: self.run_backtest_evaluation(
-                self.create_backtest_config(p)
-            )
+            evaluation_function = self._evaluate_reward_params
 
         last_error: Exception | None = None
         for retry in range(self.max_retries):
@@ -345,7 +390,14 @@ class RewardFunctionOptimizer:
                 else:
                     color = "🟡"
 
-                print(f"  {icon} {key.replace('_', ' ').title()}: {color}{value:{fmt}}")
+                if fmt == "d":
+                    formatted_value = str(int(round(safe_to_float(value, 0.0))))
+                else:
+                    formatted_value = f"{safe_to_float(value, 0.0):{fmt}}"
+
+                print(
+                    f"  {icon} {key.replace('_', ' ').title()}: {color}{formatted_value}"
+                )
             else:
                 print(f"  📋 {key}: {value}")
 
@@ -648,9 +700,7 @@ class RewardFunctionOptimizer:
             # Run optimization
             result = self.optimize_reward_function(
                 stage=stage,
-                evaluation_function=lambda params: self.run_backtest_evaluation(
-                    self.create_backtest_config(params)
-                ),
+                evaluation_function=self._evaluate_reward_params,
                 n_trials=n_trials,
                 objectives=objectives,
             )
@@ -820,47 +870,30 @@ class RewardFunctionOptimizer:
         }
 
         # Apply reward function parameters
-        reward_settings = {}
+        reward_settings: ConfigMap = {}
 
-        # Profit bonus multipliers
         if any(k.startswith("profit_bonus_multiplier_") for k in reward_params):
-            multipliers = []
-            multipliers.append(reward_params.get("profit_bonus_multiplier_buy", 1.0))
-            multipliers.append(reward_params.get("profit_bonus_multiplier_sell", 1.0))
-            multipliers.append(reward_params.get("profit_bonus_multiplier_hold", 1.0))
-            reward_settings["profit_bonus_multipliers"] = multipliers
+            reward_settings["profit_bonus_multipliers"] = self._extract_profit_bonus_multipliers(
+                reward_params
+            )
 
-        # Trading bonuses
-        if "trading_bonus" in reward_params:
-            reward_settings["trading_bonus"] = reward_params["trading_bonus"]
-        if "trading_bonus_multiplier" in reward_params:
-            reward_settings["trading_bonus_multiplier"] = reward_params[
-                "trading_bonus_multiplier"
-            ]
-
-        # ATR and portfolio coefficients
-        if "base_profit_bonus_atr_coeff" in reward_params:
-            reward_settings["base_profit_bonus_atr_coeff"] = reward_params[
-                "base_profit_bonus_atr_coeff"
-            ]
-        if "base_profit_bonus_portfolio_coeff" in reward_params:
-            reward_settings["base_profit_bonus_portfolio_coeff"] = reward_params[
-                "base_profit_bonus_portfolio_coeff"
-            ]
-
-        # Advanced components
-        if "momentum_weight" in reward_params:
-            reward_settings["momentum_weight"] = reward_params["momentum_weight"]
-        if "volatility_weight" in reward_params:
-            reward_settings["volatility_weight"] = reward_params["volatility_weight"]
-        if "time_decay_weight" in reward_params:
-            reward_settings["time_decay_weight"] = reward_params["time_decay_weight"]
+        scalar_keys = (
+            "trading_bonus",
+            "trading_bonus_multiplier",
+            "base_profit_bonus_atr_coeff",
+            "base_profit_bonus_portfolio_coeff",
+            "momentum_weight",
+            "volatility_weight",
+            "time_decay_weight",
+        )
+        for key in scalar_keys:
+            if key in reward_params:
+                reward_settings[key] = reward_params[key]
 
         # Multi-objective weights
-        if any(k.endswith("_weight") for k in reward_params):
-            reward_settings.update(
-                {k: v for k, v in reward_params.items() if k.endswith("_weight")}
-            )
+        reward_settings.update(
+            {k: v for k, v in reward_params.items() if k.endswith("_weight")}
+        )
 
         config["reward_settings"] = reward_settings
         return config
@@ -878,25 +911,18 @@ class RewardFunctionOptimizer:
         try:
             # For now, use a simplified evaluation based on reward parameters
             # In production, this would integrate with actual backtesting
-            reward_settings = config.get("reward_settings", {})
+            reward_settings = ensure_dict(config.get("reward_settings"))
 
-            # Extract key parameters
-            profit_weight = reward_settings.get("profit_weight", 1.0)
-            risk_weight = reward_settings.get("risk_weight", 1.0)
-            consistency_weight = reward_settings.get("consistency_weight", 1.0)
-
-            profit_mult_buy = reward_settings.get(
-                "profit_bonus_multipliers", [1.0, 1.0, 1.0]
-            )[0]
-            profit_mult_sell = reward_settings.get(
-                "profit_bonus_multipliers", [1.0, 1.0, 1.0]
-            )[1]
-            profit_mult_hold = reward_settings.get(
-                "profit_bonus_multipliers", [1.0, 1.0, 1.0]
-            )[2]
-
-            momentum_weight = reward_settings.get("momentum_weight", 0.0)
-            volatility_weight = reward_settings.get("volatility_weight", 0.0)
+            (
+                profit_weight,
+                risk_weight,
+                consistency_weight,
+                profit_mult_buy,
+                profit_mult_sell,
+                profit_mult_hold,
+                momentum_weight,
+                volatility_weight,
+            ) = self._extract_reward_inputs_from_settings(reward_settings)
 
             # Simulate performance based on parameter combinations
             # Higher profit multipliers generally lead to higher returns but higher risk
@@ -1255,9 +1281,7 @@ class RewardFunctionOptimizer:
         # Run optimization with selected stage
         result = self.optimize_reward_function(
             stage=selected_stage,
-            evaluation_function=lambda params: self.run_backtest_evaluation(
-                self.create_backtest_config(params)
-            ),
+            evaluation_function=self._evaluate_reward_params,
             n_trials=n_trials,
             objectives=objectives,
         )
@@ -1271,7 +1295,8 @@ class RewardFunctionOptimizer:
 
         print("\n🎉 Adaptive Optimization Completed!")
         print(f"📊 Selected Stage: {selected_stage}")
-        print(f"🏆 Best Score: {result.best_scores.get('profit', 'N/A'):.4f}")
+        best_profit = safe_to_float(result.best_scores.get("profit", 0.0), 0.0)
+        print(f"🏆 Best Score: {best_profit:.4f}")
 
         return result
 
@@ -1379,13 +1404,17 @@ class RewardFunctionOptimizer:
 """
 
         for objective, score in result.best_scores.items():
-            report += f"- **{objective}**: {score:.4f}\n"
+            report += f"- **{objective}**: {safe_to_float(score, 0.0):.4f}\n"
+
+        study_best_value = safe_to_float(
+            result.convergence_info.get("study_best_value", 0.0), 0.0
+        )
 
         report += f"""
 ## Convergence Information
 - **Best Trial**: {result.convergence_info.get('best_trial_number', 'N/A')}
 - **Total Trials**: {result.convergence_info.get('n_trials', 'N/A')}
-- **Study Best Value**: {result.convergence_info.get('study_best_value', 'N/A'):.4f}
+- **Study Best Value**: {study_best_value:.4f}
 
 ## Optimization History Summary
 - **Total Trials**: {len(result.optimization_history)}

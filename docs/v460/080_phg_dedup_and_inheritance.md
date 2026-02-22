@@ -585,3 +585,35 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
   - `ztb/training/algorithms/sac/sac_algorithm.py`
 - `pytest` は実行環境に未導入 (`No module named pytest`) のため未実施。
 - ランタイム smoke は `numpy` 未導入 (`No module named numpy`) のため限定的。
+
+## Phase 18 追補: reward optimizer 評価経路リファクタ + レポート不具合修正 (2026-02-22)
+
+### 1) 重複削減（保守性向上）
+
+- `ztb/training/reward_function_optimizer/reward_function_optimizer.py` に
+  `_evaluate_reward_params()` を導入し、
+  `optimize_from_config_file` / `optimize_adaptive` / robust fallback の
+  `create_backtest_config + run_backtest_evaluation` 重複経路を統一。
+- `create_backtest_config()` の reward settings 組み立てを
+  scalar key loop + helper へ整理し、分岐重複を削減。
+- `run_backtest_evaluation()` の入力抽出を
+  `_extract_reward_inputs_from_settings()` に抽出し、
+  multipliers/weight の取り出し重複を削減。
+
+### 2) 不具合可能性の解消
+
+- `_print_scores()` で `format='d'` に float が入ると例外になり得る問題を修正。
+- `optimize_adaptive()` の `Best Score` 表示で、
+  `'N/A'` 文字列に `:.4f` が適用され得る問題を修正。
+- `generate_optimization_report()` の `Study Best Value` も同様に
+  safe float へ正規化してから整形するよう修正。
+- `run_backtest_evaluation()` は `reward_settings` を `ensure_dict()` で受け、
+  setting 型揺れ時の実行時例外リスクを低減。
+
+### 3) 検証
+
+- `py_compile`:
+  - `ztb/training/reward_function_optimizer/reward_function_optimizer.py`
+- venv test:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/reward/test_reward_optimization.py`
+  - 結果: `5 passed`（warning 1）
