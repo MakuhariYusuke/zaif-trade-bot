@@ -352,9 +352,41 @@ ops/windows/trading_service.bat:
 
 | # | 対応 |
 |---|------|
-| 1 | §3.1 に「設計段階」明記済み |
-| 2 | 実装時に YAML/lock metadata 参照に統一予定 |
-| 3 | §3.1 に `-Exchange`/`-DryRun` 追加、§3.4 で start event からのパラメータ復元設計追加 |
-| 4 | §3.2 にイベント契約 (schema) を新設、`watchdog_alert` と `watchdog_restart` を分離定義 |
-| 5 | §3.3 に `restart.lock` 取得ステップを追加 (TOCTOU 防止) |
-| 6 | §3.7 に再起動直後セーフモード (lot 縮小 + 発注抑止) を追加、§6 リスク表も更新 |
+| 1 | **実装済**: §3.1 に「設計段階」明記 → P2-B 実装完了 (`fill_test_watchdog.ps1` 拡張) |
+| 2 | **実装済**: `Get-StaleHeartbeatSec` 関数で `fill_test.yaml` から `lock_stale_heartbeat_sec` を動的読み取り |
+| 3 | **実装済**: `-Exchange`/`-DryRun` パラメータ追加 + `Get-LastStartArgs` で start event からパラメータ復元 |
+| 4 | **実装済**: §3.2 イベント契約定義 + `Write-EventLog` で `watchdog_alert`/`watchdog_restart` を厳密分離 |
+| 5 | **実装済**: `restart.lock` (短寿命 30s) による TOCTOU 防止 + `try/finally` で確実解放 |
+| 6 | **設計反映**: §3.7 セーフモード設計を追加。fill_test 側の実装は次フェーズ |
+
+---
+
+## §10 P2-B 実装ログ (2026-02-23)
+
+### 10.1 実装ファイル
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `ops/windows/fill_test_watchdog.ps1` | P2-B: AutoRestart 全機能実装 (168→320行) |
+| `scripts/v460/run_fill_test.py` | start イベントに `details.args` 追加 (watchdog パラメータ復元用) |
+| `ops/windows/test_fill_test_watchdog.ps1` | NEW: Pester テスト |
+
+### 10.2 実装機能一覧
+
+| 機能 | パラメータ | 説明 |
+|------|-----------|------|
+| 自動再起動 | `-AutoRestart` | NOT_RUNNING 検出時に fill_test を再起動 |
+| crash loop 防止 | `-MaxRestarts 3 -CooldownMinutes 60` | 一定時間内の再起動回数を制限 |
+| TOCTOU 防止 | `restart.lock` | 複数 watchdog インスタンスの排他制御 |
+| stale 閾値動的取得 | YAML 読み取り | `lock_stale_heartbeat_sec` をハードコードから YAML 参照に変更 |
+| パラメータ復元 | `Get-LastStartArgs` | events.jsonl の最新 start event から `--exchange`, `--dry-run` 等を復元 |
+| 明示パラメータ | `-Hours/-Config/-Exchange/-DryRun` | watchdog コマンドラインから直接指定も可 |
+
+### 10.3 動作確認結果
+
+| テスト | 結果 | 詳細 |
+|--------|------|------|
+| 監視モード (AutoRestart なし) | ✅ | PID=108148 検出、heartbeat stale 報告 |
+| AutoRestart + RUNNING | ✅ exit 0 | 再起動せず正常終了 |
+| restart.lock 排他 | ✅ exit 0 SKIP | 別インスタンスの lock を検出、スキップ |
+| Python テスト (16件) | ✅ ALL PASS | start event args 含む全テスト OK |

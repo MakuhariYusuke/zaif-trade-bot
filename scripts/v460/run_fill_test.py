@@ -2088,13 +2088,22 @@ def main() -> None:
 
     runner = FillTestRunner(adapter, config, yaml_cfg=yaml_cfg)
 
-    # 148# P0: start イベント記録
+    # 148# P0: start イベント記録 (150# §3.2: args を含めて watchdog が復元可能に)
     _log_event(
         "start",
         config.results_dir,
         run_id=runner._run_id,
         git_sha=runner._git_sha,
-        details={"hours": args.hours, "config": args.config},
+        details={
+            "hours": args.hours,
+            "config": args.config,
+            "args": {
+                "hours": args.hours,
+                "config": args.config,
+                "exchange": args.exchange,
+                "dry_run": args.dry_run,
+            },
+        },
     )
 
     # Signal handler for graceful shutdown
