@@ -702,3 +702,39 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
   - `assets/images/latest_training_rewards.csv`
   - `data/performance/performance_history.json`
   - `.gitignore` へ明示し、`git rm --cached` で index からのみ削除（ローカル実体は保持）。
+
+## Phase 21 追補: dynamic weight 更新ロジックの重複整理 + 型揺れ耐性強化 (2026-02-23)
+
+### 1) 重複削減（保守性向上）
+
+- `ztb/training/reward_function_optimizer/reward_function_optimizer.py` に
+  動的重み更新向け helper を追加:
+  - `_extract_numeric_metric()`
+  - `_classify_risk_level()`
+  - `_classify_market_regime_from_win_rate()`
+- `_update_dynamic_weights_from_history()` と `update_dynamic_weights()` の
+  risk 判定ロジックを helper 経由に統一し、閾値の散在を解消。
+
+### 2) 不具合可能性の解消
+
+- `_update_dynamic_weights_from_history()` で
+  history score が文字列などの型揺れを含む場合も `safe_to_float` 経由で扱うよう変更し、
+  `sum()` 時の型エラーリスクを除去。
+- `_print_scores()` はカテゴリ値を数値正規化してから色判定/整形するよう修正し、
+  非数値入力混在時でも表示処理が落ちないよう改善。
+
+### 3) 検証
+
+- 新規テスト:
+  - `tests/unit/reward/test_reward_optimizer_dynamic_weights.py`
+    - history 文字列スコアの正規化と dynamic weight 更新
+    - risk level 閾値境界（0.05/0.15）
+    - `_print_scores()` の非数値耐性
+- `py_compile`:
+  - `ztb/training/reward_function_optimizer/reward_function_optimizer.py`
+  - `tests/unit/reward/test_reward_optimizer_dynamic_weights.py`
+- venv test:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/reward/test_reward_optimizer_dynamic_weights.py`
+    - 結果: `3 passed`（warning 1）
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/reward/test_reward_optimization.py`
+    - 結果: `5 passed`（warning 1）

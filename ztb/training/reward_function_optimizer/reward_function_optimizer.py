@@ -63,6 +63,10 @@ DEFAULT_SYNTHETIC_SAC_HYPERPARAMETERS: dict[str, float | int] = {
     "gamma": 0.99,
     "reward_scale": 1.0,
 }
+RISK_MODERATE_DRAWDOWN_THRESHOLD = 0.05
+RISK_HIGH_DRAWDOWN_THRESHOLD = 0.15
+WIN_RATE_BULL_THRESHOLD = 0.6
+WIN_RATE_BEAR_THRESHOLD = 0.4
 
 OPTUNA_AVAILABLE = importlib.util.find_spec("optuna") is not None
 if not OPTUNA_AVAILABLE:
@@ -326,6 +330,32 @@ class RewardFunctionOptimizer:
     def _clamp(value: float, low: float, high: float) -> float:
         return max(low, min(high, value))
 
+    @staticmethod
+    def _extract_numeric_metric(
+        score_maps: list[ConfigMap], key: str
+    ) -> list[float]:
+        values: list[float] = []
+        for score_map in score_maps:
+            if key in score_map:
+                values.append(safe_to_float(score_map.get(key, 0.0), 0.0))
+        return values
+
+    @staticmethod
+    def _classify_risk_level(avg_drawdown: float) -> str:
+        if avg_drawdown >= RISK_HIGH_DRAWDOWN_THRESHOLD:
+            return "high"
+        if avg_drawdown >= RISK_MODERATE_DRAWDOWN_THRESHOLD:
+            return "moderate"
+        return "low"
+
+    @staticmethod
+    def _classify_market_regime_from_win_rate(avg_win_rate: float) -> str:
+        if avg_win_rate > WIN_RATE_BULL_THRESHOLD:
+            return "bull"
+        if avg_win_rate < WIN_RATE_BEAR_THRESHOLD:
+            return "bear"
+        return "neutral"
+
     @classmethod
     def _compute_sac_adjustment_factors(
         cls,
@@ -399,7 +429,7 @@ class RewardFunctionOptimizer:
         recent_scores = [ensure_dict(trial.get("scores")) for trial in recent_trials]
 
         # Calculate performance trends
-        profit_scores = [s.get("profit", 0) for s in recent_scores if "profit" in s]
+        profit_scores = self._extract_numeric_metric(recent_scores, "profit")
         if len(profit_scores) >= 3:
             # Simple trend analysis
             recent_avg = sum(profit_scores[-3:]) / 3
@@ -413,28 +443,18 @@ class RewardFunctionOptimizer:
                 self.dynamic_weights["performance_trend"] = "stable"
 
         # Estimate risk level from drawdown patterns
-        drawdown_scores = [
-            s.get("max_drawdown", 0) for s in recent_scores if "max_drawdown" in s
-        ]
+        drawdown_scores = self._extract_numeric_metric(recent_scores, "max_drawdown")
         if drawdown_scores:
             avg_drawdown = sum(drawdown_scores) / len(drawdown_scores)
-            if avg_drawdown > 0.15:  # High risk
-                self.dynamic_weights["risk_level"] = "high"
-            elif avg_drawdown > 0.05:  # Moderate risk
-                self.dynamic_weights["risk_level"] = "moderate"
-            else:  # Low risk
-                self.dynamic_weights["risk_level"] = "low"
+            self.dynamic_weights["risk_level"] = self._classify_risk_level(avg_drawdown)
 
         # Market regime estimation (simplified - could be enhanced with actual market data)
-        win_rates = [s.get("win_rate", 0) for s in recent_scores if "win_rate" in s]
+        win_rates = self._extract_numeric_metric(recent_scores, "win_rate")
         if win_rates:
             avg_win_rate = sum(win_rates) / len(win_rates)
-            if avg_win_rate > 0.6:
-                self.dynamic_weights["market_regime"] = "bull"
-            elif avg_win_rate < 0.4:
-                self.dynamic_weights["market_regime"] = "bear"
-            else:
-                self.dynamic_weights["market_regime"] = "neutral"
+            self.dynamic_weights["market_regime"] = (
+                self._classify_market_regime_from_win_rate(avg_win_rate)
+            )
 
         self.logger.debug(
             f"Updated dynamic weights from history: {self.dynamic_weights}"
@@ -559,21 +579,22 @@ class RewardFunctionOptimizer:
                 icon = cat["icon"]
                 fmt = cat["format"]
                 higher_better = cat["higher_better"]
+                numeric_value = safe_to_float(value, 0.0)
 
                 # Color coding based on performance
-                if higher_better is True and value > 0:
+                if higher_better is True and numeric_value > 0:
                     color = "🟢"
-                elif higher_better is False and value < 0.1:  # Low drawdown is good
+                elif higher_better is False and numeric_value < 0.1:  # Low drawdown is good
                     color = "🟢"
-                elif higher_better is False and value > 0.2:  # High drawdown is bad
+                elif higher_better is False and numeric_value > 0.2:  # High drawdown is bad
                     color = "🔴"
                 else:
                     color = "🟡"
 
                 if fmt == "d":
-                    formatted_value = str(int(round(safe_to_float(value, 0.0))))
+                    formatted_value = str(int(round(numeric_value)))
                 else:
-                    formatted_value = f"{safe_to_float(value, 0.0):{fmt}}"
+                    formatted_value = f"{numeric_value:{fmt}}"
 
                 print(
                     f"  {icon} {key.replace('_', ' ').title()}: {color}{formatted_value}"
@@ -694,13 +715,7 @@ class RewardFunctionOptimizer:
             avg_drawdown = (
                 sum(recent_drawdowns) / len(recent_drawdowns) if recent_drawdowns else 0
             )
-
-            if avg_drawdown > 0.15:
-                self.dynamic_weights["risk_level"] = "high"
-            elif avg_drawdown < 0.05:
-                self.dynamic_weights["risk_level"] = "low"
-            else:
-                self.dynamic_weights["risk_level"] = "moderate"
+            self.dynamic_weights["risk_level"] = self._classify_risk_level(avg_drawdown)
 
         self.logger.info(f"Updated dynamic weights: {self.dynamic_weights}")
 
