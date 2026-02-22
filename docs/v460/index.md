@@ -1,7 +1,7 @@
 # v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-21 (129# ログ分析・残課題統合レビュー, 131# retrain 学習改善, 130# 6 施策実装)
+> 最終更新: 2026-02-23 (147# Phase C 24h run 開始・停止原因調査)
 
 ---
 
@@ -122,6 +122,24 @@
 | 127 | rev | [127_ph2_rev_126.md](127_ph2_rev_126.md) | 126# レビュー — 契約統一・AS 非依存・run_id 分離 (S127.1#) |
 | 128 | rpt | [128_ph2_rpt_log_review_and_strategy.md](128_ph2_rpt_log_review_and_strategy.md) | ログレビュー分析と改善方策（妥当性検証 + 追加提案追記） |
 | 129 | rpt | [129_ph2_rpt_log_analysis_and_backlog.md](129_ph2_rpt_log_analysis_and_backlog.md) | ログ分析・改善指針・残課題統合レビュー (131# 外部レビュー用) |
+| 130 | rpt | [130_ph2_rpt_implementation_and_retrain.md](130_ph2_rpt_implementation_and_retrain.md) | 6 施策実装 + retrain 改善 |
+| 131 | rpt | [131_ph2_rpt_y3_retrain_efficiency.md](131_ph2_rpt_y3_retrain_efficiency.md) | Y3 retrain 効率化報告 |
+| 132 | rpt | [132_fill_test_log_analysis.md](132_fill_test_log_analysis.md) | fill_test ログ分析・収益性最大化計画 |
+| 133 | rev | [133_ph2_rev_132_profitability_max_plan.md](133_ph2_rev_132_profitability_max_plan.md) | 132# 収益性最大化計画レビュー |
+| 134 | rev | [134_ph2_rev_133_validity_evaluation.md](134_ph2_rev_133_validity_evaluation.md) | 133# 妥当性評価 — Phase A-E ロードマップ |
+| 135 | impl | [135_ph2_impl_data_infra_gate_perrun.md](135_ph2_impl_data_infra_gate_perrun.md) | Phase A/B: データインフラ復旧 + Gate per-run |
+| 136 | impl | [136_ph2_impl_p1_retrain_kill.md](136_ph2_impl_p1_retrain_kill.md) | P1 retrain kill 施策実装 |
+| 137 | impl | [137_ph2_impl_review_fixes_p1.md](137_ph2_impl_review_fixes_p1.md) | レビュー指摘対応 P1 |
+| 138 | impl | [138_ph2_impl_p1_preflight_calibration.md](138_ph2_impl_p1_preflight_calibration.md) | P1 preflight calibration 実装 |
+| 139 | fix | [139_ph2_fix_review_137_138.md](139_ph2_fix_review_137_138.md) | 137#/138# レビュー修正 |
+| 140 | fix | [140_ph2_fix_critical_fillrecord.md](140_ph2_fix_critical_fillrecord.md) | FillRecord critical fix |
+| 141 | impl | [141_ph2_impl_side_separation_regime_monitor.md](141_ph2_impl_side_separation_regime_monitor.md) | Side 分離 + Regime モニター |
+| 142 | plan | [142_ph2_plan_regime_utilization.md](142_ph2_plan_regime_utilization.md) | Regime 活用計画 |
+| 143 | impl | [143_ph2_impl_regime_utilization.md](143_ph2_impl_regime_utilization.md) | Regime 活用実装 |
+| 144 | impl | [144_ph2_impl_regime_reprice_timeout.md](144_ph2_impl_regime_reprice_timeout.md) | Regime reprice + timeout 実装 |
+| 145 | impl | [145_ph2_impl_regime_retrain_adaptation.md](145_ph2_impl_regime_retrain_adaptation.md) | Regime retrain adaptation (R-2a config) |
+| 146 | impl | [146_ph2_impl_multi_exchange_registry.md](146_ph2_impl_multi_exchange_registry.md) | Multi-exchange registry 分離 |
+| 147 | rpt | [147_ph2_rpt_phase_c_24h_run_start.md](147_ph2_rpt_phase_c_24h_run_start.md) | Phase C 24h 連続 run 開始・停止原因調査 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
