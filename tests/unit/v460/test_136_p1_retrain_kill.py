@@ -1,6 +1,8 @@
 """136# P1-01/02/03 テスト.
 
-- RetainTrigger: fill_records mtime チェック、trades health ガード、バックオフ
+- RetrainTrigger: fill_records mtime チェック、trades health ガード、バックオフ
+- §9 #1 回帰テスト: unhealthy→healthy 同一 mtime で retrain が走ること
+- §9 #2: feature freshness → trigger 統合
 - FeatureFreshness: trades/OB 鮮度チェック
 - SellDynamicKillManager: rolling kill、cooldown、レジーム別閾値、テレメトリ
 """
@@ -19,14 +21,14 @@ import pytest
 # ===== P1-01: RetainTrigger =====
 
 class TestRetainTrigger:
-    """RetainTriggerの事前チェック."""
+    """RetrainTriggerの事前チェック (§9 #5: 後方互換エイリアスも確認)."""
 
     def test_skip_when_no_fill_records_updated(self, tmp_path: Path) -> None:
         """fill_records 存在するが mtime 変化なし → 2回目はスキップ."""
-        from ztb.ml.retrain_trigger import RetainTrigger, RetainTriggerConfig
+        from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
 
-        cfg = RetainTriggerConfig(check_trades_health=False)
-        trigger = RetainTrigger(results_dir=tmp_path, config=cfg)
+        cfg = RetrainTriggerConfig(check_trades_health=False)
+        trigger = RetrainTrigger(results_dir=tmp_path, config=cfg)
 
         # ファイル作成
         fr = tmp_path / "fill_records_test.jsonl"
@@ -43,10 +45,10 @@ class TestRetainTrigger:
 
     def test_pass_when_fill_records_updated(self, tmp_path: Path) -> None:
         """fill_records 更新 → 通過."""
-        from ztb.ml.retrain_trigger import RetainTrigger, RetainTriggerConfig
+        from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
 
-        cfg = RetainTriggerConfig(check_trades_health=False)
-        trigger = RetainTrigger(results_dir=tmp_path, config=cfg)
+        cfg = RetrainTriggerConfig(check_trades_health=False)
+        trigger = RetrainTrigger(results_dir=tmp_path, config=cfg)
 
         # ファイル作成
         fr = tmp_path / "fill_records_test.jsonl"
@@ -62,14 +64,14 @@ class TestRetainTrigger:
 
     def test_skip_when_trades_unhealthy(self, tmp_path: Path) -> None:
         """trades 欠損 → blocked."""
-        from ztb.ml.retrain_trigger import RetainTrigger, RetainTriggerConfig
+        from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
 
-        cfg = RetainTriggerConfig(
+        cfg = RetrainTriggerConfig(
             check_fill_records_mtime=False,
             check_trades_health=True,
             trades_lookback_days=1,
         )
-        trigger = RetainTrigger(results_dir=tmp_path, raw_dir=tmp_path, config=cfg)
+        trigger = RetrainTrigger(results_dir=tmp_path, raw_dir=tmp_path, config=cfg)
         # trades ディレクトリなし → unhealthy
         ok, reason = trigger.should_retrain()
         assert ok is False
@@ -77,14 +79,14 @@ class TestRetainTrigger:
 
     def test_backoff_increases_interval(self) -> None:
         """連続スキップでバックオフ倍増."""
-        from ztb.ml.retrain_trigger import RetainTrigger, RetainTriggerConfig
+        from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
 
-        cfg = RetainTriggerConfig(
+        cfg = RetrainTriggerConfig(
             base_interval_sec=100,
             backoff_multiplier=2.0,
             backoff_max_interval_sec=1000,
         )
-        trigger = RetainTrigger(results_dir=Path("/nonexistent"), config=cfg)
+        trigger = RetrainTrigger(results_dir=Path("/nonexistent"), config=cfg)
         assert trigger.get_effective_interval() == 100
 
         trigger.record_result("skipped")
@@ -101,10 +103,10 @@ class TestRetainTrigger:
 
     def test_backoff_resets_on_deploy(self) -> None:
         """deploy 成功でバックオフリセット."""
-        from ztb.ml.retrain_trigger import RetainTrigger, RetainTriggerConfig
+        from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
 
-        cfg = RetainTriggerConfig(base_interval_sec=100, backoff_multiplier=2.0)
-        trigger = RetainTrigger(results_dir=Path("/nonexistent"), config=cfg)
+        cfg = RetrainTriggerConfig(base_interval_sec=100, backoff_multiplier=2.0)
+        trigger = RetrainTrigger(results_dir=Path("/nonexistent"), config=cfg)
         trigger.record_result("skipped")
         trigger.record_result("skipped")
         assert trigger.consecutive_skips == 2
@@ -112,6 +114,77 @@ class TestRetainTrigger:
         trigger.record_result("deployed")
         assert trigger.consecutive_skips == 0
         assert trigger.get_effective_interval() == 100
+
+    def test_unhealthy_to_healthy_same_mtime_retrain_fires(self, tmp_path: Path) -> None:
+        """§9 #A 回帰: unhealthy→healthy 同一 mtime で retrain が走る.
+
+        #1 FIX 前は mtime が先に消費されたため、health 復帰後に
+        「fill_records unchanged」で false skip していた。
+        """
+        from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
+
+        # trades ディレクトリ = tmp_path/trades — 作成しない (unhealthy)
+        cfg = RetrainTriggerConfig(
+            check_fill_records_mtime=True,
+            check_trades_health=True,
+            trades_lookback_days=1,
+            trades_stale_threshold_hours=999.0,  # stale は無視
+        )
+        trigger = RetrainTrigger(
+            results_dir=tmp_path, raw_dir=tmp_path, config=cfg
+        )
+
+        # fill_records 作成
+        fr = tmp_path / "fill_records_test.jsonl"
+        fr.write_text('{"x":1}\n')
+
+        # 1st call: fill_records に変化あり、だが trades unhealthy → blocked
+        ok1, reason1 = trigger.should_retrain()
+        assert ok1 is False, "trades 不在なので blocked のはず"
+        assert "unhealthy" in reason1
+
+        # 2nd call: trades を用意 (同じ mtime のまま healthy に復帰)
+        # → #1 FIX により mtime は消費されていないので retrain が通る
+        trades_dir = tmp_path / "trades"
+        trades_dir.mkdir()
+        import gzip
+        from datetime import datetime, timedelta, timezone
+        yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y%m%d")
+        (trades_dir / f"{yesterday}.jsonl.gz").write_bytes(
+            gzip.compress(b'{"ts":1}\n')
+        )
+
+        ok2, reason2 = trigger.should_retrain()
+        assert ok2 is True, f"健全化後は retrain が走るべき: {reason2}"
+
+    def test_feature_freshness_integrated_in_trigger(self, tmp_path: Path) -> None:
+        """§9 #2: check_feature_freshness=True で stale → skip."""
+        from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
+
+        cfg = RetrainTriggerConfig(
+            check_fill_records_mtime=False,
+            check_trades_health=False,
+            check_feature_freshness=True,
+            feature_trades_stale_hours=0.001,  # 即時 stale
+            feature_ob_stale_hours=0.001,
+        )
+        trigger = RetrainTrigger(results_dir=tmp_path, raw_dir=tmp_path, config=cfg)
+        # trades/OB ディレクトリなし → stale
+        ok, reason = trigger.should_retrain()
+        assert ok is False
+        assert "stale" in reason.lower()
+
+    def test_backward_compat_alias(self) -> None:
+        """§9 #5: RetainTrigger/RetainTriggerConfig エイリアスが存在する."""
+        from ztb.ml.retrain_trigger import (
+            RetainTrigger,
+            RetainTriggerConfig,
+            RetrainTrigger,
+            RetrainTriggerConfig,
+        )
+
+        assert RetainTriggerConfig is RetrainTriggerConfig
+        assert RetainTrigger is RetrainTrigger
 
 
 # ===== P1-02: Feature Freshness =====

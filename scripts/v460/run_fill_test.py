@@ -241,6 +241,9 @@ class FillTestRunner:
         # 安全設計: atexit + signal で残存注文キャンセル + 未保存データ退避 + ロック解放
         atexit.register(self._cleanup_sync)
 
+        # 137# P1-08: narrow spread pause 連続カウンタ
+        self._narrow_spread_consecutive: int = 0
+
         # 044# A-7: loss_cap 更新カウンタ
         self._loss_cap_update_interval = config.loss_cap_update_interval
 
@@ -320,8 +323,20 @@ class FillTestRunner:
         )
 
     def _is_sell_killed(self) -> bool:
-        """133# P0-10 / 136# P1-03: sell 動的 kill 判定 — SellDynamicKillManager に委譲."""
-        killed, _telemetry = self._sell_kill_mgr.check_kill()
+        """133# P0-10 / 136# P1-03: sell 動的 kill 判定 — SellDynamicKillManager に委譲.
+
+        §9 #3: 現在レジームを check_kill() に渡し regime_thresholds を有効化。
+        """
+        regime: str | None = None
+        if self._regime_detector is not None:
+            regime = self._regime_detector.current_regime.value
+        killed, telemetry = self._sell_kill_mgr.check_kill(regime=regime)
+        if killed:
+            logger.info(
+                f"[136# §9] sell kill: regime={regime or 'default'}, "
+                f"threshold_used={telemetry.threshold_used}, "
+                f"cooldown_remaining={telemetry.cooldown_remaining}"
+            )
         return killed
 
     def _track_sell_pnl(self, record: "FillRecord") -> None:
@@ -697,6 +712,39 @@ class FillTestRunner:
             )
 
         # 113# R1: SkipGate 判定を _evaluate_skip_gate() に委譲
+        # 137# P1-08: spread 狭小時の「休む」判定
+        if (
+            self.config.narrow_spread_pause_enabled
+            and spread_at_order is not None
+            and order_price > 0
+        ):
+            mid_est = order_price  # 近似: maker price ≈ mid
+            spread_bps_val = spread_at_order / mid_est * self._BPS_FACTOR if mid_est > 0 else 0.0
+            if spread_bps_val < self.config.narrow_spread_pause_bps:
+                self._narrow_spread_consecutive += 1
+                if self._narrow_spread_consecutive <= self.config.narrow_spread_pause_max_consecutive:
+                    logger.info(
+                        f"[137# P1-08] Spread too narrow ({spread_bps_val:.1f}bps "
+                        f"< {self.config.narrow_spread_pause_bps}bps). "
+                        f"Pausing {self.config.narrow_spread_pause_sec}s "
+                        f"({self._narrow_spread_consecutive}/{self.config.narrow_spread_pause_max_consecutive})"
+                    )
+                    return FillRecord(
+                        cycle_id=cycle_id,
+                        timestamp=time.time(),
+                        side=side,
+                        order_price=order_price,
+                        order_quantity=self._current_lot,
+                        cancelled=True,
+                        cancel_reason="narrow_spread_pause",
+                        spread_at_order=spread_at_order,
+                        spread_offset_ratio=effective_offset_ratio,
+                        run_id=self._run_id,
+                        git_sha=self._git_sha,
+                    )
+            else:
+                self._narrow_spread_consecutive = 0
+
         sg = await self._evaluate_skip_gate(
             side, cycle_id, order_price, spread_at_order, effective_offset_ratio,
         )

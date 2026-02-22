@@ -1413,17 +1413,23 @@ def run_scheduler(cfg: dict[str, Any], config_path: Path | None = None) -> None:
     130# L2: サイクルごとに YAML を再読み込みし、YAML 変更を再起動なしで反映。
     136# P1-01: RetainTrigger で事前チェック + 適応的バックオフ。
     """
-    from ztb.ml.retrain_trigger import RetainTrigger, RetainTriggerConfig
+    from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
 
     interval = cfg.get("interval_sec", 3600)
 
-    # 136# P1-01: トリガー初期化
-    trigger_cfg = RetainTriggerConfig(
+    # 136# P1-01 + §9 #4: トリガー設定を YAML から完全外部化
+    trigger_cfg = RetrainTriggerConfig(
         base_interval_sec=interval,
         check_trades_health=cfg.get("trigger_check_trades_health", True),
         trades_lookback_days=cfg.get("trigger_trades_lookback_days", 3),
+        trades_stale_threshold_hours=cfg.get("trigger_trades_stale_threshold_hours", 36.0),
+        backoff_multiplier=cfg.get("trigger_backoff_multiplier", 2.0),
+        backoff_max_interval_sec=cfg.get("trigger_backoff_max_interval_sec", 14400),
+        check_feature_freshness=cfg.get("trigger_check_feature_freshness", False),
+        feature_trades_stale_hours=cfg.get("trigger_feature_trades_stale_hours", 6.0),
+        feature_ob_stale_hours=cfg.get("trigger_feature_ob_stale_hours", 6.0),
     )
-    trigger = RetainTrigger(
+    trigger = RetrainTrigger(
         results_dir=Path(cfg["results_dir"]),
         raw_dir=Path(cfg.get("raw_dir", "data/v460/raw")),
         config=trigger_cfg,

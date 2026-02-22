@@ -140,7 +140,10 @@ stale_order:
   drift_bps_buy: 4.0           # buy 側: 4bps で stale 判定 (buy AS 狙い撃ち回避)
   drift_bps_sell: 5.0          # sell 側: 5bps (据え置き)
   max_reprice_buy: 1           # buy 側: 1回限定 (追随コスト制限)
-  max_reprice_sell: 2          # sell 側: 2回 (fill rate 重視)
+  # 137# P1-06: sell 側 reprice 上限 2→1 に縮小。
+  # reprice=2 の平均は -3.44bps (134# §3 分析) で損失源。
+  # AB: 1→2 に戻す場合は YAML でこの値を 2 に変更。
+  max_reprice_sell: 1          # sell 側: 1回 (134# P1-06: 2→1 縮小)
 
 # ---- 安全設計 (000# §3.9) ----
 safety:
@@ -250,6 +253,17 @@ loss_control:
     window: 50                     # rolling ウィンドウ (sell fill 数)
     threshold_bps: -0.5            # この bps 以下で sell 停止
     resume_window: 20              # 停止後の再評価待機サイクル数
+  # 137# P1-08: spread 狭小時 pause (too_narrow 拡張)
+  narrow_spread_pause:
+    enabled: false                 # true で有効化 (AB テスト)
+    threshold_bps: 3.0             # spread < この bps で狭小判定
+    pause_sec: 5.0                 # 狭小時の待機秒数
+    max_consecutive: 3             # 連続スキップ上限 (超過で強行)
+  # 137# P1-11: PnL fee 控除統一 (実収益一致)
+  pnl_fee_deduction:
+    enabled: false                 # true で PnL に fee 控除を適用
+    maker_fee_bps: 0.0             # Coincheck maker fee (現在 0%)
+    taker_fee_bps: 0.0             # taker fee (参考用)
 
 # ---- 102# チューニングパラメータ (散在マジックナンバーの外部化) ----
 tuning:
@@ -356,3 +370,12 @@ retrain:
   # 130# D.1 Q3: trades I/O fallback の窓幅 (日数)
   # 特徴量 window は 60s/300s なので ±1日が適正。過大な窓は I/O 無駄。
   trades_fallback_recent_days: 1  # date_filter 空振り時のフォールバック窓 (±N日)
+  # 137# §9 #4: retrain trigger 設定 (YAML 外部化)
+  trigger_check_trades_health: true     # trades 健全性チェック
+  trigger_trades_lookback_days: 3       # trades lookback 日数
+  trigger_trades_stale_threshold_hours: 36.0   # trades stale 閾値 (h)
+  trigger_backoff_multiplier: 2.0       # 連続skip バックオフ倍率
+  trigger_backoff_max_interval_sec: 14400  # バックオフ最大 interval (4h)
+  trigger_check_feature_freshness: false  # feature 鮮度チェック (本番安定後に true)
+  trigger_feature_trades_stale_hours: 6.0  # feature trades stale (h)
+  trigger_feature_ob_stale_hours: 6.0     # feature OB stale (h)

@@ -184,3 +184,37 @@ v460 全体: 1104 passed, 0 failed, 91 warnings
 | `b96ac2ef3` | 135# §9 review fixes (watermark dedup, flush retry, etc.) |
 | `2d3a99ccd` | 135# §10 レビュー対応結果ドキュメント追記 |
 | `af30e12b1` | 136# P1-01/02/03 実装 + テスト 15 件 |
+
+---
+
+## §9 外部レビュー追記 (2026-02-22)
+
+### §9.1 重大度付きレビュー結果
+
+| # | 重大度 | 対象 | 問題 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | HIGH | `ztb/ml/retrain_trigger.py` | `should_retrain()` で `fill_records` mtime を先に確定更新しているため、**trades unhealthy で一度ブロックされた後**、同じ mtime のまま健全化しても `unchanged` 扱いで再学習が走らない。実データ更新を取りこぼす。 | `_last_fill_mtime` は「retrain 実行確定時（または `record_result("deployed")`）」に更新。少なくとも health チェック通過前更新を廃止。 |
+| 2 | MEDIUM | `ztb/data/trades_health.py`, `scripts/v460/ml/retrain_scheduler.py`, `ztb/ml/retrain_trigger.py` | P1-02 の `check_feature_freshness()` が実装されているが、scheduler/trigger から未使用。ドキュメント上の「feature staleness monitoring」が実運用ガードとして未接続。 | `RetainTrigger` に freshness チェックを統合し、`trades/OB` の stale 判定で retrain を skip する経路を追加。 |
+| 3 | MEDIUM | `scripts/v460/run_fill_test.py`, `ztb/risk/sell_dynamic_kill.py` | P1-03 で「レジーム別閾値」を謳っているが、`run_fill_test` 側で `regime` を `check_kill()` に渡しておらず、`regime_thresholds` が実質無効。 | `_is_sell_killed()` で現在レジームを取得して `check_kill(regime=...)` 呼び出し。skip ログも telemetry の `threshold_used` を出力。 |
+| 4 | LOW | `scripts/v460/ml/retrain_scheduler.py` | trigger の可変パラメータ (`backoff_multiplier`, `backoff_max_interval_sec`, `trades_stale_threshold_hours`) を YAML から受け取っていない。運用調整幅が狭い。 | `fill_test.yaml` の `retrain.trigger_*` キーを `RetainTriggerConfig` にマップして外部化。 |
+| 5 | LOW | `ztb/ml/retrain_trigger.py`, `docs/v460/136_ph2_impl_p1_retrain_kill.md` | クラス名が `RetainTrigger`（retain）になっており、文脈の `retrain` と命名ズレ。検索性・可読性低下。 | 互換エイリアスを残して `RetrainTrigger` へ改名、段階的移行。 |
+
+### §9.2 追加見落とし点 (再点検)
+
+| # | 重大度 | 対象 | 問題 | 推奨対応 |
+|---|---|---|---|---|
+| A | MEDIUM | `tests/unit/v460/test_136_p1_retrain_kill.py` | HIGH #1 の「unhealthy → healthy 復帰時に mtime 更新取りこぼし」回帰テストが未実装。 | `should_retrain()` の 2段階シナリオ（初回 unhealthy、次回 healthy 同 mtime）を追加。 |
+| B | LOW | `tests/unit/v460/test_136_p1_retrain_kill.py`, `scripts/v460/run_fill_test.py` | sell kill の regime 連携は manager 単体テストのみで、`run_fill_test` 統合経路の検証がない。 | `run_fill_test` 側のユニット/統合テストを追加し、`regime_thresholds` 有効化を確認。 |
+| C | LOW | `docs/v460/136_ph2_impl_p1_retrain_kill.md` | 結論の「1104 passed」は環境依存。全体 test は依存パッケージ差分で再現不能な場合がある。 | 「フルスイートは実装時環境で確認、現環境では対象テストのみ再確認」と注記すると再現性が上がる。 |
+
+### §9.3 このレビューでの再検証
+
+- `tests/unit/v460/test_136_p1_retrain_kill.py`: **15 passed**
+- 再現確認（手動）: `RetainTrigger` にて `trades unhealthy` 後、同一 mtime で healthy に戻しても `fill_records unchanged` で skip 継続を確認。
+
+### §9.4 優先修正順 (提案)
+
+1. P0: `RetainTrigger` の mtime 更新タイミング修正 + 回帰テスト追加  
+2. P1: `check_feature_freshness()` を scheduler ガードに接続  
+3. P1: sell dynamic kill の regime 閾値を `run_fill_test` まで配線  
+4. P2: trigger 設定の YAML 外部化と命名整備 (`RetrainTrigger`)

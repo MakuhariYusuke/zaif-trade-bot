@@ -186,6 +186,15 @@ class FillTestConfig:
     sell_dynamic_kill_window: int = 50       # rolling ウィンドウ (fill 数)
     sell_dynamic_kill_threshold_bps: float = -0.5  # この値以下で sell 停止
     sell_dynamic_kill_resume_window: int = 20     # 停止後、N サイクル後に再評価
+    # ---- 137# P1-08: spread 狭小時の「休む」判定 ----
+    narrow_spread_pause_enabled: bool = False     # True で spread 狭小時にサイクルスキップ
+    narrow_spread_pause_bps: float = 3.0          # spread < この bps で狭小とみなす
+    narrow_spread_pause_sec: float = 5.0          # 狭小検出時のスリープ秒数
+    narrow_spread_pause_max_consecutive: int = 3  # 連続スキップ上限 (超過で強行)
+    # ---- 137# P1-11: PnL fee 控除統一 ----
+    pnl_fee_deduction_enabled: bool = False   # True で PnL に fee 控除を適用
+    maker_fee_bps: float = 0.0                # maker 手数料 (bps, Coincheck maker=0)
+    taker_fee_bps: float = 0.0                # taker 手数料 (bps, 将来の taker 対応用)
     # ---- 102# YAML化: 散在マジックナンバーの設定外部化 ----
     max_offset_ratio: float = 0.30
     min_offset_ratio: float = 0.01
@@ -501,6 +510,27 @@ class FillTestConfig:
         }.items():
             if yk in sell_kill:
                 kwargs[ck] = sell_kill[yk]
+
+        # 137# P1-08: narrow spread pause
+        narrow_pause = 止血.get("narrow_spread_pause", {})
+        if narrow_pause.get("enabled") is not None:
+            kwargs["narrow_spread_pause_enabled"] = narrow_pause["enabled"]
+        for yk, ck in {
+            "threshold_bps": "narrow_spread_pause_bps",
+            "pause_sec": "narrow_spread_pause_sec",
+            "max_consecutive": "narrow_spread_pause_max_consecutive",
+        }.items():
+            if yk in narrow_pause:
+                kwargs[ck] = narrow_pause[yk]
+
+        # 137# P1-11: PnL fee 控除
+        fee_cfg = 止血.get("pnl_fee_deduction", {})
+        if fee_cfg.get("enabled") is not None:
+            kwargs["pnl_fee_deduction_enabled"] = fee_cfg["enabled"]
+        if "maker_fee_bps" in fee_cfg:
+            kwargs["maker_fee_bps"] = fee_cfg["maker_fee_bps"]
+        if "taker_fee_bps" in fee_cfg:
+            kwargs["taker_fee_bps"] = fee_cfg["taker_fee_bps"]
 
         # 102# YAML 化: 散在マジックナンバーの設定外部化
         tuning = yaml_cfg.get("tuning", {})

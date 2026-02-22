@@ -6,7 +6,7 @@ retrain_scheduler の固定 interval loop を補完し、以下の事前チェ�
   3. 連続スキップ時の適応的バックオフ
 
 Usage:
-    trigger = RetainTrigger(results_dir, raw_dir)
+    trigger = RetrainTrigger(results_dir, raw_dir)
     if trigger.should_retrain():
         retrain_model(cfg)
         trigger.record_result("deployed")
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class RetainTriggerConfig:
+class RetrainTriggerConfig:
     """トリガー設定."""
 
     #: fill_records の更新がない場合にスキップする
@@ -42,10 +42,16 @@ class RetainTriggerConfig:
     backoff_max_interval_sec: int = 14400  # 4h
     #: 基本 interval (秒) — バックオフの基底
     base_interval_sec: int = 3600
+    #: §9 #2: feature 鮮度チェックを有効化
+    check_feature_freshness: bool = False
+    #: feature trades stale 閾値 (時間)
+    feature_trades_stale_hours: float = 6.0
+    #: feature OB stale 閾値 (時間)
+    feature_ob_stale_hours: float = 6.0
 
 
 @dataclass
-class RetainTrigger:
+class RetrainTrigger:
     """データ駆動の retrain トリガー.
 
     retrain_scheduler の while ループ内で should_retrain() を呼び出し、
@@ -54,7 +60,7 @@ class RetainTrigger:
 
     results_dir: Path
     raw_dir: Path | None = None
-    config: RetainTriggerConfig = field(default_factory=RetainTriggerConfig)
+    config: RetrainTriggerConfig = field(default_factory=RetrainTriggerConfig)
 
     # 内部状態
     _last_fill_mtime: float = 0.0
@@ -98,6 +104,9 @@ class RetainTrigger:
         self._last_check_time = time.time()
 
         # Check 1: fill_records 更新チェック
+        # §9 #1 FIX: mtime は全チェック通過後に更新。
+        # trades unhealthy で block された場合、mtime を消費しない。
+        _pending_mtime: float | None = None
         if self.config.check_fill_records_mtime:
             current_mtime = self._get_fill_records_latest_mtime()
             if current_mtime <= self._last_fill_mtime and self._last_fill_mtime > 0.0:
@@ -108,8 +117,8 @@ class RetainTrigger:
                 logger.info(f"[136# P1-01] Retrain skip: {reason}")
                 self._consecutive_skips += 1
                 return False, reason
-            # mtime を先に更新（retrain 結果に依らず次回比較のため）
-            self._last_fill_mtime = current_mtime
+            # mtime 更新を保留 (全チェック通過まで確定しない)
+            _pending_mtime = current_mtime
 
         # Check 2: trades 健全性チェック
         if self.config.check_trades_health:
@@ -119,6 +128,25 @@ class RetainTrigger:
                 logger.warning(f"[136# P1-01] Retrain blocked: {reason}")
                 self._consecutive_skips += 1
                 return False, reason
+
+        # Check 3: feature 鮮度チェック (§9 #2: freshness → trigger 接続)
+        if self.config.check_feature_freshness:
+            from ztb.data.trades_health import check_feature_freshness
+
+            freshness = check_feature_freshness(
+                raw_dir=self.raw_dir,
+                trades_stale_hours=self.config.feature_trades_stale_hours,
+                ob_stale_hours=self.config.feature_ob_stale_hours,
+            )
+            if not freshness.fresh:
+                reason = f"feature stale: {freshness.message}"
+                logger.warning(f"[136# P1-01] Retrain blocked: {reason}")
+                self._consecutive_skips += 1
+                return False, reason
+
+        # 全チェック通過: mtime を確定更新
+        if _pending_mtime is not None:
+            self._last_fill_mtime = _pending_mtime
 
         return True, "ok"
 
@@ -146,3 +174,8 @@ class RetainTrigger:
     def consecutive_skips(self) -> int:
         """連続スキップ回数."""
         return self._consecutive_skips
+
+
+# §9 #5: 後方互換エイリアス (段階的移行)
+RetainTriggerConfig = RetrainTriggerConfig
+RetainTrigger = RetrainTrigger

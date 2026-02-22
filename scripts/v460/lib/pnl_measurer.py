@@ -152,4 +152,16 @@ class PnlMeasurer:
             except Exception:
                 pass
 
+        # 137# P1-11: fee 控除統一 — PnL bps から maker fee を一律控除
+        if cfg.pnl_fee_deduction_enabled and cfg.maker_fee_bps > 0:
+            fee = cfg.maker_fee_bps
+            if m.post_fill_pnl is not None:
+                m.post_fill_pnl -= fee
+            if m.post_fill_60s_pnl is not None:
+                m.post_fill_60s_pnl -= fee
+            if m.post_fill_120s_pnl is not None:
+                m.post_fill_120s_pnl -= fee
+            if m.pnl_at_exit_bps is not None:
+                m.pnl_at_exit_bps -= fee
+
         return m
