@@ -174,6 +174,15 @@ class TestStatePersistence:
             assert loaded.regime_confirmed == "unknown"  # デフォルト
             assert loaded.regime_prices is None
 
+    def test_load_non_object_json_returns_none(self) -> None:
+        """状態JSONがobject以外の場合は安全に None を返す."""
+        from scripts.v460.lib.resilience import FillTestStatePersistence
+
+        with tempfile.TemporaryDirectory() as tmp:
+            sp = FillTestStatePersistence(Path(tmp))
+            (Path(tmp) / "fill_test_state.json").write_text("[1,2,3]", encoding="utf-8")
+            assert sp.load() is None
+
 
 class TestRegimeDetectorPersistence:
     """121# A4: FillTestRegimeDetector の get_state/restore_state テスト."""

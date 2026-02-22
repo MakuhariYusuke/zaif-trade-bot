@@ -1329,3 +1329,40 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
     - 結果: `5 passed`
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460 --maxfail=20`
     - 結果: `1463 passed`
+
+## Phase 36 追補: resilience の Any削減 + JSON I/O 共通化 (2026-02-22)
+
+### 1) Any削減と型安全化
+
+- `scripts/v460/lib/resilience.py`
+  - `maybe_check()` の戻り値を `HealthStatus` (`TypedDict`) に明確化し、
+    `dict[str, Any]` を排除。
+  - `HealthLevel` (`Literal`) を導入し、`level` の値域を固定。
+  - `psutil` 依存を `_PsutilLike` / `_ProcessLike` Protocol で整理し、
+    定期チェックごとの再 import を除去。
+  - `Optional[...]` を `| None` へ統一し、型記述を簡潔化。
+
+### 2) 重複削減（既存ヘルパ活用）
+
+- `FillTestStatePersistence.save/load` を手書き JSON 処理から
+  `ztb.io.json_io.write_json` / `read_json_object` に統一。
+  - 既存の atomic write ヘルパへ寄せることで I/O 実装の重複を削減。
+  - dataclass フィールドの後方互換フィルタは維持。
+
+### 3) 不具合可能性の排除
+
+- 状態ファイルが JSON object 以外（例: `[]`）だった場合に、
+  例外で落とさず `None` を返して継続できることをテストで保証。
+
+### 4) 追加テスト
+
+- `tests/unit/v460/test_113_resilience.py`
+  - `test_load_non_object_json_returns_none` を追加。
+
+### 5) 検証
+
+- `py_compile`:
+  - `scripts/v460/lib/resilience.py`
+- 回帰確認:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_113_resilience.py`
+    - 結果: `28 passed`

@@ -8,12 +8,13 @@ fill_test 耐障害性モジュール — 113# CircuitBreaker / HealthMonitor / 
 from __future__ import annotations
 
 import gc
-import json
 import logging
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 from pathlib import Path
-from typing import Any, Optional
+from typing import Literal, Protocol, TypedDict
+
+from ztb.io.json_io import read_json_object, write_json
 
 logger = logging.getLogger(__name__)
 
@@ -76,47 +77,81 @@ class HealthThresholds:
     check_interval_sec: float = 300.0  # ヘルスチェック間隔 (秒)
 
 
+HealthLevel = Literal["ok", "warning", "critical", "unknown"]
+
+
+class HealthStatus(TypedDict, total=False):
+    uptime_sec: float
+    cycle_count: int
+    rss_mb: float
+    cpu_percent: float
+    threads: int
+    disk_free_gb: float
+    level: HealthLevel
+
+
+class _MemoryInfoLike(Protocol):
+    rss: int
+
+
+class _ProcessLike(Protocol):
+    def memory_info(self) -> _MemoryInfoLike: ...
+    def cpu_percent(self) -> float: ...
+    def num_threads(self) -> int: ...
+
+
+class _DiskUsageLike(Protocol):
+    free: int
+
+
+class _PsutilLike(Protocol):
+    def Process(self) -> _ProcessLike: ...
+    def disk_usage(self, path: str) -> _DiskUsageLike: ...
+
+
 class FillTestHealthMonitor:
     """fill_test 向け軽量ヘルスモニター.
 
     psutil が利用できない環境では gracefully degrade.
     """
 
-    def __init__(self, thresholds: Optional[HealthThresholds] = None) -> None:
+    def __init__(self, thresholds: HealthThresholds | None = None) -> None:
         self._thresholds = thresholds or HealthThresholds()
         self._gc_counter = 0
         self._last_check_time = 0.0
         self._start_time = time.time()
         self._psutil_available = False
+        self._psutil: _PsutilLike | None = None
+        self._process: _ProcessLike | None = None
         try:
-            import psutil  # type: ignore[import-untyped]
+            import psutil
+
+            self._psutil = psutil
+            self._process = self._psutil.Process()
             self._psutil_available = True
-            self._process = psutil.Process()
         except ImportError:
             logger.info("[health] psutil not available — RSS monitoring disabled")
 
-    def maybe_check(self, cycle_count: int) -> Optional[dict[str, Any]]:
+    def maybe_check(self, cycle_count: int) -> HealthStatus | None:
         """定期チェック. 閾値超過時は警告ログ + ステータス辞書を返す."""
         now = time.time()
         if now - self._last_check_time < self._thresholds.check_interval_sec:
             return None
         self._last_check_time = now
 
-        status: dict[str, Any] = {
+        status: HealthStatus = {
             "uptime_sec": now - self._start_time,
             "cycle_count": cycle_count,
         }
 
-        if self._psutil_available:
-            import psutil  # type: ignore[import-untyped]
-
+        if self._psutil_available and self._process is not None and self._psutil is not None:
             rss_mb = self._process.memory_info().rss / (1024 * 1024)
             status["rss_mb"] = round(rss_mb, 1)
             status["cpu_percent"] = self._process.cpu_percent()
             status["threads"] = self._process.num_threads()
 
             try:
-                disk = psutil.disk_usage(".")
+                disk = self._psutil.disk_usage(".")
                 status["disk_free_gb"] = round(disk.free / (1024**3), 2)
             except Exception:
                 pass
@@ -137,7 +172,7 @@ class FillTestHealthMonitor:
                 status["level"] = "ok"
 
             disk_free = status.get("disk_free_gb")
-            if disk_free is not None and disk_free < self._thresholds.disk_free_warn_gb:
+            if isinstance(disk_free, (int, float)) and disk_free < self._thresholds.disk_free_warn_gb:
                 logger.warning(
                     f"[health] WARNING: disk_free={disk_free:.2f}GB < "
                     f"{self._thresholds.disk_free_warn_gb:.1f}GB"
@@ -177,13 +212,13 @@ class FillTestState:
     soft_loss_cap_triggered: bool = False
     # 適応パラメータ
     base_offset_ratio: float = 0.0010
-    base_offset_ratio_buy: Optional[float] = None
-    base_offset_ratio_sell: Optional[float] = None
+    base_offset_ratio_buy: float | None = None
+    base_offset_ratio_sell: float | None = None
     # 121# A4: regime state persistence — 再起動時 warm-up 不要化
     regime_confirmed: str = "unknown"  # FillTestRegime.value
     regime_stability: int = 0
-    regime_prices: Optional[list[list[float]]] = None  # [[ts, price], ...]
-    regime_raw_history: Optional[list[str]] = None  # [regime_value, ...]
+    regime_prices: list[list[float]] | None = None  # [[ts, price], ...]
+    regime_raw_history: list[str] | None = None  # [regime_value, ...]
     # タイムスタンプ
     saved_at: float = 0.0
     saved_at_iso: str = ""
@@ -206,23 +241,19 @@ class FillTestStatePersistence:
         state.saved_at = time.time()
         state.saved_at_iso = time.strftime("%Y-%m-%dT%H:%M:%S%z")
         try:
-            data = asdict(state)
-            tmp = self._state_file.with_suffix(".tmp")
-            tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-            tmp.replace(self._state_file)
+            write_json(self._state_file, asdict(state))
             logger.debug(f"[state] Saved: cycle={state.cycle_count}, pnl={state.cumulative_pnl_jpy:.1f}")
         except Exception as e:
             logger.warning(f"[state] Failed to save: {e}")
 
-    def load(self) -> Optional[FillTestState]:
+    def load(self) -> FillTestState | None:
         """状態を JSON から復元. ファイルなし/パースエラーは None."""
         if not self._state_file.exists():
             return None
         try:
-            data = json.loads(self._state_file.read_text(encoding="utf-8"))
+            data = read_json_object(self._state_file)
             # dataclass フィールドのみ取得 (後方互換)
-            import dataclasses
-            valid_fields = {f.name for f in dataclasses.fields(FillTestState)}
+            valid_fields = {f.name for f in fields(FillTestState)}
             filtered = {k: v for k, v in data.items() if k in valid_fields}
             return FillTestState(**filtered)
         except Exception as e:
