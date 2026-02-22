@@ -147,6 +147,11 @@ class FillTestConfig:
     skip_gate_adaptive_step: float = 0.05  # 100# 0.02→0.05
     skip_gate_adaptive_floor: float = 0.35
     skip_gate_adaptive_ceiling: float = 0.80
+    # 138# P1-03: score calibration (isotonic regression)
+    skip_gate_score_calibration: bool = False      # True で score 校正を有効化
+    skip_gate_calibrator_path: str | None = None   # calibrator pkl パス (None=インメモリ)
+    skip_gate_calibrator_min_samples: int = 30     # 校正に必要な最小サンプル数
+    skip_gate_calibrator_refit_interval: int = 100 # 自動 refit 間隔 (新規レコード数)
     # 124# Rule: unknown regime での sell スキップ
     skip_sell_unknown_regime: bool = False
     # 130# unknown regime での buy offset boost (AS 回避)
@@ -191,6 +196,11 @@ class FillTestConfig:
     narrow_spread_pause_bps: float = 3.0          # spread < この bps で狭小とみなす
     narrow_spread_pause_sec: float = 5.0          # 狭小検出時のスリープ秒数
     narrow_spread_pause_max_consecutive: int = 3  # 連続スキップ上限 (超過で強行)
+    # ---- 138# P1-10: preflight 失敗連続→run pause (dead-cycle 防止) ----
+    preflight_pause_enabled: bool = True       # True で SAFE_STOP 前に pause を挟む
+    preflight_pause_threshold: int = 5         # この回数で pause 発動 (< max_preflight_skip)
+    preflight_pause_sec: float = 300.0         # pause 時のスリープ秒数
+    preflight_max_pauses: int = 3              # run 内の最大 pause 回数 (超過で SAFE_STOP)
     # ---- 137# P1-11: PnL fee 控除統一 ----
     pnl_fee_deduction_enabled: bool = False   # True で PnL に fee 控除を適用
     maker_fee_bps: float = 0.0                # maker 手数料 (bps, Coincheck maker=0)
@@ -439,6 +449,11 @@ class FillTestConfig:
             "skip_sell_unknown_regime": "skip_sell_unknown_regime",
             # 130# unknown buy offset boost
             "unknown_buy_offset_boost": "unknown_buy_offset_boost",
+            # 138# P1-03: score calibration
+            "score_calibration": "skip_gate_score_calibration",
+            "calibrator_path": "skip_gate_calibrator_path",
+            "calibrator_min_samples": "skip_gate_calibrator_min_samples",
+            "calibrator_refit_interval": "skip_gate_calibrator_refit_interval",
         }
         for yaml_key, config_key in sg_map.items():
             if yaml_key in sg and sg[yaml_key] is not None:
@@ -531,6 +546,18 @@ class FillTestConfig:
             kwargs["maker_fee_bps"] = fee_cfg["maker_fee_bps"]
         if "taker_fee_bps" in fee_cfg:
             kwargs["taker_fee_bps"] = fee_cfg["taker_fee_bps"]
+
+        # 138# P1-10: preflight pause (dead-cycle 防止)
+        pf_pause = 止血.get("preflight_pause", {})
+        if pf_pause.get("enabled") is not None:
+            kwargs["preflight_pause_enabled"] = pf_pause["enabled"]
+        for yk, ck in {
+            "threshold": "preflight_pause_threshold",
+            "pause_sec": "preflight_pause_sec",
+            "max_pauses": "preflight_max_pauses",
+        }.items():
+            if yk in pf_pause:
+                kwargs[ck] = pf_pause[yk]
 
         # 102# YAML 化: 散在マジックナンバーの設定外部化
         tuning = yaml_cfg.get("tuning", {})

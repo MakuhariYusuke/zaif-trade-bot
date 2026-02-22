@@ -244,6 +244,9 @@ class FillTestRunner:
         # 137# P1-08: narrow spread pause 連続カウンタ
         self._narrow_spread_consecutive: int = 0
 
+        # 138# P1-10: preflight pause カウンタ (run 内の累積 pause 回数)
+        self._preflight_pause_count: int = 0
+
         # 044# A-7: loss_cap 更新カウンタ
         self._loss_cap_update_interval = config.loss_cap_update_interval
 
@@ -1279,6 +1282,24 @@ class FillTestRunner:
                         # カウンタリセットして縮小ロットで再試行
                         self._preflight_skip_count = 0
                         await asyncio.sleep(self.config.cycle_interval_sec)
+                        continue
+
+                    # 138# P1-10: preflight pause — SAFE_STOP 前に一時停止で回復を待つ
+                    if (
+                        self.config.preflight_pause_enabled
+                        and self._preflight_skip_count >= self.config.preflight_pause_threshold
+                        and self._preflight_pause_count < self.config.preflight_max_pauses
+                    ):
+                        self._preflight_pause_count += 1
+                        pause_sec = self.config.preflight_pause_sec
+                        logger.warning(
+                            f"[preflight_pause] 連続 preflight 失敗 {self._preflight_skip_count} 回 "
+                            f"(閾値 {self.config.preflight_pause_threshold}). "
+                            f"pause #{self._preflight_pause_count}/{self.config.preflight_max_pauses} "
+                            f"→ {pause_sec:.0f}s 待機後に再開"
+                        )
+                        self._preflight_skip_count = 0
+                        await asyncio.sleep(pause_sec)
                         continue
 
                     # 044# F8: 連続 preflight 失敗上限 → SAFE_STOP

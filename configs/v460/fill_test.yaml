@@ -219,6 +219,11 @@ skip_gate:
   adaptive_step: 0.05          # 100# P0-2: 0.02→0.05 (収束ラグ低減)
   adaptive_floor: 0.35         # 閾値下限 (過剰 skip 防止)
   adaptive_ceiling: 0.80       # 閾値上限
+  # 138# P1-03: score calibration (isotonic regression)
+  score_calibration: false     # true で score 校正有効化 (AB テスト)
+  calibrator_path: null        # calibrator pkl パス (null=インメモリ)
+  calibrator_min_samples: 30   # 校正に必要な最小サンプル数
+  calibrator_refit_interval: 100  # 自動 refit 間隔 (新レコード数)
   # 124# Rule: unknown regime での sell スキップ (WF: S20%_30=+0.198, S20%_120=+0.140)
   skip_sell_unknown_regime: true
   # 130# unknown regime buy offset boost (128# 分析: unknown buy -1.384bps)
@@ -264,6 +269,12 @@ loss_control:
     enabled: false                 # true で PnL に fee 控除を適用
     maker_fee_bps: 0.0             # Coincheck maker fee (現在 0%)
     taker_fee_bps: 0.0             # taker fee (参考用)
+  # 138# P1-10: preflight pause (dead-cycle 防止)
+  preflight_pause:
+    enabled: true                  # SAFE_STOP 前の pause 機構
+    threshold: 5                   # 連続 preflight 失敗のpause発動閾値
+    pause_sec: 300.0               # pause 待機秒数 (5分)
+    max_pauses: 3                  # run 内最大 pause 回数 (超過でSAFE_STOP)
 
 # ---- 102# チューニングパラメータ (散在マジックナンバーの外部化) ----
 tuning:

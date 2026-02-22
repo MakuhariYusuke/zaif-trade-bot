@@ -156,6 +156,7 @@ class SkipGate:
         config: SkipGateConfig | None = None,
         metadata: dict[str, Any] | None = None,
         pipeline: Pipeline | None = None,
+        score_calibrator: Any | None = None,
     ) -> None:
         self.model = model
         self.scaler = scaler
@@ -169,6 +170,8 @@ class SkipGate:
         # 088# 動的較正用: side 別 P(AS) 履歴
         self._pas_history_buy: list[float] = []
         self._pas_history_sell: list[float] = []
+        # 138# P1-03: score calibrator (isotonic regression)
+        self._score_calibrator = score_calibrator
 
     def evaluate(
         self,
@@ -259,6 +262,11 @@ class SkipGate:
             else:
                 x_scaled = self.scaler.transform(x_df)
                 pred_pnl = float(self.model.predict(x_scaled)[0])
+            # 138# P1-03: score calibration — isotonic regression で校正
+            if self._score_calibrator is not None:
+                cal = self._score_calibrator
+                if hasattr(cal, "is_fitted") and cal.is_fitted:
+                    pred_pnl = cal.calibrate(pred_pnl)
             # 125# 動的較正: mode=pnl でも target_skip_rate にあわせて閾値を調整
             if self.config.adaptive_threshold and side is not None:
                 threshold_used = self._calibrate_pnl_threshold(side, pred_pnl)

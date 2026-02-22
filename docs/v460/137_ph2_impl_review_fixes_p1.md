@@ -222,4 +222,37 @@ v460 unit tests: **1118 passed** (1104→1118, +14)
 
 ## §9 外部レビュー追記欄
 
-(レビュー結果はここに追記)
+### §9.1 重大度付きレビュー結果 (2026-02-22)
+
+| # | 重大度 | 対象 | 問題 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | HIGH | `scripts/v460/ml/retrain_scheduler.py` | `new_samples` 負値バグは「0に clamp」されただけで、`latest_run_only=true` + 旧モデル `n_samples` が大きいケースでは `new_samples=0` のまま長期固定化し、実質的に retrain が再開しない。132/133 の本質課題（run 混線）を未解決。 | `prev_n_samples` を「同一 run_id 基準」に変更するか、`latest_run_only` 時は `prev_n_samples` を無効化して別閾値で判定。 |
+| 2 | MEDIUM | `scripts/v460/run_fill_test.py`, `scripts/v460/lib/fill_config.py`, `ztb/risk/sell_dynamic_kill.py` | 136# §9 #3 の「regime 閾値配線」は部分対応。`check_kill(regime=...)` は実装されたが、`regime_thresholds` を YAML/Config から注入する経路がなく、実運用では常に空 dict。 | `FillTestConfig` に `sell_dynamic_kill_regime_thresholds` を追加し、`loss_control.sell_dynamic_kill.regime_thresholds` をパースして `SellKillConfig` に渡す。 |
+| 3 | MEDIUM | `scripts/v460/run_fill_test.py` | P1-08 の `narrow_spread_pause_sec` がログ出力のみで実際の待機に使われていない。仕様文「Pausing Ns」と実挙動が乖離。 | `narrow_spread_pause` 分岐で `await asyncio.sleep(narrow_spread_pause_sec)` を実行するか、仕様を「次サイクルまで待機」に明記して設定項目を削除。 |
+| 4 | MEDIUM | `scripts/v460/lib/pnl_measurer.py`, `scripts/v460/lib/fill_config.py` | P1-11 は「fee/slippage 控除統一」を掲げる一方、実装は maker fee 一律控除のみ。`taker_fee_bps` は未使用、slippage 控除は未実装。 | 仕様を fee-only に縮小するか、`pnl_at_exit_bps` 等に taker/slippage を反映する計算式を追加。 |
+| 5 | MEDIUM | `scripts/v460/ml/feature_enricher.py` | 132# F3 で問題化した `trades 全量フォールバック` が依然残存。date_filter/±N 日で空の場合に `date_filter=None` で全読み込みし、時間整合と I/O の双方で再悪化リスク。 | 全量フォールバックを `retrain` 設定で明示 opt-in にし、デフォルトは `skip retrain`。同時に欠損日を error として記録。 |
+| 6 | LOW | `tests/unit/v460/test_137_p1_features.py` | P1-08/P1-11 のテストは主に config/パースと単体計算で、`run_fill_test` 統合挙動（pause 実動作、kill+regime 閾値）が未検証。 | 統合テストを 2 件追加（狭スプレッド時の待機時間、regime 閾値で kill 判定分岐）。 |
+| 7 | LOW | `configs/v460/fill_test.yaml` | feature freshness gate は実装済みだがデフォルト `false`。データ供給障害の早期検知が運用で効かない可能性。 | 収集系が安定したら `trigger_check_feature_freshness: true` を段階導入し、しきい値を保守設定で開始。 |
+
+### §9.2 132/133 計画起点の追加見落とし
+
+| # | 重大度 | 起点 | 見落とし内容 | 推奨対応 |
+|---|---|---|---|---|
+| A | HIGH | 133# P0-01 | 「負値回避=修正完了」と判定しているが、run_id 非整合の根因は未修正。 | run_id 別 `prev_n_samples` 追跡を実装し、同一 run 比較へ変更。 |
+| B | MEDIUM | 132# F3 / 133# C4 | trades 欠損時の全量 fallback を温存したまま。データ基盤修復後でも再発時に silently 劣化。 | fallback 最終段を禁止し、欠損を `status=skipped_trigger_data_missing` として監査ログ化。 |
+| C | MEDIUM | 134# P1-08 | pause パラメータを追加したが wait 実装が無いため、AB テスト結果の解釈が不正確。 | pause 実装または設定削除のどちらかに統一。 |
+| D | MEDIUM | 134# P1-11 | 「fee/slippage」要件に対して slippage 未実装。 | spread/queue_wait を利用した簡易 slippage 控除を first step として導入。 |
+
+### §9.3 再検証ログ (このレビュー時点)
+
+- `tests/unit/v460/test_136_p1_retrain_kill.py`: **18 passed**
+- `tests/unit/v460/test_137_p1_features.py`: **11 passed**
+- `tests/unit/v460` 全体: **1118 passed, 91 warnings**（`137` 記載値と一致）
+
+### §9.4 優先修正順 (提案)
+
+1. P0: `new_samples` を run_id 整合で再設計（HIGH #1 / 132-133 A）  
+2. P1: `regime_thresholds` を YAML→Config→Manager に完全配線（MEDIUM #2）  
+3. P1: `narrow_spread_pause_sec` の実挙動を仕様一致化（MEDIUM #3）  
+4. P1: fee/slippage 仕様を実装か文言修正で確定（MEDIUM #4）  
+5. P1: trades 全量フォールバックを安全側（skip）へ変更（MEDIUM #5）
