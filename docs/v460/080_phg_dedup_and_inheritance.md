@@ -697,3 +697,8 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - `git gc --prune=now` 実行で pack サイズを圧縮:
   - `size-pack: 241.47 MiB -> 47.18 MiB`
 - `git fsck --full` 実行（dangling object はあるが破損なし）。
+- 差分汚染の再発源 3 ファイルを tracking から除外:
+  - `test_results.json`
+  - `assets/images/latest_training_rewards.csv`
+  - `data/performance/performance_history.json`
+  - `.gitignore` へ明示し、`git rm --cached` で index からのみ削除（ローカル実体は保持）。

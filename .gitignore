@@ -101,6 +101,11 @@ best_model/
 temp/
 temp_model/
 
+# Frequently regenerated local outputs (keep local, do not track)
+test_results.json
+assets/images/latest_training_rewards.csv
+data/performance/performance_history.json
+
 # Misc
 typescript_legacy.zip
 .positions/
