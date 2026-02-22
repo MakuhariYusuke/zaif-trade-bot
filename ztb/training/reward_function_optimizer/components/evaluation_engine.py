@@ -5,12 +5,18 @@ This module separates evaluation-related logic from the main optimizer class,
 including performance measurement, cross-validation, and result analysis.
 """
 
-from typing import Any, Callable, Dict, List, Optional
+from collections import deque
+from typing import Callable
 
 from ztb.metrics.metrics import coefficient_of_variation
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.safety import ensure_dict, safe_to_float
 
 logger = get_logger(__name__)
+
+ConfigMap = dict[str, object]
+ScoreMap = dict[str, float]
+EvaluationRecord = dict[str, object]
 
 
 class EvaluationEngine:
@@ -24,17 +30,17 @@ class EvaluationEngine:
     - Statistical significance testing
     """
 
-    def __init__(self):
+    def __init__(self, history_limit: int = 2000):
         """Initialize EvaluationEngine."""
         self.logger = get_logger(__name__)
-        self.evaluation_history = []
+        self.evaluation_history: deque[EvaluationRecord] = deque(maxlen=history_limit)
 
     def evaluate_configuration(
         self,
-        config: Dict[str, Any],
-        evaluation_function: Callable,
-        market_conditions: Optional[List[Dict[str, Any]]] = None,
-    ) -> Dict[str, Any]:
+        config: ConfigMap,
+        evaluation_function: Callable[[ConfigMap], ScoreMap],
+        market_conditions: list[ConfigMap] | None = None,
+    ) -> ConfigMap:
         """
         Evaluate a reward function configuration.
 
@@ -53,7 +59,7 @@ class EvaluationEngine:
             if market_conditions is None:
                 market_conditions = [{}]  # Default single evaluation
 
-            all_results = []
+            all_results: list[ConfigMap] = []
 
             for i, condition in enumerate(market_conditions):
                 self.logger.debug(
@@ -64,7 +70,8 @@ class EvaluationEngine:
                 eval_config = {**config, **condition}
 
                 # Run evaluation
-                result = evaluation_function(eval_config)
+                raw_result = evaluation_function(eval_config)
+                result = ensure_dict(raw_result)
                 result["condition"] = condition
                 result["condition_index"] = i
 
@@ -73,7 +80,7 @@ class EvaluationEngine:
             # Aggregate results
             aggregated_results = self._aggregate_results(all_results)
 
-            evaluation_record = {
+            evaluation_record: EvaluationRecord = {
                 "config": config,
                 "results": aggregated_results,
                 "individual_results": all_results,
@@ -94,11 +101,11 @@ class EvaluationEngine:
 
     def cross_validate(
         self,
-        config: Dict[str, Any],
-        evaluation_function: Callable,
+        config: ConfigMap,
+        evaluation_function: Callable[[ConfigMap], ScoreMap],
         n_folds: int = 5,
-        validation_function: Optional[Callable] = None,
-    ) -> Dict[str, Any]:
+        validation_function: Callable[[ConfigMap], bool] | None = None,
+    ) -> ConfigMap:
         """
         Perform cross-validation on configuration.
 
@@ -115,13 +122,13 @@ class EvaluationEngine:
             RuntimeError: If cross-validation fails
         """
         try:
-            fold_results = []
+            fold_results: list[ConfigMap] = []
 
             for fold in range(n_folds):
                 self.logger.debug(f"Cross-validation fold {fold + 1}/{n_folds}")
 
                 # Run evaluation for this fold
-                result = evaluation_function(config)
+                result = ensure_dict(evaluation_function(config))
                 result["fold"] = fold
 
                 fold_results.append(result)
@@ -129,7 +136,7 @@ class EvaluationEngine:
             # Calculate cross-validation statistics
             cv_results = self._calculate_cv_statistics(fold_results)
 
-            cv_record = {
+            cv_record: EvaluationRecord = {
                 "config": config,
                 "cv_results": cv_results,
                 "fold_results": fold_results,
@@ -150,10 +157,10 @@ class EvaluationEngine:
 
     def compare_configurations(
         self,
-        configs: List[Dict[str, Any]],
-        evaluation_function: Callable,
+        configs: list[ConfigMap],
+        evaluation_function: Callable[[ConfigMap], ScoreMap],
         statistical_test: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> ConfigMap:
         """
         Compare multiple configurations.
 
@@ -169,7 +176,7 @@ class EvaluationEngine:
             RuntimeError: If comparison fails
         """
         try:
-            comparison_results = []
+            comparison_results: list[ConfigMap] = []
 
             for i, config in enumerate(configs):
                 self.logger.debug(f"Evaluating configuration {i + 1}/{len(configs)}")
@@ -181,7 +188,10 @@ class EvaluationEngine:
                 comparison_results.append(result)
 
             # Sort by performance
-            comparison_results.sort(key=lambda x: x.get("mean_score", 0), reverse=True)
+            comparison_results.sort(
+                key=lambda x: safe_to_float(x.get("mean_score", 0.0), 0.0),
+                reverse=True,
+            )
 
             # Perform statistical testing if requested
             if statistical_test and len(comparison_results) > 1:
@@ -208,7 +218,7 @@ class EvaluationEngine:
             self.logger.error(f"Configuration comparison failed: {e}")
             raise RuntimeError(f"Configuration comparison failed: {e}") from e
 
-    def _aggregate_results(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _aggregate_results(self, results: list[ConfigMap]) -> ConfigMap:
         """Aggregate multiple evaluation results."""
         try:
             if not results:
@@ -217,7 +227,7 @@ class EvaluationEngine:
             import numpy as np
 
             # Extract scores
-            scores = [r.get("score", 0) for r in results if "score" in r]
+            scores = [self._extract_primary_score(r) for r in results]
 
             if not scores:
                 return {"error": "No scores found in results"}
@@ -230,12 +240,15 @@ class EvaluationEngine:
                 "median_score": float(np.median(scores)),
                 "n_results": len(results),
                 "n_scores": len(scores),
+                "scores": [float(s) for s in scores],
             }
 
             # Add additional metrics if available
             for metric_name in ["profit", "sharpe_ratio", "win_rate", "max_drawdown"]:
                 metric_values = [
-                    r.get(metric_name) for r in results if metric_name in r
+                    safe_to_float(r.get(metric_name, 0.0), 0.0)
+                    for r in results
+                    if metric_name in r
                 ]
                 if metric_values:
                     aggregated[f"mean_{metric_name}"] = float(np.mean(metric_values))
@@ -248,8 +261,8 @@ class EvaluationEngine:
             return {"error": f"Aggregation failed: {e}"}
 
     def _calculate_cv_statistics(
-        self, fold_results: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, fold_results: list[ConfigMap]
+    ) -> ConfigMap:
         """Calculate cross-validation statistics."""
         try:
             if not fold_results:
@@ -257,7 +270,7 @@ class EvaluationEngine:
 
             import numpy as np
 
-            scores = [r.get("score", 0) for r in fold_results if "score" in r]
+            scores = [self._extract_primary_score(r) for r in fold_results]
 
             if not scores:
                 return {"error": "No scores found in fold results"}
@@ -282,8 +295,8 @@ class EvaluationEngine:
             return {"error": f"CV statistics calculation failed: {e}"}
 
     def _perform_statistical_testing(
-        self, results: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, results: list[ConfigMap]
+    ) -> ConfigMap:
         """Perform statistical significance testing between configurations."""
         try:
             if len(results) < 2:
@@ -293,27 +306,34 @@ class EvaluationEngine:
 
             # Simple t-test between best and second best
             best_scores = results[0].get("scores", [])
-            second_best_scores = (
-                results[1].get("scores", []) if len(results) > 1 else []
-            )
+            second_best_scores = results[1].get("scores", []) if len(results) > 1 else []
 
-            if not best_scores or not second_best_scores:
+            if (
+                not isinstance(best_scores, list)
+                or not isinstance(second_best_scores, list)
+                or not best_scores
+                or not second_best_scores
+            ):
                 return {"error": "Insufficient score data for statistical testing"}
 
             from scipy import stats
 
             # Perform t-test
-            t_stat, p_value = stats.ttest_ind(best_scores, second_best_scores)
+            best_arr = [safe_to_float(v, 0.0) for v in best_scores]
+            second_arr = [safe_to_float(v, 0.0) for v in second_best_scores]
+            t_stat, p_value = stats.ttest_ind(best_arr, second_arr)
+            t_stat_f = safe_to_float(t_stat, 0.0)
+            p_value_f = safe_to_float(p_value, 1.0)
 
             statistical_results = {
-                "t_statistic": float(t_stat),
-                "p_value": float(p_value),
-                "significant_difference": p_value < 0.05,
+                "t_statistic": t_stat_f,
+                "p_value": p_value_f,
+                "significant_difference": p_value_f < 0.05,
                 "best_vs_second_best": True,
                 "test_type": "t-test",
             }
 
-            self.logger.debug(f"Statistical test: t={t_stat:.3f}, p={p_value:.3f}")
+            self.logger.debug(f"Statistical test: t={t_stat_f:.3f}, p={p_value_f:.3f}")
 
             return statistical_results
 
@@ -330,9 +350,16 @@ class EvaluationEngine:
 
         return datetime.now().isoformat()
 
-    def get_evaluation_history(self) -> List[Dict[str, Any]]:
+    @staticmethod
+    def _extract_primary_score(result: ConfigMap) -> float:
+        # Prefer explicit score; otherwise fallback to profit-based score.
+        if "score" in result:
+            return safe_to_float(result.get("score", 0.0), 0.0)
+        return safe_to_float(result.get("profit", 0.0), 0.0)
+
+    def get_evaluation_history(self) -> list[EvaluationRecord]:
         """Get evaluation history."""
-        return self.evaluation_history.copy()
+        return list(self.evaluation_history)
 
     def clear_history(self) -> None:
         """Clear evaluation history."""

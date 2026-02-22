@@ -10,7 +10,8 @@ References:
 """
 
 import logging
-from typing import Any, Callable, Dict, Optional, Protocol, Tuple, Union, cast
+from collections.abc import Sequence
+from typing import Callable, Optional, cast
 
 import torch.nn as nn
 from stable_baselines3 import SAC
@@ -23,8 +24,12 @@ from ztb.adaptation.explainability.config import ExplainabilityConfig
 from ztb.training.algorithms.base_algorithm import BaseRLAlgorithm
 from ztb.training.models.advanced_networks import LSTMPolicy, TransformerPolicy
 from ztb.training.model_compression import create_compression_pipeline
+from ztb.types.common import SACLikeModelProtocol
+from ztb.utils.safety import ensure_dict, safe_to_float, safe_to_int
 
 logger = logging.getLogger(__name__)
+
+ConfigMap = dict[str, object]
 
 
 # Default SAC configuration used by the tests
@@ -125,7 +130,7 @@ class SACAlgorithm(BaseRLAlgorithm):
 
     @staticmethod
     def _resolve_policy_kwargs(
-        raw_kwargs: Optional[Dict[str, Any]],
+        raw_kwargs: Optional[ConfigMap],
         network_type: str = "mlp",  # "mlp", "lstm", "transformer", "efficient"
         sequence_length: int = 10,
         lstm_hidden_size: int = 128,
@@ -135,14 +140,14 @@ class SACAlgorithm(BaseRLAlgorithm):
         transformer_n_layers: int = 4,
         transformer_d_ff: int = 512,
         network_dropout: float = 0.1,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[ConfigMap]:
         """
         Normalize policy kwargs and configure advanced network architectures.
         """
         if raw_kwargs is None:
             raw_kwargs = {}
 
-        policy_kwargs: Dict[str, Any] = dict(raw_kwargs)
+        policy_kwargs: ConfigMap = dict(raw_kwargs)
 
         # Configure network architecture based on type
         if network_type == "lstm":
@@ -200,7 +205,7 @@ class SACAlgorithm(BaseRLAlgorithm):
         # Handle activation function
         activation = policy_kwargs.get("activation_fn")
         if isinstance(activation, str):
-            activation_map: Dict[str, Callable[[], nn.Module]] = {
+            activation_map: dict[str, Callable[[], nn.Module]] = {
                 "relu": nn.ReLU,
                 "leaky_relu": nn.LeakyReLU,
                 "elu": nn.ELU,
@@ -220,7 +225,7 @@ class SACAlgorithm(BaseRLAlgorithm):
 
         return policy_kwargs
 
-    def get_default_config(self) -> Dict[str, Any]:
+    def get_default_config(self) -> ConfigMap:
         """
         Get the default SAC configuration.
 
@@ -234,7 +239,7 @@ class SACAlgorithm(BaseRLAlgorithm):
         """
         return DEFAULT_SAC_CONFIG.copy()
 
-    def validate_config(self, config: Dict[str, Any]) -> bool:
+    def validate_config(self, config: ConfigMap) -> bool:
         """
         Validate a SAC configuration dictionary.
 
@@ -259,28 +264,32 @@ class SACAlgorithm(BaseRLAlgorithm):
             if param not in config:
                 raise ValueError(f"Missing required SAC parameter: {param}")
 
+        learning_rate = safe_to_float(config.get("learning_rate", -1.0), -1.0)
+        buffer_size = safe_to_int(config.get("buffer_size", -1), -1)
+        batch_size = safe_to_int(config.get("batch_size", -1), -1)
+
         # 値の範囲チェック
-        if config["learning_rate"] <= 0:
+        if learning_rate <= 0:
             raise ValueError(
-                f"learning_rate must be positive, got {config['learning_rate']}"
+                f"learning_rate must be positive, got {config.get('learning_rate')}"
             )
 
-        if config["buffer_size"] <= 0:
+        if buffer_size <= 0:
             raise ValueError(
-                f"buffer_size must be positive, got {config['buffer_size']}"
+                f"buffer_size must be positive, got {config.get('buffer_size')}"
             )
 
-        if config["batch_size"] <= 0:
-            raise ValueError(f"batch_size must be positive, got {config['batch_size']}")
+        if batch_size <= 0:
+            raise ValueError(f"batch_size must be positive, got {config.get('batch_size')}")
 
         # buffer_size >= batch_size
-        if config["buffer_size"] < config["batch_size"]:
+        if buffer_size < batch_size:
             raise ValueError(
-                f"buffer_size ({config['buffer_size']}) must be >= batch_size ({config['batch_size']})"
+                f"buffer_size ({buffer_size}) must be >= batch_size ({batch_size})"
             )
 
         # ネットワークタイプの検証
-        network_type = config.get("network_type", "mlp")
+        network_type = str(config.get("network_type", "mlp"))
         if network_type not in ["mlp", "lstm", "transformer", "efficient"]:
             raise ValueError(
                 f"Unsupported network_type: {network_type}. Must be one of: mlp, lstm, transformer, efficient"
@@ -288,27 +297,25 @@ class SACAlgorithm(BaseRLAlgorithm):
 
         # LSTM/Transformer固有のパラメータ検証
         if network_type == "lstm":
-            if config.get("lstm_hidden_size", 128) <= 0:
+            if safe_to_int(config.get("lstm_hidden_size", 128), 128) <= 0:
                 raise ValueError("lstm_hidden_size must be positive")
-            if config.get("lstm_layers", 2) <= 0:
+            if safe_to_int(config.get("lstm_layers", 2), 2) <= 0:
                 raise ValueError("lstm_layers must be positive")
         elif network_type == "transformer":
-            if config.get("transformer_d_model", 128) <= 0:
+            d_model = safe_to_int(config.get("transformer_d_model", 128), 128)
+            n_heads = safe_to_int(config.get("transformer_n_heads", 8), 8)
+            if d_model <= 0:
                 raise ValueError("transformer_d_model must be positive")
-            if config.get("transformer_n_heads", 8) <= 0:
+            if n_heads <= 0:
                 raise ValueError("transformer_n_heads must be positive")
-            if (
-                config.get("transformer_d_model", 128)
-                % config.get("transformer_n_heads", 8)
-                != 0
-            ):
+            if d_model % n_heads != 0:
                 raise ValueError(
                     "transformer_d_model must be divisible by transformer_n_heads"
                 )
 
         # sequence_lengthの検証（LSTM/Transformer共通）
         if network_type in ["lstm", "transformer"]:
-            if config.get("sequence_length", 10) <= 0:
+            if safe_to_int(config.get("sequence_length", 10), 10) <= 0:
                 raise ValueError("sequence_length must be positive")
 
         # 転移学習設定の検証
@@ -319,7 +326,7 @@ class SACAlgorithm(BaseRLAlgorithm):
                     "transfer_learning_enabled is True but pretrained_model_path is not specified"
                 )
 
-            freeze_layers = config.get("freeze_layers", 0)
+            freeze_layers = safe_to_float(config.get("freeze_layers", 0), 0.0)
             if freeze_layers < 0:
                 raise ValueError("freeze_layers must be non-negative")
 
@@ -333,7 +340,7 @@ class SACAlgorithm(BaseRLAlgorithm):
                 )
 
             fine_tune_lr = config.get("fine_tune_learning_rate")
-            if fine_tune_lr is not None and fine_tune_lr <= 0:
+            if fine_tune_lr is not None and safe_to_float(fine_tune_lr, 0.0) <= 0:
                 raise ValueError(
                     "fine_tune_learning_rate must be positive if specified"
                 )
@@ -371,9 +378,10 @@ class SACAlgorithm(BaseRLAlgorithm):
                     raise ValueError(f"Unsupported pruning_type: {pruning_type}")
 
                 pruning_amount = config.get("pruning_amount", 0.3)
-                if not (0.0 < pruning_amount < 1.0):
+                pruning_amount_f = safe_to_float(pruning_amount, 0.3)
+                if not (0.0 < pruning_amount_f < 1.0):
                     raise ValueError(
-                        f"pruning_amount must be between 0.0 and 1.0, got {pruning_amount}"
+                        f"pruning_amount must be between 0.0 and 1.0, got {pruning_amount_f}"
                     )
 
             # 蒸留設定の検証
@@ -385,11 +393,12 @@ class SACAlgorithm(BaseRLAlgorithm):
                     )
 
                 distillation_temp = config.get("distillation_temperature", 2.0)
-                if distillation_temp <= 0:
+                if safe_to_float(distillation_temp, 0.0) <= 0:
                     raise ValueError("distillation_temperature must be positive")
 
                 distillation_alpha = config.get("distillation_alpha", 0.5)
-                if not (0.0 <= distillation_alpha <= 1.0):
+                distillation_alpha_f = safe_to_float(distillation_alpha, -1.0)
+                if not (0.0 <= distillation_alpha_f <= 1.0):
                     raise ValueError("distillation_alpha must be between 0.0 and 1.0")
 
         logger.debug(f"SAC config validation passed: {config}")
@@ -398,7 +407,7 @@ class SACAlgorithm(BaseRLAlgorithm):
     def create_model(
         self,
         env: VecEnv,
-        config: Dict[str, Any],
+        config: ConfigMap,
         tensorboard_log: Optional[str] = None,
     ) -> BaseAlgorithm:
         """Create a SAC model instance using the provided environment and config.
@@ -424,69 +433,108 @@ class SACAlgorithm(BaseRLAlgorithm):
         self.validate_config(config)
 
         logger.info(f"Creating SAC model with config: {config}")
-        logger.info("compression_enabled: %s, compression_techniques: %s", config.get("compression_enabled"), config.get("compression_techniques"))
+        logger.info(
+            "compression_enabled: %s, compression_techniques: %s",
+            config.get("compression_enabled"),
+            config.get("compression_techniques"),
+        )
 
         # Stable-Baselines3 SAC用パラメータ抽出
         sac_params = {
             "policy": config.get("policy", "MlpPolicy"),
             "env": env,
-            "learning_rate": config["learning_rate"],
-            "buffer_size": config["buffer_size"],
-            "learning_starts": config.get(
-                "learning_starts", DEFAULT_SAC_CONFIG["learning_starts"]
+            "learning_rate": safe_to_float(config["learning_rate"], 3e-4),
+            "buffer_size": safe_to_int(config["buffer_size"], 50000),
+            "learning_starts": safe_to_int(
+                config.get("learning_starts", DEFAULT_SAC_CONFIG["learning_starts"]),
+                DEFAULT_SAC_CONFIG["learning_starts"],
             ),
-            "batch_size": config["batch_size"],
-            "tau": config.get("tau", DEFAULT_SAC_CONFIG["tau"]),
-            "gamma": config.get("gamma", DEFAULT_SAC_CONFIG["gamma"]),
-            "train_freq": config.get("train_freq", DEFAULT_SAC_CONFIG["train_freq"]),
-            "gradient_steps": config.get(
-                "gradient_steps", DEFAULT_SAC_CONFIG["gradient_steps"]
+            "batch_size": safe_to_int(config["batch_size"], 256),
+            "tau": safe_to_float(config.get("tau", DEFAULT_SAC_CONFIG["tau"]), DEFAULT_SAC_CONFIG["tau"]),
+            "gamma": safe_to_float(config.get("gamma", DEFAULT_SAC_CONFIG["gamma"]), DEFAULT_SAC_CONFIG["gamma"]),
+            "train_freq": safe_to_int(
+                config.get("train_freq", DEFAULT_SAC_CONFIG["train_freq"]),
+                DEFAULT_SAC_CONFIG["train_freq"],
+            ),
+            "gradient_steps": safe_to_int(
+                config.get("gradient_steps", DEFAULT_SAC_CONFIG["gradient_steps"]),
+                DEFAULT_SAC_CONFIG["gradient_steps"],
             ),
             "ent_coef": config.get("ent_coef", DEFAULT_SAC_CONFIG["ent_coef"]),
             "target_entropy": config.get(
                 "target_entropy", DEFAULT_SAC_CONFIG["target_entropy"]
             ),
-            "target_update_interval": config.get(
-                "target_update_interval", DEFAULT_SAC_CONFIG["target_update_interval"]
+            "target_update_interval": safe_to_int(
+                config.get(
+                    "target_update_interval",
+                    DEFAULT_SAC_CONFIG["target_update_interval"],
+                ),
+                DEFAULT_SAC_CONFIG["target_update_interval"],
             ),
             "use_sde": config.get("use_sde", DEFAULT_SAC_CONFIG["use_sde"]),
-            "sde_sample_freq": config.get(
-                "sde_sample_freq", DEFAULT_SAC_CONFIG["sde_sample_freq"]
+            "sde_sample_freq": safe_to_int(
+                config.get("sde_sample_freq", DEFAULT_SAC_CONFIG["sde_sample_freq"]),
+                DEFAULT_SAC_CONFIG["sde_sample_freq"],
             ),
             "use_sde_at_warmup": config.get(
                 "use_sde_at_warmup", DEFAULT_SAC_CONFIG["use_sde_at_warmup"]
             ),
-            "verbose": config.get("verbose", DEFAULT_SAC_CONFIG["verbose"]),
+            "verbose": safe_to_int(
+                config.get("verbose", DEFAULT_SAC_CONFIG["verbose"]),
+                DEFAULT_SAC_CONFIG["verbose"],
+            ),
             "tensorboard_log": tensorboard_log,
             "device": config.get("device", DEFAULT_SAC_CONFIG["device"]),
         }
 
         # policy_kwargsがあれば追加（文字列定義の活性化関数を解決）
-        network_type = config.get("network_type", "mlp")
+        network_type = str(config.get("network_type", "mlp"))
+        raw_policy_kwargs = config.get("policy_kwargs")
+        policy_kwargs_source = (
+            ensure_dict(raw_policy_kwargs)
+            if isinstance(raw_policy_kwargs, dict)
+            else None
+        )
         policy_kwargs = self._resolve_policy_kwargs(
-            config.get("policy_kwargs"),
+            policy_kwargs_source,
             network_type=network_type,
-            sequence_length=config.get(
-                "sequence_length", DEFAULT_SAC_CONFIG["sequence_length"]
+            sequence_length=safe_to_int(
+                config.get("sequence_length", DEFAULT_SAC_CONFIG["sequence_length"]),
+                DEFAULT_SAC_CONFIG["sequence_length"],
             ),
-            lstm_hidden_size=config.get(
-                "lstm_hidden_size", DEFAULT_SAC_CONFIG["lstm_hidden_size"]
+            lstm_hidden_size=safe_to_int(
+                config.get("lstm_hidden_size", DEFAULT_SAC_CONFIG["lstm_hidden_size"]),
+                DEFAULT_SAC_CONFIG["lstm_hidden_size"],
             ),
-            lstm_layers=config.get("lstm_layers", DEFAULT_SAC_CONFIG["lstm_layers"]),
-            transformer_d_model=config.get(
-                "transformer_d_model", DEFAULT_SAC_CONFIG["transformer_d_model"]
+            lstm_layers=safe_to_int(
+                config.get("lstm_layers", DEFAULT_SAC_CONFIG["lstm_layers"]),
+                DEFAULT_SAC_CONFIG["lstm_layers"],
             ),
-            transformer_n_heads=config.get(
-                "transformer_n_heads", DEFAULT_SAC_CONFIG["transformer_n_heads"]
+            transformer_d_model=safe_to_int(
+                config.get(
+                    "transformer_d_model", DEFAULT_SAC_CONFIG["transformer_d_model"]
+                ),
+                DEFAULT_SAC_CONFIG["transformer_d_model"],
             ),
-            transformer_n_layers=config.get(
-                "transformer_n_layers", DEFAULT_SAC_CONFIG["transformer_n_layers"]
+            transformer_n_heads=safe_to_int(
+                config.get(
+                    "transformer_n_heads", DEFAULT_SAC_CONFIG["transformer_n_heads"]
+                ),
+                DEFAULT_SAC_CONFIG["transformer_n_heads"],
             ),
-            transformer_d_ff=config.get(
-                "transformer_d_ff", DEFAULT_SAC_CONFIG["transformer_d_ff"]
+            transformer_n_layers=safe_to_int(
+                config.get(
+                    "transformer_n_layers", DEFAULT_SAC_CONFIG["transformer_n_layers"]
+                ),
+                DEFAULT_SAC_CONFIG["transformer_n_layers"],
             ),
-            network_dropout=config.get(
-                "network_dropout", DEFAULT_SAC_CONFIG["network_dropout"]
+            transformer_d_ff=safe_to_int(
+                config.get("transformer_d_ff", DEFAULT_SAC_CONFIG["transformer_d_ff"]),
+                DEFAULT_SAC_CONFIG["transformer_d_ff"],
+            ),
+            network_dropout=safe_to_float(
+                config.get("network_dropout", DEFAULT_SAC_CONFIG["network_dropout"]),
+                DEFAULT_SAC_CONFIG["network_dropout"],
             ),
         )
         if policy_kwargs is not None:
@@ -516,7 +564,10 @@ class SACAlgorithm(BaseRLAlgorithm):
 
         # 特徴量情報をログに出力
         feature_set = config.get("feature_set", "curated")
-        expected_features = config.get("expected_features", 88)
+        expected_features = safe_to_int(config.get("expected_features", 88), 88)
+        learning_rate = safe_to_float(config.get("learning_rate", 3e-4), 3e-4)
+        buffer_size = safe_to_int(config.get("buffer_size", 50000), 50000)
+        batch_size = safe_to_int(config.get("batch_size", 256), 256)
         try:
             # 環境の観測空間から特徴量数を取得
             if hasattr(env, "observation_space"):
@@ -525,8 +576,8 @@ class SACAlgorithm(BaseRLAlgorithm):
                 logger.info(
                     f"SAC model created with feature integration: "
                     f"feature_set={feature_set}, expected_features={expected_features}, "
-                    f"actual_features={actual_features}, lr={config['learning_rate']}, "
-                    f"buffer_size={config['buffer_size']}, batch_size={config['batch_size']}, "
+                    f"actual_features={actual_features}, lr={learning_rate}, "
+                    f"buffer_size={buffer_size}, batch_size={batch_size}, "
                     f"ent_coef={config.get('ent_coef', 'auto')}"
                 )
                 if abs(actual_features - expected_features) > 5:  # 許容誤差
@@ -537,8 +588,8 @@ class SACAlgorithm(BaseRLAlgorithm):
             else:
                 logger.info(
                     f"SAC model created: feature_set={feature_set}, expected_features={expected_features}, "
-                    f"lr={config['learning_rate']}, buffer_size={config['buffer_size']}, "
-                    f"batch_size={config['batch_size']}, ent_coef={config.get('ent_coef', 'auto')}"
+                    f"lr={learning_rate}, buffer_size={buffer_size}, "
+                    f"batch_size={batch_size}, ent_coef={config.get('ent_coef', 'auto')}"
                 )
         except Exception as e:
             logger.warning(
@@ -546,8 +597,8 @@ class SACAlgorithm(BaseRLAlgorithm):
             )
             logger.info(
                 f"SAC model created: feature_set={feature_set}, expected_features={expected_features}, "
-                f"lr={config['learning_rate']}, buffer_size={config['buffer_size']}, "
-                f"batch_size={config['batch_size']}, ent_coef={config.get('ent_coef', 'auto')}"
+                f"lr={learning_rate}, buffer_size={buffer_size}, "
+                f"batch_size={batch_size}, ent_coef={config.get('ent_coef', 'auto')}"
             )
 
         # 説明可能性アナライザーの初期化
@@ -557,7 +608,7 @@ class SACAlgorithm(BaseRLAlgorithm):
         return self._model
 
     def _apply_transfer_learning(
-        self, model: BaseAlgorithm, config: Dict[str, Any]
+        self, model: BaseAlgorithm, config: ConfigMap
     ) -> None:
         """Apply transfer learning to a model.
 
@@ -581,14 +632,16 @@ class SACAlgorithm(BaseRLAlgorithm):
             self._validate_pretrained_model(model, pretrained_model, config)
 
             # 層の凍結
-            freeze_layers = config.get("freeze_layers", 0)
+            freeze_layers = safe_to_float(config.get("freeze_layers", 0.0), 0.0)
             if freeze_layers > 0:
                 self._freeze_layers(model, freeze_layers, config)
 
             # ファインチューニング学習率の設定
             fine_tune_lr = config.get("fine_tune_learning_rate")
             if fine_tune_lr is not None:
-                self._set_fine_tune_learning_rate(model, fine_tune_lr)
+                self._set_fine_tune_learning_rate(
+                    model, safe_to_float(fine_tune_lr, 3e-4)
+                )
 
             logger.info("Transfer learning applied successfully")
 
@@ -597,7 +650,7 @@ class SACAlgorithm(BaseRLAlgorithm):
             raise
 
     def _apply_model_compression(
-        self, model: BaseAlgorithm, config: Dict[str, Any]
+        self, model: BaseAlgorithm, config: ConfigMap
     ) -> None:
         """Apply model compression techniques to the SAC model.
 
@@ -605,7 +658,13 @@ class SACAlgorithm(BaseRLAlgorithm):
             model: The SAC model to compress.
             config: Compression configuration dictionary.
         """
-        compression_techniques = config.get("compression_techniques", [])
+        raw_techniques = config.get("compression_techniques", [])
+        if isinstance(raw_techniques, list):
+            compression_techniques = [str(item) for item in raw_techniques]
+        elif raw_techniques is None:
+            compression_techniques = []
+        else:
+            compression_techniques = [str(raw_techniques)]
         if not compression_techniques:
             logger.warning(
                 "Model compression enabled but no compression_techniques specified"
@@ -632,7 +691,7 @@ class SACAlgorithm(BaseRLAlgorithm):
                 techniques_config["pruning"] = {
                     "type": "pruning",
                     "pruning_type": config.get("pruning_type", "l1_unstructured"),
-                    "amount": config.get("pruning_amount", 0.3),
+                    "amount": safe_to_float(config.get("pruning_amount", 0.3), 0.3),
                 }
 
             if "distillation" in compression_techniques:
@@ -642,8 +701,12 @@ class SACAlgorithm(BaseRLAlgorithm):
                     SAC.load(teacher_model_path, device=model.device)
                     techniques_config["distillation"] = {
                         "type": "distillation",
-                        "temperature": config.get("distillation_temperature", 2.0),
-                        "alpha": config.get("distillation_alpha", 0.5),
+                        "temperature": safe_to_float(
+                            config.get("distillation_temperature", 2.0), 2.0
+                        ),
+                        "alpha": safe_to_float(
+                            config.get("distillation_alpha", 0.5), 0.5
+                        ),
                     }
                 else:
                     logger.warning(
@@ -695,7 +758,7 @@ class SACAlgorithm(BaseRLAlgorithm):
         self,
         model: BaseAlgorithm,
         pretrained_model: BaseAlgorithm,
-        config: Dict[str, Any],
+        config: ConfigMap,
     ) -> None:
         """Validate a pretrained model.
 
@@ -705,7 +768,7 @@ class SACAlgorithm(BaseRLAlgorithm):
             config: Configuration dictionary
         """
         # ネットワークタイプの一致を確認
-        current_network_type = config.get("network_type", "mlp")
+        current_network_type = str(config.get("network_type", "mlp"))
 
         # ポリシータイプの確認
         if current_network_type == "lstm":
@@ -729,8 +792,8 @@ class SACAlgorithm(BaseRLAlgorithm):
     def _freeze_layers(
         self,
         model: BaseAlgorithm,
-        freeze_layers: Union[int, float],
-        config: Dict[str, Any],
+        freeze_layers: int | float,
+        config: ConfigMap,
     ) -> None:
         """Freeze specified layers of the model.
 
@@ -739,7 +802,7 @@ class SACAlgorithm(BaseRLAlgorithm):
             freeze_layers: Number of layers or fraction to freeze
             config: Configuration dictionary
         """
-        network_type = config.get("network_type", "mlp")
+        network_type = str(config.get("network_type", "mlp"))
 
         if network_type == "mlp":
             # MLPの場合：層数を指定
@@ -751,7 +814,7 @@ class SACAlgorithm(BaseRLAlgorithm):
         logger.info(f"Froze {freeze_layers} layers for {network_type} network")
 
     def _freeze_mlp_layers(
-        self, model: BaseAlgorithm, freeze_layers: Union[int, float]
+        self, model: BaseAlgorithm, freeze_layers: int | float
     ) -> None:
         """Freeze layers in an MLP network.
 
@@ -770,7 +833,7 @@ class SACAlgorithm(BaseRLAlgorithm):
             self._freeze_network_layers(policy.critic, freeze_layers)
 
     def _freeze_network_layers(
-        self, network: nn.Module, freeze_layers: Union[int, float]
+        self, network: nn.Module, freeze_layers: int | float
     ) -> None:
         """Freeze layers in a network.
 
@@ -891,8 +954,8 @@ class SACAlgorithm(BaseRLAlgorithm):
         self,
         model: BaseAlgorithm,
         total_timesteps: int,
-        callback: Optional[Callable[..., Any]] = None,
-        **kwargs: Any,
+        callback: Optional[Callable[..., object]] = None,
+        **kwargs: object,
     ) -> BaseAlgorithm:
         """Train the SAC model.
 
@@ -958,7 +1021,7 @@ class SACAlgorithm(BaseRLAlgorithm):
         logger.info(f"SAC model loaded from {load_path}")
         return model
 
-    def _initialize_explainability_analyzer(self, config: Dict[str, Any]) -> None:
+    def _initialize_explainability_analyzer(self, config: ConfigMap) -> None:
         """Initialize the explainability analyzer using provided config.
 
         Args:
@@ -967,16 +1030,20 @@ class SACAlgorithm(BaseRLAlgorithm):
         try:
             # 説明可能性設定の作成
             explainability_config = ExplainabilityConfig(
-                enabled=config.get("explainability_enabled", True),
-                explanation_method=config.get("explanation_method", "shap"),
-                shap_max_evals=config.get("shap_max_evals", 1000),
-                shap_batch_size=config.get("shap_batch_size", 50),
-                generate_natural_language=config.get("natural_language_enabled", True),
-                enable_visualization=config.get("enable_visualization", True),
-                plot_format=config.get("plot_format", "png"),
-                cache_explanations=config.get("explanation_cache_enabled", True),
-                cache_ttl_seconds=config.get("cache_ttl_seconds", 3600),
-                generate_reports=config.get("report_generation", True),
+                enabled=bool(config.get("explainability_enabled", True)),
+                explanation_method=str(config.get("explanation_method", "shap")),
+                shap_max_evals=safe_to_int(config.get("shap_max_evals", 1000), 1000),
+                shap_batch_size=safe_to_int(config.get("shap_batch_size", 50), 50),
+                generate_natural_language=bool(
+                    config.get("natural_language_enabled", True)
+                ),
+                enable_visualization=bool(config.get("enable_visualization", True)),
+                plot_format=str(config.get("plot_format", "png")),
+                cache_explanations=bool(config.get("explanation_cache_enabled", True)),
+                cache_ttl_seconds=safe_to_int(
+                    config.get("cache_ttl_seconds", 3600), 3600
+                ),
+                generate_reports=bool(config.get("report_generation", True)),
             )
 
             # 説明可能性アナライザーの作成
@@ -990,10 +1057,10 @@ class SACAlgorithm(BaseRLAlgorithm):
 
     def explain_decision(
         self,
-        observation: Any,
-        action: Optional[Any] = None,
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Dict[str, Any]]:
+        observation: object,
+        action: object | None = None,
+        context: ConfigMap | None = None,
+    ) -> ConfigMap | None:
         """Explain a model decision.
 
         Args:
@@ -1015,7 +1082,7 @@ class SACAlgorithm(BaseRLAlgorithm):
             )
 
             # 辞書形式に変換して返す
-            return cast(Dict[str, Any], explanation_result.to_dict())
+            return cast(ConfigMap, explanation_result.to_dict())
 
         except Exception as e:
             logger.error(f"Failed to explain decision: {e}")
@@ -1023,8 +1090,8 @@ class SACAlgorithm(BaseRLAlgorithm):
 
     def generate_explanation_report(
         self,
-        observations: Any,
-        actions: Optional[Any] = None,
+        observations: object | Sequence[object],
+        actions: Sequence[object] | None = None,
         output_path: Optional[str] = None,
     ) -> Optional[str]:
         """Generate an explanation report for a batch of observations.

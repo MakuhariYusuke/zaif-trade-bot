@@ -5,12 +5,13 @@ Manages parameter spaces for different reward function optimization stages.
 Separated from the main optimizer to follow Single Responsibility Principle.
 """
 
-from typing import Any, Dict
-
 from ztb.training.hyperparameter_optimizer import ParameterSpace
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.safety import safe_to_float
 
 logger = get_logger(__name__)
+
+ConfigMap = dict[str, object]
 
 
 class RewardFunctionParameterSpace:
@@ -26,7 +27,7 @@ class RewardFunctionParameterSpace:
     def __init__(self):
         self.logger = get_logger(__name__)
 
-    def get_parameter_spaces(self) -> Dict[str, Dict[str, ParameterSpace]]:
+    def get_parameter_spaces(self) -> dict[str, dict[str, ParameterSpace]]:
         """
         Get all parameter spaces for different reward function stages.
 
@@ -44,7 +45,7 @@ class RewardFunctionParameterSpace:
             "high_volatility": self._get_high_volatility_space(),
         }
 
-    def _get_balanced_transition_space(self) -> Dict[str, ParameterSpace]:
+    def _get_balanced_transition_space(self) -> dict[str, ParameterSpace]:
         """Get parameter space for balanced transition stage."""
         return {
             # Basic trading parameters with narrower, more realistic ranges
@@ -115,7 +116,7 @@ class RewardFunctionParameterSpace:
             ),
         }
 
-    def _get_trading_focused_space(self) -> Dict[str, ParameterSpace]:
+    def _get_trading_focused_space(self) -> dict[str, ParameterSpace]:
         """Get parameter space for trading focused stage."""
         return {
             # Basic trading parameters
@@ -173,7 +174,7 @@ class RewardFunctionParameterSpace:
             ),
         }
 
-    def _get_profit_optimized_space(self) -> Dict[str, ParameterSpace]:
+    def _get_profit_optimized_space(self) -> dict[str, ParameterSpace]:
         """Get parameter space for profit optimized stage."""
         return {
             # Profit-focused parameters
@@ -245,7 +246,7 @@ class RewardFunctionParameterSpace:
             ),
         }
 
-    def _get_ultra_profit_space(self) -> Dict[str, ParameterSpace]:
+    def _get_ultra_profit_space(self) -> dict[str, ParameterSpace]:
         """Get parameter space for ultra profit stage."""
         return {
             "profit_weight": ParameterSpace(
@@ -305,7 +306,7 @@ class RewardFunctionParameterSpace:
             ),
         }
 
-    def _get_bull_market_space(self) -> Dict[str, ParameterSpace]:
+    def _get_bull_market_space(self) -> dict[str, ParameterSpace]:
         """Get parameter space for bull market optimization."""
         return {
             "profit_weight": ParameterSpace(
@@ -328,7 +329,7 @@ class RewardFunctionParameterSpace:
             ),
         }
 
-    def _get_bear_market_space(self) -> Dict[str, ParameterSpace]:
+    def _get_bear_market_space(self) -> dict[str, ParameterSpace]:
         """Get parameter space for bear market optimization."""
         return {
             "profit_weight": ParameterSpace(
@@ -351,7 +352,7 @@ class RewardFunctionParameterSpace:
             ),
         }
 
-    def _get_sideways_market_space(self) -> Dict[str, ParameterSpace]:
+    def _get_sideways_market_space(self) -> dict[str, ParameterSpace]:
         """Get parameter space for sideways market optimization."""
         return {
             "consistency_weight": ParameterSpace(
@@ -371,7 +372,7 @@ class RewardFunctionParameterSpace:
             ),
         }
 
-    def _get_high_volatility_space(self) -> Dict[str, ParameterSpace]:
+    def _get_high_volatility_space(self) -> dict[str, ParameterSpace]:
         """Get parameter space for high volatility market optimization."""
         return {
             "volatility_weight": ParameterSpace(
@@ -392,8 +393,8 @@ class RewardFunctionParameterSpace:
         }
 
     def create_parameter_space_from_config(
-        self, config: Dict[str, Any], exploration_range: float = 0.1
-    ) -> Dict[str, ParameterSpace]:
+        self, config: ConfigMap, exploration_range: float = 0.1
+    ) -> dict[str, ParameterSpace]:
         """
         Create parameter space from existing configuration values.
 
@@ -404,70 +405,80 @@ class RewardFunctionParameterSpace:
         Returns:
             Parameter space dictionary
         """
-        parameter_space = {}
+        parameter_space: dict[str, ParameterSpace] = {}
 
         for param_name, param_value in config.items():
-            if isinstance(param_value, (int, float)):
-                # Calculate exploration bounds
-                if param_value == 0:
-                    # For zero values, use small absolute range
-                    low = -0.1
-                    high = 0.1
-                else:
-                    # Calculate percentage-based range
-                    range_value = abs(param_value) * exploration_range
-                    low = param_value - range_value
-                    high = param_value + range_value
+            if isinstance(param_value, bool) or not isinstance(param_value, (int, float)):
+                continue
 
-                    # Ensure low < high (important for negative values)
-                    if low > high:
-                        low, high = high, low
+            numeric_value = safe_to_float(param_value, 0.0)
 
-                    # For very small ranges, ensure minimum spread
-                    if abs(high - low) < 1e-6:
-                        center = (low + high) / 2
-                        spread = max(abs(center) * 0.01, 1e-6)
-                        low = center - spread
-                        high = center + spread
+            # Calculate exploration bounds
+            if numeric_value == 0.0:
+                # For zero values, use small absolute range
+                low = -0.1
+                high = 0.1
+            else:
+                # Calculate percentage-based range
+                range_value = abs(numeric_value) * exploration_range
+                low = numeric_value - range_value
+                high = numeric_value + range_value
 
-                # Special handling for certain parameters
-                if param_name in ["reward_clip_min", "reward_clip_max"]:
-                    # These can be negative, ensure proper ordering
-                    if param_name == "reward_clip_min":
-                        # reward_clip_min should be <= reward_clip_max
-                        # For min, allow more negative values
-                        low = min(low, param_value * 1.5)  # Allow 50% more negative
-                        high = min(high, config.get("reward_clip_max", param_value))
-                    elif param_name == "reward_clip_max":
-                        # For max, allow more positive values
-                        low = max(low, config.get("reward_clip_min", param_value))
-                        high = max(high, param_value * 1.5)  # Allow 50% more positive
+                # Ensure low < high (important for negative values)
+                if low > high:
+                    low, high = high, low
 
-                # Determine parameter type and constraints
-                if isinstance(param_value, int) or param_name in [
-                    "batch_size",
-                    "buffer_size",
-                    "learning_starts",
-                    "target_update_interval",
-                ]:
-                    # Integer parameters
-                    parameter_space[param_name] = ParameterSpace(
-                        param_name,
-                        "int",
-                        max(1, int(low))
-                        if param_name not in ["reward_clip_min", "reward_clip_max"]
-                        else int(low),
-                        int(high),
-                    )
-                else:
-                    # Float parameters
-                    parameter_space[param_name] = ParameterSpace(
-                        param_name,
-                        "float",
-                        low,
-                        high,
-                        log_scale=param_name
-                        in ["learning_rate", "ent_coef"],  # Use log scale for rates
-                    )
+                # For very small ranges, ensure minimum spread
+                if abs(high - low) < 1e-6:
+                    center = (low + high) / 2
+                    spread = max(abs(center) * 0.01, 1e-6)
+                    low = center - spread
+                    high = center + spread
+
+            # Special handling for certain parameters
+            if param_name in ["reward_clip_min", "reward_clip_max"]:
+                # These can be negative, ensure proper ordering
+                if param_name == "reward_clip_min":
+                    # reward_clip_min should be <= reward_clip_max
+                    # For min, allow more negative values
+                    low = min(low, numeric_value * 1.5)  # Allow 50% more negative
+                    clip_max = safe_to_float(config.get("reward_clip_max", numeric_value), numeric_value)
+                    high = min(high, clip_max)
+                elif param_name == "reward_clip_max":
+                    # For max, allow more positive values
+                    clip_min = safe_to_float(config.get("reward_clip_min", numeric_value), numeric_value)
+                    low = max(low, clip_min)
+                    high = max(high, numeric_value * 1.5)  # Allow 50% more positive
+
+            # Determine parameter type and constraints
+            if isinstance(param_value, int) or param_name in [
+                "batch_size",
+                "buffer_size",
+                "learning_starts",
+                "target_update_interval",
+            ]:
+                # Integer parameters
+                low_i = int(low)
+                high_i = int(high)
+                if param_name not in ["reward_clip_min", "reward_clip_max"]:
+                    low_i = max(1, low_i)
+                if high_i < low_i:
+                    high_i = low_i
+                parameter_space[param_name] = ParameterSpace(
+                    param_name,
+                    "int",
+                    low_i,
+                    high_i,
+                )
+            else:
+                # Float parameters
+                parameter_space[param_name] = ParameterSpace(
+                    param_name,
+                    "float",
+                    low,
+                    high,
+                    log_scale=param_name
+                    in ["learning_rate", "ent_coef"],  # Use log scale for rates
+                )
 
         return parameter_space

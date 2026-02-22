@@ -6,7 +6,7 @@ Separated from the main optimizer to follow Single Responsibility Principle.
 """
 
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Protocol
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -14,8 +14,19 @@ import seaborn as sns
 
 from ztb.analysis.common.plot_utils import save_plot
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.safety import ensure_dict, safe_to_float
 
 logger = get_logger(__name__)
+
+ResultMap = dict[str, object]
+
+
+class TrialLike(Protocol):
+    """Minimal trial-like protocol used by plotting helpers."""
+
+    number: int
+    value: float
+    params: dict[str, object]
 
 
 class RewardFunctionDisplayManager:
@@ -38,9 +49,31 @@ class RewardFunctionDisplayManager:
         plt.style.use("default")
         sns.set_palette("husl")
 
+    @staticmethod
+    def _stage_slug(stage_name: str) -> str:
+        return stage_name.lower().replace(" ", "_")
+
+    def _plot_path(self, prefix: str, stage_name: str) -> Path:
+        return self.output_dir / f"{prefix}_{self._stage_slug(stage_name)}.png"
+
+    def _finalize_plot(
+        self,
+        filename: Path | None,
+        show_plots: bool,
+        save_plots: bool,
+        log_label: str,
+    ) -> None:
+        if save_plots and filename is not None:
+            save_plot(filename)
+            self.logger.info("Saved %s plot to %s", log_label, filename)
+        if show_plots:
+            plt.show()
+        else:
+            plt.close()
+
     def display_optimization_results(
         self,
-        results: Dict[str, Any],
+        results: ResultMap,
         stage_name: str,
         show_plots: bool = True,
         save_plots: bool = True,
@@ -66,28 +99,30 @@ class RewardFunctionDisplayManager:
         if show_plots or save_plots:
             self._create_optimization_plots(results, stage_name, show_plots, save_plots)
 
-    def _display_summary_stats(self, results: Dict[str, Any], stage_name: str) -> None:
+    def _display_summary_stats(self, results: ResultMap, stage_name: str) -> None:
         """Display summary statistics of optimization results."""
         print(f"\n{'='*60}")
         print(f"OPTIMIZATION RESULTS - {stage_name.upper()}")
         print(f"{'='*60}")
 
         if "best_value" in results:
-            print(f"Best Objective Value: {results['best_value']:.6f}")
+            best_value = safe_to_float(results.get("best_value", 0.0), 0.0)
+            print(f"Best Objective Value: {best_value:.6f}")
 
         if "best_params" in results:
             print(f"Number of Parameters: {len(results['best_params'])}")
 
         if "n_trials" in results:
-            print(f"Total Trials: {results['n_trials']}")
+            print(f"Total Trials: {int(safe_to_float(results.get('n_trials', 0), 0.0))}")
 
         if "elapsed_time" in results:
-            print(f"Elapsed Time: {results['elapsed_time']:.2f} seconds")
+            elapsed_time = safe_to_float(results.get("elapsed_time", 0.0), 0.0)
+            print(f"Elapsed Time: {elapsed_time:.2f} seconds")
 
         print(f"{'='*60}\n")
 
     def _display_best_parameters(
-        self, results: Dict[str, Any], stage_name: str
+        self, results: ResultMap, stage_name: str
     ) -> None:
         """Display the best parameters found during optimization."""
         if "best_params" not in results:
@@ -96,7 +131,7 @@ class RewardFunctionDisplayManager:
         print(f"BEST PARAMETERS - {stage_name.upper()}")
         print("-" * 40)
 
-        best_params = results["best_params"]
+        best_params = ensure_dict(results.get("best_params"))
         for param_name, param_value in best_params.items():
             if isinstance(param_value, float):
                 print(f"{param_name}: {param_value:.6f}")
@@ -107,7 +142,7 @@ class RewardFunctionDisplayManager:
 
     def _create_optimization_plots(
         self,
-        results: Dict[str, Any],
+        results: ResultMap,
         stage_name: str,
         show_plots: bool = True,
         save_plots: bool = True,
@@ -130,7 +165,7 @@ class RewardFunctionDisplayManager:
 
     def _plot_parameter_importance(
         self,
-        results: Dict[str, Any],
+        results: ResultMap,
         stage_name: str,
         show_plots: bool,
         save_plots: bool,
@@ -139,11 +174,13 @@ class RewardFunctionDisplayManager:
         if "param_importance" not in results:
             return
 
-        importance_data = results["param_importance"]
+        importance_data = ensure_dict(results.get("param_importance"))
+        if not importance_data:
+            return
 
         plt.figure(figsize=(12, 8))
         params = list(importance_data.keys())
-        importance = list(importance_data.values())
+        importance = [safe_to_float(v, 0.0) for v in importance_data.values()]
 
         plt.barh(params, importance)
         plt.xlabel("Importance")
@@ -151,22 +188,12 @@ class RewardFunctionDisplayManager:
         plt.title(f"Parameter Importance - {stage_name}")
         plt.tight_layout()
 
-        if save_plots:
-            filename = (
-                self.output_dir
-                / f"parameter_importance_{stage_name.lower().replace(' ', '_')}.png"
-            )
-            save_plot(filename)
-            self.logger.info(f"Saved parameter importance plot to {filename}")
-
-        if show_plots:
-            plt.show()
-        else:
-            plt.close()
+        filename = self._plot_path("parameter_importance", stage_name)
+        self._finalize_plot(filename, show_plots, save_plots, "parameter importance")
 
     def _plot_optimization_history(
         self,
-        results: Dict[str, Any],
+        results: ResultMap,
         stage_name: str,
         show_plots: bool,
         save_plots: bool,
@@ -175,13 +202,20 @@ class RewardFunctionDisplayManager:
         if "trials" not in results:
             return
 
-        trials = results["trials"]
+        trials_obj = results.get("trials")
+        if not isinstance(trials_obj, list):
+            return
+        trials: list[TrialLike] = [
+            t for t in trials_obj if hasattr(t, "number") and hasattr(t, "value")
+        ]
+        if not trials:
+            return
 
         plt.figure(figsize=(12, 6))
 
         # Plot objective values over trials
-        trial_numbers = [t.number for t in trials]
-        values = [t.value for t in trials]
+        trial_numbers = [int(getattr(t, "number", 0)) for t in trials]
+        values = [safe_to_float(getattr(t, "value", 0.0), 0.0) for t in trials]
 
         plt.plot(trial_numbers, values, "b-", alpha=0.7)
         plt.xlabel("Trial Number")
@@ -190,22 +224,12 @@ class RewardFunctionDisplayManager:
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
 
-        if save_plots:
-            filename = (
-                self.output_dir
-                / f"optimization_history_{stage_name.lower().replace(' ', '_')}.png"
-            )
-            save_plot(filename)
-            self.logger.info(f"Saved optimization history plot to {filename}")
-
-        if show_plots:
-            plt.show()
-        else:
-            plt.close()
+        filename = self._plot_path("optimization_history", stage_name)
+        self._finalize_plot(filename, show_plots, save_plots, "optimization history")
 
     def _plot_parameter_correlations(
         self,
-        results: Dict[str, Any],
+        results: ResultMap,
         stage_name: str,
         show_plots: bool,
         save_plots: bool,
@@ -214,17 +238,24 @@ class RewardFunctionDisplayManager:
         if "trials" not in results:
             return
 
-        trials = results["trials"]
+        trials_obj = results.get("trials")
+        if not isinstance(trials_obj, list):
+            return
+        trials: list[TrialLike] = [
+            t
+            for t in trials_obj
+            if hasattr(t, "params") and isinstance(getattr(t, "params", {}), dict)
+        ]
         if len(trials) < 2:
             return
 
         # Extract parameter values
-        param_data = {}
+        param_data: dict[str, list[float]] = {}
         for trial in trials:
-            for param_name, param_value in trial.params.items():
+            for param_name, param_value in getattr(trial, "params", {}).items():
                 if param_name not in param_data:
                     param_data[param_name] = []
-                param_data[param_name].append(param_value)
+                param_data[param_name].append(safe_to_float(param_value, 0.0))
 
         if len(param_data) < 2:
             return
@@ -245,23 +276,13 @@ class RewardFunctionDisplayManager:
         plt.title(f"Parameter Correlations - {stage_name}")
         plt.tight_layout()
 
-        if save_plots:
-            filename = (
-                self.output_dir
-                / f"parameter_correlations_{stage_name.lower().replace(' ', '_')}.png"
-            )
-            save_plot(filename)
-            self.logger.info(f"Saved parameter correlations plot to {filename}")
-
-        if show_plots:
-            plt.show()
-        else:
-            plt.close()
+        filename = self._plot_path("parameter_correlations", stage_name)
+        self._finalize_plot(filename, show_plots, save_plots, "parameter correlations")
 
     def display_comparison_results(
         self,
-        comparison_data: Dict[str, Any],
-        metric_names: List[str],
+        comparison_data: ResultMap,
+        metric_names: list[str],
         show_plots: bool = True,
         save_plots: bool = True,
     ) -> None:
@@ -288,27 +309,31 @@ class RewardFunctionDisplayManager:
             )
 
     def _display_comparison_table(
-        self, comparison_data: Dict[str, Any], metric_names: List[str]
+        self, comparison_data: ResultMap, metric_names: list[str]
     ) -> None:
         """Display comparison table."""
         if "configurations" not in comparison_data:
             return
 
-        configs = comparison_data["configurations"]
+        configs = ensure_dict(comparison_data.get("configurations"))
 
         print(f"{'Configuration':<20} {' | '.join(f'{m:<12}' for m in metric_names)}")
         print("-" * (20 + len(metric_names) * 14))
 
         for config_name, metrics in configs.items():
-            metric_values = [f"{metrics.get(m, 0):<12.6f}" for m in metric_names]
+            metrics_map = ensure_dict(metrics)
+            metric_values = [
+                f"{safe_to_float(metrics_map.get(m, 0.0), 0.0):<12.6f}"
+                for m in metric_names
+            ]
             print(f"{config_name:<20} {' | '.join(metric_values)}")
 
         print()
 
     def _create_comparison_plots(
         self,
-        comparison_data: Dict[str, Any],
-        metric_names: List[str],
+        comparison_data: ResultMap,
+        metric_names: list[str],
         show_plots: bool,
         save_plots: bool,
     ) -> None:
@@ -316,8 +341,10 @@ class RewardFunctionDisplayManager:
         if "configurations" not in comparison_data:
             return
 
-        configs = comparison_data["configurations"]
+        configs = ensure_dict(comparison_data.get("configurations"))
         config_names = list(configs.keys())
+        if not config_names:
+            return
 
         # Create bar plot for each metric
         n_metrics = len(metric_names)
@@ -327,7 +354,10 @@ class RewardFunctionDisplayManager:
             axes = [axes]
 
         for i, metric in enumerate(metric_names):
-            values = [configs[config].get(metric, 0) for config in config_names]
+            values = [
+                safe_to_float(ensure_dict(configs[config]).get(metric, 0.0), 0.0)
+                for config in config_names
+            ]
 
             axes[i].bar(config_names, values)
             axes[i].set_title(f"{metric} Comparison")
@@ -336,12 +366,5 @@ class RewardFunctionDisplayManager:
 
         plt.tight_layout()
 
-        if save_plots:
-            filename = self.output_dir / "configuration_comparison.png"
-            save_plot(filename)
-            self.logger.info(f"Saved comparison plot to {filename}")
-
-        if show_plots:
-            plt.show()
-        else:
-            plt.close()
+        filename = self.output_dir / "configuration_comparison.png"
+        self._finalize_plot(filename, show_plots, save_plots, "configuration comparison")

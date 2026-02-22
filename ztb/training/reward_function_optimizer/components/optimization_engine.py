@@ -5,16 +5,38 @@ This module separates optimization-related logic from the main optimizer class,
 including parameter search, objective evaluation, and convergence checking.
 """
 
-from typing import Any, Callable, Dict, List, Optional
+from collections import deque
+from typing import Callable, Protocol
 
+from ztb.training.hyperparameter_optimizer import ParameterSpace
 from ztb.training.reward_function_optimizer.constants import (
     DEFAULT_OPTIMIZATION_TRIALS,
     SAMPLER_SEED,
     EVALUATION_TIMEOUT_SECONDS,
 )
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.safety import ensure_dict, safe_to_float
 
 logger = get_logger(__name__)
+
+ConfigMap = dict[str, object]
+ScoreMap = dict[str, float]
+HistoryRecord = dict[str, object]
+ParameterDefinition = ParameterSpace | ConfigMap
+
+
+class TrialLike(Protocol):
+    """Minimal Optuna trial protocol used by the optimizer."""
+
+    number: int
+
+    def suggest_float(
+        self, name: str, low: float, high: float, *, log: bool = False
+    ) -> float: ...
+
+    def suggest_int(self, name: str, low: int, high: int) -> int: ...
+
+    def suggest_categorical(self, name: str, choices: list[object]) -> object: ...
 
 
 class OptimizationEngine:
@@ -28,12 +50,12 @@ class OptimizationEngine:
     - Convergence detection
     """
 
-    def __init__(self):
+    def __init__(self, history_limit: int = 5000):
         """Initialize OptimizationEngine."""
         self.logger = get_logger(__name__)
         self.optuna_available = self._check_optuna_available()
-        self.parameter_spaces = {}
-        self.optimization_history = []
+        self.parameter_spaces: dict[str, dict[str, ParameterDefinition]] = {}
+        self.optimization_history: deque[HistoryRecord] = deque(maxlen=history_limit)
 
     def _check_optuna_available(self) -> bool:
         """Check if Optuna is available."""
@@ -47,8 +69,8 @@ class OptimizationEngine:
     def define_parameter_space(
         self,
         stage: str,
-        parameters: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        parameters: dict[str, ParameterDefinition],
+    ) -> ConfigMap:
         """
         Define parameter space for optimization.
 
@@ -82,46 +104,132 @@ class OptimizationEngine:
             self.logger.error(f"Failed to define parameter space: {e}")
             raise
 
-    def _extract_bounds(self, parameters: Dict[str, Any]) -> Dict[str, tuple]:
+    def _extract_bounds(
+        self, parameters: dict[str, ParameterDefinition]
+    ) -> dict[str, tuple[object, object]]:
         """Extract parameter bounds from definitions."""
-        bounds = {}
+        bounds: dict[str, tuple[object, object]] = {}
         for param_name, param_config in parameters.items():
-            if isinstance(param_config, dict):
-                if "low" in param_config and "high" in param_config:
-                    bounds[param_name] = (param_config["low"], param_config["high"])
-                elif "choices" in param_config:
-                    # For categorical parameters, use index bounds
-                    choices = param_config["choices"]
-                    bounds[param_name] = (0, len(choices) - 1)
-            else:
-                # Default bounds for numeric parameters
-                bounds[param_name] = (0.0, 1.0)
+            param_def = self._parameter_definition_to_map(param_config)
+            if "low" in param_def and "high" in param_def:
+                bounds[param_name] = (param_def["low"], param_def["high"])
+                continue
+            choices = param_def.get("choices")
+            if isinstance(choices, list) and choices:
+                # For categorical parameters, use index bounds
+                bounds[param_name] = (0, len(choices) - 1)
+                continue
+            # Default bounds for numeric parameters
+            bounds[param_name] = (0.0, 1.0)
 
         return bounds
 
-    def _extract_types(self, parameters: Dict[str, Any]) -> Dict[str, str]:
+    def _extract_types(self, parameters: dict[str, ParameterDefinition]) -> dict[str, str]:
         """Extract parameter types from definitions."""
-        types = {}
+        types: dict[str, str] = {}
         for param_name, param_config in parameters.items():
-            if isinstance(param_config, dict):
-                if "choices" in param_config:
-                    types[param_name] = "categorical"
-                else:
-                    types[param_name] = "float"
-            else:
-                types[param_name] = "float"
+            param_def = self._parameter_definition_to_map(param_config)
+            param_type = str(param_def.get("type", "float"))
+            if param_type in {"float", "int", "categorical"}:
+                types[param_name] = param_type
+                continue
+            choices = param_def.get("choices")
+            types[param_name] = "categorical" if isinstance(choices, list) else "float"
 
         return types
+
+    def sample_parameters_for_trial(
+        self,
+        trial: TrialLike,
+        parameter_space: dict[str, ParameterDefinition],
+    ) -> ConfigMap:
+        """
+        Sample parameters for a trial from mixed parameter definitions.
+
+        Supports both `ParameterSpace` instances and dict-based definitions.
+        """
+        params: ConfigMap = {}
+        for param_name, param_def in parameter_space.items():
+            sampled = self._sample_parameter_value(trial, param_name, param_def)
+            if sampled is not None:
+                params[param_name] = sampled
+        return params
+
+    @staticmethod
+    def _parameter_definition_to_map(param_def: ParameterDefinition) -> ConfigMap:
+        if isinstance(param_def, ParameterSpace):
+            return {
+                "type": param_def.type,
+                "low": param_def.low,
+                "high": param_def.high,
+                "choices": param_def.choices,
+                "log_scale": param_def.log_scale,
+            }
+        return param_def if isinstance(param_def, dict) else {}
+
+    def _sample_parameter_value(
+        self,
+        trial: TrialLike,
+        param_name: str,
+        param_def: ParameterDefinition,
+    ) -> object | None:
+        definition = self._parameter_definition_to_map(param_def)
+        param_type = str(definition.get("type", "float"))
+
+        if param_type == "float":
+            low = definition.get("low")
+            high = definition.get("high")
+            if low is None or high is None:
+                self.logger.warning(
+                    "Skipping float parameter '%s' due to missing bounds", param_name
+                )
+                return None
+            low_f = safe_to_float(low, 0.0)
+            high_f = safe_to_float(high, low_f)
+            if low_f > high_f:
+                low_f, high_f = high_f, low_f
+            return trial.suggest_float(
+                param_name, low_f, high_f, log=bool(definition.get("log_scale", False))
+            )
+
+        if param_type == "int":
+            low = definition.get("low")
+            high = definition.get("high")
+            if low is None or high is None:
+                self.logger.warning(
+                    "Skipping int parameter '%s' due to missing bounds", param_name
+                )
+                return None
+            low_i = int(round(safe_to_float(low, 0.0)))
+            high_i = int(round(safe_to_float(high, float(low_i))))
+            if low_i > high_i:
+                low_i, high_i = high_i, low_i
+            return trial.suggest_int(param_name, low_i, high_i)
+
+        if param_type == "categorical":
+            choices = definition.get("choices")
+            if not isinstance(choices, list) or not choices:
+                self.logger.warning(
+                    "Skipping categorical parameter '%s' due to missing choices",
+                    param_name,
+                )
+                return None
+            return trial.suggest_categorical(param_name, choices)
+
+        self.logger.warning(
+            "Skipping unsupported parameter type '%s' for '%s'", param_type, param_name
+        )
+        return None
 
     def optimize(
         self,
         stage: str,
-        evaluation_function: Callable,
+        evaluation_function: Callable[[ConfigMap], ScoreMap],
         n_trials: int = DEFAULT_OPTIMIZATION_TRIALS,
-        objectives: Optional[List[str]] = None,
-        constraints: Optional[Dict[str, Any]] = None,
-        parameter_spaces: Optional[Dict[str, Dict[str, Any]]] = None,
-    ) -> Dict[str, Any]:
+        objectives: list[str] | None = None,
+        constraints: ConfigMap | None = None,
+        parameter_spaces: dict[str, dict[str, ParameterDefinition]] | None = None,
+    ) -> ConfigMap:
         """
         Run optimization for reward function parameters.
 
@@ -155,42 +263,24 @@ class OptimizationEngine:
             start_time = time.time()
             param_space = parameter_spaces[stage]
 
-            def optuna_objective(trial):
+            def optuna_objective(trial: TrialLike) -> float:
                 """Objective function for Optuna optimization."""
-                params = {}
-
-                # Sample parameters for the stage
-                for param_name, param_def in param_space.items():
-                    if param_def.type == "float":
-                        if param_def.log_scale:
-                            params[param_name] = trial.suggest_float(
-                                param_name, param_def.low, param_def.high, log=True
-                            )
-                        else:
-                            params[param_name] = trial.suggest_float(
-                                param_name, param_def.low, param_def.high
-                            )
-                    elif param_def.type == "int":
-                        if param_def.low is not None and param_def.high is not None:
-                            params[param_name] = trial.suggest_int(
-                                param_name, int(param_def.low), int(param_def.high)
-                            )
-                    elif param_def.type == "categorical":
-                        params[param_name] = trial.suggest_categorical(
-                            param_name, param_def.choices
-                        )
+                params = self.sample_parameters_for_trial(trial, param_space)
 
                 # Evaluate parameters using actual backtest
                 try:
-                    scores = evaluation_function(params)
+                    scores = ensure_dict(evaluation_function(params))
                 except Exception as e:
-                    self.logger.warning(f"Evaluation failed for trial {trial.number}: {e}")
+                    self.logger.warning(
+                        f"Evaluation failed for trial {getattr(trial, 'number', -1)}: {e}"
+                    )
                     # Return poor scores for failed evaluations
-                    scores = dict.fromkeys(objectives, -999)
+                    scores = {objective: -999.0 for objective in objectives}
+                    scores.setdefault("profit", -999.0)
 
                 # Store trial information
-                trial_info = {
-                    "trial_number": trial.number,
+                trial_info: HistoryRecord = {
+                    "trial_number": getattr(trial, "number", -1),
                     "parameters": params.copy(),
                     "scores": scores.copy(),
                     "timestamp": time.time(),
@@ -199,7 +289,7 @@ class OptimizationEngine:
 
                 # Return composite score (weighted average of objectives)
                 # For simplicity, use profit as primary objective
-                return scores.get("profit", 0.0)
+                return safe_to_float(scores.get("profit", 0.0), 0.0)
 
             # Create Optuna study
             study = optuna.create_study(
@@ -217,7 +307,7 @@ class OptimizationEngine:
 
             # Get best scores by re-evaluating best parameters
             try:
-                best_scores = evaluation_function(best_params)
+                best_scores = ensure_dict(evaluation_function(best_params))
             except Exception as e:
                 self.logger.warning(f"Final evaluation failed: {e}")
                 best_scores = {"profit": best_score}
@@ -231,13 +321,15 @@ class OptimizationEngine:
                     "constraints": constraints,
                 },
                 "best_scores": best_scores,
-                "optimization_history": self.optimization_history.copy(),
+                "optimization_history": list(self.optimization_history),
                 "optimization_time": time.time() - start_time,
                 "convergence_info": {
                     "best_trial_number": study.best_trial.number if study.best_trial else None,
                     "study_best_value": best_score,
                     "n_trials": len(study.trials),
-                    "n_completed_trials": len(study.trials),  # All trials are completed
+                    "n_completed_trials": len(
+                        [t for t in study.trials if getattr(t.state, "name", "") == "COMPLETE"]
+                    ),
                 },
             }
 
@@ -248,16 +340,12 @@ class OptimizationEngine:
             self.logger.error(f"Optimization failed: {e}")
             raise RuntimeError(f"Optimization failed: {e}") from e
 
-        except Exception as e:
-            self.logger.error(f"Optimization failed: {e}")
-            raise RuntimeError(f"Optimization failed: {e}") from e
-
     def evaluate_parameters(
         self,
-        parameters: Dict[str, Any],
-        evaluation_function: Callable,
+        parameters: ConfigMap,
+        evaluation_function: Callable[[ConfigMap], float],
         n_evaluations: int = 5,
-    ) -> Dict[str, Any]:
+    ) -> ConfigMap:
         """
         Evaluate parameter set with multiple runs.
 
@@ -301,7 +389,7 @@ class OptimizationEngine:
 
     def check_convergence(
         self,
-        history: List[Dict[str, Any]],
+        history: list[HistoryRecord],
         window_size: int = 10,
         tolerance: float = 1e-4,
     ) -> bool:
@@ -320,7 +408,10 @@ class OptimizationEngine:
             if len(history) < window_size:
                 return False
 
-            recent_scores = [h["score"] for h in history[-window_size:]]
+            recent_scores = [
+                self._extract_history_score(h)
+                for h in history[-window_size:]
+            ]
             max_score = max(recent_scores)
             min_score = min(recent_scores)
 
@@ -336,3 +427,10 @@ class OptimizationEngine:
         except Exception as e:
             self.logger.error(f"Convergence check failed: {e}")
             return False
+
+    @staticmethod
+    def _extract_history_score(record: HistoryRecord) -> float:
+        if "score" in record:
+            return safe_to_float(record.get("score", 0.0), 0.0)
+        scores = ensure_dict(record.get("scores"))
+        return safe_to_float(scores.get("profit", 0.0), 0.0)

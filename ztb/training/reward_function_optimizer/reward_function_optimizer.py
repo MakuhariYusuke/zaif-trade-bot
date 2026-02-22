@@ -8,24 +8,31 @@ including parameter tuning, multi-objective optimization, and automated reward d
 
 import json
 import time
+from copy import deepcopy
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Callable, Optional
 import importlib.util
 
 from ztb.io.json_io import read_json_object, write_json
 from ztb.metrics.metrics import calculate_autocorrelation, detect_outliers_iqr
 from ztb.training.hyperparameter_optimizer import ParameterSpace
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.safety import ensure_dict, safe_to_float, safe_to_int
 
 from .components.evaluation_engine import EvaluationEngine
 
 # Import extracted components
 from .components.optimization_engine import OptimizationEngine
+from .parameter_space import RewardFunctionParameterSpace
 
 logger = get_logger(__name__)
+
+ConfigMap = dict[str, object]
+ScoreMap = dict[str, float]
+HistoryRecord = dict[str, object]
 
 OPTUNA_AVAILABLE = importlib.util.find_spec("optuna") is not None
 if not OPTUNA_AVAILABLE:
@@ -47,11 +54,11 @@ class RewardFunctionConfig:
     """Configuration for reward function optimization."""
 
     stage: str
-    parameters: Dict[str, Any] = field(default_factory=dict)
-    objectives: List[str] = field(
+    parameters: ConfigMap = field(default_factory=dict)
+    objectives: list[str] = field(
         default_factory=lambda: ["profit", "sharpe", "win_rate"]
     )
-    constraints: Dict[str, Any] = field(default_factory=dict)
+    constraints: ConfigMap = field(default_factory=dict)
 
 
 @dataclass
@@ -59,10 +66,10 @@ class RewardOptimizationResult:
     """Result of reward function optimization."""
 
     best_config: RewardFunctionConfig
-    best_scores: Dict[str, float]
-    optimization_history: List[Dict[str, Any]] = field(default_factory=list)
+    best_scores: ScoreMap
+    optimization_history: list[HistoryRecord] = field(default_factory=list)
     optimization_time: float = 0.0
-    convergence_info: Dict[str, Any] = field(default_factory=dict)
+    convergence_info: ConfigMap = field(default_factory=dict)
 
 
 class RewardFunctionOptimizer:
@@ -76,7 +83,7 @@ class RewardFunctionOptimizer:
     - Cross-validation across market conditions
     """
 
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: str | None = None):
         """
         Initialize reward function optimizer.
 
@@ -89,14 +96,21 @@ class RewardFunctionOptimizer:
         # Load configuration if exists
         self.config = self._load_config()
 
+        # Shared parameter-space manager (single source of truth)
+        self.parameter_space_manager = RewardFunctionParameterSpace()
+
         # Default parameter spaces for different reward stages
         self.parameter_spaces = self._define_parameter_spaces()
 
         # Optimization history
-        self.optimization_history: deque = deque(maxlen=1000)
+        self.optimization_history: deque[HistoryRecord] = deque(maxlen=1000)
 
-        # Evaluation cache for robustness
-        self.evaluation_cache = {}
+        # Evaluation cache for robustness (bounded to prevent memory growth)
+        self.max_evaluation_cache_size = max(
+            32, safe_to_int(self.config.get("evaluation_cache_max_size", 512), 512)
+        )
+        self.evaluation_cache: dict[str, ScoreMap] = {}
+        self._evaluation_cache_order: deque[str] = deque()
 
         # Dynamic weighting system
         self.dynamic_weights = {
@@ -118,6 +132,34 @@ class RewardFunctionOptimizer:
         self.optimization_engine = OptimizationEngine()
         self.evaluation_engine = EvaluationEngine()
 
+    def _build_evaluation_cache_key(
+        self, params: ConfigMap, objectives: list[str]
+    ) -> str:
+        payload = {
+            "params": {str(k): params[k] for k in sorted(params.keys())},
+            "objectives": sorted(str(obj) for obj in objectives),
+        }
+        return json.dumps(payload, sort_keys=True, default=str, ensure_ascii=False)
+
+    def _normalize_scores(self, raw_scores: object, objectives: list[str]) -> ScoreMap:
+        score_map = ensure_dict(raw_scores)
+        normalized: ScoreMap = {}
+        for objective in objectives:
+            normalized[objective] = safe_to_float(score_map.get(objective, 0.0), 0.0)
+        # Keep commonly referenced diagnostics if present.
+        for key in ("max_drawdown", "total_trades", "avg_trade_return"):
+            if key in score_map:
+                normalized[key] = safe_to_float(score_map.get(key, 0.0), 0.0)
+        return normalized
+
+    def _store_evaluation_cache(self, cache_key: str, scores: ScoreMap) -> None:
+        if cache_key not in self.evaluation_cache:
+            self._evaluation_cache_order.append(cache_key)
+        self.evaluation_cache[cache_key] = scores
+        while len(self._evaluation_cache_order) > self.max_evaluation_cache_size:
+            oldest = self._evaluation_cache_order.popleft()
+            self.evaluation_cache.pop(oldest, None)
+
     def _update_dynamic_weights_from_history(self):
         """
         Update dynamic weights based on optimization history and performance trends.
@@ -126,8 +168,8 @@ class RewardFunctionOptimizer:
         if len(self.optimization_history) < 5:
             return  # Not enough history for meaningful updates
 
-        recent_trials = self.optimization_history[-10:]  # Last 10 trials
-        recent_scores = [trial.get("scores", {}) for trial in recent_trials]
+        recent_trials = list(self.optimization_history)[-10:]  # Last 10 trials
+        recent_scores = [ensure_dict(trial.get("scores")) for trial in recent_trials]
 
         # Calculate performance trends
         profit_scores = [s.get("profit", 0) for s in recent_scores if "profit" in s]
@@ -172,8 +214,12 @@ class RewardFunctionOptimizer:
         )
 
     def _robust_evaluate_parameters(
-        self, params: Dict[str, Any], objectives: List[str], trial_number: int
-    ) -> Dict[str, float]:
+        self,
+        params: ConfigMap,
+        objectives: list[str],
+        trial_number: int,
+        evaluation_function: Callable[[ConfigMap], ScoreMap] | None = None,
+    ) -> ScoreMap:
         """
         Robust parameter evaluation with retry logic and caching.
 
@@ -181,19 +227,48 @@ class RewardFunctionOptimizer:
             params: Parameters to evaluate
             objectives: List of objectives
             trial_number: Current trial number for logging
+            evaluation_function: Optional custom evaluation function
 
         Returns:
             Evaluation scores
         """
-        # Delegate evaluation to EvaluationEngine
-        return self.evaluation_engine.evaluate_configuration(
-            params=params,
-            objectives=objectives,
-            trial_number=trial_number,
-            evaluation_cache=self.evaluation_cache,
-            max_retries=self.max_retries,
-            retry_delay=self.retry_delay,
-        )
+        cache_key = self._build_evaluation_cache_key(params, objectives)
+        cached = self.evaluation_cache.get(cache_key)
+        if cached is not None:
+            return dict(cached)
+
+        if evaluation_function is None:
+            evaluation_function = lambda p: self.run_backtest_evaluation(
+                self.create_backtest_config(p)
+            )
+
+        last_error: Exception | None = None
+        for retry in range(self.max_retries):
+            try:
+                raw_scores = evaluation_function(params)
+                normalized = self._normalize_scores(raw_scores, objectives)
+                self._store_evaluation_cache(cache_key, normalized)
+                return dict(normalized)
+            except Exception as exc:  # pragma: no cover - defensive retry path
+                last_error = exc
+                self.logger.warning(
+                    "Evaluation retry %d/%d failed for trial %d: %s",
+                    retry + 1,
+                    self.max_retries,
+                    trial_number,
+                    exc,
+                )
+                if retry + 1 < self.max_retries:
+                    time.sleep(self.retry_delay)
+
+        if last_error is not None:
+            self.logger.error(
+                "Evaluation failed after retries for trial %d: %s",
+                trial_number,
+                last_error,
+            )
+        fallback = {objective: 0.0 for objective in objectives}
+        return fallback
 
     def set_console_output(
         self,
@@ -234,9 +309,7 @@ class RewardFunctionOptimizer:
             if current == total:
                 print()  # New line at completion
 
-    def _print_scores(
-        self, scores: Dict[str, float], title: str = "Performance Scores"
-    ):
+    def _print_scores(self, scores: ScoreMap, title: str = "Performance Scores"):
         """Print formatted performance scores."""
         if not self.show_detailed_scores:
             return
@@ -286,15 +359,18 @@ class RewardFunctionOptimizer:
         if result.convergence_info:
             conv = result.convergence_info
             print(f"🏆 Best Trial: #{conv.get('best_trial_number', 'N/A')}")
-            print(f"📊 Study Best Value: {conv.get('study_best_value', 'N/A'):.4f}")
+            best_value = safe_to_float(conv.get("study_best_value", 0.0), 0.0)
+            print(f"📊 Study Best Value: {best_value:.4f}")
 
         self._print_scores(result.best_scores, "Final Best Scores")
 
         # Show parameter improvements if available
         if len(result.optimization_history) > 1:
             print("\n📈 Optimization Progress:")
-            first_score = result.optimization_history[0]["scores"].get("profit", 0)
-            best_score = result.best_scores.get("profit", 0)
+            first_entry = ensure_dict(result.optimization_history[0])
+            first_scores = ensure_dict(first_entry.get("scores"))
+            first_score = safe_to_float(first_scores.get("profit", 0.0), 0.0)
+            best_score = safe_to_float(result.best_scores.get("profit", 0.0), 0.0)
             improvement = (
                 ((best_score - first_score) / abs(first_score)) * 100
                 if first_score != 0
@@ -318,358 +394,22 @@ class RewardFunctionOptimizer:
 
         logger.error(f"Error in {context}: {error}", exc_info=True)
 
-    def _define_parameter_spaces(self) -> Dict[str, Dict[str, ParameterSpace]]:
-        """Define parameter spaces for different reward function stages."""
+    def _define_parameter_spaces(self) -> dict[str, dict[str, ParameterSpace]]:
+        """Define parameter spaces for different reward-function stages."""
+        return self.parameter_space_manager.get_parameter_spaces()
 
-        spaces = {}
-
-        # Balanced transition stage parameters - Enhanced with improved ranges
-        spaces["balanced_transition"] = {
-            # Basic trading parameters with narrower, more realistic ranges
-            "balance_penalty_tolerance": ParameterSpace(
-                "balance_penalty_tolerance", "float", 0.02, 0.1, log_scale=False
-            ),
-            "balance_penalty": ParameterSpace(
-                "balance_penalty", "float", 2.0, 10.0, log_scale=False
-            ),
-            "hold_penalty_rate": ParameterSpace(
-                "hold_penalty_rate", "float", 0.005, 0.05, log_scale=True
-            ),
-            "trading_bonus_multiplier": ParameterSpace(
-                "trading_bonus_multiplier", "float", 1.2, 3.0, log_scale=False
-            ),
-            "trading_bonus": ParameterSpace(
-                "trading_bonus", "float", 0.005, 0.03, log_scale=True
-            ),
-            # Profit bonus multipliers for each action [BUY, SELL, HOLD] - asymmetric ranges
-            "profit_bonus_multiplier_buy": ParameterSpace(
-                "profit_bonus_multiplier_buy", "float", 0.8, 1.5, log_scale=False
-            ),
-            "profit_bonus_multiplier_sell": ParameterSpace(
-                "profit_bonus_multiplier_sell", "float", 0.8, 1.5, log_scale=False
-            ),
-            "profit_bonus_multiplier_hold": ParameterSpace(
-                "profit_bonus_multiplier_hold", "float", 0.2, 0.8, log_scale=False
-            ),
-            # ATR and portfolio-based profit bonuses - narrower ranges
-            "base_profit_bonus_atr_coeff": ParameterSpace(
-                "base_profit_bonus_atr_coeff", "float", 1.0, 2.5, log_scale=False
-            ),
-            "base_profit_bonus_portfolio_coeff": ParameterSpace(
-                "base_profit_bonus_portfolio_coeff", "float", 1.0, 2.5, log_scale=False
-            ),
-            # Advanced reward components - market-aware weights
-            "momentum_weight": ParameterSpace(
-                "momentum_weight", "float", 0.1, 0.7, log_scale=False
-            ),
-            "volatility_weight": ParameterSpace(
-                "volatility_weight", "float", 0.1, 0.6, log_scale=False
-            ),
-            "time_decay_weight": ParameterSpace(
-                "time_decay_weight", "float", 0.05, 0.3, log_scale=False
-            ),
-            # Multi-objective weights - normalized ranges
-            "profit_weight": ParameterSpace(
-                "profit_weight", "float", 0.3, 1.2, log_scale=False
-            ),
-            "risk_weight": ParameterSpace(
-                "risk_weight", "float", 0.2, 0.8, log_scale=False
-            ),
-            "consistency_weight": ParameterSpace(
-                "consistency_weight", "float", 0.3, 1.0, log_scale=False
-            ),
-            # Asymmetric reward scaling parameters (v435 enhancement)
-            "long_position_reward_multiplier": ParameterSpace(
-                "long_position_reward_multiplier", "float", 1.0, 2.0, log_scale=False
-            ),
-            "short_position_reward_multiplier": ParameterSpace(
-                "short_position_reward_multiplier", "float", 0.5, 1.0, log_scale=False
-            ),
-            "long_position_penalty_multiplier": ParameterSpace(
-                "long_position_penalty_multiplier", "float", 0.5, 1.0, log_scale=False
-            ),
-            "short_position_penalty_multiplier": ParameterSpace(
-                "short_position_penalty_multiplier", "float", 1.0, 1.5, log_scale=False
-            ),
-        }
-
-        # Trading focused stage parameters - Enhanced
-        spaces["trading_focused"] = {
-            # Basic trading parameters
-            "balance_penalty_tolerance": ParameterSpace(
-                "balance_penalty_tolerance", "float", 0.01, 0.2, log_scale=False
-            ),
-            "balance_penalty": ParameterSpace(
-                "balance_penalty", "float", 5.0, 50.0, log_scale=False
-            ),
-            "hold_penalty_rate": ParameterSpace(
-                "hold_penalty_rate", "float", 0.01, 1.0, log_scale=True
-            ),
-            "trading_bonus_multiplier": ParameterSpace(
-                "trading_bonus_multiplier", "float", 1.0, 10.0, log_scale=False
-            ),
-            "trading_bonus": ParameterSpace(
-                "trading_bonus", "float", 0.01, 1.0, log_scale=True
-            ),
-            # Profit bonus multipliers for each action [BUY, SELL, HOLD]
-            "profit_bonus_multiplier_buy": ParameterSpace(
-                "profit_bonus_multiplier_buy", "float", 0.8, 3.0, log_scale=False
-            ),
-            "profit_bonus_multiplier_sell": ParameterSpace(
-                "profit_bonus_multiplier_sell", "float", 0.8, 3.0, log_scale=False
-            ),
-            "profit_bonus_multiplier_hold": ParameterSpace(
-                "profit_bonus_multiplier_hold", "float", 0.05, 1.0, log_scale=False
-            ),
-            # ATR and portfolio-based profit bonuses
-            "base_profit_bonus_atr_coeff": ParameterSpace(
-                "base_profit_bonus_atr_coeff", "float", 1.0, 5.0, log_scale=False
-            ),
-            "base_profit_bonus_portfolio_coeff": ParameterSpace(
-                "base_profit_bonus_portfolio_coeff", "float", 1.0, 5.0, log_scale=False
-            ),
-            # Advanced reward components
-            "momentum_weight": ParameterSpace(
-                "momentum_weight", "float", 0.0, 2.0, log_scale=False
-            ),
-            "volatility_weight": ParameterSpace(
-                "volatility_weight", "float", 0.0, 2.0, log_scale=False
-            ),
-            "time_decay_weight": ParameterSpace(
-                "time_decay_weight", "float", 0.0, 1.0, log_scale=False
-            ),
-            # Multi-objective weights
-            "profit_weight": ParameterSpace(
-                "profit_weight", "float", 0.1, 2.0, log_scale=False
-            ),
-            "risk_weight": ParameterSpace(
-                "risk_weight", "float", 0.1, 2.0, log_scale=False
-            ),
-            "consistency_weight": ParameterSpace(
-                "consistency_weight", "float", 0.1, 2.0, log_scale=False
-            ),
-        }
-
-        # Profit optimized stage parameters - Enhanced
-        spaces["profit_optimized"] = {
-            # Profit-focused parameters
-            "profit_weight": ParameterSpace(
-                "profit_weight", "float", 0.5, 5.0, log_scale=False
-            ),
-            "risk_weight": ParameterSpace(
-                "risk_weight", "float", 0.01, 1.0, log_scale=True
-            ),
-            "consistency_weight": ParameterSpace(
-                "consistency_weight", "float", 0.01, 1.0, log_scale=True
-            ),
-            # Profit bonus multipliers for each action [BUY, SELL, HOLD]
-            "profit_bonus_multiplier_buy": ParameterSpace(
-                "profit_bonus_multiplier_buy", "float", 1.0, 5.0, log_scale=False
-            ),
-            "profit_bonus_multiplier_sell": ParameterSpace(
-                "profit_bonus_multiplier_sell", "float", 1.0, 5.0, log_scale=False
-            ),
-            "profit_bonus_multiplier_hold": ParameterSpace(
-                "profit_bonus_multiplier_hold", "float", 0.01, 1.0, log_scale=False
-            ),
-            # ATR and portfolio-based profit bonuses
-            "base_profit_bonus_atr_coeff": ParameterSpace(
-                "base_profit_bonus_atr_coeff", "float", 2.0, 8.0, log_scale=False
-            ),
-            "base_profit_bonus_portfolio_coeff": ParameterSpace(
-                "base_profit_bonus_portfolio_coeff", "float", 2.0, 8.0, log_scale=False
-            ),
-            # Advanced reward components
-            "momentum_weight": ParameterSpace(
-                "momentum_weight", "float", 0.0, 3.0, log_scale=False
-            ),
-            "volatility_weight": ParameterSpace(
-                "volatility_weight", "float", 0.0, 3.0, log_scale=False
-            ),
-            "time_decay_weight": ParameterSpace(
-                "time_decay_weight", "float", 0.0, 1.5, log_scale=False
-            ),
-            # Risk management parameters
-            "position_penalty_weight": ParameterSpace(
-                "position_penalty_weight", "float", 0.001, 0.1, log_scale=True
-            ),
-            "drawdown_penalty_weight": ParameterSpace(
-                "drawdown_penalty_weight", "float", 0.001, 0.1, log_scale=True
-            ),
-            "stagnation_penalty_weight": ParameterSpace(
-                "stagnation_penalty_weight", "float", 0.001, 0.1, log_scale=True
-            ),
-            # Performance bonuses
-            "growth_bonus_weight": ParameterSpace(
-                "growth_bonus_weight", "float", 0.001, 0.1, log_scale=True
-            ),
-            "win_streak_bonus_weight": ParameterSpace(
-                "win_streak_bonus_weight", "float", 0.001, 0.1, log_scale=True
-            ),
-            # Asymmetric reward scaling parameters (v435 enhancement)
-            "long_position_reward_multiplier": ParameterSpace(
-                "long_position_reward_multiplier", "float", 1.0, 3.0, log_scale=False
-            ),
-            "short_position_reward_multiplier": ParameterSpace(
-                "short_position_reward_multiplier", "float", 0.3, 1.0, log_scale=False
-            ),
-            "long_position_penalty_multiplier": ParameterSpace(
-                "long_position_penalty_multiplier", "float", 0.3, 1.0, log_scale=False
-            ),
-            "short_position_penalty_multiplier": ParameterSpace(
-                "short_position_penalty_multiplier", "float", 1.0, 2.0, log_scale=False
-            ),
-        }
-
-        # Ultra profit stage parameters - Enhanced
-        spaces["ultra_profit"] = {
-            "profit_weight": ParameterSpace(
-                "profit_weight", "float", 1.0, 10.0, log_scale=False
-            ),
-            "risk_weight": ParameterSpace(
-                "risk_weight", "float", 0.001, 0.1, log_scale=True
-            ),
-            "consistency_weight": ParameterSpace(
-                "consistency_weight", "float", 0.001, 0.1, log_scale=True
-            ),
-            # Profit bonus multipliers for each action [BUY, SELL, HOLD]
-            "profit_bonus_multiplier_buy": ParameterSpace(
-                "profit_bonus_multiplier_buy", "float", 2.0, 10.0, log_scale=False
-            ),
-            "profit_bonus_multiplier_sell": ParameterSpace(
-                "profit_bonus_multiplier_sell", "float", 2.0, 10.0, log_scale=False
-            ),
-            "profit_bonus_multiplier_hold": ParameterSpace(
-                "profit_bonus_multiplier_hold", "float", 0.001, 0.5, log_scale=False
-            ),
-            # ATR and portfolio-based profit bonuses
-            "base_profit_bonus_atr_coeff": ParameterSpace(
-                "base_profit_bonus_atr_coeff", "float", 3.0, 15.0, log_scale=False
-            ),
-            "base_profit_bonus_portfolio_coeff": ParameterSpace(
-                "base_profit_bonus_portfolio_coeff", "float", 3.0, 15.0, log_scale=False
-            ),
-            # Advanced reward components
-            "momentum_weight": ParameterSpace(
-                "momentum_weight", "float", 0.0, 5.0, log_scale=False
-            ),
-            "volatility_weight": ParameterSpace(
-                "volatility_weight", "float", 0.0, 5.0, log_scale=False
-            ),
-            "time_decay_weight": ParameterSpace(
-                "time_decay_weight", "float", 0.0, 2.0, log_scale=False
-            ),
-            "ultra_profit_multiplier": ParameterSpace(
-                "ultra_profit_multiplier", "float", 1.0, 5.0, log_scale=False
-            ),
-            "ultra_risk_multiplier": ParameterSpace(
-                "ultra_risk_multiplier", "float", 0.1, 2.0, log_scale=False
-            ),
-            # Asymmetric reward scaling parameters (v435 enhancement)
-            "long_position_reward_multiplier": ParameterSpace(
-                "long_position_reward_multiplier", "float", 1.0, 4.0, log_scale=False
-            ),
-            "short_position_reward_multiplier": ParameterSpace(
-                "short_position_reward_multiplier", "float", 0.2, 1.0, log_scale=False
-            ),
-            "long_position_penalty_multiplier": ParameterSpace(
-                "long_position_penalty_multiplier", "float", 0.2, 1.0, log_scale=False
-            ),
-            "short_position_penalty_multiplier": ParameterSpace(
-                "short_position_penalty_multiplier", "float", 1.0, 3.0, log_scale=False
-            ),
-        }
-
-        # Market regime-specific optimization stages
-
-        # Bull market optimization
-        spaces["bull_market"] = {
-            "profit_weight": ParameterSpace(
-                "profit_weight", "float", 1.0, 8.0, log_scale=False
-            ),
-            "momentum_weight": ParameterSpace(
-                "momentum_weight", "float", 1.0, 5.0, log_scale=False
-            ),
-            "volatility_weight": ParameterSpace(
-                "volatility_weight", "float", 0.0, 2.0, log_scale=False
-            ),
-            "profit_bonus_multiplier_buy": ParameterSpace(
-                "profit_bonus_multiplier_buy", "float", 1.5, 8.0, log_scale=False
-            ),
-            "profit_bonus_multiplier_sell": ParameterSpace(
-                "profit_bonus_multiplier_sell", "float", 0.5, 3.0, log_scale=False
-            ),
-            "trading_bonus_multiplier": ParameterSpace(
-                "trading_bonus_multiplier", "float", 2.0, 8.0, log_scale=False
-            ),
-        }
-
-        # Bear market optimization
-        spaces["bear_market"] = {
-            "profit_weight": ParameterSpace(
-                "profit_weight", "float", 0.5, 4.0, log_scale=False
-            ),
-            "risk_weight": ParameterSpace(
-                "risk_weight", "float", 0.5, 3.0, log_scale=False
-            ),
-            "volatility_weight": ParameterSpace(
-                "volatility_weight", "float", 1.0, 4.0, log_scale=False
-            ),
-            "profit_bonus_multiplier_buy": ParameterSpace(
-                "profit_bonus_multiplier_buy", "float", 0.1, 2.0, log_scale=False
-            ),
-            "profit_bonus_multiplier_sell": ParameterSpace(
-                "profit_bonus_multiplier_sell", "float", 1.0, 6.0, log_scale=False
-            ),
-            "trading_bonus_multiplier": ParameterSpace(
-                "trading_bonus_multiplier", "float", 1.0, 5.0, log_scale=False
-            ),
-        }
-
-        # Sideways market optimization
-        spaces["sideways_market"] = {
-            "consistency_weight": ParameterSpace(
-                "consistency_weight", "float", 1.0, 5.0, log_scale=False
-            ),
-            "hold_penalty_rate": ParameterSpace(
-                "hold_penalty_rate", "float", 0.001, 0.05, log_scale=True
-            ),
-            "profit_bonus_multiplier_hold": ParameterSpace(
-                "profit_bonus_multiplier_hold", "float", 0.5, 2.0, log_scale=False
-            ),
-            "time_decay_weight": ParameterSpace(
-                "time_decay_weight", "float", 0.1, 1.0, log_scale=False
-            ),
-            "stagnation_penalty_weight": ParameterSpace(
-                "stagnation_penalty_weight", "float", 0.001, 0.05, log_scale=True
-            ),
-        }
-
-        # High volatility market optimization
-        spaces["high_volatility"] = {
-            "volatility_weight": ParameterSpace(
-                "volatility_weight", "float", 2.0, 8.0, log_scale=False
-            ),
-            "risk_weight": ParameterSpace(
-                "risk_weight", "float", 1.0, 5.0, log_scale=False
-            ),
-            "base_profit_bonus_atr_coeff": ParameterSpace(
-                "base_profit_bonus_atr_coeff", "float", 3.0, 12.0, log_scale=False
-            ),
-            "profit_bonus_multiplier_buy": ParameterSpace(
-                "profit_bonus_multiplier_buy", "float", 1.0, 6.0, log_scale=False
-            ),
-            "profit_bonus_multiplier_sell": ParameterSpace(
-                "profit_bonus_multiplier_sell", "float", 1.0, 6.0, log_scale=False
-            ),
-        }
-
-        return spaces
+    def create_parameter_space_from_config(
+        self, config: ConfigMap, exploration_range: float = 0.1
+    ) -> dict[str, ParameterSpace]:
+        """Create an exploration parameter-space around a base config."""
+        return self.parameter_space_manager.create_parameter_space_from_config(
+            config, exploration_range
+        )
 
     def update_dynamic_weights(
         self,
-        market_data: Optional[Dict[str, Any]] = None,
-        performance_history: Optional[List[Dict[str, float]]] = None,
+        market_data: dict[str, object] | None = None,
+        performance_history: list[dict[str, float]] | None = None,
     ) -> None:
         """
         Update dynamic weights based on market conditions and performance history.
@@ -680,8 +420,8 @@ class RewardFunctionOptimizer:
         """
         # Update market regime
         if market_data:
-            volatility = market_data.get("volatility", 0.5)
-            trend_strength = market_data.get("trend_strength", 0.0)
+            volatility = safe_to_float(market_data.get("volatility", 0.5), 0.5)
+            trend_strength = safe_to_float(market_data.get("trend_strength", 0.0), 0.0)
 
             if volatility > 0.8:
                 self.dynamic_weights["market_regime"] = "volatile"
@@ -697,7 +437,8 @@ class RewardFunctionOptimizer:
         # Update performance trend
         if performance_history and len(performance_history) >= 3:
             recent_scores = [
-                h.get("composite_score", 0) for h in performance_history[-3:]
+                safe_to_float(h.get("composite_score", 0.0), 0.0)
+                for h in performance_history[-3:]
             ]
             if all(
                 recent_scores[i] < recent_scores[i + 1]
@@ -715,7 +456,8 @@ class RewardFunctionOptimizer:
         # Update risk level based on recent drawdowns
         if performance_history:
             recent_drawdowns = [
-                h.get("max_drawdown", 0) for h in performance_history[-5:]
+                safe_to_float(h.get("max_drawdown", 0.0), 0.0)
+                for h in performance_history[-5:]
             ]
             avg_drawdown = (
                 sum(recent_drawdowns) / len(recent_drawdowns) if recent_drawdowns else 0
@@ -730,7 +472,7 @@ class RewardFunctionOptimizer:
 
         self.logger.info(f"Updated dynamic weights: {self.dynamic_weights}")
 
-    def get_dynamic_objective_weights(self, objectives: List[str]) -> Dict[str, float]:
+    def get_dynamic_objective_weights(self, objectives: list[str]) -> ScoreMap:
         """
         Get dynamic objective weights based on current market and performance conditions.
 
@@ -782,7 +524,7 @@ class RewardFunctionOptimizer:
         # Return only weights for requested objectives
         return {obj: base_weights.get(obj, 0.0) for obj in objectives}
 
-    def _load_config(self) -> Dict[str, Any]:
+    def _load_config(self) -> ConfigMap:
         """
         Load configuration from file.
 
@@ -792,7 +534,7 @@ class RewardFunctionOptimizer:
         try:
             config_file = Path(self.config_path)
             if config_file.exists():
-                config = read_json_object(config_file)
+                config = ensure_dict(read_json_object(config_file))
                 self.logger.info(f"Loaded configuration from: {config_file}")
                 return config
             else:
@@ -802,7 +544,7 @@ class RewardFunctionOptimizer:
             self.logger.error(f"Failed to load configuration: {e}")
             return {}
 
-    def load_base_config_from_file(self, config_file_path: str) -> Dict[str, Any]:
+    def load_base_config_from_file(self, config_file_path: str) -> ConfigMap:
         """
         Load base configuration from JSON file.
 
@@ -816,18 +558,18 @@ class RewardFunctionOptimizer:
         if not config_path.exists():
             raise FileNotFoundError(f"Config file not found: {config_file_path}")
 
-        config_data = read_json_object(config_path)
+        config_data = ensure_dict(read_json_object(config_path))
 
         # Extract parameters from different sections
         parameters = {}
 
         # Extract SAC hyperparameters
         if "sac_hyperparameters" in config_data:
-            parameters.update(config_data["sac_hyperparameters"])
+            parameters.update(ensure_dict(config_data["sac_hyperparameters"]))
 
         # Extract reward settings
         if "reward_settings" in config_data:
-            reward_settings = config_data["reward_settings"]
+            reward_settings = ensure_dict(config_data["reward_settings"])
             # Only include numeric reward parameters
             for key, value in reward_settings.items():
                 if isinstance(value, (int, float)):
@@ -835,19 +577,19 @@ class RewardFunctionOptimizer:
 
         # Extract environment parameters if they are numeric
         if "environment" in config_data:
-            for key, value in config_data["environment"].items():
+            for key, value in ensure_dict(config_data["environment"]).items():
                 if isinstance(value, (int, float)):
                     parameters[key] = value
 
         # If no structured parameters found, assume the whole file is parameters
         if not parameters:
             if "parameters" in config_data:
-                parameters = config_data["parameters"]
+                parameters = ensure_dict(config_data["parameters"])
             else:
                 # Assume the whole file is parameters
-                parameters = config_data
+                parameters = dict(config_data)
 
-        stage = config_data.get("stage", "profit_optimized")
+        stage = str(config_data.get("stage", "profit_optimized"))
 
         return {"parameters": parameters, "stage": stage, "file_path": str(config_path)}
 
@@ -857,7 +599,7 @@ class RewardFunctionOptimizer:
         config_file_path: str,
         exploration_range: float = 0.1,
         n_trials: int = 100,
-        objectives: Optional[List[str]] = None,
+        objectives: list[str] | None = None,
     ) -> RewardOptimizationResult:
         """
         Optimize reward function parameters starting from existing config file.
@@ -884,7 +626,7 @@ class RewardFunctionOptimizer:
         )
 
         # Use the stage from config or default
-        stage = base_config.get("stage", "profit_optimized")
+        stage = str(base_config.get("stage", "profit_optimized"))
         objectives = objectives or ["profit", "sharpe", "win_rate"]
 
         # Print header
@@ -921,7 +663,7 @@ class RewardFunctionOptimizer:
 
     def optimize_hyperparameters_from_config(
         self, config_file_path: str, exploration_range: float = 0.1, n_trials: int = 50
-    ) -> Dict[str, Any]:
+    ) -> ConfigMap:
         """
         Optimize SAC hyperparameters starting from existing config file.
 
@@ -979,18 +721,9 @@ class RewardFunctionOptimizer:
         # Define objective function for SAC hyperparameter optimization
         def sac_objective(trial):
             """Objective function for SAC hyperparameter optimization."""
-            params = {}
-
-            # Sample SAC parameters
-            for param_name, param_def in sac_param_space.items():
-                if param_def.type == "float":
-                    params[param_name] = trial.suggest_float(
-                        param_name, param_def.low, param_def.high
-                    )
-                elif param_def.type == "int":
-                    params[param_name] = trial.suggest_int(
-                        param_name, int(param_def.low), int(param_def.high)
-                    )
+            params = self.optimization_engine.sample_parameters_for_trial(
+                trial, sac_param_space
+            )
 
             # Create backtest config with optimized SAC params and fixed reward params
             try:
@@ -1000,10 +733,10 @@ class RewardFunctionOptimizer:
                 scores = self.run_backtest_evaluation(backtest_config)
             except Exception as e:
                 self._handle_error(e, f"SAC evaluation (trial {trial.number})")
-                return -999  # Poor score for failed evaluations
+                return -999.0  # Poor score for failed evaluations
 
             # Return composite score
-            return scores.get("profit", 0.0)
+            return safe_to_float(scores.get("profit", 0.0), 0.0)
 
         # Create Optuna study
         study = optuna.create_study(
@@ -1013,6 +746,7 @@ class RewardFunctionOptimizer:
         )
 
         # Run optimization
+        optimization_started_at = time.time()
         try:
             study.optimize(sac_objective, n_trials=n_trials)
         except Exception as e:
@@ -1043,7 +777,7 @@ class RewardFunctionOptimizer:
 
         # Print results
         print("\n🎉 SAC Hyperparameter Optimization Completed!")
-        print(f"⏱️  Optimization Time: {(time.time() - time.time()):.2f} seconds")
+        print(f"⏱️  Optimization Time: {(time.time() - optimization_started_at):.2f} seconds")
         print(f"🏆 Best Score: {best_score:.4f}")
         print("📊 Best Parameters:")
         for param, value in best_params.items():
@@ -1059,9 +793,9 @@ class RewardFunctionOptimizer:
 
     def create_backtest_config(
         self,
-        reward_params: Dict[str, Any],
-        base_config: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        reward_params: ConfigMap,
+        base_config: ConfigMap | None = None,
+    ) -> ConfigMap:
         """
         Create backtest configuration with reward function parameters.
 
@@ -1072,7 +806,7 @@ class RewardFunctionOptimizer:
         Returns:
             Complete backtest configuration
         """
-        config = base_config or {
+        config = deepcopy(base_config) if base_config is not None else {
             "total_timesteps": 50000,
             "eval_freq": 10000,
             "n_eval_episodes": 10,
@@ -1131,7 +865,7 @@ class RewardFunctionOptimizer:
         config["reward_settings"] = reward_settings
         return config
 
-    def run_backtest_evaluation(self, config: Dict[str, Any]) -> Dict[str, float]:
+    def run_backtest_evaluation(self, config: ConfigMap) -> ScoreMap:
         """
         Run actual backtest evaluation with given configuration.
 
@@ -1224,10 +958,10 @@ class RewardFunctionOptimizer:
     def optimize_reward_function(
         self,
         stage: str,
-        evaluation_function: Callable,
+        evaluation_function: Callable[[ConfigMap], ScoreMap],
         n_trials: int = 100,
-        objectives: Optional[List[str]] = None,
-        constraints: Optional[Dict[str, Any]] = None,
+        objectives: list[str] | None = None,
+        constraints: ConfigMap | None = None,
     ) -> RewardOptimizationResult:
         """
         Optimize reward function parameters for a specific stage.
@@ -1252,15 +986,31 @@ class RewardFunctionOptimizer:
         objectives = objectives or ["profit", "sharpe", "win_rate"]
         constraints = constraints or {}
 
+        trial_counter = {"value": 0}
+
+        def robust_eval(params: ConfigMap) -> ScoreMap:
+            trial_counter["value"] += 1
+            return self._robust_evaluate_parameters(
+                params=params,
+                objectives=objectives,
+                trial_number=trial_counter["value"],
+                evaluation_function=evaluation_function,
+            )
+
         # Delegate optimization to OptimizationEngine
         result_dict = self.optimization_engine.optimize(
             stage=stage,
-            evaluation_function=evaluation_function,
+            evaluation_function=robust_eval,
             n_trials=n_trials,
             objectives=objectives,
             constraints=constraints,
             parameter_spaces=self.parameter_spaces,
         )
+
+        history = result_dict.get("optimization_history")
+        if isinstance(history, list):
+            for record in history:
+                self.optimization_history.append(ensure_dict(record))
 
         # Convert to RewardOptimizationResult
         return RewardOptimizationResult(
@@ -1280,9 +1030,9 @@ class RewardFunctionOptimizer:
         self,
         stage: str,
         n_trials: int = 200,
-        objectives: Optional[List[str]] = None,
-        constraints: Optional[Dict[str, Any]] = None,
-    ) -> List[RewardOptimizationResult]:
+        objectives: list[str] | None = None,
+        constraints: ConfigMap | None = None,
+    ) -> list[RewardOptimizationResult]:
         """
         Optimize Pareto front for multi-objective reward function design.
 
@@ -1318,29 +1068,9 @@ class RewardFunctionOptimizer:
 
         def objective(trial):
             """Multi-objective function for Pareto optimization."""
-            params = {}
-
-            # Sample parameters for the stage
-            param_space = self.parameter_spaces[stage]
-            for param_name, param_def in param_space.items():
-                if param_def.type == "float":
-                    if param_def.log_scale:
-                        params[param_name] = trial.suggest_float(
-                            param_name, param_def.low, param_def.high, log=True
-                        )
-                    else:
-                        params[param_name] = trial.suggest_float(
-                            param_name, param_def.low, param_def.high
-                        )
-                elif param_def.type == "int":
-                    if param_def.low is not None and param_def.high is not None:
-                        params[param_name] = trial.suggest_int(
-                            param_name, int(param_def.low), int(param_def.high)
-                        )
-                elif param_def.type == "categorical":
-                    params[param_name] = trial.suggest_categorical(
-                        param_name, param_def.choices
-                    )
+            params = self.optimization_engine.sample_parameters_for_trial(
+                trial, self.parameter_spaces[stage]
+            )
 
             # Evaluate parameters using actual backtest
             try:
@@ -1349,7 +1079,7 @@ class RewardFunctionOptimizer:
             except Exception as e:
                 self._handle_error(e, f"Pareto evaluation (trial {trial.number})")
                 # Return poor scores for all objectives
-                scores = dict.fromkeys(objectives, -999)
+                scores = {objective_name: -999.0 for objective_name in objectives}
 
             # Store trial information
             trial_info = {
@@ -1449,7 +1179,7 @@ class RewardFunctionOptimizer:
 
         return pareto_solutions
 
-    def auto_select_stage(self, market_data: Optional[Dict[str, Any]] = None) -> str:
+    def auto_select_stage(self, market_data: dict[str, object] | None = None) -> str:
         """
         Automatically select the best optimization stage based on market conditions.
 
@@ -1462,9 +1192,9 @@ class RewardFunctionOptimizer:
         if not market_data:
             return "balanced_transition"  # Default stage
 
-        volatility = market_data.get("volatility", 0.5)
-        trend_strength = market_data.get("trend_strength", 0.0)
-        market_phase = market_data.get("phase", "neutral")
+        volatility = safe_to_float(market_data.get("volatility", 0.5), 0.5)
+        trend_strength = safe_to_float(market_data.get("trend_strength", 0.0), 0.0)
+        market_phase = str(market_data.get("phase", "neutral"))
 
         # Decision logic based on market conditions
         if volatility > 0.8:
@@ -1486,9 +1216,9 @@ class RewardFunctionOptimizer:
 
     def optimize_adaptive(
         self,
-        market_data: Optional[Dict[str, Any]] = None,
+        market_data: dict[str, object] | None = None,
         n_trials: int = 100,
-        objectives: Optional[List[str]] = None,
+        objectives: list[str] | None = None,
     ) -> RewardOptimizationResult:
         """
         Adaptive optimization that selects the best stage based on market conditions.
@@ -1677,14 +1407,14 @@ class RewardFunctionOptimizer:
         self.logger.info(f"Optimization report generated: {report_file}")
 
     def analyze_optimization_statistics(
-        self, results: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, results: list[dict[str, object]]
+    ) -> ConfigMap:
         """最適化結果の統計分析を実行"""
         if not results:
             return {}
 
         # 報酬値の時系列を抽出
-        rewards = [r.get("reward", 0) for r in results]
+        rewards = [safe_to_float(ensure_dict(r).get("reward", 0.0), 0.0) for r in results]
 
         if len(rewards) < 3:
             return {"insufficient_data": True}

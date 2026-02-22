@@ -529,3 +529,59 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - `any_inventory`:
   - `--roots scripts/v460/ml`: `retrain_scheduler.py` は `Any=0`
   - repo 全体 `any_type_debt_tokens=2,465`（`scanned_files=1,302`）
+
+## Phase 17 追補: reward optimizer クラス統合 + Any削減 + git/LFS 複雑化点検 (2026-02-22)
+
+### 1) クラス群改善（継承/責務整理・重複削減）
+
+- `ztb/training/reward_function_optimizer/reward_function_optimizer.py`
+  の巨大 `_define_parameter_spaces()` を削減し、
+  `RewardFunctionParameterSpace` へ委譲する構成へ統一。
+- 同時に `create_parameter_space_from_config()` を optimizer 本体に復元し、
+  `optimize_from_config_file()` / `optimize_hyperparameters_from_config()` からの呼び出し不整合
+  （実行時 `AttributeError` リスク）を解消。
+- `OptimizationEngine` に `sample_parameters_for_trial()` を導入し、
+  3 箇所に散っていた Optuna parameter sampling 重複を統合。
+
+### 2) 不具合可能性の解消
+
+- `RewardFunctionParameterSpace.create_parameter_space_from_config()` で
+  `bool` 値が `int` として探索対象に混入する問題を除外。
+- 同メソッドで int 境界の丸め後逆転 (`high < low`) を補正し、
+  不正探索空間生成を防止。
+- `SACAlgorithm` の transfer/compression/explainability まわりに
+  `safe_to_float/safe_to_int` を拡張適用し、設定値の型揺れ起因の実行時例外リスクを低減。
+- `EvaluationEngine` の比較ソート・t検定結果を数値正規化し、
+  NaN/非数入力時の不安定挙動を緩和。
+
+### 3) Any削減（対象領域の完了）
+
+- 以下を `Any=0` 化:
+  - `ztb/training/reward_function_optimizer/reward_function_optimizer.py`
+  - `ztb/training/reward_function_optimizer/parameter_space.py`
+  - `ztb/training/reward_function_optimizer/display_manager.py`
+  - `ztb/training/reward_function_optimizer/components/optimization_engine.py`
+  - `ztb/training/reward_function_optimizer/components/evaluation_engine.py`
+  - `ztb/training/algorithms/sac/sac_algorithm.py`
+- `any_inventory`（`--roots ztb/training/algorithms/sac ztb/training/reward_function_optimizer`）:
+  `any_type_debt_tokens = 0`
+
+### 4) git 複雑化の点検結果（LFS）
+
+- 現在の repo は `filter.lfs.required=true` かつ `git-lfs` バイナリ未導入のため、
+  `git status` など全体走査系コマンドが失敗する状態を確認。
+- `.gitattributes` で `*.csv` を含む広範囲が LFS 対象のため、
+  `assets/images/latest_training_rewards.csv` の clean filter 失敗が顕在化。
+- 本作業では source 側変更に限定し、LFS 管理対象ファイルには非介入。
+
+### 5) 検証
+
+- `py_compile`:
+  - `ztb/training/reward_function_optimizer/reward_function_optimizer.py`
+  - `ztb/training/reward_function_optimizer/parameter_space.py`
+  - `ztb/training/reward_function_optimizer/display_manager.py`
+  - `ztb/training/reward_function_optimizer/components/optimization_engine.py`
+  - `ztb/training/reward_function_optimizer/components/evaluation_engine.py`
+  - `ztb/training/algorithms/sac/sac_algorithm.py`
+- `pytest` は実行環境に未導入 (`No module named pytest`) のため未実施。
+- ランタイム smoke は `numpy` 未導入 (`No module named numpy`) のため限定的。
