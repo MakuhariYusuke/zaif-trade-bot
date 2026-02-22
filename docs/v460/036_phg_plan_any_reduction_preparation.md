@@ -902,6 +902,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step72時点 | repo全体 | 2,505 |
 | Step73時点 | repo全体 | 2,505 |
 | Step74時点 | repo全体 | 2,488 |
+| Step75時点 | repo全体 | 2,465 |
 | Step4時点 | `scripts/v460` | **0** |
 | Step5時点 | `ztb/evaluation/unified_evaluation.py` | **0** |
 | Step8時点 | `ztb/metrics/metrics.py` | **0** |
@@ -1032,6 +1033,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 | Step74時点 | `ztb/trading/strategies/action_signal_guide/realtime_adaptation/streaming_processor.py` | **0** |
 | Step74時点 | `ztb/training/core/config_builder.py` | **0** |
 | Step74時点 | `ztb/training/checkpoint/checkpoint_manager.py` | **0** |
+| Step75時点 | `scripts/v460/ml/retrain_scheduler.py` | **0** |
 
 ---
 
@@ -1149,6 +1151,42 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - repo 全体 `any_type_debt_tokens=2,488`（`scanned_files=1,300`）
   - `streaming_processor.py` / `config_builder.py` / `checkpoint_manager.py` は `Any=0`
 
+## Step75 追補: retrain_scheduler Any 撤去 + WF評価高速化 + LFSガード明示化 (2026-02-22)
+
+### 1) `retrain_scheduler.py` の Any 削減・型契約整理
+
+- `scripts/v460/ml/retrain_scheduler.py` の `Any` を全撤去し、`ConfigMap` / `object` ベースへ移行。
+- config 取得の主要分岐で `safe_to_int` / `safe_to_float` / `safe_to_bool` を適用し、
+  YAML 値型ゆらぎ時の実行時不整合リスクを低減。
+- `_safe_import_ztb_module()` の spec/loader 検証を追加し、import spec 失敗時の曖昧な例外を解消。
+
+### 2) 重複削減・性能改善
+
+- WF評価の PnL 集計を `_extract_numeric_column()` / `_compute_skip_metrics()` に統合し、
+  single/multi window の重複ロジックを削減。
+- `multi-window` 側で PnL 列をウィンドウ外で一括抽出して再利用し、
+  反復 `DataFrame.loc` コストを削減。
+- `SimpleImputer`/`StandardScaler` 後の中間 `DataFrame` 再構築を削減し、配列ベースで学習。
+- `X_val` が小さい/空のウィンドウで不要 transform を回避し、early-stopping 前処理の失敗余地を低減。
+
+### 3) JSONL I/O 統合と運用安定化
+
+- `_append_jsonl_record()` を導入し、history 追記（scheduler/side/once）を単一実装へ統合。
+- 追記処理の重複を減らし、将来的な監査フォーマット変更点を1箇所に集約可能化。
+
+### 4) LFS汚染回避の調整
+
+- `.gitattributes` 末尾に `*.py` / `*.pyi` の明示 override を追加し、
+  source code が LFS 管理へ再侵食するリスクを低減。
+
+### 5) 検証
+
+- `py_compile`:
+  - `scripts/v460/ml/retrain_scheduler.py`
+- `any_inventory`:
+  - `--roots scripts/v460/ml`: `scripts/v460/ml/retrain_scheduler.py` は `any_type_debt_tokens=0`
+  - repo 全体: `any_type_debt_tokens=2,465`（`scanned_files=1,302`）
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
@@ -1169,8 +1207,8 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
    - `parallel_backend=process` の強制終了戦略（job isolation + watchdog）を設計し、timeout 時のリソース占有をさらに低減。  
 9. `ztb/trading/live/simulation/paper_trader.py`
    - `run_replay` 返却 payload と state snapshot を `TypedDict` 化し、残存 `Any` を段階削減。  
-10. `scripts/v460/ml/retrain_scheduler.py`
-   - repo 最大の type debt (`27`) を優先削減し、再学習ジョブ設定の型契約を明示。  
+10. `scripts/v460/ml/train_sg_v3.py`
+   - `scripts/v460` 内の残存 type debt 上位（`6`）を優先削減し、学習設定 payload 契約を固定。  
 
 ---
 

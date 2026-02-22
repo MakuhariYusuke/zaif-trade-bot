@@ -35,9 +35,9 @@ import logging
 import os
 import sys
 import time
+import types
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -56,12 +56,16 @@ from scripts.v460.ml.skip_gate import (
     _OB_FEATURE_COLS,
     get_gate_feature_cols,
 )
+from ztb.utils.safety import ensure_dict, safe_to_bool, safe_to_float, safe_to_int
 
 # 127# X1: module-level FileHandler を廃止。main() 内で初期化する。
 logger = logging.getLogger(__name__)
 
+ConfigMap = dict[str, object]
+FoldPnlSamples = tuple[list[float], list[float]]
 
-def _safe_import_ztb_module(dotted_path: str) -> Any:
+
+def _safe_import_ztb_module(dotted_path: str) -> types.ModuleType:
     """ztb サブモジュールを circular import を回避して読み込む.
 
     ztb.analysis/__init__.py → ztb.trading 間の循環参照があるため、
@@ -69,7 +73,6 @@ def _safe_import_ztb_module(dotted_path: str) -> Any:
     ロード不可になる場合がある。importlib.util で直接ロードすることで回避する。
     """
     import importlib.util
-    import types as _builtin_types
 
     # まず通常 import を試行 (循環が解消されている場合はこちらが速い)
     try:
@@ -90,7 +93,7 @@ def _safe_import_ztb_module(dotted_path: str) -> Any:
         pkg_name = ".".join(parts[:i])
         if pkg_name not in sys.modules:
             pkg_dir = Path("/".join(parts[:i]))
-            pkg = _builtin_types.ModuleType(pkg_name)
+            pkg = types.ModuleType(pkg_name)
             pkg.__path__ = [str(pkg_dir)]
             pkg.__package__ = pkg_name
             sys.modules[pkg_name] = pkg
@@ -101,10 +104,12 @@ def _safe_import_ztb_module(dotted_path: str) -> Any:
                     setattr(pkg, short, child_mod)
 
     spec = importlib.util.spec_from_file_location(dotted_path, str(file_path))
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Failed to build import spec for {dotted_path}")
     mod = importlib.util.module_from_spec(spec)
     mod.__package__ = ".".join(parts[:-1])
     sys.modules[dotted_path] = mod
-    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    spec.loader.exec_module(mod)
     # 親パッケージにアトリビュート設定
     if len(parts) > 1:
         parent_name = ".".join(parts[:-1])
@@ -113,7 +118,7 @@ def _safe_import_ztb_module(dotted_path: str) -> Any:
     return mod
 
 # デフォルト設定 (127# C1: model_path/mode/use_ob は skip_gate: から継承)
-_DEFAULT_CONFIG: dict[str, Any] = {
+_DEFAULT_CONFIG: ConfigMap = {
     "interval_sec": 3600,           # 再学習間隔 (秒) — 1時間
     "min_new_samples": 30,          # 再学習に必要な最小新規サンプル数
     "min_total_samples": 100,       # 再学習に必要な最小合計サンプル数
@@ -194,7 +199,7 @@ _DEFAULT_CONFIG: dict[str, Any] = {
 }
 
 
-def load_retrain_config(config_path: Path | None = None) -> dict[str, Any]:
+def load_retrain_config(config_path: Path | None = None) -> ConfigMap:
     """YAML retrain + skip_gate セクションから設定を読み込む.
 
     127# C1: model_path / mode / use_ob_features は skip_gate: から継承。
@@ -206,10 +211,10 @@ def load_retrain_config(config_path: Path | None = None) -> dict[str, Any]:
         try:
             import yaml
             with open(yaml_path) as f:
-                yaml_data = yaml.safe_load(f) or {}
+                yaml_data = ensure_dict(yaml.safe_load(f) or {})
 
             # 127# C1: skip_gate セクションから model_path / mode / use_ob_features を継承
-            sg_cfg = yaml_data.get("skip_gate", {})
+            sg_cfg = ensure_dict(yaml_data.get("skip_gate"))
             cfg["model_path"] = sg_cfg.get("model_path", "models/v460/skip_gate_lgbm_pnl120.pkl")
             cfg["mode"] = sg_cfg.get("mode", "pnl")
             cfg["use_ob_features"] = sg_cfg.get("use_ob_features", True)
@@ -219,7 +224,7 @@ def load_retrain_config(config_path: Path | None = None) -> dict[str, Any]:
             # results_dir はトップレベルから継承
             cfg["results_dir"] = yaml_data.get("results_dir", "results/v460/fill_test")
 
-            retrain_cfg = yaml_data.get("retrain", {})
+            retrain_cfg = ensure_dict(yaml_data.get("retrain"))
             if retrain_cfg:
                 for key in _DEFAULT_CONFIG:
                     if key in retrain_cfg:
@@ -239,10 +244,10 @@ def load_retrain_config(config_path: Path | None = None) -> dict[str, Any]:
     return cfg
 
 
-def _validate_config(cfg: dict[str, Any]) -> None:
+def _validate_config(cfg: ConfigMap) -> None:
     """127# C1: 設定の整合性を検証 (fail-fast)."""
-    mode = cfg.get("mode", "pnl")
-    target = cfg.get("target", "pnl120")
+    mode = str(cfg.get("mode", "pnl"))
+    target = str(cfg.get("target", "pnl120"))
 
     if mode != "pnl":
         raise ValueError(
@@ -254,7 +259,7 @@ def _validate_config(cfg: dict[str, Any]) -> None:
             f"retrain.target must be 'pnl120' or 'pnl30', got '{target}'. "
             f"127# M2: 'as30' は廃止。PnL 回帰 target を指定してください。"
         )
-    model_path = cfg.get("model_path", "")
+    model_path = str(cfg.get("model_path", ""))
     if not model_path:
         raise ValueError("model_path is empty. skip_gate.model_path を設定してください。")
     # 131# A.1 #5: target と model_path の命名不整合警告
@@ -272,6 +277,52 @@ def _validate_config(cfg: dict[str, Any]) -> None:
                 f"131# A.1 #5: target='{target}' but model_path contains 'pnl30': "
                 f"{model_path}. 運用上の誤認に注意。"
             )
+
+
+def _append_jsonl_record(path: Path, payload: object) -> None:
+    """JSONL に 1 レコードを追記."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(payload, default=str, ensure_ascii=False) + "\n")
+
+
+def _extract_numeric_column(df: pd.DataFrame, index: pd.Index, column: str) -> np.ndarray:
+    """指定列を float 配列として抽出 (欠損は NaN)."""
+    if column not in df.columns:
+        return np.full(len(index), np.nan, dtype=np.float64)
+    values = pd.to_numeric(df.loc[index, column], errors="coerce")
+    return values.to_numpy(dtype=np.float64, copy=False)
+
+
+def _clean_float_values(values: np.ndarray) -> list[float]:
+    if values.size == 0:
+        return []
+    finite = values[np.isfinite(values)]
+    return finite.astype(np.float64, copy=False).tolist()
+
+
+def _compute_skip_metrics(
+    preds: np.ndarray,
+    pnl30: np.ndarray,
+    pnl120: np.ndarray,
+    skip_percentile: float,
+) -> tuple[float, float, float, FoldPnlSamples, FoldPnlSamples]:
+    """skip 評価スコアと統計ゲート入力用 fold データを返す."""
+    threshold = np.percentile(preds, skip_percentile)
+    keep_mask = preds >= threshold
+
+    baseline_30 = float(np.nanmean(pnl30))
+    baseline_120 = float(np.nanmean(pnl120))
+    kept_30 = float(np.nanmean(pnl30[keep_mask]))
+    kept_120 = float(np.nanmean(pnl120[keep_mask]))
+
+    imp_30 = kept_30 - baseline_30
+    imp_120 = kept_120 - baseline_120
+    score = imp_120 - max(0.0, -imp_30)
+
+    fold_pnl30 = (_clean_float_values(pnl30[keep_mask]), _clean_float_values(pnl30))
+    fold_pnl120 = (_clean_float_values(pnl120[keep_mask]), _clean_float_values(pnl120))
+    return score, imp_30, imp_120, fold_pnl30, fold_pnl120
 
 
 def _build_full_features(
@@ -333,8 +384,10 @@ def _load_enriched_cache(
             cached = payload
             stored_key = None
         elif isinstance(payload, dict):
-            cached = payload.get("data")
-            stored_key = payload.get("cache_key")
+            payload_map = ensure_dict(payload)
+            cached_obj = payload_map.get("data")
+            stored_key = payload_map.get("cache_key")
+            cached = cached_obj if isinstance(cached_obj, pd.DataFrame) else None
         else:
             logger.info("E4: Cache format unrecognized, invalidated")
             return None
@@ -376,26 +429,26 @@ def _save_enriched_cache(
 
 
 def _build_lgbm_regressor(
-    cfg: dict[str, Any],
+    cfg: ConfigMap,
     n_estimators_override: int | None = None,
 ) -> "lgb.LGBMRegressor":
     """共通 LGBMRegressor 構築 (DRY)."""
     import lightgbm as lgb
 
     return lgb.LGBMRegressor(
-        n_estimators=n_estimators_override or cfg.get("lgbm_n_estimators", 150),
-        max_depth=cfg.get("lgbm_max_depth", 4),
-        learning_rate=cfg.get("lgbm_learning_rate", 0.05),
-        num_leaves=cfg.get("lgbm_num_leaves", 15),
-        min_child_samples=cfg.get("lgbm_min_child_samples", 20),
+        n_estimators=n_estimators_override or safe_to_int(cfg.get("lgbm_n_estimators", 150), 150),
+        max_depth=safe_to_int(cfg.get("lgbm_max_depth", 4), 4),
+        learning_rate=safe_to_float(cfg.get("lgbm_learning_rate", 0.05), 0.05),
+        num_leaves=safe_to_int(cfg.get("lgbm_num_leaves", 15), 15),
+        min_child_samples=safe_to_int(cfg.get("lgbm_min_child_samples", 20), 20),
         # 133# Y1-Y6: YAML 外部化 (旧: ハードコード)
-        subsample=cfg.get("lgbm_subsample", 0.8),
-        colsample_bytree=cfg.get("lgbm_colsample_bytree", 0.8),
-        reg_alpha=cfg.get("lgbm_reg_alpha", 1.0),
-        reg_lambda=cfg.get("lgbm_reg_lambda", 1.0),
-        random_state=cfg.get("lgbm_random_state", 42),
+        subsample=safe_to_float(cfg.get("lgbm_subsample", 0.8), 0.8),
+        colsample_bytree=safe_to_float(cfg.get("lgbm_colsample_bytree", 0.8), 0.8),
+        reg_alpha=safe_to_float(cfg.get("lgbm_reg_alpha", 1.0), 1.0),
+        reg_lambda=safe_to_float(cfg.get("lgbm_reg_lambda", 1.0), 1.0),
+        random_state=safe_to_int(cfg.get("lgbm_random_state", 42), 42),
         verbose=-1,
-        n_jobs=cfg.get("lgbm_n_jobs", 1),
+        n_jobs=safe_to_int(cfg.get("lgbm_n_jobs", 1), 1),
     )
 
 
@@ -403,10 +456,10 @@ def _evaluate_wf(
     X: pd.DataFrame,
     y: pd.Series,
     enriched: pd.DataFrame,
-    cfg: dict[str, Any],
-    prev_booster: "Any | None" = None,
+    cfg: ConfigMap,
+    prev_booster: object | None = None,
     sample_weight: np.ndarray | None = None,
-) -> dict[str, Any]:
+) -> ConfigMap:
     """Walk-Forward OOS 評価ディスパッチ.
 
     131# C1: wf_multi_window_enabled=True なら WalkForwardSplitter で
@@ -427,10 +480,10 @@ def _evaluate_wf_multi(
     X: pd.DataFrame,
     y: pd.Series,
     enriched: pd.DataFrame,
-    cfg: dict[str, Any],
-    prev_booster: "Any | None" = None,
+    cfg: ConfigMap,
+    prev_booster: object | None = None,
     sample_weight: np.ndarray | None = None,
-) -> dict[str, Any] | None:
+) -> ConfigMap | None:
     """131# C1: Multi-window Walk-Forward 評価 (WalkForwardSplitter 統合).
 
     複数の WF ウィンドウで独立に train→predict し、per-window PnL を収集。
@@ -459,11 +512,11 @@ def _evaluate_wf_multi(
     # Splitter にはダミー DataFrame を渡す (行数さえ合えばよい)
     dummy_df = pd.DataFrame(index=range(n))
     splitter = WalkForwardSplitter(
-        initial_train_pct=cfg.get("wf_initial_train_pct", 0.50),
-        val_pct=cfg.get("wf_val_pct", 0.10),
-        test_pct=cfg.get("wf_test_pct", 0.15),
-        step_pct=cfg.get("wf_step_pct", 0.20),
-        embargo_days=cfg.get("wf_embargo_rows", 0),
+        initial_train_pct=safe_to_float(cfg.get("wf_initial_train_pct", 0.50), 0.50),
+        val_pct=safe_to_float(cfg.get("wf_val_pct", 0.10), 0.10),
+        test_pct=safe_to_float(cfg.get("wf_test_pct", 0.15), 0.15),
+        step_pct=safe_to_float(cfg.get("wf_step_pct", 0.20), 0.20),
+        embargo_days=safe_to_int(cfg.get("wf_embargo_rows", 0), 0),
     )
 
     try:
@@ -472,8 +525,8 @@ def _evaluate_wf_multi(
         logger.info(f"C1: WalkForwardSplitter could not split (n={n}): {e}")
         return None
 
-    min_train = cfg.get("wf_min_window_train", 30)
-    min_test = cfg.get("wf_min_window_test", 10)
+    min_train = safe_to_int(cfg.get("wf_min_window_train", 30), 30)
+    min_test = safe_to_int(cfg.get("wf_min_window_test", 10), 10)
 
     # 有効ウィンドウのみ選択
     valid_windows = [
@@ -501,8 +554,15 @@ def _evaluate_wf_multi(
     total_n_test = 0
     total_n_train = 0
 
-    early_stop = cfg.get("early_stopping_rounds", 0)
-    n_est = cfg.get("lgbm_n_estimators_max", 300) if early_stop > 0 else cfg.get("lgbm_n_estimators", 150)
+    early_stop = safe_to_int(cfg.get("early_stopping_rounds", 0), 0)
+    n_est = (
+        safe_to_int(cfg.get("lgbm_n_estimators_max", 300), 300)
+        if early_stop > 0
+        else safe_to_int(cfg.get("lgbm_n_estimators", 150), 150)
+    )
+    skip_pct = safe_to_float(cfg.get("skip_percentile", 20), 20.0)
+    pnl30_all = _extract_numeric_column(enriched, X.index, "post_fill_30s_pnl")
+    pnl120_all = _extract_numeric_column(enriched, X.index, "post_fill_120s_pnl")
 
     for win in valid_windows:
         X_train = X.iloc[win.train_start:win.train_end]
@@ -510,28 +570,18 @@ def _evaluate_wf_multi(
         X_val = X.iloc[win.val_start:win.val_end]
         y_val = y.iloc[win.val_start:win.val_end]
         X_test = X.iloc[win.test_start:win.test_end]
-        y_test = y.iloc[win.test_start:win.test_end]
 
         # 前処理
         imputer = SimpleImputer(strategy="median")
         scaler = StandardScaler()
-        X_train_sc = pd.DataFrame(
-            scaler.fit_transform(imputer.fit_transform(X_train)),
-            columns=X_train.columns, index=X_train.index,
-        )
-        X_val_sc = pd.DataFrame(
-            scaler.transform(imputer.transform(X_val)),
-            columns=X_val.columns, index=X_val.index,
-        )
-        X_test_sc = pd.DataFrame(
-            scaler.transform(imputer.transform(X_test)),
-            columns=X_test.columns, index=X_test.index,
-        )
+        X_train_sc = scaler.fit_transform(imputer.fit_transform(X_train))
+        X_test_sc = scaler.transform(imputer.transform(X_test))
 
         lgbm_model = _build_lgbm_regressor(cfg, n_estimators_override=n_est)
 
-        fit_kwargs: dict[str, Any] = {}
+        fit_kwargs: dict[str, object] = {}
         if early_stop > 0 and len(X_val) >= 5:
+            X_val_sc = scaler.transform(imputer.transform(X_val))
             fit_kwargs["eval_set"] = [(X_val_sc, y_val)]
             fit_kwargs["callbacks"] = [
                 lgb.early_stopping(stopping_rounds=early_stop, verbose=False),
@@ -543,48 +593,23 @@ def _evaluate_wf_multi(
             fit_kwargs["sample_weight"] = sample_weight[win.train_start:win.train_end]
 
         lgbm_model.fit(X_train_sc, y_train, **fit_kwargs)
-        preds_test = lgbm_model.predict(X_test_sc)
+        preds_test = np.asarray(lgbm_model.predict(X_test_sc), dtype=np.float64)
 
         # OOS PnL 参照
-        test_idx = X_test.index
-        pnl30_col = "post_fill_30s_pnl"
-        pnl120_col = "post_fill_120s_pnl"
-        pnl30 = (
-            enriched.loc[test_idx, pnl30_col].astype(float).values
-            if pnl30_col in enriched.columns
-            else np.full(len(test_idx), np.nan)
+        pnl30 = pnl30_all[win.test_start:win.test_end]
+        pnl120 = pnl120_all[win.test_start:win.test_end]
+        score, imp_30, imp_120, fold30, fold120 = _compute_skip_metrics(
+            preds_test,
+            pnl30,
+            pnl120,
+            skip_pct,
         )
-        pnl120 = (
-            enriched.loc[test_idx, pnl120_col].astype(float).values
-            if pnl120_col in enriched.columns
-            else np.full(len(test_idx), np.nan)
-        )
-
-        # Skip bottom N% predicted PnL (133# Y7: YAML 外部化)
-        _skip_pct = cfg.get("skip_percentile", 20)
-        threshold = np.percentile(preds_test, _skip_pct)
-        keep_mask = preds_test >= threshold
-
-        baseline_30 = float(np.nanmean(pnl30))
-        baseline_120 = float(np.nanmean(pnl120))
-        kept_30 = float(np.nanmean(pnl30[keep_mask]))
-        kept_120 = float(np.nanmean(pnl120[keep_mask]))
-
-        imp_30 = kept_30 - baseline_30
-        imp_120 = kept_120 - baseline_120
-        score = imp_120 - max(0, -imp_30)
 
         window_scores.append(score)
         window_imp30.append(imp_30)
         window_imp120.append(imp_120)
-
-        # NaN を除外した fold-level PnL データ (statistical gate 用)
-        kept_pnl30_clean = [float(v) for v in pnl30[keep_mask] if not np.isnan(v)]
-        all_pnl30_clean = [float(v) for v in pnl30 if not np.isnan(v)]
-        kept_pnl120_clean = [float(v) for v in pnl120[keep_mask] if not np.isnan(v)]
-        all_pnl120_clean = [float(v) for v in pnl120 if not np.isnan(v)]
-        fold_pnl30.append((kept_pnl30_clean, all_pnl30_clean))
-        fold_pnl120.append((kept_pnl120_clean, all_pnl120_clean))
+        fold_pnl30.append(fold30)
+        fold_pnl120.append(fold120)
 
         # Feature importance 集計
         if hasattr(lgbm_model, "feature_importances_"):
@@ -630,10 +655,10 @@ def _evaluate_wf_single(
     X: pd.DataFrame,
     y: pd.Series,
     enriched: pd.DataFrame,
-    cfg: dict[str, Any],
-    prev_booster: "Any | None" = None,
+    cfg: ConfigMap,
+    prev_booster: object | None = None,
     sample_weight: np.ndarray | None = None,
-) -> dict[str, float]:
+) -> ConfigMap:
     """Walk-Forward OOS 評価で品質スコアを算出.
 
     直近 test_ratio をテストセットとし、残りで訓練→テスト予測の skip simulation。
@@ -645,7 +670,6 @@ def _evaluate_wf_single(
         {"score": float, "pnl30_improvement": float, "pnl120_improvement": float, ...}
     """
     from sklearn.impute import SimpleImputer
-    from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import StandardScaler
 
     try:
@@ -653,7 +677,7 @@ def _evaluate_wf_single(
     except ImportError:
         raise RuntimeError("LightGBM required")
 
-    test_ratio = cfg.get("wf_test_ratio", 0.2)
+    test_ratio = safe_to_float(cfg.get("wf_test_ratio", 0.2), 0.2)
     n = len(X)
     split_idx = int(n * (1.0 - test_ratio))
     if split_idx < 50 or (n - split_idx) < 20:
@@ -664,32 +688,22 @@ def _evaluate_wf_single(
     y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
 
     # E2: early stopping 有効時は上限を引き上げ
-    early_stop = cfg.get("early_stopping_rounds", 0)
+    early_stop = safe_to_int(cfg.get("early_stopping_rounds", 0), 0)
     if early_stop > 0:
-        n_est = cfg.get("lgbm_n_estimators_max", 300)
+        n_est = safe_to_int(cfg.get("lgbm_n_estimators_max", 300), 300)
     else:
-        n_est = cfg.get("lgbm_n_estimators", 150)
+        n_est = safe_to_int(cfg.get("lgbm_n_estimators", 150), 150)
 
     lgbm_model = _build_lgbm_regressor(cfg, n_estimators_override=n_est)
 
     # E2: early stopping 用の前処理 (Pipeline 内で fit するため手動分離)
     imputer = SimpleImputer(strategy="median")
     scaler = StandardScaler()
-    X_train_imp = pd.DataFrame(
-        imputer.fit_transform(X_train), columns=X_train.columns, index=X_train.index,
-    )
-    X_train_sc = pd.DataFrame(
-        scaler.fit_transform(X_train_imp), columns=X_train.columns, index=X_train.index,
-    )
-    X_test_imp = pd.DataFrame(
-        imputer.transform(X_test), columns=X_test.columns, index=X_test.index,
-    )
-    X_test_sc = pd.DataFrame(
-        scaler.transform(X_test_imp), columns=X_test.columns, index=X_test.index,
-    )
+    X_train_sc = scaler.fit_transform(imputer.fit_transform(X_train))
+    X_test_sc = scaler.transform(imputer.transform(X_test))
 
     # E1: warm-start — 前モデルの booster を init_model に使用
-    fit_kwargs: dict[str, Any] = {}
+    fit_kwargs: dict[str, object] = {}
     if early_stop > 0:
         fit_kwargs["eval_set"] = [(X_test_sc, y_test)]
         # LightGBM 4.x: callbacks で early stopping
@@ -697,7 +711,7 @@ def _evaluate_wf_single(
             lgb.early_stopping(stopping_rounds=early_stop, verbose=False),
             lgb.log_evaluation(period=0),  # suppress iteration log
         ]
-    if prev_booster is not None and cfg.get("warm_start_enabled", True):
+    if prev_booster is not None and safe_to_bool(cfg.get("warm_start_enabled", True), True):
         fit_kwargs["init_model"] = prev_booster
         logger.info("E1: Using prev booster as init_model for WF eval")
 
@@ -706,29 +720,18 @@ def _evaluate_wf_single(
         fit_kwargs["sample_weight"] = sample_weight[:split_idx]
 
     lgbm_model.fit(X_train_sc, y_train, **fit_kwargs)
-    preds_test = lgbm_model.predict(X_test_sc)
+    preds_test = np.asarray(lgbm_model.predict(X_test_sc), dtype=np.float64)
 
     # OOS PnL 参照 (pnl30/pnl120)
-    pnl30_col = "post_fill_30s_pnl"
-    pnl120_col = "post_fill_120s_pnl"
     test_idx = X_test.index
-
-    pnl30 = enriched.loc[test_idx, pnl30_col].astype(float).values if pnl30_col in enriched.columns else np.full(len(test_idx), np.nan)
-    pnl120 = enriched.loc[test_idx, pnl120_col].astype(float).values if pnl120_col in enriched.columns else np.full(len(test_idx), np.nan)
-
-    baseline_30 = float(np.nanmean(pnl30))
-    baseline_120 = float(np.nanmean(pnl120))
-
-    # Skip bottom N% predicted PnL (133# Y7: YAML 外部化)
-    _skip_pct = cfg.get("skip_percentile", 20)
-    threshold = np.percentile(preds_test, _skip_pct)
-    keep_mask = preds_test >= threshold
-    kept_30 = float(np.nanmean(pnl30[keep_mask]))
-    kept_120 = float(np.nanmean(pnl120[keep_mask]))
-
-    imp_30 = kept_30 - baseline_30
-    imp_120 = kept_120 - baseline_120
-    score = imp_120 - max(0, -imp_30)  # 125# profit_score: pnl120 改善 - pnl30 悪化ペナルティ
+    pnl30 = _extract_numeric_column(enriched, test_idx, "post_fill_30s_pnl")
+    pnl120 = _extract_numeric_column(enriched, test_idx, "post_fill_120s_pnl")
+    score, imp_30, imp_120, fold30, fold120 = _compute_skip_metrics(
+        preds_test,
+        pnl30,
+        pnl120,
+        safe_to_float(cfg.get("skip_percentile", 20), 20.0),
+    )
 
     # E2: 実際に使用された木の数を記録
     actual_n_trees = lgbm_model.booster_.num_trees() if hasattr(lgbm_model, "booster_") else n_est
@@ -738,12 +741,6 @@ def _evaluate_wf_single(
     if hasattr(lgbm_model, "feature_importances_"):
         for col, imp in zip(X_train.columns, lgbm_model.feature_importances_):
             feat_importance[col] = int(imp)
-
-    # C2: single-window でも fold-level PnL を記録 (holm_bonferroni_gate 用)
-    kept_pnl30_clean = [float(v) for v in pnl30[keep_mask] if not np.isnan(v)]
-    all_pnl30_clean = [float(v) for v in pnl30 if not np.isnan(v)]
-    kept_pnl120_clean = [float(v) for v in pnl120[keep_mask] if not np.isnan(v)]
-    all_pnl120_clean = [float(v) for v in pnl120 if not np.isnan(v)]
 
     return {
         "score": score,
@@ -755,15 +752,15 @@ def _evaluate_wf_single(
         "feature_importance": feat_importance,
         # C2: statistical gate 用 per-sample data
         "n_windows": 1,
-        "fold_pnl30": [(kept_pnl30_clean, all_pnl30_clean)],
-        "fold_pnl120": [(kept_pnl120_clean, all_pnl120_clean)],
+        "fold_pnl30": [fold30],
+        "fold_pnl120": [fold120],
     }
 
 
 def _apply_statistical_gate(
-    wf_result: dict[str, Any],
-    cfg: dict[str, Any],
-) -> dict[str, Any]:
+    wf_result: ConfigMap,
+    cfg: ConfigMap,
+) -> ConfigMap:
     """131# C2: 統計的品質ゲート.
 
     WF 評価の per-window / per-sample PnL データに対して
@@ -783,13 +780,13 @@ def _apply_statistical_gate(
     except ImportError:
         return {"applied": False, "reason": "gate_checks not importable"}
 
-    alpha = cfg.get("statistical_gate_alpha", 0.05)
-    min_effect = cfg.get("statistical_gate_min_effect", 0.147)
-    min_test = cfg.get("statistical_gate_min_test_samples", 40)
+    alpha = safe_to_float(cfg.get("statistical_gate_alpha", 0.05), 0.05)
+    min_effect = safe_to_float(cfg.get("statistical_gate_min_effect", 0.147), 0.147)
+    min_test = safe_to_int(cfg.get("statistical_gate_min_test_samples", 40), 40)
 
     fold_pnl30 = wf_result.get("fold_pnl30", [])
     fold_pnl120 = wf_result.get("fold_pnl120", [])
-    n_windows = wf_result.get("n_windows", 0)
+    n_windows = safe_to_int(wf_result.get("n_windows", 0), 0)
 
     # 合計テストサンプル数チェック
     total_test = sum(len(b) for _, b in fold_pnl30) if fold_pnl30 else 0
@@ -800,11 +797,28 @@ def _apply_statistical_gate(
         }
 
     # fold-level data 構築
-    fold_results: dict[str, list[tuple[list[float], list[float]]]] = {}
-    if fold_pnl30:
-        fold_results["pnl30"] = fold_pnl30
-    if fold_pnl120:
-        fold_results["pnl120"] = fold_pnl120
+    def _normalize_fold_pairs(raw_folds: object) -> list[FoldPnlSamples]:
+        normalized: list[FoldPnlSamples] = []
+        if not isinstance(raw_folds, list):
+            return normalized
+        for pair in raw_folds:
+            if not isinstance(pair, (tuple, list)) or len(pair) != 2:
+                continue
+            kept_raw, all_raw = pair
+            if not isinstance(kept_raw, list) or not isinstance(all_raw, list):
+                continue
+            kept_vals = [safe_to_float(v, float("nan")) for v in kept_raw]
+            all_vals = [safe_to_float(v, float("nan")) for v in all_raw]
+            normalized.append((_clean_float_values(np.asarray(kept_vals)), _clean_float_values(np.asarray(all_vals))))
+        return normalized
+
+    fold_results: dict[str, list[FoldPnlSamples]] = {}
+    norm_30 = _normalize_fold_pairs(fold_pnl30)
+    norm_120 = _normalize_fold_pairs(fold_pnl120)
+    if norm_30:
+        fold_results["pnl30"] = norm_30
+    if norm_120:
+        fold_results["pnl120"] = norm_120
 
     if not fold_results:
         return {"applied": False, "reason": "no_fold_data"}
@@ -824,7 +838,7 @@ def _apply_statistical_gate(
         }
     else:
         # Single-window: holm_bonferroni_gate (per-sample)
-        hb_input: dict[str, tuple[list[float], list[float]]] = {}
+        hb_input: dict[str, FoldPnlSamples] = {}
         for key, folds in fold_results.items():
             if folds:
                 hb_input[key] = folds[0]  # single window → first fold
@@ -846,8 +860,8 @@ def _apply_statistical_gate(
 def _compute_regime_sample_weights(
     enriched: pd.DataFrame,
     valid_index: pd.Index,
-    cfg: dict[str, Any],
-) -> tuple[np.ndarray, dict[str, Any]]:
+    cfg: ConfigMap,
+) -> tuple[np.ndarray, ConfigMap]:
     """145# R-2a: レジーム別 sample_weight を算出.
 
     各サンプルの regime 列を参照し、cfg の weight マッピングで重み付け。
@@ -861,10 +875,11 @@ def _compute_regime_sample_weights(
     Returns:
         (sample_weight 配列, メタデータ dict)
     """
-    regime_weights_map: dict[str, float] = cfg.get("regime_sample_weights", {})
-    current_boost: float = cfg.get("regime_current_boost", 1.5)
-    lookback: int = cfg.get("regime_current_lookback", 10)
-    weight_floor: float = cfg.get("regime_weight_floor", 0.1)
+    regime_weights_raw = ensure_dict(cfg.get("regime_sample_weights"))
+    regime_weights_map = {str(k): safe_to_float(v, 1.0) for k, v in regime_weights_raw.items()}
+    current_boost = safe_to_float(cfg.get("regime_current_boost", 1.5), 1.5)
+    lookback = safe_to_int(cfg.get("regime_current_lookback", 10), 10)
+    weight_floor = safe_to_float(cfg.get("regime_weight_floor", 0.1), 0.1)
 
     # regime 列がなければ均一重み
     if "regime" not in enriched.columns:
@@ -927,7 +942,7 @@ def _compute_regime_sample_weights(
     return weights, weight_stats
 
 
-def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
+def retrain_model(cfg: ConfigMap) -> ConfigMap:
     """モデル再学習 → 品質評価 → アトミック差し替え.
 
     127# レビュー反映:
@@ -949,20 +964,23 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
     except ImportError:
         return {"status": "error", "reason": "lightgbm not installed"}
 
-    model_path = Path(cfg["model_path"])
-    results_dir = Path(cfg["results_dir"])
-    target = cfg["target"]
-    use_ob = cfg.get("use_ob_features", True)
+    model_path = Path(str(cfg.get("model_path", "")))
+    results_dir = Path(str(cfg.get("results_dir", "results/v460/fill_test")))
+    target = str(cfg.get("target", "pnl120"))
+    use_ob = safe_to_bool(cfg.get("use_ob_features", True), True)
 
-    result: dict[str, Any] = {
+    result: ConfigMap = {
         "timestamp": datetime.now().isoformat(),
         "status": "pending",
     }
 
     # 127# H2: run_id フィルタリング
-    run_id_filter: str | list[str] | None = cfg.get("run_id_filter")
-    exclude_missing = cfg.get("exclude_missing_run_id", True)
-    latest_run_only = cfg.get("latest_run_only", True)
+    run_id_filter_raw = cfg.get("run_id_filter")
+    run_id_filter: str | list[str] | None = (
+        run_id_filter_raw if isinstance(run_id_filter_raw, (str, list)) else None
+    )
+    exclude_missing = safe_to_bool(cfg.get("exclude_missing_run_id", True), True)
+    latest_run_only = safe_to_bool(cfg.get("latest_run_only", True), True)
 
     # Step 1: データロード
     try:
@@ -1000,18 +1018,20 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
             )
 
     # 141# P1-01: side 別モデル — 指定 side のみにフィルタリング
-    side_filter = cfg.get("side_filter")
+    side_filter_raw = cfg.get("side_filter")
+    side_filter = str(side_filter_raw) if isinstance(side_filter_raw, str) and side_filter_raw else None
     if side_filter and "side" in records.columns:
         n_before_side = len(records)
         records = records[records["side"] == side_filter].reset_index(drop=True)
         logger.info(
             f"141# Side filter: {side_filter} → {len(records)}/{n_before_side} records"
         )
-        if len(records) < cfg.get("side_min_samples", 50):
+        side_min_samples = safe_to_int(cfg.get("side_min_samples", 50), 50)
+        if len(records) < side_min_samples:
             return {
                 **result,
                 "status": "skipped",
-                "reason": f"Insufficient {side_filter} samples: {len(records)} < {cfg.get('side_min_samples', 50)}",
+                "reason": f"Insufficient {side_filter} samples: {len(records)} < {side_min_samples}",
                 "side_filter": side_filter,
             }
         result["side_filter"] = side_filter
@@ -1019,7 +1039,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
     enriched = None
     # E4: enriched data cache — I/O コスト削減
     # 131# A.1 #6: cache_key = target + feature_cols + run_ids で stale cache 防止
-    if cfg.get("enriched_cache_enabled", True):
+    if safe_to_bool(cfg.get("enriched_cache_enabled", True), True):
         cache_path = _get_enriched_cache_path(results_dir)
         feature_cols_str = ",".join(sorted(get_gate_feature_cols(use_ob=use_ob)))
         run_ids_str = ""
@@ -1034,9 +1054,9 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
     if enriched is None:
         enriched = enrich_fill_records(
             records,
-            trades_fallback_recent_days=cfg.get("trades_fallback_recent_days", 1),
+            trades_fallback_recent_days=safe_to_int(cfg.get("trades_fallback_recent_days", 1), 1),
         )
-        if cfg.get("enriched_cache_enabled", True):
+        if safe_to_bool(cfg.get("enriched_cache_enabled", True), True):
             _save_enriched_cache(cache_path, enriched, cache_key=cache_key)
 
     # 127# H1: PnL 回帰向け特徴量抽出 (AS ラベル非依存)
@@ -1091,7 +1111,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
 
     # 145# R-2b: 現在レジーム検出 (R-2a weighting の有無に関わらず常に実行)
     # 直近 N 件の多数決で推定し、result に記録 → run_scheduler で trigger に伝搬
-    _regime_lookback = cfg.get("regime_current_lookback", 10)
+    _regime_lookback = safe_to_int(cfg.get("regime_current_lookback", 10), 10)
     if "regime" in enriched.columns and len(X_valid) >= _regime_lookback:
         _recent_regimes = enriched.loc[X_valid.index, "regime"].fillna("unknown").iloc[-_regime_lookback:]
         _regime_counts = _recent_regimes.value_counts()
@@ -1105,7 +1125,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
 
     # 145# R-2a: レジーム重み付きサンプルウェイト計算
     regime_sample_weight: np.ndarray | None = None
-    if cfg.get("regime_weighting_enabled", False):
+    if safe_to_bool(cfg.get("regime_weighting_enabled", False), False):
         regime_sample_weight, weight_stats = _compute_regime_sample_weights(
             enriched, X_valid.index, cfg,
         )
@@ -1120,17 +1140,17 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
         result["regime_weighting"] = {"regime_weighting": "disabled"}
 
     # Step 2: 最小サンプルチェック (130# Bootstrap 2段化)
-    bootstrap_threshold = cfg.get("bootstrap_threshold", 100)
+    bootstrap_threshold = safe_to_int(cfg.get("bootstrap_threshold", 100), 100)
     is_bootstrap = len(X_valid) < bootstrap_threshold
     if is_bootstrap:
-        min_total = cfg.get("bootstrap_min_total_samples", 30)
+        min_total = safe_to_int(cfg.get("bootstrap_min_total_samples", 30), 30)
         result["phase"] = "bootstrap"
         logger.info(
             f"130# Bootstrap phase: {len(X_valid)} < {bootstrap_threshold}, "
             f"using min_total={min_total}"
         )
     else:
-        min_total = cfg.get("min_total_samples", 100)
+        min_total = safe_to_int(cfg.get("min_total_samples", 100), 100)
         result["phase"] = "stable"
     if len(X_valid) < min_total:
         return {
@@ -1159,7 +1179,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
                 "wf_dead_features", [],
             )
             # E1: LightGBM booster を抽出 (warm-start に使用)
-            if cfg.get("warm_start_enabled", True):
+            if safe_to_bool(cfg.get("warm_start_enabled", True), True):
                 if hasattr(prev_gate, "_pipeline") and prev_gate._pipeline is not None:
                     prev_model = prev_gate._pipeline.named_steps.get("model")
                     if hasattr(prev_model, "booster_"):
@@ -1177,9 +1197,9 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
 
     # Step 3: 新規サンプルチェック (130# Bootstrap 2段化)
     if is_bootstrap:
-        min_new = cfg.get("bootstrap_min_new_samples", 10)
+        min_new = safe_to_int(cfg.get("bootstrap_min_new_samples", 10), 10)
     else:
-        min_new = cfg.get("min_new_samples", 30)
+        min_new = safe_to_int(cfg.get("min_new_samples", 30), 30)
     # 140# §8.1-#3: run_id 直接比較で run 切替を検出 (139# のヒューリスティックを補強)
     # latest_run_only=true で現 run の run_id と前モデルの source_run_id を比較。
     # 不一致 or prev_source_run_id が空 (旧モデル) かつ raw < 0 なら run 切替。
@@ -1223,7 +1243,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
     )
 
     # Step 4: Walk-Forward 品質評価
-    if cfg.get("quality_gate_enabled", True):
+    if safe_to_bool(cfg.get("quality_gate_enabled", True), True):
         wf_result = _evaluate_wf(
             X_valid, y_valid, enriched, cfg,
             prev_booster=prev_booster,
@@ -1237,7 +1257,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
         )
 
         # 127# M1: 前モデル不在時の絶対最低 score チェック
-        absolute_min = cfg.get("absolute_min_score", -0.10)
+        absolute_min = safe_to_float(cfg.get("absolute_min_score", -0.10), -0.10)
         if not prev_gate_loaded and wf_result["score"] < absolute_min:
             logger.warning(
                 f"Quality gate REJECT (no prev model): "
@@ -1246,7 +1266,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
             return {**result, "status": "rejected", "reason": "absolute_min_score"}
 
         # 品質ゲート: 前モデルの score と比較 (127# X2: prev_score は Step 3 で取得済み)
-        min_improvement = cfg.get("min_score_improvement", -0.05)
+        min_improvement = safe_to_float(cfg.get("min_score_improvement", -0.05), -0.05)
 
         improvement = wf_result["score"] - prev_score
         result["score_improvement"] = improvement
@@ -1259,10 +1279,10 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
             return {**result, "status": "rejected", "reason": "quality_gate"}
 
         # 131# A.1 #4: --all-runs 時も target PnL improvement >= 0 をハード制約
-        if cfg.get("all_runs_require_positive_pnl", False):
-            target = cfg.get("target", "pnl120")
+        if safe_to_bool(cfg.get("all_runs_require_positive_pnl", False), False):
+            target = str(cfg.get("target", "pnl120"))
             pnl_key = f"{target}_improvement"  # "pnl120_improvement" or "pnl30_improvement"
-            pnl_imp = wf_result.get(pnl_key, 0.0)
+            pnl_imp = safe_to_float(wf_result.get(pnl_key, 0.0), 0.0)
             if pnl_imp < 0:
                 logger.warning(
                     f"Quality gate REJECT (--all-runs positive pnl): "
@@ -1272,7 +1292,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
                 return {**result, "status": "rejected", "reason": "negative_pnl_improvement"}
 
         # 131# C2: 統計的品質ゲート (gate_checks 統合)
-        if cfg.get("statistical_gate_enabled", True):
+        if safe_to_bool(cfg.get("statistical_gate_enabled", True), True):
             stat_gate_result = _apply_statistical_gate(wf_result, cfg)
             result["statistical_gate"] = stat_gate_result
             if stat_gate_result.get("applied"):
@@ -1299,16 +1319,16 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
     # 131# B: 連続 dead = 前モデルでも dead だった特徴量のみ prune (振動防止)
     pruned_features: list[str] = []
     wf_dead_features: list[str] = []  # 今回 WF で dead な全特徴量 (metadata 記録用)
-    min_trees_for_pruning = cfg.get("feature_pruning_min_trees", 20)
+    min_trees_for_pruning = safe_to_int(cfg.get("feature_pruning_min_trees", 20), 20)
     wf_actual_trees = result.get("wf_eval", {}).get("actual_n_trees", 0)
     if (
-        cfg.get("feature_pruning_enabled", True)
-        and cfg.get("quality_gate_enabled", True)
+        safe_to_bool(cfg.get("feature_pruning_enabled", True), True)
+        and safe_to_bool(cfg.get("quality_gate_enabled", True), True)
         and "wf_eval" in result
         and wf_actual_trees >= min_trees_for_pruning
     ):
         feat_imp = result["wf_eval"].get("feature_importance", {})
-        min_imp = cfg.get("feature_pruning_min_importance", 0)
+        min_imp = safe_to_int(cfg.get("feature_pruning_min_importance", 0), 0)
         if feat_imp:
             wf_dead_features = [c for c in feature_cols if feat_imp.get(c, 0) <= min_imp]
             # 131# B: 連続 dead — 前モデルで dead or pruned だった特徴量と交差
@@ -1324,7 +1344,9 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
                     prev_wf_dead = set(result.get("_prev_wf_dead_features", []))
                 prev_dead = prev_pruned_set | prev_wf_dead
 
-            require_consecutive = cfg.get("feature_pruning_require_consecutive", True)
+            require_consecutive = safe_to_bool(
+                cfg.get("feature_pruning_require_consecutive", True), True
+            )
             if require_consecutive and prev_dead:
                 pruned = [c for c in wf_dead_features if c in prev_dead]
                 if pruned != wf_dead_features:
@@ -1352,7 +1374,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
                     f"{len(feature_cols) - len(pruned)} features (min=5)"
                 )
     elif (
-        cfg.get("feature_pruning_enabled", True)
+        safe_to_bool(cfg.get("feature_pruning_enabled", True), True)
         and wf_actual_trees < min_trees_for_pruning
         and wf_actual_trees > 0
     ):
@@ -1363,13 +1385,13 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
 
     # 131# C3: 冗長特徴量除去 (redundancy.find_highly_correlated_features 統合)
     redundancy_pruned: list[str] = []
-    if cfg.get("redundancy_pruning_enabled", True) and len(feature_cols) >= 5:
+    if safe_to_bool(cfg.get("redundancy_pruning_enabled", True), True) and len(feature_cols) >= 5:
         try:
             _red_mod = _safe_import_ztb_module("ztb.analysis.redundancy")
             calculate_feature_correlations = _red_mod.calculate_feature_correlations
             find_highly_correlated_features = _red_mod.find_highly_correlated_features
 
-            corr_threshold = cfg.get("redundancy_correlation_threshold", 0.85)
+            corr_threshold = safe_to_float(cfg.get("redundancy_correlation_threshold", 0.85), 0.85)
             corr_matrix = calculate_feature_correlations(X_valid[feature_cols])
             corr_pairs = find_highly_correlated_features(corr_matrix, corr_threshold)
 
@@ -1422,16 +1444,16 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
     )
 
     # E2: early stopping 有効時は train/val 分割
-    early_stop = cfg.get("early_stopping_rounds", 0)
+    early_stop = safe_to_int(cfg.get("early_stopping_rounds", 0), 0)
     if early_stop > 0:
-        n_est = cfg.get("lgbm_n_estimators_max", 300)
+        n_est = safe_to_int(cfg.get("lgbm_n_estimators_max", 300), 300)
     else:
-        n_est = cfg.get("lgbm_n_estimators", 150)
+        n_est = safe_to_int(cfg.get("lgbm_n_estimators", 150), 150)
 
     lgbm = _build_lgbm_regressor(cfg, n_estimators_override=n_est)
 
     # E1/E2: fit kwargs
-    fit_kwargs: dict[str, Any] = {}
+    fit_kwargs: dict[str, object] = {}
     if early_stop > 0:
         # early stopping 用に内部的に val split (直近20%)
         es_split = int(len(X_sc) * 0.8)
@@ -1446,7 +1468,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
     # 注意: feature_cols が変更された場合 (pruning) は warm-start 不可
     if (
         prev_booster is not None
-        and cfg.get("warm_start_enabled", True)
+        and safe_to_bool(cfg.get("warm_start_enabled", True), True)
         and not pruned_features  # E3 pruning 時は feature 不一致
         and not redundancy_pruned  # C3 redundancy pruning 時も feature 不一致
         and prev_feature_cols == feature_cols  # feature_cols 完全一致が必要
@@ -1476,15 +1498,15 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
 
     # SkipGateConfig — 127# C1: mode を設定から取得
     sg_config = SkipGateConfig(
-        mode=cfg.get("mode", "pnl"),
+        mode=str(cfg.get("mode", "pnl")),
         enabled=True,
         buy_enabled=True,
         sell_enabled=True,
         threshold_bps=0.0,
         use_ob_features=use_ob,
-        adaptive_threshold=cfg.get("adaptive_threshold", True),
-        target_skip_rate_buy=cfg.get("target_skip_rate_buy", 0.15),
-        target_skip_rate_sell=cfg.get("target_skip_rate_sell", 0.20),
+        adaptive_threshold=safe_to_bool(cfg.get("adaptive_threshold", True), True),
+        target_skip_rate_buy=safe_to_float(cfg.get("target_skip_rate_buy", 0.15), 0.15),
+        target_skip_rate_sell=safe_to_float(cfg.get("target_skip_rate_sell", 0.20), 0.20),
         adaptive_window=50,
         adaptive_min_samples=20,
         adaptive_step=0.05,
@@ -1493,7 +1515,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
     )
 
     wf_results_meta = {}
-    if cfg.get("quality_gate_enabled"):
+    if safe_to_bool(cfg.get("quality_gate_enabled", True), True):
         wf_results_meta = {
             "profit_score": wf_result["score"],
             "skip20_pnl30_improvement_bps": wf_result["pnl30_improvement"],
@@ -1520,9 +1542,11 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
         "wf_dead_features": wf_dead_features,  # 131# B: 次回 consecutive-dead 参照用
         "source_run_id": result.get("run_id", ""),  # 140# §8.1-#3: run_id 直接比較用
         "run_switched": result.get("run_switched", False),  # 140# run 切替フラグ
-        "enriched_cache_used": cfg.get("enriched_cache_enabled", True),
+        "enriched_cache_used": safe_to_bool(cfg.get("enriched_cache_enabled", True), True),
         # 131# C1-C3: ztb asset 統合メタデータ
-        "wf_multi_window": wf_result.get("n_windows", 1) if cfg.get("quality_gate_enabled") else 0,
+        "wf_multi_window": wf_result.get("n_windows", 1)
+        if safe_to_bool(cfg.get("quality_gate_enabled", True), True)
+        else 0,
         "redundancy_pruned_features": redundancy_pruned,
         "statistical_gate": result.get("statistical_gate", {}),
         # 145# R-2a: レジーム重み付き学習メタデータ
@@ -1607,7 +1631,7 @@ def retrain_model(cfg: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def _run_online_monitor(cfg: dict[str, Any]) -> dict[str, Any] | None:
+def _run_online_monitor(cfg: ConfigMap) -> ConfigMap | None:
     """141# P1-12: 直近 N fill でオンラインパフォーマンスを評価.
 
     retrain サイクルの最後に呼び出し、skip gate の判定品質を
@@ -1620,14 +1644,14 @@ def _run_online_monitor(cfg: dict[str, Any]) -> dict[str, Any] | None:
             log_online_monitor_summary,
         )
 
-        window = cfg.get("online_monitor_window", 100)
-        pnl_col = cfg.get("online_monitor_pnl_column", "post_fill_30s_pnl")
-        degraded_threshold = cfg.get("online_monitor_degraded_threshold_bps", -0.3)
+        window = safe_to_int(cfg.get("online_monitor_window", 100), 100)
+        pnl_col = str(cfg.get("online_monitor_pnl_column", "post_fill_30s_pnl"))
+        degraded_threshold = safe_to_float(cfg.get("online_monitor_degraded_threshold_bps", -0.3), -0.3)
 
-        if not cfg.get("online_monitor_enabled", True):
+        if not safe_to_bool(cfg.get("online_monitor_enabled", True), True):
             return None
 
-        results_dir = Path(cfg.get("results_dir", "results/v460"))
+        results_dir = Path(str(cfg.get("results_dir", "results/v460")))
         try:
             records = load_fill_records(results_dir, exclude_missing_run_id=False)
         except FileNotFoundError:
@@ -1650,9 +1674,9 @@ def _run_online_monitor(cfg: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def _retrain_side_specific(
-    cfg: dict[str, Any],
+    cfg: ConfigMap,
     history_path: Path,
-) -> list[dict[str, Any]]:
+) -> list[ConfigMap]:
     """141# P1-01/02: buy/sell 分離モデルを追加学習.
 
     統一モデル retrain 後に呼び出される。各 side のデータだけを使い、
@@ -1666,7 +1690,7 @@ def _retrain_side_specific(
     Returns:
         side 別 retrain 結果リスト.
     """
-    results: list[dict[str, Any]] = []
+    results: list[ConfigMap] = []
     model_path_map = {
         "buy": cfg.get("model_path_buy", ""),
         "sell": cfg.get("model_path_sell", ""),
@@ -1696,8 +1720,7 @@ def _retrain_side_specific(
                 f"141# Side model {side}: status={side_result['status']}, "
                 f"target={target_map[side]}, path={side_model_path}"
             )
-            with open(history_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(side_result, default=str) + "\n")
+            _append_jsonl_record(history_path, side_result)
             results.append(side_result)
         except Exception as e:
             logger.error(f"141# Side model {side} failed: {e}", exc_info=True)
@@ -1706,7 +1729,7 @@ def _retrain_side_specific(
     return results
 
 
-def run_scheduler(cfg: dict[str, Any], config_path: Path | None = None) -> None:
+def run_scheduler(cfg: ConfigMap, config_path: Path | None = None) -> None:
     """定期再学習ループ.
 
     130# L2: サイクルごとに YAML を再読み込みし、YAML 変更を再起動なしで反映。
@@ -1714,40 +1737,50 @@ def run_scheduler(cfg: dict[str, Any], config_path: Path | None = None) -> None:
     """
     from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
 
-    interval = cfg.get("interval_sec", 3600)
+    interval = safe_to_int(cfg.get("interval_sec", 3600), 3600)
 
     # 136# P1-01 + §9 #4: トリガー設定を YAML から完全外部化
     trigger_cfg = RetrainTriggerConfig(
         base_interval_sec=interval,
-        check_trades_health=cfg.get("trigger_check_trades_health", True),
-        trades_lookback_days=cfg.get("trigger_trades_lookback_days", 3),
-        trades_stale_threshold_hours=cfg.get("trigger_trades_stale_threshold_hours", 36.0),
-        backoff_multiplier=cfg.get("trigger_backoff_multiplier", 2.0),
-        backoff_max_interval_sec=cfg.get("trigger_backoff_max_interval_sec", 14400),
-        check_feature_freshness=cfg.get("trigger_check_feature_freshness", False),
-        feature_trades_stale_hours=cfg.get("trigger_feature_trades_stale_hours", 6.0),
-        feature_ob_stale_hours=cfg.get("trigger_feature_ob_stale_hours", 6.0),
+        check_trades_health=safe_to_bool(cfg.get("trigger_check_trades_health", True), True),
+        trades_lookback_days=safe_to_int(cfg.get("trigger_trades_lookback_days", 3), 3),
+        trades_stale_threshold_hours=safe_to_float(
+            cfg.get("trigger_trades_stale_threshold_hours", 36.0), 36.0
+        ),
+        backoff_multiplier=safe_to_float(cfg.get("trigger_backoff_multiplier", 2.0), 2.0),
+        backoff_max_interval_sec=safe_to_int(cfg.get("trigger_backoff_max_interval_sec", 14400), 14400),
+        check_feature_freshness=safe_to_bool(cfg.get("trigger_check_feature_freshness", False), False),
+        feature_trades_stale_hours=safe_to_float(cfg.get("trigger_feature_trades_stale_hours", 6.0), 6.0),
+        feature_ob_stale_hours=safe_to_float(cfg.get("trigger_feature_ob_stale_hours", 6.0), 6.0),
         # 145# R-2b: レジーム別 interval 倍率
-        regime_interval_multipliers=cfg.get("trigger_regime_interval_multipliers", {
-            "high_vol": 0.5,
-            "trending": 0.75,
-            "ranging": 1.5,
-            "unknown": 1.0,
-        }),
+        regime_interval_multipliers={
+            str(k): safe_to_float(v, 1.0)
+            for k, v in ensure_dict(
+                cfg.get(
+                    "trigger_regime_interval_multipliers",
+                    {
+                        "high_vol": 0.5,
+                        "trending": 0.75,
+                        "ranging": 1.5,
+                        "unknown": 1.0,
+                    },
+                )
+            ).items()
+        },
     )
     trigger = RetrainTrigger(
-        results_dir=Path(cfg["results_dir"]),
-        raw_dir=Path(cfg.get("raw_dir", "data/v460/raw")),
+        results_dir=Path(str(cfg.get("results_dir", "results/v460/fill_test"))),
+        raw_dir=Path(str(cfg.get("raw_dir", "data/v460/raw"))),
         config=trigger_cfg,
     )
 
     logger.info(
         f"=== 126# Retrain Scheduler started ===\n"
         f"  interval: {interval}s ({interval / 3600:.1f}h)\n"
-        f"  model_path: {cfg['model_path']}\n"
-        f"  target: {cfg['target']}\n"
-        f"  min_new_samples: {cfg['min_new_samples']}\n"
-        f"  quality_gate: {cfg.get('quality_gate_enabled', True)}\n"
+        f"  model_path: {cfg.get('model_path', '')}\n"
+        f"  target: {cfg.get('target', '')}\n"
+        f"  min_new_samples: {cfg.get('min_new_samples', '')}\n"
+        f"  quality_gate: {safe_to_bool(cfg.get('quality_gate_enabled', True), True)}\n"
         f"  config_hot_reload: {config_path is not None}\n"
         f"  136# trigger: fill_mtime={trigger_cfg.check_fill_records_mtime}, "
         f"trades_health={trigger_cfg.check_trades_health}, "
@@ -1787,8 +1820,7 @@ def run_scheduler(cfg: dict[str, Any], config_path: Path | None = None) -> None:
                 "reason": trigger_reason,
                 "consecutive_skips": trigger.consecutive_skips,
             }
-            with open(history_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(skip_result, default=str) + "\n")
+            _append_jsonl_record(history_path, skip_result)
             time.sleep(effective_interval)
             continue
 
@@ -1801,11 +1833,10 @@ def run_scheduler(cfg: dict[str, Any], config_path: Path | None = None) -> None:
                 current_regime=result.get("current_regime", "unknown"),
             )
             # 履歴ファイルに記録
-            with open(history_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(result, default=str) + "\n")
+            _append_jsonl_record(history_path, result)
 
             # 141# P1-01/02: side 別モデル追加学習
-            if cfg.get("side_specific_enabled"):
+            if safe_to_bool(cfg.get("side_specific_enabled", False), False):
                 _retrain_side_specific(cfg, history_path)
 
             # 141# P1-12: オンラインパフォーマンスモニター
@@ -1879,14 +1910,13 @@ def main() -> None:
         log_dir.mkdir(exist_ok=True)
         history_path = log_dir / "retrain_history.jsonl"
         try:
-            with open(history_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(result, default=str) + "\n")
+            _append_jsonl_record(history_path, result)
             logger.info(f"133# P0-02: One-shot result appended to {history_path}")
         except Exception as e:
             logger.warning(f"133# P0-02: Failed to write one-shot history: {e}")
 
         # 141# P1-01/02: --once でも side 別モデル追加学習
-        if cfg.get("side_specific_enabled"):
+        if safe_to_bool(cfg.get("side_specific_enabled", False), False):
             _retrain_side_specific(cfg, history_path)
 
         # 141# P1-12: オンラインパフォーマンスモニター

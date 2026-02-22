@@ -493,3 +493,39 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
   - `ztb/trading/live/simulation/paper_trader.py`
 - `any_inventory`（対象）:
   - `streaming_processor.py` / `config_builder.py` / `checkpoint_manager.py` は `Any=0`
+
+## Phase 16 追補: retrain_scheduler 重複統合 + 評価高速化 + LFS汚染ガード (2026-02-22)
+
+### 1) 重複削減（helper 統合）
+
+- `scripts/v460/ml/retrain_scheduler.py` に
+  `_extract_numeric_column()` / `_compute_skip_metrics()` を追加し、
+  single/multi の skip 評価ロジックを共通化。
+- history JSONL 追記を `_append_jsonl_record()` に統一し、
+  scheduler / one-shot / side-specific の重複 I/O 実装を削減。
+
+### 2) 不具合可能性の低減
+
+- `multi-window` 評価で `X_val` が小さい/空のケースに対し、
+  early-stopping 用 transform を必要時のみ実行するよう変更。
+- `_safe_import_ztb_module()` に spec/loader の fail-fast 検証を追加し、
+  import 異常時の原因特定性を向上。
+
+### 3) 性能改善
+
+- WF評価で PnL 列をループ外で一括抽出し、window 内の反復 `DataFrame.loc` を削減。
+- 前処理中間 `DataFrame` の再構築を減らし、配列ベース処理へ寄せてオーバーヘッドを圧縮。
+
+### 4) 型安全 + LFS運用改善
+
+- `retrain_scheduler.py` の `Any` を全撤去し、`ConfigMap` / `object` ベースへ移行（対象 `Any=0`）。
+- `.gitattributes` へ `*.py` / `*.pyi` の非LFS override を明示し、
+  source code の LFS pointer 汚染を抑止。
+
+### 5) 検証
+
+- `py_compile`:
+  - `scripts/v460/ml/retrain_scheduler.py`
+- `any_inventory`:
+  - `--roots scripts/v460/ml`: `retrain_scheduler.py` は `Any=0`
+  - repo 全体 `any_type_debt_tokens=2,465`（`scanned_files=1,302`）

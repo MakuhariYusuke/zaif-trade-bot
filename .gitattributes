@@ -60,3 +60,7 @@ mypy_*.txt filter=lfs diff=lfs merge=lfs -text
 package-lock.json filter=lfs diff=lfs merge=lfs -text
 docs/** filter=lfs diff=lfs merge=lfs -text
 docs/**/*.md !filter !diff !merge text
+
+# Source files should never be LFS-managed.
+*.py !filter !diff !merge text
+*.pyi !filter !diff !merge text
