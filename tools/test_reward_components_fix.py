@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 """Quick test to verify reward_components are now saved correctly."""
 
-import json
 import subprocess
+import sys
 from pathlib import Path
 
+from ztb.reporting.services.catalog import (
+    extract_reward_components_from_payload,
+    get_recent_training_reports,
+    load_training_report,
+)
+from ztb.utils.safety import ensure_dict
 
-def test_quick_training():
+
+def test_quick_training() -> bool:
     """Run a quick 500-step training to verify reward_components."""
     # Test with minimal config
     config_path = "config/v447/baseline.json"
@@ -15,11 +22,13 @@ def test_quick_training():
     print(f"Running quick test with {config_path}...")
     
     cmd = [
-        "python",
+        sys.executable,
         "tools/ab_test_runner.py",
-        "--config", config_path,
+        "--configs",
+        config_path,
         "--timesteps", "500",
-        "--name", "reward_components_test"
+        "--seeds",
+        "1",
     ]
     
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -33,21 +42,22 @@ def test_quick_training():
     
     # Check most recent training report
     reports_dir = Path("training_results/reports")
-    reports = sorted(reports_dir.glob("training_report_*.json"))
+    reports = get_recent_training_reports(limit=1, reports_dir=reports_dir)
     
     if not reports:
         print("❌ No training reports found")
         return False
     
-    latest_report = reports[-1]
+    latest_report = reports[0]
     print(f"Checking report: {latest_report.name}")
-    
-    with open(latest_report) as f:
-        report = json.load(f)
-    
-    # Check for reward_components
-    training_stats = report.get("training_stats", {})
-    reward_components = training_stats.get("reward_components", {})
+
+    report = load_training_report(latest_report)
+    if report is None:
+        print("❌ Could not load latest report JSON")
+        return False
+
+    training_stats = ensure_dict(report.get("training_stats"))
+    reward_components = extract_reward_components_from_payload(report)
     
     if not reward_components:
         print("❌ reward_components NOT FOUND in training_stats")
@@ -64,4 +74,4 @@ def test_quick_training():
 
 if __name__ == "__main__":
     success = test_quick_training()
-    exit(0 if success else 1)
+    raise SystemExit(0 if success else 1)

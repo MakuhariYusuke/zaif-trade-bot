@@ -4,6 +4,21 @@ import json
 import re
 from pathlib import Path
 
+from ztb.reporting.services.catalog import list_training_reports
+
+
+def _build_backup_path(file_path: Path) -> Path:
+    candidate = file_path.with_suffix(".json.bak")
+    if not candidate.exists():
+        return candidate
+
+    index = 1
+    while True:
+        candidate = file_path.with_suffix(f".json.bak{index}")
+        if not candidate.exists():
+            return candidate
+        index += 1
+
 
 def fix_json_file(file_path: Path) -> bool:
     """Fix a single JSON file by removing extra closing braces."""
@@ -22,13 +37,16 @@ def fix_json_file(file_path: Path) -> bool:
         
         # Remove extra closing braces at the end
         # Pattern: }}\n at the end when there should be only }\n
-        fixed_content = re.sub(r'\}\}\s*$', '}', content)
+        fixed_content = re.sub(r"\}\}\s*$", "}", content)
+        if fixed_content == content:
+            print(f"✗ Could not fix {file_path.name}: no trailing extra brace pattern")
+            return False
         
         # Verify the fix
         try:
             json.loads(fixed_content)
             # Backup original
-            backup_path = file_path.with_suffix('.json.bak')
+            backup_path = _build_backup_path(file_path)
             file_path.rename(backup_path)
             # Write fixed version
             file_path.write_text(fixed_content, encoding="utf-8")
@@ -51,7 +69,7 @@ def main():
         return
     
     # Find all training report JSON files
-    json_files = list(reports_dir.glob("training_report_*.json"))
+    json_files = list_training_reports(reports_dir=reports_dir)
     
     print(f"Found {len(json_files)} training report files")
     print("Checking for broken JSON files...\n")

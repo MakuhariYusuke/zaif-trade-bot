@@ -987,3 +987,53 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - 回帰確認:
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/reporting/services/test_catalog.py`
     - 結果: `9 passed`（warning 1）
+
+## Phase 28 追補: report補助スクリプト群の型安全化 + helper横展開 (2026-02-22)
+
+### 1) helper 横展開（重複排除）
+
+- `tools/ab_search_result_summary.py`
+  - `training_report` 走査・JSON読込・action distribution 抽出を
+    `list_training_reports()` / `load_training_report()` /
+    `extract_action_distribution_from_payload()` に統一。
+- `tools/fix_broken_json_reports.py`
+  - report 列挙を `list_training_reports()` へ統合。
+- `tools/test_reward_components_fix.py`
+  - 最新 report 取得を `get_recent_training_reports()` に統合し、
+    components 抽出を `extract_reward_components_from_payload()` 経由へ統一。
+- `tools/analysis/action_distribution_window.py`
+  - report 読込を `load_training_report()`、列挙を `list_training_reports()` へ統合。
+
+### 2) 不具合可能性の解消
+
+- `test_reward_components_fix.py`
+  - `ab_test_runner.py` 呼び出し引数を `--config` から
+    現行契約の `--configs` へ修正。
+  - 実行 python を固定文字列 `python` から `sys.executable` に変更し、
+    venv 環境差異による実行失敗を低減。
+- `fix_broken_json_reports.py`
+  - backup 拡張子衝突時に `.json.bak1`, `.json.bak2` ... を採番するよう改善し、
+    再実行時の rename 失敗を回避。
+
+### 3) 型安全・保守性
+
+- `tools/ab_search_result_summary.py`
+  - `ActionAverage`, `BalanceSearchSummary` (`TypedDict`) を導入。
+- `tools/duplicate_report_summary.py`
+  - `read_json_object` + `ensure_dict/safe_to_float` で
+    入力揺れに耐える要約処理へ変更。
+- `tools/analysis/action_distribution_window.py`
+  - `ActionDistribution` (`TypedDict`) と
+    `_normalize_action_distribution()` を導入し、集計前の数値正規化を統一。
+
+### 4) 検証
+
+- `py_compile`:
+  - `tools/ab_search_result_summary.py`
+  - `tools/duplicate_report_summary.py`
+  - `tools/fix_broken_json_reports.py`
+  - `tools/test_reward_components_fix.py`
+  - `tools/analysis/action_distribution_window.py`
+- 回帰確認:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/reporting/services/test_catalog.py`
+    - 結果: `9 passed`（warning 1）
