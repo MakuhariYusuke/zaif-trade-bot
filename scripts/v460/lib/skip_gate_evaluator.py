@@ -13,13 +13,13 @@ FillTestRunner から SkipGate 初期化 + 評価ロジックを分離。
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, cast
 
 from scripts.v460.lib.fill_config import FillTestConfig, SkipGateResult
+from ztb.utils.run_manifest import compute_file_hash as _compute_shared_file_hash
 
 if TYPE_CHECKING:
     from ztb.metrics.fill_quality import FillRecord
@@ -290,7 +290,7 @@ class SkipGateEvaluator:
     def _compute_file_hash(path: Path) -> str:
         """ファイルの SHA256 ハッシュを算出 (126# hot-reload 用)."""
         try:
-            return hashlib.sha256(path.read_bytes()).hexdigest()
+            return _compute_shared_file_hash(path)
         except Exception:
             return ""
 

@@ -16,7 +16,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from ztb.data.market_data_collector import _read_jsonl_gz
+from ztb.io.jsonl_gz import read_jsonl_gz
 
 logger = logging.getLogger(__name__)
 
@@ -46,19 +46,19 @@ def load_raw_orderbook(
     if not ob_dir.exists():
         return pd.DataFrame()
 
-    all_records: list[dict] = []
+    all_records: list[dict[str, object]] = []
     for f in sorted(ob_dir.glob("*.jsonl.gz")):
         # 130# 日付限定ロード
         if date_filter is not None:
             stem = f.stem.replace(".jsonl", "")
             if stem not in date_filter:
                 continue
-        all_records.extend(_read_jsonl_gz(f))
+        all_records.extend(read_jsonl_gz(f))
 
     if not all_records:
         return pd.DataFrame()
 
-    rows: list[dict] = []
+    rows: list[dict[str, float]] = []
     for r in all_records:
         bids = r.get("bids", [])
         asks = r.get("asks", [])
@@ -110,14 +110,14 @@ def load_raw_trades(
     if not tr_dir.exists():
         return pd.DataFrame()
 
-    all_records: list[dict] = []
+    all_records: list[dict[str, object]] = []
     for f in sorted(tr_dir.glob("*.jsonl.gz")):
         # 130# 日付限定ロード: ファイル名 YYYYMMDD.jsonl.gz から日付抽出
         if date_filter is not None:
             stem = f.stem.replace(".jsonl", "")  # "20260220" etc.
             if stem not in date_filter:
                 continue
-        all_records.extend(_read_jsonl_gz(f))
+        all_records.extend(read_jsonl_gz(f))
 
     if not all_records:
         return pd.DataFrame()

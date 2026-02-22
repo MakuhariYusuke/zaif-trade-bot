@@ -1411,3 +1411,44 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
     - 結果: `184 passed`
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_145_structural_fixes.py`
     - 結果: `53 passed`
+
+## Phase 38 追補: ztb共通I/O・ハッシュの再利用統一 (2026-02-22)
+
+### 1) ztb 側ヘルパへの統一（重複削減）
+
+- `ztb/data/market_data_collector.py`
+  - raw JSONL.gz 書き込みを手書き gzip/json から
+    `ztb.io.jsonl_gz.append_jsonl_gz` に統一。
+  - `_read_jsonl_gz()` を `ztb.io.jsonl_gz.read_jsonl_gz` の
+    backward-compatible wrapper に置換。
+  - これにより JSONL.gz の読書き実装を単一化し、
+    v460 側での private 実装依存を削減。
+
+- `scripts/v460/ml/feature_enricher.py`
+  - `ztb.data.market_data_collector._read_jsonl_gz`（private）依存を廃止。
+  - `ztb.io.jsonl_gz.read_jsonl_gz`（public）へ切替。
+  - raw データロードの型注釈も `dict[str, object]` ベースに整理。
+
+- `scripts/v460/lib/skip_gate_evaluator.py`
+  - ファイルハッシュ計算を手書き `hashlib` から
+    `ztb.utils.run_manifest.compute_file_hash` に統一。
+  - ハッシュ計算ロジックを ztb 共通実装へ寄せ、重複を削減。
+
+### 2) 不具合可能性の排除
+
+- `feature_enricher` が private helper に依存していたため、
+  collector 側の内部変更に弱い構造だった点を解消。
+- JSONL.gz 読み込み仕様（空ファイル/欠損/異常行扱い）を
+  `ztb.io.jsonl_gz` 側に集約し、挙動の一貫性を改善。
+
+### 3) 検証
+
+- `py_compile`:
+  - `ztb/data/market_data_collector.py`
+  - `scripts/v460/ml/feature_enricher.py`
+  - `scripts/v460/lib/skip_gate_evaluator.py`
+- 回帰確認:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_aggregate_to_1min.py tests/unit/v460/test_build_features_pipeline.py tests/unit/v460/test_enricher_skip_gate.py`
+    - 結果: `104 passed`
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_141_side_specific_models.py tests/unit/v460/test_skip_gate_v3.py tests/unit/v460/test_retrain_hot_reload.py tests/unit/v460/test_143_regime_utilization.py`
+    - 結果: `184 passed`

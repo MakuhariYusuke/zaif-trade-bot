@@ -13,17 +13,16 @@ NOTE: DataAcquisitionScheduler (ztb/data/scheduler.py) は Binance 専用のた�
 from __future__ import annotations
 
 import asyncio
-import gzip
-import json
 import logging
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import numpy as np
 import pandas as pd
 
+from ztb.io.jsonl_gz import append_jsonl_gz, read_jsonl_gz
 from ztb.trading.live.exchanges.base.broker_interfaces import (
     IBroker,
     MarketDataNotSupported,
@@ -167,11 +166,7 @@ class MarketDataCollector:
 
     @staticmethod
     def _write_jsonl_gz(path: Path, records: list[dict[str, Any]]) -> None:
-        if not records:
-            return
-        with gzip.open(path, "at", encoding="utf-8") as f:
-            for r in records:
-                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        append_jsonl_gz(path, records)
 
     # ------------------------------------------------------------------
     # 1-min aggregation (raw → Parquet)
@@ -428,13 +423,5 @@ class MarketDataCollector:
 
 
 def _read_jsonl_gz(path: Path) -> list[dict[str, Any]]:
-    """Read a JSONL gzip file into a list of dicts."""
-    if not path.exists():
-        return []
-    records: list[dict[str, Any]] = []
-    with gzip.open(path, "rt", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                records.append(json.loads(line))
-    return records
+    """Backward-compatible wrapper around ztb.io.jsonl_gz.read_jsonl_gz."""
+    return cast(list[dict[str, Any]], read_jsonl_gz(path))
