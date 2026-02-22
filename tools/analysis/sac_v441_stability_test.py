@@ -6,8 +6,8 @@ v438分析結果に基づくv441改善設定の検証を行う。
 1万ステップの制約下で段階的なテストを実施。
 """
 
-import json
 import sys
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 
@@ -15,28 +15,41 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from ztb.analysis.core.analyzer import UnifiedAnalyzer
+from ztb.io.json_io import read_json_object, write_json
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
 
-def load_config(config_path: str) -> dict:
+def load_config(config_path: str) -> dict[str, object]:
     """設定ファイルを読み込み"""
-    with open(config_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    return read_json_object(config_path)
 
 
-def create_test_config(base_config: dict, test_name: str) -> dict:
+def create_test_config(base_config: dict[str, object], test_name: str) -> dict[str, object]:
     """テスト用の設定を作成"""
-    config = base_config.copy()
-    config["training"]["model_name"] = f"sac_v441_{test_name}_10k"
-    config["training"]["total_timesteps"] = 10000
+    # Deep copy to avoid mutating the source config's nested maps.
+    config = deepcopy(base_config)
+    training = config.get("training")
+    if not isinstance(training, dict):
+        training = {}
+        config["training"] = training
+    training["model_name"] = f"sac_v441_{test_name}_10k"
+    training["total_timesteps"] = 10000
 
     # テスト用の軽量設定
-    config["evaluation"]["eval_freq"] = 1000
-    config["evaluation"]["save_freq"] = 2000
-    config["logging"]["log_interval"] = 200
+    evaluation = config.get("evaluation")
+    if not isinstance(evaluation, dict):
+        evaluation = {}
+        config["evaluation"] = evaluation
+    evaluation["eval_freq"] = 1000
+    evaluation["save_freq"] = 2000
+
+    logging_cfg = config.get("logging")
+    if not isinstance(logging_cfg, dict):
+        logging_cfg = {}
+        config["logging"] = logging_cfg
+    logging_cfg["log_interval"] = 200
 
     return config
 
@@ -54,8 +67,7 @@ def run_stability_test():
 
     # 設定保存
     test_config_path = f"config/sac_v441_stability_test_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    with open(test_config_path, "w", encoding="utf-8") as f:
-        json.dump(test_config, f, indent=2, ensure_ascii=False)
+    write_json(test_config_path, test_config, indent=2, ensure_ascii=False)
 
     logger.info(f"Test configuration saved to: {test_config_path}")
 
@@ -70,11 +82,8 @@ def analyze_training_results(config_path: str):
     """トレーニング結果の分析"""
     logger.info("Analyzing training results...")
 
-    # 分析器初期化
-    analyzer = UnifiedAnalyzer()
-
-    # 設定読み込み
-    config = load_config(config_path)
+    # Validate config can be loaded; result is not used in simulation analysis.
+    _ = load_config(config_path)
 
     # 分析実行（モック）
     analysis_results = {

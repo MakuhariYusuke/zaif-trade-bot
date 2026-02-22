@@ -6,7 +6,6 @@ v438モデルの深層分析結果を基に、v441開発のための具体的な
 安定性向上、レジーム特化、行動最適化を重点的に実装。
 """
 
-import json
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -17,6 +16,8 @@ import sys
 sys.path.insert(0, str(project_root))
 
 from ztb.utils.logging_utils import get_logger
+from ztb.io.json_io import read_json_object, write_json
+from ztb.utils.safety import ensure_dict
 
 logger = get_logger(__name__)
 
@@ -39,9 +40,8 @@ class SACv441DevelopmentPlan:
 
     def _load_v438_analysis(self) -> Dict[str, Any]:
         """v438分析結果の読み込み"""
-        with open(self.v438_analysis_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        return data.get('results', {})
+        data = read_json_object(self.v438_analysis_path)
+        return ensure_dict(data.get('results'))
 
     def create_development_plan(self) -> Dict[str, Any]:
         """
@@ -425,8 +425,7 @@ class SACv441DevelopmentPlan:
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
         # JSON保存
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(plan_data, f, indent=2, ensure_ascii=False, default=str)
+        write_json(output_path, plan_data, indent=2, ensure_ascii=False)
 
         logger.info(f"Development plan saved to: {output_path}")
         return output_path

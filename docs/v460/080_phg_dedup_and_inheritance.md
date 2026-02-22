@@ -1076,3 +1076,31 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - 回帰確認:
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/reporting/services/test_catalog.py`
     - 結果: `9 passed`（warning 1）
+
+## Phase 30 追補: v441 analysis scripts への JSON helper 適用 + 設定汚染バグ修正 (2026-02-22)
+
+### 1) JSON helper の追加横展開
+
+- `tools/analysis/sac_v441_stability_test.py`
+  - config load/save を `read_json_object()` / `write_json()` に統一。
+- `tools/analysis/sac_v441_development_plan.py`
+  - v438分析結果の読込を `read_json_object()` へ統一。
+  - 開発計画の保存を `write_json()` へ統一。
+
+### 2) 不具合可能性の解消
+
+- `sac_v441_stability_test.py`:
+  - `create_test_config()` の shallow copy (`dict.copy`) による
+    nested config 汚染リスクを `deepcopy` 化で解消。
+  - `training/evaluation/logging` セクション欠落時の `KeyError` を回避する
+    defensive 初期化を追加。
+  - 未使用の `UnifiedAnalyzer` 初期化を削除し、無駄な依存初期化コストを削減。
+
+### 3) 検証
+
+- `py_compile`:
+  - `tools/analysis/sac_v441_stability_test.py`
+  - `tools/analysis/sac_v441_development_plan.py`
+- 回帰確認:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/reporting/services/test_catalog.py`
+    - 結果: `9 passed`（warning 1）
