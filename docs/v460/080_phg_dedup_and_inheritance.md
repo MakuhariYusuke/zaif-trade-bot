@@ -643,6 +643,9 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - `optimize_hyperparameters_from_config()` で
   固定 reward 設定の `base_backtest_config` を再利用し、
   trial ごとの不要な設定再構築を削減（軽量化）。
+- config 側に数値 SAC パラメータが無いケースでは
+  `DEFAULT_SYNTHETIC_SAC_HYPERPARAMETERS` へフォールバックし、
+  「探索次元 0 で最適化が実質無効化される」ケースを回避。
 - `optimize_reward_function()` 完了時に
   `_update_dynamic_weights_from_history()` を連携し、
   history 依存ロジックの死蔵を防止（次回最適化への反映を有効化）。

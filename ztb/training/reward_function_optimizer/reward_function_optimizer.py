@@ -916,6 +916,12 @@ class RewardFunctionOptimizer:
         sac_params, reward_params = self._split_sac_and_reward_params(
             ensure_dict(base_config.get("parameters"))
         )
+        if not sac_params:
+            sac_params = dict(DEFAULT_SYNTHETIC_SAC_HYPERPARAMETERS)
+            self.logger.warning(
+                "No numeric SAC hyperparameters found in %s; falling back to defaults.",
+                config_file_path,
+            )
 
         # Print header
         self._print_header(
