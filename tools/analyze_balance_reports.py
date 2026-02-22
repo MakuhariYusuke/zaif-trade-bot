@@ -5,9 +5,28 @@ Analyze recent training reports for balance exploration.
 Finds the best action distributions and identifies patterns.
 """
 
-import json
+import math
 from pathlib import Path
-from typing import Dict, List
+from typing import TypedDict
+
+from ztb.reporting.services.catalog import (
+    extract_action_distribution_from_payload,
+    get_recent_training_reports,
+    load_training_report,
+)
+from ztb.utils.safety import ensure_dict, safe_to_float
+
+
+class BalanceReportSummary(TypedDict):
+    file: str
+    modified: float
+    buy: float
+    sell: float
+    hold: float
+    balance_score: float
+    balance_shaping: object
+    balance_penalty: object
+    timesteps: float
 
 
 def calculate_balance_score(buy: float, sell: float, hold: float) -> float:
@@ -18,59 +37,53 @@ def calculate_balance_score(buy: float, sell: float, hold: float) -> float:
     return min(buy, sell, hold)
 
 
-def analyze_reports(limit: int = 20) -> List[Dict]:
+def analyze_reports(limit: int = 20) -> list[BalanceReportSummary]:
     """Analyze recent training reports."""
-    reports_dir = Path("reports")
-    report_files = sorted(
-        reports_dir.glob("training_report_*.json"),
-        key=lambda x: x.stat().st_mtime,
-        reverse=True,
-    )[:limit]
+    report_files = get_recent_training_reports(limit=limit, reports_dir=Path("reports"))
 
-    results = []
+    results: list[BalanceReportSummary] = []
 
     for report_file in report_files:
-        try:
-            data = json.loads(report_file.read_text(encoding="utf-8"))
-
-            # Get action distribution
-            ad = data.get("action_distribution")
-            if not ad:
-                ad = data.get("training_stats", {}).get("action_distribution")
-
-            if not ad:
-                continue
-
-            buy = ad.get("BUY", 0)
-            sell = ad.get("SELL", 0)
-            hold = ad.get("HOLD", 0)
-
-            # Get curriculum config if available
-            curriculum = data.get("configuration", {}).get("curriculum", {})
-            balance_shaping = curriculum.get("balance_shaping_value", "N/A")
-            balance_penalty = curriculum.get("balance_penalty", "N/A")
-
-            # Calculate balance score
-            balance_score = calculate_balance_score(buy, sell, hold)
-
-            results.append(
-                {
-                    "file": report_file.name,
-                    "modified": report_file.stat().st_mtime,
-                    "buy": buy,
-                    "sell": sell,
-                    "hold": hold,
-                    "balance_score": balance_score,
-                    "balance_shaping": balance_shaping,
-                    "balance_penalty": balance_penalty,
-                    "timesteps": data.get("training_stats", {}).get(
-                        "total_timesteps", 0
-                    ),
-                }
-            )
-        except Exception as e:
-            print(f"Error processing {report_file.name}: {e}")
+        data = load_training_report(report_file)
+        if data is None:
+            print(f"Error processing {report_file.name}: could not load JSON")
             continue
+
+        ad = extract_action_distribution_from_payload(data)
+        if not ad:
+            continue
+
+        buy = safe_to_float(ad.get("BUY"), 0.0)
+        sell = safe_to_float(ad.get("SELL"), 0.0)
+        hold = safe_to_float(ad.get("HOLD"), 0.0)
+
+        configuration = ensure_dict(data.get("configuration"))
+        curriculum = ensure_dict(configuration.get("curriculum"))
+        balance_shaping = curriculum.get("balance_shaping_value", "N/A")
+        balance_penalty = curriculum.get("balance_penalty", "N/A")
+
+        training_stats = ensure_dict(data.get("training_stats"))
+        timesteps = safe_to_float(training_stats.get("total_timesteps"), 0.0)
+
+        try:
+            modified = report_file.stat().st_mtime
+        except OSError:
+            modified = 0.0
+
+        balance_score = calculate_balance_score(buy, sell, hold)
+        results.append(
+            {
+                "file": report_file.name,
+                "modified": modified,
+                "buy": buy,
+                "sell": sell,
+                "hold": hold,
+                "balance_score": balance_score,
+                "balance_shaping": balance_shaping,
+                "balance_penalty": balance_penalty,
+                "timesteps": timesteps,
+            }
+        )
 
     return results
 
@@ -163,11 +176,13 @@ def main() -> None:
 
     if target_results:
         # Get balance_shaping values from target results
-        shaping_values = [
-            r["balance_shaping"]
-            for r in target_results
-            if r["balance_shaping"] != "N/A"
-        ]
+        shaping_values: list[float] = []
+        for result in target_results:
+            if result["balance_shaping"] == "N/A":
+                continue
+            parsed = safe_to_float(result["balance_shaping"], math.nan)
+            if not math.isnan(parsed):
+                shaping_values.append(parsed)
         if shaping_values:
             avg_shaping = sum(shaping_values) / len(shaping_values)
             print(

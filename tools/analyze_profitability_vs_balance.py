@@ -5,71 +5,76 @@ Analyze the correlation between profitability and BUY/SELL balance.
 This script investigates whether balanced BUY/SELL ratios lead to higher profitability.
 """
 
-import json
-from pathlib import Path
 import statistics
+
+from pathlib import Path
+from typing import TypedDict
+
+from ztb.reporting.services.catalog import (
+    extract_action_distribution_from_payload,
+    get_recent_training_reports,
+    load_training_report,
+)
 from ztb.trading.environment.components.rewards.utils import RewardUtils
+from ztb.utils.safety import ensure_dict, safe_to_float
+
+
+class ProfitabilityDataPoint(TypedDict):
+    file: str
+    final_reward: float
+    buy: float
+    sell: float
+    hold: float
+    buy_sell_ratio: float
+    buy_sell_diff: float
+    buy_sell_balance: float
 
 
 def analyze_profitability_balance() -> None:
     """Analyze correlation between portfolio value and action balance."""
-    reports_dir = Path("reports")
-    report_files = sorted(
-        reports_dir.glob("training_report_*.json"),
-        key=lambda x: x.stat().st_mtime,
-        reverse=True
-    )[:50]  # Last 50 reports
+    report_files = get_recent_training_reports(limit=50, reports_dir=Path("reports"))
     
-    data_points = []
+    data_points: list[ProfitabilityDataPoint] = []
     
     for report_file in report_files:
-        try:
-            data = json.loads(report_file.read_text(encoding="utf-8"))
-            
-            # Get final reward as profitability proxy
-            stats = data.get("training_stats", {})
-            pv_raw = stats.get("final_reward", 0)  # Use final_reward as proxy
-            
-            # Convert to float if it's a string
-            try:
-                pv = float(pv_raw) if pv_raw else 0.0
-            except (ValueError, TypeError):
-                pv = 0.0
-            
-            # Get action distribution
-            ad = stats.get("action_distribution")
-            
-            if not ad or pv == 0:
-                continue
-            
-            buy = ad.get("BUY", 0)
-            sell = ad.get("SELL", 0)
-            hold = ad.get("HOLD", 0)
-            
-            # Calculate BUY/SELL ratio and imbalance
-            if sell > 0:
-                buy_sell_ratio = buy / sell
-            else:
-                buy_sell_ratio = 999.0  # Very high if no SELL
-            
-            # Use canonical deviation helper (target 50/50 for BUY/SELL)
-            buy_sell_diff = RewardUtils.calculate_balance_deviation_from_ratios([buy, sell], [0.5, 0.5])
-            buy_sell_balance = min(buy, sell)  # Perfect balance = 0.5 each
-            
-            data_points.append({
+        data = load_training_report(report_file)
+        if data is None:
+            print(f"Error processing {report_file}: could not load JSON")
+            continue
+
+        stats = ensure_dict(data.get("training_stats"))
+        pv = safe_to_float(stats.get("final_reward"), 0.0)
+        ad = extract_action_distribution_from_payload(data)
+
+        if not ad or pv == 0.0:
+            continue
+
+        buy = safe_to_float(ad.get("BUY"), 0.0)
+        sell = safe_to_float(ad.get("SELL"), 0.0)
+        hold = safe_to_float(ad.get("HOLD"), 0.0)
+
+        if sell > 0:
+            buy_sell_ratio = buy / sell
+        else:
+            buy_sell_ratio = 999.0  # Very high if no SELL
+
+        buy_sell_diff = RewardUtils.calculate_balance_deviation_from_ratios(
+            [buy, sell], [0.5, 0.5]
+        )
+        buy_sell_balance = min(buy, sell)  # Perfect balance = 0.5 each
+
+        data_points.append(
+            {
                 "file": report_file.name,
-                "final_reward": pv,  # Changed from portfolio_value
+                "final_reward": pv,
                 "buy": buy,
                 "sell": sell,
                 "hold": hold,
                 "buy_sell_ratio": buy_sell_ratio,
                 "buy_sell_diff": buy_sell_diff,
                 "buy_sell_balance": buy_sell_balance,
-            })
-            
-        except Exception as e:
-            print(f"Error processing {report_file}: {e}")
-            continue
+            }
+        )
     
     if not data_points:
         print("No valid data points found")

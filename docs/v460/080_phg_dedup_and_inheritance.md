@@ -948,3 +948,42 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - venv test:
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/reporting/services/test_catalog.py`
     - 結果: `9 passed`（warning 1）
+
+## Phase 27 追補: report分析スクリプトの水平展開（balance/profitability/components）(2026-02-22)
+
+### 1) helper 水平展開（重複削減）
+
+- `tools/analyze_balance_reports.py`
+  - `glob + json.load` の直実装を `get_recent_training_reports()` / `load_training_report()` /
+    `extract_action_distribution_from_payload()` へ統一。
+- `tools/analyze_profitability_vs_balance.py`
+  - 同様に report 列挙・読込・action distribution 抽出を catalog helper へ統一。
+- `tools/analyze_ab_with_components.py`
+  - report 収集/読込/reward_components 抽出/action 抽出を helper 経由へ全面移行。
+  - default pattern (`training_report_*.json`) かつ `--filter-recent` 指定時は
+    `get_recent_training_reports()` を優先利用し、不要な全件ロードを回避。
+  - JSON 出力は `write_json` へ統一し、I/O 契約を共通化。
+
+### 2) 不具合可能性の解消
+
+- `analyze_balance_reports.py`:
+  - `balance_shaping` が文字列等の場合に `sum()` で落ちる経路を `safe_to_float` で防御。
+- `analyze_ab_with_components.py`:
+  - component 統計集計時の `float(value)` 直変換を廃止し、型揺れを `safe_to_float` で吸収。
+  - 壊れた JSON report は warning のみでスキップし、全体処理を継続。
+
+### 3) 型安全・保守性
+
+- 3スクリプトで `TypedDict` を導入し、解析 payload 契約を明示。
+- report payload 取り扱いを `ensure_dict` / `safe_to_float` 経由へ統一し、
+  script 間での型処理分岐重複を削減。
+
+### 4) 検証
+
+- `py_compile`:
+  - `tools/analyze_balance_reports.py`
+  - `tools/analyze_profitability_vs_balance.py`
+  - `tools/analyze_ab_with_components.py`
+- 回帰確認:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/reporting/services/test_catalog.py`
+    - 結果: `9 passed`（warning 1）
