@@ -519,3 +519,39 @@ configs/v460/fill_test.yaml:
 | 5 | **受容**: §3.6 に dust_sweep 優先ルール追加: `dust_sweep_active` サイクルは `confidence_factor=1.0` 固定 |
 | 6 | **受容**: `confidence_lot_pnl_zero` / `confidence_lot_pnl_max` パラメータを §3.2/§3.3 から削除。mode=pnl 凍結に伴い不要 |
 | 7 | **受容**: §3.7 FillRecord フィールドを拡充: `confidence_lot_factor` + `order_lot_regime` + `order_lot_effective` + `confidence_lot_mode` |
+---
+
+## §11 実装完了記録
+
+**コミット**: `ec65a2251`  
+**日時**: 2026-02-23  
+
+### 11.1 変更ファイル
+
+| ファイル | 変更 |
+|----------|------|
+| `scripts/v460/lib/fill_config.py` | FillTestConfig に 4 フィールド追加 + `__post_init__` バリデーション + `from_yaml` 配線 |
+| `scripts/v460/run_fill_test.py` | `_confidence_lot_factor()`, `_effective_order_lot()` 新規, `run_single_cycle()` 統合 |
+| `ztb/metrics/fill_quality.py` | FillRecord に 4 フィールド追加 (§10 #7) |
+| `configs/v460/fill_test.yaml` | `confidence_lot` セクション追加 (`enabled: false`) |
+| `tests/unit/v460/test_151_confidence_lot.py` | 31 テスト新規 (T1-T9 + validation + YAML + FillRecord) |
+| `tests/unit/v460/test_143_regime_utilization.py` | ソース検査テストを 151# 構造に適合 |
+| `tests/unit/v460/test_145_structural_fixes.py` | SkipGate lot 渡しテストを 151# 構造に適合 |
+
+### 11.2 §10 Codex レビュー対応状況
+
+| # | 状態 |
+|---|------|
+| 1 | ✅ `enabled: false` デフォルト。effectivity check は Phase C データで実施後に有効化 |
+| 2 | ✅ `__post_init__` に floor/scale/mode バリデーション。`_confidence_lot_factor` で `[0, 1]` クランプ |
+| 3 | ✅ `mode=pnl` は凍結 (warning + factor=1.0 返却)。`sg.as_prob` のみ使用 |
+| 4 | ✅ `_regime_lot` を1回算出、SkipGate/発注/記録に共通引き回し |
+| 5 | ✅ `dust_sweep_active` 時は `confidence_factor=1.0` |
+| 6 | ✅ `pnl_zero_factor`/`pnl_max` は実装に含めず (mode=pnl 凍結) |
+| 7 | ✅ FillRecord: `confidence_lot_factor`, `order_lot_regime`, `order_lot_effective`, `confidence_lot_mode` |
+
+### 11.3 有効化手順
+
+1. Phase C fill_records で `order_quantity == min_order_btc` の比率を確認 (no-op risk)
+2. 比率 < 80% なら `configs/v460/fill_test.yaml` の `confidence_lot.enabled: true` に切替
+3. `scale`/`floor` は Phase C データの AS prob vs PnL 中央値から決定

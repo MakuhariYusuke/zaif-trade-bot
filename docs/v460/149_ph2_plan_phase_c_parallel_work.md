@@ -51,7 +51,7 @@ Phase E (P1 group)        : ✅ 137#-141# で先行実施済み (全 9 項目完
 | P2-08 | shadow model A/B | ⚠️ P2 維持 | hot-reload アトミック性確保済み。工数大 | ❌ 工数大 |
 | P3-01 | hft_proxies boardless fallback | ❌ 優先度低 | fill_test は tick 板データ直接保有 | N/A |
 | P3-02 | advanced_regime_detector AB | ⚠️ P3 維持 | unknown レジーム削減に有望だが P0-09 で応急対応済み | ⚠️ 調査可 |
-| P3-03 | dynamic_position_sizer | 📐 設計中 | [151#](151_ph2_plan_dynamic_position_sizer.md) AS 確率連動ロット設計 | ✅ 設計完了 |
+| P3-03 | dynamic_position_sizer | ✅ 実装完了 | [151#](151_ph2_plan_dynamic_position_sizer.md) AS 確率連動ロット (`enabled:false`) | ✅ 実装完了 (有効化は Phase C 後) |
 | P3-04 | pnl_monte_carlo 日次実行 | ✅ **実装済** | 146# `daily_health_check.py` に統合 | ✅ タスク登録のみ |
 | P3-05 | venue 横断比較 | ⚠️ P3 維持 | 146# multi-exchange で基盤は整備済み | ⚠️ 調査可 |
 
