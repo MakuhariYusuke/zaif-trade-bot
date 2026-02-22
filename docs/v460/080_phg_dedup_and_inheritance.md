@@ -1496,3 +1496,39 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
     - 結果: `55 passed`
   - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_v460_core.py tests/unit/v460/test_gate_check.py`
     - 結果: `100 passed`
+
+## Phase 40 追補: hash/git helper 水平展開 + oracle_test Any除去 (2026-02-22)
+
+### 1) ztb helper の水平展開（重複削減）
+
+- `scripts/v460/lib/data_loader.py`
+  - `compute_data_hash()` の手書き `hashlib` 実装を
+    `ztb.utils.run_manifest.compute_file_hash` へ統一。
+- `scripts/v460/build_features.py`
+  - `compute_sha256()` の手書き `hashlib` 実装を
+    `ztb.utils.run_manifest.compute_file_hash` へ統一。
+- `scripts/v460/lib/abstract_cycle_runner.py`
+  - `_get_git_sha()` の手書き `subprocess git rev-parse` 実装を
+  `ztb.utils.git_utils.get_git_sha` へ統一。
+
+### 2) 型安全向上（Any削減）
+
+- `scripts/v460/analysis/oracle_test.py`
+  - `dict[str, Any]` を撤廃し、
+    `OracleRunResult` / `HorizonOracleResult` / `KillSwitchResult` /
+    `SideOracleStats` (`TypedDict`) を導入。
+  - `scripts/v460` 配下の `Any` 在庫を 0 化。
+
+### 3) 検証
+
+- `py_compile`:
+  - `scripts/v460/lib/data_loader.py`
+  - `scripts/v460/build_features.py`
+  - `scripts/v460/lib/abstract_cycle_runner.py`
+  - `scripts/v460/analysis/oracle_test.py`
+- 回帰確認:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_v460_core.py tests/unit/v460/test_145_s14_structural_refactors.py tests/unit/v460/test_148_fill_test_events.py`
+    - 結果: `99 passed`
+- Any inventory:
+  - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460 --top 10`
+    - 結果: `any_type_debt_tokens=0`（`scripts/v460`）

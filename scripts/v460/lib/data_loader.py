@@ -11,13 +11,13 @@ v460 Data loader — Parquet 読込 + train/eval 分割.
 
 from __future__ import annotations
 
-import hashlib
 import logging
 from pathlib import Path
 from typing import Optional, TypedDict
 
 import numpy as np
 import pandas as pd
+from ztb.utils.run_manifest import compute_file_hash as _compute_shared_file_hash
 
 logger = logging.getLogger(__name__)
 
@@ -137,11 +137,7 @@ def compute_data_hash(path: str | Path) -> str:
     if not p.is_absolute():
         p = _PROJECT_ROOT / p
 
-    sha = hashlib.sha256()
-    with open(p, "rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
-            sha.update(chunk)
-    return sha.hexdigest()
+    return _compute_shared_file_hash(p)
 
 
 NaNRatioCheck = TypedDict(

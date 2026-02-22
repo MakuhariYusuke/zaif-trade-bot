@@ -12,14 +12,18 @@ Template Method パターンにより、サブクラスは以下を実装する:
 
 from __future__ import annotations
 
-import subprocess
 import time
 import uuid
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
+
+from ztb.utils.git_utils import get_git_sha as _get_shared_git_sha
 
 if TYPE_CHECKING:
     from ztb.metrics.fill_quality import FillRecord
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 
 class AbstractCycleRunner(ABC):
@@ -95,11 +99,5 @@ class AbstractCycleRunner(ABC):
     @staticmethod
     def _get_git_sha() -> str:
         """Get current git commit short hash, or 'unknown' on failure."""
-        try:
-            result = subprocess.run(
-                ["git", "rev-parse", "--short", "HEAD"],
-                capture_output=True, text=True, timeout=5,
-            )
-            return result.stdout.strip() if result.returncode == 0 else "unknown"
-        except Exception:
-            return "unknown"
+        sha = _get_shared_git_sha(cwd=_PROJECT_ROOT)
+        return sha[:12] if sha != "unknown" else "unknown"

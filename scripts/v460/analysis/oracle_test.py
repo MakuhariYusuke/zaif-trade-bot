@@ -22,7 +22,7 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import TypedDict
 
 import numpy as np
 import pandas as pd
@@ -35,17 +35,66 @@ from scripts.v460.ml.feature_enricher import enrich_fill_records
 logger = logging.getLogger(__name__)
 
 
+class SideOracleStats(TypedDict):
+    """Side別統計."""
+
+    n: int
+    mean_bps: float
+    std_bps: float
+    profitable_rate: float
+    oracle_skip_mean_bps: float
+
+
+class HorizonOracleResult(TypedDict, total=False):
+    """1 horizon の Oracle 結果."""
+
+    status: str
+    n: int
+    baseline_mean_bps: float
+    baseline_std_bps: float
+    oracle_skip_mean_bps: float
+    oracle_skip_rate: float
+    oracle_skip_improvement_bps: float
+    oracle_flip_mean_bps: float
+    profitable_rate: float
+    side_analysis: dict[str, SideOracleStats]
+
+
+class KillSwitchResult(TypedDict, total=False):
+    """Kill Switch 判定."""
+
+    pnl30: str
+    pnl30_action: str
+    oracle_pnl30_bps: float
+    pnl120: str
+    pnl120_action: str
+    oracle_pnl120_bps: float
+
+
+class OracleRunResult(TypedDict, total=False):
+    """Oracle テスト実行結果."""
+
+    timestamp: str
+    results_dir: str
+    status: str
+    reason: str
+    total_records: int
+    filled_records: int
+    oracle: dict[str, HorizonOracleResult]
+    kill_switch: KillSwitchResult
+
+
 def run_oracle_test(
     results_dir: str = "results/v460/fill_test",
     trades_fallback_recent_days: int = 1,
-) -> dict[str, Any]:
+) -> OracleRunResult:
     """Oracle テストを実行.
 
     Returns:
         結果 dict: oracle_pnl30, oracle_pnl120, baseline, kill_switch 判定など.
     """
     results_path = Path(results_dir)
-    result: dict[str, Any] = {
+    result: OracleRunResult = {
         "timestamp": datetime.now().isoformat(),
         "results_dir": str(results_path),
     }
@@ -81,7 +130,7 @@ def run_oracle_test(
         return {**result, "status": "error", "reason": "PnL columns not found"}
 
     # 3. 各 horizon で Oracle 分析
-    oracle_results: dict[str, dict[str, Any]] = {}
+    oracle_results: dict[str, HorizonOracleResult] = {}
 
     for label, col in horizons.items():
         pnl_values = filled[col].astype(float).dropna()
@@ -110,7 +159,7 @@ def run_oracle_test(
         skip_improvement = oracle_skip_mean - baseline_mean
 
         # Side 別分析
-        side_analysis = {}
+        side_analysis: dict[str, SideOracleStats] = {}
         if "side" in filled.columns:
             for side in ["buy", "sell"]:
                 side_mask = filled["side"] == side
@@ -141,7 +190,7 @@ def run_oracle_test(
     result["oracle"] = oracle_results
 
     # 4. Kill Switch 判定 (121# §6.3, 122# R7)
-    kill_switch: dict[str, Any] = {}
+    kill_switch: KillSwitchResult = {}
 
     if "pnl30" in oracle_results and oracle_results["pnl30"].get("n", 0) > 0:
         oracle_30 = oracle_results["pnl30"]["oracle_skip_mean_bps"]

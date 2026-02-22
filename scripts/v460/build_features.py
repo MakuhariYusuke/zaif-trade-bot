@@ -37,7 +37,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import hashlib
 import logging
 import sys
 from pathlib import Path
@@ -53,6 +52,7 @@ logger = logging.getLogger(__name__)
 
 from ztb.data.market_data_collector import MarketDataCollector
 from ztb.features.microstructure import add_microstructure_features, MICROSTRUCTURE_FEATURES
+from ztb.utils.run_manifest import compute_file_hash as _compute_shared_file_hash
 
 # Default paths
 DEFAULT_SOURCE = "data/btc_jpy_1m_v451_optimized_features.parquet"
@@ -168,11 +168,7 @@ def build_proxy_features(df: pd.DataFrame, window: int = 20) -> pd.DataFrame:
 
 def compute_sha256(path: Path) -> str:
     """File SHA-256."""
-    sha = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
-            sha.update(chunk)
-    return sha.hexdigest()
+    return _compute_shared_file_hash(path)
 
 
 # ---------------------------------------------------------------------------
