@@ -45,7 +45,8 @@ from ztb.metrics.fill_quality import (
     save_fill_records,
 )
 from ztb.risk.circuit_breakers import KillSwitch
-from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+from ztb.trading.live.exchanges.base.broker_interfaces import IBroker
+from ztb.trading.live.registry.broker_registry import get_broker_registry
 from scripts.v460.lib.adaptation_engine import AdaptationEngine
 from scripts.v460.lib.balance_checker import BalanceChecker
 from scripts.v460.lib import cancel_reasons as CR  # 145# §9-#6
@@ -113,7 +114,7 @@ class FillTestRunner(AbstractCycleRunner):
 
     def __init__(
         self,
-        adapter: CoincheckAdapter,
+        adapter: IBroker,
         config: FillTestConfig,
         yaml_cfg: Optional[dict] = None,
     ) -> None:
@@ -1853,6 +1854,8 @@ def main() -> None:
                         help="方策B: 動的ロットサイジングを有効化 (CLI > YAML)")
     parser.add_argument("--max-lot", type=float, default=None,
                         help="方策B: ロット上限 (BTC) (CLI > YAML)")
+    parser.add_argument("--exchange", default="coincheck",
+                        help="取引所名 (coincheck/bitflyer 等, デフォルト: coincheck)")
     args = parser.parse_args()
 
     if args.results_only:
@@ -1874,35 +1877,43 @@ def main() -> None:
         else:
             sys.exit(1)
 
-    # Adapter setup
-    # .env ファイルから API 認証情報を自動読込 (CLI 引数が未指定の場合)
+    # Adapter setup — 146# マルチ取引所対応: BrokerRegistry 経由で生成
     from dotenv import load_dotenv
 
     load_dotenv(_PROJECT_ROOT / ".env")
-    api_key = os.environ.get("COINCHECK_API_KEY")
-    api_secret = os.environ.get("COINCHECK_API_SECRET")
+
+    exchange_name = args.exchange.lower()
+    registry = get_broker_registry()
+    if not registry.has_broker(exchange_name):
+        logger.error(
+            f"Unknown exchange: {exchange_name!r}. "
+            f"Available: {', '.join(registry.list_brokers())}"
+        )
+        sys.exit(1)
 
     # 032# #2: CLI引数からの認証情報は非推奨警告付きで後方互換維持
+    cli_api_key: str | None = None
+    cli_api_secret: str | None = None
     if args.api_key or args.api_secret:
         logger.warning(
             "WARNING: --api-key/--api-secret はプロセスリストや履歴に平文で残ります。"
             ".env ファイルからの読込を推奨します。"
         )
-        api_key = args.api_key or api_key
-        api_secret = args.api_secret or api_secret
+        cli_api_key = args.api_key
+        cli_api_secret = args.api_secret
 
-    if not args.dry_run and not (api_key and api_secret):
-        logger.error(
-            "API credentials required for live mode. "
-            "Set COINCHECK_API_KEY/COINCHECK_API_SECRET in .env"
+    try:
+        adapter = registry.create_adapter(
+            exchange_name,
+            dry_run=args.dry_run,
+            api_key=cli_api_key,
+            api_secret=cli_api_secret,
         )
+    except ValueError as e:
+        logger.error(str(e))
         sys.exit(1)
 
-    adapter = CoincheckAdapter(
-        api_key=api_key,
-        api_secret=api_secret,
-        dry_run=args.dry_run,
-    )
+    logger.info(f"Exchange adapter: {exchange_name} (dry_run={args.dry_run})")
 
     # --- 設定構築: YAML → CLI override ---
     from scripts.v460.lib.config_loader import load_fill_test_config

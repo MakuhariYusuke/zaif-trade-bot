@@ -29,7 +29,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 from ztb.data.market_data_collector import MarketDataCollector
-from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+from ztb.trading.live.registry.broker_registry import get_broker_registry
 
 logging.basicConfig(
     level=logging.INFO,
@@ -38,10 +38,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def main(hours: float, interval: float, auto_agg: bool, use_ws: bool) -> None:
+async def main(hours: float, interval: float, auto_agg: bool, use_ws: bool, exchange: str = "coincheck") -> None:
     """Observation-only data collection."""
+    # 146# マルチ取引所対応: BrokerRegistry 経由で生成
     # dry_run=True でも get_orderbook / get_recent_trades は public API を叩く
-    adapter = CoincheckAdapter(dry_run=True)
+    registry = get_broker_registry()
+    adapter = registry.create_adapter(exchange, dry_run=True)
 
     collector = MarketDataCollector(
         adapter=adapter,
@@ -96,8 +98,12 @@ def cli() -> None:
         "--ws", action="store_true",
         help="Use WebSocket streaming instead of REST polling (014# T4)",
     )
+    parser.add_argument(
+        "--exchange", default="coincheck",
+        help="Exchange name (coincheck/bitflyer etc., default: coincheck)",
+    )
     args = parser.parse_args()
-    asyncio.run(main(args.hours, args.interval, args.auto_aggregate, args.ws))
+    asyncio.run(main(args.hours, args.interval, args.auto_aggregate, args.ws, args.exchange))
 
 
 if __name__ == "__main__":
