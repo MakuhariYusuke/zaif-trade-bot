@@ -211,3 +211,94 @@ scripts/v460/run_fill_test.py:L281, L809, L1298:
 |----------|----------|
 | `docs/v460/149_ph2_plan_phase_c_parallel_work.md` | NEW: 本ドキュメント |
 
+---
+
+## §8 148# P2 実装ログ
+
+### 8.1 P2-A: fill_test 死活監視 (watchdog)
+
+**実装**: `ops/windows/fill_test_watchdog.ps1`
+
+機能:
+- プロセス存在確認 (`Get-Process` で `run_fill_test` を検索)
+- lock heartbeat 鮮度確認 (300s stale 閾値)
+- 最新 fill_record タイムスタンプ確認
+- `fill_test_events.jsonl` へのアラートイベント記録
+- Discord webhook 通知 (オプション)
+
+**タスクスケジューラ登録**:
+
+```powershell
+# 5分間隔で実行
+$Action = New-ScheduledTaskAction -Execute "powershell.exe" `
+    -Argument "-ExecutionPolicy Bypass -File C:\Users\Admin\dev\zaif-trade-bot\ops\windows\fill_test_watchdog.ps1"
+$Trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5)
+Register-ScheduledTask -TaskName "ZTB-FillTestWatchdog" -Action $Action -Trigger $Trigger -Description "147# P2-A: fill_test watchdog"
+```
+
+**手動実行**:
+```powershell
+cd C:\Users\Admin\dev\zaif-trade-bot
+.\ops\windows\fill_test_watchdog.ps1
+# Discord 通知付き
+.\ops\windows\fill_test_watchdog.ps1 -Notify
+```
+
+### 8.2 daily_health_check 初回実行結果
+
+**実行日時**: 2026-02-23 04:27:59 JST
+
+| チェック | 結果 | 詳細 |
+|---------|------|------|
+| trades_health | ⚠️ UNHEALTHY | missing_days=['20260221', '20260220'] |
+| feature_freshness | ✅ OK | - |
+| gate_judgment | ❌ ERROR | API 引数不整合 (既知) |
+| oracle_baseline | ✅ done | mean=0.000 bps |
+
+**Oracle レポートサマリ**:
+
+| セグメント | n | 実績 PnL30s | Oracle PnL30s | 月間推定 (JPY) |
+|-----------|---|-------------|---------------|----------------|
+| all | 1182 | -0.24 bps | +2.64 bps | -7,622 / +40,133 |
+| buy | 591 | -0.00 bps | +2.82 bps | -104 / +45,428 |
+| sell | 591 | -0.47 bps | +2.44 bps | -15,141 / +34,838 |
+
+**所見**:
+- sell 側の実績 PnL が大きくマイナス (逆選別リスク継続)
+- Oracle 上限と実績の乖離が大きく、SkipGate 品質向上余地あり
+- trades_health の missing_days は TradesRecorder 収集問題の可能性
+
+### 8.3 watchdog 動作確認
+
+```
+PS> .\ops\windows\fill_test_watchdog.ps1
+08-02-23 04:31:17 RUNNING [watchdog] fill_test 稼働中: PID=108148, uptime=0.00:53:44 | heartbeat STALE (703s ago)
+```
+
+- プロセス検出: ✅ PID=108148 を正しく検出
+- heartbeat: STALE (古いコードで動作中のため 60s 周期更新なし)
+- 次回 run 以降は heartbeat が 60s 周期で更新されるため正常動作予定
+
+### 8.4 P2 ステータスまとめ
+
+| ID | 施策 | 状態 |
+|----|------|------|
+| P2-A | プロセス死活監視 | ✅ 実装完了 `fill_test_watchdog.ps1` |
+| P2-B | Task Scheduler 自動再起動 | ❌ 未着手 (要設計検討) |
+---
+
+## 変更履歴
+
+| 日時 | 変更内容 |
+|------|----------|
+| 2026-02-23 04:00 | 初版作成 |
+| 2026-02-23 04:31 | §8 追加: 148# P2 実装ログ (watchdog, daily_health_check結果) |
+
+## 変更ファイル (更新)
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `docs/v460/149_ph2_plan_phase_c_parallel_work.md` | §8 追加: P2 実装ログ |
+| `docs/v460/147_ph2_rpt_phase_c_24h_run_start.md` | P2-A ステータス更新 |
+| `docs/v460/148_ph2_rev_147_phase_c_stop_cause_and_side_issues.md` | P2 追加 |
+| `ops/windows/fill_test_watchdog.ps1` | NEW: 死活監視スクリプト |

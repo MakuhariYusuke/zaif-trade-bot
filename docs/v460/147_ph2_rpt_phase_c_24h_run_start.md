@@ -143,10 +143,10 @@ regime_weight_floor: 0.1
 
 **P2 (本番前に検討):**
 
-| ID | 施策 | 工数 | 備考 |
-|----|------|------|------|
-| P2-A | プロセス死活監視 cron | 0.2日 | `ps aux | grep fill_test` → Slack 通知 |
-| P2-B | Windows Task Scheduler 自動再起動 | 0.3日 | 異常終了時のみ再起動 |
+| ID | 施策 | 工数 | 状態 | 備考 |
+|----|------|------|------|------|
+| P2-A | プロセス死活監視 | 0.2日 | ✅ 実装済 | `ops/windows/fill_test_watchdog.ps1` |
+| P2-B | Windows Task Scheduler 自動再起動 | 0.3日 | ❌ 未着手 | 異常終了時のみ再起動 |
 
 ---
 
