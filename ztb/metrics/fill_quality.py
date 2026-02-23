@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections import deque
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -98,6 +99,8 @@ class FillRecord:
     vg_triggered: Optional[bool] = None              # VolatilityGuard 発動したか
     # 129# D.2: 残高制約による side 強制切替フラグ (評価/学習での交絡分離用)
     balance_forced_switch: Optional[bool] = None     # 残高不足で side が強制切替されたか
+    # 155# §9.4 #2: balance_forced_skip 連続回数追跡
+    balance_forced_consecutive: Optional[int] = None  # スキップ時点の連続 forced skip 数
     # 151# P3-03: confidence lot 情報 (§10 #7 可観測性)
     confidence_lot_factor: Optional[float] = None    # 適用された倍率 [0, 1]
     order_lot_regime: Optional[float] = None         # regime_adjusted_lot (confidence 未適用)
@@ -166,6 +169,27 @@ class FillMetrics:
     def to_dict(self) -> dict:
         """JSON serializable dict."""
         return asdict(self)
+
+
+@dataclass
+class PnlAccumulator:
+    """Finite PnL 値だけを集計するストリーム集計器."""
+
+    count: int = 0
+    total_bps: float = 0.0
+
+    def add(self, value: float | None) -> None:
+        if value is None:
+            return
+        numeric = float(value)
+        if not np.isfinite(numeric):
+            return
+        self.count += 1
+        self.total_bps += numeric
+
+    @property
+    def mean_bps(self) -> float:
+        return self.total_bps / self.count if self.count else 0.0
 
 
 # ======================================================================
@@ -989,18 +1013,22 @@ def compute_round_trip_metrics(
     filled = [r for r in records if r.filled and r.fill_price is not None]
     filled.sort(key=lambda r: r.timestamp)
 
-    pending_buys: list[FillRecord] = []
-    pending_sells: list[FillRecord] = []
+    pending_buys: deque[FillRecord] = deque()
+    pending_sells: deque[FillRecord] = deque()
     trips: list[RoundTripRecord] = []
 
     for r in filled:
         if r.side == "buy":
             if pending_sells:
                 # sell 先行 → buy で close
-                sell_entry = pending_sells.pop(0)  # FIFO
-                pnl_bps = (sell_entry.fill_price - r.fill_price) / r.fill_price * 10_000  # type: ignore[operator]
+                sell_entry = pending_sells.popleft()  # FIFO
+                sell_price = sell_entry.fill_price
+                buy_price = r.fill_price
+                if sell_price is None or buy_price is None:
+                    continue
+                pnl_bps = (sell_price - buy_price) / buy_price * 10_000
                 qty = min(r.order_quantity, sell_entry.order_quantity)
-                pnl_jpy = (sell_entry.fill_price - r.fill_price) * qty  # type: ignore[operator]
+                pnl_jpy = (sell_price - buy_price) * qty
                 hold_sec = r.timestamp - sell_entry.timestamp
                 trips.append(RoundTripRecord(
                     entry_record=sell_entry,
@@ -1015,10 +1043,14 @@ def compute_round_trip_metrics(
         elif r.side == "sell":
             if pending_buys:
                 # buy 先行 → sell で close
-                buy_entry = pending_buys.pop(0)  # FIFO
-                pnl_bps = (r.fill_price - buy_entry.fill_price) / buy_entry.fill_price * 10_000  # type: ignore[operator]
+                buy_entry = pending_buys.popleft()  # FIFO
+                sell_price = r.fill_price
+                buy_price = buy_entry.fill_price
+                if sell_price is None or buy_price is None:
+                    continue
+                pnl_bps = (sell_price - buy_price) / buy_price * 10_000
                 qty = min(r.order_quantity, buy_entry.order_quantity)
-                pnl_jpy = (r.fill_price - buy_entry.fill_price) * qty  # type: ignore[operator]
+                pnl_jpy = (sell_price - buy_price) * qty
                 hold_sec = r.timestamp - buy_entry.timestamp
                 trips.append(RoundTripRecord(
                     entry_record=buy_entry,
@@ -1061,16 +1093,51 @@ def compute_round_trip_metrics(
 
 
 @dataclass
-class RegimeMetrics:
-    """レジーム別の集計指標."""
+class GroupedMetricsBase:
+    """グループ集計で共通となる損益・AS 指標."""
 
-    regime: str
     count: int = 0
     filled: int = 0
-    fill_rate: float = 0.0
     pnl_mean_bps: float = 0.0
     as_ratio: float = 0.0
+
+
+@dataclass
+class RegimeMetrics(GroupedMetricsBase):
+    """レジーム別の集計指標."""
+
+    regime: str = "unknown"
+    fill_rate: float = 0.0
     queue_wait_median_sec: float = 0.0
+
+
+def _summarize_filled_records(
+    records: list[FillRecord],
+    *,
+    include_queue_wait: bool = False,
+) -> tuple[int, float, float, float]:
+    """filled レコードの共通集計を単一パスで算出."""
+    filled_count = 0
+    pnl_acc = PnlAccumulator()
+    as_total = 0
+    as_positive = 0
+    queue_waits: list[float] = []
+
+    for rec in records:
+        if not rec.filled:
+            continue
+        filled_count += 1
+        pnl_acc.add(rec.post_fill_30s_pnl)
+        if rec.adverse_selected is not None:
+            as_total += 1
+            if rec.adverse_selected:
+                as_positive += 1
+        if include_queue_wait and rec.queue_wait_sec > 0:
+            queue_waits.append(rec.queue_wait_sec)
+
+    as_ratio = (as_positive / as_total) if as_total else 0.0
+    wait_median = float(np.median(queue_waits)) if queue_waits else 0.0
+    return filled_count, pnl_acc.mean_bps, as_ratio, wait_median
 
 
 def compute_regime_metrics(records: list[FillRecord]) -> list[RegimeMetrics]:
@@ -1092,25 +1159,19 @@ def compute_regime_metrics(records: list[FillRecord]) -> list[RegimeMetrics]:
     result: list[RegimeMetrics] = []
     for regime_name in sorted(groups.keys()):
         recs = groups[regime_name]
-        filled_recs = [r for r in recs if r.filled]
-        pnls = [
-            r.post_fill_30s_pnl for r in filled_recs
-            if r.post_fill_30s_pnl is not None
-        ]
-        as_recs = [r for r in filled_recs if r.adverse_selected is not None]
-        waits = [r.queue_wait_sec for r in filled_recs if r.queue_wait_sec > 0]
+        filled_count, pnl_mean, as_ratio, wait_median = _summarize_filled_records(
+            recs,
+            include_queue_wait=True,
+        )
 
         result.append(RegimeMetrics(
             regime=regime_name,
             count=len(recs),
-            filled=len(filled_recs),
-            fill_rate=len(filled_recs) / len(recs) if recs else 0.0,
-            pnl_mean_bps=float(np.mean(pnls)) if pnls else 0.0,
-            as_ratio=(
-                sum(1 for r in as_recs if r.adverse_selected) / len(as_recs)
-                if as_recs else 0.0
-            ),
-            queue_wait_median_sec=float(np.median(waits)) if waits else 0.0,
+            filled=filled_count,
+            fill_rate=filled_count / len(recs) if recs else 0.0,
+            pnl_mean_bps=pnl_mean,
+            as_ratio=as_ratio,
+            queue_wait_median_sec=wait_median,
         ))
     return result
 
@@ -1121,14 +1182,10 @@ def compute_regime_metrics(records: list[FillRecord]) -> list[RegimeMetrics]:
 
 
 @dataclass
-class HourlyMetrics:
+class HourlyMetrics(GroupedMetricsBase):
     """UTC 時間帯別の集計指標."""
 
-    utc_hour: int
-    count: int = 0
-    filled: int = 0
-    pnl_mean_bps: float = 0.0
-    as_ratio: float = 0.0
+    utc_hour: int = 0
 
 
 def compute_hourly_metrics(records: list[FillRecord]) -> list[HourlyMetrics]:
@@ -1154,21 +1211,16 @@ def compute_hourly_metrics(records: list[FillRecord]) -> list[HourlyMetrics]:
         if hour not in groups:
             continue
         recs = groups[hour]
-        filled_recs = [r for r in recs if r.filled]
-        pnls = [
-            r.post_fill_30s_pnl for r in filled_recs
-            if r.post_fill_30s_pnl is not None
-        ]
-        as_recs = [r for r in filled_recs if r.adverse_selected is not None]
+        filled_count, pnl_mean, as_ratio, _wait_median_unused = _summarize_filled_records(
+            recs,
+            include_queue_wait=False,
+        )
 
         result.append(HourlyMetrics(
             utc_hour=hour,
             count=len(recs),
-            filled=len(filled_recs),
-            pnl_mean_bps=float(np.mean(pnls)) if pnls else 0.0,
-            as_ratio=(
-                sum(1 for r in as_recs if r.adverse_selected) / len(as_recs)
-                if as_recs else 0.0
-            ),
+            filled=filled_count,
+            pnl_mean_bps=pnl_mean,
+            as_ratio=as_ratio,
         ))
     return result

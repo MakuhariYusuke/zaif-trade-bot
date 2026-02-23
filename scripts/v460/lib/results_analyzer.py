@@ -9,13 +9,16 @@ ztb/io/json_io の write_json (atomic write) を活用.
 from __future__ import annotations
 
 import logging
+import math
 from collections import defaultdict
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from ztb.io.json_io import write_json
 from ztb.metrics.fill_quality import (
     FillMetrics,
     FillRecord,
+    PnlAccumulator,
     RegimeMetrics,
     compute_fill_metrics,
     compute_regime_metrics,
@@ -292,9 +295,42 @@ def log_multi_track_summary(analysis: dict) -> None:
 # ======================================================================
 
 
-def _safe_mean(values: list[float]) -> float:
-    """空リストセーフな平均値."""
-    return sum(values) / len(values) if values else 0.0
+@dataclass
+class _BinaryPnlSplit:
+    """bool フラグで 2 群に分けた PnL 集計."""
+
+    positive: PnlAccumulator = field(default_factory=PnlAccumulator)
+    negative: PnlAccumulator = field(default_factory=PnlAccumulator)
+
+    def add(self, flag: bool | None, pnl_bps: float) -> None:
+        if flag is True:
+            self.positive.add(pnl_bps)
+        elif flag is False:
+            self.negative.add(pnl_bps)
+
+    def to_payload(
+        self,
+        *,
+        positive_label: str,
+        negative_label: str,
+        require_both_for_delta: bool,
+    ) -> dict[str, object]:
+        delta: float | None
+        if require_both_for_delta and (self.positive.count == 0 or self.negative.count == 0):
+            delta = None
+        else:
+            delta = round(self.positive.mean_bps - self.negative.mean_bps, 3)
+        return {
+            positive_label: {
+                "n": self.positive.count,
+                "pnl_mean": round(self.positive.mean_bps, 3),
+            },
+            negative_label: {
+                "n": self.negative.count,
+                "pnl_mean": round(self.negative.mean_bps, 3),
+            },
+            "delta": delta,
+        }
 
 
 def compute_event_contribution(
@@ -313,46 +349,69 @@ def compute_event_contribution(
             "sg":  { "high_prob": { ... }, "low_prob": { ... }, "delta": ... },
         }
     """
-    filled = [r for r in records if r.filled and r.post_fill_30s_pnl is not None]
     result: dict = {}
+    ffd_split = _BinaryPnlSplit()
+    vg_split = _BinaryPnlSplit()
+    sg_pairs: list[tuple[float, float]] = []
+
+    for record in records:
+        if not record.filled or record.post_fill_30s_pnl is None:
+            continue
+
+        pnl_value = float(record.post_fill_30s_pnl)
+        if not math.isfinite(pnl_value):
+            continue
+
+        ffd_split.add(record.ffd_boost_active, pnl_value)
+        vg_split.add(record.vg_triggered, pnl_value)
+
+        as_prob = record.skip_gate_as_prob
+        if as_prob is None:
+            continue
+        prob_value = float(as_prob)
+        if math.isfinite(prob_value):
+            sg_pairs.append((prob_value, pnl_value))
 
     # --- FFD 寄与 ---
-    ffd_active = [r for r in filled if getattr(r, "ffd_boost_active", None) is True]
-    ffd_inactive = [r for r in filled if getattr(r, "ffd_boost_active", None) is False]
-    ffd_active_pnl = _safe_mean([r.post_fill_30s_pnl for r in ffd_active])  # type: ignore[arg-type]
-    ffd_inactive_pnl = _safe_mean([r.post_fill_30s_pnl for r in ffd_inactive])  # type: ignore[arg-type]
-    result["ffd"] = {
-        "active": {"n": len(ffd_active), "pnl_mean": round(ffd_active_pnl, 3)},
-        "inactive": {"n": len(ffd_inactive), "pnl_mean": round(ffd_inactive_pnl, 3)},
-        "delta": round(ffd_active_pnl - ffd_inactive_pnl, 3) if ffd_active and ffd_inactive else None,
-    }
+    result["ffd"] = ffd_split.to_payload(
+        positive_label="active",
+        negative_label="inactive",
+        require_both_for_delta=True,
+    )
 
     # --- VG 寄与 ---
-    vg_on = [r for r in filled if getattr(r, "vg_triggered", None) is True]
-    vg_off = [r for r in filled if getattr(r, "vg_triggered", None) is False]
-    vg_on_pnl = _safe_mean([r.post_fill_30s_pnl for r in vg_on])  # type: ignore[arg-type]
-    vg_off_pnl = _safe_mean([r.post_fill_30s_pnl for r in vg_off])  # type: ignore[arg-type]
-    result["vg"] = {
-        "triggered": {"n": len(vg_on), "pnl_mean": round(vg_on_pnl, 3)},
-        "not_triggered": {"n": len(vg_off), "pnl_mean": round(vg_off_pnl, 3)},
-        "delta": round(vg_on_pnl - vg_off_pnl, 3) if vg_on and vg_off else None,
-    }
+    result["vg"] = vg_split.to_payload(
+        positive_label="triggered",
+        negative_label="not_triggered",
+        require_both_for_delta=True,
+    )
 
     # --- SG 寄与 (高 P(AS) skip vs 低 P(AS) pass) ---
     # skip された = 負の寄与を避けた、と仮定して
     # pass された中で as_prob 閾値前後の PnL 差を比較
-    sg_records = [r for r in filled if getattr(r, "skip_gate_as_prob", None) is not None]
-    if sg_records:
-        median_prob = sorted(r.skip_gate_as_prob for r in sg_records)[len(sg_records) // 2]  # type: ignore[arg-type]
-        sg_high = [r for r in sg_records if r.skip_gate_as_prob >= median_prob]  # type: ignore[operator]
-        sg_low = [r for r in sg_records if r.skip_gate_as_prob < median_prob]  # type: ignore[operator]
-        sg_high_pnl = _safe_mean([r.post_fill_30s_pnl for r in sg_high])  # type: ignore[arg-type]
-        sg_low_pnl = _safe_mean([r.post_fill_30s_pnl for r in sg_low])  # type: ignore[arg-type]
+    if sg_pairs:
+        sorted_probs = sorted(prob for prob, _pnl in sg_pairs)
+        median_prob = sorted_probs[len(sorted_probs) // 2]
+
+        sg_high = PnlAccumulator()
+        sg_low = PnlAccumulator()
+        for prob_value, pnl_value in sg_pairs:
+            if prob_value >= median_prob:
+                sg_high.add(pnl_value)
+            else:
+                sg_low.add(pnl_value)
+
         result["sg"] = {
-            "high_prob": {"n": len(sg_high), "pnl_mean": round(sg_high_pnl, 3),
-                          "median_threshold": round(median_prob, 3)},  # type: ignore[arg-type]
-            "low_prob": {"n": len(sg_low), "pnl_mean": round(sg_low_pnl, 3)},
-            "delta": round(sg_high_pnl - sg_low_pnl, 3),
+            "high_prob": {
+                "n": sg_high.count,
+                "pnl_mean": round(sg_high.mean_bps, 3),
+                "median_threshold": round(median_prob, 3),
+            },
+            "low_prob": {
+                "n": sg_low.count,
+                "pnl_mean": round(sg_low.mean_bps, 3),
+            },
+            "delta": round(sg_high.mean_bps - sg_low.mean_bps, 3),
         }
     else:
         result["sg"] = {"high_prob": {"n": 0}, "low_prob": {"n": 0}, "delta": None}

@@ -1419,6 +1419,65 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460/analysis/compare_regime_ab.py scripts/maintenance/optimize_git_local.py`
   - 結果: `any_type_debt_tokens=0`
 
+## Step82: 損益計算の共通化・効率化 + 継承整理 (2026-02-23)
+
+### 1) 既存損益実装の再利用を強化
+
+- 対象:
+  - `ztb/metrics/fill_quality.py`
+  - `scripts/v460/lib/results_analyzer.py`
+- `fill_quality` に `PnlAccumulator` を追加し、有限値のみを集計する共通 PnL 集計器を導入。
+- `results_analyzer.compute_event_contribution()` は
+  `PnlAccumulator` を利用する形に統一し、局所 `sum/len` 実装を削減。
+
+### 2) 計算効率改善（損益計算のホットパス）
+
+- `compute_round_trip_metrics()` の FIFO キューを
+  `list.pop(0)` から `collections.deque.popleft()` へ変更。
+  - 先頭取り出しが O(n) → O(1) となり、大量 fill 時の計算負荷を削減。
+- `compute_event_contribution()` を単一パス集計へ再構成。
+  - 旧: filled/FFD/VG/SG で複数回フィルタ + 中間配列生成。
+  - 新: 1 回走査でイベント別 accumulator に投入し、SG のみ閾値計算用に最小データ保持。
+
+### 3) 継承整理（重複削減）
+
+- `GroupedMetricsBase` を導入し、共通フィールド
+  (`count`, `filled`, `pnl_mean_bps`, `as_ratio`) を基底化。
+- `RegimeMetrics` / `HourlyMetrics` は `GroupedMetricsBase` を継承する形へ再整理。
+- `compute_regime_metrics()` / `compute_hourly_metrics()` は
+  `_summarize_filled_records()` 共通ヘルパーを利用し、重複ロジックを削減。
+
+### 4) 不具合余地の低減
+
+- `results_analyzer` の `type: ignore[arg-type/operator]` を除去し、
+  `None` / 非有限値ガードで安全に集計。
+- `round_trip` 計算で `fill_price` の `None` を明示ガードし、
+  Optional 値演算の潜在不具合を抑止。
+
+### 5) テスト
+
+- 追加:
+  - `tests/unit/v460/test_results_analyzer.py`
+    - `test_compute_event_contribution_basic`
+    - `test_compute_event_contribution_ignores_non_finite_values`
+- 回帰:
+  - `tests/unit/v460/test_fill_quality.py::Test051RoundTripMetrics`
+  - `tests/unit/v460/test_fill_quality.py::Test051RegimeMetrics`
+  - `tests/unit/v460/test_fill_quality.py::Test051HourlyMetrics`
+
+### 6) 検証
+
+- `py_compile`:
+  - `ztb/metrics/fill_quality.py`
+  - `scripts/v460/lib/results_analyzer.py`
+  - `tests/unit/v460/test_results_analyzer.py`
+- テスト:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_results_analyzer.py tests/unit/v460/test_fill_quality.py::Test051RoundTripMetrics tests/unit/v460/test_fill_quality.py::Test051RegimeMetrics tests/unit/v460/test_fill_quality.py::Test051HourlyMetrics -q --override-ini="addopts="`
+  - 結果: `11 passed`
+- `any_inventory`:
+  - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots ztb/metrics/fill_quality.py scripts/v460/lib/results_analyzer.py tests/unit/v460/test_results_analyzer.py`
+  - 結果: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
