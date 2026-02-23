@@ -1344,7 +1344,17 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
                 return {**result, "status": "rejected", "reason": "negative_pnl_improvement"}
 
         # 131# C2: 統計的品質ゲート (gate_checks 統合)
-        if safe_to_bool(cfg.get("statistical_gate_enabled", True), True):
+        # 159# P0-1: 前モデル不在時 (初回訓練) は統計比較が無意味 → skip
+        if not prev_gate_loaded:
+            logger.info(
+                "C2: Statistical gate skipped: no previous model for comparison "
+                "(initial training)"
+            )
+            result["statistical_gate"] = {
+                "applied": False,
+                "reason": "no_previous_model",
+            }
+        elif safe_to_bool(cfg.get("statistical_gate_enabled", True), True):
             stat_gate_result = _apply_statistical_gate(wf_result, cfg)
             result["statistical_gate"] = stat_gate_result
             if stat_gate_result.get("applied"):
@@ -1945,13 +1955,16 @@ def main() -> None:
         cfg["min_total_samples"] = 30
         cfg["min_new_samples"] = 0  # 新規サンプル要件を緩和
         # Y3: relative quality gate を緩和 (既存モデルと target が異なる可能性)
-        # absolute_min_score チェックは維持 (-0.10 以下は棄却)
+        # absolute_min_score チェックは維持 (159# P0-1: -0.10 → -0.50 に緩和)
+        # 初回 side 別モデル構築で WF 窓が 1 個 (test n≈34) → 高分散のため
         # 131# A.1 #4: 加えて pnl_improvement >= 0 のハード制約を追加
         cfg["min_score_improvement"] = -999.0
+        cfg["absolute_min_score"] = -0.50  # 159# P0-1: 初回訓練用に緩和
         cfg["all_runs_require_positive_pnl"] = True  # 131# A.1 #4
         logger.info(
             "Y3: --all-runs enabled → latest_run_only=False, "
             "exclude_missing_run_id=False, min_new_samples=0, "
+            "absolute_min_score=-0.50, "
             "relative quality gate bypassed (absolute_min + positive pnl retained)"
         )
 

@@ -46,6 +46,11 @@
 | 成果基準 | sell skip_gate の AS フィルタ精度が OOS で改善 (AUC +0.02 以上) |
 | 関連コード | `scripts/v460/ml/retrain_scheduler.py`, `scripts/v460/lib/skip_gate_evaluator.py` |
 | 工数見積 | 0.5 日 |
+| **ステータス** | **✅ 初回デプロイ完了** (2026-02-24 05:34) |
+| 結果 | sell model: pnl120 target, 229 samples, 15 features → `skip_gate_lgbm_pnl120_sell.pkl` (250KB) |
+| | buy model: pnl30 target, 519 samples, 13 features → `skip_gate_lgbm_pnl30_buy.pkl` (297KB) |
+| | 159# P0-1: 統計ゲートを初回訓練時スキップ (prev model 不在時は比較対象なし), absolute_min_score 緩和 (-0.10→-0.50 for --all-runs) |
+| | retrain_scheduler 定期再訓練で自動更新予定 (PID 122860, interval 1h, side_specific_enabled=true) |
 
 ### P0-2: sell offset 段階的縮小 A/B テスト (0.18→0.14)
 
@@ -400,3 +405,4 @@ Week 3 (03/09–03/16):
 | 2026-02-24 | 158# P0-4: Oracle テスト実施 PASS + AS cost 分析 (commit `fd9d4ce18`) |
 | 2026-02-24 | 158# P0-3: trending_down sell 中間スナップショット n=5 (commit `ae2e4e5c0`) |
 | 2026-02-24 | 159# レビュー反映: §1.1 進捗更新 (P1-3/P2-2/P2-4/P1-4), §2.1 trades_health alert 不整合修正, P0-B 3指標 dashboard 追加 |
+| 2026-02-24 | 159# P0-1: SkipGate sell/buy side 別モデル初回デプロイ (--all-runs, 統計ゲート初回スキップ+absolute_min 緩和) |
