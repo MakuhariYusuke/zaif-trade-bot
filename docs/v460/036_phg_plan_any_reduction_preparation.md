@@ -1524,6 +1524,47 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460/analysis/oracle_baseline.py scripts/v460/lib/results_analyzer.py ztb/metrics/fill_quality.py`
   - 結果: `any_type_debt_tokens=0`
 
+## Step84: `analyze_fill_records` の多重走査削減 (2026-02-23)
+
+### 1) 目的
+
+- 対象: `scripts/v460/analysis/analyze_fill_records.py`
+- 既存実装は同一 `all_records` を用途ごとに繰り返し走査しており、
+  データ量増加時に処理時間・中間配列コストが増大しやすい状態だった。
+
+### 2) 改善内容
+
+- 全面を **単一パス集計** ベースに再構成。
+  - filled/skip
+  - 30s/60s/120s PnL
+  - side別 fill/AS/PnL
+  - skip reason
+  - regime別件数/PnL
+  - UTC hour別 PnL/AS
+  - latest run 指標
+  - queue wait 指標
+  を1回走査で蓄積。
+- `_PnlStats` / `_RunStats` の小型集計構造を導入し、
+  `sum/len` の重複ロジックを排除。
+- `_to_finite_float()` と `_pct()` を追加し、
+  非数値混入・ゼロ除算に対する安全性を強化。
+- データ未存在時（fill_recordsファイルなし）も早期returnで明示出力。
+
+### 3) 検証
+
+- `py_compile`:
+  - `scripts/v460/analysis/analyze_fill_records.py`
+  - `scripts/v460/analysis/oracle_baseline.py`
+  - `scripts/v460/lib/results_analyzer.py`
+- テスト:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_retrain_hot_reload.py -k oracle -q --override-ini="addopts="`
+  - 結果: `5 passed, 64 deselected`
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_results_analyzer.py -q --override-ini="addopts="`
+  - 結果: `2 passed`
+- `any_inventory`:
+  - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460/analysis/analyze_fill_records.py scripts/v460/analysis/oracle_baseline.py scripts/v460/lib/results_analyzer.py`
+  - 結果: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
