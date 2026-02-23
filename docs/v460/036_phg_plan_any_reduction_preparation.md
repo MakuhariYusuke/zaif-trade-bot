@@ -1252,6 +1252,55 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `--roots scripts/v460/analysis/compare_regime_ab.py`
   - 結果: `any_type_debt_tokens=0`
 
+## Step78 追補: テスト/Git 重量対策（ローカル高速化）(2026-02-23)
+
+### 1) pytest の重い既定動作を軽量化
+
+- `pytest.ini` の既定 `addopts` から次を削減:
+  - `--verbose`（大量出力による I/O 負荷）
+  - `--cov-report=html:htmlcov`（毎回 HTML 生成）
+- `--cov` / `--cov-fail-under` は維持し、品質ゲート要件は保持。
+
+### 2) 高速テストランナー追加
+
+- 追加: `scripts/testing/run_fast_pytest.py`
+  - `--override-ini=addopts=` で重い既定 addopts をバイパス。
+  - `scope` (`v460` / `unit` / `all`) と `collect-only` をサポート。
+  - `xdist` 導入環境では自動で `-n auto` を付与。
+  - `collect-only` は `-qq` でノード一覧の出力量を圧縮。
+
+### 3) Git の重量対策（設定 + helper）
+
+- 追加: `scripts/maintenance/optimize_git_local.py`
+  - local git config に高速化設定を適用:
+    - `feature.manyFiles=true`
+    - `core.untrackedCache=true`
+    - `core.preloadIndex=true`
+    - `index.threads=0`
+    - `status.aheadBehind=false`
+- `ztb/utils/git_utils.py` を高速化:
+  - `git --no-optional-locks` + `GIT_OPTIONAL_LOCKS=0`
+  - status 系 API の既定を **tracked-only** (`--untracked-files=no`) へ変更
+  - status 行数を上限付きで返すように変更（巨大差分時のコスト抑制）
+- `run_metadata.py` / `run_manifest.py` は tracked-only dirty 判定へ追従。
+
+### 4) 検証
+
+- `py_compile`:
+  - `ztb/utils/git_utils.py`
+  - `ztb/utils/run_metadata.py`
+  - `ztb/utils/run_manifest.py`
+  - `scripts/testing/run_fast_pytest.py`
+  - `scripts/maintenance/optimize_git_local.py`
+- テスト:
+  - `.venv/Scripts/python.exe scripts/testing/run_fast_pytest.py tests/unit/v460/test_152_parallel_tasks.py`
+  - 結果: `12 passed`
+  - `.venv/Scripts/python.exe scripts/testing/run_fast_pytest.py --scope all --collect-only`
+  - 結果: `5394 tests collected`
+- `any_inventory`:
+  - `--roots ztb/utils/git_utils.py ztb/utils/run_metadata.py ztb/utils/run_manifest.py scripts/testing/run_fast_pytest.py scripts/maintenance/optimize_git_local.py`
+  - 結果: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

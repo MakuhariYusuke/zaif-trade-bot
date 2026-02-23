@@ -286,7 +286,10 @@ class RunMetadata:
     def capture_git_info(self) -> GitInfo:
         """Capture git repository information."""
         cwd = Path.cwd()
-        status_lines = get_git_status_lines(cwd=cwd)
+        # Keep metadata capture fast on large repos: tracked changes only.
+        status_lines = get_git_status_lines(
+            cwd=cwd, include_untracked=False, max_lines=200
+        )
         status_summary = "\n".join(status_lines)
         if len(status_summary) > 200:
             status_summary = status_summary[:200]

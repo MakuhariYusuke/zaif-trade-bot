@@ -86,7 +86,8 @@ def get_git_dirty_status() -> bool:
     Returns:
         True if there are uncommitted changes, False otherwise
     """
-    return _get_git_dirty_status()
+    # Manifest generation is called frequently; tracked changes are sufficient.
+    return _get_git_dirty_status(include_untracked=False)
 
 
 def compute_file_hash(file_path: Path) -> str:
