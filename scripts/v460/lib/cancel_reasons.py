@@ -25,6 +25,7 @@ BALANCE_FORCED_SKIP = "balance_forced_skip"
 UNKNOWN_REGIME_BUY_SKIP = "unknown_regime_buy_skip"
 UNKNOWN_REGIME_SELL_SKIP = "unknown_regime_sell_skip"  # 156# §16: buy側と対称化
 SELL_DYNAMIC_KILL = "sell_dynamic_kill"
+BUY_DYNAMIC_KILL = "buy_dynamic_kill"  # 157# §19: buy 側動的 kill
 TRENDING_SELL_SKIP = "trending_sell_skip"  # 155# §9: trending regime sell 抑制
 SKIP_GATE = "skip_gate"
 
@@ -39,6 +40,7 @@ AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     UNKNOWN_REGIME_BUY_SKIP,
     UNKNOWN_REGIME_SELL_SKIP,
     SELL_DYNAMIC_KILL,
+    BUY_DYNAMIC_KILL,
     TRENDING_SELL_SKIP,
 })
 

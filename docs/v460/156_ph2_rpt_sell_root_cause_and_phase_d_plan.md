@@ -709,3 +709,119 @@ sell: 0.18  # → Phase D-3 A/B で 0.15→0.14 段階縮小予定
 2. **trending offset boost の buy/sell 非対称化** — 有利方向取引で不要な offset 拡大を抑制
 3. **AdvancedRegimeDetector archived 移動** — dead code 整理
 4. **stale_check_after_sec_sell 30s→20s** — buy (15s) との差を縮める
+
+→ **§19 で実装完了。**
+
+---
+
+## §19 未活用レジーム機能実装 + retrain 検証
+
+> §18.5 の Phase E 候補 4 件を実装し、retrain パイプラインの機能検証を実施。
+> 000# §4「適応運用: A (パラメータ適応) → B (定期再訓練)」の位置づけで、
+> 146# §12.5 の P2-01 (SAC/PPO retrain) とは独立した LGBM retrain の確認。
+
+### 19.1 実装概要
+
+| # | 機能 | 概要 | 設計判断 |
+|---|------|------|----------|
+| E-1 | BuyDynamicKillManager | buy 側 rolling PnL kill | SellDynamicKillManager を `DynamicKillManager` に DRY 化。`side` パラメータで buy/sell 共用 |
+| E-2 | trending offset boost 非対称化 | buy/sell で異なる boost 値 | `regime_trending_offset_boost_buy/sell` (None=共通値フォールバック) |
+| E-3 | AdvancedRegimeDetector archived | dead code 整理 | mid_price のみ保有で high/low/close 3 入力不適合 (152# 判断) |
+| E-4 | stale_check_after_sec_sell 30→20s | buy (15s) との差を縮小 | Phase C データで sell stale 過多が確認されたため |
+
+### 19.2 E-1: BuyDynamicKillManager (DRY 化)
+
+**設計**: `SellDynamicKillManager` → `DynamicKillManager` にリネーム、`side` パラメータ追加。
+`BuyDynamicKillManager` は `DynamicKillManager(side="buy")` のコンビニエンスサブクラス。
+後方互換: `SellDynamicKillManager = DynamicKillManager` エイリアス。
+
+**YAML 設定** (`configs/v460/fill_test.yaml`):
+
+```yaml
+loss_control:
+  buy_dynamic_kill:
+    enabled: true
+    window: 50
+    threshold_bps: -0.8      # sell (-0.5) より寛容 — buy は構造的に AS リスクが低い
+    resume_window: 10
+    regime_thresholds:
+      trending_down: -0.5    # 不利レジームでは厳しく
+      trending_up: -1.5      # 有利レジームでは寛容に
+      high_vol: -0.5
+```
+
+**統合**: `run_fill_test.py` に `_is_buy_killed()` / `_track_buy_pnl()` メソッド追加。
+main loop で sell_dynamic_kill と対称的に動作。`balance_forced` 時はバイパス。
+
+### 19.3 E-2: trending offset boost 非対称化
+
+**問題**: trending 時の offset boost が buy/sell 同一だと、有利方向取引でも不必要に
+offset が拡大し、約定価格が不利になる。
+
+**解決**: `MakerPriceCalculator.compute()` で side 別 boost 値を解決:
+1. `cfg.regime_trending_offset_boost_buy/sell` が非 None → それを使用
+2. None → 共通値 `cfg.regime_trending_offset_boost` にフォールバック
+
+**YAML**: `trending_offset_boost_buy: 1.0` (no boost), `trending_offset_boost_sell: 1.5`
+
+### 19.4 E-3: AdvancedRegimeDetector archived
+
+**理由**: `AdvancedRegimeDetector` は high/low/close の 3 入力が必要だが、
+fill_test は mid_price のみ保有しており入力要件不適合 (152# で不採用判断済み)。
+テスト・ユーティリティスクリプトでのみ使用されていた dead code。
+
+**移動先**:
+- `ztb/analysis/regime/advanced_regime_detector.py` → `archived/advanced_regime_detector_regime.py`
+- `ztb/analysis/advanced_regime_detector.py` → `archived/advanced_regime_detector_analysis.py`
+- `tests/unit/analysis/regime/test_advanced_regime_detector.py` → `archived/test_advanced_regime_detector.py`
+- `scripts/utils/compare_regime_detectors.py` → `archived/compare_regime_detectors.py`
+
+`ztb/analysis/regime/__init__.py` から export 削除。
+
+### 19.5 E-4: stale_check_after_sec_sell 30→20s
+
+`configs/v460/fill_test.yaml`: `check_after_sec_sell: 30.0` → `20.0`
+
+buy (15s) との 15s 差を 5s に縮め、sell stale 過多を軽減。
+
+### 19.6 retrain 機能検証
+
+146# §12.5 P2-01 「WalkForward → retrain (SAC/PPO 用, 保留)」は SAC/PPO 対象。
+現行 LGBM retrain は以下の通り完全に機能している:
+
+| コンポーネント | ファイル | 機能 |
+|--------------|----------|------|
+| retrain_scheduler | `scripts/v460/ml/retrain_scheduler.py` (1970L) | WF 評価 + 品質ゲート + warm-start + early stopping + dead feature pruning + enriched data cache + multi-window WF + 統計的品質ゲート + 冗長特徴量除去 |
+| RetrainTrigger | `ztb/ml/retrain_trigger.py` (223L) | データ駆動トリガー + trades 健全性チェック + feature 鮮度チェック + 145# R-2b レジーム別 interval 倍率 + adaptive backoff |
+| SkipGateEvaluator hot-reload | `scripts/v460/lib/skip_gate_evaluator.py` | SHA256 ハッシュベースのモデル変更検出 + side 別モデルパス |
+| 子プロセス統合 | `scripts/v460/run_fill_test.py` | retrain_scheduler 自動起動 + health check |
+
+**retrain テスト結果**: `test_retrain_hot_reload.py` **69 passed** (37.63s)
+
+### 19.7 テスト結果
+
+| テストファイル | テスト数 | 結果 |
+|---------------|---------|------|
+| `test_157_regime_features.py` (新規) | 31 | **31 passed** |
+| `test_retrain_hot_reload.py` (既存) | 69 | **69 passed** |
+| v460 全体 | 1636 | **1636 passed** / 2 failed (pre-existing) |
+
+pre-existing failures:
+- `test_113`: `run_single_cycle` 行数 438 > 420 (§13 ガード)
+- `test_139`: `_inject_calibrator` 不在 (リファクタ残)
+
+### 19.8 変更ファイル一覧
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `ztb/risk/sell_dynamic_kill.py` | `DynamicKillManager` DRY 化 + `BuyDynamicKillManager` + `side` パラメータ + テレメトリ `side` フィールド |
+| `scripts/v460/lib/fill_config.py` | `buy_dynamic_kill_*` フィールド 5 件 + `regime_trending_offset_boost_buy/sell` + YAML パース |
+| `configs/v460/fill_test.yaml` | `buy_dynamic_kill:` セクション + `trending_offset_boost_buy/sell` + `check_after_sec_sell: 20.0` |
+| `scripts/v460/run_fill_test.py` | `_is_buy_killed()` / `_track_buy_pnl()` + main loop 統合 |
+| `scripts/v460/lib/cancel_reasons.py` | `BUY_DYNAMIC_KILL` 定数 + `AUDIT_CANCEL_REASONS` |
+| `scripts/v460/analysis/hindsight_filter.py` | `buy_dynamic_kill` → `_REGIME_GUARD_REASONS` |
+| `scripts/v460/lib/maker_price.py` | side 別 trending boost 解決ロジック |
+| `ztb/analysis/regime/__init__.py` | `AdvancedRegimeDetector` export 削除 |
+| `tests/unit/v460/test_145_structural_fixes.py` | `BUY_DYNAMIC_KILL` 期待値追加 |
+| `tests/unit/v460/test_157_regime_features.py` | **新規**: 31 テスト |
+| `archived/` (4 ファイル移動) | AdvancedRegimeDetector 関連 |

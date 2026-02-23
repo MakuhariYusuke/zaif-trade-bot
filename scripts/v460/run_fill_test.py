@@ -353,13 +353,22 @@ class FillTestRunner(AbstractCycleRunner):
         self._trades_recorder = TradesRecorder(enabled=True)
 
         # 136# P1-03: sell 動的 kill — 独立マネージャに委譲
-        from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
+        from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig, BuyDynamicKillManager, DynamicKillConfig
         self._sell_kill_mgr = SellDynamicKillManager(SellKillConfig(
             enabled=config.sell_dynamic_kill_enabled,
             window=config.sell_dynamic_kill_window,
             threshold_bps=config.sell_dynamic_kill_threshold_bps,
             resume_window=config.sell_dynamic_kill_resume_window,
             regime_thresholds=config.sell_dynamic_kill_regime_thresholds,  # 139# §9-#2
+        ))
+
+        # 157# §19: buy 動的 kill — sell との対称性確保
+        self._buy_kill_mgr = BuyDynamicKillManager(DynamicKillConfig(
+            enabled=config.buy_dynamic_kill_enabled,
+            window=config.buy_dynamic_kill_window,
+            threshold_bps=config.buy_dynamic_kill_threshold_bps,
+            resume_window=config.buy_dynamic_kill_resume_window,
+            regime_thresholds=config.buy_dynamic_kill_regime_thresholds,
         ))
 
         # 安全設計: atexit + signal で残存注文キャンセル + 未保存データ退避 + ロック解放
@@ -640,6 +649,32 @@ class FillTestRunner(AbstractCycleRunner):
             and record.post_fill_30s_pnl is not None
         ):
             self._sell_kill_mgr.track(record.post_fill_30s_pnl)
+
+    def _is_buy_killed(self) -> bool:
+        """157# §19: buy 動的 kill 判定 — BuyDynamicKillManager に委譲.
+
+        sell_dynamic_kill の buy 側対称版。
+        """
+        regime: str | None = None
+        if self._regime_detector is not None:
+            regime = self._regime_detector.current_regime.value
+        killed, telemetry = self._buy_kill_mgr.check_kill(regime=regime)
+        if killed:
+            logger.info(
+                f"[157# §19] buy kill: regime={regime or 'default'}, "
+                f"threshold_used={telemetry.threshold_used}, "
+                f"cooldown_remaining={telemetry.cooldown_remaining}"
+            )
+        return killed
+
+    def _track_buy_pnl(self, record: "FillRecord") -> None:
+        """157# §19: buy fill の PnL を追跡 — BuyDynamicKillManager に委譲."""
+        if (
+            record.filled
+            and record.side == "buy"
+            and record.post_fill_30s_pnl is not None
+        ):
+            self._buy_kill_mgr.track(record.post_fill_30s_pnl)
 
     async def _compute_orderbook_imbalance(self, depth: int = 5) -> tuple[float, float, float]:
         """054# S1: 板不均衡を計算 — 120# MakerPriceCalculator に委譲."""
@@ -1841,6 +1876,29 @@ class FillTestRunner(AbstractCycleRunner):
                     await asyncio.sleep(self.config.cycle_interval_sec)
                     continue
 
+            # 157# §19: buy 動的 kill — rolling PnL が閾値以下なら buy 停止
+            # balance_forced 時はバイパス (sell_dynamic_kill と対称)
+            if (
+                self.config.buy_dynamic_kill_enabled
+                and next_side == "buy"
+                and not _balance_forced
+                and self._is_buy_killed()
+            ):
+                logger.info(
+                    f"[157# §19] Skipping buy — rolling PnL below "
+                    f"{self.config.buy_dynamic_kill_threshold_bps}bps"
+                )
+                _skip_record = self._make_skip_record(
+                    side="buy",
+                    cancel_reason=CR.BUY_DYNAMIC_KILL,
+                    order_quantity=self._current_lot,
+                )
+                batch.append(_skip_record)
+                total_count += 1
+                batch = self._batch_persistence.maybe_flush(batch, "buy_dynamic_kill")
+                await asyncio.sleep(self.config.cycle_interval_sec)
+                continue
+
             # 133# P0-10: sell 動的 kill — rolling PnL が閾値以下なら sell 停止
             # 156# §12: balance_forced 時はバイパス (片側残高で sell するしかない局面)
             if (
@@ -1892,6 +1950,8 @@ class FillTestRunner(AbstractCycleRunner):
                 filled_count += 1
                 # 133# P0-10: sell PnL 追跡 (動的 kill 判定用)
                 self._track_sell_pnl(record)
+                # 157# §19: buy PnL 追跡 (動的 kill 判定用)
+                self._track_buy_pnl(record)
                 # 033# F4: 累積 PnL インクリメンタル追跡
                 if record.post_fill_30s_pnl is not None and record.fill_price:
                     cumulative_pnl_jpy += (

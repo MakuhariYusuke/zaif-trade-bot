@@ -284,18 +284,27 @@ class MakerPriceCalculator:
 
         # 052#: トレンディング時にオフセットをブースト
         # 156# D-4: is_trending で trending_up/trending_down も包含
+        # 157# §19: buy/sell 非対称化 — 有利方向取引では boost 不要
         if (
             self._regime_detector is not None
             and hasattr(self._regime_detector, "current_regime")
             and self._regime_detector.current_regime.is_trending
-            and cfg.regime_trending_offset_boost > 1.0
         ):
-            effective_offset_ratio *= cfg.regime_trending_offset_boost
-            logger.debug(
-                f"[regime] trending → offset boosted: "
-                f"{effective_offset_ratio / cfg.regime_trending_offset_boost:.4f} "
-                f"→ {effective_offset_ratio:.4f}"
-            )
+            # side 別 boost 値を解決 (None=共通値にフォールバック)
+            _trending_boost = cfg.regime_trending_offset_boost
+            if side == "buy" and cfg.regime_trending_offset_boost_buy is not None:
+                _trending_boost = cfg.regime_trending_offset_boost_buy
+            elif side == "sell" and cfg.regime_trending_offset_boost_sell is not None:
+                _trending_boost = cfg.regime_trending_offset_boost_sell
+
+            if _trending_boost > 1.0:
+                effective_offset_ratio *= _trending_boost
+                logger.debug(
+                    f"[regime] trending → {side} offset boosted: "
+                    f"{effective_offset_ratio / _trending_boost:.4f} "
+                    f"→ {effective_offset_ratio:.4f} "
+                    f"(boost={_trending_boost:.2f})"
+                )
 
         # 143# R-1a: high_vol 時にオフセットをブースト (AS リスク上昇に対応)
         if (

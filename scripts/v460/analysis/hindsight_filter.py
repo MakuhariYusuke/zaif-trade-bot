@@ -388,6 +388,7 @@ _TECHNICAL_REASONS = frozenset({
 _REGIME_GUARD_REASONS = frozenset({
     "unknown_regime_buy_skip",
     "sell_dynamic_kill",
+    "buy_dynamic_kill",  # 157# §19
     "trending_sell_skip",
 })
 

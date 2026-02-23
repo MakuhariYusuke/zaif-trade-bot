@@ -153,6 +153,7 @@ class TestCancelReasons:
             CR.UNKNOWN_REGIME_BUY_SKIP,
             CR.UNKNOWN_REGIME_SELL_SKIP,
             CR.SELL_DYNAMIC_KILL,
+            CR.BUY_DYNAMIC_KILL,       # 157# §19
             CR.TRENDING_SELL_SKIP,
         }
         assert CR.AUDIT_CANCEL_REASONS == expected

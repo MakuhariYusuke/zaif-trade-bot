@@ -88,6 +88,11 @@ class FillTestConfig:
     regime_min_confidence: float = 0.3  # 052# 0.4→0.3
     # 052#: トレンディング時のオフセットブースト (PnL -1.2bps)
     regime_trending_offset_boost: float = 1.5  # トレンディング検出時に offset × 1.5
+    # 157# §19: trending offset boost の buy/sell 非対称化
+    # trending_up 時の buy は有利方向取引 → boost 不要 (1.0)
+    # trending_up 時の sell は逆方向取引 → 通常 boost (1.5)
+    regime_trending_offset_boost_buy: float | None = None   # None=共通値使用
+    regime_trending_offset_boost_sell: float | None = None  # None=共通値使用
     # 143# R-1a: レジーム別 offset 調整
     regime_high_vol_offset_boost: float = 1.2   # high_vol 時に offset × 1.2 (+20% 拡張)
     regime_ranging_offset_discount: float = 1.0 # ranging 時に offset × N (1.0=無効, <1.0で縮小)
@@ -224,6 +229,12 @@ class FillTestConfig:
     sell_dynamic_kill_resume_window: int = 20     # 停止後、N サイクル後に再評価
     # 139# §9-#2: レジーム別閾値 (regime_name -> threshold_bps)
     sell_dynamic_kill_regime_thresholds: dict[str, float] = field(default_factory=dict)
+    # ---- 157# §19: buy 動的 kill (rolling PnL ベースの自動停止 — sell との対称性) ----
+    buy_dynamic_kill_enabled: bool = False   # True で buy rolling PnL 監視有効
+    buy_dynamic_kill_window: int = 50        # rolling ウィンドウ (fill 数)
+    buy_dynamic_kill_threshold_bps: float = -0.8  # buy は sell より寛容 (157#: 構造的に buy のほうが AS リスクが低い)
+    buy_dynamic_kill_resume_window: int = 10      # 停止後、N サイクル後に再評価
+    buy_dynamic_kill_regime_thresholds: dict[str, float] = field(default_factory=dict)
     # ---- 137# P1-08: spread 狭小時の「休む」判定 ----
     narrow_spread_pause_enabled: bool = False     # True で spread 狭小時にサイクルスキップ
     narrow_spread_pause_bps: float = 3.0          # spread < この bps で狭小とみなす
@@ -407,6 +418,8 @@ class FillTestConfig:
             "hysteresis_count": "regime_hysteresis_count",
             "min_confidence": "regime_min_confidence",
             "trending_offset_boost": "regime_trending_offset_boost",
+            "trending_offset_boost_buy": "regime_trending_offset_boost_buy",    # 157# §19
+            "trending_offset_boost_sell": "regime_trending_offset_boost_sell",   # 157# §19
             "high_vol_offset_boost": "regime_high_vol_offset_boost",       # 143# R-1a
             "ranging_offset_discount": "regime_ranging_offset_discount",   # 143# R-1a
         }
@@ -665,6 +678,20 @@ class FillTestConfig:
         # 139# §9-#2: regime_thresholds YAML 配線
         if "regime_thresholds" in sell_kill:
             kwargs["sell_dynamic_kill_regime_thresholds"] = sell_kill["regime_thresholds"]
+
+        # 157# §19: buy 動的 kill
+        buy_kill = 止血.get("buy_dynamic_kill", {})
+        if buy_kill.get("enabled") is not None:
+            kwargs["buy_dynamic_kill_enabled"] = buy_kill["enabled"]
+        for yk, ck in {
+            "window": "buy_dynamic_kill_window",
+            "threshold_bps": "buy_dynamic_kill_threshold_bps",
+            "resume_window": "buy_dynamic_kill_resume_window",
+        }.items():
+            if yk in buy_kill:
+                kwargs[ck] = buy_kill[yk]
+        if "regime_thresholds" in buy_kill:
+            kwargs["buy_dynamic_kill_regime_thresholds"] = buy_kill["regime_thresholds"]
 
         # 137# P1-08: narrow spread pause
         narrow_pause = 止血.get("narrow_spread_pause", {})

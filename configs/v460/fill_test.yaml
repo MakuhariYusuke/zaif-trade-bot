@@ -89,6 +89,11 @@ regime:
   hysteresis_count: 3          # 状態確定までの連続一致数
   min_confidence: 0.2          # 152#: 0.3→0.2 (classify最低値0.4で不発のため引き下げ)
   trending_offset_boost: 1.5   # 052#: trending PnL -1.2bps → offset ×1.5 で保守化
+  # 157# §19: trending offset boost の buy/sell 非対称化
+  # trending_up 時: buy は順張り (有利方向) → boost 縮小、sell は逆行リスク → full boost
+  # trending_down 時: sell は順張り (有利方向) → boost 縮小、buy は逆行リスク → full boost
+  trending_offset_boost_buy: 1.0     # buy は trending 時 boost なし (有利方向取引で offset 拡大は利益ロス)
+  trending_offset_boost_sell: 1.5    # sell は trending 時 full boost 据え置き (逆選択防御)
   # 156# §18: ranging 時に offset 縮小 → 安定市場で fill_rate+利幅確保
   ranging_offset_discount: 0.90   # ranging 時 offset × 0.90 (控えめ開始、A/B で 0.85 検証予定)
 
@@ -148,7 +153,7 @@ stale_order:
   cooldown_sec: 10.0           # 再発注後のチェック猶予 (連続 reprice 防止)
   # 096# side-specific: buy は早期介入 + reprice 1回限定
   check_after_sec_buy: 15.0    # buy 側: 15s でチェック開始 (AS 回避の早期介入)
-  check_after_sec_sell: 30.0   # sell 側: 30s (fill rate 確保のため据え置き)
+  check_after_sec_sell: 20.0   # 157# §19: 30→20s (buy 15s との差を縮める、stale 検出の迅速化)
   drift_bps_buy: 4.0           # buy 側: 4bps で stale 判定 (buy AS 狙い撃ち回避)
   drift_bps_sell: 5.0          # sell 側: 5bps (据え置き)
   max_reprice_buy: 1           # buy 側: 1回限定 (追随コスト制限)
@@ -289,6 +294,16 @@ loss_control:
       trending_up: -0.3            # 上昇トレンド時は sell への許容を縮小
       trending_down: -1.0          # 下降トレンド時は sell に寛容
       ranging: -0.5                # レンジ時はデフォルト同等
+  # 157# §19: buy 動的 kill (rolling PnL ベースの自動停止 — sell との対称性)
+  buy_dynamic_kill:
+    enabled: true
+    window: 50                     # rolling ウィンドウ (buy fill 数)
+    threshold_bps: -0.8            # buy は sell より寛容 (構造的に buy の AS リスクが低い)
+    resume_window: 10              # 停止後、N サイクル後に再評価
+    regime_thresholds:
+      trending_down: -0.5          # 下降トレンド時は buy への許容を縮小
+      trending_up: -1.5            # 上昇トレンド時は buy に寛容 (順張り)
+      high_vol: -0.5               # 高ボラ時は buy 抑制
   # 137# P1-08: spread 狭小時 pause (too_narrow 拡張)
   narrow_spread_pause:
     enabled: false                 # true で有効化 (AB テスト)
