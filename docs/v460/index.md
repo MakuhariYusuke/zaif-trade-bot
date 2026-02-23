@@ -146,6 +146,7 @@
 | 151 | impl | [151_ph2_plan_dynamic_position_sizer.md](151_ph2_plan_dynamic_position_sizer.md) | P3-03 confidence_lot 実装 |
 | 152 | plan | [152_ph2_plan_priority_improvements.md](152_ph2_plan_priority_improvements.md) | 代替優先施策: 144# CRITICAL検証 + P3-03判定 + P3-02 unknown削減 |
 | 153 | refactor | [153_ph2_refactor_test_stabilization.md](153_ph2_refactor_test_stabilization.md) | P2 品質改善: テスト安定化 + run_fill_test 分割設計 |
+| 154 | analysis | [154_ph2_dryrun_10h_analysis.md](154_ph2_dryrun_10h_analysis.md) | Dry-Run 10h ログ分析 & 改善提案 (P0-08 deadlock 発見) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

@@ -206,6 +206,8 @@ class FillTestConfig:
     sell_offset_floor: float = 0.0         # 0 = 無制限, >0 で sell offset 最低保証
     # ---- 133# P0-08: 残高制約による強制 side 切替時の発注抑制 ----
     skip_balance_forced: bool = False      # True で強制切替時スキップ (平均 -1.98bps の損失回避)
+    # 154# C-1/C-2: deadlock 防止 — 片側残高枯渇時は forced でも実行を許可
+    balance_forced_deadlock_limit: int = 3  # 連続 forced skip が N 回超過 → 強制実行 (0=無制限)
     # ---- 133# P0-09: unknown レジームでの buy スキップ ----
     skip_buy_unknown_regime: bool = False  # True で unknown レジーム時 buy もスキップ (-1.384bps)
     # ---- 133# P0-10: sell 動的 kill (rolling PnL ベースの自動停止) ----
@@ -630,6 +632,9 @@ class FillTestConfig:
         止血 = yaml_cfg.get("止血", yaml_cfg.get("loss_control", {}))
         if 止血.get("skip_balance_forced") is not None:
             kwargs["skip_balance_forced"] = 止血["skip_balance_forced"]
+        # 154# C-1/C-2: deadlock 防止の連続 forced skip 上限
+        if 止血.get("balance_forced_deadlock_limit") is not None:
+            kwargs["balance_forced_deadlock_limit"] = 止血["balance_forced_deadlock_limit"]
         if 止血.get("skip_buy_unknown_regime") is not None:
             kwargs["skip_buy_unknown_regime"] = 止血["skip_buy_unknown_regime"]
         sell_kill = 止血.get("sell_dynamic_kill", {})

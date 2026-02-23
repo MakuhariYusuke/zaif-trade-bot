@@ -392,6 +392,9 @@ class FillTestRunner(AbstractCycleRunner):
         # 138# P1-10: preflight pause カウンタ (run 内の累積 pause 回数)
         self._preflight_pause_count: int = 0
 
+        # 154# C-2: balance_forced_skip 連続カウンタ (deadlock 防止)
+        self._balance_forced_skip_count: int = 0
+
         # 044# A-7: loss_cap 更新カウンタ
         self._loss_cap_update_interval = config.loss_cap_update_interval
 
@@ -1689,23 +1692,55 @@ class FillTestRunner(AbstractCycleRunner):
 
             # --- サイクル実行 ---
             # 133# P0-08: balance_forced_switch 時のハードスキップ
+            # 154# C-1/C-2: deadlock 防止 — 片側残高のみの場合は forced でも実行許可
             if _balance_forced and self.config.skip_balance_forced:
-                logger.info(
-                    f"[133# P0-08] Skipping cycle — balance_forced_switch=True "
-                    f"(avg -1.98bps loss). side={next_side}"
+                # 154# C-1: 元の side (forced 前) も残高不足かチェック
+                # → 両方不足 = preflight で弾かれるはずなので到達しない
+                # → 元 side だけ不足 = forced side が唯一の選択肢 → 実行すべき
+                original_side = "buy" if next_side == "sell" else "sell"
+                original_also_insufficient = await self._check_balance_for_side(
+                    original_side, regime_mult=_regime_mult
                 )
-                # 145# §9-#5: _make_skip_record DRY 化
-                _skip_record = self._make_skip_record(
-                    side=next_side,
-                    cancel_reason=CR.BALANCE_FORCED_SKIP,
-                    order_quantity=self._current_lot,
-                    balance_forced_switch=True,
+                # 154# C-2: 連続 forced skip カウンタによるフォールバック
+                _deadlock_limit = self.config.balance_forced_deadlock_limit
+                _over_deadlock_limit = (
+                    _deadlock_limit > 0
+                    and self._balance_forced_skip_count >= _deadlock_limit
                 )
-                batch.append(_skip_record)
-                total_count += 1
-                batch = self._batch_persistence.maybe_flush(batch, "balance_forced_skip")
-                await asyncio.sleep(self.config.cycle_interval_sec)
-                continue
+
+                if original_also_insufficient or _over_deadlock_limit:
+                    # 片側しか取引できない or デッドロック上限超過 → 実行許可
+                    _reason = (
+                        "one_sided_balance" if original_also_insufficient
+                        else f"deadlock_limit({self._balance_forced_skip_count})"
+                    )
+                    logger.info(
+                        f"[154# C-1] balance_forced but {_reason} — "
+                        f"proceeding with {next_side} (original_side={original_side} "
+                        f"insufficient={original_also_insufficient})"
+                    )
+                    self._balance_forced_skip_count = 0
+                    # → continue しない: run_single_cycle へ進む
+                else:
+                    # 両方残高 OK → 従来通りスキップ (forced switch は損失回避のため)
+                    self._balance_forced_skip_count += 1
+                    logger.info(
+                        f"[133# P0-08] Skipping cycle — balance_forced_switch=True "
+                        f"(avg -1.98bps loss). side={next_side}, "
+                        f"consecutive={self._balance_forced_skip_count}"
+                    )
+                    # 145# §9-#5: _make_skip_record DRY 化
+                    _skip_record = self._make_skip_record(
+                        side=next_side,
+                        cancel_reason=CR.BALANCE_FORCED_SKIP,
+                        order_quantity=self._current_lot,
+                        balance_forced_switch=True,
+                    )
+                    batch.append(_skip_record)
+                    total_count += 1
+                    batch = self._batch_persistence.maybe_flush(batch, "balance_forced_skip")
+                    await asyncio.sleep(self.config.cycle_interval_sec)
+                    continue
 
             # 133# P0-09: unknown regime での buy スキップ
             if (
@@ -1758,6 +1793,8 @@ class FillTestRunner(AbstractCycleRunner):
                     side_override=next_side,
                     balance_forced_switch=_balance_forced,
                 )
+                # 154# C-2: 実サイクル実行 → forced skip カウンタリセット
+                self._balance_forced_skip_count = 0
             except KeyboardInterrupt:
                 logger.info("KeyboardInterrupt — stopping gracefully")
                 self._kill_switch.kill("keyboard_interrupt")
