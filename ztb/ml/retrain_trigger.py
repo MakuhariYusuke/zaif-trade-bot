@@ -36,6 +36,8 @@ class RetrainTriggerConfig:
     trades_lookback_days: int = 3
     #: trades stale 閾値 (時間)
     trades_stale_threshold_hours: float = 36.0
+    #: 158# trades 欠損日の許容数 (0=厳密, 1=1日欠損許容)
+    trades_max_missing_days: int = 1
     #: 連続 skip 時のバックオフ倍率 (1.0=無効, 2.0=倍増)
     backoff_multiplier: float = 2.0
     #: バックオフ最大 interval (秒)
@@ -114,6 +116,7 @@ class RetrainTrigger:
             raw_dir=self.raw_dir,
             lookback_days=self.config.trades_lookback_days,
             stale_threshold_hours=self.config.trades_stale_threshold_hours,
+            max_missing_days=self.config.trades_max_missing_days,
         )
         return result.healthy, result.message
 

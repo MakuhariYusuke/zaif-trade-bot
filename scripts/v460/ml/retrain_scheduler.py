@@ -171,6 +171,18 @@ _DEFAULT_CONFIG: ConfigMap = {
     # C3: 冗長特徴量除去 (131# redundancy 統合)
     "redundancy_pruning_enabled": True,
     "redundancy_correlation_threshold": 0.85,
+    # 130# D.1 Q3: trades I/O fallback
+    "trades_fallback_recent_days": 1,
+    # 137# §9 #4: retrain trigger 設定
+    "trigger_check_trades_health": True,
+    "trigger_trades_lookback_days": 3,
+    "trigger_trades_stale_threshold_hours": 36.0,
+    "trigger_trades_max_missing_days": 1,  # 158# deadlock gap 対応
+    "trigger_backoff_multiplier": 2.0,
+    "trigger_backoff_max_interval_sec": 14400,
+    "trigger_check_feature_freshness": False,
+    "trigger_feature_trades_stale_hours": 6.0,
+    "trigger_feature_ob_stale_hours": 6.0,
     # SkipGate config
     "adaptive_threshold": True,
     "target_skip_rate_buy": 0.15,
@@ -1786,6 +1798,9 @@ def run_scheduler(cfg: ConfigMap, config_path: Path | None = None) -> None:
         trades_lookback_days=safe_to_int(cfg.get("trigger_trades_lookback_days", 3), 3),
         trades_stale_threshold_hours=safe_to_float(
             cfg.get("trigger_trades_stale_threshold_hours", 36.0), 36.0
+        ),
+        trades_max_missing_days=safe_to_int(
+            cfg.get("trigger_trades_max_missing_days", 1), 1
         ),
         backoff_multiplier=safe_to_float(cfg.get("trigger_backoff_multiplier", 2.0), 2.0),
         backoff_max_interval_sec=safe_to_int(cfg.get("trigger_backoff_max_interval_sec", 14400), 14400),

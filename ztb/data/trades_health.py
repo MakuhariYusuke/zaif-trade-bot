@@ -47,6 +47,7 @@ def check_trades_health(
     *,
     lookback_days: int = 3,
     stale_threshold_hours: float = 36.0,
+    max_missing_days: int = 0,
 ) -> TradesHealthResult:
     """trades raw データの健全性をチェック.
 
@@ -56,6 +57,9 @@ def check_trades_health(
             None の場合は直近 lookback_days 日を自動生成.
         lookback_days: expected_days=None 時の遡り日数.
         stale_threshold_hours: 最新ファイルがこれ以上古い場合は unhealthy.
+        max_missing_days: 許容する欠損日数 (default: 0 = 厳密チェック).
+            158# trades_health 修正: deadlock/restart による一時的なデータギャップに
+            対応するため、最新ファイルが fresh であれば N 日分の欠損を許容する。
 
     Returns:
         TradesHealthResult: 結果オブジェクト.
@@ -96,16 +100,22 @@ def check_trades_health(
             stale_hours = float("inf")
 
     # 判定
-    healthy = len(missing) == 0 and stale_hours < stale_threshold_hours
+    # 158# 修正: max_missing_days で欠損許容。ただし鮮度は必須。
+    missing_ok = len(missing) <= max_missing_days
+    stale_ok = stale_hours < stale_threshold_hours
+    healthy = missing_ok and stale_ok
     if not healthy:
         parts: list[str] = []
-        if missing:
-            parts.append(f"missing_days={missing}")
-        if stale_hours >= stale_threshold_hours:
+        if not missing_ok:
+            parts.append(f"missing_days={missing} (max_allowed={max_missing_days})")
+        if not stale_ok:
             parts.append(f"stale={stale_hours:.1f}h (threshold={stale_threshold_hours}h)")
         msg = "UNHEALTHY: " + ", ".join(parts)
     else:
-        msg = f"OK: {len(available)} days available, stale={stale_hours:.1f}h"
+        extra = ""
+        if missing:
+            extra = f", tolerated_gaps={missing}"
+        msg = f"OK: {len(available)} days available, stale={stale_hours:.1f}h{extra}"
 
     return TradesHealthResult(
         healthy=healthy,
@@ -213,10 +223,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Trades data health check")
     parser.add_argument("--raw-dir", default=None, help="Raw data dir")
     parser.add_argument("--days", type=int, default=3, help="Lookback days")
+    parser.add_argument("--max-missing", type=int, default=0, help="Max missing days to tolerate")
     args = parser.parse_args()
 
     raw = Path(args.raw_dir) if args.raw_dir else None
-    result = check_trades_health(raw_dir=raw, lookback_days=args.days)
+    result = check_trades_health(raw_dir=raw, lookback_days=args.days,
+                                max_missing_days=args.max_missing)
     print(result.message)
     if not result.healthy:
         raise SystemExit(1)

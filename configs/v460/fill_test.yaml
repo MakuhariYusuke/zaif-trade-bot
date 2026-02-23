@@ -453,6 +453,7 @@ retrain:
   trigger_check_trades_health: true     # trades 健全性チェック
   trigger_trades_lookback_days: 3       # trades lookback 日数
   trigger_trades_stale_threshold_hours: 36.0   # trades stale 閾値 (h)
+  trigger_trades_max_missing_days: 2           # 158# trades 欠損日の許容数 (02/20-21 deadlock gap 対応)
   trigger_backoff_multiplier: 2.0       # 連続skip バックオフ倍率
   trigger_backoff_max_interval_sec: 14400  # バックオフ最大 interval (4h)
   trigger_check_feature_freshness: true   # 139# §9-#7: feature 鮮度チェック有効化

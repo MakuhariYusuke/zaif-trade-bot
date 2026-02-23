@@ -77,6 +77,49 @@ class TestRetainTrigger:
         assert ok is False
         assert "unhealthy" in reason
 
+    def test_trades_max_missing_days_tolerance(self, tmp_path: Path) -> None:
+        """158# max_missing_days=1 で 1 日欠損を許容."""
+        from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
+
+        # lookback_days=3 で 3 日中 1 日欠損のセットアップ
+        tr_dir = tmp_path / "trades"
+        tr_dir.mkdir()
+        from datetime import datetime, timedelta, timezone
+
+        now = datetime.now(timezone.utc)
+        for i in [1, 3]:  # yesterday と 3 日前は存在、2 日前は欠損
+            day = (now - timedelta(days=i)).strftime("%Y%m%d")
+            f = tr_dir / f"{day}.jsonl.gz"
+            import gzip as _gz
+            f.write_bytes(_gz.compress(b'{"t":1}\n'))
+
+        # max_missing_days=0 (厳密) → UNHEALTHY
+        cfg_strict = RetrainTriggerConfig(
+            check_fill_records_mtime=False,
+            check_trades_health=True,
+            trades_lookback_days=3,
+            trades_max_missing_days=0,
+        )
+        trigger_strict = RetrainTrigger(
+            results_dir=tmp_path, raw_dir=tmp_path, config=cfg_strict
+        )
+        ok, reason = trigger_strict.should_retrain()
+        assert ok is False
+        assert "missing" in reason.lower() or "unhealthy" in reason.lower()
+
+        # max_missing_days=1 (寛容) → HEALTHY
+        cfg_tolerant = RetrainTriggerConfig(
+            check_fill_records_mtime=False,
+            check_trades_health=True,
+            trades_lookback_days=3,
+            trades_max_missing_days=1,
+        )
+        trigger_tolerant = RetrainTrigger(
+            results_dir=tmp_path, raw_dir=tmp_path, config=cfg_tolerant
+        )
+        ok2, reason2 = trigger_tolerant.should_retrain()
+        assert ok2 is True
+
     def test_backoff_increases_interval(self) -> None:
         """連続スキップでバックオフ倍増."""
         from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
@@ -185,6 +228,91 @@ class TestRetainTrigger:
 
         assert RetainTriggerConfig is RetrainTriggerConfig
         assert RetainTrigger is RetrainTrigger
+
+
+# ===== 158# trades_health max_missing_days =====
+
+class TestTradesHealthMaxMissing:
+    """158# check_trades_health の max_missing_days パラメータ."""
+
+    def test_strict_rejects_any_missing(self, tmp_path: Path) -> None:
+        """max_missing_days=0 → 1 日欠損で UNHEALTHY."""
+        from ztb.data.trades_health import check_trades_health
+
+        tr_dir = tmp_path / "trades"
+        tr_dir.mkdir()
+        from datetime import datetime, timedelta, timezone
+        import gzip as _gz
+
+        now = datetime.now(timezone.utc)
+        # day-1 存在, day-2 欠損
+        day1 = (now - timedelta(days=1)).strftime("%Y%m%d")
+        (tr_dir / f"{day1}.jsonl.gz").write_bytes(_gz.compress(b'{"t":1}\n'))
+
+        result = check_trades_health(
+            raw_dir=tmp_path, lookback_days=2, max_missing_days=0,
+        )
+        assert not result.healthy
+        assert len(result.missing_days) == 1
+
+    def test_tolerant_allows_one_gap(self, tmp_path: Path) -> None:
+        """max_missing_days=1 → 1 日欠損でも HEALTHY (fresh 条件下)."""
+        from ztb.data.trades_health import check_trades_health
+
+        tr_dir = tmp_path / "trades"
+        tr_dir.mkdir()
+        from datetime import datetime, timedelta, timezone
+        import gzip as _gz
+
+        now = datetime.now(timezone.utc)
+        day1 = (now - timedelta(days=1)).strftime("%Y%m%d")
+        (tr_dir / f"{day1}.jsonl.gz").write_bytes(_gz.compress(b'{"t":1}\n'))
+
+        result = check_trades_health(
+            raw_dir=tmp_path, lookback_days=2, max_missing_days=1,
+        )
+        assert result.healthy
+        assert "tolerated_gaps" in result.message
+
+    def test_tolerant_rejects_too_many_gaps(self, tmp_path: Path) -> None:
+        """max_missing_days=1 → 2 日欠損は UNHEALTHY."""
+        from ztb.data.trades_health import check_trades_health
+
+        tr_dir = tmp_path / "trades"
+        tr_dir.mkdir()
+        from datetime import datetime, timedelta, timezone
+        import gzip as _gz
+
+        now = datetime.now(timezone.utc)
+        day1 = (now - timedelta(days=1)).strftime("%Y%m%d")
+        (tr_dir / f"{day1}.jsonl.gz").write_bytes(_gz.compress(b'{"t":1}\n'))
+
+        result = check_trades_health(
+            raw_dir=tmp_path, lookback_days=3, max_missing_days=1,
+        )
+        assert not result.healthy
+        assert "max_allowed=1" in result.message
+
+    def test_message_contains_tolerated_info(self, tmp_path: Path) -> None:
+        """OK メッセージに tolerated gaps 情報が含まれる."""
+        from ztb.data.trades_health import check_trades_health
+
+        tr_dir = tmp_path / "trades"
+        tr_dir.mkdir()
+        from datetime import datetime, timedelta, timezone
+        import gzip as _gz
+
+        now = datetime.now(timezone.utc)
+        for i in [1, 3]:
+            day = (now - timedelta(days=i)).strftime("%Y%m%d")
+            (tr_dir / f"{day}.jsonl.gz").write_bytes(_gz.compress(b'{"t":1}\n'))
+
+        result = check_trades_health(
+            raw_dir=tmp_path, lookback_days=3, max_missing_days=1,
+        )
+        assert result.healthy
+        assert "OK" in result.message
+        assert len(result.missing_days) == 1
 
 
 # ===== P1-02: Feature Freshness =====
