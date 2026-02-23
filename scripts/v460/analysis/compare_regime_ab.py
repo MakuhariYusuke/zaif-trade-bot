@@ -26,9 +26,9 @@ import csv
 import json
 import sys
 from collections import Counter, defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Sequence
 
 from scripts.v460.lib.regime_detector import (
     FillTestRegime,
@@ -39,6 +39,8 @@ from scripts.v460.lib.regime_detector import (
 
 # Re-use data loading from reproduce script
 from scripts.v460.analysis.reproduce_152_metrics import _load_records
+
+FillRecord = dict[str, object]
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +107,7 @@ class SimRecord:
 
 
 def _simulate(
-    records: list[dict[str, Any]],
+    records: list[FillRecord],
     config: RegimeConfig | None = None,
 ) -> tuple[list[SimRecord], dict[str, int]]:
     """fill records を old/new detector に replay してレジーム分類を比較.
@@ -134,8 +136,12 @@ def _simulate(
     sorted_recs = sorted(records, key=lambda r: float(r.get("timestamp", 0)))
 
     # §12 #2: order_price==0 / side 不正のレコードを除外
-    prefilter_stats: dict[str, int] = {"total_input": len(sorted_recs), "price_zero_excluded": 0, "side_invalid_excluded": 0}
-    valid_recs: list[dict[str, Any]] = []
+    prefilter_stats: dict[str, int] = {
+        "total_input": len(sorted_recs),
+        "price_zero_excluded": 0,
+        "side_invalid_excluded": 0,
+    }
+    valid_recs: list[FillRecord] = []
     for rec in sorted_recs:
         ts = rec.get("timestamp")
         price = rec.get("order_price")
@@ -144,8 +150,8 @@ def _simulate(
         if float(price) <= 0:
             prefilter_stats["price_zero_excluded"] += 1
             continue
-        side = rec.get("side", "")
-        if side not in ("", "buy", "sell", None):
+        side_val = rec.get("side", "")
+        if side_val not in ("", "buy", "sell", None):
             prefilter_stats["side_invalid_excluded"] += 1
             continue
         valid_recs.append(rec)
@@ -164,6 +170,9 @@ def _simulate(
         old_result = old_det.update(ts_f, price_f)
         new_result = new_det.update(ts_f, price_f)
 
+        pnl_raw = rec.get("post_fill_30s_pnl")
+        pnl_30s = float(pnl_raw) if isinstance(pnl_raw, (int, float)) else None
+
         results.append(SimRecord(
             timestamp=ts_f,
             order_price=price_f,
@@ -173,7 +182,7 @@ def _simulate(
             old_confidence=old_result.confidence,
             new_confidence=new_result.confidence,
             filled=bool(rec.get("filled")),
-            pnl_30s=rec.get("post_fill_30s_pnl"),
+            pnl_30s=pnl_30s,
         ))
 
     return results, prefilter_stats
@@ -368,7 +377,7 @@ def _save_summary(
     sim_results: list[SimRecord],
     output_dir: Path,
     *,
-    config_info: dict[str, Any] | None = None,
+    config_info: dict[str, object] | None = None,
     prefilter_stats: dict[str, int] | None = None,
 ) -> None:
     """Save summary as JSON."""
@@ -450,7 +459,7 @@ def main(argv: Sequence[str] | None = None) -> list[GateResult]:
     for r in records:
         regime = r.get("regime")
         pnl = r.get("post_fill_30s_pnl")
-        if regime and pnl is not None and r.get("filled"):
+        if isinstance(regime, str) and pnl is not None and bool(r.get("filled")):
             recorded_pnl.setdefault(regime, 0.0)
 
     gates = _evaluate_gates(sim_results, recorded_pnl)

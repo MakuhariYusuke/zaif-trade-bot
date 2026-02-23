@@ -1228,6 +1228,30 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `--roots stable_baselines3 sb3_contrib prometheus_client ztb/evaluation/logging.py ztb/utils/v4xx_config_converter.py ztb/evaluation/promotion.py`
   - 結果: `scanned_files=22`, `any_type_debt_tokens=0`
 
+## Step77 追補: regime A/B ハーネスの型安全化 + 入力正規化 (2026-02-23)
+
+### 1) `compare_regime_ab.py` の `Any` 全撤去
+
+- `scripts/v460/analysis/compare_regime_ab.py` の `Any` 注釈を `object` ベースへ置換。
+- `FillRecord = dict[str, object]` を導入し、`_simulate()` / `_save_summary()` で payload 契約を明示化。
+
+### 2) 不具合余地の低減
+
+- `post_fill_30s_pnl` を `float | None` へ正規化して `SimRecord.pnl_30s` へ格納するよう修正。
+  - 非数値混入時にそのまま伝播して後段集計で型不整合になるリスクを抑制。
+- `recorded_pnl` 生成時に `regime` を `str` 限定で扱うようにし、異常値混入時の辞書キー汚染を防止。
+
+### 3) 検証
+
+- `py_compile`:
+  - `scripts/v460/analysis/compare_regime_ab.py`
+- テスト:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_152_parallel_tasks.py::TestCompareRegimeAB -q --override-ini="addopts=" -W all`
+  - 結果: `5 passed`
+- `any_inventory`:
+  - `--roots scripts/v460/analysis/compare_regime_ab.py`
+  - 結果: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
