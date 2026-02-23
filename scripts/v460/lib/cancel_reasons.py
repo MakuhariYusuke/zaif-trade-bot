@@ -68,3 +68,4 @@ ORDERBOOK_TIMEOUT = "orderbook_timeout"
 ORDERBOOK_RATE_LIMIT = "orderbook_rate_limit"
 ORDERBOOK_EMPTY = "orderbook_empty"
 SELL_GUARD_REJECT = "sell_guard_reject"
+SPREAD_TOO_NARROW = "spread_too_narrow"  # 158# §20-D

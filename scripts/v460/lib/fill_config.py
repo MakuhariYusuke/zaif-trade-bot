@@ -222,6 +222,8 @@ class FillTestConfig:
     skip_sell_trending: bool = False  # True で trending 時 sell をスキップ (-0.687bps)
     # 156# D-4: trending 方向別分解 — True なら trending_up のみスキップ (trending_down sell を開放)
     skip_sell_trending_up_only: bool = False
+    # 158# §20-B: 連続 trending sell skip 安全弁 — N 回超過で sell を強制許可 (0=無制限)
+    max_consecutive_trending_sell_skip: int = 30
     # ---- 133# P0-10: sell 動的 kill (rolling PnL ベースの自動停止) ----
     sell_dynamic_kill_enabled: bool = False  # True で sell rolling PnL 監視有効
     sell_dynamic_kill_window: int = 50       # rolling ウィンドウ (fill 数)
@@ -665,6 +667,9 @@ class FillTestConfig:
         # 156# D-4: trending 方向別分解
         if 止血.get("skip_sell_trending_up_only") is not None:
             kwargs["skip_sell_trending_up_only"] = 止血["skip_sell_trending_up_only"]
+        # 158# §20-B: 連続 trending sell skip 安全弁
+        if 止血.get("max_consecutive_trending_sell_skip") is not None:
+            kwargs["max_consecutive_trending_sell_skip"] = 止血["max_consecutive_trending_sell_skip"]
         sell_kill = 止血.get("sell_dynamic_kill", {})
         if sell_kill.get("enabled") is not None:
             kwargs["sell_dynamic_kill_enabled"] = sell_kill["enabled"]

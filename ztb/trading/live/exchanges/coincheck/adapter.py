@@ -393,18 +393,22 @@ class CoincheckAdapter(BaseExchangeAdapter):
             )
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"Failed to cancel order {order_id}: {error_msg}")
-
+            # 158# §20-C: "Failed to cancel" / "not found" / "already cancelled"
+            # は注文が約定済みまたはキャンセル済みの場合に発生する正常系。
+            # ERROR → WARNING に降格し、re-raise しない。
+            _lower = error_msg.lower()
             if (
-                "not found" in error_msg.lower()
-                or "already cancelled" in error_msg.lower()
+                "not found" in _lower
+                or "already cancelled" in _lower
+                or "failed to cancel" in _lower
             ):
                 logger.warning(
-                    f"Order cancellation failed (order may have already executed "
-                    f"or been cancelled): {error_msg}"
+                    f"[158# §20-C] Cancel order {order_id} returned expected "
+                    f"non-fatal error (order likely filled/cancelled): {error_msg}"
                 )
                 return False
             else:
+                logger.error(f"Failed to cancel order {order_id}: {error_msg}")
                 raise
 
     async def _get_order_status_real(self, order_id: str) -> Optional[Order]:

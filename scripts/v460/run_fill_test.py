@@ -405,6 +405,9 @@ class FillTestRunner(AbstractCycleRunner):
         # 154# C-2: balance_forced_skip 連続カウンタ (deadlock 防止)
         self._balance_forced_skip_count: int = 0
 
+        # 158# §20-B: trending_sell_skip 連続カウンタ (安全弁)
+        self._trending_sell_skip_count: int = 0
+
         # 044# A-7: loss_cap 更新カウンタ
         self._loss_cap_update_interval = config.loss_cap_update_interval
 
@@ -1025,19 +1028,27 @@ class FillTestRunner(AbstractCycleRunner):
         try:
             order_price, spread_at_order, effective_offset_ratio = await self._compute_maker_price(side)
         except Exception as e:
-            logger.error(f"Failed to compute maker price: {e}")
             # 130# orderbook_error 細分化
             err_msg = str(e).lower()
             if "timeout" in err_msg or "timed out" in err_msg:
                 ob_cancel_reason = "orderbook_timeout"
+                logger.error(f"Failed to compute maker price: {e}")
             elif "rate" in err_msg or "limit" in err_msg or "too many" in err_msg:
                 ob_cancel_reason = "orderbook_rate_limit"
+                logger.error(f"Failed to compute maker price: {e}")
             elif "empty" in err_msg or "no bid" in err_msg or "no ask" in err_msg:
                 ob_cancel_reason = "orderbook_empty"
+                logger.error(f"Failed to compute maker price: {e}")
             elif "sell_guard" in err_msg:
                 ob_cancel_reason = "sell_guard_reject"
+                logger.warning(f"Maker price rejected: {e}")
+            elif "spread too narrow" in err_msg:
+                # 158# §20-D: spread_too_narrow を専用分類 — ERROR→INFO 降格
+                ob_cancel_reason = "spread_too_narrow"
+                logger.info(f"[158# §20-D] {e}")
             else:
                 ob_cancel_reason = "orderbook_error"
+                logger.error(f"Failed to compute maker price: {e}")
             # 155# §9.5 #3: orderbook_error 時に前回 mid_price をフォールバック
             # 156# §10 #5: 鮮度判定 — 閾値超は stale とみなす
             # 156# §16 review: _prev_mid_* 直接アクセス → 公開メソッド化
@@ -1651,6 +1662,25 @@ class FillTestRunner(AbstractCycleRunner):
             # 047# Issue12: 離脱時のみログ出力
             self._time_filter.on_exit()
 
+            # 158# §20-A: メインループ毎にレジーム更新 — skip パスでも遷移を保証
+            # Root cause fix: trending_sell_skip 等のスキップパスでは
+            # run_single_cycle が呼ばれず regime_detector.update() が滞留→デッドロック
+            # fallback price (直近 OB mid) を毎ループ投入して遷移機会を確保
+            if self._regime_detector is not None:
+                _fb_price, _fb_time = self._maker_price.get_fallback_price()
+                if _fb_price is not None:
+                    _pre_regime = self._regime_detector.current_regime
+                    _regime_result = self._regime_detector.update(
+                        time.time(), _fb_price
+                    )
+                    if _regime_result.regime != _pre_regime:
+                        logger.info(
+                            f"[158# §20-A] Regime transition in main loop: "
+                            f"{_pre_regime.value} → {_regime_result.regime.value} "
+                            f"(stability={_regime_result.stability}, "
+                            f"trend_pct={_regime_result.trend_pct:.4f})"
+                        )
+
             # 041# 残高 pre-flight check: 不足サイドはスキップ
             # 145# §8-#1: レジーム倍率込みで残高判定 (preflight-lot alignment)
             _regime_mult = self._regime_lot_multiplier()
@@ -1843,6 +1873,7 @@ class FillTestRunner(AbstractCycleRunner):
             # trending sell avg -0.687 bps — 逆行トレード削減
             # 156# §10 #1: balance_forced 時はバイパス (片側残高で sell するしかない局面)
             # 156# D-4: trending 方向別分解 — trending_down sell は開放可能
+            # 158# §20-B: 連続 skip 安全弁 — max_consecutive 超過で強制許可
             if (
                 self.config.skip_sell_trending
                 and next_side == "sell"
@@ -1852,6 +1883,7 @@ class FillTestRunner(AbstractCycleRunner):
             ):
                 # D-4: trending_up_only モードならば trending_down は通過させる
                 _current_regime = self._regime_detector.current_regime
+                _should_skip = True
                 if (
                     self.config.skip_sell_trending_up_only
                     and _current_regime.value == "trending_down"
@@ -1859,10 +1891,30 @@ class FillTestRunner(AbstractCycleRunner):
                     logger.debug(
                         "[156# D-4] Allowing sell in trending_down regime"
                     )
-                else:
+                    _should_skip = False
+
+                # 158# §20-B: 連続 skip 安全弁
+                _max_consec = self.config.max_consecutive_trending_sell_skip
+                if (
+                    _should_skip
+                    and _max_consec > 0
+                    and self._trending_sell_skip_count >= _max_consec
+                ):
+                    logger.warning(
+                        f"[158# §20-B] Trending sell skip safety valve: "
+                        f"{self._trending_sell_skip_count} consecutive skips "
+                        f">= limit {_max_consec} — forcing sell execution"
+                    )
+                    self._trending_sell_skip_count = 0
+                    _should_skip = False
+
+                if _should_skip:
+                    self._trending_sell_skip_count += 1
                     logger.info(
                         f"[155# §9] Skipping sell — {_current_regime.value} regime "
-                        "(avg -0.687bps loss)"
+                        f"(avg -0.687bps loss) "
+                        f"[consecutive={self._trending_sell_skip_count}"
+                        f"/{_max_consec if _max_consec > 0 else '∞'}]"
                     )
                     _skip_record = self._make_skip_record(
                         side="sell",
@@ -1875,6 +1927,9 @@ class FillTestRunner(AbstractCycleRunner):
                     batch = self._batch_persistence.maybe_flush(batch, "trending_sell_skip")
                     await asyncio.sleep(self.config.cycle_interval_sec)
                     continue
+                else:
+                    # skip しない → カウンタリセット
+                    self._trending_sell_skip_count = 0
 
             # 157# §19: buy 動的 kill — rolling PnL が閾値以下なら buy 停止
             # balance_forced 時はバイパス (sell_dynamic_kill と対称)
@@ -1930,6 +1985,8 @@ class FillTestRunner(AbstractCycleRunner):
                 )
                 # 154# C-2: 実サイクル実行 → forced skip カウンタリセット
                 self._balance_forced_skip_count = 0
+                # 158# §20-B: 実サイクル実行 → trending sell skip カウンタリセット
+                self._trending_sell_skip_count = 0
             except KeyboardInterrupt:
                 logger.info("KeyboardInterrupt — stopping gracefully")
                 self._kill_switch.kill("keyboard_interrupt")

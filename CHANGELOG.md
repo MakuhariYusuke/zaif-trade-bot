@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 158# §20 レジームデッドロック修正 + 副次課題解決
+
+- **Fix A: メインループ毎のレジーム更新** (§20-A, ROOT CAUSE FIX): `regime_detector.update()` を `run_continuous` のメインループ先頭で毎回呼び出し。skip パス (trending_sell_skip, balance_forced_skip, unknown_buy_skip, dynamic_kill) でもレジーム遷移が保証される。fallback price (直近 OB mid) を使用。遷移時にはログ出力。
+- **Fix B: 連続 trending sell skip 安全弁** (§20-B): `max_consecutive_trending_sell_skip` 設定 (default=30, 0=無制限)。連続 N 回 skip 超過で sell を強制許可。FillTestConfig + YAML 止血セクション対応。
+- **Fix C: cancel_failed 400 ハンドリング改善** (§20-C): Coincheck `_cancel_order_real` で "Failed to cancel" パターンを catch し、ERROR→WARNING 降格。約定済み注文のキャンセル試行は正常系として扱う。
+- **Fix D: spread_too_narrow 分類改善** (§20-D): `orderbook_error` から `spread_too_narrow` に専用分類。ログレベルを ERROR→INFO に降格 (正常な市場状態)。`CR.SPREAD_TOO_NARROW` 定数追加。
+- **テスト**: 23 新規 ALL PASSED (test_158_regime_deadlock_fix.py)。全 v460 unit 1659 passed / 2 pre-existing failures (0 regressions)。
+
 ### 155# §11 残課題対応 + 118# バックログ消化
 
 - **balance_forced_consecutive 追跡** (§9.4 #2): FillRecord に `balance_forced_consecutive` フィールド追加、skip 時に連続回数を記録
