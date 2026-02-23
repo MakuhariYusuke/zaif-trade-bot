@@ -393,20 +393,28 @@ class CoincheckAdapter(BaseExchangeAdapter):
             )
         except Exception as e:
             error_msg = str(e)
-            # 158# §20-C: "Failed to cancel" / "not found" / "already cancelled"
-            # は注文が約定済みまたはキャンセル済みの場合に発生する正常系。
-            # ERROR → WARNING に降格し、re-raise しない。
+            # 158# §20-C: cancel エラーのログレベル適正化
+            # "Failed to cancel" は約定済み/キャンセル済みの可能性が高い。
+            # ただし order_monitor の Bug11 fill recheck が例外を前提とするため
+            # re-raise は維持 (return False にすると fill 検出が消失する)。
             _lower = error_msg.lower()
             if (
                 "not found" in _lower
                 or "already cancelled" in _lower
-                or "failed to cancel" in _lower
             ):
+                # 確定的に存在しない注文 → return False (従来通り)
                 logger.warning(
-                    f"[158# §20-C] Cancel order {order_id} returned expected "
-                    f"non-fatal error (order likely filled/cancelled): {error_msg}"
+                    f"[158# §20-C] Cancel order {order_id}: "
+                    f"order not found/already cancelled: {error_msg}"
                 )
                 return False
+            elif "failed to cancel" in _lower:
+                # 約定中の可能性あり → re-raise して caller 側で fill recheck
+                logger.warning(
+                    f"[158# §20-C] Cancel order {order_id}: "
+                    f"likely filled during cancel attempt: {error_msg}"
+                )
+                raise
             else:
                 logger.error(f"Failed to cancel order {order_id}: {error_msg}")
                 raise

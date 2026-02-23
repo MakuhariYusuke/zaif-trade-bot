@@ -215,36 +215,40 @@ class TestCancelFailedHandling:
     """Fix C: Coincheck cancel 400 エラーの graceful handling."""
 
     def test_adapter_catches_failed_to_cancel(self) -> None:
-        """_cancel_order_real が 'Failed to cancel' を re-raise しない."""
+        """_cancel_order_real が 'Failed to cancel' で WARNING ログ → re-raise."""
         import inspect
         from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
         source = inspect.getsource(CoincheckAdapter._cancel_order_real)
         assert "failed to cancel" in source.lower()
-        # 旧コード: logger.error → 新コード: logger.warning
         assert "§20-C" in source
+        # "Failed to cancel" は re-raise (fill recheck のため)
+        # "not found" / "already cancelled" は return False
+        assert "return False" in source
+        assert "raise" in source
 
     def test_cancel_error_patterns(self) -> None:
         """3パターンの cancel エラーがすべてマッチすること."""
-        # パターン: "not found", "already cancelled", "failed to cancel"
-        patterns = [
+        # not_found / already_cancelled → return False
+        return_false_patterns = [
             "Order not found",
             "Order already cancelled",
+        ]
+        for msg in return_false_patterns:
+            _lower = msg.lower()
+            matched = "not found" in _lower or "already cancelled" in _lower
+            assert matched, f"Return-false pattern should match: {msg}"
+
+        # "Failed to cancel" → re-raise (fill 検出のため)
+        raise_patterns = [
             "Failed to cancel the order",
             "Coincheck API error: 400 | body={\"success\":false,\"error\":\"Failed to cancel the order.\"}",
         ]
-        for msg in patterns:
-            _lower = msg.lower()
-            matched = (
-                "not found" in _lower
-                or "already cancelled" in _lower
-                or "failed to cancel" in _lower
-            )
-            assert matched, f"Pattern should match: {msg}"
+        for msg in raise_patterns:
+            assert "failed to cancel" in msg.lower(), f"Raise pattern should match: {msg}"
 
     def test_cancel_unknown_error_still_raises(self) -> None:
         """未知のエラーは re-raise すること."""
-        # "Network timeout" は3パターンにマッチしない
         msg = "Network timeout during cancellation"
         _lower = msg.lower()
         matched = (
@@ -255,23 +259,39 @@ class TestCancelFailedHandling:
         assert not matched, "Unknown errors should NOT match"
 
     @pytest.mark.asyncio
-    async def test_cancel_failed_returns_false(self) -> None:
-        """cancel 失敗 (約定済み) は False を返し例外を投げない."""
+    async def test_cancel_failed_to_cancel_re_raises(self) -> None:
+        """'Failed to cancel' は re-raise する (order_monitor の fill recheck 保持)."""
         from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+        from ztb.utils.errors import NetworkError
 
         adapter = CoincheckAdapter.__new__(CoincheckAdapter)
         adapter.api_base_url = "https://coincheck.com"
         adapter.request_timeout = 5
-
-        # _make_api_request が "Failed to cancel" を含む NetworkError を raise
-        from ztb.utils.errors import NetworkError
 
         def mock_request(*args, **kwargs):
             raise NetworkError("Coincheck API error: 400 | body={\"error\":\"Failed to cancel the order.\"}")
 
         adapter._make_api_request = mock_request
 
-        result = await adapter._cancel_order_real("test_order_123")
+        with pytest.raises(NetworkError):
+            await adapter._cancel_order_real("test_order_123")
+
+    @pytest.mark.asyncio
+    async def test_cancel_not_found_returns_false(self) -> None:
+        """'not found' は return False (例外なし)."""
+        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+        from ztb.utils.errors import NetworkError
+
+        adapter = CoincheckAdapter.__new__(CoincheckAdapter)
+        adapter.api_base_url = "https://coincheck.com"
+        adapter.request_timeout = 5
+
+        def mock_request(*args, **kwargs):
+            raise NetworkError("Order not found")
+
+        adapter._make_api_request = mock_request
+
+        result = await adapter._cancel_order_real("test_order_456")
         assert result is False
 
 
