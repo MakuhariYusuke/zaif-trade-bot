@@ -4,6 +4,8 @@
 - Config フィールド存在
 - YAML パース
 - FillRecord.reprice_count フィールド
+- FillRecord.reprice_drift_bps フィールド (158# P1-3)
+- VG 詳細ログフィールド (158# P2-6)
 - ロジック構造テスト (コードベース)
 - 発動条件テスト
 """
@@ -173,6 +175,63 @@ class TestFillRecordRepriceCount:
 
 
 # =====================================================================
+# C-2. FillRecord — reprice_drift_bps フィールド (158# P1-3)
+# =====================================================================
+
+class TestFillRecordRepriceDriftBps:
+    """158# P1-3: FillRecord.reprice_drift_bps の検証."""
+
+    def test_reprice_drift_bps_default_none(self) -> None:
+        r = FillRecord(
+            cycle_id="test", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+        )
+        assert r.reprice_drift_bps is None
+
+    def test_reprice_drift_bps_explicit(self) -> None:
+        r = FillRecord(
+            cycle_id="test", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+            reprice_drift_bps=12.5,
+        )
+        assert r.reprice_drift_bps == pytest.approx(12.5)
+
+    def test_reprice_drift_bps_roundtrip(self) -> None:
+        """to_dict / from_dict でラウンドトリップ."""
+        r = FillRecord(
+            cycle_id="test", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+            reprice_count=2, reprice_drift_bps=8.3,
+        )
+        d = r.to_dict()
+        assert d["reprice_drift_bps"] == pytest.approx(8.3)
+        r2 = FillRecord.from_dict(d)
+        assert r2.reprice_drift_bps == pytest.approx(8.3)
+
+    def test_reprice_drift_bps_absent_in_old_data(self) -> None:
+        """古いデータに reprice_drift_bps がなくても from_dict が動く."""
+        d = {
+            "cycle_id": "old",
+            "timestamp": 0.0,
+            "side": "sell",
+            "order_price": 100.0,
+            "order_quantity": 0.001,
+            "reprice_count": 1,
+        }
+        r = FillRecord.from_dict(d)
+        assert r.reprice_drift_bps is None
+
+    def test_reprice_drift_bps_none_when_no_reprice(self) -> None:
+        """reprice_count=0 の場合は drift_bps=None が期待される."""
+        r = FillRecord(
+            cycle_id="test", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+            reprice_count=0, reprice_drift_bps=None,
+        )
+        assert r.reprice_drift_bps is None
+
+
+# =====================================================================
 # D. ロジック構造テスト — stale order 検出がコードに存在
 # =====================================================================
 
@@ -225,6 +284,20 @@ class TestStaleOrderLogic:
         source = inspect.getsource(OrderMonitor.monitor)
         # mid_at_order = current_mid
         assert "mid_at_order = current_mid" in source
+
+    def test_stale_order_tracks_cumulative_drift(self) -> None:
+        """158# P1-3: cumulative_drift_bps を追跡している."""
+        from scripts.v460.lib.order_monitor import OrderMonitor
+        source = inspect.getsource(OrderMonitor.monitor)
+        assert "cumulative_drift_bps" in source
+        assert "cumulative_drift_bps += drift_bps" in source
+
+    def test_fill_monitor_result_has_reprice_drift_bps(self) -> None:
+        """158# P1-3: FillMonitorResult に reprice_drift_bps がある."""
+        from scripts.v460.lib.fill_config import FillMonitorResult
+        result = FillMonitorResult()
+        assert hasattr(result, "reprice_drift_bps")
+        assert result.reprice_drift_bps == 0.0
 
 
 # =====================================================================
@@ -305,3 +378,72 @@ class TestStaleOrderDirection:
         current_mid = 10_005_000.0
         is_away = current_mid < mid_at_order
         assert not is_away
+
+
+# =====================================================================
+# G. VG 詳細ログフィールド (158# P2-6)
+# =====================================================================
+
+class TestFillRecordVGDetailFields:
+    """158# P2-6: VG 詳細ログフィールドの検証."""
+
+    def test_vg_detail_fields_default_none(self) -> None:
+        r = FillRecord(
+            cycle_id="test", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+        )
+        assert r.vg_velocity_bps is None
+        assert r.vg_vpin is None
+        assert r.vg_boost_factor is None
+
+    def test_vg_detail_fields_explicit(self) -> None:
+        r = FillRecord(
+            cycle_id="test", timestamp=0.0, side="sell",
+            order_price=100.0, order_quantity=0.001,
+            vg_triggered=True,
+            vg_velocity_bps=15.3,
+            vg_vpin=0.72,
+            vg_boost_factor=1.5,
+        )
+        assert r.vg_velocity_bps == pytest.approx(15.3)
+        assert r.vg_vpin == pytest.approx(0.72)
+        assert r.vg_boost_factor == pytest.approx(1.5)
+
+    def test_vg_detail_fields_roundtrip(self) -> None:
+        """to_dict / from_dict ラウンドトリップ."""
+        r = FillRecord(
+            cycle_id="vg", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+            vg_triggered=True,
+            vg_velocity_bps=8.5,
+            vg_vpin=0.55,
+            vg_boost_factor=1.4,
+        )
+        d = r.to_dict()
+        assert d["vg_velocity_bps"] == pytest.approx(8.5)
+        r2 = FillRecord.from_dict(d)
+        assert r2.vg_velocity_bps == pytest.approx(8.5)
+        assert r2.vg_vpin == pytest.approx(0.55)
+        assert r2.vg_boost_factor == pytest.approx(1.4)
+
+    def test_vg_detail_absent_in_old_data(self) -> None:
+        """古いデータに VG 詳細がなくても from_dict が動く."""
+        d = {
+            "cycle_id": "old",
+            "timestamp": 0.0,
+            "side": "buy",
+            "order_price": 100.0,
+            "order_quantity": 0.001,
+            "vg_triggered": True,
+        }
+        r = FillRecord.from_dict(d)
+        assert r.vg_velocity_bps is None
+        assert r.vg_vpin is None
+        assert r.vg_boost_factor is None
+
+    def test_maker_price_vg_properties_exist(self) -> None:
+        """MakerPriceCalculator に VG 詳細プロパティが存在する."""
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+        assert hasattr(MakerPriceCalculator, "last_vg_velocity_bps")
+        assert hasattr(MakerPriceCalculator, "last_vg_vpin")
+        assert hasattr(MakerPriceCalculator, "last_vg_boost_factor")

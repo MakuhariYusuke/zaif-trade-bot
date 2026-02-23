@@ -51,6 +51,8 @@ class FillTestConfig:
     batch_flush_interval_sec: float = 600.0  # 079# 時間ベース定期flush (秒)
     max_save_retries: int = 3  # 保存リトライ上限
     save_fail_threshold: int = 3  # 緊急ダンプ発動の連続失敗回数
+    # 158# P1-5: A/B テスト基盤 — variant 識別子 (fill_records に記録)
+    ab_test_variant: str = ""  # 空="テストなし", 例: "sell_offset_015", "rescue_enabled"
     # ログ
     progress_log_interval: int = 50  # 進捗ログの出力間隔 (サイクル数)
     heartbeat_interval_sec: float = 900.0  # 079# heartbeat 間隔 (秒, time_filter 抑制中)
@@ -216,6 +218,9 @@ class FillTestConfig:
     skip_balance_forced: bool = False      # True で強制切替時スキップ (平均 -1.98bps の損失回避)
     # 154# C-1/C-2: deadlock 防止 — 片側残高枯渇時は forced でも実行を許可
     balance_forced_deadlock_limit: int = 3  # 連続 forced skip が N 回超過 → 強制実行 (0=無制限)
+    # 158# P1-1: balance_forced 救済モード — offset 倍増で安全にポジション解消
+    balance_forced_rescue_enabled: bool = False    # True で rescue モード有効 (skip の代わりに高 offset で実行)
+    balance_forced_rescue_offset_mult: float = 2.0  # rescue 時の offset 倍率 (2.0 = 通常の 2 倍)
     # ---- 133# P0-09: unknown レジームでの buy スキップ ----
     skip_buy_unknown_regime: bool = False  # True で unknown レジーム時 buy もスキップ (-1.384bps)
     # ---- 155# §9: trending レジームでの sell 抑制 ----
@@ -659,6 +664,11 @@ class FillTestConfig:
         # 154# C-1/C-2: deadlock 防止の連続 forced skip 上限
         if 止血.get("balance_forced_deadlock_limit") is not None:
             kwargs["balance_forced_deadlock_limit"] = 止血["balance_forced_deadlock_limit"]
+        # 158# P1-1: balance_forced 救済モード
+        if 止血.get("balance_forced_rescue_enabled") is not None:
+            kwargs["balance_forced_rescue_enabled"] = 止血["balance_forced_rescue_enabled"]
+        if 止血.get("balance_forced_rescue_offset_mult") is not None:
+            kwargs["balance_forced_rescue_offset_mult"] = float(止血["balance_forced_rescue_offset_mult"])
         if 止血.get("skip_buy_unknown_regime") is not None:
             kwargs["skip_buy_unknown_regime"] = 止血["skip_buy_unknown_regime"]
         # 155# §9: trending sell 抑制
@@ -769,6 +779,11 @@ class FillTestConfig:
             if yaml_key in tuning:
                 kwargs[config_key] = tuning[yaml_key]
 
+        # 158# P1-5: A/B テスト variant 識別子
+        ab_test = yaml_cfg.get("ab_test", {})
+        if ab_test.get("variant"):
+            kwargs["ab_test_variant"] = str(ab_test["variant"])
+
         return cls(**kwargs)
 
 
@@ -799,6 +814,8 @@ class FillMonitorResult:
     cancel_reason: Optional[str] = None
     queue_wait: float = 0.0
     reprice_count: int = 0
+    # 158# P1-3: reprice 累積 drift (bps)
+    reprice_drift_bps: float = 0.0
     final_order_price: float = 0.0
     # 145# §9-#2: regime 調整済みの実効タイムアウト (cancel_reason 判定で使用)
     effective_timeout: float = 0.0

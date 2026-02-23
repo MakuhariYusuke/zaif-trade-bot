@@ -76,6 +76,9 @@ class MakerPriceCalculator:
         "_last_ask_depth",
         "_last_vpin",
         "_last_vg_triggered",
+        "_last_vg_velocity_bps",
+        "_last_vg_vpin",
+        "_last_vg_boost_factor",
         "_last_ob_snapshot",
     )
 
@@ -107,6 +110,10 @@ class MakerPriceCalculator:
         self._last_vpin: float | None = None
         # 120# P2-1: VG 発動状態追跡 (寄与分解基盤)
         self._last_vg_triggered: bool = False
+        # 158# P2-6: VG 詳細ログ
+        self._last_vg_velocity_bps: float | None = None
+        self._last_vg_vpin: float | None = None
+        self._last_vg_boost_factor: float | None = None
         # 129# OB recorder: 生スナップショットキャッシュ
         self._last_ob_snapshot: object | None = None
 
@@ -159,6 +166,21 @@ class MakerPriceCalculator:
     def last_vg_triggered(self) -> bool:
         """120# P2-1: 直近の compute() で VG が発動したか."""
         return self._last_vg_triggered
+
+    @property
+    def last_vg_velocity_bps(self) -> float | None:
+        """158# P2-6: 直近 VG 評価時の velocity (bps)."""
+        return self._last_vg_velocity_bps
+
+    @property
+    def last_vg_vpin(self) -> float | None:
+        """158# P2-6: 直近 VG 評価時の VPIN."""
+        return self._last_vg_vpin
+
+    @property
+    def last_vg_boost_factor(self) -> float | None:
+        """158# P2-6: 直近 VG 適用 boost 倍率 (1.0=未発動)."""
+        return self._last_vg_boost_factor
 
     # ------------------------------------------------------------------
     # 板不均衡 (054# S1)
@@ -403,6 +425,8 @@ class MakerPriceCalculator:
         if cfg.volatility_guard_enabled:
             vg_triggered = False
             vg_reason = ""
+            _vg_velocity = mid_trend_bps  # 158# P2-6: ログ用
+            _vg_vpin = self._last_vpin    # 158# P2-6: ログ用
             if (
                 mid_trend_bps is not None
                 and abs(mid_trend_bps) > cfg.volatility_guard_velocity_threshold_bps
@@ -414,12 +438,14 @@ class MakerPriceCalculator:
                     vg_triggered = True
                     vg_reason += (f"{'+' if vg_reason else ''}vpin="
                                   f"{self._last_vpin:.2f}")
+            _vg_boost = 1.0  # 158# P2-6: 実際の boost 倍率
             if vg_triggered:
                 pre_offset = effective_offset_ratio
                 effective_offset_ratio = min(
                     effective_offset_ratio * cfg.volatility_guard_offset_boost_factor,
                     cfg.max_offset_ratio,
                 )
+                _vg_boost = effective_offset_ratio / pre_offset if pre_offset > 0 else 1.0
                 logger.info(
                     f"[volatility_guard] 107# {side} offset boosted: "
                     f"{pre_offset:.4f}→{effective_offset_ratio:.4f} "
@@ -427,8 +453,15 @@ class MakerPriceCalculator:
                 )
             # 120# P2-1: VG 発動状態を追跡
             self._last_vg_triggered = vg_triggered
+            # 158# P2-6: VG 詳細ログ (ヒンドサイト分析用)
+            self._last_vg_velocity_bps = _vg_velocity
+            self._last_vg_vpin = _vg_vpin
+            self._last_vg_boost_factor = _vg_boost if vg_triggered else None
         else:
             self._last_vg_triggered = False
+            self._last_vg_velocity_bps = None
+            self._last_vg_vpin = None
+            self._last_vg_boost_factor = None
 
         # 054# S1: Imbalance ベース AS リスク補正
         if cfg.imbalance_enabled and abs(imb) > cfg.imbalance_threshold:

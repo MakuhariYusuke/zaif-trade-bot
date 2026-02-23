@@ -91,6 +91,8 @@ class FillRecord:
     skip_gate_threshold_used: Optional[float] = None  # 実際に適用された閾値 (side別解決後)
     # 094# stale order cancel-replace 追跡
     reprice_count: int = 0                        # 1 サイクル内で再発注した回数
+    # 158# P1-3: reprice 累積 drift (bps) — 全 reprice の合計 drift を記録
+    reprice_drift_bps: Optional[float] = None     # 全 reprice 発動時の累積ドリフト (bps)
     # 100# P1-4: 実際の PnL 計測経過秒数 (early_exit で 30s 未満になる場合の記録)
     actual_measurement_sec: Optional[float] = None  # mid_30s_after の実計測秒数
     # 120# A4: Early Exit 明示フラグ (推定ではなく PnlMeasurer の判定値を直接保存)
@@ -100,6 +102,10 @@ class FillRecord:
     # 120# P2-1: 寄与分解基盤 — FFD/VG イベントフラグ
     ffd_boost_active: Optional[bool] = None          # FastFillDefense boost 中だったか
     vg_triggered: Optional[bool] = None              # VolatilityGuard 発動したか
+    # 158# P2-6: VG 詳細ログ (ヒンドサイト分析用)
+    vg_velocity_bps: Optional[float] = None          # VG 評価時の mid_price_trend (bps)
+    vg_vpin: Optional[float] = None                  # VG 評価時の VPIN 値
+    vg_boost_factor: Optional[float] = None          # 実際に適用された boost 倍率 (1.0=未発動)
     # 129# D.2: 残高制約による side 強制切替フラグ (評価/学習での交絡分離用)
     balance_forced_switch: Optional[bool] = None     # 残高不足で side が強制切替されたか
     # 155# §9.4 #2: balance_forced_skip 連続回数追跡
@@ -109,6 +115,8 @@ class FillRecord:
     order_lot_regime: Optional[float] = None         # regime_adjusted_lot (confidence 未適用)
     order_lot_effective: Optional[float] = None      # 最終発注ロット (= order_quantity)
     confidence_lot_mode: Optional[str] = None        # "as" / "pnl" / None (無効時)
+    # 158# P1-5: A/B テスト variant 識別子 (実験分析用)
+    ab_test_variant: Optional[str] = None             # 例: "sell_offset_015", None=実験なし
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

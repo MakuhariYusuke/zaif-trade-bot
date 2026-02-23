@@ -121,6 +121,7 @@ class OrderMonitor:
         cancel_reason_poll: Optional[str] = None
         elapsed = 0.0
         reprice_count = 0
+        cumulative_drift_bps = 0.0  # 158# P1-3: 累積 drift
         min_order_btc: Final[float] = cfg.min_order_btc
 
         # ------ 144# R-1c/R-1d: レジーム別 reprice/timeout 調整 ------
@@ -353,6 +354,7 @@ class OrderMonitor:
                             mid_at_order = current_mid
                             last_reprice_time = time.time()
                             reprice_count += 1
+                            cumulative_drift_bps += drift_bps  # 158# P1-3
                             pending_order_setter(order.order_id)  # type: ignore[operator]
                             logger.info(
                                 f"[stale_order] Repriced {side} @ {new_price:.0f} JPY "
@@ -410,6 +412,7 @@ class OrderMonitor:
             cancel_reason=cancel_reason_poll,
             queue_wait=elapsed,
             reprice_count=reprice_count,
+            reprice_drift_bps=cumulative_drift_bps,  # 158# P1-3
             final_order_price=order_price,
             effective_timeout=_effective_timeout,
         )

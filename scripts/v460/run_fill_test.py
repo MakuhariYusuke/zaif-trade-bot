@@ -462,6 +462,7 @@ class FillTestRunner(AbstractCycleRunner):
             spread_offset_ratio=spread_offset_ratio,
             regime=regime,
             balance_forced_switch=balance_forced_switch,
+            ab_test_variant=self.config.ab_test_variant or None,  # 158# P1-5
             **extra,  # type: ignore[arg-type]
         )
 
@@ -962,6 +963,7 @@ class FillTestRunner(AbstractCycleRunner):
         self,
         side_override: str | None = None,
         balance_forced_switch: bool = False,
+        balance_forced_rescue: bool = False,
     ) -> FillRecord:
         """1 サイクル: 発注 → 監視 → 結果記録.
 
@@ -970,6 +972,7 @@ class FillTestRunner(AbstractCycleRunner):
         055# Fix: side 決定前に最新 imbalance を取得.
         075# Fix: side_override で run_continuous() が決定した side を強制適用.
         129# D.2: balance_forced_switch フラグを FillRecord に記録.
+        158# P1-1: balance_forced_rescue — offset 倍増で安全にポジション解消.
         """
         self._cycle_count += 1
         cycle_id = self._new_cycle_id()
@@ -1085,6 +1088,29 @@ class FillTestRunner(AbstractCycleRunner):
             )
 
         # 113# R1: SkipGate 判定を _evaluate_skip_gate() に委譲
+        # 158# P1-1: balance_forced rescue → offset 倍増で安全にポジション解消
+        if balance_forced_rescue and effective_offset_ratio > 0:
+            _rescue_mult = self.config.balance_forced_rescue_offset_mult
+            _pre_rescue_offset = effective_offset_ratio
+            effective_offset_ratio = min(
+                effective_offset_ratio * _rescue_mult,
+                self.config.max_offset_ratio,
+            )
+            # 価格を rescue offset で再計算
+            if spread_at_order is not None and spread_at_order > 0:
+                mid_est = order_price + (spread_at_order * _pre_rescue_offset / 2 if side == "buy"
+                                         else -spread_at_order * _pre_rescue_offset / 2)
+                if side == "buy":
+                    order_price = mid_est - spread_at_order * effective_offset_ratio / 2
+                else:
+                    order_price = mid_est + spread_at_order * effective_offset_ratio / 2
+                order_price = round(order_price)
+            logger.info(
+                f"[158# P1-1] balance_forced_rescue: offset "
+                f"{_pre_rescue_offset:.4f}→{effective_offset_ratio:.4f} "
+                f"(×{_rescue_mult:.1f}), price={order_price:.0f}"
+            )
+
         # 137# P1-08: spread 狭小時の「休む」判定
         if (
             self.config.narrow_spread_pause_enabled
@@ -1271,6 +1297,7 @@ class FillTestRunner(AbstractCycleRunner):
         queue_wait = monitor.queue_wait
         cancel_reason_poll = monitor.cancel_reason
         reprice_count = monitor.reprice_count
+        reprice_drift_bps = monitor.reprice_drift_bps  # 158# P1-3
         order_price = monitor.final_order_price  # stale reprice で変更される場合
         _effective_timeout = monitor.effective_timeout  # 145# §9-#2
 
@@ -1375,6 +1402,8 @@ class FillTestRunner(AbstractCycleRunner):
             skip_gate_threshold_used=skip_gate_threshold_used,
             # 094# stale order cancel-replace 追跡
             reprice_count=reprice_count,
+            # 158# P1-3: reprice 累積 drift (bps)
+            reprice_drift_bps=reprice_drift_bps if reprice_count > 0 else None,
             # 100# P1-4: 実際の PnL 計測経過秒数
             actual_measurement_sec=actual_measurement_sec if filled else None,
             # 120# A4: Early Exit 明示フラグ
@@ -1384,6 +1413,10 @@ class FillTestRunner(AbstractCycleRunner):
             # 120# P2-1: 寄与分解基盤 — FFD/VG イベントフラグ
             ffd_boost_active=self._fast_fill_defense.is_boost_active(side),
             vg_triggered=self._maker_price.last_vg_triggered,
+            # 158# P2-6: VG 詳細ログ (ヒンドサイト分析用)
+            vg_velocity_bps=self._maker_price.last_vg_velocity_bps,
+            vg_vpin=self._maker_price.last_vg_vpin,
+            vg_boost_factor=self._maker_price.last_vg_boost_factor,
             # 129# D.2: 残高制約による side 強制切替フラグ
             balance_forced_switch=balance_forced_switch or None,
             # 151# P3-03: confidence lot 可観測性 (§10 #7)
@@ -1391,6 +1424,8 @@ class FillTestRunner(AbstractCycleRunner):
             order_lot_regime=_regime_lot,
             order_lot_effective=_order_lot,
             confidence_lot_mode=self.config.confidence_lot_mode if self.config.enable_confidence_lot else None,
+            # 158# P1-5: A/B テスト variant 識別子
+            ab_test_variant=self.config.ab_test_variant or None,
         )
 
         logger.info(
@@ -1565,6 +1600,7 @@ class FillTestRunner(AbstractCycleRunner):
         while time.time() < end_time and not self._kill_switch.is_killed():
             # 129# D.2: 残高制約による side 強制切替追跡
             _balance_forced = False
+            _is_rescue = False  # 158# P1-1: balance_forced rescue フラグ
             # 073# side 別時間帯フィルター: side 決定後にフィルタリング
             # side 別リスト未設定時はグローバルリスト (041# 互換)
             next_side = self._next_side()
@@ -1822,6 +1858,17 @@ class FillTestRunner(AbstractCycleRunner):
                     )
                     self._balance_forced_skip_count = 0
                     # → continue しない: run_single_cycle へ進む
+                elif self.config.balance_forced_rescue_enabled:
+                    # 158# P1-1: rescue モード — skip せず offset 倍増で安全実行
+                    self._balance_forced_skip_count = 0
+                    _is_rescue = True  # run_single_cycle に渡すフラグ
+                    logger.info(
+                        f"[158# P1-1] balance_forced rescue mode: "
+                        f"executing {next_side} with offset ×"
+                        f"{self.config.balance_forced_rescue_offset_mult:.1f} "
+                        f"(was consecutive skip={self._balance_forced_skip_count})"
+                    )
+                    # → continue しない: run_single_cycle へ進む (rescue=True)
                 else:
                     # 両方残高 OK → 従来通りスキップ (forced switch は損失回避のため)
                     self._balance_forced_skip_count += 1
@@ -1983,6 +2030,7 @@ class FillTestRunner(AbstractCycleRunner):
                 record = await self.run_single_cycle(
                     side_override=next_side,
                     balance_forced_switch=_balance_forced,
+                    balance_forced_rescue=_is_rescue,
                 )
                 # 154# C-2: 実サイクル実行 → forced skip カウンタリセット
                 self._balance_forced_skip_count = 0

@@ -4,6 +4,7 @@
   - C-1: 片側残高枯渇時は balance_forced でも実行許可
   - C-2: 連続 forced skip カウンタによるフォールバック
   - Config: balance_forced_deadlock_limit の YAML 読込・デフォルト値
+  - 158# P1-1: balance_forced 救済モード (offset 倍増)
 """
 
 from __future__ import annotations
@@ -173,3 +174,149 @@ class TestCancelReasonConstant:
 
     def test_balance_forced_skip_value(self) -> None:
         assert CR.BALANCE_FORCED_SKIP == "balance_forced_skip"
+
+
+# ======================================================================
+# 158# P1-1: balance_forced 救済モード
+# ======================================================================
+
+class TestBalanceForcedRescueConfig:
+    """158# P1-1: rescue モード設定テスト."""
+
+    def test_rescue_disabled_by_default(self) -> None:
+        cfg = FillTestConfig()
+        assert cfg.balance_forced_rescue_enabled is False
+
+    def test_rescue_offset_mult_default(self) -> None:
+        cfg = FillTestConfig()
+        assert cfg.balance_forced_rescue_offset_mult == pytest.approx(2.0)
+
+    def test_rescue_custom_values(self) -> None:
+        cfg = FillTestConfig(
+            balance_forced_rescue_enabled=True,
+            balance_forced_rescue_offset_mult=1.5,
+        )
+        assert cfg.balance_forced_rescue_enabled is True
+        assert cfg.balance_forced_rescue_offset_mult == pytest.approx(1.5)
+
+    def test_rescue_yaml_parsing(self) -> None:
+        """YAML loss_control セクションから rescue 設定を読込."""
+        yaml_cfg = {
+            "loss_control": {
+                "balance_forced_rescue_enabled": True,
+                "balance_forced_rescue_offset_mult": 1.8,
+            }
+        }
+        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        assert cfg.balance_forced_rescue_enabled is True
+        assert cfg.balance_forced_rescue_offset_mult == pytest.approx(1.8)
+
+
+class TestBalanceForcedRescueLogic:
+    """158# P1-1: rescue モードロジックテスト."""
+
+    def test_run_single_cycle_accepts_rescue_param(self) -> None:
+        """run_single_cycle が balance_forced_rescue パラメータを受け取る."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+        sig = inspect.signature(FillTestRunner.run_single_cycle)
+        assert "balance_forced_rescue" in sig.parameters
+        param = sig.parameters["balance_forced_rescue"]
+        assert param.default is False
+
+    def test_rescue_offset_in_run_single_cycle(self) -> None:
+        """run_single_cycle に rescue offset 調整ロジックがある."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        assert "balance_forced_rescue" in source
+        assert "balance_forced_rescue_offset_mult" in source
+
+    def test_rescue_mode_in_run_continuous(self) -> None:
+        """run_continuous に rescue フラグの初期化と受け渡しがある."""
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+        source = inspect.getsource(FillTestRunner.run_continuous)
+        assert "_is_rescue" in source
+        assert "balance_forced_rescue_enabled" in source
+
+    def test_config_fields_in_dataclass(self) -> None:
+        """FillTestConfig に rescue 関連フィールドが存在する."""
+        import dataclasses
+        cfg = FillTestConfig()
+        field_names = [f.name for f in dataclasses.fields(cfg)]
+        assert "balance_forced_rescue_enabled" in field_names
+        assert "balance_forced_rescue_offset_mult" in field_names
+
+
+# ======================================================================
+# 158# P1-5: A/B テスト基盤 (variant_id)
+# ======================================================================
+
+class TestABTestVariantConfig:
+    """158# P1-5: A/B テスト variant 設定テスト."""
+
+    def test_ab_variant_default_empty(self) -> None:
+        cfg = FillTestConfig()
+        assert cfg.ab_test_variant == ""
+
+    def test_ab_variant_custom(self) -> None:
+        cfg = FillTestConfig(ab_test_variant="sell_offset_015")
+        assert cfg.ab_test_variant == "sell_offset_015"
+
+    def test_ab_variant_yaml_parsing(self) -> None:
+        yaml_cfg = {
+            "ab_test": {"variant": "rescue_enabled"},
+        }
+        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        assert cfg.ab_test_variant == "rescue_enabled"
+
+    def test_ab_variant_yaml_absent(self) -> None:
+        yaml_cfg: dict = {}
+        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        assert cfg.ab_test_variant == ""
+
+
+class TestABTestVariantFillRecord:
+    """158# P1-5: FillRecord に variant が記録される."""
+
+    def test_fill_record_has_ab_test_variant(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord
+        r = FillRecord(
+            cycle_id="test", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+            ab_test_variant="sell_offset_015",
+        )
+        assert r.ab_test_variant == "sell_offset_015"
+
+    def test_fill_record_ab_variant_default_none(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord
+        r = FillRecord(
+            cycle_id="test", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+        )
+        assert r.ab_test_variant is None
+
+    def test_fill_record_ab_variant_roundtrip(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord
+        r = FillRecord(
+            cycle_id="test", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+            ab_test_variant="control_v1",
+        )
+        d = r.to_dict()
+        assert d["ab_test_variant"] == "control_v1"
+        r2 = FillRecord.from_dict(d)
+        assert r2.ab_test_variant == "control_v1"
+
+    def test_fill_record_ab_variant_absent_in_old_data(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord
+        d = {
+            "cycle_id": "old",
+            "timestamp": 0.0,
+            "side": "buy",
+            "order_price": 100.0,
+            "order_quantity": 0.001,
+        }
+        r = FillRecord.from_dict(d)
+        assert r.ab_test_variant is None

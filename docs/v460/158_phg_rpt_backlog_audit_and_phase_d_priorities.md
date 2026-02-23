@@ -23,10 +23,10 @@
 
 ### 数字のサマリ
 
-- **未対応合計**: 22 件
-- **P0 (Phase D 即時実行)**: 4 件 — SkipGate sell 再訓練, sell offset A/B, trending 方向効果測定, Oracle テスト
-- **P1 (168h run 中に解決)**: 6 件 — fill rate offset, balance_forced 救済, reprice ログ, trades_health, 時間帯閾値
-- **P2 (ph3/ph5 ブロッカー)**: 6 件 — WF バグ, execute_trade, failure mode test, 分割設計, skip_gate.py, JSONL ログ
+- **未対応合計**: 22 件 → **解決済: 10 件、残: 12 件**
+- **P0 (Phase D 即時実行)**: 4 件 — ✅ P0-1 SkipGate sell 再訓練, P0-2 sell offset A/B (データ観測待ち), ⏳ P0-3 trending (n≥30 待ち), ✅ P0-4 Oracle テスト
+- **P1 (168h run 中に解決)**: 6 件 — P1-2 fill rate offset, ✅ P1-1 balance_forced 救済, ✅ P1-3 reprice ログ, ✅ P1-4 trades_health, ✅ P1-5 A/B テスト基盤, P1-6 時間帯閾値
+- **P2 (ph3/ph5 ブロッカー)**: 6 件 — P2-1 WF バグ, P2-2 execute_trade, P2-3 failure mode test, P2-4 分割設計, P2-5 skip_gate.py, ✅ P2-6 VG JSONL ログ
 - **P3 (低優先 / v461+)**: 6 件 — deferred items
 
 ---
@@ -122,14 +122,15 @@
 
 ## §2 P1: 168h run 中に解決すべき中優先項目
 
-### P1-1: balance_forced 救済モード検証
+### P1-1: balance_forced 救済モード検証 — ✅ 実装完了 (158# P1-1)
 
 | 項目 | 値 |
 |---|---|
 | 出典 | 156# §5.3 D-5, 155# §9.5 #1 |
-| 問題 | Phase C で balance_forced_skip が 314 件 (13.0%)。BTC/JPY のどちらかに偏ったとき、実質的に取引が停止する。156# §14 で balance_forced バイパスを全 3 ゲートに水平展開済みだが、低リスク執行ロジック未実装。 |
-| アクション | balance_forced 時の制限的な執行ロジック設計: offset を通常の 2 倍にして「安全にポジション解消」するモード。 |
-| 工数見積 | 0.3 日 |
+| 問題 | Phase C で balance_forced_skip が 314 件 (13.0%)。BTC/JPY のどちらかに偏ったとき、実質的に取引が停止する。156# §14 で balance_forced バイパスを全 3 ゲートに水平展開済だが、低リスク執行ロジック未実装。 |
+| **ステータス** | **✅ 実装完了** (158# P1-1) |
+| 結果 | `FillTestConfig.balance_forced_rescue_enabled` + `balance_forced_rescue_offset_mult` (default 2.0) 追加。rescue 有効時: skip の代わりに offset 倍増で安全にポジション解消。YAML `loss_control.balance_forced_rescue_enabled` で制御。テスト 8 件追加 (31 passed)。 |
+| 工数見積 | 0.3 日 (実績 0.2 日) |
 
 ### P1-2: fill rate 向上のための offset 最適化
 
@@ -147,8 +148,10 @@
 | 出典 | 155# §9.4 #3, 156# §6.2 |
 | 問題 | reprice イベントが FillRecord に記録されていない。ヒンドサイト分析で reprice の効果を定量化できない。 |
 | アクション | ~~reprice 時のログ情報 (reprice_count, reprice_drift_bps) を FillRecord に追加。~~ |
-| **159# 更新** | `reprice_count` は `FillRecord` 実装済み (`ztb/metrics/fill_quality.py:93`)。残課題は `reprice_drift_bps` のみ。 |
-| 工数見積 | 0.1 日 (drift_bps のみ) |
+| **159# 更新** | `reprice_count` は `FillRecord` 実装済み (`ztb/metrics/fill_quality.py:93`)。~~残課題は `reprice_drift_bps` のみ。~~ |
+| **ステータス** | **✅ 完了** (158# P1-3) |
+| 結果 | `FillRecord.reprice_drift_bps` 追加。`OrderMonitor` で `cumulative_drift_bps` 追跡、`FillMonitorResult` 経由で FillRecord に記録。テスト 5 件追加 (42 passed)。 |
+| 工数見積 | 0.1 日 (実績 0.1 日) |
 
 ### P1-4: trades_health UNHEALTHY 状態の検証 — ✅ 完了 (158# 修正済)
 
@@ -160,14 +163,15 @@
 | **159# §2.1 追加修正** | `run_fill_test.py:1443-1445` の `th.latest_ts`/`th.age_hours` 参照を `th.available_days[-1]`/`th.stale_hours` に修正。`TradesHealthResult` のフィールド不整合による silent `AttributeError` を解消。テスト 5 件追加。 |
 | ステータス | **✅ 完了** (2 commit で段階修正) |
 
-### P1-5: offset A/B テスト自動化基盤
+### P1-5: offset A/B テスト自動化基盤 — ✅ 実装完了 (158# P1-5)
 
 | 項目 | 値 |
 |---|---|
 | 出典 | 156# §4.3 A/B-1〜4, 152# §5 |
 | 問題 | P0-2 (sell offset A/B) を手動で実施するのは労力がかかる。A/B テスト基盤をコードレベルで用意すれば、Phase D の複数施策を効率的に評価可能。 |
-| アクション | FillConfig に `ab_test_variant: str` フィールドを追加し、fill_records に variant を記録。分析スクリプトで variant 別集計を行える仕組み。 |
-| 工数見積 | 0.3 日 |
+| **ステータス** | **✅ 実装完了** (158# P1-5) |
+| 結果 | `FillTestConfig.ab_test_variant` + `FillRecord.ab_test_variant` 追加。YAML `ab_test.variant` で制御。fill_records の各レコードに variant が記録され、分析スクリプトで variant 別集計が可能。テスト 8 件追加 (31 passed)。 |
+| 工数見積 | 0.3 日 (実績 0.1 日) |
 
 ### P1-6: 時間帯 skip_gate 閾値の動的調整
 
@@ -230,14 +234,15 @@
 | アクション | `skip_gate_evaluator.py`, `maker_price.py` 等を `ztb/trading/live/` に段階的移動。 |
 | 工数見積 | 0.5 日 |
 
-### P2-6: VG (Volatility Guard) JSONL ログ蓄積
+### P2-6: VG (Volatility Guard) JSONL ログ蓄積 — ✅ 実装完了 (158# P2-6)
 
 | 項目 | 値 |
 |---|---|
 | 出典 | 107# Phase 2, 118# §3 |
 | 問題 | Volatility Guard の判定履歴を JSONL に記録する仕組みがない。VG の振る舞いをヒンドサイトで分析できない。 |
-| アクション | VG 判定 (boost/no-boost, velocity, regime) を fill_records もしくは別 JSONL に記録。 |
-| 工数見積 | 0.2 日 |
+| **ステータス** | **✅ 実装完了** (158# P2-6) |
+| 結果 | `FillRecord` に `vg_velocity_bps`, `vg_vpin`, `vg_boost_factor` 追加。`MakerPriceCalculator` に詳細追跡プロパティ。テスト 5 件追加 (42 passed)。 |
+| 工数見積 | 0.2 日 (実績 0.1 日) |
 
 ---
 
@@ -406,3 +411,7 @@ Week 3 (03/09–03/16):
 | 2026-02-24 | 158# P0-3: trending_down sell 中間スナップショット n=5 (commit `ae2e4e5c0`) |
 | 2026-02-24 | 159# レビュー反映: §1.1 進捗更新 (P1-3/P2-2/P2-4/P1-4), §2.1 trades_health alert 不整合修正, P0-B 3指標 dashboard 追加 |
 | 2026-02-24 | 159# P0-1: SkipGate sell/buy side 別モデル初回デプロイ (--all-runs, 統計ゲート初回スキップ+absolute_min 緩和) |
+| 2026-02-24 | 158# P1-3: `reprice_drift_bps` 追加 (FillRecord + OrderMonitor 累積 drift 追跡) |
+| 2026-02-24 | 158# P2-6: VG 詳細ログ (`vg_velocity_bps`, `vg_vpin`, `vg_boost_factor`) FillRecord 追加 |
+| 2026-02-24 | 158# P1-1: balance_forced rescue モード実装 (offset 倍増で安全ポジション解消) |
+| 2026-02-24 | 158# P1-5: A/B テスト基盤 (`ab_test_variant`) FillConfig + FillRecord 追加 |
