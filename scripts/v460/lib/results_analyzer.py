@@ -8,6 +8,7 @@ ztb/io/json_io の write_json (atomic write) を活用.
 
 from __future__ import annotations
 
+import heapq
 import logging
 import math
 from collections import defaultdict
@@ -247,8 +248,11 @@ def compute_multi_track_analysis(
         result["current_run"] = {"run_id": None, "n_total": 0}
 
     # --- trailing-N ---
-    sorted_records = sorted(records, key=lambda r: r.timestamp, reverse=True)
-    trailing_records = sorted_records[:trailing_n]
+    trailing_records = heapq.nlargest(
+        trailing_n,
+        records,
+        key=lambda r: r.timestamp,
+    )
     if trailing_records:
         trailing_metrics = compute_fill_metrics(trailing_records)
         result[f"trailing_{trailing_n}"] = _metrics_summary(

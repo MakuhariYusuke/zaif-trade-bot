@@ -25,8 +25,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import math
 import sys
-from dataclasses import asdict, dataclass
+from collections import defaultdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Optional
 
@@ -36,6 +38,7 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 
 from ztb.metrics.fill_quality import (
     FillRecord,
+    PnlAccumulator,
     filter_clean_records,
     load_fill_records_glob,
 )
@@ -73,14 +76,124 @@ class OracleMetrics:
     monthly_oracle_jpy: Optional[float] = None
 
 
+@dataclass
+class _OracleAggregate:
+    """Oracle 指標の元となる生集計."""
+
+    n_total: int = 0
+    n_negative: int = 0
+    pnl_30s_all: PnlAccumulator = field(default_factory=PnlAccumulator)
+    pnl_30s_nonnegative: PnlAccumulator = field(default_factory=PnlAccumulator)
+    pnl_60s_all: PnlAccumulator = field(default_factory=PnlAccumulator)
+    pnl_120s_all: PnlAccumulator = field(default_factory=PnlAccumulator)
+    pnl_60s_nonnegative: PnlAccumulator = field(default_factory=PnlAccumulator)
+    pnl_120s_nonnegative: PnlAccumulator = field(default_factory=PnlAccumulator)
+
+
 _BPS_FACTOR = 10_000
 # 120s サイクル → 月 21,600 cycles (30日)
 _MONTHLY_CYCLES = 30 * 24 * 3600 / 120
 
 
-def _safe_mean(values: list[float]) -> float:
-    """空リストでも安全な平均."""
-    return sum(values) / len(values) if values else 0.0
+def _to_finite_float(value: object | None) -> float | None:
+    if value is None:
+        return None
+    try:
+        numeric = float(value)
+    except Exception:
+        return None
+    return numeric if math.isfinite(numeric) else None
+
+
+def _aggregate_oracle(records: list[FillRecord]) -> _OracleAggregate:
+    """filled + 30s PnL 有効レコードを単一パスで集計."""
+    agg = _OracleAggregate()
+
+    for record in records:
+        if not record.filled or record.post_fill_30s_pnl is None:
+            continue
+
+        pnl_30s = _to_finite_float(record.post_fill_30s_pnl)
+        if pnl_30s is None:
+            continue
+
+        agg.n_total += 1
+        agg.pnl_30s_all.add(pnl_30s)
+        if pnl_30s >= 0:
+            agg.pnl_30s_nonnegative.add(pnl_30s)
+        else:
+            agg.n_negative += 1
+
+        numeric_60s = _to_finite_float(record.post_fill_60s_pnl)
+        if numeric_60s is not None:
+            agg.pnl_60s_all.add(numeric_60s)
+            if numeric_60s >= 0:
+                agg.pnl_60s_nonnegative.add(numeric_60s)
+
+        numeric_120s = _to_finite_float(record.post_fill_120s_pnl)
+        if numeric_120s is not None:
+            agg.pnl_120s_all.add(numeric_120s)
+            if numeric_120s >= 0:
+                agg.pnl_120s_nonnegative.add(numeric_120s)
+
+    return agg
+
+
+def _metrics_from_aggregate(
+    agg: _OracleAggregate,
+    *,
+    label: str,
+    lot_btc: float,
+    btc_price_jpy: float,
+) -> OracleMetrics:
+    """集計値から OracleMetrics を構築."""
+    if agg.n_total == 0:
+        return OracleMetrics(
+            label=label,
+            n_total=0,
+            n_positive=0,
+            n_negative=0,
+            oracle_skip_rate=0.0,
+            actual_pnl_mean=0.0,
+            actual_pnl_sum=0.0,
+            oracle_pnl_mean=0.0,
+            oracle_pnl_sum=0.0,
+        )
+
+    n_positive = agg.pnl_30s_nonnegative.count
+    oracle_exec_rate = n_positive / agg.n_total
+    jpy_factor = lot_btc * btc_price_jpy / _BPS_FACTOR
+    actual_jpy = agg.pnl_30s_all.mean_bps * jpy_factor
+    # Oracle は正の取引のみ実行するため、cycle あたり期待値 = oracle_mean × 実行率
+    oracle_jpy = agg.pnl_30s_nonnegative.mean_bps * jpy_factor * oracle_exec_rate
+
+    return OracleMetrics(
+        label=label,
+        n_total=agg.n_total,
+        n_positive=n_positive,
+        n_negative=agg.n_negative,
+        oracle_skip_rate=agg.n_negative / agg.n_total,
+        actual_pnl_mean=round(agg.pnl_30s_all.mean_bps, 4),
+        actual_pnl_sum=round(agg.pnl_30s_all.total_bps, 2),
+        oracle_pnl_mean=round(agg.pnl_30s_nonnegative.mean_bps, 4),
+        oracle_pnl_sum=round(agg.pnl_30s_nonnegative.total_bps, 2),
+        pnl_60s_mean=round(agg.pnl_60s_all.mean_bps, 4) if agg.pnl_60s_all.count else None,
+        pnl_120s_mean=round(agg.pnl_120s_all.mean_bps, 4) if agg.pnl_120s_all.count else None,
+        oracle_60s_mean=(
+            round(agg.pnl_60s_nonnegative.mean_bps, 4)
+            if agg.pnl_60s_nonnegative.count
+            else None
+        ),
+        oracle_120s_mean=(
+            round(agg.pnl_120s_nonnegative.mean_bps, 4)
+            if agg.pnl_120s_nonnegative.count
+            else None
+        ),
+        actual_jpy_per_cycle=round(actual_jpy, 4),
+        oracle_jpy_per_cycle=round(oracle_jpy, 4),
+        monthly_actual_jpy=round(actual_jpy * _MONTHLY_CYCLES, 0),
+        monthly_oracle_jpy=round(oracle_jpy * _MONTHLY_CYCLES, 0),
+    )
 
 
 def compute_oracle_metrics(
@@ -97,56 +210,12 @@ def compute_oracle_metrics(
         lot_btc: JPY 換算に使うロットサイズ.
         btc_price_jpy: JPY 換算に使う BTC 価格.
     """
-    # 30s PnL がある filled レコードのみ
-    valid = [
-        r for r in records
-        if r.filled and r.post_fill_30s_pnl is not None
-    ]
-    if not valid:
-        return OracleMetrics(
-            label=label, n_total=0, n_positive=0, n_negative=0,
-            oracle_skip_rate=0.0, actual_pnl_mean=0.0, actual_pnl_sum=0.0,
-            oracle_pnl_mean=0.0, oracle_pnl_sum=0.0,
-        )
-
-    pnl_30s = [r.post_fill_30s_pnl for r in valid]  # type: ignore[misc]
-    positive = [p for p in pnl_30s if p >= 0]
-    negative = [p for p in pnl_30s if p < 0]
-
-    # 60s / 120s (存在するレコードのみ)
-    pnl_60s = [r.post_fill_60s_pnl for r in valid if r.post_fill_60s_pnl is not None]
-    pnl_120s = [r.post_fill_120s_pnl for r in valid if r.post_fill_120s_pnl is not None]
-    pos_60s = [p for p in pnl_60s if p >= 0]
-    pos_120s = [p for p in pnl_120s if p >= 0]
-
-    actual_mean = _safe_mean(pnl_30s)
-    oracle_mean = _safe_mean(positive)
-
-    # JPY 換算: lot × price × bps / BPS_FACTOR
-    jpy_factor = lot_btc * btc_price_jpy / _BPS_FACTOR
-    actual_jpy = actual_mean * jpy_factor
-    oracle_jpy = oracle_mean * jpy_factor * (len(positive) / len(valid)) if valid else 0.0
-    # Oracle は正の取引のみ実行するため、cycle あたり期待値 = oracle_mean × 実行率
-    oracle_exec_rate = len(positive) / len(valid) if valid else 0.0
-
-    return OracleMetrics(
+    agg = _aggregate_oracle(records)
+    return _metrics_from_aggregate(
+        agg,
         label=label,
-        n_total=len(valid),
-        n_positive=len(positive),
-        n_negative=len(negative),
-        oracle_skip_rate=len(negative) / len(valid) if valid else 0.0,
-        actual_pnl_mean=round(actual_mean, 4),
-        actual_pnl_sum=round(sum(pnl_30s), 2),
-        oracle_pnl_mean=round(oracle_mean, 4),
-        oracle_pnl_sum=round(sum(positive), 2),
-        pnl_60s_mean=round(_safe_mean(pnl_60s), 4) if pnl_60s else None,
-        pnl_120s_mean=round(_safe_mean(pnl_120s), 4) if pnl_120s else None,
-        oracle_60s_mean=round(_safe_mean(pos_60s), 4) if pos_60s else None,
-        oracle_120s_mean=round(_safe_mean(pos_120s), 4) if pos_120s else None,
-        actual_jpy_per_cycle=round(actual_jpy, 4),
-        oracle_jpy_per_cycle=round(oracle_jpy, 4),
-        monthly_actual_jpy=round(actual_jpy * _MONTHLY_CYCLES, 0),
-        monthly_oracle_jpy=round(oracle_jpy * _MONTHLY_CYCLES, 0),
+        lot_btc=lot_btc,
+        btc_price_jpy=btc_price_jpy,
     )
 
 
@@ -201,29 +270,44 @@ def run_oracle_baseline(
         print("[oracle] filled かつ PnL 計測済みのレコードがありません。")
         return {"error": "no filled records"}
 
+    side_groups: dict[str, list[FillRecord]] = {"buy": [], "sell": []}
+    regime_groups: dict[str, list[FillRecord]] = defaultdict(list)
+    for record in filled:
+        if record.side in side_groups:
+            side_groups[record.side].append(record)
+        regime_groups[record.regime or "none"].append(record)
+
     # --- 全体 ---
-    all_metrics = compute_oracle_metrics(filled, "all", lot_btc, btc_price_jpy)
+    all_agg = _aggregate_oracle(filled)
+    all_metrics = _metrics_from_aggregate(
+        all_agg,
+        label="all",
+        lot_btc=lot_btc,
+        btc_price_jpy=btc_price_jpy,
+    )
 
     # --- side 別 ---
-    buy = [r for r in filled if r.side == "buy"]
-    sell = [r for r in filled if r.side == "sell"]
-    buy_metrics = compute_oracle_metrics(buy, "buy", lot_btc, btc_price_jpy)
-    sell_metrics = compute_oracle_metrics(sell, "sell", lot_btc, btc_price_jpy)
+    buy_metrics = compute_oracle_metrics(side_groups["buy"], "buy", lot_btc, btc_price_jpy)
+    sell_metrics = compute_oracle_metrics(side_groups["sell"], "sell", lot_btc, btc_price_jpy)
 
     # --- レジーム別 ---
     regime_metrics: list[OracleMetrics] = []
-    regimes = sorted(set(r.regime or "none" for r in filled))
-    for regime in regimes:
-        recs = [r for r in filled if (r.regime or "none") == regime]
+    for regime_name in sorted(regime_groups):
+        recs = regime_groups[regime_name]
         if recs:
             regime_metrics.append(
-                compute_oracle_metrics(recs, f"regime:{regime}", lot_btc, btc_price_jpy)
+                compute_oracle_metrics(recs, f"regime:{regime_name}", lot_btc, btc_price_jpy)
             )
 
     # --- Lot size 別月間推定 ---
     lot_scenarios: list[dict] = []
     for lot in [0.001, 0.005, 0.01, 0.05, 0.1]:
-        m = compute_oracle_metrics(filled, f"lot={lot}", lot, btc_price_jpy)
+        m = _metrics_from_aggregate(
+            all_agg,
+            label=f"lot={lot}",
+            lot_btc=lot,
+            btc_price_jpy=btc_price_jpy,
+        )
         lot_scenarios.append({
             "lot_btc": lot,
             "monthly_actual_jpy": m.monthly_actual_jpy,

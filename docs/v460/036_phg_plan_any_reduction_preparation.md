@@ -1478,6 +1478,52 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots ztb/metrics/fill_quality.py scripts/v460/lib/results_analyzer.py tests/unit/v460/test_results_analyzer.py`
   - 結果: `any_type_debt_tokens=0`
 
+## Step83: Oracle系損益計算の単一パス化 + 追加計算削減 (2026-02-23)
+
+### 1) 既存損益実装の再利用
+
+- 対象:
+  - `scripts/v460/analysis/oracle_baseline.py`
+  - `scripts/v460/lib/results_analyzer.py`
+- `oracle_baseline` で `ztb.metrics.fill_quality.PnlAccumulator` を再利用。
+  - Oracle集計を `PnlAccumulator` ベースに統一し、手書き `sum/len` を削減。
+
+### 2) 計算効率改善
+
+- `oracle_baseline`:
+  - `_OracleAggregate` / `_aggregate_oracle()` / `_metrics_from_aggregate()` を導入。
+  - `compute_oracle_metrics()` を単一パス集計に変更（`type: ignore` 除去）。
+  - `run_oracle_baseline()` の lotシナリオは、同一データの再走査をやめて
+    **全体集計を再利用**して算出。
+  - side/regime 用のグループ化も1回の走査で構築。
+- `results_analyzer`:
+  - `compute_multi_track_analysis()` の trailing 算出を
+    全件ソート (`sorted(..., reverse=True)[:N]`) から
+    `heapq.nlargest(N, ...)` に変更。
+    - `O(n log n)` → `O(n log N)`（N は trailing window）。
+
+### 3) 不具合余地の低減
+
+- `oracle_baseline` で `_to_finite_float()` を導入し、
+  非数値/非有限値混入時に安全に除外。
+- Oracle集計の `filled + pnl30 有効` 条件を明示化し、
+  60s/120s も同一基準の安全変換で集計。
+
+### 4) 検証
+
+- `py_compile`:
+  - `scripts/v460/analysis/oracle_baseline.py`
+  - `scripts/v460/lib/results_analyzer.py`
+  - `ztb/metrics/fill_quality.py`
+- テスト:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_retrain_hot_reload.py -k oracle -q --override-ini="addopts="`
+  - 結果: `5 passed, 64 deselected`
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_results_analyzer.py tests/unit/v460/test_fill_quality.py::Test051RoundTripMetrics tests/unit/v460/test_fill_quality.py::Test051RegimeMetrics tests/unit/v460/test_fill_quality.py::Test051HourlyMetrics -q --override-ini="addopts="`
+  - 結果: `11 passed`
+- `any_inventory`:
+  - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460/analysis/oracle_baseline.py scripts/v460/lib/results_analyzer.py ztb/metrics/fill_quality.py`
+  - 結果: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
