@@ -1308,6 +1308,10 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - 対象: `scripts/v460/analysis/reproduce_152_metrics.py`
 - `FillRecord` / `MetricsMap` alias を導入し、`Any` を `object` ベースへ置換。
 - `_load_records()` は読み込んだ JSONL を dict のみに正規化して扱うよう変更。
+- 既存実装を再利用:
+  - `ztb.utils.safety.ensure_dict` / `safe_to_float` / `safe_to_int`
+  - `ztb.io.json_io.write_json`
+  に寄せ、同等ヘルパーのローカル重複を削減。
 
 ### 2) パフォーマンス・重複削減
 

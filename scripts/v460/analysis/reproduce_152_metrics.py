@@ -13,12 +13,15 @@ import argparse
 import datetime
 import glob
 import json
+import math
 import sys
 from collections import Counter, defaultdict
 from collections.abc import Sequence
 from pathlib import Path
 
 from ztb.io.jsonl import read_jsonl_objects
+from ztb.io.json_io import write_json
+from ztb.utils.safety import ensure_dict, safe_to_float, safe_to_int
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -30,14 +33,10 @@ MetricsMap = dict[str, object]
 
 
 def _to_float(value: object) -> float | None:
-    if isinstance(value, (int, float)):
-        return float(value)
-    if isinstance(value, str):
-        try:
-            return float(value)
-        except ValueError:
-            return None
-    return None
+    if value is None or isinstance(value, bool):
+        return None
+    parsed = safe_to_float(value, float("nan"))
+    return parsed if math.isfinite(parsed) else None
 
 
 def _to_str(value: object) -> str | None:
@@ -45,7 +44,7 @@ def _to_str(value: object) -> str | None:
 
 
 def _to_dict(value: object) -> dict[str, object]:
-    return dict(value) if isinstance(value, dict) else {}
+    return ensure_dict(value)
 
 
 # ---------------------------------------------------------------------------
@@ -229,22 +228,11 @@ def _compute_metrics(
 # ---------------------------------------------------------------------------
 
 def _as_int(value: object) -> int:
-    if isinstance(value, bool):
-        return int(value)
-    if isinstance(value, int):
-        return value
-    if isinstance(value, float):
-        return int(value)
-    if isinstance(value, str):
-        try:
-            return int(value)
-        except ValueError:
-            return 0
-    return 0
+    return safe_to_int(value, 0)
 
 
 def _as_float_or_zero(value: object) -> float:
-    return _to_float(value) or 0.0
+    return safe_to_float(value, 0.0)
 
 
 def _print_report(metrics: MetricsMap, params: dict[str, object]) -> None:
@@ -387,9 +375,11 @@ def main(argv: Sequence[str] | None = None) -> MetricsMap:
     if args.output:
         out_path = Path(args.output)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(
-            json.dumps({"params": params, "metrics": metrics}, indent=2, ensure_ascii=False),
-            encoding="utf-8",
+        write_json(
+            out_path,
+            {"params": params, "metrics": metrics},
+            indent=2,
+            ensure_ascii=False,
         )
         print(f"\nSaved to {out_path}")
 
