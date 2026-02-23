@@ -433,9 +433,70 @@ Week 3 (03/09-03/16):
 
 ---
 
-## §13 変更履歴 (追補)
+## §14 balance_forced バイパス水平展開 + Phase C 再起動
+
+### 14.1 問題
+
+§10 #1 では `skip_sell_trending` への balance_forced バイパスのみ修正したが、同種のデッドロックリスクが残り 2 ゲートにも存在:
+
+| ゲート | side | デッドロック条件 | 修正前 |
+|--------|------|-----------------|--------|
+| `skip_buy_unknown_regime` | buy | forced→buy + regime=unknown | ❌ バイパスなし |
+| `skip_sell_trending` | sell | forced→sell + regime=trending | ✅ §10 #1 修正済 |
+| `sell_dynamic_kill` | sell | forced→sell + rolling PnL 閾値以下 | ❌ バイパスなし |
+
+### 14.2 修正内容
+
+全 3 ゲートに `and not _balance_forced` 条件を統一:
+
+```python
+# skip_buy_unknown_regime (L1773)
+if (self.config.skip_buy_unknown_regime
+    and next_side == "buy"
+    and not _balance_forced          # ← 追加
+    and self._regime_detector ...):
+
+# sell_dynamic_kill (L1824)
+if (self.config.sell_dynamic_kill_enabled
+    and next_side == "sell"
+    and not _balance_forced          # ← 追加
+    and self._is_sell_killed()):
+```
+
+### 14.3 テスト
+
+`TestBalanceForcedBypassHorizontal` (4 テスト):
+- 各ゲートのソースに `not _balance_forced` が含まれることを検証
+- AST パースで 3 箇所以上の `not _balance_forced` を確認
+
+**結果**: 32 passed (既存 28 + 新規 4)
+
+### 14.4 Phase C 再起動
+
+| 項目 | 値 |
+|------|-----|
+| 旧 PID | 108148 (deadlock since 02/23 04:36, 強制停止) |
+| 新 PID | 120384 |
+| 起動日時 | 2026-02-23 19:01:06 JST |
+| Git SHA | `3959424ef` |
+| 設定ファイル | `configs/v460/fill_test.yaml` |
+| 実行時間 | 168h (`--hours 168`) |
+| exchange | coincheck |
+
+### 14.5 変更ファイル
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `scripts/v460/run_fill_test.py` | skip_buy_unknown_regime + sell_dynamic_kill に balance_forced bypass 追加 |
+| `tests/unit/v460/test_155_hindsight_review.py` | TestBalanceForcedBypassHorizontal 4 テスト追加 |
+| `docs/v460/156_ph2_rpt_sell_root_cause_and_phase_d_plan.md` | 本セクション追加 |
+
+---
+
+## §15 変更履歴 (追補)
 
 | 日付 | 内容 |
 |------|------|
 | 2026-02-23 | 155# 実装レビュー結果（重大度付き）を追補し、Phase D 連携を明記 |
 | 2026-02-23 | §10 レビュー全 6 項目の実装完了、§12 に結果記録 |
+| 2026-02-23 | balance_forced バイパス水平展開 (全3ゲート統一) + Phase C 再起動 (PID 120384) |
