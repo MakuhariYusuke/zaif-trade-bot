@@ -202,6 +202,7 @@ class OrderMonitor:
                     # 122# E12 Fix: postonly_reject 推定の精度向上
                     # elapsed だけでなく spread_at_order も条件に含めて
                     # status_unknown との誤分類を低減
+                    # 156# §10 #3: 定数経由で統一 (旧 "postonly_reject" → "post_only_reject")
                     is_fast_cancel = elapsed < cfg.poll_interval_sec * 3
                     is_narrow_spread = (
                         spread_at_order is not None
@@ -209,7 +210,7 @@ class OrderMonitor:
                         and spread_at_order < cfg.min_spread_jpy * 2
                     )
                     if is_fast_cancel and is_narrow_spread:
-                        reason = "postonly_reject"
+                        reason = "post_only_reject"
                     elif is_fast_cancel:
                         reason = "status_unknown_fast"
                     else:

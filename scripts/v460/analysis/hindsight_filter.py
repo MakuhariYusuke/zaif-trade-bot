@@ -285,6 +285,10 @@ def _analyze_records(
 
         side = _to_str(r.get("side"), default="unknown")
 
+        # 156# §10 #2: buy/sell 以外の side を除外 (符号歪み防止)
+        if side not in ("buy", "sell"):
+            continue
+
         # §9.4 #1: price=0 → 補間で疑似参照価格を取得
         interpolated = False
         if op_f <= 0:
@@ -357,9 +361,15 @@ _DIRECT_CATEGORY_BY_REASON: dict[str, str] = {
     "timeout": "H2_timeout",
     "balance_forced_skip": "H5_balance_forced",
 }
+# 156# §10 #3/#4: cancel_reasons 定数と同期し技術要因を一括分類
 _TECHNICAL_REASONS = frozenset({
-    "postonly_reject",
+    "post_only_reject",
+    "postonly_reject",       # レガシー互換 (order_monitor 旧出力)
     "orderbook_error",
+    "orderbook_timeout",     # 130# 細分化
+    "orderbook_rate_limit",  # 130# 細分化
+    "orderbook_empty",       # 130# 細分化
+    "sell_guard_reject",     # 088# sell ガード
     "api_error",
     "stale_skip_gate_blocked",
     "stale_reprice_failed",

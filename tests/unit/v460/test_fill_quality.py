@@ -1379,9 +1379,10 @@ class TestUnknownFillHandling:
 
         assert record.filled is False
         assert record.cancelled is True
-        # 079#: elapsed が短い場合は postonly_reject/status_unknown_fast、長い場合は status_unknown
+        # 079#: elapsed が短い場合は post_only_reject/status_unknown_fast、長い場合は status_unknown
         # 122# E12: spread 条件も考慮して 3 分類に細分化
-        assert record.cancel_reason in ("status_unknown", "status_unknown_fast", "postonly_reject")
+        # 156# §10 #3: postonly_reject → post_only_reject に統一
+        assert record.cancel_reason in ("status_unknown", "status_unknown_fast", "post_only_reject")
 
     @pytest.mark.asyncio
     async def test_status_none_then_filled_on_retry(

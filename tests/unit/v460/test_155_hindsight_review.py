@@ -1,4 +1,7 @@
-"""155# §9 レビュー対応テスト — price=0 補間, 待機時間帯, regime×side, trending sell 抑制."""
+"""155# §9 レビュー対応テスト — price=0 補間, 待機時間帯, regime×side, trending sell 抑制.
+
+156# §10 #6: 挙動テスト追加 — balance_forced×trending バイパス, reason 正規化, side バリデーション.
+"""
 
 from __future__ import annotations
 
@@ -348,3 +351,184 @@ class TestSellTimeoutConfig:
         yaml_cfg = {"order_timeout_sec_sell": 72.0}
         cfg = FillTestConfig.from_yaml(yaml_cfg)
         assert cfg.order_timeout_sec_sell == 72.0
+
+
+# ======================================================================
+# 156# §10 #1: balance_forced × trending 競合解消テスト
+# ======================================================================
+
+
+class TestBalanceForcedTrendingBypass:
+    """balance_forced=True 時に skip_sell_trending をバイパスすることの検証."""
+
+    def test_trending_sell_skip_code_has_balance_forced_check(self) -> None:
+        """run_fill_test.py の trending sell skip ブロックに
+        'not _balance_forced' 条件が含まれていること."""
+        import ast
+        from pathlib import Path
+        src = Path("scripts/v460/run_fill_test.py").read_text(encoding="utf-8")
+        tree = ast.parse(src)
+        found = False
+        for node in ast.walk(tree):
+            if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+                if isinstance(node.operand, ast.Name) and node.operand.id == "_balance_forced":
+                    found = True
+                    break
+        assert found, "trending sell skip must check 'not _balance_forced'"
+
+    def test_skip_sell_trending_config_still_exists(self) -> None:
+        """skip_sell_trending 設定フィールドは維持されていること."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+        cfg = FillTestConfig(skip_sell_trending=True)
+        assert cfg.skip_sell_trending is True
+
+
+# ======================================================================
+# 156# §10 #3: cancel_reason 正規化テスト
+# ======================================================================
+
+
+class TestCancelReasonNormalization:
+    """post_only_reject 表記統一の検証."""
+
+    def test_cancel_reasons_constant_value(self) -> None:
+        """定数が 'post_only_reject' であること."""
+        from scripts.v460.lib.cancel_reasons import POST_ONLY_REJECT
+        assert POST_ONLY_REJECT == "post_only_reject"
+
+    def test_order_monitor_uses_post_only_reject(self) -> None:
+        """order_monitor.py が 'post_only_reject' を出力すること."""
+        src_path = "scripts/v460/lib/order_monitor.py"
+        from pathlib import Path
+        src = Path(src_path).read_text(encoding="utf-8")
+        assert '"post_only_reject"' in src
+        # 旧表記が残っていないこと
+        assert 'reason = "postonly_reject"' not in src
+
+    def test_hindsight_technical_reasons_covers_both(self) -> None:
+        """hindsight_filter がレガシー互換で両方の表記を認識すること."""
+        from scripts.v460.analysis.hindsight_filter import _TECHNICAL_REASONS
+        assert "post_only_reject" in _TECHNICAL_REASONS
+        assert "postonly_reject" in _TECHNICAL_REASONS  # レガシー互換
+
+
+# ======================================================================
+# 156# §10 #2: side バリデーションテスト
+# ======================================================================
+
+
+class TestSideValidation:
+    """buy/sell 以外の side が除外されることの検証."""
+
+    def test_invalid_side_excluded(self) -> None:
+        """side='unknown' のレコードが分析結果に含まれないこと."""
+        from scripts.v460.analysis.hindsight_filter import (
+            _analyze_records,
+            PricePoint,
+        )
+        records = [
+            {"cycle_id": "c1", "timestamp": 100.0, "side": "unknown",
+             "order_price": 1000.0, "filled": False, "cancel_reason": "timeout"},
+            {"cycle_id": "c2", "timestamp": 100.0, "side": "buy",
+             "order_price": 1000.0, "filled": True, "cancel_reason": ""},
+        ]
+        timeline = [
+            PricePoint(timestamp=90.0, price=1000.0),
+            PricePoint(timestamp=130.0, price=1001.0),
+            PricePoint(timestamp=220.0, price=1002.0),
+        ]
+        results = _analyze_records(records, timeline)
+        # unknown side は除外され、buy のみ残る
+        assert len(results) == 1
+        assert results[0].side == "buy"
+
+    def test_valid_sides_kept(self) -> None:
+        """buy と sell の両方が正常に処理されること."""
+        from scripts.v460.analysis.hindsight_filter import (
+            _analyze_records,
+            PricePoint,
+        )
+        records = [
+            {"cycle_id": "c1", "timestamp": 100.0, "side": "buy",
+             "order_price": 1000.0, "filled": True, "cancel_reason": ""},
+            {"cycle_id": "c2", "timestamp": 100.0, "side": "sell",
+             "order_price": 1000.0, "filled": True, "cancel_reason": ""},
+        ]
+        timeline = [
+            PricePoint(timestamp=90.0, price=1000.0),
+            PricePoint(timestamp=130.0, price=1001.0),
+            PricePoint(timestamp=220.0, price=1002.0),
+        ]
+        results = _analyze_records(records, timeline)
+        assert len(results) == 2
+        sides = {r.side for r in results}
+        assert sides == {"buy", "sell"}
+
+
+# ======================================================================
+# 156# §10 #4: H6 technical 分類網羅テスト
+# ======================================================================
+
+
+class TestH6TechnicalClassification:
+    """技術要因の cancel_reason が H6_technical に分類されること."""
+
+    def test_all_ob_reasons_are_technical(self) -> None:
+        """orderbook_* 系が全て H6_technical に分類されること."""
+        from scripts.v460.analysis.hindsight_filter import (
+            _category_from_result,
+            HindsightResult,
+        )
+        ob_reasons = [
+            "orderbook_error", "orderbook_timeout",
+            "orderbook_rate_limit", "orderbook_empty",
+            "sell_guard_reject",
+        ]
+        for reason in ob_reasons:
+            result = HindsightResult(
+                cycle_id="t1", timestamp=1.0, side="sell",
+                order_price=100.0, cancel_reason=reason,
+                filled=False, actual_pnl_30s=None,
+                hindsight_pnl_30s=None, hindsight_pnl_60s=None,
+                hindsight_pnl_120s=None, reverse_pnl_30s=None,
+                skip_gate_score=None, skip_gate_as_prob=None,
+                regime=None, interpolated_ref=False, queue_wait_sec=None,
+            )
+            cat = _category_from_result(result)
+            assert cat == "H6_technical", f"{reason} should be H6_technical, got {cat}"
+
+    def test_postonly_both_forms_technical(self) -> None:
+        """post_only_reject/postonly_reject の両方が H6_technical."""
+        from scripts.v460.analysis.hindsight_filter import (
+            _category_from_result,
+            HindsightResult,
+        )
+        for reason in ("post_only_reject", "postonly_reject"):
+            result = HindsightResult(
+                cycle_id="t1", timestamp=1.0, side="buy",
+                order_price=100.0, cancel_reason=reason,
+                filled=False, actual_pnl_30s=None,
+                hindsight_pnl_30s=None, hindsight_pnl_60s=None,
+                hindsight_pnl_120s=None, reverse_pnl_30s=None,
+                skip_gate_score=None, skip_gate_as_prob=None,
+                regime=None, interpolated_ref=False, queue_wait_sec=None,
+            )
+            assert _category_from_result(result) == "H6_technical"
+
+
+# ======================================================================
+# 156# §10 #5: fallback 鮮度テスト
+# ======================================================================
+
+
+class TestFallbackPriceStaleness:
+    """orderbook_error fallback に鮮度判定が含まれることの検証."""
+
+    def test_fallback_stale_check_in_code(self) -> None:
+        """run_fill_test.py に fallback_stale チェックが含まれること."""
+        from pathlib import Path
+        src = Path("scripts/v460/run_fill_test.py").read_text(encoding="utf-8")
+        assert "_fallback_stale" in src
+        assert "_fallback_age" in src
+        # stale 時は price=0.0 にフォールバック
+        assert "not _fallback_stale else 0.0" in src

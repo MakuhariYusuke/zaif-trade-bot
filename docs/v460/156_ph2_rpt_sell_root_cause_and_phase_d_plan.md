@@ -363,3 +363,79 @@ Week 3 (03/09-03/16):
 | `docs/v460/133_ph2_rev_132_profitability_max_plan.md` | 132# リネームに伴うリンク更新 |
 | `archived/docs_v460/146_multi_exchange_registry.md` | 146# 重複ファイルのアーカイブ |
 | `docs/v460/156_ph2_rpt_sell_root_cause_and_phase_d_plan.md` | 本ドキュメント (新規) |
+
+---
+
+## §10 追補: 155# 実装レビュー結果 (Codex 反映)
+
+> 先行レビュー（チャット回答）を文書化し、Phase D 計画へ接続する。
+
+### 10.1 主要指摘 (重大度付き)
+
+| # | 重大度 | 対象ファイル | 問題 | 推奨対応 |
+|---|--------|--------------|------|---------|
+| 1 | **HIGH** | `scripts/v460/run_fill_test.py` | `balance_forced` で実行許可されたケースでも `skip_sell_trending` が後段で発火し、実質的に「売るしかない局面」で売れず停止しうる。 | `balance_forced_switch=True` 時は `skip_sell_trending` をバイパス。one-sided balance 時は必ず執行。 |
+| 2 | **MEDIUM** | `scripts/v460/analysis/hindsight_filter.py` | `side` が `buy/sell` 以外でも後知恵 PnL に混入し、符号が歪む可能性。 | `buy/sell` 以外を除外、または別カテゴリ（例: H9_invalid_side）へ分離。 |
+| 3 | **MEDIUM** | `scripts/v460/run_fill_test.py`, `scripts/v460/lib/order_monitor.py`, `scripts/v460/lib/cancel_reasons.py` | `post_only_reject` と `postonly_reject` が混在し、原因別集計が分断。 | cancel_reason を定数経由で単一表記に統一し、読み込み時に互換マップで吸収。 |
+| 4 | **MEDIUM** | `scripts/v460/analysis/hindsight_filter.py` | H6 technical 分類が `orderbook_timeout/rate_limit/empty/sell_guard_reject` を網羅しきれず、技術要因の寄与が過小化。 | `_categorize()` を `cancel_reasons` 定数と同期し、技術要因を一括分類。 |
+| 5 | **LOW** | `scripts/v460/run_fill_test.py` | `orderbook_error` 時の `_prev_mid_price` fallback に鮮度判定がない。 | fallback 価格の age を記録し、閾値超過時は stale フラグ付きで扱う。 |
+| 6 | **MEDIUM** | `tests/unit/v460/test_155_hindsight_review.py` | 設定・フィールド存在テスト中心で、相互作用（forced×trending, reason 正規化等）の挙動テストが不足。 | 挙動テストを追加（forced時バイパス、reason正規化、sell timeout反映）。 |
+
+### 10.2 収益直結の実装優先順 (レビュー反映)
+
+| 優先 | 施策 | 目的 |
+|------|------|------|
+| **P0** | `balance_forced` と `skip_sell_trending` の競合解消 | デッドロック回避 + 機会損失削減 |
+| **P0** | cancel_reason 正規化 (`post_only_reject` 系) | ログ分析精度改善、誤った意思決定防止 |
+| **P1** | H6 technical 分類の網羅化 | `orderbook_*` 系の損失寄与を可視化 |
+| **P1** | 15-30s 帯 reprice/cancel の早期化検証 | wait 帯ワースト損失の抑制 |
+| **P2** | fallback price 鮮度管理 | ヒンドサイト集計の信頼性向上 |
+
+### 10.3 Phase D への組込み
+
+既存の D タスクへ以下を明示的に内包する:
+
+1. D-1 (OB 正規化) に「H6 分類同期 + reason 正規化」を追加。  
+2. D-4 (trending 分解) に「balance_forced 時バイパス」の実装・検証を追加。  
+3. D-2/D-3 の評価ログで `post_only/postonly` 混在が残っていないことを受入条件にする。  
+
+---
+
+## §12 §10 レビュー実装結果
+
+### 12.1 実装サマリ
+
+| # | 重大度 | ステータス | 対応内容 |
+|---|--------|-----------|----------|
+| 1 | **HIGH** | **完了** | `run_fill_test.py` L1781: `skip_sell_trending` 条件に `and not _balance_forced` を追加。forced sell がトレンドゲートでブロックされるデッドロックを解消。 |
+| 2 | **MEDIUM** | **完了** | `hindsight_filter.py` `_analyze_records()`: `side not in ("buy", "sell")` を除外。unknown side が PnL 符号を汚染する問題を防止。 |
+| 3 | **MEDIUM** | **完了** | `order_monitor.py` L212: `"postonly_reject"` → `"post_only_reject"` に統一。`cancel_reasons.py` 定数と整合。`hindsight_filter.py` は後方互換で両形式を受容。 |
+| 4 | **MEDIUM** | **完了** | `hindsight_filter.py` `_TECHNICAL_REASONS`: 5→11 に拡張。`orderbook_timeout/rate_limit/empty` + `sell_guard_reject` + `post_only_reject/postonly_reject` を追加。H6_technical 分類の網羅性を確保。 |
+| 5 | **LOW** | **完了** | `run_fill_test.py` L1005-1030: `_prev_mid_time` から `_fallback_age` を算出、120s 超で `_fallback_stale=True` → `order_price=0.0`。stale 価格による分析汚染を防止。 |
+| 6 | **MEDIUM** | **完了** | `test_155_hindsight_review.py`: 挙動テスト 5 クラス追加 — `TestBalanceForcedTrendingBypass`, `TestCancelReasonNormalization`, `TestSideValidation`, `TestH6TechnicalClassification`, `TestFallbackPriceStaleness`。 |
+
+### 12.2 テスト結果
+
+- `test_155_hindsight_review.py`: **28 passed** (既存 14 + 新規 14)
+- `test_fill_quality.py`: **176 passed** (postonly→post_only assertion 更新)
+- `test_145_structural_fixes.py`: **53 passed** (影響なし確認)
+
+### 12.3 変更ファイル
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `scripts/v460/run_fill_test.py` | #1 balance_forced×trending bypass + #5 fallback 鮮度管理 |
+| `scripts/v460/lib/order_monitor.py` | #3 cancel_reason 正規化 (postonly→post_only) |
+| `scripts/v460/analysis/hindsight_filter.py` | #2 side バリデーション + #4 H6 分類拡張 + #3 後方互換 |
+| `tests/unit/v460/test_fill_quality.py` | postonly→post_only assertion 更新 |
+| `tests/unit/v460/test_155_hindsight_review.py` | #6 挙動テスト 5 クラス追加 |
+| `docs/v460/156_ph2_rpt_sell_root_cause_and_phase_d_plan.md` | 本セクション追加 |
+
+---
+
+## §13 変更履歴 (追補)
+
+| 日付 | 内容 |
+|------|------|
+| 2026-02-23 | 155# 実装レビュー結果（重大度付き）を追補し、Phase D 連携を明記 |
+| 2026-02-23 | §10 レビュー全 6 項目の実装完了、§12 に結果記録 |

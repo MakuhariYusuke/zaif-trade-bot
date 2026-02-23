@@ -1003,19 +1003,34 @@ class FillTestRunner(AbstractCycleRunner):
             else:
                 ob_cancel_reason = "orderbook_error"
             # 155# §9.5 #3: orderbook_error 時に前回 mid_price をフォールバック
+            # 156# §10 #5: 鮮度判定 — 120s 超は stale とみなす
             _fallback_price = self._maker_price._prev_mid_price or 0.0
-            if _fallback_price > 0:
+            _fallback_age: float | None = None
+            _fallback_stale = False
+            if _fallback_price > 0 and self._maker_price._prev_mid_time is not None:
+                import time as _time_mod
+                _fallback_age = _time_mod.time() - self._maker_price._prev_mid_time
+                _fallback_stale = _fallback_age > 120.0
                 logger.info(
                     f"[155# ob_fallback] Using last mid_price={_fallback_price:.0f} "
+                    f"age={_fallback_age:.1f}s stale={_fallback_stale} "
                     f"as reference for skip record"
+                )
+            elif _fallback_price > 0:
+                logger.info(
+                    f"[155# ob_fallback] Using last mid_price={_fallback_price:.0f} "
+                    f"(no timestamp) as reference for skip record"
                 )
             return self._make_skip_record(
                 side=side,
                 cancel_reason=ob_cancel_reason,
                 cycle_id=cycle_id,
-                order_price=_fallback_price,
+                order_price=_fallback_price if not _fallback_stale else 0.0,
                 spread_offset_ratio=self._maker_price.base_offset_ratio,
-                error_message=str(e),
+                error_message=(
+                    f"{e} [fallback_age={_fallback_age:.1f}s stale={_fallback_stale}]"
+                    if _fallback_age is not None else str(e)
+                ),
             )
 
         # 113# R1: SkipGate 判定を _evaluate_skip_gate() に委譲
@@ -1777,9 +1792,11 @@ class FillTestRunner(AbstractCycleRunner):
 
             # 155# §9: trending レジーム時の sell 抑制
             # trending sell avg -0.687 bps — 逆行トレード削減
+            # 156# §10 #1: balance_forced 時はバイパス (片側残高で sell するしかない局面)
             if (
                 self.config.skip_sell_trending
                 and next_side == "sell"
+                and not _balance_forced
                 and self._regime_detector is not None
                 and self._regime_detector.current_regime.value == "trending"
             ):
