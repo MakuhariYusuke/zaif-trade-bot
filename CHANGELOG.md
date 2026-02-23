@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 155# §11 残課題対応 + 118# バックログ消化
+
+- **balance_forced_consecutive 追跡** (§9.4 #2): FillRecord に `balance_forced_consecutive` フィールド追加、skip 時に連続回数を記録
+- **orderbook_error フォールバック** (§9.5 #3): `_compute_maker_price` 失敗時、`_prev_mid_price` を skip record の `order_price` に使用
+- **time_filter Phase 3 Step 1** (118# §5.6 D4): sell 遮断 6h→3h (`[4,8,14,15,16,21]` → `[4,8,14]`)。VG 有効確認済
+- **sell timeout 非対称化** (155# S-3): `order_timeout_sec_sell: 75.0` (90→75s, -16.7%)。sell は速い撤退が有利
+- **テスト**: 21 targeted ALL PASSED (6 新規 + 15 既存/更新)
+
 ### 124.2# SkipGate v3 — 多角的モデル探索・新モデルデプロイ
 
 - **117 experiments**: 7 models × 7 targets × 3 feature sets + regression + rules

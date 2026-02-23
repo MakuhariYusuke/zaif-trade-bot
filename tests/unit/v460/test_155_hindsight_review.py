@@ -295,3 +295,56 @@ class TestSkipSellTrendingConfig:
         from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig(skip_sell_trending=True)
         assert cfg.skip_sell_trending is True
+
+
+# ======================================================================
+# 155# §10 残課題: balance_forced_consecutive フィールド (§9.4 #2)
+# ======================================================================
+
+
+class TestBalanceForcedConsecutiveField:
+    """FillRecord に balance_forced_consecutive が存在すること."""
+
+    _BASE = {"cycle_id": "t1", "timestamp": 1.0, "side": "buy", "order_price": 100.0, "order_quantity": 0.001}
+
+    def test_field_default_none(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord
+        rec = FillRecord(**self._BASE)
+        assert rec.balance_forced_consecutive is None
+
+    def test_field_set(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord
+        rec = FillRecord(**self._BASE, balance_forced_consecutive=5)
+        assert rec.balance_forced_consecutive == 5
+
+    def test_to_dict_contains_field(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord
+        rec = FillRecord(**self._BASE, balance_forced_consecutive=3)
+        d = rec.to_dict()
+        assert "balance_forced_consecutive" in d
+        assert d["balance_forced_consecutive"] == 3
+
+
+# ======================================================================
+# 155# S-3: order_timeout_sec_sell 設定
+# ======================================================================
+
+
+class TestSellTimeoutConfig:
+    """FillTestConfig に order_timeout_sec_sell が存在すること."""
+
+    def test_default_none(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        cfg = FillTestConfig()
+        assert cfg.order_timeout_sec_sell is None
+
+    def test_set_value(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        cfg = FillTestConfig(order_timeout_sec_sell=75.0)
+        assert cfg.order_timeout_sec_sell == 75.0
+
+    def test_from_yaml_loads(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        yaml_cfg = {"order_timeout_sec_sell": 72.0}
+        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        assert cfg.order_timeout_sec_sell == 72.0

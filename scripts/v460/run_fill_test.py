@@ -1002,10 +1002,18 @@ class FillTestRunner(AbstractCycleRunner):
                 ob_cancel_reason = "sell_guard_reject"
             else:
                 ob_cancel_reason = "orderbook_error"
+            # 155# §9.5 #3: orderbook_error 時に前回 mid_price をフォールバック
+            _fallback_price = self._maker_price._prev_mid_price or 0.0
+            if _fallback_price > 0:
+                logger.info(
+                    f"[155# ob_fallback] Using last mid_price={_fallback_price:.0f} "
+                    f"as reference for skip record"
+                )
             return self._make_skip_record(
                 side=side,
                 cancel_reason=ob_cancel_reason,
                 cycle_id=cycle_id,
+                order_price=_fallback_price,
                 spread_offset_ratio=self._maker_price.base_offset_ratio,
                 error_message=str(e),
             )
@@ -1735,6 +1743,7 @@ class FillTestRunner(AbstractCycleRunner):
                         cancel_reason=CR.BALANCE_FORCED_SKIP,
                         order_quantity=self._current_lot,
                         balance_forced_switch=True,
+                        balance_forced_consecutive=self._balance_forced_skip_count,
                     )
                     batch.append(_skip_record)
                     total_count += 1

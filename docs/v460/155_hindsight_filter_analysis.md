@@ -286,7 +286,54 @@ tests/unit/v460/test_154_deadlock_prevention.py — 15 passed
 
 | §9 項目 | ステータス | 備考 |
 |---------|-----------|------|
-| §9.4 #2: balance_forced 連続回数/秒数を fill_records に追加 | 未対応 | run_fill_test.py の FillRecord 拡張が必要 |
+| §9.4 #2: balance_forced 連続回数/秒数を fill_records に追加 | ✅ §11 で対応 | FillRecord に `balance_forced_consecutive` 追加 |
 | §9.4 #3: queue_wait_sec 15s超の reprice 有無ログ | 一部対応 | wait_bands 分析は入ったが、reprice ログ連携は未実装 |
 | §9.5 #1: balance_forced 低リスク救済 A/B | 未対応 | Phase D (次期運用) で検証予定 |
-| §9.5 #3: orderbook_error フォールバック | 未対応 | 板取得失敗時の代替価格源が必要 |
+| §9.5 #3: orderbook_error フォールバック | ✅ §11 で対応 | `_prev_mid_price` フォールバック実装 |
+
+---
+
+## §11 残課題対応 + 118# バックログ消化 (155# §10.5 + 118# §5.6/§8.8)
+
+### 11.1 対応内容
+
+| # | 施策 | 根拠 | 変更内容 |
+|---|------|------|---------|
+| 1 | balance_forced_consecutive 追跡 | §9.4 #2 | FillRecord に `balance_forced_consecutive` フィールド追加。skip 時に連続回数を記録 |
+| 2 | orderbook_error フォールバック | §9.5 #3 | `_compute_maker_price` 失敗時、`_prev_mid_price` を skip record の `order_price` に使用 |
+| 3 | time_filter Phase 3 Step 1 | 118# §5.6/§8.8 D4 | sell 遮断 6h→3h: `[4,8,14,15,16,21]` → `[4,8,14]` (mean≤-3.0bps のみ残留)。VG 有効確認済 |
+| 4 | sell timeout 非対称化 | 155# §7.2 S-3 | `order_timeout_sec_sell: 75.0` (90→75s, -16.7%)。sell は速い撤退が有利 |
+
+### 11.2 変更ファイル
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `ztb/metrics/fill_quality.py` | `balance_forced_consecutive: Optional[int]` フィールド追加 |
+| `scripts/v460/run_fill_test.py` | balance_forced_skip 時に consecutive 値を渡す + orderbook_error fallback |
+| `scripts/v460/lib/fill_config.py` | `order_timeout_sec_sell` フィールド + YAML flat_keys 追加 |
+| `scripts/v460/lib/order_monitor.py` | sell 側 timeout に `order_timeout_sec_sell` を使用 |
+| `configs/v460/fill_test.yaml` | sell 遮断時間帯縮小 + `order_timeout_sec_sell: 75.0` |
+| `tests/unit/v460/test_155_hindsight_review.py` | +6 テスト (balance_forced x3, sell_timeout x3) |
+| `tests/unit/v460/test_fill_quality.py` | sell hours assertion 更新 |
+| `tests/unit/v460/test_regime_detector.py` | sell hours assertion 更新 |
+| `tests/unit/v460/test_113_resilience.py` | line count limit 410→420 |
+
+### 11.3 テスト結果
+
+```
+21 targeted tests: ALL PASSED
+- test_155 (18 tests): 12 既存 + 6 新規
+- test_fill_quality time_filter assertion: PASSED
+- test_regime_detector time_filter assertion: PASSED
+- test_113 run_single_cycle line count: PASSED (412 <= 420)
+Pre-existing failures (unrelated): test_139 calibrator injection
+```
+
+### 11.4 残課題
+
+| 項目 | ステータス | 備考 |
+|------|-----------|------|
+| §9.4 #3: reprice ログ連携 | 未対応 | Phase C データで要否判断 |
+| §9.5 #1: balance_forced A/B | Phase D | 次期運用で検証 |
+| 118# §8.5: Oracle テスト | ph3 前必須 | 大規模作業、別タスク |
+| 118# §6.3: 運用失敗モードテスト | ph3-pre | 障害注入テスト設計が必要 |

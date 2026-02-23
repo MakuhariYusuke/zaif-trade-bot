@@ -28,6 +28,7 @@ class FillTestConfig:
     order_quantity: float = 0.001  # 初期ロット (Coincheck BTC 最小)
     cycle_interval_sec: float = 120.0  # サイクル間隔
     order_timeout_sec: float = 90.0  # 注文タイムアウト (096# 300→90)
+    order_timeout_sec_sell: float | None = None  # 155# S-3: sell 専用 timeout (None=共通値)
     poll_interval_sec: float = 5.0  # ポーリング間隔
     post_fill_wait_sec: float = 30.0  # 約定後 PnL 計測待ち
     results_dir: str = "results/v460/fill_test"
@@ -345,6 +346,7 @@ class FillTestConfig:
         # フラットキー (YAML キー == dataclass フィールド名)
         flat_keys = {
             "symbol", "order_quantity", "cycle_interval_sec", "order_timeout_sec",
+            "order_timeout_sec_sell",
             "poll_interval_sec", "post_fill_wait_sec", "results_dir",
             "max_preflight_skip", "start_side",
             "spread_offset_ratio", "min_offset_jpy",

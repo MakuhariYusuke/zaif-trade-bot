@@ -130,12 +130,18 @@ class OrderMonitor:
             if _rr is not None:
                 _regime_name = _rr.value
         # R-1d: effective timeout (base × regime multiplier)
+        # 155# S-3: sell 側は専用 timeout を使用 (速い撤退が有利)
+        _base_timeout = (
+            cfg.order_timeout_sec_sell
+            if side == "sell" and cfg.order_timeout_sec_sell is not None
+            else cfg.order_timeout_sec
+        )
         _timeout_mult = cfg.regime_timeout_multipliers.get(_regime_name, 1.0) if _regime_name else 1.0  # type: ignore[arg-type]
-        _effective_timeout = cfg.order_timeout_sec * _timeout_mult
+        _effective_timeout = _base_timeout * _timeout_mult
         if _timeout_mult != 1.0:
             logger.debug(
                 f"[regime_timeout] {_regime_name} → timeout "
-                f"{cfg.order_timeout_sec:.0f}s × {_timeout_mult:.2f} = {_effective_timeout:.0f}s"
+                f"{_base_timeout:.0f}s × {_timeout_mult:.2f} = {_effective_timeout:.0f}s"
             )
         # R-1c: reprice offset (applied after side-specific resolution)
         _regime_reprice_offset = cfg.regime_reprice_adjustments.get(_regime_name, 0) if _regime_name else 0  # type: ignore[arg-type]
