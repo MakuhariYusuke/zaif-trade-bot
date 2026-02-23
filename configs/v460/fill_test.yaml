@@ -125,7 +125,7 @@ e3:
 # buy は共通値 (0.05) を継承、sell のみ保守化
 side_offset:
   # buy: 0.05                  # buy 側は共通値で十分 (PnL -0.10bps)
-  sell: 0.18                   # 121# A2: 0.14→0.18 (sell PnL -0.632bps対策, AS -3~5pt期待, fill_rate 8.3ptマージン内)
+  sell: 0.18                   # 121# A2: 0.14→0.18 / 156# D-3: A/Bで 0.15→0.14 段階縮小予定
 
 # ---- 049# 即約定防御 ----
 fast_fill_defense:
@@ -274,12 +274,14 @@ loss_control:
   skip_buy_unknown_regime: true
   # 155# §9: trending レジーム時の sell スキップ (trending-sell 平均 -0.687bps)
   skip_sell_trending: true
+  # 156# D-4: trending_up のみ skip、trending_down sell は開放
+  skip_sell_trending_up_only: true
   # P0-10: sell 動的 kill (rolling PnL ベースの自動停止)
   sell_dynamic_kill:
     enabled: true
     window: 50                     # rolling ウィンドウ (sell fill 数)
     threshold_bps: -0.5            # この bps 以下で sell 停止
-    resume_window: 20              # 停止後の再評価待機サイクル数
+    resume_window: 10              # 156# D-5: 20→10 (40分→約20分へ半減)
     # 139# §9-#2: レジーム別閾値 (regime_name -> threshold_bps)
     regime_thresholds:
       trending_up: -0.3            # 上昇トレンド時は sell への許容を縮小

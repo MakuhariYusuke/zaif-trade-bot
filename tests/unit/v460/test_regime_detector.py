@@ -89,22 +89,25 @@ class TestBasicRegimeDetection:
             assert confirmed[-1].regime == FillTestRegime.RANGING
 
     def test_trending_on_upward_prices(self, quick_detector: FillTestRegimeDetector) -> None:
-        """上昇価格はトレンド判定."""
+        """上昇価格は TRENDING_UP 判定 (156# D-4)."""
         # 0.5% 以上の変動を window=5 で作る → 100 → 101 = +1%
         prices = [100.0, 100.2, 100.4, 100.6, 100.8, 101.0, 101.2, 101.4, 101.6, 101.8]
         results = _feed_prices(quick_detector, prices)
-        # 最終結果はトレンド
-        final = results[-1]
-        # hysteresis 2 回以上トレンドが出ていれば確定
-        trending = [r for r in results if r.regime == FillTestRegime.TRENDING]
+        # 156# D-4: trending_up を期待
+        trending = [r for r in results if r.regime.is_trending]
         assert len(trending) > 0, f"Expected trending, got {[r.regime.value for r in results]}"
+        # 上昇価格なので最終は TRENDING_UP
+        up = [r for r in results if r.regime == FillTestRegime.TRENDING_UP]
+        assert len(up) > 0, f"Expected TRENDING_UP, got {[r.regime.value for r in results]}"
 
     def test_trending_on_downward_prices(self, quick_detector: FillTestRegimeDetector) -> None:
-        """下落価格もトレンド判定."""
+        """下落価格は TRENDING_DOWN 判定 (156# D-4)."""
         prices = [100.0, 99.8, 99.6, 99.4, 99.2, 99.0, 98.8, 98.6, 98.4, 98.2]
         results = _feed_prices(quick_detector, prices)
-        trending = [r for r in results if r.regime == FillTestRegime.TRENDING]
+        trending = [r for r in results if r.regime.is_trending]
         assert len(trending) > 0
+        down = [r for r in results if r.regime == FillTestRegime.TRENDING_DOWN]
+        assert len(down) > 0, f"Expected TRENDING_DOWN, got {[r.regime.value for r in results]}"
 
     def test_high_vol_on_volatile_prices(self) -> None:
         """急激な値動きは高ボラ判定."""
@@ -174,7 +177,7 @@ class TestHysteresis:
 
         # 最終的にトレンドに遷移しているはず
         final = results[-1]
-        assert final.regime == FillTestRegime.TRENDING
+        assert final.regime.is_trending, f"Expected trending (via is_trending), got {final.regime}"
 
 
 # ======================================================================
@@ -1047,3 +1050,154 @@ class TestBug086TimeFilterPositionAccumulation:
         assert "片側蓄積防止" in source, (
             "086# 片側蓄積防止コメントが必要"
         )
+
+
+# ======================================================================
+# 156# Phase D テスト
+# ======================================================================
+
+
+class TestPhaseD4TrendingDirection:
+    """156# D-4: trending 方向分解テスト."""
+
+    def test_is_trending_property(self) -> None:
+        """is_trending が TRENDING / TRENDING_UP / TRENDING_DOWN を包含."""
+        assert FillTestRegime.TRENDING.is_trending is True
+        assert FillTestRegime.TRENDING_UP.is_trending is True
+        assert FillTestRegime.TRENDING_DOWN.is_trending is True
+        assert FillTestRegime.RANGING.is_trending is False
+        assert FillTestRegime.HIGH_VOL.is_trending is False
+        assert FillTestRegime.UNKNOWN.is_trending is False
+
+    def test_trending_up_value(self) -> None:
+        """TRENDING_UP の value が 'trending_up'."""
+        assert FillTestRegime.TRENDING_UP.value == "trending_up"
+
+    def test_trending_down_value(self) -> None:
+        """TRENDING_DOWN の value が 'trending_down'."""
+        assert FillTestRegime.TRENDING_DOWN.value == "trending_down"
+
+    def test_classify_upward_returns_trending_up(self) -> None:
+        """上昇トレンドが TRENDING_UP を返す."""
+        config = RegimeConfig(
+            window=5,
+            trend_threshold_pct=0.3,
+            hysteresis_count=2,
+            min_confidence=0.0,
+        )
+        detector = FillTestRegimeDetector(config)
+        # 急上昇
+        prices = [100.0 + i * 0.5 for i in range(15)]
+        results = _feed_prices(detector, prices)
+        up = [r for r in results if r.regime == FillTestRegime.TRENDING_UP]
+        assert len(up) > 0, f"Expected TRENDING_UP, got {[r.regime.value for r in results]}"
+
+    def test_classify_downward_returns_trending_down(self) -> None:
+        """下降トレンドが TRENDING_DOWN を返す."""
+        config = RegimeConfig(
+            window=5,
+            trend_threshold_pct=0.3,
+            hysteresis_count=2,
+            min_confidence=0.0,
+        )
+        detector = FillTestRegimeDetector(config)
+        # 急下降
+        prices = [100.0 - i * 0.5 for i in range(15)]
+        results = _feed_prices(detector, prices)
+        down = [r for r in results if r.regime == FillTestRegime.TRENDING_DOWN]
+        assert len(down) > 0, f"Expected TRENDING_DOWN, got {[r.regime.value for r in results]}"
+
+    def test_regime_thresholds_match_direction(self) -> None:
+        """regime_thresholds の key が D-4 方向別 value と一致."""
+        from ztb.risk.sell_dynamic_kill import SellKillConfig
+
+        thresholds = {"trending_up": -0.3, "trending_down": -1.0, "ranging": -0.5}
+        config = SellKillConfig(regime_thresholds=thresholds)
+        # TRENDING_UP.value → "trending_up" → threshold hit
+        assert FillTestRegime.TRENDING_UP.value in config.regime_thresholds
+        assert FillTestRegime.TRENDING_DOWN.value in config.regime_thresholds
+
+
+class TestPhaseD4SkipSellTrendingUpOnly:
+    """156# D-4: skip_sell_trending_up_only 設定テスト."""
+
+    def test_config_field_exists(self) -> None:
+        """skip_sell_trending_up_only フィールドが存在."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        config = FillTestConfig()
+        assert hasattr(config, "skip_sell_trending_up_only")
+        assert config.skip_sell_trending_up_only is False
+
+    def test_yaml_mapping(self) -> None:
+        """YAML から skip_sell_trending_up_only がパースされる."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        yaml_cfg = {
+            "loss_control": {
+                "skip_sell_trending_up_only": True,
+            },
+        }
+        config = FillTestConfig.from_yaml(yaml_cfg)
+        assert config.skip_sell_trending_up_only is True
+
+
+class TestPhaseD1ObUtils:
+    """156# D-1: ob_utils 型安全向上テスト."""
+
+    def test_extract_price_tuple(self) -> None:
+        """tuple から price を抽出."""
+        from scripts.v460.lib.ob_utils import extract_price
+
+        assert extract_price((15000000.0, 0.5)) == 15000000.0
+
+    def test_extract_price_empty_tuple(self) -> None:
+        """空 tuple は 0.0."""
+        from scripts.v460.lib.ob_utils import extract_price
+
+        assert extract_price(()) == 0.0
+
+    def test_extract_size_tuple(self) -> None:
+        """tuple から size を抽出."""
+        from scripts.v460.lib.ob_utils import extract_size
+
+        assert extract_size((15000000.0, 0.5)) == 0.5
+
+    def test_depth_volume_basic(self) -> None:
+        """depth_volume が合計出来高を返す."""
+        from scripts.v460.lib.ob_utils import depth_volume
+
+        levels = [(100.0, 1.0), (99.0, 2.0), (98.0, 3.0)]
+        assert depth_volume(levels, depth=2) == 3.0
+        assert depth_volume(levels, depth=5) == 6.0
+
+
+class TestPhaseD5KillCooldown:
+    """156# D-5: sell_dynamic_kill cooldown テスト."""
+
+    def test_resume_window_10(self) -> None:
+        """resume_window=10 で cooldown が 10 サイクルで解除."""
+        from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
+
+        config = SellKillConfig(
+            enabled=True, window=5, threshold_bps=-0.5, resume_window=10
+        )
+        mgr = SellDynamicKillManager(config)
+        # タンク: 5 fill の平均を -1.0bps にする → kill 発動
+        for _ in range(5):
+            mgr.track(-1.0)
+        killed, tele = mgr.check_kill()
+        assert killed is True
+        assert tele.cooldown_remaining == 10
+
+        # 10 サイクル消化 (cooldown 中は全て killed)
+        for i in range(10):
+            killed, tele = mgr.check_kill()
+            assert killed is True, f"cycle {i}: should still be killed"
+
+        # cooldown 解除後、良好な fill を追加して平均を改善
+        for _ in range(5):
+            mgr.track(1.0)
+        # 平均が閾値以上 → 解除
+        killed, tele = mgr.check_kill()
+        assert killed is False

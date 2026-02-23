@@ -1045,9 +1045,9 @@ class TestAcceleratedHysteresis:
             det.update(float(7 + i), price)
         assert det.current_regime == FillTestRegime.RANGING  # まだ遷移しない
 
-        # 3 連続で遷移
+        # 3 連続で遷移 (156# D-4: 方向付きで trending_up になる)
         det.update(9.0, base + 60 + 3 * 50_000)
-        assert det.current_regime == FillTestRegime.TRENDING
+        assert det.current_regime.is_trending
 
 
 class TestMajorityFallback:

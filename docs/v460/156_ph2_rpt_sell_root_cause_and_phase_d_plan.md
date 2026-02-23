@@ -558,3 +558,72 @@ if (self.config.sell_dynamic_kill_enabled
 | `scripts/v460/analysis/hindsight_filter.py` | `import logging` + logger 初期化 + side 除外カウンター + ログ出力 |
 | `tests/unit/v460/test_155_hindsight_review.py` | §16 テスト 11 件追加 (43 件合計) |
 | `tests/unit/v460/test_145_structural_fixes.py` | AUDIT_CANCEL_REASONS テスト期待値更新 |
+
+---
+
+## §17 Phase D 実装 (156# D-1/D-3/D-4/D-5)
+
+### 17.1 実装サマリ
+
+| Task | 内容 | 変更ファイル |
+|------|------|-------------|
+| D-1 | OB fetch 失敗ログ可視化 + カウンタ | `skip_gate_evaluator.py` |
+| D-3 | sell offset 段階的縮小 A/B 準備 (YAML 注記) | `fill_test.yaml` |
+| D-4 | trending 方向分解 (TRENDING_UP/TRENDING_DOWN) | `regime_detector.py`, `fill_config.py`, `run_fill_test.py`, `maker_price.py` |
+| D-5 | sell_dynamic_kill cooldown 半減 (20→10) | `fill_test.yaml` |
+
+### 17.2 D-4: trending 方向分解
+
+**変更の核心**: `FillTestRegime.TRENDING` を `TRENDING_UP` / `TRENDING_DOWN` に分解。
+
+- `FillTestRegime` に `TRENDING_UP = "trending_up"`, `TRENDING_DOWN = "trending_down"` 追加
+- `is_trending` プロパティで後方互換 (`TRENDING`, `TRENDING_UP`, `TRENDING_DOWN` を統一判定)
+- `_classify()`: `trend_pct > 0` → `TRENDING_UP`, else `TRENDING_DOWN`
+- `skip_sell_trending` ゲート: `is_trending` で判定 + `skip_sell_trending_up_only` で下降トレンド sell 開放
+- `maker_price.py` の offset boost: `.value == "trending"` → `.is_trending` に置換
+
+**regime_thresholds 自動連携**: YAML 既存の `trending_up: -0.3`, `trending_down: -1.0` キーが
+`_classify()` の戻り値 `.value` と直接一致し、`SellDynamicKillManager.check_kill()` で方向別閾値が有効化。
+
+### 17.3 D-1: OB fetch 可視化
+
+- `skip_gate_evaluator.py` に `_ob_fetch_fail_count`, `_ob_fetch_total_count` カウンタ追加
+- `logger.debug` → 初回 + 10 回毎に `logger.warning`, それ以外は `logger.debug` (ログ爆発防止)
+- OB 特徴量が有効 (`use_ob_features: true`) なのに fetch 失敗が silent だった問題を解消
+
+### 17.4 型安全向上
+
+- `ob_utils.py`: `object` → `OrderBookLevel` / `OrderBookLevels` TypeAlias 導入
+- `Optional[T]` → `T | None` 統一 (PEP 604)
+- f-string → `%s` lazy formatting (`logger.debug` / `logger.warning`)
+
+### 17.5 設定変更 (fill_test.yaml)
+
+```yaml
+# D-4: trending_up のみ skip、trending_down sell は開放
+skip_sell_trending_up_only: true
+# D-5: cooldown 20→10 (40分→約20分へ半減)
+resume_window: 10
+# D-3: A/B テスト準備 (sell offset 0.18→段階的縮小予定)
+sell: 0.18  # → Phase D-3 A/B で 0.15→0.14 段階縮小予定
+```
+
+### 17.6 テスト結果
+
+- 新規テスト: 9 件 (D-1/D-4/D-5 カバー)
+- 既存テスト修正: 3 件 (TRENDING → is_trending / TRENDING_UP/DOWN 対応)
+- v460 全体: **1598 passed** / 2 failed (pre-existing, Phase D 無関係)
+
+### 17.7 変更ファイル一覧
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `scripts/v460/lib/regime_detector.py` | TRENDING_UP/DOWN enum + is_trending + _classify 方向分解 |
+| `scripts/v460/lib/fill_config.py` | skip_sell_trending_up_only フィールド + YAML mapping |
+| `scripts/v460/run_fill_test.py` | skip_sell_trending ゲート → is_trending + up_only 対応 |
+| `scripts/v460/lib/maker_price.py` | .value == "trending" → .is_trending |
+| `scripts/v460/lib/skip_gate_evaluator.py` | OB fetch 可視化カウンタ + warning ログ |
+| `scripts/v460/lib/ob_utils.py` | OrderBookLevel TypeAlias + Optional→Union 統一 |
+| `configs/v460/fill_test.yaml` | D-3/D-4/D-5 設定変更 |
+| `tests/unit/v460/test_regime_detector.py` | D-4/D-5 テスト 9 件追加 + 既存修正 |
+| `tests/unit/v460/test_143_regime_utilization.py` | TRENDING → is_trending 修正 |

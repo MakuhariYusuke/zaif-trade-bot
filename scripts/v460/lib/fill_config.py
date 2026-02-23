@@ -215,6 +215,8 @@ class FillTestConfig:
     skip_buy_unknown_regime: bool = False  # True で unknown レジーム時 buy もスキップ (-1.384bps)
     # ---- 155# §9: trending レジームでの sell 抑制 ----
     skip_sell_trending: bool = False  # True で trending 時 sell をスキップ (-0.687bps)
+    # 156# D-4: trending 方向別分解 — True なら trending_up のみスキップ (trending_down sell を開放)
+    skip_sell_trending_up_only: bool = False
     # ---- 133# P0-10: sell 動的 kill (rolling PnL ベースの自動停止) ----
     sell_dynamic_kill_enabled: bool = False  # True で sell rolling PnL 監視有効
     sell_dynamic_kill_window: int = 50       # rolling ウィンドウ (fill 数)
@@ -647,6 +649,9 @@ class FillTestConfig:
         # 155# §9: trending sell 抑制
         if 止血.get("skip_sell_trending") is not None:
             kwargs["skip_sell_trending"] = 止血["skip_sell_trending"]
+        # 156# D-4: trending 方向別分解
+        if 止血.get("skip_sell_trending_up_only") is not None:
+            kwargs["skip_sell_trending_up_only"] = 止血["skip_sell_trending_up_only"]
         sell_kill = 止血.get("sell_dynamic_kill", {})
         if sell_kill.get("enabled") is not None:
             kwargs["sell_dynamic_kill_enabled"] = sell_kill["enabled"]

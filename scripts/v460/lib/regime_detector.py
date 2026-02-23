@@ -30,12 +30,21 @@ class FillTestRegime(str, Enum):
     """fill_test 用の軽量レジーム分類.
 
     035# §4.2: 4 状態から開始.
+    156# D-4: trending を方向別に分解 (trending_up / trending_down).
+    後方互換: .is_trending プロパティで TRENDING/TRENDING_UP/TRENDING_DOWN を統一判定.
     """
 
-    TRENDING = "trending"
+    TRENDING = "trending"            # 方向不明 (レガシー互換)
+    TRENDING_UP = "trending_up"      # 156# D-4: 上昇トレンド
+    TRENDING_DOWN = "trending_down"  # 156# D-4: 下降トレンド
     RANGING = "ranging"
     HIGH_VOL = "high_vol"
     UNKNOWN = "unknown"
+
+    @property
+    def is_trending(self) -> bool:
+        """trending 系 (方向問わず) かどうか."""
+        return self in (FillTestRegime.TRENDING, FillTestRegime.TRENDING_UP, FillTestRegime.TRENDING_DOWN)
 
 
 @dataclass
@@ -218,12 +227,17 @@ class FillTestRegimeDetector:
             confidence = min(1.0, 0.6 + excess * 0.4)
             return FillTestRegime.HIGH_VOL, confidence
 
-        # トレンド判定
+        # トレンド判定 — 156# D-4: 方向別に分解
         if abs_trend >= threshold:
             # 信頼度: threshold をどれだけ超えたか
             excess = (abs_trend - threshold) / threshold
             confidence = min(1.0, 0.5 + excess * 0.3)
-            return FillTestRegime.TRENDING, confidence
+            regime = (
+                FillTestRegime.TRENDING_UP
+                if trend_pct > 0
+                else FillTestRegime.TRENDING_DOWN
+            )
+            return regime, confidence
 
         # レンジ: トレンドも高ボラもない
         # 信頼度: threshold からの距離 (0 に近いほど確信が高い)

@@ -104,6 +104,9 @@ class SkipGateEvaluator:
         self._gate_path_sell: Path | None = None
         self._model_file_hash_buy: str = ""
         self._model_file_hash_sell: str = ""
+        # 156# D-1: OB fetch 失敗カウンタ
+        self._ob_fetch_fail_count: int = 0
+        self._ob_fetch_total_count: int = 0
         # 126# hot-reload 状態
         self._gate_path: Path | None = None
         self._model_file_hash: str = ""
@@ -537,6 +540,7 @@ class SkipGateEvaluator:
             # 141# P1-01: side 別モデルの use_ob_features を参照
             sg_use_ob = active_gate.config.use_ob_features
             if sg_use_ob:
+                self._ob_fetch_total_count += 1
                 try:
                     from scripts.v460.lib.ob_utils import extract_price, depth_volume
                     get_orderbook = getattr(adapter, "get_orderbook", None)
@@ -554,7 +558,16 @@ class SkipGateEvaluator:
                             ob_bid_vol = depth_volume(bids, self._config.skip_gate_ob_depth)
                             ob_ask_vol = depth_volume(asks, self._config.skip_gate_ob_depth)
                 except Exception as e:
-                    logger.debug(f"[skip_gate] OB fetch failed: {e}")
+                    self._ob_fetch_fail_count += 1
+                    # 156# D-1: 初回 + 10回毎に warning、それ以外は debug
+                    if self._ob_fetch_fail_count == 1 or self._ob_fetch_fail_count % 10 == 0:
+                        logger.warning(
+                            "[skip_gate] OB fetch failed (%d times): %s",
+                            self._ob_fetch_fail_count,
+                            e,
+                        )
+                    else:
+                        logger.debug("[skip_gate] OB fetch failed: %s", e)
 
             gate_features = build_features_from_market_state(
                 side=side,

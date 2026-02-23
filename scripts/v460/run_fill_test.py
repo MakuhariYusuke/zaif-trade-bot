@@ -301,6 +301,7 @@ class FillTestRunner(AbstractCycleRunner):
         self._regime_detector: Optional["FillTestRegimeDetector"] = None
         if config.enable_regime:
             from scripts.v460.lib.regime_detector import (
+                FillTestRegime,
                 FillTestRegimeDetector,
                 RegimeConfig,
             )
@@ -1798,28 +1799,39 @@ class FillTestRunner(AbstractCycleRunner):
             # 155# §9: trending レジーム時の sell 抑制
             # trending sell avg -0.687 bps — 逆行トレード削減
             # 156# §10 #1: balance_forced 時はバイパス (片側残高で sell するしかない局面)
+            # 156# D-4: trending 方向別分解 — trending_down sell は開放可能
             if (
                 self.config.skip_sell_trending
                 and next_side == "sell"
                 and not _balance_forced
                 and self._regime_detector is not None
-                and self._regime_detector.current_regime.value == "trending"
+                and self._regime_detector.current_regime.is_trending
             ):
-                logger.info(
-                    "[155# §9] Skipping sell — trending regime "
-                    "(avg -0.687bps loss)"
-                )
-                _skip_record = self._make_skip_record(
-                    side="sell",
-                    cancel_reason=CR.TRENDING_SELL_SKIP,
-                    order_quantity=self._current_lot,
-                    regime="trending",
-                )
-                batch.append(_skip_record)
-                total_count += 1
-                batch = self._batch_persistence.maybe_flush(batch, "trending_sell_skip")
-                await asyncio.sleep(self.config.cycle_interval_sec)
-                continue
+                # D-4: trending_up_only モードならば trending_down は通過させる
+                _current_regime = self._regime_detector.current_regime
+                if (
+                    self.config.skip_sell_trending_up_only
+                    and _current_regime.value == "trending_down"
+                ):
+                    logger.debug(
+                        "[156# D-4] Allowing sell in trending_down regime"
+                    )
+                else:
+                    logger.info(
+                        f"[155# §9] Skipping sell — {_current_regime.value} regime "
+                        "(avg -0.687bps loss)"
+                    )
+                    _skip_record = self._make_skip_record(
+                        side="sell",
+                        cancel_reason=CR.TRENDING_SELL_SKIP,
+                        order_quantity=self._current_lot,
+                        regime=_current_regime.value,
+                    )
+                    batch.append(_skip_record)
+                    total_count += 1
+                    batch = self._batch_persistence.maybe_flush(batch, "trending_sell_skip")
+                    await asyncio.sleep(self.config.cycle_interval_sec)
+                    continue
 
             # 133# P0-10: sell 動的 kill — rolling PnL が閾値以下なら sell 停止
             # 156# §12: balance_forced 時はバイパス (片側残高で sell するしかない局面)

@@ -11,12 +11,17 @@ best_bid_ask / depth_volume / spread 等の市場データ取得を型安全に�
 from __future__ import annotations
 
 import logging
-from typing import Optional, Protocol, Sequence, cast
+from typing import Protocol, Sequence, TypeAlias, Union, cast
 
 logger = logging.getLogger(__name__)
 
+# 156# D-1: 型安全向上 — OB レベルの型を明示
+# tuple[float, float] (price, size) or NamedTuple/dataclass with .price/.quantity
+OrderBookLevel: TypeAlias = Union[tuple[float, float], "object"]
+OrderBookLevels: TypeAlias = Sequence[OrderBookLevel]
 
-def extract_price(level: object) -> float:
+
+def extract_price(level: OrderBookLevel) -> float:
     """板レベルから price を抽出 (tuple / object 両対応)."""
     if isinstance(level, (list, tuple)):
         if not level:
@@ -25,7 +30,7 @@ def extract_price(level: object) -> float:
     return float(getattr(level, "price", 0.0))
 
 
-def extract_size(level: object) -> float:
+def extract_size(level: OrderBookLevel) -> float:
     """板レベルから size (quantity) を抽出 (tuple / object 両対応)."""
     if isinstance(level, (list, tuple)):
         if len(level) < 2:
@@ -49,14 +54,14 @@ def best_bid_ask(
     return bid, ask
 
 
-def depth_volume(levels: Sequence[object], depth: int = 5) -> float:
+def depth_volume(levels: OrderBookLevels, depth: int = 5) -> float:
     """板の指定深さまでの合計出来高を計算."""
     return sum(extract_size(lv) for lv in levels[:depth])
 
 
-def _coerce_levels(levels: object) -> Sequence[object]:
+def _coerce_levels(levels: object) -> OrderBookLevels:
     if isinstance(levels, Sequence):
-        return cast(Sequence[object], levels)
+        return cast(OrderBookLevels, levels)
     return ()
 
 
@@ -83,7 +88,7 @@ class MarketDataAccessor:
 
     async def best_bid_ask(
         self, depth: int = 1
-    ) -> tuple[Optional[float], Optional[float]]:
+    ) -> tuple[float | None, float | None]:
         """Get best bid/ask via adapter, normalised through ob_utils.
 
         Returns:
@@ -93,17 +98,17 @@ class MarketDataAccessor:
             ob = await self._adapter.get_orderbook(self._symbol, depth=depth)
             return best_bid_ask(ob)
         except Exception as e:
-            logger.debug(f"MarketDataAccessor.best_bid_ask failed: {e}")
+            logger.debug("MarketDataAccessor.best_bid_ask failed: %s", e)
             return None, None
 
-    async def spread(self, depth: int = 1) -> Optional[float]:
+    async def spread(self, depth: int = 1) -> float | None:
         """Best ask - best bid. None if data unavailable."""
         bid, ask = await self.best_bid_ask(depth)
         if bid is not None and ask is not None:
             return ask - bid
         return None
 
-    async def mid_price(self, depth: int = 1) -> Optional[float]:
+    async def mid_price(self, depth: int = 1) -> float | None:
         """Mid-price = (bid + ask) / 2. None if data unavailable."""
         bid, ask = await self.best_bid_ask(depth)
         if bid is not None and ask is not None:

@@ -282,10 +282,11 @@ class MakerPriceCalculator:
             )
 
         # 052#: トレンディング時にオフセットをブースト
+        # 156# D-4: is_trending で trending_up/trending_down も包含
         if (
             self._regime_detector is not None
             and hasattr(self._regime_detector, "current_regime")
-            and self._regime_detector.current_regime.value == "trending"
+            and self._regime_detector.current_regime.is_trending
             and cfg.regime_trending_offset_boost > 1.0
         ):
             effective_offset_ratio *= cfg.regime_trending_offset_boost
