@@ -1372,6 +1372,53 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460/analysis/compare_regime_ab.py`
   - 結果: `any_type_debt_tokens=0`
 
+## Step81: Git フック修復の再現化 + `compare_regime_ab` 安定性改善 (2026-02-23)
+
+### 1) Git 修復（再現可能化）
+
+- 背景:
+  - `.git/hooks/pre-commit` が CRLF と shell 非互換構文を含み、
+    `fatal: cannot exec '.git/hooks/pre-commit': No such file or directory`
+    を誘発する状態を確認。
+- 対応:
+  - `scripts/maintenance/optimize_git_local.py` に
+    `--repair-pre-commit-hook` を追加。
+  - 同オプションで `.git/hooks/pre-commit` を LF の portable launcher に再生成し、
+    実行環境が合致しない場合は非ブロッキングで skip する挙動を標準化。
+
+### 2) 機能改善（不具合予防 + 軽量化）
+
+- 対象: `scripts/v460/analysis/compare_regime_ab.py`
+- `0除算` 予防:
+  - `_safe_pct()` を導入し、`_print_report()` の
+    `total==0` / `filled==0` ケースでも例外なく出力継続。
+- 前処理の軽量化:
+  - 前処理で正規化した `timestamp/order_price` を
+    `ParsedFillRecord` として保持し、後段ループで再変換を廃止。
+  - 変換重複と dict 参照回数を削減。
+
+### 3) テスト強化
+
+- 対象: `tests/unit/v460/test_152_parallel_tasks.py`
+- 追加:
+  - `test_print_report_handles_zero_records`
+  - `test_print_report_handles_zero_filled`
+- 目的:
+  - レコード0件・filled0件の境界条件で回帰しないことを固定化。
+
+### 4) 検証
+
+- `py_compile`:
+  - `scripts/v460/analysis/compare_regime_ab.py`
+  - `scripts/maintenance/optimize_git_local.py`
+  - `tests/unit/v460/test_152_parallel_tasks.py`
+- テスト:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_152_parallel_tasks.py -q --override-ini="addopts="`
+  - 結果: `14 passed`
+- `any_inventory`:
+  - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460/analysis/compare_regime_ab.py scripts/maintenance/optimize_git_local.py`
+  - 結果: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

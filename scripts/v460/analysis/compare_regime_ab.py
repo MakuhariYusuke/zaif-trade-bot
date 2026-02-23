@@ -42,6 +42,7 @@ from ztb.io.json_io import write_json
 from ztb.utils.safety import safe_to_float
 
 FillRecord = dict[str, object]
+ParsedFillRecord = tuple[FillRecord, float, float]
 
 
 # ---------------------------------------------------------------------------
@@ -114,6 +115,10 @@ def _to_float_or_none(value: object) -> float | None:
     return parsed if math.isfinite(parsed) else None
 
 
+def _safe_pct(numerator: int, denominator: int) -> float:
+    return (numerator / denominator * 100.0) if denominator > 0 else 0.0
+
+
 def _simulate(
     records: list[FillRecord],
     config: RegimeConfig | None = None,
@@ -152,7 +157,7 @@ def _simulate(
         "price_zero_excluded": 0,
         "side_invalid_excluded": 0,
     }
-    valid_recs: list[FillRecord] = []
+    valid_recs: list[ParsedFillRecord] = []
     for rec in sorted_recs:
         ts_f = _to_float_or_none(rec.get("timestamp"))
         price_f = _to_float_or_none(rec.get("order_price"))
@@ -165,16 +170,11 @@ def _simulate(
         if side_val not in ("", "buy", "sell", None):
             prefilter_stats["side_invalid_excluded"] += 1
             continue
-        valid_recs.append(rec)
+        valid_recs.append((rec, ts_f, price_f))
     prefilter_stats["valid_records"] = len(valid_recs)
 
     results: list[SimRecord] = []
-    for rec in valid_recs:
-        ts_f = _to_float_or_none(rec.get("timestamp"))
-        price_f = _to_float_or_none(rec.get("order_price"))
-        if ts_f is None or price_f is None:
-            continue
-
+    for rec, ts_f, price_f in valid_recs:
         old_result = old_det.update(ts_f, price_f)
         new_result = new_det.update(ts_f, price_f)
 
@@ -304,6 +304,7 @@ def _print_report(
 
     total = len(sim_results)
     filled = [r for r in sim_results if r.filled]
+    filled_total = len(filled)
 
     # Unknown distribution comparison
     print("\n--- Unknown 比率比較 ---")
@@ -311,8 +312,10 @@ def _print_report(
                            ("new (152# A+B)", lambda r: r.new_regime)]:
         unk = sum(1 for r in sim_results if getter(r) == "unknown")
         unk_f = sum(1 for r in filled if getter(r) == "unknown")
-        print(f"  {label}: {unk}/{total} ({unk/total*100:.1f}%) all, "
-              f"{unk_f}/{len(filled)} ({unk_f/len(filled)*100:.1f}%) filled")
+        print(
+            f"  {label}: {unk}/{total} ({_safe_pct(unk, total):.1f}%) all, "
+            f"{unk_f}/{filled_total} ({_safe_pct(unk_f, filled_total):.1f}%) filled",
+        )
 
     # Regime distribution comparison
     print("\n--- Regime 分布比較 ---")

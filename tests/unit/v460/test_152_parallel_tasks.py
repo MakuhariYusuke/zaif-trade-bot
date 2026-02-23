@@ -246,6 +246,36 @@ class TestCompareRegimeAB:
         assert gates[1].gate_id == "G2"
         assert gates[2].gate_id == "G3"
 
+    def test_print_report_handles_zero_records(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """有効レコード 0 件でもレポート出力が落ちないこと."""
+        from scripts.v460.analysis.compare_regime_ab import _evaluate_gates, _print_report
+
+        gates = _evaluate_gates([])
+        _print_report([], gates)
+        captured = capsys.readouterr()
+        assert "Unknown 比率比較" in captured.out
+
+    def test_print_report_handles_zero_filled(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """filled 0 件でも 0 除算せずレポート出力できること."""
+        from scripts.v460.analysis.compare_regime_ab import _evaluate_gates, _simulate, _print_report
+
+        records = []
+        base = 10_000_000
+        for i in range(8):
+            records.append({
+                "timestamp": 1739400000 + i * 120,
+                "order_price": base + i * 100,
+                "filled": False,
+                "regime": "ranging",
+                "post_fill_30s_pnl": None,
+            })
+
+        results, _stats = _simulate(records)
+        gates = _evaluate_gates(results)
+        _print_report(results, gates)
+        captured = capsys.readouterr()
+        assert "filled" in captured.out
+
 
 # ======================================================================
 # P1-6: confidence_lot no-op ガードテスト
