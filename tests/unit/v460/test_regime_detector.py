@@ -6,6 +6,7 @@ test_regime_detector — 軽量レジーム検知のユニットテスト.
 
 from __future__ import annotations
 
+import math
 import time
 
 import numpy as np
@@ -276,6 +277,30 @@ class TestDetectorState:
         # 100 ポイント投入
         _feed_prices(detector, [100.0 + i * 0.001 for i in range(100)])
         assert detector.observation_count <= config.window * 3
+
+
+class TestIndicatorRobustness:
+    """指標計算の数値安定性テスト."""
+
+    def test_safe_returns_filters_zero_denominator(self) -> None:
+        """0 価格を含む系列でも finite な returns のみが返る."""
+        prices = np.array([100.0, 0.0, 101.0, 102.0], dtype=float)
+        returns = FillTestRegimeDetector._safe_returns(prices)
+        assert returns.size > 0
+        assert np.all(np.isfinite(returns))
+
+    def test_zero_prices_do_not_produce_nan_metrics(self) -> None:
+        """0 価格混在でも trend/volatility は NaN/inf にならない."""
+        detector = FillTestRegimeDetector(
+            RegimeConfig(window=5, hysteresis_count=1, min_confidence=0.0),
+        )
+        prices = [100.0, 0.0, 101.0, 0.0, 102.0, 103.0, 0.0, 104.0]
+        results = _feed_prices(detector, prices)
+        matured = results[4:]  # window 到達後
+        assert matured, "Expected mature regime results after window fill"
+        for result in matured:
+            assert math.isfinite(result.trend_pct)
+            assert math.isfinite(result.volatility_ratio)
 
 
 # ======================================================================

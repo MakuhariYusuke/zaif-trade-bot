@@ -353,7 +353,11 @@ class SkipGateEvaluator:
 
     def _check_and_reload_side_models(self) -> None:
         """141# side 別モデルの変更検出 + リロード."""
-        from scripts.v460.ml.skip_gate import SkipGate
+        try:
+            from scripts.v460.ml.skip_gate import SkipGate
+        except Exception as e:
+            logger.debug(f"[skip_gate] side hot-reload skipped (import failed): {e}")
+            return
         skip_gate_cls = cast(_SkipGateClassLike, SkipGate)
 
         for side, attr_gate, attr_path, attr_hash in self._SIDE_MODEL_SLOTS:

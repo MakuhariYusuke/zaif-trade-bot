@@ -58,6 +58,12 @@ from scripts.v460.lib.fill_config import (
     FillMonitorResult as _FillMonitorResult,
     PnlMeasurement as _PnlMeasurement,
 )
+from scripts.v460.lib.lot_manager import (
+    compute_confidence_lot_factor,
+    compute_effective_order_lot,
+    resolve_regime_lot_multiplier,
+    scale_lot_by_regime,
+)
 from scripts.v460.lib.maker_price import MakerPriceCalculator
 from scripts.v460.lib.ob_recorder import OBRecorder
 from scripts.v460.lib.order_monitor import OrderMonitor
@@ -461,12 +467,11 @@ class FillTestRunner(AbstractCycleRunner):
         倍率辞書が空 / レジーム未検出 / 該当なしの場合は 1.0 を返す.
         """
         multipliers = self.config.regime_lot_multipliers
-        if not multipliers or self._regime_detector is None:
-            return 1.0
-        regime = self._regime_detector.current_regime
-        if regime is None:
-            return 1.0
-        return multipliers.get(regime.value, 1.0)
+        regime_value: str | None = None
+        if self._regime_detector is not None:
+            regime = self._regime_detector.current_regime
+            regime_value = regime.value if regime is not None else None
+        return resolve_regime_lot_multiplier(multipliers, regime_value=regime_value)
 
     def _regime_adjusted_lot(self) -> float:
         """143# R-1b: レジーム別ロット倍率を適用した注文ロットを返す.
@@ -480,8 +485,12 @@ class FillTestRunner(AbstractCycleRunner):
             return base_lot
         # 倍率適用 + 安全クランプ (144# #2: config.min_order_btc に統一)
         min_lot = self.config.min_order_btc
-        adjusted = max(base_lot * mult, min_lot)
-        adjusted = min(adjusted, self.config.max_lot) if self.config.max_lot > 0 else adjusted
+        adjusted = scale_lot_by_regime(
+            base_lot,
+            multiplier=mult,
+            min_lot=min_lot,
+            max_lot=self.config.max_lot,
+        )
         if adjusted != base_lot:
             logger.debug(
                 f"[regime_lot] mult={mult:.2f} → lot adjusted: "
@@ -508,27 +517,18 @@ class FillTestRunner(AbstractCycleRunner):
         Returns:
             1.0 (無効時 / 確率なし / dust_sweep) or [floor, 1.0] の倍率.
         """
-        if not self.config.enable_confidence_lot:
-            return 1.0
-        if dust_sweep_active:
-            return 1.0
-
         mode = self.config.confidence_lot_mode
-        if mode == "pnl":
+        if self.config.enable_confidence_lot and mode == "pnl":
             # §10 #3/#6 + §13 #1: mode=pnl は凍結。__post_init__ で弾くが防御的二重ガード
             logger.warning("[confidence_lot] mode='pnl' is frozen; treating as 1.0")
-            return 1.0
-        # mode == "as"
-        if as_prob is None:
-            return 1.0
-        import math
-        if not math.isfinite(as_prob):
-            return 1.0
-        scale = self.config.confidence_lot_scale
-        floor = self.config.confidence_lot_floor
-        raw = 1.0 - scale * as_prob
-        # §10 #2: 縮小専用不変条件 — factor ∈ [0, 1]
-        return max(floor, min(1.0, max(0.0, raw)))
+        return compute_confidence_lot_factor(
+            enabled=self.config.enable_confidence_lot,
+            mode=mode,
+            as_prob=as_prob,
+            scale=self.config.confidence_lot_scale,
+            floor=self.config.confidence_lot_floor,
+            dust_sweep_active=dust_sweep_active,
+        )
 
     def _effective_order_lot(
         self,
@@ -552,12 +552,12 @@ class FillTestRunner(AbstractCycleRunner):
         conf_factor = self._confidence_lot_factor(
             as_prob, dust_sweep_active=dust_sweep_active,
         )
-        lot = regime_lot * conf_factor
-
-        min_lot = self.config.min_order_btc
-        lot = max(lot, min_lot)
-        if self.config.max_lot > 0:
-            lot = min(lot, self.config.max_lot)
+        lot = compute_effective_order_lot(
+            regime_lot=regime_lot,
+            confidence_factor=conf_factor,
+            min_lot=self.config.min_order_btc,
+            max_lot=self.config.max_lot,
+        )
 
         if conf_factor < 1.0:
             logger.debug(

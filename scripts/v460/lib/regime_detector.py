@@ -161,26 +161,44 @@ class FillTestRegimeDetector:
             (trend_pct, volatility_ratio)
         """
         recent = self._prices[-self.config.window :]
-        prices = np.array([p[1] for p in recent])
+        prices = np.array([p[1] for p in recent], dtype=float)
 
         # trend: window 区間の価格変化率 (%)
-        if prices[0] > 0:
+        if (
+            prices.size >= 2
+            and np.isfinite(prices[0])
+            and np.isfinite(prices[-1])
+            and abs(prices[0]) > 1e-12
+        ):
             trend_pct = (prices[-1] - prices[0]) / prices[0] * 100
         else:
             trend_pct = 0.0
 
-        # returns (隣接比)
-        returns = np.diff(prices) / prices[:-1]
+        # returns (隣接比) — zero/invalid denominator は除外して NaN/inf 伝播を防止
+        returns = self._safe_returns(prices)
         current_vol = float(np.std(returns)) if len(returns) > 1 else 0.0
 
         # baseline: 全バッファの returns の std
-        all_prices = np.array([p[1] for p in self._prices])
-        all_returns = np.diff(all_prices) / all_prices[:-1]
+        all_prices = np.array([p[1] for p in self._prices], dtype=float)
+        all_returns = self._safe_returns(all_prices)
         baseline_vol = float(np.std(all_returns)) if len(all_returns) > 1 else current_vol
 
         vol_ratio = current_vol / baseline_vol if baseline_vol > 1e-12 else 1.0
 
         return trend_pct, vol_ratio
+
+    @staticmethod
+    def _safe_returns(prices: np.ndarray) -> np.ndarray:
+        """価格列から有限な return のみを抽出する."""
+        if prices.size < 2:
+            return np.array([], dtype=float)
+        prev = prices[:-1]
+        diff = np.diff(prices)
+        valid = np.isfinite(prev) & np.isfinite(diff) & (np.abs(prev) > 1e-12)
+        if not np.any(valid):
+            return np.array([], dtype=float)
+        returns = diff[valid] / prev[valid]
+        return returns[np.isfinite(returns)]
 
     def _classify(
         self, trend_pct: float, vol_ratio: float

@@ -1775,3 +1775,45 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - Any inventory:
   - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots ztb/ops/alerts/jsonl_loader.py ztb/ops/monitoring/alert_notifier.py ztb/ops/alerts/alert_notifier.py ztb/ops/monitoring/collect_last_errors.py --top 10`
     - 結果: `any_type_debt_tokens=0`（対象4ファイル）
+
+## Phase 45 追補: run_fill_test の lot責務分割 + 外部化メソッド点検 (2026-02-23)
+
+### 1) 初期分割（153# P2-8 optional 実装）
+
+- `scripts/v460/lib/lot_manager.py` を追加し、per-cycle lot 計算を純粋関数へ分離:
+  - `resolve_regime_lot_multiplier`
+  - `scale_lot_by_regime`
+  - `compute_confidence_lot_factor`
+  - `compute_effective_order_lot`
+- `scripts/v460/run_fill_test.py` の以下4メソッドを helper 委譲化:
+  - `_regime_lot_multiplier`
+  - `_regime_adjusted_lot`
+  - `_confidence_lot_factor`
+  - `_effective_order_lot`
+- `FillTestRunner` の公開 API / 呼び出し順序は維持し、
+  `run_single_cycle` の lot 経路を変更せずに責務のみ分離。
+
+### 2) 既存外部化メソッドの点検と不具合芽摘み
+
+- `scripts/v460/lib/regime_detector.py`
+  - 価格系列に 0 / 非有限値が混在する場合でも `NaN/inf` が伝播しないよう
+    `_safe_returns()` を導入して return 計算を安全化。
+  - trend 算出も有限値 + 非ゼロ分母を前提にガード。
+- `scripts/v460/lib/skip_gate_evaluator.py`
+  - side hot-reload 時の `SkipGate` import 失敗を non-fatal 化し、
+    optional 依存未解決環境での評価経路クラッシュ可能性を低減。
+
+### 3) テスト/型安全
+
+- 新規テスト:
+  - `tests/unit/v460/test_lot_manager.py`
+- 追加強化:
+  - `tests/unit/v460/test_regime_detector.py`
+    - 0価格混在時の finite 指標保証
+    - `_safe_returns` の分母ゼロ除外
+- 回帰確認:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_lot_manager.py tests/unit/v460/test_regime_detector.py tests/unit/v460/test_143_regime_utilization.py tests/unit/v460/test_151_confidence_lot.py tests/unit/v460/test_152_parallel_tasks.py`
+    - 結果: `169 passed, 1 warning`
+- Any inventory:
+  - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460/lib/lot_manager.py scripts/v460/run_fill_test.py scripts/v460/lib/regime_detector.py scripts/v460/lib/skip_gate_evaluator.py tests/unit/v460/test_lot_manager.py tests/unit/v460/test_regime_detector.py --top 20`
+    - 結果: `any_type_debt_tokens=0`（対象6ファイル）
