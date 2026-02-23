@@ -1565,6 +1565,64 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460/analysis/analyze_fill_records.py scripts/v460/analysis/oracle_baseline.py scripts/v460/lib/results_analyzer.py`
   - 結果: `any_type_debt_tokens=0`
 
+## Step85: `hindsight_filter` の filter 簡素化 + 契約化 + 補間ホットパス改善 (2026-02-23)
+
+### 1) 対象
+
+- `scripts/v460/analysis/hindsight_filter.py`
+
+### 2) Any削減（型安全向上）
+
+- `dict[str, Any]` / `dict[str, dict[str, Any]]` を排除。
+- `RawRecord`（`Mapping[str, object]`）と `TypedDict` 契約を導入:
+  - `AggregatePnlSummary`（基底）
+  - `WaitBandSummary` / `RegimeSideSummary`（基底継承）
+  - `SideReversalSummary`
+  - `HourlySummary`
+  - `SkipGate*` 系契約
+  - `InterpolatedStats`
+- `main()` 戻り値を `dict[str, object]` に変更。
+
+### 3) filter/重複整理（保守性改善）
+
+- cancel reason 分類を `_category_from_result()` + 定数テーブル化し、
+  if/elif 連鎖を簡素化。
+- 集計ロジックを共通化:
+  - `_PnlAggregateBase`
+  - `_SignedPnlAggregate`
+  - `_SideReversalAggregate`
+  - `_HourlyAggregate`
+- `_analyze_side_reversal` / `_analyze_hourly` / `_analyze_wait_bands` /
+  `_analyze_regime_side` / `_analyze_skip_gate_calibration` を
+  単一走査寄りの実装へ整理（中間 list の重複生成を削減）。
+- レポート表示の未使用プレースホルダコード（`pass` を含むブロック）を削除。
+
+### 4) 不具合余地の低減
+
+- 数値入力を `_to_float()` で統一変換し、
+  文字列/非有限値混入時の計算不具合を抑止。
+- 補間計算で同一 timestamp 混在時のゼロ除算リスクをガード
+  （`interval <= 0` を除外）。
+- `timeline` が空の場合は明示エラーで early-exit。
+
+### 5) パフォーマンス改善
+
+- `_analyze_records()` 内で `timeline` の timestamp 配列を前計算し、
+  `_interpolate_price()` 呼び出しごとの再生成を除去。
+- `_build_price_timeline()` で同一 timestamp を圧縮し、
+  補間点数と検索ノイズを削減。
+
+### 6) 検証
+
+- `py_compile`:
+  - `.venv/Scripts/python.exe -m py_compile scripts/v460/analysis/hindsight_filter.py`
+- テスト:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_155_hindsight_review.py -q --override-ini="addopts="`
+  - 結果: `18 passed`
+- `any_inventory`:
+  - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460/analysis/hindsight_filter.py`
+  - 結果: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
