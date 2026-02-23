@@ -10,9 +10,13 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import List
+
+from ztb.ops.alerts.jsonl_loader import load_alerts_from_jsonl
+
+AlertRecord = dict[str, object]
 
 try:
     import requests
@@ -24,39 +28,19 @@ except ImportError:
 
 def load_alerts(
     jsonl_path: Path, since_seconds: int, min_level: str
-) -> List[Dict[str, Any]]:
+) -> List[AlertRecord]:
     """Load alerts from JSONL file."""
     if not jsonl_path.exists():
         print(f"JSONL file not found: {jsonl_path}", file=sys.stderr)
         return []
-
-    since_time = datetime.now() - timedelta(seconds=since_seconds)
-    alerts = []
-    level_order = {"INFO": 0, "WARN": 1, "ERROR": 2, "CRITICAL": 3}
-
-    try:
-        with open(jsonl_path, "r") as f:
-            for line in f:
-                try:
-                    alert = json.loads(line.strip())
-                    alert_time = datetime.fromisoformat(alert["timestamp"])
-                    if alert_time >= since_time and level_order.get(
-                        alert.get("level", "INFO"), 0
-                    ) >= level_order.get(min_level, 1):
-                        alerts.append(alert)
-                except json.JSONDecodeError:
-                    continue
-    except Exception as e:
-        print(f"Error reading JSONL: {e}", file=sys.stderr)
-
-    return alerts
+    return load_alerts_from_jsonl(jsonl_path, since_seconds, min_level)
 
 
 def send_webhook(
     webhook_url: str,
     title: str,
     correlation_id: str,
-    alerts: List[Dict[str, Any]],
+    alerts: List[AlertRecord],
     platform: str = "slack",
 ) -> bool:
     """Send alerts to webhook. Supports Slack and Discord."""
@@ -83,7 +67,7 @@ def send_webhook(
         }
     else:
         # Slack webhook format (default)
-        payload = {"title": title, "correlation_id": correlation_id, "alerts": alerts}  # type: ignore[dict-item]
+        payload = {"title": title, "correlation_id": correlation_id, "alerts": alerts}
 
     max_retries = 3
     for attempt in range(max_retries):

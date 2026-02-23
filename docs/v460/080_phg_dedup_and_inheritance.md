@@ -1715,3 +1715,63 @@ plain class (`class RegimeType:`) で値にも差異 (`_range` vs `_ranging`)。
 - Any inventory:
   - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots ztb/utils/core/logger.py ztb/utils/parallel_experiments.py ztb/ops/monitoring/watch_1m.py ztb/ops/monitoring/disk_health.py ztb/ops/status/progress_eta.py ztb/io/text_io.py --top 10`
     - 結果: `any_type_debt_tokens=0`（対象6ファイル）
+
+## Phase 44 追補: monitoring/alerts の既存実装統合 + watch_log 経路不具合修正 (2026-02-23)
+
+### 1) 既存実装再利用による重複削減
+
+- `ztb/ops/alerts/jsonl_loader.py` を追加し、
+  `load_alerts_from_jsonl()` を共通化。
+  - `ztb.io.jsonl.iter_jsonl_objects` を再利用し、
+    2系統 notifier の手書き `open + json.loads` 重複を統合。
+- 適用先:
+  - `ztb/ops/monitoring/alert_notifier.py`
+  - `ztb/ops/alerts/alert_notifier.py`
+
+### 2) 不具合可能性の排除
+
+- `ztb/ops/monitoring/collect_last_errors.py`
+  - watch ログ参照を `watch_log.jsonl` 固定から
+    `artifacts/{correlation_id}/logs/watch_log.jsonl` 優先へ修正
+    （legacy `./watch_log.jsonl` は fallback 維持）。
+  - これにより `watch_1m.py` の実際の出力先と整合し、
+    エラー収集漏れを解消。
+- alert timestamp 解析を強化:
+  - `Z` サフィックスや timezone-aware/naive 混在を許容し、
+    時刻比較の取りこぼし/例外を低減。
+
+### 3) 性能改善（I/O）
+
+- `collect_last_errors.py` のログ走査を
+  `read_text().splitlines()[-1000:]` から
+  `read_last_lines(..., count=1000)` へ置換。
+- 巨大ログ時の全件読込を避け、監視補助コマンドのメモリ使用量を抑制。
+
+### 4) 型安全
+
+- `ztb/ops/monitoring/alert_notifier.py`
+- `ztb/ops/alerts/alert_notifier.py`
+- `ztb/ops/alerts/jsonl_loader.py`
+- `ztb/ops/monitoring/collect_last_errors.py`
+- 上記4ファイルの `any_type_debt_tokens=0` を確認。
+
+### 5) テスト・検証
+
+- `py_compile`:
+  - `ztb/ops/alerts/jsonl_loader.py`
+  - `ztb/ops/monitoring/alert_notifier.py`
+  - `ztb/ops/alerts/alert_notifier.py`
+  - `ztb/ops/monitoring/collect_last_errors.py`
+  - `tests/unit/ops/test_alert_notifier_loading.py`
+  - `tests/unit/ops/test_collect_last_errors.py`
+- 追加テスト:
+  - `tests/unit/ops/test_alert_notifier_loading.py`（新規）
+  - `tests/unit/ops/test_collect_last_errors.py`（新規）
+- 回帰確認:
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/ops/test_alert_notifier_loading.py tests/unit/ops/test_collect_last_errors.py`
+    - 結果: `5 passed`
+  - `.venv/Scripts/python.exe -m pytest -q tests/unit/utils/test_text_io.py tests/unit/core/test_disk_health.py tests/unit/core/test_watch_1m_runtime.py tests/unit/ops/test_alert_notifier_loading.py tests/unit/ops/test_collect_last_errors.py tests/unit/core/test_supervise_1m.py`
+    - 結果: `11 passed, 1 skipped`
+- Any inventory:
+  - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots ztb/ops/alerts/jsonl_loader.py ztb/ops/monitoring/alert_notifier.py ztb/ops/alerts/alert_notifier.py ztb/ops/monitoring/collect_last_errors.py --top 10`
+    - 結果: `any_type_debt_tokens=0`（対象4ファイル）

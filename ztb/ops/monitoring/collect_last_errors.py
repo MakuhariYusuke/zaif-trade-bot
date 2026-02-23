@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 from typing import List
 
-from ztb.io.text_io import read_text, write_text
+from ztb.io.text_io import read_last_lines, write_text
 
 def extract_errors_from_logs(log_dir: Path) -> List[str]:
     """Extract ERROR/FAIL lines from log files."""
@@ -20,10 +20,10 @@ def extract_errors_from_logs(log_dir: Path) -> List[str]:
 
     for log_file in log_files:
         try:
-            lines = read_text(log_file).splitlines()
+            lines = read_last_lines(log_file, count=1000)
 
             # Look for ERROR or FAIL in lines
-            for line in lines[-1000:]:  # Last 1000 lines
+            for line in lines:
                 if "ERROR" in line.upper() or "FAIL" in line.upper():
                     errors.append(f"{log_file.name}: {line.strip()}")
         except Exception as e:
@@ -40,12 +40,15 @@ def extract_errors_from_watch_log(watch_log_path: Path) -> List[str]:
         return errors
 
     try:
-        lines = read_text(watch_log_path).splitlines()
+        lines = read_last_lines(watch_log_path, count=1000)
 
-        for line in lines[-1000:]:  # Last 1000 entries
+        for line in lines:
             try:
-                alert = json.loads(line.strip())
-                level = alert.get("level", "").upper()
+                payload = json.loads(line.strip())
+                if not isinstance(payload, dict):
+                    continue
+                alert = payload
+                level = str(alert.get("level", "")).upper()
                 if level in ("ERROR", "CRITICAL", "FAIL"):
                     timestamp = alert.get("timestamp", "unknown")
                     message = alert.get("message", str(alert))
@@ -58,10 +61,18 @@ def extract_errors_from_watch_log(watch_log_path: Path) -> List[str]:
     return errors
 
 
+def _resolve_watch_log_path(correlation_id: str) -> Path:
+    """Resolve watch_log path from canonical artifacts location, with legacy fallback."""
+    canonical = Path("artifacts") / correlation_id / "logs" / "watch_log.jsonl"
+    if canonical.exists():
+        return canonical
+    return Path("watch_log.jsonl")
+
+
 def collect_last_errors(correlation_id: str) -> List[str]:
     """Collect last errors from all sources."""
     log_dir = Path("logs")
-    watch_log_path = Path("watch_log.jsonl")
+    watch_log_path = _resolve_watch_log_path(correlation_id)
 
     errors = []
     errors.extend(extract_errors_from_logs(log_dir))
