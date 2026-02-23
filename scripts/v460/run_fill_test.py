@@ -1432,6 +1432,7 @@ class FillTestRunner(AbstractCycleRunner):
                         "fill_test 内蔵 TradesRecorder の動作状態を確認してください"
                     )
                 # 148# P1: trades stale 自動イベント記録
+                # 159# §2.1 fix: latest_ts/age_hours → available_days[-1]/stale_hours
                 _log_event(
                     "trades_health_alert",
                     self._results_dir,
@@ -1440,9 +1441,9 @@ class FillTestRunner(AbstractCycleRunner):
                     reason=f"trades unhealthy: {th.message}",
                     details={
                         "healthy": th.healthy,
-                        "latest_ts": str(th.latest_ts) if th.latest_ts else None,
+                        "latest_day": th.available_days[-1] if th.available_days else None,
                         "missing_days": th.missing_days,
-                        "age_hours": round(th.age_hours, 1) if th.age_hours else None,
+                        "stale_hours": round(th.stale_hours, 1),
                     },
                 )
             else:

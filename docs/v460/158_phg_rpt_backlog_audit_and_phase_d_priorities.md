@@ -135,24 +135,25 @@
 | アクション | stale_check 間隔の動的調整 + reprice 戦略改善。155# T-1/T-2/T-3 の順に実施。 |
 | 工数見積 | 0.5 日 |
 
-### P1-3: reprice ログ連携 (156# §9.4 #3)
+### P1-3: reprice ログ連携 (156# §9.4 #3) — 部分完了
 
 | 項目 | 値 |
 |---|---|
 | 出典 | 155# §9.4 #3, 156# §6.2 |
 | 問題 | reprice イベントが FillRecord に記録されていない。ヒンドサイト分析で reprice の効果を定量化できない。 |
-| アクション | reprice 時のログ情報 (reprice_count, reprice_drift_bps) を FillRecord に追加。 |
-| 工数見積 | 0.2 日 |
+| アクション | ~~reprice 時のログ情報 (reprice_count, reprice_drift_bps) を FillRecord に追加。~~ |
+| **159# 更新** | `reprice_count` は `FillRecord` 実装済み (`ztb/metrics/fill_quality.py:93`)。残課題は `reprice_drift_bps` のみ。 |
+| 工数見積 | 0.1 日 (drift_bps のみ) |
 
-### P1-4: trades_health UNHEALTHY 状態の検証
+### P1-4: trades_health UNHEALTHY 状態の検証 — ✅ 完了 (158# 修正済)
 
 | 項目 | 値 |
 |---|---|
 | 出典 | 118# §8.3, retrain_scheduler ログ |
-| 問題 | `RetrainTrigger.trades_health` が UNHEALTHY を返している可能性。128# 以降で retrain 頻度に影響。trades_health は `n_recent_trades >= min_trades_threshold` で判定しており、dry-run (実取引なし) では常に UNHEALTHY になるのが正常動作なのか、設計上の見落ちなのか未確認。 |
-| アクション | fill_test ログから trades_health の状態を確認。dry-run での正しい挙動を定義し、必要なら fill_records を trades_health のソースとして使うように修正。 |
-| 工数見積 | 0.2 日 |
-| 緊急度 | **即時確認推奨** — retrain trigger の判定に直結 |
+| 問題 | 20260220-21 deadlock gap により trades_health が UNHEALTHY → retrain 完全ブロック。 |
+| **158# 修正** | `max_missing_days` パラメータ導入 (commit `1a1d8d354`)。YAML: `trigger_trades_max_missing_days: 2`。retrain_scheduler PID 124484 で再稼働確認済。 |
+| **159# §2.1 追加修正** | `run_fill_test.py:1443-1445` の `th.latest_ts`/`th.age_hours` 参照を `th.available_days[-1]`/`th.stale_hours` に修正。`TradesHealthResult` のフィールド不整合による silent `AttributeError` を解消。テスト 5 件追加。 |
+| ステータス | **✅ 完了** (2 commit で段階修正) |
 
 ### P1-5: offset A/B テスト自動化基盤
 
@@ -186,14 +187,15 @@
 | アクション | retrain_scheduler の WF ロジックを検証し、v458 バグが影響していないことを確認。影響がある場合は修正。 |
 | 工数見積 | 0.5 日 |
 
-### P2-2: execute_trade() 実装 (013# D-1)
+### P2-2: execute_trade() 実装 (013# D-1) — 159# 更新: 実装済み・統合検証待ち
 
 | 項目 | 値 |
 |---|---|
 | 出典 | 013# D-1, 118# §6.1 |
-| 問題 | `OrderManager.execute_trade()` は dry-run パスのみ実装。Ph5 (本番デプロイ) 前に実取引パスの実装が必須。 |
-| ステータス | 未着手。fill_test は独自の注文フローを持っているため ph2 では不要だったが、本番移行のブロッカー。 |
-| 工数見積 | 1.0 日 |
+| 問題 | ~~`OrderManager.execute_trade()` は dry-run パスのみ実装。~~ |
+| **159# 更新** | `ztb/trading/live_trader/components/order_manager.py:29` に live 実装あり。fill_test は独自注文フローだが、`live_trader.py:1634` から `order_manager.execute_trade()` を呼び出す統合済み。残課題は統合テストの充実。 |
+| ステータス | **実装済み・統合検証待ち** |
+| 工数見積 | 0.3 日 (テスト追加のみ) |
 
 ### P2-3: 運用失敗モードテスト (118# §8.5)
 
@@ -204,15 +206,15 @@
 | アクション | `tests/integration/v460/test_failure_modes.py` を設計・実装。mock レベルでの障害注入テスト。 |
 | 工数見積 | 1.0 日 |
 
-### P2-4: run_fill_test 分割設計 (153# タスク B)
+### P2-4: run_fill_test 分割設計 (153# タスク B) — 進行中
 
 | 項目 | 値 |
 |---|---|
 | 出典 | 153# §3 |
-| 問題 | `FillTestRunner` が 2,200+ 行の god object。Lot/Position, Order Execution, Measurement, Lifecycle, Record/IO の 5 責務が混在。 |
-| ステータス | 153# で設計メモ作成済み。実装は未着手。 |
-| アクション | 153# §3.2 に従い、まず LotManager の抽出から着手。FillTestRunner の公開 API は維持。 |
-| 工数見積 | 1.0 日 |
+| 問題 | `FillTestRunner` が 2,600+ 行の god object。Lot/Position, Order Execution, Measurement, Lifecycle, Record/IO の 5 責務が混在。 |
+| **159# 更新** | `scripts/v460/lib/` に 27+ モジュール分割進展 (`lot_manager.py`, `lot_sizer.py`, `order_monitor.py`, `pnl_measurer.py`, `balance_checker.py` 等)。159# §3.3: 稼働中は Facade 維持 + 契約テスト先行で段階移行。 |
+| ステータス | **進行中 (lib/ 分割済み、Facade 統合待ち)** |
+| 工数見積 | 0.5 日 (残テスト + Facade 配線) |
 
 ### P2-5: skip_gate.py モジュール配置 (106# R5)
 
@@ -394,3 +396,7 @@ Week 3 (03/09–03/16):
 | 日付 | 内容 |
 |------|------|
 | 2026-02-24 | 初版: 118#–157# 横断監査 22 件 + Phase D 優先順位 + 外部レビュー向け補足 |
+| 2026-02-24 | 158# P1-4: trades_health `max_missing_days` 導入 (commit `1a1d8d354`) |
+| 2026-02-24 | 158# P0-4: Oracle テスト実施 PASS + AS cost 分析 (commit `fd9d4ce18`) |
+| 2026-02-24 | 158# P0-3: trending_down sell 中間スナップショット n=5 (commit `ae2e4e5c0`) |
+| 2026-02-24 | 159# レビュー反映: §1.1 進捗更新 (P1-3/P2-2/P2-4/P1-4), §2.1 trades_health alert 不整合修正, P0-B 3指標 dashboard 追加 |

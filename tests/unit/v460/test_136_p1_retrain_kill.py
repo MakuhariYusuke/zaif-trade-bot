@@ -315,6 +315,94 @@ class TestTradesHealthMaxMissing:
         assert len(result.missing_days) == 1
 
 
+class TestTradesHealthResultFields:
+    """159# §2.1: TradesHealthResult のフィールド整合性テスト.
+
+    run_fill_test.py が参照するフィールドが TradesHealthResult に存在すること、
+    かつ旧 latest_ts / age_hours が存在しないことを確認。
+    """
+
+    def test_result_has_stale_hours(self, tmp_path: Path) -> None:
+        """stale_hours フィールドが float で取得可能."""
+        from ztb.data.trades_health import check_trades_health
+
+        tr_dir = tmp_path / "trades"
+        tr_dir.mkdir()
+        from datetime import datetime, timedelta, timezone
+        import gzip as _gz
+
+        now = datetime.now(timezone.utc)
+        day1 = (now - timedelta(days=1)).strftime("%Y%m%d")
+        (tr_dir / f"{day1}.jsonl.gz").write_bytes(_gz.compress(b'{"t":1}\n'))
+
+        result = check_trades_health(raw_dir=tmp_path, lookback_days=1)
+        assert isinstance(result.stale_hours, float)
+        assert result.stale_hours >= 0
+
+    def test_result_has_available_days_list(self, tmp_path: Path) -> None:
+        """available_days からインデックスアクセス可能."""
+        from ztb.data.trades_health import check_trades_health
+
+        tr_dir = tmp_path / "trades"
+        tr_dir.mkdir()
+        from datetime import datetime, timedelta, timezone
+        import gzip as _gz
+
+        now = datetime.now(timezone.utc)
+        day1 = (now - timedelta(days=1)).strftime("%Y%m%d")
+        (tr_dir / f"{day1}.jsonl.gz").write_bytes(_gz.compress(b'{"t":1}\n'))
+
+        result = check_trades_health(raw_dir=tmp_path, lookback_days=1)
+        assert len(result.available_days) >= 1
+        latest_day = result.available_days[-1]
+        assert len(latest_day) == 8 and latest_day.isdigit()
+
+    def test_no_latest_ts_attribute(self) -> None:
+        """159# §2.1: latest_ts は存在しない → hasattr=False."""
+        from ztb.data.trades_health import TradesHealthResult
+
+        r = TradesHealthResult(
+            healthy=True, available_days=["20260223"],
+            missing_days=[], stale_hours=0.5, message="OK",
+        )
+        assert not hasattr(r, "latest_ts")
+
+    def test_no_age_hours_attribute(self) -> None:
+        """159# §2.1: age_hours は存在しない → hasattr=False."""
+        from ztb.data.trades_health import TradesHealthResult
+
+        r = TradesHealthResult(
+            healthy=True, available_days=["20260223"],
+            missing_days=[], stale_hours=0.5, message="OK",
+        )
+        assert not hasattr(r, "age_hours")
+
+    def test_event_details_format(self, tmp_path: Path) -> None:
+        """run_fill_test.py の修正後 event details 形式が構築可能."""
+        from ztb.data.trades_health import check_trades_health
+
+        tr_dir = tmp_path / "trades"
+        tr_dir.mkdir()
+        from datetime import datetime, timedelta, timezone
+        import gzip as _gz
+
+        now = datetime.now(timezone.utc)
+        day1 = (now - timedelta(days=1)).strftime("%Y%m%d")
+        (tr_dir / f"{day1}.jsonl.gz").write_bytes(_gz.compress(b'{"t":1}\n'))
+
+        th = check_trades_health(raw_dir=tmp_path, lookback_days=2)
+        # 159# §2.1 fix: 修正後のフィールド参照が例外なしで構築可能
+        details = {
+            "healthy": th.healthy,
+            "latest_day": th.available_days[-1] if th.available_days else None,
+            "missing_days": th.missing_days,
+            "stale_hours": round(th.stale_hours, 1),
+        }
+        assert "latest_day" in details
+        assert details["stale_hours"] >= 0
+        assert isinstance(details["missing_days"], list)
+
+
 # ===== P1-02: Feature Freshness =====
 
 class TestFeatureFreshness:
