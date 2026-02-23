@@ -145,6 +145,7 @@
 | 150 | plan | [150_ph2_plan_fill_test_auto_restart.md](150_ph2_plan_fill_test_auto_restart.md) | P2-B 自動再起動設計 |
 | 151 | impl | [151_ph2_plan_dynamic_position_sizer.md](151_ph2_plan_dynamic_position_sizer.md) | P3-03 confidence_lot 実装 |
 | 152 | plan | [152_ph2_plan_priority_improvements.md](152_ph2_plan_priority_improvements.md) | 代替優先施策: 144# CRITICAL検証 + P3-03判定 + P3-02 unknown削減 |
+| 153 | refactor | [153_ph2_refactor_test_stabilization.md](153_ph2_refactor_test_stabilization.md) | P2 品質改善: テスト安定化 + run_fill_test 分割設計 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

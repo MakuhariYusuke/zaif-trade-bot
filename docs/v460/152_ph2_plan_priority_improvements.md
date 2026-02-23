@@ -239,14 +239,18 @@ mid_price のみで RSI/ADX を近似しても精度は低い。**FillTestRegime
 
 ### 5.1 実施順序
 
-| 順 | 作業 | ファイル | 工数 |
-|----|------|---------|------|
-| 1 | §4.2 A: accelerated hysteresis | `regime_detector.py` | 0.05 日 |
-| 2 | §4.2 B: 最頻フォールバック | `regime_detector.py` | 0.1 日 |
-| 3 | §4.2 C: min_confidence YAML 更新 | `fill_test.yaml` | 0.02 日 |
-| 4 | §3.6 P3-03 結論をドキュメント反映 | `fill_test.yaml` コメント | 0.02 日 |
-| 5 | テスト追加 (regime_detector) | `test_143_regime_utilization.py` | 0.1 日 |
-| **合計** | | | **0.29 日** |
+| 順 | 作業 | ファイル | 工数 | 状態 |
+|----|------|---------|------|------|
+| 1 | §4.2 A: accelerated hysteresis | `regime_detector.py` | 0.05 日 | ✅ 完了 |
+| 2 | §4.2 B: 最頻フォールバック | `regime_detector.py` | 0.1 日 | ✅ 完了 |
+| 3 | §4.2 C: min_confidence YAML 更新 | `fill_test.yaml` | 0.02 日 | ✅ 完了 |
+| 4 | §3.6 P3-03 結論をドキュメント反映 | `fill_test.yaml` コメント | 0.02 日 | ✅ 完了 |
+| 5 | テスト追加 (regime_detector) | `test_143_regime_utilization.py` | 0.1 日 | ✅ 完了 |
+| 6 | §9 P0-1: 集計再現スクリプト | `reproduce_152_metrics.py` | 0.1 日 | ✅ 完了 |
+| 7 | §9 P0-2: regime A/B 比較ハーネス | `compare_regime_ab.py` | 0.15 日 | ✅ 完了 |
+| 8 | §9 P1-6: confidence_lot no-op ガード | `run_fill_test.py` | 0.02 日 | ✅ 完了 |
+| 9 | §9 テスト追加 (並行施策) | `test_152_parallel_tasks.py` | 0.1 日 | ✅ 完了 |
+| **合計** | | | **0.66 日** | |
 
 > 144# §8.1 #6 は 145# で対応済みのため、スコープから除外。
 
@@ -257,6 +261,10 @@ mid_price のみで RSI/ADX を近似しても精度は低い。**FillTestRegime
 | `scripts/v460/lib/regime_detector.py` | 機能改善 | A: accelerated hysteresis + B: majority fallback |
 | `configs/v460/fill_test.yaml` | 設定変更 | min_confidence 0.3→0.2, P3-03 有効化見送りコメント |
 | `tests/unit/v460/test_143_regime_utilization.py` | テスト追加 | accelerated hysteresis + fallback テスト |
+| `scripts/v460/analysis/reproduce_152_metrics.py` | 新規 | §9 P0-1 集計再現スクリプト |
+| `scripts/v460/analysis/compare_regime_ab.py` | 新規 | §9 P0-2 regime A/B 比較ハーネス |
+| `scripts/v460/run_fill_test.py` | 機能改善 | §9 P1-6 confidence_lot no-op 起動時ガード |
+| `tests/unit/v460/test_152_parallel_tasks.py` | 新規 | §9 並行施策テスト (11件) |
 | `docs/v460/152_ph2_plan_priority_improvements.md` | 新規 | 本ドキュメント |
 
 ---
@@ -287,6 +295,8 @@ mid_price のみで RSI/ADX を近似しても精度は低い。**FillTestRegime
 - 工数 0.29 日の投資対効果 (ROI) は十分か
 - 次に着手すべき施策の提案
 
+> **注**: §5.1 工数は §9 並行施策統合後 0.66 日に更新済み。
+
 ---
 
 ## §7 変更履歴
@@ -296,6 +306,7 @@ mid_price のみで RSI/ADX を近似しても精度は低い。**FillTestRegime
 | 2026-02-23 | 初版: 3 施策の計画・検証・実装方針 |
 | 2026-02-23 | §8 Codex レビュー全 5 件対応 (§10 追加) |
 | 2026-02-23 | §9 並行施策 3 件実装: P0-1 + P0-2 + P1-6 (§11 追加) |
+| 2026-02-23 | §5 に並行施策統合 + 153# P2 委譲ドキュメント作成 |
 
 ---
 
