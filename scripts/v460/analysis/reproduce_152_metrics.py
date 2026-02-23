@@ -75,10 +75,21 @@ def _load_records(
 # Metrics computation
 # ---------------------------------------------------------------------------
 
-def _compute_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
+def _compute_metrics(
+    records: list[dict[str, Any]],
+    *,
+    include_zero_qty: bool = False,
+) -> dict[str, Any]:
     """Compute all §1-equivalent metrics."""
     total = len(records)
-    with_qty = [r for r in records if r.get("order_quantity") is not None]
+    # §12 #4: デフォルトは order_quantity > 0 (0.0000 除外)
+    if include_zero_qty:
+        with_qty = [r for r in records if r.get("order_quantity") is not None]
+    else:
+        with_qty = [
+            r for r in records
+            if r.get("order_quantity") is not None and float(r["order_quantity"]) > 0
+        ]
     filled = [r for r in records if r.get("filled")]
 
     # Regime distribution (over all records with regime)
@@ -279,6 +290,10 @@ def main(argv: Sequence[str] | None = None) -> dict[str, Any]:
         "--quiet", action="store_true",
         help="Suppress human-readable output",
     )
+    parser.add_argument(
+        "--include-zero-qty", action="store_true",
+        help="order_quantity=0 のレコードも集計に含める (デフォルト: 除外)",
+    )
     args = parser.parse_args(argv)
 
     records = _load_records(
@@ -300,7 +315,7 @@ def main(argv: Sequence[str] | None = None) -> dict[str, Any]:
         "record_count": len(records),
     }
 
-    metrics = _compute_metrics(records)
+    metrics = _compute_metrics(records, include_zero_qty=args.include_zero_qty)
 
     if not args.quiet:
         _print_report(metrics, params)

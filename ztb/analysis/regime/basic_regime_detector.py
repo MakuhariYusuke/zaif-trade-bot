@@ -6,12 +6,16 @@ Follows Single Responsibility Principle by focusing only on regime detection.
 """
 
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict, List, Protocol
 
 import numpy as np
 
-from ztb.trading.environment.components.interfaces import IMarketRegimeDetector
 from ztb.utils.logging_utils import get_logger
+
+
+class IMarketRegimeDetector(Protocol):
+    def detect_regime(self, current_price: float, step: int) -> str:
+        """Detect the current market regime."""
 
 
 class MarketRegimeDetector(IMarketRegimeDetector):

@@ -307,6 +307,7 @@ mid_price のみで RSI/ADX を近似しても精度は低い。**FillTestRegime
 | 2026-02-23 | §8 Codex レビュー全 5 件対応 (§10 追加) |
 | 2026-02-23 | §9 並行施策 3 件実装: P0-1 + P0-2 + P1-6 (§11 追加) |
 | 2026-02-23 | §5 に並行施策統合 + 153# P2 委譲ドキュメント作成 |
+| 2026-02-24 | §13 Codex 実装レビュー全 6 件対応 (§12 指摘 #1-#6) |
 
 ---
 
@@ -427,3 +428,47 @@ mid_price のみで RSI/ADX を近似しても精度は低い。**FillTestRegime
   - TestCompareRegimeAB: 4 (旧detector加速なし、fallbackなし、simulate、gate評価)
   - TestConfidenceLotNoOpGuard: 3 (no-op検知、正常時非発火、無効時非発火)
 - 回帰: 152# 既存 (58) + 151# 既存 (32) = 90 passed, 0 failures
+
+---
+
+## §12 Codex 実装レビュー (152#)
+
+### 12.1 指摘事項 (重大度順)
+
+| # | 重大度 | 対象ファイル | 問題 | 推奨対応 |
+|---|---|---|---|---|
+| 1 | HIGH | `scripts/v460/analysis/compare_regime_ab.py:112`, `scripts/v460/analysis/compare_regime_ab.py:126`, `configs/v460/fill_test.yaml:89` | A/B ハーネスの `new` detector が `RegimeConfig()` デフォルト (`min_confidence=0.4`) を使用し、152実運用設定 (`0.2`) を反映していない。比較前提が崩れ、Gate 結果が実運用と不整合になる。 | `--min-confidence` CLI を追加し、デフォルトを `fill_test.yaml` と同じ値に同期する。最低でも現状値を実行ログ/JSONに明示して誤解を防ぐ。 |
+| 2 | HIGH | `scripts/v460/analysis/compare_regime_ab.py:136` | replay 入力で `order_price == 0` を除外していないため、preflight/監査スキップ系レコードが detector に混入する。実際の出力 CSV でも `order_price_zero=295` 件が含まれ、unknown 比率比較を歪める。 | `price > 0` と `side in {buy,sell}` を前処理条件に追加し、除外件数をレポートする。 |
+| 3 | MEDIUM | `scripts/v460/analysis/compare_regime_ab.py:226` | G3 が `old_total_pnl` と `new_total_pnl` を同じ実績 PnL 合計で計算しており、理論上ほぼ常に `Δ=0` になる。Gate として判別力がない。 | G3 を「regime 変更で影響を受けるパラメータ（lot/timeout/reprice）を再計算した近似期待値」に置換するか、現段階では Gate から除外する。 |
+| 4 | MEDIUM | `scripts/v460/analysis/reproduce_152_metrics.py:81` | `records_with_order_quantity` が `order_quantity is not None` 判定で、`0.0000` を含む。§1 の「実注文件数」と定義がズレやすく、再現値がぶれる。 | `order_quantity > 0` の集計をデフォルトにし、`--include-zero-qty` をオプション化する。 |
+| 5 | LOW | `tests/unit/v460/test_152_parallel_tasks.py:80` | `test_main_with_output` が `main()` を呼ばず、JSON 読み書きのみを検証している。CLI 経路の回帰検知になっていない。 | `monkeypatch` で `argv` を注入して `main([...])` を直接実行し、出力 JSON の key 構造まで検証する。 |
+| 6 | LOW | `tests/unit/v460/test_152_parallel_tasks.py:102` | `test_old_detector_no_accelerated_hysteresis` の期待値が広すぎて（UNKNOWN/TRENDING/RANGING すべて許容）実質 no-op テストになっている。 | 連続回数を制御した入力で「2連続では遷移しない / 3連続で遷移する」を明示アサートに変更する。 |
+
+### 12.2 総評
+
+- 152 の方向性（P3-03 見送り、P3-02 集中）は妥当。  
+- ただし `compare_regime_ab.py` の **入力前処理と設定同期** を修正しない限り、A/B 判定は意思決定根拠として弱い。  
+- 優先度は `#1` と `#2` を先に修正し、その後に G3 の扱いを決めるのが最短です。
+
+---
+
+## §13 §12 レビュー対応結果 (全 6 件)
+
+| # | 重大度 | 指摘 | 対応内容 | 対応箇所 |
+|---|---|---|---|---|
+| 1 | HIGH | new detector が `RegimeConfig()` デフォルト (`min_confidence=0.4`) を使用 | `--min-confidence` CLI 追加 (default=0.2)。`_simulate()` のデフォルト config も `min_confidence=0.2` に変更。JSON 出力に `config.min_confidence_new/old` を含める | `compare_regime_ab.py` L109, L401-408, L376 |
+| 2 | HIGH | `order_price == 0` レコードが混入 | `_simulate()` に前処理追加: `price > 0` フィルタ + 除外件数 `prefilter_stats` を返却・表示・JSON 保存 | `compare_regime_ab.py` L130-148 |
+| 3 | MEDIUM | G3 が常に Δ=0 で判別力なし | G3 を **informational** に変更 (always True)。再分類件数のみ報告し、lot/timeout 影響は実運用後に評価する旨を明記。`all_gates_passed` への影響なし | `compare_regime_ab.py` L223-241 |
+| 4 | MEDIUM | `order_quantity is not None` が 0.0000 含む | デフォルトを `order_quantity > 0` に変更。`--include-zero-qty` オプション追加 | `reproduce_152_metrics.py` L82-90, L302 |
+| 5 | LOW | `test_main_with_output` が `main()` を呼ばない | `main(argv)` を直接呼び出し、`tmp_path` に JSONL テストデータ作成 → JSON 出力の key 構造を検証 | `test_152_parallel_tasks.py` L80-108 |
+| 6 | LOW | `test_old_detector_no_accelerated_hysteresis` が no-op | old/new 両 detector を並行実行。2回後に old が UNKNOWN 維持を `assert ==`、3回後に確定を `assert !=` で明示検証 | `test_152_parallel_tasks.py` L119-157 |
+
+### 13.1 追加テスト
+
+- `test_simulate_excludes_price_zero`: price==0 が除外されることを検証 (#2 対応の回帰テスト)
+- テスト合計: 12 件 (11 → 12, 新規 1)
+
+### 13.2 回帰テスト結果
+
+- 全体: 1538 passed, 1 failed (pre-existing test_139 `_inject_calibrator` — 既知問題)
+- test_152_parallel_tasks.py: 12/12 passed

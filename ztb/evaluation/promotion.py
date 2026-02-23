@@ -5,7 +5,7 @@ module is not available. Uses standardized error handling from ztb.utils.safety.
 """
 
 import logging
-from typing import Any, Dict, Tuple
+from collections.abc import Mapping
 
 from ztb.utils.safety import safe_to_float
 
@@ -26,7 +26,7 @@ try:
     )
 
     _PROMOTION_AVAILABLE = True
-except ImportError as e:
+except Exception as e:
     logger.debug(f"ztb.analysis.promotion not available, using fallback stubs: {e}")
 
     # Lightweight fallbacks used only in tests when the full analysis module
@@ -35,7 +35,7 @@ except ImportError as e:
     class PromotionEngine:  # type: ignore[no-redef]
         """Base promotion engine placeholder."""
 
-        def __init__(self, *args: Any, **kwargs: Any) -> None:
+        def __init__(self, *args: object, **kwargs: object) -> None:
             """Initialize engine."""
             pass
 
@@ -58,7 +58,7 @@ except ImportError as e:
             self.value = value
             self.weight = weight
 
-        def evaluate(self, data: Any) -> Tuple[bool, float]:
+        def evaluate(self, data: object) -> tuple[bool, float]:
             """Evaluate if data meets criteria.
 
             Args:
@@ -108,7 +108,7 @@ except ImportError as e:
             self.value = value
             self.weight = weight
 
-        def evaluate(self, data: Any) -> Tuple[bool, float]:
+        def evaluate(self, data: object) -> tuple[bool, float]:
             """Evaluate if data meets criteria.
 
             Args:
@@ -119,7 +119,7 @@ except ImportError as e:
             """
             val: float = safe_to_float(
                 getattr(data, self.name, None)
-                or (data.get(self.name) if isinstance(data, dict) else None)
+                or (data.get(self.name) if isinstance(data, Mapping) else None)
             )
             passed = False
             if self.operator == ">":
@@ -142,7 +142,7 @@ except ImportError as e:
     class PromotionNotifier:  # type: ignore[no-redef]
         """Promotion notifier placeholder."""
 
-        def __init__(self, *args: Any, **kwargs: Any) -> None:
+        def __init__(self, *args: object, **kwargs: object) -> None:
             """Initialize notifier."""
             pass
 
@@ -156,7 +156,7 @@ except ImportError as e:
     class YamlPromotionEngine(PromotionEngine):  # type: ignore[no-redef]
         """YAML-based promotion engine."""
 
-        def __init__(self, config: Dict[str, Any] | None = None) -> None:
+        def __init__(self, config: dict[str, object] | None = None) -> None:
             """Initialize with optional config.
 
             Args:

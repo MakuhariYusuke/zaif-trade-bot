@@ -1748,6 +1748,84 @@ if "seaborn" not in sys.modules:
     _sns = types.ModuleType("seaborn")
     sys.modules["seaborn"] = _sns
 
+# Final compatibility normalization (runs after all earlier stub branches).
+try:
+    import importlib
+
+    # Ensure stable_baselines3 root has expected algorithms
+    sb3_mod = sys.modules.get("stable_baselines3")
+    if sb3_mod is None:
+        try:
+            sb3_mod = importlib.import_module("stable_baselines3")
+        except Exception:
+            sb3_mod = types.ModuleType("stable_baselines3")
+            sys.modules["stable_baselines3"] = sb3_mod
+
+    for algo_name in ("SAC", "PPO", "A2C", "DQN", "TD3"):
+        if not hasattr(sb3_mod, algo_name):
+            setattr(
+                sb3_mod,
+                algo_name,
+                type(algo_name, (), {"learn": lambda self, *a, **k: self}),
+            )
+
+    # Ensure callbacks module has BaseCallback/CallbackList
+    cbm = sys.modules.get("stable_baselines3.common.callbacks")
+    if cbm is None:
+        try:
+            cbm = importlib.import_module("stable_baselines3.common.callbacks")
+        except Exception:
+            cbm = types.ModuleType("stable_baselines3.common.callbacks")
+            sys.modules["stable_baselines3.common.callbacks"] = cbm
+
+    if not hasattr(cbm, "BaseCallback"):
+        class BaseCallback:
+            def __init__(self, *args, **kwargs):
+                self.n_calls = 0
+
+        cbm.BaseCallback = BaseCallback
+
+    if not hasattr(cbm, "CallbackList"):
+        class CallbackList(cbm.BaseCallback):
+            def __init__(self, callbacks=None):
+                super().__init__()
+                self.callbacks = list(callbacks or [])
+
+        cbm.CallbackList = CallbackList
+
+    # Ensure torch has dtype namespace and torch.nn.functional import path.
+    tmod = sys.modules.get("torch")
+    if tmod is not None and not hasattr(tmod, "dtype"):
+        tmod.dtype = type("dtype", (), {})
+    nn_mod = sys.modules.get("torch.nn")
+    if nn_mod is not None and "torch.nn.functional" not in sys.modules:
+        fmod = getattr(nn_mod, "functional", None)
+        if fmod is None:
+            fmod = types.ModuleType("torch.nn.functional")
+            fmod.relu = lambda x: x
+            fmod.mse_loss = lambda a, b: 0
+            nn_mod.functional = fmod
+        sys.modules["torch.nn.functional"] = fmod
+
+    # Ensure tensorboard shim exists for torch.utils.tensorboard import.
+    if "torch.utils.tensorboard" not in sys.modules:
+        tb_mod = types.ModuleType("torch.utils.tensorboard")
+
+        class SummaryWriter:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def add_scalar(self, *args, **kwargs):
+                return None
+
+            def close(self):
+                return None
+
+        tb_mod.SummaryWriter = SummaryWriter
+        sys.modules["torch.utils.tensorboard"] = tb_mod
+except Exception:
+    pass
+
 
 def pytest_ignore_collect(collection_path, config):
     """Skip collecting tests that live in legacy/script trees the maintainer

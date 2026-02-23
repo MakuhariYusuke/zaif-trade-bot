@@ -143,7 +143,7 @@ git commit --no-verify -m "refactor(153#): <内容>"
 
 ## §5 成果物チェックリスト
 
-- [ ] タスク A: collect errors 解消 → `pytest --co -q` が error 0
+- [x] タスク A: collect errors 解消 → `pytest --co -q` が error 0
 - [x] タスク A: warning 削減 → `-W all` 実行結果をログに記載
 - [ ] タスク A: 不安定テスト対応 → flaky テストの一覧と対処
 - [x] タスク B: 責務マップ → §6 に追記
@@ -173,6 +173,19 @@ git commit --no-verify -m "refactor(153#): <内容>"
   - 警告は `tests/conftest.py:158` の `PytestUnknownMarkWarning`（`pytest.mark.unit` 自動付与）に集中
 - flaky 対応:
   - 今回は collect blocker の解消を優先せず、P2-8（分割実装）を先行したため未着手
+
+#### 6.1 追補（2026-02-23）
+
+- collect を再実行:
+  - `.venv/Scripts/python.exe -m pytest tests/ --co -q`
+  - 結果: `5402 tests collected` / `error=0`
+- warning の根因を解消:
+  - `pytest.ini` の section header を `[pytest]` に修正（設定未読込の解消）
+  - `pyproject.toml` に `unit/integration/slow/performance` marker 定義を追加
+  - `pytest.ini` の `-n auto` を除去し、`pytest-xdist` 未導入環境でも実行可能化
+- warning 再計測:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_lot_manager.py tests/unit/v460/test_regime_detector.py tests/unit/v460/test_143_regime_utilization.py tests/unit/v460/test_151_confidence_lot.py tests/unit/v460/test_152_parallel_tasks.py -q --override-ini="addopts=" -W all`
+  - 結果: `170 passed, 0 warnings`
 
 ### 6.2 タスク B: run_fill_test 分割設計
 
@@ -232,16 +245,19 @@ graph TD
 
 ```
 .venv/Scripts/python.exe -m pytest -q tests/unit/v460/test_lot_manager.py tests/unit/v460/test_regime_detector.py tests/unit/v460/test_143_regime_utilization.py tests/unit/v460/test_151_confidence_lot.py tests/unit/v460/test_152_parallel_tasks.py
-=> 169 passed, 1 warning in 13.73s
+=> 170 passed in 8.71s
 
 .venv/Scripts/python.exe -m pytest tests/unit/v460/test_lot_manager.py tests/unit/v460/test_regime_detector.py tests/unit/v460/test_143_regime_utilization.py tests/unit/v460/test_151_confidence_lot.py tests/unit/v460/test_152_parallel_tasks.py -q --override-ini="addopts=" -W all
-=> 169 passed, 169 warnings
+=> 170 passed, 0 warnings
 
 .venv/Scripts/python.exe -m py_compile scripts/v460/lib/lot_manager.py scripts/v460/run_fill_test.py scripts/v460/lib/regime_detector.py scripts/v460/lib/skip_gate_evaluator.py tests/unit/v460/test_lot_manager.py tests/unit/v460/test_regime_detector.py
 => OK
 
 .venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460/lib/lot_manager.py scripts/v460/run_fill_test.py scripts/v460/lib/regime_detector.py scripts/v460/lib/skip_gate_evaluator.py tests/unit/v460/test_lot_manager.py tests/unit/v460/test_regime_detector.py --top 20
 => any_type_debt_tokens=0
+
+.venv/Scripts/python.exe -m pytest tests/ --co -q
+=> 5402 tests collected (collect errors: 0)
 ```
 
 ### 6.4 コミット履歴

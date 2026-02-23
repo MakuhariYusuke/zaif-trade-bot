@@ -1187,6 +1187,47 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `--roots scripts/v460/ml`: `scripts/v460/ml/retrain_scheduler.py` は `any_type_debt_tokens=0`
   - repo 全体: `any_type_debt_tokens=2,465`（`scanned_files=1,302`）
 
+## Step76 追補: collect 完了 + pytest 設定復旧 + 互換 shim Any 全撤去 (2026-02-23)
+
+### 1) テスト安定化の未完了項目を解消（153# 追補）
+
+- `pytest --co -q` を再実行し、`5402 tests collected / collect errors=0` を確認。
+- warning 根因だった pytest 設定未読込を修正:
+  - `pytest.ini` セクションを `[tool:pytest]` から `[pytest]` に修正。
+  - `pytest.ini` の `-n auto` を除去し、`pytest-xdist` 未導入環境でも実行可能化。
+  - `pyproject.toml` 側にも `unit/integration/slow/performance` marker を明示追加。
+- 再計測: `tests/unit/v460` 主要5ファイルで `170 passed, 0 warnings`（`-W all`）。
+
+### 2) 互換 shim 群の型安全化（Any 後退を回収）
+
+- 追加互換モジュール群の `Any` を `object` / `Mapping` ベースへ統一:
+  - `stable_baselines3/*`, `sb3_contrib/*`, `prometheus_client/__init__.py`
+  - `ztb/utils/v4xx_config_converter.py`
+  - `ztb/evaluation/logging.py`
+  - `ztb/evaluation/promotion.py`
+- `stable_baselines3` shim では `BaseAlgorithm` 継承を導入し、
+  学習/保存/推論のダミー実装重複を削減（継承ベースの重複排除）。
+
+### 3) 検証
+
+- `py_compile`:
+  - `stable_baselines3/__init__.py`
+  - `stable_baselines3/common/base_class.py`
+  - `stable_baselines3/common/callbacks.py`
+  - `stable_baselines3/common/monitor.py`
+  - `stable_baselines3/common/evaluation.py`
+  - `stable_baselines3/common/vec_env.py`
+  - `stable_baselines3/common/type_aliases.py`
+  - `stable_baselines3/common/torch_layers.py`
+  - `sb3_contrib/common/wrappers.py`
+  - `prometheus_client/__init__.py`
+  - `ztb/utils/v4xx_config_converter.py`
+  - `ztb/evaluation/logging.py`
+  - `ztb/evaluation/promotion.py`
+- `any_inventory`:
+  - `--roots stable_baselines3 sb3_contrib prometheus_client ztb/evaluation/logging.py ztb/utils/v4xx_config_converter.py ztb/evaluation/promotion.py`
+  - 結果: `scanned_files=22`, `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

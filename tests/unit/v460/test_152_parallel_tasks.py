@@ -77,18 +77,34 @@ class TestReproduceMetrics:
         assert "buy" in metrics["side_regime_pnl"]
         assert "sell" in metrics["side_regime_pnl"]
 
-    def test_main_with_output(self) -> None:
-        """main() が JSON 出力できること (CLI テスト)."""
-        from scripts.v460.analysis.reproduce_152_metrics import _compute_metrics
+    def test_main_with_output(self, tmp_path: Path) -> None:
+        """main() が CLI 経由で JSON 出力できること."""
+        from scripts.v460.analysis.reproduce_152_metrics import main
 
+        # テスト用 JSONL データを作成
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        jsonl_path = data_dir / "fill_records_20260213.jsonl"
         records = self._make_records(6)
-        metrics = _compute_metrics(records)
+        jsonl_path.write_text(
+            "\n".join(json.dumps(r) for r in records),
+            encoding="utf-8",
+        )
+        out_json = tmp_path / "output.json"
 
-        with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
-            json.dump({"metrics": metrics}, f, indent=2)
-            f.flush()
-            loaded = json.loads(Path(f.name).read_text())
-            assert loaded["metrics"]["total_records"] == 6
+        # main() を CLI 引数付きで呼び出し
+        metrics = main([
+            "--data-dir", str(data_dir),
+            "--output", str(out_json),
+            "--quiet",
+        ])
+
+        assert metrics["total_records"] == 6
+        assert out_json.exists()
+        loaded = json.loads(out_json.read_text(encoding="utf-8"))
+        assert loaded["metrics"]["total_records"] == 6
+        assert "regime_distribution" in loaded["metrics"]
+        assert "side_regime_pnl" in loaded["metrics"]
 
 
 # ======================================================================
@@ -100,30 +116,44 @@ class TestCompareRegimeAB:
     """A/B 比較ハーネスのロジック検証."""
 
     def test_old_detector_no_accelerated_hysteresis(self) -> None:
-        """旧 detector が accelerated hysteresis を使わないこと."""
+        """旧 detector が accelerated hysteresis を使わないことを確認.
+
+        新 detector (A+B) は UNKNOWN→first regime で N-1 回で確定、
+        旧 detector は N 回必要 (加速なし)。
+        """
         from scripts.v460.analysis.compare_regime_ab import OldFillTestRegimeDetector
-        from scripts.v460.lib.regime_detector import FillTestRegime, RegimeConfig
+        from scripts.v460.lib.regime_detector import (
+            FillTestRegime,
+            FillTestRegimeDetector,
+            RegimeConfig,
+        )
 
         config = RegimeConfig(window=3, hysteresis_count=3, min_confidence=0.0)
-        det = OldFillTestRegimeDetector(config)
+        old_det = OldFillTestRegimeDetector(config)
+        new_det = FillTestRegimeDetector(config)
 
-        # Feed data that should trigger trending
-        base = 10_000_000
+        # ウィンドウ充填: 単調上昇 (トレンドを作る)
+        base = 10_000_000.0
         for i in range(3):
-            det.update(float(i), base + i * 0.001)  # window fill
+            old_det.update(float(i), base + i * 1000)
+            new_det.update(float(i), base + i * 1000)
 
-        # UNKNOWN → first regime: 旧は 3 回必要 (加速なし)
-        # Feed strong trend signals
-        for i in range(3, 6):
-            result = det.update(float(i), base + (i - 3) * 100_000)
+        # 強いトレンドシグナルを2回連続送信
+        # new detector: accelerated (N-1=2) で確定する可能性がある
+        # old detector: 3回必要なのでまだ確定しない
+        for i in range(3, 5):
+            old_det.update(float(i), base + i * 100_000)
+            new_det.update(float(i), base + i * 100_000)
 
-        # After 3 trend signals, still might be unknown depending on threshold
-        # The key: old detector requires full hysteresis_count (3), not N-1 (2)
-        assert det._confirmed_regime in (
-            FillTestRegime.UNKNOWN,
-            FillTestRegime.TRENDING,
-            FillTestRegime.RANGING,
-        )
+        # 2回後: 旧 detector はまだ UNKNOWN (3回必要)
+        assert old_det._confirmed_regime == FillTestRegime.UNKNOWN
+
+        # 3回目を送信
+        old_det.update(5.0, base + 5 * 100_000)
+        new_det.update(5.0, base + 5 * 100_000)
+
+        # 3回後: 旧 detector も確定する (加速なしの通常ヒステリシス)
+        assert old_det._confirmed_regime != FillTestRegime.UNKNOWN
 
     def test_old_detector_no_majority_fallback(self) -> None:
         """旧 detector が majority fallback を使わないこと."""
@@ -159,10 +189,39 @@ class TestCompareRegimeAB:
                 "post_fill_30s_pnl": -0.1 if i % 2 == 0 else None,
             })
 
-        results = _simulate(records)
+        results, stats = _simulate(records)
         assert len(results) == 30
         assert all(hasattr(r, "old_regime") for r in results)
         assert all(hasattr(r, "new_regime") for r in results)
+        assert "valid_records" in stats
+
+    def test_simulate_excludes_price_zero(self) -> None:
+        """§12 #2: order_price==0 のレコードが除外されること."""
+        from scripts.v460.analysis.compare_regime_ab import _simulate
+
+        records = []
+        base = 10_000_000
+        for i in range(10):
+            records.append({
+                "timestamp": 1739400000 + i * 120,
+                "order_price": base + i * 100,
+                "filled": True,
+                "regime": "ranging",
+                "post_fill_30s_pnl": -0.1,
+            })
+        # price==0 のレコードを追加
+        for i in range(5):
+            records.append({
+                "timestamp": 1739400000 + (10 + i) * 120,
+                "order_price": 0,
+                "filled": False,
+                "regime": "n/a",
+            })
+
+        results, stats = _simulate(records)
+        assert len(results) == 10  # price==0 は除外
+        assert stats["price_zero_excluded"] == 5
+        assert stats["valid_records"] == 10
 
     def test_gate_evaluation(self) -> None:
         """Gate 評価が動作すること."""
@@ -179,7 +238,7 @@ class TestCompareRegimeAB:
                 "post_fill_30s_pnl": -0.2,
             })
 
-        results = _simulate(records)
+        results, _stats = _simulate(records)
         gates = _evaluate_gates(results, {"ranging": -0.2})
 
         assert len(gates) == 3

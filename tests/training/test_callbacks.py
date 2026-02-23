@@ -3,20 +3,52 @@ import time
 import sys
 import types
 
-# Provide a simple fake 'stable_baselines3.common.callbacks' to avoid heavy deps during tests
-sb3_mod = types.ModuleType("stable_baselines3")
-sb3_common = types.ModuleType("stable_baselines3.common")
-sb3_callbacks = types.ModuleType("stable_baselines3.common.callbacks")
-sb3_callbacks.BaseCallback = object
+# Provide a lightweight `stable_baselines3.common.callbacks` shim without
+# clobbering an existing module graph used by later tests.
+sb3_mod = sys.modules.get("stable_baselines3")
+if sb3_mod is None:
+    sb3_mod = types.ModuleType("stable_baselines3")
+    sys.modules["stable_baselines3"] = sb3_mod
+
+sb3_common = sys.modules.get("stable_baselines3.common")
+if sb3_common is None:
+    sb3_common = types.ModuleType("stable_baselines3.common")
+    sys.modules["stable_baselines3.common"] = sb3_common
+
+sb3_callbacks = sys.modules.get("stable_baselines3.common.callbacks")
+if sb3_callbacks is None:
+    sb3_callbacks = types.ModuleType("stable_baselines3.common.callbacks")
+    sys.modules["stable_baselines3.common.callbacks"] = sb3_callbacks
+
+if not hasattr(sb3_callbacks, "BaseCallback"):
+    class BaseCallback:
+        def __init__(self, *args, **kwargs):
+            self.n_calls = 0
+
+    sb3_callbacks.BaseCallback = BaseCallback
+
+if not hasattr(sb3_callbacks, "CallbackList"):
+    class CallbackList(list):
+        pass
+
+    sb3_callbacks.CallbackList = CallbackList
+
+if not hasattr(sb3_mod, "SAC"):
+    class _DummyAlgo:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    sb3_mod.SAC = _DummyAlgo
+if not hasattr(sb3_mod, "PPO"):
+    sb3_mod.PPO = sb3_mod.SAC
+
 sb3_common.callbacks = sb3_callbacks
 sb3_mod.common = sb3_common
-sys.modules["stable_baselines3"] = sb3_mod
-sys.modules["stable_baselines3.common"] = sb3_common
-sys.modules["stable_baselines3.common.callbacks"] = sb3_callbacks
 
 # Provide a minimal 'websockets' module if not installed to avoid heavy runtime
-ws_mod = types.ModuleType("websockets")
-sys.modules["websockets"] = ws_mod
+if "websockets" not in sys.modules:
+    ws_mod = types.ModuleType("websockets")
+    sys.modules["websockets"] = ws_mod
 
 from ztb.training.callbacks.core.modern_callback_system import (
     CallbackContext,

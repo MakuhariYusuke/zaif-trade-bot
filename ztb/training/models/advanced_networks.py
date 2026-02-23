@@ -14,8 +14,16 @@ import torch.nn as nn
 try:
     import torch.nn.functional as F
 except Exception:
+    class _FunctionalFallback:
+        @staticmethod
+        def relu(x):
+            return x
 
-    F = _F
+        @staticmethod
+        def softmax(x, dim=-1):
+            return x
+
+    F = _FunctionalFallback()
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 

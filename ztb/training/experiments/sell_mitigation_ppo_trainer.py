@@ -17,7 +17,7 @@ from typing import Any, Dict, Optional
 import numpy as np
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
-from stable_baselines3.common.callbacks import CallbackList
+from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 
 from ztb.io.data_loader import DataLoader
 

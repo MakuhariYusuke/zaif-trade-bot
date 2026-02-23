@@ -6,7 +6,7 @@ to enhance signal generation and validation.
 """
 
 import logging
-from typing import TYPE_CHECKING, Optional, TypedDict
+from typing import TYPE_CHECKING, Optional, Protocol, TypedDict
 
 import numpy as np
 import pandas as pd
@@ -21,10 +21,15 @@ from .history_helpers import append_with_compaction
 logger = logging.getLogger(__name__)
 
 
-from ztb.trading.environment.components.interfaces import IMarketRegimeDetector
-
 if TYPE_CHECKING:
     from ..action_signal_guide import ActionSignal
+
+
+class IMarketRegimeDetector(Protocol):
+    def detect_regime(
+        self, market_data: pd.DataFrame | float, step: int | None = None
+    ) -> MarketRegime | str:
+        """Detect market regime from price series or current price."""
 
 
 class RegimeIndicators(TypedDict):

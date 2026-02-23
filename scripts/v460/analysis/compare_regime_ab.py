@@ -107,9 +107,13 @@ class SimRecord:
 def _simulate(
     records: list[dict[str, Any]],
     config: RegimeConfig | None = None,
-) -> list[SimRecord]:
-    """fill records を old/new detector に replay してレジーム分類を比較."""
-    cfg = config or RegimeConfig()
+) -> tuple[list[SimRecord], dict[str, int]]:
+    """fill records を old/new detector に replay してレジーム分類を比較.
+
+    Returns:
+        (results, stats): results はレコードごとの結果, stats は前処理統計.
+    """
+    cfg = config or RegimeConfig(min_confidence=0.2)
     old_det = OldFillTestRegimeDetector(RegimeConfig(
         window=cfg.window,
         trend_threshold_pct=cfg.trend_threshold_pct,
@@ -129,8 +133,26 @@ def _simulate(
     # Sort by timestamp for chronological replay
     sorted_recs = sorted(records, key=lambda r: float(r.get("timestamp", 0)))
 
-    results: list[SimRecord] = []
+    # §12 #2: order_price==0 / side 不正のレコードを除外
+    prefilter_stats: dict[str, int] = {"total_input": len(sorted_recs), "price_zero_excluded": 0, "side_invalid_excluded": 0}
+    valid_recs: list[dict[str, Any]] = []
     for rec in sorted_recs:
+        ts = rec.get("timestamp")
+        price = rec.get("order_price")
+        if ts is None or price is None:
+            continue
+        if float(price) <= 0:
+            prefilter_stats["price_zero_excluded"] += 1
+            continue
+        side = rec.get("side", "")
+        if side not in ("", "buy", "sell", None):
+            prefilter_stats["side_invalid_excluded"] += 1
+            continue
+        valid_recs.append(rec)
+    prefilter_stats["valid_records"] = len(valid_recs)
+
+    results: list[SimRecord] = []
+    for rec in valid_recs:
         ts = rec.get("timestamp")
         price = rec.get("order_price")
         if ts is None or price is None:
@@ -154,7 +176,7 @@ def _simulate(
             pnl_30s=rec.get("post_fill_30s_pnl"),
         ))
 
-    return results
+    return results, prefilter_stats
 
 
 # ---------------------------------------------------------------------------
@@ -222,28 +244,25 @@ def _evaluate_gates(
         detail="; ".join(g2_details),
     ))
 
-    # --- G3: total PnL non-degradation ---
+    # --- G3: total PnL non-degradation (INFORMATIONAL) ---
+    # §12 #3: replay では実 PnL が変わらないため、一方的に Δ=0 になる。
+    # regime 再分類による lot/timeout パラメータ変更の影響は、実運用後に評価する。
+    # 現時点では再分類件数のみ報告。
     old_total_pnl = sum(r.pnl_30s for r in filled_results if r.pnl_30s is not None)
-    # New total PnL estimate: unknown fills reassigned to their new regime's avg PnL
-    new_total_pnl = 0.0
-    for r in filled_results:
-        if r.pnl_30s is not None:
-            new_total_pnl += r.pnl_30s
-
-    # The actual PnL doesn't change (same fills, same outcomes).
-    # What changes is regime-conditional behavior (lot sizing, timeout, etc.)
-    # So G3 measures: "if fills previously in unknown now had the correct regime's
-    # parameters applied, would total PnL degrade?"
-    # Approximation: unknown fills would get same PnL (conservative estimate)
-    pnl_diff = new_total_pnl - old_total_pnl
+    reclassified_count = sum(
+        1 for r in sim_results if r.old_regime != r.new_regime
+    )
+    reclassified_filled = sum(
+        1 for r in filled_results if r.old_regime != r.new_regime
+    )
 
     gates.append(GateResult(
         gate_id="G3",
-        passed=pnl_diff >= -5.0,
-        threshold="≤ 5 bps worsening",
-        actual=f"Δ={pnl_diff:+.2f} bps",
-        detail=f"old_sum={old_total_pnl:.2f}, new_sum={new_total_pnl:.2f} "
-               f"(same fills, parameter change impact estimated via regime reclassification)",
+        passed=True,  # informational: always True
+        threshold="informational (replayではPnL同一)",
+        actual=f"reclassified={reclassified_count}/{len(sim_results)} ({reclassified_filled} filled)",
+        detail=f"total_pnl={old_total_pnl:.2f} bps (unchanged). "
+               f"Regime変更によるlot/timeout影響は実運用後に評価。",
     ))
 
     return gates
@@ -348,6 +367,9 @@ def _save_summary(
     gates: list[GateResult],
     sim_results: list[SimRecord],
     output_dir: Path,
+    *,
+    config_info: dict[str, Any] | None = None,
+    prefilter_stats: dict[str, int] | None = None,
 ) -> None:
     """Save summary as JSON."""
     total = len(sim_results)
@@ -371,6 +393,8 @@ def _save_summary(
             for g in gates
         ],
         "all_gates_passed": all(g.passed for g in gates),
+        "config": config_info or {},
+        "prefilter_stats": prefilter_stats or {},
     }
 
     json_path = output_dir / "regime_ab_summary.json"
@@ -393,6 +417,10 @@ def main(argv: Sequence[str] | None = None) -> list[GateResult]:
     parser.add_argument("--run-id", default=None, help="Filter by run_id")
     parser.add_argument("--data-dir", default="results/v460/fill_test")
     parser.add_argument("--output", default=None, help="Output directory")
+    parser.add_argument(
+        "--min-confidence", type=float, default=0.2,
+        help="New detector の min_confidence (default: 0.2, fill_test.yaml と同期)",
+    )
     args = parser.parse_args(argv)
 
     records = _load_records(
@@ -406,7 +434,16 @@ def main(argv: Sequence[str] | None = None) -> list[GateResult]:
         print("ERROR: No records", file=sys.stderr)
         sys.exit(1)
 
-    sim_results = _simulate(records)
+    cfg = RegimeConfig(min_confidence=args.min_confidence)
+    sim_results, prefilter_stats = _simulate(records, config=cfg)
+
+    # §12 #1: 使用設定をログ出力
+    print(f"[config] new_detector min_confidence={cfg.min_confidence}")
+    if prefilter_stats.get("price_zero_excluded", 0) > 0:
+        print(f"[prefilter] price==0 excluded: {prefilter_stats['price_zero_excluded']}")
+    if prefilter_stats.get("side_invalid_excluded", 0) > 0:
+        print(f"[prefilter] invalid side excluded: {prefilter_stats['side_invalid_excluded']}")
+    print(f"[prefilter] valid records: {prefilter_stats['valid_records']}/{prefilter_stats['total_input']}")
 
     # Recorded regime PnL (for reference)
     recorded_pnl: dict[str, float] = {}
@@ -423,7 +460,11 @@ def main(argv: Sequence[str] | None = None) -> list[GateResult]:
     if args.output:
         out_dir = Path(args.output)
         _save_csv(sim_results, out_dir)
-        _save_summary(gates, sim_results, out_dir)
+        _save_summary(
+            gates, sim_results, out_dir,
+            config_info={"min_confidence_new": cfg.min_confidence, "min_confidence_old": 0.3},
+            prefilter_stats=prefilter_stats,
+        )
 
     return gates
 
