@@ -271,6 +271,8 @@ loss_control:
   balance_forced_deadlock_limit: 3  # 連続 forced skip N 回超過 → 強制実行 (0=無制限)
   # P0-09: unknown レジーム時の buy スキップ (unknown-buy 平均 -1.384bps)
   skip_buy_unknown_regime: true
+  # 155# §9: trending レジーム時の sell スキップ (trending-sell 平均 -0.687bps)
+  skip_sell_trending: true
   # P0-10: sell 動的 kill (rolling PnL ベースの自動停止)
   sell_dynamic_kill:
     enabled: true

@@ -120,6 +120,10 @@ class HindsightResult:
     skip_gate_score: float | None
     skip_gate_as_prob: float | None
     regime: str | None
+    # §9.4 #1: order_price=0 時に補間で得た疑似参照価格
+    interpolated_ref: bool = False
+    # §9.2 #3: queue_wait_sec (fill 待機時間)
+    queue_wait_sec: float | None = None
 
 
 def _compute_hindsight_pnl(
@@ -139,7 +143,11 @@ def _analyze_records(
     records: list[dict[str, Any]],
     timeline: list[PricePoint],
 ) -> list[HindsightResult]:
-    """全レコードの後知恵PnLを計算."""
+    """全レコードの後知恵PnLを計算.
+
+    §9.4 #1: order_price=0 のレコードも timestamp 基準の補間価格を
+    疑似参照価格として使い、H5/H6 の後知恵 PnL を出す。
+    """
     results: list[HindsightResult] = []
 
     for r in records:
@@ -151,8 +159,15 @@ def _analyze_records(
 
         ts_f = float(ts)
         op_f = float(op)
+
+        # §9.4 #1: price=0 → 補間で疑似参照価格を取得
+        interpolated = False
         if op_f <= 0:
-            continue
+            interp = _interpolate_price(timeline, ts_f)
+            if interp is None:
+                continue  # タイムラインからも取れない → 分析不能
+            op_f = interp
+            interpolated = True
 
         # 未来の価格を補間
         p30 = _interpolate_price(timeline, ts_f + 30)
@@ -166,6 +181,10 @@ def _analyze_records(
         # 逆サイド
         rev_side = "sell" if side == "buy" else "buy"
         rev30 = _compute_hindsight_pnl(rev_side, op_f, p30)
+
+        # §9.2 #3: queue_wait_sec
+        qw = r.get("queue_wait_sec")
+        qw_f = float(qw) if qw is not None else None
 
         results.append(HindsightResult(
             cycle_id=str(r.get("cycle_id", "")),
@@ -182,6 +201,8 @@ def _analyze_records(
             skip_gate_score=r.get("skip_gate_score"),
             skip_gate_as_prob=r.get("skip_gate_as_prob"),
             regime=r.get("regime"),
+            interpolated_ref=interpolated,
+            queue_wait_sec=qw_f,
         ))
 
     return results
@@ -223,6 +244,10 @@ def _categorize(results: list[HindsightResult]) -> dict[str, list[HindsightResul
                                   "api_error", "stale_skip_gate_blocked",
                                   "stale_reprice_failed"):
             cats["H6_technical"].append(r)
+        elif r.cancel_reason in ("unknown_regime_buy_skip",
+                                  "sell_dynamic_kill",
+                                  "trending_sell_skip"):
+            cats["H8_regime_guard"].append(r)
         else:
             cats["H7_other"].append(r)
     return dict(cats)
@@ -386,6 +411,84 @@ def _analyze_skip_gate_calibration(results: list[HindsightResult]) -> dict[str, 
     }
 
 
+def _analyze_wait_bands(results: list[HindsightResult]) -> dict[str, dict[str, Any]]:
+    """§9.2 #3: fill 待機時間帯別の PnL 分析.
+
+    queue_wait_sec が 15-30s で最悪 (-0.563 bps) という指摘に対応。
+    """
+    bands: list[tuple[str, float, float]] = [
+        ("0-5s", 0, 5),
+        ("5-15s", 5, 15),
+        ("15-30s", 15, 30),
+        ("30-60s", 30, 60),
+        ("60s+", 60, float("inf")),
+    ]
+    summary: dict[str, dict[str, Any]] = {}
+
+    filled_with_wait = [
+        r for r in results
+        if r.filled and r.queue_wait_sec is not None
+    ]
+
+    for label, lo, hi in bands:
+        in_band = [r for r in filled_with_wait if lo <= (r.queue_wait_sec or 0) < hi]
+        h30 = [r.actual_pnl_30s for r in in_band if r.actual_pnl_30s is not None]
+        profitable = sum(1 for v in h30 if v > 0)
+        summary[label] = {
+            "count": len(in_band),
+            "avg_pnl_30s": round(sum(h30) / len(h30), 4) if h30 else 0,
+            "profitable_pct": round(profitable / len(h30) * 100, 1) if h30 else 0,
+            "total_pnl": round(sum(h30), 2) if h30 else 0,
+        }
+
+    return summary
+
+
+def _analyze_regime_side(results: list[HindsightResult]) -> dict[str, dict[str, Any]]:
+    """§9.2 #4: レジーム×side クロス分析.
+
+    trending sell -0.687 bps という指摘に対応し、全組み合わせを出す。
+    """
+    combos: dict[str, list[HindsightResult]] = defaultdict(list)
+    for r in results:
+        if r.filled and r.actual_pnl_30s is not None:
+            key = f"{r.regime or 'none'}_{r.side}"
+            combos[key].append(r)
+
+    summary: dict[str, dict[str, Any]] = {}
+    for key in sorted(combos.keys()):
+        recs = combos[key]
+        pnls = [r.actual_pnl_30s for r in recs if r.actual_pnl_30s is not None]
+        profitable = sum(1 for v in pnls if v > 0)
+        summary[key] = {
+            "count": len(recs),
+            "avg_pnl_30s": round(sum(pnls) / len(pnls), 4) if pnls else 0,
+            "profitable_pct": round(profitable / len(pnls) * 100, 1) if pnls else 0,
+            "total_pnl": round(sum(pnls), 2) if pnls else 0,
+        }
+
+    return summary
+
+
+def _analyze_interpolated_stats(results: list[HindsightResult]) -> dict[str, Any]:
+    """§9.4 #1: 補間参照価格で分析したレコード (旧 price=0) の統計."""
+    interp = [r for r in results if r.interpolated_ref]
+    non_interp = [r for r in results if not r.interpolated_ref]
+
+    def _stats(recs: list[HindsightResult]) -> dict[str, Any]:
+        h30 = [r.hindsight_pnl_30s for r in recs if r.hindsight_pnl_30s is not None]
+        return {
+            "count": len(recs),
+            "with_pnl": len(h30),
+            "avg_hindsight_30s": round(sum(h30) / len(h30), 4) if h30 else None,
+        }
+
+    return {
+        "interpolated": _stats(interp),
+        "original_price": _stats(non_interp),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Display
 # ---------------------------------------------------------------------------
@@ -396,6 +499,10 @@ def _print_report(
     hourly: dict[str, dict[str, Any]],
     skip_gate_cal: dict[str, Any],
     total_records: int,
+    *,
+    wait_bands: dict[str, dict[str, Any]] | None = None,
+    regime_side: dict[str, dict[str, Any]] | None = None,
+    interpolated_stats: dict[str, Any] | None = None,
 ) -> None:
     """Print hindsight analysis report."""
     print("=" * 70)
@@ -480,6 +587,38 @@ def _print_report(
                 f"{data['total_loss_bps']:>8.2f}"
             )
 
+    # §9.2 #3: Wait time bands
+    if wait_bands:
+        print("\n--- 待機時間帯別 PnL (filled, actual 30s) ---")
+        print(f"  {'Band':<10} {'N':>5} {'avg_pnl':>9} {'profit%':>8} {'total':>8}")
+        for band, data in wait_bands.items():
+            print(
+                f"  {band:<10} {data['count']:>5} "
+                f"{data['avg_pnl_30s']:>9.4f} "
+                f"{data['profitable_pct']:>7.1f}% "
+                f"{data['total_pnl']:>8.2f}"
+            )
+
+    # §9.2 #4: Regime × Side
+    if regime_side:
+        print("\n--- レジーム×Side 別 PnL (filled, actual 30s) ---")
+        print(f"  {'Regime_Side':<20} {'N':>5} {'avg_pnl':>9} {'profit%':>8} {'total':>8}")
+        for key, data in regime_side.items():
+            print(
+                f"  {key:<20} {data['count']:>5} "
+                f"{data['avg_pnl_30s']:>9.4f} "
+                f"{data['profitable_pct']:>7.1f}% "
+                f"{data['total_pnl']:>8.2f}"
+            )
+
+    # §9.4 #1: Interpolated stats
+    if interpolated_stats:
+        print("\n--- 補間参照価格の統計 (§9.4 #1) ---")
+        for label, data in interpolated_stats.items():
+            avg = data.get("avg_hindsight_30s")
+            avg_s = f"{avg:.4f}" if avg is not None else "N/A"
+            print(f"  {label}: count={data['count']}, with_pnl={data['with_pnl']}, avg_30s={avg_s}")
+
     print(f"\n{'='*70}")
 
 
@@ -534,8 +673,22 @@ def main(argv: Sequence[str] | None = None) -> dict[str, Any]:
     # Skip gate calibration
     skip_gate_cal = _analyze_skip_gate_calibration(results)
 
+    # §9.2 #3: Wait time band analysis
+    wait_bands = _analyze_wait_bands(results)
+
+    # §9.2 #4: Regime × Side cross analysis
+    regime_side = _analyze_regime_side(results)
+
+    # §9.4 #1: Interpolated stats
+    interpolated_stats = _analyze_interpolated_stats(results)
+
     # Print report
-    _print_report(cat_analyses, side_reversal, hourly, skip_gate_cal, len(records))
+    _print_report(
+        cat_analyses, side_reversal, hourly, skip_gate_cal, len(records),
+        wait_bands=wait_bands,
+        regime_side=regime_side,
+        interpolated_stats=interpolated_stats,
+    )
 
     # Build output
     output = {
@@ -557,6 +710,9 @@ def main(argv: Sequence[str] | None = None) -> dict[str, Any]:
         "side_reversal": side_reversal,
         "hourly_summary": hourly,
         "skip_gate_calibration": skip_gate_cal,
+        "wait_bands": wait_bands,
+        "regime_side": regime_side,
+        "interpolated_stats": interpolated_stats,
     }
 
     # Top missed opportunities

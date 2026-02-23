@@ -1766,6 +1766,30 @@ class FillTestRunner(AbstractCycleRunner):
                 await asyncio.sleep(self.config.cycle_interval_sec)
                 continue
 
+            # 155# §9: trending レジーム時の sell 抑制
+            # trending sell avg -0.687 bps — 逆行トレード削減
+            if (
+                self.config.skip_sell_trending
+                and next_side == "sell"
+                and self._regime_detector is not None
+                and self._regime_detector.current_regime.value == "trending"
+            ):
+                logger.info(
+                    "[155# §9] Skipping sell — trending regime "
+                    "(avg -0.687bps loss)"
+                )
+                _skip_record = self._make_skip_record(
+                    side="sell",
+                    cancel_reason=CR.TRENDING_SELL_SKIP,
+                    order_quantity=self._current_lot,
+                    regime="trending",
+                )
+                batch.append(_skip_record)
+                total_count += 1
+                batch = self._batch_persistence.maybe_flush(batch, "trending_sell_skip")
+                await asyncio.sleep(self.config.cycle_interval_sec)
+                continue
+
             # 133# P0-10: sell 動的 kill — rolling PnL が閾値以下なら sell 停止
             if (
                 self.config.sell_dynamic_kill_enabled

@@ -210,6 +210,8 @@ class FillTestConfig:
     balance_forced_deadlock_limit: int = 3  # 連続 forced skip が N 回超過 → 強制実行 (0=無制限)
     # ---- 133# P0-09: unknown レジームでの buy スキップ ----
     skip_buy_unknown_regime: bool = False  # True で unknown レジーム時 buy もスキップ (-1.384bps)
+    # ---- 155# §9: trending レジームでの sell 抑制 ----
+    skip_sell_trending: bool = False  # True で trending 時 sell をスキップ (-0.687bps)
     # ---- 133# P0-10: sell 動的 kill (rolling PnL ベースの自動停止) ----
     sell_dynamic_kill_enabled: bool = False  # True で sell rolling PnL 監視有効
     sell_dynamic_kill_window: int = 50       # rolling ウィンドウ (fill 数)
@@ -637,6 +639,9 @@ class FillTestConfig:
             kwargs["balance_forced_deadlock_limit"] = 止血["balance_forced_deadlock_limit"]
         if 止血.get("skip_buy_unknown_regime") is not None:
             kwargs["skip_buy_unknown_regime"] = 止血["skip_buy_unknown_regime"]
+        # 155# §9: trending sell 抑制
+        if 止血.get("skip_sell_trending") is not None:
+            kwargs["skip_sell_trending"] = 止血["skip_sell_trending"]
         sell_kill = 止血.get("sell_dynamic_kill", {})
         if sell_kill.get("enabled") is not None:
             kwargs["sell_dynamic_kill_enabled"] = sell_kill["enabled"]
