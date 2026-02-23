@@ -71,6 +71,18 @@
 | 分析スクリプト | `scripts/v460/analysis/analyze_fill_records.py` (regime×side フィルタ) |
 | 工数見積 | 0.2 日 (データ蓄積待ち + 分析) |
 
+#### 158# 中間スナップショット (2026-02-24, n=5 — 統計的に不十分)
+
+| regime×side | n | mean PnL30 | std | min | max |
+|---|---|---|---|---|---|
+| trending_down_sell | 5 | **+2.89 bps** | 8.72 | -8.96 | +15.60 |
+| trending_down_buy | 5 | -2.08 bps | 7.19 | — | — |
+| trending_sell | 118 | -0.66 bps | 5.70 | — | — |
+| trending_buy | 118 | +0.57 bps | 6.62 | — | — |
+
+**暫定判定:** trending_down sell は +2.89 bps で基準 (> -0.3) を超過するが、n=5 では信頼区間が非常に広い。
+**次回確認:** n≥30 到達時に再評価 (推定 48-72h 後)。
+
 ### P0-4: Oracle テスト (ph3 前必須) — ✅ PASS (158# 実施済)
 
 | 項目 | 値 |
