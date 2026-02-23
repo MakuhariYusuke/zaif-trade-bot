@@ -1339,6 +1339,39 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `--roots scripts/v460/analysis/reproduce_152_metrics.py`
   - 結果: `any_type_debt_tokens=0`
 
+## Step80: `compare_regime_ab.py` の既存実装再利用 + 型安全化 (2026-02-23)
+
+### 1) 既存実装の再利用
+
+- 対象: `scripts/v460/analysis/compare_regime_ab.py`
+- 数値変換を `ztb.utils.safety.safe_to_float` ベースへ統一。
+  - ローカル helper `_to_float_or_none()` を追加し、`bool`/非有限値を除外して `None` に正規化。
+- summary 出力を `Path.write_text(json.dumps(...))` から `ztb.io.json_io.write_json` に置換。
+
+### 2) 重複削減・不具合余地の解消
+
+- `float(...)` 直接変換を排除し、時刻/価格/PNL の変換失敗で落ちる経路を防御化。
+- `_evaluate_gates()` の `type: ignore[arg-type]` を除去し、`None` ガードで型整合を明示。
+- 未使用 import (`RegimeResult`) を削除。
+- `main()` 側の実質未使用な `recorded_pnl` 集計ループを削除（1 パス分の無駄走査を解消）。
+- `_evaluate_gates()` は既存テスト互換のため第2引数を optional で維持。
+
+### 3) パフォーマンス・保守性
+
+- 変換処理を helper に集約し、前処理とシミュレーションの重複ロジックを縮退。
+- JSON 出力経路を共通 I/O helper に統一し、他スクリプトとの実装差分を削減。
+
+### 4) 検証
+
+- `py_compile`:
+  - `scripts/v460/analysis/compare_regime_ab.py`
+- テスト:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_152_parallel_tasks.py -q --override-ini="addopts="`
+  - 結果: `12 passed`
+- `any_inventory`:
+  - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460/analysis/compare_regime_ab.py`
+  - 結果: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

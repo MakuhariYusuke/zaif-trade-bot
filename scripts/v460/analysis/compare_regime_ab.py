@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import argparse
 import csv
-import json
+import math
 import sys
 from collections import Counter, defaultdict
 from collections.abc import Sequence
@@ -34,11 +34,12 @@ from scripts.v460.lib.regime_detector import (
     FillTestRegime,
     FillTestRegimeDetector,
     RegimeConfig,
-    RegimeResult,
 )
 
 # Re-use data loading from reproduce script
 from scripts.v460.analysis.reproduce_152_metrics import _load_records
+from ztb.io.json_io import write_json
+from ztb.utils.safety import safe_to_float
 
 FillRecord = dict[str, object]
 
@@ -106,6 +107,13 @@ class SimRecord:
     pnl_30s: float | None
 
 
+def _to_float_or_none(value: object) -> float | None:
+    if value is None or isinstance(value, bool):
+        return None
+    parsed = safe_to_float(value, float("nan"))
+    return parsed if math.isfinite(parsed) else None
+
+
 def _simulate(
     records: list[FillRecord],
     config: RegimeConfig | None = None,
@@ -133,7 +141,10 @@ def _simulate(
     ))
 
     # Sort by timestamp for chronological replay
-    sorted_recs = sorted(records, key=lambda r: float(r.get("timestamp", 0)))
+    sorted_recs = sorted(
+        records,
+        key=lambda r: _to_float_or_none(r.get("timestamp")) or 0.0,
+    )
 
     # §12 #2: order_price==0 / side 不正のレコードを除外
     prefilter_stats: dict[str, int] = {
@@ -143,11 +154,11 @@ def _simulate(
     }
     valid_recs: list[FillRecord] = []
     for rec in sorted_recs:
-        ts = rec.get("timestamp")
-        price = rec.get("order_price")
-        if ts is None or price is None:
+        ts_f = _to_float_or_none(rec.get("timestamp"))
+        price_f = _to_float_or_none(rec.get("order_price"))
+        if ts_f is None or price_f is None:
             continue
-        if float(price) <= 0:
+        if price_f <= 0:
             prefilter_stats["price_zero_excluded"] += 1
             continue
         side_val = rec.get("side", "")
@@ -159,19 +170,15 @@ def _simulate(
 
     results: list[SimRecord] = []
     for rec in valid_recs:
-        ts = rec.get("timestamp")
-        price = rec.get("order_price")
-        if ts is None or price is None:
+        ts_f = _to_float_or_none(rec.get("timestamp"))
+        price_f = _to_float_or_none(rec.get("order_price"))
+        if ts_f is None or price_f is None:
             continue
-
-        ts_f = float(ts)
-        price_f = float(price)
 
         old_result = old_det.update(ts_f, price_f)
         new_result = new_det.update(ts_f, price_f)
 
-        pnl_raw = rec.get("post_fill_30s_pnl")
-        pnl_30s = float(pnl_raw) if isinstance(pnl_raw, (int, float)) else None
+        pnl_30s = _to_float_or_none(rec.get("post_fill_30s_pnl"))
 
         results.append(SimRecord(
             timestamp=ts_f,
@@ -206,7 +213,7 @@ class GateResult:
 
 def _evaluate_gates(
     sim_results: list[SimRecord],
-    recorded_regime_pnl: dict[str, float],
+    _recorded_regime_pnl: dict[str, float] | None = None,
 ) -> list[GateResult]:
     """§4.6 Gate を old/new で評価."""
     gates: list[GateResult] = []
@@ -233,14 +240,18 @@ def _evaluate_gates(
     old_regime_pnl: dict[str, list[float]] = defaultdict(list)
     new_regime_pnl: dict[str, list[float]] = defaultdict(list)
     for r in filled_results:
-        old_regime_pnl[r.old_regime].append(r.pnl_30s)  # type: ignore[arg-type]
-        new_regime_pnl[r.new_regime].append(r.pnl_30s)  # type: ignore[arg-type]
+        if r.pnl_30s is None:
+            continue
+        old_regime_pnl[r.old_regime].append(r.pnl_30s)
+        new_regime_pnl[r.new_regime].append(r.pnl_30s)
 
     max_degradation = 0.0
     g2_details: list[str] = []
     for regime in ["ranging", "trending"]:
-        old_avg = sum(old_regime_pnl.get(regime, [0])) / max(len(old_regime_pnl.get(regime, [1])), 1)
-        new_avg = sum(new_regime_pnl.get(regime, [0])) / max(len(new_regime_pnl.get(regime, [1])), 1)
+        old_vals = old_regime_pnl.get(regime, [])
+        new_vals = new_regime_pnl.get(regime, [])
+        old_avg = sum(old_vals) / len(old_vals) if old_vals else 0.0
+        new_avg = sum(new_vals) / len(new_vals) if new_vals else 0.0
         diff = abs(new_avg - old_avg)
         max_degradation = max(max_degradation, diff)
         g2_details.append(f"{regime}: old={old_avg:.4f} → new={new_avg:.4f} (Δ={new_avg-old_avg:+.4f})")
@@ -381,6 +392,7 @@ def _save_summary(
     prefilter_stats: dict[str, int] | None = None,
 ) -> None:
     """Save summary as JSON."""
+    output_dir.mkdir(parents=True, exist_ok=True)
     total = len(sim_results)
     old_unk = sum(1 for r in sim_results if r.old_regime == "unknown")
     new_unk = sum(1 for r in sim_results if r.new_regime == "unknown")
@@ -407,7 +419,7 @@ def _save_summary(
     }
 
     json_path = output_dir / "regime_ab_summary.json"
-    json_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    write_json(json_path, summary, indent=2, ensure_ascii=False)
     print(f"Saved: {json_path}")
 
 
@@ -454,15 +466,7 @@ def main(argv: Sequence[str] | None = None) -> list[GateResult]:
         print(f"[prefilter] invalid side excluded: {prefilter_stats['side_invalid_excluded']}")
     print(f"[prefilter] valid records: {prefilter_stats['valid_records']}/{prefilter_stats['total_input']}")
 
-    # Recorded regime PnL (for reference)
-    recorded_pnl: dict[str, float] = {}
-    for r in records:
-        regime = r.get("regime")
-        pnl = r.get("post_fill_30s_pnl")
-        if isinstance(regime, str) and pnl is not None and bool(r.get("filled")):
-            recorded_pnl.setdefault(regime, 0.0)
-
-    gates = _evaluate_gates(sim_results, recorded_pnl)
+    gates = _evaluate_gates(sim_results)
 
     _print_report(sim_results, gates)
 
