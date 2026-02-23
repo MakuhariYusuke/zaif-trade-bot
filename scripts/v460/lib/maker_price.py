@@ -109,6 +109,14 @@ class MakerPriceCalculator:
         # 129# OB recorder: 生スナップショットキャッシュ
         self._last_ob_snapshot: object | None = None
 
+    def get_fallback_price(self) -> tuple[float | None, float | None]:
+        """156# §16: OB エラー時のフォールバック価格と記録時刻を返す.
+
+        Returns:
+            (prev_mid_price, prev_mid_time) — 未設定時は (None, None).
+        """
+        return self._prev_mid_price, self._prev_mid_time
+
     # ------------------------------------------------------------------
     # offset 同期 (adaptation 後に呼ばれる)
     # ------------------------------------------------------------------

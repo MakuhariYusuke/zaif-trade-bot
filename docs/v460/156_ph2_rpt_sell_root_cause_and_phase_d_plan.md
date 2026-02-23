@@ -500,3 +500,61 @@ if (self.config.sell_dynamic_kill_enabled
 | 2026-02-23 | 155# 実装レビュー結果（重大度付き）を追補し、Phase D 連携を明記 |
 | 2026-02-23 | §10 レビュー全 6 項目の実装完了、§12 に結果記録 |
 | 2026-02-23 | balance_forced バイパス水平展開 (全3ゲート統一) + Phase C 再起動 (PID 120384) |
+| 2026-02-24 | §16 自己レビュー: 8 項目修正 + レジーム既存資産調査 + テスト 43→11追加 |
+
+---
+
+## §16 自己レビュー + レジーム既存資産調査
+
+### 16.1 自己レビュー発見事項
+
+156# 全 4 コミット (`5c0ca0cae`..`2f01fcdde`) の横断レビュー結果:
+
+| # | 重大度 | 問題 | 対応 |
+|---|--------|------|------|
+| 1 | MEDIUM | `import time as _time_mod` ブロック内重複 import — 上位に `import time` 既存 | 除去、`time.time()` に統一 |
+| 2 | MEDIUM | fallback staleness 120s ハードコード — config 化されていない | `fallback_stale_sec: float = 120.0` を FillConfig + from_yaml に追加 |
+| 3 | HIGH | `_prev_mid_price` / `_prev_mid_time` 直接アクセス (private 属性) | `get_fallback_price()` 公開 API を MakerPriceCalculator に追加、全箇所を置換 |
+| 4 | INFO | `skip_sell_unknown_regime` が config + SkipGate evaluator に存在するが main loop に無い | 意図的設計 — SkipGate が ML ルールとして処理。ドキュメント記録のみ |
+| 5 | LOW | `UNKNOWN_REGIME_SELL_SKIP` 定数が cancel_reasons.py に無い | 定数追加 + AUDIT_CANCEL_REASONS frozenset に登録 |
+| 6 | MEDIUM | hindsight_filter の side 除外がログ出力されない | `_skipped_invalid_side` カウンター + logger.info 追加 |
+| 7 | MEDIUM | タイムスタンプなし fallback パスが stale 扱いされない | `_fallback_stale = True` に変更 ("no timestamp, treated as stale") |
+| 8 | LOW | hindsight_filter.py に logger 未定義 (NameError) | `import logging` + `logger = getLogger(__name__)` 追加 |
+
+### 16.2 レジーム既存資産調査
+
+156# Phase D 設計に向け、既存のレジーム関連実装を調査:
+
+**3 つのレジーム検出器:**
+
+| 実装 | パス | 状態数 | 用途 |
+|------|------|--------|------|
+| `FillTestRegimeDetector` | `scripts/v460/lib/regime_detector.py` | 4 (trending/ranging/high_vol/unknown) | fill_test メインループ使用中 |
+| `MarketRegimeDetector` | `ztb/analysis/regime/basic_regime_detector.py` | 4 (bull/bear/sideways/volatile) | 汎用 (未使用) |
+| `AdvancedRegimeDetector` | `ztb/analysis/regime/advanced_regime_detector.py` | 12 (RSI/ADX/MACD 組合せ) | 汎用 (未使用) |
+
+**Key findings:**
+
+- `SellDynamicKillManager` (`ztb/risk/sell_dynamic_kill.py`): sell 専用 kill。regime_thresholds dict でレジーム別閾値設定可能
+- **BuyDynamicKillManager は存在しない** — buy 側は unknown skip のみで防御が薄い
+- `skip_sell_unknown_regime`: FillConfig L179 に config 存在、SkipGate evaluator L456 で `rule_skip_unknown_sell` として ML 判定内で使用。main loop のゲートとは別系統
+- `unknown_buy_offset_boost` (130#): unknown レジーム時に buy offset を引き上げる既存機能
+- `FillTestRegimeDetector` は hysteresis (count=3) + confidence gate (min=0.4) + 152# UNKNOWN→初回遷移加速を実装済み
+
+### 16.3 Phase D への示唆
+
+1. **sell 防御は十分** — 7 重ゲート + SellDynamicKillManager + SkipGate rule_skip_unknown_sell
+2. **buy 側が手薄** — unknown skip のみ。BuyDynamicKillManager 相当、または buy_trending_boost が Phase D+ で検討候補
+3. **AdvancedRegimeDetector (12 状態)** は現状未使用だが、trending の方向分解 (上昇/下降) に活用可能 → D-2/D-3 にフィード
+
+### 16.4 変更ファイル
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `scripts/v460/run_fill_test.py` | import 重複除去, `get_fallback_price()` 呼出し置換 (2 箇所), `fallback_stale_sec` config 参照, no-timestamp stale 処理 |
+| `scripts/v460/lib/maker_price.py` | `get_fallback_price()` 公開メソッド追加 |
+| `scripts/v460/lib/cancel_reasons.py` | `UNKNOWN_REGIME_SELL_SKIP` 定数 + frozenset 登録 |
+| `scripts/v460/lib/fill_config.py` | `fallback_stale_sec: float = 120.0` フィールド + from_yaml マッピング |
+| `scripts/v460/analysis/hindsight_filter.py` | `import logging` + logger 初期化 + side 除外カウンター + ログ出力 |
+| `tests/unit/v460/test_155_hindsight_review.py` | §16 テスト 11 件追加 (43 件合計) |
+| `tests/unit/v460/test_145_structural_fixes.py` | AUDIT_CANCEL_REASONS テスト期待値更新 |

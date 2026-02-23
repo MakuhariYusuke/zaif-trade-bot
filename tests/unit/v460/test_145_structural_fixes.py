@@ -151,6 +151,7 @@ class TestCancelReasons:
             CR.NARROW_SPREAD_PAUSE,
             CR.BALANCE_FORCED_SKIP,
             CR.UNKNOWN_REGIME_BUY_SKIP,
+            CR.UNKNOWN_REGIME_SELL_SKIP,
             CR.SELL_DYNAMIC_KILL,
             CR.TRENDING_SELL_SKIP,
         }

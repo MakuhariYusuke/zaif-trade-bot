@@ -1003,23 +1003,27 @@ class FillTestRunner(AbstractCycleRunner):
             else:
                 ob_cancel_reason = "orderbook_error"
             # 155# §9.5 #3: orderbook_error 時に前回 mid_price をフォールバック
-            # 156# §10 #5: 鮮度判定 — 120s 超は stale とみなす
-            _fallback_price = self._maker_price._prev_mid_price or 0.0
+            # 156# §10 #5: 鮮度判定 — 閾値超は stale とみなす
+            # 156# §16 review: _prev_mid_* 直接アクセス → 公開メソッド化
+            _fb_price, _fb_time = self._maker_price.get_fallback_price()
+            _fallback_price = _fb_price or 0.0
             _fallback_age: float | None = None
             _fallback_stale = False
-            if _fallback_price > 0 and self._maker_price._prev_mid_time is not None:
-                import time as _time_mod
-                _fallback_age = _time_mod.time() - self._maker_price._prev_mid_time
-                _fallback_stale = _fallback_age > 120.0
+            _stale_sec = self.config.fallback_stale_sec
+            if _fallback_price > 0 and _fb_time is not None:
+                _fallback_age = time.time() - _fb_time
+                _fallback_stale = _fallback_age > _stale_sec
                 logger.info(
                     f"[155# ob_fallback] Using last mid_price={_fallback_price:.0f} "
                     f"age={_fallback_age:.1f}s stale={_fallback_stale} "
                     f"as reference for skip record"
                 )
             elif _fallback_price > 0:
+                # no timestamp → stale 扱い (安全策)
+                _fallback_stale = True
                 logger.info(
                     f"[155# ob_fallback] Using last mid_price={_fallback_price:.0f} "
-                    f"(no timestamp) as reference for skip record"
+                    f"(no timestamp, treated as stale) as reference for skip record"
                 )
             return self._make_skip_record(
                 side=side,
@@ -1246,10 +1250,9 @@ class FillTestRunner(AbstractCycleRunner):
             # regime 検知のノイズ源となる。
             if mid_at_fill is not None:
                 regime_price = mid_at_fill
-            elif self._maker_price._prev_mid_price is not None:
-                regime_price = self._maker_price._prev_mid_price
             else:
-                regime_price = None  # データ不足: スキップ
+                _fb_price, _ = self._maker_price.get_fallback_price()
+                regime_price = _fb_price  # None if unavailable
 
             if regime_price is not None:
                 regime_result = self._regime_detector.update(t_submit, regime_price)

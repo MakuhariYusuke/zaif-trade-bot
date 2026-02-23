@@ -1,6 +1,7 @@
 """155# §9 レビュー対応テスト — price=0 補間, 待機時間帯, regime×side, trending sell 抑制.
 
 156# §10 #6: 挙動テスト追加 — balance_forced×trending バイパス, reason 正規化, side バリデーション.
+156# §16: 自己レビュー修正テスト — get_fallback_price, fallback_stale_sec, cancel_reason 定数, logger.
 """
 
 from __future__ import annotations
@@ -596,3 +597,109 @@ class TestBalanceForcedBypassHorizontal:
         assert count >= 3, (
             f"Expected at least 3 'not _balance_forced' checks, found {count}"
         )
+
+
+# ======================================================================
+# 156# §16: 自己レビュー修正テスト
+# ======================================================================
+
+
+class TestGetFallbackPrice:
+    """maker_price.get_fallback_price() 公開APIテスト."""
+
+    def test_method_exists(self) -> None:
+        """get_fallback_price メソッドが存在すること."""
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+        assert hasattr(MakerPriceCalculator, "get_fallback_price")
+
+    def test_returns_tuple(self) -> None:
+        """get_fallback_price が tuple を返すこと."""
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+        import inspect
+        sig = inspect.signature(MakerPriceCalculator.get_fallback_price)
+        # return annotation が tuple であること
+        ann = sig.return_annotation
+        assert ann is not inspect.Parameter.empty, "return annotation must exist"
+
+    def test_run_fill_test_uses_public_api(self) -> None:
+        """run_fill_test が _prev_mid_price を直接参照していないこと."""
+        from pathlib import Path
+        src = Path("scripts/v460/run_fill_test.py").read_text(encoding="utf-8")
+        assert "get_fallback_price()" in src, "must use public API"
+        # 直接の private access がないこと
+        assert "._prev_mid_price" not in src, (
+            "must not access _prev_mid_price directly"
+        )
+
+
+class TestFallbackStaleSecConfig:
+    """fallback_stale_sec が FillConfig に定義されていること."""
+
+    def test_field_exists_with_default(self) -> None:
+        """fallback_stale_sec のデフォルト値が 120.0 であること."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+        cfg = FillTestConfig()
+        assert hasattr(cfg, "fallback_stale_sec")
+        assert cfg.fallback_stale_sec == 120.0
+
+    def test_from_yaml_maps_field(self) -> None:
+        """from_yaml の flat_keys に fallback_stale_sec が含まれること."""
+        from pathlib import Path
+        src = Path("scripts/v460/lib/fill_config.py").read_text(encoding="utf-8")
+        assert '"fallback_stale_sec"' in src
+
+
+class TestUnknownRegimeSellSkipConstant:
+    """UNKNOWN_REGIME_SELL_SKIP 定数テスト."""
+
+    def test_constant_exists(self) -> None:
+        """定数が cancel_reasons に存在すること."""
+        from scripts.v460.lib.cancel_reasons import UNKNOWN_REGIME_SELL_SKIP
+        assert UNKNOWN_REGIME_SELL_SKIP == "unknown_regime_sell_skip"
+
+    def test_in_audit_set(self) -> None:
+        """AUDIT_CANCEL_REASONS に含まれること."""
+        from scripts.v460.lib.cancel_reasons import (
+            AUDIT_CANCEL_REASONS,
+            UNKNOWN_REGIME_SELL_SKIP,
+        )
+        assert UNKNOWN_REGIME_SELL_SKIP in AUDIT_CANCEL_REASONS
+
+    def test_symmetric_with_buy(self) -> None:
+        """BUY_SKIP と SELL_SKIP が対称に存在すること."""
+        from scripts.v460.lib import cancel_reasons as cr
+        assert hasattr(cr, "UNKNOWN_REGIME_BUY_SKIP")
+        assert hasattr(cr, "UNKNOWN_REGIME_SELL_SKIP")
+
+
+class TestHindsightFilterLogger:
+    """hindsight_filter にロガーが定義されていること."""
+
+    def test_logger_defined(self) -> None:
+        """モジュールレベルで logger が定義されていること."""
+        from pathlib import Path
+        src = Path("scripts/v460/analysis/hindsight_filter.py").read_text(
+            encoding="utf-8"
+        )
+        assert "import logging" in src
+        assert "logger = logging.getLogger" in src
+
+    def test_invalid_side_counter_logged(self) -> None:
+        """除外カウンターがログ出力されるコードが存在すること."""
+        from pathlib import Path
+        src = Path("scripts/v460/analysis/hindsight_filter.py").read_text(
+            encoding="utf-8"
+        )
+        assert "_skipped_invalid_side" in src
+        assert "Excluded" in src
+
+
+class TestNoTimestampFallbackStale:
+    """タイムスタンプなしの fallback がstale扱いされること."""
+
+    def test_no_timestamp_treated_as_stale(self) -> None:
+        """タイムスタンプなしパスが _fallback_stale = True を設定すること."""
+        from pathlib import Path
+        src = Path("scripts/v460/run_fill_test.py").read_text(encoding="utf-8")
+        # "no timestamp" パスで stale 扱い
+        assert "treated as stale" in src

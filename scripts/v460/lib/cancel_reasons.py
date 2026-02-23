@@ -23,6 +23,7 @@ TIME_FILTER_086_DEADLOCK = "time_filter_086_deadlock"
 NARROW_SPREAD_PAUSE = "narrow_spread_pause"
 BALANCE_FORCED_SKIP = "balance_forced_skip"
 UNKNOWN_REGIME_BUY_SKIP = "unknown_regime_buy_skip"
+UNKNOWN_REGIME_SELL_SKIP = "unknown_regime_sell_skip"  # 156# §16: buy側と対称化
 SELL_DYNAMIC_KILL = "sell_dynamic_kill"
 TRENDING_SELL_SKIP = "trending_sell_skip"  # 155# §9: trending regime sell 抑制
 SKIP_GATE = "skip_gate"
@@ -36,6 +37,7 @@ AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     NARROW_SPREAD_PAUSE,
     BALANCE_FORCED_SKIP,
     UNKNOWN_REGIME_BUY_SKIP,
+    UNKNOWN_REGIME_SELL_SKIP,
     SELL_DYNAMIC_KILL,
     TRENDING_SELL_SKIP,
 })

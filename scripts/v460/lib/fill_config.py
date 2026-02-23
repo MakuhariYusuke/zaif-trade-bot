@@ -179,6 +179,8 @@ class FillTestConfig:
     skip_sell_unknown_regime: bool = False
     # 130# unknown regime での buy offset boost (AS 回避)
     unknown_buy_offset_boost: float = 1.0  # 1.0 = 無効, >1.0 で boost (例: 2.0 = VG相当)
+    # 156# §16: OB エラー fallback 価格の鮮度閾値 (秒)
+    fallback_stale_sec: float = 120.0
     # 094# stale order 検出 & cancel-replace (価格乖離した注文を再発注)
     stale_order_enabled: bool = False
     stale_check_after_sec: float = 30.0    # 発注後この秒数以降で乖離チェック開始
@@ -355,6 +357,7 @@ class FillTestConfig:
             "batch_size", "max_save_retries", "save_fail_threshold",
             "progress_log_interval",
             "log_max_bytes", "log_backup_count",
+            "fallback_stale_sec",  # 156# §16
         }
         for key in flat_keys:
             if key in yaml_cfg:

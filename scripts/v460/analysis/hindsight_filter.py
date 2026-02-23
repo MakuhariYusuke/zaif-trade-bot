@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import bisect
 import json
+import logging
 import math
 import sys
 from collections import defaultdict
@@ -32,6 +33,8 @@ from typing import TypeAlias, TypedDict
 
 from scripts.v460.analysis.reproduce_152_metrics import _load_records
 from ztb.metrics.fill_quality import PnlAccumulator
+
+logger = logging.getLogger(__name__)
 
 
 RawRecord: TypeAlias = Mapping[str, object]
@@ -276,6 +279,7 @@ def _analyze_records(
     """
     results: list[HindsightResult] = []
     timeline_ts = [point.timestamp for point in timeline]
+    _skipped_invalid_side = 0  # 156# §16: 除外カウント
 
     for r in records:
         ts_f = _to_float(r.get("timestamp"))
@@ -287,6 +291,7 @@ def _analyze_records(
 
         # 156# §10 #2: buy/sell 以外の side を除外 (符号歪み防止)
         if side not in ("buy", "sell"):
+            _skipped_invalid_side += 1
             continue
 
         # §9.4 #1: price=0 → 補間で疑似参照価格を取得
@@ -332,6 +337,12 @@ def _analyze_records(
             interpolated_ref=interpolated,
             queue_wait_sec=qw_f,
         ))
+
+    if _skipped_invalid_side > 0:
+        logger.info(
+            f"[hindsight] Excluded {_skipped_invalid_side} records "
+            f"with invalid side (not buy/sell)"
+        )
 
     return results
 
