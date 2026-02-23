@@ -23,6 +23,7 @@ from typing import Final, NamedTuple, Optional, Protocol
 
 from scripts.v460.lib.fast_fill_defense import FastFillDefense
 from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.regime_detector import FillTestRegime
 
 logger = logging.getLogger(__name__)
 
@@ -300,7 +301,7 @@ class MakerPriceCalculator:
         if (
             self._regime_detector is not None
             and hasattr(self._regime_detector, "current_regime")
-            and self._regime_detector.current_regime.value == "high_vol"
+            and self._regime_detector.current_regime == FillTestRegime.HIGH_VOL
             and cfg.regime_high_vol_offset_boost > 1.0
         ):
             pre_offset = effective_offset_ratio
@@ -318,7 +319,7 @@ class MakerPriceCalculator:
         if (
             self._regime_detector is not None
             and hasattr(self._regime_detector, "current_regime")
-            and self._regime_detector.current_regime.value == "ranging"
+            and self._regime_detector.current_regime == FillTestRegime.RANGING
             and cfg.regime_ranging_offset_discount < 1.0
         ):
             pre_offset = effective_offset_ratio
@@ -340,7 +341,7 @@ class MakerPriceCalculator:
             and hasattr(self._regime_detector, "current_regime")
             and (
                 self._regime_detector.current_regime is None
-                or self._regime_detector.current_regime.value == "unknown"
+                or self._regime_detector.current_regime == FillTestRegime.UNKNOWN
             )
         ):
             pre_offset = effective_offset_ratio

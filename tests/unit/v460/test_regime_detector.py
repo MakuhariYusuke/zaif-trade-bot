@@ -1201,3 +1201,116 @@ class TestPhaseD5KillCooldown:
         # 平均が閾値以上 → 解除
         killed, tele = mgr.check_kill()
         assert killed is False
+
+
+# ======================================================================
+# 156# §18 セルフレビュー: データシンク解消 + enum 一貫性 + 未活用機能
+# ======================================================================
+
+
+class TestPhaseD18DataSinkResolution:
+    """156# §18: trend_pct / volatility_ratio の FillRecord 伝搬テスト."""
+
+    def test_fill_record_has_regime_trend_pct_field(self) -> None:
+        """FillRecord に regime_trend_pct フィールドが存在."""
+        from ztb.metrics.fill_quality import FillRecord
+
+        record = FillRecord(
+            cycle_id="test",
+            timestamp=1000.0,
+            side="buy",
+            order_price=15_000_000.0,
+            order_quantity=0.001,
+            regime_trend_pct=1.23,
+            regime_volatility_ratio=0.75,
+        )
+        assert record.regime_trend_pct == 1.23
+        assert record.regime_volatility_ratio == 0.75
+
+    def test_fill_record_data_sink_fields_serialize(self) -> None:
+        """trend_pct / volatility_ratio が to_dict / from_dict で保持."""
+        from ztb.metrics.fill_quality import FillRecord
+
+        record = FillRecord(
+            cycle_id="test",
+            timestamp=1000.0,
+            side="sell",
+            order_price=15_000_000.0,
+            order_quantity=0.001,
+            regime_trend_pct=-0.5,
+            regime_volatility_ratio=1.8,
+        )
+        d = record.to_dict()
+        assert d["regime_trend_pct"] == -0.5
+        assert d["regime_volatility_ratio"] == 1.8
+
+        restored = FillRecord.from_dict(d)
+        assert restored.regime_trend_pct == -0.5
+        assert restored.regime_volatility_ratio == 1.8
+
+    def test_backward_compat_no_data_sink_fields(self) -> None:
+        """旧データ (trend_pct なし) からも from_dict できる."""
+        from ztb.metrics.fill_quality import FillRecord
+
+        old = {"cycle_id": "x", "timestamp": 0.0, "side": "buy",
+               "order_price": 100.0, "order_quantity": 0.001}
+        r = FillRecord.from_dict(old)
+        assert r.regime_trend_pct is None
+        assert r.regime_volatility_ratio is None
+
+
+class TestPhaseD18EnumConsistency:
+    """156# §18: maker_price.py の enum 直接比較テスト."""
+
+    def test_maker_price_imports_fill_test_regime(self) -> None:
+        """maker_price.py が FillTestRegime をインポートしている."""
+        import importlib
+        mod = importlib.import_module("scripts.v460.lib.maker_price")
+        assert hasattr(mod, "FillTestRegime")
+
+    def test_high_vol_uses_enum_comparison(self) -> None:
+        """maker_price.py の high_vol ロジックが enum 比較を使用."""
+        import inspect
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+
+        source = inspect.getsource(MakerPriceCalculator.compute)
+        assert "FillTestRegime.HIGH_VOL" in source
+        assert "FillTestRegime.RANGING" in source
+        assert "FillTestRegime.UNKNOWN" in source
+        # 文字列比較が残っていないこと
+        assert '.value == "high_vol"' not in source
+        assert '.value == "ranging"' not in source
+        assert '.value == "unknown"' not in source
+
+
+class TestPhaseD18ObFetchStats:
+    """156# §18: OB fetch 統計プロパティテスト."""
+
+    def test_ob_fetch_stats_property_exists(self) -> None:
+        """SkipGateEvaluator.ob_fetch_stats が返せる."""
+        from pathlib import Path
+        from scripts.v460.lib.fill_config import FillTestConfig
+        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+
+        config = FillTestConfig(skip_gate_enabled=False)
+        evaluator = SkipGateEvaluator(config, Path("."))
+        fail, total = evaluator.ob_fetch_stats
+        assert fail == 0
+        assert total == 0
+
+
+class TestPhaseD18RangingYaml:
+    """156# §18: ranging_offset_discount YAML 有効化テスト."""
+
+    def test_yaml_has_ranging_discount(self) -> None:
+        """YAML に ranging_offset_discount が設定されている."""
+        from pathlib import Path
+        import yaml  # type: ignore[import-untyped]
+
+        yaml_path = Path("configs/v460/fill_test.yaml")
+        with open(yaml_path) as f:
+            cfg = yaml.safe_load(f)
+        regime = cfg["regime"]
+        assert "ranging_offset_discount" in regime
+        discount = regime["ranging_offset_discount"]
+        assert 0.5 < discount < 1.0, f"discount should be 0.5-1.0, got {discount}"

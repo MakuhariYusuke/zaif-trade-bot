@@ -627,3 +627,85 @@ sell: 0.18  # → Phase D-3 A/B で 0.15→0.14 段階縮小予定
 | `configs/v460/fill_test.yaml` | D-3/D-4/D-5 設定変更 |
 | `tests/unit/v460/test_regime_detector.py` | D-4/D-5 テスト 9 件追加 + 既存修正 |
 | `tests/unit/v460/test_143_regime_utilization.py` | TRENDING → is_trending 修正 |
+
+---
+
+## §18 Phase D セルフレビュー + 未活用レジーム機能対応
+
+### 18.1 レビュー発見事項と対応
+
+| # | 発見 | 重要度 | 対応 |
+|---|------|--------|------|
+| 1 | `maker_price.py` の `high_vol`/`ranging`/`unknown` が `.value ==` 文字列比較 | 中 | **修正**: `FillTestRegime` enum 直接比較に統一 |
+| 2 | `trend_pct`/`volatility_ratio` が `RegimeResult` で計算後、下流に伝搬されず消失 (データシンク) | 中 | **修正**: `FillRecord` に `regime_trend_pct`/`regime_volatility_ratio` フィールド追加、`run_fill_test.py` で伝搬 |
+| 3 | `ranging_offset_discount` がコード実装済みだが YAML 未設定で dormant | 中 | **修正**: YAML に `0.90` で有効化 (安定市場で利幅確保) |
+| 4 | `SkipGateEvaluator._ob_fetch_fail_count` カウンタが外部監視不可 | 低 | **修正**: `ob_fetch_stats` プロパティ公開 |
+| 5 | テスト mock が `MagicMock().value = "..."` で enum 比較と不整合 | 中 | **修正**: `FillTestRegime(value)` enum 値を直接使用 |
+
+### 18.2 未活用レジーム機能 監査報告
+
+#### 18.2.1 AdvancedRegimeDetector (12 状態) — DEAD CODE
+
+- **場所**: `ztb/analysis/regime/advanced_regime_detector.py`
+- **状態**: `__init__.py` から export 有、実運用コードでの import/使用は **皆無**
+- **理由**: fill_test は `mid_price` のみ取得。AdvancedRegimeDetector は `high`/`low`/`close` の 3 入力が必要で入力要件を満たせない (152# で不採用判断済み)
+- **推奨**: archived 移動候補。D-4 で `FillTestRegimeDetector._classify()` に方向分解を直接実装したため、AdvancedRegimeDetector の方向情報は不要
+
+#### 18.2.2 FillTestRegime 各値の消費状況
+
+| 値 | 生成 | 消費ロジック | 判定 |
+|---|---|---|---|
+| `TRENDING` | `_classify()` では **非生成** (is_trending 内で参照のみ) | レガシー互換 | dead-on-arrival (安全に保持) |
+| `TRENDING_UP` | `_classify()` で生成 (trend_pct>0) | skip_sell_trending + sell_dynamic_kill regime_thresholds | **ACTIVE** |
+| `TRENDING_DOWN` | `_classify()` で生成 (trend_pct≤0) | skip_sell_trending_up_only で通過判定 | **ACTIVE** |
+| `RANGING` | `_classify()` で生成 | ranging_offset_discount (§18 で YAML 有効化) | **ACTIVE** (§18 以前は dormant) |
+| `HIGH_VOL` | `_classify()` で生成 | high_vol_offset_boost | **ACTIVE** |
+| `UNKNOWN` | 初期状態 / 信頼度ゲート | skip_buy_unknown_regime + unknown_buy_offset_boost | **ACTIVE** |
+
+#### 18.2.3 Buy 側レジーム防御の非対称性
+
+| 防御 | Sell 側 | Buy 側 |
+|------|---------|--------|
+| レジーム skip | skip_sell_trending ✅ | skip_buy_unknown_regime ✅ |
+| 動的 kill (rolling PnL) | SellDynamicKillManager ✅ | **なし** ❌ |
+| offset boost | regime_trending_offset_boost (共通) ✅ | unknown_buy_offset_boost ✅ |
+| Kill 方向別閾値 | regime_thresholds ✅ | **なし** ❌ |
+
+- **BuyDynamicKillManager は存在しない** — buy 側 rolling PnL 悪化時の自動停止機構が **完全に欠落**
+- `regime_trending_offset_boost` は buy/sell **共通適用** — trending_up 時の buy は有利方向取引なのに過剰 offset で利益ロスの可能性
+- **Phase E 候補**: buy/sell 非対称 offset boost、BuyDynamicKillManager 実装
+
+#### 18.2.4 RegimeResult フィールドの消費状況
+
+| フィールド | 下流消費 | §18 対応 |
+|---|---|---|
+| `regime` | 全ゲート・FillRecord | 正常 |
+| `confidence` | FillRecord + ロット調整 | 正常 |
+| `stability` | FillRecord + resilience 復元 | 正常 |
+| `trend_pct` | **未消費** → FillRecord に伝搬なし | **§18 修正**: `regime_trend_pct` 追加 |
+| `volatility_ratio` | **未消費** → FillRecord に伝搬なし | **§18 修正**: `regime_volatility_ratio` 追加 |
+
+### 18.3 テスト結果
+
+- 新規テスト: 7 件 (§18 レビュー項目カバー)
+- 既存テスト修正: 1 件 (mock regime detector → enum 直接使用)
+- v460 全体: **1605 passed** / 2 failed (pre-existing)
+
+### 18.4 変更ファイル一覧
+
+| ファイル | 変更内容 |
+|----------|----------|
+| `ztb/metrics/fill_quality.py` | `regime_trend_pct` / `regime_volatility_ratio` フィールド追加 |
+| `scripts/v460/run_fill_test.py` | `trend_pct` / `volatility_ratio` → FillRecord 伝搬 |
+| `scripts/v460/lib/maker_price.py` | `.value ==` 文字列比較 → `FillTestRegime` enum 直接比較 (3 箇所)、`FillTestRegime` import 追加 |
+| `scripts/v460/lib/skip_gate_evaluator.py` | `ob_fetch_stats` プロパティ追加 |
+| `configs/v460/fill_test.yaml` | `ranging_offset_discount: 0.90` 追加 |
+| `tests/unit/v460/test_regime_detector.py` | §18 テスト 7 件追加 |
+| `tests/unit/v460/test_143_regime_utilization.py` | mock → FillTestRegime enum 直接使用 |
+
+### 18.5 Phase E 候補 (今回対応外)
+
+1. **BuyDynamicKillManager** — buy 側 rolling PnL 自動停止 (sell との対称性)
+2. **trending offset boost の buy/sell 非対称化** — 有利方向取引で不要な offset 拡大を抑制
+3. **AdvancedRegimeDetector archived 移動** — dead code 整理
+4. **stale_check_after_sec_sell 30s→20s** — buy (15s) との差を縮める

@@ -89,6 +89,8 @@ regime:
   hysteresis_count: 3          # 状態確定までの連続一致数
   min_confidence: 0.2          # 152#: 0.3→0.2 (classify最低値0.4で不発のため引き下げ)
   trending_offset_boost: 1.5   # 052#: trending PnL -1.2bps → offset ×1.5 で保守化
+  # 156# §18: ranging 時に offset 縮小 → 安定市場で fill_rate+利幅確保
+  ranging_offset_discount: 0.90   # ranging 時 offset × 0.90 (控えめ開始、A/B で 0.85 検証予定)
 
 # ---- 時間帯フィルター (041#) ----
 # 089# 大幅削減: 16h→6h per side (088# SkipGate 動的較正 + sell_guard で補完)

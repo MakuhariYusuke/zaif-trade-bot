@@ -409,6 +409,11 @@ class SkipGateEvaluator:
         """内部 SkipGate インスタンスへのアクセス (OrderMonitor 等で使用)."""
         return self._skip_gate
 
+    @property
+    def ob_fetch_stats(self) -> tuple[int, int]:
+        """156# §18: OB fetch 統計 (fail_count, total_count)."""
+        return self._ob_fetch_fail_count, self._ob_fetch_total_count
+
     def _select_gate_for_side(self, side: str) -> _SkipGateLike | None:
         """141# P1-01: side に適合する SkipGate を返す.
 

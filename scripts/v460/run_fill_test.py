@@ -1245,6 +1245,9 @@ class FillTestRunner(AbstractCycleRunner):
         regime_str: Optional[str] = None
         regime_conf: Optional[float] = None
         regime_stab: Optional[int] = None
+        # 156# §18: データシンク解消 — trend_pct/volatility_ratio を FillRecord へ
+        regime_trend_pct: Optional[float] = None
+        regime_vol_ratio: Optional[float] = None
         if self._regime_detector is not None:
             # 100# P1-6 fix: unfilled 時は order_price (offset 込み) ではなく
             # 直近の真の mid price を使用。order_price は offset を含むため
@@ -1260,6 +1263,8 @@ class FillTestRunner(AbstractCycleRunner):
                 regime_str = regime_result.regime.value
                 regime_conf = regime_result.confidence
                 regime_stab = regime_result.stability
+                regime_trend_pct = regime_result.trend_pct
+                regime_vol_ratio = regime_result.volatility_ratio
 
         record = FillRecord(
             cycle_id=cycle_id,
@@ -1299,6 +1304,9 @@ class FillTestRunner(AbstractCycleRunner):
             regime=regime_str,
             regime_confidence=regime_conf,
             regime_stability=regime_stab,
+            # 156# §18: データシンク解消
+            regime_trend_pct=regime_trend_pct,
+            regime_volatility_ratio=regime_vol_ratio,
             # 054# S5: AS 予測データ基盤
             # 122# R5/§7.3 方法 2: OB 記録を imbalance_enabled と独立させ常時記録
             orderbook_imbalance=self._maker_price._last_imbalance,

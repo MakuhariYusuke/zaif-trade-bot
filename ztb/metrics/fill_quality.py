@@ -68,6 +68,9 @@ class FillRecord:
     regime: Optional[str] = None  # FillTestRegime.value (trending/ranging/high_vol/unknown)
     regime_confidence: Optional[float] = None  # 0.0–1.0
     regime_stability: Optional[int] = None  # 連続同一レジーム数
+    # 156# §18: データシンク解消 — 下流分析で方向強度/ボラ比を活用
+    regime_trend_pct: Optional[float] = None    # トレンド強度 (%)
+    regime_volatility_ratio: Optional[float] = None  # ボラティリティ比
     # 054# AS 予測データ基盤 — orderbook imbalance + spread + mid trend
     orderbook_imbalance: Optional[float] = None   # 板不均衡 [-1, +1] (+1=bid圧倒)
     bid_depth_total: Optional[float] = None       # bid 側合計数量 (BTC)

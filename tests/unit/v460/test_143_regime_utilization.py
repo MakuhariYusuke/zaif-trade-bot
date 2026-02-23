@@ -102,12 +102,12 @@ class TestRegimeOffsetBoostFunctional:
             sell_max_spread_jpy=0.0,
         )
 
-        # mock regime detector
+        # mock regime detector — 156# §18: FillTestRegime enum を直接使用
         regime_det = None
         if regime_value is not None:
+            from scripts.v460.lib.regime_detector import FillTestRegime as _R
             regime_det = MagicMock()
-            regime_det.current_regime = MagicMock()
-            regime_det.current_regime.value = regime_value
+            regime_det.current_regime = _R(regime_value)
 
         ffd = MagicMock()
         ffd.should_boost.return_value = False
