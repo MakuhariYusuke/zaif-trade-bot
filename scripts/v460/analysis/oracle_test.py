@@ -61,6 +61,18 @@ class HorizonOracleResult(TypedDict, total=False):
     side_analysis: dict[str, SideOracleStats]
 
 
+class ASCostAnalysis(TypedDict, total=False):
+    """AS (Adverse Selection) コスト分析 — 158# P0-4 要件."""
+
+    n_as: int
+    n_non_as: int
+    as_ratio: float
+    as_avg_pnl30_bps: float
+    non_as_avg_pnl30_bps: float
+    as_cost_bps: float  # as_ratio × |as_avg_pnl30|
+    oracle_net_of_as_bps: float  # oracle_flip - as_cost
+
+
 class KillSwitchResult(TypedDict, total=False):
     """Kill Switch 判定."""
 
@@ -82,6 +94,7 @@ class OracleRunResult(TypedDict, total=False):
     total_records: int
     filled_records: int
     oracle: dict[str, HorizonOracleResult]
+    as_cost: ASCostAnalysis
     kill_switch: KillSwitchResult
 
 
@@ -190,6 +203,42 @@ def run_oracle_test(
 
     result["oracle"] = oracle_results
 
+    # 3.5. AS コスト分析 (158# P0-4: AS_ratio × avg_AS_loss)
+    as_cost_result: ASCostAnalysis = {}
+    as_col = "adverse_selected"
+    pnl30_col_name = "post_fill_30s_pnl"
+    if as_col in filled.columns and pnl30_col_name in filled.columns:
+        as_mask = filled[as_col].astype(bool)
+        pnl30_valid = filled[pnl30_col_name].astype(float).notna()
+        as_records = filled.loc[as_mask & pnl30_valid]
+        non_as_records = filled.loc[~as_mask & pnl30_valid]
+
+        n_as = int(len(as_records))
+        n_non_as = int(len(non_as_records))
+        n_total_valid = n_as + n_non_as
+
+        if n_total_valid > 0 and n_as > 0:
+            as_ratio = n_as / n_total_valid
+            as_avg = float(as_records[pnl30_col_name].astype(float).mean())
+            non_as_avg = float(non_as_records[pnl30_col_name].astype(float).mean()) if n_non_as > 0 else 0.0
+            as_cost = as_ratio * abs(as_avg)  # AS コスト (bps)
+
+            # Oracle Flip PnL30 から AS cost を差し引いた net
+            oracle_flip_30 = oracle_results.get("pnl30", {}).get("oracle_flip_mean_bps", 0.0)
+            oracle_net = oracle_flip_30 - as_cost
+
+            as_cost_result = {
+                "n_as": n_as,
+                "n_non_as": n_non_as,
+                "as_ratio": round(as_ratio, 4),
+                "as_avg_pnl30_bps": round(as_avg, 4),
+                "non_as_avg_pnl30_bps": round(non_as_avg, 4),
+                "as_cost_bps": round(as_cost, 4),
+                "oracle_net_of_as_bps": round(oracle_net, 4),
+            }
+
+    result["as_cost"] = as_cost_result
+
     # 4. Kill Switch 判定 (121# §6.3, 122# R7)
     kill_switch: KillSwitchResult = {}
 
@@ -269,6 +318,20 @@ def main() -> None:
                 print(f"    [{side:4s}] n={sa['n']:4d}, mean={sa['mean_bps']:+.4f}, "
                       f"profitable={sa['profitable_rate']:.1%}, "
                       f"oracle_skip={sa['oracle_skip_mean_bps']:+.4f}")
+
+    print(f"\n  === AS Cost Analysis (158# P0-4) ===")
+    as_cost = result.get("as_cost", {})
+    if as_cost.get("n_as"):
+        print(f"    AS records:   {as_cost['n_as']} ({as_cost['as_ratio']:.1%})")
+        print(f"    Non-AS:       {as_cost['n_non_as']} ({1-as_cost['as_ratio']:.1%})")
+        print(f"    AS avg PnL30: {as_cost['as_avg_pnl30_bps']:+.4f} bps")
+        print(f"    Non-AS PnL30: {as_cost['non_as_avg_pnl30_bps']:+.4f} bps")
+        print(f"    AS cost:      {as_cost['as_cost_bps']:+.4f} bps  (AS_ratio x |avg_AS_loss|)")
+        print(f"    Oracle net:   {as_cost['oracle_net_of_as_bps']:+.4f} bps  (Oracle Flip - AS cost)")
+        verdict = "PASS" if as_cost["oracle_net_of_as_bps"] > 0 else "FAIL"
+        print(f"    158# P0-4 verdict: {verdict}")
+    else:
+        print("    No AS data available")
 
     print(f"\n  === Kill Switch ===")
     ks = result.get("kill_switch", {})

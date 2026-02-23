@@ -71,7 +71,7 @@
 | 分析スクリプト | `scripts/v460/analysis/analyze_fill_records.py` (regime×side フィルタ) |
 | 工数見積 | 0.2 日 (データ蓄積待ち + 分析) |
 
-### P0-4: Oracle テスト (ph3 前必須)
+### P0-4: Oracle テスト (ph3 前必須) — ✅ PASS (158# 実施済)
 
 | 項目 | 値 |
 |---|---|
@@ -79,8 +79,27 @@
 | 問題 | v459 の教訓「完全予測でも taker 手数料で費用負け」が ph3 進入前に検証されていない。v460 は maker 0% だが AS コストが Oracle PnL を超えていないかを確認すべき。 |
 | アクション | Phase C の 2,700+ records で Oracle baseline を計算: 「全約定の PnL30 を符号反転なしで計算し、完全予測時の理論上限を算出」。AS_ratio × avg_AS_loss を差し引いた net を検証。 |
 | 成果基準 | Oracle net PnL > 0 bps (maker 0% で理論的に利益が出うることを確認) |
-| 関連コード | 新規スクリプト or `hindsight_filter.py` 拡張 |
+| 関連コード | `scripts/v460/analysis/oracle_test.py`, `oracle_baseline.py` (AS cost 分析追加) |
 | 工数見積 | 0.3 日 |
+
+#### 158# 実施結果 (2026-02-24, n=1289 filled / 2739 total)
+
+| 指標 | 30s | 120s |
+|---|---|---|
+| Baseline mean | -0.2844 bps | +0.2267 bps |
+| Oracle Skip mean | +2.8606 bps | +4.9194 bps |
+| Oracle Flip mean | +2.9343 bps | +4.7844 bps |
+| Profitable rate | 46.3% | 50.9% |
+| Kill Switch | **PASS** (>1.0) | **PASS** (>1.0) |
+
+**AS コスト分析:**
+- AS ratio: 26.5% (341/1289), AS avg PnL30: -5.18 bps
+- Non-AS avg PnL30: +1.48 bps
+- **AS cost = 0.265 × 5.18 = 1.37 bps**
+- **Oracle net (Flip - AS cost) = 2.93 - 1.37 = +1.56 bps > 0 → ✅ PASS**
+
+**結論:** maker 0% 環境で理論上限は十分に正。ph3 SAC 訓練進行の根拠確認済。
+改善余地 = Oracle Skip (+2.86) - Baseline (-0.28) = **+3.14 bps** — skip gate 精度向上が最大レバレッジ。
 
 ---
 
