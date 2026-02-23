@@ -1,7 +1,7 @@
 # v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-24 (158# §20 レジームデッドロック修正)
+> 最終更新: 2026-02-24 (158# バックログ監査 + Phase D 優先順位)
 
 ---
 
@@ -179,6 +179,7 @@
 | 111 | rpt | [111_phg_rpt_legacy_asset_research.md](111_phg_rpt_legacy_asset_research.md) | v456–v459 レガシー資産・教訓 調査レポート |
 | 112 | rev | [112_phg_rev_111_legacy_asset.md](112_phg_rev_111_legacy_asset.md) | 111# レビュー + 追加提案 + 見落とし補完 |
 | 118 | rpt | [118_phg_rpt_backlog_deep_analysis.md](118_phg_rpt_backlog_deep_analysis.md) | 残課題・未検討提案の深掘り考察 (53→39 RESOLVED, §5/§8全件disposition, 特徴量再訓練計画 Appendix F) |
+| 158 | rpt | [158_phg_rpt_backlog_audit_and_phase_d_priorities.md](158_phg_rpt_backlog_audit_and_phase_d_priorities.md) | バックログ監査 (118#–157# 横断) + Phase D 優先順位 22 件 + 外部 AI レビュー向け補足 |
 
 ---
 
