@@ -190,17 +190,36 @@ regime_detector が None またはレジーム未検出の場合は multiplier =
 ```
 Phase A (Data Infra)      : ✅ 135#
 Phase B (Observability)   : ✅ 135#
-Phase C (Re-measurement)  : ⬜ Operational (24h run 未実施)
-Phase D (Retrain restart) : ✅ 136#
+Phase C (Re-measurement)  : 🔄 運用中 (168h run: 02/13-02/23, PID 108148 deadlock)
+Phase D (Retrain restart) : ✅ 136# (基盤) → 🔄 156# で Phase C と並行開始
 Phase E (P1 group)        : ✅ 137#-141# (全 9 項目完了)
 142# Self-check           : ✅ C-1/M-1/M-3 修正
 143# R-1a/R-1b            : ✅ offset + lot regime adaptation
-144# R-1c/R-1d + review   : ✅ 本セッション (reprice + timeout + review 10件)
+144# R-1c/R-1d + review   : ✅ reprice + timeout + review 10件
+145# Structural fixes      : ✅ cancel_reasons Enum化 + lot 乗算修正
+146# Registry decoupling   : ✅ マルチ取引所 Registry 分離
+147#-150# Phase C ops       : ✅ restart automation + deadlock対策
+151# DPS plan              : ✅ confidence_lot 設計
+152# Priority improvements  : ✅ 144# CRITICAL検証 + P3-03判定
+153# Test stabilization     : ✅ テスト安定化 + run_fill_test 分割設計
+154# 10h dryrun analysis   : ✅ P0-08 deadlock 発見・対策
+155# Hindsight analysis    : ✅ 後知恵分析 + trending sell抑制 + sell timeout非対称化
 ```
 
 **R-1 全サブタスク完了**: R-1a (offset), R-1b (lot), R-1c (reprice), R-1d (timeout)
 
-**次ステップ**: P2 グループ (P2-01〜P2-12) / Phase C 24h 実測 / R-2 retrain 重み付け
+**Phase C 状況** (2026-02-23時点):
+- 168h run: 2,407 レコード蓄積、26 restarts、PID 108148 deadlock (02/23 04:36〜)
+- 主要改善: trending sell抑制、sell timeout 75s、time_filter 3h化、balance_forced追跡
+- **次**: restart → 残りデータ蓄積 or Phase D 並行開始 (156#)
+
+**Phase D 並行開始の根拠**:
+- 136# で retrain基盤は構築済み
+- 2,407 records は SkipGate 再訓練に十分なサンプル数
+- Phase C deadlock中の空き時間を活用
+- sell 弱体の根本要因 (7重ゲート/負の螺旋) に Phase D retrain が直接効く
+
+**次ステップ**: 156# (sell根本分析 + Phase C/D並行計画) / 144# §8-§9 CRITICAL修正
 
 ---
 

@@ -124,7 +124,7 @@
 | 129 | rpt | [129_ph2_rpt_log_analysis_and_backlog.md](129_ph2_rpt_log_analysis_and_backlog.md) | ログ分析・改善指針・残課題統合レビュー (131# 外部レビュー用) |
 | 130 | rpt | [130_ph2_rpt_implementation_and_retrain.md](130_ph2_rpt_implementation_and_retrain.md) | 6 施策実装 + retrain 改善 |
 | 131 | rpt | [131_ph2_rpt_y3_retrain_efficiency.md](131_ph2_rpt_y3_retrain_efficiency.md) | Y3 retrain 効率化報告 |
-| 132 | rpt | [132_fill_test_log_analysis.md](132_fill_test_log_analysis.md) | fill_test ログ分析・収益性最大化計画 |
+| 132 | rpt | [132_ph2_rpt_fill_test_log_analysis.md](132_ph2_rpt_fill_test_log_analysis.md) | fill_test ログ分析・収益性最大化計画 |
 | 133 | rev | [133_ph2_rev_132_profitability_max_plan.md](133_ph2_rev_132_profitability_max_plan.md) | 132# 収益性最大化計画レビュー |
 | 134 | rev | [134_ph2_rev_133_validity_evaluation.md](134_ph2_rev_133_validity_evaluation.md) | 133# 妥当性評価 — Phase A-E ロードマップ |
 | 135 | impl | [135_ph2_impl_data_infra_gate_perrun.md](135_ph2_impl_data_infra_gate_perrun.md) | Phase A/B: データインフラ復旧 + Gate per-run |
@@ -147,6 +147,8 @@
 | 152 | plan | [152_ph2_plan_priority_improvements.md](152_ph2_plan_priority_improvements.md) | 代替優先施策: 144# CRITICAL検証 + P3-03判定 + P3-02 unknown削減 |
 | 153 | refactor | [153_ph2_refactor_test_stabilization.md](153_ph2_refactor_test_stabilization.md) | P2 品質改善: テスト安定化 + run_fill_test 分割設計 |
 | 154 | analysis | [154_ph2_dryrun_10h_analysis.md](154_ph2_dryrun_10h_analysis.md) | Dry-Run 10h ログ分析 & 改善提案 (P0-08 deadlock 発見) |
+| 155 | rpt | [155_ph2_rpt_hindsight_filter_analysis.md](155_ph2_rpt_hindsight_filter_analysis.md) | Phase C ヒンドサイト分析: sell弱点・時間帯・regime×side |
+| 156 | rpt | [156_ph2_rpt_sell_root_cause_and_phase_d_plan.md](156_ph2_rpt_sell_root_cause_and_phase_d_plan.md) | Sell根本原因7重ゲート分析 + 168h総括 + Phase C/D並行計画 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

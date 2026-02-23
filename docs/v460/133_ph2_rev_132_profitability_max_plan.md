@@ -5,9 +5,9 @@
 | 番号 | 133 |
 | フェーズ | ph2 |
 | 種別 | rev |
-| 対象 | `132_fill_test_log_analysis.md` |
+| 対象 | `132_ph2_rpt_fill_test_log_analysis.md` |
 | 作成日 | 2026-02-22 |
-| 参照 | `docs/v460/000_ph0_plan_project_proposal.md`, `docs/v460/118_phg_rpt_backlog_deep_analysis.md`, `docs/v460/132_fill_test_log_analysis.md`, `results/v460/fill_test/fill_records_20260213.jsonl`, `results/v460/fill_test/fill_records_20260214.jsonl`, `results/v460/fill_test/fill_records_20260215.jsonl`, `results/v460/fill_test/fill_records_20260216.jsonl`, `results/v460/fill_test/fill_records_20260217.jsonl`, `results/v460/fill_test/fill_records_20260218.jsonl`, `results/v460/fill_test/fill_records_20260219.jsonl`, `results/v460/fill_test/fill_records_20260220.jsonl`, `results/v460/fill_test/fill_records_20260221.jsonl`, `results/v460/fill_test/logs/fill_test.log`, `logs/retrain_scheduler.log`, `logs/retrain_history.jsonl`, `configs/v460/fill_test.yaml`, `scripts/v460/ml/retrain_scheduler.py`, `scripts/v460/ml/feature_enricher.py`, `scripts/v460/analysis/analyze_fill_records.py`, `scripts/v460/analysis/analyze_fill_detail.py`, `scripts/v460/gate_judgment.py` |
+| 参照 | `docs/v460/000_ph0_plan_project_proposal.md`, `docs/v460/118_phg_rpt_backlog_deep_analysis.md`, `docs/v460/132_ph2_rpt_fill_test_log_analysis.md`, `results/v460/fill_test/fill_records_20260213.jsonl`, `results/v460/fill_test/fill_records_20260214.jsonl`, `results/v460/fill_test/fill_records_20260215.jsonl`, `results/v460/fill_test/fill_records_20260216.jsonl`, `results/v460/fill_test/fill_records_20260217.jsonl`, `results/v460/fill_test/fill_records_20260218.jsonl`, `results/v460/fill_test/fill_records_20260219.jsonl`, `results/v460/fill_test/fill_records_20260220.jsonl`, `results/v460/fill_test/fill_records_20260221.jsonl`, `results/v460/fill_test/logs/fill_test.log`, `logs/retrain_scheduler.log`, `logs/retrain_history.jsonl`, `configs/v460/fill_test.yaml`, `scripts/v460/ml/retrain_scheduler.py`, `scripts/v460/ml/feature_enricher.py`, `scripts/v460/analysis/analyze_fill_records.py`, `scripts/v460/analysis/analyze_fill_detail.py`, `scripts/v460/gate_judgment.py` |
 | 結論 | **132の方向性は概ね妥当。ただし最新ログ時点で「全体WATCHでも最新runはFAIL」の乖離が拡大しており、今は“改善”より先に“悪化ドリフト停止”を優先すべき。** |
 
 ---

@@ -335,7 +335,7 @@ B1 (YAML化) → B5 (bootstrap緩和) → B3 (deploy)
 |---------|---------|
 | `scripts/v460/analysis/analyze_fill_records.py` | **新規**: fill_records 包括分析 |
 | `scripts/v460/analysis/analyze_fill_detail.py` | **新規**: 詳細分析 (daily/run_id/regime) |
-| `docs/v460/132_fill_test_log_analysis.md` | **新規**: 本ドキュメント |
+| `docs/v460/132_ph2_rpt_fill_test_log_analysis.md` | **新規**: 本ドキュメント |
 
 ---
 
