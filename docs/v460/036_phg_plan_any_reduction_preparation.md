@@ -1301,6 +1301,40 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `--roots ztb/utils/git_utils.py ztb/utils/run_metadata.py ztb/utils/run_manifest.py scripts/testing/run_fast_pytest.py scripts/maintenance/optimize_git_local.py`
   - 結果: `any_type_debt_tokens=0`
 
+## Step79 追補: metrics再現スクリプトの単一パス集計化 + 型安全化 (2026-02-23)
+
+### 1) `reproduce_152_metrics.py` の `Any` 全撤去
+
+- 対象: `scripts/v460/analysis/reproduce_152_metrics.py`
+- `FillRecord` / `MetricsMap` alias を導入し、`Any` を `object` ベースへ置換。
+- `_load_records()` は読み込んだ JSONL を dict のみに正規化して扱うよう変更。
+
+### 2) パフォーマンス・重複削減
+
+- `_compute_metrics()` を多重ループ構造から **単一パス集計** へ再構成。
+  - `regime_distribution` / `lot_distribution` / `run_ids`
+  - `regime_pnl_30s` / `side_regime_pnl`
+  - `hour_pnl` / `as_probability_distribution`
+  を1回の走査で蓄積し、後段で summary 生成に統一。
+- `filled` / `with_qty` の中間配列依存を削減し、メモリ使用を抑制。
+
+### 3) 不具合余地の低減
+
+- 数値項目は `_to_float()` に統一し、文字列・不正値混入時の `ValueError` 伝播を抑止。
+- `_print_report()` を防御的な型変換（`_to_dict`, `_as_int`, `_as_float_or_zero`）で強化し、
+  破損データ混入時の表示処理クラッシュを回避。
+
+### 4) 検証
+
+- `py_compile`:
+  - `scripts/v460/analysis/reproduce_152_metrics.py`
+- テスト:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_152_parallel_tasks.py -q --override-ini="addopts="`
+  - 結果: `12 passed`
+- `any_inventory`:
+  - `--roots scripts/v460/analysis/reproduce_152_metrics.py`
+  - 結果: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

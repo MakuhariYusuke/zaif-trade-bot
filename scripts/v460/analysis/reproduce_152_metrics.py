@@ -15,8 +15,8 @@ import glob
 import json
 import sys
 from collections import Counter, defaultdict
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
 
 from ztb.io.jsonl import read_jsonl_objects
 
@@ -25,6 +25,27 @@ from ztb.io.jsonl import read_jsonl_objects
 # ---------------------------------------------------------------------------
 DEFAULT_DATA_DIR = "results/v460/fill_test"
 DEFAULT_PATTERN = "fill_records_*.jsonl"
+FillRecord = dict[str, object]
+MetricsMap = dict[str, object]
+
+
+def _to_float(value: object) -> float | None:
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _to_str(value: object) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
+def _to_dict(value: object) -> dict[str, object]:
+    return dict(value) if isinstance(value, dict) else {}
 
 
 # ---------------------------------------------------------------------------
@@ -37,7 +58,7 @@ def _load_records(
     start_date: str | None = None,
     end_date: str | None = None,
     run_id: str | None = None,
-) -> list[dict[str, Any]]:
+) -> list[FillRecord]:
     """Load fill records with optional date/run_id filtering."""
     files = sorted(glob.glob(str(Path(data_dir) / DEFAULT_PATTERN)))
     if not files:
@@ -60,9 +81,10 @@ def _load_records(
             filtered.append(f)
         files = filtered
 
-    records: list[dict[str, Any]] = []
+    records: list[FillRecord] = []
     for f in files:
-        records.extend(read_jsonl_objects(Path(f)))
+        raw_records = read_jsonl_objects(Path(f))
+        records.extend(_to_dict(record) for record in raw_records if isinstance(record, dict))
 
     # run_id filtering
     if run_id:
@@ -76,119 +98,121 @@ def _load_records(
 # ---------------------------------------------------------------------------
 
 def _compute_metrics(
-    records: list[dict[str, Any]],
+    records: list[FillRecord],
     *,
     include_zero_qty: bool = False,
-) -> dict[str, Any]:
+) -> MetricsMap:
     """Compute all §1-equivalent metrics."""
     total = len(records)
-    # §12 #4: デフォルトは order_quantity > 0 (0.0000 除外)
-    if include_zero_qty:
-        with_qty = [r for r in records if r.get("order_quantity") is not None]
-    else:
-        with_qty = [
-            r for r in records
-            if r.get("order_quantity") is not None and float(r["order_quantity"]) > 0
-        ]
-    filled = [r for r in records if r.get("filled")]
+    records_with_qty = 0
+    filled_count = 0
 
-    # Regime distribution (over all records with regime)
     regime_all: Counter[str] = Counter()
-    for r in records:
-        regime = r.get("regime")
+    lot_counter: Counter[str] = Counter()
+    run_ids: Counter[str] = Counter()
+    regime_pnl_values: dict[str, list[float]] = defaultdict(list)
+    side_regime_values: dict[str, dict[str, list[float]]] = {
+        "buy": defaultdict(list),
+        "sell": defaultdict(list),
+    }
+    hour_pnl_values: dict[int, list[float]] = defaultdict(list)
+    as_probs: list[float] = []
+
+    for record in records:
+        run_ids[str(record.get("run_id", "none"))] += 1
+
+        regime = _to_str(record.get("regime"))
         if regime is not None:
             regime_all[regime] += 1
+
+        qty = _to_float(record.get("order_quantity"))
+        if qty is not None and (include_zero_qty or qty > 0):
+            records_with_qty += 1
+            lot_counter[f"{qty:.4f}"] += 1
+
+        as_prob = _to_float(record.get("skip_gate_as_prob"))
+        if as_prob is not None:
+            as_probs.append(as_prob)
+
+        if not bool(record.get("filled")):
+            continue
+        filled_count += 1
+
+        pnl = _to_float(record.get("post_fill_30s_pnl"))
+        if pnl is None:
+            continue
+
+        regime_key = regime if regime is not None else "n/a"
+        regime_pnl_values[regime_key].append(pnl)
+
+        side = _to_str(record.get("side"))
+        if side in ("buy", "sell"):
+            side_regime_values[side][regime_key].append(pnl)
+
+        ts = _to_float(record.get("timestamp"))
+        if ts is not None:
+            hour = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).hour
+            hour_pnl_values[hour].append(pnl)
+
     regime_tagged_total = sum(regime_all.values())
 
-    # Regime × PnL (filled only, post_fill_30s_pnl)
-    regime_pnl: dict[str, list[float]] = defaultdict(list)
-    for r in filled:
-        pnl = r.get("post_fill_30s_pnl")
-        if pnl is not None:
-            regime_pnl[r.get("regime", "n/a")].append(pnl)
-
     regime_pnl_summary: dict[str, dict[str, float]] = {}
-    for regime, vals in sorted(regime_pnl.items(), key=lambda x: -len(x[1])):
+    for regime, values in sorted(regime_pnl_values.items(), key=lambda item: -len(item[1])):
         regime_pnl_summary[regime] = {
-            "fills": len(vals),
-            "avg_pnl_bps": round(sum(vals) / len(vals), 4) if vals else 0.0,
-            "sum_pnl_bps": round(sum(vals), 2),
+            "fills": len(values),
+            "avg_pnl_bps": round(sum(values) / len(values), 4) if values else 0.0,
+            "sum_pnl_bps": round(sum(values), 2),
         }
 
-    # Lot distribution
-    lot_counter: Counter[str] = Counter()
-    for r in with_qty:
-        qty = r.get("order_quantity")
-        if qty is not None:
-            lot_counter[f"{float(qty):.4f}"] += 1
-
-    # AS probability distribution (skip_gate_as_prob)
-    as_probs = [
-        float(r["skip_gate_as_prob"])
-        for r in records
-        if r.get("skip_gate_as_prob") is not None
-    ]
     as_dist: dict[str, float] = {}
     if as_probs:
-        import math
-        bins = [(0.0, 0.1), (0.1, 0.2), (0.2, 0.3), (0.3, 0.4),
-                (0.4, 0.5), (0.5, 0.6), (0.6, 1.01)]
+        bins = [
+            (0.0, 0.1),
+            (0.1, 0.2),
+            (0.2, 0.3),
+            (0.3, 0.4),
+            (0.4, 0.5),
+            (0.5, 0.6),
+            (0.6, 1.01),
+        ]
+        total_probs = len(as_probs)
         for lo, hi in bins:
-            cnt = sum(1 for p in as_probs if lo <= p < hi)
+            count = sum(1 for prob in as_probs if lo <= prob < hi)
             label = f"[{lo:.1f},{hi:.1f})" if hi <= 1.0 else f"[{lo:.1f}+)"
-            as_dist[label] = round(cnt / len(as_probs) * 100, 1)
-        as_dist["mean"] = round(sum(as_probs) / len(as_probs), 3)
-        as_dist["median"] = round(sorted(as_probs)[len(as_probs) // 2], 3)
+            as_dist[label] = round(count / total_probs * 100, 1)
+        sorted_probs = sorted(as_probs)
+        mid = len(sorted_probs) // 2
+        as_dist["mean"] = round(sum(sorted_probs) / len(sorted_probs), 3)
+        as_dist["median"] = round(sorted_probs[mid], 3)
 
-    # Side × regime × PnL cross-tabulation (P0-3 寄与分解統合)
-    side_regime_pnl: dict[str, dict[str, dict[str, float]]] = {}
-    for side_name in ["buy", "sell"]:
+    side_regime_pnl: dict[str, dict[str, dict[str, float]]] = {"buy": {}, "sell": {}}
+    for side_name in ("buy", "sell"):
         side_data: dict[str, dict[str, float]] = {}
-        for regime in sorted(regime_pnl.keys()):
-            side_vals = [
-                r["post_fill_30s_pnl"]
-                for r in filled
-                if r.get("side") == side_name
-                and r.get("regime") == regime
-                and r.get("post_fill_30s_pnl") is not None
-            ]
-            if side_vals:
-                side_data[regime] = {
-                    "fills": len(side_vals),
-                    "avg_pnl_bps": round(sum(side_vals) / len(side_vals), 4),
-                    "sum_pnl_bps": round(sum(side_vals), 2),
-                }
+        for regime, values in sorted(
+            side_regime_values[side_name].items(), key=lambda item: -len(item[1])
+        ):
+            if not values:
+                continue
+            side_data[regime] = {
+                "fills": len(values),
+                "avg_pnl_bps": round(sum(values) / len(values), 4),
+                "sum_pnl_bps": round(sum(values), 2),
+            }
         side_regime_pnl[side_name] = side_data
 
-    # Hour × PnL (UTC)
-    hour_pnl: dict[int, list[float]] = defaultdict(list)
-    for r in filled:
-        ts = r.get("timestamp")
-        pnl = r.get("post_fill_30s_pnl")
-        if ts is not None and pnl is not None:
-            h = datetime.datetime.fromtimestamp(
-                float(ts), tz=datetime.timezone.utc
-            ).hour
-            hour_pnl[h].append(pnl)
-
     hour_summary: dict[str, dict[str, float]] = {}
-    for h in sorted(hour_pnl.keys()):
-        vals = hour_pnl[h]
-        hour_summary[f"UTC{h:02d}_JST{(h+9)%24:02d}"] = {
-            "fills": len(vals),
-            "avg_pnl_bps": round(sum(vals) / len(vals), 4) if vals else 0.0,
+    for hour in sorted(hour_pnl_values):
+        values = hour_pnl_values[hour]
+        hour_summary[f"UTC{hour:02d}_JST{(hour + 9) % 24:02d}"] = {
+            "fills": len(values),
+            "avg_pnl_bps": round(sum(values) / len(values), 4) if values else 0.0,
         }
-
-    # run_id breakdown
-    run_ids: dict[str, int] = Counter()
-    for r in records:
-        run_ids[str(r.get("run_id", "none"))] += 1
 
     return {
         "total_records": total,
-        "records_with_order_quantity": len(with_qty),
-        "filled": len(filled),
-        "fill_rate_pct": round(len(filled) / total * 100, 1) if total else 0,
+        "records_with_order_quantity": records_with_qty,
+        "filled": filled_count,
+        "fill_rate_pct": round(filled_count / total * 100, 1) if total else 0,
         "regime_tagged": regime_tagged_total,
         "regime_distribution": dict(regime_all.most_common()),
         "regime_pnl_30s": regime_pnl_summary,
@@ -204,56 +228,96 @@ def _compute_metrics(
 # Display
 # ---------------------------------------------------------------------------
 
-def _print_report(metrics: dict[str, Any], params: dict[str, Any]) -> None:
+def _as_int(value: object) -> int:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return 0
+    return 0
+
+
+def _as_float_or_zero(value: object) -> float:
+    return _to_float(value) or 0.0
+
+
+def _print_report(metrics: MetricsMap, params: dict[str, object]) -> None:
     """Print human-readable report matching §1 format."""
+    regime_distribution = _to_dict(metrics.get("regime_distribution"))
+    regime_pnl_30s = _to_dict(metrics.get("regime_pnl_30s"))
+    lot_distribution = _to_dict(metrics.get("lot_distribution"))
+    side_regime_pnl = _to_dict(metrics.get("side_regime_pnl"))
+    hour_pnl = _to_dict(metrics.get("hour_pnl"))
+    run_ids = _to_dict(metrics.get("run_ids"))
+    regime_tagged = _as_int(metrics.get("regime_tagged"))
+    records_with_qty = _as_int(metrics.get("records_with_order_quantity"))
+
     print("=" * 60)
     print("152# 集計再現レポート")
     print("=" * 60)
     print(f"Parameters: {json.dumps(params, ensure_ascii=False)}")
     print()
 
-    print(f"Total records: {metrics['total_records']:,}")
-    print(f"Records with order_quantity: {metrics['records_with_order_quantity']:,}")
-    print(f"Filled: {metrics['filled']:,}")
-    print(f"Fill rate: {metrics['fill_rate_pct']}%")
-    print(f"Regime-tagged records: {metrics['regime_tagged']:,}")
+    print(f"Total records: {_as_int(metrics.get('total_records')):,}")
+    print(f"Records with order_quantity: {records_with_qty:,}")
+    print(f"Filled: {_as_int(metrics.get('filled')):,}")
+    print(f"Fill rate: {_as_float_or_zero(metrics.get('fill_rate_pct'))}%")
+    print(f"Regime-tagged records: {regime_tagged:,}")
 
     print("\n--- Regime Distribution ---")
-    for regime, count in metrics["regime_distribution"].items():
-        pct = count / metrics["regime_tagged"] * 100 if metrics["regime_tagged"] else 0
+    for regime, count in regime_distribution.items():
+        count_int = _as_int(count)
+        pct = count_int / regime_tagged * 100 if regime_tagged else 0
         print(f"  {regime}: {count} ({pct:.1f}%)")
 
     print("\n--- Regime × PnL (30s) ---")
     print(f"  {'Regime':<12} {'fills':>6} {'avg PnL':>10} {'sum PnL':>10}")
-    for regime, data in metrics["regime_pnl_30s"].items():
+    for regime, raw_data in regime_pnl_30s.items():
+        data = _to_dict(raw_data)
         print(
-            f"  {regime:<12} {data['fills']:>6} "
-            f"{data['avg_pnl_bps']:>10.4f} {data['sum_pnl_bps']:>10.2f}"
+            f"  {regime:<12} {_as_int(data.get('fills')):>6} "
+            f"{_as_float_or_zero(data.get('avg_pnl_bps')):>10.4f} "
+            f"{_as_float_or_zero(data.get('sum_pnl_bps')):>10.2f}"
         )
 
     print("\n--- Lot Distribution ---")
-    for lot, count in metrics["lot_distribution"].items():
-        pct = count / metrics["records_with_order_quantity"] * 100 if metrics["records_with_order_quantity"] else 0
+    for lot, count in lot_distribution.items():
+        count_int = _as_int(count)
+        pct = count_int / records_with_qty * 100 if records_with_qty else 0
         print(f"  {lot} BTC: {count} ({pct:.1f}%)")
 
     print("\n--- Side × Regime × PnL (30s) ---")
-    for side, regimes in metrics["side_regime_pnl"].items():
+    for side, raw_regimes in side_regime_pnl.items():
+        regimes = _to_dict(raw_regimes)
         print(f"  [{side}]")
-        for regime, data in regimes.items():
+        for regime, raw_data in regimes.items():
+            data = _to_dict(raw_data)
             print(
-                f"    {regime:<12} fills={data['fills']:>4}, "
-                f"avg={data['avg_pnl_bps']:>8.4f} bps, sum={data['sum_pnl_bps']:>8.2f} bps"
+                f"    {regime:<12} fills={_as_int(data.get('fills')):>4}, "
+                f"avg={_as_float_or_zero(data.get('avg_pnl_bps')):>8.4f} bps, "
+                f"sum={_as_float_or_zero(data.get('sum_pnl_bps')):>8.2f} bps"
             )
 
     print("\n--- Hour × PnL (worst 6) ---")
     sorted_hours = sorted(
-        metrics["hour_pnl"].items(), key=lambda x: x[1]["avg_pnl_bps"]
+        hour_pnl.items(),
+        key=lambda x: _as_float_or_zero(_to_dict(x[1]).get("avg_pnl_bps")),
     )
     for hour_label, data in sorted_hours[:6]:
-        print(f"  {hour_label}: n={data['fills']}, avg={data['avg_pnl_bps']:.4f} bps")
+        hour_data = _to_dict(data)
+        print(
+            f"  {hour_label}: n={_as_int(hour_data.get('fills'))}, "
+            f"avg={_as_float_or_zero(hour_data.get('avg_pnl_bps')):.4f} bps"
+        )
 
-    print(f"\n--- Run IDs ({len(metrics['run_ids'])}) ---")
-    for rid, count in metrics["run_ids"].items():
+    print(f"\n--- Run IDs ({len(run_ids)}) ---")
+    for rid, count in run_ids.items():
         print(f"  {rid}: {count}")
 
 
@@ -261,7 +325,7 @@ def _print_report(metrics: dict[str, Any], params: dict[str, Any]) -> None:
 # CLI
 # ---------------------------------------------------------------------------
 
-def main(argv: Sequence[str] | None = None) -> dict[str, Any]:
+def main(argv: Sequence[str] | None = None) -> MetricsMap:
     """Entry point. Returns metrics dict for programmatic use."""
     parser = argparse.ArgumentParser(
         description="152# 集計再現スクリプト — §1 データの再現",
@@ -307,7 +371,7 @@ def main(argv: Sequence[str] | None = None) -> dict[str, Any]:
         print("ERROR: No records after filtering", file=sys.stderr)
         sys.exit(1)
 
-    params = {
+    params: dict[str, object] = {
         "data_dir": args.data_dir,
         "start_date": args.start,
         "end_date": args.end,
