@@ -295,6 +295,7 @@ mid_price のみで RSI/ADX を近似しても精度は低い。**FillTestRegime
 |------|------|
 | 2026-02-23 | 初版: 3 施策の計画・検証・実装方針 |
 | 2026-02-23 | §8 Codex レビュー全 5 件対応 (§10 追加) |
+| 2026-02-23 | §9 並行施策 3 件実装: P0-1 + P0-2 + P1-6 (§11 追加) |
 
 ---
 
@@ -355,3 +356,63 @@ mid_price のみで RSI/ADX を近似しても精度は低い。**FillTestRegime
 | 3 | MEDIUM | P3-02 成功判定が弱い | §4.6「採用/棄却 Gate」新設: G1 (unknown ≤ 3%)、G2 (regime PnL ±0.1 bps)、G3 (全体 PnL ≤ 5 bps 悪化)。棄却時の次ステップも明記 | §4.6 |
 | 4 | LOW | 工数不一致 (§5.1: 0.29 日 vs §6.4: 0.34 日) | §6.4 を 0.29 日に統一 (§5.1 と整合)。差分 0.05 日は §8.1 #6 のスコープ除外による | §6.4 |
 | 5 | LOW | C 案 (min_confidence) の優先度が低い | §4.2 C に「優先度: A/B の後」を明記。A/B の採否判定完了後に着手する旨を追記 | §4.2 C |
+
+---
+
+## §11 §9 並行施策 実装結果
+
+### 11.1 選定基準
+
+| 項目 | ROI | 実装可能 | 判定 | 理由 |
+|------|-----|---------|------|------|
+| P0-1 集計再現 | ★★★ | ✅ | **採用** | 全分析の基盤、§8 #2 の根本対応 |
+| P0-2 A/B 比較 | ★★★ | ✅ | **採用** | §4.6 Gate 判定に必須 |
+| P0-3 寄与分解 | ★★ | ✅ | **P0-1 に統合** | side×regime crosstab として内包 |
+| P1-4 SkipGate 掃引 | ★★ | 部分的 | 見送り | 複雑、別セッション向き |
+| P1-5 遷移監査 | ★ | ✅ | 見送り | P0-2 に内包可能 |
+| P1-6 no-op ガード | ★★ | ✅ | **採用** | 防御的コード、0.1h で完了 |
+| P2-7 テスト安定化 | ★ | ✅ | 見送り | `unit` mark は登録済、`--disable-warnings` で抑止中 |
+| P2-8 分割設計 | ★ | メモのみ | 見送り | 即時収益寄与なし |
+
+### 11.2 P0-1: 集計再現スクリプト
+
+- 成果物: `scripts/v460/analysis/reproduce_152_metrics.py`
+- CLI: `--start`, `--end`, `--run-id`, `--data-dir`, `--output`, `--quiet`
+- 出力: §1 完全再現 (regime 分布, PnL, ロット, AS 確率) + P0-3 寄与分解 (side×regime×hour)
+- 検証: §1 PnL 値 (ranging -0.222, trending -0.086, unknown -0.891) が完全一致
+- JSON 出力: `results/v460/reproduce_152.json`
+
+### 11.3 P0-2: regime A/B 比較ハーネス
+
+- 成果物: `scripts/v460/analysis/compare_regime_ab.py`
+- 方式: fill_records の `order_price` を old (pre-152#) / new (A+B) detector に replay
+- CSV 出力: `results/v460/ab_regime/regime_ab_comparison.csv`
+
+#### A/B 比較結果
+
+| Gate | 基準 | 結果 | 判定 |
+|------|------|------|------|
+| G1 | unknown ≤ 3% | old=0.9% → new=0.9% | ✅ PASS |
+| G2 | regime PnL ±0.1 bps | maxΔ=0.063 bps | ✅ PASS |
+| G3 | 全体 PnL ≤ 5 bps 悪化 | Δ=0.00 bps | ✅ PASS |
+
+**総合判定: ✅ 採用可能**
+
+> 注意: シミュレーション上の unknown 比率 (0.9%) は本番の 8.8% より低い。
+> これは order_price 時系列の密度が本番の mid_price サイクルと異なるため。
+> Gate 判定は old/new 相対比較として有効。
+
+### 11.4 P1-6: confidence_lot no-op ガード
+
+- 変更ファイル: `scripts/v460/run_fill_test.py`
+- ロジック: `order_quantity ≤ min_order_btc × 1.01` の場合に WARNING ログを出力
+- 動作: 起動をブロックせず、警告のみ (設定ミスの早期検知が目的)
+- 既存ガード (151# §13 #2) の直後に追加、両方が補完的に機能
+
+### 11.5 テスト
+
+- 新規: `tests/unit/v460/test_152_parallel_tasks.py` (11 テスト)
+  - TestReproduceMetrics: 4 (metrics計算、regime分布、crosstab、JSON出力)
+  - TestCompareRegimeAB: 4 (旧detector加速なし、fallbackなし、simulate、gate評価)
+  - TestConfidenceLotNoOpGuard: 3 (no-op検知、正常時非発火、無効時非発火)
+- 回帰: 152# 既存 (58) + 151# 既存 (32) = 90 passed, 0 failures

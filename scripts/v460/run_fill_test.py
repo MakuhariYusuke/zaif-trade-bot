@@ -368,6 +368,17 @@ class FillTestRunner(AbstractCycleRunner):
                 config.confidence_lot_floor,
                 config.confidence_lot_mode,
             )
+            # 152# §9 P1-6: no-op 検知ガード — order_quantity ≈ min_order_btc なら実質無意味
+            if config.order_quantity <= config.min_order_btc * 1.01:
+                logger.warning(
+                    "[confidence_lot] NO-OP DETECTED: order_quantity (%.4f) ≈ "
+                    "min_order_btc (%.4f). Shrink-only design cannot reduce below "
+                    "min_order_btc → confidence_lot has zero effect. "
+                    "Consider increasing order_quantity or setting enabled=false. "
+                    "See 152# §3.5.",
+                    config.order_quantity,
+                    config.min_order_btc,
+                )
 
         # 137# P1-08: narrow spread pause 連続カウンタ
         self._narrow_spread_consecutive: int = 0
