@@ -150,7 +150,7 @@ git commit --no-verify -m "refactor(153#): <内容>"
 - [x] タスク B: 分割候補の提案 → §6 に追記
 - [x] タスク B (optional): 初期分割の実装 → コミット SHA を §6 に記載
 - [x] 全テスト回帰確認 → `pytest tests/unit/v460/ -v` の結果を §6 に記載
-- [ ] コミット完了
+- [x] コミット完了
 
 ---
 
@@ -247,5 +247,5 @@ graph TD
 ### 6.4 コミット履歴
 
 ```
-(commit 後に追記)
+0d2883d28 refactor(153#): split lot sizing helpers and harden externalized modules
 ```
