@@ -1767,9 +1767,11 @@ class FillTestRunner(AbstractCycleRunner):
                     continue
 
             # 133# P0-09: unknown regime での buy スキップ
+            # 156# §12: balance_forced 時はバイパス (片側残高で buy するしかない局面)
             if (
                 self.config.skip_buy_unknown_regime
                 and next_side == "buy"
+                and not _balance_forced
                 and self._regime_detector is not None
                 and self._regime_detector.current_regime.value == "unknown"
             ):
@@ -1817,9 +1819,11 @@ class FillTestRunner(AbstractCycleRunner):
                 continue
 
             # 133# P0-10: sell 動的 kill — rolling PnL が閾値以下なら sell 停止
+            # 156# §12: balance_forced 時はバイパス (片側残高で sell するしかない局面)
             if (
                 self.config.sell_dynamic_kill_enabled
                 and next_side == "sell"
+                and not _balance_forced
                 and self._is_sell_killed()
             ):
                 logger.info(
