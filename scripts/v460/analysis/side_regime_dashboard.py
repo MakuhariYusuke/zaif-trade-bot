@@ -36,10 +36,12 @@ from ztb.io.jsonl import read_jsonl_objects
 from scripts.v460.lib.ab_judgment import (
     ABJudgmentCriteria,
     ABJudgmentResult,
+    PerRegimeResult,
     TrendingEvalCriteria,
     TrendingEvalResult,
     Verdict,
     evaluate_ab_variant,
+    evaluate_per_regime,
     evaluate_trending_down_sell,
 )
 
@@ -81,6 +83,7 @@ class DashboardResult(TypedDict, total=False):
     # 160# P0-B/C: judgment 統合
     ab_judgment: dict[str, object] | None
     trending_eval: dict[str, object] | None
+    per_regime_judgment: list[dict[str, object]] | None
 
 
 def _to_finite(value: object) -> float | None:
@@ -252,6 +255,7 @@ def run_dashboard(
     # === 160# P0-B/C: judgment 統合 ===
     result["ab_judgment"] = None
     result["trending_eval"] = None
+    result["per_regime_judgment"] = None
 
     if with_judgment:
         # P0-B: side=sell を variant, side=buy を control として3指標判定
@@ -305,6 +309,36 @@ def run_dashboard(
             "daily_breakdown": trending_result.daily_breakdown,
             "summary": trending_result.summary(),
         }
+
+        # Per-regime A/B judgment (regime フィルタで隠れた健全性を可視化)
+        per_regime_results = evaluate_per_regime(
+            variant_records=sell_records,
+            control_records=buy_records,
+            criteria=ab_criteria,
+            variant_label="sell",
+            control_label="buy",
+            target_regimes=["ranging", "trending", "trending_down", "trending_up"],
+        )
+        result["per_regime_judgment"] = [
+            {
+                "regime": pr.regime,
+                "overall": pr.result.overall.value,
+                "n_variant": pr.result.n_variant,
+                "n_control": pr.result.n_control,
+                "criteria": [
+                    {
+                        "name": c.name,
+                        "verdict": c.verdict.value,
+                        "value": c.value,
+                        "threshold": c.threshold,
+                        "detail": c.detail,
+                    }
+                    for c in pr.result.criteria
+                ],
+                "summary": pr.result.summary(),
+            }
+            for pr in per_regime_results
+        ]
 
     return result
 
@@ -360,6 +394,25 @@ def _print_dashboard(result: DashboardResult) -> None:
     if te:
         print(f"\n  --- P0-C: Trending Down Sell Evaluation ---")
         print(f"  {te['summary']}")
+
+    prj = result.get("per_regime_judgment")
+    if prj:
+        print(f"\n  --- Per-Regime A/B Judgment ---")
+        for entry in prj:  # type: ignore[union-attr]
+            regime = str(entry["regime"])
+            overall = str(entry["overall"])
+            flag = "✅" if overall == "pass" else (
+                "⚠️" if overall == "insufficient" else "❌"
+            )
+            nv = entry.get("n_variant", 0)
+            nc = entry.get("n_control", 0)
+            print(f"    {flag} {regime:15s}  [{overall.upper()}]  "
+                  f"sell(n={nv}) vs buy(n={nc})")
+            criteria_list: list[dict[str, object]] = entry.get("criteria", [])  # type: ignore[assignment]
+            for c in criteria_list:
+                cv = str(c.get("verdict", ""))
+                cf = "✅" if cv == "pass" else "❌"
+                print(f"      {cf} {c['name']}: {c['detail']}")
 
     print("=" * 74)
 

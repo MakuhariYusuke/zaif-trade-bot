@@ -484,6 +484,9 @@ retrain:
 # ======================================================================
 judgment:
   ab_criteria:
+    # --- regime フィルタ (warmup / legacy ノイズ除外) ---
+    exclude_regimes:
+      - "none"                     # warmup期間 (regime未確定) のレコードを除外
     # --- サンプル要件 ---
     min_filled_records: 50         # filled レコード最小数 (< x → INSUFFICIENT)
     min_calendar_days: 2           # 最低暦日数

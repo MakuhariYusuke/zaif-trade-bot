@@ -20,10 +20,12 @@ from scripts.v460.lib.ab_judgment import (
     ABJudgmentCriteria,
     ABJudgmentResult,
     CriterionResult,
+    PerRegimeResult,
     TrendingEvalCriteria,
     TrendingEvalResult,
     Verdict,
     evaluate_ab_variant,
+    evaluate_per_regime,
     evaluate_trending_down_sell,
     _compute_metrics,
     _extract_pnl30_array,
@@ -615,3 +617,274 @@ judgment:
         ab, trending = _load_judgment_config(str(yaml_file))
         assert ab is None
         assert trending is None
+
+
+# ======================================================================
+# exclude_regimes フィルタリングテスト
+# ======================================================================
+
+
+class TestExcludeRegimes:
+    """exclude_regimes パラメータによる warmup/legacy ノイズ除外テスト."""
+
+    def test_default_excludes_none(self) -> None:
+        """デフォルトで regime=none を除外."""
+        c = ABJudgmentCriteria()
+        assert c.exclude_regimes == ["none"]
+
+    def test_exclude_empty_means_all_included(self) -> None:
+        """exclude_regimes=[] なら全 regime を含む."""
+        c = ABJudgmentCriteria(exclude_regimes=[])
+        assert c.exclude_regimes == []
+
+    def test_from_dict_with_exclude_regimes(self) -> None:
+        """YAML 辞書から exclude_regimes をロード."""
+        c = ABJudgmentCriteria.from_dict({
+            "exclude_regimes": ["none", "unknown"],
+        })
+        assert c.exclude_regimes == ["none", "unknown"]
+
+    def test_from_dict_exclude_regimes_none_becomes_empty(self) -> None:
+        """YAML で exclude_regimes: null → 空リスト."""
+        c = ABJudgmentCriteria.from_dict({"exclude_regimes": None})
+        assert c.exclude_regimes == []
+
+    def test_evaluate_excludes_none_regime(self) -> None:
+        """regime=none のレコードが判定から除外される."""
+        # ranging records: 健全 (pnl30 > 0)
+        sell_ranging = _make_records(
+            100, side="sell", regime="ranging",
+            fill_rate=0.8, pnl_mean=0.5, pnl_std=1.0,
+        )
+        buy_ranging = _make_records(
+            100, side="buy", regime="ranging",
+            fill_rate=0.8, pnl_mean=0.3, pnl_std=1.0,
+        )
+        # none records: 悪い (pnl30 << 0, AS 高い)
+        sell_none = _make_records(
+            80, side="sell", regime="none",
+            fill_rate=0.5, pnl_mean=-3.0, pnl_std=2.0,
+        )
+        buy_none = _make_records(
+            80, side="buy", regime="none",
+            fill_rate=0.5, pnl_mean=-2.0, pnl_std=2.0,
+        )
+
+        all_sell = sell_ranging + sell_none
+        all_buy = buy_ranging + buy_none
+
+        # exclude_regimes=["none"] → none が除外されて ranging のみで判定
+        criteria_exclude = ABJudgmentCriteria(
+            exclude_regimes=["none"],
+            min_filled_records=10,
+        )
+        result = evaluate_ab_variant(
+            all_sell, all_buy, criteria=criteria_exclude,
+            variant_label="sell", control_label="buy",
+        )
+        # ranging だけなら健全なはず
+        assert result.n_variant > 0
+        # none が含まれていないことを確認
+        assert result.n_variant == len([r for r in sell_ranging if r.get("filled")])
+
+    def test_evaluate_no_exclude_includes_all(self) -> None:
+        """exclude_regimes=[] なら全レコード含む."""
+        sell = _make_records(60, side="sell", regime="ranging", fill_rate=0.8)
+        sell_none = _make_records(40, side="sell", regime="none", fill_rate=0.5)
+        buy = _make_records(100, side="buy", regime="ranging", fill_rate=0.8)
+
+        all_sell = sell + sell_none
+        criteria = ABJudgmentCriteria(exclude_regimes=[], min_filled_records=10)
+        result = evaluate_ab_variant(
+            all_sell, buy, criteria=criteria,
+            variant_label="sell", control_label="buy",
+        )
+        # 全レコードの filled が含まれるはず
+        total_filled = len([r for r in all_sell if r.get("filled")])
+        assert result.n_variant == total_filled
+
+    def test_evaluate_excludes_multiple_regimes(self) -> None:
+        """複数 regime を除外."""
+        sell_r = _make_records(80, side="sell", regime="ranging", fill_rate=0.8, pnl_mean=0.5)
+        sell_n = _make_records(30, side="sell", regime="none", fill_rate=0.5, pnl_mean=-5.0)
+        sell_u = _make_records(20, side="sell", regime="unknown", fill_rate=0.5, pnl_mean=-4.0)
+        buy = _make_records(100, side="buy", regime="ranging", fill_rate=0.8)
+
+        all_sell = sell_r + sell_n + sell_u
+        criteria = ABJudgmentCriteria(
+            exclude_regimes=["none", "unknown"],
+            min_filled_records=10,
+        )
+        result = evaluate_ab_variant(
+            all_sell, buy, criteria=criteria,
+            variant_label="sell", control_label="buy",
+        )
+        assert result.n_variant == len([r for r in sell_r if r.get("filled")])
+
+    def test_exclude_regime_none_null(self) -> None:
+        """regime=None (Python None) のレコードも 'none' として除外される."""
+        sell = [_make_record(side="sell", regime="ranging", filled=True, pnl30=0.5)]
+        sell_null = [
+            {"side": "sell", "regime": None, "filled": True,
+             "post_fill_30s_pnl": -5.0, "timestamp": time.time()},
+        ]
+        buy = _make_records(60, side="buy", regime="ranging", fill_rate=0.8)
+
+        all_sell = sell * 60 + sell_null * 10
+        criteria = ABJudgmentCriteria(exclude_regimes=["none"], min_filled_records=10)
+        result = evaluate_ab_variant(
+            all_sell, buy, criteria=criteria,
+            variant_label="sell", control_label="buy",
+        )
+        # None regime が除外されて 60 レコードのみ
+        assert result.n_variant == 60
+
+
+# ======================================================================
+# Per-regime A/B 判定テスト
+# ======================================================================
+
+
+class TestEvaluatePerRegime:
+    """evaluate_per_regime テスト."""
+
+    def test_basic_per_regime(self) -> None:
+        """regime 別に分離して判定が行われる."""
+        sell_ranging = _make_records(80, side="sell", regime="ranging", fill_rate=0.8, pnl_mean=0.5)
+        sell_trending = _make_records(40, side="sell", regime="trending", fill_rate=0.4, pnl_mean=-2.0)
+        buy_ranging = _make_records(80, side="buy", regime="ranging", fill_rate=0.8, pnl_mean=0.3)
+        buy_trending = _make_records(40, side="buy", regime="trending", fill_rate=0.8, pnl_mean=0.2)
+
+        all_sell = sell_ranging + sell_trending
+        all_buy = buy_ranging + buy_trending
+
+        criteria = ABJudgmentCriteria(min_filled_records=10)
+        results = evaluate_per_regime(
+            all_sell, all_buy,
+            criteria=criteria,
+            variant_label="sell", control_label="buy",
+            target_regimes=["ranging", "trending"],
+        )
+        assert len(results) == 2
+        regime_names = {r.regime for r in results}
+        assert "ranging" in regime_names
+        assert "trending" in regime_names
+
+    def test_per_regime_label(self) -> None:
+        """variant_label に regime 名が付加される."""
+        sell = _make_records(60, side="sell", regime="ranging", fill_rate=0.8)
+        buy = _make_records(60, side="buy", regime="ranging", fill_rate=0.8)
+
+        results = evaluate_per_regime(
+            sell, buy,
+            criteria=ABJudgmentCriteria(min_filled_records=10),
+            variant_label="sell", control_label="buy",
+            target_regimes=["ranging"],
+        )
+        assert len(results) == 1
+        assert results[0].result.variant_label == "sell[ranging]"
+        assert results[0].result.control_label == "buy[ranging]"
+
+    def test_per_regime_target_filter(self) -> None:
+        """target_regimes で指定した regime のみ評価."""
+        sell = (
+            _make_records(60, side="sell", regime="ranging", fill_rate=0.8)
+            + _make_records(20, side="sell", regime="none", fill_rate=0.5)
+        )
+        buy = (
+            _make_records(60, side="buy", regime="ranging", fill_rate=0.8)
+            + _make_records(20, side="buy", regime="none", fill_rate=0.5)
+        )
+
+        results = evaluate_per_regime(
+            sell, buy,
+            criteria=ABJudgmentCriteria(min_filled_records=5),
+            target_regimes=["ranging"],
+        )
+        assert len(results) == 1
+        assert results[0].regime == "ranging"
+
+    def test_per_regime_no_target_shows_all(self) -> None:
+        """target_regimes=None なら全 regime."""
+        sell = (
+            _make_records(40, side="sell", regime="ranging", fill_rate=0.8)
+            + _make_records(40, side="sell", regime="trending", fill_rate=0.5)
+        )
+        buy = (
+            _make_records(40, side="buy", regime="ranging", fill_rate=0.8)
+            + _make_records(40, side="buy", regime="trending", fill_rate=0.8)
+        )
+
+        results = evaluate_per_regime(
+            sell, buy,
+            criteria=ABJudgmentCriteria(min_filled_records=5),
+            target_regimes=None,
+        )
+        assert len(results) == 2
+
+    def test_per_regime_insufficient_sample(self) -> None:
+        """レコード数不足の regime は INSUFFICIENT."""
+        sell = _make_records(5, side="sell", regime="trending_down", fill_rate=0.8)
+        buy = _make_records(5, side="buy", regime="trending_down", fill_rate=0.8)
+
+        results = evaluate_per_regime(
+            sell, buy,
+            criteria=ABJudgmentCriteria(min_filled_records=50),
+            target_regimes=["trending_down"],
+        )
+        assert len(results) == 1
+        assert results[0].result.overall == Verdict.INSUFFICIENT
+
+    def test_per_regime_empty_regime_skipped(self) -> None:
+        """データが存在しない target_regime はスキップ."""
+        sell = _make_records(60, side="sell", regime="ranging", fill_rate=0.8)
+        buy = _make_records(60, side="buy", regime="ranging", fill_rate=0.8)
+
+        results = evaluate_per_regime(
+            sell, buy,
+            criteria=ABJudgmentCriteria(min_filled_records=5),
+            target_regimes=["trending_down"],
+        )
+        assert len(results) == 0
+
+
+# ======================================================================
+# YAML exclude_regimes ロードテスト
+# ======================================================================
+
+
+class TestYAMLExcludeRegimes:
+    """YAML 設定から exclude_regimes がロードされることをテスト."""
+
+    def test_load_with_exclude_regimes(self, tmp_path: Any) -> None:
+        yaml_content = """
+judgment:
+  ab_criteria:
+    min_filled_records: 50
+    exclude_regimes:
+      - "none"
+      - "unknown"
+  trending_down_sell:
+    min_filled: 10
+"""
+        yaml_file = tmp_path / "test.yaml"
+        yaml_file.write_text(yaml_content, encoding="utf-8")
+
+        from scripts.v460.analysis.side_regime_dashboard import _load_judgment_config
+        ab, _ = _load_judgment_config(str(yaml_file))
+        assert ab is not None
+        assert ab.exclude_regimes == ["none", "unknown"]
+
+    def test_load_without_exclude_regimes_uses_default(self, tmp_path: Any) -> None:
+        yaml_content = """
+judgment:
+  ab_criteria:
+    min_filled_records: 50
+"""
+        yaml_file = tmp_path / "test.yaml"
+        yaml_file.write_text(yaml_content, encoding="utf-8")
+
+        from scripts.v460.analysis.side_regime_dashboard import _load_judgment_config
+        ab, _ = _load_judgment_config(str(yaml_file))
+        assert ab is not None
+        assert ab.exclude_regimes == ["none"]  # default

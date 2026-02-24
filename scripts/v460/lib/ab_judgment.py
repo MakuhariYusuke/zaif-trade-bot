@@ -48,6 +48,11 @@ class ABJudgmentCriteria:
     min_filled_records: int = 50  # filled レコード最小数 (これ未満は INSUFFICIENT)
     min_calendar_days: int = 2  # 最低暦日数
 
+    # --- regime フィルタ ---
+    exclude_regimes: list[str] = field(
+        default_factory=lambda: ["none"],
+    )  # warmup / legacy ノイズ除外 (空=全 regime 含む)
+
     # --- 3指標閾値 ---
     # fill_rate: variant >= control × (1 - tolerance) で PASS
     fill_rate_min: float = 0.30  # 絶対下限 (30% 未満は無条件 FAIL)
@@ -65,7 +70,11 @@ class ABJudgmentCriteria:
     def from_dict(cls, d: dict[str, Any]) -> ABJudgmentCriteria:
         """辞書から生成 (YAML 用)."""
         known = {f.name for f in cls.__dataclass_fields__.values()}
-        return cls(**{k: v for k, v in d.items() if k in known})
+        filtered = {k: v for k, v in d.items() if k in known}
+        # exclude_regimes: YAML リスト → そのまま渡す
+        if "exclude_regimes" in filtered and filtered["exclude_regimes"] is None:
+            filtered["exclude_regimes"] = []
+        return cls(**filtered)
 
 
 @dataclass
@@ -210,6 +219,18 @@ def evaluate_ab_variant(
     if criteria is None:
         criteria = ABJudgmentCriteria()
 
+    # --- regime フィルタ (warmup / legacy ノイズ除外) ---
+    if criteria.exclude_regimes:
+        excl = set(criteria.exclude_regimes)
+        variant_records = [
+            r for r in variant_records
+            if str(r.get("regime") or "none") not in excl
+        ]
+        control_records = [
+            r for r in control_records
+            if str(r.get("regime") or "none") not in excl
+        ]
+
     vm = _compute_metrics(variant_records)
     cm = _compute_metrics(control_records)
 
@@ -347,6 +368,93 @@ def evaluate_ab_variant(
         result.overall = Verdict.PASS
 
     return result
+
+
+def _filter_by_regime(
+    records: list[dict[str, Any]], regime: str,
+) -> list[dict[str, Any]]:
+    """指定 regime のレコードのみ抽出."""
+    return [r for r in records if str(r.get("regime") or "none") == regime]
+
+
+@dataclass
+class PerRegimeResult:
+    """Regime 別 A/B 判定結果."""
+
+    regime: str
+    result: ABJudgmentResult
+
+
+def evaluate_per_regime(
+    variant_records: list[dict[str, Any]],
+    control_records: list[dict[str, Any]],
+    criteria: ABJudgmentCriteria | None = None,
+    *,
+    variant_label: str = "variant",
+    control_label: str = "control",
+    target_regimes: list[str] | None = None,
+) -> list[PerRegimeResult]:
+    """Regime 別に A/B 判定を実行.
+
+    集約値ではデータ汚染が見えない問題を解決するため、
+    regime 単位で3指標判定を行う。
+
+    Args:
+        variant_records: variant 群の全レコード.
+        control_records: control 群の全レコード.
+        criteria: 判定基準 (None=デフォルト). exclude_regimes は無視される。
+        variant_label: variant 表示名.
+        control_label: control 表示名.
+        target_regimes: 対象 regime リスト (None=全 regime).
+
+    Returns:
+        list[PerRegimeResult]: regime ごとの判定結果.
+    """
+    if criteria is None:
+        criteria = ABJudgmentCriteria()
+
+    # regime 別に分類
+    all_regimes: set[str] = set()
+    for r in variant_records:
+        all_regimes.add(str(r.get("regime") or "none"))
+    for r in control_records:
+        all_regimes.add(str(r.get("regime") or "none"))
+
+    if target_regimes is not None:
+        all_regimes = all_regimes & set(target_regimes)
+
+    # per-regime 判定: exclude_regimes を無効化して個別 regime を評価
+    per_regime_criteria = ABJudgmentCriteria(
+        min_filled_records=criteria.min_filled_records,
+        min_calendar_days=criteria.min_calendar_days,
+        fill_rate_min=criteria.fill_rate_min,
+        fill_rate_degradation_tolerance=criteria.fill_rate_degradation_tolerance,
+        avg_pnl30_min_bps=criteria.avg_pnl30_min_bps,
+        avg_pnl30_must_improve=criteria.avg_pnl30_must_improve,
+        downside_p10_min_bps=criteria.downside_p10_min_bps,
+        downside_p10_degradation_max_bps=criteria.downside_p10_degradation_max_bps,
+        exclude_regimes=[],  # regime filtering は外側で行う
+    )
+
+    results: list[PerRegimeResult] = []
+    for regime in sorted(all_regimes):
+        v_filtered = _filter_by_regime(variant_records, regime)
+        c_filtered = _filter_by_regime(control_records, regime)
+
+        # どちらかが空なら INSUFFICIENT
+        if not v_filtered and not c_filtered:
+            continue
+
+        ab_result = evaluate_ab_variant(
+            variant_records=v_filtered,
+            control_records=c_filtered,
+            criteria=per_regime_criteria,
+            variant_label=f"{variant_label}[{regime}]",
+            control_label=f"{control_label}[{regime}]",
+        )
+        results.append(PerRegimeResult(regime=regime, result=ab_result))
+
+    return results
 
 
 # ======================================================================

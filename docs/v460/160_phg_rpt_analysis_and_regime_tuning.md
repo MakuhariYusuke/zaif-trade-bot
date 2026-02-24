@@ -467,3 +467,76 @@ fill_rate 最大化のため offset を0に近づけるバイアスが生じる�
 ### 8.6 JSON 結果
 
 完全な JSON 出力は `reports/160_p0bc_judgment_results.json` に保存。
+
+---
+
+## §9 改善: exclude_regimes フィルタ + Per-Regime 判定
+
+### 9.1 背景と課題
+
+§8 の P0-B/C 実測評価は **両方 FAIL** だが、regime 別分析で以下が判明:
+
+1. **regime=none (warmup)** が全体を汚染: sell 128件 (AS 42.2%), buy 139件 (AS 43.2%) — regime 確定前のノイズ  
+2. **trending sell legacy** 118件: skip_sell_trending 有効化前のデータ。p10=-6.56 で最悪  
+3. **ranging sell は実は buy より健全**: fill 76.1%>71.1%, p10 -4.29>-4.71, AS 20.2%<20.8%
+
+**集約判定が misleading** であることが根本問題。
+
+### 9.2 実装改善
+
+#### 9.2.1 exclude_regimes パラメータ
+
+`ABJudgmentCriteria` に `exclude_regimes: list[str]` フィールドを追加:
+
+- **デフォルト**: `["none"]` — warmup 期間のレコードを自動除外
+- `evaluate_ab_variant()` の入口でフィルタリング
+- YAML `judgment.ab_criteria.exclude_regimes` で制御可能
+
+#### 9.2.2 Per-Regime A/B 判定
+
+`evaluate_per_regime()` 関数を新設:
+
+- regime 別に3指標判定を分離実行
+- `target_regimes` で対象 regime を指定可能
+- ダッシュボードに `--with-judgment` で自動出力
+
+### 9.3 再評価結果 (exclude_regimes=["none"])
+
+#### P0-B: A/B 総合判定 (none 除外)
+
+| 指標 | sell (variant) | buy (control) | 判定 | 備考 |
+|---|---|---|---|---|
+| n_filled | **564** | 565 | — | none 128+139 除外 |
+| fill_rate | 58.2% | 72.7% | **❌ FAIL** | sell defense gate で低下 |
+| avg_pnl30 | -0.39 bps | +0.07 bps | ✅ PASS | 閾値 -1.0 bps 以内 |
+| downside_p10 | -5.30 bps | -5.14 bps | **❌ FAIL** | -5.0 僅かに超過 |
+| **総合** | | | **❌ FAIL** | trending legacy データが残存 |
+
+改善点: §8 比で sell p10 が -5.39→-5.30 に改善 (none ノイズ除去効果)
+
+#### Per-Regime A/B 判定
+
+| regime | sell p10 | buy p10 | fill_rate判定 | avg_pnl30判定 | p10判定 | **総合** |
+|---|---|---|---|---|---|---|
+| **ranging** | **-4.29** | -4.71 | ✅ (76.1%) | ✅ (-0.34) | **✅** (-4.29>-5.0) | **✅ PASS** |
+| trending | -6.56 | -6.96 | ❌ (32.8%) | ✅ (-0.66) | ❌ (-6.56) | ❌ FAIL |
+| trending_down | — | — | — | — | — | ⚠️ INSUFFICIENT (n=13) |
+| trending_up | — | — | — | — | — | ⚠️ INSUFFICIENT (n=1) |
+
+**重要な発見**: **ranging sell は3指標すべて PASS**。  
+- sell p10 (-4.29) > buy p10 (-4.71): sell のほうが安全
+- sell fill_rate (76.1%) > buy fill_rate (71.1%): sell のほうが高約定率
+- trending sell FAIL は skip_sell_trending で既に対処済み
+
+### 9.4 結論
+
+1. **ranging sell は健全**: 集約判定の FAIL は warmup + trending legacy の汚染が原因
+2. **現行 skip 設定は適切**: skip_sell_trending / skip_buy_unknown_regime が正しく機能
+3. **判定システム改善**: exclude_regimes + per_regime で実態を正確に捕捉可能に
+4. **P0-C (trending_down sell)**: 暫定継続、n=30 到達後に再評価
+
+### 9.5 テスト
+
+- 既存43テスト: 全 PASS (回帰なし)
+- 新規16テスト: exclude_regimes + per_regime + YAML ロード
+- **計59テスト PASSED**
