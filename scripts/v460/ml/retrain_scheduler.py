@@ -701,6 +701,7 @@ def _evaluate_wf_single(
     E1: prev_booster があれば warm-start で学習。
     E2: early_stopping_rounds で過学習を自動防止。
     145# R-2a: sample_weight 対応。
+    158# P2-1: early stopping に val セットを使用 (テストリーク修正)。
 
     Returns:
         {"score": float, "pnl30_improvement": float, "pnl120_improvement": float, ...}
@@ -714,14 +715,32 @@ def _evaluate_wf_single(
         raise RuntimeError("LightGBM required")
 
     test_ratio = safe_to_float(cfg.get("wf_test_ratio", 0.2), 0.2)
+    val_ratio = safe_to_float(cfg.get("wf_val_ratio_single", 0.1), 0.1)
+    embargo_rows = safe_to_int(cfg.get("wf_embargo_rows", 0), 0)
     n = len(X)
-    split_idx = int(n * (1.0 - test_ratio))
-    if split_idx < 50 or (n - split_idx) < 20:
-        logger.warning(f"Insufficient data for WF eval: train={split_idx}, test={n - split_idx}")
+    # 158# P2-1: train / embargo / val / test に4分割 (リーク修正)
+    test_size = max(1, int(n * test_ratio))
+    val_size = max(1, int(n * val_ratio))
+    train_size = n - test_size - val_size - embargo_rows
+    if train_size < 50 or test_size < 20:
+        logger.warning(
+            f"Insufficient data for WF eval: train={train_size}, "
+            f"val={val_size}, test={test_size}, embargo={embargo_rows}"
+        )
         return {"score": 0.0, "pnl30_improvement": 0.0, "pnl120_improvement": 0.0}
 
-    X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
-    y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
+    train_end = train_size
+    val_start = train_end + embargo_rows
+    val_end = val_start + val_size
+    test_start_idx = val_end
+    # test_end = n
+
+    X_train = X.iloc[:train_end]
+    y_train = y.iloc[:train_end]
+    X_val = X.iloc[val_start:val_end]
+    y_val = y.iloc[val_start:val_end]
+    X_test = X.iloc[test_start_idx:]
+    y_test = y.iloc[test_start_idx:]  # noqa: F841
 
     # E2: early stopping 有効時は上限を引き上げ
     early_stop = safe_to_int(cfg.get("early_stopping_rounds", 0), 0)
@@ -740,8 +759,10 @@ def _evaluate_wf_single(
 
     # E1: warm-start — 前モデルの booster を init_model に使用
     fit_kwargs: dict[str, object] = {}
-    if early_stop > 0:
-        fit_kwargs["eval_set"] = [(X_test_sc, y_test)]
+    # 158# P2-1: early stopping は val セットで行う (test リーク防止)
+    if early_stop > 0 and len(X_val) >= 5:
+        X_val_sc = scaler.transform(imputer.transform(X_val))
+        fit_kwargs["eval_set"] = [(X_val_sc, y_val)]
         # LightGBM 4.x: callbacks で early stopping
         fit_kwargs["callbacks"] = [
             lgb.early_stopping(stopping_rounds=early_stop, verbose=False),
@@ -753,7 +774,7 @@ def _evaluate_wf_single(
 
     # 145# R-2a: レジーム重み付き学習 — train 分の weight を切り出し
     if sample_weight is not None:
-        fit_kwargs["sample_weight"] = sample_weight[:split_idx]
+        fit_kwargs["sample_weight"] = sample_weight[:train_end]
 
     lgbm_model.fit(X_train_sc, y_train, **fit_kwargs)
     preds_test = np.asarray(lgbm_model.predict(X_test_sc), dtype=np.float64)

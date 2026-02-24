@@ -1179,6 +1179,107 @@ class TestMultiWindowWF:
 
 
 # =====================================================================
+# 158# P2-1: WF single-window leakage 修正テスト
+# =====================================================================
+
+
+class TestWFSingleWindowLeakageFix:
+    """158# P2-1: _evaluate_wf_single の val/test 分離を検証."""
+
+    def test_val_not_test_for_early_stopping(self) -> None:
+        """early_stopping 有効時に test ではなく val を eval_set に使用."""
+        from scripts.v460.ml.retrain_scheduler import _evaluate_wf_single
+
+        n = 300
+        rng = np.random.RandomState(42)
+        X = pd.DataFrame(rng.randn(n, 5), columns=[f"f{i}" for i in range(5)])
+        y = pd.Series(rng.randn(n))
+        enriched = pd.DataFrame({
+            "post_fill_30s_pnl": rng.randn(n) * 0.1,
+            "post_fill_120s_pnl": rng.randn(n) * 0.2,
+        })
+
+        cfg = {
+            "wf_test_ratio": 0.2,
+            "wf_val_ratio_single": 0.1,
+            "wf_embargo_rows": 0,
+            "early_stopping_rounds": 10,
+            "lgbm_n_estimators_max": 50,
+            "lgbm_max_depth": 2,
+            "lgbm_learning_rate": 0.1,
+            "lgbm_num_leaves": 4,
+            "lgbm_min_child_samples": 5,
+            "warm_start_enabled": False,
+        }
+
+        result = _evaluate_wf_single(X, y, enriched, cfg)
+        # 出力は正常
+        assert result["n_windows"] == 1
+        # train + val + test = n (embargo=0 の場合)
+        assert result["n_train"] + 30 + result["n_test"] == n  # val=30 (10%×300)
+
+    def test_train_test_sizes_with_embargo(self) -> None:
+        """embargo 有効時に train/test の間に gap がある."""
+        from scripts.v460.ml.retrain_scheduler import _evaluate_wf_single
+
+        n = 300
+        rng = np.random.RandomState(42)
+        X = pd.DataFrame(rng.randn(n, 5), columns=[f"f{i}" for i in range(5)])
+        y = pd.Series(rng.randn(n))
+        enriched = pd.DataFrame({
+            "post_fill_30s_pnl": rng.randn(n) * 0.1,
+            "post_fill_120s_pnl": rng.randn(n) * 0.2,
+        })
+
+        cfg = {
+            "wf_test_ratio": 0.2,
+            "wf_val_ratio_single": 0.1,
+            "wf_embargo_rows": 5,
+            "early_stopping_rounds": 0,
+            "lgbm_n_estimators": 10,
+            "lgbm_max_depth": 2,
+            "lgbm_learning_rate": 0.1,
+            "lgbm_num_leaves": 4,
+            "lgbm_min_child_samples": 5,
+            "warm_start_enabled": False,
+        }
+
+        result = _evaluate_wf_single(X, y, enriched, cfg)
+        # embargo=5 で train が 5 行減る
+        # total = train + embargo(5) + val(30) + test(60) = 300
+        expected_train = 300 - 60 - 30 - 5  # = 205
+        assert result["n_train"] == expected_train
+        assert result["n_test"] == 60  # 20% of 300
+
+    def test_insufficient_data_returns_zero(self) -> None:
+        """データ不足時にスコア 0.0 を返す."""
+        from scripts.v460.ml.retrain_scheduler import _evaluate_wf_single
+
+        n = 30  # Too small for meaningful split
+        rng = np.random.RandomState(42)
+        X = pd.DataFrame(rng.randn(n, 3), columns=["f1", "f2", "f3"])
+        y = pd.Series(rng.randn(n))
+        enriched = pd.DataFrame({
+            "post_fill_30s_pnl": rng.randn(n) * 0.1,
+            "post_fill_120s_pnl": rng.randn(n) * 0.2,
+        })
+
+        cfg = {
+            "wf_test_ratio": 0.2,
+            "wf_val_ratio_single": 0.1,
+            "early_stopping_rounds": 0,
+            "lgbm_n_estimators": 10,
+            "lgbm_max_depth": 2,
+            "lgbm_learning_rate": 0.1,
+            "lgbm_num_leaves": 4,
+            "lgbm_min_child_samples": 5,
+        }
+
+        result = _evaluate_wf_single(X, y, enriched, cfg)
+        assert result["score"] == 0.0
+
+
+# =====================================================================
 # 131# C2: 統計的品質ゲート テスト
 # =====================================================================
 
