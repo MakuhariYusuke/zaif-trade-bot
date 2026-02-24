@@ -23,10 +23,10 @@
 
 ### 数字のサマリ
 
-- **未対応合計**: 22 件 → **解決済: 10 件、残: 12 件**
+- **未対応合計**: 22 件 → **解決済: 12 件、残: 10 件**
 - **P0 (Phase D 即時実行)**: 4 件 — ✅ P0-1 SkipGate sell 再訓練, P0-2 sell offset A/B (データ観測待ち), ⏳ P0-3 trending (n≥30 待ち), ✅ P0-4 Oracle テスト
-- **P1 (168h run 中に解決)**: 6 件 — P1-2 fill rate offset, ✅ P1-1 balance_forced 救済, ✅ P1-3 reprice ログ, ✅ P1-4 trades_health, ✅ P1-5 A/B テスト基盤, P1-6 時間帯閾値
-- **P2 (ph3/ph5 ブロッカー)**: 6 件 — P2-1 WF バグ, P2-2 execute_trade, P2-3 failure mode test, P2-4 分割設計, P2-5 skip_gate.py, ✅ P2-6 VG JSONL ログ
+- **P1 (168h run 中に解決)**: 6 件 — P1-2 fill rate offset, ✅ P1-1 balance_forced 救済, ✅ P1-3 reprice ログ, ✅ P1-4 trades_health, ✅ P1-5 A/B テスト基盤, ✅ P1-6 時間帯閾値
+- **P2 (ph3/ph5 ブロッカー)**: 6 件 — P2-1 WF バグ, P2-2 execute_trade, P2-3 failure mode test, ✅ P2-4 分割 Phase1 完了, P2-5 skip_gate.py, ✅ P2-6 VG JSONL ログ
 - **P3 (低優先 / v461+)**: 6 件 — deferred items
 
 ---
@@ -76,17 +76,19 @@
 | 分析スクリプト | `scripts/v460/analysis/analyze_fill_records.py` (regime×side フィルタ) |
 | 工数見積 | 0.2 日 (データ蓄積待ち + 分析) |
 
-#### 158# 中間スナップショット (2026-02-24, n=5 — 統計的に不十分)
+#### 158# 中間スナップショット (2026-02-24, n=10 — 統計的にまだ不十分)
 
-| regime×side | n | mean PnL30 | std | min | max |
-|---|---|---|---|---|---|
-| trending_down_sell | 5 | **+2.89 bps** | 8.72 | -8.96 | +15.60 |
-| trending_down_buy | 5 | -2.08 bps | 7.19 | — | — |
-| trending_sell | 118 | -0.66 bps | 5.70 | — | — |
-| trending_buy | 118 | +0.57 bps | 6.62 | — | — |
+| regime×side | n | mean PnL30 | 判定 |
+|---|---|---|---|
+| trending_down_sell | 10 | **+1.87 bps** | ✅ > -0.3 |
+| trending_down_buy | 11 | +5.30 bps | — |
+| trending_sell | 22 | -0.04 bps | 改善傾向 |
+| trending_buy | 24 | +0.46 bps | — |
+| ranging_buy | 158 | -0.34 bps | — |
+| ranging_sell | 156 | -0.44 bps | — |
 
-**暫定判定:** trending_down sell は +2.89 bps で基準 (> -0.3) を超過するが、n=5 では信頼区間が非常に広い。
-**次回確認:** n≥30 到達時に再評価 (推定 48-72h 後)。
+**暫定判定:** trending_down sell は +1.87 bps で基準 (> -0.3) を超過。n=5→10 で依然正。
+**次回確認:** n≥30 到達時に最終評価 (推定 24-48h 後)。
 
 ### P0-4: Oracle テスト (ph3 前必須) — ✅ PASS (158# 実施済)
 
@@ -215,15 +217,17 @@
 | アクション | `tests/integration/v460/test_failure_modes.py` を設計・実装。mock レベルでの障害注入テスト。 |
 | 工数見積 | 1.0 日 |
 
-### P2-4: run_fill_test 分割設計 (153# タスク B) — 進行中
+### P2-4: run_fill_test 分割設計 (153# タスク B) — Phase 1 完了
 
 | 項目 | 値 |
 |---|---|
 | 出典 | 153# §3 |
-| 問題 | `FillTestRunner` が 2,600+ 行の god object。Lot/Position, Order Execution, Measurement, Lifecycle, Record/IO の 5 責務が混在。 |
+| 問題 | `FillTestRunner` が 2,700+ 行の god object。Lot/Position, Order Execution, Measurement, Lifecycle, Record/IO の 5 責務が混在。 |
 | **159# 更新** | `scripts/v460/lib/` に 27+ モジュール分割進展 (`lot_manager.py`, `lot_sizer.py`, `order_monitor.py`, `pnl_measurer.py`, `balance_checker.py` 等)。159# §3.3: 稼働中は Facade 維持 + 契約テスト先行で段階移行。 |
-| ステータス | **進行中 (lib/ 分割済み、Facade 統合待ち)** |
-| 工数見積 | 0.5 日 (残テスト + Facade 配線) |
+| **158# Phase 1** | `event_logger.py` (118行), `lock_manager.py` (146行), `fill_test_cli.py` (422行) 抽出。`run_fill_test.py` 2,715→2,164行 (-551行, -20.3%)。`skip_gate_evaluator.py` _compute_file_hash 統一。テスト 7 ファイル修正、1,738 全件 PASS。commit `1aed848e3` |
+| ステータス | **Phase 1 完了。Phase 2 (run_continuous/run_single_cycle 分割) は本番稼働リスクのため保留** |
+| 残課題 | `run_continuous` (802行), `run_single_cycle` (483行) の更なる分割は次回 run 終了後 |
+| 工数見積 | Phase 1: 0.3 日 (実績)。Phase 2: 0.5 日 (予定) |
 
 ### P2-5: skip_gate.py モジュール配置 (106# R5)
 
@@ -300,18 +304,21 @@
 | 大義 | **短期間での高収益性システム** (000# §0) |
 | 現フェーズ | ph2 (G1.1-exec gate: 168h fill test qualification) |
 | 蓄積データ | 2,700+ fill_records (10+ 暦日) |
-| 技術スタック | Python 3.11, LGBM SkipGate, pytest 1,636+ テスト |
+| 技術スタック | Python 3.11, LGBM SkipGate, pytest 1,738 テスト |
 | 設定ファイル | `configs/v460/fill_test.yaml` |
-| メイン実行 | `scripts/v460/run_fill_test.py` (`FillTestRunner`, 2,200+ 行) |
+| メイン実行 | `scripts/v460/run_fill_test.py` (`FillTestRunner`, 2,164 行) + `lib/fill_test_cli.py` (422行) |
 | retrain | `scripts/v460/ml/retrain_scheduler.py` (1,970 行, WF + 品質ゲート) |
 
 ### 6.2 アーキテクチャ概要
 
 ```
 scripts/v460/
-├── run_fill_test.py         # メインループ (FillTestRunner)
+├── run_fill_test.py         # メインループ (FillTestRunner, 2,164行)
 ├── lib/
 │   ├── fill_config.py       # YAML 設定 → dataclass
+│   ├── fill_test_cli.py     # CLI エントリポイント (main() 抽出, 422行)
+│   ├── event_logger.py      # 148# イベントログ + TeeWriter (118行)
+│   ├── lock_manager.py      # 044# 単一起動ロック管理 (146行)
 │   ├── maker_price.py       # offset 計算 + VG + regime boost
 │   ├── skip_gate_evaluator.py  # LGBM SkipGate (buy/sell 分離モデル)
 │   ├── regime_detector.py   # FillTestRegimeDetector (TRENDING_UP/DOWN/RANGING/HIGH_VOL/UNKNOWN)
@@ -415,3 +422,7 @@ Week 3 (03/09–03/16):
 | 2026-02-24 | 158# P2-6: VG 詳細ログ (`vg_velocity_bps`, `vg_vpin`, `vg_boost_factor`) FillRecord 追加 |
 | 2026-02-24 | 158# P1-1: balance_forced rescue モード実装 (offset 倍増で安全ポジション解消) |
 | 2026-02-24 | 158# P1-5: A/B テスト基盤 (`ab_test_variant`) FillConfig + FillRecord 追加 |
+| 2026-02-24 | 158# P1-6: skip_gate 時間帯閾値オフセット実装 (commit `b22ea22f7`) |
+| 2026-02-24 | 158# P2-4 Phase 1: run_fill_test.py 分割 — event_logger/lock_manager/fill_test_cli 抽出 (2,715→2,164行, -20.3%). テスト1,738全件PASS (commit `1aed848e3`) |
+| 2026-02-24 | 158# P2-4 Phase 2 検討: run_continuous (802行)/run_single_cycle (483行) の更なる分割は本番稼働リスク考慮で保留 |
+| 2026-02-24 | 158# fix: test_157 SkipGateEvaluator._compute_file_hash → compute_file_hash 直接使用に統一, test_136 浮動小数点精度許容 |
