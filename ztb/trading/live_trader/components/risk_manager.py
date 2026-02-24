@@ -1,5 +1,7 @@
 """Risk management component for live trading."""
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
@@ -12,6 +14,8 @@ from ztb.utils.logging_utils import get_logger
 from ztb.utils.safety import safe_to_float
 
 if TYPE_CHECKING:
+    import pandas as pd
+
     from ztb.trading.live_trader.live_trader import LiveTrader
 
 
