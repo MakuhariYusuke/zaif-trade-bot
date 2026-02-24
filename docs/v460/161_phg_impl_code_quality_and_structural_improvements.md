@@ -168,6 +168,25 @@ def _cleanup_sync(self) -> None:
 
 ---
 
+## §5b 水平添加: safe_to_finite 統合 (5ファイル追加)
+
+§3 で `ztb.utils.safety.safe_to_finite` を整備したが、同一ロジックが analysis/ 配下にも散在:
+
+| ファイル | ローカル関数 | 呼出数 |
+|---|---|---|
+| `analyze_fill_records.py` | `_to_finite_float` | 3 |
+| `oracle_baseline.py` | `_to_finite_float` | 3 |
+| `hindsight_filter.py` | `_to_float` | 11 |
+| `compare_regime_ab.py` | `_to_float_or_none` | 4 |
+| `reproduce_152_metrics.py` | `_to_float` | 7 |
+
+全5件のローカル関数定義を削除し、`safe_to_finite` に統合。
+不要になった `import math` / `safe_to_float` import も除去。
+
+> `ob_recorder.py` の `_to_finite_float` は bool 型除外の追加ロジックを持つため対象外とした。
+
+---
+
 ## §6 テスト結果
 
 | テストスイート | 結果 |
@@ -176,7 +195,7 @@ def _cleanup_sync(self) -> None:
 | `test_159_side_regime_dashboard.py` | **6 passed** ✅ |
 | `test_141_side_specific_models.py` (OnlineMonitor) | **10 passed** ✅ |
 | `test_143_regime_utilization.py` (pre_filter) | **1 passed** ✅ |
-| 全テストスイート | **82 passed** (v460関連全PASS, CustomPPO 5件は既存問題・無関係) |
+| 全テストスイート | **1858 passed** (v460 unit 全PASS, CustomPPO 5件は既存問題・無関係) |
 
 ---
 
@@ -191,3 +210,56 @@ def _cleanup_sync(self) -> None:
 | `scripts/v460/run_fill_test.py` | 修正 | `_cleanup_sync()` asyncio安全化 |
 | `ztb/utils/safety.py` | 追加 | `safe_to_finite()` 関数 |
 | `tests/unit/v460/test_160_ab_judgment.py` | 修正 | import先変更 (`safe_to_finite`) |
+| `scripts/v460/analysis/analyze_fill_records.py` | リファクタ | `_to_finite_float` → `safe_to_finite` |
+| `scripts/v460/analysis/oracle_baseline.py` | リファクタ | `_to_finite_float` → `safe_to_finite` |
+| `scripts/v460/analysis/hindsight_filter.py` | リファクタ | `_to_float` → `safe_to_finite` (11箇所) |
+| `scripts/v460/analysis/compare_regime_ab.py` | リファクタ | `_to_float_or_none` → `safe_to_finite` |
+| `scripts/v460/analysis/reproduce_152_metrics.py` | リファクタ | `_to_float` → `safe_to_finite` |
+
+---
+
+## §8 自己レビュー結果
+
+### 問題なし
+
+- `safe_to_finite` の挙動: `None / NaN / Inf → None`, `"3.14" → 3.14`, `bool → 1.0/0.0` — 一貫性あり
+- `ob_recorder.py` のみ `bool → None` が必要なため、意図的に対象外とした (正当)
+- `_to_str` (hindsight_filter, reproduce_152) は別関数として正しく残存
+- `metrics_utils.py` に `__all__` 追加済み
+- SIGTERM handler: `signal.signal()` はメインスレッドで呼ぶ必要 — `_install_signal_handlers()` は `main()` から呼ばれるため問題なし
+
+### 注意事項
+
+- `compare_regime_ab.py` の旧 `_to_float_or_none` は `safe_to_float(value, nan)` 経由だったが `safe_to_finite` は `float(value)` 直接 — 挙動は等価（どちらも `float("nan") → nan → None`）
+- `retrain_scheduler.py` の `_shutdown_event` はモジュールレベルグローバル変数 — マルチプロセスで fork した場合は共有されない。現行アーキテクチャでは単一プロセスなので問題なし
+
+---
+
+## §9 158# 残課題ステータス
+
+### 最重要 OPEN 項目 (収益直結)
+
+| ID | 項目 | 優先度 | 状態 |
+|---|---|---|---|
+| P0-2 | sell offset 段階的縮小 A/B テスト (0.18→0.14) | **P0** | ab_test_variant データ蓄積待ち |
+| P1-2 実施 | buy base offset 引き上げ (0.05→0.12-0.15) | P1 | n≥200 到達後 A/B テスト予定 |
+| §10.3 | 同side内 variant 比較への段階移行 | P1 | データ蓄積待ち |
+| §12.B | retrain final training val 分割が WF eval と独立 | **P2-HIGH** | 精度検証要 |
+
+### 構造改善 OPEN 項目
+
+| ID | 項目 | 優先度 | 推定工数 |
+|---|---|---|---|
+| retrain_scheduler 分割 | 1,794行 God Object → 3-4モジュール | P2 | 2-3h |
+| run_fill_test 分割 | 2,012行 → 構成分離 | P2 | 3-4h |
+| FillTestConfig TypedDict化 | 208フィールドの型安全 | P2 | 1-2h |
+| YAML外部化 | CircuitBreaker/HealthMonitor等の定数 8件 | P2 | 1-2h |
+| skip_gate.py モジュール移設 | scripts/ → ztb/ | P2 | 1h |
+
+### Gemini セカンドオピニオン (未着手)
+
+| ID | 項目 | 収益インパクト |
+|---|---|---|
+| Gemini-B | Inventory Skewing (在庫偏重による非対称クオート) | 高 |
+| Gemini-C | SkipGate sell SHAP分析 | 中 |
+| Gemini-D | 「休むも相場」ロジック | 中 |

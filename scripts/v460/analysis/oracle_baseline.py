@@ -25,7 +25,8 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import math
+
+from ztb.utils.safety import safe_to_finite
 import sys
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
@@ -95,14 +96,6 @@ _BPS_FACTOR = 10_000
 _MONTHLY_CYCLES = 30 * 24 * 3600 / 120
 
 
-def _to_finite_float(value: object | None) -> float | None:
-    if value is None:
-        return None
-    try:
-        numeric = float(value)
-    except Exception:
-        return None
-    return numeric if math.isfinite(numeric) else None
 
 
 def _aggregate_oracle(records: list[FillRecord]) -> _OracleAggregate:
@@ -113,7 +106,7 @@ def _aggregate_oracle(records: list[FillRecord]) -> _OracleAggregate:
         if not record.filled or record.post_fill_30s_pnl is None:
             continue
 
-        pnl_30s = _to_finite_float(record.post_fill_30s_pnl)
+        pnl_30s = safe_to_finite(record.post_fill_30s_pnl)
         if pnl_30s is None:
             continue
 
@@ -124,13 +117,13 @@ def _aggregate_oracle(records: list[FillRecord]) -> _OracleAggregate:
         else:
             agg.n_negative += 1
 
-        numeric_60s = _to_finite_float(record.post_fill_60s_pnl)
+        numeric_60s = safe_to_finite(record.post_fill_60s_pnl)
         if numeric_60s is not None:
             agg.pnl_60s_all.add(numeric_60s)
             if numeric_60s >= 0:
                 agg.pnl_60s_nonnegative.add(numeric_60s)
 
-        numeric_120s = _to_finite_float(record.post_fill_120s_pnl)
+        numeric_120s = safe_to_finite(record.post_fill_120s_pnl)
         if numeric_120s is not None:
             agg.pnl_120s_all.add(numeric_120s)
             if numeric_120s >= 0:

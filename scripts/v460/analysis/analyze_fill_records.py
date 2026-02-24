@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import datetime
 import glob
-import math
+
+from ztb.utils.safety import safe_to_finite
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -36,14 +37,6 @@ class _RunStats:
     pnl_30s: _PnlStats = field(default_factory=_PnlStats)
 
 
-def _to_finite_float(value: object | None) -> float | None:
-    if value is None:
-        return None
-    try:
-        numeric = float(value)
-    except Exception:
-        return None
-    return numeric if math.isfinite(numeric) else None
 
 
 def _pct(numerator: int, denominator: int) -> float:
@@ -125,11 +118,11 @@ def main() -> None:
             if side in ("buy", "sell"):
                 side_as[side] += 1
 
-        queue_wait_sec = _to_finite_float(record.get("queue_wait_sec"))
+        queue_wait_sec = safe_to_finite(record.get("queue_wait_sec"))
         if queue_wait_sec is not None:
             queue_waits.append(queue_wait_sec)
 
-        timestamp = _to_finite_float(record.get("timestamp"))
+        timestamp = safe_to_finite(record.get("timestamp"))
         utc_hour: int | None = None
         if timestamp is not None:
             utc_hour = datetime.datetime.fromtimestamp(
@@ -142,7 +135,7 @@ def main() -> None:
 
         for tf in ("30s", "60s", "120s"):
             key = f"post_fill_{tf}_pnl"
-            pnl_value = _to_finite_float(record.get(key))
+            pnl_value = safe_to_finite(record.get(key))
             if pnl_value is None:
                 continue
             pnl_by_tf[tf].add(pnl_value)

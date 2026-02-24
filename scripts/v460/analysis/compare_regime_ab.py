@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import math
 import sys
 from collections import Counter, defaultdict
 from collections.abc import Sequence
@@ -39,7 +38,7 @@ from scripts.v460.lib.regime_detector import (
 # Re-use data loading from reproduce script
 from scripts.v460.analysis.reproduce_152_metrics import _load_records
 from ztb.io.json_io import write_json
-from ztb.utils.safety import safe_to_float
+from ztb.utils.safety import safe_to_finite
 
 FillRecord = dict[str, object]
 ParsedFillRecord = tuple[FillRecord, float, float]
@@ -108,11 +107,6 @@ class SimRecord:
     pnl_30s: float | None
 
 
-def _to_float_or_none(value: object) -> float | None:
-    if value is None or isinstance(value, bool):
-        return None
-    parsed = safe_to_float(value, float("nan"))
-    return parsed if math.isfinite(parsed) else None
 
 
 def _safe_pct(numerator: int, denominator: int) -> float:
@@ -148,7 +142,7 @@ def _simulate(
     # Sort by timestamp for chronological replay
     sorted_recs = sorted(
         records,
-        key=lambda r: _to_float_or_none(r.get("timestamp")) or 0.0,
+        key=lambda r: safe_to_finite(r.get("timestamp")) or 0.0,
     )
 
     # §12 #2: order_price==0 / side 不正のレコードを除外
@@ -159,8 +153,8 @@ def _simulate(
     }
     valid_recs: list[ParsedFillRecord] = []
     for rec in sorted_recs:
-        ts_f = _to_float_or_none(rec.get("timestamp"))
-        price_f = _to_float_or_none(rec.get("order_price"))
+        ts_f = safe_to_finite(rec.get("timestamp"))
+        price_f = safe_to_finite(rec.get("order_price"))
         if ts_f is None or price_f is None:
             continue
         if price_f <= 0:
@@ -178,7 +172,7 @@ def _simulate(
         old_result = old_det.update(ts_f, price_f)
         new_result = new_det.update(ts_f, price_f)
 
-        pnl_30s = _to_float_or_none(rec.get("post_fill_30s_pnl"))
+        pnl_30s = safe_to_finite(rec.get("post_fill_30s_pnl"))
 
         results.append(SimRecord(
             timestamp=ts_f,

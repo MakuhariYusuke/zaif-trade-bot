@@ -13,7 +13,6 @@ import argparse
 import datetime
 import glob
 import json
-import math
 import sys
 from collections import Counter, defaultdict
 from collections.abc import Sequence
@@ -21,7 +20,7 @@ from pathlib import Path
 
 from ztb.io.jsonl import read_jsonl_objects
 from ztb.io.json_io import write_json
-from ztb.utils.safety import ensure_dict, safe_to_float, safe_to_int
+from ztb.utils.safety import ensure_dict, safe_to_int, safe_to_finite
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -32,11 +31,6 @@ FillRecord = dict[str, object]
 MetricsMap = dict[str, object]
 
 
-def _to_float(value: object) -> float | None:
-    if value is None or isinstance(value, bool):
-        return None
-    parsed = safe_to_float(value, float("nan"))
-    return parsed if math.isfinite(parsed) else None
 
 
 def _to_str(value: object) -> str | None:
@@ -124,12 +118,12 @@ def _compute_metrics(
         if regime is not None:
             regime_all[regime] += 1
 
-        qty = _to_float(record.get("order_quantity"))
+        qty = safe_to_finite(record.get("order_quantity"))
         if qty is not None and (include_zero_qty or qty > 0):
             records_with_qty += 1
             lot_counter[f"{qty:.4f}"] += 1
 
-        as_prob = _to_float(record.get("skip_gate_as_prob"))
+        as_prob = safe_to_finite(record.get("skip_gate_as_prob"))
         if as_prob is not None:
             as_probs.append(as_prob)
 
@@ -137,7 +131,7 @@ def _compute_metrics(
             continue
         filled_count += 1
 
-        pnl = _to_float(record.get("post_fill_30s_pnl"))
+        pnl = safe_to_finite(record.get("post_fill_30s_pnl"))
         if pnl is None:
             continue
 
@@ -148,7 +142,7 @@ def _compute_metrics(
         if side in ("buy", "sell"):
             side_regime_values[side][regime_key].append(pnl)
 
-        ts = _to_float(record.get("timestamp"))
+        ts = safe_to_finite(record.get("timestamp"))
         if ts is not None:
             hour = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).hour
             hour_pnl_values[hour].append(pnl)
@@ -232,7 +226,7 @@ def _as_int(value: object) -> int:
 
 
 def _as_float_or_zero(value: object) -> float:
-    return safe_to_float(value, 0.0)
+    return safesafe_to_finite(value, 0.0)
 
 
 def _print_report(metrics: MetricsMap, params: dict[str, object]) -> None:

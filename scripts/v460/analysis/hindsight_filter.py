@@ -22,7 +22,8 @@ import argparse
 import bisect
 import json
 import logging
-import math
+
+from ztb.utils.safety import safe_to_finite
 import sys
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
@@ -111,14 +112,6 @@ class InterpolatedStats(TypedDict):
     original_price: InterpolatedSplitStats
 
 
-def _to_float(value: object | None) -> float | None:
-    if value is None or isinstance(value, bool):
-        return None
-    try:
-        numeric = float(value)
-    except (TypeError, ValueError):
-        return None
-    return numeric if math.isfinite(numeric) else None
 
 
 def _to_str(value: object | None, *, default: str = "") -> str:
@@ -163,12 +156,12 @@ def _build_price_timeline(records: Sequence[RawRecord]) -> list[PricePoint]:
     points: list[PricePoint] = []
 
     for r in records:
-        ts_f = _to_float(r.get("timestamp"))
+        ts_f = safe_to_finite(r.get("timestamp"))
         if ts_f is None:
             continue
 
         # order_price は注文時の mid_price の近似
-        op_f = _to_float(r.get("order_price"))
+        op_f = safe_to_finite(r.get("order_price"))
         if op_f is not None and op_f > 0:
             points.append(PricePoint(ts_f, op_f))
 
@@ -180,7 +173,7 @@ def _build_price_timeline(records: Sequence[RawRecord]) -> list[PricePoint]:
                 ("mid_60s_after", 60),
                 ("mid_120s_after", 120),
             ]:
-                mid_price = _to_float(r.get(field_name))
+                mid_price = safe_to_finite(r.get(field_name))
                 if mid_price is not None:
                     points.append(PricePoint(ts_f + offset, mid_price))
 
@@ -282,8 +275,8 @@ def _analyze_records(
     _skipped_invalid_side = 0  # 156# §16: 除外カウント
 
     for r in records:
-        ts_f = _to_float(r.get("timestamp"))
-        op_f = _to_float(r.get("order_price"))
+        ts_f = safe_to_finite(r.get("timestamp"))
+        op_f = safe_to_finite(r.get("order_price"))
         if ts_f is None or op_f is None:
             continue
 
@@ -317,7 +310,7 @@ def _analyze_records(
         rev30 = _compute_hindsight_pnl(rev_side, op_f, p30)
 
         # §9.2 #3: queue_wait_sec
-        qw_f = _to_float(r.get("queue_wait_sec"))
+        qw_f = safe_to_finite(r.get("queue_wait_sec"))
 
         results.append(HindsightResult(
             cycle_id=_to_str(r.get("cycle_id"), default=""),
@@ -326,13 +319,13 @@ def _analyze_records(
             order_price=op_f,
             cancel_reason=_to_str(r.get("cancel_reason"), default=""),
             filled=bool(r.get("filled")),
-            actual_pnl_30s=_to_float(r.get("post_fill_30s_pnl")),
+            actual_pnl_30s=safe_to_finite(r.get("post_fill_30s_pnl")),
             hindsight_pnl_30s=h30,
             hindsight_pnl_60s=h60,
             hindsight_pnl_120s=h120,
             reverse_pnl_30s=rev30,
-            skip_gate_score=_to_float(r.get("skip_gate_score")),
-            skip_gate_as_prob=_to_float(r.get("skip_gate_as_prob")),
+            skip_gate_score=safe_to_finite(r.get("skip_gate_score")),
+            skip_gate_as_prob=safe_to_finite(r.get("skip_gate_as_prob")),
             regime=_to_optional_str(r.get("regime")),
             interpolated_ref=interpolated,
             queue_wait_sec=qw_f,
@@ -403,7 +396,7 @@ class _PnlAggregateBase:
 
     def add(self, value: float | None) -> None:
         self.sample_count += 1
-        numeric = _to_float(value)
+        numeric = safe_to_finite(value)
         self.pnl.add(numeric)
         if numeric is not None and numeric > 0:
             self.positive_count += 1
@@ -426,7 +419,7 @@ class _SignedPnlAggregate(_PnlAggregateBase):
 
     def add(self, value: float | None) -> None:
         super().add(value)
-        numeric = _to_float(value)
+        numeric = safe_to_finite(value)
         if numeric is None:
             return
         if numeric > 0:
