@@ -540,3 +540,140 @@ fill_rate 最大化のため offset を0に近づけるバイアスが生じる�
 - 既存43テスト: 全 PASS (回帰なし)
 - 新規16テスト: exclude_regimes + per_regime + YAML ロード
 - **計59テスト PASSED**
+
+---
+
+## §10 追記レビュー（ログ再確認での見落とし指摘）
+
+> 依頼どおり Git 差分に依存せず、実行ログ/生成物/現行コードの突合で追記。
+
+### 10.1 重大: 「実装済み」と「実ラン反映済み」が混在
+
+- `fill_test_events.jsonl` の最新 start は `run_id=1771873023_6bef9188`, `git_sha=a7e5d0b82317`。
+- 一方、`fill_records_20260224.jsonl` では `regime: null` が多数残存（例: line 1, 4, 7...）。
+- よって §5 の「regime=None 率 ~0%」は**コード上の期待値**であり、現行ランの実測としては未達の可能性が高い。
+
+**レビュー結論**: `regime` 伝搬修正は実装済みでも、評価対象データが旧ラン由来なら検証結論は成立しない。P0判断は「修正後run_id限定の再集計」まで保留が妥当。
+
+### 10.2 重大: §9 の再評価結果が成果物JSONに未反映
+
+- `reports/160_p0bc_judgment_results.json` には `ab_judgment` / `trending_eval` はあるが、`per_regime_judgment` が存在しない。
+- §9 で主張している `exclude_regimes=["none"]` 再評価値（n=564/565 等）も同 JSON からは追跡不能。
+
+**レビュー結論**: §9 は分析方向として妥当だが、再現可能な保存成果物が不足。監査可能性の観点で「根拠ファイル未固定」は見落とし。
+
+### 10.3 設計上の盲点: 現在のA/Bは「sell vs buy比較」で厳密A/Bではない
+
+- `side_regime_dashboard.py` の `with_judgment` は `variant=sell`, `control=buy` を固定比較。
+- これは side 差（市場構造差・ゲート差）を含むため、offset 変更の純粋効果推定と交絡する。
+
+**レビュー結論**: 「P0-B判定基盤」は改善されたが、因果的には still biased。厳密評価は同side内で `ab_test.variant` による比較が必要。
+
+### 10.4 判定ロジックの見落とし: control側の最低サンプル制約が未定義
+
+- `evaluate_ab_variant()` は `min_filled_records`, `min_calendar_days` を variant 側中心で判定。
+- control 側が薄いケースでも PASS/FAIL を返しうるため、将来の不安定判定リスクがある。
+
+**レビュー結論**: 直近データ量では顕在化していないが、運用長期では誤判定源。`min_control_filled_records` 等の対称制約が必要。
+
+### 10.5 追加アクション（優先順）
+
+1. **P0**: 修正後コミットで fill test を再起動し、`run_id/git_sha` を固定した再評価を実施。
+2. **P0**: §9 の再評価結果を単一JSON（`per_regime_judgment` 含む）として保存し、本文数値と1対1対応させる。
+3. **P1**: A/B判定を「sell vs buy」から「同side内 variant vs control」へ段階移行（少なくとも補助指標として併記）。
+4. **P1**: `evaluate_ab_variant` に control 側の最小サンプル/日数制約を追加。
+
+### 10.6 最終ステータス更新（レビュー視点）
+
+| 項目 | ステータス | コメント |
+|---|---|---|
+| regime 伝搬修正の実装 | ✅ 実装済み | コード上は確認できる |
+| regime=None 解消の運用実証 | ⚠️ 未確定 | 現行レコードに `regime:null` 残存 |
+| 3指標A/B判定基盤 | ✅ 実装済み | ただし比較設計に交絡あり |
+| per-regime 判定の監査可能性 | ⚠️ 不十分 | JSON成果物への固定が不足 |
+| P0-B/C の最終判定確定 | ❌ まだ早い | 修正後run限定で再判定が必要 |
+
+---
+
+## §11 レビュー対応: §10 指摘への妥当性判断と修正
+
+### 11.1 各指摘の妥当性判断
+
+| 指摘 | 妥当性 | 根拠 | 対応 |
+|---|---|---|---|
+| **10.1** regime修正が現ランに未反映 | **完全に妥当** | fill test PID 124796 は `a7e5d0b82` (regime修正 `8d644b00e` より前)。2/24 データの 59.7% が `regime:null` | fill test 再起動 |
+| **10.2** per_regime JSON 未保存 | **完全に妥当** | `reports/160_p0bc_judgment_results.json` に `per_regime_judgment` キーなし確認 | JSON再保存済み |
+| **10.3** sell vs buy は厳密A/Bではない | **妥当 (P1)** | side差・ゲート差が交絡。ただし `ab_test_variant` フィールドは実装済み、データ蓄積待ち | 注記のみ。variant_id データ蓄積後に移行 |
+| **10.4** control側min_filled未定義 | **妥当** | control n_filled=5 でも PASS/FAIL 返却していた | `min_control_filled_records=30` 追加済み |
+
+### 11.2 実施した修正
+
+#### 11.2.1 control 側最小サンプル制約 (§10.4 対応)
+
+`ABJudgmentCriteria` に `min_control_filled_records: int = 30` を追加:
+- variant 側チェックの直後に control 側の `n_filled < min_control_filled_records` を判定
+- INSUFFICIENT を返し、薄い control による誤判定を防止
+- `evaluate_per_regime()` にも伝搬
+- YAML `judgment.ab_criteria.min_control_filled_records` で外部制御可能
+
+#### 11.2.2 JSON 成果物の完全化 (§10.2 対応)
+
+`reports/160_p0bc_judgment_results.json` を再生成:
+- `per_regime_judgment` (4件: ranging/trending/trending_down/trending_up) を含む
+- `ab_judgment` は `exclude_regimes=["none"]` 適用後の値
+
+#### 11.2.3 新フィールド分析スクリプト活用 (158# 残課題)
+
+`SideMetrics` と `_compute_side_metrics()` を拡張:
+- `reprice_rate` / `avg_reprice_drift_bps`: reprice 発生率 + drift 平均
+- `vg_trigger_rate`: VG trigger 率
+- ダッシュボード表示に追加
+
+**注**: 5フィールドとも FillRecord 構築コードでは正しく POPULATE されているが、
+現行 fill test (旧コミット) では出力されていない。再起動で解決。
+
+#### 11.2.4 regime:null 残存の原因確定 (§10.1 対応)
+
+日別 `regime:null` 率:
+
+| 日付 | total | regime_null | 率 |
+|---|---|---|---|
+| 0213 | 211 | 211 | **100%** |
+| 0214 | 220 | 144 | 65.5% |
+| 0215-16 | 81 | 0 | **0%** |
+| 0217-20 | 949 | 171 | 18.0% |
+| 0221-24 | 1608 | 797 | **49.6%** |
+
+0215-16 の 0% は別ラン (PID 120384, `3959424ef883`) で、0221 以降の急増は
+PID 124796 (`a7e5d0b82`, regime修正前コミット) 再開後。
+**原因: fill test が旧コードで動作**。再起動で解決確実。
+
+### 11.3 §10.5 アクション対応ステータス
+
+| # | アクション | ステータス | 備考 |
+|---|---|---|---|
+| 1 | 修正後コミットで fill test 再起動 | ⏳ 準備完了 | コミット後に実行 |
+| 2 | per_regime JSON 保存 | ✅ 完了 | `per_regime_judgment` 含む完全 JSON |
+| 3 | 同side内 variant比較への段階移行 | 📋 P1 保留 | `ab_test_variant` データ蓄積待ち |
+| 4 | control側min_filled制約追加 | ✅ 完了 | `min_control_filled_records=30` |
+
+### 11.4 テスト
+
+- 既存テスト: 59→63 (control 制約テスト4件追加)
+- ダッシュボード結合: 69 PASSED
+- SideMetrics新フィールド: reprice_rate / vg_trigger_rate 追加 (データなし環境で 0.0 出力確認)
+
+### 11.5 158# 残課題ステータス更新
+
+159# §4 優先順位に対する最新状態:
+
+| 項目 | 元優先度 | ステータス | 備考 |
+|---|---|---|---|
+| P0-A trades_health 不整合 | P0 | **✅ クローズ** | 159# §9.1 確認済み |
+| P0-B A/B判定3指標化 | P0 | **✅ 完了** | 160# §8-9-11 |
+| P0-C trending_down sell 評価 | P0 | **✅ 完了** (暫定FAIL, 継続) | n=30 で再評価 |
+| P1-A reprice_drift_bps | P1 | **✅ 実装済み** | 分析スクリプトにも集計追加。データは再起動後 |
+| P1-B variant_id 記録 | P1 | **✅ 実装済み** | ab_test_variant フィールド |
+| P1-C VG 詳細ログ | P1 | **✅ 実装済み** | vg_velocity/vpin/boost_factor, 分析集計追加 |
+| P2-A execute_trade 品質検証 | P2 | 📋 未着手 | |
+| P2-B run_fill_test 分割 | P2 | 📋 進行中 | lib/ 分割は進展 |

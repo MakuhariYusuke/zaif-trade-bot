@@ -100,6 +100,7 @@ class TestABJudgmentCriteria:
     def test_defaults(self) -> None:
         c = ABJudgmentCriteria()
         assert c.min_filled_records == 50
+        assert c.min_control_filled_records == 30
         assert c.fill_rate_min == 0.30
         assert c.avg_pnl30_min_bps == -1.0
         assert c.downside_p10_min_bps == -5.0
@@ -215,7 +216,7 @@ class TestEvaluateABVariant:
 
     def test_pass_normal(self) -> None:
         """標準的な PASS ケース."""
-        criteria = ABJudgmentCriteria(min_filled_records=5, min_calendar_days=1)
+        criteria = ABJudgmentCriteria(min_filled_records=5, min_control_filled_records=5, min_calendar_days=1)
         variant = _make_records(20, fill_rate=0.6, pnl_mean=1.0, pnl_std=0.5)
         control = _make_records(20, fill_rate=0.5, pnl_mean=0.5, pnl_std=0.5, side="buy")
         result = evaluate_ab_variant(variant, control, criteria)
@@ -243,6 +244,7 @@ class TestEvaluateABVariant:
         """fill_rate が絶対下限未満で FAIL."""
         criteria = ABJudgmentCriteria(
             min_filled_records=5,
+            min_control_filled_records=5,
             min_calendar_days=1,
             fill_rate_min=0.50,
         )
@@ -258,6 +260,7 @@ class TestEvaluateABVariant:
         """fill_rate の対 control 悪化で FAIL."""
         criteria = ABJudgmentCriteria(
             min_filled_records=5,
+            min_control_filled_records=5,
             min_calendar_days=1,
             fill_rate_min=0.20,
             fill_rate_degradation_tolerance=0.05,
@@ -273,6 +276,7 @@ class TestEvaluateABVariant:
         """avg_pnl30 が下限未満で FAIL."""
         criteria = ABJudgmentCriteria(
             min_filled_records=5,
+            min_control_filled_records=5,
             min_calendar_days=1,
             avg_pnl30_min_bps=-0.5,
         )
@@ -288,6 +292,7 @@ class TestEvaluateABVariant:
         """downside_p10 が絶対下限未満で FAIL."""
         criteria = ABJudgmentCriteria(
             min_filled_records=5,
+            min_control_filled_records=5,
             min_calendar_days=1,
             downside_p10_min_bps=-3.0,
         )
@@ -300,7 +305,7 @@ class TestEvaluateABVariant:
 
     def test_statistical_test_integrated(self) -> None:
         """統計検定が実行されること (n>=10)."""
-        criteria = ABJudgmentCriteria(min_filled_records=5, min_calendar_days=1)
+        criteria = ABJudgmentCriteria(min_filled_records=5, min_control_filled_records=5, min_calendar_days=1)
         variant = _make_records(30, fill_rate=0.8, pnl_mean=2.0, pnl_std=0.5)
         control = _make_records(30, fill_rate=0.8, pnl_mean=-2.0, pnl_std=0.5, side="buy")
         result = evaluate_ab_variant(variant, control, criteria)
@@ -312,7 +317,7 @@ class TestEvaluateABVariant:
 
     def test_summary_contains_verdict(self) -> None:
         """summary() がverdict を含むこと."""
-        criteria = ABJudgmentCriteria(min_filled_records=5, min_calendar_days=1)
+        criteria = ABJudgmentCriteria(min_filled_records=5, min_control_filled_records=5, min_calendar_days=1)
         variant = _make_records(20, fill_rate=0.6, pnl_mean=1.0)
         control = _make_records(20, fill_rate=0.5, pnl_mean=0.5, side="buy")
         result = evaluate_ab_variant(variant, control, criteria)
@@ -329,6 +334,7 @@ class TestEvaluateABVariant:
         """avg_pnl30_must_improve=True でcontrol以下ならFAIL."""
         criteria = ABJudgmentCriteria(
             min_filled_records=5,
+            min_control_filled_records=5,
             min_calendar_days=1,
             avg_pnl30_min_bps=-10.0,
             avg_pnl30_must_improve=True,
@@ -888,3 +894,48 @@ judgment:
         ab, _ = _load_judgment_config(str(yaml_file))
         assert ab is not None
         assert ab.exclude_regimes == ["none"]  # default
+
+
+# ======================================================================
+# control 側最小サンプル制約テスト (§10.4)
+# ======================================================================
+
+
+class TestControlMinFilled:
+    """control 側の最小 filled 制約テスト."""
+
+    def test_control_sufficient(self) -> None:
+        """control が十分なら通常判定."""
+        sell = _make_records(100, side="sell", fill_rate=0.8, pnl_mean=0.5)
+        buy = _make_records(80, side="buy", fill_rate=0.8, pnl_mean=0.3)
+        criteria = ABJudgmentCriteria(
+            min_filled_records=10,
+            min_control_filled_records=10,
+            min_calendar_days=1,
+            exclude_regimes=[],
+        )
+        result = evaluate_ab_variant(sell, buy, criteria=criteria)
+        assert result.overall != Verdict.INSUFFICIENT
+
+    def test_control_insufficient(self) -> None:
+        """control が min_control_filled_records 未満 → INSUFFICIENT."""
+        sell = _make_records(100, side="sell", fill_rate=0.8, pnl_mean=0.5)
+        buy = _make_records(10, side="buy", fill_rate=0.5, pnl_mean=0.3)
+        criteria = ABJudgmentCriteria(
+            min_filled_records=10,
+            min_control_filled_records=30,  # 10*0.5=5 < 30
+            exclude_regimes=[],
+        )
+        result = evaluate_ab_variant(sell, buy, criteria=criteria)
+        assert result.overall == Verdict.INSUFFICIENT
+        assert any(c.name == "control_sample_size" for c in result.criteria)
+
+    def test_control_default_threshold(self) -> None:
+        """デフォルト min_control_filled_records=30."""
+        c = ABJudgmentCriteria()
+        assert c.min_control_filled_records == 30
+
+    def test_control_from_dict(self) -> None:
+        """YAML から min_control_filled_records をロード."""
+        c = ABJudgmentCriteria.from_dict({"min_control_filled_records": 20})
+        assert c.min_control_filled_records == 20

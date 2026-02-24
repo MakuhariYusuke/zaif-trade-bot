@@ -59,6 +59,10 @@ class SideMetrics(TypedDict, total=False):
     profitable_rate: float
     as_rate: float
     avg_as_loss_bps: float
+    # 159# P1-A/P1-C: 新フィールド集計
+    reprice_rate: float  # reprice 発生率 (filled 中)
+    avg_reprice_drift_bps: float  # reprice drift 平均
+    vg_trigger_rate: float  # VG trigger 率 (filled 中)
 
 
 class RegimeSideMetrics(TypedDict, total=False):
@@ -131,6 +135,17 @@ def _compute_side_metrics(records: list[dict[str, object]]) -> SideMetrics:
     as_clean = [v for v in as_pnl if v is not None]
     avg_as_loss = float(np.mean(as_clean)) if as_clean else 0.0
 
+    # reprice 集計 (159# P1-A)
+    repriced = [r for r in filled if (r.get("reprice_count") or 0) > 0]
+    reprice_rate = len(repriced) / n_filled if n_filled > 0 else 0.0
+    drift_vals = [_to_finite(r.get("reprice_drift_bps")) for r in repriced]
+    drift_clean = [v for v in drift_vals if v is not None]
+    avg_reprice_drift = float(np.mean(drift_clean)) if drift_clean else 0.0
+
+    # VG trigger 集計 (159# P1-C)
+    vg_triggered = [r for r in filled if r.get("vg_boost_factor") is not None]
+    vg_trigger_rate = len(vg_triggered) / n_filled if n_filled > 0 else 0.0
+
     return {
         "n_total": n_total,
         "n_filled": n_filled,
@@ -142,6 +157,9 @@ def _compute_side_metrics(records: list[dict[str, object]]) -> SideMetrics:
         "profitable_rate": round(profitable, 4),
         "as_rate": round(as_rate, 4),
         "avg_as_loss_bps": round(avg_as_loss, 4),
+        "reprice_rate": round(reprice_rate, 4),
+        "avg_reprice_drift_bps": round(avg_reprice_drift, 4),
+        "vg_trigger_rate": round(vg_trigger_rate, 4),
     }
 
 
@@ -362,6 +380,11 @@ def _print_dashboard(result: DashboardResult) -> None:
         print(f"    downside_p05:  {sm['downside_p05_bps']:+.4f} bps")
         print(f"    profitable:    {sm['profitable_rate']:.1%}")
         print(f"    AS rate:       {sm['as_rate']:.1%}, avg AS loss: {sm['avg_as_loss_bps']:+.4f} bps")
+        rr = sm.get('reprice_rate', 0.0)
+        rd = sm.get('avg_reprice_drift_bps', 0.0)
+        vg = sm.get('vg_trigger_rate', 0.0)
+        if rr > 0 or vg > 0:
+            print(f"    reprice:       {rr:.1%} (drift {rd:+.4f} bps), VG trigger: {vg:.1%}")
 
     print(f"\n  --- Regime × Side Detail ---")
     for item in result.get("regime_side_detail", []):

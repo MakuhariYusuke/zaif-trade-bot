@@ -488,7 +488,8 @@ judgment:
     exclude_regimes:
       - "none"                     # warmup期間 (regime未確定) のレコードを除外
     # --- サンプル要件 ---
-    min_filled_records: 50         # filled レコード最小数 (< x → INSUFFICIENT)
+    min_filled_records: 50         # variant filled レコード最小数 (< x → INSUFFICIENT)
+    min_control_filled_records: 30 # control filled レコード最小数 (対称制約)
     min_calendar_days: 2           # 最低暦日数
     # --- 1. fill_rate ---
     fill_rate_min: 0.30            # 絶対下限 (30% 未満は無条件 FAIL)

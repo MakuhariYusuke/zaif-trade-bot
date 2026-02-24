@@ -45,7 +45,8 @@ class ABJudgmentCriteria:
     """
 
     # --- 最低サンプル要件 ---
-    min_filled_records: int = 50  # filled レコード最小数 (これ未満は INSUFFICIENT)
+    min_filled_records: int = 50  # variant filled レコード最小数 (これ未満は INSUFFICIENT)
+    min_control_filled_records: int = 30  # control filled レコード最小数 (10.4: 対称制約)
     min_calendar_days: int = 2  # 最低暦日数
 
     # --- regime フィルタ ---
@@ -254,6 +255,17 @@ def evaluate_ab_variant(
         ))
         return result
 
+    if cm["n_filled"] < criteria.min_control_filled_records:
+        result.overall = Verdict.INSUFFICIENT
+        result.criteria.append(CriterionResult(
+            name="control_sample_size",
+            verdict=Verdict.INSUFFICIENT,
+            value=float(cm["n_filled"]),
+            threshold=float(criteria.min_control_filled_records),
+            detail=f"control filled={cm['n_filled']} < min={criteria.min_control_filled_records}",
+        ))
+        return result
+
     if vm["calendar_days"] < criteria.min_calendar_days:
         result.overall = Verdict.INSUFFICIENT
         result.criteria.append(CriterionResult(
@@ -426,6 +438,7 @@ def evaluate_per_regime(
     # per-regime 判定: exclude_regimes を無効化して個別 regime を評価
     per_regime_criteria = ABJudgmentCriteria(
         min_filled_records=criteria.min_filled_records,
+        min_control_filled_records=criteria.min_control_filled_records,
         min_calendar_days=criteria.min_calendar_days,
         fill_rate_min=criteria.fill_rate_min,
         fill_rate_degradation_tolerance=criteria.fill_rate_degradation_tolerance,
