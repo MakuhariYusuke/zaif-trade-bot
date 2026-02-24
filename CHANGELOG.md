@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 163# IS Enablement + Dynamic Gating (107# Phase 3 Step 2)
+
+- **Inventory Skewing YAML 有効化**: inventory_skewing.enabled: true に変更。IS ロジック実装済みのため YAML フリップのみ
+- **107# Phase 3 Step 2 動的ゲーティング**: TimeFilter の静的遮断を regime 連動に拡張
+  - YAML: skip_utc_hours_buy: [8,16,18][16], skip_utc_hours_sell: [4,8,14][8], global: [16][]
+  - 新設: 
+egime_adaptive_enabled: true, 
+egime_adaptive_extra_buy: [8,18], 
+egime_adaptive_extra_sell: [4,14]
+  - TimeFilter.is_filtered() に 
+egime パラメータ追加  high_vol 時に旧 Step 1 遮断を復元
+  - FillLoopOrchestrator._is_time_filtered() が current_regime を自動伝播
+  - FillTestConfig に 3 フィールド追加 + パーサー更新
+- **テスト**: 20 新規テスト (test_163_regime_adaptive_gating.py), 既存 YAML 検証テスト 3 件を Step 2 値に更新
+- **ドキュメント**: 161#/158#/163# に 163# 実績クロスリファレンス (6 箇所)
+- **テスト**: v460 unit 1878 passed, 0 failed
+
 ### 163# God Object 分割 + 構造健全化
 
 - **run_fill_test.py Mixin 分割** (2231→378 行): FillTestRunner を 3 Mixin に分解

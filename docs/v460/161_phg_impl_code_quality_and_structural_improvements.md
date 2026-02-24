@@ -25,6 +25,7 @@
 | 総行数 | 27,174 |
 | 500行超ファイル | 14 |
 | God Object候補 | 2 (`retrain_scheduler.py` 1,794行, `run_fill_test.py` 2,012行) |
+| **163# 実績** | `run_fill_test.py` 2,231→378行 (3 Mixin 分割), `maker_price.py compute()` 306→143行, `fill_config.py from_yaml()` 479→139行 |
 
 
 ### 1.2 正当な複雑性（維持）
@@ -162,7 +163,7 @@ def _cleanup_sync(self) -> None:
 | 項目 | 理由 | 推定工数 |
 |---|---|---|
 | `retrain_scheduler.py` 分割 | 1,794行 God Object → 3-4モジュールに | 2-3h |
-| `run_fill_test.py` 分割 | 2,012行 → 構成分離 | 3-4h |
+| `run_fill_test.py` 分割 | 2,012行 → 構成分離 | 3-4h | **✅ 163# 完了** (2,231→378行, 3 Mixin) |
 | `FillTestConfig` TypedDict化 | 208フィールドの型安全 | 1-2h |
 | ConfigMap / NestedConfig | flat dict → 構造化config | 1h |
 
@@ -251,7 +252,7 @@ def _cleanup_sync(self) -> None:
 | ID | 項目 | 優先度 | 推定工数 |
 |---|---|---|---|
 | retrain_scheduler 分割 | 1,794行 God Object → 3-4モジュール | P2 | 2-3h |
-| run_fill_test 分割 | 2,012行 → 構成分離 | P2 | 3-4h |
+| run_fill_test 分割 | 2,012行 → 構成分離 | P2 | 3-4h | **✅ 163# 完了** |
 | FillTestConfig TypedDict化 | 208フィールドの型安全 | P2 | 1-2h |
 | YAML外部化 | CircuitBreaker/HealthMonitor等の定数 8件 | P2 | 1-2h |
 | skip_gate.py モジュール移設 | scripts/ → ztb/ | P2 | 1h |

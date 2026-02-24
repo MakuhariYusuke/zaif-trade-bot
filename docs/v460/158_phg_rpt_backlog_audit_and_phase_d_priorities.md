@@ -271,7 +271,7 @@ adaptive_offset: min=0.01, max=0.30
 | 問題 | `FillTestRunner` が 2,700+ 行の god object。Lot/Position, Order Execution, Measurement, Lifecycle, Record/IO の 5 責務が混在。 |
 | **159# 更新** | `scripts/v460/lib/` に 27+ モジュール分割進展 (`lot_manager.py`, `lot_sizer.py`, `order_monitor.py`, `pnl_measurer.py`, `balance_checker.py` 等)。159# §3.3: 稼働中は Facade 維持 + 契約テスト先行で段階移行。 |
 | **158# Phase 1** | `event_logger.py` (118行), `lock_manager.py` (146行), `fill_test_cli.py` (422行) 抽出。`run_fill_test.py` 2,715→2,164行 (-551行, -20.3%)。`skip_gate_evaluator.py` _compute_file_hash 統一。テスト 7 ファイル修正、1,738 全件 PASS。commit `1aed848e3` |
-| ステータス | **Phase 1 完了。Phase 2 (run_continuous/run_single_cycle 分割) は本番稼働リスクのため保留** |
+| ステータス | **✅ Phase 2 完了 (163#)**: run_fill_test.py 2,231→378行。3 Mixin 分割 (fill_record_helpers / fill_cycle_executor / fill_loop_orchestrator) + maker_price compute() 306→143行 + fill_config from_yaml() 479→139行。テスト 1,858 全件 PASS。 |
 | 残課題 | `run_continuous` (802行), `run_single_cycle` (483行) の更なる分割は次回 run 終了後 |
 | 工数見積 | Phase 1: 0.3 日 (実績)。Phase 2: 0.5 日 (予定) |
 
@@ -476,6 +476,7 @@ Week 3 (03/09–03/16):
 | 2026-02-24 | 158# P2-2: OrderManager 統合テスト 25 件 (demo/live/validation/adapter/price/error/async 全パス) |
 | 2026-02-24 | 158# P2-3: 障害モードテスト 27 件 (CircuitBreaker 状態遷移, タイムアウト, RiskManager 緊急停止, 価格フォールバック, 連続エラー) |
 | 2026-02-24 | fix: risk_manager.py `pd.DataFrame` NameError 修正 (`from __future__ import annotations`) |
+| 2026-02-25 | 163# P2-4 Phase 2 完了: run_fill_test.py 2,231→378行 3 Mixin 分割, maker_price compute() 306→143行, fill_config from_yaml() 479→139行, God Object 化防止警告追加, テスト 1,858 PASS (commit `6b766caf9`) |
 | 2026-02-24 | retrain_scheduler 再起動: PID 129404 (WF leakage fix 適用済み), 旧 PID 122860 停止確認 |
 | 2026-02-24 | テスト合計: 1793 passed (1741 + P2-2 25 件 + P2-3 27 件) |
 | 2026-02-24 | 158# P0-3 最終評価: trending sell フィルタ検証完了 (n=221 skip + 681 filled sell 分析)。trending sell=-0.66bps(skip正解), trending_down sell=+1.18bps(開放成功), 累積損失回避~145.9bps |

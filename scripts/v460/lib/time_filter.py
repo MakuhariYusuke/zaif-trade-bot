@@ -53,10 +53,13 @@ class TimeFilter:
     def consecutive_086_wait(self, value: int) -> None:
         self._consecutive_086_wait = value
 
-    def is_filtered(self, side: str | None = None) -> bool:
+    def is_filtered(
+        self, side: str | None = None, *, regime: str | None = None,
+    ) -> bool:
         """時間帯フィルター判定.
 
         100# fix: グローバル + side 別リストの union で判定。
+        163# 拡張: regime="high_vol" 時は追加遮断時間を適用。
         side=None の場合はグローバルリストのみで判定。
         Returns True → 呼び出し元はスリープすべき。
         """
@@ -66,12 +69,22 @@ class TimeFilter:
 
         global_hours = set(self._config.skip_utc_hours or [])
 
+        # 163# regime 連動: high_vol 時は追加遮断時間を union
+        extra_buy: set[int] = set()
+        extra_sell: set[int] = set()
+        if (
+            self._config.regime_adaptive_enabled
+            and regime == "high_vol"
+        ):
+            extra_buy = set(self._config.regime_adaptive_extra_buy or [])
+            extra_sell = set(self._config.regime_adaptive_extra_sell or [])
+
         if side == "buy" and self._config.skip_utc_hours_buy is not None:
             side_hours = set(self._config.skip_utc_hours_buy)
-            return current_utc_hour in (global_hours | side_hours)
+            return current_utc_hour in (global_hours | side_hours | extra_buy)
         if side == "sell" and self._config.skip_utc_hours_sell is not None:
             side_hours = set(self._config.skip_utc_hours_sell)
-            return current_utc_hour in (global_hours | side_hours)
+            return current_utc_hour in (global_hours | side_hours | extra_sell)
 
         return current_utc_hour in global_hours
 

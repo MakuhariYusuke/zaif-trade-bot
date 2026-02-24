@@ -348,3 +348,5 @@ Sell は以下 **6 層** のガードを通過する必要がある:
 |------|------|
 | 2026-02-25 | 初版作成 (17 件カタログ) |
 | 2026-02-25 | Inventory Skewing 実装反映 (`42a06d8e9`) — P0 項目消化 |
+| 2026-02-25 | God Object 分割完了 (`6b766caf9`): run_fill_test 2,231→378行 3 Mixin, maker_price compute() 306→143行, fill_config from_yaml() 479→139行 |
+| 2026-02-26 | IS YAML enabled=true, 107# Phase 3 Step 2 動的ゲーティング実装 (regime-adaptive time_filter) |

@@ -118,25 +118,23 @@ regime:
 # 新: buy 6/24h, sell 6/24h ブロック → 両方 open 13/24h (54%)
 time_filter:
   enabled: true               # 041#: 高 AS 時間帯のスキップ
-  skip_utc_hours: [16]        # 089#: グローバル = 両 side 共通ブロック (UTC16=JST1)
-  # 089# buy: mean ≤ -2.0 bps & n ≥ 5 のみ残す (旧 16h → 6h)
-  #   UTC01 (JST10): -2.43 bps n=14 | UTC02 (JST11): -2.78 bps n=8
-  #   UTC08 (JST17): -3.81 bps n=15 | UTC12 (JST21): -2.19 bps n=6
-  #   UTC16 (JST01): -3.60 bps n=7  | UTC18 (JST03): -3.24 bps n=8
-  #   UTC21 (JST06): -2.19 bps n=13
-  # 096# UTC08 追加: -3.81bps n=15 は統計的に確実な悪時間帯
-  skip_utc_hours_buy: [8, 16, 18]                   # 121# A1: 7h→3h (mean≤-3.0bps のみ残留: UTC08=-3.81, UTC16=-3.60, UTC18=-3.24)
-  # 089# sell: mean ≤ -2.0 bps & n ≥ 5 のみ残す (旧 16h → 6h)
-  #   UTC04 (JST13): -5.56 bps n=7  | UTC08 (JST17): -6.72 bps n=8
-  #   UTC13 (JST22): -1.91 bps n=14 | UTC14 (JST23): -4.62 bps n=8
-  #   UTC16 (JST01): -2.13 bps n=8
-  # 107# UTC17 解除: 実測 +0.65 bps (n=8) → 誤遮断。Phase 3 段階的廃止の第一歩
-  # 107# UTC13 残留: -1.91 bps は閾値 -2.0 未満だが AS% 28.6% & n=14 で統計的に有意
-  skip_utc_hours_sell: [4, 8, 14]          # 155# Phase3 Step1: 6h→3h (mean≤-3.0bpsのみ残留: UTC04=-5.56, UTC08=-6.72, UTC14=-4.62。 UTC15/21解除, UTC16=global)
+  skip_utc_hours: []           # 163# Step2: global block 廃止 (buy/sell 個別に統合済み)
+  # 163# Step 2 (107# Phase 3): PnL ≤ -3.0bps の最悪時間帯のみ残留
+  # 162# 10日分析: UTC08=-3.81bps, UTC16=-2.82bps が明確に悪い
+  # 旧 Step 1: BUY=[8,16,18], SELL=[4,8,14,+16(global)] → 有効遮断 BUY 3h, SELL 4h
+  # 新 Step 2: BUY=[16],       SELL=[8]                  → 有効遮断 BUY 1h, SELL 1h
+  skip_utc_hours_buy: [16]     # 163# Step2: UTC16(JST01) -2.82bps のみ残留
+  skip_utc_hours_sell: [8]     # 163# Step2: UTC08(JST17) -3.81bps のみ残留
   # 110# 086# デッドロック修正: alt_side==_last_side 時の連続待機上限
   # 0=旧動作(無制限), >0 で N 回超過後 alt_side を許可
   # 3回 × 120s = 6分待機後に解除 → 理論上 49%→~8% のアイドル削減
   max_086_consecutive_wait: 3
+  # 163# regime 連動動的ゲーティング (107# Phase 3 拡張)
+  # high_vol regime 時は旧 Step 1 の追加遮断を復元 → 安全ネット
+  # ranging/trending_up 時は Step 2 のみ → 機会最大化
+  regime_adaptive_enabled: true
+  regime_adaptive_extra_buy: [8, 18]     # high_vol 時のみ追加遮断
+  regime_adaptive_extra_sell: [4, 14]    # high_vol 時のみ追加遮断
 
 # ---- 049# E3 サンプリング ----
 e3:
@@ -338,7 +336,7 @@ loss_control:
 
   # 162# Inventory Skewing: 在庫偏重に応じた非対称 offset (balance_forced 根本対策)
   inventory_skewing:
-    enabled: false               # true で有効化 (ステージング後に ON)
+    enabled: true                # 163# 有効化 (段階デプロイ: まずドライランで検証)
     window: 100                  # 直近 N fill の在庫偏重を計算
     max_factor: 0.4              # 最大 offset 補正倍率 (40%)
     neutral_band: 0.1            # |imbalance| < 0.1 では補正なし (中立帯)

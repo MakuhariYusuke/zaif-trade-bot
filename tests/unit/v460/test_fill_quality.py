@@ -2528,18 +2528,21 @@ class Test052AdaptSellOffsetSync:
         assert cfg["side_offset"]["sell"] == 0.18
 
     def test_yaml_skip_utc_hours_buy_includes_12(self) -> None:
-        """121# A1: time_filter 緩和で UTC12 は buy skip から除外 (mean -2.19bps < -3.0 閾値)."""
+        """163# Step2: time_filter buy=[16]のみ。旧 UTC08/18 は regime_adaptive で復元."""
         from pathlib import Path
         import yaml  # type: ignore[import-untyped]
 
         yaml_path = Path("configs/v460/fill_test.yaml")
         with open(yaml_path) as f:
             cfg = yaml.safe_load(f)
-        # 121# A1: 7h→3h 緩和後は [8, 16, 18] のみ。UTC12 は解除済み
+        # 163# Step 2: BUY = [16] のみ残留
         assert 12 not in cfg["time_filter"]["skip_utc_hours_buy"]
-        assert 8 in cfg["time_filter"]["skip_utc_hours_buy"]
         assert 16 in cfg["time_filter"]["skip_utc_hours_buy"]
-        assert 18 in cfg["time_filter"]["skip_utc_hours_buy"]
+        # 163# Step 2: UTC08, 18 は通常時遮断解除 → regime_adaptive_extra_buy に移動
+        assert 8 not in cfg["time_filter"]["skip_utc_hours_buy"]
+        assert 18 not in cfg["time_filter"]["skip_utc_hours_buy"]
+        assert 8 in cfg["time_filter"]["regime_adaptive_extra_buy"]
+        assert 18 in cfg["time_filter"]["regime_adaptive_extra_buy"]
 
     def test_yaml_deadzone_updated(self) -> None:
         """052# で deadzone が 2.5 に更新されている."""
@@ -2569,7 +2572,7 @@ class Test052AdaptSellOffsetSync:
         assert FillTestConfig().min_order_btc == 0.001
 
     def test_yaml_skip_utc_hours_side_specific_089(self) -> None:
-        """155# Phase3 Step1 time_filter: buy=[8,16,18], sell=[4,8,14]."""
+        """163# Step2 time_filter: buy=[16], sell=[8]. 旧値は regime_adaptive に移動."""
         from pathlib import Path
         import yaml  # type: ignore[import-untyped]
 
@@ -2578,11 +2581,14 @@ class Test052AdaptSellOffsetSync:
             cfg = yaml.safe_load(f)
         buy_skip = cfg["time_filter"]["skip_utc_hours_buy"]
         sell_skip = cfg["time_filter"]["skip_utc_hours_sell"]
-        # 121# A1: buy = [8, 16, 18] (mean ≤ -3.0bps のみ残留)
-        assert buy_skip == [8, 16, 18], f"Expected [8,16,18], got {buy_skip}"
-        # 155# Phase3 Step1: sell 6h→3h (mean≤-3.0bpsのみ: UTC04/08/14)
-        assert sell_skip == [4, 8, 14], f"Expected [4,8,14], got {sell_skip}"
-        # 旧 UTC13 (sell) は -1.91bps で閾値未満 → 解除
+        # 163# Step 2: buy = [16], sell = [8]
+        assert buy_skip == [16], f"Expected [16], got {buy_skip}"
+        assert sell_skip == [8], f"Expected [8], got {sell_skip}"
+        # 163# regime_adaptive_extra に旧遮断時間を保持
+        tf = cfg["time_filter"]
+        assert tf["regime_adaptive_extra_buy"] == [8, 18]
+        assert tf["regime_adaptive_extra_sell"] == [4, 14]
+        # 旧 UTC13 (sell) は引き続き解除
         assert 13 not in sell_skip
 
     def test_trending_offset_boost_in_code(self) -> None:

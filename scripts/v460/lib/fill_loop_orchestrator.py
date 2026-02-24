@@ -95,8 +95,12 @@ class FillLoopOrchestratorMixin:
             self._buy_kill_mgr.track(record.post_fill_30s_pnl)
 
     def _is_time_filtered(self, side: str | None = None) -> bool:
-        """時間帯フィルター — 121# TimeFilter に委譲."""
-        return self._time_filter.is_filtered(side=side)
+        """時間帯フィルター — 121# TimeFilter に委譲.
+
+        163#: regime 連動動的ゲーティング — current_regime を渡す。
+        """
+        regime = self._current_regime_value()
+        return self._time_filter.is_filtered(side=side, regime=regime)
 
     # 106# R2: bps 換算定数 — FillRecordHelpersMixin._BPS_FACTOR を MRO 経由で継承
 

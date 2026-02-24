@@ -233,6 +233,10 @@ class FillTestConfig:
     volatility_guard_offset_boost_factor: float = 2.0
     # 110# 086# デッドロック修正: 連続 both-filtered 上限
     max_086_consecutive_wait: int = 3      # 0 = 無制限 (旧動作), >0 で N 回超過後 alt_side 許可
+    # 163# regime 連動動的ゲーティング (107# Phase 3 拡張)
+    regime_adaptive_enabled: bool = False
+    regime_adaptive_extra_buy: list[int] | None = None   # high_vol 時のみ追加遮断
+    regime_adaptive_extra_sell: list[int] | None = None  # high_vol 時のみ追加遮断
     # 088# sell 専用ハードガード
     sell_max_spread_jpy: float = 0.0       # 0 = 無制限, >0 でスプレッド超過時 sell スキップ
     sell_offset_floor: float = 0.0         # 0 = 無制限, >0 で sell offset 最低保証
@@ -916,6 +920,13 @@ class FillTestConfig:
         if "max_086_consecutive_wait" in tf:
             kwargs["max_086_consecutive_wait"] = tf["max_086_consecutive_wait"]
 
+        # 163# regime 連動動的ゲーティング
+        if tf.get("regime_adaptive_enabled"):
+            kwargs["regime_adaptive_enabled"] = True
+        if "regime_adaptive_extra_buy" in tf:
+            kwargs["regime_adaptive_extra_buy"] = tf["regime_adaptive_extra_buy"]
+        if "regime_adaptive_extra_sell" in tf:
+            kwargs["regime_adaptive_extra_sell"] = tf["regime_adaptive_extra_sell"]
 
         # 163# ステージ抽出: trading features
         kwargs.update(cls._parse_trading_features(yaml_cfg))
