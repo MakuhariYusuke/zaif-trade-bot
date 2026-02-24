@@ -1,7 +1,8 @@
-# 158# 分析レポート: P0-3 Trending フィルタ検証 + P1-2 Offset 最適化
+# 160# 分析レポート: P0-3 Trending フィルタ検証 + P1-2 Offset 最適化 + レジーム改善
 
 > 2026-02-24 Fill Test (PID 124796) 蓄積データに基づく分析結果。
 > 対象: `results/v460/fill_test/` 12 ファイル, 2,932 total records
+> 160# で追加: regime=None 問題の根本原因特定と skip record 全箇所への regime 伝搬
 
 ---
 
@@ -177,3 +178,76 @@ tuning:
 | 日付 | 内容 |
 |---|---|
 | 2026-02-24 | 初版: P0-3 trending フィルタ検証結果 + P1-2 offset 最適化分析 + YAML 外部化候補 |
+| 2026-02-24 | 160# 改番: regime=None 根本原因分析 + skip record regime 伝搬実装 |
+
+---
+
+## §5 160# レジーム改善: regime=None 問題の解消
+
+### 5.1 問題分析
+
+直近 5 ファイル (1,753 records) の regime フィールド分布:
+
+| 区分 | 件数 | 割合 | 説明 |
+|---|---|---|---|
+| `regime=None` | 770 | **43.9%** | ❌ 早期キャンセルで regime 未記録 |
+| `regime="ranging"` | 600 | 34.2% | ✅ 正常 |
+| `regime="trending"` | 321 | 18.3% | ✅ 正常 |
+| `regime="trending_down"` | 35 | 2.0% | ✅ 正常 |
+| `regime="trending_up"` | 27 | 1.5% | ✅ 正常 |
+| `regime="unknown"` | 0 | **0.0%** | ✅ 分類器は正常動作 (min_confidence=0.2 効果) |
+
+#### 根本原因: regime=None は「分類器の問題」ではなく「記録漏れ」
+
+`_make_skip_record()` による早期キャンセルレコードが `regime` 引数なしで生成されていた。
+分類器自体は近直データで unknown=0% と極めて良好に動作。
+
+cancel_reason 別内訳 (regime=None 770件):
+
+| cancel_reason | 件数 | 説明 |
+|---|---|---|
+| balance_forced_skip | 377 | 残高強制切替スキップ |
+| skip_gate | 169 | SkipGate ML 判定 |
+| orderbook_error | 140 | OB 取得失敗 |
+| spread_too_narrow | 37 | スプレッド狭小 |
+| sell_dynamic_kill | 16 | sell 動的停止 |
+| sell_guard_reject | 15 | sell ガード拒否 |
+| time_filter_086_deadlock | 14 | 時間帯フィルタ |
+| time_filter_both_sides | 2 | 両 side フィルタ |
+
+### 5.2 修正内容
+
+`_current_regime_value()` ヘルパーメソッドを追加し、全 `_make_skip_record` 呼び出しに `regime=` を伝搬:
+
+| ファイル | 修正箇所 | cancel_reason |
+|---|---|---|
+| `run_fill_test.py` | L818 | circuit_breaker_open |
+| `run_fill_test.py` | L912 | orderbook_error / sell_guard_reject |
+| `run_fill_test.py` | L969 | narrow_spread_pause |
+| `run_fill_test.py` | L1459 | time_filter_both_sides |
+| `run_fill_test.py` | L1521 | time_filter_086_deadlock |
+| `run_fill_test.py` | L1594 | preflight_insufficient |
+| `run_fill_test.py` | L1646 | preflight_pause |
+| `run_fill_test.py` | L1109 | api_error (direct FillRecord) |
+| `run_fill_test.py` | L1728 | balance_forced_skip |
+| `run_fill_test.py` | L1842 | buy_dynamic_kill |
+| `run_fill_test.py` | L1867 | sell_dynamic_kill |
+| `skip_gate_evaluator.py` | L478 | skip_gate_rule_unknown_sell |
+| `skip_gate_evaluator.py` | L629 | skip_gate (ML判定) |
+
+既に `regime=` を持っていた箇所 (変更不要):
+- L1755: `unknown_regime_buy_skip` → `regime="unknown"` (明示的)
+- L1814: `trending_sell_skip` → `regime=_current_regime.value` (明示的)
+
+### 5.3 期待効果
+
+| 指標 | Before | After |
+|---|---|---|
+| regime=None 率 | 43.9% (770/1753) | **~0%** (warmup 期間のみ) |
+| regime=unknown 率 | 0.0% (recent) | 0.0% (変化なし) |
+| 分析可能レコード率 | 56.1% | **~100%** |
+
+これにより:
+1. `compute_regime_metrics()` の精度向上 (43.9% のデータが分析対象に復帰)
+2. `skip_sell_unknown_regime` ゲートの改善 (regime_value=None を unknown 扱いしていた問題が解消)
+3. regime 別 PnL 分析の信頼性向上

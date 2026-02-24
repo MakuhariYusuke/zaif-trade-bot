@@ -494,6 +494,7 @@ class SkipGateEvaluator:
                 ask_depth_total=last_ask_depth,
                 run_id=run_id,
                 git_sha=git_sha,
+                regime=regime_value,  # 160#
             )
             return result
 
@@ -649,6 +650,7 @@ class SkipGateEvaluator:
                     ask_depth_total=last_ask_depth,
                     run_id=run_id,
                     git_sha=git_sha,
+                    regime=regime_value,  # 160#
                 )
             else:
                 logger.debug(

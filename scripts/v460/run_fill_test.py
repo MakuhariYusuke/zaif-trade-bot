@@ -382,6 +382,16 @@ class FillTestRunner(AbstractCycleRunner):
             **extra,  # type: ignore[arg-type]
         )
 
+    def _current_regime_value(self) -> str | None:
+        """160# skip record 用: 現在の確定レジーム文字列.
+
+        _make_skip_record の regime 引数に渡し、cancel 系レコードにも
+        レジーム情報を伝搬する。regime=None → 43.9% だった問題を解消。
+        """
+        if self._regime_detector is None:
+            return None
+        return self._regime_detector.current_regime.value
+
     def _get_regime_state_fields(self) -> dict:
         """121# A4: regime state persistence — FillTestState に渡す regime 関連フィールド."""
         if self._regime_detector is None:
@@ -809,6 +819,7 @@ class FillTestRunner(AbstractCycleRunner):
                     side=side_override or "buy",
                     cancel_reason=CR.CIRCUIT_BREAKER_OPEN,
                     cycle_id=cycle_id,
+                    regime=self._current_regime_value(),  # 160#
                 )
 
         # 055# Fix #2: Smart Side 判定用に最新板 imbalance を事前取得
@@ -908,6 +919,7 @@ class FillTestRunner(AbstractCycleRunner):
                     f"{e} [fallback_age={_fallback_age:.1f}s stale={_fallback_stale}]"
                     if _fallback_age is not None else str(e)
                 ),
+                regime=self._current_regime_value(),  # 160#
             )
 
         # 113# R1: SkipGate 判定を _evaluate_skip_gate() に委譲
@@ -961,6 +973,7 @@ class FillTestRunner(AbstractCycleRunner):
                         order_price=order_price,
                         spread_at_order=spread_at_order,
                         spread_offset_ratio=effective_offset_ratio,
+                        regime=self._current_regime_value(),  # 160#
                     )
             else:
                 self._narrow_spread_consecutive = 0
@@ -1109,6 +1122,7 @@ class FillTestRunner(AbstractCycleRunner):
                 spread_offset_ratio=effective_offset_ratio,  # 096# 計算済み実効値
                 run_id=self._run_id,       # 088# データ品質: エラー時も必須
                 git_sha=self._git_sha,     # 088# quarantine 防止
+                regime=self._current_regime_value(),  # 160#
             )
 
         # 113# R1: ポーリング監視 + 未約定キャンセルを _monitor_fill_polling() に委譲
@@ -1446,6 +1460,7 @@ class FillTestRunner(AbstractCycleRunner):
                             side=next_side,
                             cancel_reason=CR.TIME_FILTER_BOTH_SIDES,
                             order_quantity=0.0,
+                            regime=self._current_regime_value(),  # 160#
                         ))
                     else:
                         # 079# heartbeat: 長時間抑制中にプロセス生存を定期ログ
@@ -1507,6 +1522,7 @@ class FillTestRunner(AbstractCycleRunner):
                                     side=next_side,
                                     cancel_reason=CR.TIME_FILTER_086_DEADLOCK,
                                     order_quantity=0.0,
+                                    regime=self._current_regime_value(),  # 160#
                                 ))
                             # 107# R1: 重複 flush → _maybe_flush_batch 統合
                             batch = self._batch_persistence.maybe_flush(batch, "alt_side==last_side wait")
@@ -1579,6 +1595,7 @@ class FillTestRunner(AbstractCycleRunner):
                         side=next_side,
                         cancel_reason=CR.PREFLIGHT_INSUFFICIENT,
                         order_quantity=self._current_lot,
+                        regime=self._current_regime_value(),  # 160#
                     ))
                     # 107# R1: 重複 flush → _maybe_flush_batch 統合
                     batch = self._batch_persistence.maybe_flush(batch, "preflight skip")
@@ -1631,6 +1648,7 @@ class FillTestRunner(AbstractCycleRunner):
                             cancel_reason=CR.PREFLIGHT_PAUSE,
                             cycle_id=f"preflight_pause_{self._preflight_pause_count}_{int(time.time())}",
                             order_quantity=0.0,
+                            regime=self._current_regime_value(),  # 160#
                         ))
                         batch = self._batch_persistence.maybe_flush(batch, "preflight_pause")
                         self._preflight_skip_count = 0
@@ -1713,6 +1731,7 @@ class FillTestRunner(AbstractCycleRunner):
                         order_quantity=self._current_lot,
                         balance_forced_switch=True,
                         balance_forced_consecutive=self._balance_forced_skip_count,
+                        regime=self._current_regime_value(),  # 160#
                     )
                     batch.append(_skip_record)
                     total_count += 1
@@ -1824,6 +1843,7 @@ class FillTestRunner(AbstractCycleRunner):
                     side="buy",
                     cancel_reason=CR.BUY_DYNAMIC_KILL,
                     order_quantity=self._current_lot,
+                    regime=self._current_regime_value(),  # 160#
                 )
                 batch.append(_skip_record)
                 total_count += 1
@@ -1848,6 +1868,7 @@ class FillTestRunner(AbstractCycleRunner):
                     side="sell",
                     cancel_reason=CR.SELL_DYNAMIC_KILL,
                     order_quantity=self._current_lot,
+                    regime=self._current_regime_value(),  # 160#
                 )
                 batch.append(_skip_record)
                 total_count += 1
