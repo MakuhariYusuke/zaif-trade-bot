@@ -26,7 +26,7 @@
 - **未対応合計**: 22 件 → **解決済: 12 件、残: 10 件**
 - **P0 (Phase D 即時実行)**: 4 件 — ✅ P0-1 SkipGate sell 再訓練, P0-2 sell offset A/B (データ観測待ち), ⏳ P0-3 trending (n≥30 待ち), ✅ P0-4 Oracle テスト
 - **P1 (168h run 中に解決)**: 6 件 — P1-2 fill rate offset, ✅ P1-1 balance_forced 救済, ✅ P1-3 reprice ログ, ✅ P1-4 trades_health, ✅ P1-5 A/B テスト基盤, ✅ P1-6 時間帯閾値
-- **P2 (ph3/ph5 ブロッカー)**: 6 件 — P2-1 WF バグ, P2-2 execute_trade, P2-3 failure mode test, ✅ P2-4 分割 Phase1 完了, P2-5 skip_gate.py, ✅ P2-6 VG JSONL ログ
+- **P2 (ph3/ph5 ブロッカー)**: 6 件 — ✅ P2-1 WF リーケージ修正, ✅ P2-2 execute_trade 統合テスト, ✅ P2-3 failure mode test, ✅ P2-4 分割 Phase1 完了, P2-5 skip_gate.py, ✅ P2-6 VG JSONL ログ
 - **P3 (低優先 / v461+)**: 6 件 — deferred items
 
 ---
@@ -193,29 +193,29 @@
 | 項目 | 値 |
 |---|---|
 | 出典 | 118# §4.3, 111# §6 |
-| 問題 | v458 WalkForward に leakage バグ + fold splitting の off-by-one が残存。retrain_scheduler の WF 評価精度に直結。 |
-| ステータス | 118# で OPEN のまま。現行 retrain_scheduler は 131# で独自 WF ロジックを使用しており部分回避中。 |
-| アクション | retrain_scheduler の WF ロジックを検証し、v458 バグが影響していないことを確認。影響がある場合は修正。 |
-| 工数見積 | 0.5 日 |
+| 問題 | `_evaluate_wf_single` が `eval_set = [(X_test_sc, y_test)]` でテストデータをリークしていた。multi-window 版は正常 (`X_val` 使用)。 |
+| 修正内容 | (1) train/embargo/val/test の 4 分割に変更 (2) `wf_val_ratio_single` (default 0.1) パラメータ追加 (3) `wf_embargo_rows` (default 0) でアンバーゴ対応 (4) early stopping は `X_val` を使用 (5) `sample_weight` スライシングを `[:train_end]` に修正 |
+| テスト | `TestWFSingleWindowLeakageFix` 3 件追加 (val 分離検証, embargo 検証, 最小データ検証) |
+| **ステータス** | **✅ 完了** (commit `7c5bed6ce`) |
+| retrain 再起動 | PID 129404 (2026-02-24 13:53:58) で修正済みコードで再起動完了 |
 
-### P2-2: execute_trade() 実装 (013# D-1) — 159# 更新: 実装済み・統合検証待ち
+### P2-2: execute_trade() 実装 (013# D-1) — ✅ 統合テスト完了
 
 | 項目 | 値 |
 |---|---|
 | 出典 | 013# D-1, 118# §6.1 |
-| 問題 | ~~`OrderManager.execute_trade()` は dry-run パスのみ実装。~~ |
-| **159# 更新** | `ztb/trading/live_trader/components/order_manager.py:29` に live 実装あり。fill_test は独自注文フローだが、`live_trader.py:1634` から `order_manager.execute_trade()` を呼び出す統合済み。残課題は統合テストの充実。 |
-| ステータス | **実装済み・統合検証待ち** |
-| 工数見積 | 0.3 日 (テスト追加のみ) |
+| **159# 更新** | `ztb/trading/live_trader/components/order_manager.py:29` に live 実装あり。fill_test は独自注文フローだが、`live_trader.py:1634` から `order_manager.execute_trade()` を呼び出す統合済み。 |
+| テスト | `test_158_order_manager_integration.py` 25 件: Demo mode (4), Validation (5), Live success (4), No adapter (2), No price (3), Exchange error (2), Order None (2), Async bridge (2), get_trade_info (1) |
+| **ステータス** | **✅ 完了** (commit `628e7e710`) |
 
-### P2-3: 運用失敗モードテスト (118# §8.5)
+### P2-3: 運用失敗モードテスト (118# §8.5) — ✅ 完了
 
 | 項目 | 値 |
 |---|---|
 | 出典 | 118# §6.3, 118# §8.5 |
-| 問題 | API 障害、部分約定、ネットワーク断等の失敗モードに対する統合テストが未実装。障害注入テスト設計が必要。 |
-| アクション | `tests/integration/v460/test_failure_modes.py` を設計・実装。mock レベルでの障害注入テスト。 |
-| 工数見積 | 1.0 日 |
+| テスト | `test_158_failure_modes.py` 27 件: CircuitBreaker 状態遷移 (8), OrderManager タイムアウト (2), RiskManager 緊急停止/制限 (10), 価格フォールバック (4), 連続エラー (3) |
+| 副次修正 | `risk_manager.py`: `pd.DataFrame` 未 import (NameError) を `from __future__ import annotations` + `TYPE_CHECKING` で修正 |
+| **ステータス** | **✅ 完了** (commit `628e7e710`) |
 
 ### P2-4: run_fill_test 分割設計 (153# タスク B) — Phase 1 完了
 
@@ -426,3 +426,9 @@ Week 3 (03/09–03/16):
 | 2026-02-24 | 158# P2-4 Phase 1: run_fill_test.py 分割 — event_logger/lock_manager/fill_test_cli 抽出 (2,715→2,164行, -20.3%). テスト1,738全件PASS (commit `1aed848e3`) |
 | 2026-02-24 | 158# P2-4 Phase 2 検討: run_continuous (802行)/run_single_cycle (483行) の更なる分割は本番稼働リスク考慮で保留 |
 | 2026-02-24 | 158# fix: test_157 SkipGateEvaluator._compute_file_hash → compute_file_hash 直接使用に統一, test_136 浮動小数点精度許容 |
+| 2026-02-24 | 158# P2-1: WF `_evaluate_wf_single` テストデータリーケージ修正 — eval_set を X_val に変更, wf_val_ratio_single/wf_embargo_rows 追加, テスト3件 (commit `7c5bed6ce`) |
+| 2026-02-24 | 158# P2-2: OrderManager 統合テスト 25 件 (demo/live/validation/adapter/price/error/async 全パス) |
+| 2026-02-24 | 158# P2-3: 障害モードテスト 27 件 (CircuitBreaker 状態遷移, タイムアウト, RiskManager 緊急停止, 価格フォールバック, 連続エラー) |
+| 2026-02-24 | fix: risk_manager.py `pd.DataFrame` NameError 修正 (`from __future__ import annotations`) |
+| 2026-02-24 | retrain_scheduler 再起動: PID 129404 (WF leakage fix 適用済み), 旧 PID 122860 停止確認 |
+| 2026-02-24 | テスト合計: 1793 passed (1741 + P2-2 25 件 + P2-3 27 件) |
