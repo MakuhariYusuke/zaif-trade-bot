@@ -41,6 +41,7 @@ class TrainingProgressCallback(BaseCallback):
         checkpoint_manager: Optional[Any] = None,
     ):
         super().__init__(verbose)
+        self.verbose = verbose  # Ensure verbose is always available (SB3 compat)
         self.check_freq = check_freq
         self.system_optimizer = system_optimizer
         self.metrics_csv_writer = metrics_csv_writer

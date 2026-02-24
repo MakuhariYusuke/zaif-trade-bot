@@ -41,10 +41,10 @@ def simple_df() -> pd.DataFrame:
 def env_config() -> EnvironmentConfig:
     """Create test environment configuration."""
     return EnvironmentConfig(
-        commission_rate=0.001,
-        slippage_rate=0.0005,
-        initial_balance=100000.0,
-        position_size_pct=0.1,
+        commission=0.001,
+        slippage=0.0005,
+        initial_portfolio_value=100000.0,
+        max_position_size=0.1,
         allow_reverse=False,
     )
 
@@ -246,8 +246,8 @@ class TestCustomPPOWithSELLMitigationTrainer:
 
         # Create config
         config = {
-            "commission_rate": 0.001,
-            "slippage_rate": 0.0005,
+            "commission": 0.001,
+            "slippage": 0.0005,
             "initial_balance": 100000.0,
             "position_size_pct": 0.1,
             "allow_reverse": False,

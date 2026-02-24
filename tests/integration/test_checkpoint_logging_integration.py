@@ -20,6 +20,27 @@ from ztb.training.unified_trainer.base.callbacks import TrainingProgressCallback
 from ztb.utils.logging_utils import StructuredLogger
 
 
+# Module-level picklable stand-in for SAC model.
+# Mock(spec=SAC) cannot be pickled reliably across test ordering.
+class _StubOptimizer:
+    param_groups = [{"lr": 0.0003}]
+    def state_dict(self) -> dict:
+        return {"param_groups": self.param_groups}
+
+
+class _StubPolicy:
+    def __init__(self) -> None:
+        self.optimizer = _StubOptimizer()
+    def state_dict(self) -> dict:
+        return {"weights": []}
+
+
+class _StubModel:
+    """Picklable SAC model stub for checkpoint tests."""
+    def __init__(self) -> None:
+        self.policy = _StubPolicy()
+
+
 class TestCheckpointLoggingIntegration(unittest.TestCase):
     """Integration tests for checkpoint and logging functionality."""
 
@@ -38,12 +59,7 @@ class TestCheckpointLoggingIntegration(unittest.TestCase):
             config=self.checkpoint_config
         )
 
-        # Setup mock SAC model
-        self.mock_model = Mock(spec=SAC)
-        self.mock_policy = Mock()
-        self.mock_model.policy = self.mock_policy
-        self.mock_optimizer = Mock()
-        self.mock_policy.optimizer = self.mock_optimizer
+        self.mock_model = _StubModel()
 
         # Setup structured logger
         self.structured_logger = StructuredLogger("test.integration", json_format=True)
@@ -273,11 +289,7 @@ class TestPerformanceUnderLoad(unittest.TestCase):
             config=TrainingCheckpointConfig(async_save=False)
         )
 
-        self.mock_model = Mock(spec=SAC)
-        self.mock_policy = Mock()
-        self.mock_model.policy = self.mock_policy
-        self.mock_optimizer = Mock()
-        self.mock_policy.optimizer = self.mock_optimizer
+        self.mock_model = _StubModel()
 
     def tearDown(self):
         """Clean up after tests."""

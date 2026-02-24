@@ -193,25 +193,9 @@ class BaseRewardCalculator:
             enable_advanced_integration=enable_advanced_integration,
         )
 
-        # 4. Asymmetric Reward Scaler
-        long_position_reward_multiplier = self.get_setting_float(
-            "asymmetric_reward_scaling.long_position_reward_multiplier", 1.3
-        )
-        short_position_reward_multiplier = self.get_setting_float(
-            "asymmetric_reward_scaling.short_position_reward_multiplier", 0.7
-        )
-        long_position_penalty_multiplier = self.get_setting_float(
-            "asymmetric_reward_scaling.long_position_penalty_multiplier", 0.9
-        )
-        short_position_penalty_multiplier = self.get_setting_float(
-            "asymmetric_reward_scaling.short_position_penalty_multiplier", 0.95
-        )
-
+        # 4. Asymmetric Reward Scaler — uses env_config to read settings internally
         self.asymmetric_reward_scaler = AsymmetricRewardScaler(
-            long_position_reward_multiplier=long_position_reward_multiplier,
-            short_position_reward_multiplier=short_position_reward_multiplier,
-            long_position_penalty_multiplier=long_position_penalty_multiplier,
-            short_position_penalty_multiplier=short_position_penalty_multiplier,
+            env_config=self.config,
         )
 
     def _resolve_setting(self, key: str, default: Any) -> Any:

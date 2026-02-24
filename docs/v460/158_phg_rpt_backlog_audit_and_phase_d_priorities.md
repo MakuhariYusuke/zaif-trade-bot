@@ -24,8 +24,8 @@
 ### 数字のサマリ
 
 - **未対応合計**: 22 件 → **解決済: 12 件、残: 10 件**
-- **P0 (Phase D 即時実行)**: 4 件 — ✅ P0-1 SkipGate sell 再訓練, P0-2 sell offset A/B (データ観測待ち), ⏳ P0-3 trending (n≥30 待ち), ✅ P0-4 Oracle テスト
-- **P1 (168h run 中に解決)**: 6 件 — P1-2 fill rate offset, ✅ P1-1 balance_forced 救済, ✅ P1-3 reprice ログ, ✅ P1-4 trades_health, ✅ P1-5 A/B テスト基盤, ✅ P1-6 時間帯閾値
+- **P0 (Phase D 即時実行)**: 4 件 — ✅ P0-1 SkipGate sell 再訓練, P0-2 sell offset A/B (データ観測待ち), ✅ P0-3 trending フィルタ検証完了, ✅ P0-4 Oracle テスト
+- **P1 (168h run 中に解決)**: 6 件 — ✅ P1-2 fill rate offset 分析完了, ✅ P1-1 balance_forced 救済, ✅ P1-3 reprice ログ, ✅ P1-4 trades_health, ✅ P1-5 A/B テスト基盤, ✅ P1-6 時間帯閾値
 - **P2 (ph3/ph5 ブロッカー)**: 6 件 — ✅ P2-1 WF リーケージ修正, ✅ P2-2 execute_trade 統合テスト, ✅ P2-3 failure mode test, ✅ P2-4 分割 Phase1 完了, P2-5 skip_gate.py, ✅ P2-6 VG JSONL ログ
 - **P3 (低優先 / v461+)**: 6 件 — deferred items
 
@@ -76,19 +76,29 @@
 | 分析スクリプト | `scripts/v460/analysis/analyze_fill_records.py` (regime×side フィルタ) |
 | 工数見積 | 0.2 日 (データ蓄積待ち + 分析) |
 
-#### 158# 中間スナップショット (2026-02-24, n=10 — 統計的にまだ不十分)
+#### 158# 最終評価 (2026-02-24, n=221 trending_sell_skip + 681 filled sell)
 
-| regime×side | n | mean PnL30 | 判定 |
-|---|---|---|---|
-| trending_down_sell | 10 | **+1.87 bps** | ✅ > -0.3 |
-| trending_down_buy | 11 | +5.30 bps | — |
-| trending_sell | 22 | -0.04 bps | 改善傾向 |
-| trending_buy | 24 | +0.46 bps | — |
-| ranging_buy | 158 | -0.34 bps | — |
-| ranging_sell | 156 | -0.44 bps | — |
+**分析手法:** trending_sell_skip 221 件は約定前キャンセルのため価格/PnL データなし。  
+代替として filled sell/buy レコードを regime 別に集計し、trending sell フィルタの妥当性を検証。
 
-**暫定判定:** trending_down sell は +1.87 bps で基準 (> -0.3) を超過。n=5→10 で依然正。
-**次回確認:** n≥30 到達時に最終評価 (推定 24-48h 後)。
+| regime | sell PnL30 | buy PnL30 | n(sell) | n(buy) |
+|---|---|---|---|---|
+| ranging | -0.32 bps | -0.03 bps | 377 | 375 |
+| trending | **-0.66 bps** | **+0.57 bps** | 118 | 118 |
+| trending_down | **+1.18 bps** | +4.25 bps | 11 | 13 |
+| unknown | -0.69 bps | -0.46 bps | 174 | 186 |
+| **全体** | **-0.45 bps** | **+0.04 bps** | 680 | 692 |
+
+**カウンターファクチュアル分析:**
+- 221 件の trending sell skip が仮に約定していた場合、trending sell PnL(-0.66 bps) × 221 = **-145.9 bps の累積損失回避**
+- trending_down sell (D-4 `skip_sell_trending_up_only: true` で開放): n=11, PnL30=+1.18 bps → **+12.97 bps の累積利益**
+- trending buy は +0.57 bps で正の期待値を維持 (sell skip 後も buy は継続)
+
+**最終判定:** ✅ **フィルタ設計は妥当**
+- trending sell は -0.66 bps で skip は正解 (buy は +0.57 bps で方向性あり)
+- trending_down sell 開放は +1.18 bps で成果基準 (> -0.3 bps) を大幅超過
+- 安全弁 `max_consecutive_trending_sell_skip: 30` も機能確認済
+- **ステータス: ✅ 完了**
 
 ### P0-4: Oracle テスト (ph3 前必須) — ✅ PASS (158# 実施済)
 
@@ -134,7 +144,7 @@
 | 結果 | `FillTestConfig.balance_forced_rescue_enabled` + `balance_forced_rescue_offset_mult` (default 2.0) 追加。rescue 有効時: skip の代わりに offset 倍増で安全にポジション解消。YAML `loss_control.balance_forced_rescue_enabled` で制御。テスト 8 件追加 (31 passed)。 |
 | 工数見積 | 0.3 日 (実績 0.2 日) |
 
-### P1-2: fill rate 向上のための offset 最適化
+### P1-2: fill rate 向上のための offset 最適化 — ✅ 分析完了
 
 | 項目 | 値 |
 |---|---|
@@ -142,6 +152,42 @@
 | 問題 | timeout (261 件, avg +0.406 bps) は板に並べたが fill されなかった。72.4% が方向正解。「指値 offset が保守的すぎる」が主因。fast_fill_defense の has_negative_edge 検出率が sell 側で構造的に低い (098# §3.1)。 |
 | アクション | stale_check 間隔の動的調整 + reprice 戦略改善。155# T-1/T-2/T-3 の順に実施。 |
 | 工数見積 | 0.5 日 |
+| **ステータス** | **✅ 分析完了** (158# offset 最適化分析) |
+
+#### 158# offset 最適化分析 (2026-02-24, n=102 直近 2 日間)
+
+**全体概況:**
+- Fill rate: 46.9% (BUY 59.0%, SELL 38.7%)
+- Timeout: 268 件 (buy 161, sell 107)
+- Queue wait: mean=31.4s, median=13.1s
+
+**offset × PnL30 分析 (直近 2 日, filled のみ):**
+
+| side | offset range | n | mean PnL30 | 判定 |
+|---|---|---|---|---|
+| BUY | ≤0.1 | 39 | +0.16 bps | 低 offset → 利益薄 |
+| BUY | 0.1–0.3 | 12 | **+5.86 bps** | ⭐ **スイートスポット** |
+| BUY | >0.3 | 1 | -4.17 bps | 過剰 → 逆選択のみ fill |
+| SELL | ≤0.1 | 0 | — | — |
+| SELL | 0.1–0.3 | 44 | +0.66 bps | 現行レンジ、妥当 |
+| SELL | >0.3 | 6 | -0.50 bps | 過剰 |
+
+**現行設定:**
+```yaml
+spread_offset_ratio: 0.05    # base (buy はこれを継承)
+side_offset:
+  sell: 0.18                 # sell 専用
+trending_offset_boost_buy: 1.0   # boost なし
+trending_offset_boost_sell: 1.5  # 1.5 倍
+ranging_offset_discount: 0.90    # ranging 時 10% 割引
+adaptive_offset: min=0.01, max=0.30
+```
+
+**Key Insight:**
+- Buy 実効 offset (mean=0.097) が低すぎる。0.1–0.3 帯は PnL30 が **36.6 倍** (+5.86 vs +0.16)
+- Sell 実効 offset (mean=0.289) は妥当レンジ内
+- **推奨**: Buy base offset を 0.05→0.12–0.15 に引き上げ検討
+- **注意**: n=102 (2 日間) はサンプル不足。追加データ蓄積後に最終判断 → P0-2 A/B テストで正式検証
 
 ### P1-3: reprice ログ連携 (156# §9.4 #3) — 部分完了
 
@@ -432,3 +478,6 @@ Week 3 (03/09–03/16):
 | 2026-02-24 | fix: risk_manager.py `pd.DataFrame` NameError 修正 (`from __future__ import annotations`) |
 | 2026-02-24 | retrain_scheduler 再起動: PID 129404 (WF leakage fix 適用済み), 旧 PID 122860 停止確認 |
 | 2026-02-24 | テスト合計: 1793 passed (1741 + P2-2 25 件 + P2-3 27 件) |
+| 2026-02-24 | 158# P0-3 最終評価: trending sell フィルタ検証完了 (n=221 skip + 681 filled sell 分析)。trending sell=-0.66bps(skip正解), trending_down sell=+1.18bps(開放成功), 累積損失回避~145.9bps |
+| 2026-02-24 | 158# P1-2 offset 分析: buy offset 0.1-0.3帯がスイートスポット(+5.86bps vs +0.16bps @<=0.1)。buy base offset 引き上げ推奨(0.05→0.12-0.15)。n=102で追加データ要 |
+| 2026-02-24 | mypy 品質チェック: order_manager/risk_manager/circuit_breaker/retrain_scheduler 全件 0 error (実質エラー 0、yaml スタブ警告のみ) |

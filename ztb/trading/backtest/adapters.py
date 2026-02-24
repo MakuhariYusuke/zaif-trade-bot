@@ -559,6 +559,12 @@ class ActionSignalGuideAdapter:
         )()
         self.threshold_manager = ThresholdManager(threshold_config)
 
+        # Hyperparameters for dynamic threshold calculation
+        self.hyperparameters: dict[str, float] = {
+            "confidence_threshold": 0.6,
+            "signal_strength_threshold": 0.3,
+        }
+
         self.walk_forward_analyzer = WalkForwardAnalyzer()
         self.active_positions = {}  # Track open positions with stop levels
 

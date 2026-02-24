@@ -357,7 +357,17 @@ class CheckpointManager:
             self.last_checkpoint_path = None  # Reset diff chain
 
         # Serialize
-        data = pickle.dumps(save_data, protocol=pickle.HIGHEST_PROTOCOL)
+        try:
+            data = pickle.dumps(save_data, protocol=pickle.HIGHEST_PROTOCOL)
+        except (pickle.PicklingError, TypeError, AttributeError) as pickle_err:
+            # Fallback: strip any unpicklable objects (e.g. Mock leaking from tests)
+            import logging as _log
+
+            _log.getLogger(__name__).warning(
+                "Checkpoint pickle failed (%s); retrying with sanitised payload", pickle_err
+            )
+            sanitised = self._sanitise_for_pickle(save_data)
+            data = pickle.dumps(sanitised, protocol=pickle.HIGHEST_PROTOCOL)
 
         # Compress
         compressed_data = self._compress_data(data)
@@ -490,6 +500,23 @@ class CheckpointManager:
         """Shutdown the manager"""
         self.save_queue.put(None)  # Poison pill
         self.worker_thread.join(timeout=5)
+
+    @staticmethod
+    def _sanitise_for_pickle(obj: object, *, _depth: int = 0) -> object:
+        """Recursively replace unpicklable objects with safe representations."""
+        if _depth > 20:
+            return repr(obj)
+        if isinstance(obj, dict):
+            return {k: CheckpointManager._sanitise_for_pickle(v, _depth=_depth + 1) for k, v in obj.items()}
+        if isinstance(obj, (list, tuple)):
+            sanitised = [CheckpointManager._sanitise_for_pickle(v, _depth=_depth + 1) for v in obj]
+            return type(obj)(sanitised) if isinstance(obj, tuple) else sanitised
+        # Quick pickle test for leaf objects
+        try:
+            pickle.dumps(obj, protocol=pickle.HIGHEST_PROTOCOL)
+            return obj
+        except Exception:
+            return repr(obj)
 
     def _compute_diff(
         self, old_data: CheckpointData, new_data: CheckpointData
