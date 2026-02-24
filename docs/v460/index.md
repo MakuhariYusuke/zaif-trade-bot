@@ -184,6 +184,7 @@
 | 160 | rpt | [160_phg_rpt_analysis_and_regime_tuning.md](160_phg_rpt_analysis_and_regime_tuning.md) | P0-3/P1-2 分析 + YAML外部化 + regime=None根本修正 + P0-B A/B判定3指標固定 + P0-C trending_down sell実測評価 |
 | 161 | impl | [161_phg_impl_code_quality_and_structural_improvements.md](161_phg_impl_code_quality_and_structural_improvements.md) | 複雑性監査 + SIGTERM graceful shutdown + DRY統合 + asyncio安全化 |
 | 162 | rpt | [162_phg_rpt_fill_test_10day_log_analysis.md](162_phg_rpt_fill_test_10day_log_analysis.md) | Fill Test 10日間ログ分析: AS率27%, Fill Rate急落, 改善提案 |
+| 163 | rpt | [163_phg_rpt_stopgap_measures_catalog.md](163_phg_rpt_stopgap_measures_catalog.md) | 止血施策カタログ: 17 件のストップギャップ措置を文書化 + FillTestRunner mixin 分割 |
 
 ---
 

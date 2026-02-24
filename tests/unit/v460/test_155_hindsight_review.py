@@ -367,7 +367,9 @@ class TestBalanceForcedTrendingBypass:
         'not _balance_forced' 条件が含まれていること."""
         import ast
         from pathlib import Path
-        src = Path("scripts/v460/run_fill_test.py").read_text(encoding="utf-8")
+        # 163# mixin 分割: balance_forced チェックは orchestrator に存在
+        from tests.unit.v460._fill_test_source import FILL_LOOP_ORCHESTRATOR
+        src = FILL_LOOP_ORCHESTRATOR.read_text(encoding="utf-8")
         tree = ast.parse(src)
         found = False
         for node in ast.walk(tree):
@@ -528,7 +530,9 @@ class TestFallbackPriceStaleness:
     def test_fallback_stale_check_in_code(self) -> None:
         """run_fill_test.py に fallback_stale チェックが含まれること."""
         from pathlib import Path
-        src = Path("scripts/v460/run_fill_test.py").read_text(encoding="utf-8")
+        # 163# mixin 分割: fallback stale チェックは executor に存在
+        from tests.unit.v460._fill_test_source import FILL_CYCLE_EXECUTOR
+        src = FILL_CYCLE_EXECUTOR.read_text(encoding="utf-8")
         assert "_fallback_stale" in src
         assert "_fallback_age" in src
         # stale 時は price=0.0 にフォールバック
@@ -549,8 +553,8 @@ class TestBalanceForcedBypassHorizontal:
     """
 
     def _get_source(self) -> str:
-        from pathlib import Path
-        return Path("scripts/v460/run_fill_test.py").read_text(encoding="utf-8")
+        from tests.unit.v460._fill_test_source import FILL_LOOP_ORCHESTRATOR  # 163# mixin 分割
+        return FILL_LOOP_ORCHESTRATOR.read_text(encoding="utf-8")
 
     def test_skip_buy_unknown_regime_has_bypass(self) -> None:
         """skip_buy_unknown_regime ブロックに 'not _balance_forced' が含まれること."""
@@ -624,7 +628,9 @@ class TestGetFallbackPrice:
     def test_run_fill_test_uses_public_api(self) -> None:
         """run_fill_test が _prev_mid_price を直接参照していないこと."""
         from pathlib import Path
-        src = Path("scripts/v460/run_fill_test.py").read_text(encoding="utf-8")
+        # 163# mixin 分割: 全ソースを連結して public API 使用を検証
+        from tests.unit.v460._fill_test_source import read_fill_test_runner_source
+        src = read_fill_test_runner_source()
         assert "get_fallback_price()" in src, "must use public API"
         # 直接の private access がないこと
         assert "._prev_mid_price" not in src, (
@@ -700,6 +706,8 @@ class TestNoTimestampFallbackStale:
     def test_no_timestamp_treated_as_stale(self) -> None:
         """タイムスタンプなしパスが _fallback_stale = True を設定すること."""
         from pathlib import Path
-        src = Path("scripts/v460/run_fill_test.py").read_text(encoding="utf-8")
+        # 163# mixin 分割: stale 処理は executor に存在
+        from tests.unit.v460._fill_test_source import FILL_CYCLE_EXECUTOR
+        src = FILL_CYCLE_EXECUTOR.read_text(encoding="utf-8")
         # "no timestamp" パスで stale 扱い
         assert "treated as stale" in src

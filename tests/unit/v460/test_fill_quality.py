@@ -2077,7 +2077,7 @@ class Test049SideOffset:
         import inspect
         from scripts.v460.lib.maker_price import MakerPriceCalculator
 
-        source = inspect.getsource(MakerPriceCalculator.compute)
+        source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
         # 096# 状態分離: base_offset_ratio* を使用
         assert "base_offset_ratio" in source
         assert "effective_offset_ratio" in source
@@ -2203,7 +2203,7 @@ class Test050EffectiveOffsetRecord:
         import inspect
         from scripts.v460.lib.maker_price import MakerPriceCalculator
 
-        source = inspect.getsource(MakerPriceCalculator.compute)
+        source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
         assert "effective_offset_ratio" in source
         # MakerPriceResult に price, spread, effective_offset_ratio を格納
         assert "MakerPriceResult" in source
@@ -2593,7 +2593,7 @@ class Test052AdaptSellOffsetSync:
         import inspect
         from scripts.v460.lib.maker_price import MakerPriceCalculator
 
-        source = inspect.getsource(MakerPriceCalculator.compute)
+        source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
         assert "trending" in source
         assert "regime_trending_offset_boost" in source
 
@@ -2690,7 +2690,7 @@ class Test107TimeFilterDynamicGating:
         import inspect
         from scripts.v460.lib.maker_price import MakerPriceCalculator
 
-        source = inspect.getsource(MakerPriceCalculator.compute)
+        source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
         assert "volatility_guard" in source
         assert "velocity_threshold_bps" in source or "vpin_threshold" in source
 

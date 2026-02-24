@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 163# God Object 分割 + 構造健全化
+
+- **run_fill_test.py Mixin 分割** (2231→378 行): FillTestRunner を 3 Mixin に分解
+  - `fill_record_helpers.py` (270 行): skip record / lot / regime ヘルパー
+  - `fill_cycle_executor.py` (652 行): run_single_cycle + OB/SkipGate/PnL
+  - `fill_loop_orchestrator.py` (1094 行): run_continuous + kill/filter/adapt
+- **maker_price.py compute() 分割** (306→143 行): 4 private ステージメソッドに抽出
+  - `_apply_regime_boosts`, `_apply_spread_adaptive`, `_apply_volatility_guard`, `_apply_imbalance_risk`
+- **fill_config.py from_yaml() 分割** (479→139 行): 5 @staticmethod セクションパーサー
+  - `_parse_trading_features`, `_parse_skip_gate_section`, `_parse_stale_vg_section`, `_parse_stopgap_section`, `_parse_infra_section`
+- **Bug fix**: `_parse_infra_section` の `止血` 変数未定義バグ修正 (yaml_cfg から取得)
+- **Bug fix**: `_BPS_FACTOR` Mixin 重複定義除去 (MRO 経由で FillRecordHelpersMixin から継承)
+- **God Object 化防止**: 3 ファイルのクラス docstring に行数上限・構造ルール警告を追加
+- **ソース分析テスト修正**: 10 テストファイル計 20+ 箇所を Mixin/クラス全体ソース参照に修正
+- **ドキュメント**: 163 doc 命名規則修正 (`163_audit_` → `163_phg_rpt_`), index.md 更新
+- **テスト**: v460 unit 1858 passed (pre-existing failures: lightgbm/xgboost 未インストール)
+
 ### 162# Inventory Skewing 実装 (balance_forced 根本対策)
 
 - **Inventory Skewing** (159# Gemini-B, P0): 在庫偏重に応じた非対称 offset 補正を maker_price.py に実装。直近 N fill の buy/sell 比率から正規化 imbalance [-1,+1] を算出し、過剰に保有する side の offset を拡大（抑制）/ 不足 side の offset を縮小（促進）。alance_forced_skip に頼る事後的キャンセルから、事前的な約定バランス制御へ転換。

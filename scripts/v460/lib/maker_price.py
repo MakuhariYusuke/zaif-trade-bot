@@ -60,6 +60,21 @@ class MakerPriceCalculator:
     """maker limit 価格計算 — FillTestRunner から分割.
 
     __slots__ でメモリフットプリントを制御。
+
+    ╔══════════════════════════════════════════════════════════════╗
+    ║  ⚠ GOD OBJECT 化 禁止 — AI コーディングエージェント向け警告  ║
+    ╠══════════════════════════════════════════════════════════════╣
+    ║  compute() は 163# で 306→143 行に分割済み。               ║
+    ║  ステージパイプライン構造:                                  ║
+    ║    compute() → _apply_regime_boosts()                      ║
+    ║              → _apply_spread_adaptive()                    ║
+    ║              → _apply_volatility_guard()                   ║
+    ║              → _apply_imbalance_risk()                     ║
+    ║  新ロジック追加時は新しい _apply_*() private メソッドとして ║
+    ║  パイプラインに挿入すること。compute() に直接書かない。     ║
+    ║  compute() 行数上限: 150 行。                              ║
+    ║  クラス全体の行数上限: 700 行。超過時はモジュール分割。     ║
+    ╚══════════════════════════════════════════════════════════════╝
     """
 
     __slots__ = (
@@ -249,6 +264,244 @@ class MakerPriceCalculator:
     # ------------------------------------------------------------------
     # メイン: maker limit 価格算出
     # ------------------------------------------------------------------
+
+    # ================================================================
+    # compute() ステージ抽出メソッド (163# God Object 分割)
+    # WARNING: 以下のメソッドは compute() パイプラインの一部。
+    #          単独呼出し禁止。新ステージ追加時は compute() 内の呼出し順に注意。
+    # ================================================================
+
+    def _apply_regime_boosts(
+        self, side: str, effective_offset_ratio: float,
+    ) -> float:
+        """052# 143# 130# regime 別 offset 補正.
+
+        - trending: buy/sell 非対称 boost
+        - high_vol: offset 拡大 (AS リスク上昇)
+        - ranging: offset 縮小 (安定市場で利幅確保)
+        - unknown: buy guard offset boost
+        """
+        cfg = self._config
+
+        # 052#: トレンディング時にオフセットをブースト
+        # 156# D-4: is_trending で trending_up/trending_down も包含
+        # 157# §19: buy/sell 非対称化 — 有利方向取引では boost 不要
+        if (
+            self._regime_detector is not None
+            and hasattr(self._regime_detector, "current_regime")
+            and self._regime_detector.current_regime.is_trending
+        ):
+            _trending_boost = cfg.regime_trending_offset_boost
+            if side == "buy" and cfg.regime_trending_offset_boost_buy is not None:
+                _trending_boost = cfg.regime_trending_offset_boost_buy
+            elif side == "sell" and cfg.regime_trending_offset_boost_sell is not None:
+                _trending_boost = cfg.regime_trending_offset_boost_sell
+
+            if _trending_boost > 1.0:
+                effective_offset_ratio *= _trending_boost
+                logger.debug(
+                    f"[regime] trending → {side} offset boosted: "
+                    f"{effective_offset_ratio / _trending_boost:.4f} "
+                    f"→ {effective_offset_ratio:.4f} "
+                    f"(boost={_trending_boost:.2f})"
+                )
+
+        # 143# R-1a: high_vol 時にオフセットをブースト (AS リスク上昇に対応)
+        if (
+            self._regime_detector is not None
+            and hasattr(self._regime_detector, "current_regime")
+            and self._regime_detector.current_regime == FillTestRegime.HIGH_VOL
+            and cfg.regime_high_vol_offset_boost > 1.0
+        ):
+            pre_offset = effective_offset_ratio
+            effective_offset_ratio = min(
+                effective_offset_ratio * cfg.regime_high_vol_offset_boost,
+                cfg.max_offset_ratio,
+            )
+            logger.debug(
+                f"[regime] high_vol → offset boosted: "
+                f"{pre_offset:.4f} → {effective_offset_ratio:.4f} "
+                f"(boost={cfg.regime_high_vol_offset_boost:.2f})"
+            )
+
+        # 143# R-1a: ranging 時にオフセットを縮小 (安定市場で利幅確保)
+        if (
+            self._regime_detector is not None
+            and hasattr(self._regime_detector, "current_regime")
+            and self._regime_detector.current_regime == FillTestRegime.RANGING
+            and cfg.regime_ranging_offset_discount < 1.0
+        ):
+            pre_offset = effective_offset_ratio
+            effective_offset_ratio = max(
+                effective_offset_ratio * cfg.regime_ranging_offset_discount,
+                cfg.min_offset_ratio,
+            )
+            logger.debug(
+                f"[regime] ranging → offset discounted: "
+                f"{pre_offset:.4f} → {effective_offset_ratio:.4f} "
+                f"(discount={cfg.regime_ranging_offset_discount:.2f})"
+            )
+
+        # 130# unknown regime buy guard: offset boost で AS 回避
+        if (
+            cfg.unknown_buy_offset_boost > 1.0
+            and side == "buy"
+            and self._regime_detector is not None
+            and hasattr(self._regime_detector, "current_regime")
+            and (
+                self._regime_detector.current_regime is None
+                or self._regime_detector.current_regime == FillTestRegime.UNKNOWN
+            )
+        ):
+            pre_offset = effective_offset_ratio
+            effective_offset_ratio = min(
+                effective_offset_ratio * cfg.unknown_buy_offset_boost,
+                cfg.max_offset_ratio,
+            )
+            logger.info(
+                f"[unknown_buy_guard] 130# buy offset boosted: "
+                f"{pre_offset:.4f}→{effective_offset_ratio:.4f} "
+                f"(regime=unknown, boost={cfg.unknown_buy_offset_boost:.2f})"
+            )
+
+        return effective_offset_ratio
+
+    def _apply_spread_adaptive(
+        self,
+        side: str,
+        spread: float,
+        mid_price: float,
+        effective_offset_ratio: float,
+    ) -> float:
+        """054# S4: Spread 適応型 offset + 091# sell floor 事後再適用."""
+        cfg = self._config
+
+        if cfg.spread_adaptive_enabled:
+            spread_bps = spread / mid_price * _BPS_FACTOR
+            if spread_bps < cfg.narrow_spread_bps:
+                sa_boost = cfg.narrow_spread_boost
+                if side == "buy" and cfg.narrow_spread_boost_buy is not None:
+                    sa_boost = cfg.narrow_spread_boost_buy
+                elif side == "sell" and cfg.narrow_spread_boost_sell is not None:
+                    sa_boost = cfg.narrow_spread_boost_sell
+                effective_offset_ratio = min(
+                    effective_offset_ratio * sa_boost, cfg.max_offset_ratio,
+                )
+                logger.debug(
+                    f"[spread_adaptive] Narrow spread {spread_bps:.1f}bps "
+                    f"({side} boost={sa_boost:.2f}) "
+                    f"→ offset boosted to {effective_offset_ratio:.4f}"
+                )
+            elif spread_bps > cfg.wide_spread_bps:
+                effective_offset_ratio = max(
+                    effective_offset_ratio * cfg.wide_spread_ratio, cfg.min_offset_ratio,
+                )
+                logger.debug(
+                    f"[spread_adaptive] Wide spread {spread_bps:.1f}bps "
+                    f"→ offset reduced to {effective_offset_ratio:.4f}"
+                )
+
+        # 091# sell offset floor 事後再適用
+        if side == "sell" and cfg.sell_offset_floor > 0:
+            if effective_offset_ratio < cfg.sell_offset_floor:
+                logger.debug(
+                    f"[sell_guard] Post-adaptive floor re-applied: "
+                    f"{effective_offset_ratio:.4f} → {cfg.sell_offset_floor:.4f}"
+                )
+                effective_offset_ratio = cfg.sell_offset_floor
+
+        return effective_offset_ratio
+
+    def _apply_volatility_guard(
+        self,
+        side: str,
+        mid_trend_bps: float | None,
+        effective_offset_ratio: float,
+    ) -> float:
+        """107# Volatility Guard: リアルタイム急変検知 → offset boost."""
+        cfg = self._config
+
+        if cfg.volatility_guard_enabled:
+            vg_triggered = False
+            vg_reason = ""
+            _vg_velocity = mid_trend_bps  # 158# P2-6: ログ用
+            _vg_vpin = self._last_vpin    # 158# P2-6: ログ用
+            if (
+                mid_trend_bps is not None
+                and abs(mid_trend_bps) > cfg.volatility_guard_velocity_threshold_bps
+            ):
+                vg_triggered = True
+                vg_reason = f"velocity={mid_trend_bps:.1f}bps"
+            if self._last_vpin is not None:
+                if self._last_vpin > cfg.volatility_guard_vpin_threshold:
+                    vg_triggered = True
+                    vg_reason += (f"{'+' if vg_reason else ''}vpin="
+                                  f"{self._last_vpin:.2f}")
+            _vg_boost = 1.0  # 158# P2-6: 実際の boost 倍率
+            if vg_triggered:
+                pre_offset = effective_offset_ratio
+                effective_offset_ratio = min(
+                    effective_offset_ratio * cfg.volatility_guard_offset_boost_factor,
+                    cfg.max_offset_ratio,
+                )
+                _vg_boost = effective_offset_ratio / pre_offset if pre_offset > 0 else 1.0
+                logger.info(
+                    f"[volatility_guard] 107# {side} offset boosted: "
+                    f"{pre_offset:.4f}→{effective_offset_ratio:.4f} "
+                    f"({vg_reason})"
+                )
+            # 120# P2-1: VG 発動状態を追跡
+            self._last_vg_triggered = vg_triggered
+            # 158# P2-6: VG 詳細ログ (ヒンドサイト分析用)
+            self._last_vg_velocity_bps = _vg_velocity
+            self._last_vg_vpin = _vg_vpin
+            self._last_vg_boost_factor = _vg_boost if vg_triggered else None
+        else:
+            self._last_vg_triggered = False
+            self._last_vg_velocity_bps = None
+            self._last_vg_vpin = None
+            self._last_vg_boost_factor = None
+
+        return effective_offset_ratio
+
+    def _apply_imbalance_risk(
+        self,
+        side: str,
+        imb: float,
+        effective_offset_ratio: float,
+    ) -> float:
+        """054# S1: Imbalance ベース AS リスク補正.
+
+        Raises:
+            ValueError: Extreme AS risk (imb >= skip_threshold) → 注文抑止.
+        """
+        cfg = self._config
+
+        if cfg.imbalance_enabled and abs(imb) > cfg.imbalance_threshold:
+            as_risk = (
+                (side == "buy" and imb < -cfg.imbalance_threshold)
+                or (side == "sell" and imb > cfg.imbalance_threshold)
+            )
+            if as_risk:
+                if abs(imb) >= cfg.imbalance_skip_threshold:
+                    logger.info(
+                        f"[imbalance] Extreme AS risk: {side} imb={imb:+.3f} "
+                        f">= skip_threshold {cfg.imbalance_skip_threshold}. "
+                        f"Skipping order."
+                    )
+                    raise ValueError(
+                        f"Imbalance skip: {side} order suppressed (imb={imb:+.3f})"
+                    )
+                else:
+                    effective_offset_ratio *= cfg.imbalance_offset_boost
+                    effective_offset_ratio = min(effective_offset_ratio, cfg.max_offset_ratio)
+                    logger.info(
+                        f"[imbalance] {side} AS risk: imb={imb:+.3f}, "
+                        f"offset boosted to {effective_offset_ratio:.4f}"
+                    )
+
+        return effective_offset_ratio
+
     async def compute(
         self,
         side: str,
@@ -344,188 +597,25 @@ class MakerPriceCalculator:
                 f"sell_guard: spread {spread:.0f} > max {cfg.sell_max_spread_jpy:.0f}"
             )
 
-        # 052#: トレンディング時にオフセットをブースト
-        # 156# D-4: is_trending で trending_up/trending_down も包含
-        # 157# §19: buy/sell 非対称化 — 有利方向取引では boost 不要
-        if (
-            self._regime_detector is not None
-            and hasattr(self._regime_detector, "current_regime")
-            and self._regime_detector.current_regime.is_trending
-        ):
-            # side 別 boost 値を解決 (None=共通値にフォールバック)
-            _trending_boost = cfg.regime_trending_offset_boost
-            if side == "buy" and cfg.regime_trending_offset_boost_buy is not None:
-                _trending_boost = cfg.regime_trending_offset_boost_buy
-            elif side == "sell" and cfg.regime_trending_offset_boost_sell is not None:
-                _trending_boost = cfg.regime_trending_offset_boost_sell
+        # 163# ステージ抽出: _apply_regime_boosts()
+        effective_offset_ratio = self._apply_regime_boosts(
+            side, effective_offset_ratio,
+        )
 
-            if _trending_boost > 1.0:
-                effective_offset_ratio *= _trending_boost
-                logger.debug(
-                    f"[regime] trending → {side} offset boosted: "
-                    f"{effective_offset_ratio / _trending_boost:.4f} "
-                    f"→ {effective_offset_ratio:.4f} "
-                    f"(boost={_trending_boost:.2f})"
-                )
+        # 163# ステージ抽出: _apply_spread_adaptive()
+        effective_offset_ratio = self._apply_spread_adaptive(
+            side, spread, mid_price, effective_offset_ratio,
+        )
 
-        # 143# R-1a: high_vol 時にオフセットをブースト (AS リスク上昇に対応)
-        if (
-            self._regime_detector is not None
-            and hasattr(self._regime_detector, "current_regime")
-            and self._regime_detector.current_regime == FillTestRegime.HIGH_VOL
-            and cfg.regime_high_vol_offset_boost > 1.0
-        ):
-            pre_offset = effective_offset_ratio
-            effective_offset_ratio = min(
-                effective_offset_ratio * cfg.regime_high_vol_offset_boost,
-                cfg.max_offset_ratio,
-            )
-            logger.debug(
-                f"[regime] high_vol → offset boosted: "
-                f"{pre_offset:.4f} → {effective_offset_ratio:.4f} "
-                f"(boost={cfg.regime_high_vol_offset_boost:.2f})"
-            )
+        # 163# ステージ抽出: _apply_volatility_guard()
+        effective_offset_ratio = self._apply_volatility_guard(
+            side, mid_trend_bps, effective_offset_ratio,
+        )
 
-        # 143# R-1a: ranging 時にオフセットを縮小 (安定市場で利幅確保)
-        if (
-            self._regime_detector is not None
-            and hasattr(self._regime_detector, "current_regime")
-            and self._regime_detector.current_regime == FillTestRegime.RANGING
-            and cfg.regime_ranging_offset_discount < 1.0
-        ):
-            pre_offset = effective_offset_ratio
-            effective_offset_ratio = max(
-                effective_offset_ratio * cfg.regime_ranging_offset_discount,
-                cfg.min_offset_ratio,
-            )
-            logger.debug(
-                f"[regime] ranging → offset discounted: "
-                f"{pre_offset:.4f} → {effective_offset_ratio:.4f} "
-                f"(discount={cfg.regime_ranging_offset_discount:.2f})"
-            )
-
-        # 130# unknown regime buy guard: offset boost で AS 回避
-        if (
-            cfg.unknown_buy_offset_boost > 1.0
-            and side == "buy"
-            and self._regime_detector is not None
-            and hasattr(self._regime_detector, "current_regime")
-            and (
-                self._regime_detector.current_regime is None
-                or self._regime_detector.current_regime == FillTestRegime.UNKNOWN
-            )
-        ):
-            pre_offset = effective_offset_ratio
-            effective_offset_ratio = min(
-                effective_offset_ratio * cfg.unknown_buy_offset_boost,
-                cfg.max_offset_ratio,
-            )
-            logger.info(
-                f"[unknown_buy_guard] 130# buy offset boosted: "
-                f"{pre_offset:.4f}→{effective_offset_ratio:.4f} "
-                f"(regime=unknown, boost={cfg.unknown_buy_offset_boost:.2f})"
-            )
-
-        # 054# S4: Spread 適応型 offset
-        if cfg.spread_adaptive_enabled:
-            spread_bps = spread / mid_price * _BPS_FACTOR
-            if spread_bps < cfg.narrow_spread_bps:
-                sa_boost = cfg.narrow_spread_boost
-                if side == "buy" and cfg.narrow_spread_boost_buy is not None:
-                    sa_boost = cfg.narrow_spread_boost_buy
-                elif side == "sell" and cfg.narrow_spread_boost_sell is not None:
-                    sa_boost = cfg.narrow_spread_boost_sell
-                effective_offset_ratio = min(
-                    effective_offset_ratio * sa_boost, cfg.max_offset_ratio,
-                )
-                logger.debug(
-                    f"[spread_adaptive] Narrow spread {spread_bps:.1f}bps "
-                    f"({side} boost={sa_boost:.2f}) "
-                    f"→ offset boosted to {effective_offset_ratio:.4f}"
-                )
-            elif spread_bps > cfg.wide_spread_bps:
-                effective_offset_ratio = max(
-                    effective_offset_ratio * cfg.wide_spread_ratio, cfg.min_offset_ratio,
-                )
-                logger.debug(
-                    f"[spread_adaptive] Wide spread {spread_bps:.1f}bps "
-                    f"→ offset reduced to {effective_offset_ratio:.4f}"
-                )
-
-        # 091# sell offset floor 事後再適用
-        if side == "sell" and cfg.sell_offset_floor > 0:
-            if effective_offset_ratio < cfg.sell_offset_floor:
-                logger.debug(
-                    f"[sell_guard] Post-adaptive floor re-applied: "
-                    f"{effective_offset_ratio:.4f} → {cfg.sell_offset_floor:.4f}"
-                )
-                effective_offset_ratio = cfg.sell_offset_floor
-
-        # 107# Volatility Guard: リアルタイム急変検知 → offset boost
-        if cfg.volatility_guard_enabled:
-            vg_triggered = False
-            vg_reason = ""
-            _vg_velocity = mid_trend_bps  # 158# P2-6: ログ用
-            _vg_vpin = self._last_vpin    # 158# P2-6: ログ用
-            if (
-                mid_trend_bps is not None
-                and abs(mid_trend_bps) > cfg.volatility_guard_velocity_threshold_bps
-            ):
-                vg_triggered = True
-                vg_reason = f"velocity={mid_trend_bps:.1f}bps"
-            if self._last_vpin is not None:
-                if self._last_vpin > cfg.volatility_guard_vpin_threshold:
-                    vg_triggered = True
-                    vg_reason += (f"{'+' if vg_reason else ''}vpin="
-                                  f"{self._last_vpin:.2f}")
-            _vg_boost = 1.0  # 158# P2-6: 実際の boost 倍率
-            if vg_triggered:
-                pre_offset = effective_offset_ratio
-                effective_offset_ratio = min(
-                    effective_offset_ratio * cfg.volatility_guard_offset_boost_factor,
-                    cfg.max_offset_ratio,
-                )
-                _vg_boost = effective_offset_ratio / pre_offset if pre_offset > 0 else 1.0
-                logger.info(
-                    f"[volatility_guard] 107# {side} offset boosted: "
-                    f"{pre_offset:.4f}→{effective_offset_ratio:.4f} "
-                    f"({vg_reason})"
-                )
-            # 120# P2-1: VG 発動状態を追跡
-            self._last_vg_triggered = vg_triggered
-            # 158# P2-6: VG 詳細ログ (ヒンドサイト分析用)
-            self._last_vg_velocity_bps = _vg_velocity
-            self._last_vg_vpin = _vg_vpin
-            self._last_vg_boost_factor = _vg_boost if vg_triggered else None
-        else:
-            self._last_vg_triggered = False
-            self._last_vg_velocity_bps = None
-            self._last_vg_vpin = None
-            self._last_vg_boost_factor = None
-
-        # 054# S1: Imbalance ベース AS リスク補正
-        if cfg.imbalance_enabled and abs(imb) > cfg.imbalance_threshold:
-            as_risk = (
-                (side == "buy" and imb < -cfg.imbalance_threshold)
-                or (side == "sell" and imb > cfg.imbalance_threshold)
-            )
-            if as_risk:
-                if abs(imb) >= cfg.imbalance_skip_threshold:
-                    logger.info(
-                        f"[imbalance] Extreme AS risk: {side} imb={imb:+.3f} "
-                        f">= skip_threshold {cfg.imbalance_skip_threshold}. "
-                        f"Skipping order."
-                    )
-                    raise ValueError(
-                        f"Imbalance skip: {side} order suppressed (imb={imb:+.3f})"
-                    )
-                else:
-                    effective_offset_ratio *= cfg.imbalance_offset_boost
-                    effective_offset_ratio = min(effective_offset_ratio, cfg.max_offset_ratio)
-                    logger.info(
-                        f"[imbalance] {side} AS risk: imb={imb:+.3f}, "
-                        f"offset boosted to {effective_offset_ratio:.4f}"
-                    )
+        # 163# ステージ抽出: _apply_imbalance_risk()
+        effective_offset_ratio = self._apply_imbalance_risk(
+            side, imb, effective_offset_ratio,
+        )
 
         offset = max(cfg.min_offset_jpy, spread * effective_offset_ratio)
 

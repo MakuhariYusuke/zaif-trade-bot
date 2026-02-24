@@ -22,6 +22,23 @@ class FillTestConfig:
     """Fill test runner の設定.
 
     優先順位: CLI引数 > YAML > dataclass defaults.
+
+    ╔══════════════════════════════════════════════════════════════╗
+    ║  ⚠ GOD OBJECT 化 禁止 — AI コーディングエージェント向け警告  ║
+    ╠══════════════════════════════════════════════════════════════╣
+    ║  from_yaml() は 163# で 479→139 行に分割済み。             ║
+    ║  セクション別 @staticmethod パーサー構造:                   ║
+    ║    _parse_trading_features()  — 取引パラメータ              ║
+    ║    _parse_skip_gate_section() — SkipGate 設定               ║
+    ║    _parse_stale_vg_section()  — Stale/VG パラメータ         ║
+    ║    _parse_stopgap_section()   — 止血 (Loss Control)         ║
+    ║    _parse_infra_section()     — インフラ設定                ║
+    ║  新セクション追加時は新しい _parse_*() @staticmethod を作成 ║
+    ║  し from_yaml() から呼び出すこと。from_yaml() に直接書かない║
+    ║  from_yaml() 行数上限: 150 行。                            ║
+    ║  フィールド追加は適切なセクションパーサーに追加。           ║
+    ║  クラス全体の行数上限: 1000 行。超過時はモジュール分割。    ║
+    ╚══════════════════════════════════════════════════════════════╝
     """
 
     symbol: str = "btc_jpy"
@@ -381,6 +398,401 @@ class FillTestConfig:
                 f"got '{self.confidence_lot_mode}' (mode='pnl' is frozen)"
             )
 
+
+    # ================================================================
+    # from_yaml() セクションパーサー (163# God Object 分割)
+    # WARNING: 下記メソッドは from_yaml() から呼ばれる補助関数。
+    #          新設定キーは対応するセクションパーサーに追加すること。
+    # ================================================================
+
+    @staticmethod
+    def _parse_trading_features(yaml_cfg: dict) -> dict:
+        """049#/054# E3/side_offset/FFD/imbalance/smart_side/early_exit/spread_adaptive."""
+        kwargs: dict = {}
+        # 049# E3 サンプリング
+        e3 = yaml_cfg.get("e3", {})
+        if "sampling_ratio" in e3:
+            kwargs["e3_sampling_ratio"] = e3["sampling_ratio"]
+
+        # 049# side 別 offset
+        side_offset = yaml_cfg.get("side_offset", {})
+        if "buy" in side_offset:
+            kwargs["spread_offset_ratio_buy"] = side_offset["buy"]
+        if "sell" in side_offset:
+            kwargs["spread_offset_ratio_sell"] = side_offset["sell"]
+
+        # 049# 即約定防御
+        ffd = yaml_cfg.get("fast_fill_defense", {})
+        if ffd.get("enabled") is not None:
+            kwargs["fast_fill_defense_enabled"] = ffd["enabled"]
+        if "threshold_sec" in ffd:
+            kwargs["fast_fill_threshold_sec"] = ffd["threshold_sec"]
+        if "offset_boost" in ffd:
+            kwargs["fast_fill_offset_boost"] = ffd["offset_boost"]
+        # 093# side 別 fast_fill_defense
+        if "threshold_sec_buy" in ffd:
+            kwargs["fast_fill_threshold_sec_buy"] = ffd["threshold_sec_buy"]
+        if "threshold_sec_sell" in ffd:
+            kwargs["fast_fill_threshold_sec_sell"] = ffd["threshold_sec_sell"]
+        if "offset_boost_buy" in ffd:
+            kwargs["fast_fill_offset_boost_buy"] = ffd["offset_boost_buy"]
+        if "offset_boost_sell" in ffd:
+            kwargs["fast_fill_offset_boost_sell"] = ffd["offset_boost_sell"]
+
+        # 054# S1: Orderbook Imbalance
+        imb = yaml_cfg.get("imbalance", {})
+        if imb.get("enabled") is not None:
+            kwargs["imbalance_enabled"] = imb["enabled"]
+        imb_map = {
+            "depth": "imbalance_depth",
+            "threshold": "imbalance_threshold",
+            "offset_boost": "imbalance_offset_boost",
+            "skip_threshold": "imbalance_skip_threshold",
+        }
+        for yaml_key, config_key in imb_map.items():
+            if yaml_key in imb:
+                kwargs[config_key] = imb[yaml_key]
+
+        # 054# S2: Smart Side
+        ss = yaml_cfg.get("smart_side", {})
+        if ss.get("enabled") is not None:
+            kwargs["smart_side_enabled"] = ss["enabled"]
+        if "mode" in ss:
+            kwargs["smart_side_mode"] = ss["mode"]
+        if "max_consecutive_same" in ss:
+            kwargs["smart_side_max_consecutive"] = ss["max_consecutive_same"]
+
+        # 054# S3: Early Exit (テール損失カット)
+        ee = yaml_cfg.get("early_exit", {})
+        if ee.get("enabled") is not None:
+            kwargs["early_exit_enabled"] = ee["enabled"]
+        ee_map = {
+            "threshold_bps": "early_exit_threshold_bps",
+            "monitoring_interval_sec": "early_exit_monitor_interval_sec",
+            "rapid_exit_interval_sec": "early_exit_rapid_interval_sec",
+        }
+        for yaml_key, config_key in ee_map.items():
+            if yaml_key in ee:
+                kwargs[config_key] = ee[yaml_key]
+
+        # 054# S4: Spread Adaptive Offset
+        sa = yaml_cfg.get("spread_adaptive", {})
+        if sa.get("enabled") is not None:
+            kwargs["spread_adaptive_enabled"] = sa["enabled"]
+        sa_map = {
+            "narrow_spread_bps": "narrow_spread_bps",
+            "narrow_spread_boost": "narrow_spread_boost",
+            "narrow_spread_boost_buy": "narrow_spread_boost_buy",    # 093#
+            "narrow_spread_boost_sell": "narrow_spread_boost_sell",  # 093#
+            "wide_spread_bps": "wide_spread_bps",
+            "wide_spread_ratio": "wide_spread_ratio",
+        }
+        for yaml_key, config_key in sa_map.items():
+            if yaml_key in sa:
+                kwargs[config_key] = sa[yaml_key]
+
+        return kwargs
+
+    @staticmethod
+    def _parse_skip_gate_section(yaml_cfg: dict) -> dict:
+        """062# S5: SkipGate ML フィルター YAML マッピング."""
+        kwargs: dict = {}
+        # 062# S5: SkipGate ML フィルター
+        sg = yaml_cfg.get("skip_gate", {})
+        if sg.get("enabled") is not None:
+            kwargs["skip_gate_enabled"] = sg["enabled"]
+        sg_map = {
+            "mode": "skip_gate_mode",
+            "model_path": "skip_gate_model_path",
+            # 141# P1-01: side 別モデルパス
+            "model_path_buy": "skip_gate_model_path_buy",
+            "model_path_sell": "skip_gate_model_path_sell",
+            "as_threshold": "skip_gate_as_threshold",
+            "pnl_threshold": "skip_gate_pnl_threshold",
+            "max_skip_rate": "skip_gate_max_skip_rate",
+            # 118# A3: side 別有効/無効
+            "buy_enabled": "skip_gate_buy_enabled",
+            "sell_enabled": "skip_gate_sell_enabled",
+            # 068# §3.3: side 別閾値
+            "as_threshold_buy": "skip_gate_as_threshold_buy",
+            "as_threshold_sell": "skip_gate_as_threshold_sell",
+            # 072# OB トグル
+            "use_ob_features": "skip_gate_use_ob_features",
+            # 088# 動的閾値較正
+            "adaptive_threshold": "skip_gate_adaptive_threshold",
+            "target_skip_rate_buy": "skip_gate_target_skip_rate_buy",
+            "target_skip_rate_sell": "skip_gate_target_skip_rate_sell",
+            "adaptive_window": "skip_gate_adaptive_window",
+            "adaptive_min_samples": "skip_gate_adaptive_min_samples",
+            "adaptive_step": "skip_gate_adaptive_step",
+            "adaptive_floor": "skip_gate_adaptive_floor",
+            "adaptive_ceiling": "skip_gate_adaptive_ceiling",
+            # 124# Rule: unknown regime sell skip
+            "skip_sell_unknown_regime": "skip_sell_unknown_regime",
+            # 130# unknown buy offset boost
+            "unknown_buy_offset_boost": "unknown_buy_offset_boost",
+            # 141# P1-04: regime thresholds
+            "regime_thresholds": "skip_gate_regime_thresholds",
+            # 138# P1-03: score calibration
+            "score_calibration": "skip_gate_score_calibration",
+            "calibrator_path": "skip_gate_calibrator_path",
+            "calibrator_min_samples": "skip_gate_calibrator_min_samples",
+            "calibrator_refit_interval": "skip_gate_calibrator_refit_interval",
+        }
+        for yaml_key, config_key in sg_map.items():
+            if yaml_key in sg and sg[yaml_key] is not None:
+                kwargs[config_key] = sg[yaml_key]
+
+        # 158# P1-6: hour_offsets (UTC hour → offset bps)
+        hour_offsets_raw = sg.get("hour_offsets", {})
+        if hour_offsets_raw:
+            kwargs["skip_gate_hour_offsets"] = {
+                int(k): float(v) for k, v in hour_offsets_raw.items()
+            }
+
+        return kwargs
+
+    @staticmethod
+    def _parse_stale_vg_section(yaml_cfg: dict) -> dict:
+        """094#/096#/107# Stale order + VG + sell_guard."""
+        kwargs: dict = {}
+        # 094# stale order 検出 & cancel-replace
+        so = yaml_cfg.get("stale_order", {})
+        if so.get("enabled") is not None:
+            kwargs["stale_order_enabled"] = so["enabled"]
+        so_map = {
+            "check_after_sec": "stale_check_after_sec",
+            "drift_bps": "stale_drift_bps",
+            "max_reprice": "stale_max_reprice",
+            "cooldown_sec": "stale_cooldown_sec",
+            # 096# side-specific
+            "check_after_sec_buy": "stale_check_after_sec_buy",
+            "check_after_sec_sell": "stale_check_after_sec_sell",
+            "drift_bps_buy": "stale_drift_bps_buy",
+            "drift_bps_sell": "stale_drift_bps_sell",
+            "max_reprice_buy": "stale_max_reprice_buy",
+            "max_reprice_sell": "stale_max_reprice_sell",
+            # 158# P1-2: reprice offset tightening
+            "reprice_tighten": "stale_reprice_tighten",
+        }
+        for yaml_key, config_key in so_map.items():
+            if yaml_key in so:
+                kwargs[config_key] = so[yaml_key]
+
+        # 096# adaptation recency window
+        adapt = yaml_cfg.get("adaptation", {})
+        if adapt.get("recency_window") is not None:
+            kwargs["adapt_recency_window"] = adapt["recency_window"]
+        # 103# adaptation.min_samples → min_adapt_samples マッピング
+        if "min_samples" in adapt:
+            kwargs["min_adapt_samples"] = adapt["min_samples"]
+
+        # 107# Volatility Guard
+        vg = yaml_cfg.get("volatility_guard", {})
+        if vg.get("enabled") is not None:
+            kwargs["volatility_guard_enabled"] = vg["enabled"]
+        vg_map = {
+            "velocity_window_sec": "volatility_guard_velocity_window_sec",
+            "velocity_threshold_bps": "volatility_guard_velocity_threshold_bps",
+            "vpin_threshold": "volatility_guard_vpin_threshold",
+            "offset_boost_factor": "volatility_guard_offset_boost_factor",
+        }
+        for yaml_key, config_key in vg_map.items():
+            if yaml_key in vg:
+                kwargs[config_key] = vg[yaml_key]
+
+        # 088# sell 専用ハードガード
+        sell_guard = yaml_cfg.get("sell_guard", {})
+        if sell_guard.get("max_spread_jpy") is not None:
+            kwargs["sell_max_spread_jpy"] = sell_guard["max_spread_jpy"]
+        if sell_guard.get("offset_floor") is not None:
+            kwargs["sell_offset_floor"] = sell_guard["offset_floor"]
+
+        return kwargs
+
+    @staticmethod
+    def _parse_stopgap_section(yaml_cfg: dict) -> dict:
+        """133# 止血施策 + dynamic kill + narrow spread + inventory skewing."""
+        kwargs: dict = {}
+        # 133# P0-08/09/10: 止血施策
+        止血 = yaml_cfg.get("止血", yaml_cfg.get("loss_control", {}))
+        if 止血.get("skip_balance_forced") is not None:
+            kwargs["skip_balance_forced"] = 止血["skip_balance_forced"]
+        # 154# C-1/C-2: deadlock 防止の連続 forced skip 上限
+        if 止血.get("balance_forced_deadlock_limit") is not None:
+            kwargs["balance_forced_deadlock_limit"] = 止血["balance_forced_deadlock_limit"]
+        # 158# P1-1: balance_forced 救済モード
+        if 止血.get("balance_forced_rescue_enabled") is not None:
+            kwargs["balance_forced_rescue_enabled"] = 止血["balance_forced_rescue_enabled"]
+        if 止血.get("balance_forced_rescue_offset_mult") is not None:
+            kwargs["balance_forced_rescue_offset_mult"] = float(止血["balance_forced_rescue_offset_mult"])
+        if 止血.get("skip_buy_unknown_regime") is not None:
+            kwargs["skip_buy_unknown_regime"] = 止血["skip_buy_unknown_regime"]
+        # 155# §9: trending sell 抑制
+        if 止血.get("skip_sell_trending") is not None:
+            kwargs["skip_sell_trending"] = 止血["skip_sell_trending"]
+        # 156# D-4: trending 方向別分解
+        if 止血.get("skip_sell_trending_up_only") is not None:
+            kwargs["skip_sell_trending_up_only"] = 止血["skip_sell_trending_up_only"]
+        # 158# §20-B: 連続 trending sell skip 安全弁
+        if 止血.get("max_consecutive_trending_sell_skip") is not None:
+            kwargs["max_consecutive_trending_sell_skip"] = 止血["max_consecutive_trending_sell_skip"]
+        sell_kill = 止血.get("sell_dynamic_kill", {})
+        if sell_kill.get("enabled") is not None:
+            kwargs["sell_dynamic_kill_enabled"] = sell_kill["enabled"]
+        for yk, ck in {
+            "window": "sell_dynamic_kill_window",
+            "threshold_bps": "sell_dynamic_kill_threshold_bps",
+            "resume_window": "sell_dynamic_kill_resume_window",
+        }.items():
+            if yk in sell_kill:
+                kwargs[ck] = sell_kill[yk]
+        # 139# §9-#2: regime_thresholds YAML 配線
+        if "regime_thresholds" in sell_kill:
+            kwargs["sell_dynamic_kill_regime_thresholds"] = sell_kill["regime_thresholds"]
+
+        # 157# §19: buy 動的 kill
+        buy_kill = 止血.get("buy_dynamic_kill", {})
+        if buy_kill.get("enabled") is not None:
+            kwargs["buy_dynamic_kill_enabled"] = buy_kill["enabled"]
+        for yk, ck in {
+            "window": "buy_dynamic_kill_window",
+            "threshold_bps": "buy_dynamic_kill_threshold_bps",
+            "resume_window": "buy_dynamic_kill_resume_window",
+        }.items():
+            if yk in buy_kill:
+                kwargs[ck] = buy_kill[yk]
+        if "regime_thresholds" in buy_kill:
+            kwargs["buy_dynamic_kill_regime_thresholds"] = buy_kill["regime_thresholds"]
+
+        # 137# P1-08: narrow spread pause
+        narrow_pause = 止血.get("narrow_spread_pause", {})
+        if narrow_pause.get("enabled") is not None:
+            kwargs["narrow_spread_pause_enabled"] = narrow_pause["enabled"]
+        for yk, ck in {
+            "threshold_bps": "narrow_spread_pause_bps",
+            "pause_sec": "narrow_spread_pause_sec",
+            "max_consecutive": "narrow_spread_pause_max_consecutive",
+        }.items():
+            if yk in narrow_pause:
+                kwargs[ck] = narrow_pause[yk]
+
+
+        # 162# Inventory Skewing: 在庫偏重による非対称クオート
+        inv_skew = 止血.get("inventory_skewing", {})
+        if inv_skew.get("enabled") is not None:
+            kwargs["inventory_skewing_enabled"] = inv_skew["enabled"]
+        for yk, ck in {
+            "window": "inventory_skewing_window",
+            "max_factor": "inventory_skewing_max_factor",
+            "neutral_band": "inventory_skewing_neutral_band",
+        }.items():
+            if yk in inv_skew:
+                kwargs[ck] = inv_skew[yk]
+
+        return kwargs
+
+    @staticmethod
+    def _parse_infra_section(yaml_cfg: dict) -> dict:
+        """137#/102#/158# PnL fee + preflight + tuning + resilience + A/B test."""
+        kwargs: dict = {}
+        # 163#: 止血セクション参照 (pnl_fee_deduction, preflight_pause 等のサブキー用)
+        止血 = yaml_cfg.get("止血", yaml_cfg.get("loss_control", {}))
+        # 137# P1-11: PnL fee 控除
+        fee_cfg = 止血.get("pnl_fee_deduction", {})
+        if fee_cfg.get("enabled") is not None:
+            kwargs["pnl_fee_deduction_enabled"] = fee_cfg["enabled"]
+        if "maker_fee_bps" in fee_cfg:
+            kwargs["maker_fee_bps"] = fee_cfg["maker_fee_bps"]
+        if "taker_fee_bps" in fee_cfg:
+            kwargs["taker_fee_bps"] = fee_cfg["taker_fee_bps"]
+
+        # 138# P1-10: preflight pause (dead-cycle 防止)
+        pf_pause = 止血.get("preflight_pause", {})
+        if pf_pause.get("enabled") is not None:
+            kwargs["preflight_pause_enabled"] = pf_pause["enabled"]
+        for yk, ck in {
+            "threshold": "preflight_pause_threshold",
+            "pause_sec": "preflight_pause_sec",
+            "max_pauses": "preflight_max_pauses",
+        }.items():
+            if yk in pf_pause:
+                kwargs[ck] = pf_pause[yk]
+
+        # 102# YAML 化: 散在マジックナンバーの設定外部化
+        tuning = yaml_cfg.get("tuning", {})
+        tuning_map = {
+            "max_offset_ratio": "max_offset_ratio",
+            "min_offset_ratio": "min_offset_ratio",
+            "loss_cap_update_interval": "loss_cap_update_interval",
+            "min_loss_cap_jpy": "min_loss_cap_jpy",
+            "mid_trend_validity_sec": "mid_trend_validity_sec",
+            "balance_margin_ratio": "balance_margin_ratio",
+            "balance_shrink_consecutive": "balance_shrink_consecutive",
+            "balance_shrink_divisor": "balance_shrink_divisor",
+            "skip_gate_recent_trades_limit": "skip_gate_recent_trades_limit",
+            "status_unknown_retry_delays": "status_unknown_retry_delays",
+            "rate_limit_min_backoff_sec": "rate_limit_min_backoff_sec",
+            "save_retry_backoff_sec": "save_retry_backoff_sec",
+            "regime_warmup_multiplier": "regime_warmup_multiplier",
+            "e3_60s_multiplier": "e3_60s_multiplier",
+            "e3_120s_multiplier": "e3_120s_multiplier",
+            "adapt_min_side_samples": "adapt_min_side_samples",
+            "batch_flush_interval_sec": "batch_flush_interval_sec",
+            "heartbeat_interval_sec": "heartbeat_interval_sec",
+            # 121# 追加外部化
+            "min_order_btc": "min_order_btc",
+            "dust_sweep_enabled": "dust_sweep_enabled",  # 128#
+            "lock_acquire_retries": "lock_acquire_retries",
+            "skip_gate_ob_depth": "skip_gate_ob_depth",
+            "retry_backoff_base": "retry_backoff_base",
+            "soft_loss_cap_lot_divisor": "soft_loss_cap_lot_divisor",
+            "file_log_level": "file_log_level",
+            "insufficient_funds_patterns": "insufficient_funds_patterns",
+            # 148# §9 #2: heartbeat 設定を YAML から調整可能に
+            "lock_heartbeat_period_sec": "lock_heartbeat_period_sec",
+            "lock_stale_heartbeat_sec": "lock_stale_heartbeat_sec",
+            # 158# YAML 外部化: tuning 追加
+            "hot_reload_check_interval_sec": "hot_reload_check_interval_sec",
+            "records_cache_ttl_sec": "records_cache_ttl_sec",
+            "trades_recorder_fetch_limit": "trades_recorder_fetch_limit",
+            "balance_freeze_cycles": "balance_freeze_cycles",
+        }
+        for yaml_key, config_key in tuning_map.items():
+            if yaml_key in tuning:
+                kwargs[config_key] = tuning[yaml_key]
+
+        # 158# YAML 外部化: resilience セクション (CircuitBreaker / HealthMonitor)
+        resilience = yaml_cfg.get("resilience", {})
+        cb = resilience.get("circuit_breaker", {})
+        cb_map = {
+            "failure_threshold": "cb_failure_threshold",
+            "recovery_timeout": "cb_recovery_timeout",
+            "success_threshold": "cb_success_threshold",
+            "timeout": "cb_timeout",
+        }
+        for yaml_key, config_key in cb_map.items():
+            if yaml_key in cb:
+                kwargs[config_key] = cb[yaml_key]
+        hm = resilience.get("health_monitor", {})
+        hm_map = {
+            "rss_warn_mb": "hm_rss_warn_mb",
+            "rss_critical_mb": "hm_rss_critical_mb",
+            "disk_free_warn_gb": "hm_disk_free_warn_gb",
+            "gc_interval_cycles": "hm_gc_interval_cycles",
+            "check_interval_sec": "hm_check_interval_sec",
+        }
+        for yaml_key, config_key in hm_map.items():
+            if yaml_key in hm:
+                kwargs[config_key] = hm[yaml_key]
+
+        # 158# P1-5: A/B テスト variant 識別子
+        ab_test = yaml_cfg.get("ab_test", {})
+        if ab_test.get("variant"):
+            kwargs["ab_test_variant"] = str(ab_test["variant"])
+
+        return kwargs
+
     @classmethod
     def from_yaml(cls, yaml_cfg: dict) -> "FillTestConfig":
         """YAML dict から FillTestConfig を構築.
@@ -504,361 +916,21 @@ class FillTestConfig:
         if "max_086_consecutive_wait" in tf:
             kwargs["max_086_consecutive_wait"] = tf["max_086_consecutive_wait"]
 
-        # 049# E3 サンプリング
-        e3 = yaml_cfg.get("e3", {})
-        if "sampling_ratio" in e3:
-            kwargs["e3_sampling_ratio"] = e3["sampling_ratio"]
 
-        # 049# side 別 offset
-        side_offset = yaml_cfg.get("side_offset", {})
-        if "buy" in side_offset:
-            kwargs["spread_offset_ratio_buy"] = side_offset["buy"]
-        if "sell" in side_offset:
-            kwargs["spread_offset_ratio_sell"] = side_offset["sell"]
+        # 163# ステージ抽出: trading features
+        kwargs.update(cls._parse_trading_features(yaml_cfg))
 
-        # 049# 即約定防御
-        ffd = yaml_cfg.get("fast_fill_defense", {})
-        if ffd.get("enabled") is not None:
-            kwargs["fast_fill_defense_enabled"] = ffd["enabled"]
-        if "threshold_sec" in ffd:
-            kwargs["fast_fill_threshold_sec"] = ffd["threshold_sec"]
-        if "offset_boost" in ffd:
-            kwargs["fast_fill_offset_boost"] = ffd["offset_boost"]
-        # 093# side 別 fast_fill_defense
-        if "threshold_sec_buy" in ffd:
-            kwargs["fast_fill_threshold_sec_buy"] = ffd["threshold_sec_buy"]
-        if "threshold_sec_sell" in ffd:
-            kwargs["fast_fill_threshold_sec_sell"] = ffd["threshold_sec_sell"]
-        if "offset_boost_buy" in ffd:
-            kwargs["fast_fill_offset_boost_buy"] = ffd["offset_boost_buy"]
-        if "offset_boost_sell" in ffd:
-            kwargs["fast_fill_offset_boost_sell"] = ffd["offset_boost_sell"]
+        # 163# ステージ抽出: skip_gate ML filter
+        kwargs.update(cls._parse_skip_gate_section(yaml_cfg))
 
-        # 054# S1: Orderbook Imbalance
-        imb = yaml_cfg.get("imbalance", {})
-        if imb.get("enabled") is not None:
-            kwargs["imbalance_enabled"] = imb["enabled"]
-        imb_map = {
-            "depth": "imbalance_depth",
-            "threshold": "imbalance_threshold",
-            "offset_boost": "imbalance_offset_boost",
-            "skip_threshold": "imbalance_skip_threshold",
-        }
-        for yaml_key, config_key in imb_map.items():
-            if yaml_key in imb:
-                kwargs[config_key] = imb[yaml_key]
+        # 163# ステージ抽出: stale order + VG + sell_guard
+        kwargs.update(cls._parse_stale_vg_section(yaml_cfg))
 
-        # 054# S2: Smart Side
-        ss = yaml_cfg.get("smart_side", {})
-        if ss.get("enabled") is not None:
-            kwargs["smart_side_enabled"] = ss["enabled"]
-        if "mode" in ss:
-            kwargs["smart_side_mode"] = ss["mode"]
-        if "max_consecutive_same" in ss:
-            kwargs["smart_side_max_consecutive"] = ss["max_consecutive_same"]
+        # 163# ステージ抽出: 止血 + dynamic kill + narrow spread + inventory skewing
+        kwargs.update(cls._parse_stopgap_section(yaml_cfg))
 
-        # 054# S3: Early Exit (テール損失カット)
-        ee = yaml_cfg.get("early_exit", {})
-        if ee.get("enabled") is not None:
-            kwargs["early_exit_enabled"] = ee["enabled"]
-        ee_map = {
-            "threshold_bps": "early_exit_threshold_bps",
-            "monitoring_interval_sec": "early_exit_monitor_interval_sec",
-            "rapid_exit_interval_sec": "early_exit_rapid_interval_sec",
-        }
-        for yaml_key, config_key in ee_map.items():
-            if yaml_key in ee:
-                kwargs[config_key] = ee[yaml_key]
-
-        # 054# S4: Spread Adaptive Offset
-        sa = yaml_cfg.get("spread_adaptive", {})
-        if sa.get("enabled") is not None:
-            kwargs["spread_adaptive_enabled"] = sa["enabled"]
-        sa_map = {
-            "narrow_spread_bps": "narrow_spread_bps",
-            "narrow_spread_boost": "narrow_spread_boost",
-            "narrow_spread_boost_buy": "narrow_spread_boost_buy",    # 093#
-            "narrow_spread_boost_sell": "narrow_spread_boost_sell",  # 093#
-            "wide_spread_bps": "wide_spread_bps",
-            "wide_spread_ratio": "wide_spread_ratio",
-        }
-        for yaml_key, config_key in sa_map.items():
-            if yaml_key in sa:
-                kwargs[config_key] = sa[yaml_key]
-
-        # 062# S5: SkipGate ML フィルター
-        sg = yaml_cfg.get("skip_gate", {})
-        if sg.get("enabled") is not None:
-            kwargs["skip_gate_enabled"] = sg["enabled"]
-        sg_map = {
-            "mode": "skip_gate_mode",
-            "model_path": "skip_gate_model_path",
-            # 141# P1-01: side 別モデルパス
-            "model_path_buy": "skip_gate_model_path_buy",
-            "model_path_sell": "skip_gate_model_path_sell",
-            "as_threshold": "skip_gate_as_threshold",
-            "pnl_threshold": "skip_gate_pnl_threshold",
-            "max_skip_rate": "skip_gate_max_skip_rate",
-            # 118# A3: side 別有効/無効
-            "buy_enabled": "skip_gate_buy_enabled",
-            "sell_enabled": "skip_gate_sell_enabled",
-            # 068# §3.3: side 別閾値
-            "as_threshold_buy": "skip_gate_as_threshold_buy",
-            "as_threshold_sell": "skip_gate_as_threshold_sell",
-            # 072# OB トグル
-            "use_ob_features": "skip_gate_use_ob_features",
-            # 088# 動的閾値較正
-            "adaptive_threshold": "skip_gate_adaptive_threshold",
-            "target_skip_rate_buy": "skip_gate_target_skip_rate_buy",
-            "target_skip_rate_sell": "skip_gate_target_skip_rate_sell",
-            "adaptive_window": "skip_gate_adaptive_window",
-            "adaptive_min_samples": "skip_gate_adaptive_min_samples",
-            "adaptive_step": "skip_gate_adaptive_step",
-            "adaptive_floor": "skip_gate_adaptive_floor",
-            "adaptive_ceiling": "skip_gate_adaptive_ceiling",
-            # 124# Rule: unknown regime sell skip
-            "skip_sell_unknown_regime": "skip_sell_unknown_regime",
-            # 130# unknown buy offset boost
-            "unknown_buy_offset_boost": "unknown_buy_offset_boost",
-            # 141# P1-04: regime thresholds
-            "regime_thresholds": "skip_gate_regime_thresholds",
-            # 138# P1-03: score calibration
-            "score_calibration": "skip_gate_score_calibration",
-            "calibrator_path": "skip_gate_calibrator_path",
-            "calibrator_min_samples": "skip_gate_calibrator_min_samples",
-            "calibrator_refit_interval": "skip_gate_calibrator_refit_interval",
-        }
-        for yaml_key, config_key in sg_map.items():
-            if yaml_key in sg and sg[yaml_key] is not None:
-                kwargs[config_key] = sg[yaml_key]
-
-        # 158# P1-6: hour_offsets (UTC hour → offset bps)
-        hour_offsets_raw = sg.get("hour_offsets", {})
-        if hour_offsets_raw:
-            kwargs["skip_gate_hour_offsets"] = {
-                int(k): float(v) for k, v in hour_offsets_raw.items()
-            }
-
-        # 094# stale order 検出 & cancel-replace
-        so = yaml_cfg.get("stale_order", {})
-        if so.get("enabled") is not None:
-            kwargs["stale_order_enabled"] = so["enabled"]
-        so_map = {
-            "check_after_sec": "stale_check_after_sec",
-            "drift_bps": "stale_drift_bps",
-            "max_reprice": "stale_max_reprice",
-            "cooldown_sec": "stale_cooldown_sec",
-            # 096# side-specific
-            "check_after_sec_buy": "stale_check_after_sec_buy",
-            "check_after_sec_sell": "stale_check_after_sec_sell",
-            "drift_bps_buy": "stale_drift_bps_buy",
-            "drift_bps_sell": "stale_drift_bps_sell",
-            "max_reprice_buy": "stale_max_reprice_buy",
-            "max_reprice_sell": "stale_max_reprice_sell",
-            # 158# P1-2: reprice offset tightening
-            "reprice_tighten": "stale_reprice_tighten",
-        }
-        for yaml_key, config_key in so_map.items():
-            if yaml_key in so:
-                kwargs[config_key] = so[yaml_key]
-
-        # 096# adaptation recency window
-        adapt = yaml_cfg.get("adaptation", {})
-        if adapt.get("recency_window") is not None:
-            kwargs["adapt_recency_window"] = adapt["recency_window"]
-        # 103# adaptation.min_samples → min_adapt_samples マッピング
-        if "min_samples" in adapt:
-            kwargs["min_adapt_samples"] = adapt["min_samples"]
-
-        # 107# Volatility Guard
-        vg = yaml_cfg.get("volatility_guard", {})
-        if vg.get("enabled") is not None:
-            kwargs["volatility_guard_enabled"] = vg["enabled"]
-        vg_map = {
-            "velocity_window_sec": "volatility_guard_velocity_window_sec",
-            "velocity_threshold_bps": "volatility_guard_velocity_threshold_bps",
-            "vpin_threshold": "volatility_guard_vpin_threshold",
-            "offset_boost_factor": "volatility_guard_offset_boost_factor",
-        }
-        for yaml_key, config_key in vg_map.items():
-            if yaml_key in vg:
-                kwargs[config_key] = vg[yaml_key]
-
-        # 088# sell 専用ハードガード
-        sell_guard = yaml_cfg.get("sell_guard", {})
-        if sell_guard.get("max_spread_jpy") is not None:
-            kwargs["sell_max_spread_jpy"] = sell_guard["max_spread_jpy"]
-        if sell_guard.get("offset_floor") is not None:
-            kwargs["sell_offset_floor"] = sell_guard["offset_floor"]
-
-        # 133# P0-08/09/10: 止血施策
-        止血 = yaml_cfg.get("止血", yaml_cfg.get("loss_control", {}))
-        if 止血.get("skip_balance_forced") is not None:
-            kwargs["skip_balance_forced"] = 止血["skip_balance_forced"]
-        # 154# C-1/C-2: deadlock 防止の連続 forced skip 上限
-        if 止血.get("balance_forced_deadlock_limit") is not None:
-            kwargs["balance_forced_deadlock_limit"] = 止血["balance_forced_deadlock_limit"]
-        # 158# P1-1: balance_forced 救済モード
-        if 止血.get("balance_forced_rescue_enabled") is not None:
-            kwargs["balance_forced_rescue_enabled"] = 止血["balance_forced_rescue_enabled"]
-        if 止血.get("balance_forced_rescue_offset_mult") is not None:
-            kwargs["balance_forced_rescue_offset_mult"] = float(止血["balance_forced_rescue_offset_mult"])
-        if 止血.get("skip_buy_unknown_regime") is not None:
-            kwargs["skip_buy_unknown_regime"] = 止血["skip_buy_unknown_regime"]
-        # 155# §9: trending sell 抑制
-        if 止血.get("skip_sell_trending") is not None:
-            kwargs["skip_sell_trending"] = 止血["skip_sell_trending"]
-        # 156# D-4: trending 方向別分解
-        if 止血.get("skip_sell_trending_up_only") is not None:
-            kwargs["skip_sell_trending_up_only"] = 止血["skip_sell_trending_up_only"]
-        # 158# §20-B: 連続 trending sell skip 安全弁
-        if 止血.get("max_consecutive_trending_sell_skip") is not None:
-            kwargs["max_consecutive_trending_sell_skip"] = 止血["max_consecutive_trending_sell_skip"]
-        sell_kill = 止血.get("sell_dynamic_kill", {})
-        if sell_kill.get("enabled") is not None:
-            kwargs["sell_dynamic_kill_enabled"] = sell_kill["enabled"]
-        for yk, ck in {
-            "window": "sell_dynamic_kill_window",
-            "threshold_bps": "sell_dynamic_kill_threshold_bps",
-            "resume_window": "sell_dynamic_kill_resume_window",
-        }.items():
-            if yk in sell_kill:
-                kwargs[ck] = sell_kill[yk]
-        # 139# §9-#2: regime_thresholds YAML 配線
-        if "regime_thresholds" in sell_kill:
-            kwargs["sell_dynamic_kill_regime_thresholds"] = sell_kill["regime_thresholds"]
-
-        # 157# §19: buy 動的 kill
-        buy_kill = 止血.get("buy_dynamic_kill", {})
-        if buy_kill.get("enabled") is not None:
-            kwargs["buy_dynamic_kill_enabled"] = buy_kill["enabled"]
-        for yk, ck in {
-            "window": "buy_dynamic_kill_window",
-            "threshold_bps": "buy_dynamic_kill_threshold_bps",
-            "resume_window": "buy_dynamic_kill_resume_window",
-        }.items():
-            if yk in buy_kill:
-                kwargs[ck] = buy_kill[yk]
-        if "regime_thresholds" in buy_kill:
-            kwargs["buy_dynamic_kill_regime_thresholds"] = buy_kill["regime_thresholds"]
-
-        # 137# P1-08: narrow spread pause
-        narrow_pause = 止血.get("narrow_spread_pause", {})
-        if narrow_pause.get("enabled") is not None:
-            kwargs["narrow_spread_pause_enabled"] = narrow_pause["enabled"]
-        for yk, ck in {
-            "threshold_bps": "narrow_spread_pause_bps",
-            "pause_sec": "narrow_spread_pause_sec",
-            "max_consecutive": "narrow_spread_pause_max_consecutive",
-        }.items():
-            if yk in narrow_pause:
-                kwargs[ck] = narrow_pause[yk]
-
-
-        # 162# Inventory Skewing: 在庫偏重による非対称クオート
-        inv_skew = 止血.get("inventory_skewing", {})
-        if inv_skew.get("enabled") is not None:
-            kwargs["inventory_skewing_enabled"] = inv_skew["enabled"]
-        for yk, ck in {
-            "window": "inventory_skewing_window",
-            "max_factor": "inventory_skewing_max_factor",
-            "neutral_band": "inventory_skewing_neutral_band",
-        }.items():
-            if yk in inv_skew:
-                kwargs[ck] = inv_skew[yk]
-
-        # 137# P1-11: PnL fee 控除
-        fee_cfg = 止血.get("pnl_fee_deduction", {})
-        if fee_cfg.get("enabled") is not None:
-            kwargs["pnl_fee_deduction_enabled"] = fee_cfg["enabled"]
-        if "maker_fee_bps" in fee_cfg:
-            kwargs["maker_fee_bps"] = fee_cfg["maker_fee_bps"]
-        if "taker_fee_bps" in fee_cfg:
-            kwargs["taker_fee_bps"] = fee_cfg["taker_fee_bps"]
-
-        # 138# P1-10: preflight pause (dead-cycle 防止)
-        pf_pause = 止血.get("preflight_pause", {})
-        if pf_pause.get("enabled") is not None:
-            kwargs["preflight_pause_enabled"] = pf_pause["enabled"]
-        for yk, ck in {
-            "threshold": "preflight_pause_threshold",
-            "pause_sec": "preflight_pause_sec",
-            "max_pauses": "preflight_max_pauses",
-        }.items():
-            if yk in pf_pause:
-                kwargs[ck] = pf_pause[yk]
-
-        # 102# YAML 化: 散在マジックナンバーの設定外部化
-        tuning = yaml_cfg.get("tuning", {})
-        tuning_map = {
-            "max_offset_ratio": "max_offset_ratio",
-            "min_offset_ratio": "min_offset_ratio",
-            "loss_cap_update_interval": "loss_cap_update_interval",
-            "min_loss_cap_jpy": "min_loss_cap_jpy",
-            "mid_trend_validity_sec": "mid_trend_validity_sec",
-            "balance_margin_ratio": "balance_margin_ratio",
-            "balance_shrink_consecutive": "balance_shrink_consecutive",
-            "balance_shrink_divisor": "balance_shrink_divisor",
-            "skip_gate_recent_trades_limit": "skip_gate_recent_trades_limit",
-            "status_unknown_retry_delays": "status_unknown_retry_delays",
-            "rate_limit_min_backoff_sec": "rate_limit_min_backoff_sec",
-            "save_retry_backoff_sec": "save_retry_backoff_sec",
-            "regime_warmup_multiplier": "regime_warmup_multiplier",
-            "e3_60s_multiplier": "e3_60s_multiplier",
-            "e3_120s_multiplier": "e3_120s_multiplier",
-            "adapt_min_side_samples": "adapt_min_side_samples",
-            "batch_flush_interval_sec": "batch_flush_interval_sec",
-            "heartbeat_interval_sec": "heartbeat_interval_sec",
-            # 121# 追加外部化
-            "min_order_btc": "min_order_btc",
-            "dust_sweep_enabled": "dust_sweep_enabled",  # 128#
-            "lock_acquire_retries": "lock_acquire_retries",
-            "skip_gate_ob_depth": "skip_gate_ob_depth",
-            "retry_backoff_base": "retry_backoff_base",
-            "soft_loss_cap_lot_divisor": "soft_loss_cap_lot_divisor",
-            "file_log_level": "file_log_level",
-            "insufficient_funds_patterns": "insufficient_funds_patterns",
-            # 148# §9 #2: heartbeat 設定を YAML から調整可能に
-            "lock_heartbeat_period_sec": "lock_heartbeat_period_sec",
-            "lock_stale_heartbeat_sec": "lock_stale_heartbeat_sec",
-            # 158# YAML 外部化: tuning 追加
-            "hot_reload_check_interval_sec": "hot_reload_check_interval_sec",
-            "records_cache_ttl_sec": "records_cache_ttl_sec",
-            "trades_recorder_fetch_limit": "trades_recorder_fetch_limit",
-            "balance_freeze_cycles": "balance_freeze_cycles",
-        }
-        for yaml_key, config_key in tuning_map.items():
-            if yaml_key in tuning:
-                kwargs[config_key] = tuning[yaml_key]
-
-        # 158# YAML 外部化: resilience セクション (CircuitBreaker / HealthMonitor)
-        resilience = yaml_cfg.get("resilience", {})
-        cb = resilience.get("circuit_breaker", {})
-        cb_map = {
-            "failure_threshold": "cb_failure_threshold",
-            "recovery_timeout": "cb_recovery_timeout",
-            "success_threshold": "cb_success_threshold",
-            "timeout": "cb_timeout",
-        }
-        for yaml_key, config_key in cb_map.items():
-            if yaml_key in cb:
-                kwargs[config_key] = cb[yaml_key]
-        hm = resilience.get("health_monitor", {})
-        hm_map = {
-            "rss_warn_mb": "hm_rss_warn_mb",
-            "rss_critical_mb": "hm_rss_critical_mb",
-            "disk_free_warn_gb": "hm_disk_free_warn_gb",
-            "gc_interval_cycles": "hm_gc_interval_cycles",
-            "check_interval_sec": "hm_check_interval_sec",
-        }
-        for yaml_key, config_key in hm_map.items():
-            if yaml_key in hm:
-                kwargs[config_key] = hm[yaml_key]
-
-        # 158# P1-5: A/B テスト variant 識別子
-        ab_test = yaml_cfg.get("ab_test", {})
-        if ab_test.get("variant"):
-            kwargs["ab_test_variant"] = str(ab_test["variant"])
+        # 163# ステージ抽出: PnL fee + preflight + tuning + resilience + A/B test
+        kwargs.update(cls._parse_infra_section(yaml_cfg))
 
         return cls(**kwargs)
 

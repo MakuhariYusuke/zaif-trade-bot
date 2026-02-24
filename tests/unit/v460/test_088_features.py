@@ -14,6 +14,8 @@ import numpy as np
 import pytest
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+
+from tests.unit.v460._fill_test_source import read_fill_test_runner_source  # 163# mixin 分割対応
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig, SkipDecision
@@ -435,8 +437,8 @@ class TestDataQualityFillRecord:
     def test_early_return_paths_have_run_id(self) -> None:
         """全 FillRecord 生成箇所に run_id が含まれる (ソース検査)."""
         import re
-        src = Path(_PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py")
-        content = src.read_text(encoding="utf-8")
+        # 163# mixin 分割: 全ソースを連結して検索
+        content = read_fill_test_runner_source()
         # FillRecord( の全出現を見つけ、括弧対応で全体ブロックを抽出
         pattern = r"FillRecord\("
         fill_record_blocks: list[str] = []
@@ -473,8 +475,8 @@ class TestDataQualityFillRecord:
     def test_make_skip_record_used_for_all_skips(self) -> None:
         """145# §9-#5: cancel_reason 付きスキップは _make_skip_record 経由であること."""
         import re
-        src = Path(_PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py")
-        content = src.read_text(encoding="utf-8")
+        # 163# mixin 分割: 全ソースを連結して検索
+        content = read_fill_test_runner_source()
         # _make_skip_record 呼出し回数 ≥ 散在する cancel_reason 定数参照数
         skip_calls = len(re.findall(r"_make_skip_record\(", content))
         assert skip_calls >= 8, (

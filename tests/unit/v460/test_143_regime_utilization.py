@@ -59,13 +59,13 @@ class TestRegimeOffsetBoostSource:
 
     def test_high_vol_offset_boost_in_source(self) -> None:
         from scripts.v460.lib.maker_price import MakerPriceCalculator
-        source = inspect.getsource(MakerPriceCalculator.compute)
+        source = inspect.getsource(MakerPriceCalculator)
         assert "regime_high_vol_offset_boost" in source
         assert "high_vol" in source
 
     def test_ranging_offset_discount_in_source(self) -> None:
         from scripts.v460.lib.maker_price import MakerPriceCalculator
-        source = inspect.getsource(MakerPriceCalculator.compute)
+        source = inspect.getsource(MakerPriceCalculator)
         assert "regime_ranging_offset_discount" in source
         assert "ranging" in source
 

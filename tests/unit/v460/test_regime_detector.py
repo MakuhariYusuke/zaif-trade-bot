@@ -1273,7 +1273,7 @@ class TestPhaseD18EnumConsistency:
         import inspect
         from scripts.v460.lib.maker_price import MakerPriceCalculator
 
-        source = inspect.getsource(MakerPriceCalculator.compute)
+        source = inspect.getsource(MakerPriceCalculator)
         assert "FillTestRegime.HIGH_VOL" in source
         assert "FillTestRegime.RANGING" in source
         assert "FillTestRegime.UNKNOWN" in source

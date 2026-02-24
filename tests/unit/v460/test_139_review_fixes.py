@@ -155,9 +155,8 @@ class TestPreflightPauseAuditRecord:
 
     def test_source_has_audit_record(self) -> None:
         """run_fill_test.py の preflight pause ブロックに _make_skip_record がある."""
-        import inspect
-        import scripts.v460.run_fill_test as rft
-        source = inspect.getsource(rft)
+        from tests.unit.v460._fill_test_source import read_fill_test_runner_source  # noqa: E501
+        source = read_fill_test_runner_source()  # 163# mixin 分割対応
         # 145# §9-#5: CR.PREFLIGHT_PAUSE 定数に移行済み
         assert "PREFLIGHT_PAUSE" in source
         assert "_make_skip_record" in source
@@ -341,9 +340,8 @@ class TestNarrowSpreadPauseActualWait:
 
     def test_run_fill_test_calls_asyncio_sleep(self) -> None:
         """run_fill_test.py の narrow_spread_pause ブロックに asyncio.sleep がある."""
-        import inspect
-        import scripts.v460.run_fill_test as rft
-        source = inspect.getsource(rft)
+        from tests.unit.v460._fill_test_source import FILL_LOOP_ORCHESTRATOR
+        source = FILL_LOOP_ORCHESTRATOR.read_text(encoding="utf-8")  # 163# mixin 分割
         # narrow_spread_pause の分岐内に asyncio.sleep が存在することを確認
         # 139# §9-#3 で追加
         assert "await asyncio.sleep(pause_sec)" in source

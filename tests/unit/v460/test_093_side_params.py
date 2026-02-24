@@ -207,14 +207,14 @@ class TestSpreadAdaptiveSideLogic:
         120#: _compute_maker_price は maker_price.py に抽出済み.
         """
         from scripts.v460.lib.maker_price import MakerPriceCalculator
-        source = inspect.getsource(MakerPriceCalculator.compute)
+        source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
         assert "narrow_spread_boost_buy" in source
         assert "narrow_spread_boost_sell" in source
 
     def test_sa_boost_variable_name(self) -> None:
         """093# で sa_boost 変数を使ってサイド別分岐している."""
         from scripts.v460.lib.maker_price import MakerPriceCalculator
-        source = inspect.getsource(MakerPriceCalculator.compute)
+        source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
         assert "sa_boost" in source
 
 
