@@ -175,3 +175,47 @@ sell 側の PnL が極端に悪い原因を「旧データによるモデルの�
 2. **Day 1 (観測修復)**: `trades_health` 不整合修正 (159# P0-A)。
 3. **Day 2 (在庫管理)**: `balance_forced` の事後救済ではなく、事前予防としての Inventory Skewing ロジックの導入。
 4. **Day 3 (分析と再訓練)**: sell 側モデルの SHAP 分析を実施した上で、SkipGate の再訓練 (158# P0-1) を行う。
+
+---
+
+## §9 追記レビュー（実装後・Git非依存確認）
+
+> 依頼に基づき、Git 差分ではなく「実装痕跡の直接確認」で再レビューを実施。
+> 対象は 158# 主要論点（P0/P1/P2）に限定。
+
+### 9.1 確認結果サマリ
+
+| 項目 | 判定 | 根拠 |
+|---|---|---|
+| `trades_health` フィールド不整合 | **対応済み** | `run_fill_test.py` のイベント詳細が `latest_day` / `stale_hours` 参照へ修正 |
+| `reprice_drift_bps` 収集 | **対応済み** | `FillRecord` にフィールド追加 + `OrderMonitor`→`run_fill_test` へ伝搬 |
+| A/B variant 記録 | **対応済み** | `FillTestConfig.ab_test_variant` と `FillRecord.ab_test_variant` の実装確認 |
+| VG 詳細ログ（速度/VPIN/倍率） | **対応済み** | `vg_velocity_bps` / `vg_vpin` / `vg_boost_factor` を `FillRecord` 記録 |
+
+### 9.2 評価（レビュワー見解）
+
+- 158# で指摘した「観測欠損」系は、今回の実装で大きく改善した。
+- 特に `trades_health_alert` の修正は、運用監視の信頼性を直接上げるため評価が高い。
+- `reprice_drift_bps` と VG 詳細ログの追加により、今後の A/B 判断は「感覚」ではなく定量化しやすくなった。
+
+### 9.3 残課題（実装済みだが運用未確認）
+
+1. **データ実測の確認**: 新規フィールドが実データ JSONL に期待どおり出力されるかを最低1日分で確認。  
+2. **分析スクリプト追従**: `ab_test_variant` / `reprice_drift_bps` / VG 新項目を集計側が利用しているか点検。  
+3. **評価基準の固定**: sell offset A/B 判定を `fill_rate + avg_pnl30 + downside tail` の3指標必須に明文化。
+
+### 9.4 優先度アップデート
+
+- 旧 P0-A（`trades_health` 不整合修正）は **クローズ**。
+- ~~次の最優先は **P0-B（A/B判定基準の固定）** と **P0-C（trending_down sell 実測評価）**。~~ → **160# で実装・実測完了**
+  - P0-B: sell vs buy 3指標判定 → **FAIL** (fill_rate 36% 悪化 + p10 -5.39 < -5.0)
+  - P0-C: trending_down sell 13件 → **FAIL** (avg_pnl30 +0.42 ✅ だが p10 -5.67 < -5.0)
+  - 詳細: `160_phg_rpt_analysis_and_regime_tuning.md` §8 参照
+- `variant` 記録が入ったため、次フェーズは「施策実装」より「統計的に誤判定しない運用ルール整備」を優先すべき。
+
+### 9.5 変更履歴追記
+
+| 日付 | 内容 |
+|---|---|
+| 2026-02-24 | 追記: 158# 実装後レビュー（Git非依存）。観測系4項目の対応済みを確認し、次優先を再設定 |
+| 2026-02-24 | §9.4 更新: P0-B/C 160# で実装・実測完了。両項目 FAIL (p10 超過)。trending_down sell は暫定継続 |

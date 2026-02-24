@@ -339,3 +339,131 @@ fill_rate 最大化のため offset を0に近づけるバイアスが生じる�
 # カスタム設定で実行
 .venv\Scripts\python.exe scripts/v460/analysis/side_regime_dashboard.py --with-judgment --config configs/v460/fill_test.yaml
 ```
+
+---
+
+## §8 P0-B/C 実測結果 (2026-02-24)
+
+> 対象: `results/v460/fill_test/` 12 ファイル, 3,019 total records, 1,396 filled
+> Fill Test PID 124796 蓄積データ (開始～2026-02-24 現在)
+
+### 8.1 全体ダッシュボード
+
+| 指標 | buy | sell |
+|---|---|---|
+| n_total | 1,190 | 1,829 |
+| n_filled | 704 | 692 |
+| fill_rate | **59.2%** | **37.8%** |
+| avg_pnl30 (bps) | **+0.0261** | **-0.4693** |
+| std_pnl30 (bps) | — | — |
+| downside_p10 (bps) | **-5.1448** | **-5.3911** |
+| downside_p05 (bps) | -7.3987 | -6.8531 |
+| profitable_rate | 48.4% | 44.5% |
+| AS rate | 27.8% | 26.3% |
+| avg AS loss (bps) | -4.9157 | -5.5798 |
+
+### 8.2 Regime × Side 詳細
+
+| regime | side | fill_rate | avg_pnl30 | p10 | AS rate | n_filled |
+|---|---|---|---|---|---|---|
+| none | buy | 33.7% | -0.1491 | -4.6327 | 43.2% | 139 |
+| none | sell | 14.9% | -0.8026 | -5.8606 | 42.2% | 128 |
+| ranging | buy | 71.1% | -0.0767 | -4.7086 | 20.8% | 384 |
+| ranging | sell | 76.1% | -0.3422 | -4.2858 | 20.2% | 386 |
+| trending | buy | 73.3% | +0.5727 | -6.9571 | 28.0% | 118 |
+| trending | sell | 32.8% | -0.6596 | -6.5637 | 28.0% | 118 |
+| **trending_down** | **buy** | **88.2%** | **+4.2093** | -5.4679 | 33.3% | 15 |
+| **trending_down** | **sell** | **72.2%** | **+0.4210** | -5.6659 | 38.5% | 13 |
+| trending_up | buy | 100.0% | +2.9064 | +2.9064 | 0.0% | 1 |
+| trending_up | sell | 3.9% | +0.2444 | +0.2444 | 0.0% | 1 |
+| unknown | buy | 81.0% | -1.3837 | -5.6131 | 38.3% | 47 |
+| unknown | sell | 79.3% | -0.3876 | -3.9363 | 26.1% | 46 |
+
+### 8.3 P0-B: A/B 判定結果
+
+```
+[A/B Judgment] ❌ FAIL
+  variant=sell (n=692) vs control=buy (n=704)
+  ❌ fill_rate: variant=37.8% control=59.2% — degraded 36.0% vs control
+  ✅ avg_pnl30: variant=-0.4693 control=+0.0261 bps — OK
+  ❌ downside_p10: variant=-5.3911 control=-5.1448 bps — below absolute min -5.00
+  [stat] pnl30 p=0.0644, Cohen's d=-0.099
+```
+
+| 指標 | sell (variant) | buy (control) | 閾値 | 判定 |
+|---|---|---|---|---|
+| fill_rate | 37.8% | 59.2% | ≥30% abs, ≤5% degradation | **❌ FAIL** (36% 悪化) |
+| avg_pnl30 | -0.4693 bps | +0.0261 bps | ≥ -1.0 bps | ✅ PASS |
+| downside_p10 | -5.3911 bps | -5.1448 bps | ≥ -5.0 bps | **❌ FAIL** (-5.39 < -5.0) |
+| **総合** | | | 全指標 PASS | **❌ FAIL** |
+
+**統計検定**: Welch t検定 p=0.0644 (10% 水準で有意だが 5% 水準で非有意), Cohen's d=-0.099 (微小効果)
+
+#### 解釈
+
+1. **fill_rate 大幅悪化** (37.8% vs 59.2%): sell 側の防御ゲート (skip_gate, trending_sell_skip, time_filter 等) が厳格に作用し、sell の約定率が buy の2/3。これは「売り控え」仕様の正常動作だが、A/B 比較としては sell variant は fill_rate で不利。
+2. **avg_pnl30 は閾値内**: sell -0.47 bps は -1.0 bps の下限を上回っている。ただし buy +0.03 bps との差は -0.50 bps で、p=0.064 から偶然変動の可能性もある。
+3. **downside_p10 が僅差で FAIL**: sell -5.39 vs buy -5.14 で、絶対閾値 -5.0 bps を sell が 0.39 bps だけ下回る。テールリスクの制御が必要。
+
+#### アクション
+
+- sell offset 緩和施策は **現時点では不採用判定**。
+- fill_rate の大差は設計意図 (sell 防御) によるものであり、A/B 比較の文脈では regime ごとの比較 (ranging 同士: buy 71.1% vs sell 76.1%) を見るべき。
+- downside_p10 改善のため、running 中の skip_gate 再訓練が p10 を引き上げるか経過観察。
+
+### 8.4 P0-C: trending_down sell 実測評価
+
+```
+[Trending Down Sell Eval] ❌ FAIL
+  n_filled=13 (total=18)
+  avg_pnl30=+0.4210 bps
+  downside_p10=-5.6659 bps
+  profitable=53.8%
+  CF gain=+1.0810 bps vs skip
+  FAIL: p10=-5.6659 < min=-5.00
+  --- Daily ---
+    20260223: n=5, avg_pnl30=+2.8880 bps
+    20260224: n=8, avg_pnl30=-1.1209 bps
+```
+
+| 指標 | 実測値 | 閾値 | 判定 |
+|---|---|---|---|
+| n_filled | 13 | ≥10 (min), 30 (target) | ⚠️ PROVISIONAL (足りている) |
+| avg_pnl30 | **+0.4210 bps** | ≥ -0.5 bps | ✅ PASS |
+| downside_p10 | **-5.6659 bps** | ≥ -5.0 bps | **❌ FAIL** |
+| profitable_rate | 53.8% | — | 半数以上が利益方向 |
+| CF gain | **+1.0810 bps** | vs -0.66 (skip 時期待値) | ✅ 改善 |
+| **総合** | | | | **❌ FAIL** (p10 超過) |
+
+#### 日次推移
+
+| 日付 | n_filled | avg_pnl30 (bps) |
+|---|---|---|
+| 2026-02-23 | 5 | **+2.8880** |
+| 2026-02-24 | 8 | **-1.1209** |
+
+#### 解釈
+
+1. **avg_pnl30 は良好** (+0.42 bps): 156# D-4 の trending_down sell 開放は平均値ベースでプラス効果。CF gain +1.08 bps は、skip していた場合 (-0.66 bps) からの改善を示す。
+2. **downside_p10 が FAIL** (-5.67 bps < -5.0 bps): 13件中の worst decile (下位1-2件) が深い損失。サンプル少数のため1件のテール取引で p10 が大きく振れる。
+3. **日次ばらつきが大きい**: 2/23 は +2.89, 2/24 は -1.12。これは n=13 の不安定性であり、判定は暫定的。
+4. **サンプル不足**: 13/30 で target の 43% 到達。有意な判定には倍以上の蓄積が必要。
+
+#### アクション
+
+- trending_down sell は **「暫定継続、閾値緩和検討」** とする。
+  - 理由: avg_pnl30 が + 0.42 bps で明らかにプラス方向。p10 の FAIL は n=13 の不安定性に起因する可能性が高い。
+  - 対応: n=30 到達まで開放継続し、再評価で p10 が依然 -5.0 bps 以下なら skip 復帰を検討。
+- `downside_p10_min_bps` を -6.0 bps へ緩和する案は n=30 到達後に判断。
+
+### 8.5 次のマイルストーン
+
+| 項目 | 条件 | 期待時期 |
+|---|---|---|
+| P0-C 再評価 | trending_down sell n_filled ≥ 30 | ~2-3日後 |
+| P0-B 再評価 (regime別) | ranging 固定での sell vs buy 比較 | データ十分 |
+| skip_gate 再訓練効果 | PID 129404 の完了 + 1日分蓄積 | ~1-2日後 |
+
+### 8.6 JSON 結果
+
+完全な JSON 出力は `reports/160_p0bc_judgment_results.json` に保存。
