@@ -478,3 +478,30 @@ retrain:
   trigger_check_feature_freshness: true   # 139# §9-#7: feature 鮮度チェック有効化
   trigger_feature_trades_stale_hours: 6.0  # feature trades stale (h)
   trigger_feature_ob_stale_hours: 6.0     # feature OB stale (h)
+
+# ======================================================================
+# 160# P0-B/C: A/B 判定基準 + trending_down sell 評価
+# ======================================================================
+judgment:
+  ab_criteria:
+    # --- サンプル要件 ---
+    min_filled_records: 50         # filled レコード最小数 (< x → INSUFFICIENT)
+    min_calendar_days: 2           # 最低暦日数
+    # --- 1. fill_rate ---
+    fill_rate_min: 0.30            # 絶対下限 (30% 未満は無条件 FAIL)
+    fill_rate_degradation_tolerance: 0.05  # control比 5% 超悪化で FAIL
+    # --- 2. avg_pnl30 ---
+    avg_pnl30_min_bps: -1.0       # 絶対下限 (bps)
+    avg_pnl30_must_improve: false  # true: control よりも改善を要求
+    # --- 3. downside_tail ---
+    downside_p10_min_bps: -5.0    # p10 絶対下限 (bps)
+    downside_p10_degradation_max_bps: 2.0  # control比 2bps以上悪化で FAIL
+  trending_down_sell:
+    # --- サンプル要件 ---
+    min_filled: 10                 # 最低 filled 数 (< x → INSUFFICIENT)
+    target_filled: 30              # 統計有意サンプル数
+    # --- 判定閾値 ---
+    avg_pnl30_min_bps: -0.5       # 平均 PnL30 下限 (bps)
+    downside_p10_min_bps: -5.0    # p10 下限 (bps)
+    # --- カウンターファクチュアル ---
+    counterfactual_pnl30_bps: -0.66  # trending sell skip時の期待損失 (160# §1.3)

@@ -3,6 +3,7 @@
 > 2026-02-24 Fill Test (PID 124796) 蓄積データに基づく分析結果。
 > 対象: `results/v460/fill_test/` 12 ファイル, 2,932 total records
 > 160# で追加: regime=None 問題の根本原因特定と skip record 全箇所への regime 伝搬
+> 160# P0-B/C: A/B判定基準の固定 (3指標) + trending_down sell 実測評価テンプレート
 
 ---
 
@@ -251,3 +252,90 @@ cancel_reason 別内訳 (regime=None 770件):
 1. `compute_regime_metrics()` の精度向上 (43.9% のデータが分析対象に復帰)
 2. `skip_sell_unknown_regime` ゲートの改善 (regime_value=None を unknown 扱いしていた問題が解消)
 3. regime 別 PnL 分析の信頼性向上
+
+---
+
+## §6 P0-B: A/B判定基準の固定 (3指標必須)
+
+### 6.1 課題 (159# §3.1)
+
+sell offset A/B テストの判定を `fill_rate` 単独で行うと、
+fill_rate 最大化のため offset を0に近づけるバイアスが生じる。
+結果として AS (Adverse Selection) 率の上昇・テール損失の拡大を見逃す。
+
+### 6.2 解決: 3指標同時判定の明文化
+
+| 指標 | 閾値 | 根拠 |
+|---|---|---|
+| `fill_rate` | ≥30% (絶対), control比5%以上悪化で FAIL | 流動性確認 |
+| `avg_pnl30` | ≥ -1.0 bps | 期待収益の下限ガード |
+| `downside_p10` | ≥ -5.0 bps, control比2bps以上悪化で FAIL | テールリスク管理 |
+
+全指標 PASS で「variant 採用可」、1つでも FAIL なら「不採用」。
+
+### 6.3 実装
+
+| ファイル | 内容 |
+|---|---|
+| `scripts/v460/lib/ab_judgment.py` | 新規: `ABJudgmentCriteria`, `evaluate_ab_variant()`, `Verdict` |
+| `configs/v460/fill_test.yaml` | `judgment.ab_criteria` セクション追加 (全閾値 YAML 外部化) |
+| `scripts/v460/analysis/side_regime_dashboard.py` | `--with-judgment` オプション追加で3指標判定を統合 |
+| `tests/unit/v460/test_160_ab_judgment.py` | 43テスト (pass/fail/insufficient 各パターン網羅) |
+
+### 6.4 既存資産活用
+
+- `ztb.adaptation.ab_test.analyzer.ABTestAnalyzer` — PnL30 の Welch t検定 + Cohen's d 効果量
+- `scripts.v460.analysis.side_regime_dashboard._compute_side_metrics` — 3指標算出ロジック互換
+
+---
+
+## §7 P0-C: trending_down sell 実測評価テンプレート
+
+### 7.1 課題 (159# §4.1)
+
+156# D-4 で trending_down sell を開放したが、
+効果の日次追跡と PASS/FAIL の自動判定が未整備。
+
+### 7.2 解決: 固定テンプレート日次評価
+
+| 指標 | 閾値 | 根拠 |
+|---|---|---|
+| `avg_pnl30` | ≥ -0.5 bps | §1.3 の trending sell 期待損失 (-0.66) より改善 |
+| `downside_p10` | ≥ -5.0 bps | テールリスク管理 |
+| `min_filled` | ≥ 10 (INSUFFICIENT 閾値) | 統計的最低件数 |
+| `target_filled` | 30 (PROVISIONAL PASS 閾値) | 有意性確保 |
+
+カウンターファクチュアル比較: 実測 avg_pnl30 vs skip時の期待損失 (-0.66 bps)
+
+### 7.3 実装
+
+| ファイル | 内容 |
+|---|---|
+| `scripts/v460/lib/ab_judgment.py` | `TrendingEvalCriteria`, `evaluate_trending_down_sell()`, `TrendingEvalResult` |
+| `configs/v460/fill_test.yaml` | `judgment.trending_down_sell` セクション |
+| `scripts/v460/analysis/side_regime_dashboard.py` | `--with-judgment` で trending eval 結果も出力 |
+
+### 7.4 出力例
+
+```text
+[Trending Down Sell Eval] ✅ PASS
+  n_filled=15 (total=30)
+  avg_pnl30=+1.1800 bps
+  downside_p10=-2.3400 bps
+  profitable=73.3%
+  CF gain=+1.8400 bps vs skip
+  PROVISIONAL PASS (n=15/30): metrics within thresholds but sample insufficient for full confidence
+  --- Daily ---
+    20260224: n=5, avg_pnl30=+1.2000 bps
+    20260225: n=10, avg_pnl30=+1.1600 bps
+```
+
+### 7.5 使い方
+
+```powershell
+# ダッシュボード + judgment 評価
+.venv\Scripts\python.exe scripts/v460/analysis/side_regime_dashboard.py --with-judgment
+
+# カスタム設定で実行
+.venv\Scripts\python.exe scripts/v460/analysis/side_regime_dashboard.py --with-judgment --config configs/v460/fill_test.yaml
+```

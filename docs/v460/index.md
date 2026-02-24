@@ -181,7 +181,7 @@
 | 118 | rpt | [118_phg_rpt_backlog_deep_analysis.md](118_phg_rpt_backlog_deep_analysis.md) | 残課題・未検討提案の深掘り考察 (53→39 RESOLVED, §5/§8全件disposition, 特徴量再訓練計画 Appendix F) |
 | 158 | rpt | [158_phg_rpt_backlog_audit_and_phase_d_priorities.md](158_phg_rpt_backlog_audit_and_phase_d_priorities.md) | バックログ監査 (118#–157# 横断) + Phase D 優先順位 22 件 + 外部 AI レビュー向け補足 |
 | 159 | rev | [159_phg_rev_158_phase_d_backlog_review.md](159_phg_rev_158_phase_d_backlog_review.md) | 158# レビュー: 実装照合・優先度再編・範囲外改善提案 |
-| 160 | rpt | [160_phg_rpt_analysis_and_regime_tuning.md](160_phg_rpt_analysis_and_regime_tuning.md) | P0-3/P1-2 分析 + YAML外部化 + regime=None根本修正 (skip record全箇所伝搬) |
+| 160 | rpt | [160_phg_rpt_analysis_and_regime_tuning.md](160_phg_rpt_analysis_and_regime_tuning.md) | P0-3/P1-2 分析 + YAML外部化 + regime=None根本修正 + P0-B A/B判定3指標固定 + P0-C trending_down sell実測評価 |
 
 ---
 
