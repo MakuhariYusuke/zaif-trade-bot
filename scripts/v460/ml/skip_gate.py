@@ -189,6 +189,7 @@ class SkipGate:
         *,
         side: str | None = None,
         regime: str | None = None,
+        threshold_offset: float = 0.0,
     ) -> SkipDecision:
         """注文前にスキップ判定.
 
@@ -196,6 +197,9 @@ class SkipGate:
             features: 特徴量辞書. GATE_FEATURE_COLS のキーを含む.
             side: "buy" or "sell". 068# §3.3 side 別閾値に使用.
             regime: 141# P1-04 レジーム名. regime_thresholds に一致すればオーバーライド.
+            threshold_offset: 158# P1-6 時間帯別閾値調整 (bps).
+                PnL mode: threshold += offset (正=厳格化).
+                AS mode: threshold -= offset (正=厳格化).
 
         Returns:
             SkipDecision.
@@ -269,6 +273,10 @@ class SkipGate:
             elif side == "sell" and self.config.as_threshold_sell is not None:
                 threshold = self.config.as_threshold_sell
             threshold_used = threshold  # 084# side別解決後の閾値
+            # 158# P1-6: 時間帯別閾値調整 (AS mode: 正=厳格化=閾値低下)
+            if threshold_offset != 0.0:
+                threshold -= threshold_offset
+                threshold_used = threshold
             # 088# 動的較正: 目標 skip 率ベースで閾値を自動調整
             if self.config.adaptive_threshold and side is not None:
                 threshold = self._calibrate_threshold(side, pred_prob, threshold)
@@ -294,6 +302,9 @@ class SkipGate:
                 base_threshold = self.config.regime_thresholds.get(
                     regime, base_threshold
                 )
+            # 158# P1-6: 時間帯別閾値調整 (PnL mode: 正=厳格化=閾値上昇)
+            if threshold_offset != 0.0:
+                base_threshold += threshold_offset
             # 125# 動的較正: mode=pnl でも target_skip_rate にあわせて閾値を調整
             if self.config.adaptive_threshold and side is not None:
                 threshold_used = self._calibrate_pnl_threshold(

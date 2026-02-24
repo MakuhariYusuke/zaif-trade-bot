@@ -182,6 +182,9 @@ class FillTestConfig:
     skip_gate_calibrator_refit_interval: int = 100 # 自動 refit 間隔 (新規レコード数)
     # 141# P1-04: regime 別 PnL 閾値オーバーライド
     skip_gate_regime_thresholds: dict[str, float] = field(default_factory=dict)
+    # 158# P1-6: 時間帯別 skip_gate 閾値調整 (UTC hour → offset bps)
+    # 正=厳格化 (skip 増), 負=緩和 (skip 減). PnL mode: threshold += offset, AS mode: threshold -= offset
+    skip_gate_hour_offsets: dict[int, float] = field(default_factory=dict)
     # 124# Rule: unknown regime での sell スキップ
     skip_sell_unknown_regime: bool = False
     # 130# unknown regime での buy offset boost (AS 回避)
@@ -201,6 +204,8 @@ class FillTestConfig:
     stale_drift_bps_sell: float | None = None        # sell 側乖離閾値 (None=共通値)
     stale_max_reprice_buy: int | None = None         # buy 側最大 reprice (None=共通値)
     stale_max_reprice_sell: int | None = None        # sell 側最大 reprice (None=共通値)
+    # 158# P1-2: reprice 時の offset 引き締め (1.0=変更なし, 0.85=15% 引き締め→より市場価格に近づける)
+    stale_reprice_tighten: float = 1.0
     # 096# adapter recency window (全履歴混合を停止)
     adapt_recency_window: int = 0          # 0=全履歴, >0=直近 N clean records のみ
     # 107# Volatility Guard (リアルタイム急変検知)
@@ -607,6 +612,13 @@ class FillTestConfig:
             if yaml_key in sg and sg[yaml_key] is not None:
                 kwargs[config_key] = sg[yaml_key]
 
+        # 158# P1-6: hour_offsets (UTC hour → offset bps)
+        hour_offsets_raw = sg.get("hour_offsets", {})
+        if hour_offsets_raw:
+            kwargs["skip_gate_hour_offsets"] = {
+                int(k): float(v) for k, v in hour_offsets_raw.items()
+            }
+
         # 094# stale order 検出 & cancel-replace
         so = yaml_cfg.get("stale_order", {})
         if so.get("enabled") is not None:
@@ -623,6 +635,8 @@ class FillTestConfig:
             "drift_bps_sell": "stale_drift_bps_sell",
             "max_reprice_buy": "stale_max_reprice_buy",
             "max_reprice_sell": "stale_max_reprice_sell",
+            # 158# P1-2: reprice offset tightening
+            "reprice_tighten": "stale_reprice_tighten",
         }
         for yaml_key, config_key in so_map.items():
             if yaml_key in so:
@@ -801,6 +815,8 @@ class SkipGateResult:
     model_used: Optional[str] = None
     as_prob: Optional[float] = None
     threshold_used: Optional[float] = None
+    # 158# P1-6: 時間帯別閾値調整のオフセット
+    hour_offset: float = 0.0
     early_return_record: Optional[FillRecord] = None
 
 

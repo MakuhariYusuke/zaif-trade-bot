@@ -6,6 +6,7 @@
 - FillRecord.reprice_count フィールド
 - FillRecord.reprice_drift_bps フィールド (158# P1-3)
 - VG 詳細ログフィールド (158# P2-6)
+- 時間帯別 skip_gate 閾値調整 (158# P1-6)
 - ロジック構造テスト (コードベース)
 - 発動条件テスト
 """
@@ -447,3 +448,114 @@ class TestFillRecordVGDetailFields:
         assert hasattr(MakerPriceCalculator, "last_vg_velocity_bps")
         assert hasattr(MakerPriceCalculator, "last_vg_vpin")
         assert hasattr(MakerPriceCalculator, "last_vg_boost_factor")
+
+
+# =====================================================================
+# F. 158# P1-6: 時間帯別 skip_gate 閾値調整
+# =====================================================================
+
+class TestSkipGateHourOffsets:
+    """158# P1-6: skip_gate_hour_offsets の Config + FillRecord テスト."""
+
+    def test_hour_offsets_default_empty(self) -> None:
+        cfg = FillTestConfig()
+        assert cfg.skip_gate_hour_offsets == {}
+
+    def test_hour_offsets_explicit(self) -> None:
+        cfg = FillTestConfig(skip_gate_hour_offsets={0: 0.05, 14: -0.02})
+        assert cfg.skip_gate_hour_offsets[0] == pytest.approx(0.05)
+        assert cfg.skip_gate_hour_offsets[14] == pytest.approx(-0.02)
+
+    def test_hour_offsets_yaml_parsing(self) -> None:
+        """YAML の skip_gate.hour_offsets が正しくパースされる."""
+        import yaml
+        yaml_str = """
+skip_gate:
+  enabled: true
+  mode: pnl
+  hour_offsets:
+    0: 0.05
+    1: 0.03
+    14: -0.02
+    15: -0.03
+"""
+        data = yaml.safe_load(yaml_str)
+        cfg = FillTestConfig.from_yaml(data)
+        assert cfg.skip_gate_hour_offsets[0] == pytest.approx(0.05)
+        assert cfg.skip_gate_hour_offsets[1] == pytest.approx(0.03)
+        assert cfg.skip_gate_hour_offsets[14] == pytest.approx(-0.02)
+        assert cfg.skip_gate_hour_offsets[15] == pytest.approx(-0.03)
+
+    def test_fill_record_hour_offset_default_none(self) -> None:
+        r = FillRecord(
+            cycle_id="t",
+            timestamp=0.0,
+            side="buy",
+            order_price=100.0,
+            order_quantity=0.001,
+        )
+        assert r.skip_gate_hour_offset is None
+
+    def test_fill_record_hour_offset_explicit(self) -> None:
+        r = FillRecord(
+            cycle_id="t",
+            timestamp=0.0,
+            side="buy",
+            order_price=100.0,
+            order_quantity=0.001,
+            skip_gate_hour_offset=0.05,
+        )
+        assert r.skip_gate_hour_offset == pytest.approx(0.05)
+
+    def test_fill_record_hour_offset_roundtrip(self) -> None:
+        """from_dict で hour_offset がラウンドトリップする."""
+        r = FillRecord(
+            cycle_id="t",
+            timestamp=0.0,
+            side="buy",
+            order_price=100.0,
+            order_quantity=0.001,
+            skip_gate_hour_offset=-0.03,
+        )
+        d = r.to_dict()
+        r2 = FillRecord.from_dict(d)
+        assert r2.skip_gate_hour_offset == pytest.approx(-0.03)
+
+    def test_fill_record_hour_offset_old_data_compat(self) -> None:
+        """古いデータに hour_offset がなくても from_dict が動く."""
+        d = {
+            "cycle_id": "old",
+            "timestamp": 0.0,
+            "side": "buy",
+            "order_price": 100.0,
+            "order_quantity": 0.001,
+        }
+        r = FillRecord.from_dict(d)
+        assert r.skip_gate_hour_offset is None
+
+
+class TestSkipGateThresholdOffset:
+    """158# P1-6: SkipGate.evaluate の threshold_offset の動作テスト."""
+
+    def test_skip_gate_evaluate_accepts_threshold_offset(self) -> None:
+        """SkipGate.evaluate が threshold_offset パラメータを受け付ける."""
+        import inspect
+        from scripts.v460.ml.skip_gate import SkipGate
+        sig = inspect.signature(SkipGate.evaluate)
+        assert "threshold_offset" in sig.parameters
+        p = sig.parameters["threshold_offset"]
+        assert p.default == 0.0
+
+    def test_skip_gate_result_hour_offset_field(self) -> None:
+        """SkipGateResult に hour_offset フィールドが存在."""
+        from scripts.v460.lib.fill_config import SkipGateResult
+        r = SkipGateResult()
+        assert r.hour_offset == 0.0
+
+    def test_skip_gate_evaluator_config_hour_offsets(self) -> None:
+        """SkipGateEvaluator が config.skip_gate_hour_offsets を参照可能."""
+        cfg = FillTestConfig(skip_gate_hour_offsets={0: 0.1, 12: -0.05})
+        assert cfg.skip_gate_hour_offsets[0] == pytest.approx(0.1)
+        assert cfg.skip_gate_hour_offsets[12] == pytest.approx(-0.05)
+        # 未定義時間帯は 0.0 (get default)
+        assert cfg.skip_gate_hour_offsets.get(6, 0.0) == 0.0

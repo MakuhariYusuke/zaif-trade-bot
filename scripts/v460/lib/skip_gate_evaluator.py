@@ -69,6 +69,7 @@ class _SkipGateLike(Protocol):
         *,
         side: str | None = None,
         regime: str | None = None,
+        threshold_offset: float = ...,
     ) -> _SkipDecisionLike:
         ...
 
@@ -335,6 +336,7 @@ class SkipGateEvaluator:
                 apply_warm_start=True,
             )
             self._skip_gate = new_gate
+            self._inject_calibrator(new_gate)  # 158# hot-reload 後も calibrator 再注入
             self._model_file_hash = new_hash
             n_samples = new_gate.metadata.get("n_samples", "?")
             version = new_gate.metadata.get("version", "?")
@@ -592,8 +594,18 @@ class SkipGateEvaluator:
             if maker_price_vpin_setter is not None and callable(maker_price_vpin_setter):
                 maker_price_vpin_setter(gate_features.get("vpin_60s"))
 
+            # 158# P1-6: 時間帯別 skip_gate 閾値調整
+            from datetime import datetime, timezone as _tz
+            _utc_hour = datetime.now(_tz.utc).hour
+            _hour_offset = self._config.skip_gate_hour_offsets.get(_utc_hour, 0.0)
+
             # 141# P1-01: side 別モデルにディスパッチ (フォールバック: unified)
-            decision = active_gate.evaluate(gate_features, side=side, regime=sg_regime)
+            decision = active_gate.evaluate(
+                gate_features,
+                side=side,
+                regime=sg_regime,
+                threshold_offset=_hour_offset,
+            )
             result.skipped = decision.should_skip
             result.score = decision.predicted_pnl_bps
             result.reason = decision.reason
@@ -606,6 +618,7 @@ class SkipGateEvaluator:
             result.model_used = f"{decision.model_used}:{model_tag}"
             result.as_prob = decision.as_probability
             result.threshold_used = decision.threshold_used
+            result.hour_offset = _hour_offset
 
             if decision.should_skip:
                 from ztb.metrics.fill_quality import FillRecord
@@ -631,6 +644,7 @@ class SkipGateEvaluator:
                     skip_gate_model_used=result.model_used,
                     skip_gate_as_prob=result.as_prob,
                     skip_gate_threshold_used=result.threshold_used,
+                    skip_gate_hour_offset=_hour_offset if _hour_offset != 0.0 else None,
                     # 122# R5: OB 記録を imbalance_enabled と独立させ常時記録
                     orderbook_imbalance=last_imbalance,
                     bid_depth_total=last_bid_depth,

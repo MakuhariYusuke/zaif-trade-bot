@@ -320,3 +320,69 @@ class TestABTestVariantFillRecord:
         }
         r = FillRecord.from_dict(d)
         assert r.ab_test_variant is None
+
+
+# =====================================================================
+# G. 158# P1-2: reprice offset tightening
+# =====================================================================
+
+class TestRepriceOffsetTighten:
+    """158# P1-2: stale_reprice_tighten の Config + ロジックテスト."""
+
+    def test_default_value(self) -> None:
+        cfg = FillTestConfig()
+        assert cfg.stale_reprice_tighten == pytest.approx(1.0)
+
+    def test_custom_value(self) -> None:
+        cfg = FillTestConfig(stale_reprice_tighten=0.85)
+        assert cfg.stale_reprice_tighten == pytest.approx(0.85)
+
+    def test_yaml_parsing(self) -> None:
+        import yaml
+        yaml_str = """
+stale_order:
+  enabled: true
+  reprice_tighten: 0.80
+"""
+        data = yaml.safe_load(yaml_str)
+        cfg = FillTestConfig.from_yaml(data)
+        assert cfg.stale_reprice_tighten == pytest.approx(0.80)
+
+    def test_tighten_logic_in_order_monitor(self) -> None:
+        """OrderMonitor に tighten ロジックが存在する."""
+        import inspect
+        from scripts.v460.lib.order_monitor import OrderMonitor
+        source = inspect.getsource(OrderMonitor.monitor)
+        assert "stale_reprice_tighten" in source
+        assert "tightened_gap" in source
+
+    def test_tighten_buy_formula(self) -> None:
+        """buy 側: tighten で mid に近づく (gap 縮小)."""
+        mid = 15_000_000
+        original_price = 14_970_000  # gap = 30,000
+        tighten = 0.85
+        gap = abs(original_price - mid)
+        tightened_gap = gap * tighten
+        new_price = round(mid - tightened_gap)
+        assert new_price > original_price  # closer to mid
+        assert new_price == round(mid - 30_000 * 0.85)
+
+    def test_tighten_sell_formula(self) -> None:
+        """sell 側: tighten で mid に近づく (gap 縮小)."""
+        mid = 15_000_000
+        original_price = 15_030_000  # gap = 30,000
+        tighten = 0.85
+        gap = abs(original_price - mid)
+        tightened_gap = gap * tighten
+        new_price = round(mid + tightened_gap)
+        assert new_price < original_price  # closer to mid
+        assert new_price == round(mid + 30_000 * 0.85)
+
+    def test_tighten_1_0_no_change(self) -> None:
+        """tighten=1.0 の場合は価格変更なし."""
+        mid = 15_000_000
+        original_price = 14_970_000
+        tighten = 1.0
+        gap = abs(original_price - mid)
+        tightened_gap = gap * tighten
+        assert tightened_gap == gap  # no change

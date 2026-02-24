@@ -89,6 +89,8 @@ class FillRecord:
     # 084# SkipGate 可観測性改善: P(AS) と使用閾値を直接記録
     skip_gate_as_prob: Optional[float] = None     # AS 確率 (0.0-1.0), mode="as" 時のみ
     skip_gate_threshold_used: Optional[float] = None  # 実際に適用された閾値 (side別解決後)
+    # 158# P1-6: 時間帯別 skip_gate 閾値調整のオフセット値 (bps)
+    skip_gate_hour_offset: Optional[float] = None    # 適用された hour-based offset (0.0=調整なし)
     # 094# stale order cancel-replace 追跡
     reprice_count: int = 0                        # 1 サイクル内で再発注した回数
     # 158# P1-3: reprice 累積 drift (bps) — 全 reprice の合計 drift を記録

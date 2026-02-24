@@ -338,6 +338,20 @@ class OrderMonitor:
                         try:
                             result = await compute_maker_price(side)  # type: ignore[operator]
                             new_price = result[0]
+                            # 158# P1-2: reprice offset tightening
+                            _tighten = cfg.stale_reprice_tighten
+                            if _tighten != 1.0 and current_mid > 0:
+                                _gap = abs(new_price - current_mid)
+                                _tightened_gap = _gap * _tighten
+                                if side == "buy":
+                                    new_price = round(current_mid - _tightened_gap)
+                                else:
+                                    new_price = round(current_mid + _tightened_gap)
+                                logger.debug(
+                                    f"[stale_order] Offset tightened: "
+                                    f"gap {_gap:.0f}→{_tightened_gap:.0f} "
+                                    f"(factor={_tighten})"
+                                )
                             reprice_lot = max(
                                 min_order_btc,
                                 int(current_lot / min_order_btc) * min_order_btc,

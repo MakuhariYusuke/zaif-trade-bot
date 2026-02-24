@@ -1155,6 +1155,7 @@ class FillTestRunner(AbstractCycleRunner):
         skip_gate_model_used = sg.model_used
         skip_gate_as_prob = sg.as_prob
         skip_gate_threshold_used = sg.threshold_used
+        skip_gate_hour_offset = sg.hour_offset if sg.hour_offset != 0.0 else None
         if sg.early_return_record is not None:
             return sg.early_return_record
 
@@ -1400,6 +1401,8 @@ class FillTestRunner(AbstractCycleRunner):
             # 084# P(AS) 可観測性改善
             skip_gate_as_prob=skip_gate_as_prob,
             skip_gate_threshold_used=skip_gate_threshold_used,
+            # 158# P1-6: 時間帯別 skip_gate 閾値調整のオフセット
+            skip_gate_hour_offset=skip_gate_hour_offset,
             # 094# stale order cancel-replace 追跡
             reprice_count=reprice_count,
             # 158# P1-3: reprice 累積 drift (bps)
