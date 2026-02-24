@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 162# Inventory Skewing 実装 (balance_forced 根本対策)
+
+- **Inventory Skewing** (159# Gemini-B, P0): 在庫偏重に応じた非対称 offset 補正を maker_price.py に実装。直近 N fill の buy/sell 比率から正規化 imbalance [-1,+1] を算出し、過剰に保有する side の offset を拡大（抑制）/ 不足 side の offset を縮小（促進）。alance_forced_skip に頼る事後的キャンセルから、事前的な約定バランス制御へ転換。
+- **設定フィールド**: inventory_skewing_enabled, _window (100), _max_factor (0.4), _neutral_band (0.1)  FillTestConfig に追加
+- **YAML**: `fill_test.yaml` の `loss_control.inventory_skewing` セクション (`enabled: false` でデプロイ、ステージング後に ON)
+- **callback**: `run_fill_test.py` fill 成功時に `update_inventory(side)` 呼び出し
+- **テスト**: v460 unit 1729 passed (pre-existing 8 failures: lightgbm/xgboost 未インストール)
+- **姑息策カタログ**: docs/v460/163_audit_stopgap_measures_catalog.md  17 件のバンドエイド施策を網羅的に洗い出し、根本対策ロードマップ策定
+
 ### 158# §20 レジームデッドロック修正 + 副次課題解決
 
 - **Fix A: メインループ毎のレジーム更新** (§20-A, ROOT CAUSE FIX): `regime_detector.update()` を `run_continuous` のメインループ先頭で毎回呼び出し。skip パス (trending_sell_skip, balance_forced_skip, unknown_buy_skip, dynamic_kill) でもレジーム遷移が保証される。fallback price (直近 OB mid) を使用。遷移時にはログ出力。
