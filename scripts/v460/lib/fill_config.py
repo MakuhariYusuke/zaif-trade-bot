@@ -291,6 +291,21 @@ class FillTestConfig:
     insufficient_funds_patterns: list[str] = field(
         default_factory=lambda: ["所持金額", "足りません"]
     )
+    # ---- 158# YAML 外部化: resilience (CircuitBreaker / HealthMonitor) ----
+    cb_failure_threshold: int = 5           # API 連続失敗→OPEN
+    cb_recovery_timeout: float = 120.0      # OPEN→HALF_OPEN 待機 (秒)
+    cb_success_threshold: int = 2           # HALF_OPEN→CLOSE 成功回数
+    cb_timeout: float = 30.0               # API タイムアウト (秒)
+    hm_rss_warn_mb: float = 1500.0          # RSS 警告閾値 (MB)
+    hm_rss_critical_mb: float = 2500.0      # RSS 緊急閾値 (MB)
+    hm_disk_free_warn_gb: float = 2.0       # ディスク空き警告 (GB)
+    hm_gc_interval_cycles: int = 100        # GC 実行間隔 (サイクル数)
+    hm_check_interval_sec: float = 300.0    # ヘルスチェック間隔 (秒)
+    # ---- 158# YAML 外部化: tuning 追加 ----
+    hot_reload_check_interval_sec: float = 120.0   # SkipGate モデル差替チェック間隔
+    records_cache_ttl_sec: float = 10.0             # 適応エンジン キャッシュ TTL
+    trades_recorder_fetch_limit: int = 100          # TradesRecorder 取得件数
+    balance_freeze_cycles: int = 3                  # 残高不足 side の凍結サイクル数
 
     def __post_init__(self) -> None:
         """103# バリデーション: YAML 誤設定による本番クラッシュ防止."""
@@ -788,10 +803,39 @@ class FillTestConfig:
             # 148# §9 #2: heartbeat 設定を YAML から調整可能に
             "lock_heartbeat_period_sec": "lock_heartbeat_period_sec",
             "lock_stale_heartbeat_sec": "lock_stale_heartbeat_sec",
+            # 158# YAML 外部化: tuning 追加
+            "hot_reload_check_interval_sec": "hot_reload_check_interval_sec",
+            "records_cache_ttl_sec": "records_cache_ttl_sec",
+            "trades_recorder_fetch_limit": "trades_recorder_fetch_limit",
+            "balance_freeze_cycles": "balance_freeze_cycles",
         }
         for yaml_key, config_key in tuning_map.items():
             if yaml_key in tuning:
                 kwargs[config_key] = tuning[yaml_key]
+
+        # 158# YAML 外部化: resilience セクション (CircuitBreaker / HealthMonitor)
+        resilience = yaml_cfg.get("resilience", {})
+        cb = resilience.get("circuit_breaker", {})
+        cb_map = {
+            "failure_threshold": "cb_failure_threshold",
+            "recovery_timeout": "cb_recovery_timeout",
+            "success_threshold": "cb_success_threshold",
+            "timeout": "cb_timeout",
+        }
+        for yaml_key, config_key in cb_map.items():
+            if yaml_key in cb:
+                kwargs[config_key] = cb[yaml_key]
+        hm = resilience.get("health_monitor", {})
+        hm_map = {
+            "rss_warn_mb": "hm_rss_warn_mb",
+            "rss_critical_mb": "hm_rss_critical_mb",
+            "disk_free_warn_gb": "hm_disk_free_warn_gb",
+            "gc_interval_cycles": "hm_gc_interval_cycles",
+            "check_interval_sec": "hm_check_interval_sec",
+        }
+        for yaml_key, config_key in hm_map.items():
+            if yaml_key in hm:
+                kwargs[config_key] = hm[yaml_key]
 
         # 158# P1-5: A/B テスト variant 識別子
         ab_test = yaml_cfg.get("ab_test", {})

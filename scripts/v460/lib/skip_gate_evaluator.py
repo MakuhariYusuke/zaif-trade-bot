@@ -85,7 +85,8 @@ class SkipGateEvaluator:
     """SkipGate ML フィルター (062# / 088# / 096# / 126# 統合)."""
 
     # 126# hot-reload: モデルファイルのチェック間隔 (秒)
-    _HOT_RELOAD_CHECK_INTERVAL_SEC = 120.0  # 2分 (cycle_interval と同程度)
+    # 158# YAML 外部化: config.hot_reload_check_interval_sec から読み込み (フォールバック用に残す)
+    _HOT_RELOAD_CHECK_INTERVAL_SEC = 120.0  # デフォルト値 (config 未設定時のフォールバック)
     _SIDE_MODEL_SLOTS: tuple[tuple[str, str, str, str], ...] = (
         ("buy", "_gate_buy", "_gate_path_buy", "_model_file_hash_buy"),
         ("sell", "_gate_sell", "_gate_path_sell", "_model_file_hash_sell"),
@@ -302,7 +303,10 @@ class SkipGateEvaluator:
         if not hasattr(self, "_last_reload_check"):
             return
         now = time.monotonic()
-        if now - self._last_reload_check < self._HOT_RELOAD_CHECK_INTERVAL_SEC:
+        # 158# YAML 外部化: config から hot_reload 間隔を取得
+        _raw = getattr(self._config, "hot_reload_check_interval_sec", None)
+        interval = _raw if isinstance(_raw, (int, float)) else self._HOT_RELOAD_CHECK_INTERVAL_SEC
+        if now - self._last_reload_check < interval:
             return
         self._last_reload_check = now
 

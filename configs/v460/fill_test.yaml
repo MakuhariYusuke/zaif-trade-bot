@@ -80,6 +80,20 @@ confidence_lot:
   floor: 0.3                  # 最小 lot 倍率 [0, 1]
   mode: "as"                  # "as" only ("pnl" は凍結)
 
+# ---- 158# resilience (CircuitBreaker / HealthMonitor) YAML 外部化 ----
+resilience:
+  circuit_breaker:
+    failure_threshold: 5          # API 連続失敗→OPEN
+    recovery_timeout: 120.0       # OPEN→HALF_OPEN 待機 (秒)
+    success_threshold: 2          # HALF_OPEN→CLOSE 成功回数
+    timeout: 30.0                 # API タイムアウト (秒)
+  health_monitor:
+    rss_warn_mb: 1500.0           # RSS 警告閾値 (MB)
+    rss_critical_mb: 2500.0       # RSS 緊急閾値 (MB) — OOM 回避
+    disk_free_warn_gb: 2.0        # ディスク空き警告 (GB)
+    gc_interval_cycles: 100       # GC 実行間隔 (サイクル数)
+    check_interval_sec: 300.0     # ヘルスチェック間隔 (秒)
+
 # ---- レジーム検知 (035# §4) ----
 regime:
   enabled: true               # レジーム判定の有効化
@@ -355,6 +369,11 @@ tuning:
   insufficient_funds_patterns:     # 残高不足エラー判定パターン (日本語含む)
     - "所持金額"
     - "足りません"
+  # 158# YAML 外部化: 追加パラメータ
+  hot_reload_check_interval_sec: 120.0   # SkipGate モデル差替チェック間隔 (秒, cycle_interval と同程度)
+  records_cache_ttl_sec: 10.0             # 適応エンジン レコードキャッシュ TTL (秒)
+  trades_recorder_fetch_limit: 100        # TradesRecorder 取得件数 (VPIN 計算用)
+  balance_freeze_cycles: 3                # 残高不足 side の凍結サイクル数 (cycle_interval × N)
 
 # ---- 126# SkipGate 定期再学習 ----
 # retrain_scheduler.py がバックグラウンドで実行、fill_test とは別プロセス

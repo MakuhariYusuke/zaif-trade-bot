@@ -72,6 +72,7 @@ from scripts.v460.lib.resilience import (
     FillTestHealthMonitor,
     FillTestStatePersistence,
     FillTestState,
+    HealthThresholds,
     create_api_circuit_breaker,
 )
 from scripts.v460.lib.results_analyzer import (
@@ -243,8 +244,22 @@ class FillTestRunner(AbstractCycleRunner):
         self._skip_gate = self._skip_gate_evaluator.skip_gate  # OrderMonitor 等互換用
 
         # 113# resilience: CircuitBreaker / HealthMonitor / StatePersistence
-        self._circuit_breaker = create_api_circuit_breaker()
-        self._health_monitor = FillTestHealthMonitor()
+        # 158# YAML 外部化: config から閾値を取得
+        self._circuit_breaker = create_api_circuit_breaker(
+            failure_threshold=config.cb_failure_threshold,
+            recovery_timeout=config.cb_recovery_timeout,
+            success_threshold=config.cb_success_threshold,
+            timeout=config.cb_timeout,
+        )
+        self._health_monitor = FillTestHealthMonitor(
+            thresholds=HealthThresholds(
+                rss_warn_mb=config.hm_rss_warn_mb,
+                rss_critical_mb=config.hm_rss_critical_mb,
+                disk_free_warn_gb=config.hm_disk_free_warn_gb,
+                gc_interval_cycles=config.hm_gc_interval_cycles,
+                check_interval_sec=config.hm_check_interval_sec,
+            )
+        )
         self._state_persistence = FillTestStatePersistence(self._results_dir)
 
         # 129# OB recorder: 板スナップショットを raw JSONL.gz に蓄積 (retrain_scheduler 用)
@@ -816,7 +831,9 @@ class FillTestRunner(AbstractCycleRunner):
 
         # 135# P0-04: trades recorder — OB とは独立した try で障害分離 (§9.1 #3)
         try:
-            recent = await self.adapter.get_recent_trades(self.config.symbol, limit=100)
+            recent = await self.adapter.get_recent_trades(
+                self.config.symbol, limit=self.config.trades_recorder_fetch_limit,
+            )
             self._trades_recorder.record_from_adapter(recent)
         except Exception as te:
             logger.debug(f"Trades fetch for recording skipped: {te}")
@@ -1540,8 +1557,11 @@ class FillTestRunner(AbstractCycleRunner):
                         f"[balance] {next_side} insufficient, "
                         f"switching to {opposite} immediately (091#)"
                     )
-                    # 120# A5: 不足 side を 3 サイクル凍結 (API 呼出し節約)
-                    self._side_selector.freeze_side(next_side, cycles=3)
+                    # 120# A5: 不足 side を N サイクル凍結 (API 呼出し節約)
+                    # 158# YAML 外部化: balance_freeze_cycles
+                    self._side_selector.freeze_side(
+                        next_side, cycles=self.config.balance_freeze_cycles,
+                    )
                     next_side = opposite
                     self._last_side = opposite  # 次回は再び元の side
                     self._preflight_skip_count = 0

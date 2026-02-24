@@ -88,7 +88,7 @@ class AdaptationEngine:
         連続呼出しされる場合、ディスク I/O + メモリ重複を排除。
         """
         now = time.time()
-        if self._cached_records is not None and (now - self._cache_ts) < _RECORDS_CACHE_TTL_SEC:
+        if self._cached_records is not None and (now - self._cache_ts) < self._config.records_cache_ttl_sec:
             return self._cached_records
 
         all_records = load_fill_records_glob(str(self._results_dir))
