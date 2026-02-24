@@ -1950,9 +1950,9 @@ class Test049CleanOnlyMainJudgment:
     def test_main_uses_filter_clean_records(self) -> None:
         """main() のソースに filter_clean_records が含まれることを確認."""
         import inspect
-        from scripts.v460.run_fill_test import main
+        import scripts.v460.lib.fill_test_cli as cli_mod
 
-        source = inspect.getsource(main)
+        source = inspect.getsource(cli_mod)
         # filter_clean_records が使われている
         assert "filter_clean_records" in source
         # 旧パターン (records を直接 compute_fill_metrics に渡す) が存在しない
@@ -1963,9 +1963,9 @@ class Test049CleanOnlyMainJudgment:
     def test_main_exit_code_uses_judgment_type(self) -> None:
         """049# §4-#1: 通常実行の exit code が judgment_type を参照."""
         import inspect
-        from scripts.v460.run_fill_test import main
+        import scripts.v460.lib.fill_test_cli as cli_mod
 
-        source = inspect.getsource(main)
+        source = inspect.getsource(cli_mod)
         # FINAL/INTERIM 分岐がある
         assert 'jtype == "FINAL"' in source or "judgment_type" in source
         # 旧パターン (gate_result のみ) が存在しない
@@ -1974,9 +1974,9 @@ class Test049CleanOnlyMainJudgment:
     def test_main_has_data_quality_output(self) -> None:
         """049# §6.1-#4: judgment に data_quality セクションが含まれる."""
         import inspect
-        from scripts.v460.run_fill_test import main
+        import scripts.v460.lib.fill_test_cli as cli_mod
 
-        source = inspect.getsource(main)
+        source = inspect.getsource(cli_mod)
         assert '"data_quality"' in source
         assert '"clean_records"' in source
         assert '"quarantine_records"' in source

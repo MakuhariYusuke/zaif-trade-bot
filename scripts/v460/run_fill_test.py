@@ -13,16 +13,11 @@ Usage:
 
 from __future__ import annotations
 
-import argparse
 import asyncio
 import atexit
 import json
 import logging
-import logging.handlers
 import os
-import platform
-import signal
-import subprocess
 import sys
 import time
 import uuid
@@ -87,6 +82,8 @@ from scripts.v460.lib.side_selector import SideSelector
 from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 from scripts.v460.lib.time_filter import TimeFilter
 from scripts.v460.lib.abstract_cycle_runner import AbstractCycleRunner
+from scripts.v460.lib.event_logger import log_event as _log_event, TeeWriter as _TeeWriter, setup_stderr_mirror as _setup_stderr_mirror
+from scripts.v460.lib.lock_manager import LockManager
 
 logging.basicConfig(
     level=logging.INFO,
@@ -96,114 +93,10 @@ logger = logging.getLogger(__name__)
 
 
 # ======================================================================
-# 148# Event Logger — 停止理由の永続化
+# 148# Event Logger — event_logger.py に移動 (158# P2-4)
+# _log_event, _TeeWriter, _setup_stderr_mirror は
+# scripts.v460.lib.event_logger からインポート
 # ======================================================================
-
-def _log_event(
-    event: str,
-    results_dir: str | Path,
-    run_id: str = "",
-    git_sha: str = "",
-    reason: str | None = None,
-    details: dict | None = None,
-) -> None:
-    """fill_test_events.jsonl にイベントを記録.
-
-    148# P0: 停止理由を推定でなく事実として記録するため、
-    start/stop/crash/signal イベントを永続化する。
-
-    Args:
-        event: イベント種別 (start, stop, crash, signal)
-        results_dir: 結果ディレクトリ
-        run_id: 実行 ID
-        git_sha: Git SHA
-        reason: 停止理由 (stop/crash/signal の場合)
-        details: 追加詳細情報
-    """
-    try:
-        events_path = Path(results_dir) / "fill_test_events.jsonl"
-        events_path.parent.mkdir(parents=True, exist_ok=True)
-        record = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "event": event,
-            "run_id": run_id,
-            "git_sha": git_sha,
-            "pid": os.getpid(),
-            "reason": reason,
-            "details": details or {},
-        }
-        line = json.dumps(record, ensure_ascii=False) + "\n"
-        if os.name == "nt":
-            # §11 #2: lock/unlock を byte 0 固定で対称化
-            # §11 #3: Windows 専用パス (非 Windows は else へ)
-            import msvcrt
-
-            with open(events_path, "a", encoding="utf-8") as f:
-                f.seek(0)
-                msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
-                try:
-                    f.seek(0, 2)  # EOF for append
-                    f.write(line)
-                    f.flush()
-                finally:
-                    f.seek(0)  # back to locked byte 0
-                    msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
-        else:
-            # 非 Windows: fcntl があれば使用、なければ無ロックで追記
-            with open(events_path, "a", encoding="utf-8") as f:
-                try:
-                    import fcntl
-
-                    fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-                    try:
-                        f.write(line)
-                        f.flush()
-                    finally:
-                        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
-                except ImportError:
-                    f.write(line)
-                    f.flush()
-        logger.info(f"[event] {event}: reason={reason}")
-    except Exception as e:
-        logger.warning(f"[event] Failed to log event: {e}")
-
-
-# ======================================================================
-# 148# P1: stderr をファイルにもミラーリング
-# ======================================================================
-
-class _TeeWriter:
-    """stderr を複数出力先に同時書き込み (148# P1: stderr ミラー専用)."""
-
-    def __init__(self, *writers):
-        self.writers = writers
-
-    def write(self, s: str) -> int:
-        for w in self.writers:
-            try:
-                w.write(s)
-            except Exception:
-                pass
-        return len(s)
-
-    def flush(self) -> None:
-        for w in self.writers:
-            try:
-                w.flush()
-            except Exception:
-                pass
-
-
-def _setup_stderr_mirror(results_dir: str | Path) -> None:
-    """148# P1: stderr をファイルにもミラーリング."""
-    try:
-        stderr_path = Path(results_dir) / "logs" / "fill_test_stderr.log"
-        stderr_path.parent.mkdir(parents=True, exist_ok=True)
-        stderr_file = open(stderr_path, "a", encoding="utf-8")
-        sys.stderr = _TeeWriter(sys.__stderr__, stderr_file)
-        logger.info(f"[148#] stderr mirroring to {stderr_path}")
-    except Exception as e:
-        logger.warning(f"[148#] Failed to setup stderr mirror: {e}")
 
 
 # ======================================================================
@@ -248,11 +141,19 @@ class FillTestRunner(AbstractCycleRunner):
         # 120# KillSwitch 統合: _shutdown_requested bool → KillSwitch (ztb.risk)
         self._kill_switch = KillSwitch("fill_test")
         self._pending_order_id: Optional[str] = None
-        self._lockfile_path: Optional[Path] = None  # 044# 単一起動ロック
 
         # 020# O4: データバージョン管理
         self._run_id = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
         self._git_sha = self._get_git_sha()
+
+        # 044# 単一起動ロック → 158# P2-4: LockManager に委譲
+        self._lock_manager = LockManager(
+            self._results_dir,
+            self._run_id,
+            lock_stale_heartbeat_sec=config.lock_stale_heartbeat_sec,
+            lock_acquire_retries=config.lock_acquire_retries,
+            lock_heartbeat_period_sec=config.lock_heartbeat_period_sec,
+        )
 
         # 033# 方策 B: 動的ロットの実行時数量 (config.order_quantity を初期値とする)
         # 121# BalanceChecker に残高チェック + ロット管理を委譲
@@ -713,115 +614,20 @@ class FillTestRunner(AbstractCycleRunner):
             regime_mult=regime_mult,
         )
 
+    # ------------------------------------------------------------------
+    # 158# P2-4: Lock 管理 — LockManager に委譲
+    # ------------------------------------------------------------------
     def _acquire_lock(self) -> None:
-        """044# Bug7: 単一起動ロック (lockfile + PID + stale 回収).
-
-        047# A4: TOCTOU race 対策 — open(path, 'x') で排他的作成。
-        同一 results_dir に対して複数プロセスが並行動作することを防止。
-        ロックファイルに PID を記録し、起動時に既存ロックの生死を検証する。
-        129# D.3: heartbeat timestamp をロックファイルに記録し、
-        PID alive でも heartbeat 陳腐化で stale と判定する。
-        """
-        lock_path = self._results_dir / "fill_test.lock"
-        self._lockfile_path = lock_path
-        now_ts = int(time.time())
-        lock_content = f"{os.getpid()}|{now_ts}|{self._run_id}|{now_ts}"
-
-        def _check_stale_and_reclaim() -> bool:
-            """既存ロックが stale なら削除して True を返す."""
-            try:
-                content = lock_path.read_text(encoding="utf-8").strip()
-                parts = content.split("|")
-                existing_pid = int(parts[0])
-                # 129# heartbeat age 検査 (4番目フィールド)
-                heartbeat_ts = int(parts[3]) if len(parts) >= 4 else int(parts[1])
-                heartbeat_age = time.time() - heartbeat_ts
-                import psutil  # type: ignore[import-untyped]
-                if psutil.pid_exists(existing_pid):
-                    try:
-                        proc = psutil.Process(existing_pid)
-                        cmdline = " ".join(proc.cmdline())
-                        if "fill_test" in cmdline or "run_fill_test" in cmdline:
-                            # 129# heartbeat stale 検査: PID alive でも
-                            # heartbeat が閾値超なら non-functional と判定
-                            if heartbeat_age > self.config.lock_stale_heartbeat_sec:
-                                logger.warning(
-                                    f"[lock] PID {existing_pid} alive but "
-                                    f"heartbeat stale ({heartbeat_age:.0f}s > "
-                                    f"{self.config.lock_stale_heartbeat_sec:.0f}s). "
-                                    f"Treating as stale."
-                                )
-                            else:
-                                raise RuntimeError(
-                                    f"別の fill_test プロセスが実行中です "
-                                    f"(PID={existing_pid}, "
-                                    f"heartbeat={heartbeat_age:.0f}s ago). "
-                                    f"強制起動するにはロックファイルを削除: {lock_path}"
-                                )
-                    except (psutil.NoSuchProcess, psutil.AccessDenied):
-                        pass
-            except (ValueError, ImportError, OSError):
-                pass
-            # stale lock — 削除して再取得を試みる
-            logger.warning(f"[lock] Stale lockfile detected, reclaiming: {lock_path}")
-            try:
-                lock_path.unlink()
-            except OSError:
-                pass
-            return True
-
-        # 047# A4: open(path, 'x') で排他的にファイル作成 (atomic)
-        # FileExistsError なら既存ロックを検証 → stale ならリトライ
-        for _attempt in range(self.config.lock_acquire_retries):
-            try:
-                fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-                try:
-                    os.write(fd, lock_content.encode("utf-8"))
-                finally:
-                    os.close(fd)
-                logger.info(
-                    f"[lock] Acquired lockfile: PID={os.getpid()}, run_id={self._run_id}"
-                )
-                return
-            except FileExistsError:
-                _check_stale_and_reclaim()
-        # リトライ後もダメな場合
-        raise RuntimeError(f"ロックファイルの取得に失敗しました: {lock_path}")
+        """044# 単一起動ロック — LockManager に委譲."""
+        self._lock_manager.acquire()
 
     def _release_lock(self) -> None:
-        """044# ロックファイル解放."""
-        if self._lockfile_path and self._lockfile_path.exists():
-            try:
-                # 自プロセスのロックのみ解放
-                content = self._lockfile_path.read_text(encoding="utf-8").strip()
-                if content.startswith(f"{os.getpid()}|"):
-                    self._lockfile_path.unlink()
-                    logger.info("[lock] Released lockfile")
-            except Exception as e:
-                logger.warning(f"[lock] Failed to release lockfile: {e}")
+        """044# ロックファイル解放 — LockManager に委譲."""
+        self._lock_manager.release()
 
     def _update_lock_heartbeat(self) -> None:
-        """129# D.3: lock ファイルの heartbeat timestamp を更新.
-
-        PID alive だが non-functional な状態を検出可能にする。
-        フォーマット: PID|created_ts|run_id|heartbeat_ts
-        """
-        if not self._lockfile_path or not self._lockfile_path.exists():
-            return
-        try:
-            content = self._lockfile_path.read_text(encoding="utf-8").strip()
-            parts = content.split("|")
-            if not content.startswith(f"{os.getpid()}|"):
-                return  # 自プロセスのロックでない
-            # heartbeat_ts (4番目) を更新
-            now_ts = str(int(time.time()))
-            if len(parts) >= 4:
-                parts[3] = now_ts
-            else:
-                parts.append(now_ts)
-            self._lockfile_path.write_text("|".join(parts), encoding="utf-8")
-        except Exception:
-            pass  # heartbeat 更新失敗は致命的ではない
+        """129# heartbeat 更新 — LockManager に委譲."""
+        self._lock_manager.update_heartbeat()
 
     async def _cancel_stale_orders(self) -> int:
         """042# 起動時の滞留注文自動クリア.
@@ -2344,372 +2150,15 @@ class FillTestRunner(AbstractCycleRunner):
 # 119# run_results_only / save_judgment は results_analyzer.py に移動済み
 
 # ======================================================================
-# CLI
+# CLI — 158# P2-4: fill_test_cli.py に移動
 # ======================================================================
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="G1.1-exec Fill Test Runner (009# §4.2)",
-    )
-    parser.add_argument("--hours", type=float, default=24.0,
-                        help="実測時間 (時間). デフォルト: 24h")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Dry-run モード (実際に発注しない)")
-    parser.add_argument("--config", default=None,
-                        help="設定 YAML パス (デフォルト: configs/v460/fill_test.yaml)")
-    # 032# #2: CLI 認証情報は .env からのみ推奨 (後方互換のため残すが非推奨警告)
-    parser.add_argument("--api-key", default=None,
-                        help="[DEPRECATED] .env から読込を推奨")
-    parser.add_argument("--api-secret", default=None,
-                        help="[DEPRECATED] .env から読込を推奨")
-    parser.add_argument("--results-dir", default=None,
-                        help="結果保存ディレクトリ (CLI > YAML)")
-    parser.add_argument("--results-only", action="store_true",
-                        help="既存データからメトリクスのみ算出")
-    parser.add_argument("--cycle-interval", type=float, default=None,
-                        help="サイクル間隔 (秒) (CLI > YAML)")
-    parser.add_argument("--output", default=None,
-                        help="判定結果の JSON 出力先")
-    parser.add_argument("--start-side", choices=["buy", "sell"], default=None,
-                        help="開始サイド (CLI > YAML)")
-    parser.add_argument("--spread-offset-ratio", type=float, default=None,
-                        help="スプレッド比例オフセット率 (CLI > YAML)")
-    parser.add_argument("--min-spread-jpy", type=float, default=None,
-                        help="最小スプレッドフィルター (JPY) (CLI > YAML)")
-    parser.add_argument("--enable-auto-adapt", action="store_true", default=False,
-                        help="方策A: 自動パラメータ適応を有効化 (CLI > YAML)")
-    parser.add_argument("--enable-dynamic-lot", action="store_true", default=False,
-                        help="方策B: 動的ロットサイジングを有効化 (CLI > YAML)")
-    parser.add_argument("--max-lot", type=float, default=None,
-                        help="方策B: ロット上限 (BTC) (CLI > YAML)")
-    parser.add_argument("--exchange", default="coincheck",
-                        help="取引所名 (coincheck/bitflyer 等, デフォルト: coincheck)")
-    args = parser.parse_args()
-
-    if args.results_only:
-        rd = args.results_dir or "results/v460/fill_test"
-        result = run_results_only(rd)
-        if args.output:
-            save_judgment(result, args.output)
-            logger.info(f"Saved judgment to {args.output}")
-        print(json.dumps(result, indent=2, ensure_ascii=False))
-        # 047# A3: FINAL PASS のみ exit 0。INTERIM/PROVISIONAL PASS は exit 2。
-        jtype = result.get("judgment_type", "PROVISIONAL")
-        gate = result.get("gate_result")
-        if gate == "PASS" and jtype == "FINAL":
-            sys.exit(0)
-        elif gate == "PASS":
-            # INTERIM / PROVISIONAL PASS — まだ確定判定ではない
-            logger.info(f"Gate PASS but judgment_type={jtype} (not FINAL), exit 2")
-            sys.exit(2)
-        else:
-            sys.exit(1)
-
-    # Adapter setup — 146# マルチ取引所対応: BrokerRegistry 経由で生成
-    from dotenv import load_dotenv
-
-    load_dotenv(_PROJECT_ROOT / ".env")
-
-    exchange_name = args.exchange.lower()
-    registry = get_broker_registry()
-    if not registry.has_broker(exchange_name):
-        logger.error(
-            f"Unknown exchange: {exchange_name!r}. "
-            f"Available: {', '.join(registry.list_brokers())}"
-        )
-        sys.exit(1)
-
-    # 032# #2: CLI引数からの認証情報は非推奨警告付きで後方互換維持
-    cli_api_key: str | None = None
-    cli_api_secret: str | None = None
-    if args.api_key or args.api_secret:
-        logger.warning(
-            "WARNING: --api-key/--api-secret はプロセスリストや履歴に平文で残ります。"
-            ".env ファイルからの読込を推奨します。"
-        )
-        cli_api_key = args.api_key
-        cli_api_secret = args.api_secret
-
-    try:
-        adapter = registry.create_adapter(
-            exchange_name,
-            dry_run=args.dry_run,
-            api_key=cli_api_key,
-            api_secret=cli_api_secret,
-        )
-    except ValueError as e:
-        logger.error(str(e))
-        sys.exit(1)
-
-    logger.info(f"Exchange adapter: {exchange_name} (dry_run={args.dry_run})")
-
-    # --- 設定構築: YAML → CLI override ---
-    from scripts.v460.lib.config_loader import load_fill_test_config
-
-    yaml_cfg = load_fill_test_config(args.config)
-    config = FillTestConfig.from_yaml(yaml_cfg)
-
-    # CLI 引数が明示指定された場合のみ上書き (None / False はスキップ)
-    if args.cycle_interval is not None:
-        config.cycle_interval_sec = args.cycle_interval
-    if args.results_dir is not None:
-        config.results_dir = args.results_dir
-    if args.start_side is not None:
-        config.start_side = args.start_side
-    if args.spread_offset_ratio is not None:
-        config.spread_offset_ratio = args.spread_offset_ratio
-    if args.min_spread_jpy is not None:
-        config.min_spread_jpy = args.min_spread_jpy
-    if args.enable_auto_adapt:
-        config.enable_auto_adapt = True
-    if args.enable_dynamic_lot:
-        config.enable_dynamic_lot = True
-    if args.max_lot is not None:
-        config.max_lot = args.max_lot
-
-    logger.info(
-        f"Config loaded: YAML={args.config or 'default'}, "
-        f"offset={config.spread_offset_ratio}, lot={config.order_quantity}, "
-        f"adapt={config.enable_auto_adapt}, dynamic_lot={config.enable_dynamic_lot}, "
-        f"regime={config.enable_regime}, "
-        f"time_filter={config.enable_time_filter}, "
-        f"loss_cap_auto={config.loss_cap_auto}"
-    )
-
-    # 024# O3: ログファイル出力 (ローテーション付き)
-    # 122# FileHandler を FillTestRunner 初期化前に設定 (warm_start 等のログが記録されるように)
-    log_dir = Path(config.results_dir) / "logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
-    file_handler = logging.handlers.RotatingFileHandler(
-        log_dir / "fill_test.log",
-        maxBytes=config.log_max_bytes,
-        backupCount=config.log_backup_count,
-        encoding="utf-8",
-    )
-    file_handler.setLevel(getattr(logging, config.file_log_level, logging.DEBUG))
-    file_handler.setFormatter(
-        logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s")
-    )
-    logging.getLogger().addHandler(file_handler)
-    logger.info(f"Log file: {log_dir / 'fill_test.log'}")
-
-    # 148# P1: stderr をファイルにもミラーリング
-    _setup_stderr_mirror(config.results_dir)
-
-    runner = FillTestRunner(adapter, config, yaml_cfg=yaml_cfg)
-
-    # 148# P0: start イベント記録 (150# §3.2: args を含めて watchdog が復元可能に)
-    _log_event(
-        "start",
-        config.results_dir,
-        run_id=runner._run_id,
-        git_sha=runner._git_sha,
-        details={
-            "hours": args.hours,
-            "config": args.config,
-            "args": {
-                "hours": args.hours,
-                "config": args.config,
-                "exchange": args.exchange,
-                "dry_run": args.dry_run,
-            },
-        },
-    )
-
-    # Signal handler for graceful shutdown
-    def _signal_handler(signum: int, frame: object) -> None:
-        logger.info(f"Signal {signum} received — requesting shutdown")
-        # 148# P0: signal イベント記録
-        _log_event(
-            "signal",
-            config.results_dir,
-            run_id=runner._run_id,
-            git_sha=runner._git_sha,
-            reason=f"signal_{signum}",
-        )
-        runner._kill_switch.kill(f"signal_{signum}")
-
-    signal.signal(signal.SIGINT, _signal_handler)
-    # 044# A-1: Windows では SIGTERM が未サポート → SIGBREAK を使用
-    if platform.system() == "Windows":
-        try:
-            signal.signal(signal.SIGBREAK, _signal_handler)  # type: ignore[attr-defined]
-        except (AttributeError, OSError):
-            logger.debug("SIGBREAK not available on this platform")
-    else:
-        signal.signal(signal.SIGTERM, _signal_handler)
-
-    # Run
-    # 126# retrain_scheduler を子プロセスとして自動起動
-    # 127# H3: stderr をログファイルにリダイレクト + ヘルスチェック
-    retrain_proc: subprocess.Popen | None = None  # type: ignore[type-arg]
-    retrain_stderr_fh = None  # ファイルハンドル
-    retrain_cfg = yaml_cfg.get("retrain", {})
-    if retrain_cfg.get("enabled", True):
-        retrain_script = _PROJECT_ROOT / "scripts" / "v460" / "ml" / "retrain_scheduler.py"
-        if retrain_script.exists():
-            retrain_cmd = [
-                sys.executable,
-                str(retrain_script),
-                "--config",
-                str(args.config or _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"),
-            ]
-            try:
-                # 127# H3: stderr をファイルにリダイレクト (可観測性向上)
-                retrain_log_dir = Path(config.results_dir) / "logs"
-                retrain_log_dir.mkdir(parents=True, exist_ok=True)
-                retrain_stderr_path = retrain_log_dir / "retrain_scheduler_stderr.log"
-                retrain_stderr_fh = open(retrain_stderr_path, "a", encoding="utf-8")
-                retrain_proc = subprocess.Popen(
-                    retrain_cmd,
-                    stdout=subprocess.DEVNULL,
-                    stderr=retrain_stderr_fh,
-                )
-                logger.info(
-                    f"[126#] retrain_scheduler started (PID {retrain_proc.pid}), "
-                    f"stderr → {retrain_stderr_path}"
-                )
-                # 127# H3: 10秒後にヘルスチェック
-                time.sleep(10)
-                if retrain_proc.poll() is not None:
-                    logger.error(
-                        f"[127#] retrain_scheduler DIED immediately "
-                        f"(exit code {retrain_proc.returncode}). "
-                        f"Check {retrain_stderr_path}"
-                    )
-                    retrain_proc = None
-            except Exception as e:
-                logger.warning(f"[126#] retrain_scheduler start failed: {e}")
-
-    # 148# P0: top-level except で crash を捕捉
-    stop_reason: str | None = None
-    records: list = []
-    try:
-        records = asyncio.run(runner.run_continuous(args.hours))
-        # 正常終了: kill_switch の reason を取得 (148# §9 #1: get_reason() に修正)
-        stop_reason = runner._kill_switch.get_reason() if runner._kill_switch.is_killed() else "completed"
-    except KeyboardInterrupt:
-        stop_reason = "keyboard_interrupt"
-        logger.info("KeyboardInterrupt — stopping gracefully")
-    except Exception as e:
-        # 148# P0: crash イベント記録
-        import traceback
-        stop_reason = f"crash:{type(e).__name__}"
-        _log_event(
-            "crash",
-            config.results_dir,
-            run_id=runner._run_id,
-            git_sha=runner._git_sha,
-            reason=stop_reason,
-            details={"traceback": traceback.format_exc()},
-        )
-        logger.error(f"[148#] Unhandled exception: {e}", exc_info=True)
-        raise
-    finally:
-        # 148# P0: stop イベント記録 (crash 時は上で記録済み)
-        if stop_reason and not stop_reason.startswith("crash:"):
-            _log_event(
-                "stop",
-                config.results_dir,
-                run_id=runner._run_id,
-                git_sha=runner._git_sha,
-                reason=stop_reason,
-            )
-        # 126# fill_test 終了時に retrain_scheduler を停止
-        if retrain_proc is not None and retrain_proc.poll() is None:
-            retrain_proc.terminate()
-            try:
-                retrain_proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                retrain_proc.kill()
-            logger.info(f"[126#] retrain_scheduler stopped (PID {retrain_proc.pid})")
-        if retrain_stderr_fh is not None:
-            retrain_stderr_fh.close()
-
-    # Compute metrics & judgment
-    if records:
-        from scripts.v460.lib.config_loader import load_gate_thresholds
-
-        # 049# §4-#2: clean のみで集計 (quarantine 混在による誤判定防止)
-        clean_records, quarantine_records = filter_clean_records(records)
-        if quarantine_records:
-            logger.info(
-                f"[main] quarantine {len(quarantine_records)}/{len(records)} "
-                f"records excluded from final metrics"
-            )
-        metrics = compute_fill_metrics(clean_records)
-        gate_cfg = load_gate_thresholds()
-        thresholds = gate_cfg.get("g1_1_exec", {})
-        judgment = g1_1_judgment(metrics, thresholds)
-
-        # 116# 二段階判定 (115# レビュー反映)
-        quick_thresholds = gate_cfg.get("g1_1_quick_exec", {})
-        full_thresholds = gate_cfg.get("g1_2_full_exec", {})
-        quick_judgment = g1_1_quick_judgment(metrics, quick_thresholds)
-        full_judgment = g1_2_full_judgment(metrics, full_thresholds)
-        judgment["two_stage"] = {
-            "g1_1_quick": quick_judgment,
-            "g1_2_full": full_judgment,
-        }
-
-        # 049# §6.1-#4: clean/quarantine/coverage を judgment に追加
-        n_total = len(records)
-        judgment["data_quality"] = {
-            "total_records": n_total,
-            "clean_records": len(clean_records),
-            "quarantine_records": len(quarantine_records),
-            "clean_rate": len(clean_records) / n_total if n_total else 0.0,
-            "quarantine_rate": len(quarantine_records) / n_total if n_total else 0.0,
-            "as_coverage": metrics.as_coverage,
-            "as_raw_coverage": metrics.as_raw_coverage,
-        }
-        del records, quarantine_records  # メモリ早期解放
-
-        # 120# A2: run 別二系統分析 (Simpson 逆転リスク対策)
-        from scripts.v460.lib.results_analyzer import (
-            compute_event_contribution,
-            compute_multi_track_analysis,
-            compute_regime_breakdown,
-            log_event_contribution,
-            log_multi_track_summary,
-            log_regime_breakdown,
-        )
-        multi_track = compute_multi_track_analysis(clean_records)
-        log_multi_track_summary(multi_track)
-        judgment["multi_track"] = multi_track
-
-        # 120# P2-1: FFD/VG/SG 寄与分解
-        event_contrib = compute_event_contribution(clean_records)
-        log_event_contribution(event_contrib)
-        judgment["event_contribution"] = event_contrib
-
-        # 120# P2-2: regime 別比較基盤
-        regime_breakdown = compute_regime_breakdown(clean_records)
-        log_regime_breakdown(regime_breakdown)
-        judgment["regime_breakdown"] = regime_breakdown
-
-        out_str = json.dumps(judgment, indent=2, ensure_ascii=False)
-        print(out_str)
-
-        if args.output:
-            save_judgment(judgment, args.output)
-            logger.info(f"Saved judgment to {args.output}")
-
-        # 049# §4-#1: exit code を results-only と統一
-        # FINAL+PASS → 0, INTERIM/PROVISIONAL+PASS → 2, FAIL → 1
-        jtype = judgment.get("judgment_type", "PROVISIONAL")
-        gate = judgment.get("gate_result")
-        if gate == "PASS" and jtype == "FINAL":
-            sys.exit(0)
-        elif gate == "PASS":
-            logger.info(f"Gate PASS but judgment_type={jtype} (not FINAL), exit 2")
-            sys.exit(2)
-        else:
-            sys.exit(1)
-    else:
-        logger.warning("No records collected")
-        sys.exit(1)
+    """Fill Test CLI エントリポイント — fill_test_cli.py に委譲."""
+    from scripts.v460.lib.fill_test_cli import fill_test_main
+    fill_test_main()
 
 
 if __name__ == "__main__":
     main()
+

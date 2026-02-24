@@ -387,11 +387,16 @@ class TestRetrainPipelineIntegrity:
         """SkipGateEvaluator に hot-reload メソッドが存在."""
         from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
         assert hasattr(SkipGateEvaluator, "_check_and_reload_model")
-        assert hasattr(SkipGateEvaluator, "_compute_file_hash")
+        # _compute_file_hash は ztb.utils.run_manifest.compute_file_hash へ委譲
+        import inspect
+        src = inspect.getsource(SkipGateEvaluator)
+        assert "compute_file_hash" in src
 
     def test_fill_test_retrain_subprocess_integration(self) -> None:
-        """run_fill_test.py に retrain_scheduler 子プロセス起動ロジックが存在."""
-        source = inspect.getsource(__import__("scripts.v460.run_fill_test", fromlist=["_"]))
+        """fill_test_cli.py に retrain_scheduler 子プロセス起動ロジックが存在."""
+        source = inspect.getsource(
+            __import__("scripts.v460.lib.fill_test_cli", fromlist=["_"])
+        )
         assert "retrain_scheduler" in source
         assert "retrain_proc" in source
 

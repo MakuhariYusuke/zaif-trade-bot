@@ -19,7 +19,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, cast
 
 from scripts.v460.lib.fill_config import FillTestConfig, SkipGateResult
-from ztb.utils.run_manifest import compute_file_hash as _compute_shared_file_hash
+# ファイルの SHA256 ハッシュを算出 (126# hot-reload 用)
+from ztb.utils.run_manifest import compute_file_hash
 
 if TYPE_CHECKING:
     from ztb.metrics.fill_quality import FillRecord
@@ -138,7 +139,7 @@ class SkipGateEvaluator:
                 apply_warm_start=True,
             )
             self._skip_gate = skip_gate
-            self._model_file_hash = self._compute_file_hash(gate_path)
+            self._model_file_hash = compute_file_hash(gate_path)
             self._last_reload_check = time.monotonic()
 
             # 141# P1-01: side 別モデルロード
@@ -277,7 +278,7 @@ class SkipGateEvaluator:
                 side_gate = self._load_gate_from_path(skip_gate_cls, gate_path)
                 setattr(self, attr_gate, side_gate)
                 setattr(self, attr_path, gate_path)
-                setattr(self, attr_hash, self._compute_file_hash(gate_path))
+                setattr(self, attr_hash, compute_file_hash(gate_path))
                 n_features = len(side_gate.feature_cols)
                 target = side_gate.metadata.get("target", "?")
                 logger.info(
@@ -290,13 +291,6 @@ class SkipGateEvaluator:
                     f"Will use unified model."
                 )
 
-    @staticmethod
-    def _compute_file_hash(path: Path) -> str:
-        """ファイルの SHA256 ハッシュを算出 (126# hot-reload 用)."""
-        try:
-            return _compute_shared_file_hash(path)
-        except Exception:
-            return ""
 
     def _check_and_reload_model(self) -> None:
         """126# モデルファイル変更を検出してリロード.
@@ -318,7 +312,7 @@ class SkipGateEvaluator:
         if self._gate_path is None or not self._gate_path.exists():
             return
 
-        new_hash = self._compute_file_hash(self._gate_path)
+        new_hash = compute_file_hash(self._gate_path)
         if new_hash == self._model_file_hash or not new_hash:
             return
 
@@ -380,7 +374,7 @@ class SkipGateEvaluator:
                     new_gate = self._load_gate_from_path(skip_gate_cls, gate_path)
                     setattr(self, attr_gate, new_gate)
                     setattr(self, attr_path, gate_path)
-                    setattr(self, attr_hash, self._compute_file_hash(gate_path))
+                    setattr(self, attr_hash, compute_file_hash(gate_path))
                     logger.info(f"[skip_gate] 141# {side} model first load via hot-reload: {gate_path}")
                 except Exception as e:
                     logger.warning(f"[skip_gate] 141# {side} model first load failed: {e}")
@@ -389,7 +383,7 @@ class SkipGateEvaluator:
             if not gate_path.exists():
                 continue
             old_hash = getattr(self, attr_hash, "")
-            new_hash = self._compute_file_hash(gate_path)
+            new_hash = compute_file_hash(gate_path)
             if new_hash == old_hash or not new_hash:
                 continue
             try:

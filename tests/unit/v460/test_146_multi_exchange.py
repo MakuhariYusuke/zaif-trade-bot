@@ -463,13 +463,15 @@ class TestRunFillTestExchangeDecoupling:
         assert "adapter: IBroker" in src
 
     def test_exchange_cli_arg(self) -> None:
-        src = (_PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py").read_text(
+        # 158# P2-4: CLI は fill_test_cli.py に移動
+        src = (_PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_test_cli.py").read_text(
             encoding="utf-8"
         )
         assert '"--exchange"' in src
 
     def test_create_adapter_call(self) -> None:
-        src = (_PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py").read_text(
+        # 158# P2-4: CLI は fill_test_cli.py に移動
+        src = (_PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_test_cli.py").read_text(
             encoding="utf-8"
         )
         assert "registry.create_adapter(" in src

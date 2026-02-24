@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from scripts.v460.run_fill_test import _log_event, _setup_stderr_mirror, _TeeWriter
+from scripts.v460.lib.event_logger import log_event as _log_event, setup_stderr_mirror as _setup_stderr_mirror, TeeWriter as _TeeWriter
 
 
 # ======================================================================

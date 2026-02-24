@@ -337,7 +337,7 @@ class TestTradesHealthResultFields:
 
         result = check_trades_health(raw_dir=tmp_path, lookback_days=1)
         assert isinstance(result.stale_hours, float)
-        assert result.stale_hours >= 0
+        assert result.stale_hours >= -1e-6  # 浮動小数点誤差を許容
 
     def test_result_has_available_days_list(self, tmp_path: Path) -> None:
         """available_days からインデックスアクセス可能."""

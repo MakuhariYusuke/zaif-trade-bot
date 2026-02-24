@@ -823,9 +823,9 @@ class TestWindowsSignalHandler:
     """044# A-1: Windows SIGTERM 修正."""
 
     def test_platform_import(self) -> None:
-        """platform モジュールが run_fill_test でインポートされている."""
+        """platform モジュールが fill_test_cli でインポートされている."""
         import importlib
-        mod = importlib.import_module("scripts.v460.run_fill_test")
+        mod = importlib.import_module("scripts.v460.lib.fill_test_cli")
         # platform が import されていることを確認
         assert hasattr(mod, "platform")
 

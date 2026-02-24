@@ -204,20 +204,21 @@ class TestHotReload:
             assert evaluator._skip_gate.metadata["version"] == "v1"  # type: ignore[union-attr]
 
     def test_compute_file_hash(self) -> None:
-        """_compute_file_hash で SHA256 が正しく計算される."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+        """compute_file_hash で SHA256 が正しく計算される."""
+        from ztb.utils.run_manifest import compute_file_hash
 
         with tempfile.TemporaryDirectory() as tmpdir:
             p = Path(tmpdir) / "test.bin"
             p.write_bytes(b"hello world")
             expected = hashlib.sha256(b"hello world").hexdigest()
-            assert SkipGateEvaluator._compute_file_hash(p) == expected
+            assert compute_file_hash(p) == expected
 
     def test_compute_file_hash_missing_file(self) -> None:
-        """存在しないファイルのハッシュは空文字."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        result = SkipGateEvaluator._compute_file_hash(Path("/nonexistent"))
-        assert result == ""
+        """存在しないファイルのハッシュ計算は例外."""
+        from ztb.utils.run_manifest import compute_file_hash
+        import pytest
+        with pytest.raises((FileNotFoundError, OSError)):
+            compute_file_hash(Path("/nonexistent"))
 
 
 # =====================================================================
