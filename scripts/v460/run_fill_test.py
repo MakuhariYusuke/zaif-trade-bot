@@ -2174,18 +2174,36 @@ class FillTestRunner(AbstractCycleRunner):
             self._batch_persistence.take_unsaved()  # クリア
 
         # 044# A-4: 残存注文のキャンセル (確実に await する)
+        # 161# fix: 既存ループ検出 + フォールバックで asyncio anti-pattern 回避
         if self._pending_order_id:
             logger.warning(f"Cleaning up pending order: {self._pending_order_id}")
             try:
-                # 新しいイベントループで確実に実行
-                loop = asyncio.new_event_loop()
                 try:
-                    loop.run_until_complete(
-                        self.adapter.cancel_order(self._pending_order_id)
+                    running_loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    running_loop = None
+
+                if running_loop is not None and running_loop.is_running():
+                    # ループ実行中 — future でスケジュール (best effort)
+                    fut = asyncio.run_coroutine_threadsafe(
+                        self.adapter.cancel_order(self._pending_order_id),
+                        running_loop,
                     )
-                    logger.info(f"Cancelled pending order: {self._pending_order_id}")
-                finally:
-                    loop.close()
+                    try:
+                        fut.result(timeout=5.0)
+                        logger.info(f"Cancelled pending order: {self._pending_order_id}")
+                    except Exception as e2:
+                        logger.warning(f"Cleanup via running loop failed: {e2}")
+                else:
+                    # ループなし — 新規ループで実行 (atexit 時の標準パス)
+                    loop = asyncio.new_event_loop()
+                    try:
+                        loop.run_until_complete(
+                            self.adapter.cancel_order(self._pending_order_id)
+                        )
+                        logger.info(f"Cancelled pending order: {self._pending_order_id}")
+                    finally:
+                        loop.close()
             except Exception as e:
                 logger.error(f"Cleanup failed: {e}")
 

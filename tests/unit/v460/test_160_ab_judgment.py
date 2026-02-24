@@ -29,8 +29,8 @@ from scripts.v460.lib.ab_judgment import (
     evaluate_trending_down_sell,
     _compute_metrics,
     _extract_pnl30_array,
-    _safe_finite,
 )
+from ztb.utils.safety import safe_to_finite
 
 
 # ======================================================================
@@ -125,28 +125,28 @@ class TestABJudgmentCriteria:
 
 
 class TestSafeFinite:
-    """_safe_finite ヘルパーテスト."""
+    """safe_to_finite ヘルパーテスト."""
 
     def test_normal_float(self) -> None:
-        assert _safe_finite(1.5) == 1.5
+        assert safe_to_finite(1.5) == 1.5
 
     def test_int(self) -> None:
-        assert _safe_finite(42) == 42.0
+        assert safe_to_finite(42) == 42.0
 
     def test_none(self) -> None:
-        assert _safe_finite(None) is None
+        assert safe_to_finite(None) is None
 
     def test_nan(self) -> None:
-        assert _safe_finite(float("nan")) is None
+        assert safe_to_finite(float("nan")) is None
 
     def test_inf(self) -> None:
-        assert _safe_finite(float("inf")) is None
+        assert safe_to_finite(float("inf")) is None
 
     def test_string_numeric(self) -> None:
-        assert _safe_finite("3.14") == pytest.approx(3.14)
+        assert safe_to_finite("3.14") == pytest.approx(3.14)
 
     def test_string_invalid(self) -> None:
-        assert _safe_finite("hello") is None
+        assert safe_to_finite("hello") is None
 
 
 class TestComputeMetrics:

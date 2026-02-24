@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -33,6 +32,8 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 from ztb.io.jsonl import read_jsonl_objects
 
 # 160# P0-B/C: judgment 統合
+from scripts.v460.lib.metrics_utils import compute_extended_metrics
+from ztb.utils.safety import safe_to_finite
 from scripts.v460.lib.ab_judgment import (
     ABJudgmentCriteria,
     ABJudgmentResult,
@@ -90,76 +91,29 @@ class DashboardResult(TypedDict, total=False):
     per_regime_judgment: list[dict[str, object]] | None
 
 
-def _to_finite(value: object) -> float | None:
-    """有限浮動小数点数への安全な変換."""
-    if value is None:
-        return None
-    try:
-        v = float(value)  # type: ignore[arg-type]
-    except (ValueError, TypeError):
-        return None
-    return v if math.isfinite(v) else None
+# 161# DRY: _to_finite -> ztb.utils.safety.safe_to_finite に統合
 
 
 def _compute_side_metrics(records: list[dict[str, object]]) -> SideMetrics:
-    """レコード群から SideMetrics を計算."""
-    n_total = len(records)
-    filled = [r for r in records if r.get("filled")]
-    n_filled = len(filled)
-    fill_rate = n_filled / n_total if n_total > 0 else 0.0
+    """レコード群から SideMetrics を計算.
 
-    pnl30_values = [
-        _to_finite(r.get("post_fill_30s_pnl"))
-        for r in filled
-    ]
-    pnl30_clean = [v for v in pnl30_values if v is not None]
-
-    if pnl30_clean:
-        arr = np.array(pnl30_clean)
-        avg_pnl30 = float(np.mean(arr))
-        std_pnl30 = float(np.std(arr))
-        p10 = float(np.percentile(arr, 10))
-        p05 = float(np.percentile(arr, 5))
-        profitable = float(np.sum(arr > 0) / len(arr))
-    else:
-        avg_pnl30 = 0.0
-        std_pnl30 = 0.0
-        p10 = 0.0
-        p05 = 0.0
-        profitable = 0.0
-
-    # AS 率
-    as_records = [r for r in filled if r.get("adverse_selected")]
-    as_rate = len(as_records) / n_filled if n_filled > 0 else 0.0
-    as_pnl = [_to_finite(r.get("post_fill_30s_pnl")) for r in as_records]
-    as_clean = [v for v in as_pnl if v is not None]
-    avg_as_loss = float(np.mean(as_clean)) if as_clean else 0.0
-
-    # reprice 集計 (159# P1-A)
-    repriced = [r for r in filled if (r.get("reprice_count") or 0) > 0]
-    reprice_rate = len(repriced) / n_filled if n_filled > 0 else 0.0
-    drift_vals = [_to_finite(r.get("reprice_drift_bps")) for r in repriced]
-    drift_clean = [v for v in drift_vals if v is not None]
-    avg_reprice_drift = float(np.mean(drift_clean)) if drift_clean else 0.0
-
-    # VG trigger 集計 (159# P1-C)
-    vg_triggered = [r for r in filled if r.get("vg_boost_factor") is not None]
-    vg_trigger_rate = len(vg_triggered) / n_filled if n_filled > 0 else 0.0
-
+    161# DRY: compute_extended_metrics に委譲。
+    """
+    ext = compute_extended_metrics(records)  # type: ignore[arg-type]
     return {
-        "n_total": n_total,
-        "n_filled": n_filled,
-        "fill_rate": round(fill_rate, 4),
-        "avg_pnl30_bps": round(avg_pnl30, 4),
-        "std_pnl30_bps": round(std_pnl30, 4),
-        "downside_p10_bps": round(p10, 4),
-        "downside_p05_bps": round(p05, 4),
-        "profitable_rate": round(profitable, 4),
-        "as_rate": round(as_rate, 4),
-        "avg_as_loss_bps": round(avg_as_loss, 4),
-        "reprice_rate": round(reprice_rate, 4),
-        "avg_reprice_drift_bps": round(avg_reprice_drift, 4),
-        "vg_trigger_rate": round(vg_trigger_rate, 4),
+        "n_total": ext["n_total"],
+        "n_filled": ext["n_filled"],
+        "fill_rate": round(ext["fill_rate"], 4),
+        "avg_pnl30_bps": round(ext["avg_pnl30_bps"], 4) if ext["avg_pnl30_bps"] == ext["avg_pnl30_bps"] else 0.0,
+        "std_pnl30_bps": round(ext["std_pnl30_bps"], 4),
+        "downside_p10_bps": round(ext["downside_p10_bps"], 4) if ext["downside_p10_bps"] == ext["downside_p10_bps"] else 0.0,
+        "downside_p05_bps": round(ext["downside_p05_bps"], 4) if ext["downside_p05_bps"] == ext["downside_p05_bps"] else 0.0,
+        "profitable_rate": round(ext["profitable_rate"], 4),
+        "as_rate": round(ext["as_rate"], 4),
+        "avg_as_loss_bps": round(ext["avg_as_loss_bps"], 4),
+        "reprice_rate": round(ext["reprice_rate"], 4),
+        "avg_reprice_drift_bps": round(ext["avg_reprice_drift_bps"], 4),
+        "vg_trigger_rate": round(ext["vg_trigger_rate"], 4),
     }
 
 
@@ -260,7 +214,7 @@ def run_dashboard(
 
     for day in sorted(td_by_day.keys()):
         recs = td_by_day[day]
-        pnls = [_to_finite(r.get("post_fill_30s_pnl")) for r in recs]
+        pnls = [safe_to_finite(r.get("post_fill_30s_pnl")) for r in recs]
         clean = [v for v in pnls if v is not None]
         trending_daily.append({
             "day": day,

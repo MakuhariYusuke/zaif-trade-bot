@@ -33,7 +33,9 @@ import argparse
 import json
 import logging
 import os
+import signal
 import sys
+import threading
 import time
 import types
 from datetime import datetime
@@ -64,6 +66,20 @@ logger = logging.getLogger(__name__)
 
 ConfigMap = dict[str, object]
 FoldPnlSamples = tuple[list[float], list[float]]
+
+# 161# SIGTERM graceful shutdown
+_shutdown_event = threading.Event()
+
+
+def _install_signal_handlers() -> None:
+    """SIGTERM/SIGINT で graceful 停止するためのハンドラを設定."""
+    def _handler(signum: int, _frame: object) -> None:
+        name = signal.Signals(signum).name
+        logger.warning(f"[161#] Received {name} — scheduling graceful shutdown")
+        _shutdown_event.set()
+
+    signal.signal(signal.SIGTERM, _handler)
+    signal.signal(signal.SIGINT, _handler)
 
 
 def _safe_import_ztb_module(dotted_path: str) -> types.ModuleType:
@@ -1885,7 +1901,10 @@ def run_scheduler(cfg: ConfigMap, config_path: Path | None = None) -> None:
     log_dir.mkdir(exist_ok=True)
     history_path = log_dir / "retrain_history.jsonl"
 
-    while True:
+    _install_signal_handlers()
+    logger.info("[161#] Graceful shutdown handlers installed (SIGTERM/SIGINT)")
+
+    while not _shutdown_event.is_set():
         # 130# L2: サイクルごとに YAML からリロード (閾値・ターゲット変更を反映)
         if config_path is not None:
             try:
@@ -1915,7 +1934,9 @@ def run_scheduler(cfg: ConfigMap, config_path: Path | None = None) -> None:
                 "consecutive_skips": trigger.consecutive_skips,
             }
             _append_jsonl_record(history_path, skip_result)
-            time.sleep(effective_interval)
+            # 161# graceful shutdown: wait with event for responsiveness
+            if _shutdown_event.wait(timeout=effective_interval):
+                break
             continue
 
         try:
@@ -1941,7 +1962,10 @@ def run_scheduler(cfg: ConfigMap, config_path: Path | None = None) -> None:
 
         effective_interval = trigger.get_effective_interval()
         logger.info(f"Next retrain in {effective_interval}s ({effective_interval / 3600:.1f}h)")
-        time.sleep(effective_interval)
+        # 161# graceful shutdown: wait with event for responsiveness
+        _shutdown_event.wait(timeout=effective_interval)
+
+    logger.info("[161#] Scheduler stopped gracefully")
 
 
 def main() -> None:

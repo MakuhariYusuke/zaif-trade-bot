@@ -1,6 +1,7 @@
 from collections.abc import Mapping
+import math
 from pathlib import Path
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from ztb.io.json_io import read_json_object
 
@@ -46,6 +47,20 @@ def safe_to_float(value: object, default: float = 0.0) -> float:
         return float(value)
     except Exception:
         return default
+
+
+def safe_to_finite(value: Any) -> float | None:
+    """値を有限 float に安全変換. None / NaN / Inf → None を返す.
+
+    161# DRY: ab_judgment._safe_finite / dashboard._to_finite を統合。
+    """
+    if value is None:
+        return None
+    try:
+        v = float(value)
+    except (ValueError, TypeError):
+        return None
+    return v if math.isfinite(v) else None
 
 
 def safe_to_int(value: object, default: int = 0) -> int:

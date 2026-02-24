@@ -20,6 +20,9 @@ from typing import Any
 
 import numpy as np
 
+from scripts.v460.lib.metrics_utils import compute_base_metrics
+from ztb.utils.safety import safe_to_finite
+
 logger = logging.getLogger(__name__)
 
 
@@ -122,15 +125,7 @@ class ABJudgmentResult:
         return "\n".join(lines)
 
 
-def _safe_finite(val: Any) -> float | None:
-    """有限浮動小数点への安全変換."""
-    if val is None:
-        return None
-    try:
-        v = float(val)
-    except (ValueError, TypeError):
-        return None
-    return v if math.isfinite(v) else None
+
 
 
 def _extract_pnl30_array(records: list[dict[str, Any]]) -> np.ndarray:
@@ -139,7 +134,7 @@ def _extract_pnl30_array(records: list[dict[str, Any]]) -> np.ndarray:
     for r in records:
         if not r.get("filled"):
             continue
-        v = _safe_finite(r.get("post_fill_30s_pnl"))
+        v = safe_to_finite(r.get("post_fill_30s_pnl"))
         if v is not None:
             vals.append(v)
     return np.array(vals, dtype=float) if vals else np.array([], dtype=float)
@@ -148,53 +143,17 @@ def _extract_pnl30_array(records: list[dict[str, Any]]) -> np.ndarray:
 def _compute_metrics(records: list[dict[str, Any]]) -> dict[str, float]:
     """レコード群から判定用メトリクスを算出.
 
-    side_regime_dashboard._compute_side_metrics と互換性のある出力。
+    161# DRY: compute_base_metrics に委譲。
     """
-    n_total = len(records)
-    filled = [r for r in records if r.get("filled")]
-    n_filled = len(filled)
-    fill_rate = n_filled / n_total if n_total > 0 else 0.0
-
-    pnl_vals = [_safe_finite(r.get("post_fill_30s_pnl")) for r in filled]
-    pnl_clean: list[float] = [v for v in pnl_vals if v is not None]
-
-    if pnl_clean:
-        arr = np.array(pnl_clean)
-        avg_pnl30 = float(np.mean(arr))
-        p10 = float(np.percentile(arr, 10))
-        p05 = float(np.percentile(arr, 5))
-    else:
-        # 160# bugfix: 0.0 だと閾値(-1.0等)を上回り誤PASS判定されるため NaN
-        avg_pnl30 = float("nan")
-        p10 = float("nan")
-        p05 = float("nan")
-
-    # カレンダー日数
-    timestamps = []
-    for r in filled:
-        ts = _safe_finite(r.get("timestamp"))
-        if ts is not None:
-            timestamps.append(ts)
-    if timestamps:
-        from datetime import datetime, timezone
-        days = set()
-        for ts in timestamps:
-            try:
-                days.add(datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y%m%d"))
-            except (ValueError, OSError):
-                continue
-        calendar_days = len(days)
-    else:
-        calendar_days = 0
-
+    base = compute_base_metrics(records)
     return {
-        "n_total": n_total,
-        "n_filled": n_filled,
-        "fill_rate": fill_rate,
-        "avg_pnl30_bps": avg_pnl30,
-        "downside_p10_bps": p10,
-        "downside_p05_bps": p05,
-        "calendar_days": calendar_days,
+        "n_total": base["n_total"],
+        "n_filled": base["n_filled"],
+        "fill_rate": base["fill_rate"],
+        "avg_pnl30_bps": base["avg_pnl30_bps"],
+        "downside_p10_bps": base["downside_p10_bps"],
+        "downside_p05_bps": base["downside_p05_bps"],
+        "calendar_days": base["calendar_days"],
     }
 
 
@@ -595,7 +554,7 @@ def evaluate_trending_down_sell(
         return result
 
     # PnL30 配列
-    pnl_vals = [_safe_finite(r.get("post_fill_30s_pnl")) for r in td_sell_filled]
+    pnl_vals = [safe_to_finite(r.get("post_fill_30s_pnl")) for r in td_sell_filled]
     pnl_clean = [v for v in pnl_vals if v is not None]
 
     if not pnl_clean:
@@ -615,10 +574,10 @@ def evaluate_trending_down_sell(
     from datetime import datetime, timezone
     daily_groups: dict[str, list[float]] = defaultdict(list)
     for r in td_sell_filled:
-        ts = _safe_finite(r.get("timestamp"))
+        ts = safe_to_finite(r.get("timestamp"))
         if ts is None:
             continue
-        pnl = _safe_finite(r.get("post_fill_30s_pnl"))
+        pnl = safe_to_finite(r.get("post_fill_30s_pnl"))
         if pnl is None:
             continue
         try:
