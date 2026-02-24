@@ -449,7 +449,7 @@ def _save_enriched_cache(
     enriched: pd.DataFrame,
     cache_key: str | None = None,
 ) -> None:
-    """E4: enriched data を cache に保存 (cache_key 付き)."""
+    """E4: enriched data を cache に保存 (cache_key 付き, アトミック書き込み)."""
     try:
         import pickle
         payload = {
@@ -457,11 +457,19 @@ def _save_enriched_cache(
             "cache_key": cache_key,
             "n_records": len(enriched),
         }
-        with open(cache_path, "wb") as f:
+        # 160# fix: アトミック書き込み (中断時の破損 cache 防止)
+        tmp_path = cache_path.with_suffix(".pkl.tmp")
+        with open(tmp_path, "wb") as f:
             pickle.dump(payload, f)
+        tmp_path.replace(cache_path)
         logger.info(f"E4: Saved enriched cache ({len(enriched)} records, key={cache_key}) to {cache_path}")
     except Exception as e:
         logger.warning(f"E4: Cache save failed: {e}")
+        # tmp ファイル残留を防止
+        try:
+            tmp_path.unlink(missing_ok=True)  # type: ignore[possibly-undefined]
+        except Exception:
+            pass
 
 
 def _build_lgbm_regressor(

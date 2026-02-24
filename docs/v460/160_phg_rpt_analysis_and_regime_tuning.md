@@ -677,3 +677,46 @@ PID 124796 (`a7e5d0b82`, regime修正前コミット) 再開後。
 | P1-C VG 詳細ログ | P1 | **✅ 実装済み** | vg_velocity/vpin/boost_factor, 分析集計追加 |
 | P2-A execute_trade 品質検証 | P2 | 📋 未着手 | |
 | P2-B run_fill_test 分割 | P2 | 📋 進行中 | lib/ 分割は進展 |
+
+---
+
+## §12 追加改善 (コード品質スキャン)
+
+### 12.1 発見・修正事項
+
+サブエージェントによるコード品質スキャンで CRITICAL〜HIGH の問題を発見し、即時対応。
+
+| # | 深刻度 | ファイル | 問題 | 対応 |
+|---|---|---|---|---|
+| 1 | **CRITICAL** | `ab_judgment.py` | 空 PnL データで `0.0` を返し閾値 `-1.0` を上回って **誤 PASS** | NaN 化 + `pnl_data` INSUFFICIENT チェック追加 |
+| 2 | **HIGH** | `retrain_scheduler.py` | `_save_enriched_cache()` が直接書き込み → 中断でデータ破損 | `.pkl.tmp` + `replace()` アトミック書き込みに変更 |
+| 3 | **HIGH** | `run_fill_test.py` | 起動時 trades_health が `max_missing_days=0` で retrain_scheduler (`=1`) と不整合 | `max_missing_days=1` に統一 |
+| 4 | **MEDIUM** | `online_monitor.py` | `.fillna(False).astype(bool)` の FutureWarning が6回出力 | `_to_bool()` ヘルパーで一括対応 |
+| 5 | **MEDIUM** | `online_monitor.py` | `skip_col` が同メソッド内で2回定義 | 重複を除去 |
+
+### 12.2 未対応事項 (P1/P2)
+
+| # | 深刻度 | ファイル | 問題 | 理由 |
+|---|---|---|---|---|
+| A | CRITICAL | `retrain_scheduler.py` | SIGTERM グレースフル停止未実装 | 大規模リファクタ、別セッション対応 |
+| B | HIGH | `retrain_scheduler.py` | final training の val 分割が WF eval と独立 | 精度検証が必要、別セッション対応 |
+| C | HIGH | `run_fill_test.py` | `_cleanup_sync()` の `asyncio.new_event_loop()` 問題 | Py3.12+ 対応、互換テスト必要 |
+| D | MEDIUM | `ab_judgment.py` / `dashboard.py` | `_compute_metrics` と `_compute_side_metrics` のロジック重複 | DRY 統合は影響範囲大 |
+| E | MEDIUM | `retrain_scheduler.py` | `ConfigMap = dict[str, object]` の型安全性不足 | TypedDict 化は大規模リファクタ |
+
+### 12.3 テスト
+
+- `test_160_ab_judgment.py`: 65 PASSED (新規 2 件追加: `TestEmptyPnlInsufficient`)
+- `test_159_side_regime_dashboard.py`: 6 PASSED
+- `test_141 (OnlineMonitor)`: 10 PASSED
+- `test_143 (pre_filter)`: 1 PASSED
+- **合計: 82 テスト PASSED**
+
+### 12.4 fill test 再起動状況
+
+- **旧 PID 124796** (`a7e5d0b82`, regime修正前): **停止済み**
+- **新 PID 128012** (`d9874bbee12a`, 最新コード): **稼働中**
+  - regime detector: 有効
+  - SkipGate: 有効 (17 features)
+  - 起動時 trades_health: 20260221 欠落 (情報のみ、機能影響なし)
+- **Retrain scheduler PID 129404**: 正常稼働中 (直近サイクル完了、次回3h後)

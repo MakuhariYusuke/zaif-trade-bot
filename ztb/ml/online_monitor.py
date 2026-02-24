@@ -27,6 +27,11 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
+def _to_bool(s: pd.Series) -> pd.Series:
+    """NaN → False の安全な bool 変換 (FutureWarning 回避)."""
+    return s.fillna(False).infer_objects(copy=False).astype(bool)
+
+
 @dataclass
 class OnlineMonitorConfig:
     """オンラインモニター設定."""
@@ -126,10 +131,10 @@ class OnlineMonitor:
         # skip_gate_skipped=True (skip 判定) または filled=True (約定済み) のみ
         skip_col = "skip_gate_skipped"
         if skip_col in records.columns:
-            skip_mask = records[skip_col].fillna(False).astype(bool)
-            filled_mask = records.get(
+            skip_mask = _to_bool(records[skip_col])
+            filled_mask = _to_bool(records.get(
                 "filled", pd.Series(True, index=records.index)
-            ).fillna(False).astype(bool)
+            ))
             evaluable = records[skip_mask | filled_mask]
         else:
             evaluable = records
@@ -142,11 +147,10 @@ class OnlineMonitor:
             return result
 
         # skip/pass 分離
-        skip_col = "skip_gate_skipped"
         if skip_col not in recent.columns:
             return result
 
-        skip_mask = recent[skip_col].fillna(False).astype(bool)
+        skip_mask = _to_bool(recent[skip_col])
         passed = recent[~skip_mask]
         skipped = recent[skip_mask]
         result.n_passed = len(passed)
@@ -156,7 +160,7 @@ class OnlineMonitor:
         pnl_col = cfg.pnl_column
         if pnl_col in passed.columns:
             filled_passed = passed[
-                passed.get("filled", pd.Series(True, index=passed.index)).fillna(False).astype(bool)
+                _to_bool(passed.get("filled", pd.Series(True, index=passed.index)))
             ]
             if len(filled_passed) > 0:
                 pnl_vals = pd.to_numeric(filled_passed[pnl_col], errors="coerce").dropna()
@@ -203,12 +207,8 @@ class OnlineMonitor:
                 side_df = recent[recent["side"] == side_val]
                 if len(side_df) == 0:
                     continue
-                side_skip = side_df[
-                    side_df[skip_col].fillna(False).astype(bool)
-                ]
-                side_pass = side_df[
-                    ~side_df[skip_col].fillna(False).astype(bool)
-                ]
+                side_skip = side_df[_to_bool(side_df[skip_col])]
+                side_pass = side_df[~_to_bool(side_df[skip_col])]
                 side_info: dict[str, float] = {
                     "n_total": float(len(side_df)),
                     "n_passed": float(len(side_pass)),
@@ -218,8 +218,7 @@ class OnlineMonitor:
                 # pass PnL
                 if pnl_col in side_pass.columns and len(side_pass) > 0:
                     filled_side = side_pass[
-                        side_pass.get("filled", pd.Series(True, index=side_pass.index))
-                        .fillna(False).astype(bool)
+                        _to_bool(side_pass.get("filled", pd.Series(True, index=side_pass.index)))
                     ]
                     if len(filled_side) > 0:
                         pnl_s = pd.to_numeric(filled_side[pnl_col], errors="coerce").dropna()

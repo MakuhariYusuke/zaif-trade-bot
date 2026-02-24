@@ -1297,8 +1297,13 @@ class FillTestRunner(AbstractCycleRunner):
         self._acquire_lock()
 
         # 135# P2-09→P1: trades データ健全性チェック
+        # 160# fix: max_missing_days=1 で retrain_scheduler と同じ許容レベルに統一
         try:
-            th = check_trades_health(lookback_days=3, stale_threshold_hours=36.0)
+            th = check_trades_health(
+                lookback_days=3,
+                stale_threshold_hours=36.0,
+                max_missing_days=1,
+            )
             if not th.healthy:
                 logger.warning(f"[trades_health] {th.message}")
                 if th.missing_days:

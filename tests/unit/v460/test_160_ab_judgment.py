@@ -939,3 +939,44 @@ class TestControlMinFilled:
         """YAML から min_control_filled_records をロード."""
         c = ABJudgmentCriteria.from_dict({"min_control_filled_records": 20})
         assert c.min_control_filled_records == 20
+
+
+# ======================================================================
+# 160# bugfix: 空 PnL データ誤 PASS 防止テスト
+# ======================================================================
+
+
+class TestEmptyPnlInsufficient:
+    """PnL データなし時に INSUFFICIENT を返すことを確認."""
+
+    def test_variant_no_pnl_is_insufficient(self) -> None:
+        """variant に filled はあるが PnL が全て None → INSUFFICIENT."""
+        base = time.time()
+        # filled=True だが pnl30=None のレコード群
+        variant = [
+            _make_record(side="sell", regime="ranging", filled=True, pnl30=None, timestamp=base + i * 120)
+            for i in range(60)
+        ]
+        control = _make_records(60, side="buy", fill_rate=0.8, pnl_mean=0.3)
+        criteria = ABJudgmentCriteria(
+            min_filled_records=10,
+            min_control_filled_records=5,
+            min_calendar_days=1,
+            exclude_regimes=[],
+        )
+        result = evaluate_ab_variant(variant, control, criteria=criteria)
+        assert result.overall == Verdict.INSUFFICIENT
+        assert any(c.name == "pnl_data" for c in result.criteria)
+
+    def test_variant_with_pnl_is_not_pnl_insufficient(self) -> None:
+        """variant に PnL データあり → pnl_data INSUFFICIENT にならない."""
+        sell = _make_records(100, side="sell", fill_rate=0.8, pnl_mean=0.5)
+        buy = _make_records(80, side="buy", fill_rate=0.8, pnl_mean=0.3)
+        criteria = ABJudgmentCriteria(
+            min_filled_records=10,
+            min_control_filled_records=5,
+            min_calendar_days=1,
+            exclude_regimes=[],
+        )
+        result = evaluate_ab_variant(sell, buy, criteria=criteria)
+        assert not any(c.name == "pnl_data" for c in result.criteria)

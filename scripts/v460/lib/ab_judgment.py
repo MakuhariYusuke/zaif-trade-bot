@@ -164,9 +164,10 @@ def _compute_metrics(records: list[dict[str, Any]]) -> dict[str, float]:
         p10 = float(np.percentile(arr, 10))
         p05 = float(np.percentile(arr, 5))
     else:
-        avg_pnl30 = 0.0
-        p10 = 0.0
-        p05 = 0.0
+        # 160# bugfix: 0.0 だと閾値(-1.0等)を上回り誤PASS判定されるため NaN
+        avg_pnl30 = float("nan")
+        p10 = float("nan")
+        p05 = float("nan")
 
     # カレンダー日数
     timestamps = []
@@ -274,6 +275,18 @@ def evaluate_ab_variant(
             value=float(vm["calendar_days"]),
             threshold=float(criteria.min_calendar_days),
             detail=f"variant days={vm['calendar_days']} < min={criteria.min_calendar_days}",
+        ))
+        return result
+
+    # --- 0. PnL データ有効性チェック (160# bugfix) ---
+    if math.isnan(vm["avg_pnl30_bps"]):
+        result.overall = Verdict.INSUFFICIENT
+        result.criteria.append(CriterionResult(
+            name="pnl_data",
+            verdict=Verdict.INSUFFICIENT,
+            value=float(vm["n_filled"]),
+            threshold=1.0,
+            detail=f"variant filled={vm['n_filled']} but no valid PnL data",
         ))
         return result
 
