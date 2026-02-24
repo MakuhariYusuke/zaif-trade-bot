@@ -1,7 +1,7 @@
 # v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-25 (161# コード品質・構造改善)
+> 最終更新: 2026-02-25 (162# Fill Test 10日間ログ分析)
 
 ---
 
@@ -183,6 +183,7 @@
 | 159 | rev | [159_phg_rev_158_phase_d_backlog_review.md](159_phg_rev_158_phase_d_backlog_review.md) | 158# レビュー: 実装照合・優先度再編・範囲外改善提案 |
 | 160 | rpt | [160_phg_rpt_analysis_and_regime_tuning.md](160_phg_rpt_analysis_and_regime_tuning.md) | P0-3/P1-2 分析 + YAML外部化 + regime=None根本修正 + P0-B A/B判定3指標固定 + P0-C trending_down sell実測評価 |
 | 161 | impl | [161_phg_impl_code_quality_and_structural_improvements.md](161_phg_impl_code_quality_and_structural_improvements.md) | 複雑性監査 + SIGTERM graceful shutdown + DRY統合 + asyncio安全化 |
+| 162 | rpt | [162_phg_rpt_fill_test_10day_log_analysis.md](162_phg_rpt_fill_test_10day_log_analysis.md) | Fill Test 10日間ログ分析: AS率27%, Fill Rate急落, 改善提案 |
 
 ---
 

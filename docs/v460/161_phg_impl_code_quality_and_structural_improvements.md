@@ -263,3 +263,18 @@ def _cleanup_sync(self) -> None:
 | Gemini-B | Inventory Skewing (在庫偏重による非対称クオート) | 高 |
 | Gemini-C | SkipGate sell SHAP分析 | 中 |
 | Gemini-D | 「休むも相場」ロジック | 中 |
+
+---
+
+## §10 ログ分析 (続報)
+
+本セッション後半で Fill Test 10日間データの包括分析を実施。
+詳細は **[162# Fill Test 10日間ログ分析](162_phg_rpt_fill_test_10day_log_analysis.md)** を参照。
+
+### 主要発見
+
+- Fill Rate が 77% → 9% に急落 (balance_forced_skip 集中)
+- Adverse Selection 27.1% が avg_pnl30 = -5.29bps で支配的損失
+- Non-AS のみでは +1.65bps と正のエッジ存在
+- Retrain Scheduler のモデル更新成功率が 4% (70% がデータ不足 skip)
+- Sell 側 Fill Rate が Buy より 22pt 低い構造的問題
