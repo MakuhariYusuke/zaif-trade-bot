@@ -253,6 +253,11 @@ class FillTestConfig:
     narrow_spread_pause_sec: float = 5.0          # 狭小検出時のスリープ秒数
     narrow_spread_pause_max_consecutive: int = 3  # 連続スキップ上限 (超過で強行)
     # ---- 138# P1-10: preflight 失敗連続→run pause (dead-cycle 防止) ----
+    # ---- 162# Inventory Skewing: 在庫偏重による非対称クオート ----
+    inventory_skewing_enabled: bool = False    # True で在庫偏重 offset 補正を有効化
+    inventory_skewing_window: int = 100        # 直近 N fill で在庫偏重を計算
+    inventory_skewing_max_factor: float = 0.4  # 最大 offset 補正倍率 (0.4 = 40%)
+    inventory_skewing_neutral_band: float = 0.1  # |imbalance| < この値なら補正なし
     preflight_pause_enabled: bool = True       # True で SAFE_STOP 前に pause を挟む
     preflight_pause_threshold: int = 5         # この回数で pause 発動 (< max_preflight_skip)
     preflight_pause_sec: float = 300.0         # pause 時のスリープ秒数
@@ -748,6 +753,19 @@ class FillTestConfig:
         }.items():
             if yk in narrow_pause:
                 kwargs[ck] = narrow_pause[yk]
+
+
+        # 162# Inventory Skewing: 在庫偏重による非対称クオート
+        inv_skew = 止血.get("inventory_skewing", {})
+        if inv_skew.get("enabled") is not None:
+            kwargs["inventory_skewing_enabled"] = inv_skew["enabled"]
+        for yk, ck in {
+            "window": "inventory_skewing_window",
+            "max_factor": "inventory_skewing_max_factor",
+            "neutral_band": "inventory_skewing_neutral_band",
+        }.items():
+            if yk in inv_skew:
+                kwargs[ck] = inv_skew[yk]
 
         # 137# P1-11: PnL fee 控除
         fee_cfg = 止血.get("pnl_fee_deduction", {})

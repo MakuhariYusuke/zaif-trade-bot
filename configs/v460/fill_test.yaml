@@ -336,6 +336,13 @@ loss_control:
     pause_sec: 300.0               # pause 待機秒数 (5分)
     max_pauses: 3                  # run 内最大 pause 回数 (超過でSAFE_STOP)
 
+  # 162# Inventory Skewing: 在庫偏重に応じた非対称 offset (balance_forced 根本対策)
+  inventory_skewing:
+    enabled: false               # true で有効化 (ステージング後に ON)
+    window: 100                  # 直近 N fill の在庫偏重を計算
+    max_factor: 0.4              # 最大 offset 補正倍率 (40%)
+    neutral_band: 0.1            # |imbalance| < 0.1 では補正なし (中立帯)
+
 # ---- 102# チューニングパラメータ (散在マジックナンバーの外部化) ----
 tuning:
   max_offset_ratio: 0.30           # offset 比率の共通上限キャップ

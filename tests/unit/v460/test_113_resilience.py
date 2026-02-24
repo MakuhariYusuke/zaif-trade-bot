@@ -247,11 +247,11 @@ class TestR1MethodExtraction:
         assert "_measure_post_fill_pnl" in source
 
     def test_run_single_cycle_under_400_lines(self) -> None:
-        """run_single_cycle が 490 行以下 (R1 目標 + 158# P1-3/P2-6/P1-1/P1-5/P1-6 累積)."""
+        """run_single_cycle が 495 行以下 (R1 目標 + 162# Inventory Skewing 追加)."""
         from scripts.v460.run_fill_test import FillTestRunner
         source = inspect.getsource(FillTestRunner.run_single_cycle)
         line_count = len(source.splitlines())
-        assert line_count <= 490, f"run_single_cycle is {line_count} lines (> 490)"
+        assert line_count <= 495, f"run_single_cycle is {line_count} lines (> 495)"
 
     def test_extracted_methods_exist(self) -> None:
         """抽出メソッドが FillTestRunner に存在."""

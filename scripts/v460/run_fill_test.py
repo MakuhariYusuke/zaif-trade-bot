@@ -1152,6 +1152,10 @@ class FillTestRunner(AbstractCycleRunner):
         adverse_selected_raw = pnl.adverse_selected_raw
         actual_measurement_sec = pnl.actual_measurement_sec
 
+        # 162# Inventory Skewing: fill 成功時に在庫偏重を更新
+        if filled:
+            self._maker_price.update_inventory(side)
+
         # 037# レジーム検知更新 (035# §7 Week 1)
         regime_str: Optional[str] = None
         regime_conf: Optional[float] = None
@@ -2225,4 +2229,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

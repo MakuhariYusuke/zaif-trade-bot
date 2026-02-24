@@ -17,6 +17,7 @@ run_fill_test.py FillTestRunner からの God Object 分割:
 
 from __future__ import annotations
 
+import collections
 import logging
 import time
 from typing import Final, NamedTuple, Optional, Protocol
@@ -79,6 +80,8 @@ class MakerPriceCalculator:
         "_last_vg_velocity_bps",
         "_last_vg_vpin",
         "_last_vg_boost_factor",
+        "_inv_fill_history",        # 162# inventory skewing fill deque
+        "_inv_net_imbalance",        # 162# normalized net imbalance [-1,1]
         "_last_ob_snapshot",
     )
 
@@ -116,6 +119,10 @@ class MakerPriceCalculator:
         self._last_vg_boost_factor: float | None = None
         # 129# OB recorder: 生スナップショットキャッシュ
         self._last_ob_snapshot: object | None = None
+        # 162# Inventory Skewing: fill 履歴追跡
+        _w = config.inventory_skewing_window if config.inventory_skewing_window > 0 else 100
+        self._inv_fill_history: collections.deque[str] = collections.deque(maxlen=_w)
+        self._inv_net_imbalance: float = 0.0
 
     def get_fallback_price(self) -> tuple[float | None, float | None]:
         """156# §16: OB エラー時のフォールバック価格と記録時刻を返す.
@@ -124,6 +131,21 @@ class MakerPriceCalculator:
             (prev_mid_price, prev_mid_time) — 未設定時は (None, None).
         """
         return self._prev_mid_price, self._prev_mid_time
+
+    def update_inventory(self, side: str) -> None:
+        """162# Inventory Skewing: fill 後に在庫偏重を更新.
+
+        Args:
+            side: 'buy' or 'sell'  約定した side.
+        """
+        self._inv_fill_history.append(side)
+        n = len(self._inv_fill_history)
+        if n == 0:
+            self._inv_net_imbalance = 0.0
+            return
+        buys = sum(1 for s in self._inv_fill_history if s == "buy")
+        # imbalance: +1 = all buys (long偏重), -1 = all sells (short偏重)
+        self._inv_net_imbalance = (2 * buys - n) / n
 
     # ------------------------------------------------------------------
     # offset 同期 (adaptation 後に呼ばれる)
@@ -285,6 +307,24 @@ class MakerPriceCalculator:
             effective_offset_ratio = self._base_offset_ratio_buy
         elif side == "sell" and self._base_offset_ratio_sell is not None:
             effective_offset_ratio = self._base_offset_ratio_sell
+
+        # 162# Inventory Skewing: 在庫偏重に応じた非対称 offset 補正
+        # buy 偏重(imbalance>0) -> buy offset拡大(抑制), sell offset縮小(促進)
+        # sell 偏重(imbalance<0) -> sell offset拡大(抑制), buy offset縮小(促進)
+        if (
+            cfg.inventory_skewing_enabled
+            and abs(self._inv_net_imbalance) > cfg.inventory_skewing_neutral_band
+        ):
+            _imb = self._inv_net_imbalance
+            _sign = 1.0 if side == "buy" else -1.0
+            _factor = _imb * _sign * cfg.inventory_skewing_max_factor
+            _prev = effective_offset_ratio
+            effective_offset_ratio *= (1.0 + _factor)
+            effective_offset_ratio = max(effective_offset_ratio, cfg.min_offset_ratio)
+            logger.info(
+                f"[inv_skew] {side} imbalance={_imb:+.3f} "
+                f"factor={_factor:+.4f} offset {_prev:.4f}->{effective_offset_ratio:.4f}"
+            )
 
         # 088# sell 専用ハードガード: offset floor
         if side == "sell" and cfg.sell_offset_floor > 0:
