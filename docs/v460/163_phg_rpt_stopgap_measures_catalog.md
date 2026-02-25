@@ -327,7 +327,7 @@ Sell は以下 **6 層** のガードを通過する必要がある:
 | **P0** | ~~Inventory Skewing 実装~~ **162# 実装済み** (`42a06d8e9`, enabled=false) → **enabled=true** (`5a5b9ba42`) | 3-A, 3-B, 3-C (balance_forced 関連全体) | fill_rate +15-20pt |
 | **P0** | ~~動的ゲーティング (time_filter 代替)~~ **107# Step 2 実装済み** (5a5b9ba42, regime_adaptive_enabled=true) | 1-A, 1-B, 1-C | アイドル時間 -30%+ |
 | **P1** | sell offset 動的最適化 | 2-A, 2-B (trending_sell_skip) | sell fill_rate 改善 |
-| **P1** | AS 根因分析 + モデル改善 | 2-C (sell_dynamic_kill), 6-A (unknown_regime skip) | PnL 改善 |
+| **P1** | AS 根因分析 + モデル改善 | 2-C (sell_dynamic_kill), 6-A (unknown_regime skip) | PnL 改善 | → 165# AS-R1 (velocity rule) + daily health report |
 | **P2** | sell_guard 閾値動的化 | 2-D | 16+件のキャンセル削減 |
 
 ---
@@ -489,5 +489,6 @@ base_offset_ratio_sell (0.18)
 | 2026-02-25 | God Object 分割完了 (`6b766caf9`): run_fill_test 2,231→378行 3 Mixin, maker_price compute() 306→143行, fill_config from_yaml() 479→139行 |
 | 2026-02-26 | IS YAML enabled=true, 107# Phase 3 Step 2 動的ゲーティング実装 (regime-adaptive time_filter) |
 | 2026-02-26 | 162# §7 P0: Stopgap 退出基準表追記, 164# SHAP 分析との相互参照追加 |
+| 2026-02-25 | 165# AS根因分析(SkipGate r≈ 0), AS-R1 velocity sell skip rule, 162# P1: daily per-regime 3-indicator + stopgap exit eval統合 |
 | 2026-02-26 | 162# P0: analyze_fill_logs CLI (再現可能分析), 162# P1: IS 段階有効化計画追記 |
 | 2026-02-26 | 163# P1: Sell Offset 動的最適化分析 (SO-1~3 提案), 164# SHAP 知見との接続 |
