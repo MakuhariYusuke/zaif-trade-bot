@@ -11,9 +11,21 @@
 |------|-----|
 | 分析手法 | SHAP TreeExplainer (tree_path_dependent) |
 | 対象モデル | pnl120_generic (17feat/56samp), pnl120_sell (15feat/229samp), pnl30_buy (13feat/519samp) |
-| 背景データ | `cache/data/enriched_fill_test.pkl` (119 fill records, sell-only) |
+| 背景データ | `cache/data/enriched_fill_test.pkl` (119 enriched rows, sell-only; うち filled=28) |
 | SHAP サンプル数 | 28 (enriched から build_preorder_as_features 経由で構築) |
 | 日付 | 2026-02-26 |
+
+### 再現性情報
+
+| ファイル | MD5 | 更新日時 |
+|----------|-----|---------|
+| `models/v460/skip_gate_lgbm_pnl120.pkl` | `5ACEA89F7EF8FEE92C82709D0052EDDD` | 2026-02-25 07:35:08 |
+| `models/v460/skip_gate_lgbm_pnl120_sell.pkl` | `9EF2634355EAC35205F04C66499EAC34` | 2026-02-24 05:34:51 |
+| `models/v460/skip_gate_lgbm_pnl30_buy.pkl` | `BAE0E33FF34F56174A0966038A3B308C` | 2026-02-24 05:34:10 |
+| `cache/data/enriched_fill_test.pkl` | `D90EECB4881DACFDCB0F1D9CA4C4ADC0` | 2026-02-25 07:54:30 |
+
+**実行コマンド**: `temp/shap_analysis.py` (TreeExplainer → `analysis_results/shap_skip_gate_analysis.json`)
+**Python**: 3.11.9, SHAP 0.50.0, LightGBM (モデル内蔵)
 
 ---
 
@@ -115,19 +127,23 @@
 
 ---
 
-## §3 予測精度評価 (OOS)
+## §3 予測精度評価 (探索的検証)
 
-| Model | Pred-PnL corr | Skip(bottom20%) PnL | Keep(top80%) PnL | Improvement |
-|-------|:---:|:---:|:---:|:---:|
-| pnl120_generic | +0.227 | -7.45 bps | +1.22 bps | +2.17 bps |
-| pnl120_sell | **-0.381** | +7.75 bps | -2.96 bps | **-2.01 bps** |
-| pnl30_buy | +0.370 | -1.71 bps | -0.09 bps | +0.35 bps |
+| Model | Pred-PnL corr | Skip(bottom20%) PnL | Keep(top80%) PnL | Improvement | WF OOS改善 (metadata) |
+|-------|:---:|:---:|:---:|:---:|:---:|
+| pnl120_generic | +0.227 | -7.45 bps | +1.22 bps | +2.17 bps | 0.0 bps |
+| pnl120_sell | **-0.381** | +7.75 bps | -2.96 bps | **-2.01 bps** | **+0.221 bps** |
+| pnl30_buy | +0.370 | -1.71 bps | -0.09 bps | +0.35 bps | +0.355 bps |
+
+> **指標定義の注意**: 左 5 列は enriched_fill_test.pkl 28 サンプルでの**探索的評価**。
+> 右端の「WF OOS改善」は訓練時の Walk-Forward Out-of-Sample 評価 (`wf_results` metadata)。
+> Sell の Improvement=-2.01bps(探索) vs WF=+0.221bps(OOS) の符号逆転は、評価データの母集団差による。
 
 ### 異常: pnl120_sell の負の相関
 
 - Sell model の予測と実 PnL が**負の相関** (-0.381)
 - 「PnL 高い」と予測した注文がむしろ損失 → **逆シグナル問題**
-- ただし enriched_fill_test.pkl のデータは sell-only 119 行から 28 行に絞られた検証用サブセットであり、WF 評価では +0.221bps の改善を達成
+- ただし enriched_fill_test.pkl のデータは sell-only 119 enriched rows (うち feature構築成功=28) の検証用サブセットであり、WF 評価 (訓練時 229 サンプル) では +0.221bps の改善を達成
 - → **モデル自体は out-of-sample で機能しているが、in-sample の sell-only データでの逆相関は過学習の兆候**
 
 ---
@@ -138,7 +154,7 @@
 
 | # | 提案 | 期待効果 | 根拠 |
 |---|------|----------|------|
-| Q1 | Generic pnl120 model を廃止し side-specific のみに | SkipGate 判定の安定化 | profit_score=0、実質 dead |
+| Q1 | Generic pnl120 model を**段階的に無効化** (side モデル健全性 SLO 確認後) | SkipGate 判定の安定化 | profit_score=0、実質 dead。ただし `skip_gate_evaluator.py` のフォールバック設計上、side モデル障害時の安全弁として残置が必要 |
 | Q2 | `regime_high_vol` を feature pruning 対象に追加 | 学習効率向上 | 両モデルで SHAP=0 |
 | Q3 | pnl30_buy の次回 retrain で `side_buy` 列を除外確認 | pruned 済みだが metadata に残存していないか確認 | pruned_features に含まれる |
 
@@ -156,6 +172,8 @@
 |---|------|----------|------|
 | S1 | Sell offset を spread_jpy + price_velocity_60s のシンプルルールで動的化 | sell 防御レイヤ簡素化 | SHAP Top 2 で sell PnL の 60% を説明 |
 | S2 | 160# 3 指標 (side_aligned_tfi/velocity/imbalance) を SkipGate 評価 KPI に追加 | stopgap 退出判定の定量基盤 | 162# §7.2 |
+| S3 | 160# 3指標判定枠組み (fill_rate / avg_pnl30 / downside_p10) を M1/M2/M3 採否判定に直接転用 | SHAP由来施策の効果検証基盤 | 6.3 レビュー提案 |
+| S4 | hour 特徴量の冗長性定量化: TimeFilter ON/OFF 期間で SHAP 差分比較 | 107# 動的ゲーティングとの重複排除根拠 | 6.3 レビュー提案 |
 
 ---
 
@@ -181,3 +199,55 @@
 | 日付 | 内容 |
 |------|------|
 | 2026-02-26 | 初版作成: 3 モデル SHAP TreeExplainer 分析 |
+| 2026-02-26 | §6 レビュー指摘対応: データ定義修正, 指標ラベル分離, Generic段階撤去条件付け, 再現性メタ追加, S3/S4 提案追加 |
+
+---
+
+## §6 追記レビュー（見落とし事項・要補強点）
+
+> 164# の主張を、モデル実体・SHAP JSON・設定/実装の一次情報で再照合したレビュー追記。
+
+### 6.1 事実一致（確認できた点）
+
+- 3モデルの `n_samples` は本文どおり (`generic=56`, `sell=229`, `buy=519`)。
+- `wf_results` も本文で引用している値と整合（`sell profit_score=-0.187`, `buy=+0.355`）。
+- `enriched_fill_test.pkl` は `dict(data, cache_key, n_records)` 構造で、`data` は 119 行・`side=sell` のみ、`filled=28`。
+- `regime_high_vol` が死に特徴量になりやすい前提（本データに high_vol サンプルなし）は妥当。
+
+### 6.2 重要な見落とし（修正推奨）
+
+1. **データ定義の誤記**
+   - §分析条件の「119 fill records」は不正確。正しくは **119 enriched rows（filled は 28）**。
+   - ここを誤ると、読者が検定力を過大評価する。
+
+2. **§3 の「OOS」表記が指標定義と混在**
+   - 表の `Pred-PnL corr`/`Skip(bottom20%)`/`Keep(top80%)` は、実質的に 28サンプルの探索指標。
+   - 一方で `wf_results` は訓練時の walk-forward 指標。両者を同じ「OOS」と書くと誤解を招く。
+   - 特に sell は `wf_results.skip20_pnl120=+0.221bps` だが、§3表では `Improvement=-2.01bps` と符号が逆で、**指標定義の違いを明記しないと矛盾に見える**。
+
+3. **Generic モデルの即時廃止提案は安全条件不足**
+   - `skip_gate_evaluator.py` は side モデル不在/障害時に unified へフォールバックする設計。
+   - 現行 YAML でも `skip_gate.model_path`（unified）と side別 `model_path_buy/sell` を併用。
+   - よって「廃止」は即断せず、**無効化条件（sideモデル健全性SLO）を満たしてから段階撤去**が必要。
+
+4. **再現性メタの不足**
+   - 164 本文に、使用したモデルファイルの更新時刻・ハッシュ・実行コマンドが未記載。
+   - 将来比較（再訓練後）で同条件再現が困難。
+
+### 6.3 過去成果の活用観点（追加提案）
+
+- **160# の3指標判定枠組み**（fill_rate / avg_pnl30 / downside_p10）を、SHAP由来施策（M1/M2/M3）の採否判定に直接転用する。
+- **163# 退出基準表**に 164 のSHAP検証項目を入れる際は、以下の2層で管理する:
+  1) モデル品質: `wf_results`（本来OOS）
+  2) 解釈妥当性: SHAP（探索）
+- **107# 動的ゲーティング資産**と重複する hour 特徴は、「TimeFilter効いている期間/いない期間」で SHAP差分比較することで、冗長性を定量化できる。
+
+### 6.4 最終レビュー判定
+
+| 項目 | 判定 | コメント |
+|---|---|---|
+| SHAP分析の方向性 | ✅ 妥当 | 159# 指摘への回答として有効 |
+| 数値整合（モデルメタ） | ✅ 概ね整合 | n_samples / wf_results は一致 |
+| 指標ラベリングの明確性 | ⚠️ 要改善 | §3 の OOS 表現は定義分離が必要 |
+| Generic 廃止判断の安全性 | ⚠️ 要条件付け | fallback設計を考慮した段階撤去が必要 |
+| 再現性（監査可能性） | ⚠️ 不足 | 実行コマンド・モデル識別情報の固定が必要 |

@@ -1,8 +1,17 @@
-# v460 ドキュメント索引
+﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
 > 最終更新: 2026-02-25 (162# Fill Test 10日間ログ分析)
 
+---
+
+## 運用方針（VS Code同期制限の回避）
+
+- 一部の巨大ファイルは VS Code 拡張の同期制限（実質 50MB 前後）により直接読取できない前提で運用する。
+- 調査レビューは Get-Content -TotalCount / Select-String -Context / Get-Content -Skip -First を使った部分抽出を標準手順とする。
+- 集計検証は run_id / git_sha / date_from,to を固定して再現可能性を担保し、ワイルドカード横断集計のみで最終判定しない。
+- 長大な成果物は章分割または日次分割し、単一 Markdown/JSONL の肥大化を避ける。
+- 一時抽出物は temp/、恒久成果物は docs/v460/ と reports/ に分離して管理する。
 ---
 
 ## フェーズ定義
@@ -261,3 +270,5 @@ NNN_phX_TYPE_description.md
 13. **106# R6**: utils 70+ ファイル分割
 14. **106# R7**: config/ vs configs/ 重複ディレクトリ整理
 15. **109# DUP3**: UnifiedTrainer God Object (2835行)
+
+

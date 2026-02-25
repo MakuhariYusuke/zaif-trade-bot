@@ -1,4 +1,4 @@
-# v460 Project Proposal: "Microstructure Edge"
+﻿# v460 Project Proposal: "Microstructure Edge"
 
 **Date**: 2026-02-13
 **Status**: Draft
@@ -378,3 +378,14 @@ NNN_phX_type_subject.md
 | 2026-02-19 | §3.3 | 分母定義 (raw/clean/attempted) 一覧表追加。cancel reason 内訳表追加。3 系列同時出力ルール明記。115# Q10.6 対応 | 117# |
 | 2026-02-21 | §5 | 番号体系 (ドキュメント番号 vs セッション番号) を追記。123# から移設 | 128# |
 | 2026-02-21 | §5, §3.3 | コード内コメント番号付与ポリシー追記 (Q5)。Gate 判定前提条件 (同一 SHA・YAML 72h) 追記 (E.5 #3)。YAML 反映を「反映確認済み」で管理する運用規約追記 | 130# D.1 |
+
+
+
+---
+
+## 運用方針追補（VS Code同期制限回避）
+
+- VS Code 拡張の同期制限（実質 50MB 前後）を前提に、巨大ファイルは直接全文読取を行わない。
+- 調査レビューは PowerShell の部分抽出（Get-Content -Skip -First, Select-String -Context）を標準手順とする。
+- ログ分析の最終判定は run_id / git_sha / 期間固定で再現可能にし、ワイルドカード横断のみで結論を出さない。
+- 成果物は肥大化を避け、章分割日次分割アーカイブ分離（docs/v460/, reports/, temp/）を徹底する。
