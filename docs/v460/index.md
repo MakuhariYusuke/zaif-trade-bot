@@ -198,6 +198,7 @@
 | 165 | rpt | [165_phg_rpt_as_root_cause_and_velocity_rule.md](165_phg_rpt_as_root_cause_and_velocity_rule.md) | AS Root Cause Analysis + Velocity Skip Rule + Daily Health Report |
 | 166 | rpt | [166_phg_rpt_reviewer_response_and_remaining_tasks.md](166_phg_rpt_reviewer_response_and_remaining_tasks.md) | レビュー対応 + 162/163 残課題消化: SR-1~SR-4 安定性修正, ログベース改善観測 |
 | 167 | fix | [167_phg_fix_sell_loop_dl4_dl5.md](167_phg_fix_sell_loop_dl4_dl5.md) | sell ループ構造修正 (DL-4/DL-5) + カウンタ永続化: 166# §11.5 全提案を汎用原則で解消 |
+| 168 | rpt | [168_phg_rpt_comprehensive_improvement_hodl_vs_trading.md](168_phg_rpt_comprehensive_improvement_hodl_vs_trading.md) | HODL vs Trading 定量比較 + 未検討提案棚卸し + 既存資産活用計画 |
 
 ---
 
