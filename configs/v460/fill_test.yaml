@@ -281,7 +281,7 @@ volatility_guard:
 # ---- 088# sell 専用ハードガード ----
 sell_guard:
   max_spread_jpy: 4000.0       # スプレッド 4000 JPY 超で sell スキップ (085# で 4677 で -7.37bps)
-  offset_floor: 0.10           # 105#: 0.08→0.10 sell offset 最低保証 (sell PnL -0.85bps 対策)
+  offset_floor: 0.20           # 165# SO-1: 0.10->0.20 offset<0.2 sell -0.92bps 226件 推定+173bps (prev 105#: 0.08→0.10 sell offset 最低保証 (sell PnL -0.85bps 対策)
 
 # ---- 133# 止血施策 (P0-08/09/10) ----
 loss_control:

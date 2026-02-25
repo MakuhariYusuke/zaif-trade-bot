@@ -379,6 +379,66 @@ Sell は以下 **6 層** のガードを通過する必要がある:
 - [159_phg_rev_158_phase_d_backlog_review.md](159_phg_rev_158_phase_d_backlog_review.md) — IS P0 格上げ推奨
 
 ---
+## Sell Offset 動的最適化分析 (163# P1 / 164# SHAP 知見)
+
+> 164# SHAP 分析で `spread_jpy` (SHAP=1.636) と `price_velocity_60s` (SHAP=0.466) が
+> sell PnL の支配的特徴量と判明。sell offset チェーンのパラメータ最適化余地を定量分析する。
+
+### 現在の Sell Offset チェーン
+
+```
+base_offset_ratio_sell (0.18)
+  → Inventory Skewing (max_factor=0.4)
+  → sell_offset_floor (0.1)          ← ★ 改善候補
+  → sell_max_spread_jpy (4000)
+  → regime boost (trending_offset_boost_sell=1.5)
+  → spread_adaptive (narrow=2.0, wide=0.5)
+  → volatility_guard (boost_factor=2.0)  ← ★ 改善候補
+  → imbalance_risk (boost=1.5)
+  → FFD boost (offset_boost_sell=2.5)
+```
+
+### データ分析結果 (全期間 2/17–2/25, 742 sell fills)
+
+| effective_offset 区間 | n | avg_pnl30 (bps) | 備考 |
+|----------------------|--:|:----------------:|------|
+| [0.0, 0.2) | 226 | **-0.92** | ← 最悪。floor=0.1 で低すぎる |
+| [0.2, 0.3) | 135 | -0.15 | 改善の目標域 |
+| [0.3, 0.4) | 263 | -0.50 | baseline |
+| [0.4, 0.6) | 46 | -1.11 | VG 中間域 |
+| [0.6, 1.0) | 72 | **+0.31** | 十分な offset で profitable |
+
+#### VG 発動 vs PnL
+
+| VG | n | avg_pnl30 |
+|----|--:|:---------:|
+| True | 121 | -0.83bps |
+| False | 621 | -0.46bps |
+
+> VG 発動時でもなお -0.83bps → VG boost_factor=2.0 では不十分の可能性。
+
+### 提案: 即時可能なパラメータ調整
+
+| ID | 変更 | 現在値 | 提案値 | 根拠 | 推定効果 |
+|----|------|--------|--------|------|---------|
+| SO-1 | `sell_guard.offset_floor` | 0.1 | **0.2** | offset<0.2 が -0.92bps (226件, 全sell fillの30%); 0.2+は -0.15bps | **+173bps** (全期間推定) |
+| SO-2 | `volatility_guard.offset_boost_factor` | 2.0 | 2.5 (sell時のみ) | VG発動sell -0.83bps; offset 0.6+で+0.31bps → 2.0倍では到達不足 | 要A/B検証 |
+| SO-3 | `side_offset.sell` | 0.18 | 0.22 | SO-1と合わせて sell default offset を引き上げ | SO-1 と重複の恐れ、要A/B |
+
+### 実施手順
+
+1. **SO-1 (即時適用推奨)**: `configs/v460/fill_test.yaml` の `sell_guard.offset_floor: 0.2` に変更
+2. 24h 観察後、`analyze_fill_logs.py --side sell --date-from <change_date>` で効果測定
+3. SO-2/SO-3 は SO-1 の効果確定後に検討
+
+### 注意事項
+
+- sell_offset_floor 引き上げ = sell fill_rate 低下の可能性あり (offset 拡大 → 約定しにくい)
+- ただし現在 offset<0.2 の sell は fill できても損失 (-0.92bps) → fill_rate 低下は許容範囲
+- ロールバック条件: sell fill_rate < 15% (現在 26.1%) かつ PnL 改善なし
+
+---
+
 ## Stopgap 退出基準表 (162# §7 P0)
 
 > 各 stopgap を OFF にする際の **前提条件・監視指標・ロールバック条件** を定義する。
@@ -430,3 +490,4 @@ Sell は以下 **6 層** のガードを通過する必要がある:
 | 2026-02-26 | IS YAML enabled=true, 107# Phase 3 Step 2 動的ゲーティング実装 (regime-adaptive time_filter) |
 | 2026-02-26 | 162# §7 P0: Stopgap 退出基準表追記, 164# SHAP 分析との相互参照追加 |
 | 2026-02-26 | 162# P0: analyze_fill_logs CLI (再現可能分析), 162# P1: IS 段階有効化計画追記 |
+| 2026-02-26 | 163# P1: Sell Offset 動的最適化分析 (SO-1~3 提案), 164# SHAP 知見との接続 |
