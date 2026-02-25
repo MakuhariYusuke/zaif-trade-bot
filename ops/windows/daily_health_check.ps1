@@ -33,6 +33,18 @@ try {
         Write-Host "Health check exited with code $exitCode" -ForegroundColor Red
     }
 
+    # 168# §8 #8: Stopgap daily report + Side regime dashboard
+    $stopgapOutput = Join-Path $OutputDir "stopgap_$date.json"
+    Write-Host "--- Stopgap Daily Report ---" -ForegroundColor Cyan
+    & ".venv\Scripts\python.exe" scripts/v460/analysis/stopgap_daily_report.py `
+        --json --output $stopgapOutput 2>&1 | Write-Host
+
+    $dashboardOutput = Join-Path $OutputDir "dashboard_$date.json"
+    Write-Host "--- Side Regime Dashboard ---" -ForegroundColor Cyan
+    # side_regime_dashboard.py は --output 未対応のため stdout リダイレクト
+    & ".venv\Scripts\python.exe" scripts/v460/analysis/side_regime_dashboard.py `
+        --json 2>&1 | Out-File -FilePath $dashboardOutput -Encoding utf8
+
     # 7日以上古いレポートを削除
     if (Test-Path $OutputDir) {
         Get-ChildItem $OutputDir -Filter "*.json" |

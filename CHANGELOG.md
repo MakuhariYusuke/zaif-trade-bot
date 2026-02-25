@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 168# §8 Daily Report Automation (2026-02-26)
+
+### Added
+- `daily_health_check.py`: check 5 (Stopgap Health) + check 6 (Side×Regime Dashboard) 統合
+  - `_run_stopgap_health()`: fill_rate, exit_checks, alerts を日次レポートに反映
+  - `_run_side_regime_dashboard()`: side_summary, regime_side groups を日次レポートに反映
+  - Stopgap EXIT BREACH → overall_healthy = False
+- `ops/windows/daily_health_check.ps1`: stopgap_daily_report + dashboard 呼び出し追加
+- `tests/unit/v460/test_168_daily_health_integration.py`: 9 tests (4 stopgap + 3 dashboard + 2 integration)
+
+### Fixed
+- `_run_stopgap_health()`: DailyHealthReport フィールド名不一致修正 (n_records→total_records, exit_checks→stopgap_checks)
+- PS1: `side_regime_dashboard.py` は `--output` 未対応 → stdout リダイレクト方式に修正
+
+### 167# DL-4/DL-5 Fix Effect (Interim Analysis, n=47)
+- Sell fill rate: 21.6% → 39.1% (+17.5pt)
+- Max consecutive sell cancels: 19 → 4 (-15)
+- trending_sell_skip: 144 → 4 (97% 削減)
+- Side balance: sell-heavy → balanced
+
+
 ## 166# Self-Review + Stability Refactoring (2026-02-25)
 
 ### Fixed

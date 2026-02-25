@@ -548,4 +548,54 @@ effective_boost = 1 + (1 - |inv_skew_factor|) * (boost_factor - 1)
 189 passed, 5 warnings in 34.40s (176 既存 + 7 VG damping + 6 P2-C)
 ```
 
-*§9 は 168# fix 実装完了時点の記録。*
+### 9.4 §8.1 #1: 167# DL-4/DL-5 修正効果 (暫定分析, n=47)
+
+167# SHA `bd4d2314` の 47 レコード (2.1 時間) で暫定評価。統計的有意性は限定的。
+
+| 指標 | Pre-167 (n=500) | 167# (n=47) | 差分 |
+|------|------------------|--------------|------|
+| Total fill rate | 30.4% | 42.6% | **+12.2pt** |
+| Sell fill rate | 21.6% | 39.1% | **+17.5pt** |
+| Max consec sell cancel | 19 | 4 | **-15** |
+| Side balance (sell %) | 68.6% (sell-heavy) | 48.9% (balanced) | **正常化** |
+| trending_sell_skip | 144 / 500 | 4 / 47 | **97% 削減** |
+
+**結論**: DL-4/DL-5 sell loop 修正は、限られたサンプルでも売り側約定率/連続キャンセル/サイドバランスの大幅改善を確認。168# SHA での長期確認を継続。
+
+### 9.5 §8.3 #8: 日次自動レポート統合
+
+#### 変更内容
+
+| ファイル | 変更 |
+|----------|------|
+| `scripts/v460/daily_health_check.py` | check 5 (`_run_stopgap_health`) + check 6 (`_run_side_regime_dashboard`) 追加。[1/4]~[4/4] → [1/6]~[6/6]。Stopgap EXIT BREACH → `overall_healthy=False` |
+| `ops/windows/daily_health_check.ps1` | stopgap + dashboard 呼出追加。dashboard は `--output` 未対応のため stdout リダイレクト方式採用 |
+| `tests/unit/v460/test_168_daily_health_integration.py` | 9 tests 新規 (4 stopgap + 3 dashboard + 2 integration) |
+
+#### バグ修正
+- `_run_stopgap_health`: `DailyHealthReport` フィールド名不一致 (`n_records`→`total_records`, `exit_checks`→`stopgap_checks`, alerts の `asdict()`→既に dict)
+- `_run_side_regime_dashboard`: `regime_side`→`regime_side_detail`
+- PS1: `--output` → stdout `Out-File` リダイレクト
+
+### 9.6 テスト結果 (§9.5 追加分)
+
+```
+9 passed (4 stopgap_health + 3 side_regime_dashboard + 2 integration)
+57 passed (既存 stopgap_health + side_regime_dashboard リグレッションなし)
+```
+
+### 9.7 残タスクステータス
+
+| §8 # | タスク | ステータス | 備考 |
+|-------|--------|------------|------|
+| #0 | InvSkew/VG 競合解消 | ✅ 完了 | commit `0d5d4f574` |
+| #1 | 167# DL-4/5 効果確認 | ✅ 暫定完了 | §9.4 参照。長期データで再確認要 |
+| #2 | P2-C1/C2/C3 | ✅ 完了 | commit `0d5d4f574` |
+| #3 | R-3 velocity calibration | 🔲 データ待ち | velocity log 5 件 (100+ 必要) |
+| #4 | HODL vs Trading 再計算 | 🔲 データ待ち | 168# SHA 24h+ 必要 |
+| #5 | Sell offset A/B | 🔲 データ待ち | InvSkew/VG 修正後データ要 |
+| #6 | Sell 保持期間 A/B | 🔲 データ待ち | InvSkew/VG 修正後データ要 |
+| #7 | SkipGate 再訓練 | 🔲 中期 | buy/sell 別モデル |
+| #8 | 日次レポート cron 化 | ✅ 完了 | §9.5 参照 |
+
+*§9.4-9.7 は 168# §8 #1/#8 実装完了時点の記録 (2026-02-26)。*

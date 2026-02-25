@@ -160,6 +160,75 @@ def _run_oracle_baseline(results_dir: str) -> CheckReport:
     return report
 
 
+
+def _run_stopgap_health(results_dir: str, window_hours: int = 168) -> CheckReport:
+    """168# §8 #8: Stopgap ヘルスレポート統合."""
+    report: CheckReport = {"check": "stopgap_health"}
+    try:
+        from scripts.v460.lib.stopgap_health import (
+            generate_health_report as gen_stopgap,
+            load_fill_records,
+        )
+
+        results_path = Path(results_dir)
+        records = load_fill_records(results_path)
+        if not records:
+            report["skipped"] = True
+            report["reason"] = "no fill records"
+            return report
+        stopgap_rpt = gen_stopgap(records, window_hours=window_hours)
+        n_total = stopgap_rpt.total_records
+        n_filled = stopgap_rpt.total_filled
+        report["n_records"] = n_total
+        report["overall_fill_rate"] = round(n_filled / n_total, 4) if n_total else 0
+        report["n_alerts"] = len(stopgap_rpt.alerts) if stopgap_rpt.alerts else 0
+        # Stopgap exit checks summary (stopgap_checks は dict のリスト)
+        if stopgap_rpt.stopgap_checks:
+            exits = []
+            for ec in stopgap_rpt.stopgap_checks:
+                exits.append({
+                    "stopgap_id": ec["stopgap_id"],
+                    "verdict": ec["verdict"],
+                    "metrics": ec.get("metrics"),
+                    "criteria": ec.get("criteria"),
+                })
+            report["exit_checks"] = exits
+            n_breach = sum(
+                1 for ec in stopgap_rpt.stopgap_checks
+                if ec.get("verdict") == "BREACH"
+            )
+            report["n_exit_breaches"] = n_breach
+        # Critical alerts (alerts は既に dict のリスト)
+        if stopgap_rpt.alerts:
+            report["alerts"] = stopgap_rpt.alerts[:5]
+    except Exception as e:
+        logger.warning("stopgap_health failed: %s", e)
+        report["error"] = str(e)
+    return report
+
+
+def _run_side_regime_dashboard(results_dir: str) -> CheckReport:
+    """168# §8 #8: Side×Regime 3指標ダッシュボード統合."""
+    report: CheckReport = {"check": "side_regime_dashboard"}
+    try:
+        from scripts.v460.analysis.side_regime_dashboard import run_dashboard
+
+        dashboard = run_dashboard(results_dir=results_dir, with_judgment=False)
+        report["total_records"] = dashboard.get("total_records", 0)
+        report["total_filled"] = dashboard.get("total_filled", 0)
+        report["overall_fill_rate"] = dashboard.get("overall_fill_rate", 0)
+        # Side summaries
+        if "side_summary" in dashboard:
+            report["side_summary"] = dashboard["side_summary"]
+        # Regime × side detail
+        if "regime_side_detail" in dashboard:
+            report["n_regime_side_groups"] = len(dashboard["regime_side_detail"])
+    except Exception as e:
+        logger.warning("side_regime_dashboard failed: %s", e)
+        report["error"] = str(e)
+    return report
+
+
 def run_daily_health_check(
     results_dir: str = "results/v460/fill_test",
     skip_monte_carlo: bool = False,
@@ -180,7 +249,7 @@ def run_daily_health_check(
     }
 
     # 1. Trades health
-    logger.info("=== [1/4] Trades Health Check ===")
+    logger.info("=== [1/6] Trades Health Check ===")
     trades_result = _run_trades_health()
     report["checks"].append(trades_result)
     if not trades_result.get("healthy", False):
@@ -190,7 +259,7 @@ def run_daily_health_check(
         logger.info("trades_health: OK")
 
     # 2. Feature freshness
-    logger.info("=== [2/4] Feature Freshness Check ===")
+    logger.info("=== [2/6] Feature Freshness Check ===")
     freshness_result = _run_feature_freshness()
     report["checks"].append(freshness_result)
     if not freshness_result.get("fresh", False):
@@ -200,7 +269,7 @@ def run_daily_health_check(
         logger.info("feature_freshness: OK")
 
     # 3. Gate judgment + Monte Carlo
-    logger.info("=== [3/4] Gate Judgment %s ===", "(+ Monte Carlo)" if not skip_monte_carlo else "")
+    logger.info("=== [3/6] Gate Judgment %s ===", "(+ Monte Carlo)" if not skip_monte_carlo else "")
     gate_result = _run_gate_judgment(
         results_dir=results_dir,
         latest_run=True,
@@ -216,13 +285,33 @@ def run_daily_health_check(
 
     # 4. Oracle baseline
     if not skip_oracle:
-        logger.info("=== [4/4] Oracle Baseline KPI ===")
+        logger.info("=== [4/6] Oracle Baseline KPI ===")
         oracle_result = _run_oracle_baseline(results_dir=results_dir)
         report["checks"].append(oracle_result)
         logger.info("oracle_baseline: done (mean=%.3f bps)",
                      oracle_result.get("oracle_pnl_mean_bps", 0) or 0)
     else:
-        logger.info("=== [4/4] Oracle Baseline: skipped ===")
+        logger.info("=== [4/6] Oracle Baseline: skipped ===")
+
+    # 5. 168# Stopgap health
+    logger.info("=== [5/6] Stopgap Health ===")
+    stopgap_result = _run_stopgap_health(results_dir=results_dir)
+    report["checks"].append(stopgap_result)
+    n_breaches = stopgap_result.get("n_exit_breaches", 0)
+    if n_breaches > 0:
+        report["overall_healthy"] = False
+        logger.warning("stopgap_health: %d EXIT BREACHES", n_breaches)
+    else:
+        logger.info("stopgap_health: OK (fill_rate=%.1f%%)",
+                     (stopgap_result.get("overall_fill_rate") or 0) * 100)
+
+    # 6. 168# Side × Regime dashboard
+    logger.info("=== [6/6] Side×Regime Dashboard ===")
+    dashboard_result = _run_side_regime_dashboard(results_dir=results_dir)
+    report["checks"].append(dashboard_result)
+    logger.info("side_regime_dashboard: %d records, fill_rate=%.1f%%",
+                 dashboard_result.get("total_records", 0),
+                 (dashboard_result.get("overall_fill_rate") or 0) * 100)
 
     # Summary
     status = "HEALTHY" if report["overall_healthy"] else "UNHEALTHY"
