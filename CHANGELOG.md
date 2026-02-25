@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## 164# SkipGate SHAP Analysis + Stopgap Retirement Criteria (2026-02-26)
+
+### Added
+- `docs/v460/164_phg_rpt_skip_gate_shap_analysis.md`: SkipGate 3 モデル (pnl120_generic, pnl120_sell, pnl30_buy) の SHAP TreeExplainer 分析レポート
+- `analysis_results/shap_skip_gate_analysis.json`: SHAP 分析結果 JSON
+- 163# に Stopgap 退出基準表を追記 (162# §7 P0 対応): 10 項目の前提条件/監視指標/OFF判定基準/ロールバック条件
+
+### Key Findings
+- Generic pnl120 model: profit_score=0.0 → DEAD MODEL (廃止候補)
+- Sell model: spread_jpy が SHAP 最重要 (1.636) — spread_guard と機能重複
+- Buy model: price_velocity_60s が最重要 (0.832) — AS 回避パターンを学習
+- regime_high_vol: 両モデルで SHAP=0 (サンプル不足)
+- hour_sin/cos: 両モデルで高重要度 → TimeFilter と重複学習
+
 ## [Unreleased]
 
 ### 163# IS Enablement + Dynamic Gating (107# Phase 3 Step 2)

@@ -332,6 +332,36 @@ Sell は以下 **6 層** のガードを通過する必要がある:
 
 ---
 
+## Stopgap 退出基準表 (162# §7 P0)
+
+> 各 stopgap を OFF にする際の **前提条件・監視指標・ロールバック条件** を定義する。
+> 上位の stopgap ほど依存関係が深いため、退出順序を厳守すること。
+
+### 退出順序: IS → per-regime判定 → time_filter縮退 → sell_guard緩和
+
+| ID | Stopgap | 退出前提条件 | 監視指標 (24h) | OFF判定基準 | ロールバック条件 |
+|----|---------|-------------|---------------|------------|----------------|
+| 3-A | balance_forced_skip | IS enabled=true で 24h 稼働 | buy/sell fill_count 比率, inventory imbalance | imbalance 標準偏差 < 0.3, forced_skip 発生率 < 5% | forced_skip 率 > 15% 即時 ON |
+| 3-B | balance_forced_deadlock_limit | 3-A 退出後 24h 観察 | deadlock_count, max_consecutive_forced | deadlock_count = 0 (24h) | 1 回でも deadlock 発生で即時 ON |
+| 3-C | balance_forced_rescue | 3-B 退出後 24h 観察 | rescue_triggered_count | rescue 0 回 (48h) | rescue 発生で即時 ON |
+| 2-A | trending_sell_skip | IS + 107# dynamic gating 安定 | sell AS_rate (per-regime), sell PnL/trade | sell AS_rate < 35% (trending regime), total PnL > 0 | AS_rate > 50% で即時 ON |
+| 2-B | max_consecutive_trending_sell_skip | 2-A 退出後 | consecutive_skip_count | 2-A OFF で不要 | 2-A 復活時に自動 ON |
+| 1-A | time_filter (静的) | 107# Step 2 regime-adaptive で 48h 安定 | skip_utc_hours 該当時間帯の fill PnL | regime-adaptive PnL > baseline (p < 0.1) | 該当時間帯で AS_rate > 50% |
+| 1-C | TIME_FILTER_BOTH_SIDES | sell 側 time_filter 縮退後 72h | 両側同時遮断の発生頻度 | 発生 0 回 (72h) | 1 回発生で検討 |
+| 2-C | sell_dynamic_kill | 164# SHAP 知見で SkipGate 改善後 | sell rolling PnL, sell_dynamic_kill 発動回数 | kill 発動 < 1回/day (7日平均) | kill 発動 > 3回/day |
+| 2-D | sell_guard | sell offset 動的化 (P1) 完了後 | sell cancel 率, sell PnL | cancel 率 < 10%, PnL > 0 | cancel 率 > 20% |
+| 6-A | unknown_regime_buy_skip | regime 検出精度向上後 | unknown_regime 出現率 | unknown < 5% (7日) | unknown > 15% |
+
+### 退出プロセス
+
+1. **ステージング (24h)**: 対象 stopgap を `enabled: false` に変更し dry-run 相当で観察
+2. **判定**: 上記監視指標が OFF 基準を満たすか確認
+3. **本番 OFF**: 基準満たした場合のみ OFF。`git_sha` と日時を記録
+4. **観察期間 (48h)**: ロールバック条件を継続監視
+5. **確定**: 48h 問題なければ当該 stopgap をコード削除候補に移行
+
+---
+
 ## 関連ドキュメント
 - [107_ph2_analysis_time_filter_dynamic_gating.md](107_ph2_analysis_time_filter_dynamic_gating.md) — Time Filter 動的ゲーティング提案
 - [110_ph2_fix_086_time_filter_deadlock.md](110_ph2_fix_086_time_filter_deadlock.md) — 086# deadlock 修正
@@ -340,6 +370,7 @@ Sell は以下 **6 層** のガードを通過する必要がある:
 - [157_ph2_fix_regime_deadlock_and_cancel.md](157_ph2_fix_regime_deadlock_and_cancel.md) — レジームデッドロック修正
 - [159_phg_rev_158_phase_d_backlog_review.md](159_phg_rev_158_phase_d_backlog_review.md) — Inventory Skewing P0 推奨
 - [162_phg_rpt_fill_test_10day_log_analysis.md](162_phg_rpt_fill_test_10day_log_analysis.md) — 10 日間ログ分析
+- [164_phg_rpt_skip_gate_shap_analysis.md](164_phg_rpt_skip_gate_shap_analysis.md) — SkipGate SHAP 特徴量分析
 
 ---
 
@@ -350,3 +381,4 @@ Sell は以下 **6 層** のガードを通過する必要がある:
 | 2026-02-25 | Inventory Skewing 実装反映 (`42a06d8e9`) — P0 項目消化 |
 | 2026-02-25 | God Object 分割完了 (`6b766caf9`): run_fill_test 2,231→378行 3 Mixin, maker_price compute() 306→143行, fill_config from_yaml() 479→139行 |
 | 2026-02-26 | IS YAML enabled=true, 107# Phase 3 Step 2 動的ゲーティング実装 (regime-adaptive time_filter) |
+| 2026-02-26 | 162# §7 P0: Stopgap 退出基準表追記, 164# SHAP 分析との相互参照追加 |

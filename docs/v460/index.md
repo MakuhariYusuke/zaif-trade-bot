@@ -185,6 +185,7 @@
 | 161 | impl | [161_phg_impl_code_quality_and_structural_improvements.md](161_phg_impl_code_quality_and_structural_improvements.md) | 複雑性監査 + SIGTERM graceful shutdown + DRY統合 + asyncio安全化 |
 | 162 | rpt | [162_phg_rpt_fill_test_10day_log_analysis.md](162_phg_rpt_fill_test_10day_log_analysis.md) | Fill Test 10日間ログ分析: AS率27%, Fill Rate急落, 改善提案 |
 | 163 | rpt | [163_phg_rpt_stopgap_measures_catalog.md](163_phg_rpt_stopgap_measures_catalog.md) | 止血施策カタログ: 17 件のストップギャップ措置を文書化 + FillTestRunner mixin 分割 |
+| 164 | rpt | [164_phg_rpt_skip_gate_shap_analysis.md](164_phg_rpt_skip_gate_shap_analysis.md) | SkipGate SHAP 特徴量重要度分析: 3 モデル TreeExplainer + Stopgap 退出基準表 |
 
 ---
 
