@@ -595,10 +595,12 @@ effective_boost = 1 + (1 - |inv_skew_factor|) * (boost_factor - 1)
 | #4 | HODL vs Trading 再計算 | 🔲 データ待ち | 168# SHA 24h+ 必要 |
 | #5 | Sell offset A/B | 🔲 データ待ち | InvSkew/VG 修正後データ要 |
 | #6 | Sell 保持期間 A/B | 🔲 データ待ち | InvSkew/VG 修正後データ要 |
-| #7 | SkipGate 再訓練 | 🔲 中期 | buy/sell 別モデル |
+| #7 | SkipGate 再訓練 | ✅ 実行済 | §9.10-B 参照。品質ゲート正常リジェクト + バグ修正 |
 | #8 | 日次レポート cron 化 | ✅ 完了 | §9.5 参照 |
+| §4.2 #8 | time_filter 精緻化 | ✅ 完了 | §9.10-C 参照。UTC 7/12/21 追加 |
+| §4.3 | 週次自動化 | ✅ 完了 | §9.10-D 参照。weekly_analysis.ps1 |
 
-*§9.4-9.7 は 168# §8 #1/#8 実装完了時点の記録 (2026-02-26)。*
+*§9.4-9.7 は 168# §8 #1/#8 実装完了時点の記録 (2026-02-26)。§9.10 で #7/§4.2#8/§4.3 完了 (2026-02-26)。*
 
 ### 9.8 §4.1 #3: DailyDrawdownGuard 統合
 
@@ -706,3 +708,76 @@ DailyDrawdownGuard (scripts/v460/lib/daily_drawdown_guard.py)
 - 未約定時の空 PnlMeasurement
 
 **互換性**: `post_fill_wait_sec_sell: null` で従来動作 (30s 共通) に自動フォールバック。
+
+### 9.10 168# §4.2 #5/#8 + §4.3: SkipGate リトレイン + time_filter 精緻化 + 週次自動化
+
+#### A. feature_enricher 重複列バグ修正 (§4.2 #5 前提)
+
+**問題**: `retrain_scheduler.py --once --all-runs` 実行時に全モデルが
+`"Insufficient samples after feature build"` で skip される。
+
+**根本原因**: `feature_enricher.py` の `enrich_fill_records()` で、
+最近の fill_records に `price_velocity_60s` 列が含まれるようになった (88/3137 records)。
+`pd.concat([fill_df, enriched], axis=1)` で同名列が重複し、
+`enriched["price_velocity_60s"]` が DataFrame(3137×2) を返す →
+`build_preorder_as_features()` 内で `cannot reindex on an axis with duplicate labels` ValueError。
+
+**修正** (`scripts/v460/ml/feature_enricher.py` L489-494):
+```python
+overlap_cols = fill_df.columns.intersection(enriched.columns)
+if len(overlap_cols) > 0:
+    logger.info(f"168# Dropping {len(overlap_cols)} overlapping columns from fill_df: {overlap_cols.tolist()}")
+    fill_df = fill_df.drop(columns=overlap_cols)
+```
+→ enriched 側 (OB/trades から計算した最新値) を優先。
+
+#### B. SkipGate リトレイン結果
+
+3,697 JSONL records (13 files, 2026-02-13〜2026-02-25) でリトレイン実行。
+feature build は成功 (X=1247×16) だが、品質ゲートが全モデルを正しくリジェクト:
+
+| モデル | サンプル | WF Score | Status | Reason |
+|--------|----------|----------|--------|--------|
+| Unified (pnl30) | 1,247 | 0.0000 | rejected | statistical_gate (n_trees=1) |
+| Buy (pnl30) | 643 | 0.0341 | rejected | statistical_gate (cliff_d=0.019) |
+| Sell (pnl120) | 276 | -0.0166 | rejected | positive_pnl gate |
+
+**判定**: 品質ゲートが正常機能。既存モデル (2/24-25 訓練) が維持される。
+データ蓄積 (n>1000 per side) により将来改善余地あり。
+online_monitor: DEGRADED (pass_mean_pnl=-0.524bps < threshold=-0.3bps)。
+
+#### C. time_filter UTC 損失バンド精緻化 (§4.2 #8)
+
+PnL-by-hour 分析 (side×UTC hour) から新たに 3 損失バンドを特定:
+
+| 追加 | UTC時間 | Side | Avg PnL (bps) | WR (%) | Type | 根拠 |
+|------|---------|------|---------------|--------|------|------|
+| **NEW** | UTC 21 | sell | -1.681 | 32.1% | 常時遮断 | PnL120=-5.067, n=28 |
+| **NEW** | UTC 7 | sell | -1.831 | 29.0% | regime_adaptive | n=31, high_vol 時限定 |
+| **NEW** | UTC 12 | buy | -1.678 | 23.5% | regime_adaptive | n=17, high_vol 時限定 |
+
+**設定変更** (`configs/v460/fill_test.yaml`):
+- `skip_utc_hours_sell: [8, 21]` — UTC 21 を常時遮断に追加
+- `regime_adaptive_extra_buy: [8, 12, 18]` — UTC 12 を high_vol 遮断に追加
+- `regime_adaptive_extra_sell: [4, 7, 14]` — UTC 7 を high_vol 遮断に追加
+
+**テスト**: 4 テストファイル更新、2041 passed (0 failed)。
+
+#### D. 週次分析自動化 (§4.3)
+
+**新規**: `ops/windows/weekly_analysis.ps1`
+- hindsight_filter (7 日ウィンドウ) + PnL Monte Carlo (感度分析付き)
+- 出力: `analysis_results/weekly/hindsight_YYYYMMDD.json`, `mc_YYYYMMDD.json`
+- 30 日超の古い結果を自動クリーンアップ
+- Windows Task Scheduler 登録用コメント付き
+- 日次 PnL MC は既存の `daily_health_check.py` に含まれる
+
+#### E. §8 残課題トラッカー更新
+
+| # | タスク | ステータス | 備考 |
+|---|--------|------------|------|
+| #5 | SkipGate 再訓練 | ✅ 実行済 | 品質ゲートが正常リジェクト。バグ修正が主成果 |
+| #8 | time_filter 精緻化 | ✅ 完了 | UTC 7/12/21 追加 (3 損失バンド) |
+| §4.3 | 週次自動化 | ✅ 完了 | weekly_analysis.ps1 作成 |
+
+**commit**: `3fc9412f7` (8 files changed, 190 insertions)
