@@ -781,3 +781,60 @@ PnL-by-hour 分析 (side×UTC hour) から新たに 3 損失バンドを特定:
 | §4.3 | 週次自動化 | ✅ 完了 | weekly_analysis.ps1 作成 |
 
 **commit**: `3fc9412f7` (8 files changed, 190 insertions)
+
+### 9.11 168# time_filter 根本原因分析 — 低ボラティリティ offset boost
+
+#### A. 根本原因の特定
+
+1,458件の約定データに対し、時間帯×side の市場 microstructure 分析を実施。
+「なぜ特定時間帯で負けるのか」の統計的有意検定 (Welch's t-test) 結果:
+
+**BUY 側 (5 因子が有意)**:
+
+| 特徴量 | 損失時間帯 | 利益時間帯 | t値 | 判定 |
+|--------|-----------|-----------|------|------|
+| `spread_offset_ratio` | 0.072 | 0.111 | **-6.23** | ★★★ |
+| `orderbook_imbalance` | +0.238 | -0.004 | **+3.03** | ★★★ |
+| `skip_gate_score` | -0.617 | -2.376 | **+2.90** | ★★★ |
+| `spread_at_order` | 2,875 | 2,456 | **+2.43** | ★★ |
+| `regime_volatility_ratio` | 0.661 | 0.918 | **-2.01** | ★★ |
+
+**SELL 側 (1 因子のみ有意)**:
+
+| 特徴量 | 損失時間帯 | 利益時間帯 | t値 | 判定 |
+|--------|-----------|-----------|------|------|
+| `spread_offset_ratio` | 0.230 | 0.313 | **-4.14** | ★★★ |
+
+**結論**: `spread_offset_ratio` が両 side で最も強い損失予測因子。
+time_filter は「offset ratio が低い条件」を時間帯で近似しているに過ぎない。
+
+#### B. 因果メカニズム
+
+```
+低ボラティリティ (vol_ratio < 0.70)
+  → 既存 regime boost (trending/high_vol) が不発動
+  → offset が base 値付近に留まる (buy: ~0.05-0.07)
+  → mid に近い注文価格 → 約定しやすいが利幅なし
+  → 些細な逆行で損失 (adverse selection↑)
+```
+
+#### C. 実装: 低ボラティリティ offset boost
+
+**設計**: `regime_volatility_ratio < threshold` 時に offset を動的拡大。
+「いつ」ではなく「どんな条件で」block するかの構造的対策。
+
+**変更ファイル** (5 files):
+1. `scripts/v460/lib/regime_detector.py` — `last_volatility_ratio` プロパティ + `_last_result` キャッシュ
+2. `scripts/v460/lib/fill_config.py` — `low_vol_offset_boost_enabled/boost/threshold` 3フィールド + YAML パーサー
+3. `scripts/v460/lib/maker_price.py` — `_apply_regime_boosts()` 内に低 vol boost ステージ追加
+4. `configs/v460/fill_test.yaml` — `low_vol_offset_boost_enabled: true, boost: 1.4, threshold: 0.70`
+5. `tests/unit/v460/test_168_low_vol_offset_boost.py` — 10 tests
+
+**パイプライン位置**: ranging discount → **★低 vol boost** → unknown buy guard
+
+**パラメータ根拠**:
+- `threshold: 0.70` — 損失時間帯平均 vol_ratio=0.661 をカバー
+- `boost: 1.4` — buy offset 0.05→0.07 で損失時間帯 (0.072) と利益時間帯 (0.111) の中間値に到達
+
+**テスト**: 10 tests (Property 2 + Config 2 + MakerPrice 6), 全テスト 2051 passed。
+**commit**: `97b89ba7c` (5 files, 256 insertions)
