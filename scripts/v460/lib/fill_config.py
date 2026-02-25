@@ -992,6 +992,8 @@ class FillMonitorResult:
     final_order_price: float = 0.0
     # 145# §9-#2: regime 調整済みの実効タイムアウト (cancel_reason 判定で使用)
     effective_timeout: float = 0.0
+    # 166# C.7: cancel 失敗後に約定を検出した場合のフラグ (Bug11)
+    cancel_failed_likely_filled: bool = False
 
 
 @dataclass

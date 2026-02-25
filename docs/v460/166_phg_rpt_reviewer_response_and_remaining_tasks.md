@@ -282,12 +282,12 @@ Codexレビューの指摘は、実運用ログのノイズや運用上の摩擦
 | ID | 優先度 | 内容 | ステータス |
 |---|---|---|---|
 | 7.1 | P1 | index.md 更新 (162# 以降停止) | 待機 |
-| 7.3 A.2 | P0 | blank git_sha 312件の生成パス修正 | 待機 |
-| 7.3 B.4 | P1 | trending_up consecutive sell skip 上限緩和 (max=30検討) | 待機 |
+| 7.3 A.2 | P0 | blank git_sha 312件の生成パス修正 | ✅ 解決済 (2/15以降 0件、過去の歴史的遺産) |
+| 7.3 B.4 | P1 | trending_up consecutive sell skip 上限緩和 (max=30検討) | ✅ HF4で対応済 (30→10) |
 | 7.3 B.5 | P1 | AS-R1 velocity skip サンプル蓄積 (R-3 継続) | 蓄積中 |
-| 7.3 C.6 | P1-P2 | sklearn feature-name warning (DataFrame統一) | 待機 |
-| 7.3 C.7 | P1-P2 | cancel_failed_likely_filled KPI分離 | 待機 |
-| 8.2B | P1 | Fast Fill Defense 過剰反応チューニング | 待機 |
+| 7.3 C.6 | P1-P2 | sklearn feature-name warning (DataFrame統一) | ✅ §10で対応 |
+| 7.3 C.7 | P1-P2 | cancel_failed_likely_filled KPI分離 | ✅ §10で対応 |
+| 8.2B | P1 | Fast Fill Defense 過剰反応チューニング | ✅ 評価完了 (影響軽微、変更不要) |
 
 ### 9.6 HF3 補完修正
 
@@ -306,3 +306,85 @@ HF3 の `_log_insufficient()` メソッドは正しく実装されていたが�
 | HF2 (lock silent exit) |  ライブ確認 | `[lock] 別の fill_test プロセスが実行中です  reason=lock_conflict` |
 | HF3 (insufficient cooldown) |  コード確認、ライブ再起動で有効化 | `_log_insufficient()` 導入済み |
 | HF4 (rebalance relaxation) |  ライブ確認 | `[154# C-1] balance_forced but one_sided_balance  sell 約定` |
+
+
+---
+
+## 10 §7/§8 残課題消化 + デッドロック修正 (166# 後半-2)
+
+### 10.1 §7.3 C.6: sklearn feature-name warning 修正
+
+**根本原因**: `SkipGate` の Pipeline (`SimpleImputer→StandardScaler→LGBMRegressor`) で `SimpleImputer` が DataFrame を numpy 配列に変換。下流の `StandardScaler` と `LGBMRegressor` が feature names を期待するため警告発生。
+
+**修正内容** (`scripts/v460/ml/skip_gate.py`):
+- `__init__` で `self._pipeline.set_output(transform="pandas")` を呼出
+- スタンドアロン `self.scaler` にも同様の `set_output` を適用
+- `hasattr` ガードで旧モデル互換性を維持
+
+**効果**: stderr の 819行 (49%) が消滅。本番 3モデル (pnl120, pnl30_buy, pnl120_sell) で確認済。
+
+### 10.2 §7.3 C.7: cancel_failed_likely_filled KPI
+
+**目的**: Bug11 (cancel→fill race condition) パスの可視化。cancel 失敗＝約定推定のフラグを FillRecord に記録。
+
+**修正ファイル**:
+1. `scripts/v460/lib/fill_config.py`: `FillMonitorResult.cancel_failed_likely_filled: bool = False`
+2. `ztb/metrics/fill_quality.py`: `FillRecord.cancel_failed_likely_filled: Optional[bool] = None`
+3. `scripts/v460/lib/order_monitor.py`: Bug11 タイムアウト + stale order の cancel 失敗パスでフラグ設定
+4. `scripts/v460/lib/fill_cycle_executor.py`: monitor結果からフラグ抽出→FillRecord に伝播
+
+**後方互換**: `FillRecord.from_dict()` が不明フィールドを自動無視するため、旧データとの互換性あり。
+
+### 10.3 デッドロック修正 (3件)
+
+**audit方法**: `fill_loop_orchestrator.py` の全11 `continue` パスについて `_last_side` 更新有無を検査。
+
+**発見バグ**:
+
+| # | skip path | 症状 | 修正 |
+|---|-----------|------|------|
+| DL-1 | `unknown_regime_buy_skip` (L657) | buy 無限スキップ、sell 到達不可 | `self._last_side = "buy"` 追加 |
+| DL-2 | `buy_dynamic_kill` (L759) | buy 無限 kill、sell 到達不可 | `self._last_side = "buy"` 追加 |
+| DL-3 | `sell_dynamic_kill` (L784) | sell 無限 kill、buy 到達不可 | `self._last_side = "sell"` 追加 |
+
+**設計注**: `trending_sell_skip` と `balance_forced_skip` は意図的に同一 side を維持 (安全弁あり: max_consecutive=10, deadlock_limit+rescue)。
+
+### 10.4 §7.3 A.2: blank git_sha 評価
+
+13日間の fill_records 分析:
+- 全149件の blank git_sha は 2/13 (129件) と 2/14 (20件) に集中
+- **2/15以降: 0件** — 過去コミットで既に解決済
+- 判定: **歴史的遺産、現在のバグではない** (P0→クローズ)
+
+### 10.5 §8.2B: Fast Fill Defense (FFD) 評価
+
+FFD 有効レコード: 115/~3546 (3.2%)
+
+| 指標 | FFD ON | FFD OFF |
+|------|--------|---------|
+| PnL | -0.54bps | -0.22bps |
+| AS rate | 22% | 27% |
+
+FFD の影響は軽微 (5% AS 改善 vs -0.32bps PnL 悪化)。チューニングの優先度は低い。
+
+### 10.6 ログ分析 (3日間トレンド)
+
+| 日付 | 総レコード | fill率 | 主要 skip 原因 |
+|------|-----------|--------|---------------|
+| 2/23 | 317 | 8.8% | balance_forced_skip:246, trending_sell_skip:220 |
+| 2/24 | 442 | 32.6% | sell_dynamic_kill:92, skip_gate:60 |
+| 2/25 (today) | 238 | 27.3% | trending_sell_skip:79, skip_gate:32, spread_too_narrow:19 |
+
+HF1-4 適用後に fill 率が 8.8%→32.6% に大幅改善。今回のデッドロック修正 (DL-1/2/3) により、追加の改善が期待される。
+
+### 10.7 テスト結果
+
+新規テスト (`tests/unit/v460/test_166_remaining_tasks.py`): **13 passed**
+
+| テストクラス | テスト数 | カバー |
+|---|---|---|
+| TestSklearnWarningFix | 4 | C.6 set_output |
+| TestCancelFailedKPI | 4 | C.7 KPI field |
+| TestDeadlockSideAlternation | 5 | DL-1/2/3 |
+
+回帰テスト: **1982 passed, 1 failed** (既知の `test_train_skip_gate_real`)。新規0失敗。

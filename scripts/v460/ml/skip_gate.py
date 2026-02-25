@@ -177,6 +177,12 @@ class SkipGate:
         self._recent_skips_buy: list[bool] = []
         self._recent_skips_sell: list[bool] = []
         self._pipeline = pipeline  # 059# NEW-02: 完全 Pipeline
+        # 166# C.6: Pipeline の各ステップが DataFrame を保持するよう設定
+        # sklearn 警告 "X does not have valid feature names" を解消
+        if self._pipeline is not None:
+            self._pipeline.set_output(transform="pandas")
+        if self.scaler is not None and hasattr(self.scaler, "set_output"):
+            self.scaler.set_output(transform="pandas")
         # 088# 動的較正用: side 別 P(AS) 履歴
         self._pas_history_buy: list[float] = []
         self._pas_history_sell: list[float] = []

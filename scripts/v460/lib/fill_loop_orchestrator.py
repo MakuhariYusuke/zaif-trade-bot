@@ -654,6 +654,8 @@ class FillLoopOrchestratorMixin:
                 batch.append(_skip_record)
                 total_count += 1
                 batch = self._batch_persistence.maybe_flush(batch, "unknown_buy_skip")
+                # 166# deadlock fix: _last_side を更新して sell 側も試行可能に
+                self._last_side = "buy"
                 await asyncio.sleep(self.config.cycle_interval_sec)
                 continue
 
@@ -755,6 +757,8 @@ class FillLoopOrchestratorMixin:
                 batch.append(_skip_record)
                 total_count += 1
                 batch = self._batch_persistence.maybe_flush(batch, "buy_dynamic_kill")
+                # 166# deadlock fix: _last_side を更新して sell 側も試行可能に
+                self._last_side = "buy"
                 await asyncio.sleep(self.config.cycle_interval_sec)
                 continue
 
@@ -780,6 +784,8 @@ class FillLoopOrchestratorMixin:
                 batch.append(_skip_record)
                 total_count += 1
                 batch = self._batch_persistence.maybe_flush(batch, "sell_dynamic_kill")
+                # 166# deadlock fix: _last_side を更新して buy 側も試行可能に
+                self._last_side = "sell"
                 await asyncio.sleep(self.config.cycle_interval_sec)
                 continue
 

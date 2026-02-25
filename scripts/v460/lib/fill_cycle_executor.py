@@ -505,6 +505,7 @@ class FillCycleExecutorMixin:
         reprice_drift_bps = monitor.reprice_drift_bps  # 158# P1-3
         order_price = monitor.final_order_price  # stale reprice で変更される場合
         _effective_timeout = monitor.effective_timeout  # 145# §9-#2
+        cancel_failed_likely_filled = monitor.cancel_failed_likely_filled  # 166# C.7
 
         # 113# R1: PnL 計測を _measure_post_fill_pnl() に委譲
         pnl = await self._measure_post_fill_pnl(filled, fill_price, side)
@@ -639,6 +640,8 @@ class FillCycleExecutorMixin:
             confidence_lot_mode=self.config.confidence_lot_mode if self.config.enable_confidence_lot else None,
             # 158# P1-5: A/B テスト variant 識別子
             ab_test_variant=self.config.ab_test_variant or None,
+            # 166# C.7: cancel 失敗→約定検出フラグ (Bug11 KPI)
+            cancel_failed_likely_filled=cancel_failed_likely_filled or None,
         )
 
         logger.info(

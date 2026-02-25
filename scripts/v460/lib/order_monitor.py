@@ -119,6 +119,7 @@ class OrderMonitor:
         fill_price: Optional[float] = None
         t_fill: Optional[float] = None
         cancel_reason_poll: Optional[str] = None
+        _cancel_failed_likely_filled = False  # 166# C.7
         elapsed = 0.0
         reprice_count = 0
         cumulative_drift_bps = 0.0  # 158# P1-3: 累積 drift
@@ -293,6 +294,7 @@ class OrderMonitor:
                                         filled = True
                                         fill_price = recheck.price if recheck.price else order_price
                                         t_fill = time.time()
+                                        _cancel_failed_likely_filled = True  # 166# C.7
                                         logger.info(
                                             f"[stale_order] Order actually filled during cancel @ "
                                             f"{fill_price:.0f} JPY"
@@ -406,6 +408,7 @@ class OrderMonitor:
                             )
                             t_fill = time.time()
                             cancel_reason_poll = None
+                            _cancel_failed_likely_filled = True  # 166# C.7
                             logger.info(
                                 f"[Bug11] Order was actually filled @ "
                                 f"{fill_price:.0f} JPY (detected on cancel failure)"
@@ -429,4 +432,5 @@ class OrderMonitor:
             reprice_drift_bps=cumulative_drift_bps,  # 158# P1-3
             final_order_price=order_price,
             effective_timeout=_effective_timeout,
+            cancel_failed_likely_filled=_cancel_failed_likely_filled,  # 166# C.7
         )

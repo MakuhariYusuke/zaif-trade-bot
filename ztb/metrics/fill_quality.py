@@ -121,6 +121,8 @@ class FillRecord:
     confidence_lot_mode: Optional[str] = None        # "as" / "pnl" / None (無効時)
     # 158# P1-5: A/B テスト variant 識別子 (実験分析用)
     ab_test_variant: Optional[str] = None             # 例: "sell_offset_015", None=実験なし
+    # 166# C.7: cancel 失敗後に約定確認されたフラグ (Bug11 KPI 分離)
+    cancel_failed_likely_filled: Optional[bool] = None  # True=cancel失敗→約定検出
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""
