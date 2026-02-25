@@ -495,3 +495,57 @@ VG は effective_offset_ratio に対して乗算ブーストするため、InvSk
 ---
 
 *7-8 は 2026-02-26 にレビュー指摘の事実検証として追記。全データはコードログ設定ファイルの直読に基づく。*
+
+---
+
+## §9 実装結果 (168# fix commit)
+
+### 9.1 §8.1 #0: InvSkew/VG 競合解消
+
+**問題**: InvSkew が sell offset を緩和 (factor < 0) しても、直後の VG が
+`offset_boost_factor=2.0` でフル倍増し、48.7% のケースで InvSkew の効果をキャンセル。
+
+**対策**: VG boost を InvSkew factor に比例してダンピング。
+
+```
+effective_boost = 1 + (1 - |inv_skew_factor|) * (boost_factor - 1)
+```
+
+| 変更ファイル | 内容 |
+|-------------|------|
+| `maker_price.py` | `_last_inv_skew_factor` 追跡 + `_apply_volatility_guard` ダンピングロジック |
+| `fill_config.py` | `vg_inv_skew_damping_enabled: bool = False` (デフォルト無効) |
+| `fill_test.yaml` | `inv_skew_damping_enabled: true` (VGセクション内) |
+
+**テスト**: 7件追加 (config default, YAML mapping, code present, damping reduce, positive no-effect, disabled full-boost, extreme cap)
+
+### 9.2 §8.1 #2: P2-C1/C2/C3 着手
+
+#### P2-C1: sell_guard max_spread_jpy 閾値引上げ
+
+| 項目 | Before | After | 根拠 |
+|------|--------|-------|------|
+| `max_spread_jpy` | 4000.0 | 5000.0 | 165# SO-1 offset_floor 0.20 で保護強化済。161件/9.3%のキャンセル削減期待 |
+
+#### P2-C2: Reprice offset tightening 有効化
+
+| 項目 | Before | After | 根拠 |
+|------|--------|-------|------|
+| `reprice_tighten` | 未設定 (default 1.0) | 0.85 | 162# §3.4: reprice avg drift 7.44bps, PnL -0.42bps。15% tighten で drift 圧縮 |
+
+#### P2-C3: Reprice SkipGate 閾値緩和
+
+| 項目 | Before | After | 根拠 |
+|------|--------|-------|------|
+| `reprice_skip_gate_offset` | なし (新設, default 0.0) | 0.05 | 162# F4: 27件 stale_skip_gate_blocked。reprice は offset 再計算済みのためゲートを微緩和 |
+
+**変更ファイル**: fill_test.yaml, fill_config.py (field + mapping), order_monitor.py (threshold_offset 適用)
+**テスト**: 6件追加 (YAML値, config default, code presence × P2-C1/C2/C3)
+
+### 9.3 テスト結果
+
+```
+189 passed, 5 warnings in 34.40s (176 既存 + 7 VG damping + 6 P2-C)
+```
+
+*§9 は 168# fix 実装完了時点の記録。*

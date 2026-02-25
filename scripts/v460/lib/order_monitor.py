@@ -322,7 +322,13 @@ class OrderMonitor:
                                     recent_trades=None,
                                     market_timestamp=time.time(),
                                 )
-                                rp_decision = skip_gate.evaluate(rp_features, side=side)  # type: ignore[union-attr]
+                                # 168# P2-C3: reprice 時は SkipGate 閾値を緩和
+                                _rp_sg_offset = getattr(cfg, 'stale_reprice_skip_gate_offset', 0.0)
+                                rp_decision = skip_gate.evaluate(  # type: ignore[union-attr]
+                                    rp_features,
+                                    side=side,
+                                    threshold_offset=-_rp_sg_offset,  # 負=緩和方向
+                                )
                                 if rp_decision.should_skip:
                                     reprice_gate_skipped = True
                                     logger.info(

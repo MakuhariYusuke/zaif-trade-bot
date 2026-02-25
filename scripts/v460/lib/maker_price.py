@@ -97,6 +97,7 @@ class MakerPriceCalculator:
         "_last_vg_boost_factor",
         "_inv_fill_history",        # 162# inventory skewing fill deque
         "_inv_net_imbalance",        # 162# normalized net imbalance [-1,1]
+        "_last_inv_skew_factor",     # 168# last applied inv_skew factor
         "_last_ob_snapshot",
     )
 
@@ -138,6 +139,8 @@ class MakerPriceCalculator:
         _w = config.inventory_skewing_window if config.inventory_skewing_window > 0 else 100
         self._inv_fill_history: collections.deque[str] = collections.deque(maxlen=_w)
         self._inv_net_imbalance: float = 0.0
+        # 168# InvSkew/VG 競合解消: 直近の InvSkew 補正係数 (負=sell緩和)
+        self._last_inv_skew_factor: float = 0.0
 
     def get_fallback_price(self) -> tuple[float | None, float | None]:
         """156# §16: OB エラー時のフォールバック価格と記録時刻を返す.
@@ -440,8 +443,25 @@ class MakerPriceCalculator:
             _vg_boost = 1.0  # 158# P2-6: 実際の boost 倍率
             if vg_triggered:
                 pre_offset = effective_offset_ratio
+                # 168# InvSkew/VG 競合解消: InvSkew が offset を緩和している場合、
+                # VG boost 倍率を抑制して在庫リバランス効果を保全する。
+                # damping: InvSkew factor が負(=sell offset 縮小)なら
+                #   effective_boost = 1 + (1 - |factor|) * (boost_factor - 1)
+                _raw_boost = cfg.volatility_guard_offset_boost_factor
+                if (
+                    cfg.vg_inv_skew_damping_enabled
+                    and self._last_inv_skew_factor < 0.0
+                ):
+                    _damping = 1.0 - min(abs(self._last_inv_skew_factor), 1.0)
+                    _raw_boost = 1.0 + _damping * (_raw_boost - 1.0)
+                    logger.info(
+                        f"[vg_damping] 168# InvSkew factor="
+                        f"{self._last_inv_skew_factor:+.4f} → "
+                        f"VG boost {cfg.volatility_guard_offset_boost_factor:.2f}"
+                        f"→{_raw_boost:.4f}"
+                    )
                 effective_offset_ratio = min(
-                    effective_offset_ratio * cfg.volatility_guard_offset_boost_factor,
+                    effective_offset_ratio * _raw_boost,
                     cfg.max_offset_ratio,
                 )
                 _vg_boost = effective_offset_ratio / pre_offset if pre_offset > 0 else 1.0
@@ -574,10 +594,13 @@ class MakerPriceCalculator:
             _prev = effective_offset_ratio
             effective_offset_ratio *= (1.0 + _factor)
             effective_offset_ratio = max(effective_offset_ratio, cfg.min_offset_ratio)
+            self._last_inv_skew_factor = _factor
             logger.info(
                 f"[inv_skew] {side} imbalance={_imb:+.3f} "
                 f"factor={_factor:+.4f} offset {_prev:.4f}->{effective_offset_ratio:.4f}"
             )
+        else:
+            self._last_inv_skew_factor = 0.0
 
         # 088# sell 専用ハードガード: offset floor
         if side == "sell" and cfg.sell_offset_floor > 0:

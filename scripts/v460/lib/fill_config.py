@@ -228,6 +228,8 @@ class FillTestConfig:
     stale_max_reprice_sell: int | None = None        # sell 側最大 reprice (None=共通値)
     # 158# P1-2: reprice 時の offset 引き締め (1.0=変更なし, 0.85=15% 引き締め→より市場価格に近づける)
     stale_reprice_tighten: float = 1.0
+    # 168# P2-C3: reprice SkipGate 閾値緩和 offset
+    stale_reprice_skip_gate_offset: float = 0.0
     # 096# adapter recency window (全履歴混合を停止)
     adapt_recency_window: int = 0          # 0=全履歴, >0=直近 N clean records のみ
     # 107# Volatility Guard (リアルタイム急変検知)
@@ -236,6 +238,8 @@ class FillTestConfig:
     volatility_guard_velocity_threshold_bps: float = 15.0
     volatility_guard_vpin_threshold: float = 0.70
     volatility_guard_offset_boost_factor: float = 2.0
+    # 168# InvSkew/VG 競合解消: InvSkew 緩和時に VG ブースト上限を制御
+    vg_inv_skew_damping_enabled: bool = False
     # 110# 086# デッドロック修正: 連続 both-filtered 上限
     max_086_consecutive_wait: int = 3      # 0 = 無制限 (旧動作), >0 で N 回超過後 alt_side 許可
     # 163# regime 連動動的ゲーティング (107# Phase 3 拡張)
@@ -588,6 +592,7 @@ class FillTestConfig:
             "max_reprice_sell": "stale_max_reprice_sell",
             # 158# P1-2: reprice offset tightening
             "reprice_tighten": "stale_reprice_tighten",
+            "reprice_skip_gate_offset": "stale_reprice_skip_gate_offset",
         }
         for yaml_key, config_key in so_map.items():
             if yaml_key in so:
@@ -610,6 +615,7 @@ class FillTestConfig:
             "velocity_threshold_bps": "volatility_guard_velocity_threshold_bps",
             "vpin_threshold": "volatility_guard_vpin_threshold",
             "offset_boost_factor": "volatility_guard_offset_boost_factor",
+            "inv_skew_damping_enabled": "vg_inv_skew_damping_enabled",
         }
         for yaml_key, config_key in vg_map.items():
             if yaml_key in vg:

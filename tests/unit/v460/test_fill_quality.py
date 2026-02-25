@@ -2700,6 +2700,220 @@ class Test107TimeFilterDynamicGating:
         assert "volatility_guard" in source
         assert "velocity_threshold_bps" in source or "vpin_threshold" in source
 
+    # ---- 168# InvSkew/VG 競合解消テスト ----
+
+    def test_vg_inv_skew_damping_config_default(self) -> None:
+        """168# vg_inv_skew_damping_enabled のデフォルトは False."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        cfg = FillTestConfig()
+        assert hasattr(cfg, "vg_inv_skew_damping_enabled")
+        assert cfg.vg_inv_skew_damping_enabled is False
+
+    def test_vg_inv_skew_damping_yaml_mapping(self) -> None:
+        """168# YAML 'inv_skew_damping_enabled' が VG セクションで読み込まれる."""
+        from pathlib import Path
+        import yaml  # type: ignore[import-untyped]
+
+        yaml_path = Path("configs/v460/fill_test.yaml")
+        with open(yaml_path) as f:
+            cfg = yaml.safe_load(f)
+        vg = cfg["volatility_guard"]
+        assert "inv_skew_damping_enabled" in vg
+        assert vg["inv_skew_damping_enabled"] is True
+
+    def test_vg_inv_skew_damping_code_present(self) -> None:
+        """168# InvSkew/VG damping ロジックがソースに含まれる."""
+        import inspect
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+
+        source = inspect.getsource(MakerPriceCalculator)
+        assert "vg_inv_skew_damping_enabled" in source
+        assert "_last_inv_skew_factor" in source
+        assert "vg_damping" in source  # ログラベル
+
+    def test_vg_damping_reduces_boost_when_inv_skew_negative(self) -> None:
+        """168# InvSkew factor<0 時に VG boost が dampen される."""
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        cfg = FillTestConfig(
+            volatility_guard_enabled=True,
+            volatility_guard_velocity_threshold_bps=10.0,
+            volatility_guard_offset_boost_factor=2.0,
+            vg_inv_skew_damping_enabled=True,
+            max_offset_ratio=1.0,
+        )
+        from scripts.v460.lib.fast_fill_defense import (
+            FastFillDefense,
+            FastFillDefenseConfig,
+        )
+
+        _ffd = FastFillDefense(FastFillDefenseConfig(), base_offset_ratio=0.05)
+        calc = MakerPriceCalculator(
+            cfg, _ffd, regime_detector=None, base_offset_ratio=0.05,
+        )
+        # Simulate InvSkew having reduced sell offset (factor = -0.4)
+        calc._last_inv_skew_factor = -0.4
+        # Trigger VG via velocity
+        result = calc._apply_volatility_guard(
+            side="sell", mid_trend_bps=20.0, effective_offset_ratio=0.10,
+        )
+        # Without damping: 0.10 * 2.0 = 0.20
+        # With damping: factor=-0.4 → damping=0.6 → boost=1+0.6*1=1.6
+        #   → 0.10 * 1.6 = 0.16
+        expected = 0.10 * (1.0 + 0.6 * (2.0 - 1.0))
+        assert abs(result - expected) < 1e-9, f"Expected ~{expected}, got {result}"
+
+    def test_vg_damping_no_effect_when_factor_positive(self) -> None:
+        """168# InvSkew factor>=0 では VG boost は通常通り."""
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        cfg = FillTestConfig(
+            volatility_guard_enabled=True,
+            volatility_guard_velocity_threshold_bps=10.0,
+            volatility_guard_offset_boost_factor=2.0,
+            vg_inv_skew_damping_enabled=True,
+            max_offset_ratio=1.0,
+        )
+        from scripts.v460.lib.fast_fill_defense import (
+            FastFillDefense,
+            FastFillDefenseConfig,
+        )
+
+        _ffd = FastFillDefense(FastFillDefenseConfig(), base_offset_ratio=0.05)
+        calc = MakerPriceCalculator(
+            cfg, _ffd, regime_detector=None, base_offset_ratio=0.05,
+        )
+        calc._last_inv_skew_factor = 0.3  # positive = no damping
+        result = calc._apply_volatility_guard(
+            side="buy", mid_trend_bps=20.0, effective_offset_ratio=0.10,
+        )
+        expected = 0.10 * 2.0  # full boost
+        assert abs(result - expected) < 1e-9, f"Expected {expected}, got {result}"
+
+    def test_vg_damping_disabled_full_boost(self) -> None:
+        """168# damping 無効時は従来通り full boost."""
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        cfg = FillTestConfig(
+            volatility_guard_enabled=True,
+            volatility_guard_velocity_threshold_bps=10.0,
+            volatility_guard_offset_boost_factor=2.0,
+            vg_inv_skew_damping_enabled=False,  # disabled
+            max_offset_ratio=1.0,
+        )
+        from scripts.v460.lib.fast_fill_defense import (
+            FastFillDefense,
+            FastFillDefenseConfig,
+        )
+
+        _ffd = FastFillDefense(FastFillDefenseConfig(), base_offset_ratio=0.05)
+        calc = MakerPriceCalculator(
+            cfg, _ffd, regime_detector=None, base_offset_ratio=0.05,
+        )
+        calc._last_inv_skew_factor = -0.4  # would dampen if enabled
+        result = calc._apply_volatility_guard(
+            side="sell", mid_trend_bps=20.0, effective_offset_ratio=0.10,
+        )
+        expected = 0.10 * 2.0  # full boost, no damping
+        assert abs(result - expected) < 1e-9, f"Expected {expected}, got {result}"
+
+    def test_vg_damping_extreme_factor_caps_at_one(self) -> None:
+        """168# |factor| > 1.0 は 1.0 で cap → boost=1.0 (完全抑制)."""
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        cfg = FillTestConfig(
+            volatility_guard_enabled=True,
+            volatility_guard_velocity_threshold_bps=10.0,
+            volatility_guard_offset_boost_factor=3.0,
+            vg_inv_skew_damping_enabled=True,
+            max_offset_ratio=1.0,
+        )
+        from scripts.v460.lib.fast_fill_defense import (
+            FastFillDefense,
+            FastFillDefenseConfig,
+        )
+
+        _ffd = FastFillDefense(FastFillDefenseConfig(), base_offset_ratio=0.05)
+        calc = MakerPriceCalculator(
+            cfg, _ffd, regime_detector=None, base_offset_ratio=0.05,
+        )
+        calc._last_inv_skew_factor = -1.5  # extreme: capped to 1.0
+        result = calc._apply_volatility_guard(
+            side="sell", mid_trend_bps=20.0, effective_offset_ratio=0.10,
+        )
+        # damping = 1.0 - min(1.5, 1.0) = 0.0 → boost = 1.0 + 0.0 = 1.0
+        expected = 0.10 * 1.0  # completely suppressed
+        assert abs(result - expected) < 1e-9, f"Expected {expected}, got {result}"
+
+    # ---- 168# P2-C1/C2/C3 テスト ----
+
+    def test_p2c1_sell_guard_max_spread_yaml(self) -> None:
+        """168# P2-C1: sell_guard max_spread_jpy が 5000 に更新済み."""
+        from pathlib import Path
+        import yaml  # type: ignore[import-untyped]
+
+        with open(Path("configs/v460/fill_test.yaml")) as f:
+            cfg = yaml.safe_load(f)
+        sg = cfg["sell_guard"]
+        assert sg["max_spread_jpy"] == 5000.0, (
+            f"168# P2-C1: expected 5000, got {sg['max_spread_jpy']}"
+        )
+
+    def test_p2c2_reprice_tighten_yaml(self) -> None:
+        """168# P2-C2: stale_order.reprice_tighten が YAML に設定済み."""
+        from pathlib import Path
+        import yaml  # type: ignore[import-untyped]
+
+        with open(Path("configs/v460/fill_test.yaml")) as f:
+            cfg = yaml.safe_load(f)
+        so = cfg["stale_order"]
+        assert "reprice_tighten" in so, "168# P2-C2: reprice_tighten not in YAML"
+        assert so["reprice_tighten"] == 0.85
+
+    def test_p2c2_reprice_tighten_config_field(self) -> None:
+        """168# P2-C2: FillTestConfig.stale_reprice_tighten のデフォルトは 1.0."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        cfg = FillTestConfig()
+        assert cfg.stale_reprice_tighten == 1.0
+
+    def test_p2c3_reprice_skip_gate_offset_yaml(self) -> None:
+        """168# P2-C3: stale_order.reprice_skip_gate_offset が YAML に設定済み."""
+        from pathlib import Path
+        import yaml  # type: ignore[import-untyped]
+
+        with open(Path("configs/v460/fill_test.yaml")) as f:
+            cfg = yaml.safe_load(f)
+        so = cfg["stale_order"]
+        assert "reprice_skip_gate_offset" in so, (
+            "168# P2-C3: reprice_skip_gate_offset not in YAML"
+        )
+        assert so["reprice_skip_gate_offset"] == 0.05
+
+    def test_p2c3_reprice_skip_gate_offset_config(self) -> None:
+        """168# P2-C3: FillTestConfig.stale_reprice_skip_gate_offset は 0.0 デフォルト."""
+        from scripts.v460.run_fill_test import FillTestConfig
+
+        cfg = FillTestConfig()
+        assert hasattr(cfg, "stale_reprice_skip_gate_offset")
+        assert cfg.stale_reprice_skip_gate_offset == 0.0
+
+    def test_p2c3_reprice_skip_gate_offset_in_code(self) -> None:
+        """168# P2-C3: order_monitor.py で reprice_skip_gate_offset が使用されている."""
+        import inspect
+        from scripts.v460.lib.order_monitor import OrderMonitor
+
+        source = inspect.getsource(OrderMonitor)
+        assert "stale_reprice_skip_gate_offset" in source
+        assert "threshold_offset" in source  # evaluate に offset を渡している
+
+
+
     def test_batch_persistence_in_code(self) -> None:
         """119# BatchPersistence 委譲が存在する."""
         from scripts.v460.lib.batch_persistence import BatchPersistence
