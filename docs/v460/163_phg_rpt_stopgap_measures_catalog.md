@@ -325,7 +325,7 @@ Sell は以下 **6 層** のガードを通過する必要がある:
 | 優先度 | 対策 | 消滅する姑息的手段 | 期待効果 |
 |--------|------|-------------------|----------|
 | **P0** | ~~Inventory Skewing 実装~~ **162# 実装済み** (`42a06d8e9`, enabled=false) → **enabled=true** (`5a5b9ba42`) | 3-A, 3-B, 3-C (balance_forced 関連全体) | fill_rate +15-20pt |
-| **P0** | 動的ゲーティング (time_filter 代替) | 1-A, 1-B, 1-C | アイドル時間 -30%+ |
+| **P0** | ~~動的ゲーティング (time_filter 代替)~~ **107# Step 2 実装済み** (5a5b9ba42, regime_adaptive_enabled=true) | 1-A, 1-B, 1-C | アイドル時間 -30%+ |
 | **P1** | sell offset 動的最適化 | 2-A, 2-B (trending_sell_skip) | sell fill_rate 改善 |
 | **P1** | AS 根因分析 + モデル改善 | 2-C (sell_dynamic_kill), 6-A (unknown_regime skip) | PnL 改善 |
 | **P2** | sell_guard 閾値動的化 | 2-D | 16+件のキャンセル削減 |
