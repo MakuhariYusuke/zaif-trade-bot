@@ -808,6 +808,8 @@ class FillLoopOrchestratorMixin:
                 logger.error(f"Cycle execution error: {e}", exc_info=True)
                 # 128# 例外時も dust sweep ロットを復元
                 self._balance_checker.restore_lot_after_dust_sweep()
+                # 166# SR-4: 例外 continue でも side 交互を保証
+                self._last_side = next_side
                 await asyncio.sleep(self.config.cycle_interval_sec)
                 continue
 

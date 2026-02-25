@@ -388,3 +388,79 @@ HF1-4 適用後に fill 率が 8.8%→32.6% に大幅改善。今回のデッド
 | TestDeadlockSideAlternation | 5 | DL-1/2/3 |
 
 回帰テスト: **1982 passed, 1 failed** (既知の `test_train_skip_gate_real`)。新規0失敗。
+
+
+## 11. セルフレビュー + 安定化リファクタリング (166# 後半-3)
+
+### 11.1 セルフレビュー実施概要
+
+166# の全変更 (8ファイル +321/-5) を対象に包括的セルフレビューを実施。
+
+| 項目 | 対象 | 結果 |
+|------|------|------|
+| Diff audit | 8ファイル | OK |
+| Continue-path audit | 11箇所の continue | L812 に追加リスク検出 (SR-4で修正) |
+| Cancel_failed KPI flow | 2 refs (executor) + 4 refs (monitor) | 正常なデータフロー確認 |
+| Memory/stability | 12コアファイル | 6 SILENT例外 + 1 DICT (安全) + 1 ASYNC (安全) |
+| Code dedup | orchestrator skip pattern | 5箇所x5行、ROI不足で見送り |
+
+### 11.2 安定化修正 (SR-1 ~ SR-4)
+
+| Fix ID | ファイル | 修正内容 | 影響 |
+|--------|---------|---------|------|
+| SR-1a | pnl_measurer.py L65 | `except Exception: pass` -> `logger.debug("mid_at_fill fetch failed")` | 可観測性向上 |
+| SR-1b | pnl_measurer.py L108 | 同上 -> `mid_30s_after fetch failed` | 同上 |
+| SR-1c | pnl_measurer.py L138 | 同上 -> `mid_60s_after PnL failed` | 同上 |
+| SR-1d | pnl_measurer.py L152 | 同上 -> `mid_120s_after PnL failed` | 同上 |
+| SR-2 | order_monitor.py L302 | `except Exception: pass` -> `logger.debug("Recheck after cancel-fail raised")` | stale order可視化 |
+| SR-3 | skip_gate_evaluator.py L538 | `except Exception: pass` -> `logger.debug("Trades formatting failed")` | feature障害可視化 |
+| SR-4 | fill_loop_orchestrator.py L812 | 例外ハンドラに `self._last_side = next_side` 追加 | デッドロック防止 |
+
+**SR-4 根拠**: `run_single_cycle()` が `update_after_decision(side)` 前に例外すると
+`_last_side` 未更新のまま同一 side 無限ループのリスク。
+
+### 11.3 メモリ監査結果
+
+全12コアファイルを走査。**リーク箇所なし**:
+- `batch` リスト: `maybe_flush()` で定期的にフラッシュ (有界)
+- `deque(maxlen=N)`: maker_price.py, fill_quality.py (有界)
+- `_last_insufficient_log[side]`: buy/sell の2キーのみ (有界)
+- `heartbeat_task`: L328 create -> L996 cancel -> L998 await (適切なライフサイクル)
+
+### 11.4 コード重複評価
+
+- orchestrator skip-continue (5箇所x5行): ヘルパー抽出で実質7行削減。可読性低下リスク > 利得 -> 見送り
+- `_current_regime_value`, `_make_skip_record`: 既に `fill_record_helpers.py` に集約済み
+- import パターン: 標準的な重複のみ (logging, Path 等)
+
+### 11.5 ログベース改善観測 (13日間・3571レコード)
+
+| 指標 | 値 | 備考 |
+|------|------|------|
+| 全体 fill rate | 1552/3571 (43.5%) | 初期73-82% -> 直近27-33% に低下 |
+| buy fill rate | 784/1354 (57.9%) | |
+| sell fill rate | 768/2217 (34.6%) | buy比 23.3pt 低い |
+| PnL (30s後) | mean=-0.23bps, median=-0.16bps | 微損 |
+| Top skip | balance_forced:377, trending_sell:358, skip_gate:350 | |
+| trending_sell max連続 | 116回 (SHA 3959424e, Feb 23) | 再起動でカウンタリセット |
+| 最低時間帯 | UTC 09-10 (19-26%) | JST 18-19時 |
+
+**戦略的改善提案** (コード外):
+1. sell 側 fill rate 改善 (offset/spread チューニング)
+2. trending_sell_skip カウンタの永続化 (再起動耐性)
+3. UTC 09-10 時間帯の特別処理検討
+4. balance_forced_skip 頻発時のロット自動調整強化
+
+### 11.6 テスト結果
+
+回帰テスト: **1982 passed, 1 failed** (既知 `test_train_skip_gate_real`)。SR-1~SR-4 新規リグレッション 0。
+
+### 11.7 変更サマリ
+
+```
+ scripts/v460/lib/fill_loop_orchestrator.py |  2 ++
+ scripts/v460/lib/order_monitor.py          |  4 ++--
+ scripts/v460/lib/pnl_measurer.py           | 16 ++++++++--------
+ scripts/v460/lib/skip_gate_evaluator.py    |  4 ++--
+ 4 files changed, 14 insertions(+), 12 deletions(-)
+```

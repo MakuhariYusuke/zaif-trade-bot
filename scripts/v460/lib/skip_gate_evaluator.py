@@ -535,8 +535,8 @@ class SkipGateEvaluator:
                             }
                             for t in trades
                         ]
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Trades formatting failed: %s", exc)
 
             # 072# OB トグル
             ob_bid: float | None = None

@@ -62,8 +62,8 @@ class PnlMeasurer:
 
         try:
             m.mid_at_fill = await get_mid_price()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("mid_at_fill fetch failed: %s", exc)
 
         # 054# S3: Early Exit 監視付き 30s 待機
         early_exit_triggered = False
@@ -105,8 +105,8 @@ class PnlMeasurer:
 
         try:
             m.mid_30s_after = await get_mid_price()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("mid_30s_after fetch failed: %s", exc)
 
         if m.mid_at_fill is not None and m.mid_30s_after is not None:
             if side == "buy":
@@ -135,8 +135,8 @@ class PnlMeasurer:
                     m.post_fill_60s_pnl = (m.mid_60s_after - m.mid_at_fill) / m.mid_at_fill * _BPS_FACTOR
                 else:
                     m.post_fill_60s_pnl = (m.mid_at_fill - m.mid_60s_after) / m.mid_at_fill * _BPS_FACTOR
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("mid_60s_after PnL failed: %s", exc)
 
             e3_target_120s = cfg.post_fill_wait_sec * cfg.e3_120s_multiplier
             e3_elapsed = time.time() - t_post_fill_start
@@ -149,8 +149,8 @@ class PnlMeasurer:
                     m.post_fill_120s_pnl = (m.mid_120s_after - m.mid_at_fill) / m.mid_at_fill * _BPS_FACTOR
                 else:
                     m.post_fill_120s_pnl = (m.mid_at_fill - m.mid_120s_after) / m.mid_at_fill * _BPS_FACTOR
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("mid_120s_after PnL failed: %s", exc)
 
         # 137# P1-11: fee 控除統一 — PnL bps から maker fee を一律控除
         # 139# §9-#4: 仕様確定 — maker fee のみ控除 (現行は maker 注文のみ)。

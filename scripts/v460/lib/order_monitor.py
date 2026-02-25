@@ -299,8 +299,8 @@ class OrderMonitor:
                                             f"[stale_order] Order actually filled during cancel @ "
                                             f"{fill_price:.0f} JPY"
                                         )
-                                except Exception:
-                                    pass
+                                except Exception as exc:
+                                    logger.debug("Recheck after cancel-fail raised: %s", exc)
                             if filled:
                                 break
                             logger.warning(f"[stale_order] Cancel failed: {cancel_err}")

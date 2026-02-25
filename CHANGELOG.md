@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 166# Self-Review + Stability Refactoring (2026-02-25)
+
+### Fixed
+- SR-1a/b/c/d: pnl_measurer.py の4箇所の silent exception を logger.debug に置換 (可観測性向上)
+- SR-2: order_monitor.py の cancel-fail recheck silent exception を logger.debug に置換
+- SR-3: skip_gate_evaluator.py の trades formatting silent exception を logger.debug に置換
+- SR-4: fill_loop_orchestrator.py 例外ハンドラに _last_side 更新追加 (デッドロック防止)
+
+### Assessed (No Change)
+- メモリリーク: 12コアファイル監査済み、全コレクション有界確認
+- コード重複: orchestrator skip-continue 5箇所 (ヘルパー抽出 ROI 不足で見送り)
+- ログ分析: fill rate 低下傾向、sell側不利、戦略改善提案4件を文書化
+
+
 ## 164# SkipGate SHAP Analysis + Stopgap Retirement Criteria (2026-02-26)
 
 ### Added
