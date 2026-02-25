@@ -206,6 +206,11 @@ class FillTestConfig:
     skip_sell_unknown_regime: bool = False
     # 130# unknown regime での buy offset boost (AS 回避)
     unknown_buy_offset_boost: float = 1.0  # 1.0 = 無効, >1.0 で boost (例: 2.0 = VG相当)
+    # 165# AS-R1: velocity-based sell/buy skip (SkipGate pre-ML rule)
+    sell_velocity_skip_enabled: bool = False
+    sell_velocity_skip_threshold_bps: float = 8.0  # price_velocity_60s > this AND sell -> skip
+    buy_velocity_skip_enabled: bool = False
+    buy_velocity_skip_threshold_bps: float = -8.0  # price_velocity_60s < this AND buy -> skip
     # 156# §16: OB エラー fallback 価格の鮮度閾値 (秒)
     fallback_stale_sec: float = 120.0
     # 094# stale order 検出 & cancel-replace (価格乖離した注文を再発注)
@@ -535,6 +540,11 @@ class FillTestConfig:
             "skip_sell_unknown_regime": "skip_sell_unknown_regime",
             # 130# unknown buy offset boost
             "unknown_buy_offset_boost": "unknown_buy_offset_boost",
+            # 165# AS-R1: velocity-based skip
+            "sell_velocity_skip_enabled": "sell_velocity_skip_enabled",
+            "sell_velocity_skip_threshold_bps": "sell_velocity_skip_threshold_bps",
+            "buy_velocity_skip_enabled": "buy_velocity_skip_enabled",
+            "buy_velocity_skip_threshold_bps": "buy_velocity_skip_threshold_bps",
             # 141# P1-04: regime thresholds
             "regime_thresholds": "skip_gate_regime_thresholds",
             # 138# P1-03: score calibration
@@ -962,6 +972,8 @@ class SkipGateResult:
     threshold_used: Optional[float] = None
     # 158# P1-6: 時間帯別閾値調整のオフセット
     hour_offset: float = 0.0
+    # 165# AS-R1: velocity logging
+    price_velocity_60s: Optional[float] = None
     early_return_record: Optional[FillRecord] = None
 
 

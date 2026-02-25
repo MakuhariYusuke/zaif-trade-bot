@@ -358,6 +358,7 @@ class FillCycleExecutorMixin:
         skip_gate_as_prob = sg.as_prob
         skip_gate_threshold_used = sg.threshold_used
         skip_gate_hour_offset = sg.hour_offset if sg.hour_offset != 0.0 else None
+        _sg_velocity_60s = sg.price_velocity_60s  # 165# AS-R1
         if sg.early_return_record is not None:
             return sg.early_return_record
 
@@ -627,6 +628,8 @@ class FillCycleExecutorMixin:
             vg_velocity_bps=self._maker_price.last_vg_velocity_bps,
             vg_vpin=self._maker_price.last_vg_vpin,
             vg_boost_factor=self._maker_price.last_vg_boost_factor,
+            # 165# AS-R1: velocity logging
+            price_velocity_60s=_sg_velocity_60s,
             # 129# D.2: 残高制約による side 強制切替フラグ
             balance_forced_switch=balance_forced_switch or None,
             # 151# P3-03: confidence lot 可観測性 (§10 #7)

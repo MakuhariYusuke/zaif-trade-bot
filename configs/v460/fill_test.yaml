@@ -245,7 +245,7 @@ skip_gate:
   # 088# 動的閾値較正: 目標 skip 率ベースで閾値を自動調整
   adaptive_threshold: true     # P(AS) 分位点から閾値を動的設定
   target_skip_rate_buy: 0.15   # 107# 0.10→0.15 (time_filter 代替強化: buy 7h遮断→SG に委譲)
-  target_skip_rate_sell: 0.20  # 124# 0.25→0.20 (sell再有効化に伴い保守化, 逆選別なし前提)
+  target_skip_rate_sell: 0.250  # 124# 0.25→0.20 (sell再有効化に伴い保守化, 逆選別なし前提)
   adaptive_window: 50          # 較正ウィンドウ (直近 N サイクル)
   adaptive_min_samples: 20     # ウォームアップ期間 (最初の N 件は静的閾値)
   adaptive_step: 0.05          # 100# P0-2: 0.02→0.05 (収束ラグ低減)
@@ -265,6 +265,11 @@ skip_gate:
   skip_sell_unknown_regime: true
   # 130# unknown regime buy offset boost (128# 分析: unknown buy -1.384bps)
   unknown_buy_offset_boost: 2.0  # VG 相当の 2x boost (1.0 = 無効)
+  # 165# AS-R1: velocity-based pre-ML skip
+  sell_velocity_skip_enabled: true
+  sell_velocity_skip_threshold_bps: 8.0
+  buy_velocity_skip_enabled: false
+  buy_velocity_skip_threshold_bps: -8.0
 
 # ---- 107# Volatility Guard (リアルタイム急変検知) ----
 # time_filter の静的遮断では対応不能な「時間帯内の急変」に対応

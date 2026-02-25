@@ -593,6 +593,87 @@ class SkipGateEvaluator:
             if maker_price_vpin_setter is not None and callable(maker_price_vpin_setter):
                 maker_price_vpin_setter(gate_features.get("vpin_60s"))
 
+            # 165# AS-R1: velocity-based pre-ML sell/buy skip rule
+            _pv60 = gate_features.get("price_velocity_60s", 0.0)
+            if (
+                self._config.sell_velocity_skip_enabled
+                and side == "sell"
+                and _pv60 > self._config.sell_velocity_skip_threshold_bps
+            ):
+                from ztb.metrics.fill_quality import FillRecord
+
+                logger.info(
+                    f"[skip_gate] SKIP: sell velocity {_pv60:.2f}bps "
+                    f"> {self._config.sell_velocity_skip_threshold_bps}bps "
+                    f"(165# AS-R1 rule_velocity_sell_skip)"
+                )
+                result.skipped = True
+                result.score = _pv60
+                result.reason = "rule_velocity_sell_skip"
+                result.model_used = "rule"
+                result.early_return_record = FillRecord(
+                    cycle_id=cycle_id,
+                    timestamp=time.time(),
+                    side=side,
+                    order_price=order_price,
+                    order_quantity=current_lot,
+                    cancelled=True,
+                    cancel_reason="skip_gate_rule_velocity_sell",
+                    spread_at_order=spread_at_order,
+                    spread_offset_ratio=effective_offset_ratio,
+                    skip_gate_skipped=True,
+                    skip_gate_score=_pv60,
+                    skip_gate_reason="rule_velocity_sell_skip",
+                    skip_gate_model_used="rule",
+                    orderbook_imbalance=last_imbalance,
+                    bid_depth_total=last_bid_depth,
+                    ask_depth_total=last_ask_depth,
+                    run_id=run_id,
+                    git_sha=git_sha,
+                    regime=regime_value,
+                    price_velocity_60s=_pv60,
+                )
+                return result
+            if (
+                self._config.buy_velocity_skip_enabled
+                and side == "buy"
+                and _pv60 < self._config.buy_velocity_skip_threshold_bps
+            ):
+                from ztb.metrics.fill_quality import FillRecord
+
+                logger.info(
+                    f"[skip_gate] SKIP: buy velocity {_pv60:.2f}bps "
+                    f"< {self._config.buy_velocity_skip_threshold_bps}bps "
+                    f"(165# AS-R1 rule_velocity_buy_skip)"
+                )
+                result.skipped = True
+                result.score = _pv60
+                result.reason = "rule_velocity_buy_skip"
+                result.model_used = "rule"
+                result.early_return_record = FillRecord(
+                    cycle_id=cycle_id,
+                    timestamp=time.time(),
+                    side=side,
+                    order_price=order_price,
+                    order_quantity=current_lot,
+                    cancelled=True,
+                    cancel_reason="skip_gate_rule_velocity_buy",
+                    spread_at_order=spread_at_order,
+                    spread_offset_ratio=effective_offset_ratio,
+                    skip_gate_skipped=True,
+                    skip_gate_score=_pv60,
+                    skip_gate_reason="rule_velocity_buy_skip",
+                    skip_gate_model_used="rule",
+                    orderbook_imbalance=last_imbalance,
+                    bid_depth_total=last_bid_depth,
+                    ask_depth_total=last_ask_depth,
+                    run_id=run_id,
+                    git_sha=git_sha,
+                    regime=regime_value,
+                    price_velocity_60s=_pv60,
+                )
+                return result
+
             # 158# P1-6: 時間帯別 skip_gate 閾値調整
             from datetime import datetime, timezone as _tz
             _utc_hour = datetime.now(_tz.utc).hour
@@ -608,6 +689,7 @@ class SkipGateEvaluator:
             result.skipped = decision.should_skip
             result.score = decision.predicted_pnl_bps
             result.reason = decision.reason
+            result.price_velocity_60s = gate_features.get("price_velocity_60s")
             # 141#: model_used にどのモデルが使われたかを示す
             is_side_model = (
                 (side == "buy" and self._gate_buy is not None)

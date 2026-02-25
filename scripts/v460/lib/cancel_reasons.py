@@ -28,6 +28,9 @@ SELL_DYNAMIC_KILL = "sell_dynamic_kill"
 BUY_DYNAMIC_KILL = "buy_dynamic_kill"  # 157# §19: buy 側動的 kill
 TRENDING_SELL_SKIP = "trending_sell_skip"  # 155# §9: trending regime sell 抑制
 SKIP_GATE = "skip_gate"
+# 165# AS-R1: velocity-based skip
+SKIP_GATE_RULE_VELOCITY_SELL = "skip_gate_rule_velocity_sell"
+SKIP_GATE_RULE_VELOCITY_BUY = "skip_gate_rule_velocity_buy"
 
 AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     CIRCUIT_BREAKER_OPEN,
