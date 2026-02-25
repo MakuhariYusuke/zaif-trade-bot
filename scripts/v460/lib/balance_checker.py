@@ -121,11 +121,12 @@ class BalanceChecker:
                 )
                 # 128# 縮小後も dust sweep 判定を通過させる
                 return self._maybe_dust_sweep(btc_free)
-            logger.warning(
+            self._log_insufficient(
+                "sell",
                 f"[balance] Insufficient BTC for sell: "
                 f"{btc_free:.6f} < {self._min_order_btc:.4f} "
                 f"(regime_mult={regime_mult:.2f}). "
-                f"Skipping sell → will retry buy next."
+                f"Skipping sell → will retry buy next.",
             )
             return True
 
@@ -179,11 +180,12 @@ class BalanceChecker:
                     f"ロット自動縮小: {old_lot:.4f} → {affordable_lot:.4f} BTC"
                 )
                 return False
-            logger.warning(
+            self._log_insufficient(
+                "buy",
                 f"[balance] Insufficient JPY for buy: "
                 f"{jpy_free:.0f} < min {self._min_order_btc * regime_mult * price * self._config.balance_margin_ratio:.0f} "
                 f"(regime_mult={regime_mult:.2f}). "
-                f"Skipping buy → will retry sell next."
+                f"Skipping buy → will retry sell next.",
             )
             return True
 

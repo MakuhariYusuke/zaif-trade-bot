@@ -487,6 +487,13 @@ def enrich_fill_records(
         f"trades available={not trades_df.empty}"
     )
 
+    # 168# §10: 重複列回避 — fill_df に既存のマイクロ特徴量列があれば
+    # enriched 側の再計算値を優先する (全レコード一貫性のため)
+    overlap_cols = fill_df.columns.intersection(enriched.columns)
+    if len(overlap_cols) > 0:
+        logger.info(f"168# Dropping {len(overlap_cols)} overlapping columns from fill_df: {overlap_cols.tolist()}")
+        fill_df = fill_df.drop(columns=overlap_cols)
+
     return pd.concat([fill_df, enriched], axis=1)
 
 

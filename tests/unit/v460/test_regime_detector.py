@@ -623,13 +623,13 @@ class TestTimeFilterNoRecord:
         tf = cfg["time_filter"]
         assert "skip_utc_hours_buy" in tf
         assert "skip_utc_hours_sell" in tf
-        # 163# Step 2: buy = [16], sell = [8] (最悪時間帯のみ残留)
+        # 168# §4.2 #8: buy = [16], sell = [8, 21] (損失バンド精緻化)
         assert set(tf["skip_utc_hours_buy"]) == {16}
-        assert set(tf["skip_utc_hours_sell"]) == {8}
-        # 163# regime_adaptive で旧遮断を high_vol 時のみ復元
+        assert set(tf["skip_utc_hours_sell"]) == {8, 21}
+        # 168# regime_adaptive 拡張: +UTC12(buy), +UTC7(sell)
         assert tf["regime_adaptive_enabled"] is True
-        assert set(tf["regime_adaptive_extra_buy"]) == {8, 18}
-        assert set(tf["regime_adaptive_extra_sell"]) == {4, 14}
+        assert set(tf["regime_adaptive_extra_buy"]) == {8, 12, 18}
+        assert set(tf["regime_adaptive_extra_sell"]) == {4, 7, 14}
         # buy UTC04 は引き続き解除
         assert 4 not in tf["skip_utc_hours_buy"]
         # sell UTC01 は引き続き解除

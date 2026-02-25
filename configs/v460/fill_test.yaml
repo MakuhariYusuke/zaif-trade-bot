@@ -125,7 +125,8 @@ time_filter:
   # 旧 Step 1: BUY=[8,16,18], SELL=[4,8,14,+16(global)] → 有効遮断 BUY 3h, SELL 4h
   # 新 Step 2: BUY=[16],       SELL=[8]                  → 有効遮断 BUY 1h, SELL 1h
   skip_utc_hours_buy: [16]     # 163# Step2: UTC16(JST01) -2.82bps のみ残留
-  skip_utc_hours_sell: [8]     # 163# Step2: UTC08(JST17) -3.81bps のみ残留
+  # 168# §4.2 #8: UTC21(JST06) sell -1.681bps, WR32.1%, PnL120=-5.067bps → 恒常ブロック追加
+  skip_utc_hours_sell: [8, 21] # 163# UTC08 + 168# UTC21
   # 110# 086# デッドロック修正: alt_side==_last_side 時の連続待機上限
   # 0=旧動作(無制限), >0 で N 回超過後 alt_side を許可
   # 3回 × 120s = 6分待機後に解除 → 理論上 49%→~8% のアイドル削減
@@ -134,8 +135,9 @@ time_filter:
   # high_vol regime 時は旧 Step 1 の追加遮断を復元 → 安全ネット
   # ranging/trending_up 時は Step 2 のみ → 機会最大化
   regime_adaptive_enabled: true
-  regime_adaptive_extra_buy: [8, 18]     # high_vol 時のみ追加遮断
-  regime_adaptive_extra_sell: [4, 14]    # high_vol 時のみ追加遮断
+  # 168# §4.2 #8: UTC7 sell=-1.831bps WR29.0% PnL120=-8.262, UTC12 buy=-1.678bps WR23.5%
+  regime_adaptive_extra_buy: [8, 12, 18]   # high_vol 時のみ追加遮断 (168# +UTC12)
+  regime_adaptive_extra_sell: [4, 7, 14]   # high_vol 時のみ追加遮断 (168# +UTC7)
 
 # ---- 049# E3 サンプリング ----
 e3:

@@ -2572,7 +2572,7 @@ class Test052AdaptSellOffsetSync:
         assert FillTestConfig().min_order_btc == 0.001
 
     def test_yaml_skip_utc_hours_side_specific_089(self) -> None:
-        """163# Step2 time_filter: buy=[16], sell=[8]. 旧値は regime_adaptive に移動."""
+        """168# time_filter精緻化: buy=[16], sell=[8,21]. regime_adaptive拡張."""
         from pathlib import Path
         import yaml  # type: ignore[import-untyped]
 
@@ -2581,13 +2581,13 @@ class Test052AdaptSellOffsetSync:
             cfg = yaml.safe_load(f)
         buy_skip = cfg["time_filter"]["skip_utc_hours_buy"]
         sell_skip = cfg["time_filter"]["skip_utc_hours_sell"]
-        # 163# Step 2: buy = [16], sell = [8]
+        # 163# Step 2 + 168# §4.2 #8: buy = [16], sell = [8, 21]
         assert buy_skip == [16], f"Expected [16], got {buy_skip}"
-        assert sell_skip == [8], f"Expected [8], got {sell_skip}"
-        # 163# regime_adaptive_extra に旧遮断時間を保持
+        assert sell_skip == [8, 21], f"Expected [8, 21], got {sell_skip}"
+        # 168# regime_adaptive_extra 拡張: +UTC12(buy), +UTC7(sell)
         tf = cfg["time_filter"]
-        assert tf["regime_adaptive_extra_buy"] == [8, 18]
-        assert tf["regime_adaptive_extra_sell"] == [4, 14]
+        assert tf["regime_adaptive_extra_buy"] == [8, 12, 18]
+        assert tf["regime_adaptive_extra_sell"] == [4, 7, 14]
         # 旧 UTC13 (sell) は引き続き解除
         assert 13 not in sell_skip
 

@@ -70,12 +70,12 @@
 
 | File | Change |
 |------|--------|
-| ill_config.py | +4 fields: sell/buy_velocity_skip_enabled/threshold_bps |
+| fill_config.py | +4 fields: sell/buy_velocity_skip_enabled/threshold_bps |
 | skip_gate_evaluator.py | 速度ルール (SkipGate ML 前のプリゲート) |
-| ill_quality.py | price_velocity_60s field (FillRecord) |
-| ill_cycle_executor.py | 速度値の抽出記録 |
+| fill_quality.py | price_velocity_60s field (FillRecord) |
+| fill_cycle_executor.py | 速度値の抽出記録 |
 | cancel_reasons.py | SKIP_GATE_RULE_VELOCITY_SELL/BUY |
-| ill_test.yaml | 	arget_skip_rate_sell: 0.20 \u2192 0.25, 速度ルール設定 |
+| fill_test.yaml | 	arget_skip_rate_sell: 0.20 \u2192 0.25, 速度ルール設定 |
 
 ### 2.3 Config
 
@@ -169,3 +169,69 @@ Per-regime \u00d7 sell breakdown also available per day.
 | Date | Change |
 |------|--------|
 | 2026-02-25 | 165# Initial: AS root cause + AS-R1 velocity skip + 162# P1 daily health |
+
+---
+
+## 7. Reviewer追記（厳格査読・162/163残課題優先）
+
+### 7.1 総評
+
+本レポートは方向性（「AS主要因の特定」「velocity pre-gate導入」「日次stopgap評価」）自体は妥当だが、**意思決定に使うには未成熟**。特に、
+
+- 集計スナップショットの固定が甘く、再集計時に数値がドリフトしている
+- `model_used` の区分が簡略化され、悪化要因の局在を取り逃している
+- 実行失敗ログの解釈が機能回帰と運用競合で混同されうる
+
+ため、現時点で「AS-R1が有効だった/無効だった」の結論を強く出すのは危険。
+
+### 7.2 事実確認（再計算ベース）
+
+直近 `fill_records_*.jsonl` 再計算では、以下のように 165本文値と差分が出ることを確認。
+
+- total=3433, filled=1508, fill_rate=43.93%
+- AS rate=26.66%（方向は165本文と整合）
+- AS avg≈-5.42bps / non-AS avg≈+1.63bps（方向は整合）
+- score-pnl相関: overall≈-0.0196, buy≈-0.0065, sell≈-0.0293（「ほぼゼロ」は整合）
+
+**問題は方向ではなく、再現条件の固定不足**。母集団（run_id/日付範囲/抽出時刻）を固定せずに比較しているため、報告値の信頼区間が曖昧。
+
+### 7.3 重大な欠落
+
+`model_used` は本文の 3 区分（`none`/`primary`/`primary:side_sell`）より細かく、少なくとも `primary:side_buy` と `primary:unified` が存在する。これを集約で潰すと、
+
+- 「どの経路がASを増やしているか」
+- 「どの経路が改善余地か」
+
+の切り分け精度が落ち、`163` の stopgap出口判定に誤誘導を起こす。
+
+### 7.4 実行失敗解釈の注意
+
+イベント/ログ上の `run_fill_test` 異常終了は、少なくとも一部で lock 競合（既存プロセス/heartbeat）起因が確認される。これは **AS-R1ロジック不具合の直接証拠ではない**。
+
+したがって、失敗要因は以下に分離して扱うべき。
+
+- 機能回帰（速度ルール実装ミス）
+- 運用競合（多重起動・lock管理）
+- 外部要因（取引所応答・資産制約）
+
+### 7.5 162/163 残課題を踏まえた優先順位（必須）
+
+短期収益性の観点でも、順序は以下を推奨。
+
+1. **P0: 再現性固定**
+  - run_id, 期間, 使用ファイル, 集計スクリプト引数を 1 セットで固定して再計算
+2. **P0: 163出口判定の運用化**
+  - 2-A/2-C/2-D/6-A の日次判定を「KEEP継続」だけでなく、解除条件の監視閾値逸脱を自動アラート化
+3. **P1: AS-R1の閾値校正**
+  - 速度ログから sell閾値 8.0bps の妥当域を再探索（過剰skipによる機会損失を同時計測）
+4. **P1: model_used経路別レポートを165へ昇格**
+  - side_sell/side_buy/unified を分離し、経路別AS率・PnLを固定フォーマット化
+
+### 7.6 受入条件（このレビューの観点）
+
+以下が満たされるまで、165の結論は「暫定」と明記するのが妥当。
+
+- 同一母集団で再計算して本文表を再現可能
+- `model_used` 経路別にAS悪化源が説明可能
+- lock競合を除外した連続運転ログでAS-R1の効果/副作用を評価済み
+- 162/163の stopgap出口判定と矛盾しない運用判断が記録されている

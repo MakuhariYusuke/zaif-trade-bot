@@ -209,8 +209,8 @@ class TestFillTestConfigRegimeAdaptive:
             raw = yaml.safe_load(f)
         cfg = FillTestConfig.from_yaml(raw)
         assert cfg.regime_adaptive_enabled is True
-        assert cfg.regime_adaptive_extra_buy == [8, 18]
-        assert cfg.regime_adaptive_extra_sell == [4, 14]
+        assert cfg.regime_adaptive_extra_buy == [8, 12, 18]  # 168# +UTC12
+        assert cfg.regime_adaptive_extra_sell == [4, 7, 14]   # 168# +UTC7
 
     def test_default_values(self) -> None:
         """デフォルト値: regime_adaptive_enabled=False, 他=None."""
@@ -232,4 +232,4 @@ class TestFillTestConfigRegimeAdaptive:
         tf = raw["time_filter"]
         assert tf["skip_utc_hours"] == []
         assert tf["skip_utc_hours_buy"] == [16]
-        assert tf["skip_utc_hours_sell"] == [8]
+        assert tf["skip_utc_hours_sell"] == [8, 21]  # 168# +UTC21
