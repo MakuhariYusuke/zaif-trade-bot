@@ -111,6 +111,13 @@ class FillTestRegimeDetector:
         return self._confirmed_regime
 
     @property
+    def last_volatility_ratio(self) -> float:
+        """168# 直近の volatility_ratio (maker_price 低 vol boost 用)."""
+        if hasattr(self, "_last_result") and self._last_result is not None:
+            return self._last_result.volatility_ratio
+        return 1.0  # デフォルト: ブースト不発動
+
+    @property
     def observation_count(self) -> int:
         """蓄積済み観測数."""
         return len(self._prices)
@@ -155,13 +162,16 @@ class FillTestRegimeDetector:
         # ヒステリシス適用 (035# §4.2 #2)
         confirmed = self._apply_hysteresis(raw_regime)
 
-        return RegimeResult(
+        result = RegimeResult(
             regime=confirmed,
             confidence=confidence,
             stability=self._stability_count,
             trend_pct=trend_pct,
             volatility_ratio=vol_ratio,
         )
+        # 168# §9.10: maker_price 低 vol boost 用にキャッシュ
+        self._last_result = result
+        return result
 
     def _compute_indicators(self) -> tuple[float, float]:
         """直近 window の trend% と volatility ratio を算出.

@@ -116,6 +116,11 @@ class FillTestConfig:
     # 143# R-1a: レジーム別 offset 調整
     regime_high_vol_offset_boost: float = 1.2   # high_vol 時に offset × 1.2 (+20% 拡張)
     regime_ranging_offset_discount: float = 1.0 # ranging 時に offset × N (1.0=無効, <1.0で縮小)
+    # 168# §9.10: 低ボラティリティ offset boost (time_filter 根本対策)
+    # vol_ratio < threshold 時に offset を拡大し、低ボラ環境での過剰アグレッシブ発注を抑制
+    low_vol_offset_boost_enabled: bool = False
+    low_vol_offset_boost: float = 1.4   # 低 vol 時の offset 倍率
+    low_vol_threshold: float = 0.70     # vol_ratio がこの値未満で発動
     # 041# 時間帯フィルター (AS 高リスク時間帯のスキップ)
     enable_time_filter: bool = False
     skip_utc_hours: list[int] | None = None
@@ -901,6 +906,9 @@ class FillTestConfig:
             "trending_offset_boost_sell": "regime_trending_offset_boost_sell",   # 157# §19
             "high_vol_offset_boost": "regime_high_vol_offset_boost",       # 143# R-1a
             "ranging_offset_discount": "regime_ranging_offset_discount",   # 143# R-1a
+            "low_vol_offset_boost_enabled": "low_vol_offset_boost_enabled", # 168#
+            "low_vol_offset_boost": "low_vol_offset_boost",               # 168#
+            "low_vol_threshold": "low_vol_threshold",                     # 168#
         }
         for yaml_key, config_key in regime_map.items():
             if yaml_key in regime:

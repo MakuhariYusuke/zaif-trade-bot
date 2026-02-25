@@ -345,6 +345,28 @@ class MakerPriceCalculator:
                 f"(discount={cfg.regime_ranging_offset_discount:.2f})"
             )
 
+        # 168# 低ボラティリティ offset boost: vol_ratio < threshold で offset 拡大
+        # time_filter の根本対策 — 低 vol 環境での過剰アグレッシブ発注を構造的に抑制
+        if (
+            cfg.low_vol_offset_boost_enabled
+            and self._regime_detector is not None
+            and hasattr(self._regime_detector, "last_volatility_ratio")
+        ):
+            vol_ratio = self._regime_detector.last_volatility_ratio
+            if vol_ratio < cfg.low_vol_threshold:
+                _low_vol_boost = cfg.low_vol_offset_boost
+                pre_offset = effective_offset_ratio
+                effective_offset_ratio = min(
+                    effective_offset_ratio * _low_vol_boost,
+                    cfg.max_offset_ratio,
+                )
+                logger.info(
+                    f"[low_vol_boost] 168# {side} vol_ratio={vol_ratio:.3f} "
+                    f"< {cfg.low_vol_threshold:.2f} → offset boosted: "
+                    f"{pre_offset:.4f}→{effective_offset_ratio:.4f} "
+                    f"(boost={_low_vol_boost:.2f})"
+                )
+
         # 130# unknown regime buy guard: offset boost で AS 回避
         if (
             cfg.unknown_buy_offset_boost > 1.0
