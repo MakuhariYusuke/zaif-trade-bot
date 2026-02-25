@@ -195,6 +195,9 @@
 | 162 | rpt | [162_phg_rpt_fill_test_10day_log_analysis.md](162_phg_rpt_fill_test_10day_log_analysis.md) | Fill Test 10日間ログ分析: AS率27%, Fill Rate急落, 改善提案 |
 | 163 | rpt | [163_phg_rpt_stopgap_measures_catalog.md](163_phg_rpt_stopgap_measures_catalog.md) | 止血施策カタログ: 17 件のストップギャップ措置を文書化 + FillTestRunner mixin 分割 |
 | 164 | rpt | [164_phg_rpt_skip_gate_shap_analysis.md](164_phg_rpt_skip_gate_shap_analysis.md) | SkipGate SHAP 特徴量重要度分析: 3 モデル TreeExplainer + Stopgap 退出基準表 |
+| 165 | rpt | [165_phg_rpt_as_root_cause_and_velocity_rule.md](165_phg_rpt_as_root_cause_and_velocity_rule.md) | AS Root Cause Analysis + Velocity Skip Rule + Daily Health Report |
+| 166 | rpt | [166_phg_rpt_reviewer_response_and_remaining_tasks.md](166_phg_rpt_reviewer_response_and_remaining_tasks.md) | レビュー対応 + 162/163 残課題消化: SR-1~SR-4 安定性修正, ログベース改善観測 |
+| 167 | fix | [167_phg_fix_sell_loop_dl4_dl5.md](167_phg_fix_sell_loop_dl4_dl5.md) | sell ループ構造修正 (DL-4/DL-5) + カウンタ永続化: 166# §11.5 全提案を汎用原則で解消 |
 
 ---
 
