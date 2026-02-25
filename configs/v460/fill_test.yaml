@@ -358,6 +358,11 @@ loss_control:
     window: 100                  # 直近 N fill の在庫偏重を計算
     max_factor: 0.4              # 最大 offset 補正倍率 (40%)
     neutral_band: 0.1            # |imbalance| < 0.1 では補正なし (中立帯)
+  # 168# §4.1 #3: 日次ドローダウンガード (1日の累積損失制限)
+  daily_drawdown:
+    enabled: false               # true で有効化 (まず観測モードで検証)
+    hard_limit_bps: -50.0        # 日次累積 PnL がこの bps 以下でトレード全停止
+    soft_limit_bps: -30.0        # soft 閾値で lot 半減
 
 # ---- 102# チューニングパラメータ (散在マジックナンバーの外部化) ----
 tuning:

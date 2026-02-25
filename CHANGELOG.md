@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 168# §4.1 #3: DailyDrawdownGuard (2026-02-26)
+
+### Added
+- `scripts/v460/lib/daily_drawdown_guard.py`: 日次 PnL ベースドローダウンガード (soft/hard 二段制御)
+- `cancel_reasons.DAILY_DRAWDOWN_HALT`: 新定数 + AUDIT set 追加
+- `FillTestConfig`: `daily_drawdown_enabled/hard_limit_bps/soft_limit_bps` 3 フィールド + YAML パーサー
+- `FillTestState.daily_drawdown_state`: 永続化フィールド (resume 対応)
+- `fill_loop_orchestrator.py`: halt skip / PnL update / soft lot reduction / state save/load
+- `configs/v460/fill_test.yaml`: `loss_control.daily_drawdown` セクション (enabled: false)
+- `tests/unit/v460/test_168_daily_drawdown_guard.py`: 27 tests
+
 ## 168# §8 Daily Report Automation (2026-02-26)
 
 ### Added

@@ -294,6 +294,14 @@ class FillLoopOrchestratorMixin:
                     "prices": saved_state.regime_prices,
                     "raw_history": saved_state.regime_raw_history or [],
                 })
+            # 168# §4.1 #3: 日次ドローダウンガード状態復元
+            if saved_state is not None and saved_state.daily_drawdown_state:
+                self._daily_drawdown_guard.import_state(saved_state.daily_drawdown_state)
+        else:
+            # regime_detector がない場合でも daily_drawdown state は復元
+            saved_state = self._state_persistence.load()
+            if saved_state is not None and saved_state.daily_drawdown_state:
+                self._daily_drawdown_guard.import_state(saved_state.daily_drawdown_state)
 
         if self._regime_detector is not None and existing_records and not regime_restored:
             # fallback: 旧方式の warm-up (state 復元失敗時)
@@ -330,6 +338,21 @@ class FillLoopOrchestratorMixin:
         logger.info(f"Starting fill test: {hours}h, interval={self.config.cycle_interval_sec}s")
 
         while time.time() < end_time and not self._kill_switch.is_killed():
+            # 168# §4.1 #3: 日次ドローダウンガード — halt 中はスキップ
+            if self._daily_drawdown_guard.is_halted():
+                # 日次 PnL 超過 → UTC 日替わりまでスキップ
+                batch.append(self._make_skip_record(
+                    side="none",
+                    cancel_reason=CR.DAILY_DRAWDOWN_HALT,
+                    order_quantity=0.0,
+                    regime=self._current_regime_value(),
+                ))
+                total_count += 1
+                batch = self._batch_persistence.maybe_flush(batch, "daily_drawdown_halt")
+                self._update_lock_heartbeat()
+                await asyncio.sleep(self.config.cycle_interval_sec * 5)  # halt 中は 5x 間隔
+                continue
+
             # 129# D.2: 残高制約による side 強制切替追跡
             _balance_forced = False
             _is_rescue = False  # 158# P1-1: balance_forced rescue フラグ
@@ -833,6 +856,22 @@ class FillLoopOrchestratorMixin:
                         record.post_fill_30s_pnl / self._BPS_FACTOR
                         * record.fill_price * record.order_quantity
                     )
+                # 168# §4.1 #3: 日次ドローダウンガード PnL 更新
+                if record.post_fill_30s_pnl is not None:
+                    dd_result = self._daily_drawdown_guard.update_pnl(
+                        record.post_fill_30s_pnl,
+                    )
+                    if dd_result.get("soft_triggered"):
+                        old_lot = self._current_lot
+                        self._current_lot = max(
+                            self.config.order_quantity,
+                            self._current_lot / 2,
+                        )
+                        self._balance_checker.pre_shrink_lot = self._current_lot
+                        logger.warning(
+                            f"[daily_drawdown] soft lot reduction: "
+                            f"{old_lot:.4f} → {self._current_lot:.4f} BTC"
+                        )
             batch.append(record)
 
             # --- 046# soft/hard 二段 loss_cap ---
@@ -937,6 +976,7 @@ class FillLoopOrchestratorMixin:
                     base_offset_ratio=self._maker_price.base_offset_ratio,
                     base_offset_ratio_buy=self._maker_price.base_offset_ratio_buy,
                     base_offset_ratio_sell=self._maker_price.base_offset_ratio_sell,
+                    daily_drawdown_state=self._daily_drawdown_guard.export_state(),
                     **self._get_regime_state_fields(),
                 ))
 
@@ -995,6 +1035,7 @@ class FillLoopOrchestratorMixin:
             base_offset_ratio=self._maker_price.base_offset_ratio,
             base_offset_ratio_buy=self._maker_price.base_offset_ratio_buy,
             base_offset_ratio_sell=self._maker_price.base_offset_ratio_sell,
+            daily_drawdown_state=self._daily_drawdown_guard.export_state(),
             **self._get_regime_state_fields(),
         ))
 

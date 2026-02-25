@@ -351,6 +351,14 @@ class FillTestRunner(
         # 158# §20-B: trending_sell_skip 連続カウンタ (安全弁)
         self._trending_sell_skip_count: int = 0
 
+        # 168# §4.1 #3: 日次ドローダウンガード
+        from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
+        self._daily_drawdown_guard = DailyDrawdownGuard(
+            enabled=config.daily_drawdown_enabled,
+            hard_limit_bps=config.daily_drawdown_hard_limit_bps,
+            soft_limit_bps=config.daily_drawdown_soft_limit_bps,
+        )
+
         # 044# A-7: loss_cap 更新カウンタ
         self._loss_cap_update_interval = config.loss_cap_update_interval
 

@@ -129,6 +129,10 @@ class FillTestConfig:
     loss_cap_ratio: float = 0.05  # 残高の 5% をキャップ (hard)
     # 046# soft/hard 二段 loss_cap: soft 超過でロット半減、hard 超過で SAFE_STOP
     soft_loss_cap_ratio: float = 0.02  # 残高の 2% で soft cap (ロット半減)
+    # 168# §4.1 #3: 日次ドローダウンガード (UTC 日単位の cumPnL 制限)
+    daily_drawdown_enabled: bool = False        # True で日次 PnL 監視有効
+    daily_drawdown_hard_limit_bps: float = -50.0  # この bps 以下でサイクル停止
+    daily_drawdown_soft_limit_bps: float = -30.0  # この bps 以下でロット半減
     # 049# E3 サンプリング: 全約定ではなくサンプリングで multi-timeframe 計測
     e3_sampling_ratio: float = 1.0  # 0.0-1.0, 1.0=全約定, 0.33=1/3 のみ
     # 049# side 別 offset: buy/sell で独立に offset を設定
@@ -709,6 +713,15 @@ class FillTestConfig:
         }.items():
             if yk in inv_skew:
                 kwargs[ck] = inv_skew[yk]
+
+        # 168# §4.1 #3: 日次ドローダウンガード
+        dd_guard = 止血.get("daily_drawdown", {})
+        if dd_guard.get("enabled") is not None:
+            kwargs["daily_drawdown_enabled"] = dd_guard["enabled"]
+        if "hard_limit_bps" in dd_guard:
+            kwargs["daily_drawdown_hard_limit_bps"] = float(dd_guard["hard_limit_bps"])
+        if "soft_limit_bps" in dd_guard:
+            kwargs["daily_drawdown_soft_limit_bps"] = float(dd_guard["soft_limit_bps"])
 
         return kwargs
 

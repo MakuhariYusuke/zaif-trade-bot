@@ -599,3 +599,46 @@ effective_boost = 1 + (1 - |inv_skew_factor|) * (boost_factor - 1)
 | #8 | 日次レポート cron 化 | ✅ 完了 | §9.5 参照 |
 
 *§9.4-9.7 は 168# §8 #1/#8 実装完了時点の記録 (2026-02-26)。*
+
+### 9.8 §4.1 #3: DailyDrawdownGuard 統合
+
+**目的**: 日次累計 PnL が閾値を超過した場合にトレードを自動停止し、1日の最大損失を制限する。
+既存の `ztb/risk/drawdown_controller.py` は RL 訓練環境向け (ポートフォリオ価値ベース) のため、
+fill test / ライブ取引向けに bps ベースの軽量ガードを新規実装。
+
+**アーキテクチャ**:
+
+```
+DailyDrawdownGuard (scripts/v460/lib/daily_drawdown_guard.py)
+├── DailyDrawdownState (dataclass): current_day, daily_pnl_bps, halted, ...
+├── update_pnl(bps) → {"halted", "soft_triggered", "daily_pnl_bps"}
+├── is_halted() → bool (UTC 日替わり自動リセット付き)
+├── export_state() / import_state() → FillTestState 永続化
+└── get_metrics() → 監視/レポート用 dict
+```
+
+**二段制御**:
+| 段階 | 閾値 (デフォルト) | アクション |
+|------|-------------------|------------|
+| **soft** | -30 bps | ロット半減 (1日1回) |
+| **hard** | -50 bps | トレード全停止 (UTC 日替わりまで) |
+
+**変更ファイル** (7 files):
+1. `scripts/v460/lib/daily_drawdown_guard.py` — **新規**: DailyDrawdownGuard クラス
+2. `scripts/v460/lib/cancel_reasons.py` — `DAILY_DRAWDOWN_HALT` 定数 + AUDIT set 追加
+3. `scripts/v460/lib/fill_config.py` — `daily_drawdown_enabled/hard_limit_bps/soft_limit_bps` フィールド + YAML パーサー
+4. `scripts/v460/run_fill_test.py` — `__init__` で DailyDrawdownGuard 初期化
+5. `scripts/v460/lib/fill_loop_orchestrator.py` — halt skip / PnL update / soft lot reduction / state 永続化
+6. `scripts/v460/lib/resilience.py` — `FillTestState.daily_drawdown_state` フィールド
+7. `configs/v460/fill_test.yaml` — `loss_control.daily_drawdown` セクション (enabled: false)
+
+**統合ポイント**:
+- **メインループ冒頭**: `is_halted()` → skip record (cancel_reason=`daily_drawdown_halt`) + 5x interval sleep
+- **約定後 PnL 追跡**: `record.post_fill_30s_pnl` を `update_pnl()` に渡し soft/hard 判定
+- **soft lot reduction**: `self._current_lot /= 2` (既存 soft_loss_cap パターン踏襲)
+- **state 永続化**: FillTestState に export_state() dict を保存、resume 時に同UTC日なら restore
+
+**テスト**: 27 tests (test_168_daily_drawdown_guard.py)
+- 基本 / PnL 追跡 / soft・hard 制御 / 日替わりリセット / state export/import / cancel_reasons / config / metrics
+
+**初期値**: `enabled: false` (観測期間として既存ログで閾値を検証してから有効化)

@@ -31,6 +31,8 @@ SKIP_GATE = "skip_gate"
 # 165# AS-R1: velocity-based skip
 SKIP_GATE_RULE_VELOCITY_SELL = "skip_gate_rule_velocity_sell"
 SKIP_GATE_RULE_VELOCITY_BUY = "skip_gate_rule_velocity_buy"
+# 168# §4.1 #3: daily drawdown halt
+DAILY_DRAWDOWN_HALT = "daily_drawdown_halt"
 
 AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     CIRCUIT_BREAKER_OPEN,
@@ -45,6 +47,7 @@ AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     SELL_DYNAMIC_KILL,
     BUY_DYNAMIC_KILL,
     TRENDING_SELL_SKIP,
+    DAILY_DRAWDOWN_HALT,
 })
 
 # ======================================================================

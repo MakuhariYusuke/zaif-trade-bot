@@ -219,6 +219,8 @@ class FillTestState:
     regime_stability: int = 0
     regime_prices: list[list[float]] | None = None  # [[ts, price], ...]
     regime_raw_history: list[str] | None = None  # [regime_value, ...]
+    # 168# §4.1 #3: 日次ドローダウンガード状態
+    daily_drawdown_state: dict[str, object] | None = None
     # タイムスタンプ
     saved_at: float = 0.0
     saved_at_iso: str = ""
