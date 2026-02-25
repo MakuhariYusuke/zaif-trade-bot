@@ -696,6 +696,21 @@ class FillLoopOrchestratorMixin:
                     self._trending_sell_skip_count = 0
                     _should_skip = False
 
+                # 166# HF4: 資金枯渇リバランス緩和
+                # 8.2A: buy 側が残高不足の場合、sell スキップを中断してリバランス
+                if _should_skip:
+                    _buy_insufficient = await self._check_balance_for_side(
+                        "buy", regime_mult=_regime_mult
+                    )
+                    if _buy_insufficient:
+                        logger.info(
+                            f"[166# HF4] Trending sell skip relaxation: "
+                            f"buy side insufficient  forcing sell for rebalance "
+                            f"(was consecutive={self._trending_sell_skip_count})"
+                        )
+                        self._trending_sell_skip_count = 0
+                        _should_skip = False
+
                 if _should_skip:
                     self._trending_sell_skip_count += 1
                     logger.info(

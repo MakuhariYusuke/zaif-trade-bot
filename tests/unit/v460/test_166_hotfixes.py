@@ -152,3 +152,75 @@ class TestRescueConfig:
         cfg = FillTestConfig.from_yaml(yaml_cfg)
         assert cfg.balance_forced_rescue_enabled is True
         assert cfg.balance_forced_rescue_offset_mult == 2.0
+
+
+# ======================================================================
+# HF4: trending sell skip rebalance relaxation
+# ======================================================================
+
+class TestTrendingSellSkipRebalance:
+    """166# HF4: buy 残高不足時に trending sell skip を緩和."""
+
+    def test_hf4_code_exists_in_orchestrator(self):
+        """HF4 コードがオーケストレータに存在する."""
+        import inspect
+        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+        source = inspect.getsource(FillLoopOrchestratorMixin)
+        assert "166# HF4" in source
+        assert "buy side insufficient" in source or "buy_insufficient" in source
+
+    def test_max_consecutive_trending_sell_skip_yaml(self):
+        """YAML で max_consecutive_trending_sell_skip=10 が設定されている."""
+        import yaml
+        from pathlib import Path
+        cfg_path = Path("configs/v460/fill_test.yaml")
+        with open(cfg_path) as f:
+            raw = yaml.safe_load(f)
+        val = raw.get("loss_control", {}).get("max_consecutive_trending_sell_skip", None)
+        assert val == 10, f"Expected 10, got {val}"
+
+    def test_config_loads_max_consecutive(self):
+        """FillTestConfig が max_consecutive_trending_sell_skip を正しくロードする."""
+        import yaml
+        from scripts.v460.lib.fill_config import FillTestConfig
+        cfg_path = "configs/v460/fill_test.yaml"
+        with open(cfg_path) as f:
+            raw = yaml.safe_load(f)
+        cfg = FillTestConfig.from_yaml(raw)
+        assert cfg.max_consecutive_trending_sell_skip == 10
+
+
+# ======================================================================
+# HF4: trending sell skip rebalance relaxation
+# ======================================================================
+
+class TestTrendingSellSkipRebalance:
+    """166# HF4: buy 残高不足時に trending sell skip を緩和."""
+
+    def test_hf4_code_exists_in_orchestrator(self):
+        """HF4 コードがオーケストレータに存在する."""
+        import inspect
+        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+        source = inspect.getsource(FillLoopOrchestratorMixin)
+        assert "166# HF4" in source
+        assert "buy side insufficient" in source or "buy_insufficient" in source
+
+    def test_max_consecutive_trending_sell_skip_yaml(self):
+        """YAML で max_consecutive_trending_sell_skip=10 が設定されている."""
+        import yaml
+        from pathlib import Path
+        cfg_path = Path("configs/v460/fill_test.yaml")
+        with open(cfg_path) as f:
+            raw = yaml.safe_load(f)
+        val = raw.get("loss_control", {}).get("max_consecutive_trending_sell_skip", None)
+        assert val == 10, f"Expected 10, got {val}"
+
+    def test_config_loads_max_consecutive(self):
+        """FillTestConfig が max_consecutive_trending_sell_skip を正しくロードする."""
+        import yaml
+        from scripts.v460.lib.fill_config import FillTestConfig
+        cfg_path = "configs/v460/fill_test.yaml"
+        with open(cfg_path) as f:
+            raw = yaml.safe_load(f)
+        cfg = FillTestConfig.from_yaml(raw)
+        assert cfg.max_consecutive_trending_sell_skip == 10

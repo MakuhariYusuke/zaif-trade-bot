@@ -303,6 +303,8 @@ loss_control:
   skip_sell_trending: true
   # 156# D-4: trending_up のみ skip、trending_down sell は開放
   skip_sell_trending_up_only: true
+  # 166# HF4: 連続 sell skip 安全弁上限を 3010 に短縮 (7.3 B.4)
+  max_consecutive_trending_sell_skip: 10
   # P0-10: sell 動的 kill (rolling PnL ベースの自動停止)
   sell_dynamic_kill:
     enabled: true
