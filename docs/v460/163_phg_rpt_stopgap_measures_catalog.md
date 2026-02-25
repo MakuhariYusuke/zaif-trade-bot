@@ -324,7 +324,7 @@ Sell は以下 **6 層** のガードを通過する必要がある:
 
 | 優先度 | 対策 | 消滅する姑息的手段 | 期待効果 |
 |--------|------|-------------------|----------|
-| **P0** | ~~Inventory Skewing 実装~~ **162# 実装済み** (`42a06d8e9`, enabled=false) | 3-A, 3-B, 3-C (balance_forced 関連全体) | fill_rate +15-20pt |
+| **P0** | ~~Inventory Skewing 実装~~ **162# 実装済み** (`42a06d8e9`, enabled=false) → **enabled=true** (`5a5b9ba42`) | 3-A, 3-B, 3-C (balance_forced 関連全体) | fill_rate +15-20pt |
 | **P0** | 動的ゲーティング (time_filter 代替) | 1-A, 1-B, 1-C | アイドル時間 -30%+ |
 | **P1** | sell offset 動的最適化 | 2-A, 2-B (trending_sell_skip) | sell fill_rate 改善 |
 | **P1** | AS 根因分析 + モデル改善 | 2-C (sell_dynamic_kill), 6-A (unknown_regime skip) | PnL 改善 |
@@ -332,6 +332,53 @@ Sell は以下 **6 層** のガードを通過する必要がある:
 
 ---
 
+## Inventory Skewing 段階有効化計画 (162# P1)
+
+> 161# で提案された IS の段階的有効化を、163# 退出基準表と接続する運用計画。
+> 000# 運用方針追補に従い、各ステージの判定は再現可能なフィルタ条件で実施する。
+
+### 現在のステータス
+
+| 項目 | 値 |
+|------|-----|
+| YAML | `configs/v460/fill_test.yaml` → `loss_control.inventory_skewing` |
+| enabled | **true** (since `5a5b9ba42`, 2026-02-26) |
+| max_factor | 0.4 |
+| neutral_band | 0.1 |
+| window | 100 |
+
+### ステージ定義
+
+| Stage | 条件 | 期間 | KPI 基準 | 次ステージ移行条件 |
+|-------|------|------|----------|-------------------|
+| **S0** (実装) | enabled=false | — | — | ✅ 完了 (`42a06d8e9`) |
+| **S1** (有効化) | enabled=true, max_factor=0.4 | 24h+ | fill_rate, forced_skip 率, imbalance σ | ← **現在ここ** |
+| **S2** (チューニング) | max_factor / neutral_band 調整 | 24h | S1 比で KPI 劣化なし | S1 KPI が 24h 安定 |
+| **S3** (stopgap 退出) | 3-A balance_forced_skip OFF | 48h | 退出基準表 3-A 参照 | S2 完了 + forced_skip < 5% |
+| **S4** (確定) | 3-B, 3-C 順次退出 | 各 48h | 退出基準表 3-B, 3-C 参照 | S3 完了 + deadlock/rescue 0回 |
+
+### S1 (現行) 判定コマンド
+
+```powershell
+# 直近24hのIS有効化後データを分析 (162# P0 ツール使用)
+.venv/Scripts/python tools/analysis/analyze_fill_logs.py `
+  --git-sha 5a5b9ba `
+  --date-from 2026-02-26 `
+  --json -o reports/is_s1_eval.json
+```
+
+### S1 → S2 移行判定基準
+
+1. `forced_skip` 発生率 < 10% (24h)
+2. `inventory_imbalance` 標準偏差 < 0.3
+3. buy/sell fill_count 比率 0.3–3.0 の範囲内
+4. 全体 PnL が S0 期間 (2/17–2/25) の平均を下回らない
+
+### 関連ドキュメント
+- [161_phg_rev_160_fill_test_review.md](161_phg_rev_160_fill_test_review.md) — IS 提案元
+- [159_phg_rev_158_phase_d_backlog_review.md](159_phg_rev_158_phase_d_backlog_review.md) — IS P0 格上げ推奨
+
+---
 ## Stopgap 退出基準表 (162# §7 P0)
 
 > 各 stopgap を OFF にする際の **前提条件・監視指標・ロールバック条件** を定義する。
@@ -382,3 +429,4 @@ Sell は以下 **6 層** のガードを通過する必要がある:
 | 2026-02-25 | God Object 分割完了 (`6b766caf9`): run_fill_test 2,231→378行 3 Mixin, maker_price compute() 306→143行, fill_config from_yaml() 479→139行 |
 | 2026-02-26 | IS YAML enabled=true, 107# Phase 3 Step 2 動的ゲーティング実装 (regime-adaptive time_filter) |
 | 2026-02-26 | 162# §7 P0: Stopgap 退出基準表追記, 164# SHAP 分析との相互参照追加 |
+| 2026-02-26 | 162# P0: analyze_fill_logs CLI (再現可能分析), 162# P1: IS 段階有効化計画追記 |
