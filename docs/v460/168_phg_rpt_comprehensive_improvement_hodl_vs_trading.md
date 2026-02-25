@@ -642,3 +642,67 @@ DailyDrawdownGuard (scripts/v460/lib/daily_drawdown_guard.py)
 - 基本 / PnL 追跡 / soft・hard 制御 / 日替わりリセット / state export/import / cancel_reasons / config / metrics
 
 **初期値**: `enabled: false` (観測期間として既存ログで閾値を検証してから有効化)
+
+### 9.9 168# 残課題消化: 分析実行 + sell 保持期間延長
+
+#### A. 分析ツール実行結果
+
+**hindsight_filter** (3676 records):
+- sell reverse_better=57.5% (過半数で逆サイドが正解)
+- ranging_sell avg_pnl=-0.30 bps (最大ボリューム損失源, n=461)
+- none_sell avg_pnl=-0.80 bps (少数だが最悪)
+- trending_buy系が好調: trending_down_buy +3.69 bps, trending_up_buy +2.67 bps
+- skip_gate閾値=0.50 が最善 (上げると悪化)
+- 待機時間 5-15s が最もマシ (avg=-0.08 bps), 15-30s が最悪 (-0.61 bps)
+- 出力: `analysis_results/168_hindsight.json`
+
+**PnL Monte Carlo** (10,000 paths):
+- **E[PnL] = -2,276 JPY/月**, σ=517 JPY, P(loss)=100%
+- **G1.1 = FAIL** (fill_rate 43.1%, cancel_ratio 56.9%, pnl_mean -0.236 bps)
+- 感度分析: **pnl_adj +1.0 bps で黒字化** (fill 50%→+8,569 JPY, fill 90%→+15,431 JPY)
+- fill_rate 改善だけでは不十分、pnl_mean の改善が必須
+
+**oracle_baseline**:
+- **Oracle月間: +45,942 JPY** (実績: -5,910 JPY), gap=51,852 JPY → ph3 PASS
+- sell が最大損失源: sell月間 -14,697 JPY vs buy +2,783 JPY
+- trending_down 最強: 実績 +54,299 JPY/月
+- unknown 最悪: 実績 -28,869 JPY/月
+- 出力: `analysis_results/168_oracle.json`
+
+**sell SHAP 分析** (164# 既存, n=28):
+- sell 最重要特徴量: spread_jpy (SHAP=1.636), price_velocity_60s (1.420)
+- skip20 pnl120 改善: +0.221 bps
+- 低サンプル数 (n=28) のため追加データ蓄積が必要
+
+#### B. 統合知見 — sell 側改善ロードマップ
+
+| 観点 | データ | 行動指針 |
+|------|--------|----------|
+| sell reverse_better | 57.5% | 現行モデルの sell 判定精度が不十分 |
+| oracle sell | +39,448 JPY/月 | 理論上は sell で利益可能 |
+| PnL30→PnL120 | -0.45→+0.01 bps | 時間経過で sell は回復傾向 |
+| MC感度 | +1.0 bps で黒字 | pnl_mean の微改善で大きな効果 |
+
+#### C. sell 保持期間延長 (§4.1 #1)
+
+**根拠**: sell PnL30s=-0.454 bps (損失) → PnL120s=+0.012 bps (BEP) → 時間経過で回復。
+保持期間を 30s→90s に延長すると:
+1. PnL 計測が 90s 時点の正のゾーンに入る
+2. sell サイクル頻度が自然に削減 (90s 待ち → 毎時 sell 約30→約18回)
+3. 次サイクルまでの冷却期間が増え sell loop を構造的に抑制
+
+**変更ファイル** (4 files):
+1. `scripts/v460/lib/fill_config.py` — `post_fill_wait_sec_sell: float | None` フィールド + flat_keys 追加
+2. `scripts/v460/lib/pnl_measurer.py` — side=="sell" 時に sell 専用 wait_sec を使用
+3. `configs/v460/fill_test.yaml` — `post_fill_wait_sec_sell: 90.0`
+4. `tests/unit/v460/test_168_pnl_measurer_sell_hold.py` — 9 tests
+
+**テスト** (9 tests):
+- sell が sell 専用 wait を使用
+- buy は sell override を無視
+- early exit との組合せ
+- YAML パースの正確性
+- PnL 計算の正確性
+- 未約定時の空 PnlMeasurement
+
+**互換性**: `post_fill_wait_sec_sell: null` で従来動作 (30s 共通) に自動フォールバック。

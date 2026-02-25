@@ -5,6 +5,7 @@ run_fill_test.py FillTestRunner からの God Object 分割:
 - 30s/60s/120s multi-timeframe 計測 (047# E3)
 - Early Exit 監視 (054# S3)
 - 049# サンプリング制御
+- 168# §4.1 #1: sell 保持期間延長 (side 別 post_fill_wait_sec)
 
 型安全: Optional チェーン明示化、Final 定数。
 メモリ: __slots__ 適用。
@@ -60,18 +61,27 @@ class PnlMeasurer:
         if not filled or fill_price is None:
             return m
 
+        # 168# §4.1 #1: sell 保持期間延長 — side 別 post_fill_wait_sec
+        wait_sec = cfg.post_fill_wait_sec
+        if side == "sell" and cfg.post_fill_wait_sec_sell is not None:
+            wait_sec = cfg.post_fill_wait_sec_sell
+            logger.debug(
+                f"[168# sell_hold] Using sell-specific wait: {wait_sec}s "
+                f"(default={cfg.post_fill_wait_sec}s)"
+            )
+
         try:
             m.mid_at_fill = await get_mid_price()
         except Exception as exc:
             logger.debug("mid_at_fill fetch failed: %s", exc)
 
-        # 054# S3: Early Exit 監視付き 30s 待機
+        # 054# S3: Early Exit 監視付き待機
         early_exit_triggered = False
         t_post_fill_start = time.time()
 
         if cfg.early_exit_enabled and m.mid_at_fill is not None:
             monitor_sec = cfg.early_exit_monitor_interval_sec
-            ticks = max(1, int(cfg.post_fill_wait_sec / monitor_sec))
+            ticks = max(1, int(wait_sec / monitor_sec))
             tick = 0
             for tick in range(ticks):
                 await asyncio.sleep(monitor_sec)
@@ -93,13 +103,13 @@ class PnlMeasurer:
                 except Exception:
                     continue
             elapsed_monitor = (tick + 1) * monitor_sec if early_exit_triggered else ticks * monitor_sec
-            remaining = cfg.post_fill_wait_sec - elapsed_monitor
-            # 120# A4-2: EE 発動でも固定30s まで待機して真の post_fill_pnl を取得
+            remaining = wait_sec - elapsed_monitor
+            # 120# A4-2: EE 発動でも固定待機時間まで待って真の post_fill_pnl を取得
             if remaining > 0:
                 await asyncio.sleep(remaining)
         else:
-            logger.info(f"Waiting {cfg.post_fill_wait_sec}s for PnL measurement...")
-            await asyncio.sleep(cfg.post_fill_wait_sec)
+            logger.info(f"Waiting {wait_sec}s for PnL measurement...")
+            await asyncio.sleep(wait_sec)
 
         m.actual_measurement_sec = time.time() - t_post_fill_start
 

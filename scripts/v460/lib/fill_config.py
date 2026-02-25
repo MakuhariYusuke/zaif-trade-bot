@@ -48,6 +48,7 @@ class FillTestConfig:
     order_timeout_sec_sell: float | None = None  # 155# S-3: sell 専用 timeout (None=共通値)
     poll_interval_sec: float = 5.0  # ポーリング間隔
     post_fill_wait_sec: float = 30.0  # 約定後 PnL 計測待ち
+    post_fill_wait_sec_sell: float | None = None  # 168# §4.1 #1: sell 専用 PnL 計測待ち (None=共通値)
     results_dir: str = "results/v460/fill_test"
     # 044# 連続 preflight 失敗上限 (buy/sell 両方不足で無限スキップ防止)
     max_preflight_skip: int = 10
@@ -839,7 +840,8 @@ class FillTestConfig:
         flat_keys = {
             "symbol", "order_quantity", "cycle_interval_sec", "order_timeout_sec",
             "order_timeout_sec_sell",
-            "poll_interval_sec", "post_fill_wait_sec", "results_dir",
+            "poll_interval_sec", "post_fill_wait_sec", "post_fill_wait_sec_sell",
+            "results_dir",
             "max_preflight_skip", "start_side",
             "spread_offset_ratio", "min_offset_jpy",
             "max_order_retries", "retry_delay_sec",

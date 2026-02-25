@@ -15,6 +15,7 @@ order_timeout_sec: 90.0       # 096#: 300→90 (stale order + reprice で早期�
 order_timeout_sec_sell: 75.0  # 155# S-3: sell は速い撤退が有利 (90→75, -16.7%)
 poll_interval_sec: 5.0        # ポーリング間隔 (秒)
 post_fill_wait_sec: 30.0      # 約定後 PnL 計測待ち (秒)
+post_fill_wait_sec_sell: 90.0  # 168# §4.1 #1: sell 保持期間延長 (30→90s, PnL120>0 が根拠)
 results_dir: results/v460/fill_test
 start_side: buy               # 開始サイド (buy / sell)
 max_preflight_skip: 10        # 046# 連続 preflight 失敗上限 (SAFE_STOP)
