@@ -554,6 +554,39 @@ def section_ob_age(records: list[dict[str, Any]]) -> list[str]:
 # JSON output
 # ---------------------------------------------------------------------------
 
+
+def section_model_used(records: list[dict[str, Any]]) -> list[str]:
+    """165# model_used 経路別 AS/PnL 分析."""
+    filled = [r for r in records if r.get("filled")]
+    nf = len(filled)
+    lines = ["## Model Used 経路別 (165# 7.3)"]
+    if not nf:
+        lines.append("  (no fills)")
+        lines.append("")
+        return lines
+
+    groups: dict[str, list[dict[str, Any]]] = collections.defaultdict(list)
+    for r in filled:
+        model = str(r.get("skip_gate_model_used") or "none")
+        groups[model].append(r)
+
+    lines.append(f"  {'Model':>25s} {'N':>5s} {'AS#':>4s} {'AS%':>6s} {'PnL30':>8s} {'AS_Loss':>8s}")
+    for model in sorted(groups.keys()):
+        recs = groups[model]
+        as_recs = [r for r in recs if r.get("adverse_selected")]
+        as_rate = len(as_recs) / len(recs) * 100
+        pnl_arr = _pnls(recs)
+        avg_pnl = float(np.mean(pnl_arr)) if len(pnl_arr) else float("nan")
+        as_pnl_arr = _pnls(as_recs)
+        avg_as = float(np.mean(as_pnl_arr)) if len(as_pnl_arr) else 0.0
+        lines.append(
+            f"  {model:>25s} {len(recs):>5d} {len(as_recs):>4d} "
+            f"{as_rate:>5.1f}% {avg_pnl:>+8.2f} {avg_as:>+8.2f}"
+        )
+    lines.append("")
+    return lines
+
+
 def build_json_summary(records: list[dict[str, Any]], args: argparse.Namespace) -> dict[str, Any]:
     """JSON 形式のサマリーを構築."""
     n = len(records)
@@ -660,6 +693,7 @@ def main() -> None:
     all_lines.extend(section_ffd_boost(records))
     all_lines.extend(section_ab_test(records))
     all_lines.extend(section_ob_age(records))
+    all_lines.extend(section_model_used(records))
 
     output_text = "\n".join(all_lines)
 

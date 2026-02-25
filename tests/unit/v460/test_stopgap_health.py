@@ -12,12 +12,17 @@ from datetime import datetime, timezone
 import pytest
 
 from scripts.v460.lib.stopgap_health import (
+    AlertItem,
     DailyHealthReport,
     DailyMetrics,
     ExitVerdict,
+    ModelUsedMetrics,
     StopgapExitCheck,
+    apply_filters,
     compute_daily_metrics,
+    compute_model_used_metrics,
     evaluate_stopgap_exit,
+    generate_alerts,
     generate_health_report,
     load_fill_records,
     _filter_window,
@@ -380,3 +385,207 @@ class TestGenerateHealthReport:
         json_str = json.dumps(data, default=str)
         assert "daily_metrics" in json_str
         assert "stopgap_checks" in json_str
+
+
+# ======================================================================
+# apply_filters (165# 7.5 P0 再現性固定)
+# ======================================================================
+
+
+class TestApplyFilters:
+    def test_no_filter(self):
+        recs = _records_batch(10)
+        r, f = apply_filters(recs)
+        assert len(r) == 10
+        assert all(v is None for v in f.values())
+
+    def test_run_id_filter(self):
+        recs = [
+            {**_make_record(), "run_id": "abc"},
+            {**_make_record(), "run_id": "def"},
+            {**_make_record(), "run_id": "abc"},
+        ]
+        r, f = apply_filters(recs, run_id="abc")
+        assert len(r) == 2
+        assert f["run_id"] == "abc"
+
+    def test_git_sha_prefix(self):
+        recs = [
+            {**_make_record(), "git_sha": "abc123def"},
+            {**_make_record(), "git_sha": "abc999fff"},
+            {**_make_record(), "git_sha": "def000000"},
+        ]
+        r, f = apply_filters(recs, git_sha="abc")
+        assert len(r) == 2
+        assert f["git_sha"] == "abc"
+
+    def test_date_from(self):
+        ts1 = datetime(2026, 2, 20, 0, 0, tzinfo=timezone.utc).timestamp()
+        ts2 = datetime(2026, 2, 22, 0, 0, tzinfo=timezone.utc).timestamp()
+        recs = [
+            {**_make_record(), "timestamp": ts1},
+            {**_make_record(), "timestamp": ts2},
+        ]
+        r, _ = apply_filters(recs, date_from="2026-02-21")
+        assert len(r) == 1
+
+    def test_date_to_inclusive(self):
+        ts1 = datetime(2026, 2, 20, 12, 0, tzinfo=timezone.utc).timestamp()
+        ts2 = datetime(2026, 2, 21, 12, 0, tzinfo=timezone.utc).timestamp()
+        recs = [
+            {**_make_record(), "timestamp": ts1},
+            {**_make_record(), "timestamp": ts2},
+        ]
+        r, _ = apply_filters(recs, date_to="2026-02-20")
+        assert len(r) == 1  # ts1 is within 2/20 (inclusive end = +86400s)
+
+    def test_combined(self):
+        ts1 = datetime(2026, 2, 20, 0, 0, tzinfo=timezone.utc).timestamp()
+        recs = [
+            {**_make_record(), "run_id": "r1", "git_sha": "abc", "timestamp": ts1},
+            {**_make_record(), "run_id": "r2", "git_sha": "abc", "timestamp": ts1},
+            {**_make_record(), "run_id": "r1", "git_sha": "def", "timestamp": ts1},
+        ]
+        r, _ = apply_filters(recs, run_id="r1", git_sha="abc")
+        assert len(r) == 1
+
+
+# ======================================================================
+# ModelUsedMetrics / compute_model_used_metrics (165# 7.3)
+# ======================================================================
+
+
+class TestComputeModelUsedMetrics:
+    def test_empty(self):
+        result = compute_model_used_metrics([])
+        assert result == []
+
+    def test_single_model(self):
+        recs = [
+            {**_make_record(pnl30=2.0), "skip_gate_model_used": "primary:side_sell"},
+            {**_make_record(pnl30=-3.0, adverse_selected=True), "skip_gate_model_used": "primary:side_sell"},
+        ]
+        result = compute_model_used_metrics(recs)
+        assert len(result) == 1
+        m = result[0]
+        assert m.model_used == "primary:side_sell"
+        assert m.n_filled == 2
+        assert m.as_count == 1
+        assert m.as_rate == 0.5
+
+    def test_multiple_models(self):
+        recs = [
+            {**_make_record(pnl30=1.0), "skip_gate_model_used": "none"},
+            {**_make_record(pnl30=2.0), "skip_gate_model_used": "primary:side_buy"},
+            {**_make_record(pnl30=-1.0, adverse_selected=True), "skip_gate_model_used": "primary:unified"},
+        ]
+        result = compute_model_used_metrics(recs)
+        assert len(result) == 3
+        models = [m.model_used for m in result]
+        assert "none" in models
+        assert "primary:side_buy" in models
+        assert "primary:unified" in models
+
+    def test_unfilled_excluded(self):
+        recs = [
+            {**_make_record(filled=False), "skip_gate_model_used": "none"},
+            {**_make_record(pnl30=1.0), "skip_gate_model_used": "none"},
+        ]
+        result = compute_model_used_metrics(recs)
+        assert len(result) == 1
+        assert result[0].n_filled == 1
+
+    def test_none_model_default(self):
+        recs = [_make_record(pnl30=1.0)]  # no skip_gate_model_used key
+        result = compute_model_used_metrics(recs)
+        assert result[0].model_used == "none"
+
+
+# ======================================================================
+# generate_alerts (165# 7.5 P0)
+# ======================================================================
+
+
+class TestGenerateAlerts:
+    def test_keep_warning(self):
+        checks = [StopgapExitCheck(
+            stopgap_id="2-A",
+            name="Test",
+            verdict=ExitVerdict.KEEP,
+            detail="keep detail",
+            metrics={}
+        )]
+        alerts = generate_alerts(checks)
+        assert len(alerts) == 1
+        assert alerts[0].severity == "warning"
+
+    def test_can_exit_info(self):
+        checks = [StopgapExitCheck(
+            stopgap_id="2-C",
+            name="Test",
+            verdict=ExitVerdict.CAN_EXIT,
+            detail="exit detail",
+            metrics={}
+        )]
+        alerts = generate_alerts(checks)
+        assert len(alerts) == 1
+        assert alerts[0].severity == "info"
+
+    def test_rollback_critical(self):
+        checks = [StopgapExitCheck(
+            stopgap_id="2-D",
+            name="Test",
+            verdict=ExitVerdict.KEEP,
+            detail="rollback",
+            metrics={"rollback_triggered": True}
+        )]
+        alerts = generate_alerts(checks)
+        assert len(alerts) == 1
+        assert alerts[0].severity == "critical"
+
+    def test_empty(self):
+        alerts = generate_alerts([])
+        assert alerts == []
+
+
+# ======================================================================
+# Report includes new fields (165# 7.3/7.5 integration)
+# ======================================================================
+
+
+class TestReportNewFields:
+    def test_report_has_model_used(self):
+        recs = [
+            {**_make_record(pnl30=1.0), "skip_gate_model_used": "primary:side_sell"},
+            {**_make_record(pnl30=-1.0, adverse_selected=True), "skip_gate_model_used": "none"},
+        ]
+        report = generate_health_report(recs, window_hours=0)
+        assert len(report.model_used_breakdown) > 0
+        mu_models = {m["model_used"] for m in report.model_used_breakdown}
+        assert "primary:side_sell" in mu_models
+        assert "none" in mu_models
+
+    def test_report_has_alerts(self):
+        recs = _records_batch(20, as_rate=0.5, pnl30=-5.0)
+        report = generate_health_report(recs, window_hours=0)
+        assert len(report.alerts) > 0
+        severities = {a["severity"] for a in report.alerts}
+        assert len(severities) > 0
+
+    def test_report_has_filters(self):
+        recs = _records_batch(10)
+        report = generate_health_report(
+            recs, window_hours=0,
+            filters_applied={"run_id": "test123", "git_sha": None, "date_from": None, "date_to": None}
+        )
+        assert report.filters_applied["run_id"] == "test123"
+
+    def test_report_json_includes_new_fields(self):
+        recs = _records_batch(20)
+        report = generate_health_report(recs, window_hours=0)
+        from dataclasses import asdict
+        data = asdict(report)
+        s = json.dumps(data, default=str)
+        assert "model_used_breakdown" in s
+        assert "alerts" in s
+        assert "filters_applied" in s

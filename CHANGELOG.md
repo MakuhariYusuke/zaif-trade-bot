@@ -20,7 +20,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - regime_high_vol: 両モデルで SHAP=0 (サンプル不足)
 - hour_sin/cos: 両モデルで高重要度 → TimeFilter と重複学習
 
-## [Unreleased]
+## [Unreleased] - 166# レビュー対応 + 残課題消化
+
+### Added
+- stopgap_health.py: pply_filters() (P0 再現性固定), compute_model_used_metrics() (P1 model_used 経路別), generate_alerts() (P0 退出基準アラート)
+- stopgap_daily_report.py: --run-id/--git-sha/--date-from/--date-to CLI 引数
+- nalyze_fill_logs.py: section_model_used() (model_used 経路別分析セクション)
+- テスト +23 件 (apply_filters 6, model_used 8, alerts 4, report_fields 5)
+
+### Changed
+- DailyHealthReport: ilters_applied, model_used_breakdown, lerts フィールド追加
+- generate_health_report(): ilters_applied 引数追加
+- print_health_summary(): Model Used 表 + Alerts セクション追加
+
+## [Previous]
 
 ### 163# IS Enablement + Dynamic Gating (107# Phase 3 Step 2)
 

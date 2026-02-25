@@ -1,8 +1,9 @@
-"""165# CLI: Stopgap Daily Health Report.
+"""165# CLI: Stopgap Daily Health Report (162# P0 再現性固定対応).
 
 Usage:
     .venv\Scripts\python.exe scripts/v460/analysis/stopgap_daily_report.py
     .venv\Scripts\python.exe scripts/v460/analysis/stopgap_daily_report.py --window 48 --json
+    .venv\Scripts\python.exe scripts/v460/analysis/stopgap_daily_report.py --git-sha 955a78 --date-from 2026-02-25
     .venv\Scripts\python.exe scripts/v460/analysis/stopgap_daily_report.py --output reports/health.json
 """
 
@@ -21,6 +22,7 @@ if project_root not in sys.path:
 
 from scripts.v460.lib.stopgap_health import (
     DailyHealthReport,
+    apply_filters,
     generate_health_report,
     load_fill_records,
     print_health_summary,
@@ -48,6 +50,11 @@ def main() -> None:
         default=7,
         help="日次出力の最大日数 (default: 7)",
     )
+    # 162# P0: 再現性固定フィルタ
+    parser.add_argument("--run-id", help="run_id 完全一致フィルタ")
+    parser.add_argument("--git-sha", help="git_sha 前方一致フィルタ (短縮 SHA 可)")
+    parser.add_argument("--date-from", help="開始日 inclusive (YYYY-MM-DD UTC)")
+    parser.add_argument("--date-to", help="終了日 inclusive (YYYY-MM-DD UTC)")
     parser.add_argument(
         "--json",
         action="store_true",
@@ -71,10 +78,23 @@ def main() -> None:
         print("ERROR: no fill records found", file=sys.stderr)
         sys.exit(1)
 
+    # 162# P0: apply reproducibility filters
+    records, filters = apply_filters(
+        records,
+        run_id=args.run_id,
+        git_sha=args.git_sha,
+        date_from=args.date_from,
+        date_to=args.date_to,
+    )
+    if not records:
+        print("ERROR: no records after filter", file=sys.stderr)
+        sys.exit(1)
+
     report = generate_health_report(
         records,
         window_hours=args.window,
         daily_limit=args.daily_limit,
+        filters_applied=filters,
     )
 
     if args.json or args.output:

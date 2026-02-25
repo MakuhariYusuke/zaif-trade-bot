@@ -84,6 +84,27 @@ class StopgapExitCheck:
 
 
 @dataclass
+class ModelUsedMetrics:
+    """model_used 経路別 AS/PnL (165# 7.3 対応)."""
+
+    model_used: str
+    n_filled: int = 0
+    as_count: int = 0
+    as_rate: float = 0.0
+    avg_pnl30_bps: float = float("nan")
+    avg_as_loss_bps: float = 0.0
+
+
+@dataclass
+class AlertItem:
+    """退出基準の閾値逸脱アラート (165# 7.5 P0 対応)."""
+
+    severity: str  # "critical" | "warning" | "info"
+    stopgap_id: str
+    message: str
+
+
+@dataclass
 class DailyHealthReport:
     """日次ヘルスレポート全体."""
 
@@ -91,8 +112,11 @@ class DailyHealthReport:
     window_hours: int
     total_records: int
     total_filled: int
+    filters_applied: dict[str, str | None] = field(default_factory=dict)
     daily_metrics: list[dict[str, Any]] = field(default_factory=list)
+    model_used_breakdown: list[dict[str, Any]] = field(default_factory=list)
     stopgap_checks: list[dict[str, Any]] = field(default_factory=list)
+    alerts: list[dict[str, Any]] = field(default_factory=list)
 
 
 # ======================================================================
@@ -119,6 +143,48 @@ def load_fill_records(results_dir: Path) -> list[dict[str, Any]]:
                         except json.JSONDecodeError:
                             continue
     return all_records
+
+
+def apply_filters(
+    records: list[dict[str, Any]],
+    *,
+    run_id: str | None = None,
+    git_sha: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, str | None]]:
+    """162# P0 再現性固定: run_id/git_sha/date でフィルタ.
+
+    analyze_fill_logs.apply_filters と同一ロジック (DRY: 共通化候補).
+    Returns: (filtered_records, applied_filters_dict)
+    """
+    out = records
+    if run_id:
+        out = [r for r in out if r.get("run_id") == run_id]
+    if git_sha:
+        out = [r for r in out if str(r.get("git_sha", "")).startswith(git_sha)]
+    if date_from:
+        from datetime import datetime as dt
+        ts_from = dt.strptime(date_from, "%Y-%m-%d").replace(
+            tzinfo=timezone.utc
+        ).timestamp()
+        out = [r for r in out if (r.get("timestamp") or 0) >= ts_from]
+    if date_to:
+        from datetime import datetime as dt
+        ts_to = (
+            dt.strptime(date_to, "%Y-%m-%d").replace(
+                tzinfo=timezone.utc
+            ).timestamp()
+            + 86400
+        )
+        out = [r for r in out if (r.get("timestamp") or 0) < ts_to]
+    filters = {
+        "run_id": run_id,
+        "git_sha": git_sha,
+        "date_from": date_from,
+        "date_to": date_to,
+    }
+    return out, filters
 
 
 def _filter_window(
@@ -450,11 +516,75 @@ def evaluate_stopgap_exit(
 # ======================================================================
 
 
+def compute_model_used_metrics(
+    records: list[dict[str, Any]],
+) -> list[ModelUsedMetrics]:
+    """model_used 経路別の AS率PnL を算出 (165# 7.3)."""
+    filled = [r for r in records if r.get("filled")]
+    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for r in filled:
+        model = str(r.get("skip_gate_model_used") or "none")
+        groups[model].append(r)
+
+    results: list[ModelUsedMetrics] = []
+    for model, recs in sorted(groups.items()):
+        as_recs = [r for r in recs if r.get("adverse_selected")]
+        as_rate = len(as_recs) / len(recs) if recs else 0.0
+        pnl_vals = [safe_to_finite(r.get("post_fill_30s_pnl")) for r in recs]
+        pnl_clean = [v for v in pnl_vals if v is not None]
+        avg_pnl = float(np.mean(pnl_clean)) if pnl_clean else float("nan")
+        as_pnls = [safe_to_finite(r.get("post_fill_30s_pnl")) for r in as_recs]
+        as_pnl_clean = [v for v in as_pnls if v is not None]
+        avg_as = float(np.mean(as_pnl_clean)) if as_pnl_clean else 0.0
+
+        results.append(ModelUsedMetrics(
+            model_used=model,
+            n_filled=len(recs),
+            as_count=len(as_recs),
+            as_rate=round(as_rate, 4),
+            avg_pnl30_bps=round(avg_pnl, 4) if not math.isnan(avg_pnl) else avg_pnl,
+            avg_as_loss_bps=round(avg_as, 4),
+        ))
+    return results
+
+
+def generate_alerts(
+    checks: list[StopgapExitCheck],
+) -> list[AlertItem]:
+    """退出基準の閾値逸脱を自動アラート化 (165# 7.5 P0).
+
+    KEEP 判定のうち、ロールバック条件に抵触するものを CRITICAL、
+    KEEP で閾値近接をWARNING としてアラート生成。
+    """
+    alerts: list[AlertItem] = []
+    for c in checks:
+        if c.metrics.get("rollback_triggered"):
+            alerts.append(AlertItem(
+                severity="critical",
+                stopgap_id=c.stopgap_id,
+                message=f"ROLLBACK condition met for {c.name}: {c.detail}",
+            ))
+        elif c.verdict == ExitVerdict.KEEP:
+            alerts.append(AlertItem(
+                severity="warning",
+                stopgap_id=c.stopgap_id,
+                message=f"Still KEEP: {c.name}: {c.detail}",
+            ))
+        elif c.verdict == ExitVerdict.CAN_EXIT:
+            alerts.append(AlertItem(
+                severity="info",
+                stopgap_id=c.stopgap_id,
+                message=f"Ready to exit: {c.name}: {c.detail}",
+            ))
+    return alerts
+
+
 def generate_health_report(
     records: list[dict[str, Any]],
     *,
     window_hours: int = 168,
     daily_limit: int = 7,
+    filters_applied: dict[str, str | None] | None = None,
 ) -> DailyHealthReport:
     """日次ヘルスレポートを生成.
 
@@ -510,13 +640,37 @@ def generate_health_report(
         for c in checks
     ]
 
+    # model_used breakdown
+    model_metrics = compute_model_used_metrics(windowed)
+    model_dicts = [
+        {
+            "model_used": m.model_used,
+            "n_filled": m.n_filled,
+            "as_count": m.as_count,
+            "as_rate": m.as_rate,
+            "avg_pnl30_bps": m.avg_pnl30_bps if not math.isnan(m.avg_pnl30_bps) else None,
+            "avg_as_loss_bps": m.avg_as_loss_bps,
+        }
+        for m in model_metrics
+    ]
+
+    # Alerts
+    alert_items = generate_alerts(checks)
+    alert_dicts = [
+        {"severity": a.severity, "stopgap_id": a.stopgap_id, "message": a.message}
+        for a in alert_items
+    ]
+
     return DailyHealthReport(
         generated_at=datetime.now(tz=timezone.utc).isoformat(),
         window_hours=window_hours,
         total_records=n_total,
         total_filled=n_filled,
+        filters_applied=filters_applied or {},
         daily_metrics=daily_dicts,
+        model_used_breakdown=model_dicts,
         stopgap_checks=check_dicts,
+        alerts=alert_dicts,
     )
 
 
@@ -570,6 +724,19 @@ def print_health_summary(report: DailyHealthReport) -> None:
                     f"{d['as_rate']:>5.1%}"
                 )
 
+    # Model Used breakdown
+    if report.model_used_breakdown:
+        print("\n  --- Model Used Pathway (165# 7.3) ---")
+        print(f"  {'Model':>25} {'N':>5} {'AS#':>4} {'AS%':>6} {'PnL30':>8} {'AS_Loss':>8}")
+        for m in report.model_used_breakdown:
+            pnl = m.get("avg_pnl30_bps")
+            pnl_s = f"{pnl:>+8.2f}" if pnl is not None else f"{'N/A':>8}"
+            print(
+                f"  {m['model_used']:>25} {m['n_filled']:>5} "
+                f"{m['as_count']:>4} {m['as_rate']:>5.1%} "
+                f"{pnl_s} {m['avg_as_loss_bps']:>+8.2f}"
+            )
+
     # Stopgap exit checks
     if report.stopgap_checks:
         print("\n  --- Stopgap Exit Evaluation (163# Table) ---")
@@ -580,5 +747,16 @@ def print_health_summary(report: DailyHealthReport) -> None:
                 "insufficient": "??",
             }.get(c["verdict"], "??")
             print(f"  [{icon}] {c['stopgap_id']} {c['name']}: {c['detail']}")
+
+    # Alerts
+    if report.alerts:
+        print("\n  --- Alerts ---")
+        for a in report.alerts:
+            sev_icon = {"critical": "!!!", "warning": " ! ", "info": " i "}.get(a["severity"], " ? ")
+            print(f"  [{sev_icon}] {a['stopgap_id']}: {a['message']}")
+
+    # Filters
+    if report.filters_applied and any(v for v in report.filters_applied.values()):
+        print("\n  Filters:", " ".join(f"{k}={v}" for k, v in report.filters_applied.items() if v))
 
     print("\n" + "=" * 72)

@@ -21,6 +21,7 @@ from tools.analysis.analyze_fill_logs import (
     load_records,
     section_basic,
     section_header,
+    section_model_used,
     section_side,
 )
 
@@ -246,3 +247,37 @@ class TestJsonSummary:
         result = build_json_summary(sample_records, args)
         assert result["filters"]["run_id"] == "run_1"
         assert result["filters"]["git_sha"] == "sha_A"
+
+
+# ---------------------------------------------------------------------------
+# Tests: section_model_used (165# 7.3)
+# ---------------------------------------------------------------------------
+
+
+class TestSectionModelUsed:
+    def test_basic(self, sample_records: list[dict]) -> None:
+        """Returns lines with model used data."""
+        # Add skip_gate_model_used to records
+        for r in sample_records:
+            r["skip_gate_model_used"] = "primary:side_sell" if r["side"] == "sell" else "none"
+        lines = section_model_used(sample_records)
+        assert any("Model Used" in l for l in lines)
+
+    def test_empty_no_crash(self) -> None:
+        lines = section_model_used([])
+        assert any("no fills" in l for l in lines)
+
+    def test_multiple_models(self) -> None:
+        recs = [
+            _make_record(filled=True, pnl30=1.0),
+            _make_record(filled=True, pnl30=-2.0),
+            _make_record(filled=True, pnl30=3.0),
+        ]
+        recs[0]["skip_gate_model_used"] = "none"
+        recs[1]["skip_gate_model_used"] = "primary:side_sell"
+        recs[2]["skip_gate_model_used"] = "primary:unified"
+        lines = section_model_used(recs)
+        joined = "\n".join(lines)
+        assert "none" in joined
+        assert "primary:side_sell" in joined
+        assert "primary:unified" in joined
