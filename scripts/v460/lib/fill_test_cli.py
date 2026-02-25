@@ -307,6 +307,7 @@ def fill_test_main() -> None:
 
     # Runner 生成
     from scripts.v460.run_fill_test import FillTestRunner
+    from scripts.v460.lib.lock_manager import LockConflictError
 
     runner = FillTestRunner(adapter, config, yaml_cfg=yaml_cfg)
 
@@ -364,6 +365,11 @@ def fill_test_main() -> None:
             if runner._kill_switch.is_killed()
             else "completed"
         )
+    except LockConflictError as e:
+        # 166# HF2: 別プロセス稼働中は crash 扱いせず正常終了
+        logger.info(f"[lock] {e}")
+        stop_reason = "lock_conflict"
+        return
     except KeyboardInterrupt:
         stop_reason = "keyboard_interrupt"
         logger.info("KeyboardInterrupt — stopping gracefully")

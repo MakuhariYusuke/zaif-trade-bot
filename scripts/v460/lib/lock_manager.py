@@ -11,7 +11,18 @@ import os
 import time
 from pathlib import Path
 
+import psutil  # type: ignore[import-untyped]
+
 logger = logging.getLogger(__name__)
+
+
+class LockConflictError(RuntimeError):
+    """166# HF2: 別プロセス稼働中の正常終了用例外.
+
+    RuntimeError の代わりにこの例外を raise することで、
+    fill_test_cli.py 側で crash 扱いせず silent exit できる。
+    """
+    pass
 
 
 class LockManager:
@@ -61,7 +72,6 @@ class LockManager:
                 # 129# heartbeat age 検査 (4番目フィールド)
                 heartbeat_ts = int(parts[3]) if len(parts) >= 4 else int(parts[1])
                 heartbeat_age = time.time() - heartbeat_ts
-                import psutil  # type: ignore[import-untyped]
                 if psutil.pid_exists(existing_pid):
                     try:
                         proc = psutil.Process(existing_pid)
@@ -76,7 +86,7 @@ class LockManager:
                                     f"Treating as stale."
                                 )
                             else:
-                                raise RuntimeError(
+                                raise LockConflictError(
                                     f"別の fill_test プロセスが実行中です "
                                     f"(PID={existing_pid}, "
                                     f"heartbeat={heartbeat_age:.0f}s ago). "
@@ -109,7 +119,7 @@ class LockManager:
             except FileExistsError:
                 _check_stale_and_reclaim()
         # リトライ後もダメな場合
-        raise RuntimeError(f"ロックファイルの取得に失敗しました: {lock_path}")
+        raise LockConflictError(f"ロックファイルの取得に失敗しました: {lock_path}")
 
     def release(self) -> None:
         """044# ロックファイル解放."""

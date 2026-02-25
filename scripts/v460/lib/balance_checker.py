@@ -14,6 +14,7 @@ FillTestRunner から残高 pre-flight チェック + ロット自動縮小を�
 from __future__ import annotations
 
 import logging
+import time as _time
 
 from scripts.v460.lib.fill_config import FillTestConfig
 
@@ -35,6 +36,9 @@ class BalanceChecker:
         # 128# dust sweep 状態
         self._dust_sweep_active: bool = False
         self._pre_dust_lot: float = config.order_quantity
+        # 166# HF3: Insufficient 警告クールダウン (side別)
+        self._insufficient_cooldown_sec: float = 120.0  # 同一 side 2分間抑制
+        self._last_insufficient_log: dict[str, float] = {}  # side -> timestamp
 
     @property
     def current_lot(self) -> float:
@@ -221,6 +225,24 @@ class BalanceChecker:
                 f"Selling full balance: {self._current_lot:.8f} BTC"
             )
         return False
+
+    def _log_insufficient(self, side: str, message: str) -> None:
+        """166# HF3: side別クールダウン付き Insufficient 警告.
+
+        同一 side の Insufficient 警告を _insufficient_cooldown_sec 間隔で抑制し、
+        ログノイズを削減する。
+        """
+        import time
+        now = time.time()
+        last = self._last_insufficient_log.get(side, 0.0)
+        if now - last >= self._insufficient_cooldown_sec:
+            logger.warning(message)
+            self._last_insufficient_log[side] = now
+        else:
+            logger.debug(
+                f"[balance] {side} insufficient (suppressed, "
+                f"cooldown {self._insufficient_cooldown_sec:.0f}s)"
+            )
 
     def apply_lot_floor(self) -> None:
         """105#: lot floor guard — 浮動小数点丸め誤差による API 400 防止.
