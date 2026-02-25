@@ -288,3 +288,21 @@ Codexレビューの指摘は、実運用ログのノイズや運用上の摩擦
 | 7.3 C.6 | P1-P2 | sklearn feature-name warning (DataFrame統一) | 待機 |
 | 7.3 C.7 | P1-P2 | cancel_failed_likely_filled KPI分離 | 待機 |
 | 8.2B | P1 | Fast Fill Defense 過剰反応チューニング | 待機 |
+
+### 9.6 HF3 補完修正
+
+HF3 の `_log_insufficient()` メソッドは正しく実装されていたが、`_check_sell` / `_check_buy` 内の `logger.warning()` 呼び出しの置換が不完全だった。修正済み。
+
+また HF4 (8.2A 完全対応) をライブ検証で確認:
+- Cycle 3537: buy 残高不足  `balance_forced`  `one_sided_balance`  sell 約定 @ 10,273,195 JPY
+- JPY 残高 2,103  12,376 に回復、deaadlock 回避成功
+- `max_consecutive_trending_sell_skip` = 30  10 に短縮済み (7.3 B.4)
+
+### 9.7 ライブ検証結果サマリ
+
+| HF# | 検証ステータス | 証跡 |
+|---|---|---|
+| HF1 (rescue config) |  インフラ有効化済み | `balance_forced_rescue_enabled: true` |
+| HF2 (lock silent exit) |  ライブ確認 | `[lock] 別の fill_test プロセスが実行中です  reason=lock_conflict` |
+| HF3 (insufficient cooldown) |  コード確認、ライブ再起動で有効化 | `_log_insufficient()` 導入済み |
+| HF4 (rebalance relaxation) |  ライブ確認 | `[154# C-1] balance_forced but one_sided_balance  sell 約定` |
