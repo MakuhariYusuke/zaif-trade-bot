@@ -628,6 +628,8 @@ class FillLoopOrchestratorMixin:
                     batch.append(_skip_record)
                     total_count += 1
                     batch = self._batch_persistence.maybe_flush(batch, "balance_forced_skip")
+                    # 167# DL-5: _last_side を更新 (rescue=true 時は到達しないが防御的に)
+                    self._last_side = next_side
                     await asyncio.sleep(self.config.cycle_interval_sec)
                     continue
 
@@ -730,6 +732,8 @@ class FillLoopOrchestratorMixin:
                     batch.append(_skip_record)
                     total_count += 1
                     batch = self._batch_persistence.maybe_flush(batch, "trending_sell_skip")
+                    # 167# DL-4: _last_side を更新して buy 側も試行可能に
+                    self._last_side = next_side  # = "sell"
                     await asyncio.sleep(self.config.cycle_interval_sec)
                     continue
                 else:

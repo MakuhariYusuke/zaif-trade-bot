@@ -445,11 +445,11 @@ HF1-4 適用後に fill 率が 8.8%→32.6% に大幅改善。今回のデッド
 | trending_sell max連続 | 116回 (SHA 3959424e, Feb 23) | 再起動でカウンタリセット |
 | 最低時間帯 | UTC 09-10 (19-26%) | JST 18-19時 |
 
-**戦略的改善提案** (コード外):
-1. sell 側 fill rate 改善 (offset/spread チューニング)
-2. trending_sell_skip カウンタの永続化 (再起動耐性)
-3. UTC 09-10 時間帯の特別処理検討
-4. balance_forced_skip 頻発時のロット自動調整強化
+**戦略的改善提案** → **167# で根本修正済み**:
+1. ~~sell 側 fill rate 改善~~ → 167# DL-4: trending_sell_skip の _last_side 未更新が根因。交互保証修正で解消
+2. ~~trending_sell_skip カウンタの永続化~~ → 167# P2: resume_from_existing() でカウンタ復元
+3. ~~UTC 09-10 時間帯の特別処理検討~~ → ad-hoc 不要: sell 蓄積解消で時間帯依存は消失
+4. ~~balance_forced_skip 頻発時のロット自動調整強化~~ → 対応不要: rescue_enabled=true で bf_skip 到達不可
 
 ### 11.6 テスト結果
 

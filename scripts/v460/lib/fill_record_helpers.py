@@ -259,9 +259,27 @@ class FillRecordHelpersMixin:
         # 最後のレコードの side を復元
         last_record = existing[-1]
         self._last_side = last_record.side
+
+        # 167# DL-4/P2: 末尾連続 skip カウンタを復元 (再起動耐性)
+        _tss_count = 0  # trending_sell_skip
+        _bfs_count = 0  # balance_forced_skip
+        for rec in reversed(existing):
+            cr = rec.cancel_reason
+            if cr == "trending_sell_skip":
+                _tss_count += 1
+            elif cr == "balance_forced_skip":
+                _bfs_count += 1
+            else:
+                break  # 連続でなくなったら終了
+        if hasattr(self, "_trending_sell_skip_count"):
+            self._trending_sell_skip_count = _tss_count
+        if hasattr(self, "_balance_forced_skip_count"):
+            self._balance_forced_skip_count = _bfs_count
+
         logger.info(
             f"Resumed from existing records: n={len(existing)}, "
-            f"last_side={self._last_side}, cycle_count={self._cycle_count}"
+            f"last_side={self._last_side}, cycle_count={self._cycle_count}, "
+            f"trailing_tss={_tss_count}, trailing_bfs={_bfs_count}"
         )
         return existing
 
