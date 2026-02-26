@@ -347,6 +347,9 @@ class MakerPriceCalculator:
 
         # 168# 低ボラティリティ offset boost: vol_ratio < threshold で offset 拡大
         # time_filter の根本対策 — 低 vol 環境での過剰アグレッシブ発注を構造的に抑制
+        # NOTE: last_volatility_ratio は main loop L464 時点の値 (order 時)。
+        #   fill record の regime_volatility_ratio は post-fill L544 の値で数十秒の差がある。
+        #   この遅延を吸収するため threshold に +0.05 の安全マージンを設けている。
         if (
             cfg.low_vol_offset_boost_enabled
             and self._regime_detector is not None

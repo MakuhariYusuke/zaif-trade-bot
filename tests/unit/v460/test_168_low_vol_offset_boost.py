@@ -78,7 +78,7 @@ class TestLowVolOffsetBoostConfig:
         cfg = FillConfig()
         assert cfg.low_vol_offset_boost_enabled is False
         assert cfg.low_vol_offset_boost == 1.4
-        assert cfg.low_vol_threshold == 0.70
+        assert cfg.low_vol_threshold == 0.75
 
     def test_yaml_parsing(self) -> None:
         """YAML から正しく読み込まれる."""
@@ -87,7 +87,7 @@ class TestLowVolOffsetBoostConfig:
         cfg = FillConfig.from_yaml(raw)
         assert cfg.low_vol_offset_boost_enabled is True
         assert cfg.low_vol_offset_boost == 1.4
-        assert cfg.low_vol_threshold == 0.70
+        assert cfg.low_vol_threshold == 0.75
 
 
 class TestLowVolOffsetBoostMakerPrice:

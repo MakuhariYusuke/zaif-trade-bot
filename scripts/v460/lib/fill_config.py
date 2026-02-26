@@ -120,7 +120,7 @@ class FillTestConfig:
     # vol_ratio < threshold 時に offset を拡大し、低ボラ環境での過剰アグレッシブ発注を抑制
     low_vol_offset_boost_enabled: bool = False
     low_vol_offset_boost: float = 1.4   # 低 vol 時の offset 倍率
-    low_vol_threshold: float = 0.70     # vol_ratio がこの値未満で発動
+    low_vol_threshold: float = 0.75     # vol_ratio がこの値未満で発動 (168# 0.70→0.75: order/fill遅延マージン)
     # 041# 時間帯フィルター (AS 高リスク時間帯のスキップ)
     enable_time_filter: bool = False
     skip_utc_hours: list[int] | None = None
