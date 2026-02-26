@@ -249,9 +249,12 @@ v460 開始以来の施策を時系列で整理し、「根本対策」vs「弥�
 | 5 | sell hold 90s | 根本 (PnL30→PnL90回復) | △ データ待ち | サイクル頻度低下 |
 | 6 | low_vol offset boost | **根本** (因果分析ベース) | △ データ待ち | low_vol 判定精度依存 |
 | 7 | InvSkew/VG damping | 構造 (競合解消) | △ データ待ち | new complexity |
-| 8 | DailyDrawdownGuard | 構造 (リスク制限) | ✅ 正常作動 | enabled: false (観測中) |
+| 8 | DailyDrawdownGuard | 構造 (リスク制限) | ✅ 正常作動 | enabled: false (観測中) → **169# C4 で有効化** |
+| 9 | **B1' ranging_buy low_vol skip** | **根本** (因果分析 + Gemini 10.2-D) | △ データ待ち | 169# 新規。§3.2 損失源 69% を直接排除 |
+| 10 | ~~C1 time_filter UTC14/17 追加~~ | ❌ **弥縫 → revert** | — | B1' と重複。欧州流動性を遮断する副作用 |
+| 11 | C3 sell_dynamic_kill trending_up 強化 | 構造 (defense-in-depth) | △ データ待ち | 安全弁突破時の二次防御。skip_sell_trending と異なる制御層 |
 
-**根本対策率**: 8 施策中 **2 件** (sell hold, low_vol boost) が因果分析ベースの根本対策。残りは防御的弥縫策/構造ガード。
+**根本対策率**: 11 施策中 **3 件** (sell hold, low_vol boost, B1' ranging skip) が因果分析ベースの根本対策。1 件 revert (弥縫策判定)。
 
 ### 5.3 因果分離未完了の影響
 
@@ -408,7 +411,7 @@ S3 (0.005 BTC) に Oracle 比 50% キャプチャ (pnl_mean=+1.28bps) で到達�
 
 | # | アクション | 期待効果 | 前提 | ステータス |
 |---|-----------|---------|------|-----------|
-| **C1** | JST 23 (UTC14), JST 02 (UTC17) を time_filter buy スキップに追加 | loss avoidance (-3.137bps, -2.522bps) | §3.3 データ確認 | ✅ **169# impl** |
+| **C1** | ~~JST 23 (UTC14), JST 02 (UTC17) を time_filter buy スキップに追加~~ | ~~loss avoidance~~ | §3.3 + B1' 重複分析 | ❌ **revert** (§12.1 参照) |
 | **C2** | SkipGate 再訓練 (n>1000/side 到達後) | 方向精度改善 | データ蓄積 | ⏳ データ待ち |
 | **C3** | sell_dynamic_kill trending_up 閾値強化 (-0.3→-0.1) + 安全弁 10→20 | trending_up_sell -2.770bps 回避 | §3.1 データ | ✅ **169# impl** |
 | **C4** | DailyDrawdownGuard 有効化 (`enabled: true`, hard=-50bps, soft=-30bps) | リスク制限 | S0 データで閾値検証 | ✅ **169# impl** |
@@ -496,7 +499,8 @@ S3 (0.005 BTC) に Oracle 比 50% キャプチャ (pnl_mean=+1.28bps) で到達�
 | 2026-02-27 | 初版作成。G1.1 診断 + 構造分解 + Oracle ギャップ + ロットスケーリング計画 + MC リスク + 外部レビュー向け要約 |
 | 2026-02-27 | Codex R1-R6 + Gemini 10.1-10.3 レビュー追記、著者回答-1 追記 |
 | 2026-02-27 | 169# impl: B1' + B0 + popup fix (§11) |
-| 2026-02-28 | 169# impl-2: C1 (time_filter JST23/02 buy skip) + C3 (trending_up_sell 閾値強化) + C4 (DailyDrawdownGuard 有効化) + §8 整合性修正 |
+| 2026-02-28 | 169# impl-2: C3 (trending_up_sell 閾値強化) + C4 (DailyDrawdownGuard 有効化) + §8 整合性修正 |
+| 2026-02-28 | 169# C1 revert: time_filter UTC14/17 削除。B1' が根本対策であり時間ベース遮断は弥繆策と判定 |
 
 ---
 
@@ -816,14 +820,32 @@ Windows で `subprocess.Popen` が新規コンソールウィンドウを開く�
 **実装日**: 2026-02-28
 **コミット**: (本コミットに含む)
 
-### 12.1 C1: time_filter JST23/JST02 buy スキップ追加
+### 12.1 C1: time_filter JST23/JST02 buy スキップ — **revert (弥繮策判定)**
 
-| 変更 | 内容 |
+| 項目 | 内容 |
 |------|------|
-| **ファイル** | `configs/v460/fill_test.yaml` |
-| **変更内容** | `skip_utc_hours_buy: [16]` → `[14, 16, 17]` |
-| **根拠** | §3.3 JST23 (UTC14) -3.137bps n=53、JST02 (UTC17) -2.522bps n=92 |
-| **影響** | buy 有効時間 23h→21h (遮断率 8.3%→12.5%)。sell 側は変更なし |
+| **当初変更** | `skip_utc_hours_buy: [16]` → `[14, 16, 17]` |
+| **revert** | `[16]` に復元 (UTC14/17 削除) |
+
+#### 根本原因分析
+
+§3.3 の JST23 (-3.137bps) / JST02 (-2.522bps) の損失は以下の構造で発生している:
+
+```
+JST23/02 損失の因果構造:
+  日本深夜 → 国内流動性低下 → ranging レジーム単純化
+  → low_vol + ranging_buy が大半
+  → B1' (ranging_buy low_vol hard skip) が根本原因を直接処理
+```
+
+#### time_filter ではなく B1' が正解である理由:
+
+1. **弥繆策重複**: §5.2 が警告する「弥繆策連鏎」そのもの。時間ベースの粗いフィルタで、条件ベースの精密なフィルタ (B1') と同じ問題を重複処理
+2. **欧州流動性の損失**: UTC14=CET15:00 (欧州午後), UTC17=CET18:00 (欧州夕方)。BTC/JPY に二方向流動性を提供する時間帯を静的に遮断するのは機会損失
+3. **最良レジームの抑圧**: §3.1 trending_down_buy (+1.888bps, 最良) がこの時間帯で発生すれば、time_filter が利益機会を潰す
+4. **B1' の包含性**: B1' は `regime=="ranging" AND vol_ratio < threshold AND side=="buy"` でフィルタ。時間帯に依存せず、UTC14/17 の損失ケースの大半を包含的に処理
+
+**原則**: 条件ベースフィルタ (regime/vol) が時間ベースフィルタに優先する。時間フィルタは「他の全てのフィルタで対処不能」な場合の最後の手段とする。
 
 ### 12.2 C3: sell_dynamic_kill trending_up 閾値強化
 

@@ -2581,8 +2581,8 @@ class Test052AdaptSellOffsetSync:
             cfg = yaml.safe_load(f)
         buy_skip = cfg["time_filter"]["skip_utc_hours_buy"]
         sell_skip = cfg["time_filter"]["skip_utc_hours_sell"]
-        # 169# C1: buy = [14, 16, 17] (JST23/01/02), sell = [8, 21]
-        assert buy_skip == [14, 16, 17], f"Expected [14, 16, 17], got {buy_skip}"
+        # 163# Step 2 + 168# §4.2 #8: buy = [16], sell = [8, 21]
+        assert buy_skip == [16], f"Expected [16], got {buy_skip}"
         assert sell_skip == [8, 21], f"Expected [8, 21], got {sell_skip}"
         # 168# regime_adaptive_extra 拡張: +UTC12(buy), +UTC7(sell)
         tf = cfg["time_filter"]

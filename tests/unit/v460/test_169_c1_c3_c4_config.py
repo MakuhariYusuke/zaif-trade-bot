@@ -29,28 +29,39 @@ def config_from_yaml() -> FillConfig:
 
 
 # ================================================================
-# C1: time_filter JST23/JST02 buy skip
+# C1: time_filter — B1' が根本対策のため静的遮断は不適用
 # ================================================================
 
 
-class TestC1TimeFilterBuySkip:
-    """C1: skip_utc_hours_buy に UTC14/17 が追加されたことを検証."""
+class TestC1TimeFilterNotBlocked:
+    """C1 revert: UTC14(JST23)/UTC17(JST02) は time_filter で遮断しない.
 
-    def test_utc14_in_buy_skip(self, config_from_yaml: FillConfig) -> None:
-        """UTC14 (JST23) が buy スキップリストに含まれる."""
-        assert 14 in config_from_yaml.skip_utc_hours_buy
+    根拠:
+    - JST23/02 の損失は ranging_buy at low_vol が主因 → B1' が根本対策
+    - UTC14=CET15:00, UTC17=CET18:00 は欧州取引活発帯
+    - 静的遮断は trending_down_buy (+1.888bps, 最良) の機会損失を生む
+    - §5.2 弥縫策連鎖リスク回避: 条件ベースフィルタ (B1') が時間ベースに優先
+    """
 
-    def test_utc17_in_buy_skip(self, config_from_yaml: FillConfig) -> None:
-        """UTC17 (JST02) が buy スキップリストに含まれる."""
-        assert 17 in config_from_yaml.skip_utc_hours_buy
+    def test_utc14_not_in_buy_skip(self, config_from_yaml: FillConfig) -> None:
+        """UTC14 (JST23/CET15) は欧州午後 — buy 遮断しない."""
+        assert 14 not in config_from_yaml.skip_utc_hours_buy
 
-    def test_utc16_still_in_buy_skip(self, config_from_yaml: FillConfig) -> None:
-        """既存の UTC16 (JST01) が維持されている."""
+    def test_utc17_not_in_buy_skip(self, config_from_yaml: FillConfig) -> None:
+        """UTC17 (JST02/CET18) は欧州夕方 — buy 遮断しない."""
+        assert 17 not in config_from_yaml.skip_utc_hours_buy
+
+    def test_utc16_remains_in_buy_skip(self, config_from_yaml: FillConfig) -> None:
+        """既存の UTC16 (JST01) は維持 (163# baseline)."""
         assert 16 in config_from_yaml.skip_utc_hours_buy
 
     def test_buy_skip_count(self, config_from_yaml: FillConfig) -> None:
-        """buy スキップは 3 時間帯."""
-        assert len(config_from_yaml.skip_utc_hours_buy) == 3
+        """buy スキップは 1 時間帯のみ (最小限)."""
+        assert len(config_from_yaml.skip_utc_hours_buy) == 1
+
+    def test_b1_prime_handles_root_cause(self, config_from_yaml: FillConfig) -> None:
+        """B1' (ranging_buy low_vol skip) が有効 — 時間帯遮断は不要."""
+        assert config_from_yaml.skip_ranging_buy_low_vol is True
 
     def test_sell_skip_unchanged(self, config_from_yaml: FillConfig) -> None:
         """sell スキップリストは変更なし [8, 21]."""
