@@ -329,6 +329,18 @@ def fill_test_main() -> None:
         },
     )
 
+    # 168# Discord 通知: fill_test 開始
+    try:
+        from ztb.utils.notify import get_notifier
+        _notifier = get_notifier()
+        _notifier.notify_fill_test_status(
+            runner._run_id, "start",
+            {"hours": str(args.hours), "config": args.config,
+             "git_sha": runner._git_sha, "dry_run": str(args.dry_run)},
+        )
+    except Exception:
+        logger.debug("Discord notification skipped (start)", exc_info=True)
+
     # Signal handler
     def _signal_handler(signum: int, frame: object) -> None:
         logger.info(f"Signal {signum} received — requesting shutdown")
@@ -387,6 +399,20 @@ def fill_test_main() -> None:
         logger.error(f"[148#] Unhandled exception: {e}", exc_info=True)
         raise
     finally:
+        # 168# Discord 通知: fill_test 停止/クラッシュ
+        try:
+            from ztb.utils.notify import get_notifier
+            _n = get_notifier()
+            _details = {"stop_reason": stop_reason or "unknown",
+                        "n_records": str(len(records)),
+                        "git_sha": runner._git_sha}
+            _n.notify_fill_test_status(
+                runner._run_id,
+                "crash" if (stop_reason or "").startswith("crash:") else "stop",
+                _details,
+            )
+        except Exception:
+            logger.debug("Discord notification skipped (stop)", exc_info=True)
         if stop_reason and not stop_reason.startswith("crash:"):
             log_event(
                 "stop",

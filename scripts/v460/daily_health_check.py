@@ -319,6 +319,23 @@ def run_daily_health_check(
     logger.info("Daily Health Check: %s", status)
     logger.info("=" * 50)
 
+    # 168# Discord 通知
+    try:
+        from ztb.utils.notify import get_notifier
+        _notifier = get_notifier()
+        _fields = {"checks": str(len(report["checks"]))}
+        for chk in report["checks"]:
+            name = chk.get("check", "?")
+            if chk.get("error"):
+                _fields[name] = f"ERROR: {chk['error']}"
+            elif chk.get("n_exit_breaches", 0) > 0:
+                _fields[name] = f"BREACH x{chk['n_exit_breaches']}"
+            else:
+                _fields[name] = "OK"
+        _notifier.notify_daily_health(now.strftime("%Y-%m-%d"), report["overall_healthy"], _fields)
+    except Exception:
+        logger.debug("Discord notification skipped", exc_info=True)
+
     # Save
     if output_path:
         out = Path(output_path)

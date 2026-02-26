@@ -92,8 +92,6 @@ class DiscordNotifier:
                 logger.error("Webhook URL not configured")
                 return False
 
-            payload = {"embeds": [embed]}
-
             # Retry logic with exponential backoff
             for attempt in range(self.max_retries + 1):
                 try:
@@ -153,6 +151,26 @@ class DiscordNotifier:
         status = "✅ Success" if success else "❌ Failed"
         title = f"🔬 ML Job {status}"
         message = f"Job {job_id} completed"
+        color = "success" if success else "error"
+        self.send_notification(title, message, color, metrics)
+
+    def notify_data_pipeline_status(
+        self, status: str, details: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Notify about data pipeline status."""
+        title = f"📊 Data Pipeline {status.title()}"
+        message = "Data acquisition and integrity check completed"
+        self.send_notification(
+            title, message, "success" if status == "success" else "error", details
+        )
+
+    def notify_risk_alert(
+        self, alert_type: str, details: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Notify about risk management alerts."""
+        title = f"⚠️ Risk Alert: {alert_type}"
+        message = "Risk management threshold exceeded"
+        self.send_notification(title, message, "warning", details)
 
     def notify_trading_signal(
         self, symbol: str, signal: str, confidence: float
@@ -164,6 +182,34 @@ class DiscordNotifier:
             "success" if signal == "buy" else "error" if signal == "sell" else "info"
         )
         fields = {"Symbol": symbol, "Signal": signal, "Confidence": f"{confidence:.2%}"}
+        self.send_notification(title, message, color, fields)
+
+    def notify_fill_test_status(
+        self,
+        run_id: str,
+        status: str,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """fill_test の開始/停止/クラッシュを通知."""
+        icon_map = {"start": "🟢", "stop": "🔵", "crash": "🔴", "completed": "✅"}
+        color_map = {"start": "info", "stop": "info", "crash": "error", "completed": "success"}
+        icon = icon_map.get(status, "ℹ️")
+        title = f"{icon} fill_test {status}"
+        message = f"run_id: {run_id}"
+        self.send_notification(title, message, color_map.get(status, "info"), details)
+
+    def notify_daily_health(
+        self,
+        date: str,
+        healthy: bool,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """日次ヘルスチェック結果を通知."""
+        icon = "✅" if healthy else "🔴"
+        title = f"{icon} Daily Health {date}"
+        message = "HEALTHY" if healthy else "UNHEALTHY — check report"
+        color = "success" if healthy else "error"
+        self.send_notification(title, message, color, details)
 
     def notify_drift_alert(
         self, drift_type: str, severity: str, details: Optional[Dict[str, Any]] = None
@@ -223,8 +269,14 @@ def send_notification(
 
 
 def get_notifier() -> DiscordNotifier:
-    """Get the global Discord notifier instance."""
+    """Get the global Discord notifier instance (auto-loads from env)."""
     global _default_notifier
     if _default_notifier is None:
-        _default_notifier = DiscordNotifier()
+        import os
+        url = (
+            os.getenv("DISCORD_WEBHOOK")
+            or os.getenv("DISCORD_WEBHOOK_URL")
+            or os.getenv("DISCORD_WEBHOOK_PROD")
+        )
+        _default_notifier = DiscordNotifier(webhook_url=url)
     return _default_notifier
