@@ -170,32 +170,32 @@ class TestTrendingSellSkipRebalance:
         assert "buy side insufficient" in source or "buy_insufficient" in source
 
     def test_max_consecutive_trending_sell_skip_yaml(self):
-        """YAML で max_consecutive_trending_sell_skip=10 が設定されている."""
+        """YAML で max_consecutive_trending_sell_skip=20 が設定されている (169# C3: 10→20)."""
         import yaml
         from pathlib import Path
         cfg_path = Path("configs/v460/fill_test.yaml")
         with open(cfg_path) as f:
             raw = yaml.safe_load(f)
         val = raw.get("loss_control", {}).get("max_consecutive_trending_sell_skip", None)
-        assert val == 10, f"Expected 10, got {val}"
+        assert val == 20, f"Expected 20, got {val}"
 
     def test_config_loads_max_consecutive(self):
-        """FillTestConfig が max_consecutive_trending_sell_skip を正しくロードする."""
+        """FillTestConfig が max_consecutive_trending_sell_skip を正しくロードする (169# C3: 20)."""
         import yaml
         from scripts.v460.lib.fill_config import FillTestConfig
         cfg_path = "configs/v460/fill_test.yaml"
         with open(cfg_path) as f:
             raw = yaml.safe_load(f)
         cfg = FillTestConfig.from_yaml(raw)
-        assert cfg.max_consecutive_trending_sell_skip == 10
+        assert cfg.max_consecutive_trending_sell_skip == 20
 
 
 # ======================================================================
 # HF4: trending sell skip rebalance relaxation
 # ======================================================================
 
-class TestTrendingSellSkipRebalance:
-    """166# HF4: buy 残高不足時に trending sell skip を緩和."""
+class TestTrendingSellSkipRebalance2:
+    """166# HF4: buy 残高不足時に trending sell skip を緩和 (duplicate cleanup)."""
 
     def test_hf4_code_exists_in_orchestrator(self):
         """HF4 コードがオーケストレータに存在する."""
@@ -206,21 +206,21 @@ class TestTrendingSellSkipRebalance:
         assert "buy side insufficient" in source or "buy_insufficient" in source
 
     def test_max_consecutive_trending_sell_skip_yaml(self):
-        """YAML で max_consecutive_trending_sell_skip=10 が設定されている."""
+        """YAML で max_consecutive_trending_sell_skip=20 が設定されている (169# C3: 10→20)."""
         import yaml
         from pathlib import Path
         cfg_path = Path("configs/v460/fill_test.yaml")
         with open(cfg_path) as f:
             raw = yaml.safe_load(f)
         val = raw.get("loss_control", {}).get("max_consecutive_trending_sell_skip", None)
-        assert val == 10, f"Expected 10, got {val}"
+        assert val == 20, f"Expected 20, got {val}"
 
     def test_config_loads_max_consecutive(self):
-        """FillTestConfig が max_consecutive_trending_sell_skip を正しくロードする."""
+        """FillTestConfig が max_consecutive_trending_sell_skip を正しくロードする (169# C3: 20)."""
         import yaml
         from scripts.v460.lib.fill_config import FillTestConfig
         cfg_path = "configs/v460/fill_test.yaml"
         with open(cfg_path) as f:
             raw = yaml.safe_load(f)
         cfg = FillTestConfig.from_yaml(raw)
-        assert cfg.max_consecutive_trending_sell_skip == 10
+        assert cfg.max_consecutive_trending_sell_skip == 20

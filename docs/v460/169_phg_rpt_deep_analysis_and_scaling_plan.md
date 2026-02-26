@@ -390,25 +390,28 @@ S3 (0.005 BTC) に Oracle 比 50% キャプチャ (pnl_mean=+1.28bps) で到達�
 | **A1** | **168h データ収集を継続** (変更しない) | パッケージ baseline 確立 | なし (損失軽微) | R11 遵守 |
 | **A2** | daily_health_check を毎日実行して監視 | 異常早期検知 | なし | Discord 通知済 |
 
-### 8.2 短期 (168h 完了後, 次の 168h run)
+### 8.2 短期 (168h 完了後, 次の 168h run) — ~~旧版 (superseded)~~
 
-R11 ルール: 最大 2 件の変更/run。
+> **⚠️ 以下の旧 B1/B2 は Codex R3 + Gemini 10.2-C/D の批判を受けて撤回・差替え済み。**
+> **修正版は「著者回答-1 → §8.2 短期（修正版）」(B1' + B0) を参照のこと。**
 
-| # | アクション | 期待効果 (bps) | 根拠 | 優先度 |
-|---|-----------|---------------|------|--------|
-| **B1** | **ranging_discount 0.90→1.0 に復元** | +0.2~0.4 | §3.2 ranging_buy が全損失の 69% | ★★★ |
-| **B2** | **order_timeout 90→60s に短縮** | +0.1~0.3 | §3.4 15s+ 約定が構造的損失。早期 cancel で次サイクルへ | ★★★ |
+~~R11 ルール: 最大 2 件の変更/run。~~
 
-**B1+B2 で +0.3~0.7 bps の改善余地**。pnl_mean を -0.27→0 近傍に引き上げる第一歩。
+| # | アクション | 期待効果 (bps) | 根拠 | 判定 |
+|---|-----------|---------------|------|------|
+| ~~**B1**~~ | ~~ranging_discount 0.90→1.0 に復元~~ | ~~+0.2~0.4~~ | ~~§3.2 ranging_buy が全損失の 69%~~ | ❌ **差替** → B1' (Gemini 10.2-D) |
+| ~~**B2**~~ | ~~order_timeout 90→60s に短縮~~ | ~~+0.1~0.3~~ | ~~§3.4 15s+ 約定が構造的損失~~ | ❌ **撤回** (Gemini 10.2-C: 論理矛盾) |
+
+~~**B1+B2 で +0.3~0.7 bps の改善余地**。pnl_mean を -0.27→0 近傍に引き上げる第一歩。~~
 
 ### 8.3 中期 (2-4 週間)
 
-| # | アクション | 期待効果 | 前提 |
-|---|-----------|---------|------|
-| **C1** | JST 23, JST 02 を time_filter に追加 | loss avoidance | §3.3 データ確認 |
-| **C2** | SkipGate 再訓練 (n>1000/side 到達後) | 方向精度改善 | データ蓄積 |
-| **C3** | sell_dynamic_kill 閾値の A/B (trending_up sell 遮断強化) | -2.77bps 回避 | §3.1 データ |
-| **C4** | DailyDrawdownGuard 有効化 (`enabled: true`) | リスク制限 | S0 データで閾値検証 |
+| # | アクション | 期待効果 | 前提 | ステータス |
+|---|-----------|---------|------|-----------|
+| **C1** | JST 23 (UTC14), JST 02 (UTC17) を time_filter buy スキップに追加 | loss avoidance (-3.137bps, -2.522bps) | §3.3 データ確認 | ✅ **169# impl** |
+| **C2** | SkipGate 再訓練 (n>1000/side 到達後) | 方向精度改善 | データ蓄積 | ⏳ データ待ち |
+| **C3** | sell_dynamic_kill trending_up 閾値強化 (-0.3→-0.1) + 安全弁 10→20 | trending_up_sell -2.770bps 回避 | §3.1 データ | ✅ **169# impl** |
+| **C4** | DailyDrawdownGuard 有効化 (`enabled: true`, hard=-50bps, soft=-30bps) | リスク制限 | S0 データで閾値検証 | ✅ **169# impl** |
 
 ### 8.4 長期 (S1 到達以降)
 
@@ -454,7 +457,7 @@ R11 ルール: 最大 2 件の変更/run。
 1. **§3.9 中止条件への対応は妥当か?** fill_rate 44% < 70% で中止条件該当だが、Oracle 正+累積損失軽微で継続中
 2. **弥縫策連鎖のリスク** (§5): 8 施策中根本対策 2 件。層構造は複雑化傾向
 3. **ロットスケーリング** (§6): 利益未達 (pnl_mean<0) 状態でのスケーリング計画は premature では?
-4. **offset 最適化** (§8 B1/B2): ranging_discount 復元 + timeout 短縮は因果的に正当か?
+4. **offset 最適化** (§8 ~~B1/B2~~ → B1'/B0): ~~ranging_discount 復元 + timeout 短縮は因果的に正当か?~~ → 著者回答-1 で B1 は B1'（ranging_buy low_vol ハードスキップ）に差替え、B2 は撤回済
 
 ### 9.2 データ出典と再現性
 
@@ -492,6 +495,8 @@ R11 ルール: 最大 2 件の変更/run。
 |------|------|
 | 2026-02-27 | 初版作成。G1.1 診断 + 構造分解 + Oracle ギャップ + ロットスケーリング計画 + MC リスク + 外部レビュー向け要約 |
 | 2026-02-27 | Codex R1-R6 + Gemini 10.1-10.3 レビュー追記、著者回答-1 追記 |
+| 2026-02-27 | 169# impl: B1' + B0 + popup fix (§11) |
+| 2026-02-28 | 169# impl-2: C1 (time_filter JST23/02 buy skip) + C3 (trending_up_sell 閾値強化) + C4 (DailyDrawdownGuard 有効化) + §8 整合性修正 |
 
 ---
 
@@ -803,3 +808,45 @@ Windows で `subprocess.Popen` が新規コンソールウィンドウを開く�
 - `TestOrchestratorRangingBuySkipSource` (2): ソースコード構造検証
 - `TestThreeSeriesStructure` (2): 3-series 出力構造
 - `TestPopenNoWindow` (4): popen_no_window ユーティリティ
+
+---
+
+## §12 実装記録-2: 169# C1/C3/C4 (中期課題の前倒し実装)
+
+**実装日**: 2026-02-28
+**コミット**: (本コミットに含む)
+
+### 12.1 C1: time_filter JST23/JST02 buy スキップ追加
+
+| 変更 | 内容 |
+|------|------|
+| **ファイル** | `configs/v460/fill_test.yaml` |
+| **変更内容** | `skip_utc_hours_buy: [16]` → `[14, 16, 17]` |
+| **根拠** | §3.3 JST23 (UTC14) -3.137bps n=53、JST02 (UTC17) -2.522bps n=92 |
+| **影響** | buy 有効時間 23h→21h (遮断率 8.3%→12.5%)。sell 側は変更なし |
+
+### 12.2 C3: sell_dynamic_kill trending_up 閾値強化
+
+| 変更 | 内容 |
+|------|------|
+| **ファイル** | `configs/v460/fill_test.yaml` |
+| **変更内容-1** | `sell_dynamic_kill.regime_thresholds.trending_up: -0.3` → `-0.1` |
+| **変更内容-2** | `max_consecutive_trending_sell_skip: 10` → `20` |
+| **根拠** | §3.1 trending_up_sell: n=25, avg=-2.770bps (最悪/件)。閾値強化 + 安全弁発動頻度半減 |
+| **期待効果** | trending_up 時の sell 漏洩を ~50% 削減 → +0.3~0.5bps |
+
+### 12.3 C4: DailyDrawdownGuard 有効化
+
+| 変更 | 内容 |
+|------|------|
+| **ファイル** | `configs/v460/fill_test.yaml` |
+| **変更内容** | `daily_drawdown.enabled: false` → `true` |
+| **閾値** | soft=-30bps (lot 半減)、hard=-50bps (サイクル停止) |
+| **根拠** | 168# §4.1 #3 で実装済み・テスト済みだが未有効化。暴走防止の安全弁として稼働開始 |
+
+### 12.4 §8 文書整合性修正
+
+- §8.2 旧版 (B1/B2) を ~~strikethrough~~ で superseded マーク
+- §8.3 中期テーブルに C1/C3/C4 のステータス列追加
+- §9.1 レビュー注目ポイント #4 を B1'/B0 への差替え反映
+- 改訂履歴に 169# impl-2 エントリ追加

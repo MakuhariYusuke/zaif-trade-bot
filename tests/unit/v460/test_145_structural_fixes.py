@@ -156,6 +156,7 @@ class TestCancelReasons:
             CR.BUY_DYNAMIC_KILL,       # 157# §19
             CR.TRENDING_SELL_SKIP,
             CR.DAILY_DRAWDOWN_HALT,     # 168# §4.1 #3
+            CR.RANGING_LOW_VOL_SKIP,   # 169# B1'
         }
         assert CR.AUDIT_CANCEL_REASONS == expected
 

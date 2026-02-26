@@ -231,5 +231,5 @@ class TestFillTestConfigRegimeAdaptive:
             raw = yaml.safe_load(f)
         tf = raw["time_filter"]
         assert tf["skip_utc_hours"] == []
-        assert tf["skip_utc_hours_buy"] == [16]
+        assert tf["skip_utc_hours_buy"] == [14, 16, 17]  # 169# C1: +UTC14(JST23), +UTC17(JST02)
         assert tf["skip_utc_hours_sell"] == [8, 21]  # 168# +UTC21
