@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 169# time_filter 全廃 — 107# Phase 3 Step 3 完了 (2026-02-28)
+
+### Changed
+- `configs/v460/fill_test.yaml`: 全ての静的時間帯遮断リストを空に
+  - `skip_utc_hours_buy: [16]` → `[]`
+  - `skip_utc_hours_sell: [8, 21]` → `[]`
+  - `regime_adaptive_extra_buy: [8, 12, 18]` → `[]`
+  - `regime_adaptive_extra_sell: [4, 7, 14]` → `[]`
+  - `enabled: true` + `regime_adaptive_enabled: true` は機構保全として維持
+
+### Rationale
+- 全ての時間帯遮断は「市場状態の時間帯相関」を因果と混同した弥縫策
+- 条件ベースフィルタに完全移行: B1' (ranging_buy_low_vol), SkipGate (ML+hour), VG (velocity/VPIN), sell_dynamic_kill (rolling PnL), DailyDrawdownGuard
+
+### Tests
+- `test_169_c1_c3_c4_config.py`: TestC1TimeFilterFullAbolition (9 tests — 全リスト空 + 機構維持)
+- `test_163_regime_adaptive_gating.py`, `test_regime_detector.py`, `test_fill_quality.py`: assertions updated
+- 2086 passed, 0 failed
+
+
 ## 168# §4.1 #3: DailyDrawdownGuard (2026-02-26)
 
 ### Added

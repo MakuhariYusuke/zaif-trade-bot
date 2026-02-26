@@ -1,6 +1,6 @@
-"""169# C1/C3/C4 設定テスト — time_filter + trending_up_sell 閾値 + DailyDrawdownGuard.
+"""169# C1/C3/C4 設定テスト — time_filter 全廃 + trending_up_sell 閾値 + DailyDrawdownGuard.
 
-C1: JST23 (UTC14) / JST02 (UTC17) の buy スキップ追加
+C1: time_filter 全廃 — 条件ベースフィルタ (B1', SkipGate, VG, sell_dynamic_kill) が根本対策
 C3: sell_dynamic_kill trending_up 閾値 -0.3→-0.1 + 安全弁 10→20
 C4: DailyDrawdownGuard enabled: true
 
@@ -29,43 +29,56 @@ def config_from_yaml() -> FillConfig:
 
 
 # ================================================================
-# C1: time_filter — B1' が根本対策のため静的遮断は不適用
+# C1: time_filter 全廃 — 条件ベースフィルタが根本対策
 # ================================================================
 
 
-class TestC1TimeFilterNotBlocked:
-    """C1 revert: UTC14(JST23)/UTC17(JST02) は time_filter で遮断しない.
+class TestC1TimeFilterFullAbolition:
+    """169# time_filter 全廃: 全ての静的時間帯遮断を撤廃.
 
-    根拠:
-    - JST23/02 の損失は ranging_buy at low_vol が主因 → B1' が根本対策
-    - UTC14=CET15:00, UTC17=CET18:00 は欧州取引活発帯
-    - 静的遮断は trending_down_buy (+1.888bps, 最良) の機会損失を生む
-    - §5.2 弥縫策連鎖リスク回避: 条件ベースフィルタ (B1') が時間ベースに優先
+    根拠 (107# Phase 3 Step 3 完了):
+    - 全ての時間帯遮断は「市場状態の時間帯相関」を因果と混同した弥縫策
+    - 条件ベースフィルタが全ての根本原因を直接処理:
+      * B1': ranging_buy at low_vol → hard skip (損失源の 69%)
+      * SkipGate: ML + hour_sin/cos + regime → AS 確率予測
+      * VG: velocity/VPIN → offset_boost (リアルタイム変動)
+      * sell_dynamic_kill: rolling PnL → sell 停止
+      * trending_sell_skip: trending_up → sell skip
+      * DailyDrawdownGuard: 日次 cumPnL → hard/soft limit
+    - 原則: 条件ベースフィルタ > 時間ベースフィルタ
     """
 
-    def test_utc14_not_in_buy_skip(self, config_from_yaml: FillConfig) -> None:
-        """UTC14 (JST23/CET15) は欧州午後 — buy 遮断しない."""
-        assert 14 not in config_from_yaml.skip_utc_hours_buy
+    def test_buy_skip_empty(self, config_from_yaml: FillConfig) -> None:
+        """buy スキップリストが空 — 全時間帯開放."""
+        assert config_from_yaml.skip_utc_hours_buy == []
 
-    def test_utc17_not_in_buy_skip(self, config_from_yaml: FillConfig) -> None:
-        """UTC17 (JST02/CET18) は欧州夕方 — buy 遮断しない."""
-        assert 17 not in config_from_yaml.skip_utc_hours_buy
+    def test_sell_skip_empty(self, config_from_yaml: FillConfig) -> None:
+        """sell スキップリストが空 — 全時間帯開放."""
+        assert config_from_yaml.skip_utc_hours_sell == []
 
-    def test_utc16_remains_in_buy_skip(self, config_from_yaml: FillConfig) -> None:
-        """既存の UTC16 (JST01) は維持 (163# baseline)."""
-        assert 16 in config_from_yaml.skip_utc_hours_buy
+    def test_global_skip_empty(self, config_from_yaml: FillConfig) -> None:
+        """グローバルスキップリストが空."""
+        assert config_from_yaml.skip_utc_hours == []
 
-    def test_buy_skip_count(self, config_from_yaml: FillConfig) -> None:
-        """buy スキップは 1 時間帯のみ (最小限)."""
-        assert len(config_from_yaml.skip_utc_hours_buy) == 1
+    def test_regime_adaptive_buy_empty(self, config_from_yaml: FillConfig) -> None:
+        """regime_adaptive_extra_buy が空 — VG が high_vol を直接処理."""
+        assert config_from_yaml.regime_adaptive_extra_buy == []
+
+    def test_regime_adaptive_sell_empty(self, config_from_yaml: FillConfig) -> None:
+        """regime_adaptive_extra_sell が空 — sell_dynamic_kill + VG が担当."""
+        assert config_from_yaml.regime_adaptive_extra_sell == []
 
     def test_b1_prime_handles_root_cause(self, config_from_yaml: FillConfig) -> None:
         """B1' (ranging_buy low_vol skip) が有効 — 時間帯遮断は不要."""
         assert config_from_yaml.skip_ranging_buy_low_vol is True
 
-    def test_sell_skip_unchanged(self, config_from_yaml: FillConfig) -> None:
-        """sell スキップリストは変更なし [8, 21]."""
-        assert sorted(config_from_yaml.skip_utc_hours_sell) == [8, 21]
+    def test_time_filter_enabled_for_framework(self, config_from_yaml: FillConfig) -> None:
+        """time_filter 機構自体は維持 (コードパス健全性, 即時復帰可能)."""
+        assert config_from_yaml.enable_time_filter is True
+
+    def test_regime_adaptive_mechanism_preserved(self, config_from_yaml: FillConfig) -> None:
+        """regime_adaptive 機構自体は維持 (将来の再有効化に備える)."""
+        assert config_from_yaml.regime_adaptive_enabled is True
 
 
 # ================================================================

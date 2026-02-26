@@ -2535,14 +2535,11 @@ class Test052AdaptSellOffsetSync:
         yaml_path = Path("configs/v460/fill_test.yaml")
         with open(yaml_path) as f:
             cfg = yaml.safe_load(f)
-        # 163# Step 2: BUY = [16] のみ残留
-        assert 12 not in cfg["time_filter"]["skip_utc_hours_buy"]
-        assert 16 in cfg["time_filter"]["skip_utc_hours_buy"]
-        # 163# Step 2: UTC08, 18 は通常時遮断解除 → regime_adaptive_extra_buy に移動
-        assert 8 not in cfg["time_filter"]["skip_utc_hours_buy"]
-        assert 18 not in cfg["time_filter"]["skip_utc_hours_buy"]
-        assert 8 in cfg["time_filter"]["regime_adaptive_extra_buy"]
-        assert 18 in cfg["time_filter"]["regime_adaptive_extra_buy"]
+        # 169# time_filter 全廃: 全リスト空 (条件ベースフィルタに完全移行)
+        assert cfg["time_filter"]["skip_utc_hours_buy"] == []
+        assert cfg["time_filter"]["skip_utc_hours_sell"] == []
+        assert cfg["time_filter"]["regime_adaptive_extra_buy"] == []
+        assert cfg["time_filter"]["regime_adaptive_extra_sell"] == []
 
     def test_yaml_deadzone_updated(self) -> None:
         """052# で deadzone が 2.5 に更新されている."""
@@ -2572,7 +2569,7 @@ class Test052AdaptSellOffsetSync:
         assert FillTestConfig().min_order_btc == 0.001
 
     def test_yaml_skip_utc_hours_side_specific_089(self) -> None:
-        """168# time_filter精緻化: buy=[16], sell=[8,21]. regime_adaptive拡張."""
+        """169# time_filter全廃: 条件ベースフィルタに完全移行."""
         from pathlib import Path
         import yaml  # type: ignore[import-untyped]
 
@@ -2581,15 +2578,13 @@ class Test052AdaptSellOffsetSync:
             cfg = yaml.safe_load(f)
         buy_skip = cfg["time_filter"]["skip_utc_hours_buy"]
         sell_skip = cfg["time_filter"]["skip_utc_hours_sell"]
-        # 163# Step 2 + 168# §4.2 #8: buy = [16], sell = [8, 21]
-        assert buy_skip == [16], f"Expected [16], got {buy_skip}"
-        assert sell_skip == [8, 21], f"Expected [8, 21], got {sell_skip}"
-        # 168# regime_adaptive_extra 拡張: +UTC12(buy), +UTC7(sell)
+        # 169# time_filter 全廃: 全リスト空 (B1' + SkipGate + VG + sell_dynamic_kill が根本対策)
+        assert buy_skip == [], f"Expected [], got {buy_skip}"
+        assert sell_skip == [], f"Expected [], got {sell_skip}"
+        # 169# regime_adaptive リストも空 (VG が high_vol を直接処理)
         tf = cfg["time_filter"]
-        assert tf["regime_adaptive_extra_buy"] == [8, 12, 18]
-        assert tf["regime_adaptive_extra_sell"] == [4, 7, 14]
-        # 旧 UTC13 (sell) は引き続き解除
-        assert 13 not in sell_skip
+        assert tf["regime_adaptive_extra_buy"] == []
+        assert tf["regime_adaptive_extra_sell"] == []
 
     def test_trending_offset_boost_in_code(self) -> None:
         """052# MakerPriceCalculator.compute にトレンディングブーストが含まれる.

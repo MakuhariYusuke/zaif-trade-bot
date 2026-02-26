@@ -624,16 +624,12 @@ class TestTimeFilterNoRecord:
         assert "skip_utc_hours_buy" in tf
         assert "skip_utc_hours_sell" in tf
         # 168# §4.2 #8: buy = [16], sell = [8, 21] (損失バンド精緻化)
-        assert set(tf["skip_utc_hours_buy"]) == {16}
-        assert set(tf["skip_utc_hours_sell"]) == {8, 21}
-        # 168# regime_adaptive 拡張: +UTC12(buy), +UTC7(sell)
+        # 169# time_filter 全廃: 全リスト空 (条件ベースフィルタに完全移行)
+        assert tf["skip_utc_hours_buy"] == []
+        assert tf["skip_utc_hours_sell"] == []
         assert tf["regime_adaptive_enabled"] is True
-        assert set(tf["regime_adaptive_extra_buy"]) == {8, 12, 18}
-        assert set(tf["regime_adaptive_extra_sell"]) == {4, 7, 14}
-        # buy UTC04 は引き続き解除
-        assert 4 not in tf["skip_utc_hours_buy"]
-        # sell UTC01 は引き続き解除
-        assert 1 not in tf["skip_utc_hours_sell"]
+        assert tf["regime_adaptive_extra_buy"] == []
+        assert tf["regime_adaptive_extra_sell"] == []
 
 
 class TestDynamicLossCapReserved:

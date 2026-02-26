@@ -243,7 +243,7 @@ v460 開始以来の施策を時系列で整理し、「根本対策」vs「弥�
 | # | 施策 | 種別 | 効果検証 | リスク |
 |---|------|------|---------|--------|
 | 1 | spread_offset_ratio 0.20→0.05 | パラメータ調整 | ✅ AS 低減 | offset 過少化の副作用 |
-| 2 | time_filter (時間帯遮断) | 弥縫 → 構造化中 | △ (時間帯近似) | 168# で low_vol に書き換え |
+| 2 | ~~time_filter (時間帯遮断)~~ | ❌ **弥縫 → 全廃** | — | 107# Phase 3 Step 3 完了。条件ベースフィルタ (B1'+SkipGate+VG+sell_dynamic_kill) に完全移行 |
 | 3 | SkipGate ML フィルター | 構造 (ML ベース) | ✅ reject 正常 | モデル陳腐化リスク |
 | 4 | Volatility Guard | 構造 (リアルタイム) | ✅ 有効 | InvSkew 競合 → ダンピングで解消 |
 | 5 | sell hold 90s | 根本 (PnL30→PnL90回復) | △ データ待ち | サイクル頻度低下 |
@@ -253,8 +253,9 @@ v460 開始以来の施策を時系列で整理し、「根本対策」vs「弥�
 | 9 | **B1' ranging_buy low_vol skip** | **根本** (因果分析 + Gemini 10.2-D) | △ データ待ち | 169# 新規。§3.2 損失源 69% を直接排除 |
 | 10 | ~~C1 time_filter UTC14/17 追加~~ | ❌ **弥縫 → revert** | — | B1' と重複。欧州流動性を遮断する副作用 |
 | 11 | C3 sell_dynamic_kill trending_up 強化 | 構造 (defense-in-depth) | △ データ待ち | 安全弁突破時の二次防御。skip_sell_trending と異なる制御層 |
+| 12 | ~~time_filter 全設定 (UTC16 buy, UTC8/21 sell, regime_adaptive)~~ | ❌ **弥縫 → 全廃** | — | 全ての静的時間帯遮断は「市場状態の時間帯相関」を因果と混同。#2 の全廃を完了 |
 
-**根本対策率**: 11 施策中 **3 件** (sell hold, low_vol boost, B1' ranging skip) が因果分析ベースの根本対策。1 件 revert (弥縫策判定)。
+**根本対策率**: 12 施策中 **3 件** (sell hold, low_vol boost, B1' ranging skip) が因果分析ベースの根本対策。3 件 revert/全廃 (弥縫策判定)。
 
 ### 5.3 因果分離未完了の影響
 
@@ -501,6 +502,7 @@ S3 (0.005 BTC) に Oracle 比 50% キャプチャ (pnl_mean=+1.28bps) で到達�
 | 2026-02-27 | 169# impl: B1' + B0 + popup fix (§11) |
 | 2026-02-28 | 169# impl-2: C3 (trending_up_sell 閾値強化) + C4 (DailyDrawdownGuard 有効化) + §8 整合性修正 |
 | 2026-02-28 | 169# C1 revert: time_filter UTC14/17 削除。B1' が根本対策であり時間ベース遮断は弥繆策と判定 |
+| 2026-02-28 | 169# time_filter 全廃 (107# Phase 3 Step 3 完了): 全ての静的時間帯遮断を撤廃、条件ベースフィルタに完全移行 (§12.5) |
 
 ---
 
@@ -867,6 +869,36 @@ JST23/02 損失の因果構造:
 | **根拠** | 168# §4.1 #3 で実装済み・テスト済みだが未有効化。暴走防止の安全弁として稼働開始 |
 
 ### 12.4 §8 文書整合性修正
+
+### 12.5 time_filter 全廃 — 107# Phase 3 Step 3 完了
+
+**実施日**: 2026-02-28
+
+| 項目 | 変更内容 |
+|------|----------|
+| `skip_utc_hours_buy` | `[16]` → `[]` |
+| `skip_utc_hours_sell` | `[8, 21]` → `[]` |
+| `regime_adaptive_extra_buy` | `[8, 12, 18]` → `[]` |
+| `regime_adaptive_extra_sell` | `[4, 7, 14]` → `[]` |
+| `enabled`, `regime_adaptive_enabled` | `true` のまま維持 (機構保全) |
+
+#### 各エントリの根本原因分析
+
+| エントリ | UTC(JST) | 起源 | PnL (bps) | n | 根本原因 | 条件ベース代替 |
+|----------|----------|------|-----------|---|---------|-------------|
+| buy [16] | UTC16(JST01) | 107# | -3.60 | 7 | 深夜薄板→ranging+low_vol | **B1'** + SkipGate + VG |
+| sell [8] | UTC08(JST17) | 107#/163# | -6.72 | 8 | 市場終了→方向性変動 | **sell_dynamic_kill** + trending_sell_skip + VG |
+| sell [21] | UTC21(JST06) | 168# | -1.68 | 28 | 早朝薄板→sell AS | sell_dynamic_kill + VG + SkipGate |
+| adaptive buy [8,12,18] | high_vol限定 | 163#/168# | -0.47~-3.24 | 6-17 | high_vol時のbuy AS | **VG** (offset_boost) + B1' + SkipGate |
+| adaptive sell [4,7,14] | high_vol限定 | 163#/168# | -1.85~-5.56 | 7-31 | high_vol時のsell AS | sell_dynamic_kill + VG + SkipGate |
+
+#### 全廃の正当性
+
+1. **全エントリが弥縫策**: 107# 自身が「time_filter は平均的に悪い時間帯を遮断する静的な手段であり、良い時間帯内での突然の悪化 (false negative) と悪い時間帯内での良い機会の逸失 (false positive) を本質的に解決できない」と分析済み
+2. **小標本問題**: 全エントリが n=7~31 の統計に基づく。市場構造変化で容易に無効化
+3. **条件ベースフィルタの充実**: B1' (69%損失源の直接処理)、SkipGate (ML+時刻特徴量)、VG (リアルタイム変動検知)、sell_dynamic_kill (rolling PnL)、DailyDrawdownGuard (日次リスク制限) が全面稼働
+4. **107# Phase 3 ロードマップ準拠**: Step 1 (163#: 7h→3h) → Step 2 (163#: 3h→1h) → **Step 3 (169#: 1h→0h)** 完了
+5. **原則の一貫適用**: §12.1 で確立した「条件ベースフィルタ > 時間ベースフィルタ」原則を全エントリに適用
 
 - §8.2 旧版 (B1/B2) を ~~strikethrough~~ で superseded マーク
 - §8.3 中期テーブルに C1/C3/C4 のステータス列追加
