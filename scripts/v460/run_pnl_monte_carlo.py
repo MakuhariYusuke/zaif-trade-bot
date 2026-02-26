@@ -32,6 +32,10 @@ from ztb.risk.pnl_monte_carlo import (
     MonteCarloConfig,
     PnLMonteCarloSimulator,
 )
+from ztb.metrics.fill_quality import (
+    compute_fill_metrics,
+    filter_clean_records,
+)
 from ztb.io.json_io import write_json
 
 logging.basicConfig(
@@ -114,6 +118,35 @@ def main() -> None:
         result_dict = result.to_dict()
         if args.sensitivity:
             result_dict["sensitivity"] = sim.sensitivity_analysis()
+
+        # 169# B0: 3-series fill rate を構造化出力 (R2 分母混在解消)
+        all_metrics = compute_fill_metrics(records)
+        clean_records, _quarantine = filter_clean_records(records)
+        clean_metrics = compute_fill_metrics(clean_records) if clean_records else all_metrics
+        n_clean = len(clean_records) if clean_records else 0
+        result_dict["three_series"] = {
+            "raw": {
+                "fill_rate": round(all_metrics.overall_fill_rate, 6),
+                "n_total": all_metrics.total_orders,
+                "n_filled": all_metrics.filled_orders,
+            },
+            "clean": {
+                "fill_rate": round(
+                    clean_metrics.filled_orders / n_clean if n_clean else 0.0, 6
+                ),
+                "n_total": n_clean,
+                "n_filled": clean_metrics.filled_orders,
+            },
+            "attempted": {
+                "fill_rate": round(clean_metrics.attempted_fill_rate, 6),
+                "n_total": clean_metrics.attempted_orders,
+                "n_filled": clean_metrics.filled_orders,
+                "skip_gate_count": clean_metrics.skip_gate_count,
+            },
+            "gate_basis": "clean",
+            "mc_basis": "raw",  # MC はフィルタ前の全データで実行
+        }
+
         write_json(output_path, result_dict, indent=2, ensure_ascii=False, default=str)
         logger.info(f"Results saved to {output_path}")
 

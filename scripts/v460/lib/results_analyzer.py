@@ -131,6 +131,34 @@ def run_results_only(results_dir: str, thresholds_path: str | None = None) -> di
     log_multi_track_summary(multi_track)
     judgment["multi_track"] = multi_track
 
+    # 169# B0: R2 gate metric 3-series 構造化 (分母定義の不一致解消)
+    # raw = all_records (quarantine 含む), clean = quarantine 除外, attempted = skip_gate 除外
+    # judgment JSON に明示的に 3 系列を格納し downstream の分母混在を防止
+    _clean_fill_rate = metrics.filled_orders / len(records) if records else 0.0
+    judgment["three_series"] = {
+        "raw": {
+            "fill_rate": round(metrics.overall_fill_rate, 6),
+            "n_total": metrics.total_orders,
+            "n_filled": metrics.filled_orders,
+            "note": "全レコード (quarantine 含む) ベース",
+        },
+        "clean": {
+            "fill_rate": round(_clean_fill_rate, 6),
+            "n_total": len(records),
+            "n_filled": metrics.filled_orders,
+            "note": "quarantine 除外後ベース (Gate 判定はこの系列)",
+        },
+        "attempted": {
+            "fill_rate": round(metrics.attempted_fill_rate, 6),
+            "n_total": metrics.attempted_orders,
+            "n_filled": metrics.filled_orders,
+            "skip_gate_count": metrics.skip_gate_count,
+            "skip_gate_ratio": round(metrics.skip_gate_ratio, 6),
+            "note": "skip_gate 除外後ベース (純粋な発注判断の精度)",
+        },
+        "gate_basis": "clean",  # Gate 判定に使用する系列を明示
+    }
+
     # 120# P2-1: FFD/VG/SG 寄与分解
     event_contrib = compute_event_contribution(records)
     log_event_contribution(event_contrib)

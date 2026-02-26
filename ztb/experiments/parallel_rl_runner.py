@@ -227,9 +227,11 @@ class ParallelRLExperimentRunner:
 
         try:
             # Start process
+            from ztb.utils.system_utils import popen_no_window
+
             with open(log_file, "w") as f:
                 process = subprocess.Popen(
-                    cmd, stdout=f, stderr=subprocess.STDOUT, cwd=os.getcwd()
+                    cmd, **popen_no_window(), stdout=f, stderr=subprocess.STDOUT, cwd=os.getcwd()
                 )
 
             self.processes[exp_name] = process

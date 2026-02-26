@@ -109,3 +109,32 @@ def get_system_info() -> Dict[str, Any]:
         == "1",
         "memory_optimized": "PYTORCH_CUDA_ALLOC_CONF" in os.environ,
     }
+
+
+# ======================================================================
+# 169# subprocess popup 抑制 (Windows)
+# ======================================================================
+
+import subprocess
+import sys
+
+
+def popen_no_window(**extra_kwargs: Any) -> Dict[str, Any]:
+    """Windows でコンソールウィンドウがポップアップしない Popen kwargs を返す.
+
+    169# Fix: launch_monitoring / ab_test_runner 等で subprocess.Popen が
+    新規コンソールウィンドウを開き、ユーザー操作性を著しく阻害していた問題に対処。
+
+    Usage::
+
+        proc = subprocess.Popen(cmd, **popen_no_window(), text=True)
+
+    Returns:
+        dict: ``creationflags=CREATE_NO_WINDOW`` (Windows) or empty dict (非Windows).
+    """
+    kwargs: Dict[str, Any] = {}
+    if sys.platform == "win32":
+        # CREATE_NO_WINDOW = 0x08000000
+        kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+    kwargs.update(extra_kwargs)
+    return kwargs

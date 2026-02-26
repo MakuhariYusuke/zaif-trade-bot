@@ -182,8 +182,11 @@ def _start_retrain_scheduler(
                 retrain_log_dir.mkdir(parents=True, exist_ok=True)
                 retrain_stderr_path = retrain_log_dir / "retrain_scheduler_stderr.log"
                 retrain_stderr_fh = open(retrain_stderr_path, "a", encoding="utf-8")
+                from ztb.utils.system_utils import popen_no_window
+
                 retrain_proc = subprocess.Popen(
                     retrain_cmd,
+                    **popen_no_window(),
                     stdout=subprocess.DEVNULL,
                     stderr=retrain_stderr_fh,
                 )

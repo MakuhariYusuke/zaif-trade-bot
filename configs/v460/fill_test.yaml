@@ -118,6 +118,10 @@ regime:
   low_vol_offset_boost_enabled: true
   low_vol_offset_boost: 1.4
   low_vol_threshold: 0.75
+  # 169# B1': ranging_buy at low_vol ハードスキップ (Gemini 10.2-D「休むも相場」)
+  # ranging_buy は全損失の 69% (-220.84 JPY) を占める最大損失源
+  # 低ボラ環境では offset 調整より完全スキップが clean
+  skip_ranging_buy_low_vol: true
 
 # ---- 時間帯フィルター (041#) ----
 # 089# 大幅削減: 16h→6h per side (088# SkipGate 動的較正 + sell_guard で補完)

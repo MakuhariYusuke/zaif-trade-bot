@@ -12,6 +12,8 @@ import sys
 from types import FrameType
 from typing import List, Optional
 
+from ztb.utils.system_utils import popen_no_window
+
 
 class MonitoringLauncher:
     def __init__(
@@ -63,7 +65,7 @@ class MonitoringLauncher:
                 print(f"Would run: {' '.join(cmd)}")
             else:
                 try:
-                    proc = subprocess.Popen(cmd, text=True)
+                    proc = subprocess.Popen(cmd, **popen_no_window(), text=True)
                     self.processes.append(proc)
                     print(f"Launched: {' '.join(cmd)} (PID: {proc.pid})")
                 except Exception as e:

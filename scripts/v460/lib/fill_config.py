@@ -121,6 +121,10 @@ class FillTestConfig:
     low_vol_offset_boost_enabled: bool = False
     low_vol_offset_boost: float = 1.4   # 低 vol 時の offset 倍率
     low_vol_threshold: float = 0.75     # vol_ratio がこの値未満で発動 (168# 0.70→0.75: order/fill遅延マージン)
+    # 169# B1': ranging_buy at low_vol ハードスキップ (Gemini 10.2-D「休むも相場」)
+    # ranging レジーム + buy + vol_ratio < low_vol_threshold → 完全スキップ
+    # ranging_buy が全損失の 69% を占める根本対策。offset 調整より clean
+    skip_ranging_buy_low_vol: bool = False
     # 041# 時間帯フィルター (AS 高リスク時間帯のスキップ)
     enable_time_filter: bool = False
     skip_utc_hours: list[int] | None = None
@@ -909,6 +913,7 @@ class FillTestConfig:
             "low_vol_offset_boost_enabled": "low_vol_offset_boost_enabled", # 168#
             "low_vol_offset_boost": "low_vol_offset_boost",               # 168#
             "low_vol_threshold": "low_vol_threshold",                     # 168#
+            "skip_ranging_buy_low_vol": "skip_ranging_buy_low_vol",       # 169# B1'
         }
         for yaml_key, config_key in regime_map.items():
             if yaml_key in regime:

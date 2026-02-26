@@ -731,3 +731,75 @@ B0 はコード/分析スクリプトの修正であり fill_test パラメー�
 B1' と合わせて「1 パラメータ変更 + 1 計測修正」の 2 件構成。R11 遵守。
 
 **旧 B2 (timeout 短縮)**: 撤回 (Gemini 10.2-C)。stale reprice 最適化として中期 C に移動。
+
+---
+
+## §11 実装記録 (169# Implementation Log)
+
+### 11.1 B1': ranging_buy at low_vol ハードスキップ
+
+**実装日**: 2026-02-27
+**コミット**: (本コミットに含む)
+
+#### 変更ファイル:
+| ファイル | 変更内容 |
+|---------|---------|
+| `scripts/v460/lib/cancel_reasons.py` | `RANGING_LOW_VOL_SKIP` 定数追加 + `AUDIT_CANCEL_REASONS` に登録 |
+| `scripts/v460/lib/fill_config.py` | `skip_ranging_buy_low_vol: bool = False` フィールド追加 + YAML パーサー更新 |
+| `scripts/v460/lib/fill_loop_orchestrator.py` | unknown_regime_buy_skip 直後に ranging_buy low_vol skip ロジック挿入 |
+| `configs/v460/fill_test.yaml` | `skip_ranging_buy_low_vol: true` 追加 (regime セクション) |
+
+#### ロジック:
+```python
+if (config.skip_ranging_buy_low_vol
+    and side == "buy"
+    and not balance_forced
+    and regime == "ranging"
+    and vol_ratio < low_vol_threshold):
+    → skip (cancel_reason="ranging_low_vol_skip")
+```
+
+#### 設計判断:
+- `low_vol_threshold` は既存の `low_vol_offset_boost` と共有 (0.75)
+- `balance_forced` 時はバイパス (片側残高で buy するしかない局面)
+- cancel_reason は `AUDIT_CANCEL_REASONS` に含め quarantine bypass 対象
+
+### 11.2 B0: R2 gate metric 3-series 定義修正
+
+#### 変更ファイル:
+| ファイル | 変更内容 |
+|---------|---------|
+| `scripts/v460/lib/results_analyzer.py` | judgment dict に `three_series` 構造化ブロック追加 |
+| `scripts/v460/run_pnl_monte_carlo.py` | MC JSON 出力に `three_series` 追加 + `filter_clean_records` import |
+
+#### 3 系列定義:
+| 系列 | 分母 | 用途 |
+|------|------|------|
+| **raw** | 全レコード (quarantine 含む) | 全体像の把握 |
+| **clean** | quarantine 除外後 | **Gate 判定** (E1-E5) |
+| **attempted** | skip_gate 除外後 | 純粋な発注判断の精度 |
+
+`gate_basis` フィールドで Gate 判定に使用する系列を明示 (`"clean"`)。
+
+### 11.3 ポップアップ修正 (UX 改善)
+
+#### 変更ファイル:
+| ファイル | 変更内容 |
+|---------|---------|
+| `ztb/utils/system_utils.py` | `popen_no_window()` ヘルパー関数追加 |
+| `ztb/ops/monitoring/launch_monitoring.py` | `Popen` に `popen_no_window()` 適用 |
+| `tools/ab_test_runner.py` | 同上 |
+| `scripts/v460/lib/fill_test_cli.py` | 同上 |
+| `ztb/experiments/parallel_rl_runner.py` | 同上 |
+
+Windows で `subprocess.Popen` が新規コンソールウィンドウを開く問題を
+`CREATE_NO_WINDOW` フラグで抑制。非 Windows 環境では no-op。
+
+### 11.4 テスト
+
+`tests/unit/v460/test_169_ranging_buy_skip_and_metrics.py` — 14 テスト:
+- `TestRangingLowVolSkipConstant` (3): cancel_reason 定数・AUDIT set 登録
+- `TestSkipRangingBuyLowVolConfig` (3): fill_config フィールド・YAML パース
+- `TestOrchestratorRangingBuySkipSource` (2): ソースコード構造検証
+- `TestThreeSeriesStructure` (2): 3-series 出力構造
+- `TestPopenNoWindow` (4): popen_no_window ユーティリティ

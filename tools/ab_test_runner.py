@@ -80,7 +80,9 @@ def build_child_command(
 def launch_child_training(cmd: List[str], seed: int, config_path: Path) -> None:
     """Launch the child process and persist its PID for debugging."""
     print("Running:", " ".join(cmd))
-    p = subprocess.Popen(cmd)
+    from ztb.utils.system_utils import popen_no_window
+
+    p = subprocess.Popen(cmd, **popen_no_window())
     try:
         child_pid = p.pid
         print(f"Started training subprocess with PID {child_pid} for seed {seed}")

@@ -684,6 +684,36 @@ class FillLoopOrchestratorMixin:
                 await asyncio.sleep(self.config.cycle_interval_sec)
                 continue
 
+            # 169# B1': ranging_buy at low_vol ハードスキップ (Gemini 10.2-D「休むも相場」)
+            # ranging_buy は全損失の 69% (-220.84 JPY)。低ボラ環境ではスプレッドエッジが
+            # 極小化し offset 調整では対処困難 → 完全スキップが clean
+            # balance_forced 時はバイパス (片側残高で buy するしかない局面)
+            if (
+                self.config.skip_ranging_buy_low_vol
+                and next_side == "buy"
+                and not _balance_forced
+                and self._regime_detector is not None
+                and self._regime_detector.current_regime.value == "ranging"
+            ):
+                _vol_ratio = self._regime_detector.last_volatility_ratio
+                if _vol_ratio < self.config.low_vol_threshold:
+                    logger.info(
+                        f"[169# B1'] Skipping buy — ranging regime at low vol "
+                        f"(vol_ratio={_vol_ratio:.4f} < threshold={self.config.low_vol_threshold})"
+                    )
+                    _skip_record = self._make_skip_record(
+                        side="buy",
+                        cancel_reason=CR.RANGING_LOW_VOL_SKIP,
+                        order_quantity=self._current_lot,
+                        regime="ranging",
+                    )
+                    batch.append(_skip_record)
+                    total_count += 1
+                    batch = self._batch_persistence.maybe_flush(batch, "ranging_low_vol_skip")
+                    self._last_side = "buy"
+                    await asyncio.sleep(self.config.cycle_interval_sec)
+                    continue
+
             # 155# §9: trending レジーム時の sell 抑制
             # trending sell avg -0.687 bps — 逆行トレード削減
             # 156# §10 #1: balance_forced 時はバイパス (片側残高で sell するしかない局面)
