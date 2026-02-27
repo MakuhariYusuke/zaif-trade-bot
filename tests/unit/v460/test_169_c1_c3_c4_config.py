@@ -87,13 +87,16 @@ class TestC1TimeFilterFullAbolition:
 
 
 class TestC3TrendingUpSellThreshold:
-    """C3: trending_up 閾値強化 + 安全弁拡大."""
+    """C3: trending_up 閾値強化 + 安全弁調整.
+
+    171# Guard Paradox 対策で閾値を緩和 (-0.1→-0.3), 安全弁を早期化 (20→10).
+    """
 
     def test_regime_threshold_trending_up(self, config_from_yaml: FillConfig) -> None:
-        """trending_up の sell_dynamic_kill 閾値が -0.1 に強化されている."""
+        """trending_up の sell_dynamic_kill 閾値が -0.3 (171# Guard Paradox 対策)."""
         thresholds = config_from_yaml.sell_dynamic_kill_regime_thresholds
         assert thresholds is not None
-        assert thresholds.get("trending_up") == pytest.approx(-0.1)
+        assert thresholds.get("trending_up") == pytest.approx(-0.3)
 
     def test_regime_threshold_trending_down_unchanged(
         self, config_from_yaml: FillConfig
@@ -114,8 +117,14 @@ class TestC3TrendingUpSellThreshold:
     def test_max_consecutive_trending_sell_skip(
         self, config_from_yaml: FillConfig
     ) -> None:
-        """安全弁が 20 に拡大されている."""
-        assert config_from_yaml.max_consecutive_trending_sell_skip == 20
+        """171# Guard Paradox: 安全弁が 10 に短縮 (sell 機会確保)."""
+        assert config_from_yaml.max_consecutive_trending_sell_skip == 10
+
+    def test_sell_guard_inv_bypass_threshold(
+        self, config_from_yaml: FillConfig
+    ) -> None:
+        """171# Guard Paradox: 在庫偏重バイパス閾値が 0.3."""
+        assert config_from_yaml.sell_guard_inv_bypass_threshold == pytest.approx(0.3)
 
 
 # ================================================================

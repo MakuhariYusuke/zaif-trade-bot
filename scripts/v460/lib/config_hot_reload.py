@@ -138,6 +138,7 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "skip_sell_trending",
     "skip_sell_trending_up_only",
     "max_consecutive_trending_sell_skip",
+    "sell_guard_inv_bypass_threshold",  # 171# Guard Paradox 対策
     "skip_balance_forced",
     "balance_forced_deadlock_limit",
     "balance_forced_rescue_enabled",

@@ -112,6 +112,29 @@ class InterpolatedStats(TypedDict):
     original_price: InterpolatedSplitStats
 
 
+# ---------------------------------------------------------------------------
+# 172# EV_per_cycle — Codex R3 + Gemini 9.4 推奨指標
+# EV = fill_prob × avg_pnl_if_filled (bps/cycle)
+# ---------------------------------------------------------------------------
+
+class EvPerCycleSummary(TypedDict):
+    """1 グループの EV_per_cycle 集計."""
+    total_cycles: int
+    filled_cycles: int
+    fill_prob: float
+    avg_pnl_if_filled: float  # bps (actual 30s)
+    ev_per_cycle: float       # bps
+    # guard 評価用: ブロックされたサイクルの後知恵 PnL
+    blocked_cycles: int
+    avg_hindsight_blocked: float | None  # bps (hindsight 30s)
+    guard_value: float | None  # ev_per_cycle - avg_hindsight_blocked
+
+
+class EvPerCycleReport(TypedDict):
+    """EV_per_cycle 分析全体."""
+    overall: EvPerCycleSummary
+    by_regime_side: dict[str, EvPerCycleSummary]
+    by_guard: dict[str, EvPerCycleSummary]
 
 
 def _to_str(value: object | None, *, default: str = "") -> str:
@@ -726,6 +749,104 @@ def _analyze_interpolated_stats(results: list[HindsightResult]) -> InterpolatedS
     }
 
 
+def _compute_ev_summary(
+    filled_pnls: Sequence[float],
+    blocked_hindsight: Sequence[float],
+    total_cycles: int,
+) -> EvPerCycleSummary:
+    """EV_per_cycle 集計の共通ロジック.
+
+    172# EV_per_cycle = fill_prob × avg_pnl_if_filled.
+    guard_value = EV(executed) − avg_hindsight(blocked) で
+    ガードの「損失回避効果 − 機会損失」を評価する。
+    """
+    filled_n = len(filled_pnls)
+    fill_prob = filled_n / total_cycles if total_cycles > 0 else 0.0
+    avg_pnl = _mean(list(filled_pnls)) or 0.0
+    ev = fill_prob * avg_pnl
+
+    blocked_n = len(blocked_hindsight)
+    avg_blocked = _mean(list(blocked_hindsight))
+    guard_val: float | None = None
+    if avg_blocked is not None:
+        # guard_value > 0 → ガードが正のEVを持つ (ブロックした方が悪い)
+        # guard_value < 0 → ガードが有害 (良い機会をブロックしている)
+        guard_val = round(ev - avg_blocked, 4)
+
+    return {
+        "total_cycles": total_cycles,
+        "filled_cycles": filled_n,
+        "fill_prob": round(fill_prob, 4),
+        "avg_pnl_if_filled": round(avg_pnl, 4),
+        "ev_per_cycle": round(ev, 4),
+        "blocked_cycles": blocked_n,
+        "avg_hindsight_blocked": round(avg_blocked, 4) if avg_blocked is not None else None,
+        "guard_value": guard_val,
+    }
+
+
+def _analyze_ev_per_cycle(results: list[HindsightResult]) -> EvPerCycleReport:
+    """172# EV_per_cycle 分析 — Codex R3 + Gemini 9.4 推奨.
+
+    EV_per_cycle = fill_prob × avg_pnl_if_filled (bps/cycle)
+    各 regime×side / guard カテゴリ別に算出。
+    """
+    # -- Overall --
+    all_filled_pnl = [
+        r.actual_pnl_30s for r in results
+        if r.filled and r.actual_pnl_30s is not None
+    ]
+    all_blocked_h = [
+        r.hindsight_pnl_30s for r in results
+        if not r.filled and r.hindsight_pnl_30s is not None
+    ]
+    overall = _compute_ev_summary(all_filled_pnl, all_blocked_h, len(results))
+
+    # -- By regime × side --
+    regime_side_groups: dict[str, dict[str, list[float]]] = defaultdict(
+        lambda: {"filled_pnl": [], "blocked_h": [], "total": []}
+    )
+    for r in results:
+        key = f"{r.regime or 'none'}_{r.side}"
+        regime_side_groups[key]["total"].append(0.0)  # count only
+        if r.filled and r.actual_pnl_30s is not None:
+            regime_side_groups[key]["filled_pnl"].append(r.actual_pnl_30s)
+        elif not r.filled and r.hindsight_pnl_30s is not None:
+            regime_side_groups[key]["blocked_h"].append(r.hindsight_pnl_30s)
+
+    by_regime_side: dict[str, EvPerCycleSummary] = {}
+    for key in sorted(regime_side_groups.keys()):
+        g = regime_side_groups[key]
+        by_regime_side[key] = _compute_ev_summary(
+            g["filled_pnl"], g["blocked_h"], len(g["total"]),
+        )
+
+    # -- By guard (cancel_reason カテゴリ) --
+    guard_groups: dict[str, dict[str, list[float]]] = defaultdict(
+        lambda: {"filled_pnl": [], "blocked_h": [], "total": []}
+    )
+    for r in results:
+        cat = _category_from_result(r)
+        guard_groups[cat]["total"].append(0.0)
+        if r.filled and r.actual_pnl_30s is not None:
+            guard_groups[cat]["filled_pnl"].append(r.actual_pnl_30s)
+        elif not r.filled and r.hindsight_pnl_30s is not None:
+            guard_groups[cat]["blocked_h"].append(r.hindsight_pnl_30s)
+
+    by_guard: dict[str, EvPerCycleSummary] = {}
+    for cat in sorted(guard_groups.keys()):
+        g = guard_groups[cat]
+        by_guard[cat] = _compute_ev_summary(
+            g["filled_pnl"], g["blocked_h"], len(g["total"]),
+        )
+
+    return {
+        "overall": overall,
+        "by_regime_side": by_regime_side,
+        "by_guard": by_guard,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Display
 # ---------------------------------------------------------------------------
@@ -740,6 +861,7 @@ def _print_report(
     wait_bands: dict[str, WaitBandSummary] | None = None,
     regime_side: dict[str, RegimeSideSummary] | None = None,
     interpolated_stats: InterpolatedStats | None = None,
+    ev_per_cycle: EvPerCycleReport | None = None,
 ) -> None:
     """Print hindsight analysis report."""
     print("=" * 70)
@@ -840,6 +962,41 @@ def _print_report(
             avg_s = f"{avg:.4f}" if avg is not None else "N/A"
             print(f"  {label}: count={data['count']}, with_pnl={data['with_pnl']}, avg_30s={avg_s}")
 
+    # 172# EV_per_cycle
+    if ev_per_cycle:
+        print("\n--- 172# EV_per_cycle (fill_prob × avg_pnl_if_filled) ---")
+        ov = ev_per_cycle["overall"]
+        print(f"  Overall: fill_prob={ov['fill_prob']:.3f}, "
+              f"avg_pnl={ov['avg_pnl_if_filled']:.4f}, "
+              f"EV={ov['ev_per_cycle']:.4f} bps/cycle")
+        if ov["guard_value"] is not None:
+            print(f"  guard_value={ov['guard_value']:.4f} "
+                  f"(>0: guards help, <0: guards harmful)")
+
+        print(f"\n  {'Regime_Side':<22} {'N':>5} {'fill%':>6} {'avg_pnl':>8} "
+              f"{'EV':>8} {'blocked':>7} {'blk_h30':>8} {'guard_v':>8}")
+        for key, s in ev_per_cycle["by_regime_side"].items():
+            gv_s = f"{s['guard_value']:.4f}" if s["guard_value"] is not None else "N/A"
+            bh_s = f"{s['avg_hindsight_blocked']:.4f}" if s["avg_hindsight_blocked"] is not None else "N/A"
+            print(f"  {key:<22} {s['total_cycles']:>5} "
+                  f"{s['fill_prob']:>5.1%} "
+                  f"{s['avg_pnl_if_filled']:>8.4f} "
+                  f"{s['ev_per_cycle']:>8.4f} "
+                  f"{s['blocked_cycles']:>7} "
+                  f"{bh_s:>8} {gv_s:>8}")
+
+        print(f"\n  {'Guard_Cat':<22} {'N':>5} {'fill%':>6} {'avg_pnl':>8} "
+              f"{'EV':>8} {'blocked':>7} {'blk_h30':>8} {'guard_v':>8}")
+        for cat, s in ev_per_cycle["by_guard"].items():
+            gv_s = f"{s['guard_value']:.4f}" if s["guard_value"] is not None else "N/A"
+            bh_s = f"{s['avg_hindsight_blocked']:.4f}" if s["avg_hindsight_blocked"] is not None else "N/A"
+            print(f"  {cat:<22} {s['total_cycles']:>5} "
+                  f"{s['fill_prob']:>5.1%} "
+                  f"{s['avg_pnl_if_filled']:>8.4f} "
+                  f"{s['ev_per_cycle']:>8.4f} "
+                  f"{s['blocked_cycles']:>7} "
+                  f"{bh_s:>8} {gv_s:>8}")
+
     print(f"\n{'='*70}")
 
 
@@ -906,12 +1063,16 @@ def main(argv: Sequence[str] | None = None) -> dict[str, object]:
     # §9.4 #1: Interpolated stats
     interpolated_stats = _analyze_interpolated_stats(results)
 
+    # 172# EV_per_cycle
+    ev_per_cycle = _analyze_ev_per_cycle(results)
+
     # Print report
     _print_report(
         cat_analyses, side_reversal, hourly, skip_gate_cal, len(records),
         wait_bands=wait_bands,
         regime_side=regime_side,
         interpolated_stats=interpolated_stats,
+        ev_per_cycle=ev_per_cycle,
     )
 
     # Build output
@@ -937,6 +1098,7 @@ def main(argv: Sequence[str] | None = None) -> dict[str, object]:
         "wait_bands": wait_bands,
         "regime_side": regime_side,
         "interpolated_stats": interpolated_stats,
+        "ev_per_cycle": ev_per_cycle,
     }
 
     # Top missed opportunities

@@ -278,6 +278,9 @@ class FillTestConfig:
     skip_sell_trending_up_only: bool = False
     # 158# §20-B: 連続 trending sell skip 安全弁 — N 回超過で sell を強制許可 (0=無制限)
     max_consecutive_trending_sell_skip: int = 30
+    # 171# Guard Paradox 対策: 在庫偏重時に sell ガードを自動緩和
+    # InvSkew imbalance > この閾値なら trending_sell_skip + sell_dynamic_kill をバイパス
+    sell_guard_inv_bypass_threshold: float = 0.3  # buy偏重 0.3 以上で sell 抑制解除
     # ---- 133# P0-10: sell 動的 kill (rolling PnL ベースの自動停止) ----
     sell_dynamic_kill_enabled: bool = False  # True で sell rolling PnL 監視有効
     sell_dynamic_kill_window: int = 50       # rolling ウィンドウ (fill 数)
@@ -671,6 +674,9 @@ class FillTestConfig:
         # 158# §20-B: 連続 trending sell skip 安全弁
         if 止血.get("max_consecutive_trending_sell_skip") is not None:
             kwargs["max_consecutive_trending_sell_skip"] = 止血["max_consecutive_trending_sell_skip"]
+        # 171# Guard Paradox 対策: 在庫偏重時の sell ガードバイパス閾値
+        if 止血.get("sell_guard_inv_bypass_threshold") is not None:
+            kwargs["sell_guard_inv_bypass_threshold"] = float(止血["sell_guard_inv_bypass_threshold"])
         sell_kill = 止血.get("sell_dynamic_kill", {})
         if sell_kill.get("enabled") is not None:
             kwargs["sell_dynamic_kill_enabled"] = sell_kill["enabled"]

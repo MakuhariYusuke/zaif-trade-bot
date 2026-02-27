@@ -311,7 +311,7 @@ loss_control:
   balance_forced_deadlock_limit: 3
   # 166# HF1: rescue モード有効化 (資金枯渇  レジームスキップ デッドロック対策)
   balance_forced_rescue_enabled: true
-  balance_forced_rescue_offset_mult: 2.0  # 連続 forced skip N 回超過 → 強制実行 (0=無制限)
+  balance_forced_rescue_offset_mult: 1.3  # 171#: 2.0→1.3 (2.0では fill率低下でrescue無力化。1.3で実効的な約定を確保)
   # P0-09: unknown レジーム時の buy スキップ (unknown-buy 平均 -1.384bps)
   skip_buy_unknown_regime: true
   # 155# §9: trending レジーム時の sell スキップ (trending-sell 平均 -0.687bps)
@@ -319,7 +319,9 @@ loss_control:
   # 156# D-4: trending_up のみ skip、trending_down sell は開放
   skip_sell_trending_up_only: true
   # 166# HF4: 連続 sell skip 安全弁上限を 3010 に短縮 (7.3 B.4)
-  max_consecutive_trending_sell_skip: 20   # 169# C3: 10→20 (安全弁発動頻度半減、trending_up_sell 漏洩削減)
+  max_consecutive_trending_sell_skip: 10   # 171#: 20→10 (Guard Paradox対策: 安全弁を早期発動して sell 機会確保)
+  # 171# Guard Paradox 対策: 在庫偏重時に sell ガードをバイパスする閾値
+  sell_guard_inv_bypass_threshold: 0.3  # InvSkew imbalance >= 0.3 (buy偏重) で sell 抑制解除
   # P0-10: sell 動的 kill (rolling PnL ベースの自動停止)
   sell_dynamic_kill:
     enabled: true
@@ -328,7 +330,7 @@ loss_control:
     resume_window: 10              # 156# D-5: 20→10 (40分→約20分へ半減)
     # 139# §9-#2: レジーム別閾値 (regime_name -> threshold_bps)
     regime_thresholds:
-      trending_up: -0.1            # 169# C3: -0.3→-0.1 (trending_up_sell -2.770bps 対策、ほぼゼロ容認)
+      trending_up: -0.3            # 171#: -0.1→-0.3 (Guard Paradox対策: -0.1はほぼ全sell kill、在庫偏重の正フィードバック原因)
       trending_down: -1.0          # 下降トレンド時は sell に寛容
       ranging: -0.5                # レンジ時はデフォルト同等
   # 157# §19: buy 動的 kill (rolling PnL ベースの自動停止 — sell との対称性)

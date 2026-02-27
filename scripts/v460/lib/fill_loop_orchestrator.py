@@ -768,6 +768,21 @@ class FillLoopOrchestratorMixin:
                         self._trending_sell_skip_count = 0
                         _should_skip = False
 
+                # 171# Guard Paradox 対策: 在庫が buy 偏重なら sell 抑制を解除
+                # (sell ガード過剰 → buy 偏重 → balance_forced_skip の正フィードバックを断切)
+                if _should_skip:
+                    _inv_bypass = self.config.sell_guard_inv_bypass_threshold
+                    _inv_imb = self._maker_price._inv_net_imbalance
+                    if _inv_bypass > 0 and _inv_imb >= _inv_bypass:
+                        logger.info(
+                            f"[171#] Trending sell skip relaxation: "
+                            f"inv_imbalance={_inv_imb:.3f} >= "
+                            f"threshold={_inv_bypass} — "
+                            f"forcing sell for inventory rebalance"
+                        )
+                        self._trending_sell_skip_count = 0
+                        _should_skip = False
+
                 if _should_skip:
                     self._trending_sell_skip_count += 1
                     logger.info(
@@ -821,10 +836,17 @@ class FillLoopOrchestratorMixin:
 
             # 133# P0-10: sell 動的 kill — rolling PnL が閾値以下なら sell 停止
             # 156# §12: balance_forced 時はバイパス (片側残高で sell するしかない局面)
+            # 171# Guard Paradox 対策: 在庫 buy 偏重時もバイパス (sell 抑制の正フィードバック断切)
+            _inv_bypass_sell_kill = (
+                self.config.sell_guard_inv_bypass_threshold > 0
+                and self._maker_price._inv_net_imbalance
+                    >= self.config.sell_guard_inv_bypass_threshold
+            )
             if (
                 self.config.sell_dynamic_kill_enabled
                 and next_side == "sell"
                 and not _balance_forced
+                and not _inv_bypass_sell_kill
                 and self._is_sell_killed()
             ):
                 logger.info(

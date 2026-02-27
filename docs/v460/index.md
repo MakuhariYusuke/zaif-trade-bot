@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-27 (170# ログ深堀り + 型安全強化)
+> 最終更新: 2026-02-27 (172# Guard Paradox 根本対策 + EV_per_cycle)
 
 ---
 
@@ -161,6 +161,8 @@
 | 157 | fix | [157_ph2_fix_regime_deadlock_and_cancel.md](157_ph2_fix_regime_deadlock_and_cancel.md) | §20 レジームデッドロック修正 + cancel re-raise + spread_too_narrow 分類 |
 | 169 | rpt | [169_ph2_rpt_deep_analysis_and_scaling_plan.md](169_ph2_rpt_deep_analysis_and_scaling_plan.md) | 深堀り分析: G1.1 ゲート診断 + ロットスケーリング計画 + 外部 AI レビュー |
 | 170 | rpt | [170_ph2_rpt_log_deep_analysis_and_type_safety.md](170_ph2_rpt_log_deep_analysis_and_type_safety.md) | ログ深堀り + 型安全強化 + Config Hot-Reload + AI レビュー準備 |
+| 171 | rpt | [171_ph2_rpt_sell_guard_paradox_deep_dive.md](171_ph2_rpt_sell_guard_paradox_deep_dive.md) | Sell Guard Paradox 技術精査 + balance_forced_skip 正フィードバックループ発見 |
+| 172 | fix | [172_ph2_fix_guard_paradox_and_ev_per_cycle.md](172_ph2_fix_guard_paradox_and_ev_per_cycle.md) | Guard Paradox 根本対策 (InvSkew bypass) + EV_per_cycle 実装 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
