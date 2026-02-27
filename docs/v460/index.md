@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-28 (182# Trend Mode 厳格化 + EV_weighted外部化 + Deadlock regime別緩和)
+> 最終更新: 2026-02-28 (183# ログ分析ベース逆選択防御強化)
 
 ---
 
@@ -173,6 +173,7 @@
 | 180 | impl | [180_ph2_impl_watchdog_hidden_review.md](180_ph2_impl_watchdog_hidden_review.md) | Watchdog 非表示化 + 179# Self-Review + from_yaml 堅牢化 |
 | 181 | impl | [181_ph2_impl_cd_chase_enable_ev_weighted.md](181_ph2_impl_cd_chase_enable_ev_weighted.md) | C/D/Chase 有効化 + EV_weighted + Stop Condition Monitor |
 | 182 | impl | [182_ph2_impl_trend_strict_ev_ext_deadlock.md](182_ph2_impl_trend_strict_ev_ext_deadlock.md) | Trend Mode 厳格化 + EV_weighted外部化 + Deadlock regime別緩和 |
+| 183 | impl | [../sessions/183_log_analysis_adverse_guard.md](../sessions/183_log_analysis_adverse_guard.md) | ログ分析ベース逆選択防御強化 (hour_offsets + velocity_skip + narrow_spread_guard + VG/VPIN) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

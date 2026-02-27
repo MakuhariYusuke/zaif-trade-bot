@@ -679,12 +679,25 @@ class SkipGateEvaluator:
             _utc_hour = datetime.now(_tz.utc).hour
             _hour_offset = self._config.skip_gate_hour_offsets.get(_utc_hour, 0.0)
 
+            # 183# narrow spread adverse guard: spread < threshold → 閾値厳格化
+            _spread_offset = 0.0
+            _ns_thr = self._config.skip_gate_narrow_spread_threshold_jpy
+            if _ns_thr > 0 and spread_at_order is not None and spread_at_order < _ns_thr:
+                _spread_offset = self._config.skip_gate_narrow_spread_offset
+                if _spread_offset != 0.0:
+                    logger.debug(
+                        "[skip_gate] 183# narrow spread guard: spread=%.0f < %.0f → offset +%.2f",
+                        spread_at_order, _ns_thr, _spread_offset,
+                    )
+
+            _total_offset = _hour_offset + _spread_offset
+
             # 141# P1-01: side 別モデルにディスパッチ (フォールバック: unified)
             decision = active_gate.evaluate(
                 gate_features,
                 side=side,
                 regime=sg_regime,
-                threshold_offset=_hour_offset,
+                threshold_offset=_total_offset,
             )
             result.skipped = decision.should_skip
             result.score = decision.predicted_pnl_bps
@@ -699,7 +712,7 @@ class SkipGateEvaluator:
             result.model_used = f"{decision.model_used}:{model_tag}"
             result.as_prob = decision.as_probability
             result.threshold_used = decision.threshold_used
-            result.hour_offset = _hour_offset
+            result.hour_offset = _total_offset
 
             if decision.should_skip:
                 from ztb.metrics.fill_quality import FillRecord
@@ -725,7 +738,7 @@ class SkipGateEvaluator:
                     skip_gate_model_used=result.model_used,
                     skip_gate_as_prob=result.as_prob,
                     skip_gate_threshold_used=result.threshold_used,
-                    skip_gate_hour_offset=_hour_offset if _hour_offset != 0.0 else None,
+                    skip_gate_hour_offset=_total_offset if _total_offset != 0.0 else None,
                     # 122# R5: OB 記録を imbalance_enabled と独立させ常時記録
                     orderbook_imbalance=last_imbalance,
                     bid_depth_total=last_bid_depth,

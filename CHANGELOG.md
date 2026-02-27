@@ -6,6 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 183# ログ分析ベース逆選択防御強化 (2026-02-28)
+
+### 分析結果
+- fill_test.log 47,414行 + fill_records 15ファイル (4,671レコード, 1,991 filled) を統計分析
+- **逆選択率 28.2%** (561/1991), 平均 -5.90 bps, 累計 -3,310 bps → **収益性改善の最大ボトルネック**
+- 非逆選択: +1.90 bps, WR 64.4% → AS 除去で本来プラス
+- 最強予測因子: VG velocity (adverse med=-0.95 vs non-adverse +0.83)
+
+### Added
+- `skip_gate_evaluator.py`: narrow spread adverse guard (spread < threshold で skip_gate offset 加算)
+- `fill_config.py`: `skip_gate_narrow_spread_threshold_jpy`, `skip_gate_narrow_spread_offset` フィールド
+- `config_hot_reload.py`: 上記 2 フィールドを hot-reload 対象に追加
+- `fill_test.yaml`: `skip_gate.hour_offsets` — 5 悪時間帯 (UTC 14/16/18/21/23) に AS ペナルティ
+- `test_183_log_analysis_improvements.py`: 16 テストケース
+
+### Changed
+- `fill_test.yaml`: `buy_velocity_skip_enabled` false→true, 閾値 -8→-6 bps
+- `fill_test.yaml`: `sell_velocity_skip_threshold_bps` 8→6 bps
+- `fill_test.yaml`: `volatility_guard.velocity_threshold_bps` 15→12
+- `fill_test.yaml`: `volatility_guard.vpin_threshold` 0.63→0.60
+- `fill_test.yaml`: `narrow_spread_boost_buy` 1.5→2.0, `narrow_spread_boost_sell` 2.0→2.5
+- `test_093_side_params.py`: narrow_spread_boost 期待値更新
+- `test_fill_quality.py`: VG threshold 期待値更新
+
+### Tests
+- 2330 passed, 0 failed
+
+
 ## 182# Trend Mode 厳格化 + EV_weighted外部化 + Deadlock regime別緩和 (2026-02-28)
 
 ### Added

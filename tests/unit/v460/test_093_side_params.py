@@ -140,8 +140,8 @@ class TestSpreadAdaptiveSideYAML:
         sa = y["spread_adaptive"]
         assert "narrow_spread_boost_buy" in sa
         assert "narrow_spread_boost_sell" in sa
-        assert sa["narrow_spread_boost_buy"] == pytest.approx(1.5)
-        assert sa["narrow_spread_boost_sell"] == pytest.approx(2.0)
+        assert sa["narrow_spread_boost_buy"] == pytest.approx(2.0)   # 183# 1.5→2.0 (spread<2kでAS32%対策)
+        assert sa["narrow_spread_boost_sell"] == pytest.approx(2.5)  # 183# 2.0→2.5
 
 
 # =====================================================================

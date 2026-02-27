@@ -235,8 +235,8 @@ spread_adaptive:
   enabled: true                # スプレッド幅に応じた offset 動的調整
   narrow_spread_bps: 2.5       # 121# A3: 2.0→2.5 P50近辺に引上げ→postonly_reject -20~30%削減 (168h 65件→~45件)
   narrow_spread_boost: 2.0     # 狭スプレッド時の offset 倍率 (共通フォールバック)
-  narrow_spread_boost_buy: 1.5 # 093# buy 側: 084# Tier2 #4 — 0.05→0.075 に軽減して fill 促進
-  narrow_spread_boost_sell: 2.0 # 093# sell 側: offset 増加の限界効果低い→据え置き (084#: AS 構造的要因)
+  narrow_spread_boost_buy: 2.0 # 183# 1.5→2.0 (spread<2kでAS32%: buy/sell対称化。<2k帯PnL=-0.46bps改善狙い)
+  narrow_spread_boost_sell: 2.5 # 183# 2.0→2.5 (spread<2kでAS32%: sell側のoffset拡大で逆選択回避強化)
   wide_spread_bps: 4.5         # 120# 25.0→4.5: P95相当。max(5.03)に近い帯で wide 判定
   wide_spread_ratio: 0.5       # 広スプレッド時の offset 割引
 
@@ -290,9 +290,22 @@ skip_gate:
   unknown_buy_offset_boost: 2.0  # VG 相当の 2x boost (1.0 = 無効)
   # 165# AS-R1: velocity-based pre-ML skip
   sell_velocity_skip_enabled: true
-  sell_velocity_skip_threshold_bps: 8.0
-  buy_velocity_skip_enabled: false
-  buy_velocity_skip_threshold_bps: -8.0
+  sell_velocity_skip_threshold_bps: 6.0   # 183# 8.0→6.0 (AS率28%対策: VG vel adverse med=-0.95, sell急騰局面の捕捉率向上)
+  buy_velocity_skip_enabled: true          # 183# false→true (buy AS率28%≒sell同等。急落局面で買い参入を抑制)
+  buy_velocity_skip_threshold_bps: -6.0   # 183# -8.0→-6.0 (enableに併せ閾値も保守化)
+  # 183# 時間帯別 skip_gate 閾値オフセット (UTC hour → PnL threshold 加算)
+  # ログ分析: 01h JST(=16UTC)64%AS, 03h(=18UTC)50%, 06h(=21UTC)36%, 17h(=08UTC)42%, 23h(=14UTC)43%
+  # PnLモード: 正方向=厳格化 (より高い予測PnLがないとskip)
+  hour_offsets:
+    14: 0.3    # 23h JST: AS43%, -134.5bps/日 → 厳格化
+    16: 0.5    # 01h JST: AS64%, -79.8bps/日 → 最も厳格化
+    18: 0.3    # 03h JST: AS50%, -54.8bps/日 → 厳格化
+    21: 0.3    # 06h JST: AS36%, -125.8bps/日 → 厳格化 (PnL損失最大時間帯)
+    23: 0.2    # 08h JST: AS28%だがPnL-30.7bps → 軽い厳格化
+  # 183# narrow spread adverse guard: spread < threshold で skip_gate 閾値厳格化
+  # ログ分析: spread<2kでAS32% (全体28%), PnL=-0.46bps (全体-0.30bps)
+  skip_gate_narrow_spread_threshold_jpy: 2000.0
+  skip_gate_narrow_spread_offset: 0.2     # PnLモード: threshold += 0.2 (厳格化)
 
 # ---- 107# Volatility Guard (リアルタイム急変検知) ----
 # time_filter の静的遮断では対応不能な「時間帯内の急変」に対応
@@ -300,9 +313,9 @@ volatility_guard:
   enabled: true
   # 短期 price velocity: 直近60秒の mid price 変動率 (bps)
   velocity_window_sec: 60       # ウィンドウ (秒)
-  velocity_threshold_bps: 15.0  # この bps 超で guard 発動
+  velocity_threshold_bps: 12.0  # 183# 15.0→12.0 (VG vel=逆選択最強因子: adverse med=-0.95, non-adverse med=+0.83。感度引上げでoffset boost発動率向上)
   # VPIN (Volume-synchronized Probability of Informed Trading)
-  vpin_threshold: 0.63          # 130# Y4: 0.70→0.63 (-10% 感度引上げ。AS -3~5pt 期待。118# §9-A4 VG有効性確認済)
+  vpin_threshold: 0.60          # 183# 0.63→0.60 (AS28%対策。AS時VPIN mean=0.427 vs non-AS=0.413。感度引上げ)
   # 行動: offset を boost (skip は攻撃的すぎる→データ蓄積後に検討)
   offset_boost_factor: 2.0      # guard 発動時の offset 倍率
   # 168# InvSkew/VG 競合解消: InvSkew が sell offset を緩和した場面で

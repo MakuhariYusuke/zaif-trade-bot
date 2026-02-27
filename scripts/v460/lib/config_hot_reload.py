@@ -97,6 +97,9 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "skip_gate_target_skip_rate_buy",
     "skip_gate_target_skip_rate_sell",
     "skip_gate_hour_offsets",
+    # 183# narrow spread adverse guard
+    "skip_gate_narrow_spread_threshold_jpy",
+    "skip_gate_narrow_spread_offset",
     # --- dynamic kill ---
     "sell_dynamic_kill_enabled",
     "sell_dynamic_kill_window",

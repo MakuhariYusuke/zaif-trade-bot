@@ -234,6 +234,11 @@ class FillTestConfig:
     sell_velocity_skip_threshold_bps: float = 8.0  # price_velocity_60s > this AND sell -> skip
     buy_velocity_skip_enabled: bool = False
     buy_velocity_skip_threshold_bps: float = -8.0  # price_velocity_60s < this AND buy -> skip
+    # 183# narrow spread 時の skip_gate 閾値オフセット (逆選択防御)
+    # spread < narrow_spread_skip_threshold_jpy のとき threshold に加算。
+    # ログ分析: spread<2kでAS32% (全体28%) → 閾値厳格化で AS fill削減
+    skip_gate_narrow_spread_threshold_jpy: float = 0.0  # 0.0=無効
+    skip_gate_narrow_spread_offset: float = 0.0  # 正=厳格化 (PnLモード)
     # 156# §16: OB エラー fallback 価格の鮮度閾値 (秒)
     fallback_stale_sec: float = 120.0
     # 094# stale order 検出 & cancel-replace (価格乖離した注文を再発注)
@@ -616,6 +621,9 @@ class FillTestConfig:
             "calibrator_path": "skip_gate_calibrator_path",
             "calibrator_min_samples": "skip_gate_calibrator_min_samples",
             "calibrator_refit_interval": "skip_gate_calibrator_refit_interval",
+            # 183# narrow spread adverse guard
+            "skip_gate_narrow_spread_threshold_jpy": "skip_gate_narrow_spread_threshold_jpy",
+            "skip_gate_narrow_spread_offset": "skip_gate_narrow_spread_offset",
         }
         for yaml_key, config_key in sg_map.items():
             if yaml_key in sg and sg[yaml_key] is not None:

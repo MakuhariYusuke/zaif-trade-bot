@@ -2667,8 +2667,8 @@ class Test107TimeFilterDynamicGating:
         vg = cfg["volatility_guard"]
         assert vg["enabled"] is True
         assert vg["velocity_window_sec"] == 60
-        assert vg["velocity_threshold_bps"] == 15.0
-        assert vg["vpin_threshold"] == 0.63  # 130# Y4: 0.70→0.63 (-10% 感度引上げ)
+        assert vg["velocity_threshold_bps"] == 12.0   # 183# 15.0→12.0 (AS28%対策: VG感度引上げ)
+        assert vg["vpin_threshold"] == 0.60  # 183# 0.63→0.60 (VPIN感度引上げ)
         assert vg["offset_boost_factor"] == 2.0
 
     def test_volatility_guard_config_fields(self) -> None:
