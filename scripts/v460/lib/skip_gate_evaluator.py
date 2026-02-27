@@ -692,6 +692,16 @@ class SkipGateEvaluator:
 
             _total_offset = _hour_offset + _spread_offset
 
+            # 186# strictness clamp: 過剰な厳格化/緩和を防止
+            _OFFSET_FLOOR = -0.3  # 最大緩和
+            _OFFSET_CEIL = 0.5    # 最大厳格化
+            if _total_offset < _OFFSET_FLOOR or _total_offset > _OFFSET_CEIL:
+                logger.debug(
+                    "[skip_gate] 186# clamp: raw_offset=%.2f → clamped to [%.1f, %.1f]",
+                    _total_offset, _OFFSET_FLOOR, _OFFSET_CEIL,
+                )
+                _total_offset = max(_OFFSET_FLOOR, min(_OFFSET_CEIL, _total_offset))
+
             # 141# P1-01: side 別モデルにディスパッチ (フォールバック: unified)
             decision = active_gate.evaluate(
                 gate_features,

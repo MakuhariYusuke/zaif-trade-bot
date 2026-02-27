@@ -76,7 +76,11 @@ class RegimePolicyConfig:
 
     # --- 182# Trend Mode 発動条件厳格化 ---
     # confidence がこの閾値未満 → C/D/Chase は ranging 扱い
-    trend_min_confidence: float = 0.55
+    trend_min_confidence: float = 0.45   # 186# 緩和 0.55→0.45 (enter)
+
+    # --- 186# Trend Mode ヒステリシス ---
+    trend_exit_confidence: float = 0.30  # ranging に戻る閾値 (exit)
+    trend_min_dwell: int = 3             # 最低保持サイクル数
 
     # --- 182# 在庫偏り regime 別緩和 ---
     # trending 時の deadlock_limit を base より緩和 (片側取引を長く許容)
@@ -167,10 +171,13 @@ class RegimePolicyConfig:
                         )
 
         # 182# EV_weighted weights / trend_min_confidence / deadlock_limit_trending
+        # 186# trend_exit_confidence / trend_min_dwell
         for yaml_key, config_key, conv in [
             ("ev_weighted_w30", "ev_weighted_w30", float),
             ("ev_weighted_w120", "ev_weighted_w120", float),
             ("trend_min_confidence", "trend_min_confidence", float),
+            ("trend_exit_confidence", "trend_exit_confidence", float),
+            ("trend_min_dwell", "trend_min_dwell", int),
             ("deadlock_limit_trending", "deadlock_limit_trending", int),
         ]:
             val = rp.get(yaml_key)
@@ -244,6 +251,9 @@ class DefaultCycleStrategy:
         self._fallback_until: float = 0.0
         # 182# Trend Mode 厳格化: サイクル冒頭で更新
         self._current_confidence: float = 0.0
+        # 186# ヒステリシス状態
+        self._in_trend_mode: bool = False
+        self._trend_dwell: int = 0
 
     @property
     def policy(self) -> RegimePolicyConfig:
@@ -273,13 +283,42 @@ class DefaultCycleStrategy:
         self._current_confidence = confidence
 
     def gated_regime(self, regime: str | None, confidence: float | None = None) -> str | None:
-        """182# Trend Mode 厳格化: confidence 不足なら ranging に降格."""
+        """182#/186# Trend Mode ヒステリシス付き confidence gating.
+
+        Enter: confidence >= trend_min_confidence
+        Exit:  confidence < trend_exit_confidence AND dwell >= trend_min_dwell
+        """
         if regime is None:
             return regime
         c = confidence if confidence is not None else self._current_confidence
-        if regime.startswith("trending") and c < self._policy.trend_min_confidence:
-            return "ranging"
-        return regime
+        is_trending_input = regime.startswith("trending")
+
+        if self._in_trend_mode:
+            # Exit: regime が non-trending、または confidence 低下 + dwell 経過
+            if not is_trending_input or (
+                c < self._policy.trend_exit_confidence
+                and self._trend_dwell >= self._policy.trend_min_dwell
+            ):
+                self._in_trend_mode = False
+                self._trend_dwell = 0
+                logger.debug(
+                    "[186# gated_regime] EXIT trend mode: regime=%s conf=%.3f dwell=%d",
+                    regime, c, self._trend_dwell,
+                )
+                return "ranging" if is_trending_input else regime
+            self._trend_dwell += 1
+            return regime  # trend 維持
+        else:
+            # Enter: confidence >= 閾値
+            if is_trending_input and c >= self._policy.trend_min_confidence:
+                self._in_trend_mode = True
+                self._trend_dwell = 1
+                logger.debug(
+                    "[186# gated_regime] ENTER trend mode: regime=%s conf=%.3f",
+                    regime, c,
+                )
+                return regime
+            return "ranging" if is_trending_input else regime
 
     def effective_interval(self, regime: str | None) -> float:
         """C: regime 別サイクル間隔 (182# confidence gating 内包)."""

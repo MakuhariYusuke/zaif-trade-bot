@@ -56,7 +56,7 @@ class TestTrendMinConfidence:
 
     def test_default_trend_min_confidence(self):
         rp = RegimePolicyConfig()
-        assert rp.trend_min_confidence == 0.55
+        assert rp.trend_min_confidence == 0.45  # 186# default 変更
 
     def test_from_yaml_custom(self):
         yaml_cfg = {"regime_policy": {"trend_min_confidence": 0.7}}
@@ -66,7 +66,7 @@ class TestTrendMinConfidence:
     def test_from_yaml_invalid(self):
         yaml_cfg = {"regime_policy": {"trend_min_confidence": "invalid"}}
         rp = RegimePolicyConfig.from_yaml(yaml_cfg)
-        assert rp.trend_min_confidence == 0.55  # default
+        assert rp.trend_min_confidence == 0.45  # 186# default
 
 
 class TestGatedRegime:
@@ -112,8 +112,10 @@ class TestGatedRegime:
     def test_explicit_confidence_overrides_cached(self, strategy: DefaultCycleStrategy):
         """明示的 confidence が cached を上書き."""
         strategy.update_confidence(0.1)  # cached: low
+        # 186# ヒステリシス: enter(0.8) → trend モードに入る
         assert strategy.gated_regime("trending_up", confidence=0.8) == "trending_up"
-        assert strategy.gated_regime("trending_up", confidence=0.3) == "ranging"
+        # enter 後 0.2 < exit(0.30) だが dwell=1 < min_dwell=3 なので trend 維持
+        assert strategy.gated_regime("trending_up", confidence=0.2) == "trending_up"
 
     def test_boundary_confidence(self, strategy: DefaultCycleStrategy):
         """ちょうど 0.55 → 降格されない (< strict)."""

@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-28 (184# 逆選択防御施策レビュー依頼)
+> 最終更新: 2026-02-28 (186# 185レビュー評価 + Trend Mode ヒステリシス + Strictness Clamp)
 
 ---
 
@@ -175,6 +175,8 @@
 | 182 | impl | [182_ph2_impl_trend_strict_ev_ext_deadlock.md](182_ph2_impl_trend_strict_ev_ext_deadlock.md) | Trend Mode 厳格化 + EV_weighted外部化 + Deadlock regime別緩和 |
 | 183 | impl | [183_ph2_impl_log_analysis_adverse_guard.md](183_ph2_impl_log_analysis_adverse_guard.md) | ログ分析ベース逆選択防御強化 (hour_offsets + velocity_skip + narrow_spread_guard + VG/VPIN) |
 | 184 | ext | [184_ph2_ext_adverse_guard_review.md](184_ph2_ext_adverse_guard_review.md) | 逆選択防御施策レビュー依頼 — 外部 AI レビュー |
+| 185 | rev | [185_ph2_rev_184_adverse_guard_macro_trend_review.md](185_ph2_rev_184_adverse_guard_macro_trend_review.md) | 184レビュー: 逆選択防御の妥当性 + 大値動き追随不足の根本分析 |
+| 186 | rev | [186_ph2_rev_185_evaluation_and_plan.md](186_ph2_rev_185_evaluation_and_plan.md) | 185レビュー評価 + Trend Mode ヒステリシス + Strictness Clamp |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

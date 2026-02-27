@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 186# 185レビュー評価 + Trend Mode ヒステリシス + Strictness Clamp (2026-02-28)
+
+### Added
+- `docs/v460/186_ph2_rev_185_evaluation_and_plan.md`: 185# Codex/Gemini レビュー評価 + 178# 未達事項棚卸し + Phase A–D 実装計画
+- `tests/unit/v460/test_186_hysteresis_clamp.py`: 21 テストケース (ヒステリシス 11, YAML 3, Clamp 5, 後方互換 2)
+
+### Changed
+- `regime_policy.py` — **A-1: Trend Mode ヒステリシス化**
+  - `RegimePolicyConfig`: `trend_exit_confidence=0.30`, `trend_min_dwell=3` 追加; `trend_min_confidence` デフォルト 0.55→0.45
+  - `DefaultCycleStrategy`: `_in_trend_mode`, `_trend_dwell` 状態変数追加
+  - `gated_regime()`: enter/exit/min_dwell ヒステリシス状態機械に全面書き換え
+  - `from_yaml()`: `trend_exit_confidence`, `trend_min_dwell` パース追加
+- `skip_gate_evaluator.py` — **A-2: Strictness Clamp**
+  - `_total_offset` に `[-0.3, 0.5]` クランプ追加 (無制限蓄積防止)
+- `configs/v460/fill_test.yaml`: ヒステリシスパラメータ追加
+- `tests/unit/v460/test_182_trend_strict_ev_ext_deadlock.py`: デフォルト値変更 (0.55→0.45) + ヒステリシス挙動に合わせたアサーション修正
+
+### 背景 (178# 未達事項から)
+- U1 ヒステリシス: ✅ 本セッションで解消
+- U2 Chase 方向制御: Phase B (次セッション)
+- U3 IOC: Phase D (将来)
+- U4 Buy 水平線: Phase C
+- U5 Clamp: ✅ 本セッションで解消
+- U6 guard_trace: Phase B
+
+
 ## 184# 逆選択防御施策レビュー依頼 (2026-02-28)
 
 ### Added
