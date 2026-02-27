@@ -167,7 +167,89 @@ deadlock。2/23: 246 件の balance_forced_skip (全て regime=None) がこの�
 
 ---
 
-## 6. テスト
+## 6. 提案済み未実装施策 (A/B 効果検証後に検討)
+
+本分析で 4 つの施策 (A–D) を提案。A+B は本 176# で実装済み。
+C/D は A+B の fill_test 効果検証結果を踏まえて実装判断する。
+
+### 施策 C: Dynamic Cycle Interval — trending 時のサイクル短縮
+
+**課題**: 現行 `cycle_interval_sec = 120s` は全 regime 一律。
+trending 市場は価格変動が速く、120s 間隔では fill 機会を複数逃す。
+
+**提案**:
+- trending regime 検出時に `cycle_interval_sec` を動的に短縮 (120s → 60s)
+- ranging 時は据え置き (120s) またはやや延長 (150s) して API コスト節約
+
+```yaml
+# 想定設定 (未実装)
+regime_cycle_interval:
+  ranging: 120.0
+  trending: 60.0
+  trending_up: 60.0
+  trending_down: 60.0
+```
+
+**期待効果**:
+- trending 中の fill 試行回数が 2 倍 → buy fill 機会 +50–100%
+- 2/25 実績では trending_up 中 19 fills / 8h → サイクル短縮で推定 30+ fills
+
+**リスク**:
+- API 呼び出し頻度増加 (rate limit に注意)
+- スプレッドコスト: 高頻度注文は不利スプレッドに当たる確率も上昇
+- `fast_fill_defense` との干渉: boost TTL (175#) との整合要確認
+
+**実装見積**: fill_loop_orchestrator の `_wait_next_cycle()` で regime 参照分岐を追加。
+YAML 設定は `fill_config.py` に `regime_cycle_interval` dict を追加。工数 ~2h。
+
+### 施策 D: Regime-linked Post-Fill Wait — trending 時の再参入加速
+
+**課題**: 現行 `post_fill_wait_sec = 30s` (buy) / `90s` (sell) は全 regime 一律。
+trending 市場で fill 後 30–90s 待つと、次の順張り機会を逃す。
+
+**提案**:
+- trending regime 検出時に `post_fill_wait_sec` を短縮 (buy: 30s → 15s, sell: 90s → 45s)
+- ranging 時は据え置き (risk-off 維持)
+
+```yaml
+# 想定設定 (未実装)
+regime_post_fill_wait:
+  ranging:
+    buy: 30.0
+    sell: 90.0
+  trending_up:
+    buy: 15.0     # 順張り buy → 即座に次の buy 機会を狙う
+    sell: 45.0     # sell 後も早めに次サイクルへ
+  trending_down:
+    buy: 45.0      # 逆張り buy は慎重に
+    sell: 15.0     # 順張り sell → 即座に次の sell 機会
+```
+
+**期待効果**:
+- trending_up 中の buy 連続 fill: 30s→15s で再参入速度 2 倍
+- 2/25 反実仮想: trending_up buy +4.02 bps × 連続 fill → 累積利益の線形増加
+
+**リスク**:
+- PnL 計測窓短縮: `e3_60s_multiplier` (post_fill_wait × 2.0) の計測精度低下
+- 在庫蓄積速度: buy 連続 fill → BTC 保有量増大 → 逆行時の損失拡大
+- `balance_forced_skip` 再発: 買い急ぎ → 約定前に再注文 → 同方向 deadlock
+
+**実装見積**: `_post_fill_wait()` で regime 分岐追加。YAML 設定は
+`fill_config.py` に `regime_post_fill_wait` nested dict を追加。工数 ~2h。
+施策 C と合わせて実装すると相乗効果が大きい。
+
+### 施策 A–D 対応表
+
+| 施策 | 内容 | 優先度 | 状態 |
+|------|------|--------|------|
+| **A** | TRENDING sell skip 除外 | HIGH | ✅ 176# 実装済 |
+| **B** | 方向×サイド別 offset boost | HIGH | ✅ 176# 実装済 |
+| **C** | Dynamic cycle interval | MED | ❌ 未実装 (A/B 効果検証後) |
+| **D** | Regime-linked post_fill_wait | MED | ❌ 未実装 (A/B 効果検証後) |
+
+---
+
+## 7. テスト
 
 ### 新規テスト (36 件)
 
@@ -191,7 +273,7 @@ deadlock。2/23: 246 件の balance_forced_skip (全て regime=None) がこの�
 
 ---
 
-## 7. 変更ファイル一覧
+## 8. 変更ファイル一覧
 
 | # | ファイル | 施策 | 優先度 |
 |---|---------|------|--------|

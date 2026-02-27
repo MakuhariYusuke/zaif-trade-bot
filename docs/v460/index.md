@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-28 (175# Code Review Sweep #2 — HIGH 2 / MED 5 / LOW 4, 23 tests)
+> 最終更新: 2026-02-28 (176# Trending方向×サイド別Offset Asymmetry + 横展開, 36 tests)
 
 ---
 
@@ -164,7 +164,9 @@
 | 171 | rpt | [171_ph2_rpt_sell_guard_paradox_deep_dive.md](171_ph2_rpt_sell_guard_paradox_deep_dive.md) | Sell Guard Paradox 技術精査 + balance_forced_skip 正フィードバックループ発見 |
 | 172 | fix | [172_ph2_fix_guard_paradox_and_ev_per_cycle.md](172_ph2_fix_guard_paradox_and_ev_per_cycle.md) | Guard Paradox 根本対策 (InvSkew bypass) + EV_per_cycle 実装 |
 | 173 | fix | [173_ph2_fix_code_review_sweep.md](173_ph2_fix_code_review_sweep.md) | 包括的コードレビュー Sweep — CRITICAL 1 / HIGH 5 / MED 6 / 機能改善 1 |
+| 174 | fix | [174_ph2_fix_fresh_code_review.md](174_ph2_fix_fresh_code_review.md) | Fresh Code Review — CRITICAL 1 / HIGH 5 / MED 1 |
 | 175 | fix | [175_ph2_fix_code_review_sweep2.md](175_ph2_fix_code_review_sweep2.md) | Code Review Sweep #2 — HIGH 2 / MED 5 / LOW 4 |
+| 176 | impl | [176_ph2_impl_trending_offset_asymmetry.md](176_ph2_impl_trending_offset_asymmetry.md) | Trending方向×サイド別Offset Asymmetry + 横展開 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
