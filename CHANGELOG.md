@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 174# Fresh Code Review — 新規バグ修正 (2026-03-01)
+
+### Fixed (CRITICAL)
+- `fill_loop_orchestrator.py`: `_cancel_stale_orders()` が成功パスで `cancelled_count` を返さず `None` を返すバグを修正
+
+### Fixed (HIGH)
+- `cancel_reasons.py`: `SKIP_GATE`, `SKIP_GATE_RULE_VELOCITY_SELL`, `SKIP_GATE_RULE_VELOCITY_BUY` が `AUDIT_CANCEL_REASONS` に欠落 → quarantine bypass 誤判定
+- `skip_gate_evaluator.py`: `_valid_regimes` に `trending_up` / `trending_down` が欠落 → 156# D-4 の方向別 regime が偽警告
+- `config_hot_reload.py`: side 別 fast_fill フィールド 4件が `_HOT_RELOADABLE_FIELDS` に欠落
+- `config_hot_reload.py`: `post_fill_wait_sec` (base) が reloadable でない
+- `fill_config.py`: `daily_drawdown_soft_limit_bps < hard_limit_bps` の順序逆転を検出する `__post_init__` バリデーション追加
+
+### Fixed (MED)
+- `fill_config.py`: `inventory_skewing_window < 0`, `sell_dynamic_kill_window < 1`, `sell_offset_floor_inv_discount ∉ [0,1]` のバリデーション追加
+
+### Identified (未修正・追加対応推奨)
+- `maker_price.py`, `order_monitor.py`, `skip_gate_evaluator.py`, `balance_checker.py`: `object` 型注釈 → Protocol 型化 (#7)
+- `skip_gate_evaluator.py`: `FillRecord` 重複 import 4箇所 (#8)
+- `adapter.py`: `InsufficientFundsError` 検出が英語パターンのみ、日本語エラー未対応 (#10)
+- `order_monitor.py`: stale 検出の side 別セレクタ冗長 (#12)
+- `config_hot_reload.py`: stale 系 side 別フィールド 6件が reloadable でない (#13)
+
+### Tests
+- 54 passed (config/validation), 137 passed (regime/skip_gate), 0 new failures
+
+
 ## 169# time_filter 全廃 — 107# Phase 3 Step 3 完了 (2026-02-28)
 
 ### Changed

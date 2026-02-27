@@ -123,7 +123,11 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     # --- fast fill defense ---
     "fast_fill_defense_enabled",
     "fast_fill_threshold_sec",
+    "fast_fill_threshold_sec_buy",     # 174# side 別
+    "fast_fill_threshold_sec_sell",    # 174# side 別
     "fast_fill_offset_boost",
+    "fast_fill_offset_boost_buy",      # 174# side 別
+    "fast_fill_offset_boost_sell",     # 174# side 別
     # --- 日次ドローダウン ---
     "daily_drawdown_enabled",
     "daily_drawdown_hard_limit_bps",
@@ -156,6 +160,7 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "cycle_interval_sec",
     "order_timeout_sec",
     "order_timeout_sec_sell",
+    "post_fill_wait_sec",       # 174# base (sell フォールバック先)
     "post_fill_wait_sec_sell",
     # --- misc ---
     "as_deadzone_bps",

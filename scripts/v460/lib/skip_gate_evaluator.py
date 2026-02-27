@@ -197,7 +197,7 @@ class SkipGateEvaluator:
         # 141# P1-04: regime 別閾値
         sg.config.regime_thresholds = config.skip_gate_regime_thresholds
         # 142# M-3: regime_thresholds キーバリデーション
-        _valid_regimes = {"trending", "ranging", "high_vol", "unknown"}
+        _valid_regimes = {"trending", "trending_up", "trending_down", "ranging", "high_vol", "unknown"}
         for key in config.skip_gate_regime_thresholds:
             if key not in _valid_regimes:
                 logger.warning(

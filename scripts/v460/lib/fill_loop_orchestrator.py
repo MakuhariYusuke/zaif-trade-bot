@@ -166,6 +166,7 @@ class FillLoopOrchestratorMixin:
             )
         except Exception as e:
             logger.warning(f"[startup] Stale order check failed (non-fatal): {e}")
+        return cancelled_count
 
     async def run_continuous(self, hours: float) -> list[FillRecord]:
         """指定時間、連続してサイクルを実行.

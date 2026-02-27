@@ -435,6 +435,28 @@ class FillTestConfig:
                 f"sell_guard_inv_bypass_threshold must be in [0, 1], "
                 f"got {self.sell_guard_inv_bypass_threshold}"
             )
+        # 174# daily_drawdown soft/hard limit 順序バリデーション
+        if self.daily_drawdown_soft_limit_bps < self.daily_drawdown_hard_limit_bps:
+            raise ValueError(
+                f"daily_drawdown_soft_limit_bps ({self.daily_drawdown_soft_limit_bps}) "
+                f"must be >= daily_drawdown_hard_limit_bps ({self.daily_drawdown_hard_limit_bps}). "
+                f"soft=-30, hard=-50 のように soft は hard より緩い値であること"
+            )
+        # 174# inventory_skewing_window / sell_dynamic_kill_window 境界
+        if self.inventory_skewing_window < 0:
+            raise ValueError(
+                f"inventory_skewing_window must be >= 0, got {self.inventory_skewing_window}"
+            )
+        if self.sell_dynamic_kill_window < 1:
+            raise ValueError(
+                f"sell_dynamic_kill_window must be >= 1, got {self.sell_dynamic_kill_window}"
+            )
+        # 174# sell_offset_floor_inv_discount 値域
+        if not (0.0 <= self.sell_offset_floor_inv_discount <= 1.0):
+            raise ValueError(
+                f"sell_offset_floor_inv_discount must be in [0, 1], "
+                f"got {self.sell_offset_floor_inv_discount}"
+            )
 
 
     # ================================================================
