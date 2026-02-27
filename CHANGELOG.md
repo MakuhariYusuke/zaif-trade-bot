@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 182# Trend Mode 厳格化 + EV_weighted外部化 + Deadlock regime別緩和 (2026-02-28)
+
+### Added
+- `RegimePolicyConfig`: `ev_weighted_w30/w120`, `trend_min_confidence`, `deadlock_limit_trending` フィールド追加
+- `DefaultCycleStrategy.gated_regime()`: confidence < threshold で trending → ranging 降格
+- `DefaultCycleStrategy.update_confidence()`: ループ毎の confidence キャッシュ
+- `FillTestRegimeDetector.current_confidence` プロパティ
+- Orchestrator: confidence キャッシュフロー + regime 別 deadlock limit
+- `test_182_trend_strict_ev_ext_deadlock.py`: 25 テストケース
+
+### Changed
+- `fill_cycle_executor`: EV_weighted 計算が policy w30/w120 を参照
+- `fill_test.yaml`: 4 新パラメータ追加 (ev_weighted_w30/w120, trend_min_confidence, deadlock_limit_trending)
+- 179# テスト: confidence 設定追加で 182# gated_regime 互換化
+- 113# テスト: run_single_cycle 行数ガード 500→510
+
+
 ## 176# Trending方向×サイド別Offset Asymmetry + 横展開 (2026-02-27)
 
 ### Fixed (HIGH — 施策A)

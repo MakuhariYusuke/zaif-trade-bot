@@ -70,6 +70,18 @@ class RegimePolicyConfig:
     pnl_floor_bps: float = -0.8
     pnl_window_sec: float = 21600.0         # 6h
 
+    # --- 182# EV_weighted 重み YAML 外部化 ---
+    ev_weighted_w30: float = 0.4
+    ev_weighted_w120: float = 0.6
+
+    # --- 182# Trend Mode 発動条件厳格化 ---
+    # confidence がこの閾値未満 → C/D/Chase は ranging 扱い
+    trend_min_confidence: float = 0.55
+
+    # --- 182# 在庫偏り regime 別緩和 ---
+    # trending 時の deadlock_limit を base より緩和 (片側取引を長く許容)
+    deadlock_limit_trending: int = 5
+
     @classmethod
     def from_yaml(cls, yaml_cfg: dict[str, object]) -> RegimePolicyConfig:
         """YAML の regime_policy セクションからパース.
@@ -154,6 +166,20 @@ class RegimePolicyConfig:
                             yaml_key, exc,
                         )
 
+        # 182# EV_weighted weights / trend_min_confidence / deadlock_limit_trending
+        for yaml_key, config_key, conv in [
+            ("ev_weighted_w30", "ev_weighted_w30", float),
+            ("ev_weighted_w120", "ev_weighted_w120", float),
+            ("trend_min_confidence", "trend_min_confidence", float),
+            ("deadlock_limit_trending", "deadlock_limit_trending", int),
+        ]:
+            val = rp.get(yaml_key)
+            if val is not None:
+                try:
+                    kwargs[config_key] = conv(val)
+                except (TypeError, ValueError) as exc:
+                    logger.warning("[182# from_yaml] invalid %s: %s", yaml_key, exc)
+
         return cls(**kwargs)
 
 
@@ -216,6 +242,8 @@ class DefaultCycleStrategy:
         # 停止条件によるフォールバック状態
         self._fallback_active: bool = False
         self._fallback_until: float = 0.0
+        # 182# Trend Mode 厳格化: サイクル冒頭で更新
+        self._current_confidence: float = 0.0
 
     @property
     def policy(self) -> RegimePolicyConfig:
@@ -240,18 +268,33 @@ class DefaultCycleStrategy:
             return True
         return False
 
+    def update_confidence(self, confidence: float) -> None:
+        """182# サイクル冒頭で呼び出し、最新 confidence をキャッシュ."""
+        self._current_confidence = confidence
+
+    def gated_regime(self, regime: str | None, confidence: float | None = None) -> str | None:
+        """182# Trend Mode 厳格化: confidence 不足なら ranging に降格."""
+        if regime is None:
+            return regime
+        c = confidence if confidence is not None else self._current_confidence
+        if regime.startswith("trending") and c < self._policy.trend_min_confidence:
+            return "ranging"
+        return regime
+
     def effective_interval(self, regime: str | None) -> float:
-        """C: regime 別サイクル間隔."""
+        """C: regime 別サイクル間隔 (182# confidence gating 内包)."""
         if not self._policy.dynamic_cycle_enabled or self._check_fallback():
             return self._base_interval
+        regime = self.gated_regime(regime)
         if regime is None:
             return self._base_interval
         return self._policy.cycle_intervals.get(regime, self._base_interval)
 
     def effective_post_fill_wait(self, side: str, regime: str | None) -> float:
-        """D: regime × side 別 post-fill wait."""
+        """D: regime × side 別 post-fill wait (182# confidence gating 内包)."""
         if not self._policy.dynamic_wait_enabled or self._check_fallback():
             return self._base_wait_sell if side == "sell" else self._base_wait_buy
+        regime = self.gated_regime(regime)
         if regime is None:
             return self._base_wait_sell if side == "sell" else self._base_wait_buy
         regime_waits = self._policy.post_fill_wait.get(regime)
@@ -263,9 +306,10 @@ class DefaultCycleStrategy:
         )
 
     def is_chase_enabled(self, regime: str | None) -> bool:
-        """Chase: trending 系 regime 限定で有効."""
+        """Chase: trending 系 regime 限定で有効 (182# confidence gating 内包)."""
         if not self._policy.chase_enabled or self._check_fallback():
             return False
+        regime = self.gated_regime(regime)
         if regime is None:
             return False
         return regime in self._policy.chase_regimes

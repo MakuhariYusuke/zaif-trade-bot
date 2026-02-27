@@ -192,6 +192,7 @@ class TestEffectiveInterval:
                 cycle_intervals={"trending": 60.0, "ranging": 120.0},
             ),
         )
+        strategy.update_confidence(0.9)  # 182# gated_regime 対応
         assert strategy.effective_interval("trending") == 60.0
         assert strategy.effective_interval("ranging") == 120.0
         assert strategy.effective_interval("unknown") == 120.0  # fallback to base
@@ -214,6 +215,7 @@ class TestEffectiveInterval:
             base_wait_sell=90.0,
             policy=RegimePolicyConfig(dynamic_cycle_enabled=True),
         )
+        strategy.update_confidence(0.9)  # 182# gated_regime 対応
         assert strategy.effective_interval(regime) == expected
 
 
@@ -248,6 +250,7 @@ class TestEffectivePostFillWait:
                 },
             ),
         )
+        strategy.update_confidence(0.9)  # 182# gated_regime 対応
         assert strategy.effective_post_fill_wait("buy", "trending_up") == 15.0
         assert strategy.effective_post_fill_wait("sell", "trending_up") == 45.0
         assert strategy.effective_post_fill_wait("buy", "ranging") == 30.0
@@ -274,6 +277,7 @@ class TestEffectivePostFillWait:
             base_wait_sell=90.0,
             policy=RegimePolicyConfig(dynamic_wait_enabled=True),
         )
+        strategy.update_confidence(0.9)  # 182# gated_regime 対応
         assert strategy.effective_post_fill_wait(side, regime) == expected
 
 
@@ -302,6 +306,7 @@ class TestChase:
             base_wait_sell=90.0,
             policy=RegimePolicyConfig(chase_enabled=True),
         )
+        strategy.update_confidence(0.9)  # 182# gated_regime 対応
         assert strategy.is_chase_enabled("trending_up") is True
         assert strategy.is_chase_enabled("trending_down") is True
         assert strategy.is_chase_enabled("trending") is True
@@ -355,6 +360,7 @@ class TestFallback:
                 chase_enabled=True,
             ),
         )
+        strategy.update_confidence(0.9)  # 182# gated_regime 対応
         # Before fallback
         assert strategy.effective_interval("trending") == 60.0
         assert strategy.is_chase_enabled("trending") is True
@@ -373,6 +379,7 @@ class TestFallback:
             base_wait_sell=90.0,
             policy=RegimePolicyConfig(dynamic_cycle_enabled=True),
         )
+        strategy.update_confidence(0.9)  # 182# gated_regime 対応
         # Activate with 0 duration → expires immediately
         strategy._fallback_active = True
         strategy._fallback_until = time.time() - 1.0  # already expired
@@ -483,7 +490,7 @@ class TestRegimeSideMatrix:
 
     @pytest.fixture
     def strategy(self) -> DefaultCycleStrategy:
-        return DefaultCycleStrategy(
+        s = DefaultCycleStrategy(
             base_interval=120.0,
             base_wait_buy=30.0,
             base_wait_sell=90.0,
@@ -493,6 +500,8 @@ class TestRegimeSideMatrix:
                 chase_enabled=True,
             ),
         )
+        s.update_confidence(0.9)  # 182# gated_regime 対応
+        return s
 
     @pytest.mark.parametrize("regime", REGIMES)
     def test_effective_interval_no_crash(self, strategy: DefaultCycleStrategy, regime):

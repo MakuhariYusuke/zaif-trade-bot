@@ -613,3 +613,8 @@ regime_policy:
     fill_rate_window_sec: 21600      # 6h ウィンドウ
     pnl_floor_bps: -0.8             # avg pnl30 -0.8bps 未満 → フォールバック
     pnl_window_sec: 21600           # 6h ウィンドウ
+  # 182# EV_weighted 重み + Trend Mode 厳格化 + 在庫偏り regime 別緩和
+  ev_weighted_w30: 0.4               # pnl30 の重み (短期ノイズ抑制)
+  ev_weighted_w120: 0.6              # pnl120 の重み (中期シグナル重視)
+  trend_min_confidence: 0.55         # この confidence 未満 → C/D/Chase は ranging 扱い
+  deadlock_limit_trending: 5         # trending 時の deadlock_limit (base=3 より緩和)

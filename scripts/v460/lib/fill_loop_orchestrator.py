@@ -504,10 +504,7 @@ class FillLoopOrchestratorMixin:
             # 047# Issue12: 離脱時のみログ出力
             self._time_filter.on_exit()
 
-            # 158# §20-A: メインループ毎にレジーム更新 — skip パスでも遷移を保証
-            # Root cause fix: trending_sell_skip 等のスキップパスでは
-            # run_single_cycle が呼ばれず regime_detector.update() が滞留→デッドロック
-            # fallback price (直近 OB mid) を毎ループ投入して遷移機会を確保
+            # 158# §20-A: skip パスでも regime 遷移保証 (fallback price 投入)
             if self._regime_detector is not None:
                 _fb_price, _fb_time = self._maker_price.get_fallback_price()
                 if _fb_price is not None:
@@ -515,6 +512,9 @@ class FillLoopOrchestratorMixin:
                     _regime_result = self._regime_detector.update(
                         time.time(), _fb_price
                     )
+                    # 182# confidence キャッシュ (Trend Mode 厳格化)
+                    if hasattr(self, "_cycle_strategy"):
+                        self._cycle_strategy.update_confidence(_regime_result.confidence)
                     if _regime_result.regime != _pre_regime:
                         logger.info(
                             f"[158# §20-A] Regime transition in main loop: "
@@ -638,18 +638,20 @@ class FillLoopOrchestratorMixin:
             self._side_selector.unfreeze_side()
 
             # --- サイクル実行 ---
-            # 133# P0-08: balance_forced_switch 時のハードスキップ
-            # 154# C-1/C-2: deadlock 防止 — 片側残高のみの場合は forced でも実行許可
+            # 133# P0-08 / 154# C-1/C-2: balance_forced スキップ + deadlock 防止
             if _balance_forced and self.config.skip_balance_forced:
-                # 154# C-1: 元の side (forced 前) も残高不足かチェック
-                # → 両方不足 = preflight で弾かれるはずなので到達しない
-                # → 元 side だけ不足 = forced side が唯一の選択肢 → 実行すべき
+                # 154# C-1: 両側残高判定
                 original_side = "buy" if next_side == "sell" else "sell"
                 original_also_insufficient = await self._check_balance_for_side(
                     original_side, regime_mult=_regime_mult
                 )
-                # 154# C-2: 連続 forced skip カウンタによるフォールバック
-                _deadlock_limit = self.config.balance_forced_deadlock_limit
+                # 154# C-2 + 182# regime 別緩和: trending 時は deadlock_limit 引き上げ
+                _r = self._current_regime_value()
+                _deadlock_limit = (
+                    self._cycle_strategy.policy.deadlock_limit_trending
+                    if _r and _r.startswith("trending") and hasattr(self, "_cycle_strategy")
+                    else self.config.balance_forced_deadlock_limit
+                )
                 _over_deadlock_limit = (
                     _deadlock_limit > 0
                     and self._balance_forced_skip_count >= _deadlock_limit

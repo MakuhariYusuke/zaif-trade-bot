@@ -118,6 +118,13 @@ class FillTestRegimeDetector:
         return 1.0  # デフォルト: ブースト不発動
 
     @property
+    def current_confidence(self) -> float:
+        """182# 直近の confidence (Trend Mode 厳格化用)."""
+        if hasattr(self, "_last_result") and self._last_result is not None:
+            return self._last_result.confidence
+        return 0.0
+
+    @property
     def observation_count(self) -> int:
         """蓄積済み観測数."""
         return len(self._prices)

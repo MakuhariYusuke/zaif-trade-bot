@@ -680,8 +680,12 @@ class FillCycleExecutorMixin:
             ab_test_variant=self.config.ab_test_variant or None,
             # 166# C.7: cancel 失敗→約定検出フラグ (Bug11 KPI)
             cancel_failed_likely_filled=cancel_failed_likely_filled or None,
-            # 181# EV_weighted: 30s/120s 加重平均 PnL
+            # 181# EV_weighted: 30s/120s 加重平均 PnL (182# weights YAML外部化)
             ev_weighted_pnl=self._compute_ev_weighted(
+                post_fill_pnl, post_fill_120s_pnl,
+                w30=self._cycle_strategy.policy.ev_weighted_w30,
+                w120=self._cycle_strategy.policy.ev_weighted_w120,
+            ) if hasattr(self, "_cycle_strategy") else self._compute_ev_weighted(
                 post_fill_pnl, post_fill_120s_pnl
             ),
         )
