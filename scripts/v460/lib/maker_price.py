@@ -165,6 +165,15 @@ class MakerPriceCalculator:
         # imbalance: +1 = all buys (long偏重), -1 = all sells (short偏重)
         self._inv_net_imbalance = (2 * buys - n) / n
 
+    @property
+    def inv_net_imbalance(self) -> float:
+        """172# 在庫偏重指標 (public accessor).
+
+        Returns:
+            float ∈ [-1, 1]: +1=全buy(long偏重), -1=全sell(short偏重), 0=均衡.
+        """
+        return self._inv_net_imbalance
+
     # ------------------------------------------------------------------
     # offset 同期 (adaptation 後に呼ばれる)
     # ------------------------------------------------------------------

@@ -160,8 +160,19 @@ $$\text{guard\_value} = EV_{\text{per\_cycle}} - \overline{\text{hindsight}}_{\t
 ## §6 テスト結果
 
 ```
-48 passed, 0 failed (test_169_config_hot_reload + test_169_ranging_buy_skip_and_metrics + test_169_c1_c3_c4_config)
+54 passed, 0 failed
+ - test_169_config_hot_reload: 15 passed
+ - test_169_ranging_buy_skip_and_metrics: 14 passed
+ - test_169_c1_c3_c4_config: 25 passed (含む 172# 新規テスト 6 件)
 ```
+
+172# 新規テスト:
+- `TestInvNetImbalanceProperty::test_initial_value_zero` — 初期値 0.0
+- `TestInvNetImbalanceProperty::test_buy_biased` — buy のみ → +1.0
+- `TestInvNetImbalanceProperty::test_balanced` — buy/sell 均等 → 0.0
+- `TestEvPerCycleCompute::test_empty_results` — 空リスト耐性
+- `TestEvPerCycleCompute::test_all_filled` — EV = fill_prob × avg_pnl
+- `TestEvPerCycleCompute::test_guard_value_negative_means_harmful` — guard_value 符号検証
 
 mypy: 新コードの型エラー 0 件 (既知のモジュール名衝突のみ)。
 
@@ -182,7 +193,7 @@ mypy: 新コードの型エラー 0 件 (既知のモジュール名衝突のみ
 | 優先度 | アクション | ステータス |
 |--------|-----------|-----------|
 | **P0** | balance_forced_skip フィードバックループ対策 | ✅ §2-3 |
-| **P0** | Gate Exception-1 ルール 000# 追記 | ❌ 未着手 |
+| **P0** | Gate Exception-1 ルール 000# 追記 | ✅ §9 (000# §3.10 追加) |
 | **P1** | EV_per_cycle 算出ロジック実装 | ✅ §4 |
 | **P1** | sell offset floor 動的化検討 | ❌ 未着手 |
 | **P1** | DailyDrawdownGuard 機会損失メトリクス | ❌ 未着手 |
@@ -190,3 +201,48 @@ mypy: 新コードの型エラー 0 件 (既知のモジュール名衝突のみ
 | **P2** | cancel_reason Literal 型化 | ❌ 未着手 |
 | **P2** | CircuitBreaker 統合 | ❌ 未着手 |
 | **P3** | StatisticalValidator A/B テスト統合 | ❌ 未着手 |
+
+---
+
+## §9 Gate Exception-1 — 000# §3.10 追記完了
+
+170# §10.3 で定義された **Exception-1: Oracle Gap 継続例外** を 000# §3.10 に追記済み。
+
+- 発動条件: K1/F1 FAIL かつ Oracle PnL mean > 0 かつ累積実損 < 3,000 JPY
+- 有効期限: 72h、適用上限: 連続 2 回
+- Appendix A 改訂履歴にも 2026-02-27 エントリ追加
+
+---
+
+## §10 自己レビュー — 172# 実装品質評価
+
+### 10.1 発見された問題と対処
+
+| # | 重要度 | 問題 | 対処 |
+|---|--------|------|------|
+| R1 | HIGH | `_inv_net_imbalance` をプライベート属性のまま外部から直接アクセス | `@property inv_net_imbalance` を `MakerPriceCalculator` に追加、orchestrator の参照を public accessor に変更 |
+| R2 | MED | `_mean(filled_pnls) or 0.0` — `_mean` が `0.0` を返した時も falsy で `or` に入る | `avg_pnl_raw = _mean(...)` + `if avg_pnl_raw is not None` で明示判定に変更。`0.0` の場合は結果同一だが意図が不明瞭だった |
+| R3 | MED | `guard_value` のコメントが曖昧 (「ブロックした方が悪い」の主語不明) | docstring に符号解釈を明記: `> 0: ガードが有害注文を正しく除外`, `< 0: ガードが良い機会を逃している` |
+| R4 | LOW | EV_per_cycle テストが未実装 | `TestInvNetImbalanceProperty` (3件) + `TestEvPerCycleCompute` (3件) 追加 |
+| R5 | INFO | 000# に Gate Exception-1 未追記 (170# §10.5 P0) | §3.10 追記完了 |
+
+### 10.2 未対処の技術的負債
+
+| # | 重要度 | 内容 | 推奨対応 |
+|---|--------|------|---------|
+| D1 | MED | `sell_offset_floor` 0.20 固定 — InvSkew が sell 促進を要求しても floor でクランプされ効果限定 | regime/vol 条件ベースの動的 floor を `maker_price.py` に実装 |
+| D2 | MED | `DailyDrawdownGuard` に機会損失メトリクスがない — halt 中の逸失利益を定量化不能 | `halt_opportunity_cost_bps` + `post_resume_pnl_bps` を記録 |
+| D3 | LOW | `cancel_reason` が文字列ベース — タイポや不一致のリスク | `Literal` 型 or `StrEnum` に統一 |
+| D4 | LOW | 172# InvSkew bypass の閾値 0.3 は理論値 — 実運用データで要チューニング | fill_test 1 週間後にヒストグラム分析で最適値を検証 |
+| D5 | LOW | `_compute_ev_summary` の `guard_value` は EV(実行) - avg_hindsight(ブロック) で計算するが、ブロック分にはfill確率が含まれていない | 将来的に `EV_blocked = fill_prob_blocked × avg_hindsight` への拡張を検討 |
+
+### 10.3 アーキテクチャ評価
+
+**良い点**:
+- InvSkew bypass は既存コードへの侵入が最小限 (2 箇所の `if` 追加のみ)
+- hot-reload 対応で運用中にリアルタイムでバイパス閾値を調整可能
+- EV_per_cycle は既存の `HindsightResult` データ構造を再利用、新 I/O なし
+
+**懸念点**:
+- ガードの重層化は進んでいるが、**ガードの統合管理 (Guard Manager)** が不在。各ガードが orchestrator の `run_loop` に直接 `if` 文で散在している。将来的に `GuardChain` パターンで一元管理すべき
+- `trending_sell_skip` と `sell_dynamic_kill` が独立してバイパス判定を持つ。閾値は共通の `sell_guard_inv_bypass_threshold` だが、将来のガード追加時に「どのガードがバイパス対象か」のマッピングが必要になる

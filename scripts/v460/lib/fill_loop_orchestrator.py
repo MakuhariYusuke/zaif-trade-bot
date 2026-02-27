@@ -772,7 +772,7 @@ class FillLoopOrchestratorMixin:
                 # (sell ガード過剰 → buy 偏重 → balance_forced_skip の正フィードバックを断切)
                 if _should_skip:
                     _inv_bypass = self.config.sell_guard_inv_bypass_threshold
-                    _inv_imb = self._maker_price._inv_net_imbalance
+                    _inv_imb = self._maker_price.inv_net_imbalance
                     if _inv_bypass > 0 and _inv_imb >= _inv_bypass:
                         logger.info(
                             f"[171#] Trending sell skip relaxation: "
@@ -839,7 +839,7 @@ class FillLoopOrchestratorMixin:
             # 171# Guard Paradox 対策: 在庫 buy 偏重時もバイパス (sell 抑制の正フィードバック断切)
             _inv_bypass_sell_kill = (
                 self.config.sell_guard_inv_bypass_threshold > 0
-                and self._maker_price._inv_net_imbalance
+                and self._maker_price.inv_net_imbalance
                     >= self.config.sell_guard_inv_bypass_threshold
             )
             if (

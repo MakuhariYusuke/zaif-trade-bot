@@ -759,18 +759,21 @@ def _compute_ev_summary(
     172# EV_per_cycle = fill_prob × avg_pnl_if_filled.
     guard_value = EV(executed) − avg_hindsight(blocked) で
     ガードの「損失回避効果 − 機会損失」を評価する。
+
+    guard_value の解釈:
+      > 0: EV(実行) がブロック分の後知恵 PnL を上回る → ガードが有害な注文を正しく除外
+      < 0: ブロック分の後知恵 PnL が EV(実行) を上回る → ガードが良い機会を逃している
     """
     filled_n = len(filled_pnls)
     fill_prob = filled_n / total_cycles if total_cycles > 0 else 0.0
-    avg_pnl = _mean(list(filled_pnls)) or 0.0
+    avg_pnl_raw = _mean(list(filled_pnls))
+    avg_pnl = avg_pnl_raw if avg_pnl_raw is not None else 0.0
     ev = fill_prob * avg_pnl
 
     blocked_n = len(blocked_hindsight)
     avg_blocked = _mean(list(blocked_hindsight))
     guard_val: float | None = None
     if avg_blocked is not None:
-        # guard_value > 0 → ガードが正のEVを持つ (ブロックした方が悪い)
-        # guard_value < 0 → ガードが有害 (良い機会をブロックしている)
         guard_val = round(ev - avg_blocked, 4)
 
     return {

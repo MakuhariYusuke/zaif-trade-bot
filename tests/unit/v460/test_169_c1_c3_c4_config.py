@@ -183,3 +183,91 @@ class TestC4DailyDrawdownGuard:
         result = guard.update_pnl(-35.0)
         assert result["soft_triggered"] is True
         assert result["halted"] is False
+
+
+# ================================================================
+# C5: 172# inv_net_imbalance property + EV_per_cycle
+# ================================================================
+
+
+class TestInvNetImbalanceProperty:
+    """172# maker_price.inv_net_imbalance public property の検証."""
+
+    def test_initial_value_zero(self) -> None:
+        """初期値は 0.0."""
+        from unittest.mock import MagicMock
+
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+
+        config = MagicMock()
+        config.inventory_skewing_window = 100
+        ffd = MagicMock()
+        mp = MakerPriceCalculator(
+            config, ffd, None, base_offset_ratio=0.20
+        )
+        assert mp.inv_net_imbalance == 0.0
+
+    def test_buy_biased(self) -> None:
+        """buy のみ→ +1.0."""
+        from unittest.mock import MagicMock
+
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+
+        config = MagicMock()
+        config.inventory_skewing_window = 10
+        ffd = MagicMock()
+        mp = MakerPriceCalculator(
+            config, ffd, None, base_offset_ratio=0.20
+        )
+        for _ in range(5):
+            mp.update_inventory("buy")
+        assert mp.inv_net_imbalance == pytest.approx(1.0)
+
+    def test_balanced(self) -> None:
+        """buy/sell 均等→ 0.0."""
+        from unittest.mock import MagicMock
+
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+
+        config = MagicMock()
+        config.inventory_skewing_window = 10
+        ffd = MagicMock()
+        mp = MakerPriceCalculator(
+            config, ffd, None, base_offset_ratio=0.20
+        )
+        for _ in range(5):
+            mp.update_inventory("buy")
+            mp.update_inventory("sell")
+        assert mp.inv_net_imbalance == pytest.approx(0.0)
+
+
+class TestEvPerCycleCompute:
+    """172# EV_per_cycle 算出ロジックの検証."""
+
+    def test_empty_results(self) -> None:
+        """空リストでクラッシュしない."""
+        from scripts.v460.analysis.hindsight_filter import _compute_ev_summary
+
+        result = _compute_ev_summary([], [], 0)
+        assert result["total_cycles"] == 0
+        assert result["ev_per_cycle"] == 0.0
+        assert result["guard_value"] is None
+
+    def test_all_filled(self) -> None:
+        """全約定 → EV = 1.0 × avg_pnl."""
+        from scripts.v460.analysis.hindsight_filter import _compute_ev_summary
+
+        result = _compute_ev_summary([0.5, -0.3, 0.2], [], 3)
+        assert result["fill_prob"] == pytest.approx(1.0)
+        expected_avg = (0.5 - 0.3 + 0.2) / 3
+        assert result["avg_pnl_if_filled"] == pytest.approx(expected_avg, abs=0.001)
+        assert result["ev_per_cycle"] == pytest.approx(expected_avg, abs=0.001)
+
+    def test_guard_value_negative_means_harmful(self) -> None:
+        """ブロック分の後知恵が良い → guard_value < 0."""
+        from scripts.v460.analysis.hindsight_filter import _compute_ev_summary
+
+        # EV = 0.5 * (-0.1) = -0.05, blocked avg = +0.5
+        result = _compute_ev_summary([-0.1], [0.5], 2)
+        assert result["guard_value"] is not None
+        assert result["guard_value"] < 0  # ガードが有害
