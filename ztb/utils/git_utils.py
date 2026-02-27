@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 _GIT_READONLY_FLAGS = ["--no-optional-locks"]
@@ -31,6 +32,10 @@ def _run_git(
         env = dict(os.environ)
         # Read-only metadata commands should not contend on index.lock.
         env.setdefault("GIT_OPTIONAL_LOCKS", "0")
+        # 169# subprocess popup 抑制
+        extra_kwargs: dict[str, int] = {}
+        if sys.platform == "win32":
+            extra_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
         return subprocess.run(
             ["git", *_GIT_READONLY_FLAGS, *_GIT_LFS_BYPASS, *args],
             capture_output=True,
@@ -38,6 +43,7 @@ def _run_git(
             cwd=cwd,
             timeout=timeout,
             env=env,
+            **extra_kwargs,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
         return None

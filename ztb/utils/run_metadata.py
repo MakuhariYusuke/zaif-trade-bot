@@ -206,11 +206,16 @@ class RunMetadata:
     def _capture_package_info_via_pip(self) -> dict[str, PackageInfo]:
         packages: dict[str, PackageInfo] = {}
         try:
+            # 169# subprocess popup 抑制
+            extra_kwargs: dict[str, int] = {}
+            if sys.platform == "win32":
+                extra_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "list", "--format=json"],
                 capture_output=True,
                 text=True,
                 timeout=30,
+                **extra_kwargs,
             )
             if result.returncode != 0:
                 return packages
