@@ -263,6 +263,8 @@ class FillTestConfig:
     # 088# sell 専用ハードガード
     sell_max_spread_jpy: float = 0.0       # 0 = 無制限, >0 でスプレッド超過時 sell スキップ
     sell_offset_floor: float = 0.0         # 0 = 無制限, >0 で sell offset 最低保証
+    # 173# 動的フロア: 在庫 buy 偏重時にフロアを割引 (1.0=割引なし, 0.5=半減, 0.0=フロア無効化)
+    sell_offset_floor_inv_discount: float = 0.5
     # ---- 133# P0-08: 残高制約による強制 side 切替時の発注抑制 ----
     skip_balance_forced: bool = False      # True で強制切替時スキップ (平均 -1.98bps の損失回避)
     # 154# C-1/C-2: deadlock 防止 — 片側残高枯渇時は forced でも実行を許可
@@ -426,6 +428,12 @@ class FillTestConfig:
             raise ValueError(
                 f"confidence_lot_mode must be 'as' when enabled, "
                 f"got '{self.confidence_lot_mode}' (mode='pnl' is frozen)"
+            )
+        # 173# sell_guard_inv_bypass_threshold バリデーション
+        if not (0.0 <= self.sell_guard_inv_bypass_threshold <= 1.0):
+            raise ValueError(
+                f"sell_guard_inv_bypass_threshold must be in [0, 1], "
+                f"got {self.sell_guard_inv_bypass_threshold}"
             )
 
 

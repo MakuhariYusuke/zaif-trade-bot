@@ -306,7 +306,7 @@ class TestDailyDrawdownMetrics:
         expected_keys = {
             "enabled", "current_day", "daily_pnl_bps", "daily_fill_count",
             "halted", "soft_triggered", "hard_limit_bps", "soft_limit_bps",
-            "total_halt_days",
+            "total_halt_days", "halt_blocked_cycles",  # 173# 追加
         }
         assert set(m.keys()) == expected_keys
 

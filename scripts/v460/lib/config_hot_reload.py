@@ -156,11 +156,18 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "cycle_interval_sec",
     "order_timeout_sec",
     "order_timeout_sec_sell",
+    "post_fill_wait_sec_sell",
     # --- misc ---
     "as_deadzone_bps",
     "min_spread_jpy",
     "e3_sampling_ratio",
     "progress_log_interval",
+    # --- 173# maker_price 単純値読み取り ---
+    "sell_offset_floor",
+    "sell_offset_floor_inv_discount",
+    "sell_max_spread_jpy",
+    "unknown_buy_offset_boost",
+    "fallback_stale_sec",
 })
 
 # 構造体再構築が必要なコンポーネントのマッピング

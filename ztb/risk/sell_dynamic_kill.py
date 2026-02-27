@@ -37,6 +37,15 @@ class DynamicKillConfig:
     #: キーが一致すれば基本閾値の代わりに使用。
     regime_thresholds: dict[str, float] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        """173# バリデーション: window/resume_window >= 1."""
+        if self.window < 1:
+            raise ValueError(f"DynamicKillConfig.window must be >= 1, got {self.window}")
+        if self.resume_window < 0:
+            raise ValueError(
+                f"DynamicKillConfig.resume_window must be >= 0, got {self.resume_window}"
+            )
+
 
 # 後方互換エイリアス
 SellKillConfig = DynamicKillConfig

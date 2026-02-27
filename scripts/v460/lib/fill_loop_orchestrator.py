@@ -622,13 +622,14 @@ class FillLoopOrchestratorMixin:
                     # → continue しない: run_single_cycle へ進む
                 elif self.config.balance_forced_rescue_enabled:
                     # 158# P1-1: rescue モード — skip せず offset 倍増で安全実行
+                    _prev_skip_count = self._balance_forced_skip_count  # 173# ログ用に退避
                     self._balance_forced_skip_count = 0
                     _is_rescue = True  # run_single_cycle に渡すフラグ
                     logger.info(
                         f"[158# P1-1] balance_forced rescue mode: "
                         f"executing {next_side} with offset ×"
                         f"{self.config.balance_forced_rescue_offset_mult:.1f} "
-                        f"(was consecutive skip={self._balance_forced_skip_count})"
+                        f"(was consecutive skip={_prev_skip_count})"
                     )
                     # → continue しない: run_single_cycle へ進む (rescue=True)
                 else:
@@ -994,10 +995,14 @@ class FillLoopOrchestratorMixin:
                     self._regime_detector.current_regime.value
                     if self._regime_detector else "n/a"
                 )
+                _fill_rate_pct = (
+                    filled_count / total_count * 100.0
+                    if total_count > 0 else 0.0
+                )
                 logger.info(
                     f"Progress: {self._cycle_count} cycles, "
                     f"fill rate={filled_count}/{total_count} "
-                    f"({filled_count/total_count*100:.1f}%), "
+                    f"({_fill_rate_pct:.1f}%), "
                     f"cumPnL={cumulative_pnl_jpy:.1f}JPY, "
                     f"lot={self._current_lot:.4f}BTC, "
                     f"regime={regime_tag}, "

@@ -31,6 +31,7 @@ from scripts.v460.lib.lot_manager import (
 from ztb.metrics.fill_quality import FillRecord, load_fill_records_glob
 
 if TYPE_CHECKING:
+    from scripts.v460.lib.cancel_reasons import CancelReason
     from scripts.v460.lib.fill_config import FillTestConfig
     from scripts.v460.lib.maker_price import MakerPriceCalculator
     from scripts.v460.lib.regime_detector import RegimeDetector
@@ -66,7 +67,7 @@ class FillRecordHelpersMixin:
         self,
         *,
         side: str,
-        cancel_reason: str,
+        cancel_reason: CancelReason,
         cycle_id: str | None = None,
         order_quantity: float | None = None,
         order_price: float = 0.0,

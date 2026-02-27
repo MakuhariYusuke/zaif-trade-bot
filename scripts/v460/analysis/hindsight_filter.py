@@ -33,6 +33,7 @@ from pathlib import Path
 from typing import TypeAlias, TypedDict
 
 from scripts.v460.analysis.reproduce_152_metrics import _load_records
+from scripts.v460.lib import cancel_reasons as CR
 from ztb.metrics.fill_quality import PnlAccumulator
 
 logger = logging.getLogger(__name__)
@@ -384,28 +385,33 @@ class CategoryAnalysis:
 
 
 _DIRECT_CATEGORY_BY_REASON: dict[str, str] = {
-    "skip_gate": "H1_skip_gate",
-    "timeout": "H2_timeout",
-    "balance_forced_skip": "H5_balance_forced",
+    CR.SKIP_GATE: "H1_skip_gate",
+    CR.TIMEOUT: "H2_timeout",
+    CR.BALANCE_FORCED_SKIP: "H5_balance_forced",
+    CR.DAILY_DRAWDOWN_HALT: "H9_daily_drawdown",  # 173#
 }
 # 156# §10 #3/#4: cancel_reasons 定数と同期し技術要因を一括分類
 _TECHNICAL_REASONS = frozenset({
-    "post_only_reject",
+    CR.POST_ONLY_REJECT,
     "postonly_reject",       # レガシー互換 (order_monitor 旧出力)
-    "orderbook_error",
-    "orderbook_timeout",     # 130# 細分化
-    "orderbook_rate_limit",  # 130# 細分化
-    "orderbook_empty",       # 130# 細分化
-    "sell_guard_reject",     # 088# sell ガード
-    "api_error",
-    "stale_skip_gate_blocked",
-    "stale_reprice_failed",
+    CR.ORDERBOOK_ERROR,
+    CR.ORDERBOOK_TIMEOUT,    # 130# 細分化
+    CR.ORDERBOOK_RATE_LIMIT, # 130# 細分化
+    CR.ORDERBOOK_EMPTY,      # 130# 細分化
+    CR.SELL_GUARD_REJECT,    # 088# sell ガード
+    CR.API_ERROR,
+    CR.STALE_SKIP_GATE_BLOCKED,
+    CR.STALE_REPRICE_FAILED,
 })
 _REGIME_GUARD_REASONS = frozenset({
-    "unknown_regime_buy_skip",
-    "sell_dynamic_kill",
-    "buy_dynamic_kill",  # 157# §19
-    "trending_sell_skip",
+    CR.UNKNOWN_REGIME_BUY_SKIP,
+    CR.UNKNOWN_REGIME_SELL_SKIP,  # 173# 追加
+    CR.SELL_DYNAMIC_KILL,
+    CR.BUY_DYNAMIC_KILL,   # 157# §19
+    CR.TRENDING_SELL_SKIP,
+    CR.RANGING_LOW_VOL_SKIP,  # 173# 169# B1' 追加
+    CR.SKIP_GATE_RULE_VELOCITY_SELL,  # 173# 165# AS-R1 追加
+    CR.SKIP_GATE_RULE_VELOCITY_BUY,   # 173# 165# AS-R1 追加
 })
 
 

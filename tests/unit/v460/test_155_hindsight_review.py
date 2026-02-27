@@ -582,7 +582,7 @@ class TestBalanceForcedBypassHorizontal:
         # P0-10 コメントで正確に位置を特定 (init の使用箇所を避ける)
         idx = src.find("P0-10: sell 動的 kill")
         assert idx != -1, "sell_dynamic_kill P0-10 block not found in source"
-        block = src[idx:idx + 400]
+        block = src[idx:idx + 800]  # 171# InvSkew bypass 追加分を考慮して拡大
         assert "not _balance_forced" in block, (
             "sell_dynamic_kill must bypass when _balance_forced=True"
         )

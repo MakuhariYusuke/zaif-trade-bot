@@ -8,9 +8,13 @@ order_monitor 等に散在し、命名変更時のドリフトリスクが高い
   AUDIT  — 監査系・スキップ系 (quarantine bypass 対象)
   EXEC   — 実行系 (発注結果)
   GUARD  — 保護系 (circuit_breaker, timeout 等)
+
+173#: CancelReason Literal 型エイリアスを追加。型安全性を向上。
 """
 
 from __future__ import annotations
+
+from typing import Literal
 
 # ======================================================================
 # AUDIT: quarantine bypass 対象
@@ -77,3 +81,45 @@ ORDERBOOK_RATE_LIMIT = "orderbook_rate_limit"
 ORDERBOOK_EMPTY = "orderbook_empty"
 SELL_GUARD_REJECT = "sell_guard_reject"
 SPREAD_TOO_NARROW = "spread_too_narrow"  # 158# §20-D
+
+# ======================================================================
+# 173# 型安全: CancelReason Literal 型エイリアス
+# すべての有効な cancel_reason 値を列挙。新規追加時はここにも追記。
+# ======================================================================
+CancelReason = Literal[
+    # AUDIT
+    "circuit_breaker_open",
+    "preflight_pause",
+    "preflight_insufficient",
+    "time_filter_both_sides",
+    "time_filter_086_deadlock",
+    "narrow_spread_pause",
+    "balance_forced_skip",
+    "unknown_regime_buy_skip",
+    "unknown_regime_sell_skip",
+    "sell_dynamic_kill",
+    "buy_dynamic_kill",
+    "trending_sell_skip",
+    "ranging_low_vol_skip",
+    "skip_gate",
+    "skip_gate_rule_velocity_sell",
+    "skip_gate_rule_velocity_buy",
+    "daily_drawdown_halt",
+    # EXEC
+    "post_only_reject",
+    "insufficient_funds",
+    "minimum_size",
+    "api_error",
+    "timeout",
+    "unknown",
+    # GUARD
+    "stale_skip_gate_blocked",
+    "stale_reprice_failed",
+    # ORDERBOOK
+    "orderbook_error",
+    "orderbook_timeout",
+    "orderbook_rate_limit",
+    "orderbook_empty",
+    "sell_guard_reject",
+    "spread_too_narrow",
+]

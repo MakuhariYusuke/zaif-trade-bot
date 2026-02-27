@@ -231,12 +231,34 @@ class MakerPriceCalculator:
         """158# P2-6: 直近 VG 適用 boost 倍率 (1.0=未発動)."""
         return self._last_vg_boost_factor
 
+    def _effective_sell_offset_floor(self) -> float:
+        """173# 動的 sell_offset_floor — 在庫 buy 偏重時にフロアを割引.
+
+        InvSkew が sell offset を下げようとする局面でフロアがそれを阻止
+        するのを防ぐ。割引率は sell_offset_floor_inv_discount で設定。
+        """
+        cfg = self._config
+        base_floor = cfg.sell_offset_floor
+        if base_floor <= 0:
+            return 0.0
+        bypass_th = cfg.sell_guard_inv_bypass_threshold
+        if bypass_th > 0 and self._inv_net_imbalance >= bypass_th:
+            discounted = base_floor * cfg.sell_offset_floor_inv_discount
+            if discounted < base_floor:
+                logger.debug(
+                    f"[sell_guard] Dynamic floor discount: "
+                    f"inv_imb={self._inv_net_imbalance:.3f} >= {bypass_th} "
+                    f"→ floor {base_floor:.4f} → {discounted:.4f}"
+                )
+            return discounted
+        return base_floor
+
     # ------------------------------------------------------------------
     # 板不均衡 (054# S1)
     # ------------------------------------------------------------------
     async def compute_imbalance(
         self,
-        adapter: object,
+        adapter: OrderbookProvider,
         symbol: str,
         depth: int = 5,
     ) -> ImbalanceResult:
@@ -246,7 +268,7 @@ class MakerPriceCalculator:
             ImbalanceResult(imbalance, bid_total, ask_total).
             imbalance ∈ [-1, +1].
         """
-        ob = await adapter.get_orderbook(symbol, depth=depth)  # type: ignore[attr-defined]
+        ob = await adapter.get_orderbook(symbol, depth=depth)
         # 129# OB recorder: 生スナップショットをキャッシュ
         self._last_ob_snapshot = ob
         bid_volume = sum(qty for _, qty in ob.bids[:depth]) if ob.bids else 0.0
@@ -264,9 +286,9 @@ class MakerPriceCalculator:
     # ------------------------------------------------------------------
     # mid price (簡易)
     # ------------------------------------------------------------------
-    async def get_mid_price(self, adapter: object, symbol: str) -> float:
+    async def get_mid_price(self, adapter: OrderbookProvider, symbol: str) -> float:
         """板の best bid/ask から mid price を算出."""
-        ob = await adapter.get_orderbook(symbol, depth=1)  # type: ignore[attr-defined]
+        ob = await adapter.get_orderbook(symbol, depth=1)
         if not ob.bids or not ob.asks:
             raise ValueError("Empty orderbook — cannot compute mid price")
         best_bid = ob.bids[0][0]
@@ -438,14 +460,15 @@ class MakerPriceCalculator:
                     f"→ offset reduced to {effective_offset_ratio:.4f}"
                 )
 
-        # 091# sell offset floor 事後再適用
-        if side == "sell" and cfg.sell_offset_floor > 0:
-            if effective_offset_ratio < cfg.sell_offset_floor:
+        # 091# sell offset floor 事後再適用 (173# 動的フロア対応)
+        if side == "sell":
+            _dyn_floor = self._effective_sell_offset_floor()
+            if _dyn_floor > 0 and effective_offset_ratio < _dyn_floor:
                 logger.debug(
                     f"[sell_guard] Post-adaptive floor re-applied: "
-                    f"{effective_offset_ratio:.4f} → {cfg.sell_offset_floor:.4f}"
+                    f"{effective_offset_ratio:.4f} → {_dyn_floor:.4f}"
                 )
-                effective_offset_ratio = cfg.sell_offset_floor
+                effective_offset_ratio = _dyn_floor
 
         return effective_offset_ratio
 
@@ -559,7 +582,7 @@ class MakerPriceCalculator:
     async def compute(
         self,
         side: str,
-        adapter: object,
+        adapter: OrderbookProvider,
         symbol: str,
     ) -> MakerPriceResult:
         """maker limit 価格を算出: スプレッド比例オフセット + post_only 安全策.
@@ -582,7 +605,7 @@ class MakerPriceCalculator:
         else:
             imb = 0.0
 
-        ob = await adapter.get_orderbook(symbol, depth=1)  # type: ignore[attr-defined]
+        ob = await adapter.get_orderbook(symbol, depth=1)
         if not ob.bids or not ob.asks:
             raise ValueError("Empty orderbook")
         best_bid = ob.bids[0][0]
@@ -636,9 +659,11 @@ class MakerPriceCalculator:
         else:
             self._last_inv_skew_factor = 0.0
 
-        # 088# sell 専用ハードガード: offset floor
-        if side == "sell" and cfg.sell_offset_floor > 0:
-            effective_offset_ratio = max(effective_offset_ratio, cfg.sell_offset_floor)
+        # 088# sell 専用ハードガード: offset floor (173# 動的フロア対応)
+        if side == "sell":
+            _dyn_floor = self._effective_sell_offset_floor()
+            if _dyn_floor > 0:
+                effective_offset_ratio = max(effective_offset_ratio, _dyn_floor)
 
         # 088# sell 専用: max_spread 超過で sell スキップ
         if (

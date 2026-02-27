@@ -13,10 +13,19 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from typing import TypedDict
 
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
+
+
+class DrawdownAction(TypedDict):
+    """173# update_pnl() の型安全な戻り値."""
+
+    halted: bool
+    soft_triggered: bool
+    daily_pnl_bps: float
 
 
 @dataclass
@@ -29,6 +38,7 @@ class DailyDrawdownState:
     halted: bool = False
     halt_triggered_at: float | None = None  # timestamp
     total_halt_days: int = 0  # 累計 halt 発生日数
+    halt_blocked_cycles: int = 0  # 173# 機会損失: halt 中にブロックされたサイクル数
 
 
 class DailyDrawdownGuard:
@@ -90,28 +100,24 @@ class DailyDrawdownGuard:
             return True
         return False
 
-    def update_pnl(self, pnl_bps: float) -> dict[str, object]:
+    def update_pnl(self, pnl_bps: float) -> DrawdownAction:
         """約定後に PnL (bps) を加算し、制御アクションを返す.
 
         Returns:
-            {
-                "halted": bool,
-                "soft_triggered": bool,
-                "daily_pnl_bps": float,
-            }
+            DrawdownAction(halted, soft_triggered, daily_pnl_bps).
         """
         if not self._enabled:
-            return {"halted": False, "soft_triggered": False, "daily_pnl_bps": 0.0}
+            return DrawdownAction(halted=False, soft_triggered=False, daily_pnl_bps=0.0)
 
         self.maybe_reset_day()
         self._state.daily_pnl_bps += pnl_bps
         self._state.daily_fill_count += 1
 
-        result: dict[str, object] = {
-            "halted": False,
-            "soft_triggered": False,
-            "daily_pnl_bps": self._state.daily_pnl_bps,
-        }
+        result = DrawdownAction(
+            halted=False,
+            soft_triggered=False,
+            daily_pnl_bps=self._state.daily_pnl_bps,
+        )
 
         # Hard limit check
         if self._state.daily_pnl_bps <= self._hard_limit_bps:
@@ -143,6 +149,8 @@ class DailyDrawdownGuard:
         if not self._enabled:
             return False
         self.maybe_reset_day()
+        if self._state.halted:
+            self._state.halt_blocked_cycles += 1  # 173# 機会損失カウント
         return self._state.halted
 
     def get_metrics(self) -> dict[str, object]:
@@ -157,6 +165,7 @@ class DailyDrawdownGuard:
             "hard_limit_bps": self._hard_limit_bps,
             "soft_limit_bps": self._soft_limit_bps,
             "total_halt_days": self._state.total_halt_days,
+            "halt_blocked_cycles": self._state.halt_blocked_cycles,  # 173#
         }
 
     def export_state(self) -> dict[str, object]:
@@ -169,6 +178,7 @@ class DailyDrawdownGuard:
             "halt_triggered_at": self._state.halt_triggered_at,
             "total_halt_days": self._state.total_halt_days,
             "soft_triggered_today": self._soft_triggered_today,
+            "halt_blocked_cycles": self._state.halt_blocked_cycles,  # 173#
         }
 
     def import_state(self, data: dict[str, object]) -> None:
@@ -186,8 +196,10 @@ class DailyDrawdownGuard:
         self._state.daily_pnl_bps = float(data.get("daily_pnl_bps", 0.0))
         self._state.daily_fill_count = int(data.get("daily_fill_count", 0))
         self._state.halted = bool(data.get("halted", False))
-        self._state.halt_triggered_at = data.get("halt_triggered_at")  # type: ignore[assignment]
+        _raw_halt_at = data.get("halt_triggered_at")
+        self._state.halt_triggered_at = float(_raw_halt_at) if _raw_halt_at is not None else None
         self._state.total_halt_days = int(data.get("total_halt_days", 0))
+        self._state.halt_blocked_cycles = int(data.get("halt_blocked_cycles", 0))  # 173#
         self._soft_triggered_today = bool(data.get("soft_triggered_today", False))
         logger.info(
             f"[daily_drawdown] State restored: day={saved_day}, "
