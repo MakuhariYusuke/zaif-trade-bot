@@ -334,7 +334,7 @@ class SkipGateEvaluator:
                 apply_warm_start=True,
             )
             self._skip_gate = new_gate
-            self._inject_calibrator(new_gate)  # 158# hot-reload 後も calibrator 再注入
+            # 175# _inject_calibrator は _load_gate_from_path 内で既に実行済み
             self._model_file_hash = new_hash
             n_samples = new_gate.metadata.get("n_samples", "?")
             version = new_gate.metadata.get("version", "?")

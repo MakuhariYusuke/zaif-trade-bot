@@ -116,6 +116,13 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "stale_max_reprice",
     "stale_reprice_tighten",
     "stale_reprice_skip_gate_offset",
+    # 175# stale side 別フィールド
+    "stale_check_after_sec_buy",
+    "stale_check_after_sec_sell",
+    "stale_drift_bps_buy",
+    "stale_drift_bps_sell",
+    "stale_max_reprice_buy",
+    "stale_max_reprice_sell",
     # --- narrow spread ---
     "narrow_spread_pause_enabled",
     "narrow_spread_pause_bps",

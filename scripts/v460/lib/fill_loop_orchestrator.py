@@ -335,6 +335,7 @@ class FillLoopOrchestratorMixin:
                 await asyncio.sleep(self.config.lock_heartbeat_period_sec)
 
         heartbeat_task = asyncio.create_task(_heartbeat_loop())
+        self._heartbeat_task: asyncio.Task[None] | None = heartbeat_task  # 175# cleanup 用
 
         logger.info(f"Starting fill test: {hours}h, interval={self.config.cycle_interval_sec}s")
 
@@ -1102,6 +1103,7 @@ class FillLoopOrchestratorMixin:
 
         # 148# heartbeat タスク終了
         heartbeat_task.cancel()
+        self._heartbeat_task = None
         try:
             await heartbeat_task
         except asyncio.CancelledError:
@@ -1113,6 +1115,22 @@ class FillLoopOrchestratorMixin:
         )
         # 024# O4: 集計用に全レコードをリロード
         return load_fill_records_glob(str(self._results_dir))
+
+    async def cleanup_heartbeat(self) -> None:
+        """175# 異常終了時の heartbeat タスク cleanup.
+
+        run_continuous の呼び出し元で finally ブロックから呼ぶことで、
+        未処理例外発生時の heartbeat タスクリークを防止する。
+        """
+        task = getattr(self, "_heartbeat_task", None)
+        if task is not None and not task.done():
+            task.cancel()
+            self._heartbeat_task = None
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+            logger.info("[cleanup] heartbeat task cancelled (exception path)")
 
     def _build_adapt_kwargs(self) -> dict[str, object]:
         """120# AdaptationEngine に委譲."""

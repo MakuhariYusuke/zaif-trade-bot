@@ -451,6 +451,10 @@ class FillTestConfig:
             raise ValueError(
                 f"sell_dynamic_kill_window must be >= 1, got {self.sell_dynamic_kill_window}"
             )
+        if self.buy_dynamic_kill_window < 1:
+            raise ValueError(
+                f"buy_dynamic_kill_window must be >= 1, got {self.buy_dynamic_kill_window}"
+            )
         # 174# sell_offset_floor_inv_discount 値域
         if not (0.0 <= self.sell_offset_floor_inv_discount <= 1.0):
             raise ValueError(
@@ -674,6 +678,11 @@ class FillTestConfig:
             kwargs["sell_max_spread_jpy"] = sell_guard["max_spread_jpy"]
         if sell_guard.get("offset_floor") is not None:
             kwargs["sell_offset_floor"] = sell_guard["offset_floor"]
+        # 175# sell_offset_floor_inv_discount YAML バインド
+        if sell_guard.get("offset_floor_inv_discount") is not None:
+            kwargs["sell_offset_floor_inv_discount"] = float(
+                sell_guard["offset_floor_inv_discount"]
+            )
 
         return kwargs
 

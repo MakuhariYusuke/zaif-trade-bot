@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from typing import Final, Optional, Protocol, runtime_checkable
 
 from ztb.trading.orders.state_machine import OrderState
@@ -77,6 +78,18 @@ def _parse_order_state(status_str: str) -> OrderState:
     return _STATUS_TO_STATE.get(status_str, OrderState.PENDING)
 
 
+class _KillSwitchLike(Protocol):
+    """175# shutdown_check の型安全 Protocol."""
+
+    def is_killed(self) -> bool: ...
+
+
+class _SkipGateLike(Protocol):
+    """175# SkipGate reprice guard の型安全 Protocol."""
+
+    def evaluate(self, *, side: str, **kwargs: object) -> object: ...
+
+
 class OrderMonitor:
     """約定ポーリング監視 — FillTestRunner から分割.
 
@@ -98,11 +111,11 @@ class OrderMonitor:
         spread_at_order: Optional[float],
         effective_offset_ratio: float,
         *,
-        shutdown_check: object,  # KillSwitch
-        pending_order_setter: object,  # Callable[[str | None], None]
-        get_mid_price: object,  # Callable[[], Awaitable[float]]
-        compute_maker_price: object,  # Callable[[str], Awaitable[tuple]]
-        skip_gate: object | None = None,
+        shutdown_check: _KillSwitchLike,
+        pending_order_setter: Callable[[str | None], None],
+        get_mid_price: Callable[[], Awaitable[float]],
+        compute_maker_price: Callable[[str], Awaitable[tuple[float, float, float]]],
+        skip_gate: _SkipGateLike | None = None,
         regime_detector: object | None = None,
         current_lot: float = 0.001,
     ) -> FillMonitorResult:
@@ -152,12 +165,12 @@ class OrderMonitor:
         mid_at_order: Optional[float] = None
         if cfg.stale_order_enabled:
             try:
-                mid_at_order = await get_mid_price()  # type: ignore[operator]
+                mid_at_order = await get_mid_price()
             except Exception as e:
                 logger.debug(f"[stale_order] mid_at_order 取得失敗 (stale 検出無効化): {e}")
         last_reprice_time = t_submit
 
-        while elapsed < _effective_timeout and not shutdown_check.is_killed():  # type: ignore[union-attr]
+        while elapsed < _effective_timeout and not shutdown_check.is_killed():
             await asyncio.sleep(cfg.poll_interval_sec)
             elapsed = time.time() - t_submit
 
@@ -271,7 +284,7 @@ class OrderMonitor:
                 and (time.time() - last_reprice_time) >= cfg.stale_cooldown_sec
             ):
                 try:
-                    current_mid = await get_mid_price()  # type: ignore[operator]
+                    current_mid = await get_mid_price()
                     drift_bps = abs(current_mid - mid_at_order) / mid_at_order * _BPS_FACTOR
                     is_drifting_away = (
                         (side == "buy" and current_mid > mid_at_order)
@@ -344,7 +357,7 @@ class OrderMonitor:
                             break
 
                         try:
-                            result = await compute_maker_price(side)  # type: ignore[operator]
+                            result = await compute_maker_price(side)
                             new_price = result[0]
                             # 158# P1-2: reprice offset tightening
                             _tighten = cfg.stale_reprice_tighten
@@ -371,13 +384,13 @@ class OrderMonitor:
                                 price=new_price,
                                 order_type="limit",
                             )
-                            order = new_order  # type: ignore[assignment]
+                            order = new_order
                             order_price = new_price
                             mid_at_order = current_mid
                             last_reprice_time = time.time()
                             reprice_count += 1
                             cumulative_drift_bps += drift_bps  # 158# P1-3
-                            pending_order_setter(order.order_id)  # type: ignore[operator]
+                            pending_order_setter(order.order_id)
                             logger.info(
                                 f"[stale_order] Repriced {side} @ {new_price:.0f} JPY "
                                 f"(id={order.order_id}, reprice #{reprice_count})"
@@ -426,7 +439,7 @@ class OrderMonitor:
                     except Exception as recheck_err:
                         logger.warning(f"[Bug11] Recheck failed: {recheck_err}")
 
-        pending_order_setter(None)  # type: ignore[operator]
+        pending_order_setter(None)
 
         return FillMonitorResult(
             filled=filled,

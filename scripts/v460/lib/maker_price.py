@@ -158,9 +158,6 @@ class MakerPriceCalculator:
         """
         self._inv_fill_history.append(side)
         n = len(self._inv_fill_history)
-        if n == 0:
-            self._inv_net_imbalance = 0.0
-            return
         buys = sum(1 for s in self._inv_fill_history if s == "buy")
         # imbalance: +1 = all buys (long偏重), -1 = all sells (short偏重)
         self._inv_net_imbalance = (2 * buys - n) / n
@@ -705,7 +702,11 @@ class MakerPriceCalculator:
         boost_mult = self._fast_fill_defense.get_boost_multiplier(side)
         if boost_mult != 1.0:
             offset *= boost_mult
-            effective_offset_ratio *= boost_mult
+            # 175# FFD boost 後も max_offset_ratio クランプを適用
+            effective_offset_ratio = min(
+                effective_offset_ratio * boost_mult,
+                cfg.max_offset_ratio,
+            )
 
         if side == "buy":
             price = best_bid + offset

@@ -157,6 +157,9 @@ class TestCancelReasons:
             CR.TRENDING_SELL_SKIP,
             CR.DAILY_DRAWDOWN_HALT,     # 168# §4.1 #3
             CR.RANGING_LOW_VOL_SKIP,   # 169# B1'
+            CR.SKIP_GATE,                      # 174#
+            CR.SKIP_GATE_RULE_VELOCITY_SELL,   # 174#
+            CR.SKIP_GATE_RULE_VELOCITY_BUY,    # 174#
         }
         assert CR.AUDIT_CANCEL_REASONS == expected
 

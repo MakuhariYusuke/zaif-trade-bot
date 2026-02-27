@@ -31,6 +31,8 @@ class FastFillDefenseConfig:
     # 102# YAML化: offset 上限・下限
     max_offset_ratio: float = 0.30
     min_offset_ratio: float = 0.01
+    # 175# boost TTL (seconds): time_filter中の古いboostが残る問題を防止
+    boost_ttl_sec: float = 600.0
 
 
 @dataclass
@@ -39,6 +41,7 @@ class _SideState:
 
     boost_active: bool = False
     boost_multiplier: float = 1.0
+    boost_activated_at: float = 0.0  # 175# TTL decay 用 timestamp
 
 
 class FastFillDefense:
@@ -73,7 +76,20 @@ class FastFillDefense:
 
     def get_boost_multiplier(self, side: str) -> float:
         """現サイクルの offset に適用する boost 乗数を返す."""
-        return self._get_state(side).boost_multiplier
+        state = self._get_state(side)
+        # 175# TTL decay: boost_ttl_sec を超過したら自動解除
+        if state.boost_active and self._config.boost_ttl_sec > 0:
+            import time as _time
+            if (_time.time() - state.boost_activated_at) > self._config.boost_ttl_sec:
+                old_mult = state.boost_multiplier
+                state.boost_active = False
+                state.boost_multiplier = 1.0
+                logger.info(
+                    f"[fast_fill_defense] TTL expired ({side}): "
+                    f"multiplier {old_mult:.2f}→1.00 "
+                    f"(ttl={self._config.boost_ttl_sec:.0f}s)"
+                )
+        return state.boost_multiplier
 
     def is_boost_active(self, side: str) -> bool:
         """指定 side で boost が有効かどうか."""
@@ -165,7 +181,9 @@ class FastFillDefense:
 
         if is_fast and has_negative_edge:
             if not state.boost_active:
+                import time as _time
                 state.boost_active = True
+                state.boost_activated_at = _time.time()  # 175# TTL 起点
                 raw_boost = self._resolve_boost(side)
                 state.boost_multiplier = self._compute_capped_multiplier(side, raw_boost)
                 layer_info = "L1" if has_negative_edge_l1 else "L2(pnl)"
