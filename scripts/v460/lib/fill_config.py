@@ -239,6 +239,9 @@ class FillTestConfig:
     # ログ分析: spread<2kでAS32% (全体28%) → 閾値厳格化で AS fill削減
     skip_gate_narrow_spread_threshold_jpy: float = 0.0  # 0.0=無効
     skip_gate_narrow_spread_offset: float = 0.0  # 正=厳格化 (PnLモード)
+    # 187# clamp YAML外部化: skip_gate offset の上下限
+    skip_gate_offset_floor: float = -0.3   # 最大緩和
+    skip_gate_offset_ceil: float = 0.5     # 最大厳格化
     # 156# §16: OB エラー fallback 価格の鮮度閾値 (秒)
     fallback_stale_sec: float = 120.0
     # 094# stale order 検出 & cancel-replace (価格乖離した注文を再発注)
@@ -624,6 +627,9 @@ class FillTestConfig:
             # 183# narrow spread adverse guard
             "skip_gate_narrow_spread_threshold_jpy": "skip_gate_narrow_spread_threshold_jpy",
             "skip_gate_narrow_spread_offset": "skip_gate_narrow_spread_offset",
+            # 187# clamp YAML外部化
+            "offset_floor": "skip_gate_offset_floor",
+            "offset_ceil": "skip_gate_offset_ceil",
         }
         for yaml_key, config_key in sg_map.items():
             if yaml_key in sg and sg[yaml_key] is not None:

@@ -306,6 +306,9 @@ skip_gate:
   # ログ分析: spread<2kでAS32% (全体28%), PnL=-0.46bps (全体-0.30bps)
   skip_gate_narrow_spread_threshold_jpy: 2000.0
   skip_gate_narrow_spread_offset: 0.2     # PnLモード: threshold += 0.2 (厳格化)
+  # 187# clamp: offset 合計の上下限 (hot-reload 対応)
+  offset_floor: -0.3   # 最大緩和
+  offset_ceil: 0.5     # 最大厳格化
 
 # ---- 107# Volatility Guard (リアルタイム急変検知) ----
 # time_filter の静的遮断では対応不能な「時間帯内の急変」に対応

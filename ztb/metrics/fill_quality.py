@@ -125,6 +125,9 @@ class FillRecord:
     cancel_failed_likely_filled: Optional[bool] = None  # True=cancel失敗→約定検出
     # 181# EV_weighted: 30s/120s 加重平均 PnL (178# §1.3 設計)
     ev_weighted_pnl: Optional[float] = None  # 0.4*pnl30 + 0.6*pnl120 (bps)
+    # 187# B-2: guard_trace — gated_regime + effective_cycle_interval 記録
+    gated_regime: Optional[str] = None              # ヒステリシス適用後の実効 regime
+    effective_cycle_interval: Optional[float] = None  # 使用されたサイクル間隔 (秒)
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

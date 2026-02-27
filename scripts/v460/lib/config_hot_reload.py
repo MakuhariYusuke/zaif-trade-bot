@@ -100,6 +100,9 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     # 183# narrow spread adverse guard
     "skip_gate_narrow_spread_threshold_jpy",
     "skip_gate_narrow_spread_offset",
+    # 187# clamp YAML外部化
+    "skip_gate_offset_floor",
+    "skip_gate_offset_ceil",
     # --- dynamic kill ---
     "sell_dynamic_kill_enabled",
     "sell_dynamic_kill_window",

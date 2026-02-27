@@ -39,7 +39,7 @@ class FillCycleExecutorMixin:
     責務境界 (Single Responsibility):
       OK: 1 取引サイクル実行, OB ラッパー, SkipGate, Fill 監視, PnL 計測
       NG: ループ制御, side kill, time filter, balance forced
-    MAX LINES: 700 (超えたら run_single_cycle 内のフェーズを分割せよ)
+    MAX LINES: 720 (超えたら run_single_cycle 内のフェーズを分割せよ)
     ────────────────────────────────────────────────────
     """
 
@@ -126,7 +126,7 @@ class FillCycleExecutorMixin:
         _chase_max_rp: int | None = None
         if hasattr(self, "_cycle_strategy"):
             _regime = self._current_regime_value() if hasattr(self, "_current_regime_value") else None
-            if self._cycle_strategy.is_chase_enabled(_regime):
+            if self._cycle_strategy.is_chase_enabled(_regime, side):  # 187# B-1: side 方向制限
                 _chase_drift = self._cycle_strategy.chase_drift_bps()
                 _chase_max_rp = self._cycle_strategy.chase_max_reprice()
 
@@ -687,6 +687,17 @@ class FillCycleExecutorMixin:
                 w120=self._cycle_strategy.policy.ev_weighted_w120,
             ) if hasattr(self, "_cycle_strategy") else self._compute_ev_weighted(
                 post_fill_pnl, post_fill_120s_pnl
+            ),
+            # 187# B-2: guard_trace — ヒステリシス適用後 regime + 実効サイクル間隔
+            gated_regime=(
+                self._cycle_strategy.gated_regime(regime_str, regime_conf)
+                if hasattr(self, "_cycle_strategy") and regime_str is not None
+                else None
+            ),
+            effective_cycle_interval=(
+                self._cycle_strategy.effective_interval(regime_str)
+                if hasattr(self, "_cycle_strategy")
+                else None
             ),
         )
 

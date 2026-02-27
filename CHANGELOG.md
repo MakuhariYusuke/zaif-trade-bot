@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 187# Chase 方向制御 + guard_trace 記録 + clamp YAML外部化 (2026-02-28)
+
+### Changed
+- `regime_policy.py` — **B-1: Chase 方向制限**
+  - `CycleStrategy.is_chase_enabled()`: `side` パラメータ追加
+  - `DefaultCycleStrategy`: trending_up→buyのみ, trending_down→sellのみ, trending→両方許可
+  - `MAX LINES`: 250→400 (186# ヒステリシス追加分)
+- `fill_cycle_executor.py` — **B-2: guard_trace 記録**
+  - FillRecord に `gated_regime`, `effective_cycle_interval` 設定追加
+  - Chase 呼び出しに `side` 引数追加
+  - `MAX LINES`: 700→720
+- `fill_quality.py`: `FillRecord` に `gated_regime`, `effective_cycle_interval` フィールド追加
+- `skip_gate_evaluator.py`: clamp 定数を `FillTestConfig` 参照に変更 (hot-reload 対応)
+- `fill_config.py`: `skip_gate_offset_floor`, `skip_gate_offset_ceil` フィールド追加 + YAML パース
+- `config_hot_reload.py`: `skip_gate_offset_floor/ceil` を hot-reload 対象に追加
+- `configs/v460/fill_test.yaml`: clamp パラメータ追加
+- `test_113_resilience.py`: `run_single_cycle` 行数上限 510→520
+
+### Added
+- `tests/unit/v460/test_187_chase_direction_guard_trace.py`: 22 テストケース
+
+### 178# 未達事項進捗
+- U2 Chase 方向制御: ✅ 本セッションで解消
+- U6 guard_trace: ✅ 本セッションで解消
+
+
 ## 186# 185レビュー評価 + Trend Mode ヒステリシス + Strictness Clamp (2026-02-28)
 
 ### Added

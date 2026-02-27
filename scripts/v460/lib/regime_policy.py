@@ -6,7 +6,7 @@
 - orchestrator は self._cycle_strategy.effective_interval(regime) を呼ぶだけ
 - 各 Strategy 実装は < 200 行に収める
 
-MAX LINES: 250 (超えたら strategy 実装を別ファイルに分割)
+MAX LINES: 400 (超えたら strategy 実装を別ファイルに分割)
 """
 
 from __future__ import annotations
@@ -210,8 +210,8 @@ class CycleStrategy(Protocol):
         """regime × side 別の post-fill wait (秒) を返す."""
         ...
 
-    def is_chase_enabled(self, regime: str | None) -> bool:
-        """Chase ロジックが有効かどうかを返す."""
+    def is_chase_enabled(self, regime: str | None, side: str | None = None) -> bool:
+        """Chase ロジックが有効かどうかを返す (187# side 方向制限対応)."""
         ...
 
     def chase_drift_bps(self) -> float:
@@ -344,14 +344,27 @@ class DefaultCycleStrategy:
             self._base_wait_sell if side == "sell" else self._base_wait_buy,
         )
 
-    def is_chase_enabled(self, regime: str | None) -> bool:
-        """Chase: trending 系 regime 限定で有効 (182# confidence gating 内包)."""
+    def is_chase_enabled(self, regime: str | None, side: str | None = None) -> bool:
+        """Chase: trending 系 regime 限定で有効 (187# 方向制限追加).
+
+        187# B-1: trending_up → buy のみ chase 許可 (sell は cancel-only)
+                  trending_down → sell のみ chase 許可 (buy は cancel-only)
+                  trending (方向不明) → 両方許可 (後方互換)
+        """
         if not self._policy.chase_enabled or self._check_fallback():
             return False
         regime = self.gated_regime(regime)
         if regime is None:
             return False
-        return regime in self._policy.chase_regimes
+        if regime not in self._policy.chase_regimes:
+            return False
+        # 187# B-1: 方向フィルタリング
+        if side is not None:
+            if regime == "trending_up" and side != "buy":
+                return False
+            if regime == "trending_down" and side != "sell":
+                return False
+        return True
 
     def chase_drift_bps(self) -> float:
         return self._policy.chase_drift_bps
