@@ -1037,6 +1037,9 @@ class FillLoopOrchestratorMixin:
             # 次サイクルまで待機
             # 054# S3: rapid exit 時は interval を短縮
             if time.time() < end_time and not self._kill_switch.is_killed():
+                # 169# Config Hot-Reload: サイクル間で YAML 変更を検出・反映
+                self._config_reloader.maybe_reload(self)
+
                 if self._side_selector.rapid_exit_side is not None:
                     interval = self.config.early_exit_rapid_interval_sec
                     logger.info(

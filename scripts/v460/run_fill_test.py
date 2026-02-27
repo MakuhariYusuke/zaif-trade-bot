@@ -156,10 +156,12 @@ class FillTestRunner(
         adapter: IBroker,
         config: FillTestConfig,
         yaml_cfg: Optional[dict] = None,
+        config_yaml_path: Optional[str] = None,  # 169# config hot-reload
     ) -> None:
         self.adapter = adapter
         self.config = config
         self._yaml_cfg = yaml_cfg or {}  # YAML 生の設定 (サブモジュールに渡す用)
+        self._config_yaml_path = config_yaml_path  # 169# hot-reload 用 YAML パス
         self._results_dir = Path(config.results_dir)
         self._results_dir.mkdir(parents=True, exist_ok=True)
         self._cycle_count = 0
@@ -362,6 +364,15 @@ class FillTestRunner(
         # 044# A-7: loss_cap 更新カウンタ
         self._loss_cap_update_interval = config.loss_cap_update_interval
 
+        # 169# Config Hot-Reload: YAML 変更のライブ反映
+        from scripts.v460.lib.config_hot_reload import ConfigHotReloader
+        self._config_reloader = ConfigHotReloader(
+            config=config,
+            yaml_path=self._config_yaml_path,
+            yaml_cfg=self._yaml_cfg,
+            check_interval_sec=config.hot_reload_check_interval_sec,
+        )
+
     # 121# _current_lot プロパティ: BalanceChecker に委譲 (後方互換)
     @property
     def _current_lot(self) -> float:
@@ -371,6 +382,65 @@ class FillTestRunner(
     def _current_lot(self, value: float) -> None:
         self._balance_checker.current_lot = value
 
+
+    # ==================================================================
+    # 169# Config Hot-Reload: コンポーネント再構築コールバック
+    # ConfigHotReloader がフィールド変更検出時に呼び出す
+    # ==================================================================
+
+    def _rebuild_sell_kill_mgr(self) -> None:
+        """sell_dynamic_kill 設定変更時にマネージャを再構築."""
+        from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
+        self._sell_kill_mgr = SellDynamicKillManager(SellKillConfig(
+            enabled=self.config.sell_dynamic_kill_enabled,
+            window=self.config.sell_dynamic_kill_window,
+            threshold_bps=self.config.sell_dynamic_kill_threshold_bps,
+            resume_window=self.config.sell_dynamic_kill_resume_window,
+            regime_thresholds=self.config.sell_dynamic_kill_regime_thresholds,
+        ))
+
+    def _rebuild_buy_kill_mgr(self) -> None:
+        """buy_dynamic_kill 設定変更時にマネージャを再構築."""
+        from ztb.risk.sell_dynamic_kill import BuyDynamicKillManager, DynamicKillConfig
+        self._buy_kill_mgr = BuyDynamicKillManager(DynamicKillConfig(
+            enabled=self.config.buy_dynamic_kill_enabled,
+            window=self.config.buy_dynamic_kill_window,
+            threshold_bps=self.config.buy_dynamic_kill_threshold_bps,
+            resume_window=self.config.buy_dynamic_kill_resume_window,
+            regime_thresholds=self.config.buy_dynamic_kill_regime_thresholds,
+        ))
+
+    def _rebuild_daily_drawdown_guard(self) -> None:
+        """daily_drawdown 設定変更時にガードを再構築 (状態継承)."""
+        from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
+        old_state = self._daily_drawdown_guard.export_state()
+        self._daily_drawdown_guard = DailyDrawdownGuard(
+            enabled=self.config.daily_drawdown_enabled,
+            hard_limit_bps=self.config.daily_drawdown_hard_limit_bps,
+            soft_limit_bps=self.config.daily_drawdown_soft_limit_bps,
+        )
+        if old_state:
+            self._daily_drawdown_guard.import_state(old_state)
+
+    def _rebuild_fast_fill_defense(self) -> None:
+        """fast_fill_defense 設定変更時に再構築."""
+        from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
+        self._fast_fill_defense = FastFillDefense(
+            config=FastFillDefenseConfig(
+                enabled=self.config.fast_fill_defense_enabled,
+                threshold_sec=self.config.fast_fill_threshold_sec,
+                threshold_sec_buy=self.config.fast_fill_threshold_sec_buy,
+                threshold_sec_sell=self.config.fast_fill_threshold_sec_sell,
+                offset_boost=self.config.fast_fill_offset_boost,
+                offset_boost_buy=self.config.fast_fill_offset_boost_buy,
+                offset_boost_sell=self.config.fast_fill_offset_boost_sell,
+                max_offset_ratio=self.config.max_offset_ratio,
+                min_offset_ratio=self.config.min_offset_ratio,
+            ),
+            base_offset_ratio=self.config.spread_offset_ratio,
+            base_offset_ratio_buy=self.config.spread_offset_ratio_buy,
+            base_offset_ratio_sell=self.config.spread_offset_ratio_sell,
+        )
 
     # ==================================================================
     # 163# Mixin 分割: 以下のメソッドは個別ファイルに抽出済み

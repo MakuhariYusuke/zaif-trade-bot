@@ -312,7 +312,10 @@ def fill_test_main() -> None:
     from scripts.v460.run_fill_test import FillTestRunner
     from scripts.v460.lib.lock_manager import LockConflictError
 
-    runner = FillTestRunner(adapter, config, yaml_cfg=yaml_cfg)
+    runner = FillTestRunner(
+        adapter, config, yaml_cfg=yaml_cfg,
+        config_yaml_path=args.config,  # 169# config hot-reload
+    )
 
     # 148# P0: start イベント記録
     log_event(

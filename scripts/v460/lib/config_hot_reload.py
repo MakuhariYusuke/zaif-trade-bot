@@ -1,0 +1,344 @@
+"""169# Config Hot-Reload — YAML 変更をプロセス再起動なしで反映.
+
+SkipGate モデル hot-reload (126#) と同パターン:
+  - mtime ベースのファイル変更検知 (polling, configurable interval)
+  - 安全なフィールドのみ差分更新 (構造体再構築が必要なものは対象外 or 明示的再構築)
+  - 失敗時は旧設定を維持 (防御的設計)
+
+Usage (FillLoopOrchestratorMixin 内)::
+
+    self._config_reloader = ConfigHotReloader(config, yaml_path, yaml_cfg)
+    # 各サイクル末尾:
+    self._config_reloader.maybe_reload(self)
+"""
+
+from __future__ import annotations
+
+import dataclasses
+import logging
+import os
+import sys
+import time
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    pass  # FillTestRunner は circular import 回避のため型ヒントで使わない
+
+logger = logging.getLogger(__name__)
+
+
+# ======================================================================
+# 安全にホットリロード可能なフィールドの定義
+# ======================================================================
+
+# ランタイム中に直接代入で反映できるフィールド
+# (構造体の再構築が不要、または再構築を明示的に行うもの)
+_HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
+    # --- offset / price 関連 ---
+    "spread_offset_ratio",
+    "spread_offset_ratio_buy",
+    "spread_offset_ratio_sell",
+    "min_offset_jpy",
+    "max_offset_ratio",
+    "min_offset_ratio",
+    # --- regime offset 関連 ---
+    "regime_trending_offset_boost",
+    "regime_trending_offset_boost_buy",
+    "regime_trending_offset_boost_sell",
+    "regime_high_vol_offset_boost",
+    "regime_ranging_offset_discount",
+    "low_vol_offset_boost_enabled",
+    "low_vol_offset_boost",
+    "low_vol_threshold",
+    "skip_ranging_buy_low_vol",
+    # --- time_filter ---
+    "enable_time_filter",
+    "skip_utc_hours",
+    "skip_utc_hours_buy",
+    "skip_utc_hours_sell",
+    "regime_adaptive_enabled",
+    "regime_adaptive_extra_buy",
+    "regime_adaptive_extra_sell",
+    # --- SkipGate 閾値 (モデル自体は別途 hot-reload) ---
+    "skip_gate_enabled",
+    "skip_gate_buy_enabled",
+    "skip_gate_sell_enabled",
+    "skip_gate_as_threshold",
+    "skip_gate_as_threshold_buy",
+    "skip_gate_as_threshold_sell",
+    "skip_gate_max_skip_rate",
+    "skip_gate_adaptive_threshold",
+    "skip_gate_target_skip_rate_buy",
+    "skip_gate_target_skip_rate_sell",
+    "skip_gate_hour_offsets",
+    # --- dynamic kill ---
+    "sell_dynamic_kill_enabled",
+    "sell_dynamic_kill_window",
+    "sell_dynamic_kill_threshold_bps",
+    "sell_dynamic_kill_resume_window",
+    "sell_dynamic_kill_regime_thresholds",
+    "buy_dynamic_kill_enabled",
+    "buy_dynamic_kill_window",
+    "buy_dynamic_kill_threshold_bps",
+    "buy_dynamic_kill_resume_window",
+    "buy_dynamic_kill_regime_thresholds",
+    # --- lot 関連 ---
+    "order_quantity",
+    "max_lot",
+    "regime_lot_multipliers",
+    "enable_confidence_lot",
+    "confidence_lot_scale",
+    "confidence_lot_floor",
+    # --- stale / reprice ---
+    "stale_order_enabled",
+    "stale_check_after_sec",
+    "stale_drift_bps",
+    "stale_max_reprice",
+    "stale_reprice_tighten",
+    "stale_reprice_skip_gate_offset",
+    # --- narrow spread ---
+    "narrow_spread_pause_enabled",
+    "narrow_spread_pause_bps",
+    "narrow_spread_pause_max_consecutive",
+    # --- fast fill defense ---
+    "fast_fill_defense_enabled",
+    "fast_fill_threshold_sec",
+    "fast_fill_offset_boost",
+    # --- 日次ドローダウン ---
+    "daily_drawdown_enabled",
+    "daily_drawdown_hard_limit_bps",
+    "daily_drawdown_soft_limit_bps",
+    # --- safety ---
+    "loss_cap_jpy",
+    "loss_cap_ratio",
+    "soft_loss_cap_ratio",
+    # --- sell/buy guard ---
+    "skip_sell_unknown_regime",
+    "skip_buy_unknown_regime",
+    "skip_sell_trending",
+    "skip_sell_trending_up_only",
+    "max_consecutive_trending_sell_skip",
+    "skip_balance_forced",
+    "balance_forced_deadlock_limit",
+    "balance_forced_rescue_enabled",
+    "balance_forced_rescue_offset_mult",
+    # --- velocity skip ---
+    "sell_velocity_skip_enabled",
+    "sell_velocity_skip_threshold_bps",
+    "buy_velocity_skip_enabled",
+    "buy_velocity_skip_threshold_bps",
+    # --- VG ---
+    "volatility_guard_enabled",
+    "volatility_guard_velocity_threshold_bps",
+    "volatility_guard_offset_boost_factor",
+    # --- cycle timing ---
+    "cycle_interval_sec",
+    "order_timeout_sec",
+    "order_timeout_sec_sell",
+    # --- misc ---
+    "as_deadzone_bps",
+    "min_spread_jpy",
+    "e3_sampling_ratio",
+    "progress_log_interval",
+})
+
+# 構造体再構築が必要なコンポーネントのマッピング
+# field_prefix -> コールバック名
+_COMPONENT_REBUILD_PREFIXES: dict[str, str] = {
+    "sell_dynamic_kill_": "_rebuild_sell_kill_mgr",
+    "buy_dynamic_kill_": "_rebuild_buy_kill_mgr",
+    "daily_drawdown_": "_rebuild_daily_drawdown_guard",
+    "fast_fill_": "_rebuild_fast_fill_defense",
+}
+
+
+class ConfigHotReloader:
+    """YAML config hot-reload manager.
+
+    サイクル間の自然なリロードポイントで呼び出され、
+    YAML ファイルの mtime を確認し、変更があれば安全なフィールドのみ差分更新。
+    """
+
+    def __init__(
+        self,
+        config: Any,  # FillTestConfig (circular import 回避)
+        yaml_path: str | Path | None,
+        yaml_cfg: dict[str, Any],
+        check_interval_sec: float = 120.0,
+    ) -> None:
+        self._config = config
+        self._yaml_path: Path | None = (
+            Path(yaml_path) if yaml_path is not None else None
+        )
+        self._yaml_cfg = yaml_cfg
+        self._check_interval_sec = check_interval_sec
+        self._last_check_time: float = time.time()
+        self._last_mtime: float = self._get_mtime()
+        self._reload_count: int = 0
+        self._last_reload_time: float = 0.0
+
+    @property
+    def reload_count(self) -> int:
+        return self._reload_count
+
+    def _get_mtime(self) -> float:
+        """YAML ファイルの最終更新時刻を取得."""
+        if self._yaml_path is None:
+            return 0.0
+        try:
+            return os.path.getmtime(self._yaml_path)
+        except OSError:
+            return 0.0
+
+    def maybe_reload(self, runner: Any) -> bool:
+        """mtime check → 変更検出時にリロード実行.
+
+        Args:
+            runner: FillTestRunner インスタンス (コンポーネント再構築用)
+
+        Returns:
+            True if reload was performed.
+        """
+        now = time.time()
+        if now - self._last_check_time < self._check_interval_sec:
+            return False
+
+        self._last_check_time = now
+        current_mtime = self._get_mtime()
+
+        if current_mtime <= self._last_mtime:
+            return False
+
+        # mtime changed → reload
+        logger.info(
+            f"[config_hot_reload] YAML change detected "
+            f"(mtime {self._last_mtime:.0f} → {current_mtime:.0f}), "
+            f"reloading config..."
+        )
+        self._last_mtime = current_mtime
+
+        try:
+            return self._do_reload(runner)
+        except Exception as e:
+            logger.error(
+                f"[config_hot_reload] Reload FAILED, keeping old config: {e}",
+                exc_info=True,
+            )
+            return False
+
+    def _do_reload(self, runner: Any) -> bool:
+        """実際のリロード処理."""
+        from scripts.v460.lib.config_loader import load_fill_test_config
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        if self._yaml_path is None:
+            return False
+
+        # 新 YAML 読込 + FillTestConfig 構築 (バリデーション含む)
+        new_yaml_cfg = load_fill_test_config(self._yaml_path)
+        new_config = FillTestConfig.from_yaml(new_yaml_cfg)
+
+        # 差分検出 & 適用
+        changed_fields: list[str] = []
+        skipped_fields: list[str] = []
+        rebuild_needed: set[str] = set()
+
+        for f in dataclasses.fields(self._config):
+            if f.name not in _HOT_RELOADABLE_FIELDS:
+                continue
+
+            old_val = getattr(self._config, f.name)
+            new_val = getattr(new_config, f.name)
+
+            if old_val != new_val:
+                setattr(self._config, f.name, new_val)
+                changed_fields.append(f.name)
+                logger.info(
+                    f"[config_hot_reload]   {f.name}: {old_val!r} → {new_val!r}"
+                )
+
+                # コンポーネント再構築が必要か判定
+                for prefix, callback_name in _COMPONENT_REBUILD_PREFIXES.items():
+                    if f.name.startswith(prefix):
+                        rebuild_needed.add(callback_name)
+
+        # ホットリロード対象外だが変更されたフィールドを通知
+        for f in dataclasses.fields(self._config):
+            if f.name in _HOT_RELOADABLE_FIELDS:
+                continue
+            old_val = getattr(self._config, f.name)
+            new_val = getattr(new_config, f.name)
+            if old_val != new_val:
+                skipped_fields.append(f.name)
+
+        if not changed_fields:
+            logger.info("[config_hot_reload] No hot-reloadable fields changed")
+            if skipped_fields:
+                logger.warning(
+                    f"[config_hot_reload] Non-reloadable fields changed "
+                    f"(restart required): {skipped_fields}"
+                )
+            return False
+
+        # コンポーネント再構築
+        for callback_name in rebuild_needed:
+            try:
+                callback = getattr(runner, callback_name, None)
+                if callback is not None:
+                    callback()
+                    logger.info(
+                        f"[config_hot_reload]   component rebuilt: {callback_name}"
+                    )
+            except Exception as e:
+                logger.error(
+                    f"[config_hot_reload]   component rebuild FAILED: {callback_name}: {e}",
+                    exc_info=True,
+                )
+
+        # TimeFilter 再構築 (config から直接読み取るため再構築が必要)
+        if any(f.startswith(("enable_time_filter", "skip_utc_hours", "regime_adaptive_")) for f in changed_fields):
+            try:
+                from scripts.v460.lib.time_filter import TimeFilter
+                runner._time_filter = TimeFilter(self._config)
+                logger.info("[config_hot_reload]   TimeFilter rebuilt")
+            except Exception as e:
+                logger.error(f"[config_hot_reload]   TimeFilter rebuild FAILED: {e}")
+
+        # MakerPriceCalculator の base offset 更新
+        if any(f.startswith("spread_offset_ratio") for f in changed_fields):
+            runner._maker_price.base_offset_ratio = self._config.spread_offset_ratio
+            runner._maker_price.base_offset_ratio_buy = self._config.spread_offset_ratio_buy
+            runner._maker_price.base_offset_ratio_sell = self._config.spread_offset_ratio_sell
+            logger.info("[config_hot_reload]   MakerPriceCalculator offsets updated")
+
+        # git SHA の再取得
+        try:
+            from ztb.utils.git_utils import get_git_sha
+            new_sha = get_git_sha()
+            if new_sha != runner._git_sha:
+                old_sha = runner._git_sha
+                runner._git_sha = new_sha
+                logger.info(
+                    f"[config_hot_reload]   git SHA updated: {old_sha} → {new_sha}"
+                )
+        except Exception as e:
+            logger.warning(f"[config_hot_reload]   git SHA update failed: {e}")
+
+        # YAML cfg も更新 (AdaptationEngine 等が参照)
+        self._yaml_cfg.update(new_yaml_cfg)
+
+        self._reload_count += 1
+        self._last_reload_time = time.time()
+
+        logger.info(
+            f"[config_hot_reload] Reload #{self._reload_count} complete: "
+            f"{len(changed_fields)} fields updated"
+        )
+        if skipped_fields:
+            logger.warning(
+                f"[config_hot_reload] Non-reloadable fields changed "
+                f"(restart required): {skipped_fields}"
+            )
+
+        return True
