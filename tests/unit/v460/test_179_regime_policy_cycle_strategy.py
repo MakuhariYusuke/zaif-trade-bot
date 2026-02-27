@@ -528,5 +528,90 @@ class TestRegimeSideMatrix:
         assert sell_wait < buy_wait
 
 
+# ======================================================================
+# 180# from_yaml 不正入力耐性テスト
+# ======================================================================
+
+
+class TestFromYamlMalformedInput:
+    """180# self-review: from_yaml が不正 YAML 入力で例外を出さないことを検証."""
+
+    def test_regime_policy_not_dict(self):
+        """regime_policy が文字列でもクラッシュしない."""
+        rp = RegimePolicyConfig.from_yaml({"regime_policy": "invalid"})
+        assert rp.dynamic_cycle_enabled is False
+
+    def test_intervals_with_non_numeric(self):
+        """intervals に変換不能な値があってもデフォルトにフォールバック."""
+        yaml_cfg = {
+            "regime_policy": {
+                "dynamic_cycle": {
+                    "enabled": True,
+                    "intervals": {"ranging": "not_a_number"},
+                },
+            },
+        }
+        rp = RegimePolicyConfig.from_yaml(yaml_cfg)
+        assert rp.dynamic_cycle_enabled is True
+        # intervals パースが失敗 → デフォルト値が使われる
+        assert rp.cycle_intervals["ranging"] == 120.0
+
+    def test_waits_with_malformed_sides(self):
+        """waits の side 値が数値でなくてもクラッシュしない."""
+        yaml_cfg = {
+            "regime_policy": {
+                "dynamic_wait": {
+                    "enabled": True,
+                    "waits": {
+                        "trending_up": {"buy": "bad", "sell": 50.0},
+                    },
+                },
+            },
+        }
+        rp = RegimePolicyConfig.from_yaml(yaml_cfg)
+        assert rp.dynamic_wait_enabled is True
+        # trending_up パース失敗 → デフォルト値
+        assert rp.post_fill_wait["ranging"]["buy"] == 30.0
+
+    def test_chase_drift_bps_non_numeric(self):
+        """chase.drift_bps が文字列でもクラッシュしない."""
+        yaml_cfg = {
+            "regime_policy": {
+                "chase": {
+                    "enabled": True,
+                    "drift_bps": "invalid",
+                },
+            },
+        }
+        rp = RegimePolicyConfig.from_yaml(yaml_cfg)
+        assert rp.chase_enabled is True
+        assert rp.chase_drift_bps == 3.0  # default
+
+    def test_stop_conditions_non_numeric(self):
+        """stop_conditions の値が文字列でもクラッシュしない."""
+        yaml_cfg = {
+            "regime_policy": {
+                "stop_conditions": {
+                    "api_error_rate_threshold": "not_valid",
+                    "fill_rate_floor": 0.5,
+                },
+            },
+        }
+        rp = RegimePolicyConfig.from_yaml(yaml_cfg)
+        assert rp.api_error_rate_threshold == 0.03  # default (failed parse)
+        assert rp.fill_rate_floor == 0.5  # this one parsed OK
+
+    def test_none_regime_policy(self):
+        """regime_policy が None でもクラッシュしない."""
+        rp = RegimePolicyConfig.from_yaml({"regime_policy": None})
+        assert rp.dynamic_cycle_enabled is False
+
+    def test_empty_dynamic_cycle(self):
+        """dynamic_cycle が空 dict でもクラッシュしない."""
+        yaml_cfg = {"regime_policy": {"dynamic_cycle": {}}}
+        rp = RegimePolicyConfig.from_yaml(yaml_cfg)
+        assert rp.dynamic_cycle_enabled is False
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

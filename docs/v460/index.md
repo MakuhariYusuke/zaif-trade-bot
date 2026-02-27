@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-27 (179# RegimePolicyConfig + CycleStrategy + Chase 実装)
+> 最終更新: 2026-02-28 (180# Watchdog 非表示化 + 179# Self-Review + from_yaml 堅牢化)
 
 ---
 
@@ -170,6 +170,7 @@
 | 177 | rev | [177_ph2_rev_176_trending_capture_root_solution.md](177_ph2_rev_176_trending_capture_root_solution.md) | 176レビュー: 大値動き取り逃し是正 + 追加方策 + vXXX再利用計画 |
 | 178 | rev | [178_ph2_rev_177_evaluation.md](178_ph2_rev_177_evaluation.md) | 177レビュー評価: Codex/Gemini 提案精査 + CycleStrategy 方針 |
 | 179 | impl | [179_ph2_impl_regime_policy_cycle_strategy.md](179_ph2_impl_regime_policy_cycle_strategy.md) | RegimePolicyConfig + CycleStrategy + _effective_sleep + Chase |
+| 180 | impl | [180_ph2_impl_watchdog_hidden_review.md](180_ph2_impl_watchdog_hidden_review.md) | Watchdog 非表示化 + 179# Self-Review + from_yaml 堅牢化 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

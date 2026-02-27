@@ -61,12 +61,14 @@ foreach ($t in $tasks) {
         continue
     }
 
-    $argStr = "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`""
-    if ($t.Args) { $argStr += " $($t.Args)" }
+    # 180#: VBS wrapper で完全非表示起動 (cmd popup 防止)
+    $vbsPath = Join-Path $ProjectRoot "ops\windows\run_hidden.vbs"
+    $vbsArgStr = "`"$vbsPath`" `"$scriptPath`""
+    if ($t.Args) { $vbsArgStr += " $($t.Args)" }
 
     $action = New-ScheduledTaskAction `
-        -Execute "powershell.exe" `
-        -Argument $argStr `
+        -Execute "wscript.exe" `
+        -Argument $vbsArgStr `
         -WorkingDirectory $ProjectRoot
 
     $trigger = Invoke-Expression $t.Trigger

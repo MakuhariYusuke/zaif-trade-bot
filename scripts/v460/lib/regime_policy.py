@@ -71,59 +71,88 @@ class RegimePolicyConfig:
     pnl_window_sec: float = 21600.0         # 6h
 
     @classmethod
-    def from_yaml(cls, yaml_cfg: dict) -> RegimePolicyConfig:
-        """YAML の regime_policy セクションからパース."""
-        kwargs: dict = {}
-        rp = yaml_cfg.get("regime_policy", {})
-        if not rp:
+    def from_yaml(cls, yaml_cfg: dict[str, object]) -> RegimePolicyConfig:
+        """YAML の regime_policy セクションからパース.
+
+        不正値はキー単位で警告ログを出し、デフォルト値にフォールバックする。
+        """
+        kwargs: dict[str, object] = {}
+        rp = yaml_cfg.get("regime_policy")
+        if not isinstance(rp, dict):
             return cls()
 
         # Dynamic Cycle Interval
         dc = rp.get("dynamic_cycle", {})
-        if dc.get("enabled") is not None:
-            kwargs["dynamic_cycle_enabled"] = dc["enabled"]
-        if "intervals" in dc and isinstance(dc["intervals"], dict):
-            kwargs["cycle_intervals"] = {
-                str(k): float(v) for k, v in dc["intervals"].items()
-            }
+        if isinstance(dc, dict):
+            if dc.get("enabled") is not None:
+                kwargs["dynamic_cycle_enabled"] = bool(dc["enabled"])
+            intervals_raw = dc.get("intervals")
+            if isinstance(intervals_raw, dict):
+                try:
+                    kwargs["cycle_intervals"] = {
+                        str(k): float(v) for k, v in intervals_raw.items()
+                    }
+                except (TypeError, ValueError) as exc:
+                    logger.warning(
+                        "[179# from_yaml] invalid cycle_intervals, using default: %s", exc
+                    )
 
         # Dynamic Post-Fill Wait
         dw = rp.get("dynamic_wait", {})
-        if dw.get("enabled") is not None:
-            kwargs["dynamic_wait_enabled"] = dw["enabled"]
-        if "waits" in dw and isinstance(dw["waits"], dict):
-            waits: dict[str, dict[str, float]] = {}
-            for regime, sides in dw["waits"].items():
-                if isinstance(sides, dict):
-                    waits[str(regime)] = {
-                        str(s): float(v) for s, v in sides.items()
-                    }
-            if waits:
-                kwargs["post_fill_wait"] = waits
+        if isinstance(dw, dict):
+            if dw.get("enabled") is not None:
+                kwargs["dynamic_wait_enabled"] = bool(dw["enabled"])
+            waits_raw = dw.get("waits")
+            if isinstance(waits_raw, dict):
+                waits: dict[str, dict[str, float]] = {}
+                for regime, sides in waits_raw.items():
+                    if isinstance(sides, dict):
+                        try:
+                            waits[str(regime)] = {
+                                str(s): float(v) for s, v in sides.items()
+                            }
+                        except (TypeError, ValueError) as exc:
+                            logger.warning(
+                                "[179# from_yaml] invalid wait for regime=%s: %s",
+                                regime, exc,
+                            )
+                if waits:
+                    kwargs["post_fill_wait"] = waits
 
         # Chase
         ch = rp.get("chase", {})
-        if ch.get("enabled") is not None:
-            kwargs["chase_enabled"] = ch["enabled"]
-        if "drift_bps" in ch:
-            kwargs["chase_drift_bps"] = float(ch["drift_bps"])
-        if "max_reprice" in ch:
-            kwargs["chase_max_reprice"] = int(ch["max_reprice"])
-        if "regimes" in ch and isinstance(ch["regimes"], list):
-            kwargs["chase_regimes"] = [str(r) for r in ch["regimes"]]
+        if isinstance(ch, dict):
+            if ch.get("enabled") is not None:
+                kwargs["chase_enabled"] = bool(ch["enabled"])
+            try:
+                if "drift_bps" in ch:
+                    kwargs["chase_drift_bps"] = float(ch["drift_bps"])
+                if "max_reprice" in ch:
+                    kwargs["chase_max_reprice"] = int(ch["max_reprice"])
+            except (TypeError, ValueError) as exc:
+                logger.warning("[179# from_yaml] invalid chase params: %s", exc)
+            if "regimes" in ch and isinstance(ch["regimes"], list):
+                kwargs["chase_regimes"] = [str(r) for r in ch["regimes"]]
 
         # Stop conditions
         sc = rp.get("stop_conditions", {})
-        for yaml_key, config_key in {
-            "api_error_rate_threshold": "api_error_rate_threshold",
-            "api_error_window_sec": "api_error_window_sec",
-            "fill_rate_floor": "fill_rate_floor",
-            "fill_rate_window_sec": "fill_rate_window_sec",
-            "pnl_floor_bps": "pnl_floor_bps",
-            "pnl_window_sec": "pnl_window_sec",
-        }.items():
-            if yaml_key in sc:
-                kwargs[config_key] = float(sc[yaml_key])
+        if isinstance(sc, dict):
+            for yaml_key, config_key in {
+                "api_error_rate_threshold": "api_error_rate_threshold",
+                "api_error_window_sec": "api_error_window_sec",
+                "fill_rate_floor": "fill_rate_floor",
+                "fill_rate_window_sec": "fill_rate_window_sec",
+                "pnl_floor_bps": "pnl_floor_bps",
+                "pnl_window_sec": "pnl_window_sec",
+            }.items():
+                if yaml_key in sc:
+                    try:
+                        kwargs[config_key] = float(sc[yaml_key])
+                    except (TypeError, ValueError) as exc:
+                        logger.warning(
+                            "[179# from_yaml] invalid stop_conditions.%s: %s",
+                            yaml_key, exc,
+                        )
 
         return cls(**kwargs)
 
