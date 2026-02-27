@@ -110,6 +110,36 @@ class FillLoopOrchestratorMixin:
         base = self._cycle_strategy.effective_interval(regime)
         await asyncio.sleep(base * multiplier)
 
+    # ------------------------------------------------------------------
+    # 181# 停止条件モニター — C/D/Chase 安全弁
+    # ------------------------------------------------------------------
+    def _check_regime_stop_conditions(
+        self, filled_count: int, total_count: int,
+    ) -> None:
+        """fill_rate / avg_pnl30 を判定し、閾値違反時に fallback を起動."""
+        strategy = self._cycle_strategy
+        policy = strategy.policy
+        if not (policy.dynamic_cycle_enabled or policy.chase_enabled):
+            return
+        # fill_rate
+        if total_count > 0 and filled_count / total_count < policy.fill_rate_floor:
+            logger.warning(
+                f"[181# stop] fill_rate={filled_count/total_count:.2%} → fallback"
+            )
+            strategy.activate_fallback(3600.0)
+            return
+        # avg pnl30 (直近 100 filled)
+        records = getattr(self, "_recent_records", getattr(self, "_records", []))
+        pnls = [
+            r.post_fill_30s_pnl for r in records[-100:]
+            if getattr(r, "filled", False) and getattr(r, "post_fill_30s_pnl", None) is not None
+        ]
+        if len(pnls) >= 10:
+            avg = sum(pnls) / len(pnls)
+            if avg < policy.pnl_floor_bps:
+                logger.warning(f"[181# stop] avg_pnl30={avg:.2f}bps → fallback")
+                strategy.activate_fallback(3600.0)
+
     def _is_time_filtered(self, side: str | None = None) -> bool:
         """時間帯フィルター — 121# TimeFilter に委譲.
 
@@ -1080,6 +1110,14 @@ class FillLoopOrchestratorMixin:
                 and total_count >= self.config.min_adapt_samples
             ):
                 self._try_auto_lot_size()
+
+            # --- 181# 停止条件モニター: C/D/Chase 安全弁 ---
+            if (
+                hasattr(self, "_cycle_strategy")
+                and self._cycle_count > 0
+                and self._cycle_count % 30 == 0  # ~1h@120s, ~30min@60s
+            ):
+                self._check_regime_stop_conditions(filled_count, total_count)
 
             # 次サイクルまで待機
             # 054# S3: rapid exit 時は interval を短縮

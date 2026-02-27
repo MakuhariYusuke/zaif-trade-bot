@@ -123,6 +123,8 @@ class FillRecord:
     ab_test_variant: Optional[str] = None             # 例: "sell_offset_015", None=実験なし
     # 166# C.7: cancel 失敗後に約定確認されたフラグ (Bug11 KPI 分離)
     cancel_failed_likely_filled: Optional[bool] = None  # True=cancel失敗→約定検出
+    # 181# EV_weighted: 30s/120s 加重平均 PnL (178# §1.3 設計)
+    ev_weighted_pnl: Optional[float] = None  # 0.4*pnl30 + 0.6*pnl120 (bps)
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

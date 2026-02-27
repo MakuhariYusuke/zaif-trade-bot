@@ -149,6 +149,27 @@ class FillCycleExecutorMixin:
             chase_max_reprice_override=_chase_max_rp,       # 179# Chase
         )
 
+    # ------------------------------------------------------------------
+    # 181# EV_weighted: pnl30/pnl120 加重平均 (178# §1.3)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _compute_ev_weighted(
+        pnl30: float | None,
+        pnl120: float | None,
+        *,
+        w30: float = 0.4,
+        w120: float = 0.6,
+    ) -> float | None:
+        """30s/120s PnL の加重平均を計算.
+
+        pnl120 が None (E3 サンプリング外) の場合は pnl30 単独値を返す。
+        """
+        if pnl30 is None:
+            return None
+        if pnl120 is None:
+            return pnl30  # 120s 未計測時は 30s 単独
+        return w30 * pnl30 + w120 * pnl120
+
     async def _measure_post_fill_pnl(
         self,
         filled: bool,
@@ -659,6 +680,10 @@ class FillCycleExecutorMixin:
             ab_test_variant=self.config.ab_test_variant or None,
             # 166# C.7: cancel 失敗→約定検出フラグ (Bug11 KPI)
             cancel_failed_likely_filled=cancel_failed_likely_filled or None,
+            # 181# EV_weighted: 30s/120s 加重平均 PnL
+            ev_weighted_pnl=self._compute_ev_weighted(
+                post_fill_pnl, post_fill_120s_pnl
+            ),
         )
 
         logger.info(

@@ -563,3 +563,53 @@ judgment:
     downside_p10_min_bps: -5.0    # p10 下限 (bps)
     # --- カウンターファクチュアル ---
     counterfactual_pnl30_bps: -0.66  # trending sell skip時の期待損失 (160# §1.3)
+
+# ======================================================================
+# 181# regime_policy: 大値動き対応 — C/D/Chase (179# 基盤)
+# ======================================================================
+# hot-reload 対応: YAML 変更 → 次サイクルで自動反映
+# 緊急ロールバック: enabled を false に戻すだけで即時復帰
+regime_policy:
+  # --- C: Dynamic Cycle Interval (179# §4) ---
+  # trending 時はサイクル頻度を 2× に上げ、価格追従を改善
+  dynamic_cycle:
+    enabled: true
+    intervals:
+      ranging: 120.0       # 現行維持 (保守的)
+      trending: 60.0       # trending × 2× 頻度
+      trending_up: 60.0
+      trending_down: 60.0
+      high_vol: 120.0      # 高ボラ時は保守的に据え置き
+
+  # --- D: Regime-linked Post-Fill Wait (179# §5) ---
+  # 順方向の wait を短縮 → 利確速度向上
+  # 逆方向は据え置き or 延長 → 逆選択防御
+  dynamic_wait:
+    enabled: true
+    waits:
+      ranging:       {buy: 30, sell: 90}     # 現行維持
+      trending_up:   {buy: 15, sell: 45}     # buy(順張り)15s, sell(逆張り)45s
+      trending_down: {buy: 45, sell: 15}     # sell(順張り)15s, buy(逆張り)45s
+      trending:      {buy: 20, sell: 45}     # 方向不明 trending はやや保守的
+      high_vol:      {buy: 30, sell: 90}     # 高ボラは現行維持
+
+  # --- Chase: Stale Reprice Aggressive 拡張 (179# §6) ---
+  # trending 時に低 drift 閾値で即 reprice → 価格乖離を即座にキャッチ
+  chase:
+    enabled: true
+    drift_bps: 3.0         # 178# §2.3: 3bps で即 reprice (現行 stale は ~10bps)
+    max_reprice: 5          # 1 サイクル内の最大 chase 回数
+    regimes:
+      - trending_up
+      - trending_down
+      - trending
+
+  # --- 停止条件: C/D/Chase 安全弁 (179# §8) ---
+  # いずれか条件トリガーで自動 ranging フォールバック (1h)
+  stop_conditions:
+    api_error_rate_threshold: 0.03   # 3% 超 → フォールバック
+    api_error_window_sec: 7200       # 2h ウィンドウ
+    fill_rate_floor: 0.35            # fill_rate 35% 未満 → フォールバック
+    fill_rate_window_sec: 21600      # 6h ウィンドウ
+    pnl_floor_bps: -0.8             # avg pnl30 -0.8bps 未満 → フォールバック
+    pnl_window_sec: 21600           # 6h ウィンドウ
