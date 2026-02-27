@@ -109,6 +109,15 @@ regime:
   # trending_down 時: sell は順張り (有利方向) → boost 縮小、buy は逆行リスク → full boost
   trending_offset_boost_buy: 1.0     # buy は trending 時 boost なし (有利方向取引で offset 拡大は利益ロス)
   trending_offset_boost_sell: 1.5    # sell は trending 時 full boost 据え置き (逆選択防御)
+  # 176# B: 方向×サイド別 offset boost (skip_sell_trending=false と併用)
+  # trending_up 時: buy は順張り → offset 縮小 (0.7) で積極約定
+  # trending_up 時: sell は逆張り → offset 拡大 (1.8) で保守的利確
+  # trending_down 時: 対称逆転 (sell 順張り、buy 逆張り)
+  # 2/25 実証: trending_up buy +4.02bps, sell +1.51bps → 両方向活用で収益最大化
+  trending_up_buy_offset_boost: 0.7
+  trending_up_sell_offset_boost: 1.8
+  trending_down_buy_offset_boost: 1.8
+  trending_down_sell_offset_boost: 0.7
   # 156# §18: ranging 時に offset 縮小 → 安定市場で fill_rate+利幅確保
   ranging_offset_discount: 0.90   # ranging 時 offset × 0.90 (控えめ開始、A/B で 0.85 検証予定)
   # 168# §9.10: 低ボラティリティ offset boost (time_filter 根本対策)
@@ -273,6 +282,8 @@ skip_gate:
     high_vol: 0.2              # 高ボラ: 厳格化 (予測精度低下を補正)
     ranging: 0.1               # レンジ: やや厳格化
     trending: -0.1             # トレンド: 緩和 (トレンド追従に優位性あり)
+    trending_up: -0.1          # 176# 横展開: 方向別キー追加 (フォールバック防止)
+    trending_down: -0.1        # 176# 横展開: 方向別キー追加
   # 124# Rule: unknown regime での sell スキップ (WF: S20%_30=+0.198, S20%_120=+0.140)
   skip_sell_unknown_regime: true
   # 130# unknown regime buy offset boost (128# 分析: unknown buy -1.384bps)
@@ -315,9 +326,13 @@ loss_control:
   # P0-09: unknown レジーム時の buy スキップ (unknown-buy 平均 -1.384bps)
   skip_buy_unknown_regime: true
   # 155# §9: trending レジーム時の sell スキップ (trending-sell 平均 -0.687bps)
-  skip_sell_trending: true
+  # 176# B: skip_sell_trending=false → offset 非対称で防御 (trending_sell_skip 廃止)
+  # 2/25 反実仮想分析: 118件の sell 強制スキップ → 実際は sell も +1.51bps だった
+  # → ハードスキップより offset 拡大の方が機会損失を回避できる
+  skip_sell_trending: false
   # 156# D-4: trending_up のみ skip、trending_down sell は開放
-  skip_sell_trending_up_only: true
+  # 176# A: TRENDING(方向不明) も除外 → 実質 trending_up のみブロック
+  skip_sell_trending_up_only: true  # skip_sell_trending=false のため実質無効
   # 166# HF4: 連続 sell skip 安全弁上限を 3010 に短縮 (7.3 B.4)
   max_consecutive_trending_sell_skip: 10   # 171#: 20→10 (Guard Paradox対策: 安全弁を早期発動して sell 機会確保)
   # 171# Guard Paradox 対策: 在庫偏重時に sell ガードをバイパスする閾値
@@ -441,6 +456,8 @@ retrain:
   regime_sample_weights:             # レジーム → weight マッピング
     high_vol: 1.2                    # 高ボラはリスク考慮で upweight
     trending: 0.8                    # トレンドは順張り有利で downweight
+    trending_up: 0.8                 # 176# 横展開: 方向別キー追加
+    trending_down: 0.8               # 176# 横展開: 方向別キー追加
     ranging: 1.0                     # レンジはニュートラル
     unknown: 0.5                     # unknown は信頼度低で downweight
   regime_current_boost: 1.5          # 直近レジーム一致サンプルへのブースト

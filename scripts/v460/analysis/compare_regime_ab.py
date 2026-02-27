@@ -241,7 +241,8 @@ def _evaluate_gates(
 
     max_degradation = 0.0
     g2_details: list[str] = []
-    for regime in ["ranging", "trending"]:
+    # 176# 横展開: trending_up/trending_down も比較対象に追加
+    for regime in ["ranging", "trending", "trending_up", "trending_down"]:
         old_vals = old_regime_pnl.get(regime, [])
         new_vals = new_regime_pnl.get(regime, [])
         old_avg = sum(old_vals) / len(old_vals) if old_vals else 0.0

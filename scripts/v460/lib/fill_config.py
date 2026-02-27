@@ -113,6 +113,15 @@ class FillTestConfig:
     # trending_up 時の sell は逆方向取引 → 通常 boost (1.5)
     regime_trending_offset_boost_buy: float | None = None   # None=共通値使用
     regime_trending_offset_boost_sell: float | None = None  # None=共通値使用
+    # 176# B: 方向×サイド別 offset boost (skip_sell_trending=false と併用)
+    # trending_up 時: buy は順張り → offset 縮小 (0.7) で積極約定
+    # trending_up 時: sell は逆張り → offset 拡大 (1.8) で保守的利確
+    # trending_down 時: 逆 (sell 順張り→縮小、buy 逆張り→拡大)
+    # None = regime_trending_offset_boost_buy/sell にフォールバック
+    trending_up_buy_offset_boost: float | None = None
+    trending_up_sell_offset_boost: float | None = None
+    trending_down_buy_offset_boost: float | None = None
+    trending_down_sell_offset_boost: float | None = None
     # 143# R-1a: レジーム別 offset 調整
     regime_high_vol_offset_boost: float = 1.2   # high_vol 時に offset × 1.2 (+20% 拡張)
     regime_ranging_offset_discount: float = 1.0 # ranging 時に offset × N (1.0=無効, <1.0で縮小)
@@ -953,6 +962,11 @@ class FillTestConfig:
             "trending_offset_boost": "regime_trending_offset_boost",
             "trending_offset_boost_buy": "regime_trending_offset_boost_buy",    # 157# §19
             "trending_offset_boost_sell": "regime_trending_offset_boost_sell",   # 157# §19
+            # 176# B: 方向×サイド別 offset boost
+            "trending_up_buy_offset_boost": "trending_up_buy_offset_boost",
+            "trending_up_sell_offset_boost": "trending_up_sell_offset_boost",
+            "trending_down_buy_offset_boost": "trending_down_buy_offset_boost",
+            "trending_down_sell_offset_boost": "trending_down_sell_offset_boost",
             "high_vol_offset_boost": "regime_high_vol_offset_boost",       # 143# R-1a
             "ranging_offset_discount": "regime_ranging_offset_discount",   # 143# R-1a
             "low_vol_offset_boost_enabled": "low_vol_offset_boost_enabled", # 168#

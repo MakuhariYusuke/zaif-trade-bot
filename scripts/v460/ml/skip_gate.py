@@ -637,7 +637,8 @@ def build_features_from_market_state(
     features["hour_cos"] = float(np.cos(2 * np.pi * hour / 24))
     features["spread_jpy"] = spread_jpy
     features["offset_ratio"] = offset_ratio
-    features["regime_trending"] = 1.0 if regime == "trending" else 0.0
+    # 176# 横展開: trending_up/trending_down も trending として扱う
+    features["regime_trending"] = 1.0 if regime.startswith("trending") else 0.0
     features["regime_ranging"] = 1.0 if regime == "ranging" else 0.0
     features["regime_high_vol"] = 1.0 if regime == "high_vol" else 0.0
 

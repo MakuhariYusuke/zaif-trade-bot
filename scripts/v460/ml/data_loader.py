@@ -141,10 +141,12 @@ def build_as_features(
         features["offset_ratio"] = data["spread_offset_ratio"].astype(float)
 
     # F7: regime (one-hot, available for subset)
+    # 176# 横展開: trending_up/trending_down も regime_trending=1 に含める
     if "regime" in data.columns:
         regime = data["regime"].fillna("unknown")
-        for val in ["trending", "ranging", "high_vol"]:
-            features[f"regime_{val}"] = (regime == val).astype(int)
+        features["regime_trending"] = regime.str.startswith("trending").astype(int)
+        features["regime_ranging"] = (regime == "ranging").astype(int)
+        features["regime_high_vol"] = (regime == "high_vol").astype(int)
 
     X = pd.DataFrame(features, index=data.index)
     y = data["adverse_selected_raw"].astype(int)
@@ -202,10 +204,12 @@ def build_fill_features(
     # Fill では時系列前半が全 NaN のため TSCV で無効化される.
 
     # F5: regime
+    # 176# 横展開: trending_up/trending_down も regime_trending=1 に含める
     if "regime" in data.columns:
         regime = data["regime"].fillna("unknown")
-        for val in ["trending", "ranging", "high_vol"]:
-            features[f"regime_{val}"] = (regime == val).astype(int)
+        features["regime_trending"] = regime.str.startswith("trending").astype(int)
+        features["regime_ranging"] = (regime == "ranging").astype(int)
+        features["regime_high_vol"] = (regime == "high_vol").astype(int)
 
     X = pd.DataFrame(features, index=data.index)
     y = data["filled"].astype(int)

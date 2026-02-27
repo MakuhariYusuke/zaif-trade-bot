@@ -6,7 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## 174# Fresh Code Review — 新規バグ修正 (2026-03-01)
+## 176# Trending方向×サイド別Offset Asymmetry + 横展開 (2026-02-27)
+
+### Fixed (HIGH — 施策A)
+- `fill_loop_orchestrator.py`: `skip_sell_trending_up_only=true` で TRENDING (方向不明) が sell skip されるバグ修正 (`== "trending_down"` → `!= "trending_up"`)
+- 2/23: 220件の sell 不当ブロック、balance_forced_skip 246件のカスケードの根本原因
+
+### Added (HIGH — 施策B)
+- `fill_config.py` / `maker_price.py`: 方向×サイド別 offset boost 4パラメータ (`trending_up_buy/sell`, `trending_down_buy/sell`)
+- `_resolve_trending_boost()` 静的メソッド: 3段優先順位フォールバック (方向×サイド → サイド → 共通)
+- `fill_test.yaml`: `skip_sell_trending: false` (offset 非対称で代替)、boost 値設定 (buy=0.7, sell=1.8)
+- 2/25 反実仮想: trending_up 中 buy +4.02bps / sell +1.51bps → sell skip は誤判断だった
+
+### Fixed (横展開)
+- `config_hot_reload.py`: 4方向パラメータが hot-reload 対象に未登録 → 追加 (HIGH)
+- `skip_gate.py` / `feature_enricher.py` / `data_loader.py` (5箇所): `regime == "trending"` → `startswith("trending")` (MED — ML 特徴量情報損失修正)
+- `retrain_scheduler.py`: `regime_sample_weights` / `regime_interval_multipliers` に `trending_up/down` 追加 (LOW)
+- `fill_test.yaml`: skip_gate `regime_thresholds` / retrain `regime_sample_weights` に `trending_up/down` キー追加 (LOW)
+- `compare_regime_ab.py`: G2 ゲート比較対象に `trending_up/down` 追加 (LOW)
+- `CHANGELOG.md`: 174# 日付 `2026-03-01` → `2026-02-27` (COSMETIC)
+
+### Tests
+- `test_176_trending_offset_asymmetry.py`: 36 tests (施策A 3, 施策B 20, 横展開 12, CHANGELOG 1)
+- 2197 passed, 0 failed
+
+
+## 174# Fresh Code Review — 新規バグ修正 (2026-02-27)
 
 ### Fixed (CRITICAL)
 - `fill_loop_orchestrator.py`: `_cancel_stale_orders()` が成功パスで `cancelled_count` を返さず `None` を返すバグを修正

@@ -595,10 +595,12 @@ def build_preorder_as_features(
         features["offset_ratio"] = data["spread_offset_ratio"].astype(float)
 
     # F5: regime (one-hot)
+    # 176# 横展開: trending_up/trending_down も regime_trending=1 に含める
     if "regime" in data.columns:
         regime = data["regime"].fillna("unknown")
-        for val in ["trending", "ranging", "high_vol"]:
-            features[f"regime_{val}"] = (regime == val).astype(int)
+        features["regime_trending"] = regime.str.startswith("trending").astype(int)
+        features["regime_ranging"] = (regime == "ranging").astype(int)
+        features["regime_high_vol"] = (regime == "high_vol").astype(int)
 
     # F6: trade-based micro features (注文前に算出可能)
     for col in MICRO_FEATURE_COLS:
@@ -759,10 +761,12 @@ def build_pnl_features(
     #   AS classifier では require_spread=True で対応済.
     #   PnL model の top features は velocity / vpin / hour 系であり影響なし.
 
+    # 176# 横展開: trending_up/trending_down も regime_trending=1 に含める
     if "regime" in data.columns:
         regime = data["regime"].fillna("unknown")
-        for val in ["trending", "ranging", "high_vol"]:
-            features[f"regime_{val}"] = (regime == val).astype(int)
+        features["regime_trending"] = regime.str.startswith("trending").astype(int)
+        features["regime_ranging"] = (regime == "ranging").astype(int)
+        features["regime_high_vol"] = (regime == "high_vol").astype(int)
 
     # --- マイクロストラクチャ特徴量 ---
     # NOTE: NaN は保持。補完は CV fold 内 (059# P0-1)

@@ -302,6 +302,39 @@ class MakerPriceCalculator:
     #          単独呼出し禁止。新ステージ追加時は compute() 内の呼出し順に注意。
     # ================================================================
 
+    @staticmethod
+    def _resolve_trending_boost(
+        cfg: "FillTestConfig", regime_val: str, side: str,
+    ) -> float:
+        """176# B: 方向×サイド別 trending offset boost を解決.
+
+        優先順位:
+        1. trending_up_buy_offset_boost 等 (方向×サイド別、最優先)
+        2. regime_trending_offset_boost_buy/sell (サイド別)
+        3. regime_trending_offset_boost (共通値)
+        """
+        # --- 1. 方向×サイド別 (176# 新設) ---
+        if regime_val == "trending_up":
+            if side == "buy" and cfg.trending_up_buy_offset_boost is not None:
+                return cfg.trending_up_buy_offset_boost
+            if side == "sell" and cfg.trending_up_sell_offset_boost is not None:
+                return cfg.trending_up_sell_offset_boost
+        elif regime_val == "trending_down":
+            if side == "buy" and cfg.trending_down_buy_offset_boost is not None:
+                return cfg.trending_down_buy_offset_boost
+            if side == "sell" and cfg.trending_down_sell_offset_boost is not None:
+                return cfg.trending_down_sell_offset_boost
+        # regime_val == "trending" (方向不明) → 方向別なし → 下位にフォールバック
+
+        # --- 2. サイド別 (157# §19 既存) ---
+        if side == "buy" and cfg.regime_trending_offset_boost_buy is not None:
+            return cfg.regime_trending_offset_boost_buy
+        if side == "sell" and cfg.regime_trending_offset_boost_sell is not None:
+            return cfg.regime_trending_offset_boost_sell
+
+        # --- 3. 共通値 ---
+        return cfg.regime_trending_offset_boost
+
     def _apply_regime_boosts(
         self, side: str, effective_offset_ratio: float,
     ) -> float:
@@ -317,24 +350,23 @@ class MakerPriceCalculator:
         # 052#: トレンディング時にオフセットをブースト
         # 156# D-4: is_trending で trending_up/trending_down も包含
         # 157# §19: buy/sell 非対称化 — 有利方向取引では boost 不要
+        # 176# B: 方向×サイド別 4 分岐 (trending_up/down × buy/sell)
         if (
             self._regime_detector is not None
             and hasattr(self._regime_detector, "current_regime")
             and self._regime_detector.current_regime.is_trending
         ):
-            _trending_boost = cfg.regime_trending_offset_boost
-            if side == "buy" and cfg.regime_trending_offset_boost_buy is not None:
-                _trending_boost = cfg.regime_trending_offset_boost_buy
-            elif side == "sell" and cfg.regime_trending_offset_boost_sell is not None:
-                _trending_boost = cfg.regime_trending_offset_boost_sell
+            _regime_val = self._regime_detector.current_regime.value
+            _trending_boost = self._resolve_trending_boost(cfg, _regime_val, side)
 
-            if _trending_boost > 1.0:
+            if _trending_boost != 1.0:
+                pre_offset = effective_offset_ratio
                 effective_offset_ratio *= _trending_boost
+                _direction = "boosted" if _trending_boost > 1.0 else "discounted"
                 logger.debug(
-                    f"[regime] trending → {side} offset boosted: "
-                    f"{effective_offset_ratio / _trending_boost:.4f} "
-                    f"→ {effective_offset_ratio:.4f} "
-                    f"(boost={_trending_boost:.2f})"
+                    f"[regime] {_regime_val} → {side} offset {_direction}: "
+                    f"{pre_offset:.4f} → {effective_offset_ratio:.4f} "
+                    f"(mult={_trending_boost:.2f})"
                 )
 
         # 143# R-1a: high_vol 時にオフセットをブースト (AS リスク上昇に対応)

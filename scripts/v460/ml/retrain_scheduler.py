@@ -219,6 +219,8 @@ _DEFAULT_CONFIG: ConfigMap = {
     "regime_sample_weights": {             # レジーム → weight マッピング
         "high_vol": 1.0,
         "trending": 1.0,
+        "trending_up": 1.0,      # 176# 横展開
+        "trending_down": 1.0,    # 176# 横展開
         "ranging": 1.0,
         "unknown": 1.0,
     },
@@ -1871,6 +1873,8 @@ def run_scheduler(cfg: ConfigMap, config_path: Path | None = None) -> None:
                     {
                         "high_vol": 0.5,
                         "trending": 0.75,
+                        "trending_up": 0.75,    # 176# 横展開
+                        "trending_down": 0.75,  # 176# 横展開
                         "ranging": 1.5,
                         "unknown": 1.0,
                     },

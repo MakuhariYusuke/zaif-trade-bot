@@ -65,6 +65,11 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "regime_trending_offset_boost",
     "regime_trending_offset_boost_buy",
     "regime_trending_offset_boost_sell",
+    # 176# B: 方向×サイド別 offset boost
+    "trending_up_buy_offset_boost",
+    "trending_up_sell_offset_boost",
+    "trending_down_buy_offset_boost",
+    "trending_down_sell_offset_boost",
     "regime_high_vol_offset_boost",
     "regime_ranging_offset_discount",
     "low_vol_offset_boost_enabled",

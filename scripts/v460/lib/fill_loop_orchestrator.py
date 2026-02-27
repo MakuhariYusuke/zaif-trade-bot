@@ -730,14 +730,16 @@ class FillLoopOrchestratorMixin:
                 and self._regime_detector.current_regime.is_trending
             ):
                 # D-4: trending_up_only モードならば trending_down は通過させる
+                # 176# A: TRENDING (方向不明) も trending_up ではない → 通過
                 _current_regime = self._regime_detector.current_regime
                 _should_skip = True
                 if (
                     self.config.skip_sell_trending_up_only
-                    and _current_regime.value == "trending_down"
+                    and _current_regime.value != "trending_up"
                 ):
                     logger.debug(
-                        "[156# D-4] Allowing sell in trending_down regime"
+                        f"[176# A] Allowing sell in {_current_regime.value} regime "
+                        f"(skip_sell_trending_up_only=True, only trending_up is blocked)"
                     )
                     _should_skip = False
 
