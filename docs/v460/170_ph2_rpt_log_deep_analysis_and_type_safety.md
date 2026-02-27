@@ -456,6 +456,8 @@ cc9d45254 169# 深堀り分析レポート
 | 日付 | 内容 |
 |------|------|
 | 2026-02-27 | 初版: ログ深堀り + 型安全強化 + Config Hot-Reload + AI レビュー準備 |
+| 2026-02-27 | §9 追記: Codex/Gemini レビュー |
+| 2026-02-27 | §10 追記: 著者回答 — Codex 7/10 受理、Gemini 1.5/5 受理、Guard Paradox 実証、Exception-1 定義 |
 
 ---
 
@@ -530,3 +532,232 @@ B1'（ranging_buy low_vol skip）を導入した結果、fill_rateが低下し�
 1. **Hot-Reloadの封印**: 検証run中は設定ファイルを完全Freezeし、変更する場合は必ずプロセスを再起動してrun_idを更新すること。
 2. **非対称Offsetの導入**: Sellの構造的劣後に対して、BuyとSellで異なるベースoffset（例: SellはBuyの1.2倍広くする）を設定し、A/Bテストを実施すること。
 3. **Gateの厳格化**: 「Oracle正」を言い訳にせず、fill_rateとPnLの改善に正面から向き合うこと。
+
+---
+
+## §10 著者回答: Codex R1-R10 + Gemini 9.1-9.5 妥当性評価
+
+**Date**: 2026-02-27
+**評価方針**: 各指摘を「妥当」「部分的妥当」「却下」「要追加調査」の 4 段階で判定。事実ベースの反論を優先。
+
+### 10.1 Codex R1-R10 妥当性評価
+
+#### R1 (CRITICAL): Gate 運用の例外ルール未定義 → **妥当 — 受理**
+
+000# §3.9 に例外条項は存在しない。「Oracle 正だから継続」は裁量判断であり制度化されていない。
+
+**対応**: §10.3 にて Gate 例外ルール (Exception-1) を定義する。
+
+#### R2 (HIGH): fill_rate 指標の分母混在 → **妥当 — 受理**
+
+raw (42.6%) / clean / attempted の 3 系列が文脈依存で使い分けられている。意思決定の曖昧化は事実。
+
+**対応**: 日次レポート出力に 3 系列を固定併記する。§8 B1 として既に計画済みだが優先度を P0 に昇格。
+
+#### R3 (HIGH): B1' の副作用評価不足 → **部分的妥当 — Gemini 9.4 の方が正確**
+
+Codex は `EV_per_cycle = fill_prob × pnl_if_filled` を推奨。これは正しい評価軸だが、fill_rate 低下を「副作用」と呼ぶ点は Gemini 9.4 が正しく指摘した通り「数学的必然」。ただし **EV_per_cycle 自体は未実装** (hindsight_filter.py にも oracle_baseline.py にも存在しない) であり、この指標の実装は必要。
+
+**対応**: EV_per_cycle 算出ロジックを hindsight_filter.py に追加する (§10.5 アクションリスト)。
+
+#### R4 (HIGH): sell 劣後の根因分解未完了 → **妥当 — 受理 + 追加発見あり**
+
+技術精査により **Guard Paradox の実在を確認**:
+- VG 発動 sell: -0.608 bps (n=188) vs 非発動: -0.443 bps (n=734)
+- balance_forced sell: -0.659 bps vs normal: -0.449 bps
+- **sell 試行の 46.2% がガード群にブロック** (buy 側は 18.1%)
+- **balance_forced_skip の 377 件が全て sell 側** → 正のフィードバックループ:
+  sell ガード過剰 → sell 減少 → buy 偏重 → sell 残高枯渇 → balance_forced_skip → sell 更に減少
+
+これは Gemini 9.3「ガードのパラドックス」の実証であり、**sell の問題は guard を増やしたことそのもの**。
+
+**対応**: sell 側ガードの段階的緩和を検討 (§10.5)。
+
+#### R5 (HIGH): 同時変更による因果分離不足 → **部分的妥当 — 原則は承認、freeze 窓は却下**
+
+因果分離が理想的でない点は事実。しかし freeze 窓の設定 (Codex R4-P2 + Gemini 9.1) は以下の理由で **却下**:
+
+1. **現在進行形の損失リスク**: PnL30=-0.337 bps で日々損失が蓄積中。「再現性のために損失を放置する」のは大義 (000# §0) に反する
+2. **累積損失 -553 JPY は軽微だが方向性は負**: 手を打たなければ MC 推計で月 -2,276 JPY
+3. **Hot-Reload は「損失を減らす変更を迅速に適用する」ためのツール**: 検証の純粋性より実損回避が優先
+4. **既に live で動いている事実**: 実取引をせずに検証すべきだったが、既に投入済み。この路線変更はしない
+5. **代替策**: run_id 更新や config ハッシュのログ記録で「どの config で何が起きたか」のトレーサビリティは確保可能
+
+R11 (1 パラメータ変更/run) は承認するが、freeze 窓は不採用。
+**代替対応**: config 変更ごとに変更理由 + 変更前後のハッシュをログに記録する (既に git sha トラッキングあり)。
+
+#### R6 (MEDIUM): 短期好転の過大解釈リスク → **妥当 — 受理**
+
+n=60 で改善傾向を語るのは統計的に不十分。事前閾値 n≥300 の設定は合理的。
+
+**対応**: 170# §3.4 に「n=60 は探索結果であり判定は保留」と既に記載済み。今後の報告で n 閾値を明示する。
+
+#### R7 (MEDIUM): DrawdownGuard の評価軸偏重 → **妥当 — 受理**
+
+halt 実績 (1 日) のみでは不十分。halt 中の機会損失と再開後 PnL の tracking が必要。
+
+**対応**: DailyDrawdownGuard に `halt_opportunity_cost_bps` と `post_resume_pnl_bps` の記録を追加 (§10.5)。
+
+#### R8 (MEDIUM): 契約テスト不足 → **妥当 — 受理 (低優先)**
+
+cancel_reason の分類ドリフト防止は正しい指摘。ただし現時点では cancel_reason は文字列定数であり型安全は限定的。
+
+**対応**: cancel_reason を `Literal` 型 or `Enum` に昇格する (ph3 品質改善枠)。
+
+#### R9 (MEDIUM): 既存資産の統合が部分的 → **部分的妥当**
+
+168# 資産活用計画の即実行施策 6 件中 4 件は実装済み。残りは A/B テストデータ待ち。
+`hindsight_filter` / `daily_health_check` / `pnl_monte_carlo` の自動連携は合理的だが、現在のプロセスは半手動で十分に機能している。
+
+**対応**: 週次レポート自動化 (168# weekly_analysis.ps1) を拡張し、3 分析を 1 コマンドで実行可能にする。
+
+#### R10 (LOW): 目標体系の二重化 → **部分的妥当**
+
+fill_rate 改善と PnL 改善が局所最適で競合する指摘は正しい。しかし **fill_rate を改善しなければ PnL データが集まらない** という順序依存性がある。
+
+**対応**: Phase 2 終了条件を「Gate PASS かつ pnl_mean ≥ -0.5 bps」に修正。fill_rate は手段であり目的ではないことを明記。
+
+---
+
+### 10.2 Gemini 9.1-9.5 妥当性評価
+
+#### 9.1 Hot-Reload 封印の主張 → **却下**
+
+Gemini は「1 run = 1 config (完全固定)」を主張するが、以下の理由により **明確に却下** する:
+
+1. **大義との矛盾**: 000# §0「短期間での高収益性システム」が大義。検証の純粋性のために損失を放置することは大義に反する
+2. **現実の制約**: 既に実取引中であり、路線変更しない方針。損する可能性が高いリスクを抱えている以上、排除手段を封じることは合理的でない
+3. **「分析不能なゴミデータ」は誤り**: fill_records には全レコードに timestamp + git_sha が記録されており、config 変更前後のデータは分離可能。事後分析で因果推論は可能 (完全ではないが実用的)
+4. **Hot-Reload の不使用≠パラメータ固定**: Hot-Reload を封印しても手動再起動で変更は入る。再起動のコスト (数分のダウンタイム + 状態リセット) を省くのがHot-Reload の価値
+5. **v459 以前の知見**: v459 までの失敗の最大教訓は「検証に時間をかけすぎて市場条件が変わった」。迅速な反復が生存戦略
+
+ただし Codex R5 の「config 変更のトレーサビリティ確保」は受理し、変更ログの自動記録を強化する。
+
+#### 9.2 「Oracle 正」を免罪符にするな → **部分的妥当**
+
+「Gate 判定の形骸化」という批判は言い過ぎだが、例外ルールの不在は事実。
+
+**Gemini の誤り**: 「Gateをクリアできるまでパラメータを修正して再テストする」は正論だが、**再テストには 168h (7 日) かかる**。その間の損失放置は大義に反する。Hot-Reload で改善を入れながらデータを蓄積し、168h 到達時に Gate 判定するのが現実的なアプローチ。
+
+**受理する点**: Gate 例外の明文化 (Codex R1 と同趣旨)。§10.3 にて定義。
+
+#### 9.3 ガードのパラドックス → **妥当 — 最重要の発見**
+
+技術精査により **ガードのパラドックスが実在することを確認** (§10.1 R4 参照)。
+
+ただし Gemini の対策提案「非対称 Offset の導入」は **事実誤認**:
+- **buy:sell = 0.05:0.20 (floor) で既に 1:4 の非対称が実装済み**
+- side_offset (049#), sell_guard.offset_floor (165#), trending_offset_boost (157#), fast_fill_boost (093#) 等、**8+ のパラメータ軸で sell 側は既に過剰保守化** されている
+- **問題は非対称 offset の不在ではなく、offset の過剰な widening + guard の多重化による Adverse Selection 濃縮**
+
+真の対策方向:
+1. **sell 側 guard の段階的緩和** (特に trending_sell_skip: 396 件 = 9.1%)
+2. **sell offset floor の引き下げ** (0.20 → 0.16 程度): 約定確率を上げて「当たらない安全な壁」から「当たるが薄い防御」に移行
+3. **balance_forced_skip の正フィードバックループ断切**: sell 残高枯渇を防ぐ構造改善
+
+#### 9.4 B1' 評価軸の誤り (fill_rate 至上主義批判) → **妥当 — 受理**
+
+「fill_rate 低下は副作用ではなく数学的必然」は正確。170# §1.2 での「副作用」表現は修正すべき。
+重要なのは EV_per_cycle (Codex R3) であり、fill_rate ではない。
+
+**対応**: EV_per_cycle の実装 + B1' の期待値ベース評価を実施。
+
+#### 9.5 結論 → 1/3 受理
+
+| # | 提案 | 判定 | 理由 |
+|---|------|------|------|
+| 1 | Hot-Reload 封印 | **却下** | 大義に反する。損失リスク排除が優先 |
+| 2 | 非対称 Offset 導入 | **事実誤認** | 既に 1:4 で実装済み。問題は過剰保守化 |
+| 3 | Gate の厳格化 | **部分的受理** | 例外ルールの明文化は受理。「再テスト」は 7 日コスト |
+
+---
+
+### 10.3 Gate 例外ルール定義 (Exception-1)
+
+Codex R1 + Gemini 9.2 を受け、Gate 運用例外を以下の通り明文化する。
+
+**Exception-1: Oracle Gap 継続例外**
+
+| 条件 | 閾値 |
+|------|------|
+| 発動条件 | K1/F1 FAIL **かつ** Oracle PnL mean > 0 **かつ** 累積実損 < 3,000 JPY |
+| 有効期限 | Gate FAIL 判定日から **72h** |
+| 再判定日 | 有効期限終了時 (自動) |
+| 解除条件 | Oracle PnL ≤ 0 **or** 累積実損 ≥ 3,000 JPY |
+| 適用上限 | **連続 2 回まで** (2 回連続例外後は強制停止) |
+| 記録義務 | 例外発動ごとに docs/v460 に理由と判定を記録 |
+
+**根拠**: Oracle 正は「情報量が存在する (ph1 PASS 継続)」ことの実測証拠。執行精度が追いついていないだけであり、情報量そのものの毀損ではない。ただし無制限の継続は Gate 制度の空洞化であるため、有効期限と適用上限を設ける。
+
+---
+
+### 10.4 見落とし事項と横展開
+
+#### 10.4.1 見落とし: balance_forced_skip の正フィードバックループ (CRITICAL)
+
+**Codex/Gemini とも未言及**。技術精査で発見:
+
+- balance_forced_skip 377 件の **100% が sell 側**
+- 因果チェーン: sell guard 過剰 → sell 約定減少 → buy 偏重 → sell 用 BTC 残高枯渇 → balance_forced_skip → sell 更に減少 → ...
+- これは **構造的デッドロック** であり、guard 単体の問題ではなくシステム全体のフィードバック構造の問題
+
+**対策**: 
+- balance_freeze_cycles (現在 3) を side-aware にし、sell 側の freeze 解除を早める
+- sell offset floor を下げて sell 約定率を上げ、BTC 残高の自然回復を促す
+
+#### 10.4.2 見落とし: skip_gate の精度不可視 (HIGH)
+
+skip した注文の pnl_if_filled が記録されていないため、skip_gate の precision (本当に正しくブロックしたか) が測定不能。hindsight_filter で近似値は出るが、真の精度は不明。
+
+**対策**: skip 判定時に hindsight 参照価格を非同期記録する仕組みを検討 (ログ肥大化とのトレードオフ)。
+
+#### 10.4.3 見落とし: sell offset Q1 問題 (HIGH)
+
+offset < 0.252 の sell (Q1) は **-1.225 bps** と突出して悪い。floor=0.20 がこの層を生み出している。floor を上げても下げても問題が生じる典型的なジレンマ:
+- floor を上げる → fill_rate 更に低下
+- floor を下げる → AS 増加
+
+**対策**: floor を撤廃し、regime/vol 条件ベースの動的 floor に移行 (条件ベース > 静的閾値の原則に整合)。
+
+#### 10.4.4 横展開: v459 資産活用の具体提案
+
+v459 以前の成果で **即活用可能かつ未統合** のもの:
+
+| 資産 | パス | 活用方法 | 期待効果 |
+|------|------|---------|---------|
+| CircuitBreaker | ztb/utils/circuit_breaker.py (229L) | API 障害時の自動遮断 → orderbook_error 161 件の削減 | fill_rate +1~2pt |
+| HealthMonitor | ztb/trading/live/core/health_monitor.py (119L) | CPU/メモリ/ディスク監視 → OOM 予防 | 安定性向上 |
+| StatePersistence | ztb/trading/production/state_persistence.py | 再起動時の DailyDrawdownGuard 状態保持 | 安全弁の信頼性向上 |
+| TimeSeriesCV | ztb/analysis/cv.py (179L) | SkipGate retrain の交差検証品質ゲート | retrain 品質向上 |
+| StatisticalValidator | ztb/metrics/statistical_validator.py (492L) | A/B テストの多重検定補正 | 判定精度向上 |
+
+#### 10.4.5 横展開: Codex R3 「時間は特徴量として扱う」の具体化
+
+169# で time_filter を全廃したが、「時間帯依存性そのもの」を否定したわけではない。
+v460 の feature_enricher にはサイクリカル時間特徴量 (`hour_sin`, `hour_cos`) が **既に投入済み**。
+これは SkipGate の学習特徴量として利用可能であり、次回 retrain (C2) で時間帯パターンを ML 的に捕捉する方向は正しい。
+
+---
+
+### 10.5 アクションリスト (本回答から導出)
+
+| 優先度 | アクション | 由来 | 完了条件 |
+|--------|-----------|------|---------|
+| **P0** | balance_forced_skip フィードバックループの構造分析 + 対策設計 | §10.4.1 (著者発見) | sell 側 balance_forced_skip 率が 50% 以下に低下 |
+| **P0** | Gate Exception-1 ルールを 000# に追記 | Codex R1 + Gemini 9.2 | §10.3 の内容が 000# に反映 |
+| **P1** | EV_per_cycle 算出ロジック実装 | Codex R3 + Gemini 9.4 | hindsight_filter に `ev_per_cycle` 出力追加 |
+| **P1** | sell offset floor の動的化検討 | §10.4.3 (著者発見) | 静的 floor 0.20 を regime/vol 条件ベースに移行 |
+| **P1** | DailyDrawdownGuard に機会損失メトリクス追加 | Codex R7 | halt_opportunity_cost_bps 記録 |
+| **P2** | 日次レポート 3 系列固定出力 | Codex R2 | raw/clean/attempted が 1 レポートで確認可能 |
+| **P2** | cancel_reason の Literal 型化 | Codex R8 | 文字列からの型安全な分類 |
+| **P2** | CircuitBreaker 統合 | §10.4.4 (v459 資産) | orderbook_error 率の低下 |
+| **P3** | StatisticalValidator の A/B テスト統合 | §10.4.4 (v459 資産) | Holm-Bonferroni 補正付き判定 |
+
+### 10.6 総括
+
+Codex R1-R10 は概ね妥当であり、10 件中 **7 件を受理、3 件を部分的受理**。却下はゼロ。
+Gemini 9.1-9.5 は鋭い洞察 (ガードのパラドックス、fill_rate 至上主義批判) を含むが、事実誤認 (非対称 offset 未実装) と大義との乖離 (Hot-Reload 封印) がある。5 件中 **1.5 件受理、1 件部分的受理、2 件却下、0.5 件事実誤認**。
+
+**最重要の発見**: sell 側 guard の多重化が Guard Paradox (Adverse Selection 濃縮) + balance_forced_skip 正フィードバックループを引き起こしている。**次の 1 変更は sell ガードの緩和 (減算) であるべきで、ガードの追加 (加算) ではない**。
+
+**v459 以前の成果活用**: 主要資産は既に統合済みだが、CircuitBreaker (orderbook_error 削減)、StatePersistence (状態保持)、StatisticalValidator (A/B 検定) は即統合可能。特に CircuitBreaker は fill_rate を直接改善する。
