@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 184# 逆選択防御施策レビュー依頼 (2026-02-28)
+
+### Added
+- `docs/v460/184_ph2_ext_adverse_guard_review.md`: 外部 AI レビュー用資料 (Q1–Q6, 付録 A–C)
+- `docs/v460/183_ph2_impl_log_analysis_adverse_guard.md`: 183# ドキュメントを docs/sessions → docs/v460 に移動・命名規約準拠
+
+
 ## 183# ログ分析ベース逆選択防御強化 (2026-02-28)
 
 ### 分析結果
