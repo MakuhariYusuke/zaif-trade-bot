@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-25 (162# Fill Test 10日間ログ分析)
+> 最終更新: 2026-02-27 (170# ログ深堀り + 型安全強化)
 
 ---
 
@@ -159,6 +159,8 @@
 | 155 | rpt | [155_ph2_rpt_hindsight_filter_analysis.md](155_ph2_rpt_hindsight_filter_analysis.md) | Phase C ヒンドサイト分析: sell弱点・時間帯・regime×side |
 | 156 | rpt | [156_ph2_rpt_sell_root_cause_and_phase_d_plan.md](156_ph2_rpt_sell_root_cause_and_phase_d_plan.md) | Sell根本原因7重ゲート分析 + 168h総括 + Phase C/D並行計画 |
 | 157 | fix | [157_ph2_fix_regime_deadlock_and_cancel.md](157_ph2_fix_regime_deadlock_and_cancel.md) | §20 レジームデッドロック修正 + cancel re-raise + spread_too_narrow 分類 |
+| 169 | rpt | [169_ph2_rpt_deep_analysis_and_scaling_plan.md](169_ph2_rpt_deep_analysis_and_scaling_plan.md) | 深堀り分析: G1.1 ゲート診断 + ロットスケーリング計画 + 外部 AI レビュー |
+| 170 | rpt | [170_ph2_rpt_log_deep_analysis_and_type_safety.md](170_ph2_rpt_log_deep_analysis_and_type_safety.md) | ログ深堀り + 型安全強化 + Config Hot-Reload + AI レビュー準備 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

@@ -155,8 +155,8 @@ class FillTestRunner(
         self,
         adapter: IBroker,
         config: FillTestConfig,
-        yaml_cfg: Optional[dict] = None,
-        config_yaml_path: Optional[str] = None,  # 169# config hot-reload
+        yaml_cfg: dict[str, object] | None = None,
+        config_yaml_path: str | None = None,  # 169# config hot-reload
     ) -> None:
         self.adapter = adapter
         self.config = config

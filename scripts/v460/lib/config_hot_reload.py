@@ -20,12 +20,31 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
-    pass  # FillTestRunner は circular import 回避のため型ヒントで使わない
+    from scripts.v460.lib.fill_config import FillTestConfig
+    from scripts.v460.lib.maker_price import MakerPriceCalculator
+    from scripts.v460.lib.time_filter import TimeFilter
 
 logger = logging.getLogger(__name__)
+
+
+class _HotReloadableRunner(Protocol):
+    """ConfigHotReloader が runner に要求する最小インタフェース.
+
+    FillTestRunner の circular import を避けつつ型安全を確保する
+    構造的サブタイピング (PEP 544).
+    """
+
+    _time_filter: TimeFilter
+    _maker_price: MakerPriceCalculator
+    _git_sha: str
+
+    def _rebuild_sell_kill_mgr(self) -> None: ...
+    def _rebuild_buy_kill_mgr(self) -> None: ...
+    def _rebuild_daily_drawdown_guard(self) -> None: ...
+    def _rebuild_fast_fill_defense(self) -> None: ...
 
 
 # ======================================================================
@@ -162,9 +181,9 @@ class ConfigHotReloader:
 
     def __init__(
         self,
-        config: Any,  # FillTestConfig (circular import 回避)
+        config: FillTestConfig,
         yaml_path: str | Path | None,
-        yaml_cfg: dict[str, Any],
+        yaml_cfg: dict[str, object],
         check_interval_sec: float = 120.0,
     ) -> None:
         self._config = config
@@ -191,7 +210,7 @@ class ConfigHotReloader:
         except OSError:
             return 0.0
 
-    def maybe_reload(self, runner: Any) -> bool:
+    def maybe_reload(self, runner: _HotReloadableRunner) -> bool:
         """mtime check → 変更検出時にリロード実行.
 
         Args:
@@ -227,7 +246,7 @@ class ConfigHotReloader:
             )
             return False
 
-    def _do_reload(self, runner: Any) -> bool:
+    def _do_reload(self, runner: _HotReloadableRunner) -> bool:
         """実際のリロード処理."""
         from scripts.v460.lib.config_loader import load_fill_test_config
         from scripts.v460.lib.fill_config import FillTestConfig

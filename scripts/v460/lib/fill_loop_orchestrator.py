@@ -1086,11 +1086,11 @@ class FillLoopOrchestratorMixin:
         # 024# O4: 集計用に全レコードをリロード
         return load_fill_records_glob(str(self._results_dir))
 
-    def _build_adapt_kwargs(self) -> dict:
+    def _build_adapt_kwargs(self) -> dict[str, object]:
         """120# AdaptationEngine に委譲."""
         return self._adaptation_engine._build_adapt_kwargs()
 
-    def _build_lot_kwargs(self) -> dict:
+    def _build_lot_kwargs(self) -> dict[str, object]:
         """120# AdaptationEngine に委譲."""
         return self._adaptation_engine._build_lot_kwargs()
 

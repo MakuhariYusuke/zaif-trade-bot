@@ -16,6 +16,10 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ztb.metrics.fill_quality import FillRecord
 
 logger = logging.getLogger(__name__)
 
@@ -207,7 +211,7 @@ def _start_retrain_scheduler(
     return retrain_proc, retrain_stderr_fh
 
 
-def _compute_final_judgment(records: list) -> dict:
+def _compute_final_judgment(records: list[FillRecord]) -> dict[str, object]:
     """Post-run: metrics & judgment 算出."""
     from ztb.metrics.fill_quality import (
         compute_fill_metrics,
