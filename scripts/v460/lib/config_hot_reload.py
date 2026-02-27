@@ -45,6 +45,7 @@ class _HotReloadableRunner(Protocol):
     def _rebuild_buy_kill_mgr(self) -> None: ...
     def _rebuild_daily_drawdown_guard(self) -> None: ...
     def _rebuild_fast_fill_defense(self) -> None: ...
+    def _rebuild_cycle_strategy(self) -> None: ...  # 179#
 
 
 # ======================================================================
@@ -369,8 +370,25 @@ class ConfigHotReloader:
         except Exception as e:
             logger.warning(f"[config_hot_reload]   git SHA update failed: {e}")
 
+        # 179# regime_policy セクション変更 → CycleStrategy 再構築
+        # NOTE: _yaml_cfg.update() の前に比較する (更新後は old==new になるため)
+        _old_rp = self._yaml_cfg.get("regime_policy", {})
+        _new_rp = new_yaml_cfg.get("regime_policy", {})
+        _rp_changed = _old_rp != _new_rp
+
         # YAML cfg も更新 (AdaptationEngine 等が参照)
         self._yaml_cfg.update(new_yaml_cfg)
+
+        if _rp_changed:
+            try:
+                runner._rebuild_cycle_strategy()
+                logger.info("[config_hot_reload]   CycleStrategy rebuilt (regime_policy changed)")
+                changed_fields.append("regime_policy")
+            except Exception as e:
+                logger.error(
+                    f"[config_hot_reload]   CycleStrategy rebuild FAILED: {e}",
+                    exc_info=True,
+                )
 
         self._reload_count += 1
         self._last_reload_time = time.time()

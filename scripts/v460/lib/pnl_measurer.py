@@ -45,6 +45,7 @@ class PnlMeasurer:
         side: str,
         *,
         get_mid_price: Callable[[], Awaitable[float]],
+        wait_sec_override: float | None = None,  # 179# D: regime 別 post-fill wait
     ) -> PnlMeasurement:
         """約定後 PnL 計測 — 30s/60s/120s.
 
@@ -62,13 +63,21 @@ class PnlMeasurer:
             return m
 
         # 168# §4.1 #1: sell 保持期間延長 — side 別 post_fill_wait_sec
-        wait_sec = cfg.post_fill_wait_sec
-        if side == "sell" and cfg.post_fill_wait_sec_sell is not None:
-            wait_sec = cfg.post_fill_wait_sec_sell
+        # 179# D: regime 別 post-fill wait override
+        if wait_sec_override is not None:
+            wait_sec = wait_sec_override
             logger.debug(
-                f"[168# sell_hold] Using sell-specific wait: {wait_sec}s "
-                f"(default={cfg.post_fill_wait_sec}s)"
+                f"[179# D] Using regime-overridden wait: {wait_sec}s "
+                f"(base config={cfg.post_fill_wait_sec}s)"
             )
+        else:
+            wait_sec = cfg.post_fill_wait_sec
+            if side == "sell" and cfg.post_fill_wait_sec_sell is not None:
+                wait_sec = cfg.post_fill_wait_sec_sell
+                logger.debug(
+                    f"[168# sell_hold] Using sell-specific wait: {wait_sec}s "
+                    f"(default={cfg.post_fill_wait_sec}s)"
+                )
 
         try:
             m.mid_at_fill = await get_mid_price()

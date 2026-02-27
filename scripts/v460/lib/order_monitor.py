@@ -118,6 +118,8 @@ class OrderMonitor:
         skip_gate: _SkipGateLike | None = None,
         regime_detector: object | None = None,
         current_lot: float = 0.001,
+        chase_drift_bps_override: float | None = None,      # 179# Chase
+        chase_max_reprice_override: int | None = None,       # 179# Chase
     ) -> FillMonitorResult:
         """約定ポーリング監視 + stale order cancel-replace.
 
@@ -273,6 +275,11 @@ class OrderMonitor:
                 if (cfg.stale_max_reprice_buy if side == "buy" else cfg.stale_max_reprice_sell) is not None
                 else cfg.stale_max_reprice
             )
+            # 179# Chase: trending 時は低い drift 閾値 & 高い reprice 上限を適用
+            if chase_drift_bps_override is not None:
+                _stale_drift = chase_drift_bps_override
+            if chase_max_reprice_override is not None:
+                _stale_max_rp_base = chase_max_reprice_override
             # 144# R-1c: レジーム別 reprice オフセット (最低0でクランプ)
             _stale_max_rp = max(0, _stale_max_rp_base + _regime_reprice_offset)
             if (

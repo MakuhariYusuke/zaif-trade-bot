@@ -88,6 +88,7 @@ from scripts.v460.lib.lock_manager import LockManager
 from scripts.v460.lib.fill_record_helpers import FillRecordHelpersMixin  # 163#
 from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin  # 163#
 from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin  # 163#
+from scripts.v460.lib.regime_policy import CycleStrategy  # 179#
 
 logging.basicConfig(
     level=logging.INFO,
@@ -373,6 +374,17 @@ class FillTestRunner(
             check_interval_sec=config.hot_reload_check_interval_sec,
         )
 
+        # 179# CycleStrategy: regime 別サイクル制御量
+        from scripts.v460.lib.regime_policy import DefaultCycleStrategy, RegimePolicyConfig
+        _rp = RegimePolicyConfig.from_yaml(self._yaml_cfg) if self._yaml_cfg else RegimePolicyConfig()
+        _wait_sell = config.post_fill_wait_sec_sell if config.post_fill_wait_sec_sell is not None else config.post_fill_wait_sec
+        self._cycle_strategy: CycleStrategy = DefaultCycleStrategy(
+            base_interval=config.cycle_interval_sec,
+            base_wait_buy=config.post_fill_wait_sec,
+            base_wait_sell=_wait_sell,
+            policy=_rp,
+        )
+
     # 121# _current_lot プロパティ: BalanceChecker に委譲 (後方互換)
     @property
     def _current_lot(self) -> float:
@@ -440,6 +452,24 @@ class FillTestRunner(
             base_offset_ratio=self.config.spread_offset_ratio,
             base_offset_ratio_buy=self.config.spread_offset_ratio_buy,
             base_offset_ratio_sell=self.config.spread_offset_ratio_sell,
+        )
+
+    def _rebuild_cycle_strategy(self) -> None:
+        """179# regime_policy 設定変更時に CycleStrategy を再構築."""
+        from scripts.v460.lib.regime_policy import DefaultCycleStrategy, RegimePolicyConfig
+        _rp = RegimePolicyConfig.from_yaml(self._yaml_cfg) if self._yaml_cfg else RegimePolicyConfig()
+        _wait_sell = self.config.post_fill_wait_sec_sell if self.config.post_fill_wait_sec_sell is not None else self.config.post_fill_wait_sec
+        self._cycle_strategy = DefaultCycleStrategy(
+            base_interval=self.config.cycle_interval_sec,
+            base_wait_buy=self.config.post_fill_wait_sec,
+            base_wait_sell=_wait_sell,
+            policy=_rp,
+        )
+        logger.info(
+            f"[179# hot-reload] CycleStrategy rebuilt: "
+            f"dynamic_cycle={_rp.dynamic_cycle_enabled}, "
+            f"dynamic_wait={_rp.dynamic_wait_enabled}, "
+            f"chase={_rp.chase_enabled}"
         )
 
     # ==================================================================

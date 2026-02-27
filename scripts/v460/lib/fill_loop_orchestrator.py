@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Optional
 
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.event_logger import log_event as _log_event
+from scripts.v460.lib.regime_policy import CycleStrategy
 from scripts.v460.lib.resilience import FillTestState
 from ztb.data.trades_health import check_trades_health
 from ztb.metrics.fill_quality import FillRecord, filter_clean_records, load_fill_records_glob
@@ -93,6 +94,21 @@ class FillLoopOrchestratorMixin:
             and record.post_fill_30s_pnl is not None
         ):
             self._buy_kill_mgr.track(record.post_fill_30s_pnl)
+
+    # ------------------------------------------------------------------
+    # 179# S1: _effective_sleep — regime 応答サイクル間隔の一元化
+    # ------------------------------------------------------------------
+    async def _effective_sleep(self, *, multiplier: float = 1.0) -> None:
+        """179# CycleStrategy に委譲し、regime 別サイクル間隔で sleep.
+
+        skip/halt/error continue 全パスがこのメソッドを経由する。
+        - multiplier=1.0 : 通常スキップ
+        - multiplier=5.0 : halt (daily drawdown)
+        正常サイクル完了パスは rapid_exit ロジックを含むため直接呼ばない。
+        """
+        regime = self._current_regime_value()
+        base = self._cycle_strategy.effective_interval(regime)
+        await asyncio.sleep(base * multiplier)
 
     def _is_time_filtered(self, side: str | None = None) -> bool:
         """時間帯フィルター — 121# TimeFilter に委譲.
@@ -352,7 +368,7 @@ class FillLoopOrchestratorMixin:
                 total_count += 1
                 batch = self._batch_persistence.maybe_flush(batch, "daily_drawdown_halt")
                 self._update_lock_heartbeat()
-                await asyncio.sleep(self.config.cycle_interval_sec * 5)  # halt 中は 5x 間隔
+                await self._effective_sleep(multiplier=5.0)  # 179# S1: halt 中は 5x 間隔
                 continue
 
             # 129# D.2: 残高制約による side 強制切替追跡
@@ -403,7 +419,7 @@ class FillLoopOrchestratorMixin:
                             self._update_lock_heartbeat()
                         # 107# R1: 重複 flush → _maybe_flush_batch 統合
                         batch = self._batch_persistence.maybe_flush(batch, "time_filter")
-                    await asyncio.sleep(self.config.cycle_interval_sec)
+                    await self._effective_sleep()  # 179# S1
                     continue
                 else:
                     # 反対 side は通過 → side 切り替え
@@ -443,7 +459,7 @@ class FillLoopOrchestratorMixin:
                                 ))
                             # 107# R1: 重複 flush → _maybe_flush_batch 統合
                             batch = self._batch_persistence.maybe_flush(batch, "alt_side==last_side wait")
-                            await asyncio.sleep(self.config.cycle_interval_sec)
+                            await self._effective_sleep()  # 179# S1
                             continue
                     else:
                         # 086# ではない通常の side 切り替え → カウンタリセット
@@ -540,7 +556,7 @@ class FillLoopOrchestratorMixin:
                         )
                         # カウンタリセットして縮小ロットで再試行
                         self._preflight_skip_count = 0
-                        await asyncio.sleep(self.config.cycle_interval_sec)
+                        await self._effective_sleep()  # 179# S1
                         continue
 
                     # 138# P1-10: preflight pause — SAFE_STOP 前に一時停止で回復を待つ
@@ -581,7 +597,7 @@ class FillLoopOrchestratorMixin:
                         )
                         self._kill_switch.kill("preflight_skip_exceeded")
                         break
-                    await asyncio.sleep(self.config.cycle_interval_sec)
+                    await self._effective_sleep()  # 179# S1
                     continue
 
             # preflight 成功 → カウンタリセット
@@ -656,7 +672,7 @@ class FillLoopOrchestratorMixin:
                     batch = self._batch_persistence.maybe_flush(batch, "balance_forced_skip")
                     # 167# DL-5: _last_side を更新 (rescue=true 時は到達しないが防御的に)
                     self._last_side = next_side
-                    await asyncio.sleep(self.config.cycle_interval_sec)
+                    await self._effective_sleep()  # 179# S1
                     continue
 
             # 133# P0-09: unknown regime での buy スキップ
@@ -684,7 +700,7 @@ class FillLoopOrchestratorMixin:
                 batch = self._batch_persistence.maybe_flush(batch, "unknown_buy_skip")
                 # 166# deadlock fix: _last_side を更新して sell 側も試行可能に
                 self._last_side = "buy"
-                await asyncio.sleep(self.config.cycle_interval_sec)
+                await self._effective_sleep()  # 179# S1
                 continue
 
             # 169# B1': ranging_buy at low_vol ハードスキップ (Gemini 10.2-D「休むも相場」)
@@ -714,7 +730,7 @@ class FillLoopOrchestratorMixin:
                     total_count += 1
                     batch = self._batch_persistence.maybe_flush(batch, "ranging_low_vol_skip")
                     self._last_side = "buy"
-                    await asyncio.sleep(self.config.cycle_interval_sec)
+                    await self._effective_sleep()  # 179# S1
                     continue
 
             # 155# §9: trending レジーム時の sell 抑制
@@ -807,7 +823,7 @@ class FillLoopOrchestratorMixin:
                     batch = self._batch_persistence.maybe_flush(batch, "trending_sell_skip")
                     # 167# DL-4: _last_side を更新して buy 側も試行可能に
                     self._last_side = next_side  # = "sell"
-                    await asyncio.sleep(self.config.cycle_interval_sec)
+                    await self._effective_sleep()  # 179# S1
                     continue
                 else:
                     # skip しない → カウンタリセット
@@ -836,7 +852,7 @@ class FillLoopOrchestratorMixin:
                 batch = self._batch_persistence.maybe_flush(batch, "buy_dynamic_kill")
                 # 166# deadlock fix: _last_side を更新して sell 側も試行可能に
                 self._last_side = "buy"
-                await asyncio.sleep(self.config.cycle_interval_sec)
+                await self._effective_sleep()  # 179# S1
                 continue
 
             # 133# P0-10: sell 動的 kill — rolling PnL が閾値以下なら sell 停止
@@ -870,7 +886,7 @@ class FillLoopOrchestratorMixin:
                 batch = self._batch_persistence.maybe_flush(batch, "sell_dynamic_kill")
                 # 166# deadlock fix: _last_side を更新して buy 側も試行可能に
                 self._last_side = "sell"
-                await asyncio.sleep(self.config.cycle_interval_sec)
+                await self._effective_sleep()  # 179# S1
                 continue
 
             try:
@@ -894,7 +910,7 @@ class FillLoopOrchestratorMixin:
                 self._balance_checker.restore_lot_after_dust_sweep()
                 # 166# SR-4: 例外 continue でも side 交互を保証
                 self._last_side = next_side
-                await asyncio.sleep(self.config.cycle_interval_sec)
+                await self._effective_sleep()  # 179# S1
                 continue
 
             # 128# dust sweep 後のロット復元 (サイクル完了ごとに確実に実行)
@@ -1078,7 +1094,9 @@ class FillLoopOrchestratorMixin:
                         f"{interval:.0f}s (next side={self._side_selector.rapid_exit_side})"
                     )
                 else:
-                    interval = self.config.cycle_interval_sec
+                    # 179# S1: regime 別サイクル間隔
+                    regime = self._current_regime_value()
+                    interval = self._cycle_strategy.effective_interval(regime)
                 await asyncio.sleep(interval)
 
         # 残りバッチを保存

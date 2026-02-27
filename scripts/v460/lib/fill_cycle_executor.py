@@ -121,6 +121,15 @@ class FillCycleExecutorMixin:
         def _set_pending(oid: str | None) -> None:
             self._pending_order_id = oid
 
+        # 179# Chase: CycleStrategy から regime 別 chase パラメータを取得
+        _chase_drift: float | None = None
+        _chase_max_rp: int | None = None
+        if hasattr(self, "_cycle_strategy"):
+            _regime = self._current_regime_value() if hasattr(self, "_current_regime_value") else None
+            if self._cycle_strategy.is_chase_enabled(_regime):
+                _chase_drift = self._cycle_strategy.chase_drift_bps()
+                _chase_max_rp = self._cycle_strategy.chase_max_reprice()
+
         return await self._order_monitor.monitor(
             adapter=self.adapter,
             order=order,  # type: ignore[arg-type]
@@ -136,6 +145,8 @@ class FillCycleExecutorMixin:
             skip_gate=self._skip_gate,
             regime_detector=self._regime_detector,
             current_lot=_lot,
+            chase_drift_bps_override=_chase_drift,          # 179# Chase
+            chase_max_reprice_override=_chase_max_rp,       # 179# Chase
         )
 
     async def _measure_post_fill_pnl(
@@ -145,11 +156,17 @@ class FillCycleExecutorMixin:
         side: str,
     ) -> _PnlMeasurement:
         """約定後 PnL 計測 — 120# PnlMeasurer に委譲."""
+        # 179# D: regime 別 post-fill wait
+        _wait_override: float | None = None
+        if hasattr(self, "_cycle_strategy"):
+            _regime = self._current_regime_value() if hasattr(self, "_current_regime_value") else None
+            _wait_override = self._cycle_strategy.effective_post_fill_wait(side, _regime)
         pnl = await self._pnl_measurer.measure(
             filled=filled,
             fill_price=fill_price,
             side=side,
             get_mid_price=self._get_mid_price,
+            wait_sec_override=_wait_override,  # 179# D
         )
         # 054# S3: early exit → rapid exit フラグ
         if pnl.early_exit_triggered:
