@@ -131,6 +131,9 @@ regime:
   # ranging_buy は全損失の 69% (-220.84 JPY) を占める最大損失源
   # 低ボラ環境では offset 調整より完全スキップが clean
   skip_ranging_buy_low_vol: true
+  # 195# B1' ソフト化: hard skip → maker_price low_vol_offset_boost に委譲
+  # ranging_buy_low_vol の hard skip を無効化し、low_vol_offset_boost (1.4x) のみで対応
+  ranging_buy_low_vol_as_offset: true
   # 189# D: MacroRegime (長周期レジーム) — micro との conflict 検出
   macro:
     enabled: false              # 189# 初期は観測のみ (conflict_action=log)。Phase E で downgrade 移行
@@ -320,6 +323,9 @@ skip_gate:
   sell_velocity_skip_threshold_bps: 6.0   # 183# 8.0→6.0 (AS率28%対策: VG vel adverse med=-0.95, sell急騰局面の捕捉率向上)
   buy_velocity_skip_enabled: true          # 183# false→true (buy AS率28%≒sell同等。急落局面で買い参入を抑制)
   buy_velocity_skip_threshold_bps: -6.0   # 183# -8.0→-6.0 (enableに併せ閾値も保守化)
+  # 195# velocity_skip ソフト化: hard skip → offset boost
+  velocity_skip_as_offset_enabled: true
+  velocity_offset_boost_factor: 2.0       # 閾値超過時 offset ×2.0 (skip ではなく保守的発注)
   # 183# 時間帯別 skip_gate 閾値オフセット (UTC hour → PnL threshold 加算)
   # ログ分析: 01h JST(=16UTC)64%AS, 03h(=18UTC)50%, 06h(=21UTC)36%, 17h(=08UTC)42%, 23h(=14UTC)43%
   # PnLモード: 正方向=厳格化 (より高い予測PnLがないとskip)

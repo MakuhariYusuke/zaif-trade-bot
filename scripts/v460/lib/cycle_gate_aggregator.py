@@ -228,7 +228,11 @@ class CycleGateAggregator:
     def _check_ranging_buy_low_vol(
         self, side: str, regime: str, vol_ratio: float | None, balance_forced: bool,
     ) -> GateCheckResult:
-        """A11: B1' ranging buy at low vol ハードスキップ."""
+        """A11: B1' ranging buy at low vol ハードスキップ.
+
+        195# ソフト化: ranging_buy_low_vol_as_offset=True 時は
+        hard skip せず maker_price の low_vol_offset_boost に委譲。
+        """
         if (
             self._config.skip_ranging_buy_low_vol
             and side == "buy"
@@ -237,6 +241,17 @@ class CycleGateAggregator:
             and vol_ratio is not None
             and vol_ratio < self._config.low_vol_threshold
         ):
+            # 195#: ソフトモード時は block しない (maker_price low_vol_offset_boost が対応)
+            if self._config.ranging_buy_low_vol_as_offset:
+                return GateCheckResult(
+                    gate_name="ranging_buy_low_vol",
+                    blocked=False,
+                    detail=(
+                        f"195# B1'→offset: vol_ratio={vol_ratio:.4f} "
+                        f"< {self._config.low_vol_threshold} "
+                        f"(maker_price low_vol_boost で対応)"
+                    ),
+                )
             return GateCheckResult(
                 gate_name="ranging_buy_low_vol",
                 blocked=True,
@@ -366,8 +381,15 @@ class CycleGateAggregator:
 
         NOTE: price_velocity_60s は Gate 評価前に外部で取得されている必要がある。
         取得不可の場合は None → skip しない。
+        195# ソフト化: velocity_skip_as_offset_enabled 時は
+        hard skip せず skip_gate_evaluator → executor の offset boost に委譲。
         """
         if price_velocity_60s is None:
+            return GateCheckResult(gate_name="velocity_skip", blocked=False)
+
+        # 195#: ソフトモード時はここで block しない
+        # (skip_gate_evaluator で offset boost として処理)
+        if self._config.velocity_skip_as_offset_enabled:
             return GateCheckResult(gate_name="velocity_skip", blocked=False)
 
         if (

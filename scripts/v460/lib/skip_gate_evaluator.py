@@ -858,85 +858,76 @@ class SkipGateEvaluator:
                 maker_price_vpin_setter(gate_features.get("vpin_60s"))
 
             # 165# AS-R1: velocity-based pre-ML sell/buy skip rule
+            # 195# ソフト化: velocity_skip_as_offset_enabled 時は hard skip せず offset boost
             _pv60 = gate_features.get("price_velocity_60s", 0.0)
-            if (
+            _velocity_sell_triggered = (
                 self._config.sell_velocity_skip_enabled
                 and side == "sell"
                 and _pv60 > self._config.sell_velocity_skip_threshold_bps
-            ):
-                from ztb.metrics.fill_quality import FillRecord
-
-                logger.info(
-                    f"[skip_gate] SKIP: sell velocity {_pv60:.2f}bps "
-                    f"> {self._config.sell_velocity_skip_threshold_bps}bps "
-                    f"(165# AS-R1 rule_velocity_sell_skip)"
-                )
-                result.skipped = True
-                result.score = _pv60
-                result.reason = "rule_velocity_sell_skip"
-                result.model_used = "rule"
-                result.early_return_record = FillRecord(
-                    cycle_id=cycle_id,
-                    timestamp=time.time(),
-                    side=side,
-                    order_price=order_price,
-                    order_quantity=current_lot,
-                    cancelled=True,
-                    cancel_reason="skip_gate_rule_velocity_sell",
-                    spread_at_order=spread_at_order,
-                    spread_offset_ratio=effective_offset_ratio,
-                    skip_gate_skipped=True,
-                    skip_gate_score=_pv60,
-                    skip_gate_reason="rule_velocity_sell_skip",
-                    skip_gate_model_used="rule",
-                    orderbook_imbalance=last_imbalance,
-                    bid_depth_total=last_bid_depth,
-                    ask_depth_total=last_ask_depth,
-                    run_id=run_id,
-                    git_sha=git_sha,
-                    regime=regime_value,
-                    price_velocity_60s=_pv60,
-                )
-                return result
-            if (
+            )
+            _velocity_buy_triggered = (
                 self._config.buy_velocity_skip_enabled
                 and side == "buy"
                 and _pv60 < self._config.buy_velocity_skip_threshold_bps
-            ):
-                from ztb.metrics.fill_quality import FillRecord
+            )
 
-                logger.info(
-                    f"[skip_gate] SKIP: buy velocity {_pv60:.2f}bps "
-                    f"< {self._config.buy_velocity_skip_threshold_bps}bps "
-                    f"(165# AS-R1 rule_velocity_buy_skip)"
+            if _velocity_sell_triggered or _velocity_buy_triggered:
+                _vel_label = "sell" if _velocity_sell_triggered else "buy"
+                _vel_th = (
+                    self._config.sell_velocity_skip_threshold_bps
+                    if _velocity_sell_triggered
+                    else self._config.buy_velocity_skip_threshold_bps
                 )
-                result.skipped = True
-                result.score = _pv60
-                result.reason = "rule_velocity_buy_skip"
-                result.model_used = "rule"
-                result.early_return_record = FillRecord(
-                    cycle_id=cycle_id,
-                    timestamp=time.time(),
-                    side=side,
-                    order_price=order_price,
-                    order_quantity=current_lot,
-                    cancelled=True,
-                    cancel_reason="skip_gate_rule_velocity_buy",
-                    spread_at_order=spread_at_order,
-                    spread_offset_ratio=effective_offset_ratio,
-                    skip_gate_skipped=True,
-                    skip_gate_score=_pv60,
-                    skip_gate_reason="rule_velocity_buy_skip",
-                    skip_gate_model_used="rule",
-                    orderbook_imbalance=last_imbalance,
-                    bid_depth_total=last_bid_depth,
-                    ask_depth_total=last_ask_depth,
-                    run_id=run_id,
-                    git_sha=git_sha,
-                    regime=regime_value,
-                    price_velocity_60s=_pv60,
-                )
-                return result
+
+                if self._config.velocity_skip_as_offset_enabled:
+                    # 195# ソフトモード: skip せず offset boost 倍率を記録
+                    _boost = self._config.velocity_offset_boost_factor
+                    result.velocity_offset_mult = _boost
+                    result.price_velocity_60s = _pv60
+                    logger.info(
+                        f"[skip_gate] 195# velocity→offset: {_vel_label} "
+                        f"velocity={_pv60:.2f}bps (th={_vel_th}) "
+                        f"→ offset_mult={_boost:.2f}"
+                    )
+                    # hard skip しない → ML 判定に進む
+                else:
+                    # 旧モード: hard skip
+                    from ztb.metrics.fill_quality import FillRecord
+
+                    _reason = f"rule_velocity_{_vel_label}_skip"
+                    _cancel = f"skip_gate_rule_velocity_{_vel_label}"
+                    logger.info(
+                        f"[skip_gate] SKIP: {_vel_label} velocity {_pv60:.2f}bps "
+                        f"{'>' if _velocity_sell_triggered else '<'} {_vel_th}bps "
+                        f"(165# AS-R1 {_reason})"
+                    )
+                    result.skipped = True
+                    result.score = _pv60
+                    result.reason = _reason
+                    result.model_used = "rule"
+                    result.early_return_record = FillRecord(
+                        cycle_id=cycle_id,
+                        timestamp=time.time(),
+                        side=side,
+                        order_price=order_price,
+                        order_quantity=current_lot,
+                        cancelled=True,
+                        cancel_reason=_cancel,
+                        spread_at_order=spread_at_order,
+                        spread_offset_ratio=effective_offset_ratio,
+                        skip_gate_skipped=True,
+                        skip_gate_score=_pv60,
+                        skip_gate_reason=_reason,
+                        skip_gate_model_used="rule",
+                        orderbook_imbalance=last_imbalance,
+                        bid_depth_total=last_bid_depth,
+                        ask_depth_total=last_ask_depth,
+                        run_id=run_id,
+                        git_sha=git_sha,
+                        regime=regime_value,
+                        price_velocity_60s=_pv60,
+                    )
+                    return result
 
             # 158# P1-6: 時間帯別 skip_gate 閾値調整
             from datetime import datetime, timezone as _tz

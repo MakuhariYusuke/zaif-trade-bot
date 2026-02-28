@@ -134,6 +134,9 @@ class FillTestConfig:
     # ranging レジーム + buy + vol_ratio < low_vol_threshold → 完全スキップ
     # ranging_buy が全損失の 69% を占める根本対策。offset 調整より clean
     skip_ranging_buy_low_vol: bool = False
+    # 195# B1' ソフト化: hard skip → maker_price low_vol_offset_boost に委譲
+    # enabled 時、ranging_buy_low_vol のハードスキップを無効化し offset boost のみで対応
+    ranging_buy_low_vol_as_offset: bool = False
     # 189# D: Macro Regime 統合
     enable_macro_regime: bool = False  # MacroRegimeDetector 有効化
     macro_regime_bucket_sec: float = 30.0  # 時間バケットサイズ
@@ -264,6 +267,10 @@ class FillTestConfig:
     sell_velocity_skip_threshold_bps: float = 8.0  # price_velocity_60s > this AND sell -> skip
     buy_velocity_skip_enabled: bool = False
     buy_velocity_skip_threshold_bps: float = -8.0  # price_velocity_60s < this AND buy -> skip
+    # 195# velocity_skip ソフト化: hard skip → offset boost
+    # enabled 時、閾値超過でもスキップせずに offset を boost して保守的価格で発注
+    velocity_skip_as_offset_enabled: bool = False
+    velocity_offset_boost_factor: float = 2.0  # offset ×2.0 (閾値超過時)
     # 183# narrow spread 時の skip_gate 閾値オフセット (逆選択防御)
     # spread < narrow_spread_skip_threshold_jpy のとき threshold に加算。
     # ログ分析: spread<2kでAS32% (全体28%) → 閾値厳格化で AS fill削減
@@ -662,6 +669,9 @@ class FillTestConfig:
             "sell_velocity_skip_threshold_bps": "sell_velocity_skip_threshold_bps",
             "buy_velocity_skip_enabled": "buy_velocity_skip_enabled",
             "buy_velocity_skip_threshold_bps": "buy_velocity_skip_threshold_bps",
+            # 195# velocity_skip ソフト化
+            "velocity_skip_as_offset_enabled": "velocity_skip_as_offset_enabled",
+            "velocity_offset_boost_factor": "velocity_offset_boost_factor",
             # 141# P1-04: regime thresholds
             "regime_thresholds": "skip_gate_regime_thresholds",
             # 138# P1-03: score calibration
@@ -1032,6 +1042,7 @@ class FillTestConfig:
             "low_vol_offset_boost": "low_vol_offset_boost",               # 168#
             "low_vol_threshold": "low_vol_threshold",                     # 168#
             "skip_ranging_buy_low_vol": "skip_ranging_buy_low_vol",       # 169# B1'
+            "ranging_buy_low_vol_as_offset": "ranging_buy_low_vol_as_offset", # 195# B1' ソフト化
         }
         for yaml_key, config_key in regime_map.items():
             if yaml_key in regime:
@@ -1142,6 +1153,8 @@ class SkipGateResult:
     early_return_record: Optional[FillRecord] = None
     # 193#: ev_weighted score (offset 修飾子用)
     ev_score: Optional[float] = None
+    # 195#: velocity_skip ソフトモード — offset boost 倍率
+    velocity_offset_mult: Optional[float] = None
 
 
 @dataclass

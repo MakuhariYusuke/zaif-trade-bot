@@ -591,6 +591,34 @@ class FillCycleExecutorMixin:
                     f"(delta={_delta:+.0f}JPY, price={order_price:.0f})"
                 )
 
+        # 195#: velocity_skip ソフトモード — offset boost 適用
+        # velocity が閾値を超えた場合、hard skip ではなく offset を拡大して保守的に発注
+        _vel_offset_applied = False
+        if (
+            sg.velocity_offset_mult is not None
+            and sg.velocity_offset_mult != 1.0
+            and spread_at_order is not None
+            and spread_at_order > 0
+            and order_price > 0
+        ):
+            _vel_mult = sg.velocity_offset_mult
+            _old_offset = spread_at_order * effective_offset_ratio
+            _new_offset = _old_offset * _vel_mult
+            _delta = _new_offset - _old_offset
+            if side == "buy":
+                # buy: offset 増 → price 下降 (mid から離れる → より保守的)
+                order_price = round(order_price - _delta)
+            else:
+                # sell: offset 増 → price 上昇 (mid から離れる → より保守的)
+                order_price = round(order_price + _delta)
+            effective_offset_ratio *= _vel_mult
+            _vel_offset_applied = True
+            logger.info(
+                f"[195# vel_offset] {side}: velocity={sg.price_velocity_60s:.2f}bps "
+                f"→ offset_mult={_vel_mult:.2f} "
+                f"(delta={_delta:+.0f}JPY, price={order_price:.0f})"
+            )
+
         # 2. 発注 (CM-2: リトライ付き)
         t_submit = time.time()
         order = None
