@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Awaitable, Callable
-from typing import Final, Optional, Protocol, runtime_checkable
+from typing import Final, Optional, Protocol, cast, runtime_checkable
 
 from ztb.trading.orders.state_machine import OrderState
 
@@ -90,6 +90,19 @@ class _SkipGateLike(Protocol):
     def evaluate(self, *, side: str, **kwargs: object) -> object: ...
 
 
+class _SkipDecisionLike(Protocol):
+    """reprice guard で使う最小 SkipDecision 契約."""
+
+    @property
+    def should_skip(self) -> bool: ...
+
+    @property
+    def as_probability(self) -> float | None: ...
+
+    @property
+    def threshold_used(self) -> float | None: ...
+
+
 class OrderMonitor:
     """約定ポーリング監視 — FillTestRunner から分割.
 
@@ -100,6 +113,71 @@ class OrderMonitor:
 
     def __init__(self, config: FillTestConfig) -> None:
         self._config = config
+
+    @staticmethod
+    def _resolve_regime_name(regime_detector: object | None) -> str | None:
+        """regime detector から現在レジーム名を安全に取得する."""
+        if regime_detector is None or not hasattr(regime_detector, "current_regime"):
+            return None
+        current_regime = getattr(regime_detector, "current_regime", None)
+        if current_regime is None:
+            return None
+        return getattr(current_regime, "value", None)
+
+    def _should_block_reprice_with_skip_gate(
+        self,
+        *,
+        skip_gate: _SkipGateLike | None,
+        side: str,
+        spread_at_order: float | None,
+        effective_offset_ratio: float,
+        regime_detector: object | None,
+        market_timestamp: float,
+    ) -> bool:
+        """reprice 前の SkipGate ガードを共通処理する."""
+        if skip_gate is None:
+            return False
+        try:
+            from scripts.v460.ml.skip_gate import build_features_from_market_state
+
+            rp_features = build_features_from_market_state(
+                side=side,
+                spread_jpy=spread_at_order or 0.0,
+                offset_ratio=effective_offset_ratio,
+                regime=self._resolve_regime_name(regime_detector) or "unknown",
+                recent_trades=None,
+                market_timestamp=market_timestamp,
+            )
+            threshold_offset = -getattr(
+                self._config,
+                "stale_reprice_skip_gate_offset",
+                0.0,
+            )
+            rp_decision = cast(
+                _SkipDecisionLike,
+                skip_gate.evaluate(
+                    rp_features,
+                    side=side,
+                    threshold_offset=threshold_offset,
+                ),
+            )
+            if not rp_decision.should_skip:
+                return False
+
+            as_prob = rp_decision.as_probability
+            threshold_used = rp_decision.threshold_used
+            if as_prob is not None and threshold_used is not None:
+                logger.info(
+                    "[stale_order] SkipGate blocked reprice: P(AS)=%.3f >= %.3f",
+                    as_prob,
+                    threshold_used,
+                )
+            else:
+                logger.info("[stale_order] SkipGate blocked reprice")
+            return True
+        except Exception as sg_err:
+            logger.debug("[stale_order] SkipGate check failed: %s", sg_err)
+            return False
 
     async def monitor(
         self,
@@ -141,11 +219,7 @@ class OrderMonitor:
         min_order_btc: Final[float] = cfg.min_order_btc
 
         # ------ 144# R-1c/R-1d: レジーム別 reprice/timeout 調整 ------
-        _regime_name: str | None = None
-        if regime_detector is not None and hasattr(regime_detector, "current_regime"):
-            _rr = regime_detector.current_regime  # type: ignore[union-attr]
-            if _rr is not None:
-                _regime_name = _rr.value
+        _regime_name = self._resolve_regime_name(regime_detector)
         # R-1d: effective timeout (base × regime multiplier)
         # 155# S-3: sell 側は専用 timeout を使用 (速い撤退が有利)
         _base_timeout = (
@@ -333,37 +407,15 @@ class OrderMonitor:
                             continue
 
                         # 2) 100# P0-6: SkipGate による reprice ガード
-                        reprice_gate_skipped = False
-                        if skip_gate is not None:
-                            try:
-                                from scripts.v460.ml.skip_gate import build_features_from_market_state
-                                sg_regime = None
-                                if regime_detector is not None and hasattr(regime_detector, "current_regime"):
-                                    sg_regime = regime_detector.current_regime.value
-                                rp_features = build_features_from_market_state(
-                                    side=side,
-                                    spread_jpy=spread_at_order or 0.0,
-                                    offset_ratio=effective_offset_ratio,
-                                    regime=sg_regime,
-                                    recent_trades=None,
-                                    market_timestamp=time.time(),
-                                )
-                                # 168# P2-C3: reprice 時は SkipGate 閾値を緩和
-                                _rp_sg_offset = getattr(cfg, 'stale_reprice_skip_gate_offset', 0.0)
-                                rp_decision = skip_gate.evaluate(  # type: ignore[union-attr]
-                                    rp_features,
-                                    side=side,
-                                    threshold_offset=-_rp_sg_offset,  # 負=緩和方向
-                                )
-                                if rp_decision.should_skip:
-                                    reprice_gate_skipped = True
-                                    logger.info(
-                                        f"[stale_order] SkipGate blocked reprice: "
-                                        f"P(AS)={rp_decision.as_probability:.3f} "
-                                        f">= {rp_decision.threshold_used:.3f}"
-                                    )
-                            except Exception as sg_err:
-                                logger.debug(f"[stale_order] SkipGate check failed: {sg_err}")
+                        reprice_check_ts = time.time()
+                        reprice_gate_skipped = self._should_block_reprice_with_skip_gate(
+                            skip_gate=skip_gate,
+                            side=side,
+                            spread_at_order=spread_at_order,
+                            effective_offset_ratio=effective_offset_ratio,
+                            regime_detector=regime_detector,
+                            market_timestamp=reprice_check_ts,
+                        )
 
                         if reprice_gate_skipped:
                             cancel_reason_poll = "stale_skip_gate_blocked"
@@ -400,7 +452,7 @@ class OrderMonitor:
                             order = new_order
                             order_price = new_price
                             mid_at_order = current_mid
-                            last_reprice_time = time.time()
+                            last_reprice_time = reprice_check_ts
                             reprice_count += 1
                             cumulative_drift_bps += drift_bps  # 158# P1-3
                             pending_order_setter(order.order_id)

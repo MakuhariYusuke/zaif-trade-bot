@@ -2297,6 +2297,60 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/lib/skip_gate_evaluator.py`: `any_type_debt_tokens=0`
   - `tests/unit/v460/test_skip_gate_v3.py`: `any_type_debt_tokens=0`
 
+## Step103 実施内容（`order_monitor` の reprice skip 判定統一 + `SkipGateResult` 代入集約）
+
+### 1) 対象ファイル
+
+- `scripts/v460/lib/order_monitor.py`
+- `scripts/v460/lib/skip_gate_evaluator.py`
+- `tests/unit/v460/test_143_regime_utilization.py`
+- `tests/unit/v460/test_skip_gate_v3.py`
+
+### 2) 実運用改善 / 重複削減
+
+- `order_monitor` に
+  `_resolve_regime_name()` を追加し、
+  timeout/reprice 用のレジーム名取得を共通化。
+- `order_monitor` に
+  `_should_block_reprice_with_skip_gate()` を追加し、
+  stale reprice 前の SkipGate 判定
+  (`build_features_from_market_state` + threshold_offset + ログ) を
+  1 箇所へ集約。
+- これにより、`monitor()` 内の局所ロジックから
+  ローカル import / feature 構築 / decision ログの重複を削減し、
+  reprice 判定の見通しを改善。
+- reprice check 時刻を `reprice_check_ts` として 1 回だけ取得し、
+  SkipGate feature の時刻と `last_reprice_time` を揃える形へ統一。
+- `skip_gate_evaluator` には
+  `_assign_result_fields()` / `_apply_decision_to_result()` を追加し、
+  `SkipGateResult` への代入束
+  (`skipped/score/reason/model_used/as_prob/threshold_used/hour_offset`) を
+  共通化。
+- unknown rule skip / no_model_for_side / velocity rule skip / 最終 model decision
+  の result 反映が同じ経路に寄り、変更時の項目漏れを減らした。
+- `test_143_regime_utilization.py` の既存 `Any` 注釈を `MagicMock` に置換し、
+  触った周辺テストも `any_type_debt_tokens=0` に維持。
+
+### 3) 検証
+
+- `py_compile`
+  - `scripts/v460/lib/skip_gate_evaluator.py`
+  - `scripts/v460/lib/order_monitor.py`
+  - `tests/unit/v460/test_skip_gate_v3.py`
+  - `tests/unit/v460/test_143_regime_utilization.py`
+- `pytest`
+  - `tests/unit/v460/test_skip_gate_v3.py`
+  - `tests/unit/v460/test_195_velocity_b1_soft.py`
+  - `tests/unit/v460/test_141_side_specific_models.py`
+  - `tests/unit/v460/test_143_regime_utilization.py`
+  - `-k "skip_unknown or normalize_recent_trades or model_used_tag or side_only_missing_side_returns_reason or velocity or OrderMonitorHelpers or reprice_offset_increases_limit or negative_offset_clamps_to_zero"`
+  - 結果: `40 passed`
+- `any_inventory`
+  - `scripts/v460/lib/skip_gate_evaluator.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/order_monitor.py`: `any_type_debt_tokens=0`
+  - `tests/unit/v460/test_skip_gate_v3.py`: `any_type_debt_tokens=0`
+  - `tests/unit/v460/test_143_regime_utilization.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

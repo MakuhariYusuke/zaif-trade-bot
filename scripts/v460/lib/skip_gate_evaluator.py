@@ -336,6 +336,59 @@ class SkipGateEvaluator:
             price_velocity_60s=price_velocity_60s,
         )
 
+    @staticmethod
+    def _assign_result_fields(
+        result: SkipGateResult,
+        *,
+        skipped: bool,
+        score: float,
+        reason: str,
+        model_used: str,
+        as_prob: float | None = None,
+        threshold_used: float | None = None,
+        hour_offset: float = 0.0,
+        price_velocity_60s: float | None = None,
+    ) -> None:
+        """SkipGateResult の共通フィールドを一括設定する."""
+        result.skipped = skipped
+        result.score = score
+        result.reason = reason
+        result.model_used = model_used
+        result.as_prob = as_prob
+        result.threshold_used = threshold_used
+        result.hour_offset = hour_offset
+        result.price_velocity_60s = price_velocity_60s
+
+    def _apply_decision_to_result(
+        self,
+        result: SkipGateResult,
+        *,
+        decision: _SkipDecisionLike,
+        side: str,
+        price_velocity_60s: float | None,
+        hour_offset: float,
+    ) -> None:
+        """最終 decision を SkipGateResult へ反映する."""
+        if decision.model_used == "ev_weighted":
+            model_tag = f"ev_weighted_{side}"
+        else:
+            is_side_model = (
+                (side == "buy" and self._gate_buy is not None)
+                or (side == "sell" and self._gate_sell is not None)
+            )
+            model_tag = f"side_{side}" if is_side_model else "unified"
+        self._assign_result_fields(
+            result,
+            skipped=decision.should_skip,
+            score=decision.predicted_pnl_bps,
+            reason=decision.reason,
+            model_used=f"{decision.model_used}:{model_tag}",
+            as_prob=decision.as_probability,
+            threshold_used=decision.threshold_used,
+            hour_offset=hour_offset,
+            price_velocity_60s=price_velocity_60s,
+        )
+
     def _apply_config_overrides(self, skip_gate: _SkipGateLike) -> None:
         """YAML 設定でモデル内 config をオーバーライド."""
         config = self._config
@@ -879,10 +932,13 @@ class SkipGateEvaluator:
                 f"[skip_gate] SKIP: sell in unknown regime "
                 f"(124# rule_skip_unknown_sell)"
             )
-            result.skipped = True
-            result.score = 0.0
-            result.reason = "rule_skip_unknown_sell"
-            result.model_used = "rule"
+            self._assign_result_fields(
+                result,
+                skipped=True,
+                score=0.0,
+                reason="rule_skip_unknown_sell",
+                model_used="rule",
+            )
             result.early_return_record = self._make_skip_fill_record(
                 cycle_id=cycle_id,
                 timestamp=event_ts,
@@ -907,10 +963,13 @@ class SkipGateEvaluator:
         # side 固有モデルのみ存在し、要求 side にはモデルがないケースを明示処理
         active_gate = self._select_gate_for_side(side)
         if active_gate is None:
-            result.skipped = False
-            result.score = 0.0
-            result.reason = f"no_model_for_side:{side}"
-            result.model_used = "none"
+            self._assign_result_fields(
+                result,
+                skipped=False,
+                score=0.0,
+                reason=f"no_model_for_side:{side}",
+                model_used="none",
+            )
             logger.info(
                 f"[skip_gate] No model available for side={side}. "
                 f"unified={'yes' if self._skip_gate is not None else 'no'}"
@@ -1042,10 +1101,14 @@ class SkipGateEvaluator:
                         f"{'>' if _velocity_sell_triggered else '<'} {_vel_th}bps "
                         f"(165# AS-R1 {_reason})"
                     )
-                    result.skipped = True
-                    result.score = _pv60
-                    result.reason = _reason
-                    result.model_used = "rule"
+                    self._assign_result_fields(
+                        result,
+                        skipped=True,
+                        score=_pv60,
+                        reason=_reason,
+                        model_used="rule",
+                        price_velocity_60s=_pv60,
+                    )
                     result.early_return_record = self._make_skip_fill_record(
                         cycle_id=cycle_id,
                         timestamp=market_ts,
@@ -1119,23 +1182,13 @@ class SkipGateEvaluator:
                 else:
                     decision = _ev_combined
 
-            result.skipped = decision.should_skip
-            result.score = decision.predicted_pnl_bps
-            result.reason = decision.reason
-            result.price_velocity_60s = gate_features.get("price_velocity_60s")
-            # 141#/188#: model_used にどのモデルが使われたかを示す
-            if decision.model_used == "ev_weighted":
-                model_tag = f"ev_weighted_{side}"
-            else:
-                is_side_model = (
-                    (side == "buy" and self._gate_buy is not None)
-                    or (side == "sell" and self._gate_sell is not None)
-                )
-                model_tag = f"side_{side}" if is_side_model else "unified"
-            result.model_used = f"{decision.model_used}:{model_tag}"
-            result.as_prob = decision.as_probability
-            result.threshold_used = decision.threshold_used
-            result.hour_offset = _total_offset
+            self._apply_decision_to_result(
+                result,
+                decision=decision,
+                side=side,
+                price_velocity_60s=gate_features.get("price_velocity_60s"),
+                hour_offset=_total_offset,
+            )
 
             if decision.should_skip:
                 logger.info(

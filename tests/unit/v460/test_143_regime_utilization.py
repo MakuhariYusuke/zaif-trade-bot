@@ -22,7 +22,6 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock, AsyncMock, patch
 
 import pytest
@@ -272,7 +271,7 @@ class TestRegimeAdjustedLot:
         max_lot: float = 0.01,
         multipliers: dict[str, float] | None = None,
         regime_value: str | None = None,
-    ) -> Any:
+    ) -> MagicMock:
         """FillTestRunner のモック — _regime_adjusted_lot のみテスト."""
         from scripts.v460.lib.fill_config import FillTestConfig
 
@@ -772,6 +771,57 @@ class TestRegimeTimeoutMonitorBehavioral:
         assert cfg.order_timeout_sec * mult == 90.0
 
 
+class TestOrderMonitorHelpers:
+    """OrderMonitor の小ヘルパー契約を直接検証."""
+
+    def test_resolve_regime_name(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        from scripts.v460.lib.order_monitor import OrderMonitor
+
+        monitor = OrderMonitor(FillTestConfig())
+        regime_det = MagicMock()
+        regime_det.current_regime = MagicMock()
+        regime_det.current_regime.value = "trending"
+
+        assert monitor._resolve_regime_name(regime_det) == "trending"
+        assert monitor._resolve_regime_name(None) is None
+
+    def test_reprice_skip_gate_helper_uses_config_offset(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        from scripts.v460.lib.order_monitor import OrderMonitor
+
+        cfg = FillTestConfig(stale_reprice_skip_gate_offset=0.15)
+        monitor = OrderMonitor(cfg)
+
+        regime_det = MagicMock()
+        regime_det.current_regime = MagicMock()
+        regime_det.current_regime.value = "trending"
+
+        decision = MagicMock()
+        decision.should_skip = True
+        decision.as_probability = 0.72
+        decision.threshold_used = 0.55
+
+        skip_gate = MagicMock()
+        skip_gate.evaluate.return_value = decision
+
+        blocked = monitor._should_block_reprice_with_skip_gate(
+            skip_gate=skip_gate,
+            side="sell",
+            spread_at_order=2000.0,
+            effective_offset_ratio=0.05,
+            regime_detector=regime_det,
+            market_timestamp=1700000000.0,
+        )
+
+        assert blocked is True
+        call = skip_gate.evaluate.call_args
+        assert call is not None
+        assert call.kwargs["side"] == "sell"
+        assert call.kwargs["threshold_offset"] == pytest.approx(-0.15)
+        assert call.args[0]["regime_trending"] == 1.0
+
+
 # ======================================================================
 # 145# fix: lot management bug fixes (§8-#1/#2/#3, §9-#1, §9-#2)
 # ======================================================================
@@ -787,7 +837,7 @@ class TestLotNoCompounding:
         max_lot: float = 0.05,
         multipliers: dict[str, float] | None = None,
         regime_value: str | None = None,
-    ) -> Any:
+    ) -> MagicMock:
         from scripts.v460.lib.fill_config import FillTestConfig
 
         config = FillTestConfig(
