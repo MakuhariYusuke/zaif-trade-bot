@@ -2399,7 +2399,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/lib/skip_gate_evaluator.py`
 - `pytest`
   - `tests/unit/v460/test_skip_gate_v3.py`
-  - 結果: `17 passed`
+  - 結果: `15 passed`
 - `any_inventory`
   - `scripts/v460/lib/fill_record_helpers.py`: `any_type_debt_tokens=0`
   - `scripts/v460/lib/skip_gate_evaluator.py`: `any_type_debt_tokens=0`
