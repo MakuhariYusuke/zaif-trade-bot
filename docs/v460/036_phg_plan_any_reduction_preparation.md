@@ -2380,6 +2380,30 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/lib/fill_cycle_executor.py`: `any_type_debt_tokens=0`
   - `tests/unit/v460/test_145_structural_fixes.py`: `any_type_debt_tokens=0`
 
+### Step105: skip FillRecord builder を evaluator と共通化
+
+1. 対応概要
+- `scripts/v460/lib/fill_record_helpers.py`
+  - `build_skip_fill_record()` を追加し、skip/監査系 `FillRecord` の共通 builder を module-level に抽出した。
+  - 追加フィールド反映も `_apply_skip_record_extras()` に分離した。
+- `scripts/v460/lib/skip_gate_evaluator.py`
+  - `_make_skip_fill_record()` を `build_skip_fill_record()` 経由へ切り替えた。
+
+2. 目的
+- `skip_gate_evaluator` と runner 側で二重化していた `FillRecord` 初期化契約を一本化する。
+- skip 系フィールド追加時の変更漏れを減らし、`duplicate/unknown key` の防御も同じルールへ揃える。
+
+3. 検証
+- `py_compile`
+  - `scripts/v460/lib/fill_record_helpers.py`
+  - `scripts/v460/lib/skip_gate_evaluator.py`
+- `pytest`
+  - `tests/unit/v460/test_skip_gate_v3.py`
+  - 結果: `17 passed`
+- `any_inventory`
+  - `scripts/v460/lib/fill_record_helpers.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/skip_gate_evaluator.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

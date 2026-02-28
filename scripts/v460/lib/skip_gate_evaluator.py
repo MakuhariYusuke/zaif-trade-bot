@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, cast
 
 from scripts.v460.lib.fill_config import FillTestConfig, SkipGateResult
+from scripts.v460.lib.fill_record_helpers import build_skip_fill_record
 from scripts.v460.ml.skip_gate import SkipDecision, build_features_from_market_state
 # ファイルの SHA256 ハッシュを算出 (126# hot-reload 用)
 from ztb.utils.run_manifest import compute_file_hash
@@ -308,18 +309,13 @@ class SkipGateEvaluator:
         price_velocity_60s: float | None = None,
     ) -> "FillRecord":
         """skip 系の early return 用 FillRecord を共通生成."""
-        from ztb.metrics.fill_quality import FillRecord
-
-        return FillRecord(
+        return build_skip_fill_record(
             cycle_id=cycle_id,
             timestamp=timestamp,
             side=side,
             order_price=order_price,
             order_quantity=order_quantity,
-            cancelled=True,
             cancel_reason=cancel_reason,
-            spread_at_order=spread_at_order,
-            spread_offset_ratio=spread_offset_ratio,
             skip_gate_skipped=True,
             skip_gate_score=skip_gate_score,
             skip_gate_reason=skip_gate_reason,
@@ -332,6 +328,8 @@ class SkipGateEvaluator:
             ask_depth_total=ask_depth_total,
             run_id=run_id,
             git_sha=git_sha,
+            spread_at_order=spread_at_order,
+            spread_offset_ratio=spread_offset_ratio,
             regime=regime,
             price_velocity_60s=price_velocity_60s,
         )
