@@ -259,3 +259,31 @@ class TestFFDBoostConsistency:
         # base 0.2, FFD x3.0 -> cap at 0.3, spread=100 => offset=30, buy price=1030
         assert result.effective_offset_ratio == pytest.approx(0.3, abs=0.0001)
         assert result.price == pytest.approx(1030.0, abs=0.0001)
+
+
+class TestSpreadGuardHelper:
+    """spread guard の共通 helper."""
+
+    def test_buy_cross_falls_back_to_best_bid(self) -> None:
+        result = MakerPriceCalculator._finalize_price_with_spread_guard(
+            side="buy",
+            best_bid=1000.0,
+            best_ask=1010.0,
+            spread=10.0,
+            offset=20.0,
+            effective_offset_ratio=0.2,
+        )
+        assert result.price == 1000.0
+        assert result.effective_offset_ratio == 0.0
+
+    def test_sell_cross_falls_back_to_best_ask(self) -> None:
+        result = MakerPriceCalculator._finalize_price_with_spread_guard(
+            side="sell",
+            best_bid=1000.0,
+            best_ask=1010.0,
+            spread=10.0,
+            offset=20.0,
+            effective_offset_ratio=0.2,
+        )
+        assert result.price == 1010.0
+        assert result.effective_offset_ratio == 0.0

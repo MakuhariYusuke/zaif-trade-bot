@@ -1730,6 +1730,41 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460/lib/maker_price.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_175_code_review_sweep2.py`
   - 結果: `any_type_debt_tokens=0`
 
+## Step88: `maker_price` の spread guard 共通化 (2026-02-28)
+
+### 1) 対象
+
+- `scripts/v460/lib/maker_price.py`
+- `tests/unit/v460/test_168_low_vol_offset_boost.py`
+
+### 2) 重複削減
+
+- `MakerPriceCalculator._finalize_price_with_spread_guard()` を追加し、
+  `compute()` 末尾の buy/sell 別 spread guard 分岐を一本化。
+- cross 時の fallback 価格決定と
+  `effective_offset_ratio=0.0` 化を helper に集約。
+
+### 3) テスト強化
+
+- spread guard helper の直接テストを追加:
+  - buy cross → `best_bid` fallback
+  - sell cross → `best_ask` fallback
+
+### 4) 検証
+
+- `py_compile`:
+  - `.venv/Scripts/python.exe -m py_compile scripts/v460/lib/maker_price.py tests/unit/v460/test_168_low_vol_offset_boost.py`
+- テスト:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_168_low_vol_offset_boost.py -q --override-ini="addopts="`
+  - 結果: `15 passed`
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_143_regime_utilization.py -q --override-ini="addopts="`
+  - 結果: `58 passed`
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_fill_quality.py -k "volatility_guard" -q --override-ini="addopts="`
+  - 結果: `3 passed, 186 deselected`
+- `any_inventory`:
+  - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460/lib/maker_price.py tests/unit/v460/test_168_low_vol_offset_boost.py`
+  - 結果: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

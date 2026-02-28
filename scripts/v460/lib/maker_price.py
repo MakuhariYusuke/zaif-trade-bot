@@ -357,6 +357,36 @@ class MakerPriceCalculator:
             updated = min(updated, max_ratio)
         return updated, (updated / effective_offset_ratio)
 
+    @staticmethod
+    def _finalize_price_with_spread_guard(
+        *,
+        side: str,
+        best_bid: float,
+        best_ask: float,
+        spread: float,
+        offset: float,
+        effective_offset_ratio: float,
+    ) -> MakerPriceResult:
+        """最終価格を組み立て、cross 時は spread guard で安全側へ戻す."""
+        if side == "buy":
+            price = best_bid + offset
+            if price >= best_ask:
+                logger.info(
+                    f"Spread guard: buy price {price:.0f} >= ask {best_ask:.0f}, "
+                    f"fallback to best_bid {best_bid:.0f} (spread={spread:.0f})"
+                )
+                return MakerPriceResult(best_bid, spread, 0.0)
+            return MakerPriceResult(price, spread, effective_offset_ratio)
+
+        price = best_ask - offset
+        if price <= best_bid:
+            logger.info(
+                f"Spread guard: sell price {price:.0f} <= bid {best_bid:.0f}, "
+                f"fallback to best_ask {best_ask:.0f} (spread={spread:.0f})"
+            )
+            return MakerPriceResult(best_ask, spread, 0.0)
+        return MakerPriceResult(price, spread, effective_offset_ratio)
+
     def _apply_regime_boosts(
         self, side: str, effective_offset_ratio: float,
     ) -> float:
@@ -784,24 +814,11 @@ class MakerPriceCalculator:
             )
             if _applied_mult != 1.0:
                 offset = max(cfg.min_offset_jpy, spread * effective_offset_ratio)
-
-        if side == "buy":
-            price = best_bid + offset
-            if price >= best_ask:
-                price = best_bid
-                effective_offset_ratio = 0.0
-                logger.info(
-                    f"Spread guard: buy price {best_bid + offset:.0f} >= ask {best_ask:.0f}, "
-                    f"fallback to best_bid {best_bid:.0f} (spread={spread:.0f})"
-                )
-            return MakerPriceResult(price, spread, effective_offset_ratio)
-        else:
-            price = best_ask - offset
-            if price <= best_bid:
-                price = best_ask
-                effective_offset_ratio = 0.0
-                logger.info(
-                    f"Spread guard: sell price {best_ask - offset:.0f} <= bid {best_bid:.0f}, "
-                    f"fallback to best_ask {best_ask:.0f} (spread={spread:.0f})"
-                )
-            return MakerPriceResult(price, spread, effective_offset_ratio)
+        return self._finalize_price_with_spread_guard(
+            side=side,
+            best_bid=best_bid,
+            best_ask=best_ask,
+            spread=spread,
+            offset=offset,
+            effective_offset_ratio=effective_offset_ratio,
+        )
