@@ -178,6 +178,12 @@ class TestEvWeightedDecision:
         # 190# 追加フィールド (MagicMock のまま放置すると > 演算エラー)
         config.skip_gate_ev_max_consecutive_skip = 0
         config.skip_gate_ev_one_sided_threshold_shift = 0.0
+        # 193# ev_as_offset モード (テストでは旧モード=False)
+        config.skip_gate_ev_as_offset_enabled = False
+        config.skip_gate_ev_offset_sensitivity = 0.05
+        config.skip_gate_ev_offset_min_mult = 0.5
+        config.skip_gate_ev_offset_max_mult = 1.5
+        config.skip_gate_ev_emergency_skip_threshold = -8.0
 
         evaluator = SkipGateEvaluator(config, Path("."))
         evaluator._gate_alt_buy = gate_alt_buy

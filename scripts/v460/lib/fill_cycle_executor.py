@@ -554,6 +554,43 @@ class FillCycleExecutorMixin:
         if sg.early_return_record is not None:
             return sg.early_return_record
 
+        # 193#: ev_weighted → offset 価格調整
+        # SkipGate PASS 後に ev_score を使って order_price を post-hoc 調整
+        _ev_offset_applied = False
+        if (
+            sg.ev_score is not None
+            and self.config.skip_gate_ev_as_offset_enabled
+            and spread_at_order is not None
+            and spread_at_order > 0
+            and order_price > 0
+        ):
+            _ev_s = sg.ev_score
+            _sens = self.config.skip_gate_ev_offset_sensitivity
+            _min_m = self.config.skip_gate_ev_offset_min_mult
+            _max_m = self.config.skip_gate_ev_offset_max_mult
+            _raw_mult = 1.0 + _sens * _ev_s
+            _ev_mult = max(_min_m, min(_max_m, _raw_mult))
+            if _ev_mult != 1.0:
+                # offset の変化分を価格に反映
+                _old_offset = spread_at_order * effective_offset_ratio
+                _new_offset = _old_offset * _ev_mult
+                _delta = _new_offset - _old_offset
+                if side == "buy":
+                    # buy: offset 増 → price 上昇 (mid に近づく → より積極的)
+                    # buy: offset 減 → price 下降 (mid から離れる → より保守的)
+                    order_price = round(order_price + _delta)
+                else:
+                    # sell: offset 増 → price 下降 (mid に近づく → より積極的)
+                    # sell: offset 減 → price 上昇 (mid から離れる → より保守的)
+                    order_price = round(order_price - _delta)
+                effective_offset_ratio *= _ev_mult
+                _ev_offset_applied = True
+                logger.info(
+                    f"[193# ev_offset] {side}: ev_score={_ev_s:.3f} "
+                    f"→ offset_mult={_ev_mult:.3f} "
+                    f"(delta={_delta:+.0f}JPY, price={order_price:.0f})"
+                )
+
         # 2. 発注 (CM-2: リトライ付き)
         t_submit = time.time()
         order = None

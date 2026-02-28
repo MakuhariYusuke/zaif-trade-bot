@@ -212,10 +212,22 @@ class FillTestConfig:
     skip_gate_ev_w30: float = 0.4   # ev_weighted の pnl30 重み
     skip_gate_ev_w120: float = 0.6  # ev_weighted の pnl120 重み
     # 190# A: ev_weighted 連続 skip 安全弁 (0=無効, N回連続skipで強制PASS)
+    # 193#: 安全弁は廃止予定。ev_as_offset_enabled=True 時は無視される。
     skip_gate_ev_max_consecutive_skip: int = 0
     # 190# B: 片側 balance 時の ev_weighted threshold 緩和シフト (bps)
-    # BTC=0 で buy のみ可能時に threshold を下方シフトして取引再開
+    # 193#: ev_as_offset_enabled=True 時は無視される。
     skip_gate_ev_one_sided_threshold_shift: float = 0.0
+    # 193#: ev_weighted → offset 修飾子モード (192# §5.2 + Gemini §9.4)
+    # True: ev_weighted は PASS/SKIP ゲートではなく offset 乗数として機能
+    skip_gate_ev_as_offset_enabled: bool = False
+    # ev_score → offset 乗数の感度: mult = 1.0 + sensitivity × ev_score
+    # sensitivity=0.05, ev=-3.0 → mult=0.85 (15%保守的), ev=+2.0 → mult=1.10
+    skip_gate_ev_offset_sensitivity: float = 0.05
+    # offset 乗数のクランプ範囲
+    skip_gate_ev_offset_min_mult: float = 0.5
+    skip_gate_ev_offset_max_mult: float = 1.5
+    # 緊急スキップ: ev_score がこの値未満なら依然ハードスキップ
+    skip_gate_ev_emergency_skip_threshold: float = -8.0
     skip_gate_as_threshold: float = 0.52   # 100# AS 確率スキップ閾値 (0.65→0.52)
     skip_gate_pnl_threshold: float = 0.0   # PnL 予測スキップ閾値 (mode=pnl)
     skip_gate_max_skip_rate: float = 0.3   # 連続スキップ率上限 (安全弁)
@@ -615,6 +627,12 @@ class FillTestConfig:
             # 190# A/B: ev_weighted 安全弁 + 片側 balance threshold 緩和
             "ev_max_consecutive_skip": "skip_gate_ev_max_consecutive_skip",
             "ev_one_sided_threshold_shift": "skip_gate_ev_one_sided_threshold_shift",
+            # 193#: ev_weighted → offset 修飾子モード
+            "ev_as_offset_enabled": "skip_gate_ev_as_offset_enabled",
+            "ev_offset_sensitivity": "skip_gate_ev_offset_sensitivity",
+            "ev_offset_min_mult": "skip_gate_ev_offset_min_mult",
+            "ev_offset_max_mult": "skip_gate_ev_offset_max_mult",
+            "ev_emergency_skip_threshold": "skip_gate_ev_emergency_skip_threshold",
             "as_threshold": "skip_gate_as_threshold",
             "pnl_threshold": "skip_gate_pnl_threshold",
             "max_skip_rate": "skip_gate_max_skip_rate",
@@ -1122,6 +1140,8 @@ class SkipGateResult:
     # 165# AS-R1: velocity logging
     price_velocity_60s: Optional[float] = None
     early_return_record: Optional[FillRecord] = None
+    # 193#: ev_weighted score (offset 修飾子用)
+    ev_score: Optional[float] = None
 
 
 @dataclass

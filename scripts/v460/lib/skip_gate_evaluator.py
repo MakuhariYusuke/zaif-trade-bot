@@ -362,7 +362,13 @@ class SkipGateEvaluator:
         primary (短期) と alt (長期) の predicted_pnl を ev_weighted で統合。
         AS mode では ev_weighted は適用しない (確率ベースのため加重平均が不適切)。
 
+        193#: ev_as_offset_enabled=True 時は offset 修飾子モードに切り替え。
+        - ゲート判定は行わず ev_score を計算して返す (should_skip=False 固定)
+        - ev_score < emergency_threshold の場合のみ hard skip
+        - 安全弁・片側緩和は不要 (offset が連続的に調整するため)
+
         190# A: 連続 skip 安全弁 + B: 片側 balance 時の threshold 緩和。
+        (193# ev_as_offset_enabled=True 時は無視)
 
         Returns:
             統合判定の SkipDecision, または None (ev_weighted 不適用時).
@@ -414,6 +420,13 @@ class SkipGateEvaluator:
         else:
             ev_score = w30 * alt_pnl + w120 * primary_pnl
 
+        # 193#: offset 修飾子モード
+        if self._config.skip_gate_ev_as_offset_enabled:
+            return self._ev_weighted_as_offset(
+                side, ev_score, primary_decision,
+            )
+
+        # --- 旧モード: ハードゲート (ev_as_offset_enabled=False) ---
         # ev_weighted threshold — primary の threshold_used を基準に判定
         threshold_used = primary_decision.threshold_used
         if threshold_used is None:
@@ -473,6 +486,72 @@ class SkipGateEvaluator:
             model_used="ev_weighted",
             as_probability=primary_decision.as_probability,
             threshold_used=threshold_used,
+        )
+
+    def _ev_weighted_as_offset(
+        self,
+        side: str,
+        ev_score: float,
+        primary_decision: _SkipDecisionLike,
+    ) -> _SkipDecisionLike:
+        """193#: ev_weighted を offset 修飾子として機能させる.
+
+        - ev_score を predicted_pnl_bps に格納して返却
+        - should_skip は emergency threshold 未満の場合のみ True
+        - 安全弁・片側緩和は不要 (offset が連続的に調整)
+        - ev_score は SkipGateResult.ev_score 経由で executor に渡り、
+          order_price を post-hoc 調整する
+
+        Returns:
+            SkipDecision (should_skip=False except emergency)
+        """
+        from scripts.v460.ml.skip_gate import SkipDecision
+
+        _emergency = self._config.skip_gate_ev_emergency_skip_threshold
+        if ev_score < _emergency:
+            logger.warning(
+                "[skip_gate] 193# ev_weighted EMERGENCY SKIP: "
+                "ev_score=%.3f < emergency_threshold=%.3f",
+                ev_score, _emergency,
+            )
+            # 安全弁カウンタリセット (旧モード互換)
+            self._ev_consecutive_skip_count = 0
+            return SkipDecision(
+                should_skip=True,
+                predicted_pnl_bps=ev_score,
+                threshold_bps=primary_decision.threshold_bps,
+                features_used=primary_decision.features_used if hasattr(primary_decision, "features_used") else 0,
+                reason="ev_weighted_emergency_skip",
+                model_used="ev_weighted",
+                as_probability=primary_decision.as_probability,
+                threshold_used=_emergency,
+            )
+
+        # offset 修飾子モード: 安全弁カウンタリセット
+        self._ev_consecutive_skip_count = 0
+
+        # offset 乗数を計算 (ログ用)
+        _sens = self._config.skip_gate_ev_offset_sensitivity
+        _min_m = self._config.skip_gate_ev_offset_min_mult
+        _max_m = self._config.skip_gate_ev_offset_max_mult
+        _raw_mult = 1.0 + _sens * ev_score
+        _clamped_mult = max(_min_m, min(_max_m, _raw_mult))
+
+        logger.info(
+            "[skip_gate] 193# ev_weighted→offset: side=%s ev_score=%.3f "
+            "→ offset_mult=%.3f (raw=%.3f, sens=%.3f, clamp=[%.2f,%.2f])",
+            side, ev_score, _clamped_mult, _raw_mult, _sens, _min_m, _max_m,
+        )
+
+        return SkipDecision(
+            should_skip=False,
+            predicted_pnl_bps=ev_score,
+            threshold_bps=primary_decision.threshold_bps,
+            features_used=primary_decision.features_used if hasattr(primary_decision, "features_used") else 0,
+            reason="ev_weighted_offset",
+            model_used="ev_weighted",
+            as_probability=primary_decision.as_probability,
+            threshold_used=0.0,
         )
 
 
@@ -901,7 +980,15 @@ class SkipGateEvaluator:
                 one_sided_balance=one_sided_balance,
             )
             if _ev_combined is not None:
-                decision = _ev_combined
+                # 193#: ev_as_offset モードでは primary decision を保持し、
+                # ev_score のみ抽出。旧モードでは完全置換。
+                if self._config.skip_gate_ev_as_offset_enabled:
+                    result.ev_score = _ev_combined.predicted_pnl_bps
+                    # emergency skip のみ primary を上書き
+                    if _ev_combined.should_skip:
+                        decision = _ev_combined
+                else:
+                    decision = _ev_combined
 
             result.skipped = decision.should_skip
             result.score = decision.predicted_pnl_bps

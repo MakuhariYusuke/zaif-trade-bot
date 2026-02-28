@@ -1,0 +1,42 @@
+{
+  "v0001": {
+    "result_type": "integration_test",
+    "timestamp": "2026-02-24T15:36:41.509065",
+    "tags": [
+      "integration",
+      "test"
+    ],
+    "performance_metrics": {},
+    "filename": "integration_test_v0001_20260224.json"
+  },
+  "v0002": {
+    "result_type": "integration_test",
+    "timestamp": "2026-02-24T15:52:01.230916",
+    "tags": [
+      "integration",
+      "test"
+    ],
+    "performance_metrics": {},
+    "filename": "integration_test_v0002_20260224.json"
+  },
+  "v0003": {
+    "result_type": "integration_test",
+    "timestamp": "2026-02-24T16:02:18.492110",
+    "tags": [
+      "integration",
+      "test"
+    ],
+    "performance_metrics": {},
+    "filename": "integration_test_v0003_20260224.json"
+  },
+  "v0004": {
+    "result_type": "integration_test",
+    "timestamp": "2026-02-24T16:11:26.886297",
+    "tags": [
+      "integration",
+      "test"
+    ],
+    "performance_metrics": {},
+    "filename": "integration_test_v0004_20260224.json"
+  }
+}

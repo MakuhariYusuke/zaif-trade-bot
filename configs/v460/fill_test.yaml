@@ -272,9 +272,17 @@ skip_gate:
   ev_weighted_enabled: true
   ev_w30: 0.4                  # 短期 PnL 重み (即時平均回帰)
   ev_w120: 0.6                 # 長期 PnL 重み (持続的回復)
-  # 190# A: ev_weighted 連続 skip 安全弁 (5回連続skipで強制PASS → デッドロック防止)
+  # 193#: ev_weighted → offset 修飾子モード (192# §5.2 + Gemini §9.4)
+  # true: ev_weighted は PASS/SKIP ゲートではなく offset 乗数として機能
+  # ev_score が負 → offset 縮小 (保守的価格)、正 → offset 拡大 (積極的)
+  ev_as_offset_enabled: true
+  ev_offset_sensitivity: 0.05   # ev_score → offset 乗数の感度
+  ev_offset_min_mult: 0.5       # offset 乗数下限 (最も保守的)
+  ev_offset_max_mult: 1.5       # offset 乗数上限 (最も積極的)
+  ev_emergency_skip_threshold: -8.0  # この値未満は依然ハードスキップ
+  # 190# A: ev_weighted 連続 skip 安全弁 (193# offset モードでは無視)
   ev_max_consecutive_skip: 5
-  # 190# B: 片側 balance 時の ev_weighted threshold 緩和 (BTC=0→buy専用に緩和)
+  # 190# B: 片側 balance 時の ev_weighted threshold 緩和 (193# offset モードでは無視)
   ev_one_sided_threshold_shift: -1.0  # threshold を -1.0bps シフト（取引再開優先）
   as_threshold: 0.50           # 120# 0.52→0.50: P(AS)=0.50 が変曲点 (AS 18.1%→36.7%)
   as_threshold_buy: 0.50       # 120# A3: [0.50,0.52) 帯 n=60 PnL=-0.247 AS=36.7% → skip 対象化
