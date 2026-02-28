@@ -30,16 +30,13 @@ class TestFFDBoostClamp:
         from scripts.v460.lib.maker_price import MakerPriceCalculator
         import inspect
         source = inspect.getsource(MakerPriceCalculator.compute)
-        # FFD boost 適用箇所に min( ... max_offset_ratio) が含まれることを確認
-        # ソース内で "boost_mult" と "max_offset_ratio" が同一範囲にあること
+        # FFD boost セクションが helper 経由で max_offset_ratio clamp を使うことを確認
         assert "boost_mult" in source
-        assert "cfg.max_offset_ratio" in source
-        # FFD boost セクションに "min(" があることを確認 (クランプ実装)
-        # boost 行の後に min() があることを検証
+        assert "_scale_offset_ratio" in source
         boost_idx = source.find("boost_mult")
-        min_after_boost = source.find("min(", boost_idx)
-        max_offset_after_boost = source.find("max_offset_ratio", min_after_boost) if min_after_boost > 0 else -1
-        assert max_offset_after_boost > 0, "FFD boost 後に min(...max_offset_ratio) clamp が必要"
+        helper_after_boost = source.find("_scale_offset_ratio", boost_idx)
+        max_after_helper = source.find("max_ratio=cfg.max_offset_ratio", helper_after_boost)
+        assert max_after_helper > 0, "FFD boost 後に helper clamp が必要"
 
 
 # ======================================================================

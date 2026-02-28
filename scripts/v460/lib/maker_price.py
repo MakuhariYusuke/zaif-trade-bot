@@ -335,6 +335,28 @@ class MakerPriceCalculator:
         # --- 3. 共通値 ---
         return cfg.regime_trending_offset_boost
 
+    @staticmethod
+    def _scale_offset_ratio(
+        effective_offset_ratio: float,
+        multiplier: float,
+        *,
+        min_ratio: float | None = None,
+        max_ratio: float | None = None,
+    ) -> tuple[float, float]:
+        """offset ratio に倍率を安全適用し、実際の適用倍率も返す.
+
+        誤設定で 0 以下の倍率が来ても ratio を壊さず no-op にする。
+        """
+        if effective_offset_ratio <= 0 or multiplier <= 0:
+            return effective_offset_ratio, 1.0
+
+        updated = effective_offset_ratio * multiplier
+        if min_ratio is not None:
+            updated = max(updated, min_ratio)
+        if max_ratio is not None:
+            updated = min(updated, max_ratio)
+        return updated, (updated / effective_offset_ratio)
+
     def _apply_regime_boosts(
         self, side: str, effective_offset_ratio: float,
     ) -> float:
@@ -361,12 +383,16 @@ class MakerPriceCalculator:
 
             if _trending_boost != 1.0:
                 pre_offset = effective_offset_ratio
-                effective_offset_ratio *= _trending_boost
-                _direction = "boosted" if _trending_boost > 1.0 else "discounted"
+                effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
+                    effective_offset_ratio, _trending_boost,
+                )
+                _direction = "boosted" if _applied_mult > 1.0 else "discounted"
+                if _applied_mult == 1.0:
+                    _direction = "unchanged"
                 logger.debug(
                     f"[regime] {_regime_val} → {side} offset {_direction}: "
                     f"{pre_offset:.4f} → {effective_offset_ratio:.4f} "
-                    f"(mult={_trending_boost:.2f})"
+                    f"(mult={_applied_mult:.2f})"
                 )
 
         # 143# R-1a: high_vol 時にオフセットをブースト (AS リスク上昇に対応)
@@ -377,14 +403,15 @@ class MakerPriceCalculator:
             and cfg.regime_high_vol_offset_boost > 1.0
         ):
             pre_offset = effective_offset_ratio
-            effective_offset_ratio = min(
-                effective_offset_ratio * cfg.regime_high_vol_offset_boost,
-                cfg.max_offset_ratio,
+            effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
+                effective_offset_ratio,
+                cfg.regime_high_vol_offset_boost,
+                max_ratio=cfg.max_offset_ratio,
             )
             logger.debug(
                 f"[regime] high_vol → offset boosted: "
                 f"{pre_offset:.4f} → {effective_offset_ratio:.4f} "
-                f"(boost={cfg.regime_high_vol_offset_boost:.2f})"
+                f"(boost={_applied_mult:.2f})"
             )
 
         # 143# R-1a: ranging 時にオフセットを縮小 (安定市場で利幅確保)
@@ -395,14 +422,15 @@ class MakerPriceCalculator:
             and cfg.regime_ranging_offset_discount < 1.0
         ):
             pre_offset = effective_offset_ratio
-            effective_offset_ratio = max(
-                effective_offset_ratio * cfg.regime_ranging_offset_discount,
-                cfg.min_offset_ratio,
+            effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
+                effective_offset_ratio,
+                cfg.regime_ranging_offset_discount,
+                min_ratio=cfg.min_offset_ratio,
             )
             logger.debug(
                 f"[regime] ranging → offset discounted: "
                 f"{pre_offset:.4f} → {effective_offset_ratio:.4f} "
-                f"(discount={cfg.regime_ranging_offset_discount:.2f})"
+                f"(discount={_applied_mult:.2f})"
             )
 
         # 168# 低ボラティリティ offset boost: vol_ratio < threshold で offset 拡大
@@ -419,15 +447,16 @@ class MakerPriceCalculator:
             if vol_ratio < cfg.low_vol_threshold:
                 _low_vol_boost = cfg.low_vol_offset_boost
                 pre_offset = effective_offset_ratio
-                effective_offset_ratio = min(
-                    effective_offset_ratio * _low_vol_boost,
-                    cfg.max_offset_ratio,
+                effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
+                    effective_offset_ratio,
+                    _low_vol_boost,
+                    max_ratio=cfg.max_offset_ratio,
                 )
                 logger.info(
                     f"[low_vol_boost] 168# {side} vol_ratio={vol_ratio:.3f} "
                     f"< {cfg.low_vol_threshold:.2f} → offset boosted: "
                     f"{pre_offset:.4f}→{effective_offset_ratio:.4f} "
-                    f"(boost={_low_vol_boost:.2f})"
+                    f"(boost={_applied_mult:.2f})"
                 )
 
         # 130# unknown regime buy guard: offset boost で AS 回避
@@ -442,14 +471,15 @@ class MakerPriceCalculator:
             )
         ):
             pre_offset = effective_offset_ratio
-            effective_offset_ratio = min(
-                effective_offset_ratio * cfg.unknown_buy_offset_boost,
-                cfg.max_offset_ratio,
+            effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
+                effective_offset_ratio,
+                cfg.unknown_buy_offset_boost,
+                max_ratio=cfg.max_offset_ratio,
             )
             logger.info(
                 f"[unknown_buy_guard] 130# buy offset boosted: "
                 f"{pre_offset:.4f}→{effective_offset_ratio:.4f} "
-                f"(regime=unknown, boost={cfg.unknown_buy_offset_boost:.2f})"
+                f"(regime=unknown, boost={_applied_mult:.2f})"
             )
 
         return effective_offset_ratio
@@ -472,21 +502,25 @@ class MakerPriceCalculator:
                     sa_boost = cfg.narrow_spread_boost_buy
                 elif side == "sell" and cfg.narrow_spread_boost_sell is not None:
                     sa_boost = cfg.narrow_spread_boost_sell
-                effective_offset_ratio = min(
-                    effective_offset_ratio * sa_boost, cfg.max_offset_ratio,
+                effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
+                    effective_offset_ratio,
+                    sa_boost,
+                    max_ratio=cfg.max_offset_ratio,
                 )
                 logger.debug(
                     f"[spread_adaptive] Narrow spread {spread_bps:.1f}bps "
-                    f"({side} boost={sa_boost:.2f}) "
+                    f"({side} boost={_applied_mult:.2f}) "
                     f"→ offset boosted to {effective_offset_ratio:.4f}"
                 )
             elif spread_bps > cfg.wide_spread_bps:
-                effective_offset_ratio = max(
-                    effective_offset_ratio * cfg.wide_spread_ratio, cfg.min_offset_ratio,
+                effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
+                    effective_offset_ratio,
+                    cfg.wide_spread_ratio,
+                    min_ratio=cfg.min_offset_ratio,
                 )
                 logger.debug(
                     f"[spread_adaptive] Wide spread {spread_bps:.1f}bps "
-                    f"→ offset reduced to {effective_offset_ratio:.4f}"
+                    f"(mult={_applied_mult:.2f}) → offset reduced to {effective_offset_ratio:.4f}"
                 )
 
         # 091# sell offset floor 事後再適用 (173# 動的フロア対応)
@@ -546,11 +580,11 @@ class MakerPriceCalculator:
                         f"VG boost {cfg.volatility_guard_offset_boost_factor:.2f}"
                         f"→{_raw_boost:.4f}"
                     )
-                effective_offset_ratio = min(
-                    effective_offset_ratio * _raw_boost,
-                    cfg.max_offset_ratio,
+                effective_offset_ratio, _vg_boost = self._scale_offset_ratio(
+                    effective_offset_ratio,
+                    _raw_boost,
+                    max_ratio=cfg.max_offset_ratio,
                 )
-                _vg_boost = effective_offset_ratio / pre_offset if pre_offset > 0 else 1.0
                 logger.info(
                     f"[volatility_guard] 107# {side} offset boosted: "
                     f"{pre_offset:.4f}→{effective_offset_ratio:.4f} "
@@ -599,11 +633,15 @@ class MakerPriceCalculator:
                         f"Imbalance skip: {side} order suppressed (imb={imb:+.3f})"
                     )
                 else:
-                    effective_offset_ratio *= cfg.imbalance_offset_boost
-                    effective_offset_ratio = min(effective_offset_ratio, cfg.max_offset_ratio)
+                    effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
+                        effective_offset_ratio,
+                        cfg.imbalance_offset_boost,
+                        max_ratio=cfg.max_offset_ratio,
+                    )
                     logger.info(
                         f"[imbalance] {side} AS risk: imb={imb:+.3f}, "
-                        f"offset boosted to {effective_offset_ratio:.4f}"
+                        f"offset boosted to {effective_offset_ratio:.4f} "
+                        f"(mult={_applied_mult:.2f})"
                     )
 
         return effective_offset_ratio
@@ -678,12 +716,16 @@ class MakerPriceCalculator:
             _sign = 1.0 if side == "buy" else -1.0
             _factor = _imb * _sign * cfg.inventory_skewing_max_factor
             _prev = effective_offset_ratio
-            effective_offset_ratio *= (1.0 + _factor)
-            effective_offset_ratio = max(effective_offset_ratio, cfg.min_offset_ratio)
+            effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
+                effective_offset_ratio,
+                1.0 + _factor,
+                min_ratio=cfg.min_offset_ratio,
+            )
             self._last_inv_skew_factor = _factor
             logger.info(
                 f"[inv_skew] {side} imbalance={_imb:+.3f} "
-                f"factor={_factor:+.4f} offset {_prev:.4f}->{effective_offset_ratio:.4f}"
+                f"factor={_factor:+.4f} mult={_applied_mult:.4f} "
+                f"offset {_prev:.4f}->{effective_offset_ratio:.4f}"
             )
         else:
             self._last_inv_skew_factor = 0.0
@@ -733,12 +775,15 @@ class MakerPriceCalculator:
         # 100# FastFillDefense: per-side boost 乗数を適用
         boost_mult = self._fast_fill_defense.get_boost_multiplier(side)
         if boost_mult != 1.0:
-            offset *= boost_mult
-            # 175# FFD boost 後も max_offset_ratio クランプを適用
-            effective_offset_ratio = min(
-                effective_offset_ratio * boost_mult,
-                cfg.max_offset_ratio,
+            # 175# FFD boost 後も max_offset_ratio クランプを適用し、
+            # 実際の価格補正量と返却 ratio の整合を保つ.
+            effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
+                effective_offset_ratio,
+                boost_mult,
+                max_ratio=cfg.max_offset_ratio,
             )
+            if _applied_mult != 1.0:
+                offset = max(cfg.min_offset_jpy, spread * effective_offset_ratio)
 
         if side == "buy":
             price = best_bid + offset

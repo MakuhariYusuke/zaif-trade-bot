@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -207,3 +206,56 @@ class TestLowVolOffsetBoostMakerPrice:
         # base=0.05, trending boost=1.5 → 0.075, low_vol boost=1.3 → 0.0975
         # is_trending depends on enum — let's just check it's > base
         assert result.effective_offset_ratio > 0.05
+
+
+class TestOffsetScalingHelper:
+    """maker_price の共通倍率適用 helper."""
+
+    def test_scale_offset_ratio_clamps_and_reports_actual_multiplier(self) -> None:
+        ratio, applied = MakerPriceCalculator._scale_offset_ratio(
+            0.2,
+            3.0,
+            max_ratio=0.3,
+        )
+        assert ratio == pytest.approx(0.3, abs=0.0001)
+        assert applied == pytest.approx(1.5, abs=0.0001)
+
+    def test_scale_offset_ratio_ignores_invalid_multiplier(self) -> None:
+        ratio, applied = MakerPriceCalculator._scale_offset_ratio(
+            0.2,
+            0.0,
+            max_ratio=0.3,
+        )
+        assert ratio == pytest.approx(0.2, abs=0.0001)
+        assert applied == pytest.approx(1.0, abs=0.0001)
+
+
+class TestFFDBoostConsistency:
+    """FFD boost 後の価格補正量と ratio が整合すること."""
+
+    @pytest.mark.asyncio
+    async def test_clamped_ffd_recomputes_offset_from_ratio(self) -> None:
+        cfg = FillConfig(
+            spread_offset_ratio=0.2,
+            max_offset_ratio=0.3,
+            min_offset_jpy=1.0,
+            min_spread_jpy=10.0,
+            spread_adaptive_enabled=False,
+            imbalance_enabled=False,
+            volatility_guard_enabled=False,
+            inventory_skewing_enabled=False,
+        )
+        det = _make_regime_detector(regime=FillTestRegime.RANGING, vol_ratio=1.0)
+        ffd = FastFillDefense(cfg, base_offset_ratio=cfg.spread_offset_ratio)
+        ffd.get_boost_multiplier = MagicMock(return_value=3.0)
+        calc = MakerPriceCalculator(
+            cfg, ffd, regime_detector=det,
+            base_offset_ratio=cfg.spread_offset_ratio,
+        )
+        adapter = _make_adapter(bid=1000.0, ask=1100.0)
+
+        result = await calc.compute("buy", adapter, "btc_jpy")
+
+        # base 0.2, FFD x3.0 -> cap at 0.3, spread=100 => offset=30, buy price=1030
+        assert result.effective_offset_ratio == pytest.approx(0.3, abs=0.0001)
+        assert result.price == pytest.approx(1030.0, abs=0.0001)

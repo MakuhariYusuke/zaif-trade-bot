@@ -1672,6 +1672,64 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460/lib/skip_gate_evaluator.py scripts/v460/lib/fill_cycle_executor.py tests/unit/v460/test_196_velocity_proportional_trending_soft.py`
   - 結果: `any_type_debt_tokens=0`
 
+## Step87: `maker_price` の offset倍率適用一元化 + FFD整合修正 (2026-02-28)
+
+### 1) 対象
+
+- `scripts/v460/lib/maker_price.py`
+- `tests/unit/v460/test_168_low_vol_offset_boost.py`
+- `tests/unit/v460/test_175_code_review_sweep2.py`
+
+### 2) 重複削減 / 横展開
+
+- `MakerPriceCalculator._scale_offset_ratio()` を追加し、
+  offset ratio への倍率適用を共通化。
+- 以下の手書き `*= ...` / `min(...)` / `max(...)` パターンを helper 経由へ整理:
+  - trending boost / discount
+  - high_vol
+  - ranging
+  - low_vol
+  - unknown buy guard
+  - spread adaptive (narrow / wide)
+  - volatility guard
+  - imbalance AS risk
+  - inventory skewing
+  - FFD boost
+
+### 3) 不具合封じ
+
+- 0 以下の multiplier が来ても no-op とし、ratio を壊さないようにした。
+- FFD boost 後の `effective_offset_ratio` と実際の `offset` が
+  clamp 時に食い違う問題を修正。
+  - 旧: raw `boost_mult` で `offset` を先に拡大し、ratio だけ clamp
+  - 新: clamp 後の ratio から `offset` を再計算し、価格と返却値を整合
+- helper は「実際の適用倍率」を返すため、clamp 後の実効値ログにも流用可能。
+
+### 4) テスト強化
+
+- `test_168_low_vol_offset_boost.py`
+  - helper の clamp/no-op テストを追加
+  - FFD clamp 後に価格と ratio が一致する機能テストを追加
+- `test_175_code_review_sweep2.py`
+  - 旧 `min(...)` 文字列依存をやめ、helper 経由の clamp 実装を検証
+
+### 5) 検証
+
+- `py_compile`:
+  - `.venv/Scripts/python.exe -m py_compile scripts/v460/lib/maker_price.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_175_code_review_sweep2.py`
+- テスト:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_168_low_vol_offset_boost.py -q --override-ini="addopts="`
+  - 結果: `13 passed`
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_175_code_review_sweep2.py::TestFFDBoostClamp -q --override-ini="addopts="`
+  - 結果: `1 passed`
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_143_regime_utilization.py -q --override-ini="addopts="`
+  - 結果: `58 passed`
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_fill_quality.py -k "volatility_guard" -q --override-ini="addopts="`
+  - 結果: `3 passed, 186 deselected`
+- `any_inventory`:
+  - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460/lib/maker_price.py tests/unit/v460/test_168_low_vol_offset_boost.py tests/unit/v460/test_175_code_review_sweep2.py`
+  - 結果: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
