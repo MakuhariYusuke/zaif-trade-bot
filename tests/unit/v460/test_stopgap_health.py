@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import math
 from datetime import datetime, timezone
+from unittest.mock import patch
 
 import pytest
 
@@ -386,6 +387,19 @@ class TestGenerateHealthReport:
         assert "daily_metrics" in json_str
         assert "stopgap_checks" in json_str
 
+    def test_unknown_regime_count_serialized(self):
+        """集計済みの unknown_regime_count が report に含まれる."""
+        recs = [
+            _make_record(regime="unknown"),
+            _make_record(regime="ranging"),
+        ]
+        report = generate_health_report(recs, window_hours=0)
+        all_all = [
+            d for d in report.daily_metrics
+            if d["regime"] == "all" and d["side"] == "all"
+        ]
+        assert all_all[0]["unknown_regime_count"] == 1
+
 
 # ======================================================================
 # apply_filters (165# 7.5 P0 再現性固定)
@@ -448,6 +462,35 @@ class TestApplyFilters:
         ]
         r, _ = apply_filters(recs, run_id="r1", git_sha="abc")
         assert len(r) == 1
+
+
+# ======================================================================
+# load_fill_records
+# ======================================================================
+
+
+class TestLoadFillRecords:
+    def test_fallback_ignores_non_object_lines(self, tmp_path):
+        path = tmp_path / "fill_records_test.jsonl"
+        path.write_text(
+            "\n".join([
+                "{\"filled\": true, \"timestamp\": 1}",
+                "[]",
+                "42",
+                "\"text\"",
+                "{invalid",
+            ]),
+            encoding="utf-8",
+        )
+
+        with patch(
+            "ztb.io.jsonl.read_jsonl_objects",
+            side_effect=RuntimeError("force fallback"),
+        ):
+            records = load_fill_records(tmp_path)
+
+        assert len(records) == 1
+        assert records[0]["filled"] is True
 
 
 # ======================================================================

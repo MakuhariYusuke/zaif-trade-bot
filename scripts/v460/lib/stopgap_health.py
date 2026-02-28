@@ -16,21 +16,66 @@ import json
 import logging
 import math
 from collections import defaultdict
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import NotRequired, TypedDict, cast
 
 import numpy as np
 
 from scripts.v460.lib.metrics_utils import (
-    compute_base_metrics,
     compute_extended_metrics,
 )
+from ztb.io.json_io import JSONObject
 from ztb.utils.safety import safe_to_finite
 
 logger = logging.getLogger(__name__)
+
+FillRecord = JSONObject
+MetricScalar = bool | int | float | None
+CriteriaScalar = int | float
+StopgapMetrics = dict[str, MetricScalar]
+StopgapCriteria = dict[str, CriteriaScalar]
+
+
+class DailyMetricRow(TypedDict, total=False):
+    day: str
+    regime: str
+    side: str
+    n_total: int
+    n_filled: int
+    fill_rate: float
+    avg_pnl30_bps: NotRequired[float]
+    downside_p10_bps: NotRequired[float]
+    as_rate: float
+    dynamic_kill_count: NotRequired[int]
+    unknown_regime_count: NotRequired[int]
+    velocity_skip_count: NotRequired[int]
+
+
+class ModelUsedMetricsRow(TypedDict):
+    model_used: str
+    n_filled: int
+    as_count: int
+    as_rate: float
+    avg_pnl30_bps: float | None
+    avg_as_loss_bps: float
+
+
+class StopgapCheckRow(TypedDict):
+    stopgap_id: str
+    name: str
+    verdict: str
+    metrics: StopgapMetrics
+    criteria: StopgapCriteria
+    detail: str
+
+
+class AlertRow(TypedDict):
+    severity: str
+    stopgap_id: str
+    message: str
 
 
 # ======================================================================
@@ -78,8 +123,8 @@ class StopgapExitCheck:
     stopgap_id: str     # "2-A", "2-C", "6-A" etc.
     name: str
     verdict: ExitVerdict
-    metrics: dict[str, Any] = field(default_factory=dict)
-    criteria: dict[str, Any] = field(default_factory=dict)
+    metrics: StopgapMetrics = field(default_factory=dict)
+    criteria: StopgapCriteria = field(default_factory=dict)
     detail: str = ""
 
 
@@ -113,10 +158,10 @@ class DailyHealthReport:
     total_records: int
     total_filled: int
     filters_applied: dict[str, str | None] = field(default_factory=dict)
-    daily_metrics: list[dict[str, Any]] = field(default_factory=list)
-    model_used_breakdown: list[dict[str, Any]] = field(default_factory=list)
-    stopgap_checks: list[dict[str, Any]] = field(default_factory=list)
-    alerts: list[dict[str, Any]] = field(default_factory=list)
+    daily_metrics: list[DailyMetricRow] = field(default_factory=list)
+    model_used_breakdown: list[ModelUsedMetricsRow] = field(default_factory=list)
+    stopgap_checks: list[StopgapCheckRow] = field(default_factory=list)
+    alerts: list[AlertRow] = field(default_factory=list)
 
 
 # ======================================================================
@@ -124,35 +169,48 @@ class DailyHealthReport:
 # ======================================================================
 
 
-def load_fill_records(results_dir: Path) -> list[dict[str, Any]]:
+def _as_fill_record(value: object) -> FillRecord | None:
+    """JSON decoded value から object 行だけを許可する."""
+    if isinstance(value, dict):
+        return cast(FillRecord, value)
+    return None
+
+
+def load_fill_records(results_dir: Path) -> list[FillRecord]:
     """全 fill_records_*.jsonl をロード."""
     from ztb.io.jsonl import read_jsonl_objects
 
-    all_records: list[dict[str, Any]] = []
+    all_records: list[FillRecord] = []
     for path in sorted(results_dir.glob("fill_records_*.jsonl")):
         try:
             records = read_jsonl_objects(path)
-            all_records.extend(records)
+            for record in records:
+                coerced = _as_fill_record(record)
+                if coerced is not None:
+                    all_records.append(coerced)
         except Exception:
             with open(path, encoding="utf-8-sig") as f:
                 for line in f:
                     line = line.strip()
                     if line:
                         try:
-                            all_records.append(json.loads(line))
+                            decoded = json.loads(line)
+                            coerced = _as_fill_record(decoded)
+                            if coerced is not None:
+                                all_records.append(coerced)
                         except json.JSONDecodeError:
                             continue
     return all_records
 
 
 def apply_filters(
-    records: list[dict[str, Any]],
+    records: list[FillRecord],
     *,
     run_id: str | None = None,
     git_sha: str | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
-) -> tuple[list[dict[str, Any]], dict[str, str | None]]:
+) -> tuple[list[FillRecord], dict[str, str | None]]:
     """162# P0 再現性固定: run_id/git_sha/date でフィルタ.
 
     analyze_fill_logs.apply_filters と同一ロジック (DRY: 共通化候補).
@@ -188,9 +246,9 @@ def apply_filters(
 
 
 def _filter_window(
-    records: list[dict[str, Any]],
+    records: list[FillRecord],
     window_hours: int,
-) -> list[dict[str, Any]]:
+) -> list[FillRecord]:
     """最新 window_hours のレコードのみ抽出."""
     if window_hours <= 0:
         return records
@@ -199,7 +257,7 @@ def _filter_window(
     return [r for r in records if (safe_to_finite(r.get("timestamp")) or 0) >= cutoff]
 
 
-def _get_day(r: dict[str, Any]) -> str:
+def _get_day(r: FillRecord) -> str:
     """YYYYMMDD を抽出."""
     ts = safe_to_finite(r.get("timestamp"))
     if ts is None:
@@ -210,20 +268,29 @@ def _get_day(r: dict[str, Any]) -> str:
         return "unknown"
 
 
+def _collect_finite_values(
+    records: list[FillRecord],
+    key: str,
+) -> list[float]:
+    """指定キーの有限値だけを抽出する."""
+    values = [safe_to_finite(r.get(key)) for r in records]
+    return [v for v in values if v is not None]
+
+
 # ======================================================================
 # Daily Metrics Computation
 # ======================================================================
 
 
 def compute_daily_metrics(
-    records: list[dict[str, Any]],
+    records: list[FillRecord],
 ) -> list[DailyMetrics]:
     """日次 x regime x side の 3指標を算出.
 
     162# P1 受入基準のコア実装。
     """
     # Group by (day, regime, side)
-    groups: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
+    groups: dict[tuple[str, str, str], list[FillRecord]] = defaultdict(list)
 
     for r in records:
         day = _get_day(r)
@@ -280,7 +347,7 @@ def compute_daily_metrics(
 
 
 def _check_2a_trending_sell_skip(
-    records: list[dict[str, Any]],
+    records: list[FillRecord],
 ) -> StopgapExitCheck:
     """2-A: trending_sell_skip 退出判定.
 
@@ -309,8 +376,7 @@ def _check_2a_trending_sell_skip(
     as_count = sum(1 for r in trending_sell if r.get("adverse_selected"))
     as_rate = as_count / len(trending_sell) if trending_sell else 0.0
 
-    pnl_vals = [safe_to_finite(r.get("post_fill_30s_pnl")) for r in all_filled]
-    pnl_clean = [v for v in pnl_vals if v is not None]
+    pnl_clean = _collect_finite_values(all_filled, "post_fill_30s_pnl")
     total_pnl = sum(pnl_clean) if pnl_clean else 0.0
 
     can_exit = as_rate < 0.35 and total_pnl > 0
@@ -341,7 +407,7 @@ def _check_2a_trending_sell_skip(
 
 
 def _check_2c_sell_dynamic_kill(
-    records: list[dict[str, Any]],
+    records: list[FillRecord],
     window_days: float = 7.0,
 ) -> StopgapExitCheck:
     """2-C: sell_dynamic_kill 退出判定.
@@ -381,7 +447,7 @@ def _check_2c_sell_dynamic_kill(
 
 
 def _check_6a_unknown_regime_skip(
-    records: list[dict[str, Any]],
+    records: list[FillRecord],
     window_days: float = 7.0,
 ) -> StopgapExitCheck:
     """6-A: unknown_regime skip 退出判定.
@@ -432,7 +498,7 @@ def _check_6a_unknown_regime_skip(
 
 
 def _check_2d_sell_guard(
-    records: list[dict[str, Any]],
+    records: list[FillRecord],
 ) -> StopgapExitCheck:
     """2-D: sell_guard 退出判定.
 
@@ -454,8 +520,7 @@ def _check_2d_sell_guard(
         )
 
     cancel_rate = len(sell_cancelled) / len(sell_records) if sell_records else 0.0
-    pnl_vals = [safe_to_finite(r.get("post_fill_30s_pnl")) for r in sell_filled]
-    pnl_clean = [v for v in pnl_vals if v is not None]
+    pnl_clean = _collect_finite_values(sell_filled, "post_fill_30s_pnl")
     avg_pnl = float(np.mean(pnl_clean)) if pnl_clean else float("nan")
 
     can_exit = cancel_rate < 0.10 and (not math.isnan(avg_pnl) and avg_pnl > 0)
@@ -485,7 +550,7 @@ def _check_2d_sell_guard(
 
 
 def evaluate_stopgap_exit(
-    records: list[dict[str, Any]],
+    records: list[FillRecord],
     window_hours: int = 168,
 ) -> list[StopgapExitCheck]:
     """163# Stopgap 退出基準表の自動評価.
@@ -517,11 +582,11 @@ def evaluate_stopgap_exit(
 
 
 def compute_model_used_metrics(
-    records: list[dict[str, Any]],
+    records: list[FillRecord],
 ) -> list[ModelUsedMetrics]:
     """model_used 経路別の AS率PnL を算出 (165# 7.3)."""
     filled = [r for r in records if r.get("filled")]
-    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    groups: dict[str, list[FillRecord]] = defaultdict(list)
     for r in filled:
         model = str(r.get("skip_gate_model_used") or "none")
         groups[model].append(r)
@@ -530,11 +595,9 @@ def compute_model_used_metrics(
     for model, recs in sorted(groups.items()):
         as_recs = [r for r in recs if r.get("adverse_selected")]
         as_rate = len(as_recs) / len(recs) if recs else 0.0
-        pnl_vals = [safe_to_finite(r.get("post_fill_30s_pnl")) for r in recs]
-        pnl_clean = [v for v in pnl_vals if v is not None]
+        pnl_clean = _collect_finite_values(recs, "post_fill_30s_pnl")
         avg_pnl = float(np.mean(pnl_clean)) if pnl_clean else float("nan")
-        as_pnls = [safe_to_finite(r.get("post_fill_30s_pnl")) for r in as_recs]
-        as_pnl_clean = [v for v in as_pnls if v is not None]
+        as_pnl_clean = _collect_finite_values(as_recs, "post_fill_30s_pnl")
         avg_as = float(np.mean(as_pnl_clean)) if as_pnl_clean else 0.0
 
         results.append(ModelUsedMetrics(
@@ -579,8 +642,67 @@ def generate_alerts(
     return alerts
 
 
+def _serialize_daily_metric(m: DailyMetrics) -> DailyMetricRow:
+    """DailyMetrics を JSON 出力向けに整形."""
+    row: DailyMetricRow = {
+        "day": m.day,
+        "regime": m.regime,
+        "side": m.side,
+        "n_total": m.n_total,
+        "n_filled": m.n_filled,
+        "fill_rate": round(m.fill_rate, 4),
+        "as_rate": round(m.as_rate, 4),
+    }
+    if not math.isnan(m.avg_pnl30_bps):
+        row["avg_pnl30_bps"] = round(m.avg_pnl30_bps, 4)
+    if not math.isnan(m.downside_p10_bps):
+        row["downside_p10_bps"] = round(m.downside_p10_bps, 4)
+    if m.dynamic_kill_count:
+        row["dynamic_kill_count"] = m.dynamic_kill_count
+    if m.unknown_regime_count:
+        row["unknown_regime_count"] = m.unknown_regime_count
+    if m.velocity_skip_count:
+        row["velocity_skip_count"] = m.velocity_skip_count
+    return row
+
+
+def _serialize_stopgap_check(c: StopgapExitCheck) -> StopgapCheckRow:
+    """StopgapExitCheck を JSON 出力向けに整形."""
+    return {
+        "stopgap_id": c.stopgap_id,
+        "name": c.name,
+        "verdict": c.verdict.value,
+        "metrics": c.metrics,
+        "criteria": c.criteria,
+        "detail": c.detail,
+    }
+
+
+def _serialize_model_used_metric(m: ModelUsedMetrics) -> ModelUsedMetricsRow:
+    """ModelUsedMetrics を JSON 出力向けに整形."""
+    return {
+        "model_used": m.model_used,
+        "n_filled": m.n_filled,
+        "as_count": m.as_count,
+        "as_rate": m.as_rate,
+        "avg_pnl30_bps": (
+            None if math.isnan(m.avg_pnl30_bps) else m.avg_pnl30_bps
+        ),
+        "avg_as_loss_bps": m.avg_as_loss_bps,
+    }
+
+
+def _serialize_alert(a: AlertItem) -> AlertRow:
+    """AlertItem を JSON 出力向けに整形."""
+    return {
+        "severity": a.severity,
+        "stopgap_id": a.stopgap_id,
+        "message": a.message,
+    }
+
+
 def generate_health_report(
-    records: list[dict[str, Any]],
+    records: list[FillRecord],
     *,
     window_hours: int = 168,
     daily_limit: int = 7,
@@ -597,27 +719,7 @@ def generate_health_report(
     daily = compute_daily_metrics(windowed)
     checks = evaluate_stopgap_exit(records, window_hours=window_hours)
 
-    # Serialize
-    daily_dicts: list[dict[str, Any]] = []
-    for m in daily:
-        d: dict[str, Any] = {
-            "day": m.day,
-            "regime": m.regime,
-            "side": m.side,
-            "n_total": m.n_total,
-            "n_filled": m.n_filled,
-            "fill_rate": round(m.fill_rate, 4),
-        }
-        if not math.isnan(m.avg_pnl30_bps):
-            d["avg_pnl30_bps"] = round(m.avg_pnl30_bps, 4)
-        if not math.isnan(m.downside_p10_bps):
-            d["downside_p10_bps"] = round(m.downside_p10_bps, 4)
-        d["as_rate"] = round(m.as_rate, 4)
-        if m.dynamic_kill_count:
-            d["dynamic_kill_count"] = m.dynamic_kill_count
-        if m.velocity_skip_count:
-            d["velocity_skip_count"] = m.velocity_skip_count
-        daily_dicts.append(d)
+    daily_dicts = [_serialize_daily_metric(m) for m in daily]
 
     # 日数制限: 最新 daily_limit 日分のみ
     days_seen = sorted({m.day for m in daily if m.day != "unknown"})
@@ -628,38 +730,15 @@ def generate_health_report(
     n_total = len(windowed)
     n_filled = sum(1 for r in windowed if r.get("filled"))
 
-    check_dicts = [
-        {
-            "stopgap_id": c.stopgap_id,
-            "name": c.name,
-            "verdict": c.verdict.value,
-            "metrics": c.metrics,
-            "criteria": c.criteria,
-            "detail": c.detail,
-        }
-        for c in checks
-    ]
+    check_dicts = [_serialize_stopgap_check(c) for c in checks]
 
     # model_used breakdown
     model_metrics = compute_model_used_metrics(windowed)
-    model_dicts = [
-        {
-            "model_used": m.model_used,
-            "n_filled": m.n_filled,
-            "as_count": m.as_count,
-            "as_rate": m.as_rate,
-            "avg_pnl30_bps": m.avg_pnl30_bps if not math.isnan(m.avg_pnl30_bps) else None,
-            "avg_as_loss_bps": m.avg_as_loss_bps,
-        }
-        for m in model_metrics
-    ]
+    model_dicts = [_serialize_model_used_metric(m) for m in model_metrics]
 
     # Alerts
     alert_items = generate_alerts(checks)
-    alert_dicts = [
-        {"severity": a.severity, "stopgap_id": a.stopgap_id, "message": a.message}
-        for a in alert_items
-    ]
+    alert_dicts = [_serialize_alert(a) for a in alert_items]
 
     return DailyHealthReport(
         generated_at=datetime.now(tz=timezone.utc).isoformat(),

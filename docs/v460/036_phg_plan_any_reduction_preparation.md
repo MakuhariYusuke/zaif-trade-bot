@@ -1808,6 +1808,31 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `balance_forced_apply_trending_offset=False` のときだけ bypass になることを追加検証。
 - `temp_yaml` fixture の戻り値を `Iterator[Path]` にして `Any` を削減。
 
+## Step90: `stopgap_health` の型固定 + JSONL fallback 防御強化 (2026-02-28)
+
+### 1) 対象
+
+- `scripts/v460/lib/stopgap_health.py`
+- `tests/unit/v460/test_stopgap_health.py`
+
+### 2) Any削減 / 不具合封じ / 重複削減
+
+- `stopgap_health` のレコード入力型を `JSONObject` ベースに固定し、
+  `StopgapMetrics` / `StopgapCriteria` / 各 report row を `TypedDict` 化。
+- `DailyHealthReport` の list payload を `TypedDict` 契約へ寄せ、
+  `Any` 注釈を削減。
+- JSONL fallback 読み込み時に object 以外 (`[]`, 数値, 文字列) を無視し、
+  後続の `.get()` で壊れる不正行を遮断。
+- `_collect_finite_values()` を追加し、
+  PnL 抽出処理の重複を `2-A` / `2-D` / model_used 集計で共通化。
+- `unknown_regime_count` を report serialize 時にも出力し、
+  既に集計している指標が落ちていた不整合を解消。
+
+### 3) テスト強化
+
+- fallback 読み込みで非 object 行を無視することを追加検証。
+- `unknown_regime_count` が report に含まれることを追加検証。
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
