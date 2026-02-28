@@ -1623,6 +1623,55 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460/analysis/hindsight_filter.py`
   - 結果: `any_type_debt_tokens=0`
 
+## Step86: v460 soft-offset 系の重複削減 + misconfig/ゼロ除算防止 (2026-02-28)
+
+### 1) 対象
+
+- `scripts/v460/lib/skip_gate_evaluator.py`
+- `scripts/v460/lib/fill_cycle_executor.py`
+- `tests/unit/v460/test_196_velocity_proportional_trending_soft.py`
+
+### 2) 不具合封じ
+
+- `SkipGateEvaluator._compute_velocity_offset_multiplier()` を追加し、
+  velocity proportional 計算を一元化。
+- `threshold_bps=0` のときは proportional 計算を使わず
+  固定倍率へフォールバックし、ゼロ除算を防止。
+- `base/max multiplier < 1.0` の誤設定時も
+  1.0 未満に落とさず clamp し、soft mode が攻撃的価格になる事故を防止。
+
+### 3) 重複削減 / 保守性改善
+
+- `FillCycleExecutorMixin._apply_offset_multiplier()` を追加し、
+  193/195/196 系の offset multiplier 適用パターンを共通化。
+- `velocity_offset` と `trending_offset` の
+  価格更新ロジック重複を削減。
+- 追加で `ev_offset` も同ヘルパへ寄せ、
+  方向反転（aggressive/conservative）の分岐を 1 箇所に統合。
+- 1.0 以下の倍率は no-op 扱いに統一し、
+  「soft mode なのに offset を狭める」逆方向挙動を抑止。
+
+### 4) テスト強化
+
+- `test_196_velocity_proportional_trending_soft.py` を
+  source 文字列依存から一部脱却し、実際の helper 挙動を直接検証。
+- 追加観点:
+  - proportional boost の実計算
+  - `threshold=0` fallback
+  - sub-1 multiplier clamp
+  - executor helper の no-op 保証
+
+### 5) 検証
+
+- `py_compile`:
+  - `.venv/Scripts/python.exe -m py_compile scripts/v460/lib/skip_gate_evaluator.py scripts/v460/lib/fill_cycle_executor.py tests/unit/v460/test_196_velocity_proportional_trending_soft.py`
+- テスト:
+  - `.venv/Scripts/python.exe -m pytest tests/unit/v460/test_193_ev_offset.py tests/unit/v460/test_176_trending_offset_asymmetry.py tests/unit/v460/test_196_velocity_proportional_trending_soft.py tests/unit/v460/test_113_resilience.py -q --override-ini="addopts="`
+  - 結果: `124 passed`
+- `any_inventory`:
+  - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460/lib/skip_gate_evaluator.py scripts/v460/lib/fill_cycle_executor.py tests/unit/v460/test_196_velocity_proportional_trending_soft.py`
+  - 結果: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

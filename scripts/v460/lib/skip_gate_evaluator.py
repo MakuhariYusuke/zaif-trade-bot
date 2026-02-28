@@ -174,6 +174,34 @@ class SkipGateEvaluator:
             path = self._project_root / path
         return path
 
+    @staticmethod
+    def _compute_velocity_offset_multiplier(
+        *,
+        observed_velocity_bps: float,
+        threshold_bps: float,
+        base_multiplier: float,
+        max_multiplier: float,
+        proportional: bool,
+    ) -> tuple[float, bool]:
+        """velocity soft mode の offset 乗数を安全に解決する.
+
+        - 0 除算回避: threshold=0 の場合は proportional を使わず固定倍率へフォールバック
+        - 保守性維持: 1.0 未満の倍率は無効化し、少なくとも現状維持 (1.0) に丸める
+        - 上限暴走防止: max_multiplier で頭打ち
+        """
+        capped_max = max(1.0, float(max_multiplier))
+        bounded_base = min(max(1.0, float(base_multiplier)), capped_max)
+        if not proportional:
+            return bounded_base, False
+
+        threshold_abs = abs(float(threshold_bps))
+        if threshold_abs <= 0.0:
+            return bounded_base, False
+
+        excess_ratio = abs(float(observed_velocity_bps)) / threshold_abs
+        boost = 1.0 + (bounded_base - 1.0) * excess_ratio
+        return min(boost, capped_max), True
+
     def _load_gate_from_path(
         self,
         skip_gate_cls: _SkipGateClassLike,
@@ -882,20 +910,20 @@ class SkipGateEvaluator:
                 if self._config.velocity_skip_as_offset_enabled:
                     # 195# ソフトモード: skip せず offset boost 倍率を記録
                     # 196# 比例モード: 閾値超過量に比例した段階的 boost
-                    if self._config.velocity_offset_proportional:
-                        _excess_ratio = abs(_pv60) / abs(_vel_th)  # >= 1.0
-                        _base = self._config.velocity_offset_boost_factor
-                        _boost = 1.0 + (_base - 1.0) * _excess_ratio
-                        _boost = min(_boost, self._config.velocity_offset_max_mult)
-                    else:
-                        _boost = self._config.velocity_offset_boost_factor
+                    _boost, _is_proportional = self._compute_velocity_offset_multiplier(
+                        observed_velocity_bps=_pv60,
+                        threshold_bps=_vel_th,
+                        base_multiplier=self._config.velocity_offset_boost_factor,
+                        max_multiplier=self._config.velocity_offset_max_mult,
+                        proportional=self._config.velocity_offset_proportional,
+                    )
                     result.velocity_offset_mult = _boost
                     result.price_velocity_60s = _pv60
                     logger.info(
                         f"[skip_gate] 195# velocity→offset: {_vel_label} "
                         f"velocity={_pv60:.2f}bps (th={_vel_th}) "
                         f"→ offset_mult={_boost:.2f}"
-                        f"{' (proportional)' if self._config.velocity_offset_proportional else ''}"
+                        f"{' (proportional)' if _is_proportional else ''}"
                     )
                     # hard skip しない → ML 判定に進む
                 else:

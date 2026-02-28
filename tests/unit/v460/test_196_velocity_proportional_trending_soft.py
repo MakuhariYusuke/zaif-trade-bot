@@ -152,20 +152,47 @@ class TestVelocityProportionalCalculation:
 class TestVelocityProportionalInSkipGate:
     """196# skip_gate_evaluator 内での比例 boost 適用."""
 
-    def test_proportional_in_evaluate_source(self):
-        """skip_gate_evaluator.evaluate() に velocity_offset_proportional 分岐が存在."""
+    def test_proportional_helper_applies_ratio(self):
+        """比例モード時は閾値超過量に応じて boost される."""
         from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
-        source = inspect.getsource(SkipGateEvaluator.evaluate)
-        assert "velocity_offset_proportional" in source
-        assert "excess_ratio" in source
+        boost, proportional = SkipGateEvaluator._compute_velocity_offset_multiplier(
+            observed_velocity_bps=9.0,
+            threshold_bps=6.0,
+            base_multiplier=2.0,
+            max_multiplier=4.0,
+            proportional=True,
+        )
+        assert proportional is True
+        assert boost == pytest.approx(2.5, abs=0.01)
 
-    def test_proportional_log_message(self):
-        """比例モード時のログに '(proportional)' が含まれること."""
+    def test_zero_threshold_falls_back_to_fixed(self):
+        """threshold=0 でも 0除算せず固定 boost にフォールバック."""
         from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
-        source = inspect.getsource(SkipGateEvaluator.evaluate)
-        assert "proportional" in source
+        boost, proportional = SkipGateEvaluator._compute_velocity_offset_multiplier(
+            observed_velocity_bps=9.0,
+            threshold_bps=0.0,
+            base_multiplier=2.0,
+            max_multiplier=4.0,
+            proportional=True,
+        )
+        assert proportional is False
+        assert boost == 2.0
+
+    def test_boost_is_clamped_to_safe_range(self):
+        """1.0 未満の設定は攻撃的にならないよう 1.0 に丸める."""
+        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+
+        boost, proportional = SkipGateEvaluator._compute_velocity_offset_multiplier(
+            observed_velocity_bps=9.0,
+            threshold_bps=6.0,
+            base_multiplier=0.5,
+            max_multiplier=0.8,
+            proportional=True,
+        )
+        assert proportional is True
+        assert boost == 1.0
 
 
 # =================================================================
@@ -376,6 +403,39 @@ class TestTrendingOffsetInExecutor:
         source = inspect.getsource(FillCycleExecutorMixin.run_single_cycle)
         assert "196# trend_offset" in source
         assert "trending_offset_mult" in source
+
+    def test_offset_helper_ignores_non_protective_multiplier(self):
+        """1.0 以下の倍率は適用せず、価格を攻撃的にしない."""
+        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
+
+        price, ratio, applied_mult, delta = FillCycleExecutorMixin._apply_offset_multiplier(
+            side="sell",
+            order_price=1000.0,
+            spread_at_order=100.0,
+            effective_offset_ratio=0.2,
+            offset_mult=0.5,
+        )
+        assert price == 1000.0
+        assert ratio == 0.2
+        assert applied_mult is None
+        assert delta is None
+
+    def test_offset_helper_supports_aggressive_mode(self):
+        """193# EV モードでは multiplier>1.0 で mid に近づく."""
+        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
+
+        price, ratio, applied_mult, delta = FillCycleExecutorMixin._apply_offset_multiplier(
+            side="buy",
+            order_price=1000.0,
+            spread_at_order=100.0,
+            effective_offset_ratio=0.2,
+            offset_mult=1.5,
+            aggressive_when_multiplier_gt_one=True,
+        )
+        assert applied_mult == 1.5
+        assert delta == pytest.approx(10.0, abs=0.01)
+        assert price == 1010
+        assert ratio == pytest.approx(0.3, abs=0.0001)
 
 
 class TestGateCheckResultOffsetMult:

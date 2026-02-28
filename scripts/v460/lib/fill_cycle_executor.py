@@ -174,6 +174,51 @@ class FillCycleExecutorMixin:
             return pnl30  # 120s 未計測時は 30s 単独
         return w30 * pnl30 + w120 * pnl120
 
+    @staticmethod
+    def _apply_offset_multiplier(
+        *,
+        side: str,
+        order_price: float,
+        spread_at_order: float | None,
+        effective_offset_ratio: float,
+        offset_mult: float | None,
+        aggressive_when_multiplier_gt_one: bool = False,
+    ) -> tuple[float, float, float | None, float | None]:
+        """offset 倍率を安全に適用し、更新後の価格・倍率を返す.
+
+        `aggressive_when_multiplier_gt_one=False`:
+          multiplier>1.0 で mid から遠ざける (195/196 の保守的発注)
+        `aggressive_when_multiplier_gt_one=True`:
+          multiplier>1.0 で mid に近づける (193 の EV 前向き調整)
+        """
+        if (
+            offset_mult is None
+            or offset_mult <= 0.0
+            or spread_at_order is None
+            or spread_at_order <= 0
+            or order_price <= 0
+        ):
+            return order_price, effective_offset_ratio, None, None
+        if offset_mult == 1.0:
+            return order_price, effective_offset_ratio, None, None
+        if not aggressive_when_multiplier_gt_one and offset_mult < 1.0:
+            return order_price, effective_offset_ratio, None, None
+
+        old_offset = spread_at_order * effective_offset_ratio
+        new_offset = old_offset * offset_mult
+        delta = new_offset - old_offset
+        if aggressive_when_multiplier_gt_one:
+            if side == "buy":
+                order_price = round(order_price + delta)
+            else:
+                order_price = round(order_price - delta)
+        else:
+            if side == "buy":
+                order_price = round(order_price - delta)
+            else:
+                order_price = round(order_price + delta)
+        return order_price, effective_offset_ratio * offset_mult, offset_mult, delta
+
     # ------------------------------------------------------------------
     # 188# FillRecord 構築 (run_single_cycle からの抽出)
     # ------------------------------------------------------------------
@@ -571,48 +616,33 @@ class FillCycleExecutorMixin:
             _max_m = self.config.skip_gate_ev_offset_max_mult
             _raw_mult = 1.0 + _sens * _ev_s
             _ev_mult = max(_min_m, min(_max_m, _raw_mult))
-            if _ev_mult != 1.0:
-                # offset の変化分を価格に反映
-                _old_offset = spread_at_order * effective_offset_ratio
-                _new_offset = _old_offset * _ev_mult
-                _delta = _new_offset - _old_offset
-                if side == "buy":
-                    # buy: offset 増 → price 上昇 (mid に近づく → より積極的)
-                    # buy: offset 減 → price 下降 (mid から離れる → より保守的)
-                    order_price = round(order_price + _delta)
-                else:
-                    # sell: offset 増 → price 下降 (mid に近づく → より積極的)
-                    # sell: offset 減 → price 上昇 (mid から離れる → より保守的)
-                    order_price = round(order_price - _delta)
-                effective_offset_ratio *= _ev_mult
+            order_price, effective_offset_ratio, _applied_mult, _delta = self._apply_offset_multiplier(
+                side=side,
+                order_price=order_price,
+                spread_at_order=spread_at_order,
+                effective_offset_ratio=effective_offset_ratio,
+                offset_mult=_ev_mult,
+                aggressive_when_multiplier_gt_one=True,
+            )
+            if _applied_mult is not None and _delta is not None:
                 _ev_offset_applied = True
                 logger.info(
                     f"[193# ev_offset] {side}: ev_score={_ev_s:.3f} "
-                    f"→ offset_mult={_ev_mult:.3f} "
+                    f"→ offset_mult={_applied_mult:.3f} "
                     f"(delta={_delta:+.0f}JPY, price={order_price:.0f})"
                 )
 
         # 195#: velocity_skip ソフトモード — offset boost 適用
         # velocity が閾値を超えた場合、hard skip ではなく offset を拡大して保守的に発注
         _vel_offset_applied = False
-        if (
-            sg.velocity_offset_mult is not None
-            and sg.velocity_offset_mult != 1.0
-            and spread_at_order is not None
-            and spread_at_order > 0
-            and order_price > 0
-        ):
-            _vel_mult = sg.velocity_offset_mult
-            _old_offset = spread_at_order * effective_offset_ratio
-            _new_offset = _old_offset * _vel_mult
-            _delta = _new_offset - _old_offset
-            if side == "buy":
-                # buy: offset 増 → price 下降 (mid から離れる → より保守的)
-                order_price = round(order_price - _delta)
-            else:
-                # sell: offset 増 → price 上昇 (mid から離れる → より保守的)
-                order_price = round(order_price + _delta)
-            effective_offset_ratio *= _vel_mult
+        order_price, effective_offset_ratio, _vel_mult, _delta = self._apply_offset_multiplier(
+            side=side,
+            order_price=order_price,
+            spread_at_order=spread_at_order,
+            effective_offset_ratio=effective_offset_ratio,
+            offset_mult=sg.velocity_offset_mult,
+        )
+        if _vel_mult is not None and _delta is not None:
             _vel_offset_applied = True
             logger.info(
                 f"[195# vel_offset] {side}: velocity={sg.price_velocity_60s:.2f}bps "
@@ -622,21 +652,14 @@ class FillCycleExecutorMixin:
 
         # 196# trending_sell ソフトモード — offset boost 適用
         # trending regime での sell を skip せず、offset を拡大して保守的に発注
-        if (
-            trending_offset_mult is not None
-            and trending_offset_mult != 1.0
-            and spread_at_order is not None
-            and spread_at_order > 0
-            and order_price > 0
-            and side == "sell"
-        ):
-            _trend_mult = trending_offset_mult
-            _old_offset = spread_at_order * effective_offset_ratio
-            _new_offset = _old_offset * _trend_mult
-            _delta = _new_offset - _old_offset
-            # sell: offset 増 → price 上昇 (mid から離れる → より保守的)
-            order_price = round(order_price + _delta)
-            effective_offset_ratio *= _trend_mult
+        order_price, effective_offset_ratio, _trend_mult, _delta = self._apply_offset_multiplier(
+            side=side,
+            order_price=order_price,
+            spread_at_order=spread_at_order,
+            effective_offset_ratio=effective_offset_ratio,
+            offset_mult=trending_offset_mult if side == "sell" else None,
+        )
+        if _trend_mult is not None and _delta is not None:
             logger.info(
                 f"[196# trend_offset] sell: trending regime "
                 f"→ offset_mult={_trend_mult:.1f} "
