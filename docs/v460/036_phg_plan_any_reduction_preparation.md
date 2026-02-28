@@ -2404,6 +2404,28 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/lib/fill_record_helpers.py`: `any_type_debt_tokens=0`
   - `scripts/v460/lib/skip_gate_evaluator.py`: `any_type_debt_tokens=0`
 
+### Step106: loop 側 skip record 呼び出しを wrapper 化
+
+1. 対応概要
+- `scripts/v460/lib/fill_loop_orchestrator.py`
+  - `_make_loop_skip_record()` を追加し、`run_continuous` 内の loop-level skip record を一本化した。
+  - `regime=self._current_regime_value()` の重複指定を除去した。
+  - `preflight_pause` は record timestamp と `cycle_id` の時刻成分に同じ値を使うよう揃えた。
+
+2. 目的
+- ループ側の skip record が常に同じ契約で現在レジームを保持するようにし、呼び出し側の重複と漏れを減らす。
+- `preflight_pause` の記録時刻と ID の不一致余地をなくし、監査しやすくする。
+
+3. 検証
+- `py_compile`
+  - `scripts/v460/lib/fill_loop_orchestrator.py`
+- `pytest`
+  - `tests/unit/v460/test_143_regime_utilization.py`
+  - `tests/unit/v460/test_145_structural_fixes.py`
+  - 結果: `114 passed`
+- `any_inventory`
+  - `scripts/v460/lib/fill_loop_orchestrator.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

@@ -111,6 +111,38 @@ class FillLoopOrchestratorMixin:
         base = self._cycle_strategy.effective_interval(regime)
         await asyncio.sleep(base * multiplier)
 
+    def _make_loop_skip_record(
+        self,
+        *,
+        timestamp: float | None = None,
+        side: str,
+        cancel_reason: str,
+        cycle_id: str | None = None,
+        order_quantity: float | None = None,
+        order_price: float = 0.0,
+        spread_at_order: float | None = None,
+        spread_offset_ratio: float | None = None,
+        balance_forced_switch: bool = False,
+        **extra: object,
+    ) -> FillRecord:
+        """run_continuous 系 skip record の共通 wrapper.
+
+        ループ側の skip は常に現在レジームを記録するため、呼び出し側の重複指定を除く。
+        """
+        return self._make_skip_record(
+            timestamp=timestamp,
+            side=side,
+            cancel_reason=cancel_reason,
+            cycle_id=cycle_id,
+            order_quantity=order_quantity,
+            order_price=order_price,
+            spread_at_order=spread_at_order,
+            spread_offset_ratio=spread_offset_ratio,
+            regime=self._current_regime_value(),
+            balance_forced_switch=balance_forced_switch,
+            **extra,
+        )
+
     # ------------------------------------------------------------------
     # 181# 停止条件モニター — C/D/Chase 安全弁
     # ------------------------------------------------------------------
@@ -390,11 +422,10 @@ class FillLoopOrchestratorMixin:
             # 168# §4.1 #3: 日次ドローダウンガード — halt 中はスキップ
             if self._daily_drawdown_guard.is_halted():
                 # 日次 PnL 超過 → UTC 日替わりまでスキップ
-                batch.append(self._make_skip_record(
+                batch.append(self._make_loop_skip_record(
                     side="none",
                     cancel_reason=CR.DAILY_DRAWDOWN_HALT,
                     order_quantity=0.0,
-                    regime=self._current_regime_value(),
                 ))
                 total_count += 1
                 batch = self._batch_persistence.maybe_flush(batch, "daily_drawdown_halt")
@@ -421,11 +452,10 @@ class FillLoopOrchestratorMixin:
                     # 140# §8.1-#2: skip record を生成し可観測性確保 (132# F4)
                     if not self._time_filter.in_filter:
                         self._time_filter.on_enter()
-                        batch.append(self._make_skip_record(
+                        batch.append(self._make_loop_skip_record(
                             side=next_side,
                             cancel_reason=CR.TIME_FILTER_BOTH_SIDES,
                             order_quantity=0.0,
-                            regime=self._current_regime_value(),  # 160#
                         ))
                     else:
                         # 079# heartbeat: 長時間抑制中にプロセス生存を定期ログ
@@ -483,11 +513,10 @@ class FillLoopOrchestratorMixin:
                             if not self._time_filter.in_filter:
                                 self._time_filter.on_enter()
                                 # 140# §8.1-#2: 086 deadlock 進入時も record 生成
-                                batch.append(self._make_skip_record(
+                                batch.append(self._make_loop_skip_record(
                                     side=next_side,
                                     cancel_reason=CR.TIME_FILTER_086_DEADLOCK,
                                     order_quantity=0.0,
-                                    regime=self._current_regime_value(),  # 160#
                                 ))
                             # 107# R1: 重複 flush → _maybe_flush_batch 統合
                             batch = self._batch_persistence.maybe_flush(batch, "alt_side==last_side wait")
@@ -556,11 +585,10 @@ class FillLoopOrchestratorMixin:
 
                     # 140# §8.1-#2: preflight skip record 生成 (132# F4)
                     # 145# §9-#5: _make_skip_record DRY 化
-                    batch.append(self._make_skip_record(
+                    batch.append(self._make_loop_skip_record(
                         side=next_side,
                         cancel_reason=CR.PREFLIGHT_INSUFFICIENT,
                         order_quantity=self._current_lot,
-                        regime=self._current_regime_value(),  # 160#
                     ))
                     # 107# R1: 重複 flush → _maybe_flush_batch 統合
                     batch = self._batch_persistence.maybe_flush(batch, "preflight skip")
@@ -608,12 +636,16 @@ class FillLoopOrchestratorMixin:
                         # 140# §8.1-#1: batch.append 導線に統一 (undefined _append_fill_record 修正)
                         # 143# 140§7 #2: cycle_id に timestamp 付与で一意化
                         # 145# §9-#5: _make_skip_record DRY 化
-                        batch.append(self._make_skip_record(
+                        _pause_record_ts = time.time()
+                        batch.append(self._make_loop_skip_record(
+                            timestamp=_pause_record_ts,
                             side="none",
                             cancel_reason=CR.PREFLIGHT_PAUSE,
-                            cycle_id=f"preflight_pause_{self._preflight_pause_count}_{int(time.time())}",
+                            cycle_id=(
+                                f"preflight_pause_{self._preflight_pause_count}_"
+                                f"{int(_pause_record_ts)}"
+                            ),
                             order_quantity=0.0,
-                            regime=self._current_regime_value(),  # 160#
                         ))
                         batch = self._batch_persistence.maybe_flush(batch, "preflight_pause")
                         self._preflight_skip_count = 0
@@ -694,13 +726,12 @@ class FillLoopOrchestratorMixin:
                         f"consecutive={self._balance_forced_skip_count}"
                     )
                     # 145# §9-#5: _make_skip_record DRY 化
-                    _skip_record = self._make_skip_record(
+                    _skip_record = self._make_loop_skip_record(
                         side=next_side,
                         cancel_reason=CR.BALANCE_FORCED_SKIP,
                         order_quantity=self._current_lot,
                         balance_forced_switch=True,
                         balance_forced_consecutive=self._balance_forced_skip_count,
-                        regime=self._current_regime_value(),  # 160#
                     )
                     batch.append(_skip_record)
                     total_count += 1
@@ -766,11 +797,10 @@ class FillLoopOrchestratorMixin:
                         f"[{_gate_result.audit_summary}]"
                     )
 
-                _skip_record = self._make_skip_record(
+                _skip_record = self._make_loop_skip_record(
                     side=next_side,
                     cancel_reason=_gate_result.cancel_reason,
                     order_quantity=self._current_lot,
-                    regime=self._current_regime_value(),
                 )
                 batch.append(_skip_record)
                 total_count += 1
