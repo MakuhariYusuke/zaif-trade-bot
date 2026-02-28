@@ -17,6 +17,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
+from scripts.v460.ml.frame_utils import compute_local_hour_cyclic
 from ztb.io.jsonl_gz import read_jsonl_gz
 
 logger = logging.getLogger(__name__)
@@ -724,8 +725,6 @@ def build_preorder_as_features(
     Returns:
         (X, y) タプル. X のカラム = skip_gate._BASE_FEATURE_COLS と一致.
     """
-    from datetime import datetime as _dt
-
     # filled かつ AS ラベル有りのみ
     mask = enriched_df["filled"].astype(bool) & enriched_df["adverse_selected_raw"].notna()
     data = enriched_df.loc[mask].copy()
@@ -737,49 +736,47 @@ def build_preorder_as_features(
         raise ValueError(f"Insufficient labeled samples: {len(data)}")
 
     features: dict[str, pd.Series] = {}
+    aligned = data
 
     # --- 注文前に観測可能な特徴量のみ ---
     # F1: side (binary)
-    features["side_buy"] = (data["side"] == "buy").astype(int)
+    features["side_buy"] = (aligned["side"] == "buy").astype(int)
 
     # F2: hour (cyclic) — 注文時刻
-    ts = data["timestamp"].astype(float)
-    hours = ts.apply(
-        lambda t: (lambda d: d.hour + d.minute / 60.0)(_dt.fromtimestamp(t))
-    )
-    features["hour_sin"] = np.sin(2 * np.pi * hours / 24)
-    features["hour_cos"] = np.cos(2 * np.pi * hours / 24)
+    hour_sin, hour_cos = compute_local_hour_cyclic(data["timestamp"])
+    features["hour_sin"] = hour_sin
+    features["hour_cos"] = hour_cos
 
     # F3: spread_jpy — 注文時のスプレッド
     if "spread_at_order" in data.columns:
-        features["spread_jpy"] = data["spread_at_order"].astype(float)
+        features["spread_jpy"] = aligned["spread_at_order"].astype(float)
 
     # F4: offset_ratio — 注文時の設定値
     if "spread_offset_ratio" in data.columns:
-        features["offset_ratio"] = data["spread_offset_ratio"].astype(float)
+        features["offset_ratio"] = aligned["spread_offset_ratio"].astype(float)
 
     # F5: regime (one-hot)
     # 176# 横展開: trending_up/trending_down も regime_trending=1 に含める
     if "regime" in data.columns:
-        regime = data["regime"].fillna("unknown")
+        regime = aligned["regime"].fillna("unknown")
         features["regime_trending"] = regime.str.startswith("trending").astype(int)
         features["regime_ranging"] = (regime == "ranging").astype(int)
         features["regime_high_vol"] = (regime == "high_vol").astype(int)
 
     # F6: trade-based micro features (注文前に算出可能)
     for col in MICRO_FEATURE_COLS:
-        if col in enriched_df.columns and col not in ("spread_bps_ob", "depth_imbalance_ob"):
-            features[col] = enriched_df.loc[data.index, col].astype(float)
+        if col in aligned.columns and col not in ("spread_bps_ob", "depth_imbalance_ob"):
+            features[col] = aligned[col].astype(float)
 
     # F7: side-aligned interaction features (trade-based only)
-    side_sign = data["side"].map({"buy": 1.0, "sell": -1.0}).astype(float)
+    side_sign = aligned["side"].map({"buy": 1.0, "sell": -1.0}).astype(float)
 
-    if "trade_flow_imbalance_60s" in enriched_df.columns:
-        tfi = enriched_df.loc[data.index, "trade_flow_imbalance_60s"].astype(float)
+    if "trade_flow_imbalance_60s" in aligned.columns:
+        tfi = aligned["trade_flow_imbalance_60s"].astype(float)
         features["side_aligned_tfi"] = (tfi * side_sign).fillna(0.0)
 
-    if "price_velocity_60s" in enriched_df.columns:
-        vel = enriched_df.loc[data.index, "price_velocity_60s"].astype(float)
+    if "price_velocity_60s" in aligned.columns:
+        vel = aligned["price_velocity_60s"].astype(float)
         features["side_aligned_velocity"] = (vel * side_sign).fillna(0.0)
 
     # NOTE: log_queue_wait, edge_bps は事後特徴量のため意図的に除外
@@ -820,49 +817,50 @@ def build_enriched_as_features(
     # 1. 既存特徴量
     # 060# fix: enriched path では spread 必須 → 全 TSCV fold で clean features
     X_base, y = build_as_features(enriched_df, require_spread=require_spread)
+    aligned_rows = enriched_df.loc[X_base.index]
 
     # 2. マイクロストラクチャ特徴量を追加
     # NOTE: NaN は保持。補完は CV fold 内で SimpleImputer が行う (059# P0-1)
     micro_features: dict[str, pd.Series] = {}
     for col in MICRO_FEATURE_COLS:
-        if col in enriched_df.columns:
-            micro_features[col] = enriched_df.loc[X_base.index, col].astype(float)
+        if col in aligned_rows.columns:
+            micro_features[col] = aligned_rows[col].astype(float)
 
     # 3. side-aligned インタラクション特徴量
     #    buy 側: side_sign = +1, sell 側: side_sign = -1
     #    → "自分の注文に有利な方向" を正の値で表現
-    side_sign = enriched_df.loc[X_base.index, "side"].map(
+    side_sign = aligned_rows["side"].map(
         {"buy": 1.0, "sell": -1.0}
     ).astype(float)
 
     # depth_imbalance × side_sign: bid 厚い → buy に有利 (+)
-    if "depth_imbalance_ob" in enriched_df.columns:
-        di = enriched_df.loc[X_base.index, "depth_imbalance_ob"].astype(float)
-        aligned = di * side_sign
-        micro_features["side_aligned_imbalance"] = aligned.fillna(0.0)
+    if "depth_imbalance_ob" in aligned_rows.columns:
+        di = aligned_rows["depth_imbalance_ob"].astype(float)
+        aligned_imbalance = di * side_sign
+        micro_features["side_aligned_imbalance"] = aligned_imbalance.fillna(0.0)
 
     # trade_flow_imbalance × side_sign: buy 優勢 → buy に有利 (+)
-    if "trade_flow_imbalance_60s" in enriched_df.columns:
-        tfi = enriched_df.loc[X_base.index, "trade_flow_imbalance_60s"].astype(float)
+    if "trade_flow_imbalance_60s" in aligned_rows.columns:
+        tfi = aligned_rows["trade_flow_imbalance_60s"].astype(float)
         aligned_tfi = tfi * side_sign
         micro_features["side_aligned_tfi"] = aligned_tfi.fillna(0.0)
 
     # price_velocity × side_sign: 上昇 → buy に有利 (+)
-    if "price_velocity_60s" in enriched_df.columns:
-        vel = enriched_df.loc[X_base.index, "price_velocity_60s"].astype(float)
+    if "price_velocity_60s" in aligned_rows.columns:
+        vel = aligned_rows["price_velocity_60s"].astype(float)
         aligned_vel = vel * side_sign
         micro_features["side_aligned_velocity"] = aligned_vel.fillna(0.0)
 
     # 4. 060# v2: Multi-timeframe & momentum 特徴量
     for col in V2_FEATURE_COLS:
-        if col in enriched_df.columns:
-            micro_features[col] = enriched_df.loc[X_base.index, col].astype(float)
+        if col in aligned_rows.columns:
+            micro_features[col] = aligned_rows[col].astype(float)
 
     # 5. 060# v2: side-aligned momentum (AS 予測のコア)
     #    リターンが自分に不利な方向 → AS リスク高
     for ret_col in ["return_30s", "return_60s", "return_300s"]:
-        if ret_col in enriched_df.columns:
-            ret = enriched_df.loc[X_base.index, ret_col].astype(float)
+        if ret_col in aligned_rows.columns:
+            ret = aligned_rows[ret_col].astype(float)
             # buy: 上昇 → 有利 (+), sell: 下降 → 有利 (+)
             aligned_ret = ret * side_sign
             micro_features[f"side_aligned_{ret_col}"] = aligned_ret
@@ -894,7 +892,6 @@ def build_pnl_features(
         (X, y) タプル. y は post_fill_30s_pnl (bps).
     """
     from scripts.v460.ml.data_loader import build_as_features as _build_base
-    from datetime import datetime
 
     # filled かつ PnL 非 NaN
     mask = (
@@ -911,13 +908,10 @@ def build_pnl_features(
     # --- 基本特徴量 (data_loader と同系列) ---
     features["side_buy"] = (data["side"] == "buy").astype(int)
 
-    ts = data["timestamp"].astype(float)
     # 059# NEW-03: 小数時刻で統一 (skip_gate 推論側と同一粒度)
-    hours = ts.apply(
-        lambda t: (lambda d: d.hour + d.minute / 60.0)(datetime.fromtimestamp(t))
-    )
-    features["hour_sin"] = np.sin(2 * np.pi * hours / 24)
-    features["hour_cos"] = np.cos(2 * np.pi * hours / 24)
+    hour_sin, hour_cos = compute_local_hour_cyclic(data["timestamp"])
+    features["hour_sin"] = hour_sin
+    features["hour_cos"] = hour_cos
 
     # 060# NOTE: spread_jpy / offset_ratio は PnL パイプラインから除外.
     # 理由: 時系列的に後半にしか存在せず (Q1-Q2 は全 NaN),

@@ -14,6 +14,11 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from scripts.v460.ml.frame_utils import (
+    collect_bad_side_hours,
+    compute_utc_hour,
+    exclude_side_hour_combos,
+)
 from ztb.io.jsonl import read_jsonl_objects
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -98,7 +103,7 @@ def segment_analysis(df: pd.DataFrame) -> None:
 
     # UTC hour 別
     if "timestamp" in filled.columns:
-        filled["utc_hour"] = pd.to_datetime(filled["timestamp"], unit="s", utc=True).dt.hour
+        filled["utc_hour"] = compute_utc_hour(filled["timestamp"])
         print("\n--- UTC Hour 別 PnL ---")
         hour_stats = []
         for h in range(24):
@@ -112,10 +117,10 @@ def segment_analysis(df: pd.DataFrame) -> None:
                 })
         if hour_stats:
             hdf = pd.DataFrame(hour_stats)
-            for _, row in hdf.iterrows():
-                marker = "***" if row["mean"] > 0.5 else ("---" if row["mean"] < -1.0 else "   ")
-                print(f"  UTC{int(row['hour']):02d} (JST{int(row['jst']):02d}): "
-                      f"mean={row['mean']:+.3f} win={row['win_pct']:.0f}% n={int(row['n'])} {marker}")
+            for row in hdf.itertuples(index=False):
+                marker = "***" if row.mean > 0.5 else ("---" if row.mean < -1.0 else "   ")
+                print(f"  UTC{int(row.hour):02d} (JST{int(row.jst):02d}): "
+                      f"mean={row.mean:+.3f} win={row.win_pct:.0f}% n={int(row.n)} {marker}")
 
     # side × hour
     print("\n--- Side × UTC Hour PnL ---")
@@ -175,7 +180,7 @@ def walk_forward_strategies(df: pd.DataFrame) -> None:
     filled[pnl_col] = filled[pnl_col].astype(float)
 
     # hour 情報
-    filled["utc_hour"] = pd.to_datetime(filled["timestamp"], unit="s", utc=True).dt.hour
+    filled["utc_hour"] = compute_utc_hour(filled["timestamp"])
 
     N = len(filled)
     fold_size = N // 5  # 5 parts: 4 folds (train=3, test=1)
@@ -205,21 +210,15 @@ def walk_forward_strategies(df: pd.DataFrame) -> None:
         test = filled.iloc[test_start:test_end]
 
         # Train: side×hour で negative PnL の組み合わせを特定
-        skip_combos = set()
-        for side in ["buy", "sell"]:
-            for h in range(24):
-                mask = (train["side"] == side) & (train["utc_hour"] == h)
-                p = train.loc[mask, pnl_col].dropna()
-                if len(p) >= 3 and p.mean() < -0.5:
-                    skip_combos.add((side, h))
+        skip_combos = collect_bad_side_hours(
+            train,
+            pnl_col=pnl_col,
+            threshold=-0.5,
+            min_count=3,
+        )
 
         # Test: skip_combos に該当しないレコードのみ
-        if skip_combos:
-            test_filtered = test[~test.apply(
-                lambda r: (r["side"], r["utc_hour"]) in skip_combos, axis=1
-            )]
-        else:
-            test_filtered = test
+        test_filtered = exclude_side_hour_combos(test, skip_combos)
         test_pnl = test_filtered[pnl_col].dropna()
         if len(test_pnl) > 0:
             s1_results.append({
@@ -338,13 +337,12 @@ def walk_forward_strategies(df: pd.DataFrame) -> None:
             test = filled.iloc[test_start:test_end]
 
             # Train S1 component
-            skip_combos = set()
-            for side in ["buy", "sell"]:
-                for h in range(24):
-                    mask = (train["side"] == side) & (train["utc_hour"] == h)
-                    p = train.loc[mask, pnl_col].dropna()
-                    if len(p) >= 3 and p.mean() < -0.5:
-                        skip_combos.add((side, h))
+            skip_combos = collect_bad_side_hours(
+                train,
+                pnl_col=pnl_col,
+                threshold=-0.5,
+                min_count=3,
+            )
 
             # Train S4 component
             good_regimes = set()
@@ -354,11 +352,7 @@ def walk_forward_strategies(df: pd.DataFrame) -> None:
                     good_regimes.add(regime)
 
             # Test: both filters
-            test_f = test.copy()
-            if skip_combos:
-                test_f = test_f[~test_f.apply(
-                    lambda r: (r["side"], r["utc_hour"]) in skip_combos, axis=1
-                )]
+            test_f = exclude_side_hour_combos(test, skip_combos)
             if good_regimes:
                 test_f = test_f[test_f["regime"].isin(good_regimes)]
 
@@ -448,24 +442,19 @@ def walk_forward_strategies(df: pd.DataFrame) -> None:
         test = filled.iloc[test_start:test_end]
 
         # S1 component
-        skip_combos = set()
-        for side in ["buy", "sell"]:
-            for h in range(24):
-                mask = (train["side"] == side) & (train["utc_hour"] == h)
-                p = train.loc[mask, pnl_col].dropna()
-                if len(p) >= 3 and p.mean() < -0.5:
-                    skip_combos.add((side, h))
+        skip_combos = collect_bad_side_hours(
+            train,
+            pnl_col=pnl_col,
+            threshold=-0.5,
+            min_count=3,
+        )
 
         # Fast fill guard: queue_wait < 5s の PnL が negative なら除外
         fast_fill_pnl = train.loc[train["queue_wait_sec"] < 5, pnl_col].dropna()
         guard_fast = len(fast_fill_pnl) >= 5 and fast_fill_pnl.mean() < -0.5
 
         # Test
-        test_f = test.copy()
-        if skip_combos:
-            test_f = test_f[~test_f.apply(
-                lambda r: (r["side"], r["utc_hour"]) in skip_combos, axis=1
-            )]
+        test_f = exclude_side_hour_combos(test, skip_combos)
         if guard_fast:
             test_f = test_f[test_f["queue_wait_sec"] >= 5]
 

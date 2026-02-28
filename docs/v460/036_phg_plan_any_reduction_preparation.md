@@ -2052,6 +2052,58 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - `scripts/v460/ml/feature_enricher.py`: `any_type_debt_tokens=0`
 
+## Step98 実施内容（時刻特徴量共通化 + side×hour フィルタのベクトル化）
+
+### 1) 対象ファイル
+
+- `scripts/v460/ml/frame_utils.py`
+- `scripts/v460/ml/data_loader.py`
+- `scripts/v460/ml/feature_enricher.py`
+- `scripts/v460/ml/run_073_strategy_analysis.py`
+- `scripts/v460/ml/run_075_verification.py`
+
+### 2) 実運用改善 / 重複削減
+
+- `frame_utils` を新設し、
+  `compute_local_hour_cyclic()` / `compute_utc_hour()` を共通化。
+- `data_loader` / `feature_enricher` の
+  `timestamp.apply(datetime.fromtimestamp(...))` をベクトル化 helper に置換。
+- これにより hour cyclic 特徴量生成の重複を解消し、
+  学習データ準備時の Python レベル callback 実行を削減。
+- `frame_utils.collect_bad_side_hours()` を追加し、
+  `side×hour` ごとの悪化スロット抽出を `groupby` 集約へ置換。
+- `frame_utils.exclude_side_hour_combos()` を追加し、
+  `apply(axis=1)` ベースの tuple 判定をベクトル化マスクへ置換。
+- `run_073_strategy_analysis` / `run_075_verification` の
+  time filter 系戦略は上記 helper に統一し、
+  fold ごとの test filtering コストを削減。
+- `iterrows()` による表示ループも `itertuples()` へ置換し、
+  行オブジェクト生成を軽量化。
+- `feature_enricher` の特徴量組み立てでは
+  同一 index の `.loc[...]` を繰り返さず、
+  slice 済み DataFrame を再利用する形へ整理。
+
+### 3) 検証
+
+- `py_compile`
+  - `scripts/v460/ml/frame_utils.py`
+  - `scripts/v460/ml/data_loader.py`
+  - `scripts/v460/ml/feature_enricher.py`
+  - `scripts/v460/ml/run_073_strategy_analysis.py`
+  - `scripts/v460/ml/run_075_verification.py`
+- `pytest`
+  - `tests/unit/v460/test_ml_pipeline.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - 結果: `80 passed`
+- import smoke
+  - `scripts.v460.ml.run_073_strategy_analysis`
+  - `scripts.v460.ml.run_075_verification`
+  - `scripts.v460.ml.data_loader`
+  - `scripts.v460.ml.feature_enricher`
+  - `scripts.v460.ml.frame_utils`
+- `any_inventory`
+  - 対象 5 ファイルとも `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

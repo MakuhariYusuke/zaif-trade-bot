@@ -6,7 +6,6 @@ fill_records_*.jsonl を読み込み、AS/Fill 分類用の特徴量を生成す
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -15,6 +14,7 @@ import pandas as pd
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from scripts.v460.ml.frame_utils import compute_local_hour_cyclic
 from ztb.io.jsonl import read_jsonl_objects
 
 logger = logging.getLogger(__name__)
@@ -114,12 +114,10 @@ def build_as_features(
     features["side_buy"] = (data["side"] == "buy").astype(int)
 
     # F3: hour_of_day (cyclic encoding) — 059# NEW-03: 小数時刻で統一
-    ts = data["timestamp"].astype(float)
-    hours = ts.apply(
-        lambda t: (lambda d: d.hour + d.minute / 60.0)(datetime.fromtimestamp(t))
-    )
-    features["hour_sin"] = np.sin(2 * np.pi * hours / 24)
-    features["hour_cos"] = np.cos(2 * np.pi * hours / 24)
+    ts = data["timestamp"]
+    hour_sin, hour_cos = compute_local_hour_cyclic(ts)
+    features["hour_sin"] = hour_sin
+    features["hour_cos"] = hour_cos
 
     # F4: fill_price relative to mid (edge proxy)
     if "mid_at_fill" in data.columns:
@@ -192,12 +190,10 @@ def build_fill_features(
     features["side_buy"] = (data["side"] == "buy").astype(int)
 
     # F2: hour — 059# NEW-03: 小数時刻で統一
-    ts = data["timestamp"].astype(float)
-    hours = ts.apply(
-        lambda t: (lambda d: d.hour + d.minute / 60.0)(datetime.fromtimestamp(t))
-    )
-    features["hour_sin"] = np.sin(2 * np.pi * hours / 24)
-    features["hour_cos"] = np.cos(2 * np.pi * hours / 24)
+    ts = data["timestamp"]
+    hour_sin, hour_cos = compute_local_hour_cyclic(ts)
+    features["hour_sin"] = hour_sin
+    features["hour_cos"] = hour_cos
 
     # 060# NOTE: spread_jpy / offset_ratio は Fill 分類器から除外.
     # AS classifier 側で require_spread=True により対応済.

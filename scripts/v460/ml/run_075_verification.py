@@ -22,6 +22,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy import stats as scipy_stats
+from scripts.v460.ml.frame_utils import (
+    collect_bad_side_hours,
+    compute_utc_hour,
+    exclude_side_hour_combos,
+)
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT))
@@ -194,9 +199,7 @@ def section_2_side_hour_heatmap(clean_filled: pd.DataFrame) -> dict:
     print("=" * 70)
 
     clean_filled = clean_filled.copy()
-    clean_filled["utc_hour"] = pd.to_datetime(
-        clean_filled["timestamp"], unit="s", utc=True,
-    ).dt.hour
+    clean_filled["utc_hour"] = compute_utc_hour(clean_filled["timestamp"])
 
     results: dict = {}
     for side in ["buy", "sell"]:
@@ -238,9 +241,7 @@ def section_3_time_filter_impact(
     print("=" * 70)
 
     clean_filled = clean_filled.copy()
-    clean_filled["utc_hour"] = pd.to_datetime(
-        clean_filled["timestamp"], unit="s", utc=True,
-    ).dt.hour
+    clean_filled["utc_hour"] = compute_utc_hour(clean_filled["timestamp"])
 
     # 075# YAML の設定値 (clean データ再検証後 + §8.2 批判反映)
     global_skip = {1, 2, 8, 9, 12, 13, 14, 16, 17, 18, 19, 21}
@@ -359,9 +360,7 @@ def _multi_metric_before_after(
     # --- fill_rate, cancel_ratio (全レコード clean_all が必要) ---
     if clean_all is not None and len(clean_all) > 0 and "timestamp" in clean_all.columns:
         all_df = clean_all.copy()
-        all_df["utc_hour"] = pd.to_datetime(
-            all_df["timestamp"], unit="s", utc=True,
-        ).dt.hour
+        all_df["utc_hour"] = compute_utc_hour(all_df["timestamp"])
 
         # Before: global skip 以外
         b_all_mask = ~all_df["utc_hour"].isin(global_skip)
@@ -416,9 +415,7 @@ def section_4_wf_with_stats(clean_filled: pd.DataFrame) -> dict:
 
     filled = clean_filled.copy().sort_values("timestamp").reset_index(drop=True)
     filled[PNL_COL] = filled[PNL_COL].astype(float)
-    filled["utc_hour"] = pd.to_datetime(
-        filled["timestamp"], unit="s", utc=True,
-    ).dt.hour
+    filled["utc_hour"] = compute_utc_hour(filled["timestamp"])
 
     N = len(filled)
     fold_size = N // 5
@@ -434,35 +431,25 @@ def section_4_wf_with_stats(clean_filled: pd.DataFrame) -> dict:
 
     def s1_side_time(train: pd.DataFrame, test: pd.DataFrame) -> pd.DataFrame:
         """073# 実装: side 別 time filter (事前制御可能)."""
-        skip_combos: set[tuple[str, int]] = set()
-        for side in ["buy", "sell"]:
-            for h in range(24):
-                mask = (train["side"] == side) & (train["utc_hour"] == h)
-                p = train.loc[mask, PNL_COL].dropna()
-                if len(p) >= 3 and p.mean() < -0.5:
-                    skip_combos.add((side, h))
-        if skip_combos:
-            return test[~test.apply(
-                lambda r: (r["side"], r["utc_hour"]) in skip_combos, axis=1,
-            )]
-        return test
+        skip_combos = collect_bad_side_hours(
+            train,
+            pnl_col=PNL_COL,
+            threshold=-0.5,
+            min_count=3,
+        )
+        return exclude_side_hour_combos(test, skip_combos)
 
     def s9_conservative_side_time(
         train: pd.DataFrame, test: pd.DataFrame,
     ) -> pd.DataFrame:
         """Conservative side-time: 閾値 -1.0, n≥2."""
-        skip_combos: set[tuple[str, int]] = set()
-        for side in ["buy", "sell"]:
-            for h in range(24):
-                mask = (train["side"] == side) & (train["utc_hour"] == h)
-                p = train.loc[mask, PNL_COL].dropna()
-                if len(p) >= 2 and p.mean() < -1.0:
-                    skip_combos.add((side, h))
-        if skip_combos:
-            return test[~test.apply(
-                lambda r: (r["side"], r["utc_hour"]) in skip_combos, axis=1,
-            )]
-        return test
+        skip_combos = collect_bad_side_hours(
+            train,
+            pnl_col=PNL_COL,
+            threshold=-1.0,
+            min_count=2,
+        )
+        return exclude_side_hour_combos(test, skip_combos)
 
     def s13_sell_offset_boost(
         train: pd.DataFrame, test: pd.DataFrame,
@@ -652,9 +639,7 @@ def section_5_monte_carlo_50k(clean_filled: pd.DataFrame) -> dict:
     print("=" * 70)
 
     filled = clean_filled.copy()
-    filled["utc_hour"] = pd.to_datetime(
-        filled["timestamp"], unit="s", utc=True,
-    ).dt.hour
+    filled["utc_hour"] = compute_utc_hour(filled["timestamp"])
     filled["date"] = pd.to_datetime(
         filled["timestamp"], unit="s", utc=True,
     ).dt.date
@@ -875,9 +860,7 @@ def section_7_permutation_test(clean_filled: pd.DataFrame) -> dict:
     print("=" * 70)
 
     filled = clean_filled.copy()
-    filled["utc_hour"] = pd.to_datetime(
-        filled["timestamp"], unit="s", utc=True,
-    ).dt.hour
+    filled["utc_hour"] = compute_utc_hour(filled["timestamp"])
 
     buy_skip = {1, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 23}
     sell_skip = {3, 4, 5, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23}
@@ -1026,10 +1009,10 @@ def section_8_temporal_stability(clean_filled: pd.DataFrame) -> dict:
         print(f"    sharpe-like ratio:  {sharpe_like:+.4f}")
 
         print(f"    --- 日別 ---")
-        for _, row in daily.iterrows():
-            sign = "+" if row["total_pnl"] >= 0 else ""
-            print(f"    {row['date']}  n={int(row['n_trades']):>3}  "
-                  f"mean={row['mean_pnl']:>+7.3f}  total={sign}{row['total_pnl']:.1f}")
+        for row in daily.itertuples(index=False):
+            sign = "+" if row.total_pnl >= 0 else ""
+            print(f"    {row.date}  n={int(row.n_trades):>3}  "
+                  f"mean={row.mean_pnl:>+7.3f}  total={sign}{row.total_pnl:.1f}")
 
     # Before vs After の安定性比較
     if "before" in result and "after" in result and "error" not in result["before"] and "error" not in result["after"]:
@@ -1051,9 +1034,7 @@ def section_9_power_analysis(clean_filled: pd.DataFrame) -> dict:
     print("=" * 70)
 
     filled = clean_filled.copy()
-    filled["utc_hour"] = pd.to_datetime(
-        filled["timestamp"], unit="s", utc=True,
-    ).dt.hour
+    filled["utc_hour"] = compute_utc_hour(filled["timestamp"])
 
     buy_skip = {1, 2, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 23}
     sell_skip = {3, 4, 5, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23}
