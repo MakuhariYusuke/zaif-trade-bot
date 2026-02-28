@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 import math
 from datetime import datetime, timezone
-from unittest.mock import patch
 
 import pytest
 
@@ -470,11 +469,11 @@ class TestApplyFilters:
 
 
 class TestLoadFillRecords:
-    def test_fallback_ignores_non_object_lines(self, tmp_path):
+    def test_loader_handles_bom_and_ignores_non_object_lines(self, tmp_path):
         path = tmp_path / "fill_records_test.jsonl"
         path.write_text(
             "\n".join([
-                "{\"filled\": true, \"timestamp\": 1}",
+                "\ufeff{\"filled\": true, \"timestamp\": 1}",
                 "[]",
                 "42",
                 "\"text\"",
@@ -483,11 +482,7 @@ class TestLoadFillRecords:
             encoding="utf-8",
         )
 
-        with patch(
-            "ztb.io.jsonl.read_jsonl_objects",
-            side_effect=RuntimeError("force fallback"),
-        ):
-            records = load_fill_records(tmp_path)
+        records = load_fill_records(tmp_path)
 
         assert len(records) == 1
         assert records[0]["filled"] is True

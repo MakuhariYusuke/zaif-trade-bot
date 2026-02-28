@@ -12,7 +12,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import math
 from collections import defaultdict
@@ -169,37 +168,14 @@ class DailyHealthReport:
 # ======================================================================
 
 
-def _as_fill_record(value: object) -> FillRecord | None:
-    """JSON decoded value から object 行だけを許可する."""
-    if isinstance(value, dict):
-        return cast(FillRecord, value)
-    return None
-
-
 def load_fill_records(results_dir: Path) -> list[FillRecord]:
     """全 fill_records_*.jsonl をロード."""
     from ztb.io.jsonl import read_jsonl_objects
 
     all_records: list[FillRecord] = []
     for path in sorted(results_dir.glob("fill_records_*.jsonl")):
-        try:
-            records = read_jsonl_objects(path)
-            for record in records:
-                coerced = _as_fill_record(record)
-                if coerced is not None:
-                    all_records.append(coerced)
-        except Exception:
-            with open(path, encoding="utf-8-sig") as f:
-                for line in f:
-                    line = line.strip()
-                    if line:
-                        try:
-                            decoded = json.loads(line)
-                            coerced = _as_fill_record(decoded)
-                            if coerced is not None:
-                                all_records.append(coerced)
-                        except json.JSONDecodeError:
-                            continue
+        records = read_jsonl_objects(path)
+        all_records.extend(cast(list[FillRecord], records))
     return all_records
 
 

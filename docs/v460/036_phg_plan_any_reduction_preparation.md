@@ -1901,6 +1901,30 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   horizon ごとに再計算していたため、skip率ごとに一度だけ前計算するよう整理。
 - `skip{pct}_n_keep` の重複代入も 1 回に集約。
 
+## Step94: JSONL reader の BOM耐性追加 + ローカルfallback削減 (2026-02-28)
+
+### 1) 対象
+
+- `ztb/io/jsonl.py`
+- `scripts/v460/lib/stopgap_health.py`
+- `scripts/v460/analysis/side_regime_dashboard.py`
+- `tests/unit/v460/test_stopgap_health.py`
+- `tests/unit/v460/test_160_ab_judgment.py`
+
+### 2) 実運用改善 / 重複削減
+
+- `ztb.io.jsonl.iter_jsonl_objects()` の先頭行で UTF-8 BOM を除去し、
+  BOM 付き JSONL を追加 fallback なしで読めるよう改善。
+- これにより `read_jsonl_objects()` 利用箇所全体で BOM 耐性が有効化。
+- `stopgap_health` / `side_regime_dashboard` の
+  `utf-8-sig` 再読込 fallback を削除し、読み込み経路を共通 helper に一本化。
+- 非 object 行のスキップも共通 helper に一本化され、ローカル分岐を削減。
+
+### 3) テスト更新
+
+- 両 loader テストを、fallback 強制ではなく
+  `BOM + 非 object 行` の実入力に対する実挙動確認へ更新。
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

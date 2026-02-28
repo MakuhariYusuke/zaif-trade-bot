@@ -21,7 +21,7 @@ import sys
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import TypedDict
 
 import numpy as np
 
@@ -94,13 +94,6 @@ class DashboardResult(TypedDict, total=False):
 # 161# DRY: _to_finite -> ztb.utils.safety.safe_to_finite に統合
 
 
-def _as_metric_record(value: object) -> MetricRecord | None:
-    """JSON decoded value から object 行だけを許可する."""
-    if isinstance(value, dict):
-        return cast(MetricRecord, value)
-    return None
-
-
 def _compute_side_metrics(records: list[MetricRecord]) -> SideMetrics:
     """レコード群から SideMetrics を計算.
 
@@ -128,25 +121,8 @@ def _load_all_records(results_dir: Path) -> list[MetricRecord]:
     """fill_records JSONL を全読み込み."""
     all_records: list[MetricRecord] = []
     for path in sorted(results_dir.glob("fill_records_*.jsonl")):
-        try:
-            records = read_jsonl_objects(path)
-            for record in records:
-                coerced = _as_metric_record(record)
-                if coerced is not None:
-                    all_records.append(coerced)
-        except Exception:
-            # BOM fallback
-            with open(path, encoding="utf-8-sig") as f:
-                for line in f:
-                    line = line.strip()
-                    if line:
-                        try:
-                            decoded = json.loads(line)
-                            coerced = _as_metric_record(decoded)
-                            if coerced is not None:
-                                all_records.append(coerced)
-                        except json.JSONDecodeError:
-                            continue
+        records = read_jsonl_objects(path)
+        all_records.extend(records)
     return all_records
 
 

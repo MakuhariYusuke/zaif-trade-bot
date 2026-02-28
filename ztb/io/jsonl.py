@@ -48,6 +48,9 @@ def iter_jsonl_objects(
     source = _to_path(path)
     with open(source, "r", encoding=encoding, errors=errors) as f:
         for line_no, line in enumerate(f, 1):
+            # Tolerate UTF-8 BOM emitted by some editors/exporters.
+            if line_no == 1 and line.startswith("\ufeff"):
+                line = line.removeprefix("\ufeff")
             parsed = _parse_jsonl_object_line(
                 line,
                 source=source,

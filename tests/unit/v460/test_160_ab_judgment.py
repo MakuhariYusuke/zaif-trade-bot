@@ -12,7 +12,6 @@ from __future__ import annotations
 import math
 import time
 from pathlib import Path
-from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -571,16 +570,16 @@ class TestDashboardJudgmentIntegration:
         assert "verdict" in te
         assert te["verdict"] in ("pass", "fail", "insufficient")
 
-    def test_load_all_records_fallback_ignores_non_object_lines(
+    def test_load_all_records_handles_bom_and_ignores_non_object_lines(
         self, tmp_path: Path,
     ) -> None:
-        """fallback 読み込みでは object 以外の JSON 行を無視する."""
+        """read_jsonl_objects 経由で BOM/非object行を安全に処理する."""
         from scripts.v460.analysis.side_regime_dashboard import _load_all_records
 
         path = tmp_path / "fill_records_test.jsonl"
         path.write_text(
             "\n".join([
-                "{\"filled\": true, \"timestamp\": 1}",
+                "\ufeff{\"filled\": true, \"timestamp\": 1}",
                 "[]",
                 "42",
                 "\"text\"",
@@ -589,11 +588,7 @@ class TestDashboardJudgmentIntegration:
             encoding="utf-8",
         )
 
-        with patch(
-            "scripts.v460.analysis.side_regime_dashboard.read_jsonl_objects",
-            side_effect=RuntimeError("force fallback"),
-        ):
-            records = _load_all_records(tmp_path)
+        records = _load_all_records(tmp_path)
 
         assert len(records) == 1
         assert records[0]["filled"] is True
