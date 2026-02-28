@@ -175,6 +175,9 @@ class TestEvWeightedDecision:
         config.skip_gate_ev_weighted_enabled = ev_enabled
         config.skip_gate_ev_w30 = ev_w30
         config.skip_gate_ev_w120 = ev_w120
+        # 190# 追加フィールド (MagicMock のまま放置すると > 演算エラー)
+        config.skip_gate_ev_max_consecutive_skip = 0
+        config.skip_gate_ev_one_sided_threshold_shift = 0.0
 
         evaluator = SkipGateEvaluator(config, Path("."))
         evaluator._gate_alt_buy = gate_alt_buy

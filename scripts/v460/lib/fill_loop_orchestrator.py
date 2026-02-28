@@ -404,6 +404,7 @@ class FillLoopOrchestratorMixin:
             # 129# D.2: 残高制約による side 強制切替追跡
             _balance_forced = False
             _is_rescue = False  # 158# P1-1: balance_forced rescue フラグ
+            _one_sided_balance = False  # 190# B: 片側 balance フラグ (ev_weighted threshold 緩和用)
             # 073# side 別時間帯フィルター: side 決定後にフィルタリング
             # side 別リスト未設定時はグローバルリスト (041# 互換)
             next_side = self._next_side()
@@ -669,6 +670,7 @@ class FillLoopOrchestratorMixin:
                         f"insufficient={original_also_insufficient})"
                     )
                     self._balance_forced_skip_count = 0
+                    _one_sided_balance = original_also_insufficient  # 190# B
                     # → continue しない: run_single_cycle へ進む
                 elif self.config.balance_forced_rescue_enabled:
                     # 158# P1-1: rescue モード — skip せず offset 倍増で安全実行
@@ -926,6 +928,7 @@ class FillLoopOrchestratorMixin:
                     side_override=next_side,
                     balance_forced_switch=_balance_forced,
                     balance_forced_rescue=_is_rescue,
+                    one_sided_balance=_one_sided_balance,
                 )
                 # 154# C-2: 実サイクル実行 → forced skip カウンタリセット
                 self._balance_forced_skip_count = 0

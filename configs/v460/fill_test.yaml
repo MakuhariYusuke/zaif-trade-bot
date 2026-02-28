@@ -23,7 +23,7 @@ max_preflight_skip: 10        # 046# 連続 preflight 失敗上限 (SAFE_STOP)
 # ---- スプレッド比例オフセット (CM-1) ----
 spread_offset_ratio: 0.05     # 031# 0.2→0.05: AS 低減のため保守化
 min_offset_jpy: 1.0           # 最小オフセット (JPY)
-min_spread_jpy: 1200           # 130# Y2: 1500→1200 段階緩和 (D.3 Q4: 1000は攻め過ぎ、1200≈1.14bps で安全マージン維持。fill_rate +10~15pt 期待)
+min_spread_jpy: 1000           # 190# C: 1200→1000 (実測 spread=1140JPY で頻繁遮断。1000JPY≈0.97bps)
 
 # ---- リトライ (CM-2) ----
 max_order_retries: 2              # 041# 1→2: api_error 削減のため
@@ -272,10 +272,14 @@ skip_gate:
   ev_weighted_enabled: true
   ev_w30: 0.4                  # 短期 PnL 重み (即時平均回帰)
   ev_w120: 0.6                 # 長期 PnL 重み (持続的回復)
+  # 190# A: ev_weighted 連続 skip 安全弁 (5回連続skipで強制PASS → デッドロック防止)
+  ev_max_consecutive_skip: 5
+  # 190# B: 片側 balance 時の ev_weighted threshold 緩和 (BTC=0→buy専用に緩和)
+  ev_one_sided_threshold_shift: -1.0  # threshold を -1.0bps シフト（取引再開優先）
   as_threshold: 0.50           # 120# 0.52→0.50: P(AS)=0.50 が変曲点 (AS 18.1%→36.7%)
   as_threshold_buy: 0.50       # 120# A3: [0.50,0.52) 帯 n=60 PnL=-0.247 AS=36.7% → skip 対象化
   as_threshold_sell: 0.50      # 100# P0-2: sell 側厳格化 (旧 0.60 → 0.50)
-  pnl_threshold: 0.0
+  pnl_threshold: -0.5          # 190# D: 0.0→-0.5 (ev_weighted score が常時負のため閾値緩和)
   max_skip_rate: 0.3
   use_ob_features: true        # 127# H4: retrain と統一 (false→true)
   # 088# 動的閾値較正: 目標 skip 率ベースで閾値を自動調整

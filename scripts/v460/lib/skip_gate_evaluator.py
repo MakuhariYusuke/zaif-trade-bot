@@ -120,6 +120,8 @@ class SkipGateEvaluator:
         self._gate_path_alt_sell: Path | None = None
         self._model_file_hash_alt_buy: str = ""
         self._model_file_hash_alt_sell: str = ""
+        # 190# A: ev_weighted 連続 skip 安全弁カウンタ
+        self._ev_consecutive_skip_count: int = 0
         # 156# D-1: OB fetch 失敗カウンタ
         self._ob_fetch_fail_count: int = 0
         self._ob_fetch_total_count: int = 0
@@ -351,12 +353,16 @@ class SkipGateEvaluator:
         regime: str,
         threshold_offset: float,
         primary_decision: _SkipDecisionLike,
+        *,
+        one_sided_balance: bool = False,
     ) -> _SkipDecisionLike | None:
         """188# C-1: ev_weighted 統合判定.
 
         副 horizon モデルが存在し ev_weighted_enabled=True の場合、
         primary (短期) と alt (長期) の predicted_pnl を ev_weighted で統合。
         AS mode では ev_weighted は適用しない (確率ベースのため加重平均が不適切)。
+
+        190# A: 連続 skip 安全弁 + B: 片側 balance 時の threshold 緩和。
 
         Returns:
             統合判定の SkipDecision, または None (ev_weighted 不適用時).
@@ -412,21 +418,58 @@ class SkipGateEvaluator:
         threshold_used = primary_decision.threshold_used
         if threshold_used is None:
             threshold_used = 0.0
+
+        # 190# B: 片側 balance 時の threshold 緩和
+        # BTC=0 で buy しか選択肢がない状態で threshold が厳しすぎるとデッドロック
+        _threshold_relaxation = self._config.skip_gate_ev_one_sided_threshold_shift
+        if one_sided_balance and _threshold_relaxation != 0.0:
+            _original_threshold = threshold_used
+            threshold_used += _threshold_relaxation  # 負方向シフト = 緩和
+            logger.debug(
+                "[skip_gate] 190# B: one_sided_balance threshold relaxation: "
+                "%.3f → %.3f (shift=%.3f)",
+                _original_threshold, threshold_used, _threshold_relaxation,
+            )
+
         should_skip = ev_score < threshold_used
+
+        # 190# A: 連続 skip 安全弁
+        _max_consecutive = self._config.skip_gate_ev_max_consecutive_skip
+        if should_skip and _max_consecutive > 0:
+            self._ev_consecutive_skip_count += 1
+            if self._ev_consecutive_skip_count >= _max_consecutive:
+                logger.warning(
+                    "[skip_gate] 190# A: ev_weighted consecutive skip safety valve: "
+                    "%d consecutive skips >= limit %d — forcing PASS "
+                    "(score=%.3f, threshold=%.3f)",
+                    self._ev_consecutive_skip_count, _max_consecutive,
+                    ev_score, threshold_used,
+                )
+                self._ev_consecutive_skip_count = 0
+                should_skip = False
+        elif not should_skip:
+            # PASS 時はカウンタリセット
+            self._ev_consecutive_skip_count = 0
 
         logger.debug(
             "[skip_gate] 188# ev_weighted: side=%s pnl_primary=%.3f pnl_alt=%.3f "
-            "ev=%.3f threshold=%.3f skip=%s",
+            "ev=%.3f threshold=%.3f skip=%s consec=%d",
             side, primary_pnl, alt_pnl, ev_score, threshold_used, should_skip,
+            self._ev_consecutive_skip_count,
         )
 
         from scripts.v460.ml.skip_gate import SkipDecision
+        _reason = (
+            "ev_weighted_skip" if should_skip
+            else "ev_weighted_pass_safety" if self._ev_consecutive_skip_count == 0 and ev_score < threshold_used
+            else "ev_weighted_pass"
+        )
         return SkipDecision(
             should_skip=should_skip,
             predicted_pnl_bps=ev_score,
             threshold_bps=primary_decision.threshold_bps,
             features_used=primary_decision.features_used if hasattr(primary_decision, "features_used") else 0,
-            reason="ev_weighted_skip" if should_skip else "ev_weighted_pass",
+            reason=_reason,
             model_used="ev_weighted",
             as_probability=primary_decision.as_probability,
             threshold_used=threshold_used,
@@ -584,6 +627,8 @@ class SkipGateEvaluator:
         last_ask_depth: float | None,
         imbalance_enabled: bool,
         maker_price_vpin_setter: object | None = None,
+        *,
+        one_sided_balance: bool = False,
     ) -> SkipGateResult:
         """062# SkipGate ML 判定.
 
@@ -853,6 +898,7 @@ class SkipGateEvaluator:
             # 188# C-1: ev_weighted — 副 horizon モデルがあれば統合判定
             _ev_combined = self._try_ev_weighted_decision(
                 side, gate_features, sg_regime, _total_offset, decision,
+                one_sided_balance=one_sided_balance,
             )
             if _ev_combined is not None:
                 decision = _ev_combined

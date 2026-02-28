@@ -211,6 +211,11 @@ class FillTestConfig:
     skip_gate_ev_weighted_enabled: bool = False  # True: 両 horizon ev_weighted 判定
     skip_gate_ev_w30: float = 0.4   # ev_weighted の pnl30 重み
     skip_gate_ev_w120: float = 0.6  # ev_weighted の pnl120 重み
+    # 190# A: ev_weighted 連続 skip 安全弁 (0=無効, N回連続skipで強制PASS)
+    skip_gate_ev_max_consecutive_skip: int = 0
+    # 190# B: 片側 balance 時の ev_weighted threshold 緩和シフト (bps)
+    # BTC=0 で buy のみ可能時に threshold を下方シフトして取引再開
+    skip_gate_ev_one_sided_threshold_shift: float = 0.0
     skip_gate_as_threshold: float = 0.52   # 100# AS 確率スキップ閾値 (0.65→0.52)
     skip_gate_pnl_threshold: float = 0.0   # PnL 予測スキップ閾値 (mode=pnl)
     skip_gate_max_skip_rate: float = 0.3   # 連続スキップ率上限 (安全弁)
@@ -607,6 +612,9 @@ class FillTestConfig:
             "ev_weighted_enabled": "skip_gate_ev_weighted_enabled",
             "ev_w30": "skip_gate_ev_w30",
             "ev_w120": "skip_gate_ev_w120",
+            # 190# A/B: ev_weighted 安全弁 + 片側 balance threshold 緩和
+            "ev_max_consecutive_skip": "skip_gate_ev_max_consecutive_skip",
+            "ev_one_sided_threshold_shift": "skip_gate_ev_one_sided_threshold_shift",
             "as_threshold": "skip_gate_as_threshold",
             "pnl_threshold": "skip_gate_pnl_threshold",
             "max_skip_rate": "skip_gate_max_skip_rate",

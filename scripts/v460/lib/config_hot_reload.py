@@ -92,6 +92,7 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "skip_gate_as_threshold",
     "skip_gate_as_threshold_buy",
     "skip_gate_as_threshold_sell",
+    "skip_gate_pnl_threshold",
     "skip_gate_max_skip_rate",
     "skip_gate_adaptive_threshold",
     "skip_gate_target_skip_rate_buy",
@@ -107,6 +108,9 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "skip_gate_ev_weighted_enabled",
     "skip_gate_ev_w30",
     "skip_gate_ev_w120",
+    # 190# A/B: ev_weighted 連続 skip 安全弁 + 片側 balance threshold 緩和
+    "skip_gate_ev_max_consecutive_skip",
+    "skip_gate_ev_one_sided_threshold_shift",
     # 189# D: MacroRegime
     "enable_macro_regime",
     "macro_regime_conflict_action",

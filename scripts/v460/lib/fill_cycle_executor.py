@@ -71,10 +71,12 @@ class FillCycleExecutorMixin:
         effective_offset_ratio: float,
         *,
         order_lot: float | None = None,
+        one_sided_balance: bool = False,
     ) -> _SkipGateResult:
         """SkipGate ML 判定 — 121# SkipGateEvaluator に委譲.
 
         145# §9-#4: order_lot を渡してレジーム倍率適用後のロットで記録.
+        190# B: one_sided_balance を渡して片側 balance 時の threshold 緩和.
         """
         regime_value = (
             self._regime_detector.current_regime.value
@@ -99,6 +101,7 @@ class FillCycleExecutorMixin:
             last_ask_depth=self._maker_price._last_ask_depth,
             imbalance_enabled=self.config.imbalance_enabled,
             maker_price_vpin_setter=lambda v: setattr(self._maker_price, '_last_vpin', v),
+            one_sided_balance=one_sided_balance,
         )
 
     async def _monitor_fill_polling(
@@ -347,6 +350,7 @@ class FillCycleExecutorMixin:
         side_override: str | None = None,
         balance_forced_switch: bool = False,
         balance_forced_rescue: bool = False,
+        one_sided_balance: bool = False,
     ) -> FillRecord:
         """1 サイクル: 発注 → 監視 → 結果記録.
 
@@ -356,6 +360,7 @@ class FillCycleExecutorMixin:
         075# Fix: side_override で run_continuous() が決定した side を強制適用.
         129# D.2: balance_forced_switch フラグを FillRecord に記録.
         158# P1-1: balance_forced_rescue — offset 倍増で安全にポジション解消.
+        190# B: one_sided_balance — 片側残高時の ev_weighted threshold 緩和.
         """
         self._cycle_count += 1
         cycle_id = self._new_cycle_id()
@@ -536,6 +541,7 @@ class FillCycleExecutorMixin:
         sg = await self._evaluate_skip_gate(
             side, cycle_id, order_price, spread_at_order, effective_offset_ratio,
             order_lot=_regime_lot,
+            one_sided_balance=one_sided_balance,
         )
         skip_gate_skipped = sg.skipped
         skip_gate_score = sg.score
