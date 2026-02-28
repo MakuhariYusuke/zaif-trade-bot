@@ -6,16 +6,53 @@ ab_judgment._compute_metrics と side_regime_dashboard._compute_side_metrics の
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import TypedDict
 
 import numpy as np
 
+from ztb.io.json_io import JSONObject
 from ztb.utils.safety import safe_to_finite
 
-__all__ = ["compute_base_metrics", "compute_extended_metrics"]
+MetricRecord = JSONObject
 
 
-def compute_base_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
+class BaseMetrics(TypedDict):
+    n_total: int
+    n_filled: int
+    fill_rate: float
+    avg_pnl30_bps: float
+    std_pnl30_bps: float
+    downside_p10_bps: float
+    downside_p05_bps: float
+    profitable_rate: float
+    calendar_days: int
+    pnl30_array: np.ndarray
+
+
+class ExtendedMetrics(BaseMetrics):
+    as_rate: float
+    avg_as_loss_bps: float
+    reprice_rate: float
+    avg_reprice_drift_bps: float
+    vg_trigger_rate: float
+
+
+__all__ = [
+    "MetricRecord",
+    "BaseMetrics",
+    "ExtendedMetrics",
+    "compute_base_metrics",
+    "compute_extended_metrics",
+]
+
+
+def _collect_finite_values(records: list[MetricRecord], key: str) -> list[float]:
+    """指定キーの有限値だけを抽出する."""
+    values = [safe_to_finite(r.get(key)) for r in records]
+    return [v for v in values if v is not None]
+
+
+def compute_base_metrics(records: list[MetricRecord]) -> BaseMetrics:
     """fill レコード群から基本メトリクスを算出.
 
     ab_judgment / side_regime_dashboard 双方で使える共通ベース。
@@ -32,8 +69,7 @@ def compute_base_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
     n_filled = len(filled)
     fill_rate = n_filled / n_total if n_total > 0 else 0.0
 
-    pnl_vals = [safe_to_finite(r.get("post_fill_30s_pnl")) for r in filled]
-    pnl_clean: list[float] = [v for v in pnl_vals if v is not None]
+    pnl_clean = _collect_finite_values(filled, "post_fill_30s_pnl")
 
     if pnl_clean:
         arr = np.array(pnl_clean, dtype=float)
@@ -75,7 +111,7 @@ def compute_base_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def compute_extended_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
+def compute_extended_metrics(records: list[MetricRecord]) -> ExtendedMetrics:
     """基本メトリクス + AS / reprice / VG 拡張.
 
     side_regime_dashboard 向け。
@@ -87,15 +123,13 @@ def compute_extended_metrics(records: list[dict[str, Any]]) -> dict[str, Any]:
     # AS 率
     as_records = [r for r in filled if r.get("adverse_selected")]
     as_rate = len(as_records) / n_filled if n_filled > 0 else 0.0
-    as_pnl = [safe_to_finite(r.get("post_fill_30s_pnl")) for r in as_records]
-    as_clean = [v for v in as_pnl if v is not None]
+    as_clean = _collect_finite_values(as_records, "post_fill_30s_pnl")
     avg_as_loss = float(np.mean(as_clean)) if as_clean else 0.0
 
     # reprice 集計 (159# P1-A)
     repriced = [r for r in filled if (r.get("reprice_count") or 0) > 0]
     reprice_rate = len(repriced) / n_filled if n_filled > 0 else 0.0
-    drift_vals = [safe_to_finite(r.get("reprice_drift_bps")) for r in repriced]
-    drift_clean = [v for v in drift_vals if v is not None]
+    drift_clean = _collect_finite_values(repriced, "reprice_drift_bps")
     avg_reprice_drift = float(np.mean(drift_clean)) if drift_clean else 0.0
 
     # VG trigger 集計 (159# P1-C)

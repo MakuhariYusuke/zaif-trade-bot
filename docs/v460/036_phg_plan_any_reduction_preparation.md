@@ -1859,6 +1859,32 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `tests/unit/v460/test_160_ab_judgment.py`
   - 結果: `any_type_debt_tokens=0`
 
+## Step92: `metrics_utils` 契約化 + `side_regime_dashboard` fallback 防御 (2026-02-28)
+
+### 1) 対象
+
+- `scripts/v460/lib/metrics_utils.py`
+- `scripts/v460/analysis/side_regime_dashboard.py`
+- `tests/unit/v460/test_160_ab_judgment.py`
+
+### 2) Any削減 / 重複削減 / 不具合封じ
+
+- `metrics_utils` に `MetricRecord` / `BaseMetrics` / `ExtendedMetrics`
+  (`TypedDict`) を導入し、共通メトリクス契約を明示化。
+- `compute_base_metrics()` / `compute_extended_metrics()` の
+  入出力注釈から `Any` を除去。
+- `_collect_finite_values()` を `metrics_utils` 側へ集約し、
+  PnL / drift 抽出の重複を削減。
+- `side_regime_dashboard` は `MetricRecord` を使うように変更し、
+  `compute_extended_metrics()` 呼び出しの `type: ignore[arg-type]` を除去。
+- `side_regime_dashboard` の JSONL fallback 読み込みでも
+  object 以外の JSON 行を無視し、後続の `.get()` 前提崩れを防止。
+
+### 3) テスト強化
+
+- `side_regime_dashboard._load_all_records()` の fallback が
+  非 object 行を無視することを追加検証。
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

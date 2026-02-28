@@ -21,7 +21,7 @@ import sys
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, cast
 
 import numpy as np
 
@@ -32,7 +32,7 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 from ztb.io.jsonl import read_jsonl_objects
 
 # 160# P0-B/C: judgment 統合
-from scripts.v460.lib.metrics_utils import compute_extended_metrics
+from scripts.v460.lib.metrics_utils import MetricRecord, compute_extended_metrics
 from ztb.utils.safety import safe_to_finite
 from scripts.v460.lib.ab_judgment import (
     ABJudgmentCriteria,
@@ -94,12 +94,19 @@ class DashboardResult(TypedDict, total=False):
 # 161# DRY: _to_finite -> ztb.utils.safety.safe_to_finite に統合
 
 
-def _compute_side_metrics(records: list[dict[str, object]]) -> SideMetrics:
+def _as_metric_record(value: object) -> MetricRecord | None:
+    """JSON decoded value から object 行だけを許可する."""
+    if isinstance(value, dict):
+        return cast(MetricRecord, value)
+    return None
+
+
+def _compute_side_metrics(records: list[MetricRecord]) -> SideMetrics:
     """レコード群から SideMetrics を計算.
 
     161# DRY: compute_extended_metrics に委譲。
     """
-    ext = compute_extended_metrics(records)  # type: ignore[arg-type]
+    ext = compute_extended_metrics(records)
     return {
         "n_total": ext["n_total"],
         "n_filled": ext["n_filled"],
@@ -117,13 +124,16 @@ def _compute_side_metrics(records: list[dict[str, object]]) -> SideMetrics:
     }
 
 
-def _load_all_records(results_dir: Path) -> list[dict[str, object]]:
+def _load_all_records(results_dir: Path) -> list[MetricRecord]:
     """fill_records JSONL を全読み込み."""
-    all_records: list[dict[str, object]] = []
+    all_records: list[MetricRecord] = []
     for path in sorted(results_dir.glob("fill_records_*.jsonl")):
         try:
             records = read_jsonl_objects(path)
-            all_records.extend(records)
+            for record in records:
+                coerced = _as_metric_record(record)
+                if coerced is not None:
+                    all_records.append(coerced)
         except Exception:
             # BOM fallback
             with open(path, encoding="utf-8-sig") as f:
@@ -131,7 +141,10 @@ def _load_all_records(results_dir: Path) -> list[dict[str, object]]:
                     line = line.strip()
                     if line:
                         try:
-                            all_records.append(json.loads(line))
+                            decoded = json.loads(line)
+                            coerced = _as_metric_record(decoded)
+                            if coerced is not None:
+                                all_records.append(coerced)
                         except json.JSONDecodeError:
                             continue
     return all_records
@@ -169,7 +182,7 @@ def run_dashboard(
     result["overall_fill_rate"] = round(len(filled) / len(records), 4) if records else 0.0
 
     # === Side 別サマリー (159# §3.1: 3指標) ===
-    side_groups: dict[str, list[dict[str, object]]] = defaultdict(list)
+    side_groups: dict[str, list[MetricRecord]] = defaultdict(list)
     for r in records:
         side = str(r.get("side", "unknown"))
         side_groups[side].append(r)
@@ -181,7 +194,7 @@ def run_dashboard(
     result["side_summary"] = side_summary
 
     # === Regime × Side 詳細 ===
-    regime_side_groups: dict[str, list[dict[str, object]]] = defaultdict(list)
+    regime_side_groups: dict[str, list[MetricRecord]] = defaultdict(list)
     for r in records:
         regime = str(r.get("regime") or "none")
         side = str(r.get("side", "unknown"))
@@ -201,7 +214,7 @@ def run_dashboard(
     # === P0-C: trending 日次テンプレート ===
     # trending_down × sell の日別集計
     trending_daily: list[dict[str, object]] = []
-    td_by_day: dict[str, list[dict[str, object]]] = defaultdict(list)
+    td_by_day: dict[str, list[MetricRecord]] = defaultdict(list)
     for r in filled:
         if r.get("regime") == "trending_down" and r.get("side") == "sell":
             ts = r.get("timestamp")
