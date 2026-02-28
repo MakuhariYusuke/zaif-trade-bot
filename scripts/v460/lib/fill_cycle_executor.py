@@ -209,6 +209,10 @@ class FillCycleExecutorMixin:
         balance_forced_switch: bool,
         confidence_factor: float,
         regime_lot: float,
+        macro_trend: str | None = None,
+        macro_slope_5m: float | None = None,
+        macro_slope_15m: float | None = None,
+        macro_aligned: bool | None = None,
     ) -> FillRecord:
         """188# FillRecord を組み立てる.
 
@@ -308,6 +312,10 @@ class FillCycleExecutorMixin:
                 if hasattr(self, "_cycle_strategy")
                 else None
             ),
+            macro_trend=macro_trend,
+            macro_slope_5m=macro_slope_5m,
+            macro_slope_15m=macro_slope_15m,
+            macro_aligned=macro_aligned,
         )
 
     async def _measure_post_fill_pnl(
@@ -727,6 +735,41 @@ class FillCycleExecutorMixin:
                 regime_trend_pct = regime_result.trend_pct
                 regime_vol_ratio = regime_result.volatility_ratio
 
+        # 189# D: MacroRegime 更新 + compose_regimes
+        _macro_trend: Optional[str] = None
+        _macro_slope_5m: Optional[float] = None
+        _macro_slope_15m: Optional[float] = None
+        _macro_aligned: Optional[bool] = None
+        if hasattr(self, "_macro_regime_detector") and self._macro_regime_detector is not None:
+            _macro_price = mid_at_fill if mid_at_fill is not None else None
+            if _macro_price is None:
+                _fb, _ = self._maker_price.get_fallback_price()
+                _macro_price = _fb
+            if _macro_price is not None:
+                from scripts.v460.lib.macro_regime import compose_regimes
+                macro_result = self._macro_regime_detector.update(t_submit, _macro_price)
+                _macro_trend = macro_result.trend.value
+                _macro_slope_5m = macro_result.slope_5m_bps_per_min
+                _macro_slope_15m = macro_result.slope_15m_bps_per_min
+                if regime_str is not None:
+                    _, _macro_aligned = compose_regimes(
+                        regime_str, regime_conf or 0.0, macro_result,
+                    )
+                    if not _macro_aligned:
+                        _action = getattr(self.config, "macro_regime_conflict_action", "log")
+                        if _action == "downgrade":
+                            regime_str = "ranging"
+                            logger.info(
+                                "[macro_regime] micro/macro conflict → ranging downgrade "
+                                "(micro=%s, macro=%s)", regime_str, _macro_trend,
+                            )
+                        else:
+                            logger.debug(
+                                "[macro_regime] micro/macro conflict detected "
+                                "(micro=%s, macro=%s, aligned=False)",
+                                regime_str, _macro_trend,
+                            )
+
         record = self._build_fill_record(
             cycle_id=cycle_id,
             t_submit=t_submit,
@@ -760,6 +803,10 @@ class FillCycleExecutorMixin:
             balance_forced_switch=balance_forced_switch,
             confidence_factor=_confidence_factor,
             regime_lot=_regime_lot,
+            macro_trend=_macro_trend,
+            macro_slope_5m=_macro_slope_5m,
+            macro_slope_15m=_macro_slope_15m,
+            macro_aligned=_macro_aligned,
         )
 
         logger.info(

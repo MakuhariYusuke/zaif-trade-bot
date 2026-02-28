@@ -131,6 +131,13 @@ regime:
   # ranging_buy は全損失の 69% (-220.84 JPY) を占める最大損失源
   # 低ボラ環境では offset 調整より完全スキップが clean
   skip_ranging_buy_low_vol: true
+  # 189# D: MacroRegime (長周期レジーム) — micro との conflict 検出
+  macro:
+    enabled: false              # 189# 初期は観測のみ (conflict_action=log)。Phase E で downgrade 移行
+    bucket_sec: 30.0            # macro 判定の bucket 幅 (秒)
+    slope_threshold: 1.0        # trending 判定の slope 閾値 (bps/min)
+    strong_threshold: 3.0       # strong trend の slope 閾値 (bps/min)
+    conflict_action: log        # "log"=観測のみ, "downgrade"=conflict 時に ranging 降格
 
 # ---- 時間帯フィルター (041#) ----
 # 169# time_filter 全廃 (107# Phase 3 Step 3 完了)
@@ -257,6 +264,14 @@ skip_gate:
   # 141# P1-01: side 別モデルパス (null=統一モデルにフォールバック)
   model_path_buy: models/v460/skip_gate_lgbm_pnl30_buy.pkl
   model_path_sell: models/v460/skip_gate_lgbm_pnl120_sell.pkl
+  # 189# C-1: ev_weighted 用 alt horizon モデル (buy=pnl120長期, sell=pnl30短期)
+  model_path_buy_long: models/v460/skip_gate_lgbm_pnl120_buy.pkl
+  model_path_sell_short: models/v460/skip_gate_lgbm_pnl30_sell.pkl
+  # 189# ev_weighted: 両 horizon 統合判定 (w30×短期PnL + w120×長期PnL)
+  # buy pnl120 skip20: +2.075bps, sell pnl30 skip20: +1.272bps — 収益改善確認済み
+  ev_weighted_enabled: true
+  ev_w30: 0.4                  # 短期 PnL 重み (即時平均回帰)
+  ev_w120: 0.6                 # 長期 PnL 重み (持続的回復)
   as_threshold: 0.50           # 120# 0.52→0.50: P(AS)=0.50 が変曲点 (AS 18.1%→36.7%)
   as_threshold_buy: 0.50       # 120# A3: [0.50,0.52) 帯 n=60 PnL=-0.247 AS=36.7% → skip 対象化
   as_threshold_sell: 0.50      # 100# P0-2: sell 側厳格化 (旧 0.60 → 0.50)
@@ -461,6 +476,10 @@ retrain:
   side_specific_enabled: true        # side 別モデルを追加学習
   target_buy: pnl30                  # buy 側ターゲット (30s で即座に平均回帰)
   target_sell: pnl120                # sell 側ターゲット (120s の回復 horizon で評価)
+  # 189# alt horizon (ev_weighted 用): 両サイド補完 horizon を追加学習
+  alt_horizon_enabled: true          # alt horizon モデルの自動再学習
+  target_buy_alt: pnl120             # buy alt ターゲット (長期回復を補完)
+  target_sell_alt: pnl30             # sell alt ターゲット (即時平均回帰を補完)
   side_min_samples: 50               # side 別学習の最小サンプル数
   # 141# P1-12: オンラインパフォーマンスモニター
   online_monitor_enabled: true       # 直近 N fill で skip gate 品質を online 評価

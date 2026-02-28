@@ -107,6 +107,9 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "skip_gate_ev_weighted_enabled",
     "skip_gate_ev_w30",
     "skip_gate_ev_w120",
+    # 189# D: MacroRegime
+    "enable_macro_regime",
+    "macro_regime_conflict_action",
     # --- dynamic kill ---
     "sell_dynamic_kill_enabled",
     "sell_dynamic_kill_window",

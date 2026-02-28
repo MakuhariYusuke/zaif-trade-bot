@@ -134,6 +134,12 @@ class FillTestConfig:
     # ranging レジーム + buy + vol_ratio < low_vol_threshold → 完全スキップ
     # ranging_buy が全損失の 69% を占める根本対策。offset 調整より clean
     skip_ranging_buy_low_vol: bool = False
+    # 189# D: Macro Regime 統合
+    enable_macro_regime: bool = False  # MacroRegimeDetector 有効化
+    macro_regime_bucket_sec: float = 30.0  # 時間バケットサイズ
+    macro_regime_slope_threshold: float = 1.0  # bps/min — trending 判定閾値
+    macro_regime_strong_threshold: float = 3.0  # bps/min — strong trending 閾値
+    macro_regime_conflict_action: str = "log"  # "log" or "downgrade" — 矛盾時動作
     # 041# 時間帯フィルター (AS 高リスク時間帯のスキップ)
     enable_time_filter: bool = False
     skip_utc_hours: list[int] | None = None
@@ -1004,6 +1010,19 @@ class FillTestConfig:
         for yaml_key, config_key in regime_map.items():
             if yaml_key in regime:
                 kwargs[config_key] = regime[yaml_key]
+        # 189# D: macro_regime サブセクション
+        macro_cfg = regime.get("macro", {})
+        if isinstance(macro_cfg, dict):
+            macro_map = {
+                "enabled": "enable_macro_regime",
+                "bucket_sec": "macro_regime_bucket_sec",
+                "slope_threshold": "macro_regime_slope_threshold",
+                "strong_threshold": "macro_regime_strong_threshold",
+                "conflict_action": "macro_regime_conflict_action",
+            }
+            for yaml_key, config_key in macro_map.items():
+                if yaml_key in macro_cfg:
+                    kwargs[config_key] = macro_cfg[yaml_key]
         # 143# R-1b: レジーム別 lot 倍率
         if "lot_multipliers" in regime and isinstance(regime["lot_multipliers"], dict):
             kwargs["regime_lot_multipliers"] = {

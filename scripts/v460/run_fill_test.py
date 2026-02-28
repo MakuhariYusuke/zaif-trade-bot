@@ -253,6 +253,25 @@ class FillTestRunner(
                 f"hysteresis={regime_cfg.hysteresis_count}"
             )
 
+        # 189# D: MacroRegimeDetector 初期化
+        self._macro_regime_detector: Optional["MacroRegimeDetector"] = None
+        if config.enable_macro_regime:
+            from scripts.v460.lib.macro_regime import (
+                MacroRegimeConfig,
+                MacroRegimeDetector,
+            )
+
+            macro_cfg = MacroRegimeConfig(
+                bucket_sec=config.macro_regime_bucket_sec,
+                slope_threshold_bps_per_min=config.macro_regime_slope_threshold,
+                strong_slope_threshold_bps_per_min=config.macro_regime_strong_threshold,
+            )
+            self._macro_regime_detector = MacroRegimeDetector(macro_cfg)
+            logger.info(
+                f"[MacroRegime] detector enabled: bucket={macro_cfg.bucket_sec}s, "
+                f"slope_thr={macro_cfg.slope_threshold_bps_per_min} bps/min"
+            )
+
         # 119# BatchPersistence: 保存失敗トラッキング・リトライ・緊急ダンプ
         self._batch_persistence = BatchPersistence(
             results_dir=self._results_dir,

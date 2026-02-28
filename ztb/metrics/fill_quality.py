@@ -128,6 +128,11 @@ class FillRecord:
     # 187# B-2: guard_trace — gated_regime + effective_cycle_interval 記録
     gated_regime: Optional[str] = None              # ヒステリシス適用後の実効 regime
     effective_cycle_interval: Optional[float] = None  # 使用されたサイクル間隔 (秒)
+    # 189# D: MacroRegime 統合
+    macro_trend: Optional[str] = None               # macro_strong_up / neutral / ... / macro_insufficient
+    macro_slope_5m: Optional[float] = None          # 5分 slope (bps/min)
+    macro_slope_15m: Optional[float] = None         # 15分 slope (bps/min)
+    macro_aligned: Optional[bool] = None            # micro/macro 一致フラグ
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""

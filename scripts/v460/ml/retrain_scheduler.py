@@ -205,9 +205,13 @@ _DEFAULT_CONFIG: ConfigMap = {
     "target_skip_rate_sell": 0.20,
     # 141# P1-01/02: side 分離モデル + target 二層化
     "side_specific_enabled": False,       # side 別モデル追加学習を有効化
-    "target_buy": "pnl30",               # buy 側ターゲット
+    "target_buy": "pnl30",               # buy 側ターゲット (primary)
     "target_sell": "pnl30",              # sell 側ターゲット (YAML で pnl120 に上書き)
     "side_min_samples": 50,              # side 別学習の最小サンプル数
+    # 189# multi-horizon: alt (副 horizon) モデル学習
+    "alt_horizon_enabled": False,         # alt horizon モデル追加学習を有効化
+    "target_buy_alt": "pnl120",           # buy 側 alt ターゲット (長期)
+    "target_sell_alt": "pnl30",           # sell 側 alt ターゲット (短期)
     # 141# P1-12: オンラインパフォーマンスモニター
     "online_monitor_enabled": True,       # P1-12 online monitor を有効化
     "online_monitor_window": 100,         # 評価ウィンドウ (直近 N fill)
@@ -252,6 +256,9 @@ def load_retrain_config(config_path: Path | None = None) -> ConfigMap:
             # 141# P1-01: side 別モデルパスを skip_gate セクションから継承
             cfg["model_path_buy"] = sg_cfg.get("model_path_buy", "")
             cfg["model_path_sell"] = sg_cfg.get("model_path_sell", "")
+            # 189# multi-horizon: alt モデルパスを skip_gate セクションから継承
+            cfg["model_path_buy_long"] = sg_cfg.get("model_path_buy_long", "")
+            cfg["model_path_sell_short"] = sg_cfg.get("model_path_sell_short", "")
             # results_dir はトップレベルから継承
             cfg["results_dir"] = yaml_data.get("results_dir", "results/v460/fill_test")
 
@@ -1786,10 +1793,11 @@ def _retrain_side_specific(
     cfg: ConfigMap,
     history_path: Path,
 ) -> list[ConfigMap]:
-    """141# P1-01/02: buy/sell 分離モデルを追加学習.
+    """141# P1-01/02 + 189# multi-horizon: buy/sell 分離モデルを追加学習.
 
     統一モデル retrain 後に呼び出される。各 side のデータだけを使い、
     side 固有のターゲット (buy=pnl30, sell=pnl120) で個別学習。
+    189# alt_horizon_enabled=True の場合、副 horizon モデルも追加学習。
     十分なサンプルがない side はスキップ。
 
     Args:
@@ -1800,6 +1808,8 @@ def _retrain_side_specific(
         side 別 retrain 結果リスト.
     """
     results: list[ConfigMap] = []
+
+    # --- primary horizon (既存) ---
     model_path_map = {
         "buy": cfg.get("model_path_buy", ""),
         "sell": cfg.get("model_path_sell", ""),
@@ -1809,31 +1819,57 @@ def _retrain_side_specific(
         "sell": cfg.get("target_sell", cfg.get("target", "pnl30")),
     }
 
+    # --- 189# alt horizon (副 horizon for ev_weighted) ---
+    alt_enabled = bool(cfg.get("alt_horizon_enabled", False))
+    alt_model_path_map = {
+        "buy": cfg.get("model_path_buy_long", ""),
+        "sell": cfg.get("model_path_sell_short", ""),
+    }
+    alt_target_map = {
+        "buy": cfg.get("target_buy_alt", "pnl120"),
+        "sell": cfg.get("target_sell_alt", "pnl30"),
+    }
+
+    # 訓練対象: [(side, model_path, target, label), ...]
+    train_specs: list[tuple[str, str, str, str]] = []
     for side in ("buy", "sell"):
-        side_model_path = model_path_map[side]
-        if not side_model_path:
-            logger.debug(f"141# Side model {side}: no model_path configured, skipping")
+        # primary
+        if model_path_map[side]:
+            train_specs.append((side, str(model_path_map[side]), str(target_map[side]), "primary"))
+        # alt (189#)
+        if alt_enabled and alt_model_path_map[side]:
+            train_specs.append((side, str(alt_model_path_map[side]), str(alt_target_map[side]), "alt"))
+
+    for side, model_path, target, horizon_label in train_specs:
+        if not model_path:
+            logger.debug(f"141#/189# Side model {side}/{horizon_label}: no model_path, skipping")
             continue
 
         side_cfg = {**cfg}
         side_cfg["side_filter"] = side
-        side_cfg["target"] = target_map[side]
-        side_cfg["model_path"] = side_model_path
+        side_cfg["target"] = target
+        side_cfg["model_path"] = model_path
         # side 学習では warm_start は unified モデルと feature set が異なり得るため無効化
         side_cfg["warm_start_enabled"] = False
 
         try:
             side_result = retrain_model(side_cfg)
             side_result["side_model"] = side
+            side_result["horizon_label"] = horizon_label  # 189#
             logger.info(
-                f"141# Side model {side}: status={side_result['status']}, "
-                f"target={target_map[side]}, path={side_model_path}"
+                f"141#/189# Side model {side}/{horizon_label}: "
+                f"status={side_result['status']}, target={target}, path={model_path}"
             )
             _append_jsonl_record(history_path, side_result)
             results.append(side_result)
         except Exception as e:
-            logger.error(f"141# Side model {side} failed: {e}", exc_info=True)
-            results.append({"side_model": side, "status": "error", "reason": str(e)})
+            logger.error(f"141#/189# Side model {side}/{horizon_label} failed: {e}", exc_info=True)
+            results.append({
+                "side_model": side,
+                "horizon_label": horizon_label,
+                "status": "error",
+                "reason": str(e),
+            })
 
     return results
 
