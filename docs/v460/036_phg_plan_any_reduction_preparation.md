@@ -2426,6 +2426,26 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - `scripts/v460/lib/fill_loop_orchestrator.py`: `any_type_debt_tokens=0`
 
+### Step107: cycle 側 skip record 呼び出しも wrapper 化
+
+1. 対応概要
+- `scripts/v460/lib/fill_cycle_executor.py`
+  - `_make_cycle_skip_record()` を追加し、`run_single_cycle` 内の skip record 生成を一本化した。
+  - circuit breaker / orderbook error / narrow spread pause / order attempt failure の 4 経路を統一した。
+
+2. 目的
+- サイクル側の skip 記録も loop 側と同じく `regime` の伝搬を wrapper に閉じ込め、呼び出し側の重複指定をなくす。
+- cycle-level の cancel/skip reason 追加時に変更箇所を狭める。
+
+3. 検証
+- `py_compile`
+  - `scripts/v460/lib/fill_cycle_executor.py`
+- `pytest`
+  - `tests/unit/v460/test_145_structural_fixes.py`
+  - `結果: 54 passed`
+- `any_inventory`
+  - `scripts/v460/lib/fill_cycle_executor.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

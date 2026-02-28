@@ -59,6 +59,35 @@ class FillCycleExecutorMixin:
         r = await self._maker_price.compute(side, self.adapter, self.config.symbol)
         return r.price, r.spread, r.effective_offset_ratio
 
+    def _make_cycle_skip_record(
+        self,
+        *,
+        timestamp: float | None = None,
+        side: str,
+        cancel_reason: str,
+        cycle_id: str | None = None,
+        order_quantity: float | None = None,
+        order_price: float = 0.0,
+        spread_at_order: float | None = None,
+        spread_offset_ratio: float | None = None,
+        balance_forced_switch: bool = False,
+        **extra: object,
+    ) -> FillRecord:
+        """run_single_cycle 系 skip record の共通 wrapper."""
+        return self._make_skip_record(
+            timestamp=timestamp,
+            side=side,
+            cancel_reason=cancel_reason,
+            cycle_id=cycle_id,
+            order_quantity=order_quantity,
+            order_price=order_price,
+            spread_at_order=spread_at_order,
+            spread_offset_ratio=spread_offset_ratio,
+            regime=self._current_regime_value(),
+            balance_forced_switch=balance_forced_switch,
+            **extra,
+        )
+
     # ==================================================================
     # 113# R1: run_single_cycle から抽出したサブメソッド
     # ==================================================================
@@ -419,11 +448,10 @@ class FillCycleExecutorMixin:
                     f"[circuit_breaker] OPEN — skipping cycle {self._cycle_count} "
                     f"(recovery in {self._circuit_breaker.config.recovery_timeout}s)"
                 )
-                return self._make_skip_record(
+                return self._make_cycle_skip_record(
                     side=side_override or "buy",
                     cancel_reason=CR.CIRCUIT_BREAKER_OPEN,
                     cycle_id=cycle_id,
-                    regime=self._current_regime_value(),  # 160#
                 )
 
         # 055# Fix #2: Smart Side 判定用に最新板 imbalance を事前取得
@@ -513,7 +541,7 @@ class FillCycleExecutorMixin:
                     f"[155# ob_fallback] Using last mid_price={_fallback_price:.0f} "
                     f"(no timestamp, treated as stale) as reference for skip record"
                 )
-            return self._make_skip_record(
+            return self._make_cycle_skip_record(
                 side=side,
                 cancel_reason=ob_cancel_reason,
                 cycle_id=cycle_id,
@@ -523,7 +551,6 @@ class FillCycleExecutorMixin:
                     f"{e} [fallback_age={_fallback_age:.1f}s stale={_fallback_stale}]"
                     if _fallback_age is not None else str(e)
                 ),
-                regime=self._current_regime_value(),  # 160#
             )
 
         # 113# R1: SkipGate 判定を _evaluate_skip_gate() に委譲
@@ -570,14 +597,13 @@ class FillCycleExecutorMixin:
                     )
                     # 139# §9-#3: 実際に待機してから FillRecord を返す
                     await asyncio.sleep(pause_sec)
-                    return self._make_skip_record(
+                    return self._make_cycle_skip_record(
                         side=side,
                         cancel_reason=CR.NARROW_SPREAD_PAUSE,
                         cycle_id=cycle_id,
                         order_price=order_price,
                         spread_at_order=spread_at_order,
                         spread_offset_ratio=effective_offset_ratio,
-                        regime=self._current_regime_value(),  # 160#
                     )
             else:
                 self._narrow_spread_consecutive = 0
@@ -781,7 +807,7 @@ class FillCycleExecutorMixin:
             logger.error(f"All order attempts failed: {last_error}")
             # 113# resilience: API 失敗を CircuitBreaker に記録
             await self._circuit_breaker.async_on_failure()
-            return self._make_skip_record(
+            return self._make_cycle_skip_record(
                 timestamp=t_submit,
                 side=side,
                 cancel_reason=cancel_reason,
@@ -790,7 +816,6 @@ class FillCycleExecutorMixin:
                 order_price=order_price,
                 spread_at_order=spread_at_order,
                 spread_offset_ratio=effective_offset_ratio,  # 096# 計算済み実効値
-                regime=self._current_regime_value(),  # 160#
                 error_message=last_error,  # 031# エラー詳細を記録
             )
         if not isinstance(order, OrderLike):
