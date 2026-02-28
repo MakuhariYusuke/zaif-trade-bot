@@ -153,7 +153,9 @@ class OrderMonitor:
             if side == "sell" and cfg.order_timeout_sec_sell is not None
             else cfg.order_timeout_sec
         )
-        _timeout_mult = cfg.regime_timeout_multipliers.get(_regime_name, 1.0) if _regime_name else 1.0  # type: ignore[arg-type]
+        _timeout_mult = 1.0
+        if _regime_name is not None:
+            _timeout_mult = cfg.regime_timeout_multipliers.get(_regime_name, 1.0)
         _effective_timeout = _base_timeout * _timeout_mult
         if _timeout_mult != 1.0:
             logger.debug(
@@ -161,7 +163,11 @@ class OrderMonitor:
                 f"{_base_timeout:.0f}s × {_timeout_mult:.2f} = {_effective_timeout:.0f}s"
             )
         # R-1c: reprice offset (applied after side-specific resolution)
-        _regime_reprice_offset = cfg.regime_reprice_adjustments.get(_regime_name, 0) if _regime_name else 0  # type: ignore[arg-type]
+        _regime_reprice_offset = (
+            cfg.regime_reprice_adjustments.get(_regime_name, 0)
+            if _regime_name is not None
+            else 0
+        )
 
         # 094# 発注時 mid price を stale 判定の基準にする
         mid_at_order: Optional[float] = None

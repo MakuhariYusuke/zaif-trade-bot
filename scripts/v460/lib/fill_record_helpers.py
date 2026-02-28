@@ -16,7 +16,7 @@ import logging
 import time
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Final, Optional
 
 from ztb.utils.git_utils import get_git_sha as _get_shared_git_sha
 
@@ -38,6 +38,24 @@ if TYPE_CHECKING:
     from scripts.v460.lib.side_selector import SideSelector
 
 logger = logging.getLogger(__name__)
+
+_FILL_RECORD_FIELD_NAMES: Final[frozenset[str]] = frozenset(FillRecord.__dataclass_fields__.keys())
+_SKIP_RECORD_RESERVED_FIELDS: Final[frozenset[str]] = frozenset({
+    "cycle_id",
+    "timestamp",
+    "side",
+    "order_price",
+    "order_quantity",
+    "cancelled",
+    "cancel_reason",
+    "run_id",
+    "git_sha",
+    "spread_at_order",
+    "spread_offset_ratio",
+    "regime",
+    "balance_forced_switch",
+    "ab_test_variant",
+})
 
 
 class FillRecordHelpersMixin:
@@ -82,7 +100,7 @@ class FillRecordHelpersMixin:
         run_id, git_sha, timestamp は自動設定。
         cancel_reason 文字列は cancel_reasons モジュールの定数を使うこと。
         """
-        return FillRecord(
+        record = FillRecord(
             cycle_id=cycle_id or self._new_cycle_id(),
             timestamp=time.time(),
             side=side,
@@ -97,8 +115,32 @@ class FillRecordHelpersMixin:
             regime=regime,
             balance_forced_switch=balance_forced_switch,
             ab_test_variant=self.config.ab_test_variant or None,  # 158# P1-5
-            **extra,  # type: ignore[arg-type]
         )
+        if not extra:
+            return record
+
+        duplicate_keys: list[str] = []
+        unknown_keys: list[str] = []
+        for key, value in extra.items():
+            if key in _SKIP_RECORD_RESERVED_FIELDS:
+                duplicate_keys.append(key)
+                continue
+            if key not in _FILL_RECORD_FIELD_NAMES:
+                unknown_keys.append(key)
+                continue
+            setattr(record, key, value)
+
+        if duplicate_keys:
+            logger.debug(
+                "FillRecordHelpersMixin._make_skip_record: duplicate extra keys ignored: %s",
+                sorted(duplicate_keys),
+            )
+        if unknown_keys:
+            logger.debug(
+                "FillRecordHelpersMixin._make_skip_record: unknown extra keys ignored: %s",
+                sorted(unknown_keys),
+            )
+        return record
 
     def _current_regime_value(self) -> str | None:
         """160# skip record 用: 現在の確定レジーム文字列.

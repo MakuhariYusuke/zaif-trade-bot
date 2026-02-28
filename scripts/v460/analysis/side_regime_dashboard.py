@@ -193,13 +193,14 @@ def run_dashboard(
     td_by_day: dict[str, list[MetricRecord]] = defaultdict(list)
     for r in filled:
         if r.get("regime") == "trending_down" and r.get("side") == "sell":
-            ts = r.get("timestamp")
-            if ts:
-                try:
-                    day = datetime.fromtimestamp(float(ts), tz=timezone.utc).strftime("%Y%m%d")  # type: ignore[arg-type]
-                except (ValueError, TypeError, OSError):
-                    continue
-                td_by_day[day].append(r)
+            ts_value = safe_to_finite(r.get("timestamp"))
+            if ts_value is None:
+                continue
+            try:
+                day = datetime.fromtimestamp(ts_value, tz=timezone.utc).strftime("%Y%m%d")
+            except (ValueError, OSError):
+                continue
+            td_by_day[day].append(r)
 
     for day in sorted(td_by_day.keys()):
         recs = td_by_day[day]

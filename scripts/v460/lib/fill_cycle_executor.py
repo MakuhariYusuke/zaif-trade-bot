@@ -23,6 +23,7 @@ from scripts.v460.lib.fill_config import (
     FillMonitorResult as _FillMonitorResult,
     PnlMeasurement as _PnlMeasurement,
 )
+from scripts.v460.lib.order_monitor import OrderLike
 from scripts.v460.lib.resilience import CircuitState
 from ztb.metrics.fill_quality import FillRecord
 
@@ -106,7 +107,7 @@ class FillCycleExecutorMixin:
 
     async def _monitor_fill_polling(
         self,
-        order: object,
+        order: OrderLike,
         order_price: float,
         side: str,
         t_submit: float,
@@ -136,7 +137,7 @@ class FillCycleExecutorMixin:
 
         return await self._order_monitor.monitor(
             adapter=self.adapter,
-            order=order,  # type: ignore[arg-type]
+            order=order,
             order_price=order_price,
             side=side,
             t_submit=t_submit,
@@ -668,7 +669,7 @@ class FillCycleExecutorMixin:
 
         # 2. 発注 (CM-2: リトライ付き)
         t_submit = time.time()
-        order = None
+        order: object | None = None
         last_error: Optional[str] = None
         cancel_reason: str = "unknown"  # 032# #6: ループ未実行時の NameError 防止
 
@@ -794,6 +795,10 @@ class FillCycleExecutorMixin:
                 run_id=self._run_id,       # 088# データ品質: エラー時も必須
                 git_sha=self._git_sha,     # 088# quarantine 防止
                 regime=self._current_regime_value(),  # 160#
+            )
+        if not isinstance(order, OrderLike):
+            raise TypeError(
+                f"adapter.place_order returned non-OrderLike: {type(order).__name__}"
             )
 
         # 113# R1: ポーリング監視 + 未約定キャンセルを _monitor_fill_polling() に委譲

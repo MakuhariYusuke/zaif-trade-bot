@@ -1925,6 +1925,49 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - 両 loader テストを、fallback 強制ではなく
   `BOM + 非 object 行` の実入力に対する実挙動確認へ更新。
 
+## Step95 実施内容（scripts/v460 実行パス優先: order/fill/dashboard 型安全化）
+
+### 1) 対象ファイル
+
+- `scripts/v460/lib/order_monitor.py`
+- `scripts/v460/lib/fill_cycle_executor.py`
+- `scripts/v460/lib/fill_record_helpers.py`
+- `scripts/v460/analysis/side_regime_dashboard.py`
+
+### 2) 実運用改善 / 重複削減
+
+- `order_monitor` の regime timeout / regime reprice 解決で、
+  `None` を辞書 `.get()` に渡さない分岐へ整理し、
+  `type: ignore[arg-type]` を除去。
+- `fill_cycle_executor` で `adapter.place_order()` 戻り値に
+  `OrderLike` 実行時ガードを追加し、
+  非互換オブジェクト混入時は早期に `TypeError` で検出するよう改善。
+- `fill_record_helpers` の `_make_skip_record()` は
+  `extra` を dataclass 既知フィールドだけへ限定して適用する形に変更。
+- これにより unknown key / base field 重複 key は debug ログへ退避し、
+  `FillRecord` 構築時の動的 `**extra` 依存を排除。
+- `side_regime_dashboard` の trending 日次集計では
+  `timestamp` を `safe_to_finite()` 経由で正規化し、
+  `0` も有効 timestamp として扱えるよう改善。
+
+### 3) 検証
+
+- `py_compile`
+  - `scripts/v460/lib/order_monitor.py`
+  - `scripts/v460/lib/fill_cycle_executor.py`
+  - `scripts/v460/lib/fill_record_helpers.py`
+  - `scripts/v460/analysis/side_regime_dashboard.py`
+- `pytest`
+  - `tests/unit/v460/test_143_regime_utilization.py`
+  - `tests/unit/v460/test_094_stale_order.py`
+  - `tests/unit/v460/test_179_regime_policy_cycle_strategy.py`
+  - `tests/unit/v460/test_145_structural_fixes.py`
+  - `tests/unit/v460/test_159_side_regime_dashboard.py`
+  - `tests/unit/v460/test_160_ab_judgment.py`
+  - 結果: `307 passed`
+- `any_inventory`
+  - 対象 4 ファイルとも `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
