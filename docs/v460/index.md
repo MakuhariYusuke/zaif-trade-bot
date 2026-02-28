@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-28 (188# ファイル分割 + Phase C ev_weighted + Phase D Macro Regime)
+> 最終更新: 2026-02-28 (190# ev_weighted デッドロック修正 + min_spread_jpy 緩和)
 
 ---
 
@@ -179,6 +179,8 @@
 | 186 | rev | [186_ph2_rev_185_evaluation_and_plan.md](186_ph2_rev_185_evaluation_and_plan.md) | 185レビュー評価 + Trend Mode ヒステリシス + Strictness Clamp |
 | 187 | impl | [187_ph2_impl_chase_direction_guard_trace.md](187_ph2_impl_chase_direction_guard_trace.md) | Chase 方向制御 + guard_trace 記録 + clamp YAML外部化 |
 | 188 | impl | [188_ph2_impl_split_evc_macro.md](188_ph2_impl_split_evc_macro.md) | ファイル分割 + Phase C ev_weighted SkipGate + Phase D Macro Regime 基盤 |
+| 189 | impl | [189_alt_horizon_macro_integration.md](189_alt_horizon_macro_integration.md) | Alt horizon モデル訓練 + ev_weighted SkipGate + MacroRegime 基盤 |
+| 190 | fix | [190_ph2_fix_ev_weighted_deadlock.md](190_ph2_fix_ev_weighted_deadlock.md) | ev_weighted デッドロック修正 + min_spread_jpy 緩和 + pnl_threshold 調整 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
