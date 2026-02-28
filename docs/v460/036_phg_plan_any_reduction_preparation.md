@@ -2017,6 +2017,41 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - 対象 7 ファイルとも `any_type_debt_tokens=0`
 
+## Step97 実施内容（feature_enricher: trades / orderbook 窓参照の配列化）
+
+### 1) 対象ファイル
+
+- `scripts/v460/ml/feature_enricher.py`
+
+### 2) 実運用改善 / 重複削減
+
+- `TradeFeatureContext` を導入し、
+  `trades` の `timestamp / price / amount / buy_volume 累積和` を
+  1 回だけ前計算する形に変更。
+- `enrich_fill_records()` では
+  30s / 60s / 300s の各窓を DataFrame slice + `sum()` で都度計算せず、
+  `searchsorted + 累積和差分` で解くよう改善。
+- これにより 1 fill あたりの `trades` 側処理は
+  行スライス生成と `side.str.lower()` 再評価を避け、
+  Python / pandas オブジェクト生成量を大幅に削減。
+- `OrderbookFeatureContext` も導入し、
+  `spread_bps / depth_imbalance / bid_vol_5 / ask_vol_5 / mid_price` を配列化。
+- `_find_nearest_ob()` と `_compute_return_momentum()` は
+  `ob_df.iloc[...]` 依存を減らし、配列直接参照へ変更。
+- `enrich_fill_records()` 全体で、
+  `trades` / `orderbook` ともに per-record の DataFrame row アクセスをほぼ排除。
+
+### 3) 検証
+
+- `py_compile`
+  - `scripts/v460/ml/feature_enricher.py`
+- `pytest`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_ob_recorder.py -k "feature_enricher or matched or load_raw_orderbook or _find_nearest_ob"`
+  - 結果: `65 passed`
+- `any_inventory`
+  - `scripts/v460/ml/feature_enricher.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

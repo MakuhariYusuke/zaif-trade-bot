@@ -9,6 +9,7 @@ v459 K2 の非 RL 上限検証 + v460 マイクロストラクチャ特徴量を
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import logging
 from pathlib import Path
 from typing import Optional
@@ -25,6 +26,226 @@ _DEFAULT_RAW_DIR = Path("data/v460/raw")
 # 特徴量ウィンドウ (秒)
 _TRADE_WINDOW_SEC = 60  # 直近 60 秒の約定統計
 _OB_MATCH_TOLERANCE_SEC = 5  # 板スナップショットの許容誤差
+_MULTI_TF_WINDOWS = [30, 300]  # 秒 (primary 60s は既存)
+
+
+@dataclass(frozen=True)
+class _TradeFeatureContext:
+    """約定特徴量の高速計算に使う前計算済み配列."""
+
+    timestamps: np.ndarray
+    prices: np.ndarray
+    cumulative_total_volume: np.ndarray
+    cumulative_buy_volume: np.ndarray
+
+
+@dataclass(frozen=True)
+class _OrderbookFeatureContext:
+    """板特徴量の高速参照に使う前計算済み配列."""
+
+    timestamps: np.ndarray
+    mid_prices: np.ndarray
+    spread_bps: np.ndarray
+    depth_imbalance: np.ndarray
+    bid_vol_5: np.ndarray
+    ask_vol_5: np.ndarray
+
+
+def _build_orderbook_feature_context(
+    ob_df: pd.DataFrame,
+) -> _OrderbookFeatureContext | None:
+    """ob_df から高速参照用の配列を構築."""
+    if ob_df.empty:
+        return None
+    return _OrderbookFeatureContext(
+        timestamps=ob_df["ts"].to_numpy(dtype=np.float64, copy=False),
+        mid_prices=ob_df["mid_price"].to_numpy(dtype=np.float64, copy=False),
+        spread_bps=ob_df["spread_bps"].to_numpy(dtype=np.float64, copy=False),
+        depth_imbalance=ob_df["depth_imbalance"].to_numpy(dtype=np.float64, copy=False),
+        bid_vol_5=ob_df["bid_vol_5"].to_numpy(dtype=np.float64, copy=False),
+        ask_vol_5=ob_df["ask_vol_5"].to_numpy(dtype=np.float64, copy=False),
+    )
+
+
+def _build_trade_feature_context(
+    trades_df: pd.DataFrame,
+    *,
+    sorted_ts: np.ndarray | None = None,
+) -> _TradeFeatureContext | None:
+    """trades_df から高速窓計算用の前計算配列を構築."""
+    if trades_df.empty:
+        return None
+
+    timestamps = (
+        np.asarray(sorted_ts, dtype=np.float64)
+        if sorted_ts is not None and len(sorted_ts) == len(trades_df)
+        else trades_df["ts"].to_numpy(dtype=np.float64, copy=False)
+    )
+    if timestamps.size == 0:
+        return None
+
+    prices = trades_df["price"].to_numpy(dtype=np.float64, copy=False)
+    amounts = trades_df["amount"].to_numpy(dtype=np.float64, copy=False)
+    is_buy = trades_df["side"].astype(str).str.lower().eq("buy").to_numpy(dtype=bool, copy=False)
+    buy_amounts = np.where(is_buy, amounts, 0.0)
+
+    cumulative_total = np.empty(len(amounts) + 1, dtype=np.float64)
+    cumulative_total[0] = 0.0
+    np.cumsum(amounts, dtype=np.float64, out=cumulative_total[1:])
+
+    cumulative_buy = np.empty(len(amounts) + 1, dtype=np.float64)
+    cumulative_buy[0] = 0.0
+    np.cumsum(buy_amounts, dtype=np.float64, out=cumulative_buy[1:])
+
+    return _TradeFeatureContext(
+        timestamps=timestamps,
+        prices=prices,
+        cumulative_total_volume=cumulative_total,
+        cumulative_buy_volume=cumulative_buy,
+    )
+
+
+def _default_trade_features() -> dict[str, float]:
+    """primary 60s 互換のデフォルト特徴量."""
+    return {
+        "trade_count_60s": 0.0,
+        "buy_ratio": 0.5,
+        "trade_flow_imbalance_60s": 0.0,
+        "avg_trade_size": 0.0,
+        "price_velocity_60s": 0.0,
+        "vpin_60s": 0.5,
+    }
+
+
+def _default_multi_timeframe_trade_features(
+    windows: tuple[int, ...] = tuple(_MULTI_TF_WINDOWS),
+) -> dict[str, float]:
+    """multi-timeframe 特徴量のデフォルト値."""
+    result: dict[str, float] = {}
+    for window_sec in windows:
+        suffix = f"_{window_sec}s"
+        result[f"vpin{suffix}"] = 0.5
+        result[f"tfi{suffix}"] = 0.0
+        result[f"velocity{suffix}"] = 0.0
+        result[f"trade_count{suffix}"] = 0.0
+    result["vpin_acceleration"] = 0.0
+    result["tfi_acceleration"] = 0.0
+    result["trade_rate_acceleration"] = 0.0
+    return result
+
+
+def _compute_trade_window_core(
+    context: _TradeFeatureContext,
+    *,
+    end_index: int,
+    ts: float,
+    window_sec: int,
+) -> dict[str, float]:
+    """単一窓の約定統計コア計算."""
+    start_index = int(np.searchsorted(context.timestamps, ts - window_sec, side="left"))
+    if start_index >= end_index:
+        return {
+            "count": 0.0,
+            "buy_ratio": 0.5,
+            "tfi": 0.0,
+            "avg_size": 0.0,
+            "price_velocity": 0.0,
+            "vpin": 0.5,
+        }
+
+    total_vol = float(
+        context.cumulative_total_volume[end_index] - context.cumulative_total_volume[start_index]
+    )
+    buy_vol = float(
+        context.cumulative_buy_volume[end_index] - context.cumulative_buy_volume[start_index]
+    )
+    count = end_index - start_index
+
+    if total_vol > 0.0:
+        buy_ratio = buy_vol / total_vol
+        signed_flow = 2.0 * buy_vol - total_vol
+        tfi = signed_flow / total_vol
+        vpin = abs(signed_flow) / total_vol
+    else:
+        buy_ratio = 0.5
+        tfi = 0.0
+        vpin = 0.5
+
+    first_price = float(context.prices[start_index])
+    last_price = float(context.prices[end_index - 1])
+    price_velocity = (
+        (last_price - first_price) / first_price * 10000
+        if first_price > 0.0
+        else 0.0
+    )
+
+    return {
+        "count": float(count),
+        "buy_ratio": buy_ratio,
+        "tfi": tfi,
+        "avg_size": total_vol / count if count > 0 else 0.0,
+        "price_velocity": price_velocity,
+        "vpin": vpin,
+    }
+
+
+def _compute_trade_feature_bundle(
+    ts: float,
+    *,
+    context: _TradeFeatureContext | None,
+    primary_window_sec: int = _TRADE_WINDOW_SEC,
+    multi_windows: tuple[int, ...] = tuple(_MULTI_TF_WINDOWS),
+) -> tuple[dict[str, float], dict[str, float]]:
+    """primary + multi-timeframe の trade 特徴量を一括計算."""
+    primary = _default_trade_features()
+    multi = _default_multi_timeframe_trade_features(multi_windows)
+    if context is None:
+        return primary, multi
+
+    end_index = int(np.searchsorted(context.timestamps, ts, side="left"))
+    if end_index <= 0:
+        return primary, multi
+
+    primary_core = _compute_trade_window_core(
+        context,
+        end_index=end_index,
+        ts=ts,
+        window_sec=primary_window_sec,
+    )
+    primary = {
+        "trade_count_60s": primary_core["count"],
+        "buy_ratio": primary_core["buy_ratio"],
+        "trade_flow_imbalance_60s": primary_core["tfi"],
+        "avg_trade_size": primary_core["avg_size"],
+        "price_velocity_60s": primary_core["price_velocity"],
+        "vpin_60s": primary_core["vpin"],
+    }
+
+    core_by_window: dict[int, dict[str, float]] = {}
+    for window_sec in multi_windows:
+        core = _compute_trade_window_core(
+            context,
+            end_index=end_index,
+            ts=ts,
+            window_sec=window_sec,
+        )
+        core_by_window[window_sec] = core
+        suffix = f"_{window_sec}s"
+        multi[f"vpin{suffix}"] = core["vpin"]
+        multi[f"tfi{suffix}"] = core["tfi"]
+        multi[f"velocity{suffix}"] = core["price_velocity"]
+        multi[f"trade_count{suffix}"] = core["count"]
+
+    short_core = core_by_window.get(30)
+    long_core = core_by_window.get(300)
+    if short_core is not None and long_core is not None:
+        multi["vpin_acceleration"] = short_core["vpin"] - long_core["vpin"]
+        multi["tfi_acceleration"] = short_core["tfi"] - long_core["tfi"]
+        rate_30 = short_core["count"] / 30.0 if short_core["count"] > 0.0 else 0.0
+        rate_300 = long_core["count"] / 300.0 if long_core["count"] > 0.0 else 0.0
+        multi["trade_rate_acceleration"] = rate_30 - rate_300
+
+    return primary, multi
 
 
 def load_raw_orderbook(
@@ -135,6 +356,7 @@ def _compute_trade_features(
     window_sec: int = _TRADE_WINDOW_SEC,
     *,
     _sorted_ts: np.ndarray | None = None,
+    _context: _TradeFeatureContext | None = None,
 ) -> dict[str, float]:
     """指定時点の直前 window_sec 秒間の約定統計を算出.
 
@@ -144,68 +366,22 @@ def _compute_trade_features(
         trade_count_60s, buy_ratio, trade_flow_imbalance_60s,
         avg_trade_size, price_velocity_60s, vpin_60s
     """
-    _default = {
-        "trade_count_60s": 0.0,
-        "buy_ratio": 0.5,
-        "trade_flow_imbalance_60s": 0.0,
-        "avg_trade_size": 0.0,
-        "price_velocity_60s": 0.0,
-        "vpin_60s": 0.5,
-    }
-    if trades_df.empty:
-        return _default
-
-    t0 = ts - window_sec
-
-    # 059# P1-7: searchsorted で O(log N) にスライス
-    if _sorted_ts is not None:
-        i_start = int(np.searchsorted(_sorted_ts, t0, side="left"))
-        i_end = int(np.searchsorted(_sorted_ts, ts, side="left"))
-        if i_start >= i_end:
-            return _default
-        window = trades_df.iloc[i_start:i_end]
-    else:
-        mask = (trades_df["ts"] >= t0) & (trades_df["ts"] < ts)
-        window = trades_df.loc[mask]
-
-    if window.empty:
-        return _default
-
-    n_trades = len(window)
-    buy_mask = window["side"].str.lower() == "buy"
-    buy_vol = float(window.loc[buy_mask, "amount"].sum())
-    sell_vol = float(window.loc[~buy_mask, "amount"].sum())
-    total_vol = buy_vol + sell_vol
-
-    buy_ratio = buy_vol / total_vol if total_vol > 0 else 0.5
-    tfi = (buy_vol - sell_vol) / total_vol if total_vol > 0 else 0.0
-    avg_size = total_vol / n_trades if n_trades > 0 else 0.0
-
-    # Price velocity: (last - first) / first * 10000 bps
-    first_price = float(window["price"].iloc[0])
-    last_price = float(window["price"].iloc[-1])
-    price_vel = (
-        (last_price - first_price) / first_price * 10000
-        if first_price > 0 else 0.0
+    context = _context or _build_trade_feature_context(trades_df, sorted_ts=_sorted_ts)
+    primary, _ = _compute_trade_feature_bundle(
+        ts,
+        context=context,
+        primary_window_sec=window_sec,
+        multi_windows=(),
     )
-
-    # VPIN: |buy_vol - sell_vol| / total_vol
-    vpin = abs(buy_vol - sell_vol) / total_vol if total_vol > 0 else 0.5
-
-    return {
-        "trade_count_60s": float(n_trades),
-        "buy_ratio": buy_ratio,
-        "trade_flow_imbalance_60s": tfi,
-        "avg_trade_size": avg_size,
-        "price_velocity_60s": price_vel,
-        "vpin_60s": vpin,
-    }
+    return primary
 
 
 def _find_nearest_ob(
     ob_df: pd.DataFrame,
     ts: float,
     tolerance_sec: int = _OB_MATCH_TOLERANCE_SEC,
+    *,
+    _context: _OrderbookFeatureContext | None = None,
 ) -> dict[str, float]:
     """指定時刻に最も近い板スナップショットから特徴量取得.
 
@@ -218,21 +394,22 @@ def _find_nearest_ob(
         "bid_vol_5_ob": np.nan,
         "ask_vol_5_ob": np.nan,
     }
-    if ob_df.empty:
+    context = _context or _build_orderbook_feature_context(ob_df)
+    if context is None:
         return default
 
     # Binary search for nearest
-    idx = np.searchsorted(ob_df["ts"].values, ts)
+    idx = int(np.searchsorted(context.timestamps, ts))
     candidates = []
     if idx > 0:
         candidates.append(idx - 1)
-    if idx < len(ob_df):
+    if idx < len(context.timestamps):
         candidates.append(idx)
 
     best_idx = -1
     best_diff = float("inf")
     for c in candidates:
-        diff = abs(ob_df["ts"].iloc[c] - ts)
+        diff = abs(float(context.timestamps[c]) - ts)
         if diff < best_diff:
             best_diff = diff
             best_idx = c
@@ -240,18 +417,15 @@ def _find_nearest_ob(
     if best_idx < 0 or best_diff > tolerance_sec:
         return default
 
-    row = ob_df.iloc[best_idx]
     return {
-        "spread_bps_ob": float(row["spread_bps"]),
-        "depth_imbalance_ob": float(row["depth_imbalance"]),
-        "bid_vol_5_ob": float(row["bid_vol_5"]),
-        "ask_vol_5_ob": float(row["ask_vol_5"]),
+        "spread_bps_ob": float(context.spread_bps[best_idx]),
+        "depth_imbalance_ob": float(context.depth_imbalance[best_idx]),
+        "bid_vol_5_ob": float(context.bid_vol_5[best_idx]),
+        "ask_vol_5_ob": float(context.ask_vol_5[best_idx]),
     }
 
 
 # ----- 060# v2: Multi-timeframe & volatility features -----
-
-_MULTI_TF_WINDOWS = [30, 300]  # 秒 (primary 60s は既存)
 
 
 def _compute_multi_timeframe_trade_features(
@@ -259,6 +433,7 @@ def _compute_multi_timeframe_trade_features(
     ts: float,
     *,
     _sorted_ts: np.ndarray | None = None,
+    _context: _TradeFeatureContext | None = None,
 ) -> dict[str, float]:
     """060# v2: 30s/300s 窓の約定統計 (既存 60s を補完).
 
@@ -266,38 +441,11 @@ def _compute_multi_timeframe_trade_features(
     - 短期 (30s) vs 長期 (300s) の flow 乖離 → 情報トレーダー検知
     - 加速度 (trade rate の変化) → urgency
     """
-    result: dict[str, float] = {}
-
-    for w in _MULTI_TF_WINDOWS:
-        suffix = f"_{w}s"
-        feats = _compute_trade_features(
-            trades_df, ts, w, _sorted_ts=_sorted_ts
-        )
-        # 主要指標のみ追加 (全部入れると次元が爆発)
-        result[f"vpin{suffix}"] = feats["vpin_60s"]  # 命名は窓に合わせる
-        result[f"tfi{suffix}"] = feats["trade_flow_imbalance_60s"]
-        result[f"velocity{suffix}"] = feats["price_velocity_60s"]
-        result[f"trade_count{suffix}"] = feats["trade_count_60s"]
-
-    # Cross-timeframe: 30s vs 300s の加速度シグナル
-    vpin_30 = result.get("vpin_30s", 0.5)
-    vpin_300 = result.get("vpin_300s", 0.5)
-    tfi_30 = result.get("tfi_30s", 0.0)
-    tfi_300 = result.get("tfi_300s", 0.0)
-    tc_30 = result.get("trade_count_30s", 0.0)
-    tc_300 = result.get("trade_count_300s", 0.0)
-
-    # VPIN 加速: 短期 VPIN が長期より高い → 直近に informed trading
-    result["vpin_acceleration"] = vpin_30 - vpin_300
-
-    # TFI 加速: 短期 flow が長期より偏っている → 方向性圧力の急変
-    result["tfi_acceleration"] = tfi_30 - tfi_300
-
-    # Trade rate 加速: 30s rate vs 300s rate (normalized to per-second)
-    rate_30 = tc_30 / 30.0 if tc_30 > 0 else 0.0
-    rate_300 = tc_300 / 300.0 if tc_300 > 0 else 0.0
-    result["trade_rate_acceleration"] = rate_30 - rate_300
-
+    context = _context or _build_trade_feature_context(trades_df, sorted_ts=_sorted_ts)
+    _, result = _compute_trade_feature_bundle(
+        ts,
+        context=context,
+    )
     return result
 
 
@@ -306,6 +454,7 @@ def _compute_return_momentum(
     ts: float,
     *,
     sorted_ts: np.ndarray | None = None,
+    _context: _OrderbookFeatureContext | None = None,
     windows: tuple[int, ...] = (30, 60, 300),
 ) -> dict[str, float]:
     """060# v2: OB mid price ベースのリターンモメンタム + ボラティリティ.
@@ -326,11 +475,16 @@ def _compute_return_momentum(
         default[f"return_{w}s"] = np.nan
     default["realized_vol_300s"] = np.nan
 
-    if ob_df.empty or "ts" not in ob_df.columns:
+    context = _context or _build_orderbook_feature_context(ob_df)
+    if context is None:
         return default
 
-    ts_arr = sorted_ts if sorted_ts is not None else ob_df["ts"].values
-    mid_arr = ob_df["mid_price"].values
+    ts_arr = (
+        np.asarray(sorted_ts, dtype=np.float64)
+        if sorted_ts is not None and len(sorted_ts) == len(context.timestamps)
+        else context.timestamps
+    )
+    mid_arr = context.mid_prices
 
     # 現在の mid を取得 (最近傍)
     idx_now = int(np.searchsorted(ts_arr, ts, side="right")) - 1
@@ -448,9 +602,12 @@ def enrich_fill_records(
     if not trades_df.empty and "ts" in trades_df.columns:
         trades_df = trades_df.sort_values("ts").reset_index(drop=True)
         sorted_ts = trades_df["ts"].values
+        trade_context = _build_trade_feature_context(trades_df, sorted_ts=sorted_ts)
     else:
         sorted_ts = None
+        trade_context = None
 
+    ob_context = _build_orderbook_feature_context(ob_df)
     # 060#: OB ts も事前準備 (multi-timeframe momentum 計算用)
     ob_sorted_ts = ob_df["ts"].values if not ob_df.empty else None
 
@@ -459,20 +616,27 @@ def enrich_fill_records(
     for ts in timestamps:
 
         # Orderbook features (nearest snapshot)
-        ob_features = _find_nearest_ob(ob_df, ts, ob_tolerance_sec)
-
-        # Trade features (rolling window — primary 60s)
-        trade_features = _compute_trade_features(
-            trades_df, ts, trade_window_sec, _sorted_ts=sorted_ts
+        ob_features = _find_nearest_ob(
+            ob_df,
+            ts,
+            ob_tolerance_sec,
+            _context=ob_context,
         )
 
-        # 060# v2: Multi-timeframe trade features (30s, 300s)
-        multi_tf = _compute_multi_timeframe_trade_features(
-            trades_df, ts, _sorted_ts=sorted_ts
+        # Trade features (rolling window — primary 60s)
+        trade_features, multi_tf = _compute_trade_feature_bundle(
+            ts,
+            context=trade_context,
+            primary_window_sec=trade_window_sec,
         )
 
         # 060# v2: Return momentum & volatility (from OB mid prices)
-        momentum = _compute_return_momentum(ob_df, ts, sorted_ts=ob_sorted_ts)
+        momentum = _compute_return_momentum(
+            ob_df,
+            ts,
+            sorted_ts=ob_sorted_ts,
+            _context=ob_context,
+        )
 
         enriched_rows.append(
             {**ob_features, **trade_features, **multi_tf, **momentum}
