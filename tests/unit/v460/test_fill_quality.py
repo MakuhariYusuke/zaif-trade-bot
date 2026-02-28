@@ -61,6 +61,30 @@ class TestFillRecord:
         assert r.cycle_id == "x"
         assert not hasattr(r, "extra_key")
 
+    def test_build_skip_fill_record_applies_known_extra_only(self) -> None:
+        from ztb.metrics.fill_quality import build_skip_fill_record
+
+        r = build_skip_fill_record(
+            cycle_id="skip_1",
+            timestamp=1.0,
+            side="buy",
+            order_price=100.0,
+            order_quantity=0.01,
+            cancel_reason="skip_gate",
+            run_id="run_1",
+            git_sha="abc123",
+            regime="trending",
+            skip_gate_skipped=True,
+            skip_gate_reason="threshold",
+            unknown_extra="ignored",
+        )
+
+        assert r.cancelled is True
+        assert r.cancel_reason == "skip_gate"
+        assert r.skip_gate_skipped is True
+        assert r.skip_gate_reason == "threshold"
+        assert not hasattr(r, "unknown_extra")
+
     def test_defaults(self) -> None:
         from ztb.metrics.fill_quality import FillRecord
 

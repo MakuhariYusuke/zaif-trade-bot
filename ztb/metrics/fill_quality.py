@@ -18,7 +18,7 @@ from collections import deque
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Final, Optional
 
 import numpy as np
 from scipy import stats
@@ -146,6 +146,88 @@ class FillRecord:
         if unknown:
             logger.debug(f"FillRecord.from_dict: unknown fields ignored: {unknown}")
         return cls(**{k: v for k, v in d.items() if k in known_keys})
+
+
+_FILL_RECORD_FIELD_NAMES: Final[frozenset[str]] = frozenset(FillRecord.__dataclass_fields__.keys())
+_SKIP_RECORD_RESERVED_FIELDS: Final[frozenset[str]] = frozenset({
+    "cycle_id",
+    "timestamp",
+    "side",
+    "order_price",
+    "order_quantity",
+    "cancel_reason",
+    "run_id",
+    "git_sha",
+    "spread_at_order",
+    "spread_offset_ratio",
+    "regime",
+    "balance_forced_switch",
+    "ab_test_variant",
+})
+
+
+def build_skip_fill_record(
+    *,
+    cycle_id: str,
+    timestamp: float,
+    side: str,
+    order_price: float,
+    order_quantity: float,
+    cancel_reason: str,
+    run_id: str | None,
+    git_sha: str | None,
+    spread_at_order: float | None = None,
+    spread_offset_ratio: float | None = None,
+    regime: str | None = None,
+    balance_forced_switch: bool = False,
+    ab_test_variant: str | None = None,
+    **extra: object,
+) -> FillRecord:
+    """skip/監査系 FillRecord の共通 builder.
+
+    追加フィールドは FillRecord に存在するものだけを反映し、それ以外は無視する。
+    """
+    record = FillRecord(
+        cycle_id=cycle_id,
+        timestamp=timestamp,
+        side=side,
+        order_price=order_price,
+        order_quantity=order_quantity,
+        cancelled=True,
+        cancel_reason=cancel_reason,
+        run_id=run_id,
+        git_sha=git_sha,
+        spread_at_order=spread_at_order,
+        spread_offset_ratio=spread_offset_ratio,
+        regime=regime,
+        balance_forced_switch=balance_forced_switch,
+        ab_test_variant=ab_test_variant,
+    )
+    if not extra:
+        return record
+
+    unknown_keys: list[str] = []
+    reserved_keys: list[str] = []
+    for key, value in extra.items():
+        if key in _SKIP_RECORD_RESERVED_FIELDS:
+            reserved_keys.append(key)
+            continue
+        if key not in _FILL_RECORD_FIELD_NAMES:
+            unknown_keys.append(key)
+            continue
+        setattr(record, key, value)
+
+    if reserved_keys:
+        logger.debug(
+            "build_skip_fill_record: reserved extra keys ignored: %s",
+            sorted(reserved_keys),
+        )
+    if unknown_keys:
+        logger.debug(
+            "build_skip_fill_record: unknown extra keys ignored: %s",
+            sorted(unknown_keys),
+        )
+    return record
 
 
 @dataclass

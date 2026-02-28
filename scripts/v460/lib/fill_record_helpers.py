@@ -16,7 +16,7 @@ import logging
 import time
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, Optional
+from typing import TYPE_CHECKING, Optional
 
 from ztb.utils.git_utils import get_git_sha as _get_shared_git_sha
 
@@ -28,7 +28,7 @@ from scripts.v460.lib.lot_manager import (
     resolve_regime_lot_multiplier,
     scale_lot_by_regime,
 )
-from ztb.metrics.fill_quality import FillRecord, load_fill_records_glob
+from ztb.metrics.fill_quality import FillRecord, build_skip_fill_record, load_fill_records_glob
 
 if TYPE_CHECKING:
     from scripts.v460.lib.cancel_reasons import CancelReason
@@ -38,90 +38,6 @@ if TYPE_CHECKING:
     from scripts.v460.lib.side_selector import SideSelector
 
 logger = logging.getLogger(__name__)
-
-_FILL_RECORD_FIELD_NAMES: Final[frozenset[str]] = frozenset(FillRecord.__dataclass_fields__.keys())
-_SKIP_RECORD_RESERVED_FIELDS: Final[frozenset[str]] = frozenset({
-    "cycle_id",
-    "timestamp",
-    "side",
-    "order_price",
-    "order_quantity",
-    "cancelled",
-    "cancel_reason",
-    "run_id",
-    "git_sha",
-    "spread_at_order",
-    "spread_offset_ratio",
-    "regime",
-    "balance_forced_switch",
-    "ab_test_variant",
-})
-
-
-def _apply_skip_record_extras(record: FillRecord, extra: dict[str, object]) -> FillRecord:
-    """skip 系 FillRecord の追加フィールド反映を共通化."""
-    if not extra:
-        return record
-
-    duplicate_keys: list[str] = []
-    unknown_keys: list[str] = []
-    for key, value in extra.items():
-        if key in _SKIP_RECORD_RESERVED_FIELDS:
-            duplicate_keys.append(key)
-            continue
-        if key not in _FILL_RECORD_FIELD_NAMES:
-            unknown_keys.append(key)
-            continue
-        setattr(record, key, value)
-
-    if duplicate_keys:
-        logger.debug(
-            "build_skip_fill_record: duplicate extra keys ignored: %s",
-            sorted(duplicate_keys),
-        )
-    if unknown_keys:
-        logger.debug(
-            "build_skip_fill_record: unknown extra keys ignored: %s",
-            sorted(unknown_keys),
-        )
-    return record
-
-
-def build_skip_fill_record(
-    *,
-    cycle_id: str,
-    timestamp: float,
-    side: str,
-    order_price: float,
-    order_quantity: float,
-    cancel_reason: str,
-    run_id: str,
-    git_sha: str | None,
-    spread_at_order: float | None = None,
-    spread_offset_ratio: float | None = None,
-    regime: str | None = None,
-    balance_forced_switch: bool = False,
-    ab_test_variant: str | None = None,
-    **extra: object,
-) -> FillRecord:
-    """skip/監査系 FillRecord の共通 builder."""
-    record = FillRecord(
-        cycle_id=cycle_id,
-        timestamp=timestamp,
-        side=side,
-        order_price=order_price,
-        order_quantity=order_quantity,
-        cancelled=True,
-        cancel_reason=cancel_reason,
-        run_id=run_id,
-        git_sha=git_sha,
-        spread_at_order=spread_at_order,
-        spread_offset_ratio=spread_offset_ratio,
-        regime=regime,
-        balance_forced_switch=balance_forced_switch,
-        ab_test_variant=ab_test_variant,
-    )
-    return _apply_skip_record_extras(record, extra)
 
 
 class FillRecordHelpersMixin:

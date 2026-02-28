@@ -2446,6 +2446,33 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - `scripts/v460/lib/fill_cycle_executor.py`: `any_type_debt_tokens=0`
 
+### Step108: skip FillRecord builder を ztb 側へ昇格
+
+1. 対応概要
+- `ztb/metrics/fill_quality.py`
+  - `build_skip_fill_record()` を追加し、`FillRecord` 定義元へ skip/監査系 builder を昇格した。
+  - known field のみ反映し、unknown field は無視する契約を ztb 側へ集約した。
+- `scripts/v460/lib/fill_record_helpers.py`
+  - local builder 実装を削除し、`ztb.metrics.fill_quality.build_skip_fill_record` を利用する形へ整理した。
+- `tests/unit/v460/test_fill_quality.py`
+  - ztb 側 builder が known extra のみ反映し、unknown extra を捨てることを追加検証した。
+
+2. 目的
+- `FillRecord` の生成責務を `FillRecord` 定義元へ寄せ、v460 固有 helper から ztb 共通資産として再利用しやすくする。
+- 今回切り出した builder を、他系統（v459/将来 v4xx）でもそのまま使える配置にする。
+
+3. 検証
+- `py_compile`
+  - `ztb/metrics/fill_quality.py`
+  - `scripts/v460/lib/fill_record_helpers.py`
+- `pytest`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_145_structural_fixes.py`
+  - 結果: `244 passed`
+- `any_inventory`
+  - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/fill_record_helpers.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
