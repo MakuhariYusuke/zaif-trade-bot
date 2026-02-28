@@ -2254,6 +2254,49 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/ml/skip_gate.py`: `any_type_debt_tokens=0`
   - `scripts/v460/lib/skip_gate_evaluator.py`: `any_type_debt_tokens=0`
 
+## Step102 実施内容（`skip_gate_evaluator` の skip record 統一 + trade payload 正規化）
+
+### 1) 対象ファイル
+
+- `scripts/v460/lib/skip_gate_evaluator.py`
+- `tests/unit/v460/test_skip_gate_v3.py`
+
+### 2) 実運用改善 / 重複削減
+
+- `skip_gate_evaluator` に
+  `_get_trade_field()` / `_normalize_recent_trades()` を追加し、
+  adapter から返る recent trade が `dict` / object 混在でも
+  `skip_gate` へ渡す payload を共通形式に正規化するよう変更。
+- これにより、従来の `getattr(...)` 前提では拾えていなかった
+  dict 形式の `timestamp` / `amount` / `quantity` / `side` も扱えるようにした。
+- `_make_skip_fill_record()` を追加し、
+  unknown-regime rule skip / velocity rule skip / 通常 model skip の
+  `FillRecord(...)` 生成を一本化。
+- 3 箇所で重複していた
+  `cycle_id` / `order_price` / `spread_at_order` / skip metadata の束を
+  1 箇所へ集約し、保守時の変更漏れを減らした。
+- `evaluate()` では `market_ts` を 1 回だけ取得し、
+  feature 構築・trade fallback timestamp・early return record の
+  timestamp を揃える形へ変更。
+- UTC hour 算出は `datetime.now(timezone.utc)` をやめて
+  `time.gmtime(market_ts).tm_hour` に変更し、
+  常用パスの object 生成を減らした。
+
+### 3) 検証
+
+- `py_compile`
+  - `scripts/v460/lib/skip_gate_evaluator.py`
+  - `tests/unit/v460/test_skip_gate_v3.py`
+- `pytest`
+  - `tests/unit/v460/test_skip_gate_v3.py`
+  - `tests/unit/v460/test_195_velocity_b1_soft.py`
+  - `tests/unit/v460/test_141_side_specific_models.py`
+  - `-k "skip_unknown or normalize_recent_trades or model_used_tag or side_only_missing_side_returns_reason or velocity"`
+  - 結果: `36 passed`
+- `any_inventory`
+  - `scripts/v460/lib/skip_gate_evaluator.py`: `any_type_debt_tokens=0`
+  - `tests/unit/v460/test_skip_gate_v3.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

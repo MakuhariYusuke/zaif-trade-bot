@@ -274,6 +274,39 @@ class TestSkipSellUnknownRegime:
         assert result.skipped is True
         assert result.reason == "rule_skip_unknown_sell"
         assert result.model_used == "rule"
+        assert result.early_return_record is not None
+        assert result.early_return_record.cancel_reason == "skip_gate_rule_unknown_sell"
+        assert result.early_return_record.skip_gate_reason == "rule_skip_unknown_sell"
+
+    def test_normalize_recent_trades_accepts_dict_and_object(self) -> None:
+        """recent_trades は dict/object 混在でも共通形式に正規化される."""
+        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+
+        class TradeObj:
+            def __init__(self) -> None:
+                self.ts = 101.0
+                self.price = 502.0
+                self.quantity = 3.0
+                self.side = "sell"
+
+        normalized = SkipGateEvaluator._normalize_recent_trades(
+            [
+                {
+                    "timestamp": 100.0,
+                    "price": 500.0,
+                    "amount": 2.0,
+                    "side": "buy",
+                },
+                TradeObj(),
+                None,
+            ],
+            fallback_timestamp=999.0,
+        )
+
+        assert normalized == [
+            {"ts": 100.0, "price": 500.0, "amount": 2.0, "side": "buy"},
+            {"ts": 101.0, "price": 502.0, "amount": 3.0, "side": "sell"},
+        ]
 
     def test_evaluator_passes_sell_trending(self, config: "FillTestConfig") -> None:
         """sell + trending regime → ルールは発火しない (ML判定に委譲)."""

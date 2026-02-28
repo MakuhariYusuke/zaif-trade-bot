@@ -217,6 +217,125 @@ class SkipGateEvaluator:
         self._inject_calibrator(gate)
         return gate
 
+    @staticmethod
+    def _get_trade_field(
+        trade: object,
+        *,
+        key: str,
+        fallback_key: str | None = None,
+        default: object = None,
+    ) -> object:
+        """dict / object 両対応で trade field を取得する."""
+        if isinstance(trade, dict):
+            if key in trade:
+                return trade[key]
+            if fallback_key is not None and fallback_key in trade:
+                return trade[fallback_key]
+            return default
+        value = getattr(trade, key, default)
+        if value is default and fallback_key is not None:
+            value = getattr(trade, fallback_key, default)
+        return value
+
+    @classmethod
+    def _normalize_recent_trades(
+        cls,
+        trades: object,
+        *,
+        fallback_timestamp: float,
+    ) -> list[dict[str, object]] | None:
+        """adapter の recent_trades を skip_gate 用の共通形式へ正規化."""
+        if not trades:
+            return None
+        try:
+            iterator = iter(cast(object, trades))
+        except TypeError:
+            return None
+
+        normalized: list[dict[str, object]] = []
+        for trade in iterator:
+            if trade is None:
+                continue
+            normalized.append({
+                "ts": cls._get_trade_field(
+                    trade,
+                    key="timestamp",
+                    fallback_key="ts",
+                    default=fallback_timestamp,
+                ),
+                "price": cls._get_trade_field(
+                    trade,
+                    key="price",
+                    default=0.0,
+                ),
+                "amount": cls._get_trade_field(
+                    trade,
+                    key="amount",
+                    fallback_key="quantity",
+                    default=0.0,
+                ),
+                "side": cls._get_trade_field(
+                    trade,
+                    key="side",
+                    default="buy",
+                ),
+            })
+        return normalized or None
+
+    @staticmethod
+    def _make_skip_fill_record(
+        *,
+        cycle_id: str,
+        timestamp: float,
+        side: str,
+        order_price: float,
+        order_quantity: float,
+        cancel_reason: str,
+        spread_at_order: float | None,
+        spread_offset_ratio: float,
+        skip_gate_score: float,
+        skip_gate_reason: str,
+        skip_gate_model_used: str,
+        orderbook_imbalance: float | None,
+        bid_depth_total: float | None,
+        ask_depth_total: float | None,
+        run_id: str,
+        git_sha: str | None,
+        regime: str | None,
+        skip_gate_as_prob: float | None = None,
+        skip_gate_threshold_used: float | None = None,
+        skip_gate_hour_offset: float | None = None,
+        price_velocity_60s: float | None = None,
+    ) -> "FillRecord":
+        """skip 系の early return 用 FillRecord を共通生成."""
+        from ztb.metrics.fill_quality import FillRecord
+
+        return FillRecord(
+            cycle_id=cycle_id,
+            timestamp=timestamp,
+            side=side,
+            order_price=order_price,
+            order_quantity=order_quantity,
+            cancelled=True,
+            cancel_reason=cancel_reason,
+            spread_at_order=spread_at_order,
+            spread_offset_ratio=spread_offset_ratio,
+            skip_gate_skipped=True,
+            skip_gate_score=skip_gate_score,
+            skip_gate_reason=skip_gate_reason,
+            skip_gate_model_used=skip_gate_model_used,
+            skip_gate_as_prob=skip_gate_as_prob,
+            skip_gate_threshold_used=skip_gate_threshold_used,
+            skip_gate_hour_offset=skip_gate_hour_offset,
+            orderbook_imbalance=orderbook_imbalance,
+            bid_depth_total=bid_depth_total,
+            ask_depth_total=ask_depth_total,
+            run_id=run_id,
+            git_sha=git_sha,
+            regime=regime,
+            price_velocity_60s=price_velocity_60s,
+        )
+
     def _apply_config_overrides(self, skip_gate: _SkipGateLike) -> None:
         """YAML 設定でモデル内 config をオーバーライド."""
         config = self._config
@@ -755,8 +874,7 @@ class SkipGateEvaluator:
             and side == "sell"
             and (regime_value is None or regime_value == "unknown")
         ):
-            from ztb.metrics.fill_quality import FillRecord
-
+            event_ts = time.time()
             logger.info(
                 f"[skip_gate] SKIP: sell in unknown regime "
                 f"(124# rule_skip_unknown_sell)"
@@ -765,17 +883,15 @@ class SkipGateEvaluator:
             result.score = 0.0
             result.reason = "rule_skip_unknown_sell"
             result.model_used = "rule"
-            result.early_return_record = FillRecord(
+            result.early_return_record = self._make_skip_fill_record(
                 cycle_id=cycle_id,
-                timestamp=time.time(),
+                timestamp=event_ts,
                 side=side,
                 order_price=order_price,
                 order_quantity=current_lot,
-                cancelled=True,
                 cancel_reason="skip_gate_rule_unknown_sell",
                 spread_at_order=spread_at_order,
                 spread_offset_ratio=effective_offset_ratio,
-                skip_gate_skipped=True,
                 skip_gate_score=0.0,
                 skip_gate_reason="rule_skip_unknown_sell",
                 skip_gate_model_used="rule",
@@ -803,6 +919,7 @@ class SkipGateEvaluator:
 
         try:
             sg_regime = regime_value or "unknown"
+            market_ts = time.time()
 
             # 直近約定データ取得
             recent_trades_data: list[dict[str, object]] | None = None
@@ -813,16 +930,10 @@ class SkipGateEvaluator:
                         symbol,
                         limit=self._config.skip_gate_recent_trades_limit,
                     )
-                    if trades:
-                        recent_trades_data = [
-                            {
-                                "ts": getattr(t, "timestamp", time.time()),
-                                "price": getattr(t, "price", 0.0),
-                                "amount": getattr(t, "amount", getattr(t, "quantity", 0.0)),
-                                "side": getattr(t, "side", "buy"),
-                            }
-                            for t in trades
-                        ]
+                    recent_trades_data = self._normalize_recent_trades(
+                        trades,
+                        fallback_timestamp=market_ts,
+                    )
             except Exception as exc:
                 logger.debug("Trades formatting failed: %s", exc)
 
@@ -869,7 +980,7 @@ class SkipGateEvaluator:
                 offset_ratio=effective_offset_ratio,
                 regime=sg_regime,
                 recent_trades=recent_trades_data,
-                market_timestamp=time.time(),
+                market_timestamp=market_ts,
                 best_bid=ob_bid,
                 best_ask=ob_ask,
                 bid_vol_5=ob_bid_vol,
@@ -924,8 +1035,6 @@ class SkipGateEvaluator:
                     # hard skip しない → ML 判定に進む
                 else:
                     # 旧モード: hard skip
-                    from ztb.metrics.fill_quality import FillRecord
-
                     _reason = f"rule_velocity_{_vel_label}_skip"
                     _cancel = f"skip_gate_rule_velocity_{_vel_label}"
                     logger.info(
@@ -937,17 +1046,15 @@ class SkipGateEvaluator:
                     result.score = _pv60
                     result.reason = _reason
                     result.model_used = "rule"
-                    result.early_return_record = FillRecord(
+                    result.early_return_record = self._make_skip_fill_record(
                         cycle_id=cycle_id,
-                        timestamp=time.time(),
+                        timestamp=market_ts,
                         side=side,
                         order_price=order_price,
                         order_quantity=current_lot,
-                        cancelled=True,
                         cancel_reason=_cancel,
                         spread_at_order=spread_at_order,
                         spread_offset_ratio=effective_offset_ratio,
-                        skip_gate_skipped=True,
                         skip_gate_score=_pv60,
                         skip_gate_reason=_reason,
                         skip_gate_model_used="rule",
@@ -962,8 +1069,7 @@ class SkipGateEvaluator:
                     return result
 
             # 158# P1-6: 時間帯別 skip_gate 閾値調整
-            from datetime import datetime, timezone as _tz
-            _utc_hour = datetime.now(_tz.utc).hour
+            _utc_hour = time.gmtime(market_ts).tm_hour
             _hour_offset = self._config.skip_gate_hour_offsets.get(_utc_hour, 0.0)
 
             # 183# narrow spread adverse guard: spread < threshold → 閾値厳格化
@@ -1032,24 +1138,20 @@ class SkipGateEvaluator:
             result.hour_offset = _total_offset
 
             if decision.should_skip:
-                from ztb.metrics.fill_quality import FillRecord
-
                 logger.info(
                     f"[skip_gate] SKIP: {side} order skipped "
                     f"(score={result.score:.3f}, reason={result.reason}, "
                     f"model={result.model_used}, features={decision.features_used})"
                 )
-                result.early_return_record = FillRecord(
+                result.early_return_record = self._make_skip_fill_record(
                     cycle_id=cycle_id,
-                    timestamp=time.time(),
+                    timestamp=market_ts,
                     side=side,
                     order_price=order_price,
                     order_quantity=current_lot,
-                    cancelled=True,
                     cancel_reason="skip_gate",
                     spread_at_order=spread_at_order,
                     spread_offset_ratio=effective_offset_ratio,
-                    skip_gate_skipped=True,
                     skip_gate_score=result.score,
                     skip_gate_reason=result.reason,
                     skip_gate_model_used=result.model_used,
