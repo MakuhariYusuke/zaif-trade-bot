@@ -9,7 +9,6 @@ from __future__ import annotations
 import glob
 import logging
 import sys
-from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -23,6 +22,7 @@ from scripts.v460.ml.feature_enricher import (
     build_enriched_as_features,
     enrich_fill_records,
 )
+from scripts.v460.ml.frame_utils import compute_utc_hour
 from ztb.io.json_io import write_json
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
@@ -33,9 +33,8 @@ def analyze_temporal_structure(df: pd.DataFrame) -> dict:
     """時間帯別PnLの安定性をWalk-Forwardで検証."""
     filled = df[df["filled"].astype(bool)].copy()
     pnl = filled["post_fill_30s_pnl"].astype(float)
-    ts = filled["timestamp"].astype(float)
-    hours_utc = ts.apply(lambda t: datetime.fromtimestamp(t).hour)
-    jst_hours = ts.apply(lambda t: (datetime.fromtimestamp(t).hour + 9) % 24)
+    hours_utc = compute_utc_hour(filled["timestamp"])
+    jst_hours = (hours_utc + 9) % 24
 
     results = {}
 
@@ -79,9 +78,7 @@ def analyze_temporal_structure(df: pd.DataFrame) -> dict:
     # Sort by timestamp
     filled_sorted = filled.sort_values("timestamp").reset_index(drop=True)
     pnl_sorted = filled_sorted["post_fill_30s_pnl"].astype(float)
-    hours_sorted = filled_sorted["timestamp"].astype(float).apply(
-        lambda t: datetime.fromtimestamp(t).hour
-    )
+    hours_sorted = compute_utc_hour(filled_sorted["timestamp"])
 
     n = len(filled_sorted)
     # Use 3 temporal splits: first third trains, rest tests; first 2/3 trains, rest tests
@@ -283,36 +280,39 @@ def analyze_round_trip_detail(df: pd.DataFrame) -> dict:
     logger.info("\n--- Round-Trip Analysis ---")
 
     # Build round trips: pair consecutive opposite-side fills
+    side_values = filled["side"].astype(str).to_numpy(copy=False)
+    fill_prices = filled["fill_price"].astype(float).to_numpy(dtype=np.float64, copy=False)
+    timestamps = filled["timestamp"].astype(float).to_numpy(dtype=np.float64, copy=False)
+    entry_hours_utc = compute_utc_hour(filled["timestamp"]).to_numpy(dtype=np.int64, copy=False)
     trips = []
     i = 0
-    while i < len(filled) - 1:
-        curr = filled.iloc[i]
-        # Find next opposite side fill
-        for j in range(i + 1, len(filled)):
-            nxt = filled.iloc[j]
-            if curr["side"] != nxt["side"]:
-                # Round trip found
-                if curr["side"] == "buy":
-                    buy_price = float(curr["fill_price"])
-                    sell_price = float(nxt["fill_price"])
-                else:
-                    sell_price = float(curr["fill_price"])
-                    buy_price = float(nxt["fill_price"])
-                mid_price = (buy_price + sell_price) / 2
-                rt_pnl_bps = (sell_price - buy_price) / mid_price * 10000 if mid_price > 0 else 0
-                dt = float(nxt["timestamp"]) - float(curr["timestamp"])
-                trips.append({
-                    "entry_side": curr["side"],
-                    "pnl_bps": round(rt_pnl_bps, 4),
-                    "duration_sec": round(dt, 1),
-                    "buy_price": buy_price,
-                    "sell_price": sell_price,
-                    "entry_hour_utc": datetime.fromtimestamp(float(curr["timestamp"])).hour,
-                })
-                i = j + 1
-                break
-        else:
+    n_filled = len(filled)
+    while i < n_filled - 1:
+        curr_side = side_values[i]
+        j = i + 1
+        while j < n_filled and side_values[j] == curr_side:
+            j += 1
+        if j >= n_filled:
             break
+
+        if curr_side == "buy":
+            buy_price = float(fill_prices[i])
+            sell_price = float(fill_prices[j])
+        else:
+            sell_price = float(fill_prices[i])
+            buy_price = float(fill_prices[j])
+        mid_price = (buy_price + sell_price) / 2
+        rt_pnl_bps = (sell_price - buy_price) / mid_price * 10000 if mid_price > 0 else 0
+        dt = timestamps[j] - timestamps[i]
+        trips.append({
+            "entry_side": curr_side,
+            "pnl_bps": round(rt_pnl_bps, 4),
+            "duration_sec": round(float(dt), 1),
+            "buy_price": buy_price,
+            "sell_price": sell_price,
+            "entry_hour_utc": int(entry_hours_utc[i]),
+        })
+        i = j + 1
 
     if not trips:
         logger.info("  No round trips found")

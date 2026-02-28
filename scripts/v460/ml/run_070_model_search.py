@@ -52,6 +52,7 @@ from scripts.v460.ml.feature_enricher import (
     build_pnl_features,
     enrich_fill_records,
 )
+from scripts.v460.ml.frame_utils import compute_utc_hour
 from scripts.v460.ml.walk_forward_as import expanding_window_splits
 from ztb.io.json_io import write_json
 
@@ -101,8 +102,7 @@ def eval_rule_baselines(df: pd.DataFrame) -> list[dict]:
     results.append(_eval("R2_skip_all_buy", filled["side"] == "buy"))
 
     # R3-R5: time-based skips (hour bins)
-    ts = filled["timestamp"].astype(float)
-    hours_utc = ts.apply(lambda t: datetime.fromtimestamp(t).hour)
+    hours_utc = compute_utc_hour(filled["timestamp"])
 
     # R3: Skip "bad" UTC hours (from fill_test.yaml time filter)
     bad_hours = {1, 2, 8, 9, 12, 13, 14, 16, 17, 18, 19, 21}

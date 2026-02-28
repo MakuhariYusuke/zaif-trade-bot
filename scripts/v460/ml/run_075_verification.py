@@ -49,6 +49,69 @@ RESULTS_DIR = _PROJECT_ROOT / "results" / "v460" / "fill_test"
 ARTIFACT_DIR = _PROJECT_ROOT / "results" / "v460" / "verification_077"
 
 
+def _collect_pnl_blocks(
+    frame: pd.DataFrame,
+    mask: pd.Series,
+    *,
+    pnl_col: str,
+) -> list[np.ndarray]:
+    """日次単位の PnL ブロックを配列で収集."""
+    if frame.empty:
+        return []
+    grouped = (
+        frame.loc[mask, ["date", pnl_col]]
+        .dropna(subset=[pnl_col])
+        .groupby("date", sort=False)[pnl_col]
+    )
+    return [
+        values.to_numpy(dtype=np.float64, copy=False)
+        for _, values in grouped
+        if len(values) > 0
+    ]
+
+
+def _prepare_block_stats(blocks: list[np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
+    """block bootstrap 用のサイズ/総和を前計算."""
+    if not blocks:
+        return (
+            np.zeros(0, dtype=np.int64),
+            np.zeros(0, dtype=np.float64),
+        )
+    block_sizes = np.fromiter((block.size for block in blocks), dtype=np.int64, count=len(blocks))
+    block_sums = np.fromiter((block.sum() for block in blocks), dtype=np.float64, count=len(blocks))
+    return block_sizes, block_sums
+
+
+def _sample_block_bootstrap_sum(
+    blocks: list[np.ndarray],
+    *,
+    block_sizes: np.ndarray,
+    block_sums: np.ndarray,
+    n_steps: int,
+    rng: np.random.Generator,
+) -> float:
+    """日次ブロック bootstrap の合計値だけを返す."""
+    if n_steps <= 0 or not blocks:
+        return 0.0
+
+    total = 0
+    sampled_sum = 0.0
+    n_blocks = len(blocks)
+    while total < n_steps:
+        block_idx = int(rng.integers(n_blocks))
+        block_size = int(block_sizes[block_idx])
+        if block_size <= 0:
+            continue
+        remaining = n_steps - total
+        if block_size <= remaining:
+            sampled_sum += float(block_sums[block_idx])
+            total += block_size
+            continue
+        sampled_sum += float(blocks[block_idx][:remaining].sum())
+        total = n_steps
+    return sampled_sum
+
+
 def load_clean_filled(
     *,
     run_ids: list[str] | None = None,
@@ -677,51 +740,75 @@ def section_5_monte_carlo_50k(clean_filled: pd.DataFrame) -> dict:
 
     # --- 日次ブロック bootstrap (076# CRITICAL#2) ---
     # 時系列自己相関を保持するため、日次ブロック単位でリサンプル
-    before_dates = filled.loc[before_mask].groupby("date")[PNL_COL].apply(list).to_dict()
-    after_buy_dates = filled.loc[
-        (filled["side"] == "buy") & (~filled["utc_hour"].isin(buy_skip))
-    ].groupby("date")[PNL_COL].apply(list).to_dict()
-    after_sell_dates = filled.loc[
-        (filled["side"] == "sell") & (~filled["utc_hour"].isin(sell_skip))
-    ].groupby("date")[PNL_COL].apply(list).to_dict()
-
-    before_blocks = list(before_dates.values())
-    after_buy_blocks = list(after_buy_dates.values())
-    after_sell_blocks = list(after_sell_dates.values())
+    after_buy_mask = (filled["side"] == "buy") & (~filled["utc_hour"].isin(buy_skip))
+    after_sell_mask = (filled["side"] == "sell") & (~filled["utc_hour"].isin(sell_skip))
+    before_blocks = _collect_pnl_blocks(filled, before_mask, pnl_col=PNL_COL)
+    after_buy_blocks = _collect_pnl_blocks(filled, after_buy_mask, pnl_col=PNL_COL)
+    after_sell_blocks = _collect_pnl_blocks(filled, after_sell_mask, pnl_col=PNL_COL)
+    before_block_sizes, before_block_sums = _prepare_block_stats(before_blocks)
+    after_buy_block_sizes, after_buy_block_sums = _prepare_block_stats(after_buy_blocks)
+    after_sell_block_sizes, after_sell_block_sums = _prepare_block_stats(after_sell_blocks)
 
     print(f"\n  Block bootstrap: {len(before_blocks)} before blocks, "
           f"{len(after_buy_blocks)} after-buy blocks, {len(after_sell_blocks)} after-sell blocks")
 
     # Bootstrap
-    before_cumuls: list[float] = []
-    after_cumuls: list[float] = []
+    before_arr = np.empty(N_BOOTSTRAP, dtype=np.float64)
+    after_arr = np.empty(N_BOOTSTRAP, dtype=np.float64)
 
     print(f"  Running {N_BOOTSTRAP} bootstrap iterations ({N_STEPS} steps each)...")
     t0 = time.time()
 
-    for _ in range(N_BOOTSTRAP):
-        # Scenario A: resample blocks, then sample within
-        samples_a = rng.choice(pool_before, size=N_STEPS, replace=True)
-        before_cumuls.append(float(samples_a.sum()))
+    for i in range(N_BOOTSTRAP):
+        # Scenario A: true block bootstrap
+        before_arr[i] = _sample_block_bootstrap_sum(
+            before_blocks,
+            block_sizes=before_block_sizes,
+            block_sums=before_block_sums,
+            n_steps=N_STEPS,
+            rng=rng,
+        )
 
-        # Scenario B: alternate buy/sell pools, no bias
+        # Scenario B: buy/sell を別ブロックで維持
         n_buy = N_STEPS // 2
         n_sell = N_STEPS - n_buy
-        if len(after_buy) > 0 and len(after_sell) > 0:
-            buy_samples = rng.choice(after_buy, size=n_buy, replace=True)
-            sell_samples = rng.choice(after_sell, size=n_sell, replace=True)
-            samples_b = np.concatenate([buy_samples, sell_samples])
-        elif len(pool_after) > 0:
-            samples_b = rng.choice(pool_after, size=N_STEPS, replace=True)
+        if after_buy_blocks and after_sell_blocks:
+            buy_sum = _sample_block_bootstrap_sum(
+                after_buy_blocks,
+                block_sizes=after_buy_block_sizes,
+                block_sums=after_buy_block_sums,
+                n_steps=n_buy,
+                rng=rng,
+            )
+            sell_sum = _sample_block_bootstrap_sum(
+                after_sell_blocks,
+                block_sizes=after_sell_block_sizes,
+                block_sums=after_sell_block_sums,
+                n_steps=n_sell,
+                rng=rng,
+            )
+            after_arr[i] = buy_sum + sell_sum
+        elif after_buy_blocks:
+            after_arr[i] = _sample_block_bootstrap_sum(
+                after_buy_blocks,
+                block_sizes=after_buy_block_sizes,
+                block_sums=after_buy_block_sums,
+                n_steps=N_STEPS,
+                rng=rng,
+            )
+        elif after_sell_blocks:
+            after_arr[i] = _sample_block_bootstrap_sum(
+                after_sell_blocks,
+                block_sizes=after_sell_block_sizes,
+                block_sums=after_sell_block_sums,
+                n_steps=N_STEPS,
+                rng=rng,
+            )
         else:
-            samples_b = np.zeros(N_STEPS)
-        after_cumuls.append(float(samples_b.sum()))
+            after_arr[i] = 0.0
 
     elapsed = time.time() - t0
     print(f"  完了: {elapsed:.1f}s")
-
-    before_arr = np.array(before_cumuls)
-    after_arr = np.array(after_cumuls)
 
     result = {
         "n_steps": N_STEPS,

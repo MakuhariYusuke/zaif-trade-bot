@@ -2104,6 +2104,68 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - 対象 5 ファイルとも `any_type_debt_tokens=0`
 
+## Step99 実施内容（070/073/075 の時間帯集計整理 + Monte Carlo block bootstrap 軽量化）
+
+### 1) 対象ファイル
+
+- `scripts/v460/ml/frame_utils.py`
+- `scripts/v460/ml/run_070_model_search.py`
+- `scripts/v460/ml/run_070_deep_analysis.py`
+- `scripts/v460/ml/run_070_final_analysis.py`
+- `scripts/v460/ml/run_073_strategy_sweep.py`
+- `scripts/v460/ml/run_075_verification.py`
+
+### 2) 実運用改善 / 重複削減
+
+- `frame_utils` に
+  `_select_side_hour_combos()` / `collect_good_side_hours()` /
+  `_match_side_hour_combos()` を追加し、
+  side×hour 集計後の抽出と include/exclude 判定を共通化。
+- `collect_bad_side_hours()` は `iterrows()` を廃止し、
+  集約済み `count` / `mean` 配列から直接組み合わせを抽出する形へ変更。
+- `run_073_strategy_sweep` の
+  `s11_best_hours_only()` は `collect_good_side_hours()` へ統一し、
+  local `groupby + iterrows()` 実装を削除。
+- `run_070_model_search` / `run_070_deep_analysis` / `run_070_final_analysis` は
+  `compute_utc_hour()` を使う形へ寄せ、
+  `timestamp.apply(datetime.fromtimestamp(...))` の重複を削減。
+- `run_070_final_analysis` では
+  chained indexing を `train_window` 経由に整理し、
+  学習半区間の sell 抽出を読みやすく保守しやすい形へ修正。
+- `run_070_deep_analysis.analyze_round_trip_detail()` は
+  `side` / `price` / `timestamp` / `entry_hour` を配列化し、
+  `filled.iloc[i]` / `filled.iloc[j]` の row object 生成をやめて
+  連続同sideスキャンを軽量化。
+- `run_075_verification.section_5_monte_carlo_50k()` は
+  既に修正済みの true block bootstrap を前提に、
+  block の `size` / `sum` を前計算し、
+  各反復でサンプル配列を毎回構築せず「合計値だけ」を計算する形へ変更。
+- これにより Monte Carlo 部分の大きな一時配列確保を減らし、
+  1000 回反復時の Python/NumPy オブジェクト生成コストを圧縮。
+
+### 3) 検証
+
+- `py_compile`
+  - `scripts/v460/ml/frame_utils.py`
+  - `scripts/v460/ml/run_073_strategy_sweep.py`
+  - `scripts/v460/ml/run_070_model_search.py`
+  - `scripts/v460/ml/run_070_deep_analysis.py`
+  - `scripts/v460/ml/run_070_final_analysis.py`
+  - `scripts/v460/ml/run_075_verification.py`
+- import smoke
+  - `scripts.v460.ml.run_070_model_search`
+  - `scripts.v460.ml.run_070_deep_analysis`
+  - `scripts.v460.ml.run_070_final_analysis`
+  - `scripts.v460.ml.run_073_strategy_sweep`
+  - `scripts.v460.ml.run_075_verification`
+  - block helper smoke: `_prepare_block_stats()` / `_sample_block_bootstrap_sum()`
+- `pytest`
+  - `tests/unit/v460/test_ml_pipeline.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - 結果: `80 passed`
+- `any_inventory`
+  - 対象 6 ファイルとも `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

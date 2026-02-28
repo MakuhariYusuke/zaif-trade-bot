@@ -13,7 +13,6 @@ from __future__ import annotations
 import logging
 import pickle
 import sys
-from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -35,6 +34,7 @@ from scripts.v460.ml.feature_enricher import (
     build_pnl_features,
     enrich_fill_records,
 )
+from scripts.v460.ml.frame_utils import compute_utc_hour
 from scripts.v460.ml.walk_forward_as import expanding_window_splits
 from ztb.io.json_io import write_json
 
@@ -189,13 +189,13 @@ def hybrid_strategy_test(df: pd.DataFrame) -> dict:
     logger.info(f"  buy_only: kept_pnl={kept_pnl_buy:+.4f}, improvement={kept_pnl_buy - baseline:+.4f}")
 
     # Strategy 2: Skip sells during bad sell hours (sell PnL < -2 bps hours)
-    ts = filled["timestamp"].astype(float)
-    hours_utc = ts.apply(lambda t: datetime.fromtimestamp(t).hour)
+    hours_utc = compute_utc_hour(filled["timestamp"])
 
     # WF test: train on first half
     mid = n // 2
-    train_sell = filled.iloc[:mid][filled.iloc[:mid]["side"] == "sell"]
-    train_sell_hours = train_sell["timestamp"].astype(float).apply(lambda t: datetime.fromtimestamp(t).hour)
+    train_window = filled.iloc[:mid]
+    train_sell = train_window[train_window["side"] == "sell"]
+    train_sell_hours = hours_utc.iloc[:mid].loc[train_sell.index]
     train_sell_pnl = train_sell["post_fill_30s_pnl"].astype(float)
     sell_hour_pnl = train_sell_pnl.groupby(train_sell_hours).mean()
     bad_sell_hours = set(sell_hour_pnl[sell_hour_pnl < -1.5].index.tolist())

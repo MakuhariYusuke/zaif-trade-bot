@@ -19,6 +19,13 @@ import pandas as pd
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT))
 
+from scripts.v460.ml.frame_utils import (
+    collect_bad_side_hours,
+    collect_good_side_hours,
+    compute_utc_hour,
+    exclude_side_hour_combos,
+    include_side_hour_combos,
+)
 from scripts.v460.ml.run_073_strategy_analysis import load_all_records
 
 
@@ -37,7 +44,8 @@ def wf_evaluate(filled: pd.DataFrame, strategy_fn, name: str) -> dict:
         test = filled.iloc[test_start:test_end]
 
         test_filtered, info = strategy_fn(train, test)
-        test_pnl = test_filtered[pnl_col].dropna()
+        eval_col = "sim_pnl" if "sim_pnl" in test_filtered.columns else pnl_col
+        test_pnl = test_filtered[eval_col].dropna()
         if len(test_pnl) > 0:
             results.append({
                 "fold": fold,
@@ -53,18 +61,13 @@ def wf_evaluate(filled: pd.DataFrame, strategy_fn, name: str) -> dict:
 
 def s9_conservative_side_time(train: pd.DataFrame, test: pd.DataFrame):
     """Side 別 time filter: 閾値 -1.0, 最低 n=2."""
-    pnl_col = "post_fill_30s_pnl"
-    skip_combos = set()
-    for side in ["buy", "sell"]:
-        for h in range(24):
-            mask = (train["side"] == side) & (train["utc_hour"] == h)
-            p = train.loc[mask, pnl_col].dropna()
-            if len(p) >= 2 and p.mean() < -1.0:
-                skip_combos.add((side, h))
-
-    test_f = test[~test.apply(
-        lambda r: (r["side"], r["utc_hour"]) in skip_combos, axis=1
-    )] if skip_combos else test
+    skip_combos = collect_bad_side_hours(
+        train,
+        pnl_col="post_fill_30s_pnl",
+        threshold=-1.0,
+        min_count=2,
+    )
+    test_f = exclude_side_hour_combos(test, skip_combos)
     return test_f, {"skip_combos": len(skip_combos)}
 
 
@@ -73,26 +76,22 @@ def s10_asymmetric_offset_sim(train: pd.DataFrame, test: pd.DataFrame):
 
     sell は全体的に AS が大きいため厳しめ、buy は緩め。
     """
-    pnl_col = "post_fill_30s_pnl"
     skip_combos = set()
 
-    # Buy: 閾値 -2.0 (緩い)
-    for h in range(24):
-        mask = (train["side"] == "buy") & (train["utc_hour"] == h)
-        p = train.loc[mask, pnl_col].dropna()
-        if len(p) >= 2 and p.mean() < -2.0:
-            skip_combos.add(("buy", h))
+    skip_combos |= collect_bad_side_hours(
+        train.loc[train["side"] == "buy"],
+        pnl_col="post_fill_30s_pnl",
+        threshold=-2.0,
+        min_count=2,
+    )
+    skip_combos |= collect_bad_side_hours(
+        train.loc[train["side"] == "sell"],
+        pnl_col="post_fill_30s_pnl",
+        threshold=-0.8,
+        min_count=2,
+    )
 
-    # Sell: 閾値 -0.8 (厳しい)
-    for h in range(24):
-        mask = (train["side"] == "sell") & (train["utc_hour"] == h)
-        p = train.loc[mask, pnl_col].dropna()
-        if len(p) >= 2 and p.mean() < -0.8:
-            skip_combos.add(("sell", h))
-
-    test_f = test[~test.apply(
-        lambda r: (r["side"], r["utc_hour"]) in skip_combos, axis=1
-    )] if skip_combos else test
+    test_f = exclude_side_hour_combos(test, skip_combos)
     return test_f, {"skip_combos": len(skip_combos),
                     "buy_skip": sum(1 for s, h in skip_combos if s == "buy"),
                     "sell_skip": sum(1 for s, h in skip_combos if s == "sell")}
@@ -100,21 +99,13 @@ def s10_asymmetric_offset_sim(train: pd.DataFrame, test: pd.DataFrame):
 
 def s11_best_hours_only(train: pd.DataFrame, test: pd.DataFrame):
     """PnL > 0 の side×hour のみ残す (ポジティブセレクション)."""
-    pnl_col = "post_fill_30s_pnl"
-    good_combos = set()
-    for side in ["buy", "sell"]:
-        for h in range(24):
-            mask = (train["side"] == side) & (train["utc_hour"] == h)
-            p = train.loc[mask, pnl_col].dropna()
-            if len(p) >= 3 and p.mean() > 0:
-                good_combos.add((side, h))
-
-    if good_combos:
-        test_f = test[test.apply(
-            lambda r: (r["side"], r["utc_hour"]) in good_combos, axis=1
-        )]
-    else:
-        test_f = test
+    good_combos = collect_good_side_hours(
+        train,
+        pnl_col="post_fill_30s_pnl",
+        threshold=0.0,
+        min_count=3,
+    )
+    test_f = include_side_hour_combos(test, good_combos)
     return test_f, {"good_combos": len(good_combos)}
 
 
@@ -154,33 +145,27 @@ def s14_combined_best(train: pd.DataFrame, test: pd.DataFrame):
 
     実装可能な複合戦略の最終形。
     """
-    pnl_col = "post_fill_30s_pnl"
     skip_combos = set()
 
-    # Buy: 閾値 -2.0
-    for h in range(24):
-        mask = (train["side"] == "buy") & (train["utc_hour"] == h)
-        p = train.loc[mask, pnl_col].dropna()
-        if len(p) >= 2 and p.mean() < -2.0:
-            skip_combos.add(("buy", h))
-
-    # Sell: 閾値 -0.8
-    for h in range(24):
-        mask = (train["side"] == "sell") & (train["utc_hour"] == h)
-        p = train.loc[mask, pnl_col].dropna()
-        if len(p) >= 2 and p.mean() < -0.8:
-            skip_combos.add(("sell", h))
+    skip_combos |= collect_bad_side_hours(
+        train.loc[train["side"] == "buy"],
+        pnl_col="post_fill_30s_pnl",
+        threshold=-2.0,
+        min_count=2,
+    )
+    skip_combos |= collect_bad_side_hours(
+        train.loc[train["side"] == "sell"],
+        pnl_col="post_fill_30s_pnl",
+        threshold=-0.8,
+        min_count=2,
+    )
 
     # Fast fill guard
-    fast_pnl = train.loc[train["queue_wait_sec"] < 5, pnl_col].dropna()
+    fast_pnl = train.loc[train["queue_wait_sec"] < 5, "post_fill_30s_pnl"].dropna()
     guard_fast = len(fast_pnl) >= 5 and fast_pnl.mean() < -0.5
 
     # Apply
-    test_f = test.copy()
-    if skip_combos:
-        test_f = test_f[~test_f.apply(
-            lambda r: (r["side"], r["utc_hour"]) in skip_combos, axis=1
-        )]
+    test_f = exclude_side_hour_combos(test, skip_combos)
     if guard_fast:
         test_f = test_f[test_f["queue_wait_sec"] >= 5]
 
@@ -194,7 +179,7 @@ def main() -> None:
     df = load_all_records()
     filled = df[df["filled"] == True].copy().sort_values("timestamp").reset_index(drop=True)
     filled["post_fill_30s_pnl"] = filled["post_fill_30s_pnl"].astype(float)
-    filled["utc_hour"] = pd.to_datetime(filled["timestamp"], unit="s", utc=True).dt.hour
+    filled["utc_hour"] = compute_utc_hour(filled["timestamp"])
 
     print(f"全 filled: {len(filled)}")
     print(f"Date: {pd.to_datetime(filled['timestamp'].min(), unit='s')} "
