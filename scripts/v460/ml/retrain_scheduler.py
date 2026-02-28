@@ -51,6 +51,7 @@ from scripts.v460.ml.feature_enricher import (
     build_preorder_as_features,
     enrich_fill_records,
 )
+from scripts.v460.ml.skip_eval_utils import compute_skip_slice_metrics
 from scripts.v460.ml.skip_gate import (
     SkipGate,
     SkipGateConfig,
@@ -369,20 +370,20 @@ def _compute_skip_metrics(
     skip_percentile: float,
 ) -> tuple[float, float, float, FoldPnlSamples, FoldPnlSamples]:
     """skip 評価スコアと統計ゲート入力用 fold データを返す."""
-    threshold = np.percentile(preds, skip_percentile)
-    keep_mask = preds >= threshold
+    stats = compute_skip_slice_metrics(
+        preds,
+        pnl30,
+        pnl120,
+        skip_pct=skip_percentile,
+        skip_low_scores=True,
+    )
 
-    baseline_30 = float(np.nanmean(pnl30))
-    baseline_120 = float(np.nanmean(pnl120))
-    kept_30 = float(np.nanmean(pnl30[keep_mask]))
-    kept_120 = float(np.nanmean(pnl120[keep_mask]))
-
-    imp_30 = kept_30 - baseline_30
-    imp_120 = kept_120 - baseline_120
+    imp_30 = stats.pnl30_improvement
+    imp_120 = stats.pnl120_improvement
     score = imp_120 - max(0.0, -imp_30)
 
-    fold_pnl30 = (_clean_float_values(pnl30[keep_mask]), _clean_float_values(pnl30))
-    fold_pnl120 = (_clean_float_values(pnl120[keep_mask]), _clean_float_values(pnl120))
+    fold_pnl30 = (_clean_float_values(pnl30[stats.keep_mask]), _clean_float_values(pnl30))
+    fold_pnl120 = (_clean_float_values(pnl120[stats.keep_mask]), _clean_float_values(pnl120))
     return score, imp_30, imp_120, fold_pnl30, fold_pnl120
 
 

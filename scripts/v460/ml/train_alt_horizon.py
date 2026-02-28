@@ -41,6 +41,7 @@ from scripts.v460.ml.feature_enricher import (
     build_preorder_as_features,
     enrich_fill_records,
 )
+from scripts.v460.ml.skip_eval_utils import compute_skip_slice_metrics
 from scripts.v460.ml.skip_gate import (
     SkipGate,
     SkipGateConfig,
@@ -282,24 +283,37 @@ def evaluate_skip_quality(
     idx = X.index
 
     result: EvalResults = {}
-    skip_masks = {
-        skip_pct: preds >= np.percentile(preds, skip_pct)
-        for skip_pct in (10, 20)
-    }
-    for skip_pct, keep in skip_masks.items():
-        result[f"skip{skip_pct}_n_keep"] = int(keep.sum())
+    pnl30 = (
+        enriched.loc[idx, "post_fill_30s_pnl"].astype(float).values
+        if "post_fill_30s_pnl" in enriched.columns
+        else np.full(len(idx), np.nan, dtype=np.float64)
+    )
+    pnl120 = (
+        enriched.loc[idx, "post_fill_120s_pnl"].astype(float).values
+        if "post_fill_120s_pnl" in enriched.columns
+        else np.full(len(idx), np.nan, dtype=np.float64)
+    )
 
-    for col_name, col_key in [("post_fill_30s_pnl", "pnl30"), ("post_fill_120s_pnl", "pnl120")]:
-        if col_name not in enriched.columns:
-            continue
-
-        pnl = enriched.loc[idx, col_name].astype(float).values
-        baseline = float(np.nanmean(pnl))
-        result[f"baseline_{col_key}"] = baseline
-        for skip_pct, keep in skip_masks.items():
-            kept_mean = float(np.nanmean(pnl[keep]))
-            result[f"skip{skip_pct}_{col_key}_improvement"] = kept_mean - baseline
-            result[f"skip{skip_pct}_{col_key}_kept_mean"] = kept_mean
+    for i, skip_pct in enumerate((10, 20)):
+        stats = compute_skip_slice_metrics(
+            preds,
+            pnl30,
+            pnl120,
+            skip_pct=skip_pct,
+            skip_low_scores=True,
+        )
+        if i == 0:
+            if "post_fill_30s_pnl" in enriched.columns:
+                result["baseline_pnl30"] = stats.baseline_pnl30
+            if "post_fill_120s_pnl" in enriched.columns:
+                result["baseline_pnl120"] = stats.baseline_pnl120
+        result[f"skip{skip_pct}_n_keep"] = stats.n_keep
+        if "post_fill_30s_pnl" in enriched.columns:
+            result[f"skip{skip_pct}_pnl30_improvement"] = stats.pnl30_improvement
+            result[f"skip{skip_pct}_pnl30_kept_mean"] = stats.kept_pnl30
+        if "post_fill_120s_pnl" in enriched.columns:
+            result[f"skip{skip_pct}_pnl120_improvement"] = stats.pnl120_improvement
+            result[f"skip{skip_pct}_pnl120_kept_mean"] = stats.kept_pnl120
 
     return result
 

@@ -43,6 +43,7 @@ from scripts.v460.ml.feature_enricher import (
     enrich_fill_records,
 )
 from scripts.v460.ml.model_protocols import ProbabilisticEstimator, RegressorEstimator
+from scripts.v460.ml.skip_eval_utils import compute_skip_slice_metrics, safe_finite_mean
 from scripts.v460.ml.walk_forward_as import expanding_window_splits
 from ztb.io.json_io import write_json
 
@@ -358,54 +359,34 @@ def _dual_horizon_skip_sim(
         pnl120: PnL120s (bps)
         invert: True の場合、低確率を skip (逆転 SG)
     """
-    valid = ~np.isnan(probs) & ~np.isnan(pnl30)
+    valid = np.isfinite(probs) & np.isfinite(pnl30)
     if valid.sum() < 20:
         return {"skip20_pnl30": 0, "skip10_pnl30": 0,
                 "skip20_pnl120": 0, "skip10_pnl120": 0,
                 "baseline_pnl30": 0, "baseline_pnl120": 0}
 
-    p = probs[valid]
-    p30 = pnl30[valid]
-    p120_all = pnl120[valid]
-
-    baseline_30 = _safe_nanmean(p30)
-    baseline_120 = _safe_nanmean(p120_all)
-
-    result: dict[str, float] = {
-        "baseline_pnl30": baseline_30,
-        "baseline_pnl120": baseline_120,
-    }
-
-    for label, pct in [("skip20", 80), ("skip10", 90)]:
-        if invert:
-            # Skip LOWEST probability → keep high probability
-            threshold = np.percentile(p, 100 - pct)
-            keep = p >= threshold
-        else:
-            # Skip HIGHEST probability → keep low probability (standard)
-            threshold = np.percentile(p, pct)
-            keep = p < threshold
-
-        if keep.sum() > 0:
-            kept_30 = _safe_nanmean(p30[keep])
-            kept_120 = _safe_nanmean(p120_all[keep])
-            result[f"{label}_pnl30"] = kept_30 - baseline_30
-            result[f"{label}_pnl120"] = kept_120 - baseline_120
-        else:
-            result[f"{label}_pnl30"] = 0.0
-            result[f"{label}_pnl120"] = 0.0
+    result: dict[str, float] = {}
+    for i, (label, skip_pct) in enumerate((("skip20", 20), ("skip10", 10))):
+        stats = compute_skip_slice_metrics(
+            probs,
+            pnl30,
+            pnl120,
+            skip_pct=skip_pct,
+            skip_low_scores=invert,
+            require_pnl30_for_selection=True,
+        )
+        if i == 0:
+            result["baseline_pnl30"] = stats.baseline_pnl30
+            result["baseline_pnl120"] = stats.baseline_pnl120
+        result[f"{label}_pnl30"] = stats.pnl30_improvement
+        result[f"{label}_pnl120"] = stats.pnl120_improvement
 
     return result
 
 
 def _safe_nanmean(values: np.ndarray) -> float:
     """NaN/inf のみの場合でも 0.0 を返す安全 mean."""
-    if values.size == 0:
-        return 0.0
-    finite = values[np.isfinite(values)]
-    if finite.size == 0:
-        return 0.0
-    return float(np.mean(finite))
+    return safe_finite_mean(values)
 
 
 def run_classification_wf(

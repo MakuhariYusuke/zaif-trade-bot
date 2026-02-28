@@ -454,9 +454,9 @@ def enrich_fill_records(
     # 060#: OB ts も事前準備 (multi-timeframe momentum 計算用)
     ob_sorted_ts = ob_df["ts"].values if not ob_df.empty else None
 
-    enriched_rows: list[dict] = []
-    for _, row in fill_df.iterrows():
-        ts = float(row["timestamp"])
+    timestamps = fill_df["timestamp"].to_numpy(dtype=np.float64, copy=False)
+    enriched_rows: list[dict[str, float]] = []
+    for ts in timestamps:
 
         # Orderbook features (nearest snapshot)
         ob_features = _find_nearest_ob(ob_df, ts, ob_tolerance_sec)

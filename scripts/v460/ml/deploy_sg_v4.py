@@ -35,6 +35,7 @@ from scripts.v460.ml.feature_enricher import (
     build_preorder_as_features,
     enrich_fill_records,
 )
+from scripts.v460.ml.skip_eval_utils import compute_skip_slice_metrics
 from scripts.v460.ml.skip_gate import (
     SkipGate,
     SkipGateConfig,
@@ -283,29 +284,28 @@ def evaluate_on_train(
     pnl30 = enriched_df.loc[filled_mask, pnl30_col].astype(float).reindex(X.index).values
     pnl120 = enriched_df.loc[filled_mask, pnl120_col].astype(float).reindex(X.index).values
 
-    baseline_30 = float(np.nanmean(pnl30))
-    baseline_120 = float(np.nanmean(pnl120))
-
     results = {
-        "baseline_pnl30_bps": baseline_30,
-        "baseline_pnl120_bps": baseline_120,
         "pred_mean": float(np.mean(preds)),
         "pred_median": float(np.median(preds)),
     }
 
-    for skip_pct_label, skip_pct in [("skip20", 20), ("skip10", 10)]:
-        # 回帰: 低予測 PnL をスキップ → percentile で下位 N% を除去
-        threshold = np.percentile(preds, skip_pct)
-        keep_mask = preds >= threshold
-        n_keep = keep_mask.sum()
-        kept_30 = float(np.nanmean(pnl30[keep_mask]))
-        kept_120 = float(np.nanmean(pnl120[keep_mask]))
-        results[f"{skip_pct_label}_threshold"] = float(threshold)
-        results[f"{skip_pct_label}_n_keep"] = int(n_keep)
-        results[f"{skip_pct_label}_pnl30_bps"] = kept_30
-        results[f"{skip_pct_label}_pnl120_bps"] = kept_120
-        results[f"{skip_pct_label}_pnl30_improvement"] = kept_30 - baseline_30
-        results[f"{skip_pct_label}_pnl120_improvement"] = kept_120 - baseline_120
+    for i, (skip_pct_label, skip_pct) in enumerate((("skip20", 20), ("skip10", 10))):
+        stats = compute_skip_slice_metrics(
+            preds,
+            pnl30,
+            pnl120,
+            skip_pct=skip_pct,
+            skip_low_scores=True,
+        )
+        if i == 0:
+            results["baseline_pnl30_bps"] = stats.baseline_pnl30
+            results["baseline_pnl120_bps"] = stats.baseline_pnl120
+        results[f"{skip_pct_label}_threshold"] = stats.threshold
+        results[f"{skip_pct_label}_n_keep"] = stats.n_keep
+        results[f"{skip_pct_label}_pnl30_bps"] = stats.kept_pnl30
+        results[f"{skip_pct_label}_pnl120_bps"] = stats.kept_pnl120
+        results[f"{skip_pct_label}_pnl30_improvement"] = stats.pnl30_improvement
+        results[f"{skip_pct_label}_pnl120_improvement"] = stats.pnl120_improvement
 
     # Side別評価
     side_data = enriched_df.loc[X.index, "side"] if "side" in enriched_df.columns else None
@@ -316,19 +316,20 @@ def evaluate_on_train(
                 s_pnl30 = pnl30[s_mask]
                 s_pnl120 = pnl120[s_mask]
                 s_preds = preds[s_mask]
+                side_stats = compute_skip_slice_metrics(
+                    s_preds,
+                    s_pnl30,
+                    s_pnl120,
+                    skip_pct=20,
+                    skip_low_scores=True,
+                )
                 results[f"{s}_n"] = int(s_mask.sum())
-                results[f"{s}_baseline_pnl30"] = float(np.nanmean(s_pnl30))
-                results[f"{s}_baseline_pnl120"] = float(np.nanmean(s_pnl120))
+                results[f"{s}_baseline_pnl30"] = side_stats.baseline_pnl30
+                results[f"{s}_baseline_pnl120"] = side_stats.baseline_pnl120
                 # Skip lowest 20% predicted PnL per side
                 if s_mask.sum() > 20:
-                    th = np.percentile(s_preds, 20)
-                    keep = s_preds >= th
-                    results[f"{s}_skip20_pnl30_improvement"] = (
-                        float(np.nanmean(s_pnl30[keep])) - float(np.nanmean(s_pnl30))
-                    )
-                    results[f"{s}_skip20_pnl120_improvement"] = (
-                        float(np.nanmean(s_pnl120[keep])) - float(np.nanmean(s_pnl120))
-                    )
+                    results[f"{s}_skip20_pnl30_improvement"] = side_stats.pnl30_improvement
+                    results[f"{s}_skip20_pnl120_improvement"] = side_stats.pnl120_improvement
 
     return results
 

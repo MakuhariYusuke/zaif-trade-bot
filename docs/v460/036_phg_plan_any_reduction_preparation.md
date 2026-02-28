@@ -1968,6 +1968,55 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - 対象 4 ファイルとも `any_type_debt_tokens=0`
 
+## Step96 実施内容（学習評価ロジックの共通化 + feature enricher 軽量化）
+
+### 1) 対象ファイル
+
+- `scripts/v460/ml/skip_eval_utils.py`
+- `scripts/v460/ml/train_sg_v3.py`
+- `scripts/v460/ml/deploy_sg_v3.py`
+- `scripts/v460/ml/deploy_sg_v4.py`
+- `scripts/v460/ml/train_alt_horizon.py`
+- `scripts/v460/ml/retrain_scheduler.py`
+- `scripts/v460/ml/feature_enricher.py`
+
+### 2) 実運用改善 / 重複削減
+
+- `skip_eval_utils` を新設し、
+  skip percentile ごとの `baseline / kept / improvement / keep_mask` 計算を共通化。
+- これにより `train_sg_v3` / `deploy_sg_v3` / `deploy_sg_v4` /
+  `train_alt_horizon` / `retrain_scheduler` の重複ロジックを削減。
+- `safe_finite_mean()` を共通化し、
+  `np.nanmean()` が空集合や全欠損で `nan` / warning を返す経路を抑止。
+- スコアが同値に偏るケースで keep 集合が空になっても、
+  baseline をそのまま返して改善値を `0` に固定するようにし、
+  学習レポートが `nan` 汚染される不具合余地を低減。
+- `retrain_scheduler` の fold-level kept/all PnL 抽出も
+  共通 `keep_mask` を使う形に整理し、選別契約を一本化。
+- `feature_enricher.enrich_fill_records()` は
+  `iterrows()` を廃止して `timestamp` 配列の直接走査へ変更。
+- これにより学習前処理ホットパスでの row 単位 `Series` 生成を削減し、
+  メモリ断片化と Python オブジェクト生成コストを圧縮。
+
+### 3) 検証
+
+- `py_compile`
+  - `scripts/v460/ml/skip_eval_utils.py`
+  - `scripts/v460/ml/train_sg_v3.py`
+  - `scripts/v460/ml/deploy_sg_v3.py`
+  - `scripts/v460/ml/deploy_sg_v4.py`
+  - `scripts/v460/ml/train_alt_horizon.py`
+  - `scripts/v460/ml/retrain_scheduler.py`
+  - `scripts/v460/ml/feature_enricher.py`
+- `pytest`
+  - `tests/unit/v460/test_train_sg_v3.py`
+  - `tests/unit/v460/test_retrain_hot_reload.py -k "evaluate_wf_multi_returns_fold_data or single_window_returns_fold_data"`
+  - `tests/unit/v460/test_189_alt_horizon_macro_integration.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - 結果: `110 passed`
+- `any_inventory`
+  - 対象 7 ファイルとも `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

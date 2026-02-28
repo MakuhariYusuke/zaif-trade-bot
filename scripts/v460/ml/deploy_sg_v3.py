@@ -37,6 +37,7 @@ from scripts.v460.ml.feature_enricher import (
     build_preorder_as_features,
     enrich_fill_records,
 )
+from scripts.v460.ml.skip_eval_utils import compute_skip_slice_metrics
 from scripts.v460.ml.skip_gate import (
     SkipGate,
     SkipGateConfig,
@@ -227,28 +228,28 @@ def evaluate_on_train(
     else:
         pnl120 = np.full(len(pnl30), np.nan)
 
-    baseline_30 = float(np.nanmean(pnl30))
-    baseline_120 = float(np.nanmean(pnl120))
-
     results = {
-        "baseline_pnl30_bps": baseline_30,
-        "baseline_pnl120_bps": baseline_120,
         "prob_mean": float(np.mean(probs)),
         "prob_median": float(np.median(probs)),
     }
 
-    for skip_pct_label, keep_pct in [("skip20", 80), ("skip10", 90)]:
-        threshold = np.percentile(probs, keep_pct)
-        keep_mask = probs < threshold
-        n_keep = keep_mask.sum()
-        kept_30 = float(np.nanmean(pnl30[keep_mask]))
-        kept_120 = float(np.nanmean(pnl120[keep_mask]))
-        results[f"{skip_pct_label}_threshold"] = float(threshold)
-        results[f"{skip_pct_label}_n_keep"] = int(n_keep)
-        results[f"{skip_pct_label}_pnl30_bps"] = kept_30
-        results[f"{skip_pct_label}_pnl120_bps"] = kept_120
-        results[f"{skip_pct_label}_pnl30_improvement"] = kept_30 - baseline_30
-        results[f"{skip_pct_label}_pnl120_improvement"] = kept_120 - baseline_120
+    for i, (skip_pct_label, skip_pct) in enumerate((("skip20", 20), ("skip10", 10))):
+        stats = compute_skip_slice_metrics(
+            probs,
+            pnl30,
+            pnl120,
+            skip_pct=skip_pct,
+            skip_low_scores=False,
+        )
+        if i == 0:
+            results["baseline_pnl30_bps"] = stats.baseline_pnl30
+            results["baseline_pnl120_bps"] = stats.baseline_pnl120
+        results[f"{skip_pct_label}_threshold"] = stats.threshold
+        results[f"{skip_pct_label}_n_keep"] = stats.n_keep
+        results[f"{skip_pct_label}_pnl30_bps"] = stats.kept_pnl30
+        results[f"{skip_pct_label}_pnl120_bps"] = stats.kept_pnl120
+        results[f"{skip_pct_label}_pnl30_improvement"] = stats.pnl30_improvement
+        results[f"{skip_pct_label}_pnl120_improvement"] = stats.pnl120_improvement
 
     return results
 
