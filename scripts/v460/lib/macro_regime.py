@@ -1,0 +1,269 @@
+"""188# Macro Regime Detector — 5m/15m slope ベースの中長期マーケット状態判定.
+
+185#-§5.1 Phase D: fill_test サイクルの mid_price を時間バケット集約し、
+5 分・15 分スロープを算出。micro regime と組み合わせて
+マクロ的なトレンド/レンジ/ボラ判定を行う基盤モジュール。
+
+設計原則:
+  - 入力: FillTestRegimeDetector と同じ (timestamp, mid_price) ストリーム
+  - 5m/15m スロープは OLS 線形回帰で算出 (ノイズ耐性)
+  - micro regime より遅延するが、トレンド方向の確度が高い
+  - compose_regimes() で micro + macro を統合し、矛盾検出 + regime 増強
+
+MAX LINES: 250
+"""
+
+from __future__ import annotations
+
+import logging
+import math
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Optional
+
+import numpy as np
+
+logger = logging.getLogger(__name__)
+
+
+class MacroTrend(str, Enum):
+    """マクロ方向分類."""
+
+    STRONG_UP = "macro_strong_up"       # 5m/15m 双方上昇
+    WEAK_UP = "macro_weak_up"           # 片方のみ上昇
+    NEUTRAL = "macro_neutral"           # 横ばい
+    WEAK_DOWN = "macro_weak_down"       # 片方のみ下降
+    STRONG_DOWN = "macro_strong_down"   # 5m/15m 双方下降
+    INSUFFICIENT = "macro_insufficient" # データ不足
+
+
+@dataclass
+class MacroRegimeConfig:
+    """MacroRegimeDetector 設定."""
+
+    # バケットサイズ (秒) — mid_price をこの間隔で集約
+    bucket_sec: float = 30.0
+
+    # スロープ算出ウィンドウ (バケット数)
+    slope_window_5m: int = 10    # 30s × 10 = 5 分
+    slope_window_15m: int = 30   # 30s × 30 = 15 分
+
+    # スロープ閾値 (bps/min) — これ以上で trending 判定
+    slope_threshold_bps_per_min: float = 1.0
+
+    # 強いトレンドの閾値 (bps/min)
+    strong_slope_threshold_bps_per_min: float = 3.0
+
+    # バッファ上限 (バケット数)
+    max_buckets: int = 60  # 30min 分
+
+    # micro regime との矛盾時に macro を優先する confidence 閾値
+    macro_override_confidence: float = 0.7
+
+
+@dataclass
+class MacroRegimeResult:
+    """MacroRegimeDetector の判定結果."""
+
+    trend: MacroTrend
+    slope_5m_bps_per_min: float = 0.0    # 5 分スロープ (bps/min)
+    slope_15m_bps_per_min: float = 0.0   # 15 分スロープ (bps/min)
+    confidence: float = 0.0              # 0.0–1.0
+    buckets_available: int = 0           # 蓄積バケット数
+    micro_macro_aligned: bool = True     # micro/macro 一致フラグ
+
+    def to_dict(self) -> dict[str, object]:
+        """JSON serializable dict."""
+        return {
+            "trend": self.trend.value,
+            "slope_5m": round(self.slope_5m_bps_per_min, 4),
+            "slope_15m": round(self.slope_15m_bps_per_min, 4),
+            "confidence": round(self.confidence, 4),
+            "buckets": self.buckets_available,
+            "aligned": self.micro_macro_aligned,
+        }
+
+
+class MacroRegimeDetector:
+    """5m/15m スロープによるマクロ regime 判定.
+
+    使い方:
+        macro = MacroRegimeDetector(config)
+        # fill_test サイクルごとに更新
+        result = macro.update(timestamp, mid_price)
+        # micro regime と組み合わせ
+        composed = compose_regimes(micro_result, result)
+    """
+
+    def __init__(self, config: MacroRegimeConfig | None = None) -> None:
+        self.config = config or MacroRegimeConfig()
+        # バケット: (bucket_start_ts, [prices_in_bucket])
+        self._buckets: list[tuple[float, float]] = []  # (ts_center, avg_price)
+        self._current_bucket_prices: list[float] = []
+        self._current_bucket_start: float = 0.0
+
+    @property
+    def buckets_available(self) -> int:
+        return len(self._buckets)
+
+    def update(self, timestamp: float, mid_price: float) -> MacroRegimeResult:
+        """mid_price を投入し、マクロ regime を更新.
+
+        Args:
+            timestamp: エポック秒.
+            mid_price: 板の mid price.
+
+        Returns:
+            MacroRegimeResult
+        """
+        if not math.isfinite(mid_price) or mid_price <= 0:
+            return self._insufficient_result()
+
+        # バケット集約
+        if self._current_bucket_start == 0.0:
+            self._current_bucket_start = timestamp
+
+        bucket_age = timestamp - self._current_bucket_start
+        self._current_bucket_prices.append(mid_price)
+
+        if bucket_age >= self.config.bucket_sec and self._current_bucket_prices:
+            # バケット確定 → 平均価格を記録
+            avg = sum(self._current_bucket_prices) / len(self._current_bucket_prices)
+            ts_center = self._current_bucket_start + bucket_age / 2
+            self._buckets.append((ts_center, avg))
+            self._current_bucket_prices = [mid_price]
+            self._current_bucket_start = timestamp
+
+            # バッファ上限
+            if len(self._buckets) > self.config.max_buckets:
+                self._buckets = self._buckets[-self.config.max_buckets:]
+
+        # データ不足判定
+        if len(self._buckets) < self.config.slope_window_5m:
+            return self._insufficient_result()
+
+        # スロープ算出
+        slope_5m = self._compute_slope(self.config.slope_window_5m)
+        slope_15m = (
+            self._compute_slope(self.config.slope_window_15m)
+            if len(self._buckets) >= self.config.slope_window_15m
+            else 0.0
+        )
+
+        # トレンド分類
+        trend, confidence = self._classify(slope_5m, slope_15m)
+
+        return MacroRegimeResult(
+            trend=trend,
+            slope_5m_bps_per_min=slope_5m,
+            slope_15m_bps_per_min=slope_15m,
+            confidence=confidence,
+            buckets_available=len(self._buckets),
+        )
+
+    def _compute_slope(self, window: int) -> float:
+        """直近 window バケットの OLS 線形回帰スロープを bps/min で返す.
+
+        Returns:
+            スロープ (bps/min). 正=上昇, 負=下降.
+        """
+        if len(self._buckets) < window:
+            return 0.0
+
+        recent = self._buckets[-window:]
+        ts = np.array([b[0] for b in recent], dtype=np.float64)
+        px = np.array([b[1] for b in recent], dtype=np.float64)
+
+        if px[0] <= 0 or not np.all(np.isfinite(px)):
+            return 0.0
+
+        # 時間を分単位に正規化
+        t_min = (ts - ts[0]) / 60.0
+
+        # OLS: slope = Σ(t-t̄)(p-p̄) / Σ(t-t̄)²
+        t_mean = t_min.mean()
+        p_mean = px.mean()
+        dt = t_min - t_mean
+        dp = px - p_mean
+        denom = (dt * dt).sum()
+        if denom < 1e-12:
+            return 0.0
+
+        slope_jpy_per_min = (dt * dp).sum() / denom
+        # JPY/min → bps/min (基準価格 = 区間先頭)
+        slope_bps = slope_jpy_per_min / px[0] * 10_000
+        return float(slope_bps)
+
+    def _classify(
+        self, slope_5m: float, slope_15m: float,
+    ) -> tuple[MacroTrend, float]:
+        """スロープからマクロトレンドと confidence を分類."""
+        thr = self.config.slope_threshold_bps_per_min
+        strong_thr = self.config.strong_slope_threshold_bps_per_min
+
+        up_5 = slope_5m > thr
+        down_5 = slope_5m < -thr
+        up_15 = slope_15m > thr
+        down_15 = slope_15m < -thr
+
+        has_15m = len(self._buckets) >= self.config.slope_window_15m
+
+        if has_15m:
+            if up_5 and up_15:
+                excess = min(abs(slope_5m), abs(slope_15m)) / strong_thr
+                conf = min(1.0, 0.6 + excess * 0.3)
+                return MacroTrend.STRONG_UP, conf
+            if down_5 and down_15:
+                excess = min(abs(slope_5m), abs(slope_15m)) / strong_thr
+                conf = min(1.0, 0.6 + excess * 0.3)
+                return MacroTrend.STRONG_DOWN, conf
+            if up_5 or up_15:
+                return MacroTrend.WEAK_UP, 0.4
+            if down_5 or down_15:
+                return MacroTrend.WEAK_DOWN, 0.4
+        else:
+            # 15m データ不足 — 5m 単独判定
+            if up_5:
+                conf = min(0.7, 0.4 + abs(slope_5m) / strong_thr * 0.3)
+                return MacroTrend.WEAK_UP, conf
+            if down_5:
+                conf = min(0.7, 0.4 + abs(slope_5m) / strong_thr * 0.3)
+                return MacroTrend.WEAK_DOWN, conf
+
+        return MacroTrend.NEUTRAL, 0.5
+
+    def _insufficient_result(self) -> MacroRegimeResult:
+        return MacroRegimeResult(
+            trend=MacroTrend.INSUFFICIENT,
+            buckets_available=len(self._buckets),
+        )
+
+
+def compose_regimes(
+    micro_regime: str | None,
+    micro_confidence: float,
+    macro_result: MacroRegimeResult,
+) -> tuple[str | None, bool]:
+    """micro regime と macro trend を照合し、矛盾フラグを返す.
+
+    Returns:
+        (effective_regime, is_aligned)
+        - is_aligned=False の場合、micro/macro が矛盾 (例: micro=trending_up, macro=strong_down)
+        - 呼び出し元は矛盾時に regime を ranging に降格する等の制御に使用
+    """
+    if micro_regime is None or macro_result.trend == MacroTrend.INSUFFICIENT:
+        return micro_regime, True
+
+    aligned = True
+
+    # 矛盾検出: micro trending_up ↔ macro strong_down (またはその逆)
+    if micro_regime == "trending_up" and macro_result.trend in (
+        MacroTrend.STRONG_DOWN, MacroTrend.WEAK_DOWN,
+    ):
+        aligned = False
+    elif micro_regime == "trending_down" and macro_result.trend in (
+        MacroTrend.STRONG_UP, MacroTrend.WEAK_UP,
+    ):
+        aligned = False
+
+    return micro_regime, aligned

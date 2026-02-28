@@ -39,8 +39,9 @@ class FillCycleExecutorMixin:
     責務境界 (Single Responsibility):
       OK: 1 取引サイクル実行, OB ラッパー, SkipGate, Fill 監視, PnL 計測
       NG: ループ制御, side kill, time filter, balance forced
-    MAX LINES: 720 (超えたら run_single_cycle 内のフェーズを分割せよ)
+    MAX LINES: 750 (超えたら _build_fill_record を別モジュールに分離せよ)
     ────────────────────────────────────────────────────
+    188# _build_fill_record() 抽出済み
     """
 
     async def _compute_orderbook_imbalance(self, depth: int = 5) -> tuple[float, float, float]:
@@ -169,6 +170,145 @@ class FillCycleExecutorMixin:
         if pnl120 is None:
             return pnl30  # 120s 未計測時は 30s 単独
         return w30 * pnl30 + w120 * pnl120
+
+    # ------------------------------------------------------------------
+    # 188# FillRecord 構築 (run_single_cycle からの抽出)
+    # ------------------------------------------------------------------
+    def _build_fill_record(
+        self,
+        *,
+        cycle_id: str,
+        t_submit: float,
+        side: str,
+        order_price: float,
+        order_lot: float,
+        fill_price: float | None,
+        filled: bool,
+        spread_at_order: float | None,
+        effective_offset_ratio: float,
+        queue_wait: float,
+        cancel_reason_poll: str | None,
+        reprice_count: int,
+        reprice_drift_bps: float | None,
+        effective_timeout: float | None,
+        cancel_failed_likely_filled: bool,
+        pnl: _PnlMeasurement,
+        sg_skipped: bool,
+        sg_score: float,
+        sg_reason: str,
+        sg_model_used: str,
+        sg_as_prob: float | None,
+        sg_threshold_used: float | None,
+        sg_hour_offset: float | None,
+        sg_velocity_60s: float | None,
+        regime_str: str | None,
+        regime_conf: float | None,
+        regime_stab: int | None,
+        regime_trend_pct: float | None,
+        regime_vol_ratio: float | None,
+        balance_forced_switch: bool,
+        confidence_factor: float,
+        regime_lot: float,
+    ) -> FillRecord:
+        """188# FillRecord を組み立てる.
+
+        run_single_cycle の末尾から抽出。self 経由のセンサー値 +
+        サイクル変数を統合して 1 レコードを構築する。
+        """
+        mid_at_fill = pnl.mid_at_fill
+        post_fill_pnl = pnl.post_fill_pnl
+        post_fill_120s_pnl = pnl.post_fill_120s_pnl
+
+        return FillRecord(
+            cycle_id=cycle_id,
+            timestamp=t_submit,
+            side=side,
+            order_price=order_price,
+            order_quantity=order_lot,
+            fill_price=fill_price,
+            filled=filled,
+            cancelled=not filled,
+            queue_wait_sec=queue_wait,
+            mid_at_fill=mid_at_fill,
+            mid_30s_after=pnl.mid_30s_after,
+            mid_60s_after=pnl.mid_60s_after,
+            mid_120s_after=pnl.mid_120s_after,
+            post_fill_30s_pnl=post_fill_pnl,
+            post_fill_60s_pnl=pnl.post_fill_60s_pnl,
+            post_fill_120s_pnl=post_fill_120s_pnl,
+            adverse_selected=pnl.adverse_selected,
+            adverse_selected_raw=pnl.adverse_selected_raw,
+            cancel_reason=(
+                cancel_reason_poll
+                if cancel_reason_poll
+                else (
+                    "timeout"
+                    if (not filled and queue_wait >= (effective_timeout or self.config.order_timeout_sec))
+                    else ("unknown" if not filled else None)
+                )
+            ),
+            run_id=self._run_id,
+            git_sha=self._git_sha,
+            spread_at_order=spread_at_order,
+            spread_offset_ratio=effective_offset_ratio,
+            regime=regime_str,
+            regime_confidence=regime_conf,
+            regime_stability=regime_stab,
+            regime_trend_pct=regime_trend_pct,
+            regime_volatility_ratio=regime_vol_ratio,
+            orderbook_imbalance=self._maker_price._last_imbalance,
+            bid_depth_total=self._maker_price._last_bid_depth,
+            ask_depth_total=self._maker_price._last_ask_depth,
+            mid_price_trend_5s=self._maker_price._last_mid_trend_bps,
+            spread_bps=(
+                (spread_at_order / mid_at_fill * self._BPS_FACTOR)
+                if spread_at_order is not None and mid_at_fill is not None and mid_at_fill > 0
+                else None
+            ),
+            effective_offset_used=effective_offset_ratio,
+            skip_gate_skipped=sg_skipped,
+            skip_gate_score=sg_score,
+            skip_gate_reason=sg_reason,
+            skip_gate_model_used=sg_model_used,
+            skip_gate_as_prob=sg_as_prob,
+            skip_gate_threshold_used=sg_threshold_used,
+            skip_gate_hour_offset=sg_hour_offset,
+            reprice_count=reprice_count,
+            reprice_drift_bps=reprice_drift_bps if reprice_count > 0 else None,
+            actual_measurement_sec=pnl.actual_measurement_sec if filled else None,
+            early_exit_triggered=pnl.early_exit_triggered if filled else None,
+            pnl_at_exit_bps=pnl.pnl_at_exit_bps if filled else None,
+            ffd_boost_active=self._fast_fill_defense.is_boost_active(side),
+            vg_triggered=self._maker_price.last_vg_triggered,
+            vg_velocity_bps=self._maker_price.last_vg_velocity_bps,
+            vg_vpin=self._maker_price.last_vg_vpin,
+            vg_boost_factor=self._maker_price.last_vg_boost_factor,
+            price_velocity_60s=sg_velocity_60s,
+            balance_forced_switch=balance_forced_switch or None,
+            confidence_lot_factor=confidence_factor if self.config.enable_confidence_lot else None,
+            order_lot_regime=regime_lot,
+            order_lot_effective=order_lot,
+            confidence_lot_mode=self.config.confidence_lot_mode if self.config.enable_confidence_lot else None,
+            ab_test_variant=self.config.ab_test_variant or None,
+            cancel_failed_likely_filled=cancel_failed_likely_filled or None,
+            ev_weighted_pnl=self._compute_ev_weighted(
+                post_fill_pnl, post_fill_120s_pnl,
+                w30=self._cycle_strategy.policy.ev_weighted_w30,
+                w120=self._cycle_strategy.policy.ev_weighted_w120,
+            ) if hasattr(self, "_cycle_strategy") else self._compute_ev_weighted(
+                post_fill_pnl, post_fill_120s_pnl
+            ),
+            gated_regime=(
+                self._cycle_strategy.gated_regime(regime_str, regime_conf)
+                if hasattr(self, "_cycle_strategy") and regime_str is not None
+                else None
+            ),
+            effective_cycle_interval=(
+                self._cycle_strategy.effective_interval(regime_str)
+                if hasattr(self, "_cycle_strategy")
+                else None
+            ),
+        )
 
     async def _measure_post_fill_pnl(
         self,
@@ -587,118 +727,39 @@ class FillCycleExecutorMixin:
                 regime_trend_pct = regime_result.trend_pct
                 regime_vol_ratio = regime_result.volatility_ratio
 
-        record = FillRecord(
+        record = self._build_fill_record(
             cycle_id=cycle_id,
-            timestamp=t_submit,
+            t_submit=t_submit,
             side=side,
             order_price=order_price,
-            order_quantity=_order_lot,
+            order_lot=_order_lot,
             fill_price=fill_price,
             filled=filled,
-            cancelled=not filled,
-            queue_wait_sec=queue_wait,
-            mid_at_fill=mid_at_fill,
-            mid_30s_after=mid_30s_after,
-            mid_60s_after=mid_60s_after,
-            mid_120s_after=mid_120s_after,
-            post_fill_30s_pnl=post_fill_pnl,
-            post_fill_60s_pnl=post_fill_60s_pnl,
-            post_fill_120s_pnl=post_fill_120s_pnl,
-            adverse_selected=adverse_selected,
-            adverse_selected_raw=adverse_selected_raw,
-            cancel_reason=(
-                cancel_reason_poll
-                if cancel_reason_poll
-                else (
-                    "timeout"
-                    # 145# §9-#2: regime 調整済みの effective_timeout を使用
-                    if (not filled and queue_wait >= (_effective_timeout or self.config.order_timeout_sec))
-                    else ("unknown" if not filled else None)  # 117# C-fix: None 防止
-                )
-            ),
-            run_id=self._run_id,
-            git_sha=self._git_sha,
-            # 031# 追加フィールド
             spread_at_order=spread_at_order,
-            spread_offset_ratio=effective_offset_ratio,  # 050# Bug#3 fix: 実効値を記録
-            # 037# レジーム情報
-            regime=regime_str,
-            regime_confidence=regime_conf,
-            regime_stability=regime_stab,
-            # 156# §18: データシンク解消
-            regime_trend_pct=regime_trend_pct,
-            regime_volatility_ratio=regime_vol_ratio,
-            # 054# S5: AS 予測データ基盤
-            # 122# R5/§7.3 方法 2: OB 記録を imbalance_enabled と独立させ常時記録
-            orderbook_imbalance=self._maker_price._last_imbalance,
-            bid_depth_total=self._maker_price._last_bid_depth,
-            ask_depth_total=self._maker_price._last_ask_depth,
-            mid_price_trend_5s=self._maker_price._last_mid_trend_bps,
-            spread_bps=(
-                (spread_at_order / mid_at_fill * self._BPS_FACTOR)
-                if spread_at_order is not None and mid_at_fill is not None and mid_at_fill > 0
-                else None
-            ),
-            effective_offset_used=effective_offset_ratio,
-            # 062# SkipGate 判定情報 (PASS 時も記録 → 後続分析用)
-            skip_gate_skipped=skip_gate_skipped,
-            skip_gate_score=skip_gate_score,
-            skip_gate_reason=skip_gate_reason,
-            skip_gate_model_used=skip_gate_model_used,
-            # 084# P(AS) 可観測性改善
-            skip_gate_as_prob=skip_gate_as_prob,
-            skip_gate_threshold_used=skip_gate_threshold_used,
-            # 158# P1-6: 時間帯別 skip_gate 閾値調整のオフセット
-            skip_gate_hour_offset=skip_gate_hour_offset,
-            # 094# stale order cancel-replace 追跡
+            effective_offset_ratio=effective_offset_ratio,
+            queue_wait=queue_wait,
+            cancel_reason_poll=cancel_reason_poll,
             reprice_count=reprice_count,
-            # 158# P1-3: reprice 累積 drift (bps)
-            reprice_drift_bps=reprice_drift_bps if reprice_count > 0 else None,
-            # 100# P1-4: 実際の PnL 計測経過秒数
-            actual_measurement_sec=actual_measurement_sec if filled else None,
-            # 120# A4: Early Exit 明示フラグ
-            early_exit_triggered=pnl.early_exit_triggered if filled else None,
-            # 120# A4-2: EE 中断時点 PnL (計測バイアス分離)
-            pnl_at_exit_bps=pnl.pnl_at_exit_bps if filled else None,
-            # 120# P2-1: 寄与分解基盤 — FFD/VG イベントフラグ
-            ffd_boost_active=self._fast_fill_defense.is_boost_active(side),
-            vg_triggered=self._maker_price.last_vg_triggered,
-            # 158# P2-6: VG 詳細ログ (ヒンドサイト分析用)
-            vg_velocity_bps=self._maker_price.last_vg_velocity_bps,
-            vg_vpin=self._maker_price.last_vg_vpin,
-            vg_boost_factor=self._maker_price.last_vg_boost_factor,
-            # 165# AS-R1: velocity logging
-            price_velocity_60s=_sg_velocity_60s,
-            # 129# D.2: 残高制約による side 強制切替フラグ
-            balance_forced_switch=balance_forced_switch or None,
-            # 151# P3-03: confidence lot 可観測性 (§10 #7)
-            confidence_lot_factor=_confidence_factor if self.config.enable_confidence_lot else None,
-            order_lot_regime=_regime_lot,
-            order_lot_effective=_order_lot,
-            confidence_lot_mode=self.config.confidence_lot_mode if self.config.enable_confidence_lot else None,
-            # 158# P1-5: A/B テスト variant 識別子
-            ab_test_variant=self.config.ab_test_variant or None,
-            # 166# C.7: cancel 失敗→約定検出フラグ (Bug11 KPI)
-            cancel_failed_likely_filled=cancel_failed_likely_filled or None,
-            # 181# EV_weighted: 30s/120s 加重平均 PnL (182# weights YAML外部化)
-            ev_weighted_pnl=self._compute_ev_weighted(
-                post_fill_pnl, post_fill_120s_pnl,
-                w30=self._cycle_strategy.policy.ev_weighted_w30,
-                w120=self._cycle_strategy.policy.ev_weighted_w120,
-            ) if hasattr(self, "_cycle_strategy") else self._compute_ev_weighted(
-                post_fill_pnl, post_fill_120s_pnl
-            ),
-            # 187# B-2: guard_trace — ヒステリシス適用後 regime + 実効サイクル間隔
-            gated_regime=(
-                self._cycle_strategy.gated_regime(regime_str, regime_conf)
-                if hasattr(self, "_cycle_strategy") and regime_str is not None
-                else None
-            ),
-            effective_cycle_interval=(
-                self._cycle_strategy.effective_interval(regime_str)
-                if hasattr(self, "_cycle_strategy")
-                else None
-            ),
+            reprice_drift_bps=reprice_drift_bps,
+            effective_timeout=_effective_timeout,
+            cancel_failed_likely_filled=cancel_failed_likely_filled,
+            pnl=pnl,
+            sg_skipped=skip_gate_skipped,
+            sg_score=skip_gate_score,
+            sg_reason=skip_gate_reason,
+            sg_model_used=skip_gate_model_used,
+            sg_as_prob=skip_gate_as_prob,
+            sg_threshold_used=skip_gate_threshold_used,
+            sg_hour_offset=skip_gate_hour_offset,
+            sg_velocity_60s=_sg_velocity_60s,
+            regime_str=regime_str,
+            regime_conf=regime_conf,
+            regime_stab=regime_stab,
+            regime_trend_pct=regime_trend_pct,
+            regime_vol_ratio=regime_vol_ratio,
+            balance_forced_switch=balance_forced_switch,
+            confidence_factor=_confidence_factor,
+            regime_lot=_regime_lot,
         )
 
         logger.info(

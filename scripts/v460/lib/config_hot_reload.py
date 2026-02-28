@@ -103,6 +103,10 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     # 187# clamp YAML外部化
     "skip_gate_offset_floor",
     "skip_gate_offset_ceil",
+    # 188# C-1: ev_weighted SkipGate
+    "skip_gate_ev_weighted_enabled",
+    "skip_gate_ev_w30",
+    "skip_gate_ev_w120",
     # --- dynamic kill ---
     "sell_dynamic_kill_enabled",
     "sell_dynamic_kill_window",

@@ -198,6 +198,13 @@ class FillTestConfig:
     # 141# P1-01: side 別モデルパス (None=統一モデルにフォールバック)
     skip_gate_model_path_buy: str | None = None
     skip_gate_model_path_sell: str | None = None
+    # 188# C-1: ev_weighted SkipGate — 両 horizon モデルで統合判定
+    # 副 horizon モデルパス (pnl120→buy用, pnl30→sell用). None=単一モデル判定
+    skip_gate_model_path_buy_long: str | None = None   # buy の pnl120 (長期) モデル
+    skip_gate_model_path_sell_short: str | None = None  # sell の pnl30 (短期) モデル
+    skip_gate_ev_weighted_enabled: bool = False  # True: 両 horizon ev_weighted 判定
+    skip_gate_ev_w30: float = 0.4   # ev_weighted の pnl30 重み
+    skip_gate_ev_w120: float = 0.6  # ev_weighted の pnl120 重み
     skip_gate_as_threshold: float = 0.52   # 100# AS 確率スキップ閾値 (0.65→0.52)
     skip_gate_pnl_threshold: float = 0.0   # PnL 予測スキップ閾値 (mode=pnl)
     skip_gate_max_skip_rate: float = 0.3   # 連続スキップ率上限 (安全弁)
@@ -588,6 +595,12 @@ class FillTestConfig:
             # 141# P1-01: side 別モデルパス
             "model_path_buy": "skip_gate_model_path_buy",
             "model_path_sell": "skip_gate_model_path_sell",
+            # 188# C-1: ev_weighted SkipGate
+            "model_path_buy_long": "skip_gate_model_path_buy_long",
+            "model_path_sell_short": "skip_gate_model_path_sell_short",
+            "ev_weighted_enabled": "skip_gate_ev_weighted_enabled",
+            "ev_w30": "skip_gate_ev_w30",
+            "ev_w120": "skip_gate_ev_w120",
             "as_threshold": "skip_gate_as_threshold",
             "pnl_threshold": "skip_gate_pnl_threshold",
             "max_skip_rate": "skip_gate_max_skip_rate",

@@ -6,6 +6,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 188# ファイル分割 + Phase C ev_weighted SkipGate + Phase D Macro Regime 基盤 (2026-02-28)
+
+### Changed
+- `regime_policy.py` (373→192 lines) — `DefaultCycleStrategy` を `cycle_strategy.py` に分割
+  - 後方互換の re-export 維持
+  - `MAX LINES`: 400→250
+- `fill_cycle_executor.py` — FillRecord 構築ロジックを `_build_fill_record()` に抽出
+  - `run_single_cycle` 約55行短縮
+  - `MAX LINES`: 720→750
+- `skip_gate_evaluator.py` — Phase C: ev_weighted デュアルモデル統合判定
+  - `_ALT_MODEL_SLOTS`: alt horizon モデルスロット定義
+  - `_load_alt_models()`: 副 horizon モデル (buy=pnl120, sell=pnl30) ロード
+  - `_try_ev_weighted_decision()`: `w30*pnl30 + w120*pnl120` による統合判定
+  - AS mode では ev_weighted 不適用 (確率空間の加重平均が不適切)
+  - `_SkipDecisionLike` Protocol に `threshold_bps` フィールド追加
+- `fill_config.py` — ev_weighted 設定フィールド追加
+  - `skip_gate_ev_weighted_enabled`, `skip_gate_ev_w30/w120`
+  - `skip_gate_model_path_buy_long`, `skip_gate_model_path_sell_short`
+  - YAML パース対応 (`_parse_skip_gate_section`)
+- `config_hot_reload.py` — ev_weighted 関連 3 キーを hot-reload 対象に追加
+
+### Added
+- `scripts/v460/lib/cycle_strategy.py` (139 lines) — DefaultCycleStrategy を独立モジュール化
+- `scripts/v460/lib/macro_regime.py` (~250 lines) — Phase D: Macro Regime 基盤
+  - `MacroTrend` enum: STRONG_UP/WEAK_UP/NEUTRAL/WEAK_DOWN/STRONG_DOWN/INSUFFICIENT
+  - `MacroRegimeDetector`: 時間バケット集約 + OLS 線形回帰スロープ (5m/15m)
+  - `compose_regimes()`: micro+macro 一致/矛盾検出
+- `tests/unit/v460/test_188_split_evc_macro.py` (24 テスト)
+- `docs/v460/188_ph2_impl_split_evc_macro.md`
+
+### 186# Phase 進捗
+- Phase A: Trend Mode ヒステリシス ✅ (186#)
+- Phase B: Chase 方向制御 + guard_trace ✅ (187#)
+- Phase C: Buy SkipGate ev_weighted ✅ (188# — 基盤実装, pnl120 モデル訓練後に有効化)
+- Phase D: Macro Regime 基盤 ✅ (188# — MacroRegimeDetector, fill_test 統合は次フェーズ)
+
+
 ## 187# Chase 方向制御 + guard_trace 記録 + clamp YAML外部化 (2026-02-28)
 
 ### Changed

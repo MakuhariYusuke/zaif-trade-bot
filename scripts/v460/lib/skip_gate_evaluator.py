@@ -52,6 +52,7 @@ class _SkipGateConfigLike(Protocol):
 class _SkipDecisionLike(Protocol):
     should_skip: bool
     predicted_pnl_bps: float
+    threshold_bps: float
     reason: str
     model_used: str
     as_probability: float | None
@@ -91,6 +92,11 @@ class SkipGateEvaluator:
         ("buy", "_gate_buy", "_gate_path_buy", "_model_file_hash_buy"),
         ("sell", "_gate_sell", "_gate_path_sell", "_model_file_hash_sell"),
     )
+    # 188# C-1: ev_weighted 副 horizon モデルスロット
+    _ALT_MODEL_SLOTS: tuple[tuple[str, str, str, str, str], ...] = (
+        ("buy", "_gate_alt_buy", "_gate_path_alt_buy", "_model_file_hash_alt_buy", "skip_gate_model_path_buy_long"),
+        ("sell", "_gate_alt_sell", "_gate_path_alt_sell", "_model_file_hash_alt_sell", "skip_gate_model_path_sell_short"),
+    )
 
     def __init__(
         self,
@@ -107,6 +113,13 @@ class SkipGateEvaluator:
         self._gate_path_sell: Path | None = None
         self._model_file_hash_buy: str = ""
         self._model_file_hash_sell: str = ""
+        # 188# C-1: ev_weighted 副 horizon モデルスロット
+        self._gate_alt_buy: _SkipGateLike | None = None
+        self._gate_alt_sell: _SkipGateLike | None = None
+        self._gate_path_alt_buy: Path | None = None
+        self._gate_path_alt_sell: Path | None = None
+        self._model_file_hash_alt_buy: str = ""
+        self._model_file_hash_alt_sell: str = ""
         # 156# D-1: OB fetch 失敗カウンタ
         self._ob_fetch_fail_count: int = 0
         self._ob_fetch_total_count: int = 0
@@ -130,6 +143,8 @@ class SkipGateEvaluator:
                 )
                 # 143# A.1 #2: unified 不在でも side モデルのロードを試行
                 self._load_side_models(skip_gate_cls)
+                # 188# C-1: ev_weighted 副 horizon モデルロード
+                self._load_alt_models(skip_gate_cls)
                 self._last_reload_check = time.monotonic()
                 return
 
@@ -145,6 +160,8 @@ class SkipGateEvaluator:
 
             # 141# P1-01: side 別モデルロード
             self._load_side_models(skip_gate_cls)
+            # 188# C-1: ev_weighted 副 horizon モデルロード
+            self._load_alt_models(skip_gate_cls)
         except Exception as e:
             logger.error(f"[skip_gate] Failed to load: {e}. SkipGate disabled.")
             self._skip_gate = None
@@ -291,6 +308,129 @@ class SkipGateEvaluator:
                     f"[skip_gate] 141# {side} model load failed: {e}. "
                     f"Will use unified model."
                 )
+
+    def _load_alt_models(self, skip_gate_cls: _SkipGateClassLike) -> None:
+        """188# C-1: ev_weighted 用の副 horizon モデルをロード.
+
+        buy_long (pnl120 buy), sell_short (pnl30 sell) が設定・存在する場合にロード。
+        ev_weighted_enabled=False でもパスを差していればロード (後の YAML hot-reload で有効化可能)。
+        """
+        config = self._config
+        for side, attr_gate, attr_path, attr_hash, config_key in self._ALT_MODEL_SLOTS:
+            model_path_str = getattr(config, config_key, None)
+            if not model_path_str:
+                continue
+            gate_path = self._resolve_model_path(model_path_str)
+            if not gate_path.exists():
+                logger.info(
+                    f"[skip_gate] 188# alt {side} model not found: {gate_path}. "
+                    f"ev_weighted will fall back to single-model evaluation."
+                )
+                continue
+            try:
+                alt_gate = self._load_gate_from_path(skip_gate_cls, gate_path)
+                setattr(self, attr_gate, alt_gate)
+                setattr(self, attr_path, gate_path)
+                setattr(self, attr_hash, compute_file_hash(gate_path))
+                n_features = len(alt_gate.feature_cols)
+                target = alt_gate.metadata.get("target", "?")
+                logger.info(
+                    f"[skip_gate] 188# alt {side} model loaded: {gate_path}, "
+                    f"features={n_features}, target={target}"
+                )
+            except Exception as e:
+                logger.warning(
+                    f"[skip_gate] 188# alt {side} model load failed: {e}. "
+                    f"ev_weighted will fall back to single-model evaluation."
+                )
+
+    def _try_ev_weighted_decision(
+        self,
+        side: str,
+        features: dict[str, object] | dict[str, float],
+        regime: str,
+        threshold_offset: float,
+        primary_decision: _SkipDecisionLike,
+    ) -> _SkipDecisionLike | None:
+        """188# C-1: ev_weighted 統合判定.
+
+        副 horizon モデルが存在し ev_weighted_enabled=True の場合、
+        primary (短期) と alt (長期) の predicted_pnl を ev_weighted で統合。
+        AS mode では ev_weighted は適用しない (確率ベースのため加重平均が不適切)。
+
+        Returns:
+            統合判定の SkipDecision, または None (ev_weighted 不適用時).
+        """
+        if not self._config.skip_gate_ev_weighted_enabled:
+            return None
+
+        # AS mode では ev_weighted 不適用
+        alt_gate: _SkipGateLike | None
+        if side == "buy":
+            alt_gate = self._gate_alt_buy
+        elif side == "sell":
+            alt_gate = self._gate_alt_sell
+        else:
+            return None
+
+        if alt_gate is None:
+            return None
+
+        # PnL mode のみ ev_weighted (AS mode は確率空間の加重平均が不適切)
+        if alt_gate.config.mode != "pnl":
+            logger.debug(
+                "[skip_gate] 188# ev_weighted skipped: alt model mode=%s (pnl required)",
+                alt_gate.config.mode,
+            )
+            return None
+
+        try:
+            alt_decision = alt_gate.evaluate(
+                features,
+                side=side,
+                regime=regime,
+                threshold_offset=threshold_offset,
+            )
+        except Exception as e:
+            logger.warning("[skip_gate] 188# alt model evaluate failed: %s", e)
+            return None
+
+        # primary と alt の pred_pnl を ev_weighted 合成
+        w30 = self._config.skip_gate_ev_w30
+        w120 = self._config.skip_gate_ev_w120
+        primary_pnl = primary_decision.predicted_pnl_bps
+        alt_pnl = alt_decision.predicted_pnl_bps
+
+        # buy: primary=pnl30 (短期), alt=pnl120 (長期)
+        # sell: primary=pnl120 (長期), alt=pnl30 (短期)
+        if side == "buy":
+            ev_score = w30 * primary_pnl + w120 * alt_pnl
+        else:
+            ev_score = w30 * alt_pnl + w120 * primary_pnl
+
+        # ev_weighted threshold — primary の threshold_used を基準に判定
+        threshold_used = primary_decision.threshold_used
+        if threshold_used is None:
+            threshold_used = 0.0
+        should_skip = ev_score < threshold_used
+
+        logger.debug(
+            "[skip_gate] 188# ev_weighted: side=%s pnl_primary=%.3f pnl_alt=%.3f "
+            "ev=%.3f threshold=%.3f skip=%s",
+            side, primary_pnl, alt_pnl, ev_score, threshold_used, should_skip,
+        )
+
+        from scripts.v460.ml.skip_gate import SkipDecision
+        return SkipDecision(
+            should_skip=should_skip,
+            predicted_pnl_bps=ev_score,
+            threshold_bps=primary_decision.threshold_bps,
+            features_used=primary_decision.features_used if hasattr(primary_decision, "features_used") else 0,
+            reason="ev_weighted_skip" if should_skip else "ev_weighted_pass",
+            model_used="ev_weighted",
+            as_probability=primary_decision.as_probability,
+            threshold_used=threshold_used,
+        )
 
 
     def _check_and_reload_model(self) -> None:
@@ -709,16 +849,27 @@ class SkipGateEvaluator:
                 regime=sg_regime,
                 threshold_offset=_total_offset,
             )
+
+            # 188# C-1: ev_weighted — 副 horizon モデルがあれば統合判定
+            _ev_combined = self._try_ev_weighted_decision(
+                side, gate_features, sg_regime, _total_offset, decision,
+            )
+            if _ev_combined is not None:
+                decision = _ev_combined
+
             result.skipped = decision.should_skip
             result.score = decision.predicted_pnl_bps
             result.reason = decision.reason
             result.price_velocity_60s = gate_features.get("price_velocity_60s")
-            # 141#: model_used にどのモデルが使われたかを示す
-            is_side_model = (
-                (side == "buy" and self._gate_buy is not None)
-                or (side == "sell" and self._gate_sell is not None)
-            )
-            model_tag = f"side_{side}" if is_side_model else "unified"
+            # 141#/188#: model_used にどのモデルが使われたかを示す
+            if decision.model_used == "ev_weighted":
+                model_tag = f"ev_weighted_{side}"
+            else:
+                is_side_model = (
+                    (side == "buy" and self._gate_buy is not None)
+                    or (side == "sell" and self._gate_sell is not None)
+                )
+                model_tag = f"side_{side}" if is_side_model else "unified"
             result.model_used = f"{decision.model_used}:{model_tag}"
             result.as_prob = decision.as_probability
             result.threshold_used = decision.threshold_used
