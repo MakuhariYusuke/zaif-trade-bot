@@ -153,6 +153,16 @@ class MakerPriceCalculator:
         """
         return self._prev_mid_price, self._prev_mid_time
 
+    @property
+    def last_spread(self) -> float | None:
+        """197# Gate 8-9 用: 直近の compute() で算出された spread (JPY)."""
+        return self._last_spread
+
+    @property
+    def last_mid_price(self) -> float | None:
+        """197# Gate 8-9 用: 直近の mid price (JPY)."""
+        return self._prev_mid_price
+
     def update_inventory(self, side: str) -> None:
         """162# Inventory Skewing: fill 後に在庫偏重を更新.
 

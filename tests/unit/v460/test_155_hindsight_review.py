@@ -569,11 +569,13 @@ class TestBalanceForcedBypassHorizontal:
         )
 
     def test_skip_sell_trending_has_bypass(self) -> None:
-        """skip_sell_trending ブロックに 'not balance_forced' が含まれること."""
+        """skip_sell_trending ブロックに 'not balance_forced' が含まれること.
+        197#: balance_forced offset ブロックが先に現れるため検索範囲を拡張。
+        """
         src = self._get_source()
         idx = src.find("skip_sell_trending")
         assert idx != -1
-        block = src[idx:idx + 400]
+        block = src[idx:idx + 1200]
         assert "not balance_forced" in block
 
     def test_sell_dynamic_kill_has_bypass(self) -> None:

@@ -16,14 +16,34 @@ import logging
 import math
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import TypedDict
 
 import numpy as np
 
 from scripts.v460.lib.metrics_utils import compute_base_metrics
+from ztb.io.json_io import JSONObject
 from ztb.utils.safety import safe_to_finite
 
 logger = logging.getLogger(__name__)
+
+FillRecord = JSONObject
+
+
+class JudgmentMetrics(TypedDict):
+    n_total: int
+    n_filled: int
+    fill_rate: float
+    avg_pnl30_bps: float
+    downside_p10_bps: float
+    downside_p05_bps: float
+    calendar_days: int
+
+
+class DailyBreakdownRow(TypedDict, total=False):
+    day: str
+    n_filled: int
+    avg_pnl30_bps: float
+    p10_bps: float
 
 
 # ======================================================================
@@ -71,7 +91,7 @@ class ABJudgmentCriteria:
     downside_p10_degradation_max_bps: float = 2.0  # control 比 2bps 以上悪化で FAIL
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> ABJudgmentCriteria:
+    def from_dict(cls, d: JSONObject) -> ABJudgmentCriteria:
         """辞書から生成 (YAML 用)."""
         known = {f.name for f in cls.__dataclass_fields__.values()}
         filtered = {k: v for k, v in d.items() if k in known}
@@ -128,7 +148,7 @@ class ABJudgmentResult:
 
 
 
-def _extract_pnl30_array(records: list[dict[str, Any]]) -> np.ndarray:
+def _extract_pnl30_array(records: list[FillRecord]) -> np.ndarray:
     """filled レコードから PnL30 配列を抽出."""
     vals = []
     for r in records:
@@ -140,7 +160,7 @@ def _extract_pnl30_array(records: list[dict[str, Any]]) -> np.ndarray:
     return np.array(vals, dtype=float) if vals else np.array([], dtype=float)
 
 
-def _compute_metrics(records: list[dict[str, Any]]) -> dict[str, float]:
+def _compute_metrics(records: list[FillRecord]) -> JudgmentMetrics:
     """レコード群から判定用メトリクスを算出.
 
     161# DRY: compute_base_metrics に委譲。
@@ -158,8 +178,8 @@ def _compute_metrics(records: list[dict[str, Any]]) -> dict[str, float]:
 
 
 def evaluate_ab_variant(
-    variant_records: list[dict[str, Any]],
-    control_records: list[dict[str, Any]],
+    variant_records: list[FillRecord],
+    control_records: list[FillRecord],
     criteria: ABJudgmentCriteria | None = None,
     *,
     variant_label: str = "variant",
@@ -355,8 +375,8 @@ def evaluate_ab_variant(
 
 
 def _filter_by_regime(
-    records: list[dict[str, Any]], regime: str,
-) -> list[dict[str, Any]]:
+    records: list[FillRecord], regime: str,
+) -> list[FillRecord]:
     """指定 regime のレコードのみ抽出."""
     return [r for r in records if str(r.get("regime") or "none") == regime]
 
@@ -370,8 +390,8 @@ class PerRegimeResult:
 
 
 def evaluate_per_regime(
-    variant_records: list[dict[str, Any]],
-    control_records: list[dict[str, Any]],
+    variant_records: list[FillRecord],
+    control_records: list[FillRecord],
     criteria: ABJudgmentCriteria | None = None,
     *,
     variant_label: str = "variant",
@@ -469,7 +489,7 @@ class TrendingEvalCriteria:
     counterfactual_pnl30_bps: float = -0.66
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> TrendingEvalCriteria:
+    def from_dict(cls, d: JSONObject) -> TrendingEvalCriteria:
         """辞書から生成."""
         known = {f.name for f in cls.__dataclass_fields__.values()}
         return cls(**{k: v for k, v in d.items() if k in known})
@@ -488,7 +508,7 @@ class TrendingEvalResult:
     profitable_rate: float = 0.0
     counterfactual_gain_bps: float = 0.0  # 実測 - カウンターファクチュアル
     detail: str = ""
-    daily_breakdown: list[dict[str, Any]] = field(default_factory=list)
+    daily_breakdown: list[DailyBreakdownRow] = field(default_factory=list)
 
     def summary(self) -> str:
         """人間可読サマリ."""
@@ -515,7 +535,7 @@ class TrendingEvalResult:
 
 
 def evaluate_trending_down_sell(
-    records: list[dict[str, Any]],
+    records: list[FillRecord],
     criteria: TrendingEvalCriteria | None = None,
 ) -> TrendingEvalResult:
     """trending_down sell の実測評価 (160# P0-C).
@@ -588,7 +608,7 @@ def evaluate_trending_down_sell(
 
     for day in sorted(daily_groups.keys()):
         vals = daily_groups[day]
-        entry: dict[str, Any] = {
+        entry: DailyBreakdownRow = {
             "day": day,
             "n_filled": len(vals),
             "avg_pnl30_bps": round(float(np.mean(vals)), 4),

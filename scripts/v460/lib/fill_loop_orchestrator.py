@@ -743,8 +743,8 @@ class FillLoopOrchestratorMixin:
                 is_buy_killed=self._is_buy_killed(),
                 is_sell_killed=self._is_sell_killed(),
                 # 197# Gate 8-9: cached spread/mid for pre-check
-                spread_jpy=self._maker_price._last_spread,
-                mid_price=self._maker_price._prev_mid_price,
+                spread_jpy=self._maker_price.last_spread,
+                mid_price=self._maker_price.last_mid_price,
                 trending_sell_skip_count=self._trending_sell_skip_count,
                 buy_side_insufficient=_buy_side_insufficient,
             )

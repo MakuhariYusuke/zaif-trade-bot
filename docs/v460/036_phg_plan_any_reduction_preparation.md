@@ -1833,6 +1833,32 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - fallback 読み込みで非 object 行を無視することを追加検証。
 - `unknown_regime_count` が report に含まれることを追加検証。
 
+## Step91: `ab_judgment` の payload 契約型固定 (2026-02-28)
+
+### 1) 対象
+
+- `scripts/v460/lib/ab_judgment.py`
+- `tests/unit/v460/test_160_ab_judgment.py`
+
+### 2) Any削減 / 保守性改善
+
+- `ab_judgment` の入力レコード型を `JSONObject` ベースに統一し、
+  `FillRecord` alias を導入。
+- 判定メトリクス戻り値を `JudgmentMetrics`、日次内訳を `DailyBreakdownRow`
+  (`TypedDict`) に固定し、`Any` 注釈を削減。
+- `ABJudgmentCriteria.from_dict()` / `TrendingEvalCriteria.from_dict()` の
+  入力も `JSONObject` に寄せ、YAML payload 契約を明確化。
+- テスト側の helper も `JSONObject` に寄せ、
+  `tmp_path: Any` を `Path` に置換。
+
+### 3) 検証
+
+- `tests/unit/v460/test_160_ab_judgment.py`: `65 passed`
+- `any_inventory`:
+  - `scripts/v460/lib/ab_judgment.py`
+  - `tests/unit/v460/test_160_ab_judgment.py`
+  - 結果: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

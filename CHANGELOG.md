@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 197# boost 最適化 + balance_forced offset + Gate 8-9 統合 (2026-03-01)
+
+### Added
+- Gate 8: narrow_spread_pause を CycleGateAggregator に統合 (旧 executor B3)
+- Gate 9: maker_price 事前チェック (spread_too_narrow / sell_guard_reject)
+- `balance_forced_apply_trending_offset` config フィールド — forced sell の AS リスク低減
+- `MakerPriceCalculator.last_spread` / `last_mid_price` public property
+- `tests/unit/v460/test_197_boost_optimization_gate_integration.py` — 45 テスト
+- `docs/v460/197_ph2_impl_boost_optimization_gate_integration.md`
+
+### Changed
+- `velocity_offset_boost_factor` 2.0→1.5 (fill_records 5,102 件分析: boost 1.0-1.5 帯 PnL +0.47)
+- `trending_sell_offset_boost_factor` 3.0→2.0 (regime 1.8x との累積 5.4x→3.6x に修正)
+- `_check_trending_sell()`: balance_forced 時も trending offset を適用 (block しない)
+- CycleGateAggregator: 7 gates → 9 gates (narrow_spread + maker_price_pre)
+- orchestrator: evaluate() に spread_jpy/mid_price パラメータ追加
+- `_GATE_TO_CANCEL_REASON` に 3 エントリ追加
+
+### Fixed
+- balance_forced 設計ギャップ: forced sell が trending_up で offset 保護なしだった問題を修正
+- test_155 source scan range 不足 (400→1200) — 197# コード追加で不足
+
 ## 196# velocity offset 比例化 + trending_sell ソフト化 (2026-03-01)
 
 ### Added

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import math
 import time
-from typing import Any
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -30,6 +30,7 @@ from scripts.v460.lib.ab_judgment import (
     _compute_metrics,
     _extract_pnl30_array,
 )
+from ztb.io.json_io import JSONObject
 from ztb.utils.safety import safe_to_finite
 
 
@@ -46,10 +47,10 @@ def _make_record(
     pnl30: float | None = 0.5,
     timestamp: float | None = None,
     adverse_selected: bool = False,
-) -> dict[str, Any]:
+) -> JSONObject:
     """テスト用 FillRecord 辞書."""
     ts = timestamp or time.time()
-    r: dict[str, Any] = {
+    r: JSONObject = {
         "side": side,
         "regime": regime,
         "filled": filled,
@@ -71,7 +72,7 @@ def _make_records(
     pnl_mean: float = 0.0,
     pnl_std: float = 1.0,
     base_ts: float | None = None,
-) -> list[dict[str, Any]]:
+) -> list[JSONObject]:
     """n 件のテスト用レコードを生成."""
     rng = np.random.default_rng(42)
     base = base_ts or time.time()
@@ -521,7 +522,7 @@ class TestEvaluateTrendingDownSell:
 class TestDashboardJudgmentIntegration:
     """side_regime_dashboard の judgment 統合テスト."""
 
-    def test_run_dashboard_without_judgment(self, tmp_path: Any) -> None:
+    def test_run_dashboard_without_judgment(self, tmp_path: Path) -> None:
         """with_judgment=False ではjudgment結果がNone."""
         from scripts.v460.analysis.side_regime_dashboard import run_dashboard
 
@@ -530,7 +531,7 @@ class TestDashboardJudgmentIntegration:
         assert result.get("ab_judgment") is None
         assert result.get("trending_eval") is None
 
-    def test_run_dashboard_with_judgment(self, tmp_path: Any) -> None:
+    def test_run_dashboard_with_judgment(self, tmp_path: Path) -> None:
         """with_judgment=True でjudgment結果が生成される."""
         import json as _json
 
@@ -578,7 +579,7 @@ class TestDashboardJudgmentIntegration:
 class TestYAMLJudgmentLoad:
     """YAML judgment セクションのロードテスト."""
 
-    def test_load_from_yaml(self, tmp_path: Any) -> None:
+    def test_load_from_yaml(self, tmp_path: Path) -> None:
         """YAML から judgment 設定をロード."""
         yaml_content = """
 judgment:
@@ -614,7 +615,7 @@ judgment:
         assert ab is None
         assert trending is None
 
-    def test_load_no_judgment_section(self, tmp_path: Any) -> None:
+    def test_load_no_judgment_section(self, tmp_path: Path) -> None:
         """judgment セクションなし → None."""
         yaml_file = tmp_path / "minimal.yaml"
         yaml_file.write_text("some_key: value\n", encoding="utf-8")
@@ -862,7 +863,7 @@ class TestEvaluatePerRegime:
 class TestYAMLExcludeRegimes:
     """YAML 設定から exclude_regimes がロードされることをテスト."""
 
-    def test_load_with_exclude_regimes(self, tmp_path: Any) -> None:
+    def test_load_with_exclude_regimes(self, tmp_path: Path) -> None:
         yaml_content = """
 judgment:
   ab_criteria:
@@ -881,7 +882,7 @@ judgment:
         assert ab is not None
         assert ab.exclude_regimes == ["none", "unknown"]
 
-    def test_load_without_exclude_regimes_uses_default(self, tmp_path: Any) -> None:
+    def test_load_without_exclude_regimes_uses_default(self, tmp_path: Path) -> None:
         yaml_content = """
 judgment:
   ab_criteria:

@@ -403,6 +403,24 @@ class TestMakerPriceSpreadCache:
         assert "_last_spread" in source
         assert "self._last_spread = spread" in source
 
+    def test_last_spread_property(self):
+        """last_spread プロパティが公開されていること."""
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+
+        assert hasattr(MakerPriceCalculator, "last_spread")
+        assert isinstance(
+            getattr(MakerPriceCalculator, "last_spread"), property,
+        )
+
+    def test_last_mid_price_property(self):
+        """last_mid_price プロパティが公開されていること."""
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+
+        assert hasattr(MakerPriceCalculator, "last_mid_price")
+        assert isinstance(
+            getattr(MakerPriceCalculator, "last_mid_price"), property,
+        )
+
 
 # =================================================================
 # G. 後方互換性 + 統合テスト
@@ -517,7 +535,8 @@ class TestDesignConsistency197:
         source = inspect.getsource(FillLoopOrchestratorMixin.run_continuous)
         assert "spread_jpy" in source
         assert "mid_price" in source
-        assert "_last_spread" in source
+        assert "last_spread" in source
+        assert "last_mid_price" in source
 
     def test_evaluate_accepts_spread_params(self):
         """evaluate() が spread_jpy/mid_price パラメータを受け付けること."""
