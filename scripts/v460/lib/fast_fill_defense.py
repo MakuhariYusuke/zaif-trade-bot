@@ -74,6 +74,21 @@ class FastFillDefense:
     def _get_state(self, side: str) -> _SideState:
         return self._state_buy if side == "buy" else self._state_sell
 
+    def _resolve_side_value(
+        self,
+        side: str,
+        common_value: float,
+        *,
+        buy_value: Optional[float] = None,
+        sell_value: Optional[float] = None,
+    ) -> float:
+        """side 別値を解決し、未設定時は共通値へフォールバックする."""
+        if side == "buy":
+            return common_value if buy_value is None else buy_value
+        if side == "sell":
+            return common_value if sell_value is None else sell_value
+        return common_value
+
     def get_boost_multiplier(self, side: str) -> float:
         """現サイクルの offset に適用する boost 乗数を返す."""
         state = self._get_state(side)
@@ -97,19 +112,21 @@ class FastFillDefense:
 
     def _resolve_threshold_sec(self, side: str) -> float:
         """side 別の fast_fill 判定閾値秒数を解決."""
-        if side == "buy" and self._config.threshold_sec_buy is not None:
-            return self._config.threshold_sec_buy
-        if side == "sell" and self._config.threshold_sec_sell is not None:
-            return self._config.threshold_sec_sell
-        return self._config.threshold_sec
+        return self._resolve_side_value(
+            side,
+            self._config.threshold_sec,
+            buy_value=self._config.threshold_sec_buy,
+            sell_value=self._config.threshold_sec_sell,
+        )
 
     def _resolve_boost(self, side: str) -> float:
         """side 別の offset boost 倍率を解決."""
-        if side == "buy" and self._config.offset_boost_buy is not None:
-            return self._config.offset_boost_buy
-        if side == "sell" and self._config.offset_boost_sell is not None:
-            return self._config.offset_boost_sell
-        return self._config.offset_boost
+        return self._resolve_side_value(
+            side,
+            self._config.offset_boost,
+            buy_value=self._config.offset_boost_buy,
+            sell_value=self._config.offset_boost_sell,
+        )
 
     def _resolve_base_offset(self, side: str) -> float:
         """side 別の base offset ratio を解決.
@@ -117,11 +134,12 @@ class FastFillDefense:
         P0-5 fix: boost cap 計算に common 0.05 ではなく sell=0.12 等の
         side-specific 値を使用する。
         """
-        if side == "buy" and self._base_offset_ratio_buy is not None:
-            return self._base_offset_ratio_buy
-        if side == "sell" and self._base_offset_ratio_sell is not None:
-            return self._base_offset_ratio_sell
-        return self._base_offset_ratio
+        return self._resolve_side_value(
+            side,
+            self._base_offset_ratio,
+            buy_value=self._base_offset_ratio_buy,
+            sell_value=self._base_offset_ratio_sell,
+        )
 
     def _compute_capped_multiplier(self, side: str, raw_boost: float) -> float:
         """boost 乗数を side 別 base_offset_ratio で cap する.
@@ -129,8 +147,12 @@ class FastFillDefense:
         098# P1-2: cap = max_offset_ratio / base_offset を side 別に計算。
         sell (base=0.12) → cap=2.5, buy (base=0.05) → cap=6.0
         """
-        base = self._resolve_base_offset(side)
-        cap = self._config.max_offset_ratio / max(base, self._config.min_offset_ratio)
+        if raw_boost <= 1.0:
+            return 1.0
+
+        safe_floor = max(self._config.min_offset_ratio, 1e-12)
+        base = max(self._resolve_base_offset(side), safe_floor)
+        cap = max(1.0, self._config.max_offset_ratio / base)
         return min(raw_boost, cap)
 
     def evaluate_fill(

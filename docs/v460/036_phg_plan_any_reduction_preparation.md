@@ -1765,6 +1765,49 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `.venv/Scripts/python.exe scripts/quality/any_inventory.py --roots scripts/v460/lib/maker_price.py tests/unit/v460/test_168_low_vol_offset_boost.py`
   - 結果: `any_type_debt_tokens=0`
 
+## Step89: `config_hot_reload` の対象漏れ補完 + `fast_fill_defense` の side解決共通化 (2026-02-28)
+
+### 1) 対象
+
+- `scripts/v460/lib/config_hot_reload.py`
+- `scripts/v460/lib/fill_config.py`
+- `scripts/v460/lib/fast_fill_defense.py`
+- `tests/unit/v460/test_169_config_hot_reload.py`
+- `tests/unit/v460/test_100_fast_fill_defense.py`
+- `tests/unit/v460/test_196_velocity_proportional_trending_soft.py`
+
+### 2) 不具合封じ / 重複削減
+
+- `config_hot_reload` の `_HOT_RELOADABLE_FIELDS` に、
+  後発追加された soft-guard 系の対象漏れを補完:
+  - EV soft offset (`193#`)
+  - velocity soft offset (`195/196#`)
+  - trending sell soft offset (`196#`)
+  - `balance_forced_apply_trending_offset` (`197#`)
+- `FastFillDefense._resolve_side_value()` を追加し、
+  threshold / boost / base offset の side別 fallback を一元化。
+- `FastFillDefense._compute_capped_multiplier()` で、
+  誤設定時でも multiplier が `1.0` 未満へ落ちないよう clamp。
+- `min_offset_ratio<=0` でも 0 除算しないよう安全床を導入。
+- `FillTestConfig.trending_sell_offset_boost_factor` の dataclass 既定値を
+  live YAML (`2.0`) と一致させ、デフォルト構築時だけ `3.0` になる不整合を解消。
+- `FillTestConfig.velocity_offset_boost_factor` は
+  live YAML (`1.5`) と整合していることをテストで固定。
+- `FillTestConfig.balance_forced_apply_trending_offset` を
+  live YAML (`True`) と一致させ、デフォルト構築時との乖離を解消。
+
+### 3) テスト強化
+
+- `test_169_config_hot_reload.py`
+  - 後発 soft-guard 項目が hot-reload 対象から漏れていないことを固定。
+- `test_100_fast_fill_defense.py`
+  - `boost<1.0` の誤設定で防御が弱まらないことを追加検証。
+  - `min_offset_ratio<=0` でも cap 計算が安全に成立することを追加検証。
+- `test_196_velocity_proportional_trending_soft.py`
+  - `balance_forced` は live YAML 既定で offset が乗ることを固定。
+  - `balance_forced_apply_trending_offset=False` のときだけ bypass になることを追加検証。
+- `temp_yaml` fixture の戻り値を `Iterator[Path]` にして `Any` を削減。
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

@@ -42,6 +42,9 @@ _GATE_TO_CANCEL_REASON: dict[str, str] = {
     "rule_velocity_sell_skip": "skip_gate_rule_velocity_sell",
     "rule_velocity_buy_skip": "skip_gate_rule_velocity_buy",
     "rule_skip_unknown_sell": "unknown_regime_sell_skip",
+    "narrow_spread_pause": "narrow_spread_pause",        # 197# Gate 8
+    "spread_too_narrow": "spread_too_narrow",            # 197# Gate 9
+    "sell_guard_reject": "sell_guard_reject",             # 197# Gate 9
 }
 
 
@@ -207,6 +210,22 @@ class CycleGateAggregator:
             result.blocking_reason = g7.reason
             return result
 
+        # --- Gate 8: narrow_spread_pause (197# B3→Gate 統合) ---
+        g8 = self._check_narrow_spread(spread_jpy, mid_price)
+        result.checks.append(g8)
+        if g8.blocked:
+            result.blocked = True
+            result.blocking_reason = g8.reason
+            return result
+
+        # --- Gate 9: maker_price pre-check (197# D1-D3 事前チェック) ---
+        g9 = self._check_maker_price_precheck(side, spread_jpy)
+        result.checks.append(g9)
+        if g9.blocked:
+            result.blocked = True
+            result.blocking_reason = g9.reason
+            return result
+
         return result
 
     # ================================================================
@@ -279,8 +298,34 @@ class CycleGateAggregator:
         """A12: trending regime での sell 抑制.
 
         安全弁 (連続スキップ, HF4, inv_bypass) もここで判定。
+        197#: balance_forced 時もトレンドオフセットを適用 (block はしない)。
         """
         _is_trending = regime in ("trending", "trending_up", "trending_down")
+
+        # 197# balance_forced でも trending 時に offset を適用
+        # (block はしない — forced sell を止めてはいけない)
+        if (
+            self._config.skip_sell_trending
+            and side == "sell"
+            and balance_forced
+            and _is_trending
+            and self._config.balance_forced_apply_trending_offset
+            and self._config.trending_sell_as_offset_enabled
+        ):
+            # trending_up_only チェック
+            if self._config.skip_sell_trending_up_only and regime != "trending_up":
+                return GateCheckResult(gate_name="trending_sell", blocked=False)
+            _boost = self._config.trending_sell_offset_boost_factor
+            return GateCheckResult(
+                gate_name="trending_sell",
+                blocked=False,
+                detail=(
+                    f"197# balance_forced+trending→offset: {regime} sell "
+                    f"→ offset_mult={_boost:.1f} (forced sell 保護)"
+                ),
+                offset_mult=_boost,
+            )
+
         if not (
             self._config.skip_sell_trending
             and side == "sell"
@@ -454,3 +499,73 @@ class CycleGateAggregator:
                 detail="124# unknown regime sell skip",
             )
         return GateCheckResult(gate_name="unknown_regime_sell", blocked=False)
+
+    def _check_narrow_spread(
+        self,
+        spread_jpy: float | None,
+        mid_price: float | None,
+    ) -> GateCheckResult:
+        """197# Gate 8: narrow_spread_pause の Gate 統合 (旧 B3).
+
+        spread が閾値未満の場合にサイクルスキップ。
+        cached spread を使用するため実際の spread とは若干のラグあり。
+        """
+        if not self._config.narrow_spread_pause_enabled:
+            return GateCheckResult(gate_name="narrow_spread", blocked=False)
+        if spread_jpy is None or mid_price is None or mid_price <= 0:
+            return GateCheckResult(gate_name="narrow_spread", blocked=False)
+
+        spread_bps = spread_jpy / mid_price * 10000.0
+        if spread_bps >= self._config.narrow_spread_pause_bps:
+            return GateCheckResult(gate_name="narrow_spread", blocked=False)
+
+        return GateCheckResult(
+            gate_name="narrow_spread",
+            blocked=True,
+            reason="narrow_spread_pause",
+            detail=(
+                f"197# Gate8: spread={spread_bps:.1f}bps "
+                f"< {self._config.narrow_spread_pause_bps}bps"
+            ),
+        )
+
+    def _check_maker_price_precheck(
+        self,
+        side: str,
+        spread_jpy: float | None,
+    ) -> GateCheckResult:
+        """197# Gate 9: maker_price ValueError の事前チェック.
+
+        cached spread を使い、maker_price.compute() が ValueError を
+        raise する可能性が高いケースを事前に検出する。
+        実際の判定は executor の try/except が最終防衛線。
+        """
+        if spread_jpy is None:
+            return GateCheckResult(gate_name="maker_price_pre", blocked=False)
+
+        # D1: spread_too_narrow (min_spread_jpy 未満)
+        if spread_jpy < self._config.min_spread_jpy:
+            return GateCheckResult(
+                gate_name="maker_price_pre",
+                blocked=True,
+                reason="spread_too_narrow",
+                detail=(
+                    f"197# Gate9: spread={spread_jpy:.0f}JPY "
+                    f"< min={self._config.min_spread_jpy:.0f}JPY"
+                ),
+            )
+
+        # D3: sell_guard max_spread 超過
+        _max = self._config.sell_max_spread_jpy
+        if side == "sell" and _max > 0 and spread_jpy > _max:
+            return GateCheckResult(
+                gate_name="maker_price_pre",
+                blocked=True,
+                reason="sell_guard_reject",
+                detail=(
+                    f"197# Gate9: sell spread={spread_jpy:.0f}JPY "
+                    f"> max={_max:.0f}JPY"
+                ),
+            )
+
+        return GateCheckResult(gate_name="maker_price_pre", blocked=False)

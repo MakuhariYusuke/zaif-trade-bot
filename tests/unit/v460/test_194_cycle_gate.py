@@ -324,7 +324,7 @@ class TestIntegration:
         gate = _make_gate()
         r = gate.evaluate(**_default_ctx(side="buy", regime="ranging", vol_ratio=1.0))
         assert not r.blocked
-        assert len(r.checks) == 7  # 7 ゲート全通過
+        assert len(r.checks) == 9  # 197#: 7→9 ゲートに拡張
         assert all(not c.blocked for c in r.checks)
 
     def test_first_gate_blocks_early_exit(self) -> None:

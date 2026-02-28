@@ -132,6 +132,31 @@ class TestSideSpecificBoostCap:
         # cap = 0.30 / 0.05 = 6.0
         assert defense.get_boost_multiplier("buy") == pytest.approx(6.0)
 
+    def test_subunit_boost_is_clamped_to_one(self) -> None:
+        """誤設定で boost<1 でも防御側が攻め方向に反転しない."""
+        cfg = FastFillDefenseConfig(
+            enabled=True,
+            threshold_sec=5.0,
+            offset_boost=0.5,
+        )
+        defense = FastFillDefense(cfg, base_offset_ratio=0.05)
+
+        defense.evaluate_fill(
+            "buy", queue_wait_sec=2.0,
+            fill_price=101_000, mid_at_fill=100_000,
+        )
+        assert defense.get_boost_multiplier("buy") == pytest.approx(1.0)
+
+    def test_zero_floor_misconfig_avoids_division_by_zero(self) -> None:
+        """min_offset_ratio<=0 でも cap 計算が壊れない."""
+        cfg = FastFillDefenseConfig(
+            min_offset_ratio=0.0,
+            max_offset_ratio=0.0,
+        )
+        defense = FastFillDefense(cfg, base_offset_ratio=0.0)
+
+        assert defense._compute_capped_multiplier("sell", 5.0) == pytest.approx(1.0)
+
 
 class TestSideSpecificThreshold:
     """P0-4: threshold_sec_buy=10.0 で buy defense が有効になること."""

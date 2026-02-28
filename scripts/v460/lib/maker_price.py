@@ -99,6 +99,7 @@ class MakerPriceCalculator:
         "_inv_net_imbalance",        # 162# normalized net imbalance [-1,1]
         "_last_inv_skew_factor",     # 168# last applied inv_skew factor
         "_last_ob_snapshot",
+        "_last_spread",              # 197# cached spread for Gate pre-check
     )
 
     def __init__(
@@ -141,6 +142,8 @@ class MakerPriceCalculator:
         self._inv_net_imbalance: float = 0.0
         # 168# InvSkew/VG 競合解消: 直近の InvSkew 補正係数 (負=sell緩和)
         self._last_inv_skew_factor: float = 0.0
+        # 197# cached spread for CycleGateAggregator pre-check
+        self._last_spread: float | None = None
 
     def get_fallback_price(self) -> tuple[float | None, float | None]:
         """156# §16: OB エラー時のフォールバック価格と記録時刻を返す.
@@ -720,6 +723,7 @@ class MakerPriceCalculator:
         self._prev_mid_price = mid_price
         self._prev_mid_time = now
         self._last_mid_trend_bps = mid_trend_bps
+        self._last_spread = spread  # 197# Gate pre-check 用キャッシュ
 
         # 031# スプレッドフィルター
         if spread < cfg.min_spread_jpy:

@@ -28,14 +28,15 @@ def _make_config(**overrides):
         "buy_velocity_skip_enabled": True,
         "buy_velocity_skip_threshold_bps": -6.0,
         "velocity_skip_as_offset_enabled": True,
-        "velocity_offset_boost_factor": 2.0,
+        "velocity_offset_boost_factor": 1.5,
         "velocity_offset_proportional": False,
         "velocity_offset_max_mult": 4.0,
         # trending sell
         "skip_sell_trending": True,
         "skip_sell_trending_up_only": True,
         "trending_sell_as_offset_enabled": False,
-        "trending_sell_offset_boost_factor": 3.0,
+        "trending_sell_offset_boost_factor": 2.0,
+        "balance_forced_apply_trending_offset": True,
         "max_consecutive_trending_sell_skip": 30,
         "sell_guard_inv_bypass_threshold": 0.3,
         # skip gate basics
@@ -213,7 +214,7 @@ class TestTrendingSellSoftConfig:
         from scripts.v460.lib.fill_config import FillTestConfig
 
         cfg = FillTestConfig()
-        assert cfg.trending_sell_offset_boost_factor == 3.0
+        assert cfg.trending_sell_offset_boost_factor == 2.0
 
 
 class TestTrendingSellSoftGate:
@@ -309,8 +310,8 @@ class TestTrendingSellSoftGate:
         assert result.blocked is False
         assert result.trending_offset_mult is None
 
-    def test_soft_mode_balance_forced_bypasses(self):
-        """balance_forced=True 時は trending_sell ゲート自体をスキップ."""
+    def test_soft_mode_balance_forced_applies_by_default(self):
+        """balance_forced=True でも live YAML 既定では trending offset を適用."""
         from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         cfg = _make_config(
@@ -329,7 +330,29 @@ class TestTrendingSellSoftGate:
             is_sell_killed=False,
         )
         assert result.blocked is False
-        # balance_forced 時は gate 自体にかからない → offset_mult は None
+        assert result.trending_offset_mult == 2.0
+
+    def test_soft_mode_balance_forced_can_be_disabled(self):
+        """明示 disable 時は balance_forced で trending offset を載せない."""
+        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
+
+        cfg = _make_config(
+            skip_sell_trending=True,
+            skip_sell_trending_up_only=True,
+            trending_sell_as_offset_enabled=True,
+            balance_forced_apply_trending_offset=False,
+        )
+        gate = CycleGateAggregator(cfg)
+        result = gate.evaluate(
+            side="sell",
+            regime="trending_up",
+            vol_ratio=1.0,
+            balance_forced=True,
+            inv_net_imbalance=0.0,
+            is_buy_killed=False,
+            is_sell_killed=False,
+        )
+        assert result.blocked is False
         assert result.trending_offset_mult is None
 
     def test_soft_mode_eliminates_bypass_complexity(self):
@@ -487,6 +510,7 @@ class TestConfigYamlParse196:
 
         sg = cfg["skip_gate"]
         assert sg["velocity_offset_proportional"] is True
+        assert sg["velocity_offset_boost_factor"] == 1.5
         assert sg["velocity_offset_max_mult"] == 4.0
 
     def test_yaml_trending_sell_soft(self):
@@ -500,7 +524,8 @@ class TestConfigYamlParse196:
 
         lc = cfg["loss_control"]
         assert lc["trending_sell_as_offset_enabled"] is True
-        assert lc["trending_sell_offset_boost_factor"] == 3.0
+        assert lc["trending_sell_offset_boost_factor"] == 2.0  # 197# 3.0→2.0 最適化
+        assert lc["balance_forced_apply_trending_offset"] is True
 
     def test_config_from_yaml_round_trip(self):
         """from_yaml で 196# フィールドが正しく parse されること."""
@@ -527,9 +552,11 @@ class TestConfigYamlParse196:
         # FillTestConfig のデフォルト値が正しいこと
         cfg = FillTestConfig()
         assert cfg.velocity_offset_proportional is False
+        assert cfg.velocity_offset_boost_factor == 1.5
         assert cfg.velocity_offset_max_mult == 4.0
         assert cfg.trending_sell_as_offset_enabled is False
-        assert cfg.trending_sell_offset_boost_factor == 3.0
+        assert cfg.trending_sell_offset_boost_factor == 2.0
+        assert cfg.balance_forced_apply_trending_offset is True
 
 
 # =================================================================

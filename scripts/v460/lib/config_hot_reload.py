@@ -111,6 +111,12 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     # 190# A/B: ev_weighted 連続 skip 安全弁 + 片側 balance threshold 緩和
     "skip_gate_ev_max_consecutive_skip",
     "skip_gate_ev_one_sided_threshold_shift",
+    # 193# EV soft offset
+    "skip_gate_ev_as_offset_enabled",
+    "skip_gate_ev_offset_sensitivity",
+    "skip_gate_ev_offset_min_mult",
+    "skip_gate_ev_offset_max_mult",
+    "skip_gate_ev_emergency_skip_threshold",
     # 189# D: MacroRegime
     "enable_macro_regime",
     "macro_regime_conflict_action",
@@ -171,6 +177,10 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "skip_buy_unknown_regime",
     "skip_sell_trending",
     "skip_sell_trending_up_only",
+    # 196# trending sell soft offset
+    "trending_sell_as_offset_enabled",
+    "trending_sell_offset_boost_factor",
+    "balance_forced_apply_trending_offset",
     "max_consecutive_trending_sell_skip",
     "sell_guard_inv_bypass_threshold",  # 171# Guard Paradox 対策
     "skip_balance_forced",
@@ -182,6 +192,11 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "sell_velocity_skip_threshold_bps",
     "buy_velocity_skip_enabled",
     "buy_velocity_skip_threshold_bps",
+    # 195/196# velocity soft offset
+    "velocity_skip_as_offset_enabled",
+    "velocity_offset_boost_factor",
+    "velocity_offset_proportional",
+    "velocity_offset_max_mult",
     # --- VG ---
     "volatility_guard_enabled",
     "volatility_guard_velocity_threshold_bps",

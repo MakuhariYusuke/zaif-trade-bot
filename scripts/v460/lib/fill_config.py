@@ -270,7 +270,7 @@ class FillTestConfig:
     # 195# velocity_skip ソフト化: hard skip → offset boost
     # enabled 時、閾値超過でもスキップせずに offset を boost して保守的価格で発注
     velocity_skip_as_offset_enabled: bool = False
-    velocity_offset_boost_factor: float = 2.0  # offset ×2.0 (閾値超過時)
+    velocity_offset_boost_factor: float = 1.5  # 197# 2.0→1.5 (boost 1.0-1.5帯 PnL+0.47 vs 2.0帯 PnL-0.37)
     # 196# velocity offset 段階的 boost: 閾値超過量に比例した乗数
     velocity_offset_proportional: bool = False  # True=比例, False=固定
     velocity_offset_max_mult: float = 4.0  # 比例モード時の上限乗数
@@ -338,7 +338,9 @@ class FillTestConfig:
     # 196# trending_sell ソフト化: hard skip → offset boost
     # enabled 時、trending sell をスキップせず offset を boost して保守的価格で sell 発注
     trending_sell_as_offset_enabled: bool = False
-    trending_sell_offset_boost_factor: float = 3.0  # offset ×3.0 (trending sell 時)
+    trending_sell_offset_boost_factor: float = 2.0  # live YAML 既定値と整合
+    # 197# balance_forced 時も trending offset を適用 (live YAML 既定値)
+    balance_forced_apply_trending_offset: bool = True
     # 158# §20-B: 連続 trending sell skip 安全弁 — N 回超過で sell を強制許可 (0=無制限)
     max_consecutive_trending_sell_skip: int = 30
     # 171# Guard Paradox 対策: 在庫偏重時に sell ガードを自動緩和
@@ -803,6 +805,9 @@ class FillTestConfig:
             kwargs["trending_sell_as_offset_enabled"] = 止血["trending_sell_as_offset_enabled"]
         if 止血.get("trending_sell_offset_boost_factor") is not None:
             kwargs["trending_sell_offset_boost_factor"] = float(止血["trending_sell_offset_boost_factor"])
+        # 197# balance_forced 時の trending offset 適用
+        if 止血.get("balance_forced_apply_trending_offset") is not None:
+            kwargs["balance_forced_apply_trending_offset"] = 止血["balance_forced_apply_trending_offset"]
         # 158# §20-B: 連続 trending sell skip 安全弁
         if 止血.get("max_consecutive_trending_sell_skip") is not None:
             kwargs["max_consecutive_trending_sell_skip"] = 止血["max_consecutive_trending_sell_skip"]

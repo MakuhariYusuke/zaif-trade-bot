@@ -742,6 +742,9 @@ class FillLoopOrchestratorMixin:
                 inv_net_imbalance=self._maker_price.inv_net_imbalance,
                 is_buy_killed=self._is_buy_killed(),
                 is_sell_killed=self._is_sell_killed(),
+                # 197# Gate 8-9: cached spread/mid for pre-check
+                spread_jpy=self._maker_price._last_spread,
+                mid_price=self._maker_price._prev_mid_price,
                 trending_sell_skip_count=self._trending_sell_skip_count,
                 buy_side_insufficient=_buy_side_insufficient,
             )
@@ -775,7 +778,11 @@ class FillLoopOrchestratorMixin:
                     batch, _gate_result.cancel_reason,
                 )
                 self._last_side = next_side
-                await self._effective_sleep()
+                # 197# narrow_spread_pause: Gate 8 ブロック時は pause_sec 分待機
+                if _gate_result.blocking_reason == "narrow_spread_pause":
+                    await asyncio.sleep(self.config.narrow_spread_pause_sec)
+                else:
+                    await self._effective_sleep()
                 continue
             else:
                 # ゲート通過 → trending sell カウンタリセット

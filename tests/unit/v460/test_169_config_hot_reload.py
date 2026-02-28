@@ -7,7 +7,7 @@ import os
 import tempfile
 import time
 from pathlib import Path
-from typing import Any
+from typing import Iterator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -103,7 +103,7 @@ regime:
 
 
 @pytest.fixture
-def temp_yaml(yaml_content_base: str) -> Any:
+def temp_yaml(yaml_content_base: str) -> Iterator[Path]:
     """Temporary YAML file that can be modified."""
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".yaml", delete=False, encoding="utf-8",
@@ -499,4 +499,25 @@ class TestReloadableFieldsConsistency:
         overlap = forbidden & _HOT_RELOADABLE_FIELDS
         assert overlap == set(), (
             f"These fields should NOT be hot-reloadable: {overlap}"
+        )
+
+    def test_recent_soft_guard_fields_are_reloadable(self) -> None:
+        """後発追加の soft-guard 関連は reload 対象から漏らさない."""
+        expected = {
+            "skip_gate_ev_as_offset_enabled",
+            "skip_gate_ev_offset_sensitivity",
+            "skip_gate_ev_offset_min_mult",
+            "skip_gate_ev_offset_max_mult",
+            "skip_gate_ev_emergency_skip_threshold",
+            "velocity_skip_as_offset_enabled",
+            "velocity_offset_boost_factor",
+            "velocity_offset_proportional",
+            "velocity_offset_max_mult",
+            "trending_sell_as_offset_enabled",
+            "trending_sell_offset_boost_factor",
+            "balance_forced_apply_trending_offset",
+        }
+        missing = expected - _HOT_RELOADABLE_FIELDS
+        assert missing == set(), (
+            f"Recent soft-guard fields should be hot-reloadable: {missing}"
         )

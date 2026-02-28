@@ -444,11 +444,11 @@ class TestConfigYamlParse:
         assert config.velocity_skip_as_offset_enabled is False
 
     def test_default_velocity_offset_boost_factor(self) -> None:
-        """velocity_offset_boost_factor のデフォルトは 2.0."""
+        """velocity_offset_boost_factor のデフォルトは 1.5 (197# 最適化)."""
         from scripts.v460.lib.fill_config import FillTestConfig
 
         config = FillTestConfig()
-        assert config.velocity_offset_boost_factor == 2.0
+        assert config.velocity_offset_boost_factor == 1.5
 
     def test_default_ranging_buy_low_vol_as_offset_disabled(self) -> None:
         """ranging_buy_low_vol_as_offset のデフォルトは False."""

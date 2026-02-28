@@ -325,7 +325,7 @@ skip_gate:
   buy_velocity_skip_threshold_bps: -6.0   # 183# -8.0→-6.0 (enableに併せ閾値も保守化)
   # 195# velocity_skip ソフト化: hard skip → offset boost
   velocity_skip_as_offset_enabled: true
-  velocity_offset_boost_factor: 2.0       # 閾値超過時 offset ×2.0 (skip ではなく保守的発注)
+  velocity_offset_boost_factor: 1.5       # 197# 2.0→1.5 (boost 1.0-1.5帯 PnL+0.47 vs 2.0帯 PnL-0.37)
   # 196# velocity offset 段階的 boost: 閾値超過量に比例した乗数
   velocity_offset_proportional: true      # 固定→比例モード
   velocity_offset_max_mult: 4.0           # 比例モード上限 (×4.0)
@@ -387,7 +387,9 @@ loss_control:
   skip_sell_trending_up_only: true
   # 196# trending_sell ソフト化: hard skip → offset boost
   trending_sell_as_offset_enabled: true
-  trending_sell_offset_boost_factor: 3.0    # trending sell 時 offset ×3.0 (保守的発注)
+  trending_sell_offset_boost_factor: 2.0    # 197# 3.0→2.0 (regime 1.8xとの累積で10000JPY spreadで総計 3.6x、実用的な保守的価格)
+  # 197# balance_forced 時も trending offset を適用 (forced sell の AS リスク低減)
+  balance_forced_apply_trending_offset: true
   # 166# HF4: 連続 sell skip 安全弁上限を 3010 に短縮 (7.3 B.4)
   max_consecutive_trending_sell_skip: 10   # 171#: 20→10 (Guard Paradox対策: 安全弁を早期発動して sell 機会確保)
   # 171# Guard Paradox 対策: 在庫偏重時に sell ガードをバイパスする閾値
