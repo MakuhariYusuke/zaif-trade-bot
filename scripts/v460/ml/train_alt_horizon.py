@@ -26,7 +26,7 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Literal, TypedDict
 
 import numpy as np
 import pandas as pd
@@ -60,9 +60,56 @@ REPORT_DIR = Path("reports/v460/ml_189")
 
 _FULL_FEATURE_COLS = get_gate_feature_cols(use_ob=True)
 
+
+class AltSpec(TypedDict):
+    side: str
+    pnl_col: str
+    target_label: str
+    model_file: str
+    description: str
+
+
+class DataStats(TypedDict):
+    n_samples: int
+    target_mean: float
+    target_median: float
+    target_std: float
+    target_positive_rate: float
+
+
+class PredStats(TypedDict):
+    pred_mean: float
+    pred_median: float
+    pred_std: float
+    pred_p10: float
+    pred_p25: float
+    pred_p75: float
+    pred_p90: float
+    feature_importance: dict[str, float]
+
+
+EvalMetricValue = float | int
+EvalResults = dict[str, EvalMetricValue]
+
+
+class TrainReport(TypedDict):
+    generated_at: str
+    source: str
+    side: str
+    model_path: str
+    spec: AltSpec
+    data_stats: DataStats
+    pred_stats: PredStats
+    eval_results: EvalResults
+
+
+class ErrorReport(TypedDict):
+    status: Literal["error"]
+    reason: str
+
 # --- Alt horizon 定義テーブル ---
 # (side, pnl_col, target_label, output_filename)
-_ALT_SPECS: dict[str, dict[str, str]] = {
+_ALT_SPECS: dict[str, AltSpec] = {
     "buy": {
         "side": "buy",
         "pnl_col": "post_fill_120s_pnl",
@@ -81,8 +128,8 @@ _ALT_SPECS: dict[str, dict[str, str]] = {
 
 
 def load_side_data(
-    spec: dict[str, str],
-) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame, dict[str, Any]]:
+    spec: AltSpec,
+) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame, DataStats]:
     """side フィルタ + ターゲット構築."""
     records = load_fill_records()
     logger.info(f"Loaded {len(records)} total records")
@@ -147,7 +194,7 @@ def load_side_data(
         )
 
     # 統計情報
-    stats = {
+    stats: DataStats = {
         "n_samples": len(X_side),
         "target_mean": float(y_pnl.mean()),
         "target_median": float(y_pnl.median()),
@@ -167,8 +214,8 @@ def load_side_data(
 def train_lgbm_pipeline(
     X: pd.DataFrame,
     y: pd.Series,
-    spec: dict[str, str],
-) -> tuple[Pipeline, dict[str, Any]]:
+    spec: AltSpec,
+) -> tuple[Pipeline, PredStats]:
     """LGBM 回帰 Pipeline を訓練."""
     try:
         import lightgbm as lgb
@@ -200,7 +247,7 @@ def train_lgbm_pipeline(
     pipeline.fit(X, y)
 
     preds = pipeline.predict(X)
-    pred_stats = {
+    pred_stats: PredStats = {
         "pred_mean": float(np.mean(preds)),
         "pred_median": float(np.median(preds)),
         "pred_std": float(np.std(preds)),
@@ -229,33 +276,39 @@ def evaluate_skip_quality(
     pipeline: Pipeline,
     X: pd.DataFrame,
     enriched: pd.DataFrame,
-) -> dict[str, Any]:
+) -> EvalResults:
     """スキップシミュレーション (参考値 — 訓練データ上)."""
     preds = pipeline.predict(X)
     idx = X.index
 
-    result: dict[str, Any] = {}
+    result: EvalResults = {}
+    skip_masks = {
+        skip_pct: preds >= np.percentile(preds, skip_pct)
+        for skip_pct in (10, 20)
+    }
+    for skip_pct, keep in skip_masks.items():
+        result[f"skip{skip_pct}_n_keep"] = int(keep.sum())
+
     for col_name, col_key in [("post_fill_30s_pnl", "pnl30"), ("post_fill_120s_pnl", "pnl120")]:
-        if col_name in enriched.columns:
-            pnl = enriched.loc[idx, col_name].astype(float).values
-            baseline = float(np.nanmean(pnl))
-            result[f"baseline_{col_key}"] = baseline
-            for skip_pct in [10, 20]:
-                threshold = np.percentile(preds, skip_pct)
-                keep = preds >= threshold
-                kept_mean = float(np.nanmean(pnl[keep]))
-                result[f"skip{skip_pct}_{col_key}_improvement"] = kept_mean - baseline
-                result[f"skip{skip_pct}_{col_key}_kept_mean"] = kept_mean
-                result[f"skip{skip_pct}_n_keep"] = int(keep.sum())
+        if col_name not in enriched.columns:
+            continue
+
+        pnl = enriched.loc[idx, col_name].astype(float).values
+        baseline = float(np.nanmean(pnl))
+        result[f"baseline_{col_key}"] = baseline
+        for skip_pct, keep in skip_masks.items():
+            kept_mean = float(np.nanmean(pnl[keep]))
+            result[f"skip{skip_pct}_{col_key}_improvement"] = kept_mean - baseline
+            result[f"skip{skip_pct}_{col_key}_kept_mean"] = kept_mean
 
     return result
 
 
 def save_skipgate(
     pipeline: Pipeline,
-    spec: dict[str, str],
-    data_stats: dict[str, Any],
-    pred_stats: dict[str, Any],
+    spec: AltSpec,
+    data_stats: DataStats,
+    pred_stats: PredStats,
 ) -> Path:
     """SkipGate 形式で保存."""
     config = SkipGateConfig(
@@ -327,7 +380,7 @@ def save_skipgate(
     return save_path
 
 
-def train_one(side: str) -> dict[str, Any]:
+def train_one(side: str) -> TrainReport:
     """1 side の alt モデルを訓練して保存."""
     spec = _ALT_SPECS[side]
     logger.info(f"\n{'='*60}")
@@ -339,7 +392,7 @@ def train_one(side: str) -> dict[str, Any]:
     eval_results = evaluate_skip_quality(pipeline, X, enriched)
     model_path = save_skipgate(pipeline, spec, data_stats, pred_stats)
 
-    report: dict[str, Any] = {
+    report: TrainReport = {
         "generated_at": datetime.now().isoformat(),
         "source": "189# train_alt_horizon.py",
         "side": side,
@@ -371,7 +424,7 @@ def main() -> None:
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
     sides = ["buy", "sell"] if args.side == "both" else [args.side]
-    results = {}
+    results: dict[str, TrainReport | ErrorReport] = {}
 
     for side in sides:
         try:

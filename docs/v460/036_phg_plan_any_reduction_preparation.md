@@ -1885,6 +1885,22 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `side_regime_dashboard._load_all_records()` の fallback が
   非 object 行を無視することを追加検証。
 
+## Step93: `train_alt_horizon` の payload 型固定 + skip集計重複削減 (2026-02-28)
+
+### 1) 対象
+
+- `scripts/v460/ml/train_alt_horizon.py`
+
+### 2) Any削減 / 重複削減 / 軽微な効率化
+
+- `AltSpec` / `DataStats` / `PredStats` / `TrainReport` / `ErrorReport`
+  を `TypedDict` 化し、訓練 payload の `Any` 注釈を除去。
+- `evaluate_skip_quality()` の返却を `EvalResults` 契約に固定。
+- `evaluate_skip_quality()` で
+  `np.percentile(preds, skip_pct)` と `preds >= threshold` を
+  horizon ごとに再計算していたため、skip率ごとに一度だけ前計算するよう整理。
+- `skip{pct}_n_keep` の重複代入も 1 回に集約。
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
