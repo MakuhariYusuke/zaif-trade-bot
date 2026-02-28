@@ -2351,6 +2351,35 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `tests/unit/v460/test_skip_gate_v3.py`: `any_type_debt_tokens=0`
   - `tests/unit/v460/test_143_regime_utilization.py`: `any_type_debt_tokens=0`
 
+### Step104: executor failure skip record を共通 helper に統一
+
+1. 対応概要
+- `scripts/v460/lib/fill_record_helpers.py`
+  - `_make_skip_record()` に `timestamp` 引数を追加し、明示時刻を保持できるようにした。
+- `scripts/v460/lib/fill_cycle_executor.py`
+  - 全注文試行失敗時の ad-hoc `FillRecord(...)` を `_make_skip_record()` 経由へ置換した。
+- `tests/unit/v460/test_145_structural_fixes.py`
+  - `_make_skip_record(timestamp=...)` の保持を検証する回帰テストを追加した。
+  - 併せて touched helper の `Any` 注釈を削除した。
+
+2. 目的
+- executor 側の failure/cancel record 生成を、既存の skip record 契約へ寄せて変更漏れを防ぐ。
+- 送信開始時刻 `t_submit` をそのまま記録できるようにし、失敗記録の時刻整合を上げる。
+
+3. 検証
+- `py_compile`
+  - `scripts/v460/lib/fill_record_helpers.py`
+  - `scripts/v460/lib/fill_cycle_executor.py`
+  - `tests/unit/v460/test_145_structural_fixes.py`
+- `pytest`
+  - `tests/unit/v460/test_145_structural_fixes.py`
+  - `-k "TestMakeSkipRecord or test_order_attempts_fail_returns_record"`
+  - 結果: `7 passed`
+- `any_inventory`
+  - `scripts/v460/lib/fill_record_helpers.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/fill_cycle_executor.py`: `any_type_debt_tokens=0`
+  - `tests/unit/v460/test_145_structural_fixes.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

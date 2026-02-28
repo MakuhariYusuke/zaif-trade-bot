@@ -781,20 +781,17 @@ class FillCycleExecutorMixin:
             logger.error(f"All order attempts failed: {last_error}")
             # 113# resilience: API 失敗を CircuitBreaker に記録
             await self._circuit_breaker.async_on_failure()
-            return FillRecord(
-                cycle_id=cycle_id,
+            return self._make_skip_record(
                 timestamp=t_submit,
                 side=side,
-                order_price=order_price,
-                order_quantity=_order_lot,
-                cancelled=True,
                 cancel_reason=cancel_reason,
-                error_message=last_error,  # 031# エラー詳細を記録
+                cycle_id=cycle_id,
+                order_quantity=_order_lot,
+                order_price=order_price,
                 spread_at_order=spread_at_order,
                 spread_offset_ratio=effective_offset_ratio,  # 096# 計算済み実効値
-                run_id=self._run_id,       # 088# データ品質: エラー時も必須
-                git_sha=self._git_sha,     # 088# quarantine 防止
                 regime=self._current_regime_value(),  # 160#
+                error_message=last_error,  # 031# エラー詳細を記録
             )
         if not isinstance(order, OrderLike):
             raise TypeError(

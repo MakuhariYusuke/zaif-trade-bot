@@ -84,6 +84,7 @@ class FillRecordHelpersMixin:
     def _make_skip_record(
         self,
         *,
+        timestamp: float | None = None,
         side: str,
         cancel_reason: CancelReason,
         cycle_id: str | None = None,
@@ -102,7 +103,7 @@ class FillRecordHelpersMixin:
         """
         record = FillRecord(
             cycle_id=cycle_id or self._new_cycle_id(),
-            timestamp=time.time(),
+            timestamp=time.time() if timestamp is None else timestamp,
             side=side,
             order_price=order_price,
             order_quantity=order_quantity if order_quantity is not None else self._current_lot,

@@ -14,7 +14,6 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -258,7 +257,7 @@ class TestRegimeConfigValidation:
 class TestPreflightRegimeMult:
     """BalanceChecker.check() が regime_mult を正しく反映するか."""
 
-    def _make_checker(self, *, lot: float = 0.005) -> Any:
+    def _make_checker(self, *, lot: float = 0.005) -> object:
         from scripts.v460.lib.fill_config import FillTestConfig
         from scripts.v460.lib.balance_checker import BalanceChecker
 
@@ -378,7 +377,7 @@ class TestRegimeLotMultiplier:
         self,
         multipliers: dict[str, float] | None = None,
         regime_value: str | None = None,
-    ) -> Any:
+    ) -> MagicMock:
         import types
         from scripts.v460.run_fill_test import FillTestRunner
         from scripts.v460.lib.fill_config import FillTestConfig
@@ -457,7 +456,7 @@ class TestNewCycleId:
 class TestMakeSkipRecord:
     """_make_skip_record() ヘルパのフィールド検証."""
 
-    def _make_runner_mock(self) -> Any:
+    def _make_runner_mock(self) -> MagicMock:
         import types
         from scripts.v460.run_fill_test import FillTestRunner
 
@@ -521,6 +520,15 @@ class TestMakeSkipRecord:
         )
         assert rec.balance_forced_switch is True
         assert rec.regime == "unknown"
+
+    def test_custom_timestamp(self) -> None:
+        runner = self._make_runner_mock()
+        rec = runner._make_skip_record(
+            timestamp=12345.0,
+            side="buy",
+            cancel_reason="x",
+        )
+        assert rec.timestamp == 12345.0
 
 
 # ======================================================================
