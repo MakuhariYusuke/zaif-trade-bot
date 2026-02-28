@@ -95,6 +95,89 @@ def get_gate_feature_cols(use_ob: bool = False) -> list[str]:
 GATE_FEATURE_COLS = get_gate_feature_cols(use_ob=False)
 
 
+def _coerce_finite_float(value: object) -> float | None:
+    """有限な float に変換できる値だけを通す."""
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not np.isfinite(numeric):
+        return None
+    return numeric
+
+
+def _append_bounded_history(
+    history: list[float],
+    value: float,
+    *,
+    max_len: int,
+) -> None:
+    """履歴へ追加し、超過した古い要素を切り捨てる."""
+    history.append(value)
+    if len(history) > max_len:
+        del history[: len(history) - max_len]
+
+
+def _move_toward_target(current_value: float, target_value: float, step: float) -> float:
+    """現在値を target に向けて固定ステップで近づける."""
+    if current_value > target_value + step:
+        return current_value - step
+    if current_value < target_value - step:
+        return current_value + step
+    return target_value
+
+
+def _summarize_recent_trades(
+    recent_trades: list[dict[str, object]] | None,
+    *,
+    cutoff_timestamp: float | None,
+) -> tuple[int, float, float, float | None, float | None]:
+    """trade window 内の出来高と価格変化を単一走査で集計."""
+    if not recent_trades:
+        return 0, 0.0, 0.0, None, None
+
+    trade_count = 0
+    buy_volume = 0.0
+    sell_volume = 0.0
+    first_price_seen: float | None = None
+    last_price_seen: float | None = None
+    earliest_ts = float("inf")
+    latest_ts = float("-inf")
+    earliest_price: float | None = None
+    latest_price: float | None = None
+
+    for trade in recent_trades:
+        ts_value = _coerce_finite_float(trade.get("ts"))
+        if cutoff_timestamp is not None and (ts_value is None or ts_value < cutoff_timestamp):
+            continue
+
+        trade_count += 1
+        amount = _coerce_finite_float(trade.get("amount")) or 0.0
+        if str(trade.get("side", "")).lower() == "buy":
+            buy_volume += amount
+        else:
+            sell_volume += amount
+
+        price = _coerce_finite_float(trade.get("price"))
+        if price is None:
+            continue
+        if first_price_seen is None:
+            first_price_seen = price
+        last_price_seen = price
+        if ts_value is None:
+            continue
+        if ts_value < earliest_ts:
+            earliest_ts = ts_value
+            earliest_price = price
+        if ts_value > latest_ts:
+            latest_ts = ts_value
+            latest_price = price
+
+    if earliest_price is not None and latest_price is not None:
+        return trade_count, buy_volume, sell_volume, earliest_price, latest_price
+    return trade_count, buy_volume, sell_volume, first_price_seen, last_price_seen
+
+
 @dataclass
 class SkipGateConfig:
     """Skip gate 設定."""
@@ -173,6 +256,9 @@ class SkipGate:
         self.feature_cols = feature_cols
         self.config = config or SkipGateConfig()
         self.metadata = metadata or {}
+        self._feature_index = {
+            col: idx for idx, col in enumerate(self.feature_cols)
+        }
         # 100# P1-1: per-side skip 履歴 (cross-side 干渉を排除)
         self._recent_skips_buy: list[bool] = []
         self._recent_skips_sell: list[bool] = []
@@ -188,6 +274,24 @@ class SkipGate:
         self._pas_history_sell: list[float] = []
         # 138# P1-03: score calibrator (isotonic regression)
         self._score_calibrator = score_calibrator
+
+    def _build_feature_vector(
+        self,
+        features: dict[str, object],
+    ) -> tuple[np.ndarray, int]:
+        """入力特徴量をモデル入力ベクトルへ詰め替える."""
+        x = np.full(len(self.feature_cols), np.nan, dtype=np.float64)
+        n_used = 0
+        for name, raw_value in features.items():
+            idx = self._feature_index.get(name)
+            if idx is None:
+                continue
+            value = _coerce_finite_float(raw_value)
+            if value is None:
+                continue
+            x[idx] = value
+            n_used += 1
+        return x, n_used
 
     def evaluate(
         self,
@@ -234,17 +338,7 @@ class SkipGate:
             )
 
         # 059# NEW-04: 未提供特徴量は NaN (Pipeline の Imputer が処理)
-        x = np.full(len(self.feature_cols), np.nan)
-        n_used = 0
-        for i, col in enumerate(self.feature_cols):
-            if col in features:
-                try:
-                    value = float(features[col])
-                except (TypeError, ValueError):
-                    continue
-                if np.isfinite(value):
-                    x[i] = value
-                    n_used += 1
+        x, n_used = self._build_feature_vector(features)
 
         if n_used < 3:
             return SkipDecision(
@@ -256,7 +350,7 @@ class SkipGate:
             )
 
         # 予測 — 059# NEW-02: Pipeline 優先、後方互換あり
-        x_df = pd.DataFrame([x], columns=self.feature_cols)
+        x_df = pd.DataFrame(x.reshape(1, -1), columns=self.feature_cols, copy=False)
 
         # 061#: mode に応じた予測・判定
         as_prob: Optional[float] = None  # 084# P(AS) 直接記録用
@@ -380,12 +474,8 @@ class SkipGate:
         )
         target_rate = min(max(float(target_rate), 0.0), 1.0)
 
-        # 履歴に追加
-        history.append(current_prob)
-        # ウィンドウ超過分を除去
         max_len = max(1, int(cfg.adaptive_window))
-        if len(history) > max_len:
-            del history[: len(history) - max_len]
+        _append_bounded_history(history, current_prob, max_len=max_len)
 
         # ウォームアップ: サンプル不足時は静的閾値を使用
         if len(history) < cfg.adaptive_min_samples:
@@ -402,12 +492,7 @@ class SkipGate:
         step = abs(float(cfg.adaptive_step))
         if step == 0.0:
             step = 0.01
-        if base_threshold > target_threshold + step:
-            new_threshold = base_threshold - step
-        elif base_threshold < target_threshold - step:
-            new_threshold = base_threshold + step
-        else:
-            new_threshold = target_threshold
+        new_threshold = _move_toward_target(base_threshold, target_threshold, step)
 
         # クランプ: floor / ceiling で制約
         floor = min(float(cfg.adaptive_floor), float(cfg.adaptive_ceiling))
@@ -481,11 +566,8 @@ class SkipGate:
             else self._pred_pnl_history_sell
         )
 
-        # 履歴に追加
-        history.append(current_pnl)
         max_len = max(1, int(cfg.adaptive_window))
-        if len(history) > max_len:
-            del history[: len(history) - max_len]
+        _append_bounded_history(history, current_pnl, max_len=max_len)
 
         # ウォームアップ: サンプル不足時は静的閾値を使用
         if len(history) < cfg.adaptive_min_samples:
@@ -508,12 +590,7 @@ class SkipGate:
         step = abs(float(cfg.adaptive_step))  # bps 単位のステップ (PnL 空間)
         if step == 0.0:
             step = 0.01
-        if current_th > target_threshold + step:
-            new_threshold = current_th - step
-        elif current_th < target_threshold - step:
-            new_threshold = current_th + step
-        else:
-            new_threshold = target_threshold
+        new_threshold = _move_toward_target(current_th, target_threshold, step)
 
         if abs(new_threshold - current_th) > 0.001:
             logger.debug(
@@ -643,52 +720,36 @@ def build_features_from_market_state(
     features["regime_high_vol"] = 1.0 if regime == "high_vol" else 0.0
 
     # Trade features — 059# P1-6: trade_window_sec でフィルタ
-    if recent_trades and market_timestamp is not None:
-        cutoff = market_timestamp - trade_window_sec
-        recent_trades = [
-            t for t in recent_trades if t.get("ts", 0) >= cutoff
-        ]
-    if recent_trades:
-        n_trades = len(recent_trades)
-        buy_vol = sum(
-            t.get("amount", 0)
-            for t in recent_trades
-            if t.get("side", "").lower() == "buy"
-        )
-        sell_vol = sum(
-            t.get("amount", 0)
-            for t in recent_trades
-            if t.get("side", "").lower() != "buy"
-        )
-        total_vol = buy_vol + sell_vol
+    cutoff = (
+        market_timestamp - trade_window_sec
+        if market_timestamp is not None else None
+    )
+    n_trades, buy_vol, sell_vol, first_price, last_price = _summarize_recent_trades(
+        recent_trades,
+        cutoff_timestamp=cutoff,
+    )
+    total_vol = buy_vol + sell_vol
 
-        features["trade_count_60s"] = float(n_trades)
-        features["buy_ratio"] = buy_vol / total_vol if total_vol > 0 else 0.5
-        features["trade_flow_imbalance_60s"] = (
-            (buy_vol - sell_vol) / total_vol if total_vol > 0 else 0.0
-        )
-        features["avg_trade_size"] = total_vol / n_trades if n_trades > 0 else 0.0
-
-        # Price velocity
-        if n_trades >= 2:
-            first_p = recent_trades[0].get("price", 0)
-            last_p = recent_trades[-1].get("price", 0)
-            features["price_velocity_60s"] = (
-                (last_p - first_p) / first_p * 10000 if first_p > 0 else 0.0
-            )
-        else:
-            features["price_velocity_60s"] = 0.0
-
-        features["vpin_60s"] = (
-            abs(buy_vol - sell_vol) / total_vol if total_vol > 0 else 0.5
+    features["trade_count_60s"] = float(n_trades)
+    features["buy_ratio"] = buy_vol / total_vol if total_vol > 0 else 0.5
+    features["trade_flow_imbalance_60s"] = (
+        (buy_vol - sell_vol) / total_vol if total_vol > 0 else 0.0
+    )
+    features["avg_trade_size"] = total_vol / n_trades if n_trades > 0 else 0.0
+    if (
+        n_trades >= 2
+        and first_price is not None
+        and last_price is not None
+        and first_price > 0
+    ):
+        features["price_velocity_60s"] = (
+            (last_price - first_price) / first_price * 10000
         )
     else:
-        features["trade_count_60s"] = 0.0
-        features["buy_ratio"] = 0.5
-        features["trade_flow_imbalance_60s"] = 0.0
-        features["avg_trade_size"] = 0.0
         features["price_velocity_60s"] = 0.0
-        features["vpin_60s"] = 0.5
+    features["vpin_60s"] = (
+        abs(buy_vol - sell_vol) / total_vol if total_vol > 0 else 0.5
+    )
 
     # Interaction features (trade-based only, 071# OB 除去)
     side_sign = 1.0 if side == "buy" else -1.0
@@ -750,8 +811,6 @@ def warm_start_skip_gate_thresholds(
         fill_records_dir: fill_records_*.jsonl のディレクトリ.
         window: 復元するサンプル数 (直近 N 件).
     """
-    import glob
-
     # 124# モデル世代検証: trained_at 以前のレコードは旧モデル由来。
     # 旧 P(AS) を新 P(target) の adaptive calibrator に注入すると closed_form 誤較正。
     model_trained_ts: float | None = None
@@ -762,8 +821,8 @@ def warm_start_skip_gate_thresholds(
         except (ValueError, TypeError):
             pass
 
-    prob_records: list[tuple[str, float]] = []  # (side, p_as)
-    files = sorted(glob.glob(str(Path(fill_records_dir) / "*.jsonl")))
+    prob_records_desc: list[tuple[str, float]] = []  # newest -> oldest
+    files = sorted(Path(fill_records_dir).glob("*.jsonl"))
     # 096# パフォーマンス: 必要な件数に達したら早期終了（最新ファイルから逆順読み）
     need = window * 2
     stale_skipped = 0
@@ -791,19 +850,21 @@ def warm_start_skip_gate_thresholds(
                             stale_skipped += 1
                             continue
                 file_records.append((side, p_as_val))
-        prob_records = file_records + prob_records
-        if len(prob_records) >= need:
+        if file_records:
+            prob_records_desc.extend(reversed(file_records))
+        if len(prob_records_desc) >= need:
+            del prob_records_desc[need:]
             break
 
     if stale_skipped > 0:
         logger.info(
             f"[skip_gate] 124# warm_start: skipped {stale_skipped} stale records "
             f"from previous model (trained_at={trained_at_str}). "
-            f"Usable records: {len(prob_records)}"
+            f"Usable records: {len(prob_records_desc)}"
         )
 
     # 直近 window 件を復元
-    recent = prob_records[-window * 2:] if len(prob_records) > window * 2 else prob_records
+    recent = list(reversed(prob_records_desc))
     buy_probs = [p for s, p in recent if s == "buy"][-window:]
     sell_probs = [p for s, p in recent if s == "sell"][-window:]
 

@@ -2193,6 +2193,67 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - `scripts/v460/ml/run_075_verification.py`: `any_type_debt_tokens=0`
 
+## Step101 実施内容（`skip_gate` hot path の単一走査化 + malformed input 防御）
+
+### 1) 対象ファイル
+
+- `scripts/v460/ml/skip_gate.py`
+- `scripts/v460/lib/skip_gate_evaluator.py`
+
+### 2) 実運用改善 / 重複削減
+
+- `skip_gate` に
+  `_coerce_finite_float()` / `_append_bounded_history()` /
+  `_move_toward_target()` を追加し、
+  数値変換・履歴 trimming・段階閾値移動の重複ロジックを共通化。
+- `SkipGate.__init__()` で `feature_cols -> index` の map を前計算し、
+  `evaluate()` は `_build_feature_vector()` 経由で
+  `features.items()` を 1 回だけ走査する形へ変更。
+- これにより、毎回 `feature_cols` 全件をなめて
+  `if col in features` を繰り返す実装を削減。
+- `evaluate()` の single-row 入力は
+  `x.reshape(1, -1)` をそのまま `DataFrame` 化し、
+  余計な list 包装を減らした。
+- `build_features_from_market_state()` は
+  `_summarize_recent_trades()` を使う単一走査へ変更し、
+  trade window の filter / buy volume / sell volume / price velocity を
+  別々に計算していた処理を統合。
+- 同時に、`recent_trades` の
+  不正な `ts` / `amount` / `price` / `side` で落ちないようにし、
+  malformed 行はスキップまたは 0 扱いで継続する防御を追加。
+- price velocity は「入力順」ではなく
+  window 内の最古/最新 `ts` を優先して計算する形に変更し、
+  未整列 trade 入力で誤った符号や値になり得る不具合余地を削減。
+- `warm_start_skip_gate_thresholds()` は
+  `file_records + prob_records` の前方連結を廃止し、
+  newest-first で必要件数だけ保持する形へ変更。
+  これにより、起動時 warm start の不要な list コピーを削減。
+- `skip_gate_evaluator` では
+  `build_features_from_market_state` / `SkipDecision` の
+  per-call ローカル import を外し、常用パスの小さなオーバーヘッドを削減。
+
+### 3) 検証
+
+- `py_compile`
+  - `scripts/v460/ml/skip_gate.py`
+  - `scripts/v460/lib/skip_gate_evaluator.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+- `pytest`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - `test_evaluate_returns_decision`
+    - `test_skip_rate_limit`
+    - `test_with_recent_trades`
+    - `test_recent_trades_handles_unsorted_and_malformed_rows`
+    - `test_trade_window_sec_filters_trades`
+    - `test_calibrate_after_warmup_adjusts`
+    - `test_warm_start_restores_history`
+    - `test_warm_start_prefers_most_recent_records`
+  - `tests/unit/v460/test_193_ev_offset.py`
+  - 結果: `25 passed`
+- `any_inventory`
+  - `scripts/v460/ml/skip_gate.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/skip_gate_evaluator.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

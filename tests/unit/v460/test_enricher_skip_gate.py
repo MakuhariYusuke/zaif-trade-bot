@@ -793,6 +793,28 @@ class Test058MarketStateFeatures:
         for col in GATE_FEATURE_COLS:
             assert col in features, f"Missing: {col}"
 
+    def test_recent_trades_handles_unsorted_and_malformed_rows(self) -> None:
+        """未整列・一部不正な trade でも安全に集計できる."""
+        trades = [
+            {"ts": "bad", "price": 99.0, "amount": "oops", "side": None},
+            {"ts": 102.0, "price": 102.0, "amount": 3.0, "side": "sell"},
+            {"ts": 100.0, "price": 100.0, "amount": 2.0, "side": "buy"},
+            {"ts": 101.0, "price": 101.0, "amount": 1.0, "side": "buy"},
+        ]
+        features = build_features_from_market_state(
+            side="buy",
+            spread_jpy=500.0,
+            offset_ratio=0.05,
+            regime="ranging",
+            recent_trades=trades,
+            trade_window_sec=10,
+            market_timestamp=105.0,
+        )
+        assert features["trade_count_60s"] == 3.0
+        assert features["avg_trade_size"] == pytest.approx(2.0)
+        assert features["buy_ratio"] == pytest.approx(0.5)
+        assert features["price_velocity_60s"] == pytest.approx(200.0)
+
 
 # ======================================================================
 # Integration: 実データ
@@ -1338,3 +1360,34 @@ class Test106R3WarmStart:
 
         # 較正が入って閾値が変化しているはず
         assert adaptive_gate.config.as_threshold_buy != original_buy_th
+
+    def test_warm_start_prefers_most_recent_records(
+        self, adaptive_gate: SkipGate, tmp_path: Path,
+    ) -> None:
+        """複数ファイル時は新しいレコード側を優先して復元する."""
+        from scripts.v460.ml.skip_gate import warm_start_skip_gate_thresholds
+
+        old_records = [
+            json.dumps({
+                "side": "buy",
+                "skip_gate_as_prob": 0.10 + i * 0.01,
+                "filled": True,
+                "timestamp": 1700000000 + i * 60,
+            })
+            for i in range(6)
+        ]
+        new_records = [
+            json.dumps({
+                "side": "buy",
+                "skip_gate_as_prob": 0.60 + i * 0.01,
+                "filled": True,
+                "timestamp": 1700003600 + i * 60,
+            })
+            for i in range(6)
+        ]
+        (tmp_path / "fill_records_20260101.jsonl").write_text("\n".join(old_records))
+        (tmp_path / "fill_records_20260102.jsonl").write_text("\n".join(new_records))
+
+        warm_start_skip_gate_thresholds(adaptive_gate, str(tmp_path), window=3)
+
+        assert adaptive_gate._pas_history_buy == pytest.approx([0.63, 0.64, 0.65])

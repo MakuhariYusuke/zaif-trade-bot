@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, cast
 
 from scripts.v460.lib.fill_config import FillTestConfig, SkipGateResult
+from scripts.v460.ml.skip_gate import SkipDecision, build_features_from_market_state
 # ファイルの SHA256 ハッシュを算出 (126# hot-reload 用)
 from ztb.utils.run_manifest import compute_file_hash
 
@@ -499,7 +500,6 @@ class SkipGateEvaluator:
             self._ev_consecutive_skip_count,
         )
 
-        from scripts.v460.ml.skip_gate import SkipDecision
         _reason = (
             "ev_weighted_skip" if should_skip
             else "ev_weighted_pass_safety" if self._ev_consecutive_skip_count == 0 and ev_score < threshold_used
@@ -533,8 +533,6 @@ class SkipGateEvaluator:
         Returns:
             SkipDecision (should_skip=False except emergency)
         """
-        from scripts.v460.ml.skip_gate import SkipDecision
-
         _emergency = self._config.skip_gate_ev_emergency_skip_threshold
         if ev_score < _emergency:
             logger.warning(
@@ -804,8 +802,6 @@ class SkipGateEvaluator:
             return result
 
         try:
-            from scripts.v460.ml.skip_gate import build_features_from_market_state
-
             sg_regime = regime_value or "unknown"
 
             # 直近約定データ取得
