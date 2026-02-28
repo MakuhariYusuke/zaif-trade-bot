@@ -8,9 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 197# boost 最適化 + balance_forced offset + Gate 8-9 統合 (2026-03-01)
 
+### Fixed
+- **CRITICAL**: Gate 9 フィードバックループ — spread_too_narrow が hard block → compute() 未実行 → キャッシュ未更新 → 永久デッドロック。advisory-only (blocked=False) に修正
+
 ### Added
 - Gate 8: narrow_spread_pause を CycleGateAggregator に統合 (旧 executor B3)
-- Gate 9: maker_price 事前チェック (spread_too_narrow / sell_guard_reject)
+- Gate 9: maker_price 事前チェック (spread_too_narrow / sell_guard_reject) — advisory-only
 - `balance_forced_apply_trending_offset` config フィールド — forced sell の AS リスク低減
 - `MakerPriceCalculator.last_spread` / `last_mid_price` public property
 - `tests/unit/v460/test_197_boost_optimization_gate_integration.py` — 45 テスト

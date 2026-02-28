@@ -534,37 +534,43 @@ class CycleGateAggregator:
         side: str,
         spread_jpy: float | None,
     ) -> GateCheckResult:
-        """197# Gate 9: maker_price ValueError の事前チェック.
+        """197# Gate 9: maker_price ValueError の事前チェック (advisory).
 
         cached spread を使い、maker_price.compute() が ValueError を
-        raise する可能性が高いケースを事前に検出する。
+        raise する可能性が高いケースを事前 *検出* するが、ブロックしない。
+
+        blocked=True にすると Gate→compute() 未実行→キャッシュ更新なし
+        →永久デッドロック のフィードバックループが発生するため、
+        advisory-only (blocked=False)。
         実際の判定は executor の try/except が最終防衛線。
         """
         if spread_jpy is None:
             return GateCheckResult(gate_name="maker_price_pre", blocked=False)
 
-        # D1: spread_too_narrow (min_spread_jpy 未満)
+        # D1: spread_too_narrow (min_spread_jpy 未満) — advisory only
         if spread_jpy < self._config.min_spread_jpy:
             return GateCheckResult(
                 gate_name="maker_price_pre",
-                blocked=True,
+                blocked=False,
                 reason="spread_too_narrow",
                 detail=(
-                    f"197# Gate9: spread={spread_jpy:.0f}JPY "
-                    f"< min={self._config.min_spread_jpy:.0f}JPY"
+                    f"197# Gate9-advisory: spread={spread_jpy:.0f}JPY "
+                    f"< min={self._config.min_spread_jpy:.0f}JPY "
+                    f"(executor try/except が最終防衛)"
                 ),
             )
 
-        # D3: sell_guard max_spread 超過
+        # D3: sell_guard max_spread 超過 — advisory only
         _max = self._config.sell_max_spread_jpy
         if side == "sell" and _max > 0 and spread_jpy > _max:
             return GateCheckResult(
                 gate_name="maker_price_pre",
-                blocked=True,
+                blocked=False,
                 reason="sell_guard_reject",
                 detail=(
-                    f"197# Gate9: sell spread={spread_jpy:.0f}JPY "
-                    f"> max={_max:.0f}JPY"
+                    f"197# Gate9-advisory: sell spread={spread_jpy:.0f}JPY "
+                    f"> max={_max:.0f}JPY "
+                    f"(executor try/except が最終防衛)"
                 ),
             )
 

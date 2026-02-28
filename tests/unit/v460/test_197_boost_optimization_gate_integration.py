@@ -312,14 +312,21 @@ class TestGate8NarrowSpread:
 
 
 class TestGate9MakerPricePrecheck:
-    """197# Gate 9: maker_price ValueError 事前チェック."""
+    """197# Gate 9 (advisory): maker_price ValueError 事前チェック.
 
-    def test_spread_too_narrow_blocks(self):
-        """spread < min_spread_jpy → blocked."""
+    blocked=True だと compute() 未実行→キャッシュ更新なし→
+    永久デッドロックのフィードバックループが発生するため、
+    advisory-only (blocked=False)。executor try/except が最終防衛線。
+    """
+
+    def test_spread_too_narrow_advisory(self):
+        """197# spread < min_spread_jpy → advisory (blocked=False), reason は記録."""
         gate = _make_gate(min_spread_jpy=500.0)
         r = gate.evaluate(**_default_ctx(spread_jpy=300.0))
-        assert r.blocked is True
-        assert r.blocking_reason == "spread_too_narrow"
+        assert r.blocked is False  # 197# advisory
+        gate9 = [c for c in r.checks if c.gate_name == "maker_price_pre"]
+        assert len(gate9) == 1
+        assert gate9[0].reason == "spread_too_narrow"
 
     def test_spread_above_min_passes(self):
         """spread >= min_spread_jpy → pass."""
@@ -327,12 +334,14 @@ class TestGate9MakerPricePrecheck:
         r = gate.evaluate(**_default_ctx(spread_jpy=600.0))
         assert r.blocked is False
 
-    def test_sell_guard_reject_blocks(self):
-        """sell + spread > sell_max_spread_jpy → blocked."""
+    def test_sell_guard_reject_advisory(self):
+        """197# sell + spread > sell_max_spread_jpy → advisory (blocked=False)."""
         gate = _make_gate(sell_max_spread_jpy=10000.0)
         r = gate.evaluate(**_default_ctx(side="sell", spread_jpy=15000.0))
-        assert r.blocked is True
-        assert r.blocking_reason == "sell_guard_reject"
+        assert r.blocked is False  # 197# advisory
+        gate9 = [c for c in r.checks if c.gate_name == "maker_price_pre"]
+        assert len(gate9) == 1
+        assert gate9[0].reason == "sell_guard_reject"
 
     def test_sell_guard_buy_side_unaffected(self):
         """buy 側は sell_guard に影響されない."""

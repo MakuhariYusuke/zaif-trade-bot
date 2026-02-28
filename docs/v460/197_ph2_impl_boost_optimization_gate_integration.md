@@ -54,6 +54,8 @@ maker_price.compute() が ValueError を raise するケースを Gate で事前
 
 実際の判定は executor の try/except が最終防衛線。Gate は cached spread で早期検出。
 
+> **修正**: blocked=True だとフィードバックループ（Gate→compute未実行→キャッシュ未更新→永久デッドロック）が発生。advisory-only (blocked=False) に変更済み。
+
 ### F. maker_price._last_spread キャッシュ + public API
 
 `compute()` 内で算出された spread を `_last_spread` にキャッシュ。
