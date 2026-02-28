@@ -2166,6 +2166,33 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - 対象 6 ファイルとも `any_type_debt_tokens=0`
 
+## Step100 実施内容（`run_075_verification` の pool 集計一時配列削減）
+
+### 1) 対象ファイル
+
+- `scripts/v460/ml/run_075_verification.py`
+
+### 2) 実運用改善 / 重複削減
+
+- `section_5_monte_carlo_50k()` で
+  `pool_before` / `after_buy` / `after_sell` / `pool_after` の
+  一時 NumPy 配列を先に組み立てる実装を廃止。
+- 既に構築している日次 block と
+  `_prepare_block_stats()` の `size` / `sum` 前計算値から、
+  pool 件数と平均 PnL を直接算出する形へ変更。
+- これにより bootstrap 本体とは別に保持していた
+  「比較用の重複配列」をなくし、
+  Monte Carlo 前段のメモリ消費と無駄な連結処理を削減。
+
+### 3) 検証
+
+- `py_compile`
+  - `scripts/v460/ml/run_075_verification.py`
+- import smoke
+  - `scripts.v460.ml.run_075_verification`
+- `any_inventory`
+  - `scripts/v460/ml/run_075_verification.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

@@ -716,30 +716,8 @@ def section_5_monte_carlo_50k(clean_filled: pd.DataFrame) -> dict:
     sell_skip = {3, 4, 5, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23}
     global_skip = {1, 2, 8, 9, 12, 13, 14, 16, 17, 18, 19, 21}
 
-    # --- Scenario A: グローバル filter のみ (073# 以前) ---
+    # --- Scenario A/B: filter 適用後の block を先に構築 ---
     before_mask = ~filled["utc_hour"].isin(global_skip)
-    pool_before = filled.loc[before_mask, PNL_COL].dropna().values
-
-    # --- Scenario B: side 別 filter (075#) — バイアス加算なし ---
-    after_buy = filled.loc[
-        (filled["side"] == "buy") & (~filled["utc_hour"].isin(buy_skip)), PNL_COL,
-    ].dropna().values
-    after_sell = filled.loc[
-        (filled["side"] == "sell") & (~filled["utc_hour"].isin(sell_skip)), PNL_COL,
-    ].dropna().values
-    # 076# CRITICAL#2: +0.2bps 手動加算を廃止 — 実データのみで比較
-    pool_after = np.concatenate([after_buy, after_sell]) if len(after_sell) > 0 else after_buy
-
-    if len(pool_before) < 10 or len(pool_after) < 5:
-        print("  ERROR: 十分なデータなし (before/after pool が小さすぎる)")
-        return {"error": "insufficient_data"}
-
-    print(f"  Pool A (before, global filter):  {len(pool_before)} records, mean={pool_before.mean():+.3f} bps")
-    print(f"  Pool B (after, side filter):     {len(pool_after)} records, mean={pool_after.mean():+.3f} bps")
-    print(f"  ※ 076# 修正: sell +0.2bps 手動加算を廃止")
-
-    # --- 日次ブロック bootstrap (076# CRITICAL#2) ---
-    # 時系列自己相関を保持するため、日次ブロック単位でリサンプル
     after_buy_mask = (filled["side"] == "buy") & (~filled["utc_hour"].isin(buy_skip))
     after_sell_mask = (filled["side"] == "sell") & (~filled["utc_hour"].isin(sell_skip))
     before_blocks = _collect_pnl_blocks(filled, before_mask, pnl_col=PNL_COL)
@@ -748,7 +726,25 @@ def section_5_monte_carlo_50k(clean_filled: pd.DataFrame) -> dict:
     before_block_sizes, before_block_sums = _prepare_block_stats(before_blocks)
     after_buy_block_sizes, after_buy_block_sums = _prepare_block_stats(after_buy_blocks)
     after_sell_block_sizes, after_sell_block_sums = _prepare_block_stats(after_sell_blocks)
+    before_pool_size = int(before_block_sizes.sum())
+    before_pool_mean = (
+        float(before_block_sums.sum() / before_pool_size)
+        if before_pool_size > 0 else 0.0
+    )
+    after_pool_size = int(after_buy_block_sizes.sum() + after_sell_block_sizes.sum())
+    after_pool_sum = float(after_buy_block_sums.sum() + after_sell_block_sums.sum())
+    after_pool_mean = (after_pool_sum / after_pool_size) if after_pool_size > 0 else 0.0
 
+    if before_pool_size < 10 or after_pool_size < 5:
+        print("  ERROR: 十分なデータなし (before/after pool が小さすぎる)")
+        return {"error": "insufficient_data"}
+
+    print(f"  Pool A (before, global filter):  {before_pool_size} records, mean={before_pool_mean:+.3f} bps")
+    print(f"  Pool B (after, side filter):     {after_pool_size} records, mean={after_pool_mean:+.3f} bps")
+    print(f"  ※ 076# 修正: sell +0.2bps 手動加算を廃止")
+
+    # --- 日次ブロック bootstrap (076# CRITICAL#2) ---
+    # 時系列自己相関を保持するため、日次ブロック単位でリサンプル
     print(f"\n  Block bootstrap: {len(before_blocks)} before blocks, "
           f"{len(after_buy_blocks)} after-buy blocks, {len(after_sell_blocks)} after-sell blocks")
 
