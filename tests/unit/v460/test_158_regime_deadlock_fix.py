@@ -38,22 +38,24 @@ class TestRegimeUpdateDuringSkip:
         assert "_regime_detector.update(" in source
 
     def test_regime_update_before_skip_checks(self) -> None:
-        """§20-A のレジーム更新が skip 判定 (skip_sell_trending 等) より前にあること."""
+        """§20-A のレジーム更新が skip 判定 (CycleGateAggregator) より前にあること.
+
+        194#: skip chain は CycleGateAggregator に集約。
+        orchestrator 内で §20-A が _cycle_gate.evaluate() より前にあることを確認。
+        """
         import inspect
         from scripts.v460.run_fill_test import FillTestRunner
 
         source = inspect.getsource(FillTestRunner.run_continuous)
         idx_regime_update = source.find("§20-A")
-        idx_trending_skip = source.find("skip_sell_trending")
-        idx_unknown_skip = source.find("skip_buy_unknown_regime")
+        idx_gate_evaluate = source.find("_cycle_gate.evaluate(")
         idx_balance_forced = source.find("skip_balance_forced")
 
         assert idx_regime_update > 0
-        # main loop の §20-A はすべてのスキップ判定より前
-        assert idx_regime_update < idx_trending_skip, \
-            "§20-A must appear before skip_sell_trending"
-        assert idx_regime_update < idx_unknown_skip, \
-            "§20-A must appear before skip_buy_unknown_regime"
+        assert idx_gate_evaluate > 0, "_cycle_gate.evaluate() not found in run_continuous"
+        # main loop の §20-A は gateway 評価より前
+        assert idx_regime_update < idx_gate_evaluate, \
+            "§20-A must appear before _cycle_gate.evaluate()"
         assert idx_regime_update < idx_balance_forced, \
             "§20-A must appear before skip_balance_forced"
 
@@ -369,14 +371,16 @@ class TestIntegrationConsistency:
                     f"{pattern} must appear after §20-A regime update"
 
     def test_no_dead_code_in_trending_skip(self) -> None:
-        """trending_sell_skip ブロックにデッドコード (到達不能コード) がないこと."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
+        """trending_sell_skip ブロックにデッドコード (到達不能コード) がないこと.
 
-        source = inspect.getsource(FillTestRunner.run_continuous)
-        # D-4 & §20-B 安全弁が共存
-        assert "D-4" in source
-        assert "§20-B" in source
+        194#: trending_sell ロジックは CycleGateAggregator に集約。
+        """
+        from pathlib import Path
+        source = Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8")
+        # 安全弁 (consecutive safety valve, HF4, inv_bypass) が共存
+        assert "158#" in source  # consecutive safety valve
+        assert "166# HF4" in source  # buy side insufficient
+        assert "171#" in source  # inv bypass
 
     def test_fill_config_defaults_are_safe(self) -> None:
         """デフォルト設定で安全弁が有効 (0 ではない)."""

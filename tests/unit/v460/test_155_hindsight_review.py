@@ -550,41 +550,40 @@ class TestBalanceForcedBypassHorizontal:
     156# §10 で sell_trending のみ修正済み → §12 で残り 2 ゲートにも水平展開:
     - skip_buy_unknown_regime
     - sell_dynamic_kill
+    194#: ロジックは CycleGateAggregator に集約済み。
     """
 
     def _get_source(self) -> str:
-        from tests.unit.v460._fill_test_source import FILL_LOOP_ORCHESTRATOR  # 163# mixin 分割
-        return FILL_LOOP_ORCHESTRATOR.read_text(encoding="utf-8")
+        """194#: CycleGateAggregator のソースを返す."""
+        from pathlib import Path
+        return Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8")
 
     def test_skip_buy_unknown_regime_has_bypass(self) -> None:
-        """skip_buy_unknown_regime ブロックに 'not _balance_forced' が含まれること."""
+        """skip_buy_unknown_regime ブロックに 'not balance_forced' が含まれること."""
         src = self._get_source()
-        # skip_buy_unknown_regime の if ブロックを抽出
         idx = src.find("skip_buy_unknown_regime")
         assert idx != -1, "skip_buy_unknown_regime not found in source"
-        # 次の 'continue' までの範囲で balance_forced チェック
         block = src[idx:idx + 400]
-        assert "not _balance_forced" in block, (
-            "skip_buy_unknown_regime must bypass when _balance_forced=True"
+        assert "not balance_forced" in block, (
+            "skip_buy_unknown_regime must bypass when balance_forced=True"
         )
 
     def test_skip_sell_trending_has_bypass(self) -> None:
-        """skip_sell_trending ブロックに 'not _balance_forced' が含まれること."""
+        """skip_sell_trending ブロックに 'not balance_forced' が含まれること."""
         src = self._get_source()
         idx = src.find("skip_sell_trending")
         assert idx != -1
         block = src[idx:idx + 400]
-        assert "not _balance_forced" in block
+        assert "not balance_forced" in block
 
     def test_sell_dynamic_kill_has_bypass(self) -> None:
-        """sell_dynamic_kill ブロックに 'not _balance_forced' が含まれること."""
+        """sell_dynamic_kill ブロックに 'not balance_forced' が含まれること."""
         src = self._get_source()
-        # P0-10 コメントで正確に位置を特定 (init の使用箇所を避ける)
-        idx = src.find("P0-10: sell 動的 kill")
-        assert idx != -1, "sell_dynamic_kill P0-10 block not found in source"
-        block = src[idx:idx + 800]  # 171# InvSkew bypass 追加分を考慮して拡大
-        assert "not _balance_forced" in block, (
-            "sell_dynamic_kill must bypass when _balance_forced=True"
+        idx = src.find("sell_dynamic_kill_enabled")
+        assert idx != -1, "sell_dynamic_kill block not found in source"
+        block = src[idx:idx + 800]
+        assert "not balance_forced" in block, (
+            "sell_dynamic_kill must bypass when balance_forced=True"
         )
 
     def test_all_three_gates_have_balance_forced_bypass(self) -> None:
@@ -592,14 +591,13 @@ class TestBalanceForcedBypassHorizontal:
         import ast
         src = self._get_source()
         tree = ast.parse(src)
-        # AST で 'not _balance_forced' パターンをカウント
         count = 0
         for node in ast.walk(tree):
             if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
-                if isinstance(node.operand, ast.Name) and node.operand.id == "_balance_forced":
+                if isinstance(node.operand, ast.Name) and node.operand.id == "balance_forced":
                     count += 1
         assert count >= 3, (
-            f"Expected at least 3 'not _balance_forced' checks, found {count}"
+            f"Expected at least 3 'not balance_forced' checks, found {count}"
         )
 
 

@@ -39,7 +39,8 @@ class FillLoopOrchestratorMixin:
     責務境界 (Single Responsibility):
       OK: ループ制御, skip chain 評価, adaptation, 状態保存, cleanup
       NG: 1 サイクル実行, OB 取得, SkipGate 評価, PnL 計測
-    MAX LINES: 1200 (超えたら skip chain を独立モジュールに抽出せよ)
+    194#: per-cycle skip chain は CycleGateAggregator に集約
+    MAX LINES: 1200 (194# で 1309→1172 に削減済み)
     ────────────────────────────────────────────────────
     """
 
@@ -709,69 +710,13 @@ class FillLoopOrchestratorMixin:
                     await self._effective_sleep()  # 179# S1
                     continue
 
-            # 133# P0-09: unknown regime での buy スキップ
-            # 156# §12: balance_forced 時はバイパス (片側残高で buy するしかない局面)
-            if (
-                self.config.skip_buy_unknown_regime
-                and next_side == "buy"
-                and not _balance_forced
-                and self._regime_detector is not None
-                and self._regime_detector.current_regime.value == "unknown"
-            ):
-                logger.info(
-                    f"[133# P0-09] Skipping buy — unknown regime "
-                    f"(avg -1.384bps loss)"
-                )
-                # 145# §9-#5: _make_skip_record DRY 化
-                _skip_record = self._make_skip_record(
-                    side="buy",
-                    cancel_reason=CR.UNKNOWN_REGIME_BUY_SKIP,
-                    order_quantity=self._current_lot,
-                    regime="unknown",
-                )
-                batch.append(_skip_record)
-                total_count += 1
-                batch = self._batch_persistence.maybe_flush(batch, "unknown_buy_skip")
-                # 166# deadlock fix: _last_side を更新して sell 側も試行可能に
-                self._last_side = "buy"
-                await self._effective_sleep()  # 179# S1
-                continue
+            # ════════════════════════════════════════════════════════════
+            # 194# CycleGateAggregator: per-cycle skip 判定の一元化
+            # 旧: A10-A14 の散在 if/continue (220行) → 統合ゲート評価
+            # ════════════════════════════════════════════════════════════
 
-            # 169# B1': ranging_buy at low_vol ハードスキップ (Gemini 10.2-D「休むも相場」)
-            # ranging_buy は全損失の 69% (-220.84 JPY)。低ボラ環境ではスプレッドエッジが
-            # 極小化し offset 調整では対処困難 → 完全スキップが clean
-            # balance_forced 時はバイパス (片側残高で buy するしかない局面)
-            if (
-                self.config.skip_ranging_buy_low_vol
-                and next_side == "buy"
-                and not _balance_forced
-                and self._regime_detector is not None
-                and self._regime_detector.current_regime.value == "ranging"
-            ):
-                _vol_ratio = self._regime_detector.last_volatility_ratio
-                if _vol_ratio < self.config.low_vol_threshold:
-                    logger.info(
-                        f"[169# B1'] Skipping buy — ranging regime at low vol "
-                        f"(vol_ratio={_vol_ratio:.4f} < threshold={self.config.low_vol_threshold})"
-                    )
-                    _skip_record = self._make_skip_record(
-                        side="buy",
-                        cancel_reason=CR.RANGING_LOW_VOL_SKIP,
-                        order_quantity=self._current_lot,
-                        regime="ranging",
-                    )
-                    batch.append(_skip_record)
-                    total_count += 1
-                    batch = self._batch_persistence.maybe_flush(batch, "ranging_low_vol_skip")
-                    self._last_side = "buy"
-                    await self._effective_sleep()  # 179# S1
-                    continue
-
-            # 155# §9: trending レジーム時の sell 抑制
-            # trending sell avg -0.687 bps — 逆行トレード削減
-            # 156# §10 #1: balance_forced 時はバイパス (片側残高で sell するしかない局面)
-            # 156# D-4: trending 方向別分解 — trending_down sell は開放可能
-            # 158# §20-B: 連続 skip 安全弁 — max_consecutive 超過で強制許可
+            # HF4 安全弁: trending_sell のための buy 残高チェック (async)
+            _buy_side_insufficient = False
             if (
                 self.config.skip_sell_trending
                 and next_side == "sell"
@@ -779,149 +724,68 @@ class FillLoopOrchestratorMixin:
                 and self._regime_detector is not None
                 and self._regime_detector.current_regime.is_trending
             ):
-                # D-4: trending_up_only モードならば trending_down は通過させる
-                # 176# A: TRENDING (方向不明) も trending_up ではない → 通過
-                _current_regime = self._regime_detector.current_regime
-                _should_skip = True
-                if (
-                    self.config.skip_sell_trending_up_only
-                    and _current_regime.value != "trending_up"
-                ):
-                    logger.debug(
-                        f"[176# A] Allowing sell in {_current_regime.value} regime "
-                        f"(skip_sell_trending_up_only=True, only trending_up is blocked)"
-                    )
-                    _should_skip = False
-
-                # 158# §20-B: 連続 skip 安全弁
-                _max_consec = self.config.max_consecutive_trending_sell_skip
-                if (
-                    _should_skip
-                    and _max_consec > 0
-                    and self._trending_sell_skip_count >= _max_consec
-                ):
-                    logger.warning(
-                        f"[158# §20-B] Trending sell skip safety valve: "
-                        f"{self._trending_sell_skip_count} consecutive skips "
-                        f">= limit {_max_consec} — forcing sell execution"
-                    )
-                    self._trending_sell_skip_count = 0
-                    _should_skip = False
-
-                # 166# HF4: 資金枯渇リバランス緩和
-                # 8.2A: buy 側が残高不足の場合、sell スキップを中断してリバランス
-                if _should_skip:
-                    _buy_insufficient = await self._check_balance_for_side(
-                        "buy", regime_mult=_regime_mult
-                    )
-                    if _buy_insufficient:
-                        logger.info(
-                            f"[166# HF4] Trending sell skip relaxation: "
-                            f"buy side insufficient  forcing sell for rebalance "
-                            f"(was consecutive={self._trending_sell_skip_count})"
-                        )
-                        self._trending_sell_skip_count = 0
-                        _should_skip = False
-
-                # 171# Guard Paradox 対策: 在庫が buy 偏重なら sell 抑制を解除
-                # (sell ガード過剰 → buy 偏重 → balance_forced_skip の正フィードバックを断切)
-                if _should_skip:
-                    _inv_bypass = self.config.sell_guard_inv_bypass_threshold
-                    _inv_imb = self._maker_price.inv_net_imbalance
-                    if _inv_bypass > 0 and _inv_imb >= _inv_bypass:
-                        logger.info(
-                            f"[171#] Trending sell skip relaxation: "
-                            f"inv_imbalance={_inv_imb:.3f} >= "
-                            f"threshold={_inv_bypass} — "
-                            f"forcing sell for inventory rebalance"
-                        )
-                        self._trending_sell_skip_count = 0
-                        _should_skip = False
-
-                if _should_skip:
-                    self._trending_sell_skip_count += 1
-                    logger.info(
-                        f"[155# §9] Skipping sell — {_current_regime.value} regime "
-                        f"(avg -0.687bps loss) "
-                        f"[consecutive={self._trending_sell_skip_count}"
-                        f"/{_max_consec if _max_consec > 0 else '∞'}]"
-                    )
-                    _skip_record = self._make_skip_record(
-                        side="sell",
-                        cancel_reason=CR.TRENDING_SELL_SKIP,
-                        order_quantity=self._current_lot,
-                        regime=_current_regime.value,
-                    )
-                    batch.append(_skip_record)
-                    total_count += 1
-                    batch = self._batch_persistence.maybe_flush(batch, "trending_sell_skip")
-                    # 167# DL-4: _last_side を更新して buy 側も試行可能に
-                    self._last_side = next_side  # = "sell"
-                    await self._effective_sleep()  # 179# S1
-                    continue
-                else:
-                    # skip しない → カウンタリセット
-                    self._trending_sell_skip_count = 0
-
-            # 157# §19: buy 動的 kill — rolling PnL が閾値以下なら buy 停止
-            # balance_forced 時はバイパス (sell_dynamic_kill と対称)
-            if (
-                self.config.buy_dynamic_kill_enabled
-                and next_side == "buy"
-                and not _balance_forced
-                and self._is_buy_killed()
-            ):
-                logger.info(
-                    f"[157# §19] Skipping buy — rolling PnL below "
-                    f"{self.config.buy_dynamic_kill_threshold_bps}bps"
+                _buy_side_insufficient = await self._check_balance_for_side(
+                    "buy", regime_mult=_regime_mult,
                 )
-                _skip_record = self._make_skip_record(
-                    side="buy",
-                    cancel_reason=CR.BUY_DYNAMIC_KILL,
-                    order_quantity=self._current_lot,
-                    regime=self._current_regime_value(),  # 160#
-                )
-                batch.append(_skip_record)
-                total_count += 1
-                batch = self._batch_persistence.maybe_flush(batch, "buy_dynamic_kill")
-                # 166# deadlock fix: _last_side を更新して sell 側も試行可能に
-                self._last_side = "buy"
-                await self._effective_sleep()  # 179# S1
-                continue
 
-            # 133# P0-10: sell 動的 kill — rolling PnL が閾値以下なら sell 停止
-            # 156# §12: balance_forced 時はバイパス (片側残高で sell するしかない局面)
-            # 171# Guard Paradox 対策: 在庫 buy 偏重時もバイパス (sell 抑制の正フィードバック断切)
-            _inv_bypass_sell_kill = (
-                self.config.sell_guard_inv_bypass_threshold > 0
-                and self._maker_price.inv_net_imbalance
-                    >= self.config.sell_guard_inv_bypass_threshold
+            _gate_result = self._cycle_gate.evaluate(
+                side=next_side,
+                regime=(
+                    self._regime_detector.current_regime.value
+                    if self._regime_detector is not None else None
+                ),
+                vol_ratio=(
+                    self._regime_detector.last_volatility_ratio
+                    if self._regime_detector is not None else None
+                ),
+                balance_forced=_balance_forced,
+                inv_net_imbalance=self._maker_price.inv_net_imbalance,
+                is_buy_killed=self._is_buy_killed(),
+                is_sell_killed=self._is_sell_killed(),
+                trending_sell_skip_count=self._trending_sell_skip_count,
+                buy_side_insufficient=_buy_side_insufficient,
             )
-            if (
-                self.config.sell_dynamic_kill_enabled
-                and next_side == "sell"
-                and not _balance_forced
-                and not _inv_bypass_sell_kill
-                and self._is_sell_killed()
-            ):
-                logger.info(
-                    f"[133# P0-10] Skipping sell — rolling PnL below "
-                    f"{self.config.sell_dynamic_kill_threshold_bps}bps"
-                )
-                # 145# §9-#5: _make_skip_record DRY 化
+
+            if _gate_result.blocked:
+                # カウンタ管理
+                if _gate_result.blocking_reason == "trending_sell_skip":
+                    self._trending_sell_skip_count += 1
+                    _max_c = self.config.max_consecutive_trending_sell_skip
+                    logger.info(
+                        f"[194#] {_gate_result.blocking_reason} "
+                        f"[consecutive={self._trending_sell_skip_count}"
+                        f"/{_max_c if _max_c > 0 else '∞'}] "
+                        f"[{_gate_result.audit_summary}]"
+                    )
+                else:
+                    logger.info(
+                        f"[194#] Cycle gate blocked: {_gate_result.blocking_reason} "
+                        f"[{_gate_result.audit_summary}]"
+                    )
+
                 _skip_record = self._make_skip_record(
-                    side="sell",
-                    cancel_reason=CR.SELL_DYNAMIC_KILL,
+                    side=next_side,
+                    cancel_reason=_gate_result.cancel_reason,
                     order_quantity=self._current_lot,
-                    regime=self._current_regime_value(),  # 160#
+                    regime=self._current_regime_value(),
                 )
                 batch.append(_skip_record)
                 total_count += 1
-                batch = self._batch_persistence.maybe_flush(batch, "sell_dynamic_kill")
-                # 166# deadlock fix: _last_side を更新して buy 側も試行可能に
-                self._last_side = "sell"
-                await self._effective_sleep()  # 179# S1
+                batch = self._batch_persistence.maybe_flush(
+                    batch, _gate_result.cancel_reason,
+                )
+                self._last_side = next_side
+                await self._effective_sleep()
                 continue
+            else:
+                # ゲート通過 → trending sell カウンタリセット
+                if (
+                    self.config.skip_sell_trending
+                    and next_side == "sell"
+                    and self._regime_detector is not None
+                    and self._regime_detector.current_regime.is_trending
+                ):
+                    self._trending_sell_skip_count = 0
 
             try:
                 record = await self.run_single_cycle(

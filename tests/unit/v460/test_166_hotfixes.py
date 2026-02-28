@@ -159,15 +159,17 @@ class TestRescueConfig:
 # ======================================================================
 
 class TestTrendingSellSkipRebalance:
-    """166# HF4: buy 残高不足時に trending sell skip を緩和."""
+    """166# HF4: buy 残高不足時に trending sell skip を緩和.
+
+    194#: HF4 ロジックは CycleGateAggregator に集約。
+    """
 
     def test_hf4_code_exists_in_orchestrator(self):
-        """HF4 コードがオーケストレータに存在する."""
-        import inspect
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
-        source = inspect.getsource(FillLoopOrchestratorMixin)
+        """HF4 コードが CycleGateAggregator に存在する."""
+        from pathlib import Path
+        source = Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8")
         assert "166# HF4" in source
-        assert "buy side insufficient" in source or "buy_insufficient" in source
+        assert "buy side insufficient" in source or "buy_side_insufficient" in source
 
     def test_max_consecutive_trending_sell_skip_yaml(self):
         """YAML で max_consecutive_trending_sell_skip=10 が設定されている (171# 20→10)."""
@@ -195,15 +197,17 @@ class TestTrendingSellSkipRebalance:
 # ======================================================================
 
 class TestTrendingSellSkipRebalance2:
-    """166# HF4: buy 残高不足時に trending sell skip を緩和 (duplicate cleanup)."""
+    """166# HF4: buy 残高不足時に trending sell skip を緩和 (duplicate cleanup).
+
+    194#: HF4 ロジックは CycleGateAggregator に集約。
+    """
 
     def test_hf4_code_exists_in_orchestrator(self):
-        """HF4 コードがオーケストレータに存在する."""
-        import inspect
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
-        source = inspect.getsource(FillLoopOrchestratorMixin)
+        """HF4 コードが CycleGateAggregator に存在する."""
+        from pathlib import Path
+        source = Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8")
         assert "166# HF4" in source
-        assert "buy side insufficient" in source or "buy_insufficient" in source
+        assert "buy side insufficient" in source or "buy_side_insufficient" in source
 
     def test_max_consecutive_trending_sell_skip_yaml(self):
         """YAML で max_consecutive_trending_sell_skip=10 が設定されている (171# 20→10)."""

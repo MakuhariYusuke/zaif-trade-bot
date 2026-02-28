@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 194# CycleGateAggregator — per-cycle skip 判定の一元化 (2026-03-01)
+
+### Added
+- `scripts/v460/lib/cycle_gate_aggregator.py` — 新モジュール
+  - `CycleGateAggregator`: 全 per-cycle skip 判定を一元管理
+  - `CycleGateResult`: 全ゲート統合結果 + audit trail
+  - `GateCheckResult`: 個別ゲート判定結果
+  - 7 ゲート (A10-A14 + C2 + C4-C5) を統合
+  - cancel_reason マッピング (`_GATE_TO_CANCEL_REASON`)
+- `tests/unit/v460/test_194_cycle_gate.py` — 40 テスト
+
+### Changed
+- `fill_loop_orchestrator.py` (1309→1172 行, -137 行)
+  - 旧: A10-A14 の散在 if/continue (220 行) → 統合ゲート評価
+  - 新: `_cycle_gate.evaluate()` 1 箇所で全 per-cycle 判定
+  - MAX LINES 1200 以下に復帰
+- `run_fill_test.py` — `CycleGateAggregator` インスタンス初期化追加
+- ソースコード検査テスト 10 件を CycleGateAggregator 参照に更新
+  - test_139, test_155, test_158, test_166_hotfixes, test_166_remaining, test_169, test_176
+
+### Architecture (192# §3 対応)
+- **問題**: 「同一判断が 4 箇所に分散」(orchestrator/executor/skip_gate/maker_price)
+- **対策**: per-cycle skip chain を `CycleGateAggregator` に集約
+  - Hard blocker: 7 ゲートを優先順序付き逐次評価
+  - 安全弁 (consecutive count, HF4, inv_bypass) もゲート内で判定
+  - カウンタ管理 (trending_sell_skip_count) は orchestrator に残留
+  - 全ゲートの audit trail を CycleGateResult.checks に記録
+
+
 ## 188# ファイル分割 + Phase C ev_weighted SkipGate + Phase D Macro Regime 基盤 (2026-02-28)
 
 ### Changed

@@ -150,43 +150,38 @@ class TestCancelFailedKPI:
 # ── Deadlock fixes ─────────────────────────────────────────
 
 class TestDeadlockSideAlternation:
-    """166# deadlock fix: skip paths must update _last_side for alternation."""
+    """166# deadlock fix: skip paths must update _last_side for alternation.
 
-    def test_orchestrator_code_has_deadlock_fix_unknown_regime(self):
-        """unknown_regime_buy_skip パスに _last_side 更新がある."""
+    194#: skip chain は CycleGateAggregator に集約。
+    orchestrator の統合 gate blocked パスで _last_side = next_side 更新。
+    """
+
+    def test_orchestrator_code_has_deadlock_fix_unified(self):
+        """194# 統合ゲート blocked パスに _last_side 更新がある."""
         code = Path("scripts/v460/lib/fill_loop_orchestrator.py").read_text(
             encoding="utf-8"
         )
-        # Find the unknown_buy_skip section with deadlock fix
-        assert '166# deadlock fix' in code
-        idx = code.index('"unknown_buy_skip"')
-        # The deadlock fix should be nearby (within 200 chars)
-        nearby = code[idx:idx + 300]
-        assert 'self._last_side = "buy"' in nearby, (
-            "unknown_regime_buy_skip missing _last_side update"
+        # 194# 統合ゲート: gate_result.blocked → _last_side = next_side
+        assert '_gate_result.blocked' in code
+        idx = code.index('_gate_result.blocked')
+        nearby = code[idx:idx + 1500]
+        assert 'self._last_side = next_side' in nearby, (
+            "unified gate blocked path missing _last_side update"
         )
 
-    def test_orchestrator_code_has_deadlock_fix_buy_kill(self):
-        """buy_dynamic_kill パスに _last_side 更新がある."""
-        code = Path("scripts/v460/lib/fill_loop_orchestrator.py").read_text(
-            encoding="utf-8"
-        )
-        idx = code.index('"buy_dynamic_kill"')
-        nearby = code[idx:idx + 300]
-        assert 'self._last_side = "buy"' in nearby, (
-            "buy_dynamic_kill missing _last_side update"
-        )
-
-    def test_orchestrator_code_has_deadlock_fix_sell_kill(self):
-        """sell_dynamic_kill パスに _last_side 更新がある."""
-        code = Path("scripts/v460/lib/fill_loop_orchestrator.py").read_text(
-            encoding="utf-8"
-        )
-        idx = code.index('"sell_dynamic_kill"')
-        nearby = code[idx:idx + 300]
-        assert 'self._last_side = "sell"' in nearby, (
-            "sell_dynamic_kill missing _last_side update"
-        )
+    def test_all_gate_reasons_mapped_to_cancel_reasons(self):
+        """194# 全ゲートの blocking_reason が cancel_reason にマッピングされている."""
+        from scripts.v460.lib.cycle_gate_aggregator import _GATE_TO_CANCEL_REASON
+        expected_reasons = [
+            "unknown_regime_buy_skip",
+            "trending_sell_skip",
+            "buy_dynamic_kill",
+            "sell_dynamic_kill",
+        ]
+        for reason in expected_reasons:
+            assert reason in _GATE_TO_CANCEL_REASON, (
+                f"{reason} not in _GATE_TO_CANCEL_REASON"
+            )
 
     def test_side_selector_alternation_after_buy_skip(self):
         """_last_side='buy' 設定後に _next_side() が 'sell' を返す."""

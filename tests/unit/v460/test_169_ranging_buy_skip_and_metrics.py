@@ -86,27 +86,34 @@ class TestSkipRangingBuyLowVolConfig:
 
 
 class TestOrchestratorRangingBuySkipSource:
-    """169# B1': orchestrator に ranging_buy skip が正しく挿入されていることを検証."""
+    """169# B1': CycleGateAggregator に ranging_buy skip が正しく実装されていることを検証.
+
+    194#: skip ロジックは CycleGateAggregator に集約。
+    """
 
     def test_skip_logic_in_source(self) -> None:
-        """fill_loop_orchestrator.py に skip ロジックが含まれる."""
-        from tests.unit.v460._fill_test_source import FILL_LOOP_ORCHESTRATOR
-
-        source = FILL_LOOP_ORCHESTRATOR.read_text(encoding="utf-8")
+        """cycle_gate_aggregator.py に skip ロジックが含まれる."""
+        from pathlib import Path
+        source = Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8")
         assert "skip_ranging_buy_low_vol" in source
-        assert "RANGING_LOW_VOL_SKIP" in source
+        assert "ranging_low_vol_skip" in source
         assert '169# B1\'' in source
 
     def test_skip_order_in_source(self) -> None:
-        """skip ロジックが unknown_regime_buy_skip の後、trending_sell_skip の前にあること."""
-        from tests.unit.v460._fill_test_source import FILL_LOOP_ORCHESTRATOR
+        """skip ロジックが unknown_regime_buy の後、trending_sell の前にあること.
 
-        source = FILL_LOOP_ORCHESTRATOR.read_text(encoding="utf-8")
-        unknown_pos = source.index("UNKNOWN_REGIME_BUY_SKIP")
-        ranging_pos = source.index("RANGING_LOW_VOL_SKIP")
-        trending_pos = source.index("TRENDING_SELL_SKIP")
+        194#: CycleGateAggregator.evaluate() 内のゲート呼び出し順序で検証。
+        """
+        from pathlib import Path
+        source = Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8")
+        # evaluate() メソッド内のゲート呼出し順序を検証
+        eval_start = source.index("def evaluate(")
+        eval_src = source[eval_start:]
+        unknown_pos = eval_src.index("Gate 1: unknown_regime_buy")
+        ranging_pos = eval_src.index("Gate 2")
+        trending_pos = eval_src.index("Gate 3: trending_sell")
         assert unknown_pos < ranging_pos < trending_pos, (
-            "ranging_buy skip must be between unknown_regime_buy_skip and trending_sell_skip"
+            "ranging_buy skip must be between unknown_regime_buy and trending_sell"
         )
 
 

@@ -21,39 +21,35 @@ from scripts.v460.lib.regime_detector import FillTestRegime
 # 施策 A: TRENDING (方向不明) skip 除外テスト
 # =================================================================
 class TestTrendingSkipExclusion:
-    """176# A: TRENDING (undirected) regime は sell skip しない."""
+    """176# A: TRENDING (undirected) regime は sell skip しない.
+
+    194#: trending_sell ロジックは CycleGateAggregator に集約。
+    """
 
     def test_orchestrator_trending_undirected_not_blocked(self) -> None:
         """skip_sell_trending_up_only=True 時、TRENDING (undirected) は
         trending_up とみなさず sell を通過させる。
 
-        ソースコード AST 解析で `_current_regime.value != 'trending_up'` 条件を確認。
+        194#: CycleGateAggregator のソースで確認。
         """
-        from tests.unit.v460._fill_test_source import FILL_LOOP_ORCHESTRATOR
-
-        src = FILL_LOOP_ORCHESTRATOR.read_text(encoding="utf-8")
-        # 176# A: trending_up のみブロック（trending/trending_down は通過）
-        assert 'trending_up' in src, "trending_up check must exist in orchestrator"
-        # 旧コード: `trending_down` のみ通過 → 新コード: `trending_up` 以外は全通過
-        assert '_current_regime.value != "trending_up"' in src, (
-            "176# A: should check != trending_up (not == trending_down)"
+        from pathlib import Path
+        src = Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8")
+        assert 'trending_up' in src, "trending_up check must exist in cycle_gate_aggregator"
+        assert 'regime != "trending_up"' in src, (
+            "176# A: should check != trending_up"
         )
 
     def test_orchestrator_allows_trending_down_sell(self) -> None:
         """trending_down 時の sell は通過する (既存動作の維持確認)."""
-        from tests.unit.v460._fill_test_source import FILL_LOOP_ORCHESTRATOR
-
-        src = FILL_LOOP_ORCHESTRATOR.read_text(encoding="utf-8")
-        # trending_down は trending_up ではないので通過する
+        from pathlib import Path
+        src = Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8")
         assert 'trending_up' in src
 
     def test_no_old_trending_down_only_check(self) -> None:
         """旧コード `== "trending_down"` 条件が削除されていること."""
-        from tests.unit.v460._fill_test_source import FILL_LOOP_ORCHESTRATOR
-
-        src = FILL_LOOP_ORCHESTRATOR.read_text(encoding="utf-8")
-        # 旧: `_current_regime.value == "trending_down"` → 新: != "trending_up"
-        assert '_current_regime.value == "trending_down"' not in src, (
+        from pathlib import Path
+        src = Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8")
+        assert 'regime == "trending_down"' not in src, (
             "176# A: old trending_down-only passthrough must be removed"
         )
 

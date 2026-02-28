@@ -502,22 +502,28 @@ class TestRunContinuousBranchExecution:
         """全 skip 分岐が cancel_reason 付き FillRecord を持つことを確認.
 
         145# §9-#5/6: cancel_reasons モジュールの CR 定数に移行済み。
+        194#: A10-A14 は CycleGateAggregator に移行。
+             orchestrator に残る CR 定数のみチェック。
         """
         import inspect
         import scripts.v460.run_fill_test as rft
         source = inspect.getsource(rft.FillTestRunner.run_continuous)
+        # orchestrator に残る CR 定数 (system-level halt + balance)
         expected_cr_constants = [
             "CR.TIME_FILTER_BOTH_SIDES",
             "CR.TIME_FILTER_086_DEADLOCK",
             "CR.PREFLIGHT_INSUFFICIENT",
             "CR.PREFLIGHT_PAUSE",
             "CR.BALANCE_FORCED_SKIP",
-            "CR.UNKNOWN_REGIME_BUY_SKIP",
-            "CR.SELL_DYNAMIC_KILL",
         ]
         for cr_const in expected_cr_constants:
             assert cr_const in source, \
                 f'{cr_const} not found in run_continuous'
+
+        # 194#: A10-A14 は CycleGateAggregator 側で cancel_reason マッピング
+        from scripts.v460.lib.cycle_gate_aggregator import _GATE_TO_CANCEL_REASON
+        assert "unknown_regime_buy_skip" in _GATE_TO_CANCEL_REASON.values()
+        assert "sell_dynamic_kill" in _GATE_TO_CANCEL_REASON.values()
 
 
 # ---------------------------------------------------------------------------

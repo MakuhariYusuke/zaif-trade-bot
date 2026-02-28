@@ -336,6 +336,10 @@ class FillTestRunner(
             regime_thresholds=config.buy_dynamic_kill_regime_thresholds,
         ))
 
+        # 194# CycleGateAggregator: per-cycle skip 判定の一元化 (192# §3 対応)
+        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
+        self._cycle_gate = CycleGateAggregator(config)
+
         # 安全設計: atexit + signal で残存注文キャンセル + 未保存データ退避 + ロック解放
         atexit.register(self._cleanup_sync)
 
