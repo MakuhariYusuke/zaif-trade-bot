@@ -881,13 +881,21 @@ class SkipGateEvaluator:
 
                 if self._config.velocity_skip_as_offset_enabled:
                     # 195# ソフトモード: skip せず offset boost 倍率を記録
-                    _boost = self._config.velocity_offset_boost_factor
+                    # 196# 比例モード: 閾値超過量に比例した段階的 boost
+                    if self._config.velocity_offset_proportional:
+                        _excess_ratio = abs(_pv60) / abs(_vel_th)  # >= 1.0
+                        _base = self._config.velocity_offset_boost_factor
+                        _boost = 1.0 + (_base - 1.0) * _excess_ratio
+                        _boost = min(_boost, self._config.velocity_offset_max_mult)
+                    else:
+                        _boost = self._config.velocity_offset_boost_factor
                     result.velocity_offset_mult = _boost
                     result.price_velocity_60s = _pv60
                     logger.info(
                         f"[skip_gate] 195# velocity→offset: {_vel_label} "
                         f"velocity={_pv60:.2f}bps (th={_vel_th}) "
                         f"→ offset_mult={_boost:.2f}"
+                        f"{' (proportional)' if self._config.velocity_offset_proportional else ''}"
                     )
                     # hard skip しない → ML 判定に進む
                 else:

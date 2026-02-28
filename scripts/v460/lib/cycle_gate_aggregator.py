@@ -53,6 +53,7 @@ class GateCheckResult:
     blocked: bool
     reason: str = ""
     detail: str = ""
+    offset_mult: float | None = None  # 196# soft mode offset 乗数
 
 
 @dataclass
@@ -63,11 +64,13 @@ class CycleGateResult:
     - blocked=False: 取引続行可
     - blocking_reason: skip の最初の理由
     - checks: 全ゲートの判定結果チェーン (audit trail)
+    - trending_offset_mult: 196# trending sell soft mode offset 乗数
     """
 
     blocked: bool = False
     blocking_reason: str = ""
     checks: list[GateCheckResult] = field(default_factory=list)
+    trending_offset_mult: float | None = None  # 196# trending sell → offset boost
 
     @property
     def audit_summary(self) -> str:
@@ -166,6 +169,9 @@ class CycleGateAggregator:
             result.blocked = True
             result.blocking_reason = g3.reason
             return result
+        # 196# trending_sell soft mode: propagate offset mult
+        if g3.offset_mult is not None:
+            result.trending_offset_mult = g3.offset_mult
 
         # --- Gate 4: buy_dynamic_kill ---
         g4 = self._check_buy_dynamic_kill(side, balance_forced, is_buy_killed)
@@ -289,6 +295,20 @@ class CycleGateAggregator:
                 gate_name="trending_sell",
                 blocked=False,
                 detail=f"176# A: {regime} is not trending_up, allowed",
+            )
+
+        # 196# ソフトモード: block しない、offset boost で対応
+        # bypass 条件 (HF4, inv_bypass, consecutive) は不要 — sell は常に発注される
+        if self._config.trending_sell_as_offset_enabled:
+            _boost = self._config.trending_sell_offset_boost_factor
+            return GateCheckResult(
+                gate_name="trending_sell",
+                blocked=False,
+                detail=(
+                    f"196# trending_sell→offset: {regime} sell "
+                    f"→ offset_mult={_boost:.1f}"
+                ),
+                offset_mult=_boost,
             )
 
         # 158# §20-B: 連続 skip 安全弁

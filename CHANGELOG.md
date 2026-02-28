@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 196# velocity offset 比例化 + trending_sell ソフト化 (2026-03-01)
+
+### Added
+- velocity_offset 段階的 boost: 閾値超過量に比例した乗数 (固定 ×2.0 → ×2.0~4.0)
+  - `velocity_offset_proportional: bool` / `velocity_offset_max_mult: float`
+- trending_sell → soft offset: hard skip → offset ×3.0 で保守的 sell 発注
+  - `trending_sell_as_offset_enabled: bool` / `trending_sell_offset_boost_factor: float`
+  - HF4/inv_bypass/consecutive bypass の複雑性を構造的に解消
+- `tests/unit/v460/test_196_velocity_proportional_trending_soft.py` — 34 テスト
+- `docs/v460/196_ph2_impl_velocity_proportional_trending_soft.md`
+- `docs/v460/194_ph2_impl_cycle_gate_aggregator.md` (欠損ドキュメント補完)
+
+### Changed
+- `GateCheckResult.offset_mult` / `CycleGateResult.trending_offset_mult` — soft offset 伝播
+- `run_single_cycle()` に `trending_offset_mult` パラメータ追加
+- `fill_test.yaml`: velocity_offset_proportional=true, trending_sell soft mode 有効化
+
+### Fixed
+- ドキュメント命名正規化: 193#, 195# を `{N}_ph2_impl_{desc}.md` 形式に
+- index.md に 193#~196# エントリ追加
+
 ## 194# CycleGateAggregator — per-cycle skip 判定の一元化 (2026-03-01)
 
 ### Added

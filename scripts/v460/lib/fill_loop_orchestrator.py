@@ -793,6 +793,7 @@ class FillLoopOrchestratorMixin:
                     balance_forced_switch=_balance_forced,
                     balance_forced_rescue=_is_rescue,
                     one_sided_balance=_one_sided_balance,
+                    trending_offset_mult=_gate_result.trending_offset_mult,
                 )
                 # 154# C-2: 実サイクル実行 → forced skip カウンタリセット
                 self._balance_forced_skip_count = 0

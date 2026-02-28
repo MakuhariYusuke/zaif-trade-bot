@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-02-28 (192# 191レビュー: Guard複雑性分析の検証 + 根本簡素化方針)
+> 最終更新: 2026-03-01 (196# velocity offset 比例化 + trending_sell ソフト化)
 
 ---
 
@@ -183,6 +183,10 @@
 | 190 | fix | [190_ph2_fix_ev_weighted_deadlock.md](190_ph2_fix_ev_weighted_deadlock.md) | ev_weighted デッドロック修正 + min_spread_jpy 緩和 + pnl_threshold 調整 |
 | 191 | rev | [191_ph2_rev_guard_complexity_analysis.md](191_ph2_rev_guard_complexity_analysis.md) | Guard Layer 複雑性分析 + 簡素化提案 (AI レビュー用) |
 | 192 | rev | [192_ph2_rev_191_guard_simplification_validation.md](192_ph2_rev_191_guard_simplification_validation.md) | 191レビュー: Guard複雑性分析の検証 + 根本簡素化方針 |
+| 193 | impl | [193_ph2_impl_ev_weighted_to_offset.md](193_ph2_impl_ev_weighted_to_offset.md) | ev_weighted gate→offset modifier 変換 (192# §5.2 + Gemini §9.4) |
+| 194 | impl | [194_ph2_impl_cycle_gate_aggregator.md](194_ph2_impl_cycle_gate_aggregator.md) | CycleGateAggregator per-cycle skip 判定一元化 (192# §3 対応) |
+| 195 | impl | [195_ph2_impl_velocity_b1_soft_gate.md](195_ph2_impl_velocity_b1_soft_gate.md) | velocity_skip ソフト化 + B1' offset 統合 (193# 横展開) |
+| 196 | impl | [196_ph2_impl_velocity_proportional_trending_soft.md](196_ph2_impl_velocity_proportional_trending_soft.md) | velocity offset 比例化 + trending_sell ソフト化 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

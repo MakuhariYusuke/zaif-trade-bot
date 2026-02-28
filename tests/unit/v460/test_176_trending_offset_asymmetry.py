@@ -121,7 +121,11 @@ class TestDirectionalBoostConfig:
         assert regime["trending_down_sell_offset_boost"] == 0.7
 
     def test_live_yaml_skip_sell_trending_false(self) -> None:
-        """176# B: skip_sell_trending=false に変更済み."""
+        """176# B → 196#: skip_sell_trending=true + trending_sell_as_offset_enabled=true.
+
+        196#: ハードスキップではなく offset boost で保守的 sell 発注に変換。
+        skip_sell_trending=true でゲート条件を有効化しつつ、soft mode で block しない。
+        """
         from pathlib import Path
         import yaml  # type: ignore[import-untyped]
 
@@ -130,8 +134,12 @@ class TestDirectionalBoostConfig:
             cfg = yaml.safe_load(f)
 
         lc = cfg["loss_control"]
-        assert lc["skip_sell_trending"] is False, (
-            "176# B: skip_sell_trending must be false (offset asymmetry replaces hard skip)"
+        # 196#: skip_sell_trending=true (ゲート条件有効化) + soft mode
+        assert lc["skip_sell_trending"] is True, (
+            "196#: skip_sell_trending must be true (soft offset mode needs gate condition)"
+        )
+        assert lc["trending_sell_as_offset_enabled"] is True, (
+            "196#: trending_sell_as_offset_enabled must be true (offset replaces hard skip)"
         )
 
 

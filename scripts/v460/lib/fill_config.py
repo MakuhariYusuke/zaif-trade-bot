@@ -271,6 +271,9 @@ class FillTestConfig:
     # enabled 時、閾値超過でもスキップせずに offset を boost して保守的価格で発注
     velocity_skip_as_offset_enabled: bool = False
     velocity_offset_boost_factor: float = 2.0  # offset ×2.0 (閾値超過時)
+    # 196# velocity offset 段階的 boost: 閾値超過量に比例した乗数
+    velocity_offset_proportional: bool = False  # True=比例, False=固定
+    velocity_offset_max_mult: float = 4.0  # 比例モード時の上限乗数
     # 183# narrow spread 時の skip_gate 閾値オフセット (逆選択防御)
     # spread < narrow_spread_skip_threshold_jpy のとき threshold に加算。
     # ログ分析: spread<2kでAS32% (全体28%) → 閾値厳格化で AS fill削減
@@ -332,6 +335,10 @@ class FillTestConfig:
     skip_sell_trending: bool = False  # True で trending 時 sell をスキップ (-0.687bps)
     # 156# D-4: trending 方向別分解 — True なら trending_up のみスキップ (trending_down sell を開放)
     skip_sell_trending_up_only: bool = False
+    # 196# trending_sell ソフト化: hard skip → offset boost
+    # enabled 時、trending sell をスキップせず offset を boost して保守的価格で sell 発注
+    trending_sell_as_offset_enabled: bool = False
+    trending_sell_offset_boost_factor: float = 3.0  # offset ×3.0 (trending sell 時)
     # 158# §20-B: 連続 trending sell skip 安全弁 — N 回超過で sell を強制許可 (0=無制限)
     max_consecutive_trending_sell_skip: int = 30
     # 171# Guard Paradox 対策: 在庫偏重時に sell ガードを自動緩和
@@ -672,6 +679,9 @@ class FillTestConfig:
             # 195# velocity_skip ソフト化
             "velocity_skip_as_offset_enabled": "velocity_skip_as_offset_enabled",
             "velocity_offset_boost_factor": "velocity_offset_boost_factor",
+            # 196# velocity offset 段階的 boost
+            "velocity_offset_proportional": "velocity_offset_proportional",
+            "velocity_offset_max_mult": "velocity_offset_max_mult",
             # 141# P1-04: regime thresholds
             "regime_thresholds": "skip_gate_regime_thresholds",
             # 138# P1-03: score calibration
@@ -788,6 +798,11 @@ class FillTestConfig:
         # 156# D-4: trending 方向別分解
         if 止血.get("skip_sell_trending_up_only") is not None:
             kwargs["skip_sell_trending_up_only"] = 止血["skip_sell_trending_up_only"]
+        # 196# trending sell ソフト化
+        if 止血.get("trending_sell_as_offset_enabled") is not None:
+            kwargs["trending_sell_as_offset_enabled"] = 止血["trending_sell_as_offset_enabled"]
+        if 止血.get("trending_sell_offset_boost_factor") is not None:
+            kwargs["trending_sell_offset_boost_factor"] = float(止血["trending_sell_offset_boost_factor"])
         # 158# §20-B: 連続 trending sell skip 安全弁
         if 止血.get("max_consecutive_trending_sell_skip") is not None:
             kwargs["max_consecutive_trending_sell_skip"] = 止血["max_consecutive_trending_sell_skip"]

@@ -351,6 +351,7 @@ class FillCycleExecutorMixin:
         balance_forced_switch: bool = False,
         balance_forced_rescue: bool = False,
         one_sided_balance: bool = False,
+        trending_offset_mult: float | None = None,
     ) -> FillRecord:
         """1 サイクル: 発注 → 監視 → 結果記録.
 
@@ -616,6 +617,29 @@ class FillCycleExecutorMixin:
             logger.info(
                 f"[195# vel_offset] {side}: velocity={sg.price_velocity_60s:.2f}bps "
                 f"→ offset_mult={_vel_mult:.2f} "
+                f"(delta={_delta:+.0f}JPY, price={order_price:.0f})"
+            )
+
+        # 196# trending_sell ソフトモード — offset boost 適用
+        # trending regime での sell を skip せず、offset を拡大して保守的に発注
+        if (
+            trending_offset_mult is not None
+            and trending_offset_mult != 1.0
+            and spread_at_order is not None
+            and spread_at_order > 0
+            and order_price > 0
+            and side == "sell"
+        ):
+            _trend_mult = trending_offset_mult
+            _old_offset = spread_at_order * effective_offset_ratio
+            _new_offset = _old_offset * _trend_mult
+            _delta = _new_offset - _old_offset
+            # sell: offset 増 → price 上昇 (mid から離れる → より保守的)
+            order_price = round(order_price + _delta)
+            effective_offset_ratio *= _trend_mult
+            logger.info(
+                f"[196# trend_offset] sell: trending regime "
+                f"→ offset_mult={_trend_mult:.1f} "
                 f"(delta={_delta:+.0f}JPY, price={order_price:.0f})"
             )
 
