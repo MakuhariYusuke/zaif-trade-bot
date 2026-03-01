@@ -22,6 +22,7 @@ from typing import Final, Iterable, Iterator, Mapping, Optional
 
 import numpy as np
 from scipy import stats
+from ztb.utils.dataclass_utils import get_dataclass_field_names
 
 logger = logging.getLogger(__name__)
 
@@ -144,7 +145,7 @@ class FillRecord:
         return cls(**_sanitize_fill_record_fields(d, context="FillRecord.from_dict"))
 
 
-_FILL_RECORD_FIELD_NAMES: Final[frozenset[str]] = frozenset(FillRecord.__dataclass_fields__.keys())
+_FILL_RECORD_FIELD_NAMES: Final[frozenset[str]] = get_dataclass_field_names(FillRecord)
 _SKIP_RECORD_PROTECTED_FIELDS: Final[frozenset[str]] = frozenset({
     "cycle_id",
     "timestamp",

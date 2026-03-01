@@ -31,6 +31,7 @@ from scripts.v460.lib.ab_judgment import (
     _extract_pnl30_array,
 )
 from ztb.io.json_io import JSONObject
+from ztb.utils.dataclass_utils import filter_known_dataclass_fields
 from ztb.utils.safety import safe_to_finite
 
 
@@ -123,6 +124,20 @@ class TestABJudgmentCriteria:
     def test_from_dict_empty(self) -> None:
         c = ABJudgmentCriteria.from_dict({})
         assert c.min_filled_records == 50
+
+    def test_filter_known_dataclass_fields_reuses_helper(self) -> None:
+        filtered = filter_known_dataclass_fields(
+            ABJudgmentCriteria,
+            {
+                "min_filled_records": 77,
+                "fill_rate_min": 0.25,
+                "unknown_key": "ignored",
+            },
+        )
+        assert filtered == {
+            "min_filled_records": 77,
+            "fill_rate_min": 0.25,
+        }
 
 
 class TestSafeFinite:

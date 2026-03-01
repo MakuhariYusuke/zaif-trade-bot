@@ -29,16 +29,6 @@ from typing import Optional
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
-from ztb.metrics.fill_quality import (
-    FillRecord,
-    compute_fill_metrics,
-    filter_clean_records,
-    g1_1_judgment,
-    g1_1_quick_judgment,
-    g1_2_full_judgment,
-    load_fill_records_glob,
-    save_fill_records,
-)
 from ztb.risk.circuit_breakers import KillSwitch
 from ztb.trading.live.exchanges.base.broker_interfaces import IBroker
 from ztb.trading.live.registry.broker_registry import get_broker_registry

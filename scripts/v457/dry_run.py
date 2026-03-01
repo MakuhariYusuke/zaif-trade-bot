@@ -8,6 +8,7 @@ sys.path.insert(0, str(project_root))
 
 from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import RewardSettings
+from ztb.utils.dataclass_utils import filter_known_dataclass_fields
 from ztb.utils.logging_utils import setup_logging
 from ztb.training.utils.v457_config_utils import extract_env_config, load_config_dict
 
@@ -46,9 +47,7 @@ def run_dry_run():
 
     # Filter valid keys for EnvironmentConfig
     from ztb.trading.environment.utils.config import EnvironmentConfig
-    valid_keys = {f.name for f in EnvironmentConfig.__dataclass_fields__.values()}
-    
-    env_kwargs = {k: v for k, v in env_config_dict.items() if k in valid_keys}
+    env_kwargs = filter_known_dataclass_fields(EnvironmentConfig, env_config_dict)
     
     # Handle aliases and manual mapping
     env_kwargs["transaction_cost"] = env_config_dict.get("transaction_cost", 0.0005)

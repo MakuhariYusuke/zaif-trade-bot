@@ -22,6 +22,7 @@ import numpy as np
 
 from scripts.v460.lib.metrics_utils import compute_base_metrics
 from ztb.io.json_io import JSONObject
+from ztb.utils.dataclass_utils import filter_known_dataclass_fields
 from ztb.utils.safety import safe_to_finite
 
 logger = logging.getLogger(__name__)
@@ -93,8 +94,7 @@ class ABJudgmentCriteria:
     @classmethod
     def from_dict(cls, d: JSONObject) -> ABJudgmentCriteria:
         """辞書から生成 (YAML 用)."""
-        known = {f.name for f in cls.__dataclass_fields__.values()}
-        filtered = {k: v for k, v in d.items() if k in known}
+        filtered = filter_known_dataclass_fields(cls, d)
         # exclude_regimes: YAML リスト → そのまま渡す
         if "exclude_regimes" in filtered and filtered["exclude_regimes"] is None:
             filtered["exclude_regimes"] = []
@@ -491,8 +491,7 @@ class TrendingEvalCriteria:
     @classmethod
     def from_dict(cls, d: JSONObject) -> TrendingEvalCriteria:
         """辞書から生成."""
-        known = {f.name for f in cls.__dataclass_fields__.values()}
-        return cls(**{k: v for k, v in d.items() if k in known})
+        return cls(**filter_known_dataclass_fields(cls, d))
 
 
 @dataclass

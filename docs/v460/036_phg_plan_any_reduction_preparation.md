@@ -2858,6 +2858,44 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/lib/fill_record_helpers.py`: `any_type_debt_tokens=0`
   - `scripts/v460/lib/fill_loop_orchestrator.py`: `any_type_debt_tokens=0`
 
+### Step125: dataclass field filtering を共通 helper 化
+
+1. 対応概要
+- `ztb/utils/dataclass_utils.py`
+  - `get_dataclass_field_names()` を追加し、dataclass の field 名取得をキャッシュ付き helper に切り出した。
+  - `filter_known_dataclass_fields()` を追加し、辞書入力を dataclass の既知 field のみに絞る共通処理を導入した。
+- `ztb/metrics/fill_quality.py`
+  - `FillRecord` の既知 field 集合を、新 helper 経由で解決するように変更した。
+- `scripts/v460/lib/ab_judgment.py`
+  - `ABJudgmentCriteria.from_dict()` / `TrendingEvalCriteria.from_dict()` の field filtering を共通 helper 経由に統一した。
+- `scripts/v460/run_fill_test.py`
+  - 分割後に未使用となっていた `ztb.metrics.fill_quality` 依存 import を削除した。
+- `scripts/v457/dry_run.py`
+  - `EnvironmentConfig` への kwargs 絞り込みも同 helper に寄せ、旧系スクリプトへ水平展開した。
+- `tests/unit/v460/test_160_ab_judgment.py`
+  - dataclass helper の直接テストを追加した。
+
+2. 目的
+- `__dataclass_fields__` の直参照を局所実装のまま増やさず、既知 field filtering の契約を共通化する。
+- 今回切り出した helper を、今後の dataclass `from_dict()` 実装へ横展開しやすくする。
+- `run_fill_test.py` の不要依存を減らし、分割後の import 面も整理する。
+
+3. 検証
+- `py_compile`
+  - `ztb/utils/dataclass_utils.py`
+  - `ztb/metrics/fill_quality.py`
+  - `scripts/v460/lib/ab_judgment.py`
+  - `scripts/v460/run_fill_test.py`
+  - `scripts/v457/dry_run.py`
+- `pytest`
+  - `tests/unit/v460/test_160_ab_judgment.py`
+  - 結果: `67 passed`
+- `any_inventory`
+  - `ztb/utils/dataclass_utils.py`: `any_type_debt_tokens=0`
+  - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/ab_judgment.py`: `any_type_debt_tokens=0`
+  - `scripts/v457/dry_run.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
