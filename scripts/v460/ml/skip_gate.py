@@ -44,6 +44,42 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_MODEL_PATH = Path("models/v460/skip_gate.pkl")
 
+# 216# §6: 旧→新 特徴量名マイグレーション (pickle 互換)
+_FEATURE_NAME_MIGRATION: dict[str, str] = {
+    "price_velocity_60s": "price_velocity_bps",
+}
+
+
+def _migrate_pipeline_feature_names(pipeline: Pipeline) -> None:
+    """Pipeline 内の各 step の feature_names_in_ を _FEATURE_NAME_MIGRATION で更新.
+
+    sklearn の Pipeline にフィットした estimator は feature_names_in_ 属性に
+    学習時の特徴量名を保持する。旧名が含まれている場合、予測時に
+    "feature names should match those that were passed during fit" エラーが出る。
+    このヘルパーはロード時に feature_names_in_ を新名に置換する。
+    """
+    if not _FEATURE_NAME_MIGRATION:
+        return
+    for _name, step in pipeline.steps:
+        fni = getattr(step, "feature_names_in_", None)
+        if fni is not None:
+            migrated = np.array(
+                [_FEATURE_NAME_MIGRATION.get(str(f), str(f)) for f in fni],
+                dtype=fni.dtype if hasattr(fni, "dtype") else object,
+            )
+            try:
+                step.feature_names_in_ = migrated
+            except AttributeError:
+                # LGBMRegressor etc. — property with no setter
+                # 内部属性 (_Booster.feature_name) を直接更新
+                if hasattr(step, "_Booster") and step._Booster is not None:
+                    booster = step._Booster
+                    old_names = booster.feature_name()
+                    new_names = [
+                        _FEATURE_NAME_MIGRATION.get(n, n) for n in old_names
+                    ]
+                    booster.feature_name_ = new_names
+
 #: skip gate で使用する特徴量カラム (順序固定)
 #: 071# OB 特徴量を除去 — 072# トグルで復元可能
 _BASE_FEATURE_COLS: list[str] = [
@@ -254,7 +290,10 @@ class SkipGate:
     ) -> None:
         self.model = model
         self.scaler = scaler
-        self.feature_cols = feature_cols
+        # 216# §6: pickle 互換 — 旧特徴量名を現行名にマイグレーション
+        self.feature_cols = [
+            _FEATURE_NAME_MIGRATION.get(c, c) for c in feature_cols
+        ]
         self.config = config or SkipGateConfig()
         self.metadata = metadata or {}
         self._feature_index = {
@@ -268,6 +307,7 @@ class SkipGate:
         # sklearn 警告 "X does not have valid feature names" を解消
         if self._pipeline is not None:
             self._pipeline.set_output(transform="pandas")
+            _migrate_pipeline_feature_names(self._pipeline)
         if self.scaler is not None and hasattr(self.scaler, "set_output"):
             self.scaler.set_output(transform="pandas")
         # 088# 動的較正用: side 別 P(AS) 履歴

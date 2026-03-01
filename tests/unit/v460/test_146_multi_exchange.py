@@ -451,7 +451,8 @@ class TestRunFillTestExchangeDecoupling:
         assert "from ztb.trading.live.exchanges.coincheck.adapter import" not in src
 
     def test_uses_broker_registry(self) -> None:
-        src = (_PROJECT_ROOT / "scripts" / "v460" / "run_fill_test.py").read_text(
+        # 158# P2-4: broker registry は fill_test_cli.py に移動
+        src = (_PROJECT_ROOT / "scripts" / "v460" / "lib" / "fill_test_cli.py").read_text(
             encoding="utf-8"
         )
         assert "get_broker_registry" in src

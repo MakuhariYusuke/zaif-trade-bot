@@ -560,7 +560,7 @@ class TestBalanceForcedBypassHorizontal:
     def _get_source(self) -> str:
         """194#: CycleGateAggregator のソースを返す."""
         from pathlib import Path
-        return Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8")
+        return Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8-sig")
 
     def test_skip_buy_unknown_regime_has_bypass(self) -> None:
         """skip_buy_unknown_regime ブロックに 'not balance_forced' が含まれること."""

@@ -277,3 +277,82 @@ class TestGuardFireCountsPersistence:
         obj._inc_guard_fire("dd_halt")  # type: ignore[attr-defined]
         obj._inc_guard_fire("toxic_veto_set")  # type: ignore[attr-defined]
         assert obj._guard_fire_counts == {"dd_halt": 2, "toxic_veto_set": 1}  # type: ignore[attr-defined]
+
+
+# =====================================================================
+# 216# §6 SkipGate feature_cols マイグレーション
+# =====================================================================
+
+
+class Test217SkipGateFeatureMigration:
+    """216# §6 SkipGate pickle 互換: 旧特徴量名を自動マイグレーション."""
+
+    def test_old_feature_name_migrated(self) -> None:
+        """price_velocity_60s → price_velocity_bps に自動変換される."""
+        from scripts.v460.ml.skip_gate import SkipGate
+
+        old_cols = ["spread_jpy", "price_velocity_60s", "vpin_60s"]
+        gate = SkipGate(model=None, scaler=None, feature_cols=old_cols)
+        assert gate.feature_cols == ["spread_jpy", "price_velocity_bps", "vpin_60s"]
+        assert "price_velocity_bps" in gate._feature_index
+        assert "price_velocity_60s" not in gate._feature_index
+
+    def test_new_feature_name_unchanged(self) -> None:
+        """既にリネーム済みの名前はそのまま."""
+        from scripts.v460.ml.skip_gate import SkipGate
+
+        new_cols = ["spread_jpy", "price_velocity_bps", "vpin_60s"]
+        gate = SkipGate(model=None, scaler=None, feature_cols=new_cols)
+        assert gate.feature_cols == new_cols
+
+    def test_migrated_model_accepts_new_feature_key(self) -> None:
+        """旧モデルでも price_velocity_bps キーで正しくマッチする."""
+        from scripts.v460.ml.skip_gate import SkipGate
+        import numpy as np
+
+        old_cols = ["spread_jpy", "price_velocity_60s", "vpin_60s"]
+        gate = SkipGate(model=None, scaler=None, feature_cols=old_cols)
+        vec, n_used = gate._build_feature_vector({"price_velocity_bps": 5.0})
+        assert n_used == 1
+        assert vec[1] == 5.0  # index 1 = price_velocity_bps (migrated)
+        assert np.isnan(vec[0])  # spread_jpy not provided
+
+
+# =====================================================================
+# 216# §6 FillRecord field alias (後方互換)
+# =====================================================================
+
+
+class Test217FillRecordFieldAlias:
+    """216# §6 旧 JSONL の price_velocity_60s が price_velocity_bps にマッピングされる."""
+
+    def test_old_field_name_mapped(self) -> None:
+        """price_velocity_60s → price_velocity_bps に自動変換."""
+        from ztb.metrics.fill_quality import FillRecord
+
+        data = {
+            "cycle_id": "test",
+            "timestamp": 1772400000.0,
+            "side": "buy",
+            "order_price": 15_000_000.0,
+            "order_quantity": 0.001,
+            "price_velocity_60s": 3.5,
+        }
+        rec = FillRecord.from_dict(data)
+        assert rec.price_velocity_bps == 3.5
+
+    def test_new_field_name_preferred(self) -> None:
+        """両方存在する場合は新名優先、旧名は無視."""
+        from ztb.metrics.fill_quality import FillRecord
+
+        data = {
+            "cycle_id": "test",
+            "timestamp": 1772400000.0,
+            "side": "buy",
+            "order_price": 15_000_000.0,
+            "order_quantity": 0.001,
+            "price_velocity_60s": 999.0,
+            "price_velocity_bps": 3.5,
+        }
+        rec = FillRecord.from_dict(data)
+        assert rec.price_velocity_bps == 3.5

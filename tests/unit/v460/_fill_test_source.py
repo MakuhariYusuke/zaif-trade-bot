@@ -40,8 +40,8 @@ FILL_TEST_RUNNER_MAIN = (
 
 @lru_cache(maxsize=None)
 def read_source_text(path: Path) -> str:
-    """UTF-8 テキスト読込をキャッシュする."""
-    return path.read_text(encoding="utf-8")
+    """UTF-8 テキスト読込をキャッシュする (BOM 自動除去)."""
+    return path.read_text(encoding="utf-8-sig")
 
 
 @lru_cache(maxsize=None)

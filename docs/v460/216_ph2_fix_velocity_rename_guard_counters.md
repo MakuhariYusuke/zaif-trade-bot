@@ -121,8 +121,8 @@ bot halt 中のため再学習で対応。
 | **合計** | **299** | **✅ ALL PASSED** |
 
 既知の失敗 (velocity rename 無関係):
-- test_retrain_hot_reload: 5 FAILED (fill_records_20260220.jsonl の
-  FillRecord schema 不一致。order_price/order_quantity 欠落。pre-existing)
+- test_retrain_hot_reload: 5 FAILED → **216# §6 で修正済み**
+  (order_price/order_quantity 欠落テストデータ)
 
 ---
 
@@ -138,3 +138,73 @@ bot halt 中のため再学習で対応。
 | **F** | **211# §8 事実/仕様分離** | **✅ 216#** |
 | G | 206#–211# 検証 run | ⏳ halt 解除待ち |
 | H | update_pnl if/elif | ✅ 215# P0-A |
+
+---
+
+## §6 追加修正 (216# セルフレビュー後)
+
+### 6.1 test_retrain_hot_reload テストデータ修正
+
+FillRecord の必須フィールド `order_price`/`order_quantity` をテスト用 JSONL に追加。
+5 テスト (insufficient_samples, insufficient_new, e2e, balance_forced x2) が通過するようになった。
+
+### 6.2 State 復元ロジック DRY リファクタリング
+
+`fill_loop_orchestrator.py` の if/else 両ブロックで重複していた 4 項目
+(DD / toxic_veto / one-sided / guard_fire_counts) の復元ロジックを
+`_restore_common_state(saved_state)` ヘルパーに抽出。
+~20 行削減、今後の state フィールド追加時の 2 箇所修正忘れリスクを解消。
+
+### 6.3 SkipGate ML モデル pickle 互換性
+
+旧モデルの `feature_cols` に残る `price_velocity_60s` を `__init__` 時に
+`price_velocity_bps` に自動マイグレーション。
+
+**問題**: モデル weights の position は変わらないが、`_feature_index` のキー名が
+旧名のため、新コードが送る `price_velocity_bps` キーにマッチしない。
+SHAP Top 1-2 特徴量が NaN 補完で無効化される。
+
+**対策**: `_FEATURE_NAME_MIGRATION` dict によるロード時自動変換。
+モデル再学習なしで既存 pkl が即座に新特徴量名に対応。
+
+### 6.4 FillRecord 旧フィールド名エイリアス
+
+`_sanitize_fill_record_fields()` に `_FIELD_ALIASES` を追加。
+旧 JSONL レコードの `price_velocity_60s` を `price_velocity_bps` に自動マッピング。
+過去の fill records ロード時に velocity データが失われることを防止。
+
+---
+
+## §7 プレ既存テスト全修正 (P3)
+
+### 修正サマリ
+
+| テスト | 件数 | 原因 | 修正内容 |
+|---|---|---|---|
+| test_088_features | 2 | `_make_loop_skip_record` wrapper 未対応 + `build_skip_fill_record` 集約 | regex を `_make_(?:loop_)?skip_record` に拡張、`build_skip_fill_record` 検証に変更 |
+| test_113_resilience | 3 | BOM (U+FEFF) + 行数超過 + re-export 欠落 | `utf-8-sig` 読込、行数上限 650、`_SkipGateResult` re-export 追加 |
+| test_141_side_specific | 1 | FillRecord 必須フィールド欠落 | `order_price`/`order_quantity`/`timestamp` 追加 |
+| test_145_structural | 1 | `OPERATOR_HALT` 定数が expected set に未追加 | `CR.OPERATOR_HALT` 追加 |
+| test_146_multi_exchange | 1 | `get_broker_registry` が CLI に移動済み | 検索先を `fill_test_cli.py` に変更 |
+| test_155_hindsight | 1 | `cycle_gate_aggregator.py` の BOM | `utf-8-sig` 読込 |
+| test_166_remaining | 1 | Pipeline 内 `feature_names_in_` に旧名残存 | `_migrate_pipeline_feature_names()` で LGBMRegressor 含む全 step をマイグレーション |
+| test_175_code_review | 2 | `load_fill_records_glob` → `iter_fill_records_glob` 変更 | mock パスを `ztb.metrics.fill_quality.iter_fill_records_glob` に更新 |
+| test_203_dd_state | 2 | クラスレベル属性 `_halt_iter_count=0` + `_should_record_halt` パターン変更 | テスト条件を現実に合わせて更新 |
+
+### 実装詳細
+
+#### Pipeline feature_names_in_ マイグレーション (`skip_gate.py`)
+sklearn Pipeline の各 step が保持する `feature_names_in_` 属性に旧特徴量名が残っていると、
+predict 時に `ValueError: feature names should match` が発生する。
+`_migrate_pipeline_feature_names()` ヘルパーを追加し、ロード時に全 step の
+`feature_names_in_` を `_FEATURE_NAME_MIGRATION` で自動更新。
+LGBMRegressor は property setter を持たないため、内部の `_Booster.feature_name_` を直接更新。
+
+#### run_fill_test.py re-export
+163# Mixin 分割で `_SkipGateResult` / `_FillMonitorResult` / `_PnlMeasurement` が
+`fill_config.py` に移動されたが、テストが `run_fill_test` からインポートしていたため
+re-export (`as _SkipGateResult` alias) を追加。
+
+### テスト結果
+- 修正前: 14 failures (pre-existing)
+- 修正後: **2838 passed, 0 failed**

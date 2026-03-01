@@ -177,11 +177,23 @@ def _sanitize_fill_record_fields(
     protected_keys: frozenset[str] = frozenset(),
 ) -> dict[str, object]:
     """FillRecord に存在するキーだけ通し、不要キーは無視する."""
+    # 216# §6: 旧フィールド名 → 新フィールド名 のマイグレーション
+    _FIELD_ALIASES: dict[str, str] = {
+        "price_velocity_60s": "price_velocity_bps",
+    }
     filtered: dict[str, object] = {}
     unknown_keys: list[str] = []
     protected_hits: list[str] = []
 
     for key, value in values.items():
+        # エイリアス解決 (新名が既に存在しない場合のみ)
+        resolved = _FIELD_ALIASES.get(key, key)
+        if resolved != key and resolved in values:
+            # 新名が既に存在 → 旧名は無視
+            unknown_keys.append(key)
+            continue
+        key = resolved
+
         if key in protected_keys:
             protected_hits.append(key)
             continue

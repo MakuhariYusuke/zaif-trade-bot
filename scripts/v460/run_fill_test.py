@@ -33,6 +33,11 @@ from scripts.v460.lib.balance_checker import BalanceChecker
 from scripts.v460.lib.batch_persistence import BatchPersistence
 from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.fill_config import (  # 216# §7 re-export for tests
+    SkipGateResult as _SkipGateResult,
+    FillMonitorResult as _FillMonitorResult,
+    PnlMeasurement as _PnlMeasurement,
+)
 from scripts.v460.lib.maker_price import MakerPriceCalculator
 from scripts.v460.lib.ob_recorder import OBRecorder
 from scripts.v460.lib.order_monitor import OrderMonitor

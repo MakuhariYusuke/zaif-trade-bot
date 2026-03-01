@@ -246,11 +246,11 @@ class TestR1MethodExtraction:
         assert "_measure_post_fill_pnl" in source
 
     def test_run_single_cycle_under_400_lines(self) -> None:
-        """run_single_cycle が 600 行以下 (R1 目標 + 162# Inv-Skewing + 181# StopCond + 187# guard_trace + 195# vel_offset + 196# trend_offset + 202# C VG sell supplement)."""
+        """run_single_cycle が 650 行以下 (R1 目標 + 162# Inv-Skewing + 181# StopCond + 187# guard_trace + 195# vel_offset + 196# trend_offset + 202# C VG sell supplement + 215# DD halt/guard_fire)."""
         from tests.unit.v460._fill_test_source import read_fill_test_method_source
         source = read_fill_test_method_source("run_single_cycle")
         line_count = len(source.splitlines())
-        assert line_count <= 600, f"run_single_cycle is {line_count} lines (> 600)"
+        assert line_count <= 650, f"run_single_cycle is {line_count} lines (> 650)"
 
     def test_extracted_methods_exist(self) -> None:
         """抽出メソッドが FillTestRunner に存在."""

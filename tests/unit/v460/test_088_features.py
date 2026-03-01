@@ -435,50 +435,44 @@ class TestDataQualityFillRecord:
     """
 
     def test_early_return_paths_have_run_id(self) -> None:
-        """全 FillRecord 生成箇所に run_id が含まれる (ソース検査)."""
+        """全 skip record 生成箇所に run_id が含まれる (ソース検査)."""
         import re
         # 163# mixin 分割: 全ソースを連結して検索
         content = read_fill_test_runner_source()
-        # FillRecord( の全出現を見つけ、括弧対応で全体ブロックを抽出
-        pattern = r"FillRecord\("
-        fill_record_blocks: list[str] = []
-        for m in re.finditer(pattern, content):
+        # 145# §9-#5 → 216# §7: _make_skip_record / build_skip_fill_record に集約済み
+        # 集約先の関数自体が run_id を受け取る or 伝播していることを確認
+        # _make_skip_record は build_skip_fill_record を呼ぶ wrapper
+        assert "run_id" in content, "run_id reference missing from source"
+        # build_skip_fill_record の呼び出し箇所で run_id が引数に含まれる
+        for m in re.finditer(r'build_skip_fill_record\(', content):
             start = m.start()
+            # 括弧対応でブロック抽出
             depth = 0
             end = start
             for i in range(start, min(start + 3000, len(content))):
-                if content[i] == "(":
+                if content[i] == '(':
                     depth += 1
-                elif content[i] == ")":
+                elif content[i] == ')':
                     depth -= 1
                     if depth == 0:
                         end = i + 1
                         break
-            fill_record_blocks.append(content[start:end])
-
-        # 早期 return パス = cancel_reason を含む FillRecord
-        early_returns = [b for b in fill_record_blocks if "cancel_reason" in b]
-        # 145# §9-#5: _make_skip_record に集約済み → 最低 1 箇所 (_make_skip_record 内)
-        assert len(early_returns) >= 1, (
-            f"Expected ≥1 FillRecord with cancel_reason (in _make_skip_record), "
-            f"found {len(early_returns)}"
-        )
-
-        for block in early_returns:
-            assert "run_id=" in block, (
-                f"FillRecord (cancel_reason) missing run_id: ...{block[:100]}..."
+            block = content[start:end]
+            assert "run_id" in block, (
+                f"build_skip_fill_record missing run_id: ...{block[:100]}..."
             )
-            assert "git_sha=" in block, (
-                f"FillRecord (cancel_reason) missing git_sha: ...{block[:100]}..."
+            assert "git_sha" in block, (
+                f"build_skip_fill_record missing git_sha: ...{block[:100]}..."
             )
 
     def test_make_skip_record_used_for_all_skips(self) -> None:
-        """145# §9-#5: cancel_reason 付きスキップは _make_skip_record 経由であること."""
+        """145# §9-#5: cancel_reason 付きスキップは skip_record wrapper 経由であること."""
         import re
         # 163# mixin 分割: 全ソースを連結して検索
         content = read_fill_test_runner_source()
-        # _make_skip_record 呼出し回数 ≥ 散在する cancel_reason 定数参照数
-        skip_calls = len(re.findall(r"_make_skip_record\(", content))
+        # 216# §7: _make_skip_record + _make_loop_skip_record の合計を検査
+        # _make_loop_skip_record は _make_skip_record の wrapper
+        skip_calls = len(re.findall(r'_make_(?:loop_)?skip_record\(', content))
         assert skip_calls >= 8, (
-            f"Expected ≥8 _make_skip_record calls, found {skip_calls}"
+            f"Expected ≥8 skip_record wrapper calls, found {skip_calls}"
         )

@@ -106,6 +106,9 @@ class TestRetrainSideFilter:
             "side": ["buy", "buy", "buy", "sell", "sell", "sell"],
             "filled": [True] * 6,
             "run_id": ["run_1"] * 6,
+            "order_price": [15_000_000.0] * 6,
+            "order_quantity": [0.001] * 6,
+            "timestamp": [f"2026-03-01T00:0{i}:00Z" for i in range(6)],
         })
         df.to_json(records_dir / "fill_records_test.jsonl", orient="records", lines=True)
 

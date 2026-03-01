@@ -223,6 +223,32 @@ class FillLoopOrchestratorMixin:
         self._guard_fire_counts[guard_name] = self._guard_fire_counts.get(guard_name, 0) + 1
 
     # ------------------------------------------------------------------
+    # 216# §6 DRY: State 復元共通ヘルパー
+    # ------------------------------------------------------------------
+    def _restore_common_state(self, saved_state: "FillTestState | None") -> None:
+        """DD / toxic_veto / one-sided / guard_fire_counts の共通復元."""
+        if saved_state is None:
+            return
+        # 168# §4.1 #3: 日次ドローダウンガード状態復元
+        if saved_state.daily_drawdown_state:
+            self._daily_drawdown_guard.import_state(saved_state.daily_drawdown_state)
+        # 207# §1: toxic veto 状態復元
+        if saved_state.toxic_veto:
+            self._toxic_veto = dict(saved_state.toxic_veto)
+            logger.info(f"[207# §1] Toxic veto restored: {self._toxic_veto}")
+        # 210# L-2: one-sided 連続カウンタ復元
+        if saved_state.one_sided_consecutive_count > 0:
+            self._one_sided_consecutive_count = saved_state.one_sided_consecutive_count
+            logger.info(
+                f"[210# L-2] One-sided count restored: "
+                f"{self._one_sided_consecutive_count}"
+            )
+        # 216# E: Guard 発火カウンタ復元
+        if saved_state.guard_fire_counts:
+            self._guard_fire_counts = dict(saved_state.guard_fire_counts)
+            logger.info(f"[216# E] Guard fire counts restored: {self._guard_fire_counts}")
+
+    # ------------------------------------------------------------------
     # 179# S1: _effective_sleep — regime 応答サイクル間隔の一元化
     # ------------------------------------------------------------------
     async def _effective_sleep(self, *, multiplier: float = 1.0) -> None:
@@ -518,44 +544,11 @@ class FillLoopOrchestratorMixin:
                     "prices": saved_state.regime_prices,
                     "raw_history": saved_state.regime_raw_history or [],
                 })
-            # 168# §4.1 #3: 日次ドローダウンガード状態復元
-            if saved_state is not None and saved_state.daily_drawdown_state:
-                self._daily_drawdown_guard.import_state(saved_state.daily_drawdown_state)
-            # 207# §1: toxic veto 状態復元
-            if saved_state is not None and saved_state.toxic_veto:
-                self._toxic_veto = dict(saved_state.toxic_veto)
-                logger.info(f"[207# §1] Toxic veto restored: {self._toxic_veto}")
-            # 210# L-2: one-sided 連続カウンタ復元
-            if saved_state is not None and saved_state.one_sided_consecutive_count > 0:
-                self._one_sided_consecutive_count = saved_state.one_sided_consecutive_count
-                logger.info(
-                    f"[210# L-2] One-sided count restored: "
-                    f"{self._one_sided_consecutive_count}"
-                )
-            # 216# E: Guard 発火カウンタ復元
-            if saved_state is not None and saved_state.guard_fire_counts:
-                self._guard_fire_counts = dict(saved_state.guard_fire_counts)
-                logger.info(f"[216# E] Guard fire counts restored: {self._guard_fire_counts}")
+            self._restore_common_state(saved_state)
         else:
-            # regime_detector がない場合でも daily_drawdown state は復元
+            # regime_detector がない場合でも共通 state は復元
             saved_state = self._state_persistence.load()
-            if saved_state is not None and saved_state.daily_drawdown_state:
-                self._daily_drawdown_guard.import_state(saved_state.daily_drawdown_state)
-            # 207# §1: toxic veto 状態復元
-            if saved_state is not None and saved_state.toxic_veto:
-                self._toxic_veto = dict(saved_state.toxic_veto)
-                logger.info(f"[207# §1] Toxic veto restored: {self._toxic_veto}")
-            # 210# L-2: one-sided 連続カウンタ復元
-            if saved_state is not None and saved_state.one_sided_consecutive_count > 0:
-                self._one_sided_consecutive_count = saved_state.one_sided_consecutive_count
-                logger.info(
-                    f"[210# L-2] One-sided count restored: "
-                    f"{self._one_sided_consecutive_count}"
-                )
-            # 216# E: Guard 発火カウンタ復元
-            if saved_state is not None and saved_state.guard_fire_counts:
-                self._guard_fire_counts = dict(saved_state.guard_fire_counts)
-                logger.info(f"[216# E] Guard fire counts restored: {self._guard_fire_counts}")
+            self._restore_common_state(saved_state)
 
         # 203# F: DD warmup — state 復元失敗時 (stale/missing) は fill records から再計算
         # state file が壊れている or 保存されていない場合のセーフティネット

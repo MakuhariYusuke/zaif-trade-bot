@@ -180,8 +180,8 @@ class TestSkipCounterSeparation:
             rec.side = "sell"
             mock_records.append(rec)
 
-        with patch("scripts.v460.lib.fill_record_helpers.load_fill_records_glob",
-                    return_value=mock_records):
+        with patch("ztb.metrics.fill_quality.iter_fill_records_glob",
+                    return_value=iter(mock_records)):
             runner.resume_from_existing()
 
         # 末尾は balance_forced_skip 1件のみ連続
@@ -215,8 +215,8 @@ class TestSkipCounterSeparation:
             rec.side = "sell"
             mock_records.append(rec)
 
-        with patch("scripts.v460.lib.fill_record_helpers.load_fill_records_glob",
-                    return_value=mock_records):
+        with patch("ztb.metrics.fill_quality.iter_fill_records_glob",
+                    return_value=iter(mock_records)):
             runner.resume_from_existing()
 
         assert runner._trending_sell_skip_count == 3

@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-02 (214# Codex/Gemini指摘検証: DD state不整合裏付け, hot-reload漏れ確認, 212#命名修正)
+> 最終更新: 2026-03-02 (216# §7 プレ既存テスト全修正, Pipeline feature_names_in_ マイグレーション)
 
 ---
 

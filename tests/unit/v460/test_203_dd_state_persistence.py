@@ -30,11 +30,11 @@ class TestHaltStateSave:
         assert not hasattr(mixin, "_halt_start_cycle") or getattr(mixin, "_halt_start_cycle", None) is None
 
     def test_halt_iter_count_attr_on_orchestrator(self) -> None:
-        """_halt_iter_count attr が halt 開始時に初期化."""
+        """_halt_iter_count attr がクラスレベルで 0 初期化されている."""
         from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         mixin = FillLoopOrchestratorMixin.__new__(FillLoopOrchestratorMixin)
-        # 初期状態では _halt_iter_count は未設定
-        assert not hasattr(mixin, "_halt_iter_count")
+        # 216# §7: クラスレベル属性として 0 で定義済み
+        assert getattr(mixin, "_halt_iter_count", None) == 0
 
 
 # ============================================================
@@ -165,9 +165,9 @@ class TestHaltElapsedCounter:
         src = inspect.getsource(FillLoopOrchestratorMixin.run_continuous)
         assert "_halt_entering" in src, \
             "203# E halt開始フラグが存在するべき"
-        # _halt_entering 条件でstate保存
-        assert "if _halt_entering or" in src, \
-            "203# E halt開始時にstate保存すべき"
+        # 216# §7: _halt_entering は _should_record_halt に統合された
+        assert "_should_record_halt" in src, \
+            "203# E halt時の条件付き保存が存在するべき"
 
     def test_no_old_cycle_count_modulo_in_halt(self) -> None:
         """旧実装の self._cycle_count % progress_log_interval (halt内) が除去された."""
