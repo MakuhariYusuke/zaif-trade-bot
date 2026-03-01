@@ -1,9 +1,19 @@
-# Risk management module for trading controls
+"""Risk management package with lazy export loading."""
 
-from .checks import RiskChecker, RiskManager
-from .pnl_monte_carlo import MonteCarloConfig, MonteCarloResult, PnLMonteCarloSimulator
-from .profiles import create_custom_risk_profile, get_risk_profile
-from .rules import RiskRuleEngine
+from __future__ import annotations
+
+from importlib import import_module
+
+_LAZY_MODULE_ATTRS: dict[str, tuple[str, str]] = {
+    "get_risk_profile": ("ztb.risk.profiles", "get_risk_profile"),
+    "create_custom_risk_profile": ("ztb.risk.profiles", "create_custom_risk_profile"),
+    "RiskRuleEngine": ("ztb.risk.rules", "RiskRuleEngine"),
+    "RiskChecker": ("ztb.risk.checks", "RiskChecker"),
+    "RiskManager": ("ztb.risk.checks", "RiskManager"),
+    "PnLMonteCarloSimulator": ("ztb.risk.pnl_monte_carlo", "PnLMonteCarloSimulator"),
+    "MonteCarloConfig": ("ztb.risk.pnl_monte_carlo", "MonteCarloConfig"),
+    "MonteCarloResult": ("ztb.risk.pnl_monte_carlo", "MonteCarloResult"),
+}
 
 __all__ = [
     "get_risk_profile",
@@ -15,3 +25,17 @@ __all__ = [
     "MonteCarloConfig",
     "MonteCarloResult",
 ]
+
+
+def __getattr__(name: str) -> object:
+    target = _LAZY_MODULE_ATTRS.get(name)
+    if target is None:
+        raise AttributeError(f"module {__name__} has no attribute {name!r}")
+    module_name, attr_name = target
+    value = getattr(import_module(module_name), attr_name)
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(__all__))

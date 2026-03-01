@@ -28,7 +28,6 @@ from scripts.v460.lib.lot_manager import (
     resolve_regime_lot_multiplier,
     scale_lot_by_regime,
 )
-from ztb.metrics.fill_quality import build_skip_fill_record, iter_fill_records_glob
 
 if TYPE_CHECKING:
     from scripts.v460.lib.cancel_reasons import CancelReason
@@ -84,6 +83,8 @@ class FillRecordHelpersMixin:
         run_id, git_sha, timestamp は自動設定。
         cancel_reason 文字列は cancel_reasons モジュールの定数を使うこと。
         """
+        from ztb.metrics.fill_quality import build_skip_fill_record
+
         return build_skip_fill_record(
             cycle_id=cycle_id or self._new_cycle_id(),
             timestamp=time.time() if timestamp is None else timestamp,
@@ -263,6 +264,8 @@ class FillRecordHelpersMixin:
           - _last_side を復元 (片側蓄積防止)
           - 既存レコードを返す (結果集計用)
         """
+        from ztb.metrics.fill_quality import iter_fill_records_glob
+
         existing = list(iter_fill_records_glob(str(self._results_dir)))
         if not existing:
             return []

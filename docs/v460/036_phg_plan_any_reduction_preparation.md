@@ -2896,6 +2896,78 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/lib/ab_judgment.py`: `any_type_debt_tokens=0`
   - `scripts/v457/dry_run.py`: `any_type_debt_tokens=0`
 
+### Step126: package export を lazy 化して import 初動を軽量化
+
+1. 対応概要
+- `ztb/data/__init__.py`
+  - package export を `__getattr__` ベースの lazy loading に変更し、`ztb.data` import 時の重い一括 import を解消した。
+- `ztb/risk/__init__.py`
+  - `RiskChecker` / `PnLMonteCarloSimulator` などの export を lazy loading に変更した。
+- `ztb/metrics/__init__.py`
+  - `MetricsCalculator` / `sharpe_ratio` などの export を lazy loading に変更した。
+- `scripts/v460/run_fill_test.py`
+  - `FillTestRunner.__init__` でしか使わない依存を local import 化した。
+  - `FillTestConfig` に加えて `_SkipGateResult` / `_FillMonitorResult` / `_PnlMeasurement` の re-export を明示復元した。
+
+2. 目的
+- `from ztb.data.trades_recorder import TradesRecorder` や `from ztb.risk.circuit_breakers import KillSwitch` 時に、package `__init__` が不要な重い submodule を巻き込む問題を解消する。
+- 構造テストが `scripts.v460.run_fill_test` を import するだけで数秒待たされる状態を改善する。
+- 既存の package API と `run_fill_test` の後方互換 import は維持する。
+
+3. 検証
+- `py_compile`
+  - `scripts/v460/run_fill_test.py`
+  - `ztb/data/__init__.py`
+  - `ztb/risk/__init__.py`
+  - `ztb/metrics/__init__.py`
+- smoke
+  - `from ztb.data import DataAugmentation, StreamingPipeline`
+  - `from ztb.risk import RiskChecker, MonteCarloConfig`
+  - `from ztb.metrics import MetricsCalculator, sharpe_ratio`
+  - `from scripts.v460.run_fill_test import _SkipGateResult, _FillMonitorResult, _PnlMeasurement`
+- import timing
+  - `scripts.v460.run_fill_test` 初回 import: `5.66s → 2.85s`
+- `pytest`
+  - `tests/unit/v460/test_113_resilience.py`
+  - 結果: `28 passed`
+
+### Step127: mixin から fill_quality runtime import を遅延化
+
+1. 対応概要
+- `scripts/v460/lib/fill_config.py`
+  - `FillRecord` を `TYPE_CHECKING` 側へ移動し、型注釈だけのために `ztb.metrics.fill_quality` を runtime import しないようにした。
+- `scripts/v460/lib/fill_record_helpers.py`
+  - `build_skip_fill_record()` / `iter_fill_records_glob()` を使用メソッド内 import に変更した。
+- `scripts/v460/lib/fill_cycle_executor.py`
+  - `build_fill_record()` を `_build_fill_record()` 内 import に変更し、`FillRecord` は `TYPE_CHECKING` 側へ移した。
+- `scripts/v460/lib/fill_loop_orchestrator.py`
+  - `compute_record_pnl_jpy()` / `filter_clean_records()` / `iter_fill_records_glob()` / `check_trades_health()` を `run_continuous()` 内 import に変更した。
+
+2. 目的
+- `FillTestRunner` を import しただけで `scipy` / `fill_quality` を読み込む経路を減らし、構造テストや source inspection の待ち時間をさらに削る。
+- `fill_quality` 依存は「実際に run_continuous / record builder を実行するとき」に限定する。
+
+3. 検証
+- `py_compile`
+  - `scripts/v460/lib/fill_config.py`
+  - `scripts/v460/lib/fill_record_helpers.py`
+  - `scripts/v460/lib/fill_cycle_executor.py`
+  - `scripts/v460/lib/fill_loop_orchestrator.py`
+- import timing
+  - `scripts.v460.run_fill_test` 初回 import: `2.85s → 1.51s`
+- `pytest`
+  - `tests/unit/v460/test_113_resilience.py tests/unit/v460/test_145_structural_fixes.py -k "TestMakeSkipRecord or TestFillRecordBuilderIntegration or internal_dataclasses_are_importable"`
+  - 結果: `10 passed`
+- `any_inventory`
+  - `scripts/v460/run_fill_test.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/fill_config.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/fill_record_helpers.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/fill_cycle_executor.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/fill_loop_orchestrator.py`: `any_type_debt_tokens=0`
+  - `ztb/data/__init__.py`: `any_type_debt_tokens=0`
+  - `ztb/risk/__init__.py`: `any_type_debt_tokens=0`
+  - `ztb/metrics/__init__.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

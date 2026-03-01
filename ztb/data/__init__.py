@@ -1,64 +1,48 @@
-"""
-データ処理モジュール
+"""Data processing package with lazy export loading."""
 
-金融時系列データに対する包括的なデータ処理機能を提供：
-- データ拡張（Data Augmentation）
-- 異常値検出・処理（Outlier Detection & Handling）
-- データバリデーション（Data Validation）
-- データ処理パイプライン（Data Processing Pipeline）
-- ストリーミングデータ処理（Streaming Data Processing）
-"""
+from __future__ import annotations
 
-from .btc_data_augmentation import BTCBiasDetector, BTCDataAugmentor
-from .coin_gecko_stream import CoinGeckoStream, MarketDataBatch, StreamConfig
+from importlib import import_module
 
-# 新しいデータ処理モジュール
-from .data_augmentation import DataAugmentation
-from .data_loader import (
-    analyze_feature_distributions,
-    detect_outliers_iqr,
-    detect_outliers_zscore,
-)
-from .data_processing_pipeline import (
-    DataProcessingPipeline,
-    PipelineResult,
-    create_financial_data_pipeline,
-)
-from .data_validation import (
-    DataIntegrityChecker,
-    DataQualityMetrics,
-    DataValidator,
-    ValidationResult,
-)
-from .outlier_detection import OutlierDetector, OutlierHandler
-from .stream_buffer import BufferStats, StreamBuffer
+_LAZY_MODULE_ATTRS: dict[str, tuple[str, str]] = {
+    "analyze_feature_distributions": ("ztb.data.data_loader", "analyze_feature_distributions"),
+    "detect_outliers_iqr": ("ztb.data.data_loader", "detect_outliers_iqr"),
+    "detect_outliers_zscore": ("ztb.data.data_loader", "detect_outliers_zscore"),
+    "StreamBuffer": ("ztb.data.stream_buffer", "StreamBuffer"),
+    "BufferStats": ("ztb.data.stream_buffer", "BufferStats"),
+    "CoinGeckoStream": ("ztb.data.coin_gecko_stream", "CoinGeckoStream"),
+    "StreamConfig": ("ztb.data.coin_gecko_stream", "StreamConfig"),
+    "MarketDataBatch": ("ztb.data.coin_gecko_stream", "MarketDataBatch"),
+    "StreamingPipeline": ("ztb.data.streaming_pipeline", "StreamingPipeline"),
+    "PipelineStats": ("ztb.data.streaming_pipeline", "PipelineStats"),
+    "BTCDataAugmentor": ("ztb.data.btc_data_augmentation", "BTCDataAugmentor"),
+    "BTCBiasDetector": ("ztb.data.btc_data_augmentation", "BTCBiasDetector"),
+    "DataAugmentation": ("ztb.data.data_augmentation", "DataAugmentation"),
+    "OutlierDetector": ("ztb.data.outlier_detection", "OutlierDetector"),
+    "OutlierHandler": ("ztb.data.outlier_detection", "OutlierHandler"),
+    "DataValidator": ("ztb.data.data_validation", "DataValidator"),
+    "DataIntegrityChecker": ("ztb.data.data_validation", "DataIntegrityChecker"),
+    "ValidationResult": ("ztb.data.data_validation", "ValidationResult"),
+    "DataQualityMetrics": ("ztb.data.data_validation", "DataQualityMetrics"),
+    "DataProcessingPipeline": ("ztb.data.data_processing_pipeline", "DataProcessingPipeline"),
+    "PipelineResult": ("ztb.data.data_processing_pipeline", "PipelineResult"),
+    "create_financial_data_pipeline": ("ztb.data.data_processing_pipeline", "create_financial_data_pipeline"),
+}
 
-__all__ = [
-    # 既存のストリーミング機能
-    "analyze_feature_distributions",
-    "detect_outliers_iqr",
-    "detect_outliers_zscore",
-    "StreamBuffer",
-    "BufferStats",
-    "CoinGeckoStream",
-    "StreamConfig",
-    "MarketDataBatch",
-    "StreamingPipeline",
-    "PipelineStats",
-    # BTCデータ拡張機能
-    "BTCDataAugmentor",
-    "BTCBiasDetector",
-    # 新しいデータ処理機能
-    "DataAugmentation",
-    "OutlierDetector",
-    "OutlierHandler",
-    "DataValidator",
-    "DataIntegrityChecker",
-    "ValidationResult",
-    "DataQualityMetrics",
-    "DataProcessingPipeline",
-    "PipelineResult",
-    "create_financial_data_pipeline",
-]
+__all__ = list(_LAZY_MODULE_ATTRS)
 
 __version__ = "1.0.0"
+
+
+def __getattr__(name: str) -> object:
+    target = _LAZY_MODULE_ATTRS.get(name)
+    if target is None:
+        raise AttributeError(f"module {__name__} has no attribute {name!r}")
+    module_name, attr_name = target
+    value = getattr(import_module(module_name), attr_name)
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(__all__))

@@ -26,10 +26,10 @@ from scripts.v460.lib.fill_config import (
 from scripts.v460.lib.ob_utils import best_bid_ask  # 200# 10-C: module-level import
 from scripts.v460.lib.order_monitor import OrderLike
 from scripts.v460.lib.resilience import CircuitState
-from ztb.metrics.fill_quality import FillRecord, build_fill_record
 
 if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
+    from ztb.metrics.fill_quality import FillRecord
 
 logger = logging.getLogger(__name__)
 
@@ -478,6 +478,8 @@ class FillCycleExecutorMixin:
         run_single_cycle の末尾から抽出。self 経由のセンサー値 +
         サイクル変数を統合して 1 レコードを構築する。
         """
+        from ztb.metrics.fill_quality import build_fill_record
+
         payload: dict[str, object] = {
             "cycle_id": cycle_id,
             "timestamp": t_submit,

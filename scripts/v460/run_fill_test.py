@@ -13,72 +13,32 @@ Usage:
 
 from __future__ import annotations
 
-import asyncio
 import atexit
-import json
 import logging
-import os
 import sys
 import time
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 # Project root
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
-from ztb.risk.circuit_breakers import KillSwitch
-from ztb.trading.live.exchanges.base.broker_interfaces import IBroker
-from ztb.trading.live.registry.broker_registry import get_broker_registry
-from scripts.v460.lib.adaptation_engine import AdaptationEngine
-from scripts.v460.lib.balance_checker import BalanceChecker
-from scripts.v460.lib import cancel_reasons as CR  # 145# §9-#6
-from scripts.v460.lib.batch_persistence import BatchPersistence
-from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
 from scripts.v460.lib.fill_config import (
     FillTestConfig,
-    SkipGateResult as _SkipGateResult,
     FillMonitorResult as _FillMonitorResult,
     PnlMeasurement as _PnlMeasurement,
+    SkipGateResult as _SkipGateResult,
 )
-from scripts.v460.lib.lot_manager import (
-    compute_confidence_lot_factor,
-    compute_effective_order_lot,
-    resolve_regime_lot_multiplier,
-    scale_lot_by_regime,
-)
-from scripts.v460.lib.maker_price import MakerPriceCalculator
-from scripts.v460.lib.ob_recorder import OBRecorder
-from scripts.v460.lib.order_monitor import OrderMonitor
-from ztb.data.trades_recorder import TradesRecorder
-from ztb.data.trades_health import check_trades_health
-from ztb.utils.git_utils import get_git_sha as _get_shared_git_sha
-from scripts.v460.lib.pnl_measurer import PnlMeasurer
-from scripts.v460.lib.resilience import (
-    CircuitBreaker,
-    CircuitState,
-    FillTestHealthMonitor,
-    FillTestStatePersistence,
-    FillTestState,
-    HealthThresholds,
-    create_api_circuit_breaker,
-)
-from scripts.v460.lib.results_analyzer import (
-    run_results_only,
-    save_judgment,
-)
-from scripts.v460.lib.side_selector import SideSelector
-from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-from scripts.v460.lib.time_filter import TimeFilter
 from scripts.v460.lib.abstract_cycle_runner import AbstractCycleRunner
-from scripts.v460.lib.event_logger import log_event as _log_event, TeeWriter as _TeeWriter, setup_stderr_mirror as _setup_stderr_mirror
-from scripts.v460.lib.lock_manager import LockManager
 from scripts.v460.lib.fill_record_helpers import FillRecordHelpersMixin  # 163#
 from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin  # 163#
 from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin  # 163#
 from scripts.v460.lib.regime_policy import CycleStrategy  # 179#
+
+if TYPE_CHECKING:
+    from ztb.trading.live.exchanges.base.broker_interfaces import IBroker
 
 logging.basicConfig(
     level=logging.INFO,
@@ -149,6 +109,30 @@ class FillTestRunner(
         yaml_cfg: dict[str, object] | None = None,
         config_yaml_path: str | None = None,  # 169# config hot-reload
     ) -> None:
+        from ztb.data.trades_recorder import TradesRecorder
+        from ztb.risk.circuit_breakers import KillSwitch
+        from scripts.v460.lib.adaptation_engine import AdaptationEngine
+        from scripts.v460.lib.balance_checker import BalanceChecker
+        from scripts.v460.lib.batch_persistence import BatchPersistence
+        from scripts.v460.lib.fast_fill_defense import (
+            FastFillDefense,
+            FastFillDefenseConfig,
+        )
+        from scripts.v460.lib.lock_manager import LockManager
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+        from scripts.v460.lib.ob_recorder import OBRecorder
+        from scripts.v460.lib.order_monitor import OrderMonitor
+        from scripts.v460.lib.pnl_measurer import PnlMeasurer
+        from scripts.v460.lib.resilience import (
+            FillTestHealthMonitor,
+            FillTestStatePersistence,
+            HealthThresholds,
+            create_api_circuit_breaker,
+        )
+        from scripts.v460.lib.side_selector import SideSelector
+        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+        from scripts.v460.lib.time_filter import TimeFilter
+
         self.adapter = adapter
         self.config = config
         self._yaml_cfg = yaml_cfg or {}  # YAML 生の設定 (サブモジュールに渡す用)

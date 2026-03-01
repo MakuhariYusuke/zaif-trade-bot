@@ -8,9 +8,10 @@ FillTestConfig — fill_test 設定データクラス + サイクル内部デー
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-from ztb.metrics.fill_quality import FillRecord
+if TYPE_CHECKING:
+    from ztb.metrics.fill_quality import FillRecord
 
 
 # ======================================================================
