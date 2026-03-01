@@ -18,7 +18,7 @@ from collections import deque
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Final, Optional
+from typing import Final, Iterable, Mapping, Optional
 
 import numpy as np
 from scipy import stats
@@ -139,22 +139,20 @@ class FillRecord:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict) -> FillRecord:
+    def from_dict(cls, d: Mapping[str, object]) -> FillRecord:
         """Reconstruct from dict."""
-        known_keys = set(cls.__dataclass_fields__.keys())
-        unknown = set(d.keys()) - known_keys
-        if unknown:
-            logger.debug(f"FillRecord.from_dict: unknown fields ignored: {unknown}")
-        return cls(**{k: v for k, v in d.items() if k in known_keys})
+        return cls(**_sanitize_fill_record_fields(d, context="FillRecord.from_dict"))
 
 
 _FILL_RECORD_FIELD_NAMES: Final[frozenset[str]] = frozenset(FillRecord.__dataclass_fields__.keys())
-_SKIP_RECORD_RESERVED_FIELDS: Final[frozenset[str]] = frozenset({
+_SKIP_RECORD_PROTECTED_FIELDS: Final[frozenset[str]] = frozenset({
     "cycle_id",
     "timestamp",
     "side",
     "order_price",
     "order_quantity",
+    "filled",
+    "cancelled",
     "cancel_reason",
     "run_id",
     "git_sha",
@@ -164,6 +162,49 @@ _SKIP_RECORD_RESERVED_FIELDS: Final[frozenset[str]] = frozenset({
     "balance_forced_switch",
     "ab_test_variant",
 })
+
+
+def _sanitize_fill_record_fields(
+    values: Mapping[str, object],
+    *,
+    context: str,
+    protected_keys: frozenset[str] = frozenset(),
+) -> dict[str, object]:
+    """FillRecord に存在するキーだけ通し、不要キーは無視する."""
+    filtered: dict[str, object] = {}
+    unknown_keys: list[str] = []
+    protected_hits: list[str] = []
+
+    for key, value in values.items():
+        if key in protected_keys:
+            protected_hits.append(key)
+            continue
+        if key not in _FILL_RECORD_FIELD_NAMES:
+            unknown_keys.append(key)
+            continue
+        filtered[key] = value
+
+    if protected_hits:
+        logger.debug(
+            "%s: protected keys ignored: %s",
+            context,
+            sorted(protected_hits),
+        )
+    if unknown_keys:
+        logger.debug(
+            "%s: unknown fields ignored: %s",
+            context,
+            sorted(unknown_keys),
+        )
+    return filtered
+
+
+def build_fill_record(**data: object) -> FillRecord:
+    """FillRecord の generic builder.
+
+    known field のみを通す。必須フィールド不足は FillRecord 側の TypeError に委ねる。
+    """
+    return FillRecord(**_sanitize_fill_record_fields(data, context="build_fill_record"))
 
 
 def build_skip_fill_record(
@@ -187,47 +228,31 @@ def build_skip_fill_record(
 
     追加フィールドは FillRecord に存在するものだけを反映し、それ以外は無視する。
     """
-    record = FillRecord(
-        cycle_id=cycle_id,
-        timestamp=timestamp,
-        side=side,
-        order_price=order_price,
-        order_quantity=order_quantity,
-        cancelled=True,
-        cancel_reason=cancel_reason,
-        run_id=run_id,
-        git_sha=git_sha,
-        spread_at_order=spread_at_order,
-        spread_offset_ratio=spread_offset_ratio,
-        regime=regime,
-        balance_forced_switch=balance_forced_switch,
-        ab_test_variant=ab_test_variant,
+    payload: dict[str, object] = {
+        "cycle_id": cycle_id,
+        "timestamp": timestamp,
+        "side": side,
+        "order_price": order_price,
+        "order_quantity": order_quantity,
+        "filled": False,
+        "cancelled": True,
+        "cancel_reason": cancel_reason,
+        "run_id": run_id,
+        "git_sha": git_sha,
+        "spread_at_order": spread_at_order,
+        "spread_offset_ratio": spread_offset_ratio,
+        "regime": regime,
+        "balance_forced_switch": balance_forced_switch,
+        "ab_test_variant": ab_test_variant,
+    }
+    payload.update(
+        _sanitize_fill_record_fields(
+            extra,
+            context="build_skip_fill_record",
+            protected_keys=_SKIP_RECORD_PROTECTED_FIELDS,
+        )
     )
-    if not extra:
-        return record
-
-    unknown_keys: list[str] = []
-    reserved_keys: list[str] = []
-    for key, value in extra.items():
-        if key in _SKIP_RECORD_RESERVED_FIELDS:
-            reserved_keys.append(key)
-            continue
-        if key not in _FILL_RECORD_FIELD_NAMES:
-            unknown_keys.append(key)
-            continue
-        setattr(record, key, value)
-
-    if reserved_keys:
-        logger.debug(
-            "build_skip_fill_record: reserved extra keys ignored: %s",
-            sorted(reserved_keys),
-        )
-    if unknown_keys:
-        logger.debug(
-            "build_skip_fill_record: unknown extra keys ignored: %s",
-            sorted(unknown_keys),
-        )
-    return record
+    return build_fill_record(**payload)
 
 
 @dataclass
@@ -895,28 +920,32 @@ def g1_2_full_judgment(
 # ======================================================================
 
 
-def save_fill_records(records: list[FillRecord], path: str | Path) -> None:
+def save_fill_records(records: Iterable[FillRecord], path: str | Path) -> None:
     """JSONL 形式で FillRecord を保存.
 
     032#17: バッチ全体を tempfile に書き出してから append する。
     SIGINT / ディスクフル時の不完全行混入を防止。
     """
     import os
+    import shutil
     import tempfile
 
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    lines = [json.dumps(r.to_dict(), ensure_ascii=False) + "\n" for r in records]
     # Atomic batch: write to temp, fsync, then append to target
     tmp_fd, tmp_path = tempfile.mkstemp(dir=str(p.parent), suffix=".tmp")
+    count = 0
     try:
         with os.fdopen(tmp_fd, "w", encoding="utf-8") as tmp_f:
-            tmp_f.writelines(lines)
+            for record in records:
+                tmp_f.write(json.dumps(record.to_dict(), ensure_ascii=False))
+                tmp_f.write("\n")
+                count += 1
             tmp_f.flush()
             os.fsync(tmp_f.fileno())
         with open(p, "a", encoding="utf-8") as f:
             with open(tmp_path, "r", encoding="utf-8") as tmp_r:
-                f.write(tmp_r.read())
+                shutil.copyfileobj(tmp_r, f, length=1024 * 1024)
             f.flush()
             os.fsync(f.fileno())
     finally:
@@ -924,7 +953,7 @@ def save_fill_records(records: list[FillRecord], path: str | Path) -> None:
             os.remove(tmp_path)
         except OSError:
             pass
-    logger.info(f"Saved {len(records)} fill records to {p}")
+    logger.info(f"Saved {count} fill records to {p}")
 
 
 def load_fill_records(path: str | Path) -> list[FillRecord]:
@@ -965,6 +994,20 @@ def load_fill_records(path: str | Path) -> list[FillRecord]:
     return records
 
 
+def _extend_unique_fill_records(
+    target: list[FillRecord],
+    *,
+    seen_ids: set[str],
+    source: list[FillRecord],
+) -> None:
+    """cycle_id 未出現の FillRecord だけを target に追加."""
+    for record in source:
+        if record.cycle_id in seen_ids:
+            continue
+        seen_ids.add(record.cycle_id)
+        target.append(record)
+
+
 def load_fill_records_glob(directory: str | Path) -> list[FillRecord]:
     """ディレクトリ内の全 JSONL ファイルから FillRecord を読み込み.
 
@@ -973,20 +1016,20 @@ def load_fill_records_glob(directory: str | Path) -> list[FillRecord]:
     records: list[FillRecord] = []
     seen_ids: set[str] = set()
     for p in sorted(d.glob("fill_records_*.jsonl")):
-        file_records = load_fill_records(p)
-        for r in file_records:
-            if r.cycle_id not in seen_ids:
-                seen_ids.add(r.cycle_id)
-                records.append(r)
+        _extend_unique_fill_records(
+            records,
+            seen_ids=seen_ids,
+            source=load_fill_records(p),
+        )
     # emergency dump ディレクトリも統合 (重複は自動排除)
     emergency_dir = d / "emergency"
     if emergency_dir.exists():
         for p in sorted(emergency_dir.glob("emergency_*.jsonl")):
-            file_records = load_fill_records(p)
-            for r in file_records:
-                if r.cycle_id not in seen_ids:
-                    seen_ids.add(r.cycle_id)
-                    records.append(r)
+            _extend_unique_fill_records(
+                records,
+                seen_ids=seen_ids,
+                source=load_fill_records(p),
+            )
     return records
 
 

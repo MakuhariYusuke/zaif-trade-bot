@@ -74,16 +74,37 @@ class TestFillRecord:
             run_id="run_1",
             git_sha="abc123",
             regime="trending",
+            filled=True,
             skip_gate_skipped=True,
             skip_gate_reason="threshold",
             unknown_extra="ignored",
         )
 
         assert r.cancelled is True
+        assert r.filled is False
         assert r.cancel_reason == "skip_gate"
         assert r.skip_gate_skipped is True
         assert r.skip_gate_reason == "threshold"
         assert not hasattr(r, "unknown_extra")
+
+    def test_build_fill_record_ignores_unknown_fields(self) -> None:
+        from ztb.metrics.fill_quality import build_fill_record
+
+        r = build_fill_record(
+            cycle_id="base_1",
+            timestamp=2.0,
+            side="sell",
+            order_price=101.0,
+            order_quantity=0.02,
+            cancelled=True,
+            cancel_reason="timeout",
+            stray_field="ignored",
+        )
+
+        assert r.cycle_id == "base_1"
+        assert r.cancelled is True
+        assert r.cancel_reason == "timeout"
+        assert not hasattr(r, "stray_field")
 
     def test_defaults(self) -> None:
         from ztb.metrics.fill_quality import FillRecord
@@ -1054,6 +1075,31 @@ class TestFillRecordIO:
 
             all_records = load_fill_records_glob(tmpdir)
             assert len(all_records) == 6
+
+    def test_glob_load_deduplicates_emergency_records(self) -> None:
+        from ztb.metrics.fill_quality import (
+            FillRecord,
+            load_fill_records_glob,
+            save_fill_records,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            emergency = root / "emergency"
+            emergency.mkdir()
+            base_record = FillRecord(
+                cycle_id="dup_1",
+                timestamp=1700000000.0,
+                side="buy",
+                order_price=100.0,
+                order_quantity=0.001,
+            )
+            save_fill_records([base_record], root / "fill_records_20260101.jsonl")
+            save_fill_records([base_record], emergency / "emergency_20260101.jsonl")
+
+            all_records = load_fill_records_glob(root)
+            assert len(all_records) == 1
+            assert all_records[0].cycle_id == "dup_1"
 
     def test_load_corrupt_lines_skipped(self) -> None:
         """032# #19: 破損行はスキップして残りを正常読込."""

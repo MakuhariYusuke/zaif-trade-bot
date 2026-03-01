@@ -2473,6 +2473,107 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
   - `scripts/v460/lib/fill_record_helpers.py`: `any_type_debt_tokens=0`
 
+### Step109: generic FillRecord builder と成功系 record の統合
+
+1. 対応概要
+- `ztb/metrics/fill_quality.py`
+  - `_sanitize_fill_record_fields()` を追加し、`known field のみ通す` 契約を共通化した。
+  - `FillRecord.from_dict()` を同 helper 経由に変更した。
+  - `build_fill_record()` を追加し、generic な `FillRecord` builder を導入した。
+  - `build_skip_fill_record()` も `build_fill_record()` 経由へ変更した。
+  - skip builder の protected field に `filled` を追加し、`filled=True` 上書きで skip semantics が崩れる余地を塞いだ。
+- `scripts/v460/lib/fill_cycle_executor.py`
+  - `_build_fill_record()` を `build_fill_record()` 経由へ変更した。
+  - cancel reason 解決を `_resolve_fill_cancel_reason()` に抽出した。
+  - `spread_bps` 計算を `_compute_fill_spread_bps()` に抽出した。
+- `tests/unit/v460/test_fill_quality.py`
+  - generic builder の unknown field 無視を追加検証した。
+  - skip builder が `filled=True` を受けても skip semantics を維持することを追加検証した。
+- `tests/unit/v460/test_145_structural_fixes.py`
+  - executor の `_build_fill_record()` が共通 builder を使う構造テストを追加した。
+
+2. 目的
+- `FillRecord.from_dict()` / skip builder / 成功系 builder の「既知フィールドだけを通す」契約を 1 箇所に揃える。
+- 成功系 record も `FillRecord` 定義元の builder を通すことで、v460 側の直書き初期化を減らし、横展開しやすくする。
+
+3. 検証
+- `py_compile`
+  - `ztb/metrics/fill_quality.py`
+  - `scripts/v460/lib/fill_record_helpers.py`
+  - `scripts/v460/lib/fill_cycle_executor.py`
+- `pytest`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_145_structural_fixes.py`
+  - `tests/unit/v460/test_skip_gate_v3.py`
+  - `結果: 261 passed`
+- `any_inventory`
+  - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/fill_record_helpers.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/fill_cycle_executor.py`: `any_type_debt_tokens=0`
+
+### Step110: FillRecord JSONL I/O のメモリ使用と重複排除補助を整理
+
+1. 対応概要
+- `ztb/metrics/fill_quality.py`
+  - `save_fill_records()` の一時 `lines` 配列を廃止し、temp file へ逐次書き込みに変更した。
+  - temp file から本体ファイルへの append も `read()` 一括読み込みではなく `shutil.copyfileobj()` に変更した。
+  - `load_fill_records_glob()` の重複排除ループを `_extend_unique_fill_records()` に抽出した。
+- `tests/unit/v460/test_fill_quality.py`
+  - emergency dump 側の duplicate が cross-file で重複追加されないことを追加検証した。
+
+2. 目的
+- 大きい batch 保存時に JSONL 全行文字列を一度に保持しないようにし、ピークメモリを下げる。
+- `fill_records_*` / `emergency_*` の重複排除規約を 1 箇所に寄せて、挙動差の混入を防ぐ。
+
+3. 検証
+- `py_compile`
+  - `ztb/metrics/fill_quality.py`
+- `pytest`
+  - `tests/unit/v460/test_fill_quality.py`
+  - 結果: `192 passed`
+- `any_inventory`
+  - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
+
+### Step111: save_fill_records を Iterable 契約へ拡張
+
+1. 対応概要
+- `ztb/metrics/fill_quality.py`
+  - `save_fill_records()` の入力型を `list[FillRecord]` から `Iterable[FillRecord]` に拡張した。
+  - 逐次書き込みの件数を loop 内で数えるようにし、`len(records)` 依存を除去した。
+
+2. 目的
+- ストリーム書き込み実装と型契約を一致させ、呼び出し側に list への事前具象化を強制しない。
+- 大きい batch 保存時に、ログ件数取得のためだけに `Sized` を要求しない。
+
+3. 検証
+- `py_compile`
+  - `ztb/metrics/fill_quality.py`
+- `pytest`
+  - `tests/unit/v460/test_fill_quality.py -k "TestFillRecordIO"`
+  - 結果: `5 passed`
+- `any_inventory`
+  - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
+
+### Step112: fill_record_helpers の runtime import を縮小
+
+1. 対応概要
+- `scripts/v460/lib/fill_record_helpers.py`
+  - `FillRecord` の runtime import を外し、`TYPE_CHECKING` 側へ移動した。
+  - runtime では実際に使う `build_skip_fill_record` / `load_fill_records_glob` のみを import する形に整理した。
+
+2. 目的
+- type annotation 用の import を runtime 依存から切り離し、モジュール初期化時の結合を少し下げる。
+- helper モジュールの責務を `skip record` / resume 用の実利用シンボルに絞る。
+
+3. 検証
+- `py_compile`
+  - `scripts/v460/lib/fill_record_helpers.py`
+- `pytest`
+  - `tests/unit/v460/test_145_structural_fixes.py -k "TestMakeSkipRecord"`
+  - 結果: `7 passed`
+- `any_inventory`
+  - `scripts/v460/lib/fill_record_helpers.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

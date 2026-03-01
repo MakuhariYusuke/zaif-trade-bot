@@ -28,7 +28,7 @@ from scripts.v460.lib.lot_manager import (
     resolve_regime_lot_multiplier,
     scale_lot_by_regime,
 )
-from ztb.metrics.fill_quality import FillRecord, build_skip_fill_record, load_fill_records_glob
+from ztb.metrics.fill_quality import build_skip_fill_record, load_fill_records_glob
 
 if TYPE_CHECKING:
     from scripts.v460.lib.cancel_reasons import CancelReason
@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from scripts.v460.lib.maker_price import MakerPriceCalculator
     from scripts.v460.lib.regime_detector import RegimeDetector
     from scripts.v460.lib.side_selector import SideSelector
+    from ztb.metrics.fill_quality import FillRecord
 
 logger = logging.getLogger(__name__)
 
