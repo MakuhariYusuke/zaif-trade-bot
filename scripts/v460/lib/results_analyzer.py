@@ -211,11 +211,8 @@ def compute_run_level_breakdown(
 
     run_id が空 / None のレコードは "legacy" にまとめる。
     """
-    groups: dict[str, list[FillRecord]] = defaultdict(list)
-    for r in records:
-        key = r.run_id if (r.run_id and r.run_id.strip()) else "legacy"
-        groups[key].append(r)
-    return dict(groups)
+    groups, _latest_run_id = _group_runs_with_latest_id(records)
+    return groups
 
 
 def _group_runs_with_latest_id(

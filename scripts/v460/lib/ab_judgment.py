@@ -22,9 +22,8 @@ from typing import TypedDict
 
 import numpy as np
 
-from scripts.v460.lib.metrics_utils import compute_base_metrics
+from scripts.v460.lib.metrics_utils import MetricsAccumulator, compute_base_metrics
 from ztb.io.json_io import JSONObject
-from ztb.metrics.fill_quality import PnlAccumulator, PnlWinAccumulator
 from ztb.utils.dataclass_utils import filter_known_dataclass_fields
 from ztb.utils.safety import safe_to_finite
 
@@ -536,18 +535,6 @@ class TrendingEvalResult:
         return "\n".join(lines)
 
 
-@dataclass
-class _DailyPnlBreakdown:
-    """日次の PnL 集計と percentile 用バッファ."""
-
-    pnl: PnlAccumulator = field(default_factory=PnlAccumulator)
-    values: list[float] = field(default_factory=list)
-
-    def add(self, value: float) -> None:
-        self.pnl.add(value)
-        self.values.append(value)
-
-
 def evaluate_trending_down_sell(
     records: list[FillRecord],
     criteria: TrendingEvalCriteria | None = None,
@@ -564,25 +551,15 @@ def evaluate_trending_down_sell(
     if criteria is None:
         criteria = TrendingEvalCriteria()
 
-    n_total = 0
-    n_filled = 0
-    pnl_values: list[float] = []
-    pnl_summary = PnlWinAccumulator()
-    daily_groups: dict[str, _DailyPnlBreakdown] = defaultdict(_DailyPnlBreakdown)
+    metrics = MetricsAccumulator()
+    daily_groups: dict[str, MetricsAccumulator] = defaultdict(MetricsAccumulator)
 
     for record in records:
         if record.get("regime") != "trending_down" or record.get("side") != "sell":
             continue
-        n_total += 1
+        metrics.add(record)
         if not record.get("filled"):
             continue
-        n_filled += 1
-
-        pnl = safe_to_finite(record.get("post_fill_30s_pnl"))
-        if pnl is None:
-            continue
-        pnl_values.append(pnl)
-        pnl_summary.add(pnl)
 
         ts = safe_to_finite(record.get("timestamp"))
         if ts is None:
@@ -591,12 +568,12 @@ def evaluate_trending_down_sell(
             day = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y%m%d")
         except (ValueError, OSError):
             continue
-        daily_groups[day].add(pnl)
+        daily_groups[day].add(record)
 
     result = TrendingEvalResult(
         verdict=Verdict.INSUFFICIENT,  # 仮設定 (後で上書き)
-        n_total=n_total,
-        n_filled=n_filled,
+        n_total=metrics.n_total,
+        n_filled=metrics.n_filled,
     )
 
     # サンプル不足チェック
@@ -609,28 +586,29 @@ def evaluate_trending_down_sell(
         )
         return result
 
-    if not pnl_values:
+    base_metrics = metrics.to_base_metrics()
+    pnl_arr = base_metrics["pnl30_array"]
+    if pnl_arr.size == 0:
         result.verdict = Verdict.INSUFFICIENT
         result.detail = "No valid PnL30 data"
         return result
 
-    arr = np.array(pnl_values)
-    result.avg_pnl30_bps = pnl_summary.mean_bps
-    result.downside_p10_bps = float(np.percentile(arr, 10))
-    result.downside_p05_bps = float(np.percentile(arr, 5))
-    result.profitable_rate = pnl_summary.win_rate
+    result.avg_pnl30_bps = base_metrics["avg_pnl30_bps"]
+    result.downside_p10_bps = float(np.percentile(pnl_arr, 10))
+    result.downside_p05_bps = float(np.percentile(pnl_arr, 5))
+    result.profitable_rate = base_metrics["profitable_rate"]
     result.counterfactual_gain_bps = result.avg_pnl30_bps - criteria.counterfactual_pnl30_bps
 
     # 日次内訳 (P0-C 固定テンプレート)
     for day in sorted(daily_groups.keys()):
-        daily = daily_groups[day]
+        daily = daily_groups[day].to_base_metrics()
         entry: DailyBreakdownRow = {
             "day": day,
-            "n_filled": daily.pnl.count,
-            "avg_pnl30_bps": round(daily.pnl.mean_bps, 4),
+            "n_filled": daily["n_filled"],
+            "avg_pnl30_bps": round(daily["avg_pnl30_bps"], 4),
         }
-        if len(daily.values) >= 3:
-            entry["p10_bps"] = round(float(np.percentile(daily.values, 10)), 4)
+        if daily["n_filled"] >= 3 and daily["downside_p10_bps"] == daily["downside_p10_bps"]:
+            entry["p10_bps"] = round(daily["downside_p10_bps"], 4)
         result.daily_breakdown.append(entry)
 
     # 判定

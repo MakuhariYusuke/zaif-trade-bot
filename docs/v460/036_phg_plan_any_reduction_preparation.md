@@ -3673,7 +3673,35 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - `scripts/v460/lib/metrics_utils.py`: `any_type_debt_tokens=0`
   - `scripts/v460/analysis/side_regime_dashboard.py`: `any_type_debt_tokens=0`
-  - `scripts/v460/lib/stopgap_health.py`: `any_type_debt_tokens=0`
+- `scripts/v460/lib/stopgap_health.py`: `any_type_debt_tokens=0`
+
+### Step147 MetricsAccumulator 再横展開（ab_judgment / results_analyzer）
+
+1. 変更概要
+- `scripts/v460/lib/ab_judgment.py` の `evaluate_trending_down_sell()` を `MetricsAccumulator` ベースに変更した。
+- ローカルの `_DailyPnlBreakdown` と `pnl_values` / `PnlWinAccumulator` の手書き集計を削除し、全体・日次とも `MetricsAccumulator` の `to_base_metrics()` を使う形に統一した。
+- `scripts/v460/lib/results_analyzer.py` の public API `compute_run_level_breakdown()` は、重複していた run_id grouping を `_group_runs_with_latest_id()` へ委譲する形に整理した。
+
+2. 類似実装の確認
+- `evaluate_trending_down_sell()` は `side_regime_dashboard` / `stopgap_health` と同じく、「filtered records を舐めて 3指標 + 日次内訳を作る」同型だったため、同じ集計器へ寄せた。
+- `results_analyzer` の run grouping は、既に最新 run 判定用 helper があったので、その再利用だけで重複を消せた。
+
+3. 目的
+- trending_down sell 評価のメトリクス定義を `metrics_utils` に揃え、平均・勝率・tail 指標の変更漏れを防ぐ。
+- 日次 breakdown 用の専用集計構造を減らし、保守点を削る。
+- run_id grouping ロジックの分岐を 1 箇所に閉じ込め、将来の legacy key 変更時の修正点を減らす。
+
+4. 検証
+- `py_compile`
+  - `scripts/v460/lib/ab_judgment.py`
+  - `scripts/v460/lib/results_analyzer.py`
+- `pytest`
+  - `tests/unit/v460/test_160_ab_judgment.py`
+  - `tests/unit/v460/test_results_analyzer.py`
+  - 結果: `71 passed`
+- `any_inventory`
+  - `scripts/v460/lib/ab_judgment.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/results_analyzer.py`: `any_type_debt_tokens=0`
 
 ## 6. 次フェーズ（優先順）
 
