@@ -621,6 +621,15 @@ class TestFillRecordBuilderIntegration:
         assert "_resolve_fill_cancel_reason(" in measurement_source
         assert "_compute_fill_spread_bps(" in market_source
 
+    def test_resume_and_reload_use_iter_glob(self) -> None:
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        resume_source = inspect.getsource(FillTestRunner.resume_from_existing)
+        run_source = inspect.getsource(FillTestRunner.run_continuous)
+        assert "iter_fill_records_glob(" in resume_source
+        assert "iter_fill_records_glob(" in run_source
+
 
 class TestCheckBalanceAcceptsRegimeMult:
     """_check_balance_for_side が regime_mult パラメータを受け取ることを確認."""

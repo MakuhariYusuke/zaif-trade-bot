@@ -28,7 +28,7 @@ from ztb.metrics.fill_quality import (
     FillRecord,
     compute_record_pnl_jpy,
     filter_clean_records,
-    load_fill_records_glob,
+    iter_fill_records_glob,
 )
 
 if TYPE_CHECKING:
@@ -1153,7 +1153,7 @@ class FillLoopOrchestratorMixin:
             f"{filled_count} filled"
         )
         # 024# O4: 集計用に全レコードをリロード
-        return load_fill_records_glob(str(self._results_dir))
+        return list(iter_fill_records_glob(str(self._results_dir)))
 
     async def cleanup_heartbeat(self) -> None:
         """175# 異常終了時の heartbeat タスク cleanup.

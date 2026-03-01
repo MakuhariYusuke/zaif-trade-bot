@@ -2833,6 +2833,31 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - `scripts/v460/lib/fill_cycle_executor.py`: `any_type_debt_tokens=0`
 
+### Step124: 残る load_fill_records_glob 呼び出しも iterator-first に揃える
+
+1. 対応概要
+- `scripts/v460/lib/fill_record_helpers.py`
+  - `resume_from_existing()` の読み込みを `list(iter_fill_records_glob(...))` に変更した。
+- `scripts/v460/lib/fill_loop_orchestrator.py`
+  - `run_continuous()` 終了時の全件再読込も `list(iter_fill_records_glob(...))` に変更した。
+- `tests/unit/v460/test_145_structural_fixes.py`
+  - `resume_from_existing()` / `run_continuous()` が `iter_fill_records_glob()` を使う構造テストを追加した。
+
+2. 目的
+- 残っていた `load_fill_records_glob()` 呼び出しを、iterator-first で統一する。
+- 呼び出し側で「list を欲しいから明示的に list 化している」ことをはっきりさせる。
+
+3. 検証
+- `py_compile`
+  - `scripts/v460/lib/fill_record_helpers.py`
+  - `scripts/v460/lib/fill_loop_orchestrator.py`
+- `pytest`
+  - `tests/unit/v460/test_145_structural_fixes.py -k "TestFillRecordBuilderIntegration"`
+  - 結果: `2 passed`
+- `any_inventory`
+  - `scripts/v460/lib/fill_record_helpers.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/fill_loop_orchestrator.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

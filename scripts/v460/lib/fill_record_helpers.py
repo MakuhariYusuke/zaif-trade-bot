@@ -28,7 +28,7 @@ from scripts.v460.lib.lot_manager import (
     resolve_regime_lot_multiplier,
     scale_lot_by_regime,
 )
-from ztb.metrics.fill_quality import build_skip_fill_record, load_fill_records_glob
+from ztb.metrics.fill_quality import build_skip_fill_record, iter_fill_records_glob
 
 if TYPE_CHECKING:
     from scripts.v460.lib.cancel_reasons import CancelReason
@@ -263,7 +263,7 @@ class FillRecordHelpersMixin:
           - _last_side を復元 (片側蓄積防止)
           - 既存レコードを返す (結果集計用)
         """
-        existing = load_fill_records_glob(str(self._results_dir))
+        existing = list(iter_fill_records_glob(str(self._results_dir)))
         if not existing:
             return []
 
