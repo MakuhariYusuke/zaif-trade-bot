@@ -60,7 +60,7 @@ def compute_instant_velocity_bps(
         current_mid: 現在の mid price
         prev_mid: 前回の mid price
         dt: 前回観測からの経過時間 (秒)
-        max_dt: この秒数を超えた場合は stale と見なし None を返す
+        max_dt: この秒数以上の場合は stale と見なし None を返す
 
     Returns:
         velocity in bps, or None if stale / invalid

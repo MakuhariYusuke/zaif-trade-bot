@@ -45,6 +45,9 @@ class FillTestConfig:
     symbol: str = "btc_jpy"
     order_quantity: float = 0.001  # 初期ロット (Coincheck BTC 最小)
     cycle_interval_sec: float = 120.0  # サイクル間隔
+    # 209# M4: sleep 乗数積み重ねの上限 (0=無制限)
+    # soft_dd_mult × loss_cooldown × one_sided_mult の積で interval が過大になるのを防止
+    max_cycle_sleep_sec: float = 600.0  # 10分上限 (0=無制限)
     order_timeout_sec: float = 90.0  # 注文タイムアウト (096# 300→90)
     order_timeout_sec_sell: float | None = None  # 155# S-3: sell 専用 timeout (None=共通値)
     poll_interval_sec: float = 5.0  # ポーリング間隔
@@ -582,6 +585,25 @@ class FillTestConfig:
                 f"loss_cooldown_interval_mult must be >= 1.0, "
                 f"got {self.loss_cooldown_interval_mult}"
             )
+        # 209# M-2: one-sided 制限パラメータのバリデーション
+        if self.one_sided_consecutive_interval_mult <= 0:
+            raise ValueError(
+                f"one_sided_consecutive_interval_mult must be > 0, "
+                f"got {self.one_sided_consecutive_interval_mult}"
+            )
+        if self.one_sided_consecutive_limit < 0:
+            raise ValueError(
+                f"one_sided_consecutive_limit must be >= 0, "
+                f"got {self.one_sided_consecutive_limit}"
+            )
+        # 209# H5: コアタイミングパラメータのバリデーション
+        for _timing_name in ("order_timeout_sec", "poll_interval_sec", "cycle_interval_sec"):
+            if getattr(self, _timing_name) <= 0:
+                raise ValueError(f"{_timing_name} must be > 0, got {getattr(self, _timing_name)}")
+        if self.max_cycle_sleep_sec < 0:
+            raise ValueError(
+                f"max_cycle_sleep_sec must be >= 0, got {self.max_cycle_sleep_sec}"
+            )
 
 
     # ================================================================
@@ -1087,7 +1109,8 @@ class FillTestConfig:
 
         # フラットキー (YAML キー == dataclass フィールド名)
         flat_keys = {
-            "symbol", "order_quantity", "cycle_interval_sec", "order_timeout_sec",
+            "symbol", "order_quantity", "cycle_interval_sec", "max_cycle_sleep_sec",
+            "order_timeout_sec",
             "order_timeout_sec_sell",
             "poll_interval_sec", "post_fill_wait_sec", "post_fill_wait_sec_sell",
             "results_dir",

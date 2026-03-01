@@ -196,7 +196,9 @@ class FillTestHealthMonitor:
                     f"[health] WARNING: disk_free={disk_free:.2f}GB < "
                     f"{self._thresholds.disk_free_warn_gb:.1f}GB"
                 )
-                status["level"] = "warning"
+                # 209# H1: severity escalation — critical を warning で上書きしない
+                if status.get("level") != "critical":
+                    status["level"] = "warning"
         else:
             status["level"] = "unknown"
 

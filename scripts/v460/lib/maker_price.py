@@ -25,6 +25,7 @@ from typing import Final, NamedTuple, Optional, Protocol
 from scripts.v460.lib.fast_fill_defense import FastFillDefense
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.regime_detector import FillTestRegime
+from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
 
 logger = logging.getLogger(__name__)
 
@@ -733,8 +734,6 @@ class MakerPriceCalculator:
         mid_price = (best_bid + best_ask) / 2.0
 
         # 054# → 208# SSOT: mid price velocity を velocity_math で算出
-        from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
-
         now = time.time()
         mid_trend_bps: float | None = None
         if self._prev_mid_price is not None and self._prev_mid_time is not None:

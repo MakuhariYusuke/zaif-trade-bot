@@ -43,6 +43,9 @@ class FillLoopOrchestratorMixin:
     _halt_start_cycle: int | None = None
     _last_balance_forced_time: float = 0.0
     _balance_forced_freq_count: int = 0
+    # 209# M6: 動的生成されていた属性をクラスレベルに宣言
+    _in_hard_skip_hour: bool = False
+    _halt_iter_count: int = 0
     # 202# A: 単一サイクル大損失クールダウン乗数 (次サイクルのみ有効)
     _loss_cooldown_mult: float = 1.0
     # 205# §9.2: Toxic Fill 同一サイド拒否 — side → 残存拒否サイクル数
@@ -536,6 +539,13 @@ class FillLoopOrchestratorMixin:
                         f"[daily_drawdown] Day reset → toxic veto cleared: {self._toxic_veto}"
                     )
                     self._toxic_veto = {}
+                # 209# M-3: one-sided 連続カウンタも日替わりでリセット
+                if self._one_sided_consecutive_count > 0:
+                    logger.info(
+                        f"[daily_drawdown] Day reset → one_sided_consecutive_count "
+                        f"{self._one_sided_consecutive_count} → 0"
+                    )
+                    self._one_sided_consecutive_count = 0
 
             # 168# §4.1 #3: 日次ドローダウンガード — halt 中はスキップ
             if self._daily_drawdown_guard.is_halted():
@@ -667,6 +677,12 @@ class FillLoopOrchestratorMixin:
                 )
                 if _alt_blocked:
                     # 両サイド封鎖 (veto + per_side_dd 含む) → スキップ
+                    # 209# H-1: デッドロック防止 — skip 時も veto カウンタを減算
+                    for _vs in list(self._toxic_veto.keys()):
+                        self._toxic_veto[_vs] -= 1
+                        if self._toxic_veto[_vs] <= 0:
+                            del self._toxic_veto[_vs]
+                            logger.info(f"[209# H-1] Toxic veto expired (both-blocked): {_vs}")
                     batch.append(self._make_loop_skip_record(
                         side="none",
                         cancel_reason=CR.TOXIC_FILL_SIDE_VETO,
@@ -1385,7 +1401,11 @@ class FillLoopOrchestratorMixin:
                 ):
                     _os_mult = self.config.one_sided_consecutive_interval_mult
 
-                await asyncio.sleep(interval * soft_dd_mult * _loss_cd * _os_mult)
+                # 209# M4: sleep 上限キャップ — 乗数積み重ねによる長時間無応答を防止
+                _raw_sleep = interval * soft_dd_mult * _loss_cd * _os_mult
+                _max_sleep = self.config.max_cycle_sleep_sec
+                _clamped = min(_raw_sleep, _max_sleep) if _max_sleep > 0 else _raw_sleep
+                await asyncio.sleep(_clamped)
 
         # 残りバッチを保存
         if batch:

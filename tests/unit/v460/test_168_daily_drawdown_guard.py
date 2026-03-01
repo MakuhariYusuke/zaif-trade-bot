@@ -655,3 +655,130 @@ class TestOneSidedConsecutiveMultLogic:
     def test_disabled(self) -> None:
         assert self._calc_os_mult(100, 0, 3.0) == 1.0
 
+
+class TestConfigValidation209:
+    """209# config validation テスト."""
+
+    def test_negative_one_sided_limit_raises(self) -> None:
+        """one_sided_consecutive_limit < 0 で ValueError。"""
+        import pytest
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        with pytest.raises(ValueError, match="one_sided_consecutive_limit"):
+            FillTestConfig(one_sided_consecutive_limit=-1)
+
+    def test_zero_one_sided_mult_raises(self) -> None:
+        """one_sided_consecutive_interval_mult <= 0 で ValueError。"""
+        import pytest
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        with pytest.raises(ValueError, match="one_sided_consecutive_interval_mult"):
+            FillTestConfig(one_sided_consecutive_interval_mult=0.0)
+
+    def test_zero_cycle_interval_raises(self) -> None:
+        """cycle_interval_sec <= 0 で ValueError。"""
+        import pytest
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        with pytest.raises(ValueError, match="cycle_interval_sec"):
+            FillTestConfig(cycle_interval_sec=0.0)
+
+    def test_zero_poll_interval_raises(self) -> None:
+        """poll_interval_sec <= 0 で ValueError。"""
+        import pytest
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        with pytest.raises(ValueError, match="poll_interval_sec"):
+            FillTestConfig(poll_interval_sec=-1.0)
+
+    def test_max_cycle_sleep_default(self) -> None:
+        """max_cycle_sleep_sec のデフォルト値が 600。"""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        cfg = FillTestConfig()
+        assert cfg.max_cycle_sleep_sec == 600.0
+
+    def test_max_cycle_sleep_negative_raises(self) -> None:
+        """max_cycle_sleep_sec < 0 で ValueError。"""
+        import pytest
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        with pytest.raises(ValueError, match="max_cycle_sleep_sec"):
+            FillTestConfig(max_cycle_sleep_sec=-1.0)
+
+
+class TestSleepClampLogic209:
+    """209# M4: sleep 乗数上限キャップロジックのテスト。"""
+
+    @staticmethod
+    def _calc_clamped_sleep(
+        interval: float,
+        soft_dd_mult: float,
+        loss_cd: float,
+        os_mult: float,
+        max_sleep: float,
+    ) -> float:
+        """orchestrator sleep ロジックを再現。"""
+        raw = interval * soft_dd_mult * loss_cd * os_mult
+        if max_sleep > 0:
+            return min(raw, max_sleep)
+        return raw
+
+    def test_under_cap(self) -> None:
+        result = self._calc_clamped_sleep(120, 1.0, 1.0, 1.0, 600.0)
+        assert result == 120.0
+
+    def test_capped(self) -> None:
+        # 120 * 3.0 * 2.0 * 3.0 = 2160 → capped to 600
+        result = self._calc_clamped_sleep(120, 3.0, 2.0, 3.0, 600.0)
+        assert result == 600.0
+
+    def test_disabled_cap(self) -> None:
+        # max_sleep=0 → no cap
+        result = self._calc_clamped_sleep(120, 3.0, 2.0, 3.0, 0.0)
+        assert result == 2160.0
+
+
+class TestVetoDeadlockFix209:
+    """209# H-1: 両サイド veto 時のデクリメント検証。"""
+
+    def test_both_blocked_decrements_veto(self) -> None:
+        """両サイド封鎖時に veto カウンタが減算されること (デッドロック防止)。"""
+        toxic_veto: dict[str, int] = {"buy": 2, "sell": 1}
+
+        # 209# ロジック再現: both-blocked パスでの decrement
+        for _vs in list(toxic_veto.keys()):
+            toxic_veto[_vs] -= 1
+            if toxic_veto[_vs] <= 0:
+                del toxic_veto[_vs]
+
+        # sell は 1→0 で削除、buy は 2→1 で残存
+        assert toxic_veto == {"buy": 1}
+
+    def test_both_blocked_clears_all(self) -> None:
+        """両サイドとも残り1の場合、両方クリアされること。"""
+        toxic_veto: dict[str, int] = {"buy": 1, "sell": 1}
+
+        for _vs in list(toxic_veto.keys()):
+            toxic_veto[_vs] -= 1
+            if toxic_veto[_vs] <= 0:
+                del toxic_veto[_vs]
+
+        assert toxic_veto == {}
+
+
+class TestInstantVelocityBoundary209:
+    """209# M-4: dt == max_dt の境界条件テスト。"""
+
+    def test_dt_equals_max_dt_returns_none(self) -> None:
+        """dt == max_dt の場合は None (stale) を返すこと。"""
+        from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
+
+        result = compute_instant_velocity_bps(
+            current_mid=10_100_000.0,
+            prev_mid=10_000_000.0,
+            dt=30.0,
+            max_dt=30.0,
+        )
+        assert result is None
+
