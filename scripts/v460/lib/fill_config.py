@@ -357,6 +357,10 @@ class FillTestConfig:
     toxic_fill_veto_cycles: int = 3              # 拒否サイクル数 (0=無効)
     # 202# B: 片側残高枯渇時にも rescue offset を適用 (通常の rescue は deadlock 用)
     one_sided_balance_rescue_offset: bool = True  # True で one_sided_balance 時も offset 保護
+    # 207# §4: one-sided 連続実行制限 — 片側残高枯渇での連続強制実行を制限
+    # 205# §4.2 Codex: offset だけでは不十分、interval 延長 + 連続制限が必要
+    one_sided_consecutive_limit: int = 5  # 片側強制取引の連続上限 (0=無制限)
+    one_sided_consecutive_interval_mult: float = 3.0  # 上限到達時の interval 乗数
     # ---- 133# P0-09: unknown レジームでの buy スキップ ----
     skip_buy_unknown_regime: bool = False  # True で unknown レジーム時 buy もスキップ (-1.384bps)
     # ---- 155# §9: trending レジームでの sell 抑制 ----
@@ -956,6 +960,11 @@ class FillTestConfig:
         # 202# B: 片側残高枯渇時の rescue offset
         if "one_sided_balance_rescue_offset" in 止血:
             kwargs["one_sided_balance_rescue_offset"] = 止血["one_sided_balance_rescue_offset"]
+        # 207# §4: one-sided 連続実行制限
+        if "one_sided_consecutive_limit" in 止血:
+            kwargs["one_sided_consecutive_limit"] = int(止血["one_sided_consecutive_limit"])
+        if "one_sided_consecutive_interval_mult" in 止血:
+            kwargs["one_sided_consecutive_interval_mult"] = float(止血["one_sided_consecutive_interval_mult"])
         # 205# §9.5: 片側 DD Halt (daily_drawdown サブキー)
         if dd_guard.get("per_side_enabled") is not None:
             kwargs["per_side_dd_enabled"] = dd_guard["per_side_enabled"]

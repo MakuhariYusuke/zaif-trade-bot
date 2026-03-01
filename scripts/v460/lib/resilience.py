@@ -240,6 +240,8 @@ class FillTestState:
     regime_raw_history: list[str] | None = None  # [regime_value, ...]
     # 168# §4.1 #3: 日次ドローダウンガード状態
     daily_drawdown_state: dict[str, object] | None = None
+    # 207# §1: toxic veto 永続化 (再起動時に veto 状態を復元)
+    toxic_veto: dict[str, int] | None = None
     # タイムスタンプ
     saved_at: float = 0.0
     saved_at_iso: str = ""

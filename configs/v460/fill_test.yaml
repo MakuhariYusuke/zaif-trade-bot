@@ -393,6 +393,10 @@ loss_control:
   toxic_fill_veto_cycles: 3            # 拒否サイクル数 (0=無効)
   # 202# B: 片側残高枯渇時にも rescue offset を適用 (強制 sell の AS リスク抑制)
   one_sided_balance_rescue_offset: true
+  # 207# §4: one-sided 連続実行制限 (片側残高枯渇での連続強制取引を制限)
+  # 205# §4.2 Codex: offset 保護だけでは不十分、interval 延長 + 連続制限が必要
+  one_sided_consecutive_limit: 5           # 片側強制取引の連続上限 (0=無制限)
+  one_sided_consecutive_interval_mult: 3.0 # 上限到達時の interval 乗数
   # P0-09: unknown レジーム時の buy スキップ (unknown-buy 平均 -1.384bps)
   skip_buy_unknown_regime: true
   # 155# §9: trending レジーム時の sell スキップ (trending-sell 平均 -0.687bps)

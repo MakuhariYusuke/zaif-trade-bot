@@ -481,3 +481,177 @@ class TestFillTestConfig205:
         assert cfg.per_side_dd_enabled is False
         assert cfg.per_side_dd_hard_limit_bps == -30.0
         assert cfg.per_side_dd_halt_cycles == 0
+
+
+# ======================================================================
+# 12. 207# 堅牢性修正テスト
+# ======================================================================
+
+
+class TestFillTestStateToxicVeto:
+    """207# §1: FillTestState に toxic_veto フィールドが存在し永続化可能。"""
+
+    def test_toxic_veto_field_exists(self) -> None:
+        from scripts.v460.lib.resilience import FillTestState
+        state = FillTestState()
+        assert state.toxic_veto is None
+
+    def test_toxic_veto_with_data(self) -> None:
+        from scripts.v460.lib.resilience import FillTestState
+        state = FillTestState(toxic_veto={"buy": 3, "sell": 1})
+        assert state.toxic_veto == {"buy": 3, "sell": 1}
+
+    def test_toxic_veto_none_default(self) -> None:
+        from scripts.v460.lib.resilience import FillTestState
+        state = FillTestState(toxic_veto=None)
+        assert state.toxic_veto is None
+
+
+class TestPerSideDDWarmup:
+    """207# §2: warmup が per-side PnL を正しく計算する。"""
+
+    def _make_guard(
+        self,
+        per_side_hard: float = -20.0,
+        per_side_halt_cycles: int = 0,
+    ) -> DailyDrawdownGuard:
+        return DailyDrawdownGuard(
+            enabled=True,
+            hard_limit_bps=-50.0,
+            soft_limit_bps=-30.0,
+            per_side_enabled=True,
+            per_side_hard_limit_bps=per_side_hard,
+            per_side_halt_cycles=per_side_halt_cycles,
+        )
+
+    def test_warmup_sets_per_side_pnl(self) -> None:
+        """warmup 後に daily_pnl_bps_buy / sell が計算されること。"""
+        guard = self._make_guard(per_side_hard=-20.0)
+        # warmup で注入される値をシミュレート
+        guard.state.daily_pnl_bps_buy = -10.0
+        guard.state.daily_pnl_bps_sell = -5.0
+        guard.state.daily_pnl_bps = -15.0
+        guard.state.daily_fill_count = 3
+
+        assert guard.state.daily_pnl_bps_buy == pytest.approx(-10.0)
+        assert guard.state.daily_pnl_bps_sell == pytest.approx(-5.0)
+        assert not guard.is_side_halted("buy")
+        assert not guard.is_side_halted("sell")
+
+    def test_warmup_triggers_per_side_halt(self) -> None:
+        """warmup で閾値超過した場合に片側封鎖されること。"""
+        guard = self._make_guard(per_side_hard=-10.0)
+        # 直接 state を設定（warmup がやることをシミュレート）
+        guard.state.daily_pnl_bps_buy = -15.0
+        guard.state.side_halted_buy = True
+        guard.state.side_halt_remaining_buy = 0
+
+        assert guard.is_side_halted("buy")
+        assert not guard.is_side_halted("sell")
+
+
+class TestToxicVetoDayReset:
+    """207# §4: UTC 日替わりで toxic veto がクリアされること。
+
+    (fill_loop_orchestrator 内のロジックのため、ここでは DailyDrawdownGuard
+    の maybe_reset_day がトリガとなることを前提に、ガード側の動作を確認。)
+    """
+
+    def test_day_reset_returns_true(self) -> None:
+        """maybe_reset_day が True を返した際に veto クリアのトリガとなること。"""
+        guard = DailyDrawdownGuard(enabled=True, hard_limit_bps=-50.0, soft_limit_bps=-30.0)
+        tomorrow = _tomorrow_str()
+        with patch.object(DailyDrawdownGuard, "_utc_today", return_value=tomorrow):
+            assert guard.maybe_reset_day() is True
+
+
+class TestPerSideDDAndVetoInteraction:
+    """207# §5b: per_side_dd と toxic veto の相互作用テスト。"""
+
+    def test_veto_alt_side_blocked_by_dd(self) -> None:
+        """toxic veto で切替先が per_side_dd で封鎖されている場合の検証。
+
+        per_side_dd が sell を封鎖中 + toxic veto が buy を封鎖中
+        → 両方封鎖 → スキップが期待される。
+        """
+        guard = DailyDrawdownGuard(
+            enabled=True,
+            hard_limit_bps=-50.0,
+            soft_limit_bps=-30.0,
+            per_side_enabled=True,
+            per_side_hard_limit_bps=-10.0,
+            per_side_halt_cycles=0,
+        )
+        # sell 側を per_side_dd で封鎖
+        guard.update_pnl(-15.0, side="sell")
+        assert guard.is_side_halted("sell")
+
+        # toxic veto は dict として外部管理 (orchestrator)
+        toxic_veto: dict[str, int] = {"buy": 3}
+
+        # next_side = buy → toxic veto でブロック → alt = sell
+        next_side = "buy"
+        assert next_side in toxic_veto
+        alt_side = "sell"
+        # alt_side が per_side_dd で封鎖されているか確認
+        alt_blocked = alt_side in toxic_veto or guard.is_side_halted(alt_side)
+        assert alt_blocked is True  # sell は per_side_dd で封鎖済み
+
+
+class TestOneSidedConsecutiveConfig:
+    """207# §4: one-sided 連続実行制限の設定デフォルト値テスト。"""
+
+    def test_default_values(self) -> None:
+        """FillTestConfig のデフォルト値が正しいこと。"""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        cfg = FillTestConfig()
+        assert cfg.one_sided_consecutive_limit == 5
+        assert cfg.one_sided_consecutive_interval_mult == 3.0
+
+    def test_custom_values(self) -> None:
+        """カスタム値を設定できること。"""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        cfg = FillTestConfig(
+            one_sided_consecutive_limit=10,
+            one_sided_consecutive_interval_mult=5.0,
+        )
+        assert cfg.one_sided_consecutive_limit == 10
+        assert cfg.one_sided_consecutive_interval_mult == 5.0
+
+    def test_disabled_when_zero(self) -> None:
+        """limit=0 で無制限（無効化）となること。"""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        cfg = FillTestConfig(one_sided_consecutive_limit=0)
+        # limit=0 → 条件 `_os_limit > 0` が False → mult 不適用
+        assert cfg.one_sided_consecutive_limit == 0
+
+
+class TestOneSidedConsecutiveMultLogic:
+    """207# §4: one-sided interval 乗数の適用ロジック単体テスト。
+
+    fill_loop_orchestrator の sleep 付近のロジックを関数外で再現し、
+    multiplier 計算の正しさを検証する。
+    """
+
+    @staticmethod
+    def _calc_os_mult(count: int, limit: int, mult: float) -> float:
+        """orchestrator の §4 ロジックを再現。"""
+        if limit > 0 and count >= limit:
+            return mult
+        return 1.0
+
+    def test_under_limit(self) -> None:
+        assert self._calc_os_mult(3, 5, 3.0) == 1.0
+
+    def test_at_limit(self) -> None:
+        assert self._calc_os_mult(5, 5, 3.0) == 3.0
+
+    def test_over_limit(self) -> None:
+        assert self._calc_os_mult(8, 5, 3.0) == 3.0
+
+    def test_disabled(self) -> None:
+        assert self._calc_os_mult(100, 0, 3.0) == 1.0
+

@@ -47,6 +47,8 @@ class FillLoopOrchestratorMixin:
     _loss_cooldown_mult: float = 1.0
     # 205# §9.2: Toxic Fill 同一サイド拒否 — side → 残存拒否サイクル数
     _toxic_veto: dict[str, int] | None = None
+    # 207# §4: one-sided 連続実行カウンタ (205# §4.2 Codex 対応)
+    _one_sided_consecutive_count: int = 0
 
     def _is_sell_killed(self) -> bool:
         """133# P0-10 / 136# P1-03: sell 動的 kill 判定 — SellDynamicKillManager に委譲.
@@ -121,22 +123,48 @@ class FillLoopOrchestratorMixin:
             if r_date == utc_today:
                 daily_pnl_sum += r.post_fill_30s_pnl
                 daily_fill_count += 1
+        # 207# §2: per-side PnL の warmup 計算
+        daily_pnl_buy = 0.0
+        daily_pnl_sell = 0.0
+        for r in records:
+            if not r.filled or r.post_fill_30s_pnl is None:
+                continue
+            r_date = datetime.fromtimestamp(r.timestamp, tz=timezone.utc).strftime("%Y%m%d")
+            if r_date == utc_today and r.side == "buy":
+                daily_pnl_buy += r.post_fill_30s_pnl
+            elif r_date == utc_today and r.side == "sell":
+                daily_pnl_sell += r.post_fill_30s_pnl
+
         if daily_fill_count > 0:
             # 1件ずつ update_pnl を呼ばず、直接 state を注入 (効率的)
-            self._daily_drawdown_guard.state.daily_pnl_bps = daily_pnl_sum
-            self._daily_drawdown_guard.state.daily_fill_count = daily_fill_count
-            self._daily_drawdown_guard.state.current_day = utc_today
+            guard = self._daily_drawdown_guard
+            guard.state.daily_pnl_bps = daily_pnl_sum
+            guard.state.daily_fill_count = daily_fill_count
+            guard.state.current_day = utc_today
+            # 207# §2: per-side PnL 注入
+            guard.state.daily_pnl_bps_buy = daily_pnl_buy
+            guard.state.daily_pnl_bps_sell = daily_pnl_sell
+            # per-side halt 判定
+            if guard._per_side_enabled:
+                if daily_pnl_buy <= guard._per_side_hard_limit_bps:
+                    guard.state.side_halted_buy = True
+                    guard.state.side_halt_remaining_buy = guard._per_side_halt_cycles
+                if daily_pnl_sell <= guard._per_side_hard_limit_bps:
+                    guard.state.side_halted_sell = True
+                    guard.state.side_halt_remaining_sell = guard._per_side_halt_cycles
             # soft limit チェック (hard 超過時も soft は必ず超過)
-            if daily_pnl_sum <= self._daily_drawdown_guard._soft_limit_bps:
-                self._daily_drawdown_guard._soft_triggered_today = True
+            if daily_pnl_sum <= guard._soft_limit_bps:
+                guard._soft_triggered_today = True
             # hard limit チェック
-            if daily_pnl_sum <= self._daily_drawdown_guard._hard_limit_bps:
-                self._daily_drawdown_guard.state.halted = True
+            if daily_pnl_sum <= guard._hard_limit_bps:
+                guard.state.halted = True
                 import time as _time
-                self._daily_drawdown_guard.state.halt_triggered_at = _time.time()
+                guard.state.halt_triggered_at = _time.time()
             logger.warning(
                 f"[203# F] DD warmup from fill records: {daily_fill_count} fills today, "
-                f"daily_pnl={daily_pnl_sum:+.2f}bps, halted={self._daily_drawdown_guard.state.halted}"
+                f"daily_pnl={daily_pnl_sum:+.2f}bps, "
+                f"buy={daily_pnl_buy:+.2f}bps, sell={daily_pnl_sell:+.2f}bps, "
+                f"halted={guard.state.halted}"
             )
 
     # ------------------------------------------------------------------
@@ -433,11 +461,19 @@ class FillLoopOrchestratorMixin:
             # 168# §4.1 #3: 日次ドローダウンガード状態復元
             if saved_state is not None and saved_state.daily_drawdown_state:
                 self._daily_drawdown_guard.import_state(saved_state.daily_drawdown_state)
+            # 207# §1: toxic veto 状態復元
+            if saved_state is not None and saved_state.toxic_veto:
+                self._toxic_veto = dict(saved_state.toxic_veto)
+                logger.info(f"[207# §1] Toxic veto restored: {self._toxic_veto}")
         else:
             # regime_detector がない場合でも daily_drawdown state は復元
             saved_state = self._state_persistence.load()
             if saved_state is not None and saved_state.daily_drawdown_state:
                 self._daily_drawdown_guard.import_state(saved_state.daily_drawdown_state)
+            # 207# §1: toxic veto 状態復元
+            if saved_state is not None and saved_state.toxic_veto:
+                self._toxic_veto = dict(saved_state.toxic_veto)
+                logger.info(f"[207# §1] Toxic veto restored: {self._toxic_veto}")
 
         # 203# F: DD warmup — state 復元失敗時 (stale/missing) は fill records から再計算
         # state file が壊れている or 保存されていない場合のセーフティネット
@@ -494,6 +530,12 @@ class FillLoopOrchestratorMixin:
                         f"{_old_mult:.1f} → 1.0"
                     )
                     self._soft_drawdown_interval_multiplier = 1.0
+                # 207# §4: toxic veto も日替わりでクリア
+                if self._toxic_veto:
+                    logger.info(
+                        f"[daily_drawdown] Day reset → toxic veto cleared: {self._toxic_veto}"
+                    )
+                    self._toxic_veto = {}
 
             # 168# §4.1 #3: 日次ドローダウンガード — halt 中はスキップ
             if self._daily_drawdown_guard.is_halted():
@@ -534,6 +576,7 @@ class FillLoopOrchestratorMixin:
                         base_offset_ratio_buy=self._maker_price.base_offset_ratio_buy,
                         base_offset_ratio_sell=self._maker_price.base_offset_ratio_sell,
                         daily_drawdown_state=self._daily_drawdown_guard.export_state(),
+                        toxic_veto=dict(self._toxic_veto) if self._toxic_veto else None,
                         **self._get_regime_state_fields(),
                     ))
                 await self._effective_sleep(multiplier=5.0)  # 179# S1: halt 中は 5x 間隔
@@ -580,14 +623,9 @@ class FillLoopOrchestratorMixin:
             # 205# §9.5: 片側 DD Halt のサイクルカウンタ更新
             self._daily_drawdown_guard.tick_side_halt()
 
-            # 205# §9.2: Toxic Fill 同一サイド拒否 — カウンタ減算
+            # 205# §9.2: Toxic Fill 同一サイド拒否 — 初期化のみ (デクリメントはサイクル末尾)
             if self._toxic_veto is None:
                 self._toxic_veto = {}
-            for _veto_side in list(self._toxic_veto.keys()):
-                self._toxic_veto[_veto_side] -= 1
-                if self._toxic_veto[_veto_side] <= 0:
-                    del self._toxic_veto[_veto_side]
-                    logger.info(f"[205# §9.2] Toxic veto expired: {_veto_side}")
 
             # 129# D.2: 残高制約による side 強制切替追跡
             _balance_forced = False
@@ -620,10 +658,15 @@ class FillLoopOrchestratorMixin:
                     next_side = _alt
 
             # 205# §9.2: Toxic Fill 同一サイド拒否 — 封鎖されたサイドは反対に切替
+            # 207# §5b: alt_side が per_side_dd で封鎖されている場合も考慮
             if self._toxic_veto and next_side in self._toxic_veto:
                 _alt = "sell" if next_side == "buy" else "buy"
-                if _alt in self._toxic_veto:
-                    # 両サイド拒否 → スキップ
+                _alt_blocked = (
+                    _alt in self._toxic_veto
+                    or self._daily_drawdown_guard.is_side_halted(_alt)
+                )
+                if _alt_blocked:
+                    # 両サイド封鎖 (veto + per_side_dd 含む) → スキップ
                     batch.append(self._make_loop_skip_record(
                         side="none",
                         cancel_reason=CR.TOXIC_FILL_SIDE_VETO,
@@ -1061,6 +1104,23 @@ class FillLoopOrchestratorMixin:
                 self._balance_forced_skip_count = 0
                 # 158# §20-B: 実サイクル実行 → trending sell skip カウンタリセット
                 self._trending_sell_skip_count = 0
+                # 207# §4: one-sided 連続実行追跡 (205# §4.2 Codex)
+                if _one_sided_balance:
+                    self._one_sided_consecutive_count += 1
+                    _os_limit = self.config.one_sided_consecutive_limit
+                    if _os_limit > 0 and self._one_sided_consecutive_count >= _os_limit:
+                        logger.warning(
+                            f"[207# §4] One-sided consecutive limit reached: "
+                            f"{self._one_sided_consecutive_count}/{_os_limit} — "
+                            f"interval ×{self.config.one_sided_consecutive_interval_mult:.1f}"
+                        )
+                else:
+                    if self._one_sided_consecutive_count > 0:
+                        logger.info(
+                            f"[207# §4] One-sided streak ended: "
+                            f"{self._one_sided_consecutive_count} consecutive → reset"
+                        )
+                    self._one_sided_consecutive_count = 0
             except KeyboardInterrupt:
                 logger.info("KeyboardInterrupt — stopping gracefully")
                 self._kill_switch.kill("keyboard_interrupt")
@@ -1250,6 +1310,7 @@ class FillLoopOrchestratorMixin:
                     base_offset_ratio_buy=self._maker_price.base_offset_ratio_buy,
                     base_offset_ratio_sell=self._maker_price.base_offset_ratio_sell,
                     daily_drawdown_state=self._daily_drawdown_guard.export_state(),
+                    toxic_veto=dict(self._toxic_veto) if self._toxic_veto else None,
                     **self._get_regime_state_fields(),
                 ))
 
@@ -1306,7 +1367,25 @@ class FillLoopOrchestratorMixin:
                 # 202# A: 単一サイクル大損失クールダウン (1回適用で自動リセット)
                 _loss_cd = self._loss_cooldown_mult
                 self._loss_cooldown_mult = 1.0  # 次サイクルではリセット
-                await asyncio.sleep(interval * soft_dd_mult * _loss_cd)
+
+                # 207# §3: Toxic veto カウンタ減算 (サイクル末尾で実行 — off-by-one 防止)
+                if self._toxic_veto:
+                    for _veto_side in list(self._toxic_veto.keys()):
+                        self._toxic_veto[_veto_side] -= 1
+                        if self._toxic_veto[_veto_side] <= 0:
+                            del self._toxic_veto[_veto_side]
+                            logger.info(f"[205# §9.2] Toxic veto expired: {_veto_side}")
+
+                # 207# §4: one-sided 連続実行制限到達時の interval 延長
+                _os_limit = self.config.one_sided_consecutive_limit
+                _os_mult = 1.0
+                if (
+                    _os_limit > 0
+                    and self._one_sided_consecutive_count >= _os_limit
+                ):
+                    _os_mult = self.config.one_sided_consecutive_interval_mult
+
+                await asyncio.sleep(interval * soft_dd_mult * _loss_cd * _os_mult)
 
         # 残りバッチを保存
         if batch:
@@ -1327,6 +1406,7 @@ class FillLoopOrchestratorMixin:
             base_offset_ratio_buy=self._maker_price.base_offset_ratio_buy,
             base_offset_ratio_sell=self._maker_price.base_offset_ratio_sell,
             daily_drawdown_state=self._daily_drawdown_guard.export_state(),
+            toxic_veto=dict(self._toxic_veto) if self._toxic_veto else None,
             **self._get_regime_state_fields(),
         ))
 
