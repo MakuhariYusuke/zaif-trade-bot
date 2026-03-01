@@ -106,7 +106,7 @@ class TestDDWarmupFromRecords:
 
     def test_warmup_triggers_halt(self) -> None:
         """当日累積PnLがhard limitを超えていたらhalt状態にする."""
-        mixin = self._make_mixin_with_dd_guard(hard_limit=-50.0)
+        mixin = self._make_mixin_with_dd_guard(hard_limit=-50.0, soft_limit=-30.0)
         now = time.time()
         records = [
             self._make_mock_record(True, -30.0, now - 100),
@@ -115,6 +115,8 @@ class TestDDWarmupFromRecords:
         mixin._warmup_daily_drawdown_from_records(records)
         assert mixin._daily_drawdown_guard.state.daily_pnl_bps == pytest.approx(-55.0)
         assert mixin._daily_drawdown_guard.state.halted is True
+        # hard limit 超過時は soft_triggered も True (both limits breached)
+        assert mixin._daily_drawdown_guard._soft_triggered_today is True
 
     def test_warmup_triggers_soft(self) -> None:
         """当日累積PnLがsoft limitを超えていたらsoft_triggered."""

@@ -124,14 +124,14 @@ class FillLoopOrchestratorMixin:
             self._daily_drawdown_guard.state.daily_pnl_bps = daily_pnl_sum
             self._daily_drawdown_guard.state.daily_fill_count = daily_fill_count
             self._daily_drawdown_guard.state.current_day = utc_today
+            # soft limit チェック (hard 超過時も soft は必ず超過)
+            if daily_pnl_sum <= self._daily_drawdown_guard._soft_limit_bps:
+                self._daily_drawdown_guard._soft_triggered_today = True
             # hard limit チェック
             if daily_pnl_sum <= self._daily_drawdown_guard._hard_limit_bps:
                 self._daily_drawdown_guard.state.halted = True
                 import time as _time
                 self._daily_drawdown_guard.state.halt_triggered_at = _time.time()
-            # soft limit チェック
-            elif daily_pnl_sum <= self._daily_drawdown_guard._soft_limit_bps:
-                self._daily_drawdown_guard._soft_triggered_today = True
             logger.warning(
                 f"[203# F] DD warmup from fill records: {daily_fill_count} fills today, "
                 f"daily_pnl={daily_pnl_sum:+.2f}bps, halted={self._daily_drawdown_guard.state.halted}"
