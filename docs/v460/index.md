@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-02 (210# 203#/204# 残課題解消 — FFD同期, velocity配線, one-sided永続化, spread staleness)
+> 最終更新: 2026-03-02 (211# 204# I offset boost 3層防御完成, sleep clamp, halt可視化ログ)
 
 ---
 
@@ -201,6 +201,7 @@
 | 208 | refactor | [208_ph2_refactor_velocity_ssot.md](208_ph2_refactor_velocity_ssot.md) | Velocity SSOT 強化 — instant velocity 計算を velocity_math に移動 (205# §3.2/§9.1) |
 | 209 | fix | [209_ph2_fix_self_review_and_audit.md](209_ph2_fix_self_review_and_audit.md) | セルフレビュー + コード監査: vetoデッドロック防止, config検証, sleep上限, health監視修正 |
 | 210 | fix | [210_ph2_fix_remaining_203_204_issues.md](210_ph2_fix_remaining_203_204_issues.md) | 203#/204# 残課題解消: FFD hot-reload同期, velocity配線, one-sided永続化, spread staleness, DRY snapshot |
+| 211 | fix | [211_ph2_fix_204i_offset_boost_sleep_clamp.md](211_ph2_fix_204i_offset_boost_sleep_clamp.md) | 204# I offset boost 3層防御完成, _effective_sleep clamp, halt可視化ログ, 198# link修正 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
