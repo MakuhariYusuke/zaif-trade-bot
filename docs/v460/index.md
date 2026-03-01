@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-02 (207# 206堅牢性修正 5件 + 片側連続実行制限)
+> 最終更新: 2026-03-02 (208# Velocity SSOT 強化 — instant velocity 一元化)
 
 ---
 
@@ -198,6 +198,7 @@
 | 205 | rev | [205_ph2_rev_200_204_root_cause_progress_and_blind_spots.md](205_ph2_rev_200_204_root_cause_progress_and_blind_spots.md) | 200–204レビュー: 根本解決への進捗評価 + 盲点整理 |
 | 206 | impl | [206_ph2_impl_205_review_response_p0.md](206_ph2_impl_205_review_response_p0.md) | 205レビュー応答: P0 3施策実装 (Hard Skip §9.4 / Toxic Veto §9.2 / 片側DD §9.5) |
 | 207 | fix | [207_ph2_fix_206_robustness_and_one_sided_limit.md](207_ph2_fix_206_robustness_and_one_sided_limit.md) | 206堅牢性修正 5件 + 片側連続実行制限 (205# §4.2) |
+| 208 | refactor | [208_ph2_refactor_velocity_ssot.md](208_ph2_refactor_velocity_ssot.md) | Velocity SSOT 強化 — instant velocity 計算を velocity_math に移動 (205# §3.2/§9.1) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
