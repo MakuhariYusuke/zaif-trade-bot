@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-02 (211# 204# I offset boost 3層防御完成, sleep clamp, halt可視化ログ)
+> 最終更新: 2026-03-02 (214# Codex/Gemini指摘検証: DD state不整合裏付け, hot-reload漏れ確認, 212#命名修正)
 
 ---
 
@@ -202,7 +202,9 @@
 | 209 | fix | [209_ph2_fix_self_review_and_audit.md](209_ph2_fix_self_review_and_audit.md) | セルフレビュー + コード監査: vetoデッドロック防止, config検証, sleep上限, health監視修正 |
 | 210 | fix | [210_ph2_fix_remaining_203_204_issues.md](210_ph2_fix_remaining_203_204_issues.md) | 203#/204# 残課題解消: FFD hot-reload同期, velocity配線, one-sided永続化, spread staleness, DRY snapshot |
 | 211 | fix | [211_ph2_fix_204i_offset_boost_sleep_clamp.md](211_ph2_fix_204i_offset_boost_sleep_clamp.md) | 204# I offset boost 3層防御完成, _effective_sleep clamp, halt可視化ログ, 198# link修正 |
-| 212 | audit | [212_codebase_audit_review.md](212_codebase_audit_review.md) | コードベース品質監査 — Codex/Gemini 外部レビュー用改善ポイント一覧 |
+| 212 | audit | [212_ph2_audit_codebase_quality.md](212_ph2_audit_codebase_quality.md) | コードベース品質監査 — Codex/Gemini 外部レビュー用改善ポイント一覧 |
+| 213 | rev | [213_ph2_rev_205_212_validation_and_proposals.md](213_ph2_rev_205_212_validation_and_proposals.md) | 205# Gemini追加分〜212# 横断レビュー: 実装検証, DD状態移行穴, velocity混線, 211# 外部イベント監査 |
+| 214 | resp | [214_ph2_resp_213_codex_gemini_verification.md](214_ph2_resp_213_codex_gemini_verification.md) | 213# Codex/Gemini指摘に対する実コード・実データ検証: DD state 5フィールド不整合確認, hot-reload 7漏れ確認, velocity名称問題評価 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
