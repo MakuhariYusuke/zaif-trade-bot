@@ -196,7 +196,7 @@
 | 203 | fix | [203_ph2_fix_dd_state_persistence.md](203_ph2_fix_dd_state_persistence.md) | P0: DD状態HALT中未保存バグ修正 + fill records warmup + halt counter修正 |
 | 204 | rpt | [204_ph2_rpt_comprehensive_trade_analysis.md](204_ph2_rpt_comprehensive_trade_analysis.md) | 包括的トレード分析 — MM理論・一目均衡表・市場微細構造理論11理論適用 + vXXX資産活用計画 |
 | 205 | rev | [205_ph2_rev_200_204_root_cause_progress_and_blind_spots.md](205_ph2_rev_200_204_root_cause_progress_and_blind_spots.md) | 200–204レビュー: 根本解決への進捗評価 + 盲点整理 |
-| 206 | impl | — | 205レビュー応答: P0 3施策実装 (Hard Skip §9.4 / Toxic Veto §9.2 / 片側DD §9.5) |
+| 206 | impl | [206_ph2_impl_205_review_response_p0.md](206_ph2_impl_205_review_response_p0.md) | 205レビュー応答: P0 3施策実装 (Hard Skip §9.4 / Toxic Veto §9.2 / 片側DD §9.5) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
