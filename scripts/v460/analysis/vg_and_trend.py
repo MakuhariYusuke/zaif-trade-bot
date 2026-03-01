@@ -37,6 +37,7 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 
 from ztb.metrics.fill_quality import (
     FillRecord,
+    PnlAccumulator,
     compute_fill_metrics,
     filter_clean_records,
     load_fill_records_glob,
@@ -148,23 +149,30 @@ def analyze_vg_effectiveness(
     vg_all = [r for r in records if r.cycle_id in vg_cycle_ids]
     non_vg_all = [r for r in records if r.cycle_id not in vg_cycle_ids]
 
+    def _mean_or_none(acc: PnlAccumulator) -> float | None:
+        return acc.mean_bps if acc.count else None
+
     def _group_stats(group: list[FillRecord], label: str) -> dict:
         if not group:
             return {"label": label, "n": 0}
 
-        pnl_30 = [r.post_fill_30s_pnl for r in group if r.post_fill_30s_pnl is not None]
-        pnl_60 = [r.post_fill_60s_pnl for r in group if r.post_fill_60s_pnl is not None]
-        pnl_120 = [r.post_fill_120s_pnl for r in group if r.post_fill_120s_pnl is not None]
-        as_count = sum(1 for r in group if r.adverse_selected is True)
-
-        import numpy as np
+        pnl_30 = PnlAccumulator()
+        pnl_60 = PnlAccumulator()
+        pnl_120 = PnlAccumulator()
+        as_count = 0
+        for record in group:
+            pnl_30.add(record.post_fill_30s_pnl)
+            pnl_60.add(record.post_fill_60s_pnl)
+            pnl_120.add(record.post_fill_120s_pnl)
+            if record.adverse_selected is True:
+                as_count += 1
 
         result: dict = {
             "label": label,
             "n": len(group),
-            "pnl_30s_mean": float(np.mean(pnl_30)) if pnl_30 else None,
-            "pnl_60s_mean": float(np.mean(pnl_60)) if pnl_60 else None,
-            "pnl_120s_mean": float(np.mean(pnl_120)) if pnl_120 else None,
+            "pnl_30s_mean": _mean_or_none(pnl_30),
+            "pnl_60s_mean": _mean_or_none(pnl_60),
+            "pnl_120s_mean": _mean_or_none(pnl_120),
             "as_count": as_count,
             "as_rate": as_count / len(group) if group else 0.0,
         }
@@ -179,15 +187,21 @@ def analyze_vg_effectiveness(
     non_vg_stats = _group_stats(non_vg_filled, "Non-VG (filled)")
 
     # VG offset boost 分析
-    offsets_vg = [
-        r.effective_offset_used for r in vg_filled
-        if r.effective_offset_used is not None
-    ]
-    offsets_non = [
-        r.effective_offset_used for r in non_vg_filled
-        if r.effective_offset_used is not None
-    ]
-    import numpy as np
+    vg_offset_total = 0.0
+    vg_offset_count = 0
+    for record in vg_filled:
+        if record.effective_offset_used is None:
+            continue
+        vg_offset_total += record.effective_offset_used
+        vg_offset_count += 1
+
+    non_vg_offset_total = 0.0
+    non_vg_offset_count = 0
+    for record in non_vg_filled:
+        if record.effective_offset_used is None:
+            continue
+        non_vg_offset_total += record.effective_offset_used
+        non_vg_offset_count += 1
 
     return {
         "vg_total_cycles": len(vg_all),
@@ -196,8 +210,12 @@ def analyze_vg_effectiveness(
         "non_vg_fill_rate": _fill_rate(non_vg_all),
         "vg_filled": vg_stats,
         "non_vg_filled": non_vg_stats,
-        "vg_mean_offset": float(np.mean(offsets_vg)) if offsets_vg else None,
-        "non_vg_mean_offset": float(np.mean(offsets_non)) if offsets_non else None,
+        "vg_mean_offset": (
+            vg_offset_total / vg_offset_count if vg_offset_count else None
+        ),
+        "non_vg_mean_offset": (
+            non_vg_offset_total / non_vg_offset_count if non_vg_offset_count else None
+        ),
         "interpretation": _interpret_vg(vg_stats, non_vg_stats),
     }
 
@@ -261,20 +279,33 @@ def analyze_daily_trend(records: list[FillRecord]) -> list[dict]:
     results = []
     for day in sorted(by_day.keys()):
         recs = by_day[day]
-        filled = [r for r in recs if r.filled]
         n_total = len(recs)
-        n_filled = len(filled)
-        n_as = sum(1 for r in filled if r.adverse_selected is True)
+        n_filled = 0
+        n_as = 0
+        pnl_30 = PnlAccumulator()
+        pnl_120 = PnlAccumulator()
+        buy_filled = 0
+        buy_as = 0
+        sell_filled = 0
+        sell_as = 0
 
-        pnl_30 = [r.post_fill_30s_pnl for r in filled if r.post_fill_30s_pnl is not None]
-        pnl_120 = [r.post_fill_120s_pnl for r in filled if r.post_fill_120s_pnl is not None]
-        import numpy as np
-
-        # side 別 AS
-        buy_filled = [r for r in filled if r.side == "buy"]
-        sell_filled = [r for r in filled if r.side == "sell"]
-        buy_as = sum(1 for r in buy_filled if r.adverse_selected is True)
-        sell_as = sum(1 for r in sell_filled if r.adverse_selected is True)
+        for record in recs:
+            if not record.filled:
+                continue
+            n_filled += 1
+            pnl_30.add(record.post_fill_30s_pnl)
+            pnl_120.add(record.post_fill_120s_pnl)
+            adverse_selected = record.adverse_selected is True
+            if adverse_selected:
+                n_as += 1
+            if record.side == "buy":
+                buy_filled += 1
+                if adverse_selected:
+                    buy_as += 1
+            elif record.side == "sell":
+                sell_filled += 1
+                if adverse_selected:
+                    sell_as += 1
 
         results.append({
             "date": day,
@@ -283,12 +314,12 @@ def analyze_daily_trend(records: list[FillRecord]) -> list[dict]:
             "fill_rate": n_filled / n_total if n_total > 0 else 0.0,
             "as_count": n_as,
             "as_rate": n_as / n_filled if n_filled > 0 else 0.0,
-            "pnl_30s_mean": float(np.mean(pnl_30)) if pnl_30 else None,
-            "pnl_120s_mean": float(np.mean(pnl_120)) if pnl_120 else None,
-            "buy_filled": len(buy_filled),
-            "buy_as_rate": buy_as / len(buy_filled) if buy_filled else 0.0,
-            "sell_filled": len(sell_filled),
-            "sell_as_rate": sell_as / len(sell_filled) if sell_filled else 0.0,
+            "pnl_30s_mean": pnl_30.mean_bps if pnl_30.count else None,
+            "pnl_120s_mean": pnl_120.mean_bps if pnl_120.count else None,
+            "buy_filled": buy_filled,
+            "buy_as_rate": buy_as / buy_filled if buy_filled else 0.0,
+            "sell_filled": sell_filled,
+            "sell_as_rate": sell_as / sell_filled if sell_filled else 0.0,
         })
     return results
 
@@ -302,13 +333,18 @@ def analyze_8h_trend(records: list[FillRecord]) -> list[dict]:
     results = []
     for period in sorted(by_period.keys()):
         recs = by_period[period]
-        filled = [r for r in recs if r.filled]
         n_total = len(recs)
-        n_filled = len(filled)
-        n_as = sum(1 for r in filled if r.adverse_selected is True)
+        n_filled = 0
+        n_as = 0
+        pnl_30 = PnlAccumulator()
 
-        pnl_30 = [r.post_fill_30s_pnl for r in filled if r.post_fill_30s_pnl is not None]
-        import numpy as np
+        for record in recs:
+            if not record.filled:
+                continue
+            n_filled += 1
+            pnl_30.add(record.post_fill_30s_pnl)
+            if record.adverse_selected is True:
+                n_as += 1
 
         results.append({
             "period": period,
@@ -317,7 +353,7 @@ def analyze_8h_trend(records: list[FillRecord]) -> list[dict]:
             "fill_rate": n_filled / n_total if n_total > 0 else 0.0,
             "as_count": n_as,
             "as_rate": n_as / n_filled if n_filled > 0 else 0.0,
-            "pnl_30s_mean": float(np.mean(pnl_30)) if pnl_30 else None,
+            "pnl_30s_mean": pnl_30.mean_bps if pnl_30.count else None,
         })
     return results
 

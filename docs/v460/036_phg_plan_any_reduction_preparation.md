@@ -3318,6 +3318,85 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/analysis/analyze_fill_detail.py`: `any_type_debt_tokens=0`
   - `scripts/v460/analysis/reproduce_152_metrics.py`: `any_type_debt_tokens=0`
 
+### Step136: `ztb.metrics` の PnL 集計を横展開し、analysis の手元集計を縮退
+
+1. 対応概要
+- `ztb/metrics/fill_quality.py`
+  - `PnlWinAccumulator` を追加し、`PnlAccumulator` に `positive_count` / `win_rate` を薄く足した共通集計器を導入した。
+- `scripts/v460/analysis/analyze_fill_records.py`
+  - ローカルの `_PnlStats` を削除し、`PnlWinAccumulator` に置換した。
+  - `iter_fill_record_objects_from_files()` の結果を全件 `list` 化せず、そのまま単一走査で集計する形に変更した。
+  - 有効レコード 0 件時は `Latest run: N/A` を出すようにし、空データ時の表示不整合を避けた。
+- `scripts/v460/analysis/compare_regime_ab.py`
+  - old/new regime の PnL 集計を `defaultdict(list)` から `PnlAccumulator` ベースへ変更した。
+  - G2/G3 とレポート出力での平均・合計算出を stream 集計に寄せ、不要な `list[float]` 蓄積を削減した。
+
+2. 類似実装の確認
+- `ztb.metrics.fill_quality.PnlAccumulator` 自体は既に複数 analysis で利用されていたが、`win_rate` まで同時に扱う共通集計器は無かった。
+- そのため、`analyze_fill_records.py` 固有の `_PnlStats` を増やし続けるのではなく、`ztb.metrics` 側へ `PnlWinAccumulator` を追加して横展開できる形にした。
+- `compare_regime_ab.py` は `win_rate` を使わないため、既存の `PnlAccumulator` のみで十分と判断し、新規 helper 追加は行っていない。
+
+3. 目的
+- `analysis` 側に散っていた「平均算出のためだけの PnL list 蓄積」を減らし、長期間ログ読込時のメモリ負荷を下げる。
+- 勝率付き PnL 集計の契約を `ztb.metrics` に寄せ、今後の横展開先でも手元実装を再発させないようにする。
+- `analyze_fill_records` の集計経路を streaming 化し、総レコード数が増えたときのコスト増を抑える。
+
+4. 検証
+- `py_compile`
+  - `ztb/metrics/fill_quality.py`
+  - `scripts/v460/analysis/analyze_fill_records.py`
+  - `scripts/v460/analysis/compare_regime_ab.py`
+  - `tests/unit/v460/test_fill_quality.py`
+- `pytest`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_152_parallel_tasks.py`
+  - `-k "TestPnlWinAccumulator or test_gate_evaluation or test_print_report_handles_zero_records or test_print_report_handles_zero_filled"`
+  - 結果: `4 passed, 214 deselected`
+- import smoke
+  - `scripts.v460.analysis.analyze_fill_records`
+  - `scripts.v460.analysis.compare_regime_ab`
+  - 結果: `main` が利用可能
+- `any_inventory`
+  - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/analysis/analyze_fill_records.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/analysis/compare_regime_ab.py`: `any_type_debt_tokens=0`
+
+### Step137: `vg_and_trend` でも `PnlAccumulator` を再利用し、日次/期間集計の list 蓄積を削減
+
+1. 対応概要
+- `scripts/v460/analysis/vg_and_trend.py`
+  - `analyze_vg_effectiveness()` の group 別 PnL 集計を `PnlAccumulator` へ変更し、`pnl_30/60/120` の list 生成をやめた。
+  - VG/非VG の offset 平均も `sum/count` ベースに変更し、`np.mean()` 用の一時 list を作らない形へ寄せた。
+  - `analyze_daily_trend()` は filled / AS / side 別 AS / PnL30 / PnL120 を 1 走査で集計する形へ整理した。
+  - `analyze_8h_trend()` も同様に、filled 群の list 化をやめて単一走査へ寄せた。
+
+2. 類似実装の確認
+- `vg_and_trend.py` は既に `FillRecord` dataclass を受けており、`ztb.metrics.fill_quality.PnlAccumulator` をそのまま再利用できる構造だった。
+- 追加の専用 helper は不要だったため、既存 `ztb.metrics` 実装の再利用だけで完結させた。
+
+3. 目的
+- 日別・8時間帯別の分析で、平均を取るためだけの `list[float]` と `filled` 部分 list の多重生成を減らす。
+- `vg_and_trend` の group 集計を `analyze_fill_detail` / `reproduce_152_metrics` と同じ stream 集計寄りに揃える。
+- 大きい fill log を読む分析で、一時メモリと Python レベルの append コストを抑える。
+
+4. 検証
+- `py_compile`
+  - `ztb/metrics/fill_quality.py`
+  - `scripts/v460/analysis/analyze_fill_records.py`
+  - `scripts/v460/analysis/compare_regime_ab.py`
+  - `scripts/v460/analysis/vg_and_trend.py`
+  - `tests/unit/v460/test_fill_quality.py`
+- `pytest`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_152_parallel_tasks.py`
+  - `-k "TestPnlWinAccumulator or TestVGAndTrendAnalysis or test_gate_evaluation or test_print_report_handles_zero_records or test_print_report_handles_zero_filled"`
+  - 結果: `11 passed, 207 deselected`
+- `any_inventory`
+  - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/analysis/vg_and_trend.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/analysis/analyze_fill_records.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/analysis/compare_regime_ab.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

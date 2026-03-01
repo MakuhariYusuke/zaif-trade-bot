@@ -3,41 +3,24 @@
 from __future__ import annotations
 
 import datetime
-
-from ztb.utils.safety import safe_to_finite
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from ztb.io.jsonl import iter_jsonl_objects
 from ztb.metrics.fill_quality import (
+    PnlWinAccumulator,
     iter_fill_record_objects_from_files,
     list_fill_record_files,
 )
-
-
-@dataclass
-class _PnlStats:
-    count: int = 0
-    total: float = 0.0
-    positive: int = 0
-
-    def add(self, value: float) -> None:
-        self.count += 1
-        self.total += value
-        if value > 0:
-            self.positive += 1
-
-    @property
-    def mean(self) -> float:
-        return self.total / self.count if self.count else 0.0
+from ztb.utils.safety import safe_to_finite
 
 
 @dataclass
 class _RunStats:
     total: int = 0
     filled: int = 0
-    pnl_30s: _PnlStats = field(default_factory=_PnlStats)
+    pnl_30s: PnlWinAccumulator = field(default_factory=PnlWinAccumulator)
 
 
 
@@ -53,42 +36,38 @@ def main() -> None:
         print("No fill_records files found: results/v460/fill_test/fill_records_*.jsonl")
         return
 
-    all_records = list(iter_fill_record_objects_from_files(files))
-
-    total_records = len(all_records)
-    print(f"Total records: {total_records}")
     first_date = files[0].stem.split("_")[-1]
     last_date = files[-1].stem.split("_")[-1]
-    print(f"Date range: {first_date} - {last_date}")
-
-    pnl_by_tf: dict[str, _PnlStats] = {
-        "30s": _PnlStats(),
-        "60s": _PnlStats(),
-        "120s": _PnlStats(),
+    pnl_by_tf: dict[str, PnlWinAccumulator] = {
+        "30s": PnlWinAccumulator(),
+        "60s": PnlWinAccumulator(),
+        "120s": PnlWinAccumulator(),
     }
     side_totals: Counter[str] = Counter()
     side_filled: Counter[str] = Counter()
     side_as: Counter[str] = Counter()
-    side_pnl_30s: dict[str, _PnlStats] = defaultdict(_PnlStats)
+    side_pnl_30s: dict[str, PnlWinAccumulator] = defaultdict(PnlWinAccumulator)
     skip_reasons: Counter[str] = Counter()
     regime_counts: Counter[str] = Counter()
-    regime_pnl_30s: dict[str, _PnlStats] = defaultdict(_PnlStats)
-    hour_pnl_30s: dict[int, _PnlStats] = defaultdict(_PnlStats)
+    regime_pnl_30s: dict[str, PnlWinAccumulator] = defaultdict(PnlWinAccumulator)
+    hour_pnl_30s: dict[int, PnlWinAccumulator] = defaultdict(PnlWinAccumulator)
     hour_as: Counter[int] = Counter()
     hour_total: Counter[int] = Counter()
     run_stats: dict[str, _RunStats] = defaultdict(_RunStats)
     queue_waits: list[float] = []
 
+    total_records = 0
     filled_count = 0
     skipped_count = 0
     as_total_count = 0
     bfs_count = 0
-    latest_run = ""
+    latest_run: str | None = None
 
-    for raw_record in all_records:
+    for raw_record in iter_fill_record_objects_from_files(files):
         if not isinstance(raw_record, dict):
             continue
 
+        total_records += 1
         record = raw_record
         side = str(record.get("side", ""))
         regime = str(record.get("regime", "n/a"))
@@ -149,6 +128,9 @@ def main() -> None:
                 if utc_hour is not None:
                     hour_pnl_30s[utc_hour].add(pnl_value)
 
+    print(f"Total records: {total_records}")
+    print(f"Date range: {first_date} - {last_date}")
+
     # Fill/skip stats
     print(f"Filled: {filled_count}, Skipped: {skipped_count}")
     print(f"Fill rate: {_pct(filled_count, total_records):.1f}%")
@@ -158,8 +140,8 @@ def main() -> None:
         stats = pnl_by_tf[tf]
         if stats.count:
             print(
-                f"PnL {tf}: n={stats.count}, mean={stats.mean:.4f} bps, "
-                f"win_rate={_pct(stats.positive, stats.count):.1f}%"
+                f"PnL {tf}: n={stats.count}, mean={stats.mean_bps:.4f} bps, "
+                f"win_rate={stats.win_rate * 100.0:.1f}%"
             )
 
     # Side stats
@@ -171,7 +153,7 @@ def main() -> None:
         filled_side = side_filled.get(side_name, 0)
         side_total = side_totals.get(side_name, 0)
         print(
-            f"  {side_name}: n={side_stats.count}, mean_pnl={side_stats.mean:.4f} bps, "
+            f"  {side_name}: n={side_stats.count}, mean_pnl={side_stats.mean_bps:.4f} bps, "
             f"AS={as_count}/{filled_side} ({_pct(as_count, filled_side):.1f}%), "
             f"fill_rate={_pct(filled_side, side_total):.1f}%"
         )
@@ -198,19 +180,19 @@ def main() -> None:
         regime_pnl_30s.items(),
         key=lambda item: -item[1].count,
     ):
-        print(f"  {regime}: n={stats.count}, mean={stats.mean:.4f} bps")
+        print(f"  {regime}: n={stats.count}, mean={stats.mean_bps:.4f} bps")
 
     # Hour × PnL (UTC)
     print("Hour (UTC) × PnL 30s (worst 6):")
     worst_hours = sorted(
         hour_pnl_30s.items(),
-        key=lambda item: item[1].mean,
+        key=lambda item: item[1].mean_bps,
     )[:6]
     for hour, stats in worst_hours:
         as_rate = _pct(hour_as.get(hour, 0), hour_total.get(hour, 0))
         print(
             f"  UTC{hour:02d} (JST{(hour + 9) % 24:02d}): n={stats.count}, "
-            f"mean={stats.mean:.4f} bps, AS={as_rate:.1f}%"
+            f"mean={stats.mean_bps:.4f} bps, AS={as_rate:.1f}%"
         )
 
     # balance_forced_switch 割合
@@ -220,14 +202,17 @@ def main() -> None:
     )
 
     # Latest run analysis
-    latest = run_stats[latest_run]
-    print(f"\nLatest run ({latest_run}):")
-    print(
-        f"  records={latest.total}, filled={latest.filled}, "
-        f"fill_rate={_pct(latest.filled, latest.total):.1f}%"
-    )
-    if latest.pnl_30s.count:
-        print(f"  PnL 30s: mean={latest.pnl_30s.mean:.4f} bps")
+    if latest_run is not None:
+        latest = run_stats[latest_run]
+        print(f"\nLatest run ({latest_run}):")
+        print(
+            f"  records={latest.total}, filled={latest.filled}, "
+            f"fill_rate={_pct(latest.filled, latest.total):.1f}%"
+        )
+        if latest.pnl_30s.count:
+            print(f"  PnL 30s: mean={latest.pnl_30s.mean_bps:.4f} bps")
+    else:
+        print("\nLatest run: N/A (no valid records)")
 
     # Queue wait time analysis
     if queue_waits:

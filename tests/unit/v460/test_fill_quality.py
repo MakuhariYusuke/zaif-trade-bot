@@ -2660,6 +2660,31 @@ class Test051RoundTripMetrics:
 
 
 # ======================================================================
+# PnL accumulator helpers
+# ======================================================================
+
+
+class TestPnlWinAccumulator:
+    """勝率付き PnL 集計 helper のテスト."""
+
+    def test_tracks_mean_and_win_rate(self) -> None:
+        from ztb.metrics.fill_quality import PnlWinAccumulator
+
+        acc = PnlWinAccumulator()
+        acc.add(None)
+        acc.add(float("nan"))
+        acc.add(-1.5)
+        acc.add(0.0)
+        acc.add(3.0)
+
+        assert acc.count == 3
+        assert acc.total_bps == pytest.approx(1.5)
+        assert acc.mean_bps == pytest.approx(0.5)
+        assert acc.positive_count == 1
+        assert acc.win_rate == pytest.approx(1 / 3)
+
+
+# ======================================================================
 # 051# P2-4: レジーム別メトリクステスト
 # ======================================================================
 

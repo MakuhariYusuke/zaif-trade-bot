@@ -38,6 +38,7 @@ from scripts.v460.lib.regime_detector import (
 # Re-use data loading from reproduce script
 from scripts.v460.analysis.reproduce_152_metrics import _load_records
 from ztb.io.json_io import write_json
+from ztb.metrics.fill_quality import PnlAccumulator
 from ztb.utils.safety import safe_to_finite
 
 FillRecord = dict[str, object]
@@ -229,24 +230,25 @@ def _evaluate_gates(
 
     # --- G2: regime PnL non-degradation ---
     # Compare filled records' PnL by new-assigned regime vs recorded regime
-    filled_results = [r for r in sim_results if r.filled and r.pnl_30s is not None]
-
-    old_regime_pnl: dict[str, list[float]] = defaultdict(list)
-    new_regime_pnl: dict[str, list[float]] = defaultdict(list)
-    for r in filled_results:
-        if r.pnl_30s is None:
+    old_regime_pnl: dict[str, PnlAccumulator] = defaultdict(PnlAccumulator)
+    new_regime_pnl: dict[str, PnlAccumulator] = defaultdict(PnlAccumulator)
+    total_pnl = PnlAccumulator()
+    reclassified_filled = 0
+    for r in sim_results:
+        if not r.filled or r.pnl_30s is None:
             continue
-        old_regime_pnl[r.old_regime].append(r.pnl_30s)
-        new_regime_pnl[r.new_regime].append(r.pnl_30s)
+        old_regime_pnl[r.old_regime].add(r.pnl_30s)
+        new_regime_pnl[r.new_regime].add(r.pnl_30s)
+        total_pnl.add(r.pnl_30s)
+        if r.old_regime != r.new_regime:
+            reclassified_filled += 1
 
     max_degradation = 0.0
     g2_details: list[str] = []
     # 176# 横展開: trending_up/trending_down も比較対象に追加
     for regime in ["ranging", "trending", "trending_up", "trending_down"]:
-        old_vals = old_regime_pnl.get(regime, [])
-        new_vals = new_regime_pnl.get(regime, [])
-        old_avg = sum(old_vals) / len(old_vals) if old_vals else 0.0
-        new_avg = sum(new_vals) / len(new_vals) if new_vals else 0.0
+        old_avg = old_regime_pnl.get(regime, PnlAccumulator()).mean_bps
+        new_avg = new_regime_pnl.get(regime, PnlAccumulator()).mean_bps
         diff = abs(new_avg - old_avg)
         max_degradation = max(max_degradation, diff)
         g2_details.append(f"{regime}: old={old_avg:.4f} → new={new_avg:.4f} (Δ={new_avg-old_avg:+.4f})")
@@ -263,12 +265,8 @@ def _evaluate_gates(
     # §12 #3: replay では実 PnL が変わらないため、一方的に Δ=0 になる。
     # regime 再分類による lot/timeout パラメータ変更の影響は、実運用後に評価する。
     # 現時点では再分類件数のみ報告。
-    old_total_pnl = sum(r.pnl_30s for r in filled_results if r.pnl_30s is not None)
     reclassified_count = sum(
         1 for r in sim_results if r.old_regime != r.new_regime
-    )
-    reclassified_filled = sum(
-        1 for r in filled_results if r.old_regime != r.new_regime
     )
 
     gates.append(GateResult(
@@ -276,7 +274,7 @@ def _evaluate_gates(
         passed=True,  # informational: always True
         threshold="informational (replayではPnL同一)",
         actual=f"reclassified={reclassified_count}/{len(sim_results)} ({reclassified_filled} filled)",
-        detail=f"total_pnl={old_total_pnl:.2f} bps (unchanged). "
+        detail=f"total_pnl={total_pnl.total_bps:.2f} bps (unchanged). "
                f"Regime変更によるlot/timeout影響は実運用後に評価。",
     ))
 
@@ -332,14 +330,15 @@ def _print_report(
 
     # Filled PnL by regime (new assignment)
     print("\n--- Regime × PnL (new assignment, filled) ---")
-    new_regime_pnl: dict[str, list[float]] = defaultdict(list)
+    new_regime_pnl: dict[str, PnlAccumulator] = defaultdict(PnlAccumulator)
     for r in filled:
-        if r.pnl_30s is not None:
-            new_regime_pnl[r.new_regime].append(r.pnl_30s)
+        new_regime_pnl[r.new_regime].add(r.pnl_30s)
     print(f"  {'Regime':<12} {'fills':>6} {'avg PnL':>10} {'sum PnL':>10}")
-    for regime, vals in sorted(new_regime_pnl.items(), key=lambda x: -len(x[1])):
-        avg = sum(vals) / len(vals) if vals else 0
-        print(f"  {regime:<12} {len(vals):>6} {avg:>10.4f} {sum(vals):>10.2f}")
+    for regime, acc in sorted(new_regime_pnl.items(), key=lambda item: -item[1].count):
+        print(
+            f"  {regime:<12} {acc.count:>6} {acc.mean_bps:>10.4f} "
+            f"{acc.total_bps:>10.2f}"
+        )
 
     # Gate results
     print("\n--- §4.6 Gate 判定 ---")
