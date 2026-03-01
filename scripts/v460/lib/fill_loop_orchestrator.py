@@ -612,9 +612,13 @@ class FillLoopOrchestratorMixin:
                     self._halt_iter_count = 0
                 else:
                     self._halt_iter_count = getattr(self, "_halt_iter_count", 0) + 1
+                # 211# fix: halt 中は progress_log_interval(50) ではなく
+                # 専用間隔 _HALT_PERSIST_INTERVAL(10) で state/record を保存。
+                # 600s sleep × 50 = 8.3h は長すぎ、再起動時に進捗が大幅に巻き戻る。
+                _HALT_PERSIST_INTERVAL = 10
                 _should_record_halt = (
                     _halt_entering  # 開始時
-                    or self._halt_iter_count % max(1, self.config.progress_log_interval) == 0  # N回毎
+                    or self._halt_iter_count % _HALT_PERSIST_INTERVAL == 0
                 )
                 if _should_record_halt:
                     batch.append(self._make_loop_skip_record(
@@ -626,18 +630,18 @@ class FillLoopOrchestratorMixin:
                     batch = self._batch_persistence.maybe_flush(batch, "daily_drawdown_halt")
                 self._update_lock_heartbeat()
                 # 203# E: HALT 開始時は必ず state 保存 + 以降は N iter 毎
-                # (旧実装は _cycle_count % interval で判定 → halt 中は不変のため保存されないバグ)
-                if _halt_entering or self._halt_iter_count % max(1, self.config.progress_log_interval) == 0:
+                # 211# fix: halt 専用間隔に統一 (旧: progress_log_interval=50 → 8.3h)
+                if _should_record_halt:
                     self._state_persistence.save(self._build_state_snapshot(
                         total_count=total_count,
                         filled_count=filled_count,
                         cumulative_pnl_jpy=cumulative_pnl_jpy,
                     ))
-                # 211#: halt サイクル可視化ログ (entering + 10 iter 毎)
-                if _halt_entering or self._halt_iter_count % 10 == 0:
+                # 211#: halt サイクル可視化ログ (entering + _HALT_PERSIST_INTERVAL 毎)
+                if _should_record_halt:
                     logger.info(
                         f"[daily_drawdown] Halt cycle #{self._halt_iter_count}"
-                        f" (next log @+{10 - self._halt_iter_count % 10} iters)"
+                        f" (next log @+{_HALT_PERSIST_INTERVAL} iters)"
                     )
                 await self._effective_sleep(multiplier=5.0)  # 179# S1: halt 中は 5x 間隔
                 continue
