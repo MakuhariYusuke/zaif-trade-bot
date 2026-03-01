@@ -124,24 +124,21 @@ class FillLoopOrchestratorMixin:
         utc_today = datetime.now(timezone.utc).strftime("%Y%m%d")
         daily_pnl_sum = 0.0
         daily_fill_count = 0
-        for r in records:
-            if not r.filled or r.post_fill_30s_pnl is None:
-                continue
-            # timestamp (epoch) を UTC 日付に変換
-            r_date = datetime.fromtimestamp(r.timestamp, tz=timezone.utc).strftime("%Y%m%d")
-            if r_date == utc_today:
-                daily_pnl_sum += r.post_fill_30s_pnl
-                daily_fill_count += 1
-        # 207# §2: per-side PnL の warmup 計算
+        # 209# M1: 1回走査で全指標を計算 (元は2回走査)
         daily_pnl_buy = 0.0
         daily_pnl_sell = 0.0
         for r in records:
             if not r.filled or r.post_fill_30s_pnl is None:
                 continue
+            # timestamp (epoch) を UTC 日付に変換
             r_date = datetime.fromtimestamp(r.timestamp, tz=timezone.utc).strftime("%Y%m%d")
-            if r_date == utc_today and r.side == "buy":
+            if r_date != utc_today:
+                continue
+            daily_pnl_sum += r.post_fill_30s_pnl
+            daily_fill_count += 1
+            if r.side == "buy":
                 daily_pnl_buy += r.post_fill_30s_pnl
-            elif r_date == utc_today and r.side == "sell":
+            elif r.side == "sell":
                 daily_pnl_sell += r.post_fill_30s_pnl
 
         if daily_fill_count > 0:
