@@ -144,6 +144,21 @@ class DailyDrawdownGuard:
         elif side == "sell":
             self._state.daily_pnl_bps_sell += pnl_bps
 
+        # 215# fix: soft trigger は hard halt と独立に評価する。
+        # 旧: if/elif で hard halt 時に soft が skip される → import_state 時に
+        # soft_triggered_today=false のまま復元され、halt 解除後に soft 防御が未適用。
+        # Soft limit check (aggregate) — hard よりも先に評価
+        if (
+            self._state.daily_pnl_bps <= self._soft_limit_bps
+            and not self._soft_triggered_today
+        ):
+            self._soft_triggered_today = True
+            logger.warning(
+                f"[daily_drawdown] SOFT: daily PnL {self._state.daily_pnl_bps:+.2f}bps "
+                f"<= soft limit {self._soft_limit_bps}bps — requesting lot reduction"
+            )
+            result["soft_triggered"] = True
+
         # Hard limit check (aggregate)
         if self._state.daily_pnl_bps <= self._hard_limit_bps:
             if not self._state.halted:
@@ -154,18 +169,6 @@ class DailyDrawdownGuard:
                     f"<= hard limit {self._hard_limit_bps}bps after {self._state.daily_fill_count} fills"
                 )
             result["halted"] = True
-
-        # Soft limit check (aggregate)
-        elif (
-            self._state.daily_pnl_bps <= self._soft_limit_bps
-            and not self._soft_triggered_today
-        ):
-            self._soft_triggered_today = True
-            logger.warning(
-                f"[daily_drawdown] SOFT: daily PnL {self._state.daily_pnl_bps:+.2f}bps "
-                f"<= soft limit {self._soft_limit_bps}bps — requesting lot reduction"
-            )
-            result["soft_triggered"] = True
 
         # 205# §9.5: 片側 DD Halt チェック
         if self._per_side_enabled and side in ("buy", "sell"):
@@ -305,6 +308,41 @@ class DailyDrawdownGuard:
             f"buy_pnl={self._state.daily_pnl_bps_buy:+.2f}bps, "
             f"sell_pnl={self._state.daily_pnl_bps_sell:+.2f}bps"
         )
+
+    def needs_warmup_repair(self) -> bool:
+        """215# P0-A: import_state 後の整合性検証.
+
+        per-side PnL が 0.0 のまま合計 PnL が有意な値を持つ場合、
+        または soft_triggered_today が整合しない場合に True を返す。
+        呼び出し元で _warmup_daily_drawdown_from_records() を発動する。
+        """
+        if not self._enabled:
+            return False
+        s = self._state
+        if s.daily_fill_count == 0:
+            return False  # fill なしなら warmup 不要
+        # Case 1: per-side PnL が両方 0.0 だが合計が有意
+        _per_side_sum = abs(s.daily_pnl_bps_buy) + abs(s.daily_pnl_bps_sell)
+        if _per_side_sum < 0.01 and abs(s.daily_pnl_bps) >= 1.0:
+            logger.warning(
+                f"[215# P0-A] DD state inconsistency detected: "
+                f"daily_pnl={s.daily_pnl_bps:+.2f}bps but "
+                f"buy={s.daily_pnl_bps_buy:+.2f}/sell={s.daily_pnl_bps_sell:+.2f}"
+            )
+            return True
+        # Case 2: soft_triggered_today=false だが daily_pnl が soft limit 以下
+        if (
+            not self._soft_triggered_today
+            and s.daily_pnl_bps <= self._soft_limit_bps
+            and s.daily_fill_count > 0
+        ):
+            logger.warning(
+                f"[215# P0-A] DD soft_triggered inconsistency: "
+                f"soft_triggered=false but pnl={s.daily_pnl_bps:+.2f}bps "
+                f"<= soft_limit={self._soft_limit_bps}bps"
+            )
+            return True
+        return False
 
     # ------------------------------------------------------------------
     # Internal

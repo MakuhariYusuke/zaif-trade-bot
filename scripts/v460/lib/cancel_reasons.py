@@ -46,6 +46,8 @@ HARD_SKIP_UTC_HOUR = "hard_skip_utc_hour"
 TOXIC_FILL_SIDE_VETO = "toxic_fill_side_veto"
 # 205# §9.5: 片側 DD Halt (サイド別累積損失超過で片側封鎖)
 PER_SIDE_DD_HALT = "per_side_dd_halt"
+# 215# P0-C: alert_mode.json によるオペレータ緊急停止
+OPERATOR_HALT = "operator_halt"
 
 AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     CIRCUIT_BREAKER_OPEN,
@@ -69,6 +71,7 @@ AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     HARD_SKIP_UTC_HOUR,
     TOXIC_FILL_SIDE_VETO,
     PER_SIDE_DD_HALT,
+    OPERATOR_HALT,
 })
 
 # ======================================================================
@@ -125,6 +128,7 @@ CancelReason = Literal[
     "hard_skip_utc_hour",
     "toxic_fill_side_veto",
     "per_side_dd_halt",
+    "operator_halt",
     # EXEC
     "post_only_reject",
     "insufficient_funds",

@@ -205,6 +205,7 @@
 | 212 | audit | [212_ph2_audit_codebase_quality.md](212_ph2_audit_codebase_quality.md) | コードベース品質監査 — Codex/Gemini 外部レビュー用改善ポイント一覧 |
 | 213 | rev | [213_ph2_rev_205_212_validation_and_proposals.md](213_ph2_rev_205_212_validation_and_proposals.md) | 205# Gemini追加分〜212# 横断レビュー: 実装検証, DD状態移行穴, velocity混線, 211# 外部イベント監査 |
 | 214 | resp | [214_ph2_resp_213_codex_gemini_verification.md](214_ph2_resp_213_codex_gemini_verification.md) | 213# Codex/Gemini指摘に対する実コード・実データ検証: DD state 5フィールド不整合確認, hot-reload 7漏れ確認, velocity名称問題評価 |
+| 215 | fix | [215_ph2_fix_dd_hotreload_alertmode.md](215_ph2_fix_dd_hotreload_alertmode.md) | P0実装: DD state整合性修復 (if/elif+warmup), hot-reload 13フィールド追加, alert_mode.json DEFCONスイッチ |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

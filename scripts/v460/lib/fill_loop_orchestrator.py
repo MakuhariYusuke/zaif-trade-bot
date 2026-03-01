@@ -52,6 +52,10 @@ class FillLoopOrchestratorMixin:
     _toxic_veto: dict[str, int] | None = None
     # 207# §4: one-sided 連続実行カウンタ (205# §4.2 Codex 対応)
     _one_sided_consecutive_count: int = 0
+    # 215# P0-C: alert_mode.json オーバーライド (サイクル先頭で更新)
+    _alert_offset_mult: float = 1.0
+    _alert_lot_mult: float = 1.0
+    _alert_interval_mult: float = 1.0
 
     def _is_sell_killed(self) -> bool:
         """133# P0-10 / 136# P1-03: sell 動的 kill 判定 — SellDynamicKillManager に委譲.
@@ -534,10 +538,14 @@ class FillLoopOrchestratorMixin:
 
         # 203# F: DD warmup — state 復元失敗時 (stale/missing) は fill records から再計算
         # state file が壊れている or 保存されていない場合のセーフティネット
+        # 215# P0-A: needs_warmup_repair() で per-side/soft 整合性も検出
         if (
             self._daily_drawdown_guard.enabled
-            and self._daily_drawdown_guard.state.daily_fill_count == 0
             and existing_records
+            and (
+                self._daily_drawdown_guard.state.daily_fill_count == 0
+                or self._daily_drawdown_guard.needs_warmup_repair()
+            )
         ):
             self._warmup_daily_drawdown_from_records(existing_records)
 
@@ -654,6 +662,26 @@ class FillLoopOrchestratorMixin:
                 )
                 self._halt_start_cycle = None
                 self._halt_iter_count = 0
+
+            # 215# P0-C: alert_mode.json — オペレータ緊急介入チェック
+            from scripts.v460.lib.alert_mode import load_alert_mode
+            _alert = load_alert_mode(self._results_dir)
+            if _alert.halt:
+                batch.append(self._make_loop_skip_record(
+                    side="none",
+                    cancel_reason=CR.OPERATOR_HALT,
+                    order_quantity=0.0,
+                ))
+                total_count += 1
+                batch = self._batch_persistence.maybe_flush(batch, "operator_halt")
+                self._update_lock_heartbeat()
+                await self._effective_sleep(multiplier=5.0)
+                continue
+            # 215# P0-C: 非 halt オーバーライドをインスタンス変数に保存
+            # (fill_cycle_executor から参照)
+            self._alert_offset_mult = _alert.offset_mult
+            self._alert_lot_mult = _alert.lot_mult
+            self._alert_interval_mult = _alert.interval_mult
 
             # 205# §9.4: 時間帯 Hard Skip (Kyle proxy)
             # soft offset (158# P1-6) では抑制不十分な最悪時間帯はサイクル全停止
@@ -1456,7 +1484,9 @@ class FillLoopOrchestratorMixin:
                     _os_mult = self.config.one_sided_consecutive_interval_mult
 
                 # 209# M4: sleep 上限キャップ — 乗数積み重ねによる長時間無応答を防止
-                _raw_sleep = interval * soft_dd_mult * _loss_cd * _os_mult
+                # 215# P0-C: alert_mode interval_mult を追加
+                _alert_im = self._alert_interval_mult
+                _raw_sleep = interval * soft_dd_mult * _loss_cd * _os_mult * _alert_im
                 _max_sleep = self.config.max_cycle_sleep_sec
                 _clamped = min(_raw_sleep, _max_sleep) if _max_sleep > 0 else _raw_sleep
                 await asyncio.sleep(_clamped)

@@ -882,6 +882,24 @@ class FillCycleExecutorMixin:
                     f"(delta={_vg_supp_delta:+.0f}JPY, price={order_price:.0f})"
                 )
 
+        # 215# P0-C: alert_mode offset 乗数 — 全サイド共通
+        _alert_om = getattr(self, "_alert_offset_mult", 1.0)
+        if _alert_om != 1.0:
+            order_price, effective_offset_ratio, _a_mult, _a_delta = (
+                self._apply_offset_multiplier(
+                    side=side,
+                    order_price=order_price,
+                    spread_at_order=spread_at_order,
+                    effective_offset_ratio=effective_offset_ratio,
+                    offset_mult=_alert_om,
+                )
+            )
+            if _a_mult is not None and _a_delta is not None:
+                logger.warning(
+                    f"[215# alert_mode] {side}: offset_mult={_a_mult:.2f} "
+                    f"(delta={_a_delta:+.0f}JPY, price={order_price:.0f})"
+                )
+
         # 2. 発注 (CM-2: リトライ付き)
         t_submit = time.time()
         order: object | None = None
@@ -899,6 +917,16 @@ class FillCycleExecutorMixin:
             as_prob=skip_gate_as_prob,
             dust_sweep_active=self._balance_checker.dust_sweep_active,
         )
+
+        # 215# P0-C: alert_mode lot 乗数 — 縮小運転
+        _alert_lm = getattr(self, "_alert_lot_mult", 1.0)
+        if _alert_lm != 1.0:
+            _pre_lot = _order_lot
+            _order_lot = max(self.config.order_quantity, _order_lot * _alert_lm)
+            logger.warning(
+                f"[215# alert_mode] lot_mult={_alert_lm:.2f}: "
+                f"{_pre_lot} → {_order_lot}"
+            )
 
         for attempt in range(1 + self.config.max_order_retries):
             try:

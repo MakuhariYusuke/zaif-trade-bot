@@ -219,6 +219,26 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "sell_max_spread_jpy",
     "unknown_buy_offset_boost",
     "fallback_stale_sec",
+    # --- 215# P0-B: 防御パラメータ (202#-210# 追加分) ---
+    # 202# A: 単一サイクル大損失クールダウン
+    "loss_cooldown_threshold_bps",
+    "loss_cooldown_interval_mult",
+    # 207# §3: 大損後 offset 防御拡大
+    "loss_boost_offset_mult",
+    # 207# §1: Toxic Fill 同一サイド拒否
+    "toxic_fill_veto_threshold_bps",
+    "toxic_fill_veto_cycles",
+    # 209# M-3: 片側連続実行制限
+    "one_sided_consecutive_limit",
+    "one_sided_consecutive_interval_mult",
+    # 205# §9.5: 片側 DD ガード
+    "per_side_dd_enabled",
+    "per_side_dd_hard_limit_bps",
+    "per_side_dd_halt_cycles",
+    # 205# §9.4: 時間帯 Hard Skip
+    "hard_skip_utc_hours",
+    # 209# M-4: max cycle sleep cap
+    "max_cycle_sleep_sec",
 })
 
 # 構造体再構築が必要なコンポーネントのマッピング
@@ -227,6 +247,7 @@ _COMPONENT_REBUILD_PREFIXES: dict[str, str] = {
     "sell_dynamic_kill_": "_rebuild_sell_kill_mgr",
     "buy_dynamic_kill_": "_rebuild_buy_kill_mgr",
     "daily_drawdown_": "_rebuild_daily_drawdown_guard",
+    "per_side_dd_": "_rebuild_daily_drawdown_guard",  # 215# P0-B: 片側 DD も同再構築
     "fast_fill_": "_rebuild_fast_fill_defense",
 }
 
