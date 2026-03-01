@@ -239,6 +239,8 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "hard_skip_utc_hours",
     # 209# M-4: max cycle sleep cap
     "max_cycle_sleep_sec",
+    # 212# §3.2: Soft DD interval multiplier
+    "soft_drawdown_interval_multiplier",
 })
 
 # 構造体再構築が必要なコンポーネントのマッピング
