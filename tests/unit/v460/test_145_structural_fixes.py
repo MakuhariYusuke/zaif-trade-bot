@@ -594,10 +594,8 @@ class TestSkipGateLotConsistency:
 
         151# P3-03: regime_lot を1回算出し、SkipGate/発注/記録へ共通引き回し.
         """
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
-
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        from tests.unit.v460._fill_test_source import read_fill_test_method_source
+        source = read_fill_test_method_source("run_single_cycle")
         # 151# P3-03: 単一算出した _regime_lot を SkipGate に渡す
         assert "order_lot=_regime_lot" in source, (
             "SkipGate call should pass pre-computed _regime_lot (151# §10 #4)"
@@ -608,25 +606,21 @@ class TestFillRecordBuilderIntegration:
     """FillRecord 組み立てが共通 builder に寄っていることを確認."""
 
     def test_build_fill_record_is_used(self) -> None:
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
-
-        source = inspect.getsource(FillTestRunner._build_fill_record)
+        from tests.unit.v460._fill_test_source import read_fill_test_method_source
+        source = read_fill_test_method_source("_build_fill_record")
         assert "build_fill_record(" in source
         assert "_build_fill_measurement_fields(" in source
         assert "_build_fill_market_fields(" in source
         assert "_build_fill_strategy_fields(" in source
-        measurement_source = inspect.getsource(FillTestRunner._build_fill_measurement_fields)
-        market_source = inspect.getsource(FillTestRunner._build_fill_market_fields)
+        measurement_source = read_fill_test_method_source("_build_fill_measurement_fields")
+        market_source = read_fill_test_method_source("_build_fill_market_fields")
         assert "_resolve_fill_cancel_reason(" in measurement_source
         assert "_compute_fill_spread_bps(" in market_source
 
     def test_resume_and_reload_use_iter_glob(self) -> None:
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
-
-        resume_source = inspect.getsource(FillTestRunner.resume_from_existing)
-        run_source = inspect.getsource(FillTestRunner.run_continuous)
+        from tests.unit.v460._fill_test_source import read_fill_test_method_source
+        resume_source = read_fill_test_method_source("resume_from_existing")
+        run_source = read_fill_test_method_source("run_continuous")
         assert "iter_fill_records_glob(" in resume_source
         assert "iter_fill_records_glob(" in run_source
 
@@ -645,10 +639,8 @@ class TestCheckBalanceAcceptsRegimeMult:
 
     def test_run_continuous_passes_regime_mult(self) -> None:
         """run_continuous 内で regime_mult= が preflight に渡されていることを確認."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
-
-        source = inspect.getsource(FillTestRunner.run_continuous)
+        from tests.unit.v460._fill_test_source import read_fill_test_method_source
+        source = read_fill_test_method_source("run_continuous")
         assert "_regime_lot_multiplier()" in source
         assert "regime_mult=_regime_mult" in source
 

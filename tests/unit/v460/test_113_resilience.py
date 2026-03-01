@@ -7,7 +7,6 @@
 
 from __future__ import annotations
 
-import inspect
 import json
 import tempfile
 from pathlib import Path
@@ -230,35 +229,35 @@ class TestR1MethodExtraction:
 
     def test_run_single_cycle_delegates_to_skip_gate(self) -> None:
         """run_single_cycle が _evaluate_skip_gate を呼ぶ."""
-        from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        from tests.unit.v460._fill_test_source import read_fill_test_method_source
+        source = read_fill_test_method_source("run_single_cycle")
         assert "_evaluate_skip_gate" in source
 
     def test_run_single_cycle_delegates_to_monitor(self) -> None:
         """run_single_cycle が _monitor_fill_polling を呼ぶ."""
-        from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        from tests.unit.v460._fill_test_source import read_fill_test_method_source
+        source = read_fill_test_method_source("run_single_cycle")
         assert "_monitor_fill_polling" in source
 
     def test_run_single_cycle_delegates_to_pnl(self) -> None:
         """run_single_cycle が _measure_post_fill_pnl を呼ぶ."""
-        from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        from tests.unit.v460._fill_test_source import read_fill_test_method_source
+        source = read_fill_test_method_source("run_single_cycle")
         assert "_measure_post_fill_pnl" in source
 
     def test_run_single_cycle_under_400_lines(self) -> None:
         """run_single_cycle が 570 行以下 (R1 目標 + 162# Inv-Skewing + 181# StopCond + 187# guard_trace + 195# vel_offset + 196# trend_offset)."""
-        from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        from tests.unit.v460._fill_test_source import read_fill_test_method_source
+        source = read_fill_test_method_source("run_single_cycle")
         line_count = len(source.splitlines())
         assert line_count <= 570, f"run_single_cycle is {line_count} lines (> 570)"
 
     def test_extracted_methods_exist(self) -> None:
         """抽出メソッドが FillTestRunner に存在."""
-        from scripts.v460.run_fill_test import FillTestRunner
-        assert hasattr(FillTestRunner, "_evaluate_skip_gate")
-        assert hasattr(FillTestRunner, "_monitor_fill_polling")
-        assert hasattr(FillTestRunner, "_measure_post_fill_pnl")
+        from tests.unit.v460._fill_test_source import read_fill_test_method_source
+        assert read_fill_test_method_source("_evaluate_skip_gate")
+        assert read_fill_test_method_source("_monitor_fill_polling")
+        assert read_fill_test_method_source("_measure_post_fill_pnl")
 
     def test_result_dataclasses_exist(self) -> None:
         """R1 結果データクラスがインポート可能."""
@@ -276,20 +275,20 @@ class TestR1CircuitBreakerInRunSingleCycle:
     """113# CircuitBreaker が run_single_cycle に組み込まれている."""
 
     def test_circuit_breaker_guard_in_source(self) -> None:
-        from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        from tests.unit.v460._fill_test_source import read_fill_test_method_source
+        source = read_fill_test_method_source("run_single_cycle")
         assert "circuit_breaker" in source
         # 145# §9-#6: CR.CIRCUIT_BREAKER_OPEN 定数に移行済み
         assert "CIRCUIT_BREAKER_OPEN" in source
 
     def test_circuit_breaker_success_recording(self) -> None:
-        from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        from tests.unit.v460._fill_test_source import read_fill_test_method_source
+        source = read_fill_test_method_source("run_single_cycle")
         assert "_on_success" in source
 
     def test_circuit_breaker_failure_recording(self) -> None:
-        from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_single_cycle)
+        from tests.unit.v460._fill_test_source import read_fill_test_method_source
+        source = read_fill_test_method_source("run_single_cycle")
         assert "_on_failure" in source
 
 
@@ -297,20 +296,20 @@ class TestR1ResilienceInRunContinuous:
     """113# HealthMonitor / StatePersistence が run_continuous に組み込まれている."""
 
     def test_health_check_in_continuous(self) -> None:
-        from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_continuous)
+        from tests.unit.v460._fill_test_source import read_fill_test_method_source
+        source = read_fill_test_method_source("run_continuous")
         assert "maybe_check" in source
         assert "maybe_gc" in source
 
     def test_state_persistence_in_continuous(self) -> None:
-        from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_continuous)
+        from tests.unit.v460._fill_test_source import read_fill_test_method_source
+        source = read_fill_test_method_source("run_continuous")
         assert "state_persistence" in source
         assert "FillTestState" in source
 
     def test_resilience_init_in_constructor(self) -> None:
-        from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.__init__)
+        from tests.unit.v460._fill_test_source import read_fill_test_method_source
+        source = read_fill_test_method_source("__init__")
         assert "_circuit_breaker" in source
         assert "_health_monitor" in source
         assert "_state_persistence" in source

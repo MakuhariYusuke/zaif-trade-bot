@@ -24,11 +24,11 @@ from scripts.v460.lib.fill_config import (
     PnlMeasurement as _PnlMeasurement,
 )
 from scripts.v460.lib.ob_utils import best_bid_ask  # 200# 10-C: module-level import
-from scripts.v460.lib.order_monitor import OrderLike
-from scripts.v460.lib.resilience import CircuitState
 
 if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
+    from scripts.v460.lib.order_monitor import OrderLike
+    from scripts.v460.lib.resilience import CircuitState
     from ztb.metrics.fill_quality import FillRecord
 
 logger = logging.getLogger(__name__)
@@ -597,6 +597,8 @@ class FillCycleExecutorMixin:
         cycle_id = self._new_cycle_id()
 
         # 113# resilience: CircuitBreaker ガード — OPEN 中は API 呼出しを回避
+        from scripts.v460.lib.resilience import CircuitState
+
         if self._circuit_breaker.state == CircuitState.OPEN:
             if not self._circuit_breaker.should_attempt_reset():
                 logger.warning(

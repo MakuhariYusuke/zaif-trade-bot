@@ -10,6 +10,7 @@ WARNING (God Object 防止):
 
 from __future__ import annotations
 
+import ast
 from functools import lru_cache
 from pathlib import Path
 
@@ -43,6 +44,12 @@ def read_source_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+@lru_cache(maxsize=None)
+def parse_source_tree(path: Path) -> ast.AST:
+    """ソースの AST をキャッシュする."""
+    return ast.parse(read_source_text(path))
+
+
 def read_fill_test_runner_source() -> str:
     """FillTestRunner 全ソース (本体 + 3 mixin) を連結して返す.
 
@@ -51,3 +58,21 @@ def read_fill_test_runner_source() -> str:
     return "\n".join(
         read_source_text(p) for p in _FILL_TEST_RUNNER_SOURCES
     )
+
+
+@lru_cache(maxsize=None)
+def read_fill_test_method_source(method_name: str) -> str:
+    """FillTestRunner 本体または mixin 群からメソッド source を返す."""
+    for path in _FILL_TEST_RUNNER_SOURCES:
+        source = read_source_text(path)
+        lines = source.splitlines()
+        tree = parse_source_tree(path)
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            if node.name != method_name:
+                continue
+            if not hasattr(node, "lineno") or not hasattr(node, "end_lineno"):
+                continue
+            return "\n".join(lines[node.lineno - 1:node.end_lineno])
+    raise KeyError(f"FillTestRunner method not found: {method_name}")

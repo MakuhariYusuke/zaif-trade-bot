@@ -17,8 +17,6 @@ import time
 from collections.abc import Awaitable, Callable
 from typing import Final, Optional, Protocol, cast, runtime_checkable
 
-from ztb.trading.orders.state_machine import OrderState
-
 from scripts.v460.lib.fill_config import FillMonitorResult, FillTestConfig
 
 logger = logging.getLogger(__name__)
@@ -62,20 +60,27 @@ class ExchangeAdapter(Protocol):
     async def get_orderbook(self, symbol: str, depth: int = 1) -> object: ...
 
 
-# ztb OrderState ↔ exchange status string マッピング
-_STATUS_TO_STATE: dict[str, OrderState] = {
-    "filled": OrderState.FILLED,
-    "cancelled": OrderState.CANCELLED,
-    "rejected": OrderState.REJECTED,
-    "pending": OrderState.PENDING,
-    "confirmed": OrderState.CONFIRMED,
-    "partial": OrderState.PARTIAL,
+# exchange status 文字列の正規化
+_STATE_FILLED: Final[str] = "filled"
+_STATE_CANCELLED: Final[str] = "cancelled"
+_STATE_REJECTED: Final[str] = "rejected"
+_STATE_PENDING: Final[str] = "pending"
+_STATE_CONFIRMED: Final[str] = "confirmed"
+_STATE_PARTIAL: Final[str] = "partial"
+
+_STATUS_TO_STATE: dict[str, str] = {
+    "filled": _STATE_FILLED,
+    "cancelled": _STATE_CANCELLED,
+    "rejected": _STATE_REJECTED,
+    "pending": _STATE_PENDING,
+    "confirmed": _STATE_CONFIRMED,
+    "partial": _STATE_PARTIAL,
 }
 
 
-def _parse_order_state(status_str: str) -> OrderState:
-    """exchange status 文字列 → OrderState enum (型安全変換)."""
-    return _STATUS_TO_STATE.get(status_str, OrderState.PENDING)
+def _parse_order_state(status_str: str) -> str:
+    """exchange status 文字列を内部比較用の正規化文字列へ変換."""
+    return _STATUS_TO_STATE.get(status_str, _STATE_PENDING)
 
 
 class _KillSwitchLike(Protocol):
@@ -270,7 +275,7 @@ class OrderMonitor:
                         status_order = await adapter.get_order_status(order.order_id)
                         if status_order is not None:
                             state = _parse_order_state(status_order.status)
-                            if state == OrderState.FILLED:
+                            if state == _STATE_FILLED:
                                 filled = True
                                 fill_price = (
                                     status_order.price
@@ -291,7 +296,7 @@ class OrderMonitor:
                         break
                     if _recovered and status_order is not None:
                         state = _parse_order_state(status_order.status)
-                        if state in (OrderState.CANCELLED, OrderState.REJECTED):
+                        if state in (_STATE_CANCELLED, _STATE_REJECTED):
                             cancel_reason_poll = f"exchange_{status_order.status}"
                             logger.info(f"Order {status_order.status}: {order.order_id}")
                             break
@@ -321,7 +326,7 @@ class OrderMonitor:
                     break
 
                 state = _parse_order_state(status_order.status)
-                if state == OrderState.FILLED:
+                if state == _STATE_FILLED:
                     filled = True
                     fill_price = (
                         status_order.price if status_order.price else order_price
@@ -332,7 +337,7 @@ class OrderMonitor:
                         f"wait={elapsed:.1f}s"
                     )
                     break
-                elif state in (OrderState.CANCELLED, OrderState.REJECTED):
+                elif state in (_STATE_CANCELLED, _STATE_REJECTED):
                     cancel_reason_poll = f"exchange_{status_order.status}"
                     logger.info(f"Order {status_order.status}: {order.order_id}")
                     break
@@ -391,7 +396,7 @@ class OrderMonitor:
                             if "Failed to cancel" in str(cancel_err) or "not found" in str(cancel_err).lower():
                                 try:
                                     recheck = await adapter.get_order_status(order.order_id)
-                                    if recheck is not None and _parse_order_state(recheck.status) == OrderState.FILLED:
+                                    if recheck is not None and _parse_order_state(recheck.status) == _STATE_FILLED:
                                         filled = True
                                         fill_price = recheck.price if recheck.price else order_price
                                         t_fill = time.time()
@@ -421,7 +426,7 @@ class OrderMonitor:
                             if "Failed to cancel" in str(cancel_err) or "not found" in str(cancel_err).lower():
                                 try:
                                     recheck = await adapter.get_order_status(order.order_id)
-                                    if recheck is not None and _parse_order_state(recheck.status) == OrderState.FILLED:
+                                    if recheck is not None and _parse_order_state(recheck.status) == _STATE_FILLED:
                                         filled = True
                                         fill_price = recheck.price if recheck.price else order_price
                                         t_fill = time.time()
@@ -518,7 +523,7 @@ class OrderMonitor:
                 if "Failed to cancel" in str(e) or "not found" in str(e).lower():
                     try:
                         recheck = await adapter.get_order_status(order.order_id)
-                        if recheck is not None and _parse_order_state(recheck.status) == OrderState.FILLED:
+                        if recheck is not None and _parse_order_state(recheck.status) == _STATE_FILLED:
                             filled = True
                             fill_price = (
                                 recheck.price if recheck.price else order_price

@@ -18,8 +18,6 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
 
-from ztb.utils.git_utils import get_git_sha as _get_shared_git_sha
-
 if TYPE_CHECKING:
     from ztb.metrics.fill_quality import FillRecord
 
@@ -99,5 +97,7 @@ class AbstractCycleRunner(ABC):
     @staticmethod
     def _get_git_sha() -> str:
         """Get current git commit short hash, or 'unknown' on failure."""
+        from ztb.utils.git_utils import get_git_sha as _get_shared_git_sha
+
         sha = _get_shared_git_sha(cwd=_PROJECT_ROOT)
         return sha[:12] if sha != "unknown" else "unknown"

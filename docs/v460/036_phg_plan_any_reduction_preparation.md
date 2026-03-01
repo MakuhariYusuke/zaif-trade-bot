@@ -3003,6 +3003,51 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - `ztb/utils/logging_utils.py`: `any_type_debt_tokens=0`
 
+### Step129: FillTestRunner 構造テストの import 依存をさらに削減
+
+1. 対応概要
+- `scripts/v460/lib/abstract_cycle_runner.py`
+  - `get_git_sha` import を `_get_git_sha()` 内へ移し、抽象基底を import しただけで git helper を読まないようにした。
+- `scripts/v460/lib/order_monitor.py`
+  - `ztb.trading.orders.state_machine.OrderState` 依存を廃止し、内部比較を正規化済み status 文字列へ置き換えた。
+- `scripts/v460/lib/fill_cycle_executor.py`
+  - `OrderLike` を `TYPE_CHECKING` 側へ移動し、型注釈だけのために `order_monitor` を runtime import しないようにした。
+  - `CircuitState` は `run_single_cycle()` 内 import に変更した。
+- `tests/unit/v460/_fill_test_source.py`
+  - `read_fill_test_method_source()` を追加し、本体/mixin 群からメソッド source を cached AST で抽出できるようにした。
+  - `parse_source_tree()` を追加し、AST 解析もキャッシュ化した。
+- `tests/unit/v460/test_113_resilience.py`
+  - `inspect.getsource(FillTestRunner...)` を、cached source helper ベースへ変更した。
+- `tests/unit/v460/test_145_structural_fixes.py`
+  - source-level 検証の一部を、`read_fill_test_method_source()` ベースへ変更した。
+
+2. 目的
+- `scripts.v460.run_fill_test` import 時の残存依存をさらに削減し、構造テストの初回待ち時間を詰める。
+- `FillTestRunner` を import しなくても済む source-level テストを増やし、テスト全体のオーバーヘッドを下げる。
+
+3. 検証
+- `py_compile`
+  - `scripts/v460/lib/abstract_cycle_runner.py`
+  - `scripts/v460/lib/order_monitor.py`
+  - `scripts/v460/lib/fill_cycle_executor.py`
+  - `tests/unit/v460/_fill_test_source.py`
+  - `tests/unit/v460/test_113_resilience.py`
+  - `tests/unit/v460/test_145_structural_fixes.py`
+  - `scripts/v460/run_fill_test.py`
+- `pytest`
+  - `tests/unit/v460/test_113_resilience.py tests/unit/v460/test_145_structural_fixes.py`
+  - 結果: `85 passed`
+- import timing
+  - `scripts.v460.run_fill_test` fresh import: `1.59s → 1.25s`
+  - `-X importtime` cumulative: `0.42s → 0.63s`（計測条件差あり。fresh import を主指標とする）
+- `any_inventory`
+  - `scripts/v460/lib/abstract_cycle_runner.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/order_monitor.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/fill_cycle_executor.py`: `any_type_debt_tokens=0`
+  - `tests/unit/v460/_fill_test_source.py`: `any_type_debt_tokens=0`
+  - `tests/unit/v460/test_113_resilience.py`: `any_type_debt_tokens=0`
+  - `tests/unit/v460/test_145_structural_fixes.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
