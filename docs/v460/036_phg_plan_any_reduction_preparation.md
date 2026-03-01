@@ -3494,6 +3494,64 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - `scripts/v460/lib/metrics_utils.py`: `any_type_debt_tokens=0`
 
+### Step141: `oracle_test` の PnL 集計を正規化し、非有限値を安全に除外
+
+1. 対応概要
+- `scripts/v460/analysis/oracle_test.py`
+  - `_to_finite_float_array()` を追加し、pandas `Series` を有限 `float` 配列へ正規化する処理を共通化した。
+  - `_summarize_pnl_array()` を追加し、baseline / oracle skip / oracle flip / profitable rate の算出式を共通化した。
+  - horizon 別集計・side 別集計の双方で同 helper を使うように変更し、重複計算コードを削減した。
+  - `NaN` だけでなく `inf` も除外するようにし、非有限値で `inf` 汚染される不具合余地を解消した。
+  - AS cost 分析も `pd.to_numeric(..., errors="coerce") + np.isfinite` ベースに統一し、列変換・mask 再構築の重複を減らした。
+- `tests/unit/v460/test_158_oracle_test.py`
+  - `NaN` / `inf` を含む PnL でも有限値だけで集計される回帰テストを追加した。
+
+2. 類似実装の確認
+- `oracle_test.py` は pandas / numpy ベースの分析なので、`ztb.metrics.fill_quality` の stream 集計器へ無理に寄せるより、有限値正規化と集計式の重複排除を優先した。
+- 一方で、「有限値だけ扱う」という契約は他 analysis と揃え、非有限値を silently 集計してしまう差異をなくした。
+
+3. 目的
+- Horizon / side ごとに散っていた同型の平均・比率計算を一本化し、保守性を上げる。
+- `inf` が混入した際に平均が壊れる不具合を防ぐ。
+- 列変換と boolean mask の重複を減らし、分析時の無駄な pandas 操作を削減する。
+
+4. 検証
+- `py_compile`
+  - `scripts/v460/analysis/oracle_test.py`
+  - `tests/unit/v460/test_158_oracle_test.py`
+- `pytest`
+  - `tests/unit/v460/test_158_oracle_test.py`
+  - `tests/unit/v460/test_results_analyzer.py`
+  - 結果: `13 passed`
+- `any_inventory`
+  - `scripts/v460/analysis/oracle_test.py`: `any_type_debt_tokens=0`
+  - `tests/unit/v460/test_158_oracle_test.py`: `any_type_debt_tokens=0`
+
+### Step142: `results_analyzer` の重複計算を削減
+
+1. 対応概要
+- `scripts/v460/lib/results_analyzer.py`
+  - `compute_multi_track_analysis()` で latest run の `compute_fill_metrics()` を二度呼んでいたため、per-run ループ内で作った entry をそのまま `current_run` に再利用する形へ変更した。
+  - `compute_event_contribution()` の SG 集計は `list[tuple[prob, pnl]]` をやめ、`sg_probs` / `sg_pnls` の平行リストへ変更した。
+
+2. 類似実装の確認
+- `results_analyzer` は既に `PnlAccumulator` を使えていたため、新しい集計器は不要だった。
+- 今回はメモリと重複計算の削減に集中し、既存の統計契約はそのまま維持した。
+
+3. 目的
+- latest run の再集計を避け、run 数が多いときの不要な `compute_fill_metrics()` 呼び出しを減らす。
+- SG 寄与分解の一時オブジェクト数を減らし、tuple 蓄積のオーバーヘッドを下げる。
+
+4. 検証
+- `py_compile`
+  - `scripts/v460/lib/results_analyzer.py`
+- `pytest`
+  - `tests/unit/v460/test_158_oracle_test.py`
+  - `tests/unit/v460/test_results_analyzer.py`
+  - 結果: `13 passed`
+- `any_inventory`
+  - `scripts/v460/lib/results_analyzer.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

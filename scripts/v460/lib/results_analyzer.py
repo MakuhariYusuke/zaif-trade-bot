@@ -241,7 +241,7 @@ def compute_multi_track_analysis(
     # --- per-run breakdown ---
     run_groups = compute_run_level_breakdown(records)
     per_run_list: list[dict] = []
-    latest_run_id: str | None = None
+    latest_run_entry: dict | None = None
     latest_ts: float = 0.0
 
     for run_id, run_records in run_groups.items():
@@ -255,7 +255,7 @@ def compute_multi_track_analysis(
         max_ts = max(r.timestamp for r in run_records)
         if max_ts > latest_ts:
             latest_ts = max_ts
-            latest_run_id = run_id
+            latest_run_entry = dict(entry)
 
     # timestamp 降順ソート
     per_run_list.sort(
@@ -265,13 +265,8 @@ def compute_multi_track_analysis(
     result["per_run"] = per_run_list
 
     # --- current-run ---
-    if latest_run_id and latest_run_id in run_groups:
-        current_records = run_groups[latest_run_id]
-        current_metrics = compute_fill_metrics(current_records)
-        result["current_run"] = {
-            "run_id": latest_run_id,
-            **_metrics_summary(current_metrics, len(current_records)),
-        }
+    if latest_run_entry is not None:
+        result["current_run"] = latest_run_entry
     else:
         result["current_run"] = {"run_id": None, "n_total": 0}
 
@@ -384,7 +379,8 @@ def compute_event_contribution(
     result: dict = {}
     ffd_split = _BinaryPnlSplit()
     vg_split = _BinaryPnlSplit()
-    sg_pairs: list[tuple[float, float]] = []
+    sg_probs: list[float] = []
+    sg_pnls: list[float] = []
 
     for record in records:
         if not record.filled or record.post_fill_30s_pnl is None:
@@ -402,7 +398,8 @@ def compute_event_contribution(
             continue
         prob_value = float(as_prob)
         if math.isfinite(prob_value):
-            sg_pairs.append((prob_value, pnl_value))
+            sg_probs.append(prob_value)
+            sg_pnls.append(pnl_value)
 
     # --- FFD 寄与 ---
     result["ffd"] = ffd_split.to_payload(
@@ -421,13 +418,13 @@ def compute_event_contribution(
     # --- SG 寄与 (高 P(AS) skip vs 低 P(AS) pass) ---
     # skip された = 負の寄与を避けた、と仮定して
     # pass された中で as_prob 閾値前後の PnL 差を比較
-    if sg_pairs:
-        sorted_probs = sorted(prob for prob, _pnl in sg_pairs)
+    if sg_probs:
+        sorted_probs = sorted(sg_probs)
         median_prob = sorted_probs[len(sorted_probs) // 2]
 
         sg_high = PnlAccumulator()
         sg_low = PnlAccumulator()
-        for prob_value, pnl_value in sg_pairs:
+        for prob_value, pnl_value in zip(sg_probs, sg_pnls, strict=False):
             if prob_value >= median_prob:
                 sg_high.add(pnl_value)
             else:

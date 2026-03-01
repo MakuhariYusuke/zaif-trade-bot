@@ -217,3 +217,22 @@ class TestPnl120Horizon:
         # Oracle Skip 120s: (5+6)/2 = 5.5
         assert pnl120_result["oracle_skip_mean_bps"] == pytest.approx(5.5, abs=0.001)
         assert result["kill_switch"]["pnl120"] == "PASS"
+
+
+class TestNonFiniteHandling:
+    """非有限値の入力を安全に無視すること."""
+
+    @patch("scripts.v460.analysis.oracle_test.enrich_fill_records")
+    @patch("scripts.v460.analysis.oracle_test.load_fill_records")
+    def test_non_finite_pnl_ignored(self, mock_load: object, mock_enrich: object) -> None:
+        df = _make_fill_df([1.0, float("nan"), float("inf"), -2.0])
+        mock_load.return_value = df  # type: ignore[union-attr]
+        mock_enrich.return_value = df  # type: ignore[union-attr]
+
+        result = run_oracle_test(results_dir="dummy")
+        pnl30 = result["oracle"]["pnl30"]
+
+        # finite values are [1.0, -2.0]
+        assert pnl30["n"] == 2
+        assert pnl30["baseline_mean_bps"] == pytest.approx(-0.5, abs=0.001)
+        assert pnl30["oracle_skip_mean_bps"] == pytest.approx(1.0, abs=0.001)

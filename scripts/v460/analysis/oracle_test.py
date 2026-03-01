@@ -98,6 +98,30 @@ class OracleRunResult(TypedDict, total=False):
     kill_switch: KillSwitchResult
 
 
+def _to_finite_float_array(series: pd.Series) -> np.ndarray:
+    """Series を有限 float 配列へ正規化する."""
+    numeric = pd.to_numeric(series, errors="coerce").to_numpy(dtype=float, copy=False)
+    return numeric[np.isfinite(numeric)]
+
+
+def _summarize_pnl_array(pnl_arr: np.ndarray) -> tuple[float, float, float, float, float]:
+    """PnL 配列から主要 Oracle 指標を算出する."""
+    n = len(pnl_arr)
+    if n == 0:
+        return 0.0, 0.0, 0.0, 0.0, 0.0
+
+    positive_mask = pnl_arr > 0
+    positive_count = int(np.count_nonzero(positive_mask))
+    positive_sum = float(pnl_arr[positive_mask].sum()) if positive_count > 0 else 0.0
+
+    baseline_mean = float(pnl_arr.mean())
+    baseline_std = float(pnl_arr.std())
+    oracle_skip_mean = positive_sum / positive_count if positive_count > 0 else 0.0
+    oracle_skip_rate = float((n - positive_count) / n)
+    oracle_flip_mean = float(np.abs(pnl_arr).mean())
+    return baseline_mean, baseline_std, oracle_skip_mean, oracle_skip_rate, oracle_flip_mean
+
+
 def run_oracle_test(
     results_dir: str = "results/v460/fill_test",
     trades_fallback_recent_days: int = 1,
@@ -147,27 +171,16 @@ def run_oracle_test(
     oracle_results: dict[str, HorizonOracleResult] = {}
 
     for label, col in horizons.items():
-        pnl_values = filled[col].astype(float).dropna()
-        n = len(pnl_values)
+        pnl_arr = _to_finite_float_array(filled[col])
+        n = len(pnl_arr)
 
         if n == 0:
             oracle_results[label] = {"status": "no_data", "n": 0}
             continue
 
-        pnl_arr = pnl_values.values
-
-        # Baseline: 全トレードの平均 PnL (現実)
-        baseline_mean = float(np.mean(pnl_arr))
-        baseline_std = float(np.std(pnl_arr))
-
-        # Oracle Skip: 負の PnL を完全にスキップ (perfect skip gate)
-        profitable = pnl_arr[pnl_arr > 0]
-        unprofitable = pnl_arr[pnl_arr <= 0]
-        oracle_skip_mean = float(np.mean(profitable)) if len(profitable) > 0 else 0.0
-        oracle_skip_rate = float(len(unprofitable) / n)
-
-        # Oracle Side Flip: 常に正しい side を選択 (|pnl| の平均)
-        oracle_flip_mean = float(np.mean(np.abs(pnl_arr)))
+        baseline_mean, baseline_std, oracle_skip_mean, oracle_skip_rate, oracle_flip_mean = (
+            _summarize_pnl_array(pnl_arr)
+        )
 
         # Oracle Skip の改善量 (bps)
         skip_improvement = oracle_skip_mean - baseline_mean
@@ -177,16 +190,17 @@ def run_oracle_test(
         if "side" in filled.columns:
             for side in ["buy", "sell"]:
                 side_mask = filled["side"] == side
-                side_pnl = filled.loc[side_mask, col].astype(float).dropna()
+                side_pnl = _to_finite_float_array(filled.loc[side_mask, col])
                 if len(side_pnl) > 0:
-                    sp = side_pnl.values
-                    side_profitable = sp[sp > 0]
+                    side_mean, side_std, side_skip_mean, side_skip_rate, _side_flip_mean_unused = (
+                        _summarize_pnl_array(side_pnl)
+                    )
                     side_analysis[side] = {
-                        "n": int(len(sp)),
-                        "mean_bps": float(np.mean(sp)),
-                        "std_bps": float(np.std(sp)),
-                        "profitable_rate": float(len(side_profitable) / len(sp)),
-                        "oracle_skip_mean_bps": float(np.mean(side_profitable)) if len(side_profitable) > 0 else 0.0,
+                        "n": int(len(side_pnl)),
+                        "mean_bps": side_mean,
+                        "std_bps": side_std,
+                        "profitable_rate": round(1.0 - side_skip_rate, 4),
+                        "oracle_skip_mean_bps": side_skip_mean,
                     }
 
         oracle_results[label] = {
@@ -208,19 +222,24 @@ def run_oracle_test(
     as_col = "adverse_selected"
     pnl30_col_name = "post_fill_30s_pnl"
     if as_col in filled.columns and pnl30_col_name in filled.columns:
-        as_mask = filled[as_col].astype(bool)
-        pnl30_valid = filled[pnl30_col_name].astype(float).notna()
-        as_records = filled.loc[as_mask & pnl30_valid]
-        non_as_records = filled.loc[~as_mask & pnl30_valid]
+        pnl30_series = pd.to_numeric(filled[pnl30_col_name], errors="coerce")
+        pnl30_array = pnl30_series.to_numpy(dtype=float, copy=False)
+        valid_mask = np.isfinite(pnl30_array)
+        as_mask = filled[as_col].fillna(False).astype(bool).to_numpy(dtype=bool, copy=False)
 
-        n_as = int(len(as_records))
-        n_non_as = int(len(non_as_records))
+        valid_pnl30 = pnl30_array[valid_mask]
+        valid_as_mask = as_mask[valid_mask]
+        as_values = valid_pnl30[valid_as_mask]
+        non_as_values = valid_pnl30[~valid_as_mask]
+
+        n_as = int(len(as_values))
+        n_non_as = int(len(non_as_values))
         n_total_valid = n_as + n_non_as
 
         if n_total_valid > 0 and n_as > 0:
             as_ratio = n_as / n_total_valid
-            as_avg = float(as_records[pnl30_col_name].astype(float).mean())
-            non_as_avg = float(non_as_records[pnl30_col_name].astype(float).mean()) if n_non_as > 0 else 0.0
+            as_avg = float(as_values.mean())
+            non_as_avg = float(non_as_values.mean()) if n_non_as > 0 else 0.0
             as_cost = as_ratio * abs(as_avg)  # AS コスト (bps)
 
             # Oracle Flip PnL30 から AS cost を差し引いた net
