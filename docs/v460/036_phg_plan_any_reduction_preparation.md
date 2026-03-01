@@ -3615,6 +3615,34 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/lib/results_analyzer.py`: `any_type_debt_tokens=0`
   - `tests/unit/v460/test_results_analyzer.py`: `any_type_debt_tokens=0`
 
+### Step145: `vg_and_trend` の group list を集計器保持へ置換
+
+1. 対応概要
+- `scripts/v460/analysis/vg_and_trend.py`
+  - `_VgAggregate` を追加し、VG 発動群 / 非発動群の `total_cycles` / `filled` / PnL / AS / offset を 1 パスで集計するよう変更した。
+  - `analyze_vg_effectiveness()` の `filled` / `vg_filled` / `non_vg_filled` / `vg_all` / `non_vg_all` の複数 list 生成を廃止した。
+  - `_TrendAggregate` を追加し、日次 / 8時間帯別の total/fill/AS/PnL/side別 AS を集約する形へ変更した。
+  - `analyze_daily_trend()` / `analyze_8h_trend()` の `dict[str, list[FillRecord]]` をやめ、`dict[str, _TrendAggregate]` へ変更した。
+
+2. 類似実装の確認
+- 方向性は `oracle_baseline` の `_OracleAggregate` と同じで、「group ごとにレコード配列を持つ」のではなく「group ごとに集計状態だけ持つ」形へ統一した。
+- percentile を必要としない箇所なので、`PnlAccumulator` ベースの集計だけで完結している。
+
+3. 目的
+- VG 比較と日次/期間分析で、group ごとの `FillRecord` list を保持し続ける無駄を減らす。
+- fill log 件数が増えても、集計時のピークメモリを抑える。
+- 同一ファイル内の group 集計方式を揃え、保守性を上げる。
+
+4. 検証
+- `py_compile`
+  - `scripts/v460/analysis/vg_and_trend.py`
+- `pytest`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `-k "TestVGAndTrendAnalysis"`
+  - 結果: `7 passed, 197 deselected`
+- `any_inventory`
+  - `scripts/v460/analysis/vg_and_trend.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

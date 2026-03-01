@@ -27,6 +27,7 @@ import json
 import re
 import sys
 from collections import defaultdict
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -48,6 +49,87 @@ from ztb.io.json_io import write_json
 # ======================================================================
 # A4: Volatility Guard effectiveness
 # ======================================================================
+
+
+@dataclass
+class _TrendAggregate:
+    """日次/期間別 KPI の集計状態."""
+
+    total_cycles: int = 0
+    filled: int = 0
+    as_count: int = 0
+    pnl_30: PnlAccumulator = field(default_factory=PnlAccumulator)
+    pnl_120: PnlAccumulator = field(default_factory=PnlAccumulator)
+    buy_filled: int = 0
+    buy_as: int = 0
+    sell_filled: int = 0
+    sell_as: int = 0
+
+    def add(self, record: FillRecord) -> None:
+        self.total_cycles += 1
+        if not record.filled:
+            return
+        self.filled += 1
+        self.pnl_30.add(record.post_fill_30s_pnl)
+        self.pnl_120.add(record.post_fill_120s_pnl)
+        adverse_selected = record.adverse_selected is True
+        if adverse_selected:
+            self.as_count += 1
+        if record.side == "buy":
+            self.buy_filled += 1
+            if adverse_selected:
+                self.buy_as += 1
+        elif record.side == "sell":
+            self.sell_filled += 1
+            if adverse_selected:
+                self.sell_as += 1
+
+
+@dataclass
+class _VgAggregate:
+    """VG 発動群/非発動群の比較集計."""
+
+    total_cycles: int = 0
+    filled: int = 0
+    pnl_30: PnlAccumulator = field(default_factory=PnlAccumulator)
+    pnl_60: PnlAccumulator = field(default_factory=PnlAccumulator)
+    pnl_120: PnlAccumulator = field(default_factory=PnlAccumulator)
+    as_count: int = 0
+    offset_total: float = 0.0
+    offset_count: int = 0
+
+    def add(self, record: FillRecord) -> None:
+        self.total_cycles += 1
+        if not record.filled:
+            return
+        self.filled += 1
+        self.pnl_30.add(record.post_fill_30s_pnl)
+        self.pnl_60.add(record.post_fill_60s_pnl)
+        self.pnl_120.add(record.post_fill_120s_pnl)
+        if record.adverse_selected is True:
+            self.as_count += 1
+        if record.effective_offset_used is not None:
+            self.offset_total += record.effective_offset_used
+            self.offset_count += 1
+
+    def to_payload(self, label: str) -> dict:
+        return {
+            "label": label,
+            "n": self.filled,
+            "pnl_30s_mean": self.pnl_30.mean_bps if self.pnl_30.count else None,
+            "pnl_60s_mean": self.pnl_60.mean_bps if self.pnl_60.count else None,
+            "pnl_120s_mean": self.pnl_120.mean_bps if self.pnl_120.count else None,
+            "as_count": self.as_count,
+            "as_rate": self.as_count / self.filled if self.filled else 0.0,
+        }
+
+    @property
+    def fill_rate(self) -> float:
+        return self.filled / self.total_cycles if self.total_cycles else 0.0
+
+    @property
+    def mean_offset(self) -> float | None:
+        return self.offset_total / self.offset_count if self.offset_count else None
 
 # TODO(123# Gemini review): プレーンテキストログの regex パースは脆い。
 #   VG 発動等の重要イベントは JSONL 構造化ログとして出力・保存する設計に
@@ -140,82 +222,26 @@ def analyze_vg_effectiveness(
     vg_cycle_ids: set[str],
 ) -> dict:
     """VG 発動群 vs 非発動群の KPI 比較."""
-    filled = [r for r in records if r.filled]
+    vg_agg = _VgAggregate()
+    non_vg_agg = _VgAggregate()
+    for record in records:
+        if record.cycle_id in vg_cycle_ids:
+            vg_agg.add(record)
+        else:
+            non_vg_agg.add(record)
 
-    vg_filled = [r for r in filled if r.cycle_id in vg_cycle_ids]
-    non_vg_filled = [r for r in filled if r.cycle_id not in vg_cycle_ids]
-
-    # VG 発動サイクル全体 (filled + cancelled)
-    vg_all = [r for r in records if r.cycle_id in vg_cycle_ids]
-    non_vg_all = [r for r in records if r.cycle_id not in vg_cycle_ids]
-
-    def _mean_or_none(acc: PnlAccumulator) -> float | None:
-        return acc.mean_bps if acc.count else None
-
-    def _group_stats(group: list[FillRecord], label: str) -> dict:
-        if not group:
-            return {"label": label, "n": 0}
-
-        pnl_30 = PnlAccumulator()
-        pnl_60 = PnlAccumulator()
-        pnl_120 = PnlAccumulator()
-        as_count = 0
-        for record in group:
-            pnl_30.add(record.post_fill_30s_pnl)
-            pnl_60.add(record.post_fill_60s_pnl)
-            pnl_120.add(record.post_fill_120s_pnl)
-            if record.adverse_selected is True:
-                as_count += 1
-
-        result: dict = {
-            "label": label,
-            "n": len(group),
-            "pnl_30s_mean": _mean_or_none(pnl_30),
-            "pnl_60s_mean": _mean_or_none(pnl_60),
-            "pnl_120s_mean": _mean_or_none(pnl_120),
-            "as_count": as_count,
-            "as_rate": as_count / len(group) if group else 0.0,
-        }
-        return result
-
-    def _fill_rate(all_recs: list[FillRecord]) -> float:
-        if not all_recs:
-            return 0.0
-        return sum(1 for r in all_recs if r.filled) / len(all_recs)
-
-    vg_stats = _group_stats(vg_filled, "VG-active (filled)")
-    non_vg_stats = _group_stats(non_vg_filled, "Non-VG (filled)")
-
-    # VG offset boost 分析
-    vg_offset_total = 0.0
-    vg_offset_count = 0
-    for record in vg_filled:
-        if record.effective_offset_used is None:
-            continue
-        vg_offset_total += record.effective_offset_used
-        vg_offset_count += 1
-
-    non_vg_offset_total = 0.0
-    non_vg_offset_count = 0
-    for record in non_vg_filled:
-        if record.effective_offset_used is None:
-            continue
-        non_vg_offset_total += record.effective_offset_used
-        non_vg_offset_count += 1
+    vg_stats = vg_agg.to_payload("VG-active (filled)")
+    non_vg_stats = non_vg_agg.to_payload("Non-VG (filled)")
 
     return {
-        "vg_total_cycles": len(vg_all),
-        "non_vg_total_cycles": len(non_vg_all),
-        "vg_fill_rate": _fill_rate(vg_all),
-        "non_vg_fill_rate": _fill_rate(non_vg_all),
+        "vg_total_cycles": vg_agg.total_cycles,
+        "non_vg_total_cycles": non_vg_agg.total_cycles,
+        "vg_fill_rate": vg_agg.fill_rate,
+        "non_vg_fill_rate": non_vg_agg.fill_rate,
         "vg_filled": vg_stats,
         "non_vg_filled": non_vg_stats,
-        "vg_mean_offset": (
-            vg_offset_total / vg_offset_count if vg_offset_count else None
-        ),
-        "non_vg_mean_offset": (
-            non_vg_offset_total / non_vg_offset_count if non_vg_offset_count else None
-        ),
+        "vg_mean_offset": vg_agg.mean_offset,
+        "non_vg_mean_offset": non_vg_agg.mean_offset,
         "interpretation": _interpret_vg(vg_stats, non_vg_stats),
     }
 
@@ -272,88 +298,49 @@ def _period_key(ts: float) -> str:
 
 def analyze_daily_trend(records: list[FillRecord]) -> list[dict]:
     """日別 KPI ブレークダウン."""
-    by_day: dict[str, list[FillRecord]] = defaultdict(list)
-    for r in records:
-        by_day[_date_key(r.timestamp)].append(r)
+    by_day: dict[str, _TrendAggregate] = defaultdict(_TrendAggregate)
+    for record in records:
+        by_day[_date_key(record.timestamp)].add(record)
 
     results = []
     for day in sorted(by_day.keys()):
-        recs = by_day[day]
-        n_total = len(recs)
-        n_filled = 0
-        n_as = 0
-        pnl_30 = PnlAccumulator()
-        pnl_120 = PnlAccumulator()
-        buy_filled = 0
-        buy_as = 0
-        sell_filled = 0
-        sell_as = 0
-
-        for record in recs:
-            if not record.filled:
-                continue
-            n_filled += 1
-            pnl_30.add(record.post_fill_30s_pnl)
-            pnl_120.add(record.post_fill_120s_pnl)
-            adverse_selected = record.adverse_selected is True
-            if adverse_selected:
-                n_as += 1
-            if record.side == "buy":
-                buy_filled += 1
-                if adverse_selected:
-                    buy_as += 1
-            elif record.side == "sell":
-                sell_filled += 1
-                if adverse_selected:
-                    sell_as += 1
+        agg = by_day[day]
 
         results.append({
             "date": day,
-            "total_cycles": n_total,
-            "filled": n_filled,
-            "fill_rate": n_filled / n_total if n_total > 0 else 0.0,
-            "as_count": n_as,
-            "as_rate": n_as / n_filled if n_filled > 0 else 0.0,
-            "pnl_30s_mean": pnl_30.mean_bps if pnl_30.count else None,
-            "pnl_120s_mean": pnl_120.mean_bps if pnl_120.count else None,
-            "buy_filled": buy_filled,
-            "buy_as_rate": buy_as / buy_filled if buy_filled else 0.0,
-            "sell_filled": sell_filled,
-            "sell_as_rate": sell_as / sell_filled if sell_filled else 0.0,
+            "total_cycles": agg.total_cycles,
+            "filled": agg.filled,
+            "fill_rate": agg.filled / agg.total_cycles if agg.total_cycles > 0 else 0.0,
+            "as_count": agg.as_count,
+            "as_rate": agg.as_count / agg.filled if agg.filled > 0 else 0.0,
+            "pnl_30s_mean": agg.pnl_30.mean_bps if agg.pnl_30.count else None,
+            "pnl_120s_mean": agg.pnl_120.mean_bps if agg.pnl_120.count else None,
+            "buy_filled": agg.buy_filled,
+            "buy_as_rate": agg.buy_as / agg.buy_filled if agg.buy_filled else 0.0,
+            "sell_filled": agg.sell_filled,
+            "sell_as_rate": agg.sell_as / agg.sell_filled if agg.sell_filled else 0.0,
         })
     return results
 
 
 def analyze_8h_trend(records: list[FillRecord]) -> list[dict]:
     """8 時間帯別 KPI ブレークダウン."""
-    by_period: dict[str, list[FillRecord]] = defaultdict(list)
-    for r in records:
-        by_period[_period_key(r.timestamp)].append(r)
+    by_period: dict[str, _TrendAggregate] = defaultdict(_TrendAggregate)
+    for record in records:
+        by_period[_period_key(record.timestamp)].add(record)
 
     results = []
     for period in sorted(by_period.keys()):
-        recs = by_period[period]
-        n_total = len(recs)
-        n_filled = 0
-        n_as = 0
-        pnl_30 = PnlAccumulator()
-
-        for record in recs:
-            if not record.filled:
-                continue
-            n_filled += 1
-            pnl_30.add(record.post_fill_30s_pnl)
-            if record.adverse_selected is True:
-                n_as += 1
+        agg = by_period[period]
 
         results.append({
             "period": period,
-            "total_cycles": n_total,
-            "filled": n_filled,
-            "fill_rate": n_filled / n_total if n_total > 0 else 0.0,
-            "as_count": n_as,
-            "as_rate": n_as / n_filled if n_filled > 0 else 0.0,
-            "pnl_30s_mean": pnl_30.mean_bps if pnl_30.count else None,
+            "total_cycles": agg.total_cycles,
+            "filled": agg.filled,
+            "fill_rate": agg.filled / agg.total_cycles if agg.total_cycles > 0 else 0.0,
+            "as_count": agg.as_count,
+            "as_rate": agg.as_count / agg.filled if agg.filled > 0 else 0.0,
+            "pnl_30s_mean": agg.pnl_30.mean_bps if agg.pnl_30.count else None,
         })
     return results
 
