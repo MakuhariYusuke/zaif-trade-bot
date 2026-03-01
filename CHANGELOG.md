@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 198# 事後分析: 2026-03-01 朝セッション -53bps ドローダウン (2026-03-01)
+
+### Analysis
+- 朝セッション (09:04–10:07) で 12 fills, -53.21bps → daily_drawdown HALT
+- 根本原因: stale_order reprice 逆選択増幅, postonly_guard offset 無効化, soft lot 半減バグ
+- 改善提案 9 件 (A–I) を文書化: `docs/v460/198_postmortem_20260301_drawdown_analysis.md`
+
 ## 197# boost 最適化 + balance_forced offset + Gate 8-9 統合 (2026-03-01)
 
 ### Fixed
