@@ -3744,7 +3744,40 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/lib/stopgap_health.py`: `any_type_debt_tokens=0`
   - `scripts/v460/analysis/side_regime_dashboard.py`: `any_type_debt_tokens=0`
   - `scripts/v460/lib/batch_persistence.py`: `any_type_debt_tokens=0`
-  - `scripts/v460/lib/fill_cycle_executor.py`: `any_type_debt_tokens=0`
+- `scripts/v460/lib/fill_cycle_executor.py`: `any_type_debt_tokens=0`
+
+### Step149 fill_quality 集計の 1 パス化（compute_fill_metrics）
+
+1. 変更概要
+- `ztb/metrics/fill_quality.py` に `_mean_and_one_sided_pvalue()` を追加し、30s/60s/120s PnL の平均 + 片側 t 検定ロジックを共通化した。
+- `compute_fill_metrics()` は `filled` / `cancelled` の補助 `FillRecord` list に依存する形をやめ、1 回の走査で以下を同時に集計する形へ整理した。
+  - `filled_count`
+  - `cancelled_count`
+  - `cancel_reason_breakdown`
+  - `skip_gate_count`
+  - `wait_times`
+  - `post_fill_30s/60s/120s` の数値列
+  - `adverse_selected` / `adverse_selected_raw` の coverage と件数
+- これにより、`filled` の二次走査で作っていた queue wait / AS / multi-timeframe PnL の重複ループを削減した。
+
+2. 類似実装の確認
+- 既に導入済みの `PnlAccumulator` / `PnlWinAccumulator` と方向性は同じで、「必要な統計だけを保持し、不要なレコード配列を持たない」方針に揃えた。
+- 今回は median と t 検定の都合で数値列は維持するが、`FillRecord` 本体の補助 list は不要になった。
+
+3. 目的
+- fill_test 終了時の最終集計で、レコード件数増加に対する余計なメモリ保持を減らす。
+- `compute_fill_metrics()` の内部重複を減らし、仕様変更時の追従点を少なくする。
+- 30s/60s/120s の統計計算契約を 1 つの helper に揃えて、p 値計算の分岐ズレを防ぐ。
+
+4. 検証
+- `py_compile`
+  - `ztb/metrics/fill_quality.py`
+- `pytest`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_169_ranging_buy_skip_and_metrics.py`
+  - 結果: `218 passed`
+- `any_inventory`
+  - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
 
 ## 6. 次フェーズ（優先順）
 

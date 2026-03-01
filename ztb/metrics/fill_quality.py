@@ -417,6 +417,20 @@ def format_utc_day(timestamp: object, *, compact: bool = True) -> str | None:
         return None
 
 
+def _mean_and_one_sided_pvalue(values: list[float]) -> tuple[float, float]:
+    """平均値と片側 t 検定 p 値を返す."""
+    if not values:
+        return 0.0, 1.0
+    mean_val = float(np.mean(values))
+    if len(values) < 2:
+        return mean_val, 1.0
+
+    t_stat, two_sided_p = stats.ttest_1samp(values, 0.0)
+    if t_stat < 0:
+        return mean_val, float(two_sided_p / 2)
+    return mean_val, 1.0 - float(two_sided_p / 2)
+
+
 def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
     """FillRecord のリストから G1.1 Gate 指標を算出.
 
@@ -429,16 +443,44 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
         return FillMetrics()
 
     total = len(records)
-    filled: list[FillRecord] = []
+    filled_count = 0
     cancelled_count = 0
     cancel_reason_breakdown: dict[str, int] = {}
     skip_gate_count = 0
     daily_groups: dict[str, _DailyFillCount] = {}
+    wait_times: list[float] = []
+    pnl_values: list[float] = []
+    pnl60_values: list[float] = []
+    pnl120_values: list[float] = []
+    as_coverage = 0
+    as_raw_coverage = 0
+    n_adverse = 0
+    n_adverse_raw = 0
 
-    # --- E1 / E2 / cancel reason / attempted 用の前処理 ---
+    # --- E1-E5 / cancel reason / attempted 用の前処理 ---
     for record in records:
         if record.filled:
-            filled.append(record)
+            filled_count += 1
+            if record.queue_wait_sec > 0:
+                wait_times.append(record.queue_wait_sec)
+
+            if record.post_fill_30s_pnl is not None:
+                pnl_values.append(record.post_fill_30s_pnl)
+            if record.post_fill_60s_pnl is not None:
+                pnl60_values.append(record.post_fill_60s_pnl)
+            if record.post_fill_120s_pnl is not None:
+                pnl120_values.append(record.post_fill_120s_pnl)
+
+            if record.adverse_selected is not None:
+                as_coverage += 1
+                if record.adverse_selected:
+                    n_adverse += 1
+
+            if record.adverse_selected_raw is not None:
+                as_raw_coverage += 1
+                if record.adverse_selected_raw:
+                    n_adverse_raw += 1
+
         if record.cancelled:
             cancelled_count += 1
             reason = record.cancel_reason or "unknown"
@@ -469,45 +511,18 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
     cancel_ratio = cancelled_count / total if total > 0 else 0.0
 
     # --- E3: queue_wait_median_sec (filled orders only) ---
-    wait_times = [r.queue_wait_sec for r in filled if r.queue_wait_sec > 0]
     queue_wait_median = float(np.median(wait_times)) if wait_times else 0.0
 
     # --- E4: post_fill_30s_pnl ---
-    pnl_values = [
-        r.post_fill_30s_pnl for r in filled
-        if r.post_fill_30s_pnl is not None
-    ]
-    if pnl_values:
-        pnl_mean = float(np.mean(pnl_values))
-        # 片側 t 検定: H0: mean >= 0, H1: mean < 0
-        if len(pnl_values) >= 2:
-            t_stat, two_sided_p = stats.ttest_1samp(pnl_values, 0.0)
-            # 片側 (mean < 0 方向): t_stat < 0 なら p_one = two_sided_p / 2
-            if t_stat < 0:
-                pnl_pvalue = float(two_sided_p / 2)
-            else:
-                pnl_pvalue = 1.0 - float(two_sided_p / 2)
-        else:
-            pnl_pvalue = 1.0  # サンプル不足 → PASS 扱い
-    else:
-        pnl_mean = 0.0
-        pnl_pvalue = 1.0
+    pnl_mean, pnl_pvalue = _mean_and_one_sided_pvalue(pnl_values)
 
     # --- E5: adverse_selection_ratio ---
-    adverse_records = [
-        r for r in filled
-        if r.adverse_selected is not None
-    ]
-    n_adverse = sum(1 for r in adverse_records if r.adverse_selected)
-    adverse_ratio = n_adverse / len(adverse_records) if adverse_records else 0.0
+    adverse_ratio = n_adverse / as_coverage if as_coverage else 0.0
 
     # --- E5-raw: 020# O5 — deadzone 非適用の生データ並行監視 ---
-    adverse_raw_records = [
-        r for r in filled
-        if r.adverse_selected_raw is not None
-    ]
-    n_adverse_raw = sum(1 for r in adverse_raw_records if r.adverse_selected_raw)
-    adverse_ratio_raw = n_adverse_raw / len(adverse_raw_records) if adverse_raw_records else adverse_ratio
+    adverse_ratio_raw = (
+        n_adverse_raw / as_raw_coverage if as_raw_coverage else adverse_ratio
+    )
 
     # --- 020# O1: サンプル充足判定 ---
     # 047# Finding3: 3日ではなく 7日を要求 (000# §3.3 準拠)
@@ -516,13 +531,13 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
     # --- 116# attempted ベース指標 ---
     attempted_orders = total - skip_gate_count
     skip_gate_ratio = skip_gate_count / total if total > 0 else 0.0
-    attempted_fill_rate = len(filled) / attempted_orders if attempted_orders > 0 else 0.0
+    attempted_fill_rate = filled_count / attempted_orders if attempted_orders > 0 else 0.0
     attempted_cancel_ratio = (
-        (attempted_orders - len(filled)) / attempted_orders
+        (attempted_orders - filled_count) / attempted_orders
         if attempted_orders > 0
         else 0.0
     )
-    overall_fill_rate = len(filled) / total if total > 0 else 0.0
+    overall_fill_rate = filled_count / total if total > 0 else 0.0
 
     # --- 116# PnL CI 上限 (Kill Gate 複合条件用) ---
     pnl_ci_upper = 0.0
@@ -532,24 +547,12 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
         pnl_ci_upper = pnl_mean + t_crit * se
 
     # --- 122# B3: multi-timeframe PnL (047# データ基盤活用) ---
-    def _pnl_stats(attr: str) -> tuple[float, float]:
-        vals = [getattr(r, attr) for r in filled if getattr(r, attr, None) is not None]
-        if not vals:
-            return 0.0, 1.0
-        mean_val = float(np.mean(vals))
-        if len(vals) >= 2:
-            t_s, two_p = stats.ttest_1samp(vals, 0.0)
-            p_one = float(two_p / 2) if t_s < 0 else 1.0 - float(two_p / 2)
-        else:
-            p_one = 1.0
-        return mean_val, p_one
-
-    pnl60_mean, pnl60_pvalue = _pnl_stats("post_fill_60s_pnl")
-    pnl120_mean, pnl120_pvalue = _pnl_stats("post_fill_120s_pnl")
+    pnl60_mean, pnl60_pvalue = _mean_and_one_sided_pvalue(pnl60_values)
+    pnl120_mean, pnl120_pvalue = _mean_and_one_sided_pvalue(pnl120_values)
 
     return FillMetrics(
         total_orders=total,
-        filled_orders=len(filled),
+        filled_orders=filled_count,
         cancelled_orders=cancelled_count,
         fill_rate_p90=fill_rate_p90,
         cancel_ratio=cancel_ratio,
@@ -562,8 +565,8 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
         measurement_days=len(daily_fill_rates),
         sample_sufficient=sample_sufficient,
         # 047# Finding4: AS coverage
-        as_coverage=len(adverse_records),
-        as_raw_coverage=len(adverse_raw_records),
+        as_coverage=as_coverage,
+        as_raw_coverage=as_raw_coverage,
         # 116# attempted
         attempted_orders=attempted_orders,
         skip_gate_count=skip_gate_count,
