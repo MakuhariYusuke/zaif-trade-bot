@@ -1,4 +1,4 @@
-"""
+﻿"""
 G1.1-exec Fill Quality Metrics — 009# §4.3 準拠.
 
 maker 注文の約定品質を評価する指標の算出と Gate 判定を提供する。
@@ -115,7 +115,7 @@ class FillRecord:
     vg_vpin: Optional[float] = None                  # VG 評価時の VPIN 値
     vg_boost_factor: Optional[float] = None          # 実際に適用された boost 倍率 (1.0=未発動)
     # 165# AS-R1: SkipGate 特徴量ログ (閾値キャリブレーション用)
-    price_velocity_60s: Optional[float] = None        # 直近60sの価格速度 (bps)
+    price_velocity_bps: Optional[float] = None        # 直近60sの価格速度 (bps)
     # 129# D.2: 残高制約による side 強制切替フラグ (評価/学習での交絡分離用)
     balance_forced_switch: Optional[bool] = None     # 残高不足で side が強制切替されたか
     # 155# §9.4 #2: balance_forced_skip 連続回数追跡

@@ -1,4 +1,4 @@
-"""163# Mixin: FillCycleExecutorMixin -- run_single_cycle + 直接依存メソッド.
+﻿"""163# Mixin: FillCycleExecutorMixin -- run_single_cycle + 直接依存メソッド.
 
 1 サイクル: 発注 → 約定監視 → PnL 計測 → FillRecord 構築。
 
@@ -170,7 +170,7 @@ class FillCycleExecutorMixin:
         sg_as_prob: float | None,
         sg_threshold_used: float | None,
         sg_hour_offset: float | None,
-        sg_velocity_60s: float | None,
+        sg_velocity_bps: float | None,
         regime_str: str | None,
         regime_conf: float | None,
         regime_stab: int | None,
@@ -215,7 +215,7 @@ class FillCycleExecutorMixin:
             "vg_velocity_bps": self._maker_price.last_vg_velocity_bps,
             "vg_vpin": self._maker_price.last_vg_vpin,
             "vg_boost_factor": self._maker_price.last_vg_boost_factor,
-            "price_velocity_60s": sg_velocity_60s,
+            "price_velocity_bps": sg_velocity_bps,
             "balance_forced_switch": balance_forced_switch or None,
             "confidence_lot_factor": (
                 confidence_factor if self.config.enable_confidence_lot else None
@@ -459,7 +459,7 @@ class FillCycleExecutorMixin:
         sg_as_prob: float | None,
         sg_threshold_used: float | None,
         sg_hour_offset: float | None,
-        sg_velocity_60s: float | None,
+        sg_velocity_bps: float | None,
         regime_str: str | None,
         regime_conf: float | None,
         regime_stab: int | None,
@@ -513,7 +513,7 @@ class FillCycleExecutorMixin:
                 sg_as_prob=sg_as_prob,
                 sg_threshold_used=sg_threshold_used,
                 sg_hour_offset=sg_hour_offset,
-                sg_velocity_60s=sg_velocity_60s,
+                sg_velocity_bps=sg_velocity_bps,
                 regime_str=regime_str,
                 regime_conf=regime_conf,
                 regime_stab=regime_stab,
@@ -780,7 +780,7 @@ class FillCycleExecutorMixin:
         skip_gate_as_prob = sg.as_prob
         skip_gate_threshold_used = sg.threshold_used
         skip_gate_hour_offset = sg.hour_offset if sg.hour_offset != 0.0 else None
-        _sg_velocity_60s = sg.price_velocity_60s  # 165# AS-R1
+        _sg_velocity_bps = sg.price_velocity_bps  # 165# AS-R1
         if sg.early_return_record is not None:
             return sg.early_return_record
 
@@ -834,7 +834,7 @@ class FillCycleExecutorMixin:
         if _vel_mult is not None and _delta is not None:
             _vel_offset_applied = True
             logger.info(
-                f"[195# vel_offset] {side}: velocity={sg.price_velocity_60s:.2f}bps "
+                f"[195# vel_offset] {side}: velocity={sg.price_velocity_bps:.2f}bps "
                 f"→ offset_mult={_vel_mult:.2f} "
                 f"(delta={_delta:+.0f}JPY, price={order_price:.0f})"
             )
@@ -857,12 +857,12 @@ class FillCycleExecutorMixin:
 
         # 202# C: VG sell-side 補完 — maker_price VG が未発火かつ velocity が高い sell で
         # 補足的 offset boost を適用。mid_trend_bps は point-to-point のため sell 側で
-        # VG が盲点になるケースを velocity_60s で補完する。
+        # VG が盲点になるケースを velocity_bps で補完する。
         if (
             side == "sell"
             and not self._maker_price.last_vg_triggered
-            and _sg_velocity_60s is not None
-            and abs(_sg_velocity_60s) > self.config.volatility_guard_velocity_threshold_bps
+            and _sg_velocity_bps is not None
+            and abs(_sg_velocity_bps) > self.config.volatility_guard_velocity_threshold_bps
             and not _vel_offset_applied  # 195# で既に補正済みなら二重適用しない
         ):
             _vg_supp_boost = self.config.volatility_guard_offset_boost_factor
@@ -877,8 +877,8 @@ class FillCycleExecutorMixin:
             )
             if _vg_supp_mult is not None and _vg_supp_delta is not None:
                 logger.info(
-                    f"[202# C] VG sell supplement: velocity_60s="
-                    f"{_sg_velocity_60s:.1f}bps → offset_mult={_vg_supp_mult:.2f} "
+                    f"[202# C] VG sell supplement: velocity_bps="
+                    f"{_sg_velocity_bps:.1f}bps → offset_mult={_vg_supp_mult:.2f} "
                     f"(delta={_vg_supp_delta:+.0f}JPY, price={order_price:.0f})"
                 )
 
@@ -1170,7 +1170,7 @@ class FillCycleExecutorMixin:
             sg_as_prob=skip_gate_as_prob,
             sg_threshold_used=skip_gate_threshold_used,
             sg_hour_offset=skip_gate_hour_offset,
-            sg_velocity_60s=_sg_velocity_60s,
+            sg_velocity_bps=_sg_velocity_bps,
             regime_str=regime_str,
             regime_conf=regime_conf,
             regime_stab=regime_stab,

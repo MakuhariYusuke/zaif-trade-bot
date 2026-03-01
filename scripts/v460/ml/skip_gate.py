@@ -1,4 +1,4 @@
-"""058# Skip Gate: PnL 予測ベースの注文スキップ判定.
+﻿"""058# Skip Gate: PnL 予測ベースの注文スキップ判定.
 
 Ridge PnL regressor を使って注文前に期待 PnL を予測し、
 負のPnLが見込まれる注文をスキップする。
@@ -61,7 +61,7 @@ _BASE_FEATURE_COLS: list[str] = [
     "buy_ratio",
     "trade_flow_imbalance_60s",
     "avg_trade_size",
-    "price_velocity_60s",
+    "price_velocity_bps",
     "vpin_60s",
     # interaction features (trade-based)
     "side_aligned_tfi",
@@ -743,11 +743,11 @@ def build_features_from_market_state(
         and last_price is not None
         and first_price > 0
     ):
-        features["price_velocity_60s"] = (
+        features["price_velocity_bps"] = (
             (last_price - first_price) / first_price * 10000
         )
     else:
-        features["price_velocity_60s"] = 0.0
+        features["price_velocity_bps"] = 0.0
     features["vpin_60s"] = (
         abs(buy_vol - sell_vol) / total_vol if total_vol > 0 else 0.5
     )
@@ -758,7 +758,7 @@ def build_features_from_market_state(
         features["trade_flow_imbalance_60s"] * side_sign
     )
     features["side_aligned_velocity"] = (
-        features["price_velocity_60s"] * side_sign
+        features["price_velocity_bps"] * side_sign
     )
 
     # 072# OB 特徴量 (トグル有効時のみ)

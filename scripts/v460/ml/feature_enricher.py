@@ -1,4 +1,4 @@
-"""058# Feature Enricher: raw orderbook/trades → fill record 特徴量付与.
+﻿"""058# Feature Enricher: raw orderbook/trades → fill record 特徴量付与.
 
 fill record の timestamp に対応する板・約定データから
 マイクロストラクチャ特徴量を算出し、AS 分類器を強化する。
@@ -113,7 +113,7 @@ def _default_trade_features() -> dict[str, float]:
         "buy_ratio": 0.5,
         "trade_flow_imbalance_60s": 0.0,
         "avg_trade_size": 0.0,
-        "price_velocity_60s": 0.0,
+        "price_velocity_bps": 0.0,
         "vpin_60s": 0.5,
     }
 
@@ -218,7 +218,7 @@ def _compute_trade_feature_bundle(
         "buy_ratio": primary_core["buy_ratio"],
         "trade_flow_imbalance_60s": primary_core["tfi"],
         "avg_trade_size": primary_core["avg_size"],
-        "price_velocity_60s": primary_core["price_velocity"],
+        "price_velocity_bps": primary_core["price_velocity"],
         "vpin_60s": primary_core["vpin"],
     }
 
@@ -365,7 +365,7 @@ def _compute_trade_features(
 
     Returns:
         trade_count_60s, buy_ratio, trade_flow_imbalance_60s,
-        avg_trade_size, price_velocity_60s, vpin_60s
+        avg_trade_size, price_velocity_bps, vpin_60s
     """
     context = _context or _build_trade_feature_context(trades_df, sorted_ts=_sorted_ts)
     primary, _ = _compute_trade_feature_bundle(
@@ -547,7 +547,7 @@ def enrich_fill_records(
         enriched DataFrame. 新規カラム:
             spread_bps_ob, depth_imbalance_ob, bid_vol_5_ob, ask_vol_5_ob,
             trade_count_60s, buy_ratio, trade_flow_imbalance_60s,
-            avg_trade_size, price_velocity_60s, vpin_60s,
+            avg_trade_size, price_velocity_bps, vpin_60s,
             + 060# v2 features (multi-timeframe, volatility, momentum)
     """
     # 130# 日付限定ロード: fill records のタイムスタンプから必要日を算出
@@ -672,7 +672,7 @@ MICRO_FEATURE_COLS = [
     "buy_ratio",
     "trade_flow_imbalance_60s",
     "avg_trade_size",
-    "price_velocity_60s",
+    "price_velocity_bps",
     "vpin_60s",
 ]
 
@@ -775,8 +775,8 @@ def build_preorder_as_features(
         tfi = aligned["trade_flow_imbalance_60s"].astype(float)
         features["side_aligned_tfi"] = (tfi * side_sign).fillna(0.0)
 
-    if "price_velocity_60s" in aligned.columns:
-        vel = aligned["price_velocity_60s"].astype(float)
+    if "price_velocity_bps" in aligned.columns:
+        vel = aligned["price_velocity_bps"].astype(float)
         features["side_aligned_velocity"] = (vel * side_sign).fillna(0.0)
 
     # NOTE: log_queue_wait, edge_bps は事後特徴量のため意図的に除外
@@ -846,8 +846,8 @@ def build_enriched_as_features(
         micro_features["side_aligned_tfi"] = aligned_tfi.fillna(0.0)
 
     # price_velocity × side_sign: 上昇 → buy に有利 (+)
-    if "price_velocity_60s" in aligned_rows.columns:
-        vel = aligned_rows["price_velocity_60s"].astype(float)
+    if "price_velocity_bps" in aligned_rows.columns:
+        vel = aligned_rows["price_velocity_bps"].astype(float)
         aligned_vel = vel * side_sign
         micro_features["side_aligned_velocity"] = aligned_vel.fillna(0.0)
 
@@ -941,8 +941,8 @@ def build_pnl_features(
     if "trade_flow_imbalance_60s" in data.columns:
         tfi = data["trade_flow_imbalance_60s"].astype(float)
         features["side_aligned_tfi"] = (tfi * side_sign).fillna(0.0)
-    if "price_velocity_60s" in data.columns:
-        vel = data["price_velocity_60s"].astype(float)
+    if "price_velocity_bps" in data.columns:
+        vel = data["price_velocity_bps"].astype(float)
         features["side_aligned_velocity"] = (vel * side_sign).fillna(0.0)
 
     # --- 060# v2: Multi-timeframe & momentum ---

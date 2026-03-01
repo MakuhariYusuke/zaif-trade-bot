@@ -1,4 +1,4 @@
-"""168# §4.1 #3: DailyDrawdownGuard ユニットテスト.
+﻿"""168# §4.1 #3: DailyDrawdownGuard ユニットテスト.
 
 テスト対象:
 - DailyDrawdownGuard クラス (日次 PnL 追跡、soft/hard 二段制御)
@@ -938,7 +938,7 @@ class TestVelocityGateWiring210:
     """210# H3: CycleGateAggregator に velocity が渡されること確認."""
 
     def test_velocity_skip_with_value(self) -> None:
-        """price_velocity_60s が渡された場合に velocity gate が評価される."""
+        """price_velocity_bps が渡された場合に velocity gate が評価される."""
         from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
         from scripts.v460.lib.fill_config import FillTestConfig
 
@@ -956,13 +956,13 @@ class TestVelocityGateWiring210:
             inv_net_imbalance=0.0,
             is_buy_killed=False,
             is_sell_killed=False,
-            price_velocity_60s=10.0,  # > threshold (5.0)
+            price_velocity_bps=10.0,  # > threshold (5.0)
         )
         assert result.blocked is True
         assert result.blocking_reason == "rule_velocity_sell_skip"
 
     def test_velocity_none_passes(self) -> None:
-        """price_velocity_60s=None の場合は velocity gate を通過."""
+        """price_velocity_bps=None の場合は velocity gate を通過."""
         from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
         from scripts.v460.lib.fill_config import FillTestConfig
 
@@ -980,7 +980,7 @@ class TestVelocityGateWiring210:
             inv_net_imbalance=0.0,
             is_buy_killed=False,
             is_sell_killed=False,
-            price_velocity_60s=None,
+            price_velocity_bps=None,
         )
         # velocity gate は通過、他の gate でブロックされない限り
         # velocity_skip はブロックしない
@@ -1009,7 +1009,7 @@ class TestVelocityGateWiring210:
             inv_net_imbalance=0.0,
             is_buy_killed=False,
             is_sell_killed=False,
-            price_velocity_60s=10.0,
+            price_velocity_bps=10.0,
         )
         velocity_check = next(
             (c for c in result.checks if c.gate_name == "velocity_skip"), None

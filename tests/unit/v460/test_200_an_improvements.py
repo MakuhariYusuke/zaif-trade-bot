@@ -1,4 +1,4 @@
-"""200# A-N 実装の単体テスト.
+﻿"""200# A-N 実装の単体テスト.
 
 10-A: soft_drawdown_interval_multiplier 日次リセット
 B/I: postonly_guard crossing → skip
@@ -313,7 +313,7 @@ class TestInstantVelocityBps:
         assert result is None
 
     def test_sign_convention_matches_trade_velocity(self) -> None:
-        """符号規約が price_velocity_60s と同一 (正=上昇) であること。"""
+        """符号規約が price_velocity_bps と同一 (正=上昇) であること。"""
         from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
 
         up = compute_instant_velocity_bps(

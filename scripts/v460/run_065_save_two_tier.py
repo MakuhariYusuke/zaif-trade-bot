@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 065# Phase 2: Two-Tier AS-LR モデル保存.
 
@@ -45,7 +45,7 @@ CURATED_TRADE_FEATURES = [
     "vpin_60s",
     "vpin_30s",
     "vpin_300s",
-    "price_velocity_60s",
+    "price_velocity_bps",
     "buy_ratio",
     "tfi_300s",
     "hour_cos",

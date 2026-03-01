@@ -1,4 +1,4 @@
-"""193# CycleGateAggregator — per-cycle skip 判定の一元化.
+﻿"""193# CycleGateAggregator — per-cycle skip 判定の一元化.
 
 192# §3.1 の指摘「同じ判断が 4 箇所に分散」を解消する。
 
@@ -118,7 +118,7 @@ class CycleGateAggregator:
         is_sell_killed: bool,
         spread_jpy: float | None = None,
         mid_price: float | None = None,
-        price_velocity_60s: float | None = None,
+        price_velocity_bps: float | None = None,
         # 安全弁の状態 (orchestrator が管理するカウンタ)
         trending_sell_skip_count: int = 0,
         buy_side_insufficient: bool = False,
@@ -135,7 +135,7 @@ class CycleGateAggregator:
             is_sell_killed: sell_dynamic_kill が発動中
             spread_jpy: 直近の spread (JPY)、None = 未取得
             mid_price: 直近の mid price、None = 未取得
-            price_velocity_60s: 直近60秒の価格速度 (bps)
+            price_velocity_bps: 直近60秒の価格速度 (bps)
             trending_sell_skip_count: 連続 trending sell skip カウンタ
             buy_side_insufficient: buy 側の残高不足フラグ (HF4 安全弁用)
 
@@ -195,7 +195,7 @@ class CycleGateAggregator:
             return result
 
         # --- Gate 6: velocity_skip (旧 C4-C5) ---
-        g6 = self._check_velocity_skip(side, price_velocity_60s)
+        g6 = self._check_velocity_skip(side, price_velocity_bps)
         result.checks.append(g6)
         if g6.blocked:
             result.blocked = True
@@ -440,11 +440,11 @@ class CycleGateAggregator:
         return GateCheckResult(gate_name="sell_dynamic_kill", blocked=False)
 
     def _check_velocity_skip(
-        self, side: str, price_velocity_60s: float | None,
+        self, side: str, price_velocity_bps: float | None,
     ) -> GateCheckResult:
         """C4-C5: velocity-based skip (旧 skip_gate_evaluator 内).
 
-        NOTE: price_velocity_60s は Gate 評価前に外部で取得されている必要がある。
+        NOTE: price_velocity_bps は Gate 評価前に外部で取得されている必要がある。
         210# H3: orchestrator から MakerPriceCalculator.last_mid_trend_bps
         (OB mid 差分ベース instant velocity) が渡される。名前は _60s だが、
         実際は instant velocity。符号規約は同一 (正=上昇)。
@@ -452,7 +452,7 @@ class CycleGateAggregator:
         195# ソフト化: velocity_skip_as_offset_enabled 時は
         hard skip せず skip_gate_evaluator → executor の offset boost に委譲。
         """
-        if price_velocity_60s is None:
+        if price_velocity_bps is None:
             return GateCheckResult(gate_name="velocity_skip", blocked=False)
 
         # 195#: ソフトモード時はここで block しない
@@ -463,25 +463,25 @@ class CycleGateAggregator:
         if (
             self._config.sell_velocity_skip_enabled
             and side == "sell"
-            and price_velocity_60s > self._config.sell_velocity_skip_threshold_bps
+            and price_velocity_bps > self._config.sell_velocity_skip_threshold_bps
         ):
             return GateCheckResult(
                 gate_name="velocity_skip",
                 blocked=True,
                 reason="rule_velocity_sell_skip",
-                detail=f"165# AS-R1: velocity={price_velocity_60s:.2f}bps > {self._config.sell_velocity_skip_threshold_bps}",
+                detail=f"165# AS-R1: velocity={price_velocity_bps:.2f}bps > {self._config.sell_velocity_skip_threshold_bps}",
             )
 
         if (
             self._config.buy_velocity_skip_enabled
             and side == "buy"
-            and price_velocity_60s < self._config.buy_velocity_skip_threshold_bps
+            and price_velocity_bps < self._config.buy_velocity_skip_threshold_bps
         ):
             return GateCheckResult(
                 gate_name="velocity_skip",
                 blocked=True,
                 reason="rule_velocity_buy_skip",
-                detail=f"165# AS-R1: velocity={price_velocity_60s:.2f}bps < {self._config.buy_velocity_skip_threshold_bps}",
+                detail=f"165# AS-R1: velocity={price_velocity_bps:.2f}bps < {self._config.buy_velocity_skip_threshold_bps}",
             )
 
         return GateCheckResult(gate_name="velocity_skip", blocked=False)

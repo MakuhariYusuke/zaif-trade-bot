@@ -1,4 +1,4 @@
-"""
+﻿"""
 FillTestConfig — fill_test 設定データクラス + サイクル内部データクラス.
 
 119# God Object 分割: run_fill_test.py から設定定義を分離.
@@ -284,9 +284,9 @@ class FillTestConfig:
     unknown_buy_offset_boost: float = 1.0  # 1.0 = 無効, >1.0 で boost (例: 2.0 = VG相当)
     # 165# AS-R1: velocity-based sell/buy skip (SkipGate pre-ML rule)
     sell_velocity_skip_enabled: bool = False
-    sell_velocity_skip_threshold_bps: float = 8.0  # price_velocity_60s > this AND sell -> skip
+    sell_velocity_skip_threshold_bps: float = 8.0  # price_velocity_bps > this AND sell -> skip
     buy_velocity_skip_enabled: bool = False
-    buy_velocity_skip_threshold_bps: float = -8.0  # price_velocity_60s < this AND buy -> skip
+    buy_velocity_skip_threshold_bps: float = -8.0  # price_velocity_bps < this AND buy -> skip
     # 195# velocity_skip ソフト化: hard skip → offset boost
     # enabled 時、閾値超過でもスキップせずに offset を boost して保守的価格で発注
     velocity_skip_as_offset_enabled: bool = False
@@ -1295,7 +1295,7 @@ class SkipGateResult:
     # 158# P1-6: 時間帯別閾値調整のオフセット
     hour_offset: float = 0.0
     # 165# AS-R1: velocity logging
-    price_velocity_60s: Optional[float] = None
+    price_velocity_bps: Optional[float] = None
     early_return_record: Optional[FillRecord] = None
     # 193#: ev_weighted score (offset 修飾子用)
     ev_score: Optional[float] = None

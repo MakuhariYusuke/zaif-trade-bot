@@ -1,4 +1,4 @@
-"""121# SkipGate ML 評価モジュール.
+﻿"""121# SkipGate ML 評価モジュール.
 
 FillTestRunner から SkipGate 初期化 + 評価ロジックを分離。
 062# SkipGate ML フィルター / 088# 動的閾値較正 / 096# warm start を統合。
@@ -301,7 +301,7 @@ class SkipGateEvaluator:
         skip_gate_as_prob: float | None = None,
         skip_gate_threshold_used: float | None = None,
         skip_gate_hour_offset: float | None = None,
-        price_velocity_60s: float | None = None,
+        price_velocity_bps: float | None = None,
     ) -> "FillRecord":
         """skip 系の early return 用 FillRecord を共通生成."""
         return build_skip_fill_record(
@@ -326,7 +326,7 @@ class SkipGateEvaluator:
             spread_at_order=spread_at_order,
             spread_offset_ratio=spread_offset_ratio,
             regime=regime,
-            price_velocity_60s=price_velocity_60s,
+            price_velocity_bps=price_velocity_bps,
         )
 
     @staticmethod
@@ -340,7 +340,7 @@ class SkipGateEvaluator:
         as_prob: float | None = None,
         threshold_used: float | None = None,
         hour_offset: float = 0.0,
-        price_velocity_60s: float | None = None,
+        price_velocity_bps: float | None = None,
     ) -> None:
         """SkipGateResult の共通フィールドを一括設定する."""
         result.skipped = skipped
@@ -350,7 +350,7 @@ class SkipGateEvaluator:
         result.as_prob = as_prob
         result.threshold_used = threshold_used
         result.hour_offset = hour_offset
-        result.price_velocity_60s = price_velocity_60s
+        result.price_velocity_bps = price_velocity_bps
 
     def _apply_decision_to_result(
         self,
@@ -358,7 +358,7 @@ class SkipGateEvaluator:
         *,
         decision: _SkipDecisionLike,
         side: str,
-        price_velocity_60s: float | None,
+        price_velocity_bps: float | None,
         hour_offset: float,
     ) -> None:
         """最終 decision を SkipGateResult へ反映する."""
@@ -379,7 +379,7 @@ class SkipGateEvaluator:
             as_prob=decision.as_probability,
             threshold_used=decision.threshold_used,
             hour_offset=hour_offset,
-            price_velocity_60s=price_velocity_60s,
+            price_velocity_bps=price_velocity_bps,
         )
 
     def _apply_config_overrides(self, skip_gate: _SkipGateLike) -> None:
@@ -1053,7 +1053,7 @@ class SkipGateEvaluator:
 
             # 165# AS-R1: velocity-based pre-ML sell/buy skip rule
             # 195# ソフト化: velocity_skip_as_offset_enabled 時は hard skip せず offset boost
-            _pv60 = gate_features.get("price_velocity_60s", 0.0)
+            _pv60 = gate_features.get("price_velocity_bps", 0.0)
             _velocity_sell_triggered = (
                 self._config.sell_velocity_skip_enabled
                 and side == "sell"
@@ -1084,7 +1084,7 @@ class SkipGateEvaluator:
                         proportional=self._config.velocity_offset_proportional,
                     )
                     result.velocity_offset_mult = _boost
-                    result.price_velocity_60s = _pv60
+                    result.price_velocity_bps = _pv60
                     logger.info(
                         f"[skip_gate] 195# velocity→offset: {_vel_label} "
                         f"velocity={_pv60:.2f}bps (th={_vel_th}) "
@@ -1107,7 +1107,7 @@ class SkipGateEvaluator:
                         score=_pv60,
                         reason=_reason,
                         model_used="rule",
-                        price_velocity_60s=_pv60,
+                        price_velocity_bps=_pv60,
                     )
                     result.early_return_record = self._make_skip_fill_record(
                         cycle_id=cycle_id,
@@ -1127,7 +1127,7 @@ class SkipGateEvaluator:
                         run_id=run_id,
                         git_sha=git_sha,
                         regime=regime_value,
-                        price_velocity_60s=_pv60,
+                        price_velocity_bps=_pv60,
                     )
                     return result
 
@@ -1186,7 +1186,7 @@ class SkipGateEvaluator:
                 result,
                 decision=decision,
                 side=side,
-                price_velocity_60s=gate_features.get("price_velocity_60s"),
+                price_velocity_bps=gate_features.get("price_velocity_bps"),
                 hour_offset=_total_offset,
             )
 

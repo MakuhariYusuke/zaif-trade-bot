@@ -2,7 +2,7 @@
 
 A: 単一サイクル大損失クールダウン (連鎖損失防止)
 B: 片側残高枯渇時の rescue offset 適用
-C: VG sell-side 補完 (velocity_60s ベース)
+C: VG sell-side 補完 (velocity_bps ベース)
 """
 
 from __future__ import annotations

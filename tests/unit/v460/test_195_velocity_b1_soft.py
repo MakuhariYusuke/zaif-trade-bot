@@ -1,4 +1,4 @@
-"""195# テスト: velocity_skip ソフト化 + B1' ranging_buy_low_vol offset 統合.
+﻿"""195# テスト: velocity_skip ソフト化 + B1' ranging_buy_low_vol offset 統合.
 
 193# パターンの横展開:
 - velocity_skip: hard gate → offset boost (閾値超過時 offset ×N で保守的発注)
@@ -84,7 +84,7 @@ class TestVelocitySkipSoftMode:
         from scripts.v460.lib.fill_config import SkipGateResult
 
         result = SkipGateResult()
-        gate_features = {"price_velocity_60s": 10.0}
+        gate_features = {"price_velocity_bps": 10.0}
 
         # _try_velocity_check は evaluate() 内にインラインなので
         # evaluate() 経由でテストする必要がある。
@@ -384,7 +384,7 @@ class TestVelocitySkipSoftGateAggregator:
             inv_net_imbalance=0.0,
             is_buy_killed=False,
             is_sell_killed=False,
-            price_velocity_60s=10.0,  # > 6.0 threshold
+            price_velocity_bps=10.0,  # > 6.0 threshold
         )
         assert result.blocked is True
         assert result.blocking_reason == "rule_velocity_sell_skip"
@@ -405,7 +405,7 @@ class TestVelocitySkipSoftGateAggregator:
             inv_net_imbalance=0.0,
             is_buy_killed=False,
             is_sell_killed=False,
-            price_velocity_60s=10.0,
+            price_velocity_bps=10.0,
         )
         assert result.blocked is False
 
@@ -425,7 +425,7 @@ class TestVelocitySkipSoftGateAggregator:
             inv_net_imbalance=0.0,
             is_buy_killed=False,
             is_sell_killed=False,
-            price_velocity_60s=-10.0,  # < -6.0 threshold
+            price_velocity_bps=-10.0,  # < -6.0 threshold
         )
         assert result.blocked is False
 

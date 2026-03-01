@@ -236,3 +236,44 @@ class TestAlertModeOverride:
         o = AlertModeOverride(halt=True)
         with pytest.raises(AttributeError):
             o.halt = False  # type: ignore[misc]
+
+
+# ======================================================================
+# 216# E: Guard 発火カウンタ永続化
+# ======================================================================
+
+class TestGuardFireCountsPersistence:
+    """216# E: guard_fire_counts の FillTestState round-trip."""
+
+    def test_field_default(self) -> None:
+        from scripts.v460.lib.resilience import FillTestState
+        s = FillTestState()
+        assert s.guard_fire_counts is None
+
+    def test_round_trip(self) -> None:
+        from scripts.v460.lib.resilience import FillTestState, FillTestStatePersistence
+        with tempfile.TemporaryDirectory() as td:
+            p = FillTestStatePersistence(Path(td))
+            counts = {"dd_halt": 3, "toxic_veto_set": 1, "hard_skip_utc": 7}
+            s = FillTestState(guard_fire_counts=counts)
+            p.save(s)
+            loaded = p.load()
+            assert loaded is not None
+            assert loaded.guard_fire_counts == counts
+
+    def test_inc_guard_fire_helper(self) -> None:
+        """_inc_guard_fire がカウンタを正しくインクリメントする."""
+        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+
+        class Stub(FillLoopOrchestratorMixin):
+            pass
+
+        obj = object.__new__(Stub)
+        obj._guard_fire_counts = None  # type: ignore[attr-defined]
+
+        obj._inc_guard_fire("dd_halt")  # type: ignore[attr-defined]
+        assert obj._guard_fire_counts == {"dd_halt": 1}  # type: ignore[attr-defined]
+
+        obj._inc_guard_fire("dd_halt")  # type: ignore[attr-defined]
+        obj._inc_guard_fire("toxic_veto_set")  # type: ignore[attr-defined]
+        assert obj._guard_fire_counts == {"dd_halt": 2, "toxic_veto_set": 1}  # type: ignore[attr-defined]

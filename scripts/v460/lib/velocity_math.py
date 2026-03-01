@@ -1,4 +1,4 @@
-"""200# L / 208# SSOT: Velocity 計算ユーティリティ — Single Source of Truth.
+﻿"""200# L / 208# SSOT: Velocity 計算ユーティリティ — Single Source of Truth.
 
 全 velocity 関連の **計算ロジック** を一元管理する。
 信号の種類は複数あるが、計算・符号規約・上限処理をここに集約することで
@@ -54,7 +54,7 @@ def compute_instant_velocity_bps(
     maker_price.py の inline 計算 (054#) を SSOT として抽出。
     VG (Volatility Guard) の急変検知トリガに使用される。
 
-    符号規約: 正=上昇, 負=下降 (price_velocity_60s と同一)
+    符号規約: 正=上昇, 負=下降 (price_velocity_bps と同一)
 
     Args:
         current_mid: 現在の mid price

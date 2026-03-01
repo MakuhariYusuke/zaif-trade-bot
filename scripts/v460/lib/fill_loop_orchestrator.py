@@ -1,4 +1,4 @@
-"""163# Mixin: FillLoopOrchestratorMixin -- run_continuous + ループ制御.
+﻿"""163# Mixin: FillLoopOrchestratorMixin -- run_continuous + ループ制御.
 
 メインオーケストレーションループ: side 選択, skip chain, adaptation, 状態保存。
 
@@ -56,6 +56,8 @@ class FillLoopOrchestratorMixin:
     _alert_offset_mult: float = 1.0
     _alert_lot_mult: float = 1.0
     _alert_interval_mult: float = 1.0
+    # 216# E: Guard 発火カウンタ (累積、再起動時復元)
+    _guard_fire_counts: dict[str, int] | None = None
 
     def _is_sell_killed(self) -> bool:
         """133# P0-10 / 136# P1-03: sell 動的 kill 判定 — SellDynamicKillManager に委譲.
@@ -206,8 +208,19 @@ class FillLoopOrchestratorMixin:
             toxic_veto=dict(self._toxic_veto) if self._toxic_veto else None,
             # 210# L-2: one-sided 連続カウンタ永続化
             one_sided_consecutive_count=self._one_sided_consecutive_count,
+            # 216# E: Guard 発火カウンタ永続化
+            guard_fire_counts=dict(self._guard_fire_counts) if self._guard_fire_counts else None,
             **self._get_regime_state_fields(),
         )
+
+    # ------------------------------------------------------------------
+    # 216# E: Guard 発火カウンタ — インクリメント・ヘルパー
+    # ------------------------------------------------------------------
+    def _inc_guard_fire(self, guard_name: str) -> None:
+        """累積 guard 発火カウンタをインクリメント."""
+        if self._guard_fire_counts is None:
+            self._guard_fire_counts = {}
+        self._guard_fire_counts[guard_name] = self._guard_fire_counts.get(guard_name, 0) + 1
 
     # ------------------------------------------------------------------
     # 179# S1: _effective_sleep — regime 応答サイクル間隔の一元化
@@ -519,6 +532,10 @@ class FillLoopOrchestratorMixin:
                     f"[210# L-2] One-sided count restored: "
                     f"{self._one_sided_consecutive_count}"
                 )
+            # 216# E: Guard 発火カウンタ復元
+            if saved_state is not None and saved_state.guard_fire_counts:
+                self._guard_fire_counts = dict(saved_state.guard_fire_counts)
+                logger.info(f"[216# E] Guard fire counts restored: {self._guard_fire_counts}")
         else:
             # regime_detector がない場合でも daily_drawdown state は復元
             saved_state = self._state_persistence.load()
@@ -535,6 +552,10 @@ class FillLoopOrchestratorMixin:
                     f"[210# L-2] One-sided count restored: "
                     f"{self._one_sided_consecutive_count}"
                 )
+            # 216# E: Guard 発火カウンタ復元
+            if saved_state is not None and saved_state.guard_fire_counts:
+                self._guard_fire_counts = dict(saved_state.guard_fire_counts)
+                logger.info(f"[216# E] Guard fire counts restored: {self._guard_fire_counts}")
 
         # 203# F: DD warmup — state 復元失敗時 (stale/missing) は fill records から再計算
         # state file が壊れている or 保存されていない場合のセーフティネット
@@ -616,6 +637,7 @@ class FillLoopOrchestratorMixin:
                 # 203# G: _halt_iter_count で正確にカウント (_cycle_count は halt 中不変)
                 _halt_entering = getattr(self, "_halt_start_cycle", None) is None
                 if _halt_entering:
+                    self._inc_guard_fire("dd_halt")
                     self._halt_start_cycle = self._cycle_count
                     self._halt_iter_count = 0
                 else:
@@ -693,6 +715,7 @@ class FillLoopOrchestratorMixin:
                     _hard_skip_entering = not getattr(self, "_in_hard_skip_hour", False)
                     self._in_hard_skip_hour = True
                     if _hard_skip_entering:
+                        self._inc_guard_fire("hard_skip_utc")
                         batch.append(self._make_loop_skip_record(
                             side="none",
                             cancel_reason=CR.HARD_SKIP_UTC_HOUR,
@@ -760,6 +783,7 @@ class FillLoopOrchestratorMixin:
                 if _alt_blocked:
                     # 両サイド封鎖 (veto + per_side_dd 含む) → スキップ
                     # 209# H-1: デッドロック防止 — skip 時も veto カウンタを減算
+                    self._inc_guard_fire("toxic_veto_block")
                     for _vs in list(self._toxic_veto.keys()):
                         self._toxic_veto[_vs] -= 1
                         if self._toxic_veto[_vs] <= 0:
@@ -1146,7 +1170,7 @@ class FillLoopOrchestratorMixin:
                 # NOTE: last_mid_trend_bps は OB mid 差分ベースの instant velocity であり
                 # 元々想定されていた trade_vel_60s とはデータソースが異なるが、
                 # 符号規約 (正=上昇) と閾値比較のセマンティクスは同一。
-                price_velocity_60s=self._maker_price.last_mid_trend_bps,
+                price_velocity_bps=self._maker_price.last_mid_trend_bps,
                 trending_sell_skip_count=self._trending_sell_skip_count,
                 buy_side_insufficient=_buy_side_insufficient,
             )
@@ -1275,6 +1299,7 @@ class FillLoopOrchestratorMixin:
                     if self._toxic_veto is None:
                         self._toxic_veto = {}
                     self._toxic_veto[next_side] = self.config.toxic_fill_veto_cycles
+                    self._inc_guard_fire("toxic_veto_set")
                     logger.warning(
                         f"[205# §9.2] Toxic fill veto: {next_side} blocked for "
                         f"{self.config.toxic_fill_veto_cycles} cycles "

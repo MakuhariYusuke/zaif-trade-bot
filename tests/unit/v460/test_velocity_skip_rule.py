@@ -1,7 +1,7 @@
-"""
+﻿"""
 165# AS-R1: Velocity-based sell/buy skip rule tests.
 
-Tests for the price_velocity_60s-based pre-ML skip rule added to
+Tests for the price_velocity_bps-based pre-ML skip rule added to
 SkipGateEvaluator. This rule fires before the ML model evaluation
 when velocity exceeds configurable thresholds.
 """
@@ -81,16 +81,16 @@ class TestVelocitySkipConfig:
 # ---------------------------------------------------------------------------
 
 class TestSkipGateResultVelocity:
-    """SkipGateResult.price_velocity_60s field."""
+    """SkipGateResult.price_velocity_bps field."""
 
     def test_default_none(self) -> None:
         r = SkipGateResult()
-        assert r.price_velocity_60s is None
+        assert r.price_velocity_bps is None
 
     def test_set_velocity(self) -> None:
         r = SkipGateResult()
-        r.price_velocity_60s = 12.5
-        assert r.price_velocity_60s == 12.5
+        r.price_velocity_bps = 12.5
+        assert r.price_velocity_bps == 12.5
 
 
 # ---------------------------------------------------------------------------
@@ -98,7 +98,7 @@ class TestSkipGateResultVelocity:
 # ---------------------------------------------------------------------------
 
 class TestFillRecordVelocity:
-    """FillRecord.price_velocity_60s field."""
+    """FillRecord.price_velocity_bps field."""
 
     def test_default_none(self) -> None:
         fr = FillRecord(
@@ -108,7 +108,7 @@ class TestFillRecordVelocity:
             order_price=10000000.0,
             order_quantity=0.001,
         )
-        assert fr.price_velocity_60s is None
+        assert fr.price_velocity_bps is None
 
     def test_set_velocity(self) -> None:
         fr = FillRecord(
@@ -117,9 +117,9 @@ class TestFillRecordVelocity:
             side="sell",
             order_price=10000000.0,
             order_quantity=0.001,
-            price_velocity_60s=15.3,
+            price_velocity_bps=15.3,
         )
-        assert fr.price_velocity_60s == 15.3
+        assert fr.price_velocity_bps == 15.3
 
 
 # ---------------------------------------------------------------------------
@@ -146,7 +146,7 @@ class TestVelocityRuleLogic:
     """Test the velocity rule threshold logic."""
 
     def test_sell_velocity_above_threshold_triggers_skip(self) -> None:
-        """price_velocity_60s > threshold AND sell → should skip."""
+        """price_velocity_bps > threshold AND sell → should skip."""
         # velocity=10 > threshold=8 → SKIP
         enabled = True
         side = "sell"
@@ -156,7 +156,7 @@ class TestVelocityRuleLogic:
         assert should_skip is True
 
     def test_sell_velocity_below_threshold_passes(self) -> None:
-        """price_velocity_60s < threshold AND sell → should pass."""
+        """price_velocity_bps < threshold AND sell → should pass."""
         enabled = True
         side = "sell"
         velocity = 5.0
@@ -165,7 +165,7 @@ class TestVelocityRuleLogic:
         assert should_skip is False
 
     def test_sell_velocity_equal_threshold_passes(self) -> None:
-        """price_velocity_60s == threshold → should pass (strict >)."""
+        """price_velocity_bps == threshold → should pass (strict >)."""
         enabled = True
         side = "sell"
         velocity = 8.0
@@ -183,7 +183,7 @@ class TestVelocityRuleLogic:
         assert should_skip is False
 
     def test_buy_velocity_below_neg_threshold_triggers_skip(self) -> None:
-        """price_velocity_60s < threshold AND buy → should skip."""
+        """price_velocity_bps < threshold AND buy → should skip."""
         enabled = True
         side = "buy"
         velocity = -10.0
@@ -192,7 +192,7 @@ class TestVelocityRuleLogic:
         assert should_skip is True
 
     def test_buy_velocity_above_neg_threshold_passes(self) -> None:
-        """price_velocity_60s > threshold AND buy → should pass."""
+        """price_velocity_bps > threshold AND buy → should pass."""
         enabled = True
         side = "buy"
         velocity = -5.0
@@ -274,7 +274,7 @@ class TestVelocityYamlParsing:
 # ---------------------------------------------------------------------------
 
 class TestFillRecordVelocitySerialization:
-    """price_velocity_60s should survive JSON round-trip."""
+    """price_velocity_bps should survive JSON round-trip."""
 
     def test_to_dict_includes_velocity(self) -> None:
         fr = FillRecord(
@@ -283,10 +283,10 @@ class TestFillRecordVelocitySerialization:
             side="sell",
             order_price=10000000.0,
             order_quantity=0.001,
-            price_velocity_60s=12.5,
+            price_velocity_bps=12.5,
         )
         d = fr.to_dict()
-        assert d["price_velocity_60s"] == 12.5
+        assert d["price_velocity_bps"] == 12.5
 
     def test_to_dict_velocity_none(self) -> None:
         fr = FillRecord(
@@ -298,4 +298,4 @@ class TestFillRecordVelocitySerialization:
         )
         d = fr.to_dict()
         # None fields should be absent or None in dict
-        assert d.get("price_velocity_60s") is None
+        assert d.get("price_velocity_bps") is None

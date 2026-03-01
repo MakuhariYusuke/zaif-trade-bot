@@ -1,4 +1,4 @@
-"""058# Feature Enricher + Skip Gate テスト."""
+﻿"""058# Feature Enricher + Skip Gate テスト."""
 
 from __future__ import annotations
 
@@ -765,7 +765,7 @@ class Test058MarketStateFeatures:
         )
         assert features["trade_count_60s"] == 3.0
         assert features["avg_trade_size"] > 0
-        assert features["price_velocity_60s"] > 0  # 価格上昇
+        assert features["price_velocity_bps"] > 0  # 価格上昇
 
     def test_no_trades(self) -> None:
         """約定データなし → デフォルト値."""
@@ -813,7 +813,7 @@ class Test058MarketStateFeatures:
         assert features["trade_count_60s"] == 3.0
         assert features["avg_trade_size"] == pytest.approx(2.0)
         assert features["buy_ratio"] == pytest.approx(0.5)
-        assert features["price_velocity_60s"] == pytest.approx(200.0)
+        assert features["price_velocity_bps"] == pytest.approx(200.0)
 
 
 # ======================================================================

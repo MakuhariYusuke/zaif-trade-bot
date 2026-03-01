@@ -1,4 +1,4 @@
-"""194# CycleGateAggregator 単体テスト.
+﻿"""194# CycleGateAggregator 単体テスト.
 
 192# §3 の「判断箇所一元化」に対応する CycleGateAggregator の
 全ゲートを個別・統合でテスト。
@@ -266,7 +266,7 @@ class TestVelocitySkip:
     def test_sell_velocity_skip(self) -> None:
         gate = _make_gate()
         r = gate.evaluate(**_default_ctx(
-            side="sell", regime="ranging", price_velocity_60s=10.0,
+            side="sell", regime="ranging", price_velocity_bps=10.0,
         ))
         assert r.blocked
         assert r.blocking_reason == "rule_velocity_sell_skip"
@@ -274,7 +274,7 @@ class TestVelocitySkip:
     def test_buy_velocity_skip(self) -> None:
         gate = _make_gate()
         r = gate.evaluate(**_default_ctx(
-            side="buy", regime="ranging", price_velocity_60s=-10.0,
+            side="buy", regime="ranging", price_velocity_bps=-10.0,
         ))
         assert r.blocked
         assert r.blocking_reason == "rule_velocity_buy_skip"
@@ -289,7 +289,7 @@ class TestVelocitySkip:
     def test_within_threshold_passes(self) -> None:
         gate = _make_gate()
         r = gate.evaluate(**_default_ctx(
-            side="sell", regime="ranging", price_velocity_60s=5.0,
+            side="sell", regime="ranging", price_velocity_bps=5.0,
         ))
         assert not r.blocked
 
@@ -350,7 +350,7 @@ class TestIntegration:
     def test_cancel_reason_velocity(self) -> None:
         gate = _make_gate()
         r = gate.evaluate(**_default_ctx(
-            side="sell", regime="ranging", price_velocity_60s=10.0,
+            side="sell", regime="ranging", price_velocity_bps=10.0,
         ))
         assert r.cancel_reason == "skip_gate_rule_velocity_sell"
 

@@ -1,4 +1,4 @@
-"""126# SkipGate 再学習スケジューラ + hot-reload テスト.
+﻿"""126# SkipGate 再学習スケジューラ + hot-reload テスト.
 
 retrain_scheduler.py の retrain_model() と
 SkipGateEvaluator の hot-reload 機構をテスト。
@@ -327,7 +327,7 @@ class TestBuildFullFeatures:
             "buy_ratio": [0.6, 0.4],
             "trade_flow_imbalance_60s": [0.2, -0.2],
             "avg_trade_size": [0.1, 0.05],
-            "price_velocity_60s": [1.0, -1.0],
+            "price_velocity_bps": [1.0, -1.0],
             "vpin_60s": [0.3, 0.7],
             "side_aligned_tfi": [0.2, 0.2],
             "side_aligned_velocity": [1.0, 1.0],
@@ -355,7 +355,7 @@ class TestBuildFullFeatures:
             "buy_ratio": [0.6],
             "trade_flow_imbalance_60s": [0.2],
             "avg_trade_size": [0.1],
-            "price_velocity_60s": [1.0],
+            "price_velocity_bps": [1.0],
             "vpin_60s": [0.3],
             "side_aligned_tfi": [0.2],
             "side_aligned_velocity": [1.0],

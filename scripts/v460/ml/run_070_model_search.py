@@ -1,4 +1,4 @@
-"""070# 網羅的モデル探索: ph2 fill test に投入すべき収益モデルの発見.
+﻿"""070# 網羅的モデル探索: ph2 fill test に投入すべき収益モデルの発見.
 
 全491サイクル (filled 373, AS-labeled 284) を使い、
 多角的にモデル構成を比較。OOF walk-forward で信頼性を担保。
@@ -564,7 +564,7 @@ def main() -> None:
         X_enr_all, y_enr_all = build_enriched_as_features(enriched_df)
         CURATED = [
             "log_queue_wait", "edge_bps", "vpin_60s", "vpin_30s", "vpin_300s",
-            "price_velocity_60s", "buy_ratio", "tfi_300s", "hour_cos", "hour_sin",
+            "price_velocity_bps", "buy_ratio", "tfi_300s", "hour_cos", "hour_sin",
             "side_aligned_tfi", "side_aligned_velocity",
         ]
         available_curated = [c for c in CURATED if c in X_enr_all.columns]

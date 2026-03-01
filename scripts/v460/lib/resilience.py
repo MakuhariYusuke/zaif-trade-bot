@@ -246,6 +246,8 @@ class FillTestState:
     toxic_veto: dict[str, int] | None = None
     # 210# L-2: one-sided 連続実行カウンタ永続化 (再起動時に復元)
     one_sided_consecutive_count: int = 0
+    # 216# E: Guard 発火カウンタ永続化 (累積。再起動時に復元)
+    guard_fire_counts: dict[str, int] | None = None
     # タイムスタンプ
     saved_at: float = 0.0
     saved_at_iso: str = ""

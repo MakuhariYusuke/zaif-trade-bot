@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 065# Phase 2: AS-LR ハイパーパラメータ最適化 + Two-Tier モデル.
 
@@ -42,7 +42,7 @@ CURATED_TRADE_FEATURES = [
     "vpin_60s",        # 058# Ridge top4
     "vpin_30s",        # multi-timeframe
     "vpin_300s",       # multi-timeframe
-    "price_velocity_60s",  # 058# Ridge top3
+    "price_velocity_bps",  # 058# Ridge top3
     "buy_ratio",       # trade composition
     "tfi_300s",        # longer-term TFI
     "hour_cos",        # 058# Ridge top5
