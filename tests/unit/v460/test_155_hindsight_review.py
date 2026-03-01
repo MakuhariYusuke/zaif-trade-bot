@@ -366,10 +366,12 @@ class TestBalanceForcedTrendingBypass:
         """run_fill_test.py の trending sell skip ブロックに
         'not _balance_forced' 条件が含まれていること."""
         import ast
-        from pathlib import Path
         # 163# mixin 分割: balance_forced チェックは orchestrator に存在
-        from tests.unit.v460._fill_test_source import FILL_LOOP_ORCHESTRATOR
-        src = FILL_LOOP_ORCHESTRATOR.read_text(encoding="utf-8")
+        from tests.unit.v460._fill_test_source import (
+            FILL_LOOP_ORCHESTRATOR,
+            read_source_text,
+        )
+        src = read_source_text(FILL_LOOP_ORCHESTRATOR)
         tree = ast.parse(src)
         found = False
         for node in ast.walk(tree):
@@ -529,10 +531,12 @@ class TestFallbackPriceStaleness:
 
     def test_fallback_stale_check_in_code(self) -> None:
         """run_fill_test.py に fallback_stale チェックが含まれること."""
-        from pathlib import Path
         # 163# mixin 分割: fallback stale チェックは executor に存在
-        from tests.unit.v460._fill_test_source import FILL_CYCLE_EXECUTOR
-        src = FILL_CYCLE_EXECUTOR.read_text(encoding="utf-8")
+        from tests.unit.v460._fill_test_source import (
+            FILL_CYCLE_EXECUTOR,
+            read_source_text,
+        )
+        src = read_source_text(FILL_CYCLE_EXECUTOR)
         assert "_fallback_stale" in src
         assert "_fallback_age" in src
         # stale 時は price=0.0 にフォールバック
@@ -705,9 +709,11 @@ class TestNoTimestampFallbackStale:
 
     def test_no_timestamp_treated_as_stale(self) -> None:
         """タイムスタンプなしパスが _fallback_stale = True を設定すること."""
-        from pathlib import Path
         # 163# mixin 分割: stale 処理は executor に存在
-        from tests.unit.v460._fill_test_source import FILL_CYCLE_EXECUTOR
-        src = FILL_CYCLE_EXECUTOR.read_text(encoding="utf-8")
+        from tests.unit.v460._fill_test_source import (
+            FILL_CYCLE_EXECUTOR,
+            read_source_text,
+        )
+        src = read_source_text(FILL_CYCLE_EXECUTOR)
         # "no timestamp" パスで stale 扱い
         assert "treated as stale" in src

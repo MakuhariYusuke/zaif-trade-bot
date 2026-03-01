@@ -10,6 +10,7 @@ WARNING (God Object 防止):
 
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -36,11 +37,17 @@ FILL_TEST_RUNNER_MAIN = (
 )
 
 
+@lru_cache(maxsize=None)
+def read_source_text(path: Path) -> str:
+    """UTF-8 テキスト読込をキャッシュする."""
+    return path.read_text(encoding="utf-8")
+
+
 def read_fill_test_runner_source() -> str:
     """FillTestRunner 全ソース (本体 + 3 mixin) を連結して返す.
 
     NOTE: ファイル間の行番号は不連続。位置比較テストでは個別ファイルを使用せよ。
     """
     return "\n".join(
-        p.read_text(encoding="utf-8") for p in _FILL_TEST_RUNNER_SOURCES
+        read_source_text(p) for p in _FILL_TEST_RUNNER_SOURCES
     )

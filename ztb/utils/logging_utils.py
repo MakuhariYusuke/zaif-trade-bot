@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
-"""
-Logging utilities for consistent logging setup across the codebase.
-"""
+"""Logging utilities for consistent logging setup across the codebase."""
+
+from __future__ import annotations
 
 import json
 import logging
 import time
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Mapping, Optional
 
-from ztb.types.common import ConfigDict
-from ztb.utils.config_helpers import get_dict, get_int, get_string
 from ztb.utils.types import LoggerProtocol
+
+if TYPE_CHECKING:
+    from ztb.types.common import ConfigDict
 
 BYTES_PER_MB = 1024 * 1024
 
@@ -69,13 +70,15 @@ def setup_logging(
         root_logger.addHandler(file_handler)
 
 
-def setup_logging_from_config(config: ConfigDict) -> None:
+def setup_logging_from_config(config: Mapping[str, object]) -> None:
     """
     Set up logging from configuration dictionary.
 
     Args:
         config: Configuration dictionary with logging settings
     """
+    from ztb.utils.config_helpers import get_dict, get_int, get_string
+
     logging_config = get_dict(config, "logging")
 
     level_str = get_string(logging_config, "level", "INFO").upper()
@@ -95,13 +98,15 @@ def setup_logging_from_config(config: ConfigDict) -> None:
     )
 
 
-def configure_log_levels(config: ConfigDict) -> None:
+def configure_log_levels(config: Mapping[str, object]) -> None:
     """
     Configure specific log levels for different modules.
 
     Args:
         config: Configuration dictionary with module log levels
     """
+    from ztb.utils.config_helpers import get_dict
+
     logging_config = get_dict(config, "logging")
     module_levels = get_dict(logging_config, "module_levels")
 
@@ -147,9 +152,9 @@ class StructuredLogger(LoggerProtocol):
     def __init__(self, name: str, json_format: bool = False):
         self.logger = get_logger(name)
         self.json_format = json_format
-        self.context: Dict[str, Any] = {}
+        self.context: dict[str, object] = {}
 
-    def set_context(self, **kwargs: Any) -> None:
+    def set_context(self, **kwargs: object) -> None:
         """Set logging context that will be included in all log messages."""
         self.context.update(kwargs)
 
@@ -158,7 +163,7 @@ class StructuredLogger(LoggerProtocol):
         self.context.clear()
 
     def _format_message(
-        self, message: str, extra: Optional[Dict[str, Any]] = None
+        self, message: str, extra: Optional[dict[str, object]] = None
     ) -> str:
         """Format message with context and extra data."""
         log_data = {**self.context}
@@ -175,19 +180,19 @@ class StructuredLogger(LoggerProtocol):
                 return f"{message} [{context_str}]"
             return message
 
-    def info(self, message: str, extra: Optional[Dict[str, Any]] = None) -> None:
+    def info(self, message: str, extra: Optional[dict[str, object]] = None) -> None:
         """Log info message with context."""
         self.logger.info(self._format_message(message, extra))
 
-    def warning(self, message: str, extra: Optional[Dict[str, Any]] = None) -> None:
+    def warning(self, message: str, extra: Optional[dict[str, object]] = None) -> None:
         """Log warning message with context."""
         self.logger.warning(self._format_message(message, extra))
 
-    def error(self, message: str, extra: Optional[Dict[str, Any]] = None) -> None:
+    def error(self, message: str, extra: Optional[dict[str, object]] = None) -> None:
         """Log error message with context."""
         self.logger.error(self._format_message(message, extra))
 
-    def debug(self, message: str, extra: Optional[Dict[str, Any]] = None) -> None:
+    def debug(self, message: str, extra: Optional[dict[str, object]] = None) -> None:
         """Log debug message with context."""
         self.logger.debug(self._format_message(message, extra))
 

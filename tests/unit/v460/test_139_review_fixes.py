@@ -340,8 +340,11 @@ class TestNarrowSpreadPauseActualWait:
 
     def test_run_fill_test_calls_asyncio_sleep(self) -> None:
         """run_fill_test.py の narrow_spread_pause ブロックに asyncio.sleep がある."""
-        from tests.unit.v460._fill_test_source import FILL_LOOP_ORCHESTRATOR
-        source = FILL_LOOP_ORCHESTRATOR.read_text(encoding="utf-8")  # 163# mixin 分割
+        from tests.unit.v460._fill_test_source import (
+            FILL_LOOP_ORCHESTRATOR,
+            read_source_text,
+        )
+        source = read_source_text(FILL_LOOP_ORCHESTRATOR)  # 163# mixin 分割
         # narrow_spread_pause の分岐内に asyncio.sleep が存在することを確認
         # 139# §9-#3 で追加
         assert "await asyncio.sleep(pause_sec)" in source

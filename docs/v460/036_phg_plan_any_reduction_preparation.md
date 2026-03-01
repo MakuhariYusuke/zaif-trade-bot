@@ -2968,6 +2968,41 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `ztb/risk/__init__.py`: `any_type_debt_tokens=0`
   - `ztb/metrics/__init__.py`: `any_type_debt_tokens=0`
 
+### Step128: logging helper と source 読込を軽量化してテスト待ち時間を削減
+
+1. 対応概要
+- `ztb/utils/logging_utils.py`
+  - `ConfigDict` / `config_helpers` の import を module-level から外し、`setup_logging_from_config()` / `configure_log_levels()` の内部 import に変更した。
+  - `get_logger()` だけ使う経路で、`ztb.types.common` 経由の `numpy/pandas` 読込を避ける形にした。
+- `tests/unit/v460/_fill_test_source.py`
+  - `read_source_text()` を追加し、`Path.read_text()` 結果を `lru_cache` で再利用するようにした。
+  - `read_fill_test_runner_source()` も cached helper を使うように変更した。
+- `tests/unit/v460/test_139_review_fixes.py`
+  - `FILL_LOOP_ORCHESTRATOR.read_text()` を cached helper 経由に変更した。
+- `tests/unit/v460/test_155_hindsight_review.py`
+  - `FILL_LOOP_ORCHESTRATOR` / `FILL_CYCLE_EXECUTOR` の直接 read を cached helper 経由に変更した。
+
+2. 目的
+- `get_logger()` だけ使う多数のモジュールで、設定系 helper の重い import 連鎖を避ける。
+- source inspection テストで、同一ファイルを毎回 `read_text()` し直す無駄を減らす。
+- 実行コードとテストコードの両面から、`pytest` の待ち時間を詰める。
+
+3. 検証
+- `py_compile`
+  - `ztb/utils/logging_utils.py`
+  - `tests/unit/v460/_fill_test_source.py`
+  - `tests/unit/v460/test_139_review_fixes.py`
+  - `tests/unit/v460/test_155_hindsight_review.py`
+  - `scripts/v460/run_fill_test.py`
+- import timing
+  - `scripts.v460.run_fill_test` 初回 import: `1.51s → 0.42s` (`-X importtime` 実測)
+  - `ztb.utils.logging_utils` 単体 import: `~0.00s`
+- `pytest`
+  - `tests/unit/v460/test_113_resilience.py tests/unit/v460/test_139_review_fixes.py tests/unit/v460/test_155_hindsight_review.py -k "internal_dataclasses_are_importable or run_fill_test_calls_asyncio_sleep or trending_sell_skip_code_has_balance_forced_check or fallback_stale_check_in_code or no_timestamp_treated_as_stale"`
+  - 結果: `4 passed`
+- `any_inventory`
+  - `ztb/utils/logging_utils.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
