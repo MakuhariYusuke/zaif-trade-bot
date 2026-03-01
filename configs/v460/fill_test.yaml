@@ -344,6 +344,9 @@ skip_gate:
     18: 0.3    # 03h JST: AS50%, -54.8bps/日 → 厳格化
     21: 0.3    # 06h JST: AS36%, -125.8bps/日 → 厳格化 (PnL損失最大時間帯)
     23: 0.2    # 08h JST: AS28%だがPnL-30.7bps → 軽い厳格化
+  # 205# §9.4: 時間帯 Hard Skip (Kyle proxy) — 最悪時間帯はサイクル全停止
+  # soft offset では抑制不十分な UTC 時間帯。204# 分析: UTC16(JST01 AS64%), UTC21(JST06 PnL-125.8bps/日)
+  hard_skip_utc_hours: [16, 21]
   # 183# narrow spread adverse guard: spread < threshold で skip_gate 閾値厳格化
   # ログ分析: spread<2kでAS32% (全体28%), PnL=-0.46bps (全体-0.30bps)
   skip_gate_narrow_spread_threshold_jpy: 2000.0
@@ -384,6 +387,10 @@ loss_control:
   # 202# A: 単一サイクル大損失クールダウン (連鎖損失防止)
   loss_cooldown_threshold_bps: -10.0   # PnL がこの値以下で次サイクル interval 延長
   loss_cooldown_interval_mult: 2.0     # 損失後の interval 乗数 (1サイクル限定)
+  # 205# §9.2: Toxic Fill 同一サイド拒否 (大損後に同一方向を N サイクル完全封鎖)
+  # 202# A の interval 延長は不十分 — 同一サイドの連鎖損失を根本遮断
+  toxic_fill_veto_threshold_bps: -5.0  # この PnL 以下で同一サイド拒否発動
+  toxic_fill_veto_cycles: 3            # 拒否サイクル数 (0=無効)
   # 202# B: 片側残高枯渇時にも rescue offset を適用 (強制 sell の AS リスク抑制)
   one_sided_balance_rescue_offset: true
   # P0-09: unknown レジーム時の buy スキップ (unknown-buy 平均 -1.384bps)
@@ -457,6 +464,10 @@ loss_control:
     soft_limit_bps: -30.0        # soft 閾値で lot 半減
     # 200# 10-A/10-E: soft drawdown 時の interval 乗数 (YAML 外部化)
     soft_drawdown_interval_multiplier: 3.0
+    # 205# §9.5: 片側 DD Halt — サイド別累積損失超過で片側取引停止
+    per_side_enabled: true         # 片側 DD ガード有効化
+    per_side_hard_limit_bps: -30.0 # 片側累積 PnL がこの bps 以下でそのサイドを封鎖
+    per_side_halt_cycles: 0        # 封鎖サイクル数 (0=UTC 日替わりまで永続封鎖)
 
 # ---- 102# チューニングパラメータ (散在マジックナンバーの外部化) ----
 tuning:

@@ -45,6 +45,8 @@ class FillLoopOrchestratorMixin:
     _balance_forced_freq_count: int = 0
     # 202# A: 単一サイクル大損失クールダウン乗数 (次サイクルのみ有効)
     _loss_cooldown_mult: float = 1.0
+    # 205# §9.2: Toxic Fill 同一サイド拒否 — side → 残存拒否サイクル数
+    _toxic_veto: dict[str, int] | None = None
 
     def _is_sell_killed(self) -> bool:
         """133# P0-10 / 136# P1-03: sell 動的 kill 判定 — SellDynamicKillManager に委譲.
@@ -546,6 +548,47 @@ class FillLoopOrchestratorMixin:
                 self._halt_start_cycle = None
                 self._halt_iter_count = 0
 
+            # 205# §9.4: 時間帯 Hard Skip (Kyle proxy)
+            # soft offset (158# P1-6) では抑制不十分な最悪時間帯はサイクル全停止
+            if self.config.hard_skip_utc_hours:
+                from datetime import datetime, timezone
+                _utc_h = datetime.now(timezone.utc).hour
+                if _utc_h in self.config.hard_skip_utc_hours:
+                    # 初回のみ skip record を記録
+                    _hard_skip_entering = not getattr(self, "_in_hard_skip_hour", False)
+                    self._in_hard_skip_hour = True
+                    if _hard_skip_entering:
+                        batch.append(self._make_loop_skip_record(
+                            side="none",
+                            cancel_reason=CR.HARD_SKIP_UTC_HOUR,
+                            order_quantity=0.0,
+                        ))
+                        total_count += 1
+                        batch = self._batch_persistence.maybe_flush(batch, "hard_skip_utc_hour")
+                        logger.info(
+                            f"[205# §9.4] Hard skip: UTC {_utc_h}h is in "
+                            f"hard_skip_utc_hours={self.config.hard_skip_utc_hours}"
+                        )
+                    self._update_lock_heartbeat()
+                    await self._effective_sleep()
+                    continue
+                else:
+                    if getattr(self, "_in_hard_skip_hour", False):
+                        logger.info(f"[205# §9.4] Hard skip ended (UTC {_utc_h}h)")
+                        self._in_hard_skip_hour = False
+
+            # 205# §9.5: 片側 DD Halt のサイクルカウンタ更新
+            self._daily_drawdown_guard.tick_side_halt()
+
+            # 205# §9.2: Toxic Fill 同一サイド拒否 — カウンタ減算
+            if self._toxic_veto is None:
+                self._toxic_veto = {}
+            for _veto_side in list(self._toxic_veto.keys()):
+                self._toxic_veto[_veto_side] -= 1
+                if self._toxic_veto[_veto_side] <= 0:
+                    del self._toxic_veto[_veto_side]
+                    logger.info(f"[205# §9.2] Toxic veto expired: {_veto_side}")
+
             # 129# D.2: 残高制約による side 強制切替追跡
             _balance_forced = False
             _is_rescue = False  # 158# P1-1: balance_forced rescue フラグ
@@ -553,6 +596,50 @@ class FillLoopOrchestratorMixin:
             # 073# side 別時間帯フィルター: side 決定後にフィルタリング
             # side 別リスト未設定時はグローバルリスト (041# 互換)
             next_side = self._next_side()
+
+            # 205# §9.5: 片側 DD Halt チェック — 封鎖されたサイドは回避
+            if self._daily_drawdown_guard.is_side_halted(next_side):
+                _alt = "sell" if next_side == "buy" else "buy"
+                if self._daily_drawdown_guard.is_side_halted(_alt):
+                    # 両サイド封鎖 → 集約 halt と同等扱い
+                    batch.append(self._make_loop_skip_record(
+                        side="none",
+                        cancel_reason=CR.PER_SIDE_DD_HALT,
+                        order_quantity=0.0,
+                    ))
+                    total_count += 1
+                    batch = self._batch_persistence.maybe_flush(batch, "per_side_dd_both_halt")
+                    self._update_lock_heartbeat()
+                    await self._effective_sleep(multiplier=5.0)
+                    continue
+                else:
+                    logger.info(
+                        f"[205# §9.5] Per-side DD halt: {next_side} blocked, "
+                        f"switching to {_alt}"
+                    )
+                    next_side = _alt
+
+            # 205# §9.2: Toxic Fill 同一サイド拒否 — 封鎖されたサイドは反対に切替
+            if self._toxic_veto and next_side in self._toxic_veto:
+                _alt = "sell" if next_side == "buy" else "buy"
+                if _alt in self._toxic_veto:
+                    # 両サイド拒否 → スキップ
+                    batch.append(self._make_loop_skip_record(
+                        side="none",
+                        cancel_reason=CR.TOXIC_FILL_SIDE_VETO,
+                        order_quantity=0.0,
+                    ))
+                    total_count += 1
+                    batch = self._batch_persistence.maybe_flush(batch, "toxic_veto_both")
+                    await self._effective_sleep()
+                    continue
+                else:
+                    logger.info(
+                        f"[205# §9.2] Toxic veto: {next_side} blocked "
+                        f"(remaining={self._toxic_veto[next_side]}), "
+                        f"switching to {_alt}"
+                    )
+                    next_side = _alt
 
             # side 別チェック (073#): side固有リストがあれば side 別判定
             side_filtered = self._is_time_filtered(side=next_side)
@@ -1011,6 +1098,21 @@ class FillLoopOrchestratorMixin:
                     )
                 else:
                     self._loss_cooldown_mult = 1.0
+                # 205# §9.2: Toxic Fill 同一サイド拒否 — 大損時に同一サイドを封鎖
+                if (
+                    self.config.toxic_fill_veto_cycles > 0
+                    and record.post_fill_30s_pnl is not None
+                    and record.post_fill_30s_pnl <= self.config.toxic_fill_veto_threshold_bps
+                ):
+                    if self._toxic_veto is None:
+                        self._toxic_veto = {}
+                    self._toxic_veto[next_side] = self.config.toxic_fill_veto_cycles
+                    logger.warning(
+                        f"[205# §9.2] Toxic fill veto: {next_side} blocked for "
+                        f"{self.config.toxic_fill_veto_cycles} cycles "
+                        f"(pnl={record.post_fill_30s_pnl:.2f}bps "
+                        f"<= {self.config.toxic_fill_veto_threshold_bps:.1f}bps)"
+                    )
                 # 033# F4: 累積 PnL インクリメンタル追跡
                 pnl_jpy = compute_record_pnl_jpy(record)
                 if pnl_jpy is not None:
@@ -1019,6 +1121,7 @@ class FillLoopOrchestratorMixin:
                 if record.post_fill_30s_pnl is not None:
                     dd_result = self._daily_drawdown_guard.update_pnl(
                         record.post_fill_30s_pnl,
+                        side=next_side,  # 205# §9.5: 片側 DD 追跡
                     )
                     if dd_result.get("soft_triggered"):
                         old_lot = self._current_lot

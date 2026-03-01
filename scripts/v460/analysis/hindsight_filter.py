@@ -389,6 +389,9 @@ _DIRECT_CATEGORY_BY_REASON: dict[str, str] = {
     CR.TIMEOUT: "H2_timeout",
     CR.BALANCE_FORCED_SKIP: "H5_balance_forced",
     CR.DAILY_DRAWDOWN_HALT: "H9_daily_drawdown",  # 173#
+    CR.HARD_SKIP_UTC_HOUR: "H10_hard_skip_hour",   # 205# §9.4
+    CR.TOXIC_FILL_SIDE_VETO: "H11_toxic_veto",     # 205# §9.2
+    CR.PER_SIDE_DD_HALT: "H12_per_side_dd",         # 205# §9.5
 }
 # 156# §10 #3/#4: cancel_reasons 定数と同期し技術要因を一括分類
 _TECHNICAL_REASONS = frozenset({

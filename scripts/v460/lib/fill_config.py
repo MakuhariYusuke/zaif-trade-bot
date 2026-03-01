@@ -167,6 +167,10 @@ class FillTestConfig:
     daily_drawdown_soft_limit_bps: float = -30.0  # この bps 以下でロット半減
     # 200# 10-A/10-E: soft ドローダウン時の interval 乗数 (YAML 外部化)
     soft_drawdown_interval_multiplier: float = 3.0
+    # 205# §9.5: 片側 DD Halt — サイド別累積損失超過で片側取引停止
+    per_side_dd_enabled: bool = False           # True で片側 DD ガードを有効化
+    per_side_dd_hard_limit_bps: float = -30.0   # 片側累積 PnL がこの bps 以下でそのサイドを封鎖
+    per_side_dd_halt_cycles: int = 0            # 封鎖サイクル数 (0=UTC 日替わりまで永続封鎖)
     # 049# E3 サンプリング: 全約定ではなくサンプリングで multi-timeframe 計測
     e3_sampling_ratio: float = 1.0  # 0.0-1.0, 1.0=全約定, 0.33=1/3 のみ
     # 049# side 別 offset: buy/sell で独立に offset を設定
@@ -268,6 +272,9 @@ class FillTestConfig:
     # 158# P1-6: 時間帯別 skip_gate 閾値調整 (UTC hour → offset bps)
     # 正=厳格化 (skip 増), 負=緩和 (skip 減). PnL mode: threshold += offset, AS mode: threshold -= offset
     skip_gate_hour_offsets: dict[int, float] = field(default_factory=dict)
+    # 205# §9.4: 時間帯 Hard Skip — 最悪時間帯は取引完全停止 (Kyle proxy)
+    # UTC hour のリスト。これらの時間帯では soft offset ではなくサイクル全停止
+    hard_skip_utc_hours: list[int] = field(default_factory=list)
     # 124# Rule: unknown regime での sell スキップ
     skip_sell_unknown_regime: bool = False
     # 130# unknown regime での buy offset boost (AS 回避)
@@ -344,6 +351,10 @@ class FillTestConfig:
     # 202# A: 単一サイクル大損失クールダウン — 大損後の即連鎖を防止
     loss_cooldown_threshold_bps: float = -10.0  # この PnL 以下で次サイクルの interval を延長
     loss_cooldown_interval_mult: float = 2.0    # 損失後のインターバル乗数 (1サイクル限定)
+    # 205# §9.2: Toxic Fill 同一サイド拒否 — 大損後に同一方向を N サイクル完全封鎖
+    # loss_cooldown (202# A) は interval 2x 延長のみで不十分。同一サイドの連鎖損失を遮断
+    toxic_fill_veto_threshold_bps: float = -5.0  # この PnL 以下で同一サイド拒否発動
+    toxic_fill_veto_cycles: int = 3              # 拒否サイクル数 (0=無効)
     # 202# B: 片側残高枯渇時にも rescue offset を適用 (通常の rescue は deadlock 用)
     one_sided_balance_rescue_offset: bool = True  # True で one_sided_balance 時も offset 保護
     # ---- 133# P0-09: unknown レジームでの buy スキップ ----
@@ -755,6 +766,11 @@ class FillTestConfig:
                 int(k): float(v) for k, v in hour_offsets_raw.items()
             }
 
+        # 205# §9.4: hard_skip_utc_hours (取引完全停止する UTC 時間帯)
+        hard_skip_raw = sg.get("hard_skip_utc_hours", [])
+        if hard_skip_raw:
+            kwargs["hard_skip_utc_hours"] = [int(h) for h in hard_skip_raw]
+
         return kwargs
 
     @staticmethod
@@ -932,9 +948,21 @@ class FillTestConfig:
             kwargs["loss_cooldown_threshold_bps"] = float(止血["loss_cooldown_threshold_bps"])
         if "loss_cooldown_interval_mult" in 止血:
             kwargs["loss_cooldown_interval_mult"] = float(止血["loss_cooldown_interval_mult"])
+        # 205# §9.2: Toxic Fill 同一サイド拒否
+        if "toxic_fill_veto_threshold_bps" in 止血:
+            kwargs["toxic_fill_veto_threshold_bps"] = float(止血["toxic_fill_veto_threshold_bps"])
+        if "toxic_fill_veto_cycles" in 止血:
+            kwargs["toxic_fill_veto_cycles"] = int(止血["toxic_fill_veto_cycles"])
         # 202# B: 片側残高枯渇時の rescue offset
         if "one_sided_balance_rescue_offset" in 止血:
             kwargs["one_sided_balance_rescue_offset"] = 止血["one_sided_balance_rescue_offset"]
+        # 205# §9.5: 片側 DD Halt (daily_drawdown サブキー)
+        if dd_guard.get("per_side_enabled") is not None:
+            kwargs["per_side_dd_enabled"] = dd_guard["per_side_enabled"]
+        if "per_side_hard_limit_bps" in dd_guard:
+            kwargs["per_side_dd_hard_limit_bps"] = float(dd_guard["per_side_hard_limit_bps"])
+        if "per_side_halt_cycles" in dd_guard:
+            kwargs["per_side_dd_halt_cycles"] = int(dd_guard["per_side_halt_cycles"])
 
         return kwargs
 

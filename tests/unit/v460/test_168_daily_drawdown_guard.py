@@ -151,16 +151,18 @@ class TestDailyDrawdownDayReset:
 
     def test_total_halt_days_increments(self) -> None:
         guard = DailyDrawdownGuard(enabled=True, hard_limit_bps=-10.0, soft_limit_bps=-5.0)
-        guard.update_pnl(-15.0)  # halt day 1
-        assert guard.state.total_halt_days == 0  # not counted until reset
+        # 初日: 固定日付で開始 → update_pnl 内の maybe_reset_day が current day をセット
+        with patch.object(DailyDrawdownGuard, "_utc_today", return_value="20500101"):
+            guard.update_pnl(-15.0)  # halt day 1
+            assert guard.state.total_halt_days == 0  # not counted until reset
 
-        with patch.object(DailyDrawdownGuard, "_utc_today", return_value="20260301"):
+        with patch.object(DailyDrawdownGuard, "_utc_today", return_value="20500102"):
             guard.maybe_reset_day()
             assert guard.state.total_halt_days == 1
 
             guard.update_pnl(-15.0)  # halt day 2
 
-        with patch.object(DailyDrawdownGuard, "_utc_today", return_value="20260302"):
+        with patch.object(DailyDrawdownGuard, "_utc_today", return_value="20500103"):
             guard.maybe_reset_day()
             assert guard.state.total_halt_days == 2
 
@@ -307,6 +309,9 @@ class TestDailyDrawdownMetrics:
             "enabled", "current_day", "daily_pnl_bps", "daily_fill_count",
             "halted", "soft_triggered", "hard_limit_bps", "soft_limit_bps",
             "total_halt_days", "halt_blocked_cycles",  # 173# 追加
+            # 205# §9.5: 片側 DD
+            "per_side_enabled", "daily_pnl_bps_buy", "daily_pnl_bps_sell",
+            "side_halted_buy", "side_halted_sell",
         }
         assert set(m.keys()) == expected_keys
 
@@ -331,3 +336,148 @@ def _tomorrow_str() -> str:
     from datetime import timedelta
     tomorrow = now + timedelta(days=1)
     return tomorrow.strftime("%Y%m%d")
+
+
+# ======================================================================
+# 9. 205# §9.5: 片側 DD Halt テスト
+# ======================================================================
+
+
+class TestPerSideDDHalt:
+    """205# §9.5: サイド別累積損失ガード."""
+
+    def _make_guard(
+        self,
+        hard: float = -50.0,
+        soft: float = -30.0,
+        per_side_hard: float = -25.0,
+        per_side_halt_cycles: int = 0,
+    ) -> DailyDrawdownGuard:
+        return DailyDrawdownGuard(
+            enabled=True,
+            hard_limit_bps=hard,
+            soft_limit_bps=soft,
+            per_side_enabled=True,
+            per_side_hard_limit_bps=per_side_hard,
+            per_side_halt_cycles=per_side_halt_cycles,
+        )
+
+    def test_per_side_disabled_by_default(self) -> None:
+        guard = DailyDrawdownGuard(enabled=True)
+        result = guard.update_pnl(-100.0, side="buy")
+        assert result["side_halted"] == ""
+        assert not guard.is_side_halted("buy")
+
+    def test_per_side_buy_halt(self) -> None:
+        guard = self._make_guard(per_side_hard=-20.0)
+        guard.update_pnl(-10.0, side="buy")
+        assert not guard.is_side_halted("buy")
+        guard.update_pnl(-15.0, side="buy")  # buy累積 -25 <= -20
+        assert guard.is_side_halted("buy")
+        assert not guard.is_side_halted("sell")
+
+    def test_per_side_sell_halt(self) -> None:
+        guard = self._make_guard(per_side_hard=-20.0)
+        guard.update_pnl(-25.0, side="sell")
+        assert guard.is_side_halted("sell")
+        assert not guard.is_side_halted("buy")
+
+    def test_per_side_pnl_tracked_independently(self) -> None:
+        guard = self._make_guard(per_side_hard=-30.0)
+        guard.update_pnl(-20.0, side="buy")
+        guard.update_pnl(-20.0, side="sell")
+        # 集約は -40、片側はそれぞれ -20 → まだ封鎖されない
+        assert not guard.is_side_halted("buy")
+        assert not guard.is_side_halted("sell")
+
+    def test_per_side_halt_cycles_expiry(self) -> None:
+        guard = self._make_guard(per_side_hard=-10.0, per_side_halt_cycles=3)
+        guard.update_pnl(-15.0, side="buy")
+        assert guard.is_side_halted("buy")
+        # 3サイクル tick で解除
+        guard.tick_side_halt()  # remaining: 2
+        assert guard.is_side_halted("buy")
+        guard.tick_side_halt()  # remaining: 1
+        assert guard.is_side_halted("buy")
+        guard.tick_side_halt()  # remaining: 0 → 解除
+        assert not guard.is_side_halted("buy")
+
+    def test_per_side_day_reset_clears_halt(self) -> None:
+        guard = self._make_guard(per_side_hard=-10.0)
+        guard.update_pnl(-15.0, side="sell")
+        assert guard.is_side_halted("sell")
+
+        tomorrow = _tomorrow_str()
+        with patch.object(DailyDrawdownGuard, "_utc_today", return_value=tomorrow):
+            guard.maybe_reset_day()
+            assert not guard.is_side_halted("sell")
+            assert guard.state.daily_pnl_bps_sell == 0.0
+
+    def test_per_side_halt_returns_side_halted(self) -> None:
+        guard = self._make_guard(per_side_hard=-10.0)
+        result = guard.update_pnl(-15.0, side="buy")
+        assert result["side_halted"] == "buy"
+
+    def test_per_side_export_import(self) -> None:
+        guard = self._make_guard(per_side_hard=-10.0, per_side_halt_cycles=5)
+        guard.update_pnl(-15.0, side="buy")
+        guard.update_pnl(-5.0, side="sell")
+        exported = guard.export_state()
+
+        new_guard = self._make_guard(per_side_hard=-10.0, per_side_halt_cycles=5)
+        new_guard.import_state(exported)
+        assert new_guard.is_side_halted("buy")
+        assert not new_guard.is_side_halted("sell")
+        assert new_guard.state.daily_pnl_bps_buy == pytest.approx(-15.0)
+        assert new_guard.state.daily_pnl_bps_sell == pytest.approx(-5.0)
+
+
+# ======================================================================
+# 10. 205# cancel_reasons 追加テスト
+# ======================================================================
+
+
+class TestCancelReasons205:
+    """205# で追加した cancel_reason 定数。"""
+
+    def test_hard_skip_utc_hour_exists(self) -> None:
+        from scripts.v460.lib import cancel_reasons as CR
+        assert CR.HARD_SKIP_UTC_HOUR == "hard_skip_utc_hour"
+        assert CR.HARD_SKIP_UTC_HOUR in CR.AUDIT_CANCEL_REASONS
+
+    def test_toxic_fill_side_veto_exists(self) -> None:
+        from scripts.v460.lib import cancel_reasons as CR
+        assert CR.TOXIC_FILL_SIDE_VETO == "toxic_fill_side_veto"
+        assert CR.TOXIC_FILL_SIDE_VETO in CR.AUDIT_CANCEL_REASONS
+
+    def test_per_side_dd_halt_exists(self) -> None:
+        from scripts.v460.lib import cancel_reasons as CR
+        assert CR.PER_SIDE_DD_HALT == "per_side_dd_halt"
+        assert CR.PER_SIDE_DD_HALT in CR.AUDIT_CANCEL_REASONS
+
+
+# ======================================================================
+# 11. 205# FillTestConfig 新規フィールドテスト
+# ======================================================================
+
+
+class TestFillTestConfig205:
+    """205# で追加した FillTestConfig フィールドのデフォルト値。"""
+
+    def test_hard_skip_utc_hours_default(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        cfg = FillTestConfig()
+        assert cfg.hard_skip_utc_hours == []
+
+    def test_toxic_fill_veto_defaults(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        cfg = FillTestConfig()
+        assert cfg.toxic_fill_veto_threshold_bps == -5.0
+        assert cfg.toxic_fill_veto_cycles == 3
+
+    def test_per_side_dd_defaults(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        cfg = FillTestConfig()
+        assert cfg.per_side_dd_enabled is False
+        assert cfg.per_side_dd_hard_limit_bps == -30.0
+        assert cfg.per_side_dd_halt_cycles == 0

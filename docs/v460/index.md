@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-01 (204# 包括的トレード分析 — 市場微細構造理論11理論適用)
+> 最終更新: 2026-03-01 (206# 205レビュー応答: P0 3施策実装 — Hard Skip / Toxic Veto / 片側DD)
 
 ---
 
@@ -188,13 +188,15 @@
 | 195 | impl | [195_ph2_impl_velocity_b1_soft_gate.md](195_ph2_impl_velocity_b1_soft_gate.md) | velocity_skip ソフト化 + B1' offset 統合 (193# 横展開) |
 | 196 | impl | [196_ph2_impl_velocity_proportional_trending_soft.md](196_ph2_impl_velocity_proportional_trending_soft.md) | velocity offset 比例化 + trending_sell ソフト化 |
 | 197 | impl | [197_ph2_impl_boost_optimization_gate_integration.md](197_ph2_impl_boost_optimization_gate_integration.md) | boost 最適化 + balance_forced offset + Gate 8-9 統合 |
-| 198 | rpt | [198_ph2_rpt_drawdown_postmortem_20260301.md](198_ph2_rpt_drawdown_postmortem_20260301.md) | 事後分析: 2026-03-01 朝セッション -53bps ドローダウン |
+| 198 | rpt | [198_postmortem_20260301_drawdown_analysis.md](198_postmortem_20260301_drawdown_analysis.md) | 事後分析: 2026-03-01 朝セッション -53bps ドローダウン |
 | 199 | rev | [199_ph2_rev_198_drawdown_and_hidden_risks.md](199_ph2_rev_198_drawdown_and_hidden_risks.md) | 198レビュー: ドローダウン分析の検証 + 隠れた再発要因 |
 | 200 | resp | [200_ph2_resp_199_codex_gemini_review_eval.md](200_ph2_resp_199_codex_gemini_review_eval.md) | 199 Codex/Gemini レビュー評価 + P0 実装 |
 | 201 | impl | [201_ph2_impl_an_comprehensive_improvements.md](201_ph2_impl_an_comprehensive_improvements.md) | A–N 包括的改善: postonly skip, 比例 boost, velocity SSOT, ev warning, daily reset bugfix |
 | 202 | impl | [202_ph2_impl_log_based_improvements.md](202_ph2_impl_log_based_improvements.md) | ログ分析ベース改善: loss cooldown, one-sided rescue offset, VG sell supplement |
 | 203 | fix | [203_ph2_fix_dd_state_persistence.md](203_ph2_fix_dd_state_persistence.md) | P0: DD状態HALT中未保存バグ修正 + fill records warmup + halt counter修正 |
 | 204 | rpt | [204_ph2_rpt_comprehensive_trade_analysis.md](204_ph2_rpt_comprehensive_trade_analysis.md) | 包括的トレード分析 — MM理論・一目均衡表・市場微細構造理論11理論適用 + vXXX資産活用計画 |
+| 205 | rev | [205_ph2_rev_200_204_root_cause_progress_and_blind_spots.md](205_ph2_rev_200_204_root_cause_progress_and_blind_spots.md) | 200–204レビュー: 根本解決への進捗評価 + 盲点整理 |
+| 206 | impl | — | 205レビュー応答: P0 3施策実装 (Hard Skip §9.4 / Toxic Veto §9.2 / 片側DD §9.5) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
@@ -310,4 +312,3 @@ NNN_phX_TYPE_description.md
 13. **106# R6**: utils 70+ ファイル分割
 14. **106# R7**: config/ vs configs/ 重複ディレクトリ整理
 15. **109# DUP3**: UnifiedTrainer God Object (2835行)
-

@@ -40,6 +40,12 @@ SKIP_GATE_RULE_VELOCITY_BUY = "skip_gate_rule_velocity_buy"
 DAILY_DRAWDOWN_HALT = "daily_drawdown_halt"
 # 200# B/I: postonly_guard crossing → skip (offset pipeline 無効化 防止)
 POSTONLY_CROSSING_SKIP = "postonly_crossing_skip"
+# 205# §9.4: 時間帯 Hard Skip (Kyle proxy — 最悪時間帯は取引完全停止)
+HARD_SKIP_UTC_HOUR = "hard_skip_utc_hour"
+# 205# §9.2: Toxic Fill 同一サイド拒否 (大損後に同一方向を N サイクル封鎖)
+TOXIC_FILL_SIDE_VETO = "toxic_fill_side_veto"
+# 205# §9.5: 片側 DD Halt (サイド別累積損失超過で片側封鎖)
+PER_SIDE_DD_HALT = "per_side_dd_halt"
 
 AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     CIRCUIT_BREAKER_OPEN,
@@ -60,6 +66,9 @@ AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     SKIP_GATE_RULE_VELOCITY_BUY,
     DAILY_DRAWDOWN_HALT,
     POSTONLY_CROSSING_SKIP,
+    HARD_SKIP_UTC_HOUR,
+    TOXIC_FILL_SIDE_VETO,
+    PER_SIDE_DD_HALT,
 })
 
 # ======================================================================
@@ -113,6 +122,9 @@ CancelReason = Literal[
     "skip_gate_rule_velocity_buy",
     "daily_drawdown_halt",
     "postonly_crossing_skip",
+    "hard_skip_utc_hour",
+    "toxic_fill_side_veto",
+    "per_side_dd_halt",
     # EXEC
     "post_only_reject",
     "insufficient_funds",

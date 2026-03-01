@@ -19,26 +19,39 @@ import sys
 import time
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 # Project root
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
-from scripts.v460.lib.fill_config import (
-    FillTestConfig,
-    FillMonitorResult as _FillMonitorResult,
-    PnlMeasurement as _PnlMeasurement,
-    SkipGateResult as _SkipGateResult,
+from ztb.data.trades_recorder import TradesRecorder
+from ztb.risk.circuit_breakers import KillSwitch
+from ztb.trading.live.exchanges.base.broker_interfaces import IBroker
+from scripts.v460.lib.adaptation_engine import AdaptationEngine
+from scripts.v460.lib.balance_checker import BalanceChecker
+from scripts.v460.lib.batch_persistence import BatchPersistence
+from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.maker_price import MakerPriceCalculator
+from scripts.v460.lib.ob_recorder import OBRecorder
+from scripts.v460.lib.order_monitor import OrderMonitor
+from scripts.v460.lib.pnl_measurer import PnlMeasurer
+from scripts.v460.lib.resilience import (
+    FillTestHealthMonitor,
+    FillTestStatePersistence,
+    HealthThresholds,
+    create_api_circuit_breaker,
 )
+from scripts.v460.lib.side_selector import SideSelector
+from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+from scripts.v460.lib.time_filter import TimeFilter
 from scripts.v460.lib.abstract_cycle_runner import AbstractCycleRunner
+from scripts.v460.lib.lock_manager import LockManager
 from scripts.v460.lib.fill_record_helpers import FillRecordHelpersMixin  # 163#
 from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin  # 163#
 from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin  # 163#
-
-if TYPE_CHECKING:
-    from scripts.v460.lib.regime_policy import CycleStrategy
-    from ztb.trading.live.exchanges.base.broker_interfaces import IBroker
+from scripts.v460.lib.regime_policy import CycleStrategy  # 179#
 
 logging.basicConfig(
     level=logging.INFO,
@@ -109,30 +122,6 @@ class FillTestRunner(
         yaml_cfg: dict[str, object] | None = None,
         config_yaml_path: str | None = None,  # 169# config hot-reload
     ) -> None:
-        from ztb.data.trades_recorder import TradesRecorder
-        from ztb.risk.circuit_breakers import KillSwitch
-        from scripts.v460.lib.adaptation_engine import AdaptationEngine
-        from scripts.v460.lib.balance_checker import BalanceChecker
-        from scripts.v460.lib.batch_persistence import BatchPersistence
-        from scripts.v460.lib.fast_fill_defense import (
-            FastFillDefense,
-            FastFillDefenseConfig,
-        )
-        from scripts.v460.lib.lock_manager import LockManager
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-        from scripts.v460.lib.ob_recorder import OBRecorder
-        from scripts.v460.lib.order_monitor import OrderMonitor
-        from scripts.v460.lib.pnl_measurer import PnlMeasurer
-        from scripts.v460.lib.resilience import (
-            FillTestHealthMonitor,
-            FillTestStatePersistence,
-            HealthThresholds,
-            create_api_circuit_breaker,
-        )
-        from scripts.v460.lib.side_selector import SideSelector
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        from scripts.v460.lib.time_filter import TimeFilter
-
         self.adapter = adapter
         self.config = config
         self._yaml_cfg = yaml_cfg or {}  # YAML 生の設定 (サブモジュールに渡す用)
@@ -207,7 +196,6 @@ class FillTestRunner(
         self._regime_detector: Optional["FillTestRegimeDetector"] = None
         if config.enable_regime:
             from scripts.v460.lib.regime_detector import (
-                FillTestRegime,
                 FillTestRegimeDetector,
                 RegimeConfig,
             )
@@ -357,6 +345,9 @@ class FillTestRunner(
             enabled=config.daily_drawdown_enabled,
             hard_limit_bps=config.daily_drawdown_hard_limit_bps,
             soft_limit_bps=config.daily_drawdown_soft_limit_bps,
+            per_side_enabled=config.per_side_dd_enabled,
+            per_side_hard_limit_bps=config.per_side_dd_hard_limit_bps,
+            per_side_halt_cycles=config.per_side_dd_halt_cycles,
         )
 
         # 044# A-7: loss_cap 更新カウンタ
@@ -427,6 +418,9 @@ class FillTestRunner(
             enabled=self.config.daily_drawdown_enabled,
             hard_limit_bps=self.config.daily_drawdown_hard_limit_bps,
             soft_limit_bps=self.config.daily_drawdown_soft_limit_bps,
+            per_side_enabled=self.config.per_side_dd_enabled,
+            per_side_hard_limit_bps=self.config.per_side_dd_hard_limit_bps,
+            per_side_halt_cycles=self.config.per_side_dd_halt_cycles,
         )
         if old_state:
             self._daily_drawdown_guard.import_state(old_state)
