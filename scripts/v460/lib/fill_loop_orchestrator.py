@@ -221,7 +221,12 @@ class FillLoopOrchestratorMixin:
         base = self._cycle_strategy.effective_interval(regime)
         # 200# P0-2: soft drawdown で lot 半減不可 → interval 延長
         soft_dd_mult = getattr(self, "_soft_drawdown_interval_multiplier", 1.0)
-        await asyncio.sleep(base * multiplier * soft_dd_mult)
+        _raw = base * multiplier * soft_dd_mult
+        # 211#: max_cycle_sleep_sec キャップを _effective_sleep にも適用
+        # (209# M4 は通常パスのみ → halt 中 30 分スリープの原因)
+        _max = self.config.max_cycle_sleep_sec
+        _sleep = min(_raw, _max) if _max > 0 else _raw
+        await asyncio.sleep(_sleep)
 
     def _make_loop_skip_record(
         self,
@@ -628,6 +633,12 @@ class FillLoopOrchestratorMixin:
                         filled_count=filled_count,
                         cumulative_pnl_jpy=cumulative_pnl_jpy,
                     ))
+                # 211#: halt サイクル可視化ログ (entering + 10 iter 毎)
+                if _halt_entering or self._halt_iter_count % 10 == 0:
+                    logger.info(
+                        f"[daily_drawdown] Halt cycle #{self._halt_iter_count}"
+                        f" (next log @+{10 - self._halt_iter_count % 10} iters)"
+                    )
                 await self._effective_sleep(multiplier=5.0)  # 179# S1: halt 中は 5x 間隔
                 continue
 
