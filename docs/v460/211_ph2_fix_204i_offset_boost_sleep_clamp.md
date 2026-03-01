@@ -2,7 +2,7 @@
 
 > **日付**: 2026-03-02  
 > **前提**: 210# (203#/204# 残課題解消) 完了後、204#/205# 全項目監査で検出した残 2 件 + 運用観測で発覚した sleep バグを修正  
-> **コミット**: `4edc35679` (offset boost + link 修正), `ab912a1cf` (sleep clamp + halt log)
+> **コミット**: `4edc35679` (offset boost + link 修正), `ab912a1cf` (sleep clamp + halt log), `b56ba1eea` (halt persist interval fix)
 
 ---
 
@@ -57,6 +57,15 @@
 | 修正 | halt entering + 10 iter 毎に `logger.info("[daily_drawdown] Halt cycle #N")` を出力 |
 | ファイル | `fill_loop_orchestrator.py` |
 
+### halt 中 state/record 保存間隔の適正化
+
+| 項目 | 内容 |
+|---|---|
+| 問題 | halt 中の state 保存・fill record 記録が通常サイクル用の `progress_log_interval=50` を流用しており、600s × 50 = 8.3 時間に 1 回しか保存されない。halt 中に再起動すると数時間分の halt iteration カウントが巻き戻る |
+| 修正 | halt 専用の `_HALT_PERSIST_INTERVAL = 10` を導入し、state 保存・fill record・ログ出力の 3 つを統一。600s × 10 = 約 100 分間隔で保存 |
+| 検証 | 04:07:39 に `Halt cycle #10` ログ出力を確認。#0 (02:27:39) から 100 分で正確に動作 |
+| ファイル | `fill_loop_orchestrator.py` |
+
 ---
 
 ## 3. 三層防御の完成
@@ -77,11 +86,12 @@
 |---|---|---|
 | `scripts/v460/lib/fill_config.py` | +2 | `loss_boost_offset_mult` フィールド |
 | `scripts/v460/lib/maker_price.py` | +32 | `_loss_boost_mult` slot/init/setter + compute 適用 |
-| `scripts/v460/lib/fill_loop_orchestrator.py` | +22/−1 | loss boost 呼び出し + sleep clamp + halt log |
-| `docs/v460/index.md` | +1/−1 | 198# リンク修正 |
+| `scripts/v460/lib/fill_loop_orchestrator.py` | +32/−7 | loss boost 呼び出し + sleep clamp + halt log + halt persist interval |
+| `docs/v460/index.md` | +2/−2 | 198# リンク修正 + 211# エントリ追加 |
+| `docs/v460/211_ph2_fix_204i_offset_boost_sleep_clamp.md` | +120 | 本ドキュメント |
 | `tests/unit/v460/test_168_daily_drawdown_guard.py` | +35 | 3 新規テスト |
 
-合計: **+92/−2** (5 files), コミット 2 件
+合計: **+223/−9** (6 files), コミット 4 件 (`4edc35679`, `ab912a1cf`, `21d5703eb`, `b56ba1eea`)
 
 ---
 
@@ -105,8 +115,9 @@
 
 | 問題 | 発見方法 | 原因 | 対応 |
 |---|---|---|---|
-| 再起動後 11 分間ログ無出力 | `Get-Content -Tail` + state file LastWriteTime 監視 | `_effective_sleep(5.0)` × `soft_dd_mult=3.0` = 1800s sleep。209# M4 clamp が通常パスのみ | `_effective_sleep()` に clamp 追加 |
-| halt 中のログ完全無音 | 上記調査の過程で発見 | halt パスに `logger.*` 呼び出しなし | entering + 10 iter 毎にログ出力 |
+| 再起動後 11 分間ログ無出力 | `Get-Content -Tail` + state file LastWriteTime 監視 | `_effective_sleep(5.0)` × `soft_dd_mult=3.0` = 1800s sleep。209# M4 clamp が通常パスのみ | `_effective_sleep()` に clamp 追加 (`ab912a1cf`) |
+| halt 中のログ完全無音 | 上記調査の過程で発見 | halt パスに `logger.*` 呼び出しなし | entering + 10 iter 毎にログ出力 (`ab912a1cf`) |
+| state file が 8.3h 更新されない | halt cycle #10 確認時に state LastWriteTime が entering 時のまま | `progress_log_interval=50` は 600s halt 周期で 8.3h になる | halt 専用 `_HALT_PERSIST_INTERVAL=10` (100 分間隔) に変更 (`b56ba1eea`) |
 
 ---
 
@@ -114,6 +125,59 @@
 
 | ID | 重要度 | 内容 | 備考 |
 |---|---|---|---|
+| **P0-A** | **HIGH** | **Operator Alert Flag (手動リスクフラグ)** | §8 参照。ニュース等で事前把握したリスクを即座に bot に伝達する仕組み。ファイルタッチ型で実装量極小 |
+| P1-B | MEDIUM | Micro Circuit Breaker (複数時間軸の価格急変検知) | 5 分/15 分/1h 窓で自動 halt/offset boost |
+| P1-C | MEDIUM | Spread Anomaly Detector (spread 急拡大→自動 alert) | 流動性枯渇の最速市場内シグナル |
 | 204# K–Q | P2 | σ-linked offset, OFI/PIN, Friday filter 等 | 長期施策 (205# §7) |
 | H4 | HIGH | SellDynamicKillManager rolling PnL window 非永続化 | 設計要 (210# §6) |
 | spread staleness 60s | LOW | ハードコード → Config 外部化 | 優先度低 |
+
+---
+
+## 8. 地政学イベント対応提案 (P0-A: Operator Alert Flag)
+
+### 背景
+
+2026-02-28 の米・イスラエルによるイラン攻撃 (Operation Epic Fury) で以下の事実が判明:
+
+- **BTC は 攻撃直後に $67K → $63K 急落** (2/28)、ハメネイ師死亡確認後 $68K 反発 (3/1)、現在 $66K 付近
+- **ホルムズ海峡封鎖警告**: 世界の石油・ガス輸送の 20% が通過する要衝
+- 土曜攻撃→**月曜の伝統市場オープンが真のプライシング**。CME 先物/S&P500 連鎖でBTCに波及
+
+### 問題
+
+現在の bot は「価格が動いた後」にしか反応できない。ニュースで事前にリスクを把握していても、bot に即座に伝える手段がない。
+
+### 提案: ファイルタッチ型 Alert Mode
+
+```
+results/v460/fill_test/alert_mode.json の存在をサイクル先頭でチェック
+```
+
+**発動例:**
+```powershell
+# 即座に halt
+echo '{"halt": true}' > results/v460/fill_test/alert_mode.json
+
+# 縮小運転 (offset 2倍 + lot 半減 + interval 3倍)
+echo '{"offset_mult": 2.0, "lot_mult": 0.5, "interval_mult": 3.0}' > results/v460/fill_test/alert_mode.json
+
+# 解除
+del results/v460/fill_test/alert_mode.json
+```
+
+**パラメータ:**
+
+| キー | 型 | デフォルト | 効果 |
+|---|---|---|---|
+| `halt` | bool | false | true で完全停止 (fill record に "operator_halt" 記録) |
+| `offset_mult` | float | 1.0 | offset に乗算 (>1.0 でワイドに) |
+| `lot_mult` | float | 1.0 | lot に乗算 (<1.0 で縮小) |
+| `interval_mult` | float | 1.0 | サイクル間隔に乗算 (>1.0 で低頻度) |
+| `reason` | str | "" | ログに記録する理由テキスト |
+
+**設計原則:**
+- hot-reload YAML とは独立。YAML 変更は構造的、alert は一時的
+- ファイル削除で即復帰 (状態を持たない)
+- サイクル先頭の 1 ファイル存在チェック → パフォーマンス影響なし
+- 地政学に限らず全種のイベント (取引所メンテ、大口移動等) に汎用利用可能
