@@ -6,11 +6,11 @@ run_fill_test.py FillTestRunner からの God Object 分割:
 - _build_adapt_kwargs (16L) → _build_adapt_kwargs()
 - _build_lot_kwargs (22L) → _build_lot_kwargs()
 - _update_dynamic_loss_cap (47L) → update_dynamic_loss_cap()
-- load_fill_records_glob の TTL キャッシュ (メモリリーク修正)
+- streaming fill record 読み込みの TTL キャッシュ (メモリリーク修正)
 
 メモリリーク修正:
-  _try_auto_adapt / _try_auto_lot_size が毎回 load_fill_records_glob() で
-  全レコードをディスクからロードしていた (数千件 → メモリ圧迫)。
+  _try_auto_adapt / _try_auto_lot_size が毎回全レコードをディスクからロードしていた
+  (数千件 → メモリ圧迫)。
   _cached_records + _cache_ts で TTL ベースのキャッシュを導入し、
   同一適応サイクル内の二重読み込みを排除。
 

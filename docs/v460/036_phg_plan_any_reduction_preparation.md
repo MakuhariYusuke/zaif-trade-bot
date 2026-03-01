@@ -2767,6 +2767,19 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - `scripts/v460/ml/run_075_verification.py`: `any_type_debt_tokens=0`
 
+### Step121: adaptation_engine の comment drift を解消
+
+1. 対応概要
+- `scripts/v460/lib/adaptation_engine.py`
+  - モジュール docstring の `load_fill_records_glob` 前提表現を、現在の streaming + TTL cache 実装に合わせて更新した。
+
+2. 目的
+- 旧実装を前提にした説明を除去し、実装理解時の誤読を防ぐ。
+
+3. 検証
+- `py_compile`
+  - `scripts/v460/lib/adaptation_engine.py`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
