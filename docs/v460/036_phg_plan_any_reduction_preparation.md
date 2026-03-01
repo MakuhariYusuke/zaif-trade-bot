@@ -3155,6 +3155,46 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/ml/run_073_strategy_analysis.py`: `any_type_debt_tokens=0`
   - `scripts/v460/ml/run_075_verification.py`: `any_type_debt_tokens=0`
 
+### Step133: raw fill record 読込と再現性フィルタを共通 helper に統一
+
+1. 対応概要
+- `ztb/metrics/fill_quality.py`
+  - `iter_fill_record_objects_glob()` / `load_fill_record_objects_glob()` を追加した。
+  - raw JSON object のまま `fill_records_*.jsonl` を streaming 読込し、`cycle_id` が文字列のものは cross-file で重複排除するようにした。
+  - `apply_fill_record_filters()` を追加し、`run_id` / `git_sha` / `date_from` / `date_to` のフィルタ契約を共通化した。
+  - `timestamp` が非数値・非有限値でも filter 時に落ちず、範囲外扱いで安全に除外するようにした。
+- `scripts/v460/analysis/side_regime_dashboard.py`
+  - `_load_all_records()` の手書き JSONL 読込を廃止し、`iter_fill_record_objects_glob(..., include_emergency=False)` に置換した。
+- `scripts/v460/lib/stopgap_health.py`
+  - `load_fill_records()` を `load_fill_record_objects_glob(..., include_emergency=False)` に置換した。
+  - `apply_filters()` を `apply_fill_record_filters()` への thin wrapper に変更した。
+
+2. 目的
+- `side_regime_dashboard` と `stopgap_health` に分散していた「primary fill_records の読込」「BOM/非object耐性」「再現性フィルタ」を 1 箇所に寄せる。
+- `fill_records` 読込時の duplicate 混入を、下流の手書きロジックではなく `ztb` 側の共通 helper で抑える。
+- filter 対象レコードの `timestamp` 異常値で分析スクリプトが落ちる余地を減らす。
+
+3. 検証
+- `py_compile`
+  - `ztb/metrics/fill_quality.py`
+  - `scripts/v460/analysis/side_regime_dashboard.py`
+  - `scripts/v460/lib/stopgap_health.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_stopgap_health.py`
+- `pytest`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_stopgap_health.py`
+  - `-k "TestFillRecordIO or TestApplyFilters or TestLoadFillRecords"`
+  - 結果: `20 passed`
+  - `tests/unit/v460/test_159_side_regime_dashboard.py`
+  - `tests/unit/v460/test_160_ab_judgment.py`
+  - `-k "load_all_records or TestRunDashboard or handles_bom"`
+  - 結果: `3 passed`
+- `any_inventory`
+  - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/analysis/side_regime_dashboard.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/stopgap_health.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

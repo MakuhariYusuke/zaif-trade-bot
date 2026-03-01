@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 from collections import deque
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -22,6 +23,7 @@ from typing import TYPE_CHECKING, Final, Iterable, Iterator, Mapping, Optional
 
 import numpy as np
 from scipy import stats
+from ztb.io.jsonl import iter_jsonl_objects
 from ztb.utils.dataclass_utils import get_dataclass_field_names
 
 logger = logging.getLogger(__name__)
@@ -1025,6 +1027,93 @@ def fill_records_to_dataframe(records: Iterable[FillRecord]) -> "pd.DataFrame":
     import pandas as pd
 
     return pd.DataFrame.from_records(record.to_dict() for record in records)
+
+
+def iter_fill_record_objects_glob(
+    directory: str | Path,
+    *,
+    include_emergency: bool = True,
+) -> Iterator[dict[str, object]]:
+    """ディレクトリ内の全 JSONL から raw object を逐次読み込み.
+
+    FillRecord dataclass を経由せず、analysis 系で使う dict payload をそのまま返す。
+    cycle_id が文字列のものは cross-file で重複排除する。
+    """
+    d = Path(directory)
+    seen_ids: set[str] = set()
+    for path in _iter_fill_record_files(d, include_emergency=include_emergency):
+        for record in iter_jsonl_objects(path, warn_malformed=True):
+            cycle_id = record.get("cycle_id")
+            if isinstance(cycle_id, str):
+                if cycle_id in seen_ids:
+                    continue
+                seen_ids.add(cycle_id)
+            yield record
+
+
+def load_fill_record_objects_glob(
+    directory: str | Path,
+    *,
+    include_emergency: bool = True,
+) -> list[dict[str, object]]:
+    """ディレクトリ内の全 JSONL から raw object を読み込み."""
+    return list(iter_fill_record_objects_glob(directory, include_emergency=include_emergency))
+
+
+def _coerce_filter_timestamp(value: object) -> float | None:
+    """filter 用 timestamp を有限 float に正規化する."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        ts = float(value)
+        if math.isfinite(ts):
+            return ts
+    return None
+
+
+def apply_fill_record_filters(
+    records: Iterable[Mapping[str, object]],
+    *,
+    run_id: str | None = None,
+    git_sha: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> tuple[list[dict[str, object]], dict[str, str | None]]:
+    """fill record dict に run_id/git_sha/date フィルタを適用する."""
+    ts_from: float | None = None
+    ts_to: float | None = None
+    if date_from:
+        ts_from = datetime.strptime(date_from, "%Y-%m-%d").replace(
+            tzinfo=timezone.utc
+        ).timestamp()
+    if date_to:
+        ts_to = (
+            datetime.strptime(date_to, "%Y-%m-%d").replace(
+                tzinfo=timezone.utc
+            ).timestamp()
+            + 86400
+        )
+
+    filtered: list[dict[str, object]] = []
+    for record in records:
+        if run_id and record.get("run_id") != run_id:
+            continue
+        if git_sha and not str(record.get("git_sha", "")).startswith(git_sha):
+            continue
+        timestamp = _coerce_filter_timestamp(record.get("timestamp")) or 0.0
+        if ts_from is not None and timestamp < ts_from:
+            continue
+        if ts_to is not None and timestamp >= ts_to:
+            continue
+        filtered.append(record if isinstance(record, dict) else dict(record))
+
+    filters = {
+        "run_id": run_id,
+        "git_sha": git_sha,
+        "date_from": date_from,
+        "date_to": date_to,
+    }
+    return filtered, filters
 
 
 def _iter_fill_record_files(

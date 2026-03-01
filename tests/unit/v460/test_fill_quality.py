@@ -1226,6 +1226,71 @@ class TestFillRecordIO:
         assert list(df["cycle_id"]) == ["df_0", "df_1"]
         assert list(df["order_price"]) == [100.0, 101.0]
 
+    def test_iter_fill_record_objects_glob_roundtrip(self) -> None:
+        from ztb.metrics.fill_quality import (
+            FillRecord,
+            iter_fill_record_objects_glob,
+            save_fill_records,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            emergency = root / "emergency"
+            emergency.mkdir()
+            save_fill_records(
+                [
+                    FillRecord(
+                        cycle_id="obj_1",
+                        timestamp=1700000000.0,
+                        side="buy",
+                        order_price=100.0,
+                        order_quantity=0.001,
+                    ),
+                ],
+                root / "fill_records_20260101.jsonl",
+            )
+            save_fill_records(
+                [
+                    FillRecord(
+                        cycle_id="obj_1",
+                        timestamp=1700000001.0,
+                        side="sell",
+                        order_price=101.0,
+                        order_quantity=0.001,
+                    ),
+                    FillRecord(
+                        cycle_id="obj_2",
+                        timestamp=1700000002.0,
+                        side="sell",
+                        order_price=102.0,
+                        order_quantity=0.001,
+                    ),
+                ],
+                emergency / "emergency_20260101.jsonl",
+            )
+
+            loaded = list(iter_fill_record_objects_glob(root))
+            assert [record["cycle_id"] for record in loaded] == ["obj_1", "obj_2"]
+
+    def test_apply_fill_record_filters_handles_invalid_timestamp(self) -> None:
+        from ztb.metrics.fill_quality import apply_fill_record_filters
+
+        records = [
+            {"cycle_id": "a", "timestamp": "bad", "run_id": "r1", "git_sha": "abc123"},
+            {"cycle_id": "b", "timestamp": 1771718400.0, "run_id": "r1", "git_sha": "abc999"},
+        ]
+
+        filtered, applied = apply_fill_record_filters(
+            records,
+            run_id="r1",
+            git_sha="abc",
+            date_from="2026-02-21",
+        )
+
+        assert [record["cycle_id"] for record in filtered] == ["b"]
+        assert applied["run_id"] == "r1"
+        assert applied["git_sha"] == "abc"
+
     def test_load_corrupt_lines_skipped(self) -> None:
         """032# #19: 破損行はスキップして残りを正常読込."""
         from ztb.metrics.fill_quality import FillRecord, load_fill_records

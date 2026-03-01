@@ -462,6 +462,14 @@ class TestApplyFilters:
         r, _ = apply_filters(recs, run_id="r1", git_sha="abc")
         assert len(r) == 1
 
+    def test_invalid_timestamp_does_not_raise(self):
+        recs = [
+            {**_make_record(), "timestamp": "bad"},
+            {**_make_record(), "timestamp": datetime(2026, 2, 22, 0, 0, tzinfo=timezone.utc).timestamp()},
+        ]
+        r, _ = apply_filters(recs, date_from="2026-02-21")
+        assert len(r) == 1
+
 
 # ======================================================================
 # load_fill_records
@@ -486,6 +494,23 @@ class TestLoadFillRecords:
 
         assert len(records) == 1
         assert records[0]["filled"] is True
+
+    def test_loader_deduplicates_cycle_id_across_files(self, tmp_path):
+        (tmp_path / "fill_records_20260224.jsonl").write_text(
+            json.dumps({"cycle_id": "dup_1", "filled": True, "timestamp": 1}) + "\n",
+            encoding="utf-8",
+        )
+        (tmp_path / "fill_records_20260225.jsonl").write_text(
+            "\n".join([
+                json.dumps({"cycle_id": "dup_1", "filled": False, "timestamp": 2}),
+                json.dumps({"cycle_id": "dup_2", "filled": True, "timestamp": 3}),
+            ]) + "\n",
+            encoding="utf-8",
+        )
+
+        records = load_fill_records(tmp_path)
+
+        assert [record["cycle_id"] for record in records] == ["dup_1", "dup_2"]
 
 
 # ======================================================================

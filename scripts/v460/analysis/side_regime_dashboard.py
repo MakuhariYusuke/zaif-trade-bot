@@ -21,7 +21,7 @@ import sys
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, cast
 
 import numpy as np
 
@@ -29,7 +29,7 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _SCRIPT_DIR.parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
-from ztb.io.jsonl import read_jsonl_objects
+from ztb.metrics.fill_quality import iter_fill_record_objects_glob
 
 # 160# P0-B/C: judgment 統合
 from scripts.v460.lib.metrics_utils import MetricRecord, compute_extended_metrics
@@ -119,11 +119,13 @@ def _compute_side_metrics(records: list[MetricRecord]) -> SideMetrics:
 
 def _load_all_records(results_dir: Path) -> list[MetricRecord]:
     """fill_records JSONL を全読み込み."""
-    all_records: list[MetricRecord] = []
-    for path in sorted(results_dir.glob("fill_records_*.jsonl")):
-        records = read_jsonl_objects(path)
-        all_records.extend(records)
-    return all_records
+    return [
+        cast(MetricRecord, record)
+        for record in iter_fill_record_objects_glob(
+            results_dir,
+            include_emergency=False,
+        )
+    ]
 
 
 def run_dashboard(

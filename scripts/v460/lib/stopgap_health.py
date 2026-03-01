@@ -27,6 +27,10 @@ from scripts.v460.lib.metrics_utils import (
     compute_extended_metrics,
 )
 from ztb.io.json_io import JSONObject
+from ztb.metrics.fill_quality import (
+    apply_fill_record_filters,
+    load_fill_record_objects_glob,
+)
 from ztb.utils.safety import safe_to_finite
 
 logger = logging.getLogger(__name__)
@@ -170,13 +174,10 @@ class DailyHealthReport:
 
 def load_fill_records(results_dir: Path) -> list[FillRecord]:
     """全 fill_records_*.jsonl をロード."""
-    from ztb.io.jsonl import read_jsonl_objects
-
-    all_records: list[FillRecord] = []
-    for path in sorted(results_dir.glob("fill_records_*.jsonl")):
-        records = read_jsonl_objects(path)
-        all_records.extend(cast(list[FillRecord], records))
-    return all_records
+    return cast(
+        list[FillRecord],
+        load_fill_record_objects_glob(results_dir, include_emergency=False),
+    )
 
 
 def apply_filters(
@@ -189,36 +190,17 @@ def apply_filters(
 ) -> tuple[list[FillRecord], dict[str, str | None]]:
     """162# P0 再現性固定: run_id/git_sha/date でフィルタ.
 
-    analyze_fill_logs.apply_filters と同一ロジック (DRY: 共通化候補).
+    共有実装は `ztb.metrics.fill_quality.apply_fill_record_filters()` に統一。
     Returns: (filtered_records, applied_filters_dict)
     """
-    out = records
-    if run_id:
-        out = [r for r in out if r.get("run_id") == run_id]
-    if git_sha:
-        out = [r for r in out if str(r.get("git_sha", "")).startswith(git_sha)]
-    if date_from:
-        from datetime import datetime as dt
-        ts_from = dt.strptime(date_from, "%Y-%m-%d").replace(
-            tzinfo=timezone.utc
-        ).timestamp()
-        out = [r for r in out if (r.get("timestamp") or 0) >= ts_from]
-    if date_to:
-        from datetime import datetime as dt
-        ts_to = (
-            dt.strptime(date_to, "%Y-%m-%d").replace(
-                tzinfo=timezone.utc
-            ).timestamp()
-            + 86400
-        )
-        out = [r for r in out if (r.get("timestamp") or 0) < ts_to]
-    filters = {
-        "run_id": run_id,
-        "git_sha": git_sha,
-        "date_from": date_from,
-        "date_to": date_to,
-    }
-    return out, filters
+    filtered, filters = apply_fill_record_filters(
+        records,
+        run_id=run_id,
+        git_sha=git_sha,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    return cast(list[FillRecord], filtered), filters
 
 
 def _filter_window(
