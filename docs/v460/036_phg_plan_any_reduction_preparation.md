@@ -3464,6 +3464,36 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/lib/ab_judgment.py`: `any_type_debt_tokens=0`
   - `tests/unit/v460/test_160_ab_judgment.py`: `any_type_debt_tokens=0`
 
+### Step140: 共通 `metrics_utils` の filled 集計を 1 パス寄りに整理
+
+1. 対応概要
+- `scripts/v460/lib/metrics_utils.py`
+  - `compute_base_metrics()` で `filled` list を先に作る形をやめ、filled 件数・Pnl 配列・calendar day を 1 回の走査で同時に集計する形へ変更した。
+  - `avg_pnl30_bps` / `profitable_rate` は `PnlWinAccumulator` を使う形に寄せた。
+  - `compute_extended_metrics()` も `as_records` / `repriced` / `vg_triggered` の中間 list をやめ、1 回の走査で件数と平均値を集計するように整理した。
+  - `avg_as_loss_bps` / `avg_reprice_drift_bps` は `PnlAccumulator` に統一した。
+
+2. 類似実装の確認
+- `metrics_utils` は `ab_judgment` / `side_regime_dashboard` / `stopgap_health` の共通下層なので、ここを直す方が個別最適より横展開効果が大きい。
+- 平均・勝率は `ztb.metrics.fill_quality` の既存集計器へ寄せ、percentile / std に必要な配列だけ維持した。
+- そのため、統計上必要な `np.ndarray` 契約は維持しつつ、前段の余計な list だけを削減している。
+
+3. 目的
+- 共通 metrics 層での中間 list 生成を減らし、依存先の集計コストを横断的に下げる。
+- `filled` レコードの走査回数を減らし、ログ件数増加時の基本集計コストを抑える。
+- `ztb.metrics` の集計器に寄せることで、平均値算出の契約をさらに統一する。
+
+4. 検証
+- `py_compile`
+  - `scripts/v460/lib/metrics_utils.py`
+- `pytest`
+  - `tests/unit/v460/test_159_side_regime_dashboard.py`
+  - `tests/unit/v460/test_160_ab_judgment.py`
+  - `tests/unit/v460/test_stopgap_health.py`
+  - 結果: `130 passed`
+- `any_inventory`
+  - `scripts/v460/lib/metrics_utils.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

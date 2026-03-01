@@ -11,6 +11,7 @@ from typing import TypedDict
 import numpy as np
 
 from ztb.io.json_io import JSONObject
+from ztb.metrics.fill_quality import PnlAccumulator, PnlWinAccumulator
 from ztb.utils.safety import safe_to_finite
 
 MetricRecord = JSONObject
@@ -44,14 +45,6 @@ __all__ = [
     "compute_base_metrics",
     "compute_extended_metrics",
 ]
-
-
-def _collect_finite_values(records: list[MetricRecord], key: str) -> list[float]:
-    """指定キーの有限値だけを抽出する."""
-    values = [safe_to_finite(r.get(key)) for r in records]
-    return [v for v in values if v is not None]
-
-
 def compute_base_metrics(records: list[MetricRecord]) -> BaseMetrics:
     """fill レコード群から基本メトリクスを算出.
 
@@ -65,19 +58,39 @@ def compute_base_metrics(records: list[MetricRecord]) -> BaseMetrics:
             pnl30_array (np.ndarray — 下流で stat test 等に使用可)
     """
     n_total = len(records)
-    filled = [r for r in records if r.get("filled")]
-    n_filled = len(filled)
-    fill_rate = n_filled / n_total if n_total > 0 else 0.0
+    n_filled = 0
+    fill_rate = 0.0
+    pnl_values: list[float] = []
+    pnl_summary = PnlWinAccumulator()
 
-    pnl_clean = _collect_finite_values(filled, "post_fill_30s_pnl")
+    # カレンダー日数
+    days: set[str] = set()
+    for record in records:
+        if not record.get("filled"):
+            continue
+        n_filled += 1
+        pnl_value = safe_to_finite(record.get("post_fill_30s_pnl"))
+        if pnl_value is not None:
+            pnl_values.append(pnl_value)
+            pnl_summary.add(pnl_value)
+        ts = safe_to_finite(record.get("timestamp"))
+        if ts is None:
+            continue
+        try:
+            days.add(datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y%m%d"))
+        except (ValueError, OSError):
+            continue
 
-    if pnl_clean:
-        arr = np.array(pnl_clean, dtype=float)
-        avg_pnl30 = float(np.mean(arr))
+    if n_total > 0:
+        fill_rate = n_filled / n_total
+
+    if pnl_values:
+        arr = np.array(pnl_values, dtype=float)
+        avg_pnl30 = pnl_summary.mean_bps
         std_pnl30 = float(np.std(arr))
         p10 = float(np.percentile(arr, 10))
         p05 = float(np.percentile(arr, 5))
-        profitable = float(np.sum(arr > 0) / len(arr))
+        profitable = pnl_summary.win_rate
     else:
         # 160# bugfix: 0.0 だと閾値を上回り誤PASS判定されるため NaN
         arr = np.array([], dtype=float)
@@ -86,16 +99,6 @@ def compute_base_metrics(records: list[MetricRecord]) -> BaseMetrics:
         p10 = float("nan")
         p05 = float("nan")
         profitable = 0.0
-
-    # カレンダー日数
-    days: set[str] = set()
-    for r in filled:
-        ts = safe_to_finite(r.get("timestamp"))
-        if ts is not None:
-            try:
-                days.add(datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y%m%d"))
-            except (ValueError, OSError):
-                continue
 
     return {
         "n_total": n_total,
@@ -117,24 +120,36 @@ def compute_extended_metrics(records: list[MetricRecord]) -> ExtendedMetrics:
     side_regime_dashboard 向け。
     """
     base = compute_base_metrics(records)
-    filled = [r for r in records if r.get("filled")]
     n_filled = base["n_filled"]
 
     # AS 率
-    as_records = [r for r in filled if r.get("adverse_selected")]
-    as_rate = len(as_records) / n_filled if n_filled > 0 else 0.0
-    as_clean = _collect_finite_values(as_records, "post_fill_30s_pnl")
-    avg_as_loss = float(np.mean(as_clean)) if as_clean else 0.0
+    as_count = 0
+    as_pnl_acc = PnlAccumulator()
 
     # reprice 集計 (159# P1-A)
-    repriced = [r for r in filled if (r.get("reprice_count") or 0) > 0]
-    reprice_rate = len(repriced) / n_filled if n_filled > 0 else 0.0
-    drift_clean = _collect_finite_values(repriced, "reprice_drift_bps")
-    avg_reprice_drift = float(np.mean(drift_clean)) if drift_clean else 0.0
+    repriced_count = 0
+    drift_acc = PnlAccumulator()
 
     # VG trigger 集計 (159# P1-C)
-    vg_triggered = [r for r in filled if r.get("vg_boost_factor") is not None]
-    vg_trigger_rate = len(vg_triggered) / n_filled if n_filled > 0 else 0.0
+    vg_triggered_count = 0
+
+    for record in records:
+        if not record.get("filled"):
+            continue
+        if record.get("adverse_selected"):
+            as_count += 1
+            as_pnl_acc.add(safe_to_finite(record.get("post_fill_30s_pnl")))
+        if (record.get("reprice_count") or 0) > 0:
+            repriced_count += 1
+            drift_acc.add(safe_to_finite(record.get("reprice_drift_bps")))
+        if record.get("vg_boost_factor") is not None:
+            vg_triggered_count += 1
+
+    as_rate = as_count / n_filled if n_filled > 0 else 0.0
+    avg_as_loss = as_pnl_acc.mean_bps if as_pnl_acc.count else 0.0
+    reprice_rate = repriced_count / n_filled if n_filled > 0 else 0.0
+    avg_reprice_drift = drift_acc.mean_bps if drift_acc.count else 0.0
+    vg_trigger_rate = vg_triggered_count / n_filled if n_filled > 0 else 0.0
 
     base.update({
         "as_rate": as_rate,
