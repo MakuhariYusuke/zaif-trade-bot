@@ -775,6 +775,34 @@ class FillLoopOrchestratorMixin:
                     self._alert_offset_mult *= _mcb_result.offset_mult
                     self._alert_interval_mult *= _mcb_result.interval_mult
 
+            # 211# P1-C: Spread Anomaly Detector — 流動性枯渇検知
+            if self._sad.config.enabled:
+                _sad_spread = getattr(self._maker_price, "last_spread", None)
+                if _sad_spread is not None and _sad_spread > 0:
+                    self._sad.update(_sad_spread, time.time())
+                _sad_result = self._sad.check(time.time())
+                from scripts.v460.lib.spread_anomaly_detector import SADLevel
+                if _sad_result.level == SADLevel.FROZEN:
+                    self._inc_guard_fire("sad_frozen")
+                    batch.append(self._make_loop_skip_record(
+                        side="none",
+                        cancel_reason=CR.SAD_FROZEN,
+                        order_quantity=0.0,
+                    ))
+                    total_count += 1
+                    batch = self._batch_persistence.maybe_flush(batch, "sad_frozen")
+                    self._update_lock_heartbeat()
+                    await self._effective_sleep(multiplier=5.0)
+                    continue
+                if _sad_result.level == SADLevel.DRY:
+                    self._inc_guard_fire("sad_dry")
+                    self._alert_offset_mult *= _sad_result.offset_mult
+                    self._alert_interval_mult *= _sad_result.interval_mult
+                    self._alert_lot_mult *= _sad_result.lot_mult
+                elif _sad_result.level == SADLevel.WIDE:
+                    self._inc_guard_fire("sad_wide")
+                    self._alert_offset_mult *= _sad_result.offset_mult
+
             # 205# §9.4: 時間帯 Hard Skip (Kyle proxy)
             # soft offset (158# P1-6) では抑制不十分な最悪時間帯はサイクル全停止
             if self.config.hard_skip_utc_hours:

@@ -319,6 +319,16 @@ class FillTestRunner(
             warning_interval_mult=config.mcb_warning_interval_mult,
         ))
 
+        # 211# P1-C: Spread Anomaly Detector (流動性枯渇検知)
+        from scripts.v460.lib.spread_anomaly_detector import SpreadAnomalyDetector, SADConfig
+        self._sad = SpreadAnomalyDetector(SADConfig(
+            enabled=config.sad_enabled,
+            wide_ratio=config.sad_wide_ratio,
+            dry_ratio=config.sad_dry_ratio,
+            frozen_ratio=config.sad_frozen_ratio,
+            baseline_window_sec=config.sad_baseline_window_sec,
+        ))
+
         # 安全設計: atexit + signal で残存注文キャンセル + 未保存データ退避 + ロック解放
         atexit.register(self._cleanup_sync)
 

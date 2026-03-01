@@ -51,6 +51,9 @@ OPERATOR_HALT = "operator_halt"
 # 211# P1-B: Micro Circuit Breaker (短期価格急変の自動防御)
 MCB_HALT = "mcb_halt"
 MCB_WARNING = "mcb_warning"
+# 211# P1-C: Spread Anomaly Detector (流動性枯渇検知)
+SAD_FROZEN = "sad_frozen"
+SAD_DRY = "sad_dry"
 
 AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     CIRCUIT_BREAKER_OPEN,
@@ -77,6 +80,8 @@ AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     OPERATOR_HALT,
     MCB_HALT,
     MCB_WARNING,
+    SAD_FROZEN,
+    SAD_DRY,
 })
 
 # ======================================================================
@@ -136,6 +141,8 @@ CancelReason = Literal[
     "operator_halt",
     "mcb_halt",
     "mcb_warning",
+    "sad_frozen",
+    "sad_dry",
     # EXEC
     "post_only_reject",
     "insufficient_funds",

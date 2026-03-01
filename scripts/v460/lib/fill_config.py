@@ -339,6 +339,12 @@ class FillTestConfig:
     mcb_halt_cooldown_sec: float = 300.0
     mcb_warning_offset_mult: float = 1.5
     mcb_warning_interval_mult: float = 2.0
+    # 211# P1-C: Spread Anomaly Detector (流動性枯渇検知)
+    sad_enabled: bool = False
+    sad_wide_ratio: float = 2.0
+    sad_dry_ratio: float = 4.0
+    sad_frozen_ratio: float = 8.0
+    sad_baseline_window_sec: float = 3600.0
     # 110# 086# デッドロック修正: 連続 both-filtered 上限
     max_086_consecutive_wait: int = 3      # 0 = 無制限 (旧動作), >0 で N 回超過後 alt_side 許可
     # 163# regime 連動動的ゲーティング (107# Phase 3 拡張)
@@ -876,6 +882,20 @@ class FillTestConfig:
         for yaml_key, config_key in mcb_map.items():
             if yaml_key in mcb:
                 kwargs[config_key] = mcb[yaml_key]
+
+        # 211# P1-C: Spread Anomaly Detector
+        sad = yaml_cfg.get("spread_anomaly_detector", {})
+        if sad.get("enabled") is not None:
+            kwargs["sad_enabled"] = sad["enabled"]
+        sad_map = {
+            "wide_ratio": "sad_wide_ratio",
+            "dry_ratio": "sad_dry_ratio",
+            "frozen_ratio": "sad_frozen_ratio",
+            "baseline_window_sec": "sad_baseline_window_sec",
+        }
+        for yaml_key, config_key in sad_map.items():
+            if yaml_key in sad:
+                kwargs[config_key] = sad[yaml_key]
 
         # 088# sell 専用ハードガード
         sell_guard = yaml_cfg.get("sell_guard", {})

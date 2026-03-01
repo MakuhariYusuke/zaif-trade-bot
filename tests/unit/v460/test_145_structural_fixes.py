@@ -166,6 +166,8 @@ class TestCancelReasons:
             CR.OPERATOR_HALT,                  # 215# alert_mode
             CR.MCB_HALT,                       # 211# P1-B
             CR.MCB_WARNING,                    # 211# P1-B
+            CR.SAD_FROZEN,                     # 211# P1-C
+            CR.SAD_DRY,                        # 211# P1-C
         }
         assert CR.AUDIT_CANCEL_REASONS == expected
 
