@@ -177,6 +177,34 @@ class FillLoopOrchestratorMixin:
             )
 
     # ------------------------------------------------------------------
+    # 209# H4: DynamicKillManager warmup — fill records から rolling PnL 復元
+    # ------------------------------------------------------------------
+    def _warmup_kill_managers_from_records(
+        self, records: list["FillRecord"],
+    ) -> None:
+        """209# H4: fill records から sell/buy kill manager の PnL 履歴を復元.
+
+        state file が stale/missing の場合のセーフティネット。
+        DD warmup と同様、既存 fill records の post_fill_30s_pnl を replay する。
+        """
+        sell_count = 0
+        buy_count = 0
+        for r in records:
+            if not r.filled or r.post_fill_30s_pnl is None:
+                continue
+            if r.side == "sell":
+                self._sell_kill_mgr.track(r.post_fill_30s_pnl)
+                sell_count += 1
+            elif r.side == "buy":
+                self._buy_kill_mgr.track(r.post_fill_30s_pnl)
+                buy_count += 1
+        if sell_count > 0 or buy_count > 0:
+            logger.info(
+                f"[209# H4] Kill manager warmup from fill records: "
+                f"sell={sell_count}, buy={buy_count}"
+            )
+
+    # ------------------------------------------------------------------
     # 210# DRY: FillTestState 構築の共通化 (3 箇所の重複排除)
     # ------------------------------------------------------------------
     def _build_state_snapshot(
@@ -210,6 +238,9 @@ class FillLoopOrchestratorMixin:
             one_sided_consecutive_count=self._one_sided_consecutive_count,
             # 216# E: Guard 発火カウンタ永続化
             guard_fire_counts=dict(self._guard_fire_counts) if self._guard_fire_counts else None,
+            # 209# H4: DynamicKillManager 状態永続化
+            sell_kill_state=self._sell_kill_mgr.export_state(),
+            buy_kill_state=self._buy_kill_mgr.export_state(),
             **self._get_regime_state_fields(),
         )
 
@@ -247,6 +278,23 @@ class FillLoopOrchestratorMixin:
         if saved_state.guard_fire_counts:
             self._guard_fire_counts = dict(saved_state.guard_fire_counts)
             logger.info(f"[216# E] Guard fire counts restored: {self._guard_fire_counts}")
+        # 209# H4: DynamicKillManager 状態復元
+        if saved_state.sell_kill_state:
+            self._sell_kill_mgr.import_state(saved_state.sell_kill_state)
+            logger.info(
+                f"[209# H4] Sell kill state restored: "
+                f"history={len(self._sell_kill_mgr._pnl_history)}, "
+                f"cooldown={self._sell_kill_mgr._cooldown}, "
+                f"kills={self._sell_kill_mgr._total_kills}"
+            )
+        if saved_state.buy_kill_state:
+            self._buy_kill_mgr.import_state(saved_state.buy_kill_state)
+            logger.info(
+                f"[209# H4] Buy kill state restored: "
+                f"history={len(self._buy_kill_mgr._pnl_history)}, "
+                f"cooldown={self._buy_kill_mgr._cooldown}, "
+                f"kills={self._buy_kill_mgr._total_kills}"
+            )
 
     # ------------------------------------------------------------------
     # 179# S1: _effective_sleep — regime 応答サイクル間隔の一元化
@@ -562,6 +610,10 @@ class FillLoopOrchestratorMixin:
             )
         ):
             self._warmup_daily_drawdown_from_records(existing_records)
+
+        # 209# H4: Kill manager warmup — state 復元で PnL 履歴が空なら records から再計算
+        if existing_records and len(self._sell_kill_mgr._pnl_history) == 0:
+            self._warmup_kill_managers_from_records(existing_records)
 
         if self._regime_detector is not None and existing_records and not regime_restored:
             # fallback: 旧方式の warm-up (state 復元失敗時)

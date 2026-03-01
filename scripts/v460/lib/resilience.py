@@ -248,6 +248,9 @@ class FillTestState:
     one_sided_consecutive_count: int = 0
     # 216# E: Guard 発火カウンタ永続化 (累積。再起動時に復元)
     guard_fire_counts: dict[str, int] | None = None
+    # 209# H4: DynamicKillManager 状態永続化 (rolling PnL window + cooldown)
+    sell_kill_state: dict[str, object] | None = None
+    buy_kill_state: dict[str, object] | None = None
     # タイムスタンプ
     saved_at: float = 0.0
     saved_at_iso: str = ""

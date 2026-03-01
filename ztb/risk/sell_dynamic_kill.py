@@ -188,6 +188,44 @@ class DynamicKillManager:
         self._total_kills = 0
         self._total_cooldown_cycles = 0
 
+    # ------------------------------------------------------------------
+    # 209# H4: 状態永続化 — export / import
+    # ------------------------------------------------------------------
+    def export_state(self) -> dict[str, object]:
+        """永続化用に内部状態を dict にエクスポート.
+
+        Returns:
+            pnl_history, cooldown, total_kills, total_cooldown_cycles, side を含む dict。
+        """
+        return {
+            "pnl_history": list(self._pnl_history),
+            "cooldown": self._cooldown,
+            "total_kills": self._total_kills,
+            "total_cooldown_cycles": self._total_cooldown_cycles,
+            "side": self._side,
+        }
+
+    def import_state(self, state: dict[str, object]) -> None:
+        """export_state() で保存した dict から内部状態を復元.
+
+        Args:
+            state: export_state() の戻り値。キーが欠落している場合は
+                   デフォルト値 (空リスト / 0) にフォールバック。
+        """
+        raw_history = state.get("pnl_history", [])
+        if isinstance(raw_history, list):
+            self._pnl_history = [float(v) for v in raw_history]
+        else:
+            self._pnl_history = []
+        self._cooldown = int(state.get("cooldown", 0))
+        self._total_kills = int(state.get("total_kills", 0))
+        self._total_cooldown_cycles = int(state.get("total_cooldown_cycles", 0))
+        # side は import しない (コンストラクタで固定)
+        # メモリ制限: window*3 に収める
+        max_keep = self._config.window * 3
+        if len(self._pnl_history) > max_keep:
+            self._pnl_history = self._pnl_history[-max_keep:]
+
     @property
     def side(self) -> str:
         """管理対象 side."""
