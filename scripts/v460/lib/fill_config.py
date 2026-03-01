@@ -354,6 +354,9 @@ class FillTestConfig:
     # 202# A: 単一サイクル大損失クールダウン — 大損後の即連鎖を防止
     loss_cooldown_threshold_bps: float = -10.0  # この PnL 以下で次サイクルの interval を延長
     loss_cooldown_interval_mult: float = 2.0    # 損失後のインターバル乗数 (1サイクル限定)
+    # 204# I: Per-fill loss offset boost — 大損後に次回 offset を一時的に拡大
+    # loss_cooldown (interval延長) + toxic_veto (side封鎖) に加え、offset も防御拡大
+    loss_boost_offset_mult: float = 1.5  # 大損後の offset 乗数 (1サイクル限定, 1.0=無効)
     # 205# §9.2: Toxic Fill 同一サイド拒否 — 大損後に同一方向を N サイクル完全封鎖
     # loss_cooldown (202# A) は interval 2x 延長のみで不十分。同一サイドの連鎖損失を遮断
     toxic_fill_veto_threshold_bps: float = -5.0  # この PnL 以下で同一サイド拒否発動

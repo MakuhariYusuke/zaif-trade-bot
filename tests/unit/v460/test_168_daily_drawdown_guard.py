@@ -1017,3 +1017,44 @@ class TestVelocityGateWiring210:
         assert velocity_check is not None
         assert velocity_check.blocked is False
 
+
+# ========================================================================
+# 211# 204# I: Per-fill loss offset boost テスト
+# ========================================================================
+
+
+class TestLossBoostOffset211:
+    """211# 204# I: 大損後 offset 拡大の検証."""
+
+    @staticmethod
+    def _make_calc() -> "MakerPriceCalculator":
+        from unittest.mock import MagicMock
+
+        from scripts.v460.lib.fill_config import FillTestConfig
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+
+        cfg = FillTestConfig()
+        ffd = MagicMock()
+        ffd.get_boost_multiplier.return_value = 1.0
+        return MakerPriceCalculator(
+            cfg, ffd, regime_detector=None, base_offset_ratio=0.05,
+        )
+
+    def test_initial_loss_boost_is_noop(self) -> None:
+        """初期状態では loss_boost_mult = 1.0 (noop)."""
+        calc = self._make_calc()
+        assert calc._loss_boost_mult == 1.0
+
+    def test_set_loss_boost_applies_once(self) -> None:
+        """set_loss_boost() 後、_loss_boost_mult が設定される."""
+        calc = self._make_calc()
+        calc.set_loss_boost(1.5)
+        assert calc._loss_boost_mult == 1.5
+
+    def test_loss_boost_config_default(self) -> None:
+        """FillTestConfig.loss_boost_offset_mult のデフォルト値が 1.5."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        cfg = FillTestConfig()
+        assert cfg.loss_boost_offset_mult == 1.5
+

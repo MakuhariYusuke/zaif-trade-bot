@@ -102,6 +102,7 @@ class MakerPriceCalculator:
         "_last_ob_snapshot",
         "_last_spread",              # 197# cached spread for Gate pre-check
         "_last_spread_time",         # 210# M5: staleness tracking
+        "_loss_boost_mult",          # 211# 204# I: per-fill loss offset boost
     )
 
     def __init__(
@@ -147,6 +148,8 @@ class MakerPriceCalculator:
         # 197# cached spread for CycleGateAggregator pre-check
         self._last_spread: float | None = None
         self._last_spread_time: float | None = None  # 210# M5: staleness tracking
+        # 211# 204# I: per-fill loss offset boost (1-shot, reset after application)
+        self._loss_boost_mult: float = 1.0
 
     def get_fallback_price(self) -> tuple[float | None, float | None]:
         """156# §16: OB エラー時のフォールバック価格と記録時刻を返す.
@@ -246,6 +249,13 @@ class MakerPriceCalculator:
     def update_fast_fill_defense(self, ffd: "FastFillDefense") -> None:
         """210# F: hot-reload 後の FastFillDefense 参照更新 (カプセル化維持)."""
         self._fast_fill_defense = ffd
+
+    def set_loss_boost(self, mult: float) -> None:
+        """211# 204# I: 大損直後に次回 offset を一時的に拡大.
+
+        1 回の compute() 呼び出しで消費され 1.0 にリセットされる。
+        """
+        self._loss_boost_mult = mult
 
     @property
     def last_vg_velocity_bps(self) -> float | None:
@@ -847,6 +857,23 @@ class MakerPriceCalculator:
         effective_offset_ratio = self._apply_imbalance_risk(
             side, imb, effective_offset_ratio,
         )
+
+        # 211# 204# I: per-fill loss offset boost (1-shot)
+        if self._loss_boost_mult != 1.0:
+            _lb_mult = self._loss_boost_mult
+            self._loss_boost_mult = 1.0  # 1サイクルで消費
+            pre_offset = effective_offset_ratio
+            effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
+                effective_offset_ratio,
+                _lb_mult,
+                max_ratio=cfg.max_offset_ratio,
+            )
+            if _applied_mult != 1.0:
+                logger.warning(
+                    f"[204# I] Loss boost: {side} offset "
+                    f"{pre_offset:.4f} → {effective_offset_ratio:.4f} "
+                    f"(mult={_applied_mult:.2f})"
+                )
 
         offset = max(cfg.min_offset_jpy, spread * effective_offset_ratio)
 

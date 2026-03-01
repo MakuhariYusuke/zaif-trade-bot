@@ -1211,10 +1211,15 @@ class FillLoopOrchestratorMixin:
                     and record.post_fill_30s_pnl <= self.config.loss_cooldown_threshold_bps
                 ):
                     self._loss_cooldown_mult = self.config.loss_cooldown_interval_mult
+                    # 211# 204# I: 大損後に次回 offset も拡大
+                    _lb = self.config.loss_boost_offset_mult
+                    if _lb > 1.0:
+                        self._maker_price.set_loss_boost(_lb)
                     logger.warning(
                         f"[202# A] Large cycle loss {record.post_fill_30s_pnl:.2f}bps "
                         f"<= {self.config.loss_cooldown_threshold_bps:.1f}bps — "
                         f"next interval ×{self._loss_cooldown_mult:.1f}"
+                        f", offset ×{_lb:.1f}"
                     )
                 else:
                     self._loss_cooldown_mult = 1.0
