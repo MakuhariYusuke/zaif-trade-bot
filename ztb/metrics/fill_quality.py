@@ -1013,6 +1013,14 @@ def _extend_unique_fill_records(
         target.append(record)
 
 
+def _iter_fill_record_files(directory: Path) -> Iterator[Path]:
+    """fill record 系 JSONL の対象ファイルを順序付きで列挙."""
+    yield from sorted(directory.glob("fill_records_*.jsonl"))
+    emergency_dir = directory / "emergency"
+    if emergency_dir.exists():
+        yield from sorted(emergency_dir.glob("emergency_*.jsonl"))
+
+
 def load_fill_records_glob(directory: str | Path) -> list[FillRecord]:
     """ディレクトリ内の全 JSONL ファイルから FillRecord を読み込み.
 
@@ -1020,21 +1028,12 @@ def load_fill_records_glob(directory: str | Path) -> list[FillRecord]:
     d = Path(directory)
     records: list[FillRecord] = []
     seen_ids: set[str] = set()
-    for p in sorted(d.glob("fill_records_*.jsonl")):
+    for path in _iter_fill_record_files(d):
         _extend_unique_fill_records(
             records,
             seen_ids=seen_ids,
-            source=iter_fill_records(p),
+            source=iter_fill_records(path),
         )
-    # emergency dump ディレクトリも統合 (重複は自動排除)
-    emergency_dir = d / "emergency"
-    if emergency_dir.exists():
-        for p in sorted(emergency_dir.glob("emergency_*.jsonl")):
-            _extend_unique_fill_records(
-                records,
-                seen_ids=seen_ids,
-                source=iter_fill_records(p),
-            )
     return records
 
 

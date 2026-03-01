@@ -2617,6 +2617,26 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - `scripts/v460/lib/skip_gate_evaluator.py`: `any_type_debt_tokens=0`
 
+### Step115: FillRecord glob 対象ファイル列挙を共通化
+
+1. 対応概要
+- `ztb/metrics/fill_quality.py`
+  - `_iter_fill_record_files()` を追加し、`fill_records_*.jsonl` と `emergency/emergency_*.jsonl` の列挙規約を共通化した。
+  - `load_fill_records_glob()` の 2 重ループを 1 ループに整理した。
+
+2. 目的
+- 対象ファイルの走査順序と対象パターンを 1 箇所に閉じ込め、将来の拡張時の変更点を減らす。
+- glob 側の重複した走査コードを削って見通しを上げる。
+
+3. 検証
+- `py_compile`
+  - `ztb/metrics/fill_quality.py`
+- `pytest`
+  - `tests/unit/v460/test_fill_quality.py -k "TestFillRecordIO"`
+  - 結果: `6 passed`
+- `any_inventory`
+  - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
