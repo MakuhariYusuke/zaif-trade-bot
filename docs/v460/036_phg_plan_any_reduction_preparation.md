@@ -2637,6 +2637,29 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
 
+### Step116: FillRecord glob 読み込み自体も iterator 化
+
+1. 対応概要
+- `ztb/metrics/fill_quality.py`
+  - `iter_fill_records_glob()` を追加し、cross-file 重複排除つきの逐次読み込み API を導入した。
+  - `load_fill_records_glob()` は `list(iter_fill_records_glob(...))` の薄いラッパに整理した。
+  - 旧 `_extend_unique_fill_records()` は不要になったため削除した。
+- `tests/unit/v460/test_fill_quality.py`
+  - `iter_fill_records_glob()` の roundtrip テストを追加した。
+
+2. 目的
+- 単一ファイルだけでなく glob 読み込み全体でも streaming API を持たせ、呼び出し側が必要なら list 化を避けられるようにする。
+- list API (`load_fill_records_glob`) はそのまま維持しつつ、内部実装の基準を iterator 側へ寄せる。
+
+3. 検証
+- `py_compile`
+  - `ztb/metrics/fill_quality.py`
+- `pytest`
+  - `tests/unit/v460/test_fill_quality.py -k "TestFillRecordIO"`
+  - 結果: `7 passed`
+- `any_inventory`
+  - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

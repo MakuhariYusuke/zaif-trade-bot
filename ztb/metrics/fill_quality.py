@@ -999,20 +999,6 @@ def load_fill_records(path: str | Path) -> list[FillRecord]:
     return list(iter_fill_records(path))
 
 
-def _extend_unique_fill_records(
-    target: list[FillRecord],
-    *,
-    seen_ids: set[str],
-    source: Iterable[FillRecord],
-) -> None:
-    """cycle_id 未出現の FillRecord だけを target に追加."""
-    for record in source:
-        if record.cycle_id in seen_ids:
-            continue
-        seen_ids.add(record.cycle_id)
-        target.append(record)
-
-
 def _iter_fill_record_files(directory: Path) -> Iterator[Path]:
     """fill record 系 JSONL の対象ファイルを順序付きで列挙."""
     yield from sorted(directory.glob("fill_records_*.jsonl"))
@@ -1021,20 +1007,23 @@ def _iter_fill_record_files(directory: Path) -> Iterator[Path]:
         yield from sorted(emergency_dir.glob("emergency_*.jsonl"))
 
 
-def load_fill_records_glob(directory: str | Path) -> list[FillRecord]:
-    """ディレクトリ内の全 JSONL ファイルから FillRecord を読み込み.
+def iter_fill_records_glob(directory: str | Path) -> Iterator[FillRecord]:
+    """ディレクトリ内の全 JSONL ファイルから FillRecord を逐次読み込み.
 
     101# §5: cross-file 重複排除 (emergency dump との重複対策)."""
     d = Path(directory)
-    records: list[FillRecord] = []
     seen_ids: set[str] = set()
     for path in _iter_fill_record_files(d):
-        _extend_unique_fill_records(
-            records,
-            seen_ids=seen_ids,
-            source=iter_fill_records(path),
-        )
-    return records
+        for record in iter_fill_records(path):
+            if record.cycle_id in seen_ids:
+                continue
+            seen_ids.add(record.cycle_id)
+            yield record
+
+
+def load_fill_records_glob(directory: str | Path) -> list[FillRecord]:
+    """ディレクトリ内の全 JSONL ファイルから FillRecord を読み込み."""
+    return list(iter_fill_records_glob(directory))
 
 
 def filter_clean_records(

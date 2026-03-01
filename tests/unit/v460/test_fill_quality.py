@@ -1122,6 +1122,38 @@ class TestFillRecordIO:
             assert len(all_records) == 1
             assert all_records[0].cycle_id == "dup_1"
 
+    def test_iter_glob_load_roundtrip(self) -> None:
+        from ztb.metrics.fill_quality import (
+            FillRecord,
+            iter_fill_records_glob,
+            save_fill_records,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            save_fill_records(
+                [
+                    FillRecord(
+                        cycle_id="g_1",
+                        timestamp=1700000000.0,
+                        side="buy",
+                        order_price=100.0,
+                        order_quantity=0.001,
+                    ),
+                    FillRecord(
+                        cycle_id="g_2",
+                        timestamp=1700000060.0,
+                        side="sell",
+                        order_price=101.0,
+                        order_quantity=0.001,
+                    ),
+                ],
+                root / "fill_records_20260101.jsonl",
+            )
+
+            loaded = list(iter_fill_records_glob(root))
+            assert [r.cycle_id for r in loaded] == ["g_1", "g_2"]
+
     def test_load_corrupt_lines_skipped(self) -> None:
         """032# #19: 破損行はスキップして残りを正常読込."""
         from ztb.metrics.fill_quality import FillRecord, load_fill_records
