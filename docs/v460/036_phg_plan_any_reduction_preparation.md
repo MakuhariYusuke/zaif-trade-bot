@@ -2697,6 +2697,35 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/lib/adaptation_engine.py`: `any_type_debt_tokens=0`
   - `scripts/v460/analysis/oracle_baseline.py`: `any_type_debt_tokens=0`
 
+### Step118: monitor / verification も streaming 読み込みへ寄せる
+
+1. 対応概要
+- `scripts/v460/monitor_fill_test.py`
+  - `run_monitor()` を `iter_fill_records_glob()` + `partition_clean_records()` ベースへ変更し、中間 `records` list を除去した。
+- `scripts/v460/ml/run_075_verification.py`
+  - `load_clean_filled()` を iterator ベースへ変更した。
+  - `run_id` / `git_sha` フィルタも generator で前段フィルタする形に変更した。
+  - フィルタ後件数の表示は `clean + quarantine` 確定後に出す形へ変更した。
+- `tests/unit/v460/test_fill_quality.py`
+  - `run_monitor()` の構造テストを新 helper ベースへ更新した。
+
+2. 目的
+- モニタリングや 075 検証でも、全レコードの中間 list を不要にし、読み込み時のメモリピークを下げる。
+- `run_id` / `git_sha` フィルタも streaming パスに揃える。
+
+3. 検証
+- `py_compile`
+  - `scripts/v460/monitor_fill_test.py`
+  - `scripts/v460/ml/run_075_verification.py`
+- `pytest`
+  - `tests/unit/v460/test_fill_quality.py -k "Test051MonitorExtensions"`
+  - 結果: `3 passed`
+- import smoke
+  - `scripts.v460.ml.run_075_verification`
+- `any_inventory`
+  - `scripts/v460/monitor_fill_test.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/ml/run_075_verification.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

@@ -33,8 +33,8 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 
 from ztb.metrics.fill_quality import (
     FillRecord,
-    filter_clean_records,
-    load_fill_records_glob,
+    iter_fill_records_glob,
+    partition_clean_records,
 )
 from ztb.metrics.gate_checks import (
     cliffs_delta,
@@ -127,21 +127,26 @@ def load_clean_filled(
         (clean_all_df, clean_filled_df, quarantine_df, stats_dict)
         clean_all_df には filled=False (cancelled含む) も含む.
     """
-    all_records = load_fill_records_glob(RESULTS_DIR)
+    records_iter = iter_fill_records_glob(RESULTS_DIR)
 
     # 084# run_id / git_sha フィルタ
     if run_ids:
         _ids = set(run_ids)
-        all_records = [r for r in all_records if getattr(r, "run_id", None) in _ids]
-        print(f"  [filter] run_id={run_ids} → {len(all_records)} records")
+        records_iter = (
+            r for r in records_iter
+            if getattr(r, "run_id", None) in _ids
+        )
     if git_shas:
         def _sha_match(rec: FillRecord) -> bool:
             sha = getattr(rec, "git_sha", None) or ""
             return any(sha.startswith(g) for g in git_shas)
-        all_records = [r for r in all_records if _sha_match(r)]
-        print(f"  [filter] git_sha={git_shas} → {len(all_records)} records")
+        records_iter = (r for r in records_iter if _sha_match(r))
 
-    clean, quarantine = filter_clean_records(all_records, require_git_sha=True)
+    clean, quarantine = partition_clean_records(records_iter, require_git_sha=True)
+    if run_ids:
+        print(f"  [filter] run_id={run_ids} → {len(clean) + len(quarantine)} records")
+    if git_shas:
+        print(f"  [filter] git_sha={git_shas} → {len(clean) + len(quarantine)} records")
 
     def to_df(recs: list[FillRecord]) -> pd.DataFrame:
         if not recs:

@@ -29,10 +29,10 @@ from ztb.metrics.fill_quality import (
     compute_hourly_metrics,
     compute_regime_metrics,
     compute_round_trip_metrics,
-    filter_clean_records,
+    iter_fill_records_glob,
     g1_1_quick_judgment,
     g1_2_full_judgment,
-    load_fill_records_glob,
+    partition_clean_records,
 )
 from ztb.io.json_io import write_json
 from scripts.v460.lib.config_loader import load_gate_thresholds
@@ -455,13 +455,14 @@ def save_snapshot(
 
 def run_monitor(results_dir: Path, save_json: bool = True) -> dict[str, object]:
     """メインモニタリングロジック. watch モードからも呼び出し可能."""
-    records = load_fill_records_glob(results_dir)
-    if not records:
+    clean_records, quarantine_records = partition_clean_records(
+        iter_fill_records_glob(results_dir),
+    )
+    if not clean_records and not quarantine_records:
         print(f"⚠️  {results_dir} にレコードが見つかりません")
         return {}
 
     # 051# clean/quarantine 分離
-    clean_records, quarantine_records = filter_clean_records(records)
     clean_count = len(clean_records)
     quarantine_count = len(quarantine_records)
 

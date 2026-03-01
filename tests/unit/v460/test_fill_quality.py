@@ -2610,12 +2610,13 @@ class Test051MonitorExtensions:
         assert "quarantine_count" in params
 
     def test_run_monitor_uses_clean_records(self) -> None:
-        """run_monitor が filter_clean_records を使用."""
+        """run_monitor が clean/quarantine 分離を使う."""
         import inspect
         from scripts.v460.monitor_fill_test import run_monitor
 
         source = inspect.getsource(run_monitor)
-        assert "filter_clean_records" in source
+        assert "partition_clean_records" in source
+        assert "iter_fill_records_glob" in source
         assert "clean_records" in source
         assert "quarantine_records" in source
 
