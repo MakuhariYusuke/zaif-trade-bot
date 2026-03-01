@@ -4,8 +4,7 @@
 受入基準: 「3指標 + per-regime を日次で出力」
 
 既存資産活用:
-- scripts.v460.lib.metrics_utils.compute_base_metrics (3指標算出)
-- scripts.v460.lib.metrics_utils.compute_extended_metrics (AS/reprice/VG 拡張)
+- scripts.v460.lib.metrics_utils.MetricsAccumulator (3指標 + AS/reprice/VG 拡張)
 - scripts.v460.lib.ab_judgment.evaluate_per_regime (regime 別 A/B 判定)
 - 163# Stopgap 退出基準表 (§7 Table) の自動評価
 """
@@ -21,9 +20,7 @@ from enum import Enum
 from pathlib import Path
 from typing import NotRequired, TypedDict, cast
 
-from scripts.v460.lib.metrics_utils import (
-    compute_extended_metrics,
-)
+from scripts.v460.lib.metrics_utils import MetricsAccumulator
 from ztb.io.json_io import JSONObject
 from ztb.metrics.fill_quality import (
     PnlAccumulator,
@@ -161,6 +158,25 @@ class _ModelUsedAggregate:
 
 
 @dataclass
+class _DailyAggregate:
+    """日次 stopgap 集計の内部状態."""
+
+    metrics: MetricsAccumulator = field(default_factory=MetricsAccumulator)
+    dynamic_kill_count: int = 0
+    unknown_regime_count: int = 0
+    velocity_skip_count: int = 0
+
+    def add(self, record: FillRecord) -> None:
+        self.metrics.add(record)
+        if record.get("cancel_reason") == "sell_dynamic_kill":
+            self.dynamic_kill_count += 1
+        if str(record.get("regime") or "") in ("unknown", "none", ""):
+            self.unknown_regime_count += 1
+        if str(record.get("cancel_reason") or "").startswith("skip_gate_rule_velocity"):
+            self.velocity_skip_count += 1
+
+
+@dataclass
 class AlertItem:
     """退出基準の閾値逸脱アラート (165# 7.5 P0 対応)."""
 
@@ -256,38 +272,21 @@ def compute_daily_metrics(
     162# P1 受入基準のコア実装。
     """
     # Group by (day, regime, side)
-    groups: dict[tuple[str, str, str], list[FillRecord]] = defaultdict(list)
+    groups: dict[tuple[str, str, str], _DailyAggregate] = defaultdict(_DailyAggregate)
 
     for r in records:
         day = _get_day(r)
         regime = str(r.get("regime") or "unknown")
         side = str(r.get("side") or "unknown")
 
-        groups[(day, "all", "all")].append(r)
-        groups[(day, regime, "all")].append(r)
-        groups[(day, "all", side)].append(r)
-        groups[(day, regime, side)].append(r)
+        groups[(day, "all", "all")].add(r)
+        groups[(day, regime, "all")].add(r)
+        groups[(day, "all", side)].add(r)
+        groups[(day, regime, side)].add(r)
 
     results: list[DailyMetrics] = []
-    for (day, regime, side), recs in sorted(groups.items()):
-        base = compute_extended_metrics(recs)
-        filled = [r for r in recs if r.get("filled")]
-
-        # Stopgap counts
-        dk_count = sum(
-            1 for r in recs
-            if r.get("cancel_reason") == "sell_dynamic_kill"
-        )
-        unk_count = sum(
-            1 for r in recs
-            if str(r.get("regime") or "") in ("unknown", "none", "")
-        )
-        vel_count = sum(
-            1 for r in recs
-            if str(r.get("cancel_reason") or "").startswith(
-                "skip_gate_rule_velocity"
-            )
-        )
+    for (day, regime, side), agg in sorted(groups.items()):
+        base = agg.metrics.to_extended_metrics()
 
         results.append(DailyMetrics(
             day=day,
@@ -300,9 +299,9 @@ def compute_daily_metrics(
             downside_p10_bps=base["downside_p10_bps"],
             as_rate=base["as_rate"],
             avg_as_loss_bps=base["avg_as_loss_bps"],
-            dynamic_kill_count=dk_count,
-            unknown_regime_count=unk_count,
-            velocity_skip_count=vel_count,
+            dynamic_kill_count=agg.dynamic_kill_count,
+            unknown_regime_count=agg.unknown_regime_count,
+            velocity_skip_count=agg.velocity_skip_count,
         ))
     return results
 

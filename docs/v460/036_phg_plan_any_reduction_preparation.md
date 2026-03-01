@@ -3643,6 +3643,38 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - `scripts/v460/analysis/vg_and_trend.py`: `any_type_debt_tokens=0`
 
+### Step146 MetricsAccumulator 横展開（metrics_utils / side_regime_dashboard / stopgap_health）
+
+1. 変更概要
+- `scripts/v460/lib/metrics_utils.py` に `MetricsAccumulator` を追加し、3指標・AS・reprice・VG の集計状態を 1 つの dataclass に統合した。
+- `compute_base_metrics()` / `compute_extended_metrics()` は個別の手書き集計をやめ、`MetricsAccumulator` を 1 パスで構築して結果を返す形に整理した。
+- `scripts/v460/analysis/side_regime_dashboard.py` は `side_groups` / `regime_side_groups` / `td_by_day` を `list[record]` から `MetricsAccumulator` へ変更し、group ごとのレコード保持を削減した。
+- `scripts/v460/lib/stopgap_health.py` は日次 group 集計を `_DailyAggregate` + `MetricsAccumulator` へ変更し、`compute_extended_metrics(recs)` と追加カウンタ 3 本の再走査を廃止した。
+
+2. 類似実装の確認
+- `side_regime_dashboard` と `stopgap_health` はどちらも「group ごとにレコードを溜めて後段でメトリクス化する」同型だったため、`MetricsAccumulator` に揃えて横展開した。
+- `ab_judgment` は既に `compute_base_metrics()` 側を使っていたため、今回の統合で間接的に同じ集計契約へ寄った。
+
+3. 目的
+- 同じ fill record 群に対する 3指標 + 拡張指標の重複計算を 1 箇所へ集約する。
+- group 単位で `FillRecord` を持ち続ける実装を減らし、集計時のメモリ使用量と再走査回数を下げる。
+- メトリクス定義の変更点を `metrics_utils` に閉じ込め、ダッシュボード系と stopgap 系の追従コストを下げる。
+
+4. 検証
+- `py_compile`
+  - `scripts/v460/lib/metrics_utils.py`
+  - `scripts/v460/analysis/side_regime_dashboard.py`
+  - `scripts/v460/lib/stopgap_health.py`
+- `pytest`
+  - `tests/unit/v460/test_159_side_regime_dashboard.py`
+  - `tests/unit/v460/test_stopgap_health.py`
+  - `tests/unit/v460/test_160_ab_judgment.py`
+  - 結果: `130 passed`
+- `any_inventory`
+  - `scripts/v460/lib/metrics_utils.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/analysis/side_regime_dashboard.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/stopgap_health.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

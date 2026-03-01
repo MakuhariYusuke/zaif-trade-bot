@@ -23,16 +23,19 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TypedDict, cast
 
-import numpy as np
-
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _SCRIPT_DIR.parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
-from ztb.metrics.fill_quality import PnlAccumulator, iter_fill_record_objects_glob
+from ztb.metrics.fill_quality import iter_fill_record_objects_glob
 
 # 160# P0-B/C: judgment 統合
-from scripts.v460.lib.metrics_utils import MetricRecord, compute_extended_metrics
+from scripts.v460.lib.metrics_utils import (
+    ExtendedMetrics,
+    MetricRecord,
+    MetricsAccumulator,
+    compute_extended_metrics,
+)
 from ztb.utils.safety import safe_to_finite
 from scripts.v460.lib.ab_judgment import (
     ABJudgmentCriteria,
@@ -100,6 +103,11 @@ def _compute_side_metrics(records: list[MetricRecord]) -> SideMetrics:
     161# DRY: compute_extended_metrics に委譲。
     """
     ext = compute_extended_metrics(records)
+    return _side_metrics_from_extended(ext)
+
+
+def _side_metrics_from_extended(ext: ExtendedMetrics) -> SideMetrics:
+    """拡張メトリクスを丸め込み、SideMetrics へ変換する."""
     return {
         "n_total": ext["n_total"],
         "n_filled": ext["n_filled"],
@@ -155,15 +163,15 @@ def run_dashboard(
         "total_records": len(records),
     }
 
-    side_groups: dict[str, list[MetricRecord]] = defaultdict(list)
-    regime_side_groups: dict[str, list[MetricRecord]] = defaultdict(list)
-    td_by_day: dict[str, list[MetricRecord]] = defaultdict(list)
+    side_groups: dict[str, MetricsAccumulator] = defaultdict(MetricsAccumulator)
+    regime_side_groups: dict[str, MetricsAccumulator] = defaultdict(MetricsAccumulator)
+    td_by_day: dict[str, MetricsAccumulator] = defaultdict(MetricsAccumulator)
     filled_count = 0
     for r in records:
         side = str(r.get("side", "unknown"))
         regime = str(r.get("regime") or "none")
-        side_groups[side].append(r)
-        regime_side_groups[f"{regime}:{side}"].append(r)
+        side_groups[side].add(r)
+        regime_side_groups[f"{regime}:{side}"].add(r)
         if not r.get("filled"):
             continue
         filled_count += 1
@@ -176,7 +184,7 @@ def run_dashboard(
             day = datetime.fromtimestamp(ts_value, tz=timezone.utc).strftime("%Y%m%d")
         except (ValueError, OSError):
             continue
-        td_by_day[day].append(r)
+        td_by_day[day].add(r)
 
     result["total_filled"] = filled_count
     result["overall_fill_rate"] = round(filled_count / len(records), 4) if records else 0.0
@@ -185,18 +193,21 @@ def run_dashboard(
     side_summary: dict[str, SideMetrics] = {}
     for side in ["buy", "sell"]:
         if side in side_groups:
-            side_summary[side] = _compute_side_metrics(side_groups[side])
+            side_summary[side] = _side_metrics_from_extended(
+                side_groups[side].to_extended_metrics()
+            )
     result["side_summary"] = side_summary
 
     # === Regime × Side 詳細 ===
     detail: list[RegimeSideMetrics] = []
     for key in sorted(regime_side_groups.keys()):
         regime, side = key.split(":", 1)
-        group = regime_side_groups[key]
         detail.append({
             "regime": regime,
             "side": side,
-            "metrics": _compute_side_metrics(group),
+            "metrics": _side_metrics_from_extended(
+                regime_side_groups[key].to_extended_metrics()
+            ),
         })
     result["regime_side_detail"] = detail
 
@@ -204,20 +215,21 @@ def run_dashboard(
     # trending_down × sell の日別集計
     trending_daily: list[dict[str, object]] = []
     for day in sorted(td_by_day.keys()):
-        recs = td_by_day[day]
-        pnl_acc = PnlAccumulator()
-        clean: list[float] = []
-        for record in recs:
-            pnl_value = safe_to_finite(record.get("post_fill_30s_pnl"))
-            if pnl_value is None:
-                continue
-            clean.append(pnl_value)
-            pnl_acc.add(pnl_value)
+        day_metrics = td_by_day[day].to_base_metrics()
         trending_daily.append({
             "day": day,
-            "n_filled": len(recs),
-            "avg_pnl30_bps": round(pnl_acc.mean_bps, 4) if pnl_acc.count else None,
-            "p10_bps": round(float(np.percentile(clean, 10)), 4) if len(clean) >= 3 else None,
+            "n_filled": day_metrics["n_filled"],
+            "avg_pnl30_bps": (
+                round(day_metrics["avg_pnl30_bps"], 4)
+                if day_metrics["avg_pnl30_bps"] == day_metrics["avg_pnl30_bps"]
+                else None
+            ),
+            "p10_bps": (
+                round(day_metrics["downside_p10_bps"], 4)
+                if day_metrics["n_filled"] >= 3
+                and day_metrics["downside_p10_bps"] == day_metrics["downside_p10_bps"]
+                else None
+            ),
         })
     result["trending_daily"] = trending_daily
 
@@ -229,8 +241,8 @@ def run_dashboard(
     if with_judgment:
         # P0-B: side=sell を variant, side=buy を control として3指標判定
         # (sell offset 最適化が主テーマのため sell が variant 扱い)
-        sell_records = [dict(r) for r in side_groups.get("sell", [])]
-        buy_records = [dict(r) for r in side_groups.get("buy", [])]
+        sell_records = [dict(r) for r in records if str(r.get("side", "unknown")) == "sell"]
+        buy_records = [dict(r) for r in records if str(r.get("side", "unknown")) == "buy"]
         if sell_records:
             ab_result = evaluate_ab_variant(
                 variant_records=sell_records,
