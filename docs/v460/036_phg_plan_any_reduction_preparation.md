@@ -3432,6 +3432,38 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/lib/stopgap_health.py`: `any_type_debt_tokens=0`
   - `scripts/v460/analysis/side_regime_dashboard.py`: `any_type_debt_tokens=0`
 
+### Step139: `ab_judgment` の trending 評価でも `ztb.metrics` 集計器を再利用
+
+1. 対応概要
+- `scripts/v460/lib/ab_judgment.py`
+  - `evaluate_trending_down_sell()` の `td_sell_all` / `td_sell_filled` / `pnl_vals` / `pnl_clean` の多重 list 生成を削減した。
+  - `PnlWinAccumulator` を使って、平均 PnL と profitable rate を共通集計器で算出するように変更した。
+  - 日次内訳は `_DailyPnlBreakdown` へまとめ、`avg` は `PnlAccumulator`、`p10` 用にだけ values list を保持する形に整理した。
+  - `n_total` / `n_filled` / valid PnL / daily breakdown を 1 走査で組み立てる形に寄せた。
+- `tests/unit/v460/test_160_ab_judgment.py`
+  - filled はあるが `post_fill_30s_pnl` が有限値を持たないケースで、`No valid PnL30 data` の `INSUFFICIENT` になる回帰テストを追加した。
+
+2. 類似実装の確認
+- `PnlAccumulator` / `PnlWinAccumulator` は既に `ztb.metrics.fill_quality` にあるため、平均と勝率はそこへ統一した。
+- percentile (`p10` / `p5`) は配列が必要なので、全配列除去は行わず、必要最小限の values list のみ残した。
+- つまり「平均・勝率は共有集計器」「percentile だけローカル保持」という役割分担に整理した。
+
+3. 目的
+- trending_down sell 実測評価のホットパスで、同じレコード集合を用途別に list 化し直す無駄を減らす。
+- `side_regime_dashboard` / `stopgap_health` と同じく、Pnl 集計契約を `ztb.metrics` に揃える。
+- `No valid PnL30 data` 分岐をテストで固定し、入力品質が悪いときの回帰を防ぐ。
+
+4. 検証
+- `py_compile`
+  - `scripts/v460/lib/ab_judgment.py`
+  - `tests/unit/v460/test_160_ab_judgment.py`
+- `pytest`
+  - `tests/unit/v460/test_160_ab_judgment.py`
+  - 結果: `68 passed`
+- `any_inventory`
+  - `scripts/v460/lib/ab_judgment.py`: `any_type_debt_tokens=0`
+  - `tests/unit/v460/test_160_ab_judgment.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

@@ -498,6 +498,29 @@ class TestEvaluateTrendingDownSell:
         assert result.verdict == Verdict.INSUFFICIENT
         assert result.n_filled == 0
 
+    def test_no_valid_pnl_data(self) -> None:
+        """filled はあるが PnL30 が有限値なしなら INSUFFICIENT."""
+        criteria = TrendingEvalCriteria(min_filled=2, target_filled=2)
+        records = [
+            {
+                "filled": True,
+                "side": "sell",
+                "regime": "trending_down",
+                "post_fill_30s_pnl": None,
+                "timestamp": time.time(),
+            },
+            {
+                "filled": True,
+                "side": "sell",
+                "regime": "trending_down",
+                "post_fill_30s_pnl": float("nan"),
+                "timestamp": time.time() + 60,
+            },
+        ]
+        result = evaluate_trending_down_sell(records, criteria)
+        assert result.verdict == Verdict.INSUFFICIENT
+        assert result.detail == "No valid PnL30 data"
+
     def test_provisional_pass(self) -> None:
         """min_filled 以上 target_filled 未満 → PROVISIONAL PASS."""
         criteria = TrendingEvalCriteria(
