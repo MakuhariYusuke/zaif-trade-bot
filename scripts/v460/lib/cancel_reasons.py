@@ -48,6 +48,9 @@ TOXIC_FILL_SIDE_VETO = "toxic_fill_side_veto"
 PER_SIDE_DD_HALT = "per_side_dd_halt"
 # 215# P0-C: alert_mode.json によるオペレータ緊急停止
 OPERATOR_HALT = "operator_halt"
+# 211# P1-B: Micro Circuit Breaker (短期価格急変の自動防御)
+MCB_HALT = "mcb_halt"
+MCB_WARNING = "mcb_warning"
 
 AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     CIRCUIT_BREAKER_OPEN,
@@ -72,6 +75,8 @@ AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     TOXIC_FILL_SIDE_VETO,
     PER_SIDE_DD_HALT,
     OPERATOR_HALT,
+    MCB_HALT,
+    MCB_WARNING,
 })
 
 # ======================================================================
@@ -129,6 +134,8 @@ CancelReason = Literal[
     "toxic_fill_side_veto",
     "per_side_dd_halt",
     "operator_halt",
+    "mcb_halt",
+    "mcb_warning",
     # EXEC
     "post_only_reject",
     "insufficient_funds",

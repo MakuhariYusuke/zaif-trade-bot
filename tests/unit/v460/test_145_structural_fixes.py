@@ -164,6 +164,8 @@ class TestCancelReasons:
             CR.TOXIC_FILL_SIDE_VETO,           # 205# §9.2
             CR.PER_SIDE_DD_HALT,               # 205# §9.5
             CR.OPERATOR_HALT,                  # 215# alert_mode
+            CR.MCB_HALT,                       # 211# P1-B
+            CR.MCB_WARNING,                    # 211# P1-B
         }
         assert CR.AUDIT_CANCEL_REASONS == expected
 

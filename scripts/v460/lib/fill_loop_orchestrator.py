@@ -750,6 +750,31 @@ class FillLoopOrchestratorMixin:
             self._alert_lot_mult = _alert.lot_mult
             self._alert_interval_mult = _alert.interval_mult
 
+            # 211# P1-B: Micro Circuit Breaker — 短期価格急変の自動防御
+            if self._mcb.config.enabled:
+                _mcb_mid = getattr(self._maker_price, "last_mid_price", None)
+                if _mcb_mid is not None and _mcb_mid > 0:
+                    self._mcb.update(_mcb_mid, time.time())
+                _mcb_result = self._mcb.check(time.time())
+                from scripts.v460.lib.micro_circuit_breaker import MCBLevel
+                if _mcb_result.level == MCBLevel.HALT:
+                    self._inc_guard_fire("mcb_halt")
+                    batch.append(self._make_loop_skip_record(
+                        side="none",
+                        cancel_reason=CR.MCB_HALT,
+                        order_quantity=0.0,
+                    ))
+                    total_count += 1
+                    batch = self._batch_persistence.maybe_flush(batch, "mcb_halt")
+                    self._update_lock_heartbeat()
+                    await self._effective_sleep(multiplier=5.0)
+                    continue
+                if _mcb_result.level == MCBLevel.WARNING:
+                    self._inc_guard_fire("mcb_warning")
+                    # WARNING: offset/interval を拡大 (alert_mode との積算)
+                    self._alert_offset_mult *= _mcb_result.offset_mult
+                    self._alert_interval_mult *= _mcb_result.interval_mult
+
             # 205# §9.4: 時間帯 Hard Skip (Kyle proxy)
             # soft offset (158# P1-6) では抑制不十分な最悪時間帯はサイクル全停止
             if self.config.hard_skip_utc_hours:

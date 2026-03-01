@@ -307,6 +307,18 @@ class FillTestRunner(
         from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
         self._cycle_gate = CycleGateAggregator(config)
 
+        # 211# P1-B: Micro Circuit Breaker (短期価格急変の自動検知・防御)
+        from scripts.v460.lib.micro_circuit_breaker import MicroCircuitBreaker, MCBConfig
+        self._mcb = MicroCircuitBreaker(MCBConfig(
+            enabled=config.mcb_enabled,
+            caution_sigma=config.mcb_caution_sigma,
+            warning_sigma=config.mcb_warning_sigma,
+            halt_sigma=config.mcb_halt_sigma,
+            halt_cooldown_sec=config.mcb_halt_cooldown_sec,
+            warning_offset_mult=config.mcb_warning_offset_mult,
+            warning_interval_mult=config.mcb_warning_interval_mult,
+        ))
+
         # 安全設計: atexit + signal で残存注文キャンセル + 未保存データ退避 + ロック解放
         atexit.register(self._cleanup_sync)
 

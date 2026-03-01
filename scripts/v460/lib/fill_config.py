@@ -331,6 +331,14 @@ class FillTestConfig:
     volatility_guard_offset_boost_factor: float = 2.0
     # 168# InvSkew/VG 競合解消: InvSkew 緩和時に VG ブースト上限を制御
     vg_inv_skew_damping_enabled: bool = False
+    # 211# P1-B: Micro Circuit Breaker (短期価格急変の自動検知・防御)
+    mcb_enabled: bool = False
+    mcb_caution_sigma: float = 1.0
+    mcb_warning_sigma: float = 1.5
+    mcb_halt_sigma: float = 2.0
+    mcb_halt_cooldown_sec: float = 300.0
+    mcb_warning_offset_mult: float = 1.5
+    mcb_warning_interval_mult: float = 2.0
     # 110# 086# デッドロック修正: 連続 both-filtered 上限
     max_086_consecutive_wait: int = 3      # 0 = 無制限 (旧動作), >0 で N 回超過後 alt_side 許可
     # 163# regime 連動動的ゲーティング (107# Phase 3 拡張)
@@ -852,6 +860,22 @@ class FillTestConfig:
         for yaml_key, config_key in vg_map.items():
             if yaml_key in vg:
                 kwargs[config_key] = vg[yaml_key]
+
+        # 211# P1-B: Micro Circuit Breaker
+        mcb = yaml_cfg.get("micro_circuit_breaker", {})
+        if mcb.get("enabled") is not None:
+            kwargs["mcb_enabled"] = mcb["enabled"]
+        mcb_map = {
+            "caution_sigma": "mcb_caution_sigma",
+            "warning_sigma": "mcb_warning_sigma",
+            "halt_sigma": "mcb_halt_sigma",
+            "halt_cooldown_sec": "mcb_halt_cooldown_sec",
+            "warning_offset_mult": "mcb_warning_offset_mult",
+            "warning_interval_mult": "mcb_warning_interval_mult",
+        }
+        for yaml_key, config_key in mcb_map.items():
+            if yaml_key in mcb:
+                kwargs[config_key] = mcb[yaml_key]
 
         # 088# sell 専用ハードガード
         sell_guard = yaml_cfg.get("sell_guard", {})
