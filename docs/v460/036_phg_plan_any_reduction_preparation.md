@@ -2726,6 +2726,28 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/monitor_fill_test.py`: `any_type_debt_tokens=0`
   - `scripts/v460/ml/run_075_verification.py`: `any_type_debt_tokens=0`
 
+### Step119: resume 時の trailing skip カウントを helper 化
+
+1. 対応概要
+- `scripts/v460/lib/fill_record_helpers.py`
+  - `_count_trailing_cancel_reason()` を追加し、末尾連続 `cancel_reason` 件数の計算を共通化した。
+  - `resume_from_existing()` の `trending_sell_skip` / `balance_forced_skip` 復元を helper 経由へ変更した。
+- `tests/unit/v460/test_145_structural_fixes.py`
+  - helper の直接テストを追加した。
+
+2. 目的
+- `resume_from_existing()` 内の重複ループを削り、末尾連続カウント規約を 1 箇所に閉じ込める。
+- 今後同種の trailing skip 復元を追加する場合の横展開をしやすくする。
+
+3. 検証
+- `py_compile`
+  - `scripts/v460/lib/fill_record_helpers.py`
+- `pytest`
+  - `tests/unit/v460/test_145_structural_fixes.py -k "TestMakeSkipRecord"`
+  - 結果: `8 passed`
+- `any_inventory`
+  - `scripts/v460/lib/fill_record_helpers.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

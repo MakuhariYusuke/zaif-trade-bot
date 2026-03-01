@@ -101,6 +101,16 @@ class FillRecordHelpersMixin:
             **extra,
         )
 
+    @staticmethod
+    def _count_trailing_cancel_reason(records: list["FillRecord"], reason: str) -> int:
+        """末尾から連続する cancel_reason 件数を返す."""
+        count = 0
+        for record in reversed(records):
+            if record.cancel_reason != reason:
+                break
+            count += 1
+        return count
+
     def _current_regime_value(self) -> str | None:
         """160# skip record 用: 現在の確定レジーム文字列.
 
@@ -264,18 +274,8 @@ class FillRecordHelpersMixin:
 
         # 167# DL-4/P2: 末尾連続 skip カウンタを復元 (再起動耐性)
         # 175# 各カウンタを独立したループで計算 (交互出現時の過大計上を防止)
-        _tss_count = 0  # trending_sell_skip
-        for rec in reversed(existing):
-            if rec.cancel_reason == "trending_sell_skip":
-                _tss_count += 1
-            else:
-                break
-        _bfs_count = 0  # balance_forced_skip
-        for rec in reversed(existing):
-            if rec.cancel_reason == "balance_forced_skip":
-                _bfs_count += 1
-            else:
-                break
+        _tss_count = self._count_trailing_cancel_reason(existing, "trending_sell_skip")
+        _bfs_count = self._count_trailing_cancel_reason(existing, "balance_forced_skip")
         if hasattr(self, "_trending_sell_skip_count"):
             self._trending_sell_skip_count = _tss_count
         if hasattr(self, "_balance_forced_skip_count"):

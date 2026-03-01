@@ -531,6 +531,42 @@ class TestMakeSkipRecord:
         )
         assert rec.timestamp == 12345.0
 
+    def test_count_trailing_cancel_reason(self) -> None:
+        from scripts.v460.run_fill_test import FillTestRunner
+        from ztb.metrics.fill_quality import FillRecord
+
+        records = [
+            FillRecord(
+                cycle_id="1",
+                timestamp=1.0,
+                side="buy",
+                order_price=100.0,
+                order_quantity=0.001,
+                cancelled=True,
+                cancel_reason="x",
+            ),
+            FillRecord(
+                cycle_id="2",
+                timestamp=2.0,
+                side="buy",
+                order_price=100.0,
+                order_quantity=0.001,
+                cancelled=True,
+                cancel_reason="y",
+            ),
+            FillRecord(
+                cycle_id="3",
+                timestamp=3.0,
+                side="buy",
+                order_price=100.0,
+                order_quantity=0.001,
+                cancelled=True,
+                cancel_reason="y",
+            ),
+        ]
+        assert FillTestRunner._count_trailing_cancel_reason(records, "y") == 2
+        assert FillTestRunner._count_trailing_cancel_reason(records, "x") == 0
+
 
 # ======================================================================
 # §9-#4: SkipGate lot consistency — ソースレベル検証
