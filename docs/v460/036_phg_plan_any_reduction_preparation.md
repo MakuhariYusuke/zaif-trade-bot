@@ -2598,6 +2598,25 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
 
+### Step114: skip_gate_evaluator の builder 依存を定義元へ直結
+
+1. 対応概要
+- `scripts/v460/lib/skip_gate_evaluator.py`
+  - `build_skip_fill_record` の import 元を `scripts.v460.lib.fill_record_helpers` から `ztb.metrics.fill_quality` へ変更した。
+
+2. 目的
+- re-export 的な import 経路をやめ、`FillRecord` builder の定義元へ直接依存させる。
+- `skip_gate_evaluator` と `fill_record_helpers` の不要な runtime 結合を減らす。
+
+3. 検証
+- `py_compile`
+  - `scripts/v460/lib/skip_gate_evaluator.py`
+- `pytest`
+  - `tests/unit/v460/test_skip_gate_v3.py`
+  - 結果: `15 passed`
+- `any_inventory`
+  - `scripts/v460/lib/skip_gate_evaluator.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
