@@ -3270,6 +3270,54 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/analysis/vg_and_trend.py`: `any_type_debt_tokens=0`
   - `scripts/v460/ml/skip_gate.py`: `any_type_debt_tokens=0`
 
+### Step135: stopgap JSON 出力を `ztb.io` に統一し、集計のリスト蓄積を削減
+
+1. 対応概要
+- `scripts/v460/lib/stopgap_health.py`
+  - `serialize_health_report()` を追加し、`DailyHealthReport` の JSON 出力 payload 化を共通化した。
+- `scripts/v460/analysis/stopgap_daily_report.py`
+  - 手書き `asdict() + json.dumps() + Path.write_text()` をやめ、`serialize_health_report()` + `ztb.io.json_io.write_json()` に置換した。
+  - `ztb.io` 既存 helper を再利用し、CLI の file export 経路を他スクリプトと揃えた。
+- `scripts/v460/analysis/analyze_fill_detail.py`
+  - `ztb.metrics.fill_quality.PnlAccumulator` を再利用し、day/run 集計で `pnl` の list 蓄積を廃止した。
+  - day/run 集計を 2 ループから 1 ループに寄せた。
+  - filled=0 時の `Repriced` 表示で 0 除算し得た箇所を `_pct()` 経由に変更した。
+- `scripts/v460/analysis/reproduce_152_metrics.py`
+  - `regime_pnl_values` / `side_regime_values` / `hour_pnl_values` の `list[float]` 蓄積を `PnlAccumulator` に置換した。
+  - 件数・平均・合計だけが必要な箇所はストリーム集計へ寄せ、メモリ使用量を削減した。
+
+2. 類似実装の確認
+- JSON 出力については `ztb.io.json_io.write_json()` が既にあり、新規 I/O helper は追加せずそれを採用した。
+- PnL のストリーム集計についても `ztb.metrics.fill_quality.PnlAccumulator` が既に存在したため、analysis 側の list 蓄積をそれへ寄せた。
+- つまり今回の追加 helper は `stopgap_health` ドメイン専用の `serialize_health_report()` のみで、汎用部分は既存 `ztb` 実装を優先再利用した。
+
+3. 目的
+- stopgap CLI の JSON 出力経路を `ztb` の共通 I/O 契約に揃え、保存処理の重複をなくす。
+- 大きい分析スクリプトで、平均計算のためだけに `list[float]` を保持し続ける無駄を減らす。
+- `analyze_fill_detail` の集計ループ数と、一時メモリ使用量を同時に下げる。
+
+4. 検証
+- `py_compile`
+  - `scripts/v460/lib/stopgap_health.py`
+  - `scripts/v460/analysis/stopgap_daily_report.py`
+  - `scripts/v460/analysis/analyze_fill_detail.py`
+  - `scripts/v460/analysis/reproduce_152_metrics.py`
+  - `tests/unit/v460/test_stopgap_health.py`
+- `pytest`
+  - `tests/unit/v460/test_stopgap_health.py`
+  - `tests/unit/v460/test_152_parallel_tasks.py`
+  - `-k "GenerateHealthReport or serialize_health_report or compute_metrics or main_with_output"`
+  - 結果: `10 passed`
+- import smoke
+  - `scripts.v460.analysis.stopgap_daily_report`
+  - `scripts.v460.analysis.analyze_fill_detail`
+  - 結果: `main` が利用可能
+- `any_inventory`
+  - `scripts/v460/lib/stopgap_health.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/analysis/stopgap_daily_report.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/analysis/analyze_fill_detail.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/analysis/reproduce_152_metrics.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

@@ -18,7 +18,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from ztb.io.json_io import write_json
-from ztb.metrics.fill_quality import load_fill_record_objects_glob
+from ztb.metrics.fill_quality import PnlAccumulator, load_fill_record_objects_glob
 from ztb.utils.safety import ensure_dict, safe_to_int, safe_to_finite
 
 # ---------------------------------------------------------------------------
@@ -86,12 +86,12 @@ def _compute_metrics(
     regime_all: Counter[str] = Counter()
     lot_counter: Counter[str] = Counter()
     run_ids: Counter[str] = Counter()
-    regime_pnl_values: dict[str, list[float]] = defaultdict(list)
-    side_regime_values: dict[str, dict[str, list[float]]] = {
-        "buy": defaultdict(list),
-        "sell": defaultdict(list),
+    regime_pnl_values: dict[str, PnlAccumulator] = defaultdict(PnlAccumulator)
+    side_regime_values: dict[str, dict[str, PnlAccumulator]] = {
+        "buy": defaultdict(PnlAccumulator),
+        "sell": defaultdict(PnlAccumulator),
     }
-    hour_pnl_values: dict[int, list[float]] = defaultdict(list)
+    hour_pnl_values: dict[int, PnlAccumulator] = defaultdict(PnlAccumulator)
     as_probs: list[float] = []
 
     for record in records:
@@ -119,25 +119,25 @@ def _compute_metrics(
             continue
 
         regime_key = regime if regime is not None else "n/a"
-        regime_pnl_values[regime_key].append(pnl)
+        regime_pnl_values[regime_key].add(pnl)
 
         side = _to_str(record.get("side"))
         if side in ("buy", "sell"):
-            side_regime_values[side][regime_key].append(pnl)
+            side_regime_values[side][regime_key].add(pnl)
 
         ts = safe_to_finite(record.get("timestamp"))
         if ts is not None:
             hour = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).hour
-            hour_pnl_values[hour].append(pnl)
+            hour_pnl_values[hour].add(pnl)
 
     regime_tagged_total = sum(regime_all.values())
 
     regime_pnl_summary: dict[str, dict[str, float]] = {}
-    for regime, values in sorted(regime_pnl_values.items(), key=lambda item: -len(item[1])):
+    for regime, acc in sorted(regime_pnl_values.items(), key=lambda item: -item[1].count):
         regime_pnl_summary[regime] = {
-            "fills": len(values),
-            "avg_pnl_bps": round(sum(values) / len(values), 4) if values else 0.0,
-            "sum_pnl_bps": round(sum(values), 2),
+            "fills": acc.count,
+            "avg_pnl_bps": round(acc.mean_bps, 4) if acc.count else 0.0,
+            "sum_pnl_bps": round(acc.total_bps, 2),
         }
 
     as_dist: dict[str, float] = {}
@@ -164,24 +164,24 @@ def _compute_metrics(
     side_regime_pnl: dict[str, dict[str, dict[str, float]]] = {"buy": {}, "sell": {}}
     for side_name in ("buy", "sell"):
         side_data: dict[str, dict[str, float]] = {}
-        for regime, values in sorted(
-            side_regime_values[side_name].items(), key=lambda item: -len(item[1])
+        for regime, acc in sorted(
+            side_regime_values[side_name].items(), key=lambda item: -item[1].count
         ):
-            if not values:
+            if not acc.count:
                 continue
             side_data[regime] = {
-                "fills": len(values),
-                "avg_pnl_bps": round(sum(values) / len(values), 4),
-                "sum_pnl_bps": round(sum(values), 2),
+                "fills": acc.count,
+                "avg_pnl_bps": round(acc.mean_bps, 4),
+                "sum_pnl_bps": round(acc.total_bps, 2),
             }
         side_regime_pnl[side_name] = side_data
 
     hour_summary: dict[str, dict[str, float]] = {}
     for hour in sorted(hour_pnl_values):
-        values = hour_pnl_values[hour]
+        acc = hour_pnl_values[hour]
         hour_summary[f"UTC{hour:02d}_JST{(hour + 9) % 24:02d}"] = {
-            "fills": len(values),
-            "avg_pnl_bps": round(sum(values) / len(values), 4) if values else 0.0,
+            "fills": acc.count,
+            "avg_pnl_bps": round(acc.mean_bps, 4) if acc.count else 0.0,
         }
 
     return {

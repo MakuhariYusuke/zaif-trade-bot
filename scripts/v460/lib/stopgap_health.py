@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 import math
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -709,6 +709,11 @@ def generate_health_report(
         stopgap_checks=check_dicts,
         alerts=alert_dicts,
     )
+
+
+def serialize_health_report(report: DailyHealthReport) -> dict[str, object]:
+    """DailyHealthReport を JSON 出力向け dict に変換する."""
+    return asdict(report)
 
 
 def print_health_summary(report: DailyHealthReport) -> None:

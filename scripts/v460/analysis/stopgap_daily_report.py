@@ -12,7 +12,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import asdict
 from pathlib import Path
 
 # Ensure project root on sys.path
@@ -26,7 +25,9 @@ from scripts.v460.lib.stopgap_health import (
     generate_health_report,
     load_fill_records,
     print_health_summary,
+    serialize_health_report,
 )
+from ztb.io.json_io import write_json
 
 
 def main() -> None:
@@ -98,15 +99,12 @@ def main() -> None:
     )
 
     if args.json or args.output:
-        report_dict = asdict(report)
-        json_str = json.dumps(report_dict, ensure_ascii=False, indent=2, default=str)
+        report_dict = serialize_health_report(report)
         if args.output:
-            out = Path(args.output)
-            out.parent.mkdir(parents=True, exist_ok=True)
-            out.write_text(json_str, encoding="utf-8")
-            print(f"Report saved to {out}")
+            write_json(args.output, report_dict, ensure_ascii=False, indent=2, default=str)
+            print(f"Report saved to {args.output}")
         else:
-            print(json_str)
+            print(json.dumps(report_dict, ensure_ascii=False, indent=2, default=str))
     else:
         print_health_summary(report)
 

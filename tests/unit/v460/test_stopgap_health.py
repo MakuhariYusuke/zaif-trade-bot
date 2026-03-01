@@ -25,6 +25,7 @@ from scripts.v460.lib.stopgap_health import (
     generate_alerts,
     generate_health_report,
     load_fill_records,
+    serialize_health_report,
     _filter_window,
     _get_day,
     _check_2a_trending_sell_skip,
@@ -398,6 +399,13 @@ class TestGenerateHealthReport:
             if d["regime"] == "all" and d["side"] == "all"
         ]
         assert all_all[0]["unknown_regime_count"] == 1
+
+    def test_serialize_health_report_helper(self):
+        recs = _records_batch(10, side="buy", regime="ranging")
+        report = generate_health_report(recs, window_hours=0)
+        payload = serialize_health_report(report)
+        assert payload["total_records"] == 10
+        assert isinstance(payload["daily_metrics"], list)
 
 
 # ======================================================================
