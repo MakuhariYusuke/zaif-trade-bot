@@ -125,9 +125,11 @@
 
 | ID | 重要度 | 内容 | 備考 |
 |---|---|---|---|
-| **P0-A** | **HIGH** | **Operator Alert Flag (手動リスクフラグ)** | §8 参照。ニュース等で事前把握したリスクを即座に bot に伝達する仕組み。ファイルタッチ型で実装量極小 |
-| P1-B | MEDIUM | Micro Circuit Breaker (複数時間軸の価格急変検知) | 5 分/15 分/1h 窓で自動 halt/offset boost |
-| P1-C | MEDIUM | Spread Anomaly Detector (spread 急拡大→自動 alert) | 流動性枯渇の最速市場内シグナル |
+| **P0-A** | **HIGH** | **Operator Alert Flag (手動リスクフラグ)** | §8 参照。ファイルタッチ型で実装量極小 |
+| P1-B | MEDIUM | Micro Circuit Breaker (複数時間軸の価格急変検知) | §9 参照。5 分/15 分/1h 窓で自動 halt/offset boost |
+| P1-C | MEDIUM | Spread Anomaly Detector (spread 急拡大→自動 alert) | §10 参照。流動性枯渇の最速市場内シグナル |
+| P2-D | LOW | 外部シグナルフィード (F&G, Funding Rate, RSS/News) | §11 参照。P0-A の alert_mode.json 自動ライター |
+| P2-E | LOW | ニュース特徴量としてのモデル統合 | §12 参照。外部データを observation space に追加 |
 | 204# K–Q | P2 | σ-linked offset, OFI/PIN, Friday filter 等 | 長期施策 (205# §7) |
 | H4 | HIGH | SellDynamicKillManager rolling PnL window 非永続化 | 設計要 (210# §6) |
 | spread staleness 60s | LOW | ハードコード → Config 外部化 | 優先度低 |
@@ -181,3 +183,218 @@ del results/v460/fill_test/alert_mode.json
 - ファイル削除で即復帰 (状態を持たない)
 - サイクル先頭の 1 ファイル存在チェック → パフォーマンス影響なし
 - 地政学に限らず全種のイベント (取引所メンテ、大口移動等) に汎用利用可能
+
+---
+
+## 9. 自動防御提案 (P1-B: Micro Circuit Breaker)
+
+### 概要
+
+複数時間軸の **価格変動率** を監視し、異常急変を検知したら自動で offset boost / halt を発動する。
+P0-A が「人間がトリガー」であるのに対し、P1-B は **市場データから自動検知** する防御層。
+
+### 検知ロジック
+
+```
+各サイクルで直近の価格変動率 (%) を複数窓で計算:
+  - 5 分窓 (短期ショック)
+  - 15 分窓 (中期急変)
+  - 1 時間窓 (ドリフト加速)
+
+閾値超過で段階的に防御発動
+```
+
+**段階:**
+
+| レベル | 条件 | アクション |
+|---|---|---|
+| **CAUTION** | いずれかの窓で変動率 > 1σ (直近 24h 基準) | ログ警告のみ |
+| **WARNING** | 2 窓以上で > 1.5σ、または 1 窓で > 2σ | offset ×1.5 + interval ×2.0 |
+| **HALT** | 2 窓以上で > 2σ、または 1 窓で > 3σ | 自動 halt (5 分間クールダウン後に再評価) |
+
+**σ 計算:**
+- 直近 24h の各窓変動率の標準偏差を rolling で維持
+- `deque(maxlen=窓数分の24hサンプル)` で O(1) 更新
+- 初期 warmup 中 (サンプル不足) はデフォルト閾値 (5分: 0.5%, 15分: 1.0%, 1h: 2.0%) を使用
+
+### 既存資産との関係
+
+| 既存 | 差異 |
+|---|---|
+| `regime_detector.py` | 20 観測 (~40 分) の hysteresis → 急変検知に遅すぎる |
+| `circuit_breaker.py` | API 失敗 (CLOSED/OPEN/HALF_OPEN) が対象 → 価格変動は未対象 |
+| Volatility Guard (VG) | 4h ATR 基準 → 長期指標。数分のフラッシュクラッシュを検知不能 |
+
+**P1-B は「VG と regime_detector の間を埋める 5分〜1時間の急変検知レイヤー」** として位置づけ。
+
+### 実装見積
+
+| 項目 | 量 |
+|---|---|
+| 新規ファイル | `scripts/v460/lib/micro_circuit_breaker.py` (~150行) |
+| orchestrator 変更 | サイクル先頭で `check()` 呼び出し追加 (~10行) |
+| config 追加 | `mcb_enabled`, `mcb_caution_sigma`, `mcb_warning_sigma`, `mcb_halt_sigma`, `mcb_cooldown_sec` |
+| テスト | ~80行 (閾値超過/復帰/warmup のユニットテスト) |
+
+---
+
+## 10. 流動性枯渇検知提案 (P1-C: Spread Anomaly Detector)
+
+### 概要
+
+**bid-ask spread の急拡大** は、地政学イベント・取引所障害・大口操作のいずれでも最初に現れる市場内シグナル。
+価格が動く前に spread が拡大するケースが多く、**最速の自動検知手段** となる。
+
+### 検知ロジック
+
+```
+各サイクルで取得済みの ticker.spread を蓄積:
+  - 直近 1h の spread 中央値を基準値とする
+  - 現在 spread / 基準値 = spread_ratio
+
+spread_ratio が閾値を超えたらアクション発動
+```
+
+**段階:**
+
+| レベル | 条件 (spread_ratio) | アクション |
+|---|---|---|
+| **NORMAL** | < 2.0 | 通常運転 |
+| **WIDE** | 2.0 〜 4.0 | offset を `spread_ratio × 0.5` 倍に拡大 (spread に追従) |
+| **DRY** | 4.0 〜 8.0 | offset ×3.0 + interval ×2.0 + lot ×0.5 |
+| **FROZEN** | > 8.0 | 自動 halt (30 秒ごとに再評価) |
+
+### 既存資産との関係
+
+| 既存 | 差異 |
+|---|---|
+| `spread_staleness` (60s) | 古い spread の検知 → spread の「大きさ」は見ていない |
+| `maker_price.py` の spread 適応 | offset 計算時に spread を考慮済みだが、**異常値に対する防御** (halt/lot縮小) 機能はない |
+| Volatility Guard | ATR ベース → spread 独立 |
+
+**P1-C は「spread が異常に開いた = 流動性が枯渇した」状態を検知し、約定リスクを自動回避する専用レイヤー。**
+
+### 実装見積
+
+| 項目 | 量 |
+|---|---|
+| 新規ファイル | `scripts/v460/lib/spread_anomaly_detector.py` (~100行) |
+| orchestrator 変更 | spread 取得直後に `check(spread)` 呼び出し (~5行) |
+| config 追加 | `sad_enabled`, `sad_wide_ratio`, `sad_dry_ratio`, `sad_frozen_ratio`, `sad_baseline_window_sec` |
+| テスト | ~60行 |
+| 所要データ | 既存 ticker.spread のみ (追加 API 不要) |
+
+### P1-B / P1-C の連携
+
+```
+P1-B (価格急変) と P1-C (spread 急拡大) は独立に検知するが、
+両方が同時に WARNING 以上 → 即 HALT (AND 条件での escalation)
+```
+
+これにより単独での false positive を抑制しつつ、真の急変イベントでは素早く反応できる。
+
+---
+
+## 11. 外部シグナルフィード提案 (P2-D)
+
+### 概要
+
+市場外部のデータソースを定期的に取得し、bot の防御判断に組み込む。
+P0-A (手動) / P1-B,C (市場データ自動) の上位レイヤーとして、**より早期の予兆検知** を狙う。
+
+### 候補データソース
+
+| ソース | 取得方法 | 更新頻度 | 検知可能な事象 |
+|---|---|---|---|
+| **Fear & Greed Index** | [alternative.me API](https://api.alternative.me/fng/) (無料) | 24h | 市場センチメント極端化 (F&G < 20: Extreme Fear) |
+| **Funding Rate** | coincheck / binance API | 8h | レバレッジ偏り → 清算カスケードの予兆 |
+| **Open Interest** | 取引所 API | 1h | OI 急増 → ボラ拡大の前兆 |
+| **Google Trends** | pytrends | 4h | "bitcoin crash" 等の検索急増 |
+| **X (Twitter) Sentiment** | 自前クローラー or 有料 API | 15min | インフルエンサーの panic 発信 |
+| **RSS/News** | feedparser | 5min | "Iran", "war", "hack", "exchange down" 等のキーワード |
+
+### 設計方針
+
+```python
+# 独立プロセス (bot 本体とは別)
+class ExternalSignalFeed:
+    def poll(self) -> SignalLevel:
+        """各ソースを巡回し、最も深刻なレベルを返す"""
+        ...
+    
+    def write_alert(self, level: SignalLevel, reason: str):
+        """P0-A の alert_mode.json に書き出す"""
+        ...
+```
+
+- **P0-A のファイルタッチ方式を再利用**: 外部シグナルフィードが `alert_mode.json` を書き出す → bot 本体は P0-A ロジックのみで対応
+- bot 本体とは疎結合 (別プロセス / cron)
+- 有料 API に依存しない階層 (F&G + Funding Rate は無料で取得可能)
+
+### 優先度
+
+- **P2 (中期)**: P0-A + P1-B,C が先に完成していれば、外部シグナルは「alert_mode.json の自動ライター」として追加するだけ
+- F&G Index のみの最小実装: ~50行、cron 5分ごと
+
+---
+
+## 12. ニュース特徴量としてのモデル統合提案 (P2-E)
+
+### 概要
+
+P2-D の外部シグナルを **ML モデルの特徴量** として取り込み、エージェントの行動決定に直接反映させる。
+P2-D が「ルールベースの防御」であるのに対し、P2-E は **学習ベースの適応** を目指す。
+
+### アーキテクチャ
+
+```
+            ┌──────────────────────────────┐
+            │       Observation Space       │
+            │  ┌─────────┐ ┌────────────┐  │
+            │  │ 市場特徴 │ │ 外部特徴量 │  │
+            │  │ (既存)   │ │ (新規追加) │  │
+            │  └─────────┘ └────────────┘  │
+            │         ↓         ↓          │
+            │  ┌──────────────────────┐    │
+            │  │   SAC / PPO Agent    │    │
+            │  └──────────────────────┘    │
+            │         ↓                    │
+            │  action (buy/sell/hold)       │
+            └──────────────────────────────┘
+```
+
+### 追加特徴量候補
+
+| 特徴量 | 次元 | 正規化 | 根拠 |
+|---|---|---|---|
+| `fear_greed_normalized` | 1 | [0, 1] (0=Extreme Fear, 1=Extreme Greed) | 低 F&G 時は sell/hold バイアス学習 |
+| `funding_rate_zscore` | 1 | z-score (直近 7d 基準) | 異常な funding → 清算リスク |
+| `oi_change_pct` | 1 | 直近 4h 変化率 % | OI 急増 = ボラ予兆 |
+| `news_sentiment_score` | 1 | [-1, +1] (NLP スコア) | ネガティブニュース → 防御行動 |
+| `news_volume_zscore` | 1 | z-score (直近 24h 記事数) | ニュース急増 = イベント発生 |
+| `geopolitical_risk_flag` | 1 | {0, 1} | 戦争/制裁等のキーワード検出時 |
+
+### 実装上の課題
+
+| 課題 | 対策案 |
+|---|---|
+| **特徴量の遅延** | F&G は 24h 更新 → stale な特徴量がノイズに。timestamp embedding で鮮度を学習させる |
+| **学習データの希少性** | 地政学イベントは年に数回 → synthetic data augmentation (既存価格データに人工的なショックを注入) |
+| **次元の呪い** | 6 次元追加 → 既存 ~60 特徴量の 1 割。影響は限定的だが、ablation study で効果検証必須 |
+| **NLP モデルの運用コスト** | 軽量モデル (DistilBERT / TF-IDF + ロジスティック回帰) で news_sentiment を前処理 |
+| **再学習頻度** | retrain_scheduler に組み込み。外部特徴量追加時は warm-start (既存重みを保持) |
+
+### ロードマップ
+
+| フェーズ | 内容 | 依存 |
+|---|---|---|
+| **E-1** | F&G Index のみを observation に追加、ablation study | P2-D の F&G ポーリング実装 |
+| **E-2** | Funding Rate + OI を追加 | 取引所 API 拡張 |
+| **E-3** | NLP ベースの news_sentiment 導入 | ニュースクローラー + 軽量 NLP モデル |
+| **E-4** | geopolitical_risk_flag (keyword matching → ML 分類器) | E-3 のデータパイプライン |
+
+### 優先度
+
+- **P2 (長期)**: P0-A / P1-B,C / P2-D が全て機能してからの最終段階
+- モデル再学習を伴うため、**十分な学習データ蓄積** (最低 3ヶ月のイベントデータ) が前提
+- E-1 (F&G のみ) は比較的低コストで実験可能 → P2-D 完成後に着手推奨
