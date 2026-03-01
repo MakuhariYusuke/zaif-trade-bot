@@ -13,16 +13,11 @@ WARNING -- AI Coding Agent / 人間開発者への注意:
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import time
-from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 
 from scripts.v460.lib import cancel_reasons as CR
-from scripts.v460.lib.event_logger import log_event as _log_event
-from scripts.v460.lib.regime_policy import CycleStrategy
-from scripts.v460.lib.resilience import FillTestState
 
 if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
@@ -266,12 +261,16 @@ class FillLoopOrchestratorMixin:
         033# 方策 B: 動的ロットサイジング統合.
         033# F4: 累積 PnL 安全キャップ (000# §3.9).
         """
+        from datetime import datetime, timezone
+
+        from scripts.v460.lib.event_logger import log_event as _log_event
         from ztb.data.trades_health import check_trades_health
         from ztb.metrics.fill_quality import (
             compute_record_pnl_jpy,
             filter_clean_records,
             iter_fill_records_glob,
         )
+        from scripts.v460.lib.resilience import FillTestState
 
         end_time = time.time() + hours * 3600
 

@@ -10,26 +10,24 @@ from __future__ import annotations
 import gc
 import logging
 import time
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Literal, Protocol, TypedDict
+from typing import TYPE_CHECKING, Literal, Protocol, TypedDict
 
-from ztb.io.json_io import read_json_object, write_json
+from ztb.utils.dataclass_utils import filter_known_dataclass_fields
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # §1  CircuitBreaker  — API 通信ラッパー
 # ---------------------------------------------------------------------------
-# ztb/utils/circuit_breaker.py の CircuitBreaker を直接使う.
-# fill_test では 1 個の breaker (coincheck_api) で全 REST 呼出しを保護.
-
-from ztb.utils.circuit_breaker import (
-    CircuitBreaker,
-    CircuitBreakerConfig,
-    CircuitBreakerOpenException,
-    CircuitState,
-)
+if TYPE_CHECKING:
+    from ztb.utils.circuit_breaker import (
+        CircuitBreaker,
+        CircuitBreakerConfig,
+        CircuitBreakerOpenException,
+        CircuitState,
+    )
 
 # re-export
 __all__ = [
@@ -42,6 +40,25 @@ __all__ = [
     "create_api_circuit_breaker",
 ]
 
+_CIRCUIT_BREAKER_EXPORTS = frozenset(
+    {
+        "CircuitBreaker",
+        "CircuitBreakerConfig",
+        "CircuitBreakerOpenException",
+        "CircuitState",
+    }
+)
+
+
+def __getattr__(name: str) -> object:
+    if name not in _CIRCUIT_BREAKER_EXPORTS:
+        raise AttributeError(f"module {__name__} has no attribute {name!r}")
+    from ztb.utils import circuit_breaker as cb
+
+    value = getattr(cb, name)
+    globals()[name] = value
+    return value
+
 
 def create_api_circuit_breaker(
     failure_threshold: int = 5,
@@ -53,6 +70,8 @@ def create_api_circuit_breaker(
 
     デフォルト: 5 連続失敗 → 120s OPEN → 2 連続成功で CLOSE.
     """
+    from ztb.utils.circuit_breaker import CircuitBreaker, CircuitBreakerConfig
+
     cfg = CircuitBreakerConfig(
         failure_threshold=failure_threshold,
         recovery_timeout=recovery_timeout,
@@ -240,10 +259,12 @@ class FillTestStatePersistence:
 
     def save(self, state: FillTestState) -> None:
         """状態を JSON に保存."""
+        from ztb.io import write_state_payload
+
         state.saved_at = time.time()
         state.saved_at_iso = time.strftime("%Y-%m-%dT%H:%M:%S%z")
         try:
-            write_json(self._state_file, asdict(state))
+            write_state_payload(self._state_file, asdict(state))
             logger.debug(f"[state] Saved: cycle={state.cycle_count}, pnl={state.cumulative_pnl_jpy:.1f}")
         except Exception as e:
             logger.warning(f"[state] Failed to save: {e}")
@@ -253,10 +274,10 @@ class FillTestStatePersistence:
         if not self._state_file.exists():
             return None
         try:
-            data = read_json_object(self._state_file)
-            # dataclass フィールドのみ取得 (後方互換)
-            valid_fields = {f.name for f in fields(FillTestState)}
-            filtered = {k: v for k, v in data.items() if k in valid_fields}
+            from ztb.io import read_state_payload
+
+            data = read_state_payload(self._state_file)
+            filtered = filter_known_dataclass_fields(FillTestState, data)
             return FillTestState(**filtered)
         except Exception as e:
             logger.warning(f"[state] Failed to load: {e}")

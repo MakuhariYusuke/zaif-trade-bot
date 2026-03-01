@@ -3070,6 +3070,45 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/lib/fill_record_helpers.py`: `any_type_debt_tokens=0`
   - `scripts/v460/run_fill_test.py`: `any_type_debt_tokens=0`
 
+### Step131: state/IO と fill loop の import 経路をさらに軽量化
+
+1. 対応概要
+- `scripts/v460/lib/resilience.py`
+  - `CircuitBreaker*` の re-export を `__getattr__` ベースの lazy export に変更した。
+  - `FillTestStatePersistence.save/load()` は `ztb.io` の共通 state persistence facade を使う形に整理した。
+  - `FillTestState` 復元時の field filtering を、`ztb.utils.dataclass_utils.filter_known_dataclass_fields()` に統一した。
+- `ztb/io/__init__.py`
+  - `json/jsonl/yaml/text/state_persistence` の package export を eager import から lazy export に変更した。
+- `scripts/v460/lib/fill_loop_orchestrator.py`
+  - `event_logger.log_event` を `run_continuous()` 内の local import に変更した。
+  - 使っていない `CycleStrategy` の module-level import を削除した。
+- `scripts/v460/run_fill_test.py`
+  - 型注釈専用だった `CycleStrategy` import を `TYPE_CHECKING` 側に移した。
+
+2. 目的
+- `FillTestRunner` / `FillLoopOrchestratorMixin` を import しただけで、event logging と regime policy の周辺依存まで初期化する無駄を減らす。
+- `ztb.io` も他 package と同様に lazy export 化し、`ztb` 側の共通 I/O API を保ったまま初回 import のコストを抑える。
+- `FillTestState` の restore 契約を `ztb` 共通 helper に寄せて、field 追加時の復元漏れや手書き filtering の再発を防ぐ。
+
+3. 検証
+- `py_compile`
+  - `ztb/io/__init__.py`
+  - `scripts/v460/lib/resilience.py`
+  - `scripts/v460/lib/fill_loop_orchestrator.py`
+  - `scripts/v460/run_fill_test.py`
+- `pytest`
+  - `tests/unit/v460/test_113_resilience.py`
+  - `tests/unit/v460/test_145_structural_fixes.py`
+  - 結果: `85 passed`
+- import timing
+  - `scripts.v460.run_fill_test` fresh import: `0.48s → 0.44s`
+  - `from ztb.io import read_json_object, write_state_payload; import scripts.v460.run_fill_test`: `0.66s`
+- `any_inventory`
+  - `ztb/io/__init__.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/resilience.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/fill_loop_orchestrator.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/run_fill_test.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

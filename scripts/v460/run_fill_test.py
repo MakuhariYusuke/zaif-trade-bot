@@ -35,9 +35,9 @@ from scripts.v460.lib.abstract_cycle_runner import AbstractCycleRunner
 from scripts.v460.lib.fill_record_helpers import FillRecordHelpersMixin  # 163#
 from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin  # 163#
 from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin  # 163#
-from scripts.v460.lib.regime_policy import CycleStrategy  # 179#
 
 if TYPE_CHECKING:
+    from scripts.v460.lib.regime_policy import CycleStrategy
     from ztb.trading.live.exchanges.base.broker_interfaces import IBroker
 
 logging.basicConfig(
