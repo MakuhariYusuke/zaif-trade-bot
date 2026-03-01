@@ -488,7 +488,16 @@ class MakerPriceCalculator:
         ):
             vol_ratio = self._regime_detector.last_volatility_ratio
             if vol_ratio < cfg.low_vol_threshold:
-                _low_vol_boost = cfg.low_vol_offset_boost
+                # 200# C: 比例モード — vol_ratio に応じた段階的 boost
+                # threshold=0.75, vol_ratio=0.375 (50%), boost_max=1.4 → boost=1.2
+                # threshold=0.75, vol_ratio=0.0, boost_max=1.4 → boost=1.4
+                if cfg.low_vol_boost_proportional and cfg.low_vol_threshold > 0:
+                    _ratio = 1.0 - vol_ratio / cfg.low_vol_threshold  # 0.0 ~ 1.0
+                    _low_vol_boost = cfg.low_vol_boost_min + (
+                        cfg.low_vol_offset_boost - cfg.low_vol_boost_min
+                    ) * _ratio
+                else:
+                    _low_vol_boost = cfg.low_vol_offset_boost
                 pre_offset = effective_offset_ratio
                 effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
                     effective_offset_ratio,

@@ -127,6 +127,9 @@ regime:
   low_vol_offset_boost_enabled: true
   low_vol_offset_boost: 1.4
   low_vol_threshold: 0.75
+  # 200# C: 低ボラ boost 比例モード
+  low_vol_boost_proportional: true   # vol_ratio に応じた段階的 boost
+  low_vol_boost_min: 1.0             # 比例モード時の最小 boost
   # 169# B1': ranging_buy at low_vol ハードスキップ (Gemini 10.2-D「休むも相場」)
   # ranging_buy は全損失の 69% (-220.84 JPY) を占める最大損失源
   # 低ボラ環境では offset 調整より完全スキップが clean
@@ -283,6 +286,9 @@ skip_gate:
   ev_offset_min_mult: 0.5       # offset 乗数下限 (最も保守的)
   ev_offset_max_mult: 1.5       # offset 乗数上限 (最も積極的)
   ev_emergency_skip_threshold: -8.0  # この値未満は依然ハードスキップ
+  # 200# M: ev warning zone — emergency と通常の間の中間段階
+  ev_warning_threshold: -4.0         # この値未満で warning zone 発動
+  ev_warning_offset_factor: 0.7      # warning zone での追加 offset 乗数 (保守化)
   # 190# A: ev_weighted 連続 skip 安全弁 (193# offset モードでは無視)
   ev_max_consecutive_skip: 5
   # 190# B: 片側 balance 時の ev_weighted threshold 緩和 (193# offset モードでは無視)
@@ -444,6 +450,8 @@ loss_control:
     enabled: true                # 169# C4: 有効化 (日次累積損失制限で暴走防止)
     hard_limit_bps: -50.0        # 日次累積 PnL がこの bps 以下でトレード全停止
     soft_limit_bps: -30.0        # soft 閾値で lot 半減
+    # 200# 10-A/10-E: soft drawdown 時の interval 乗数 (YAML 外部化)
+    soft_drawdown_interval_multiplier: 3.0
 
 # ---- 102# チューニングパラメータ (散在マジックナンバーの外部化) ----
 tuning:

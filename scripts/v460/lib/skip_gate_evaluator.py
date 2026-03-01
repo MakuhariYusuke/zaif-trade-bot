@@ -187,22 +187,17 @@ class SkipGateEvaluator:
     ) -> tuple[float, bool]:
         """velocity soft mode の offset 乗数を安全に解決する.
 
-        - 0 除算回避: threshold=0 の場合は proportional を使わず固定倍率へフォールバック
-        - 保守性維持: 1.0 未満の倍率は無効化し、少なくとも現状維持 (1.0) に丸める
-        - 上限暴走防止: max_multiplier で頭打ち
+        200# L: velocity_math.compute_velocity_offset_multiplier への委譲 (SSOT).
+        後方互換のため static method wrapper を維持。
         """
-        capped_max = max(1.0, float(max_multiplier))
-        bounded_base = min(max(1.0, float(base_multiplier)), capped_max)
-        if not proportional:
-            return bounded_base, False
-
-        threshold_abs = abs(float(threshold_bps))
-        if threshold_abs <= 0.0:
-            return bounded_base, False
-
-        excess_ratio = abs(float(observed_velocity_bps)) / threshold_abs
-        boost = 1.0 + (bounded_base - 1.0) * excess_ratio
-        return min(boost, capped_max), True
+        from scripts.v460.lib.velocity_math import compute_velocity_offset_multiplier
+        return compute_velocity_offset_multiplier(
+            observed_velocity_bps=observed_velocity_bps,
+            threshold_bps=threshold_bps,
+            base_multiplier=base_multiplier,
+            max_multiplier=max_multiplier,
+            proportional=proportional,
+        )
 
     def _load_gate_from_path(
         self,
@@ -726,17 +721,24 @@ class SkipGateEvaluator:
         # offset 修飾子モード: 安全弁カウンタリセット
         self._ev_consecutive_skip_count = 0
 
-        # offset 乗数を計算 (ログ用)
-        _sens = self._config.skip_gate_ev_offset_sensitivity
-        _min_m = self._config.skip_gate_ev_offset_min_mult
-        _max_m = self._config.skip_gate_ev_offset_max_mult
-        _raw_mult = 1.0 + _sens * ev_score
-        _clamped_mult = max(_min_m, min(_max_m, _raw_mult))
+        # 200# M: DRY — compute_ev_offset_multiplier に共通化 + warning zone
+        from scripts.v460.lib.fill_config import compute_ev_offset_multiplier
+        _clamped_mult = compute_ev_offset_multiplier(
+            ev_score=ev_score,
+            sensitivity=self._config.skip_gate_ev_offset_sensitivity,
+            min_mult=self._config.skip_gate_ev_offset_min_mult,
+            max_mult=self._config.skip_gate_ev_offset_max_mult,
+            warning_threshold=self._config.skip_gate_ev_warning_threshold,
+            warning_factor=self._config.skip_gate_ev_warning_offset_factor,
+        )
 
         logger.info(
             "[skip_gate] 193# ev_weighted→offset: side=%s ev_score=%.3f "
-            "→ offset_mult=%.3f (raw=%.3f, sens=%.3f, clamp=[%.2f,%.2f])",
-            side, ev_score, _clamped_mult, _raw_mult, _sens, _min_m, _max_m,
+            "→ offset_mult=%.3f (sens=%.3f, clamp=[%.2f,%.2f])",
+            side, ev_score, _clamped_mult,
+            self._config.skip_gate_ev_offset_sensitivity,
+            self._config.skip_gate_ev_offset_min_mult,
+            self._config.skip_gate_ev_offset_max_mult,
         )
 
         return SkipDecision(

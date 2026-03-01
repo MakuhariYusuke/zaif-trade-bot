@@ -38,6 +38,8 @@ SKIP_GATE_RULE_VELOCITY_SELL = "skip_gate_rule_velocity_sell"
 SKIP_GATE_RULE_VELOCITY_BUY = "skip_gate_rule_velocity_buy"
 # 168# §4.1 #3: daily drawdown halt
 DAILY_DRAWDOWN_HALT = "daily_drawdown_halt"
+# 200# B/I: postonly_guard crossing → skip (offset pipeline 無効化 防止)
+POSTONLY_CROSSING_SKIP = "postonly_crossing_skip"
 
 AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     CIRCUIT_BREAKER_OPEN,
@@ -57,6 +59,7 @@ AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     SKIP_GATE_RULE_VELOCITY_SELL,
     SKIP_GATE_RULE_VELOCITY_BUY,
     DAILY_DRAWDOWN_HALT,
+    POSTONLY_CROSSING_SKIP,
 })
 
 # ======================================================================
@@ -109,6 +112,7 @@ CancelReason = Literal[
     "skip_gate_rule_velocity_sell",
     "skip_gate_rule_velocity_buy",
     "daily_drawdown_halt",
+    "postonly_crossing_skip",
     # EXEC
     "post_only_reject",
     "insufficient_funds",

@@ -66,6 +66,12 @@ class RegimeConfig:
     # 信頼度ゲート: この値未満は unknown 扱い (035# §4.2 #3)
     min_confidence: float = 0.4
 
+    # 200# H: velocity modulation (opt-in)
+    # trending regime の confidence を velocity で補正
+    # velocity が trend 方向と一致 → confidence 強化, 不一致 → 弱化
+    velocity_modulation: bool = False
+    velocity_window_ratio: float = 0.25  # window の何割を velocity 計算に使うか
+
 
 @dataclass
 class RegimeResult:
@@ -211,6 +217,18 @@ class FillTestRegimeDetector:
 
         vol_ratio = current_vol / baseline_vol if baseline_vol > 1e-12 else 1.0
 
+        # 200# H: 短期 velocity 計算 (velocity_modulation 有効時に _classify で使用)
+        self._last_velocity_pct = 0.0
+        if self.config.velocity_modulation:
+            vel_n = max(2, int(self.config.window * self.config.velocity_window_ratio))
+            vel_prices = prices[-vel_n:]
+            if (
+                vel_prices.size >= 2
+                and np.isfinite(vel_prices[0])
+                and abs(vel_prices[0]) > 1e-12
+            ):
+                self._last_velocity_pct = (vel_prices[-1] - vel_prices[0]) / vel_prices[0] * 100
+
         return trend_pct, vol_ratio
 
     @staticmethod
@@ -254,6 +272,17 @@ class FillTestRegimeDetector:
                 if trend_pct > 0
                 else FillTestRegime.TRENDING_DOWN
             )
+            # 200# H: velocity modulation — 短期 velocity が方向と一致するか
+            if self.config.velocity_modulation:
+                _vel = getattr(self, "_last_velocity_pct", 0.0)
+                _trend_sign = 1.0 if trend_pct > 0 else -1.0
+                _vel_sign = 1.0 if _vel > 0 else (-1.0 if _vel < 0 else 0.0)
+                if _vel_sign == _trend_sign:
+                    # 一致: confidence を最大 +0.15 強化
+                    confidence = min(1.0, confidence + 0.15 * min(1.0, abs(_vel) / max(threshold, 0.01)))
+                elif _vel_sign == -_trend_sign:
+                    # 不一致: confidence を最大 -0.20 弱化 (反転兆候)
+                    confidence = max(0.0, confidence - 0.20 * min(1.0, abs(_vel) / max(threshold, 0.01)))
             return regime, confidence
 
         # レンジ: トレンドも高ボラもない

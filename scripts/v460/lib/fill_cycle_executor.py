@@ -23,9 +23,10 @@ from scripts.v460.lib.fill_config import (
     FillMonitorResult as _FillMonitorResult,
     PnlMeasurement as _PnlMeasurement,
 )
+from scripts.v460.lib.ob_utils import best_bid_ask  # 200# 10-C: module-level import
 from scripts.v460.lib.order_monitor import OrderLike
 from scripts.v460.lib.resilience import CircuitState
-from ztb.metrics.fill_quality import FillRecord
+from ztb.metrics.fill_quality import FillRecord, build_fill_record
 
 if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
@@ -87,6 +88,33 @@ class FillCycleExecutorMixin:
             balance_forced_switch=balance_forced_switch,
             **extra,
         )
+
+    def _resolve_fill_cancel_reason(
+        self,
+        *,
+        filled: bool,
+        queue_wait: float,
+        cancel_reason_poll: str | None,
+        effective_timeout: float | None,
+    ) -> str | None:
+        """約定結果に応じた cancel_reason を一元解決."""
+        if cancel_reason_poll:
+            return cancel_reason_poll
+        if filled:
+            return None
+        timeout_limit = effective_timeout or self.config.order_timeout_sec
+        return "timeout" if queue_wait >= timeout_limit else "unknown"
+
+    def _compute_fill_spread_bps(
+        self,
+        *,
+        spread_at_order: float | None,
+        mid_at_fill: float | None,
+    ) -> float | None:
+        """FillRecord 用 spread_bps を安全に算出."""
+        if spread_at_order is None or mid_at_fill is None or mid_at_fill <= 0:
+            return None
+        return spread_at_order / mid_at_fill * self._BPS_FACTOR
 
     # ==================================================================
     # 113# R1: run_single_cycle から抽出したサブメソッド
@@ -300,101 +328,103 @@ class FillCycleExecutorMixin:
         mid_at_fill = pnl.mid_at_fill
         post_fill_pnl = pnl.post_fill_pnl
         post_fill_120s_pnl = pnl.post_fill_120s_pnl
-
-        return FillRecord(
-            cycle_id=cycle_id,
-            timestamp=t_submit,
-            side=side,
-            order_price=order_price,
-            order_quantity=order_lot,
-            fill_price=fill_price,
-            filled=filled,
-            cancelled=not filled,
-            queue_wait_sec=queue_wait,
-            mid_at_fill=mid_at_fill,
-            mid_30s_after=pnl.mid_30s_after,
-            mid_60s_after=pnl.mid_60s_after,
-            mid_120s_after=pnl.mid_120s_after,
-            post_fill_30s_pnl=post_fill_pnl,
-            post_fill_60s_pnl=pnl.post_fill_60s_pnl,
-            post_fill_120s_pnl=post_fill_120s_pnl,
-            adverse_selected=pnl.adverse_selected,
-            adverse_selected_raw=pnl.adverse_selected_raw,
-            cancel_reason=(
-                cancel_reason_poll
-                if cancel_reason_poll
-                else (
-                    "timeout"
-                    if (not filled and queue_wait >= (effective_timeout or self.config.order_timeout_sec))
-                    else ("unknown" if not filled else None)
-                )
+        payload: dict[str, object] = {
+            "cycle_id": cycle_id,
+            "timestamp": t_submit,
+            "side": side,
+            "order_price": order_price,
+            "order_quantity": order_lot,
+            "fill_price": fill_price,
+            "filled": filled,
+            "cancelled": not filled,
+            "queue_wait_sec": queue_wait,
+            "mid_at_fill": mid_at_fill,
+            "mid_30s_after": pnl.mid_30s_after,
+            "mid_60s_after": pnl.mid_60s_after,
+            "mid_120s_after": pnl.mid_120s_after,
+            "post_fill_30s_pnl": post_fill_pnl,
+            "post_fill_60s_pnl": pnl.post_fill_60s_pnl,
+            "post_fill_120s_pnl": post_fill_120s_pnl,
+            "adverse_selected": pnl.adverse_selected,
+            "adverse_selected_raw": pnl.adverse_selected_raw,
+            "cancel_reason": self._resolve_fill_cancel_reason(
+                filled=filled,
+                queue_wait=queue_wait,
+                cancel_reason_poll=cancel_reason_poll,
+                effective_timeout=effective_timeout,
             ),
-            run_id=self._run_id,
-            git_sha=self._git_sha,
-            spread_at_order=spread_at_order,
-            spread_offset_ratio=effective_offset_ratio,
-            regime=regime_str,
-            regime_confidence=regime_conf,
-            regime_stability=regime_stab,
-            regime_trend_pct=regime_trend_pct,
-            regime_volatility_ratio=regime_vol_ratio,
-            orderbook_imbalance=self._maker_price._last_imbalance,
-            bid_depth_total=self._maker_price._last_bid_depth,
-            ask_depth_total=self._maker_price._last_ask_depth,
-            mid_price_trend_5s=self._maker_price._last_mid_trend_bps,
-            spread_bps=(
-                (spread_at_order / mid_at_fill * self._BPS_FACTOR)
-                if spread_at_order is not None and mid_at_fill is not None and mid_at_fill > 0
-                else None
+            "run_id": self._run_id,
+            "git_sha": self._git_sha,
+            "spread_at_order": spread_at_order,
+            "spread_offset_ratio": effective_offset_ratio,
+            "regime": regime_str,
+            "regime_confidence": regime_conf,
+            "regime_stability": regime_stab,
+            "regime_trend_pct": regime_trend_pct,
+            "regime_volatility_ratio": regime_vol_ratio,
+            "orderbook_imbalance": self._maker_price._last_imbalance,
+            "bid_depth_total": self._maker_price._last_bid_depth,
+            "ask_depth_total": self._maker_price._last_ask_depth,
+            "mid_price_trend_5s": self._maker_price._last_mid_trend_bps,
+            "spread_bps": self._compute_fill_spread_bps(
+                spread_at_order=spread_at_order,
+                mid_at_fill=mid_at_fill,
             ),
-            effective_offset_used=effective_offset_ratio,
-            skip_gate_skipped=sg_skipped,
-            skip_gate_score=sg_score,
-            skip_gate_reason=sg_reason,
-            skip_gate_model_used=sg_model_used,
-            skip_gate_as_prob=sg_as_prob,
-            skip_gate_threshold_used=sg_threshold_used,
-            skip_gate_hour_offset=sg_hour_offset,
-            reprice_count=reprice_count,
-            reprice_drift_bps=reprice_drift_bps if reprice_count > 0 else None,
-            actual_measurement_sec=pnl.actual_measurement_sec if filled else None,
-            early_exit_triggered=pnl.early_exit_triggered if filled else None,
-            pnl_at_exit_bps=pnl.pnl_at_exit_bps if filled else None,
-            ffd_boost_active=self._fast_fill_defense.is_boost_active(side),
-            vg_triggered=self._maker_price.last_vg_triggered,
-            vg_velocity_bps=self._maker_price.last_vg_velocity_bps,
-            vg_vpin=self._maker_price.last_vg_vpin,
-            vg_boost_factor=self._maker_price.last_vg_boost_factor,
-            price_velocity_60s=sg_velocity_60s,
-            balance_forced_switch=balance_forced_switch or None,
-            confidence_lot_factor=confidence_factor if self.config.enable_confidence_lot else None,
-            order_lot_regime=regime_lot,
-            order_lot_effective=order_lot,
-            confidence_lot_mode=self.config.confidence_lot_mode if self.config.enable_confidence_lot else None,
-            ab_test_variant=self.config.ab_test_variant or None,
-            cancel_failed_likely_filled=cancel_failed_likely_filled or None,
-            ev_weighted_pnl=self._compute_ev_weighted(
-                post_fill_pnl, post_fill_120s_pnl,
+            "effective_offset_used": effective_offset_ratio,
+            "skip_gate_skipped": sg_skipped,
+            "skip_gate_score": sg_score,
+            "skip_gate_reason": sg_reason,
+            "skip_gate_model_used": sg_model_used,
+            "skip_gate_as_prob": sg_as_prob,
+            "skip_gate_threshold_used": sg_threshold_used,
+            "skip_gate_hour_offset": sg_hour_offset,
+            "reprice_count": reprice_count,
+            "reprice_drift_bps": reprice_drift_bps if reprice_count > 0 else None,
+            "actual_measurement_sec": pnl.actual_measurement_sec if filled else None,
+            "early_exit_triggered": pnl.early_exit_triggered if filled else None,
+            "pnl_at_exit_bps": pnl.pnl_at_exit_bps if filled else None,
+            "ffd_boost_active": self._fast_fill_defense.is_boost_active(side),
+            "vg_triggered": self._maker_price.last_vg_triggered,
+            "vg_velocity_bps": self._maker_price.last_vg_velocity_bps,
+            "vg_vpin": self._maker_price.last_vg_vpin,
+            "vg_boost_factor": self._maker_price.last_vg_boost_factor,
+            "price_velocity_60s": sg_velocity_60s,
+            "balance_forced_switch": balance_forced_switch or None,
+            "confidence_lot_factor": (
+                confidence_factor if self.config.enable_confidence_lot else None
+            ),
+            "order_lot_regime": regime_lot,
+            "order_lot_effective": order_lot,
+            "confidence_lot_mode": (
+                self.config.confidence_lot_mode if self.config.enable_confidence_lot else None
+            ),
+            "ab_test_variant": self.config.ab_test_variant or None,
+            "cancel_failed_likely_filled": cancel_failed_likely_filled or None,
+            "ev_weighted_pnl": self._compute_ev_weighted(
+                post_fill_pnl,
+                post_fill_120s_pnl,
                 w30=self._cycle_strategy.policy.ev_weighted_w30,
                 w120=self._cycle_strategy.policy.ev_weighted_w120,
             ) if hasattr(self, "_cycle_strategy") else self._compute_ev_weighted(
-                post_fill_pnl, post_fill_120s_pnl
+                post_fill_pnl,
+                post_fill_120s_pnl,
             ),
-            gated_regime=(
+            "gated_regime": (
                 self._cycle_strategy.gated_regime(regime_str, regime_conf)
                 if hasattr(self, "_cycle_strategy") and regime_str is not None
                 else None
             ),
-            effective_cycle_interval=(
+            "effective_cycle_interval": (
                 self._cycle_strategy.effective_interval(regime_str)
                 if hasattr(self, "_cycle_strategy")
                 else None
             ),
-            macro_trend=macro_trend,
-            macro_slope_5m=macro_slope_5m,
-            macro_slope_15m=macro_slope_15m,
-            macro_aligned=macro_aligned,
-        )
+            "macro_trend": macro_trend,
+            "macro_slope_5m": macro_slope_5m,
+            "macro_slope_15m": macro_slope_15m,
+            "macro_aligned": macro_aligned,
+        }
+        return build_fill_record(**payload)
 
     async def _measure_post_fill_pnl(
         self,
@@ -407,7 +437,17 @@ class FillCycleExecutorMixin:
         _wait_override: float | None = None
         if hasattr(self, "_cycle_strategy"):
             _regime = self._current_regime_value() if hasattr(self, "_current_regime_value") else None
-            _wait_override = self._cycle_strategy.effective_post_fill_wait(side, _regime)
+            # 200# G: vol_ratio 動的 wait スケーリング
+            _vol_ratio: float | None = None
+            if (
+                hasattr(self, "_regime_detector")
+                and self._regime_detector is not None
+                and hasattr(self._regime_detector, "last_volatility_ratio")
+            ):
+                _vol_ratio = self._regime_detector.last_volatility_ratio
+            _wait_override = self._cycle_strategy.effective_post_fill_wait(
+                side, _regime, vol_ratio=_vol_ratio,
+            )
         pnl = await self._pnl_measurer.measure(
             filled=filled,
             fill_price=fill_price,
@@ -629,6 +669,7 @@ class FillCycleExecutorMixin:
 
         # 193#: ev_weighted → offset 価格調整
         # SkipGate PASS 後に ev_score を使って order_price を post-hoc 調整
+        # 200# M: DRY — compute_ev_offset_multiplier に共通化 + warning zone
         _ev_offset_applied = False
         if (
             sg.ev_score is not None
@@ -637,12 +678,16 @@ class FillCycleExecutorMixin:
             and spread_at_order > 0
             and order_price > 0
         ):
+            from scripts.v460.lib.fill_config import compute_ev_offset_multiplier
             _ev_s = sg.ev_score
-            _sens = self.config.skip_gate_ev_offset_sensitivity
-            _min_m = self.config.skip_gate_ev_offset_min_mult
-            _max_m = self.config.skip_gate_ev_offset_max_mult
-            _raw_mult = 1.0 + _sens * _ev_s
-            _ev_mult = max(_min_m, min(_max_m, _raw_mult))
+            _ev_mult = compute_ev_offset_multiplier(
+                ev_score=_ev_s,
+                sensitivity=self.config.skip_gate_ev_offset_sensitivity,
+                min_mult=self.config.skip_gate_ev_offset_min_mult,
+                max_mult=self.config.skip_gate_ev_offset_max_mult,
+                warning_threshold=self.config.skip_gate_ev_warning_threshold,
+                warning_factor=self.config.skip_gate_ev_warning_offset_factor,
+            )
             order_price, effective_offset_ratio, _applied_mult, _delta = self._apply_offset_multiplier(
                 side=side,
                 order_price=order_price,
@@ -718,24 +763,23 @@ class FillCycleExecutorMixin:
                 try:
                     _pre_ob = await self.adapter.get_orderbook(self.config.symbol, depth=1)
                     if _pre_ob and _pre_ob.bids and _pre_ob.asks:
-                        from scripts.v460.lib.ob_utils import best_bid_ask
                         _pre_best_bid, _pre_best_ask = best_bid_ask(_pre_ob)
-                        # buy の指値が best_ask 以上 → テイカー側
+                        # 200# B/I: crossing → skip (snap は offset pipeline を無効化する)
+                        # Gemini 推奨: offset 全計算を無駄にする snap を止め、サイクルスキップで再計算を待つ
                         if side == "buy" and order_price >= _pre_best_ask:
-                            _safe_price = _pre_best_bid
-                            logger.info(
-                                f"[postonly_guard] 130# buy price {order_price:.0f} >= best_ask "
-                                f"{_pre_best_ask:.0f}, adjusted to best_bid {_safe_price:.0f}"
+                            logger.warning(
+                                f"[postonly_guard] 200# buy price {order_price:.0f} >= best_ask "
+                                f"{_pre_best_ask:.0f} → skip cycle (offset pipeline nullified)"
                             )
-                            order_price = _safe_price
-                        # sell の指値が best_bid 以下 → テイカー側
+                            cancel_reason = CR.POSTONLY_CROSSING_SKIP
+                            break
                         elif side == "sell" and order_price <= _pre_best_bid:
-                            _safe_price = _pre_best_ask
-                            logger.info(
-                                f"[postonly_guard] 130# sell price {order_price:.0f} <= best_bid "
-                                f"{_pre_best_bid:.0f}, adjusted to best_ask {_safe_price:.0f}"
+                            logger.warning(
+                                f"[postonly_guard] 200# sell price {order_price:.0f} <= best_bid "
+                                f"{_pre_best_bid:.0f} → skip cycle (offset pipeline nullified)"
                             )
-                            order_price = _safe_price
+                            cancel_reason = CR.POSTONLY_CROSSING_SKIP
+                            break
                 except Exception as _pre_e:
                     logger.debug(f"[postonly_guard] Pre-check failed (non-fatal): {_pre_e}")
 
@@ -804,9 +848,13 @@ class FillCycleExecutorMixin:
                         pass  # 板取得失敗時は前回価格でリトライ
 
         if order is None:
-            logger.error(f"All order attempts failed: {last_error}")
-            # 113# resilience: API 失敗を CircuitBreaker に記録
-            await self._circuit_breaker.async_on_failure()
+            # 200# B/I: postonly crossing は意図的 skip — circuit_breaker に通知しない
+            if cancel_reason != CR.POSTONLY_CROSSING_SKIP:
+                logger.error(f"All order attempts failed: {last_error}")
+                # 113# resilience: API 失敗を CircuitBreaker に記録
+                await self._circuit_breaker.async_on_failure()
+            else:
+                logger.info("[postonly_guard] 200# crossing → cycle skipped (no CB penalty)")
             return self._make_cycle_skip_record(
                 timestamp=t_submit,
                 side=side,

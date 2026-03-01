@@ -340,21 +340,15 @@ class OrderMonitor:
                 logger.warning(f"Poll error: {e}")
 
             # --- 094# stale order 検出 & cancel-replace ---
-            _stale_check_sec = (
-                (cfg.stale_check_after_sec_buy if side == "buy" else cfg.stale_check_after_sec_sell)
-                if (cfg.stale_check_after_sec_buy if side == "buy" else cfg.stale_check_after_sec_sell) is not None
-                else cfg.stale_check_after_sec
-            )
-            _stale_drift = (
-                (cfg.stale_drift_bps_buy if side == "buy" else cfg.stale_drift_bps_sell)
-                if (cfg.stale_drift_bps_buy if side == "buy" else cfg.stale_drift_bps_sell) is not None
-                else cfg.stale_drift_bps
-            )
-            _stale_max_rp_base = (
-                (cfg.stale_max_reprice_buy if side == "buy" else cfg.stale_max_reprice_sell)
-                if (cfg.stale_max_reprice_buy if side == "buy" else cfg.stale_max_reprice_sell) is not None
-                else cfg.stale_max_reprice
-            )
+            # 200# 10-B: 冗長 ternary 解消 — side 別値を先に解決
+            _side_check_sec = cfg.stale_check_after_sec_buy if side == "buy" else cfg.stale_check_after_sec_sell
+            _stale_check_sec = _side_check_sec if _side_check_sec is not None else cfg.stale_check_after_sec
+
+            _side_drift = cfg.stale_drift_bps_buy if side == "buy" else cfg.stale_drift_bps_sell
+            _stale_drift = _side_drift if _side_drift is not None else cfg.stale_drift_bps
+
+            _side_max_rp = cfg.stale_max_reprice_buy if side == "buy" else cfg.stale_max_reprice_sell
+            _stale_max_rp_base = _side_max_rp if _side_max_rp is not None else cfg.stale_max_reprice
             # 179# Chase: trending 時は低い drift 閾値 & 高い reprice 上限を適用
             if chase_drift_bps_override is not None:
                 _stale_drift = chase_drift_bps_override

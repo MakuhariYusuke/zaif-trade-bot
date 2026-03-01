@@ -118,20 +118,38 @@ class DefaultCycleStrategy:
             return self._base_interval
         return self._policy.cycle_intervals.get(regime, self._base_interval)
 
-    def effective_post_fill_wait(self, side: str, regime: str | None) -> float:
-        """D: regime × side 別 post-fill wait (182# confidence gating 内包)."""
+    def effective_post_fill_wait(
+        self, side: str, regime: str | None, *, vol_ratio: float | None = None,
+    ) -> float:
+        """D: regime × side 別 post-fill wait (182# confidence gating 内包).
+
+        200# G: vol_ratio による動的スケーリング:
+        - 低 vol (< 1.0): wait 延長 (利益確定に時間が必要)
+        - 高 vol (> 1.0): wait 短縮 (素早い判断が必要)
+        - vol_ratio=None: 従来通り固定値
+        """
         if not self._policy.dynamic_wait_enabled or self._check_fallback():
-            return self._base_wait_sell if side == "sell" else self._base_wait_buy
-        regime = self.gated_regime(regime)
-        if regime is None:
-            return self._base_wait_sell if side == "sell" else self._base_wait_buy
-        regime_waits = self._policy.post_fill_wait.get(regime)
-        if regime_waits is None:
-            return self._base_wait_sell if side == "sell" else self._base_wait_buy
-        return regime_waits.get(
-            side,
-            self._base_wait_sell if side == "sell" else self._base_wait_buy,
-        )
+            base = self._base_wait_sell if side == "sell" else self._base_wait_buy
+        else:
+            regime = self.gated_regime(regime)
+            if regime is None:
+                base = self._base_wait_sell if side == "sell" else self._base_wait_buy
+            else:
+                regime_waits = self._policy.post_fill_wait.get(regime)
+                if regime_waits is None:
+                    base = self._base_wait_sell if side == "sell" else self._base_wait_buy
+                else:
+                    base = regime_waits.get(
+                        side,
+                        self._base_wait_sell if side == "sell" else self._base_wait_buy,
+                    )
+        # 200# G: volatility-scaled wait (opt-in: vol_ratio が渡された場合のみ)
+        if vol_ratio is not None and vol_ratio > 0:
+            # vol_ratio=0.5 → wait ×1.3, vol_ratio=1.5 → wait ×0.85
+            # 上下限: 0.7x ~ 1.5x で暴走防止
+            _vol_scale = max(0.7, min(1.5, 1.0 / vol_ratio ** 0.3))
+            return base * _vol_scale
+        return base
 
     def is_chase_enabled(self, regime: str | None, side: str | None = None) -> bool:
         """Chase: trending 系 regime 限定で有効 (187# 方向制限追加).

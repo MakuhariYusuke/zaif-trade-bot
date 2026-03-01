@@ -422,16 +422,37 @@ class FillLoopOrchestratorMixin:
         logger.info(f"Starting fill test: {hours}h, interval={self.config.cycle_interval_sec}s")
 
         while time.time() < end_time and not self._kill_switch.is_killed():
+            # 200# 10-A: 日替わり時に soft_drawdown_interval_multiplier をリセット
+            # P0-2 で追加した multiplier が日次境界で reset されないバグの修正
+            if self._daily_drawdown_guard.maybe_reset_day():
+                _old_mult = getattr(self, "_soft_drawdown_interval_multiplier", 1.0)
+                if _old_mult != 1.0:
+                    logger.info(
+                        f"[daily_drawdown] Day reset → soft_drawdown_interval_multiplier "
+                        f"{_old_mult:.1f} → 1.0"
+                    )
+                    self._soft_drawdown_interval_multiplier = 1.0
+
             # 168# §4.1 #3: 日次ドローダウンガード — halt 中はスキップ
             if self._daily_drawdown_guard.is_halted():
                 # 日次 PnL 超過 → UTC 日替わりまでスキップ
-                batch.append(self._make_loop_skip_record(
-                    side="none",
-                    cancel_reason=CR.DAILY_DRAWDOWN_HALT,
-                    order_quantity=0.0,
-                ))
-                total_count += 1
-                batch = self._batch_persistence.maybe_flush(batch, "daily_drawdown_halt")
+                # 200# K: halt record 削減 — 開始/終了 + N回毎のみ記録
+                _halt_cycle = getattr(self, "_halt_start_cycle", None)
+                if _halt_cycle is None:
+                    self._halt_start_cycle = self._cycle_count
+                _halt_elapsed = self._cycle_count - getattr(self, "_halt_start_cycle", self._cycle_count)
+                _should_record_halt = (
+                    _halt_elapsed == 0  # 開始時
+                    or _halt_elapsed % max(1, self.config.progress_log_interval) == 0  # N回毎
+                )
+                if _should_record_halt:
+                    batch.append(self._make_loop_skip_record(
+                        side="none",
+                        cancel_reason=CR.DAILY_DRAWDOWN_HALT,
+                        order_quantity=0.0,
+                    ))
+                    total_count += 1
+                    batch = self._batch_persistence.maybe_flush(batch, "daily_drawdown_halt")
                 self._update_lock_heartbeat()
                 # 200# P0-3: HALT 中も state を定期保存 (外部監視で HALT 状態を識別可能に)
                 if self._cycle_count % self.config.progress_log_interval == 0:
@@ -451,6 +472,14 @@ class FillLoopOrchestratorMixin:
                     ))
                 await self._effective_sleep(multiplier=5.0)  # 179# S1: halt 中は 5x 間隔
                 continue
+
+            # 200# K: halt 終了時の記録 (前サイクルが halt だった場合)
+            if getattr(self, "_halt_start_cycle", None) is not None:
+                _halt_duration = self._cycle_count - self._halt_start_cycle
+                logger.info(
+                    f"[daily_drawdown] Halt ended after {_halt_duration} cycles"
+                )
+                self._halt_start_cycle = None
 
             # 129# D.2: 残高制約による side 強制切替追跡
             _balance_forced = False
@@ -596,6 +625,21 @@ class FillLoopOrchestratorMixin:
                     self._preflight_skip_count = 0
                     tried_opposite = True
                     _balance_forced = True  # 129# D.2
+                    # 200# E: 時間ベース頻度検出 — 短時間で連続 balance_forced が発生 → 警告
+                    _now = time.time()
+                    _last_bf_time = getattr(self, "_last_balance_forced_time", 0.0)
+                    _bf_cooldown = self.config.balance_forced_cooldown_sec
+                    if _bf_cooldown > 0 and (_now - _last_bf_time) < _bf_cooldown:
+                        _bf_freq_count = getattr(self, "_balance_forced_freq_count", 0) + 1
+                        self._balance_forced_freq_count = _bf_freq_count
+                        logger.warning(
+                            f"[200# E] balance_forced high frequency: "
+                            f"{_bf_freq_count} events within {_bf_cooldown:.0f}s "
+                            f"(interval={_now - _last_bf_time:.1f}s)"
+                        )
+                    else:
+                        self._balance_forced_freq_count = 0
+                    self._last_balance_forced_time = _now
 
                 if not tried_opposite:
                     # 両 side とも残高不足 → 従来通りの処理
@@ -740,8 +784,8 @@ class FillLoopOrchestratorMixin:
                     # 両方残高 OK → 従来通りスキップ (forced switch は損失回避のため)
                     self._balance_forced_skip_count += 1
                     logger.info(
-                        f"[133# P0-08] Skipping cycle — balance_forced_switch=True "
-                        f"(avg -1.98bps loss). side={next_side}, "
+                        f"[133# P0-08] Skipping cycle — balance_forced_switch=True. "
+                        f"side={next_side}, "
                         f"consecutive={self._balance_forced_skip_count}"
                     )
                     # 145# §9-#5: _make_skip_record DRY 化
@@ -902,8 +946,8 @@ class FillLoopOrchestratorMixin:
                                 f"{old_lot:.4f} → {self._current_lot:.4f} BTC"
                             )
                         else:
-                            # 200# P0-2: 最小ロット到達 → interval 3倍で exposure 削減
-                            self._soft_drawdown_interval_multiplier = 3.0
+                            # 200# P0-2: 最小ロット到達 → interval 延長で exposure 削減
+                            self._soft_drawdown_interval_multiplier = self.config.soft_drawdown_interval_multiplier
                             logger.warning(
                                 f"[daily_drawdown] min lot reached ({old_lot:.4f} BTC), "
                                 f"applying 3x interval multiplier instead of lot reduction"

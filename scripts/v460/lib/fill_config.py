@@ -128,8 +128,11 @@ class FillTestConfig:
     # 168# §9.10: 低ボラティリティ offset boost (time_filter 根本対策)
     # vol_ratio < threshold 時に offset を拡大し、低ボラ環境での過剰アグレッシブ発注を抑制
     low_vol_offset_boost_enabled: bool = False
-    low_vol_offset_boost: float = 1.4   # 低 vol 時の offset 倍率
+    low_vol_offset_boost: float = 1.4   # 低 vol 時の offset 倍率 (最大値 / 固定値)
     low_vol_threshold: float = 0.75     # vol_ratio がこの値未満で発動 (168# 0.70→0.75: order/fill遅延マージン)
+    # 200# C: 低ボラ boost 比例モード (vol_ratio に応じた段階的 boost)
+    low_vol_boost_proportional: bool = False  # True=比例スケーリング, False=固定 boost
+    low_vol_boost_min: float = 1.0             # 比例モード時の最小 boost (vol_ratio=threshold でこの値)
     # 169# B1': ranging_buy at low_vol ハードスキップ (Gemini 10.2-D「休むも相場」)
     # ranging レジーム + buy + vol_ratio < low_vol_threshold → 完全スキップ
     # ranging_buy が全損失の 69% を占める根本対策。offset 調整より clean
@@ -161,6 +164,8 @@ class FillTestConfig:
     daily_drawdown_enabled: bool = False        # True で日次 PnL 監視有効
     daily_drawdown_hard_limit_bps: float = -50.0  # この bps 以下でサイクル停止
     daily_drawdown_soft_limit_bps: float = -30.0  # この bps 以下でロット半減
+    # 200# 10-A/10-E: soft ドローダウン時の interval 乗数 (YAML 外部化)
+    soft_drawdown_interval_multiplier: float = 3.0
     # 049# E3 サンプリング: 全約定ではなくサンプリングで multi-timeframe 計測
     e3_sampling_ratio: float = 1.0  # 0.0-1.0, 1.0=全約定, 0.33=1/3 のみ
     # 049# side 別 offset: buy/sell で独立に offset を設定
@@ -231,6 +236,10 @@ class FillTestConfig:
     skip_gate_ev_offset_max_mult: float = 1.5
     # 緊急スキップ: ev_score がこの値未満なら依然ハードスキップ
     skip_gate_ev_emergency_skip_threshold: float = -8.0
+    # 200# M: ev warning zone — emergency と通常の間の中間段階
+    # warning zone: emergency < ev_score < warning → offset を追加縮小
+    skip_gate_ev_warning_threshold: float = -4.0  # この値未満で warning zone 発動
+    skip_gate_ev_warning_offset_factor: float = 0.7  # warning zone での追加 offset 乗数
     skip_gate_as_threshold: float = 0.52   # 100# AS 確率スキップ閾値 (0.65→0.52)
     skip_gate_pnl_threshold: float = 0.0   # PnL 予測スキップ閾値 (mode=pnl)
     skip_gate_max_skip_rate: float = 0.3   # 連続スキップ率上限 (安全弁)
@@ -329,6 +338,8 @@ class FillTestConfig:
     # 158# P1-1: balance_forced 救済モード — offset 倍増で安全にポジション解消
     balance_forced_rescue_enabled: bool = False    # True で rescue モード有効 (skip の代わりに高 offset で実行)
     balance_forced_rescue_offset_mult: float = 2.0  # rescue 時の offset 倍率 (2.0 = 通常の 2 倍)
+    # 200# E: balance_forced 時間ベースクールダウン (短時間連発検出)
+    balance_forced_cooldown_sec: float = 0.0  # 0.0=無効, >0 で時間ベース検出
     # ---- 133# P0-09: unknown レジームでの buy スキップ ----
     skip_buy_unknown_regime: bool = False  # True で unknown レジーム時 buy もスキップ (-1.384bps)
     # ---- 155# §9: trending レジームでの sell 抑制 ----
@@ -649,6 +660,9 @@ class FillTestConfig:
             "ev_offset_min_mult": "skip_gate_ev_offset_min_mult",
             "ev_offset_max_mult": "skip_gate_ev_offset_max_mult",
             "ev_emergency_skip_threshold": "skip_gate_ev_emergency_skip_threshold",
+            # 200# M: ev warning zone
+            "ev_warning_threshold": "skip_gate_ev_warning_threshold",
+            "ev_warning_offset_factor": "skip_gate_ev_warning_offset_factor",
             "as_threshold": "skip_gate_as_threshold",
             "pnl_threshold": "skip_gate_pnl_threshold",
             "max_skip_rate": "skip_gate_max_skip_rate",
@@ -875,6 +889,9 @@ class FillTestConfig:
             kwargs["daily_drawdown_hard_limit_bps"] = float(dd_guard["hard_limit_bps"])
         if "soft_limit_bps" in dd_guard:
             kwargs["daily_drawdown_soft_limit_bps"] = float(dd_guard["soft_limit_bps"])
+        # 200# 10-A/10-E: soft_drawdown_interval_multiplier YAML 外部化
+        if "soft_drawdown_interval_multiplier" in dd_guard:
+            kwargs["soft_drawdown_interval_multiplier"] = float(dd_guard["soft_drawdown_interval_multiplier"])
 
         return kwargs
 
@@ -1061,6 +1078,9 @@ class FillTestConfig:
             "low_vol_offset_boost_enabled": "low_vol_offset_boost_enabled", # 168#
             "low_vol_offset_boost": "low_vol_offset_boost",               # 168#
             "low_vol_threshold": "low_vol_threshold",                     # 168#
+            # 200# C: low_vol proportional boost
+            "low_vol_boost_proportional": "low_vol_boost_proportional",
+            "low_vol_boost_min": "low_vol_boost_min",
             "skip_ranging_buy_low_vol": "skip_ranging_buy_low_vol",       # 169# B1'
             "ranging_buy_low_vol_as_offset": "ranging_buy_low_vol_as_offset", # 195# B1' ソフト化
         }
@@ -1214,3 +1234,36 @@ class PnlMeasurement:
     early_exit_triggered: bool = False
     # 120# A4-2: EE 発動時の中断時点 PnL (post_fill_pnl は常に固定30s)
     pnl_at_exit_bps: Optional[float] = None
+
+
+# ======================================================================
+# 200# M: ev_offset 計算ユーティリティ (DRY — executor と evaluator で共通使用)
+# ======================================================================
+def compute_ev_offset_multiplier(
+    *,
+    ev_score: float,
+    sensitivity: float,
+    min_mult: float,
+    max_mult: float,
+    warning_threshold: float = -4.0,
+    warning_factor: float = 1.0,
+) -> float:
+    """ev_score → offset 乗数の共通計算.
+
+    Args:
+        ev_score: EV スコア (正=有利, 負=不利)
+        sensitivity: ev_score → mult 感度 (mult = 1.0 + sensitivity × ev_score)
+        min_mult, max_mult: クランプ範囲
+        warning_threshold: この値未満で warning zone (追加保守化)
+        warning_factor: warning zone での追加乗数 (< 1.0 で保守的)
+
+    Returns:
+        クランプ済み offset 乗数
+    """
+    raw = 1.0 + sensitivity * ev_score
+    mult = max(min_mult, min(max_mult, raw))
+    # 200# M: warning zone — emergency ではないが低 EV → 追加保守化
+    if warning_factor != 1.0 and ev_score < warning_threshold:
+        mult *= warning_factor
+        mult = max(min_mult, min(max_mult, mult))
+    return mult

@@ -159,6 +159,7 @@ class TestCancelReasons:
             CR.SKIP_GATE,                      # 174#
             CR.SKIP_GATE_RULE_VELOCITY_SELL,   # 174#
             CR.SKIP_GATE_RULE_VELOCITY_BUY,    # 174#
+            CR.POSTONLY_CROSSING_SKIP,          # 200# B/I
         }
         assert CR.AUDIT_CANCEL_REASONS == expected
 
@@ -565,6 +566,19 @@ class TestSkipGateLotConsistency:
         assert "order_lot=_regime_lot" in source, (
             "SkipGate call should pass pre-computed _regime_lot (151# §10 #4)"
         )
+
+
+class TestFillRecordBuilderIntegration:
+    """FillRecord 組み立てが共通 builder に寄っていることを確認."""
+
+    def test_build_fill_record_is_used(self) -> None:
+        import inspect
+        from scripts.v460.run_fill_test import FillTestRunner
+
+        source = inspect.getsource(FillTestRunner._build_fill_record)
+        assert "build_fill_record(" in source
+        assert "_resolve_fill_cancel_reason(" in source
+        assert "_compute_fill_spread_bps(" in source
 
 
 class TestCheckBalanceAcceptsRegimeMult:
