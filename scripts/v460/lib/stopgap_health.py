@@ -25,6 +25,7 @@ from ztb.io.json_io import JSONObject
 from ztb.metrics.fill_quality import (
     PnlAccumulator,
     apply_fill_record_filters,
+    format_utc_day,
     load_fill_record_objects_glob,
 )
 from ztb.utils.safety import safe_to_finite
@@ -250,13 +251,7 @@ def _filter_window(
 
 def _get_day(r: FillRecord) -> str:
     """YYYYMMDD を抽出."""
-    ts = safe_to_finite(r.get("timestamp"))
-    if ts is None:
-        return "unknown"
-    try:
-        return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y%m%d")
-    except (ValueError, OSError):
-        return "unknown"
+    return format_utc_day(safe_to_finite(r.get("timestamp"))) or "unknown"
 
 
 # ======================================================================

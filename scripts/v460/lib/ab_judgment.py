@@ -16,7 +16,6 @@ import logging
 import math
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from enum import Enum
 from typing import TypedDict
 
@@ -24,6 +23,7 @@ import numpy as np
 
 from scripts.v460.lib.metrics_utils import MetricsAccumulator, compute_base_metrics
 from ztb.io.json_io import JSONObject
+from ztb.metrics.fill_quality import format_utc_day
 from ztb.utils.dataclass_utils import filter_known_dataclass_fields
 from ztb.utils.safety import safe_to_finite
 
@@ -561,12 +561,8 @@ def evaluate_trending_down_sell(
         if not record.get("filled"):
             continue
 
-        ts = safe_to_finite(record.get("timestamp"))
-        if ts is None:
-            continue
-        try:
-            day = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y%m%d")
-        except (ValueError, OSError):
+        day = format_utc_day(safe_to_finite(record.get("timestamp")))
+        if day is None:
             continue
         daily_groups[day].add(record)
 

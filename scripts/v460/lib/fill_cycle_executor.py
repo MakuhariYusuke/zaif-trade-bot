@@ -15,7 +15,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, cast
 
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fill_config import (
@@ -1020,10 +1020,11 @@ class FillCycleExecutorMixin:
                 spread_offset_ratio=effective_offset_ratio,  # 096# 計算済み実効値
                 error_message=last_error,  # 031# エラー詳細を記録
             )
-        if not isinstance(order, OrderLike):
+        if not isinstance(getattr(order, "order_id", None), str):
             raise TypeError(
                 f"adapter.place_order returned non-OrderLike: {type(order).__name__}"
             )
+        order = cast("OrderLike", order)
 
         # 113# R1: ポーリング監視 + 未約定キャンセルを _monitor_fill_polling() に委譲
         monitor = await self._monitor_fill_polling(

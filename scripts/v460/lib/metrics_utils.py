@@ -7,13 +7,12 @@ ab_judgment._compute_metrics と side_regime_dashboard._compute_side_metrics の
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import TypedDict
 
 import numpy as np
 
 from ztb.io.json_io import JSONObject
-from ztb.metrics.fill_quality import PnlAccumulator, PnlWinAccumulator
+from ztb.metrics.fill_quality import PnlAccumulator, PnlWinAccumulator, format_utc_day
 from ztb.utils.safety import safe_to_finite
 
 MetricRecord = JSONObject
@@ -68,13 +67,9 @@ class MetricsAccumulator:
             self.pnl_summary.add(pnl_value)
 
         ts = safe_to_finite(record.get("timestamp"))
-        if ts is not None:
-            try:
-                self.calendar_days.add(
-                    datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y%m%d")
-                )
-            except (ValueError, OSError):
-                pass
+        day_key = format_utc_day(ts)
+        if day_key is not None:
+            self.calendar_days.add(day_key)
 
         if record.get("adverse_selected"):
             self.as_count += 1

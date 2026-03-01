@@ -384,9 +384,37 @@ class PnlWinAccumulator:
         return self.positive_count / self.pnl.count if self.pnl.count else 0.0
 
 
+@dataclass
+class _DailyFillCount:
+    """日次 fill rate 用の軽量カウンタ."""
+
+    total: int = 0
+    filled: int = 0
+
+    def add(self, *, filled: bool) -> None:
+        self.total += 1
+        if filled:
+            self.filled += 1
+
+
 # ======================================================================
 # Metrics computation
 # ======================================================================
+
+
+def format_utc_day(timestamp: object, *, compact: bool = True) -> str | None:
+    """epoch 秒を UTC 日付文字列へ変換する."""
+    try:
+        ts = float(timestamp)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(ts):
+        return None
+    try:
+        pattern = "%Y%m%d" if compact else "%Y-%m-%d"
+        return datetime.fromtimestamp(ts, tz=timezone.utc).strftime(pattern)
+    except (OverflowError, OSError, ValueError):
+        return None
 
 
 def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
@@ -401,27 +429,44 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
         return FillMetrics()
 
     total = len(records)
-    filled = [r for r in records if r.filled]
-    cancelled = [r for r in records if r.cancelled]
+    filled: list[FillRecord] = []
+    cancelled_count = 0
+    cancel_reason_breakdown: dict[str, int] = {}
+    skip_gate_count = 0
+    daily_groups: dict[str, _DailyFillCount] = {}
 
-    # --- E1: fill_rate P90 (日別) ---
-    daily_groups: dict[str, list[FillRecord]] = {}
-    for r in records:
-        day_key = datetime.fromtimestamp(r.timestamp, tz=timezone.utc).strftime("%Y-%m-%d")
-        daily_groups.setdefault(day_key, []).append(r)
+    # --- E1 / E2 / cancel reason / attempted 用の前処理 ---
+    for record in records:
+        if record.filled:
+            filled.append(record)
+        if record.cancelled:
+            cancelled_count += 1
+            reason = record.cancel_reason or "unknown"
+            cancel_reason_breakdown[reason] = cancel_reason_breakdown.get(reason, 0) + 1
+        if record.skip_gate_skipped is True or record.cancel_reason == "skip_gate":
+            skip_gate_count += 1
+
+        day_key = format_utc_day(record.timestamp, compact=False)
+        if day_key is None:
+            continue
+        day_stats = daily_groups.get(day_key)
+        if day_stats is None:
+            day_stats = _DailyFillCount()
+            daily_groups[day_key] = day_stats
+        day_stats.add(filled=record.filled)
 
     daily_fill_rates: list[float] = []
-    for _day, day_records in sorted(daily_groups.items()):
-        n_day = len(day_records)
-        n_filled = sum(1 for r in day_records if r.filled)
-        daily_fill_rates.append(n_filled / n_day if n_day > 0 else 0.0)
+    for _day, day_stats in sorted(daily_groups.items()):
+        daily_fill_rates.append(
+            day_stats.filled / day_stats.total if day_stats.total > 0 else 0.0
+        )
 
     fill_rate_p90 = float(np.percentile(daily_fill_rates, 10)) if daily_fill_rates else 0.0
     # NOTE: P90 = "90% of days have fill rate >= this value" = 10th percentile
     # (lower bound of the distribution)
 
     # --- E2: cancel_ratio ---
-    cancel_ratio = len(cancelled) / total if total > 0 else 0.0
+    cancel_ratio = cancelled_count / total if total > 0 else 0.0
 
     # --- E3: queue_wait_median_sec (filled orders only) ---
     wait_times = [r.queue_wait_sec for r in filled if r.queue_wait_sec > 0]
@@ -468,19 +513,7 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
     # 047# Finding3: 3日ではなく 7日を要求 (000# §3.3 準拠)
     sample_sufficient = total >= 200 and len(daily_fill_rates) >= 7
 
-    # --- 117# cancel reason 内訳 (115# Q10.6) ---
-    cancel_reason_breakdown: dict[str, int] = {}
-    for r in cancelled:
-        reason = getattr(r, "cancel_reason", None) or "unknown"
-        cancel_reason_breakdown[reason] = cancel_reason_breakdown.get(reason, 0) + 1
-
     # --- 116# attempted ベース指標 ---
-    skip_gate_records = [
-        r for r in records
-        if getattr(r, "skip_gate_skipped", None) is True
-        or getattr(r, "cancel_reason", None) == "skip_gate"
-    ]
-    skip_gate_count = len(skip_gate_records)
     attempted_orders = total - skip_gate_count
     skip_gate_ratio = skip_gate_count / total if total > 0 else 0.0
     attempted_fill_rate = len(filled) / attempted_orders if attempted_orders > 0 else 0.0
@@ -517,7 +550,7 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
     return FillMetrics(
         total_orders=total,
         filled_orders=len(filled),
-        cancelled_orders=len(cancelled),
+        cancelled_orders=cancelled_count,
         fill_rate_p90=fill_rate_p90,
         cancel_ratio=cancel_ratio,
         queue_wait_median_sec=queue_wait_median,

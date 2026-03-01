@@ -3701,7 +3701,50 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - 結果: `71 passed`
 - `any_inventory`
   - `scripts/v460/lib/ab_judgment.py`: `any_type_debt_tokens=0`
-  - `scripts/v460/lib/results_analyzer.py`: `any_type_debt_tokens=0`
+- `scripts/v460/lib/results_analyzer.py`: `any_type_debt_tokens=0`
+
+### Step148 UTC日付 helper 共通化（ztb.metrics.fill_quality / v460）
+
+1. 変更概要
+- `ztb/metrics/fill_quality.py` に `format_utc_day()` を追加し、epoch 秒から UTC 日付キー (`YYYYMMDD` / `YYYY-MM-DD`) を生成する共通 helper を導入した。
+- `compute_fill_metrics()` は日次 fill rate 集計を `dict[str, list[FillRecord]]` から `_DailyFillCount` に変更し、日次 group ごとのレコード保持を削減した。
+- 同関数の `cancel_reason_breakdown` / `skip_gate_count` も前段 1 パスで同時集計し、`cancelled` / `skip_gate_records` の補助 list を廃止した。
+- `scripts/v460/lib/metrics_utils.py` / `scripts/v460/lib/ab_judgment.py` / `scripts/v460/lib/stopgap_health.py` / `scripts/v460/analysis/side_regime_dashboard.py` / `scripts/v460/lib/batch_persistence.py` は、手書きの `datetime.fromtimestamp(...).strftime("%Y%m%d")` を `format_utc_day()` に統一した。
+- 併せて `scripts/v460/lib/fill_cycle_executor.py` の `OrderLike` runtime check を属性ベース guard に修正し、`NameError` を解消した。
+
+2. 類似実装の確認
+- UTC 日付キー生成は `metrics_utils` / `ab_judgment` / `stopgap_health` / `side_regime_dashboard` / `batch_persistence` に散在していたため、`ztb.metrics` 側へ寄せるのが最も自然だった。
+- `compute_fill_metrics()` の日次 fill rate は「件数だけ欲しいのに日ごとの `FillRecord` 配列を持つ」典型だったため、同時に軽量化した。
+
+3. 目的
+- 日付キー変換の例外処理と書式を 1 箇所に固定し、運用スクリプト間の subtle なズレを防ぐ。
+- fill quality 集計で不要な list 保持を減らし、件数増加時のピークメモリを抑える。
+- テストで顕在化した `OrderLike` の runtime バグを潰し、実運用サイクルの安全性を戻す。
+
+4. 検証
+- `py_compile`
+  - `ztb/metrics/fill_quality.py`
+  - `scripts/v460/lib/metrics_utils.py`
+  - `scripts/v460/lib/ab_judgment.py`
+  - `scripts/v460/lib/stopgap_health.py`
+  - `scripts/v460/analysis/side_regime_dashboard.py`
+  - `scripts/v460/lib/batch_persistence.py`
+  - `scripts/v460/lib/fill_cycle_executor.py`
+- `pytest`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_159_side_regime_dashboard.py`
+  - `tests/unit/v460/test_stopgap_health.py`
+  - `tests/unit/v460/test_160_ab_judgment.py`
+  - `tests/unit/v460/test_169_ranging_buy_skip_and_metrics.py`
+  - 結果: `348 passed`
+- `any_inventory`
+  - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/metrics_utils.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/ab_judgment.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/stopgap_health.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/analysis/side_regime_dashboard.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/batch_persistence.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/fill_cycle_executor.py`: `any_type_debt_tokens=0`
 
 ## 6. 次フェーズ（優先順）
 

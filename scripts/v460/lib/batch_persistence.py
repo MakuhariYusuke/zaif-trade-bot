@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Optional
 
 from ztb.io.common import ensure_parent_dir
-from ztb.metrics.fill_quality import FillRecord, save_fill_records
+from ztb.metrics.fill_quality import FillRecord, format_utc_day, save_fill_records
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +124,7 @@ class BatchPersistence:
         """024# R4: record.timestamp 由来の日付でファイル分割保存."""
         by_date: dict[str, list[FillRecord]] = {}
         for record in batch:
-            day_str = datetime.fromtimestamp(
+            day_str = format_utc_day(record.timestamp) or datetime.fromtimestamp(
                 record.timestamp, tz=timezone.utc
             ).strftime("%Y%m%d")
             by_date.setdefault(day_str, []).append(record)

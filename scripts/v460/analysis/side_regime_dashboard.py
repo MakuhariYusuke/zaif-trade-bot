@@ -27,7 +27,7 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _SCRIPT_DIR.parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
-from ztb.metrics.fill_quality import iter_fill_record_objects_glob
+from ztb.metrics.fill_quality import format_utc_day, iter_fill_record_objects_glob
 
 # 160# P0-B/C: judgment 統合
 from scripts.v460.lib.metrics_utils import (
@@ -177,12 +177,8 @@ def run_dashboard(
         filled_count += 1
         if regime != "trending_down" or side != "sell":
             continue
-        ts_value = safe_to_finite(r.get("timestamp"))
-        if ts_value is None:
-            continue
-        try:
-            day = datetime.fromtimestamp(ts_value, tz=timezone.utc).strftime("%Y%m%d")
-        except (ValueError, OSError):
+        day = format_utc_day(safe_to_finite(r.get("timestamp")))
+        if day is None:
             continue
         td_by_day[day].add(r)
 
