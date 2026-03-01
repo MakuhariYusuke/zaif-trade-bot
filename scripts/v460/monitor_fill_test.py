@@ -27,6 +27,7 @@ from ztb.metrics.fill_quality import (
     FillRecord,
     compute_fill_metrics,
     compute_hourly_metrics,
+    compute_record_pnl_jpy,
     compute_regime_metrics,
     compute_round_trip_metrics,
     iter_fill_records_glob,
@@ -141,11 +142,9 @@ def _check_cumulative_loss(records: list[FillRecord]) -> bool:
     """累積実損チェック (簡易: pnl_bps × quantity × price の概算)."""
     total_loss_jpy = 0.0
     for r in records:
-        if r.filled and r.post_fill_30s_pnl is not None and r.fill_price is not None:
-            # bps → JPY: pnl_bps * 1e-4 * fill_price * quantity
-            pnl_jpy = r.post_fill_30s_pnl * 1e-4 * r.fill_price * r.order_quantity
-            if pnl_jpy < 0:
-                total_loss_jpy += pnl_jpy
+        pnl_jpy = compute_record_pnl_jpy(r)
+        if pnl_jpy is not None and pnl_jpy < 0:
+            total_loss_jpy += pnl_jpy
     return abs(total_loss_jpy) > 10_000
 
 
@@ -327,8 +326,8 @@ def print_report(
         # 累積損益概算
         total_pnl_jpy = 0.0
         for rec in filled_recs:
-            if rec.post_fill_30s_pnl is not None and rec.fill_price is not None:
-                pnl_jpy = rec.post_fill_30s_pnl * 1e-4 * rec.fill_price * rec.order_quantity
+            pnl_jpy = compute_record_pnl_jpy(rec)
+            if pnl_jpy is not None:
                 total_pnl_jpy += pnl_jpy
         print(f"  累積PnL概算: {total_pnl_jpy:+.1f} JPY")
 

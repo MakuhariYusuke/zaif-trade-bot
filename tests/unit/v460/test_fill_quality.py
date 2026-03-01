@@ -106,6 +106,21 @@ class TestFillRecord:
         assert r.cancel_reason == "timeout"
         assert not hasattr(r, "stray_field")
 
+    def test_compute_record_pnl_jpy(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord, compute_record_pnl_jpy
+
+        r = FillRecord(
+            cycle_id="pnl_1",
+            timestamp=1.0,
+            side="buy",
+            order_price=100.0,
+            order_quantity=0.5,
+            fill_price=200.0,
+            filled=True,
+            post_fill_30s_pnl=10.0,
+        )
+        assert compute_record_pnl_jpy(r) == pytest.approx(0.1)
+
     def test_defaults(self) -> None:
         from ztb.metrics.fill_quality import FillRecord
 
@@ -2619,6 +2634,13 @@ class Test051MonitorExtensions:
         assert "iter_fill_records_glob" in source
         assert "clean_records" in source
         assert "quarantine_records" in source
+
+    def test_run_monitor_uses_shared_pnl_helper(self) -> None:
+        import inspect
+        from scripts.v460.monitor_fill_test import _check_cumulative_loss
+
+        source = inspect.getsource(_check_cumulative_loss)
+        assert "compute_record_pnl_jpy" in source
 
     def test_monitor_imports_new_functions(self) -> None:
         """monitor が新しい分析関数をインポート."""

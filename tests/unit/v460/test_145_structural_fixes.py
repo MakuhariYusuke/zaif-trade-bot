@@ -613,8 +613,13 @@ class TestFillRecordBuilderIntegration:
 
         source = inspect.getsource(FillTestRunner._build_fill_record)
         assert "build_fill_record(" in source
-        assert "_resolve_fill_cancel_reason(" in source
-        assert "_compute_fill_spread_bps(" in source
+        assert "_build_fill_measurement_fields(" in source
+        assert "_build_fill_market_fields(" in source
+        assert "_build_fill_strategy_fields(" in source
+        measurement_source = inspect.getsource(FillTestRunner._build_fill_measurement_fields)
+        market_source = inspect.getsource(FillTestRunner._build_fill_market_fields)
+        assert "_resolve_fill_cancel_reason(" in measurement_source
+        assert "_compute_fill_spread_bps(" in market_source
 
 
 class TestCheckBalanceAcceptsRegimeMult:

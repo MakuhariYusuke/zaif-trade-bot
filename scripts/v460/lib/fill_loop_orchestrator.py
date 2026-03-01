@@ -24,7 +24,12 @@ from scripts.v460.lib.event_logger import log_event as _log_event
 from scripts.v460.lib.regime_policy import CycleStrategy
 from scripts.v460.lib.resilience import FillTestState
 from ztb.data.trades_health import check_trades_health
-from ztb.metrics.fill_quality import FillRecord, filter_clean_records, load_fill_records_glob
+from ztb.metrics.fill_quality import (
+    FillRecord,
+    compute_record_pnl_jpy,
+    filter_clean_records,
+    load_fill_records_glob,
+)
 
 if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
@@ -343,10 +348,9 @@ class FillLoopOrchestratorMixin:
         # 033# F4: レジューム時の累積 PnL 計算 (クリーンレコードのみ)
         cumulative_pnl_jpy = 0.0
         for r in clean_records:
-            if r.filled and r.post_fill_30s_pnl is not None and r.fill_price:
-                cumulative_pnl_jpy += (
-                    r.post_fill_30s_pnl / self._BPS_FACTOR * r.fill_price * r.order_quantity
-                )
+            pnl_jpy = compute_record_pnl_jpy(r)
+            if pnl_jpy is not None:
+                cumulative_pnl_jpy += pnl_jpy
 
         # 101# §2: soft_loss_cap_triggered をレジューム復元
         # 前回 run 中に soft cap 発動していた場合、再起動で False に戻ると
@@ -924,11 +928,9 @@ class FillLoopOrchestratorMixin:
                 # 157# §19: buy PnL 追跡 (動的 kill 判定用)
                 self._track_buy_pnl(record)
                 # 033# F4: 累積 PnL インクリメンタル追跡
-                if record.post_fill_30s_pnl is not None and record.fill_price:
-                    cumulative_pnl_jpy += (
-                        record.post_fill_30s_pnl / self._BPS_FACTOR
-                        * record.fill_price * record.order_quantity
-                    )
+                pnl_jpy = compute_record_pnl_jpy(record)
+                if pnl_jpy is not None:
+                    cumulative_pnl_jpy += pnl_jpy
                 # 168# §4.1 #3: 日次ドローダウンガード PnL 更新
                 if record.post_fill_30s_pnl is not None:
                     dd_result = self._daily_drawdown_guard.update_pnl(

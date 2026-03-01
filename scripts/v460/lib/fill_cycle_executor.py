@@ -116,6 +116,156 @@ class FillCycleExecutorMixin:
             return None
         return spread_at_order / mid_at_fill * self._BPS_FACTOR
 
+    def _build_fill_measurement_fields(
+        self,
+        *,
+        fill_price: float | None,
+        filled: bool,
+        queue_wait: float,
+        cancel_reason_poll: str | None,
+        effective_timeout: float | None,
+        pnl: _PnlMeasurement,
+    ) -> dict[str, object]:
+        """FillRecord の約定/計測系フィールドを構築."""
+        return {
+            "fill_price": fill_price,
+            "filled": filled,
+            "cancelled": not filled,
+            "queue_wait_sec": queue_wait,
+            "mid_at_fill": pnl.mid_at_fill,
+            "mid_30s_after": pnl.mid_30s_after,
+            "mid_60s_after": pnl.mid_60s_after,
+            "mid_120s_after": pnl.mid_120s_after,
+            "post_fill_30s_pnl": pnl.post_fill_pnl,
+            "post_fill_60s_pnl": pnl.post_fill_60s_pnl,
+            "post_fill_120s_pnl": pnl.post_fill_120s_pnl,
+            "adverse_selected": pnl.adverse_selected,
+            "adverse_selected_raw": pnl.adverse_selected_raw,
+            "cancel_reason": self._resolve_fill_cancel_reason(
+                filled=filled,
+                queue_wait=queue_wait,
+                cancel_reason_poll=cancel_reason_poll,
+                effective_timeout=effective_timeout,
+            ),
+            "actual_measurement_sec": pnl.actual_measurement_sec if filled else None,
+            "early_exit_triggered": pnl.early_exit_triggered if filled else None,
+            "pnl_at_exit_bps": pnl.pnl_at_exit_bps if filled else None,
+        }
+
+    def _build_fill_market_fields(
+        self,
+        *,
+        side: str,
+        spread_at_order: float | None,
+        effective_offset_ratio: float,
+        reprice_count: int,
+        reprice_drift_bps: float | None,
+        sg_skipped: bool,
+        sg_score: float,
+        sg_reason: str,
+        sg_model_used: str,
+        sg_as_prob: float | None,
+        sg_threshold_used: float | None,
+        sg_hour_offset: float | None,
+        sg_velocity_60s: float | None,
+        regime_str: str | None,
+        regime_conf: float | None,
+        regime_stab: int | None,
+        regime_trend_pct: float | None,
+        regime_vol_ratio: float | None,
+        balance_forced_switch: bool,
+        confidence_factor: float,
+        regime_lot: float,
+        order_lot: float,
+        cancel_failed_likely_filled: bool,
+        mid_at_fill: float | None,
+    ) -> dict[str, object]:
+        """FillRecord の市場観測/実行メタ系フィールドを構築."""
+        return {
+            "spread_at_order": spread_at_order,
+            "spread_offset_ratio": effective_offset_ratio,
+            "regime": regime_str,
+            "regime_confidence": regime_conf,
+            "regime_stability": regime_stab,
+            "regime_trend_pct": regime_trend_pct,
+            "regime_volatility_ratio": regime_vol_ratio,
+            "orderbook_imbalance": self._maker_price._last_imbalance,
+            "bid_depth_total": self._maker_price._last_bid_depth,
+            "ask_depth_total": self._maker_price._last_ask_depth,
+            "mid_price_trend_5s": self._maker_price._last_mid_trend_bps,
+            "spread_bps": self._compute_fill_spread_bps(
+                spread_at_order=spread_at_order,
+                mid_at_fill=mid_at_fill,
+            ),
+            "effective_offset_used": effective_offset_ratio,
+            "skip_gate_skipped": sg_skipped,
+            "skip_gate_score": sg_score,
+            "skip_gate_reason": sg_reason,
+            "skip_gate_model_used": sg_model_used,
+            "skip_gate_as_prob": sg_as_prob,
+            "skip_gate_threshold_used": sg_threshold_used,
+            "skip_gate_hour_offset": sg_hour_offset,
+            "reprice_count": reprice_count,
+            "reprice_drift_bps": reprice_drift_bps if reprice_count > 0 else None,
+            "ffd_boost_active": self._fast_fill_defense.is_boost_active(side),
+            "vg_triggered": self._maker_price.last_vg_triggered,
+            "vg_velocity_bps": self._maker_price.last_vg_velocity_bps,
+            "vg_vpin": self._maker_price.last_vg_vpin,
+            "vg_boost_factor": self._maker_price.last_vg_boost_factor,
+            "price_velocity_60s": sg_velocity_60s,
+            "balance_forced_switch": balance_forced_switch or None,
+            "confidence_lot_factor": (
+                confidence_factor if self.config.enable_confidence_lot else None
+            ),
+            "order_lot_regime": regime_lot,
+            "order_lot_effective": order_lot,
+            "confidence_lot_mode": (
+                self.config.confidence_lot_mode if self.config.enable_confidence_lot else None
+            ),
+            "ab_test_variant": self.config.ab_test_variant or None,
+            "cancel_failed_likely_filled": cancel_failed_likely_filled or None,
+        }
+
+    def _build_fill_strategy_fields(
+        self,
+        *,
+        post_fill_pnl: float | None,
+        post_fill_120s_pnl: float | None,
+        regime_str: str | None,
+        regime_conf: float | None,
+        macro_trend: str | None,
+        macro_slope_5m: float | None,
+        macro_slope_15m: float | None,
+        macro_aligned: bool | None,
+    ) -> dict[str, object]:
+        """FillRecord の strategy/macro 系フィールドを構築."""
+        ev_weighted = self._compute_ev_weighted(
+            post_fill_pnl,
+            post_fill_120s_pnl,
+            w30=self._cycle_strategy.policy.ev_weighted_w30,
+            w120=self._cycle_strategy.policy.ev_weighted_w120,
+        ) if hasattr(self, "_cycle_strategy") else self._compute_ev_weighted(
+            post_fill_pnl,
+            post_fill_120s_pnl,
+        )
+        return {
+            "ev_weighted_pnl": ev_weighted,
+            "gated_regime": (
+                self._cycle_strategy.gated_regime(regime_str, regime_conf)
+                if hasattr(self, "_cycle_strategy") and regime_str is not None
+                else None
+            ),
+            "effective_cycle_interval": (
+                self._cycle_strategy.effective_interval(regime_str)
+                if hasattr(self, "_cycle_strategy")
+                else None
+            ),
+            "macro_trend": macro_trend,
+            "macro_slope_5m": macro_slope_5m,
+            "macro_slope_15m": macro_slope_15m,
+            "macro_aligned": macro_aligned,
+        }
+
     # ==================================================================
     # 113# R1: run_single_cycle から抽出したサブメソッド
     # ==================================================================
@@ -325,105 +475,65 @@ class FillCycleExecutorMixin:
         run_single_cycle の末尾から抽出。self 経由のセンサー値 +
         サイクル変数を統合して 1 レコードを構築する。
         """
-        mid_at_fill = pnl.mid_at_fill
-        post_fill_pnl = pnl.post_fill_pnl
-        post_fill_120s_pnl = pnl.post_fill_120s_pnl
         payload: dict[str, object] = {
             "cycle_id": cycle_id,
             "timestamp": t_submit,
             "side": side,
             "order_price": order_price,
             "order_quantity": order_lot,
-            "fill_price": fill_price,
-            "filled": filled,
-            "cancelled": not filled,
-            "queue_wait_sec": queue_wait,
-            "mid_at_fill": mid_at_fill,
-            "mid_30s_after": pnl.mid_30s_after,
-            "mid_60s_after": pnl.mid_60s_after,
-            "mid_120s_after": pnl.mid_120s_after,
-            "post_fill_30s_pnl": post_fill_pnl,
-            "post_fill_60s_pnl": pnl.post_fill_60s_pnl,
-            "post_fill_120s_pnl": post_fill_120s_pnl,
-            "adverse_selected": pnl.adverse_selected,
-            "adverse_selected_raw": pnl.adverse_selected_raw,
-            "cancel_reason": self._resolve_fill_cancel_reason(
+            "run_id": self._run_id,
+            "git_sha": self._git_sha,
+        }
+        payload.update(
+            self._build_fill_measurement_fields(
+                fill_price=fill_price,
                 filled=filled,
                 queue_wait=queue_wait,
                 cancel_reason_poll=cancel_reason_poll,
                 effective_timeout=effective_timeout,
-            ),
-            "run_id": self._run_id,
-            "git_sha": self._git_sha,
-            "spread_at_order": spread_at_order,
-            "spread_offset_ratio": effective_offset_ratio,
-            "regime": regime_str,
-            "regime_confidence": regime_conf,
-            "regime_stability": regime_stab,
-            "regime_trend_pct": regime_trend_pct,
-            "regime_volatility_ratio": regime_vol_ratio,
-            "orderbook_imbalance": self._maker_price._last_imbalance,
-            "bid_depth_total": self._maker_price._last_bid_depth,
-            "ask_depth_total": self._maker_price._last_ask_depth,
-            "mid_price_trend_5s": self._maker_price._last_mid_trend_bps,
-            "spread_bps": self._compute_fill_spread_bps(
+                pnl=pnl,
+            )
+        )
+        payload.update(
+            self._build_fill_market_fields(
+                side=side,
                 spread_at_order=spread_at_order,
-                mid_at_fill=mid_at_fill,
-            ),
-            "effective_offset_used": effective_offset_ratio,
-            "skip_gate_skipped": sg_skipped,
-            "skip_gate_score": sg_score,
-            "skip_gate_reason": sg_reason,
-            "skip_gate_model_used": sg_model_used,
-            "skip_gate_as_prob": sg_as_prob,
-            "skip_gate_threshold_used": sg_threshold_used,
-            "skip_gate_hour_offset": sg_hour_offset,
-            "reprice_count": reprice_count,
-            "reprice_drift_bps": reprice_drift_bps if reprice_count > 0 else None,
-            "actual_measurement_sec": pnl.actual_measurement_sec if filled else None,
-            "early_exit_triggered": pnl.early_exit_triggered if filled else None,
-            "pnl_at_exit_bps": pnl.pnl_at_exit_bps if filled else None,
-            "ffd_boost_active": self._fast_fill_defense.is_boost_active(side),
-            "vg_triggered": self._maker_price.last_vg_triggered,
-            "vg_velocity_bps": self._maker_price.last_vg_velocity_bps,
-            "vg_vpin": self._maker_price.last_vg_vpin,
-            "vg_boost_factor": self._maker_price.last_vg_boost_factor,
-            "price_velocity_60s": sg_velocity_60s,
-            "balance_forced_switch": balance_forced_switch or None,
-            "confidence_lot_factor": (
-                confidence_factor if self.config.enable_confidence_lot else None
-            ),
-            "order_lot_regime": regime_lot,
-            "order_lot_effective": order_lot,
-            "confidence_lot_mode": (
-                self.config.confidence_lot_mode if self.config.enable_confidence_lot else None
-            ),
-            "ab_test_variant": self.config.ab_test_variant or None,
-            "cancel_failed_likely_filled": cancel_failed_likely_filled or None,
-            "ev_weighted_pnl": self._compute_ev_weighted(
-                post_fill_pnl,
-                post_fill_120s_pnl,
-                w30=self._cycle_strategy.policy.ev_weighted_w30,
-                w120=self._cycle_strategy.policy.ev_weighted_w120,
-            ) if hasattr(self, "_cycle_strategy") else self._compute_ev_weighted(
-                post_fill_pnl,
-                post_fill_120s_pnl,
-            ),
-            "gated_regime": (
-                self._cycle_strategy.gated_regime(regime_str, regime_conf)
-                if hasattr(self, "_cycle_strategy") and regime_str is not None
-                else None
-            ),
-            "effective_cycle_interval": (
-                self._cycle_strategy.effective_interval(regime_str)
-                if hasattr(self, "_cycle_strategy")
-                else None
-            ),
-            "macro_trend": macro_trend,
-            "macro_slope_5m": macro_slope_5m,
-            "macro_slope_15m": macro_slope_15m,
-            "macro_aligned": macro_aligned,
-        }
+                effective_offset_ratio=effective_offset_ratio,
+                reprice_count=reprice_count,
+                reprice_drift_bps=reprice_drift_bps,
+                sg_skipped=sg_skipped,
+                sg_score=sg_score,
+                sg_reason=sg_reason,
+                sg_model_used=sg_model_used,
+                sg_as_prob=sg_as_prob,
+                sg_threshold_used=sg_threshold_used,
+                sg_hour_offset=sg_hour_offset,
+                sg_velocity_60s=sg_velocity_60s,
+                regime_str=regime_str,
+                regime_conf=regime_conf,
+                regime_stab=regime_stab,
+                regime_trend_pct=regime_trend_pct,
+                regime_vol_ratio=regime_vol_ratio,
+                balance_forced_switch=balance_forced_switch,
+                confidence_factor=confidence_factor,
+                regime_lot=regime_lot,
+                order_lot=order_lot,
+                cancel_failed_likely_filled=cancel_failed_likely_filled,
+                mid_at_fill=pnl.mid_at_fill,
+            )
+        )
+        payload.update(
+            self._build_fill_strategy_fields(
+                post_fill_pnl=pnl.post_fill_pnl,
+                post_fill_120s_pnl=pnl.post_fill_120s_pnl,
+                regime_str=regime_str,
+                regime_conf=regime_conf,
+                macro_trend=macro_trend,
+                macro_slope_5m=macro_slope_5m,
+                macro_slope_15m=macro_slope_15m,
+                macro_aligned=macro_aligned,
+            )
+        )
         return build_fill_record(**payload)
 
     async def _measure_post_fill_pnl(

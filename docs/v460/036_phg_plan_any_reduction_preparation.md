@@ -2780,6 +2780,59 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `py_compile`
   - `scripts/v460/lib/adaptation_engine.py`
 
+### Step122: PnL bps→JPY 変換を共通 helper 化
+
+1. 対応概要
+- `ztb/metrics/fill_quality.py`
+  - `compute_record_pnl_jpy()` を追加し、`FillRecord` の 30s PnL を JPY 概算へ変換する helper を導入した。
+- `scripts/v460/lib/fill_loop_orchestrator.py`
+  - レジューム時とサイクル進行中の `cumulative_pnl_jpy` 更新を helper 経由へ統一した。
+- `scripts/v460/monitor_fill_test.py`
+  - `_check_cumulative_loss()` とレポート内の累積PnL概算を helper 経由へ統一した。
+- `tests/unit/v460/test_fill_quality.py`
+  - helper の直接テストと `monitor_fill_test` の source-level 使用確認を追加した。
+
+2. 目的
+- `post_fill_30s_pnl * 1e-4 * fill_price * order_quantity` の重複実装を削る。
+- JPY 換算ルールを 1 箇所に集約し、将来の計算条件変更を横展開しやすくする。
+
+3. 検証
+- `py_compile`
+  - `ztb/metrics/fill_quality.py`
+  - `scripts/v460/lib/fill_loop_orchestrator.py`
+  - `scripts/v460/monitor_fill_test.py`
+- `pytest`
+  - `tests/unit/v460/test_fill_quality.py -k "TestFillRecord or Test051MonitorExtensions"`
+  - 結果: `25 passed`
+- `any_inventory`
+  - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/fill_loop_orchestrator.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/monitor_fill_test.py`: `any_type_debt_tokens=0`
+
+### Step123: fill_cycle_executor の成功系 payload を 3 分割
+
+1. 対応概要
+- `scripts/v460/lib/fill_cycle_executor.py`
+  - `_build_fill_measurement_fields()` を追加し、約定/計測系フィールドを抽出した。
+  - `_build_fill_market_fields()` を追加し、市場観測/skip_gate/実行メタ系フィールドを抽出した。
+  - `_build_fill_strategy_fields()` を追加し、EV/gated_regime/macro 系フィールドを抽出した。
+  - `_build_fill_record()` は base payload + 3 helper の合成に整理した。
+- `tests/unit/v460/test_145_structural_fixes.py`
+  - `_build_fill_record()` が 3 helper を経由する構造テストへ更新した。
+
+2. 目的
+- 成功系 `FillRecord` 組み立ての責務を分解し、変更影響範囲を狭める。
+- 分割した payload helper を、将来の他 record builder へ横展開しやすい形にする。
+
+3. 検証
+- `py_compile`
+  - `scripts/v460/lib/fill_cycle_executor.py`
+- `pytest`
+  - `tests/unit/v460/test_145_structural_fixes.py -k "TestFillRecordBuilderIntegration"`
+  - 結果: `1 passed`
+- `any_inventory`
+  - `scripts/v460/lib/fill_cycle_executor.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

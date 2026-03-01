@@ -255,6 +255,23 @@ def build_skip_fill_record(
     return build_fill_record(**payload)
 
 
+def compute_record_pnl_jpy(record: FillRecord) -> float | None:
+    """FillRecord の 30s PnL を JPY 概算へ変換.
+
+    filled でない、または必要値が不足/非有限な場合は None を返す。
+    """
+    if not record.filled:
+        return None
+    if record.post_fill_30s_pnl is None or record.fill_price is None:
+        return None
+    pnl_bps = float(record.post_fill_30s_pnl)
+    fill_price = float(record.fill_price)
+    order_qty = float(record.order_quantity)
+    if not (np.isfinite(pnl_bps) and np.isfinite(fill_price) and np.isfinite(order_qty)):
+        return None
+    return pnl_bps * 1e-4 * fill_price * order_qty
+
+
 @dataclass
 class FillMetrics:
     """G1.1 Gate 指標の算出結果.
