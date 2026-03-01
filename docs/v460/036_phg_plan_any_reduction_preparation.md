@@ -3397,6 +3397,41 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/analysis/analyze_fill_records.py`: `any_type_debt_tokens=0`
   - `scripts/v460/analysis/compare_regime_ab.py`: `any_type_debt_tokens=0`
 
+### Step138: `stopgap_health` / `side_regime_dashboard` の残存集計ループを stream 化
+
+1. 対応概要
+- `scripts/v460/lib/stopgap_health.py`
+  - `PnlAccumulator` を使う形に寄せ、`_check_2a_trending_sell_skip()` の trending sell 判定と全体 PnL 集計を 1 パス化した。
+  - `_check_2d_sell_guard()` も `sell_records` / `sell_filled` / `sell_cancelled` の複数 list をやめ、件数・cancel 率・平均 PnL を 1 パスで集計する形に変更した。
+  - `compute_model_used_metrics()` は `filled -> groups[list] -> 再走査` をやめ、`_ModelUsedAggregate` による `defaultdict` 集計へ変更した。
+  - これにより `numpy` 依存が不要になり、module import も少し軽くなった。
+- `scripts/v460/analysis/side_regime_dashboard.py`
+  - `total_filled` / `side_groups` / `regime_side_groups` / `trending_daily` 用の日次バケットを 1 回の全件走査で同時に構築する形へ変更した。
+  - trending 日次の平均は `PnlAccumulator` に寄せ、`pnls -> clean` の二重 list をやめた。
+  - p10 は `percentile` が必要なため有限値 list は維持しつつ、中間配列を 1 本に削減した。
+
+2. 類似実装の確認
+- どちらも `FillRecord` 互換のレコードを扱っており、既存 `ztb.metrics.fill_quality.PnlAccumulator` をそのまま再利用できた。
+- 新規の汎用 helper は増やさず、`stopgap_health` 内だけに閉じた `_ModelUsedAggregate` で集計状態を持つ形に留めた。
+- 既に `compute_extended_metrics()` に委譲している `compute_daily_metrics()` は percentile 系を含むため、今回はその group list は維持し、純粋に重複していた前処理ループだけを削減した。
+
+3. 目的
+- stopgap 判定と dashboard で残っていた「条件抽出 list を何本も作る」パターンを減らし、件数が増えたときのメモリ圧を下げる。
+- 退出判定・model_used breakdown・trending 日次で、同じレコードを複数回なめる無駄を減らす。
+- `ztb.metrics` の既存集計器へ寄せ、analysis/lib 間の集計契約をさらに揃える。
+
+4. 検証
+- `py_compile`
+  - `scripts/v460/lib/stopgap_health.py`
+  - `scripts/v460/analysis/side_regime_dashboard.py`
+- `pytest`
+  - `tests/unit/v460/test_stopgap_health.py`
+  - `tests/unit/v460/test_159_side_regime_dashboard.py`
+  - 結果: `62 passed`
+- `any_inventory`
+  - `scripts/v460/lib/stopgap_health.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/analysis/side_regime_dashboard.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

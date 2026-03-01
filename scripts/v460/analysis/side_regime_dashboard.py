@@ -29,7 +29,7 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _SCRIPT_DIR.parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
-from ztb.metrics.fill_quality import iter_fill_record_objects_glob
+from ztb.metrics.fill_quality import PnlAccumulator, iter_fill_record_objects_glob
 
 # 160# P0-B/C: judgment 統合
 from scripts.v460.lib.metrics_utils import MetricRecord, compute_extended_metrics
@@ -155,16 +155,33 @@ def run_dashboard(
         "total_records": len(records),
     }
 
-    filled = [r for r in records if r.get("filled")]
-    result["total_filled"] = len(filled)
-    result["overall_fill_rate"] = round(len(filled) / len(records), 4) if records else 0.0
-
-    # === Side 別サマリー (159# §3.1: 3指標) ===
     side_groups: dict[str, list[MetricRecord]] = defaultdict(list)
+    regime_side_groups: dict[str, list[MetricRecord]] = defaultdict(list)
+    td_by_day: dict[str, list[MetricRecord]] = defaultdict(list)
+    filled_count = 0
     for r in records:
         side = str(r.get("side", "unknown"))
+        regime = str(r.get("regime") or "none")
         side_groups[side].append(r)
+        regime_side_groups[f"{regime}:{side}"].append(r)
+        if not r.get("filled"):
+            continue
+        filled_count += 1
+        if regime != "trending_down" or side != "sell":
+            continue
+        ts_value = safe_to_finite(r.get("timestamp"))
+        if ts_value is None:
+            continue
+        try:
+            day = datetime.fromtimestamp(ts_value, tz=timezone.utc).strftime("%Y%m%d")
+        except (ValueError, OSError):
+            continue
+        td_by_day[day].append(r)
 
+    result["total_filled"] = filled_count
+    result["overall_fill_rate"] = round(filled_count / len(records), 4) if records else 0.0
+
+    # === Side 別サマリー (159# §3.1: 3指標) ===
     side_summary: dict[str, SideMetrics] = {}
     for side in ["buy", "sell"]:
         if side in side_groups:
@@ -172,12 +189,6 @@ def run_dashboard(
     result["side_summary"] = side_summary
 
     # === Regime × Side 詳細 ===
-    regime_side_groups: dict[str, list[MetricRecord]] = defaultdict(list)
-    for r in records:
-        regime = str(r.get("regime") or "none")
-        side = str(r.get("side", "unknown"))
-        regime_side_groups[f"{regime}:{side}"].append(r)
-
     detail: list[RegimeSideMetrics] = []
     for key in sorted(regime_side_groups.keys()):
         regime, side = key.split(":", 1)
@@ -192,26 +203,20 @@ def run_dashboard(
     # === P0-C: trending 日次テンプレート ===
     # trending_down × sell の日別集計
     trending_daily: list[dict[str, object]] = []
-    td_by_day: dict[str, list[MetricRecord]] = defaultdict(list)
-    for r in filled:
-        if r.get("regime") == "trending_down" and r.get("side") == "sell":
-            ts_value = safe_to_finite(r.get("timestamp"))
-            if ts_value is None:
-                continue
-            try:
-                day = datetime.fromtimestamp(ts_value, tz=timezone.utc).strftime("%Y%m%d")
-            except (ValueError, OSError):
-                continue
-            td_by_day[day].append(r)
-
     for day in sorted(td_by_day.keys()):
         recs = td_by_day[day]
-        pnls = [safe_to_finite(r.get("post_fill_30s_pnl")) for r in recs]
-        clean = [v for v in pnls if v is not None]
+        pnl_acc = PnlAccumulator()
+        clean: list[float] = []
+        for record in recs:
+            pnl_value = safe_to_finite(record.get("post_fill_30s_pnl"))
+            if pnl_value is None:
+                continue
+            clean.append(pnl_value)
+            pnl_acc.add(pnl_value)
         trending_daily.append({
             "day": day,
             "n_filled": len(recs),
-            "avg_pnl30_bps": round(float(np.mean(clean)), 4) if clean else None,
+            "avg_pnl30_bps": round(pnl_acc.mean_bps, 4) if pnl_acc.count else None,
             "p10_bps": round(float(np.percentile(clean, 10)), 4) if len(clean) >= 3 else None,
         })
     result["trending_daily"] = trending_daily

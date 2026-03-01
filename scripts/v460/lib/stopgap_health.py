@@ -21,13 +21,12 @@ from enum import Enum
 from pathlib import Path
 from typing import NotRequired, TypedDict, cast
 
-import numpy as np
-
 from scripts.v460.lib.metrics_utils import (
     compute_extended_metrics,
 )
 from ztb.io.json_io import JSONObject
 from ztb.metrics.fill_quality import (
+    PnlAccumulator,
     apply_fill_record_filters,
     load_fill_record_objects_glob,
 )
@@ -144,6 +143,24 @@ class ModelUsedMetrics:
 
 
 @dataclass
+class _ModelUsedAggregate:
+    """model_used ごとの stream 集計."""
+
+    n_filled: int = 0
+    as_count: int = 0
+    pnl_acc: PnlAccumulator = field(default_factory=PnlAccumulator)
+    as_pnl_acc: PnlAccumulator = field(default_factory=PnlAccumulator)
+
+    def add(self, record: FillRecord) -> None:
+        self.n_filled += 1
+        pnl_value = safe_to_finite(record.get("post_fill_30s_pnl"))
+        self.pnl_acc.add(pnl_value)
+        if record.get("adverse_selected"):
+            self.as_count += 1
+            self.as_pnl_acc.add(pnl_value)
+
+
+@dataclass
 class AlertItem:
     """退出基準の閾値逸脱アラート (165# 7.5 P0 対応)."""
 
@@ -226,15 +243,6 @@ def _get_day(r: FillRecord) -> str:
         return "unknown"
 
 
-def _collect_finite_values(
-    records: list[FillRecord],
-    key: str,
-) -> list[float]:
-    """指定キーの有限値だけを抽出する."""
-    values = [safe_to_finite(r.get(key)) for r in records]
-    return [v for v in values if v is not None]
-
-
 # ======================================================================
 # Daily Metrics Computation
 # ======================================================================
@@ -312,30 +320,34 @@ def _check_2a_trending_sell_skip(
     OFF判定基準: sell AS_rate < 35% (trending regime), total PnL > 0
     ロールバック: AS_rate > 50% で即時 ON
     """
-    # trending regime × sell
-    trending_sell = [
-        r for r in records
-        if r.get("filled")
-        and str(r.get("regime") or "").startswith("trending")
-        and r.get("side") == "sell"
-    ]
-    all_filled = [r for r in records if r.get("filled")]
+    trending_sell_filled = 0
+    as_count = 0
+    total_pnl_acc = PnlAccumulator()
 
-    if len(trending_sell) < 10:
+    for record in records:
+        if not record.get("filled"):
+            continue
+        total_pnl_acc.add(safe_to_finite(record.get("post_fill_30s_pnl")))
+        if not str(record.get("regime") or "").startswith("trending"):
+            continue
+        if record.get("side") != "sell":
+            continue
+        trending_sell_filled += 1
+        if record.get("adverse_selected"):
+            as_count += 1
+
+    if trending_sell_filled < 10:
         return StopgapExitCheck(
             stopgap_id="2-A",
             name="trending_sell_skip",
             verdict=ExitVerdict.INSUFFICIENT,
-            metrics={"n_trending_sell_filled": len(trending_sell)},
+            metrics={"n_trending_sell_filled": trending_sell_filled},
             criteria={"min_sample": 10},
-            detail=f"Insufficient: {len(trending_sell)} trending sell fills < 10",
+            detail=f"Insufficient: {trending_sell_filled} trending sell fills < 10",
         )
 
-    as_count = sum(1 for r in trending_sell if r.get("adverse_selected"))
-    as_rate = as_count / len(trending_sell) if trending_sell else 0.0
-
-    pnl_clean = _collect_finite_values(all_filled, "post_fill_30s_pnl")
-    total_pnl = sum(pnl_clean) if pnl_clean else 0.0
+    as_rate = as_count / trending_sell_filled if trending_sell_filled else 0.0
+    total_pnl = total_pnl_acc.total_bps
 
     can_exit = as_rate < 0.35 and total_pnl > 0
     rollback = as_rate > 0.50
@@ -353,7 +365,7 @@ def _check_2a_trending_sell_skip(
         name="trending_sell_skip",
         verdict=verdict,
         metrics={
-            "trending_sell_filled": len(trending_sell),
+            "trending_sell_filled": trending_sell_filled,
             "as_count": as_count,
             "as_rate": round(as_rate, 4),
             "total_pnl_bps": round(total_pnl, 4),
@@ -463,23 +475,30 @@ def _check_2d_sell_guard(
     OFF判定: sell cancel 率 < 10%, sell PnL > 0
     ロールバック: cancel 率 > 20%
     """
-    sell_records = [r for r in records if r.get("side") == "sell"]
-    sell_filled = [r for r in sell_records if r.get("filled")]
-    sell_cancelled = [r for r in sell_records if r.get("cancelled")]
+    sell_total = 0
+    sell_cancelled = 0
+    sell_pnl_acc = PnlAccumulator()
+    for record in records:
+        if record.get("side") != "sell":
+            continue
+        sell_total += 1
+        if record.get("cancelled"):
+            sell_cancelled += 1
+        if record.get("filled"):
+            sell_pnl_acc.add(safe_to_finite(record.get("post_fill_30s_pnl")))
 
-    if len(sell_records) < 20:
+    if sell_total < 20:
         return StopgapExitCheck(
             stopgap_id="2-D",
             name="sell_guard",
             verdict=ExitVerdict.INSUFFICIENT,
-            metrics={"n_sell": len(sell_records)},
+            metrics={"n_sell": sell_total},
             criteria={"min_sample": 20},
-            detail=f"Insufficient: {len(sell_records)} sell records < 20",
+            detail=f"Insufficient: {sell_total} sell records < 20",
         )
 
-    cancel_rate = len(sell_cancelled) / len(sell_records) if sell_records else 0.0
-    pnl_clean = _collect_finite_values(sell_filled, "post_fill_30s_pnl")
-    avg_pnl = float(np.mean(pnl_clean)) if pnl_clean else float("nan")
+    cancel_rate = sell_cancelled / sell_total if sell_total else 0.0
+    avg_pnl = sell_pnl_acc.mean_bps if sell_pnl_acc.count else float("nan")
 
     can_exit = cancel_rate < 0.10 and (not math.isnan(avg_pnl) and avg_pnl > 0)
     rollback = cancel_rate > 0.20
@@ -496,8 +515,8 @@ def _check_2d_sell_guard(
         name="sell_guard",
         verdict=ExitVerdict.CAN_EXIT if can_exit else ExitVerdict.KEEP,
         metrics={
-            "sell_total": len(sell_records),
-            "sell_cancelled": len(sell_cancelled),
+            "sell_total": sell_total,
+            "sell_cancelled": sell_cancelled,
             "cancel_rate": round(cancel_rate, 4),
             "sell_avg_pnl_bps": round(avg_pnl, 4) if not math.isnan(avg_pnl) else None,
             "rollback_triggered": rollback,
@@ -543,25 +562,23 @@ def compute_model_used_metrics(
     records: list[FillRecord],
 ) -> list[ModelUsedMetrics]:
     """model_used 経路別の AS率PnL を算出 (165# 7.3)."""
-    filled = [r for r in records if r.get("filled")]
-    groups: dict[str, list[FillRecord]] = defaultdict(list)
-    for r in filled:
+    groups: dict[str, _ModelUsedAggregate] = defaultdict(_ModelUsedAggregate)
+    for r in records:
+        if not r.get("filled"):
+            continue
         model = str(r.get("skip_gate_model_used") or "none")
-        groups[model].append(r)
+        groups[model].add(r)
 
     results: list[ModelUsedMetrics] = []
-    for model, recs in sorted(groups.items()):
-        as_recs = [r for r in recs if r.get("adverse_selected")]
-        as_rate = len(as_recs) / len(recs) if recs else 0.0
-        pnl_clean = _collect_finite_values(recs, "post_fill_30s_pnl")
-        avg_pnl = float(np.mean(pnl_clean)) if pnl_clean else float("nan")
-        as_pnl_clean = _collect_finite_values(as_recs, "post_fill_30s_pnl")
-        avg_as = float(np.mean(as_pnl_clean)) if as_pnl_clean else 0.0
+    for model, agg in sorted(groups.items()):
+        as_rate = agg.as_count / agg.n_filled if agg.n_filled else 0.0
+        avg_pnl = agg.pnl_acc.mean_bps if agg.pnl_acc.count else float("nan")
+        avg_as = agg.as_pnl_acc.mean_bps if agg.as_pnl_acc.count else 0.0
 
         results.append(ModelUsedMetrics(
             model_used=model,
-            n_filled=len(recs),
-            as_count=len(as_recs),
+            n_filled=agg.n_filled,
+            as_count=agg.as_count,
             as_rate=round(as_rate, 4),
             avg_pnl30_bps=round(avg_pnl, 4) if not math.isnan(avg_pnl) else avg_pnl,
             avg_as_loss_bps=round(avg_as, 4),
