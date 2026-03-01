@@ -106,10 +106,13 @@ class FillLoopOrchestratorMixin:
         - multiplier=1.0 : 通常スキップ
         - multiplier=5.0 : halt (daily drawdown)
         正常サイクル完了パスは rapid_exit ロジックを含むため直接呼ばない。
+        200# P0-2: _soft_drawdown_interval_multiplier を追加乗算。
         """
         regime = self._current_regime_value()
         base = self._cycle_strategy.effective_interval(regime)
-        await asyncio.sleep(base * multiplier)
+        # 200# P0-2: soft drawdown で lot 半減不可 → interval 延長
+        soft_dd_mult = getattr(self, "_soft_drawdown_interval_multiplier", 1.0)
+        await asyncio.sleep(base * multiplier * soft_dd_mult)
 
     def _make_loop_skip_record(
         self,
@@ -430,6 +433,22 @@ class FillLoopOrchestratorMixin:
                 total_count += 1
                 batch = self._batch_persistence.maybe_flush(batch, "daily_drawdown_halt")
                 self._update_lock_heartbeat()
+                # 200# P0-3: HALT 中も state を定期保存 (外部監視で HALT 状態を識別可能に)
+                if self._cycle_count % self.config.progress_log_interval == 0:
+                    self._state_persistence.save(FillTestState(
+                        run_id=self._run_id,
+                        cycle_count=self._cycle_count,
+                        total_count=total_count,
+                        filled_count=filled_count,
+                        cumulative_pnl_jpy=cumulative_pnl_jpy,
+                        current_lot=self._current_lot,
+                        soft_loss_cap_triggered=self._soft_loss_cap_triggered,
+                        base_offset_ratio=self._maker_price.base_offset_ratio,
+                        base_offset_ratio_buy=self._maker_price.base_offset_ratio_buy,
+                        base_offset_ratio_sell=self._maker_price.base_offset_ratio_sell,
+                        daily_drawdown_state=self._daily_drawdown_guard.export_state(),
+                        **self._get_regime_state_fields(),
+                    ))
                 await self._effective_sleep(multiplier=5.0)  # 179# S1: halt 中は 5x 間隔
                 continue
 
@@ -873,15 +892,22 @@ class FillLoopOrchestratorMixin:
                     )
                     if dd_result.get("soft_triggered"):
                         old_lot = self._current_lot
-                        self._current_lot = max(
-                            self.config.order_quantity,
-                            self._current_lot / 2,
-                        )
-                        self._balance_checker.pre_shrink_lot = self._current_lot
-                        logger.warning(
-                            f"[daily_drawdown] soft lot reduction: "
-                            f"{old_lot:.4f} → {self._current_lot:.4f} BTC"
-                        )
+                        new_lot = self._current_lot / 2
+                        if new_lot >= self.config.order_quantity:
+                            # 200# P0-2: lot 半減可能
+                            self._current_lot = new_lot
+                            self._balance_checker.pre_shrink_lot = self._current_lot
+                            logger.warning(
+                                f"[daily_drawdown] soft lot reduction: "
+                                f"{old_lot:.4f} → {self._current_lot:.4f} BTC"
+                            )
+                        else:
+                            # 200# P0-2: 最小ロット到達 → interval 3倍で exposure 削減
+                            self._soft_drawdown_interval_multiplier = 3.0
+                            logger.warning(
+                                f"[daily_drawdown] min lot reached ({old_lot:.4f} BTC), "
+                                f"applying 3x interval multiplier instead of lot reduction"
+                            )
             batch.append(record)
 
             # --- 046# soft/hard 二段 loss_cap ---
@@ -1042,7 +1068,9 @@ class FillLoopOrchestratorMixin:
                     # 179# S1: regime 別サイクル間隔
                     regime = self._current_regime_value()
                     interval = self._cycle_strategy.effective_interval(regime)
-                await asyncio.sleep(interval)
+                # 200# P0-2: soft drawdown interval 延長
+                soft_dd_mult = getattr(self, "_soft_drawdown_interval_multiplier", 1.0)
+                await asyncio.sleep(interval * soft_dd_mult)
 
         # 残りバッチを保存
         if batch:

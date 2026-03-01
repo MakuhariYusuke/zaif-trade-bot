@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-01 (197# boost 最適化 + balance_forced offset + Gate 8-9 統合)
+> 最終更新: 2026-03-01 (200# 199 Codex/Gemini レビュー評価 + P0 実装)
 
 ---
 
@@ -188,6 +188,9 @@
 | 195 | impl | [195_ph2_impl_velocity_b1_soft_gate.md](195_ph2_impl_velocity_b1_soft_gate.md) | velocity_skip ソフト化 + B1' offset 統合 (193# 横展開) |
 | 196 | impl | [196_ph2_impl_velocity_proportional_trending_soft.md](196_ph2_impl_velocity_proportional_trending_soft.md) | velocity offset 比例化 + trending_sell ソフト化 |
 | 197 | impl | [197_ph2_impl_boost_optimization_gate_integration.md](197_ph2_impl_boost_optimization_gate_integration.md) | boost 最適化 + balance_forced offset + Gate 8-9 統合 |
+| 198 | rpt | [198_ph2_rpt_drawdown_postmortem_20260301.md](198_ph2_rpt_drawdown_postmortem_20260301.md) | 事後分析: 2026-03-01 朝セッション -53bps ドローダウン |
+| 199 | rev | [199_ph2_rev_198_drawdown_and_hidden_risks.md](199_ph2_rev_198_drawdown_and_hidden_risks.md) | 198レビュー: ドローダウン分析の検証 + 隠れた再発要因 |
+| 200 | resp | [200_ph2_resp_199_codex_gemini_review_eval.md](200_ph2_resp_199_codex_gemini_review_eval.md) | 199 Codex/Gemini レビュー評価 + P0 実装 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
@@ -303,5 +306,4 @@ NNN_phX_TYPE_description.md
 13. **106# R6**: utils 70+ ファイル分割
 14. **106# R7**: config/ vs configs/ 重複ディレクトリ整理
 15. **109# DUP3**: UnifiedTrainer God Object (2835行)
-
 

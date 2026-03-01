@@ -249,10 +249,12 @@ class TestStaleOrderLogic:
         assert "reprice_count" in source
 
     def test_stale_order_checks_direction(self) -> None:
-        """stale 判定で乖離方向 (is_drifting_away) を検証している."""
+        """200# stale 判定で adverse/favorable drift 方向を検証している."""
         from scripts.v460.lib.order_monitor import OrderMonitor
         source = inspect.getsource(OrderMonitor.monitor)
-        assert "is_drifting_away" in source
+        assert "is_adverse_drift" in source
+        assert "is_favorable_drift" in source
+        assert "stale_adverse_drift" in source
 
     def test_stale_order_respects_max_reprice(self) -> None:
         """max_reprice のチェックがある."""

@@ -373,13 +373,50 @@ class OrderMonitor:
                 try:
                     current_mid = await get_mid_price()
                     drift_bps = abs(current_mid - mid_at_order) / mid_at_order * _BPS_FACTOR
-                    is_drifting_away = (
+                    # 200# P0-1: adverse drift = cancel-only (逆選択回避)
+                    # buy で mid↑ / sell で mid↓ は不利方向 → 追わない
+                    is_adverse_drift = (
                         (side == "buy" and current_mid > mid_at_order)
                         or (side == "sell" and current_mid < mid_at_order)
                     )
-                    if drift_bps >= _stale_drift and is_drifting_away:
+                    # 順方向 drift (buy で mid↓ / sell で mid↑) は有利 → reprice ok
+                    is_favorable_drift = (
+                        (side == "buy" and current_mid < mid_at_order)
+                        or (side == "sell" and current_mid > mid_at_order)
+                    )
+                    if drift_bps >= _stale_drift and is_adverse_drift:
+                        # 200# 不利方向: cancel-only で撤退 (MM理論: 逆選択特攻阻止)
                         logger.info(
-                            f"[stale_order] Price drifted {drift_bps:.1f}bps "
+                            f"[stale_order] Adverse drift {drift_bps:.1f}bps "
+                            f"({side}: mid {mid_at_order:.0f}→{current_mid:.0f}). "
+                            f"Cancel-only — not chasing adverse direction"
+                        )
+                        try:
+                            await adapter.cancel_order(order.order_id)
+                        except Exception as cancel_err:
+                            if "Failed to cancel" in str(cancel_err) or "not found" in str(cancel_err).lower():
+                                try:
+                                    recheck = await adapter.get_order_status(order.order_id)
+                                    if recheck is not None and _parse_order_state(recheck.status) == OrderState.FILLED:
+                                        filled = True
+                                        fill_price = recheck.price if recheck.price else order_price
+                                        t_fill = time.time()
+                                        _cancel_failed_likely_filled = True
+                                        logger.info(
+                                            f"[stale_order] Order actually filled during cancel @ "
+                                            f"{fill_price:.0f} JPY"
+                                        )
+                                except Exception as exc:
+                                    logger.debug("Recheck after cancel-fail raised: %s", exc)
+                            if filled:
+                                break
+                            logger.warning(f"[stale_order] Adverse cancel failed: {cancel_err}")
+                        if not filled:
+                            cancel_reason_poll = "stale_adverse_drift"
+                        break
+                    if drift_bps >= _stale_drift and is_favorable_drift:
+                        logger.info(
+                            f"[stale_order] Favorable drift {drift_bps:.1f}bps "
                             f"({side}: mid {mid_at_order:.0f}→{current_mid:.0f}). "
                             f"Cancelling & repricing (reprice #{reprice_count + 1})"
                         )
@@ -472,9 +509,11 @@ class OrderMonitor:
 
         # 4. 未約定 → キャンセル
         # 117# B-fix: stale_skip_gate_blocked / stale_reprice_failed は既にキャンセル済み
+        # 200# P0-1: stale_adverse_drift も既にキャンセル済み
         _already_cancelled = cancel_reason_poll in (
             "stale_skip_gate_blocked",
             "stale_reprice_failed",
+            "stale_adverse_drift",
         )
         if not filled and not _already_cancelled:
             try:

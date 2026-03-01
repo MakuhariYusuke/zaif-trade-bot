@@ -74,6 +74,7 @@ UNKNOWN = "unknown"
 # ======================================================================
 STALE_SKIP_GATE_BLOCKED = "stale_skip_gate_blocked"
 STALE_REPRICE_FAILED = "stale_reprice_failed"
+STALE_ADVERSE_DRIFT = "stale_adverse_drift"  # 200# P0-1: 不利方向 drift cancel-only
 
 # ======================================================================
 # ORDERBOOK: 板取得エラー細分化
@@ -118,6 +119,7 @@ CancelReason = Literal[
     # GUARD
     "stale_skip_gate_blocked",
     "stale_reprice_failed",
+    "stale_adverse_drift",
     # ORDERBOOK
     "orderbook_error",
     "orderbook_timeout",

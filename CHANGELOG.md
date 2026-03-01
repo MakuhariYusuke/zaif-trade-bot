@@ -6,12 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 200# 199 Codex/Gemini レビュー評価 + P0 実装 (2026-03-01)
+
+### Fixed
+- **CRITICAL (P0-1)**: stale_order reprice 不利方向ガード — sell で mid↓ / buy で mid↑ の逆選択追随を cancel-only に変更 (`order_monitor.py`)
+- **CRITICAL (P0-2)**: soft lot 半減バグ — `max(0.001, 0.001/2)=0.001` で実質無効だった問題を修正。最小ロット到達時は interval 3倍延長で exposure 削減 (`fill_loop_orchestrator.py`)
+- **CRITICAL (P0-3)**: HALT 中 state 非保存 — `progress_log_interval` ごとに state を保存し、外部監視で HALT 状態を識別可能に (`fill_loop_orchestrator.py`)
+
+### Added
+- `cancel_reasons.py`: `STALE_ADVERSE_DRIFT` 定数追加
+- `docs/v460/200_ph2_resp_199_codex_gemini_review_eval.md`: Codex/Gemini 両レビューの個別評価 + 統合優先度マトリクス
+
+### Changed
+- 198# ドキュメント名を `198_ph2_rpt_drawdown_postmortem_20260301.md` に命名規約準拠でリネーム
+
 ## 198# 事後分析: 2026-03-01 朝セッション -53bps ドローダウン (2026-03-01)
 
 ### Analysis
 - 朝セッション (09:04–10:07) で 12 fills, -53.21bps → daily_drawdown HALT
 - 根本原因: stale_order reprice 逆選択増幅, postonly_guard offset 無効化, soft lot 半減バグ
-- 改善提案 9 件 (A–I) を文書化: `docs/v460/198_postmortem_20260301_drawdown_analysis.md`
+- 改善提案 9 件 (A–I) を文書化: `docs/v460/198_ph2_rpt_drawdown_postmortem_20260301.md`
 
 ## 197# boost 最適化 + balance_forced offset + Gate 8-9 統合 (2026-03-01)
 
