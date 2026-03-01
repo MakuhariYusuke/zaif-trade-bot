@@ -1,18 +1,73 @@
-"""200# L: Velocity 計算ユーティリティ — SSOT (Single Source of Truth).
+"""200# L / 208# SSOT: Velocity 計算ユーティリティ — Single Source of Truth.
 
-velocity 関連の数学的計算を一元化し、maker_price (VG) と skip_gate (SG) の
-重複計算を排除する。
+全 velocity 関連の **計算ロジック** を一元管理する。
+信号の種類は複数あるが、計算・符号規約・上限処理をここに集約することで
+「どのモジュールが何をどう計算しているか」の混乱を排除する。
 
-使い分けガイド:
-  - VG velocity: 瞬間的 mid 変化 (cycle 間差分). maker_price._last_vg_velocity_bps
-    → 短期 price action への即応に使用
-  - SG velocity: 60s EMA (price_velocity_60s from gate_features)
-    → skip/offset 判定の中期シグナルに使用
+アーキテクチャ:
+  本システムには目的の異なる 2 つの velocity 信号が存在する。
 
-両者は **同一の符号規約** (正=上昇, 負=下降) を使用する。
+  ┌─────────────────┬─────────────────────┬──────────────────────────────────┐
+  │ 名前            │ データソース        │ 用途                             │
+  ├─────────────────┼─────────────────────┼──────────────────────────────────┤
+  │ instant_vel_bps │ orderbook mid-price │ VG offset boost (瞬間急変検知)   │
+  │                 │ (point-to-point)    │ maker_price._apply_volatility_   │
+  │                 │                     │ guard() で使用                   │
+  ├─────────────────┼─────────────────────┼──────────────────────────────────┤
+  │ trade_vel_60s   │ 60s 約定履歴        │ SG skip/offset 判定 (中期動向)   │
+  │                 │ (first↔last price)  │ skip_gate_evaluator + ML feature │
+  └─────────────────┴─────────────────────┴──────────────────────────────────┘
+
+  両者は異なるデータソース・異なるタイムウィンドウから velocity を計測するが、
+  以下を共有する:
+    - 符号規約: 正=上昇, 負=下降 (bps 単位)
+    - offset 乗数計算: compute_velocity_offset_multiplier()
+    - bps 変換: _BPS_FACTOR = 10_000
+
+  205# §3.2 / §9.1 への対応:
+    - 201# で multiplier 計算のみ共通化していたのを拡張
+    - 208# で instant velocity 計算も本モジュールに移動
+    - trade_vel_60s は gate_features パイプライン内で計算されるため、
+      ここでは利用ガイドのみ提供 (将来的に extract 可能)
+
+Reference:
+    - 054# mid price trend 追跡 (initial implementation)
+    - 200# L velocity_math.py 新規作成 (multiplier SSOT)
+    - 205# §3.2 / §9.1 SSOT 未達指摘
+    - 208# instant velocity 計算を本モジュールに移動
 """
 
 from __future__ import annotations
+
+_BPS_FACTOR: float = 10_000.0
+
+
+def compute_instant_velocity_bps(
+    *,
+    current_mid: float,
+    prev_mid: float,
+    dt: float,
+    max_dt: float,
+) -> float | None:
+    """orderbook mid-price から瞬間 velocity (bps) を算出する.
+
+    maker_price.py の inline 計算 (054#) を SSOT として抽出。
+    VG (Volatility Guard) の急変検知トリガに使用される。
+
+    符号規約: 正=上昇, 負=下降 (price_velocity_60s と同一)
+
+    Args:
+        current_mid: 現在の mid price
+        prev_mid: 前回の mid price
+        dt: 前回観測からの経過時間 (秒)
+        max_dt: この秒数を超えた場合は stale と見なし None を返す
+
+    Returns:
+        velocity in bps, or None if stale / invalid
+    """
+    if prev_mid <= 0 or dt <= 0 or dt >= max_dt:
+        return None
+    return (current_mid - prev_mid) / prev_mid * _BPS_FACTOR
 
 
 def compute_velocity_offset_multiplier(

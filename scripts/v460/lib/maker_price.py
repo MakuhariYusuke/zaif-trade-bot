@@ -732,13 +732,18 @@ class MakerPriceCalculator:
         spread = best_ask - best_bid
         mid_price = (best_bid + best_ask) / 2.0
 
-        # 054# mid price trend 追跡
-        mid_trend_bps: float | None = None
+        # 054# → 208# SSOT: mid price velocity を velocity_math で算出
+        from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
+
         now = time.time()
+        mid_trend_bps: float | None = None
         if self._prev_mid_price is not None and self._prev_mid_time is not None:
-            dt = now - self._prev_mid_time
-            if 0 < dt < cfg.mid_trend_validity_sec:
-                mid_trend_bps = (mid_price - self._prev_mid_price) / self._prev_mid_price * _BPS_FACTOR
+            mid_trend_bps = compute_instant_velocity_bps(
+                current_mid=mid_price,
+                prev_mid=self._prev_mid_price,
+                dt=now - self._prev_mid_time,
+                max_dt=cfg.mid_trend_validity_sec,
+            )
         self._prev_mid_price = mid_price
         self._prev_mid_time = now
         self._last_mid_trend_bps = mid_trend_bps

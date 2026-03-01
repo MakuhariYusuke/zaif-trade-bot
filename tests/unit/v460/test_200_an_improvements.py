@@ -246,6 +246,88 @@ class TestVelocityMath:
         assert direct == via_evaluator
 
 
+class TestInstantVelocityBps:
+    """208# SSOT: compute_instant_velocity_bps テスト."""
+
+    def test_normal_upward(self) -> None:
+        """上昇の場合に正の bps を返すこと。"""
+        from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
+
+        result = compute_instant_velocity_bps(
+            current_mid=10_100_000.0,
+            prev_mid=10_000_000.0,
+            dt=5.0,
+            max_dt=30.0,
+        )
+        assert result is not None
+        # (10_100_000 - 10_000_000) / 10_000_000 * 10_000 = 100 bps
+        assert abs(result - 100.0) < 0.01
+
+    def test_normal_downward(self) -> None:
+        """下降の場合に負の bps を返すこと。"""
+        from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
+
+        result = compute_instant_velocity_bps(
+            current_mid=9_950_000.0,
+            prev_mid=10_000_000.0,
+            dt=5.0,
+            max_dt=30.0,
+        )
+        assert result is not None
+        assert abs(result - (-50.0)) < 0.01
+
+    def test_stale_returns_none(self) -> None:
+        """dt が max_dt 以上の場合は None を返すこと。"""
+        from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
+
+        result = compute_instant_velocity_bps(
+            current_mid=10_100_000.0,
+            prev_mid=10_000_000.0,
+            dt=31.0,
+            max_dt=30.0,
+        )
+        assert result is None
+
+    def test_zero_dt_returns_none(self) -> None:
+        """dt=0 の場合は None を返すこと。"""
+        from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
+
+        result = compute_instant_velocity_bps(
+            current_mid=10_100_000.0,
+            prev_mid=10_000_000.0,
+            dt=0.0,
+            max_dt=30.0,
+        )
+        assert result is None
+
+    def test_zero_prev_mid_returns_none(self) -> None:
+        """prev_mid=0 の場合は None を返すこと (0 除算防止)。"""
+        from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
+
+        result = compute_instant_velocity_bps(
+            current_mid=10_000_000.0,
+            prev_mid=0.0,
+            dt=5.0,
+            max_dt=30.0,
+        )
+        assert result is None
+
+    def test_sign_convention_matches_trade_velocity(self) -> None:
+        """符号規約が price_velocity_60s と同一 (正=上昇) であること。"""
+        from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
+
+        up = compute_instant_velocity_bps(
+            current_mid=10_010_000.0, prev_mid=10_000_000.0,
+            dt=5.0, max_dt=30.0,
+        )
+        down = compute_instant_velocity_bps(
+            current_mid=9_990_000.0, prev_mid=10_000_000.0,
+            dt=5.0, max_dt=30.0,
+        )
+        assert up is not None and up > 0  # 上昇 = 正
+        assert down is not None and down < 0  # 下降 = 負
+
+
 class TestEvOffsetWarningZone:
     """M: ev_as_offset warning zone + DRY."""
 
