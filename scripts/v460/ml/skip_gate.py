@@ -32,6 +32,7 @@ from sklearn.linear_model import Ridge
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from ztb.io.jsonl import iter_jsonl_objects
+from ztb.metrics.fill_quality import list_fill_record_files
 
 from scripts.v460.ml.model_protocols import (
     FeatureTransformer,
@@ -822,7 +823,7 @@ def warm_start_skip_gate_thresholds(
             pass
 
     prob_records_desc: list[tuple[str, float]] = []  # newest -> oldest
-    files = sorted(Path(fill_records_dir).glob("*.jsonl"))
+    files = list_fill_record_files(fill_records_dir, include_emergency=False)
     # 096# パフォーマンス: 必要な件数に達したら早期終了（最新ファイルから逆順読み）
     need = window * 2
     stale_skipped = 0

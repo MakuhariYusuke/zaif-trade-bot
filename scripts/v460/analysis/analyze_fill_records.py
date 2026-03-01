@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import datetime
-import glob
 
 from ztb.utils.safety import safe_to_finite
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ztb.io.jsonl import read_jsonl_objects
+from ztb.io.jsonl import iter_jsonl_objects
+from ztb.metrics.fill_quality import (
+    iter_fill_record_objects_from_files,
+    list_fill_record_files,
+)
 
 
 @dataclass
@@ -44,19 +47,18 @@ def _pct(numerator: int, denominator: int) -> float:
 
 
 def main() -> None:
-    files = sorted(glob.glob("results/v460/fill_test/fill_records_*.jsonl"))
+    results_dir = Path("results/v460/fill_test")
+    files = list_fill_record_files(results_dir, include_emergency=False)
     if not files:
         print("No fill_records files found: results/v460/fill_test/fill_records_*.jsonl")
         return
 
-    all_records: list[dict[str, object]] = []
-    for file_path in files:
-        all_records.extend(read_jsonl_objects(Path(file_path)))
+    all_records = list(iter_fill_record_objects_from_files(files))
 
     total_records = len(all_records)
     print(f"Total records: {total_records}")
-    first_date = Path(files[0]).stem.split("_")[-1]
-    last_date = Path(files[-1]).stem.split("_")[-1]
+    first_date = files[0].stem.split("_")[-1]
+    last_date = files[-1].stem.split("_")[-1]
     print(f"Date range: {first_date} - {last_date}")
 
     pnl_by_tf: dict[str, _PnlStats] = {
@@ -242,7 +244,7 @@ def main() -> None:
     if retrain_path.exists():
         statuses: Counter[str] = Counter()
         last_deployed: object | None = None
-        for entry in read_jsonl_objects(retrain_path):
+        for entry in iter_jsonl_objects(retrain_path, warn_malformed=True):
             status = str(entry.get("status", "unknown"))
             statuses[status] += 1
             if status == "deployed":

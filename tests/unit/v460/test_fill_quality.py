@@ -1291,6 +1291,82 @@ class TestFillRecordIO:
         assert applied["run_id"] == "r1"
         assert applied["git_sha"] == "abc"
 
+    def test_list_fill_record_files_supports_date_range(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord, list_fill_record_files, save_fill_records
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            save_fill_records(
+                [
+                    FillRecord(
+                        cycle_id="d1",
+                        timestamp=1700000000.0,
+                        side="buy",
+                        order_price=100.0,
+                        order_quantity=0.001,
+                    ),
+                ],
+                root / "fill_records_20260101.jsonl",
+            )
+            save_fill_records(
+                [
+                    FillRecord(
+                        cycle_id="d2",
+                        timestamp=1700000060.0,
+                        side="buy",
+                        order_price=101.0,
+                        order_quantity=0.001,
+                    ),
+                ],
+                root / "fill_records_20260102.jsonl",
+            )
+
+            files = list_fill_record_files(
+                root,
+                include_emergency=False,
+                start_date="2026-01-02",
+                end_date="20260102",
+            )
+            assert [path.name for path in files] == ["fill_records_20260102.jsonl"]
+
+    def test_load_fill_record_objects_glob_supports_date_range(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord, load_fill_record_objects_glob, save_fill_records
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            save_fill_records(
+                [
+                    FillRecord(
+                        cycle_id="r1",
+                        timestamp=1700000000.0,
+                        side="buy",
+                        order_price=100.0,
+                        order_quantity=0.001,
+                    ),
+                ],
+                root / "fill_records_20260101.jsonl",
+            )
+            save_fill_records(
+                [
+                    FillRecord(
+                        cycle_id="r2",
+                        timestamp=1700000060.0,
+                        side="sell",
+                        order_price=101.0,
+                        order_quantity=0.001,
+                    ),
+                ],
+                root / "fill_records_20260103.jsonl",
+            )
+
+            loaded = load_fill_record_objects_glob(
+                root,
+                include_emergency=False,
+                start_date="20260102",
+                end_date="2026-01-03",
+            )
+            assert [record["cycle_id"] for record in loaded] == ["r2"]
+
     def test_load_corrupt_lines_skipped(self) -> None:
         """032# #19: 破損行はスキップして残りを正常読込."""
         from ztb.metrics.fill_quality import FillRecord, load_fill_records

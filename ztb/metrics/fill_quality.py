@@ -1029,19 +1029,60 @@ def fill_records_to_dataframe(records: Iterable[FillRecord]) -> "pd.DataFrame":
     return pd.DataFrame.from_records(record.to_dict() for record in records)
 
 
-def iter_fill_record_objects_glob(
+def _normalize_fill_record_date(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.replace("-", "")
+    return normalized if len(normalized) == 8 and normalized.isdigit() else None
+
+
+def _extract_fill_record_file_date(path: Path) -> str | None:
+    date_part = path.stem.split("_")[-1]
+    return date_part if len(date_part) == 8 and date_part.isdigit() else None
+
+
+def list_fill_record_files(
     directory: str | Path,
     *,
     include_emergency: bool = True,
-) -> Iterator[dict[str, object]]:
-    """ディレクトリ内の全 JSONL から raw object を逐次読み込み.
-
-    FillRecord dataclass を経由せず、analysis 系で使う dict payload をそのまま返す。
-    cycle_id が文字列のものは cross-file で重複排除する。
-    """
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> list[Path]:
+    """fill record 系 JSONL ファイルを順序付きで列挙する."""
     d = Path(directory)
+    norm_start = _normalize_fill_record_date(start_date)
+    norm_end = _normalize_fill_record_date(end_date)
+
+    def _within_date(path: Path) -> bool:
+        if norm_start is None and norm_end is None:
+            return True
+        file_date = _extract_fill_record_file_date(path)
+        if file_date is None:
+            return False
+        if norm_start is not None and file_date < norm_start:
+            return False
+        if norm_end is not None and file_date > norm_end:
+            return False
+        return True
+
+    files = [
+        path for path in sorted(d.glob("fill_records_*.jsonl"))
+        if _within_date(path)
+    ]
+    if include_emergency:
+        emergency_dir = d / "emergency"
+        if emergency_dir.exists():
+            files.extend(
+                path for path in sorted(emergency_dir.glob("emergency_*.jsonl"))
+                if _within_date(path)
+            )
+    return files
+
+
+def iter_fill_record_objects_from_files(files: Iterable[Path]) -> Iterator[dict[str, object]]:
+    """指定ファイル群から raw object を逐次読み込み、cycle_id を跨いで重複排除する."""
     seen_ids: set[str] = set()
-    for path in _iter_fill_record_files(d, include_emergency=include_emergency):
+    for path in files:
         for record in iter_jsonl_objects(path, warn_malformed=True):
             cycle_id = record.get("cycle_id")
             if isinstance(cycle_id, str):
@@ -1051,13 +1092,44 @@ def iter_fill_record_objects_glob(
             yield record
 
 
+def iter_fill_record_objects_glob(
+    directory: str | Path,
+    *,
+    include_emergency: bool = True,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> Iterator[dict[str, object]]:
+    """ディレクトリ内の全 JSONL から raw object を逐次読み込み.
+
+    FillRecord dataclass を経由せず、analysis 系で使う dict payload をそのまま返す。
+    cycle_id が文字列のものは cross-file で重複排除する。
+    """
+    yield from iter_fill_record_objects_from_files(
+        list_fill_record_files(
+            directory,
+            include_emergency=include_emergency,
+            start_date=start_date,
+            end_date=end_date,
+        )
+    )
+
+
 def load_fill_record_objects_glob(
     directory: str | Path,
     *,
     include_emergency: bool = True,
+    start_date: str | None = None,
+    end_date: str | None = None,
 ) -> list[dict[str, object]]:
     """ディレクトリ内の全 JSONL から raw object を読み込み."""
-    return list(iter_fill_record_objects_glob(directory, include_emergency=include_emergency))
+    return list(
+        iter_fill_record_objects_glob(
+            directory,
+            include_emergency=include_emergency,
+            start_date=start_date,
+            end_date=end_date,
+        )
+    )
 
 
 def _coerce_filter_timestamp(value: object) -> float | None:
@@ -1121,12 +1193,8 @@ def _iter_fill_record_files(
     *,
     include_emergency: bool = True,
 ) -> Iterator[Path]:
-    """fill record 系 JSONL の対象ファイルを順序付きで列挙."""
-    yield from sorted(directory.glob("fill_records_*.jsonl"))
-    if include_emergency:
-        emergency_dir = directory / "emergency"
-        if emergency_dir.exists():
-            yield from sorted(emergency_dir.glob("emergency_*.jsonl"))
+    """内部互換: fill record 系 JSONL の対象ファイルを順序付きで列挙."""
+    yield from list_fill_record_files(directory, include_emergency=include_emergency)
 
 
 def iter_fill_records_glob(

@@ -11,22 +11,20 @@ from __future__ import annotations
 
 import argparse
 import datetime
-import glob
 import json
 import sys
 from collections import Counter, defaultdict
 from collections.abc import Sequence
 from pathlib import Path
 
-from ztb.io.jsonl import read_jsonl_objects
 from ztb.io.json_io import write_json
+from ztb.metrics.fill_quality import load_fill_record_objects_glob
 from ztb.utils.safety import ensure_dict, safe_to_int, safe_to_finite
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 DEFAULT_DATA_DIR = "results/v460/fill_test"
-DEFAULT_PATTERN = "fill_records_*.jsonl"
 FillRecord = dict[str, object]
 MetricsMap = dict[str, object]
 
@@ -53,36 +51,21 @@ def _load_records(
     run_id: str | None = None,
 ) -> list[FillRecord]:
     """Load fill records with optional date/run_id filtering."""
-    files = sorted(glob.glob(str(Path(data_dir) / DEFAULT_PATTERN)))
-    if not files:
+    records = [
+        _to_dict(record)
+        for record in load_fill_record_objects_glob(
+        data_dir,
+        include_emergency=False,
+        start_date=start_date,
+        end_date=end_date,
+        )
+    ]
+    if not records:
         print(f"ERROR: No fill record files found in {data_dir}", file=sys.stderr)
         sys.exit(1)
 
-    # Date filtering: filename format is fill_records_YYYYMMDD.jsonl
-    if start_date or end_date:
-        # Normalize input dates (accept YYYY-MM-DD or YYYYMMDD)
-        norm_start = start_date.replace("-", "") if start_date else None
-        norm_end = end_date.replace("-", "") if end_date else None
-        filtered: list[str] = []
-        for f in files:
-            stem = Path(f).stem  # fill_records_20260213
-            date_part = stem.split("_")[-1]  # 20260213
-            if norm_start and date_part < norm_start:
-                continue
-            if norm_end and date_part > norm_end:
-                continue
-            filtered.append(f)
-        files = filtered
-
-    records: list[FillRecord] = []
-    for f in files:
-        raw_records = read_jsonl_objects(Path(f))
-        records.extend(_to_dict(record) for record in raw_records if isinstance(record, dict))
-
-    # run_id filtering
     if run_id:
         records = [r for r in records if r.get("run_id") == run_id]
-
     return records
 
 

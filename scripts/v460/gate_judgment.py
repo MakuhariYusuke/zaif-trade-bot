@@ -39,22 +39,14 @@ from ztb.metrics.fill_quality import (
     filter_clean_records,
     g1_1_quick_judgment,
     g1_2_full_judgment,
-    load_fill_records,
+    load_fill_records_glob,
 )
 from ztb.io.json_io import write_json
 
 
 def _load_all_records(results_dir: Path) -> list[FillRecord]:
     """JSONL ファイルから全レコードを読み込み."""
-    import glob
-
-    pattern = str(results_dir / "fill_records_*.jsonl")
-    files = sorted(glob.glob(pattern))
-    all_records: list[FillRecord] = []
-    for f in files:
-        records = load_fill_records(f)
-        all_records.extend(records)
-    return all_records
+    return load_fill_records_glob(results_dir, include_emergency=False)
 
 
 def _filter_by_run_id(

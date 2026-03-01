@@ -39,7 +39,7 @@ from ztb.metrics.fill_quality import (
     FillRecord,
     compute_fill_metrics,
     filter_clean_records,
-    load_fill_records,
+    load_fill_records_glob,
 )
 from ztb.io.json_io import write_json
 
@@ -448,16 +448,9 @@ def print_8h_report(periods: list[dict]) -> None:
 
 def _load_all_records(results_dir: Path) -> list[FillRecord]:
     """JSONL ファイルから全レコードを読み込み."""
-    import glob
-
-    pattern = str(results_dir / "fill_records_*.jsonl")
-    files = sorted(glob.glob(pattern))
-    if not files:
+    all_records = load_fill_records_glob(results_dir, include_emergency=False)
+    if not all_records:
         raise FileNotFoundError(f"No fill_records_*.jsonl in {results_dir}")
-    all_records: list[FillRecord] = []
-    for f in files:
-        records = load_fill_records(f)
-        all_records.extend(records)
     return all_records
 
 

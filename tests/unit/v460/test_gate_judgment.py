@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -373,7 +374,10 @@ class TestLoadAllRecords:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             recs1 = _make_records_mixed(n_filled=5, n_cancelled=1, days=1)
-            recs2 = _make_records_mixed(n_filled=5, n_cancelled=1, days=1)
+            recs2 = [
+                replace(record, cycle_id=f"alt_{record.cycle_id}")
+                for record in _make_records_mixed(n_filled=5, n_cancelled=1, days=1)
+            ]
             save_fill_records(recs1, Path(tmpdir) / "fill_records_20260220.jsonl")
             save_fill_records(recs2, Path(tmpdir) / "fill_records_20260221.jsonl")
 

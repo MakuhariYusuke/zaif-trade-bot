@@ -52,10 +52,14 @@ def load_fill_records(
     Returns:
         全レコードの DataFrame (cancelled 含む).
     """
-    from ztb.metrics.fill_quality import fill_records_to_dataframe, iter_fill_records_glob
+    from ztb.metrics.fill_quality import (
+        fill_records_to_dataframe,
+        iter_fill_records_glob,
+        list_fill_record_files,
+    )
 
     d = results_dir or _DEFAULT_RESULTS_DIR
-    files = sorted(d.glob("fill_records_*.jsonl"))
+    files = list_fill_record_files(d, include_emergency=False)
     if not files:
         raise FileNotFoundError(f"No fill_records_*.jsonl in {d}")
 

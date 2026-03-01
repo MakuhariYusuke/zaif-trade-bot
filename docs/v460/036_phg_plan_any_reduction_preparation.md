@@ -3195,6 +3195,81 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/analysis/side_regime_dashboard.py`: `any_type_debt_tokens=0`
   - `scripts/v460/lib/stopgap_health.py`: `any_type_debt_tokens=0`
 
+### Step134: 残存していた手書き fill_records 読込を横断整理
+
+1. 対応概要
+- `ztb/metrics/fill_quality.py`
+  - `list_fill_record_files()` を追加した。
+  - `fill_records_*.jsonl` / `emergency_*.jsonl` の順序付き列挙を共通化し、`start_date` / `end_date` でファイル名日付の範囲指定も扱えるようにした。
+  - `iter_fill_record_objects_from_files()` を追加し、任意の file list から raw object を streaming 読込しつつ `cycle_id` の cross-file 重複排除を共通化した。
+  - `iter_fill_record_objects_glob()` / `load_fill_record_objects_glob()` に `start_date` / `end_date` を追加し、範囲指定付き読込も helper 側に寄せた。
+- `scripts/v460/analysis/analyze_fill_records.py`
+  - `glob.glob(...) + read_jsonl_objects(...)` を廃止し、`list_fill_record_files()` + `iter_fill_record_objects_from_files()` に置換した。
+  - `retrain_history.jsonl` は `read_jsonl_objects()` ではなく `iter_jsonl_objects()` に変更し、全件 list 化をやめた。
+- `scripts/v460/analysis/analyze_fill_detail.py`
+  - 手書き JSONL 全読込を `load_fill_record_objects_glob(..., include_emergency=False)` に置換した。
+- `scripts/v460/analysis/reproduce_152_metrics.py`
+  - 旧来の filename 日付フィルタ + `read_jsonl_objects()` ループを廃止し、`load_fill_record_objects_glob(..., start_date=..., end_date=...)` に置換した。
+- `scripts/v460/gate_judgment.py`
+  - `_load_all_records()` を `load_fill_records_glob(..., include_emergency=False)` に置換した。
+- `scripts/v460/analysis/vg_and_trend.py`
+  - `_load_all_records()` を `load_fill_records_glob(..., include_emergency=False)` に置換した。
+- `scripts/v460/ml/skip_gate.py`
+  - warm start の対象ファイル列挙を `list_fill_record_files(..., include_emergency=False)` に統一し、top-level の unrelated `.jsonl` を拾わないようにした。
+- `scripts/v460/ml/data_loader.py`
+  - 残っていた `d.glob("fill_records_*.jsonl")` も `list_fill_record_files(..., include_emergency=False)` に置換した。
+- `ztb/ml/retrain_trigger.py`
+  - `_get_fill_records_latest_mtime()` の file list 取得も `list_fill_record_files(..., include_emergency=False)` に統一した。
+
+2. 類似実装の確認
+- 既存の raw JSONL 行読み込み helper としては `ztb.io.jsonl.iter_jsonl_objects()` が既にあり、これは再利用した。
+- 一方で「fill_records 系ファイルの列挙」「日付範囲付き file selection」「cross-file `cycle_id` 重複排除付き raw object 読込」をまとめた public helper は存在しなかったため、`ztb.metrics.fill_quality` に新設した。
+- これにより、今後の fill_records 系 analysis / monitoring / retrain 側は同じ helper 群へ寄せられる。
+
+3. 目的
+- scripts/v460 内に残っていた手書きの `fill_records_*.jsonl` 読込パターンを実質的に回収し、ファイル列挙・重複排除・日付範囲指定の契約を 1 箇所へ集約する。
+- 同じ `glob + list extend` を繰り返す無駄と、file order / dedup の微妙なズレをなくす。
+- `skip_gate` warm start で unrelated JSONL を拾う余地を潰し、較正履歴の混入リスクを減らす。
+
+4. 検証
+- `py_compile`
+  - `ztb/metrics/fill_quality.py`
+  - `scripts/v460/ml/data_loader.py`
+  - `ztb/ml/retrain_trigger.py`
+  - `scripts/v460/analysis/analyze_fill_records.py`
+  - `scripts/v460/analysis/analyze_fill_detail.py`
+  - `scripts/v460/analysis/reproduce_152_metrics.py`
+  - `scripts/v460/gate_judgment.py`
+  - `scripts/v460/analysis/vg_and_trend.py`
+  - `scripts/v460/ml/skip_gate.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_gate_judgment.py`
+- `pytest`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_gate_judgment.py`
+  - `tests/unit/v460/test_ml_pipeline.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+  - `tests/unit/v460/test_skip_gate_d8.py`
+  - `tests/unit/v460/test_152_parallel_tasks.py`
+  - `tests/unit/v460/test_136_p1_retrain_kill.py`
+  - `-k "TestFillRecordIO or TestVGAndTrendAnalysis or TestLoadAllRecords or test_load_fill_records_excludes_emergency_and_deduplicates or warm_start or main or compute_metrics or RetrainTrigger"`
+  - 結果: `50 passed`
+- import smoke
+  - `scripts.v460.analysis.analyze_fill_records`
+  - `scripts.v460.analysis.analyze_fill_detail`
+  - `scripts.v460.analysis.reproduce_152_metrics`
+  - 結果: `main` / `_load_records` が利用可能
+- `any_inventory`
+  - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/ml/data_loader.py`: `any_type_debt_tokens=0`
+  - `ztb/ml/retrain_trigger.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/analysis/analyze_fill_records.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/analysis/analyze_fill_detail.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/analysis/reproduce_152_metrics.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/gate_judgment.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/analysis/vg_and_trend.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/ml/skip_gate.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

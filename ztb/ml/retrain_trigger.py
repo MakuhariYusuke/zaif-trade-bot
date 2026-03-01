@@ -93,11 +93,13 @@ class RetrainTrigger:
 
     def _get_fill_records_latest_mtime(self) -> float:
         """fill_records_*.jsonl の最新 mtime を返す."""
+        from ztb.metrics.fill_quality import list_fill_record_files
+
         rd = self.results_dir
         if not rd.exists():
             return 0.0
         mtimes: list[float] = []
-        for p in rd.glob("fill_records_*.jsonl"):
+        for p in list_fill_record_files(rd, include_emergency=False):
             try:
                 mtimes.append(p.stat().st_mtime)
             except OSError:
