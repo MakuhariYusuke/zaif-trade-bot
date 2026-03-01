@@ -98,6 +98,45 @@ class FillLoopOrchestratorMixin:
         ):
             self._buy_kill_mgr.track(record.post_fill_30s_pnl)
 
+    def _warmup_daily_drawdown_from_records(
+        self, records: list["FillRecord"],
+    ) -> None:
+        """203# F: fill records から当日分の PnL を DD guard に投入.
+
+        state file が stale/missing の場合のセーフティネット。
+        import_state が skip された後に呼ばれ、DD guard を正確な状態に復元する。
+        """
+        from datetime import datetime, timezone
+
+        utc_today = datetime.now(timezone.utc).strftime("%Y%m%d")
+        daily_pnl_sum = 0.0
+        daily_fill_count = 0
+        for r in records:
+            if not r.filled or r.post_fill_30s_pnl is None:
+                continue
+            # timestamp (epoch) を UTC 日付に変換
+            r_date = datetime.fromtimestamp(r.timestamp, tz=timezone.utc).strftime("%Y%m%d")
+            if r_date == utc_today:
+                daily_pnl_sum += r.post_fill_30s_pnl
+                daily_fill_count += 1
+        if daily_fill_count > 0:
+            # 1件ずつ update_pnl を呼ばず、直接 state を注入 (効率的)
+            self._daily_drawdown_guard.state.daily_pnl_bps = daily_pnl_sum
+            self._daily_drawdown_guard.state.daily_fill_count = daily_fill_count
+            self._daily_drawdown_guard.state.current_day = utc_today
+            # hard limit チェック
+            if daily_pnl_sum <= self._daily_drawdown_guard._hard_limit_bps:
+                self._daily_drawdown_guard.state.halted = True
+                import time as _time
+                self._daily_drawdown_guard.state.halt_triggered_at = _time.time()
+            # soft limit チェック
+            elif daily_pnl_sum <= self._daily_drawdown_guard._soft_limit_bps:
+                self._daily_drawdown_guard._soft_triggered_today = True
+            logger.warning(
+                f"[203# F] DD warmup from fill records: {daily_fill_count} fills today, "
+                f"daily_pnl={daily_pnl_sum:+.2f}bps, halted={self._daily_drawdown_guard.state.halted}"
+            )
+
     # ------------------------------------------------------------------
     # 179# S1: _effective_sleep — regime 応答サイクル間隔の一元化
     # ------------------------------------------------------------------
@@ -398,6 +437,15 @@ class FillLoopOrchestratorMixin:
             if saved_state is not None and saved_state.daily_drawdown_state:
                 self._daily_drawdown_guard.import_state(saved_state.daily_drawdown_state)
 
+        # 203# F: DD warmup — state 復元失敗時 (stale/missing) は fill records から再計算
+        # state file が壊れている or 保存されていない場合のセーフティネット
+        if (
+            self._daily_drawdown_guard.enabled
+            and self._daily_drawdown_guard.state.daily_fill_count == 0
+            and existing_records
+        ):
+            self._warmup_daily_drawdown_from_records(existing_records)
+
         if self._regime_detector is not None and existing_records and not regime_restored:
             # fallback: 旧方式の warm-up (state 復元失敗時)
             filled_with_mid = [
@@ -449,13 +497,16 @@ class FillLoopOrchestratorMixin:
             if self._daily_drawdown_guard.is_halted():
                 # 日次 PnL 超過 → UTC 日替わりまでスキップ
                 # 200# K: halt record 削減 — 開始/終了 + N回毎のみ記録
-                _halt_cycle = getattr(self, "_halt_start_cycle", None)
-                if _halt_cycle is None:
+                # 203# G: _halt_iter_count で正確にカウント (_cycle_count は halt 中不変)
+                _halt_entering = getattr(self, "_halt_start_cycle", None) is None
+                if _halt_entering:
                     self._halt_start_cycle = self._cycle_count
-                _halt_elapsed = self._cycle_count - getattr(self, "_halt_start_cycle", self._cycle_count)
+                    self._halt_iter_count = 0
+                else:
+                    self._halt_iter_count = getattr(self, "_halt_iter_count", 0) + 1
                 _should_record_halt = (
-                    _halt_elapsed == 0  # 開始時
-                    or _halt_elapsed % max(1, self.config.progress_log_interval) == 0  # N回毎
+                    _halt_entering  # 開始時
+                    or self._halt_iter_count % max(1, self.config.progress_log_interval) == 0  # N回毎
                 )
                 if _should_record_halt:
                     batch.append(self._make_loop_skip_record(
@@ -466,8 +517,9 @@ class FillLoopOrchestratorMixin:
                     total_count += 1
                     batch = self._batch_persistence.maybe_flush(batch, "daily_drawdown_halt")
                 self._update_lock_heartbeat()
-                # 200# P0-3: HALT 中も state を定期保存 (外部監視で HALT 状態を識別可能に)
-                if self._cycle_count % self.config.progress_log_interval == 0:
+                # 203# E: HALT 開始時は必ず state 保存 + 以降は N iter 毎
+                # (旧実装は _cycle_count % interval で判定 → halt 中は不変のため保存されないバグ)
+                if _halt_entering or self._halt_iter_count % max(1, self.config.progress_log_interval) == 0:
                     self._state_persistence.save(FillTestState(
                         run_id=self._run_id,
                         cycle_count=self._cycle_count,
@@ -487,11 +539,12 @@ class FillLoopOrchestratorMixin:
 
             # 200# K: halt 終了時の記録 (前サイクルが halt だった場合)
             if getattr(self, "_halt_start_cycle", None) is not None:
-                _halt_duration = self._cycle_count - self._halt_start_cycle
+                _halt_iters = getattr(self, "_halt_iter_count", 0)
                 logger.info(
-                    f"[daily_drawdown] Halt ended after {_halt_duration} cycles"
+                    f"[daily_drawdown] Halt ended after {_halt_iters} iterations"
                 )
                 self._halt_start_cycle = None
+                self._halt_iter_count = 0
 
             # 129# D.2: 残高制約による side 強制切替追跡
             _balance_forced = False
