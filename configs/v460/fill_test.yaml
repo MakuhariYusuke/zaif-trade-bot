@@ -381,6 +381,11 @@ loss_control:
   # 166# HF1: rescue モード有効化 (資金枯渇  レジームスキップ デッドロック対策)
   balance_forced_rescue_enabled: true
   balance_forced_rescue_offset_mult: 1.3  # 171#: 2.0→1.3 (2.0では fill率低下でrescue無力化。1.3で実効的な約定を確保)
+  # 202# A: 単一サイクル大損失クールダウン (連鎖損失防止)
+  loss_cooldown_threshold_bps: -10.0   # PnL がこの値以下で次サイクル interval 延長
+  loss_cooldown_interval_mult: 2.0     # 損失後の interval 乗数 (1サイクル限定)
+  # 202# B: 片側残高枯渇時にも rescue offset を適用 (強制 sell の AS リスク抑制)
+  one_sided_balance_rescue_offset: true
   # P0-09: unknown レジーム時の buy スキップ (unknown-buy 平均 -1.384bps)
   skip_buy_unknown_regime: true
   # 155# §9: trending レジーム時の sell スキップ (trending-sell 平均 -0.687bps)

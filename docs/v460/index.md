@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-01 (200# 199 Codex/Gemini レビュー評価 + P0 実装)
+> 最終更新: 2026-03-01 (202# ログ分析ベース改善)
 
 ---
 
@@ -192,6 +192,7 @@
 | 199 | rev | [199_ph2_rev_198_drawdown_and_hidden_risks.md](199_ph2_rev_198_drawdown_and_hidden_risks.md) | 198レビュー: ドローダウン分析の検証 + 隠れた再発要因 |
 | 200 | resp | [200_ph2_resp_199_codex_gemini_review_eval.md](200_ph2_resp_199_codex_gemini_review_eval.md) | 199 Codex/Gemini レビュー評価 + P0 実装 |
 | 201 | impl | [201_ph2_impl_an_comprehensive_improvements.md](201_ph2_impl_an_comprehensive_improvements.md) | A–N 包括的改善: postonly skip, 比例 boost, velocity SSOT, ev warning, daily reset bugfix |
+| 202 | impl | [202_ph2_impl_log_based_improvements.md](202_ph2_impl_log_based_improvements.md) | ログ分析ベース改善: loss cooldown, one-sided rescue offset, VG sell supplement |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

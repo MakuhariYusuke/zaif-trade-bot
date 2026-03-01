@@ -341,6 +341,11 @@ class FillTestConfig:
     balance_forced_rescue_offset_mult: float = 2.0  # rescue 時の offset 倍率 (2.0 = 通常の 2 倍)
     # 200# E: balance_forced 時間ベースクールダウン (短時間連発検出)
     balance_forced_cooldown_sec: float = 0.0  # 0.0=無効, >0 で時間ベース検出
+    # 202# A: 単一サイクル大損失クールダウン — 大損後の即連鎖を防止
+    loss_cooldown_threshold_bps: float = -10.0  # この PnL 以下で次サイクルの interval を延長
+    loss_cooldown_interval_mult: float = 2.0    # 損失後のインターバル乗数 (1サイクル限定)
+    # 202# B: 片側残高枯渇時にも rescue offset を適用 (通常の rescue は deadlock 用)
+    one_sided_balance_rescue_offset: bool = True  # True で one_sided_balance 時も offset 保護
     # ---- 133# P0-09: unknown レジームでの buy スキップ ----
     skip_buy_unknown_regime: bool = False  # True で unknown レジーム時 buy もスキップ (-1.384bps)
     # ---- 155# §9: trending レジームでの sell 抑制 ----
@@ -555,6 +560,12 @@ class FillTestConfig:
             raise ValueError(
                 f"balance_forced_cooldown_sec must be >= 0, "
                 f"got {self.balance_forced_cooldown_sec}"
+            )
+        # 202# A: loss_cooldown_interval_mult は 1.0 以上
+        if self.loss_cooldown_interval_mult < 1.0:
+            raise ValueError(
+                f"loss_cooldown_interval_mult must be >= 1.0, "
+                f"got {self.loss_cooldown_interval_mult}"
             )
 
 
@@ -916,6 +927,14 @@ class FillTestConfig:
         # 201# review: balance_forced_cooldown_sec YAML 配線
         if "balance_forced_cooldown_sec" in 止血:
             kwargs["balance_forced_cooldown_sec"] = float(止血["balance_forced_cooldown_sec"])
+        # 202# A: 単一サイクル大損失クールダウン
+        if "loss_cooldown_threshold_bps" in 止血:
+            kwargs["loss_cooldown_threshold_bps"] = float(止血["loss_cooldown_threshold_bps"])
+        if "loss_cooldown_interval_mult" in 止血:
+            kwargs["loss_cooldown_interval_mult"] = float(止血["loss_cooldown_interval_mult"])
+        # 202# B: 片側残高枯渇時の rescue offset
+        if "one_sided_balance_rescue_offset" in 止血:
+            kwargs["one_sided_balance_rescue_offset"] = 止血["one_sided_balance_rescue_offset"]
 
         return kwargs
 

@@ -855,6 +855,33 @@ class FillCycleExecutorMixin:
                 f"(delta={_delta:+.0f}JPY, price={order_price:.0f})"
             )
 
+        # 202# C: VG sell-side 補完 — maker_price VG が未発火かつ velocity が高い sell で
+        # 補足的 offset boost を適用。mid_trend_bps は point-to-point のため sell 側で
+        # VG が盲点になるケースを velocity_60s で補完する。
+        if (
+            side == "sell"
+            and not self._maker_price.last_vg_triggered
+            and _sg_velocity_60s is not None
+            and abs(_sg_velocity_60s) > self.config.volatility_guard_velocity_threshold_bps
+            and not _vel_offset_applied  # 195# で既に補正済みなら二重適用しない
+        ):
+            _vg_supp_boost = self.config.volatility_guard_offset_boost_factor
+            order_price, effective_offset_ratio, _vg_supp_mult, _vg_supp_delta = (
+                self._apply_offset_multiplier(
+                    side=side,
+                    order_price=order_price,
+                    spread_at_order=spread_at_order,
+                    effective_offset_ratio=effective_offset_ratio,
+                    offset_mult=_vg_supp_boost,
+                )
+            )
+            if _vg_supp_mult is not None and _vg_supp_delta is not None:
+                logger.info(
+                    f"[202# C] VG sell supplement: velocity_60s="
+                    f"{_sg_velocity_60s:.1f}bps → offset_mult={_vg_supp_mult:.2f} "
+                    f"(delta={_vg_supp_delta:+.0f}JPY, price={order_price:.0f})"
+                )
+
         # 2. 発注 (CM-2: リトライ付き)
         t_submit = time.time()
         order: object | None = None

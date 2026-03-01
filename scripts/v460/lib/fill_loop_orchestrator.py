@@ -43,6 +43,8 @@ class FillLoopOrchestratorMixin:
     _halt_start_cycle: int | None = None
     _last_balance_forced_time: float = 0.0
     _balance_forced_freq_count: int = 0
+    # 202# A: 単一サイクル大損失クールダウン乗数 (次サイクルのみ有効)
+    _loss_cooldown_mult: float = 1.0
 
     def _is_sell_killed(self) -> bool:
         """133# P0-10 / 136# P1-03: sell 動的 kill 判定 — SellDynamicKillManager に委譲.
@@ -777,6 +779,16 @@ class FillLoopOrchestratorMixin:
                     )
                     self._balance_forced_skip_count = 0
                     _one_sided_balance = original_also_insufficient  # 190# B
+                    # 202# B: 片側残高枯渇時は rescue offset で保護
+                    if (
+                        original_also_insufficient
+                        and self.config.one_sided_balance_rescue_offset
+                    ):
+                        _is_rescue = True
+                        logger.info(
+                            f"[202# B] one_sided_balance rescue: offset ×"
+                            f"{self.config.balance_forced_rescue_offset_mult:.1f}"
+                        )
                     # → continue しない: run_single_cycle へ進む
                 elif self.config.balance_forced_rescue_enabled:
                     # 158# P1-1: rescue モード — skip せず offset 倍増で安全実行
@@ -933,6 +945,19 @@ class FillLoopOrchestratorMixin:
                 self._track_sell_pnl(record)
                 # 157# §19: buy PnL 追跡 (動的 kill 判定用)
                 self._track_buy_pnl(record)
+                # 202# A: 単一サイクル大損失クールダウン — 連鎖損失防止
+                if (
+                    record.post_fill_30s_pnl is not None
+                    and record.post_fill_30s_pnl <= self.config.loss_cooldown_threshold_bps
+                ):
+                    self._loss_cooldown_mult = self.config.loss_cooldown_interval_mult
+                    logger.warning(
+                        f"[202# A] Large cycle loss {record.post_fill_30s_pnl:.2f}bps "
+                        f"<= {self.config.loss_cooldown_threshold_bps:.1f}bps — "
+                        f"next interval ×{self._loss_cooldown_mult:.1f}"
+                    )
+                else:
+                    self._loss_cooldown_mult = 1.0
                 # 033# F4: 累積 PnL インクリメンタル追跡
                 pnl_jpy = compute_record_pnl_jpy(record)
                 if pnl_jpy is not None:
@@ -1122,7 +1147,10 @@ class FillLoopOrchestratorMixin:
                     interval = self._cycle_strategy.effective_interval(regime)
                 # 200# P0-2: soft drawdown interval 延長
                 soft_dd_mult = getattr(self, "_soft_drawdown_interval_multiplier", 1.0)
-                await asyncio.sleep(interval * soft_dd_mult)
+                # 202# A: 単一サイクル大損失クールダウン (1回適用で自動リセット)
+                _loss_cd = self._loss_cooldown_mult
+                self._loss_cooldown_mult = 1.0  # 次サイクルではリセット
+                await asyncio.sleep(interval * soft_dd_mult * _loss_cd)
 
         # 残りバッチを保存
         if batch:
