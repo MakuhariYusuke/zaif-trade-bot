@@ -3048,6 +3048,28 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `tests/unit/v460/test_113_resilience.py`: `any_type_debt_tokens=0`
   - `tests/unit/v460/test_145_structural_fixes.py`: `any_type_debt_tokens=0`
 
+### Step130: fill_record_helpers の git import も遅延化
+
+1. 対応概要
+- `scripts/v460/lib/fill_record_helpers.py`
+  - `_get_git_sha()` でしか使わない `ztb.utils.git_utils.get_git_sha` を、module-level import から local import に変更した。
+
+2. 目的
+- `FillRecordHelpersMixin` を import しただけで git helper を読み込む無駄をなくし、`scripts.v460.run_fill_test` の初回 import をさらに短縮する。
+
+3. 検証
+- `py_compile`
+  - `scripts/v460/lib/fill_record_helpers.py`
+  - `scripts/v460/run_fill_test.py`
+- `pytest`
+  - `tests/unit/v460/test_145_structural_fixes.py -k "TestMakeSkipRecord or TestFillRecordBuilderIntegration"`
+  - 結果: `10 passed`
+- import timing
+  - `scripts.v460.run_fill_test` fresh import: `1.25s → 0.48s`
+- `any_inventory`
+  - `scripts/v460/lib/fill_record_helpers.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/run_fill_test.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
