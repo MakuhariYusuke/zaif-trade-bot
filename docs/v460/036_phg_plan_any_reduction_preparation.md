@@ -2574,6 +2574,30 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - `scripts/v460/lib/fill_record_helpers.py`: `any_type_debt_tokens=0`
 
+### Step113: FillRecord 読み込みも iterator 化して list 中継を削減
+
+1. 対応概要
+- `ztb/metrics/fill_quality.py`
+  - `iter_fill_records()` を追加し、JSONL 読み込みを逐次 yield できるようにした。
+  - `load_fill_records()` は `list(iter_fill_records(...))` の薄いラッパに整理した。
+  - `load_fill_records_glob()` は `load_fill_records()` の中間 list を作らず、`iter_fill_records()` を直接マージする形に変更した。
+  - `_extend_unique_fill_records()` の入力も `Iterable[FillRecord]` に拡張した。
+- `tests/unit/v460/test_fill_quality.py`
+  - `iter_fill_records()` の roundtrip テストを追加した。
+
+2. 目的
+- 大きい JSONL 群を横断する際に、各ファイルを一度 list 化してから再マージする無駄をなくす。
+- API は既存互換 (`load_fill_records`) を維持したまま、内部だけ逐次処理へ寄せる。
+
+3. 検証
+- `py_compile`
+  - `ztb/metrics/fill_quality.py`
+- `pytest`
+  - `tests/unit/v460/test_fill_quality.py -k "TestFillRecordIO"`
+  - 結果: `6 passed`
+- `any_inventory`
+  - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

@@ -18,7 +18,7 @@ from collections import deque
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Final, Iterable, Mapping, Optional
+from typing import Final, Iterable, Iterator, Mapping, Optional
 
 import numpy as np
 from scipy import stats
@@ -956,19 +956,19 @@ def save_fill_records(records: Iterable[FillRecord], path: str | Path) -> None:
     logger.info(f"Saved {count} fill records to {p}")
 
 
-def load_fill_records(path: str | Path) -> list[FillRecord]:
-    """JSONL ファイルから FillRecord を読み込み.
+def iter_fill_records(path: str | Path) -> Iterator[FillRecord]:
+    """JSONL ファイルから FillRecord を逐次読み込み.
 
     032# #19: 破損行はスキップしてログ出力。
     101# §5: cycle_id による重複排除 (SIGINT 中断時の partial+emergency 重複対策)。
     """
     p = Path(path)
     if not p.exists():
-        return []
-    records: list[FillRecord] = []
+        return
     seen_ids: set[str] = set()
     skipped = 0
     duplicates = 0
+    loaded = 0
     with open(p, "r", encoding="utf-8") as f:
         for line_no, line in enumerate(f, 1):
             line = line.strip()
@@ -980,7 +980,8 @@ def load_fill_records(path: str | Path) -> list[FillRecord]:
                     duplicates += 1
                     continue
                 seen_ids.add(rec.cycle_id)
-                records.append(rec)
+                loaded += 1
+                yield rec
             except (json.JSONDecodeError, TypeError, KeyError) as e:
                 skipped += 1
                 logger.warning(
@@ -990,15 +991,19 @@ def load_fill_records(path: str | Path) -> list[FillRecord]:
         logger.warning(f"Total {skipped} corrupt lines skipped in {p.name}")
     if duplicates:
         logger.info(f"Deduplicated {duplicates} records in {p.name}")
-    logger.info(f"Loaded {len(records)} fill records from {p}")
-    return records
+    logger.info(f"Loaded {loaded} fill records from {p}")
+
+
+def load_fill_records(path: str | Path) -> list[FillRecord]:
+    """JSONL ファイルから FillRecord を読み込み."""
+    return list(iter_fill_records(path))
 
 
 def _extend_unique_fill_records(
     target: list[FillRecord],
     *,
     seen_ids: set[str],
-    source: list[FillRecord],
+    source: Iterable[FillRecord],
 ) -> None:
     """cycle_id 未出現の FillRecord だけを target に追加."""
     for record in source:
@@ -1019,7 +1024,7 @@ def load_fill_records_glob(directory: str | Path) -> list[FillRecord]:
         _extend_unique_fill_records(
             records,
             seen_ids=seen_ids,
-            source=load_fill_records(p),
+            source=iter_fill_records(p),
         )
     # emergency dump ディレクトリも統合 (重複は自動排除)
     emergency_dir = d / "emergency"
@@ -1028,7 +1033,7 @@ def load_fill_records_glob(directory: str | Path) -> list[FillRecord]:
             _extend_unique_fill_records(
                 records,
                 seen_ids=seen_ids,
-                source=load_fill_records(p),
+                source=iter_fill_records(p),
             )
     return records
 

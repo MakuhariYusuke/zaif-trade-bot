@@ -1046,6 +1046,27 @@ class TestFillRecordIO:
             assert loaded[0].cycle_id == "io_0"
             assert loaded[4].side == "buy"
 
+    def test_iter_load_roundtrip(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord, iter_fill_records, save_fill_records
+
+        records = [
+            FillRecord(
+                cycle_id=f"iter_{i}",
+                timestamp=1700000000.0 + i * 60,
+                side="buy",
+                order_price=12000000.0,
+                order_quantity=0.001,
+            )
+            for i in range(3)
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "iter.jsonl"
+            save_fill_records(records, path)
+            loaded = list(iter_fill_records(path))
+            assert len(loaded) == 3
+            assert loaded[0].cycle_id == "iter_0"
+            assert loaded[2].cycle_id == "iter_2"
+
     def test_load_nonexistent(self) -> None:
         from ztb.metrics.fill_quality import load_fill_records
 
