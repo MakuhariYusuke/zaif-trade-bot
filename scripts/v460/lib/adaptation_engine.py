@@ -27,8 +27,8 @@ from typing import Final, NamedTuple, Optional
 from ztb.metrics.fill_quality import (
     FillRecord,
     compute_fill_metrics,
-    filter_clean_records,
-    load_fill_records_glob,
+    iter_fill_records_glob,
+    partition_clean_records,
 )
 
 from scripts.v460.lib.fill_config import FillTestConfig
@@ -91,9 +91,9 @@ class AdaptationEngine:
         if self._cached_records is not None and (now - self._cache_ts) < self._config.records_cache_ttl_sec:
             return self._cached_records
 
-        all_records = load_fill_records_glob(str(self._results_dir))
-        records, _q = filter_clean_records(all_records)
-        del all_records  # 即座に解放
+        records, _q = partition_clean_records(
+            iter_fill_records_glob(str(self._results_dir)),
+        )
         self._cached_records = records
         self._cache_ts = now
         return records

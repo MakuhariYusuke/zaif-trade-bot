@@ -2660,6 +2660,43 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
 
+### Step117: clean/quarantine 分離も iterable 対応へ横展開
+
+1. 対応概要
+- `ztb/metrics/fill_quality.py`
+  - `partition_clean_records()` を追加し、`Iterable[FillRecord]` を直接 clean/quarantine に分離できるようにした。
+  - `filter_clean_records()` は list 互換 API として `partition_clean_records()` を呼ぶ薄いラッパに整理した。
+- `scripts/v460/lib/results_analyzer.py`
+  - `run_results_only()` を `iter_fill_records_glob()` + `partition_clean_records()` ベースへ変更し、中間 `all_records` list を除去した。
+- `scripts/v460/lib/adaptation_engine.py`
+  - `_load_clean_records()` を `iter_fill_records_glob()` + `partition_clean_records()` ベースへ変更し、中間 `all_records` を廃止した。
+- `scripts/v460/analysis/oracle_baseline.py`
+  - `run_oracle_baseline()` を同様に streaming 読み込みへ変更した。
+- `tests/unit/v460/test_fill_quality.py`
+  - `partition_clean_records()` が generator 入力を受けられることを追加検証した。
+- `tests/unit/v460/test_169_ranging_buy_skip_and_metrics.py`
+  - `results_analyzer` の patch 対象を新 helper ベースへ更新した。
+
+2. 目的
+- 読み込みだけでなく quarantine 分離も iterator ベースに寄せ、`all_records -> clean` の二重保持を減らす。
+- `results_analyzer` / `adaptation_engine` / `oracle_baseline` の実運用寄り経路で、ピークメモリを下げる。
+
+3. 検証
+- `py_compile`
+  - `ztb/metrics/fill_quality.py`
+  - `scripts/v460/lib/results_analyzer.py`
+  - `scripts/v460/lib/adaptation_engine.py`
+  - `scripts/v460/analysis/oracle_baseline.py`
+- `pytest`
+  - `tests/unit/v460/test_fill_quality.py -k "TestFilterCleanRecordsExpanded or TestFillRecordIO"`
+  - `tests/unit/v460/test_169_ranging_buy_skip_and_metrics.py`
+  - 結果: `19 passed`
+- `any_inventory`
+  - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/results_analyzer.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/lib/adaptation_engine.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/analysis/oracle_baseline.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

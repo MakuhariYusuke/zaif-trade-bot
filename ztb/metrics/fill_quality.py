@@ -1026,12 +1026,12 @@ def load_fill_records_glob(directory: str | Path) -> list[FillRecord]:
     return list(iter_fill_records_glob(directory))
 
 
-def filter_clean_records(
-    records: list[FillRecord],
+def partition_clean_records(
+    records: Iterable[FillRecord],
     *,
     require_git_sha: bool = True,
 ) -> tuple[list[FillRecord], list[FillRecord]]:
-    """046# clean/quarantine 分離 + 047# A5 拡張基準.
+    """046# clean/quarantine 分離 + 047# A5 拡張基準 (iterable 対応).
 
     以下のいずれかに該当するレコードを quarantine へ分類:
     - git_sha が blank/None (ゾンビプロセス由来)
@@ -1039,7 +1039,7 @@ def filter_clean_records(
     - 必須フィールド (side, order_price, order_quantity) が不正
 
     Args:
-        records: 全 FillRecord リスト.
+        records: 全 FillRecord iterable.
         require_git_sha: True の場合 git_sha が blank/None のレコードを quarantine.
             False の場合は全チェックをバイパスして全件 clean を返す.
 
@@ -1047,11 +1047,15 @@ def filter_clean_records(
         (clean, quarantine) のタプル.
     """
     if not require_git_sha:
-        return records, []  # テスト用: 全件 clean (本番は常に True)
+        if isinstance(records, list):
+            return records, []  # 既存互換: list 入力時は同一参照を返す
+        return list(records), []  # テスト用: 全件 clean (本番は常に True)
 
     clean: list[FillRecord] = []
     quarantine: list[FillRecord] = []
+    total = 0
     for r in records:
+        total += 1
         # 047# A5: 複合チェック — git_sha + run_id + 必須フィールド
         reason = _quarantine_reason(r)
         if reason:
@@ -1061,10 +1065,22 @@ def filter_clean_records(
 
     if quarantine:
         logger.info(
-            f"[quarantine] {len(quarantine)}/{len(records)} records quarantined. "
+            f"[quarantine] {len(quarantine)}/{total} records quarantined. "
             f"clean={len(clean)}"
         )
     return clean, quarantine
+
+
+def filter_clean_records(
+    records: list[FillRecord],
+    *,
+    require_git_sha: bool = True,
+) -> tuple[list[FillRecord], list[FillRecord]]:
+    """046# clean/quarantine 分離 + 047# A5 拡張基準.
+
+    list 入力の既存 API。新規コードでは `partition_clean_records()` を優先。
+    """
+    return partition_clean_records(records, require_git_sha=require_git_sha)
 
 
 def _quarantine_reason(r: FillRecord) -> str | None:

@@ -167,13 +167,13 @@ class TestThreeSeriesStructure:
             "g1_2_full_exec": {},
         }
         with patch(
-            "scripts.v460.lib.results_analyzer.load_fill_records_glob",
-            return_value=records,
+            "scripts.v460.lib.results_analyzer.iter_fill_records_glob",
+            return_value=iter(records),
         ), patch(
             "scripts.v460.lib.config_loader.load_gate_thresholds",
             return_value=mock_thresholds,
         ), patch(
-            "scripts.v460.lib.results_analyzer.filter_clean_records",
+            "scripts.v460.lib.results_analyzer.partition_clean_records",
             return_value=(records, []),
         ):
             from scripts.v460.lib.results_analyzer import run_results_only

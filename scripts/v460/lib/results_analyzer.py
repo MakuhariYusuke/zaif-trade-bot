@@ -23,11 +23,11 @@ from ztb.metrics.fill_quality import (
     RegimeMetrics,
     compute_fill_metrics,
     compute_regime_metrics,
-    filter_clean_records,
+    iter_fill_records_glob,
     g1_1_judgment,
     g1_1_quick_judgment,
     g1_2_full_judgment,
-    load_fill_records_glob,
+    partition_clean_records,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,19 +40,19 @@ def run_results_only(results_dir: str, thresholds_path: str | None = None) -> di
     """
     from scripts.v460.lib.config_loader import load_gate_thresholds
 
-    all_records = load_fill_records_glob(results_dir)
-    if not all_records:
+    records, quarantine = partition_clean_records(
+        iter_fill_records_glob(results_dir),
+    )
+    if not records and not quarantine:
         logger.error(f"No fill records found in {results_dir}")
         return {"gate": "G1.1-exec", "gate_result": "NO_DATA", "error": "No records found"}
 
     # 047# A2: quarantine レコードを除外し clean のみで Gate 判定
-    records, quarantine = filter_clean_records(all_records)
     if quarantine:
         logger.warning(
             f"[results-only] {len(quarantine)} records quarantined, "
             f"using {len(records)} clean records for judgment"
         )
-    del all_records
     if not records:
         logger.error("All records are quarantined")
         return {"gate": "G1.1-exec", "gate_result": "NO_DATA", "error": "All records quarantined"}

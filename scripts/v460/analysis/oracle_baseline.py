@@ -40,8 +40,8 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 from ztb.metrics.fill_quality import (
     FillRecord,
     PnlAccumulator,
-    filter_clean_records,
-    load_fill_records_glob,
+    iter_fill_records_glob,
+    partition_clean_records,
 )
 from ztb.io.json_io import write_json
 
@@ -253,9 +253,9 @@ def run_oracle_baseline(
     Returns:
         JSON-serializable レポートdict.
     """
-    all_records = load_fill_records_glob(results_dir)
-    clean, _quarantine = filter_clean_records(all_records)
-    del all_records
+    clean, _quarantine = partition_clean_records(
+        iter_fill_records_glob(results_dir),
+    )
     filled = [r for r in clean if r.filled and r.post_fill_30s_pnl is not None]
     del clean
 

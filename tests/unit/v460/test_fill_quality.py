@@ -1859,6 +1859,21 @@ class TestFilterCleanRecordsExpanded:
         assert len(q) == 3
         assert clean[0].cycle_id == "ok"
 
+    def test_partition_accepts_generator(self) -> None:
+        """iterable 入力でも clean/quarantine 分離できる."""
+        from ztb.metrics.fill_quality import partition_clean_records
+
+        records = (
+            rec for rec in [
+                self._make_record(cycle_id="ok"),
+                self._make_record(cycle_id="bad_sha", git_sha=None),
+            ]
+        )
+        clean, q = partition_clean_records(records)
+        assert len(clean) == 1
+        assert len(q) == 1
+        assert clean[0].cycle_id == "ok"
+
 
 # ======================================================================
 # 047# A5: _quarantine_reason 単体テスト
