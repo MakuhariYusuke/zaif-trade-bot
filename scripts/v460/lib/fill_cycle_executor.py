@@ -46,6 +46,9 @@ class FillCycleExecutorMixin:
     188# _build_fill_record() 抽出済み
     """
 
+    # 201# review: 動的属性のクラスレベル宣言 (mypy 検出 + IDE 補完)
+    _postonly_crossing_streak: int = 0
+
     async def _compute_orderbook_imbalance(self, depth: int = 5) -> tuple[float, float, float]:
         """054# S1: 板不均衡を計算 — 120# MakerPriceCalculator に委譲."""
         r = await self._maker_price.compute_imbalance(self.adapter, self.config.symbol, depth=depth)
@@ -963,7 +966,17 @@ class FillCycleExecutorMixin:
                 logger.error(f"All order attempts failed: {last_error}")
                 # 113# resilience: API 失敗を CircuitBreaker に記録
                 await self._circuit_breaker.async_on_failure()
+                self._postonly_crossing_streak = 0  # 201# 非 crossing で streak リセット
             else:
+                # 201# review: crossing 連続発生を検出 → 高頻度時に warning
+                self._postonly_crossing_streak = getattr(
+                    self, "_postonly_crossing_streak", 0
+                ) + 1
+                if self._postonly_crossing_streak >= 3:
+                    logger.warning(
+                        f"[postonly_guard] 201# crossing streak={self._postonly_crossing_streak}"
+                        " — offset pipeline may need recalibration"
+                    )
                 logger.info("[postonly_guard] 200# crossing → cycle skipped (no CB penalty)")
             return self._make_cycle_skip_record(
                 timestamp=t_submit,

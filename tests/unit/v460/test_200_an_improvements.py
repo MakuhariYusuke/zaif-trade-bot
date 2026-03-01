@@ -316,3 +316,77 @@ class TestSoftDrawdownIntervalConfig:
             }
         })
         assert kwargs["soft_drawdown_interval_multiplier"] == 5.0
+
+
+# ============================================================
+# 201# review: 追加バリデーション + crossing streak テスト
+# ============================================================
+
+
+class TestPostInitValidation201:
+    """201# review: 新規フィールドの __post_init__ バリデーション."""
+
+    def test_soft_drawdown_multiplier_zero_raises(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        with pytest.raises(ValueError, match="soft_drawdown_interval_multiplier must be > 0"):
+            FillTestConfig(soft_drawdown_interval_multiplier=0.0)
+
+    def test_soft_drawdown_multiplier_negative_raises(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        with pytest.raises(ValueError, match="soft_drawdown_interval_multiplier must be > 0"):
+            FillTestConfig(soft_drawdown_interval_multiplier=-1.0)
+
+    def test_low_vol_boost_min_below_one_raises(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        with pytest.raises(ValueError, match="low_vol_boost_min must be >= 1.0"):
+            FillTestConfig(low_vol_boost_min=0.5)
+
+    def test_low_vol_boost_min_exceeds_max_raises(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        with pytest.raises(ValueError, match="low_vol_boost_min.*must be <=.*low_vol_offset_boost"):
+            FillTestConfig(low_vol_boost_min=2.0, low_vol_offset_boost=1.4)
+
+    def test_balance_forced_cooldown_negative_raises(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        with pytest.raises(ValueError, match="balance_forced_cooldown_sec must be >= 0"):
+            FillTestConfig(balance_forced_cooldown_sec=-1.0)
+
+
+class TestCooldownYamlWiring:
+    """201# review: balance_forced_cooldown_sec YAML 配線."""
+
+    def test_cooldown_parsed_from_yaml(self) -> None:
+        from scripts.v460.lib.fill_config import FillTestConfig
+        kwargs = FillTestConfig._parse_stopgap_section({
+            "止血": {
+                "balance_forced_cooldown_sec": 30.0,
+            }
+        })
+        assert kwargs["balance_forced_cooldown_sec"] == 30.0
+
+
+class TestPostonlyCrossingStreak:
+    """201# review: crossing 連続発生カウンタ."""
+
+    def test_crossing_streak_class_attr_exists(self) -> None:
+        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
+        assert hasattr(FillCycleExecutorMixin, "_postonly_crossing_streak")
+        assert FillCycleExecutorMixin._postonly_crossing_streak == 0
+
+
+class TestOrchestratorClassAttrs:
+    """201# review: 動的属性のクラスレベル宣言."""
+
+    def test_mixin_declares_soft_dd_mult(self) -> None:
+        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+        assert hasattr(FillLoopOrchestratorMixin, "_soft_drawdown_interval_multiplier")
+        assert FillLoopOrchestratorMixin._soft_drawdown_interval_multiplier == 1.0
+
+    def test_mixin_declares_halt_start_cycle(self) -> None:
+        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+        assert FillLoopOrchestratorMixin._halt_start_cycle is None
+
+    def test_mixin_declares_balance_forced_attrs(self) -> None:
+        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+        assert FillLoopOrchestratorMixin._last_balance_forced_time == 0.0
+        assert FillLoopOrchestratorMixin._balance_forced_freq_count == 0

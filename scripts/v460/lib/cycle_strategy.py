@@ -145,7 +145,7 @@ class DefaultCycleStrategy:
                     )
         # 200# G: volatility-scaled wait (opt-in: vol_ratio が渡された場合のみ)
         if vol_ratio is not None and vol_ratio > 0:
-            # vol_ratio=0.5 → wait ×1.3, vol_ratio=1.5 → wait ×0.85
+            # vol_ratio=0.5 → wait ×1.23, vol_ratio=1.5 → wait ×0.87
             # 上下限: 0.7x ~ 1.5x で暴走防止
             _vol_scale = max(0.7, min(1.5, 1.0 / vol_ratio ** 0.3))
             return base * _vol_scale

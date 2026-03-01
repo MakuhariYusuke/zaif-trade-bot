@@ -1,4 +1,4 @@
-# 200# Phase 2: A–N 包括的改善実装
+# 201# Phase 2: A–N 包括的改善実装
 
 > **前提**: `200_ph2_resp_199_codex_gemini_review_eval.md` の P0 実装 (commit `9b9ed6780`) 完了後、  
 > 残り提案 A–N + 追加発見 5 件 (10-A〜10-E) を一括実装  
@@ -221,3 +221,19 @@ Pre-existing failures (4 件、git stash で確認済):
 | `configs/v460/fill_test.yaml` | 新設定追加 | C, M, 10-E |
 | `tests/unit/v460/test_145_structural_fixes.py` | テスト修正 | B/I |
 | `tests/unit/v460/test_200_an_improvements.py` | **NEW** — 25 tests | ALL |
+
+---
+
+## 7. Post-commit レビュー修正 (201#)
+
+Self-review で発見した HIGH 1 / MED 4 / LOW 1 を追加修正。
+
+| 重要度 | 内容 | ファイル |
+|---|---|---|
+| **HIGH** | 動的属性 (`_soft_drawdown_interval_multiplier` 等) のクラスレベル宣言追加 (mypy/IDE 対応) | orchestrator, executor |
+| **MED** | `balance_forced_cooldown_sec` YAML 配線漏れ修正 | fill_config.py |
+| **MED** | `__post_init__` バリデーション追加 (`soft_drawdown_interval_multiplier > 0`, `low_vol_boost_min` 範囲, `balance_forced_cooldown_sec >= 0`) | fill_config.py |
+| **MED** | postonly crossing 連続発生カウンタ (`_postonly_crossing_streak`) — 3 連続で WARNING | fill_cycle_executor.py |
+| **LOW** | cycle_strategy コメント数値例修正 (`×1.3` → `×1.23`) | cycle_strategy.py |
+
+テスト追加: +10 tests (計 35 tests 通過)

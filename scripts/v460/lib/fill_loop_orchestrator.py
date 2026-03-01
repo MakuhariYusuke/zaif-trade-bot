@@ -49,6 +49,12 @@ class FillLoopOrchestratorMixin:
     ────────────────────────────────────────────────────
     """
 
+    # 201# review: 動的属性のクラスレベル宣言 (mypy 検出 + IDE 補完)
+    _soft_drawdown_interval_multiplier: float = 1.0
+    _halt_start_cycle: int | None = None
+    _last_balance_forced_time: float = 0.0
+    _balance_forced_freq_count: int = 0
+
     def _is_sell_killed(self) -> bool:
         """133# P0-10 / 136# P1-03: sell 動的 kill 判定 — SellDynamicKillManager に委譲.
 

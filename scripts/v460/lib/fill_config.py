@@ -535,6 +535,26 @@ class FillTestConfig:
                 f"sell_offset_floor_inv_discount must be in [0, 1], "
                 f"got {self.sell_offset_floor_inv_discount}"
             )
+        # 201# review: 200# 新規フィールドのバリデーション
+        if self.soft_drawdown_interval_multiplier <= 0:
+            raise ValueError(
+                f"soft_drawdown_interval_multiplier must be > 0, "
+                f"got {self.soft_drawdown_interval_multiplier}"
+            )
+        if self.low_vol_boost_min < 1.0:
+            raise ValueError(
+                f"low_vol_boost_min must be >= 1.0, got {self.low_vol_boost_min}"
+            )
+        if self.low_vol_boost_min > self.low_vol_offset_boost:
+            raise ValueError(
+                f"low_vol_boost_min ({self.low_vol_boost_min}) must be <= "
+                f"low_vol_offset_boost ({self.low_vol_offset_boost})"
+            )
+        if self.balance_forced_cooldown_sec < 0:
+            raise ValueError(
+                f"balance_forced_cooldown_sec must be >= 0, "
+                f"got {self.balance_forced_cooldown_sec}"
+            )
 
 
     # ================================================================
@@ -795,7 +815,7 @@ class FillTestConfig:
         """133# 止血施策 + dynamic kill + narrow spread + inventory skewing."""
         kwargs: dict = {}
         # 133# P0-08/09/10: 止血施策
-        止血 = yaml_cfg.get("止血", yaml_cfg.get("loss_control", {}))
+        止血: dict = yaml_cfg.get("止血", yaml_cfg.get("loss_control", {}))
         if 止血.get("skip_balance_forced") is not None:
             kwargs["skip_balance_forced"] = 止血["skip_balance_forced"]
         # 154# C-1/C-2: deadlock 防止の連続 forced skip 上限
@@ -892,6 +912,9 @@ class FillTestConfig:
         # 200# 10-A/10-E: soft_drawdown_interval_multiplier YAML 外部化
         if "soft_drawdown_interval_multiplier" in dd_guard:
             kwargs["soft_drawdown_interval_multiplier"] = float(dd_guard["soft_drawdown_interval_multiplier"])
+        # 201# review: balance_forced_cooldown_sec YAML 配線
+        if "balance_forced_cooldown_sec" in 止血:
+            kwargs["balance_forced_cooldown_sec"] = float(止血["balance_forced_cooldown_sec"])
 
         return kwargs
 
