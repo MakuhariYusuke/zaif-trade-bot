@@ -151,13 +151,7 @@ def load_clean_filled(
     def to_df(recs: list[FillRecord]) -> pd.DataFrame:
         if not recs:
             return pd.DataFrame()
-        rows = []
-        for r in recs:
-            d: dict = {}
-            for field in r.__dataclass_fields__:
-                d[field] = getattr(r, field)
-            rows.append(d)
-        return pd.DataFrame(rows)
+        return pd.DataFrame([record.to_dict() for record in recs])
 
     clean_df = to_df(clean)
     quarantine_df = to_df(quarantine)
@@ -169,7 +163,7 @@ def load_clean_filled(
         clean_filled = pd.DataFrame()
 
     stats = {
-        "total_records": len(all_records),
+        "total_records": len(clean) + len(quarantine),
         "clean": len(clean),
         "quarantine": len(quarantine),
         "clean_filled": len(clean_filled),

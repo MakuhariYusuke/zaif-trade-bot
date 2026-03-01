@@ -2748,6 +2748,25 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - `scripts/v460/lib/fill_record_helpers.py`: `any_type_debt_tokens=0`
 
+### Step120: 075 verification の load_clean_filled runtime bug 修正
+
+1. 対応概要
+- `scripts/v460/ml/run_075_verification.py`
+  - `stats["total_records"]` が削除済み `all_records` を参照していた不具合を修正し、`len(clean) + len(quarantine)` を使うようにした。
+  - `to_df()` の dataclass 手展開をやめ、`FillRecord.to_dict()` ベースに統一した。
+
+2. 目的
+- iterator 化後に残っていた `NameError` 余地を除去し、`load_clean_filled()` を実行可能状態に戻す。
+- `FillRecord` → `DataFrame` 変換も既存の serialize 契約へ揃える。
+
+3. 検証
+- `py_compile`
+  - `scripts/v460/ml/run_075_verification.py`
+- smoke
+  - `load_clean_filled()` を monkeypatch 付きで呼び出し、`stats["total_records"]` を確認
+- `any_inventory`
+  - `scripts/v460/ml/run_075_verification.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  
