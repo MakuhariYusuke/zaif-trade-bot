@@ -4,7 +4,10 @@ import math
 
 import pytest
 
-from scripts.v460.lib.results_analyzer import compute_event_contribution
+from scripts.v460.lib.results_analyzer import (
+    compute_event_contribution,
+    compute_multi_track_analysis,
+)
 from ztb.metrics.fill_quality import FillRecord
 
 
@@ -81,3 +84,35 @@ def test_compute_event_contribution_ignores_non_finite_values() -> None:
     assert result["sg"]["low_prob"]["n"] == 0
     assert result["sg"]["high_prob"]["median_threshold"] == pytest.approx(0.2)
     assert result["sg"]["delta"] == pytest.approx(-1.0)
+
+
+def test_compute_multi_track_analysis_selects_latest_run() -> None:
+    records = [
+        FillRecord(
+            cycle_id="a",
+            timestamp=1.0,
+            side="buy",
+            order_price=14_500_000.0,
+            order_quantity=0.001,
+            fill_price=14_500_000.0,
+            filled=True,
+            post_fill_30s_pnl=1.0,
+            run_id="run_old",
+        ),
+        FillRecord(
+            cycle_id="b",
+            timestamp=10.0,
+            side="buy",
+            order_price=14_500_000.0,
+            order_quantity=0.001,
+            fill_price=14_500_000.0,
+            filled=True,
+            post_fill_30s_pnl=2.0,
+            run_id="run_new",
+        ),
+    ]
+
+    result = compute_multi_track_analysis(records, trailing_n=10)
+
+    assert result["current_run"]["run_id"] == "run_new"
+    assert result["current_run"]["n_total"] == 1

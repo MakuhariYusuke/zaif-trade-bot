@@ -3552,6 +3552,69 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 - `any_inventory`
   - `scripts/v460/lib/results_analyzer.py`: `any_type_debt_tokens=0`
 
+### Step143: `oracle_baseline` の group 集計を `list[FillRecord]` から集計器へ置換
+
+1. 対応概要
+- `scripts/v460/analysis/oracle_baseline.py`
+  - `_group_oracle_aggregates()` を追加し、全体 / side / regime の Oracle 集計を 1 パスで構築する形へ変更した。
+  - `run_oracle_baseline()` で `filled` list、`side_groups`、`regime_groups` を保持する実装をやめ、`_OracleAggregate` を直接積む形に置換した。
+  - `buy/sell` / regime 別メトリクスは `compute_oracle_metrics()` に再度 list を渡すのではなく、`_metrics_from_aggregate()` を直接使う形へ変更した。
+  - 全体・side・regime の集計で同じ `safe_to_finite()` を何度も呼ばないよう、レコードごとの数値正規化は 1 回に寄せた。
+- `tests/unit/v460/test_retrain_hot_reload.py`
+  - `_group_oracle_aggregates()` が side / regime 別に正しく件数を積む回帰テストを追加した。
+
+2. 類似実装の確認
+- `oracle_baseline` は既に `_OracleAggregate` / `_metrics_from_aggregate()` を持っていたため、新しい集計型を増やさず既存資産の再利用で完結した。
+- これは `oracle_test` と同じく「ローカルの分析スクリプト内で、既存集計の使い回しで重複配列を減らす」方向の横展開である。
+
+3. 目的
+- 大きい fill log で `filled` / `side_groups` / `regime_groups` の複数 list を保持する無駄を減らす。
+- 集計対象件数が増えたときのピークメモリを下げる。
+- 既に存在する `_OracleAggregate` を活かし、保守点を減らす。
+
+4. 検証
+- `py_compile`
+  - `scripts/v460/analysis/oracle_baseline.py`
+  - `tests/unit/v460/test_retrain_hot_reload.py`
+- `pytest`
+  - `tests/unit/v460/test_results_analyzer.py`
+  - `tests/unit/v460/test_retrain_hot_reload.py`
+  - `-k "oracle_ or compute_multi_track_analysis_selects_latest_run or compute_event_contribution"`
+  - 結果: `9 passed, 72 deselected`
+- `any_inventory`
+  - `scripts/v460/analysis/oracle_baseline.py`: `any_type_debt_tokens=0`
+  - `tests/unit/v460/test_retrain_hot_reload.py`: `any_type_debt_tokens=0`
+
+### Step144: `results_analyzer` の run grouping をさらに 1 パス寄りに整理
+
+1. 対応概要
+- `scripts/v460/lib/results_analyzer.py`
+  - `_group_runs_with_latest_id()` を追加し、run 別 grouping と最新 run_id 特定を 1 パスで処理するよう変更した。
+  - `compute_multi_track_analysis()` 内で、各 run group に対して `max(timestamp)` を取り直す追加走査を削除した。
+- `tests/unit/v460/test_results_analyzer.py`
+  - `compute_multi_track_analysis()` が最新 timestamp の run を `current_run` に選ぶテストを追加した。
+
+2. 類似実装の確認
+- public API の `compute_run_level_breakdown()` は維持し、追加の内部 helper に限定して変更した。
+- run ごとの list 自体は `compute_fill_metrics()` の契約上まだ必要なため、今回は「group 後の再走査削減」に絞った。
+
+3. 目的
+- run 数が多い場合でも、最新 run 判定のためだけの追加走査をなくす。
+- 既存挙動を変えずに `compute_multi_track_analysis()` の定数倍コストを下げる。
+
+4. 検証
+- `py_compile`
+  - `scripts/v460/lib/results_analyzer.py`
+  - `tests/unit/v460/test_results_analyzer.py`
+- `pytest`
+  - `tests/unit/v460/test_results_analyzer.py`
+  - `tests/unit/v460/test_retrain_hot_reload.py`
+  - `-k "oracle_ or compute_multi_track_analysis_selects_latest_run or compute_event_contribution"`
+  - 結果: `9 passed, 72 deselected`
+- `any_inventory`
+  - `scripts/v460/lib/results_analyzer.py`: `any_type_debt_tokens=0`
+  - `tests/unit/v460/test_results_analyzer.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

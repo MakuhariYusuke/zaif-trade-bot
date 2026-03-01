@@ -1719,6 +1719,23 @@ class TestOracleBaseline:
         assert m.actual_jpy_per_cycle is not None
         assert abs(m.actual_jpy_per_cycle - 1.5) < 0.01
 
+    def test_group_oracle_aggregates_groups_by_side_and_regime(self) -> None:
+        """全体/side/regime 集計が 1 パスで正しく構築される."""
+        from scripts.v460.analysis.oracle_baseline import _group_oracle_aggregates
+
+        records = [
+            self._make_mock_record(side="buy", regime="ranging", pnl_30s=2.0),
+            self._make_mock_record(side="sell", regime="trending", pnl_30s=-1.0),
+            self._make_mock_record(side="buy", regime="ranging", pnl_30s=None, filled=True),
+        ]
+        all_agg, side_aggs, regime_aggs = _group_oracle_aggregates(records)
+
+        assert all_agg.n_total == 2
+        assert side_aggs["buy"].n_total == 1
+        assert side_aggs["sell"].n_total == 1
+        assert regime_aggs["ranging"].n_total == 1
+        assert regime_aggs["trending"].n_total == 1
+
 
 # =====================================================================
 # 145# R-2a: レジーム重み付き再学習テスト

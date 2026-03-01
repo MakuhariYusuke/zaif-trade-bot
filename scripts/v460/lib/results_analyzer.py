@@ -218,6 +218,24 @@ def compute_run_level_breakdown(
     return dict(groups)
 
 
+def _group_runs_with_latest_id(
+    records: list[FillRecord],
+) -> tuple[dict[str, list[FillRecord]], str | None]:
+    """run_id 別グルーピングと最新 run_id 特定を単一パスで行う."""
+    groups: dict[str, list[FillRecord]] = defaultdict(list)
+    latest_run_id: str | None = None
+    latest_ts = float("-inf")
+
+    for record in records:
+        key = record.run_id if (record.run_id and record.run_id.strip()) else "legacy"
+        groups[key].append(record)
+        if record.timestamp > latest_ts:
+            latest_ts = record.timestamp
+            latest_run_id = key
+
+    return dict(groups), latest_run_id
+
+
 def compute_multi_track_analysis(
     records: list[FillRecord],
     trailing_n: int = _TRAILING_N,
@@ -239,10 +257,9 @@ def compute_multi_track_analysis(
     result["all_run"] = _metrics_summary(all_metrics, len(records))
 
     # --- per-run breakdown ---
-    run_groups = compute_run_level_breakdown(records)
+    run_groups, latest_run_id = _group_runs_with_latest_id(records)
     per_run_list: list[dict] = []
     latest_run_entry: dict | None = None
-    latest_ts: float = 0.0
 
     for run_id, run_records in run_groups.items():
         run_metrics = compute_fill_metrics(run_records)
@@ -251,10 +268,7 @@ def compute_multi_track_analysis(
             **_metrics_summary(run_metrics, len(run_records)),
         }
         per_run_list.append(entry)
-        # 最新 run を timestamp で特定
-        max_ts = max(r.timestamp for r in run_records)
-        if max_ts > latest_ts:
-            latest_ts = max_ts
+        if run_id == latest_run_id:
             latest_run_entry = dict(entry)
 
     # timestamp 降順ソート

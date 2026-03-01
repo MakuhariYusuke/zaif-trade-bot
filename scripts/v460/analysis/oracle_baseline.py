@@ -96,6 +96,73 @@ _BPS_FACTOR = 10_000
 _MONTHLY_CYCLES = 30 * 24 * 3600 / 120
 
 
+def _add_record_to_oracle_aggregate(
+    agg: _OracleAggregate,
+    *,
+    pnl_30s: float,
+    pnl_60s: float | None,
+    pnl_120s: float | None,
+) -> None:
+    """正規化済み数値を Oracle 集計へ反映する."""
+    agg.n_total += 1
+    agg.pnl_30s_all.add(pnl_30s)
+    if pnl_30s >= 0:
+        agg.pnl_30s_nonnegative.add(pnl_30s)
+    else:
+        agg.n_negative += 1
+
+    if pnl_60s is not None:
+        agg.pnl_60s_all.add(pnl_60s)
+        if pnl_60s >= 0:
+            agg.pnl_60s_nonnegative.add(pnl_60s)
+
+    if pnl_120s is not None:
+        agg.pnl_120s_all.add(pnl_120s)
+        if pnl_120s >= 0:
+            agg.pnl_120s_nonnegative.add(pnl_120s)
+
+
+def _group_oracle_aggregates(
+    records: list[FillRecord],
+) -> tuple[_OracleAggregate, dict[str, _OracleAggregate], dict[str, _OracleAggregate]]:
+    """全体 / side / regime の Oracle 集計を 1 パスで構築する."""
+    all_agg = _OracleAggregate()
+    side_aggs: dict[str, _OracleAggregate] = {
+        "buy": _OracleAggregate(),
+        "sell": _OracleAggregate(),
+    }
+    regime_aggs: dict[str, _OracleAggregate] = defaultdict(_OracleAggregate)
+
+    for record in records:
+        if not record.filled or record.post_fill_30s_pnl is None:
+            continue
+        pnl_30s = safe_to_finite(record.post_fill_30s_pnl)
+        if pnl_30s is None:
+            continue
+        pnl_60s = safe_to_finite(record.post_fill_60s_pnl)
+        pnl_120s = safe_to_finite(record.post_fill_120s_pnl)
+        _add_record_to_oracle_aggregate(
+            all_agg,
+            pnl_30s=pnl_30s,
+            pnl_60s=pnl_60s,
+            pnl_120s=pnl_120s,
+        )
+        if record.side in side_aggs:
+            _add_record_to_oracle_aggregate(
+                side_aggs[record.side],
+                pnl_30s=pnl_30s,
+                pnl_60s=pnl_60s,
+                pnl_120s=pnl_120s,
+            )
+        regime_key = record.regime or "none"
+        _add_record_to_oracle_aggregate(
+            regime_aggs[regime_key],
+            pnl_30s=pnl_30s,
+            pnl_60s=pnl_60s,
+            pnl_120s=pnl_120s,
+        )
+
+    return all_agg, side_aggs, regime_aggs
 
 
 def _aggregate_oracle(records: list[FillRecord]) -> _OracleAggregate:
@@ -105,29 +172,15 @@ def _aggregate_oracle(records: list[FillRecord]) -> _OracleAggregate:
     for record in records:
         if not record.filled or record.post_fill_30s_pnl is None:
             continue
-
         pnl_30s = safe_to_finite(record.post_fill_30s_pnl)
         if pnl_30s is None:
             continue
-
-        agg.n_total += 1
-        agg.pnl_30s_all.add(pnl_30s)
-        if pnl_30s >= 0:
-            agg.pnl_30s_nonnegative.add(pnl_30s)
-        else:
-            agg.n_negative += 1
-
-        numeric_60s = safe_to_finite(record.post_fill_60s_pnl)
-        if numeric_60s is not None:
-            agg.pnl_60s_all.add(numeric_60s)
-            if numeric_60s >= 0:
-                agg.pnl_60s_nonnegative.add(numeric_60s)
-
-        numeric_120s = safe_to_finite(record.post_fill_120s_pnl)
-        if numeric_120s is not None:
-            agg.pnl_120s_all.add(numeric_120s)
-            if numeric_120s >= 0:
-                agg.pnl_120s_nonnegative.add(numeric_120s)
+        _add_record_to_oracle_aggregate(
+            agg,
+            pnl_30s=pnl_30s,
+            pnl_60s=safe_to_finite(record.post_fill_60s_pnl),
+            pnl_120s=safe_to_finite(record.post_fill_120s_pnl),
+        )
 
     return agg
 
@@ -256,22 +309,14 @@ def run_oracle_baseline(
     clean, _quarantine = partition_clean_records(
         iter_fill_records_glob(results_dir),
     )
-    filled = [r for r in clean if r.filled and r.post_fill_30s_pnl is not None]
+    all_agg, side_aggs, regime_aggs = _group_oracle_aggregates(clean)
     del clean
 
-    if not filled:
+    if all_agg.n_total == 0:
         print("[oracle] filled かつ PnL 計測済みのレコードがありません。")
         return {"error": "no filled records"}
 
-    side_groups: dict[str, list[FillRecord]] = {"buy": [], "sell": []}
-    regime_groups: dict[str, list[FillRecord]] = defaultdict(list)
-    for record in filled:
-        if record.side in side_groups:
-            side_groups[record.side].append(record)
-        regime_groups[record.regime or "none"].append(record)
-
     # --- 全体 ---
-    all_agg = _aggregate_oracle(filled)
     all_metrics = _metrics_from_aggregate(
         all_agg,
         label="all",
@@ -280,16 +325,31 @@ def run_oracle_baseline(
     )
 
     # --- side 別 ---
-    buy_metrics = compute_oracle_metrics(side_groups["buy"], "buy", lot_btc, btc_price_jpy)
-    sell_metrics = compute_oracle_metrics(side_groups["sell"], "sell", lot_btc, btc_price_jpy)
+    buy_metrics = _metrics_from_aggregate(
+        side_aggs["buy"],
+        label="buy",
+        lot_btc=lot_btc,
+        btc_price_jpy=btc_price_jpy,
+    )
+    sell_metrics = _metrics_from_aggregate(
+        side_aggs["sell"],
+        label="sell",
+        lot_btc=lot_btc,
+        btc_price_jpy=btc_price_jpy,
+    )
 
     # --- レジーム別 ---
     regime_metrics: list[OracleMetrics] = []
-    for regime_name in sorted(regime_groups):
-        recs = regime_groups[regime_name]
-        if recs:
+    for regime_name in sorted(regime_aggs):
+        agg = regime_aggs[regime_name]
+        if agg.n_total > 0:
             regime_metrics.append(
-                compute_oracle_metrics(recs, f"regime:{regime_name}", lot_btc, btc_price_jpy)
+                _metrics_from_aggregate(
+                    agg,
+                    label=f"regime:{regime_name}",
+                    lot_btc=lot_btc,
+                    btc_price_jpy=btc_price_jpy,
+                )
             )
 
     # --- Lot size 別月間推定 ---
@@ -364,7 +424,7 @@ def run_oracle_baseline(
         "params": {
             "lot_btc": lot_btc,
             "btc_price_jpy": btc_price_jpy,
-            "n_records_total": len(filled),
+            "n_records_total": all_agg.n_total,
         },
     }
 
