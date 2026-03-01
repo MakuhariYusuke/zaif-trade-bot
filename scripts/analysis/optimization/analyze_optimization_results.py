@@ -44,7 +44,7 @@ def analyze_penalty_scale_impact(results: List[Dict]) -> pd.DataFrame:
             try:
                 # Parse: sac_v444_2_balance_penalty_XX.json
                 penalty_scale = float(filename.split("_")[-1].replace(".json", ""))
-            except:
+            except Exception:
                 continue
             
             # Extract metrics
@@ -80,7 +80,7 @@ def analyze_action_bonus_impact(results: List[Dict]) -> pd.DataFrame:
                 parts = filename.replace("sac_v444_2_bonus_", "").replace(".json", "").split("_")
                 buy_bonus = float(parts[0].replace("buy", ""))
                 sell_bonus = float(parts[1].replace("sell", ""))
-            except:
+            except Exception:
                 continue
             
             # Extract metrics

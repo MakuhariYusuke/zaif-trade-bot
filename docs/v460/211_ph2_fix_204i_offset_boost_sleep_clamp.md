@@ -126,12 +126,12 @@
 | ID | 重要度 | 内容 | 備考 |
 |---|---|---|---|
 | **P0-A** | **HIGH** | **Operator Alert Flag (手動リスクフラグ)** | §8 参照。ファイルタッチ型で実装量極小 |
-| P1-B | MEDIUM | Micro Circuit Breaker (複数時間軸の価格急変検知) | §9 参照。5 分/15 分/1h 窓で自動 halt/offset boost |
-| P1-C | MEDIUM | Spread Anomaly Detector (spread 急拡大→自動 alert) | §10 参照。流動性枯渇の最速市場内シグナル |
+| P1-B | MEDIUM | Micro Circuit Breaker (複数時間軸の価格急変検知) | ✅ **実装済 (`06a1b48c4`)** — `micro_circuit_breaker.py` (367行) + orchestrator 統合 + テスト 21件 |
+| P1-C | MEDIUM | Spread Anomaly Detector (spread 急拡大→自動 alert) | ✅ **実装済 (`09d7868d5`)** — `spread_anomaly_detector.py` (~250行) + orchestrator 統合 + テスト 15件 |
 | P2-D | LOW | 外部シグナルフィード (F&G, Funding Rate, RSS/News) | §11 参照。P0-A の alert_mode.json 自動ライター |
 | P2-E | LOW | ニュース特徴量としてのモデル統合 | §12 参照。外部データを observation space に追加 |
 | 204# K–Q | P2 | σ-linked offset, OFI/PIN, Friday filter 等 | 長期施策 (205# §7) |
-| H4 | HIGH | SellDynamicKillManager rolling PnL window 非永続化 | 設計要 (210# §6) |
+| H4 | HIGH | SellDynamicKillManager rolling PnL window 非永続化 | ✅ **実装済 (`49e1253c2`)** — 209# H4 参照 |
 | spread staleness 60s | LOW | ハードコード → Config 外部化 | 優先度低 |
 
 ---

@@ -12,6 +12,7 @@ import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from collections import deque
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -73,7 +74,7 @@ class AdaptiveLearningSystem:
         self.experience_window = experience_window
         self.strategy_evaluation_period = strategy_evaluation_period
 
-        self.learning_experiences: List[LearningExperience] = []
+        self.learning_experiences: deque[LearningExperience] = deque(maxlen=experience_window)
         self.strategy_performances: Dict[str, StrategyPerformance] = {}
         self.current_best_strategy: Optional[str] = None
 
@@ -173,10 +174,6 @@ class AdaptiveLearningSystem:
         )
 
         self.learning_experiences.append(experience)
-
-        # 経験数制限
-        if len(self.learning_experiences) > self.experience_window:
-            self.learning_experiences.pop(0)
 
     def _evaluate_strategy_performances(self):
         """戦略パフォーマンス評価"""
@@ -340,9 +337,10 @@ class AdaptiveLearningSystem:
         # 7日以上前のデータを削除
         cutoff_date = datetime.now() - timedelta(days=7)
 
-        self.learning_experiences = [
-            exp for exp in self.learning_experiences if exp.timestamp > cutoff_date
-        ]
+        self.learning_experiences = deque(
+            (exp for exp in self.learning_experiences if exp.timestamp > cutoff_date),
+            maxlen=self.experience_window,
+        )
 
     def get_best_strategy(self) -> Optional[str]:
         """

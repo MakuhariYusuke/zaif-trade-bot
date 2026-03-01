@@ -140,7 +140,7 @@ def main():
     finally:
         try:
             env.close()
-        except:
+        except Exception:
             pass
     
     # 7. Final Model Save

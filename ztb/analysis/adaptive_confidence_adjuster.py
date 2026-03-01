@@ -7,6 +7,7 @@ Phase 3-2: パラメータ最適化 - 動的信頼度閾値調整システム
 
 import logging
 from dataclasses import dataclass
+from collections import deque
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -317,7 +318,7 @@ class AdaptiveConfidenceAdjuster:
 
         # パフォーマンス履歴
         self.performance_history: List[Dict[str, Any]] = []
-        self.threshold_history: List[float] = []
+        self.threshold_history: deque[float] = deque(maxlen=100)
 
     def calculate_adaptive_threshold(
         self,
@@ -369,8 +370,6 @@ class AdaptiveConfidenceAdjuster:
 
         # 履歴更新
         self.threshold_history.append(final_threshold)
-        if len(self.threshold_history) > 100:
-            self.threshold_history.pop(0)
 
         reasoning = self._generate_reasoning(
             market_regime,

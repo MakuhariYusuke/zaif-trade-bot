@@ -25,5 +25,5 @@ for attr in sorted(attrs):
         value = getattr(env, attr)
         if not callable(value):
             print(f"{attr}: {type(value)} = {value}")
-    except:
+    except Exception:
         print(f"{attr}: <error accessing>")

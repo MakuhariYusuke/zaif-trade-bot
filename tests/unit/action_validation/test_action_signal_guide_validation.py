@@ -118,7 +118,7 @@ def test_action_signal_guide():
         perf_stats = guide.generate_signal_performance_report()
         print(f"   Performance stats: {list(perf_stats.keys())}")
         print(f"   Cache size: {perf_stats.get('cache_size', 'N/A')}")
-    except:
+    except Exception:
         perf_stats = {"cache_size": "N/A", "memory": {"current_mb": "N/A"}}
         print("   Performance stats: generate_signal_performance_report not available")
         print("   Cache size: N/A")
@@ -237,7 +237,7 @@ def test_action_signal_guide():
     try:
         guide.update_config({"invalid_param": "test"})
         improvements.append("Configuration validation may be too permissive")
-    except:
+    except Exception:
         pass  # Good, validation works
 
     if improvements:

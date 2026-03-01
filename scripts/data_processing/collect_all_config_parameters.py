@@ -163,7 +163,7 @@ def generate_documentation(all_params, categories):
                     example = (
                         str(value)[:50] + "..." if len(str(value)) > 50 else str(value)
                     )
-                except:
+                except Exception:
                     example = "N/A"
 
             doc += f"| `{param}` | {get_parameter_description(param)} | {file_count} | `{example}` |\n"

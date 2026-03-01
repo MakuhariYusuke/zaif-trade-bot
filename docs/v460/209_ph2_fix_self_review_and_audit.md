@@ -81,7 +81,7 @@ one-sided カウンタは忘れていた。一貫性のためリセット追加�
 |---|---|---|---|
 | H2 | HIGH | Hot-reload 後 MakerPrice が旧 FFD 参照を保持 | hot-reload は稀、影響限定的 |
 | H3 | HIGH | CycleGateAggregator の velocity hard-skip がデッドコード | velocity_skip_as_offset_enabled=True (soft mode) がデフォルトのため実害なし |
-| H4 | HIGH | SellDynamicKillManager rolling window が非永続化 | fill_records warmup と同様の仕組みが必要 (要設計) |
+| H4 | HIGH | SellDynamicKillManager rolling window が非永続化 | ✅ **実装済 (`49e1253c2`)** — `export_state()`/`import_state()` + FillTestState 永続化 + fill_records warmup。テスト 17件 |
 | M1 | MEDIUM | warmup のレコード 2 回走査 | パフォーマンス (数千件で顕在化、実運用では数十件/日) |
 | M5 | MEDIUM | Gate pre-check のキャッシュスプレッドが stale になりうる | advisory-only で実害軽微 |
 | M7 | MEDIUM | Partial fill のハンドリング不在 | Coincheck 0.001 BTC では稀 |

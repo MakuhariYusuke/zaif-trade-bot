@@ -129,7 +129,7 @@ def run_v434_2_backtest(model_path: str, data_path: str, episodes: int = 10):
                 )
                 base_env._sync_from_position_manager()
                 print(f"  ⚠️  Forced position close: PnL = {final_close_pnl:+.2f} 円")
-            except:
+            except Exception:
                 pass
 
         # 最終ポートフォリオ値を取得

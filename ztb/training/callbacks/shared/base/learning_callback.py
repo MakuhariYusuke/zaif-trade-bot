@@ -15,6 +15,7 @@ import traceback
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from collections import deque
 from typing import Callable, Dict, List, Optional, Union
 
 from ztb.training.callbacks.monitoring.metrics_collector import MetricsCollector
@@ -153,7 +154,7 @@ class ErrorHandlingMixin:
             "error_threshold_before_disable": 5,
         }
 
-        self._error_history: List[ErrorContext] = []
+        self._error_history: deque[ErrorContext] = deque(maxlen=100)
         self._error_counts: Dict[str, int] = {}
         self._consecutive_errors = 0
         self._error_lock = threading.RLock()
@@ -230,10 +231,6 @@ class ErrorHandlingMixin:
             # Record error in history
             self._error_history.append(error_context)
             self._error_counts[method_name] = self._error_counts.get(method_name, 0) + 1
-
-            # Keep history bounded
-            if len(self._error_history) > 100:
-                self._error_history.pop(0)
 
             # Execute error handling strategy
             return self._execute_error_strategy(error_context, func, *args, **kwargs)
@@ -936,7 +933,7 @@ class AdaptiveCallback(LearningCallback):
     def __init__(self, adaptation_frequency: int = 10):
         super().__init__()
         self.adaptation_frequency = adaptation_frequency
-        self.adaptation_history: ObjectRecords = []
+        self.adaptation_history: deque[ObjectMap] = deque(maxlen=100)
 
     def should_adapt(self, context: LearningContext) -> bool:
         """Determine if adaptation should occur."""
@@ -955,15 +952,11 @@ class AdaptiveCallback(LearningCallback):
 
         self.adaptation_history.append(adaptation_info)
 
-        # Keep history bounded
-        if len(self.adaptation_history) > 100:
-            self.adaptation_history.pop(0)
-
         return adaptation_info
 
     def get_adaptation_history(self) -> ObjectRecords:
         """Get history of adaptations."""
-        return self.adaptation_history.copy()
+        return list(self.adaptation_history)
 
 
 class CallbackManager:

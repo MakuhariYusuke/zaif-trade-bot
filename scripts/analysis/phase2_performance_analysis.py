@@ -151,7 +151,7 @@ def analyze_risk_management_overhead():
         try:
             signal = adapter_no_risk.generate_signal(current_data, 0)
             signals_no_risk.append(signal)
-        except:
+        except Exception:
             pass  # エラーが発生したらスキップ
     time_no_risk = time.time() - start_time
 

@@ -5,8 +5,8 @@ This component is responsible for detecting market regimes based on price moveme
 Follows Single Responsibility Principle by focusing only on regime detection.
 """
 
-from collections import defaultdict
-from typing import Dict, List, Protocol
+from collections import defaultdict, deque
+from typing import Dict, Protocol
 
 import numpy as np
 
@@ -56,7 +56,7 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         self.logger = get_logger("ztb.trading.environment.market_regime_detector")
 
         # Internal state
-        self.price_history: List[float] = []
+        self.price_history: deque[float] = deque(maxlen=self.regime_detection_window)
         self.current_regime = "sideways"
         self.regime_step_counter = 0
 
@@ -77,8 +77,6 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         """
         # Update price history
         self.price_history.append(current_price)
-        if len(self.price_history) > self.regime_detection_window:
-            self.price_history.pop(0)
 
         # Need minimum history for regime detection. Keep small window minimum
         # to allow earlier detection during tests and in small datasets.

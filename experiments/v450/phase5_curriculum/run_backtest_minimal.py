@@ -87,7 +87,7 @@ def main():
         try:
             # current_step is already incremented in step()
             current_price = env.data_manager.get_price_at_step(env.current_step - 1)
-        except:
+        except Exception:
             current_price = 0.0
         price_history.append(current_price)
 
@@ -133,7 +133,7 @@ def main():
                 idx = env.current_step - 1
                 if 0 <= idx < len(df):
                     ts = df.iloc[idx]["timestamp"]
-            except:
+            except Exception:
                 pass
 
         timestamps.append(str(ts) if ts is not None else "")

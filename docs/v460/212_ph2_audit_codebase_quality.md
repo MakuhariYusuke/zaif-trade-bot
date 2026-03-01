@@ -26,9 +26,10 @@
 
 ## 1. 例外処理の欠陥 (CRITICAL)
 
-### 1.1 裸の `except:` (22箇所)
+### 1.1 裸の `except:` (30箇所) — ✅ 修正済
 
 `KeyboardInterrupt` / `SystemExit` も飲み込む最危険パターン。
+全 30 箇所を `except Exception:` に一括置換済み。
 
 | ファイル | 行 | 用途 |
 |---|---|---|
@@ -66,7 +67,7 @@
 
 ## 2. メモリリーク・パフォーマンス (HIGH)
 
-### 2.1 `list.pop(0)` → `deque(maxlen=N)` (O(n) → O(1))
+### 2.1 `list.pop(0)` → `deque(maxlen=N)` (O(n) → O(1)) — ✅ 修正済
 
 | ファイル | 行 | 対象リスト |
 |---|---|---|
@@ -77,7 +78,7 @@
 | `ztb/analysis/adaptive_confidence_adjuster.py` | L373 | `threshold_history` |
 | `ztb/analysis/regime/basic_regime_detector.py` | L81 | `price_history` |
 
-### 2.2 truncation 漏れ (無限成長リスク)
+### 2.2 truncation 漏れ (無限成長リスク) — ✅ 修正済
 
 | ファイル | 行 | 対象 |
 |---|---|---|
@@ -262,7 +263,7 @@
 
 | ID | 出典 | 内容 | 対応状況 |
 |---|---|---|---|
-| H4 | 210# §6 | SellDynamicKillManager rolling PnL window 非永続化 | 設計要 |
+| H4 | 210# §6 | SellDynamicKillManager rolling PnL window 非永続化 | ✅ 実装済 (`49e1253c2`) |
 | spread staleness 60s | 204# | ハードコード → Config 外部化 | LOW |
 | test_088 | 145# | brittle string 比較 → CR 定数ベース | LOW |
 | test_113 | 継続 | 行数ガードテストの形骸化 | テスト設計見直し |
@@ -280,9 +281,9 @@
 
 ### P1: 短期対応 (1 週間以内)
 
-3. **`pop(0)` → `deque(maxlen=)`** — 6箇所一括 — 変更量: ~30行
+3. **`pop(0)` → `deque(maxlen=)`** — 7箇所一括 — ✅ 実装済
 4. **trainer.py サイレント swallow** — 15箇所の `except Exception` 精査 — 変更量: ~50行
-5. **bare `except:` 一括修正** — 22箇所 — 変更量: ~22行 (s/except:/except Exception as e:/)
+5. **bare `except:` 一括修正** — 30箇所 — ✅ 実装済
 
 ### P2: 中期対応 (2-4 週間)
 

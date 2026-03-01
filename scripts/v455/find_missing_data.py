@@ -35,7 +35,7 @@ for p in files:
                 print(f"  End:   {end}")
                 print(f"  Rows:  {len(df)}")
                 print("-" * 20)
-        except:
+        except Exception:
             pass
     except Exception as e:
         pass

@@ -289,10 +289,8 @@ class BaseRewardCalculator:
         elif action == ACTION_HOLD:
             self._action_counts[MULTIPLIER_INDEX_HOLD] += 1
 
-        # Track recent actions
+        # Track recent actions (deque maxlen=100 handles eviction)
         self._recent_actions.append(action)
-        if len(self._recent_actions) > 100:  # Keep last 100 actions
-            self._recent_actions.pop(0)
 
     def update_win_loss_counts(self, pnl: float) -> None:
         """Update win/loss tracking."""

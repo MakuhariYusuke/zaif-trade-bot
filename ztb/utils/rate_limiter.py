@@ -89,7 +89,7 @@ class SlidingWindowRateLimiter:
             config: Rate limit configuration
         """
         self.config = config
-        self.requests: deque[float] = deque()
+        self.requests: deque[float] = deque(maxlen=config.burst_limit * 2)
         self._lock = asyncio.Lock()
 
     async def acquire(self, tokens: int = 1) -> bool:
@@ -199,6 +199,7 @@ class MultiRateLimiter:
         """
         self.default_config = default_config or RateLimitConfig()
         self.limiters: Dict[str, RateLimiter] = {}
+        self._max_limiters = 256  # Prevent unbounded growth
         self._lock = asyncio.Lock()
 
     def get_limiter(
@@ -214,6 +215,10 @@ class MultiRateLimiter:
             Rate limiter instance
         """
         if key not in self.limiters:
+            # Evict oldest if at capacity
+            if len(self.limiters) >= self._max_limiters:
+                oldest_key = next(iter(self.limiters))
+                del self.limiters[oldest_key]
             self.limiters[key] = RateLimiter(config or self.default_config)
         return self.limiters[key]
 

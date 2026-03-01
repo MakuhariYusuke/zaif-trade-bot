@@ -385,7 +385,7 @@ class TradingPerformanceMonitor:
         # パフォーマンス履歴
         self.decision_history: List[TradingDecision] = []
         self.outcome_history: List[Dict[str, Any]] = []
-        self.metrics_history: List[Dict[str, Any]] = []
+        self.metrics_history: deque[dict[str, Any]] = deque(maxlen=1000)
 
     def record_decision(self, decision: TradingDecision):
         """決定を記録"""

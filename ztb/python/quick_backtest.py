@@ -180,7 +180,7 @@ def run_quick_backtest(
                 metadata = manager.load_schema()
                 required_features = metadata.feature_names
                 print(f"Required features from schema: {len(required_features)}")
-            except:
+            except Exception:
                 # フォールバック: 基本的な特徴量
                 required_features = [
                     "close",
@@ -257,13 +257,13 @@ def run_quick_backtest(
             model = SAC.load(str(model_path))
             model_type = "sac"
             print("Detected SAC model")
-        except:
+        except Exception:
             try:
                 # PPOモデルとして読み込みを試行
                 model = MaskablePPO.load(str(model_path))
                 model_type = "ppo"
                 print("Detected PPO model")
-            except:
+            except Exception:
                 raise ValueError("Could not load model as SAC or PPO")
 
     # モデル読み込み（SAC/PPO統一）

@@ -47,8 +47,8 @@ class SignalType(Enum):
 class MarketContext:
     """Structured market context data"""
 
-    price_trend: List[float] = field(default_factory=list)
-    volume_trend: List[float] = field(default_factory=list)
+    price_trend: deque[float] = field(default_factory=lambda: deque(maxlen=10))
+    volume_trend: deque[float] = field(default_factory=lambda: deque(maxlen=10))
     trend_window: int = 10
     current_trend: MarketTrend = MarketTrend.NEUTRAL
 
@@ -116,7 +116,10 @@ class SignalGuidanceSystem:
     ):
         self.config = config or GuidanceConfig()
         self.signal_history: deque[SignalType] = deque(maxlen=self.config.max_history)
-        self.market_context = MarketContext()
+        self.market_context = MarketContext(
+            price_trend=deque(maxlen=self.config.trend_window),
+            volume_trend=deque(maxlen=self.config.trend_window),
+        )
         # Initialize quality scorer for deterministic scoring
         self.quality_scorer = SignalQualityScorer(threshold_manager=threshold_manager)
         # Initialize multi-timeframe analyzer for Phase 2 enhancement
@@ -130,15 +133,11 @@ class SignalGuidanceSystem:
     def update_market_context(self, row: pd.Series, portfolio: Dict[str, Any]) -> None:
         """Update market context for guidance decisions"""
         # Track price trend
-        if len(self.market_context.price_trend) >= self.config.trend_window:
-            self.market_context.price_trend.pop(0)
         close_price = row.get("close", row.get("price", 0))
         self.market_context.price_trend.append(float(close_price))
 
         # Track volume trend
         if "volume" in row.index:
-            if len(self.market_context.volume_trend) >= self.config.trend_window:
-                self.market_context.volume_trend.pop(0)
             volume_val = row["volume"]
             # Safely convert to float
             try:

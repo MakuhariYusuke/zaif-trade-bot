@@ -242,7 +242,7 @@ class BacktestReporter:
                 self.stats["system_info"][
                     "memory_available"
                 ] = psutil.virtual_memory().available
-            except:
+            except Exception:
                 pass
 
         # Action Diversity
