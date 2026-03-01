@@ -445,6 +445,9 @@ class CycleGateAggregator:
         """C4-C5: velocity-based skip (旧 skip_gate_evaluator 内).
 
         NOTE: price_velocity_60s は Gate 評価前に外部で取得されている必要がある。
+        210# H3: orchestrator から MakerPriceCalculator.last_mid_trend_bps
+        (OB mid 差分ベース instant velocity) が渡される。名前は _60s だが、
+        実際は instant velocity。符号規約は同一 (正=上昇)。
         取得不可の場合は None → skip しない。
         195# ソフト化: velocity_skip_as_offset_enabled 時は
         hard skip せず skip_gate_evaluator → executor の offset boost に委譲。

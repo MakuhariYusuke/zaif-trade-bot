@@ -244,6 +244,8 @@ class FillTestState:
     daily_drawdown_state: dict[str, object] | None = None
     # 207# §1: toxic veto 永続化 (再起動時に veto 状態を復元)
     toxic_veto: dict[str, int] | None = None
+    # 210# L-2: one-sided 連続実行カウンタ永続化 (再起動時に復元)
+    one_sided_consecutive_count: int = 0
     # タイムスタンプ
     saved_at: float = 0.0
     saved_at_iso: str = ""

@@ -39,6 +39,7 @@ class _HotReloadableRunner(Protocol):
 
     _time_filter: TimeFilter
     _maker_price: MakerPriceCalculator
+    _fast_fill_defense: object  # 210# D: FFD sync に必要
     _git_sha: str
 
     def _rebuild_sell_kill_mgr(self) -> None: ...
@@ -367,6 +368,17 @@ class ConfigHotReloader:
                     logger.info(
                         f"[config_hot_reload]   component rebuilt: {callback_name}"
                     )
+                    # 210# H2: FFD 再構築後に MakerPriceCalculator の参照を同期
+                    # _rebuild_fast_fill_defense() は runner._fast_fill_defense を
+                    # 新インスタンスに差し替えるが、_maker_price 側は旧参照を保持したまま
+                    # になるため、明示的に同期する。
+                    if callback_name == "_rebuild_fast_fill_defense":
+                        _ffd = getattr(runner, "_fast_fill_defense", None)
+                        if _ffd is not None:
+                            runner._maker_price.update_fast_fill_defense(_ffd)
+                            logger.info(
+                                "[config_hot_reload]   MakerPriceCalculator._fast_fill_defense synced"
+                            )
             except Exception as e:
                 logger.error(
                     f"[config_hot_reload]   component rebuild FAILED: {callback_name}: {e}",

@@ -101,6 +101,7 @@ class MakerPriceCalculator:
         "_last_inv_skew_factor",     # 168# last applied inv_skew factor
         "_last_ob_snapshot",
         "_last_spread",              # 197# cached spread for Gate pre-check
+        "_last_spread_time",         # 210# M5: staleness tracking
     )
 
     def __init__(
@@ -145,6 +146,7 @@ class MakerPriceCalculator:
         self._last_inv_skew_factor: float = 0.0
         # 197# cached spread for CycleGateAggregator pre-check
         self._last_spread: float | None = None
+        self._last_spread_time: float | None = None  # 210# M5: staleness tracking
 
     def get_fallback_price(self) -> tuple[float | None, float | None]:
         """156# §16: OB エラー時のフォールバック価格と記録時刻を返す.
@@ -156,13 +158,27 @@ class MakerPriceCalculator:
 
     @property
     def last_spread(self) -> float | None:
-        """197# Gate 8-9 用: 直近の compute() で算出された spread (JPY)."""
+        """197# Gate 8-9 用: 直近の compute() で算出された spread (JPY).
+
+        210# M5: staleness guard — 60秒以上更新されていない場合は
+        None を返し、Gate 8 がstale値でブロックするフィードバックループを防止。
+        """
+        if (
+            self._last_spread_time is not None
+            and time.time() - self._last_spread_time > 60.0
+        ):
+            return None
         return self._last_spread
 
     @property
     def last_mid_price(self) -> float | None:
         """197# Gate 8-9 用: 直近の mid price (JPY)."""
         return self._prev_mid_price
+
+    @property
+    def last_mid_trend_bps(self) -> float | None:
+        """210# H3: 直近の compute() で算出された mid velocity (bps/s)."""
+        return self._last_mid_trend_bps
 
     def update_inventory(self, side: str) -> None:
         """162# Inventory Skewing: fill 後に在庫偏重を更新.
@@ -226,6 +242,10 @@ class MakerPriceCalculator:
     def last_vg_triggered(self) -> bool:
         """120# P2-1: 直近の compute() で VG が発動したか."""
         return self._last_vg_triggered
+
+    def update_fast_fill_defense(self, ffd: "FastFillDefense") -> None:
+        """210# F: hot-reload 後の FastFillDefense 参照更新 (カプセル化維持)."""
+        self._fast_fill_defense = ffd
 
     @property
     def last_vg_velocity_bps(self) -> float | None:
@@ -747,6 +767,7 @@ class MakerPriceCalculator:
         self._prev_mid_time = now
         self._last_mid_trend_bps = mid_trend_bps
         self._last_spread = spread  # 197# Gate pre-check 用キャッシュ
+        self._last_spread_time = now  # 210# M5: staleness tracking
 
         # 031# スプレッドフィルター
         if spread < cfg.min_spread_jpy:

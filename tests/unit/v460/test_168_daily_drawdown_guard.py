@@ -6,6 +6,7 @@
 - FillTestConfig の daily_drawdown_* フィールド
 - FillTestState の daily_drawdown_state フィールド
 - State export/import (永続化)
+- 210#: FFD hot-reload, spread staleness, one-sided count persistence, velocity wiring, DRY snapshot
 """
 
 from __future__ import annotations
@@ -781,4 +782,238 @@ class TestInstantVelocityBoundary209:
             max_dt=30.0,
         )
         assert result is None
+
+
+# ======================================================================
+# 210# テスト群
+# ======================================================================
+
+
+class TestFillTestStateOneSidedPersistence210:
+    """210# L-2: one_sided_consecutive_count の FillTestState 永続化."""
+
+    def test_field_default(self) -> None:
+        """デフォルト値は 0."""
+        from scripts.v460.lib.resilience import FillTestState
+
+        state = FillTestState()
+        assert state.one_sided_consecutive_count == 0
+
+    def test_round_trip(self) -> None:
+        """dataclass asdict → FillTestState の往復でカウンタが保存/復元される."""
+        from dataclasses import asdict
+
+        from scripts.v460.lib.resilience import FillTestState
+
+        state = FillTestState(one_sided_consecutive_count=7, toxic_veto={"buy": 2})
+        d = asdict(state)
+        assert d["one_sided_consecutive_count"] == 7
+        # filter で復元
+        from ztb.utils.dataclass_utils import filter_known_dataclass_fields
+
+        restored = FillTestState(**filter_known_dataclass_fields(FillTestState, d))
+        assert restored.one_sided_consecutive_count == 7
+        assert restored.toxic_veto == {"buy": 2}
+
+
+class TestSpreadStaleness210:
+    """210# M5: last_spread staleness guard."""
+
+    @staticmethod
+    def _make_calc():
+        """テスト用 MakerPriceCalculator を構築."""
+        from unittest.mock import MagicMock
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        cfg = FillTestConfig()
+        ffd = MagicMock()
+        return MakerPriceCalculator(
+            config=cfg,
+            fast_fill_defense=ffd,
+            regime_detector=None,
+            base_offset_ratio=cfg.spread_offset_ratio,
+        )
+
+    def test_fresh_spread_returned(self) -> None:
+        """60秒以内の spread は正常に返る."""
+        calc = self._make_calc()
+        calc._last_spread = 500.0
+        calc._last_spread_time = time.time()
+        assert calc.last_spread == 500.0
+
+    def test_stale_spread_returns_none(self) -> None:
+        """60秒超の spread は None を返す."""
+        calc = self._make_calc()
+        calc._last_spread = 500.0
+        calc._last_spread_time = time.time() - 61.0
+        assert calc.last_spread is None
+
+    def test_no_spread_returns_none(self) -> None:
+        """compute() 未実行時は None."""
+        calc = self._make_calc()
+        assert calc.last_spread is None
+
+
+class TestMidTrendBpsProperty210:
+    """210# H3: last_mid_trend_bps property の動作確認."""
+
+    @staticmethod
+    def _make_calc():
+        """テスト用 MakerPriceCalculator を構築."""
+        from unittest.mock import MagicMock
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        cfg = FillTestConfig()
+        ffd = MagicMock()
+        return MakerPriceCalculator(
+            config=cfg,
+            fast_fill_defense=ffd,
+            regime_detector=None,
+            base_offset_ratio=cfg.spread_offset_ratio,
+        )
+
+    def test_initial_none(self) -> None:
+        """初期値は None."""
+        calc = self._make_calc()
+        assert calc.last_mid_trend_bps is None
+
+    def test_set_and_get(self) -> None:
+        """_last_mid_trend_bps を設定し property で取得できる."""
+        calc = self._make_calc()
+        calc._last_mid_trend_bps = 5.0
+        assert calc.last_mid_trend_bps == 5.0
+
+
+class TestFFDHotReloadSync210:
+    """210# H2: FFD hot-reload 後の MakerPriceCalculator 参照同期."""
+
+    def test_rebuild_syncs_ffd(self) -> None:
+        """_rebuild_fast_fill_defense 後に _maker_price._fast_fill_defense が同期される."""
+        from unittest.mock import MagicMock
+        from scripts.v460.lib.fill_config import FillTestConfig
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+
+        # シンプルなモック runner を構築
+        class MockRunner:
+            def __init__(self) -> None:
+                self.config = FillTestConfig()
+                self._maker_price = MakerPriceCalculator(
+                    config=self.config,
+                    fast_fill_defense=MagicMock(),
+                    regime_detector=None,
+                    base_offset_ratio=self.config.spread_offset_ratio,
+                )
+                self._fast_fill_defense = object()  # 初期 FFD
+                self._maker_price._fast_fill_defense = self._fast_fill_defense
+                self._git_sha = "test"
+
+            def _rebuild_sell_kill_mgr(self) -> None: ...
+            def _rebuild_buy_kill_mgr(self) -> None: ...
+            def _rebuild_daily_drawdown_guard(self) -> None: ...
+            def _rebuild_fast_fill_defense(self) -> None:
+                # 本番の _rebuild は新しいインスタンスを代入
+                self._fast_fill_defense = object()
+            def _rebuild_cycle_strategy(self) -> None: ...
+
+        runner = MockRunner()
+        old_ffd = runner._fast_fill_defense
+
+        # hot-reload コールバックのシミュレーション
+        # 直接 _rebuild を呼び、その後 sync 処理を検証
+        runner._rebuild_fast_fill_defense()
+        new_ffd = runner._fast_fill_defense
+        assert new_ffd is not old_ffd, "rebuild で新インスタンスが生成されているべき"
+
+        # sync 処理: hot-reload コードと同じロジック (setter を使用)
+        _ffd = getattr(runner, "_fast_fill_defense", None)
+        if _ffd is not None:
+            runner._maker_price.update_fast_fill_defense(_ffd)
+
+        assert runner._maker_price._fast_fill_defense is new_ffd
+
+
+class TestVelocityGateWiring210:
+    """210# H3: CycleGateAggregator に velocity が渡されること確認."""
+
+    def test_velocity_skip_with_value(self) -> None:
+        """price_velocity_60s が渡された場合に velocity gate が評価される."""
+        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        cfg = FillTestConfig(
+            sell_velocity_skip_enabled=True,
+            sell_velocity_skip_threshold_bps=5.0,
+            velocity_skip_as_offset_enabled=False,  # hard mode で test
+        )
+        gate = CycleGateAggregator(cfg)
+        result = gate.evaluate(
+            side="sell",
+            regime="ranging",
+            vol_ratio=1.0,
+            balance_forced=False,
+            inv_net_imbalance=0.0,
+            is_buy_killed=False,
+            is_sell_killed=False,
+            price_velocity_60s=10.0,  # > threshold (5.0)
+        )
+        assert result.blocked is True
+        assert result.blocking_reason == "rule_velocity_sell_skip"
+
+    def test_velocity_none_passes(self) -> None:
+        """price_velocity_60s=None の場合は velocity gate を通過."""
+        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        cfg = FillTestConfig(
+            sell_velocity_skip_enabled=True,
+            sell_velocity_skip_threshold_bps=5.0,
+            velocity_skip_as_offset_enabled=False,
+        )
+        gate = CycleGateAggregator(cfg)
+        result = gate.evaluate(
+            side="sell",
+            regime="ranging",
+            vol_ratio=1.0,
+            balance_forced=False,
+            inv_net_imbalance=0.0,
+            is_buy_killed=False,
+            is_sell_killed=False,
+            price_velocity_60s=None,
+        )
+        # velocity gate は通過、他の gate でブロックされない限り
+        # velocity_skip はブロックしない
+        velocity_check = next(
+            (c for c in result.checks if c.gate_name == "velocity_skip"), None
+        )
+        assert velocity_check is not None
+        assert velocity_check.blocked is False
+
+    def test_velocity_soft_mode_passes(self) -> None:
+        """velocity_skip_as_offset_enabled=True の場合は velocity gate を通過."""
+        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        cfg = FillTestConfig(
+            sell_velocity_skip_enabled=True,
+            sell_velocity_skip_threshold_bps=5.0,
+            velocity_skip_as_offset_enabled=True,  # soft mode
+        )
+        gate = CycleGateAggregator(cfg)
+        result = gate.evaluate(
+            side="sell",
+            regime="ranging",
+            vol_ratio=1.0,
+            balance_forced=False,
+            inv_net_imbalance=0.0,
+            is_buy_killed=False,
+            is_sell_killed=False,
+            price_velocity_60s=10.0,
+        )
+        velocity_check = next(
+            (c for c in result.checks if c.gate_name == "velocity_skip"), None
+        )
+        assert velocity_check is not None
+        assert velocity_check.blocked is False
 

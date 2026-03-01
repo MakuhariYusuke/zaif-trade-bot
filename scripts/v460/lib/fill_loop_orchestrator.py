@@ -171,6 +171,41 @@ class FillLoopOrchestratorMixin:
             )
 
     # ------------------------------------------------------------------
+    # 210# DRY: FillTestState 構築の共通化 (3 箇所の重複排除)
+    # ------------------------------------------------------------------
+    def _build_state_snapshot(
+        self,
+        *,
+        total_count: int,
+        filled_count: int,
+        cumulative_pnl_jpy: float,
+    ) -> object:
+        """現在の状態から FillTestState スナップショットを構築.
+
+        saves/halt saves/final save の 3 箇所で同一フィールドを
+        構築していたものを一元化し DRY 原則を担保する。
+        """
+        from scripts.v460.lib.resilience import FillTestState
+
+        return FillTestState(
+            run_id=self._run_id,
+            cycle_count=self._cycle_count,
+            total_count=total_count,
+            filled_count=filled_count,
+            cumulative_pnl_jpy=cumulative_pnl_jpy,
+            current_lot=self._current_lot,
+            soft_loss_cap_triggered=self._soft_loss_cap_triggered,
+            base_offset_ratio=self._maker_price.base_offset_ratio,
+            base_offset_ratio_buy=self._maker_price.base_offset_ratio_buy,
+            base_offset_ratio_sell=self._maker_price.base_offset_ratio_sell,
+            daily_drawdown_state=self._daily_drawdown_guard.export_state(),
+            toxic_veto=dict(self._toxic_veto) if self._toxic_veto else None,
+            # 210# L-2: one-sided 連続カウンタ永続化
+            one_sided_consecutive_count=self._one_sided_consecutive_count,
+            **self._get_regime_state_fields(),
+        )
+
+    # ------------------------------------------------------------------
     # 179# S1: _effective_sleep — regime 応答サイクル間隔の一元化
     # ------------------------------------------------------------------
     async def _effective_sleep(self, *, multiplier: float = 1.0) -> None:
@@ -468,6 +503,13 @@ class FillLoopOrchestratorMixin:
             if saved_state is not None and saved_state.toxic_veto:
                 self._toxic_veto = dict(saved_state.toxic_veto)
                 logger.info(f"[207# §1] Toxic veto restored: {self._toxic_veto}")
+            # 210# L-2: one-sided 連続カウンタ復元
+            if saved_state is not None and saved_state.one_sided_consecutive_count > 0:
+                self._one_sided_consecutive_count = saved_state.one_sided_consecutive_count
+                logger.info(
+                    f"[210# L-2] One-sided count restored: "
+                    f"{self._one_sided_consecutive_count}"
+                )
         else:
             # regime_detector がない場合でも daily_drawdown state は復元
             saved_state = self._state_persistence.load()
@@ -477,6 +519,13 @@ class FillLoopOrchestratorMixin:
             if saved_state is not None and saved_state.toxic_veto:
                 self._toxic_veto = dict(saved_state.toxic_veto)
                 logger.info(f"[207# §1] Toxic veto restored: {self._toxic_veto}")
+            # 210# L-2: one-sided 連続カウンタ復元
+            if saved_state is not None and saved_state.one_sided_consecutive_count > 0:
+                self._one_sided_consecutive_count = saved_state.one_sided_consecutive_count
+                logger.info(
+                    f"[210# L-2] One-sided count restored: "
+                    f"{self._one_sided_consecutive_count}"
+                )
 
         # 203# F: DD warmup — state 復元失敗時 (stale/missing) は fill records から再計算
         # state file が壊れている or 保存されていない場合のセーフティネット
@@ -574,20 +623,10 @@ class FillLoopOrchestratorMixin:
                 # 203# E: HALT 開始時は必ず state 保存 + 以降は N iter 毎
                 # (旧実装は _cycle_count % interval で判定 → halt 中は不変のため保存されないバグ)
                 if _halt_entering or self._halt_iter_count % max(1, self.config.progress_log_interval) == 0:
-                    self._state_persistence.save(FillTestState(
-                        run_id=self._run_id,
-                        cycle_count=self._cycle_count,
+                    self._state_persistence.save(self._build_state_snapshot(
                         total_count=total_count,
                         filled_count=filled_count,
                         cumulative_pnl_jpy=cumulative_pnl_jpy,
-                        current_lot=self._current_lot,
-                        soft_loss_cap_triggered=self._soft_loss_cap_triggered,
-                        base_offset_ratio=self._maker_price.base_offset_ratio,
-                        base_offset_ratio_buy=self._maker_price.base_offset_ratio_buy,
-                        base_offset_ratio_sell=self._maker_price.base_offset_ratio_sell,
-                        daily_drawdown_state=self._daily_drawdown_guard.export_state(),
-                        toxic_veto=dict(self._toxic_veto) if self._toxic_veto else None,
-                        **self._get_regime_state_fields(),
                     ))
                 await self._effective_sleep(multiplier=5.0)  # 179# S1: halt 中は 5x 間隔
                 continue
@@ -1060,6 +1099,11 @@ class FillLoopOrchestratorMixin:
                 # 197# Gate 8-9: cached spread/mid for pre-check
                 spread_jpy=self._maker_price.last_spread,
                 mid_price=self._maker_price.last_mid_price,
+                # 210# H3: velocity を gate に渡す (dead code 解消)
+                # NOTE: last_mid_trend_bps は OB mid 差分ベースの instant velocity であり
+                # 元々想定されていた trade_vel_60s とはデータソースが異なるが、
+                # 符号規約 (正=上昇) と閾値比較のセマンティクスは同一。
+                price_velocity_60s=self._maker_price.last_mid_trend_bps,
                 trending_sell_skip_count=self._trending_sell_skip_count,
                 buy_side_insufficient=_buy_side_insufficient,
             )
@@ -1314,20 +1358,10 @@ class FillLoopOrchestratorMixin:
             if self._cycle_count % self.config.progress_log_interval == 0:
                 # 129# lock heartbeat 更新 (state 保存と同期)
                 self._update_lock_heartbeat()
-                self._state_persistence.save(FillTestState(
-                    run_id=self._run_id,
-                    cycle_count=self._cycle_count,
+                self._state_persistence.save(self._build_state_snapshot(
                     total_count=total_count,
                     filled_count=filled_count,
                     cumulative_pnl_jpy=cumulative_pnl_jpy,
-                    current_lot=self._current_lot,
-                    soft_loss_cap_triggered=self._soft_loss_cap_triggered,
-                    base_offset_ratio=self._maker_price.base_offset_ratio,
-                    base_offset_ratio_buy=self._maker_price.base_offset_ratio_buy,
-                    base_offset_ratio_sell=self._maker_price.base_offset_ratio_sell,
-                    daily_drawdown_state=self._daily_drawdown_guard.export_state(),
-                    toxic_veto=dict(self._toxic_veto) if self._toxic_veto else None,
-                    **self._get_regime_state_fields(),
                 ))
 
             # --- 044# A-7: loss_cap 定期更新 (残高変動を反映) ---
@@ -1414,20 +1448,10 @@ class FillLoopOrchestratorMixin:
                 self._batch_persistence.emergency_dump(batch, "final")
 
         # 113# resilience: 最終状態保存
-        self._state_persistence.save(FillTestState(
-            run_id=self._run_id,
-            cycle_count=self._cycle_count,
+        self._state_persistence.save(self._build_state_snapshot(
             total_count=total_count,
             filled_count=filled_count,
             cumulative_pnl_jpy=cumulative_pnl_jpy,
-            current_lot=self._current_lot,
-            soft_loss_cap_triggered=self._soft_loss_cap_triggered,
-            base_offset_ratio=self._maker_price.base_offset_ratio,
-            base_offset_ratio_buy=self._maker_price.base_offset_ratio_buy,
-            base_offset_ratio_sell=self._maker_price.base_offset_ratio_sell,
-            daily_drawdown_state=self._daily_drawdown_guard.export_state(),
-            toxic_veto=dict(self._toxic_veto) if self._toxic_veto else None,
-            **self._get_regime_state_fields(),
         ))
 
         # 148# heartbeat タスク終了
