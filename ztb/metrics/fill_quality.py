@@ -18,13 +18,16 @@ from collections import deque
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Final, Iterable, Iterator, Mapping, Optional
+from typing import TYPE_CHECKING, Final, Iterable, Iterator, Mapping, Optional
 
 import numpy as np
 from scipy import stats
 from ztb.utils.dataclass_utils import get_dataclass_field_names
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 # ======================================================================
@@ -1017,21 +1020,37 @@ def load_fill_records(path: str | Path) -> list[FillRecord]:
     return list(iter_fill_records(path))
 
 
-def _iter_fill_record_files(directory: Path) -> Iterator[Path]:
+def fill_records_to_dataframe(records: Iterable[FillRecord]) -> "pd.DataFrame":
+    """FillRecord iterable を DataFrame に変換する."""
+    import pandas as pd
+
+    return pd.DataFrame.from_records(record.to_dict() for record in records)
+
+
+def _iter_fill_record_files(
+    directory: Path,
+    *,
+    include_emergency: bool = True,
+) -> Iterator[Path]:
     """fill record 系 JSONL の対象ファイルを順序付きで列挙."""
     yield from sorted(directory.glob("fill_records_*.jsonl"))
-    emergency_dir = directory / "emergency"
-    if emergency_dir.exists():
-        yield from sorted(emergency_dir.glob("emergency_*.jsonl"))
+    if include_emergency:
+        emergency_dir = directory / "emergency"
+        if emergency_dir.exists():
+            yield from sorted(emergency_dir.glob("emergency_*.jsonl"))
 
 
-def iter_fill_records_glob(directory: str | Path) -> Iterator[FillRecord]:
+def iter_fill_records_glob(
+    directory: str | Path,
+    *,
+    include_emergency: bool = True,
+) -> Iterator[FillRecord]:
     """ディレクトリ内の全 JSONL ファイルから FillRecord を逐次読み込み.
 
     101# §5: cross-file 重複排除 (emergency dump との重複対策)."""
     d = Path(directory)
     seen_ids: set[str] = set()
-    for path in _iter_fill_record_files(d):
+    for path in _iter_fill_record_files(d, include_emergency=include_emergency):
         for record in iter_fill_records(path):
             if record.cycle_id in seen_ids:
                 continue
@@ -1039,9 +1058,13 @@ def iter_fill_records_glob(directory: str | Path) -> Iterator[FillRecord]:
             yield record
 
 
-def load_fill_records_glob(directory: str | Path) -> list[FillRecord]:
+def load_fill_records_glob(
+    directory: str | Path,
+    *,
+    include_emergency: bool = True,
+) -> list[FillRecord]:
     """ディレクトリ内の全 JSONL ファイルから FillRecord を読み込み."""
-    return list(iter_fill_records_glob(directory))
+    return list(iter_fill_records_glob(directory, include_emergency=include_emergency))
 
 
 def partition_clean_records(

@@ -19,7 +19,7 @@ from scripts.v460.ml.frame_utils import (
     compute_utc_hour,
     exclude_side_hour_combos,
 )
-from ztb.io.jsonl import read_jsonl_objects
+from ztb.metrics.fill_quality import fill_records_to_dataframe, iter_fill_records_glob
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT))
@@ -28,15 +28,7 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 def load_all_records() -> pd.DataFrame:
     """全 fill_records_*.jsonl + emergency を読み込み."""
     results_dir = _PROJECT_ROOT / "results" / "v460" / "fill_test"
-    records: list[dict[str, object]] = []
-    for pattern in ["fill_records_*.jsonl", "emergency/*.jsonl"]:
-        for f in sorted(results_dir.glob(pattern)):
-            records.extend(read_jsonl_objects(f))
-    df = pd.DataFrame(records)
-    # 重複排除 (cycle_id ベース)
-    if "cycle_id" in df.columns:
-        df = df.drop_duplicates(subset="cycle_id", keep="last")
-    return df
+    return fill_records_to_dataframe(iter_fill_records_glob(results_dir))
 
 
 def basic_stats(df: pd.DataFrame) -> None:

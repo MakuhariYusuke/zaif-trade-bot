@@ -3109,6 +3109,52 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
   - `scripts/v460/lib/fill_loop_orchestrator.py`: `any_type_debt_tokens=0`
   - `scripts/v460/run_fill_test.py`: `any_type_debt_tokens=0`
 
+### Step132: FillRecord 読込と DataFrame 化を共通化し、ML 側の重複ループを削減
+
+1. 対応概要
+- `ztb/metrics/fill_quality.py`
+  - `fill_records_to_dataframe()` を追加し、`FillRecord` iterable からの DataFrame 化を共通化した。
+  - `iter_fill_records_glob()` / `load_fill_records_glob()` に `include_emergency` 引数を追加した。
+  - `_iter_fill_record_files()` も同フラグ対応にし、primary-only 読込を共通 helper 側で吸収した。
+- `scripts/v460/ml/data_loader.py`
+  - 手書きの `read_jsonl_objects() -> rows.extend() -> DataFrame` を廃止した。
+  - `iter_fill_records_glob(..., include_emergency=False)` + `fill_records_to_dataframe()` に置換し、primary のみを保ちつつ cross-file 重複も共通ロジックで除外するようにした。
+- `scripts/v460/ml/run_073_strategy_analysis.py`
+  - `fill_records_*.jsonl + emergency/*.jsonl` の手書き glob 読込と `drop_duplicates()` を廃止した。
+  - `iter_fill_records_glob()` の streaming + cross-file dedup に統一した。
+- `scripts/v460/ml/run_075_verification.py`
+  - `FillRecord -> dict list -> DataFrame` のローカル helper を削除した。
+  - `clean_filled` は DataFrame 再走査ではなく、`FillRecord` list の時点で抽出するよう変更した。
+  - `quarantine_filled` 件数も DataFrame フィルタではなく、list 走査で算出するよう変更した。
+
+2. 目的
+- ML/分析系で散っていた「JSONL 読込」「重複排除」「FillRecord の DataFrame 化」を `ztb` 側の共通契約へ寄せる。
+- duplicate record をいったん全件 dict で積んでから `drop_duplicates()` する無駄をなくし、読み込み時のメモリ使用量と Python ループ回数を減らす。
+- `run_075` で `clean_df` を作った後に再度 filtered DataFrame を作る二重走査を減らす。
+
+3. 検証
+- `py_compile`
+  - `ztb/metrics/fill_quality.py`
+  - `scripts/v460/ml/data_loader.py`
+  - `scripts/v460/ml/run_073_strategy_analysis.py`
+  - `scripts/v460/ml/run_075_verification.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_ml_pipeline.py`
+- `pytest`
+  - `tests/unit/v460/test_ml_pipeline.py`
+  - `tests/unit/v460/test_fill_quality.py`
+  - `-k "Test057DataLoader or TestFillRecordIO"`
+  - 結果: `17 passed`
+- import smoke
+  - `scripts.v460.ml.run_073_strategy_analysis`
+  - `scripts.v460.ml.run_075_verification`
+  - 結果: `load_all_records` / `load_clean_filled` が利用可能
+- `any_inventory`
+  - `ztb/metrics/fill_quality.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/ml/data_loader.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/ml/run_073_strategy_analysis.py`: `any_type_debt_tokens=0`
+  - `scripts/v460/ml/run_075_verification.py`: `any_type_debt_tokens=0`
+
 ## 6. 次フェーズ（優先順）
 
 1. `ztb/analysis/v4xx_unified_analyzer.py` / `ztb/analysis/promotion.py`  

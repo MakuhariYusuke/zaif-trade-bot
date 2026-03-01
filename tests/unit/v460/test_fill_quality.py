@@ -1169,6 +1169,63 @@ class TestFillRecordIO:
             loaded = list(iter_fill_records_glob(root))
             assert [r.cycle_id for r in loaded] == ["g_1", "g_2"]
 
+    def test_iter_glob_load_can_exclude_emergency(self) -> None:
+        from ztb.metrics.fill_quality import (
+            FillRecord,
+            iter_fill_records_glob,
+            save_fill_records,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            emergency = root / "emergency"
+            emergency.mkdir()
+            save_fill_records(
+                [
+                    FillRecord(
+                        cycle_id="main_1",
+                        timestamp=1700000000.0,
+                        side="buy",
+                        order_price=100.0,
+                        order_quantity=0.001,
+                    ),
+                ],
+                root / "fill_records_20260101.jsonl",
+            )
+            save_fill_records(
+                [
+                    FillRecord(
+                        cycle_id="emg_1",
+                        timestamp=1700000060.0,
+                        side="sell",
+                        order_price=101.0,
+                        order_quantity=0.001,
+                    ),
+                ],
+                emergency / "emergency_20260101.jsonl",
+            )
+
+            loaded = list(iter_fill_records_glob(root, include_emergency=False))
+            assert [r.cycle_id for r in loaded] == ["main_1"]
+
+    def test_fill_records_to_dataframe_accepts_iterator(self) -> None:
+        from ztb.metrics.fill_quality import FillRecord, fill_records_to_dataframe
+
+        records = (
+            FillRecord(
+                cycle_id=f"df_{i}",
+                timestamp=1700000000.0 + i,
+                side="buy",
+                order_price=100.0 + i,
+                order_quantity=0.001,
+            )
+            for i in range(2)
+        )
+
+        df = fill_records_to_dataframe(records)
+        assert list(df["cycle_id"]) == ["df_0", "df_1"]
+        assert list(df["order_price"]) == [100.0, 101.0]
+
     def test_load_corrupt_lines_skipped(self) -> None:
         """032# #19: 破損行はスキップして残りを正常読込."""
         from ztb.metrics.fill_quality import FillRecord, load_fill_records

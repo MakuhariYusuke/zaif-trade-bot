@@ -134,6 +134,57 @@ class Test057DataLoader:
         with pytest.raises(ValueError, match="Insufficient"):
             build_as_features(df)
 
+    def test_load_fill_records_excludes_emergency_and_deduplicates(self, tmp_path: Path) -> None:
+        """data_loader は emergency を読まず、primary 間の重複は除外する."""
+        primary_a = {
+            "cycle_id": "dup_1",
+            "timestamp": 1700000000.0,
+            "side": "buy",
+            "order_price": 15000000.0,
+            "order_quantity": 0.001,
+            "filled": True,
+            "adverse_selected_raw": True,
+            "queue_wait_sec": 10.0,
+        }
+        primary_b = {
+            "cycle_id": "uniq_1",
+            "timestamp": 1700000060.0,
+            "side": "sell",
+            "order_price": 15000010.0,
+            "order_quantity": 0.001,
+            "filled": False,
+            "adverse_selected_raw": None,
+            "queue_wait_sec": 12.0,
+        }
+        emergency = {
+            "cycle_id": "emg_1",
+            "timestamp": 1700000120.0,
+            "side": "buy",
+            "order_price": 15000020.0,
+            "order_quantity": 0.001,
+            "filled": True,
+            "adverse_selected_raw": False,
+            "queue_wait_sec": 8.0,
+        }
+
+        (tmp_path / "fill_records_20260101.jsonl").write_text(
+            json.dumps(primary_a) + "\n",
+            encoding="utf-8",
+        )
+        (tmp_path / "fill_records_20260102.jsonl").write_text(
+            "\n".join([json.dumps(primary_a), json.dumps(primary_b)]) + "\n",
+            encoding="utf-8",
+        )
+        emergency_dir = tmp_path / "emergency"
+        emergency_dir.mkdir()
+        (emergency_dir / "emergency_20260101.jsonl").write_text(
+            json.dumps(emergency) + "\n",
+            encoding="utf-8",
+        )
+
+        df = load_fill_records(tmp_path)
+        assert sorted(df["cycle_id"].tolist()) == ["dup_1", "uniq_1"]
+
 
 # ======================================================================
 # AS Classifier Tests

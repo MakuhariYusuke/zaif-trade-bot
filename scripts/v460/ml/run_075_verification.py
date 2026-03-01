@@ -33,6 +33,7 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 
 from ztb.metrics.fill_quality import (
     FillRecord,
+    fill_records_to_dataframe,
     iter_fill_records_glob,
     partition_clean_records,
 )
@@ -148,28 +149,18 @@ def load_clean_filled(
     if git_shas:
         print(f"  [filter] git_sha={git_shas} → {len(clean) + len(quarantine)} records")
 
-    def to_df(recs: list[FillRecord]) -> pd.DataFrame:
-        if not recs:
-            return pd.DataFrame()
-        return pd.DataFrame([record.to_dict() for record in recs])
-
-    clean_df = to_df(clean)
-    quarantine_df = to_df(quarantine)
-
-    # filled のみ
-    if len(clean_df) > 0 and "filled" in clean_df.columns:
-        clean_filled = clean_df[clean_df["filled"] == True].copy()
-    else:
-        clean_filled = pd.DataFrame()
+    clean_filled_records = [record for record in clean if record.filled]
+    quarantine_filled_count = sum(1 for record in quarantine if record.filled)
+    clean_df = fill_records_to_dataframe(clean)
+    clean_filled = fill_records_to_dataframe(clean_filled_records)
+    quarantine_df = fill_records_to_dataframe(quarantine)
 
     stats = {
         "total_records": len(clean) + len(quarantine),
         "clean": len(clean),
         "quarantine": len(quarantine),
-        "clean_filled": len(clean_filled),
-        "quarantine_filled": len(quarantine_df[quarantine_df["filled"] == True])
-        if len(quarantine_df) > 0 and "filled" in quarantine_df.columns
-        else 0,
+        "clean_filled": len(clean_filled_records),
+        "quarantine_filled": quarantine_filled_count,
     }
 
     return clean_df, clean_filled, quarantine_df, stats

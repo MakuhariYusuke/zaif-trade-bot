@@ -15,7 +15,6 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from scripts.v460.ml.frame_utils import compute_local_hour_cyclic
-from ztb.io.jsonl import read_jsonl_objects
 
 logger = logging.getLogger(__name__)
 
@@ -53,16 +52,16 @@ def load_fill_records(
     Returns:
         全レコードの DataFrame (cancelled 含む).
     """
+    from ztb.metrics.fill_quality import fill_records_to_dataframe, iter_fill_records_glob
+
     d = results_dir or _DEFAULT_RESULTS_DIR
     files = sorted(d.glob("fill_records_*.jsonl"))
     if not files:
         raise FileNotFoundError(f"No fill_records_*.jsonl in {d}")
 
-    rows: list[dict[str, object]] = []
-    for f in files:
-        rows.extend(read_jsonl_objects(f))
-
-    df = pd.DataFrame(rows)
+    df = fill_records_to_dataframe(
+        iter_fill_records_glob(d, include_emergency=False)
+    )
     total = len(df)
 
     # 122# E13: run_id フィルタリング (異なるラン設定の混在による交絡防止)
