@@ -748,6 +748,7 @@ class FillLoopOrchestratorMixin:
             self._alert_interval_mult = _alert.interval_mult
 
             # 211# P1-B: Micro Circuit Breaker — 短期価格急変の自動防御
+            _mcb_warning = False
             if self._mcb.config.enabled:
                 _mcb_mid = getattr(self._maker_price, "last_mid_price", None)
                 if _mcb_mid is not None and _mcb_mid > 0:
@@ -767,12 +768,14 @@ class FillLoopOrchestratorMixin:
                     await self._effective_sleep(multiplier=5.0)
                     continue
                 if _mcb_result.level == MCBLevel.WARNING:
+                    _mcb_warning = True
                     self._inc_guard_fire("mcb_warning")
                     # WARNING: offset/interval を拡大 (alert_mode との積算)
                     self._alert_offset_mult *= _mcb_result.offset_mult
                     self._alert_interval_mult *= _mcb_result.interval_mult
 
             # 211# P1-C: Spread Anomaly Detector — 流動性枯渇検知
+            _sad_warning = False
             if self._sad.config.enabled:
                 _sad_spread = getattr(self._maker_price, "last_spread", None)
                 if _sad_spread is not None and _sad_spread > 0:
@@ -792,13 +795,32 @@ class FillLoopOrchestratorMixin:
                     await self._effective_sleep(multiplier=5.0)
                     continue
                 if _sad_result.level == SADLevel.DRY:
+                    _sad_warning = True
                     self._inc_guard_fire("sad_dry")
                     self._alert_offset_mult *= _sad_result.offset_mult
                     self._alert_interval_mult *= _sad_result.interval_mult
                     self._alert_lot_mult *= _sad_result.lot_mult
                 elif _sad_result.level == SADLevel.WIDE:
+                    _sad_warning = True
                     self._inc_guard_fire("sad_wide")
                     self._alert_offset_mult *= _sad_result.offset_mult
+
+            # 211# P1-D: MCB×SAD AND Escalation
+            # 両方が同時に WARNING 以上 → 即 HALT (false positive 抑制)
+            if _mcb_warning and _sad_warning:
+                self._inc_guard_fire("mcb_sad_escalation")
+                batch.append(self._make_loop_skip_record(
+                    side="none",
+                    cancel_reason=CR.MCB_SAD_ESCALATION,
+                    order_quantity=0.0,
+                ))
+                total_count += 1
+                batch = self._batch_persistence.maybe_flush(
+                    batch, "mcb_sad_escalation"
+                )
+                self._update_lock_heartbeat()
+                await self._effective_sleep(multiplier=5.0)
+                continue
 
             # 205# §9.4: 時間帯 Hard Skip (Kyle proxy)
             # soft offset (158# P1-6) では抑制不十分な最悪時間帯はサイクル全停止

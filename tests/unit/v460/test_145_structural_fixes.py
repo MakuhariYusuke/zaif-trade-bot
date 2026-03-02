@@ -168,6 +168,7 @@ class TestCancelReasons:
             CR.MCB_WARNING,                    # 211# P1-B
             CR.SAD_FROZEN,                     # 211# P1-C
             CR.SAD_DRY,                        # 211# P1-C
+            CR.MCB_SAD_ESCALATION,             # 211# P1-D
         }
         assert CR.AUDIT_CANCEL_REASONS == expected
 

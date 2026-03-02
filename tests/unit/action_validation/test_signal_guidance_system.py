@@ -31,7 +31,7 @@ class TestSignalGuidanceSystem:
     def test_initialization(self):
         """Test system initialization"""
         assert self.system.config.guidance_level == 'adaptive'
-        assert self.system.signal_history == []
+        assert len(self.system.signal_history) == 0
         assert self.system.market_context.current_trend == MarketTrend.NEUTRAL
 
     def test_market_trend_analysis(self):

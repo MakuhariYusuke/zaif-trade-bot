@@ -54,6 +54,8 @@ MCB_WARNING = "mcb_warning"
 # 211# P1-C: Spread Anomaly Detector (流動性枯渇検知)
 SAD_FROZEN = "sad_frozen"
 SAD_DRY = "sad_dry"
+# 211# P1-D: MCB×SAD AND Escalation (両方 WARNING 以上で即 HALT)
+MCB_SAD_ESCALATION = "mcb_sad_escalation"
 
 AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     CIRCUIT_BREAKER_OPEN,
@@ -82,6 +84,7 @@ AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     MCB_WARNING,
     SAD_FROZEN,
     SAD_DRY,
+    MCB_SAD_ESCALATION,
 })
 
 # ======================================================================
@@ -143,6 +146,7 @@ CancelReason = Literal[
     "mcb_warning",
     "sad_frozen",
     "sad_dry",
+    "mcb_sad_escalation",
     # EXEC
     "post_only_reject",
     "insufficient_funds",
