@@ -50,18 +50,18 @@
 
 **対策**: `except Exception as e:` + `logger.exception(e)` に一括置換。scripts 配下はリスク低だが統一すべき。
 
-### 1.2 サイレント `except Exception:` (特に危険な箇所) — ✅ trainer.py 修正済 (`553895a0e`)
+### 1.2 サイレント `except Exception:` (特に危険な箇所) — ✅ 全修正済
 
 | ファイル | 該当数 | リスク | 状態 |
 |---|---|---|---|
 | `ztb/training/unified_trainer/trainer.py` | **12箇所** | **学習中のエラーが invisible** — 最優先 | ✅ `logger.debug` 追加 (`553895a0e`) |
-| `ztb/utils/checkpoint.py` | 7箇所 | チェックポイント破損を検知不能 | 未着手 |
-| `ztb/utils/seed_manager.py` | 9箇所 | seed 設定失敗が silent | 未着手 |
-| `ztb/utils/env_metrics.py` | 10箇所 | メトリクス計算失敗が silent | 未着手 |
-| `ztb/utils/run_metadata.py` | 5箇所 | メタデータ破損検知不能 | 未着手 |
+| `ztb/utils/checkpoint.py` | 7箇所 | チェックポイント破損を検知不能 | ✅ `logger.debug` 追加 (`7ad1ad748`) |
+| `ztb/utils/seed_manager.py` | 11箇所 | seed 設定失敗が silent | ✅ `logger.debug` 追加 (`7ad1ad748`) |
+| `ztb/utils/env_metrics.py` | 11箇所 | メトリクス計算失敗が silent | ✅ `logger.debug` 追加 (`7ad1ad748`) |
+| `ztb/utils/run_metadata.py` | 5箇所 | メタデータ破損検知不能 | ✅ `logger.debug` 追加 (`7ad1ad748`) |
 
-**対策**: `trainer.py` は `except Exception as e: logger.debug(...)` に変更済 (12箇所)。
-  残り3箇所 (import guard) はオプショナルインポートパターンのため変更不要。
+**対策**: 全ファイル `except Exception as e: logger.debug(...)` に変更済。
+  import guard パターンは `as e:` のみ追加 (ログ不要)。
 `safety.py` (7箇所) は安全装置なので設計上許容。
 
 ---
@@ -275,16 +275,16 @@
 
 ## 13. 対応優先度ロードマップ
 
-### P0: 即時対応 (収益・安全に直結)
+### P0: 即時対応 (収益・安全に直結) — ✅ 全完了
 
-1. **Hot-reload フィールド追加** — `loss_cooldown_*`, `toxic_fill_veto_*`, `one_sided_*` — 変更量: ~10行
-2. **P0-A: Operator Alert Flag** — 211# §8 参照 — 変更量: ~50行
+1. **Hot-reload フィールド追加** — ✅ 215# P0-B + 212# §3.2 で完了
+2. **P0-A: Operator Alert Flag** — ✅ 215# P0-C で完了
 
-### P1: 短期対応 (1 週間以内)
+### P1: 短期対応 (1 週間以内) — ✅ 全完了
 
-3. **`pop(0)` → `deque(maxlen=)`** — 7箇所一括 — ✅ 実装済
-4. **trainer.py サイレント swallow** — 15箇所の `except Exception` 精査 — 変更量: ~50行
-5. **bare `except:` 一括修正** — 30箇所 — ✅ 実装済
+3. **`pop(0)` → `deque(maxlen=)`** — 7箇所一括 — ✅ 実装済 (`5562edb02`)
+4. **サイレント swallow** — 計46箇所 (5ファイル) — ✅ 実装済 (`553895a0e`, `7ad1ad748`)
+5. **bare `except:` 一括修正** — 30箇所 — ✅ 実装済 (`5562edb02`)
 
 ### P2: 中期対応 (2-4 週間)
 
