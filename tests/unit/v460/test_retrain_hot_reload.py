@@ -18,6 +18,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
+try:
+    import lightgbm  # noqa: F401
+    _HAS_LIGHTGBM = True
+except ImportError:
+    _HAS_LIGHTGBM = False
+
 from scripts.v460.ml.skip_gate import (
     SkipGate,
     SkipGateConfig,
@@ -373,6 +379,7 @@ class TestBuildFullFeatures:
         assert "side_aligned_imbalance" in result.columns
 
 
+@pytest.mark.skipif(not _HAS_LIGHTGBM, reason="lightgbm not installed")
 class TestRetrainModel:
     """126# retrain_model() テスト."""
 
@@ -481,6 +488,7 @@ class TestRetrainModel:
 # 127# M3: E2E 成功テスト (retrain → deploy → hot-reload → evaluate)
 # =====================================================================
 
+@pytest.mark.skipif(not _HAS_LIGHTGBM, reason="lightgbm not installed")
 class TestE2ERetrainHotReload:
     """127# M3: 再学習→配置→hot-reload→評価の統合テスト."""
 
@@ -585,6 +593,7 @@ class TestE2ERetrainHotReload:
 # 130# Y5: balance_forced_switch フィルタリングテスト
 # =====================================================================
 
+@pytest.mark.skipif(not _HAS_LIGHTGBM, reason="lightgbm not installed")
 class TestBalanceForcedSwitchFilter:
     """130# Y5: retrain_model() が balance_forced_switch=True を除外する."""
 
@@ -827,6 +836,7 @@ class TestE3FeaturePruning:
         assert len(feature_cols) == 6
 
 
+@pytest.mark.skipif(not _HAS_LIGHTGBM, reason="lightgbm not installed")
 class TestBuildLgbmRegressor:
     """DRY: _build_lgbm_regressor テスト."""
 
@@ -898,6 +908,7 @@ class TestAtomicHashMove:
             assert loaded.metadata["version"] == "test"
 
 
+@pytest.mark.skipif(not _HAS_LIGHTGBM, reason="lightgbm not installed")
 class TestPrevModelLoadError:
     """131# A.1 #3: except:pass 廃止テスト."""
 
@@ -1035,6 +1046,7 @@ class TestPostDeployVerification:
 # 131# C1: Multi-Window Walk-Forward テスト
 # =====================================================================
 
+@pytest.mark.skipif(not _HAS_LIGHTGBM, reason="lightgbm not installed")
 class TestMultiWindowWF:
     """131# C1: WalkForwardSplitter を使った multi-window WF 評価テスト."""
 
@@ -1193,6 +1205,7 @@ class TestMultiWindowWF:
 # =====================================================================
 
 
+@pytest.mark.skipif(not _HAS_LIGHTGBM, reason="lightgbm not installed")
 class TestWFSingleWindowLeakageFix:
     """158# P2-1: _evaluate_wf_single の val/test 分離を検証."""
 
@@ -1883,6 +1896,7 @@ class TestRegimeSampleWeights:
         assert _DEFAULT_CONFIG["regime_weight_floor"] == 0.1
 
 
+@pytest.mark.skipif(not _HAS_LIGHTGBM, reason="lightgbm not installed")
 class TestStatisticalGateInitialTraining:
     """159# P0-1: 初回訓練 (prev model 不在) 時の統計ゲートスキップ."""
 

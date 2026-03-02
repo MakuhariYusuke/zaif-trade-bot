@@ -70,6 +70,7 @@ class TestSklearnWarningFix:
 
     def test_production_model_no_warnings(self):
         """本番モデルで sklearn 警告が出ないことを確認."""
+        pytest.importorskip("lightgbm", reason="lightgbm required for model loading")
         model_path = Path("models/v460/skip_gate_lgbm_pnl120.pkl")
         if not model_path.exists():
             pytest.skip("Production model not available")

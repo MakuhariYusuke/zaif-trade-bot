@@ -14,6 +14,12 @@ from unittest.mock import patch
 import numpy as np
 import pandas as pd
 import pytest
+
+try:
+    import xgboost  # noqa: F401
+    _HAS_XGBOOST = True
+except ImportError:
+    _HAS_XGBOOST = False
 import yaml
 
 
@@ -452,6 +458,7 @@ class TestCollectorDedup:
         assert len(collector._tr_buffer) == 2  # No new
 
 
+@pytest.mark.skipif(not _HAS_XGBOOST, reason="xgboost not installed")
 class TestEvaluatorFactories:
     """003# #2/3: factory 関数の分類/回帰テスト."""
 

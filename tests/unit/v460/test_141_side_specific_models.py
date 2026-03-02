@@ -23,6 +23,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
+try:
+    import lightgbm  # noqa: F401
+    _HAS_LIGHTGBM = True
+except ImportError:
+    _HAS_LIGHTGBM = False
+
 
 # ---------------------------------------------------------------------------
 # §1: FillConfig — side 別モデルパスフィールド
@@ -72,6 +78,7 @@ class TestFillConfigSideModelPaths:
 # ---------------------------------------------------------------------------
 # §2: retrain_scheduler — side_filter + _retrain_side_specific
 # ---------------------------------------------------------------------------
+@pytest.mark.skipif(not _HAS_LIGHTGBM, reason="lightgbm not installed")
 class TestRetrainSideFilter:
     """141# §2: retrain_model の side_filter パラメータ."""
 
@@ -133,6 +140,7 @@ class TestRetrainSideFilter:
         assert result.get("side_filter") == "buy"
 
 
+@pytest.mark.skipif(not _HAS_LIGHTGBM, reason="lightgbm not installed")
 class TestRetrainSideSpecificFunction:
     """141# §2: _retrain_side_specific 関数テスト."""
 
