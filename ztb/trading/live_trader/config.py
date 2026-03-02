@@ -26,6 +26,25 @@ except ImportError:
     prometheus_available = False
 
 
+@dataclass
+class LiveTraderConfig:
+    """Operational parameters for live trading (212# §7.1: magic number config 化).
+
+    live_trader.py 内のハードコード値を一元管理する。
+    """
+
+    # API timeouts (sec)
+    ticker_timeout: float = 5.0         # Ticker API request timeout
+    api_timeout: float = 10.0           # General API / CB call timeout
+
+    # Circuit breaker (sec)
+    cb_recovery_timeout: float = 60.0   # Circuit breaker recovery timeout
+
+    # Intervals (sec)
+    retry_interval: float = 60.0        # Error retry / iteration wait interval
+    order_poll_interval: float = 2.0    # Price fetch retry interval
+
+
 @dataclass(frozen=True)
 class LiveTradingOptions:
     """Runtime configuration for live trading."""

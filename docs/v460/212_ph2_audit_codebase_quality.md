@@ -103,15 +103,18 @@
 | `trending_sell_as_offset_enabled`, `trending_sell_offset_boost_factor` | 一部は入っているが on/off トグルが欠落 |
 | `one_sided_consecutive_limit`, `one_sided_consecutive_interval_mult` | 片側枯渇制限は市場状況で即調整必要 |
 
-### 3.2 短期対応 (MEDIUM)
+### 3.2 短期対応 (MEDIUM) — ✅ 全フィールド登録済
 
-| フィールド群 | 理由 |
-|---|---|
-| `soft_drawdown_interval_multiplier` | Soft DD 時の interval 乗数 |
-| `velocity_skip_as_offset_enabled`, `velocity_offset_boost_factor` 等 | velocity 系メインは入っているが toggle 一部漏れ |
-| `sell_velocity_skip_enabled/threshold`, `buy_velocity_skip_enabled/threshold` | velocity skip on/off |
-| `balance_forced_rescue_enabled/offset_mult`, `skip_balance_forced`, `balance_forced_deadlock_limit` | Balance forced 救済系 |
-| `skip_sell_trending`, `skip_buy_unknown_regime`, `skip_sell_unknown_regime` | ガード on/off — regex マッチ漏れの可能性 |
+全フィールドが `_HOT_RELOADABLE_FIELDS` に登録済みであることを確認。
+`soft_drawdown_interval_multiplier` は `3402f4373` で追加、その他は 215# P0-B 以前に登録済み。
+
+| フィールド群 | 理由 | 状態 |
+|---|---|---|
+| `soft_drawdown_interval_multiplier` | Soft DD 時の interval 乗数 | ✅ `3402f4373` |
+| `velocity_skip_as_offset_enabled`, `velocity_offset_boost_factor` 等 | velocity 系メインは入っているが toggle 一部漏れ | ✅ 登録済 |
+| `sell_velocity_skip_enabled/threshold_bps`, `buy_velocity_skip_enabled/threshold_bps` | velocity skip on/off | ✅ 登録済 |
+| `balance_forced_rescue_enabled/offset_mult`, `skip_balance_forced`, `balance_forced_deadlock_limit` | Balance forced 救済系 | ✅ 登録済 |
+| `skip_sell_trending`, `skip_buy_unknown_regime`, `skip_sell_unknown_regime` | ガード on/off — regex マッチ漏れの可能性 | ✅ 登録済 |
 
 ---
 
@@ -196,16 +199,18 @@
 
 ## 7. マジックナンバー (MEDIUM)
 
-### 7.1 本番取引に直結 (live_trader.py)
+### 7.1 本番取引に直結 (live_trader.py) — ✅ config 化済
 
-| 行 | 値 | 推奨 |
-|---|---|---|
-| L296 | `timeout=5` (ticker API) | `LiveTraderConfig.ticker_timeout` |
-| L507 | `recovery_timeout=60.0` | `LiveTraderConfig.recovery_timeout` |
-| L509 | `timeout=10.0` | `LiveTraderConfig.order_timeout` |
-| L622, 716 | `time.sleep(60)` | `LiveTraderConfig.retry_interval` |
-| L1291 | `timeout=10` | 統一 |
-| L1432 | `time.sleep(2)` | `LiveTraderConfig.order_poll_interval` |
+`LiveTraderConfig` dataclass を `config.py` に新設し、7箇所のマジックナンバーを config 参照に置換。
+
+| 行 | 値 | config フィールド | 状態 |
+|---|---|---|---|
+| L296 | `timeout=5` (ticker API) | `LiveTraderConfig.ticker_timeout` | ✅ |
+| L507 | `recovery_timeout=60.0` | `LiveTraderConfig.cb_recovery_timeout` | ✅ |
+| L509 | `timeout=10.0` | `LiveTraderConfig.api_timeout` | ✅ |
+| L622, 716 | `time.sleep(60)` | `LiveTraderConfig.retry_interval` | ✅ |
+| L1291 | `timeout=10` | `LiveTraderConfig.api_timeout` (統一) | ✅ |
+| L1432 | `time.sleep(2)` | `LiveTraderConfig.order_poll_interval` | ✅ |
 
 ### 7.2 報酬計算 (reward_calculator.py)
 
@@ -290,7 +295,7 @@
 
 6. **ライブ取引テスト拡充** — `ztb/trading/live/` カバレッジ 36.7% → 60% 目標
 7. **本番系テスト拡充** — `ztb/trading/production/` カバレッジ 37.5% → 60% 目標
-8. **live_trader.py マジックナンバー config 化** — 7箇所
+8. **live_trader.py マジックナンバー config 化** — ✅ 7箇所 → `LiveTraderConfig` に集約
 
 ### P3: 長期改善
 

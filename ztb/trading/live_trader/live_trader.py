@@ -48,7 +48,7 @@ from ztb.trading.environment.constants import (
 from ztb.trading.live.action_mask_provider import ActionMaskConfig, ActionMaskProvider
 from ztb.trading.live.registry.broker_registry import get_broker_registry
 from ztb.trading.live_trader.components.order_manager import OrderManager
-from ztb.trading.live_trader.config import LiveTradingOptions
+from ztb.trading.live_trader.config import LiveTraderConfig, LiveTradingOptions
 from ztb.trading.risk.compat import ensure_risk_manager_protocol
 from ztb.utils.logging_utils import create_structured_logger, get_logger
 from ztb.utils.safety import safe_divide, safe_get_nested_value, safe_to_int
@@ -189,6 +189,7 @@ class LiveTrader:
                     dry_run=dry_run,
                 )
             self.options = options
+            self.trader_config = LiveTraderConfig()  # 212# §7.1
             self.disable_risk_limits = options.disable_risk_limits
             self.dry_run = options.dry_run
             self.algorithm = options.algorithm
@@ -293,7 +294,7 @@ class LiveTrader:
                 # Get live price synchronously for dry-run initialization
                 import requests
 
-                response = requests.get("https://coincheck.com/api/ticker", timeout=5)
+                response = requests.get("https://coincheck.com/api/ticker", timeout=self.trader_config.ticker_timeout)
                 response.raise_for_status()
                 data = response.json()
                 if isinstance(data, dict) and "last" in data:
@@ -321,6 +322,7 @@ class LiveTrader:
             return
 
         self.options = options
+        self.trader_config = LiveTraderConfig()  # 212# §7.1
         if not self.model_path.exists():
             raise TradingError(f"Model file not found: {self.model_path}")
         self.ztb_config = ZTBConfig()
@@ -501,12 +503,12 @@ class LiveTrader:
         )
         self.rate_limiter = TokenBucketRateLimiter(rate_limit_config)
 
-        # Circuit breaker for API protection (5 failures -> open, 60s recovery)
+        # Circuit breaker for API protection (5 failures -> open, recovery)
         circuit_config = CircuitBreakerConfig(
             failure_threshold=5,
-            recovery_timeout=60.0,
+            recovery_timeout=self.trader_config.cb_recovery_timeout,
             success_threshold=3,
-            timeout=10.0,
+            timeout=self.trader_config.api_timeout,
         )
         self.api_circuit_breaker = CircuitBreaker("coincheck_api", circuit_config)
 
@@ -619,7 +621,7 @@ class LiveTrader:
                                     "error",
                                 )
                                 break
-                            time.sleep(60)
+                            time.sleep(self.trader_config.retry_interval)
                             continue
 
                     # Reset consecutive error counter on successful price fetch
@@ -712,8 +714,8 @@ class LiveTrader:
                         )
                         break
 
-            # Wait before next iteration (1 minute)
-            time.sleep(60)
+            # Wait before next iteration
+            time.sleep(self.trader_config.retry_interval)
 
         # Final report
         total_pnl = self.total_pnl
@@ -1288,7 +1290,7 @@ class LiveTrader:
             response = requests.get(
                 f"{self.base_url}/api/trades",
                 params={"pair": "btc_jpy", "limit": min(limit, 100)},
-                timeout=10,
+                timeout=self.trader_config.api_timeout,
             )
             response.raise_for_status()
             data = response.json()
@@ -1429,7 +1431,7 @@ class LiveTrader:
                     logger.warning(
                         f"Failed to fetch current price (attempt {attempt + 1}/{max_retries}): {e}"
                     )
-                    time.sleep(2)
+                    time.sleep(self.trader_config.order_poll_interval)
 
             if current_price <= 0:
                 logger = get_logger(__name__)
