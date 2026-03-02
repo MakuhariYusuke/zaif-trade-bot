@@ -5,20 +5,23 @@ This module provides unified seed setting across all random number generators
 used in the training pipeline to ensure reproducibility.
 """
 
+import logging
 import os
 import random
 from typing import TYPE_CHECKING, Optional
+
+logger = logging.getLogger(__name__)
 
 # Optional imports - gracefully handle missing dependencies
 if TYPE_CHECKING:
     # For type checking, import numpy and torch types if available
     try:
         import numpy as np
-    except Exception:  # pragma: no cover - type checking only
+    except Exception as e:  # pragma: no cover - type checking only
         np = None  # type: ignore[assignment]
     try:
         import torch
-    except Exception:  # pragma: no cover - type checking only
+    except Exception as e:  # pragma: no cover - type checking only
         torch = None  # type: ignore[assignment]
 
     HAS_NUMPY = True
@@ -75,7 +78,7 @@ class SeedManager:
                 # Cache torch global to avoid re-import
                 globals()["torch"] = tmod
                 globals()["HAS_TORCH"] = True
-            except Exception:
+            except Exception as e:
                 tmod = None
 
         if tmod is not None:
@@ -83,9 +86,9 @@ class SeedManager:
             try:
                 tmod.cuda.manual_seed(seed)
                 tmod.cuda.manual_seed_all(seed)
-            except Exception:
+            except Exception as e:
                 # cuda.* may fail on CPU-only builds - ignore
-                pass
+                logger.debug("seed setting cuda failed: %s", e)
 
             # Enable deterministic algorithms
             if self.determinism_enabled:
@@ -100,20 +103,20 @@ class SeedManager:
         try:
             tmod.backends.cudnn.deterministic = True
             tmod.backends.cudnn.benchmark = False
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("seed setting cudnn.deterministic failed: %s", e)
 
         # For reproducibility, disable TF32 on Ampere GPUs
         try:
             if hasattr(tmod.backends.cuda, "matmul"):
                 tmod.backends.cuda.matmul.allow_tf32 = False
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("seed setting cuda.matmul.allow_tf32 failed: %s", e)
         try:
             if hasattr(tmod.backends.cudnn, "allow_tf32"):
                 tmod.backends.cudnn.allow_tf32 = False
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("seed setting cudnn.allow_tf32 failed: %s", e)
 
         # Set environment variables for additional determinism
         os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
@@ -126,26 +129,26 @@ class SeedManager:
             import importlib
 
             tmod = importlib.import_module("torch")
-        except Exception:
+        except Exception as e:
             tmod = None
 
         if tmod is not None:
             try:
                 tmod.backends.cudnn.deterministic = False
                 tmod.backends.cudnn.benchmark = True
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("seed setting cudnn.benchmark failed: %s", e)
             # Re-enable TF32
             try:
                 if hasattr(tmod.backends.cuda, "matmul"):
                     tmod.backends.cuda.matmul.allow_tf32 = True
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("seed setting cuda.matmul.allow_tf32 failed: %s", e)
             try:
                 if hasattr(tmod.backends.cudnn, "allow_tf32"):
                     tmod.backends.cudnn.allow_tf32 = True
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("seed setting cudnn.allow_tf32 failed: %s", e)
 
     def get_current_seed(self) -> Optional[int]:
         """Get the currently set seed."""

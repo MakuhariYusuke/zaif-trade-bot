@@ -271,7 +271,7 @@ class CheckpointManager:
 
         try:
             from ztb.utils.notify import get_notifier
-        except Exception:
+        except Exception as e:
             get_notifier = None  # type: ignore[assignment]
 
         notifier = get_notifier() if get_notifier else None
@@ -441,7 +441,8 @@ class CheckpointManager:
         ]:
             try:
                 return decompressor(data)
-            except Exception:
+            except Exception as e:
+                logger.debug("decompressor %s failed: %s", decompressor.__name__, e)
                 continue
         raise ValueError("Could not decompress data")
 
@@ -515,7 +516,8 @@ class CheckpointManager:
         try:
             pickle.dumps(obj, protocol=pickle.HIGHEST_PROTOCOL)
             return obj
-        except Exception:
+        except Exception as e:
+            logger.debug("pickle test failed, using repr: %s", e)
             return repr(obj)
 
     def _compute_diff(
@@ -938,7 +940,7 @@ class TrainingStateManager:
             import importlib
 
             tmod = importlib.import_module("torch")
-        except Exception:
+        except Exception as e:
             tmod = None
 
         if tmod is not None:
@@ -948,7 +950,8 @@ class TrainingStateManager:
                     if tmod.cuda.is_available()
                     else tmod.random.get_rng_state()
                 )
-            except Exception:
+            except Exception as e:
+                logger.debug("torch rng state capture failed: %s", e)
                 trng = None
         else:
             trng = None
@@ -1068,7 +1071,7 @@ class TrainingStateManager:
             import importlib
 
             tmod = importlib.import_module("torch")
-        except Exception:
+        except Exception as e:
             tmod = None
 
         if tmod is not None and random_state[2] is not None:
@@ -1077,9 +1080,9 @@ class TrainingStateManager:
                     tmod.set_rng_state(random_state[2])
                 else:
                     tmod.random.set_rng_state(random_state[2])
-            except Exception:
+            except Exception as e:
                 # Ignore issues when restoring torch RNG (e.g., CPU-only or torch version mismatch)
-                pass
+                logger.debug("torch rng state restore failed: %s", e)
 
         logger.info("Restored training state to model")
 

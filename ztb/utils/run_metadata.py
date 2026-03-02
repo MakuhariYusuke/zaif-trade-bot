@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import platform
 import subprocess
@@ -29,6 +30,8 @@ from ztb.utils.git_utils import (
     get_git_sha,
     get_git_status_lines,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class PackageInfo(TypedDict):
@@ -99,8 +102,8 @@ class RunMetadata:
                     return result.stdout.strip()
             elif platform.system() == "Windows":
                 return "Windows CPU"
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("GPU info detection failed: %s", e)
 
         return "Unknown"
 
@@ -231,8 +234,8 @@ class RunMetadata:
                     continue
                 version = version_obj if isinstance(version_obj, str) else "unknown"
                 packages[name_obj] = {"version": version, "hash": None}
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("pip package info fallback failed: %s", e)
         return packages
 
     def capture_package_info(self) -> dict[str, PackageInfo]:
@@ -252,7 +255,8 @@ class RunMetadata:
                 if self.include_package_hashes:
                     info["hash"] = self._get_package_hash(dist, package_name)
                 packages[package_name] = info
-        except Exception:
+        except Exception as e:
+            logger.debug("package info capture failed, falling back to pip: %s", e)
             return self._capture_package_info_via_pip()
 
         return packages
@@ -283,7 +287,8 @@ class RunMetadata:
                 continue
             try:
                 config_hashes[config_file] = self._sha256_short(path)
-            except Exception:
+            except Exception as e:
+                logger.debug("config hash failed for %s: %s", config_file, e)
                 config_hashes[config_file] = "error"
 
         return config_hashes
@@ -333,7 +338,8 @@ class RunMetadata:
         instance = cls()
         try:
             instance.metadata = read_json_object(Path(file_path))
-        except Exception:
+        except Exception as e:
+            logger.debug("metadata load failed: %s", e)
             instance.metadata = {}
         return instance
 

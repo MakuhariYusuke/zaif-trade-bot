@@ -3,9 +3,12 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Callable, Iterable, Optional
 
 from ztb.types.common import ObjectMap
+
+logger = logging.getLogger(__name__)
 
 MetricCaster = Callable[[object], object]
 MetricSpec = tuple[str, tuple[str, ...], Optional[MetricCaster]]
@@ -113,7 +116,8 @@ def compute_balance_roi(
     try:
         final_balance = float(metrics[final_key])
         initial_balance = float(metrics[initial_key])
-    except Exception:
+    except Exception as e:
+        logger.debug("metric extraction failed: %s", e)
         return None
 
     if initial_balance == 0:
@@ -125,20 +129,23 @@ def compute_balance_roi(
 def _safe_getattr(obj: object, name: str) -> Optional[object]:
     try:
         return getattr(obj, name)
-    except Exception:
+    except Exception as e:
+        logger.debug("metric extraction failed: %s", e)
         return None
 
 
 def _call_get_env(obj: object) -> Optional[object]:
     try:
         getter = getattr(obj, "get_env", None)
-    except Exception:
+    except Exception as e:
+        logger.debug("metric extraction failed: %s", e)
         return None
 
     if callable(getter):
         try:
             return getter()
-        except Exception:
+        except Exception as e:
+            logger.debug("metric extraction failed: %s", e)
             return None
     return None
 
@@ -149,7 +156,8 @@ def _looks_like_env(obj: object) -> bool:
             return True
         if hasattr(obj, "envs") or hasattr(obj, "venv"):
             return True
-    except Exception:
+    except Exception as e:
+        logger.debug("metric extraction failed: %s", e)
         return False
     return False
 
@@ -159,7 +167,8 @@ def _unwrap_vec_env(env: object) -> object:
         envs = getattr(env, "envs", None)
         if envs:
             return envs[0]
-    except Exception:
+    except Exception as e:
+        logger.debug("metric extraction failed: %s", e)
         return env
     return env
 
@@ -177,7 +186,8 @@ def _next_wrapped_env(env: object) -> Optional[object]:
         envs = getattr(env, "envs", None)
         if envs:
             return envs[0]
-    except Exception:
+    except Exception as e:
+        logger.debug("metric extraction failed: %s", e)
         return None
     return None
 
@@ -199,14 +209,16 @@ def _set_first_attr(
     for attr in attr_names:
         try:
             value = getattr(obj, attr)
-        except Exception:
+        except Exception as e:
+            logger.debug("metric extraction failed: %s", e)
             continue
         if value is None:
             continue
         if caster is not None:
             try:
                 value = caster(value)
-            except Exception:
+            except Exception as e:
+                logger.debug("metric extraction failed: %s", e)
                 continue
         metrics[key] = value
         return
@@ -215,13 +227,15 @@ def _set_first_attr(
 def _set_sharpe_ratio(metrics: dict[str, object], env: object) -> None:
     try:
         getter = getattr(env, "get_sharpe_ratio", None)
-    except Exception:
+    except Exception as e:
+        logger.debug("metric extraction failed: %s", e)
         getter = None
     if callable(getter):
         try:
             metrics["sharpe_ratio"] = float(getter())
             return
-        except Exception:
+        except Exception as e:
+            logger.debug("metric extraction failed: %s", e)
             return
     _set_first_attr(metrics, "sharpe_ratio", env, ("sharpe_ratio",), caster=float)
 
