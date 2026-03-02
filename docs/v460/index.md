@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-02 (216# §7 プレ既存テスト全修正, Pipeline feature_names_in_ マイグレーション)
+> 最終更新: 2026-03-02 (220# Gate-level Deadlock 3fixes)
 
 ---
 
@@ -207,6 +207,10 @@
 | 214 | resp | [214_ph2_resp_213_codex_gemini_verification.md](214_ph2_resp_213_codex_gemini_verification.md) | 213# Codex/Gemini指摘に対する実コード・実データ検証: DD state 5フィールド不整合確認, hot-reload 7漏れ確認, velocity名称問題評価 |
 | 215 | fix | [215_ph2_fix_dd_hotreload_alertmode.md](215_ph2_fix_dd_hotreload_alertmode.md) | P0実装: DD state整合性修復 (if/elif+warmup), hot-reload 13フィールド追加, alert_mode.json DEFCONスイッチ |
 | 216 | fix | [216_ph2_fix_velocity_rename_guard_counters.md](216_ph2_fix_velocity_rename_guard_counters.md) | P1実装: velocity引数リネーム(19ファイル), guard発火カウンタ永続化, 211#§8事実/仕様分離 |
+| 217 | rev | [217_ph2_self_review_211_214_216.md](217_ph2_self_review_211_214_216.md) | セルフレビュー: 211# MCB/SAD + 214#-216# 実装検証 (CRITICAL 1, SIGNIFICANT 3, LOW-RISK 2) |
+| 218 | fix | [218_ph2_fix_anti_deadlock_probe.md](218_ph2_fix_anti_deadlock_probe.md) | Anti-Deadlock: DynamicKill probe cycle + per-side halt + deadlock detection log |
+| 219 | fix | [219_ph2_fix_progressive_probe_force_release.md](219_ph2_fix_progressive_probe_force_release.md) | Progressive Probe + Force Release: DynamicKill回復の高速化 (max_stale 30→10, 半減interval, 5probe強制解除) |
+| 220 | fix | [220_ph2_fix_gate_level_deadlock.md](220_ph2_fix_gate_level_deadlock.md) | Gate-level Deadlock 3fixes: Gate7 balance_forced対称性, dual-kill breaker, unknown連続bypass |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
