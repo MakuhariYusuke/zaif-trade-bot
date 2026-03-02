@@ -289,12 +289,18 @@ spread_ratio が閾値を超えたらアクション発動
 | テスト | ~60行 |
 | 所要データ | 既存 ticker.spread のみ (追加 API 不要) |
 
-### P1-B / P1-C の連携
+### P1-B / P1-C の連携 (P1-D: AND Escalation)
+
+> ✅ 実装済 (`682a6deb7`)
 
 ```
 P1-B (価格急変) と P1-C (spread 急拡大) は独立に検知するが、
 両方が同時に WARNING 以上 → 即 HALT (AND 条件での escalation)
 ```
+
+- `MCBLevel.WARNING` かつ `SADLevel.WIDE/DRY` → `CR.MCB_SAD_ESCALATION` で cycle skip
+- 単独の HALT/FROZEN はそれぞれ即 continue で処理済み
+- AND escalation は両チェック完了後に判定、sleep multiplier=5.0 で再評価
 
 これにより単独での false positive を抑制しつつ、真の急変イベントでは素早く反応できる。
 
