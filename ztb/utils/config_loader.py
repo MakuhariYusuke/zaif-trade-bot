@@ -7,7 +7,7 @@ configuration files in YAML, JSON, and TOML formats.
 
 import asyncio
 from pathlib import Path
-from typing import Any, TextIO, cast
+from typing import TextIO, cast
 
 from ztb.config.core.base import BaseConfigLoader
 from ztb.io.json_io import write_json
@@ -40,7 +40,7 @@ except ImportError:
     tomli_w = None
     TOML_WRITE_AVAILABLE = False
 
-def load_yaml_config(file_path: str | Path) -> dict[str, Any]:
+def load_yaml_config(file_path: str | Path) -> ConfigDict:
     """
     Load configuration from YAML file.
 
@@ -58,9 +58,9 @@ def load_yaml_config(file_path: str | Path) -> dict[str, Any]:
     if not file_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
-    return cast(dict[str, Any], read_yaml(file_path))
+    return cast(ConfigDict, read_yaml(file_path))
 
-def load_json_config(file_path: str | Path) -> dict[str, Any]:
+def load_json_config(file_path: str | Path) -> ConfigDict:
     """
     Load configuration from JSON file.
 
@@ -78,9 +78,9 @@ def load_json_config(file_path: str | Path) -> dict[str, Any]:
     if not file_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
-    return cast(dict[str, Any], safe_json_load(file_path))
+    return cast(ConfigDict, safe_json_load(file_path))
 
-def load_toml_config(file_path: str | Path) -> dict[str, Any]:
+def load_toml_config(file_path: str | Path) -> ConfigDict:
     """
     Load configuration from TOML file.
 
@@ -106,15 +106,15 @@ def load_toml_config(file_path: str | Path) -> dict[str, Any]:
         if TOMLLIB_AVAILABLE:
             import tomllib
 
-            return cast(dict[str, Any], tomllib.load(f))
+            return cast(ConfigDict, tomllib.load(f))
         elif TOML_AVAILABLE and tomli is not None:
-            return cast(dict[str, Any], tomli.load(f))
+            return cast(ConfigDict, tomli.load(f))
         else:
             raise ImportError(
                 "TOML support requires 'tomli' library (pip install tomli)"
             )
 
-def load_config(file_path: str | Path) -> dict[str, Any]:
+def load_config(file_path: str | Path) -> ConfigDict:
     """
     Load configuration from file (auto-detect format from extension).
 
@@ -187,7 +187,7 @@ class ConfigLoader(BaseConfigLoader):
     SUPPORTED_FORMATS = ["yaml", "yml", "json", "toml"]
 
     @staticmethod
-    def load(file_path: str | Path) -> dict[str, Any]:
+    def load(file_path: str | Path) -> ConfigDict:
         """
         Load configuration from file with auto-detected format.
 
@@ -200,7 +200,7 @@ class ConfigLoader(BaseConfigLoader):
         return load_config(file_path)
 
     @staticmethod
-    async def load_async(file_path: str | Path) -> dict[str, Any]:
+    async def load_async(file_path: str | Path) -> ConfigDict:
         """
         Asynchronously load configuration from file with auto-detected format.
 

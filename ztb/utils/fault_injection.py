@@ -14,7 +14,6 @@ from typing import (
     AsyncContextManager,
     AsyncGenerator,
     Callable,
-    dict,
     Optional,
     Type,
 )

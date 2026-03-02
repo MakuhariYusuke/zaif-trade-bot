@@ -5,6 +5,7 @@ System utilities for environment and hardware management.
 
 import importlib
 import os
+import types
 from typing import Any
 
 from ztb.utils.logging_utils import get_logger
@@ -29,7 +30,7 @@ def check_library_availability(library_name: str, feature_name: str) -> bool:
         logger.warning(f"{library_name} not available. {feature_name} will be disabled.")
         return False
 
-def safe_import(library_name: str, feature_name: str) -> Any | None:
+def safe_import(library_name: str, feature_name: str) -> types.ModuleType | None:
     """
     安全なライブラリインポートを実行
 
@@ -96,7 +97,7 @@ def configure_pytorch_environment(cuda_optimizations: bool = True) -> None:
     os.environ["OMP_NUM_THREADS"] = "1"
     os.environ["MKL_NUM_THREADS"] = "1"
 
-def get_system_info() -> dict[str, Any]:
+def get_system_info() -> dict[str, str | bool | None]:
     """Get basic system information."""
     return {
         "cuda_available": os.environ.get("CUDA_VISIBLE_DEVICES", "") != "",

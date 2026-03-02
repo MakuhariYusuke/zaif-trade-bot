@@ -6,9 +6,11 @@ with appropriate logging and fallback behaviors.
 """
 
 import logging
-from typing import Any, Callable
+from typing import Any, Callable, TypeVar
 
 from ztb.utils.errors import TradingBotError, safe_operation
+
+T = TypeVar("T")
 
 class AnalysisError(TradingBotError):
     """Base exception for analysis-related errors."""
@@ -31,14 +33,14 @@ class PatternAnalysisError(AnalysisError):
     pass
 
 def safe_analysis_operation(
-    operation: Callable[..., Any],
+    operation: Callable[..., T],
     *args: Any,
     logger: logging.Logger | None = None,
-    fallback_result: Any = None,
+    fallback_result: T | None = None,
     context: str = "",
     error_types: tuple[type[Exception], ...] | None = None,
     **kwargs: Any,
-) -> Any:
+) -> T | None:
     """Execute an analysis operation safely with analysis-specific error handling.
 
     This is a wrapper around safe_operation that provides analysis-specific
@@ -74,11 +76,11 @@ def safe_analysis_operation(
     )
 
 def safe_data_analysis(
-    operation: Callable[..., Any],
+    operation: Callable[..., T],
     *args: Any,
     logger: logging.Logger | None = None,
     **kwargs: Any,
-) -> Any:
+) -> T | None:
     """Execute data analysis operations with data-specific error handling.
 
     Specialized for data processing operations that might fail due to
@@ -94,11 +96,11 @@ def safe_data_analysis(
     )
 
 def safe_performance_analysis(
-    operation: Callable[..., Any],
+    operation: Callable[..., T],
     *args: Any,
     logger: logging.Logger | None = None,
     **kwargs: Any,
-) -> Any:
+) -> T | None:
     """Execute performance analysis operations with performance-specific error handling.
 
     Specialized for performance calculations that might fail due to
@@ -119,11 +121,11 @@ def safe_performance_analysis(
     )
 
 def safe_pattern_analysis(
-    operation: Callable[..., Any],
+    operation: Callable[..., T],
     *args: Any,
     logger: logging.Logger | None = None,
     **kwargs: Any,
-) -> Any:
+) -> T | None:
     """Execute pattern analysis operations with pattern-specific error handling.
 
     Specialized for pattern recognition operations that might fail due to

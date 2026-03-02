@@ -7,6 +7,7 @@ memory usage, and execution times.
 
 import logging
 import time
+import types as _types
 from functools import wraps
 from typing import Any, Callable, TypeVar
 
@@ -122,7 +123,12 @@ class CodePerformanceMonitor:
 
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: _types.TracebackType | None,
+    ) -> None:
         if self.start_time is None:
             return
 

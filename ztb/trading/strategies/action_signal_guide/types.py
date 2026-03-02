@@ -39,8 +39,8 @@ RecognizerGroupStatus = dict[str, bool | int | list[str]]
 RecognizerStatus = dict[str, int | str | dict[str, RecognizerGroupStatus]]
 
 # Union types for flexible inputs
-ConfigInput = "ActionSignalGuideConfig" | ConfigSection | None  # type: ignore
-GuidanceInput = "GuidanceLevel" | str | None  # type: ignore
+ConfigInput = Union["ActionSignalGuideConfig", ConfigSection, None]
+GuidanceInput = Union["GuidanceLevel", str, None]
 
 # Type aliases for multi-timeframe data structures
 MultiTimeframePayload = dict[str, object]

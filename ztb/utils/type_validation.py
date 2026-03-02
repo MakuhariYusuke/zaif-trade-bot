@@ -6,13 +6,15 @@ helping catch type-related issues during execution rather than just at static an
 """
 
 import inspect
-from typing import Any, Callable, Optional, Union, get_args, get_origin
+from typing import Any, Callable, Optional, TypeVar, Union, get_args, get_origin
 
 import numpy as np
 from numpy.typing import NDArray
 
 from ztb.types.common import ConfigDict, is_config_dict, is_numeric_config_value
 from ztb.utils.exceptions.custom_exceptions import ValidationError
+
+F = TypeVar("F", bound=Callable[..., Any])
 
 class TypeValidator:
     """
@@ -143,7 +145,7 @@ class TypeValidator:
         if expected_dtype is not None and array.dtype != expected_dtype:
             raise TypeError(f"{name} dtype must be {expected_dtype}, got {array.dtype}")
 
-def runtime_type_check(func: Callable[..., Any]) -> Callable[..., Any]:
+def runtime_type_check(func: F) -> F:
     """
     Decorator for runtime type checking of function arguments and return values.
 
@@ -193,7 +195,7 @@ def runtime_type_check(func: Callable[..., Any]) -> Callable[..., Any]:
 
         return result
 
-    return wrapper
+    return wrapper  # type: ignore[return-value]
 
 # Convenience functions for common validations
 def validate_environment_config(config: ConfigDict) -> None:

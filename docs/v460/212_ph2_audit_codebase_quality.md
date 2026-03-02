@@ -178,18 +178,21 @@
 
 ---
 
-## 6. Any 型使用 (MEDIUM)
+## 6. Any 型使用 (MEDIUM) — ✅ コアモジュール 6 ファイル完了
 
-### 6.1 コアモジュール
+### 6.1 コアモジュール — ✅ 削減済
 
-| ファイル | 出現数 | 改善案 |
-|---|---|---|
-| `ztb/utils/analysis_errors.py` | ~13 | `TypeVar` + `@overload` |
-| `ztb/utils/type_validation.py` | ~12 | `TypeVar` / `Protocol` |
-| `ztb/utils/performance_utils.py` | ~12 | `ParamSpec` (PEP 612) |
-| `ztb/utils/config_loader.py` | 全関数 | `TypedDict` / Pydantic model |
-| `ztb/utils/observability.py` | 3 | `TypeVar` |
-| `ztb/utils/system_utils.py` | 1 | `types.ModuleType` |
+| ファイル | 元Any数 | 削減 | 残留(正当) | 手法 |
+|---|---|---|---|---|
+| `ztb/utils/config_loader.py` | 10 | **10** | 0 | `ConfigDict` (既存型) |
+| `ztb/utils/performance_utils.py` | 13 | **3** | 10 | `__exit__` 標準型 (`types.TracebackType` 等) |
+| `ztb/utils/system_utils.py` | 4 | **2** | 2 | `types.ModuleType`, 具体 dict 型 |
+| `ztb/utils/observability.py` | 4 | **2** | 2 | `MetricsDict`, `JSONSerializable` |
+| `ztb/utils/analysis_errors.py` | 17 | **9** | 8 | `TypeVar("T")` — operation 戻り値型と関数戻り値型をリンク |
+| `ztb/utils/type_validation.py` | 10 | **2** | 8 | `TypeVar("F", bound=Callable)` — デコレータ原型保持 |
+| **合計** | **58** | **28** | **30** | — |
+
+残留 30 箇所はすべて正当理由あり (`*args: Any`/`**kwargs: Any` のデコレータ転送、runtime type validator の設計上の Any、numpy generic パラメータ等)。
 
 ### 6.2 Scripts (30+ 箇所)
 
@@ -300,7 +303,7 @@
 ### P3: 長期改善
 
 9. **巨大ファイル分割** — 2000行超 4ファイルから段階的に
-10. **Any 型削減** — コアモジュール 5 ファイルから
+10. **Any 型削減** — ✅ コアモジュール 6 ファイル (58 Any → 28 削減, 30 正当残留)
 11. **typing モダン化** — ✅ ztb/ 全体 936 ファイル (`2224bd458`)
 
 PEP 585/604 準拠の自動変換ツール `tools/typing_modernize.py` を作成し一括適用:

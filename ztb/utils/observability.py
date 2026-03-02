@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from ztb.types.common import JSONSerializable, MetricsDict
 from ztb.utils.path_utils import ensure_dir
 
 def generate_correlation_id() -> str:
@@ -60,7 +61,7 @@ class ObservabilityClient:
         data["correlation_id"] = self.correlation_id
         self.logger.log(level, "", extra={"extra": data})
 
-    def record_metrics(self, metrics: dict[str, Any]) -> None:
+    def record_metrics(self, metrics: MetricsDict) -> None:
         with self._metrics_lock:
             lines = []
             for key, value in metrics.items():
@@ -74,7 +75,7 @@ class ObservabilityClient:
             ensure_dir(self.metrics_path.parent)
             self.metrics_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-    def export_artifact(self, name: str, data: Any) -> Path:
+    def export_artifact(self, name: str, data: JSONSerializable) -> Path:
         ensure_dir(self.artifacts_dir)
         artifact_path = self.artifacts_dir / f"{name}.json"
         wrapped = {
