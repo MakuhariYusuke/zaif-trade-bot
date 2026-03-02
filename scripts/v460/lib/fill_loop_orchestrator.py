@@ -60,6 +60,10 @@ class FillLoopOrchestratorMixin:
     _guard_fire_counts: dict[str, int] | None = None
     # 218# デッドロック検出: 連続ゲートブロックカウンタ
     _consecutive_gate_blocks: int = 0
+    # 223# skip-time state save: 最終 state save のモノトニック時刻
+    _last_state_save_time: float = 0.0
+    #: 223# skip パス中の state save 間隔 (秒)
+    _STATE_SAVE_INTERVAL_SEC: float = 300.0
 
     def _is_sell_killed(self) -> bool:
         """133# P0-10 / 136# P1-03: sell 動的 kill 判定 — SellDynamicKillManager に委譲.
@@ -70,6 +74,11 @@ class FillLoopOrchestratorMixin:
         if self._regime_detector is not None:
             regime = self._regime_detector.current_regime.value
         killed, telemetry = self._sell_kill_mgr.check_kill(regime=regime)
+        # 223# probe/force_release メトリクス
+        if telemetry.probe_fired:
+            self._inc_guard_fire("dynamic_kill_probe_sell")
+        if telemetry.force_release_fired:
+            self._inc_guard_fire("dynamic_kill_force_release_sell")
         if killed:
             logger.info(
                 f"[136# §9] sell kill: regime={regime or 'default'}, "
@@ -96,6 +105,11 @@ class FillLoopOrchestratorMixin:
         if self._regime_detector is not None:
             regime = self._regime_detector.current_regime.value
         killed, telemetry = self._buy_kill_mgr.check_kill(regime=regime)
+        # 223# probe/force_release メトリクス
+        if telemetry.probe_fired:
+            self._inc_guard_fire("dynamic_kill_probe_buy")
+        if telemetry.force_release_fired:
+            self._inc_guard_fire("dynamic_kill_force_release_buy")
         if killed:
             logger.info(
                 f"[157# §19] buy kill: regime={regime or 'default'}, "
@@ -651,6 +665,9 @@ class FillLoopOrchestratorMixin:
 
         logger.info(f"Starting fill test: {hours}h, interval={self.config.cycle_interval_sec}s")
 
+        # 223# skip-time state save: ループ開始時にタイムスタンプ初期化
+        self._last_state_save_time = time.monotonic()
+
         while time.time() < end_time and not self._kill_switch.is_killed():
             # 200# 10-A: 日替わり時に soft_drawdown_interval_multiplier をリセット
             # P0-2 で追加した multiplier が日次境界で reset されないバグの修正
@@ -713,6 +730,7 @@ class FillLoopOrchestratorMixin:
                         filled_count=filled_count,
                         cumulative_pnl_jpy=cumulative_pnl_jpy,
                     ))
+                    self._last_state_save_time = time.monotonic()  # 223#
                 # 211#: halt サイクル可視化ログ (entering + _HALT_PERSIST_INTERVAL 毎)
                 if _should_record_halt:
                     logger.info(
@@ -879,6 +897,7 @@ class FillLoopOrchestratorMixin:
                 _alt = "sell" if next_side == "buy" else "buy"
                 if self._daily_drawdown_guard.is_side_halted(_alt):
                     # 両サイド封鎖 → 集約 halt と同等扱い
+                    self._inc_guard_fire("per_side_dd_both_halt")  # 223#
                     batch.append(self._make_loop_skip_record(
                         side="none",
                         cancel_reason=CR.PER_SIDE_DD_HALT,
@@ -890,6 +909,8 @@ class FillLoopOrchestratorMixin:
                     await self._effective_sleep(multiplier=5.0)
                     continue
                 else:
+                    # 223# P0: per-side halt switch を guard_fire_counts に記録
+                    self._inc_guard_fire("per_side_halt_switch")
                     logger.info(
                         f"[205# §9.5] Per-side DD halt: {next_side} blocked, "
                         f"switching to {_alt}"
@@ -1066,6 +1087,27 @@ class FillLoopOrchestratorMixin:
                     self._preflight_skip_count = 0
                     tried_opposite = True
                     _balance_forced = True  # 129# D.2
+                    # 223# P0: balance_forced 後に per-side halt を再チェック
+                    # (222# 1.1 CRITICAL: halt 中の side を balance_forced で貫通するバグの修正)
+                    if self._daily_drawdown_guard.is_side_halted(next_side):
+                        logger.warning(
+                            f"[223#] balance_forced → {next_side} is per-side halted — "
+                            f"refusing to bypass halt (safety > liveness)"
+                        )
+                        self._inc_guard_fire("balance_forced_halt_block")
+                        batch.append(self._make_loop_skip_record(
+                            side=next_side,
+                            cancel_reason=CR.PER_SIDE_DD_HALT,
+                            order_quantity=self._current_lot,
+                            balance_forced_switch=True,
+                        ))
+                        total_count += 1
+                        batch = self._batch_persistence.maybe_flush(
+                            batch, "balance_forced_halt_recheck",
+                        )
+                        self._last_side = next_side
+                        await self._effective_sleep()
+                        continue
                     # 200# E: 時間ベース頻度検出 — 短時間で連続 balance_forced が発生 → 警告
                     _now = time.time()
                     _last_bf_time = getattr(self, "_last_balance_forced_time", 0.0)
@@ -1337,6 +1379,21 @@ class FillLoopOrchestratorMixin:
                         f"side={next_side})"
                     )
 
+                # 223# skip-time lightweight state save: gate_block 連続中も
+                # _STATE_SAVE_INTERVAL_SEC 経過ごとに state 保存して stale 防止
+                _now_mono = time.monotonic()
+                if _now_mono - self._last_state_save_time >= self._STATE_SAVE_INTERVAL_SEC:
+                    self._state_persistence.save(self._build_state_snapshot(
+                        total_count=total_count,
+                        filled_count=filled_count,
+                        cumulative_pnl_jpy=cumulative_pnl_jpy,
+                    ))
+                    self._last_state_save_time = _now_mono
+                    logger.info(
+                        f"[223#] skip-time state save "
+                        f"(gate_blocks={self._consecutive_gate_blocks})"
+                    )
+
                 # 197# narrow_spread_pause: Gate 8 ブロック時は pause_sec 分待機
                 if _gate_result.blocking_reason == "narrow_spread_pause":
                     await asyncio.sleep(self.config.narrow_spread_pause_sec)
@@ -1346,6 +1403,9 @@ class FillLoopOrchestratorMixin:
             else:
                 # ゲート通過 → カウンタリセット
                 self._consecutive_gate_blocks = 0  # 218# デッドロック解消
+                # 223# DUAL KILL bypass 発動時のメトリクス記録
+                if _gate_result.dual_kill_bypassed:
+                    self._inc_guard_fire("dual_kill_bypass")
                 if (
                     self.config.skip_sell_trending
                     and next_side == "sell"
@@ -1571,6 +1631,7 @@ class FillLoopOrchestratorMixin:
                     filled_count=filled_count,
                     cumulative_pnl_jpy=cumulative_pnl_jpy,
                 ))
+                self._last_state_save_time = time.monotonic()  # 223#
 
             # --- 044# A-7: loss_cap 定期更新 (残高変動を反映) ---
             if (
@@ -1663,6 +1724,7 @@ class FillLoopOrchestratorMixin:
             filled_count=filled_count,
             cumulative_pnl_jpy=cumulative_pnl_jpy,
         ))
+        self._last_state_save_time = time.monotonic()  # 223#
 
         # 148# heartbeat タスク終了
         heartbeat_task.cancel()

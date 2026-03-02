@@ -72,6 +72,8 @@ class DynamicKillTelemetry:
     total_kills: int
     total_cooldown_cycles: int
     side: str = ""
+    probe_fired: bool = False       # 223# probe 発動フラグ
+    force_release_fired: bool = False  # 223# force release 発動フラグ
 
 # 後方互換エイリアス
 SellKillTelemetry = DynamicKillTelemetry
@@ -164,10 +166,12 @@ class DynamicKillManager:
                     f"kill disabled until new data (total_probes={self._total_probe_cycles})"
                 )
                 self._cooldown = 0
-                return False, self._make_telemetry(
+                _telem = self._make_telemetry(
                     killed=False, rolling_mean=None,
                     threshold=self._config.threshold_bps, regime=regime,
                 )
+                _telem.force_release_fired = True  # 223#
+                return False, _telem
 
             logger.warning(
                 f"[219#] {self._side} dynamic kill probe: "
@@ -177,9 +181,11 @@ class DynamicKillManager:
                 f"total_probes={self._total_probe_cycles})"
             )
             self._cooldown = 0  # cooldown もリセット
-            return False, self._make_telemetry(
+            _telem = self._make_telemetry(
                 killed=False, rolling_mean=None, threshold=self._config.threshold_bps, regime=regime
             )
+            _telem.probe_fired = True  # 223#
+            return False, _telem
 
         # cooldown 中
         if self._cooldown > 0:

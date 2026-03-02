@@ -74,6 +74,7 @@ class CycleGateResult:
     blocking_reason: str = ""
     checks: list[GateCheckResult] = field(default_factory=list)
     trending_offset_mult: float | None = None  # 196# trending sell → offset boost
+    dual_kill_bypassed: bool = False  # 223# DUAL KILL bypass 発動フラグ
 
     @property
     def audit_summary(self) -> str:
@@ -204,6 +205,7 @@ class CycleGateAggregator:
             # 両方 kill なら、全て通過させる (219# force release もあるが、
             # gate レベルで即座に1取引許可することで高速化)
             _dual_kill_bypass = True
+            result.dual_kill_bypassed = True  # 223# metrics 用フラグ
             logger.warning(
                 f"[219#] DUAL KILL bypass: both buy/sell killed — "
                 f"allowing {side} through to break deadlock"
