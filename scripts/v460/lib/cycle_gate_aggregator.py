@@ -166,7 +166,7 @@ class CycleGateAggregator:
             )
 
         # --- Gate 1: unknown_regime_buy_skip ---
-        g1 = self._check_unknown_regime_buy(side, _regime, balance_forced, _unknown_bypass)
+        g1 = self._check_unknown_regime_buy(side, _regime, _unknown_bypass)
         result.checks.append(g1)
         if g1.blocked:
             result.blocked = True
@@ -180,7 +180,7 @@ class CycleGateAggregator:
             self._consecutive_unknown_blocks = 0
 
         # --- Gate 2: B1' ranging_buy_low_vol ---
-        g2 = self._check_ranging_buy_low_vol(side, _regime, vol_ratio, balance_forced)
+        g2 = self._check_ranging_buy_low_vol(side, _regime, vol_ratio)
         result.checks.append(g2)
         if g2.blocked:
             result.blocked = True
@@ -189,7 +189,7 @@ class CycleGateAggregator:
 
         # --- Gate 3: trending_sell_skip ---
         g3 = self._check_trending_sell(
-            side, _regime, balance_forced, inv_net_imbalance,
+            side, _regime, inv_net_imbalance,
             trending_sell_skip_count=trending_sell_skip_count,
             buy_side_insufficient=buy_side_insufficient,
         )
@@ -218,7 +218,7 @@ class CycleGateAggregator:
                 f"allowing {side} through to break deadlock"
             )
 
-        g4 = self._check_buy_dynamic_kill(side, balance_forced, is_buy_killed, _dual_kill_bypass)
+        g4 = self._check_buy_dynamic_kill(side, is_buy_killed, _dual_kill_bypass)
         result.checks.append(g4)
         if g4.blocked:
             # 234# 縮退清算モード: balance_forced + kill gate blocked
@@ -237,7 +237,7 @@ class CycleGateAggregator:
 
         # --- Gate 5: sell_dynamic_kill ---
         g5 = self._check_sell_dynamic_kill(
-            side, balance_forced, is_sell_killed, inv_net_imbalance,
+            side, is_sell_killed, inv_net_imbalance,
             dual_kill_bypass=_dual_kill_bypass,
         )
         result.checks.append(g5)
@@ -264,7 +264,7 @@ class CycleGateAggregator:
             return result
 
         # --- Gate 7: unknown_regime_sell_skip (旧 C2) ---
-        g7 = self._check_unknown_regime_sell(side, _regime, balance_forced, _unknown_bypass)
+        g7 = self._check_unknown_regime_sell(side, _regime, _unknown_bypass)
         result.checks.append(g7)
         if g7.blocked:
             result.blocked = True
@@ -298,12 +298,13 @@ class CycleGateAggregator:
     # ================================================================
 
     def _check_unknown_regime_buy(
-        self, side: str, regime: str, balance_forced: bool,
+        self, side: str, regime: str,
         unknown_bypass: bool = False,
     ) -> GateCheckResult:
         """A10: unknown regime での buy スキップ.
 
         234# balance_forced でも Gate を適用 (gate bypass 廃止).
+        235# balance_forced 引数を削除 (dead parameter cleanup).
         """
         if (
             self._config.skip_buy_unknown_regime
@@ -320,12 +321,13 @@ class CycleGateAggregator:
         return GateCheckResult(gate_name="unknown_regime_buy", blocked=False)
 
     def _check_ranging_buy_low_vol(
-        self, side: str, regime: str, vol_ratio: float | None, balance_forced: bool,
+        self, side: str, regime: str, vol_ratio: float | None,
     ) -> GateCheckResult:
         """A11: B1' ranging buy at low vol ハードスキップ.
 
         195# ソフト化: ranging_buy_low_vol_as_offset=True 時は
-        hard skip せず maker_price の low_vol_offset_boost に委譲。
+        hard skip せず maker_price の low_vol_offset_boost に委譲.
+        235# balance_forced 引数を削除 (dead parameter cleanup).
         """
         if (
             self._config.skip_ranging_buy_low_vol
@@ -357,7 +359,6 @@ class CycleGateAggregator:
         self,
         side: str,
         regime: str,
-        balance_forced: bool,
         inv_net_imbalance: float,
         *,
         trending_sell_skip_count: int = 0,
@@ -367,7 +368,7 @@ class CycleGateAggregator:
 
         安全弁 (連続スキップ, HF4, inv_bypass) もここで判定。
         234# balance_forced でも Gate を統一適用 (gate bypass 廃止).
-        balance_forced 時の offset 保護は trending_sell_as_offset_enabled で統一処理。
+        235# balance_forced 引数を削除 (dead parameter cleanup).
         """
         _is_trending = regime in ("trending", "trending_up", "trending_down")
 
@@ -438,12 +439,13 @@ class CycleGateAggregator:
         )
 
     def _check_buy_dynamic_kill(
-        self, side: str, balance_forced: bool, is_buy_killed: bool,
+        self, side: str, is_buy_killed: bool,
         dual_kill_bypass: bool = False,
     ) -> GateCheckResult:
         """A13: buy 動的 kill.
 
         234# balance_forced でも Kill Gate は絶対権限 (gate bypass 廃止).
+        235# balance_forced 引数を削除 (dead parameter cleanup).
         """
         if (
             self._config.buy_dynamic_kill_enabled
@@ -462,7 +464,6 @@ class CycleGateAggregator:
     def _check_sell_dynamic_kill(
         self,
         side: str,
-        balance_forced: bool,
         is_sell_killed: bool,
         inv_net_imbalance: float,
         dual_kill_bypass: bool = False,
@@ -470,6 +471,7 @@ class CycleGateAggregator:
         """A14: sell 動的 kill.
 
         234# balance_forced でも Kill Gate は絶対権限 (gate bypass 廃止).
+        235# balance_forced 引数を削除 (dead parameter cleanup).
         """
         # 171# inv bypass
         _inv_bypass = (
@@ -539,13 +541,14 @@ class CycleGateAggregator:
         return GateCheckResult(gate_name="velocity_skip", blocked=False)
 
     def _check_unknown_regime_sell(
-        self, side: str, regime: str, balance_forced: bool = False,
+        self, side: str, regime: str,
         unknown_bypass: bool = False,
     ) -> GateCheckResult:
         """C2: unknown regime での sell skip.
 
         219# unknown_bypass: 連続ブロック超過時の強制通過。
         234# balance_forced でも Gate を適用 (gate bypass 廃止).
+        235# balance_forced 引数を削除 (dead parameter cleanup).
         """
         if (
             self._config.skip_sell_unknown_regime

@@ -1566,7 +1566,8 @@ class FillLoopOrchestratorMixin:
             _degraded_liquidation = _gate_result.degraded_liquidation
             if _degraded_liquidation:
                 self._degraded_liquidation_duty_counter += 1
-                _duty = self.config.degraded_liquidation_duty_cycle
+                _duty = max(self.config.degraded_liquidation_duty_cycle, 1)
+                # 235# duty_cycle=1 は「毎回実行」と同義 (skip なし)
                 if _duty > 1 and (self._degraded_liquidation_duty_counter % _duty) != 1:
                     # duty cycle スキップ: N サイクルに 1 回のみ実行
                     logger.info(
@@ -1598,6 +1599,12 @@ class FillLoopOrchestratorMixin:
                 )
             else:
                 # 正常パスではカウンタリセット
+                # 235# B-4 fix: トグル対策—転落先のカウンタを引き継ぎず完全リセット
+                if self._degraded_liquidation_duty_counter > 0:
+                    logger.info(
+                        f"[235#] Degraded liquidation cleared after "
+                        f"{self._degraded_liquidation_duty_counter} duty cycles"
+                    )
                 self._degraded_liquidation_duty_counter = 0
 
             try:
@@ -1654,6 +1661,9 @@ class FillLoopOrchestratorMixin:
                         if _freeze_off > 0 and _over >= _freeze_off:
                             _freeze_n = self.config.one_sided_escalation_freeze_cycles
                             self._one_sided_freeze_remaining = _freeze_n
+                            # 235# B-5 fix: freeze 発動時にカウンタを limit まで巻き戻し
+                            # freeze 消化後の即再発動を防止
+                            self._one_sided_consecutive_count = _os_limit
                             self._inc_guard_fire("one_sided_freeze")
                             logger.warning(
                                 f"[234#] One-sided FREEZE: "
@@ -1664,6 +1674,8 @@ class FillLoopOrchestratorMixin:
                         elif _cd_off > 0 and _over >= _cd_off:
                             _cd_n = self.config.one_sided_escalation_cooldown_cycles
                             self._one_sided_cooldown_remaining = _cd_n
+                            # 235# B-5 fix: cooldown 発動時もカウンタ巻き戻し
+                            self._one_sided_consecutive_count = _os_limit
                             self._inc_guard_fire("one_sided_cooldown")
                             logger.warning(
                                 f"[234#] One-sided COOLDOWN: "

@@ -769,6 +769,12 @@ class FillCycleExecutorMixin:
                 else:
                     order_price = mid_est + spread_at_order * effective_offset_ratio / 2
                 order_price = round(order_price)
+            else:
+                # 235# C-3 guard: spread 不明時は offset 拡大のみ (価格再計算不可)
+                logger.warning(
+                    f"[235#] degraded_liquidation: spread unavailable — "
+                    f"offset expanded but price NOT recalculated"
+                )
             logger.warning(
                 f"[234#] degraded_liquidation: offset "
                 f"{_pre_deg_offset:.4f}→{effective_offset_ratio:.4f} "

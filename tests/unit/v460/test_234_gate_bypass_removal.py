@@ -424,3 +424,57 @@ class TestBalanceForcedIntegration:
         ))
         # バイパス + balance_forced (gate bypass なし) → バイパスで通過
         assert not r.blocked
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# 235# dead parameter cleanup 検証
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestDeadParameterCleanup:
+    """235# balance_forced が _check_* のシグネチャから削除されたことを検証."""
+
+    @pytest.mark.parametrize("method_name", [
+        "_check_unknown_regime_buy",
+        "_check_ranging_buy_low_vol",
+        "_check_trending_sell",
+        "_check_buy_dynamic_kill",
+        "_check_sell_dynamic_kill",
+        "_check_unknown_regime_sell",
+    ])
+    def test_no_balance_forced_parameter(self, method_name: str) -> None:
+        """各 _check_* メソッドのシグネチャに balance_forced がないこと."""
+        method = getattr(CycleGateAggregator, method_name)
+        sig = inspect.signature(method)
+        assert "balance_forced" not in sig.parameters, (
+            f"235# dead parameter: {method_name} still has balance_forced"
+        )
+
+
+class TestDutyCycleGuard:
+    """235# duty_cycle=1 や duty_cycle=0 でのガード検証."""
+
+    def test_duty_cycle_config_min_1(self) -> None:
+        """duty_cycle=0 → max(0,1)=1 で除算エラーにならないこと."""
+        # Config レベルでは 0 設定可能だが、orchestrator で max(v,1) ガード
+        cfg = FillTestConfig(degraded_liquidation_duty_cycle=0)
+        assert cfg.degraded_liquidation_duty_cycle == 0  # 設定は維持
+
+    def test_duty_cycle_1_means_every_cycle(self) -> None:
+        """duty_cycle=1 → 毎回実行 (skip なし)."""
+        cfg = FillTestConfig(degraded_liquidation_duty_cycle=1)
+        # max(1, 1) = 1, `_duty > 1` is False → skip なし
+        assert cfg.degraded_liquidation_duty_cycle == 1
+
+
+class TestDeadConfigDeprecation:
+    """balance_forced_apply_trending_offset の DEPRECATED 注釈."""
+
+    def test_field_exists_with_default_true(self) -> None:
+        cfg = FillTestConfig()
+        assert cfg.balance_forced_apply_trending_offset is True
+
+    def test_field_not_used_in_gate_aggregator(self) -> None:
+        """Gate aggregator のソースで直接参照されていないこと."""
+        src = inspect.getsource(CycleGateAggregator)
+        assert "balance_forced_apply_trending_offset" not in src

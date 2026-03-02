@@ -423,7 +423,8 @@ class FillTestConfig:
     # 197# balance_forced 時も trending offset を適用 (live YAML 既定値)
     # 234# NOTE: gate bypass 廃止により trending_sell の balance_forced 特別パスは削除。
     # このフィールドは後方互換性のため残すが、実質 dead config。
-    balance_forced_apply_trending_offset: bool = True
+    # TODO(235#): YAML / hot_reload から参照が消えたら削除
+    balance_forced_apply_trending_offset: bool = True  # DEPRECATED: 234# dead config
     # 158# §20-B: 連続 trending sell skip 安全弁 — N 回超過で sell を強制許可 (0=無制限)
     max_consecutive_trending_sell_skip: int = 30
     # 171# Guard Paradox 対策: 在庫偏重時に sell ガードを自動緩和
@@ -1124,7 +1125,7 @@ class FillTestConfig:
             kwargs["one_sided_escalation_freeze_cycles"] = int(止血["one_sided_escalation_freeze_cycles"])
         # 234# 縮退清算モード
         if "degraded_liquidation_enabled" in 止血:
-            kwargs["degraded_liquidation_enabled"] = 止血["degraded_liquidation_enabled"]
+            kwargs["degraded_liquidation_enabled"] = bool(止血["degraded_liquidation_enabled"])
         if "degraded_liquidation_lot_mult" in 止血:
             kwargs["degraded_liquidation_lot_mult"] = float(止血["degraded_liquidation_lot_mult"])
         if "degraded_liquidation_offset_mult" in 止血:
