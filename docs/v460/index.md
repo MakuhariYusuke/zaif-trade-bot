@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-03 (231# Self-review: FFD ロジック強化 + import_state None安全)
+> 最終更新: 2026-03-03 (232# 222–231レビュー: 本筋投入前の先回り点検, FFD妥当性, 実運用SHA乖離, 残存リスク)
 
 ---
 
@@ -222,6 +222,7 @@
 | 229 | fix | [229_ph2_fix_code_hygiene_counter_rename.md](229_ph2_fix_code_hygiene_counter_rename.md) | コード衛生 + M-5 unknown counter fix + M-2 consume rename |
 | 230 | fix | [230_ph2_fix_ffd_deadzone_streak_guards.md](230_ph2_fix_ffd_deadzone_streak_guards.md) | FFD deadzone/streak + MCB/SAD guard + hasattr排除 |
 | 231 | fix | [231_ph2_fix_ffd_logic_hardening_null_safety.md](231_ph2_fix_ffd_logic_hardening_null_safety.md) | FFDロジック強化 + import_state None安全 |
+| 232 | rev | [232_ph2_rev_222_231_predeployment_risk_review.md](232_ph2_rev_222_231_predeployment_risk_review.md) | 222#–231# レビュー: 本筋投入前の先回り点検, FFD妥当性, 実運用SHA乖離, feasible set collapse, 残存リスク |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

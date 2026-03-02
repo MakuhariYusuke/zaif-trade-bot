@@ -321,8 +321,8 @@ class TestRangingBuyLowVolSoftMode:
         )
         assert result.blocked is False
 
-    def test_b1_balance_forced_bypasses(self) -> None:
-        """balance_forced=True なら B1' はバイパス (旧動作維持)."""
+    def test_b1_balance_forced_does_not_bypass(self) -> None:
+        """234#: balance_forced=True でも B1' はブロック (gate bypass 廃止)."""
         from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         config = _make_config(
@@ -339,7 +339,8 @@ class TestRangingBuyLowVolSoftMode:
             is_buy_killed=False,
             is_sell_killed=False,
         )
-        assert result.blocked is False
+        assert result.blocked is True
+        assert result.blocking_reason == "ranging_low_vol_skip"
 
     def test_b1_vol_ratio_above_threshold_no_effect(self) -> None:
         """vol_ratio >= threshold なら B1' は発動しない."""

@@ -100,16 +100,18 @@ class TestDualKillBypassedFlag:
         assert not r.blocked
         assert r.dual_kill_bypassed is False
 
-    def test_dual_kill_with_balance_forced_no_flag(self) -> None:
-        """balance_forced=True + dual kill → bypass は balance_forced 経由。
-        _dual_kill condition は `not balance_forced` で False → flag=False."""
+    def test_dual_kill_with_balance_forced_flag_true(self) -> None:
+        """234#: balance_forced=True + dual kill → dual_kill_bypassed=True.
+
+        234# で `not balance_forced` を _dual_kill 条件から削除したため、
+        balance_forced=True でも dual_kill が正しく検出される。"""
         gate = _make_gate()
         r = gate.evaluate(**_default_ctx(
             side="buy", is_buy_killed=True, is_sell_killed=True,
             balance_forced=True,
         ))
         assert not r.blocked
-        assert r.dual_kill_bypassed is False  # balance_forced が優先
+        assert r.dual_kill_bypassed is True  # 234# dual kill detected
 
     def test_default_result_has_false(self) -> None:
         """CycleGateResult デフォルトは dual_kill_bypassed=False."""

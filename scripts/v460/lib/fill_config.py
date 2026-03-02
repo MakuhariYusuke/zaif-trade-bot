@@ -398,6 +398,18 @@ class FillTestConfig:
     # 205# §4.2 Codex: offset だけでは不十分、interval 延長 + 連続制限が必要
     one_sided_consecutive_limit: int = 5  # 片側強制取引の連続上限 (0=無制限)
     one_sided_consecutive_interval_mult: float = 3.0  # 上限到達時の interval 乗数
+    # 234# one-sided エスカレーション: limit超過後の段階的強化
+    one_sided_escalation_cooldown_offset: int = 2   # limit+N で cooldown (skip N cycles)
+    one_sided_escalation_cooldown_cycles: int = 2   # cooldown 時スキップするサイクル数
+    one_sided_escalation_freeze_offset: int = 4     # limit+N で freeze (当該side N cycles凍結)
+    one_sided_escalation_freeze_cycles: int = 3     # freeze 時のサイクル数
+    # 234# 縮退清算モード — balance_forced + kill gate blocked 時の安全実行
+    # Kill Gate は絶対権限だが、balance_forced 時は完全停止ではなく
+    # min lot + wide offset で安全に縮退清算する (Gemini 233# / Codex 232# 共同提言)
+    degraded_liquidation_enabled: bool = True       # 縮退清算モードの有効/無効
+    degraded_liquidation_lot_mult: float = 0.2      # 通常 lot の 20% (min lot 相当)
+    degraded_liquidation_offset_mult: float = 3.0   # offset を通常の 3 倍 (wide offset)
+    degraded_liquidation_duty_cycle: int = 3        # N サイクルに 1 回のみ実行 (dutyCycle=3 → 33%)
     # ---- 133# P0-09: unknown レジームでの buy スキップ ----
     skip_buy_unknown_regime: bool = False  # True で unknown レジーム時 buy もスキップ (-1.384bps)
     # ---- 155# §9: trending レジームでの sell 抑制 ----
@@ -409,6 +421,8 @@ class FillTestConfig:
     trending_sell_as_offset_enabled: bool = False
     trending_sell_offset_boost_factor: float = 2.0  # live YAML 既定値と整合
     # 197# balance_forced 時も trending offset を適用 (live YAML 既定値)
+    # 234# NOTE: gate bypass 廃止により trending_sell の balance_forced 特別パスは削除。
+    # このフィールドは後方互換性のため残すが、実質 dead config。
     balance_forced_apply_trending_offset: bool = True
     # 158# §20-B: 連続 trending sell skip 安全弁 — N 回超過で sell を強制許可 (0=無制限)
     max_consecutive_trending_sell_skip: int = 30
@@ -1099,6 +1113,24 @@ class FillTestConfig:
             kwargs["one_sided_consecutive_limit"] = int(止血["one_sided_consecutive_limit"])
         if "one_sided_consecutive_interval_mult" in 止血:
             kwargs["one_sided_consecutive_interval_mult"] = float(止血["one_sided_consecutive_interval_mult"])
+        # 234# one-sided エスカレーション
+        if "one_sided_escalation_cooldown_offset" in 止血:
+            kwargs["one_sided_escalation_cooldown_offset"] = int(止血["one_sided_escalation_cooldown_offset"])
+        if "one_sided_escalation_cooldown_cycles" in 止血:
+            kwargs["one_sided_escalation_cooldown_cycles"] = int(止血["one_sided_escalation_cooldown_cycles"])
+        if "one_sided_escalation_freeze_offset" in 止血:
+            kwargs["one_sided_escalation_freeze_offset"] = int(止血["one_sided_escalation_freeze_offset"])
+        if "one_sided_escalation_freeze_cycles" in 止血:
+            kwargs["one_sided_escalation_freeze_cycles"] = int(止血["one_sided_escalation_freeze_cycles"])
+        # 234# 縮退清算モード
+        if "degraded_liquidation_enabled" in 止血:
+            kwargs["degraded_liquidation_enabled"] = 止血["degraded_liquidation_enabled"]
+        if "degraded_liquidation_lot_mult" in 止血:
+            kwargs["degraded_liquidation_lot_mult"] = float(止血["degraded_liquidation_lot_mult"])
+        if "degraded_liquidation_offset_mult" in 止血:
+            kwargs["degraded_liquidation_offset_mult"] = float(止血["degraded_liquidation_offset_mult"])
+        if "degraded_liquidation_duty_cycle" in 止血:
+            kwargs["degraded_liquidation_duty_cycle"] = int(止血["degraded_liquidation_duty_cycle"])
         # 205# §9.5: 片側 DD Halt (daily_drawdown サブキー)
         if dd_guard.get("per_side_enabled") is not None:
             kwargs["per_side_dd_enabled"] = dd_guard["per_side_enabled"]

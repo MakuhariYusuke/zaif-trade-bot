@@ -158,17 +158,22 @@ class TestBalanceForcedTrendingOffset:
             raw = yaml.safe_load(f)
         assert raw["loss_control"]["balance_forced_apply_trending_offset"] is True
 
-    def test_balance_forced_without_opt_in_no_offset(self):
-        """opt-in なし: balance_forced + trending → offset_mult=None."""
+    def test_balance_forced_always_applies_offset_234(self):
+        """234#: balance_forced_apply_trending_offset は dead config.
+
+        234# で balance_forced gate bypass 廃止。soft mode の trending
+        offset は balance_forced に関係なく常に適用される。
+        """
         gate = _make_gate(
-            balance_forced_apply_trending_offset=False,
+            balance_forced_apply_trending_offset=False,  # 234# dead config
             trending_sell_as_offset_enabled=True,
         )
         r = gate.evaluate(**_default_ctx(
             side="sell", regime="trending_up", balance_forced=True,
         ))
         assert r.blocked is False
-        assert r.trending_offset_mult is None
+        # 234#: soft mode は常に offset を適用
+        assert r.trending_offset_mult is not None
 
     def test_balance_forced_with_opt_in_applies_offset(self):
         """opt-in あり: balance_forced + trending → offset_mult 設定."""
@@ -220,8 +225,8 @@ class TestBalanceForcedTrendingOffset:
         assert r.blocked is False
         assert r.trending_offset_mult is None
 
-    def test_audit_trail_197_detail(self):
-        """audit trail に 197# の detail が含まれること."""
+    def test_audit_trail_trending_offset_detail_234(self):
+        """234#: balance_forced は通常パスを通る → 196# soft mode detail."""
         gate = _make_gate(
             balance_forced_apply_trending_offset=True,
             trending_sell_as_offset_enabled=True,
@@ -232,8 +237,8 @@ class TestBalanceForcedTrendingOffset:
         ))
         trending_check = [c for c in r.checks if c.gate_name == "trending_sell"]
         assert len(trending_check) == 1
-        assert "197#" in trending_check[0].detail
-        assert "balance_forced" in trending_check[0].detail
+        # 234#: 統一パスで 196# soft mode を通過
+        assert "196#" in trending_check[0].detail
         assert "2.5" in trending_check[0].detail
 
 

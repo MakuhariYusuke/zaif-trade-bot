@@ -68,6 +68,8 @@ class CycleGateResult:
     - blocking_reason: skip の最初の理由
     - checks: 全ゲートの判定結果チェーン (audit trail)
     - trending_offset_mult: 196# trending sell soft mode offset 乗数
+    - degraded_liquidation: 234# balance_forced が Kill Gate に阻まれた場合、
+      min lot + wide offset の縮退清算モードで実行を許可する
     """
 
     blocked: bool = False
@@ -75,6 +77,8 @@ class CycleGateResult:
     checks: list[GateCheckResult] = field(default_factory=list)
     trending_offset_mult: float | None = None  # 196# trending sell → offset boost
     dual_kill_bypassed: bool = False  # 223# DUAL KILL bypass 発動フラグ
+    degraded_liquidation: bool = False  # 234# 縮退清算モード
+    degraded_reason: str = ""  # 234# 縮退理由 (どの gate が triggered か)
 
     @property
     def audit_summary(self) -> str:
@@ -201,10 +205,8 @@ class CycleGateAggregator:
         # --- Gate 4: buy_dynamic_kill ---
         # 219# dual-kill deadlock breaker: buy+sell 両方 kill 時、
         # PnL が良い方を強制通過させてデッドロックを回避。
-        _dual_kill = (
-            is_buy_killed and is_sell_killed
-            and not balance_forced
-        )
+        # 234# balance_forced 時も dual kill 検出を行う (gate bypass 廃止)
+        _dual_kill = is_buy_killed and is_sell_killed
         _dual_kill_bypass = False
         if _dual_kill:
             # 両方 kill なら、全て通過させる (219# force release もあるが、
@@ -219,9 +221,19 @@ class CycleGateAggregator:
         g4 = self._check_buy_dynamic_kill(side, balance_forced, is_buy_killed, _dual_kill_bypass)
         result.checks.append(g4)
         if g4.blocked:
-            result.blocked = True
-            result.blocking_reason = g4.reason
-            return result
+            # 234# 縮退清算モード: balance_forced + kill gate blocked
+            # → 完全 block ではなく min lot + wide offset で安全に縮退清算
+            if balance_forced and self._config.degraded_liquidation_enabled:
+                result.degraded_liquidation = True
+                result.degraded_reason = g4.reason
+                logger.warning(
+                    f"[234#] buy_dynamic_kill + balance_forced → "
+                    f"degraded liquidation mode (min lot, wide offset)"
+                )
+            else:
+                result.blocked = True
+                result.blocking_reason = g4.reason
+                return result
 
         # --- Gate 5: sell_dynamic_kill ---
         g5 = self._check_sell_dynamic_kill(
@@ -230,9 +242,18 @@ class CycleGateAggregator:
         )
         result.checks.append(g5)
         if g5.blocked:
-            result.blocked = True
-            result.blocking_reason = g5.reason
-            return result
+            # 234# 縮退清算モード: balance_forced + kill gate blocked
+            if balance_forced and self._config.degraded_liquidation_enabled:
+                result.degraded_liquidation = True
+                result.degraded_reason = g5.reason
+                logger.warning(
+                    f"[234#] sell_dynamic_kill + balance_forced → "
+                    f"degraded liquidation mode (min lot, wide offset)"
+                )
+            else:
+                result.blocked = True
+                result.blocking_reason = g5.reason
+                return result
 
         # --- Gate 6: velocity_skip (旧 C4-C5) ---
         g6 = self._check_velocity_skip(side, price_velocity_bps)
@@ -280,11 +301,13 @@ class CycleGateAggregator:
         self, side: str, regime: str, balance_forced: bool,
         unknown_bypass: bool = False,
     ) -> GateCheckResult:
-        """A10: unknown regime での buy スキップ."""
+        """A10: unknown regime での buy スキップ.
+
+        234# balance_forced でも Gate を適用 (gate bypass 廃止).
+        """
         if (
             self._config.skip_buy_unknown_regime
             and side == "buy"
-            and not balance_forced
             and not unknown_bypass  # 219#
             and regime == "unknown"
         ):
@@ -307,7 +330,6 @@ class CycleGateAggregator:
         if (
             self._config.skip_ranging_buy_low_vol
             and side == "buy"
-            and not balance_forced
             and regime == "ranging"
             and vol_ratio is not None
             and vol_ratio < self._config.low_vol_threshold
@@ -344,38 +366,14 @@ class CycleGateAggregator:
         """A12: trending regime での sell 抑制.
 
         安全弁 (連続スキップ, HF4, inv_bypass) もここで判定。
-        197#: balance_forced 時もトレンドオフセットを適用 (block はしない)。
+        234# balance_forced でも Gate を統一適用 (gate bypass 廃止).
+        balance_forced 時の offset 保護は trending_sell_as_offset_enabled で統一処理。
         """
         _is_trending = regime in ("trending", "trending_up", "trending_down")
-
-        # 197# balance_forced でも trending 時に offset を適用
-        # (block はしない — forced sell を止めてはいけない)
-        if (
-            self._config.skip_sell_trending
-            and side == "sell"
-            and balance_forced
-            and _is_trending
-            and self._config.balance_forced_apply_trending_offset
-            and self._config.trending_sell_as_offset_enabled
-        ):
-            # trending_up_only チェック
-            if self._config.skip_sell_trending_up_only and regime != "trending_up":
-                return GateCheckResult(gate_name="trending_sell", blocked=False)
-            _boost = self._config.trending_sell_offset_boost_factor
-            return GateCheckResult(
-                gate_name="trending_sell",
-                blocked=False,
-                detail=(
-                    f"197# balance_forced+trending→offset: {regime} sell "
-                    f"→ offset_mult={_boost:.1f} (forced sell 保護)"
-                ),
-                offset_mult=_boost,
-            )
 
         if not (
             self._config.skip_sell_trending
             and side == "sell"
-            and not balance_forced
             and _is_trending
         ):
             return GateCheckResult(gate_name="trending_sell", blocked=False)
@@ -443,11 +441,13 @@ class CycleGateAggregator:
         self, side: str, balance_forced: bool, is_buy_killed: bool,
         dual_kill_bypass: bool = False,
     ) -> GateCheckResult:
-        """A13: buy 動的 kill."""
+        """A13: buy 動的 kill.
+
+        234# balance_forced でも Kill Gate は絶対権限 (gate bypass 廃止).
+        """
         if (
             self._config.buy_dynamic_kill_enabled
             and side == "buy"
-            and not balance_forced
             and not dual_kill_bypass  # 219# dual-kill deadlock breaker
             and is_buy_killed
         ):
@@ -467,7 +467,10 @@ class CycleGateAggregator:
         inv_net_imbalance: float,
         dual_kill_bypass: bool = False,
     ) -> GateCheckResult:
-        """A14: sell 動的 kill."""
+        """A14: sell 動的 kill.
+
+        234# balance_forced でも Kill Gate は絶対権限 (gate bypass 廃止).
+        """
         # 171# inv bypass
         _inv_bypass = (
             self._config.sell_guard_inv_bypass_threshold > 0
@@ -476,7 +479,6 @@ class CycleGateAggregator:
         if (
             self._config.sell_dynamic_kill_enabled
             and side == "sell"
-            and not balance_forced
             and not _inv_bypass
             and not dual_kill_bypass  # 219# dual-kill deadlock breaker
             and is_sell_killed
@@ -542,13 +544,12 @@ class CycleGateAggregator:
     ) -> GateCheckResult:
         """C2: unknown regime での sell skip.
 
-        219# balance_forced bypass 追加 (Gate1 との対称性修正)。
         219# unknown_bypass: 連続ブロック超過時の強制通過。
+        234# balance_forced でも Gate を適用 (gate bypass 廃止).
         """
         if (
             self._config.skip_sell_unknown_regime
             and side == "sell"
-            and not balance_forced  # 219# Gate1との対称性
             and not unknown_bypass  # 219# 連続ブロックバイパス
             and regime == "unknown"
         ):

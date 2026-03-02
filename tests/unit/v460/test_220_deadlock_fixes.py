@@ -67,8 +67,13 @@ def _default_ctx(**overrides: object) -> dict:
 # ═══════════════════════════════════════════════════════════════════════
 
 
-class TestGate7BalanceForcedBypass:
-    """Gate7 に balance_forced bypass を追加 (Gate1 との対称性修正)."""
+class TestGate7BalanceForcedBypassRemoved:
+    """234# balance_forced gate bypass 廃止.
+
+    219# で追加された balance_forced bypass は 234# で削除。
+    Kill Gate は絶対的安全権限を持つ。
+    balance_forced 時は degraded liquidation で対応。
+    """
 
     def test_sell_unknown_blocked_without_balance_forced(self) -> None:
         """通常: unknown regime の sell はブロック."""
@@ -77,21 +82,23 @@ class TestGate7BalanceForcedBypass:
         assert r.blocked
         assert r.blocking_reason == "rule_skip_unknown_sell"
 
-    def test_sell_unknown_bypassed_with_balance_forced(self) -> None:
-        """219# Fix: balance_forced=True なら sell も通過."""
+    def test_sell_unknown_blocked_with_balance_forced(self) -> None:
+        """234#: balance_forced=True でも sell はブロック."""
         gate = _make_gate()
         r = gate.evaluate(**_default_ctx(
             side="sell", regime="unknown", balance_forced=True,
         ))
-        assert not r.blocked
+        assert r.blocked
+        assert r.blocking_reason == "rule_skip_unknown_sell"
 
-    def test_buy_unknown_bypassed_with_balance_forced(self) -> None:
-        """Gate1 の既存動作: balance_forced=True なら buy も通過."""
+    def test_buy_unknown_blocked_with_balance_forced(self) -> None:
+        """234#: balance_forced=True でも buy はブロック."""
         gate = _make_gate()
         r = gate.evaluate(**_default_ctx(
             side="buy", regime="unknown", balance_forced=True,
         ))
-        assert not r.blocked
+        assert r.blocked
+        assert r.blocking_reason == "unknown_regime_buy_skip"
 
     def test_symmetry_both_sides_blocked_without_balance_forced(self) -> None:
         """対称性: balance_forced=False → 両方ブロック."""
@@ -101,17 +108,17 @@ class TestGate7BalanceForcedBypass:
         r_sell = gate.evaluate(**_default_ctx(side="sell", regime="unknown"))
         assert r_sell.blocked
 
-    def test_symmetry_both_sides_pass_with_balance_forced(self) -> None:
-        """対称性: balance_forced=True → 両方通過."""
+    def test_symmetry_both_sides_blocked_with_balance_forced(self) -> None:
+        """234# 対称性: balance_forced=True でも両方ブロック."""
         gate = _make_gate()
         r_buy = gate.evaluate(**_default_ctx(
             side="buy", regime="unknown", balance_forced=True,
         ))
-        assert not r_buy.blocked
+        assert r_buy.blocked
         r_sell = gate.evaluate(**_default_ctx(
             side="sell", regime="unknown", balance_forced=True,
         ))
-        assert not r_sell.blocked
+        assert r_sell.blocked
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -157,34 +164,38 @@ class TestDualKillBreaker:
         assert not r.blocked
 
     def test_dual_kill_with_balance_forced_still_passes(self) -> None:
-        """balance_forced=True + dual kill → 通過 (balance_forced 単独でも通過)."""
+        """234#: balance_forced=True + dual kill → dual_kill_bypass で通過."""
         gate = _make_gate()
         r = gate.evaluate(**_default_ctx(
             side="buy", is_buy_killed=True, is_sell_killed=True,
             balance_forced=True,
         ))
         assert not r.blocked
+        assert r.dual_kill_bypassed is True  # 234# dual_kill now detected
 
-    def test_single_kill_balance_forced_passes(self) -> None:
-        """片方 kill + balance_forced → 通過 (既存動作)."""
+    def test_single_kill_balance_forced_degraded(self) -> None:
+        """234#: 片方 kill + balance_forced → degraded liquidation mode."""
         gate = _make_gate()
         r = gate.evaluate(**_default_ctx(
             side="buy", is_buy_killed=True, is_sell_killed=False,
             balance_forced=True,
         ))
-        assert not r.blocked
+        assert not r.blocked  # degraded liquidation: not fully blocked
+        assert r.degraded_liquidation is True  # 234# degraded mode
+        assert r.degraded_reason == "buy_dynamic_kill"
 
-    def test_dual_kill_does_not_bypass_with_balance_forced(self) -> None:
-        """balance_forced=True は dual_kill_bypass を無効化する (独立制御)."""
+    def test_dual_kill_balance_forced_dual_kill_detected(self) -> None:
+        """234#: balance_forced + dual kill → dual_kill_bypassed=True.
+
+        234# で `not balance_forced` を _dual_kill 条件から削除したため、
+        balance_forced=True でも dual_kill が検出される。"""
         gate = _make_gate()
-        # balance_forced=True の場合、_dual_kill conditionでは
-        # `not balance_forced` が False なので _dual_kill=False。
-        # ただし balance_forced 単独で Gate4/5 をバイパスするので通過。
         r = gate.evaluate(**_default_ctx(
             side="sell", is_buy_killed=True, is_sell_killed=True,
             balance_forced=True,
         ))
-        assert not r.blocked  # balance_forced で通過
+        assert not r.blocked
+        assert r.dual_kill_bypassed is True  # 234# dual kill now detected
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -257,8 +268,8 @@ class TestUnknownRegimeConsecutiveBypass:
         r = gate.evaluate(**_default_ctx(side="buy", regime="unknown"))
         assert not r.blocked
 
-    def test_counter_not_reset_when_unknown_passes_via_balance_forced(self) -> None:
-        """balance_forced で unknown が通過しても、regime がまだ unknown ならリセットしない."""
+    def test_counter_increments_when_unknown_blocked_with_balance_forced(self) -> None:
+        """234#: balance_forced でも unknown regime はブロック → カウンタ増加."""
         gate = _make_gate()
 
         # 5回ブロック
@@ -266,13 +277,11 @@ class TestUnknownRegimeConsecutiveBypass:
             gate.evaluate(**_default_ctx(side="buy", regime="unknown"))
         assert gate._consecutive_unknown_blocks == 5
 
-        # balance_forced で通過 → unknown のまま → リセットしない
+        # 234#: balance_forced でも Gate1 はブロック → カウンタ 6 に
         gate.evaluate(**_default_ctx(
             side="buy", regime="unknown", balance_forced=True,
         ))
-        # balance_forced bypass で Gate1 通過、Gate7 は side=buy なのでスルー
-        # regime=unknown だが blocked ではない → リセットしない (pass ブロック)
-        assert gate._consecutive_unknown_blocks == 5
+        assert gate._consecutive_unknown_blocks == 6
 
     def test_max_consecutive_class_attr(self) -> None:
         """クラス属性の閾値が正しい."""

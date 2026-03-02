@@ -332,15 +332,19 @@ class TestTrendingSellSoftGate:
         assert result.blocked is False
         assert result.trending_offset_mult == 2.0
 
-    def test_soft_mode_balance_forced_can_be_disabled(self):
-        """明示 disable 時は balance_forced で trending offset を載せない."""
+    def test_soft_mode_balance_forced_always_applies_offset_234(self):
+        """234#: balance_forced_apply_trending_offset は dead config.
+
+        234# で balance_forced の gate bypass を廃止したため、
+        soft mode は balance_forced に関係なく常に offset を適用する。
+        """
         from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         cfg = _make_config(
             skip_sell_trending=True,
             skip_sell_trending_up_only=True,
             trending_sell_as_offset_enabled=True,
-            balance_forced_apply_trending_offset=False,
+            balance_forced_apply_trending_offset=False,  # 234# dead config
         )
         gate = CycleGateAggregator(cfg)
         result = gate.evaluate(
@@ -353,7 +357,8 @@ class TestTrendingSellSoftGate:
             is_sell_killed=False,
         )
         assert result.blocked is False
-        assert result.trending_offset_mult is None
+        # 234#: soft mode は常に offset を適用 (balance_forced でも)
+        assert result.trending_offset_mult == 2.0
 
     def test_soft_mode_eliminates_bypass_complexity(self):
         """soft mode では HF4/inv_bypass/consecutive bypass が不要.

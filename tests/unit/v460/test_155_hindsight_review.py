@@ -548,13 +548,13 @@ class TestFallbackPriceStaleness:
 # ======================================================================
 
 
-class TestBalanceForcedBypassHorizontal:
-    """全ゲートに balance_forced バイパスが実装されていることの検証.
+class TestBalanceForcedBypassRemoved:
+    """234# balance_forced による Gate bypass は廃止された。
 
-    156# §10 で sell_trending のみ修正済み → §12 で残り 2 ゲートにも水平展開:
-    - skip_buy_unknown_regime
-    - sell_dynamic_kill
-    194#: ロジックは CycleGateAggregator に集約済み。
+    232# Codex + 233# Gemini 共同提言:
+    Kill Gate は残高事情に関わらず絶対的安全権限を持つ。
+    balance_forced 時は Gate を突破するのではなく、
+    degraded_liquidation (min lot + wide offset) で安全に縮退清算する。
     """
 
     def _get_source(self) -> str:
@@ -562,49 +562,35 @@ class TestBalanceForcedBypassHorizontal:
         from pathlib import Path
         return Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8-sig")
 
-    def test_skip_buy_unknown_regime_has_bypass(self) -> None:
-        """skip_buy_unknown_regime ブロックに 'not balance_forced' が含まれること."""
-        src = self._get_source()
-        idx = src.find("skip_buy_unknown_regime")
-        assert idx != -1, "skip_buy_unknown_regime not found in source"
-        block = src[idx:idx + 400]
-        assert "not balance_forced" in block, (
-            "skip_buy_unknown_regime must bypass when balance_forced=True"
-        )
-
-    def test_skip_sell_trending_has_bypass(self) -> None:
-        """skip_sell_trending ブロックに 'not balance_forced' が含まれること.
-        197#: balance_forced offset ブロックが先に現れるため検索範囲を拡張。
-        """
-        src = self._get_source()
-        idx = src.find("skip_sell_trending")
-        assert idx != -1
-        block = src[idx:idx + 1200]
-        assert "not balance_forced" in block
-
-    def test_sell_dynamic_kill_has_bypass(self) -> None:
-        """sell_dynamic_kill ブロックに 'not balance_forced' が含まれること."""
-        src = self._get_source()
-        idx = src.find("sell_dynamic_kill_enabled")
-        assert idx != -1, "sell_dynamic_kill block not found in source"
-        block = src[idx:idx + 800]
-        assert "not balance_forced" in block, (
-            "sell_dynamic_kill must bypass when balance_forced=True"
-        )
-
-    def test_all_three_gates_have_balance_forced_bypass(self) -> None:
-        """3 ゲート全てに balance_forced バイパスがあることの統合確認."""
+    def test_no_balance_forced_bypass_in_gates(self) -> None:
+        """234# Gate 条件に 'not balance_forced' が存在しないこと."""
         import ast
         src = self._get_source()
         tree = ast.parse(src)
-        count = 0
+        bypass_count = 0
         for node in ast.walk(tree):
             if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
                 if isinstance(node.operand, ast.Name) and node.operand.id == "balance_forced":
-                    count += 1
-        assert count >= 3, (
-            f"Expected at least 3 'not balance_forced' checks, found {count}"
+                    bypass_count += 1
+        assert bypass_count == 0, (
+            f"234# balance_forced gate bypass must be removed, "
+            f"but found {bypass_count} 'not balance_forced' checks"
         )
+
+    def test_degraded_liquidation_in_evaluate(self) -> None:
+        """234# evaluate() 内に degraded_liquidation ロジックが存在."""
+        src = self._get_source()
+        assert "degraded_liquidation" in src, (
+            "234# degraded_liquidation must be implemented in gate aggregator"
+        )
+
+    def test_gate_result_has_degraded_fields(self) -> None:
+        """234# CycleGateResult に degraded フィールドが存在."""
+        from scripts.v460.lib.cycle_gate_aggregator import CycleGateResult
+        r = CycleGateResult()
+        assert hasattr(r, "degraded_liquidation")
+        assert hasattr(r, "degraded_reason")
+        assert r.degraded_liquidation is False
 
 
 # ======================================================================

@@ -113,6 +113,7 @@ ORDERBOOK_RATE_LIMIT = "orderbook_rate_limit"
 ORDERBOOK_EMPTY = "orderbook_empty"
 SELL_GUARD_REJECT = "sell_guard_reject"
 SPREAD_TOO_NARROW = "spread_too_narrow"  # 158# §20-D
+NO_FEASIBLE_QUOTE = "no_feasible_quote"  # 234# 制約集合崩壊: 有効価格域なし
 
 # ======================================================================
 # 173# 型安全: CancelReason Literal 型エイリアス
@@ -165,4 +166,9 @@ CancelReason = Literal[
     "orderbook_empty",
     "sell_guard_reject",
     "spread_too_narrow",
+    "no_feasible_quote",
+    # 234# 縮退清算 + one-sided エスカレーション
+    "degraded_liquidation_duty_skip",
+    "one_sided_cooldown_skip",
+    "one_sided_freeze_skip",
 ]

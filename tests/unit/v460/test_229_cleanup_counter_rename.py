@@ -275,20 +275,20 @@ class TestUnknownCounterResetOnGate2:
         # 229# M-5: カウンタリセット
         assert gate._consecutive_unknown_blocks == 0
 
-    def test_unknown_pass_counter_preserved(self):
-        """unknown regime だが balance_forced で Gate 1 通過 → カウンタ維持."""
+    def test_unknown_blocked_counter_increments_with_balance_forced(self):
+        """234#: unknown + balance_forced → Gate 1 ブロック → カウンタ増加."""
         gate = _make_gate()
 
         # Step 1: unknown ブロック
         gate.evaluate(**_default_ctx(side="buy", regime="unknown"))
         assert gate._consecutive_unknown_blocks == 1
 
-        # Step 2: unknown + balance_forced=True → Gate 1 通過
+        # Step 2: 234# balance_forced でも Gate 1 はブロック → カウンタ増加
         r2 = gate.evaluate(**_default_ctx(
             side="buy", regime="unknown", balance_forced=True,
         ))
-        # balance_forced で通過 → カウンタは維持 (unknown のまま)
-        assert gate._consecutive_unknown_blocks == 1
+        assert r2.blocked
+        assert gate._consecutive_unknown_blocks == 2
 
     def test_non_unknown_always_resets(self):
         """non-unknown regime は Gate 1 通過時にカウンタリセット."""

@@ -48,6 +48,8 @@ class FillCycleExecutorMixin:
 
     # 201# review: 動的属性のクラスレベル宣言 (mypy 検出 + IDE 補完)
     _postonly_crossing_streak: int = 0
+    # 234# no_feasible_quote 連続カウンタ (制約集合崩壊検出用)
+    _consecutive_no_feasible: int = 0
 
     async def _compute_orderbook_imbalance(self, depth: int = 5) -> tuple[float, float, float]:
         """054# S1: 板不均衡を計算 — 120# MakerPriceCalculator に委譲."""
@@ -580,6 +582,7 @@ class FillCycleExecutorMixin:
         balance_forced_rescue: bool = False,
         one_sided_balance: bool = False,
         trending_offset_mult: float | None = None,
+        degraded_liquidation: bool = False,
     ) -> FillRecord:
         """1 サイクル: 発注 → 監視 → 結果記録.
 
@@ -590,6 +593,7 @@ class FillCycleExecutorMixin:
         129# D.2: balance_forced_switch フラグを FillRecord に記録.
         158# P1-1: balance_forced_rescue — offset 倍増で安全にポジション解消.
         190# B: one_sided_balance — 片側残高時の ev_weighted threshold 緩和.
+        234# degraded_liquidation — Kill Gate blocked + balance_forced 時の縮退清算.
         """
         self._cycle_count += 1
         cycle_id = self._new_cycle_id()
@@ -651,6 +655,8 @@ class FillCycleExecutorMixin:
         effective_offset_ratio: float = self.config.spread_offset_ratio
         try:
             order_price, spread_at_order, effective_offset_ratio = await self._compute_maker_price(side)
+            # 234# no_feasible_quote 連続カウンタリセット (成功時)
+            self._consecutive_no_feasible = 0
         except Exception as e:
             # 130# orderbook_error 細分化
             err_msg = str(e).lower()
@@ -664,6 +670,7 @@ class FillCycleExecutorMixin:
                 ob_cancel_reason = "orderbook_empty"
                 logger.error(f"Failed to compute maker price: {e}")
             elif "sell_guard" in err_msg:
+                # 234# sell_guard + spread_too_narrow が同時発生→ 制約集合崩壊
                 ob_cancel_reason = "sell_guard_reject"
                 logger.warning(f"Maker price rejected: {e}")
             elif "spread too narrow" in err_msg:
@@ -673,6 +680,18 @@ class FillCycleExecutorMixin:
             else:
                 ob_cancel_reason = "orderbook_error"
                 logger.error(f"Failed to compute maker price: {e}")
+
+            # 234# no_feasible_quote 検出: spread 制約 (narrow/wide) で連続失敗
+            if ob_cancel_reason in ("spread_too_narrow", "sell_guard_reject"):
+                self._consecutive_no_feasible += 1
+                if self._consecutive_no_feasible >= 3:
+                    ob_cancel_reason = CR.NO_FEASIBLE_QUOTE
+                    logger.warning(
+                        f"[234#] NO_FEASIBLE_QUOTE: {self._consecutive_no_feasible} "
+                        f"consecutive infeasible quotes — constraint set collapse "
+                        f"(min_spread={self.config.min_spread_jpy}, "
+                        f"sell_max_spread={self.config.sell_max_spread_jpy})"
+                    )
             # 155# §9.5 #3: orderbook_error 時に前回 mid_price をフォールバック
             # 156# §10 #5: 鮮度判定 — 閾値超は stale とみなす
             # 156# §16 review: _prev_mid_* 直接アクセス → 公開メソッド化
@@ -732,6 +751,30 @@ class FillCycleExecutorMixin:
                 f"(×{_rescue_mult:.1f}), price={order_price:.0f}"
             )
 
+        # 234# 縮退清算モード: Kill Gate blocked + balance_forced
+        # min lot + wide offset で安全に在庫清算
+        if degraded_liquidation and effective_offset_ratio > 0:
+            _deg_offset_mult = self.config.degraded_liquidation_offset_mult
+            _pre_deg_offset = effective_offset_ratio
+            effective_offset_ratio = min(
+                effective_offset_ratio * _deg_offset_mult,
+                self.config.max_offset_ratio,
+            )
+            # 価格を degraded offset で再計算
+            if spread_at_order is not None and spread_at_order > 0:
+                mid_est = order_price + (spread_at_order * _pre_deg_offset / 2 if side == "buy"
+                                         else -spread_at_order * _pre_deg_offset / 2)
+                if side == "buy":
+                    order_price = mid_est - spread_at_order * effective_offset_ratio / 2
+                else:
+                    order_price = mid_est + spread_at_order * effective_offset_ratio / 2
+                order_price = round(order_price)
+            logger.warning(
+                f"[234#] degraded_liquidation: offset "
+                f"{_pre_deg_offset:.4f}→{effective_offset_ratio:.4f} "
+                f"(×{_deg_offset_mult:.1f}), price={order_price:.0f}"
+            )
+
         # 137# P1-08: spread 狭小時の「休む」判定
         if (
             self.config.narrow_spread_pause_enabled
@@ -765,6 +808,19 @@ class FillCycleExecutorMixin:
 
         # 151# §10 #4: regime_lot を1回だけ算出し、SkipGate/発注/記録へ共通引き回し
         _regime_lot = self._regime_adjusted_lot()
+
+        # 234# 縮退清算モード: lot を大幅縮小
+        if degraded_liquidation:
+            _pre_deg_lot = _regime_lot
+            _regime_lot = max(
+                _regime_lot * self.config.degraded_liquidation_lot_mult,
+                self.config.min_lot,
+            )
+            logger.warning(
+                f"[234#] degraded_liquidation lot: "
+                f"{_pre_deg_lot:.6f}→{_regime_lot:.6f} "
+                f"(×{self.config.degraded_liquidation_lot_mult:.1f})"
+            )
 
         sg = await self._evaluate_skip_gate(
             side, cycle_id, order_price, spread_at_order, effective_offset_ratio,

@@ -66,6 +66,11 @@ class FillLoopOrchestratorMixin:
     _guard_fire_counts: dict[str, int] | None = None
     # 218# デッドロック検出: 連続ゲートブロックカウンタ
     _consecutive_gate_blocks: int = 0
+    # 234# 縮退清算モード duty cycle カウンタ
+    _degraded_liquidation_duty_counter: int = 0
+    # 234# one-sided エスカレーション: cooldown 残サイクル
+    _one_sided_cooldown_remaining: int = 0
+    _one_sided_freeze_remaining: int = 0
     # 223# skip-time state save: 最終 state save のモノトニック時刻
     _last_state_save_time: float = 0.0
     #: 223# skip パス中の state save 間隔 (秒)
@@ -1312,6 +1317,48 @@ class FillLoopOrchestratorMixin:
             self._side_selector.unfreeze_side()
 
             # --- サイクル実行 ---
+
+            # ────────────────────────────────────────────────────
+            # 234# one-sided エスカレーション: cooldown / freeze 発動チェック
+            # ────────────────────────────────────────────────────
+            if self._one_sided_freeze_remaining > 0:
+                self._one_sided_freeze_remaining -= 1
+                logger.info(
+                    f"[234#] One-sided FREEZE active: skipping {next_side} "
+                    f"(remaining={self._one_sided_freeze_remaining})"
+                )
+                self._inc_guard_fire("one_sided_freeze_skip")
+                _skip_record = self._make_loop_skip_record(
+                    side=next_side,
+                    cancel_reason="one_sided_freeze_skip",
+                    order_quantity=self._current_lot,
+                )
+                batch.append(_skip_record)
+                total_count += 1
+                batch = self._batch_persistence.maybe_flush(batch, "one_sided_freeze_skip")
+                self._last_side = next_side
+                await self._effective_sleep()
+                continue
+
+            if self._one_sided_cooldown_remaining > 0:
+                self._one_sided_cooldown_remaining -= 1
+                logger.info(
+                    f"[234#] One-sided COOLDOWN skip: "
+                    f"remaining={self._one_sided_cooldown_remaining}"
+                )
+                self._inc_guard_fire("one_sided_cooldown_skip")
+                _skip_record = self._make_loop_skip_record(
+                    side=next_side,
+                    cancel_reason="one_sided_cooldown_skip",
+                    order_quantity=self._current_lot,
+                )
+                batch.append(_skip_record)
+                total_count += 1
+                batch = self._batch_persistence.maybe_flush(batch, "one_sided_cooldown_skip")
+                self._last_side = next_side
+                await self._effective_sleep()
+                continue
+
             # 133# P0-08 / 154# C-1/C-2: balance_forced スキップ + deadlock 防止
             if _balance_forced and self.config.skip_balance_forced:
                 # 154# C-1: 両側残高判定
@@ -1512,6 +1559,47 @@ class FillLoopOrchestratorMixin:
                 ):
                     self._trending_sell_skip_count = 0
 
+            # ────────────────────────────────────────────────────
+            # 234# 縮退清算モード: balance_forced + Kill Gate blocked
+            # → 完全 block ではなく min lot + wide offset + duty cycle で縮退実行
+            # ────────────────────────────────────────────────────
+            _degraded_liquidation = _gate_result.degraded_liquidation
+            if _degraded_liquidation:
+                self._degraded_liquidation_duty_counter += 1
+                _duty = self.config.degraded_liquidation_duty_cycle
+                if _duty > 1 and (self._degraded_liquidation_duty_counter % _duty) != 1:
+                    # duty cycle スキップ: N サイクルに 1 回のみ実行
+                    logger.info(
+                        f"[234#] Degraded liquidation duty skip: "
+                        f"cycle {self._degraded_liquidation_duty_counter}/{_duty} "
+                        f"(reason={_gate_result.degraded_reason})"
+                    )
+                    self._inc_guard_fire("degraded_liquidation_duty_skip")
+                    _skip_record = self._make_loop_skip_record(
+                        side=next_side,
+                        cancel_reason="degraded_liquidation_duty_skip",
+                        order_quantity=self._current_lot,
+                    )
+                    batch.append(_skip_record)
+                    total_count += 1
+                    batch = self._batch_persistence.maybe_flush(
+                        batch, "degraded_liquidation_duty_skip",
+                    )
+                    self._last_side = next_side
+                    await self._effective_sleep()
+                    continue
+                # duty cycle 実行回: 進む
+                self._inc_guard_fire("degraded_liquidation_active")
+                logger.warning(
+                    f"[234#] Degraded liquidation ACTIVE: "
+                    f"lot ×{self.config.degraded_liquidation_lot_mult:.1f}, "
+                    f"offset ×{self.config.degraded_liquidation_offset_mult:.1f} "
+                    f"(reason={_gate_result.degraded_reason})"
+                )
+            else:
+                # 正常パスではカウンタリセット
+                self._degraded_liquidation_duty_counter = 0
+
             try:
                 # 224# B1: halt解除後ソフトリカバリ — lot 縮小倍率を算出
                 _recovery_scale = self._daily_drawdown_guard.consume_recovery_cycle(
@@ -1547,21 +1635,48 @@ class FillLoopOrchestratorMixin:
                     balance_forced_rescue=_is_rescue,
                     one_sided_balance=_one_sided_balance,
                     trending_offset_mult=_gate_result.trending_offset_mult,
+                    degraded_liquidation=_degraded_liquidation,
                 )
                 # 154# C-2: 実サイクル実行 → forced skip カウンタリセット
                 self._balance_forced_skip_count = 0
                 # 158# §20-B: 実サイクル実行 → trending sell skip カウンタリセット
                 self._trending_sell_skip_count = 0
                 # 207# §4: one-sided 連続実行追跡 (205# §4.2 Codex)
+                # 234# エスカレーション: limit → cooldown → freeze
                 if _one_sided_balance:
                     self._one_sided_consecutive_count += 1
                     _os_limit = self.config.one_sided_consecutive_limit
                     if _os_limit > 0 and self._one_sided_consecutive_count >= _os_limit:
-                        logger.warning(
-                            f"[207# §4] One-sided consecutive limit reached: "
-                            f"{self._one_sided_consecutive_count}/{_os_limit} — "
-                            f"interval ×{self.config.one_sided_consecutive_interval_mult:.1f}"
-                        )
+                        _over = self._one_sided_consecutive_count - _os_limit
+                        # 234# Stage 3: freeze (limit + freeze_offset 以上)
+                        _freeze_off = self.config.one_sided_escalation_freeze_offset
+                        _cd_off = self.config.one_sided_escalation_cooldown_offset
+                        if _freeze_off > 0 and _over >= _freeze_off:
+                            _freeze_n = self.config.one_sided_escalation_freeze_cycles
+                            self._one_sided_freeze_remaining = _freeze_n
+                            self._inc_guard_fire("one_sided_freeze")
+                            logger.warning(
+                                f"[234#] One-sided FREEZE: "
+                                f"{self._one_sided_consecutive_count}/{_os_limit} "
+                                f"(+{_over}) → freezing {next_side} for {_freeze_n} cycles"
+                            )
+                        # 234# Stage 2: cooldown (limit + cooldown_offset 以上)
+                        elif _cd_off > 0 and _over >= _cd_off:
+                            _cd_n = self.config.one_sided_escalation_cooldown_cycles
+                            self._one_sided_cooldown_remaining = _cd_n
+                            self._inc_guard_fire("one_sided_cooldown")
+                            logger.warning(
+                                f"[234#] One-sided COOLDOWN: "
+                                f"{self._one_sided_consecutive_count}/{_os_limit} "
+                                f"(+{_over}) → skip {_cd_n} cycles"
+                            )
+                        # 234# Stage 1: interval 延長 (既存)
+                        else:
+                            logger.warning(
+                                f"[207# §4] One-sided consecutive limit reached: "
+                                f"{self._one_sided_consecutive_count}/{_os_limit} — "
+                                f"interval ×{self.config.one_sided_consecutive_interval_mult:.1f}"
+                            )
                 else:
                     if self._one_sided_consecutive_count > 0:
                         logger.info(
@@ -1569,6 +1684,8 @@ class FillLoopOrchestratorMixin:
                             f"{self._one_sided_consecutive_count} consecutive → reset"
                         )
                     self._one_sided_consecutive_count = 0
+                    self._one_sided_cooldown_remaining = 0
+                    self._one_sided_freeze_remaining = 0
             except KeyboardInterrupt:
                 logger.info("KeyboardInterrupt — stopping gracefully")
                 self._kill_switch.kill("keyboard_interrupt")

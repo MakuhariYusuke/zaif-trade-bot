@@ -410,6 +410,11 @@ loss_control:
   # 205# §4.2 Codex: offset 保護だけでは不十分、interval 延長 + 連続制限が必要
   one_sided_consecutive_limit: 5           # 片側強制取引の連続上限 (0=無制限)
   one_sided_consecutive_interval_mult: 3.0 # 上限到達時の interval 乗数
+  # 234# P0-B: one-sided エスカレーション (3段階: interval → cooldown → freeze)
+  one_sided_escalation_cooldown_offset: 2  # limit+N でcooldownステージ
+  one_sided_escalation_cooldown_cycles: 2  # cooldown 時スキップサイクル数
+  one_sided_escalation_freeze_offset: 4    # limit+N で freeze ステージ
+  one_sided_escalation_freeze_cycles: 3    # freeze 時の凍結サイクル数
   # P0-09: unknown レジーム時の buy スキップ (unknown-buy 平均 -1.384bps)
   skip_buy_unknown_regime: true
   # 155# §9: trending レジーム時の sell スキップ (trending-sell 平均 -0.687bps)
@@ -424,7 +429,13 @@ loss_control:
   trending_sell_as_offset_enabled: true
   trending_sell_offset_boost_factor: 2.0    # 197# 3.0→2.0 (regime 1.8xとの累積で10000JPY spreadで総計 3.6x、実用的な保守的価格)
   # 197# balance_forced 時も trending offset を適用 (forced sell の AS リスク低減)
+  # 234# dead config: balance_forced gate bypass 廃止により、soft mode は常に offset 適用
   balance_forced_apply_trending_offset: true
+  # 234# P0-A: 縮退清算モード (Kill Gate blocked + balance_forced 時)
+  degraded_liquidation_enabled: true        # 縮退清算モードの有効/無効
+  degraded_liquidation_lot_mult: 0.2        # 通常 lot の 20% (min lot 相当)
+  degraded_liquidation_offset_mult: 3.0     # offset を通常の 3 倍 (wide offset)
+  degraded_liquidation_duty_cycle: 3        # N サイクルに 1 回のみ実行 (33%)
   # 166# HF4: 連続 sell skip 安全弁上限を 3010 に短縮 (7.3 B.4)
   max_consecutive_trending_sell_skip: 10   # 171#: 20→10 (Guard Paradox対策: 安全弁を早期発動して sell 機会確保)
   # 171# Guard Paradox 対策: 在庫偏重時に sell ガードをバイパスする閾値
