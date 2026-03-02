@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-02 (220# Gate-level Deadlock 3fixes)
+> 最終更新: 2026-03-02 (221# AI Review — Deadlock + PnL構造分析)
 
 ---
 
@@ -211,6 +211,7 @@
 | 218 | fix | [218_ph2_fix_anti_deadlock_probe.md](218_ph2_fix_anti_deadlock_probe.md) | Anti-Deadlock: DynamicKill probe cycle + per-side halt + deadlock detection log |
 | 219 | fix | [219_ph2_fix_progressive_probe_force_release.md](219_ph2_fix_progressive_probe_force_release.md) | Progressive Probe + Force Release: DynamicKill回復の高速化 (max_stale 30→10, 半減interval, 5probe強制解除) |
 | 220 | fix | [220_ph2_fix_gate_level_deadlock.md](220_ph2_fix_gate_level_deadlock.md) | Gate-level Deadlock 3fixes: Gate7 balance_forced対称性, dual-kill breaker, unknown連続bypass |
+| 221 | rev | [221_ph2_rev_ai_review_deadlock_and_pnl.md](221_ph2_rev_ai_review_deadlock_and_pnl.md) | AI Review: 218#-220# デッドロック対策総合レビュー + PnL構造分析 + 改善提案6件 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
