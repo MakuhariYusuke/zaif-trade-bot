@@ -188,6 +188,10 @@ fast_fill_defense:
   offset_boost: 2.0            # 共通防御時 offset 倍率
   offset_boost_buy: null       # 093# buy 側倍率 (null=共通値使用)
   offset_boost_sell: 2.5       # 093# sell 側強化: sell AS は構造的に悪い→強い防御
+  # 230# H-1: Layer 2 deadzone — 正常 spread cost を超えた損失のみ AS 認定
+  l2_deadzone_bps: 3.0
+  # 230# H-2: boost 解除に必要な連続正常 fill 数 (Kyle 1985)
+  boost_release_streak: 3
 
 # ---- 094# stale order 検出 & cancel-replace ----
 stale_order:

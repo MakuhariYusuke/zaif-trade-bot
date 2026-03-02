@@ -115,6 +115,9 @@ class FillTestRegimeDetector:
         self._raw_history: list[FillTestRegime] = []  # ヒステリシス用
         self._confirmed_regime: FillTestRegime = FillTestRegime.UNKNOWN
         self._stability_count: int = 0
+        # 230# H-4: 明示的初期化 (hasattr 排除)
+        self._last_result: RegimeResult | None = None
+        self._last_velocity_pct: float = 0.0
 
     @property
     def current_regime(self) -> FillTestRegime:
@@ -124,14 +127,14 @@ class FillTestRegimeDetector:
     @property
     def last_volatility_ratio(self) -> float:
         """168# 直近の volatility_ratio (maker_price 低 vol boost 用)."""
-        if hasattr(self, "_last_result") and self._last_result is not None:
+        if self._last_result is not None:
             return self._last_result.volatility_ratio
         return 1.0  # デフォルト: ブースト不発動
 
     @property
     def current_confidence(self) -> float:
         """182# 直近の confidence (Trend Mode 厳格化用)."""
-        if hasattr(self, "_last_result") and self._last_result is not None:
+        if self._last_result is not None:
             return self._last_result.confidence
         return 0.0
 
@@ -279,7 +282,7 @@ class FillTestRegimeDetector:
             )
             # 200# H: velocity modulation — 短期 velocity が方向と一致するか
             if self.config.velocity_modulation:
-                _vel = getattr(self, "_last_velocity_pct", 0.0)
+                _vel = self._last_velocity_pct
                 _trend_sign = 1.0 if trend_pct > 0 else -1.0
                 _vel_sign = 1.0 if _vel > 0 else (-1.0 if _vel < 0 else 0.0)
                 if _vel_sign == _trend_sign:

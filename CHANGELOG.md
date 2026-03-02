@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 230# FFD deadzone/streak + MCB/SAD guard + hasattr排除 (2026-03-04)
+
+### Fixed (Bug — High Priority)
+- **H-1: FFD Layer 2 deadzone (AS理論)**: `post_fill_pnl_bps < 0` の判定で正常スプレッドコスト (~2-3bps) が adverse selection として誤検知 → 不要な offset 拡大 → fill rate 低下。`pnl < -l2_deadzone_bps` (default 3.0bps) に変更 (`fast_fill_defense.py`)
+- **H-2: FFD boost gradual release (Kyle 1985)**: 1回の正常 fill で即 boost 解除は情報漸次伝播モデルに違反。`boost_release_streak` (default 3) 回の連続正常 fill 要求に変更。途中 adverse fill で streak リセット (`fast_fill_defense.py`)
+- **H-3: MCB/SAD None guard**: `self._mcb.config.enabled` / `self._sad.config.enabled` が None 時に AttributeError — 全 4 箇所に `is not None` ガード追加 (`fill_loop_orchestrator.py`)
+- **H-4: regime_detector hasattr→init**: `_last_result` / `_last_velocity_pct` が `__init__` 未宣言 → `hasattr`/`getattr` パターン使用。明示的初期化に移行 (`regime_detector.py`)
+
+### Improved (Code Quality)
+- **M-1: fill_cycle_executor hasattr排除**: 8/10 の `hasattr(self, ...)` を `is not None` に変換。2 件は mixin method 存在確認として正当 (`fill_cycle_executor.py`)
+
+### Added (Config)
+- `ffd_l2_deadzone_bps: float = 3.0` — Layer 2 deadzone 閾値 (bps)
+- `ffd_boost_release_streak: int = 3` — boost 解除に必要な連続正常 fill 数
+- 両フィールドの `__post_init__` バリデーション (`fill_config.py`)
+- YAML `fast_fill_defense:` セクションに `l2_deadzone_bps` / `boost_release_streak` 追加
+
+### Tests
+- `test_230_ffd_deadzone_streak_guards.py` — 39 テスト (H-1×6, H-2×8, persistence×3, H-3×4, H-4×5, M-1×4, config×6, defaults×3)
+- `test_100_fast_fill_defense.py` — 既存テスト 2 件修正 (L2 deadzone / streak 適合)
+- 総テスト: 3148 passed, 0 failed
+
+
 ## 229# コード衛生 + M-5 unknown counter fix + M-2 副作用 getter 改名 (2026-03-04)
 
 ### Fixed (Bug)

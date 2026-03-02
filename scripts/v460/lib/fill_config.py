@@ -197,6 +197,10 @@ class FillTestConfig:
     fast_fill_offset_boost: float = 2.0    # 防御時の offset 倍率 (共通)
     fast_fill_offset_boost_buy: float | None = None    # 093# buy 側倍率 (None=共通値)
     fast_fill_offset_boost_sell: float | None = None   # 093# sell 側倍率 (None=共通値)
+    # 230# H-1: Layer 2 deadzone — 正常 spread cost を誤検知しない閾値 (bps)
+    ffd_l2_deadzone_bps: float = 3.0
+    # 230# H-2: boost 解除に必要な連続正常 fill 数 (Kyle 1985)
+    ffd_boost_release_streak: int = 3
     # 054# S1: Orderbook Imbalance ベース AS 予測フィルター
     imbalance_enabled: bool = False
     imbalance_depth: int = 5               # 板深さ (上位 N 段)
@@ -662,6 +666,15 @@ class FillTestConfig:
             raise ValueError(
                 f"velocity_ema_alpha must be in (0, 1], got {self.velocity_ema_alpha}"
             )
+        # 230# FFD 新規パラメータのバリデーション
+        if self.ffd_l2_deadzone_bps < 0:
+            raise ValueError(
+                f"ffd_l2_deadzone_bps must be >= 0, got {self.ffd_l2_deadzone_bps}"
+            )
+        if self.ffd_boost_release_streak < 1:
+            raise ValueError(
+                f"ffd_boost_release_streak must be >= 1, got {self.ffd_boost_release_streak}"
+            )
 
 
     # ================================================================
@@ -703,6 +716,11 @@ class FillTestConfig:
             kwargs["fast_fill_offset_boost_buy"] = ffd["offset_boost_buy"]
         if "offset_boost_sell" in ffd:
             kwargs["fast_fill_offset_boost_sell"] = ffd["offset_boost_sell"]
+        # 230# H-1/H-2: Layer 2 deadzone + boost release streak
+        if "l2_deadzone_bps" in ffd:
+            kwargs["ffd_l2_deadzone_bps"] = float(ffd["l2_deadzone_bps"])
+        if "boost_release_streak" in ffd:
+            kwargs["ffd_boost_release_streak"] = int(ffd["boost_release_streak"])
 
         # 054# S1: Orderbook Imbalance
         imb = yaml_cfg.get("imbalance", {})

@@ -68,12 +68,15 @@ class TestTwoLayerNegativeEdge:
         assert defense.is_boost_active("buy")
 
     def test_layer2_post_fill_pnl_negative(self) -> None:
-        """Layer 2: post_fill_pnl_bps < 0 で検出 (L1 は non-negative)."""
-        cfg = FastFillDefenseConfig(enabled=True, threshold_sec=5.0, offset_boost=2.0)
+        """Layer 2: post_fill_pnl_bps < -deadzone で検出 (L1 は non-negative)."""
+        cfg = FastFillDefenseConfig(
+            enabled=True, threshold_sec=5.0, offset_boost=2.0,
+            l2_deadzone_bps=2.0,  # 230# H-1: deadzone 2bps
+        )
         defense = FastFillDefense(cfg, base_offset_ratio=0.05)
 
         # sell: fill_price > mid (= non-negative edge by L1),
-        # but post_fill_pnl is negative → L2 detects
+        # but post_fill_pnl is worse than -deadzone → L2 detects
         defense.evaluate_fill(
             "sell", queue_wait_sec=3.0,
             fill_price=100_500, mid_at_fill=100_000,
@@ -217,7 +220,10 @@ class TestBoostDeactivation:
     """正常約定でブースト解除."""
 
     def test_normal_fill_deactivates(self) -> None:
-        cfg = FastFillDefenseConfig(enabled=True, threshold_sec=5.0, offset_boost=2.0)
+        cfg = FastFillDefenseConfig(
+            enabled=True, threshold_sec=5.0, offset_boost=2.0,
+            boost_release_streak=1,  # 230# H-2: 1 回で即解除
+        )
         defense = FastFillDefense(cfg, base_offset_ratio=0.05)
 
         # 1st: fast + neg edge → activate
@@ -227,7 +233,7 @@ class TestBoostDeactivation:
         )
         assert defense.is_boost_active("buy")
 
-        # 2nd: normal fill → deactivate
+        # 2nd: normal fill → deactivate (streak=1)
         defense.evaluate_fill(
             "buy", queue_wait_sec=60.0,
             fill_price=99_500, mid_at_fill=100_000,

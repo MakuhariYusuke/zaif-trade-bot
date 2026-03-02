@@ -810,11 +810,11 @@ class FillLoopOrchestratorMixin:
                 # 226# S5: halt 中も MCB/SAD に price/spread をフィードし続ける。
                 # halt 解除直後に陳腐化した σ で誤判定するのを防止。
                 # ※ check() は呼ばない (halt 中の二重ガードは不要)。
-                if self._mcb.config.enabled:
+                if self._mcb is not None and self._mcb.config.enabled:
                     _mcb_mid = self._maker_price.last_mid_price
                     if _mcb_mid is not None and _mcb_mid > 0:
                         self._mcb.update(_mcb_mid, time.time())
-                if self._sad.config.enabled:
+                if self._sad is not None and self._sad.config.enabled:
                     _sad_spread = self._maker_price.last_spread_raw
                     if _sad_spread is not None and _sad_spread > 0:
                         self._sad.update(_sad_spread, time.time())
@@ -851,7 +851,7 @@ class FillLoopOrchestratorMixin:
 
             # 211# P1-B: Micro Circuit Breaker — 短期価格急変の自動防御
             _mcb_warning = False
-            if self._mcb.config.enabled:
+            if self._mcb is not None and self._mcb.config.enabled:
                 _mcb_mid = self._maker_price.last_mid_price
                 if _mcb_mid is not None and _mcb_mid > 0:
                     self._mcb.update(_mcb_mid, time.time())
@@ -877,7 +877,7 @@ class FillLoopOrchestratorMixin:
 
             # 211# P1-C: Spread Anomaly Detector — 流動性枯渇検知
             _sad_warning = False
-            if self._sad.config.enabled:
+            if self._sad is not None and self._sad.config.enabled:
                 # 217# fix: last_spread は 60s staleness guard 付き (210# M5)。
                 # cycle 間隔 120s では常に stale → None になるため、
                 # staleness guard なしの last_spread_raw を使用する。

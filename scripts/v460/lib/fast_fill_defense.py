@@ -34,6 +34,14 @@ class FastFillDefenseConfig:
     min_offset_ratio: float = 0.01
     # 175# boost TTL (seconds): time_filter中の古いboostが残る問題を防止
     boost_ttl_sec: float = 600.0
+    # 230# H-1: Layer 2 deadzone — normal spread cost で誤発火しない閾値
+    # AS理論: maker のスプレッドコスト (~2-3 bps) は正常な損失。
+    # pnl < -deadzone のときのみ adverseSelection と判定する。
+    l2_deadzone_bps: float = 3.0
+    # 230# H-2: boost 解除に必要な連続正常 fill 数 (Kyle 1985)
+    # 情報トレーダーは複数 fill にわたり取引するため、1回の正常 fill で
+    # 安全宣言するのは尚早。N 回連続で正常なら threat 終了と判断。
+    boost_release_streak: int = 3
 
 
 @dataclass
@@ -43,6 +51,7 @@ class _SideState:
     boost_active: bool = False
     boost_multiplier: float = 1.0
     boost_activated_at: float = 0.0  # 175# TTL decay 用 timestamp
+    normal_fill_streak: int = 0  # 230# H-2: 連続正常 fill カウンタ
 
 
 class FastFillDefense:
@@ -195,8 +204,10 @@ class FastFillDefense:
         )
 
         # Layer 2: post-fill PnL check (098# §3.1: 50%見逃し問題の対策)
+        # 230# H-1: deadzone — 通常スプレッドコスト範囲の軽微な負PnLは無視
+        _dz = self._config.l2_deadzone_bps
         has_negative_edge_l2 = (
-            post_fill_pnl_bps is not None and post_fill_pnl_bps < 0
+            post_fill_pnl_bps is not None and post_fill_pnl_bps < -_dz
         )
 
         has_negative_edge = has_negative_edge_l1 or has_negative_edge_l2
@@ -214,15 +225,27 @@ class FastFillDefense:
                     f"negative edge detected ({layer_info}). "
                     f"multiplier→{state.boost_multiplier:.2f}"
                 )
+            # 230# H-2: 新規/継続に関わらず adverse fill で streak リセット
+            state.normal_fill_streak = 0
         elif state.boost_active:
-            # 正常約定に戻った → boost 解除
-            old_mult = state.boost_multiplier
-            state.boost_multiplier = 1.0
-            state.boost_active = False
-            logger.info(
-                f"[fast_fill_defense] Deactivated ({side}): normal fill detected, "
-                f"multiplier {old_mult:.2f}→1.00"
-            )
+            # 230# H-2: Kyle 1985 — 情報漸次伝播: N 回連続正常 fill で解除
+            state.normal_fill_streak += 1
+            _required = max(1, self._config.boost_release_streak)
+            if state.normal_fill_streak >= _required:
+                old_mult = state.boost_multiplier
+                state.boost_multiplier = 1.0
+                state.boost_active = False
+                state.normal_fill_streak = 0
+                logger.info(
+                    f"[fast_fill_defense] Deactivated ({side}): "
+                    f"{_required} consecutive normal fills, "
+                    f"multiplier {old_mult:.2f}→1.00"
+                )
+            else:
+                logger.debug(
+                    f"[fast_fill_defense] Normal fill streak ({side}): "
+                    f"{state.normal_fill_streak}/{_required}"
+                )
 
     def reset_on_unfilled(self, side: str) -> None:
         """未約定時のブースト永続化防止."""
@@ -233,6 +256,7 @@ class FastFillDefense:
             old_mult = state.boost_multiplier
             state.boost_multiplier = 1.0
             state.boost_active = False
+            state.normal_fill_streak = 0  # 230# H-2
             logger.info(
                 f"[fast_fill_defense] Reset on unfilled ({side}): "
                 f"multiplier {old_mult:.2f}→1.00"
@@ -255,9 +279,11 @@ class FastFillDefense:
             "buy_boost_active": self._state_buy.boost_active,
             "buy_boost_multiplier": self._state_buy.boost_multiplier,
             "buy_boost_activated_at": self._state_buy.boost_activated_at,
+            "buy_normal_fill_streak": self._state_buy.normal_fill_streak,
             "sell_boost_active": self._state_sell.boost_active,
             "sell_boost_multiplier": self._state_sell.boost_multiplier,
             "sell_boost_activated_at": self._state_sell.boost_activated_at,
+            "sell_normal_fill_streak": self._state_sell.normal_fill_streak,
         }
 
     def import_state(self, state: dict[str, object]) -> None:
@@ -265,6 +291,8 @@ class FastFillDefense:
         self._state_buy.boost_active = bool(state.get("buy_boost_active", False))
         self._state_buy.boost_multiplier = float(state.get("buy_boost_multiplier", 1.0))
         self._state_buy.boost_activated_at = float(state.get("buy_boost_activated_at", 0.0))
+        self._state_buy.normal_fill_streak = int(state.get("buy_normal_fill_streak", 0))
         self._state_sell.boost_active = bool(state.get("sell_boost_active", False))
         self._state_sell.boost_multiplier = float(state.get("sell_boost_multiplier", 1.0))
         self._state_sell.boost_activated_at = float(state.get("sell_boost_activated_at", 0.0))
+        self._state_sell.normal_fill_streak = int(state.get("sell_normal_fill_streak", 0))

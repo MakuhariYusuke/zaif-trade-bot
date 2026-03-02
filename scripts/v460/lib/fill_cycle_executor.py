@@ -247,7 +247,7 @@ class FillCycleExecutorMixin:
             post_fill_120s_pnl,
             w30=self._cycle_strategy.policy.ev_weighted_w30,
             w120=self._cycle_strategy.policy.ev_weighted_w120,
-        ) if hasattr(self, "_cycle_strategy") else self._compute_ev_weighted(
+        ) if self._cycle_strategy is not None else self._compute_ev_weighted(
             post_fill_pnl,
             post_fill_120s_pnl,
         )
@@ -255,12 +255,12 @@ class FillCycleExecutorMixin:
             "ev_weighted_pnl": ev_weighted,
             "gated_regime": (
                 self._cycle_strategy.gated_regime(regime_str, regime_conf)
-                if hasattr(self, "_cycle_strategy") and regime_str is not None
+                if self._cycle_strategy is not None and regime_str is not None
                 else None
             ),
             "effective_cycle_interval": (
                 self._cycle_strategy.effective_interval(regime_str)
-                if hasattr(self, "_cycle_strategy")
+                if self._cycle_strategy is not None
                 else None
             ),
             "macro_trend": macro_trend,
@@ -339,7 +339,7 @@ class FillCycleExecutorMixin:
         # 179# Chase: CycleStrategy から regime 別 chase パラメータを取得
         _chase_drift: float | None = None
         _chase_max_rp: int | None = None
-        if hasattr(self, "_cycle_strategy"):
+        if self._cycle_strategy is not None:
             _regime = self._current_regime_value() if hasattr(self, "_current_regime_value") else None
             if self._cycle_strategy.is_chase_enabled(_regime, side):  # 187# B-1: side 方向制限
                 _chase_drift = self._cycle_strategy.chase_drift_bps()
@@ -550,14 +550,12 @@ class FillCycleExecutorMixin:
         """約定後 PnL 計測 — 120# PnlMeasurer に委譲."""
         # 179# D: regime 別 post-fill wait
         _wait_override: float | None = None
-        if hasattr(self, "_cycle_strategy"):
+        if self._cycle_strategy is not None:
             _regime = self._current_regime_value() if hasattr(self, "_current_regime_value") else None
             # 200# G: vol_ratio 動的 wait スケーリング
             _vol_ratio: float | None = None
             if (
-                hasattr(self, "_regime_detector")
-                and self._regime_detector is not None
-                and hasattr(self._regime_detector, "last_volatility_ratio")
+                self._regime_detector is not None
             ):
                 _vol_ratio = self._regime_detector.last_volatility_ratio
             _wait_override = self._cycle_strategy.effective_post_fill_wait(
@@ -1126,7 +1124,7 @@ class FillCycleExecutorMixin:
         _macro_slope_5m: Optional[float] = None
         _macro_slope_15m: Optional[float] = None
         _macro_aligned: Optional[bool] = None
-        if hasattr(self, "_macro_regime_detector") and self._macro_regime_detector is not None:
+        if self._macro_regime_detector is not None:
             _macro_price = mid_at_fill if mid_at_fill is not None else None
             if _macro_price is None:
                 _fb, _ = self._maker_price.get_fallback_price()
