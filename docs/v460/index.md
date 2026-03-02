@@ -221,6 +221,7 @@
 | 228 | fix | [228_ph2_fix_inv_decay_hasattr_removal.md](228_ph2_fix_inv_decay_hasattr_removal.md) | Inventory Time-Decay + hasattr排除 |
 | 229 | fix | [229_ph2_fix_code_hygiene_counter_rename.md](229_ph2_fix_code_hygiene_counter_rename.md) | コード衛生 + M-5 unknown counter fix + M-2 consume rename |
 | 230 | fix | [230_ph2_fix_ffd_deadzone_streak_guards.md](230_ph2_fix_ffd_deadzone_streak_guards.md) | FFD deadzone/streak + MCB/SAD guard + hasattr排除 |
+| 231 | fix | [231_ph2_fix_ffd_logic_hardening_null_safety.md](231_ph2_fix_ffd_logic_hardening_null_safety.md) | FFDロジック強化 + import_state None安全 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
