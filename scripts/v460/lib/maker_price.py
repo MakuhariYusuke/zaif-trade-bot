@@ -100,6 +100,7 @@ class MakerPriceCalculator:
         "_inv_fill_history",        # 162# inventory skewing fill deque
         "_inv_net_imbalance",        # 162# normalized net imbalance [-1,1]
         "_inv_buy_count",            # 226# P5: O(1) incremental buy counter
+        "_inv_last_update_time",     # 228# C2: last fill timestamp for time-decay
         "_last_inv_skew_factor",     # 168# last applied inv_skew factor
         "_last_ob_snapshot",
         "_last_spread",              # 197# cached spread for Gate pre-check
@@ -148,6 +149,7 @@ class MakerPriceCalculator:
         self._inv_fill_history: collections.deque[str] = collections.deque(maxlen=_w)
         self._inv_net_imbalance: float = 0.0
         self._inv_buy_count: int = 0  # 226# P5: O(1) buy count tracker
+        self._inv_last_update_time: float = 0.0  # 228# C2: time-decay 基準時刻
         # 168# InvSkew/VG 競合解消: 直近の InvSkew 補正係数 (負=sell緩和)
         self._last_inv_skew_factor: float = 0.0
         # 197# cached spread for CycleGateAggregator pre-check
@@ -206,6 +208,7 @@ class MakerPriceCalculator:
         """162# Inventory Skewing: fill 後に在庫偏重を更新.
 
         226# P5: O(n) scan → O(1) incremental counter に改善。
+        228# C2: last update timestamp を記録 (time-decay 用)。
         deque maxlen 溢れ時の eviction も追跡。
 
         Args:
@@ -223,15 +226,38 @@ class MakerPriceCalculator:
         n = len(dq)
         # imbalance: +1 = all buys (long偏重), -1 = all sells (short偏重)
         self._inv_net_imbalance = (2 * self._inv_buy_count - n) / n
+        # 228# C2: fill 時刻を記録 → compute() で time-decay に使用
+        self._inv_last_update_time = time.time()
+
+    def _decayed_imbalance(self, now: float) -> float:
+        """228# C2: time-decay 適用後の在庫偏重値を返す.
+
+        最終 fill から elapsed 秒が経過した場合、imbalance を
+        exp(-elapsed / τ) で減衰させる。τ=0 で無効 (raw 値を返す)。
+
+        理論根拠: Guéant-Lehalle-Fernandez-Tapia (2013) —
+        在庫リスクは最終約定からの経過時間とともに情報価値が減衰する。
+        古い fill 履歴に基づくポジション偏重の信頼性低下を反映。
+        """
+        raw = self._inv_net_imbalance
+        tau = getattr(self._config, "inv_decay_tau_sec", 0.0)
+        if not isinstance(tau, (int, float)) or tau <= 0 or self._inv_last_update_time <= 0:
+            return raw
+        elapsed = now - self._inv_last_update_time
+        if elapsed <= 0:
+            return raw
+        return raw * math.exp(-elapsed / tau)
 
     @property
     def inv_net_imbalance(self) -> float:
         """172# 在庫偏重指標 (public accessor).
 
+        228# C2: inv_decay_tau_sec > 0 の場合、time-decay を適用して返す。
+
         Returns:
             float ∈ [-1, 1]: +1=全buy(long偏重), -1=全sell(short偏重), 0=均衡.
         """
-        return self._inv_net_imbalance
+        return self._decayed_imbalance(time.time())
 
     # ------------------------------------------------------------------
     # offset 同期 (adaptation 後に呼ばれる)
@@ -316,12 +342,14 @@ class MakerPriceCalculator:
         if base_floor <= 0:
             return 0.0
         bypass_th = cfg.sell_guard_inv_bypass_threshold
-        if bypass_th > 0 and self._inv_net_imbalance >= bypass_th:
+        # 228# C2: time-decay を適用した imbalance で判定
+        _imb = self._decayed_imbalance(time.time())
+        if bypass_th > 0 and _imb >= bypass_th:
             discounted = base_floor * cfg.sell_offset_floor_inv_discount
             if discounted < base_floor:
                 logger.debug(
                     f"[sell_guard] Dynamic floor discount: "
-                    f"inv_imb={self._inv_net_imbalance:.3f} >= {bypass_th} "
+                    f"inv_imb={_imb:.3f} >= {bypass_th} "
                     f"→ floor {base_floor:.4f} → {discounted:.4f}"
                 )
             return discounted
@@ -857,13 +885,15 @@ class MakerPriceCalculator:
             effective_offset_ratio = self._base_offset_ratio_sell
 
         # 162# Inventory Skewing: 在庫偏重に応じた非対称 offset 補正
+        # 228# C2: time-decay 適用 — 古い fill 履歴の影響を減衰
         # buy 偏重(imbalance>0) -> buy offset拡大(抑制), sell offset縮小(促進)
         # sell 偏重(imbalance<0) -> sell offset拡大(抑制), buy offset縮小(促進)
+        _decayed_imb = self._decayed_imbalance(now)
         if (
             cfg.inventory_skewing_enabled
-            and abs(self._inv_net_imbalance) > cfg.inventory_skewing_neutral_band
+            and abs(_decayed_imb) > cfg.inventory_skewing_neutral_band
         ):
-            _imb = self._inv_net_imbalance
+            _imb = _decayed_imb
             _sign = 1.0 if side == "buy" else -1.0
             _factor = _imb * _sign * cfg.inventory_skewing_max_factor
             _prev = effective_offset_ratio

@@ -470,6 +470,8 @@ loss_control:
     window: 100                  # 直近 N fill の在庫偏重を計算
     max_factor: 0.4              # 最大 offset 補正倍率 (40%)
     neutral_band: 0.1            # |imbalance| < 0.1 では補正なし (中立帯)
+    # 228# C2: 在庫偏重の時間減衰 — 古い fill 履歴の影響を指数関数的に減衰
+    decay_tau_sec: 0.0           # 時間減衰 τ (秒, 0=無効, 1800推奨開始値)
   # 168# §4.1 #3: 日次ドローダウンガード (1日の累積損失制限)
   daily_drawdown:
     enabled: true                # 169# C4: 有効化 (日次累積損失制限で暴走防止)

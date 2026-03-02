@@ -70,6 +70,10 @@ class FillLoopOrchestratorMixin:
     _last_state_save_time: float = 0.0
     #: 223# skip パス中の state save 間隔 (秒)
     _STATE_SAVE_INTERVAL_SEC: float = 300.0
+    # 228# H3: MCB/SAD/CycleStrategy class-level None defaults (hasattr 排除用)
+    _mcb: object | None = None
+    _sad: object | None = None
+    _cycle_strategy: object | None = None
 
     def _is_sell_killed(self) -> bool:
         """133# P0-10 / 136# P1-03: sell 動的 kill 判定 — SellDynamicKillManager に委譲.
@@ -276,12 +280,12 @@ class FillLoopOrchestratorMixin:
             # 209# H4: DynamicKillManager 状態永続化
             sell_kill_state=self._sell_kill_mgr.export_state(),
             buy_kill_state=self._buy_kill_mgr.export_state(),
-            # 225# MCB/SAD 状態永続化
+            # 225# MCB/SAD 状態永続化 (228# H3: hasattr → class-level None default)
             mcb_state=(
-                self._mcb.export_state() if hasattr(self, "_mcb") and self._mcb is not None else None
+                self._mcb.export_state() if self._mcb is not None else None
             ),
             sad_state=(
-                self._sad.export_state() if hasattr(self, "_sad") and self._sad is not None else None
+                self._sad.export_state() if self._sad is not None else None
             ),
             **self._get_regime_state_fields(),
         )
@@ -344,9 +348,9 @@ class FillLoopOrchestratorMixin:
                 f"cooldown={self._buy_kill_mgr._cooldown}, "
                 f"kills={self._buy_kill_mgr._total_kills}"
             )
-        # 225# MCB/SAD 状態復元
+        # 225# MCB/SAD 状態復元 (228# H3: hasattr → class-level None default)
         _mcb_state = getattr(saved_state, "mcb_state", None)
-        if _mcb_state and hasattr(self, "_mcb") and self._mcb is not None:
+        if _mcb_state and self._mcb is not None:
             self._mcb.import_state(_mcb_state)
             logger.info(
                 f"[225#] MCB state restored: "
@@ -354,7 +358,7 @@ class FillLoopOrchestratorMixin:
                 f"halts={self._mcb._total_halts}"
             )
         _sad_state = getattr(saved_state, "sad_state", None)
-        if _sad_state and hasattr(self, "_sad") and self._sad is not None:
+        if _sad_state and self._sad is not None:
             self._sad.import_state(_sad_state)
             logger.info(
                 f"[225#] SAD state restored: "
@@ -1132,7 +1136,7 @@ class FillLoopOrchestratorMixin:
                         time.time(), _fb_price
                     )
                     # 182# confidence キャッシュ (Trend Mode 厳格化)
-                    if hasattr(self, "_cycle_strategy"):
+                    if self._cycle_strategy is not None:
                         self._cycle_strategy.update_confidence(_regime_result.confidence)
                     if _regime_result.regime != _pre_regime:
                         logger.info(
@@ -1322,7 +1326,7 @@ class FillLoopOrchestratorMixin:
                 _r = self._current_regime_value()
                 _deadlock_limit = (
                     self._cycle_strategy.policy.deadlock_limit_trending
-                    if _r and _r.startswith("trending") and hasattr(self, "_cycle_strategy")
+                    if _r and _r.startswith("trending") and self._cycle_strategy is not None
                     else self.config.balance_forced_deadlock_limit
                 )
                 _over_deadlock_limit = (
@@ -1524,7 +1528,6 @@ class FillLoopOrchestratorMixin:
                     # ranging regime → mean reversion 期待 → 通常スケール
                     if (
                         self._regime_detector is not None
-                        and hasattr(self._regime_detector, "current_regime")
                     ):
                         _regime = self._regime_detector.current_regime
                         if _regime is not None and _regime.is_trending:
@@ -1808,7 +1811,7 @@ class FillLoopOrchestratorMixin:
 
             # --- 181# 停止条件モニター: C/D/Chase 安全弁 ---
             if (
-                hasattr(self, "_cycle_strategy")
+                self._cycle_strategy is not None
                 and self._cycle_count > 0
                 and self._cycle_count % 30 == 0  # ~1h@120s, ~30min@60s
             ):

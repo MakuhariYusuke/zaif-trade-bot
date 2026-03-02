@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 228# Inventory Time-Decay + hasattr排除 (2026-03-04)
+
+### Added (Theory)
+- **C2: Inventory Skew Time-Decay (Guéant-Lehalle-Fernandez-Tapia 2013)**: 在庫偏重 imbalance に時間減衰 `exp(-elapsed/τ)` を適用。古い fill 履歴の影響を自然に減衰させ、直近の fill のみが inv_skew に影響。τ=0 で無効 (後方互換)。O(1) 計算量を保持 (`maker_price.py`)
+
+### Improved (Code Quality)
+- **H3: hasattr 完全排除**: `fill_loop_orchestrator.py` から `hasattr(self, ...)` を全 7 箇所削除。`_mcb`, `_sad`, `_cycle_strategy` にクラスレベル `None` デフォルトを追加し、`is not None` チェックに統一。`hasattr(self._regime_detector, "current_regime")` も冗長チェックとして削除 (`fill_loop_orchestrator.py`)
+
+### Added (Config)
+- `inv_decay_tau_sec: float = 0.0` — 在庫偏重時間減衰の τ (秒, 0=無効, 1800推奨開始値) (`fill_config.py`)
+- YAML parser: `inventory_skewing.decay_tau_sec` → `inv_decay_tau_sec` 追加 (`fill_config.py`)
+- `__post_init__`: `inv_decay_tau_sec >= 0` バリデーション追加 (`fill_config.py`)
+- YAML: `decay_tau_sec: 0.0` (`fill_test.yaml`)
+
+### Tests
+- `test_228_inv_decay_hasattr_removal.py` — 17 テスト (C2 time-decay × 8, C2 compute連携 × 1, Config検証 × 3, YAML × 1, H3 hasattr排除 × 4)
+- 総テスト: 3084 passed, 0 failed
+
+
 ## 227# Ranging×OBI方向非対称 + Velocity EMAフィルタ + import最適化 + getattr排除 + Config検証 (2026-03-04)
 
 ### Added (Theory)

@@ -435,6 +435,8 @@ class FillTestConfig:
     inventory_skewing_window: int = 100        # 直近 N fill で在庫偏重を計算
     inventory_skewing_max_factor: float = 0.4  # 最大 offset 補正倍率 (0.4 = 40%)
     inventory_skewing_neutral_band: float = 0.1  # |imbalance| < この値なら補正なし
+    # 228# C2: 在庫偏重の時間減衰 — 古い fill 履歴の影響を指数関数的に減衰
+    inv_decay_tau_sec: float = 0.0             # 時間減衰 τ (秒, 0=無効, 1800推奨開始値)
     preflight_pause_enabled: bool = True       # True で SAFE_STOP 前に pause を挟む
     preflight_pause_threshold: int = 5         # この回数で pause 発動 (< max_preflight_skip)
     preflight_pause_sec: float = 300.0         # pause 時のスリープ秒数
@@ -577,6 +579,11 @@ class FillTestConfig:
         if self.inventory_skewing_window < 0:
             raise ValueError(
                 f"inventory_skewing_window must be >= 0, got {self.inventory_skewing_window}"
+            )
+        # 228# C2: inv_decay_tau_sec は非負
+        if self.inv_decay_tau_sec < 0:
+            raise ValueError(
+                f"inv_decay_tau_sec must be >= 0, got {self.inv_decay_tau_sec}"
             )
         if self.sell_dynamic_kill_window < 1:
             raise ValueError(
@@ -1032,6 +1039,7 @@ class FillTestConfig:
             "window": "inventory_skewing_window",
             "max_factor": "inventory_skewing_max_factor",
             "neutral_band": "inventory_skewing_neutral_band",
+            "decay_tau_sec": "inv_decay_tau_sec",  # 228# C2
         }.items():
             if yk in inv_skew:
                 kwargs[ck] = inv_skew[yk]
