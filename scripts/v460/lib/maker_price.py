@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import collections
 import logging
+import math
 import time
 from typing import Final, NamedTuple, Optional, Protocol
 
@@ -105,6 +106,7 @@ class MakerPriceCalculator:
         "_last_spread_time",         # 210# M5: staleness tracking
         "_loss_boost_mult",          # 211# 204# I: per-fill loss offset boost
         "_loss_boost_set_time",      # 226# T1: boost 設定時刻 (指数減衰用)
+        "_smoothed_velocity_bps",    # 227# C3: EMA-smoothed velocity (bid-ask bounce noise filter)
     )
 
     def __init__(
@@ -155,6 +157,8 @@ class MakerPriceCalculator:
         # 226# T1: 1-shot → 指数減衰 (Avellaneda-Stoikov AS理論)
         self._loss_boost_mult: float = 1.0
         self._loss_boost_set_time: float = 0.0
+        # 227# C3: EMA-smoothed velocity (bid-ask bounce noise filter)
+        self._smoothed_velocity_bps: float | None = None
 
     def get_fallback_price(self) -> tuple[float | None, float | None]:
         """156# §16: OB エラー時のフォールバック価格と記録時刻を返す.
@@ -283,9 +287,8 @@ class MakerPriceCalculator:
         指数的に減衰する。タイムスタンプを記録し、
         compute() 内で exp(-t/τ) で減衰させる。
         """
-        import time as _time
         self._loss_boost_mult = mult
-        self._loss_boost_set_time = _time.time()
+        self._loss_boost_set_time = time.time()
 
     @property
     def last_vg_velocity_bps(self) -> float | None:
@@ -519,22 +522,44 @@ class MakerPriceCalculator:
             )
 
         # 143# R-1a: ranging 時にオフセットを縮小 (安定市場で利幅確保)
+        # 227# C1: OBI (Order Book Imbalance) を活用した方向別非対称 discount
+        #  AS理論: ranging (mean-reverting) 市場では板不均衡がリバージョン方向を予測。
+        #  bid厚 (imbalance>0) → 短期上方回帰 → buy有利 → buy discount強化
+        #  ask厚 (imbalance<0) → 短期下方回帰 → sell有利 → sell discount強化
         if (
             self._regime_detector is not None
             and hasattr(self._regime_detector, "current_regime")
             and self._regime_detector.current_regime == FillTestRegime.RANGING
             and cfg.regime_ranging_offset_discount < 1.0
         ):
+            _ranging_mult = cfg.regime_ranging_offset_discount
+            # 227# C1: OBI 方向別非対称化
+            if cfg.ranging_obi_asymmetry_factor > 0.0:
+                _imb = self._last_imbalance
+                _obi_thresh = cfg.ranging_obi_threshold
+                if abs(_imb) > _obi_thresh:
+                    # imb>0 (bid厚→上方回帰): buy=有利方向→更に縮小, sell=不利→縮小緩和
+                    # imb<0 (ask厚→下方回帰): sell=有利方向→更に縮小, buy=不利→縮小緩和
+                    _obi_adj = _imb * cfg.ranging_obi_asymmetry_factor
+                    if side == "buy":
+                        # bid厚(imb>0)→buy有利→discount強化(mult小), ask厚→discount緩和
+                        _ranging_mult = _ranging_mult * (1.0 - _obi_adj)
+                    else:
+                        # ask厚(imb<0→_obi_adj<0→1-neg=1+pos)→sell有利→discount強化
+                        _ranging_mult = _ranging_mult * (1.0 + _obi_adj)
+                    # clamp: discount は min_offset_ratio 保証, 1.0 以上にはしない
+                    _ranging_mult = max(cfg.min_offset_ratio / max(effective_offset_ratio, 1e-6),
+                                        min(_ranging_mult, 1.0))
             pre_offset = effective_offset_ratio
             effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
                 effective_offset_ratio,
-                cfg.regime_ranging_offset_discount,
+                _ranging_mult,
                 min_ratio=cfg.min_offset_ratio,
             )
             logger.debug(
                 f"[regime] ranging → offset discounted: "
                 f"{pre_offset:.4f} → {effective_offset_ratio:.4f} "
-                f"(discount={_applied_mult:.2f})"
+                f"(discount={_applied_mult:.2f}, obi={self._last_imbalance:+.3f})"
             )
 
         # 168# 低ボラティリティ offset boost: vol_ratio < threshold で offset 拡大
@@ -803,6 +828,14 @@ class MakerPriceCalculator:
                 dt=now - self._prev_mid_time,
                 max_dt=cfg.mid_trend_validity_sec,
             )
+            # 227# C3: EMA smoothing — bid-ask bounce noise filter
+            # 薄い板の1-tick変動でmidが振れるノイズを抑制。
+            # α = velocity_ema_alpha (default 0.3): 低いほど滑らか。
+            if mid_trend_bps is not None and cfg.velocity_ema_alpha < 1.0:
+                _alpha = cfg.velocity_ema_alpha
+                if self._smoothed_velocity_bps is not None:
+                    mid_trend_bps = _alpha * mid_trend_bps + (1.0 - _alpha) * self._smoothed_velocity_bps
+                self._smoothed_velocity_bps = mid_trend_bps
         self._prev_mid_price = mid_price
         self._prev_mid_time = now
         self._last_mid_trend_bps = mid_trend_bps
@@ -891,11 +924,10 @@ class MakerPriceCalculator:
         # 211# 204# I  226# T1: loss offset boost (指数減衰)
         # Avellaneda-Stoikov: ASリスクは指数的に減衰 mult(t) = 1 + (M-1)*exp(-t/τ)
         if self._loss_boost_mult > 1.0 and self._loss_boost_set_time > 0.0:
-            import math as _math
             _elapsed = now - self._loss_boost_set_time
             _tau = cfg.loss_boost_decay_tau_sec
             if _tau > 0 and _elapsed > 0:
-                _decay = _math.exp(-_elapsed / _tau)
+                _decay = math.exp(-_elapsed / _tau)
             else:
                 _decay = 1.0
             _decayed_mult = 1.0 + (self._loss_boost_mult - 1.0) * _decay

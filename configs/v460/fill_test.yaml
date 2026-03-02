@@ -121,6 +121,9 @@ regime:
   trending_down_sell_offset_boost: 0.7
   # 156# §18: ranging 時に offset 縮小 → 安定市場で fill_rate+利幅確保
   ranging_offset_discount: 0.90   # ranging 時 offset × 0.90 (控えめ開始、A/B で 0.85 検証予定)
+  # 227# C1: OBI方向非対称 — ranging市場でOBIに基づく方向性シグナル
+  ranging_obi_asymmetry_factor: 0.0  # OBI非対称強度 [0,1] (0.0=無効, 0.3推奨開始値)
+  ranging_obi_threshold: 0.1         # OBI非対称適用の最小imbalance閾値
   # 168# §9.10: 低ボラティリティ offset boost (time_filter 根本対策)
   # vol_ratio < threshold の低ボラ環境で offset を 1.4 倍に拡大
   # データ根拠: 損失時間帯 vol_ratio=0.661 vs 利益時間帯 0.918 (t=-2.01)
@@ -492,6 +495,8 @@ tuning:
   loss_cap_update_interval: 50     # loss_cap 残高再取得サイクル間隔
   min_loss_cap_jpy: 50.0           # 動的 loss_cap の最低保証額 (JPY)
   mid_trend_validity_sec: 300.0    # mid price trend の有効判定秒数 (5分)
+  # 227# C3: velocity EMA ノイズフィルタ — bid-ask bounce 抑制
+  velocity_ema_alpha: 1.0            # EMA α (0,1] (1.0=無効, 0.6推奨開始値)
   balance_margin_ratio: 1.01       # buy 残高チェックの手数料マージン (1%)
   balance_shrink_consecutive: 3    # balance_shrink 発動の連続 preflight 失敗回数
   balance_shrink_divisor: 2        # balance_shrink のロット分割係数 (2=半減)

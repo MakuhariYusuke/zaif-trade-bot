@@ -15,9 +15,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 
 from scripts.v460.lib import cancel_reasons as CR
+from scripts.v460.lib.alert_mode import load_alert_mode
+from scripts.v460.lib.micro_circuit_breaker import MCBLevel
+from scripts.v460.lib.spread_anomaly_detector import SADLevel
 
 if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
@@ -137,8 +141,6 @@ class FillLoopOrchestratorMixin:
         state file が stale/missing の場合のセーフティネット。
         import_state が skip された後に呼ばれ、DD guard を正確な状態に復元する。
         """
-        from datetime import datetime, timezone
-
         utc_today = datetime.now(timezone.utc).strftime("%Y%m%d")
         daily_pnl_sum = 0.0
         daily_fill_count = 0
@@ -206,8 +208,6 @@ class FillLoopOrchestratorMixin:
         前日以前のデータを注入すると日替わり reset() の効果が無効化されるため、
         DD warmup と同じ日付フィルタを適用する。
         """
-        from datetime import datetime, timezone
-
         utc_today = datetime.now(timezone.utc).strftime("%Y%m%d")
         sell_count = 0
         buy_count = 0
@@ -379,7 +379,7 @@ class FillLoopOrchestratorMixin:
         # 200# P0-2: soft drawdown で lot 半減不可 → interval 延長
         soft_dd_mult = getattr(self, "_soft_drawdown_interval_multiplier", 1.0)
         # 217# fix: alert_mode の interval_mult をスキップ/halt パスにも適用
-        alert_im = getattr(self, "_alert_interval_mult", 1.0)
+        alert_im = self._alert_interval_mult
         _raw = base * multiplier * soft_dd_mult * alert_im
         # 211#: max_cycle_sleep_sec キャップを _effective_sleep にも適用
         # (209# M4 は通常パスのみ → halt 中 30 分スリープの原因)
@@ -534,8 +534,6 @@ class FillLoopOrchestratorMixin:
         033# 方策 B: 動的ロットサイジング統合.
         033# F4: 累積 PnL 安全キャップ (000# §3.9).
         """
-        from datetime import datetime, timezone
-
         from scripts.v460.lib.event_logger import log_event as _log_event
         from ztb.data.trades_health import check_trades_health
         from ztb.metrics.fill_quality import (
@@ -725,7 +723,7 @@ class FillLoopOrchestratorMixin:
             # 200# 10-A: 日替わり時に soft_drawdown_interval_multiplier をリセット
             # P0-2 で追加した multiplier が日次境界で reset されないバグの修正
             if self._daily_drawdown_guard.maybe_reset_day():
-                _old_mult = getattr(self, "_soft_drawdown_interval_multiplier", 1.0)
+                _old_mult = self._soft_drawdown_interval_multiplier
                 if _old_mult != 1.0:
                     logger.info(
                         f"[daily_drawdown] Day reset → soft_drawdown_interval_multiplier "
@@ -769,13 +767,13 @@ class FillLoopOrchestratorMixin:
                 # 日次 PnL 超過 → UTC 日替わりまでスキップ
                 # 200# K: halt record 削減 — 開始/終了 + N回毎のみ記録
                 # 203# G: _halt_iter_count で正確にカウント (_cycle_count は halt 中不変)
-                _halt_entering = getattr(self, "_halt_start_cycle", None) is None
+                _halt_entering = self._halt_start_cycle is None
                 if _halt_entering:
                     self._inc_guard_fire("dd_halt")
                     self._halt_start_cycle = self._cycle_count
                     self._halt_iter_count = 0
                 else:
-                    self._halt_iter_count = getattr(self, "_halt_iter_count", 0) + 1
+                    self._halt_iter_count = self._halt_iter_count + 1
                 # 211# fix: halt 中は progress_log_interval(50) ではなく
                 # 専用間隔 _HALT_PERSIST_INTERVAL(10) で state/record を保存。
                 # 600s sleep × 50 = 8.3h は長すぎ、再起動時に進捗が大幅に巻き戻る。
@@ -812,19 +810,19 @@ class FillLoopOrchestratorMixin:
                 # halt 解除直後に陳腐化した σ で誤判定するのを防止。
                 # ※ check() は呼ばない (halt 中の二重ガードは不要)。
                 if self._mcb.config.enabled:
-                    _mcb_mid = getattr(self._maker_price, "last_mid_price", None)
+                    _mcb_mid = self._maker_price.last_mid_price
                     if _mcb_mid is not None and _mcb_mid > 0:
                         self._mcb.update(_mcb_mid, time.time())
                 if self._sad.config.enabled:
-                    _sad_spread = getattr(self._maker_price, "last_spread_raw", None)
+                    _sad_spread = self._maker_price.last_spread_raw
                     if _sad_spread is not None and _sad_spread > 0:
                         self._sad.update(_sad_spread, time.time())
                 await self._effective_sleep(multiplier=5.0)  # 179# S1: halt 中は 5x 間隔
                 continue
 
             # 200# K: halt 終了時の記録 (前サイクルが halt だった場合)
-            if getattr(self, "_halt_start_cycle", None) is not None:
-                _halt_iters = getattr(self, "_halt_iter_count", 0)
+            if self._halt_start_cycle is not None:
+                _halt_iters = self._halt_iter_count
                 logger.info(
                     f"[daily_drawdown] Halt ended after {_halt_iters} iterations"
                 )
@@ -832,7 +830,6 @@ class FillLoopOrchestratorMixin:
                 self._halt_iter_count = 0
 
             # 215# P0-C: alert_mode.json — オペレータ緊急介入チェック
-            from scripts.v460.lib.alert_mode import load_alert_mode
             _alert = load_alert_mode(self._results_dir)
             if _alert.halt:
                 batch.append(self._make_loop_skip_record(
@@ -854,11 +851,10 @@ class FillLoopOrchestratorMixin:
             # 211# P1-B: Micro Circuit Breaker — 短期価格急変の自動防御
             _mcb_warning = False
             if self._mcb.config.enabled:
-                _mcb_mid = getattr(self._maker_price, "last_mid_price", None)
+                _mcb_mid = self._maker_price.last_mid_price
                 if _mcb_mid is not None and _mcb_mid > 0:
                     self._mcb.update(_mcb_mid, time.time())
                 _mcb_result = self._mcb.check(time.time())
-                from scripts.v460.lib.micro_circuit_breaker import MCBLevel
                 if _mcb_result.level == MCBLevel.HALT:
                     self._inc_guard_fire("mcb_halt")
                     batch.append(self._make_loop_skip_record(
@@ -884,11 +880,10 @@ class FillLoopOrchestratorMixin:
                 # 217# fix: last_spread は 60s staleness guard 付き (210# M5)。
                 # cycle 間隔 120s では常に stale → None になるため、
                 # staleness guard なしの last_spread_raw を使用する。
-                _sad_spread = getattr(self._maker_price, "last_spread_raw", None)
+                _sad_spread = self._maker_price.last_spread_raw
                 if _sad_spread is not None and _sad_spread > 0:
                     self._sad.update(_sad_spread, time.time())
                 _sad_result = self._sad.check(time.time())
-                from scripts.v460.lib.spread_anomaly_detector import SADLevel
                 if _sad_result.level == SADLevel.FROZEN:
                     self._inc_guard_fire("sad_frozen")
                     batch.append(self._make_loop_skip_record(
@@ -932,11 +927,10 @@ class FillLoopOrchestratorMixin:
             # 205# §9.4: 時間帯 Hard Skip (Kyle proxy)
             # soft offset (158# P1-6) では抑制不十分な最悪時間帯はサイクル全停止
             if self.config.hard_skip_utc_hours:
-                from datetime import datetime, timezone
                 _utc_h = datetime.now(timezone.utc).hour
                 if _utc_h in self.config.hard_skip_utc_hours:
                     # 初回のみ skip record を記録
-                    _hard_skip_entering = not getattr(self, "_in_hard_skip_hour", False)
+                    _hard_skip_entering = not self._in_hard_skip_hour
                     self._in_hard_skip_hour = True
                     if _hard_skip_entering:
                         self._inc_guard_fire("hard_skip_utc")
@@ -955,7 +949,7 @@ class FillLoopOrchestratorMixin:
                     await self._effective_sleep()
                     continue
                 else:
-                    if getattr(self, "_in_hard_skip_hour", False):
+                    if self._in_hard_skip_hour:
                         logger.info(f"[205# §9.4] Hard skip ended (UTC {_utc_h}h)")
                         self._in_hard_skip_hour = False
 
@@ -1207,10 +1201,10 @@ class FillLoopOrchestratorMixin:
                         continue
                     # 200# E: 時間ベース頻度検出 — 短時間で連続 balance_forced が発生 → 警告
                     _now = time.time()
-                    _last_bf_time = getattr(self, "_last_balance_forced_time", 0.0)
+                    _last_bf_time = self._last_balance_forced_time
                     _bf_cooldown = self.config.balance_forced_cooldown_sec
                     if _bf_cooldown > 0 and (_now - _last_bf_time) < _bf_cooldown:
-                        _bf_freq_count = getattr(self, "_balance_forced_freq_count", 0) + 1
+                        _bf_freq_count = self._balance_forced_freq_count + 1
                         self._balance_forced_freq_count = _bf_freq_count
                         logger.warning(
                             f"[200# E] balance_forced high frequency: "
@@ -1837,7 +1831,7 @@ class FillLoopOrchestratorMixin:
                     regime = self._current_regime_value()
                     interval = self._cycle_strategy.effective_interval(regime)
                 # 200# P0-2: soft drawdown interval 延長
-                soft_dd_mult = getattr(self, "_soft_drawdown_interval_multiplier", 1.0)
+                soft_dd_mult = self._soft_drawdown_interval_multiplier
                 # 202# A: 単一サイクル大損失クールダウン (1回適用で自動リセット)
                 _loss_cd = self._loss_cooldown_mult
                 self._loss_cooldown_mult = 1.0  # 次サイクルではリセット

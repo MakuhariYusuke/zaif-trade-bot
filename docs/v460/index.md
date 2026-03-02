@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-03 (223# 222#レビュー対応: CRITICAL halt bypass修正 + メトリクス強化 + state save改善)
+> 最終更新: 2026-03-04 (227# Ranging×OBI方向非対称 + Velocity EMAフィルタ + import最適化 + getattr排除)
 
 ---
 
@@ -214,6 +214,10 @@
 | 221 | rev | [221_ph2_rev_ai_review_deadlock_and_pnl.md](221_ph2_rev_ai_review_deadlock_and_pnl.md) | AI Review: 218#-220# デッドロック対策総合レビュー + PnL構造分析 + 改善提案6件 |
 | 222 | rev | [222_ph2_rev_213_221_deadlock_validation_and_residual_risks.md](222_ph2_rev_213_221_deadlock_validation_and_residual_risks.md) | 213#–221# レビュー: デッドロック対策の実証, per-side halt破り, SHA混在評価の補正, 残存リスク |
 | 223 | fix | [223_ph2_fix_222_review_response.md](223_ph2_fix_222_review_response.md) | 222# レビュー対応: CRITICAL halt bypass修正, guard_fire_counts 7種追加, skip-time state save, DUAL KILL廃止ロードマップ |
+| 224 | fix | [224_ph2_fix_halt_recovery_and_kill_reset.md](224_ph2_fix_halt_recovery_and_kill_reset.md) | 後続作業: B1/B2 halt解除後ソフトリカバリ + 盲点修正 |
+| 225 | fix | [225_ph2_fix_warmup_state_save_recovery_market_theory.md](225_ph2_fix_warmup_state_save_recovery_market_theory.md) | warmup日付フィルタ + state save強化 + recovery復元 + 市場理論補強 |
+| 226 | fix | [226_ph2_fix_loss_boost_decay_mcb_ffd_state_inv_skew.md](226_ph2_fix_loss_boost_decay_mcb_ffd_state_inv_skew.md) | loss_boost指数減衰 + MCB/FFD state永続化 + inv_skew O(1) + toxic_veto修正 + halt中MCB/SAD更新 |
+| 227 | fix | [227_ph2_fix_ranging_obi_velocity_ema_import_optimization.md](227_ph2_fix_ranging_obi_velocity_ema_import_optimization.md) | Ranging×OBI方向非対称 + Velocity EMAフィルタ + import最適化 + getattr排除 + Config検証 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

@@ -6,6 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 227# Ranging×OBI方向非対称 + Velocity EMAフィルタ + import最適化 + getattr排除 + Config検証 (2026-03-04)
+
+### Added (Theory)
+- **C1: Ranging×OBI 方向非対称 (AS理論)**: ranging 市場で OBI (Order Book Imbalance) に基づく方向性シグナルを追加。bid-heavy(imbalance>threshold) → buy discount 強化 / sell discount 緩和、ask-heavy → 逆。AS の情報非対称性リスクを OBI で推定し、mean-reversion ポジションの有利方向を識別 (`maker_price.py`)
+- **C3: Velocity EMA ノイズフィルタ**: `compute_instant_velocity_bps()` の即時速度に EMA 平滑化を適用。Coincheck の薄板環境において bid-ask bounce ノイズを抑制。`velocity_ema_alpha` (default=1.0: 無効) で制御 (`maker_price.py`)
+
+### Improved (Performance)
+- **H1: Hot-loop lazy import 排除**: `fill_loop_orchestrator.py` の hot path から 4 つの lazy import (`load_alert_mode`, `MCBLevel`, `SADLevel`, `datetime/timezone`) をファイル先頭に移動。推定 ~5μs/cycle 削減
+- **H5: `import math` compute() 内排除**: `maker_price.py` の `compute()` と `set_loss_boost()` 内の lazy import math/time をファイル先頭に移動
+- **H2: getattr → 直接アクセス**: `fill_loop_orchestrator.py` の ~14 箇所の `getattr(self, ...)` / `getattr(self._maker_price, ...)` をクラスレベル宣言済み属性の直接アクセスに変換
+
+### Added (Config)
+- `ranging_obi_asymmetry_factor: float = 0.0` — OBI 方向非対称の強度 [0, 1] (`fill_config.py`)
+- `ranging_obi_threshold: float = 0.1` — OBI 非対称適用の最小 imbalance 閾値 (`fill_config.py`)
+- `velocity_ema_alpha: float = 1.0` — velocity EMA 平滑化の α (0, 1] (`fill_config.py`)
+- 3 パラメータの YAML parser 追加 (`fill_config.py`)
+- 4 新バリデーションルール in `__post_init__` (`fill_config.py`)
+
+### Tests
+- `test_227_ranging_obi_velocity_ema_import_fix.py` — 21 テスト (C1 OBI 非対称 × 4, C3 velocity EMA × 3, Config 検証 × 8, import 最適化 × 5, class-level attrs × 1)
+- 総テスト: 3067 passed, 0 failed
+
+### Docs
+- 224#/225# ファイル名を命名規則 `NNN_phX_TYPE_description.md` に修正
+- `index.md` に 224#/225#/226# エントリ追加
+- `226_ph2_fix_loss_boost_decay_mcb_ffd_state_inv_skew.md` 新規作成
+
+
 ## 226# loss_boost指数減衰 + MCB/FFD state永続化 + inv_skew O(1) + toxic_veto修正 (2026-03-02)
 
 ### Added (Theory)

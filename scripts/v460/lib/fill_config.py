@@ -129,6 +129,10 @@ class FillTestConfig:
     # 143# R-1a: レジーム別 offset 調整
     regime_high_vol_offset_boost: float = 1.2   # high_vol 時に offset × 1.2 (+20% 拡張)
     regime_ranging_offset_discount: float = 1.0 # ranging 時に offset × N (1.0=無効, <1.0で縮小)
+    # 227# C1: Ranging × OBI (Order Book Imbalance) 方向別非対称 offset
+    # AS理論: ranging市場ではOBIがmean-reversion方向を予測
+    ranging_obi_asymmetry_factor: float = 0.0  # 0.0=無効, 0.15=bid/ask不均衡で±15%非対称化
+    ranging_obi_threshold: float = 0.1         # |imbalance| がこの値以下では中立扱い
     # 168# §9.10: 低ボラティリティ offset boost (time_filter 根本対策)
     # vol_ratio < threshold 時に offset を拡大し、低ボラ環境での過剰アグレッシブ発注を抑制
     low_vol_offset_boost_enabled: bool = False
@@ -445,6 +449,9 @@ class FillTestConfig:
     loss_cap_update_interval: int = 50
     min_loss_cap_jpy: float = 50.0
     mid_trend_validity_sec: float = 300.0
+    # 227# C3: velocity EMA smoothing — bid-ask bounce noise filter
+    # α=1.0 でフィルタなし (raw velocity), α=0.3 で適度な平滑化
+    velocity_ema_alpha: float = 1.0  # 1.0=無効 (後方互換), 0.3推奨
     balance_margin_ratio: float = 1.01
     balance_shrink_consecutive: int = 3
     balance_shrink_divisor: int = 2
@@ -629,6 +636,24 @@ class FillTestConfig:
         if self.max_cycle_sleep_sec < 0:
             raise ValueError(
                 f"max_cycle_sleep_sec must be >= 0, got {self.max_cycle_sleep_sec}"
+            )
+        # 227# M1: 追加バリデーション
+        if self.loss_boost_decay_tau_sec <= 0:
+            raise ValueError(
+                f"loss_boost_decay_tau_sec must be > 0, got {self.loss_boost_decay_tau_sec}"
+            )
+        if not (0.0 <= self.ranging_obi_asymmetry_factor <= 1.0):
+            raise ValueError(
+                f"ranging_obi_asymmetry_factor must be in [0, 1], "
+                f"got {self.ranging_obi_asymmetry_factor}"
+            )
+        if self.ranging_obi_threshold < 0:
+            raise ValueError(
+                f"ranging_obi_threshold must be >= 0, got {self.ranging_obi_threshold}"
+            )
+        if not (0.0 < self.velocity_ema_alpha <= 1.0):
+            raise ValueError(
+                f"velocity_ema_alpha must be in (0, 1], got {self.velocity_ema_alpha}"
             )
 
 
@@ -1103,6 +1128,8 @@ class FillTestConfig:
             "loss_cap_update_interval": "loss_cap_update_interval",
             "min_loss_cap_jpy": "min_loss_cap_jpy",
             "mid_trend_validity_sec": "mid_trend_validity_sec",
+            # 227# C3: velocity EMA smoothing
+            "velocity_ema_alpha": "velocity_ema_alpha",
             "balance_margin_ratio": "balance_margin_ratio",
             "balance_shrink_consecutive": "balance_shrink_consecutive",
             "balance_shrink_divisor": "balance_shrink_divisor",
@@ -1249,6 +1276,9 @@ class FillTestConfig:
             "trending_down_sell_offset_boost": "trending_down_sell_offset_boost",
             "high_vol_offset_boost": "regime_high_vol_offset_boost",       # 143# R-1a
             "ranging_offset_discount": "regime_ranging_offset_discount",   # 143# R-1a
+            # 227# C1: Ranging × OBI 方向別非対称 offset
+            "ranging_obi_asymmetry_factor": "ranging_obi_asymmetry_factor",
+            "ranging_obi_threshold": "ranging_obi_threshold",
             "low_vol_offset_boost_enabled": "low_vol_offset_boost_enabled", # 168#
             "low_vol_offset_boost": "low_vol_offset_boost",               # 168#
             "low_vol_threshold": "low_vol_threshold",                     # 168#
