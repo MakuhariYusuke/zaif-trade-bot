@@ -301,7 +301,16 @@
 
 9. **巨大ファイル分割** — 2000行超 4ファイルから段階的に
 10. **Any 型削減** — コアモジュール 5 ファイルから
-11. **typing モダン化** — ztb/utils/ 20+ファイル
+11. **typing モダン化** — ✅ ztb/ 全体 936 ファイル (`2224bd458`)
+
+PEP 585/604 準拠の自動変換ツール `tools/typing_modernize.py` を作成し一括適用:
+
+- `Dict` → `dict`, `List` → `list`, `Tuple` → `tuple`, `Set` → `set`, `Type[` → `type[`
+- `Optional[X]` → `X | None`, `Union[X, Y]` → `X | Y`
+- 多行 Optional/Union の単行化、前方参照の自動 `__future__` 追加 (18ファイル)
+- builtin name 衝突 (`list`/`set` メソッド) の自動検出 + `__future__` 追加
+- Union 末尾カンマ処理
+- typing import の不要エントリ自動削除
 12. **dead code 整理** — bridge.py / trading_api.py の Zaif TODO
 13. **0テスト / placeholder テスト 104 ファイルの整理** — 削除 or 実装
 
