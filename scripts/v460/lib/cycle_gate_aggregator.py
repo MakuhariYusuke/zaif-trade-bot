@@ -103,8 +103,12 @@ class CycleGateAggregator:
     ────────────────────────────────────────────────────
     """
 
+    #: 219# unknown regime 連続ブロックのバイパス閾値
+    UNKNOWN_REGIME_MAX_CONSECUTIVE: int = 10
+
     def __init__(self, config: FillTestConfig) -> None:
         self._config = config
+        self._consecutive_unknown_blocks: int = 0  # 219# unknown regime 連続カウンタ
 
     def evaluate(
         self,
@@ -145,12 +149,24 @@ class CycleGateAggregator:
         result = CycleGateResult()
         _regime = regime or "unknown"
 
+        # 219# unknown regime 連続バイパス: N サイクル連続 unknown で強制通過
+        _unknown_bypass = (
+            _regime == "unknown"
+            and self._consecutive_unknown_blocks >= self.UNKNOWN_REGIME_MAX_CONSECUTIVE
+        )
+        if _unknown_bypass:
+            logger.warning(
+                f"[219#] unknown regime bypass: {self._consecutive_unknown_blocks} "
+                f"consecutive blocks — forcing through (side={side})"
+            )
+
         # --- Gate 1: unknown_regime_buy_skip ---
-        g1 = self._check_unknown_regime_buy(side, _regime, balance_forced)
+        g1 = self._check_unknown_regime_buy(side, _regime, balance_forced, _unknown_bypass)
         result.checks.append(g1)
         if g1.blocked:
             result.blocked = True
             result.blocking_reason = g1.reason
+            self._consecutive_unknown_blocks += 1
             return result
 
         # --- Gate 2: B1' ranging_buy_low_vol ---
@@ -177,7 +193,23 @@ class CycleGateAggregator:
             result.trending_offset_mult = g3.offset_mult
 
         # --- Gate 4: buy_dynamic_kill ---
-        g4 = self._check_buy_dynamic_kill(side, balance_forced, is_buy_killed)
+        # 219# dual-kill deadlock breaker: buy+sell 両方 kill 時、
+        # PnL が良い方を強制通過させてデッドロックを回避。
+        _dual_kill = (
+            is_buy_killed and is_sell_killed
+            and not balance_forced
+        )
+        _dual_kill_bypass = False
+        if _dual_kill:
+            # 両方 kill なら、全て通過させる (219# force release もあるが、
+            # gate レベルで即座に1取引許可することで高速化)
+            _dual_kill_bypass = True
+            logger.warning(
+                f"[219#] DUAL KILL bypass: both buy/sell killed — "
+                f"allowing {side} through to break deadlock"
+            )
+
+        g4 = self._check_buy_dynamic_kill(side, balance_forced, is_buy_killed, _dual_kill_bypass)
         result.checks.append(g4)
         if g4.blocked:
             result.blocked = True
@@ -187,6 +219,7 @@ class CycleGateAggregator:
         # --- Gate 5: sell_dynamic_kill ---
         g5 = self._check_sell_dynamic_kill(
             side, balance_forced, is_sell_killed, inv_net_imbalance,
+            dual_kill_bypass=_dual_kill_bypass,
         )
         result.checks.append(g5)
         if g5.blocked:
@@ -203,12 +236,19 @@ class CycleGateAggregator:
             return result
 
         # --- Gate 7: unknown_regime_sell_skip (旧 C2) ---
-        g7 = self._check_unknown_regime_sell(side, _regime)
+        g7 = self._check_unknown_regime_sell(side, _regime, balance_forced, _unknown_bypass)
         result.checks.append(g7)
         if g7.blocked:
             result.blocked = True
             result.blocking_reason = g7.reason
+            self._consecutive_unknown_blocks += 1
             return result
+
+        # 219# unknown ブロックせず通過 → カウンタリセット
+        if _regime == "unknown":
+            pass  # regime が unknown だが gate はブロックしなかった (balance_forced 等)
+        else:
+            self._consecutive_unknown_blocks = 0
 
         # --- Gate 8: narrow_spread_pause (197# B3→Gate 統合) ---
         g8 = self._check_narrow_spread(spread_jpy, mid_price)
@@ -234,12 +274,14 @@ class CycleGateAggregator:
 
     def _check_unknown_regime_buy(
         self, side: str, regime: str, balance_forced: bool,
+        unknown_bypass: bool = False,
     ) -> GateCheckResult:
         """A10: unknown regime での buy スキップ."""
         if (
             self._config.skip_buy_unknown_regime
             and side == "buy"
             and not balance_forced
+            and not unknown_bypass  # 219#
             and regime == "unknown"
         ):
             return GateCheckResult(
@@ -395,12 +437,14 @@ class CycleGateAggregator:
 
     def _check_buy_dynamic_kill(
         self, side: str, balance_forced: bool, is_buy_killed: bool,
+        dual_kill_bypass: bool = False,
     ) -> GateCheckResult:
         """A13: buy 動的 kill."""
         if (
             self._config.buy_dynamic_kill_enabled
             and side == "buy"
             and not balance_forced
+            and not dual_kill_bypass  # 219# dual-kill deadlock breaker
             and is_buy_killed
         ):
             return GateCheckResult(
@@ -417,6 +461,7 @@ class CycleGateAggregator:
         balance_forced: bool,
         is_sell_killed: bool,
         inv_net_imbalance: float,
+        dual_kill_bypass: bool = False,
     ) -> GateCheckResult:
         """A14: sell 動的 kill."""
         # 171# inv bypass
@@ -429,6 +474,7 @@ class CycleGateAggregator:
             and side == "sell"
             and not balance_forced
             and not _inv_bypass
+            and not dual_kill_bypass  # 219# dual-kill deadlock breaker
             and is_sell_killed
         ):
             return GateCheckResult(
@@ -487,12 +533,19 @@ class CycleGateAggregator:
         return GateCheckResult(gate_name="velocity_skip", blocked=False)
 
     def _check_unknown_regime_sell(
-        self, side: str, regime: str,
+        self, side: str, regime: str, balance_forced: bool = False,
+        unknown_bypass: bool = False,
     ) -> GateCheckResult:
-        """C2: unknown regime での sell skip."""
+        """C2: unknown regime での sell skip.
+
+        219# balance_forced bypass 追加 (Gate1 との対称性修正)。
+        219# unknown_bypass: 連続ブロック超過時の強制通過。
+        """
         if (
             self._config.skip_sell_unknown_regime
             and side == "sell"
+            and not balance_forced  # 219# Gate1との対称性
+            and not unknown_bypass  # 219# 連続ブロックバイパス
             and regime == "unknown"
         ):
             return GateCheckResult(
