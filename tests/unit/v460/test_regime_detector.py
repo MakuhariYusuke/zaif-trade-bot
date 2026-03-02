@@ -1179,7 +1179,8 @@ class TestPhaseD5KillCooldown:
         from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
 
         config = SellKillConfig(
-            enabled=True, window=5, threshold_bps=-0.5, resume_window=10
+            enabled=True, window=5, threshold_bps=-0.5, resume_window=10,
+            max_stale_kill_cycles=0,  # 219#: probe を無効化 (cooldown テスト専用)
         )
         mgr = SellDynamicKillManager(config)
         # タンク: 5 fill の平均を -1.0bps にする → kill 発動

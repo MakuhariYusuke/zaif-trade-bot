@@ -199,4 +199,6 @@ class TestAntiStagnation218:
 
         assert probes >= 2, "should see multiple probes"
         state = mgr.export_state()
-        assert state["total_probe_cycles"] == probes
+        # 219#: force release 後は killed=False が連続するため probes > total_probe_cycles
+        assert state["total_probe_cycles"] >= 2, "should have at least 2 probe fire events"
+        assert state["total_probe_cycles"] <= probes

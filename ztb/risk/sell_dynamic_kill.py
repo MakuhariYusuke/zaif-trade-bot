@@ -39,7 +39,13 @@ class DynamicKillConfig:
     #: この回数 check_kill() が True を返し続けたら 1 サイクルだけ許可して
     #: 新鮮な PnL データを取得するプローブサイクルを発動する。
     #: 0 = 無効 (従来互換)。
-    max_stale_kill_cycles: int = 30
+    #: 219# 30→10 に短縮 (60分→20分)。
+    max_stale_kill_cycles: int = 10
+    #: 219# progressive probe: 連続 probe 時に interval を半減する際の下限。
+    min_probe_interval: int = 2
+    #: 219# force release: この回数 consecutive probe が発火したら
+    #: new data が来るまで kill を強制解除する。0 = 無効。
+    max_force_release_probes: int = 5
 
     def __post_init__(self) -> None:
         """173# バリデーション: window/resume_window >= 1."""
@@ -87,6 +93,8 @@ class DynamicKillManager:
         "_side",
         "_stale_counter",
         "_total_probe_cycles",
+        "_consecutive_probes",  # 219#
+        "_force_released",       # 219#
     )
 
     def __init__(self, config: DynamicKillConfig | None = None, *, side: str = "sell") -> None:
@@ -98,6 +106,8 @@ class DynamicKillManager:
         self._side = side
         self._stale_counter: int = 0  # 218# anti-stagnation
         self._total_probe_cycles: int = 0
+        self._consecutive_probes: int = 0  # 219# progressive probe
+        self._force_released: bool = False  # 219# force release active
 
     @property
     def config(self) -> DynamicKillConfig:
@@ -107,6 +117,10 @@ class DynamicKillManager:
         """fill の PnL (bps) を追跡."""
         self._pnl_history.append(pnl_bps)
         self._stale_counter = 0  # 218# 新データ投入 → stale リセット
+        self._consecutive_probes = 0  # 219# 新データ → probe 連続カウンタリセット
+        if self._force_released:
+            self._force_released = False
+            logger.info(f"[219#] {self._side} force release ended — new data received")
         # メモリ制限: 最大 window*3
         max_keep = self._config.window * 3
         if len(self._pnl_history) > max_keep:
@@ -127,15 +141,40 @@ class DynamicKillManager:
                 killed=False, rolling_mean=None, threshold=self._config.threshold_bps, regime=regime
             )
 
-        # 218# anti-stagnation: stale probe check
-        max_stale = self._config.max_stale_kill_cycles
-        if max_stale > 0 and self._stale_counter >= max_stale:
+        # 219# force release: 連続 probe 超過で強制解除中
+        if self._force_released:
+            return False, self._make_telemetry(
+                killed=False, rolling_mean=None, threshold=self._config.threshold_bps, regime=regime
+            )
+
+        # 218#/219# anti-stagnation: stale probe check + progressive interval
+        effective_max_stale = self._effective_probe_interval()
+        if effective_max_stale > 0 and self._stale_counter >= effective_max_stale:
             self._stale_counter = 0
             self._total_probe_cycles += 1
+            self._consecutive_probes += 1  # 219#
+
+            # 219# force release 判定
+            max_fr = self._config.max_force_release_probes
+            if max_fr > 0 and self._consecutive_probes >= max_fr:
+                self._force_released = True
+                logger.warning(
+                    f"[219#] {self._side} FORCE RELEASE: "
+                    f"{self._consecutive_probes} consecutive probes without recovery — "
+                    f"kill disabled until new data (total_probes={self._total_probe_cycles})"
+                )
+                self._cooldown = 0
+                return False, self._make_telemetry(
+                    killed=False, rolling_mean=None,
+                    threshold=self._config.threshold_bps, regime=regime,
+                )
+
             logger.warning(
-                f"[218#] {self._side} dynamic kill probe: "
-                f"stale for {max_stale} cycles without new data — "
-                f"allowing 1 probe cycle (total_probes={self._total_probe_cycles})"
+                f"[219#] {self._side} dynamic kill probe: "
+                f"stale for {effective_max_stale} cycles — "
+                f"allowing 1 probe cycle "
+                f"(consecutive={self._consecutive_probes}, "
+                f"total_probes={self._total_probe_cycles})"
             )
             self._cooldown = 0  # cooldown もリセット
             return False, self._make_telemetry(
@@ -203,6 +242,22 @@ class DynamicKillManager:
             side=self._side,
         )
 
+    def _effective_probe_interval(self) -> int:
+        """219# progressive probe: 連続 probe 回数に応じて interval を半減.
+
+        Returns:
+            現在の effective max_stale_kill_cycles。
+            0 なら probe 無効。
+        """
+        base = self._config.max_stale_kill_cycles
+        if base <= 0 or self._consecutive_probes <= 0:
+            return base
+        # 各 consecutive probe で半減: 10 → 5 → 3 → 2 → 2
+        interval = base
+        for _ in range(self._consecutive_probes):
+            interval = max(self._config.min_probe_interval, (interval + 1) // 2)
+        return interval
+
     def reset(self) -> None:
         """状態リセット."""
         self._pnl_history.clear()
@@ -211,6 +266,8 @@ class DynamicKillManager:
         self._total_cooldown_cycles = 0
         self._stale_counter = 0
         self._total_probe_cycles = 0
+        self._consecutive_probes = 0
+        self._force_released = False
 
     # ------------------------------------------------------------------
     # 209# H4: 状態永続化 — export / import
@@ -229,6 +286,8 @@ class DynamicKillManager:
             "side": self._side,
             "stale_counter": self._stale_counter,
             "total_probe_cycles": self._total_probe_cycles,
+            "consecutive_probes": self._consecutive_probes,
+            "force_released": self._force_released,
         }
 
     def import_state(self, state: dict[str, object]) -> None:
@@ -248,6 +307,8 @@ class DynamicKillManager:
         self._total_cooldown_cycles = int(state.get("total_cooldown_cycles", 0))
         self._stale_counter = int(state.get("stale_counter", 0))
         self._total_probe_cycles = int(state.get("total_probe_cycles", 0))
+        self._consecutive_probes = int(state.get("consecutive_probes", 0))
+        self._force_released = bool(state.get("force_released", False))
         # side は import しない (コンストラクタで固定)
         # メモリ制限: window*3 に収める
         max_keep = self._config.window * 3
