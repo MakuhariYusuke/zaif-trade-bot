@@ -296,3 +296,61 @@ class TestCancelReasonsMCB:
         assert CR.MCB_WARNING == "mcb_warning"
         assert CR.MCB_HALT in CR.AUDIT_CANCEL_REASONS
         assert CR.MCB_WARNING in CR.AUDIT_CANCEL_REASONS
+
+
+# =====================================================================
+# 217# self-review: σ 計算修正の検証テスト
+# =====================================================================
+
+
+class TestMCBSigmaCalcFix217:
+    """217# σ 計算が raw changes の std を使用することの検証."""
+
+    def test_constant_oscillation_no_false_alarm(self) -> None:
+        """一定幅の上下動 → σ が適切に計算され false alarm が出ない.
+
+        旧実装: std(|changes|) → ±1% の一定振幅で std≈0 → 微小変動で HALT。
+        新実装: std(raw changes) → ±1% の振幅で std≈1.0 → 正しい閾値。
+        """
+        mcb = MicroCircuitBreaker(MCBConfig(
+            baseline_sample_interval_sec=1.0,
+            caution_sigma=1.0,
+            warning_sigma=1.5,
+            halt_sigma=2.0,
+            single_window_warning_sigma=2.0,
+            single_window_halt_sigma=3.0,
+        ))
+        base = 100_000.0
+        # 5分間 (300s) の安定期間を構築
+        for i in range(310):
+            mcb.update(base, float(i))
+        # check を 15 回呼んで warmup を超える (min_samples=10)
+        for i in range(15):
+            # 微小な ±1% 振動を価格に追加
+            sign = 1 if i % 2 == 0 else -1
+            mcb.update(base * (1 + sign * 0.01), 310.0 + i * 2)
+            mcb.check(310.0 + i * 2)
+
+        # 通常の 1% 変動 → σ ≈ 1.0 なので sigma_5m ≈ 1.0 → CAUTION or NORMAL
+        mcb.update(base * 1.01, 350.0)
+        result = mcb.check(350.0)
+        # 旧実装では HALT になっていた。新実装では NORMAL or CAUTION
+        assert result.level in (MCBLevel.NORMAL, MCBLevel.CAUTION)
+
+    def test_calc_threshold_uses_raw_std(self) -> None:
+        """_calc_threshold が raw changes の std を返す."""
+        from collections import deque
+        history: deque[float] = deque(maxlen=720)
+        # ±1.0 の交互変動 → raw std ≈ 1.0
+        for i in range(20):
+            history.append(1.0 if i % 2 == 0 else -1.0)
+        threshold = MicroCircuitBreaker._calc_threshold(history, 0.5)
+        # raw std([1,-1,1,-1,...]) = 1.0
+        assert 0.9 < threshold < 1.1
+
+    def test_deque_maxlen_is_720(self) -> None:
+        """change_history の maxlen が 720 (24h/120s) であること."""
+        mcb = MicroCircuitBreaker(MCBConfig())
+        assert mcb._change_history_5m.maxlen == 720
+        assert mcb._change_history_15m.maxlen == 720
+        assert mcb._change_history_1h.maxlen == 720

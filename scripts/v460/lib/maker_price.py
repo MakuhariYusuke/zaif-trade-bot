@@ -174,6 +174,16 @@ class MakerPriceCalculator:
         return self._last_spread
 
     @property
+    def last_spread_raw(self) -> float | None:
+        """217# SAD 用: staleness guard なしの直近 spread (JPY).
+
+        last_spread は 210# M5 の 60s staleness guard 付きだが、
+        SAD は cycle 間隔 (120s) で常に前回値を取得する必要がある。
+        Gate 8-9 は staleness guard 版を、SAD はこちらを使用する。
+        """
+        return self._last_spread
+
+    @property
     def last_mid_price(self) -> float | None:
         """197# Gate 8-9 用: 直近の mid price (JPY)."""
         return self._prev_mid_price

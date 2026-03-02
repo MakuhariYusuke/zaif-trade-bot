@@ -207,3 +207,41 @@ class TestSADIntegration:
         assert CR.SAD_DRY == "sad_dry"
         assert CR.SAD_FROZEN in CR.AUDIT_CANCEL_REASONS
         assert CR.SAD_DRY in CR.AUDIT_CANCEL_REASONS
+
+
+# =====================================================================
+# 217# self-review: last_spread_raw 修正の検証テスト
+# =====================================================================
+
+
+class TestLastSpreadRaw217:
+    """217# maker_price.last_spread_raw が staleness guard なしで spread を返す."""
+
+    def test_last_spread_raw_bypasses_staleness(self) -> None:
+        """last_spread_raw は 60s staleness guard をバイパスする."""
+        from unittest.mock import MagicMock, patch
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+
+        # MakerPriceCalculator の最小構築 (依存を mock)
+        from scripts.v460.lib.fill_config import FillTestConfig
+        cfg = FillTestConfig()
+        mpc = MakerPriceCalculator(cfg, fast_fill_defense=MagicMock(), regime_detector=MagicMock(), base_offset_ratio=0.001)
+
+        # 内部 spread を直接設定 (compute() 経由の代替)
+        mpc._last_spread = 500.0
+        mpc._last_spread_time = 0.0  # 古い時刻
+
+        # last_spread (staleness guard 付き) → 60s 以上前なので None
+        with patch("time.time", return_value=120.0):
+            assert mpc.last_spread is None
+
+        # last_spread_raw (guard なし) → 常に値を返す
+        assert mpc.last_spread_raw == 500.0
+
+    def test_last_spread_raw_returns_none_when_unset(self) -> None:
+        """初期状態では None."""
+        from unittest.mock import MagicMock
+        from scripts.v460.lib.maker_price import MakerPriceCalculator
+        from scripts.v460.lib.fill_config import FillTestConfig
+        mpc = MakerPriceCalculator(FillTestConfig(), fast_fill_defense=MagicMock(), regime_detector=MagicMock(), base_offset_ratio=0.001)
+        assert mpc.last_spread_raw is None

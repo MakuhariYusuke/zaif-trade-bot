@@ -123,12 +123,12 @@ class MicroCircuitBreaker:
         max_samples = int(3600 / max(self._config.baseline_sample_interval_sec, 1.0)) + 100
         self._price_buffer: deque[_PriceSample] = deque(maxlen=max_samples)
         # 24h分の変動率履歴 (σ計算用)
-        # 5m窓: 24h/5m = 288 サンプル
-        self._change_history_5m: deque[float] = deque(maxlen=300)
-        # 15m窓: 24h/15m = 96 サンプル
-        self._change_history_15m: deque[float] = deque(maxlen=100)
-        # 1h窓: 24h/1h = 24 サンプル
-        self._change_history_1h: deque[float] = deque(maxlen=30)
+        # check() は cycle 毎 (~120s) に呼ばれるため、24h/120s = 720 サンプル。
+        # 217# self-review: 旧 maxlen (300/100/30) は窓 duration 基準だったが
+        # 実際の呼出頻度と不整合。全て 720 に統一して真の 24h σ を確保。
+        self._change_history_5m: deque[float] = deque(maxlen=720)
+        self._change_history_15m: deque[float] = deque(maxlen=720)
+        self._change_history_1h: deque[float] = deque(maxlen=720)
         self._last_sample_ts: float = 0.0
         self._halt_until: float = 0.0
         self._total_cautions: int = 0
@@ -308,15 +308,20 @@ class MicroCircuitBreaker:
 
     @staticmethod
     def _calc_threshold(history: deque[float], default_pct: float) -> float:
-        """変動率履歴からσ (標準偏差) を計算. サンプル不足時はデフォルト値."""
+        """変動率履歴からσ (標準偏差) を計算. サンプル不足時はデフォルト値.
+
+        σ = std(raw changes) — 生の変動率分布の標準偏差。
+        sigma_Xm = |current_change| / σ は標準的な z-score 解釈に準拠。
+        """
         min_samples = 10
         if len(history) < min_samples:
             return default_pct
-        # σ = std of absolute changes
-        abs_changes = [abs(c) for c in history]
-        n = len(abs_changes)
-        mean = sum(abs_changes) / n
-        variance = sum((x - mean) ** 2 for x in abs_changes) / n
+        # σ = std of raw changes (NOT abs — abs would measure "volatility of
+        # volatility", giving near-zero σ for constant-magnitude oscillations
+        # and causing false alarms). 217# self-review fix.
+        n = len(history)
+        mean = sum(history) / n
+        variance = sum((x - mean) ** 2 for x in history) / n
         sigma = math.sqrt(variance) if variance > 0 else default_pct
         # σ が極端に小さい場合 (flat market) はデフォルト閾値を下限に
         return max(sigma, default_pct * 0.1)

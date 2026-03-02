@@ -777,7 +777,10 @@ class FillLoopOrchestratorMixin:
             # 211# P1-C: Spread Anomaly Detector — 流動性枯渇検知
             _sad_warning = False
             if self._sad.config.enabled:
-                _sad_spread = getattr(self._maker_price, "last_spread", None)
+                # 217# fix: last_spread は 60s staleness guard 付き (210# M5)。
+                # cycle 間隔 120s では常に stale → None になるため、
+                # staleness guard なしの last_spread_raw を使用する。
+                _sad_spread = getattr(self._maker_price, "last_spread_raw", None)
                 if _sad_spread is not None and _sad_spread > 0:
                     self._sad.update(_sad_spread, time.time())
                 _sad_result = self._sad.check(time.time())
