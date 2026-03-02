@@ -47,6 +47,9 @@ class DailyDrawdownState:
     side_halted_sell: bool = False
     side_halt_remaining_buy: int = 0  # 残存封鎖サイクル数 (0=永続)
     side_halt_remaining_sell: int = 0
+    # 224# B1: halt解除後ソフトリカバリ — 残存リカバリサイクル
+    side_recovery_remaining_buy: int = 0
+    side_recovery_remaining_sell: int = 0
 
 
 class DailyDrawdownGuard:
@@ -68,6 +71,8 @@ class DailyDrawdownGuard:
         per_side_enabled: bool = False,
         per_side_hard_limit_bps: float = -30.0,
         per_side_halt_cycles: int = 0,
+        per_side_recovery_cycles: int = 5,
+        per_side_recovery_lot_scale: float = 0.5,
     ) -> None:
         self._enabled = enabled
         self._hard_limit_bps = hard_limit_bps
@@ -75,6 +80,9 @@ class DailyDrawdownGuard:
         self._per_side_enabled = per_side_enabled
         self._per_side_hard_limit_bps = per_side_hard_limit_bps
         self._per_side_halt_cycles = per_side_halt_cycles
+        # 224# B1: halt解除後ソフトリカバリ
+        self._per_side_recovery_cycles = per_side_recovery_cycles
+        self._per_side_recovery_lot_scale = per_side_recovery_lot_scale
         self._state = DailyDrawdownState()
         self._soft_triggered_today = False
 
@@ -227,12 +235,46 @@ class DailyDrawdownGuard:
             self._state.side_halt_remaining_buy = max(0, self._state.side_halt_remaining_buy - 1)
             if self._state.side_halt_remaining_buy == 0:
                 self._state.side_halted_buy = False
-                logger.info("[daily_drawdown] Per-side halt released: buy (cycles exhausted)")
+                # 224# B1: halt解除 → リカバリ期間開始
+                self._state.side_recovery_remaining_buy = self._per_side_recovery_cycles
+                logger.info(
+                    f"[daily_drawdown] Per-side halt released: buy (cycles exhausted), "
+                    f"recovery={self._per_side_recovery_cycles} cycles"
+                )
         if self._state.side_halted_sell and self._per_side_halt_cycles > 0:
             self._state.side_halt_remaining_sell = max(0, self._state.side_halt_remaining_sell - 1)
             if self._state.side_halt_remaining_sell == 0:
                 self._state.side_halted_sell = False
-                logger.info("[daily_drawdown] Per-side halt released: sell (cycles exhausted)")
+                # 224# B1: halt解除 → リカバリ期間開始
+                self._state.side_recovery_remaining_sell = self._per_side_recovery_cycles
+                logger.info(
+                    f"[daily_drawdown] Per-side halt released: sell (cycles exhausted), "
+                    f"recovery={self._per_side_recovery_cycles} cycles"
+                )
+
+    def get_recovery_lot_scale(self, side: str) -> float:
+        """224# B1: halt解除後のリカバリ期間中の lot 縮小倍率を返す.
+
+        リカバリ残サイクル > 0 の場合、デクリメントして縮小倍率を返す。
+        リカバリ期間外は 1.0 を返す。毎サイクル1回だけ呼ぶこと。
+        """
+        if not self._per_side_enabled or self._per_side_recovery_cycles <= 0:
+            return 1.0
+        if side == "buy" and self._state.side_recovery_remaining_buy > 0:
+            self._state.side_recovery_remaining_buy -= 1
+            logger.info(
+                f"[224# B1] Recovery active: buy lot_scale={self._per_side_recovery_lot_scale}, "
+                f"remaining={self._state.side_recovery_remaining_buy}"
+            )
+            return self._per_side_recovery_lot_scale
+        if side == "sell" and self._state.side_recovery_remaining_sell > 0:
+            self._state.side_recovery_remaining_sell -= 1
+            logger.info(
+                f"[224# B1] Recovery active: sell lot_scale={self._per_side_recovery_lot_scale}, "
+                f"remaining={self._state.side_recovery_remaining_sell}"
+            )
+            return self._per_side_recovery_lot_scale
+        return 1.0
 
     def get_metrics(self) -> dict[str, object]:
         """監視/レポート用メトリクス."""
@@ -253,6 +295,9 @@ class DailyDrawdownGuard:
             "daily_pnl_bps_sell": round(self._state.daily_pnl_bps_sell, 4),
             "side_halted_buy": self._state.side_halted_buy,
             "side_halted_sell": self._state.side_halted_sell,
+            # 224# B1: リカバリ状態
+            "side_recovery_remaining_buy": self._state.side_recovery_remaining_buy,
+            "side_recovery_remaining_sell": self._state.side_recovery_remaining_sell,
         }
 
     def export_state(self) -> dict[str, object]:
@@ -273,6 +318,9 @@ class DailyDrawdownGuard:
             "side_halted_sell": self._state.side_halted_sell,
             "side_halt_remaining_buy": self._state.side_halt_remaining_buy,
             "side_halt_remaining_sell": self._state.side_halt_remaining_sell,
+            # 224# B1: リカバリ状態永続化
+            "side_recovery_remaining_buy": self._state.side_recovery_remaining_buy,
+            "side_recovery_remaining_sell": self._state.side_recovery_remaining_sell,
         }
 
     def import_state(self, data: dict[str, object]) -> None:
@@ -302,6 +350,9 @@ class DailyDrawdownGuard:
         self._state.side_halted_sell = bool(data.get("side_halted_sell", False))
         self._state.side_halt_remaining_buy = int(data.get("side_halt_remaining_buy", 0))
         self._state.side_halt_remaining_sell = int(data.get("side_halt_remaining_sell", 0))
+        # 224# B1: リカバリ状態復元
+        self._state.side_recovery_remaining_buy = int(data.get("side_recovery_remaining_buy", 0))
+        self._state.side_recovery_remaining_sell = int(data.get("side_recovery_remaining_sell", 0))
         logger.info(
             f"[daily_drawdown] State restored: day={saved_day}, "
             f"pnl={self._state.daily_pnl_bps:+.2f}bps, halted={self._state.halted}, "

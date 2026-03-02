@@ -313,6 +313,8 @@ class TestDailyDrawdownMetrics:
             # 205# §9.5: 片側 DD
             "per_side_enabled", "daily_pnl_bps_buy", "daily_pnl_bps_sell",
             "side_halted_buy", "side_halted_sell",
+            # 224# B1: リカバリ
+            "side_recovery_remaining_buy", "side_recovery_remaining_sell",
         }
         assert set(m.keys()) == expected_keys
 

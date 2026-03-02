@@ -246,6 +246,8 @@ class FillTestState:
     toxic_veto: dict[str, int] | None = None
     # 210# L-2: one-sided 連続実行カウンタ永続化 (再起動時に復元)
     one_sided_consecutive_count: int = 0
+    # 224# B1: soft drawdown interval 乗数永続化 (再起動時に復元)
+    soft_drawdown_interval_multiplier: float = 1.0
     # 216# E: Guard 発火カウンタ永続化 (累積。再起動時に復元)
     guard_fire_counts: dict[str, int] | None = None
     # 209# H4: DynamicKillManager 状態永続化 (rolling PnL window + cooldown)

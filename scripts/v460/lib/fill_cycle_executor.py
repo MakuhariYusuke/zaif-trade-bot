@@ -928,6 +928,16 @@ class FillCycleExecutorMixin:
                 f"{_pre_lot} → {_order_lot}"
             )
 
+        # 224# B1: halt解除後ソフトリカバリ lot 縮小
+        _recovery_lm = getattr(self, "_halt_recovery_lot_mult", 1.0)
+        if _recovery_lm < 1.0:
+            _pre_lot = _order_lot
+            _order_lot = max(self.config.order_quantity, _order_lot * _recovery_lm)
+            logger.info(
+                f"[224# B1] Recovery lot_scale={_recovery_lm:.2f}: "
+                f"{_pre_lot:.6f} → {_order_lot:.6f}"
+            )
+
         for attempt in range(1 + self.config.max_order_retries):
             try:
                 # 130# E1: postonly 二重確認 — 発注直前に mid price を再取得し

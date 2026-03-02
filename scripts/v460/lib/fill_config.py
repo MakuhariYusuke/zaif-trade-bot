@@ -174,6 +174,9 @@ class FillTestConfig:
     per_side_dd_enabled: bool = False           # True で片側 DD ガードを有効化
     per_side_dd_hard_limit_bps: float = -30.0   # 片側累積 PnL がこの bps 以下でそのサイドを封鎖
     per_side_dd_halt_cycles: int = 0            # 封鎖サイクル数 (0=UTC 日替わりまで永続封鎖)
+    # 224# B1: halt解除後ソフトリカバリ — lot 縮小で段階的復帰
+    per_side_dd_recovery_cycles: int = 5        # リカバリ期間サイクル数 (0=無効)
+    per_side_dd_recovery_lot_scale: float = 0.5 # リカバリ期間中の lot 倍率
     # 049# E3 サンプリング: 全約定ではなくサンプリングで multi-timeframe 計測
     e3_sampling_ratio: float = 1.0  # 0.0-1.0, 1.0=全約定, 0.33=1/3 のみ
     # 049# side 別 offset: buy/sell で独立に offset を設定
@@ -1041,6 +1044,11 @@ class FillTestConfig:
             kwargs["per_side_dd_hard_limit_bps"] = float(dd_guard["per_side_hard_limit_bps"])
         if "per_side_halt_cycles" in dd_guard:
             kwargs["per_side_dd_halt_cycles"] = int(dd_guard["per_side_halt_cycles"])
+        # 224# B1: halt解除後ソフトリカバリ
+        if "per_side_recovery_cycles" in dd_guard:
+            kwargs["per_side_dd_recovery_cycles"] = int(dd_guard["per_side_recovery_cycles"])
+        if "per_side_recovery_lot_scale" in dd_guard:
+            kwargs["per_side_dd_recovery_lot_scale"] = float(dd_guard["per_side_recovery_lot_scale"])
 
         return kwargs
 

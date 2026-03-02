@@ -375,6 +375,8 @@ class FillTestRunner(
             per_side_enabled=config.per_side_dd_enabled,
             per_side_hard_limit_bps=config.per_side_dd_hard_limit_bps,
             per_side_halt_cycles=config.per_side_dd_halt_cycles,
+            per_side_recovery_cycles=config.per_side_dd_recovery_cycles,
+            per_side_recovery_lot_scale=config.per_side_dd_recovery_lot_scale,
         )
 
         # 044# A-7: loss_cap 更新カウンタ
@@ -416,8 +418,10 @@ class FillTestRunner(
     # ==================================================================
 
     def _rebuild_sell_kill_mgr(self) -> None:
-        """sell_dynamic_kill 設定変更時にマネージャを再構築."""
+        """sell_dynamic_kill 設定変更時にマネージャを再構築 (状態継承)."""
         from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
+        # 224# fix: 再構築時に PnL 履歴等の状態を保存+復元
+        old_state = self._sell_kill_mgr.export_state()
         self._sell_kill_mgr = SellDynamicKillManager(SellKillConfig(
             enabled=self.config.sell_dynamic_kill_enabled,
             window=self.config.sell_dynamic_kill_window,
@@ -425,10 +429,14 @@ class FillTestRunner(
             resume_window=self.config.sell_dynamic_kill_resume_window,
             regime_thresholds=self.config.sell_dynamic_kill_regime_thresholds,
         ))
+        if old_state:
+            self._sell_kill_mgr.import_state(old_state)
 
     def _rebuild_buy_kill_mgr(self) -> None:
-        """buy_dynamic_kill 設定変更時にマネージャを再構築."""
+        """buy_dynamic_kill 設定変更時にマネージャを再構築 (状態継承)."""
         from ztb.risk.sell_dynamic_kill import BuyDynamicKillManager, DynamicKillConfig
+        # 224# fix: 再構築時に PnL 履歴等の状態を保存+復元
+        old_state = self._buy_kill_mgr.export_state()
         self._buy_kill_mgr = BuyDynamicKillManager(DynamicKillConfig(
             enabled=self.config.buy_dynamic_kill_enabled,
             window=self.config.buy_dynamic_kill_window,
@@ -436,7 +444,8 @@ class FillTestRunner(
             resume_window=self.config.buy_dynamic_kill_resume_window,
             regime_thresholds=self.config.buy_dynamic_kill_regime_thresholds,
         ))
-
+        if old_state:
+            self._buy_kill_mgr.import_state(old_state)
     def _rebuild_daily_drawdown_guard(self) -> None:
         """daily_drawdown 設定変更時にガードを再構築 (状態継承)."""
         from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
@@ -448,6 +457,8 @@ class FillTestRunner(
             per_side_enabled=self.config.per_side_dd_enabled,
             per_side_hard_limit_bps=self.config.per_side_dd_hard_limit_bps,
             per_side_halt_cycles=self.config.per_side_dd_halt_cycles,
+            per_side_recovery_cycles=self.config.per_side_dd_recovery_cycles,
+            per_side_recovery_lot_scale=self.config.per_side_dd_recovery_lot_scale,
         )
         if old_state:
             self._daily_drawdown_guard.import_state(old_state)

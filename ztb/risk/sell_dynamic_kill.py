@@ -128,6 +128,27 @@ class DynamicKillManager:
         if len(self._pnl_history) > max_keep:
             self._pnl_history = self._pnl_history[-max_keep:]
 
+    def is_kill_active(self) -> tuple[bool, float | None, int]:
+        """224# B2: 副作用なしで kill 状態を検査.
+
+        check_kill() は cooldown デクリメント等の副作用があるため、
+        日替わり境界など副作用を避けたい場面で使用する。
+
+        Returns:
+            (is_active, rolling_mean, rolling_count)
+        """
+        if not self._config.enabled or self._force_released:
+            return False, None, len(self._pnl_history)
+        if self._cooldown > 0:
+            return True, None, len(self._pnl_history)
+        window = self._config.window
+        if len(self._pnl_history) < window:
+            return False, None, len(self._pnl_history)
+        recent = self._pnl_history[-window:]
+        rolling_mean = sum(recent) / len(recent)
+        threshold = self._config.threshold_bps
+        return rolling_mean < threshold, rolling_mean, len(self._pnl_history)
+
     def check_kill(self, regime: str | None = None) -> tuple[bool, DynamicKillTelemetry]:
         """kill すべきか判定.
 

@@ -473,6 +473,9 @@ loss_control:
     per_side_enabled: true         # 片側 DD ガード有効化
     per_side_hard_limit_bps: -30.0 # 片側累積 PnL がこの bps 以下でそのサイドを封鎖
     per_side_halt_cycles: 15       # 218# 封鎖サイクル数 (15×120s=30分で解除; 旧0=永続→デッドロック原因)
+    # 224# B1: halt解除後ソフトリカバリ — lot半減で段階的復帰
+    per_side_recovery_cycles: 5    # リカバリ期間サイクル数 (5×120s=10分; 0=無効)
+    per_side_recovery_lot_scale: 0.5  # リカバリ期間中lot倍率 (0.5=半減)
 
 # ---- 102# チューニングパラメータ (散在マジックナンバーの外部化) ----
 tuning:

@@ -48,6 +48,8 @@ class FillLoopOrchestratorMixin:
     _halt_iter_count: int = 0
     # 202# A: 単一サイクル大損失クールダウン乗数 (次サイクルのみ有効)
     _loss_cooldown_mult: float = 1.0
+    # 224# B1: halt解除後ソフトリカバリ lot 倍率 (orchestrator が設定、executor が参照)
+    _halt_recovery_lot_mult: float = 1.0
     # 205# §9.2: Toxic Fill 同一サイド拒否 — side → 残存拒否サイクル数
     _toxic_veto: dict[str, int] | None = None
     # 207# §4: one-sided 連続実行カウンタ (205# §4.2 Codex 対応)
@@ -249,6 +251,10 @@ class FillLoopOrchestratorMixin:
             toxic_veto=dict(self._toxic_veto) if self._toxic_veto else None,
             # 210# L-2: one-sided 連続カウンタ永続化
             one_sided_consecutive_count=self._one_sided_consecutive_count,
+            # 224#: soft drawdown interval 乗数永続化
+            soft_drawdown_interval_multiplier=getattr(
+                self, "_soft_drawdown_interval_multiplier", 1.0
+            ),
             # 216# E: Guard 発火カウンタ永続化
             guard_fire_counts=dict(self._guard_fire_counts) if self._guard_fire_counts else None,
             # 209# H4: DynamicKillManager 状態永続化
@@ -286,6 +292,13 @@ class FillLoopOrchestratorMixin:
             logger.info(
                 f"[210# L-2] One-sided count restored: "
                 f"{self._one_sided_consecutive_count}"
+            )
+        # 224#: soft drawdown interval 乗数復元
+        _sd_mult = getattr(saved_state, "soft_drawdown_interval_multiplier", 1.0)
+        if _sd_mult != 1.0:
+            self._soft_drawdown_interval_multiplier = _sd_mult
+            logger.info(
+                f"[224#] Soft drawdown interval multiplier restored: {_sd_mult:.1f}"
             )
         # 216# E: Guard 発火カウンタ復元
         if saved_state.guard_fire_counts:
@@ -692,6 +705,24 @@ class FillLoopOrchestratorMixin:
                         f"{self._one_sided_consecutive_count} → 0"
                     )
                     self._one_sided_consecutive_count = 0
+                # 224# B2: 日替わりリセット × dynamic kill 矛盾検出
+                # maybe_reset_day() は per-side halt/PnL を全クリアするが、
+                # DynamicKillManager の rolling window は cross-day で残存。
+                # kill がアクティブなまま halt が解除されると矛盾が生じるため警告。
+                for _km_label, _km in [
+                    ("sell", self._sell_kill_mgr),
+                    ("buy", self._buy_kill_mgr),
+                ]:
+                    _k_active, _k_mean, _k_count = _km.is_kill_active()
+                    if _k_active:
+                        logger.warning(
+                            f"[224# B2] Day reset but {_km_label}_dynamic_kill still active: "
+                            f"rolling_mean={_k_mean}, "
+                            f"rolling_count={_k_count} — "
+                            f"resetting kill state for clean day start"
+                        )
+                        _km.reset()
+                        self._inc_guard_fire("day_reset_kill_conflict")
 
             # 168# §4.1 #3: 日次ドローダウンガード — halt 中はスキップ
             if self._daily_drawdown_guard.is_halted():
@@ -1370,6 +1401,10 @@ class FillLoopOrchestratorMixin:
                 )
                 self._last_side = next_side
 
+                # 224# guard_fire_counts: ゲートブロック理由を記録
+                if _gate_result.blocking_reason:
+                    self._inc_guard_fire(f"gate_{_gate_result.blocking_reason}")
+
                 # 218# デッドロック検出
                 self._consecutive_gate_blocks += 1
                 if self._consecutive_gate_blocks >= 10 and self._consecutive_gate_blocks % 10 == 0:
@@ -1415,6 +1450,14 @@ class FillLoopOrchestratorMixin:
                     self._trending_sell_skip_count = 0
 
             try:
+                # 224# B1: halt解除後ソフトリカバリ — lot 縮小倍率を算出
+                _recovery_scale = self._daily_drawdown_guard.get_recovery_lot_scale(
+                    next_side
+                )
+                if _recovery_scale < 1.0:
+                    self._inc_guard_fire("per_side_halt_recovery_active")
+                self._halt_recovery_lot_mult = _recovery_scale
+
                 record = await self.run_single_cycle(
                     side_override=next_side,
                     balance_forced_switch=_balance_forced,
