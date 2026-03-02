@@ -249,3 +249,23 @@ class FastFillDefense:
         self._base_offset_ratio = base
         self._base_offset_ratio_buy = buy
         self._base_offset_ratio_sell = sell
+
+    def export_state(self) -> dict[str, object]:
+        """226# hot-reload 時の boost 状態保存."""
+        return {
+            "buy_boost_active": self._state_buy.boost_active,
+            "buy_boost_multiplier": self._state_buy.boost_multiplier,
+            "buy_boost_activated_at": self._state_buy.boost_activated_at,
+            "sell_boost_active": self._state_sell.boost_active,
+            "sell_boost_multiplier": self._state_sell.boost_multiplier,
+            "sell_boost_activated_at": self._state_sell.boost_activated_at,
+        }
+
+    def import_state(self, state: dict[str, object]) -> None:
+        """226# hot-reload 後の boost 状態復元."""
+        self._state_buy.boost_active = bool(state.get("buy_boost_active", False))
+        self._state_buy.boost_multiplier = float(state.get("buy_boost_multiplier", 1.0))
+        self._state_buy.boost_activated_at = float(state.get("buy_boost_activated_at", 0.0))
+        self._state_sell.boost_active = bool(state.get("sell_boost_active", False))
+        self._state_sell.boost_multiplier = float(state.get("sell_boost_multiplier", 1.0))
+        self._state_sell.boost_activated_at = float(state.get("sell_boost_activated_at", 0.0))

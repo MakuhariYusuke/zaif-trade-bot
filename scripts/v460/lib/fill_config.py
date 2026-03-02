@@ -376,7 +376,10 @@ class FillTestConfig:
     loss_cooldown_interval_mult: float = 2.0    # 損失後のインターバル乗数 (1サイクル限定)
     # 204# I: Per-fill loss offset boost — 大損後に次回 offset を一時的に拡大
     # loss_cooldown (interval延長) + toxic_veto (side封鎖) に加え、offset も防御拡大
-    loss_boost_offset_mult: float = 1.5  # 大損後の offset 乗数 (1サイクル限定, 1.0=無効)
+    loss_boost_offset_mult: float = 1.5  # 大損後の offset 乗数 (1.0=無効)
+    # 226# T1: loss_boost 指数減衰 τ (秒) — AS理論に基づく情報非対称性リスク減衰
+    # τ=300s → 5分で boost 63%減衰, 10分で86%減衰, 15分で95%減衰
+    loss_boost_decay_tau_sec: float = 300.0
     # 205# §9.2: Toxic Fill 同一サイド拒否 — 大損後に同一方向を N サイクル完全封鎖
     # loss_cooldown (202# A) は interval 2x 延長のみで不十分。同一サイドの連鎖損失を遮断
     toxic_fill_veto_threshold_bps: float = -5.0  # この PnL 以下で同一サイド拒否発動
@@ -1032,6 +1035,11 @@ class FillTestConfig:
             kwargs["toxic_fill_veto_threshold_bps"] = float(止血["toxic_fill_veto_threshold_bps"])
         if "toxic_fill_veto_cycles" in 止血:
             kwargs["toxic_fill_veto_cycles"] = int(止血["toxic_fill_veto_cycles"])
+        # 204# I: loss_boost_offset_mult + 226# T1: 指数減衰 τ
+        if "loss_boost_offset_mult" in 止血:
+            kwargs["loss_boost_offset_mult"] = float(止血["loss_boost_offset_mult"])
+        if "loss_boost_decay_tau_sec" in 止血:
+            kwargs["loss_boost_decay_tau_sec"] = float(止血["loss_boost_decay_tau_sec"])
         # 202# B: 片側残高枯渇時の rescue offset
         if "one_sided_balance_rescue_offset" in 止血:
             kwargs["one_sided_balance_rescue_offset"] = 止血["one_sided_balance_rescue_offset"]

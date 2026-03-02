@@ -466,6 +466,12 @@ class FillTestRunner(
     def _rebuild_fast_fill_defense(self) -> None:
         """fast_fill_defense 設定変更時に再構築."""
         from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
+        # 226# hot-reload: 旧 boost 状態を保存
+        _old_state = (
+            self._fast_fill_defense.export_state()
+            if hasattr(self._fast_fill_defense, "export_state")
+            else None
+        )
         self._fast_fill_defense = FastFillDefense(
             config=FastFillDefenseConfig(
                 enabled=self.config.fast_fill_defense_enabled,
@@ -482,6 +488,14 @@ class FillTestRunner(
             base_offset_ratio_buy=self.config.spread_offset_ratio_buy,
             base_offset_ratio_sell=self.config.spread_offset_ratio_sell,
         )
+        # 226# hot-reload: 旧 boost 状態を復元
+        if _old_state is not None:
+            self._fast_fill_defense.import_state(_old_state)
+            logger.info(
+                f"[226#] FFD hot-reload: boost state preserved "
+                f"(buy_active={_old_state.get('buy_boost_active')}, "
+                f"sell_active={_old_state.get('sell_boost_active')})"
+            )
 
     def _rebuild_cycle_strategy(self) -> None:
         """179# regime_policy 設定変更時に CycleStrategy を再構築."""

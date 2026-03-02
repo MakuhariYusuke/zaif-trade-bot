@@ -6,6 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 226# loss_boost指数減衰 + MCB/FFD state永続化 + inv_skew O(1) + toxic_veto修正 (2026-03-02)
+
+### Added (Theory)
+- **T1: loss_boost 指数減衰 (AS理論)**: 大損後の offset boost を 1-shot 消費から指数減衰 `mult(t) = 1 + (M-1)·exp(-t/τ)` に変更。`loss_boost_decay_tau_sec` (default=300s) で制御。Avellaneda-Stoikov 2008 の情報非対称性リスク減衰理論に基づく (`maker_price.py`)
+
+### Fixed (Safety)
+- **S5: halt中 MCB/SAD フィード継続**: DD halt 中も MCB/SAD に price/spread を供給し、halt 解除直後の σ 陳腐化による誤判定を防止 (`fill_loop_orchestrator.py`)
+- **S2: toxic_veto 三重発火ループ修正**: balance_forced → per_side_halt → continue パスで toxic_veto カウンタが減算されず永久ループする問題を修正 (`fill_loop_orchestrator.py`)
+
+### Fixed (State Persistence)
+- **#4-2: MCB change_history 永続化**: `_change_history_5m/15m/1h` を `export_state()`/`import_state()` に追加。リスタート後の σ 精度劣化を防止 (`micro_circuit_breaker.py`)
+- **#2-1: FFD hot-reload state 保存**: `export_state()`/`import_state()` メソッドを新設。hot-reload 時の boost state (buy/sell active, multiplier, activation time) 消失を防止 (`fast_fill_defense.py`, `run_fill_test.py`)
+
+### Improved (Performance)
+- **P5: inv_skew O(1) 化**: `update_inventory()` の O(n) 全走査を O(1) インクリメンタルカウンターに置換。`_inv_buy_count` で eviction を追跡 (`maker_price.py`)
+
+### Added (Config)
+- `loss_boost_decay_tau_sec: float = 300.0` — loss_boost 指数減衰の時定数 τ (秒) (`fill_config.py`)
+- `loss_boost_offset_mult` / `loss_boost_decay_tau_sec` の YAML parser 追加 (`fill_config.py`)
+- YAML: `loss_boost_offset_mult: 1.3`, `loss_boost_decay_tau_sec: 300.0` (`fill_test.yaml`)
+
+### Tests
+- `test_226_loss_boost_decay_inv_skew_state.py` — 30 テスト (T1 指数減衰 × 7, P5 O(1) × 8, #4-2 MCB 永続化 × 3, #2-1 FFD state × 5, S2 veto 減算 × 1, S5 halt MCB/SAD × 2, YAML parser × 3, FFD hot-reload × 1)
+- 総テスト: 3046 passed, 0 failed
+
+
 ## 200# 199 Codex/Gemini レビュー評価 + P0 実装 (2026-03-01)
 
 ### Fixed

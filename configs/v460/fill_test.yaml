@@ -388,6 +388,11 @@ loss_control:
   # 202# A: 単一サイクル大損失クールダウン (連鎖損失防止)
   loss_cooldown_threshold_bps: -10.0   # PnL がこの値以下で次サイクル interval 延長
   loss_cooldown_interval_mult: 2.0     # 損失後の interval 乗数 (1サイクル限定)
+  # 204# I: per-fill loss offset boost — 大損後に offset を一時的に拡大
+  loss_boost_offset_mult: 1.3          # 大損後の offset 乗数 (1.0=無効)
+  # 226# T1: loss_boost 指数減衰 — AS理論に基づく情報非対称性リスクの指数減衰
+  # τ=300s → 5分で63%減衰, 10分で86%減衰。1-shot (即消費) から緩やかな防御に移行
+  loss_boost_decay_tau_sec: 300.0
   # 205# §9.2: Toxic Fill 同一サイド拒否 (大損後に同一方向を N サイクル完全封鎖)
   # 202# A の interval 延長は不十分 — 同一サイドの連鎖損失を根本遮断
   toxic_fill_veto_threshold_bps: -5.0  # この PnL 以下で同一サイド拒否発動

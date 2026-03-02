@@ -98,11 +98,13 @@ class MakerPriceCalculator:
         "_last_vg_boost_factor",
         "_inv_fill_history",        # 162# inventory skewing fill deque
         "_inv_net_imbalance",        # 162# normalized net imbalance [-1,1]
+        "_inv_buy_count",            # 226# P5: O(1) incremental buy counter
         "_last_inv_skew_factor",     # 168# last applied inv_skew factor
         "_last_ob_snapshot",
         "_last_spread",              # 197# cached spread for Gate pre-check
         "_last_spread_time",         # 210# M5: staleness tracking
         "_loss_boost_mult",          # 211# 204# I: per-fill loss offset boost
+        "_loss_boost_set_time",      # 226# T1: boost 設定時刻 (指数減衰用)
     )
 
     def __init__(
@@ -143,13 +145,16 @@ class MakerPriceCalculator:
         _w = config.inventory_skewing_window if config.inventory_skewing_window > 0 else 100
         self._inv_fill_history: collections.deque[str] = collections.deque(maxlen=_w)
         self._inv_net_imbalance: float = 0.0
+        self._inv_buy_count: int = 0  # 226# P5: O(1) buy count tracker
         # 168# InvSkew/VG 競合解消: 直近の InvSkew 補正係数 (負=sell緩和)
         self._last_inv_skew_factor: float = 0.0
         # 197# cached spread for CycleGateAggregator pre-check
         self._last_spread: float | None = None
         self._last_spread_time: float | None = None  # 210# M5: staleness tracking
-        # 211# 204# I: per-fill loss offset boost (1-shot, reset after application)
+        # 211# 204# I: per-fill loss offset boost
+        # 226# T1: 1-shot → 指数減衰 (Avellaneda-Stoikov AS理論)
         self._loss_boost_mult: float = 1.0
+        self._loss_boost_set_time: float = 0.0
 
     def get_fallback_price(self) -> tuple[float | None, float | None]:
         """156# §16: OB エラー時のフォールバック価格と記録時刻を返す.
@@ -196,14 +201,24 @@ class MakerPriceCalculator:
     def update_inventory(self, side: str) -> None:
         """162# Inventory Skewing: fill 後に在庫偏重を更新.
 
+        226# P5: O(n) scan → O(1) incremental counter に改善。
+        deque maxlen 溢れ時の eviction も追跡。
+
         Args:
             side: 'buy' or 'sell'  約定した side.
         """
-        self._inv_fill_history.append(side)
-        n = len(self._inv_fill_history)
-        buys = sum(1 for s in self._inv_fill_history if s == "buy")
+        # maxlen 到達時の eviction 追跡
+        dq = self._inv_fill_history
+        if len(dq) == dq.maxlen:
+            evicted = dq[0]  # 左端が溢れる
+            if evicted == "buy":
+                self._inv_buy_count -= 1
+        dq.append(side)
+        if side == "buy":
+            self._inv_buy_count += 1
+        n = len(dq)
         # imbalance: +1 = all buys (long偏重), -1 = all sells (short偏重)
-        self._inv_net_imbalance = (2 * buys - n) / n
+        self._inv_net_imbalance = (2 * self._inv_buy_count - n) / n
 
     @property
     def inv_net_imbalance(self) -> float:
@@ -261,11 +276,16 @@ class MakerPriceCalculator:
         self._fast_fill_defense = ffd
 
     def set_loss_boost(self, mult: float) -> None:
-        """211# 204# I: 大損直後に次回 offset を一時的に拡大.
+        """211# 204# I: 大損直後に offset を一時的に拡大.
 
-        1 回の compute() 呼び出しで消費され 1.0 にリセットされる。
+        226# T1: 1-shot → 指数減衰に変更。
+        AS 理論 (Avellaneda-Stoikov 2008): 大損後の情報非対称性リスクは
+        指数的に減衰する。タイムスタンプを記録し、
+        compute() 内で exp(-t/τ) で減衰させる。
         """
+        import time as _time
         self._loss_boost_mult = mult
+        self._loss_boost_set_time = _time.time()
 
     @property
     def last_vg_velocity_bps(self) -> float | None:
@@ -868,22 +888,35 @@ class MakerPriceCalculator:
             side, imb, effective_offset_ratio,
         )
 
-        # 211# 204# I: per-fill loss offset boost (1-shot)
-        if self._loss_boost_mult != 1.0:
-            _lb_mult = self._loss_boost_mult
-            self._loss_boost_mult = 1.0  # 1サイクルで消費
-            pre_offset = effective_offset_ratio
-            effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
-                effective_offset_ratio,
-                _lb_mult,
-                max_ratio=cfg.max_offset_ratio,
-            )
-            if _applied_mult != 1.0:
-                logger.warning(
-                    f"[204# I] Loss boost: {side} offset "
-                    f"{pre_offset:.4f} → {effective_offset_ratio:.4f} "
-                    f"(mult={_applied_mult:.2f})"
+        # 211# 204# I  226# T1: loss offset boost (指数減衰)
+        # Avellaneda-Stoikov: ASリスクは指数的に減衰 mult(t) = 1 + (M-1)*exp(-t/τ)
+        if self._loss_boost_mult > 1.0 and self._loss_boost_set_time > 0.0:
+            import math as _math
+            _elapsed = now - self._loss_boost_set_time
+            _tau = cfg.loss_boost_decay_tau_sec
+            if _tau > 0 and _elapsed > 0:
+                _decay = _math.exp(-_elapsed / _tau)
+            else:
+                _decay = 1.0
+            _decayed_mult = 1.0 + (self._loss_boost_mult - 1.0) * _decay
+            # 減衰が十分 (mult < 1.01) ならリセット
+            if _decayed_mult < 1.01:
+                self._loss_boost_mult = 1.0
+                self._loss_boost_set_time = 0.0
+            else:
+                pre_offset = effective_offset_ratio
+                effective_offset_ratio, _applied_mult = self._scale_offset_ratio(
+                    effective_offset_ratio,
+                    _decayed_mult,
+                    max_ratio=cfg.max_offset_ratio,
                 )
+                if _applied_mult != 1.0:
+                    logger.info(
+                        f"[226# T1] Loss boost (decay): {side} offset "
+                        f"{pre_offset:.4f} → {effective_offset_ratio:.4f} "
+                        f"(mult={_decayed_mult:.3f}, elapsed={_elapsed:.0f}s, "
+                        f"τ={_tau:.0f}s)"
+                    )
 
         offset = max(cfg.min_offset_jpy, spread * effective_offset_ratio)
 

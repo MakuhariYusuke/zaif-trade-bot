@@ -808,6 +808,17 @@ class FillLoopOrchestratorMixin:
                         f"[daily_drawdown] Halt cycle #{self._halt_iter_count}"
                         f" (next log @+{_HALT_PERSIST_INTERVAL} iters)"
                     )
+                # 226# S5: halt 中も MCB/SAD に price/spread をフィードし続ける。
+                # halt 解除直後に陳腐化した σ で誤判定するのを防止。
+                # ※ check() は呼ばない (halt 中の二重ガードは不要)。
+                if self._mcb.config.enabled:
+                    _mcb_mid = getattr(self._maker_price, "last_mid_price", None)
+                    if _mcb_mid is not None and _mcb_mid > 0:
+                        self._mcb.update(_mcb_mid, time.time())
+                if self._sad.config.enabled:
+                    _sad_spread = getattr(self._maker_price, "last_spread_raw", None)
+                    if _sad_spread is not None and _sad_spread > 0:
+                        self._sad.update(_sad_spread, time.time())
                 await self._effective_sleep(multiplier=5.0)  # 179# S1: halt 中は 5x 間隔
                 continue
 
@@ -1168,6 +1179,19 @@ class FillLoopOrchestratorMixin:
                             f"refusing to bypass halt (safety > liveness)"
                         )
                         self._inc_guard_fire("balance_forced_halt_block")
+                        # 226# S2: balance_forced + halt_block で continue する際、
+                        # toxic_veto のカウンタも減算する。
+                        # さもないと veto 側が永久ループ (veto→balance_forced→halt→continue
+                        # でカウンタ不変 → 次 cycle も同一パスを通過)。
+                        if self._toxic_veto:
+                            for _vs in list(self._toxic_veto.keys()):
+                                self._toxic_veto[_vs] -= 1
+                                if self._toxic_veto[_vs] <= 0:
+                                    del self._toxic_veto[_vs]
+                                    logger.info(
+                                        f"[226# S2] Toxic veto expired "
+                                        f"(halt_block path): {_vs}"
+                                    )
                         batch.append(self._make_loop_skip_record(
                             side=next_side,
                             cancel_reason=CR.PER_SIDE_DD_HALT,

@@ -337,6 +337,10 @@ class MicroCircuitBreaker:
                 {"ts": s.timestamp, "price": s.price}
                 for s in self._price_buffer
             ],
+            # 226# σ計算用の変動率履歴を永続化 (再起動時の感度劣化防止)
+            "change_history_5m": list(self._change_history_5m),
+            "change_history_15m": list(self._change_history_15m),
+            "change_history_1h": list(self._change_history_1h),
         }
 
     def import_state(self, state: dict[str, object]) -> None:
@@ -355,6 +359,17 @@ class MicroCircuitBreaker:
                     )
             if self._price_buffer:
                 self._last_sample_ts = self._price_buffer[-1].timestamp
+        # 226# σ計算用の変動率履歴を復元
+        for key, attr in [
+            ("change_history_5m", "_change_history_5m"),
+            ("change_history_15m", "_change_history_15m"),
+            ("change_history_1h", "_change_history_1h"),
+        ]:
+            raw = state.get(key, [])
+            if isinstance(raw, list) and raw:
+                target = getattr(self, attr)
+                target.clear()
+                target.extend(float(v) for v in raw)
 
     @property
     def is_halted(self) -> bool:
