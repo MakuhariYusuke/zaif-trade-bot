@@ -71,14 +71,24 @@ def _migrate_pipeline_feature_names(pipeline: Pipeline) -> None:
                 step.feature_names_in_ = migrated
             except AttributeError:
                 # LGBMRegressor etc. — property with no setter
-                # 内部属性 (_Booster.feature_name) を直接更新
+                # 内部属性 (_Booster) を直接更新
                 if hasattr(step, "_Booster") and step._Booster is not None:
                     booster = step._Booster
                     old_names = booster.feature_name()
                     new_names = [
                         _FEATURE_NAME_MIGRATION.get(n, n) for n in old_names
                     ]
-                    booster.feature_name_ = new_names
+                    # 217# fix: Booster.feature_name_ は setter なし。
+                    # save_model/load_model で名前が反映されるよう
+                    # Booster 内部を直接書き換える。
+                    try:
+                        booster.set_feature_name(new_names)
+                    except AttributeError:
+                        # LightGBM API が変わった場合の安全弁
+                        logger.debug(
+                            "[217#] LGBMRegressor feature name migration skipped: "
+                            "Booster.set_feature_name not available"
+                        )
 
 #: skip gate で使用する特徴量カラム (順序固定)
 #: 071# OB 特徴量を除去 — 072# トグルで復元可能

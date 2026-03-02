@@ -309,7 +309,9 @@ class FillLoopOrchestratorMixin:
         base = self._cycle_strategy.effective_interval(regime)
         # 200# P0-2: soft drawdown で lot 半減不可 → interval 延長
         soft_dd_mult = getattr(self, "_soft_drawdown_interval_multiplier", 1.0)
-        _raw = base * multiplier * soft_dd_mult
+        # 217# fix: alert_mode の interval_mult をスキップ/halt パスにも適用
+        alert_im = getattr(self, "_alert_interval_mult", 1.0)
+        _raw = base * multiplier * soft_dd_mult * alert_im
         # 211#: max_cycle_sleep_sec キャップを _effective_sleep にも適用
         # (209# M4 は通常パスのみ → halt 中 30 分スリープの原因)
         _max = self.config.max_cycle_sleep_sec

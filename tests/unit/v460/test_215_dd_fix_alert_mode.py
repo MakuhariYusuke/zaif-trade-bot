@@ -356,3 +356,41 @@ class Test217FillRecordFieldAlias:
         }
         rec = FillRecord.from_dict(data)
         assert rec.price_velocity_bps == 3.5
+
+
+# =====================================================================
+# 217# self-review: alert_mode.py ValueError/TypeError 捕捉
+# =====================================================================
+
+
+class TestAlertModeInvalidValues217:
+    """217# alert_mode.json の不正値が fail-safe でデフォルトに戻る."""
+
+    def setup_method(self) -> None:
+        import scripts.v460.lib.alert_mode as _am
+        _am._last_logged_state = None
+        self._tmpdir = tempfile.mkdtemp()
+
+    def test_invalid_float_returns_inactive(self) -> None:
+        """offset_mult に文字列 → fail-safe でデフォルト返却."""
+        path = Path(self._tmpdir) / "alert_mode.json"
+        path.write_text(json.dumps({"offset_mult": "abc"}))
+        result = load_alert_mode(self._tmpdir)
+        assert not result.is_active
+
+    def test_invalid_lot_mult_returns_inactive(self) -> None:
+        """lot_mult に None → fail-safe でデフォルト返却."""
+        path = Path(self._tmpdir) / "alert_mode.json"
+        path.write_text(json.dumps({"lot_mult": None}))
+        result = load_alert_mode(self._tmpdir)
+        # None は float(None) → TypeError
+        assert not result.is_active
+
+    def test_valid_values_still_work(self) -> None:
+        """正常な値は問題なくパースされる."""
+        path = Path(self._tmpdir) / "alert_mode.json"
+        path.write_text(json.dumps({"offset_mult": 2.0, "lot_mult": 0.5}))
+        result = load_alert_mode(self._tmpdir)
+        assert result.is_active
+        assert result.offset_mult == 2.0
+        assert result.lot_mult == 0.5

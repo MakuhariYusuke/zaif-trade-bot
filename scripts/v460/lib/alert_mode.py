@@ -78,17 +78,17 @@ def load_alert_mode(results_dir: str | Path) -> AlertModeOverride:
         if not isinstance(data, dict):
             logger.warning(f"[215# P0-C] alert_mode.json: expected dict, got {type(data).__name__}")
             return _INACTIVE
-    except (json.JSONDecodeError, OSError) as e:
+
+        override = AlertModeOverride(
+            halt=bool(data.get("halt", False)),
+            offset_mult=max(0.1, float(data.get("offset_mult", 1.0))),
+            lot_mult=max(0.01, min(1.0, float(data.get("lot_mult", 1.0)))),
+            interval_mult=max(1.0, float(data.get("interval_mult", 1.0))),
+            reason=str(data.get("reason", "")),
+        )
+    except (json.JSONDecodeError, OSError, ValueError, TypeError) as e:
         logger.warning(f"[215# P0-C] alert_mode.json parse error (fail-safe): {e}")
         return _INACTIVE
-
-    override = AlertModeOverride(
-        halt=bool(data.get("halt", False)),
-        offset_mult=max(0.1, float(data.get("offset_mult", 1.0))),
-        lot_mult=max(0.01, min(1.0, float(data.get("lot_mult", 1.0)))),
-        interval_mult=max(1.0, float(data.get("interval_mult", 1.0))),
-        reason=str(data.get("reason", "")),
-    )
 
     # 変更時のみログ出力 (毎サイクルの冗長ログ回避)
     state_key = f"halt={override.halt},om={override.offset_mult},lm={override.lot_mult},im={override.interval_mult}"
