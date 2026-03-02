@@ -472,7 +472,7 @@ loss_control:
     # 205# §9.5: 片側 DD Halt — サイド別累積損失超過で片側取引停止
     per_side_enabled: true         # 片側 DD ガード有効化
     per_side_hard_limit_bps: -30.0 # 片側累積 PnL がこの bps 以下でそのサイドを封鎖
-    per_side_halt_cycles: 0        # 封鎖サイクル数 (0=UTC 日替わりまで永続封鎖)
+    per_side_halt_cycles: 15       # 218# 封鎖サイクル数 (15×120s=30分で解除; 旧0=永続→デッドロック原因)
 
 # ---- 102# チューニングパラメータ (散在マジックナンバーの外部化) ----
 tuning:

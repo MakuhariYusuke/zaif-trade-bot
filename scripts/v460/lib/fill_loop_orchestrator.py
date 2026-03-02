@@ -58,6 +58,8 @@ class FillLoopOrchestratorMixin:
     _alert_interval_mult: float = 1.0
     # 216# E: Guard 発火カウンタ (累積、再起動時復元)
     _guard_fire_counts: dict[str, int] | None = None
+    # 218# デッドロック検出: 連続ゲートブロックカウンタ
+    _consecutive_gate_blocks: int = 0
 
     def _is_sell_killed(self) -> bool:
         """133# P0-10 / 136# P1-03: sell 動的 kill 判定 — SellDynamicKillManager に委譲.
@@ -1325,6 +1327,16 @@ class FillLoopOrchestratorMixin:
                     batch, _gate_result.cancel_reason,
                 )
                 self._last_side = next_side
+
+                # 218# デッドロック検出
+                self._consecutive_gate_blocks += 1
+                if self._consecutive_gate_blocks >= 10 and self._consecutive_gate_blocks % 10 == 0:
+                    logger.warning(
+                        f"[218#] DEADLOCK WARNING: {self._consecutive_gate_blocks} "
+                        f"consecutive gate blocks (reason={_gate_result.blocking_reason}, "
+                        f"side={next_side})"
+                    )
+
                 # 197# narrow_spread_pause: Gate 8 ブロック時は pause_sec 分待機
                 if _gate_result.blocking_reason == "narrow_spread_pause":
                     await asyncio.sleep(self.config.narrow_spread_pause_sec)
@@ -1332,7 +1344,8 @@ class FillLoopOrchestratorMixin:
                     await self._effective_sleep()
                 continue
             else:
-                # ゲート通過 → trending sell カウンタリセット
+                # ゲート通過 → カウンタリセット
+                self._consecutive_gate_blocks = 0  # 218# デッドロック解消
                 if (
                     self.config.skip_sell_trending
                     and next_side == "sell"

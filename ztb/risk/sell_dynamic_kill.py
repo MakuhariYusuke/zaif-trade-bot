@@ -35,6 +35,11 @@ class DynamicKillConfig:
     #: レジーム別閾値 (レジーム名 → threshold_bps)。
     #: キーが一致すれば基本閾値の代わりに使用。
     regime_thresholds: dict[str, float] = field(default_factory=dict)
+    #: 218# anti-stagnation: kill 発動中に track() が呼ばれずに
+    #: この回数 check_kill() が True を返し続けたら 1 サイクルだけ許可して
+    #: 新鮮な PnL データを取得するプローブサイクルを発動する。
+    #: 0 = 無効 (従来互換)。
+    max_stale_kill_cycles: int = 30
 
     def __post_init__(self) -> None:
         """173# バリデーション: window/resume_window >= 1."""
@@ -80,6 +85,8 @@ class DynamicKillManager:
         "_total_kills",
         "_total_cooldown_cycles",
         "_side",
+        "_stale_counter",
+        "_total_probe_cycles",
     )
 
     def __init__(self, config: DynamicKillConfig | None = None, *, side: str = "sell") -> None:
@@ -89,6 +96,8 @@ class DynamicKillManager:
         self._total_kills: int = 0
         self._total_cooldown_cycles: int = 0
         self._side = side
+        self._stale_counter: int = 0  # 218# anti-stagnation
+        self._total_probe_cycles: int = 0
 
     @property
     def config(self) -> DynamicKillConfig:
@@ -97,6 +106,7 @@ class DynamicKillManager:
     def track(self, pnl_bps: float) -> None:
         """fill の PnL (bps) を追跡."""
         self._pnl_history.append(pnl_bps)
+        self._stale_counter = 0  # 218# 新データ投入 → stale リセット
         # メモリ制限: 最大 window*3
         max_keep = self._config.window * 3
         if len(self._pnl_history) > max_keep:
@@ -117,10 +127,26 @@ class DynamicKillManager:
                 killed=False, rolling_mean=None, threshold=self._config.threshold_bps, regime=regime
             )
 
+        # 218# anti-stagnation: stale probe check
+        max_stale = self._config.max_stale_kill_cycles
+        if max_stale > 0 and self._stale_counter >= max_stale:
+            self._stale_counter = 0
+            self._total_probe_cycles += 1
+            logger.warning(
+                f"[218#] {self._side} dynamic kill probe: "
+                f"stale for {max_stale} cycles without new data — "
+                f"allowing 1 probe cycle (total_probes={self._total_probe_cycles})"
+            )
+            self._cooldown = 0  # cooldown もリセット
+            return False, self._make_telemetry(
+                killed=False, rolling_mean=None, threshold=self._config.threshold_bps, regime=regime
+            )
+
         # cooldown 中
         if self._cooldown > 0:
             self._cooldown -= 1
             self._total_cooldown_cycles += 1
+            self._stale_counter += 1  # 218#
             return True, self._make_telemetry(
                 killed=True, rolling_mean=None, threshold=self._config.threshold_bps, regime=regime
             )
@@ -142,6 +168,7 @@ class DynamicKillManager:
         if rolling_mean < threshold:
             self._cooldown = self._config.resume_window
             self._total_kills += 1
+            self._stale_counter += 1  # 218#
             logger.warning(
                 f"[157# §19] {self._side} dynamic kill activated: "
                 f"rolling{window} mean={rolling_mean:.3f}bps < {threshold}bps, "
@@ -182,6 +209,8 @@ class DynamicKillManager:
         self._cooldown = 0
         self._total_kills = 0
         self._total_cooldown_cycles = 0
+        self._stale_counter = 0
+        self._total_probe_cycles = 0
 
     # ------------------------------------------------------------------
     # 209# H4: 状態永続化 — export / import
@@ -198,6 +227,8 @@ class DynamicKillManager:
             "total_kills": self._total_kills,
             "total_cooldown_cycles": self._total_cooldown_cycles,
             "side": self._side,
+            "stale_counter": self._stale_counter,
+            "total_probe_cycles": self._total_probe_cycles,
         }
 
     def import_state(self, state: dict[str, object]) -> None:
@@ -215,6 +246,8 @@ class DynamicKillManager:
         self._cooldown = int(state.get("cooldown", 0))
         self._total_kills = int(state.get("total_kills", 0))
         self._total_cooldown_cycles = int(state.get("total_cooldown_cycles", 0))
+        self._stale_counter = int(state.get("stale_counter", 0))
+        self._total_probe_cycles = int(state.get("total_probe_cycles", 0))
         # side は import しない (コンストラクタで固定)
         # メモリ制限: window*3 に収める
         max_keep = self._config.window * 3
