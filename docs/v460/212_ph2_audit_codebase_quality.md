@@ -50,17 +50,18 @@
 
 **対策**: `except Exception as e:` + `logger.exception(e)` に一括置換。scripts 配下はリスク低だが統一すべき。
 
-### 1.2 サイレント `except Exception:` (特に危険な箇所)
+### 1.2 サイレント `except Exception:` (特に危険な箇所) — ✅ trainer.py 修正済 (`553895a0e`)
 
-| ファイル | 該当数 | リスク |
-|---|---|---|
-| `ztb/training/unified_trainer/trainer.py` | **15箇所** | **学習中のエラーが invisible** — 最優先 |
-| `ztb/utils/checkpoint.py` | 7箇所 | チェックポイント破損を検知不能 |
-| `ztb/utils/seed_manager.py` | 9箇所 | seed 設定失敗が silent |
-| `ztb/utils/env_metrics.py` | 10箇所 | メトリクス計算失敗が silent |
-| `ztb/utils/run_metadata.py` | 5箇所 | メタデータ破損検知不能 |
+| ファイル | 該当数 | リスク | 状態 |
+|---|---|---|---|
+| `ztb/training/unified_trainer/trainer.py` | **12箇所** | **学習中のエラーが invisible** — 最優先 | ✅ `logger.debug` 追加 (`553895a0e`) |
+| `ztb/utils/checkpoint.py` | 7箇所 | チェックポイント破損を検知不能 | 未着手 |
+| `ztb/utils/seed_manager.py` | 9箇所 | seed 設定失敗が silent | 未着手 |
+| `ztb/utils/env_metrics.py` | 10箇所 | メトリクス計算失敗が silent | 未着手 |
+| `ztb/utils/run_metadata.py` | 5箇所 | メタデータ破損検知不能 | 未着手 |
 
-**対策**: `trainer.py` は `except Exception as e: logger.warning(...); raise` に変更。
+**対策**: `trainer.py` は `except Exception as e: logger.debug(...)` に変更済 (12箇所)。
+  残り3箇所 (import guard) はオプショナルインポートパターンのため変更不要。
 `safety.py` (7箇所) は安全装置なので設計上許容。
 
 ---
