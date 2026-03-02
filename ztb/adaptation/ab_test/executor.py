@@ -10,7 +10,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 import psutil
 
@@ -29,22 +29,21 @@ from .types import (
 
 logger = logging.getLogger(__name__)
 
-
 class ABTestExecutor:
     """A/Bテスト実行エンジン（メモリ効率・処理時間最適化）"""
 
     def __init__(self, config: ABTestConfig):
         self.config = config
-        self.active_tests: Dict[str, ABTestState] = {}
-        self.test_callbacks: Dict[str, List[Callable]] = {}
+        self.active_tests: dict[str, ABTestState] = {}
+        self.test_callbacks: dict[str, list[Callable]] = {}
 
         # パフォーマンス最適化
         self.executor = ThreadPoolExecutor(max_workers=config.performance.max_workers)
-        self.sample_queues: Dict[str, queue.Queue] = {}
-        self.processing_threads: Dict[str, threading.Thread] = {}
+        self.sample_queues: dict[str, queue.Queue] = {}
+        self.processing_threads: dict[str, threading.Thread] = {}
 
         # メモリ管理
-        self.memory_monitor_thread: Optional[threading.Thread] = None
+        self.memory_monitor_thread: threading.Thread | None = None
         self._start_memory_monitor()
 
         # 統計分析器
@@ -99,7 +98,7 @@ class ABTestExecutor:
             logger.warning(f"Sample queue full for test {test_id}")
             return False
 
-    def add_samples_batch(self, test_id: str, samples: List[SampleData]) -> int:
+    def add_samples_batch(self, test_id: str, samples: list[SampleData]) -> int:
         """サンプルをバッチで追加（処理時間短縮）"""
         if test_id not in self.sample_queues:
             logger.warning(f"Test {test_id} not found")
@@ -114,7 +113,7 @@ class ABTestExecutor:
 
         return added_count
 
-    def stop_test(self, test_id: str) -> Optional[ABTestResultSummary]:
+    def stop_test(self, test_id: str) -> ABTestResultSummary | None:
         """テストを停止"""
         if test_id not in self.active_tests:
             return None
@@ -132,11 +131,11 @@ class ABTestExecutor:
         logger.info(f"Stopped A/B test: {test_id}")
         return result_summary
 
-    def get_test_status(self, test_id: str) -> Optional[ABTestState]:
+    def get_test_status(self, test_id: str) -> ABTestState | None:
         """テスト状態を取得"""
         return self.active_tests.get(test_id)
 
-    def list_active_tests(self) -> List[str]:
+    def list_active_tests(self) -> list[str]:
         """アクティブなテストIDを取得"""
         return list(self.active_tests.keys())
 
@@ -190,8 +189,8 @@ class ABTestExecutor:
                 self._perform_final_analysis(test_config, test_state)
 
     def _collect_sample_batch(
-        self, sample_queue: queue.Queue, buffer: List[SampleData]
-    ) -> List[SampleData]:
+        self, sample_queue: queue.Queue, buffer: list[SampleData]
+    ) -> list[SampleData]:
         """サンプルをバッチで収集（メモリ効率的）"""
         batch_size = self.config.performance.batch_size
 
@@ -209,7 +208,7 @@ class ABTestExecutor:
         self,
         test_config: ABTestConfiguration,
         test_state: ABTestState,
-        batch: List[SampleData],
+        batch: list[SampleData],
     ):
         """サンプルバッチを処理（並列処理対応）"""
         start_time = time.time()
@@ -244,7 +243,7 @@ class ABTestExecutor:
         test_state.current_sample_count += len(batch)
 
     def _update_metrics_batch(
-        self, test_state: ABTestState, variant_id: str, samples: List[SampleData]
+        self, test_state: ABTestState, variant_id: str, samples: list[SampleData]
     ):
         """メトリクスをバッチ更新（メモリ効率的）"""
         metrics = test_state.metrics_a if variant_id == "A" else test_state.metrics_b
@@ -365,7 +364,7 @@ class ABTestExecutor:
         except Exception as e:
             logger.error(f"Final analysis failed: {e}")
 
-    def _generate_test_result(self, test_id: str) -> Optional[ABTestResultSummary]:
+    def _generate_test_result(self, test_id: str) -> ABTestResultSummary | None:
         """テスト結果を生成"""
         test_state = self.active_tests.get(test_id)
         if not test_state or not test_state.latest_statistical_result:
@@ -398,7 +397,7 @@ class ABTestExecutor:
             recommendations=self._generate_recommendations(test_state, ab_result),
         )
 
-    def _assess_risks(self, test_state: ABTestState) -> Dict[str, Any]:
+    def _assess_risks(self, test_state: ABTestState) -> dict[str, Any]:
         """リスクを評価"""
         return {
             "regression_detected": test_state.regression_detected,
@@ -412,7 +411,7 @@ class ABTestExecutor:
 
     def _generate_recommendations(
         self, test_state: ABTestState, result: ABTestResult
-    ) -> List[str]:
+    ) -> list[str]:
         """推奨事項を生成"""
         recommendations = []
 

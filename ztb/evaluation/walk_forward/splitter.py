@@ -23,7 +23,7 @@ splitter = WalkForwardSplitter(
 )
 
 # ウィンドウ生成
-windows: List[TimeSeriesWindow] = splitter.split(df)
+windows: list[TimeSeriesWindow] = splitter.split(df)
 
 # 各ウィンドウで訓練・テスト
 for window in windows:
@@ -35,14 +35,12 @@ for window in windows:
 """
 
 import logging
-from typing import List
 
 import pandas as pd
 
 from .types import TimeSeriesWindow
 
 logger = logging.getLogger(__name__)
-
 
 class WalkForwardSplitter:
     """時系列安全な複数分割生成
@@ -103,14 +101,14 @@ class WalkForwardSplitter:
             if not (0.0 <= value <= 1.0):
                 raise ValueError(f"{name} must be in [0.0, 1.0], got {value}")
 
-    def split(self, df: pd.DataFrame) -> List[TimeSeriesWindow]:
+    def split(self, df: pd.DataFrame) -> list[TimeSeriesWindow]:
         """複数ウィンドウを生成
         
         Args:
             df: 時系列データフレーム（昇順）。DatetimeIndexまたは timestamp カラムを推奨
         
         Returns:
-            List[TimeSeriesWindow]: 生成されたウィンドウリスト
+            list[TimeSeriesWindow]: 生成されたウィンドウリスト
             
         Raises:
             ValueError: データが不足している場合またはデータリークが検出された場合
@@ -143,7 +141,7 @@ class WalkForwardSplitter:
                 f"val_size={val_size}, test_size={test_size}"
             )
         
-        windows: List[TimeSeriesWindow] = []
+        windows: list[TimeSeriesWindow] = []
         window_id: int = 0
         train_start: int = 0
 
@@ -273,7 +271,7 @@ class WalkForwardSplitter:
             )
 
     @staticmethod
-    def _check_data_leakage(windows: List[TimeSeriesWindow]) -> None:
+    def _check_data_leakage(windows: list[TimeSeriesWindow]) -> None:
         """ウィンドウ間のデータリークをチェック
         
         Args:

@@ -14,7 +14,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 
@@ -32,16 +32,14 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class DetailedSACv423bAnalyzer:
     """Detailed analyzer for SAC v423b training results."""
 
     def __init__(self, report_path: str):
         self.report_path = Path(report_path)
-        self.report_data: Optional[TrainingReport] = None
+        self.report_data: TrainingReport | None = None
         self.action_dist: ActionDistribution = {}
         self.total_timesteps = 0
-
 
     def analyze_action_distribution(self) -> ActionAnalysisResult:
         """Analyze action distribution in detail."""
@@ -105,7 +103,7 @@ class DetailedSACv423bAnalyzer:
 
         return analysis
 
-    def analyze_action_patterns(self) -> Dict[str, Any]:
+    def analyze_action_patterns(self) -> dict[str, Any]:
         """
         Analyze expected action patterns and sequences.
         """
@@ -129,7 +127,7 @@ class DetailedSACv423bAnalyzer:
 
         return analysis
 
-    def _calculate_diversity(self, action_dist: Dict[str, float]) -> float:
+    def _calculate_diversity(self, action_dist: dict[str, float]) -> float:
         """Calculate action diversity using Shannon entropy normalized."""
         total = sum(action_dist.values())
         if total == 0:
@@ -145,12 +143,12 @@ class DetailedSACv423bAnalyzer:
         max_entropy = np.log2(len(action_dist))
         return entropy / max_entropy if max_entropy > 0 else 0
 
-    def _calculate_trading_intensity(self, action_dist: Dict[str, float]) -> float:
+    def _calculate_trading_intensity(self, action_dist: dict[str, float]) -> float:
         """Calculate trading intensity (0-1 scale)."""
         hold_ratio = action_dist.get("HOLD", 0) / sum(action_dist.values())
         return 1 - hold_ratio  # Higher = more trading
 
-    def _calculate_entropy(self, action_dist: Dict[str, float]) -> float:
+    def _calculate_entropy(self, action_dist: dict[str, float]) -> float:
         else:
             return "Highly imbalanced (strong bias toward one action)"
 

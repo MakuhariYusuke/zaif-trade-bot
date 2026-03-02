@@ -1,7 +1,6 @@
-from typing import Tuple
+
 
 import numpy as np
-
 
 class OnlineScaler:
     """
@@ -13,7 +12,7 @@ class OnlineScaler:
     """
 
     def __init__(
-        self, shape: Tuple[int, ...], epsilon: float = 1e-5, clip: float = 10.0
+        self, shape: tuple[int, ...], epsilon: float = 1e-5, clip: float = 10.0
     ):
         """
         Initialize the OnlineScaler.
@@ -104,7 +103,6 @@ class OnlineScaler:
         
         if self.n >= 2:
             self.var = self.M2 / (self.n - 1)
-
 
     def transform(self, x: np.ndarray) -> np.ndarray:
         """

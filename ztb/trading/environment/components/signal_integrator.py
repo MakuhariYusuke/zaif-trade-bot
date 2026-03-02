@@ -5,7 +5,7 @@ This component integrates signal-based rewards into the main reward calculation.
 Follows Single Responsibility Principle by focusing only on signal integration.
 """
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -20,7 +20,6 @@ if TYPE_CHECKING:
         GuidanceMode,
     )
     from ztb.trading.strategies.signal_reward_integrator import SignalRewardIntegrator  # noqa: F401
-
 
 class SignalIntegrator(ISignalIntegrator):
     """
@@ -62,8 +61,8 @@ class SignalIntegrator(ISignalIntegrator):
         self.enabled = enabled
         self.logger = get_logger("ztb.trading.environment.signal_integrator")
 
-        self.signal_guide: Optional[Any] = None
-        self.signal_integration: Optional[Any] = None
+        self.signal_guide: Any | None = None
+        self.signal_integration: Any | None = None
         self._signal_guide_available = False
 
         if enabled:
@@ -148,7 +147,7 @@ class SignalIntegrator(ISignalIntegrator):
             self.enabled = False
 
     def integrate_signal(
-        self, reward: float, observation: Optional[np.ndarray], action: int, step: int
+        self, reward: float, observation: np.ndarray | None, action: int, step: int
     ) -> float:
         """
         Apply signal integration to the reward if enabled.
@@ -172,19 +171,19 @@ class SignalIntegrator(ISignalIntegrator):
             return reward
 
         try:
-            # Set feature names if not already set
+            # set feature names if not already set
             if self.signal_guide and self.signal_guide.feature_names is None:
                 # Try to get feature names from config first
                 if hasattr(self.config, "feature_names") and self.config.feature_names:
                     self.signal_guide.set_feature_names(self.config.feature_names)
                     self.logger.info(
-                        f"Set feature_names from config: {len(self.config.feature_names)} features"
+                        f"set feature_names from config: {len(self.config.feature_names)} features"
                     )
                 # If not available in config, try to get from environment
                 elif hasattr(self, "_env") and hasattr(self._env, "feature_names"):
                     self.signal_guide.set_feature_names(self._env.feature_names)
                     self.logger.info(
-                        f"Set feature_names from env: {len(self._env.feature_names)} features"
+                        f"set feature_names from env: {len(self._env.feature_names)} features"
                     )
                 # Last resort: try to get from observation builder
                 elif (
@@ -196,7 +195,7 @@ class SignalIntegrator(ISignalIntegrator):
                         self._env.observation_builder.feature_names
                     )
                     self.logger.info(
-                        f"Set feature_names from observation_builder: {len(self._env.observation_builder.feature_names)} features"
+                        f"set feature_names from observation_builder: {len(self._env.observation_builder.feature_names)} features"
                     )
                 else:
                     self.logger.warning(

@@ -9,7 +9,7 @@ v434.1の問題を解決するための改良版：
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -26,8 +26,7 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
-def load_v434_2_config() -> tuple[Dict[str, Any], Dict[str, Any]]:
+def load_v434_2_config() -> tuple[dict[str, Any], dict[str, Any]]:
     """v434.2の設定を読み込み"""
     config_dir = Path("config")
 
@@ -42,7 +41,6 @@ def load_v434_2_config() -> tuple[Dict[str, Any], Dict[str, Any]]:
         env_config = json.load(f)
 
     return reward_config, env_config
-
 
 def create_v434_2_environment(
     data_path: str, reward_config: ConfigDict, env_config: ConfigDict
@@ -136,7 +134,7 @@ def create_v434_2_environment(
         base_env.action_space = gym.spaces.Box(
             low=-1.0, high=1.0, shape=(1,), dtype=np.float32
         )
-        logger.info("Set continuous action space for SAC: Box(-1.0, 1.0, (1,))")
+        logger.info("set continuous action space for SAC: Box(-1.0, 1.0, (1,))")
 
     logger.info(
         f"Created environment with {base_env.observation_space.shape[0]} features"
@@ -153,8 +151,7 @@ def create_v434_2_environment(
 
     return env
 
-
-def create_v434_2_sac_model(env: DummyVecEnv, model_path: Optional[str] = None) -> SAC:
+def create_v434_2_sac_model(env: DummyVecEnv, model_path: str | None = None) -> SAC:
     """v434.2の改良されたSACモデルを作成"""
     logger.info("Creating v434.2 SAC model with improved hyperparameters")
 
@@ -194,7 +191,6 @@ def create_v434_2_sac_model(env: DummyVecEnv, model_path: Optional[str] = None) 
 
     return model
 
-
 def train_v434_2_model(
     model: SAC,
     total_timesteps: int = 500000,
@@ -224,7 +220,6 @@ def train_v434_2_model(
     logger.info(f"Model saved to {model_save_path}")
 
     return model
-
 
 def main():
     """メイン実行関数"""
@@ -275,7 +270,6 @@ def main():
     except Exception as e:
         logger.error(f"Training failed: {e}")
         raise
-
 
 if __name__ == "__main__":
     main()

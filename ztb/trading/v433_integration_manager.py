@@ -9,7 +9,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import psutil
@@ -22,7 +22,6 @@ from ztb.trading.v433_integrated_system import V433IntegratedSystem
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 @dataclass
 class SystemIntegrationConfig:
@@ -53,7 +52,6 @@ class SystemIntegrationConfig:
     alert_on_performance_degradation: bool = True
     performance_degradation_threshold: float = 0.15  # 15%性能低下でアラート
 
-
 @dataclass
 class SystemHealthMetrics:
     """システムヘルス指標"""
@@ -67,19 +65,18 @@ class SystemHealthMetrics:
     thread_count: int = 0
 
     # コンポーネント状態
-    components_active: Dict[str, bool] = field(default_factory=dict)
-    data_flow_status: Dict[str, bool] = field(default_factory=dict)
+    components_active: dict[str, bool] = field(default_factory=dict)
+    data_flow_status: dict[str, bool] = field(default_factory=dict)
 
     # エラー指標
     error_count: int = 0
-    last_error: Optional[str] = None
+    last_error: str | None = None
     recovery_attempts: int = 0
 
     # ビジネス指標
     active_positions: int = 0
     total_pnl: float = 0.0
     win_rate: float = 0.0
-
 
 @dataclass
 class IntegrationTestResult:
@@ -88,10 +85,9 @@ class IntegrationTestResult:
     test_name: str
     success: bool
     execution_time: float
-    error_message: Optional[str] = None
-    details: Dict[str, Any] = field(default_factory=dict)
+    error_message: str | None = None
+    details: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.now)
-
 
 class SystemPerformanceMonitor:
     """パフォーマンス監視器"""
@@ -101,20 +97,20 @@ class SystemPerformanceMonitor:
         self.logger = get_logger(__name__)
 
         # パフォーマンス履歴
-        self.metrics_history: List[SystemHealthMetrics] = []
-        self.baseline_metrics: Optional[SystemHealthMetrics] = None
+        self.metrics_history: list[SystemHealthMetrics] = []
+        self.baseline_metrics: SystemHealthMetrics | None = None
 
         # プロセス監視
         self.process = psutil.Process()
         # 監視の開始/停止フラグ
         self.is_monitoring = False
-        self.monitoring_thread: Optional[threading.Thread] = None
+        self.monitoring_thread: threading.Thread | None = None
         # 最新のメトリクスキャッシュ
-        self.metrics: Dict[str, Any] = {}
+        self.metrics: dict[str, Any] = {}
 
     def measure_latency(
         self, operation: callable, *args, **kwargs
-    ) -> Tuple[float, Any]:
+    ) -> tuple[float, Any]:
         """操作のレイテンシーを測定"""
         start_time = time.time()
         result = operation(*args, **kwargs)
@@ -201,7 +197,7 @@ class SystemPerformanceMonitor:
             self.logger.error(f"Failed to stop monitoring: {e}")
             return False
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """Return the most recent metrics cache."""
         return self.metrics or {}
 
@@ -251,10 +247,8 @@ class SystemPerformanceMonitor:
                 f"Threads={metrics.thread_count}"
             )
 
-
 # Backwards-compatible alias
 PerformanceMonitor = SystemPerformanceMonitor
-
 
 class ComponentManager:
     """コンポーネントマネージャー"""
@@ -264,15 +258,15 @@ class ComponentManager:
         self.logger = get_logger(__name__)
 
         # コンポーネントインスタンス
-        self.v433_system: Optional[V433IntegratedSystem] = None
-        self.execution_engine: Optional[TradeExecutionEngine] = None
-        self.position_manager: Optional[PositionManager] = None
-        self.risk_overlay: Optional[RiskOverlay] = None
+        self.v433_system: V433IntegratedSystem | None = None
+        self.execution_engine: TradeExecutionEngine | None = None
+        self.position_manager: PositionManager | None = None
+        self.risk_overlay: RiskOverlay | None = None
         # Some test code expects a risk_manager attribute
-        self.risk_manager: Optional[Any] = None
+        self.risk_manager: Any | None = None
 
         # コンポーネント状態
-        self.components: Dict[str, Dict[str, Any]] = {}
+        self.components: dict[str, dict[str, Any]] = {}
 
         # Initialize components automatically for convenience and test compatibility
         try:
@@ -500,7 +494,7 @@ class ComponentManager:
 
         self.logger.info("All components stopped")
 
-    def get_component_status(self) -> Dict[str, Dict[str, Any]]:
+    def get_component_status(self) -> dict[str, dict[str, Any]]:
         """コンポーネント状態を取得"""
         status = {}
         for name, component in self.components.items():
@@ -552,7 +546,6 @@ class ComponentManager:
             self.logger.error(f"Component {component_name} restart failed: {e}")
             return False
 
-
 class IntegrationTester:
     """統合テスト実行器"""
 
@@ -561,9 +554,9 @@ class IntegrationTester:
         self.logger = get_logger(__name__)
 
         # テスト結果
-        self.test_results: List[IntegrationTestResult] = []
+        self.test_results: list[IntegrationTestResult] = []
 
-    def run_full_integration_test(self) -> List[IntegrationTestResult]:
+    def run_full_integration_test(self) -> list[IntegrationTestResult]:
         """完全統合テストを実行"""
         self.logger.info("Running full integration test suite...")
 
@@ -825,7 +818,6 @@ class IntegrationTester:
                 error_message=str(e),
             )
 
-
 class V433IntegrationManager:
     """
     V433 Phase 4: 統合システムマネージャー
@@ -859,7 +851,7 @@ class V433IntegrationManager:
         self.performance_thread = None
 
         # 統合テスト結果
-        self.integration_test_results: List[IntegrationTestResult] = []
+        self.integration_test_results: list[IntegrationTestResult] = []
         # Initialize components (makes v433_system, position_manager, etc. available)
         try:
             self.component_manager.initialize_components()
@@ -959,7 +951,7 @@ class V433IntegrationManager:
             pass
         return True
 
-    def run_integration_tests(self) -> List[IntegrationTestResult]:
+    def run_integration_tests(self) -> list[IntegrationTestResult]:
         """統合テストを実行"""
         self.logger.info("Running V433 integration test suite...")
 
@@ -1011,7 +1003,7 @@ class V433IntegrationManager:
             self.logger.error(f"Market data update failed: {e}")
             return False
 
-    async def submit_trading_signal(self, signal: Dict[str, Any]) -> Any:
+    async def submit_trading_signal(self, signal: dict[str, Any]) -> Any:
         """Submit trading signal through position manager asynchronously."""
         if not self.is_running or not self.component_manager.position_manager:
             self.logger.warning(
@@ -1029,7 +1021,7 @@ class V433IntegrationManager:
             self.logger.error(f"Submit trading signal failed: {e}")
             return False
 
-    def optimize_performance(self) -> Dict[str, Any]:
+    def optimize_performance(self) -> dict[str, Any]:
         """パフォーマンス最適化を実行"""
         self.logger.info("Running performance optimization...")
 
@@ -1047,7 +1039,7 @@ class V433IntegrationManager:
 
         return optimization_results
 
-    def _optimize_memory_usage(self) -> Dict[str, Any]:
+    def _optimize_memory_usage(self) -> dict[str, Any]:
         """メモリ使用量を最適化"""
         try:
             # ガベージコレクション実行
@@ -1080,7 +1072,7 @@ class V433IntegrationManager:
             self.logger.error(f"Memory optimization failed: {e}")
             return {"success": False, "error": str(e)}
 
-    def _optimize_cpu_usage(self) -> Dict[str, Any]:
+    def _optimize_cpu_usage(self) -> dict[str, Any]:
         """CPU使用量を最適化"""
         try:
             # CPU使用量測定
@@ -1102,7 +1094,7 @@ class V433IntegrationManager:
             self.logger.error(f"CPU optimization failed: {e}")
             return {"success": False, "error": str(e)}
 
-    def _optimize_latency(self) -> Dict[str, Any]:
+    def _optimize_latency(self) -> dict[str, Any]:
         """レイテンシーを最適化"""
         try:
             # テスト操作のレイテンシー測定
@@ -1251,7 +1243,7 @@ class V433IntegrationManager:
             self.logger.error(f"Health check failed: {e}")
             self.system_health = "critical"
 
-    def _check_data_flow(self) -> Dict[str, bool]:
+    def _check_data_flow(self) -> dict[str, bool]:
         """データフローをチェック"""
         data_flow_status = {}
 
@@ -1303,7 +1295,7 @@ class V433IntegrationManager:
             f"Latency={metrics.latency_ms:.2f}ms"
         )
 
-    def get_system_status(self) -> Dict[str, Any]:
+    def get_system_status(self) -> dict[str, Any]:
         """システム全体の状態を取得"""
         status = {
             "system_health": self.system_health,
@@ -1336,11 +1328,9 @@ class V433IntegrationManager:
 
         return status
 
-
 def create_v433_integration_manager(exchange: str = "zaif") -> V433IntegrationManager:
     """V433統合マネージャーのファクトリ関数"""
     return V433IntegrationManager(exchange)
-
 
 # 使用例
 if __name__ == "__main__":

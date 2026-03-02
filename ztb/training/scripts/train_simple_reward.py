@@ -6,7 +6,6 @@ Simple reward function training test
 
 import logging
 import time
-from typing import Dict, List
 
 from ztb.utils.logging_utils import setup_logging
 from ztb.utils.training_utils import display_training_complete
@@ -15,7 +14,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 # Type alias for configuration
-ConfigType = Dict[str, str | float]
+ConfigType = dict[str, str | float]
 
 from ztb.trading.env_config import get_trading_env_config
 from ztb.trading.environment import HeavyTradingEnv
@@ -29,7 +28,6 @@ from ztb.training.utils.training_utils import (
     display_training_complete,
     setup_project_path,
 )
-
 
 def train_simple_reward(
     config_name: str = "default",
@@ -88,10 +86,9 @@ def train_simple_reward(
     env.close()
     return model_path
 
-
 if __name__ == "__main__":
     # Define fine-tuned reward scaling configurations
-    configs: List[ConfigType] = [
+    configs: list[ConfigType] = [
         # Fine-tune reward_scaling around optimal value (7.5)
         {
             "name": "reward_scale_6_0",

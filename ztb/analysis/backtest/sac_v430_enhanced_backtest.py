@@ -18,11 +18,9 @@ from ztb.trading.environment.constants import continuous_to_discrete_action
 project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(project_root))
 
-
 def load_config(config_path):
     """Load configuration from file."""
     return read_json(config_path)
-
 
 def create_enhanced_backtest_config(reward_config_name):
     """Create enhanced backtest configuration with detailed logging."""
@@ -39,7 +37,6 @@ def create_enhanced_backtest_config(reward_config_name):
         raise ValueError(f"Unknown config: {reward_config_name}")
 
     return load_config(config_map[reward_config_name])
-
 
 def run_enhanced_backtest(config_name="original"):
     """Run enhanced backtest with detailed trade tracking."""
@@ -211,7 +208,6 @@ def run_enhanced_backtest(config_name="original"):
         traceback.print_exc()
         return None
 
-
 def compare_configs():
     """Compare different reward function configurations."""
 
@@ -253,7 +249,6 @@ def compare_configs():
         print(f"\n🏆 Best configuration for trading activity: {best_config[0]}")
         print(f"   Trades executed: {best_config[1]['trades_executed']}")
 
-
 def main():
     """Main function."""
     import argparse
@@ -277,7 +272,6 @@ def main():
         compare_configs()
     else:
         run_enhanced_backtest(args.config)
-
 
 if __name__ == "__main__":
     main()

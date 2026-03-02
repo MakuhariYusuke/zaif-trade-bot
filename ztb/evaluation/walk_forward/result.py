@@ -3,10 +3,8 @@ Walk-Forward 分析結果クラス
 """
 
 from dataclasses import dataclass, field
-from typing import List
 
 from .types import TimeSeriesWindow, WindowPerformance
-
 
 @dataclass
 class WalkForwardResult:
@@ -26,8 +24,8 @@ class WalkForwardResult:
         average_win_rate: 勝率の平均
         overfitting_ratio: 過学習比率の平均
     """
-    windows: List[TimeSeriesWindow] = field(default_factory=list)
-    performances: List[WindowPerformance] = field(default_factory=list)
+    windows: list[TimeSeriesWindow] = field(default_factory=list)
+    performances: list[WindowPerformance] = field(default_factory=list)
     average_val_roi: float = 0.0
     average_test_roi: float = 0.0
     test_roi_std: float = 0.0

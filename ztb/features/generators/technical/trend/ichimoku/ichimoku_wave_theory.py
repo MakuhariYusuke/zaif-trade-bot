@@ -16,14 +16,12 @@ from ztb.features.core.registry import FeatureRegistry
 
 from .ichimoku_ext import calculate_ichimoku_extended
 
-
 @FeatureRegistry.register("Ichimoku_Wave_Theory")
 def compute_ichimoku_wave_theory(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Wave Theory - cloud wave patterns and momentum"""
     feature = IchimokuWaveTheory()
     result_df = feature.compute(df)
     return result_df["ichimoku_wave_theory"]
-
 
 class IchimokuWaveTheory(BaseFeature):
     """

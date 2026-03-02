@@ -9,7 +9,6 @@ import pandas as pd
 
 from ztb.features.registry import FeatureRegistry
 
-
 @FeatureRegistry.register("Donchian_Width")
 def compute_donchian_width(df: pd.DataFrame) -> pd.Series:
     """Donchian Channel Width"""
@@ -19,7 +18,6 @@ def compute_donchian_width(df: pd.DataFrame) -> pd.Series:
         if "donchian_width" in extended_features.columns
         else pd.Series([0.0] * len(df), index=df.index)
     )
-
 
 @FeatureRegistry.register("Donchian_Price_Position")
 def compute_donchian_price_position(df: pd.DataFrame) -> pd.Series:
@@ -31,7 +29,6 @@ def compute_donchian_price_position(df: pd.DataFrame) -> pd.Series:
         else pd.Series([0.0] * len(df), index=df.index)
     )
 
-
 @FeatureRegistry.register("Donchian_Breakout_Strength")
 def compute_donchian_breakout_strength(df: pd.DataFrame) -> pd.Series:
     """Donchian Channel Breakout Strength"""
@@ -42,7 +39,6 @@ def compute_donchian_breakout_strength(df: pd.DataFrame) -> pd.Series:
         else pd.Series([0.0] * len(df), index=df.index)
     )
 
-
 @FeatureRegistry.register("Donchian_Squeeze_Ratio")
 def compute_donchian_squeeze_ratio(df: pd.DataFrame) -> pd.Series:
     """Donchian Channel Squeeze Ratio"""
@@ -52,7 +48,6 @@ def compute_donchian_squeeze_ratio(df: pd.DataFrame) -> pd.Series:
         if "donchian_squeeze_ratio" in extended_features.columns
         else pd.Series([0.0] * len(df), index=df.index)
     )
-
 
 def calculate_donchian_extended(
     data: pd.DataFrame, periods: int = 20, include_basic: bool = True
@@ -193,7 +188,6 @@ def calculate_donchian_extended(
 
     return result_df
 
-
 def calculate_donchian_signals(
     extended_features: pd.DataFrame, confidence_threshold: float = 0.7
 ) -> pd.DataFrame:
@@ -261,7 +255,6 @@ def calculate_donchian_signals(
     signals["donchian_composite_bearish"] = composite_bearish.astype(int)
 
     return pd.DataFrame(signals, index=extended_features.index)
-
 
 if __name__ == "__main__":
     # Test with synthetic data

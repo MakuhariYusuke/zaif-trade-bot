@@ -16,7 +16,6 @@ from ztb.training.binary_search.base_optimizer import (
     HyperparameterOptimizer,
 )
 
-
 class TargetKLOptimizer(HyperparameterOptimizer):
     """Optimizer for target_kl parameter."""
 
@@ -27,7 +26,6 @@ class TargetKLOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[float, float]:
         """Get the range for target_kl binary search."""
         return (0.001, 0.1)  # Reasonable range for target KL divergence
-
 
 def main() -> None:
     parser = BinarySearchArgumentParser.create_parser(
@@ -54,7 +52,6 @@ def main() -> None:
         print(
             f"\nOptimization complete. Best target_kl: {best_value}, Score: {best_score:.6f}"
         )
-
 
 if __name__ == "__main__":
     main()

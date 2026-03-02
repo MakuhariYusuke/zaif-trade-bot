@@ -20,14 +20,12 @@ from ztb.utils.talib_wrapper import TaLibWrapper
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
 
-
 @FeatureRegistry.register("Keltner_Upper")
 def compute_keltner_upper(df: pd.DataFrame) -> pd.Series:
     """Keltner Channel Upper Band"""
     feature = KeltnerChannels()
     result_df = feature.compute(df)
     return result_df["keltner_upper"]
-
 
 @FeatureRegistry.register("Keltner_Lower")
 def compute_keltner_lower(df: pd.DataFrame) -> pd.Series:
@@ -36,7 +34,6 @@ def compute_keltner_lower(df: pd.DataFrame) -> pd.Series:
     result_df = feature.compute(df)
     return result_df["keltner_lower"]
 
-
 @FeatureRegistry.register("Keltner_Position")
 def compute_keltner_position(df: pd.DataFrame) -> pd.Series:
     """Keltner Channel Price Position (0-1)"""
@@ -44,14 +41,12 @@ def compute_keltner_position(df: pd.DataFrame) -> pd.Series:
     result_df = feature.compute(df)
     return result_df["keltner_position"]
 
-
 @FeatureRegistry.register("Keltner_Width")
 def compute_keltner_width(df: pd.DataFrame) -> pd.Series:
     """Keltner Channel Width"""
     feature = KeltnerChannels()
     result_df = feature.compute(df)
     return result_df["keltner_width"]
-
 
 class KeltnerChannels(BaseFeature):
     """

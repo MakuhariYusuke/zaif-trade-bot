@@ -14,7 +14,6 @@ from ztb.metrics.metrics import calculate_distribution_stats
 from ztb.trading.environment.schema_env_factory import create_env_from_model_path
 from ztb.io.data_loader import DataLoader
 
-
 def run_sac_backtest(model_path: str, data_path: str, episodes: int = 10):
     """
     SACモデルのバックテスト実行
@@ -126,7 +125,6 @@ def run_sac_backtest(model_path: str, data_path: str, episodes: int = 10):
         "total_trades": total_trades,
         "trades_per_episode": total_trades / episodes,
     }
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

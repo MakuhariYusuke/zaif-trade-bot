@@ -4,7 +4,7 @@ Correlation Analysis Module
 相関係数分析機能を提供するモジュール
 """
 
-from typing import Dict, Literal, Optional
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -13,12 +13,11 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 def compute_correlations(
-    frames: Dict[str, pd.DataFrame],
+    frames: dict[str, pd.DataFrame],
     nan_strategy: Literal["drop", "fill", "none"] = "none",
     fill_value: float = 0.0,
-) -> Dict[str, Optional[pd.DataFrame]]:
+) -> dict[str, pd.DataFrame | None]:
     """
     複数のデータフレーム間の相関係数を計算
 

@@ -7,8 +7,6 @@ latency, and market impact.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional
-
 
 @dataclass
 class ExecutionResult:
@@ -19,8 +17,7 @@ class ExecutionResult:
     slippage_rate: float
     fee: float
     latency_ms: float
-    timestamp: Optional[float] = None
-
+    timestamp: float | None = None
 
 class ExecutionModel(ABC):
     """Abstract base class for execution models."""
@@ -33,7 +30,7 @@ class ExecutionModel(ABC):
         requested_size: float,
         current_atr: float = 0.0,
         current_volume: float = 0.0,
-        market_regime: Optional[str] = None,
+        market_regime: str | None = None,
     ) -> ExecutionResult:
         """
         Simulate the execution of a trade.

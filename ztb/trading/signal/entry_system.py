@@ -1,11 +1,10 @@
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ztb.io.common import PathLike
 from ztb.io.state_persistence import read_state_payload, write_state_payload
 from ztb.trading.signal.calibration_map import CalibrationGate, CalibrationMap
 from ztb.trading.signal.types import FusedSignal, GateResult
 from ztb.trading.types import MarketState
-
 
 class IntegratedEntrySystem:
     """
@@ -14,7 +13,7 @@ class IntegratedEntrySystem:
     to make final entry decisions.
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         self.config = config
 
         # Initialize Calibration Map & Gate
@@ -34,8 +33,8 @@ class IntegratedEntrySystem:
         market_data: MarketState,
         regime: str,
         threshold: float = 0.2,
-        pattern_score: Optional[float] = None,
-        order_size: Optional[float] = None,
+        pattern_score: float | None = None,
+        order_size: float | None = None,
     ) -> GateResult:
         """
         Process a raw signal through the Calibration Gate.

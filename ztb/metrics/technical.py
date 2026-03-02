@@ -5,8 +5,6 @@ This module provides common technical analysis indicators.
 It uses existing feature generators from ztb.features.generators.technical where possible.
 """
 
-from typing import List, Tuple, Union
-
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
@@ -21,9 +19,8 @@ from ztb.utils.talib_wrapper import TaLibWrapper
 # Global instance to share cache for SMA
 _talib = TaLibWrapper()
 
-
 def calculate_rsi(
-    prices: Union[List[float], NDArray[np.float64], pd.Series], period: int = 14
+    prices: list[float] | NDArray[np.float64] | pd.Series, period: int = 14
 ) -> float:
     """
     Calculate RSI (Relative Strength Index).
@@ -59,9 +56,8 @@ def calculate_rsi(
     except Exception:
         return 50.0
 
-
 def calculate_volatility(
-    prices: Union[List[float], NDArray[np.float64], pd.Series],
+    prices: list[float] | NDArray[np.float64] | pd.Series,
     window: int = 20,
     annualize: bool = False,
     trading_days: int = TRADING_DAYS_PER_YEAR,
@@ -106,9 +102,8 @@ def calculate_volatility(
     except Exception:
         return 0.0
 
-
 def calculate_volatility_from_returns(
-    returns: Union[List[float], NDArray[np.float64], pd.Series],
+    returns: list[float] | NDArray[np.float64] | pd.Series,
     window: int = 20,
     annualize: bool = False,
     trading_days: int = TRADING_DAYS_PER_YEAR,
@@ -150,9 +145,8 @@ def calculate_volatility_from_returns(
     except Exception:
         return 0.0
 
-
 def calculate_rolling_volatility(
-    returns: Union[pd.Series, NDArray[np.float64]],
+    returns: pd.Series | NDArray[np.float64],
     window: int = 20,
     annualize: bool = False,
     trading_days: int = TRADING_DAYS_PER_YEAR,
@@ -187,9 +181,8 @@ def calculate_rolling_volatility(
     except Exception:
         return pd.Series(dtype=float)
 
-
 def calculate_rolling_sma(
-    prices: Union[List[float], NDArray[np.float64], pd.Series], period: int
+    prices: list[float] | NDArray[np.float64] | pd.Series, period: int
 ) -> pd.Series:
     """
     Calculate rolling Simple Moving Average (SMA).
@@ -221,9 +214,8 @@ def calculate_rolling_sma(
         # Fallback
         return pd.Series(prices_arr).rolling(window=period).mean()
 
-
 def calculate_rolling_rsi(
-    prices: Union[List[float], NDArray[np.float64], pd.Series], period: int = 14
+    prices: list[float] | NDArray[np.float64] | pd.Series, period: int = 14
 ) -> pd.Series:
     """
     Calculate rolling RSI (Relative Strength Index).
@@ -256,9 +248,8 @@ def calculate_rolling_rsi(
     except Exception:
         return pd.Series(dtype=float)
 
-
 def calculate_sma(
-    prices: Union[List[float], NDArray[np.float64], pd.Series], period: int
+    prices: list[float] | NDArray[np.float64] | pd.Series, period: int
 ) -> float:
     """
     Calculate Simple Moving Average (SMA).
@@ -289,13 +280,12 @@ def calculate_sma(
         # Fallback
         return float(np.mean(prices_arr[-period:]))
 
-
 def calculate_macd(
-    prices: Union[List[float], NDArray[np.float64], pd.Series],
+    prices: list[float] | NDArray[np.float64] | pd.Series,
     fast_period: int = 12,
     slow_period: int = 26,
     signal_period: int = 9,
-) -> Tuple[pd.Series, pd.Series, pd.Series]:
+) -> tuple[pd.Series, pd.Series, pd.Series]:
     """
     Calculate MACD (Moving Average Convergence Divergence).
     Returns (macd, signal, histogram) series.
@@ -307,7 +297,7 @@ def calculate_macd(
         signal_period: Signal EMA period
 
     Returns:
-        Tuple of (macd, signal, histogram) series.
+        tuple of (macd, signal, histogram) series.
     """
     if isinstance(prices, list):
         prices_arr = np.array(prices, dtype=np.float64)
@@ -347,12 +337,11 @@ def calculate_macd(
 
         return macd, signal, hist
 
-
 def calculate_bollinger_bands(
-    prices: Union[List[float], NDArray[np.float64], pd.Series],
+    prices: list[float] | NDArray[np.float64] | pd.Series,
     period: int = 20,
     std_dev: float = 2.0,
-) -> Tuple[pd.Series, pd.Series, pd.Series]:
+) -> tuple[pd.Series, pd.Series, pd.Series]:
     """
     Calculate Bollinger Bands.
     Returns (upper, middle, lower) series.
@@ -363,7 +352,7 @@ def calculate_bollinger_bands(
         std_dev: Standard deviation multiplier
 
     Returns:
-        Tuple of (upper, middle, lower) series.
+        tuple of (upper, middle, lower) series.
     """
     if isinstance(prices, list):
         prices_arr = np.array(prices, dtype=np.float64)
@@ -400,11 +389,10 @@ def calculate_bollinger_bands(
 
         return upper, middle, lower
 
-
 def calculate_atr(
-    high: Union[List[float], NDArray[np.float64], pd.Series],
-    low: Union[List[float], NDArray[np.float64], pd.Series],
-    close: Union[List[float], NDArray[np.float64], pd.Series],
+    high: list[float] | NDArray[np.float64] | pd.Series,
+    low: list[float] | NDArray[np.float64] | pd.Series,
+    close: list[float] | NDArray[np.float64] | pd.Series,
     period: int = 14,
 ) -> float:
     """
@@ -449,11 +437,10 @@ def calculate_atr(
     except Exception:
         return 0.0
 
-
 def calculate_rolling_atr(
-    high: Union[List[float], NDArray[np.float64], pd.Series],
-    low: Union[List[float], NDArray[np.float64], pd.Series],
-    close: Union[List[float], NDArray[np.float64], pd.Series],
+    high: list[float] | NDArray[np.float64] | pd.Series,
+    low: list[float] | NDArray[np.float64] | pd.Series,
+    close: list[float] | NDArray[np.float64] | pd.Series,
     period: int = 14,
 ) -> pd.Series:
     """
@@ -497,11 +484,10 @@ def calculate_rolling_atr(
     except Exception:
         return pd.Series(dtype=float)
 
-
 def calculate_adx(
-    high: Union[List[float], NDArray[np.float64], pd.Series],
-    low: Union[List[float], NDArray[np.float64], pd.Series],
-    close: Union[List[float], NDArray[np.float64], pd.Series],
+    high: list[float] | NDArray[np.float64] | pd.Series,
+    low: list[float] | NDArray[np.float64] | pd.Series,
+    close: list[float] | NDArray[np.float64] | pd.Series,
     period: int = 14,
 ) -> float:
     """
@@ -545,11 +531,10 @@ def calculate_adx(
     except Exception:
         return 0.0
 
-
 def calculate_rolling_adx(
-    high: Union[List[float], NDArray[np.float64], pd.Series],
-    low: Union[List[float], NDArray[np.float64], pd.Series],
-    close: Union[List[float], NDArray[np.float64], pd.Series],
+    high: list[float] | NDArray[np.float64] | pd.Series,
+    low: list[float] | NDArray[np.float64] | pd.Series,
+    close: list[float] | NDArray[np.float64] | pd.Series,
     period: int = 14,
 ) -> pd.Series:
     """
@@ -593,15 +578,14 @@ def calculate_rolling_adx(
     except Exception:
         return pd.Series(dtype=float)
 
-
 def calculate_stochastic(
-    high: Union[List[float], NDArray[np.float64], pd.Series],
-    low: Union[List[float], NDArray[np.float64], pd.Series],
-    close: Union[List[float], NDArray[np.float64], pd.Series],
+    high: list[float] | NDArray[np.float64] | pd.Series,
+    low: list[float] | NDArray[np.float64] | pd.Series,
+    close: list[float] | NDArray[np.float64] | pd.Series,
     fastk_period: int = 14,
     slowk_period: int = 3,
     slowd_period: int = 3,
-) -> Tuple[pd.Series, pd.Series]:
+) -> tuple[pd.Series, pd.Series]:
     """
     Calculate Stochastic Oscillator.
     Returns (slowk, slowd) series.
@@ -615,7 +599,7 @@ def calculate_stochastic(
         slowd_period: Smoothing for making the Slow-D line
 
     Returns:
-        Tuple of (slowk, slowd) series.
+        tuple of (slowk, slowd) series.
     """
     try:
         # Convert inputs to numpy arrays
@@ -676,14 +660,13 @@ def calculate_stochastic(
 
         return slowk, slowd
 
-
 def calculate_stochastic_fast(
-    high: Union[List[float], NDArray[np.float64], pd.Series],
-    low: Union[List[float], NDArray[np.float64], pd.Series],
-    close: Union[List[float], NDArray[np.float64], pd.Series],
+    high: list[float] | NDArray[np.float64] | pd.Series,
+    low: list[float] | NDArray[np.float64] | pd.Series,
+    close: list[float] | NDArray[np.float64] | pd.Series,
     fastk_period: int = 14,
     fastd_period: int = 3,
-) -> Tuple[pd.Series, pd.Series]:
+) -> tuple[pd.Series, pd.Series]:
     """
     Calculate Stochastic Fast.
     Returns (fastk, fastd) series.
@@ -696,7 +679,7 @@ def calculate_stochastic_fast(
         fastd_period: Smoothing for making the Fast-D line
 
     Returns:
-        Tuple of (fastk, fastd) series.
+        tuple of (fastk, fastd) series.
     """
     try:
         # Convert inputs to numpy arrays
@@ -751,11 +734,10 @@ def calculate_stochastic_fast(
 
         return fastk, fastd
 
-
 def calculate_williams_r(
-    high: Union[List[float], NDArray[np.float64], pd.Series],
-    low: Union[List[float], NDArray[np.float64], pd.Series],
-    close: Union[List[float], NDArray[np.float64], pd.Series],
+    high: list[float] | NDArray[np.float64] | pd.Series,
+    low: list[float] | NDArray[np.float64] | pd.Series,
+    close: list[float] | NDArray[np.float64] | pd.Series,
     period: int = 14,
 ) -> pd.Series:
     """

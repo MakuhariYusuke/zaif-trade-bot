@@ -5,7 +5,7 @@
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -16,7 +16,6 @@ from scipy.signal import savgol_filter
 from ztb.utils.file_utils import save_csv_data
 
 logger = logging.getLogger(__name__)
-
 
 class MarketStateGenerator:
     """
@@ -74,7 +73,7 @@ class MarketStateGenerator:
             "q4": {"sentiment": -0.2, "volatility": 1.0},  # 10月-12月
         }
 
-    def get_seasonal_multiplier(self, date: datetime) -> Dict[str, float]:
+    def get_seasonal_multiplier(self, date: datetime) -> dict[str, float]:
         """季節性に基づく乗数を計算"""
         month = date.month
         if month <= 3:
@@ -85,7 +84,6 @@ class MarketStateGenerator:
             return self.seasonal_patterns["q3"]
         else:
             return self.seasonal_patterns["q4"]
-
 
 class SyntheticNewsGenerator:
     """
@@ -146,7 +144,7 @@ class SyntheticNewsGenerator:
 
     def generate_news_batch(
         self, market_state: str, num_articles: int, date: datetime
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         指定された市場状態に基づいてニュース記事を生成
 
@@ -215,7 +213,6 @@ class SyntheticNewsGenerator:
             articles.append(article)
 
         return articles
-
 
 class SyntheticEconomicDataGenerator:
     """
@@ -332,7 +329,6 @@ class SyntheticEconomicDataGenerator:
 
         return df
 
-
 class GANBasedDataGenerator(nn.Module):
     """
     GANベースの高度な合成データ生成器
@@ -381,7 +377,6 @@ class GANBasedDataGenerator(nn.Module):
         synthetic_data = self.generator(noise)
         return synthetic_data
 
-
 class MultiModalSyntheticDataset:
     """
     マルチモーダル合成データセット統合クラス
@@ -394,7 +389,7 @@ class MultiModalSyntheticDataset:
 
     def generate_comprehensive_dataset(
         self, start_date: datetime, end_date: datetime, news_per_day: int = 5
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         包括的なマルチモーダルデータセットを生成
 
@@ -489,7 +484,7 @@ class MultiModalSyntheticDataset:
         else:  # 11-12月: 年末効果
             return np.random.choice(["bull_trend", "recovery"], p=[0.6, 0.4])
 
-    def save_dataset(self, dataset: Dict[str, Any], base_path: str):
+    def save_dataset(self, dataset: dict[str, Any], base_path: str):
         """データセットを保存"""
         import os
 
@@ -513,7 +508,6 @@ class MultiModalSyntheticDataset:
             json.dump(metadata, f, indent=2)
 
         logger.info(f"Dataset saved to {base_path}")
-
 
 # 使用例
 if __name__ == "__main__":

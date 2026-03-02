@@ -6,7 +6,7 @@ Uses the base optimizer class for common functionality.
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any
 
 from ztb.utils.path_utils import get_project_root
 
@@ -18,11 +18,10 @@ from ztb.training.binary_search.base_optimizer import (
     HyperparameterOptimizer,
 )
 
-
 class RewardParamsOptimizer(HyperparameterOptimizer):
     """Optimizer for reward function parameters."""
 
-    def __init__(self, project_root: Optional[Path] = None):
+    def __init__(self, project_root: Path | None = None):
         super().__init__(project_root)
         # Reward parameters to optimize
         self.reward_multipliers = [1.0, 1.0, 1.0]  # [hold, buy, sell] multipliers
@@ -35,7 +34,7 @@ class RewardParamsOptimizer(HyperparameterOptimizer):
         """Get the range for reward multiplier binary search."""
         return (0.1, 5.0)  # Reasonable range for reward multipliers
 
-    def update_ppo_params(self, value: Union[int, float]) -> None:
+    def update_ppo_params(self, value: int | float) -> None:
         """Update environment config with reward multiplier value."""
         # For simplicity, we'll optimize one multiplier at a time
         # In practice, you might want to optimize combinations
@@ -44,7 +43,7 @@ class RewardParamsOptimizer(HyperparameterOptimizer):
 
     def evaluate_result(
         self, callback: Any
-    ) -> Tuple[float, Dict[str, Union[int, float]], Dict[str, Union[int, float]]]:
+    ) -> tuple[float, dict[str, int | float], dict[str, int | float]]:
         """Evaluate training result with focus on action balance."""
         stats = callback.get_training_stats()
         action_dist = callback.get_action_distribution()
@@ -64,7 +63,6 @@ class RewardParamsOptimizer(HyperparameterOptimizer):
         combined_score = reward_score - balance_score * 0.01
 
         return combined_score, stats, action_dist
-
 
 def main() -> None:
     parser = BinarySearchArgumentParser.create_parser(
@@ -98,7 +96,6 @@ def main() -> None:
         print(
             f"\nOptimization complete. Best reward_multiplier: {best_value}, Score: {best_score:.6f}"
         )
-
 
 if __name__ == "__main__":
     main()

@@ -11,7 +11,7 @@ Example:
     >>> ppo.train(model, total_timesteps=100000)
 """
 
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable
 
 from sb3_contrib import MaskablePPO
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -22,7 +22,6 @@ from ztb.training.core.ppo_trainer import PPOTrainerAutoHalt
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class PPOAlgorithm(BaseRLAlgorithm):
     """
@@ -44,9 +43,9 @@ class PPOAlgorithm(BaseRLAlgorithm):
             use_auto_halt: PPOTrainerAutoHaltを使用するか（デフォルト: False）
         """
         self._use_auto_halt = use_auto_halt
-        self._trainer: Optional[PPOTrainerAutoHalt] = None
-        self._model: Optional[MaskablePPO] = None
-        self._config: Optional[Dict[str, Any]] = None
+        self._trainer: PPOTrainerAutoHalt | None = None
+        self._model: MaskablePPO | None = None
+        self._config: dict[str, Any] | None = None
 
     @property
     def algorithm_name(self) -> str:
@@ -56,8 +55,8 @@ class PPOAlgorithm(BaseRLAlgorithm):
     def create_model(
         self,
         env: VecEnv,
-        config: Dict[str, Any],
-        tensorboard_log: Optional[str] = None,
+        config: dict[str, Any],
+        tensorboard_log: str | None = None,
     ) -> BaseAlgorithm:
         """
         PPOモデルを作成。
@@ -103,7 +102,7 @@ class PPOAlgorithm(BaseRLAlgorithm):
         self,
         model: BaseAlgorithm,
         total_timesteps: int,
-        callback: Optional[Callable[..., Any]] = None,
+        callback: Callable[..., Any] | None = None,
         **kwargs: Any,
     ) -> BaseAlgorithm:
         """
@@ -137,7 +136,7 @@ class PPOAlgorithm(BaseRLAlgorithm):
         logger.info("✅ PPO training completed")
         return model
 
-    def get_default_config(self) -> Dict[str, Any]:
+    def get_default_config(self) -> dict[str, Any]:
         """
         PPOのデフォルト設定を取得。
 
@@ -167,7 +166,7 @@ class PPOAlgorithm(BaseRLAlgorithm):
             "verbose": 1,
         }
 
-    def validate_config(self, config: Dict[str, Any]) -> bool:
+    def validate_config(self, config: dict[str, Any]) -> bool:
         """
         PPO設定の妥当性を検証。
 

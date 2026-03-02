@@ -6,10 +6,8 @@ This module provides a base class for exchange-specific configuration management
 
 import os
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple
 
 from dotenv import load_dotenv
-
 
 class BaseExchangeConfig(ABC):
     """
@@ -24,21 +22,21 @@ class BaseExchangeConfig(ABC):
         load_dotenv()
 
     @abstractmethod
-    def _get_env_vars(self) -> Tuple[str, str]:
+    def _get_env_vars(self) -> tuple[str, str]:
         """
         Get the environment variable names for this exchange.
 
         Returns:
-            Tuple of (api_key_env_var, api_secret_env_var)
+            tuple of (api_key_env_var, api_secret_env_var)
         """
         pass
 
-    def get_credentials(self) -> Tuple[str, str]:
+    def get_credentials(self) -> tuple[str, str]:
         """
         Get API credentials from environment variables.
 
         Returns:
-            Tuple of (api_key, api_secret)
+            tuple of (api_key, api_secret)
 
         Raises:
             ValueError: If credentials are not found or empty
@@ -59,12 +57,12 @@ class BaseExchangeConfig(ABC):
 
         return api_key, api_secret
 
-    def get_credentials_optional(self) -> Tuple[Optional[str], Optional[str]]:
+    def get_credentials_optional(self) -> tuple[str | None, str | None]:
         """
         Get API credentials from environment variables (optional).
 
         Returns:
-            Tuple of (api_key, api_secret) - may be None if not set
+            tuple of (api_key, api_secret) - may be None if not set
         """
         api_key_env, api_secret_env = self._get_env_vars()
 
@@ -78,7 +76,7 @@ class BaseExchangeConfig(ABC):
         return api_key, api_secret
 
     @staticmethod
-    def validate_credentials(api_key: Optional[str], api_secret: Optional[str]) -> bool:
+    def validate_credentials(api_key: str | None, api_secret: str | None) -> bool:
         """
         Validate that API credentials are present and non-empty.
 

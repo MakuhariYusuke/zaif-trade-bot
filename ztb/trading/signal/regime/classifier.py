@@ -5,7 +5,7 @@ Enhanced market regime classification system with 16 distinct regimes
 for adaptive signal processing and trading strategy optimization.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -25,7 +25,6 @@ from ztb.trading.signal.common.metrics import (
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class RegimeType:
     """Market regime type constants"""
@@ -63,7 +62,6 @@ class RegimeType:
     BREAKOUT_SETUP = "breakout_setup"
     BREAKDOWN_SETUP = "breakdown_setup"
 
-
 class MarketRegimeClassifier(BaseSignalProcessor):
     """
     Enhanced market regime classifier with 16 distinct regimes
@@ -72,12 +70,12 @@ class MarketRegimeClassifier(BaseSignalProcessor):
     strategies and signal processing optimization.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config)
         self.regime_definitions = self._initialize_regime_definitions()
         self.regime_history = []
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         return {
             "lookback_periods": {"short": 20, "medium": 50, "long": 100},
             "regime_scheme": "comprehensive",
@@ -85,7 +83,7 @@ class MarketRegimeClassifier(BaseSignalProcessor):
             "max_history": 1000,
         }
 
-    def _initialize_regime_definitions(self) -> List[Dict[str, Any]]:
+    def _initialize_regime_definitions(self) -> list[dict[str, Any]]:
         """Initialize the 16 regime definitions with priority-based classification"""
         # Adjusted thresholds for 1-minute crypto data
         # Volatility scale: ~0.0005 (0.05%) is typical low vol
@@ -333,7 +331,7 @@ class MarketRegimeClassifier(BaseSignalProcessor):
 
     def detect_regime(
         self, data: pd.DataFrame, current_index: int = -1
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Detect current market regime from price data
 
@@ -377,7 +375,7 @@ class MarketRegimeClassifier(BaseSignalProcessor):
 
     def _calculate_regime_metrics(
         self, data: pd.DataFrame, index: int
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Calculate comprehensive regime detection metrics"""
         # Ensure we have enough data
         min_periods = max(self.config["lookback_periods"].values())
@@ -409,7 +407,7 @@ class MarketRegimeClassifier(BaseSignalProcessor):
 
         return metrics
 
-    def _calculate_additional_indicators(self, data: pd.DataFrame) -> Dict[str, float]:
+    def _calculate_additional_indicators(self, data: pd.DataFrame) -> dict[str, float]:
         """Calculate additional technical indicators for regime detection"""
         if len(data) < 14:
             return {
@@ -482,7 +480,7 @@ class MarketRegimeClassifier(BaseSignalProcessor):
             "price_range_ratio": price_range_ratio,
         }
 
-    def _get_default_metrics(self) -> Dict[str, float]:
+    def _get_default_metrics(self) -> dict[str, float]:
         """Get default metrics when insufficient data"""
         return {
             "trend_strength": 0.0,
@@ -500,8 +498,8 @@ class MarketRegimeClassifier(BaseSignalProcessor):
         }
 
     def _classify_regime(
-        self, metrics: Dict[str, float]
-    ) -> Tuple[str, float, List[str]]:
+        self, metrics: dict[str, float]
+    ) -> tuple[str, float, list[str]]:
         """Classify regime using priority-based system"""
         classification_path = []
 
@@ -522,8 +520,8 @@ class MarketRegimeClassifier(BaseSignalProcessor):
         return RegimeType.CONSOLIDATION, 0.5, classification_path
 
     def _evaluate_regime_conditions(
-        self, metrics: Dict[str, float], regime_def: Dict[str, Any]
-    ) -> Tuple[float, float]:
+        self, metrics: dict[str, float], regime_def: dict[str, Any]
+    ) -> tuple[float, float]:
         """Evaluate how well metrics match regime conditions"""
         score = 0
         total_conditions = len(regime_def["conditions"])
@@ -552,8 +550,8 @@ class MarketRegimeClassifier(BaseSignalProcessor):
         return score, confidence
 
     def _calculate_secondary_regimes(
-        self, metrics: Dict[str, float], primary_regime: str
-    ) -> List[Tuple[str, float]]:
+        self, metrics: dict[str, float], primary_regime: str
+    ) -> list[tuple[str, float]]:
         """Calculate secondary regime candidates"""
         secondary_regimes = []
 
@@ -649,11 +647,11 @@ class MarketRegimeClassifier(BaseSignalProcessor):
                 metadata={"error": str(e)},
             )
 
-    def get_regime_history(self, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_regime_history(self, limit: int = 100) -> list[dict[str, Any]]:
         """Get regime detection history"""
         return self.regime_history[-limit:] if limit else self.regime_history
 
-    def get_regime_statistics(self) -> Dict[str, Any]:
+    def get_regime_statistics(self) -> dict[str, Any]:
         """Get regime detection statistics"""
         if not self.regime_history:
             return {}

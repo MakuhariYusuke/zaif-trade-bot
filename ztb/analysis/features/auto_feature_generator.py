@@ -19,7 +19,7 @@ import json
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Callable, Iterator
 
 import numpy as np
 import pandas as pd
@@ -34,9 +34,7 @@ from ztb.features.base import CommonPreprocessor
 from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
 from ztb.utils.quality import QualityGates
 
-
 # --- 036# Any削減: TypedDict定義 ---
-
 
 class _EvalSummary(TypedDict):
     total_generated: int
@@ -44,22 +42,20 @@ class _EvalSummary(TypedDict):
     temporary_count: int
     promotion_rate: float
 
-
 class FeatureEvalResult(TypedDict, total=False):
     """evaluate_and_promote_features の戻り値."""
 
-    promoted: Dict[str, Dict[str, object]]
-    temporary: Dict[str, Dict[str, object]]
+    promoted: dict[str, dict[str, object]]
+    temporary: dict[str, dict[str, object]]
     summary: _EvalSummary
-
 
 class ParameterCombinationGenerator:
     """Generic parameter combination generator for feature creation"""
 
     @staticmethod
     def generate_combinations(
-        *param_lists: List[Union[int, float]], max_combinations: Optional[int] = None
-    ) -> Iterator[Tuple[Union[int, float], ...]]:
+        *param_lists: list[int | float], max_combinations: int | None = None
+    ) -> Iterator[tuple[int | float, ...]]:
         """Generate all combinations from parameter lists"""
         if not param_lists:
             yield ()
@@ -80,9 +76,9 @@ class ParameterCombinationGenerator:
 
     @staticmethod
     def validate_combination(
-        combination: Tuple[Union[int, float], ...],
-        feature_type: Optional[str] = None,
-        validators: Optional[List[Callable[..., bool]]] = None,
+        combination: tuple[int | float, ...],
+        feature_type: str | None = None,
+        validators: list[Callable[..., bool]] | None = None,
     ) -> bool:
         """Validate a parameter combination with built-in rules"""
         # Built-in validations by feature type
@@ -104,7 +100,6 @@ class ParameterCombinationGenerator:
                     return False
 
         return True
-
 
 class FeatureCalculator:
     """Delegated calculation logic for different feature types"""
@@ -159,16 +154,15 @@ class FeatureCalculator:
 
         return kama
 
-
 class FeatureGeneratorTemplate(ABC):
     """Template for feature generation with common workflow"""
 
-    def __init__(self, name: str, params: Dict[str, Union[int, float, str, List[int], Dict[str, List[int]]]]):
+    def __init__(self, name: str, params: dict[str, int | float | str | list[int] | dict[str, list[int]]]):
         self.name = name
         self.params = params
         self.quality_gates = QualityGates()
 
-    def generate_features(self, ohlc_data: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+    def generate_features(self, ohlc_data: pd.DataFrame) -> dict[str, pd.DataFrame]:
         """Template method for feature generation"""
         # 1. Parameter validation
         self._validate_parameters()
@@ -199,22 +193,22 @@ class FeatureGeneratorTemplate(ABC):
         pass  # Override in subclasses
 
     @abstractmethod
-    def _generate_parameter_combinations(self) -> List[Tuple[Union[int, float], ...]]:
+    def _generate_parameter_combinations(self) -> list[tuple[int | float, ...]]:
         """Generate parameter combinations"""
 
     @abstractmethod
-    def _create_feature_name(self, combination: Tuple[Union[int, float], ...]) -> str:
+    def _create_feature_name(self, combination: tuple[int | float, ...]) -> str:
         """Create feature name from parameter combination"""
 
     @abstractmethod
     def _calculate_feature(
-        self, ohlc_data: pd.DataFrame, combination: Tuple[Union[int, float], ...]
+        self, ohlc_data: pd.DataFrame, combination: tuple[int | float, ...]
     ) -> pd.DataFrame:
         """Calculate feature data"""
 
     def _apply_naming_convention(
-        self, features: Dict[str, pd.DataFrame]
-    ) -> Dict[str, pd.DataFrame]:
+        self, features: dict[str, pd.DataFrame]
+    ) -> dict[str, pd.DataFrame]:
         """Apply auto_ naming convention with category prefixes"""
         renamed = {}
         for name, data in features.items():
@@ -237,18 +231,17 @@ class FeatureGeneratorTemplate(ABC):
             renamed[name] = data
         return renamed
 
-    def _register_to_coverage(self, features: Dict[str, pd.DataFrame]) -> None:
+    def _register_to_coverage(self, features: dict[str, pd.DataFrame]) -> None:
         """Register generated features to coverage.json"""
         # Implementation would update coverage.json
-
 
 class AutoFeatureGenerator:
     """Automatic feature generation with promotion rules"""
 
     def __init__(
         self,
-        logger: Optional[EvaluationLogger] = None,
-        config_path: Optional[Path] = None,
+        logger: EvaluationLogger | None = None,
+        config_path: Path | None = None,
     ):
         self.logger = logger or EvaluationLogger()
         self.quality_gates = QualityGates()
@@ -264,7 +257,7 @@ class AutoFeatureGenerator:
             "min_sample_size": 100,
         }
 
-    def _load_params(self) -> Dict[str, Union[int, float, str, List[int], Dict[str, List[int]]]]:
+    def _load_params(self) -> dict[str, int | float | str | list[int] | dict[str, list[int]]]:
         """Load parameter configurations from YAML file"""
         if not self.config_path.exists():
             # Fallback to default parameters
@@ -303,9 +296,9 @@ class AutoFeatureGenerator:
     def generate_ema_cross_features(
         self,
         ohlc_data: pd.DataFrame,
-        fast_periods: Optional[List[int]] = None,
-        slow_periods: Optional[List[int]] = None,
-    ) -> Dict[str, pd.DataFrame]:
+        fast_periods: list[int] | None = None,
+        slow_periods: list[int] | None = None,
+    ) -> dict[str, pd.DataFrame]:
         """
         Generate EMA cross features with multiple parameter combinations
 
@@ -386,8 +379,8 @@ class AutoFeatureGenerator:
         return features
 
     def _apply_quality_gates(
-        self, features: Dict[str, pd.DataFrame], ohlc_data: pd.DataFrame
-    ) -> Dict[str, pd.DataFrame]:
+        self, features: dict[str, pd.DataFrame], ohlc_data: pd.DataFrame
+    ) -> dict[str, pd.DataFrame]:
         """Apply quality gates to filter out poor quality features"""
         filtered_features = {}
 
@@ -419,10 +412,10 @@ class AutoFeatureGenerator:
     def generate_kama_features(
         self,
         ohlc_data: pd.DataFrame,
-        fast_periods: Optional[List[int]] = None,
-        slow_periods: Optional[List[int]] = None,
-        efficiency_periods: Optional[List[int]] = None,
-    ) -> Dict[str, pd.DataFrame]:
+        fast_periods: list[int] | None = None,
+        slow_periods: list[int] | None = None,
+        efficiency_periods: list[int] | None = None,
+    ) -> dict[str, pd.DataFrame]:
         """
         Generate KAMA features with multiple parameter combinations
 
@@ -513,7 +506,7 @@ class AutoFeatureGenerator:
         return kama
 
     def evaluate_and_promote_features(
-        self, features: Dict[str, pd.DataFrame], ohlc_data: pd.DataFrame
+        self, features: dict[str, pd.DataFrame], ohlc_data: pd.DataFrame
     ) -> FeatureEvalResult:
         """
         Evaluate generated features and promote successful ones
@@ -613,7 +606,7 @@ class AutoFeatureGenerator:
 
         return results
 
-    def _check_promotion_criteria(self, feature_results: Dict[str, Dict[str, float]]) -> bool:
+    def _check_promotion_criteria(self, feature_results: dict[str, dict[str, float]]) -> bool:
         """Check if feature meets promotion criteria"""
         for col, results in feature_results.items():
             sharpe = results.get("sharpe_ratio", 0)
@@ -629,7 +622,7 @@ class AutoFeatureGenerator:
 
         return False
 
-    def _calculate_basic_metrics(self, returns: NDArray[np.float64]) -> Dict[str, float]:
+    def _calculate_basic_metrics(self, returns: NDArray[np.float64]) -> dict[str, float]:
         """Calculate basic performance metrics"""
         returns = np.asarray(returns)  # Ensure returns is np.ndarray
         if len(returns) == 0:
@@ -661,7 +654,7 @@ class AutoFeatureGenerator:
 
     def save_promoted_features(
         self,
-        promoted_features: Dict[str, Dict[str, object]],
+        promoted_features: dict[str, dict[str, object]],
         output_dir: str = "ztb/features/auto_generated",
     ) -> None:
         """

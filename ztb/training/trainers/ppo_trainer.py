@@ -11,7 +11,7 @@ Handles PPO-specific training logic including:
 import gc
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from ztb.training.constants import SAVE_INTERVAL
 from ztb.training.unified_trainer.components.config_manager import TrainingConfigManager
@@ -21,7 +21,6 @@ from ztb.training.unified_trainer.ensemble_mixin import EnsembleMixin
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class PPOAlgorithmTrainer(EnsembleMixin):
     """
@@ -45,9 +44,9 @@ class PPOAlgorithmTrainer(EnsembleMixin):
         self.ui_manager = TrainingUIManager(self.logger)
         self.reporter = TrainingReporter(self.logger)
 
-    def _setup_memory_optimization(self, unified_config: Dict[str, Any]) -> None:
+    def _setup_memory_optimization(self, unified_config: dict[str, Any]) -> None:
         """
-        Set up memory optimization environment variables.
+        set up memory optimization environment variables.
 
         Args:
             unified_config: Unified configuration dict
@@ -58,11 +57,11 @@ class PPOAlgorithmTrainer(EnsembleMixin):
             os.environ["TORCH_USE_CUDA_DSA"] = "1"
             os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
-        # Memory optimization: Set garbage collection thresholds
+        # Memory optimization: set garbage collection thresholds
         if unified_config.get("aggressive_memory_management", False):
             gc.set_threshold(700, 10, 10)  # More aggressive GC
 
-    def _get_lagrange_params(self, config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _get_lagrange_params(self, config: dict[str, Any]) -> dict[str, Any] | None:
         """
         Extract Lagrange constraint parameters.
 
@@ -103,7 +102,7 @@ class PPOAlgorithmTrainer(EnsembleMixin):
         }
 
     def _create_ppo_trainer(
-        self, unified_config: Dict[str, Any], enable_sell_mitigation: bool = False
+        self, unified_config: dict[str, Any], enable_sell_mitigation: bool = False
     ) -> Any:
         """
         Create appropriate PPO trainer instance.
@@ -182,7 +181,7 @@ class PPOAlgorithmTrainer(EnsembleMixin):
             )
 
     def _save_model_and_schema(
-        self, model: Any, unified_config: Dict[str, Any]
+        self, model: Any, unified_config: dict[str, Any]
     ) -> None:
         """
         Save trained model and schema.
@@ -219,7 +218,7 @@ class PPOAlgorithmTrainer(EnsembleMixin):
         self._save_model_schema(session_id, model_dir)
 
     def _save_model_schema(
-        self, session_id: str, model_dir: Path, df: Optional[Any] = None
+        self, session_id: str, model_dir: Path, df: Any | None = None
     ) -> None:
         """
         Save model schema using FeatureSchemaManager.
@@ -290,7 +289,7 @@ class PPOAlgorithmTrainer(EnsembleMixin):
                 f"Failed to save model schema (non-fatal): {e}", exc_info=True
             )
 
-    def train(self, unified_config: Dict[str, Any]) -> Any:
+    def train(self, unified_config: dict[str, Any]) -> Any:
         """
         Execute PPO training.
 
@@ -303,7 +302,7 @@ class PPOAlgorithmTrainer(EnsembleMixin):
         # Initialize ensemble if enabled
         self.initialize_ensemble(unified_config)
 
-        # Set up memory optimization
+        # set up memory optimization
         self._setup_memory_optimization(unified_config)
 
         # Check if SELL bias mitigation is enabled

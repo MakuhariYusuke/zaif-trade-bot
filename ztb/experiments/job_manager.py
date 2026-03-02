@@ -21,7 +21,7 @@ from concurrent.futures import (
 )
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Optional, TypedDict, cast
+from typing import Callable, TypedDict, cast
 
 import numpy as np
 
@@ -33,7 +33,6 @@ from ztb.utils.safety import ensure_dict, safe_to_float
 
 logger = logging.getLogger(__name__)
 
-
 class JobConfig(TypedDict):
     """Configuration payload for a single job."""
 
@@ -43,7 +42,6 @@ class JobConfig(TypedDict):
     end_step: int
     steps: int
     output_file: Path
-
 
 class JobResult(TypedDict, total=False):
     """Normalized result payload for a single job."""
@@ -55,19 +53,17 @@ class JobResult(TypedDict, total=False):
     error: str
     timestamp: str
 
-
 class JobStateRecord(TypedDict, total=False):
     """Persisted job-state record from sqlite."""
 
     id: str
     status: str
-    start_time: Optional[float]
-    end_time: Optional[float]
-    checkpoint_path: Optional[str]
-    metrics: Optional[ObjectMap]
+    start_time: float | None
+    end_time: float | None
+    checkpoint_path: str | None
+    metrics: ObjectMap | None
     created_at: float
     updated_at: float
-
 
 def _json_default(value: object) -> object:
     """JSON serializer for numpy and path-like objects."""
@@ -79,14 +75,11 @@ def _json_default(value: object) -> object:
         return str(value)
     raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
 
-
 def _as_object_map(value: object) -> ObjectMap:
     return ensure_dict(value)
 
-
 def _as_float(value: object, default: float = 0.0) -> float:
     return safe_to_float(value, default)
-
 
 def _execute_training_job(
     job_config: JobConfig,
@@ -122,7 +115,6 @@ def _execute_training_job(
             "timestamp": datetime.now().isoformat(),
         }
 
-
 class JobStateDB:
     """SQLite database for job state persistence."""
 
@@ -154,10 +146,10 @@ class JobStateDB:
         self,
         job_id: str,
         status: str,
-        start_time: Optional[float] = None,
-        end_time: Optional[float] = None,
-        checkpoint_path: Optional[str] = None,
-        metrics: Optional[ObjectMap] = None,
+        start_time: float | None = None,
+        end_time: float | None = None,
+        checkpoint_path: str | None = None,
+        metrics: ObjectMap | None = None,
     ) -> None:
         """Save or update job state."""
         metrics_json = (
@@ -181,7 +173,7 @@ class JobStateDB:
             conn.commit()
 
     def _row_to_state(self, row: tuple[object, ...]) -> JobStateRecord:
-        metrics_payload: Optional[ObjectMap] = None
+        metrics_payload: ObjectMap | None = None
         if row[5]:
             try:
                 metrics_payload = _as_object_map(json.loads(cast(str, row[5])))
@@ -191,15 +183,15 @@ class JobStateDB:
         return {
             "id": cast(str, row[0]),
             "status": cast(str, row[1]),
-            "start_time": cast(Optional[float], row[2]),
-            "end_time": cast(Optional[float], row[3]),
-            "checkpoint_path": cast(Optional[str], row[4]),
+            "start_time": cast(float | None, row[2]),
+            "end_time": cast(float | None, row[3]),
+            "checkpoint_path": cast(str | None, row[4]),
             "metrics": metrics_payload,
             "created_at": _as_float(row[6]),
             "updated_at": _as_float(row[7]),
         }
 
-    def get_job_state(self, job_id: str) -> Optional[JobStateRecord]:
+    def get_job_state(self, job_id: str) -> JobStateRecord | None:
         """Get job state by ID."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,))
@@ -223,7 +215,6 @@ class JobStateDB:
             )
             rows = cursor.fetchall()
         return [self._row_to_state(cast(tuple[object, ...], row)) for row in rows]
-
 
 class JobManager:
     """
@@ -309,7 +300,7 @@ class JobManager:
         with open(manifest_file, "w", encoding="utf-8") as file:
             json.dump(manifest, file, indent=2, default=_json_default)
 
-    def _load_manifest(self, job_id: str) -> Optional[ObjectMap]:
+    def _load_manifest(self, job_id: str) -> ObjectMap | None:
         """Load job manifest from file."""
         manifest_file = self.manifest_dir / f"{job_id}.json"
         if not manifest_file.exists():
@@ -438,7 +429,7 @@ class JobManager:
             start_time=start_time,
             end_time=time.time(),
             checkpoint_path=str(job_config["output_file"]),
-            metrics=cast(Optional[ObjectMap], metrics),
+            metrics=cast(ObjectMap | None, metrics),
         )
 
         monitor_status = "success" if status == "completed" else status
@@ -460,7 +451,7 @@ class JobManager:
         raw_result = _execute_training_job(job_config, train_function)
         return self._finalize_job(job_config, start_time, raw_result)
 
-    def _try_load_completed_result(self, job_config: JobConfig) -> Optional[JobResult]:
+    def _try_load_completed_result(self, job_config: JobConfig) -> JobResult | None:
         try:
             payload = _as_object_map(safe_json_load(job_config["output_file"]))
             if str(payload.get("status")) == "completed":

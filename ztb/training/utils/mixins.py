@@ -4,8 +4,9 @@ Mixins for enhancing trainer functionality.
 This module provides mixin classes that can be added to trainers
 to provide additional functionality like progress tracking.
 """
+from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from ztb.utils.logging_utils import get_logger
 
@@ -13,7 +14,6 @@ if TYPE_CHECKING:
     from rich.progress import Progress, TaskID
 
 logger = get_logger(__name__)
-
 
 class ProgressTrackingMixin:
     """
@@ -25,8 +25,8 @@ class ProgressTrackingMixin:
 
     def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
-        self.progress: Optional["Progress"] = None
-        self.task_id: Optional["TaskID"] = None
+        self.progress: Progress | None = None
+        self.task_id: TaskID | None = None
         self._progress_enabled = True
 
     def enable_progress_bar(self) -> None:
@@ -97,7 +97,6 @@ class ProgressTrackingMixin:
                 self.progress = None
                 self.task_id = None
 
-
 class EntropyScheduleMixin:
     """
     Mixin class providing entropy coefficient scheduling.
@@ -109,7 +108,7 @@ class EntropyScheduleMixin:
     def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
         self._entropy_schedule_enabled = False
-        self._entropy_schedule_type: Optional[str] = None
+        self._entropy_schedule_type: str | None = None
         self._initial_ent_coef = 0.0
         self._final_ent_coef = 0.0
 
@@ -117,7 +116,7 @@ class EntropyScheduleMixin:
         self,
         schedule_type: str,
         initial_ent_coef: float,
-        final_ent_coef: Optional[float] = None,
+        final_ent_coef: float | None = None,
     ) -> None:
         """
         Configure entropy coefficient scheduling.

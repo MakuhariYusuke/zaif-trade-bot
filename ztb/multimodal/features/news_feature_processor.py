@@ -6,7 +6,6 @@ TextSentimentEncoderを活用したニュース情報特徴量の実装
 import logging
 from datetime import timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -18,7 +17,6 @@ from ztb.multimodal.features.text.nlp_processor import (
 )
 
 logger = logging.getLogger(__name__)
-
 
 class NewsFeatureProcessor:
     """
@@ -83,8 +81,8 @@ class NewsFeatureProcessor:
             return pd.DataFrame()
 
     def extract_sentiment_features(
-        self, news_texts: List[str]
-    ) -> Dict[str, np.ndarray]:
+        self, news_texts: list[str]
+    ) -> dict[str, np.ndarray]:
         """
         ニューステキストから感情特徴量を抽出
 
@@ -299,7 +297,6 @@ class NewsFeatureProcessor:
             logger.error(f"ニュース影響特徴量作成に失敗: {e}")
             return pd.DataFrame()
 
-
 class TradingFeatureIntegrator:
     """
     取引特徴量統合クラス
@@ -310,7 +307,7 @@ class TradingFeatureIntegrator:
         self.news_processor = NewsFeatureProcessor()
 
     def create_comprehensive_features(
-        self, price_data_path: str, news_data_path: Optional[str] = None
+        self, price_data_path: str, news_data_path: str | None = None
     ) -> pd.DataFrame:
         """
         包括的な特徴量セットを作成
@@ -357,7 +354,6 @@ class TradingFeatureIntegrator:
             logger.error(f"包括的特徴量作成に失敗: {e}")
             return pd.DataFrame()
 
-
 def create_sample_news_features():
     """
     サンプルニュース特徴量生成
@@ -386,7 +382,6 @@ def create_sample_news_features():
     print(f"平均感情スコア [ネガティブ, ニュートラル, ポジティブ]: {avg_sentiment}")
 
     print("ニュース特徴量処理が完了しました")
-
 
 if __name__ == "__main__":
     create_sample_news_features()

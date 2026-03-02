@@ -9,7 +9,6 @@ from ztb.features.core.registry import FeatureRegistry
 
 # Import extended time features
 
-
 @FeatureRegistry.register("DOW")
 def compute_dow(df: pd.DataFrame) -> pd.Series:
     """Day of Week"""
@@ -19,7 +18,6 @@ def compute_dow(df: pd.DataFrame) -> pd.Series:
     else:
         dow = pd.Series([0] * len(df))  # デフォルト月曜日
     return pd.Series(dow, name="DOW", index=df.index)
-
 
 @FeatureRegistry.register("HourOfDay")
 def compute_hour_of_day(df: pd.DataFrame) -> pd.Series:

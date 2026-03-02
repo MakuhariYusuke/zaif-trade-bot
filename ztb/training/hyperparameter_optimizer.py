@@ -16,7 +16,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 import numpy as np
 import pandas as pd
@@ -42,18 +42,16 @@ TQDM_AVAILABLE = importlib.util.find_spec("tqdm") is not None
 if not TQDM_AVAILABLE:
     logger.warning("tqdm not available. Progress bars will be disabled.")
 
-
 @dataclass
 class HyperparameterOptimizationResult:
     """Result of hyperparameter optimization."""
 
-    best_params: Optional[Dict[str, Any]]
+    best_params: dict[str, Any] | None
     best_score: float
-    trials: List[Dict[str, Any]] = field(default_factory=list)
+    trials: list[dict[str, Any]] = field(default_factory=list)
     optimization_time: float = 0.0
-    convergence_info: Dict[str, Any] = field(default_factory=dict)
-    cross_validation_scores: List[float] = field(default_factory=list)
-
+    convergence_info: dict[str, Any] = field(default_factory=dict)
+    cross_validation_scores: list[float] = field(default_factory=list)
 
 @dataclass
 class ParameterSpace:
@@ -61,11 +59,10 @@ class ParameterSpace:
 
     name: str
     type: str  # 'float', 'int', 'categorical'
-    low: Optional[float] = None
-    high: Optional[float] = None
-    choices: Optional[List[Any]] = None
+    low: float | None = None
+    high: float | None = None
+    choices: list[Any] | None = None
     log_scale: bool = False
-
 
 class OptimizationMethod(ABC):
     """Abstract base class for optimization methods."""
@@ -74,13 +71,12 @@ class OptimizationMethod(ABC):
     def optimize(
         self,
         objective_function: Callable,
-        parameter_space: Dict[str, ParameterSpace],
+        parameter_space: dict[str, ParameterSpace],
         n_trials: int,
         **kwargs,
     ) -> HyperparameterOptimizationResult:
         """Run optimization."""
         pass
-
 
 class BayesianOptimization(OptimizationMethod):
     """Bayesian optimization using Optuna."""
@@ -93,7 +89,7 @@ class BayesianOptimization(OptimizationMethod):
     def optimize(
         self,
         objective_function: Callable,
-        parameter_space: Dict[str, ParameterSpace],
+        parameter_space: dict[str, ParameterSpace],
         n_trials: int,
         **kwargs,
     ) -> HyperparameterOptimizationResult:
@@ -228,7 +224,6 @@ class BayesianOptimization(OptimizationMethod):
             convergence_info=convergence_info,
         )
 
-
 class GridSearchOptimization(OptimizationMethod):
     """Grid search optimization."""
 
@@ -238,7 +233,7 @@ class GridSearchOptimization(OptimizationMethod):
     def optimize(
         self,
         objective_function: Callable,
-        parameter_space: Dict[str, ParameterSpace],
+        parameter_space: dict[str, ParameterSpace],
         n_trials: int,
         **kwargs,
     ) -> HyperparameterOptimizationResult:
@@ -372,8 +367,8 @@ class GridSearchOptimization(OptimizationMethod):
         )
 
     def _generate_grid(
-        self, parameter_space: Dict[str, ParameterSpace]
-    ) -> List[Dict[str, Any]]:
+        self, parameter_space: dict[str, ParameterSpace]
+    ) -> list[dict[str, Any]]:
         """Generate all parameter combinations for grid search."""
         if not parameter_space:
             return [{}]
@@ -413,7 +408,6 @@ class GridSearchOptimization(OptimizationMethod):
 
         return combinations
 
-
 class RandomSearchOptimization(OptimizationMethod):
     """Random search optimization."""
 
@@ -423,7 +417,7 @@ class RandomSearchOptimization(OptimizationMethod):
     def optimize(
         self,
         objective_function: Callable,
-        parameter_space: Dict[str, ParameterSpace],
+        parameter_space: dict[str, ParameterSpace],
         n_trials: int,
         **kwargs,
     ) -> HyperparameterOptimizationResult:
@@ -549,8 +543,8 @@ class RandomSearchOptimization(OptimizationMethod):
         )
 
     def _sample_random_params(
-        self, parameter_space: Dict[str, ParameterSpace]
-    ) -> Dict[str, Any]:
+        self, parameter_space: dict[str, ParameterSpace]
+    ) -> dict[str, Any]:
         """Sample random parameters from the search space."""
         params = {}
 
@@ -576,7 +570,6 @@ class RandomSearchOptimization(OptimizationMethod):
 
         return params
 
-
 class HyperparameterOptimizer(BaseComponent):
     """
     Main hyperparameter optimization framework.
@@ -584,7 +577,7 @@ class HyperparameterOptimizer(BaseComponent):
     Supports multiple optimization methods and cross-validation strategies.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         """
         Initialize hyperparameter optimizer.
 
@@ -636,7 +629,7 @@ class HyperparameterOptimizer(BaseComponent):
         print(f"{'='*60}")
 
     def _print_progress(
-        self, current: int, total: int, best_score: float, eta: Optional[float] = None
+        self, current: int, total: int, best_score: float, eta: float | None = None
     ):
         """
         Print optimization progress.
@@ -652,7 +645,7 @@ class HyperparameterOptimizer(BaseComponent):
             f"  📊 Trial {current}/{total} completed | Best: {best_score:.6f}{eta_str}"
         )
 
-    def _print_scores(self, scores: Dict[str, Any], title: str = "Performance Scores"):
+    def _print_scores(self, scores: dict[str, Any], title: str = "Performance Scores"):
         """
         Print performance scores with color coding.
 
@@ -740,7 +733,7 @@ class HyperparameterOptimizer(BaseComponent):
         print(f"Error in {context}: {error}")
         self.logger.error(f"Error in {context}: {error}")
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """Get default configuration."""
         return {
             "default_method": "bayesian" if OPTUNA_AVAILABLE else "random",
@@ -756,7 +749,7 @@ class HyperparameterOptimizer(BaseComponent):
     def optimize_hyperparameters(
         self,
         objective_function: Callable,
-        parameter_space: Dict[str, ParameterSpace],
+        parameter_space: dict[str, ParameterSpace],
         method: str = None,
         n_trials: int = None,
         cross_validate: bool = True,
@@ -872,8 +865,8 @@ class HyperparameterOptimizer(BaseComponent):
             self.logger.error(f"Failed to save optimization results: {e}")
 
     def create_parameter_space(
-        self, param_definitions: Dict[str, Dict[str, Any]]
-    ) -> Dict[str, ParameterSpace]:
+        self, param_definitions: dict[str, dict[str, Any]]
+    ) -> dict[str, ParameterSpace]:
         """
         Create parameter space from dictionary definitions.
 
@@ -925,7 +918,6 @@ class HyperparameterOptimizer(BaseComponent):
                 self.logger.warning(f"Failed to load {json_file}: {e}")
 
         return pd.DataFrame(history_data)
-
 
 # Predefined parameter spaces for common SAC configurations
 SAC_PARAMETER_SPACE = {

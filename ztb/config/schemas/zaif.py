@@ -3,10 +3,11 @@ Configuration schemas using Pydantic for type safety and validation.
 
 This module defines the configuration models for various components of the trading system.
 """
+from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Self, Union
+from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -21,35 +22,31 @@ from ztb.trading.environment.constants import (
 # Import path utilities for robust path handling
 from ztb.utils.path_utils import ensure_dir, get_project_root
 
-
 class DataConfig(BaseModel):
     """Data source configuration."""
 
-    csv_path: Optional[str] = None
+    csv_path: str | None = None
     use_real_data: bool = True
-    data_path: Optional[str] = None
+    data_path: str | None = None
     random_start: bool = True
     min_samples: int = Field(
         default=10000, description="Minimum samples for evaluation"
     )
 
-
 class FeatureConfig(BaseModel):
     """Feature engineering configuration."""
 
     enabled: bool = True
-    params: Dict[str, Any] = Field(default_factory=dict)
-    wave: Optional[Union[str, int]] = None
+    params: dict[str, Any] = Field(default_factory=dict)
+    wave: str | int | None = None
     harmful: bool = False
-
 
 class FeaturesConfig(BaseModel):
     """Complete feature set configuration."""
 
-    features: Dict[str, FeatureConfig] = Field(default_factory=dict)
+    features: dict[str, FeatureConfig] = Field(default_factory=dict)
     feature_set: str = "default"
-    adaptive_feature_selection: Dict[str, Any] = Field(default_factory=dict)
-
+    adaptive_feature_selection: dict[str, Any] = Field(default_factory=dict)
 
 class RewardSettings(BaseModel):
     """Reward function configuration."""
@@ -59,11 +56,10 @@ class RewardSettings(BaseModel):
     use_simple_reward: bool = False
     reward_scale: float = 100.0
     trading_bonus: float = 0.01
-    profit_bonuses: Dict[str, float] = Field(default_factory=dict)
-    penalty_coefficients: Dict[str, float] = Field(default_factory=dict)
+    profit_bonuses: dict[str, float] = Field(default_factory=dict)
+    penalty_coefficients: dict[str, float] = Field(default_factory=dict)
     entropy_bonus: float = 0.0
     reward_clip_value: float = 2.0
-
 
 class EnvironmentConfig(BaseModel):
     """Trading environment configuration."""
@@ -79,9 +75,8 @@ class EnvironmentConfig(BaseModel):
     curriculum_stage: str = "balanced_trading"
     continuous_to_discrete_threshold: float = 0.1
     feature_set: str = "default"
-    csv_path: Optional[str] = None
+    csv_path: str | None = None
     reward_settings: RewardSettings = Field(default_factory=RewardSettings)
-
 
 class CurriculumLearningConfig(BaseModel):
     """Curriculum learning configuration."""
@@ -90,9 +85,8 @@ class CurriculumLearningConfig(BaseModel):
 
     enabled: bool = False
     curriculum_stage: str = "pnl_focused"
-    stage_progression: List[str] = Field(default_factory=list)
-    stage_timesteps: List[int] = Field(default_factory=list)
-
+    stage_progression: list[str] = Field(default_factory=list)
+    stage_timesteps: list[int] = Field(default_factory=list)
 
 class SACHyperparameters(BaseModel):
     """SAC algorithm hyperparameters."""
@@ -103,10 +97,9 @@ class SACHyperparameters(BaseModel):
     batch_size: int = 256
     tau: float = 0.005
     gamma: float = 0.99
-    ent_coef: Union[str, float] = 0.01
+    ent_coef: str | float = 0.01
     target_update_interval: int = 1
-    target_entropy: Union[str, float] = -2.0
-
+    target_entropy: str | float = -2.0
 
 class PPOHyperparameters(BaseModel):
     """PPO algorithm hyperparameters."""
@@ -122,7 +115,6 @@ class PPOHyperparameters(BaseModel):
     vf_coef: float = 0.5
     max_grad_norm: float = 0.5
 
-
 class TrainingConfig(BaseModel):
     """Training configuration."""
 
@@ -134,11 +126,11 @@ class TrainingConfig(BaseModel):
     data_config: DataConfig = Field(default_factory=DataConfig)
     environment: EnvironmentConfig = Field(default_factory=EnvironmentConfig)
     features: FeaturesConfig = Field(default_factory=FeaturesConfig)
-    curriculum_learning: Optional[CurriculumLearningConfig] = Field(
+    curriculum_learning: CurriculumLearningConfig | None = Field(
         default=None, description="Curriculum learning configuration"
     )
-    sac_hyperparameters: Optional[SACHyperparameters] = None
-    ppo_hyperparameters: Optional[PPOHyperparameters] = None
+    sac_hyperparameters: SACHyperparameters | None = None
+    ppo_hyperparameters: PPOHyperparameters | None = None
 
     @model_validator(mode="after")
     def validate_algorithm_params(self) -> Self:
@@ -149,34 +141,30 @@ class TrainingConfig(BaseModel):
             self.ppo_hyperparameters = PPOHyperparameters()
         return self
 
-
 class EvaluationThresholds(BaseModel):
     """Evaluation performance thresholds."""
 
     re_evaluate: float = 0.05
     monitor: float = 0.01
 
-
 class EvaluationConfig(BaseModel):
     """Evaluation and backtesting configuration."""
 
     thresholds: EvaluationThresholds = Field(default_factory=EvaluationThresholds)
     min_samples: int = 10000
-    risk_metrics: List[str] = Field(
+    risk_metrics: list[str] = Field(
         default_factory=lambda: ["sharpe", "sortino", "max_drawdown"]
     )
-    performance_metrics: List[str] = Field(
+    performance_metrics: list[str] = Field(
         default_factory=lambda: ["total_return", "win_rate", "profit_factor"]
     )
-
 
 class LoggingConfig(BaseModel):
     """Logging configuration."""
 
     level: str = "INFO"
     format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    file_path: Optional[str] = None
-
+    file_path: str | None = None
 
 class DeploymentConfig(BaseModel):
     """Production deployment configuration."""
@@ -187,7 +175,7 @@ class DeploymentConfig(BaseModel):
     model_path: str = Field(
         default_factory=lambda: str(get_project_root() / "models" / "production")
     )
-    feature_scaler_path: Optional[str] = Field(
+    feature_scaler_path: str | None = Field(
         default_factory=lambda: str(get_project_root() / "models" / "scalers")
     )
     enable_monitoring: bool = True
@@ -195,12 +183,11 @@ class DeploymentConfig(BaseModel):
 
     @field_validator("model_path", "feature_scaler_path")
     @classmethod
-    def validate_paths(cls, v: Optional[str]) -> Optional[str]:
+    def validate_paths(cls, v: str | None) -> str | None:
         """Validate and resolve paths relative to project root."""
         if v and not Path(v).is_absolute():
             return str(get_project_root() / v)
         return v
-
 
 class CheckpointConfig(BaseModel):
     """Configuration for checkpoint management."""
@@ -220,7 +207,6 @@ class CheckpointConfig(BaseModel):
     )
     light_mode: bool = Field(default=False, description="Use light checkpoint mode")
 
-
 class StreamingConfig(BaseModel):
     """Configuration for data streaming."""
 
@@ -233,7 +219,6 @@ class StreamingConfig(BaseModel):
     )
     prefetch_factor: int = Field(default=2, description="Prefetch factor for streaming")
 
-
 class EvalConfig(BaseModel):
     """Configuration for evaluation parameters."""
 
@@ -243,17 +228,16 @@ class EvalConfig(BaseModel):
     bootstrap_resamples: int = Field(
         default=1000, description="Number of bootstrap resamples"
     )
-    bootstrap_block: Optional[int] = Field(
+    bootstrap_block: int | None = Field(
         default=None, description="Bootstrap block size"
     )
-    bootstrap_overlap: Optional[int] = Field(
+    bootstrap_overlap: int | None = Field(
         default=None, description="Bootstrap overlap"
     )
     eval_freq: int = Field(default=50000, description="Evaluation frequency in steps")
-    benchmark_strategies: List[str] = Field(
+    benchmark_strategies: list[str] = Field(
         default=["sma", "buy_hold"], description="Benchmark strategies"
     )
-
 
 class VenuePrecisionConfig(BaseModel):
     """Configuration for venue-specific precision policies."""
@@ -264,15 +248,14 @@ class VenuePrecisionConfig(BaseModel):
     quantity_step: float = Field(
         default=0.0001, description="Minimum quantity increment"
     )
-    min_quantity: Optional[float] = Field(
+    min_quantity: float | None = Field(
         default=None, description="Minimum order quantity"
     )
-    max_quantity: Optional[float] = Field(
+    max_quantity: float | None = Field(
         default=None, description="Maximum order quantity"
     )
-    min_price: Optional[float] = Field(default=None, description="Minimum order price")
-    max_price: Optional[float] = Field(default=None, description="Maximum order price")
-
+    min_price: float | None = Field(default=None, description="Minimum order price")
+    max_price: float | None = Field(default=None, description="Maximum order price")
 
 class RiskProfileConfig(BaseModel):
     """Configuration for risk management profiles."""
@@ -299,7 +282,6 @@ class RiskProfileConfig(BaseModel):
         default=60, description="Cooldown period in seconds after loss"
     )
 
-
 class ZaifTradeBotConfig(BaseModel):
     """
     Unified configuration schema for Zaif Trade Bot.
@@ -309,9 +291,9 @@ class ZaifTradeBotConfig(BaseModel):
     """
 
     version: str = "1.0"
-    training: Optional[TrainingConfig] = None
+    training: TrainingConfig | None = None
     evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
-    deployment: Optional[DeploymentConfig] = None
+    deployment: DeploymentConfig | None = None
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     features: FeaturesConfig = Field(default_factory=FeaturesConfig)
 
@@ -329,7 +311,6 @@ class ZaifTradeBotConfig(BaseModel):
         extra="allow",
     )
 
-
 class UnifiedConfigLoader(BaseConfigLoader):
     """
     Configuration loader with environment variable support.
@@ -339,7 +320,7 @@ class UnifiedConfigLoader(BaseConfigLoader):
     """
 
     @staticmethod
-    def load_from_file(file_path: Union[str, Path]) -> ZaifTradeBotConfig:
+    def load_from_file(file_path: str | Path) -> ZaifTradeBotConfig:
         """
         Load configuration from YAML or JSON file.
 
@@ -367,7 +348,7 @@ class UnifiedConfigLoader(BaseConfigLoader):
         return ZaifTradeBotConfig(**data)
 
     @staticmethod
-    def load_from_env(prefix: str = "ZTB_") -> Dict[str, Any]:
+    def load_from_env(prefix: str = "ZTB_") -> dict[str, Any]:
         """
         Load configuration overrides from environment variables.
 
@@ -377,7 +358,7 @@ class UnifiedConfigLoader(BaseConfigLoader):
         Returns:
             Dictionary of configuration overrides
         """
-        overrides: Dict[str, Any] = {}
+        overrides: dict[str, Any] = {}
         for key, value in os.environ.items():
             if key.startswith(prefix):
                 # Remove prefix and convert to nested dict
@@ -392,7 +373,7 @@ class UnifiedConfigLoader(BaseConfigLoader):
     @classmethod
     def load_config(
         cls,
-        file_path: Union[str, Path, None] = None,
+        file_path: str | Path | None = None,
         env_prefix: str = "ZTB_",
     ) -> ZaifTradeBotConfig:
         """
@@ -458,7 +439,7 @@ class UnifiedConfigLoader(BaseConfigLoader):
     def save_config(
         cls,
         config: ZaifTradeBotConfig,
-        file_path: Union[str, Path],
+        file_path: str | Path,
         format: str = "yaml",
     ) -> None:
         """
@@ -495,7 +476,7 @@ class UnifiedConfigLoader(BaseConfigLoader):
 
     @classmethod
     def create_default_config(
-        cls, file_path: Union[str, Path] = "config/default.yaml"
+        cls, file_path: str | Path = "config/default.yaml"
     ) -> ZaifTradeBotConfig:
         """
         Create and save a default configuration file.
@@ -512,7 +493,7 @@ class UnifiedConfigLoader(BaseConfigLoader):
         return config
 
     @staticmethod
-    def _deep_update(base_dict: Dict[str, Any], update_dict: Dict[str, Any]) -> None:
+    def _deep_update(base_dict: dict[str, Any], update_dict: dict[str, Any]) -> None:
         """Recursively update nested dictionary."""
         for key, value in update_dict.items():
             if (
@@ -523,7 +504,6 @@ class UnifiedConfigLoader(BaseConfigLoader):
                 UnifiedConfigLoader._deep_update(base_dict[key], value)
             else:
                 base_dict[key] = value
-
 
 # Type aliases for backward compatibility
 GlobalConfig = ZaifTradeBotConfig

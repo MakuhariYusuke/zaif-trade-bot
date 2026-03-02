@@ -13,7 +13,6 @@ try:
 except Exception:
     _SB3_PPO = None
 
-
 class _PPOShim:
     @staticmethod
     def load(path: str) -> Any:
@@ -32,8 +31,6 @@ class _PPOShim:
         m._loaded_path = path
         return m
 
-
 PPO = _PPOShim
-
 
 __all__ = ["PPO"]

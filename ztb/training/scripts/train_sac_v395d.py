@@ -14,9 +14,8 @@ from ztb.utils.training_utils import display_training_complete
 setup_logging()
 logger = logging.getLogger(__name__)
 
-
 def main():
-    logger.info("🎯 SAC v395d - Optimal Parameter Set")
+    logger.info("🎯 SAC v395d - Optimal Parameter set")
     logger.info("=" * 80)
 
     start_time = time.time()
@@ -55,7 +54,6 @@ def main():
     else:
         print("❌ Training failed")
     print("=" * 80)
-
 
 if __name__ == "__main__":
     main()

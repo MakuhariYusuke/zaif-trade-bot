@@ -26,7 +26,7 @@ import hashlib
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -36,21 +36,20 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 @dataclass
 class FeatureSchema:
     """特徴量スキーマのデータクラス"""
 
-    features: List[str]
-    config: Dict[str, Any]
-    scaler_data: Optional[Dict[str, NDArray[np.floating[Any]]]] = None
+    features: list[str]
+    config: dict[str, Any]
+    scaler_data: dict[str, NDArray[np.floating[Any]]] | None = None
 
     def __post_init__(self) -> None:
         """バリデーション"""
         if not self.features:
             raise ValueError("features cannot be empty")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         result = {
             "features": self.features,
@@ -60,10 +59,9 @@ class FeatureSchema:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "FeatureSchema":
+    def from_dict(cls, data: dict[str, Any]) -> "FeatureSchema":
         """辞書から復元"""
         return cls(**data)
-
 
 @dataclass
 class FeatureSchemaMetadata:
@@ -71,23 +69,22 @@ class FeatureSchemaMetadata:
 
     model_name: str
     num_features: int
-    feature_names: List[str]
+    feature_names: list[str]
     schema_hash: str
     created_at: str
-    training_config: Dict[str, Any]
-    curated_features_spec: Optional[str] = None
+    training_config: dict[str, Any]
+    curated_features_spec: str | None = None
     feature_filtering_enabled: bool = False
-    feature_filter_mode: Optional[str] = None
+    feature_filter_mode: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "FeatureSchemaMetadata":
+    def from_dict(cls, data: dict[str, Any]) -> "FeatureSchemaMetadata":
         """辞書から復元"""
         return cls(**data)
-
 
 class FeatureSchemaManager:
     """
@@ -108,8 +105,8 @@ class FeatureSchemaManager:
     def __init__(
         self,
         model_name: str,
-        models_dir: Optional[Path] = None,
-        schemas_dir: Optional[Path] = None,
+        models_dir: Path | None = None,
+        schemas_dir: Path | None = None,
     ):
         """
         Args:
@@ -133,9 +130,9 @@ class FeatureSchemaManager:
 
     def save_schema(
         self,
-        features: List[str],
-        config: Dict[str, Any],
-        scaler_data: Optional[Dict[str, NDArray[np.floating[Any]]]] = None,
+        features: list[str],
+        config: dict[str, Any],
+        scaler_data: dict[str, NDArray[np.floating[Any]]] | None = None,
     ) -> str:
         """
         モデルの特徴量スキーマを保存
@@ -202,7 +199,7 @@ class FeatureSchemaManager:
 
         return metadata
 
-    def load_scaler(self) -> Optional[Dict[str, NDArray[np.floating[Any]]]]:
+    def load_scaler(self) -> dict[str, NDArray[np.floating[Any]]] | None:
         """正規化パラメータを読み込み"""
         scaler_path = self.model_schema_dir / "scaler.npz"
 
@@ -216,7 +213,7 @@ class FeatureSchemaManager:
             "std": data["std"],
         }
 
-    def get_feature_list(self) -> List[str]:
+    def get_feature_list(self) -> list[str]:
         """特徴量リストを取得"""
         metadata = self.load_schema()
         return metadata.feature_names
@@ -226,16 +223,16 @@ class FeatureSchemaManager:
         metadata = self.load_schema()
         return metadata.num_features
 
-    async def load_schema_async(self) -> Optional[FeatureSchemaMetadata]:
+    async def load_schema_async(self) -> FeatureSchemaMetadata | None:
         """特徴量スキーマを非同期で読み込み"""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self.load_schema)
 
     async def save_schema_async(
         self,
-        features: List[str],
-        config: Dict[str, Any],
-        scaler_data: Optional[Dict[str, NDArray[np.floating[Any]]]] = None,
+        features: list[str],
+        config: dict[str, Any],
+        scaler_data: dict[str, NDArray[np.floating[Any]]] | None = None,
     ) -> str:
         """モデルの特徴量スキーマを非同期で保存"""
         loop = asyncio.get_event_loop()
@@ -286,12 +283,12 @@ class FeatureSchemaManager:
             )
             return False
 
-    def _compute_hash(self, features: List[str]) -> str:
+    def _compute_hash(self, features: list[str]) -> str:
         """特徴量リストのハッシュを計算"""
         features_str = ",".join(sorted(features))
         return hashlib.sha256(features_str.encode()).hexdigest()[:16]
 
-    def _save_features_schema(self, features: List[str], schema_hash: str) -> None:
+    def _save_features_schema(self, features: list[str], schema_hash: str) -> None:
         """features_schema.jsonを保存"""
         schema_path = self.model_schema_dir / "features_schema.json"
         write_json(schema_path, features, indent=2, ensure_ascii=False)
@@ -304,7 +301,7 @@ class FeatureSchemaManager:
         logger.debug(f"Saved metadata: {metadata_path}")
 
     def _save_scaler(
-        self, scaler_data: Dict[str, NDArray[np.floating[Any]]], schema_hash: str
+        self, scaler_data: dict[str, NDArray[np.floating[Any]]], schema_hash: str
     ) -> None:
         """scaler.npzを保存"""
         scaler_path = self.model_schema_dir / "scaler.npz"
@@ -312,7 +309,7 @@ class FeatureSchemaManager:
         logger.debug(f"Saved scaler: {scaler_path}")
 
     @staticmethod
-    def list_all_schemas(models_dir: Optional[Path] = None) -> List[str]:
+    def list_all_schemas(models_dir: Path | None = None) -> list[str]:
         """利用可能なすべてのスキーマをリスト"""
         if models_dir is None:
             models_dir = FeatureSchemaManager.DEFAULT_MODELS_DIR
@@ -328,7 +325,7 @@ class FeatureSchemaManager:
         return sorted(schemas)
 
     @staticmethod
-    def print_schema_summary(models_dir: Optional[Path] = None) -> None:
+    def print_schema_summary(models_dir: Path | None = None) -> None:
         """全スキーマのサマリーを表示"""
         if models_dir is None:
             models_dir = FeatureSchemaManager.DEFAULT_MODELS_DIR
@@ -357,12 +354,11 @@ class FeatureSchemaManager:
 
         logger.info("=" * 80)
 
-
 def migrate_legacy_schema(
     model_name: str,
-    legacy_schema_path: Optional[Path] = None,
-    legacy_scaler_path: Optional[Path] = None,
-    config: Optional[Dict[str, Any]] = None,
+    legacy_schema_path: Path | None = None,
+    legacy_scaler_path: Path | None = None,
+    config: dict[str, Any] | None = None,
 ) -> None:
     """
     レガシーのグローバルスキーマをモデル固有スキーマに移行
@@ -375,7 +371,7 @@ def migrate_legacy_schema(
     """
     logger.info(f"Migrating legacy schema to {model_name}...")
 
-    # Set default paths if not provided
+    # set default paths if not provided
     if legacy_schema_path is None:
         legacy_schema_path = (
             FeatureSchemaManager.DEFAULT_MODELS_DIR / "features_schema.json"

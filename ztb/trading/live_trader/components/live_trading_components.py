@@ -5,7 +5,7 @@ This module separates core live trading logic from the main LiveTrader class,
 including model management, feature computation, and trading loop components.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ztb.trading.environment.constants import (
     DEFAULT_MAX_ACTION_HISTORY,
@@ -14,7 +14,6 @@ from ztb.utils.exceptions.custom_exceptions import ModelError
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class ModelManager:
     """
@@ -79,7 +78,7 @@ class ModelManager:
     def predict_action(
         self,
         observation: Any,
-        action_masks: Optional[Any] = None
+        action_masks: Any | None = None
     ) -> Any:
         """
         Predict trading action.
@@ -109,7 +108,7 @@ class ModelManager:
             self.logger.error(f"Failed to predict action: {e}")
             raise ModelError(f"Action prediction failed: {e}") from e
 
-    def validate_model(self) -> Dict[str, Any]:
+    def validate_model(self) -> dict[str, Any]:
         """
         Validate loaded model.
 
@@ -144,7 +143,6 @@ class ModelManager:
             self.logger.error(f"Model validation failed: {e}")
             raise ModelError(f"Model validation failed: {e}") from e
 
-
 class FeatureComputer:
     """
     Handles feature computation for live trading.
@@ -161,7 +159,7 @@ class FeatureComputer:
         self.price_history = None
         self.feature_computer = None
 
-    def initialize(self, config: Dict[str, Any]) -> None:
+    def initialize(self, config: dict[str, Any]) -> None:
         """
         Initialize feature computation.
 
@@ -184,7 +182,7 @@ class FeatureComputer:
             self.logger.error(f"Failed to initialize feature computer: {e}")
             raise
 
-    def compute_features(self, market_data: Dict[str, Any]) -> Optional[Any]:
+    def compute_features(self, market_data: dict[str, Any]) -> Any | None:
         """
         Compute features from market data.
 
@@ -237,7 +235,6 @@ class FeatureComputer:
         except Exception as e:
             self.logger.error(f"Feature validation failed: {e}")
             return False
-
 
 class TradingLoopManager:
     """
@@ -310,7 +307,7 @@ class TradingLoopManager:
 
             return False
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Get trading loop statistics.
 

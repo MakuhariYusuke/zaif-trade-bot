@@ -9,7 +9,6 @@ import argparse
 import csv
 import sys
 from pathlib import Path
-from typing import Dict
 
 from ztb.utils.file_utils import safe_json_dump, safe_json_load
 
@@ -20,8 +19,7 @@ try:
 except ImportError:
     HAS_TENSORBOARD = False
 
-
-def scrape_scalars(tb_dir: Path, out_csv: Path) -> Dict[str, float]:
+def scrape_scalars(tb_dir: Path, out_csv: Path) -> dict[str, float]:
     """Scrape scalars from TB events."""
     if not HAS_TENSORBOARD:
         print("TensorBoard not available, skipping")
@@ -53,8 +51,7 @@ def scrape_scalars(tb_dir: Path, out_csv: Path) -> Dict[str, float]:
 
     return latest_scalars
 
-
-def merge_to_metrics(correlation_id: str, scalars: Dict[str, float]) -> None:
+def merge_to_metrics(correlation_id: str, scalars: dict[str, float]) -> None:
     """Merge scalars into metrics.json."""
     metrics_path = Path("artifacts") / correlation_id / "metrics.json"
     if not metrics_path.exists():
@@ -66,7 +63,6 @@ def merge_to_metrics(correlation_id: str, scalars: Dict[str, float]) -> None:
         safe_json_dump(metrics, metrics_path, indent=2)
     except Exception as e:
         print(f"Error merging to metrics: {e}")
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Scrape TensorBoard scalars")
@@ -93,7 +89,6 @@ def main() -> int:
 
     print(f"Scraped {len(scalars)} scalars to {out_csv}")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

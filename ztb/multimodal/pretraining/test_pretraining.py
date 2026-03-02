@@ -7,7 +7,6 @@ components including Masked Price Modeling, Contrastive Learning,
 and Anomaly Detection Pre-training.
 """
 
-
 import pytest
 import torch
 
@@ -21,7 +20,6 @@ from ztb.multimodal.pretraining import (
     SelfSupervisedTrainer,
     TimeSeriesAugmentation,
 )
-
 
 class TestMaskedPriceModeling:
     """Test Masked Price Modeling components"""
@@ -75,7 +73,6 @@ class TestMaskedPriceModeling:
         assert "masked_ratio" in metrics
         assert isinstance(metrics["loss"], float)
         assert 0 <= metrics["masked_ratio"] <= 1
-
 
 class TestContrastiveLearning:
     """Test Contrastive Learning components"""
@@ -152,7 +149,6 @@ class TestContrastiveLearning:
         assert "z2_norm" in metrics
         assert isinstance(metrics["loss"], float)
 
-
 class TestAnomalyDetection:
     """Test Anomaly Detection components"""
 
@@ -208,7 +204,6 @@ class TestAnomalyDetection:
 
         assert "loss" in metrics
         assert isinstance(metrics["loss"], float)
-
 
 class TestSelfSupervisedTrainer:
     """Test integrated SelfSupervisedTrainer"""
@@ -278,7 +273,6 @@ class TestSelfSupervisedTrainer:
         assert embeddings.shape[0] == train_data.shape[0]
         assert embeddings.shape[1] == 256  # hidden_dim
 
-
 class TestIntegration:
     """Integration tests for the complete pipeline"""
 
@@ -320,7 +314,6 @@ class TestIntegration:
         anomaly_scores = trainer.compute_anomaly_scores(val_data)
         assert anomaly_scores is not None
         assert anomaly_scores.shape[0] == val_data.shape[0]
-
 
 if __name__ == "__main__":
     pytest.main([__file__])

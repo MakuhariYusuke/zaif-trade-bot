@@ -4,9 +4,10 @@ Market Regime Analysis Components for Action Signal Guide.
 This module provides market regime detection and analysis capabilities
 to enhance signal generation and validation.
 """
+from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional, Protocol, TypedDict
+from typing import TYPE_CHECKING, Protocol, TypedDict
 
 import numpy as np
 import pandas as pd
@@ -20,10 +21,8 @@ from .history_helpers import append_with_compaction
 
 logger = logging.getLogger(__name__)
 
-
 if TYPE_CHECKING:
     from ..action_signal_guide import ActionSignal
-
 
 class IMarketRegimeDetector(Protocol):
     def detect_regime(
@@ -31,25 +30,21 @@ class IMarketRegimeDetector(Protocol):
     ) -> MarketRegime | str:
         """Detect market regime from price series or current price."""
 
-
 class RegimeIndicators(TypedDict):
     trend_strength: float
     volatility: float
     range_bound: float
     momentum: float
 
-
 class RegimeHistoryEntry(TypedDict):
     timestamp: pd.Timestamp
     regime: MarketRegime
     indicators: RegimeIndicators
 
-
 class RegimeConfig(TypedDict):
     preferred_patterns: list[str]
     boost_factor: float
     penalty_factor: float
-
 
 class MarketRegimeDetector(IMarketRegimeDetector):
     """
@@ -435,7 +430,6 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         # Default to ranging if no clear regime
         return MarketRegime.MODERATE_VOLATILITY_RANGING
 
-
 class RegimeAdaptiveSignalProcessor:
     """
     Processes signals adaptively based on detected market regime.
@@ -485,7 +479,7 @@ class RegimeAdaptiveSignalProcessor:
         regime: MarketRegime,
         stability: float,
         market_data: pd.DataFrame,
-    ) -> Optional["ActionSignal"]:
+    ) -> ActionSignal | None:
         """
         Adapt individual signal for specific market regime.
 
@@ -731,7 +725,6 @@ class RegimeAdaptiveSignalProcessor:
                 self.adaptation_factors[regime] = avg_performance
             else:
                 self.adaptation_factors[regime] = 0.5  # Neutral
-
 
 class MarketConditionAnalyzer:
     """

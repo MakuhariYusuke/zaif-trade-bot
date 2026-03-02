@@ -7,17 +7,16 @@ success rate validation, edge case testing, and performance regression detection
 
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 import numpy as np
 import pandas as pd
 
 from ztb.evaluation.logging import EvaluationLogger
 
-
 def validate_evaluation_success_rate(
     logger: EvaluationLogger, min_success_rate: float = 0.8, time_window_days: int = 30
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Validate evaluation success rate over time window
 
@@ -93,12 +92,11 @@ def validate_evaluation_success_rate(
         "older_evaluations": len(older_evaluations),
     }
 
-
 def test_feature_computation_stability(
     feature_func: Callable[[pd.DataFrame], Any],
     ohlc_data: pd.DataFrame,
     n_runs: int = 10,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Test feature computation stability across multiple runs
 
@@ -161,16 +159,15 @@ def test_feature_computation_stability(
         "errors": errors,
     }
 
-
 def test_evaluation_pipeline_robustness(
-    evaluation_func: Callable[..., Any], test_cases: List[Dict[str, Any]]
-) -> Dict[str, Any]:
+    evaluation_func: Callable[..., Any], test_cases: list[dict[str, Any]]
+) -> dict[str, Any]:
     """
     Test evaluation pipeline robustness with various edge cases
 
     Args:
         evaluation_func: Evaluation function to test
-        test_cases: List of test case dictionaries
+        test_cases: list of test case dictionaries
 
     Returns:
         Robustness test results
@@ -219,13 +216,12 @@ def test_evaluation_pipeline_robustness(
         "test_results": results,
     }
 
-
 def detect_performance_regressions(
     logger: EvaluationLogger,
     baseline_period_days: int = 90,
     recent_period_days: int = 7,
     regression_threshold: float = 0.1,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Detect performance regressions in evaluation metrics
 
@@ -315,9 +311,8 @@ def detect_performance_regressions(
         "recent_period_days": recent_period_days,
     }
 
-
 def generate_test_report(
-    test_results: Dict[str, Any], output_path: Optional[str] = None
+    test_results: dict[str, Any], output_path: str | None = None
 ) -> str:
     """
     Generate comprehensive test report
@@ -408,12 +403,11 @@ def generate_test_report(
 
     return report
 
-
 def run_comprehensive_evaluation_tests(
     logger: EvaluationLogger,
     evaluation_func: Callable[..., Any],
     ohlc_data: pd.DataFrame,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Run comprehensive evaluation testing suite
 

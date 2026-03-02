@@ -1,9 +1,8 @@
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import pandas as pd
 
 from ztb.trading.risk.interfaces import RiskManagerProtocol
-
 
 class GenericRiskManagerAdapter(RiskManagerProtocol):
     """Adapter that wraps legacy RiskManager implementations and exposes the
@@ -46,12 +45,12 @@ class GenericRiskManagerAdapter(RiskManagerProtocol):
 
     def should_close_position(
         self,
-        position_data: Dict[str, Any],
+        position_data: dict[str, Any],
         current_price: float,
         current_portfolio_value: float,
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         if self._has("should_close_position"):
-            result: Tuple[bool, str] = self.obj.should_close_position(
+            result: tuple[bool, str] = self.obj.should_close_position(
                 position_data, current_price, current_portfolio_value
             )
             return result
@@ -84,9 +83,9 @@ class GenericRiskManagerAdapter(RiskManagerProtocol):
 
     def calculate_atr_stop_levels(
         self, data: pd.DataFrame, entry_price: float, position_type: str
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         if self._has("calculate_atr_stop_levels"):
-            result: Tuple[float, float] = self.obj.calculate_atr_stop_levels(
+            result: tuple[float, float] = self.obj.calculate_atr_stop_levels(
                 data, entry_price, position_type
             )
             return result
@@ -97,7 +96,7 @@ class GenericRiskManagerAdapter(RiskManagerProtocol):
         return entry_price * 0.98, entry_price * 1.04
 
     def update_risk_metrics(
-        self, trade_result: Optional[Dict[str, Any]] = None
+        self, trade_result: dict[str, Any] | None = None
     ) -> None:
         if self._has("update_risk_metrics"):
             self.obj.update_risk_metrics(trade_result)
@@ -122,7 +121,6 @@ class GenericRiskManagerAdapter(RiskManagerProtocol):
         except Exception:
             pass
         return None
-
 
 def ensure_risk_manager_protocol(obj: Any) -> RiskManagerProtocol:
     """Return obj if it's already protocol-compatible, otherwise wrap it."""

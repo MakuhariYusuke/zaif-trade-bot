@@ -20,7 +20,6 @@ from ztb.features.feature_set_config import get_feature_config
 from ztb.features.multi_timeframe import MultiTimeframeFeatureSystem
 from ztb.features.timeframe import Timeframe
 
-
 def create_sample_data():
     """Create sample data for testing."""
     # Create sample 5-minute data
@@ -62,7 +61,6 @@ def create_sample_data():
     df = pd.DataFrame(data)
     return df
 
-
 def test_multi_timeframe_system():
     """Test the multi-timeframe feature engineering system."""
     print("Testing Multi-Timeframe Feature Engineering System")
@@ -91,7 +89,6 @@ def test_multi_timeframe_system():
     feature_config.current_config.update(original_config)
 
     return success_enabled and success_disabled
-
 
 def test_with_config(feature_config, config_type):
     """Test system with specific configuration."""
@@ -202,7 +199,6 @@ def test_with_config(feature_config, config_type):
         if data_dir.exists():
             shutil.rmtree(data_dir)
             print(f"\nCleaned up test data directory: {data_dir}")
-
 
 if __name__ == "__main__":
     success = test_multi_timeframe_system()

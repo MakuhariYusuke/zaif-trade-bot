@@ -15,7 +15,6 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from ztb.trading.environment.schema_env_factory import create_env_from_model_path
 from ztb.io.data_loader import DataLoader
 
-
 def check_action_distribution(
     model_path: str, data_path: str, steps: int = 1000
 ) -> None:
@@ -125,7 +124,6 @@ def check_action_distribution(
         "hold_pct": hold_pct,
         "trade_pct": trade_pct,
     }
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

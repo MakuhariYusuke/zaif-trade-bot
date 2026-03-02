@@ -6,7 +6,6 @@ SAC v434.1 高度なバックテスト分析スクリプト
 
 import sys
 from pathlib import Path
-from typing import Dict, List
 
 import numpy as np
 
@@ -15,8 +14,7 @@ from ztb.io.json_io import read_json
 project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(project_root))
 
-
-def load_backtest_data() -> Dict:
+def load_backtest_data() -> dict:
     """バックテスト結果を読み込み"""
     result_files = list(Path(".").glob("backtest_results_sac_model_*.json"))
     if not result_files:
@@ -27,8 +25,7 @@ def load_backtest_data() -> Dict:
 
     return read_json(latest_file)
 
-
-def analyze_action_patterns(results: Dict) -> Dict:
+def analyze_action_patterns(results: dict) -> dict:
     """アクション分布とパターンを分析"""
     print("\n=== アクション分布分析 ===")
 
@@ -66,8 +63,7 @@ def analyze_action_patterns(results: Dict) -> Dict:
 
     return action_dist
 
-
-def analyze_market_regime_performance(results: Dict) -> Dict:
+def analyze_market_regime_performance(results: dict) -> dict:
     """市場レジーム別のパフォーマンス分析"""
     print("\n=== 市場レジーム別分析 ===")
 
@@ -100,8 +96,7 @@ def analyze_market_regime_performance(results: Dict) -> Dict:
 
     return regime_analysis
 
-
-def analyze_reward_function_effectiveness(results: Dict) -> Dict:
+def analyze_reward_function_effectiveness(results: dict) -> dict:
     """報酬関数の有効性を分析"""
     print("\n=== 報酬関数分析 ===")
 
@@ -127,8 +122,7 @@ def analyze_reward_function_effectiveness(results: Dict) -> Dict:
 
     return reward_analysis
 
-
-def analyze_risk_metrics(results: Dict) -> Dict:
+def analyze_risk_metrics(results: dict) -> dict:
     """リスクメトリクスを分析"""
     print("\n=== リスク分析 ===")
 
@@ -153,8 +147,7 @@ def analyze_risk_metrics(results: Dict) -> Dict:
 
     return risk_metrics
 
-
-def generate_v434_2_recommendations(results: Dict, analyses: Dict) -> List[str]:
+def generate_v434_2_recommendations(results: dict, analyses: dict) -> list[str]:
     """v434.2開発に向けた推奨事項を生成"""
     print("\n=== v434.2 開発推奨事項 ===")
 
@@ -248,7 +241,6 @@ def generate_v434_2_recommendations(results: Dict, analyses: Dict) -> List[str]:
 
     return recommendations
 
-
 def main():
     """メイン分析関数"""
     try:
@@ -287,7 +279,6 @@ def main():
         import traceback
 
         traceback.print_exc()
-
 
 if __name__ == "__main__":
     main()

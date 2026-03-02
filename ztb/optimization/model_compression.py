@@ -12,7 +12,6 @@ from pathlib import Path
 
 import torch
 
-
 def _iter_model_parameters(model: object) -> list[object]:
     """Best-effort parameter iterator for torch-like models."""
     params_fn = getattr(model, "parameters", None)
@@ -22,7 +21,6 @@ def _iter_model_parameters(model: object) -> list[object]:
         return list(params_fn())
     except Exception:
         return []
-
 
 def _model_state_dict(model: object) -> dict[str, object]:
     """Best-effort state_dict fetch for torch-like models."""
@@ -35,7 +33,6 @@ def _model_state_dict(model: object) -> dict[str, object]:
     except Exception:
         return {}
 
-
 class ModelCompressor:
     """Minimal compressor used for tests."""
 
@@ -46,11 +43,9 @@ class ModelCompressor:
         """Return model unchanged (no-op)."""
         return model
 
-
 def compress_model(model: object, **kwargs: object) -> object:
     """Compatibility helper used by tests and older call sites."""
     return ModelCompressor(**kwargs).compress(model)
-
 
 class BaseCompressionTechnique(ABC):
     """Abstract base class for compression techniques used in tests."""
@@ -67,7 +62,6 @@ class BaseCompressionTechnique(ABC):
     def get_compression_stats(self) -> dict[str, object]:
         """Return lightweight stats about the compression."""
 
-
 class LowRankApproximator(BaseCompressionTechnique):
     def compress(self, model: object, *args: object, **kwargs: object) -> object:
         return model
@@ -78,7 +72,6 @@ class LowRankApproximator(BaseCompressionTechnique):
     def get_compression_stats(self) -> dict[str, object]:
         return {"technique": "low_rank", "compression_ratio": 0.0}
 
-
 class SACPruner(BaseCompressionTechnique):
     def compress(self, model: object, *args: object, **kwargs: object) -> object:
         return model
@@ -88,7 +81,6 @@ class SACPruner(BaseCompressionTechnique):
 
     def get_compression_stats(self) -> dict[str, object]:
         return {"technique": "pruning", "compression_ratio": 0.0}
-
 
 class QuantizationCompressor(BaseCompressionTechnique):
     """Simple quantization stub used in tests."""
@@ -137,7 +129,6 @@ class QuantizationCompressor(BaseCompressionTechnique):
             "original_size_mb": self._get_model_size(self.quantized_model),
         }
 
-
 class PruningCompressor(BaseCompressionTechnique):
     def __init__(self, pruning_type: str = "l1_unstructured", amount: float = 0.2) -> None:
         supported = ("l1_unstructured", "l2_unstructured", "structured")
@@ -183,7 +174,6 @@ class PruningCompressor(BaseCompressionTechnique):
 
     def get_compression_stats(self) -> dict[str, object]:
         return {"technique": "pruning", "type": self.pruning_type, "amount": self.amount}
-
 
 class KnowledgeDistillationCompressor(BaseCompressionTechnique):
     def __init__(self, temperature: float = 1.0, alpha: float = 0.5) -> None:
@@ -231,7 +221,6 @@ class KnowledgeDistillationCompressor(BaseCompressionTechnique):
         self.distillation_loss_history.append(float(loss.detach().cpu().numpy()))
         return loss
 
-
 class ModelCompressionManager:
     def __init__(self) -> None:
         self.compressors: dict[str, BaseCompressionTechnique] = {}
@@ -276,7 +265,6 @@ class ModelCompressionManager:
         self.compression_stats = checkpoint.get("compression_stats", {})
         return model
 
-
 def create_compression_pipeline(
     config: dict[str, dict[str, object]] | None,
 ) -> ModelCompressionManager:
@@ -305,7 +293,6 @@ def create_compression_pipeline(
                 ),
             )
     return manager
-
 
 __all__ = [
     "ModelCompressor",

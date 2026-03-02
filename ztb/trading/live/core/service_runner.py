@@ -11,17 +11,16 @@ import logging
 import signal
 import sys
 import time
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from ztb.ops.monitoring.health_monitor import HealthMonitor
 from ztb.utils.errors import TradingBotError
-
 
 class TradingService:
     """24/7 trading service with automatic restarts and monitoring."""
 
     def __init__(
-        self, config_path: Optional[str] = None, log_level: str = "INFO"
+        self, config_path: str | None = None, log_level: str = "INFO"
     ) -> None:
         self.config_path = config_path
         self.log_level = log_level
@@ -33,7 +32,7 @@ class TradingService:
         self.last_health_report = 0.0
         self.health_report_interval = 300  # 5 minutes
 
-        # Set up logging
+        # set up logging
         self._setup_logging()
 
         # Handle signals
@@ -41,7 +40,7 @@ class TradingService:
         signal.signal(signal.SIGINT, self._signal_handler)
 
     def _setup_logging(self) -> None:
-        """Set up comprehensive logging."""
+        """set up comprehensive logging."""
         log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         logging.basicConfig(
             level=getattr(logging, self.log_level.upper()),
@@ -183,7 +182,6 @@ class TradingService:
         # Close connections, save state, etc.
         self.logger.info("Cleanup completed")
 
-
 def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(description="24/7 Trading Service Runner")
@@ -216,7 +214,6 @@ def main() -> None:
         service.restart_delay = args.restart_delay
 
     service.run()
-
 
 if __name__ == "__main__":
     main()

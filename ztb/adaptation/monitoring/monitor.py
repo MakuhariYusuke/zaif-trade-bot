@@ -8,7 +8,7 @@ import threading
 import time
 from collections import defaultdict, deque
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 import numpy as np
 
@@ -27,16 +27,15 @@ from ztb.reporting.generators.monitoring import ReportGenerator
 
 logger = logging.getLogger(__name__)
 
-
 class MetricsCollector:
     """メトリクス収集器"""
 
     def __init__(self, config: MonitoringConfig):
         self.config = config
-        self.metrics_buffer: Dict[str, deque] = defaultdict(lambda: deque(maxlen=10000))
-        self.collection_thread: Optional[threading.Thread] = None
+        self.metrics_buffer: dict[str, deque] = defaultdict(lambda: deque(maxlen=10000))
+        self.collection_thread: threading.Thread | None = None
         self.is_collecting = False
-        self.custom_collectors: Dict[str, Callable] = {}
+        self.custom_collectors: dict[str, Callable] = {}
 
     def start_collection(self) -> None:
         """収集開始"""
@@ -111,7 +110,7 @@ class MetricsCollector:
             for name, value in adaptation_metrics.items():
                 self._store_metric(name, value, MetricType.ADAPTATION, timestamp)
 
-    def _collect_performance_metrics(self) -> Dict[str, float]:
+    def _collect_performance_metrics(self) -> dict[str, float]:
         """パフォーマンスメトリクス収集"""
         # 実際の実装では取引システムからデータを取得
         # ここではサンプルデータを返す
@@ -125,7 +124,7 @@ class MetricsCollector:
             "profit_factor": 1.45,
         }
 
-    def _collect_risk_metrics(self) -> Dict[str, float]:
+    def _collect_risk_metrics(self) -> dict[str, float]:
         """リスクメトリクス収集"""
         return {
             "value_at_risk": -250.50,
@@ -136,7 +135,7 @@ class MetricsCollector:
             "stress_test_loss": -500.00,
         }
 
-    def _collect_system_metrics(self) -> Dict[str, float]:
+    def _collect_system_metrics(self) -> dict[str, float]:
         """システムメトリクス収集"""
 
         import psutil
@@ -150,7 +149,7 @@ class MetricsCollector:
             "uptime_seconds": time.time() - psutil.boot_time(),
         }
 
-    def _collect_market_metrics(self) -> Dict[str, float]:
+    def _collect_market_metrics(self) -> dict[str, float]:
         """市場メトリクス収集"""
         # 実際の実装では市場データソースから取得
         return {
@@ -161,7 +160,7 @@ class MetricsCollector:
             "price_change_24h": 2.5,
         }
 
-    def _collect_adaptation_metrics(self) -> Dict[str, float]:
+    def _collect_adaptation_metrics(self) -> dict[str, float]:
         """適応メトリクス収集"""
         return {
             "model_accuracy": 0.89,
@@ -204,7 +203,7 @@ class MetricsCollector:
 
     def get_metric_history(
         self, metric_name: str, hours: int = 24
-    ) -> List[MetricValue]:
+    ) -> list[MetricValue]:
         """メトリクス履歴取得"""
         if metric_name not in self.metrics_buffer:
             return []
@@ -214,7 +213,7 @@ class MetricsCollector:
             m for m in self.metrics_buffer[metric_name] if m.timestamp >= cutoff_time
         ]
 
-    def get_latest_metrics(self) -> Dict[str, MetricValue]:
+    def get_latest_metrics(self) -> dict[str, MetricValue]:
         """最新メトリクス取得"""
         latest = {}
         for metric_name, buffer in self.metrics_buffer.items():
@@ -226,18 +225,17 @@ class MetricsCollector:
         """カスタム収集器追加"""
         self.custom_collectors[name] = collector_func
 
-
 class AlertManager:
     """アラートマネージャー"""
 
     def __init__(self, config: MonitoringConfig):
         self.config = config
-        self.active_alerts: Dict[str, Alert] = {}
-        self.alert_history: List[Alert] = []
-        self.cooldowns: Dict[str, datetime] = {}
-        self.notification_handlers: Dict[str, Callable] = {}
+        self.active_alerts: dict[str, Alert] = {}
+        self.alert_history: list[Alert] = []
+        self.cooldowns: dict[str, datetime] = {}
+        self.notification_handlers: dict[str, Callable] = {}
 
-    def check_alerts(self, metrics: Dict[str, MetricValue]) -> List[Alert]:
+    def check_alerts(self, metrics: dict[str, MetricValue]) -> list[Alert]:
         """アラートチェック"""
         new_alerts = []
 
@@ -341,11 +339,11 @@ class AlertManager:
             return True
         return False
 
-    def get_active_alerts(self) -> List[Alert]:
+    def get_active_alerts(self) -> list[Alert]:
         """アクティブアラート取得"""
         return list(self.active_alerts.values())
 
-    def get_alert_history(self, hours: int = 24) -> List[Alert]:
+    def get_alert_history(self, hours: int = 24) -> list[Alert]:
         """アラート履歴取得"""
         cutoff_time = datetime.now() - timedelta(hours=hours)
         return [
@@ -355,7 +353,6 @@ class AlertManager:
     def add_notification_handler(self, channel: str, handler: Callable) -> None:
         """通知ハンドラー追加"""
         self.notification_handlers[channel] = handler
-
 
 class DashboardGenerator:
     """ダッシュボード生成器"""
@@ -417,8 +414,8 @@ class DashboardGenerator:
         )
 
     def _generate_performance_summary(
-        self, latest_metrics: Dict[str, MetricValue]
-    ) -> Dict[str, Any]:
+        self, latest_metrics: dict[str, MetricValue]
+    ) -> dict[str, Any]:
         """パフォーマンスサマリー生成"""
         summary = {}
 
@@ -444,9 +441,6 @@ class DashboardGenerator:
             )
 
         return summary
-
-
-
 
 class AdaptationPerformanceMonitor:
     """パフォーマンス監視システム"""
@@ -535,7 +529,7 @@ class AdaptationPerformanceMonitor:
         """コンソール通知"""
         print(f"🚨 ALERT: {alert.description}")
 
-    def check_and_alert(self) -> List[Alert]:
+    def check_and_alert(self) -> list[Alert]:
         """チェックとアラート"""
         latest_metrics = self.metrics_collector.get_latest_metrics()
         return self.alert_manager.check_alerts(latest_metrics)
@@ -566,11 +560,11 @@ class AdaptationPerformanceMonitor:
 
     def get_metrics_history(
         self, metric_name: str, hours: int = 24
-    ) -> List[MetricValue]:
+    ) -> list[MetricValue]:
         """メトリクス履歴取得"""
         return self.metrics_collector.get_metric_history(metric_name, hours)
 
-    def get_active_alerts(self) -> List[Alert]:
+    def get_active_alerts(self) -> list[Alert]:
         """アクティブアラート取得"""
         return self.alert_manager.get_active_alerts()
 
@@ -581,7 +575,6 @@ class AdaptationPerformanceMonitor:
     def resolve_alert(self, alert_id: str) -> bool:
         """アラート解決"""
         return self.alert_manager.resolve_alert(alert_id)
-
 
 # Backwards compat export expected by some modules/tests
 PerformanceMonitor = AdaptationPerformanceMonitor

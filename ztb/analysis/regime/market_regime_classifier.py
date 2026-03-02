@@ -9,7 +9,7 @@ Supports multiple regime classification schemes and adaptive parameter tuning.
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -24,7 +24,6 @@ logger = logging.getLogger(__name__)
 # Both share the same string values; short names (e.g. STRONG_BULL) are available
 # via MarketRegime's backward-compat aliases defined in market_regime_types.py.
 RegimeType = MarketRegime
-
 
 @dataclass
 class RegimeMetrics:
@@ -43,18 +42,16 @@ class RegimeMetrics:
     bollinger_position: float
     support_resistance_strength: float
 
-
 @dataclass
 class RegimeDetectionResult:
     """Result of regime detection analysis"""
 
     primary_regime: RegimeType
     confidence: float
-    secondary_regimes: List[Tuple[RegimeType, float]]
+    secondary_regimes: list[tuple[RegimeType, float]]
     metrics: RegimeMetrics
     detection_timestamp: pd.Timestamp
     lookback_period: int
-
 
 @dataclass
 class RegimeDefinition:
@@ -62,10 +59,9 @@ class RegimeDefinition:
 
     name: str
     regime_type: RegimeType
-    conditions: Dict[str, Any]
+    conditions: dict[str, Any]
     priority: int = 1
     description: str = ""
-
 
 class MarketRegimeClassifier:
     """
@@ -75,7 +71,7 @@ class MarketRegimeClassifier:
     for different market conditions and trading strategies.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize the regime classifier
 
@@ -99,7 +95,7 @@ class MarketRegimeClassifier:
             f"Market Regime Classifier initialized with {len(self.regime_definitions)} regime definitions"
         )
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """Get default configuration"""
         return {
             "lookback_periods": {"short": 20, "medium": 50, "long": 100},
@@ -108,7 +104,7 @@ class MarketRegimeClassifier:
             "confidence_threshold": 0.6,
         }
 
-    def _get_default_thresholds(self) -> Dict[str, float]:
+    def _get_default_thresholds(self) -> dict[str, float]:
         """Get default threshold values"""
         return {
             "strong_trend_threshold": 3.0,
@@ -121,7 +117,7 @@ class MarketRegimeClassifier:
             "breakout_setup_threshold": 0.0005,
         }
 
-    def _load_regime_definitions(self) -> List[RegimeDefinition]:
+    def _load_regime_definitions(self) -> list[RegimeDefinition]:
         """Load regime definitions based on configuration"""
         scheme = self.config.get("regime_scheme", "comprehensive")
 
@@ -133,7 +129,7 @@ class MarketRegimeClassifier:
             # Custom regime definitions from config
             return self._load_custom_regime_definitions()
 
-    def _get_basic_regime_definitions(self) -> List[RegimeDefinition]:
+    def _get_basic_regime_definitions(self) -> list[RegimeDefinition]:
         """Get basic 4-regime definitions"""
         return [
             RegimeDefinition(
@@ -178,7 +174,7 @@ class MarketRegimeClassifier:
             ),
         ]
 
-    def _get_comprehensive_regime_definitions(self) -> List[RegimeDefinition]:
+    def _get_comprehensive_regime_definitions(self) -> list[RegimeDefinition]:
         """Get comprehensive 16-regime definitions (Symmetric for BUY/SELL balance)"""
         t = self.thresholds
 
@@ -438,7 +434,7 @@ class MarketRegimeClassifier:
             ),
         ]
 
-    def _load_custom_regime_definitions(self) -> List[RegimeDefinition]:
+    def _load_custom_regime_definitions(self) -> list[RegimeDefinition]:
         """Load custom regime definitions from config"""
         custom_defs = self.config.get("custom_regime_definitions", [])
         regime_definitions = []
@@ -454,7 +450,7 @@ class MarketRegimeClassifier:
                 )
             )
 
-    def _load_custom_regime_definitions(self) -> List[RegimeDefinition]:
+    def _load_custom_regime_definitions(self) -> list[RegimeDefinition]:
         """Load custom regime definitions from config"""
         custom_defs = self.config.get("custom_regime_definitions", [])
         regime_definitions = []
@@ -627,7 +623,7 @@ class MarketRegimeClassifier:
 
     def _calculate_trend_strength(
         self, high: pd.Series, low: pd.Series, close: pd.Series
-    ) -> Tuple[float, float, float]:
+    ) -> tuple[float, float, float]:
         """Calculate trend strength with directional components"""
         def calculate_trend():
             # Ensure we have enough data
@@ -774,7 +770,7 @@ class MarketRegimeClassifier:
             logger.warning(f"Error calculating support/resistance strength: {e}")
             return 0.0
 
-    def _classify_regime(self, metrics: RegimeMetrics) -> Tuple[RegimeType, float]:
+    def _classify_regime(self, metrics: RegimeMetrics) -> tuple[RegimeType, float]:
         """
         Classify regime based on metrics and regime definitions
 
@@ -782,7 +778,7 @@ class MarketRegimeClassifier:
             metrics: Calculated regime metrics
 
         Returns:
-            Tuple of (regime_type, confidence)
+            tuple of (regime_type, confidence)
         """
         # Convert metrics to dict for easier condition checking
         metrics_dict = {
@@ -826,8 +822,8 @@ class MarketRegimeClassifier:
         return best_regime, best_confidence
 
     def _evaluate_regime_conditions(
-        self, metrics: Dict[str, float], regime_def: RegimeDefinition
-    ) -> Tuple[int, float]:
+        self, metrics: dict[str, float], regime_def: RegimeDefinition
+    ) -> tuple[int, float]:
         """
         Evaluate how well metrics match regime conditions
 
@@ -836,7 +832,7 @@ class MarketRegimeClassifier:
             regime_def: Regime definition to evaluate
 
         Returns:
-            Tuple of (score, confidence)
+            tuple of (score, confidence)
         """
         score = 0
         total_conditions = len(regime_def.conditions)
@@ -867,7 +863,7 @@ class MarketRegimeClassifier:
 
     def _calculate_secondary_regimes(
         self, metrics: RegimeMetrics, primary_regime: RegimeType
-    ) -> List[Tuple[RegimeType, float]]:
+    ) -> list[tuple[RegimeType, float]]:
         """
         Calculate secondary regime candidates
 
@@ -876,7 +872,7 @@ class MarketRegimeClassifier:
             primary_regime: Primary detected regime
 
         Returns:
-            List of (regime_type, confidence) tuples for secondary regimes
+            list of (regime_type, confidence) tuples for secondary regimes
         """
         # Convert metrics to dict
         metrics_dict = {
@@ -911,20 +907,20 @@ class MarketRegimeClassifier:
         secondary_regimes.sort(key=lambda x: x[1], reverse=True)
         return secondary_regimes[:3]
 
-    def get_regime_definitions(self) -> List[RegimeDefinition]:
+    def get_regime_definitions(self) -> list[RegimeDefinition]:
         """Get current regime definitions"""
         return self.regime_definitions.copy()
 
-    def update_regime_definitions(self, new_definitions: List[RegimeDefinition]):
+    def update_regime_definitions(self, new_definitions: list[RegimeDefinition]):
         """Update regime definitions"""
         self.regime_definitions = new_definitions
         logger.info(f"Updated regime definitions: {len(new_definitions)} regimes")
 
-    def get_config(self) -> Dict[str, Any]:
+    def get_config(self) -> dict[str, Any]:
         """Get current configuration"""
         return self.config.copy()
 
-    def update_config(self, new_config: Dict[str, Any]):
+    def update_config(self, new_config: dict[str, Any]):
         """Update configuration"""
         self.config.update(new_config)
         self.thresholds = self.config.get("thresholds", self._get_default_thresholds())

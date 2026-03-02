@@ -9,7 +9,7 @@ from typing import cast
 import numpy as np
 import pandas as pd
 
-# Set random seed
+# set random seed
 np.random.seed(42)
 
 # Create synthetic data

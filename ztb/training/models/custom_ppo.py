@@ -11,9 +11,10 @@ Extends MaskablePPO to integrate:
 This class overrides the train() method to inject custom components
 at the appropriate points in the learning loop.
 """
+from __future__ import annotations
 
 import warnings
-from typing import Any, Dict, Optional, Type, TypeVar, Union
+from typing import Any, Optional, TypeVar
 
 import numpy as np
 import torch as th
@@ -37,7 +38,6 @@ logger = get_logger(__name__)
 
 SelfCustomPPO = TypeVar("SelfCustomPPO", bound="CustomPPO")
 
-
 class CustomPPO(MaskablePPO):
     """
     Custom PPO with integrated bias mitigation components.
@@ -51,30 +51,30 @@ class CustomPPO(MaskablePPO):
 
     def __init__(
         self,
-        policy: Union[str, Type[MaskableActorCriticPolicy]],
-        env: Union[GymEnv, str],
+        policy: str | type[MaskableActorCriticPolicy],
+        env: GymEnv | str,
         # Standard PPO params
-        learning_rate: Union[float, Schedule] = 3e-4,
+        learning_rate: float | Schedule = 3e-4,
         n_steps: int = 2048,
         batch_size: int = 64,
         n_epochs: int = 10,
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
-        clip_range: Union[float, Schedule] = 0.2,
-        clip_range_vf: Optional[Union[float, Schedule]] = None,
+        clip_range: float | Schedule = 0.2,
+        clip_range_vf: float | Schedule | None = None,
         normalize_advantage: bool = True,
         ent_coef: float = 0.0,
         vf_coef: float = 0.5,
         max_grad_norm: float = 0.5,
-        rollout_buffer_class: Optional[Type[Any]] = None,
-        rollout_buffer_kwargs: Optional[Dict[str, Any]] = None,
-        target_kl: Optional[float] = None,
+        rollout_buffer_class: type[Any] | None = None,
+        rollout_buffer_kwargs: dict[str, Any] | None = None,
+        target_kl: float | None = None,
         stats_window_size: int = 100,
-        tensorboard_log: Optional[str] = None,
-        policy_kwargs: Optional[Dict[str, Any]] = None,
+        tensorboard_log: str | None = None,
+        policy_kwargs: dict[str, Any] | None = None,
         verbose: int = 0,
-        seed: Optional[int] = None,
-        device: Union[th.device, str] = "auto",
+        seed: int | None = None,
+        device: th.device | str = "auto",
         _init_setup_model: bool = True,
         # Custom params for bias mitigation
         enable_pan: bool = True,
@@ -144,10 +144,10 @@ class CustomPPO(MaskablePPO):
                     pass
 
         # Initialize custom components
-        self.pan_normalizer: Optional[PerActionAdvantageNormalizer] = None
-        self.entropy_controller: Optional[TargetEntropyController] = None
-        self.stratified_sampler: Optional[StratifiedSampler] = None
-        self.lagrange: Optional[LagrangeConstraint] = None
+        self.pan_normalizer: PerActionAdvantageNormalizer | None = None
+        self.entropy_controller: TargetEntropyController | None = None
+        self.stratified_sampler: StratifiedSampler | None = None
+        self.lagrange: LagrangeConstraint | None = None
 
         if enable_pan:
             # Determine number of actions from action space
@@ -468,7 +468,6 @@ class CustomPPO(MaskablePPO):
         if self.clip_range_vf is not None:
             self.logger.record("train/clip_range_vf", clip_range_vf)
 
-
 def explained_variance(
     y_pred: NDArray[np.float32], y_true: NDArray[np.float32]
 ) -> float:
@@ -484,7 +483,6 @@ def explained_variance(
     assert y_true.ndim == 1 and y_pred.ndim == 1
     var_y = np.var(y_true)
     return np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
-
 
 if __name__ == "__main__":
     print("CustomPPO module loaded successfully")

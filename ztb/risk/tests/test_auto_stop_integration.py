@@ -13,12 +13,11 @@ from unittest.mock import Mock, patch
 
 from ztb.risk.advanced_auto_stop import create_production_auto_stop
 
-
 class TestAutoStopIntegration(unittest.TestCase):
     """Integration tests for auto-stop with live trading."""
 
     def setUp(self):
-        """Set up integration test fixtures."""
+        """set up integration test fixtures."""
         self.auto_stop = create_production_auto_stop()
 
         # Mock live trader components
@@ -67,7 +66,7 @@ class TestAutoStopIntegration(unittest.TestCase):
         should_stop, reason, message = self.auto_stop.check_stop_conditions()
         self.assertFalse(should_stop)
 
-        # Set high volatility - should trigger stop
+        # set high volatility - should trigger stop
         self.auto_stop.volatility = 0.04  # Above 3% threshold
 
         should_stop, reason, message = self.auto_stop.check_stop_conditions()
@@ -178,12 +177,11 @@ class TestAutoStopIntegration(unittest.TestCase):
         # Result depends on cooldown timing, but method should exist
         self.assertIsInstance(result, bool)
 
-
 class TestLiveTraderAutoStopIntegration(unittest.TestCase):
     """Test LiveTrader integration with auto-stop system."""
 
     def setUp(self):
-        """Set up LiveTrader integration test."""
+        """set up LiveTrader integration test."""
         # Create temporary model file
         self.temp_model = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
         self.temp_model.close()
@@ -251,7 +249,6 @@ class TestLiveTraderAutoStopIntegration(unittest.TestCase):
                 )
 
                 mock_update.assert_called_once()
-
 
 if __name__ == "__main__":
     unittest.main()

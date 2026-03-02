@@ -6,12 +6,11 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from ztb.io.json_io import write_json
 
-
-def save_training_report(report: Dict[str, Any], output_dir: str = "reports") -> str:
+def save_training_report(report: dict[str, Any], output_dir: str = "reports") -> str:
     """Save a training report using the standard filename pattern."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     algorithm = report.get("metadata", {}).get("algorithm", "unknown")
@@ -22,8 +21,7 @@ def save_training_report(report: Dict[str, Any], output_dir: str = "reports") ->
     write_json(output_path, report, indent=2, ensure_ascii=False, default=str)
     return str(output_path)
 
-
-def save_ensemble_report(report: Dict[str, Any], output_dir: str = "reports") -> str:
+def save_ensemble_report(report: dict[str, Any], output_dir: str = "reports") -> str:
     """Save an ensemble report using the standard filename pattern."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"ensemble_analysis_report_{timestamp}.json"

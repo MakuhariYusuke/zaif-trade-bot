@@ -24,7 +24,6 @@ from datetime import datetime
 
 from ztb.utils.cli_common import CommonArgs, create_standard_parser
 
-
 def mark_best(correlation_id: str, artifacts_dir: Path = Path("artifacts")) -> int:
     """Mark session as best."""
     session_dir = artifacts_dir / correlation_id
@@ -44,7 +43,6 @@ def mark_best(correlation_id: str, artifacts_dir: Path = Path("artifacts")) -> i
         print(f"Failed to mark {correlation_id}: {e}", file=sys.stderr)
         return 1
 
-
 def main() -> int:
     parser = create_standard_parser("Mark session as best candidate")
     CommonArgs.add_correlation_id(parser)
@@ -52,7 +50,6 @@ def main() -> int:
 
     args = parser.parse_args()
     return mark_best(args.correlation_id, Path(args.artifacts_dir))
-
 
 if __name__ == "__main__":
     sys.exit(main())

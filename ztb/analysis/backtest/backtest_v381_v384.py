@@ -10,14 +10,13 @@ Tests both models on historical BTC/JPY market data to compare:
 
 import sys
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any
 
 # Add project root to path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from datetime import datetime
-from typing import Dict
 
 import numpy as np
 
@@ -30,8 +29,7 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
-def load_model(model_path: str) -> Tuple[Any, str]:
+def load_model(model_path: str) -> tuple[Any, str]:
     """Load PPO model (try MaskablePPO first, fallback to standard PPO)."""
     try:
         from sb3_contrib import MaskablePPO
@@ -51,10 +49,9 @@ def load_model(model_path: str) -> Tuple[Any, str]:
             logger.error(f"Failed to load model: {e2}")
             raise
 
-
 def run_backtest(
     model_path: str, data_path: str, episodes: int = 10, model_name: str = "Model"
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Run backtest for a single model.
 
@@ -228,9 +225,8 @@ def run_backtest(
 
     return results
 
-
 def print_comparison(
-    results_v381: Dict[str, Any], results_v384: Dict[str, Any]
+    results_v381: dict[str, Any], results_v384: dict[str, Any]
 ) -> None:
     """Print side-by-side comparison of results."""
 
@@ -344,7 +340,6 @@ def print_comparison(
 
     print("=" * 100)
 
-
 def main() -> int:
     """Main backtest comparison."""
 
@@ -409,7 +404,6 @@ def main() -> int:
     except Exception as e:
         logger.error(f"Backtest failed: {e}", exc_info=True)
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

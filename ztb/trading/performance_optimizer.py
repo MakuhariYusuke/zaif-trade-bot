@@ -15,7 +15,7 @@ import time
 import weakref
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Callable, Sequence
 
 import numpy as np
 import psutil
@@ -27,7 +27,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 @dataclass
 class PerformanceTarget:
     """パフォーマンス目標"""
@@ -36,7 +35,6 @@ class PerformanceTarget:
     memory_gb: float = 4.0  # 最大メモリ使用量 (4GB)
     cpu_percent: float = 80.0  # 最大CPU使用率 (80%)
     throughput_ops: int = 1000  # 1秒あたりの操作数
-
 
 @dataclass
 class SystemPerformanceMetrics:
@@ -65,7 +63,6 @@ class SystemPerformanceMetrics:
     memory_efficiency: float = 0.0  # 操作あたりのメモリ使用量
     cpu_efficiency: float = 0.0  # 操作あたりのCPU使用量
 
-
 @dataclass
 class OptimizationResult:
     """最適化結果"""
@@ -75,7 +72,7 @@ class OptimizationResult:
     after_metrics: SystemPerformanceMetrics
     improvement_percent: float
     success: bool
-    details: Dict[str, object] = field(default_factory=dict)
+    details: dict[str, object] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.now)
 
     @property
@@ -86,9 +83,7 @@ class OptimizationResult:
         else:
             return f"Degraded by {abs(self.improvement_percent):.1f}%"
 
-
-OptimizationStep = Tuple[str, Callable[[], bool]]
-
+OptimizationStep = tuple[str, Callable[[], bool]]
 
 class OptimizationComponentBase:
     """最適化コンポーネント共通基底."""
@@ -97,7 +92,7 @@ class OptimizationComponentBase:
         self.integration_manager = integration_manager
         self.logger = get_logger(__name__)
 
-    def _collect_applied_steps(self, steps: Sequence[OptimizationStep]) -> List[str]:
+    def _collect_applied_steps(self, steps: Sequence[OptimizationStep]) -> list[str]:
         """成功した最適化ステップ名のみを収集する."""
         return [step_name for step_name, operation in steps if operation()]
 
@@ -105,7 +100,6 @@ class OptimizationComponentBase:
         """`safe_execute` を利用して最適化処理を安全実行する."""
         result = safe_execute(operation, operation_name, False)
         return bool(result)
-
 
 class LatencyOptimizer(OptimizationComponentBase):
     """レイテンシー最適化器"""
@@ -115,11 +109,11 @@ class LatencyOptimizer(OptimizationComponentBase):
 
         # レイテンシープロファイリング
         self.profiler = cProfile.Profile()
-        self.latency_measurements: List[float] = []
+        self.latency_measurements: list[float] = []
 
     def measure_operation_latency(
         self, operation: Callable[..., object], *args: object, **kwargs: object
-    ) -> Tuple[float, object]:
+    ) -> tuple[float, object]:
         """操作のレイテンシーを測定"""
         start_time = time.perf_counter()
         result = operation(*args, **kwargs)
@@ -130,7 +124,7 @@ class LatencyOptimizer(OptimizationComponentBase):
 
         return latency_ms, result
 
-    def profile_critical_path(self) -> Dict[str, object]:
+    def profile_critical_path(self) -> dict[str, object]:
         """クリティカルパスのプロファイリング"""
         self.logger.info("Profiling critical execution paths...")
 
@@ -275,15 +269,15 @@ class LatencyOptimizer(OptimizationComponentBase):
             # Signal submission would go here
             pass
 
-    def _analyze_bottlenecks(self, profile_output: str) -> List[Dict[str, object]]:
+    def _analyze_bottlenecks(self, profile_output: str) -> list[dict[str, object]]:
         """ボトルネックの分析"""
-        bottlenecks: List[Dict[str, object]] = []
+        bottlenecks: list[dict[str, object]] = []
 
         for line in profile_output.splitlines():
             stripped = line.strip()
             if not stripped:
                 continue
-            if stripped.startswith(("Ordered by", "List reduced", "ncalls", "function calls")):
+            if stripped.startswith(("Ordered by", "list reduced", "ncalls", "function calls")):
                 continue
 
             parts = stripped.split(maxsplit=5)
@@ -460,7 +454,6 @@ class LatencyOptimizer(OptimizationComponentBase):
         # Round to 2 decimal places to ensure stable assertions in tests
         return round(memory_improvement, 2)
 
-
 class MemoryOptimizer(OptimizationComponentBase):
     """メモリ最適化器"""
 
@@ -468,12 +461,12 @@ class MemoryOptimizer(OptimizationComponentBase):
         super().__init__(integration_manager)
 
         # メモリ監視
-        self.memory_snapshots: List[Dict[str, object]] = []
+        self.memory_snapshots: list[dict[str, object]] = []
         self.object_refs = weakref.WeakSet()
-        self._monitoring_thread: Optional[threading.Thread] = None
+        self._monitoring_thread: threading.Thread | None = None
         self._monitoring_stop_event = threading.Event()
 
-    def analyze_memory_usage(self) -> Dict[str, object]:
+    def analyze_memory_usage(self) -> dict[str, object]:
         """メモリ使用量の分析"""
         self.logger.info("Analyzing memory usage...")
 
@@ -554,7 +547,7 @@ class MemoryOptimizer(OptimizationComponentBase):
             "snapshots_count": len(self.memory_snapshots),
         }
 
-    def optimize_memory_allocation(self) -> Dict[str, object]:
+    def optimize_memory_allocation(self) -> dict[str, object]:
         """メモリ割り当ての最適化"""
         self.logger.info("Optimizing memory allocation...")
 
@@ -613,9 +606,9 @@ class MemoryOptimizer(OptimizationComponentBase):
             self.logger.error(f"Memory monitoring stop failed: {e}")
             return False
 
-    def _detect_memory_leaks(self) -> List[Dict[str, object]]:
+    def _detect_memory_leaks(self) -> list[dict[str, object]]:
         """メモリリークの検出"""
-        leaks: List[Dict[str, object]] = []
+        leaks: list[dict[str, object]] = []
 
         if len(self.memory_snapshots) < 2:
             return leaks
@@ -642,7 +635,7 @@ class MemoryOptimizer(OptimizationComponentBase):
 
         return leaks
 
-    def _analyze_memory_efficiency(self) -> Dict[str, object]:
+    def _analyze_memory_efficiency(self) -> dict[str, object]:
         """メモリ効率の分析"""
         if not self.memory_snapshots:
             return {}
@@ -693,7 +686,6 @@ class MemoryOptimizer(OptimizationComponentBase):
             self.logger.error(f"Data structure memory optimization failed: {e}")
             return False
 
-
 class CPUOptimizer(OptimizationComponentBase):
     """CPU最適化器"""
 
@@ -701,9 +693,9 @@ class CPUOptimizer(OptimizationComponentBase):
         super().__init__(integration_manager)
 
         # CPU監視
-        self.cpu_measurements: List[float] = []
+        self.cpu_measurements: list[float] = []
 
-    def analyze_cpu_usage(self) -> Dict[str, object]:
+    def analyze_cpu_usage(self) -> dict[str, object]:
         """CPU使用量の分析"""
         self.logger.info("Analyzing CPU usage...")
 
@@ -765,7 +757,7 @@ class CPUOptimizer(OptimizationComponentBase):
             else 0,
         }
 
-    def optimize_cpu_utilization(self) -> Dict[str, object]:
+    def optimize_cpu_utilization(self) -> dict[str, object]:
         """CPU使用率の最適化"""
         self.logger.info("Optimizing CPU utilization...")
 
@@ -783,7 +775,7 @@ class CPUOptimizer(OptimizationComponentBase):
             "success": len(optimizations) > 0,
         }
 
-    def _analyze_cpu_pattern(self) -> Dict[str, object]:
+    def _analyze_cpu_pattern(self) -> dict[str, object]:
         """CPU使用パターンの分析"""
         if len(self.cpu_measurements) < 10:
             return {"pattern": "insufficient_data"}
@@ -858,7 +850,6 @@ class CPUOptimizer(OptimizationComponentBase):
             self.logger.error(f"Idle CPU reduction failed: {e}")
             return False
 
-
 class PerformanceOptimizationSystem(BaseComponent):
     """
     V433 Phase 4: パフォーマンス最適化システム
@@ -868,7 +859,7 @@ class PerformanceOptimizationSystem(BaseComponent):
     def __init__(
         self,
         integration_manager: V433IntegrationManager,
-        config: Optional[Dict[str, object]] = None,
+        config: dict[str, object] | None = None,
     ):
         super().__init__(name="PerformanceOptimizationSystem", config=config)
         # Logger instance for the component
@@ -884,13 +875,13 @@ class PerformanceOptimizationSystem(BaseComponent):
         self.targets = PerformanceTarget()
 
         # 最適化結果
-        self.optimization_results: List[OptimizationResult] = []
+        self.optimization_results: list[OptimizationResult] = []
 
         # モニタリング
-        self.monitoring_thread: Optional[threading.Thread] = None
+        self.monitoring_thread: threading.Thread | None = None
         self.is_monitoring = False
 
-    def run_comprehensive_optimization(self) -> Dict[str, object]:
+    def run_comprehensive_optimization(self) -> dict[str, object]:
         """包括的パフォーマンス最適化を実行"""
         self.logger.info("Running comprehensive performance optimization...")
 
@@ -984,7 +975,7 @@ class PerformanceOptimizationSystem(BaseComponent):
             self.logger.error(f"Error stopping performance monitoring: {e}")
             return False
 
-    def get_performance_report(self) -> Dict[str, object]:
+    def get_performance_report(self) -> dict[str, object]:
         """パフォーマンスレポートを取得"""
         # 現在のシステム指標
         current_memory = self.memory_optimizer.analyze_memory_usage()
@@ -1029,8 +1020,8 @@ class PerformanceOptimizationSystem(BaseComponent):
         }
 
     def _generate_optimization_summary(
-        self, results: Dict[str, object]
-    ) -> Dict[str, object]:
+        self, results: dict[str, object]
+    ) -> dict[str, object]:
         """最適化サマリーを生成"""
         summary = {
             "total_optimizations": len(results),
@@ -1074,7 +1065,7 @@ class PerformanceOptimizationSystem(BaseComponent):
 
         return summary
 
-    def benchmark_system_performance(self) -> Dict[str, object]:
+    def benchmark_system_performance(self) -> dict[str, object]:
         """システムパフォーマンスのベンチマーク"""
         self.logger.info("Running system performance benchmark...")
 
@@ -1100,7 +1091,7 @@ class PerformanceOptimizationSystem(BaseComponent):
         self.logger.info("System performance benchmark completed")
         return benchmark_results
 
-    def _benchmark_latency(self) -> Dict[str, object]:
+    def _benchmark_latency(self) -> dict[str, object]:
         """レイテンシーベンチマーク"""
         latencies = []
 
@@ -1122,7 +1113,7 @@ class PerformanceOptimizationSystem(BaseComponent):
             "within_target": bool(np.mean(latencies) < self.targets.latency_ms),
         }
 
-    def _benchmark_throughput(self) -> Dict[str, object]:
+    def _benchmark_throughput(self) -> dict[str, object]:
         """スループットベンチマーク"""
         # 1秒あたりの操作数
         start_time = time.time()
@@ -1145,7 +1136,7 @@ class PerformanceOptimizationSystem(BaseComponent):
             "within_target": bool(throughput >= self.targets.throughput_ops),
         }
 
-    def _benchmark_memory(self) -> Dict[str, object]:
+    def _benchmark_memory(self) -> dict[str, object]:
         """メモリベンチマーク"""
         memory_info = self.memory_optimizer.analyze_memory_usage()
 
@@ -1157,7 +1148,7 @@ class PerformanceOptimizationSystem(BaseComponent):
             ),
         }
 
-    def _benchmark_cpu(self) -> Dict[str, object]:
+    def _benchmark_cpu(self) -> dict[str, object]:
         """CPUベンチマーク"""
         cpu_info = self.cpu_optimizer.analyze_cpu_usage()
 
@@ -1170,10 +1161,10 @@ class PerformanceOptimizationSystem(BaseComponent):
         }
 
     def _evaluate_target_achievement(
-        self, benchmark_results: Dict[str, object]
-    ) -> Dict[str, object]:
+        self, benchmark_results: dict[str, object]
+    ) -> dict[str, object]:
         """目標達成度の評価"""
-        achievements: Dict[str, bool] = {}
+        achievements: dict[str, bool] = {}
 
         for benchmark_type, result in benchmark_results.items():
             if benchmark_type == "target_achievement":
@@ -1197,13 +1188,11 @@ class PerformanceOptimizationSystem(BaseComponent):
             else "needs_improvement",
         }
 
-
 def create_performance_optimization_system(
     integration_manager: V433IntegrationManager,
 ) -> PerformanceOptimizationSystem:
     """パフォーマンス最適化システムのファクトリ関数"""
     return PerformanceOptimizationSystem(integration_manager)
-
 
 # 使用例
 if __name__ == "__main__":

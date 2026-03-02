@@ -6,7 +6,7 @@ using various statistical methods (IQR, Z-score, etc.).
 """
 
 import logging
-from typing import Any, Tuple, cast
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -16,10 +16,9 @@ from ztb.utils.errors import safe_operation
 
 logger = logging.getLogger(__name__)
 
-
 def detect_outliers_iqr(
     data: pd.DataFrame, column: str
-) -> Tuple[pd.DataFrame, float, float]:
+) -> tuple[pd.DataFrame, float, float]:
     """
     Detect outliers using IQR (Interquartile Range) method.
 
@@ -28,10 +27,10 @@ def detect_outliers_iqr(
         column: Column name to analyze
 
     Returns:
-        Tuple of (outliers DataFrame, lower_bound, upper_bound)
+        tuple of (outliers DataFrame, lower_bound, upper_bound)
     """
     return cast(
-        Tuple[pd.DataFrame, float, float],
+        tuple[pd.DataFrame, float, float],
         safe_operation(
             operation=lambda: _detect_outliers_iqr_impl(data, column),
             logger=logger,
@@ -40,10 +39,9 @@ def detect_outliers_iqr(
         ),
     )
 
-
 def _detect_outliers_iqr_impl(
     data: pd.DataFrame, column: str
-) -> Tuple[pd.DataFrame, float, float]:
+) -> tuple[pd.DataFrame, float, float]:
     """Implementation of IQR outlier detection."""
     Q1 = data[column].quantile(0.25)
     Q3 = data[column].quantile(0.75)
@@ -53,7 +51,6 @@ def _detect_outliers_iqr_impl(
 
     outliers = data[(data[column] < lower_bound) | (data[column] > upper_bound)]
     return outliers, lower_bound, upper_bound
-
 
 def detect_outliers_zscore(
     data: pd.DataFrame, column: str, threshold: float = 3.0
@@ -79,7 +76,6 @@ def detect_outliers_zscore(
         ),
     )
 
-
 def _detect_outliers_zscore_impl(
     data: pd.DataFrame, column: str, threshold: float = 3.0
 ) -> pd.DataFrame:
@@ -97,7 +93,6 @@ def _detect_outliers_zscore_impl(
     outliers = cast(pd.DataFrame, data[outlier_mask])
 
     return outliers
-
 
 def calculate_z_score_single(
     value: float,
@@ -145,7 +140,6 @@ def calculate_z_score_single(
         raise ValueError(f"Unknown method for z-score: {method}")
     return float(z)
 
-
 def detect_outliers_isolation_forest(
     data: pd.DataFrame, columns: list[str], contamination: float = 0.1
 ) -> pd.DataFrame:
@@ -154,7 +148,7 @@ def detect_outliers_isolation_forest(
 
     Args:
         data: Input DataFrame
-        columns: List of column names to analyze
+        columns: list of column names to analyze
         contamination: Expected proportion of outliers (default: 0.1)
 
     Returns:
@@ -171,7 +165,6 @@ def detect_outliers_isolation_forest(
             pd.DataFrame(),
         ),
     )
-
 
 def _detect_outliers_isolation_forest_impl(
     data: pd.DataFrame, columns: list[str], contamination: float = 0.1
@@ -197,7 +190,6 @@ def _detect_outliers_isolation_forest_impl(
 
     return outliers
 
-
 def remove_outliers(
     data: pd.DataFrame, column: str, method: str = "iqr", **kwargs: Any
 ) -> pd.DataFrame:
@@ -222,7 +214,6 @@ def remove_outliers(
             data.copy(),
         ),
     )
-
 
 def _remove_outliers_impl(
     data: pd.DataFrame, column: str, method: str = "iqr", **kwargs: Any

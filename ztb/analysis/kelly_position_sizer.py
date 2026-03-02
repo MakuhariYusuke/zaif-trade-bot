@@ -7,14 +7,13 @@ Kelly基準に基づく動的ポジションサイズ決定システムを実装
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from ztb.metrics.metrics import max_drawdown
 from ztb.utils.performance_profiler import PerformanceProfiler
-
 
 @dataclass
 class KellyParameters:
@@ -80,7 +79,6 @@ class KellyParameters:
         # 最大割合でクリップ
         return min(fraction, max_fraction)
 
-
 @dataclass
 class PositionSizeDecision:
     """ポジションサイズ決定結果"""
@@ -91,7 +89,7 @@ class PositionSizeDecision:
     confidence_score: float
     reasoning: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         return {
             "kelly_fraction": self.kelly_params.kelly_fraction,
@@ -103,7 +101,6 @@ class PositionSizeDecision:
             "win_loss_ratio": self.kelly_params.win_loss_ratio,
             "total_trades": self.kelly_params.total_trades,
         }
-
 
 class KellyPositionSizer:
     """Kelly基準ポジションサイザー"""
@@ -120,8 +117,8 @@ class KellyPositionSizer:
         self.logger = logging.getLogger(__name__)
 
     def calculate_kelly_parameters(
-        self, trades: List[Dict[str, Any]], current_balance: float
-    ) -> Optional[KellyParameters]:
+        self, trades: list[dict[str, Any]], current_balance: float
+    ) -> KellyParameters | None:
         """
         トレード履歴からKellyパラメータを計算
 
@@ -172,7 +169,7 @@ class KellyPositionSizer:
 
     def calculate_dynamic_position_size(
         self,
-        trades: List[Dict[str, Any]],
+        trades: list[dict[str, Any]],
         current_balance: float,
         risk_tolerance: str = "half",
         max_risk_fraction: float = 0.02,  # 1トレードあたり最大2%リスク
@@ -243,7 +240,7 @@ class KellyPositionSizer:
         )
 
     def _adjust_for_volatility(
-        self, base_fraction: float, trades: List[Dict[str, Any]]
+        self, base_fraction: float, trades: list[dict[str, Any]]
     ) -> float:
         """ボラティリティに基づく調整"""
         if len(trades) < 5:
@@ -306,10 +303,10 @@ class KellyPositionSizer:
     @PerformanceProfiler.profile
     def optimize_portfolio_allocation(
         self,
-        trades_by_symbol: Dict[str, List[Dict[str, Any]]],
+        trades_by_symbol: dict[str, list[dict[str, Any]]],
         total_balance: float,
         max_allocation_per_symbol: float = 0.3,
-    ) -> Dict[str, PositionSizeDecision]:
+    ) -> dict[str, PositionSizeDecision]:
         """
         ポートフォリオ全体での最適配分を計算
 
@@ -352,7 +349,6 @@ class KellyPositionSizer:
 
         return allocations
 
-
 class KellyCriterionValidator:
     """Kelly基準の妥当性検証"""
 
@@ -362,10 +358,10 @@ class KellyCriterionValidator:
 
     def validate_kelly_effectiveness(
         self,
-        trades: List[Dict[str, Any]],
-        balance_history: List[float],
-        kelly_fractions: List[float] = [0.1, 0.25, 0.5, 0.75, 1.0],
-    ) -> Dict[str, Any]:
+        trades: list[dict[str, Any]],
+        balance_history: list[float],
+        kelly_fractions: list[float] = [0.1, 0.25, 0.5, 0.75, 1.0],
+    ) -> dict[str, Any]:
         """
         Kelly基準の有効性を検証
 
@@ -411,10 +407,10 @@ class KellyCriterionValidator:
 
     def _simulate_kelly_strategy(
         self,
-        trades: List[Dict[str, Any]],
+        trades: list[dict[str, Any]],
         initial_balance: float,
         kelly_fraction: float,
-    ) -> List[float]:
+    ) -> list[float]:
         """Kelly戦略のシミュレーション"""
         balance = initial_balance
         balance_history = [balance]
@@ -437,7 +433,6 @@ class KellyCriterionValidator:
         from ztb.metrics.metrics import sharpe_ratio
 
         return sharpe_ratio(returns, rf=risk_free_rate)
-
 
 # ===== 使用例 =====
 

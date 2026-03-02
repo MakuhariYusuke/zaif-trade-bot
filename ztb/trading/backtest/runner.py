@@ -8,7 +8,7 @@ Executes trading strategy backtests with comprehensive metrics and reporting.
 import argparse
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, cast
 
 import pandas as pd
 
@@ -42,7 +42,6 @@ except ImportError:
     ADAPTATION_AVAILABLE = False
     HyperparameterAdaptationSystem = None
 
-
 class BacktestEngine:
     """Core backtest execution engine."""
 
@@ -54,12 +53,12 @@ class BacktestEngine:
         enable_risk: bool = False,
         risk_profile: str = "balanced",
         kill_file: str = "/tmp/ztb.stop",
-        target_vol: Optional[float] = None,
-        correlation_id: Optional[str] = None,
+        target_vol: float | None = None,
+        correlation_id: str | None = None,
         enable_adaptation: bool = False,
-        adaptation_config: Optional[Dict[str, Any]] = None,
+        adaptation_config: dict[str, Any] | None = None,
         max_position_size: float = 1.0,
-        signal_performance_analyzer: Optional[Any] = None,
+        signal_performance_analyzer: Any | None = None,
     ) -> None:
         """Initialize backtest engine."""
         self.initial_capital = initial_capital
@@ -159,7 +158,7 @@ class BacktestEngine:
             if missing_cols:
                 raise ValueError(f"Missing required columns: {missing_cols}")
 
-            # Set timestamp as index
+            # set timestamp as index
             data.set_index("timestamp", inplace=True)
             return data
 
@@ -170,7 +169,7 @@ class BacktestEngine:
     def run_backtest(
         self, strategy: StrategyAdapter, data: pd.DataFrame
     ) -> tuple[
-        pd.Series, pd.DataFrame, Optional[Dict[str, Any]], Optional[Dict[str, Any]]
+        pd.Series, pd.DataFrame, dict[str, Any] | None, dict[str, Any] | None
     ]:
         """Run backtest simulation."""
 
@@ -480,7 +479,6 @@ class BacktestEngine:
 
         return equity_series, orders_df, adaptation_summary, signal_performance_summary
 
-
 def main() -> None:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(description="Run trading strategy backtest")
@@ -686,7 +684,7 @@ def main() -> None:
             {"timestamp": ts, "equity": eq} for ts, eq in equity_curve.items()
         ]
         orders_list = cast(
-            List[Dict[str, Any]], orders.to_dict("records") if not orders.empty else []
+            list[dict[str, Any]], orders.to_dict("records") if not orders.empty else []
         )
 
         # Generate outputs
@@ -748,10 +746,8 @@ def main() -> None:
         print(f"Backtest failed: {e}", file=sys.stderr)
         sys.exit(1)
 
-
 if __name__ == "__main__":
     main()
-
 
 # Mock classes for backtest adaptation integration
 class MockOnlineLearningPipeline:
@@ -770,10 +766,9 @@ class MockOnlineLearningPipeline:
         self.hyperparameters[name] = value
         print(f"Updated hyperparameter {name} = {value}")
 
-    def get_hyperparameters(self) -> Dict[str, float]:
+    def get_hyperparameters(self) -> dict[str, float]:
         """Get current hyperparameters."""
         return self.hyperparameters.copy()
-
 
 class MockEvaluationManager:
     """Mock evaluation manager for backtest environment."""

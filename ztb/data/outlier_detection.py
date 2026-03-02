@@ -7,9 +7,10 @@
 - 時系列特化手法（STL分解, ARIMA残差分析）
 - 処理手法（除去, 補完, クリッピング）
 """
+from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -22,7 +23,6 @@ from statsmodels.tsa.seasonal import STL
 
 logger = logging.getLogger(__name__)
 
-
 class OutlierDetector:
     """
     金融時系列データに対する異常値検出を行うクラス。
@@ -30,7 +30,7 @@ class OutlierDetector:
     複数の検出手法を組み合わせ、堅牢な異常値検出を実現。
     """
 
-    def __init__(self, random_seed: Optional[int] = None):
+    def __init__(self, random_seed: int | None = None):
         """
         OutlierDetectorを初期化。
 
@@ -42,19 +42,19 @@ class OutlierDetector:
             np.random.seed(random_seed)
 
         # スケーラーのキャッシュ
-        self.scalers: Dict[str, StandardScaler] = {}
+        self.scalers: dict[str, StandardScaler] = {}
 
         # 学習済みモデルのキャッシュ
-        self.trained_models: Dict[str, Any] = {}
+        self.trained_models: dict[str, Any] = {}
 
     def detect_outliers(
         self,
-        data: Union[pd.DataFrame, pd.Series, np.ndarray],
-        methods: Optional[List[Dict[str, Union[str, float, int]]]] = None,
-        method: Optional[str] = None,
-        columns: Optional[List[str]] = None,
+        data: pd.DataFrame | pd.Series | np.ndarray,
+        methods: list[dict[str, str | float | int]] | None = None,
+        method: str | None = None,
+        columns: list[str] | None = None,
         **kwargs,
-    ) -> Union[pd.DataFrame, dict]:
+    ) -> pd.DataFrame | dict:
         """
         指定された手法で異常値を検出。
 
@@ -151,8 +151,8 @@ class OutlierDetector:
             return result_data
 
     def _detect_z_score(
-        self, data: Union[pd.DataFrame, pd.Series, np.ndarray], columns: Optional[List[str]] = None, threshold: float = 3.0
-    ) -> Union[Dict[str, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+        self, data: pd.DataFrame | pd.Series | np.ndarray, columns: list[str] | None = None, threshold: float = 3.0
+    ) -> dict[str, np.ndarray] | tuple[np.ndarray, np.ndarray]:
         """
         Z-score法による異常値検出。
 
@@ -208,8 +208,8 @@ class OutlierDetector:
         return flags
 
     def _detect_iqr(
-        self, data: Union[pd.DataFrame, pd.Series, np.ndarray], columns: Optional[List[str]] = None, multiplier: float = 1.5
-    ) -> Union[Dict[str, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+        self, data: pd.DataFrame | pd.Series | np.ndarray, columns: list[str] | None = None, multiplier: float = 1.5
+    ) -> dict[str, np.ndarray] | tuple[np.ndarray, np.ndarray]:
         """
         IQR法による異常値検出。
 
@@ -277,8 +277,8 @@ class OutlierDetector:
         return flags
 
     def _detect_modified_z_score(
-        self, data: Union[pd.DataFrame, pd.Series, np.ndarray], columns: Optional[List[str]] = None, threshold: float = 3.5
-    ) -> Union[Dict[str, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+        self, data: pd.DataFrame | pd.Series | np.ndarray, columns: list[str] | None = None, threshold: float = 3.5
+    ) -> dict[str, np.ndarray] | tuple[np.ndarray, np.ndarray]:
         """
         Modified Z-score法による異常値検出。
 
@@ -346,8 +346,8 @@ class OutlierDetector:
         return flags
 
     def _detect_isolation_forest(
-        self, data: Union[pd.DataFrame, pd.Series, np.ndarray], columns: Optional[List[str]] = None, contamination: float = 0.1
-    ) -> Union[Dict[str, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+        self, data: pd.DataFrame | pd.Series | np.ndarray, columns: list[str] | None = None, contamination: float = 0.1
+    ) -> dict[str, np.ndarray] | tuple[np.ndarray, np.ndarray]:
         """
         Isolation Forestによる異常値検出。
 
@@ -439,11 +439,11 @@ class OutlierDetector:
 
     def _detect_lof(
         self,
-        data: Union[pd.DataFrame, pd.Series, np.ndarray],
-        columns: Optional[List[str]] = None,
+        data: pd.DataFrame | pd.Series | np.ndarray,
+        columns: list[str] | None = None,
         n_neighbors: int = 20,
         contamination: float = 0.1,
-    ) -> Union[Dict[str, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+    ) -> dict[str, np.ndarray] | tuple[np.ndarray, np.ndarray]:
         """
         Local Outlier Factorによる異常値検出。
 
@@ -534,11 +534,11 @@ class OutlierDetector:
 
     def _detect_stl_decomposition(
         self,
-        data: Union[pd.DataFrame, pd.Series, np.ndarray],
-        columns: Optional[List[str]] = None,
+        data: pd.DataFrame | pd.Series | np.ndarray,
+        columns: list[str] | None = None,
         seasonal: int = 7,
         threshold: float = 2.0,
-    ) -> Union[Dict[str, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+    ) -> dict[str, np.ndarray] | tuple[np.ndarray, np.ndarray]:
         """
         STL分解による時系列異常値検出。
 
@@ -615,11 +615,11 @@ class OutlierDetector:
 
     def _detect_arima_residual(
         self,
-        data: Union[pd.DataFrame, pd.Series, np.ndarray],
-        columns: Optional[List[str]] = None,
-        order: Tuple[int, int, int] = (1, 1, 1),
+        data: pd.DataFrame | pd.Series | np.ndarray,
+        columns: list[str] | None = None,
+        order: tuple[int, int, int] = (1, 1, 1),
         threshold: float = 2.0,
-    ) -> Union[Dict[str, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+    ) -> dict[str, np.ndarray] | tuple[np.ndarray, np.ndarray]:
         """
         ARIMA残差分析による異常値検出。
 
@@ -695,8 +695,8 @@ class OutlierDetector:
         return flags
 
     def _combine_outlier_flags(
-        self, outlier_flags: Dict[str, Union[np.ndarray, Dict[str, np.ndarray]]]
-    ) -> Union[Dict[str, np.ndarray], np.ndarray]:
+        self, outlier_flags: dict[str, np.ndarray | dict[str, np.ndarray]]
+    ) -> dict[str, np.ndarray] | np.ndarray:
         """
         複数の検出手法の結果を統合。
 
@@ -722,7 +722,7 @@ class OutlierDetector:
             combined = np.sum(stacked, axis=0) > (len(method_arrays) / 2)
             return combined
 
-        # Dict per-column path (method -> {col: ndarray})
+        # dict per-column path (method -> {col: ndarray})
         first_method = sample
         combined_flags = {}
 
@@ -740,7 +740,6 @@ class OutlierDetector:
 
         return combined_flags
 
-
 class OutlierHandler:
     """
     検出された異常値に対する処理を行うクラス。
@@ -754,7 +753,7 @@ class OutlierHandler:
         self,
         data: pd.DataFrame,
         method: str = "remove",
-        outlier_columns: Optional[List[str]] = None,
+        outlier_columns: list[str] | None = None,
         **kwargs,
     ) -> pd.DataFrame:
         """
@@ -812,7 +811,7 @@ class OutlierHandler:
         return processed_data
 
     def _remove_outliers(
-        self, data: pd.DataFrame, outlier_columns: List[str]
+        self, data: pd.DataFrame, outlier_columns: list[str]
     ) -> pd.DataFrame:
         """異常値を含む行を削除。"""
         outlier_mask = np.zeros(len(data), dtype=bool)
@@ -827,7 +826,7 @@ class OutlierHandler:
         return data[~outlier_mask].copy()
 
     def _interpolate_outliers(
-        self, data: pd.DataFrame, outlier_columns: List[str], method: str = "linear"
+        self, data: pd.DataFrame, outlier_columns: list[str], method: str = "linear"
     ) -> pd.DataFrame:
         """異常値を補間。"""
         processed_data = data.copy()
@@ -852,7 +851,7 @@ class OutlierHandler:
     def _clip_outliers(
         self,
         data: pd.DataFrame,
-        outlier_columns: List[str],
+        outlier_columns: list[str],
         lower_percentile: float = 5,
         upper_percentile: float = 95,
     ) -> pd.DataFrame:
@@ -883,8 +882,8 @@ class OutlierHandler:
     def _replace_outliers(
         self,
         data: pd.DataFrame,
-        outlier_columns: List[str],
-        replacement_value: Union[str, float] = "median",
+        outlier_columns: list[str],
+        replacement_value: str | float = "median",
     ) -> pd.DataFrame:
         """異常値を指定値で置換。"""
         processed_data = data.copy()

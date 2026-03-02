@@ -30,7 +30,6 @@ _DEFAULT_RAW_DIR = Path("data/v460/raw")
 _FLUSH_INTERVAL_SEC = 60
 _BUFFER_CAP = 10_000  # メモリ保護: 上限到達で強制 flush
 
-
 class TradeEntry(NamedTuple):
     """重複排除用の composite key."""
 
@@ -38,7 +37,6 @@ class TradeEntry(NamedTuple):
     price: float
     amount: float
     side: str
-
 
 class TradesRecorder:
     """fill_test サイクルごとの約定データを JSONL.gz で蓄積.

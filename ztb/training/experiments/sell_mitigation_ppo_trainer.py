@@ -12,7 +12,7 @@ Extends PPOTrainer with comprehensive action bias mitigation:
 """
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 from sb3_contrib import MaskablePPO
@@ -42,7 +42,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class SELLBiasMitigationPPOTrainer(PPOTrainer):
     """
     PPO Trainer with comprehensive SELL bias mitigation techniques.
@@ -69,7 +68,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         params: SELLMitigationParams containing all training and mitigation configuration
     """
 
-    config: Dict[str, Any]  # Declare config attribute for mypy  # type: ignore[misc]
+    config: dict[str, Any]  # Declare config attribute for mypy  # type: ignore[misc]
 
     def __init__(
         self,
@@ -162,7 +161,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
             )
 
         # Initialize model attribute
-        self.model: Optional[CustomPPO] = None
+        self.model: CustomPPO | None = None
 
     def _create_callback(self) -> BaseCallback:
         """Create composite training callback with SELL bias mitigation."""
@@ -531,13 +530,12 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         except Exception as e:
             logger.warning(f"Final validation failed (non-critical): {e}")
 
-
 def create_sell_mitigation_config(
-    base_config: Dict[str, Any],
+    base_config: dict[str, Any],
     enable_lagrange: bool = True,
     enable_probes: bool = True,
     enable_weights: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Create configuration for SELL bias mitigation training.
 
@@ -561,7 +559,6 @@ def create_sell_mitigation_config(
     config["tensorboard_log"] = config.get("tensorboard_log", "./tensorboard")
 
     return config
-
 
 # Test function
 def test_sell_mitigation_trainer() -> None:
@@ -597,7 +594,6 @@ def test_sell_mitigation_trainer() -> None:
         trainer.probe.close()
 
     print("✅ Test completed")
-
 
 if __name__ == "__main__":
     test_sell_mitigation_trainer()

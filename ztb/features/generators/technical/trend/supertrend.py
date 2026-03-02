@@ -7,7 +7,6 @@ from numpy.typing import NDArray
 from ztb.features.core.base import ParameterizedFeature
 from ztb.features.core.registry import FeatureRegistry
 
-
 @FeatureRegistry.register("Supertrend")
 def compute_supertrend(df: pd.DataFrame) -> pd.Series:
     """Supertrend Indicator"""
@@ -15,14 +14,12 @@ def compute_supertrend(df: pd.DataFrame) -> pd.Series:
     result_df = feature.compute(df)
     return result_df["supertrend"]
 
-
 @FeatureRegistry.register("Supertrend_Direction")
 def compute_supertrend_direction(df: pd.DataFrame) -> pd.Series:
     """Supertrend Direction (1 for uptrend, -1 for downtrend)"""
     feature = Supertrend()
     result_df = feature.compute(df)
     return result_df["supertrend_direction"]
-
 
 class Supertrend(ParameterizedFeature):
     """

@@ -17,7 +17,7 @@ import logging
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -37,7 +37,6 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_RAW_DIR = _PROJECT_ROOT / "data" / "v460" / "raw"
 DEFAULT_AGG_DIR = _PROJECT_ROOT / "data" / "v460" / "features"
 
-
 class MarketDataCollector:
     """Tick raw 収集 + 1分集約の二層保存を行うデータ収集サービス.
 
@@ -49,8 +48,8 @@ class MarketDataCollector:
         self,
         adapter: IBroker,
         symbol: str = "btc_jpy",
-        raw_dir: Optional[str | Path] = None,
-        agg_dir: Optional[str | Path] = None,
+        raw_dir: str | Path | None = None,
+        agg_dir: str | Path | None = None,
         poll_interval_sec: float = 5.0,
     ) -> None:
         self.adapter = adapter
@@ -68,7 +67,7 @@ class MarketDataCollector:
         self._ob_buffer: list[dict[str, Any]] = []
         self._tr_buffer: list[dict[str, Any]] = []
         self._buffer_cap: int = 50_000  # 自動 flush 閾値
-        self._last_trade_id: Optional[tuple[float, float, float, str]] = None
+        self._last_trade_id: tuple[float, float, float, str] | None = None
         self._running = False
 
     # ------------------------------------------------------------------
@@ -77,9 +76,9 @@ class MarketDataCollector:
 
     async def collect_tick(
         self,
-    ) -> tuple[Optional[OrderBookSnapshot], list[TradeRecord]]:
+    ) -> tuple[OrderBookSnapshot | None, list[TradeRecord]]:
         """Fetch one tick of orderbook + trades from the adapter."""
-        ob: Optional[OrderBookSnapshot] = None
+        ob: OrderBookSnapshot | None = None
         trades: list[TradeRecord] = []
 
         try:
@@ -147,7 +146,7 @@ class MarketDataCollector:
                 }
             )
 
-    def flush_raw(self, day_str: Optional[str] = None) -> tuple[Path, Path]:
+    def flush_raw(self, day_str: str | None = None) -> tuple[Path, Path]:
         """Flush in-memory buffers to JSONL gzip files and return paths."""
         day = day_str or self._today_str()
 
@@ -416,11 +415,9 @@ class MarketDataCollector:
         """Signal the collection loop to stop gracefully."""
         self._running = False
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
 
 def _read_jsonl_gz(path: Path) -> list[dict[str, Any]]:
     """Backward-compatible wrapper around ztb.io.jsonl_gz.read_jsonl_gz."""

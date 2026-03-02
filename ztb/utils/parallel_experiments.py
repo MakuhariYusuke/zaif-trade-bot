@@ -18,7 +18,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, cast
+from typing import cast
 
 import psutil
 
@@ -39,22 +39,20 @@ sys.path.append(str(Path(__file__).parent.parent))
 from ztb.experiments.base import ExperimentResult
 from ztb.utils.resource.process_priority import ProcessPriorityManager
 
-
 @dataclass
 class ParallelExperimentConfig:
     """Configuration for parallel experiment execution"""
 
     experiment_class: type
-    configs: List[ExperimentConfig]
+    configs: list[ExperimentConfig]
     max_workers: int = 2
-    shared_data_cache: Optional[str] = None
+    shared_data_cache: str | None = None
     enable_resource_monitoring: bool = True
-    priority_configs: Optional[Dict[str, str]] = None  # model_type -> priority_level
+    priority_configs: dict[str, str] | None = None  # model_type -> priority_level
     # 効率化のための追加パラメータ
     enable_priority_scheduling: bool = True  # 優先順位スケジューリング有効化
     batch_size: int = 5  # バッチ実行サイズ
-    resource_limits: Optional[Dict[str, float]] = None  # リソース制限（CPU%, Memory%）
-
+    resource_limits: dict[str, float] | None = None  # リソース制限（CPU%, Memory%）
 
 class ParallelExperimentRunner:
     """Runner for executing multiple experiments in parallel"""
@@ -76,10 +74,10 @@ class ParallelExperimentRunner:
         }
 
         # GPUリソース監視 - 遅延評価で効率化
-        self._gpu_available: Optional[bool] = None  # キャッシュ用
-        self._gpu_stats_cache: Optional[
-            Dict[str, Dict[str, float]]
-        ] = None  # GPU統計キャッシュ
+        self._gpu_available: bool | None = None  # キャッシュ用
+        self._gpu_stats_cache: 
+            dict[str, dict[str, float]]
+         | None = None  # GPU統計キャッシュ
         self._gpu_cache_time: float = 0.0  # キャッシュ時間
         self._gpu_cache_ttl: float = 5.0  # キャッシュ有効期間（秒）
 
@@ -124,7 +122,7 @@ class ParallelExperimentRunner:
                 f"Saved shared data cache: {len(self.shared_data)} items"
             )
 
-    def run_parallel(self) -> List[ExperimentResult]:
+    def run_parallel(self) -> list[ExperimentResult]:
         """Execute experiments in parallel with efficiency optimizations"""
 
         start_time = time.time()
@@ -182,8 +180,8 @@ class ParallelExperimentRunner:
         return results
 
     def _sort_configs_by_priority(
-        self, configs: List[ExperimentConfig]
-    ) -> List[ExperimentConfig]:
+        self, configs: list[ExperimentConfig]
+    ) -> list[ExperimentConfig]:
         """設定を優先順位に基づいてソート"""
         priority_order = {"high": 0, "normal": 1, "low": 2}
 
@@ -198,8 +196,8 @@ class ParallelExperimentRunner:
         return sorted(configs, key=get_priority)
 
     def _run_batch(
-        self, batch_configs: List[ConfigDict], batch_start: int
-    ) -> List[ExperimentResult]:
+        self, batch_configs: list[ConfigDict], batch_start: int
+    ) -> list[ExperimentResult]:
         """バッチ単位で実験を実行（リソース監視付き）"""
         # リソース制限チェック
         if not self._check_resource_limits():
@@ -216,7 +214,7 @@ class ParallelExperimentRunner:
             future_to_config = {}
             for i, config in enumerate(batch_configs):
                 global_index = batch_start + i
-                # Set process priority if configured
+                # set process priority if configured
                 model_type = get_string(config, "model_type", "generalization")
                 if (
                     self.config.priority_configs
@@ -372,7 +370,7 @@ class ParallelExperimentRunner:
 
         return False
 
-    def _get_gpu_usage(self) -> Dict[str, Dict[str, float]]:
+    def _get_gpu_usage(self) -> dict[str, dict[str, float]]:
         """GPU使用状況を取得（キャッシュ対応で効率化）"""
         current_time = time.time()
 
@@ -466,7 +464,7 @@ class ParallelExperimentRunner:
             except Exception:
                 pass
 
-            # Set process priority（効率化: 必要な場合のみ）
+            # set process priority（効率化: 必要な場合のみ）
             priority_level = cast(ObjectMap, config).pop(
                 "_priority_level", "normal"
             )
@@ -500,7 +498,6 @@ class ParallelExperimentRunner:
                 error_message=error_msg,
             )
 
-
 class ResourceMonitor:
     """Resource monitoring for parallel experiments"""
 
@@ -524,7 +521,7 @@ class ResourceMonitor:
 
         # メモリリーク監視 - 有界データ構造
         self.memory_history: deque[float] = deque(maxlen=1000)
-        self.gc_stats: deque[Tuple[int, int, int]] = deque(maxlen=1000)
+        self.gc_stats: deque[tuple[int, int, int]] = deque(maxlen=1000)
         self.object_counts: deque[int] = deque(maxlen=1000)
 
         # メモリリーク検知の閾値 - 設定可能に
@@ -659,26 +656,25 @@ class ResourceMonitor:
             "object_leak_threshold": self.object_leak_threshold,
         }
 
-
 def run_parallel_experiments(
     experiment_class: type,
-    configs: List[ConfigDict],
+    configs: list[ConfigDict],
     max_workers: int = 2,
-    shared_data_cache: Optional[str] = None,
+    shared_data_cache: str | None = None,
     enable_monitoring: bool = True,
-) -> List[ExperimentResult]:
+) -> list[ExperimentResult]:
     """
     Convenience function to run experiments in parallel
 
     Args:
         experiment_class: Experiment class to instantiate
-        configs: List of configuration dictionaries
+        configs: list of configuration dictionaries
         max_workers: Maximum number of parallel workers
         shared_data_cache: Path to shared data cache file
         enable_monitoring: Enable resource monitoring
 
     Returns:
-        List of experiment results
+        list of experiment results
     """
     config = ParallelExperimentConfig(
         experiment_class=experiment_class,

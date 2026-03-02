@@ -16,13 +16,11 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from ztb.metrics.metrics import calculate_distribution_stats
 from ztb.io.data_loader import DataLoader
 
-
 def load_v434_2_reward_config():
     """v434.2報酬設定を読み込み"""
     config_path = Path("config/sac_v434_2_reward_config.json")
     with open(config_path, "r", encoding="utf-8") as f:
         return json.load(f)
-
 
 def apply_v434_2_reward_settings(env, reward_config):
     """環境にv434.2報酬設定を適用"""
@@ -44,7 +42,6 @@ def apply_v434_2_reward_settings(env, reward_config):
     else:
         print("Warning: Could not apply v434.2 reward settings")
         return False
-
 
 def run_v434_2_quick_backtest(model_path: str, data_path: str, episodes: int = 10):
     """
@@ -181,7 +178,6 @@ def run_v434_2_quick_backtest(model_path: str, data_path: str, episodes: int = 1
     }
 
     return result
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SAC v434.2 Quick Backtest")

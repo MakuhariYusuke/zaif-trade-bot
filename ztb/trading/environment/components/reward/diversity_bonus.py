@@ -4,9 +4,6 @@ Diversity Bonus Calculator Component.
 This component calculates bonuses for action diversity.
 """
 
-from typing import List
-
-
 class DiversityBonusCalculator:
     """
     Calculates bonus for maintaining action diversity.
@@ -15,12 +12,12 @@ class DiversityBonusCalculator:
     repetitive behavior patterns.
     """
 
-    def calculate(self, recent_actions: List[int]) -> float:
+    def calculate(self, recent_actions: list[int]) -> float:
         """
         Calculate diversity bonus.
 
         Args:
-            recent_actions: List of recent actions
+            recent_actions: list of recent actions
 
         Returns:
             Diversity bonus value

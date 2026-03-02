@@ -9,20 +9,18 @@ avoid circular imports and to provide shared typing structures.
 from __future__ import annotations
 
 from os import PathLike as OsPathLike
-from typing import Any, Dict, List, Optional, Protocol, Tuple, Union, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from typing_extensions import TypedDict
 
 # --- Common aliases ---
 ActionType = int
-PathLike = Union[str, OsPathLike[str]]
-JSONSerializable = Union[Dict[str, Any], List[Any], str, int, float, bool, None]
-
+PathLike = str | OsPathLike[str]
+JSONSerializable = dict[str, Any] | list[Any] | str | int | float | bool | None
 
 # --- Results / metrics ---
 class TrainingResult(TypedDict, total=False):
     training_time: float
-
 
 class BacktestResult(TypedDict, total=False):
     total_return: float
@@ -31,28 +29,24 @@ class BacktestResult(TypedDict, total=False):
     win_rate: float
     total_trades: int
 
-
 class ValidationResult(TypedDict, total=False):
     is_valid: bool
-    errors: List[str]
-    warnings: List[str]
-    metrics: Optional[Dict[str, float]]
-
+    errors: list[str]
+    warnings: list[str]
+    metrics: dict[str, float] | None
 
 class IndicatorInfo(TypedDict, total=False):
     description: str
     talib_available: bool
-    parameters: List[str]
-    inputs: Optional[List[str]]
-    output_range: Optional[Tuple[Optional[float], Optional[float]]]
-    interpretation: Optional[str]
-
+    parameters: list[str]
+    inputs: list[str] | None
+    output_range: tuple[float | None, float | None] | None
+    interpretation: str | None
 
 class StatsResult(TypedDict, total=False):
     mean: float
     std: float
-    ci95: List[float]
-
+    ci95: list[float]
 
 class FeatureMetrics(TypedDict, total=False):
     win_rate: float
@@ -62,7 +56,6 @@ class FeatureMetrics(TypedDict, total=False):
     calmar_ratio: float
     sample_count: int
 
-
 # --- Protocols ---
 @runtime_checkable
 class LoggerProtocol(Protocol):
@@ -71,15 +64,13 @@ class LoggerProtocol(Protocol):
     def error(self, message: str, *args: Any, **kwargs: Any) -> None: ...
     def debug(self, message: str, *args: Any, **kwargs: Any) -> None: ...
 
-
 @runtime_checkable
 class FeeModelProtocol(Protocol):
     def calculate_fee(self, trade_value: float, trade_type: str = "buy") -> float: ...
     def get_fee_rate(self, trade_type: str = "buy") -> float: ...
 
-
 @runtime_checkable
 class ThresholdManagerProtocol(Protocol):
     def get_adaptive_threshold(self, metric_name: str, percentile: float = 20.0) -> float: ...
-    def get_adaptive_gates(self) -> Dict[str, float]: ...
+    def get_adaptive_gates(self) -> dict[str, float]: ...
 

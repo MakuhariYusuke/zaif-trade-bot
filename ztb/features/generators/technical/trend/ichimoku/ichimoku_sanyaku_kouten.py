@@ -16,14 +16,12 @@ from ztb.features.core.registry import FeatureRegistry
 
 from .ichimoku_ext import calculate_ichimoku_extended
 
-
 @FeatureRegistry.register("Ichimoku_Sanyaku_Kouten")
 def compute_ichimoku_sanyaku_kouten(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Sanyaku Kouten - three roles reversal analysis"""
     feature = IchimokuSanyakuKouten()
     result_df = feature.compute(df)
     return result_df["ichimoku_sanyaku_kouten"]
-
 
 class IchimokuSanyakuKouten(BaseFeature):
     """

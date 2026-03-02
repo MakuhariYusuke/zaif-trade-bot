@@ -8,7 +8,6 @@ Suggests or applies cleanup based on retention rules.
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Tuple
 
 # Add the ztb package to the path
 sys.path.insert(0, str(Path(__file__).parent.parent / "ztb"))
@@ -21,8 +20,7 @@ from ztb.utils.cli_common import (
     create_standard_parser,
 )
 
-
-def get_session_info(session_dir: Path) -> Tuple[str, datetime, float, bool]:
+def get_session_info(session_dir: Path) -> tuple[str, datetime, float, bool]:
     """Get session info: (id, mtime, size_mb, is_best)."""
     corr_id = session_dir.name
     mtime = datetime.fromtimestamp(session_dir.stat().st_mtime)
@@ -32,10 +30,9 @@ def get_session_info(session_dir: Path) -> Tuple[str, datetime, float, bool]:
     is_best = (session_dir / "best.marker").exists()
     return corr_id, mtime, size_mb, is_best
 
-
 def find_candidates(
     root: Path, keep_days: int, keep_best: int, max_size_gb: float
-) -> List[Tuple[str, str]]:
+) -> list[tuple[str, str]]:
     """Find cleanup candidates."""
     candidates = []
     sessions = []
@@ -89,8 +86,7 @@ def find_candidates(
 
     return candidates
 
-
-def apply_cleanup(root: Path, candidates: List[Tuple[str, str]]) -> None:
+def apply_cleanup(root: Path, candidates: list[tuple[str, str]]) -> None:
     """Apply cleanup by removing candidate directories."""
     for sess_id, reason in candidates:
         sess_dir = root / sess_id
@@ -101,7 +97,6 @@ def apply_cleanup(root: Path, candidates: List[Tuple[str, str]]) -> None:
             print(f"Removed {sess_id}: {reason}")
         except Exception as e:
             print(f"Failed to remove {sess_id}: {e}", file=sys.stderr)
-
 
 def main() -> int:
     parser = create_standard_parser("Apply retention policy for artifacts")
@@ -161,7 +156,6 @@ def main() -> int:
             print("Cleanup cancelled.")
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

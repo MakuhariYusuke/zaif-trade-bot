@@ -18,7 +18,6 @@ ConfigMap = dict[str, object]
 ScoreMap = dict[str, float]
 EvaluationRecord = dict[str, object]
 
-
 class EvaluationEngine:
     """
     Handles evaluation of reward function configurations.
@@ -165,7 +164,7 @@ class EvaluationEngine:
         Compare multiple configurations.
 
         Args:
-            configs: List of configurations to compare
+            configs: list of configurations to compare
             evaluation_function: Function to evaluate configurations
             statistical_test: Whether to perform statistical significance testing
 

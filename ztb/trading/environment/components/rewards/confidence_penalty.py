@@ -1,8 +1,7 @@
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from .base import RewardComponent, RewardContext
-
 
 class ConfidencePenaltyReward(RewardComponent):
     """
@@ -94,5 +93,4 @@ class ConfidencePenaltyReward(RewardComponent):
             )
         
         return penalty
-
 

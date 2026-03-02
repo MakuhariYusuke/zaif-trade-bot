@@ -13,10 +13,8 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from ztb.io.jsonl import append_jsonl
-
 
 def get_disk_usage(path: Path) -> dict[str, object]:
     """Get disk usage stats."""
@@ -31,8 +29,7 @@ def get_disk_usage(path: Path) -> dict[str, object]:
     except Exception as e:
         return {"error": str(e)}
 
-
-def get_inode_usage(path: Path) -> Optional[dict[str, object]]:
+def get_inode_usage(path: Path) -> dict[str, object] | None:
     """Get inode usage if available."""
     try:
         statvfs = os.statvfs(path)  # type: ignore[attr-defined]
@@ -52,8 +49,7 @@ def get_inode_usage(path: Path) -> Optional[dict[str, object]]:
     except Exception as e:
         return {"error": str(e)}
 
-
-def measure_io_latency(path: Path, test_size: int = 1024) -> Optional[float]:
+def measure_io_latency(path: Path, test_size: int = 1024) -> float | None:
     """Measure I/O latency with small read/write test."""
     try:
         test_file = path / ".disk_health_test"
@@ -77,7 +73,6 @@ def measure_io_latency(path: Path, test_size: int = 1024) -> Optional[float]:
     except Exception as e:
         print(f"I/O test failed: {e}", file=sys.stderr)
         return None
-
 
 def check_health(
     path: Path, min_free_gb: float, max_inode_usage: float, check_io: bool = False
@@ -141,11 +136,9 @@ def check_health(
 
     return alerts
 
-
 def write_alerts(alerts: list[dict[str, object]], log_path: Path) -> None:
     """Write alerts to JSONL file."""
     append_jsonl(log_path, alerts, ensure_ascii=False)
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Check disk health for Zaif Trade Bot")
@@ -191,7 +184,6 @@ def main() -> None:
             sys.exit(1)
     else:
         print("Disk health OK")
-
 
 if __name__ == "__main__":
     main()

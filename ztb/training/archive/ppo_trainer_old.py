@@ -5,7 +5,7 @@ PPO Trainer with auto-halt functionality for training gates.
 import math
 from collections import deque
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import BaseCallback
@@ -17,17 +17,16 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class PPOTrainer:
     """PPO Trainer with evaluation gates and auto-halt functionality."""
 
     def __init__(
         self,
         data_path: str,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         checkpoint_dir: str,
-        eval_gates: Optional[EvalGates] = None,
-        halt_callback: Optional[Callable[[str], None]] = None,
+        eval_gates: EvalGates | None = None,
+        halt_callback: Callable[[str], None] | None = None,
         checkpoint_interval: int = 10000,
     ):
         """
@@ -47,7 +46,7 @@ class PPOTrainer:
         self.data_path = data_path
         self.config = config
         self.checkpoint_dir = checkpoint_dir
-        self.model: Optional[PPO] = None
+        self.model: PPO | None = None
 
         # Training state
         self.current_step = 0
@@ -56,7 +55,7 @@ class PPOTrainer:
         )  # Keep last 50k rewards for efficiency
         self.steps_history: deque[int] = deque(maxlen=50000)  # Keep last 50k steps
         self.is_training = False
-        self.halt_reason: Optional[str] = None
+        self.halt_reason: str | None = None
 
         # Statistics for efficiency
         self.reward_sum = 0.0
@@ -114,7 +113,7 @@ class PPOTrainer:
         if step - self.last_gate_check_step >= self.checkpoint_interval:
             self._check_gates_and_halt_if_needed()
 
-    def get_reward_stats(self) -> Dict[str, float]:
+    def get_reward_stats(self) -> dict[str, float]:
         """
         Get reward statistics efficiently.
 
@@ -165,7 +164,7 @@ class PPOTrainer:
 
         self.last_gate_check_step = self.current_step
 
-    def _should_auto_halt(self, gate_results: Dict[str, GateResult]) -> bool:
+    def _should_auto_halt(self, gate_results: dict[str, GateResult]) -> bool:
         """
         Determine if training should auto-halt based on gate results.
 
@@ -210,14 +209,14 @@ class PPOTrainer:
 
         return False
 
-    def get_training_status(self) -> Dict[str, Any]:
+    def get_training_status(self) -> dict[str, Any]:
         """
         Get current training status.
 
         Returns:
             Status dictionary with training state and gate results
         """
-        status: Dict[str, Any] = {
+        status: dict[str, Any] = {
             "is_training": self.is_training,
             "current_step": self.current_step,
             "halt_reason": self.halt_reason,

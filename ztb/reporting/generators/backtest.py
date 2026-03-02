@@ -6,13 +6,12 @@ Generates JSON, Markdown, and CSV outputs for backtest results.
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from ztb.metrics.metrics import BacktestMetrics
 from ztb.io.json_io import write_json
 from ztb.io.text_io import write_text
 from ztb.io.csv_io import write_csv_dicts
-
 
 class ReportGenerator:
     """Generates backtest reports in multiple formats."""
@@ -20,9 +19,9 @@ class ReportGenerator:
     @staticmethod
     def generate_json_report(
         metrics: BacktestMetrics,
-        equity_curve: List[Dict[str, Any]],
-        orders: List[Dict[str, Any]],
-        metadata: Dict[str, Any],
+        equity_curve: list[dict[str, Any]],
+        orders: list[dict[str, Any]],
+        metadata: dict[str, Any],
         output_path: str,
     ) -> str:
         """Generate JSON report."""
@@ -70,7 +69,7 @@ class ReportGenerator:
 
     @staticmethod
     def generate_markdown_report(
-        metrics: BacktestMetrics, metadata: Dict[str, Any], output_path: str
+        metrics: BacktestMetrics, metadata: dict[str, Any], output_path: str
     ) -> str:
         """Generate Markdown executive summary."""
 
@@ -136,7 +135,7 @@ class ReportGenerator:
 
     @staticmethod
     def generate_equity_csv(
-        equity_curve: List[Dict[str, Any]], output_path: str
+        equity_curve: list[dict[str, Any]], output_path: str
     ) -> str:
         """Generate equity curve CSV."""
         rows = equity_curve
@@ -144,7 +143,7 @@ class ReportGenerator:
         return output_path
 
     @staticmethod
-    def generate_orders_csv(orders: List[Dict[str, Any]], output_path: str) -> str:
+    def generate_orders_csv(orders: list[dict[str, Any]], output_path: str) -> str:
         """Generate orders CSV."""
         write_csv_dicts(output_path, orders)
         return output_path

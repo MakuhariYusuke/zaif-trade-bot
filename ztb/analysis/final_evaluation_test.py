@@ -14,7 +14,6 @@ from ztb.io.json_io import read_json
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-
 def simulate_backtest(model_config, test_scenarios=1000):
     """Simulate backtesting with different market conditions"""
 
@@ -140,7 +139,6 @@ def simulate_backtest(model_config, test_scenarios=1000):
 
     return backtest_results
 
-
 def run_final_evaluation():
     """Run comprehensive final evaluation"""
 
@@ -244,7 +242,6 @@ def run_final_evaluation():
     print("Zero-trade issue resolved with bonus-based rewards")
     print("Advanced learning techniques successfully integrated")
     print("Model shows promising performance across market conditions")
-
 
 if __name__ == "__main__":
     run_final_evaluation()

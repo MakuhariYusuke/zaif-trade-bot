@@ -10,7 +10,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TypedDict, cast
+from typing import Any, TypedDict, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,22 +25,19 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from ztb.cache.parquet_io import read_parquet, write_parquet
 
-
 class ParquetConfig(TypedDict):
     """Configuration for Parquet I/O operations."""
 
     compression: str
     row_group_size: int
-    use_columns: List[str]
+    use_columns: list[str]
     engine: str
-
 
 class BenchmarkConfig(TypedDict):
     """Configuration for benchmark runs."""
 
     parquet: ParquetConfig
-    limits: Dict[str, int]
-
+    limits: dict[str, int]
 
 def generate_test_data(n_rows: int = 100000) -> pd.DataFrame:
     """Generate test DataFrame similar to trading data"""
@@ -67,10 +64,9 @@ def generate_test_data(n_rows: int = 100000) -> pd.DataFrame:
 
     return df
 
-
 def measure_io_performance(
     df: pd.DataFrame, config: BenchmarkConfig, temp_dir: Path
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Measure I/O performance for given config"""
     process = psutil.Process(os.getpid())
 
@@ -84,7 +80,7 @@ def measure_io_performance(
         temp_dir
         / f"test_{config['parquet']['compression']}_{config['parquet']['row_group_size']}.parquet"
     )
-    write_parquet(df, parquet_path, cast(Dict[str, Any], config))
+    write_parquet(df, parquet_path, cast(dict[str, Any], config))
 
     write_time = time.time() - write_start
     mem_after_write = process.memory_info().rss
@@ -95,7 +91,7 @@ def measure_io_performance(
     mem_before_read = process.memory_info().rss
     psutil.cpu_percent(interval=None)
 
-    _ = read_parquet(parquet_path, cast(Dict[str, Any], config))
+    _ = read_parquet(parquet_path, cast(dict[str, Any], config))
 
     read_time = time.time() - read_start
     mem_after_read = process.memory_info().rss
@@ -119,9 +115,8 @@ def measure_io_performance(
         "read_mem_mb": (mem_after_read - mem_before_read) / BYTES_PER_MB,
     }
 
-
 def run_benchmark(
-    n_rows: int = 100000, output_dir: Optional[Path] = None
+    n_rows: int = 100000, output_dir: Path | None = None
 ) -> pd.DataFrame:
     """Run comprehensive I/O benchmark"""
     if output_dir is None:
@@ -133,7 +128,7 @@ def run_benchmark(
     print(f"Generated test data: {len(df)} rows, {len(df.columns)} columns")
 
     # Benchmark configurations
-    configs: List[BenchmarkConfig] = []
+    configs: list[BenchmarkConfig] = []
 
     # Compression types
     compressions = ["snappy", "lz4"]
@@ -193,7 +188,6 @@ def run_benchmark(
     generate_plots(results_df, output_dir)
 
     return results_df
-
 
 def generate_plots(results_df: pd.DataFrame, output_dir: Path) -> None:
     """Generate performance comparison plots"""
@@ -274,7 +268,6 @@ def generate_plots(results_df: pd.DataFrame, output_dir: Path) -> None:
     plt.close()
 
     print(f"Top 3 configurations saved to {output_dir / 'io_bench_top3.png'}")
-
 
 def generate_weekly_report_section(results: pd.DataFrame) -> str:
     """
@@ -381,7 +374,6 @@ def generate_weekly_report_section(results: pd.DataFrame) -> str:
     report_lines.append("")
     return "\n".join(report_lines)
 
-
 def update_weekly_report(
     benchmark_results: pd.DataFrame, weekly_report_path: str = "weekly_report.md"
 ) -> None:
@@ -427,7 +419,6 @@ def update_weekly_report(
 
     print(f"Weekly report updated with I/O benchmark results: {weekly_report_path}")
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="I/O Benchmarking Tool")
     parser.add_argument(
@@ -459,7 +450,6 @@ def main() -> None:
     if args.update_weekly:
         update_weekly_report(results)
         print("\nBenchmark section added to weekly report")
-
 
 if __name__ == "__main__":
     main()

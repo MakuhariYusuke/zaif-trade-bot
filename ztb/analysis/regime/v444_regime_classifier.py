@@ -23,7 +23,7 @@ Regimes:
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -32,9 +32,7 @@ from ztb.analysis.regime.market_regime_types import MarketRegime
 
 logger = logging.getLogger(__name__)
 
-
-ConfigDict = Dict[str, Union[str, int, float, bool, Dict[str, Any], List[Any]]]
-
+ConfigDict = dict[str, str | int | float | bool | dict[str, Any] | list[Any]]
 
 class TimeFrame(Enum):
     """Time frame definitions for multi-timeframe analysis"""
@@ -43,10 +41,8 @@ class TimeFrame(Enum):
     MEDIUM = "medium"  # 1-4 hours
     LONG = "long"  # Daily
 
-
 # Backward-compatible alias
 RegimeType = MarketRegime
-
 
 @dataclass
 class RegimeMetrics:
@@ -65,18 +61,16 @@ class RegimeMetrics:
     bollinger_position: float
     support_resistance_strength: float
 
-
 @dataclass
 class RegimeDetectionResult:
     """Result of regime detection analysis"""
 
     primary_regime: RegimeType
     confidence: float
-    secondary_regimes: List[Tuple[RegimeType, float]]
+    secondary_regimes: list[tuple[RegimeType, float]]
     metrics: RegimeMetrics
     detection_timestamp: pd.Timestamp
     lookback_period: int
-
 
 @dataclass
 class MultiTimeFrameMetrics:
@@ -85,10 +79,9 @@ class MultiTimeFrameMetrics:
     short_term: RegimeMetrics
     medium_term: RegimeMetrics
     long_term: RegimeMetrics
-    timeframe_weights: Dict[str, float]
+    timeframe_weights: dict[str, float]
     integrated_regime: RegimeType
     integration_confidence: float
-
 
 class V444RegimeClassifier:
     """
@@ -98,7 +91,7 @@ class V444RegimeClassifier:
     technical indicators to accurately identify market regimes.
     """
 
-    def __init__(self, config: Optional[ConfigDict] = None):
+    def __init__(self, config: ConfigDict | None = None):
         """
         Initialize the regime classifier
 
@@ -106,12 +99,12 @@ class V444RegimeClassifier:
             config: Configuration dictionary with regime parameters
         """
         self.config = config or {}
-        self.lookback_periods: Dict[str, int] = self.config.get(
+        self.lookback_periods: dict[str, int] = self.config.get(
             "lookback_periods", {"short": 20, "medium": 50, "long": 100}
         )  # type: ignore
 
         # Regime detection thresholds
-        self.thresholds: Dict[str, float] = self.config.get(
+        self.thresholds: dict[str, float] = self.config.get(
             "thresholds",
             {
                 "strong_trend_threshold": 3.0,
@@ -292,7 +285,7 @@ class V444RegimeClassifier:
 
     def _calculate_trend_strength(
         self, high: pd.Series, low: pd.Series, close: pd.Series
-    ) -> Tuple[float, float, float]:
+    ) -> tuple[float, float, float]:
         """Calculate trend strength with directional components"""
         try:
             # Convert to pandas Series if not already
@@ -471,7 +464,7 @@ class V444RegimeClassifier:
             logger.warning(f"Error calculating support/resistance strength: {e}")
             return 0.5
 
-    def _classify_regime(self, metrics: RegimeMetrics) -> Tuple[RegimeType, float]:
+    def _classify_regime(self, metrics: RegimeMetrics) -> tuple[RegimeType, float]:
         """
         Classify the market regime based on calculated metrics
 
@@ -479,7 +472,7 @@ class V444RegimeClassifier:
             metrics: Calculated regime metrics
 
         Returns:
-            Tuple of (regime_type, confidence_score)
+            tuple of (regime_type, confidence_score)
         """
         # Strong trend classification first (highest priority)
         if (
@@ -573,7 +566,7 @@ class V444RegimeClassifier:
 
     def _calculate_secondary_regimes(
         self, metrics: RegimeMetrics, primary_regime: RegimeType
-    ) -> List[Tuple[RegimeType, float]]:
+    ) -> list[tuple[RegimeType, float]]:
         """
         Calculate secondary regime possibilities with confidence scores
 
@@ -582,7 +575,7 @@ class V444RegimeClassifier:
             primary_regime: Already determined primary regime
 
         Returns:
-            List of (regime, confidence) tuples for secondary regimes
+            list of (regime, confidence) tuples for secondary regimes
         """
         secondary_candidates = []
 
@@ -601,7 +594,7 @@ class V444RegimeClassifier:
 
     def _calculate_all_regime_scores(
         self, metrics: RegimeMetrics
-    ) -> Dict[RegimeType, float]:
+    ) -> dict[RegimeType, float]:
         """Calculate confidence scores for all regime types"""
         scores = {}
 
@@ -651,7 +644,7 @@ class V444RegimeClassifier:
             support_resistance_strength=0.5,
         )
 
-    def get_regime_config(self, regime: RegimeType) -> Dict[str, Any]:
+    def get_regime_config(self, regime: RegimeType) -> dict[str, Any]:
         """
         Get configuration parameters for a specific regime
 
@@ -748,14 +741,14 @@ class V444RegimeClassifier:
         return regime_config
 
     def get_adaptive_feature_weights(
-        self, regime: RegimeType, base_features: List[str]
-    ) -> Dict[str, float]:
+        self, regime: RegimeType, base_features: list[str]
+    ) -> dict[str, float]:
         """
         Get adaptive feature weights based on detected regime
 
         Args:
             regime: Detected market regime
-            base_features: List of base feature names
+            base_features: list of base feature names
 
         Returns:
             Dictionary mapping feature categories to weights
@@ -794,12 +787,12 @@ class V444RegimeClassifier:
             logger.warning(f"Error getting adaptive feature weights: {e}")
             return dict.fromkeys(base_features, 1.0)
 
-    def _map_features_to_categories(self, features: List[str]) -> Dict[str, str]:
+    def _map_features_to_categories(self, features: list[str]) -> dict[str, str]:
         """
         Map feature names to their categories
 
         Args:
-            features: List of feature names
+            features: list of feature names
 
         Returns:
             Dictionary mapping feature names to categories
@@ -851,8 +844,8 @@ class V444RegimeClassifier:
         return category_map
 
     def _apply_market_condition_adjustments(
-        self, weights: Dict[str, float], regime: RegimeType
-    ) -> Dict[str, float]:
+        self, weights: dict[str, float], regime: RegimeType
+    ) -> dict[str, float]:
         """
         Apply additional market condition adjustments to feature weights
 
@@ -1018,7 +1011,7 @@ class V444RegimeClassifier:
         medium_conf: float,
         long_regime: RegimeType,
         long_conf: float,
-    ) -> Tuple[RegimeType, float, Dict[str, float]]:
+    ) -> tuple[RegimeType, float, dict[str, float]]:
         """
         Integrate regime classifications from multiple timeframes
 
@@ -1027,7 +1020,7 @@ class V444RegimeClassifier:
             short_conf, medium_conf, long_conf: Confidences from each timeframe
 
         Returns:
-            Tuple of (integrated_regime, confidence, weights)
+            tuple of (integrated_regime, confidence, weights)
         """
         # Define timeframe weights (long-term has highest weight for stability)
         base_weights = {
@@ -1181,8 +1174,8 @@ class V444RegimeClassifier:
             # Keep default thresholds on error
 
     def _calculate_regime_stability_scores(
-        self, transition_probabilities: Dict[str, Dict[str, float]]
-    ) -> Dict[str, float]:
+        self, transition_probabilities: dict[str, dict[str, float]]
+    ) -> dict[str, float]:
         """レジーム安定性スコア計算"""
         stability_scores = {}
         for regime, probabilities in transition_probabilities.items():

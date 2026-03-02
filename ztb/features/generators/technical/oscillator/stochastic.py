@@ -14,14 +14,12 @@ import pandas as pd
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
 
-
 @FeatureRegistry.register("Stochastic")
 def compute_stochastic(df: pd.DataFrame) -> pd.Series:
     """Stochastic Oscillator using Ta-Lib wrapper"""
     feature = Stochastic()
     result_df = feature.compute(df)
     return result_df["stoch_k"]  # Return %K as primary value
-
 
 class Stochastic(BaseFeature):
     """

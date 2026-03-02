@@ -10,7 +10,7 @@ import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import jsonschema
 import requests
@@ -22,10 +22,9 @@ class ValidationResult:
     """Result of configuration validation."""
 
     is_valid: bool
-    errors: List[str]
-    warnings: List[str]
+    errors: list[str]
+    warnings: list[str]
     go_nogo: bool
-
 
 class ConfigLinter:
     """Configuration validation and linting."""
@@ -33,7 +32,7 @@ class ConfigLinter:
     def __init__(self, schema_dir: Path, config_dir: Path):
         self.schema_dir = schema_dir
         self.config_dir = config_dir
-        self.schemas: Dict[str, Dict[str, Any]] = {}
+        self.schemas: dict[str, dict[str, Any]] = {}
 
         # Load schemas
         self._load_schemas()
@@ -62,7 +61,7 @@ class ConfigLinter:
             ValidationResult with validation outcome
         """
         errors = []
-        warnings: List[str] = []
+        warnings: list[str] = []
 
         # Load config
         try:
@@ -100,8 +99,8 @@ class ConfigLinter:
         return ValidationResult(is_valid, errors, warnings, go_nogo)
 
     def _validate_venue_config(
-        self, config: Dict[str, Any], connectivity_skip: bool = False
-    ) -> List[str]:
+        self, config: dict[str, Any], connectivity_skip: bool = False
+    ) -> list[str]:
         """Additional validation for venue configurations."""
         warnings = []
 
@@ -135,9 +134,9 @@ class ConfigLinter:
 
     def _go_nogo_check(
         self,
-        config: Dict[str, Any],
-        errors: List[str],
-        warnings: List[str],
+        config: dict[str, Any],
+        errors: list[str],
+        warnings: list[str],
         connectivity_skip: bool = False,
     ) -> bool:
         """
@@ -176,15 +175,15 @@ class ConfigLinter:
 
     def lint_configs(
         self,
-        config_files: List[Path],
+        config_files: list[Path],
         strict_mode: bool = False,
         connectivity_skip: bool = False,
-    ) -> Dict[str, ValidationResult]:
+    ) -> dict[str, ValidationResult]:
         """
         Lint multiple configuration files.
 
         Args:
-            config_files: List of config files to validate
+            config_files: list of config files to validate
             strict_mode: Whether to treat warnings as errors
 
         Returns:
@@ -206,7 +205,6 @@ class ConfigLinter:
             results[str(config_file)] = result
 
         return results
-
 
 def main() -> None:
     """CLI entry point for config linting."""
@@ -295,7 +293,6 @@ def main() -> None:
     # Exit with appropriate code
     if not all(result.go_nogo for result in results.values()):
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

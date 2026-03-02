@@ -3,7 +3,7 @@ MACD (Moving Average Convergence Divergence) Pattern Recognizer
 既存のMACD特徴量クラスを使用したパターン認識
 """
 
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 import pandas as pd
 
@@ -14,12 +14,10 @@ from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import 
     SignalResult,
 )
 
-
 class MACDRegimeThresholds(TypedDict):
     """Regime-adjusted MACD thresholds."""
 
     histogram_threshold: float
-
 
 class MACDPatternRecognizer(IndicatorPatternRecognizer):
     """
@@ -27,7 +25,7 @@ class MACDPatternRecognizer(IndicatorPatternRecognizer):
     既存のMACD特徴量クラスを使用したパターン認識
     """
 
-    def __init__(self, config: Optional[dict[str, object]] = None):
+    def __init__(self, config: dict[str, object] | None = None):
         super().__init__(config)
         self.fast_period = int(self.config.get("fast_period", 12))
         self.slow_period = int(self.config.get("slow_period", 26))
@@ -38,8 +36,8 @@ class MACDPatternRecognizer(IndicatorPatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[MultiTimeframeData] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """
         Recognize MACD-based patterns.
         MACDベースのパターン認識
@@ -249,7 +247,7 @@ class MACDPatternRecognizer(IndicatorPatternRecognizer):
         index: int,
         volatility_ratio: float = 1.0,
         trend_strength: float = 0.5,
-    ) -> Optional[SignalResult]:
+    ) -> SignalResult | None:
         """
         Check for MACD convergence/divergence patterns.
         MACD収束/発散パターンのチェック
@@ -322,7 +320,7 @@ class MACDPatternRecognizer(IndicatorPatternRecognizer):
         self,
         current_hist: float,
         previous_hist: float,
-        multi_timeframe_data: Optional[MultiTimeframeData],
+        multi_timeframe_data: MultiTimeframeData | None,
     ) -> float:
         """Analyze multi-timeframe MACD alignment for enhanced signal confidence."""
         hist_change = current_hist - previous_hist
@@ -335,7 +333,7 @@ class MACDPatternRecognizer(IndicatorPatternRecognizer):
 
     def _adjust_thresholds_for_regime(
         self,
-        multi_timeframe_data: Optional[MultiTimeframeData],
+        multi_timeframe_data: MultiTimeframeData | None,
         pattern_type: str = "general",
     ) -> MACDRegimeThresholds:
         """

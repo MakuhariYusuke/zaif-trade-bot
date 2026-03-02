@@ -7,14 +7,13 @@ Enhanced with TTLCache memory management integration.
 
 import pickle
 from pathlib import Path
-from typing import Callable, Dict, Optional, cast
+from typing import Callable, cast
 
 import pandas as pd
 
 from ztb.utils.errors import safe_operation
 
 from .memory_cache import default_memory_manager
-
 
 class CacheDataLoader:
     """Unified data loader with caching support"""
@@ -93,11 +92,11 @@ class CacheDataLoader:
         return data
 
     def load_multiple(
-        self, keys_and_loaders: Dict[str, Callable[[], pd.DataFrame]]
-    ) -> Dict[str, pd.DataFrame]:
+        self, keys_and_loaders: dict[str, Callable[[], pd.DataFrame]]
+    ) -> dict[str, pd.DataFrame]:
         """Load multiple datasets with caching"""
         return cast(
-            Dict[str, pd.DataFrame],
+            dict[str, pd.DataFrame],
             safe_operation(
                 logger=None,  # Use default logger
                 operation=lambda: self._load_multiple_impl(keys_and_loaders),
@@ -107,15 +106,15 @@ class CacheDataLoader:
         )
 
     def _load_multiple_impl(
-        self, keys_and_loaders: Dict[str, Callable[[], pd.DataFrame]]
-    ) -> Dict[str, pd.DataFrame]:
+        self, keys_and_loaders: dict[str, Callable[[], pd.DataFrame]]
+    ) -> dict[str, pd.DataFrame]:
         """Implementation of load multiple."""
         result = {}
         for key, loader in keys_and_loaders.items():
             result[key] = self.load_with_cache(key, loader)
         return result
 
-    def clear_cache(self, key: Optional[str] = None) -> None:
+    def clear_cache(self, key: str | None = None) -> None:
         """Clear cache for specific key or all"""
         if key:
             cache_path = self.cache_dir / f"{key}.pkl"
@@ -125,9 +124,8 @@ class CacheDataLoader:
                 cache_file.unlink(missing_ok=True)
 
     def list_cached(self) -> list[str]:
-        """List cached keys"""
+        """list cached keys"""
         return [f.stem for f in self.cache_dir.glob("*.pkl")]
-
 
 # Backwards-compatible alias to reduce churn in legacy scripts/tests.
 DataLoader = CacheDataLoader

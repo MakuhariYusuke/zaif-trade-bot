@@ -7,7 +7,7 @@ and various wave patterns.
 """
 
 from enum import Enum
-from typing import List, NamedTuple, TypedDict
+from typing import NamedTuple, TypedDict
 
 import pandas as pd
 
@@ -16,13 +16,11 @@ from ztb.types.common import ConfigSection
 
 from .base import CandlestickPatternRecognizer, MultiTimeframeData, SignalResult
 
-
 class WaveType(Enum):
     IMPULSE = "impulse"
     CORRECTIVE = "corrective"
     DIAGONAL = "diagonal"
     TRIANGLE = "triangle"
-
 
 class WaveLabel(Enum):
     """Specific Elliott Wave labels."""
@@ -44,7 +42,6 @@ class WaveLabel(Enum):
     PH = "PH"  # Pivot High
     PL = "PL"  # Pivot Low
 
-
 class WaveDegree(Enum):
     GRAND_SUPERCYCLE = "grand_supercycle"
     SUPERCYCLE = "supercycle"
@@ -56,13 +53,11 @@ class WaveDegree(Enum):
     MINUETTE = "minuette"
     SUBMINUETTE = "subminuette"
 
-
 class WavePoint(NamedTuple):
     position: int
     price: float
     wave_label: WaveLabel
     degree: WaveDegree
-
 
 class WaveStructure(TypedDict):
     """Typed structure returned by wave structure identification."""
@@ -73,7 +68,6 @@ class WaveStructure(TypedDict):
     direction: int
     strength: float
     completion_index: int
-
 
 class WaveAnalyzer:
     """
@@ -87,7 +81,7 @@ class WaveAnalyzer:
     @staticmethod
     def find_pivot_points(
         data: pd.DataFrame, lookback: int = 20, min_distance: int = 3
-    ) -> List[WavePoint]:
+    ) -> list[WavePoint]:
         """Find significant pivot points in the data."""
         if len(data) < lookback:
             return []
@@ -95,8 +89,8 @@ class WaveAnalyzer:
         highs = data["high"]
         lows = data["low"]
 
-        pivot_highs: List[WavePoint] = []
-        pivot_lows: List[WavePoint] = []
+        pivot_highs: list[WavePoint] = []
+        pivot_lows: list[WavePoint] = []
 
         for i in range(lookback // 2, len(data) - lookback // 2):
             # Check for pivot high
@@ -137,7 +131,7 @@ class WaveAnalyzer:
         return all_pivots
 
     @staticmethod
-    def identify_wave_structure(pivots: List[WavePoint]) -> WaveStructure | None:
+    def identify_wave_structure(pivots: list[WavePoint]) -> WaveStructure | None:
         """Identify wave structure from pivot points."""
         if len(pivots) < 5:
             return None
@@ -205,7 +199,6 @@ class WaveAnalyzer:
                     }
 
         return None
-
 
 class _WavePatternBase(CandlestickPatternRecognizer):
     """Shared utilities for wave recognizers."""
@@ -301,7 +294,6 @@ class _WavePatternBase(CandlestickPatternRecognizer):
             data, index, pattern_factors, base_confidence=base_confidence
         )
 
-
 class ImpulseWaveRecognizer(_WavePatternBase):
     """Recognizes Elliott Wave impulse patterns (5-wave structures)."""
 
@@ -384,7 +376,6 @@ class ImpulseWaveRecognizer(_WavePatternBase):
                     )
 
         return None
-
 
 class CorrectiveWaveRecognizer(_WavePatternBase):
     """Recognizes Elliott Wave corrective patterns (ABC structures)."""
@@ -474,7 +465,6 @@ class CorrectiveWaveRecognizer(_WavePatternBase):
                     )
 
         return None
-
 
 class WaveExtensionRecognizer(_WavePatternBase):
     """Recognizes wave extensions and truncations."""
@@ -590,7 +580,6 @@ class WaveExtensionRecognizer(_WavePatternBase):
 
         return None
 
-
 class WaveIRecognizer(_WavePatternBase):
     """Recognizes Wave I (Initial impulse wave) - start of a new trend."""
 
@@ -678,7 +667,6 @@ class WaveIRecognizer(_WavePatternBase):
                 )
 
         return None
-
 
 class WaveVRecognizer(_WavePatternBase):
     """Recognizes Wave V (Final impulse wave) - completion of impulse sequence."""
@@ -770,7 +758,6 @@ class WaveVRecognizer(_WavePatternBase):
 
         return None
 
-
 class WaveYRecognizer(_WavePatternBase):
     """Recognizes Wave Y (Terminal wave in complex corrections)."""
 
@@ -860,7 +847,6 @@ class WaveYRecognizer(_WavePatternBase):
 
         return None
 
-
 class WavePRecognizer(_WavePatternBase):
     """Recognizes Wave P (Irregular correction wave)."""
 
@@ -947,7 +933,6 @@ class WavePRecognizer(_WavePatternBase):
                     )
 
         return None
-
 
 class WaveNRecognizer(_WavePatternBase):
     """Recognizes Wave N (Complex correction wave)."""
@@ -1040,7 +1025,6 @@ class WaveNRecognizer(_WavePatternBase):
                     )
 
         return None
-
 
 class WaveSRecognizer(_WavePatternBase):
     """Recognizes Wave S (Secondary correction wave)."""

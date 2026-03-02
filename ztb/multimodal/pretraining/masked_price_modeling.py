@@ -11,8 +11,6 @@ and the model learns to predict the masked values, similar to BERT's masked lang
 - 金融時系列データの文脈理解
 """
 
-from typing import Dict, Optional, Tuple
-
 import torch
 import torch.nn as nn
 try:
@@ -22,7 +20,6 @@ except Exception:
     F = _F
 
 from ztb.trading.environment.components.memory_manager import MemoryManager
-
 
 class MaskedPriceModel(nn.Module):
     """
@@ -100,8 +97,8 @@ class MaskedPriceModel(nn.Module):
         return mask
 
     def forward(
-        self, x: torch.Tensor, mask_indices: Optional[torch.Tensor] = None
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        self, x: torch.Tensor, mask_indices: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass with optional masking
 
@@ -168,7 +165,6 @@ class MaskedPriceModel(nn.Module):
         loss = F.mse_loss(masked_predictions, masked_targets)
         return loss
 
-
 class MaskedPriceModelingTrainer:
     """
     Trainer for Masked Price Modeling
@@ -180,7 +176,7 @@ class MaskedPriceModelingTrainer:
         model: MaskedPriceModel,
         optimizer: torch.optim.Optimizer,
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
-        memory_manager: Optional[MemoryManager] = None,
+        memory_manager: MemoryManager | None = None,
     ):
         """
         Initialize trainer
@@ -212,7 +208,7 @@ class MaskedPriceModelingTrainer:
         )
         self.step_counter = 0
 
-    def train_step(self, batch: torch.Tensor) -> Dict[str, float]:
+    def train_step(self, batch: torch.Tensor) -> dict[str, float]:
         """
         Single training step
 
@@ -251,7 +247,7 @@ class MaskedPriceModelingTrainer:
 
     def validate(
         self, val_data: torch.Tensor, batch_size: int = 32
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Validation on dataset
 

@@ -8,7 +8,7 @@ Runs backtest for SAC v423b model using the trained policy.
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import pandas as pd
 from stable_baselines3 import SAC
@@ -26,10 +26,8 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class SACv423bBacktester:
     """Backtester for SAC v423b model."""
-
 
     def load_model(self) -> None:
         """Load the trained SAC model."""
@@ -135,9 +133,6 @@ class SACv423bBacktester:
         return sharpe_ratio(
             returns, rf=risk_free_rate, period_per_year=TRADING_DAYS_PER_YEAR
         )
-
-
-
 
 if __name__ == "__main__":
     main()

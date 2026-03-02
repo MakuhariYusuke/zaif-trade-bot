@@ -9,7 +9,6 @@ import os
 import subprocess
 import sys
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Start monitoring processes")
     parser.add_argument(
@@ -43,7 +42,6 @@ def main() -> None:
     else:
         print(f"Failed to start monitoring (exit code: {result.returncode})")
         sys.exit(result.returncode)
-
 
 if __name__ == "__main__":
     main()

@@ -4,5 +4,4 @@ class BaseAlgorithm:
     def __init__(self, *args, **kwargs):
         pass
 
-
 __all__ = ["BaseAlgorithm"]

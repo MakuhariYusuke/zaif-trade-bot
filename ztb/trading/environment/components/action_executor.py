@@ -5,7 +5,7 @@ This module separates action-related logic from the main environment class,
 including conversion between continuous and discrete actions, and action validation.
 """
 
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 import numpy as np
 
@@ -14,7 +14,6 @@ from ztb.trading.environment.constants import continuous_to_discrete_action
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class ActionExecutor:
     """
@@ -43,10 +42,10 @@ class ActionExecutor:
 
     def convert_and_validate_action(
         self,
-        action: Union[int, np.ndarray],
-        dynamic_threshold: Optional[float] = None,
-        dynamic_negative_threshold: Optional[float] = None,
-    ) -> tuple[int, Optional[float]]:
+        action: int | np.ndarray,
+        dynamic_threshold: float | None = None,
+        dynamic_negative_threshold: float | None = None,
+    ) -> tuple[int, float | None]:
         """
         Convert action to discrete format and validate.
 
@@ -56,7 +55,7 @@ class ActionExecutor:
             dynamic_negative_threshold: Optional dynamic threshold for SELL (overrides self.negative_action_threshold)
 
         Returns:
-            Tuple of (discrete_action, continuous_value)
+            tuple of (discrete_action, continuous_value)
 
         Raises:
             ValueError: If action is invalid
@@ -117,7 +116,7 @@ class ActionExecutor:
             logger.error(f"Failed to convert and validate action {action}: {e}")
             raise
 
-    def get_action_info(self, action: Union[int, np.ndarray]) -> dict[str, Any]:
+    def get_action_info(self, action: int | np.ndarray) -> dict[str, Any]:
         """
         Get action information for logging/debugging.
 

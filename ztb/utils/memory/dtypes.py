@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import gc
 from dataclasses import dataclass
-from typing import Iterable, List, Tuple
+from typing import Iterable
 
 import numpy as np
 import pandas as pd
@@ -13,12 +13,11 @@ from pandas.api import types as ptypes
 # 117# A-fix: Break circular import (utils → trading.environment → torch)
 BYTES_PER_MB = 1024 * 1024
 
-
 @dataclass
 class OptimizationReport:
     """Summary of a dtype optimization pass."""
 
-    columns_optimized: List[str]
+    columns_optimized: list[str]
     memory_before_bytes: int
     memory_after_bytes: int
 
@@ -43,14 +42,12 @@ class OptimizationReport:
             return 0.0
         return (self.memory_saved_bytes / self.memory_before_bytes) * 100
 
-
-def _iter_chunks(items: List[str], chunk_size: int) -> Iterable[List[str]]:
+def _iter_chunks(items: list[str], chunk_size: int) -> Iterable[list[str]]:
     if chunk_size <= 0:
         yield items
         return
     for start in range(0, len(items), chunk_size):
         yield items[start : start + chunk_size]
-
 
 def _downcast_float_column(
     series: pd.Series,
@@ -58,7 +55,7 @@ def _downcast_float_column(
     sample_size: int,
     atol: float,
     rtol: float,
-) -> Tuple[pd.Series, bool]:
+) -> tuple[pd.Series, bool]:
     if series.empty:
         return series.astype(target_dtype), True  # type: ignore
 
@@ -86,16 +83,14 @@ def _downcast_float_column(
 
     return converted, True
 
-
-def _optimize_integer_column(series: pd.Series) -> Tuple[pd.Series, bool]:
+def _optimize_integer_column(series: pd.Series) -> tuple[pd.Series, bool]:
     try:
         downcasted = pd.to_numeric(series, downcast="integer")
         return downcasted, downcasted.dtype != series.dtype
     except (TypeError, ValueError):
         return series, False
 
-
-def _optimize_boolean_column(series: pd.Series) -> Tuple[pd.Series, bool]:
+def _optimize_boolean_column(series: pd.Series) -> tuple[pd.Series, bool]:
     if ptypes.is_bool_dtype(series):
         return series, False
 
@@ -107,13 +102,12 @@ def _optimize_boolean_column(series: pd.Series) -> Tuple[pd.Series, bool]:
             return series, False
     return series, False
 
-
 def _optimize_object_column(
     series: pd.Series,
     max_categories: int,
     max_ratio: float,
     treat_small_as_category: bool,
-) -> Tuple[pd.Series, bool]:
+) -> tuple[pd.Series, bool]:
     if not ptypes.is_object_dtype(series) and not ptypes.is_string_dtype(series):
         return series, False
 
@@ -133,7 +127,6 @@ def _optimize_object_column(
 
     return series, False
 
-
 def optimize_dtypes(
     df: pd.DataFrame,
     *,
@@ -148,7 +141,7 @@ def optimize_dtypes(
     chunk_size: int = 25,
     enable_gc: bool = True,
     memory_report: bool = False,
-) -> Tuple[pd.DataFrame, OptimizationReport]:
+) -> tuple[pd.DataFrame, OptimizationReport]:
     """Downcast numeric columns and convert low-cardinality objects to categories.
 
     Args:
@@ -166,12 +159,12 @@ def optimize_dtypes(
         memory_report: Log memory savings summary to stdout when True.
 
     Returns:
-        Tuple of optimized dataframe and an OptimizationReport describing the changes.
+        tuple of optimized dataframe and an OptimizationReport describing the changes.
     """
 
     optimized = df.copy()
     before_bytes = int(optimized.memory_usage(deep=True).sum())
-    optimized_columns: List[str] = []
+    optimized_columns: list[str] = []
 
     columns = list(optimized.columns)
     for chunk in _iter_chunks(columns, chunk_size):
@@ -266,7 +259,6 @@ def optimize_dtypes(
         )
 
     return optimized, report
-
 
 def downcast_df(
     df: pd.DataFrame,

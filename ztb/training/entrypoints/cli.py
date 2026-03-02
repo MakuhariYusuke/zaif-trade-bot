@@ -7,7 +7,7 @@ Handles command-line argument parsing and main entry point.
 
 import argparse
 import logging
-from typing import Any, Dict, Optional, cast
+from typing import Any, cast
 
 from ztb.training.unified_trainer import UnifiedTrainer
 from ztb.utils.config_loader import ConfigLoader
@@ -20,11 +20,10 @@ logger = get_logger(__name__)
 import importlib.util  # noqa: E402
 STABLE_BASELINES3_AVAILABLE = importlib.util.find_spec("stable_baselines3") is not None
 
-
 def configure_progress_bar(
-    config: Dict[str, Any],
-    cli_override: Optional[bool] = None,
-    log: Optional[logging.Logger] = None,
+    config: dict[str, Any],
+    cli_override: bool | None = None,
+    log: logging.Logger | None = None,
 ) -> bool:
     """
     Normalize progress bar settings and coordinate Stable-Baselines3 verbosity.
@@ -51,15 +50,14 @@ def configure_progress_bar(
 
     # Coordinate with Stable-Baselines3 verbosity
     if STABLE_BASELINES3_AVAILABLE:
-        # Set Stable-Baselines3 verbosity based on progress bar preference
+        # set Stable-Baselines3 verbosity based on progress bar preference
         # When progress bar is enabled, reduce SB3 verbosity to avoid conflicts
         sb3_verbose = 0 if desired_progress_bar else 1
         config.setdefault("sb3_verbose", sb3_verbose)
 
     return desired_progress_bar
 
-
-def load_config(config_path: str) -> Optional[Dict[str, Any]]:
+def load_config(config_path: str) -> dict[str, Any] | None:
     """
     Load configuration from file.
 
@@ -71,11 +69,10 @@ def load_config(config_path: str) -> Optional[Dict[str, Any]]:
     """
     try:
         loader = ConfigLoader()
-        return cast(Dict[str, Any] | None, loader.load_config(config_path))
+        return cast(dict[str, Any] | None, loader.load_config(config_path))
     except Exception as e:
         logger.error(f"Failed to load config from {config_path}: {e}")
         return None
-
 
 def create_argument_parser() -> argparse.ArgumentParser:
     """
@@ -117,7 +114,7 @@ def create_argument_parser() -> argparse.ArgumentParser:
         type=str,
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         default="INFO",
-        help="Set logging level (default: INFO). Overrides --verbose flag.",
+        help="set logging level (default: INFO). Overrides --verbose flag.",
     )
     parser.add_argument(
         "--force",
@@ -155,7 +152,6 @@ def create_argument_parser() -> argparse.ArgumentParser:
 
     return parser
 
-
 def main() -> int:
     """
     Main entry point for unified training.
@@ -169,7 +165,6 @@ def main() -> int:
             fallback=1,
         ),
     )
-
 
 def _main_impl() -> int:
     """
@@ -239,7 +234,6 @@ def _main_impl() -> int:
     else:
         logger.info("Training completed successfully")
     return 0
-
 
 if __name__ == "__main__":
     import sys

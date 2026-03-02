@@ -23,12 +23,11 @@ from ztb.training.callbacks.core.modern_callback_system import CallbackContext, 
 from ztb.utils.logging_utils import setup_logging
 
 def setup_logging_for_examples():
-    """Set up logging for examples."""
+    """set up logging for examples."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-
 
 def basic_callback_usage_example():
     """
@@ -81,7 +80,6 @@ def basic_callback_usage_example():
     print(f"Collected {len(final_metrics)} metrics entries")
 
     print("Basic example completed!\n")
-
 
 def comprehensive_training_example():
     """
@@ -186,7 +184,6 @@ def comprehensive_training_example():
 
     print("Comprehensive example completed!\n")
 
-
 async def async_callback_example():
     """
     Asynchronous callback usage example.
@@ -246,7 +243,6 @@ async def async_callback_example():
     await manager.trigger_event_async(CallbackEvent.TRAINING_END, end_context)
 
     print("Async example completed!\n")
-
 
 def error_handling_example():
     """
@@ -325,7 +321,6 @@ def error_handling_example():
     print(f"  Failed: {stats['failed_executions']}")
 
     print("Error handling example completed!\n")
-
 
 def custom_callback_example():
     """
@@ -446,7 +441,6 @@ def custom_callback_example():
 
     print("Custom callback example completed!\n")
 
-
 def run_all_examples():
     """Run all usage examples."""
     setup_logging()
@@ -466,7 +460,6 @@ def run_all_examples():
     custom_callback_example()
 
     print("All examples completed successfully! 🎉")
-
 
 if __name__ == "__main__":
     run_all_examples()

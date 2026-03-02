@@ -16,7 +16,6 @@ from ztb.utils.file_utils import get_project_root
 project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
-
 def test_v431_training():
     """Test v431 training with 1000 steps"""
 
@@ -99,7 +98,6 @@ def test_v431_training():
     print("1. Run full curriculum learning (20000+ timesteps)")
     print("2. Execute ensemble training with multiple models")
     print("3. Perform multi-stage training (exploration → exploitation → fine-tuning)")
-
 
 if __name__ == "__main__":
     test_v431_training()

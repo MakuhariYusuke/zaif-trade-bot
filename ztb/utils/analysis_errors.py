@@ -6,42 +6,37 @@ with appropriate logging and fallback behaviors.
 """
 
 import logging
-from typing import Any, Callable, Optional, Type
+from typing import Any, Callable
 
 from ztb.utils.errors import TradingBotError, safe_operation
-
 
 class AnalysisError(TradingBotError):
     """Base exception for analysis-related errors."""
 
     pass
 
-
 class DataAnalysisError(AnalysisError):
     """Raised when data analysis operations fail."""
 
     pass
-
 
 class PerformanceAnalysisError(AnalysisError):
     """Raised when performance analysis operations fail."""
 
     pass
 
-
 class PatternAnalysisError(AnalysisError):
     """Raised when pattern analysis operations fail."""
 
     pass
 
-
 def safe_analysis_operation(
     operation: Callable[..., Any],
     *args: Any,
-    logger: Optional[logging.Logger] = None,
+    logger: logging.Logger | None = None,
     fallback_result: Any = None,
     context: str = "",
-    error_types: Optional[tuple[Type[Exception], ...]] = None,
+    error_types: tuple[type[Exception], ...] | None = None,
     **kwargs: Any,
 ) -> Any:
     """Execute an analysis operation safely with analysis-specific error handling.
@@ -78,11 +73,10 @@ def safe_analysis_operation(
         **kwargs,
     )
 
-
 def safe_data_analysis(
     operation: Callable[..., Any],
     *args: Any,
-    logger: Optional[logging.Logger] = None,
+    logger: logging.Logger | None = None,
     **kwargs: Any,
 ) -> Any:
     """Execute data analysis operations with data-specific error handling.
@@ -99,11 +93,10 @@ def safe_data_analysis(
         **kwargs,
     )
 
-
 def safe_performance_analysis(
     operation: Callable[..., Any],
     *args: Any,
-    logger: Optional[logging.Logger] = None,
+    logger: logging.Logger | None = None,
     **kwargs: Any,
 ) -> Any:
     """Execute performance analysis operations with performance-specific error handling.
@@ -125,11 +118,10 @@ def safe_performance_analysis(
         **kwargs,
     )
 
-
 def safe_pattern_analysis(
     operation: Callable[..., Any],
     *args: Any,
-    logger: Optional[logging.Logger] = None,
+    logger: logging.Logger | None = None,
     **kwargs: Any,
 ) -> Any:
     """Execute pattern analysis operations with pattern-specific error handling.
@@ -145,7 +137,6 @@ def safe_pattern_analysis(
         error_types=(PatternAnalysisError, ValueError, RuntimeError, StatisticsError),
         **kwargs,
     )
-
 
 class StatisticsError(AnalysisError):
     """Raised when statistical computations fail."""

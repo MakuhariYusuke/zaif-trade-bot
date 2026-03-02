@@ -7,7 +7,6 @@ This component calculates penalties for different actions with fairness.
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.trading.environment.constants import EPSILON
 
-
 class ActionPenaltyCalculator:
     """
     Calculates action penalties with fairness between BUY and SELL.

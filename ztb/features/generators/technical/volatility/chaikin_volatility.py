@@ -16,14 +16,12 @@ from ztb.utils.talib_wrapper import TaLibWrapper
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
 
-
 @FeatureRegistry.register("Chaikin_Volatility")
 def compute_chaikin_volatility(df: pd.DataFrame) -> pd.Series:
     """Chaikin Volatility using Ta-Lib wrapper"""
     feature = ChaikinVolatility()
     result_df = feature.compute(df)
     return result_df["chaikin_volatility"]
-
 
 class ChaikinVolatility(BaseFeature):
     """

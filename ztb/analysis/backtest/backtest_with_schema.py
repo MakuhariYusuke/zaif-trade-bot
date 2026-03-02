@@ -26,7 +26,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 def run_backtest_with_schema(
     model_path: str, data_path: str, episodes: int = 10
 ) -> dict[str, Any]:
@@ -193,9 +192,6 @@ def run_backtest_with_schema(
                 logger.info(f"  {action}: {stats['count']:,} ({stats['pct']:.1f}%)")
 
     return results
-
-
-
 
 if __name__ == "__main__":
     sys.exit(main())

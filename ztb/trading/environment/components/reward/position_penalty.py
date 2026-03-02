@@ -6,7 +6,6 @@ This component calculates penalties for excessive position usage.
 
 import math
 
-
 class PositionPenaltyCalculator:
     """
     Calculates penalty for excessive position usage.

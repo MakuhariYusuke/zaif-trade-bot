@@ -9,10 +9,9 @@ __version__ = "1.0.0"
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import yaml  # type: ignore
-
 
 @dataclass
 class DataConfig:
@@ -27,7 +26,6 @@ class DataConfig:
     indicators: list = field(default_factory=lambda: ["GDP", "CPI", "UNEMPLOYMENT"])
     countries: list = field(default_factory=lambda: ["US", "JP", "EU"])
 
-
 @dataclass
 class FeaturesConfig:
     """特徴量エンジニアリング設定"""
@@ -39,7 +37,6 @@ class FeaturesConfig:
     outlier_threshold: float = 3.0
     attention_heads: int = 8
     fusion_layers: int = 2
-
 
 @dataclass
 class MultimodalModelConfig:
@@ -58,7 +55,6 @@ class MultimodalModelConfig:
     tau: float = 0.005
     alpha: float = 0.2
 
-
 @dataclass
 class MultimodalTrainingConfig:
     """トレーニング設定"""
@@ -73,7 +69,6 @@ class MultimodalTrainingConfig:
     cross_modal_weight: float = 1.0
     patience: int = 10
     min_delta: float = 1e-4
-
 
 @dataclass
 class EvaluationConfig:
@@ -92,7 +87,6 @@ class EvaluationConfig:
     attention_maps: bool = True
     feature_importance: bool = True
 
-
 @dataclass
 class HardwareConfig:
     """ハードウェア設定"""
@@ -101,15 +95,13 @@ class HardwareConfig:
     num_workers: int = 4
     pin_memory: bool = True
 
-
 @dataclass
 class APIConfig:
     """API設定"""
 
-    newsapi_key: Optional[str] = None
-    alphavantage_key: Optional[str] = None
-    fred_key: Optional[str] = None
-
+    newsapi_key: str | None = None
+    alphavantage_key: str | None = None
+    fred_key: str | None = None
 
 @dataclass
 class MultimodalConfig:
@@ -152,13 +144,13 @@ class MultimodalConfig:
         return cls._from_dict(config_dict)
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "MultimodalConfig":
+    def from_dict(cls, config_dict: dict[str, Any]) -> "MultimodalConfig":
         """辞書から設定を作成"""
         config_dict = cls._expand_env_vars(config_dict)
         return cls._from_dict(config_dict)
 
     @classmethod
-    def _from_dict(cls, config_dict: Dict[str, Any]) -> "MultimodalConfig":
+    def _from_dict(cls, config_dict: dict[str, Any]) -> "MultimodalConfig":
         """辞書から設定オブジェクトを作成"""
         # 各サブ設定を作成
         data_config = DataConfig(**config_dict.get("data", {}))
@@ -181,7 +173,7 @@ class MultimodalConfig:
         )
 
     @staticmethod
-    def _expand_env_vars(config_dict: Dict[str, Any]) -> Dict[str, Any]:
+    def _expand_env_vars(config_dict: dict[str, Any]) -> dict[str, Any]:
         """設定内の環境変数を展開"""
 
         def expand_value(value: Any) -> Any:
@@ -201,7 +193,7 @@ class MultimodalConfig:
 
         return expand_value(config_dict)  # type: ignore
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """設定を辞書に変換"""
         return {
             "version": self.version,

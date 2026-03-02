@@ -16,7 +16,6 @@ sys.path.insert(0, str(project_root))
 
 from ztb.utils.path_utils import get_project_root
 
-
 def load_config():
     """Load v432 configuration"""
     config_path = (
@@ -27,7 +26,6 @@ def load_config():
         / "sac_v432_0_ensemble_optimized.json"
     )
     return read_json(config_path)
-
 
 def simulate_market_data(num_steps=10000):
     """Generate synthetic market data for backtesting"""
@@ -58,7 +56,6 @@ def simulate_market_data(num_steps=10000):
         prices.append(max(new_price, 0.1))  # Prevent negative prices
 
     return np.array(prices)
-
 
 def simulate_sac_v432_action(price, prev_price, position, config, market_condition):
     """Simulate SAC v432 action with ensemble logic"""
@@ -162,7 +159,6 @@ def simulate_sac_v432_action(price, prev_price, position, config, market_conditi
     action = np.random.choice(actions, p=action_prob)
 
     return action, adjusted_rewards[action], detected_condition
-
 
 def run_backtest_simulation_v432(config, num_steps=10000, initial_capital=10000.0):
     """Run v432 backtest simulation with enhanced ensemble logic"""
@@ -369,7 +365,6 @@ def run_backtest_simulation_v432(config, num_steps=10000, initial_capital=10000.
         "total_reward": total_reward,
     }
 
-
 def main():
     # Load configuration
     config = load_config()
@@ -394,7 +389,6 @@ def main():
     print(f"\nResults saved to: {output_file}")
     print("\n=== SAC v432 Enhanced Evaluation Complete ===")
     print("Ready for unified trainer integration and further optimization")
-
 
 if __name__ == "__main__":
     main()

@@ -7,34 +7,31 @@ Gates ensure training quality and prevent invalid checkpoints from being conside
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Optional, Sequence, Union
+from typing import Any, Sequence
 
 import psutil
 
 from ztb.trading.environment.constants import BYTES_PER_GB
-
 
 class GateStatus(Enum):
     PASS = "pass"
     FAIL = "fail"
     SKIP = "skip"
 
-
 @dataclass
 class GateResult:
     name: str
     status: GateStatus
     reason: str
-    value: Union[float, int, None] = None
-    threshold: Union[float, int, None] = None
-
+    value: float | int | None = None
+    threshold: float | int | None = None
 
 class EvalGates:
     """Evaluation gates for training success validation."""
 
     def __init__(self, enabled: bool = True) -> None:
         self.enabled = enabled
-        self.gates: Dict[str, Dict[str, Any]] = {
+        self.gates: dict[str, dict[str, Any]] = {
             "resume_time": {"threshold": 30.0, "description": "Resume time < 30s"},
             "no_dup_steps": {
                 "threshold": 0,
@@ -115,7 +112,7 @@ class EvalGates:
         rewards: Sequence[float],
         steps: Sequence[int],
         threshold_steps: int = 300000,
-        reward_stats: Optional[Dict[str, float]] = None,
+        reward_stats: dict[str, float] | None = None,
     ) -> GateResult:
         """Check if reward trend is positive after threshold steps."""
         if reward_stats and reward_stats.get("count", 0) > 1000:
@@ -205,15 +202,15 @@ class EvalGates:
 
     def evaluate_all(
         self,
-        resume_start: Optional[float] = None,
-        global_steps: Optional[Sequence[int]] = None,
-        rewards: Optional[Sequence[float]] = None,
-        steps: Optional[Sequence[int]] = None,
+        resume_start: float | None = None,
+        global_steps: Sequence[int] | None = None,
+        rewards: Sequence[float] | None = None,
+        steps: Sequence[int] | None = None,
         threshold_steps: int = 300000,
-        reward_stats: Optional[Any] = None,
-        final_eval_reward: Optional[float] = None,
+        reward_stats: Any | None = None,
+        final_eval_reward: float | None = None,
         baseline: float = 0.0,
-    ) -> Dict[str, GateResult]:
+    ) -> dict[str, GateResult]:
         """Run all gate checks and return results."""
         if not self.enabled:
             return {}
@@ -249,8 +246,8 @@ class EvalGates:
         return results
 
     def get_acceptance_summary(
-        self, gate_results: Dict[str, GateResult]
-    ) -> Dict[str, Any]:
+        self, gate_results: dict[str, GateResult]
+    ) -> dict[str, Any]:
         """Generate acceptance summary from gate results."""
         if not gate_results:
             return {"pass": True, "reasons": [], "gates_disabled": True}
@@ -277,7 +274,7 @@ class EvalGates:
 
     def should_halt_training(
         self,
-        gate_results: Dict[str, GateResult],
+        gate_results: dict[str, GateResult],
         consecutive_failures: int = 0,
         max_consecutive_failures: int = 3,
     ) -> tuple[bool, str]:
@@ -290,7 +287,7 @@ class EvalGates:
             max_consecutive_failures: Maximum allowed consecutive failures
 
         Returns:
-            Tuple of (should_halt, reason)
+            tuple of (should_halt, reason)
         """
         if not gate_results:
             return False, ""
@@ -326,11 +323,9 @@ class EvalGates:
 
         return False, ""
 
-
 def enable_all_gates(gates: EvalGates) -> None:
     """Enable all evaluation gates."""
     gates.enabled = True
-
 
 def disable_all_gates(gates: EvalGates) -> None:
     """Disable all evaluation gates."""

@@ -9,10 +9,9 @@ import asyncio
 import statistics
 import time
 from dataclasses import dataclass
-from typing import List, cast
+from typing import cast
 
 import numpy as np
-
 
 @dataclass
 class BenchmarkResult:
@@ -26,8 +25,7 @@ class BenchmarkResult:
     latency_p99: float
     memory_mb: float
     passed_gates: bool
-    gate_violations: List[str]
-
+    gate_violations: list[str]
 
 class StreamingBenchmark:
     """Benchmark for streaming data processing."""
@@ -216,7 +214,7 @@ class StreamingBenchmark:
             for violation in result.gate_violations:
                 print(f"  - {violation}")
 
-    async def run_all_benchmarks(self) -> List[BenchmarkResult]:
+    async def run_all_benchmarks(self) -> list[BenchmarkResult]:
         """Run all streaming benchmarks."""
         print("Running Streaming Performance Benchmarks...")
         print("=" * 50)
@@ -253,7 +251,6 @@ class StreamingBenchmark:
 
         return results
 
-
 async def main() -> None:
     """Main benchmark runner."""
     benchmark = StreamingBenchmark()
@@ -262,7 +259,6 @@ async def main() -> None:
     # Exit with code based on results
     all_passed = all(r.passed_gates for r in results)
     exit(0 if all_passed else 1)
-
 
 if __name__ == "__main__":
     asyncio.run(main())

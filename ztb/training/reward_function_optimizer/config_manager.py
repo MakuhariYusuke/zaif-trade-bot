@@ -6,7 +6,6 @@ Separated from the main optimizer to follow Single Responsibility Principle.
 """
 
 from pathlib import Path
-from typing import Optional
 
 from ztb.io.json_io import read_json_object, write_json
 from ztb.utils.config_manager import ConfigManager
@@ -15,7 +14,6 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 ConfigObject = dict[str, object]
 
-
 class RewardFunctionConfigManager(ConfigManager):
     """
     Manages reward function configurations.
@@ -23,7 +21,7 @@ class RewardFunctionConfigManager(ConfigManager):
     Extends ConfigManager to provide reward function specific configuration handling.
     """
 
-    def __init__(self, config_dir: Optional[str] = None):
+    def __init__(self, config_dir: str | None = None):
         super().__init__(config_dir)
         self.logger = get_logger(__name__)
 

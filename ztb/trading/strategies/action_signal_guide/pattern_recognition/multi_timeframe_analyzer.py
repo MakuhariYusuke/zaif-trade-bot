@@ -15,7 +15,6 @@ from ztb.utils.logging_utils import get_logger
 
 from ..types import AnalysisResult, MultiTimeframeAnalysis, MultiTimeframeData
 
-
 class MultiTimeframeAnalyzer:
     """
     Advanced multi-timeframe analysis system.

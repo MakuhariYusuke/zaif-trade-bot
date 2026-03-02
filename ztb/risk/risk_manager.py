@@ -4,7 +4,7 @@ Risk Manager for SAC v435
 統合リスク管理システム
 """
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import pandas as pd
 
@@ -16,14 +16,13 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class RiskManager(RiskManagerProtocol):
     """
     統合リスクマネージャー
     動的ポジションサイジング、ドローダウン制御、市場適応を統合
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         """
         Args:
             config: リスク管理設定
@@ -54,9 +53,9 @@ class RiskManager(RiskManagerProtocol):
         current_price: float,
         portfolio_value: float,
         atr: float,
-        df: Optional[pd.DataFrame] = None,
+        df: pd.DataFrame | None = None,
         step: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         リスク調整済みポジションを計算
 
@@ -170,7 +169,7 @@ class RiskManager(RiskManagerProtocol):
         return min(1.0, self.max_correlation_exposure / position)
 
     def _calculate_overall_risk_level(
-        self, drawdown_info: Dict[str, Any], adaptation_info: Dict[str, Any]
+        self, drawdown_info: dict[str, Any], adaptation_info: dict[str, Any]
     ) -> float:
         """
         全体的なリスクレベルを計算
@@ -206,7 +205,7 @@ class RiskManager(RiskManagerProtocol):
 
         return min(1.0, overall_risk)
 
-    def get_risk_metrics(self) -> Dict[str, Any]:
+    def get_risk_metrics(self) -> dict[str, Any]:
         """
         包括的なリスク指標を取得
 
@@ -264,10 +263,10 @@ class RiskManager(RiskManagerProtocol):
 
     def should_close_position(
         self,
-        position_data: Dict[str, Any],
+        position_data: dict[str, Any],
         current_price: float,
         current_portfolio_value: float,
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """Decide whether to close a position. Use stop/tp checks and drawdown/emergency stop checks."""
         # Check for explicit stops in position_data
         stop_loss = position_data.get("stop_loss")
@@ -329,8 +328,8 @@ class RiskManager(RiskManagerProtocol):
         return float(size)
 
     def calculate_atr_stop_levels(
-        self, data: Optional[pd.DataFrame], entry_price: float, position_type: str
-    ) -> Tuple[float, float]:
+        self, data: pd.DataFrame | None, entry_price: float, position_type: str
+    ) -> tuple[float, float]:
         """Calculate ATR based stop-loss and take-profit prices. Fallback to % levels when ATR not available."""
         if data is not None and "atr" in data.columns and len(data) > 0:
             base_atr = float(data["atr"].iloc[-1])
@@ -352,7 +351,7 @@ class RiskManager(RiskManagerProtocol):
         return float(stop_loss), float(take_profit)
 
     def update_risk_metrics(
-        self, trade_result: Optional[Dict[str, Any]] = None
+        self, trade_result: dict[str, Any] | None = None
     ) -> None:
         """Update risk-tracking metrics, e.g., portfolio_value, drawdown_controller, and sizer's state."""
         if trade_result:

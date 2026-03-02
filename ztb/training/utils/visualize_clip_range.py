@@ -7,7 +7,7 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,14 +27,13 @@ from ztb.training.config.ppo_config import get_ppo_config  # noqa: E402
 
 LOGGER = logging.getLogger(__name__)
 
-
 def simulate_policy_updates(
     clip_range: float, n_updates: int = 50
-) -> Dict[str, List[float]]:
+) -> dict[str, list[float]]:
     """Simulate policy updates with given clip_range and track metrics."""
     try:
         # Get base PPO config and override clip_range
-        config: Dict[str, Any] = dict(get_ppo_config({"clip_range": clip_range}))
+        config: dict[str, Any] = dict(get_ppo_config({"clip_range": clip_range}))
         config.update(
             {
                 "algorithm": "ppo",
@@ -105,8 +104,7 @@ def simulate_policy_updates(
             "policy_losses": [],
         }
 
-
-def create_visualization(clip_ranges: List[float], output_dir: Path) -> None:
+def create_visualization(clip_ranges: list[float], output_dir: Path) -> None:
     """Create visualization comparing different clip_range values."""
     ensure_dir(output_dir)
     setup_plot_style()
@@ -190,7 +188,6 @@ def create_visualization(clip_ranges: List[float], output_dir: Path) -> None:
         LOGGER.info("Clip Range Comparison Summary:")
         LOGGER.info(df.to_string(index=False))
 
-
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Visualize PPO policy updates with different clip_range values"
@@ -220,7 +217,6 @@ def main() -> int:
 
     LOGGER.info(f"Visualization completed! Results saved to {args.output_dir}")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -16,7 +16,7 @@ Critical Requirements:
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple, Union, cast
+from typing import Any, cast
 
 import numpy as np
 try:
@@ -27,7 +27,6 @@ from numpy.typing import NDArray
 
 from ztb.trading.constants import ACTION_HOLD
 from ztb.trading.environment.constants import EPSILON
-
 
 @dataclass
 class InferenceConfig:
@@ -54,14 +53,13 @@ class InferenceConfig:
     transaction_cost: float = 0.001  # Default transaction cost (0.1%)
     slippage: float = 0.0005  # Default slippage (0.05%)
 
-
 def decode_action(
     logits: NDArray[np.float32] | torch.Tensor,
     legal_mask: NDArray[np.bool_] | torch.Tensor,
-    config: Optional[InferenceConfig] = None,
-    advantages: Optional[NDArray[np.float32] | torch.Tensor] = None,
-    current_position: Optional[int] = None,
-) -> Tuple[int | NDArray[np.integer[Any]], Dict[str, Any]]:
+    config: InferenceConfig | None = None,
+    advantages: NDArray[np.float32] | torch.Tensor | None = None,
+    current_position: int | None = None,
+) -> tuple[int | NDArray[np.integer[Any]], dict[str, Any]]:
     """
     Decode action from logits with strict mask enforcement.
 
@@ -84,7 +82,7 @@ def decode_action(
         current_position: Current position/action (optional, for cost gate)
 
     Returns:
-        Tuple of:
+        tuple of:
         - action: Selected action(s) (int if single, ndarray if batch)
         - info: Dictionary with:
             - probabilities: Post-softmax probabilities
@@ -146,7 +144,7 @@ def decode_action(
             f"{all_illegal_mask.sum()} observations have no legal actions. "
             f"Falling back to action {config.fallback_action} (HOLD)."
         )
-        # Set fallback action as legal for these observations
+        # set fallback action as legal for these observations
         mask_np[all_illegal_mask, config.fallback_action] = 1
 
     # Step 1: Apply mask (illegal actions → -1e9)
@@ -199,7 +197,7 @@ def decode_action(
     # Step 4 & 5 & 6: Action selection with advantage-aware tiebreaker and cost gate
     actions = np.zeros(batch_size, dtype=np.int32)
     tiebreaker_activated = np.zeros(batch_size, dtype=bool)
-    tiebreaker_reasons: list[Optional[str]] = [None] * batch_size
+    tiebreaker_reasons: list[str | None] = [None] * batch_size
     cost_gate_triggered = np.zeros(batch_size, dtype=bool)
     estimated_costs = np.zeros(batch_size, dtype=np.float32)
     top2_actions = np.zeros((batch_size, 2), dtype=np.int32)
@@ -221,7 +219,7 @@ def decode_action(
 
         # Initialize selected action with top1 (default)
         selected_action = top1_action
-        tiebreaker_reason: Optional[str] = None
+        tiebreaker_reason: str | None = None
 
         # Advantage-aware tiebreaker (Priority 1: strongest signal)
         if (
@@ -309,7 +307,7 @@ def decode_action(
 
     # Remove batch dimension if single observation
     if single_obs:
-        action: Union[int, NDArray[np.integer[Any]]] = int(actions[0])
+        action: int | NDArray[np.integer[Any]] = int(actions[0])
         info["probabilities"] = probabilities[0]
         info["top2_actions"] = top2_actions[0]
         info["top2_probs"] = top2_probs[0]
@@ -323,10 +321,9 @@ def decode_action(
 
     return action, info
 
-
 def compute_legal_sell_rate(
     actions: NDArray[np.int64], legal_masks: NDArray[np.bool_]
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Compute legal SELL rate statistics.
 

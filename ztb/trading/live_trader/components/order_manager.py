@@ -5,7 +5,7 @@
 """
 
 import asyncio
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from ztb.utils.errors import validate_quantity
 from ztb.utils.exceptions.custom_exceptions import ValidationError
@@ -13,7 +13,6 @@ from ztb.utils.logging_utils import get_logger
 
 if TYPE_CHECKING:
     from ztb.trading.live_trader.live_trader import LiveTrader
-
 
 class OrderManager:
     """Manages order execution and trade operations.
@@ -130,9 +129,9 @@ class OrderManager:
         symbol: str,
         side: str,
         quantity: float,
-        price: Optional[float] = None,
+        price: float | None = None,
         order_type: str = "limit",
-    ) -> Optional[object]:
+    ) -> object | None:
         """Bridge sync OrderManager to async exchange_adapter.place_order().
 
         Returns:

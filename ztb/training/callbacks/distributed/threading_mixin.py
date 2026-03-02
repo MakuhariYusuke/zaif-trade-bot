@@ -4,10 +4,9 @@
 from __future__ import annotations
 
 import threading
-from typing import Callable, Optional
+from typing import Callable
 
 ThreadTarget = Callable[[], None]
-
 
 class BackgroundThreadController:
     """Provide reusable start/join helpers for background threads."""
@@ -34,7 +33,7 @@ class BackgroundThreadController:
         if thread and thread.is_alive():
             thread.join(timeout=timeout)
 
-    def _get_background_thread(self, attr_name: str) -> Optional[threading.Thread]:
+    def _get_background_thread(self, attr_name: str) -> threading.Thread | None:
         candidate = getattr(self, attr_name, None)
         if isinstance(candidate, threading.Thread):
             return candidate

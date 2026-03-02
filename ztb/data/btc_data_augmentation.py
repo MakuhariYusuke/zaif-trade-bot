@@ -9,7 +9,7 @@ by adding diverse market conditions and synthetic data generation.
 
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -20,7 +20,6 @@ from ztb.utils.logging_utils import get_logger
 from ztb.utils.performance_utils import CodePerformanceMonitor
 
 logger = get_logger(__name__)
-
 
 class BTCDataAugmentor:
     """BTCデータ拡張クラス - 過去データの拡張とバイアス軽減"""
@@ -61,7 +60,7 @@ class BTCDataAugmentor:
             logger.error(f"Failed to load base data: {e}")
             raise
 
-    def analyze_data_bias(self) -> Dict[str, Any]:
+    def analyze_data_bias(self) -> dict[str, Any]:
         """Analyze potential biases in the current dataset"""
         with self.performance_monitor:
             if self.base_data is None:
@@ -118,7 +117,7 @@ class BTCDataAugmentor:
         drawdown = (prices - peak) / peak
         return drawdown.min()
 
-    def _analyze_market_regimes(self) -> Dict[str, float]:
+    def _analyze_market_regimes(self) -> dict[str, float]:
         """Analyze distribution of market regimes"""
         returns = self.base_data["returns"].dropna()
 
@@ -170,7 +169,7 @@ class BTCDataAugmentor:
             )
             return combined_data
 
-    def _calculate_base_statistics(self) -> Dict[str, Any]:
+    def _calculate_base_statistics(self) -> dict[str, Any]:
         """Calculate statistical properties of base data for synthetic generation"""
         stats = {}
 
@@ -194,8 +193,8 @@ class BTCDataAugmentor:
         return stats
 
     def _generate_synthetic_day(
-        self, date: datetime, base_stats: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+        self, date: datetime, base_stats: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """Generate synthetic data for a single day"""
         day_data = []
 
@@ -264,8 +263,8 @@ class BTCDataAugmentor:
         return day_data
 
     def _generate_technical_indicators(
-        self, current_record: Dict[str, Any], day_data: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, current_record: dict[str, Any], day_data: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Generate basic technical indicators for synthetic data"""
         indicators = {}
 
@@ -352,8 +351,8 @@ class BTCDataAugmentor:
             return combined_data
 
     def _generate_regime_data(
-        self, regime: str, num_samples: int, base_stats: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+        self, regime: str, num_samples: int, base_stats: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """Generate data for specific market regime"""
         data = []
 
@@ -459,14 +458,13 @@ class BTCDataAugmentor:
             f"Saved augmented data to {output_path} ({len(augmented_data)} records)"
         )
 
-
 class BTCBiasDetector:
     """BTCバイアス検出クラス"""
 
     def __init__(self):
         self.performance_monitor = CodePerformanceMonitor("btc_bias_detector")
 
-    def detect_data_bias(self, data: pd.DataFrame) -> Dict[str, Any]:
+    def detect_data_bias(self, data: pd.DataFrame) -> dict[str, Any]:
         """Detect various types of bias in BTC trading data"""
         with self.performance_monitor:
             bias_report = {}
@@ -491,7 +489,7 @@ class BTCBiasDetector:
 
             return bias_report
 
-    def _check_time_period_bias(self, data: pd.DataFrame) -> Dict[str, Any]:
+    def _check_time_period_bias(self, data: pd.DataFrame) -> dict[str, Any]:
         """Check if data covers diverse time periods"""
         if "timestamp" not in data.columns:
             return {"bias_detected": True, "reason": "No timestamp column"}
@@ -513,7 +511,7 @@ class BTCBiasDetector:
             "bias_detected": bias_score > 0.7,
         }
 
-    def _check_trend_bias(self, data: pd.DataFrame) -> Dict[str, Any]:
+    def _check_trend_bias(self, data: pd.DataFrame) -> dict[str, Any]:
         """Check for trend bias (overwhelming bull/bear markets)"""
         if "returns" not in data.columns and "close" not in data.columns:
             return {"bias_detected": True, "reason": "No returns or price data"}
@@ -537,7 +535,7 @@ class BTCBiasDetector:
             "bias_detected": bias_score > 0.6,
         }
 
-    def _check_volatility_bias(self, data: pd.DataFrame) -> Dict[str, Any]:
+    def _check_volatility_bias(self, data: pd.DataFrame) -> dict[str, Any]:
         """Check for volatility clustering or bias"""
         if "returns" not in data.columns and "close" not in data.columns:
             return {"bias_detected": True, "reason": "No returns or price data"}
@@ -565,7 +563,7 @@ class BTCBiasDetector:
             "bias_detected": bias_score > 0.7,
         }
 
-    def _check_regime_bias(self, data: pd.DataFrame) -> Dict[str, Any]:
+    def _check_regime_bias(self, data: pd.DataFrame) -> dict[str, Any]:
         """Check for market regime bias"""
         if "returns" not in data.columns and "close" not in data.columns:
             return {"bias_detected": True, "reason": "No returns or price data"}
@@ -602,7 +600,7 @@ class BTCBiasDetector:
             "bias_detected": bias_score > 0.5,
         }
 
-    def _check_volume_bias(self, data: pd.DataFrame) -> Dict[str, Any]:
+    def _check_volume_bias(self, data: pd.DataFrame) -> dict[str, Any]:
         """Check for volume-related biases"""
         if "volume" not in data.columns:
             return {"bias_detected": False, "reason": "No volume data available"}
@@ -623,7 +621,7 @@ class BTCBiasDetector:
             "bias_detected": bias_score > 0.5,
         }
 
-    def _check_btc_specific_bias(self, data: pd.DataFrame) -> Dict[str, Any]:
+    def _check_btc_specific_bias(self, data: pd.DataFrame) -> dict[str, Any]:
         """Check for BTC-specific biases (halving cycles, news events, etc.)"""
         bias_issues = []
 

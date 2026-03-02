@@ -15,7 +15,6 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from ztb.trading.environment.schema_env_factory import create_env_from_model_path
 from ztb.io.data_loader import DataLoader
 
-
 def load_v434_2_configs():
     """v434.2の設定を読み込み"""
     config_dir = Path("config")
@@ -31,7 +30,6 @@ def load_v434_2_configs():
         env_config = json.load(f)
 
     return reward_config, env_config
-
 
 def run_v434_2_backtest(model_path: str, data_path: str, episodes: int = 10):
     """
@@ -195,7 +193,6 @@ def run_v434_2_backtest(model_path: str, data_path: str, episodes: int = 10):
         "reward_improvements": len(reward_config["_improvements"]),
         "env_improvements": len(env_config["_improvements"]),
     }
-
 
 if __name__ == "__main__":
     import argparse

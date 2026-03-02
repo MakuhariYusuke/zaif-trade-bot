@@ -10,7 +10,6 @@ from ztb.utils.logging_utils import get_logger
 if TYPE_CHECKING:
     from ztb.trading.live_trader.live_trader import LiveTrader
 
-
 class FeatureComputation:
     """Handles feature computation for model prediction."""
 

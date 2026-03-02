@@ -3,17 +3,16 @@ SAC訓練ログ分析スクリプト
 TensorBoardログから詳細なメトリクスを抽出・分析
 """
 import os
-from typing import Any, Optional
+from typing import Any
 
 from tensorboard.backend.event_processing import event_accumulator
 from ztb.io.json_io import write_json
 
-
 def analyze_sac_logs(
-    log_path: Optional[str] = None,
-    session_id: Optional[str] = None,
-    output_path: Optional[str] = None,
-) -> Optional[dict[str, Any]]:
+    log_path: str | None = None,
+    session_id: str | None = None,
+    output_path: str | None = None,
+) -> dict[str, Any] | None:
     """
     TensorBoardログを分析
 
@@ -160,7 +159,6 @@ def analyze_sac_logs(
     print("=" * 80)
 
     return results
-
 
 if __name__ == "__main__":
     log_dir = "checkpoints/sac_session"

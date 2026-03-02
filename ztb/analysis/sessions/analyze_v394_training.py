@@ -5,9 +5,6 @@ TensorBoardイベントファイルから訓練の最終状態を抽出
 from pathlib import Path
 from typing import Any
 
-
-
-
 def analyze_training_sessions() -> None:
     """全セッションの訓練状況を分析"""
 
@@ -66,7 +63,6 @@ def analyze_training_sessions() -> None:
     print("  - Start with v394d (most promising: initial HOLD 50%)")
     print("  - Monitor memory usage during training")
     print("=" * 80)
-
 
 if __name__ == "__main__":
     analyze_training_sessions()

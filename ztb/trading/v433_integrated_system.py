@@ -9,7 +9,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 from collections import deque
@@ -34,9 +34,7 @@ except ImportError:
         def update(self, state, action, reward):
             pass
 
-
 logger = get_logger(__name__)
-
 
 @dataclass
 class V433Config:
@@ -71,7 +69,6 @@ class V433Config:
     emergency_stop_propagation: bool = True
     system_health_check_interval: int = 60  # 1分ごと
 
-
 @dataclass
 class SystemState:
     """システム状態"""
@@ -86,20 +83,19 @@ class SystemState:
     # Phase 2状態
     phase2_active: bool = False
     phase2_confidence: float = 0.0
-    phase2_last_action: Optional[ActionType] = None
+    phase2_last_action: ActionType | None = None
 
     # Phase 3状態
     phase3_active: bool = False
-    phase3_signals: List[PositionSignal] = field(default_factory=list)
+    phase3_signals: list[PositionSignal] = field(default_factory=list)
     phase3_risk_status: str = "normal"
 
     # 統合状態
     system_health: str = "healthy"  # "healthy", "warning", "critical"
-    last_decision_timestamp: Optional[datetime] = None
+    last_decision_timestamp: datetime | None = None
     decision_count: int = 0
 
     timestamp: datetime = field(default_factory=datetime.now)
-
 
 @dataclass
 class TradingDecision:
@@ -114,13 +110,12 @@ class TradingDecision:
     risk_adjusted: bool = True
     timestamp: datetime = field(default_factory=datetime.now)
 
-
 class MarketRegimeDetector:
     """市場レジーム検知器"""
 
     def __init__(self):
-        self.price_history: Dict[str, deque] = {}
-        self.return_history: Dict[str, deque] = {}
+        self.price_history: dict[str, deque] = {}
+        self.return_history: dict[str, deque] = {}
 
     def update_price(self, symbol: str, price: float):
         """価格を更新"""
@@ -136,7 +131,7 @@ class MarketRegimeDetector:
             returns = np.diff(prices) / prices[:-1]
             self.return_history[symbol] = deque(returns, maxlen=len(returns))
 
-    def detect_regime(self, symbols: List[str]) -> Tuple[str, float, float]:
+    def detect_regime(self, symbols: list[str]) -> tuple[str, float, float]:
         """市場レジームを検知"""
         if not symbols or not all(s in self.return_history for s in symbols):
             return "unknown", 0.0, 0.0
@@ -169,7 +164,6 @@ class MarketRegimeDetector:
 
         return regime, volatility, trend_strength
 
-
 class DecisionFusionEngine:
     """決定融合エンジン"""
 
@@ -179,11 +173,11 @@ class DecisionFusionEngine:
 
     def fuse_decisions(
         self,
-        phase2_decision: Optional[Dict[str, Any]],
-        phase3_signals: List[PositionSignal],
+        phase2_decision: dict[str, Any] | None,
+        phase3_signals: list[PositionSignal],
         market_regime: str,
         system_state: SystemState,
-    ) -> List[TradingDecision]:
+    ) -> list[TradingDecision]:
         """決定を融合"""
         decisions = []
 
@@ -204,11 +198,11 @@ class DecisionFusionEngine:
 
     def _weighted_fusion(
         self,
-        phase2_decision: Optional[Dict[str, Any]],
-        phase3_signals: List[PositionSignal],
+        phase2_decision: dict[str, Any] | None,
+        phase3_signals: list[PositionSignal],
         market_regime: str,
         system_state: SystemState,
-    ) -> List[TradingDecision]:
+    ) -> list[TradingDecision]:
         """重み付き融合"""
         decisions = []
 
@@ -250,11 +244,11 @@ class DecisionFusionEngine:
 
     def _hierarchical_fusion(
         self,
-        phase2_decision: Optional[Dict[str, Any]],
-        phase3_signals: List[PositionSignal],
+        phase2_decision: dict[str, Any] | None,
+        phase3_signals: list[PositionSignal],
         market_regime: str,
         system_state: SystemState,
-    ) -> List[TradingDecision]:
+    ) -> list[TradingDecision]:
         """階層的融合（Phase 2が優先）"""
         decisions = []
 
@@ -290,11 +284,11 @@ class DecisionFusionEngine:
 
     def _ensemble_fusion(
         self,
-        phase2_decision: Optional[Dict[str, Any]],
-        phase3_signals: List[PositionSignal],
+        phase2_decision: dict[str, Any] | None,
+        phase3_signals: list[PositionSignal],
         market_regime: str,
         system_state: SystemState,
-    ) -> List[TradingDecision]:
+    ) -> list[TradingDecision]:
         """アンサンブル融合"""
         decisions = []
 
@@ -374,7 +368,6 @@ class DecisionFusionEngine:
         }
         return opposites.get(action1) == action2
 
-
 class TradingPerformanceMonitor:
     """パフォーマンス監視器"""
 
@@ -383,8 +376,8 @@ class TradingPerformanceMonitor:
         self.logger = get_logger(__name__)
 
         # パフォーマンス履歴
-        self.decision_history: List[TradingDecision] = []
-        self.outcome_history: List[Dict[str, Any]] = []
+        self.decision_history: list[TradingDecision] = []
+        self.outcome_history: list[dict[str, Any]] = []
         self.metrics_history: deque[dict[str, Any]] = deque(maxlen=1000)
 
     def record_decision(self, decision: TradingDecision):
@@ -411,7 +404,7 @@ class TradingPerformanceMonitor:
         if len(self.outcome_history) > 1000:
             self.outcome_history = self.outcome_history[-1000:]
 
-    def calculate_performance_metrics(self) -> Dict[str, Any]:
+    def calculate_performance_metrics(self) -> dict[str, Any]:
         """パフォーマンス指標を計算"""
         if not self.outcome_history:
             return {}
@@ -458,7 +451,6 @@ class TradingPerformanceMonitor:
             "sample_size": len(outcomes),
         }
 
-
 class V433IntegratedSystem:
     """
     V433 Phase 3: 統合トレーディングシステム
@@ -497,7 +489,7 @@ class V433IntegratedSystem:
         self.is_running = False
 
         # 価格データ
-        self.current_prices: Dict[str, float] = {}
+        self.current_prices: dict[str, float] = {}
         self.active_symbols = ["btc_jpy", "eth_jpy", "xrp_jpy"]  # デフォルトシンボル
 
     def start_system(self):
@@ -558,7 +550,7 @@ class V433IntegratedSystem:
             state = self._construct_market_state()
             # Phase 2の更新（実際の実装による）
 
-    def _construct_market_state(self) -> Dict[str, Any]:
+    def _construct_market_state(self) -> dict[str, Any]:
         """市場状態を構築"""
         return {
             "prices": self.current_prices.copy(),
@@ -635,7 +627,7 @@ class V433IntegratedSystem:
                 self.logger.error(f"Decision loop error: {e}")
                 time.sleep(30)
 
-    def _generate_phase2_decision(self) -> Optional[Dict[str, Any]]:
+    def _generate_phase2_decision(self) -> dict[str, Any] | None:
         """Phase 2決定を生成"""
         if not self.adaptive_sac:
             return None
@@ -665,7 +657,7 @@ class V433IntegratedSystem:
             self.system_state.phase2_active = False
             return None
 
-    def _generate_phase3_signals(self) -> List[PositionSignal]:
+    def _generate_phase3_signals(self) -> list[PositionSignal]:
         """Phase 3シグナルを生成"""
         signals = []
 
@@ -837,7 +829,7 @@ class V433IntegratedSystem:
         else:
             return "hold"
 
-    def get_system_status(self) -> Dict[str, Any]:
+    def get_system_status(self) -> dict[str, Any]:
         """システム状態を取得"""
         return {
             "system_state": self.system_state.__dict__,
@@ -857,11 +849,9 @@ class V433IntegratedSystem:
             },
         }
 
-
 def create_v433_system(exchange: str = "zaif") -> V433IntegratedSystem:
     """V433統合システムのファクトリ関数"""
     return V433IntegratedSystem(exchange)
-
 
 # 使用例
 if __name__ == "__main__":

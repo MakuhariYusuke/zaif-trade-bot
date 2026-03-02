@@ -5,7 +5,7 @@ This module provides functions for evaluating and testing trading features
 against various strategies and calculating performance metrics.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 import pandas as pd
 
@@ -14,10 +14,9 @@ from ztb.metrics.metrics import sharpe_ratio, sortino_ratio
 # 年間取引日数
 from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
 
-
 def calculate_trading_metrics(
     signals: pd.Series, returns: pd.Series
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Calculate comprehensive trading metrics from signals and returns.
 
@@ -75,7 +74,6 @@ def calculate_trading_metrics(
         "sample_count": int(valid_idx.sum()),
     }
 
-
 def generate_feature_signals(feature_data: pd.Series, feature_name: str) -> pd.Series:
     """
     Generate trading signals based on feature values using feature-specific strategies.
@@ -130,10 +128,9 @@ def generate_feature_signals(feature_data: pd.Series, feature_name: str) -> pd.S
 
     return signals
 
-
 def evaluate_feature_performance(
     feature_data: pd.Series, price_data: pd.Series, feature_name: str
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Evaluate feature performance using appropriate trading strategy.
 

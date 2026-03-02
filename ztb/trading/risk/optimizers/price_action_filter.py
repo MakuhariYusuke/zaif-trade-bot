@@ -8,13 +8,12 @@ Phase 3-1: シグナル品質向上 - 価格アクションフィルタ
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from ztb.utils.performance_profiler import PerformanceProfiler
-
 
 class PriceActionPattern(Enum):
     """価格アクションパターン"""
@@ -32,7 +31,6 @@ class PriceActionPattern(Enum):
     SUPPORT_TEST = "support_test"
     RESISTANCE_TEST = "resistance_test"
     NORMAL = "normal"
-
 
 @dataclass
 class PriceActionAnalysisResult:
@@ -60,7 +58,6 @@ class PriceActionAnalysisResult:
         """高確率パターンか"""
         return self.strength > 0.7 and self.key_level_proximity > 0.8
 
-
 @dataclass
 class PriceActionFilterCriteria:
     """価格アクションフィルタ基準"""
@@ -81,19 +78,18 @@ class PriceActionFilterCriteria:
     adaptive_filtering: bool = True
     market_regime_adjustment: bool = True
 
-
 class PriceActionFilter:
     """価格アクションフィルタ"""
 
     def __init__(self):
         self.profiler = PerformanceProfiler()
         self.filter_criteria = PriceActionFilterCriteria()
-        self.pattern_history: List[PriceActionAnalysisResult] = []
+        self.pattern_history: list[PriceActionAnalysisResult] = []
         self.max_history_size = 1000  # メモリ管理のため履歴サイズを制限
 
         # キーレベル追跡
-        self.support_levels: List[float] = []
-        self.resistance_levels: List[float] = []
+        self.support_levels: list[float] = []
+        self.resistance_levels: list[float] = []
 
     def analyze_price_action(
         self,
@@ -186,7 +182,7 @@ class PriceActionFilter:
 
     def _get_candle_at_timestamp(
         self, market_data: pd.DataFrame, timestamp: datetime
-    ) -> Optional[Dict[str, float]]:
+    ) -> dict[str, float] | None:
         """指定時刻のローソク足データを取得"""
         if market_data.index.empty:
             return None
@@ -229,8 +225,8 @@ class PriceActionFilter:
         return historical_data.tail(lookback_periods)
 
     def _recognize_pattern(
-        self, current_candle: Dict[str, float], historical_data: pd.DataFrame
-    ) -> Tuple[PriceActionPattern, float, str]:
+        self, current_candle: dict[str, float], historical_data: pd.DataFrame
+    ) -> tuple[PriceActionPattern, float, str]:
         """価格アクションパターンを認識"""
         o, h, l, c = (
             current_candle["open"],
@@ -313,7 +309,7 @@ class PriceActionFilter:
         return PriceActionPattern.NORMAL, 0.5, "neutral"
 
     def _calculate_key_level_proximity(
-        self, current_candle: Dict[str, float], historical_data: pd.DataFrame
+        self, current_candle: dict[str, float], historical_data: pd.DataFrame
     ) -> float:
         """キーレベルへの近接度を計算"""
         if not self.support_levels and not self.resistance_levels:
@@ -336,7 +332,7 @@ class PriceActionFilter:
         return max_proximity
 
     def _calculate_momentum_alignment(
-        self, current_candle: Dict[str, float], historical_data: pd.DataFrame
+        self, current_candle: dict[str, float], historical_data: pd.DataFrame
     ) -> float:
         """モメンタムとの整合性を計算"""
         if historical_data.empty or len(historical_data) < 5:
@@ -425,7 +421,7 @@ class PriceActionFilter:
         else:
             return "low"
 
-    def _update_key_levels(self, current_candle: Dict[str, float]):
+    def _update_key_levels(self, current_candle: dict[str, float]):
         """キーレベルを更新"""
         h, l = current_candle["high"], current_candle["low"]
 
@@ -443,15 +439,15 @@ class PriceActionFilter:
 
     def should_filter_signal(
         self,
-        signal: Dict[str, Any],
+        signal: dict[str, Any],
         market_data: pd.DataFrame,
-        custom_criteria: Optional[PriceActionFilterCriteria] = None,
-    ) -> Tuple[bool, str, PriceActionAnalysisResult]:
+        custom_criteria: PriceActionFilterCriteria | None = None,
+    ) -> tuple[bool, str, PriceActionAnalysisResult]:
         """
         シグナルをフィルタリングすべきかを判定
 
         Returns:
-            Tuple[bool, str, PriceActionAnalysisResult]: (フィルタリング可否, 理由, 分析結果)
+            tuple[bool, str, PriceActionAnalysisResult]: (フィルタリング可否, 理由, 分析結果)
         """
         criteria = custom_criteria or self.filter_criteria
 
@@ -537,7 +533,7 @@ class PriceActionFilter:
                     0.6, self.filter_criteria.min_key_level_proximity - 0.1
                 )
 
-    def get_pattern_statistics(self) -> Dict[str, Any]:
+    def get_pattern_statistics(self) -> dict[str, Any]:
         """パターン統計を取得"""
         if not self.pattern_history:
             return {}

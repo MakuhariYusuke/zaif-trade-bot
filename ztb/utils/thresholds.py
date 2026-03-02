@@ -3,21 +3,20 @@ Adaptive Threshold Manager for dynamic quality gates
 """
 
 from pathlib import Path
-from typing import Any, Dict, cast
+from typing import Any, cast
 
 import numpy as np
 
 from ztb.analysis.status import CoverageValidator
 from ztb.utils.types import ThresholdManagerProtocol
 
-
 class AdaptiveThresholdManager(ThresholdManagerProtocol):
     """Manages adaptive thresholds based on historical market data"""
 
     def __init__(self, historical_data_path: str):
         self.historical_data_path = Path(historical_data_path)
-        self.thresholds_cache: Dict[str, float] = {}
-        self.historical_successes: Dict[str, Any] = {}
+        self.thresholds_cache: dict[str, float] = {}
+        self.historical_successes: dict[str, Any] = {}
         self._load_historical_data()
 
     def _load_historical_data(self) -> None:
@@ -70,7 +69,7 @@ class AdaptiveThresholdManager(ThresholdManagerProtocol):
 
         return cast(float, self.thresholds_cache[metric_name])
 
-    def get_adaptive_gates(self) -> Dict[str, float]:
+    def get_adaptive_gates(self) -> dict[str, float]:
         """Get adaptive quality gates based on historical data"""
         gates = {
             "nan_rate_threshold": 0.8,
@@ -109,7 +108,7 @@ class AdaptiveThresholdManager(ThresholdManagerProtocol):
                 if f.get("nan_rate", 0) > 0
             ]
             if nan_rates:
-                # Set threshold slightly above the maximum failed NaN rate
+                # set threshold slightly above the maximum failed NaN rate
                 gates["nan_rate_threshold"] = min(0.9, max(nan_rates) + 0.05)
 
             correlations = [
@@ -118,7 +117,7 @@ class AdaptiveThresholdManager(ThresholdManagerProtocol):
                 if f.get("correlation") is not None
             ]
             if correlations:
-                # Set threshold slightly above the maximum failed correlation
+                # set threshold slightly above the maximum failed correlation
                 gates["correlation_threshold"] = min(0.1, max(correlations) + 0.01)
 
             skews = [
@@ -127,7 +126,7 @@ class AdaptiveThresholdManager(ThresholdManagerProtocol):
                 if f.get("skew") is not None
             ]
             if skews:
-                # Set threshold slightly above the maximum failed skew, with bounds
+                # set threshold slightly above the maximum failed skew, with bounds
                 adaptive_skew = max(skews) + 0.5
                 gates["skew_threshold"] = max(1.5, min(5.0, adaptive_skew))
 
@@ -137,13 +136,13 @@ class AdaptiveThresholdManager(ThresholdManagerProtocol):
                 if f.get("kurtosis") is not None
             ]
             if kurtoses:
-                # Set threshold slightly above the maximum failed kurtosis, with bounds
+                # set threshold slightly above the maximum failed kurtosis, with bounds
                 adaptive_kurtosis = max(kurtoses) + 1.0
                 gates["kurtosis_threshold"] = max(3.0, min(12.0, adaptive_kurtosis))
 
         return gates
 
-    def update_thresholds(self, _new_evaluation_results: Dict[str, Any]) -> None:
+    def update_thresholds(self, _new_evaluation_results: dict[str, Any]) -> None:
         """Update thresholds with new evaluation results"""
         # This would be called after each evaluation cycle
         # Implementation depends on how we want to update the adaptive thresholds

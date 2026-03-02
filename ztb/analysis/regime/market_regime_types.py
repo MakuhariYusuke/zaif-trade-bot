@@ -7,8 +7,6 @@ market regime detection implementations.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List
-
 
 class MarketRegime(Enum):
     """Enumeration of market regimes with standardized definitions."""
@@ -37,16 +35,15 @@ class MarketRegime(Enum):
     SELL_MOMENTUM_WEAK = "sell_momentum_weak"
     SELL_VOLUME_SURGE = "sell_volume_surge"
 
-
 @dataclass
 class RegimeDetectionResult:
     """Standardized result of regime detection with optional classification path."""
 
     regime: MarketRegime
     confidence: float
-    indicators: Dict[str, float]
-    metadata: Dict[str, object]
-    classification_path: List[
+    indicators: dict[str, float]
+    metadata: dict[str, object]
+    classification_path: list[
         str
     ] = None  # Optional: track which conditions led to this regime
 
@@ -54,7 +51,6 @@ class RegimeDetectionResult:
         """Initialize optional fields."""
         if self.classification_path is None:
             self.classification_path = []
-
 
 # Backwards compatibility aliases for older enum member names
 MarketRegime.STRONG_BULL = MarketRegime.STRONG_BULL_TREND

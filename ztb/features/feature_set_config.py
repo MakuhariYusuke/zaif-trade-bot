@@ -1,14 +1,13 @@
 """
-Feature Set Configuration for SAC v427
+Feature set Configuration for SAC v427
 
 Configurable feature sets for easy swapping and customization.
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional, cast
+from typing import cast
 
 from ztb.io.json_io import read_json_object, write_json
-
 
 class FeatureSetConfig:
     """
@@ -20,7 +19,7 @@ class FeatureSetConfig:
     # Predefined feature sets
     FEATURE_SETS = {
         "default": {
-            "name": "Default Feature Set",
+            "name": "Default Feature set",
             "description": "Standard feature set with basic filtering",
             "excluded_features": [
                 "dividends",
@@ -33,7 +32,7 @@ class FeatureSetConfig:
             "include_multi_timeframe_features": True,
         },
         "full": {
-            "name": "Full Feature Set",
+            "name": "Full Feature set",
             "description": "Complete SAC v427 feature set (150+ dimensions)",
             "excluded_features": [],
             "include_regime_features": True,
@@ -43,7 +42,7 @@ class FeatureSetConfig:
             "include_multi_timeframe_features": True,
         },
         "minimal": {
-            "name": "Minimal Feature Set",
+            "name": "Minimal Feature set",
             "description": "Core features only (30-50 dimensions)",
             "excluded_features": [
                 # Exclude complex derived features
@@ -140,7 +139,7 @@ class FeatureSetConfig:
         },
     }
 
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: str | None = None):
         self.config_path = Path(config_path) if config_path else None
         self.current_config = self.FEATURE_SETS[
             "no_harmful"
@@ -165,7 +164,7 @@ class FeatureSetConfig:
             write_json(self.config_path, self.current_config, indent=2, ensure_ascii=False)
 
     def set_feature_set(self, set_name: str) -> None:
-        """Set predefined feature set."""
+        """set predefined feature set."""
         if set_name not in self.FEATURE_SETS:
             available = list(self.FEATURE_SETS.keys())
             raise ValueError(
@@ -174,14 +173,14 @@ class FeatureSetConfig:
 
         self.current_config = self.FEATURE_SETS[set_name].copy()
 
-    def get_excluded_features(self) -> List[str]:
+    def get_excluded_features(self) -> list[str]:
         """Get list of features to exclude."""
-        return cast(List[str], self.current_config.get("excluded_features", []))
+        return cast(list[str], self.current_config.get("excluded_features", []))
 
     def add_excluded_feature(self, feature: str) -> None:
         """Add a feature to the exclusion list."""
         excluded = cast(
-            List[str], self.current_config.setdefault("excluded_features", [])
+            list[str], self.current_config.setdefault("excluded_features", [])
         )
         if feature not in excluded:
             excluded.append(feature)
@@ -189,12 +188,12 @@ class FeatureSetConfig:
     def remove_excluded_feature(self, feature: str) -> None:
         """Remove a feature from the exclusion list."""
         if "excluded_features" in self.current_config:
-            excluded = cast(List[str], self.current_config["excluded_features"])
+            excluded = cast(list[str], self.current_config["excluded_features"])
             self.current_config["excluded_features"] = [
                 f for f in excluded if f != feature
             ]
 
-    def get_feature_flags(self) -> Dict[str, bool]:
+    def get_feature_flags(self) -> dict[str, bool]:
         """Get feature category flags."""
         return {
             "include_regime_features": cast(
@@ -214,20 +213,18 @@ class FeatureSetConfig:
             ),
         }
 
-    def list_available_sets(self) -> Dict[str, Dict]:
-        """List all available predefined feature sets."""
+    def list_available_sets(self) -> dict[str, dict]:
+        """list all available predefined feature sets."""
         return self.FEATURE_SETS.copy()
 
-    def get_current_config(self) -> Dict:
+    def get_current_config(self) -> dict:
         """Get current configuration."""
         return self.current_config.copy()
-
 
 # Global configuration instance
 _feature_config = None
 
-
-def get_feature_config(config_path: Optional[str] = None) -> FeatureSetConfig:
+def get_feature_config(config_path: str | None = None) -> FeatureSetConfig:
     """Get global feature configuration instance."""
     global _feature_config
     if _feature_config is None:

@@ -8,7 +8,7 @@ import sys
 import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, TypedDict, cast
+from typing import Any, Generator, TypedDict, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -40,9 +40,6 @@ if parent_path not in sys.path:
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.training.policies.policy_utils import predict_with_masks
 
-
-
-
 class EvaluationResult(TypedDict, total=False):
     """Type definition for comprehensive evaluation results.
 
@@ -53,7 +50,7 @@ class EvaluationResult(TypedDict, total=False):
     # Core performance metrics
 
     def __init__(
-        self, model_path: str, data_path: str, config: Optional[dict[str, Any]] = None
+        self, model_path: str, data_path: str, config: dict[str, Any] | None = None
     ) -> None:
         super().__init__()
         self.model_path = Path(model_path)
@@ -83,7 +80,6 @@ class EvaluationResult(TypedDict, total=False):
             log_dir=str(self.tensorboard_log_dir / "evaluation")
         )
 
-
     def _load_data(self) -> pd.DataFrame:
         """データの読み込み（キャッシュ最適化付き）"""
         # キャッシュチェック
@@ -112,9 +108,9 @@ class EvaluationResult(TypedDict, total=False):
         # メモリ最適化: 大きなデータを解放
         if memory_optimized:
             del all_rewards, all_positions, all_pnls, all_actions
-        bootstrap_block: Optional[int] = None,
-        bootstrap_overlap: Optional[bool] = None,
-    ) -> Dict[str, Any]:
+        bootstrap_block: int | None = None,
+        bootstrap_overlap: bool | None = None,
+    ) -> dict[str, Any]:
         """複数のモデルの比較評価"""
         print("Starting model comparison...")
 
@@ -261,10 +257,10 @@ class EvaluationResult(TypedDict, total=False):
     def _save_evaluation_results(
         self,
         stats: EvaluationResult,
-        all_rewards: List[List[float]],
-        all_positions: List[List[float]],
-        all_pnls: List[List[float]],
-        all_actions: List[List[int]],
+        all_rewards: list[list[float]],
+        all_positions: list[list[float]],
+        all_pnls: list[list[float]],
+        all_actions: list[list[int]],
     ) -> None:
         """評価結果の保存"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -290,7 +286,7 @@ class EvaluationResult(TypedDict, total=False):
         self._log_to_tensorboard(stats)
 
     def _log_to_tensorboard(
-        self, stats: EvaluationResult, timestamp: Optional[str] = None
+        self, stats: EvaluationResult, timestamp: str | None = None
     ) -> None:
         """TensorBoardに評価指標を記録"""
         try:
@@ -369,7 +365,7 @@ class EvaluationResult(TypedDict, total=False):
         )
         plt.close()
 
-    def _create_pnl_analysis_plot(self, stats: Dict[str, Any]) -> None:
+    def _create_pnl_analysis_plot(self, stats: dict[str, Any]) -> None:
         """PnL分析プロット"""
         _, axes = plt.subplots(2, 2, figsize=(15, 12))
 
@@ -401,7 +397,7 @@ class EvaluationResult(TypedDict, total=False):
         # Sharpe比率の表示
         plt.close()
 
-    def _create_trading_behavior_plot(self, stats: Dict[str, Any]) -> None:
+    def _create_trading_behavior_plot(self, stats: dict[str, Any]) -> None:
         """取引行動分析プロット"""
         _, axes = plt.subplots(2, 2, figsize=(15, 12))
 
@@ -433,7 +429,7 @@ class EvaluationResult(TypedDict, total=False):
         )
         plt.close()
 
-    def _create_summary_dashboard(self, stats: Dict[str, Any]) -> None:
+    def _create_summary_dashboard(self, stats: dict[str, Any]) -> None:
         """サマリーダッシュボード"""
         fig, axes = plt.subplots(4, 2, figsize=(16, 16))
 
@@ -484,7 +480,6 @@ class EvaluationResult(TypedDict, total=False):
 
         sharpe = excess_return / std_return
 
-
         returns_array = np.array(returns, dtype=float)
         cumulative = np.cumsum(returns_array)
         running_max = np.maximum.accumulate(cumulative)
@@ -494,7 +489,7 @@ class EvaluationResult(TypedDict, total=False):
         return abs(max_drawdown)  # 正の値として返す
 
     def _calculate_calmar_ratio(
-        self, returns: List[float], risk_free_rate: float = 0.0
+        self, returns: list[float], risk_free_rate: float = 0.0
     ) -> float:
         """Calmar比率の計算（年率リターン / 最大ドローダウン）"""
         if len(returns) < 2:
@@ -515,7 +510,7 @@ class EvaluationResult(TypedDict, total=False):
 
         return float(annualized_return / max_dd)
 
-    def _calculate_profit_factor(self, all_episode_pnls: List[float]) -> float:
+    def _calculate_profit_factor(self, all_episode_pnls: list[float]) -> float:
         """Profit Factorの計算（総利益 / 総損失）"""
         if not all_episode_pnls:
             return 0.0
@@ -530,7 +525,6 @@ class EvaluationResult(TypedDict, total=False):
     def __del__(self) -> None:
         """Destructor to ensure cleanup even if close() wasn't called explicitly."""
         self.close()
-
 
 def main() -> None:
     """メイン関数"""
@@ -647,7 +641,6 @@ def main() -> None:
             args.bootstrap_overlap,
         )
         evaluator.close()
-
 
 if __name__ == "__main__":
     main()

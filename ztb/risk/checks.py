@@ -4,11 +4,10 @@ Risk management checks for pre and post-trade validation.
 Provides hooks for integrating risk management into trading systems.
 """
 
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable
 
 from .profiles import RiskLimits
 from .rules import RiskRuleEngine
-
 
 class RiskChecker:
     """Pre and post-trade risk validation."""
@@ -22,8 +21,8 @@ class RiskChecker:
         trade_notional: float,
         position_notional: float,
         peak_value: float,
-        sharpe_ratio: Optional[float] = None,
-    ) -> Tuple[bool, str]:
+        sharpe_ratio: float | None = None,
+    ) -> tuple[bool, str]:
         """
         Pre-trade risk validation.
 
@@ -47,7 +46,7 @@ class RiskChecker:
         self,
         current_value: float,
         volatility: float,
-        trade_data: Optional[Dict[str, Any]] = None,
+        trade_data: dict[str, Any] | None = None,
     ) -> None:
         """
         Post-trade state update.
@@ -68,17 +67,17 @@ class RiskChecker:
 
     def check_trailing_stop(
         self, current_price: float, position_side: str
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """Check if trailing stop is hit."""
         return self.engine.check_trailing_stop(current_price, position_side)
 
     def check_take_profit(
         self, entry_price: float, current_price: float, position_side: str
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """Check if take profit target is reached."""
         return self.engine.check_take_profit(entry_price, current_price, position_side)
 
-    def get_risk_status(self) -> Dict[str, Any]:
+    def get_risk_status(self) -> dict[str, Any]:
         """Get current risk status summary."""
         return {
             "daily_loss": self.engine.daily_loss,
@@ -91,7 +90,6 @@ class RiskChecker:
             "cooldown_period": self.engine.get_cooldown_period(),
         }
 
-
 class RiskManager:
     """High-level risk management coordinator."""
 
@@ -103,8 +101,8 @@ class RiskManager:
         self.checker = RiskChecker(self.limits)
 
         # Callbacks for integration
-        self.on_risk_violation: Optional[Callable[[str], None]] = None
-        self.on_trade_blocked: Optional[Callable[[str], None]] = None
+        self.on_risk_violation: Callable[[str], None] | None = None
+        self.on_trade_blocked: Callable[[str], None] | None = None
 
     def validate_and_execute_trade(
         self,
@@ -113,7 +111,7 @@ class RiskManager:
         position_notional: float,
         peak_value: float,
         **trade_kwargs: Any,
-    ) -> Tuple[bool, Any, str]:
+    ) -> tuple[bool, Any, str]:
         """
         Validate trade and execute if allowed.
 
@@ -152,12 +150,12 @@ class RiskManager:
 
     def monitor_position(
         self, current_price: float, entry_price: float, position_side: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Monitor position for stop loss/take profit triggers.
 
         Returns:
-            Dict with trigger status
+            dict with trigger status
         """
         triggers = {}
 
@@ -175,7 +173,7 @@ class RiskManager:
 
         return triggers
 
-    def get_status_report(self) -> Dict[str, Any]:
+    def get_status_report(self) -> dict[str, Any]:
         """Get comprehensive risk status report."""
         return {
             "profile": self.limits,

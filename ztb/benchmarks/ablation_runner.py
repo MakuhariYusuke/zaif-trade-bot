@@ -10,7 +10,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -23,12 +23,11 @@ from ztb.io.data_loader import DataLoader
 # プロジェクトルートをパスに追加
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-
 def evaluate_experimental_features(
     df: pd.DataFrame,
-    experimental_features: List[str],
-    baseline_sharpe: Optional[float] = None,
-) -> Dict[str, Any]:
+    experimental_features: list[str],
+    baseline_sharpe: float | None = None,
+) -> dict[str, Any]:
     """
     Stub implementation for experimental features evaluation
     TODO: Implement proper evaluation logic
@@ -39,7 +38,6 @@ def evaluate_experimental_features(
         "baseline_sharpe": baseline_sharpe,
     }
 
-
 from ztb.metrics.metrics import (
     calculate_delta_sharpe,
     sharpe_ratio,
@@ -47,11 +45,9 @@ from ztb.metrics.metrics import (
     validate_ablation_results,
 )
 
-
 def load_config(config_path: Path) -> dict[str, Any]:
     """設定ファイルを読み込み"""
     return ConfigLoader.load(config_path)
-
 
 def load_evaluation_config() -> dict[str, Any]:
     """評価設定を読み込み"""
@@ -65,19 +61,17 @@ def load_evaluation_config() -> dict[str, Any]:
 
     return ConfigLoader.load(config_path)
 
-
 def load_feature_sets(sets_path: Path) -> dict[str, Any]:
     """特徴量セットを読み込み"""
     return ConfigLoader.load(sets_path)
 
-
 def run_ablation_analysis(
-    base_features: List[str],
-    experimental_features: Optional[List[str]] = None,
-    data_path: Optional[Path] = None,
+    base_features: list[str],
+    experimental_features: list[str] | None = None,
+    data_path: Path | None = None,
     num_runs: int = 5,
-    evaluation_config: Optional[dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    evaluation_config: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     アブレーション分析を実行
 
@@ -166,8 +160,7 @@ def run_ablation_analysis(
 
     return results
 
-
-def save_results(results: Dict[str, Any], output_path: Path) -> None:
+def save_results(results: dict[str, Any], output_path: Path) -> None:
     """結果をJSONファイルとCSVファイルに保存"""
     # JSON保存
     with open(output_path, "w", encoding="utf-8") as f:
@@ -228,7 +221,6 @@ def save_results(results: Dict[str, Any], output_path: Path) -> None:
     df.to_csv(csv_path, index=False, encoding="utf-8")
 
     logging.info(f"Results saved to {output_path} and {csv_path}")
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="特徴量アブレーション分析")
@@ -325,7 +317,6 @@ def main() -> None:
     except Exception as e:
         logging.error(f"Analysis failed: {e}")
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

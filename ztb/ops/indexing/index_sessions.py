@@ -8,11 +8,10 @@ Builds index of existing sessions for discoverability.
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from ztb.trading.environment.constants import BYTES_PER_MB
 from ztb.io.json_io import read_json, write_json
-
 
 def get_session_status(corr_dir: Path) -> str:
     """Determine session status."""
@@ -33,10 +32,9 @@ def get_session_status(corr_dir: Path) -> str:
 
     return "unknown"
 
-
-def index_sessions(root: Path) -> Dict[str, Any]:
+def index_sessions(root: Path) -> dict[str, Any]:
     """Index sessions."""
-    sessions: List[Dict[str, Any]] = []
+    sessions: list[dict[str, Any]] = []
 
     for item in root.iterdir():
         if item.is_dir() and not item.name.startswith("."):
@@ -45,7 +43,7 @@ def index_sessions(root: Path) -> Dict[str, Any]:
             summary_path = item / "summary.json"
             best_marker = item / "best.marker"
 
-            session: Dict[str, Any] = {
+            session: dict[str, Any] = {
                 "correlation_id": corr_id,
                 "created_at": datetime.fromtimestamp(item.stat().st_ctime).isoformat(),
                 "modified_at": datetime.fromtimestamp(item.stat().st_mtime).isoformat(),
@@ -99,7 +97,6 @@ def index_sessions(root: Path) -> Dict[str, Any]:
         "sessions": sessions,
     }
 
-
 def main() -> int:
     root = Path("artifacts")
     index = index_sessions(root)
@@ -109,7 +106,6 @@ def main() -> int:
 
     print(f"Indexed {len(index['sessions'])} sessions to {index_path}")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

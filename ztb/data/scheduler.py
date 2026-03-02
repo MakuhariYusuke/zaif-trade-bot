@@ -21,7 +21,6 @@ from ztb.ops.alerts.notifications import DiscordNotifier
 
 logger = logging.getLogger(__name__)
 
-
 class DataAcquisitionScheduler:
     """
     Automated scheduler for Binance data acquisition.

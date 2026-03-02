@@ -20,11 +20,10 @@ import traceback
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime
 from types import FrameType
-from typing import Callable, Mapping, Optional, TypedDict
+from typing import Callable, Mapping, TypedDict
 
 from .coordinator import DistributedConfig, Message
 from .threading_mixin import BackgroundThreadController
-
 
 class WorkerStats(TypedDict):
     """Runtime statistics for a distributed worker."""
@@ -34,7 +33,6 @@ class WorkerStats(TypedDict):
     uptime: float
     cpu_usage: float
     memory_usage: float
-
 
 class WorkerStatusSnapshot(TypedDict):
     """Public worker status payload."""
@@ -46,10 +44,8 @@ class WorkerStatusSnapshot(TypedDict):
     stats: WorkerStats
     process_alive: bool
 
-
 TaskHandler = Callable[[Mapping[str, object]], object]
 TaskCallback = Callable[[object | None], None]
-
 
 class TaskInfo(TypedDict):
     """Task envelope passed through worker pool queue."""
@@ -57,9 +53,8 @@ class TaskInfo(TypedDict):
     task_id: str
     type: str
     data: object
-    callback: Optional[TaskCallback]
+    callback: TaskCallback | None
     submitted_at: datetime
-
 
 class TaskResultInfo(TypedDict):
     """Task result stored in worker pool result queue."""
@@ -68,7 +63,6 @@ class TaskResultInfo(TypedDict):
     result: object | None
     completed_at: datetime
     worker_id: int
-
 
 def _as_payload_map(payload: object) -> dict[str, object]:
     """Normalize dynamic payloads into a string-keyed object mapping."""
@@ -82,7 +76,6 @@ def _as_payload_map(payload: object) -> dict[str, object]:
         return normalized
     return {}
 
-
 class DistributedWorker:
     """
     Worker process for distributed training operations.
@@ -94,13 +87,13 @@ class DistributedWorker:
     - Resource management
     """
 
-    def __init__(self, worker_id: int, config: Optional[DistributedConfig] = None):
+    def __init__(self, worker_id: int, config: DistributedConfig | None = None):
         self.worker_id = worker_id
         self.config = config or DistributedConfig()
         self.logger = logging.getLogger(f"Worker-{worker_id}")
 
         # Process management
-        self.process: Optional[mp.Process] = None
+        self.process: mp.Process | None = None
         self.input_queue: mp.Queue = mp.Queue(maxsize=self.config.max_queue_size)
         self.output_queue: mp.Queue = mp.Queue(maxsize=self.config.max_queue_size)
 
@@ -284,7 +277,7 @@ class DistributedWorker:
     ) -> None:
         """Main worker process loop."""
         try:
-            # Set up signal handlers
+            # set up signal handlers
             signal.signal(signal.SIGTERM, self._signal_handler)
             signal.signal(signal.SIGINT, self._signal_handler)
 
@@ -425,17 +418,16 @@ class DistributedWorker:
         _ = data
         return {"shutdown": True}
 
-    def _signal_handler(self, signum: int, frame: Optional[FrameType]) -> None:
+    def _signal_handler(self, signum: int, frame: FrameType | None) -> None:
         """Handle termination signals."""
         _ = frame
         self.logger.info(f"Worker {self.worker_id} received signal {signum}")
         # The main loop will handle cleanup
 
-
 class WorkerPool(BackgroundThreadController):
     """Pool of distributed workers for load balancing and fault tolerance."""
 
-    def __init__(self, *args, config: Optional[DistributedConfig] = None):
+    def __init__(self, *args, config: DistributedConfig | None = None):
         """Initialize WorkerPool with flexible signature.
 
         Supports both:
@@ -468,8 +460,8 @@ class WorkerPool(BackgroundThreadController):
 
         # Threading
         self._running = False
-        self._dispatcher_thread: Optional[threading.Thread] = None
-        self._task_executor: Optional[ThreadPoolExecutor] = None
+        self._dispatcher_thread: threading.Thread | None = None
+        self._task_executor: ThreadPoolExecutor | None = None
 
     def start_pool(self) -> bool:
         """Start all workers in the pool."""
@@ -531,8 +523,8 @@ class WorkerPool(BackgroundThreadController):
             self._task_executor = None
 
     def submit_task(
-        self, task_type: str, task_data: object, callback: Optional[TaskCallback] = None
-    ) -> Optional[str]:
+        self, task_type: str, task_data: object, callback: TaskCallback | None = None
+    ) -> str | None:
         """Submit a task to the worker pool."""
         if not self._running:
             return None
@@ -628,7 +620,7 @@ class WorkerPool(BackgroundThreadController):
                 self.logger.error(f"Error in dispatch loop: {e}")
                 time.sleep(1.0)
 
-    def _get_available_worker(self) -> Optional[DistributedWorker]:
+    def _get_available_worker(self) -> DistributedWorker | None:
         """Get an available worker using round-robin load balancing."""
         with self.worker_lock:
             if not self.workers:
@@ -657,7 +649,7 @@ class WorkerPool(BackgroundThreadController):
         future: Future[object | None],
         task_id: str,
         worker_id: int,
-        callback: Optional[TaskCallback],
+        callback: TaskCallback | None,
     ) -> None:
         """Handle finished task execution."""
         try:

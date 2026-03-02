@@ -11,13 +11,11 @@ from ztb.evaluation.evaluator.evaluator import TradingEvaluator
 from ztb.io.json_io import write_json
 from ztb.utils.errors import safe_operation
 
-
 def main() -> None:
     """メイン関数"""
     safe_operation(
         _main_impl, logger=None, context="Model evaluation execution"
     )  # Will be configured inside
-
 
 def _main_impl(logger) -> None:
     """Implementation of main function."""
@@ -123,7 +121,6 @@ def _main_impl(logger) -> None:
                 evaluator.close()
             except AttributeError:
                 pass
-
 
 if __name__ == "__main__":
     main()

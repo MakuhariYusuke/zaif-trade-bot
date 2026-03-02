@@ -21,7 +21,7 @@ import argparse
 import json
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
@@ -32,15 +32,14 @@ from sklearn.model_selection import train_test_split
 from ztb.preprocessing.feature_correlation_filter import FeatureCorrelationProcessor
 from ztb.io.data_loader import DataLoader
 
-
 class EnhancedFeatureAnalyzer:
     """拡張特徴量分析システム"""
 
     def __init__(
         self,
-        df: Optional[pd.DataFrame] = None,
+        df: pd.DataFrame | None = None,
         target_column: str = "win",
-        data_path: Optional[str] = None,
+        data_path: str | None = None,
     ):
         if df is not None:
             self.df = df
@@ -51,8 +50,7 @@ class EnhancedFeatureAnalyzer:
 
         self.target_column = target_column
         self.features = self._identify_features()
-        self.analysis_results: Dict[str, Any] = {}
-
+        self.analysis_results: dict[str, Any] = {}
 
     def identify_harmful_features(
         self,
@@ -61,7 +59,7 @@ class EnhancedFeatureAnalyzer:
         outlier_threshold: float = 0.30,  # 30% 外れ値以上
         correlation_threshold: float = 0.95,  # 過度な相関
         zero_value_threshold: float = 0.80,  # 80% ゼロ値以上
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         """
         拡張Harmful特徴量判定システム
 
@@ -168,7 +166,7 @@ class EnhancedFeatureAnalyzer:
 
         return harmful_features
 
-    def _calculate_feature_statistics(self) -> Dict[str, Dict[str, Any]]:
+    def _calculate_feature_statistics(self) -> dict[str, dict[str, Any]]:
         """特徴量の統計情報を計算（相関など）"""
         stats = {}
 
@@ -194,7 +192,7 @@ class EnhancedFeatureAnalyzer:
 
     def _check_sac_v427_specific_issues(
         self, feature: str, data: pd.Series
-    ) -> List[str]:
+    ) -> list[str]:
         """SAC v427特徴量特化の判定"""
         issues = []
 
@@ -228,7 +226,7 @@ class EnhancedFeatureAnalyzer:
 
         return issues
 
-    def _generate_removal_recommendation(self, issues: List[str], severity: str) -> str:
+    def _generate_removal_recommendation(self, issues: list[str], severity: str) -> str:
         """削除推奨理由を生成"""
         if severity == "critical":
             return "即時削除推奨 - 学習に悪影響を及ぼす可能性が高い"
@@ -240,8 +238,8 @@ class EnhancedFeatureAnalyzer:
     def select_by_correlation(
         self,
         correlation_threshold: float = 0.90,
-        importance_dict: Optional[Dict[str, Dict[str, float]]] = None,
-    ) -> Tuple[List[str], List[Dict[str, Any]]]:
+        importance_dict: dict[str, dict[str, float]] | None = None,
+    ) -> tuple[list[str], list[dict[str, Any]]]:
         """
         相関ベースのインテリジェント特徴量選択
 
@@ -267,7 +265,7 @@ class EnhancedFeatureAnalyzer:
 
     def suggest_optimal_features(
         self, target_count: int = 60, remove_harmful: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         最適な特徴量セットを提案
 
@@ -397,8 +395,8 @@ class EnhancedFeatureAnalyzer:
         return analysis
 
     def _generate_quality_recommendations(
-        self, harmful_features: Dict, categories: Dict
-    ) -> List[str]:
+        self, harmful_features: dict, categories: dict
+    ) -> list[str]:
         """品質分析に基づく推奨事項を生成"""
         recommendations = []
 
@@ -425,7 +423,6 @@ class EnhancedFeatureAnalyzer:
                 recommendations.append(f"🔧 {category}カテゴリの品質改善が必要")
 
         return recommendations
-
 
 def main():
     """メイン実行関数"""
@@ -583,7 +580,6 @@ def main():
         return 1
 
     return 0
-
 
 if __name__ == "__main__":
     exit(main())

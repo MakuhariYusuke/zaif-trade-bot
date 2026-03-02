@@ -10,7 +10,6 @@ import pandas as pd
 
 from ztb.trading.signal.quality.indicators.base import BaseTrendIndicator
 
-
 class MACDIndicator(BaseTrendIndicator):
     """
     MACD (Moving Average Convergence Divergence) Indicator

@@ -5,7 +5,6 @@ import json
 
 from ztb.training.unified_trainer import UnifiedTrainer
 
-
 def main():
     print("🧪 SAC v428 Position Optimized Test - 5k timesteps")
     print("=" * 60)
@@ -32,7 +31,6 @@ def main():
     else:
         print("❌ Test run failed")
     print("=" * 60)
-
 
 if __name__ == "__main__":
     main()

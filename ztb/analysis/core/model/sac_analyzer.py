@@ -14,7 +14,7 @@ import argparse
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import numpy as np
 
@@ -41,24 +41,22 @@ project_root = get_project_root()
 
 logger = get_logger(__name__)
 
-
 @dataclass
 class AnalysisResult:
     """Container for analysis results."""
 
-    action_distribution: Dict[str, float]
-    performance_metrics: Dict[str, float]
-    bias_analysis: Dict[str, Any]
-    recommendations: List[str]
-
+    action_distribution: dict[str, float]
+    performance_metrics: dict[str, float]
+    bias_analysis: dict[str, Any]
+    recommendations: list[str]
 
 class SACAnalyzer(BaseAnalyzer):
     """Comprehensive SAC model analyzer."""
 
     def __init__(
         self,
-        model_path: Optional[str] = None,
-        config_path: Optional[str] = None,
+        model_path: str | None = None,
+        config_path: str | None = None,
         samples: int = DEFAULT_ANALYSIS_SAMPLES,
     ):
         """
@@ -73,7 +71,7 @@ class SACAnalyzer(BaseAnalyzer):
         self.model_path = Path(model_path) if model_path else None
         self.config_path = Path(config_path) if config_path else None
         self.samples = samples
-        self.model: Optional[SACLikeModelProtocol] = None
+        self.model: SACLikeModelProtocol | None = None
         self.config = None
 
         if self.model_path and self.model_path.exists():
@@ -107,7 +105,7 @@ class SACAnalyzer(BaseAnalyzer):
 
     def analyze_action_distribution(
         self, num_samples: int = DEFAULT_ANALYSIS_SAMPLES, deterministic: bool = True
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Analyze action distribution of the SAC model.
 
@@ -198,7 +196,7 @@ class SACAnalyzer(BaseAnalyzer):
 
         return distribution
 
-    def analyze_bias_patterns(self, action_dist: Dict[str, float]) -> Dict[str, Any]:
+    def analyze_bias_patterns(self, action_dist: dict[str, float]) -> dict[str, Any]:
         """
         Analyze bias patterns in action distribution.
 
@@ -228,8 +226,8 @@ class SACAnalyzer(BaseAnalyzer):
         return bias_analysis
 
     def generate_recommendations(
-        self, action_dist: Dict[str, float], bias_analysis: Dict[str, Any]
-    ) -> List[str]:
+        self, action_dist: dict[str, float], bias_analysis: dict[str, Any]
+    ) -> list[str]:
         """
         Generate recommendations based on analysis.
 
@@ -238,7 +236,7 @@ class SACAnalyzer(BaseAnalyzer):
             bias_analysis: Bias analysis results
 
         Returns:
-            List of recommendations
+            list of recommendations
         """
         recommendations = []
 
@@ -276,7 +274,7 @@ class SACAnalyzer(BaseAnalyzer):
 
         return recommendations
 
-    def analyze(self, data: AnalysisData) -> Dict[str, Any]:
+    def analyze(self, data: AnalysisData) -> dict[str, Any]:
         """
         Analyze SAC model. Required by BaseAnalyzer.
 
@@ -406,7 +404,6 @@ class SACAnalyzer(BaseAnalyzer):
 
         logger.info("%s", "=" * 60)
 
-
 def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(description="SAC Analysis Suite")
@@ -440,7 +437,6 @@ def main() -> None:
         write_json(args.output, output_data, indent=2, ensure_ascii=False)
 
         print(f"\n📄 Results saved to: {args.output}")
-
 
 if __name__ == "__main__":
     main()

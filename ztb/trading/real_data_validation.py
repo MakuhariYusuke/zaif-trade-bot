@@ -9,7 +9,6 @@ import time
 import warnings
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -24,7 +23,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 @dataclass
 class LiveValidationConfig:
     """ライブ検証設定"""
@@ -38,7 +36,6 @@ class LiveValidationConfig:
     max_daily_trades: int = 10  # 1日あたりの最大取引数
     validation_mode: str = "paper_trading"  # 検証モード
 
-
 @dataclass
 class LiveTradeRecord:
     """ライブ取引記録"""
@@ -49,19 +46,18 @@ class LiveTradeRecord:
     quantity: float
     price: float
     reason: str
-    pnl: Optional[float] = None
+    pnl: float | None = None
     commission: float = 0.0
     slippage: float = 0.0
     confidence: float = 0.0
     market_conditions: dict[str, object] = field(default_factory=dict)
-
 
 @dataclass
 class LiveValidationMetrics:
     """ライブ検証指標"""
 
     start_time: datetime
-    end_time: Optional[datetime] = None
+    end_time: datetime | None = None
     total_trades: int = 0
     winning_trades: int = 0
     losing_trades: int = 0
@@ -84,7 +80,6 @@ class LiveValidationMetrics:
     market_adaptation: float = 0.0  # performance vs market
     stability_score: float = 0.0  # consistency measure
 
-
 @dataclass
 class MarketCondition:
     """市場状況"""
@@ -96,7 +91,6 @@ class MarketCondition:
     liquidity_score: float
     market_regime: str  # trending, ranging, volatile
     sentiment_score: float
-
 
 class PaperTradingEngine:
     """ペーパートレーディングエンジン"""
@@ -110,9 +104,9 @@ class PaperTradingEngine:
 
         # 取引状態
         self.balance = config.paper_trading_balance
-        self.positions: Dict[str, dict[str, object]] = {}
-        self.trade_history: List[LiveTradeRecord] = []
-        self.equity_curve: List[Tuple[datetime, float]] = [
+        self.positions: dict[str, dict[str, object]] = {}
+        self.trade_history: list[LiveTradeRecord] = []
+        self.equity_curve: list[tuple[datetime, float]] = [
             (datetime.now(), config.paper_trading_balance)
         ]
 
@@ -130,7 +124,7 @@ class PaperTradingEngine:
 
     def execute_paper_trade(
         self, signal: dict[str, object], market_data: dict[str, object]
-    ) -> Optional[LiveTradeRecord]:
+    ) -> LiveTradeRecord | None:
         """ペーパートレード実行"""
         try:
             # 取引間隔チェック
@@ -420,13 +414,12 @@ class PaperTradingEngine:
             if days_elapsed > 0:
                 self.metrics.trade_frequency = self.metrics.total_trades / days_elapsed
 
-
 class MarketConditionAnalyzer:
     """市場状況分析器"""
 
     def __init__(self):
         self.logger = get_logger(__name__)
-        self.market_history: List[MarketCondition] = []
+        self.market_history: list[MarketCondition] = []
 
     def analyze_market_conditions(self, market_data: dict[str, object]) -> MarketCondition:
         """市場状況の分析"""
@@ -540,7 +533,6 @@ class MarketConditionAnalyzer:
         momentum = market_data.get("momentum", 0)
         return np.tanh(momentum / 0.01)  # -1 to 1
 
-
 class StabilityTester:
     """安定性テスター"""
 
@@ -549,7 +541,7 @@ class StabilityTester:
         self.logger = get_logger(__name__)
 
         # 安定性指標
-        self.performance_stability: List[float] = []
+        self.performance_stability: list[float] = []
         self.adaptation_metrics: dict[str, object] = {}
 
     def run_stability_tests(self) -> dict[str, object]:
@@ -793,7 +785,6 @@ class StabilityTester:
 
         return overall_score
 
-
 class RealDataValidationSystem:
     """
     V433 Phase 4: リアルデータ検証システム
@@ -801,7 +792,7 @@ class RealDataValidationSystem:
     """
 
     def __init__(
-        self, integration_manager: V433IntegrationManager, config: Optional[object] = None
+        self, integration_manager: V433IntegrationManager, config: object | None = None
     ):
         self.integration_manager = integration_manager
         self.logger = get_logger(__name__)
@@ -1054,8 +1045,8 @@ class RealDataValidationSystem:
 
         # 結果保存
         # Tests expect a list here; keep as list for backward compatibility
-        self.validation_results: List[dict[str, object]] = []
-        self.performance_history: List[dict[str, object]] = []
+        self.validation_results: list[dict[str, object]] = []
+        self.performance_history: list[dict[str, object]] = []
 
     def start_live_validation(self, config: LiveValidationConfig) -> bool:
         """ライブ検証開始"""
@@ -1169,7 +1160,7 @@ class RealDataValidationSystem:
         except Exception as e:
             self.logger.error(f"Signal check/execution error: {e}")
 
-    def _generate_validation_signal(self) -> Optional[dict[str, object]]:
+    def _generate_validation_signal(self) -> dict[str, object] | None:
         """検証用シグナル生成"""
         # 実際の実装ではV433システムのシグナルを使用
         # ここでは簡易的なランダムシグナルを生成（検証目的）
@@ -1186,7 +1177,7 @@ class RealDataValidationSystem:
 
         return None
 
-    def _get_current_market_data(self) -> Optional[dict[str, object]]:
+    def _get_current_market_data(self) -> dict[str, object] | None:
         """現在の市場データ取得"""
         try:
             # V433システムから市場データ取得
@@ -1323,7 +1314,7 @@ class RealDataValidationSystem:
         return report
 
     def run_comprehensive_validation(
-        self, data: pd.DataFrame, data_sources: List[DataSource]
+        self, data: pd.DataFrame, data_sources: list[DataSource]
     ) -> dict[str, object]:
         """Run a suite of comprehensive validators over the provided data.
 
@@ -1406,8 +1397,8 @@ class RealDataValidationSystem:
             }
 
     def validate_data_sources(
-        self, data_sources: List[DataSource], data: pd.DataFrame
-    ) -> List[dict[str, object]]:
+        self, data_sources: list[DataSource], data: pd.DataFrame
+    ) -> list[dict[str, object]]:
         """Validate multiple data sources and return the aggregated results per source."""
         results = []
         for ds in data_sources:
@@ -1423,7 +1414,7 @@ class RealDataValidationSystem:
         failed = total - passed
 
         # Data source status aggregation
-        data_sources_status: Dict[str, Dict[str, int]] = {}
+        data_sources_status: dict[str, dict[str, int]] = {}
         for r in self.validation_results:
             src = getattr(r, "data_source", "unknown")
             if src not in data_sources_status:
@@ -1446,8 +1437,8 @@ class RealDataValidationSystem:
         ]
 
         # Quality trends: aggregating average scores per source
-        quality_trends: Dict[str, float] = {}
-        scores_by_source: Dict[str, List[float]] = {}
+        quality_trends: dict[str, float] = {}
+        scores_by_source: dict[str, list[float]] = {}
         for r in self.validation_results:
             src = getattr(r, "data_source", "unknown")
             scores_by_source.setdefault(src, []).append(getattr(r, "score", 0.0))
@@ -1468,7 +1459,7 @@ class RealDataValidationSystem:
         return report
 
     def monitor_data_quality(
-        self, data_sources: List[DataSource], data: pd.DataFrame
+        self, data_sources: list[DataSource], data: pd.DataFrame
     ) -> bool:
         """Run monitoring checks across data sources and store results.
 
@@ -1595,7 +1586,7 @@ class RealDataValidationSystem:
         performance: dict[str, object],
         stability: dict[str, object],
         risk: dict[str, object],
-    ) -> List[str]:
+    ) -> list[str]:
         """検証推奨事項生成"""
         recommendations = []
 
@@ -1648,13 +1639,11 @@ class RealDataValidationSystem:
             "sharpe_ratio": metrics.sharpe_ratio,
         }
 
-
 def create_real_data_validation_system(
     integration_manager: V433IntegrationManager,
 ) -> RealDataValidationSystem:
     """リアルデータ検証システムのファクトリ関数"""
     return RealDataValidationSystem(integration_manager)
-
 
 # 使用例
 if __name__ == "__main__":

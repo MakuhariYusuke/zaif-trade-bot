@@ -18,7 +18,7 @@ This script provides unified training capabilities for SAC trading models includ
 import argparse
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -41,11 +41,10 @@ project_root = get_project_root()
 
 logger = get_logger(__name__)
 
-
 class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
     """Unified SAC training interface."""
 
-    def __init__(self, config_path: str, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config_path: str, config: dict[str, Any] | None = None):
         super().__init__(name="SACTrainer", config=config)
         self.config_path = Path(config_path)
         self.config_data = self._load_config()
@@ -55,7 +54,7 @@ class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
         regime_config = self.config_data.get("regime_adaptation", {})
         RegimeAdaptiveTrainerMixin.__init__(self, regime_config)
 
-    def _load_config(self) -> Dict[str, Any]:
+    def _load_config(self) -> dict[str, Any]:
         """Load configuration file."""
         from ztb.utils.file_utils import safe_json_load
         from ztb.utils.logging_utils import get_logger
@@ -72,10 +71,10 @@ class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
 
     def run_training(
         self,
-        total_timesteps: Optional[int] = None,
-        output_dir: Optional[str] = None,
-        resume_path: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        total_timesteps: int | None = None,
+        output_dir: str | None = None,
+        resume_path: str | None = None,
+    ) -> dict[str, Any]:
         """
         Run SAC training.
 
@@ -120,12 +119,12 @@ class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
             logger.error(f"Training failed: {e}")
             return {"success": False, "error": str(e)}
 
-    def run_curriculum_training(self, stages: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def run_curriculum_training(self, stages: list[dict[str, Any]]) -> dict[str, Any]:
         """
         Run curriculum learning with multiple stages.
 
         Args:
-            stages: List of training stages with their configurations
+            stages: list of training stages with their configurations
 
         Returns:
             Curriculum training results
@@ -182,7 +181,7 @@ class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
             "stage_results": curriculum_results,
         }
 
-    def validate_training(self, model_path: Optional[str] = None) -> Dict[str, Any]:
+    def validate_training(self, model_path: str | None = None) -> dict[str, Any]:
         """
         Validate trained model.
 
@@ -219,7 +218,7 @@ class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
             logger.error(f"Model validation failed: {e}")
             return {"model_loaded": False, "validation_error": str(e)}
 
-    def train(self, data: ConfigDict) -> Dict[str, Any]:
+    def train(self, data: ConfigDict) -> dict[str, Any]:
         """
         Train the SAC model. Required by BaseTrainer.
 
@@ -237,7 +236,7 @@ class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
 
         return self.run_training(total_timesteps=total_timesteps, output_dir=output_dir)
 
-    def evaluate(self, data: ConfigDict) -> Dict[str, Any]:
+    def evaluate(self, data: ConfigDict) -> dict[str, Any]:
         """
         Evaluate the SAC model. Required by BaseTrainer.
 
@@ -267,7 +266,7 @@ class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
         return SAC.load(path)
 
     # RegimeAdaptiveTrainerMixin abstract method implementations
-    def apply_hyperparameter_adaptation(self, adapted_params: Dict[str, Any]):
+    def apply_hyperparameter_adaptation(self, adapted_params: dict[str, Any]):
         """
         Apply adapted hyperparameters to the training process
 
@@ -290,7 +289,7 @@ class SACTrainer(BaseTrainer, RegimeAdaptiveTrainerMixin):
         except Exception as e:
             logger.error(f"Failed to apply hyperparameter adaptation: {e}")
 
-    def get_current_market_data(self) -> Optional[pd.DataFrame]:
+    def get_current_market_data(self) -> pd.DataFrame | None:
         """
         Get current market data for regime detection
 
@@ -327,7 +326,6 @@ from ztb.io.data_loader import DataLoader
 
         # Fallback to config
         return self.config_data.get("training", {}).get("total_timesteps", 0)
-
 
 def main():
     """Main entry point."""
@@ -397,7 +395,6 @@ def main():
             print(f"  Error: {validation_results.get('validation_error', 'Unknown')}")
 
     print("=" * 60)
-
 
 if __name__ == "__main__":
     main()

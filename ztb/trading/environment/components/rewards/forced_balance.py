@@ -1,11 +1,10 @@
 import dataclasses
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 
 from .base import RewardComponent, RewardContext
-
 
 class ForcedBalanceReward(RewardComponent):
     """
@@ -21,7 +20,7 @@ class ForcedBalanceReward(RewardComponent):
         self._forced_balance_last_summary_step = 0
         self._forced_balance_summary_interval = 1000
         self.ACTION_INDEX_NAMES = ["HOLD", "BUY", "SELL"]
-        self.last_reward_details: Dict[str, float] = {}
+        self.last_reward_details: dict[str, float] = {}
 
     def get_name(self) -> str:
         return "forced_balance"
@@ -82,7 +81,6 @@ class ForcedBalanceReward(RewardComponent):
                             return default
 
         return super()._get_setting(context, key, default, cast=cast)
-
 
     def _map_forced_balance_penalty(
         self, context: RewardContext, deviation: float, severity: float

@@ -6,7 +6,7 @@ SAC v434.2 実験結果分析スクリプト
 
 import os
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -14,11 +14,9 @@ import pandas as pd
 from ztb.analysis.common.plot_utils import save_plot
 from ztb.io.json_io import read_json, write_json
 
-
-def load_experiment_results(results_path: str) -> List[Dict[str, Any]]:
+def load_experiment_results(results_path: str) -> list[dict[str, Any]]:
     """実験結果を読み込み"""
     return read_json(results_path)
-
 
 def extract_evaluation_reward(stdout: str) -> float:
     """stdoutから評価平均報酬を抽出"""
@@ -29,8 +27,7 @@ def extract_evaluation_reward(stdout: str) -> float:
         return float(match.group(1))
     return 0.0
 
-
-def analyze_hyperparameter_impact(results: List[Dict[str, Any]]) -> Dict[str, Any]:
+def analyze_hyperparameter_impact(results: list[dict[str, Any]]) -> dict[str, Any]:
     """ハイパーパラメータの影響を分析"""
     successful_results = [r for r in results if r.get("status") == "success"]
 
@@ -128,8 +125,7 @@ def analyze_hyperparameter_impact(results: List[Dict[str, Any]]) -> Dict[str, An
 
     return analysis
 
-
-def find_best_hyperparameters(analysis: Dict[str, Any]) -> Dict[str, Any]:
+def find_best_hyperparameters(analysis: dict[str, Any]) -> dict[str, Any]:
     """最適なハイパーパラメータを特定"""
     recommendations = {}
 
@@ -177,8 +173,7 @@ def find_best_hyperparameters(analysis: Dict[str, Any]) -> Dict[str, Any]:
 
     return recommendations
 
-
-def generate_analysis_report(results: List[Dict[str, Any]], output_path: str):
+def generate_analysis_report(results: list[dict[str, Any]], output_path: str):
     """分析レポート生成"""
     successful_results = [r for r in results if r.get("status") == "success"]
 
@@ -303,9 +298,8 @@ def generate_analysis_report(results: List[Dict[str, Any]], output_path: str):
             f"  - {param}: {rec['value']} (平均報酬: {rec['mean_reward']:.2f}, 実験数: {rec['confidence']})"
         )
 
-
 def create_visualizations(
-    results: List[Dict[str, Any]], output_dir: str = "experiment_plots"
+    results: list[dict[str, Any]], output_dir: str = "experiment_plots"
 ):
     """結果の可視化"""
     successful_results = [r for r in results if r.get("status") == "success"]
@@ -378,7 +372,6 @@ def create_visualizations(
 
     print(f"報酬分布プロット保存: {reward_dist_plot_path}")
 
-
 def main():
     """メイン関数"""
     results_path = "sac_v434_2_experiment_results.json"
@@ -402,7 +395,6 @@ def main():
 
     print("\n=== 分析完了 ===")
     return 0
-
 
 if __name__ == "__main__":
     exit(main())

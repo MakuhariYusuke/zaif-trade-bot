@@ -9,6 +9,7 @@ order_type mapping, post_only support, rate limit correction.
 
 145# §13: Migrated from IBroker direct to BaseExchangeAdapter inheritance.
 """
+from __future__ import annotations
 
 import hashlib
 import hmac
@@ -16,7 +17,7 @@ import logging
 import time
 import urllib.parse
 import uuid
-from typing import Dict, List, Literal, Optional, Union
+from typing import Literal
 
 import requests
 
@@ -35,10 +36,9 @@ from ..base.broker_interfaces import (
 
 logger = logging.getLogger(__name__)
 
-
 # ---- Helpers ----
 
-def _parse_timestamp(value: Union[int, float, str, None]) -> float:
+def _parse_timestamp(value: int | float | str | None) -> float:
     """Parse timestamp from epoch float/int or ISO 8601 string.
 
     Coincheck created_at can be either epoch or ISO 8601 (e.g. "2025-01-01T00:00:00.000Z").
@@ -62,12 +62,10 @@ def _parse_timestamp(value: Union[int, float, str, None]) -> float:
             return time.time()
     return time.time()
 
-
 # Type definitions for API responses
-CoincheckOrderResponse = Dict[str, Union[str, int, float]]
-CoincheckBalanceResponse = Dict[str, Union[str, float]]
-CoincheckErrorResponse = Dict[str, str]
-
+CoincheckOrderResponse = dict[str, str | int | float]
+CoincheckBalanceResponse = dict[str, str | float]
+CoincheckErrorResponse = dict[str, str]
 
 class CoincheckAdapter(BaseExchangeAdapter):
     """
@@ -87,12 +85,12 @@ class CoincheckAdapter(BaseExchangeAdapter):
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        api_secret: Optional[str] = None,
+        api_key: str | None = None,
+        api_secret: str | None = None,
         dry_run: bool = True,
-        rate_limiter: Optional[RateLimiter] = None,
-        fixed_price: Optional[float] = None,
-        random_seed: Optional[int] = None,
+        rate_limiter: RateLimiter | None = None,
+        fixed_price: float | None = None,
+        random_seed: int | None = None,
         api_base_url: str = "https://coincheck.com",
         request_timeout: float = 10.0,
     ) -> None:
@@ -120,9 +118,9 @@ class CoincheckAdapter(BaseExchangeAdapter):
         self.api_base_url = api_base_url
         self.request_timeout = request_timeout
         # Override default prices for Coincheck
-        self._current_prices: Dict[str, float] = {"btc_jpy": 5000000.0}
+        self._current_prices: dict[str, float] = {"btc_jpy": 5000000.0}
         # 146# §13: lazy-init Session with retry (see _get_session)
-        self._session: Optional[requests.Session] = None
+        self._session: requests.Session | None = None
 
     def _generate_order_id(self) -> str:
         """Generate unique order ID using UUID (Coincheck convention)."""
@@ -199,13 +197,8 @@ class CoincheckAdapter(BaseExchangeAdapter):
         self,
         method: Literal["GET", "POST", "DELETE"],
         url: str,
-        data: Optional[Dict[str, str]] = None,
-    ) -> Union[
-        CoincheckOrderResponse,
-        CoincheckBalanceResponse,
-        CoincheckErrorResponse,
-        Dict[str, object],
-    ]:
+        data: dict[str, str] | None = None,
+    ) -> CoincheckOrderResponse | CoincheckBalanceResponse | CoincheckErrorResponse | dict[str, object]:
         """Make authenticated API request to Coincheck.
 
         Args:
@@ -222,7 +215,7 @@ class CoincheckAdapter(BaseExchangeAdapter):
         nonce = str(int(time.time() * 1000000))
 
         # 013# C-3 FIX: 署名対象と実送信ボディを一致させる。
-        request_body: Optional[str] = None
+        request_body: str | None = None
         if data and method.upper() == "POST":
             request_body = urllib.parse.urlencode(data)
 
@@ -283,13 +276,13 @@ class CoincheckAdapter(BaseExchangeAdapter):
     async def _place_order_real(
         self,
         symbol: str,
-        side: Union[str, Literal["buy"], Literal["sell"]],
+        side: str | Literal["buy"] | Literal["sell"],
         quantity: float,
-        price: Optional[float] = None,
-        order_type: Union[str, Literal["market"], Literal["limit"]] = "market",
-        client_order_id: Optional[str] = None,
-        sizing_reason: Optional[str] = None,
-        target_vol: Optional[float] = None,
+        price: float | None = None,
+        order_type: str | Literal["market"] | Literal["limit"] = "market",
+        client_order_id: str | None = None,
+        sizing_reason: str | None = None,
+        target_vol: float | None = None,
     ) -> Order:
         """Place order via Coincheck real API."""
         import asyncio
@@ -297,7 +290,7 @@ class CoincheckAdapter(BaseExchangeAdapter):
         url = f"{self.api_base_url}/api/exchange/orders"
 
         # 013# C-7 FIX: Coincheck order_type mapping
-        order_data: Dict[str, str] = {
+        order_data: dict[str, str] = {
             "pair": normalize_symbol(symbol),
         }
 
@@ -419,7 +412,7 @@ class CoincheckAdapter(BaseExchangeAdapter):
                 logger.error(f"Failed to cancel order {order_id}: {error_msg}")
                 raise
 
-    async def _get_order_status_real(self, order_id: str) -> Optional[Order]:
+    async def _get_order_status_real(self, order_id: str) -> Order | None:
         """Get order status from Coincheck real API.
 
         Two-step: check opens first, then transactions for filled orders.
@@ -474,8 +467,8 @@ class CoincheckAdapter(BaseExchangeAdapter):
         return None
 
     async def _get_open_orders_real(
-        self, symbol: Optional[str] = None
-    ) -> List[Order]:
+        self, symbol: str | None = None
+    ) -> list[Order]:
         """Get open orders from Coincheck real API.
 
         009# P2-0: real mode implementation.
@@ -488,7 +481,7 @@ class CoincheckAdapter(BaseExchangeAdapter):
                 self._make_api_request, "GET", url, None,
             )
             orders_list = result.get("orders", [])
-            orders: List[Order] = []
+            orders: list[Order] = []
             for o in orders_list:
                 pair = str(o.get("pair", ""))
                 if symbol and pair != normalize_symbol(symbol):
@@ -509,14 +502,14 @@ class CoincheckAdapter(BaseExchangeAdapter):
             logger.error(f"Failed to get open orders: {e}")
             raise
 
-    async def _get_positions_real(self) -> List[Position]:
+    async def _get_positions_real(self) -> list[Position]:
         """Get positions from Coincheck (inferred from balance).
 
         Coincheck has no direct positions API for spot.
         009# P2-0: real mode — balance-based inference.
         """
         balances = await self.get_balance("BTC")
-        positions: List[Position] = []
+        positions: list[Position] = []
         for b in balances:
             if b.total > 0:
                 positions.append(
@@ -531,8 +524,8 @@ class CoincheckAdapter(BaseExchangeAdapter):
         return positions
 
     async def _get_balance_real(
-        self, currency: Optional[str] = None
-    ) -> List[Balance]:
+        self, currency: str | None = None
+    ) -> list[Balance]:
         """Get balance from Coincheck real API."""
         import asyncio
 
@@ -603,7 +596,7 @@ class CoincheckAdapter(BaseExchangeAdapter):
             logger.error(f"Failed to get balance: {e}")
             raise
 
-    async def _get_current_price_real(self, symbol: str) -> Optional[float]:
+    async def _get_current_price_real(self, symbol: str) -> float | None:
         """Get current price from Coincheck public ticker API."""
         import asyncio
 
@@ -646,7 +639,7 @@ class CoincheckAdapter(BaseExchangeAdapter):
     # 009# P2-0: dry-run / real 共通で public ticker を参照
     # ------------------------------------------------------------------
 
-    async def get_current_price(self, symbol: str) -> Optional[float]:
+    async def get_current_price(self, symbol: str) -> float | None:
         """Get current market price for symbol.
 
         Overrides BaseExchangeAdapter to use public ticker API even in dry-run.

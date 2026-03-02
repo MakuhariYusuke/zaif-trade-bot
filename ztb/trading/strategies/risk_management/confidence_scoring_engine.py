@@ -7,14 +7,13 @@ Phase 3-1: シグナル品質向上 - コンフィデンススコアリング改
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from ztb.analysis.signal_quality.signal_quality_analyzer import SignalQualityAnalyzer
 from ztb.utils.performance_profiler import PerformanceProfiler
-
 
 @dataclass
 class ConfidenceScore:
@@ -47,7 +46,6 @@ class ConfidenceScore:
 
         return min(max(total, 0.0), 1.0)  # 0-1の範囲に制限
 
-
 @dataclass
 class SignalFilterCriteria:
     """シグナルフィルタ基準"""
@@ -62,14 +60,13 @@ class SignalFilterCriteria:
     adaptive_thresholds: bool = True
     market_condition_adjustment: bool = True
 
-
 class ConfidenceScoringEngine:
     """コンフィデンススコアリングエンジン"""
 
     def __init__(self):
         self.profiler = PerformanceProfiler()
         self.quality_analyzer = SignalQualityAnalyzer()
-        self.historical_scores: List[ConfidenceScore] = []
+        self.historical_scores: list[ConfidenceScore] = []
         self.max_history_size = 1000  # メモリ管理のため履歴サイズを制限
 
         # デフォルトのフィルタ基準
@@ -77,9 +74,9 @@ class ConfidenceScoringEngine:
 
     def calculate_confidence_score(
         self,
-        signal: Dict[str, Any],
+        signal: dict[str, Any],
         market_data: pd.DataFrame,
-        context_data: Optional[Dict[str, Any]] = None,
+        context_data: dict[str, Any] | None = None,
     ) -> ConfidenceScore:
         """
         シグナルのコンフィデンススコアを計算
@@ -129,7 +126,7 @@ class ConfidenceScoringEngine:
 
         return confidence_score
 
-    def _calculate_base_score(self, signal: Dict[str, Any]) -> float:
+    def _calculate_base_score(self, signal: dict[str, Any]) -> float:
         """基本スコアを計算"""
         # シグナルの強度に基づく基本スコア
         signal_strength = signal.get("strength", 0.5)
@@ -155,7 +152,7 @@ class ConfidenceScoringEngine:
         return min(max(base_score, 0.0), 1.0)
 
     def _evaluate_market_alignment(
-        self, signal: Dict[str, Any], market_data: pd.DataFrame
+        self, signal: dict[str, Any], market_data: pd.DataFrame
     ) -> float:
         """市場トレンドとの整合性を評価"""
         if market_data.empty:
@@ -188,7 +185,7 @@ class ConfidenceScoringEngine:
             return 0.6  # 中立的
 
     def _evaluate_volume_confirmation(
-        self, signal: Dict[str, Any], market_data: pd.DataFrame
+        self, signal: dict[str, Any], market_data: pd.DataFrame
     ) -> float:
         """出来高確認を評価"""
         if "volume" not in market_data.columns:
@@ -225,7 +222,7 @@ class ConfidenceScoringEngine:
             return 0.3  # 低い出来高
 
     def _evaluate_timeframe_consistency(
-        self, signal: Dict[str, Any], market_data: pd.DataFrame
+        self, signal: dict[str, Any], market_data: pd.DataFrame
     ) -> float:
         """複数時間軸での整合性を評価"""
         # 簡易実装: 同じ方向のシグナルが異なる時間軸で確認できるかを評価
@@ -243,7 +240,7 @@ class ConfidenceScoringEngine:
             return 0.4
 
     def _evaluate_volatility_adaptation(
-        self, signal: Dict[str, Any], market_data: pd.DataFrame
+        self, signal: dict[str, Any], market_data: pd.DataFrame
     ) -> float:
         """ボラティリティ適応を評価"""
         if market_data.empty:
@@ -295,15 +292,15 @@ class ConfidenceScoringEngine:
 
     def should_accept_signal(
         self,
-        signal: Dict[str, Any],
+        signal: dict[str, Any],
         market_data: pd.DataFrame,
-        custom_criteria: Optional[SignalFilterCriteria] = None,
-    ) -> Tuple[bool, str, ConfidenceScore]:
+        custom_criteria: SignalFilterCriteria | None = None,
+    ) -> tuple[bool, str, ConfidenceScore]:
         """
         シグナルを受け入れるべきかを判定
 
         Returns:
-            Tuple[bool, str, ConfidenceScore]: (受け入れ可否, 理由, スコア)
+            tuple[bool, str, ConfidenceScore]: (受け入れ可否, 理由, スコア)
         """
         criteria = custom_criteria or self.filter_criteria
 
@@ -351,7 +348,7 @@ class ConfidenceScoringEngine:
 
         return True, "シグナルは基準を満たしています", confidence_score
 
-    def update_filter_criteria(self, market_conditions: Dict[str, Any]):
+    def update_filter_criteria(self, market_conditions: dict[str, Any]):
         """市場状況に応じてフィルタ基準を動的調整"""
         if not self.filter_criteria.adaptive_thresholds:
             return
@@ -374,7 +371,7 @@ class ConfidenceScoringEngine:
                 0.4, self.filter_criteria.min_market_alignment - 0.1
             )
 
-    def get_quality_statistics(self) -> Dict[str, Any]:
+    def get_quality_statistics(self) -> dict[str, Any]:
         """品質統計を取得"""
         if not self.historical_scores:
             return {}

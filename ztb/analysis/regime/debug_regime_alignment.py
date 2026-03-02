@@ -15,7 +15,6 @@ from ztb.analysis.specialized.market.market_regime_classifier import (
     MarketRegimeClassifier,
 )
 
-
 def main():
     # Load backtest results
     backtest_file = (
@@ -62,7 +61,6 @@ def main():
         backtest_results, market_conditions
     )
     print(f"Aligned {len(aligned_data)} trades with conditions")
-
 
 if __name__ == "__main__":
     main()

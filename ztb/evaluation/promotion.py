@@ -65,7 +65,7 @@ except Exception as e:
                 data: Data object with attributes to evaluate.
 
             Returns:
-                Tuple of (passed: bool, score: float).
+                tuple of (passed: bool, score: float).
             """
             stat: float = safe_to_float(getattr(data, self.name, 0.0))
             passed = False
@@ -115,7 +115,7 @@ except Exception as e:
                 data: Data object or dict to evaluate.
 
             Returns:
-                Tuple of (passed: bool, score: float).
+                tuple of (passed: bool, score: float).
             """
             val: float = safe_to_float(
                 getattr(data, self.name, None)
@@ -164,7 +164,6 @@ except Exception as e:
             """
             super().__init__()
             self.config = config or {}
-
 
 __all__ = [
     "PromotionEngine",

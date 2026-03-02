@@ -22,7 +22,7 @@ Bergstra & Bengio (2012)の研究で、Grid Searchより効率的であること
 
 import random
 import time
-from typing import Any, Callable, List
+from typing import Any, Callable
 
 import numpy as np
 
@@ -32,7 +32,6 @@ from ztb.optimization.base import (
     ParameterSpace,
     TrialResult,
 )
-
 
 class RandomSearchOptimizer(OptimizerBase):
     """
@@ -57,7 +56,7 @@ class RandomSearchOptimizer(OptimizerBase):
 
     def __init__(
         self,
-        parameter_spaces: List[ParameterSpace],
+        parameter_spaces: list[ParameterSpace],
         objective_function: Callable[[dict[str, Any]], TrialResult],
         n_trials: int = 20,
         random_state: int = 42,

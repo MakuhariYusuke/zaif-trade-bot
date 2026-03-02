@@ -26,7 +26,6 @@ from ztb.trading.environment.schema_env_factory import create_env_from_model_pat
 from ztb.training.core.feature_schema_manager import FeatureSchemaManager
 from ztb.io.data_loader import DataLoader
 
-
 def generate_basic_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     Generate basic features for SAC model (5-dimensional observation space)
@@ -50,7 +49,6 @@ def generate_basic_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.fillna(0)
 
     return df[["close", "volume", "price_change", "volume_change", "close_ma5"]]
-
 
 def generate_required_features(
     df: pd.DataFrame, required_features: list
@@ -142,7 +140,6 @@ def generate_required_features(
     df = df.fillna(0)
 
     return df
-
 
 def run_quick_backtest(
     model_path: str, data_path: str, episodes: int = 10, model_type: str = "auto"
@@ -391,7 +388,6 @@ def run_quick_backtest(
     print(f"Results saved to: {results_file}")
 
     return results
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

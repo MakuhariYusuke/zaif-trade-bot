@@ -11,7 +11,7 @@ PPO Trainer implementations:
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Protocol
 
 import numpy as np
 from numpy.typing import NDArray
@@ -45,16 +45,14 @@ logger = get_logger(__name__)
 # Type aliases for better type safety
 Observation = NDArray[np.float32]
 Action = int
-PredictionResult = tuple[Action, Optional[Any]]  # (action, additional_info)
-
+PredictionResult = tuple[Action, Any | None]  # (action, additional_info)
 
 class PPOTrainerProtocol(Protocol):
     """Protocol for PPO Trainer implementations."""
 
-    def train(self, session_id: str) -> Optional[MaskablePPO]:
+    def train(self, session_id: str) -> MaskablePPO | None:
         """Train the model and return it."""
         ...
-
 
 class PredictorProtocol(Protocol):
     """Protocol for predictor implementations."""
@@ -63,20 +61,17 @@ class PredictorProtocol(Protocol):
         """Make a prediction based on observation."""
         ...
 
-
 class TradingSystemProtocol(Protocol):
     """Protocol for trading system implementations."""
 
-    def trade(self, observation: Observation) -> Dict[str, Any]:
+    def trade(self, observation: Observation) -> dict[str, Any]:
         """Execute a trade based on observation."""
         ...
-
 
 class Algorithm(Enum):
     """Supported training algorithms."""
 
     PPO = "ppo"
-
 
 class Timeframe(Enum):
     """Supported timeframes for training."""
@@ -85,7 +80,6 @@ class Timeframe(Enum):
     M5 = "5m"
     M15 = "15m"
     H1 = "1h"
-
 
 @dataclass
 class PPOTrainingConfig:
@@ -103,14 +97,14 @@ class PPOTrainingConfig:
     gamma: float = 0.99
     gae_lambda: float = 0.95
     clip_range: float = 0.2
-    clip_range_vf: Optional[float] = None
+    clip_range_vf: float | None = None
     normalize_advantage: bool = True
     ent_coef: float = 0.0
     vf_coef: float = 0.5
     max_grad_norm: float = 0.5
     use_sde: bool = False
     sde_sample_freq: int = -1
-    target_kl: Optional[float] = None
+    target_kl: float | None = None
 
     # Environment and data parameters
     total_timesteps: int = DEFAULT_TOTAL_TIMESTEPS
@@ -134,15 +128,15 @@ class PPOTrainingConfig:
     # Custom features
     use_custom_ppo: bool = True
     enable_grad_probe_guard: bool = False
-    grad_probe_config: Optional[Dict[str, Any]] = None
+    grad_probe_config: dict[str, Any] | None = None
 
     # Feature configuration
     feature_set: FeatureSet = FeatureSet.CURATED
-    custom_features: Optional[List[str]] = None
-    feature_config_path: Optional[str] = None
+    custom_features: list[str] | None = None
+    feature_config_path: str | None = None
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "PPOTrainingConfig":
+    def from_dict(cls, config_dict: dict[str, Any]) -> "PPOTrainingConfig":
         """Create TrainingConfig from dictionary."""
         config = cls()
 
@@ -219,7 +213,6 @@ class PPOTrainingConfig:
 
         return config
 
-
 class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
     """
     PPO Trainer with evaluation gates and auto-halt functionality.
@@ -236,8 +229,8 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
     - Support for custom PPO implementations
     """
 
-    model: Optional[MaskablePPO]
-    env: Optional[ActionMasker]
+    model: MaskablePPO | None
+    env: ActionMasker | None
 
     def __init__(self, params: TrainerParams):
         """
@@ -266,8 +259,8 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
         self.eval_gates = EvalGates(enabled=eval_gates_enabled)
 
         # Training state
-        self.best_model_path: Optional[str] = None
-        self.training_stats: Dict[str, Any] = {}
+        self.best_model_path: str | None = None
+        self.training_stats: dict[str, Any] = {}
 
         # Log comprehensive initialization details
         logger.info("Initialized PPOTrainerAutoHalt with session details:")
@@ -313,7 +306,7 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
             df = df_full
 
         # Determine feature inclusion list from configuration
-        feature_columns: Optional[List[str]] = None
+        feature_columns: list[str] | None = None
         feature_set_enum = getattr(
             self.training_config, "feature_set", FeatureSet.CURATED
         )
@@ -517,7 +510,7 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
             grad_probe_config=grad_probe_config,
         )
 
-    def train(self, session_id: str) -> Optional[MaskablePPO]:
+    def train(self, session_id: str) -> MaskablePPO | None:
         """
         Train the PPO model with evaluation gates and auto-halt functionality.
 
@@ -653,7 +646,6 @@ class PPOTrainerAutoHalt(BaseTrainer, PPOTrainerProtocol):
             logger.warning("Cannot neutralize policy bias: no model available")
             logger.warning("  Reason: Model not initialized or training not started")
 
-
 class PPOTrainer(PPOTrainerAutoHalt):
     """
     Standard PPO Trainer for ensemble training.
@@ -664,9 +656,9 @@ class PPOTrainer(PPOTrainerAutoHalt):
     def __init__(
         self,
         data_path: str,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         checkpoint_dir: str,
-        max_features: Optional[int] = None,
+        max_features: int | None = None,
     ) -> None:
         # Validate input parameters
         if not data_path:
@@ -699,7 +691,6 @@ class PPOTrainer(PPOTrainerAutoHalt):
             checkpoint_dir=checkpoint_dir,
         )
         super().__init__(params)
-
 
 # Exported symbols
 __all__ = [

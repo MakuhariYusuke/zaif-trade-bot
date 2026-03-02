@@ -10,7 +10,6 @@ from ztb.utils.logging_utils import get_logger
 
 from .interfaces import IAsymmetricRewardScaler
 
-
 class AsymmetricRewardScaler(IAsymmetricRewardScaler):
     """
     Applies asymmetric reward scaling based on position direction.

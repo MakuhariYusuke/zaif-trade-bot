@@ -10,7 +10,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 
@@ -28,14 +28,13 @@ class EvaluationRecord:
     total_columns: int
     aligned_periods: int
     baseline_sharpe: float = 0.0
-    cv_results: Dict[str, Any] = field(default_factory=dict)
-    feature_correlations: Dict[str, float] = field(default_factory=dict)
-    feature_performances: Dict[str, Any] = field(default_factory=dict)
-    best_delta_sharpe: Optional[float] = None
+    cv_results: dict[str, Any] = field(default_factory=dict)
+    feature_correlations: dict[str, float] = field(default_factory=dict)
+    feature_performances: dict[str, Any] = field(default_factory=dict)
+    best_delta_sharpe: float | None = None
     best_feature_name: str = ""
     avg_correlation: float = 0.0
-    error: Optional[str] = None
-
+    error: str | None = None
 
 class EvaluationLogger:
     """Logger for evaluation results with persistence"""
@@ -55,7 +54,7 @@ class EvaluationLogger:
         self.latest_file = self.log_dir / "latest_results.json"
         self.best_file = self.log_dir / "best_results.json"
 
-    def log_evaluation(self, evaluation_result: Dict[str, Any]) -> None:
+    def log_evaluation(self, evaluation_result: dict[str, Any]) -> None:
         """
         Log a single evaluation result
 
@@ -111,8 +110,8 @@ class EvaluationLogger:
             self._save_json_file(self.best_file, best_results)
 
     def get_evaluation_history(
-        self, feature_name: Optional[str] = None, days: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+        self, feature_name: str | None = None, days: int | None = None
+    ) -> list[dict[str, Any]]:
         """
         Get evaluation history
 
@@ -121,7 +120,7 @@ class EvaluationLogger:
             days: Get results from last N days (optional)
 
         Returns:
-            List of evaluation records
+            list of evaluation records
         """
         if not self.history_file.exists():
             return []
@@ -154,7 +153,7 @@ class EvaluationLogger:
 
         return records
 
-    def get_latest_results(self, feature_name: Optional[str] = None) -> Dict[str, Any]:
+    def get_latest_results(self, feature_name: str | None = None) -> dict[str, Any]:
         """
         Get latest evaluation results
 
@@ -167,11 +166,11 @@ class EvaluationLogger:
         latest_results = self._load_json_file(self.latest_file)
 
         if feature_name:
-            return cast(Dict[str, Any], latest_results.get(feature_name, {}))
+            return cast(dict[str, Any], latest_results.get(feature_name, {}))
 
         return latest_results
 
-    def get_best_results(self, feature_name: Optional[str] = None) -> Dict[str, Any]:
+    def get_best_results(self, feature_name: str | None = None) -> dict[str, Any]:
         """
         Get best evaluation results
 
@@ -184,11 +183,11 @@ class EvaluationLogger:
         best_results = self._load_json_file(self.best_file)
 
         if feature_name:
-            return cast(Dict[str, Any], best_results.get(feature_name, {}))
+            return cast(dict[str, Any], best_results.get(feature_name, {}))
 
         return best_results
 
-    def get_evaluation_summary(self, days: int = 30) -> Dict[str, Any]:
+    def get_evaluation_summary(self, days: int = 30) -> dict[str, Any]:
         """
         Get evaluation summary statistics
 
@@ -238,7 +237,7 @@ class EvaluationLogger:
         avg_delta_sharpe = np.mean(delta_sharpes) if delta_sharpes else 0
 
         # Feature counts by status
-        status_counts: Dict[str, int] = {}
+        status_counts: dict[str, int] = {}
         for record in history:
             status = record["status"]
             status_counts[status] = status_counts.get(status, 0) + 1
@@ -260,18 +259,18 @@ class EvaluationLogger:
             "period_days": days,
         }
 
-    def _load_json_file(self, file_path: Path) -> Dict[str, Any]:
+    def _load_json_file(self, file_path: Path) -> dict[str, Any]:
         """Load JSON file safely"""
         if not file_path.exists():
             return {}
 
         try:
-            return cast(Dict[str, Any], read_json(file_path))
+            return cast(dict[str, Any], read_json(file_path))
         except Exception as e:
             print(f"Error loading {file_path}: {e}")
-            return cast(Dict[str, Any], {})
+            return cast(dict[str, Any], {})
 
-    def _save_json_file(self, file_path: Path, data: Dict[str, Any]) -> None:
+    def _save_json_file(self, file_path: Path, data: dict[str, Any]) -> None:
         """Save JSON file safely"""
         try:
             write_json(file_path, data, indent=2, ensure_ascii=False)

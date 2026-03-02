@@ -53,7 +53,6 @@ v442+のトレーニングダイナミクス改善のために設計されてい
 
 import logging
 from collections import deque
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -63,7 +62,6 @@ from ztb.features.core.registry import FeatureRegistry
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class OptimizerFeatureTracker:
     """
@@ -117,9 +115,9 @@ class OptimizerFeatureTracker:
             self._init_scalers()
 
         # 特徴量キャッシュ
-        self._feature_cache: Dict[str, float] = {}
-        self._correlation_cache: Dict[str, float] = {}
-        self._importance_cache: Dict[str, float] = {}
+        self._feature_cache: dict[str, float] = {}
+        self._correlation_cache: dict[str, float] = {}
+        self._importance_cache: dict[str, float] = {}
 
         # パフォーマンス監視
         self.update_count = 0
@@ -145,7 +143,7 @@ class OptimizerFeatureTracker:
             else:
                 self.scalers[feature] = StandardScaler()
 
-    def _detect_outliers_iqr(self, data: List[float]) -> Tuple[List[float], List[bool]]:
+    def _detect_outliers_iqr(self, data: list[float]) -> tuple[list[float], list[bool]]:
         """
         IQR法による外れ値検出
 
@@ -169,7 +167,7 @@ class OptimizerFeatureTracker:
 
         return filtered_data, is_outlier.tolist()
 
-    def _normalize_feature(self, feature_name: str, values: List[float]) -> List[float]:
+    def _normalize_feature(self, feature_name: str, values: list[float]) -> list[float]:
         """特徴量を正規化"""
         if not self.enable_normalization or feature_name not in self.scalers:
             return values
@@ -190,7 +188,7 @@ class OptimizerFeatureTracker:
             self.logger.warning(f"Failed to normalize {feature_name}: {e}")
             return values
 
-    def compute_feature_correlations(self) -> Dict[str, Dict[str, float]]:
+    def compute_feature_correlations(self) -> dict[str, dict[str, float]]:
         """
         特徴量間の相関行列を計算（Spearman相関）
 
@@ -230,7 +228,7 @@ class OptimizerFeatureTracker:
 
     def compute_feature_importance(
         self, target_correlation_threshold: float = 0.1
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         特徴量の重要度を評価（他の特徴量との相関の強さベース）
 
@@ -280,13 +278,13 @@ class OptimizerFeatureTracker:
     def update_optimizer_features(
         self,
         step: int,
-        learning_rate: Optional[float] = None,
-        actor_loss: Optional[float] = None,
-        critic_loss: Optional[float] = None,
-        entropy_coef: Optional[float] = None,
-        reward: Optional[float] = None,
-        gradient_norm: Optional[float] = None,
-        step_size: Optional[float] = None,
+        learning_rate: float | None = None,
+        actor_loss: float | None = None,
+        critic_loss: float | None = None,
+        entropy_coef: float | None = None,
+        reward: float | None = None,
+        gradient_norm: float | None = None,
+        step_size: float | None = None,
     ):
         """
         Optimizer状態を更新（コールバック互換API）
@@ -372,9 +370,9 @@ class OptimizerFeatureTracker:
         learning_rate: float,
         gradient_norm: float,
         step_size: float,
-        momentum: Optional[float] = None,
-        loss: Optional[float] = None,
-        update_frequency: Optional[float] = None,
+        momentum: float | None = None,
+        loss: float | None = None,
+        update_frequency: float | None = None,
     ):
         """
         Optimizer状態を更新
@@ -508,7 +506,7 @@ class OptimizerFeatureTracker:
         upper_bound = q3 + self.outlier_threshold * iqr
         return data[(data >= lower_bound) & (data <= upper_bound)]
 
-    def get_feature_vector(self, include_debug_info: bool = False) -> Dict[str, float]:
+    def get_feature_vector(self, include_debug_info: bool = False) -> dict[str, float]:
         """
         すべてのoptimizer特徴量を辞書形式で返す
 
@@ -570,14 +568,12 @@ class OptimizerFeatureTracker:
 
         return result
 
-    def get_feature_names(self) -> List[str]:
+    def get_feature_names(self) -> list[str]:
         """利用可能な特徴量名のリストを返す"""
         return list(self.get_feature_vector().keys())
 
-
 # グローバルインスタンス (シングルトンパターン)
-_optimizer_tracker: Optional[OptimizerFeatureTracker] = None
-
+_optimizer_tracker: OptimizerFeatureTracker | None = None
 
 def get_optimizer_tracker() -> OptimizerFeatureTracker:
     """OptimizerFeatureTrackerのグローバルインスタンスを取得"""
@@ -586,14 +582,13 @@ def get_optimizer_tracker() -> OptimizerFeatureTracker:
         _optimizer_tracker = OptimizerFeatureTracker()
     return _optimizer_tracker
 
-
 def update_optimizer_features(
     learning_rate: float,
     gradient_norm: float,
     step_size: float,
-    momentum: Optional[float] = None,
-    loss: Optional[float] = None,
-    update_frequency: Optional[float] = None,
+    momentum: float | None = None,
+    loss: float | None = None,
+    update_frequency: float | None = None,
 ):
     """Optimizer特徴量を更新"""
     tracker = get_optimizer_tracker()
@@ -606,12 +601,10 @@ def update_optimizer_features(
         update_frequency=update_frequency,
     )
 
-
 def set_training_progress(current_step: int, total_steps: int, current_epoch: int = 0):
     """学習進捗を設定"""
     tracker = get_optimizer_tracker()
     tracker.set_training_progress(current_step, total_steps, current_epoch)
-
 
 # 特徴量関数群 (FeatureRegistryに登録するための関数)
 @FeatureRegistry.register("optimizer_learning_rate")
@@ -620,13 +613,11 @@ def optimizer_learning_rate(df: pd.DataFrame) -> pd.Series:
     tracker = get_optimizer_tracker()
     return pd.Series([tracker.get_learning_rate()] * len(df), index=df.index)
 
-
 @FeatureRegistry.register("optimizer_learning_rate_trend")
 def optimizer_learning_rate_trend(df: pd.DataFrame) -> pd.Series:
     """学習率トレンド特徴量"""
     tracker = get_optimizer_tracker()
     return pd.Series([tracker.get_learning_rate_trend()] * len(df), index=df.index)
-
 
 @FeatureRegistry.register("optimizer_gradient_norm_avg")
 def optimizer_gradient_norm_avg(df: pd.DataFrame) -> pd.Series:
@@ -634,13 +625,11 @@ def optimizer_gradient_norm_avg(df: pd.DataFrame) -> pd.Series:
     tracker = get_optimizer_tracker()
     return pd.Series([tracker.get_gradient_norm_avg()] * len(df), index=df.index)
 
-
 @FeatureRegistry.register("optimizer_gradient_norm_std")
 def optimizer_gradient_norm_std(df: pd.DataFrame) -> pd.Series:
     """勾配ノルム標準偏差特徴量"""
     tracker = get_optimizer_tracker()
     return pd.Series([tracker.get_gradient_norm_std()] * len(df), index=df.index)
-
 
 @FeatureRegistry.register("optimizer_step_size_avg")
 def optimizer_step_size_avg(df: pd.DataFrame) -> pd.Series:
@@ -648,13 +637,11 @@ def optimizer_step_size_avg(df: pd.DataFrame) -> pd.Series:
     tracker = get_optimizer_tracker()
     return pd.Series([tracker.get_step_size_avg()] * len(df), index=df.index)
 
-
 @FeatureRegistry.register("optimizer_momentum_avg")
 def optimizer_momentum_avg(df: pd.DataFrame) -> pd.Series:
     """モメンタム平均特徴量"""
     tracker = get_optimizer_tracker()
     return pd.Series([tracker.get_momentum_avg()] * len(df), index=df.index)
-
 
 @FeatureRegistry.register("optimizer_training_progress")
 def optimizer_training_progress(df: pd.DataFrame) -> pd.Series:
@@ -662,20 +649,17 @@ def optimizer_training_progress(df: pd.DataFrame) -> pd.Series:
     tracker = get_optimizer_tracker()
     return pd.Series([tracker.get_training_progress()] * len(df), index=df.index)
 
-
 @FeatureRegistry.register("optimizer_loss_trend")
 def optimizer_loss_trend(df: pd.DataFrame) -> pd.Series:
     """損失トレンド特徴量"""
     tracker = get_optimizer_tracker()
     return pd.Series([tracker.get_loss_trend()] * len(df), index=df.index)
 
-
 @FeatureRegistry.register("optimizer_update_frequency_avg")
 def optimizer_update_frequency_avg(df: pd.DataFrame) -> pd.Series:
     """更新頻度平均特徴量"""
     tracker = get_optimizer_tracker()
     return pd.Series([tracker.get_update_frequency_avg()] * len(df), index=df.index)
-
 
 @FeatureRegistry.register("optimizer_stability_score")
 def optimizer_stability_score(df: pd.DataFrame) -> pd.Series:
@@ -684,7 +668,6 @@ def optimizer_stability_score(df: pd.DataFrame) -> pd.Series:
     return pd.Series(
         [tracker.get_optimizer_stability_score()] * len(df), index=df.index
     )
-
 
 @FeatureRegistry.register("optimizer_adaptive_lr_score")
 def optimizer_adaptive_lr_score(df: pd.DataFrame) -> pd.Series:

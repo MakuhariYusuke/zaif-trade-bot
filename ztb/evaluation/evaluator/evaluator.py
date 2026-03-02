@@ -6,7 +6,7 @@ from ztb.utils when imports fail.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +48,5 @@ except ImportError as e:
             """Evaluate and return empty result."""
             return EvaluationResult()
 
-
 __all__ = ["TradingEvaluator", "EvaluationResult", "SingleEpisodeResultDict"]
-
-
 

@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, cast
+from typing import Any, Callable, cast
 
 import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
@@ -14,11 +14,10 @@ from ..evaluation.eval_gates import EvalGates
 
 logger = get_logger(__name__)
 
-
 class FunctionCallback(BaseCallback):
     """Wrapper to make a function callable as a BaseCallback."""
 
-    def __init__(self, func: Optional[Callable[[], None]]) -> None:
+    def __init__(self, func: Callable[[], None] | None) -> None:
         super().__init__()
         self.func = func
 
@@ -31,23 +30,22 @@ class FunctionCallback(BaseCallback):
         if self.func:
             self.func()
 
-
 class DSREvaluationCallback(EvalCallback):
     """Evaluation callback with Deflated Sharpe Ratio and bootstrap resampling."""
 
-    best_mean_reward: Optional[float] = None  # type: ignore[assignment]
-    callback_on_new_best: Optional[BaseCallback] = None
-    callback_after_eval: Optional[BaseCallback] = None
+    best_mean_reward: float | None = None  # type: ignore[assignment]
+    callback_on_new_best: BaseCallback | None = None
+    callback_after_eval: BaseCallback | None = None
 
     def __init__(
         self,
         eval_env: Any,
-        callback_on_new_best: Optional[Callable[[], None]] = None,
-        callback_after_eval: Optional[Callable[[], None]] = None,
+        callback_on_new_best: Callable[[], None] | None = None,
+        callback_after_eval: Callable[[], None] | None = None,
         n_eval_episodes: int = 5,
         eval_freq: int = 10000,
-        log_path: Optional[str] = None,
-        best_model_save_path: Optional[str] = None,
+        log_path: str | None = None,
+        best_model_save_path: str | None = None,
         deterministic: bool = True,
         render: bool = False,
         verbose: int = 1,
@@ -75,9 +73,9 @@ class DSREvaluationCallback(EvalCallback):
         )
         self.bootstrap_samples = bootstrap_samples
         self.dsr_trials = dsr_trials
-        self.eval_returns_history: List[float] = []
+        self.eval_returns_history: list[float] = []
         self.eval_gates = EvalGates(enabled=gates_enabled)
-        self.gate_results_history: List[Dict[str, Any]] = []
+        self.gate_results_history: list[dict[str, Any]] = []
 
     def _on_step(self) -> bool:
         if self.eval_freq > 0 and self.n_calls % self.eval_freq == 0:
@@ -92,8 +90,8 @@ class DSREvaluationCallback(EvalCallback):
                 warn=self.warn,
             )
 
-            episode_rewards = cast(List[float], episode_rewards)
-            episode_lengths = cast(List[int], episode_lengths)
+            episode_rewards = cast(list[float], episode_rewards)
+            episode_lengths = cast(list[int], episode_lengths)
 
             if self.log_path is not None:
                 self.evaluations_timesteps.append(self.num_timesteps)
@@ -213,7 +211,7 @@ class DSREvaluationCallback(EvalCallback):
         return True
 
     def _bootstrap_resample(
-        self, data: List[float], n_samples: int
+        self, data: list[float], n_samples: int
     ) -> np.ndarray[Any, np.dtype[Any]]:
         """Perform bootstrap resampling to estimate confidence intervals."""
         bootstrap_means = []
@@ -223,7 +221,7 @@ class DSREvaluationCallback(EvalCallback):
             bootstrap_means.append(np.mean(sample))
         return np.array(bootstrap_means)
 
-    def _calculate_dsr(self, rewards: List[float], n_trials: int) -> float:
+    def _calculate_dsr(self, rewards: list[float], n_trials: int) -> float:
         """Calculate Deflated Sharpe Ratio."""
         if len(rewards) < 2:
             return 0.0

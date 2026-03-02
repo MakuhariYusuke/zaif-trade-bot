@@ -6,7 +6,6 @@ Defines default configurations for training and risk profiles.
 
 from dataclasses import dataclass, field
 
-
 @dataclass
 class RiskProfileConfig:
     """Risk profile configuration."""
@@ -17,7 +16,6 @@ class RiskProfileConfig:
     take_profit_pct: float = 0.10
     max_daily_loss_pct: float = 0.20
     circuit_breaker_threshold: float = 0.15
-
 
 @dataclass
 class LegacyTrainingConfig:
@@ -42,7 +40,6 @@ class LegacyTrainingConfig:
     risk_profile: RiskProfileConfig = field(
         default_factory=lambda: RiskProfileConfig(name="aggressive")
     )
-
 
 # Default configurations
 DEFAULT_RISK_PROFILE = RiskProfileConfig(name="aggressive")

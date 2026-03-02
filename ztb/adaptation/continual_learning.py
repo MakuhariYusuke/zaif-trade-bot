@@ -7,7 +7,7 @@ import copy
 import gc
 from collections import defaultdict, deque
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable
 
 import numpy as np
 import torch
@@ -19,7 +19,6 @@ from ztb.utils.logging_utils import get_logger
 from ztb.utils.memory_utils import OperationMemoryTracker
 
 logger = get_logger(__name__)
-
 
 @dataclass
 class TaskData:
@@ -33,7 +32,6 @@ class TaskData:
     dones: torch.Tensor
     num_samples: int
 
-
 @dataclass
 class ContinualLearningConfig:
     """継続学習設定"""
@@ -45,7 +43,6 @@ class ContinualLearningConfig:
     memory_importance_threshold: float = 0.8  # メモリ重要度の閾値
     max_tasks_in_memory: int = 5  # メモリに保持する最大タスク数
     enable_memory_tracking: bool = True
-
 
 class ElasticWeightConsolidation:
     """Elastic Weight Consolidation (EWC)"""
@@ -60,7 +57,7 @@ class ElasticWeightConsolidation:
 
     def consolidate_task(
         self, task_data: TaskData, loss_fn: Callable
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """タスクの統合（重要パラメータの保存）"""
         logger.info(f"Consolidating task: {task_data.task_id}")
 
@@ -103,7 +100,7 @@ class ElasticWeightConsolidation:
 
     def _compute_fisher_information(
         self, task_data: TaskData, loss_fn: Callable
-    ) -> Dict[str, torch.Tensor]:
+    ) -> dict[str, torch.Tensor]:
         """フィッシャー情報行列の計算"""
         fisher_info = {}
 
@@ -141,7 +138,7 @@ class ElasticWeightConsolidation:
         return fisher_info
 
     def regularization_loss(
-        self, current_params: Dict[str, torch.Tensor]
+        self, current_params: dict[str, torch.Tensor]
     ) -> torch.Tensor:
         """EWC正則化損失の計算"""
         if not self.optimal_params:
@@ -163,7 +160,6 @@ class ElasticWeightConsolidation:
                     total_loss += loss_contribution.sum()
 
         return self.config.ewc_lambda * total_loss
-
 
 class RehearsalBuffer:
     """リハーサル用バッファ（過去データの保存）"""
@@ -212,7 +208,7 @@ class RehearsalBuffer:
 
     def get_rehearsal_batch(
         self, batch_size: int = 32
-    ) -> Optional[Dict[str, torch.Tensor]]:
+    ) -> dict[str, torch.Tensor] | None:
         """リハーサル用バッチの取得"""
         if len(self.buffer) < batch_size:
             return None
@@ -234,7 +230,7 @@ class RehearsalBuffer:
 
     def get_task_rehearsal_batch(
         self, task_id: str, batch_size: int = 16
-    ) -> Optional[Dict[str, torch.Tensor]]:
+    ) -> dict[str, torch.Tensor] | None:
         """タスク固有のリハーサルバッチ取得"""
         if (
             task_id not in self.task_buffers
@@ -256,7 +252,7 @@ class RehearsalBuffer:
 
         return batch
 
-    def get_buffer_stats(self) -> Dict[str, Any]:
+    def get_buffer_stats(self) -> dict[str, Any]:
         """バッファ統計取得"""
         return {
             "total_samples": len(self.buffer),
@@ -265,7 +261,6 @@ class RehearsalBuffer:
             },
             "max_buffer_size": self.config.rehearsal_buffer_size,
         }
-
 
 class ProgressiveNetwork:
     """Progressive Neural Networks"""
@@ -372,7 +367,7 @@ class ProgressiveNetwork:
 
         return output
 
-    def get_network_stats(self) -> Dict[str, Any]:
+    def get_network_stats(self) -> dict[str, Any]:
         """ネットワーク統計取得"""
         stats = {
             "task_count": self.task_count,
@@ -384,7 +379,6 @@ class ProgressiveNetwork:
             stats["memory_stats"] = {"note": "MemoryTracker context manager used"}
 
         return stats
-
 
 class ContinualLearner:
     """継続学習統合クラス"""
@@ -419,7 +413,7 @@ class ContinualLearner:
         loss_fn: Callable,
         optimizer: "optim.Optimizer",
         num_epochs: int = 10,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """新規タスクの学習"""
         logger.info(
             f"Learning task: {task_data.task_id} using method: {self.config.method}"
@@ -476,7 +470,7 @@ class ContinualLearner:
         loss_fn: Callable,
         optimizer: "optim.Optimizer",
         num_epochs: int,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """タスクモデルの学習"""
         task_model.train()
         training_losses = []
@@ -551,7 +545,7 @@ class ContinualLearner:
         }
 
     def predict_with_continual(
-        self, state: torch.Tensor, task_id: Optional[str] = None
+        self, state: torch.Tensor, task_id: str | None = None
     ) -> torch.Tensor:
         """継続学習を考慮した予測"""
         if task_id is None:
@@ -562,7 +556,7 @@ class ContinualLearner:
         else:
             return self.model(state)
 
-    def get_continual_stats(self) -> Dict[str, Any]:
+    def get_continual_stats(self) -> dict[str, Any]:
         """継続学習統計取得"""
         stats = {
             "method": self.config.method,

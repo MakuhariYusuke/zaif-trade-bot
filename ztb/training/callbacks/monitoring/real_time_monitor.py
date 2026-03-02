@@ -14,13 +14,12 @@ import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 import websockets
 
 from ..performance.memory_optimizer import LRUCache, MemoryMonitor, WeakRefRegistry
 from .metrics_collector import MetricsCollector, get_global_metrics_collector
-
 
 @dataclass
 class MonitorConfig:
@@ -36,21 +35,20 @@ class MonitorConfig:
     retention_minutes: int = 60
     alert_check_interval: float = 5.0
 
-
 @dataclass
 class MonitorAlert:
     """Alert configuration and state."""
 
     name: str
-    condition: Callable[[Dict[str, Any]], bool]
+    condition: Callable[[dict[str, Any]], bool]
     message: str
     severity: str = "warning"  # info, warning, error, critical
     cooldown_minutes: int = 5
     enabled: bool = True
-    last_triggered: Optional[datetime] = None
+    last_triggered: datetime | None = None
     trigger_count: int = 0
 
-    def should_trigger(self, metrics: Dict[str, Any]) -> bool:
+    def should_trigger(self, metrics: dict[str, Any]) -> bool:
         """Check if alert should trigger."""
         if not self.enabled:
             return False
@@ -71,7 +69,6 @@ class MonitorAlert:
         self.trigger_count += 1
         return f"[{self.severity.upper()}] {self.message} (count: {self.trigger_count})"
 
-
 class RealTimeMonitor:
     """
     Real-time monitoring system with live updates and alerting.
@@ -86,17 +83,17 @@ class RealTimeMonitor:
 
     def __init__(
         self,
-        config: Optional[MonitorConfig] = None,
-        metrics_collector: Optional[MetricsCollector] = None,
+        config: MonitorConfig | None = None,
+        metrics_collector: MetricsCollector | None = None,
     ):
         self.config = config or MonitorConfig()
         self.metrics_collector = metrics_collector or get_global_metrics_collector()
         self.logger = logging.getLogger(__name__)
 
         # Core components
-        self.alerts: Dict[str, MonitorAlert] = {}
-        self.active_alerts: List[str] = []
-        self.monitoring_data: Dict[str, Any] = {}
+        self.alerts: dict[str, MonitorAlert] = {}
+        self.active_alerts: list[str] = []
+        self.monitoring_data: dict[str, Any] = {}
 
         # Memory optimization components
         self.data_cache = LRUCache(max_size=5000)  # Cache for monitoring data
@@ -106,9 +103,9 @@ class RealTimeMonitor:
         # Threading and synchronization
         self._lock = threading.RLock()
         self._running = False
-        self._monitor_thread: Optional[threading.Thread] = None
-        self._websocket_thread: Optional[threading.Thread] = None
-        self._alert_thread: Optional[threading.Thread] = None
+        self._monitor_thread: threading.Thread | None = None
+        self._websocket_thread: threading.Thread | None = None
+        self._alert_thread: threading.Thread | None = None
 
         # WebSocket components
         self.websocket_server = None
@@ -256,7 +253,7 @@ class RealTimeMonitor:
                 }
             )
 
-    def _get_system_status(self) -> Dict[str, Any]:
+    def _get_system_status(self) -> dict[str, Any]:
         """Get overall system status."""
         status = {
             "overall": "healthy",
@@ -393,12 +390,12 @@ class RealTimeMonitor:
                 return True
             return False
 
-    def get_monitoring_snapshot(self) -> Dict[str, Any]:
+    def get_monitoring_snapshot(self) -> dict[str, Any]:
         """Get a snapshot of current monitoring data."""
         with self._lock:
             return self.monitoring_data.copy()
 
-    def get_alert_status(self) -> Dict[str, Any]:
+    def get_alert_status(self) -> dict[str, Any]:
         """Get status of all alerts."""
         with self._lock:
             return {
@@ -475,11 +472,10 @@ class RealTimeMonitor:
         # Future enhancement - implement REST API
         self.logger.info("HTTP server not yet implemented")
 
-    def get_performance_stats(self) -> Dict[str, Any]:
+    def get_performance_stats(self) -> dict[str, Any]:
         """Get performance statistics."""
         with self._lock:
             return self.performance_stats.copy()
-
 
 # Predefined alert conditions
 def create_high_cpu_alert(threshold: float = 90.0) -> MonitorAlert:
@@ -497,7 +493,6 @@ def create_high_cpu_alert(threshold: float = 90.0) -> MonitorAlert:
         cooldown_minutes=2,
     )
 
-
 def create_high_memory_alert(threshold: float = 90.0) -> MonitorAlert:
     """Create alert for high memory usage."""
 
@@ -512,7 +507,6 @@ def create_high_memory_alert(threshold: float = 90.0) -> MonitorAlert:
         severity="warning",
         cooldown_minutes=5,
     )
-
 
 def create_training_stuck_alert(timeout_minutes: int = 30) -> MonitorAlert:
     """Create alert for training appearing stuck."""
@@ -551,7 +545,7 @@ def create_training_stuck_alert(timeout_minutes: int = 30) -> MonitorAlert:
         cooldown_minutes=10,
     )
 
-    def get_current_metrics(self) -> Dict[str, Any]:
+    def get_current_metrics(self) -> dict[str, Any]:
         """Get current monitoring metrics with caching."""
         with self._lock:
             # Try cache first
@@ -590,10 +584,8 @@ def create_training_stuck_alert(timeout_minutes: int = 30) -> MonitorAlert:
             return 0.0
         return self.performance_stats["cache_hits"] / total_requests
 
-
 # Global monitor instance
 _global_monitor = None
-
 
 def get_global_monitor() -> RealTimeMonitor:
     """Get the global monitor instance."""

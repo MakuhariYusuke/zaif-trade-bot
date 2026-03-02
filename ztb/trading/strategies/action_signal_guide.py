@@ -5,7 +5,7 @@ This module provides classical technical signal guidance to help reinforcement
 learning agents learn basic trading patterns before discovering novel strategies.
 """
 
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any
 import numpy as np
 from enum import Enum
 
@@ -13,7 +13,6 @@ from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 
 from .signal_definitions import SignalDefinitions, SignalType
 from ztb.utils.logging_utils import get_logger
-
 
 class GuidanceMode(Enum):
     """Modes of signal guidance."""
@@ -23,13 +22,11 @@ class GuidanceMode(Enum):
     FADE_OUT = "fade_out"       # Guidance that fades out over time
     NO_GUIDANCE = "none"        # No guidance (pure RL)
 
-
 class TimeFrame(Enum):
     """Time frames for signal evaluation."""
     SHORT = "short"     # Short-term signals (5-15 periods)
     MEDIUM = "medium"   # Medium-term signals (15-60 periods)
     LONG = "long"       # Long-term signals (60+ periods)
-
 
 class ActionSignalGuide:
     """
@@ -43,7 +40,7 @@ class ActionSignalGuide:
                  mode: GuidanceMode = GuidanceMode.FULL_GUIDANCE,
                  signal_weight: float = 1.0,
                  guidance_decay: float = 0.95,
-                 feature_names: Optional[List[str]] = None,
+                 feature_names: list[str] | None = None,
                  multi_timeframe: bool = True) -> None:
         """
         Initialize the action signal guide.
@@ -228,11 +225,11 @@ class ActionSignalGuide:
             else 0,
         }
 
-    def set_feature_names(self, feature_names: Optional[List[str]]) -> None:
-        """Set the feature names for signal evaluation."""
+    def set_feature_names(self, feature_names: list[str] | None) -> None:
+        """set the feature names for signal evaluation."""
         self.feature_names = feature_names
         if feature_names is not None:
-            self.logger.debug(f"Set feature names: {len(feature_names)} features")
+            self.logger.debug(f"set feature names: {len(feature_names)} features")
         else:
             self.logger.debug("Feature names set to None")
 
@@ -316,14 +313,14 @@ class ActionSignalGuide:
     def _evaluate_timeframe_signals(self,
                                   observation: np.ndarray,
                                   action: int,
-                                  signal_names: List[str]) -> float:
+                                  signal_names: list[str]) -> float:
         """
         Evaluate signals for a specific timeframe.
 
         Args:
             observation: Current market observation
             action: Action taken
-            signal_names: List of signal names to evaluate for this timeframe
+            signal_names: list of signal names to evaluate for this timeframe
 
         Returns:
             Signal strength for this timeframe
@@ -359,7 +356,7 @@ class ActionSignalGuide:
             max_signal = max(max(buy_signals or [0.0]), max(sell_signals or [0.0]))
             return max(0.0, 0.3 - max_signal)
 
-    def get_action_recommendation(self, observation: np.ndarray) -> Tuple[int, float]:
+    def get_action_recommendation(self, observation: np.ndarray) -> tuple[int, float]:
         """
         Get recommended action based on signal strength.
 
@@ -367,7 +364,7 @@ class ActionSignalGuide:
             observation: Current market observation
 
         Returns:
-            Tuple of (recommended_action, confidence)
+            tuple of (recommended_action, confidence)
         """
         if not self.feature_names:
             return 0, 0.0  # Default to HOLD
@@ -382,7 +379,7 @@ class ActionSignalGuide:
         else:
             return ACTION_HOLD, max(buy_strength, sell_strength)  # HOLD
 
-    def get_multi_timeframe_action_recommendation(self, observation: np.ndarray) -> Tuple[int, float]:
+    def get_multi_timeframe_action_recommendation(self, observation: np.ndarray) -> tuple[int, float]:
         """
         Get recommended action using multi-timeframe signal analysis.
 
@@ -390,7 +387,7 @@ class ActionSignalGuide:
             observation: Current market observation
 
         Returns:
-            Tuple of (recommended_action, confidence)
+            tuple of (recommended_action, confidence)
         """
         if not self.feature_names or not self.multi_timeframe:
             return self.get_action_recommendation(observation)
@@ -453,7 +450,7 @@ class ActionSignalGuide:
         self._setup_guidance_parameters()
         self.logger.info(f"Updated guidance mode to: {mode.value}")
 
-    def get_guidance_stats(self) -> Dict[str, Any]:
+    def get_guidance_stats(self) -> dict[str, Any]:
         """Get current guidance statistics."""
         return {
             "mode": self.mode.value,

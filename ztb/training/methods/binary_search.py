@@ -30,7 +30,6 @@ from ztb.optimization.base import (
     TrialResult,
 )
 
-
 class BinarySearchOptimizer(OptimizerBase):
     """
     Binary Search最適化（単一パラメータ向け）

@@ -15,7 +15,7 @@ market context for reinforcement learning agents.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -24,7 +24,6 @@ from ztb.features.timeframe import Timeframe, get_timeframe_params
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class MultiTimeframeFeatureEngineer:
     """
@@ -46,8 +45,8 @@ class MultiTimeframeFeatureEngineer:
 
     def __init__(
         self,
-        market_system: Optional[Any] = None,
-        config_path: Optional[str] = None,
+        market_system: Any | None = None,
+        config_path: str | None = None,
         base_timeframe: Timeframe = Timeframe.M5,  # Primary timeframe for training
     ):
         """
@@ -62,7 +61,7 @@ class MultiTimeframeFeatureEngineer:
         self.market_system = market_system
 
         # Initialize feature engineers for each timeframe
-        self.timeframe_engineers: Dict[Timeframe, SACv427FeatureEngineer] = {}
+        self.timeframe_engineers: dict[Timeframe, SACv427FeatureEngineer] = {}
 
         for timeframe in self.SUPPORTED_TIMEFRAMES:
             engineer = SACv427FeatureEngineer(
@@ -83,8 +82,8 @@ class MultiTimeframeFeatureEngineer:
 
     def generate_multi_timeframe_features(
         self,
-        data_dict: Dict[Timeframe, pd.DataFrame],
-        feature_set: Optional[str] = None,
+        data_dict: dict[Timeframe, pd.DataFrame],
+        feature_set: str | None = None,
         include_timeframe_indicators: bool = True,
     ) -> pd.DataFrame:
         """
@@ -163,7 +162,7 @@ class MultiTimeframeFeatureEngineer:
 
     def _integrate_timeframe_features(
         self,
-        timeframe_features: Dict[Timeframe, pd.DataFrame],
+        timeframe_features: dict[Timeframe, pd.DataFrame],
         base_df: pd.DataFrame,
         include_timeframe_indicators: bool,
     ) -> pd.DataFrame:
@@ -254,8 +253,8 @@ class MultiTimeframeFeatureEngineer:
         return df
 
     def get_timeframe_feature_counts(
-        self, data_dict: Dict[Timeframe, pd.DataFrame]
-    ) -> Dict[str, int]:
+        self, data_dict: dict[Timeframe, pd.DataFrame]
+    ) -> dict[str, int]:
         """
         Get feature counts for each timeframe.
 
@@ -280,8 +279,8 @@ class MultiTimeframeFeatureEngineer:
         return counts
 
     def validate_timeframe_data(
-        self, data_dict: Dict[Timeframe, pd.DataFrame]
-    ) -> List[str]:
+        self, data_dict: dict[Timeframe, pd.DataFrame]
+    ) -> list[str]:
         """
         Validate timeframe data quality and consistency.
 
@@ -289,7 +288,7 @@ class MultiTimeframeFeatureEngineer:
             data_dict: Dictionary of timeframe data
 
         Returns:
-            List of validation warnings/errors
+            list of validation warnings/errors
         """
         warnings = []
 

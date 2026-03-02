@@ -8,7 +8,7 @@ import os
 from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
+    dict,
     Optional,
     Protocol,
     Union,
@@ -17,18 +17,15 @@ from typing import (
 
 from ztb.utils.types import TrainingResult, ValidationResult
 
-
 @runtime_checkable
 class SaveableModel(Protocol):
     def save(self, path: str) -> None:
         ...
 
-
 @runtime_checkable
 class LoadableClass(Protocol):
     def load(self, path: str) -> Any:
         ...
-
 
 if TYPE_CHECKING:
     # For type checking only; avoid importing stable_baselines3 at module import time
@@ -41,7 +38,6 @@ from ztb.utils.logging_utils import get_logger
 from ztb.utils.file_utils import safe_json_dump
 
 logger = get_logger(__name__)
-
 
 def create_checkpoint_callback(
     save_freq: int, save_path: str, name_prefix: str = "rl_model", verbose: int = 1
@@ -70,7 +66,6 @@ def create_checkpoint_callback(
         verbose=verbose,
     )
 
-
 def create_eval_callback(
     eval_env,
     eval_freq: int,
@@ -78,8 +73,8 @@ def create_eval_callback(
     deterministic: bool = True,
     render: bool = False,
     verbose: int = 1,
-    best_model_save_path: Optional[str] = None,
-    log_path: Optional[str] = None,
+    best_model_save_path: str | None = None,
+    log_path: str | None = None,
 ) -> "EvalCallback":
     """
     EvalCallbackを作成
@@ -116,7 +111,6 @@ def create_eval_callback(
         verbose=verbose,
     )
 
-
 def save_model(model: SaveableModel, model_path: str, verbose: bool = True) -> bool:
     """
     モデルを保存
@@ -145,11 +139,10 @@ def save_model(model: SaveableModel, model_path: str, verbose: bool = True) -> b
         logger.error(f"Failed to save model to {model_path}: {e}")
         return False
 
-
 def save_model_with_metadata(
     model: SaveableModel,
     model_path: str,
-    metadata: Optional[Dict[str, Any]] = None,
+    metadata: dict[str, Any] | None = None,
     verbose: bool = True,
 ) -> bool:
     """
@@ -176,10 +169,9 @@ def save_model_with_metadata(
             return False
     return success
 
-
 def load_model(
-    model_path: str, algorithm: Optional[str] = None, verbose: bool = True
-) -> Optional[Union["SAC", "PPO", "MaskablePPO"]]:
+    model_path: str, algorithm: str | None = None, verbose: bool = True
+) -> "SAC" | "PPO" | "MaskablePPO" | None:
     """
     モデルを読み込み（統一版）
 
@@ -242,7 +234,6 @@ def load_model(
         logger.error(f"Failed to load model from {model_path}: {e}")
         return None
 
-
 def save_training_results(
     results: TrainingResult, output_path: str, verbose: bool = True
 ) -> bool:
@@ -273,8 +264,7 @@ def save_training_results(
         logger.error(f"Failed to save training results to {output_path}: {e}")
         return False
 
-
-def validate_training_config(config: Dict[str, Any]) -> ValidationResult:
+def validate_training_config(config: dict[str, Any]) -> ValidationResult:
     """
     トレーニング設定をバリデーション
 
@@ -282,7 +272,7 @@ def validate_training_config(config: Dict[str, Any]) -> ValidationResult:
         config: 設定辞書
 
     Returns:
-        バリデーション結果 {"valid": bool, "errors": List[str], "warnings": List[str]}
+        バリデーション結果 {"valid": bool, "errors": list[str], "warnings": list[str]}
     """
     errors = []
     warnings = []
@@ -328,8 +318,7 @@ def validate_training_config(config: Dict[str, Any]) -> ValidationResult:
 
     return {"is_valid": len(errors) == 0, "errors": errors, "warnings": warnings}
 
-
-def get_metric_from_logger(model, metric_name: str) -> Optional[float]:
+def get_metric_from_logger(model, metric_name: str) -> float | None:
     """
     Get metric value from model logger.
 
@@ -361,13 +350,11 @@ def get_metric_from_logger(model, metric_name: str) -> Optional[float]:
     except (AttributeError, KeyError, TypeError):
         return None
 
-
 class _DummyLoss:
     """Dummy loss function for fallback when torch is not available."""
 
     def __call__(self, *args, **kwargs):
         return 0
-
 
 def get_safe_loss_function(loss_class, *args, **kwargs):
     """
@@ -385,9 +372,8 @@ def get_safe_loss_function(loss_class, *args, **kwargs):
     except Exception:
         return _DummyLoss()
 
-
 def display_training_complete(
-    final_metrics: Dict[str, Any], training_time: float
+    final_metrics: dict[str, Any], training_time: float
 ) -> None:
     """
     Display training completion message.

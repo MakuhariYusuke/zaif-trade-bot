@@ -4,7 +4,7 @@ Dynamic Position Sizing for SAC v435
 市場状態に応じた適応型ポジションサイジングシステム
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -12,14 +12,13 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class DynamicPositionSizer:
     """
     動的ポジションサイジングクラス
     ボラティリティ、市場状態、ドローダウンに基づいてポジションサイズを調整
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         """
         Args:
             config: ポジションサイジング設定
@@ -38,9 +37,9 @@ class DynamicPositionSizer:
         self.drawdown_window = config.get("drawdown_window", 50)
 
         # 状態追跡
-        self.portfolio_value_history: List[float] = []
-        self.position_history: List[float] = []
-        self.volatility_history: List[float] = []
+        self.portfolio_value_history: list[float] = []
+        self.position_history: list[float] = []
+        self.volatility_history: list[float] = []
 
         # 適応係数
         self.volatility_multiplier = 1.0
@@ -54,7 +53,7 @@ class DynamicPositionSizer:
         portfolio_value: float,
         atr: float,
         market_regime: str = "ranging",
-        df: Optional[pd.DataFrame] = None,
+        df: pd.DataFrame | None = None,
     ) -> float:
         """
         動的ポジションサイズを計算
@@ -105,7 +104,7 @@ class DynamicPositionSizer:
         return adjusted_size
 
     def _apply_volatility_adjustment(
-        self, position_size: float, atr: float, df: Optional[pd.DataFrame]
+        self, position_size: float, atr: float, df: pd.DataFrame | None
     ) -> float:
         """
         ボラティリティに基づくポジションサイズ調整

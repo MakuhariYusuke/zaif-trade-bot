@@ -16,7 +16,7 @@ This module integrates multiple self-supervised learning techniques:
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -38,7 +38,6 @@ from .masked_price_modeling import MaskedPriceModel, MaskedPriceModelingTrainer
 
 logger = get_logger(__name__)
 
-
 class SelfSupervisedTrainer:
     """
     Integrated self-supervised learning trainer for financial data
@@ -50,7 +49,7 @@ class SelfSupervisedTrainer:
         input_dim: int = 156,
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
         checkpoint_dir: str = "checkpoints/pretraining",
-        memory_manager: Optional[MemoryManager] = None,
+        memory_manager: MemoryManager | None = None,
     ):
         """
         Initialize Self-Supervised Trainer
@@ -129,8 +128,8 @@ class SelfSupervisedTrainer:
         projection_dim: int = 128,
         temperature: float = 0.5,
         learning_rate: float = 1e-4,
-        augmentation_params: Optional[Dict] = None,
-        augmentation: Optional[Dict] = None,
+        augmentation_params: dict | None = None,
+        augmentation: dict | None = None,
         **kwargs,
     ):
         """
@@ -172,7 +171,7 @@ class SelfSupervisedTrainer:
 
     def initialize_anomaly_model(
         self,
-        hidden_dims: List[int] = [256, 128, 64],
+        hidden_dims: list[int] = [256, 128, 64],
         latent_dim: int = 32,
         lstm_hidden_dim: int = 128,
         lstm_num_layers: int = 2,
@@ -395,7 +394,7 @@ class SelfSupervisedTrainer:
         logger.info("Anomaly Detection training completed")
 
     def train_all_stages(
-        self, train_data: torch.Tensor, val_data: torch.Tensor, config: Dict[str, Any]
+        self, train_data: torch.Tensor, val_data: torch.Tensor, config: dict[str, Any]
     ):
         """
         Train all self-supervised learning stages sequentially
@@ -429,7 +428,7 @@ class SelfSupervisedTrainer:
 
         logger.info("Self-supervised pre-training completed")
 
-    def get_pretrained_encoders(self) -> Dict[str, nn.Module]:
+    def get_pretrained_encoders(self) -> dict[str, nn.Module]:
         """
         Get pretrained encoders for downstream tasks
         ダウンストリームタスク向け事前学習済みエンコーダーの取得
@@ -452,7 +451,7 @@ class SelfSupervisedTrainer:
 
         return encoders
 
-    def compute_anomaly_scores(self, data: torch.Tensor) -> Optional[torch.Tensor]:
+    def compute_anomaly_scores(self, data: torch.Tensor) -> torch.Tensor | None:
         """
         Compute anomaly scores using trained anomaly detector
         学習済み異常検知器による異常スコア計算
@@ -465,7 +464,7 @@ class SelfSupervisedTrainer:
 
     def get_embeddings(
         self, data: torch.Tensor, method: str = "contrastive"
-    ) -> Optional[torch.Tensor]:
+    ) -> torch.Tensor | None:
         """
         Get embeddings from specified method
         指定手法によるエンベディング取得
@@ -562,7 +561,7 @@ class SelfSupervisedTrainer:
         with open(path, "w") as f:
             json.dump(self.training_history, f, indent=2)
 
-    def _train_epoch_mpm(self, data: torch.Tensor, batch_size: int) -> Dict[str, float]:
+    def _train_epoch_mpm(self, data: torch.Tensor, batch_size: int) -> dict[str, float]:
         """Train one epoch for MPM"""
         total_loss = 0.0
         total_masked = 0
@@ -580,7 +579,7 @@ class SelfSupervisedTrainer:
             "masked_ratio": total_masked / len(data),
         }
 
-    def _train_epoch_cl(self, data: torch.Tensor, batch_size: int) -> Dict[str, float]:
+    def _train_epoch_cl(self, data: torch.Tensor, batch_size: int) -> dict[str, float]:
         """Train one epoch for Contrastive Learning"""
         total_loss = 0.0
         num_batches = 0
@@ -593,7 +592,7 @@ class SelfSupervisedTrainer:
 
         return {"loss": total_loss / num_batches}
 
-    def _train_epoch_ad(self, data: torch.Tensor, batch_size: int) -> Dict[str, float]:
+    def _train_epoch_ad(self, data: torch.Tensor, batch_size: int) -> dict[str, float]:
         """Train one epoch for Anomaly Detection"""
         total_loss = 0.0
         num_batches = 0

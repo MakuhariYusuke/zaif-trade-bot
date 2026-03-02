@@ -1,14 +1,12 @@
 """State management component for HeavyTradingEnv."""
 
-from typing import TYPE_CHECKING, Any, Dict
-
+from typing import TYPE_CHECKING, Any
 
 from ztb.trading.constants import get_action_count_index
 from ztb.utils.logging_utils import get_logger
 
 if TYPE_CHECKING:
     from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
-
 
 class StateManager:
     """Manages trading environment state (position, prices, PnL, etc.)."""
@@ -102,7 +100,7 @@ class StateManager:
         self.env.portfolio_value_history.append(self.env.portfolio_value)
         self.env.position_history.append(self.env.position)
 
-    def get_state_summary(self) -> Dict[str, Any]:
+    def get_state_summary(self) -> dict[str, Any]:
         """Get summary of current state for debugging/monitoring.
 
         Returns:

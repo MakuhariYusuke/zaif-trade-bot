@@ -7,7 +7,7 @@ Separated to follow Single Responsibility Principle.
 """
 
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,7 +18,6 @@ from ztb.analysis.common.plot_utils import save_plot
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class AnalysisDisplayManager:
     """
@@ -36,13 +35,13 @@ class AnalysisDisplayManager:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
 
-        # Set up plotting style
+        # set up plotting style
         plt.style.use("default")
         sns.set_palette("husl")
 
     def display_backtest_results(
         self,
-        results: Dict[str, Any],
+        results: dict[str, Any],
         title: str = "Backtest Results",
         show_plots: bool = True,
         save_plots: bool = True,
@@ -72,7 +71,7 @@ class AnalysisDisplayManager:
         if show_plots or save_plots:
             self._create_backtest_plots(results, title, show_plots, save_plots)
 
-    def _display_key_metrics(self, results: Dict[str, Any]) -> None:
+    def _display_key_metrics(self, results: dict[str, Any]) -> None:
         """Display key performance metrics."""
         key_metrics = [
             "total_return_pct",
@@ -100,7 +99,7 @@ class AnalysisDisplayManager:
                 else:
                     print(f"  {metric.replace('_', ' ').title()}: {value}")
 
-    def _display_performance_summary(self, results: Dict[str, Any]) -> None:
+    def _display_performance_summary(self, results: dict[str, Any]) -> None:
         """Display performance summary."""
         print("\n📈 Performance Summary:")
         print("-" * 40)
@@ -136,7 +135,7 @@ class AnalysisDisplayManager:
                 print(f"  Win Rate: {wr:.1%} ❌ (Poor)")
 
     def _create_backtest_plots(
-        self, results: Dict[str, Any], title: str, show_plots: bool, save_plots: bool
+        self, results: dict[str, Any], title: str, show_plots: bool, save_plots: bool
     ) -> None:
         """Create backtest visualization plots."""
         try:
@@ -156,7 +155,7 @@ class AnalysisDisplayManager:
             self.logger.warning(f"Failed to create backtest plots: {e}")
 
     def _plot_portfolio_value(
-        self, results: Dict[str, Any], title: str, show_plots: bool, save_plots: bool
+        self, results: dict[str, Any], title: str, show_plots: bool, save_plots: bool
     ) -> None:
         """Plot portfolio value over time."""
         if "portfolio_history" not in results or "timestamps" not in results:
@@ -187,7 +186,7 @@ class AnalysisDisplayManager:
             plt.close()
 
     def _plot_drawdown(
-        self, results: Dict[str, Any], title: str, show_plots: bool, save_plots: bool
+        self, results: dict[str, Any], title: str, show_plots: bool, save_plots: bool
     ) -> None:
         """Plot drawdown chart."""
         if "portfolio_history" not in results:
@@ -219,7 +218,7 @@ class AnalysisDisplayManager:
             plt.close()
 
     def _plot_monthly_returns(
-        self, results: Dict[str, Any], title: str, show_plots: bool, save_plots: bool
+        self, results: dict[str, Any], title: str, show_plots: bool, save_plots: bool
     ) -> None:
         """Plot monthly returns heatmap."""
         if "monthly_returns" not in results:
@@ -259,7 +258,7 @@ class AnalysisDisplayManager:
             plt.close()
 
     def _plot_trade_analysis(
-        self, results: Dict[str, Any], title: str, show_plots: bool, save_plots: bool
+        self, results: dict[str, Any], title: str, show_plots: bool, save_plots: bool
     ) -> None:
         """Plot trade analysis charts."""
         if "trade_analysis" not in results:
@@ -325,9 +324,9 @@ class AnalysisDisplayManager:
 
     def display_comparison_results(
         self,
-        comparisons: List[Dict[str, Any]],
-        metric_names: List[str],
-        titles: List[str],
+        comparisons: list[dict[str, Any]],
+        metric_names: list[str],
+        titles: list[str],
         show_plots: bool = True,
         save_plots: bool = True,
     ) -> None:
@@ -335,8 +334,8 @@ class AnalysisDisplayManager:
         Display comparison results between different analyses.
 
         Args:
-            comparisons: List of comparison result dictionaries
-            metric_names: List of metric names to compare
+            comparisons: list of comparison result dictionaries
+            metric_names: list of metric names to compare
             titles: Titles for each comparison
             show_plots: Whether to display plots
             save_plots: Whether to save plots
@@ -356,9 +355,9 @@ class AnalysisDisplayManager:
 
     def _display_comparison_table(
         self,
-        comparisons: List[Dict[str, Any]],
-        metric_names: List[str],
-        titles: List[str],
+        comparisons: list[dict[str, Any]],
+        metric_names: list[str],
+        titles: list[str],
     ) -> None:
         """Display comparison table."""
         print(f"{'Analysis':<25} {' | '.join(f'{m[:12]:<12}' for m in metric_names)}")
@@ -385,9 +384,9 @@ class AnalysisDisplayManager:
 
     def _create_comparison_plots(
         self,
-        comparisons: List[Dict[str, Any]],
-        metric_names: List[str],
-        titles: List[str],
+        comparisons: list[dict[str, Any]],
+        metric_names: list[str],
+        titles: list[str],
         show_plots: bool,
         save_plots: bool,
     ) -> None:

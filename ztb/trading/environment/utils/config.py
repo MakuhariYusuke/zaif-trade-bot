@@ -5,7 +5,7 @@ This module contains configuration classes for the Heavy Trading Environment.
 """
 
 import dataclasses
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from ztb.trading.constants import SAC_CONTINUOUS_THRESHOLD, SAC_CONTINUOUS_THRESHOLD_NEG
 from ztb.trading.environment.utils.domain_randomizer import DomainRandomizationConfig
@@ -36,7 +36,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 @dataclasses.dataclass
 class RewardSettings:
     """Type-safe reward settings configuration."""
@@ -44,11 +43,11 @@ class RewardSettings:
     use_simple_reward: bool = False
     reward_scale: float = 100.0
     trading_bonus: float = 0.01
-    profit_bonuses: Dict[str, float] = dataclasses.field(default_factory=dict)
-    penalty_coefficients: Dict[str, float] = dataclasses.field(default_factory=dict)
+    profit_bonuses: dict[str, float] = dataclasses.field(default_factory=dict)
+    penalty_coefficients: dict[str, float] = dataclasses.field(default_factory=dict)
     entropy_bonus: float = 0.0
     # v453 Hybrid Strategy
-    hybrid_config: Optional[Dict[str, Any]] = None
+    hybrid_config: dict[str, Any] | None = None
     balance_penalty: float = 0.1
     balance_penalty_tolerance: float = 0.05
     profit_weight: float = 1.0
@@ -79,7 +78,7 @@ class RewardSettings:
     reward_clip_value: float = DEFAULT_REWARD_CLIP_VALUE
     reward_clip_min: float = -80.0
     reward_clip_max: float = 80.0
-    profit_bonus_multipliers: List[float] = dataclasses.field(
+    profit_bonus_multipliers: list[float] = dataclasses.field(
         default_factory=lambda: [1.0, 1.5, 2.0]
     )
     enable_forced_diversity: bool = False
@@ -87,7 +86,7 @@ class RewardSettings:
     unrealized_loss_penalty_enabled: bool = False
     unrealized_loss_penalty_base: float = 1.1
     unrealized_loss_penalty_max_steps: int = 10
-    asymmetric_reward_scaling: Dict[str, float] = dataclasses.field(
+    asymmetric_reward_scaling: dict[str, float] = dataclasses.field(
         default_factory=lambda: {
             "long_position_reward_multiplier": 1.0,
             "short_position_reward_multiplier": 1.0,
@@ -97,10 +96,10 @@ class RewardSettings:
     )
 
     # Accept dynamic shaping configuration (backwards compatibility for v440 tests)
-    dynamic_reward_shaping: Optional[Dict[str, Any]] = None
+    dynamic_reward_shaping: dict[str, Any] | None = None
 
     # Backwards-compatible extension point to hold unknown/experimental reward keys
-    custom_reward_params: Dict[str, Any] = dataclasses.field(default_factory=dict)
+    custom_reward_params: dict[str, Any] = dataclasses.field(default_factory=dict)
 
     # Defaults for behavioral penalty lookbacks (used by BehavioralPenaltyCalculator)
     consistency_lookback: int = 50
@@ -151,7 +150,7 @@ class RewardSettings:
             pass
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "RewardSettings":
+    def from_dict(cls, config_dict: dict[str, Any]) -> "RewardSettings":
         """Create RewardSettings from dictionary."""
         # Filter out keys that are not in the dataclass
         valid_keys = {field.name for field in dataclasses.fields(cls)}
@@ -173,12 +172,11 @@ class RewardSettings:
         # Create instance with known parameters
         instance = cls(**filtered_dict)
         
-        # Set custom parameters
+        # set custom parameters
         if custom_params:
             instance.custom_reward_params = custom_params
             
         return instance
-
 
 @dataclasses.dataclass
 class EnvironmentConfig:
@@ -189,31 +187,23 @@ class EnvironmentConfig:
     transaction_cost: float = 0.0
     commission: float = 0.0  # Alias for transaction_cost for backward compatibility
     slippage: float = 0.0  # Slippage cost
-    exchange_profile: Optional[
-        ExchangeProfile
-    ] = None  # Exchange profile (fees, liquidity, etc.)
-    execution_model: Optional[
-        Union[Dict[str, Any], bool]
-    ] = None  # Execution model config (Phase 3)
-    risk_management: Dict[str, Any] = dataclasses.field(default_factory=dict)
-    domain_randomization: Optional[
-        DomainRandomizationConfig
-    ] = None  # Domain randomization config
-    max_steps: Optional[int] = None  # Maximum steps per episode
-    train_end_index: Optional[int] = None  # End index for training data subset
+    exchange_profile: ExchangeProfile | None = None  # Exchange profile (fees, liquidity, etc.)
+    execution_model: dict[str, Any] | bool | None = None  # Execution model config (Phase 3)
+    risk_management: dict[str, Any] = dataclasses.field(default_factory=dict)
+    domain_randomization: DomainRandomizationConfig | None = None  # Domain randomization config
+    max_steps: int | None = None  # Maximum steps per episode
+    train_end_index: int | None = None  # End index for training data subset
     debug_internal_state: bool = False  # Enable debug information in step output
     max_position_size: float = 1.0
     risk_free_rate: float = DEFAULT_RISK_FREE_RATE
     timeframe: str = "1m"
     feature_set: str = "full"
-    feature_names: Optional[
-        List[str]
-    ] = None  # Explicit feature list (overrides feature_set)
+    feature_names: list[str] | None = None  # Explicit feature list (overrides feature_set)
     correlation_reduction: bool = True
-    curriculum_stage: Optional[str] = None  # Set from training.curriculum_learning
-    curriculum_learning: Optional[Dict[str, Any]] = None
+    curriculum_stage: str | None = None  # set from training.curriculum_learning
+    curriculum_learning: dict[str, Any] | None = None
     feature_storage_dtype: str = "float16"
-    precision_columns: List[str] = dataclasses.field(
+    precision_columns: list[str] = dataclasses.field(
         default_factory=lambda: ["close", "open", "high", "low", "volume"]
     )
     exchange: str = "coincheck"
@@ -222,7 +212,7 @@ class EnvironmentConfig:
     min_holding_period: int = DEFAULT_MIN_HOLDING_PERIOD
 
     # v453 Hybrid Strategy
-    hybrid_config: Optional[Dict[str, Any]] = None
+    hybrid_config: dict[str, Any] | None = None
 
     # Reward settings
     reward_position_soft_cap: float = DEFAULT_REWARD_POSITION_SOFT_CAP
@@ -243,7 +233,7 @@ class EnvironmentConfig:
     enable_forced_diversity: bool = False
 
     # Action bonuses and penalties
-    action_bonuses: Dict[str, float] = dataclasses.field(
+    action_bonuses: dict[str, float] = dataclasses.field(
         default_factory=lambda: {
             "buy_action_bonus": 0.0,
             "sell_action_bonus": 0.0,
@@ -251,7 +241,7 @@ class EnvironmentConfig:
         }
     )
     base_action_penalty: float = 0.015
-    behavior_optimization: Dict[str, Any] = dataclasses.field(default_factory=dict)
+    behavior_optimization: dict[str, Any] = dataclasses.field(default_factory=dict)
 
     # 🔧 CRITICAL FIX: 現実的な資金設定
     # Bitcoin価格 ≈ 18,000,000円 を考慮した設定
@@ -260,14 +250,14 @@ class EnvironmentConfig:
     # - 旧デフォルト: 1,000,000円では max_position_size=1.0 (1800万円) で取引不可能だった
     initial_portfolio_value: float = 200_000.0
 
-    reward_profit_bonus_multipliers: List[float] = dataclasses.field(
+    reward_profit_bonus_multipliers: list[float] = dataclasses.field(
         default_factory=lambda: [1.0, 1.0, 0.8]
     )
-    reward_settings: Optional[RewardSettings] = None
+    reward_settings: RewardSettings | None = None
 
     # Memory and performance settings
     memory_logging_enabled: bool = False
-    memory_log_interval_steps: Optional[int] = None
+    memory_log_interval_steps: int | None = None
     max_action_history: int = 512
 
     # Observation normalization
@@ -277,10 +267,8 @@ class EnvironmentConfig:
 
     # Action space configuration
     use_continuous_actions: bool = False  # True for SAC, False for PPO
-    action_space_type: Optional[str] = None
-    target_feature_count: Optional[
-        int
-    ] = None  # Desired observation feature count when reducing correlations
+    action_space_type: str | None = None
+    target_feature_count: int | None = None  # Desired observation feature count when reducing correlations
     enable_action_masking: bool = False  # Only for discrete actions (PPO)
     continuous_to_discrete_threshold: float = (
         SAC_CONTINUOUS_THRESHOLD  # Threshold for SAC continuous→discrete conversion
@@ -310,12 +298,12 @@ class EnvironmentConfig:
     guidance_decay: float = 0.95
 
     # Market regime detection and adaptation settings (v443 enhancement)
-    market_regime: Optional[Dict[str, Any]] = None
-    advanced_market_regime: Optional[Dict[str, Any]] = None
-    dynamic_reward_shaping: Optional[Dict[str, Any]] = None
+    market_regime: dict[str, Any] | None = None
+    advanced_market_regime: dict[str, Any] | None = None
+    dynamic_reward_shaping: dict[str, Any] | None = None
 
     # Adaptive feature selection settings
-    adaptive_feature_selection: Optional[Dict[str, Any]] = None
+    adaptive_feature_selection: dict[str, Any] | None = None
     allow_reverse: bool = True  # If False, SELL from Long/BUY from Short only closes position (no immediate reverse)
     enforce_reverse_cooldown: bool = (
         False  # If True, min_holding_period also applies to reversal entries
@@ -335,7 +323,7 @@ class EnvironmentConfig:
             # Check if we should use ExchangeFeeModel (if exchange is specific and cost is 0)
             from ztb.utils.fee_model import ExchangeFeeModel, FeeModel, FixedFeeModel
 
-            fee_model: Optional[FeeModel] = None
+            fee_model: FeeModel | None = None
             fee_rate = self.transaction_cost
 
             # If transaction cost is 0 (default) and we have a specific exchange, try to use its defaults
@@ -373,7 +361,7 @@ class EnvironmentConfig:
                 self.transaction_cost = self.exchange_profile.taker_fee_rate
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "EnvironmentConfig":
+    def from_dict(cls, config_dict: dict[str, Any]) -> "EnvironmentConfig":
         """
         Create EnvironmentConfig from dictionary.
 
@@ -537,7 +525,7 @@ class EnvironmentConfig:
                                 )
                             else:
                                 setattr(instance, env_key, env_value)
-                            logger.debug(f"Set environment.{env_key} = {env_value}")
+                            logger.debug(f"set environment.{env_key} = {env_value}")
                         except Exception as e:
                             logger.debug(f"Could not set environment.{env_key}: {e}")
             elif key == "behavior_optimization":
@@ -655,7 +643,7 @@ class EnvironmentConfig:
 
     @staticmethod
     def _as_bool(
-        value: Union[bool, int, float, str, None], default: bool = False
+        value: bool | int | float | str | None, default: bool = False
     ) -> bool:
         """Convert various types to boolean."""
         if isinstance(value, bool):
@@ -671,9 +659,8 @@ class EnvironmentConfig:
             return False
         return default
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         """Convert config back to dictionary for compatibility."""
         return dataclasses.asdict(self)
-
 
 __all__ = ["EnvironmentConfig", "RewardSettings"]

@@ -8,7 +8,6 @@ from Binance API and save it in optimized Parquet format.
 import logging
 import time
 from pathlib import Path
-from typing import List, Optional
 
 import pandas as pd
 import pyarrow as pa
@@ -23,13 +22,12 @@ SYMBOL = "BTCUSDT"
 INTERVAL = "1m"
 LIMIT = 1000
 
-
 def fetch_binance_klines(
     symbol: str = SYMBOL,
     interval: str = INTERVAL,
     limit: int = LIMIT,
-    start_time: Optional[int] = None,
-    end_time: Optional[int] = None,
+    start_time: int | None = None,
+    end_time: int | None = None,
     max_retries: int = 5,
 ) -> pd.DataFrame:
     """
@@ -128,12 +126,11 @@ def fetch_binance_klines(
 
     return pd.DataFrame()
 
-
 def fetch_historical_klines(
     symbol: str = SYMBOL,
     interval: str = INTERVAL,
     days: int = 30,
-    max_requests: Optional[int] = None,
+    max_requests: int | None = None,
 ) -> pd.DataFrame:
     """
     Fetch historical klines by making multiple requests.
@@ -190,7 +187,6 @@ def fetch_historical_klines(
     )
     return combined_df
 
-
 def interpolate_missing_data(
     df: pd.DataFrame, max_gap_minutes: int = 5, remove_long_gaps: bool = True
 ) -> pd.DataFrame:
@@ -237,10 +233,9 @@ def interpolate_missing_data(
     logger.info(f"Interpolated data: {len(df)} -> {len(df_clean)} rows")
     return df_clean
 
-
 def save_parquet_chunked(
     df: pd.DataFrame, path: str, chunk: str = "M", compression: str = "zstd"
-) -> List[str]:
+) -> list[str]:
     """
     Save DataFrame to Parquet files in monthly chunks with zstd compression.
 
@@ -251,7 +246,7 @@ def save_parquet_chunked(
         compression: Compression algorithm
 
     Returns:
-        List of saved file paths
+        list of saved file paths
     """
     if not isinstance(df.index, pd.DatetimeIndex):
         raise ValueError("DataFrame must have DatetimeIndex")
@@ -282,9 +277,8 @@ def save_parquet_chunked(
     logger.info(f"Saved {len(saved_files)} Parquet files to {base_path}")
     return saved_files
 
-
 def load_parquet_pattern(
-    path: str, columns: Optional[List[str]] = None
+    path: str, columns: list[str] | None = None
 ) -> pd.DataFrame:
     """
     Load Parquet files from a directory pattern.

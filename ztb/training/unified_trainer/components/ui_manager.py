@@ -5,12 +5,11 @@ This module separates UI-related logic from the main trainer class,
 including progress display, status updates, and user interaction.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class TrainingUIManager:
     """
@@ -44,7 +43,7 @@ class TrainingUIManager:
         """
         self.ui = ui_instance
 
-    def display_welcome_message(self, config: Dict[str, Any]) -> None:
+    def display_welcome_message(self, config: dict[str, Any]) -> None:
         """
         Display welcome message with training configuration.
 
@@ -75,7 +74,7 @@ class TrainingUIManager:
         self,
         current_step: int,
         total_steps: int,
-        metrics: Optional[Dict[str, Any]] = None
+        metrics: dict[str, Any] | None = None
     ) -> None:
         """
         Update training progress.
@@ -93,7 +92,7 @@ class TrainingUIManager:
 
     def display_training_complete(
         self,
-        final_metrics: Dict[str, Any],
+        final_metrics: dict[str, Any],
         training_time: float
     ) -> None:
         """
@@ -109,7 +108,7 @@ class TrainingUIManager:
         except Exception as e:
             self.logger.error(f"Failed to display training complete: {e}")
 
-    def display_error(self, error_message: str, details: Optional[Dict[str, Any]] = None) -> None:
+    def display_error(self, error_message: str, details: dict[str, Any] | None = None) -> None:
         """
         Display error message.
 

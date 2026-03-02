@@ -7,7 +7,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # プロジェクトルートをPythonパスに追加
 project_root = Path(__file__).parent
@@ -16,12 +16,10 @@ sys.path.insert(0, str(project_root))
 from ztb.backtest.backtest_engine import BacktestEngine
 from ztb.utils.logging_utils import setup_logging
 
-
-def load_config(config_path: str) -> Dict[str, Any]:
+def load_config(config_path: str) -> dict[str, Any]:
     """Load configuration from file."""
     with open(config_path, "r", encoding="utf-8") as f:
         return json.load(f)
-
 
 def backtest_variant(model_path: str, config_path: str, variant_name: str) -> bool:
     """Backtest a single variant."""
@@ -88,7 +86,6 @@ def backtest_variant(model_path: str, config_path: str, variant_name: str) -> bo
         print(f"❌ {variant_name} backtest failed: {e}")
         return False
 
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="SAC v436 All Variants Backtest")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
@@ -150,7 +147,6 @@ def main() -> int:
     else:
         print("⚠️  Some variants failed. Check logs for details.")
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

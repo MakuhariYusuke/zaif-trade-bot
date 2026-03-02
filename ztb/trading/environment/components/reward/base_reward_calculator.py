@@ -6,7 +6,7 @@ and component initialization.
 """
 
 from collections import deque
-from typing import Any, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -27,7 +27,6 @@ from ztb.utils.logging_utils import get_logger
 from ..asymmetric_reward_scaler import AsymmetricRewardScaler
 from ..dynamic_reward_shaper import DynamicRewardShaper
 from ..signal_integrator import SignalIntegrator
-
 
 class BaseRewardCalculator:
     """
@@ -62,7 +61,7 @@ class BaseRewardCalculator:
         self.logger = get_logger("ztb.trading.environment.reward")
 
         # Internal state for tracking
-        self._action_counts: List[int] = [0, 0, 0]  # [BUY, SELL, HOLD]
+        self._action_counts: list[int] = [0, 0, 0]  # [BUY, SELL, HOLD]
         self._consecutive_idle_steps = 0
         self._consecutive_position_hold_steps = 0
         self._win_count = 0
@@ -267,7 +266,7 @@ class BaseRewardCalculator:
     def calculate_reward(
         self,
         action: int,
-        observation: Optional[np.ndarray],
+        observation: np.ndarray | None,
         reward: float,
         done: bool,
         info: dict,

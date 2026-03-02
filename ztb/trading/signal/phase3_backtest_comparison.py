@@ -6,14 +6,13 @@ Phase 3 Integrated Backtest System
 
 import pandas as pd
 import numpy as np
-from typing import Dict
+
 from .enhanced_risk_manager import EnhancedRiskManager
 from .statistical_validator import StatisticalValidator
 
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class IntegratedBacktestRunner:
     """統合バックテスト実行システム"""
@@ -24,7 +23,7 @@ class IntegratedBacktestRunner:
 
     def run_enhanced_backtest_aggressive(self,
                                        market_data: pd.DataFrame,
-                                       initial_balance: float = 10000) -> Dict:
+                                       initial_balance: float = 10000) -> dict:
         """
         Phase 3 Aggressiveバージョン実行
         リスク調整済み + 緩和条件
@@ -168,7 +167,7 @@ class IntegratedBacktestRunner:
         else:
             return 50.0
 
-    def _get_multi_timeframe_data(self, market_data: pd.DataFrame, current_idx: int) -> Dict[str, np.ndarray]:
+    def _get_multi_timeframe_data(self, market_data: pd.DataFrame, current_idx: int) -> dict[str, np.ndarray]:
         """マルチタイムフレームデータを取得"""
         multi_tf_data = {}
 

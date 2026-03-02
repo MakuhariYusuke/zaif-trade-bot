@@ -5,7 +5,7 @@ StrictMaskedPolicy: カスタムPPOポリシー（学習時の厳密なマスク
 違法アクションが損失計算に寄与しないことを保証する。
 """
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import torch
@@ -17,8 +17,6 @@ from stable_baselines3.common.torch_layers import (
     FlattenExtractor,
 )
 from stable_baselines3.common.type_aliases import Schedule, TensorDict
-from typing import Union
-
 
 class StrictMaskedPolicy(MaskableActorCriticPolicy):
     """
@@ -37,15 +35,15 @@ class StrictMaskedPolicy(MaskableActorCriticPolicy):
         observation_space: spaces.Space[Any],
         action_space: spaces.Space[Any],
         lr_schedule: Schedule,
-        net_arch: Optional[Dict[str, Any]] = None,
+        net_arch: dict[str, Any] | None = None,
         activation_fn: type[nn.Module] = nn.Tanh,
         ortho_init: bool = True,
         features_extractor_class: type[BaseFeaturesExtractor] = FlattenExtractor,
-        features_extractor_kwargs: Optional[Dict[str, Any]] = None,
+        features_extractor_kwargs: dict[str, Any] | None = None,
         share_features_extractor: bool = True,
         normalize_images: bool = True,
         optimizer_class: type[torch.optim.Optimizer] = torch.optim.Adam,
-        optimizer_kwargs: Optional[Dict[str, Any]] = None,
+        optimizer_kwargs: dict[str, Any] | None = None,
     ):
         """
         StrictMaskedPolicy の初期化
@@ -76,8 +74,8 @@ class StrictMaskedPolicy(MaskableActorCriticPolicy):
         self,
         obs: torch.Tensor,
         deterministic: bool = False,
-        action_masks: Optional[np.ndarray[Any, Any]] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        action_masks: np.ndarray[Any, Any] | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Forward pass with strict mask enforcement.
 
@@ -90,7 +88,7 @@ class StrictMaskedPolicy(MaskableActorCriticPolicy):
             action_masks: Action masks [batch_size, n_actions] (1=legal, 0=illegal)
 
         Returns:
-            Tuple of (actions, values, log_probs)
+            tuple of (actions, values, log_probs)
         """
         # Extract features from observation
         features = self.extract_features(obs, self.features_extractor)
@@ -142,8 +140,8 @@ class StrictMaskedPolicy(MaskableActorCriticPolicy):
         self,
         obs: torch.Tensor,
         actions: torch.Tensor,
-        action_masks: Optional[torch.Tensor] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        action_masks: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Evaluate actions with strict mask enforcement during loss calculation.
 
@@ -156,7 +154,7 @@ class StrictMaskedPolicy(MaskableActorCriticPolicy):
             action_masks: Action masks [batch_size, n_actions] (1=legal, 0=illegal)
 
         Returns:
-            Tuple of (values, log_probs, entropy)
+            tuple of (values, log_probs, entropy)
         """
         # Extract features
         features = self.extract_features(obs, self.features_extractor)
@@ -195,7 +193,7 @@ class StrictMaskedPolicy(MaskableActorCriticPolicy):
 
     def predict_values(
         self,
-        obs: Union[torch.Tensor, TensorDict],
+        obs: torch.Tensor | TensorDict,
     ) -> torch.Tensor:
         """
         Predict values for observations.

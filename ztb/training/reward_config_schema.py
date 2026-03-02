@@ -4,10 +4,11 @@ Reward Configuration Schema and Validation
 Phase 3 Day 3: Reward Config作成の型安全性確保
 YAMLファイルの検証とRewardSettingsへの変換を提供
 """
+from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import yaml
 
@@ -16,14 +17,12 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 @dataclass
 class RewardConfigValidationError(Exception):
     """Reward Config検証エラー"""
     field: str
     message: str
     value: Any = None
-
 
 class RewardConfigSchema:
     """Reward Configuration Schema定義とバリデーション"""
@@ -135,7 +134,7 @@ class RewardConfigSchema:
     }
 
     @classmethod
-    def validate(cls, config: Dict[str, Any]) -> List[str]:
+    def validate(cls, config: dict[str, Any]) -> list[str]:
         """Config検証
 
         Args:
@@ -144,7 +143,7 @@ class RewardConfigSchema:
         Returns:
             検証エラーのリスト（空なら検証成功）
         """
-        errors: List[str] = []
+        errors: list[str] = []
 
         # 必須フィールドチェック
         for field, expected_type in cls.REQUIRED_FIELDS.items():
@@ -219,7 +218,7 @@ class RewardConfigSchema:
         return errors
 
     @classmethod
-    def load_and_validate(cls, config_path: Union[str, Path]) -> Dict[str, Any]:
+    def load_and_validate(cls, config_path: str | Path) -> dict[str, Any]:
         """YAMLファイルを読み込んで検証
 
         Args:
@@ -252,8 +251,7 @@ class RewardConfigSchema:
         logger.info(f"✓ Validated config: {config.get('name', 'unknown')}")
         return config
 
-
-def load_reward_config(config_path: Union[str, Path]) -> RewardSettings:
+def load_reward_config(config_path: str | Path) -> RewardSettings:
     """YAML ConfigをRewardSettingsオブジェクトに変換
 
     Args:
@@ -270,7 +268,7 @@ def load_reward_config(config_path: Union[str, Path]) -> RewardSettings:
     config = RewardConfigSchema.load_and_validate(config_path)
 
     # RewardSettingsへの変換（YAMLキーとRewardSettings属性のマッピング）
-    settings_dict: Dict[str, Any] = {}
+    settings_dict: dict[str, Any] = {}
 
     # 基本設定
     for key in [
@@ -360,8 +358,7 @@ def load_reward_config(config_path: Union[str, Path]) -> RewardSettings:
     except Exception as e:
         raise ValueError(f"Failed to create RewardSettings: {e}") from e
 
-
-def list_available_configs(config_dir: Union[str, Path] = "configs/rewards") -> List[Path]:
+def list_available_configs(config_dir: str | Path = "configs/rewards") -> list[Path]:
     """利用可能なReward Configファイルをリスト
 
     Args:
@@ -378,10 +375,9 @@ def list_available_configs(config_dir: Union[str, Path] = "configs/rewards") -> 
     yaml_files = list(config_dir.glob("*.yaml")) + list(config_dir.glob("*.yml"))
     return sorted(yaml_files)
 
-
 def compare_configs(
-    config_paths: List[Union[str, Path]],
-) -> Dict[str, Dict[str, Any]]:
+    config_paths: list[str | Path],
+) -> dict[str, dict[str, Any]]:
     """複数のConfigを比較
 
     Args:
@@ -390,7 +386,7 @@ def compare_configs(
     Returns:
         Config名をキーとした設定辞書
     """
-    comparison: Dict[str, Dict[str, Any]] = {}
+    comparison: dict[str, dict[str, Any]] = {}
 
     for path in config_paths:
         config = RewardConfigSchema.load_and_validate(path)
@@ -408,7 +404,6 @@ def compare_configs(
         }
 
     return comparison
-
 
 __all__ = [
     "RewardConfigSchema",

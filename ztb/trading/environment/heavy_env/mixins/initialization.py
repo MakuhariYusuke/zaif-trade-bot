@@ -5,7 +5,7 @@ from __future__ import annotations
 import gc
 from collections import deque
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Iterable, Optional
 
 import numpy as np
 import pandas as pd
@@ -42,24 +42,21 @@ from ztb.utils.type_validation import TypeValidator
 if TYPE_CHECKING:
     from ztb.data.streaming_pipeline import StreamingPipeline
 
-
 logger = get_logger(__name__)
-
 
 # ---------------------------------------------------------------------------
 # Public helpers bound to HeavyTradingEnv
 # ---------------------------------------------------------------------------
 
-
 def _initialize_components(
     self: Any,
-    streaming_pipeline: Optional["StreamingPipeline"],
+    streaming_pipeline: StreamingPipeline | None,
     stream_batch_size: int,
-    df: Optional[pd.DataFrame],
+    df: pd.DataFrame | None,
 ) -> None:
     """Initialize core helper components used by the environment."""
     raw_memory_log_path = getattr(self.config, "memory_log_path", None)
-    memory_log_path: Optional[str] = None
+    memory_log_path: str | None = None
     if isinstance(raw_memory_log_path, str):
         path_candidate = Path(raw_memory_log_path)
         if not path_candidate.is_absolute():
@@ -105,12 +102,11 @@ def _initialize_components(
         episode_id_column=episode_id_column,
     )
 
-
 def _initialize_data_manager(
     self: Any,
-    streaming_pipeline: Optional["StreamingPipeline"],
+    streaming_pipeline: StreamingPipeline | None,
     stream_batch_size: int,
-    df: Optional[pd.DataFrame],
+    df: pd.DataFrame | None,
 ) -> None:
     """Initialize the DataManager component."""
     from ztb.trading.environment.components.data_manager import DataManager
@@ -124,7 +120,6 @@ def _initialize_data_manager(
         timestamp_column=self._timestamp_column,
         episode_id_column=self._episode_id_column,
     )
-
 
 def _initialize_data_structures(self: Any) -> None:
     """Prepare deque-based histories and fast-access buffers."""
@@ -158,8 +153,7 @@ def _initialize_data_structures(self: Any) -> None:
 
     self.ACTION_COUNTS_INITIAL = [0] * NUM_DISCRETE_ACTIONS
 
-
-def _initialize_data(self: Any, df: Optional[pd.DataFrame]) -> None:
+def _initialize_data(self: Any, df: pd.DataFrame | None) -> None:
     """Load baseline market data either from dataframe, CSV file, or streaming snapshot."""
     if df is not None:
         base_df = df
@@ -203,8 +197,7 @@ def _initialize_data(self: Any, df: Optional[pd.DataFrame]) -> None:
     self.n_steps = len(self.df)
     self._base_columns = list(self.df.columns)
 
-
-def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> None:
+def _initialize_features_and_spaces(self: Any, max_features: int | None) -> None:
     """Derive features, apply limits, and build observation/action spaces."""
     # Check if features are specified in config (schema-based approach)
     config_features = getattr(self.config, "feature_names", None)
@@ -517,7 +510,6 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
         self.action_space = spaces.Discrete(NUM_DISCRETE_ACTIONS)
         logger.info("Using discrete action space (PPO-compatible)")
 
-
 def _setup_scaler(self: Any) -> None:
     """Setup feature scaler from config or schema data."""
     # Check if scaler data is provided in config
@@ -535,8 +527,7 @@ def _setup_scaler(self: Any) -> None:
         self.scaler_std = None
         logger.info("No scaler data provided")
 
-
-def _compute_scaler_from_data(self: Any, train_end_index: Optional[int] = None) -> None:
+def _compute_scaler_from_data(self: Any, train_end_index: int | None = None) -> None:
     """
     データからスケーラーを計算（標準化用の平均・標準偏差）。
     データリークを防ぐため、訓練データのみを使用する。
@@ -593,7 +584,6 @@ def _compute_scaler_from_data(self: Any, train_end_index: Optional[int] = None) 
         f"mean range [{self.scaler_mean.min():.2f}, {self.scaler_mean.max():.2f}], "
         f"std range [{self.scaler_std.min():.2f}, {self.scaler_std.max():.2f}]"
     )
-
 
 def _initialize_remaining_components(self: Any) -> None:
     """Finalize runtime component setup once data is ready."""
@@ -806,15 +796,13 @@ def _initialize_remaining_components(self: Any) -> None:
 
     self.action_history = deque(maxlen=self._max_action_history)
 
-
 # ---------------------------------------------------------------------------
 # Internal helpers used by the public initialization functions
 # ---------------------------------------------------------------------------
 
-
 def _apply_curated_feature_filter(
-    curated_features_spec: str, all_features: List[str]
-) -> List[str]:
+    curated_features_spec: str, all_features: list[str]
+) -> list[str]:
     """Apply curated feature whitelist if available."""
     if "::" not in curated_features_spec:
         logger.warning(
@@ -876,10 +864,9 @@ def _apply_curated_feature_filter(
     )
     return filtered
 
-
 def _resolve_max_features_limit(
-    self: Any, max_features: Optional[int]
-) -> Optional[int]:
+    self: Any, max_features: int | None
+) -> int | None:
     """Resolve the effective max_features limit from various config locations."""
     max_features_limit = max_features
     if max_features_limit is None and hasattr(self.config, "get"):
@@ -894,7 +881,6 @@ def _resolve_max_features_limit(
         max_features_limit = getattr(self.config, "max_features", None)
     return max_features_limit if max_features_limit else None
 
-
 def _enforce_feature_limit(self: Any, max_features_limit: int) -> None:
     """Keep only the highest variance features within the specified limit."""
     logger.warning(
@@ -904,7 +890,7 @@ def _enforce_feature_limit(self: Any, max_features_limit: int) -> None:
         extra={"original_count": len(self.features), "limit": max_features_limit},
     )
 
-    feature_variances: List[Tuple[str, float]] = []
+    feature_variances: list[tuple[str, float]] = []
     for feature_name in self.features:
         if feature_name not in self.df.columns:
             continue
@@ -931,7 +917,6 @@ def _enforce_feature_limit(self: Any, max_features_limit: int) -> None:
         extra={"removed": removed_count, "final_count": len(self.features)},
     )
 
-
 def _refresh_features(self: Any) -> None:
     """Update cached feature list and observation space when schema changes."""
     exclude_cols = ["ts", "timestamp", "exchange", "pair", "episode_id"]
@@ -944,7 +929,6 @@ def _refresh_features(self: Any) -> None:
         shape=(len(self.features),),
         dtype=np.float32,
     )
-
 
 def _build_fast_access_buffers(
     self: Any,
@@ -1037,13 +1021,12 @@ def _build_fast_access_buffers(
     else:
         self._episode_id_array = None
 
-
 def _extract_numeric_column(
     self: Any,
     candidates: Iterable[str],
     *,
-    fallback: Optional[float],
-) -> Optional[NDArray[np.float32]]:
+    fallback: float | None,
+) -> NDArray[np.float32] | None:
     """Extract contiguous float32 array from first available numeric column."""
     for name in candidates:
         if name not in self.df.columns:
@@ -1067,27 +1050,26 @@ def _extract_numeric_column(
 
     return np.full(self.n_steps, fallback, dtype=np.float32)
 
-
 def _select_features_by_correlation_in_env(
     self: Any,
-    features: List[str],
+    features: list[str],
     correlation_threshold: float = 0.95,
     *,
-    target_feature_count: Optional[int] = None,
-) -> Tuple[List[str], Dict[str, List[str]]]:
+    target_feature_count: int | None = None,
+) -> tuple[list[str], dict[str, list[str]]]:
     """
     Select features by removing highly correlated ones based on current DataFrame.
 
     Args:
-        features: List of feature names to consider.
+        features: list of feature names to consider.
         correlation_threshold: Correlation threshold above which features are considered redundant.
         target_feature_count: Optional hard limit for remaining features after reduction.
 
     Returns:
-        Tuple[List[str], Dict[str, List[str]]]: reduced feature list (preserving original order)
+        tuple[list[str], dict[str, list[str]]]: reduced feature list (preserving original order)
         and metadata describing removed feature categories.
     """
-    reduction_stats: Dict[str, List[str]] = {
+    reduction_stats: dict[str, list[str]] = {
         "non_numeric": [],
         "constant": [],
         "correlated": [],

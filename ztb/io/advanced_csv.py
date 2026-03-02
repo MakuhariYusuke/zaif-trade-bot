@@ -12,18 +12,17 @@ import mmap
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from pathlib import Path
-from typing import Iterable, Optional, Union
+from typing import Iterable
 
 import pandas as pd
 
 from ztb.io.data_loader import DataLoader
 from ztb.trading.environment.constants import BYTES_PER_MB
 
-
 def read_csv_mmap(
-    file_path: Union[str, Path],
+    file_path: str | Path,
     *,
-    chunk_size: Optional[int] = None,
+    chunk_size: int | None = None,
     enable_mmap: bool = True,
     min_mmap_bytes: int = 10 * BYTES_PER_MB,
     **kwargs,
@@ -71,11 +70,10 @@ def read_csv_mmap(
         finally:
             mm.close()
 
-
 async def read_csv_async(
-    file_path: Union[str, Path],
+    file_path: str | Path,
     *,
-    executor: Optional[ThreadPoolExecutor] = None,
+    executor: ThreadPoolExecutor | None = None,
     **kwargs,
 ) -> pd.DataFrame:
     """Read a CSV asynchronously using a thread executor."""
@@ -85,9 +83,8 @@ async def read_csv_async(
         return await loop.run_in_executor(None, func)
     return await loop.run_in_executor(executor, func)
 
-
 async def read_csvs_async(
-    file_paths: Iterable[Union[str, Path]],
+    file_paths: Iterable[str | Path],
     *,
     max_workers: int = 4,
     **kwargs,
@@ -104,9 +101,8 @@ async def read_csvs_async(
     finally:
         executor.shutdown(wait=True)
 
-
 def prefetch_csv(
-    file_paths: Iterable[Union[str, Path]],
+    file_paths: Iterable[str | Path],
     *,
     max_workers: int = 4,
     **kwargs,
@@ -117,9 +113,8 @@ def prefetch_csv(
         executor.submit(read_csv_mmap, path, **kwargs)
     return executor
 
-
 def read_csv_cached(
-    file_path: Union[str, Path],
+    file_path: str | Path,
     *,
     use_cache: bool = True,
     max_cache_entries: int = 32,

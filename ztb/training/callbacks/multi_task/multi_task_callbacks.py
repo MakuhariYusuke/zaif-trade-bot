@@ -10,7 +10,6 @@ task interference assessment.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import numpy as np
 
@@ -25,14 +24,11 @@ from ztb.training.callbacks.shared.utils.value_utils import (
 )
 from ztb.types.common import ObjectMap
 
-
 _HISTORY_LIMIT = 1_000
 _EPSILON = 1e-8
 
-
 def _append_bounded(history: list[float], value: float, max_len: int = _HISTORY_LIMIT) -> None:
     _append_bounded_value(history, value, max_len)
-
 
 class _BaseFrequencyCallback(NoOpMemoryOptimizedCallback):
     """Shared base class for frequency-gated callback processing."""
@@ -43,12 +39,11 @@ class _BaseFrequencyCallback(NoOpMemoryOptimizedCallback):
         self.logger = logging.getLogger(__name__)
 
     def _should_process(
-        self, context: LearningContext, logs: Optional[ObjectMap]
+        self, context: LearningContext, logs: ObjectMap | None
     ) -> bool:
         if logs is None:
             return False
         return context.epoch % self.compute_frequency == 0
-
 
 class TaskBalancingCallback(_BaseFrequencyCallback):
     """
@@ -83,7 +78,7 @@ class TaskBalancingCallback(_BaseFrequencyCallback):
         self.imbalance_warnings: list[str] = []
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         """Monitor task balancing."""
         if not self._should_process(context, logs):
@@ -225,14 +220,13 @@ class TaskBalancingCallback(_BaseFrequencyCallback):
 
         return stats
 
-
 class SharedRepresentationCallback(_BaseFrequencyCallback):
     """Shared representation monitoring callback."""
 
     def __init__(
         self,
         compute_frequency: int = 1,
-        representation_layers: Optional[list[str]] = None,
+        representation_layers: list[str] | None = None,
     ):
         super().__init__(compute_frequency=compute_frequency)
         if representation_layers:
@@ -250,7 +244,7 @@ class SharedRepresentationCallback(_BaseFrequencyCallback):
         self.layer_gradients: dict[str, list[float]] = {}
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         """Monitor shared representations."""
         if not self._should_process(context, logs):
@@ -365,7 +359,6 @@ class SharedRepresentationCallback(_BaseFrequencyCallback):
 
         return stats
 
-
 class TaskInterferenceCallback(_BaseFrequencyCallback):
     """Task interference monitoring callback."""
 
@@ -390,7 +383,7 @@ class TaskInterferenceCallback(_BaseFrequencyCallback):
         self.negative_transfer_detected = False
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         if not self._should_process(context, logs):
             return
@@ -542,7 +535,6 @@ class TaskInterferenceCallback(_BaseFrequencyCallback):
 
         return stats
 
-
 def create_shared_representation(**kwargs: object) -> SharedRepresentationCallback:
     """Create a shared representation callback with default settings."""
     compute_frequency = kwargs.get("compute_frequency", 1)
@@ -557,7 +549,6 @@ def create_shared_representation(**kwargs: object) -> SharedRepresentationCallba
         compute_frequency=parsed_frequency,
         representation_layers=parsed_layers,
     )
-
 
 def create_task_interference(
     task_names: list[str], **kwargs: object

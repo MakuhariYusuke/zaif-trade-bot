@@ -4,14 +4,13 @@
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 import torch  # type: ignore
 import torch.nn as nn
 from ztb.trading.environment.constants import BYTES_PER_MB  # type: ignore
 
 logger = logging.getLogger(__name__)
-
 
 class DynamicQuantization:
     """動的量子化クラス
@@ -72,7 +71,6 @@ class DynamicQuantization:
                     dummy_input = torch.randn(batch_size, 256)
                     model(dummy_input)
 
-
 class StaticQuantization:
     """静的量子化クラス
 
@@ -87,7 +85,7 @@ class StaticQuantization:
         self.dtype = dtype
 
     def quantize_model(
-        self, model: nn.Module, calibration_data: List[torch.Tensor]
+        self, model: nn.Module, calibration_data: list[torch.Tensor]
     ) -> nn.Module:
         """モデルを静的量子化
 
@@ -114,7 +112,7 @@ class StaticQuantization:
         return model_quantized
 
     def _calibrate_with_data(
-        self, model: nn.Module, calibration_data: List[torch.Tensor]
+        self, model: nn.Module, calibration_data: list[torch.Tensor]
     ):
         """キャリブレーションデータでキャリブレーション"""
         model.eval()
@@ -125,7 +123,6 @@ class StaticQuantization:
                     model(data)
                 except Exception as e:
                     logger.warning(f"キャリブレーション中にエラー: {e}")
-
 
 class QuantizationAwareTraining:
     """量子化対応トレーニングクラス
@@ -158,12 +155,11 @@ class QuantizationAwareTraining:
         logger.info("量子化モデル変換完了")
         return model_quantized
 
-
 class QuantizationUtils:
     """量子化ユーティリティクラス"""
 
     @staticmethod
-    def get_model_size(model: nn.Module) -> Dict[str, float]:
+    def get_model_size(model: nn.Module) -> dict[str, float]:
         """モデルのサイズ情報を取得"""
         param_size = 0
         buffer_size = 0
@@ -185,7 +181,7 @@ class QuantizationUtils:
     @staticmethod
     def measure_inference_time(
         model: nn.Module, input_data: torch.Tensor, num_runs: int = 100
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """推論時間を測定"""
         import time
 
@@ -217,7 +213,7 @@ class QuantizationUtils:
     @staticmethod
     def compare_models(
         original_model: nn.Module, quantized_model: nn.Module, test_data: torch.Tensor
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """オリジナルモデルと量子化モデルの比較"""
 
         # サイズ比較

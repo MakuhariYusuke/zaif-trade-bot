@@ -4,16 +4,12 @@ v3.6.6結果分析 + 包括的バグ診断
 """
 
 import re
-from typing import Dict, List, Tuple
 
 CONSOLE_OUTPUT = """
 |    pan_action_counts             | [21, 6, 5]                           |
 |    pan_action_counts             | [25, 3, 4]                           |
 |    pan_action_counts             | [22, 3, 7]                           |
 """
-
-
-
 
 def main() -> None:
     print("=" * 80)
@@ -53,7 +49,7 @@ def main() -> None:
     print("📊 VERSION COMPARISON")
     print("=" * 80)
 
-    versions: Dict[str, Tuple[float, float, float]] = {
+    versions: dict[str, tuple[float, float, float]] = {
         "v3.6.4": (79.2, 8.3, 12.5),
         "v3.6.5": (73.4, 14.1, 12.5),
         "v3.6.6": (
@@ -203,7 +199,7 @@ def main() -> None:
     4. Check if profit_bonus is consistently non-zero
 
   FIX Option 1: Zero Base Penalties
-    Set action_penalty_scale = 0.0 (already done?)
+    set action_penalty_scale = 0.0 (already done?)
     Verify base penalties are actually disabled
     May need to modify _calculate_full_reward logic
 
@@ -263,7 +259,6 @@ def main() -> None:
     A balanced but unprofitable model is useless
     """
     )
-
 
 if __name__ == "__main__":
     main()

@@ -5,7 +5,7 @@ Model Selection and Rollback Logic for A/B Testing
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 from .config import ABTestConfig
 from .types import (
@@ -18,21 +18,20 @@ from .types import (
 
 logger = logging.getLogger(__name__)
 
-
 class ModelSelector:
     """モデル選択・ロールバックエンジン"""
 
     def __init__(self, config: ABTestConfig):
         self.config = config
-        self.deployment_history: List[Dict[str, Any]] = []
-        self.rollback_triggers: Dict[str, Callable] = {}
+        self.deployment_history: list[dict[str, Any]] = []
+        self.rollback_triggers: dict[str, Callable] = {}
 
     def select_model(
         self,
         test_config: ABTestConfiguration,
         test_state: ABTestState,
         result_summary: ABTestResultSummary,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         テスト結果に基づいてモデルを選択
         リスク評価と自動化を考慮
@@ -97,7 +96,7 @@ class ModelSelector:
         test_config: ABTestConfiguration,
         test_state: ABTestState,
         result_summary: ABTestResultSummary,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """デプロイメントリスクを評価"""
         risks = {
             "regression_risk": "low",
@@ -175,9 +174,9 @@ class ModelSelector:
     def _determine_action(
         self,
         result_summary: ABTestResultSummary,
-        risk_assessment: Dict[str, Any],
+        risk_assessment: dict[str, Any],
         confidence_level: float,
-    ) -> tuple[str, List[str]]:
+    ) -> tuple[str, list[str]]:
         """アクションを決定"""
         reasoning = []
 
@@ -207,7 +206,7 @@ class ModelSelector:
         return "hold", reasoning
 
     def _calculate_traffic_percentage(
-        self, confidence_level: float, risk_assessment: Dict[str, Any]
+        self, confidence_level: float, risk_assessment: dict[str, Any]
     ) -> float:
         """推奨トラフィック割合を計算"""
         base_percentage = confidence_level * 50  # 最大50%
@@ -225,7 +224,7 @@ class ModelSelector:
         self,
         test_id: str,
         selected_variant: ABTestVariant,
-        risk_assessment: Dict[str, Any],
+        risk_assessment: dict[str, Any],
     ):
         """ロールバックトリガーを設定"""
         trigger_conditions = []
@@ -279,7 +278,7 @@ class ModelSelector:
         self,
         test_id: str,
         selected_variant: ABTestVariant,
-        conditions: List[Dict[str, Any]],
+        conditions: list[dict[str, Any]],
     ) -> Callable:
         """ロールバックトリガーを作成"""
 
@@ -322,7 +321,7 @@ class ModelSelector:
         logger.info(f"Executed rollback for test {test_id}: {reason}")
 
     def check_rollback_conditions(
-        self, test_id: str, metrics: Dict[str, float], timestamp: datetime
+        self, test_id: str, metrics: dict[str, float], timestamp: datetime
     ) -> bool:
         """ロールバック条件をチェック"""
         if test_id not in self.rollback_triggers:
@@ -338,8 +337,8 @@ class ModelSelector:
         return False
 
     def get_deployment_history(
-        self, test_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, test_id: str | None = None
+    ) -> list[dict[str, Any]]:
         """デプロイメント履歴を取得"""
         if test_id:
             return [
@@ -349,7 +348,7 @@ class ModelSelector:
             ]
         return self.deployment_history.copy()
 
-    def get_active_rollback_triggers(self) -> List[str]:
+    def get_active_rollback_triggers(self) -> list[str]:
         """アクティブなロールバックトリガーを取得"""
         return list(self.rollback_triggers.keys())
 
@@ -368,13 +367,12 @@ class ModelSelector:
 
         return False
 
-
 class TrafficManager:
     """トラフィック管理エンジン"""
 
     def __init__(self, config: ABTestConfig):
         self.config = config
-        self.traffic_allocations: Dict[str, Dict[str, float]] = {}
+        self.traffic_allocations: dict[str, dict[str, float]] = {}
 
     def allocate_traffic(
         self,
@@ -382,7 +380,7 @@ class TrafficManager:
         variant_a: ABTestVariant,
         variant_b: ABTestVariant,
         percentage: float,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """トラフィックを割り当て"""
         allocation = {
             variant_a.variant_id: (100 - percentage) / 100,
@@ -400,7 +398,7 @@ class TrafficManager:
         target_percentage: float,
         steps: int = 5,
         interval_minutes: int = 30,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """トラフィックを段階的に増加"""
         if test_id not in self.traffic_allocations:
             raise ValueError(f"Test {test_id} not found")
@@ -427,7 +425,7 @@ class TrafficManager:
 
         return ramp_schedule
 
-    def get_traffic_allocation(self, test_id: str) -> Optional[Dict[str, float]]:
+    def get_traffic_allocation(self, test_id: str) -> dict[str, float] | None:
         """トラフィック割り当てを取得"""
         return self.traffic_allocations.get(test_id)
 

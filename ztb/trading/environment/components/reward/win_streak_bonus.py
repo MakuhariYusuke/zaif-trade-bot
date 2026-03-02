@@ -4,9 +4,6 @@ Win Streak Bonus Calculator Component.
 This component calculates bonuses for consecutive winning trades.
 """
 
-from typing import List
-
-
 class WinStreakBonusCalculator:
     """
     Calculates bonus for consecutive winning trades.
@@ -17,7 +14,7 @@ class WinStreakBonusCalculator:
 
     def calculate(
         self,
-        reward_history: List[float],
+        reward_history: list[float],
         streak_window: int = 5,
         min_streak: int = 3,
         bonus_per_win: float = 0.01,

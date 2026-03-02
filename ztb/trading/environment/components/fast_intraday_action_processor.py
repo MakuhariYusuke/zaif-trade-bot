@@ -1,17 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Union
 
 import numpy as np
-
 
 @dataclass(frozen=True)
 class ActionParseResult:
     target_pos_fraction: float
     ttl_fraction: float
     action_value: float
-
 
 @dataclass(frozen=True)
 class TTLProcessResult:
@@ -20,7 +17,6 @@ class TTLProcessResult:
     cooldown_counter: int
     ttl_forced_exit: bool
     cooldown_triggered: bool
-
 
 class FastIntradayActionProcessor:
     """Parse and gate actions for FastIntradayEnvV456."""
@@ -31,7 +27,7 @@ class FastIntradayActionProcessor:
         self.cooldown_steps = int(cooldown_steps)
         self.ttl_enabled = action_space_type != "1d_position"
 
-    def parse_action(self, action: Union[np.ndarray, float, int, list, tuple]) -> ActionParseResult:
+    def parse_action(self, action: np.ndarray | float | int | list | tuple) -> ActionParseResult:
         action_array = self._coerce_action(action)
         action_value = float(action_array[0]) if action_array.size > 0 else 0.0
         target_pos_fraction = float(np.clip(action_value, -1.0, 1.0))
@@ -83,7 +79,7 @@ class FastIntradayActionProcessor:
         )
 
     @staticmethod
-    def _coerce_action(action: Union[np.ndarray, float, int, list, tuple]) -> np.ndarray:
+    def _coerce_action(action: np.ndarray | float | int | list | tuple) -> np.ndarray:
         if isinstance(action, np.ndarray):
             return action.astype(np.float32).reshape(-1)
         if isinstance(action, (list, tuple)):

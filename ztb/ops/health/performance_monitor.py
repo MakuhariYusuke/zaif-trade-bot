@@ -8,7 +8,7 @@ and predictive monitoring for system resources and trading performance.
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 import psutil
 
@@ -16,7 +16,6 @@ from ztb.io.json_io import read_json_array, write_json
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 @dataclass
 class PerformanceSnapshot:
@@ -28,9 +27,8 @@ class PerformanceSnapshot:
     disk_usage_percent: float
     network_bytes_sent: int
     network_bytes_recv: int
-    gpu_memory_used_mb: Optional[float] = None
-    gpu_utilization_percent: Optional[float] = None
-
+    gpu_memory_used_mb: float | None = None
+    gpu_utilization_percent: float | None = None
 
 @dataclass
 class PerformanceTrend:
@@ -45,7 +43,6 @@ class PerformanceTrend:
     is_concerning: bool
     analysis: str
 
-
 class PerformanceHistoryEntry(TypedDict):
     """Serialized performance snapshot stored on disk."""
 
@@ -57,7 +54,6 @@ class PerformanceHistoryEntry(TypedDict):
     network_bytes_recv: int
     gpu_memory_used_mb: float | None
     gpu_utilization_percent: float | None
-
 
 class HealthPerformanceMonitor:
     """
@@ -154,7 +150,7 @@ class HealthPerformanceMonitor:
             return False
 
     @staticmethod
-    def _parse_history_entry(entry: object) -> Optional[PerformanceHistoryEntry]:
+    def _parse_history_entry(entry: object) -> PerformanceHistoryEntry | None:
         """Parse one serialized history entry, returning None if invalid."""
         if not isinstance(entry, dict):
             return None
@@ -248,7 +244,7 @@ class HealthPerformanceMonitor:
 
     def _analyze_metric_trend(
         self, snapshots: list[PerformanceSnapshot], metric_attr: str, metric_name: str
-    ) -> Optional[PerformanceTrend]:
+    ) -> PerformanceTrend | None:
         """Analyze trend for a specific metric."""
         if len(snapshots) < 2:
             return None
@@ -395,10 +391,8 @@ class HealthPerformanceMonitor:
             },
         }
 
-
 # Global performance monitor instance
-_performance_monitor: Optional[HealthPerformanceMonitor] = None
-
+_performance_monitor: HealthPerformanceMonitor | None = None
 
 def get_performance_monitor() -> HealthPerformanceMonitor:
     """Get the global performance monitor instance."""
@@ -406,7 +400,6 @@ def get_performance_monitor() -> HealthPerformanceMonitor:
     if _performance_monitor is None:
         _performance_monitor = HealthPerformanceMonitor()
     return _performance_monitor
-
 
 def run_performance_check() -> dict[str, object]:
     """Run a performance check and return results."""

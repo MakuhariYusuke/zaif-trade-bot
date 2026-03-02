@@ -9,7 +9,7 @@ import gc
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import pandas as pd
 import psutil
@@ -35,17 +35,16 @@ try:
 except ImportError:
     MEMORY_OPTIMIZATION_AVAILABLE = False
 
-
 def compute_features_batch(
     df: pd.DataFrame,
-    feature_names: Optional[List[str]] = None,
+    feature_names: list[str] | None = None,
     report_interval: int = 10000,
     verbose: bool = True,
-    enable_chunking: Optional[bool] = None,
-    chunk_size: Optional[int] = None,
+    enable_chunking: bool | None = None,
+    chunk_size: int | None = None,
     return_timing: bool = False,
     optimize_memory: bool = True,
-) -> pd.DataFrame | Tuple[pd.DataFrame, Dict[str, float]]:
+) -> pd.DataFrame | tuple[pd.DataFrame, dict[str, float]]:
     """Wrapper that delegates to the FeatureRegistry batch computation with memory optimization."""
     result = FeatureRegistry.compute_features_batch(
         df,
@@ -72,7 +71,6 @@ def compute_features_batch(
 
     return result
 
-
 class FeatureEngine(FeatureCalculator):
     """Feature computation engine implementing FeatureCalculator protocol."""
 
@@ -83,10 +81,9 @@ class FeatureEngine(FeatureCalculator):
         return compute_features_batch(data)
 
     @property
-    def feature_names(self) -> List[str]:
+    def feature_names(self) -> list[str]:
         """Get list of feature names."""
         return list(FeatureRegistry._registry.keys())
-
 
 def run_100k_experiment() -> pd.DataFrame:
     """Run 100k sample experiment with cache disabled"""
@@ -129,7 +126,6 @@ def run_100k_experiment() -> pd.DataFrame:
     print(f"\nDataFrame dtypes: {dict(dtypes_info)}")
 
     return features_df
-
 
 if __name__ == "__main__":
     # Run 100k experiment

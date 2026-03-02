@@ -6,7 +6,7 @@
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
@@ -14,7 +14,6 @@ from ztb.trading.environment.constants import BYTES_PER_GB
 from ztb.utils.constants import DEFAULT_MAX_BATCH_SIZE, DEFAULT_MAX_MEMORY_GB, DEFAULT_NUM_WORKERS
 
 logger = logging.getLogger(__name__)
-
 
 class InferenceOptimizer:
     """推論最適化クラス
@@ -184,7 +183,6 @@ class InferenceOptimizer:
             with torch.no_grad():
                 return self.model(*inputs)
 
-
 class BatchProcessor:
     """バッチ処理最適化クラス
 
@@ -215,7 +213,7 @@ class BatchProcessor:
         # バッチ処理タイマー
         self.batch_timer = None
 
-    def submit_request(self, request_id: str, inputs: Tuple[torch.Tensor, ...]) -> None:
+    def submit_request(self, request_id: str, inputs: tuple[torch.Tensor, ...]) -> None:
         """推論リクエストを送信"""
         with self.lock:
             self.request_queue.append((request_id, inputs))
@@ -227,7 +225,7 @@ class BatchProcessor:
         self.batch_timer = threading.Timer(0.01, self._process_batch)
         self.batch_timer.start()
 
-    def get_result(self, request_id: str) -> Optional[torch.Tensor]:
+    def get_result(self, request_id: str) -> torch.Tensor | None:
         """推論結果を取得"""
         return self.result_dict.get(request_id)
 
@@ -256,8 +254,8 @@ class BatchProcessor:
             logger.error(f"バッチ処理エラー: {e}")
 
     def _collate_batch(
-        self, inputs_list: List[Tuple[torch.Tensor, ...]]
-    ) -> Tuple[torch.Tensor, ...]:
+        self, inputs_list: list[tuple[torch.Tensor, ...]]
+    ) -> tuple[torch.Tensor, ...]:
         """入力をバッチ化"""
         if not inputs_list:
             return ()
@@ -270,7 +268,6 @@ class BatchProcessor:
             batched_inputs.append(batched)
 
         return tuple(batched_inputs)
-
 
 class MemoryManager:
     """メモリ管理クラス
@@ -286,7 +283,7 @@ class MemoryManager:
         self.max_memory_gb = max_memory_gb
         self.memory_history = []
 
-    def monitor_memory(self) -> Dict[str, float]:
+    def monitor_memory(self) -> dict[str, float]:
         """メモリ使用量を監視"""
         if torch.cuda.is_available():
             allocated = torch.cuda.memory_allocated() / BYTES_PER_GB
@@ -316,7 +313,7 @@ class MemoryManager:
         if len(self.memory_history) > 1000:
             self.memory_history = self.memory_history[-500:]
 
-    def get_memory_stats(self) -> Dict[str, Any]:
+    def get_memory_stats(self) -> dict[str, Any]:
         """メモリ統計を取得"""
         if not self.memory_history:
             return {}

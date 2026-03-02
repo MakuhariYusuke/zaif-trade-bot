@@ -4,27 +4,24 @@ Risk profile management for trading strategies.
 Provides preset risk management configurations and validation.
 """
 
-from typing import Dict, Optional
-
 from ztb.config.schemas.zaif import RiskProfileConfig
-
 
 class RiskProfileManager:
     """Manages risk profiles for trading strategies."""
 
     def __init__(self) -> None:
-        self._profiles: Dict[str, RiskProfileConfig] = {}
+        self._profiles: dict[str, RiskProfileConfig] = {}
 
     def add_profile(self, profile: RiskProfileConfig) -> None:
         """Add a risk profile."""
         self._profiles[profile.name] = profile
 
-    def get_profile(self, name: str) -> Optional[RiskProfileConfig]:
+    def get_profile(self, name: str) -> RiskProfileConfig | None:
         """Get a risk profile by name."""
         return self._profiles.get(name)
 
-    def list_profiles(self) -> Dict[str, RiskProfileConfig]:
-        """List all available risk profiles."""
+    def list_profiles(self) -> dict[str, RiskProfileConfig]:
+        """list all available risk profiles."""
         return self._profiles.copy()
 
     def validate_position_size(
@@ -69,16 +66,13 @@ class RiskProfileManager:
 
         return min(position_size, max_size)
 
-
 # Global instance
 _risk_manager = RiskProfileManager()
-
 
 def get_risk_manager() -> RiskProfileManager:
     """Get global risk profile manager."""
     return _risk_manager
 
-
-def get_profile(name: str) -> Optional[RiskProfileConfig]:
+def get_profile(name: str) -> RiskProfileConfig | None:
     """Convenience function to get a risk profile."""
     return _risk_manager.get_profile(name)

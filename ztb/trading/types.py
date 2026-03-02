@@ -1,10 +1,9 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, Optional, Tuple, TypedDict
+from typing import Any, TypedDict
 
 from ztb.types.common import ConfigDict
-
 
 class MarketState(TypedDict, total=False):
     """
@@ -16,15 +15,14 @@ class MarketState(TypedDict, total=False):
     close: float
     atr: float
     volume: float
-    timestamp: Optional[Any]
-
+    timestamp: Any | None
 
 @dataclass
 class PositionManagementConfig:
     """ポジション管理設定"""
 
     def __init__(self, **kwargs):
-        """Dict から設定を初期化"""
+        """dict から設定を初期化"""
         for key, value in kwargs.items():
             if hasattr(self, key):
                 setattr(self, key, value)
@@ -66,7 +64,6 @@ class PositionManagementConfig:
     sizing_update_interval: int = 300  # 5分ごと
     market_condition_adjustment: bool = True  # 市場状況に応じた調整
 
-
 @dataclass
 class PortfolioState:
     """ポートフォリオ状態"""
@@ -78,7 +75,7 @@ class PortfolioState:
     unrealized_pnl: float  # 未実現損益
     realized_pnl: float  # 実現損益
     total_risk: float  # 総リスク
-    positions: Dict[str, Any] = field(default_factory=dict)  # Position 型は循環を避けるため Any
+    positions: dict[str, Any] = field(default_factory=dict)  # Position 型は循環を避けるため Any
     timestamp: datetime = field(default_factory=datetime.now)
 
     @property
@@ -99,7 +96,6 @@ class PortfolioState:
         if self.total_risk > 0:
             return self.portfolio_return / self.total_risk
         return 0.0
-
 
 @dataclass
 class PositionSignal:

@@ -13,6 +13,5 @@ main = create_simple_main_template(
     "SAC v395a Test - 1k timesteps quick iteration"
 )
 
-
 if __name__ == "__main__":
     main()

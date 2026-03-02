@@ -5,7 +5,7 @@ This module provides standardized PPO configurations to reduce duplication
 across training scripts and improve consistency.
 """
 
-from typing import Dict, List, Optional, TypedDict
+from typing import Optional, TypedDict
 
 # Common constants used across training modules
 DEFAULT_REWARD_SCALING = 6.0  # Optimized value from hyperparameter search
@@ -23,9 +23,8 @@ STAGE_TRANSITION_RATIO = 0.20  # 5-20%: Cosine warmup for weights/λ
 STAGE_MAIN_RATIO = 0.80  # 20-80%: Main training (standard settings)
 STAGE_FINAL_RATIO = 1.00  # 80-100%: Cosine annealing LR, early stop with 3 conditions
 
-
 # Helper functions to calculate stage boundaries based on total steps
-def get_stage_boundaries(total_timesteps: int) -> Dict[str, int]:
+def get_stage_boundaries(total_timesteps: int) -> dict[str, int]:
     """
     Calculate stage boundaries based on total training steps.
 
@@ -33,7 +32,7 @@ def get_stage_boundaries(total_timesteps: int) -> Dict[str, int]:
         total_timesteps: Total number of training steps
 
     Returns:
-        Dict with stage boundaries (warmup_end, transition_end, main_end, final_end)
+        dict with stage boundaries (warmup_end, transition_end, main_end, final_end)
 
     Example:
         For 1M steps:
@@ -49,7 +48,6 @@ def get_stage_boundaries(total_timesteps: int) -> Dict[str, int]:
         "final_end": int(total_timesteps * STAGE_FINAL_RATIO),
     }
 
-
 # Checkpoint and evaluation (adaptive)
 CHECKPOINT_INTERVAL_RATIO = (
     0.025  # Save checkpoint every 2.5% of total steps (1M → 25k)
@@ -57,7 +55,6 @@ CHECKPOINT_INTERVAL_RATIO = (
 ROLLING_OOS_STEPS = (
     500  # Paper trade 500 steps for rolling OOS eval (extended from 300)
 )
-
 
 def get_checkpoint_interval(total_timesteps: int) -> int:
     """
@@ -76,7 +73,6 @@ def get_checkpoint_interval(total_timesteps: int) -> int:
     """
     return int(total_timesteps * CHECKPOINT_INTERVAL_RATIO)
 
-
 # Monitoring thresholds (early stop conditions)
 MIN_LEGAL_SELL_RATE = 0.12  # legal_sell_rate < 0.12 for patience period → stop
 SELL_RATE_PATIENCE_RATIO = 0.005  # Patience as ratio of total steps (1M → 5k)
@@ -84,7 +80,6 @@ SELL_RATE_PATIENCE_RATIO = 0.005  # Patience as ratio of total steps (1M → 5k)
 GRAD_NORM_SELL_MIN = 1e-6  # grad_norm(SELL) ≈ 0 → stop (gradient collapse)
 SHARPE_PROXY_THRESHOLD = 0.0  # Sharpe_proxy ≤ 0 for patience evals → branch stop
 SHARPE_PATIENCE_EVALS = 2  # Patience for low Sharpe (in evaluation counts)
-
 
 def get_sell_rate_patience(total_timesteps: int) -> int:
     """
@@ -102,7 +97,6 @@ def get_sell_rate_patience(total_timesteps: int) -> int:
         - 2M steps → 10,000
     """
     return int(total_timesteps * SELL_RATE_PATIENCE_RATIO)
-
 
 # KL divergence monitoring
 KL_VIOLATION_THRESHOLD = 0.5  # KL > 0.5 → potential policy collapse
@@ -135,7 +129,6 @@ DEFAULT_REWARD_VOLATILITY_PENALTY_SCALE = 0.05
 DEFAULT_REWARD_SHARPE_BONUS_SCALE = 0.02
 DEFAULT_REWARD_CLIP_VALUE = 10000.0
 
-
 class PPOConfig(TypedDict, total=False):
     """Type definition for PPO configuration."""
 
@@ -147,14 +140,14 @@ class PPOConfig(TypedDict, total=False):
     gamma: float
     gae_lambda: float
     clip_range: float
-    clip_range_vf: Optional[float]
+    clip_range_vf: float | None
     normalize_advantage: bool
     ent_coef: float
     vf_coef: float
     max_grad_norm: float
     use_sde: bool
     sde_sample_freq: int
-    target_kl: Optional[float]
+    target_kl: float | None
     verbose: int
 
     # Trading-specific parameters
@@ -170,15 +163,14 @@ class PPOConfig(TypedDict, total=False):
     max_position_size: float
     fee_model: str
     fee_rate: float
-    features: List[str]
+    features: list[str]
 
     # Training parameters
-    data_path: Optional[str]
-    checkpoint_dir: Optional[str]
-    feature_set: Optional[str]
-    timeframe: Optional[str]
-    algorithm: Optional[str]
-
+    data_path: str | None
+    checkpoint_dir: str | None
+    feature_set: str | None
+    timeframe: str | None
+    algorithm: str | None
 
 # Default PPO configuration optimized for trading environments
 DEFAULT_PPO_CONFIG: PPOConfig = {
@@ -233,8 +225,7 @@ DEFAULT_PPO_CONFIG: PPOConfig = {
     "algorithm": None,
 }
 
-
-def get_ppo_config(overrides: Optional[PPOConfig] = None) -> PPOConfig:
+def get_ppo_config(overrides: PPOConfig | None = None) -> PPOConfig:
     """
     Get PPO configuration with optional parameter overrides.
 
@@ -258,7 +249,6 @@ def get_ppo_config(overrides: Optional[PPOConfig] = None) -> PPOConfig:
     if overrides:
         config.update(overrides)
     return config  # type: ignore[return-value]
-
 
 def get_conservative_ppo_config() -> PPOConfig:
     """
@@ -284,7 +274,6 @@ def get_conservative_ppo_config() -> PPOConfig:
             "max_grad_norm": 0.3,
         }
     )
-
 
 def get_aggressive_ppo_config() -> PPOConfig:
     """

@@ -8,14 +8,14 @@ scripts, and documentation.
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Union
+from typing import Optional
 
-Number = Union[int, float]
+Number = int | float
 
 # NOTE:
 # - warmup_steps intentionally kept as ``int`` but stored in the dict as ``Number``
 #   to simplify type interactions with call-sites expecting numeric types.
-LAGRANGE_DEFAULTS: Dict[str, Number] = {
+LAGRANGE_DEFAULTS: dict[str, Number] = {
     "r_target": 0.175,  # Target SELL rate (17.5%)
     "tolerance": 0.042625,  # Deviation tolerance (~4.26%)
     "eta": 0.062875,  # Dual ascent step size
@@ -23,10 +23,9 @@ LAGRANGE_DEFAULTS: Dict[str, Number] = {
     "warmup_steps": 3_874,  # Steps before enforcing constraint strongly
 }
 
-
 def apply_lagrange_overrides(
-    overrides: Optional[Dict[str, Optional[Number]]] = None,
-) -> Dict[str, Number]:
+    overrides: dict[str, Number | None] | None = None,
+) -> dict[str, Number]:
     """Return defaults merged with any non-``None`` overrides.
 
     Args:

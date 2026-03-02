@@ -4,7 +4,7 @@ Template for main functions in training scripts.
 
 import argparse
 from pathlib import Path
-from typing import Any, Callable, Dict, Type
+from typing import Any, Callable
 
 from ztb.training.trainers.base_trainer import BaseTrainer
 from ztb.utils.file_utils import safe_json_load
@@ -12,9 +12,8 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 def create_simple_main_template(
-    trainer_class: Type[BaseTrainer],
+    trainer_class: type[BaseTrainer],
     config_path: str,
     description: str = "Training script",
     extra_info: str = "",
@@ -63,7 +62,7 @@ def create_simple_main_template(
             trainer = trainer_class(config)
             trainer.run_training()
             # Try to extract final metrics/report if available
-            final_metrics: Dict[str, Any] = {}
+            final_metrics: dict[str, Any] = {}
             training_time: float = 0.0
             try:
                 if hasattr(trainer, "training_report") and trainer.training_report:

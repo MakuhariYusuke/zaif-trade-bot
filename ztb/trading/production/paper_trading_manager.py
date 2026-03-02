@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable
 
 from ztb.trading.production.state_persistence import (
     read_state_payload,
@@ -22,9 +22,7 @@ from market_data_simulator import MarketDataSimulator, SimulatedTick
 from performance_validator import PerformanceValidator, ValidationReport
 from virtual_portfolio_manager import VirtualPortfolioManager
 
-
 # Mock classes for testing
-
 
 class OrderType(Enum):
     MARKET = "market"
@@ -34,14 +32,12 @@ class Order:
     symbol: str
     side: OrderSide
     quantity: Decimal
-    price: Optional[Decimal] = None
+    price: Decimal | None = None
     order_type: OrderType = OrderType.MARKET
-    timestamp: Optional[datetime] = None
-
+    timestamp: datetime | None = None
 
 class MarketDataProvider:
     pass
-
 
 class PaperTradingState(Enum):
     """Paper Trading状態"""
@@ -52,7 +48,6 @@ class PaperTradingState(Enum):
     VALIDATING = "validating"
     COMPLETED = "completed"
     ERROR = "error"
-
 
 @dataclass
 class PaperTradingConfig:
@@ -67,24 +62,22 @@ class PaperTradingConfig:
     validation_interval_hours: int = 24
     auto_validation: bool = True
 
-
 @dataclass
 class PaperTradingSession:
     """Paper Tradingセッション"""
 
     session_id: str
     start_time: datetime
-    end_time: Optional[datetime] = None
+    end_time: datetime | None = None
     config: PaperTradingConfig = field(default_factory=PaperTradingConfig)
     state: PaperTradingState = PaperTradingState.INITIALIZING
 
     total_trades: int = 0
     portfolio_value: Decimal = Decimal("0")
-    validation_reports: List[ValidationReport] = field(default_factory=list)
+    validation_reports: list[ValidationReport] = field(default_factory=list)
 
-    last_validation: Optional[datetime] = None
-    next_validation: Optional[datetime] = None
-
+    last_validation: datetime | None = None
+    next_validation: datetime | None = None
 
 class PaperTradingManager:
     """
@@ -97,7 +90,7 @@ class PaperTradingManager:
     def __init__(
         self,
         market_data_provider: MarketDataProvider,
-        config: Optional[PaperTradingConfig] = None,
+        config: PaperTradingConfig | None = None,
     ):
         """
         初期化
@@ -126,18 +119,18 @@ class PaperTradingManager:
         )
 
         # セッション管理
-        self.current_session: Optional[PaperTradingSession] = None
-        self.session_history: List[PaperTradingSession] = []
+        self.current_session: PaperTradingSession | None = None
+        self.session_history: list[PaperTradingSession] = []
 
         # コールバック
-        self.order_callbacks: List[Callable[[Order, bool], Awaitable[None]]] = []
-        self.validation_callbacks: List[
+        self.order_callbacks: list[Callable[[Order, bool], Awaitable[None]]] = []
+        self.validation_callbacks: list[
             Callable[[ValidationReport], Awaitable[None]]
         ] = []
 
         # 状態管理
         self.is_running = False
-        self.monitoring_task: Optional[asyncio.Task] = None
+        self.monitoring_task: asyncio.Task | None = None
 
         # ロギング
         self.logger = logging.getLogger(__name__)
@@ -147,7 +140,7 @@ class PaperTradingManager:
 
         self.logger.info("Paper Trading Manager initialized")
 
-    async def start_session(self, session_id: Optional[str] = None) -> str:
+    async def start_session(self, session_id: str | None = None) -> str:
         """
         セッション開始
 
@@ -374,12 +367,12 @@ class PaperTradingManager:
             if self.current_session:
                 self.current_session.state = PaperTradingState.RUNNING
 
-    def get_session_status(self) -> Optional[Dict[str, Any]]:
+    def get_session_status(self) -> dict[str, Any] | None:
         """
         セッション状態取得
 
         Returns:
-            Optional[Dict[str, Any]]: セッション状態
+            dict[str, Any] | None: セッション状態
         """
         if not self.current_session:
             return None
@@ -409,24 +402,24 @@ class PaperTradingManager:
             "validation_count": len(self.current_session.validation_reports),
         }
 
-    def get_latest_validation_report(self) -> Optional[ValidationReport]:
+    def get_latest_validation_report(self) -> ValidationReport | None:
         """
         最新検証レポート取得
 
         Returns:
-            Optional[ValidationReport]: 最新検証レポート
+            ValidationReport | None: 最新検証レポート
         """
         if not self.current_session or not self.current_session.validation_reports:
             return None
 
         return self.current_session.validation_reports[-1]
 
-    def get_portfolio_snapshot(self) -> Dict[str, Any]:
+    def get_portfolio_snapshot(self) -> dict[str, Any]:
         """
         ポートフォリオスナップショット取得
 
         Returns:
-            Dict[str, Any]: ポートフォリオスナップショット
+            dict[str, Any]: ポートフォリオスナップショット
         """
         positions = self.portfolio_manager.get_positions()
         metrics = self.portfolio_manager.get_portfolio_metrics()
@@ -601,12 +594,12 @@ class PaperTradingManager:
         """
         self.validation_callbacks.append(callback)
 
-    def get_performance_stats(self) -> Dict[str, Any]:
+    def get_performance_stats(self) -> dict[str, Any]:
         """
         パフォーマンス統計取得
 
         Returns:
-            Dict[str, Any]: パフォーマンス統計
+            dict[str, Any]: パフォーマンス統計
         """
         portfolio_stats = self.portfolio_manager.get_portfolio_metrics()
         market_stats = self.market_simulator.get_performance_stats()

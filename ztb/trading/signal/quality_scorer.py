@@ -11,7 +11,7 @@ Features:
 - Signal frequency optimization for scalping (20-50 signals/day)
 """
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -41,7 +41,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class SignalQualityScorer:
     """
     Deterministic signal quality scorer using technical indicators
@@ -52,8 +51,8 @@ class SignalQualityScorer:
 
     def __init__(
         self,
-        config: Optional[Dict[str, Any]] = None,
-        threshold_manager: Optional[ThresholdManager] = None,
+        config: dict[str, Any] | None = None,
+        threshold_manager: ThresholdManager | None = None,
     ):
         """
         Initialize signal quality scorer
@@ -157,7 +156,7 @@ class SignalQualityScorer:
             },
         )
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """Get default configuration"""
         return {
             "weights": {
@@ -183,8 +182,8 @@ class SignalQualityScorer:
         }
 
     def calculate_signal_quality(
-        self, df: pd.DataFrame, continuous_action: float, portfolio: Dict[str, Any]
-    ) -> Tuple[int, float]:
+        self, df: pd.DataFrame, continuous_action: float, portfolio: dict[str, Any]
+    ) -> tuple[int, float]:
         """
         Calculate signal quality score and determine action
 
@@ -194,7 +193,7 @@ class SignalQualityScorer:
             portfolio: Current portfolio state
 
         Returns:
-            Tuple of (discrete_action, quality_score)
+            tuple of (discrete_action, quality_score)
         """
         try:
             # Quick fallback for very short data windows where technical indicators
@@ -307,7 +306,7 @@ class SignalQualityScorer:
             # Fallback to continuous action conversion
             return self._fallback_action(continuous_action), 50.0
 
-    def _calculate_rsi_score(self, tech_signals: Dict[str, float]) -> float:
+    def _calculate_rsi_score(self, tech_signals: dict[str, float]) -> float:
         """Calculate improved RSI-based score (0-100) with enhanced zoning for better signal balance"""
         rsi = tech_signals.get("rsi", 50.0)
 
@@ -332,7 +331,7 @@ class SignalQualityScorer:
             score = 40 + (rsi - 50) * 0.6  # 25-55 range
             return max(25, min(55, score))
 
-    def _calculate_macd_score(self, tech_signals: Dict[str, float]) -> float:
+    def _calculate_macd_score(self, tech_signals: dict[str, float]) -> float:
         """Calculate MACD-based score (0-100)"""
         macd_line = tech_signals.get("macd_line", 0.0)
         signal_line = tech_signals.get("macd_signal", 0.0)
@@ -351,7 +350,7 @@ class SignalQualityScorer:
 
         return max(0, min(100, score))
 
-    def _calculate_macd_score_enhanced(self, tech_signals: Dict[str, Any]) -> float:
+    def _calculate_macd_score_enhanced(self, tech_signals: dict[str, Any]) -> float:
         """Calculate enhanced MACD-based score using Phase 2 features (0-100)"""
         macd_line = tech_signals.get("macd_line", 0.0)
         signal_line = tech_signals.get("signal_line", 0.0)  # Enhanced: use signal_line
@@ -396,7 +395,7 @@ class SignalQualityScorer:
         return max(0, min(100, base_score))
 
     def _calculate_bollinger_score(
-        self, tech_signals: Dict[str, float], df: pd.DataFrame
+        self, tech_signals: dict[str, float], df: pd.DataFrame
     ) -> float:
         """Calculate Bollinger Bands-based score (0-100)"""
         bb_position = tech_signals.get("bb_position", 0.5)
@@ -423,7 +422,7 @@ class SignalQualityScorer:
             # Middle - neutral
             return 50
 
-    def _calculate_atr_score(self, tech_signals: Dict[str, float]) -> float:
+    def _calculate_atr_score(self, tech_signals: dict[str, float]) -> float:
         """Calculate contextual ATR-based score (0-100) with enhanced market volatility awareness"""
         atr = tech_signals.get("atr", 0.0)
 
@@ -448,7 +447,7 @@ class SignalQualityScorer:
             score = 50 + (market_volatility - 1) * 25
             return max(0, min(100, score))
 
-    def _calculate_momentum_score(self, tech_signals: Dict[str, float]) -> float:
+    def _calculate_momentum_score(self, tech_signals: dict[str, float]) -> float:
         """Calculate momentum-based score (0-100)"""
         momentum = tech_signals.get("momentum", 0.0)
 
@@ -466,7 +465,7 @@ class SignalQualityScorer:
 
         return max(0, min(100, score))
 
-    def _calculate_stochastic_score(self, tech_signals: Dict[str, float]) -> float:
+    def _calculate_stochastic_score(self, tech_signals: dict[str, float]) -> float:
         """Calculate stochastic-based score (0-100)"""
         stoch_k = tech_signals.get("stoch_k", 50.0)
         stoch_d = tech_signals.get("stoch_d", 50.0)
@@ -554,7 +553,7 @@ class SignalQualityScorer:
             return self._calculate_trend_score(df)
 
     def _apply_position_adjustments(
-        self, score: float, portfolio: Dict[str, Any]
+        self, score: float, portfolio: dict[str, Any]
     ) -> float:
         """Apply position context adjustments to score"""
         # Get position information
@@ -603,7 +602,7 @@ class SignalQualityScorer:
         base_score: float,
         df: pd.DataFrame,
         continuous_action: float,
-        portfolio: Dict[str, Any],
+        portfolio: dict[str, Any],
     ) -> float:
         """
         Phase 3: Apply ensemble signal integration to enhance base score.
@@ -719,7 +718,7 @@ class SignalQualityScorer:
 
     def _get_enhanced_signals(
         self, df: pd.DataFrame, market_regime: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get enhanced signals using Phase 2 advanced indicators
 

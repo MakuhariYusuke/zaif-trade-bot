@@ -2,6 +2,7 @@
 Feature registry for trading features.
 特徴量レジストリ
 """
+from __future__ import annotations
 
 import gc
 import logging
@@ -10,7 +11,7 @@ import random
 import time
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Callable, Dict, List, Optional, Tuple, cast
+from typing import Any, Callable, cast
 
 import numpy as np
 import pandas as pd
@@ -25,7 +26,6 @@ from ztb.types.protocols import FeatureRegistryProtocol
 # Avoid importing `torch` at module import time to prevent ABI incompatibilities
 # and segfaults on environments with mismatched NumPy/Torch builds.
 
-
 logger = logging.getLogger(__name__)
 
 from ztb.features.utils.rolling import generate_intermediate_report
@@ -36,29 +36,28 @@ try:
 except ImportError:  # pragma: no cover - tqdm optional
     tqdm = None  # type: ignore
 
-
 class FeatureRegistry(FeatureRegistryProtocol):
     """全特徴量関数を一元管理するレジストリ"""
 
-    _registry: Dict[str, Callable[..., pd.Series]] = {}
+    _registry: dict[str, Callable[..., pd.Series]] = {}
     _cache_enabled: bool = True
     _parallel_enabled: bool = True
     _initialized: bool = False
-    _config: Dict[str, Any] = {}
+    _config: dict[str, Any] = {}
     _base_seed: int = 42
 
     @classmethod
     def initialize(
         cls,
-        seed: Optional[int] = None,
-        cache_enabled: Optional[bool] = None,
-        parallel_enabled: Optional[bool] = None,
+        seed: int | None = None,
+        cache_enabled: bool | None = None,
+        parallel_enabled: bool | None = None,
     ) -> None:
         """Initialize the registry with seed, cache and parallel settings"""
         if cls._initialized:
             return
 
-        # Set seed from parameter or default
+        # set seed from parameter or default
         final_seed = seed if seed is not None else 42
 
         # Fix seeds for reproducibility
@@ -66,7 +65,7 @@ class FeatureRegistry(FeatureRegistryProtocol):
         random.seed(final_seed)
         os.environ["PYTHONHASHSEED"] = str(final_seed)
 
-        # Set PyTorch seed if available
+        # set PyTorch seed if available
         try:
             import torch
 
@@ -77,7 +76,7 @@ class FeatureRegistry(FeatureRegistryProtocol):
         except ImportError:
             pass  # PyTorch not available
 
-        # Set BLAS thread limits for optimal parallel performance
+        # set BLAS thread limits for optimal parallel performance
         os.environ["OPENBLAS_NUM_THREADS"] = "1"
         os.environ["MKL_NUM_THREADS"] = "1"
         os.environ["NUMEXPR_NUM_THREADS"] = "1"
@@ -86,13 +85,13 @@ class FeatureRegistry(FeatureRegistryProtocol):
         # Store base seed for parallel processing
         cls._base_seed = final_seed
 
-        # Set cache enabled from parameter or default
+        # set cache enabled from parameter or default
         if cache_enabled is not None:
             cls._cache_enabled = cache_enabled
         else:
             cls._cache_enabled = True
 
-        # Set parallel enabled from parameter or default
+        # set parallel enabled from parameter or default
         if parallel_enabled is not None:
             cls._parallel_enabled = parallel_enabled
         else:
@@ -130,7 +129,7 @@ class FeatureRegistry(FeatureRegistryProtocol):
 
     @classmethod
     def set_worker_seed(cls, worker_id: int) -> None:
-        """Set deterministic seed for parallel worker processes"""
+        """set deterministic seed for parallel worker processes"""
         if not cls._initialized:
             raise RuntimeError(
                 "FeatureRegistry must be initialized before setting worker seed"
@@ -140,7 +139,7 @@ class FeatureRegistry(FeatureRegistryProtocol):
         np.random.seed(worker_seed)
         random.seed(worker_seed)
 
-        # Set PyTorch seed if available
+        # set PyTorch seed if available
         try:
             import torch
 
@@ -151,7 +150,7 @@ class FeatureRegistry(FeatureRegistryProtocol):
             pass  # PyTorch not available
 
     @classmethod
-    def get_config(cls) -> Dict[str, Any]:
+    def get_config(cls) -> dict[str, Any]:
         """Get current configuration"""
         from copy import deepcopy
 
@@ -183,7 +182,7 @@ class FeatureRegistry(FeatureRegistryProtocol):
         return cls.get(name)
 
     @classmethod
-    def list(cls) -> List[str]:
+    def list(cls) -> list[str]:
         return list(cls._registry.keys())
 
     @classmethod
@@ -196,7 +195,7 @@ class FeatureRegistry(FeatureRegistryProtocol):
         """Check if parallel processing is enabled"""
         return cls._parallel_enabled
 
-    def get_enabled_features(self, wave: Optional[int] = None) -> List[str]:
+    def get_enabled_features(self, wave: int | None = None) -> list[str]:
         """Get enabled features for the given wave"""
         return type(self).list()
 
@@ -204,19 +203,19 @@ class FeatureRegistry(FeatureRegistryProtocol):
     def compute_features_batch(
         cls,
         df: pd.DataFrame,
-        feature_names: Optional[List[str]] = None,
+        feature_names: list[str] | None = None,
         report_interval: int = 10000,
         verbose: bool = True,
-        enable_chunking: Optional[bool] = None,
-        chunk_size: Optional[int] = None,
+        enable_chunking: bool | None = None,
+        chunk_size: int | None = None,
         return_timing: bool = False,
-    ) -> pd.DataFrame | Tuple[pd.DataFrame, Dict[str, float]]:
+    ) -> pd.DataFrame | tuple[pd.DataFrame, dict[str, float]]:
         """
         Compute features in batch with stability and efficiency improvements
 
         Args:
             df: Input DataFrame with OHLCV data
-            feature_names: List of feature names to compute (None for all)
+            feature_names: list of feature names to compute (None for all)
             report_interval: Steps between intermediate reports
             verbose: Whether to print progress information
             enable_chunking: Whether to process data in chunks (overrides config)
@@ -266,7 +265,7 @@ class FeatureRegistry(FeatureRegistryProtocol):
 
     @classmethod
     def _precompute_common_calculations(
-        cls, df: pd.DataFrame, feature_names: List[str]
+        cls, df: pd.DataFrame, feature_names: list[str]
     ) -> pd.DataFrame:
         """Pre-compute common calculations shared across multiple features"""
         df = df.copy()
@@ -332,10 +331,10 @@ class FeatureRegistry(FeatureRegistryProtocol):
     def _compute_features_single(
         cls,
         df: pd.DataFrame,
-        feature_names: List[str],
+        feature_names: list[str],
         report_interval: int,
         verbose: bool,
-    ) -> Tuple[pd.DataFrame, Dict[str, float]]:
+    ) -> tuple[pd.DataFrame, dict[str, float]]:
         """Compute features on a single chunk"""
         if verbose:
             print(f"Computing {len(feature_names)} features on single chunk...")
@@ -478,7 +477,7 @@ class FeatureRegistry(FeatureRegistryProtocol):
         memory_threshold_pct = float(config.get("memory_threshold_pct", 85.0))
 
         # パフォーマンスメトリクス収集
-        perf_metrics: Dict[str, Any] = {
+        perf_metrics: dict[str, Any] = {
             "start_time": time.time(),
             "cpu_count": cpu_count,
             "max_workers": max_workers,
@@ -513,7 +512,7 @@ class FeatureRegistry(FeatureRegistryProtocol):
 
         def _compute_feature(
             feature_name: str,
-        ) -> Tuple[str, Optional[pd.Series], float, float, Optional[Exception]]:
+        ) -> tuple[str, pd.Series | None, float, float, Exception | None]:
             start_time = time.time()
             try:
                 feature_func = cls.get(feature_name)
@@ -534,7 +533,7 @@ class FeatureRegistry(FeatureRegistryProtocol):
                 return feature_name, None, 0.0, 1.0, exc
 
         def _process_result(
-            result: Tuple[str, Optional[pd.Series], float, float, Optional[Exception]],
+            result: tuple[str, pd.Series | None, float, float, Exception | None],
         ) -> None:
             nonlocal step_count
             feature_name, feature_series, computation_time, nan_rate, error = result
@@ -689,7 +688,7 @@ class FeatureRegistry(FeatureRegistryProtocol):
     def _compute_features_chunked(
         cls,
         df: pd.DataFrame,
-        feature_names: List[str],
+        feature_names: list[str],
         chunk_size: int,
         report_interval: int,
         verbose: bool,
@@ -716,7 +715,7 @@ class FeatureRegistry(FeatureRegistryProtocol):
             print(f"Processing {len(chunks)} chunks...")
 
         # Process each chunk
-        chunk_results: List[Tuple[int, pd.DataFrame]] = []
+        chunk_results: list[tuple[int, pd.DataFrame]] = []
         for start_idx, chunk_df in chunks:
             if verbose:
                 print(
@@ -759,8 +758,8 @@ class FeatureRegistry(FeatureRegistryProtocol):
 
     @classmethod
     def select_features_by_correlation(
-        cls, correlation_threshold: float = 0.95, analysis_file: Optional[str] = None
-    ) -> List[str]:
+        cls, correlation_threshold: float = 0.95, analysis_file: str | None = None
+    ) -> list[str]:
         """
         Select features by removing highly correlated ones based on analysis results.
 
@@ -769,7 +768,7 @@ class FeatureRegistry(FeatureRegistryProtocol):
             analysis_file: Path to feature analysis JSON file (auto-detects latest if None)
 
         Returns:
-            List of selected feature names
+            list of selected feature names
         """
         import json
         from pathlib import Path
@@ -821,8 +820,8 @@ class FeatureRegistry(FeatureRegistryProtocol):
 
     @classmethod
     def get_optimized_feature_set(
-        cls, correlation_threshold: float = 0.95, analysis_file: Optional[str] = None
-    ) -> List[str]:
+        cls, correlation_threshold: float = 0.95, analysis_file: str | None = None
+    ) -> list[str]:
         """
         Get optimized feature set with correlation-based selection.
 

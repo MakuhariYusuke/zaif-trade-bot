@@ -10,7 +10,7 @@ import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 
@@ -33,7 +33,6 @@ else:
 
 logger = logging.getLogger(__name__)
 
-
 @dataclass
 class WalkForwardAggregationStats:
     """Walk-Forward集約統計"""
@@ -55,7 +54,7 @@ class WalkForwardAggregationStats:
     # 過学習指標
     overfitting_indicator: float  # 平均: test_roi / val_roi
     overfitting_severity: str  # "none" | "mild" | "moderate" | "severe"
-    overfitting_ratio_list: List[float] = field(default_factory=list)
+    overfitting_ratio_list: list[float] = field(default_factory=list)
 
     # 一貫性スコア（0-1）
     consistency_score: float = 0.0
@@ -70,7 +69,6 @@ class WalkForwardAggregationStats:
 
     # 安定性指数
     stability_index: float = 0.0
-
 
 class WalkForwardUnifiedEvaluator:
     """Walk-Forward統合評価器
@@ -100,8 +98,8 @@ class WalkForwardUnifiedEvaluator:
 
     def aggregate_windows(
         self,
-        windows: List[WindowPerformance],
-        reporters: List["BacktestReporter"] | None = None,
+        windows: list[WindowPerformance],
+        reporters: list["BacktestReporter"] | None = None,
         model_name: str = "",
     ) -> ComprehensiveEvaluationClass:
         """Backwards compatible: `reporters` may be omitted or callers may pass `model_name` as second positional arg.
@@ -185,8 +183,8 @@ class WalkForwardUnifiedEvaluator:
 
     def _analyze_cross_window_stats(
         self,
-        windows: List[WindowPerformance],
-        reporters: List["BacktestReporter"] | None = None,
+        windows: list[WindowPerformance],
+        reporters: list["BacktestReporter"] | None = None,
     ) -> WalkForwardAggregationStats:
         """If `reporters` is None, build lightweight default reporter stats for aggregation."""
         """ウィンドウ横断的統計分析
@@ -217,7 +215,7 @@ class WalkForwardUnifiedEvaluator:
         # テストと訓練の乖離度を測定
         # ratio > 1.0: テストが訓練より悪化（典型的な過学習）
         # ratio < 1.0: テストが訓練より良好（ラッキー）
-        overfitting_ratios_list: List[float] = []
+        overfitting_ratios_list: list[float] = []
         for val, test in zip(val_rois, test_rois):
             if val > 1e-6:  # val が正の値の場合
                 # テスト性能の訓練性能対比（相対的な悪化度）
@@ -292,9 +290,9 @@ class WalkForwardUnifiedEvaluator:
 
     def _aggregate_metrics(
         self,
-        windows: List[WindowPerformance],
+        windows: list[WindowPerformance],
         stats: WalkForwardAggregationStats,
-    ) -> Dict[str, EvaluationResult]:
+    ) -> dict[str, EvaluationResult]:
         """メトリクス集約
 
         各ウィンドウの性能を集約し、統一メトリクス形式に変換。
@@ -304,10 +302,10 @@ class WalkForwardUnifiedEvaluator:
             stats: 集約統計
 
         Returns:
-            Dict[str, EvaluationResult]: メトリクス名 → 結果
+            dict[str, EvaluationResult]: メトリクス名 → 結果
         """
 
-        results: Dict[str, EvaluationResult] = {}
+        results: dict[str, EvaluationResult] = {}
 
         # 1. ROI関連
         results["roi_in_sample"] = EvaluationResult(
@@ -395,21 +393,21 @@ class WalkForwardUnifiedEvaluator:
 
     def compare_multiple_evaluations(
         self,
-        evaluations: Dict[str, ComprehensiveEvaluationClass],
-    ) -> Dict[str, Any]:
+        evaluations: dict[str, ComprehensiveEvaluationClass],
+    ) -> dict[str, Any]:
         """複数モデルの統合評価結果を比較
 
         Args:
             evaluations: モデル名 → 評価結果
 
         Returns:
-            Dict[str, Any]: 比較結果
+            dict[str, Any]: 比較結果
         """
 
         if not evaluations:
             raise ValueError("Evaluations dict cannot be empty")
 
-        comparison: Dict[str, Any] = {
+        comparison: dict[str, Any] = {
             "model_count": len(evaluations),
             "models": {},
             "rankings": {},
@@ -434,18 +432,18 @@ class WalkForwardUnifiedEvaluator:
 
     def _generate_rankings(
         self,
-        evaluations: Dict[str, ComprehensiveEvaluationClass],
-    ) -> Dict[str, List[str]]:
+        evaluations: dict[str, ComprehensiveEvaluationClass],
+    ) -> dict[str, list[str]]:
         """各メトリクスごとのランキングを生成
 
         Args:
             evaluations: モデル評価結果
 
         Returns:
-            Dict[str, List[str]]: メトリクス → ランク付けモデルリスト
+            dict[str, list[str]]: メトリクス → ランク付けモデルリスト
         """
 
-        rankings: Dict[str, List[str]] = {}
+        rankings: dict[str, list[str]] = {}
 
         # ROI（高い方が良い）
         roi_ranking = sorted(

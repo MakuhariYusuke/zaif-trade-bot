@@ -21,7 +21,7 @@ import sys
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, cast
+from typing import Optional, cast
 
 from ztb.io.jsonl import append_jsonl
 from ztb.trading.environment.constants import BYTES_PER_MB
@@ -50,7 +50,6 @@ try:
 except ImportError:
     HAS_TENSORBOARD = False
 
-
 class TrainingWatcher:
     def __init__(self, correlation_id: str, log_dir: Path):
         self.correlation_id = correlation_id
@@ -71,8 +70,8 @@ class TrainingWatcher:
         # State tracking
         self.last_step = 0
         self.last_step_time = datetime.now()
-        self.errors_last_hour: List[datetime] = []
-        self.rewards: List[float] = []  # For sigma calculation
+        self.errors_last_hour: list[datetime] = []
+        self.rewards: list[float] = []  # For sigma calculation
         self.hard_breach = False
         self.kill_file = Path("ztb.stop")
 
@@ -84,7 +83,7 @@ class TrainingWatcher:
         level: str,
         alert_type: str,
         message: str,
-        details: Optional[Dict[str, object]] = None,
+        details: dict[str, object] | None = None,
     ) -> None:
         """Emit structured JSON alert to file and stdout."""
         alert = {
@@ -98,7 +97,7 @@ class TrainingWatcher:
         append_jsonl(self.log_file, [alert], ensure_ascii=False)
         print(json.dumps(alert, indent=None))
 
-    def get_current_step(self) -> Optional[int]:
+    def get_current_step(self) -> int | None:
         """Get current global_step from multiple sources."""
         # Primary: metrics.json
         metrics_file = self.artifacts_dir / "metrics.json"
@@ -159,7 +158,7 @@ class TrainingWatcher:
                 return True
         return False
 
-    def check_memory_usage(self) -> Tuple[bool, bool]:
+    def check_memory_usage(self) -> tuple[bool, bool]:
         """Check RSS and GPU VRAM usage. Returns (rss_breach, vram_breach)."""
         rss_breach = False
         vram_breach = False
@@ -335,7 +334,6 @@ class TrainingWatcher:
 
         return exit_code
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Watch training session for issues")
     parser.add_argument(
@@ -358,7 +356,6 @@ def main() -> None:
         sys.exit(watcher.run_once())
     else:
         sys.exit(watcher.watch())
-
 
 if __name__ == "__main__":
     main()

@@ -15,7 +15,6 @@ from ztb.adaptation import (
 )
 from ztb.adaptation.monitoring.config import AlertThreshold
 
-
 class TestContinuousEvaluationIntegration(unittest.TestCase):
     """継続的評価マネージャーの統合テスト"""
 
@@ -202,7 +201,6 @@ class TestContinuousEvaluationIntegration(unittest.TestCase):
         self.assertEqual(
             config.alerts.alert_levels[AlertThreshold.LOW]["enabled"], True
         )
-
 
 if __name__ == "__main__":
     unittest.main()

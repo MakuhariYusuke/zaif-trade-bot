@@ -8,7 +8,7 @@ import logging
 import threading
 import time
 from collections import deque
-from typing import Any, Dict, Optional, cast
+from typing import Any, Optional, cast
 
 import psutil
 
@@ -17,11 +17,10 @@ from ztb.utils.config import ZTBConfig
 
 logger = logging.getLogger(__name__)
 
-
 class BackgroundMemoryMonitor:
     """Advanced memory monitoring with history and alerting."""
 
-    def __init__(self, config: Optional[ZTBConfig] = None):
+    def __init__(self, config: ZTBConfig | None = None):
         self.config = config or ZTBConfig()
         self.history_size = self.config.get_int("ZTB_MEMORY_HISTORY_SIZE", 100)
         self.memory_history: deque = deque(maxlen=self.history_size)
@@ -32,7 +31,7 @@ class BackgroundMemoryMonitor:
             "ZTB_MEMORY_WARNING_THRESHOLD_MB", 1000
         )
         self.monitoring_active = False
-        self.monitor_thread: Optional[threading.Thread] = None
+        self.monitor_thread: threading.Thread | None = None
         self._lock = threading.Lock()
 
     def start_monitoring(self, interval_seconds: float = 5.0) -> None:
@@ -110,7 +109,7 @@ class BackgroundMemoryMonitor:
                 f"{current_memory:.1f}MB > {self.warning_threshold_mb}MB"
             )
 
-    def get_memory_stats(self) -> Dict[str, Any]:
+    def get_memory_stats(self) -> dict[str, Any]:
         """
         Get memory usage statistics.
 
@@ -158,10 +157,8 @@ class BackgroundMemoryMonitor:
         else:
             return "stable"
 
-
 # Global monitor instance
-_memory_monitor: Optional[BackgroundMemoryMonitor] = None
-
+_memory_monitor: BackgroundMemoryMonitor | None = None
 
 def get_memory_monitor() -> BackgroundMemoryMonitor:
     """Get global memory monitor instance."""
@@ -169,7 +166,6 @@ def get_memory_monitor() -> BackgroundMemoryMonitor:
     if _memory_monitor is None:
         _memory_monitor = BackgroundMemoryMonitor()
     return _memory_monitor
-
 
 def check_memory_usage(threshold_mb: int = 1000) -> None:
     """
@@ -187,7 +183,6 @@ def check_memory_usage(threshold_mb: int = 1000) -> None:
                 f"WARNING: High memory usage: {memory_mb:.1f}MB (threshold: {threshold_mb}MB)"
             )
 
-
 def get_memory_usage() -> float:
     """
     Get current memory usage in MB.
@@ -197,7 +192,6 @@ def get_memory_usage() -> float:
     """
     process = psutil.Process()
     return cast(float, process.memory_info().rss / BYTES_PER_MB)
-
 
 def log_memory_usage(label: str = "") -> None:
     """

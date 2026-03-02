@@ -3,14 +3,13 @@ Price data management for live trading bot.
 """
 import logging
 from collections import deque
-from typing import Any, Dict, List, Protocol, cast
+from typing import Any, Protocol, cast
 
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
 logger = logging.getLogger(__name__)
-
 
 class PriceDataProvider(Protocol):
     """Protocol for price data providers."""
@@ -19,18 +18,17 @@ class PriceDataProvider(Protocol):
         """Get current price."""
         ...
 
-    def get_historical_prices(self, limit: int) -> List[float]:
+    def get_historical_prices(self, limit: int) -> list[float]:
         """Get historical prices."""
         ...
-
 
 class PriceDataManager:
     """Manages price data and feature calculation."""
 
     def __init__(
-        self, config: Dict[str, Any], price_provider: PriceDataProvider
+        self, config: dict[str, Any], price_provider: PriceDataProvider
     ) -> None:
-        self.config = cast(Dict[str, Any], config)
+        self.config = cast(dict[str, Any], config)
         self.price_provider = price_provider
         self._price_history_max_size = config.get("price_history_length", 30)
         self.price_history: deque[float] = deque(maxlen=self._price_history_max_size)
@@ -60,7 +58,7 @@ class PriceDataManager:
         """Get current price."""
         return cast(float, self.price_provider.get_current_price())
 
-    def calculate_rsi(self, prices: List[float], period: int = 14) -> float:
+    def calculate_rsi(self, prices: list[float], period: int = 14) -> float:
         """Calculate RSI (Relative Strength Index)."""
         from ztb.features.generators.technical.momentum.rsi import compute_rsi
 
@@ -69,7 +67,7 @@ class PriceDataManager:
         last_val = rsi_series.iloc[-1]
         return float(last_val) if not pd.isna(last_val) else 50.0
 
-    def calculate_sma(self, prices: List[float], period: int) -> float:
+    def calculate_sma(self, prices: list[float], period: int) -> float:
         """Calculate Simple Moving Average."""
         from ztb.features.generators.technical.trend.sma import compute_sma
 
@@ -78,7 +76,7 @@ class PriceDataManager:
         last_val = sma_series.iloc[-1]
         return float(last_val) if not pd.isna(last_val) else 0.0
 
-    def compute_live_features(self, prices: List[float]) -> Dict[str, float]:
+    def compute_live_features(self, prices: list[float]) -> dict[str, float]:
         """Compute live technical indicators."""
         if not prices:
             return {}

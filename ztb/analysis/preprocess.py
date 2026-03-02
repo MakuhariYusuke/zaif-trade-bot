@@ -5,16 +5,15 @@ This module provides common data alignment and preprocessing functions
 to ensure consistent evaluation across all features.
 """
 
-from typing import Dict, List, Optional, Set, cast
+from typing import cast
 
 import pandas as pd
-
 
 def align_series(
     df: pd.DataFrame,
     tz: str = "UTC",
     min_periods: int = 5,
-    fill_method: Optional[str] = "ffill",
+    fill_method: str | None = "ffill",
 ) -> pd.DataFrame:
     """
     Align and preprocess time series data for consistent evaluation.
@@ -75,16 +74,15 @@ def align_series(
 
     return df
 
-
 def prepare_ohlc_data(
-    df: pd.DataFrame, required_columns: Optional[List[str]] = None
+    df: pd.DataFrame, required_columns: list[str] | None = None
 ) -> pd.DataFrame:
     """
     Prepare OHLC data with standard validation and preprocessing.
 
     Args:
         df: Raw OHLC DataFrame
-        required_columns: List of required column names
+        required_columns: list of required column names
 
     Returns:
         Preprocessed OHLC DataFrame
@@ -113,7 +111,6 @@ def prepare_ohlc_data(
 
     return df
 
-
 def generate_time_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     Generate time-based features from datetime index.
@@ -133,7 +130,6 @@ def generate_time_features(df: pd.DataFrame) -> pd.DataFrame:
     df["HourOfDay"] = dt_index.hour
     return df
 
-
 class SmartPreprocessor:
     """
     Smart preprocessor that calculates only required columns.
@@ -141,21 +137,21 @@ class SmartPreprocessor:
     """
 
     # Class-level cache for shared calculations across instances
-    _global_cache: Dict[str, pd.Series] = {}
-    _cache_data_hash: Optional[str] = None
+    _global_cache: dict[str, pd.Series] = {}
+    _cache_data_hash: str | None = None
 
-    def __init__(self, required: Set[str]):
+    def __init__(self, required: set[str]):
         """
         Initialize with required calculations.
 
         Args:
-            required: Set of required calculation keys
+            required: set of required calculation keys
                       Supported: 'return', 'abs_return', 'ema:{span}',
                                'rolling_mean:{win}', 'rolling_std:{win}',
                                'rolling_max:{win}', 'rolling_min:{win}'
         """
         self.required = required
-        self._instance_cache: Dict[str, pd.Series] = {}
+        self._instance_cache: dict[str, pd.Series] = {}
 
     def preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
         """

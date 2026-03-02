@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable
 
 import requests
 
@@ -25,7 +25,6 @@ from ztb.trading.production.state_persistence import (
 )
 from ztb.types.alert_types import AlertLevel, AlertStatus
 
-
 class NotificationChannel(Enum):
     """通知チャネル"""
 
@@ -34,7 +33,6 @@ class NotificationChannel(Enum):
     WEBHOOK = "webhook"
     SMS = "sms"
     LOG = "log"
-
 
 @dataclass
 class AlertRule:
@@ -50,8 +48,7 @@ class AlertRule:
     enabled: bool = True
     cooldown_minutes: int = 5
     auto_resolve: bool = True
-    labels: Dict[str, str] = field(default_factory=dict)
-
+    labels: dict[str, str] = field(default_factory=dict)
 
 @dataclass
 class ProductionAlert:
@@ -67,12 +64,11 @@ class ProductionAlert:
     metric_value: float
     threshold: float
     timestamp: datetime
-    resolved_at: Optional[datetime] = None
-    acknowledged_at: Optional[datetime] = None
-    acknowledged_by: Optional[str] = None
-    labels: Dict[str, str] = field(default_factory=dict)
+    resolved_at: datetime | None = None
+    acknowledged_at: datetime | None = None
+    acknowledged_by: str | None = None
+    labels: dict[str, str] = field(default_factory=dict)
     notification_sent: bool = False
-
 
 @dataclass
 class NotificationConfig:
@@ -80,8 +76,7 @@ class NotificationConfig:
 
     channel: NotificationChannel
     enabled: bool = True
-    config: Dict[str, Any] = field(default_factory=dict)
-
+    config: dict[str, Any] = field(default_factory=dict)
 
 class AlertSystem:
     """
@@ -105,25 +100,25 @@ class AlertSystem:
         self.default_cooldown_minutes = default_cooldown_minutes
 
         # アラートルール管理
-        self.alert_rules: Dict[str, AlertRule] = {}
+        self.alert_rules: dict[str, AlertRule] = {}
 
         # アラート管理
-        self.active_alerts: Dict[str, ProductionAlert] = {}
-        self.alert_history: List[ProductionAlert] = []
+        self.active_alerts: dict[str, ProductionAlert] = {}
+        self.alert_history: list[ProductionAlert] = []
 
         # アラート抑制
-        self.alert_cooldowns: Dict[str, datetime] = {}
+        self.alert_cooldowns: dict[str, datetime] = {}
 
         # 通知設定
-        self.notification_configs: Dict[NotificationChannel, NotificationConfig] = {}
+        self.notification_configs: dict[NotificationChannel, NotificationConfig] = {}
         self._initialize_default_notifications()
 
         # モニタリング
         self.monitoring_active = False
-        self.monitoring_thread: Optional[threading.Thread] = None
+        self.monitoring_thread: threading.Thread | None = None
 
         # コールバック
-        self.alert_callbacks: List[Callable[[ProductionAlert], Awaitable[None]]] = []
+        self.alert_callbacks: list[Callable[[ProductionAlert], Awaitable[None]]] = []
 
         # ロギング
         self.logger = logging.getLogger(__name__)
@@ -287,8 +282,8 @@ class AlertSystem:
         self,
         metric_name: str,
         metric_value: float,
-        labels: Optional[Dict[str, str]] = None,
-    ) -> List[ProductionAlert]:
+        labels: dict[str, str] | None = None,
+    ) -> list[ProductionAlert]:
         """
         指標値に対するルールチェック
 
@@ -298,7 +293,7 @@ class AlertSystem:
             labels: ラベル
 
         Returns:
-            List[ProductionAlert]: 生成されたアラートリスト
+            list[ProductionAlert]: 生成されたアラートリスト
         """
         alerts = []
         labels = labels or {}
@@ -355,7 +350,7 @@ class AlertSystem:
             return False
 
     def _create_alert(
-        self, rule: AlertRule, metric_value: float, labels: Dict[str, str]
+        self, rule: AlertRule, metric_value: float, labels: dict[str, str]
     ) -> ProductionAlert:
         """
         アラート作成
@@ -416,7 +411,7 @@ class AlertSystem:
             f"Threshold: {rule.threshold:.2f} ({condition_desc})"
         )
 
-    def process_alerts(self, alerts: List[ProductionAlert]) -> None:
+    def process_alerts(self, alerts: list[ProductionAlert]) -> None:
         """
         アラート処理
 
@@ -706,7 +701,7 @@ Labels: {json.dumps(alert.labels, indent=2)}
         self,
         channel: NotificationChannel,
         enabled: bool = True,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
     ) -> None:
         """
         通知設定
@@ -725,8 +720,8 @@ Labels: {json.dumps(alert.labels, indent=2)}
         )
 
     def get_active_alerts(
-        self, level: Optional[AlertLevel] = None
-    ) -> List[ProductionAlert]:
+        self, level: AlertLevel | None = None
+    ) -> list[ProductionAlert]:
         """
         アクティブアラート取得
 
@@ -734,7 +729,7 @@ Labels: {json.dumps(alert.labels, indent=2)}
             level: アラートレベルフィルタ
 
         Returns:
-            List[Alert]: アクティブアラート
+            list[Alert]: アクティブアラート
         """
         alerts = list(self.active_alerts.values())
 
@@ -745,12 +740,12 @@ Labels: {json.dumps(alert.labels, indent=2)}
 
     def get_alert_history(
         self,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        level: Optional[AlertLevel] = None,
-        status: Optional[AlertStatus] = None,
-        limit: Optional[int] = None,
-    ) -> List[ProductionAlert]:
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        level: AlertLevel | None = None,
+        status: AlertStatus | None = None,
+        limit: int | None = None,
+    ) -> list[ProductionAlert]:
         """
         アラート履歴取得
 
@@ -762,7 +757,7 @@ Labels: {json.dumps(alert.labels, indent=2)}
             limit: 取得件数制限
 
         Returns:
-            List[Alert]: アラート履歴
+            list[Alert]: アラート履歴
         """
         alerts = self.alert_history
 
@@ -783,7 +778,7 @@ Labels: {json.dumps(alert.labels, indent=2)}
 
         return alerts
 
-    def get_alert_summary(self, hours: int = 24) -> Dict[str, Any]:
+    def get_alert_summary(self, hours: int = 24) -> dict[str, Any]:
         """
         アラート要約取得
 
@@ -791,7 +786,7 @@ Labels: {json.dumps(alert.labels, indent=2)}
             hours: 集計期間（時間）
 
         Returns:
-            Dict[str, Any]: アラート要約
+            dict[str, Any]: アラート要約
         """
         period_start = datetime.now() - timedelta(hours=hours)
         recent_alerts = [a for a in self.alert_history if a.timestamp >= period_start]

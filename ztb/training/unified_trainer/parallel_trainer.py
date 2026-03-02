@@ -10,11 +10,10 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ztb.training.unified_trainer.config import UnifiedTrainerConfig
 from ztb.training.unified_trainer.trainer import UnifiedTrainer
-
 
 @dataclass
 class ParallelTrainingResult:
@@ -23,26 +22,25 @@ class ParallelTrainingResult:
     algorithm: str
     success: bool
     training_time: float
-    final_reward: Optional[float] = None
-    model_path: Optional[str] = None
-    error_message: Optional[str] = None
-
+    final_reward: float | None = None
+    model_path: str | None = None
+    error_message: str | None = None
 
 class ParallelTrainer:
     """Parallel trainer for running multiple training sessions simultaneously."""
 
-    def __init__(self, configs: List[UnifiedTrainerConfig], max_workers: int = 4):
+    def __init__(self, configs: list[UnifiedTrainerConfig], max_workers: int = 4):
         """
         Initialize parallel trainer.
 
         Args:
-            configs: List of training configurations
+            configs: list of training configurations
             max_workers: Maximum number of parallel workers
         """
         self.configs = configs
         self.max_workers = max_workers
         self.logger = logging.getLogger(__name__)
-        self.results: List[ParallelTrainingResult] = []
+        self.results: list[ParallelTrainingResult] = []
 
     def train_all(self) -> bool:
         """
@@ -144,30 +142,29 @@ class ParallelTrainer:
             if result.error_message:
                 self.logger.info(f"    Error: {result.error_message}")
 
-
 class MultiModelTrainer:
     """Trainer for multiple models of the same algorithm with different configurations."""
 
     def __init__(
-        self, base_config: UnifiedTrainerConfig, variations: List[Dict[str, Any]]
+        self, base_config: UnifiedTrainerConfig, variations: list[dict[str, Any]]
     ):
         """
         Initialize multi-model trainer.
 
         Args:
             base_config: Base configuration
-            variations: List of parameter variations
+            variations: list of parameter variations
         """
         self.base_config = base_config
         self.variations = variations
         self.logger = logging.getLogger(__name__)
 
-    def train_variations(self) -> List[ParallelTrainingResult]:
+    def train_variations(self) -> list[ParallelTrainingResult]:
         """
         Train multiple variations of the same algorithm.
 
         Returns:
-            List of training results
+            list of training results
         """
         configs = []
 

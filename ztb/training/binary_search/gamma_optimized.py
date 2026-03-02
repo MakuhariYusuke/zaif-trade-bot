@@ -16,7 +16,6 @@ from ztb.training.binary_search.base_optimizer import (
     HyperparameterOptimizer,
 )
 
-
 class GammaOptimizer(HyperparameterOptimizer):
     """Optimizer for gamma parameter."""
 
@@ -27,7 +26,6 @@ class GammaOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[float, float]:
         """Get the range for gamma binary search."""
         return (0.8, 0.99)  # Reasonable range for discount factor
-
 
 def main() -> None:
     parser = BinarySearchArgumentParser.create_parser(
@@ -54,7 +52,6 @@ def main() -> None:
         print(
             f"\nOptimization complete. Best gamma: {best_value}, Score: {best_score:.6f}"
         )
-
 
 if __name__ == "__main__":
     main()

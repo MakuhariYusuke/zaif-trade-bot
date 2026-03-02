@@ -1,20 +1,19 @@
 """
 Feature status and reason enums for consistent validation.
 """
+from __future__ import annotations
 
 import json
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Union, cast
+from typing import cast
 
 from typing_extensions import TypedDict
 
 from ztb.io.json_io import read_json, write_json
 from ztb.utils.core.stats import count_features_by_category
 
-
 # --- 036# Any削減: TypedDict定義 ---
-
 
 class FeatureItem(TypedDict, total=False):
     """Status list item (verified以外のステータスで使用)."""
@@ -22,11 +21,10 @@ class FeatureItem(TypedDict, total=False):
     name: str
     reason: str
     error: str
-    dependency_chain: List[str]
-    blocked_children: List[str]
+    dependency_chain: list[str]
+    blocked_children: list[str]
     discarded_at: str
     failed_at: str
-
 
 class CoverageEvent(TypedDict, total=False):
     """coverage event-sourcing エントリ."""
@@ -36,13 +34,12 @@ class CoverageEvent(TypedDict, total=False):
     feature: str
     from_status: str
     to_status: str
-    details: Dict[str, str]
-
+    details: dict[str, str]
 
 class CoverageMetadata(TypedDict, total=False):
     """coverage metadata セクション."""
 
-    last_updated: Optional[str]
+    last_updated: str | None
     total_verified: int
     total_staging: int
     total_pending: int
@@ -50,32 +47,29 @@ class CoverageMetadata(TypedDict, total=False):
     total_failed: int
     total_unverified: int
     total_discarded: int
-    source_files: List[str]
+    source_files: list[str]
     year: int
     total_events: int
-
 
 class CoverageCurrentState(TypedDict, total=False):
     """coverage current_state セクション."""
 
-    verified: List[str]
-    staging: List[FeatureItem]
-    pending: List[FeatureItem]
-    pending_due_to_gate_fail: List[FeatureItem]
-    failed: List[FeatureItem]
-    unverified: List[FeatureItem]
-    discarded: List[FeatureItem]
-    quality_gates: Dict[str, List[str]]
-
+    verified: list[str]
+    staging: list[FeatureItem]
+    pending: list[FeatureItem]
+    pending_due_to_gate_fail: list[FeatureItem]
+    failed: list[FeatureItem]
+    unverified: list[FeatureItem]
+    discarded: list[FeatureItem]
+    quality_gates: dict[str, list[str]]
 
 class CoverageData(TypedDict, total=False):
     """coverage.json トップレベル構造."""
 
-    events: List[CoverageEvent]
+    events: list[CoverageEvent]
     current_state: CoverageCurrentState
     metadata: CoverageMetadata
-    business_rules: Dict[str, Union[int, float]]
-
+    business_rules: dict[str, int | float]
 
 class FeatureStatus(Enum):
     """Feature validation status enum"""
@@ -86,7 +80,6 @@ class FeatureStatus(Enum):
     PENDING_DUE_TO_GATE_FAIL = "pending_due_to_gate_fail"
     UNVERIFIED = "unverified"
     FAILED = "failed"
-
 
 class FeatureReason(Enum):
     """Feature validation reason enum"""
@@ -104,9 +97,8 @@ class FeatureReason(Enum):
     TYPE_MISMATCH = "type_mismatch"
     INVALID_RESULT = "invalid_result"
 
-
 # Status to allowed reasons mapping
-STATUS_REASONS: Dict[FeatureStatus, set[FeatureReason]] = {
+STATUS_REASONS: dict[FeatureStatus, set[FeatureReason]] = {
     FeatureStatus.PENDING: {
         FeatureReason.INSUFFICIENT_DATA,
         FeatureReason.HIGH_NAN_RATE,
@@ -126,7 +118,6 @@ STATUS_REASONS: Dict[FeatureStatus, set[FeatureReason]] = {
     },
     FeatureStatus.VERIFIED: set(),  # Verified features don't need reasons
 }
-
 
 class CoverageValidator:
     """Validates coverage.json structure and consistency"""
@@ -182,7 +173,7 @@ class CoverageValidator:
             )
 
         # Update totals
-        current_state = cast(Dict[str, List[str]], merged_coverage["current_state"])
+        current_state = cast(dict[str, list[str]], merged_coverage["current_state"])
         merged_coverage["metadata"]["total_verified"] = len(current_state["verified"])
         merged_coverage["metadata"]["total_staging"] = len(current_state["staging"])
         merged_coverage["metadata"]["total_pending"] = len(current_state["pending"])
@@ -207,11 +198,11 @@ class CoverageValidator:
 
         # Handle current state merging
         source_current = cast(
-            Dict[str, Union[List[str], List[FeatureItem]]],
+            dict[str, list[str] | list[FeatureItem]],
             source.get("current_state", source),
         )  # Backward compatibility
         target_current = cast(
-            Dict[str, Union[List[str], List[FeatureItem]]], target["current_state"]
+            dict[str, list[str] | list[FeatureItem]], target["current_state"]
         )
 
         # Status priority: VERIFIED > STAGING > PENDING > UNVERIFIED > FAILED
@@ -225,17 +216,17 @@ class CoverageValidator:
         }
 
         # Track existing features by name
-        existing_features: Dict[
-            str, Tuple[FeatureStatus, Optional[FeatureItem]]
+        existing_features: dict[
+            str, tuple[FeatureStatus, FeatureItem | None]
         ] = {}
         for status in FeatureStatus:
             status_key = status.value
             if status_key in target_current:
                 if status == FeatureStatus.VERIFIED:
-                    for name in cast(List[str], target_current[status_key]):
+                    for name in cast(list[str], target_current[status_key]):
                         existing_features[name] = (status, None)
                 else:
-                    for item in cast(List[FeatureItem], target_current[status_key]):
+                    for item in cast(list[FeatureItem], target_current[status_key]):
                         existing_features[item["name"]] = (status, item)
 
         # Merge status sections with conflict resolution
@@ -244,7 +235,7 @@ class CoverageValidator:
             if status_key in source_current:
                 if status == FeatureStatus.VERIFIED:
                     # Verified is list of feature names
-                    for name in cast(List[str], source_current[status_key]):
+                    for name in cast(list[str], source_current[status_key]):
                         if name in existing_features:
                             existing_status, _ = existing_features[name]
                             if (
@@ -255,12 +246,12 @@ class CoverageValidator:
                                 CoverageValidator._remove_feature_from_status(
                                     target_current, name, existing_status
                                 )
-                                cast(List[str], target_current[status_key]).append(name)
+                                cast(list[str], target_current[status_key]).append(name)
                         else:
-                            cast(List[str], target_current[status_key]).append(name)
+                            cast(list[str], target_current[status_key]).append(name)
                 elif status == FeatureStatus.STAGING:
                     # STAGING status: Similar to PENDING but for staging evaluation
-                    for item in cast(List[FeatureItem], source_current[status_key]):
+                    for item in cast(list[FeatureItem], source_current[status_key]):
                         name = item["name"]
                         if name in existing_features:
                             existing_status, _ = existing_features[name]
@@ -273,21 +264,21 @@ class CoverageValidator:
                                     target_current, name, existing_status
                                 )
                                 cast(
-                                    List[FeatureItem], target_current[status_key]
+                                    list[FeatureItem], target_current[status_key]
                                 ).append(item)
                         else:
                             cast(
-                                List[FeatureItem], target_current[status_key]
+                                list[FeatureItem], target_current[status_key]
                             ).append(item)
                 elif status == FeatureStatus.FAILED:
                     # FAILED status: Only add if feature doesn't exist in higher priority statuses
                     # FAILED should not override VERIFIED, STAGING, PENDING, or UNVERIFIED
-                    for item in cast(List[FeatureItem], source_current[status_key]):
+                    for item in cast(list[FeatureItem], source_current[status_key]):
                         name = item["name"]
                         if name not in existing_features:
                             # New failed feature - add it
                             cast(
-                                List[FeatureItem], target_current[status_key]
+                                list[FeatureItem], target_current[status_key]
                             ).append(item)
                         else:
                             # Feature exists - check if it's already FAILED, and merge dependency info
@@ -317,7 +308,7 @@ class CoverageValidator:
                             # If feature exists in higher priority status, skip (don't override)
                 else:
                     # PENDING and UNVERIFIED: normal priority-based merging
-                    for item in cast(List[FeatureItem], source_current[status_key]):
+                    for item in cast(list[FeatureItem], source_current[status_key]):
                         name = item["name"]
                         if name in existing_features:
                             existing_status, _ = existing_features[name]
@@ -330,11 +321,11 @@ class CoverageValidator:
                                     target_current, name, existing_status
                                 )
                                 cast(
-                                    List[FeatureItem], target_current[status_key]
+                                    list[FeatureItem], target_current[status_key]
                                 ).append(item)
                         else:
                             cast(
-                                List[FeatureItem], target_current[status_key]
+                                list[FeatureItem], target_current[status_key]
                             ).append(item)
 
         # Update metadata
@@ -352,9 +343,9 @@ class CoverageValidator:
         coverage_data: CoverageData,
         event_type: str,
         feature: str,
-        from_status: Optional[str] = None,
-        to_status: Optional[str] = None,
-        details: Optional[Dict[str, str]] = None,
+        from_status: str | None = None,
+        to_status: str | None = None,
+        details: dict[str, str] | None = None,
     ) -> None:
         """Record an event in the coverage data"""
         event: CoverageEvent = {
@@ -468,7 +459,7 @@ class CoverageValidator:
 
     @staticmethod
     def _remove_feature_from_status(
-        target_current: Dict[str, Union[List[str], List[FeatureItem]]],
+        target_current: dict[str, list[str] | list[FeatureItem]],
         feature_name: str,
         status: FeatureStatus,
     ) -> None:
@@ -479,18 +470,18 @@ class CoverageValidator:
 
         if status == FeatureStatus.VERIFIED:
             # VERIFIED is list of strings
-            status_list: List[str] = target_current[status_key]  # type: ignore
+            status_list: list[str] = target_current[status_key]  # type: ignore
             if feature_name in status_list:
                 status_list.remove(feature_name)
         else:
             # Other statuses are list of dicts with "name" key
-            status_list: List[FeatureItem] = target_current[status_key]  # type: ignore
+            status_list: list[FeatureItem] = target_current[status_key]  # type: ignore
             status_list[:] = [
                 item for item in status_list if item.get("name") != feature_name
             ]  # type: ignore
 
     @staticmethod
-    def validate_coverage_structure(coverage_data: CoverageData) -> List[str]:
+    def validate_coverage_structure(coverage_data: CoverageData) -> list[str]:
         """Validate coverage.json structure"""
         errors = []
 
@@ -516,7 +507,7 @@ class CoverageValidator:
         return errors
 
     @staticmethod
-    def _validate_status_section(status: FeatureStatus, items: Union[List[str], List[FeatureItem]]) -> List[str]:
+    def _validate_status_section(status: FeatureStatus, items: list[str] | list[FeatureItem]) -> list[str]:
         """Validate a status section"""
         errors = []
 
@@ -549,7 +540,7 @@ class CoverageValidator:
         return errors
 
     @staticmethod
-    def validate_coverage_comprehensive(coverage_data: CoverageData) -> List[str]:
+    def validate_coverage_comprehensive(coverage_data: CoverageData) -> list[str]:
         """Comprehensive validation including business rules"""
         errors = CoverageValidator.validate_coverage_structure(coverage_data)
 
@@ -559,7 +550,7 @@ class CoverageValidator:
         return errors
 
     @staticmethod
-    def _validate_business_rules(coverage_data: CoverageData) -> List[str]:
+    def _validate_business_rules(coverage_data: CoverageData) -> list[str]:
         """Validate business rules for coverage data"""
         errors = []
 
@@ -680,7 +671,6 @@ class CoverageValidator:
 
         return errors
 
-
 class CoverageReporter:
     """Unified reporting for coverage.json in multiple formats"""
 
@@ -754,7 +744,6 @@ class CoverageReporter:
 
         return "\n".join(lines)
 
-
 class StatusTransitionManager:
     """Manages status transitions for features"""
 
@@ -787,7 +776,7 @@ class StatusTransitionManager:
         coverage_data: CoverageData,
         feature_name: str,
         new_status: FeatureStatus,
-        reason: Optional[FeatureReason] = None,
+        reason: FeatureReason | None = None,
     ) -> bool:
         """Transition a feature to new status"""
         # Find current status
@@ -843,10 +832,9 @@ class StatusTransitionManager:
 
         return True
 
-
 def validate_coverage_comprehensive(
     coverage_data: CoverageData,
-) -> tuple[bool, List[str]]:
+) -> tuple[bool, list[str]]:
     """
     Comprehensive validation including business rules and category requirements.
 
@@ -854,7 +842,7 @@ def validate_coverage_comprehensive(
         coverage_data: Coverage data to validate
 
     Returns:
-        Tuple of (is_valid, error_messages)
+        tuple of (is_valid, error_messages)
     """
     errors = []
 
@@ -901,9 +889,8 @@ def validate_coverage_comprehensive(
 
     return len(errors) == 0, errors
 
-
 def validate_status_reason(
-    status: FeatureStatus, reason: Optional[FeatureReason]
+    status: FeatureStatus, reason: FeatureReason | None
 ) -> bool:
     """
     Validate that the reason is appropriate for the given status.
@@ -923,11 +910,9 @@ def validate_status_reason(
 
     return reason in STATUS_REASONS[status]
 
-
 def serialize_status(status: FeatureStatus) -> str:
     """Serialize FeatureStatus to string for JSON output"""
     return status.value
-
 
 def serialize_reason(reason: FeatureReason) -> str:
     """Serialize FeatureReason to string for JSON output"""

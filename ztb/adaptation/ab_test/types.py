@@ -6,14 +6,13 @@ Type definitions for A/B Testing Framework
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 # ストリーミングデータ処理のための型定義
-SampleData = Dict[str, Any]  # 柔軟なサンプルデータ型
+SampleData = dict[str, Any]  # 柔軟なサンプルデータ型
 
 # 型エイリアス
-SampleDataType = Dict[str, Any]
-
+SampleDataType = dict[str, Any]
 
 class StatisticalTest(Enum):
     """統計検定タイプ"""
@@ -21,7 +20,6 @@ class StatisticalTest(Enum):
     T_TEST = "t_test"
     MANN_WHITNEY = "mann_whitney"
     CHI_SQUARE = "chi_square"
-
 
 class ABTestStatus(Enum):
     """A/Bテストステータス"""
@@ -33,7 +31,6 @@ class ABTestStatus(Enum):
     CANCELLED = "cancelled"  # キャンセル
     FAILED = "failed"  # 失敗
 
-
 class ABTestResult(Enum):
     """A/Bテスト結果"""
 
@@ -41,7 +38,6 @@ class ABTestResult(Enum):
     WINNER_A = "winner_a"  # Aが勝者
     WINNER_B = "winner_b"  # Bが勝者
     TIE = "tie"  # 同等
-
 
 @dataclass
 class ABTestVariant:
@@ -51,8 +47,7 @@ class ABTestVariant:
     model_path: str
     model_version: str
     description: str
-    metadata: Dict[str, Any] = field(default_factory=dict)
-
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class StatisticalResult:
@@ -69,7 +64,6 @@ class StatisticalResult:
     std_a: float
     std_b: float
     timestamp: datetime = field(default_factory=datetime.now)
-
 
 @dataclass
 class StreamingStatistics:
@@ -113,7 +107,6 @@ class StreamingStatistics:
         self.min_val = float("inf")
         self.max_val = float("-inf")
 
-
 @dataclass
 class RiskAssessment:
     """リスク評価結果"""
@@ -123,9 +116,8 @@ class RiskAssessment:
     statistical_risk: str = "low"
     performance_risk: str = "low"
     regression_risk: str = "low"
-    risk_factors: List[str] = field(default_factory=list)
-    recommended_actions: List[str] = field(default_factory=list)
-
+    risk_factors: list[str] = field(default_factory=list)
+    recommended_actions: list[str] = field(default_factory=list)
 
 @dataclass
 class ABTestMetrics:
@@ -137,7 +129,6 @@ class ABTestMetrics:
     std_reward: float = 0.0
     total_trades: int = 0
     win_rate: float = 0.0
-
 
 @dataclass
 class ABTestConfiguration:
@@ -174,8 +165,7 @@ class ABTestConfiguration:
 
     # メタデータ
     created_at: datetime = field(default_factory=datetime.now)
-    tags: List[str] = field(default_factory=list)
-
+    tags: list[str] = field(default_factory=list)
 
 @dataclass
 class ABTestState:
@@ -183,8 +173,8 @@ class ABTestState:
 
     test_id: str
     status: ABTestStatus
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
     current_sample_count: int = 0
 
     # メトリクス（ストリーミング更新）
@@ -192,7 +182,7 @@ class ABTestState:
     metrics_b: ABTestMetrics = field(default_factory=lambda: ABTestMetrics("B"))
 
     # 統計結果
-    latest_statistical_result: Optional[StatisticalResult] = None
+    latest_statistical_result: StatisticalResult | None = None
 
     # リスク管理
     regression_detected: bool = False
@@ -202,20 +192,18 @@ class ABTestState:
     processing_time_ms: float = 0.0
     memory_usage_mb: float = 0.0
 
-
 @dataclass
 class ABTestResultSummary:
     """A/Bテスト結果サマリー"""
 
     test_id: str
     result: ABTestResult
-    winner_variant_id: Optional[str]
+    winner_variant_id: str | None
     confidence_level: float
     statistical_result: StatisticalResult
-    risk_assessment: Dict[str, Any]
-    recommendations: List[str]
+    risk_assessment: dict[str, Any]
+    recommendations: list[str]
     created_at: datetime = field(default_factory=datetime.now)
-
 
 @dataclass
 class ABTestReport:
@@ -224,16 +212,15 @@ class ABTestReport:
     test_id: str
     configuration: ABTestConfiguration
     state: ABTestState
-    result_summary: Optional[ABTestResultSummary]
-    performance_metrics: Dict[str, Any]
-    risk_metrics: Dict[str, Any]
+    result_summary: ABTestResultSummary | None
+    performance_metrics: dict[str, Any]
+    risk_metrics: dict[str, Any]
     generated_at: datetime = field(default_factory=datetime.now)
-
 
 # コールバック型定義（メモリ効率的な処理のため）
 SampleProcessorCallback = Callable[[SampleDataType], None]
 TestCompletionCallback = Callable[[ABTestResultSummary], None]
-RiskAlertCallback = Callable[[str, Dict[str, Any]], None]
+RiskAlertCallback = Callable[[str, dict[str, Any]], None]
 
 # ストリーミングデータ処理のためのイテレータ型
-SampleData = Dict[str, Any]  # 柔軟なサンプルデータ型
+SampleData = dict[str, Any]  # 柔軟なサンプルデータ型

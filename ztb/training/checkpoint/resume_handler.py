@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+from typing import TYPE_CHECKING, Any, Callable
 
 import pandas as pd
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -16,16 +16,14 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-
 @dataclass
 class ResumeState:
     """Summary of a successful resume operation."""
 
     step: int
-    metrics: Dict[str, Any]
-    metadata: Dict[str, Any]
-    streaming_state: Optional[Dict[str, Any]] = None
-
+    metrics: dict[str, Any]
+    metadata: dict[str, Any]
+    streaming_state: dict[str, Any] | None = None
 
 class ResumeHandler:
     """Coordinate checkpoint restoration and streaming pipeline recovery."""
@@ -34,7 +32,7 @@ class ResumeHandler:
         self,
         checkpoint_manager: TrainingCheckpointManager,
         *,
-        streaming_pipeline: Optional["StreamingPipeline"] = None,
+        streaming_pipeline: StreamingPipeline | None = None,
     ) -> None:
         self.checkpoint_manager = checkpoint_manager
         self.streaming_pipeline = streaming_pipeline
@@ -43,8 +41,8 @@ class ResumeHandler:
         self,
         model: BaseAlgorithm,
         *,
-        apply_snapshot: Optional[Callable[[TrainingCheckpointSnapshot], None]] = None,
-    ) -> Optional[ResumeState]:
+        apply_snapshot: Callable[[TrainingCheckpointSnapshot], None] | None = None,
+    ) -> ResumeState | None:
         snapshot = self.checkpoint_manager.load_latest()
         if snapshot is None:
             return None
@@ -64,7 +62,7 @@ class ResumeHandler:
             streaming_state=stream_state,
         )
 
-    def _restore_streaming_state(self, stream_state: Optional[Dict[str, Any]]) -> None:
+    def _restore_streaming_state(self, stream_state: dict[str, Any] | None) -> None:
         if not self.streaming_pipeline or not stream_state:
             return
 

@@ -61,7 +61,6 @@ except ImportError:
     def compute_supertrend_direction(df: pd.DataFrame) -> pd.Series:
         return pd.Series([0] * len(df), index=df.index)
 
-
 try:
     from ztb.features.generators.technical.volatility.bollinger import compute_bb_width
 except ImportError:
@@ -69,14 +68,12 @@ except ImportError:
     def compute_bb_width(df: pd.DataFrame, period: int = 20) -> pd.Series:
         return pd.Series([0.0] * len(df), index=df.index)
 
-
 try:
     from ztb.features.generators.technical.volume.obv import compute_obv
 except ImportError:
 
     def compute_obv(df: pd.DataFrame) -> pd.Series:
         return pd.Series([0.0] * len(df), index=df.index)
-
 
 try:
     from ztb.features.generators.technical.trend.sma import compute_sma
@@ -87,9 +84,7 @@ except ImportError:
             return pd.Series(dtype="float64", index=df.index)
         return df["close"].rolling(window=max(1, int(period))).mean()
 
-
 from .base import CandlestickPatternRecognizer, SignalResult
-
 
 class TimeClusterInfo(TypedDict):
     type: str
@@ -97,12 +92,10 @@ class TimeClusterInfo(TypedDict):
     interval: int
     strength: float
 
-
 @dataclass(frozen=True)
 class GannMarketContext:
     volatility_ratio: float
     trend_strength: float
-
 
 class GannAnalyzer:
     """Utility class for Gann analysis calculations."""
@@ -337,7 +330,6 @@ class GannAnalyzer:
             "strength": float(strength),
         }
 
-
 class GannPatternBase(CandlestickPatternRecognizer):
     """Common base for Gann recognizers (shared context + typing helpers)."""
 
@@ -433,7 +425,6 @@ class GannPatternBase(CandlestickPatternRecognizer):
     @staticmethod
     def _clamp(value: float, min_value: float, max_value: float) -> float:
         return float(max(min_value, min(max_value, value)))
-
 
 class GannAngleRecognizer(GannPatternBase):
     """Recognizes Gann angle support/resistance levels."""
@@ -547,7 +538,6 @@ class GannAngleRecognizer(GannPatternBase):
             )
 
         return None
-
 
 class GannSquareRecognizer(GannPatternBase):
     """Recognizes Gann square of 9 levels."""
@@ -668,7 +658,6 @@ class GannSquareRecognizer(GannPatternBase):
             )
 
         return None
-
 
 class GannTimeClusterRecognizer(GannPatternBase):
     """Recognizes Gann time clusters and cycle alignments."""

@@ -5,7 +5,7 @@ Trading Evaluator implementation.
 
 import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -47,19 +47,18 @@ StressTestAnalyzer = None
 
 logger = get_logger(__name__)
 
-
 class TradingEvaluator:
     """取引モデルの評価クラス"""
 
     writer: SummaryWriter  # TensorBoard SummaryWriter
-    model: Optional[BaseAlgorithm]
-    df: Optional[pd.DataFrame]
+    model: BaseAlgorithm | None
+    df: pd.DataFrame | None
     env: HeavyTradingEnv
     results_dir: Path
     tensorboard_log_dir: Path
 
     def __init__(
-        self, model_path: str, data_path: str, config: Optional[Dict[str, Any]] = None
+        self, model_path: str, data_path: str, config: dict[str, Any] | None = None
     ) -> None:
         super().__init__()
         warnings.warn(
@@ -99,7 +98,7 @@ class TradingEvaluator:
             log_dir=str(self.tensorboard_log_dir / "evaluation")
         )
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """デフォルト設定を取得"""
         return {
             "results_dir": "./results/",
@@ -129,7 +128,7 @@ class TradingEvaluator:
             df.to_pickle(cache_path)
         return df
 
-    def _load_model(self) -> Optional[BaseAlgorithm]:
+    def _load_model(self) -> BaseAlgorithm | None:
         """モデルの読み込み"""
         if not self.model_path.exists():
             # Tests expect a FileNotFoundError with message containing "Model not found"
@@ -338,7 +337,7 @@ class TradingEvaluator:
             return 0  # Default action
 
     def _aggregate_results(
-        self, results: List[SingleEpisodeResultDict]
+        self, results: list[SingleEpisodeResultDict]
     ) -> EvaluationResult:
         """結果を集計"""
         # 基本的な集計処理
@@ -543,7 +542,7 @@ class TradingEvaluator:
         pass
 
     def compare_models(
-        self, model_paths: List[str], model_names: Optional[List[str]] = None
+        self, model_paths: list[str], model_names: list[str] | None = None
     ) -> None:
         """Compare multiple models."""
         logger.info(f"Comparing {len(model_paths)} models")

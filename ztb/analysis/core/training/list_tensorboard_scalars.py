@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""List available TensorBoard scalar tags for reward improvement runs."""
+"""list available TensorBoard scalar tags for reward improvement runs."""
 
 from pathlib import Path
-from typing import List
 
 from tensorboard.backend.event_processing import event_accumulator
 
@@ -16,8 +15,7 @@ RUNS = {
     ),
 }
 
-
-def list_scalars(run_dir: Path) -> List[str]:
+def list_scalars(run_dir: Path) -> list[str]:
     events_file = next(run_dir.glob("**/events.out.tfevents.*"), None)
     if not events_file:
         raise FileNotFoundError(f"No events file found in {run_dir}")
@@ -32,7 +30,6 @@ def list_scalars(run_dir: Path) -> List[str]:
         scalars = []
     return scalars
 
-
 def main() -> None:
     for name, path in RUNS.items():
         print("=" * 80)
@@ -46,7 +43,6 @@ def main() -> None:
         for tag in scalars:
             print(f"  {tag}")
         print()
-
 
 if __name__ == "__main__":
     main()

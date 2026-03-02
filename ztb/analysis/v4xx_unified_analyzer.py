@@ -10,7 +10,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-
 class V4XXUnifiedAnalyzer:
     """Analyze single and multi-period backtest result payloads."""
 

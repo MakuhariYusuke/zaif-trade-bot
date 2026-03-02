@@ -8,7 +8,7 @@ Handles data synchronization, resampling, and quality validation.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -21,7 +21,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class MultiTimeframeDataPipeline:
     """
     Data pipeline for loading and processing multiple timeframe data.
@@ -30,7 +29,7 @@ class MultiTimeframeDataPipeline:
     across multiple timeframes.
     """
 
-    def __init__(self, data_base_path: Optional[str] = None):
+    def __init__(self, data_base_path: str | None = None):
         """
         Initialize data pipeline.
 
@@ -38,18 +37,18 @@ class MultiTimeframeDataPipeline:
             data_base_path: Base path for data files
         """
         self.data_base_path = Path(data_base_path or "data")
-        self.timeframe_data: Dict[Timeframe, pd.DataFrame] = {}
+        self.timeframe_data: dict[Timeframe, pd.DataFrame] = {}
 
     def load_timeframe_data(
         self,
-        timeframes: List[Timeframe],
-        data_files: Optional[Dict[Timeframe, str]] = None,
-    ) -> Dict[Timeframe, pd.DataFrame]:
+        timeframes: list[Timeframe],
+        data_files: dict[Timeframe, str] | None = None,
+    ) -> dict[Timeframe, pd.DataFrame]:
         """
         Load data for multiple timeframes.
 
         Args:
-            timeframes: List of timeframes to load
+            timeframes: list of timeframes to load
             data_files: Optional mapping of timeframes to file paths
 
         Returns:
@@ -96,7 +95,7 @@ class MultiTimeframeDataPipeline:
 
     def _load_single_timeframe(
         self, file_path: str, timeframe: Timeframe
-    ) -> Optional[pd.DataFrame]:
+    ) -> pd.DataFrame | None:
         """Load data for a single timeframe."""
         if not Path(file_path).exists():
             logger.warning(f"Data file not found: {file_path}")
@@ -191,9 +190,9 @@ class MultiTimeframeDataPipeline:
 
     def synchronize_timeframes(
         self,
-        data_dict: Dict[Timeframe, pd.DataFrame],
+        data_dict: dict[Timeframe, pd.DataFrame],
         base_timeframe: Timeframe = Timeframe.M5,
-    ) -> Dict[Timeframe, pd.DataFrame]:
+    ) -> dict[Timeframe, pd.DataFrame]:
         """
         Synchronize data across timeframes to common timestamps.
 
@@ -283,9 +282,9 @@ class MultiTimeframeDataPipeline:
 
     def generate_missing_timeframes(
         self,
-        available_data: Dict[Timeframe, pd.DataFrame],
-        target_timeframes: List[Timeframe],
-    ) -> Dict[Timeframe, pd.DataFrame]:
+        available_data: dict[Timeframe, pd.DataFrame],
+        target_timeframes: list[Timeframe],
+    ) -> dict[Timeframe, pd.DataFrame]:
         """
         Generate missing timeframe data through resampling.
 
@@ -373,8 +372,8 @@ class MultiTimeframeDataPipeline:
         return minute_map.get(timeframe, 60)
 
     def get_data_quality_report(
-        self, data_dict: Dict[Timeframe, pd.DataFrame]
-    ) -> Dict[str, Any]:
+        self, data_dict: dict[Timeframe, pd.DataFrame]
+    ) -> dict[str, Any]:
         """Generate data quality report."""
         report = {
             "timeframes": {},

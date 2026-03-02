@@ -4,7 +4,7 @@ SAC適応設定
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from typing import Any
 
 from .monitoring.config import MonitoringConfig
 
@@ -22,11 +22,9 @@ try:
 except ImportError:
     SafetyConfig = None  # type: ignore[misc,assignment]
 
-
 def _default_factory(cls: Any) -> Any:
     """Safe default factory for potentially archived config classes."""
     return cls() if cls is not None else None
-
 
 @dataclass
 class SACConfig:
@@ -50,7 +48,7 @@ class SACConfig:
     # パフォーマンス設定
     max_concurrent_adaptations: int = 3
     adaptation_timeout_seconds: int = 300
-    resource_limits: Dict[str, float] = field(
+    resource_limits: dict[str, float] = field(
         default_factory=lambda: {
             "cpu_percent": 80.0,
             "memory_percent": 85.0,

@@ -3,7 +3,6 @@
 """
 
 import logging
-from typing import Dict, List
 
 import numpy as np
 import torch
@@ -20,7 +19,6 @@ except Exception:  # pragma: no cover - optional runtime dep
     AutoTokenizer = None  # type: ignore
 
 logger = logging.getLogger(__name__)
-
 
 class TextSentimentEncoder(nn.Module):
     """
@@ -57,7 +55,7 @@ class TextSentimentEncoder(nn.Module):
             nn.Tanh(),  # -1 to 1
         )
 
-    def forward(self, texts: List[str]) -> Dict[str, torch.Tensor]:
+    def forward(self, texts: list[str]) -> dict[str, torch.Tensor]:
         """
         テキストを感情特徴量に変換
 
@@ -91,7 +89,6 @@ class TextSentimentEncoder(nn.Module):
             "intensity": intensity,
             "embeddings": embeddings,
         }
-
 
 class FinancialTextProcessor:
     """
@@ -131,7 +128,7 @@ class FinancialTextProcessor:
             "調整": -0.2,
         }
 
-    def extract_financial_sentiment(self, text: str) -> Dict[str, float]:
+    def extract_financial_sentiment(self, text: str) -> dict[str, float]:
         """
         金融特化の感情分析
 
@@ -158,7 +155,6 @@ class FinancialTextProcessor:
             "matched_words": matched_words,
             "confidence": min(len(matched_words) / len(words), 1.0),
         }
-
 
 class MultiModalFeatureIntegrator(nn.Module):
     """
@@ -254,7 +250,6 @@ class MultiModalFeatureIntegrator(nn.Module):
 
         return integrated_features
 
-
 class SyntheticDataGenerator:
     """
     マルチモーダル学習用の合成データ生成器
@@ -275,7 +270,7 @@ class SyntheticDataGenerator:
 
     def generate_market_news(
         self, market_state: str, num_samples: int = 100
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         市場状態に基づく合成ニュース生成
 
@@ -390,7 +385,6 @@ class SyntheticDataGenerator:
             indicators.append(final_indicators)
 
         return np.array(indicators)
-
 
 # 使用例とテスト
 if __name__ == "__main__":

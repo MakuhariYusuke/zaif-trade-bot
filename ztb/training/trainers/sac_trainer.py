@@ -13,7 +13,7 @@ AlgorithmFactoryから生成されたSACAlgorithmを使用して訓練を実行�
 import csv
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 
@@ -48,14 +48,12 @@ except Exception:
                 except Exception:
                     pass
 
-
 from stable_baselines3.common.vec_env import DummyVecEnv
 from ztb.trading.environment.environment import HeavyTradingEnv  # 🔧 Fixed import
 from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.training.algorithms import AlgorithmFactory
 from ztb.training.callbacks.advanced_callbacks import EarlyStoppingCallback
 from ztb.utils.config_manager import ConfigManager
-
 
 # Backwards-compatible minimal SACAlgorithm shim for tests that patch
 # `ztb.training.trainers.sac_trainer.SACAlgorithm`. This provides the
@@ -76,7 +74,6 @@ from ztb.utils.training_utils import create_checkpoint_callback
 
 logger = get_logger(__name__)
 
-
 class SACMetricsCallback(BaseCallback):
     """
     SAC訓練中のメトリクスを出力・記録するコールバック。
@@ -93,8 +90,8 @@ class SACMetricsCallback(BaseCallback):
     def __init__(
         self,
         log_interval: int = 100,
-        training_logger: Optional[Any] = None,
-        csv_path: Optional[Path] = None,
+        training_logger: Any | None = None,
+        csv_path: Path | None = None,
         verbose: int = 0,
     ) -> None:
         """
@@ -108,8 +105,8 @@ class SACMetricsCallback(BaseCallback):
         self.log_interval = log_interval
         self.training_logger = training_logger
         self.csv_path = csv_path
-        self.csv_writer: Optional[Any] = None
-        self.csv_file: Optional[Any] = None
+        self.csv_writer: Any | None = None
+        self.csv_file: Any | None = None
 
         # CSVファイルを初期化
         if self.csv_path:
@@ -155,7 +152,7 @@ class SACMetricsCallback(BaseCallback):
             self.csv_writer = None
             self.csv_file = None
 
-    def _write_to_csv(self, step: int, metrics: Dict[str, float]) -> None:
+    def _write_to_csv(self, step: int, metrics: dict[str, float]) -> None:
         """CSVファイルにメトリクスを書き込む"""
         if self.csv_writer is None:
             return
@@ -188,7 +185,7 @@ class SACMetricsCallback(BaseCallback):
         except Exception as e:
             logger.warning("Failed to write to CSV: %s", e)
 
-    def _write_to_tensorboard(self, step: int, metrics: Dict[str, float]) -> None:
+    def _write_to_tensorboard(self, step: int, metrics: dict[str, float]) -> None:
         """TensorBoardに直接書き込む"""
         model = getattr(self, "model", None)
         if model is None or not hasattr(model, "logger") or model.logger is None:
@@ -444,7 +441,6 @@ class SACMetricsCallback(BaseCallback):
             except Exception:
                 pass
 
-
 class SACAlgorithmTrainer(EnsembleMixin):
     """
     SAC (Soft Actor-Critic) アルゴリズムのトレーナー。
@@ -468,9 +464,9 @@ class SACAlgorithmTrainer(EnsembleMixin):
         self.progress_bar_enabled = progress_bar_enabled
         self.logger = get_logger(__name__)
         # Model instance (SAC or wrapper) - use conservative protocol
-        self.model: Optional[SACLikeModelProtocol] = None
+        self.model: SACLikeModelProtocol | None = None
 
-    def train(self, unified_config: Dict[str, Any]) -> Dict[str, Any]:
+    def train(self, unified_config: dict[str, Any]) -> dict[str, Any]:
         """
         SAC訓練を実行。
 

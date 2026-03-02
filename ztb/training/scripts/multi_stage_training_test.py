@@ -10,7 +10,6 @@ from pathlib import Path
 
 import numpy as np
 
-
 def load_config():
     """Load v431 configuration"""
     config_path = (
@@ -21,7 +20,6 @@ def load_config():
     )
     with open(config_path, "r") as f:
         return json.load(f)
-
 
 def simulate_training_stage(
     stage_name, timesteps, learning_rate, exploration_rate, config
@@ -112,7 +110,6 @@ def simulate_training_stage(
 
     return total_reward, avg_reward, actions, elapsed
 
-
 def main():
     print("=== SAC v431 Multi-Stage Training ===")
 
@@ -182,7 +179,6 @@ def main():
     print("1. Perform comprehensive backtesting with multi-stage model")
     print("2. Evaluate risk metrics and drawdown analysis")
     print("3. Compare with baseline SAC v430 performance")
-
 
 if __name__ == "__main__":
     main()

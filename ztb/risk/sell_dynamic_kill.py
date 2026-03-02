@@ -24,7 +24,6 @@ from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
 
-
 @dataclass
 class DynamicKillConfig:
     """side 共用 dynamic kill 設定 (157# §19 DRY 化)."""
@@ -46,10 +45,8 @@ class DynamicKillConfig:
                 f"DynamicKillConfig.resume_window must be >= 0, got {self.resume_window}"
             )
 
-
 # 後方互換エイリアス
 SellKillConfig = DynamicKillConfig
-
 
 @dataclass
 class DynamicKillTelemetry:
@@ -65,10 +62,8 @@ class DynamicKillTelemetry:
     total_cooldown_cycles: int
     side: str = ""
 
-
 # 後方互換エイリアス
 SellKillTelemetry = DynamicKillTelemetry
-
 
 class DynamicKillManager:
     """side 共用動的 kill マネージャ (157# §19).
@@ -231,10 +226,8 @@ class DynamicKillManager:
         """管理対象 side."""
         return self._side
 
-
 # 後方互換エイリアス (136# の import を破壊しない)
 SellDynamicKillManager = DynamicKillManager
-
 
 class BuyDynamicKillManager(DynamicKillManager):
     """157# §19: buy 側動的 kill マネージャ.

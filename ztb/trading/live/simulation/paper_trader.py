@@ -11,7 +11,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -31,8 +31,7 @@ from ztb.utils.path_utils import ensure_dir
 
 from .sim_broker import SimBroker
 
-
-def load_venue_config(venue_name: str, config_dir: str = "venues") -> Dict[str, Any]:
+def load_venue_config(venue_name: str, config_dir: str = "venues") -> dict[str, Any]:
     """Load venue configuration from YAML file."""
     config_path = Path(config_dir) / f"{venue_name}.yaml"
     if not config_path.exists():
@@ -40,11 +39,10 @@ def load_venue_config(venue_name: str, config_dir: str = "venues") -> Dict[str, 
 
     return ConfigLoader.load(config_path)
 
-
 class SymbolMeta:
     """Symbol metadata for validation."""
 
-    def __init__(self, symbol_config: Dict[str, Any]) -> None:
+    def __init__(self, symbol_config: dict[str, Any]) -> None:
         self.symbol = symbol_config["symbol"]
         self.base_asset = symbol_config["base_asset"]
         self.quote_asset = symbol_config["quote_asset"]
@@ -56,8 +54,8 @@ class SymbolMeta:
         self.max_price = symbol_config["max_price"]
 
     def validate_order(
-        self, side: str, quantity: float, price: Optional[float] = None
-    ) -> List[str]:
+        self, side: str, quantity: float, price: float | None = None
+    ) -> list[str]:
         """Validate order parameters against symbol constraints."""
         errors = []
 
@@ -76,7 +74,6 @@ class SymbolMeta:
 
         return errors
 
-
 class PaperTrader:
     """Paper trading execution engine."""
 
@@ -85,13 +82,13 @@ class PaperTrader:
         broker: SimBroker,
         strategy: StrategyAdapter,
         mode: str = "replay",
-        dataset: Optional[str] = None,
+        dataset: str | None = None,
         duration_minutes: int = 60,
         enable_risk: bool = False,
         risk_profile: str = "aggressive",
         kill_file: str = "/tmp/ztb.stop",
-        venue_config: Optional[Dict[str, Any]] = None,
-        target_vol: Optional[float] = None,
+        venue_config: dict[str, Any] | None = None,
+        target_vol: float | None = None,
         from_streaming: bool = False,
     ) -> None:
         """Initialize paper trader."""
@@ -134,7 +131,7 @@ class PaperTrader:
             self.data_feed = None  # type: ignore[assignment]
 
     def validate_order(
-        self, symbol: str, side: str, quantity: float, price: Optional[float] = None
+        self, symbol: str, side: str, quantity: float, price: float | None = None
     ) -> None:
         """Validate order against venue constraints."""
         if symbol not in self.symbol_meta:
@@ -191,7 +188,7 @@ class PaperTrader:
         # For RL, we need all features, not just OHLCV
         return df
 
-    async def run_replay(self, output_dir: Path) -> Dict[str, Any]:
+    async def run_replay(self, output_dir: Path) -> dict[str, Any]:
         """Run replay mode simulation."""
         if self.data_feed is None:
             if not self.dataset:
@@ -330,7 +327,7 @@ class PaperTrader:
             "trades_executed": trades_executed,
         }
 
-    async def run_live_lite(self, output_dir: Path) -> Dict[str, Any]:
+    async def run_live_lite(self, output_dir: Path) -> dict[str, Any]:
         """Run live-lite mode (connects to streaming pipeline)."""
         print("Starting live-lite simulation...")
         print("Note: This is a stub - would connect to actual streaming pipeline")
@@ -375,7 +372,7 @@ class PaperTrader:
             "trades_executed": trades_executed,
         }
 
-    async def run(self, output_dir: Path) -> Dict[str, Any]:
+    async def run(self, output_dir: Path) -> dict[str, Any]:
         """Run the paper trading simulation."""
         if self.mode == "replay":
             return await self.run_replay(output_dir)
@@ -384,8 +381,7 @@ class PaperTrader:
         else:
             raise ValueError(f"Unknown mode: {self.mode}")
 
-
-def save_results(results: Dict[str, Any], output_dir: Path) -> None:
+def save_results(results: dict[str, Any], output_dir: Path) -> None:
     """Save simulation results to files."""
     # Save P&L series as CSV
     if results["pnl_series"]:
@@ -412,7 +408,6 @@ def save_results(results: Dict[str, Any], output_dir: Path) -> None:
 
     with open(output_dir / "stats.json", "w") as f:
         json.dump(summary, f, indent=2)
-
 
 def main() -> None:
     """Main CLI entry point."""
@@ -549,7 +544,6 @@ def main() -> None:
 
         traceback.print_exc()
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

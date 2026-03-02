@@ -9,7 +9,6 @@ dimensionality-reduction diagnostics, embedding quality, and convergence.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
@@ -30,13 +29,10 @@ from ztb.training.callbacks.shared.utils.value_utils import (
 )
 from ztb.types.common import ObjectMap
 
-
 _HISTORY_LIMIT = 1_000
-
 
 def _append_bounded(history: list[float], value: float, max_len: int = _HISTORY_LIMIT) -> None:
     _append_bounded_value(history, value, max_len)
-
 
 class ClusteringMetricsCallback(NoOpMemoryOptimizedCallback):
     """Compute and track clustering quality metrics."""
@@ -56,7 +52,7 @@ class ClusteringMetricsCallback(NoOpMemoryOptimizedCallback):
         self.logger = logging.getLogger(__name__)
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         if context.epoch % self.compute_frequency != 0:
             return
@@ -169,12 +165,11 @@ class ClusteringMetricsCallback(NoOpMemoryOptimizedCallback):
 
         return stats
 
-
 class DimensionalityReductionMetricsCallback(NoOpMemoryOptimizedCallback):
     """Monitor dimensionality-reduction quality metrics."""
 
     def __init__(
-        self, compute_frequency: int = 1, original_data: Optional[np.ndarray] = None
+        self, compute_frequency: int = 1, original_data: np.ndarray | None = None
     ) -> None:
         super().__init__(cache_size=500)
         self.compute_frequency = max(1, compute_frequency)
@@ -188,7 +183,7 @@ class DimensionalityReductionMetricsCallback(NoOpMemoryOptimizedCallback):
         self.logger = logging.getLogger(__name__)
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         if context.epoch % self.compute_frequency != 0:
             return
@@ -325,14 +320,13 @@ class DimensionalityReductionMetricsCallback(NoOpMemoryOptimizedCallback):
 
         return stats
 
-
 class EmbeddingQualityCallback(NoOpMemoryOptimizedCallback):
     """Assess learned embedding quality via multiple downstream signals."""
 
     def __init__(
         self,
         compute_frequency: int = 1,
-        assessment_tasks: Optional[list[str]] = None,
+        assessment_tasks: list[str] | None = None,
     ):
         super().__init__(cache_size=1000)
         self.compute_frequency = max(1, compute_frequency)
@@ -349,7 +343,7 @@ class EmbeddingQualityCallback(NoOpMemoryOptimizedCallback):
         _append_bounded(history, value)
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         if context.epoch % self.compute_frequency != 0:
             return
@@ -487,7 +481,6 @@ class EmbeddingQualityCallback(NoOpMemoryOptimizedCallback):
                 )
         return stats
 
-
 class ConvergenceMonitorCallback(NoOpMemoryOptimizedCallback):
     """Monitor unsupervised training convergence based on tracked loss."""
 
@@ -508,7 +501,7 @@ class ConvergenceMonitorCallback(NoOpMemoryOptimizedCallback):
         self.logger = logging.getLogger(__name__)
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         if context.epoch % self.monitor_frequency != 0:
             return
@@ -541,7 +534,6 @@ class ConvergenceMonitorCallback(NoOpMemoryOptimizedCallback):
             "threshold": self.convergence_threshold,
         }
 
-
 # Factory functions for easy instantiation
 
 def create_clustering_metrics(**kwargs) -> ClusteringMetricsCallback:
@@ -550,13 +542,11 @@ def create_clustering_metrics(**kwargs) -> ClusteringMetricsCallback:
     defaults.update(kwargs)
     return ClusteringMetricsCallback(**defaults)
 
-
 def create_dim_reduction_metrics(**kwargs) -> DimensionalityReductionMetricsCallback:
     """Create dimensionality-reduction metrics callback with default settings."""
     defaults: ObjectMap = {"compute_frequency": 1}
     defaults.update(kwargs)
     return DimensionalityReductionMetricsCallback(**defaults)
-
 
 def create_embedding_quality(**kwargs) -> EmbeddingQualityCallback:
     """Create embedding-quality callback with default settings."""
@@ -567,7 +557,6 @@ def create_embedding_quality(**kwargs) -> EmbeddingQualityCallback:
     defaults.update(kwargs)
     return EmbeddingQualityCallback(**defaults)
 
-
 def create_convergence_monitor(**kwargs) -> ConvergenceMonitorCallback:
     """Create convergence monitor callback with default settings."""
     defaults: ObjectMap = {
@@ -577,7 +566,6 @@ def create_convergence_monitor(**kwargs) -> ConvergenceMonitorCallback:
     }
     defaults.update(kwargs)
     return ConvergenceMonitorCallback(**defaults)
-
 
 __all__ = [
     "ClusteringMetricsCallback",

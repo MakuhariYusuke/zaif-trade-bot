@@ -12,7 +12,7 @@ Provides tools to visualize and debug:
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -23,7 +23,6 @@ from ztb.utils.file_utils import safe_json_dump
 
 if TYPE_CHECKING:
     pass
-
 
 class ActionDiagnostics:
     """Diagnostic tool for action selection debugging."""
@@ -37,24 +36,24 @@ class ActionDiagnostics:
         self.save_dir = Path(save_dir)
         self.save_dir.mkdir(parents=True, exist_ok=True)
         self.step_counter = 0
-        self.batch_logs: List[Dict[str, Any]] = []
+        self.batch_logs: list[dict[str, Any]] = []
 
     def log_batch_diagnostics(
         self,
         step: int,
         logits_raw: "torch.Tensor",
         logits_masked: "torch.Tensor",
-        action_masks: Optional["torch.Tensor"],
+        action_masks: "torch.Tensor" | None,
         probs_before_temp: "torch.Tensor",
         probs_after_temp: "torch.Tensor",
         temperature: float,
         actions_selected: torch.Tensor,
-        advantages: Optional[torch.Tensor] = None,
-        policy_grad_norm: Optional[float] = None,
-        entropy: Optional[float] = None,
-        approx_kl: Optional[float] = None,
-        value_loss: Optional[float] = None,
-        policy_loss: Optional[float] = None,
+        advantages: torch.Tensor | None = None,
+        policy_grad_norm: float | None = None,
+        entropy: float | None = None,
+        approx_kl: float | None = None,
+        value_loss: float | None = None,
+        policy_loss: float | None = None,
         phase: str = "train",
     ) -> None:
         """Log diagnostic data for a single batch.
@@ -256,12 +255,11 @@ class ActionDiagnostics:
         plt.close()
         print(f"Diagnostic plots saved to {plot_file}")
 
-
 def analyze_deterministic_selection(
     logits: torch.Tensor,
     masks: torch.Tensor,
     temperature: float = 1.0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Analyze deterministic action selection process.
 
     Args:

@@ -25,12 +25,10 @@ from .base import (
 
 logger = get_logger(__name__)
 
-
 class HarmonicPoint(NamedTuple):
     position: int
     price: float
     label: str
-
 
 class HarmonicPatternMatch(TypedDict):
     """Detected harmonic pattern payload."""
@@ -44,7 +42,6 @@ class HarmonicPatternMatch(TypedDict):
     direction: int
     strength: float
     ratios: dict[str, float]
-
 
 class HarmonicAnalyzer:
     """
@@ -101,7 +98,7 @@ class HarmonicAnalyzer:
         self._cache_max_size = 128
 
     def _set_pivot_cache(self, key: str, value: list[HarmonicPoint]) -> None:
-        """Set a cache entry and remove oldest if cache exceeds max size."""
+        """set a cache entry and remove oldest if cache exceeds max size."""
         if len(self._pivot_cache) >= self._cache_max_size:
             oldest_key = next(iter(self._pivot_cache))
             del self._pivot_cache[oldest_key]
@@ -332,7 +329,6 @@ class HarmonicAnalyzer:
 
         return min(0.9, base_strength)
 
-
 class _HarmonicPatternBase(CandlestickPatternRecognizer):
     """Shared behavior for harmonic pattern recognizers."""
 
@@ -557,7 +553,6 @@ class _HarmonicPatternBase(CandlestickPatternRecognizer):
             metadata=metadata,
         )
 
-
 class GartleyRecognizer(_HarmonicPatternBase):
     """Recognizes Gartley harmonic patterns."""
 
@@ -571,7 +566,6 @@ class GartleyRecognizer(_HarmonicPatternBase):
             default_lookback_period=5,
             default_search_window=30,
         )
-
 
 class ButterflyRecognizer(_HarmonicPatternBase):
     """Recognizes Butterfly harmonic patterns."""
@@ -587,7 +581,6 @@ class ButterflyRecognizer(_HarmonicPatternBase):
             default_search_window=60,
         )
 
-
 class BatRecognizer(_HarmonicPatternBase):
     """Recognizes Bat harmonic patterns."""
 
@@ -601,7 +594,6 @@ class BatRecognizer(_HarmonicPatternBase):
             default_lookback_period=60,
             default_search_window=60,
         )
-
 
 class CrabRecognizer(_HarmonicPatternBase):
     """Recognizes Crab harmonic patterns."""

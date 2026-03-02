@@ -11,7 +11,6 @@ from ztb.io.jsonl import iter_jsonl_objects
 
 LEVEL_ORDER: dict[str, int] = {"INFO": 0, "WARN": 1, "ERROR": 2, "CRITICAL": 3, "FAIL": 4}
 
-
 def _parse_timestamp(value: object) -> datetime | None:
     if not isinstance(value, str) or not value.strip():
         return None
@@ -28,7 +27,6 @@ def _parse_timestamp(value: object) -> datetime | None:
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc)
-
 
 def load_alerts_from_jsonl(
     jsonl_path: Path,

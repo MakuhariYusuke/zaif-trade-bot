@@ -4,8 +4,6 @@ PnL Focused Reward Calculator Component.
 This component handles PnL-focused reward calculation with trend analysis.
 """
 
-from typing import Optional
-
 import numpy as np
 
 from ztb.trading.constants import (
@@ -17,7 +15,6 @@ from ztb.trading.environment.constants import EPSILON
 
 from .base_reward_calculator import BaseRewardCalculator
 from .position_penalty import PositionPenaltyCalculator
-
 
 class PnLFocusedRewardCalculator(BaseRewardCalculator):
     """
@@ -42,7 +39,7 @@ class PnLFocusedRewardCalculator(BaseRewardCalculator):
         atr: float,
         pnl: float,
         reward_scaling: float,
-        observation: Optional[np.ndarray],
+        observation: np.ndarray | None,
         step: int,
     ) -> float:
         """Calculate PnL-focused reward with trend analysis and fair action penalties."""
@@ -74,7 +71,7 @@ class PnLFocusedRewardCalculator(BaseRewardCalculator):
         return reward
 
     def _calculate_trend_multiplier(
-        self, action: int, observation: Optional[np.ndarray]
+        self, action: int, observation: np.ndarray | None
     ) -> float:
         """Calculate trend-based multiplier for profit bonus."""
         if observation is None or not hasattr(observation, "__getitem__"):

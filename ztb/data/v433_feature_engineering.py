@@ -7,7 +7,6 @@ V433 Feature Engineering: 市場レジーム適応型特徴量生成
 import json
 import logging
 from pathlib import Path
-from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -21,7 +20,6 @@ from ztb.utils.file_utils import safe_json_dump
 # ロギング設定
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 class MarketRegimeDetector:
     """
@@ -158,7 +156,6 @@ class MarketRegimeDetector:
             confidence.append(conf)
 
         return pd.Series(confidence, index=df.index)
-
 
 class AdaptiveFeatureEngineer:
     """
@@ -490,7 +487,7 @@ class AdaptiveFeatureEngineer:
 
     def _calculate_stochastic(
         self, close: pd.Series, high: pd.Series, low: pd.Series, window: int
-    ) -> Tuple[pd.Series, pd.Series]:
+    ) -> tuple[pd.Series, pd.Series]:
         """
         Stochastic Oscillatorの計算
         """
@@ -621,7 +618,6 @@ class AdaptiveFeatureEngineer:
 
         return df_selected
 
-
 def main():
     """
     メイン実行関数
@@ -686,7 +682,6 @@ def main():
     logger.info(
         f"Generated {len(df_featured.columns)} features from {len(df.columns)} original columns"
     )
-
 
 if __name__ == "__main__":
     main()

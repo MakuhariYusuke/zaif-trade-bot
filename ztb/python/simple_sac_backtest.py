@@ -15,7 +15,6 @@ from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.io.data_loader import DataLoader
 
-
 def run_simple_sac_backtest(model_path: str, data_path: str, episodes: int = 10):
     """
     SACモデルの簡易バックテスト
@@ -126,7 +125,6 @@ def run_simple_sac_backtest(model_path: str, data_path: str, episodes: int = 10)
         "total_trades": total_trades,
         "trades_per_episode": total_trades / episodes,
     }
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

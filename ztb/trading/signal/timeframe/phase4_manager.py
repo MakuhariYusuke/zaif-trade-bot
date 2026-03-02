@@ -4,7 +4,7 @@ Phase 4: Minute-level Trading Integration Manager
 分足対応の統合マネージャー
 """
 
-from typing import Dict, Optional, Tuple, Any
+from typing import Any
 import asyncio
 
 from ztb.utils.logging_utils import get_logger
@@ -15,7 +15,6 @@ from ztb.trading.signal.quality_scorer import SignalQualityScorer
 
 logger = get_logger(__name__)
 
-
 class Phase4MinuteTradingManager:
     """
     Phase 4 分足取引統合マネージャー
@@ -23,7 +22,7 @@ class Phase4MinuteTradingManager:
     分足対応の完全な取引システムを統合管理
     """
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize Phase 4 minute trading manager
 
@@ -49,7 +48,7 @@ class Phase4MinuteTradingManager:
 
         logger.info("Phase4MinuteTradingManager initialized")
 
-    def _get_default_config(self) -> Dict:
+    def _get_default_config(self) -> dict:
         """Get default configuration"""
         return {
             'enable_phase4_integration': True,
@@ -67,7 +66,7 @@ class Phase4MinuteTradingManager:
 
     async def process_minute_signal(self, symbol: str,
                                   continuous_action: float = 0.0,
-                                  portfolio: Optional[Dict] = None) -> Tuple[int, float, Dict[str, Any]]:
+                                  portfolio: dict | None = None) -> tuple[int, float, dict[str, Any]]:
         """
         分足シグナルを処理（Phase 4完全統合）
 
@@ -77,7 +76,7 @@ class Phase4MinuteTradingManager:
             portfolio: ポートフォリオ状態
 
         Returns:
-            Tuple[int, float, Dict]: (アクション, スコア, 処理詳細)
+            tuple[int, float, dict]: (アクション, スコア, 処理詳細)
         """
         portfolio = portfolio or {'position': 0, 'cash': 10000, 'value': 10000}
 
@@ -143,7 +142,7 @@ class Phase4MinuteTradingManager:
             logger.error(f"Error in Phase 4 signal processing: {e}")
             return 0, 50.0, {'status': 'error', 'error': str(e)}
 
-    async def get_minute_trading_context(self, symbol: str) -> Dict[str, Any]:
+    async def get_minute_trading_context(self, symbol: str) -> dict[str, Any]:
         """
         分足取引コンテキストを取得
 
@@ -151,7 +150,7 @@ class Phase4MinuteTradingManager:
             symbol: 取引シンボル
 
         Returns:
-            Dict: 取引コンテキスト情報
+            dict: 取引コンテキスト情報
         """
         try:
             # マルチタイムフレームデータ取得
@@ -211,7 +210,7 @@ class Phase4MinuteTradingManager:
             logger.error(f"Error getting trading context: {e}")
             return {'status': 'error', 'error': str(e)}
 
-    def _generate_trading_recommendations(self, context: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_trading_recommendations(self, context: dict[str, Any]) -> dict[str, Any]:
         """
         取引推奨を生成
 
@@ -219,7 +218,7 @@ class Phase4MinuteTradingManager:
             context: 取引コンテキスト
 
         Returns:
-            Dict: 推奨事項
+            dict: 推奨事項
         """
         try:
             recommendations = {
@@ -270,12 +269,12 @@ class Phase4MinuteTradingManager:
             logger.warning(f"Error generating recommendations: {e}")
             return {'error': str(e)}
 
-    async def validate_phase4_system(self) -> Dict[str, Any]:
+    async def validate_phase4_system(self) -> dict[str, Any]:
         """
         Phase 4システム全体の検証
 
         Returns:
-            Dict: 検証結果
+            dict: 検証結果
         """
         validation_results = {
             'components': {},

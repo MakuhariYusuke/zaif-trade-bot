@@ -8,14 +8,13 @@ dependencies, and trading bot components.
 import os
 import sys
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import psutil
 
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 @dataclass
 class HealthCheckResult:
@@ -24,8 +23,7 @@ class HealthCheckResult:
     name: str
     status: str  # "healthy", "warning", "critical"
     message: str
-    details: Optional[Dict[str, Any]] = None
-
+    details: dict[str, Any] | None = None
 
 class SystemHealthChecker:
     """
@@ -35,14 +33,14 @@ class SystemHealthChecker:
     """
 
     def __init__(self) -> None:
-        self.checks: List[HealthCheckResult] = []
+        self.checks: list[HealthCheckResult] = []
 
-    async def run_all_checks_async(self) -> List[HealthCheckResult]:
+    async def run_all_checks_async(self) -> list[HealthCheckResult]:
         """
         Run all health checks (async version).
 
         Returns:
-            List of health check results
+            list of health check results
         """
         self.checks = []
 
@@ -438,7 +436,7 @@ class SystemHealthChecker:
                 )
             )
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """
         Get a summary of all health checks.
 
@@ -470,8 +468,7 @@ class SystemHealthChecker:
             "checks": [check.__dict__ for check in self.checks],
         }
 
-
-async def run_health_check_async() -> Dict[str, Any]:
+async def run_health_check_async() -> dict[str, Any]:
     """
     Run a complete health check and return results (async version).
 
@@ -491,8 +488,7 @@ async def run_health_check_async() -> Dict[str, Any]:
 
     return summary
 
-
-def run_health_check() -> Dict[str, Any]:
+def run_health_check() -> dict[str, Any]:
     """
     Run a complete health check and return results.
 
@@ -502,7 +498,6 @@ def run_health_check() -> Dict[str, Any]:
     import asyncio
 
     return asyncio.run(run_health_check_async())
-
 
 if __name__ == "__main__":
     # Command-line interface

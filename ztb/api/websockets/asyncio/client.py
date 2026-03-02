@@ -1,6 +1,5 @@
 from contextlib import asynccontextmanager
 
-
 @asynccontextmanager
 async def connect(*args, **kwargs):
     """Async context manager stub that yields a dummy connection object.
@@ -31,7 +30,6 @@ Provides an async `connect` coroutine that can be used with `async with`.
 import asyncio
 from contextlib import asynccontextmanager
 
-
 class _DummyAsyncConnection:
     async def send(self, message):
         return None
@@ -39,7 +37,6 @@ class _DummyAsyncConnection:
     async def recv(self):
         await asyncio.sleep(0)
         return None
-
 
 @asynccontextmanager
 async def connect(*args, **kwargs):

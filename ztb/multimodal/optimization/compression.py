@@ -4,13 +4,12 @@
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
 
 logger = logging.getLogger(__name__)
-
 
 class KnowledgeDistillation:
     """知識蒸留クラス
@@ -45,8 +44,8 @@ class KnowledgeDistillation:
         self,
         student_logits: torch.Tensor,
         teacher_logits: torch.Tensor,
-        hard_targets: Optional[torch.Tensor] = None,
-        labels: Optional[torch.Tensor] = None,
+        hard_targets: torch.Tensor | None = None,
+        labels: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """蒸留損失の計算
 
@@ -78,7 +77,6 @@ class KnowledgeDistillation:
             total_loss = self.alpha * distill_loss + (1 - self.alpha) * hard_loss
 
         return total_loss
-
 
 class ModelPruning:
     """モデルプルーニングクラス
@@ -135,7 +133,6 @@ class ModelPruning:
 
         return zero_params / total_params if total_params > 0 else 0.0
 
-
 class ModelCompression:
     """モデル圧縮統合クラス
 
@@ -144,8 +141,8 @@ class ModelCompression:
 
     def __init__(
         self,
-        teacher_model: Optional[nn.Module] = None,
-        student_model: Optional[nn.Module] = None,
+        teacher_model: nn.Module | None = None,
+        student_model: nn.Module | None = None,
     ):
         """
         Args:
@@ -161,7 +158,7 @@ class ModelCompression:
             ModelPruning(student_model) if student_model is not None else None
         )
 
-    def compress_model(self, compression_config: Dict[str, Any]) -> nn.Module:
+    def compress_model(self, compression_config: dict[str, Any]) -> nn.Module:
         """モデル圧縮パイプライン
 
         Args:
@@ -212,7 +209,7 @@ class ModelCompression:
 
         return model
 
-    def get_compression_stats(self) -> Dict[str, Any]:
+    def get_compression_stats(self) -> dict[str, Any]:
         """圧縮統計を取得"""
         stats = {}
 

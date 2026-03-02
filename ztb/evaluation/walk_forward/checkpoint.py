@@ -47,7 +47,7 @@ import pickle
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 try:
@@ -62,7 +62,6 @@ from ztb.utils.path_utils import ensure_dir
 from .types import WindowPerformance
 
 logger = logging.getLogger(__name__)
-
 
 class CheckpointManager:
     """Walk-Forward 評価のチェックポイント管理（ztb.utils の軽量アダプタ）
@@ -140,7 +139,7 @@ class CheckpointManager:
             compress=compress
         )
 
-    def _compress_data(self, data: Dict[str, Any]) -> bytes:
+    def _compress_data(self, data: dict[str, Any]) -> bytes:
         """データを圧縮（ztb.utils.checkpoint 委譲）
 
         ztb.utils.checkpoint.CheckpointManager の圧縮ロジックに委譲。
@@ -178,7 +177,7 @@ class CheckpointManager:
         setattr(evaluator, "_last_walk_forward_evaluator", wf_evaluator)
         return wf_evaluator
 
-    def _decompress_data(self, compressed: bytes) -> Dict[str, Any]:
+    def _decompress_data(self, compressed: bytes) -> dict[str, Any]:
         """データを解凍（ztb.utils.checkpoint 委譲）
 
         ztb.utils.checkpoint.CheckpointManager の解凍ロジックに委譲。
@@ -188,7 +187,7 @@ class CheckpointManager:
             compressed: 圧縮済みバイト列
 
         Returns:
-            Dict[str, Any]: 解凍後のデータ
+            dict[str, Any]: 解凍後のデータ
         """
         try:
             # コア実装の解凍機能を活用
@@ -202,8 +201,8 @@ class CheckpointManager:
         self,
         evaluator: Any,
         run_id: str,
-        window_ids: Optional[List[int]] = None,
-    ) -> Dict[str, Any]:
+        window_ids: list[int] | None = None,
+    ) -> dict[str, Any]:
         """評価状態をチェックポイント保存
 
         Args:
@@ -212,7 +211,7 @@ class CheckpointManager:
             window_ids: 保存対象ウィンドウID。デフォルトは全ウィンドウ
 
         Returns:
-            Dict[str, Any]: 保存情報（ウィンドウ数、タイムスタンプなど）
+            dict[str, Any]: 保存情報（ウィンドウ数、タイムスタンプなど）
         """
         run_dir = self.checkpoint_dir / run_id
         ensure_dir(run_dir)
@@ -341,7 +340,7 @@ class CheckpointManager:
         evaluator: Any,
         run_id: str,
         restore_models: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """チェックポイントから評価状態を復元
 
         Args:
@@ -350,7 +349,7 @@ class CheckpointManager:
             restore_models: Trueの場合、SACモデルも復元
 
         Returns:
-            Dict[str, Any]: 復元情報（復元ウィンドウ数、エラーなど）
+            dict[str, Any]: 復元情報（復元ウィンドウ数、エラーなど）
 
         Raises:
             FileNotFoundError: チェックポイントが見つからない場合
@@ -457,14 +456,14 @@ class CheckpointManager:
             "restore_errors": restored_errors,
         }
 
-    def get_run_status(self, run_id: str) -> Dict[str, Any]:
+    def get_run_status(self, run_id: str) -> dict[str, Any]:
         """実行ステータスを取得
 
         Args:
             run_id: 実行ID
 
         Returns:
-            Dict[str, Any]: ステータス情報
+            dict[str, Any]: ステータス情報
 
         Raises:
             FileNotFoundError: チェックポイントが見つからない場合
@@ -511,11 +510,11 @@ class CheckpointManager:
             "timestamp": metadata.get("timestamp", "unknown"),
         }
 
-    def list_runs(self) -> List[str]:
+    def list_runs(self) -> list[str]:
         """保存されたすべての実行IDを列挙
 
         Returns:
-            List[str]: 実行IDのリスト
+            list[str]: 実行IDのリスト
         """
         if not self.checkpoint_dir.exists():
             return []
@@ -564,14 +563,14 @@ class CheckpointManager:
 
         return result is not False
 
-    def get_completed_windows(self, run_id: str) -> List[int]:
+    def get_completed_windows(self, run_id: str) -> list[int]:
         """完了済みウィンドウIDを取得
 
         Args:
             run_id: 実行ID
 
         Returns:
-            List[int]: 完了ウィンドウ ID リスト
+            list[int]: 完了ウィンドウ ID リスト
 
         Raises:
             FileNotFoundError: チェックポイントが見つからない場合
@@ -598,14 +597,14 @@ class CheckpointManager:
 
         return sorted(window_ids)
 
-    def get_results_summary(self, run_id: str) -> Dict[str, Any]:
+    def get_results_summary(self, run_id: str) -> dict[str, Any]:
         """チェックポイントから結果サマリーを取得
 
         Args:
             run_id: 実行ID
 
         Returns:
-            Dict[str, Any]: 結果統計
+            dict[str, Any]: 結果統計
 
         Raises:
             FileNotFoundError: チェックポイントが見つない場合

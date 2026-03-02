@@ -1,6 +1,6 @@
 """Training risk management component."""
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -9,7 +9,6 @@ from ztb.utils.logging_utils import get_logger
 
 if TYPE_CHECKING:
     from ztb.training.unified_trainer.trainer import UnifiedTrainer
-
 
 class TrainingRiskManager:
     """Manages training risks including early stopping and overfitting detection."""
@@ -39,8 +38,8 @@ class TrainingRiskManager:
         # Risk tracking
         self.consecutive_nan_losses = 0
         self.consecutive_high_losses = 0
-        self.reward_history: List[float] = []
-        self.validation_rewards: List[float] = []
+        self.reward_history: list[float] = []
+        self.validation_rewards: list[float] = []
 
     def check_early_stopping(self, current_reward: float) -> bool:
         """Check if early stopping should be triggered.
@@ -78,7 +77,7 @@ class TrainingRiskManager:
 
         return False
 
-    def check_overfitting(self, training_reward: float, validation_reward: Optional[float] = None) -> bool:
+    def check_overfitting(self, training_reward: float, validation_reward: float | None = None) -> bool:
         """Check for overfitting.
 
         Args:
@@ -133,7 +132,7 @@ class TrainingRiskManager:
 
         return False
 
-    def check_training_stability(self, loss: Optional[float] = None, reward: Optional[float] = None) -> bool:
+    def check_training_stability(self, loss: float | None = None, reward: float | None = None) -> bool:
         """Check training stability and detect critical issues.
 
         Args:
@@ -195,14 +194,14 @@ class TrainingRiskManager:
 
         return True
 
-    def should_pause_training(self, current_stats: Dict[str, Any]) -> Tuple[bool, str]:
+    def should_pause_training(self, current_stats: dict[str, Any]) -> tuple[bool, str]:
         """Determine if training should be paused due to risk factors.
 
         Args:
             current_stats: Current training statistics
 
         Returns:
-            Tuple of (should_pause, reason)
+            tuple of (should_pause, reason)
         """
         # Check early stopping
         avg_reward = current_stats.get("average_reward", 0)
@@ -231,7 +230,7 @@ class TrainingRiskManager:
 
         return False, ""
 
-    def get_risk_assessment(self) -> Dict[str, Any]:
+    def get_risk_assessment(self) -> dict[str, Any]:
         """Get comprehensive risk assessment.
 
         Returns:

@@ -12,7 +12,7 @@ This module provides advanced memory management utilities including:
 import logging
 import threading
 import time
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 from ztb.trading.environment.constants import BYTES_PER_MB
 
@@ -53,9 +53,7 @@ except ImportError:
                     raise KeyError(key)
             return super().__getitem__(key)
 
-
 logger = logging.getLogger(__name__)
-
 
 class MemoryManager:
     """Advanced memory management for training optimization."""
@@ -101,18 +99,18 @@ class MemoryManager:
         logger.info(f"MemoryManager initialized with max {max_memory_mb}MB limit")
 
     def set_memory_log_path(self, path: str) -> None:
-        """Set path for memory logging."""
+        """set path for memory logging."""
         self.memory_log_path = path
 
     def set_memory_log_interval(self, interval: int) -> None:
-        """Set memory logging interval (steps)."""
+        """set memory logging interval (steps)."""
         self.memory_log_interval = interval
 
     def set_gc_interval(self, interval: int) -> None:
-        """Set garbage collection interval (steps)."""
+        """set garbage collection interval (steps)."""
         self.gc_step_interval = interval
 
-    def cache_feature_data(self, key: str, data: Any, ttl: Optional[float] = None) -> None:
+    def cache_feature_data(self, key: str, data: Any, ttl: float | None = None) -> None:
         """
         Cache feature data with optional custom TTL.
 
@@ -131,7 +129,7 @@ class MemoryManager:
         else:
             self.feature_cache[key] = data
 
-    def get_cached_feature_data(self, key: str) -> Optional[Any]:
+    def get_cached_feature_data(self, key: str) -> Any | None:
         """Retrieve cached feature data."""
         # First check default cache
         try:
@@ -153,15 +151,15 @@ class MemoryManager:
         """Cache training data."""
         self.data_cache[key] = data
 
-    def get_cached_training_data(self, key: str) -> Optional[Any]:
+    def get_cached_training_data(self, key: str) -> Any | None:
         """Retrieve cached training data."""
         return self.data_cache.get(key)
 
-    def cache_model_state(self, key: str, state_dict: Dict[str, Any]) -> None:
+    def cache_model_state(self, key: str, state_dict: dict[str, Any]) -> None:
         """Cache model state."""
         self.model_cache[key] = state_dict
 
-    def get_cached_model_state(self, key: str) -> Optional[Dict[str, Any]]:
+    def get_cached_model_state(self, key: str) -> dict[str, Any] | None:
         """Retrieve cached model state."""
         return self.model_cache.get(key)
 
@@ -202,7 +200,7 @@ class MemoryManager:
         if expired_keys:
             logger.debug(f"Cleared {len(expired_keys)} expired cache entries")
 
-    def get_memory_usage(self) -> Dict[str, Union[float, int]]:
+    def get_memory_usage(self) -> dict[str, float | int]:
         """Get current memory usage statistics."""
         try:
             import psutil
@@ -270,7 +268,7 @@ class MemoryManager:
                 logger.error(f"Memory monitoring error: {e}")
                 time.sleep(30)  # Wait longer on error
 
-    def optimize_memory_usage(self) -> Dict[str, Union[float, int]]:
+    def optimize_memory_usage(self) -> dict[str, float | int]:
         """Perform memory optimization."""
         logger.info("Performing memory optimization...")
 
@@ -291,7 +289,7 @@ class MemoryManager:
 
         return memory_stats
 
-    def get_cache_stats(self) -> Dict[str, int]:
+    def get_cache_stats(self) -> dict[str, int]:
         """Get cache statistics."""
         stats = {
             "feature_cache_size": len(self.feature_cache),
@@ -307,7 +305,6 @@ class MemoryManager:
             stats["total_cache_entries"] += custom_total
 
         return stats
-
 
 class DynamicBufferManager:
     """Dynamic buffer size adjustment for training optimization."""
@@ -389,7 +386,6 @@ class DynamicBufferManager:
         optimal_size = min(max(int(data_size * 0.15), self.min_buffer_size), self.max_buffer_size)
         return optimal_size
 
-
 # Global instances
 # NOTE: SAC training with 1M replay buffer typically uses 800-1000 MB.
 # Setting threshold to 1500 MB to avoid spurious warnings and unnecessary
@@ -398,8 +394,7 @@ class DynamicBufferManager:
 default_memory_manager = MemoryManager(max_memory_mb=1500.0, enable_monitoring=False)
 default_buffer_manager = DynamicBufferManager()
 
-
-def get_memory_stats() -> Dict[str, Any]:
+def get_memory_stats() -> dict[str, Any]:
     """Get comprehensive memory statistics."""
     memory_stats = default_memory_manager.get_memory_usage()
     cache_stats = default_memory_manager.get_cache_stats()
@@ -416,11 +411,9 @@ def get_memory_stats() -> Dict[str, Any]:
         "buffer_size": buffer_size,
     }
 
-
 def optimize_memory():
     """Perform global memory optimization."""
     return default_memory_manager.optimize_memory_usage()
-
 
 if __name__ == "__main__":
     # Test memory manager

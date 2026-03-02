@@ -19,7 +19,6 @@ from ztb.io.json_io import read_json, write_json
 project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(project_root))
 
-
 def create_fixed_reward_configs():
     """Create reward function configurations that encourage trading."""
 
@@ -63,7 +62,6 @@ def create_fixed_reward_configs():
 
     return configs
 
-
 def create_test_backtest_config(reward_config, name):
     """Create a backtest configuration with modified reward function."""
 
@@ -81,7 +79,6 @@ def create_test_backtest_config(reward_config, name):
     write_json(config_path, base_config, indent=2, ensure_ascii=False)
 
     return config_path
-
 
 def run_quick_backtest_test(config_path, name):
     """Run a quick backtest test with modified config."""
@@ -179,7 +176,6 @@ def run_quick_backtest_test(config_path, name):
         traceback.print_exc()
         return None
 
-
 def main():
     """Main experiment function."""
 
@@ -230,7 +226,6 @@ def main():
     print("\n📁 Generated config files:")
     for name, result in results.items():
         print(f"   {result['config_path']}")
-
 
 if __name__ == "__main__":
     main()

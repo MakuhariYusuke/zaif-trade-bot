@@ -8,7 +8,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -29,9 +29,7 @@ if TYPE_CHECKING:
 
 # from .monitoring.market_regime_detector import MarketRegimeDetector  # Optional component
 
-
 logger = logging.getLogger(__name__)
-
 
 @dataclass
 class MarketAwareConfig:
@@ -67,7 +65,6 @@ class MarketAwareConfig:
     model_retraining_interval: int = 1440  # 分単位（24時間）
     min_training_samples: int = 100
 
-
 @dataclass
 class MarketCondition:
     """市場条件"""
@@ -97,7 +94,6 @@ class MarketCondition:
             ]
         )
 
-
 @dataclass
 class PerformancePrediction:
     """パフォーマンス予測"""
@@ -106,8 +102,7 @@ class PerformancePrediction:
     predicted_performance: float
     confidence: float
     optimal_value: float
-    feature_importance: Dict[str, float] = field(default_factory=dict)
-
+    feature_importance: dict[str, float] = field(default_factory=dict)
 
 class MarketAwareHyperparameterManager:
     """市場対応ハイパーパラメータマネージャー"""
@@ -116,8 +111,8 @@ class MarketAwareHyperparameterManager:
         self,
         online_learning_pipeline: "OnlineLearningPipeline",
         evaluation_manager: ContinuousEvaluationManager,
-        market_regime_detector: Optional[Any] = None,  # Optional component
-        config: Optional[MarketAwareConfig] = None,
+        market_regime_detector: Any | None = None,  # Optional component
+        config: MarketAwareConfig | None = None,
     ):
         self.online_learning = online_learning_pipeline
         self.evaluation_manager = evaluation_manager
@@ -130,22 +125,22 @@ class MarketAwareHyperparameterManager:
         )
 
         # 市場条件履歴
-        self.market_conditions: List[MarketCondition] = []
+        self.market_conditions: list[MarketCondition] = []
 
         # パフォーマンス予測モデル
-        self.performance_predictors: Dict[
+        self.performance_predictors: dict[
             HyperparameterType, RandomForestRegressor
         ] = {}
-        self.scalers: Dict[HyperparameterType, StandardScaler] = {}
+        self.scalers: dict[HyperparameterType, StandardScaler] = {}
 
         # 適応履歴と学習データ
-        self.adaptation_history: List[Tuple[MarketCondition, AdaptationResult]] = []
-        self.training_data: Dict[HyperparameterType, List[Tuple[np.ndarray, float]]] = {
+        self.adaptation_history: list[tuple[MarketCondition, AdaptationResult]] = []
+        self.training_data: dict[HyperparameterType, list[tuple[np.ndarray, float]]] = {
             param: [] for param in HyperparameterType
         }
 
         # 戦略パフォーマンス追跡
-        self.strategy_performance: Dict[AdaptationStrategy, List[float]] = {
+        self.strategy_performance: dict[AdaptationStrategy, list[float]] = {
             strategy: [] for strategy in AdaptationStrategy
         }
 
@@ -155,7 +150,7 @@ class MarketAwareHyperparameterManager:
         self.last_model_training = datetime.now()
 
         # スレッド管理
-        self.worker_thread: Optional[threading.Thread] = None
+        self.worker_thread: threading.Thread | None = None
 
         # 初期化
         self._initialize_predictors()
@@ -227,7 +222,7 @@ class MarketAwareHyperparameterManager:
         logger.info("Market-aware hyperparameter adaptation stopped")
 
     def adapt_hyperparameters_market_aware(
-        self, market_data: Optional[pd.DataFrame] = None, force_adaptation: bool = False
+        self, market_data: pd.DataFrame | None = None, force_adaptation: bool = False
     ) -> AdaptationResult:
         """市場対応ハイパーパラメータ適応"""
         try:
@@ -299,8 +294,8 @@ class MarketAwareHyperparameterManager:
             )
 
     def _get_current_market_condition(
-        self, market_data: Optional[pd.DataFrame] = None
-    ) -> Optional[MarketCondition]:
+        self, market_data: pd.DataFrame | None = None
+    ) -> MarketCondition | None:
         """現在の市場条件を取得"""
         try:
             # 市場データから条件を抽出
@@ -361,7 +356,7 @@ class MarketAwareHyperparameterManager:
             logger.error(f"Failed to get market condition: {e}")
             return None
 
-    def _should_adapt_now(self, market_condition: Optional[MarketCondition]) -> bool:
+    def _should_adapt_now(self, market_condition: MarketCondition | None) -> bool:
         """適応が必要かチェック"""
         try:
             if not market_condition:
@@ -401,8 +396,8 @@ class MarketAwareHyperparameterManager:
             return False
 
     def _predict_optimal_parameters(
-        self, market_condition: Optional[MarketCondition]
-    ) -> Dict[HyperparameterType, PerformancePrediction]:
+        self, market_condition: MarketCondition | None
+    ) -> dict[HyperparameterType, PerformancePrediction]:
         """最適パラメータを予測"""
         predictions = {}
 
@@ -511,9 +506,9 @@ class MarketAwareHyperparameterManager:
 
     def _select_adaptation_strategies(
         self,
-        market_condition: Optional[MarketCondition],
-        predictions: Dict[HyperparameterType, PerformancePrediction],
-    ) -> List[AdaptationStrategy]:
+        market_condition: MarketCondition | None,
+        predictions: dict[HyperparameterType, PerformancePrediction],
+    ) -> list[AdaptationStrategy]:
         """適応戦略を選択"""
         try:
             if not self.config.adaptive_strategy_selection:
@@ -547,8 +542,8 @@ class MarketAwareHyperparameterManager:
 
     def _create_adaptive_config(
         self,
-        market_condition: Optional[MarketCondition],
-        strategies: List[AdaptationStrategy],
+        market_condition: MarketCondition | None,
+        strategies: list[AdaptationStrategy],
     ) -> HyperparameterConfig:
         """適応設定を作成"""
         try:
@@ -677,8 +672,8 @@ class MarketAwareHyperparameterManager:
                 time.sleep(600)  # エラー時は10分待機
 
     def get_adaptation_recommendations(
-        self, market_condition: Optional[MarketCondition] = None
-    ) -> List[str]:
+        self, market_condition: MarketCondition | None = None
+    ) -> list[str]:
         """適応推奨を取得"""
         recommendations = []
 
@@ -731,7 +726,7 @@ class MarketAwareHyperparameterManager:
             logger.error(f"Failed to get recommendations: {e}")
             return ["Unable to generate recommendations due to error"]
 
-    def _get_best_performing_strategy(self) -> Optional[AdaptationStrategy]:
+    def _get_best_performing_strategy(self) -> AdaptationStrategy | None:
         """最高パフォーマンスの戦略を取得"""
         try:
             strategy_scores = {}
@@ -748,7 +743,7 @@ class MarketAwareHyperparameterManager:
         except Exception:
             return None
 
-    def get_performance_predictions(self) -> Dict[str, Any]:
+    def get_performance_predictions(self) -> dict[str, Any]:
         """パフォーマンス予測を取得"""
         try:
             market_condition = self._get_current_market_condition()
@@ -779,7 +774,7 @@ class MarketAwareHyperparameterManager:
             logger.error(f"Failed to get performance predictions: {e}")
             return {}
 
-    def get_adaptation_statistics(self) -> Dict[str, Any]:
+    def get_adaptation_statistics(self) -> dict[str, Any]:
         """適応統計を取得"""
         try:
             stats = {

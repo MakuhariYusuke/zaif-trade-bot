@@ -32,14 +32,12 @@ _FLOAT_ENV_KEYS = frozenset(
 )
 _INT_ENV_KEYS = frozenset({"ZTB_CHECKPOINT_INTERVAL", "ZTB_CACHE_SIZE"})
 
-
 def _parse_json_value(value: str) -> object | None:
     """Parse JSON from text with safe fallback."""
     try:
         return json.loads(value)
     except (json.JSONDecodeError, TypeError):
         return None
-
 
 def _coerce_json_container(
     raw_value: object, container_type: type[list[object]] | type[ObjectMap]
@@ -52,7 +50,6 @@ def _coerce_json_container(
         if isinstance(parsed, container_type):
             return parsed
     return None
-
 
 def _convert_env_value(key: str, value: str) -> object:
     """Convert env-string to typed config value based on schema key."""
@@ -69,7 +66,6 @@ def _convert_env_value(key: str, value: str) -> object:
         except ValueError as exc:
             raise ValueError(f"Invalid integer value for {key}: {value}") from exc
     return value
-
 
 class ZTBConfig:
     """Central configuration management for all ZTB components"""
@@ -267,7 +263,6 @@ class ZTBConfig:
         """Get full path for a specific model file."""
         return f"{self.get_model_dir()}/{model_name}"
 
-
 def get_config_value(
     config_dict: ObjectMap, key: str, expected_type: type[T], default: T
 ) -> T:
@@ -327,7 +322,6 @@ def get_config_value(
         )
         return default
 
-
 def get_config_list(
     config_dict: ObjectMap, key: str, default: list[object] | None = None
 ) -> list[object]:
@@ -340,12 +334,11 @@ def get_config_list(
         default: Default list value
 
     Returns:
-        List value or default
+        list value or default
     """
     if default is None:
         default = []
     return get_config_value(config_dict, key, list, default)
-
 
 def get_config_dict(
     config_dict: ObjectMap, key: str, default: ObjectMap | None = None
@@ -359,12 +352,11 @@ def get_config_dict(
         default: Default dict value
 
     Returns:
-        Dict value or default
+        dict value or default
     """
     if default is None:
         default = {}
     return get_config_value(config_dict, key, dict, default)
-
 
 def get_config_str(config_dict: ObjectMap, key: str, default: str = "") -> str:
     """
@@ -380,7 +372,6 @@ def get_config_str(config_dict: ObjectMap, key: str, default: str = "") -> str:
     """
     return get_config_value(config_dict, key, str, default)
 
-
 def get_config_int(config_dict: ObjectMap, key: str, default: int = 0) -> int:
     """
     Get an integer configuration value.
@@ -394,7 +385,6 @@ def get_config_int(config_dict: ObjectMap, key: str, default: int = 0) -> int:
         Integer value or default
     """
     return get_config_value(config_dict, key, int, default)
-
 
 def get_config_float(
     config_dict: ObjectMap, key: str, default: float = 0.0
@@ -412,7 +402,6 @@ def get_config_float(
     """
     return get_config_value(config_dict, key, float, default)
 
-
 def get_config_bool(
     config_dict: ObjectMap, key: str, default: bool = False
 ) -> bool:
@@ -429,10 +418,8 @@ def get_config_bool(
     """
     return get_config_value(config_dict, key, bool, default)
 
-
 # Global instance
 config = ZTBConfig()
-
 
 class TypedConfig:
     """型安全な設定管理クラス"""
@@ -492,7 +479,6 @@ class TypedConfig:
     def from_dict(cls, data: ObjectMap) -> "TypedConfig":
         """辞書から設定を復元"""
         return cls(**data)
-
 
 class ValidatedConfig(TypedConfig):
     """JSON Schemaベースの設定検証クラス"""

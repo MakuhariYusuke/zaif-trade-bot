@@ -12,11 +12,10 @@ Global Market Features for v456 (Extended)
 
 import numpy as np
 import pandas as pd
-from typing import Optional, Dict, Tuple
+
 import logging
 
 logger = logging.getLogger(__name__)
-
 
 class GlobalMarketFeatureEngineerV456:
     """
@@ -57,7 +56,7 @@ class GlobalMarketFeatureEngineerV456:
     
     def __init__(
         self,
-        binance_df: Optional[pd.DataFrame] = None,
+        binance_df: pd.DataFrame | None = None,
         usdjpy_rate: float = 155.0,  # 例値
         max_data_age_minutes: int = 5,
     ):
@@ -362,7 +361,6 @@ class GlobalMarketFeatureEngineerV456:
             return False
         
         return True
-
 
 # 使用例
 if __name__ == "__main__":

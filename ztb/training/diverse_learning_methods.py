@@ -10,7 +10,7 @@ Provides integration with multiple optimization frameworks for efficient hyperpa
 import json
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -20,7 +20,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class DiverseLearningMethods:
     """
     Integration of diverse learning methods for optimization.
@@ -28,7 +27,7 @@ class DiverseLearningMethods:
     Supports multiple optimization frameworks for comprehensive hyperparameter tuning.
     """
 
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: str | None = None):
         self.config_path = config_path or "config/optimization_config.json"
         self.results_cache = {}
         self.frameworks = {
@@ -40,11 +39,11 @@ class DiverseLearningMethods:
     def optimize_hyperparameters(
         self,
         objective_function: Callable,
-        search_space: Dict[str, Any],
+        search_space: dict[str, Any],
         framework: str = "ray_tune",
         max_evals: int = 100,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Optimize hyperparameters using specified framework.
 
@@ -325,17 +324,17 @@ class DiverseLearningMethods:
     def compare_frameworks(
         self,
         objective_function: Callable,
-        search_space: Dict[str, Any],
-        frameworks: List[str] = ["ray_tune", "hyperopt", "bohb"],
+        search_space: dict[str, Any],
+        frameworks: list[str] = ["ray_tune", "hyperopt", "bohb"],
         max_evals: int = 50,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Compare performance of different optimization frameworks.
 
         Args:
             objective_function: Function to optimize
             search_space: Parameter search space
-            frameworks: List of frameworks to compare
+            frameworks: list of frameworks to compare
             max_evals: Maximum evaluations per framework
 
         Returns:
@@ -367,7 +366,7 @@ class DiverseLearningMethods:
 
         return results
 
-    def _generate_comparison_summary(self, results: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_comparison_summary(self, results: dict[str, Any]) -> dict[str, Any]:
         """Generate comparison summary of optimization results."""
         summary = {
             "frameworks_tested": list(results.keys()),
@@ -402,7 +401,7 @@ class DiverseLearningMethods:
 
         return summary
 
-    def save_results(self, results: Dict[str, Any], output_path: str):
+    def save_results(self, results: dict[str, Any], output_path: str):
         """Save optimization results to file."""
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -412,14 +411,13 @@ class DiverseLearningMethods:
 
         logger.info(f"Results saved to {output_path}")
 
-    def load_results(self, input_path: str) -> Dict[str, Any]:
+    def load_results(self, input_path: str) -> dict[str, Any]:
         """Load optimization results from file."""
         with open(input_path, "r") as f:
             results = json.load(f)
 
         logger.info(f"Results loaded from {input_path}")
         return results
-
 
 def create_trading_objective_function(backtest_data: pd.DataFrame):
     """
@@ -478,9 +476,8 @@ def create_trading_objective_function(backtest_data: pd.DataFrame):
 
     return objective
 
-
 # Example usage and predefined search spaces
-def get_trading_search_space() -> Dict[str, Any]:
+def get_trading_search_space() -> dict[str, Any]:
     """Get predefined search space for trading strategy optimization."""
     return {
         "initial_capital": {"type": "choice", "values": [1000, 5000, 10000, 50000]},
@@ -490,7 +487,6 @@ def get_trading_search_space() -> Dict[str, Any]:
         "learning_rate": {"type": "loguniform", "low": 1e-5, "high": 1e-2},
         "batch_size": {"type": "choice", "values": [16, 32, 64, 128]},
     }
-
 
 if __name__ == "__main__":
     # Example usage

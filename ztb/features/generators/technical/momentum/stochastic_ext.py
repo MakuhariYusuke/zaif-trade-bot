@@ -11,13 +11,11 @@ from numpy.typing import NDArray
 
 from ztb.features.core.registry import FeatureRegistry
 
-
 @FeatureRegistry.register("Stochastic_Divergence")
 def compute_stochastic_divergence(df: pd.DataFrame) -> pd.Series:
     """Stochastic Divergence Signal (1=bullish divergence, -1=bearish divergence, 0=no divergence)"""
     extended_features = calculate_stochastic_extended(df)
     return extended_features["stochastic_divergence"]
-
 
 @FeatureRegistry.register("Stochastic_Signal_Strength")
 def compute_stochastic_signal_strength(df: pd.DataFrame) -> pd.Series:
@@ -25,13 +23,11 @@ def compute_stochastic_signal_strength(df: pd.DataFrame) -> pd.Series:
     extended_features = calculate_stochastic_extended(df)
     return extended_features["stochastic_signal_strength"]
 
-
 @FeatureRegistry.register("Stochastic_Trend_Alignment")
 def compute_stochastic_trend_alignment(df: pd.DataFrame) -> pd.Series:
     """Stochastic Trend Alignment (1=aligned with trend, -1=against trend)"""
     extended_features = calculate_stochastic_extended(df)
     return extended_features["stochastic_trend_alignment"]
-
 
 def calculate_stochastic_extended(
     df: pd.DataFrame,
@@ -83,7 +79,6 @@ def calculate_stochastic_extended(
     result = result.fillna(0)
 
     return result
-
 
 def _compute_stochastic_extended(
     close: NDArray[np.floating[Any]], stoch_k: NDArray[np.floating[Any]], k_period: int
@@ -140,7 +135,6 @@ def _compute_stochastic_extended(
 
     return divergence, signal_strength, trend_alignment
 
-
 def stochastic_feature_summary() -> dict[str, str]:
     """
     Returns a dictionary summarizing each extended Stochastic feature.
@@ -152,7 +146,6 @@ def stochastic_feature_summary() -> dict[str, str]:
         "stochastic_signal_strength": "Normalized distance from neutral (50)",
         "stochastic_trend_alignment": "Alignment with price trend (1=aligned, -1=against)",
     }
-
 
 if __name__ == "__main__":
     # Simple test

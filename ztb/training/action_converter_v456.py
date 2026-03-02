@@ -20,12 +20,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 # アクション定義
 ACTION_HOLD = 0
 ACTION_BUY = 1
 ACTION_SELL = 2
-
 
 class ActionConverterV456:
     """
@@ -139,7 +137,6 @@ class ActionConverterV456:
         
         return -1.0 <= action <= 1.0
 
-
 class ActionAnalyzer:
     """アクション分布の分析"""
     
@@ -178,7 +175,6 @@ class ActionAnalyzer:
         """統計をリセット"""
         self.action_history = []
         self.discrete_action_history = []
-
 
 if __name__ == '__main__':
     # テスト

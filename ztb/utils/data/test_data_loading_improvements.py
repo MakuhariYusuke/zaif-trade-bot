@@ -18,12 +18,11 @@ import pytest
 from ztb.utils.data.data_generation import DataGenerator
 from ztb.utils.data.improved_data_loader import ImprovedDataLoader
 
-
 class TestDataLoadingImprovements:
     """Test data loading optimization features."""
 
     def setup_method(self):
-        """Set up test fixtures."""
+        """set up test fixtures."""
         self.generator = DataGenerator(enable_memory_cache=True)
         self.improved_loader = ImprovedDataLoader()
 
@@ -51,7 +50,6 @@ class TestDataLoadingImprovements:
                     Path(tmp.name).unlink()
                 except PermissionError:
                     pass  # File may be locked by memory map
-
 
     def test_load_compressed_data_gzip(self):
         """Test loading gzip compressed data."""
@@ -138,12 +136,11 @@ class TestDataLoadingImprovements:
                 except PermissionError:
                     pass
 
-
 class TestImprovedDataLoader:
     """Test legacy ImprovedDataLoader features (compat coverage)."""
 
     def setup_method(self):
-        """Set up test fixtures."""
+        """set up test fixtures."""
         self.loader = ImprovedDataLoader()
         self.generator = DataGenerator(enable_memory_cache=True)
 

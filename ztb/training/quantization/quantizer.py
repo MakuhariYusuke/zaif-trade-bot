@@ -7,7 +7,7 @@ enabling model compression and inference speed optimization while maintaining ac
 
 import logging
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Union
+from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -15,13 +15,12 @@ from ztb.trading.environment.constants import BYTES_PER_MB
 
 logger = logging.getLogger(__name__)
 
-
 class SACQuantizer:
     """
     Dynamic quantizer for SAC models with precision vs speed trade-off analysis.
     """
 
-    def __init__(self, quantization_config: Optional[Dict] = None):
+    def __init__(self, quantization_config: dict | None = None):
         """
         Initialize the SAC quantizer.
 
@@ -39,7 +38,7 @@ class SACQuantizer:
         self.quantized_models = {}
         self.quantization_stats = {}
 
-    def _get_default_config(self) -> Dict:
+    def _get_default_config(self) -> dict:
         """Get default quantization configuration."""
         return {
             "dtype": torch.qint8,  # Default quantization dtype
@@ -60,7 +59,7 @@ class SACQuantizer:
             "calibration_samples": 1000,  # Number of samples for calibration
         }
 
-    def analyze_model(self, model: nn.Module) -> Dict:
+    def analyze_model(self, model: nn.Module) -> dict:
         """
         Analyze model for quantization compatibility and estimate compression.
 
@@ -126,8 +125,8 @@ class SACQuantizer:
         return base_speedup + ratio_bonus
 
     def quantize_model(
-        self, model: nn.Module, calibration_data: Optional[torch.Tensor] = None
-    ) -> Tuple[nn.Module, Dict]:
+        self, model: nn.Module, calibration_data: torch.Tensor | None = None
+    ) -> tuple[nn.Module, dict]:
         """
         Quantize the model using dynamic quantization.
 
@@ -136,7 +135,7 @@ class SACQuantizer:
             calibration_data: Optional calibration data for static quantization
 
         Returns:
-            Tuple of (quantized_model, quantization_stats)
+            tuple of (quantized_model, quantization_stats)
         """
         logger.info("Starting model quantization...")
 
@@ -171,8 +170,8 @@ class SACQuantizer:
             return model, {"status": "failed", "error": str(e)}
 
     def _collect_quantization_stats(
-        self, original_model: nn.Module, quantized_model: nn.Module, analysis: Dict
-    ) -> Dict:
+        self, original_model: nn.Module, quantized_model: nn.Module, analysis: dict
+    ) -> dict:
         """Collect comprehensive quantization statistics."""
         stats = {
             "status": "success",
@@ -206,8 +205,8 @@ class SACQuantizer:
         original_model: nn.Module,
         quantized_model: nn.Module,
         validation_data: torch.Tensor,
-        validation_labels: Optional[torch.Tensor] = None,
-    ) -> Dict:
+        validation_labels: torch.Tensor | None = None,
+    ) -> dict:
         """
         Validate quantization quality by comparing outputs.
 
@@ -263,7 +262,7 @@ class SACQuantizer:
         return validation_results
 
     def save_quantized_model(
-        self, model: nn.Module, path: Union[str, Path], metadata: Optional[Dict] = None
+        self, model: nn.Module, path: str | Path, metadata: dict | None = None
     ) -> bool:
         """
         Save quantized model with metadata.
@@ -293,8 +292,8 @@ class SACQuantizer:
             return False
 
     def load_quantized_model(
-        self, path: Union[str, Path]
-    ) -> Tuple[Optional[nn.Module], Dict]:
+        self, path: str | Path
+    ) -> tuple[nn.Module | None, dict]:
         """
         Load quantized model with metadata.
 
@@ -302,7 +301,7 @@ class SACQuantizer:
             path: Model path
 
         Returns:
-            Tuple of (model, metadata)
+            tuple of (model, metadata)
         """
         try:
             checkpoint = torch.load(path, map_location="cpu")
@@ -320,22 +319,21 @@ class SACQuantizer:
             logger.error(f"Failed to load quantized model: {e}")
             return None, {}
 
-
 class QuantizationPipeline:
     """
     End-to-end quantization pipeline for SAC models.
     """
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         self.config = config or {}
         self.quantizer = SACQuantizer(self.config.get("quantization", {}))
 
     def run_pipeline(
         self,
         model: nn.Module,
-        calibration_data: Optional[torch.Tensor] = None,
-        validation_data: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
-    ) -> Dict:
+        calibration_data: torch.Tensor | None = None,
+        validation_data: tuple[torch.Tensor, torch.Tensor] | None = None,
+    ) -> dict:
         """
         Run complete quantization pipeline.
 

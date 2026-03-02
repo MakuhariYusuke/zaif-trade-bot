@@ -6,7 +6,6 @@ Uses the base optimizer class for common functionality.
 
 import sys
 from pathlib import Path
-from typing import Union
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -15,7 +14,6 @@ from ztb.training.binary_search.base_optimizer import (
     BinarySearchArgumentParser,
     HyperparameterOptimizer,
 )
-
 
 class MaxPositionSizeOptimizer(HyperparameterOptimizer):
     """Optimizer for max_position_size parameter."""
@@ -28,10 +26,9 @@ class MaxPositionSizeOptimizer(HyperparameterOptimizer):
         """Get the range for max_position_size binary search."""
         return (0.1, 2.0)  # Reasonable range for position sizes
 
-    def update_ppo_params(self, value: Union[int, float]) -> None:
+    def update_ppo_params(self, value: int | float) -> None:
         """Update environment config with max_position_size value."""
         self.env_config.max_position_size = float(value)
-
 
 def main() -> None:
     parser = BinarySearchArgumentParser.create_parser(
@@ -62,7 +59,6 @@ def main() -> None:
         print(
             f"\nOptimization complete. Best max_position_size: {best_value}, Score: {best_score:.6f}"
         )
-
 
 if __name__ == "__main__":
     main()

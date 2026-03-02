@@ -10,16 +10,15 @@ pluggable notification systems; this module is a safe fallback.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
-
 
 def send_notification(
     title: str,
     message: str,
     priority: str = "normal",
-    fields: Optional[Dict[str, Any]] = None,
+    fields: dict[str, Any] | None = None,
 ) -> bool:
     """Send a lightweight notification. Returns True on success.
 

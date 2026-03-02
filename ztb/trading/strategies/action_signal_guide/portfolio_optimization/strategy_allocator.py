@@ -9,7 +9,6 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -41,12 +40,11 @@ from ztb.metrics.metrics import max_drawdown
 
 logger = logging.getLogger(__name__)
 
-
 @dataclass
 class AllocationResult:
     """Result of portfolio allocation."""
 
-    allocations: Dict[str, float] = field(default_factory=dict)
+    allocations: dict[str, float] = field(default_factory=dict)
     expected_return: float = 0.0
     expected_risk: float = 0.0
     sharpe_ratio: float = 0.0
@@ -55,19 +53,18 @@ class AllocationResult:
     constraints_satisfied: bool = True
     optimization_status: str = "success"
 
-
 class BaseStrategyAllocator(IStrategyAllocator):
     """Base implementation of strategy allocator."""
 
     def __init__(self, config: StrategyAllocatorConfig):
         self.config = config
-        self.last_allocation: Optional[Dict[str, float]] = None
-        self.performance_history: List[StrategyPerformance] = []
-        self.allocation_history: List[PortfolioAllocation] = []
+        self.last_allocation: dict[str, float] | None = None
+        self.performance_history: list[StrategyPerformance] = []
+        self.allocation_history: list[PortfolioAllocation] = []
 
     def allocate_strategies(
         self,
-        strategy_performance: Dict[str, StrategyPerformance],
+        strategy_performance: dict[str, StrategyPerformance],
         market_conditions: PayloadMap,
     ) -> PortfolioAllocation:
         """Allocate capital across trading strategies."""
@@ -145,7 +142,7 @@ class BaseStrategyAllocator(IStrategyAllocator):
 
     def rebalance_portfolio(
         self,
-        current_performance: Dict[str, StrategyPerformance],
+        current_performance: dict[str, StrategyPerformance],
         market_conditions: PayloadMap,
     ) -> PortfolioAllocation:
         """Rebalance portfolio based on current conditions."""
@@ -167,8 +164,8 @@ class BaseStrategyAllocator(IStrategyAllocator):
 
     def calculate_risk_metrics(
         self,
-        allocations: Dict[str, float],
-        strategy_performance: Dict[str, StrategyPerformance],
+        allocations: dict[str, float],
+        strategy_performance: dict[str, StrategyPerformance],
     ) -> RiskMetrics:
         """Calculate comprehensive risk metrics for the portfolio."""
         try:
@@ -229,13 +226,13 @@ class BaseStrategyAllocator(IStrategyAllocator):
                 concentration_metrics={},
             )
 
-    def get_allocation_history(self) -> List[PortfolioAllocation]:
+    def get_allocation_history(self) -> list[PortfolioAllocation]:
         """Get historical allocation data."""
         return list(self.allocation_history)
 
     def _prepare_strategy_data(
-        self, strategy_performance: Dict[str, StrategyPerformance]
-    ) -> Tuple[Dict[str, float], Dict[str, float], pd.DataFrame]:
+        self, strategy_performance: dict[str, StrategyPerformance]
+    ) -> tuple[dict[str, float], dict[str, float], pd.DataFrame]:
         """Prepare strategy data for optimization."""
         returns = {}
         risks = {}
@@ -266,17 +263,17 @@ class BaseStrategyAllocator(IStrategyAllocator):
         return returns, risks, correlations
 
     def _equal_weight_allocation(
-        self, strategy_performance: Dict[str, StrategyPerformance]
-    ) -> Dict[str, float]:
+        self, strategy_performance: dict[str, StrategyPerformance]
+    ) -> dict[str, float]:
         """Equal weight allocation across all strategies."""
         return self._build_equal_weight_allocations(list(strategy_performance.keys()))
 
     def _risk_parity_allocation(
         self,
-        returns: Dict[str, float],
-        risks: Dict[str, float],
+        returns: dict[str, float],
+        risks: dict[str, float],
         correlations: pd.DataFrame,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Risk parity allocation."""
         try:
             strategy_names = list(returns.keys())
@@ -308,10 +305,10 @@ class BaseStrategyAllocator(IStrategyAllocator):
 
     def _maximum_sharpe_allocation(
         self,
-        returns: Dict[str, float],
-        risks: Dict[str, float],
+        returns: dict[str, float],
+        risks: dict[str, float],
         correlations: pd.DataFrame,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Maximum Sharpe ratio allocation."""
         try:
             strategy_names = list(returns.keys())
@@ -343,10 +340,10 @@ class BaseStrategyAllocator(IStrategyAllocator):
 
     def _minimum_variance_allocation(
         self,
-        returns: Dict[str, float],
-        risks: Dict[str, float],
+        returns: dict[str, float],
+        risks: dict[str, float],
         correlations: pd.DataFrame,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Minimum variance allocation."""
         try:
             strategy_names = list(returns.keys())
@@ -377,7 +374,7 @@ class BaseStrategyAllocator(IStrategyAllocator):
     def _optimize_weights(
         objective: Callable[[np.ndarray], float],
         n_assets: int,
-    ) -> Optional[np.ndarray]:
+    ) -> np.ndarray | None:
         """Solve bounded sum-to-1 optimization for portfolio weights."""
         if n_assets <= 0:
             return None
@@ -390,13 +387,13 @@ class BaseStrategyAllocator(IStrategyAllocator):
         return np.asarray(result.x, dtype=float)
 
     def _equal_weight_allocation_from_dict(
-        self, data: Dict[str, float]
-    ) -> Dict[str, float]:
+        self, data: dict[str, float]
+    ) -> dict[str, float]:
         """Equal weight allocation from dictionary."""
         return self._build_equal_weight_allocations(list(data.keys()))
 
     @staticmethod
-    def _build_equal_weight_allocations(strategy_names: list[str]) -> Dict[str, float]:
+    def _build_equal_weight_allocations(strategy_names: list[str]) -> dict[str, float]:
         """Create equal-weight allocation map for strategy names."""
         n = len(strategy_names)
         if n == 0:
@@ -405,7 +402,7 @@ class BaseStrategyAllocator(IStrategyAllocator):
         return dict.fromkeys(strategy_names, weight)
 
     def _create_covariance_matrix(
-        self, risks: Dict[str, float], correlations: pd.DataFrame
+        self, risks: dict[str, float], correlations: pd.DataFrame
     ) -> np.ndarray:
         """Create covariance matrix from volatilities and correlations."""
         strategy_names = list(risks.keys())
@@ -423,9 +420,9 @@ class BaseStrategyAllocator(IStrategyAllocator):
 
     def _apply_constraints(
         self,
-        allocations: Dict[str, float],
-        strategy_performance: Dict[str, StrategyPerformance],
-    ) -> Dict[str, float]:
+        allocations: dict[str, float],
+        strategy_performance: dict[str, StrategyPerformance],
+    ) -> dict[str, float]:
         """Apply allocation constraints."""
         constrained_allocations = allocations.copy()
 
@@ -449,7 +446,7 @@ class BaseStrategyAllocator(IStrategyAllocator):
 
         return constrained_allocations
 
-    def _check_constraints(self, allocations: Dict[str, float]) -> bool:
+    def _check_constraints(self, allocations: dict[str, float]) -> bool:
         """Check if allocations satisfy constraints."""
         total_weight = sum(allocations.values())
         if abs(total_weight - 1.0) > 1e-6:
@@ -463,11 +460,11 @@ class BaseStrategyAllocator(IStrategyAllocator):
 
     def _calculate_portfolio_metrics(
         self,
-        allocations: Dict[str, float],
-        returns: Dict[str, float],
-        risks: Dict[str, float],
+        allocations: dict[str, float],
+        returns: dict[str, float],
+        risks: dict[str, float],
         correlations: pd.DataFrame,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Calculate portfolio-level metrics."""
         strategy_names = list(allocations.keys())
         weights = np.array([allocations[s] for s in strategy_names])
@@ -496,8 +493,8 @@ class BaseStrategyAllocator(IStrategyAllocator):
 
     def _calculate_portfolio_risk(
         self,
-        allocations: Dict[str, float],
-        risks: Dict[str, float],
+        allocations: dict[str, float],
+        risks: dict[str, float],
         correlations: pd.DataFrame,
     ) -> float:
         """Calculate portfolio volatility."""
@@ -507,10 +504,10 @@ class BaseStrategyAllocator(IStrategyAllocator):
 
     def _calculate_risk_contributions(
         self,
-        allocations: Dict[str, float],
-        risks: Dict[str, float],
+        allocations: dict[str, float],
+        risks: dict[str, float],
         correlations: pd.DataFrame,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Calculate risk contribution of each strategy."""
         cov_matrix = self._create_covariance_matrix(risks, correlations)
         weights = np.array([allocations.get(s, 0) for s in risks.keys()])
@@ -525,7 +522,7 @@ class BaseStrategyAllocator(IStrategyAllocator):
         return dict(zip(allocations.keys(), risk_contribs))
 
     def _calculate_diversification_ratio(
-        self, allocations: Dict[str, float], correlations: pd.DataFrame
+        self, allocations: dict[str, float], correlations: pd.DataFrame
     ) -> float:
         """Calculate diversification ratio."""
         weights = np.array(list(allocations.values()))
@@ -539,8 +536,8 @@ class BaseStrategyAllocator(IStrategyAllocator):
         return 1.0 / np.sqrt(avg_corr) if avg_corr > 0 else 1.0
 
     def _calculate_concentration_metrics(
-        self, allocations: Dict[str, float]
-    ) -> Dict[str, float]:
+        self, allocations: dict[str, float]
+    ) -> dict[str, float]:
         """Calculate concentration metrics."""
         weights = np.array(list(allocations.values()))
 
@@ -567,7 +564,7 @@ class BaseStrategyAllocator(IStrategyAllocator):
         }
 
     def _estimate_max_drawdown(
-        self, strategy_performance: Dict[str, StrategyPerformance]
+        self, strategy_performance: dict[str, StrategyPerformance]
     ) -> float:
         """Estimate maximum drawdown from strategy performance."""
         # Try to use actual portfolio values if available
@@ -586,7 +583,7 @@ class BaseStrategyAllocator(IStrategyAllocator):
         return max_vol * 2.5  # Rough approximation
 
     def _should_rebalance(
-        self, current_performance: Dict[str, StrategyPerformance]
+        self, current_performance: dict[str, StrategyPerformance]
     ) -> bool:
         """Determine if portfolio should be rebalanced."""
         if not self.last_allocation:
@@ -613,7 +610,6 @@ class BaseStrategyAllocator(IStrategyAllocator):
             timestamp=time.time(),
         )
 
-
 class AdvancedStrategyAllocator(BaseStrategyAllocator):
     """Advanced strategy allocator with additional optimization features."""
 
@@ -623,7 +619,7 @@ class AdvancedStrategyAllocator(BaseStrategyAllocator):
 
     def optimize_allocation(
         self,
-        strategy_performance: Dict[str, StrategyPerformance],
+        strategy_performance: dict[str, StrategyPerformance],
         risk_tolerance: float,
         constraints: PayloadMap,
     ) -> PortfolioAllocation:
@@ -670,7 +666,7 @@ class AdvancedStrategyAllocator(BaseStrategyAllocator):
             return self._create_empty_allocation(f"Optimization failed: {str(e)}")
 
     def _extract_returns_data(
-        self, strategy_performance: Dict[str, StrategyPerformance]
+        self, strategy_performance: dict[str, StrategyPerformance]
     ) -> pd.DataFrame:
         """Extract returns data from strategy performance."""
         # This is a simplified implementation
@@ -695,7 +691,7 @@ class AdvancedStrategyAllocator(BaseStrategyAllocator):
 
     def _compute_risk_parity_weights(
         self, returns_data: pd.DataFrame, risk_tolerance: float
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Compute risk parity weights."""
         try:
             # Calculate covariance matrix
@@ -744,8 +740,8 @@ class AdvancedStrategyAllocator(BaseStrategyAllocator):
             return dict.fromkeys(returns_data.columns, equal_weight)
 
     def _apply_allocation_constraints(
-        self, weights: Dict[str, float], constraints: PayloadMap
-    ) -> Dict[str, float]:
+        self, weights: dict[str, float], constraints: PayloadMap
+    ) -> dict[str, float]:
         """Apply allocation constraints to weights."""
         constrained_weights = weights.copy()
 
@@ -770,7 +766,7 @@ class AdvancedStrategyAllocator(BaseStrategyAllocator):
         return constrained_weights
 
     def _calculate_portfolio_metrics(
-        self, weights: Dict[str, float], returns_data: pd.DataFrame
+        self, weights: dict[str, float], returns_data: pd.DataFrame
     ) -> tuple:
         """Calculate portfolio-level metrics."""
         try:
@@ -796,7 +792,7 @@ class AdvancedStrategyAllocator(BaseStrategyAllocator):
             return 0.0, 0.0, 0.0
 
     def _calculate_diversification_ratio(
-        self, weights: Dict[str, float], returns_data: pd.DataFrame
+        self, weights: dict[str, float], returns_data: pd.DataFrame
     ) -> float:
         """Calculate portfolio diversification ratio."""
         try:
@@ -824,7 +820,7 @@ class AdvancedStrategyAllocator(BaseStrategyAllocator):
 
     def allocate_strategies(
         self,
-        strategy_performance: Dict[str, StrategyPerformance],
+        strategy_performance: dict[str, StrategyPerformance],
         market_conditions: PayloadMap,
     ) -> PortfolioAllocation:
         """Advanced allocation using optimization methods."""
@@ -847,9 +843,9 @@ class AdvancedStrategyAllocator(BaseStrategyAllocator):
 
     def _adjust_for_market_conditions(
         self,
-        strategy_performance: Dict[str, StrategyPerformance],
+        strategy_performance: dict[str, StrategyPerformance],
         market_conditions: PayloadMap,
-    ) -> Dict[str, StrategyPerformance]:
+    ) -> dict[str, StrategyPerformance]:
         """Adjust strategy performance based on market conditions."""
         adjusted = {}
 
@@ -897,7 +893,6 @@ class AdvancedStrategyAllocator(BaseStrategyAllocator):
             return float(value)
         except (TypeError, ValueError):
             return default
-
 
 def create_strategy_allocator(
     config: PortfolioOptimizationConfig,

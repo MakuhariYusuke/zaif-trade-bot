@@ -21,24 +21,20 @@ if TYPE_CHECKING:
     from ..action_signal_guide import ActionSignal
     from ..types import PatternStats, SignalMetadata
 
-
 class DetectionHistoryEntry(TypedDict):
     timestamp: float
     pattern_type: str
     detected: bool
     metadata: "SignalMetadata"
 
-
 class PatternCombinationEntry(TypedDict):
     patterns: tuple[str, ...]
     frequency: int
-
 
 class PatternCombinationStats(TypedDict):
     combinations: list[PatternCombinationEntry]
     total_combinations: int
     min_frequency: int
-
 
 class TemporalPatternStats(TypedDict):
     pattern_type: str
@@ -48,10 +44,8 @@ class TemporalPatternStats(TypedDict):
     detection_frequency_per_hour: float
     time_span_hours: float
 
-
 class TemporalPatternError(TypedDict):
     error: str
-
 
 class OverallStatistics(TypedDict, total=False):
     total_detections: int
@@ -64,7 +58,6 @@ class OverallStatistics(TypedDict, total=False):
     least_frequent_pattern: tuple[str, int] | None
     top_patterns_by_success: list[tuple[str, float]]
     bottom_patterns_by_success: list[tuple[str, float]]
-
 
 class PatternStatistics(IPatternStatistics):
     """
@@ -219,7 +212,7 @@ class PatternStatistics(IPatternStatistics):
         Record combination of patterns detected together.
 
         Args:
-            pattern_types: List of pattern types detected simultaneously
+            pattern_types: list of pattern types detected simultaneously
         """
         if len(pattern_types) > 1:
             # Sort for consistent key

@@ -10,7 +10,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 def run_script(script_name: str, args: list[str]) -> int:
     """Run a script with given arguments."""
     script_path = Path("scripts") / script_name
@@ -28,7 +27,6 @@ def run_script(script_name: str, args: list[str]) -> int:
     except Exception as e:
         print(f"Failed to run {script_name}: {e}", file=sys.stderr)
         return 1
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -77,7 +75,6 @@ def main() -> None:
     script_name = command_map[args.command]
     exit_code = run_script(script_name, args.args)
     sys.exit(exit_code)
-
 
 if __name__ == "__main__":
     main()

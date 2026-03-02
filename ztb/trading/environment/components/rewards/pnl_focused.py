@@ -5,7 +5,6 @@ import numpy as np
 
 from .base import RewardComponent, RewardContext
 
-
 class PnlFocusedReward(RewardComponent):
     """
     Stage 2: PnL-focused reward with trend analysis.
@@ -23,7 +22,6 @@ class PnlFocusedReward(RewardComponent):
 
     def get_name(self) -> str:
         return "pnl_focused"
-
 
     def calculate(self, context: RewardContext) -> float:
         # Base profit bonus calculation

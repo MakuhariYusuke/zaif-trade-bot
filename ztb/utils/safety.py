@@ -8,7 +8,6 @@ from ztb.io.json_io import read_json_object
 ObjectMap = dict[str, object]
 TDefault = TypeVar("TDefault")
 
-
 def safe_open_json(path: Path | None) -> ObjectMap | None:
     """安全に JSON ファイルを開いて dict を返す。失敗したら None を返す。
 
@@ -25,7 +24,6 @@ def safe_open_json(path: Path | None) -> ObjectMap | None:
     except Exception:
         return None
 
-
 def ensure_dict(value: object | None) -> ObjectMap:
     """与えられた値を dict に正規化する。変換できなければ空 dict を返す。"""
     if value is None:
@@ -40,14 +38,12 @@ def ensure_dict(value: object | None) -> ObjectMap:
     except Exception:
         return {}
 
-
 def safe_to_float(value: object, default: float = 0.0) -> float:
     """値を安全に float に変換する。失敗したら default を返す。"""
     try:
         return float(value)
     except Exception:
         return default
-
 
 def safe_to_finite(value: Any) -> float | None:
     """値を有限 float に安全変換. None / NaN / Inf → None を返す.
@@ -62,14 +58,12 @@ def safe_to_finite(value: Any) -> float | None:
         return None
     return v if math.isfinite(v) else None
 
-
 def safe_to_int(value: object, default: int = 0) -> int:
     """値を安全に int に変換する。失敗したら default を返す。"""
     try:
         return int(float(value))  # floatを経由して "1.0" なども扱えるように
     except Exception:
         return default
-
 
 def safe_to_bool(value: object, default: bool = False) -> bool:
     """値を安全に bool に変換する。失敗したら default を返す。"""
@@ -83,7 +77,6 @@ def safe_to_bool(value: object, default: bool = False) -> bool:
         return bool(value)
     except Exception:
         return default
-
 
 def safe_get_nested_value(
     data: ObjectMap, keys: list[str], default: TDefault | None = None
@@ -110,7 +103,6 @@ def safe_get_nested_value(
     except Exception:
         return default
 
-
 def safe_divide(numerator: float, denominator: float, default: float = 0.0) -> float:
     """
     安全な除算を行う。ゼロ除算を避ける。
@@ -127,7 +119,6 @@ def safe_divide(numerator: float, denominator: float, default: float = 0.0) -> f
         return numerator / denominator if denominator != 0 else default
     except Exception:
         return default
-
 
 def safe_list_get(
     lst: list[object], index: int, default: TDefault | None = None
@@ -148,7 +139,6 @@ def safe_list_get(
     except Exception:
         return default
 
-
 def validate_range(value: float, min_val: float, max_val: float) -> bool:
     """
     値が指定範囲内にあるかを検証する。
@@ -162,7 +152,6 @@ def validate_range(value: float, min_val: float, max_val: float) -> bool:
         範囲内ならTrue
     """
     return min_val <= value <= max_val
-
 
 def safe_config_get(
     config: ObjectMap,
@@ -196,7 +185,6 @@ def safe_config_get(
 
     return value
 
-
 def safe_config_get_float(
     config: ObjectMap, key: str, default: float = 0.0
 ) -> float:
@@ -204,12 +192,10 @@ def safe_config_get_float(
     value = safe_config_get(config, key, default)
     return safe_to_float(value, default)
 
-
 def safe_config_get_int(config: ObjectMap, key: str, default: int = 0) -> int:
     """設定からint値を安全に取得"""
     value = safe_config_get(config, key, default)
     return safe_to_int(value, default)
-
 
 def safe_config_get_bool(
     config: ObjectMap, key: str, default: bool = False
@@ -217,7 +203,6 @@ def safe_config_get_bool(
     """設定からbool値を安全に取得"""
     value = safe_config_get(config, key, default)
     return safe_to_bool(value, default)
-
 
 def safe_config_get_str(config: ObjectMap, key: str, default: str = "") -> str:
     """設定からstr値を安全に取得"""

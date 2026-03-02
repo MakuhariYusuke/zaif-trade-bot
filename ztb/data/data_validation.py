@@ -26,7 +26,6 @@ StringList = list[str]
 SchemaRule = dict[str, object]
 SchemaDefinition = dict[str, SchemaRule]
 
-
 class RuleEvaluationResult(TypedDict):
     """Result payload for individual validation rules."""
 
@@ -34,13 +33,11 @@ class RuleEvaluationResult(TypedDict):
     level: str
     messages: StringList
 
-
 class RuleIssueResult(TypedDict):
     """Container for collected errors/warnings."""
 
     errors: StringList
     warnings: StringList
-
 
 class SchemaValidationResult(TypedDict):
     """Schema validation summary."""
@@ -49,13 +46,11 @@ class SchemaValidationResult(TypedDict):
     warnings: StringList
     metrics: MetricsDict
 
-
 class AnomalyDetectionResult(TypedDict):
     """Anomaly detection summary."""
 
     warnings: StringList
     details: ObjectMap
-
 
 class IntegrityCheckResult(TypedDict):
     """Data integrity check summary."""
@@ -65,7 +60,6 @@ class IntegrityCheckResult(TypedDict):
     metrics: MetricsDict
     details: ObjectMap
 
-
 class AdditionalValidationRule(TypedDict, total=False):
     """User-provided validation rule schema."""
 
@@ -73,9 +67,7 @@ class AdditionalValidationRule(TypedDict, total=False):
     columns: list[str]
     params: ObjectMap
 
-
 ValidationRule = Callable[..., RuleEvaluationResult]
-
 
 @dataclass
 class ValidationResult:
@@ -87,7 +79,6 @@ class ValidationResult:
     metrics: MetricsDict
     details: ObjectMap
 
-
 @dataclass
 class DataQualityMetrics:
     """データ品質メトリクスを格納するデータクラス。"""
@@ -98,7 +89,6 @@ class DataQualityMetrics:
     consistency: float  # 一貫性 (0-1)
     validity: float  # 有効性 (0-1)
     uniqueness: float  # 独自性 (0-1)
-
 
 class DataValidator:
     """
@@ -622,7 +612,6 @@ class DataValidator:
             errors.extend(formatted_messages)
             return
         warnings.extend(formatted_messages)
-
 
 class DataIntegrityChecker:
     """

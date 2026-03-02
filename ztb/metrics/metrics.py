@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import os
-from typing import Dict, List, Optional, Tuple, TypedDict, Union, cast
+from typing import TypedDict, cast
 
 import numpy as np
 import pandas as pd
@@ -40,7 +40,6 @@ from ztb.trading.constants import (
 from ztb.utils.errors import safe_operation
 from ztb.utils.types import FeatureMetrics, StatsResult
 
-
 class MetricsResult(TypedDict):
     """Type definition for metrics calculation results"""
 
@@ -56,15 +55,14 @@ class MetricsResult(TypedDict):
     expected_value: float
     recovery_factor: float
     num_periods: int
-    seasonality_analysis: Optional[dict[str, object]]
-    market_regime_analysis: Optional[dict[str, object]]
-    walkforward_analysis: Optional[dict[str, object]]
-    stress_test_analysis: Optional[dict[str, object]]
-    statistical_tests: Optional[dict[str, object]]
-
+    seasonality_analysis: dict[str, object] | None
+    market_regime_analysis: dict[str, object] | None
+    walkforward_analysis: dict[str, object] | None
+    stress_test_analysis: dict[str, object] | None
+    statistical_tests: dict[str, object] | None
 
 def sharpe_ratio(
-    returns: Union[pd.Series, NDArray[np.generic]],
+    returns: pd.Series | NDArray[np.generic],
     rf: float = 0.0,
     period_per_year: int = TRADING_DAYS_PER_YEAR,
 ) -> float:
@@ -98,9 +96,8 @@ def sharpe_ratio(
         ),
     )
 
-
 def _sharpe_ratio_impl(
-    returns: Union[pd.Series, NDArray[np.generic]],
+    returns: pd.Series | NDArray[np.generic],
     rf: float = 0.0,
     period_per_year: int = TRADING_DAYS_PER_YEAR,
 ) -> float:
@@ -139,9 +136,8 @@ def _sharpe_ratio_impl(
     mean_excess_return = np.mean(excess_returns)
     return (mean_excess_return / volatility) * np.sqrt(period_per_year)
 
-
 def calculate_deflated_sharpe_ratio(
-    returns: Union[pd.Series, NDArray[np.generic], List[float]],
+    returns: pd.Series | NDArray[np.generic] | list[float],
     num_strategies: int = 1000,
     risk_free_rate: float = 0.0,
 ) -> float:
@@ -159,10 +155,9 @@ def calculate_deflated_sharpe_ratio(
 
     return float(sr * deflation_factor)
 
-
 def calculate_bootstrap_pvalue(
-    strategy_returns: Union[pd.Series, NDArray[np.generic], List[float]],
-    benchmark_returns: Union[pd.Series, NDArray[np.generic], List[float]],
+    strategy_returns: pd.Series | NDArray[np.generic] | list[float],
+    benchmark_returns: pd.Series | NDArray[np.generic] | list[float],
     n_bootstrap: int = 1000,
 ) -> float:
     """
@@ -196,9 +191,8 @@ def calculate_bootstrap_pvalue(
 
     return float(p_value)
 
-
 def sortino_ratio(
-    returns: Union[pd.Series, NDArray[np.generic]],
+    returns: pd.Series | NDArray[np.generic],
     rf: float = 0.0,
     period_per_year: int = TRADING_DAYS_PER_YEAR,
     downside_floor: float = 0.0,
@@ -237,9 +231,8 @@ def sortino_ratio(
         ),
     )
 
-
 def _sortino_ratio_impl(
-    returns: Union[pd.Series, NDArray[np.generic]],
+    returns: pd.Series | NDArray[np.generic],
     rf: float = 0.0,
     period_per_year: int = TRADING_DAYS_PER_YEAR,
     downside_floor: float = 0.0,
@@ -275,9 +268,8 @@ def _sortino_ratio_impl(
     mean_return = np.mean(excess_returns)
     return (mean_return / downside_std) * np.sqrt(period_per_year)  # type: ignore
 
-
 def calculate_downside_risk_reward(
-    returns: Union[pd.Series, NDArray[np.generic]], penalty_multiplier: float = 1.0
+    returns: pd.Series | NDArray[np.generic], penalty_multiplier: float = 1.0
 ) -> float:
     """Calculate a simple downside-risk-based reward used by simplified reward tests.
 
@@ -292,8 +284,7 @@ def calculate_downside_risk_reward(
         return 0.0
     return float(-np.mean(neg) * float(penalty_multiplier))
 
-
-def calculate_risk_adjusted_reward(returns: Union[pd.Series, NDArray[np.generic]], risk_penalty: float = 1.0) -> float:
+def calculate_risk_adjusted_reward(returns: pd.Series | NDArray[np.generic], risk_penalty: float = 1.0) -> float:
     """Simple risk-adjusted reward used by script-level tests.
 
     This combines average return with a downside penalty.
@@ -305,13 +296,11 @@ def calculate_risk_adjusted_reward(returns: Union[pd.Series, NDArray[np.generic]
     downside = calculate_downside_risk_reward(arr, penalty_multiplier=risk_penalty)
     return float(avg - downside)
 
-
 def calculate_trading_reward(*args, **kwargs):
     """Compatibility alias expected by older scripts/tests."""
     return calculate_risk_adjusted_reward(*args, **kwargs)
 
-
-def max_drawdown(equity_curve: Union[pd.Series, NDArray[np.generic]]) -> float:
+def max_drawdown(equity_curve: pd.Series | NDArray[np.generic]) -> float:
     """
     Calculate maximum drawdown from equity curve.
 
@@ -344,8 +333,7 @@ def max_drawdown(equity_curve: Union[pd.Series, NDArray[np.generic]]) -> float:
         ),
     )
 
-
-def _max_drawdown_impl(equity_curve: Union[pd.Series, NDArray[np.generic]]) -> float:
+def _max_drawdown_impl(equity_curve: pd.Series | NDArray[np.generic]) -> float:
     """Implementation of maximum drawdown calculation."""
     equity_curve = np.asarray(equity_curve)
 
@@ -367,9 +355,8 @@ def _max_drawdown_impl(equity_curve: Union[pd.Series, NDArray[np.generic]]) -> f
     # Return maximum drawdown (most negative value)
     return float(np.min(drawdown))
 
-
 def calmar_ratio(
-    returns: Union[pd.Series, NDArray[np.generic]],
+    returns: pd.Series | NDArray[np.generic],
     rf: float = 0.0,
     period_per_year: int = TRADING_DAYS_PER_YEAR,
 ) -> float:
@@ -410,9 +397,8 @@ def calmar_ratio(
         ),
     )
 
-
 def _calmar_ratio_impl(
-    returns: Union[pd.Series, NDArray[np.generic]],
+    returns: pd.Series | NDArray[np.generic],
     rf: float = 0.0,
     period_per_year: int = TRADING_DAYS_PER_YEAR,
 ) -> float:
@@ -442,8 +428,7 @@ def _calmar_ratio_impl(
 
     return float((annual_return - rf) / abs(mdd))
 
-
-def win_rate(returns: Union[pd.Series, NDArray[np.generic]]) -> float:
+def win_rate(returns: pd.Series | NDArray[np.generic]) -> float:
     """
     Calculate win rate (proportion of positive returns).
 
@@ -463,8 +448,7 @@ def win_rate(returns: Union[pd.Series, NDArray[np.generic]]) -> float:
         ),
     )
 
-
-def _win_rate_impl(returns: Union[pd.Series, NDArray[np.generic]]) -> float:
+def _win_rate_impl(returns: pd.Series | NDArray[np.generic]) -> float:
     returns = np.asarray(returns)
     if len(returns) == 0:
         return 0.0
@@ -476,8 +460,7 @@ def _win_rate_impl(returns: Union[pd.Series, NDArray[np.generic]]) -> float:
 
     return float(np.mean(returns > 0))
 
-
-def profit_factor(returns: Union[pd.Series, NDArray[np.generic]]) -> float:
+def profit_factor(returns: pd.Series | NDArray[np.generic]) -> float:
     """
     Calculate profit factor (gross profit / gross loss ratio).
 
@@ -513,8 +496,7 @@ def profit_factor(returns: Union[pd.Series, NDArray[np.generic]]) -> float:
         ),
     )
 
-
-def _profit_factor_impl(returns: Union[pd.Series, NDArray[np.generic]]) -> float:
+def _profit_factor_impl(returns: pd.Series | NDArray[np.generic]) -> float:
     """Implementation of profit factor calculation."""
     returns = np.asarray(returns)
 
@@ -535,8 +517,7 @@ def _profit_factor_impl(returns: Union[pd.Series, NDArray[np.generic]]) -> float
 
     return float(gross_profit / gross_loss)
 
-
-def expected_value(returns: Union[pd.Series, NDArray[np.generic]]) -> float:
+def expected_value(returns: pd.Series | NDArray[np.generic]) -> float:
     """
     Calculate expected value per trade/period.
 
@@ -572,8 +553,7 @@ def expected_value(returns: Union[pd.Series, NDArray[np.generic]]) -> float:
         ),
     )
 
-
-def _expected_value_impl(returns: Union[pd.Series, NDArray[np.generic]]) -> float:
+def _expected_value_impl(returns: pd.Series | NDArray[np.generic]) -> float:
     """Implementation of expected value calculation."""
     returns = np.asarray(returns)
 
@@ -601,9 +581,8 @@ def _expected_value_impl(returns: Union[pd.Series, NDArray[np.generic]]) -> floa
 
     return float((win_rate_val * avg_win) - ((1 - win_rate_val) * avg_loss))
 
-
 def recovery_factor(
-    returns: Union[pd.Series, NDArray[np.generic]],
+    returns: pd.Series | NDArray[np.generic],
     rf: float = 0.0,
     period_per_year: int = TRADING_DAYS_PER_YEAR,
 ) -> float:
@@ -644,9 +623,8 @@ def recovery_factor(
         ),
     )
 
-
 def _recovery_factor_impl(
-    returns: Union[pd.Series, NDArray[np.generic]],
+    returns: pd.Series | NDArray[np.generic],
     rf: float = 0.0,
     period_per_year: int = TRADING_DAYS_PER_YEAR,
 ) -> float:
@@ -677,9 +655,8 @@ def _recovery_factor_impl(
     # Recovery factor = Annual return / |Max Drawdown|
     return float((annual_return - rf) / abs(mdd))
 
-
 def rolling_analysis(
-    returns: Union[pd.Series, NDArray[np.generic]],
+    returns: pd.Series | NDArray[np.generic],
     window: int = 30,
     step: int = 1,
     rf: float = 0.0,
@@ -710,9 +687,8 @@ def rolling_analysis(
         ),
     )
 
-
 def _rolling_analysis_impl(
-    returns: Union[pd.Series, NDArray[np.generic]],
+    returns: pd.Series | NDArray[np.generic],
     window: int,
     step: int,
     rf: float,
@@ -742,8 +718,7 @@ def _rolling_analysis_impl(
 
     return pd.DataFrame(rolling_metrics)
 
-
-def drawdown_analysis(equity_curve: Union[pd.Series, NDArray[np.generic]]) -> dict[str, object]:
+def drawdown_analysis(equity_curve: pd.Series | NDArray[np.generic]) -> dict[str, object]:
     """
     Comprehensive drawdown analysis including duration, depth, and recovery time
 
@@ -763,9 +738,8 @@ def drawdown_analysis(equity_curve: Union[pd.Series, NDArray[np.generic]]) -> di
         ),
     )
 
-
 def _drawdown_analysis_impl(
-    equity_curve: Union[pd.Series, NDArray[np.generic]],
+    equity_curve: pd.Series | NDArray[np.generic],
 ) -> dict[str, object]:
     """Implementation of comprehensive drawdown analysis."""
     equity_curve = np.asarray(equity_curve)
@@ -878,10 +852,9 @@ def _drawdown_analysis_impl(
             "drawdown_periods": [],
         }
 
-
 def seasonality_analysis(
-    returns: Union[pd.Series, NDArray[np.generic]],
-    dates: Optional[Union[pd.Series, NDArray[np.generic]]] = None,
+    returns: pd.Series | NDArray[np.generic],
+    dates: pd.Series | NDArray[np.generic] | None = None,
 ) -> dict[str, object]:
     """
     Comprehensive seasonality analysis of returns
@@ -905,10 +878,9 @@ def seasonality_analysis(
         ),
     )
 
-
 def _seasonality_analysis_impl(
-    returns: Union[pd.Series, NDArray[np.generic]],
-    dates: Optional[Union[pd.Series, NDArray[np.generic]]] = None,
+    returns: pd.Series | NDArray[np.generic],
+    dates: pd.Series | NDArray[np.generic] | None = None,
 ) -> dict[str, object]:
     """Implementation of seasonality analysis."""
     returns = np.asarray(returns)
@@ -1026,10 +998,9 @@ def _seasonality_analysis_impl(
 
     return results
 
-
 def classify_market_regime(
-    prices: Union[pd.Series, NDArray[np.generic]],
-    returns: Optional[Union[pd.Series, NDArray[np.generic]]] = None,
+    prices: pd.Series | NDArray[np.generic],
+    returns: pd.Series | NDArray[np.generic] | None = None,
     window: int = 20,
 ) -> pd.Series:
     """
@@ -1050,10 +1021,9 @@ def classify_market_regime(
         default_result=pd.Series(),
     )
 
-
 def _classify_market_regime_impl(
-    prices: Union[pd.Series, NDArray[np.generic]],
-    returns: Optional[Union[pd.Series, NDArray[np.generic]]] = None,
+    prices: pd.Series | NDArray[np.generic],
+    returns: pd.Series | NDArray[np.generic] | None = None,
     window: int = 20,
 ) -> pd.Series:
     prices = pd.Series(prices)
@@ -1100,10 +1070,9 @@ def _classify_market_regime_impl(
 
     return pd.Series(regimes, index=prices.index)
 
-
 def multi_market_backtest_analysis(
-    returns: Union[pd.Series, NDArray[np.generic]],
-    prices: Union[pd.Series, NDArray[np.generic]],
+    returns: pd.Series | NDArray[np.generic],
+    prices: pd.Series | NDArray[np.generic],
     regime_window: int = 20,
 ) -> dict[str, object]:
     """
@@ -1126,10 +1095,9 @@ def multi_market_backtest_analysis(
         default_result={},
     )
 
-
 def _multi_market_backtest_analysis_impl(
-    returns: Union[pd.Series, NDArray[np.generic]],
-    prices: Union[pd.Series, NDArray[np.generic]],
+    returns: pd.Series | NDArray[np.generic],
+    prices: pd.Series | NDArray[np.generic],
     regime_window: int = 20,
 ) -> dict[str, object]:
     returns = pd.Series(returns)
@@ -1204,10 +1172,9 @@ def _multi_market_backtest_analysis_impl(
         "statistical_tests": statistical_tests_results,
     }
 
-
 def _analyze_regime_transitions(regimes: pd.Series) -> dict[str, object]:
     """Analyze transitions between market regimes."""
-    transitions: Dict[str, int] = {}
+    transitions: dict[str, int] = {}
     prev_regime = None
 
     for regime in regimes:
@@ -1218,9 +1185,8 @@ def _analyze_regime_transitions(regimes: pd.Series) -> dict[str, object]:
 
     return transitions
 
-
 def calculate_all_metrics(
-    returns: Union[pd.Series, NDArray[np.generic]],
+    returns: pd.Series | NDArray[np.generic],
     rf: float = 0.0,
     period_per_year: int = TRADING_DAYS_PER_YEAR,
 ) -> MetricsResult:
@@ -1290,9 +1256,8 @@ def calculate_all_metrics(
         ),
     )
 
-
 def _calculate_all_metrics_impl(
-    returns: Union[pd.Series, NDArray[np.generic]],
+    returns: pd.Series | NDArray[np.generic],
     rf: float = 0.0,
     period_per_year: int = TRADING_DAYS_PER_YEAR,
 ) -> MetricsResult:
@@ -1345,7 +1310,6 @@ def _calculate_all_metrics_impl(
         "statistical_tests": None,
     }
 
-
 if __name__ == "__main__":
     # Test with synthetic data
     np.random.seed(42)
@@ -1390,9 +1354,8 @@ if __name__ == "__main__":
 
     print("All tests completed successfully!")
 
-
 def p_mean_method(
-    p_values: Union[list[float], NDArray[np.generic]], method: str = "arithmetic"
+    p_values: list[float] | NDArray[np.generic], method: str = "arithmetic"
 ) -> float:
     """
     p平均法による総合p値の計算
@@ -1445,10 +1408,9 @@ def p_mean_method(
     else:
         raise ValueError(f"Unknown method: {method}")
 
-
 def perform_statistical_tests(
-    data_a: Union[pd.Series, NDArray[np.generic], list[float]],
-    data_b: Union[pd.Series, NDArray[np.generic], list[float]],
+    data_a: pd.Series | NDArray[np.generic] | list[float],
+    data_b: pd.Series | NDArray[np.generic] | list[float],
     alpha: float = 0.05,
 ) -> dict[str, object]:
     """
@@ -1500,10 +1462,9 @@ def perform_statistical_tests(
         ),
     )
 
-
 def _perform_statistical_tests_impl(
-    data_a: Union[pd.Series, NDArray[np.generic], list[float]],
-    data_b: Union[pd.Series, NDArray[np.generic], list[float]],
+    data_a: pd.Series | NDArray[np.generic] | list[float],
+    data_b: pd.Series | NDArray[np.generic] | list[float],
     alpha: float = 0.05,
 ) -> dict[str, object]:
     """統計的検定の実装"""
@@ -1538,9 +1499,8 @@ def _perform_statistical_tests_impl(
         "effect_size": float(effect_size),
     }
 
-
 def coefficient_of_variation(
-    values: Union[pd.Series, NDArray[np.generic]],
+    values: pd.Series | NDArray[np.generic],
 ) -> float:
     """
     Calculate coefficient of variation (CV).
@@ -1569,8 +1529,7 @@ def coefficient_of_variation(
         default_result=0.0,
     )
 
-
-def _coefficient_of_variation_impl(values: Union[pd.Series, NDArray[np.generic]]) -> float:
+def _coefficient_of_variation_impl(values: pd.Series | NDArray[np.generic]) -> float:
     """Implementation of coefficient of variation calculation."""
     values = np.asarray(values)
 
@@ -1590,9 +1549,8 @@ def _coefficient_of_variation_impl(values: Union[pd.Series, NDArray[np.generic]]
     std_val = np.std(values, ddof=1) if len(values) > 1 else 0.0
     return float(std_val / abs(mean_val))
 
-
 def skewness(
-    returns: Union[pd.Series, NDArray[np.generic]],
+    returns: pd.Series | NDArray[np.generic],
 ) -> float:
     """
     Calculate skewness of returns distribution.
@@ -1622,8 +1580,7 @@ def skewness(
         default_result=0.0,
     )
 
-
-def _skewness_impl(returns: Union[pd.Series, NDArray[np.generic]]) -> float:
+def _skewness_impl(returns: pd.Series | NDArray[np.generic]) -> float:
     """Implementation of skewness calculation."""
     returns = np.asarray(returns)
 
@@ -1638,9 +1595,8 @@ def _skewness_impl(returns: Union[pd.Series, NDArray[np.generic]]) -> float:
 
     return float(stats.skew(returns))
 
-
 def kurtosis(
-    returns: Union[pd.Series, NDArray[np.generic]],
+    returns: pd.Series | NDArray[np.generic],
 ) -> float:
     """
     Calculate kurtosis of returns distribution.
@@ -1670,8 +1626,7 @@ def kurtosis(
         default_result=0.0,
     )
 
-
-def _kurtosis_impl(returns: Union[pd.Series, NDArray[np.generic]]) -> float:
+def _kurtosis_impl(returns: pd.Series | NDArray[np.generic]) -> float:
     """Implementation of kurtosis calculation."""
     returns = np.asarray(returns)
 
@@ -1686,9 +1641,8 @@ def _kurtosis_impl(returns: Union[pd.Series, NDArray[np.generic]]) -> float:
 
     return float(stats.kurtosis(returns))
 
-
 def test_normality(
-    returns: Union[pd.Series, NDArray[np.generic]],
+    returns: pd.Series | NDArray[np.generic],
 ) -> dict[str, object]:
     """
     Test normality of returns distribution using multiple statistical tests.
@@ -1726,8 +1680,7 @@ def test_normality(
         },
     )
 
-
-def _test_normality_impl(returns: Union[pd.Series, NDArray[np.generic]]) -> dict[str, object]:
+def _test_normality_impl(returns: pd.Series | NDArray[np.generic]) -> dict[str, object]:
     """Implementation of normality testing."""
     returns = np.asarray(returns)
 
@@ -1793,9 +1746,8 @@ def _test_normality_impl(returns: Union[pd.Series, NDArray[np.generic]]) -> dict
 
     return results
 
-
 def autocorrelation(
-    returns: Union[pd.Series, NDArray[np.generic]],
+    returns: pd.Series | NDArray[np.generic],
     lag: int = 1,
 ) -> float:
     """
@@ -1826,9 +1778,8 @@ def autocorrelation(
         default_result=0.0,
     )
 
-
 def _autocorrelation_impl(
-    returns: Union[pd.Series, NDArray[np.generic]], lag: int = 1
+    returns: pd.Series | NDArray[np.generic], lag: int = 1
 ) -> float:
     """Implementation of autocorrelation calculation."""
     returns = np.asarray(returns)
@@ -1846,10 +1797,9 @@ def _autocorrelation_impl(
     autocorr = np.corrcoef(returns[lag:], returns[:-lag])[0, 1]
     return float(autocorr) if not np.isnan(autocorr) else 0.0
 
-
 def action_distribution(
-    actions: Union[List[int], NDArray[np.integer]],
-) -> Dict[str, float]:
+    actions: list[int] | NDArray[np.integer],
+) -> dict[str, float]:
     """
     Calculate action distribution (proportion of HOLD, BUY, SELL).
 
@@ -1860,7 +1810,7 @@ def action_distribution(
         Dictionary with action distribution {"HOLD": ratio, "BUY": ratio, "SELL": ratio}
     """
     return cast(
-        Dict[str, float],
+        dict[str, float],
         safe_operation(
             logger=None,
             operation=lambda: _action_distribution_impl(actions),
@@ -1869,10 +1819,9 @@ def action_distribution(
         ),
     )
 
-
 def _action_distribution_impl(
-    actions: Union[List[int], NDArray[np.integer]],
-) -> Dict[str, float]:
+    actions: list[int] | NDArray[np.integer],
+) -> dict[str, float]:
     actions_np = np.asarray(actions)
 
     if len(actions_np) == 0:
@@ -1898,14 +1847,13 @@ def _action_distribution_impl(
         "SELL": float(action_counts[ACTION_SELL + 1] / total_actions),
     }
 
-
 @safe_operation
 def calculate_performance_metrics(
     returns: pd.Series,
     risk_free_rate: float = 0.02,
     annualize: bool = True,
     periods_per_year: int = TRADING_DAYS_PER_YEAR,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Calculate comprehensive performance metrics for a return series.
 
@@ -1946,7 +1894,6 @@ def calculate_performance_metrics(
         "win_rate": win_rate,
     }
 
-
 def calculate_returns(equity_curve: pd.Series, freq: str = "D") -> pd.Series:
     """
     Calculate periodic returns from an equity curve.
@@ -1954,7 +1901,6 @@ def calculate_returns(equity_curve: pd.Series, freq: str = "D") -> pd.Series:
     if freq == "D":
         return equity_curve.pct_change().fillna(0)
     return equity_curve.resample(freq).last().pct_change().fillna(0)
-
 
 def calculate_cagr(equity_curve: pd.Series) -> float:
     """
@@ -1969,10 +1915,9 @@ def calculate_cagr(equity_curve: pd.Series) -> float:
         return 0.0
     return float((1 + total_return) ** (1 / years) - 1)
 
-
 def calculate_trade_metrics(
     orders: pd.DataFrame,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Calculate trade-level metrics from order history.
 
@@ -2028,7 +1973,6 @@ def calculate_trade_metrics(
         "profit_factor": float(profit_factor),
     }
 
-
 def estimate_turnover(
     orders: pd.DataFrame, initial_capital: float = 10000
 ) -> float:
@@ -2045,7 +1989,6 @@ def estimate_turnover(
     )
     return float(annualized_turnover)
 
-
 def estimate_slippage_bps(orders: pd.DataFrame, slippage_bps: float = 5.0) -> float:
     """
     Estimate slippage impact in basis points.
@@ -2054,8 +1997,7 @@ def estimate_slippage_bps(orders: pd.DataFrame, slippage_bps: float = 5.0) -> fl
         return float(slippage_bps)
     return float(slippage_bps)
 
-
-def _ensure_numpy(data: Union[List[float], np.ndarray, pd.Series]) -> np.ndarray:
+def _ensure_numpy(data: list[float] | np.ndarray | pd.Series) -> np.ndarray:
     """Convert input data to numpy array."""
     if isinstance(data, pd.Series):
         return data.to_numpy()
@@ -2065,14 +2007,12 @@ def _ensure_numpy(data: Union[List[float], np.ndarray, pd.Series]) -> np.ndarray
         return data
     raise TypeError(f"Unsupported data type: {type(data)}")
 
-
 # NOTE: p_mean_method は L1394 に正規定義あり。ここに重複定義があったが
 #       002# レビュー (D1) に基づき削除済み。
 
-
 def rolling_statistics(
-    data: Union[List[float], np.ndarray, pd.Series], window: int
-) -> Dict[str, List[float]]:
+    data: list[float] | np.ndarray | pd.Series, window: int
+) -> dict[str, list[float]]:
     """
     Calculate rolling mean/std/min/max for time series data.
     """
@@ -2089,10 +2029,10 @@ def rolling_statistics(
             "max": rolling.max().dropna().tolist(),
         }
 
-    means: List[float] = []
-    stds: List[float] = []
-    mins: List[float] = []
-    maxs: List[float] = []
+    means: list[float] = []
+    stds: list[float] = []
+    mins: list[float] = []
+    maxs: list[float] = []
 
     for i in range(window - 1, len(np_data)):
         window_data = np_data[i - window + 1 : i + 1]
@@ -2103,19 +2043,17 @@ def rolling_statistics(
 
     return {"mean": means, "std": stds, "min": mins, "max": maxs}
 
-
 def calculate_volatility(
-    data: Union[List[float], np.ndarray, pd.Series], window: int = 20
-) -> List[float]:
+    data: list[float] | np.ndarray | pd.Series, window: int = 20
+) -> list[float]:
     """
     Calculate rolling volatility (standard deviation).
     """
     stats = rolling_statistics(data, window)
     return stats["std"]
 
-
 def calculate_autocorrelation(
-    data: Union[List[float], np.ndarray, pd.Series], lag: int = 1
+    data: list[float] | np.ndarray | pd.Series, lag: int = 1
 ) -> float:
     """
     Calculate autocorrelation at specified lag.
@@ -2123,10 +2061,9 @@ def calculate_autocorrelation(
     series = data if isinstance(data, pd.Series) else pd.Series(data)
     return autocorrelation(series, lag=lag)
 
-
 def detect_outliers_iqr(
-    data: Union[List[float], np.ndarray, pd.Series], multiplier: float = 1.5
-) -> List[bool]:
+    data: list[float] | np.ndarray | pd.Series, multiplier: float = 1.5
+) -> list[bool]:
     """
     Detect outliers using the IQR method.
     """
@@ -2142,7 +2079,6 @@ def detect_outliers_iqr(
     upper_bound = q3 + multiplier * iqr
 
     return [(x < lower_bound or x > upper_bound) for x in np_data]
-
 
 def calculate_atr(data: pd.DataFrame, period: int = 14) -> pd.Series:
     """
@@ -2162,9 +2098,8 @@ def calculate_atr(data: pd.DataFrame, period: int = 14) -> pd.Series:
 
     return compute_atr(data, period=period)
 
-
 def calculate_distribution_stats(
-    data: Union[List[float], np.ndarray], decimals: int = 6
+    data: list[float] | np.ndarray, decimals: int = 6
 ) -> dict[str, object]:
     """
     Calculate distribution statistics (mean, std, 95% CI).
@@ -2184,25 +2119,23 @@ def calculate_distribution_stats(
         "ci95": [round(ci95_low, decimals), round(ci95_high, decimals)],
     }
 
-
-def sharpe_with_stats(sharpes: List[float]) -> StatsResult:
+def sharpe_with_stats(sharpes: list[float]) -> StatsResult:
     """
     Calculate summary statistics for Sharpe ratios.
 
     Args:
-        sharpes: List of Sharpe ratios
+        sharpes: list of Sharpe ratios
 
     Returns:
         StatsResult with mean, std, and 95% CI.
     """
     return cast(StatsResult, calculate_distribution_stats(sharpes))
 
-
 def calculate_delta_sharpe(
-    base_sharpes: List[float],
-    with_feature_sharpes: List[float],
+    base_sharpes: list[float],
+    with_feature_sharpes: list[float],
     min_samples: int = 10000,
-) -> Optional[StatsResult]:
+) -> StatsResult | None:
     """
     Calculate delta Sharpe (stabilized) between baseline and feature-enhanced runs.
 
@@ -2236,7 +2169,6 @@ def calculate_delta_sharpe(
         "std": round(delta_std, 6),
         "ci95": [round(delta_ci95_low, 6), round(delta_ci95_high, 6)],
     }
-
 
 def calculate_feature_metrics(
     feature_data: pd.Series, price_data: pd.Series, feature_name: str
@@ -2286,7 +2218,6 @@ def calculate_feature_metrics(
         "sample_count": int(valid_idx.sum()),
     }
 
-
 def validate_ablation_results(results: dict[str, object]) -> bool:
     """
     Validate ablation results for expected delta Sharpe structure.
@@ -2310,7 +2241,6 @@ def validate_ablation_results(results: dict[str, object]) -> bool:
         return False
 
     return True
-
 
 @dataclass
 class BacktestMetrics:
@@ -2342,9 +2272,8 @@ class BacktestMetrics:
     estimated_slippage_bps: float
 
     # Statistical significance (optional)
-    deflated_sharpe_ratio: Optional[float] = None
-    pvalue_bootstrap: Optional[float] = None
-
+    deflated_sharpe_ratio: float | None = None
+    pvalue_bootstrap: float | None = None
 
 class MetricsCalculator:
     """Calculates comprehensive trading performance metrics."""
@@ -2386,7 +2315,7 @@ class MetricsCalculator:
     @staticmethod
     def calculate_trade_metrics(
         orders: pd.DataFrame,
-    ) -> Tuple[int, float, float, float, float]:
+    ) -> tuple[int, float, float, float, float]:
         """
         Calculate trade-level metrics.
 
@@ -2505,7 +2434,7 @@ class MetricsCalculator:
     @staticmethod
     def detect_return_outliers(
         returns: pd.Series, multiplier: float = 1.5
-    ) -> List[bool]:
+    ) -> list[bool]:
         """Detect outliers in returns using IQR method."""
         returns_list = returns.dropna().tolist()
         return detect_outliers_iqr(returns_list, multiplier)

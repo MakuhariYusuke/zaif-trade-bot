@@ -16,7 +16,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import psutil
 import requests
@@ -33,8 +33,7 @@ logger = get_logger(__name__)
 
 logger = logging.getLogger(__name__)
 
-
-def collect_ci_metrics() -> Dict[str, Any]:
+def collect_ci_metrics() -> dict[str, Any]:
     """Collect CI metrics like coverage, execution time, failures"""
     process = psutil.Process()
     memory_info = process.memory_info()
@@ -68,9 +67,8 @@ def collect_ci_metrics() -> Dict[str, Any]:
 
     return metrics
 
-
 def notify_ci_results(
-    metrics: Dict[str, Any], channel: str = "discord", webhook_url: Optional[str] = None
+    metrics: dict[str, Any], channel: str = "discord", webhook_url: str | None = None
 ) -> None:
     """Notify CI results to specified channel (discord/slack)"""
     if channel.lower() == "discord":

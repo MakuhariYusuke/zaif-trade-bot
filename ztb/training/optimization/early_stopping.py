@@ -4,12 +4,11 @@ Early stopping implementation for training optimization.
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
-
 
 class EarlyStopping:
     """
@@ -40,7 +39,7 @@ class EarlyStopping:
         self.monitor = monitor
         self.mode = mode
 
-        self.best_score: Optional[float] = None
+        self.best_score: float | None = None
         self.counter = 0
         self.best_weights = None
         self.stopped_epoch = 0

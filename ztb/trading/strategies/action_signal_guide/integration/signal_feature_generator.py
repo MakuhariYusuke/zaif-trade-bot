@@ -5,14 +5,12 @@ Integrates Action Signal Guide signals into SAC observation space.
 Provides real-time signal features for HeavyTradingEnv.
 """
 
-from typing import List, Optional
 import numpy as np
 import pandas as pd
 from ztb.utils.logging_utils import get_logger
 
 from ..action_signal_guide import ActionSignalGuide
 from ..types import SignalList
-
 
 class SignalFeatureGenerator:
     """
@@ -36,8 +34,8 @@ class SignalFeatureGenerator:
         self.signal_feature_dim = 10  # Number of signal-based features
 
         # Cache for performance
-        self._last_signals: Optional[SignalList] = None
-        self._last_features: Optional[np.ndarray] = None
+        self._last_signals: SignalList | None = None
+        self._last_features: np.ndarray | None = None
 
     def generate_signal_features(self, market_data: pd.DataFrame) -> np.ndarray:
         """
@@ -74,7 +72,7 @@ class SignalFeatureGenerator:
         Extract numerical features from signal list.
 
         Args:
-            signals: List of ActionSignal objects
+            signals: list of ActionSignal objects
             market_data: Market data for context
 
         Returns:
@@ -147,7 +145,7 @@ class SignalFeatureGenerator:
         """Calculate signal freshness score."""
         return 0.0  # Placeholder
 
-    def get_feature_names(self) -> List[str]:
+    def get_feature_names(self) -> list[str]:
         """Get names of generated features."""
         return [
             "avg_signal_strength",

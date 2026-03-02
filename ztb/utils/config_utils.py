@@ -1,9 +1,9 @@
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ztb.io.json_io import read_json
 
-def read_model_name_from_config(cfg_path: Path) -> Optional[str]:
+def read_model_name_from_config(cfg_path: Path) -> str | None:
     """Read model_name from a config JSON if present.
 
     Args:
@@ -19,15 +19,14 @@ def read_model_name_from_config(cfg_path: Path) -> Optional[str]:
     except Exception:
         return None
 
-
 def load_config_unified(
-    config_path: str, required_keys: Optional[List[str]] = None
-) -> Dict[str, Any]:
+    config_path: str, required_keys: list[str] | None = None
+) -> dict[str, Any]:
     """Unified config loading with validation.
 
     Args:
         config_path: Path to config file
-        required_keys: List of required keys
+        required_keys: list of required keys
 
     Returns:
         Config dictionary

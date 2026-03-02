@@ -1,7 +1,6 @@
 """Optimized parquet loading (skeleton)"""
 
 from pathlib import Path
-from typing import List, Optional
 
 import pandas as pd
 
@@ -18,9 +17,8 @@ ESSENTIAL_COLUMNS = [
     "spread",
 ]
 
-
 def load_parquet_essential(
-    path: str | Path, essential: Optional[List[str]] = None
+    path: str | Path, essential: list[str] | None = None
 ) -> pd.DataFrame:
     path = Path(path)
     if not path.exists():

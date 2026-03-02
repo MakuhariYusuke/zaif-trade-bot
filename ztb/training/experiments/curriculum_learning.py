@@ -7,15 +7,14 @@ P0→P2までのレジーム層で段階的に学習
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from ztb.training.core.unified_trainer import UnifiedTrainer
 from ztb.utils.file_utils import safe_json_load
 
-
 def run_curriculum_stage(
     stage_name: str,
-    config_updates: Dict[str, Any],
+    config_updates: dict[str, Any],
     base_config_path: str = "unified_training_config.json",
 ) -> bool:
     """指定されたカリキュラムステージを実行"""
@@ -55,7 +54,6 @@ def run_curriculum_stage(
         # 一時ファイルを削除
         if os.path.exists(stage_config_path):
             os.remove(stage_config_path)
-
 
 def main() -> None:
     """カリキュラム学習メイン実行"""
@@ -113,7 +111,6 @@ def main() -> None:
 
     print("\n🎉 カリキュラム学習完了!")
 
-
 def evaluate_stage_performance(stage_name: str) -> None:
     """ステージ後の性能評価"""
     print(f"\n--- {stage_name} 評価 ---")
@@ -153,7 +150,6 @@ def evaluate_stage_performance(stage_name: str) -> None:
                 )
     else:
         print(f"評価失敗: {result.stderr}")
-
 
 if __name__ == "__main__":
     main()

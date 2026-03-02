@@ -6,7 +6,7 @@ including reward statistics, trading metrics, and performance analysis.
 """
 
 from collections import deque
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -16,7 +16,6 @@ from ztb.trading.environment.types import EPSILON, StatisticsDict
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class StatisticsCalculator:
     """
@@ -178,7 +177,7 @@ class StatisticsCalculator:
         trade_actions = sum(1 for a in self.action_history if a != 0)  # ACTION_HOLD = 0
         return trade_actions / (current_step / 1000)
 
-    def get_recent_performance(self, window: int = 100) -> Dict[str, Any]:
+    def get_recent_performance(self, window: int = 100) -> dict[str, Any]:
         """
         Get recent performance statistics.
 
@@ -202,7 +201,7 @@ class StatisticsCalculator:
             "window_size": window,
         }
 
-    def get_action_frequencies(self) -> Dict[int, float]:
+    def get_action_frequencies(self) -> dict[int, float]:
         """
         Get action frequency distribution.
 

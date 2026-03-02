@@ -1,11 +1,10 @@
-from typing import Any, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from ztb.features.core.base import ChannelFeature, ComputableFeature
 from ztb.features.core.registry import FeatureRegistry
-
 
 @FeatureRegistry.register("Ichimoku_Diff_Norm")
 def compute_ichimoku_diff_norm(df: pd.DataFrame) -> pd.Series:
@@ -14,14 +13,12 @@ def compute_ichimoku_diff_norm(df: pd.DataFrame) -> pd.Series:
     result_df = feature.compute(df)
     return result_df["ichimoku_diff_norm"]
 
-
 @FeatureRegistry.register("Ichimoku_Cross")
 def compute_ichimoku_cross(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Cloud Cross Signal (1 if Tenkan > Kijun, 0 otherwise)"""
     feature = Ichimoku()
     result_df = feature.compute(df)
     return result_df["ichimoku_cross"]
-
 
 class Ichimoku(ChannelFeature, ComputableFeature):
     """Ichimoku Cloud with normalized diff and cross signal"""
@@ -35,7 +32,7 @@ class Ichimoku(ChannelFeature, ComputableFeature):
         high: Any,
         low: Any,
         close: Any,
-    ) -> Tuple[Any, Any, Any, Any, Any]:
+    ) -> tuple[Any, Any, Any, Any, Any]:
         """Compute Ichimoku components using pure numpy (no numba)"""
         if len(high) != len(low) or len(high) != len(close):
             raise ValueError(

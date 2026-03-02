@@ -8,7 +8,6 @@ for optimal model compression with minimal accuracy loss.
 
 import logging
 import time
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
@@ -20,7 +19,6 @@ from ztb.training.distillation.distiller import SACDistiller
 from ztb.training.quantization.quantizer import SACQuantizer
 
 logger = logging.getLogger(__name__)
-
 
 class CompressionMetrics:
     """Metrics for tracking compression performance."""
@@ -50,13 +48,12 @@ class CompressionMetrics:
             buffer_size += buffer.nelement() * buffer.element_size()
         return (param_size + buffer_size) / BYTES_PER_MB
 
-
 class CompositeCompressor:
     """
     Composite model compression pipeline combining multiple techniques.
     """
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize composite compressor.
 
@@ -72,7 +69,7 @@ class CompositeCompressor:
         self.pruner = SACPruner(self.config.get("pruning", {}))
         self.low_rank = LowRankApproximator(self.config.get("low_rank", {}))
 
-    def _get_default_config(self) -> Dict:
+    def _get_default_config(self) -> dict:
         """Get default compression configuration."""
         return {
             "pipeline": ["pruning", "quantization", "low_rank", "distillation"],
@@ -91,8 +88,8 @@ class CompositeCompressor:
     def compress_model(
         self,
         model: nn.Module,
-        teacher_model: Optional[nn.Module] = None,
-        calibration_data: Optional[torch.Tensor] = None,
+        teacher_model: nn.Module | None = None,
+        calibration_data: torch.Tensor | None = None,
     ) -> nn.Module:
         """
         Compress model using composite pipeline.
@@ -153,7 +150,7 @@ class CompositeCompressor:
             return model
 
     def _apply_quantization(
-        self, model: nn.Module, calibration_data: Optional[torch.Tensor]
+        self, model: nn.Module, calibration_data: torch.Tensor | None
     ) -> nn.Module:
         """Apply quantization compression."""
         try:
@@ -198,7 +195,7 @@ class CompositeCompressor:
 
         return copy.deepcopy(model)
 
-    def get_compression_report(self) -> Dict:
+    def get_compression_report(self) -> dict:
         """Get compression performance report."""
         return {
             "compression_ratio": self.metrics.compression_ratio,
@@ -208,7 +205,6 @@ class CompositeCompressor:
             "compression_time_seconds": self.metrics.compression_time,
             "accuracy_drop": self.metrics.accuracy_drop,
         }
-
 
 class AdaptiveCompressor:
     """
@@ -247,7 +243,7 @@ class AdaptiveCompressor:
 
         return compressed_model
 
-    def _analyze_model(self, model: nn.Module) -> Dict:
+    def _analyze_model(self, model: nn.Module) -> dict:
         """Analyze model characteristics for compression."""
         analysis = {
             "num_parameters": sum(p.numel() for p in model.parameters()),
@@ -272,7 +268,7 @@ class AdaptiveCompressor:
 
         return analysis
 
-    def _select_optimal_pipeline(self, analysis: Dict) -> Dict:
+    def _select_optimal_pipeline(self, analysis: dict) -> dict:
         """Select optimal compression pipeline based on analysis."""
         pipeline = []
 
@@ -291,23 +287,22 @@ class AdaptiveCompressor:
 
         return {"pipeline": pipeline, "target_compression_ratio": self.target_ratio}
 
-
 # Utility functions
 def compress_model_pipeline(
     model: nn.Module,
     compression_ratio: float = 0.5,
-    techniques: Optional[List[str]] = None,
-) -> Tuple[nn.Module, Dict]:
+    techniques: list[str] | None = None,
+) -> tuple[nn.Module, dict]:
     """
     Convenience function for model compression.
 
     Args:
         model: Model to compress
         compression_ratio: Target compression ratio
-        techniques: List of compression techniques
+        techniques: list of compression techniques
 
     Returns:
-        Tuple of (compressed_model, compression_report)
+        tuple of (compressed_model, compression_report)
     """
     if techniques:
         config = {"pipeline": techniques, "target_compression_ratio": compression_ratio}
@@ -323,13 +318,12 @@ def compress_model_pipeline(
     report = compressor.get_compression_report()
     return compressed_model, report
 
-
 def benchmark_compression(
     original_model: nn.Module,
     compressed_model: nn.Module,
     test_data: torch.Tensor,
     num_runs: int = 10,
-) -> Dict:
+) -> dict:
     """
     Benchmark compression performance.
 

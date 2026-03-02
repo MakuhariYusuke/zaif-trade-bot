@@ -26,7 +26,6 @@ from ztb.adaptation.monitoring.types import (
     SafetyStatus,
 )
 
-
 class TestAnomalyDetector(unittest.TestCase):
     """AnomalyDetectorのテスト"""
 
@@ -78,7 +77,6 @@ class TestAnomalyDetector(unittest.TestCase):
         self.assertEqual(len(anomalies), 1)
         self.assertEqual(anomalies[0].anomaly_type, AnomalyType.STATISTICAL)
         self.assertEqual(anomalies[0].metric_name, metric_name)
-
 
 class TestSafetyChecker(unittest.TestCase):
     """SafetyCheckerのテスト"""
@@ -162,7 +160,6 @@ class TestSafetyChecker(unittest.TestCase):
         self.assertFalse(check.passed)
         self.assertEqual(check.safety_level, SafetyLevel.CRITICAL)
 
-
 class TestFallbackHandler(unittest.TestCase):
     """FallbackHandlerのテスト"""
 
@@ -208,7 +205,6 @@ class TestFallbackHandler(unittest.TestCase):
         # 存在しないIDのキャンセル
         result = self.handler.cancel_fallback("nonexistent")
         self.assertFalse(result)
-
 
 class TestRecoveryManager(unittest.TestCase):
     """RecoveryManagerのテスト"""
@@ -259,7 +255,6 @@ class TestRecoveryManager(unittest.TestCase):
 
         # 試行回数がリセットされていることを確認
         self.assertEqual(self.manager.recovery_attempts[trigger_reason], 0)
-
 
 class TestSafetyManager(unittest.TestCase):
     """SafetyManagerのテスト"""
@@ -314,7 +309,6 @@ class TestSafetyManager(unittest.TestCase):
         self.assertIsInstance(status.last_updated, datetime)
         self.assertGreaterEqual(status.system_health_score, 0.0)
         self.assertLessEqual(status.system_health_score, 1.0)
-
 
 if __name__ == "__main__":
     unittest.main()

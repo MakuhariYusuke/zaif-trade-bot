@@ -36,7 +36,6 @@ except ImportError as e:
     print("Required packages not available. Please install dependencies.")
     sys.exit(1)
 
-
 def load_optimized_config():
     """Load the optimized SAC v430 configuration."""
 
@@ -45,7 +44,6 @@ def load_optimized_config():
         config = json.load(f)
 
     return config
-
 
 def run_backtest():
     """Run backtest with SAC v430 model."""
@@ -189,7 +187,6 @@ def run_backtest():
         print("=" * 60)
         return None
 
-
 def run_validation(results_path):
     """Run validation analysis on backtest results."""
 
@@ -251,7 +248,6 @@ def run_validation(results_path):
         traceback.print_exc()
         return False
 
-
 def main():
     """Main function."""
     try:
@@ -282,7 +278,6 @@ def main():
 
         traceback.print_exc()
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

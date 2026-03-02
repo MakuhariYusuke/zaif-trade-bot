@@ -26,7 +26,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Coroutine, Optional, Sequence
+from typing import Any, Callable, Coroutine, Sequence
 
 import websockets
 from websockets.asyncio.client import ClientConnection
@@ -38,7 +38,6 @@ from ztb.trading.live.exchanges.base.broker_interfaces import (
 
 logger = logging.getLogger(__name__)
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -49,7 +48,6 @@ class Channel(str, Enum):
     ORDERBOOK = "btc_jpy-orderbook"
     ORDER_EVENTS = "order-events"
     EXECUTION_EVENTS = "execution-events"
-
 
 @dataclass(frozen=True)
 class WebSocketConfig:
@@ -64,14 +62,12 @@ class WebSocketConfig:
     message_timeout: float = 60.0  # no message → reconnect
     max_reconnects: int = 0  # 0 = unlimited
 
-
 # Callback type aliases
 OnTrade = Callable[[list[TradeRecord]], Coroutine[Any, Any, None]]
 OnOrderBook = Callable[[OrderBookSnapshot], Coroutine[Any, Any, None]]
 OnOrderEvent = Callable[[dict[str, Any]], Coroutine[Any, Any, None]]
 OnExecutionEvent = Callable[[dict[str, Any]], Coroutine[Any, Any, None]]
 OnError = Callable[[Exception], Coroutine[Any, Any, None]]
-
 
 # ---------------------------------------------------------------------------
 # Public WebSocket Client
@@ -93,14 +89,14 @@ class CoincheckPublicWS:
         await ws.stop()
     """
 
-    def __init__(self, config: Optional[WebSocketConfig] = None) -> None:
+    def __init__(self, config: WebSocketConfig | None = None) -> None:
         self.config = config or WebSocketConfig()
-        self.on_trade: Optional[OnTrade] = None
-        self.on_orderbook: Optional[OnOrderBook] = None
-        self.on_error: Optional[OnError] = None
+        self.on_trade: OnTrade | None = None
+        self.on_orderbook: OnOrderBook | None = None
+        self.on_error: OnError | None = None
 
-        self._ws: Optional[ClientConnection] = None
-        self._task: Optional[asyncio.Task[None]] = None
+        self._ws: ClientConnection | None = None
+        self._task: asyncio.Task[None] | None = None
         self._running = False
         self._channels: list[Channel] = []
         self._reconnect_count = 0
@@ -114,7 +110,7 @@ class CoincheckPublicWS:
 
     async def start(
         self,
-        channels: Optional[Sequence[Channel]] = None,
+        channels: Sequence[Channel] | None = None,
     ) -> None:
         """Start streaming. Default: TRADES + ORDERBOOK."""
         if self._running:
@@ -254,7 +250,6 @@ class CoincheckPublicWS:
 
         logger.debug(f"PublicWS unknown format: {str(data)[:200]}")
 
-
 # ---------------------------------------------------------------------------
 # Private WebSocket Client
 # ---------------------------------------------------------------------------
@@ -273,17 +268,17 @@ class CoincheckPrivateWS:
         self,
         api_key: str,
         api_secret: str,
-        config: Optional[WebSocketConfig] = None,
+        config: WebSocketConfig | None = None,
     ) -> None:
         self.api_key = api_key
         self.api_secret = api_secret
         self.config = config or WebSocketConfig()
-        self.on_order_event: Optional[OnOrderEvent] = None
-        self.on_execution_event: Optional[OnExecutionEvent] = None
-        self.on_error: Optional[OnError] = None
+        self.on_order_event: OnOrderEvent | None = None
+        self.on_execution_event: OnExecutionEvent | None = None
+        self.on_error: OnError | None = None
 
-        self._ws: Optional[ClientConnection] = None
-        self._task: Optional[asyncio.Task[None]] = None
+        self._ws: ClientConnection | None = None
+        self._task: asyncio.Task[None] | None = None
         self._running = False
         self._channels: list[Channel] = []
         self._reconnect_count = 0
@@ -340,7 +335,7 @@ class CoincheckPrivateWS:
 
     async def start(
         self,
-        channels: Optional[Sequence[Channel]] = None,
+        channels: Sequence[Channel] | None = None,
     ) -> None:
         """Start private streaming."""
         if self._running:
@@ -486,7 +481,6 @@ class CoincheckPrivateWS:
         else:
             logger.debug(f"PrivateWS unknown channel: {channel}")
 
-
 # ---------------------------------------------------------------------------
 # Parsers — WS format → broker_interfaces types
 # ---------------------------------------------------------------------------
@@ -515,8 +509,7 @@ def _parse_trades(data: list[list[Any]]) -> list[TradeRecord]:
             logger.debug(f"Trade parse skip: {e}")
     return result
 
-
-def _parse_orderbook(data: list[Any]) -> Optional[OrderBookSnapshot]:
+def _parse_orderbook(data: list[Any]) -> OrderBookSnapshot | None:
     """Parse WS orderbook message to OrderBookSnapshot.
 
     WS format: [pair, {bids: [[rate, amount], ...], asks: [...], last_update_at: ts}]
@@ -542,7 +535,6 @@ def _parse_orderbook(data: list[Any]) -> Optional[OrderBookSnapshot]:
     except (ValueError, TypeError) as e:
         logger.debug(f"Orderbook parse error: {e}")
         return None
-
 
 # ---------------------------------------------------------------------------
 # Stats

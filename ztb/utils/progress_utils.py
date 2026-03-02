@@ -4,15 +4,14 @@ Progress bar utilities for training visualization.
 """
 
 import importlib.util
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 STABLE_BASELINES3_AVAILABLE = importlib.util.find_spec("stable_baselines3") is not None
 
-
 def configure_progress_bar(
-    config: Dict[str, Any],
-    cli_override: Optional[bool] = None,
-    log: Optional[Any] = None,
+    config: dict[str, Any],
+    cli_override: bool | None = None,
+    log: Any | None = None,
 ) -> bool:
     """
     Normalize progress bar settings and coordinate Stable-Baselines3 verbosity.
@@ -29,7 +28,7 @@ def configure_progress_bar(
         return bool(config.get("progress_bar", False))
 
     logger_obj = log
-    progress_preference: Optional[bool] = cli_override
+    progress_preference: bool | None = cli_override
 
     legacy_top_level = config.pop("progress_bar", None)
     training_section = config.get("training")

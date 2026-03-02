@@ -9,7 +9,6 @@ from typing import TypedDict
 
 from ..interfaces.adaptation_interfaces import AdaptationTrigger
 
-
 class TriggerConditionsPayload(TypedDict):
     """Adaptation trigger conditions."""
 
@@ -18,7 +17,6 @@ class TriggerConditionsPayload(TypedDict):
     time_interval: int
     signal_quality_drop: float
     volatility_spike: float
-
 
 class ProcessingLimitsPayload(TypedDict):
     """Processing/resource limits."""
@@ -29,7 +27,6 @@ class ProcessingLimitsPayload(TypedDict):
     max_memory: int
     max_optimization_time: int
 
-
 class AdaptationSchedulePayload(TypedDict):
     """Adaptation schedule details."""
 
@@ -37,7 +34,6 @@ class AdaptationSchedulePayload(TypedDict):
     threshold_reset_frequency: int
     baseline_update_frequency: int
     cooldown_period: int
-
 
 @dataclass
 class StreamingProcessorConfig:
@@ -50,7 +46,6 @@ class StreamingProcessorConfig:
     enable_parallel_processing: bool = True
     max_workers: int = 4
     data_retention_period: int = 3600  # seconds
-
 
 @dataclass
 class AdaptiveThresholdsConfig:
@@ -70,7 +65,6 @@ class AdaptiveThresholdsConfig:
         }
     )
 
-
 @dataclass
 class PerformanceMonitorConfig:
     """Configuration for performance monitoring."""
@@ -87,7 +81,6 @@ class PerformanceMonitorConfig:
     baseline_update_frequency: int = 500
     anomaly_detection_sensitivity: float = 2.0
 
-
 @dataclass
 class FeedbackLoopConfig:
     """Configuration for feedback loop processing."""
@@ -99,7 +92,6 @@ class FeedbackLoopConfig:
     validation_period: int = 100
     max_consecutive_adaptations: int = 3
     cooldown_period: int = 50  # No adaptations for N periods after change
-
 
 @dataclass
 class RealTimeOptimizerConfig:
@@ -120,7 +112,6 @@ class RealTimeOptimizerConfig:
         }
     )
 
-
 @dataclass
 class AdaptiveControllerConfig:
     """Configuration for adaptive control systems."""
@@ -138,7 +129,6 @@ class AdaptiveControllerConfig:
     disturbance_rejection: bool = True
     system_identification: bool = True
 
-
 @dataclass
 class AdaptationTriggerConfig:
     """Configuration for adaptation triggers."""
@@ -155,7 +145,6 @@ class AdaptationTriggerConfig:
     time_based_interval: int = 300  # seconds
     signal_quality_drop_threshold: float = 0.1
     volatility_spike_threshold: float = 2.0
-
 
 @dataclass
 class RealTimeAdaptationConfig:
@@ -198,21 +187,21 @@ class RealTimeAdaptationConfig:
             self._set_aggressive_mode()
 
     def _set_conservative_mode(self):
-        """Set conservative adaptation parameters."""
+        """set conservative adaptation parameters."""
         self.feedback_loop.learning_rate = 0.005
         self.adaptive_thresholds.adaptation_rate = 0.05
         self.triggers.performance_degradation_threshold = 0.1
         self.feedback_loop.adaptation_confidence_threshold = 0.8
 
     def _set_moderate_mode(self):
-        """Set moderate adaptation parameters."""
+        """set moderate adaptation parameters."""
         self.feedback_loop.learning_rate = 0.01
         self.adaptive_thresholds.adaptation_rate = 0.1
         self.triggers.performance_degradation_threshold = 0.07
         self.feedback_loop.adaptation_confidence_threshold = 0.75
 
     def _set_aggressive_mode(self):
-        """Set aggressive adaptation parameters."""
+        """set aggressive adaptation parameters."""
         self.feedback_loop.learning_rate = 0.02
         self.adaptive_thresholds.adaptation_rate = 0.2
         self.triggers.performance_degradation_threshold = 0.05

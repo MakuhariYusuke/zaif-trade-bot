@@ -11,13 +11,12 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Awaitable, Callable, Dict, List, Optional
+from typing import Awaitable, Callable
 
 from ztb.trading.production.state_persistence import (
     read_state_payload,
     write_state_payload,
 )
-
 
 class SystemType(Enum):
     """システムタイプ"""
@@ -25,14 +24,12 @@ class SystemType(Enum):
     LEGACY = "legacy"  # 既存システム
     V433 = "v433"  # V433システム
 
-
 class SwitchMode(Enum):
     """切り替えモード"""
 
     MANUAL = "manual"  # 手動切り替え
     AUTOMATIC = "automatic"  # 自動切り替え
     GRADUAL = "gradual"  # 段階的切り替え
-
 
 @dataclass
 class SwitchCondition:
@@ -44,7 +41,6 @@ class SwitchCondition:
     consecutive_periods: int = 1  # 連続期間
     cooldown_minutes: int = 5  # クールダウン時間（分）
 
-
 @dataclass
 class SwitchRule:
     """切り替えルール"""
@@ -54,10 +50,9 @@ class SwitchRule:
     description: str
     from_system: SystemType
     to_system: SystemType
-    conditions: List[SwitchCondition]
+    conditions: list[SwitchCondition]
     priority: int = 1
     enabled: bool = True
-
 
 @dataclass
 class SwitchEvent:
@@ -67,12 +62,11 @@ class SwitchEvent:
     timestamp: datetime
     from_system: SystemType
     to_system: SystemType
-    trigger_rule: Optional[str]
+    trigger_rule: str | None
     reason: str
     success: bool
     execution_time_ms: int
-    rollback_time_ms: Optional[int] = None
-
+    rollback_time_ms: int | None = None
 
 @dataclass
 class SystemHealth:
@@ -83,8 +77,7 @@ class SystemHealth:
     last_check: datetime
     response_time_ms: int
     error_count: int
-    metrics: Dict[str, float] = field(default_factory=dict)
-
+    metrics: dict[str, float] = field(default_factory=dict)
 
 class SystemSwitcher:
     """
@@ -110,11 +103,11 @@ class SystemSwitcher:
         self.switch_mode = switch_mode
 
         # 切り替えルール
-        self.switch_rules: Dict[str, SwitchRule] = {}
-        self.active_rule: Optional[str] = None
+        self.switch_rules: dict[str, SwitchRule] = {}
+        self.active_rule: str | None = None
 
         # システム健全性
-        self.system_health: Dict[SystemType, SystemHealth] = {
+        self.system_health: dict[SystemType, SystemHealth] = {
             SystemType.LEGACY: SystemHealth(
                 system_type=SystemType.LEGACY,
                 is_healthy=True,
@@ -132,25 +125,25 @@ class SystemSwitcher:
         }
 
         # 切り替え履歴
-        self.switch_history: List[SwitchEvent] = []
+        self.switch_history: list[SwitchEvent] = []
 
         # メトリクス監視
-        self.metrics_buffer: Dict[str, List[float]] = {}
-        self.condition_states: Dict[
-            str, Dict[str, int]
+        self.metrics_buffer: dict[str, list[float]] = {}
+        self.condition_states: dict[
+            str, dict[str, int]
         ] = {}  # rule_id -> condition_index -> consecutive_count
 
         # クールダウン管理
-        self.last_switch_time: Optional[datetime] = None
-        self.cooldown_until: Optional[datetime] = None
+        self.last_switch_time: datetime | None = None
+        self.cooldown_until: datetime | None = None
 
         # コールバック
-        self.switch_callbacks: List[Callable[[SwitchEvent], Awaitable[None]]] = []
-        self.health_callbacks: List[Callable[[SystemType, bool], Awaitable[None]]] = []
+        self.switch_callbacks: list[Callable[[SwitchEvent], Awaitable[None]]] = []
+        self.health_callbacks: list[Callable[[SystemType, bool], Awaitable[None]]] = []
 
         # モニタリング
         self.monitoring_active = False
-        self.monitoring_thread: Optional[threading.Thread] = None
+        self.monitoring_thread: threading.Thread | None = None
 
         # ロギング
         self.logger = logging.getLogger(__name__)
@@ -365,7 +358,7 @@ class SystemSwitcher:
         await asyncio.sleep(0.1)  # シミュレーション
         return True
 
-    def update_metrics(self, metrics: Dict[str, float]) -> None:
+    def update_metrics(self, metrics: dict[str, float]) -> None:
         """
         メトリクス更新
 
@@ -604,7 +597,7 @@ class SystemSwitcher:
         """
         return self.current_system
 
-    def get_system_health(self, system_type: SystemType) -> Optional[SystemHealth]:
+    def get_system_health(self, system_type: SystemType) -> SystemHealth | None:
         """
         システム健全性取得
 
@@ -612,11 +605,11 @@ class SystemSwitcher:
             system_type: システムタイプ
 
         Returns:
-            Optional[SystemHealth]: システム健全性
+            SystemHealth | None: システム健全性
         """
         return self.system_health.get(system_type)
 
-    def get_switch_history(self, limit: Optional[int] = None) -> List[SwitchEvent]:
+    def get_switch_history(self, limit: int | None = None) -> list[SwitchEvent]:
         """
         切り替え履歴取得
 
@@ -624,19 +617,19 @@ class SystemSwitcher:
             limit: 取得件数制限
 
         Returns:
-            List[SwitchEvent]: 切り替え履歴
+            list[SwitchEvent]: 切り替え履歴
         """
         history = self.switch_history
         if limit:
             history = history[-limit:]
         return history.copy()
 
-    def get_active_rules(self) -> List[SwitchRule]:
+    def get_active_rules(self) -> list[SwitchRule]:
         """
         有効なルール取得
 
         Returns:
-            List[SwitchRule]: 有効な切り替えルール
+            list[SwitchRule]: 有効な切り替えルール
         """
         return [rule for rule in self.switch_rules.values() if rule.enabled]
 

@@ -8,7 +8,7 @@ import argparse
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, cast
+from typing import cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,7 +28,6 @@ if project_root not in sys.path:
 
 from ztb.features import get_feature_manager
 from ztb.utils.errors import safe_operation
-
 
 def generate_synthetic_data(n_rows: int = 10000) -> pd.DataFrame:
     """合成データを生成"""
@@ -63,13 +62,12 @@ def generate_synthetic_data(n_rows: int = 10000) -> pd.DataFrame:
 
     return df
 
-
 def calculate_correlations(
     df: pd.DataFrame, target_col: str = "return"
-) -> Dict[str, pd.DataFrame]:
+) -> dict[str, pd.DataFrame]:
     """相関計算"""
     return cast(
-        Dict[str, pd.DataFrame],
+        dict[str, pd.DataFrame],
         safe_operation(
             logger=None,  # Use default logger
             operation=lambda: _calculate_correlations_impl(df, target_col),
@@ -78,10 +76,9 @@ def calculate_correlations(
         ),
     )
 
-
 def _calculate_correlations_impl(
     df: pd.DataFrame, target_col: str
-) -> Dict[str, pd.DataFrame]:
+) -> dict[str, pd.DataFrame]:
     """Implementation of correlation calculation."""
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     feature_cols = [
@@ -92,7 +89,6 @@ def _calculate_correlations_impl(
     corr_spearman = df[feature_cols + [target_col]].corr(method="spearman")
 
     return {"pearson": corr_pearson, "spearman": corr_spearman}
-
 
 def calculate_vif(df: pd.DataFrame) -> pd.DataFrame:
     """VIF計算"""
@@ -105,7 +101,6 @@ def calculate_vif(df: pd.DataFrame) -> pd.DataFrame:
             default_result=pd.DataFrame(columns=["feature", "vif", "high_vif"]),
         ),
     )
-
 
 def _calculate_vif_impl(df: pd.DataFrame) -> pd.DataFrame:
     """Implementation of VIF calculation."""
@@ -131,13 +126,12 @@ def _calculate_vif_impl(df: pd.DataFrame) -> pd.DataFrame:
 
     return pd.DataFrame(vif_data)
 
-
 def calculate_mutual_info(
-    df: pd.DataFrame, horizons: List[int]
-) -> Dict[str, pd.DataFrame]:
+    df: pd.DataFrame, horizons: list[int]
+) -> dict[str, pd.DataFrame]:
     """相互情報量計算"""
     return cast(
-        Dict[str, pd.DataFrame],
+        dict[str, pd.DataFrame],
         safe_operation(
             logger=None,  # Use default logger
             operation=lambda: _calculate_mutual_info_impl(df, horizons),
@@ -148,10 +142,9 @@ def calculate_mutual_info(
         ),
     )
 
-
 def _calculate_mutual_info_impl(
-    df: pd.DataFrame, horizons: List[int]
-) -> Dict[str, pd.DataFrame]:
+    df: pd.DataFrame, horizons: list[int]
+) -> dict[str, pd.DataFrame]:
     """Implementation of mutual information calculation."""
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     feature_cols = [c for c in numeric_cols if c not in ["ts", "episode_id", "return"]]
@@ -176,7 +169,6 @@ def _calculate_mutual_info_impl(
 
     return mi_results
 
-
 def check_leaks(df: pd.DataFrame) -> pd.DataFrame:
     """リークチェック"""
     return cast(
@@ -190,7 +182,6 @@ def check_leaks(df: pd.DataFrame) -> pd.DataFrame:
             ),
         ),
     )
-
 
 def _check_leaks_impl(df: pd.DataFrame) -> pd.DataFrame:
     """Implementation of leak check."""
@@ -235,7 +226,6 @@ def _check_leaks_impl(df: pd.DataFrame) -> pd.DataFrame:
         )
 
     return pd.DataFrame(leak_checks)
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Wave3 diagnostic analysis")
@@ -367,7 +357,6 @@ def main() -> None:
         print("Leak warnings:")
         for _, row in warnings.iterrows():
             print(f"  {row['feature']}: {row['reason']}")
-
 
 if __name__ == "__main__":
     main()

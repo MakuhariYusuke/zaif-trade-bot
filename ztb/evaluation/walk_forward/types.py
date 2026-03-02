@@ -3,13 +3,13 @@ Walk-Forward 分析用の型定義
 
 型安全性を確保するための TypedDict と dataclass を集約管理
 """
+from __future__ import annotations
 
-from typing import List, Dict, Any, NamedTuple, Optional, TYPE_CHECKING
+from typing import Any, NamedTuple, TYPE_CHECKING
 from dataclasses import dataclass, field
 
 if TYPE_CHECKING:
     from scripts.v457.backtest_v457 import BacktestReporter
-
 
 class TimeSeriesWindow(NamedTuple):
     """時系列分割ウィンドウの定義
@@ -119,7 +119,6 @@ class TimeSeriesWindow(NamedTuple):
         """全体サイズ"""
         return self.test_end - self.train_start
 
-
 @dataclass
 class WindowPerformance:
     """ウィンドウ単位の性能メトリクス
@@ -174,8 +173,8 @@ class WindowPerformance:
     expectancy: float = 0.0
     avg_win: float = 0.0
     avg_loss: float = 0.0
-    val_reporter: Optional["BacktestReporter"] = None
-    test_reporter: Optional["BacktestReporter"] = None
+    val_reporter: BacktestReporter | None = None
+    test_reporter: BacktestReporter | None = None
 
     @property
     def overfitting_ratio(self) -> float:
@@ -258,7 +257,6 @@ class WindowPerformance:
                 f"Window {self.window_id}: test_final_balance={self.test_final_balance} is negative"
             )
 
-
 @dataclass
 class WalkForwardResult:
     """Walk-Forward 分析全体の集計結果
@@ -295,9 +293,9 @@ class WalkForwardResult:
         >>> if result.overfitting_ratio < 0.20:
         ...     print("✅ Model is robust!")
     """
-    windows: List[TimeSeriesWindow] = field(default_factory=list)
-    performances: List[WindowPerformance] = field(default_factory=list)
-    reporters: List["BacktestReporter"] = field(default_factory=list)
+    windows: list[TimeSeriesWindow] = field(default_factory=list)
+    performances: list[WindowPerformance] = field(default_factory=list)
+    reporters: list["BacktestReporter"] = field(default_factory=list)
     average_val_roi: float = 0.0
     average_test_roi: float = 0.0
     test_roi_std: float = 0.0
@@ -344,6 +342,6 @@ class WalkForwardResult:
         )
 
 # 型別名（type aliases）
-WindowList = List[TimeSeriesWindow]
-PerformanceList = List[WindowPerformance]
-MetricsDict = Dict[str, Any]
+WindowList = list[TimeSeriesWindow]
+PerformanceList = list[WindowPerformance]
+MetricsDict = dict[str, Any]

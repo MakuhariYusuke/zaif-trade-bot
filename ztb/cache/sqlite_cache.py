@@ -4,6 +4,7 @@ sqlite_cache.py
 Lightweight SQLite-based cache for Raspberry Pi environments.
 Enhanced with TTLCache memory management integration.
 """
+from __future__ import annotations
 
 import hashlib
 import logging
@@ -11,17 +12,16 @@ import pickle
 import sqlite3
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .memory_cache import default_memory_manager
-
 
 class SQLiteCache:
     """SQLite-based LRU cache with TTL support and task-specific optimization"""
 
     def __init__(
         self,
-        db_path: Optional[Path] = None,
+        db_path: Path | None = None,
         max_items: int = 50000,
         task_mode: str = "default",
         enable_memory_cache: bool = True,
@@ -90,8 +90,8 @@ class SQLiteCache:
         key_str = str(args)
         return hashlib.sha256(key_str.encode()).hexdigest()
 
-    def set(self, key: str, value: Any, ttl_sec: Optional[int] = None) -> None:
-        """Set cache value with optional TTL"""
+    def set(self, key: str, value: Any, ttl_sec: int | None = None) -> None:
+        """set cache value with optional TTL"""
         if ttl_sec is None:
             ttl_sec = self.get_default_ttl()
 
@@ -112,7 +112,7 @@ class SQLiteCache:
         if self.memory_manager:
             self.memory_manager.cache_feature_data(key, value, ttl_sec)
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """Get cache value, returns None if expired or not found"""
         now = int(time.time())
 
@@ -190,7 +190,7 @@ class SQLiteCache:
             )
             conn.commit()
 
-    def purge(self, max_items: Optional[int] = None) -> None:
+    def purge(self, max_items: int | None = None) -> None:
         """Manual purge"""
         if max_items is None:
             max_items = self.max_items
@@ -216,32 +216,26 @@ class SQLiteCache:
         if self.conn:
             self.conn.close()
 
-
 # Global cache instance
 _global_cache = SQLiteCache()
-
 
 def close_global_cache() -> None:
     """Close the global cache connection"""
     _global_cache.close()
 
-
 _global_cache = SQLiteCache()
 
-
 # Convenience functions
-def set_cache(key: str, value: Any, ttl_sec: Optional[int] = None) -> None:
+def set_cache(key: str, value: Any, ttl_sec: int | None = None) -> None:
     """Global cache setter"""
     _global_cache.set(key, value, ttl_sec)
 
-
-def get_cache(key: str) -> Optional[Any]:
+def get_cache(key: str) -> Any | None:
     """Global cache getter"""
     return _global_cache.get(key)
 
-
 if __name__ == "__main__":
-    # Set up basic logging
+    # set up basic logging
     logging.basicConfig(level=logging.INFO)
     # Simple test
     cache = SQLiteCache()

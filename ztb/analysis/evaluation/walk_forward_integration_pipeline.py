@@ -15,7 +15,7 @@ ComprehensiveEvaluation (統一評価フレームワーク出力)
 
 import logging
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import Any
 import sys
 from datetime import datetime
 
@@ -43,7 +43,6 @@ else:
 
 logger = logging.getLogger(__name__)
 
-
 class WalkForwardEvaluationPipeline:
     """Walk-Forward結果を統一評価フレームワークに統合
     
@@ -70,7 +69,7 @@ class WalkForwardEvaluationPipeline:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
         self.evaluator = WalkForwardUnifiedEvaluator()
-        self.evaluation_result: Optional[ComprehensiveEvaluationClass] = None
+        self.evaluation_result: ComprehensiveEvaluationClass | None = None
     def run_evaluation(self, walk_forward_result: 'WalkForwardResult', reporter: 'WalkForwardReporter') -> 'ComprehensiveEvaluationClass':
         """WalkForwardResultから評価を実行
         
@@ -104,9 +103,9 @@ class WalkForwardEvaluationPipeline:
     
     def integrate_walk_forward_results(
         self,
-        windows: List[WindowPerformance],
-        reporters: Optional[List["BacktestReporter"]] = None,
-        model_metadata: Optional[Dict[str, Any]] = None,
+        windows: list[WindowPerformance],
+        reporters: list["BacktestReporter"] | None = None,
+        model_metadata: dict[str, Any] | None = None,
     ) -> ComprehensiveEvaluationClass:
         """Walk-Forward結果を統合評価に変換
         
@@ -264,11 +263,11 @@ Walk-Forward統合評価レポート
     
     def _generate_recommendations(
         self,
-        roi_in: Optional[float],
-        roi_out: Optional[float],
-        robustness: Optional[float],
-        overfitting: Optional[float],
-    ) -> List[str]:
+        roi_in: float | None,
+        roi_out: float | None,
+        robustness: float | None,
+        overfitting: float | None,
+    ) -> list[str]:
         """推奨事項の自動生成
         
         Args:
@@ -278,10 +277,10 @@ Walk-Forward統合評価レポート
             overfitting: 過学習指標
             
         Returns:
-            List[str]: 推奨事項のリスト
+            list[str]: 推奨事項のリスト
         """
         
-        recommendations: List[str] = []
+        recommendations: list[str] = []
         
         # パフォーマンス評価
         if roi_out is not None:
@@ -355,8 +354,8 @@ Walk-Forward統合評価レポート
         self,
         walk_forward_result: 'WalkForwardResult',
         price_data: pd.DataFrame,
-        baseline_strategies: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        baseline_strategies: list[str] | None = None,
+    ) -> dict[str, Any]:
         """ベースライン戦略との比較
         
         Args:
@@ -364,7 +363,7 @@ Walk-Forward統合評価レポート
             baseline_strategies: 比較するベースライン戦略リスト
             
         Returns:
-            Dict[str, Any]: 比較結果
+            dict[str, Any]: 比較結果
         """
         if self.evaluation_result is None:
             raise ValueError("Evaluation result not available.")
@@ -424,14 +423,14 @@ Walk-Forward統合評価レポート
     def compare_with_baseline(
         self,
         baseline_evaluation: ComprehensiveEvaluationClass,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """現在の評価とベースライン評価（ComprehensiveEvaluationClass）を比較します。
 
         Args:
             baseline_evaluation: 比較対象の ComprehensiveEvaluationClass
 
         Returns:
-            Dict[str, Any]: 'model', 'baseline', 'metrics' を含む比較結果
+            dict[str, Any]: 'model', 'baseline', 'metrics' を含む比較結果
         """
         if self.evaluation_result is None:
             raise ValueError("Evaluation result not available.")
@@ -464,15 +463,15 @@ Walk-Forward統合評価レポート
 
     @staticmethod
     def compare_multiple_evaluations(
-        walk_forward_results: List['WalkForwardResult'],
-    ) -> List[str]:
+        walk_forward_results: list['WalkForwardResult'],
+    ) -> list[str]:
         """複数WalkForwardResultの比較（A/Bテスト）
         
         Args:
             walk_forward_results: Walk-Forward評価結果のリスト
             
         Returns:
-            List[str]: 比較結果のサマリー文字列リスト
+            list[str]: 比較結果のサマリー文字列リスト
         """
         if len(walk_forward_results) < 2:
             return ["Need at least 2 results for comparison"]
@@ -489,15 +488,15 @@ Walk-Forward統合評価レポート
     
     def _rank_evaluations(
         self,
-        evaluations: Dict[str, ComprehensiveEvaluationClass],
-    ) -> Dict[str, List[str]]:
+        evaluations: dict[str, ComprehensiveEvaluationClass],
+    ) -> dict[str, list[str]]:
         """評価結果をメトリクスごとにランキング
         
         Args:
             evaluations: モデル名 → 評価結果
             
         Returns:
-            Dict[str, List[str]]: メトリクス → ランク付けモデルリスト
+            dict[str, list[str]]: メトリクス → ランク付けモデルリスト
         """
         rankings = {}
         
@@ -536,15 +535,15 @@ Walk-Forward統合評価レポート
     
     def _run_ab_tests(
         self,
-        evaluations: Dict[str, ComprehensiveEvaluationClass],
-    ) -> Dict[str, Any]:
+        evaluations: dict[str, ComprehensiveEvaluationClass],
+    ) -> dict[str, Any]:
         """A/Bテストの統計的有意性検定
         
         Args:
             evaluations: 評価結果
             
         Returns:
-            Dict[str, Any]: 検定結果
+            dict[str, Any]: 検定結果
         """
         # 簡易版：各メトリクスの平均比較
         tests = {}
@@ -570,7 +569,6 @@ Walk-Forward統合評価レポート
             tests[name] = comparison
         
         return tests
-
 
 if __name__ == "__main__":
     main()
@@ -630,7 +628,6 @@ if __name__ == "__main__":
     # 結果を保存
     output_path = pipeline.save_evaluation(format="json")
     print(f"\nEvaluation saved: {output_path}")
-
 
 if __name__ == "__main__":
     main()

@@ -16,7 +16,7 @@ import argparse
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, cast
 
 import pandas as pd
 
@@ -27,11 +27,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
-
-def run_evaluation() -> Dict[str, Any]:
+def run_evaluation() -> dict[str, Any]:
     """Run feature evaluation."""
 
-    def perform_evaluation() -> Dict[str, Any]:
+    def perform_evaluation() -> dict[str, Any]:
         print("🔍 Running feature evaluation...")
         from ztb.evaluation.re_evaluate_features import ComprehensiveFeatureReEvaluator
 
@@ -68,12 +67,11 @@ def run_evaluation() -> Dict[str, Any]:
 
     logger = logging.getLogger(__name__)
     return cast(
-        Dict[str, Any],
+        dict[str, Any],
         safe_operation(logger, perform_evaluation, "run_evaluation()", {}),
     )
 
-
-def run_correlation_analysis() -> Optional[Dict[str, Any]]:
+def run_correlation_analysis() -> dict[str, Any] | None:
     """Run correlation analysis."""
     print(" Running correlation analysis...")
     from ztb.analysis.correlation import compute_correlations
@@ -87,7 +85,7 @@ def run_correlation_analysis() -> Optional[Dict[str, Any]]:
     results = evaluator.evaluate_experimental_features(ohlc_data)
 
     # Collect frames from successful results
-    frames: Dict[str, pd.DataFrame] = {}
+    frames: dict[str, pd.DataFrame] = {}
     for _, result in results.items():
         if result.get("status") == "success":
             # Note: In a real implementation, we would need to recompute the feature
@@ -118,8 +116,7 @@ def run_correlation_analysis() -> Optional[Dict[str, Any]]:
 
     return correlation_results
 
-
-def run_lag_correlation_analysis() -> Optional[List[Dict[str, Any]]]:
+def run_lag_correlation_analysis() -> list[dict[str, Any]] | None:
     """Run lag correlation analysis."""
     print(" Running lag correlation analysis...")
     from ztb.analysis.timeseries import compute_lag_correlations
@@ -133,7 +130,7 @@ def run_lag_correlation_analysis() -> Optional[List[Dict[str, Any]]]:
     results = evaluator.evaluate_experimental_features(ohlc_data)
 
     # Collect frames from successful results
-    frames: Dict[str, pd.DataFrame] = {}
+    frames: dict[str, pd.DataFrame] = {}
     for _, result in results.items():
         if result.get("status") == "success":
             # Note: In a real implementation, we would need to recompute the feature
@@ -166,8 +163,7 @@ def run_lag_correlation_analysis() -> Optional[List[Dict[str, Any]]]:
     print(f" Lag correlations saved to {reports_dir / 'lag_correlations.json'}")
     return lag_results
 
-
-def run_benchmark() -> Dict[str, Any]:
+def run_benchmark() -> dict[str, Any]:
     """Run benchmark generation."""
     print(" Running benchmark generation...")
     from ztb.evaluation.re_evaluate_features import ComprehensiveFeatureReEvaluator
@@ -185,8 +181,7 @@ def run_benchmark() -> Dict[str, Any]:
     print(" Benchmark generation complete")
     return benchmark_data
 
-
-def run_weekly_report() -> Optional[Dict[str, Any]]:
+def run_weekly_report() -> dict[str, Any] | None:
     """Run weekly report generation."""
     print(" Running weekly report generation...")
     from ztb.evaluation.experimental_weekly_report import ExperimentalWeeklyReporter
@@ -196,7 +191,6 @@ def run_weekly_report() -> Optional[Dict[str, Any]]:
 
     print(f" Weekly report generated: {report_path}")
     return report_path
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -254,7 +248,6 @@ def main() -> None:
 
         traceback.print_exc()
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

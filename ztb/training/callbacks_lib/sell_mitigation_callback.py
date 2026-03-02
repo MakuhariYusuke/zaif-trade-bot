@@ -10,7 +10,7 @@ components during training, including:
 - Stratified Sampler
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback
@@ -22,18 +22,17 @@ from ztb.training.optimization.stratified_sampler import StratifiedSampler
 from ztb.training.utils.grad_probes import SELLGradientProbe
 from ztb.training.utils.weights import ActionWeightCalculator
 
-
 class SELLBiasMitigationCallback(BaseCallback):
     """Callback for SELL bias mitigation during training."""
 
     def __init__(
         self,
-        lagrange: Optional[LagrangeConstraint] = None,
-        probe: Optional[SELLGradientProbe] = None,
-        weight_calc: Optional[ActionWeightCalculator] = None,
-        pan_normalizer: Optional[PerActionAdvantageNormalizer] = None,
-        entropy_controller: Optional[TargetEntropyController] = None,
-        stratified_sampler: Optional[StratifiedSampler] = None,
+        lagrange: LagrangeConstraint | None = None,
+        probe: SELLGradientProbe | None = None,
+        weight_calc: ActionWeightCalculator | None = None,
+        pan_normalizer: PerActionAdvantageNormalizer | None = None,
+        entropy_controller: TargetEntropyController | None = None,
+        stratified_sampler: StratifiedSampler | None = None,
         verbose: int = 0,
     ):
         """
@@ -92,7 +91,7 @@ class SELLBiasMitigationCallback(BaseCallback):
 
         # Log Stratified Sampler statistics
         if self.stratified_sampler is not None:
-            sampler_stats: Dict[str, Any] = self.stratified_sampler.get_statistics()
+            sampler_stats: dict[str, Any] = self.stratified_sampler.get_statistics()
             # Log bucket distribution
             if "bucket_counts" in sampler_stats:
                 bucket_counts = sampler_stats["bucket_counts"]

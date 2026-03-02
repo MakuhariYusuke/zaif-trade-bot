@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -17,7 +17,6 @@ from ztb.io.data_loader import DataLoader
 
 logger = logging.getLogger(__name__)
 
-
 class ReplayMarket(MarketDataSource):
     """Market data source that replays historical data."""
 
@@ -25,7 +24,7 @@ class ReplayMarket(MarketDataSource):
         self.data_path = Path(data_path)
         self.speed_multiplier = kwargs.get("speed_multiplier", 1.0)
         self.loop = kwargs.get("loop", False)
-        self._data: Optional[pd.DataFrame] = None
+        self._data: pd.DataFrame | None = None
         self._current_index = 0
 
     def load_data(self) -> pd.DataFrame:
@@ -87,7 +86,6 @@ class ReplayMarket(MarketDataSource):
         if self._data is None:
             return 0.0
         return min(1.0, self._current_index / len(self._data))
-
 
 # Factory function for registry
 def create_replay_market(data_path: str, **kwargs: Any) -> ReplayMarket:

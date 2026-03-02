@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import scipy.stats as stats
@@ -21,7 +21,6 @@ from ztb.trading.production.virtual_portfolio_manager import (
     VirtualTrade,
 )
 
-
 class ValidationResult(Enum):
     """検証結果"""
 
@@ -30,7 +29,6 @@ class ValidationResult(Enum):
     ACCEPTABLE = "acceptable"
     POOR = "poor"
     UNACCEPTABLE = "unacceptable"
-
 
 @dataclass
 class StatisticalTest:
@@ -43,9 +41,7 @@ class StatisticalTest:
     confidence_level: float = 0.95
     interpretation: str = ""
 
-
 # Using canonical RiskMetrics from `ztb.adaptation.monitoring.types`
-
 
 @dataclass
 class ProductionPerformanceMetrics:
@@ -63,7 +59,7 @@ class ProductionPerformanceMetrics:
     consecutive_losses: int
     recovery_factor: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         data = asdict(self)
         # Convert Decimal to str for JSON serialization
@@ -71,7 +67,6 @@ class ProductionPerformanceMetrics:
             if isinstance(value, Decimal):
                 data[key] = str(value)
         return data
-
 
 @dataclass
 class BenchmarkComparison:
@@ -84,7 +79,6 @@ class BenchmarkComparison:
     tracking_error: float
     r_squared: float
 
-
 @dataclass
 class ValidationReport:
     """検証レポート"""
@@ -94,15 +88,14 @@ class ValidationReport:
     evaluation_period_days: int
     overall_rating: ValidationResult
 
-    statistical_tests: List[StatisticalTest] = field(default_factory=list)
+    statistical_tests: list[StatisticalTest] = field(default_factory=list)
     risk_metrics: RiskMetrics = None
     performance_metrics: ProductionPerformanceMetrics = None
     benchmark_comparison: BenchmarkComparison = None
 
-    recommendations: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    critical_issues: List[str] = field(default_factory=list)
-
+    recommendations: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    critical_issues: list[str] = field(default_factory=list)
 
 class PerformanceValidator:
     """
@@ -113,7 +106,7 @@ class PerformanceValidator:
 
     def __init__(
         self,
-        benchmark_returns: Optional[List[Decimal]] = None,
+        benchmark_returns: list[Decimal] | None = None,
         risk_free_rate: float = 0.02,
         confidence_level: float = 0.95,
         min_trades_required: int = 30,
@@ -139,8 +132,8 @@ class PerformanceValidator:
 
     def validate_performance(
         self,
-        portfolio_metrics: List[PortfolioMetrics],
-        trades: List[VirtualTrade],
+        portfolio_metrics: list[PortfolioMetrics],
+        trades: list[VirtualTrade],
         evaluation_period_days: int,
     ) -> ValidationReport:
         """
@@ -213,8 +206,8 @@ class PerformanceValidator:
         return report
 
     def _run_statistical_tests(
-        self, portfolio_metrics: List[PortfolioMetrics], trades: List[VirtualTrade]
-    ) -> List[StatisticalTest]:
+        self, portfolio_metrics: list[PortfolioMetrics], trades: list[VirtualTrade]
+    ) -> list[StatisticalTest]:
         """
         統計テスト実行
 
@@ -223,7 +216,7 @@ class PerformanceValidator:
             trades: 取引履歴
 
         Returns:
-            List[StatisticalTest]: 統計テスト結果
+            list[StatisticalTest]: 統計テスト結果
         """
         tests = []
 
@@ -317,7 +310,7 @@ class PerformanceValidator:
         return tests
 
     def _calculate_risk_metrics(
-        self, portfolio_metrics: List[PortfolioMetrics]
+        self, portfolio_metrics: list[PortfolioMetrics]
     ) -> RiskMetrics:
         """
         リスク指標計算
@@ -387,7 +380,7 @@ class PerformanceValidator:
         )
 
     def _calculate_performance_metrics(
-        self, trades: List[VirtualTrade], evaluation_period_days: int
+        self, trades: list[VirtualTrade], evaluation_period_days: int
     ) -> ProductionPerformanceMetrics:
         """
         パフォーマンス指標計算
@@ -499,7 +492,7 @@ class PerformanceValidator:
         )
 
     def _calculate_benchmark_comparison(
-        self, portfolio_metrics: List[PortfolioMetrics], evaluation_period_days: int
+        self, portfolio_metrics: list[PortfolioMetrics], evaluation_period_days: int
     ) -> BenchmarkComparison:
         """
         ベンチマーク比較計算
@@ -582,8 +575,8 @@ class PerformanceValidator:
         )
 
     def _calculate_returns(
-        self, portfolio_metrics: List[PortfolioMetrics]
-    ) -> List[float]:
+        self, portfolio_metrics: list[PortfolioMetrics]
+    ) -> list[float]:
         """
         リターン計算
 
@@ -591,7 +584,7 @@ class PerformanceValidator:
             portfolio_metrics: ポートフォリオ指標履歴
 
         Returns:
-            List[float]: 日次リターン
+            list[float]: 日次リターン
         """
         if len(portfolio_metrics) < 2:
             return []
@@ -609,8 +602,8 @@ class PerformanceValidator:
         return returns
 
     def _calculate_consecutive_trades(
-        self, trades: List[VirtualTrade]
-    ) -> Tuple[int, int]:
+        self, trades: list[VirtualTrade]
+    ) -> tuple[int, int]:
         """
         連続勝敗計算
 
@@ -618,7 +611,7 @@ class PerformanceValidator:
             trades: 取引履歴
 
         Returns:
-            Tuple[int, int]: (最大連続勝ち, 最大連続負け)
+            tuple[int, int]: (最大連続勝ち, 最大連続負け)
         """
         if not trades:
             return 0, 0
@@ -706,7 +699,7 @@ class PerformanceValidator:
 
     def _generate_recommendations(
         self, report: ValidationReport
-    ) -> Tuple[List[str], List[str], List[str]]:
+    ) -> tuple[list[str], list[str], list[str]]:
         """
         レコメンデーション生成
 
@@ -714,7 +707,7 @@ class PerformanceValidator:
             report: 検証レポート
 
         Returns:
-            Tuple[List[str], List[str], List[str]]: (レコメンデーション, 警告, 重大問題)
+            tuple[list[str], list[str], list[str]]: (レコメンデーション, 警告, 重大問題)
         """
         recommendations = []
         warnings = []

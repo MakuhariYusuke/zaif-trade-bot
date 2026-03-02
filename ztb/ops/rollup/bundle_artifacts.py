@@ -11,13 +11,11 @@ import sys
 import zipfile
 from pathlib import Path
 
-
 def should_exclude_file(file_path: Path, exclude_logs: bool) -> bool:
     """Check if file should be excluded from bundle."""
     if exclude_logs and file_path.suffix.lower() == ".log":
         return True
     return False
-
 
 def create_bundle(correlation_id: str, exclude_logs: bool) -> None:
     """Create ZIP bundle of artifacts."""
@@ -54,7 +52,6 @@ def create_bundle(correlation_id: str, exclude_logs: bool) -> None:
     print(f"Bundle created: {bundle_path}")
     print(f"SHA256: {hash_path}")
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Bundle artifacts for Zaif Trade Bot session"
@@ -69,7 +66,6 @@ def main() -> None:
     args = parser.parse_args()
 
     create_bundle(args.correlation_id, args.exclude_logs)
-
 
 if __name__ == "__main__":
     main()

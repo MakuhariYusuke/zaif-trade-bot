@@ -9,15 +9,13 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ztb.utils.path_utils import ensure_dir
-
 
 def generate_correlation_id() -> str:
     """Return a random correlation identifier."""
     return uuid.uuid4().hex
-
 
 class JsonLogFormatter(logging.Formatter):
     """Formatter that emits records as one-line JSON objects."""
@@ -27,7 +25,7 @@ class JsonLogFormatter(logging.Formatter):
         self._correlation_id = correlation_id
 
     def format(self, record: logging.LogRecord) -> str:
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
             "name": record.name,
@@ -40,7 +38,6 @@ class JsonLogFormatter(logging.Formatter):
         if isinstance(extra, dict):
             payload.update(extra)
         return json.dumps(payload, ensure_ascii=False)
-
 
 @dataclass
 class ObservabilityClient:
@@ -55,7 +52,7 @@ class ObservabilityClient:
     def log_event(
         self,
         event: str,
-        payload: Optional[Dict[str, Any]] = None,
+        payload: dict[str, Any] | None = None,
         level: int = logging.INFO,
     ) -> None:
         data = payload.copy() if payload else {}
@@ -63,7 +60,7 @@ class ObservabilityClient:
         data["correlation_id"] = self.correlation_id
         self.logger.log(level, "", extra={"extra": data})
 
-    def record_metrics(self, metrics: Dict[str, Any]) -> None:
+    def record_metrics(self, metrics: dict[str, Any]) -> None:
         with self._metrics_lock:
             lines = []
             for key, value in metrics.items():
@@ -96,9 +93,8 @@ class ObservabilityClient:
             handler.close()
             self.logger.removeHandler(handler)
 
-
 def setup_observability(
-    name: str, base_dir: Path, correlation_id: Optional[str] = None
+    name: str, base_dir: Path, correlation_id: str | None = None
 ) -> ObservabilityClient:
     correlation = correlation_id or generate_correlation_id()
     base_dir.mkdir(parents=True, exist_ok=True)

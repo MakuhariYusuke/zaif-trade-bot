@@ -11,13 +11,12 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable
 
 from ztb.trading.production.state_persistence import (
     read_state_payload,
     write_state_payload,
 )
-
 
 class RollbackTrigger(Enum):
     """ロールバックトリガー"""
@@ -27,7 +26,6 @@ class RollbackTrigger(Enum):
     PERFORMANCE = "performance"  # パフォーマンス
     SYSTEM_FAILURE = "system_failure"  # システム障害
     EXTERNAL_SIGNAL = "external_signal"  # 外部シグナル
-
 
 class RollbackState(Enum):
     """ロールバック状態"""
@@ -39,7 +37,6 @@ class RollbackState(Enum):
     FAILED = "failed"  # 失敗
     CANCELLED = "cancelled"  # キャンセル
 
-
 @dataclass
 class RollbackCheckpoint:
     """ロールバックチェックポイント"""
@@ -48,11 +45,10 @@ class RollbackCheckpoint:
     timestamp: datetime
     system_id: str
     allocation_percentage: float
-    performance_metrics: Dict[str, float]
-    system_state: Dict[str, Any]
+    performance_metrics: dict[str, float]
+    system_state: dict[str, Any]
     is_stable: bool = True
     description: str = ""
-
 
 @dataclass
 class RollbackPlan:
@@ -65,9 +61,8 @@ class RollbackPlan:
     target_allocation: float
     estimated_duration_minutes: int
     risk_assessment: str
-    checkpoints: List[RollbackCheckpoint] = field(default_factory=list)
-    executed_steps: List[str] = field(default_factory=list)
-
+    checkpoints: list[RollbackCheckpoint] = field(default_factory=list)
+    executed_steps: list[str] = field(default_factory=list)
 
 @dataclass
 class RollbackExecution:
@@ -76,13 +71,12 @@ class RollbackExecution:
     execution_id: str
     plan_id: str
     start_time: datetime
-    end_time: Optional[datetime] = None
+    end_time: datetime | None = None
     state: RollbackState = RollbackState.IDLE
     progress_percentage: float = 0.0
     current_step: str = ""
-    error_message: Optional[str] = None
-    rollback_metrics: Dict[str, Any] = field(default_factory=dict)
-
+    error_message: str | None = None
+    rollback_metrics: dict[str, Any] = field(default_factory=dict)
 
 class RollbackManager:
     """
@@ -111,30 +105,30 @@ class RollbackManager:
         self.rollback_timeout_minutes = rollback_timeout_minutes
 
         # チェックポイント管理
-        self.checkpoints: Dict[str, List[RollbackCheckpoint]] = {}
+        self.checkpoints: dict[str, list[RollbackCheckpoint]] = {}
 
         # ロールバック実行管理
-        self.active_executions: Dict[str, RollbackExecution] = {}
-        self.execution_history: List[RollbackExecution] = []
+        self.active_executions: dict[str, RollbackExecution] = {}
+        self.execution_history: list[RollbackExecution] = []
 
         # ロールバックプラン
-        self.rollback_plans: Dict[str, RollbackPlan] = {}
+        self.rollback_plans: dict[str, RollbackPlan] = {}
 
         # 自動ロールバック設定
         self.auto_rollback_enabled = True
-        self.auto_rollback_conditions: Dict[str, Callable[[], bool]] = {}
+        self.auto_rollback_conditions: dict[str, Callable[[], bool]] = {}
 
         # コールバック
-        self.rollback_callbacks: List[
+        self.rollback_callbacks: list[
             Callable[[RollbackExecution], Awaitable[None]]
         ] = []
-        self.checkpoint_callbacks: List[
+        self.checkpoint_callbacks: list[
             Callable[[RollbackCheckpoint], Awaitable[None]]
         ] = []
 
         # モニタリング
         self.monitoring_active = False
-        self.monitoring_thread: Optional[threading.Thread] = None
+        self.monitoring_thread: threading.Thread | None = None
 
         # ロギング
         self.logger = logging.getLogger(__name__)
@@ -145,8 +139,8 @@ class RollbackManager:
         self,
         system_id: str,
         allocation_percentage: float,
-        performance_metrics: Dict[str, float],
-        system_state: Dict[str, Any],
+        performance_metrics: dict[str, float],
+        system_state: dict[str, Any],
         description: str = "",
     ) -> RollbackCheckpoint:
         """
@@ -198,7 +192,7 @@ class RollbackManager:
 
     def get_latest_stable_checkpoint(
         self, system_id: str
-    ) -> Optional[RollbackCheckpoint]:
+    ) -> RollbackCheckpoint | None:
         """
         最新の安定チェックポイント取得
 
@@ -206,7 +200,7 @@ class RollbackManager:
             system_id: システムID
 
         Returns:
-            Optional[RollbackCheckpoint]: 最新の安定チェックポイント
+            RollbackCheckpoint | None: 最新の安定チェックポイント
         """
         if system_id not in self.checkpoints:
             return None
@@ -244,8 +238,8 @@ class RollbackManager:
         system_id: str,
         trigger: RollbackTrigger,
         reason: str,
-        target_allocation: Optional[float] = None,
-    ) -> Optional[RollbackExecution]:
+        target_allocation: float | None = None,
+    ) -> RollbackExecution | None:
         """
         ロールバック開始
 
@@ -256,7 +250,7 @@ class RollbackManager:
             target_allocation: 目標アロケーション（指定なしの場合は最新安定チェックポイント）
 
         Returns:
-            Optional[RollbackExecution]: ロールバック実行オブジェクト
+            RollbackExecution | None: ロールバック実行オブジェクト
         """
         # ターゲットチェックポイント決定
         target_checkpoint = None
@@ -548,7 +542,7 @@ class RollbackManager:
         self.logger.info(f"Rollback cancelled for system {system_id}")
         return True
 
-    def get_active_rollback(self, system_id: str) -> Optional[RollbackExecution]:
+    def get_active_rollback(self, system_id: str) -> RollbackExecution | None:
         """
         アクティブロールバック取得
 
@@ -556,13 +550,13 @@ class RollbackManager:
             system_id: システムID
 
         Returns:
-            Optional[RollbackExecution]: アクティブロールバック実行
+            RollbackExecution | None: アクティブロールバック実行
         """
         return self.active_executions.get(system_id)
 
     def get_rollback_history(
-        self, system_id: Optional[str] = None, limit: Optional[int] = None
-    ) -> List[RollbackExecution]:
+        self, system_id: str | None = None, limit: int | None = None
+    ) -> list[RollbackExecution]:
         """
         ロールバック履歴取得
 
@@ -571,7 +565,7 @@ class RollbackManager:
             limit: 取得件数制限
 
         Returns:
-            List[RollbackExecution]: ロールバック履歴
+            list[RollbackExecution]: ロールバック履歴
         """
         history = self.execution_history
 
@@ -609,7 +603,7 @@ class RollbackManager:
             del self.auto_rollback_conditions[condition_id]
             self.logger.info(f"Auto rollback condition removed: {condition_id}")
 
-    def check_auto_rollback_conditions(self, system_id: str) -> List[str]:
+    def check_auto_rollback_conditions(self, system_id: str) -> list[str]:
         """
         自動ロールバック条件チェック
 
@@ -617,7 +611,7 @@ class RollbackManager:
             system_id: システムID
 
         Returns:
-            List[str]: トリガーされた条件IDリスト
+            list[str]: トリガーされた条件IDリスト
         """
         triggered_conditions = []
 
@@ -633,8 +627,8 @@ class RollbackManager:
         return triggered_conditions
 
     def trigger_auto_rollback(
-        self, system_id: str, triggered_conditions: List[str]
-    ) -> Optional[RollbackExecution]:
+        self, system_id: str, triggered_conditions: list[str]
+    ) -> RollbackExecution | None:
         """
         自動ロールバックトリガー
 
@@ -643,7 +637,7 @@ class RollbackManager:
             triggered_conditions: トリガーされた条件
 
         Returns:
-            Optional[RollbackExecution]: ロールバック実行
+            RollbackExecution | None: ロールバック実行
         """
         if not self.auto_rollback_enabled:
             return None

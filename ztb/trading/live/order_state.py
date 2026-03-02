@@ -11,13 +11,12 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Any, Dict, Optional, Set
+from typing import Any
 
 from ztb.trading.live.core.precision_policy import quantize_price, quantize_quantity
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class OrderState(enum.Enum):
     """Order states in the lifecycle."""
@@ -32,7 +31,6 @@ class OrderState(enum.Enum):
     EXPIRED = "expired"
     FAILED = "failed"
 
-
 class OrderEvent(enum.Enum):
     """Events that can trigger order state transitions."""
 
@@ -46,23 +44,21 @@ class OrderEvent(enum.Enum):
     FAIL = "fail"
     RESET = "reset"
 
-
 @dataclass
 class OrderData:
     """Order data structure."""
 
     order_id: str
-    client_order_id: Optional[str] = None
+    client_order_id: str | None = None
     symbol: str = ""
     side: str = ""  # buy/sell
     order_type: str = "market"
     quantity: float = 0.0
-    price: Optional[float] = None
-    stop_price: Optional[float] = None
+    price: float | None = None
+    stop_price: float | None = None
     time_in_force: str = "GTC"
     timestamp: float = field(default_factory=time.time)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class OrderRecord:
@@ -74,8 +70,8 @@ class OrderRecord:
     average_price: float = 0.0
     fees: float = 0.0
     last_update: float = field(default_factory=time.time)
-    error_message: Optional[str] = None
-    external_order_id: Optional[str] = None
+    error_message: str | None = None
+    external_order_id: str | None = None
     idempotency_key: str = ""
 
     def __post_init__(self) -> None:
@@ -136,15 +132,14 @@ class OrderRecord:
 
         return new_state in valid_transitions.get(self.state, set())
 
-
 class OrderStateMachine:
     """State machine for managing order lifecycle."""
 
     def __init__(self) -> None:
         """Initialize state machine."""
         super().__init__()
-        self.orders: Dict[str, OrderRecord] = {}
-        self.idempotency_map: Dict[str, str] = {}  # idempotency_key -> order_id
+        self.orders: dict[str, OrderRecord] = {}
+        self.idempotency_map: dict[str, str] = {}  # idempotency_key -> order_id
 
     def create_order(self, order_data: OrderData) -> OrderRecord:
         """Create a new order.
@@ -245,7 +240,7 @@ class OrderStateMachine:
         )
         return True
 
-    def get_order(self, order_id: str) -> Optional[OrderRecord]:
+    def get_order(self, order_id: str) -> OrderRecord | None:
         """Get order by ID.
 
         Args:
@@ -256,7 +251,7 @@ class OrderStateMachine:
         """
         return self.orders.get(order_id)
 
-    def get_order_by_idempotency_key(self, key: str) -> Optional[OrderRecord]:
+    def get_order_by_idempotency_key(self, key: str) -> OrderRecord | None:
         """Get order by idempotency key.
 
         Args:
@@ -271,15 +266,15 @@ class OrderStateMachine:
         return None
 
     def list_orders(
-        self, state_filter: Optional[Set[OrderState]] = None
+        self, state_filter: set[OrderState] | None = None
     ) -> list[OrderRecord]:
-        """List orders, optionally filtered by state.
+        """list orders, optionally filtered by state.
 
         Args:
-            state_filter: Set of states to include
+            state_filter: set of states to include
 
         Returns:
-            List of order records
+            list of order records
         """
         if state_filter is None:
             return list(self.orders.values())
@@ -309,7 +304,7 @@ class OrderStateMachine:
         logger.info(f"Cleaned up {len(to_remove)} terminal orders")
         return len(to_remove)
 
-    def get_order_summary(self) -> Dict[str, int]:
+    def get_order_summary(self) -> dict[str, int]:
         """Get summary of orders by state.
 
         Returns:
@@ -324,15 +319,12 @@ class OrderStateMachine:
 
         return summary
 
-
 # Global state machine instance
 _order_state_machine = OrderStateMachine()
-
 
 def get_order_state_machine() -> OrderStateMachine:
     """Get global order state machine instance."""
     return _order_state_machine
-
 
 def generate_order_id() -> str:
     """Generate a unique order ID.
@@ -342,12 +334,11 @@ def generate_order_id() -> str:
     """
     return f"ord_{uuid.uuid4().hex[:12]}"
 
-
 def create_order_with_idempotency(
     symbol: str,
     side: str,
     quantity: float,
-    price: Optional[float] = None,
+    price: float | None = None,
     venue: str = "coincheck",
     **kwargs: Any,
 ) -> OrderRecord:
@@ -380,14 +371,13 @@ def create_order_with_idempotency(
 
     return _order_state_machine.create_order(order_data)
 
-
 def find_existing_order(
     symbol: str,
     side: str,
     quantity: float,
-    price: Optional[float] = None,
-    timestamp: Optional[float] = None,
-) -> Optional[OrderRecord]:
+    price: float | None = None,
+    timestamp: float | None = None,
+) -> OrderRecord | None:
     """Find existing order by key parameters.
 
     Args:
@@ -408,14 +398,12 @@ def find_existing_order(
 
     return _order_state_machine.get_order_by_idempotency_key(idempotency_key)
 
-
 # Coincheck-specific hooks for future integration
 def coincheck_order_pre_submit_hook(order_data: OrderData) -> OrderData:
     """Pre-submit hook for Coincheck orders (placeholder for future implementation)."""
     # TODO: Add Coincheck-specific validation or transformation
     logger.debug(f"Coincheck pre-submit hook called for order {order_data.order_id}")
     return order_data
-
 
 def coincheck_order_post_submit_hook(
     order_data: OrderData, _broker_response: Any
@@ -424,17 +412,15 @@ def coincheck_order_post_submit_hook(
     # TODO: Handle Coincheck-specific response processing
     logger.debug(f"Coincheck post-submit hook called for order {order_data.order_id}")
 
-
 def coincheck_reconciliation_hook(
-    order_data: OrderData, broker_state: Dict[str, Any]
-) -> Dict[str, Any]:
+    order_data: OrderData, broker_state: dict[str, Any]
+) -> dict[str, Any]:
     """Reconciliation hook for Coincheck orders (placeholder for future implementation)."""
     # TODO: Implement Coincheck-specific reconciliation logic
     logger.debug(
         f"Coincheck reconciliation hook called for order {order_data.order_id}"
     )
     return broker_state
-
 
 # Global order state machine instance
 _order_state_machine = OrderStateMachine()

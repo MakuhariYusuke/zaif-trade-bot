@@ -5,11 +5,11 @@ SAC v395i成功後の改善点分析スクリプト
 """
 
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from ztb.io.json_io import write_json
 
-def analyze_current_state() -> Dict[str, Any]:
+def analyze_current_state() -> dict[str, Any]:
     """現在の状態を分析"""
     return {
         "training_status": {
@@ -27,8 +27,7 @@ def analyze_current_state() -> Dict[str, Any]:
         },
     }
 
-
-def identify_short_term_improvements() -> List[Dict[str, Any]]:
+def identify_short_term_improvements() -> list[dict[str, Any]]:
     """短期的改善点（すぐに実施可能）"""
     return [
         {
@@ -109,8 +108,7 @@ def identify_short_term_improvements() -> List[Dict[str, Any]]:
         },
     ]
 
-
-def identify_medium_term_improvements() -> List[Dict[str, Any]]:
+def identify_medium_term_improvements() -> list[dict[str, Any]]:
     """中期的改善点（1-2週間で実施）"""
     return [
         {
@@ -176,8 +174,7 @@ def identify_medium_term_improvements() -> List[Dict[str, Any]]:
         },
     ]
 
-
-def identify_long_term_improvements() -> List[Dict[str, Any]]:
+def identify_long_term_improvements() -> list[dict[str, Any]]:
     """長期的改善点（1ヶ月以上）"""
     return [
         {
@@ -250,8 +247,7 @@ def identify_long_term_improvements() -> List[Dict[str, Any]]:
         },
     ]
 
-
-def calculate_improvement_potential() -> Dict[str, Any]:
+def calculate_improvement_potential() -> dict[str, Any]:
     """各改善点の潜在的効果を評価"""
     return {
         "training_scale": {
@@ -299,8 +295,7 @@ def calculate_improvement_potential() -> Dict[str, Any]:
         },
     }
 
-
-def generate_improvement_roadmap() -> Dict[str, Any]:
+def generate_improvement_roadmap() -> dict[str, Any]:
     """改善のロードマップ"""
     return {
         "phase_1_immediate": {
@@ -347,7 +342,6 @@ def generate_improvement_roadmap() -> Dict[str, Any]:
             },
         },
     }
-
 
 def main() -> None:
     print("=" * 80)
@@ -459,7 +453,6 @@ def main() -> None:
     write_json(output_path, output, indent=2, ensure_ascii=False)
 
     print(f"✅ 分析結果を {output_path} に保存しました")
-
 
 if __name__ == "__main__":
     main()

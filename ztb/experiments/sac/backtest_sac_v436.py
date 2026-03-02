@@ -16,7 +16,6 @@ from ztb.io.data_loader import DataLoader
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-
 def get_v436_features():
     """v436の特徴量セットを取得（モデルの観測空間に合わせた次元）"""
     try:
@@ -52,7 +51,6 @@ def get_v436_features():
             "macd_hist",
             "bb_upper",
         ]
-
 
 def run_v436_backtest(
     model_path="models/sac_model.zip",
@@ -347,7 +345,6 @@ def run_v436_backtest(
         traceback.print_exc()
         return None
 
-
 def main():
     print("🚀 SAC v436 Signal Guided Backtest")
     print("=" * 50)
@@ -387,7 +384,6 @@ def main():
         print(f"Signal Penalty Weight: {result['signal_penalty_weight']}")
     else:
         print("❌ Backtest failed")
-
 
 if __name__ == "__main__":
     main()

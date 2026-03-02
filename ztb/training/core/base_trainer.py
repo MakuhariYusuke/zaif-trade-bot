@@ -8,7 +8,7 @@ types of trainers to reduce code duplication and improve maintainability.
 from abc import ABC, abstractmethod
 from collections import deque
 from pathlib import Path
-from typing import Any, Dict, Optional, Protocol
+from typing import Any, Protocol
 
 from stable_baselines3.common.callbacks import BaseCallback
 
@@ -19,7 +19,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class TrainerProtocol(Protocol):
     """Protocol for all trainer implementations."""
 
@@ -27,12 +26,11 @@ class TrainerProtocol(Protocol):
         """Train the model and return it."""
         ...
 
-    def get_reward_stats(self) -> Dict[str, float]:
+    def get_reward_stats(self) -> dict[str, float]:
         """Get training reward statistics."""
         ...
 
-
-class BaseTrainer(ABC, ConfigurableMixin[Dict[str, Any]]):
+class BaseTrainer(ABC, ConfigurableMixin[dict[str, Any]]):
     """
     Abstract base class for all trainers.
 
@@ -49,7 +47,7 @@ class BaseTrainer(ABC, ConfigurableMixin[Dict[str, Any]]):
     Subclasses must implement:
     - train(): Execute the training loop
     - _create_model(): Initialize the model and environment
-    - _create_callback(): Set up training callbacks
+    - _create_callback(): set up training callbacks
     """
 
     def __init__(
@@ -77,14 +75,14 @@ class BaseTrainer(ABC, ConfigurableMixin[Dict[str, Any]]):
         self.progress_bar_enabled = params.progress_bar
 
         # Statistics tracking
-        self.stats_tracker = StatisticsTracker[Dict[str, float]]()
+        self.stats_tracker = StatisticsTracker[dict[str, float]]()
 
         # Training state
         self.current_step = 0
         self.rewards_history: deque[float] = deque(maxlen=50000)
         self.steps_history: deque[int] = deque(maxlen=50000)
         self.is_training = False
-        self.halt_reason: Optional[str] = None
+        self.halt_reason: str | None = None
 
         # Statistics for efficiency (Welford's online algorithm)
         self.reward_sum = 0.0
@@ -158,7 +156,7 @@ class BaseTrainer(ABC, ConfigurableMixin[Dict[str, Any]]):
         if step - self.last_gate_check_step >= self.checkpoint_interval:
             self._check_gates_and_halt_if_needed()
 
-    def get_reward_stats(self) -> Dict[str, float]:
+    def get_reward_stats(self) -> dict[str, float]:
         """Get training reward statistics."""
         if self.reward_count == 0:
             return {"mean": 0.0, "variance": 0.0, "std": 0.0, "count": 0}
@@ -195,7 +193,7 @@ class BaseTrainer(ABC, ConfigurableMixin[Dict[str, Any]]):
 
         self.last_gate_check_step = self.current_step
 
-    def _should_auto_halt(self, gate_results: Dict[str, GateResult]) -> bool:
+    def _should_auto_halt(self, gate_results: dict[str, GateResult]) -> bool:
         """Determine if training should be auto-halted based on gate results."""
         if not gate_results:
             return False
@@ -225,9 +223,9 @@ class BaseTrainer(ABC, ConfigurableMixin[Dict[str, Any]]):
 
         return False
 
-    def get_training_status(self) -> Dict[str, Any]:
+    def get_training_status(self) -> dict[str, Any]:
         """Get comprehensive training status."""
-        status: Dict[str, Any] = {
+        status: dict[str, Any] = {
             "is_training": self.is_training,
             "current_step": self.current_step,
             "halt_reason": self.halt_reason,
@@ -324,7 +322,6 @@ class BaseTrainer(ABC, ConfigurableMixin[Dict[str, Any]]):
             Any: Trained model or training result
         """
         pass
-
 
 class CheckpointMixin:
     """

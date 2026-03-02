@@ -5,7 +5,6 @@ This component calculates bonuses based on win rate performance.
 """
 from ztb.trading.constants import ACTION_BUY, ACTION_SELL
 
-
 class WinRateBonusCalculator:
     """
     Calculates bonus based on win rate and action type.

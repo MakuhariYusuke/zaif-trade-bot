@@ -8,7 +8,7 @@ This module addresses Bug #27 by allowing proper action masking in production.
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -17,7 +17,6 @@ from numpy.typing import NDArray
 ACTION_HOLD = 0
 ACTION_BUY = 1
 ACTION_SELL = -1
-
 
 @dataclass
 class ActionMaskConfig:
@@ -31,7 +30,6 @@ class ActionMaskConfig:
 
     max_position_age: int = 1000
     """Maximum age of position before forcing closure."""
-
 
 class ActionMaskProvider:
     """
@@ -203,12 +201,12 @@ class ActionMaskProvider:
 
         return mask
 
-    def get_mask_info(self) -> Dict[str, Any]:
+    def get_mask_info(self) -> dict[str, Any]:
         """
         Get detailed information about current masking state.
 
         Returns:
-            Dict with mask state, position info, and reasoning
+            dict with mask state, position info, and reasoning
         """
         mask = self.get_action_mask()
 
@@ -231,9 +229,8 @@ class ActionMaskProvider:
             "current_step": self.current_step,
         }
 
-
 def create_mask_provider_from_env_config(
-    env_config: Dict[str, Any],
+    env_config: dict[str, Any],
 ) -> ActionMaskProvider:
     """
     Create ActionMaskProvider from environment configuration.

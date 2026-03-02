@@ -10,11 +10,10 @@ C-2対応版: グループ化されたスケーラーで正規化戦略を統一
 
 import numpy as np
 import pandas as pd
-from typing import Optional, List, Tuple, Union
+
 import logging
 
 logger = logging.getLogger(__name__)
-
 
 class GroupedFeatureScaler:
     """
@@ -272,7 +271,6 @@ class GroupedFeatureScaler:
             },
             'total_features': 88,
         }
-
 
 # 使用例とテストコード
 if __name__ == "__main__":

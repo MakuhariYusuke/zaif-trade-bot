@@ -1,5 +1,4 @@
-from typing import NotRequired, Optional, TypedDict
-
+from typing import NotRequired, TypedDict
 
 class CalibrationStats(TypedDict):
     """Statistics for a specific regime/action bin."""
@@ -11,7 +10,6 @@ class CalibrationStats(TypedDict):
     avg_loss: float
     n_eff: float
 
-
 class CalibrationStatsBundle(TypedDict):
     """Bundle of stats including L1 and Fallback."""
 
@@ -19,14 +17,12 @@ class CalibrationStatsBundle(TypedDict):
     fallback: CalibrationStats
     n_min: float
 
-
 class FusedSignal(TypedDict):
     """Signal fused from RL and Patterns."""
 
     rl_action: float
     regime: str
-    pattern_score: Optional[float]
-
+    pattern_score: float | None
 
 class GateResult(TypedDict):
     """Result of CalibrationGate evaluation."""

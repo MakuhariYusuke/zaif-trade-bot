@@ -16,7 +16,6 @@ sys.path.insert(0, str(project_root.parent.parent))
 from ztb.training.core.unified_trainer import UnifiedTrainer
 from ztb.utils.file_utils import safe_json_load
 
-
 def main() -> None:
     # Load config
     config_path = (
@@ -67,7 +66,6 @@ def main() -> None:
         print(f"Run {run_num} completed")
 
     print("Quick training test completed")
-
 
 if __name__ == "__main__":
     main()

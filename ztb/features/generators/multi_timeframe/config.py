@@ -8,7 +8,6 @@ including timeframe-specific parameters and feature set management.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from ztb.features.timeframe import Timeframe
 from ztb.io.common import PathLike
@@ -16,7 +15,6 @@ from ztb.io.json_io import read_json_object, write_json
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class MultiTimeframeConfig:
     """
@@ -26,7 +24,7 @@ class MultiTimeframeConfig:
     and feature generation settings.
     """
 
-    def __init__(self, config_path: Optional[PathLike] = None):
+    def __init__(self, config_path: PathLike | None = None):
         """
         Initialize multi-timeframe configuration.
 
@@ -192,11 +190,11 @@ class MultiTimeframeConfig:
             logger.info(f"Disabled timeframe: {timeframe.value}")
 
     def set_base_timeframe(self, timeframe: Timeframe) -> None:
-        """Set base timeframe."""
+        """set base timeframe."""
         self.config["base_timeframe"] = timeframe.value
-        logger.info(f"Set base timeframe to: {timeframe.value}")
+        logger.info(f"set base timeframe to: {timeframe.value}")
 
-    def save_config(self, path: Optional[PathLike] = None) -> None:
+    def save_config(self, path: PathLike | None = None) -> None:
         """Save configuration to file."""
         save_path = Path(path) if path is not None else Path(self.config_path)
 

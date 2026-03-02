@@ -30,7 +30,7 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 from ztb.analysis.common.types import AnalysisInput, AnalysisOutput
 
 try:
@@ -59,13 +59,12 @@ project_root: Path = get_project_root()
 
 logger = logging.getLogger(__name__)
 
-
 class UnifiedAnalysisSuite:
     """Unified analysis toolkit interface."""
 
     # low-risk attribute annotations
     project_root: Path
-    categories: Dict[str, Any]
+    categories: dict[str, Any]
 
     def __init__(self) -> None:
         """Initialize analysis suite."""
@@ -142,15 +141,13 @@ class UnifiedAnalysisSuite:
             logger.error(traceback.format_exc())
             return 1
 
-
 class BaseAnalyzer:
     """Base class for analysis tools."""
 
-    def get_available_tools(self) -> List[str]:
+    def get_available_tools(self) -> list[str]:
         """Get list of available tools in this category."""
         methods = [m for m in dir(self) if m.startswith("run_")]
         return [m[4:] for m in methods]  # Remove 'run_' prefix
-
 
 class ModelAnalysis(BaseAnalyzer):
     """Model analysis tools."""
@@ -271,7 +268,6 @@ class ModelAnalysis(BaseAnalyzer):
             logger.error(f"Detailed SAC v423b analysis failed: {e}")
             return 1
 
-
 class DataAnalysis(BaseAnalyzer):
     """Data analysis tools."""
 
@@ -322,7 +318,6 @@ class DataAnalysis(BaseAnalyzer):
         except Exception as e:
             logger.error(f"Time series analysis failed: {e}")
             return 1
-
 
 class TrainingAnalysis(BaseAnalyzer):
     """Training analysis tools."""
@@ -390,7 +385,6 @@ class TrainingAnalysis(BaseAnalyzer):
             logger.error(f"Training profiling failed: {e}")
             return 1
 
-
 class TrainingAnalysis(BaseAnalyzer):
     """Training process analysis tools."""
 
@@ -419,8 +413,6 @@ class TrainingAnalysis(BaseAnalyzer):
         except Exception as e:
             logger.error(f"Progress monitoring failed: {e}")
             return 1
-
-
 
 class PerformanceAnalysis(BaseAnalyzer):
     """Performance analysis tools."""
@@ -495,7 +487,6 @@ class PerformanceAnalysis(BaseAnalyzer):
         """Analyze regime performance."""
         logger.warning("Regime performance analysis not implemented yet")
         return 1
-
 
 class ComparativeAnalysis(BaseAnalyzer):
     """Comparative analysis tools for model and strategy comparison."""
@@ -651,7 +642,6 @@ class ComparativeAnalysis(BaseAnalyzer):
         logger.info("Backtest + analysis completed")
         return 0
 
-
 class PaperTradingAnalysis(BaseAnalyzer):
     """Paper trading analysis tools for model evaluation."""
 
@@ -700,7 +690,6 @@ class PaperTradingAnalysis(BaseAnalyzer):
         except Exception as e:
             logger.error(f"Paper trading evaluation failed: {e}")
             return 1
-
 
 class DiagnosticAnalysis(BaseAnalyzer):
     """Diagnostic analysis tools."""
@@ -785,7 +774,6 @@ class DiagnosticAnalysis(BaseAnalyzer):
         except Exception as e:
             logger.error(f"Explainability analysis failed: {e}")
             return 1
-
 
 class SpecializedAnalysis(BaseAnalyzer):
     """Specialized analysis tools."""
@@ -942,7 +930,6 @@ class SpecializedAnalysis(BaseAnalyzer):
             logger.error(f"Feature correlation analysis failed: {e}")
             return 1
 
-
 class SessionAnalysis(BaseAnalyzer):
     """Session-specific analysis tools."""
 
@@ -996,7 +983,6 @@ class SessionAnalysis(BaseAnalyzer):
     #     except Exception as e:
     #         logger.error(f"V394 training analysis failed: {e}")
     #         return 1
-
 
 def create_parser() -> argparse.ArgumentParser:
     """Create the main argument parser."""
@@ -1118,7 +1104,6 @@ def create_parser() -> argparse.ArgumentParser:
 
     return parser
 
-
 def main():
     """Main entry point."""
     parser = create_parser()
@@ -1127,7 +1112,6 @@ def main():
     suite = UnifiedAnalysisSuite()
     exit_code = suite.run(args)
     sys.exit(exit_code)
-
 
 if __name__ == "__main__":
     main()

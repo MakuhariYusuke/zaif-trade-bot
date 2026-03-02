@@ -5,7 +5,7 @@ This module separates configuration-related logic from the main trainer class,
 including config validation, environment setup, and parameter management.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ztb.training.constants import (
     DEFAULT_BATCH_SIZE_SAC,
@@ -16,7 +16,6 @@ from ztb.training.constants import (
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class TrainingConfigManager:
     """
@@ -36,8 +35,8 @@ class TrainingConfigManager:
     def process_config(
         self,
         config: Any,
-        global_config: Optional[Any] = None,
-    ) -> Dict[str, Any]:
+        global_config: Any | None = None,
+    ) -> dict[str, Any]:
         """
         Process and validate training configuration.
 
@@ -67,7 +66,7 @@ class TrainingConfigManager:
         """Check if config is a ZaifTradeBotConfig object."""
         return hasattr(config, "training") and config.training is not None
 
-    def _process_zaif_config(self, config: Any) -> Dict[str, Any]:
+    def _process_zaif_config(self, config: Any) -> dict[str, Any]:
         """Process ZaifTradeBotConfig into training config dict."""
         try:
             from ztb.config.schemas.zaif import ZaifTradeBotConfig
@@ -129,7 +128,7 @@ class TrainingConfigManager:
             self.logger.error(f"Failed to process Zaif config: {e}")
             raise
 
-    def _validate_config_dict(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    def _validate_config_dict(self, config: dict[str, Any]) -> dict[str, Any]:
         """Validate configuration dictionary."""
         if not isinstance(config, dict):
             raise TypeError(f"Config must be dict, got {type(config)}")
@@ -158,7 +157,7 @@ class TrainingConfigManager:
 
         return config
 
-    def _process_advanced_market_regime_config(self, config: Dict[str, Any]) -> None:
+    def _process_advanced_market_regime_config(self, config: dict[str, Any]) -> None:
         """Process advanced market regime configuration."""
         regime_config = config["advanced_market_regime"]
 
@@ -215,7 +214,7 @@ class TrainingConfigManager:
 
         self.logger.info("Advanced market regime configuration validated successfully")
 
-    def get_algorithm_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    def get_algorithm_config(self, config: dict[str, Any]) -> dict[str, Any]:
         """
         Extract algorithm-specific configuration.
 
@@ -233,7 +232,7 @@ class TrainingConfigManager:
         else:
             return {}
 
-    def get_environment_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    def get_environment_config(self, config: dict[str, Any]) -> dict[str, Any]:
         """
         Extract environment configuration.
 
@@ -245,7 +244,7 @@ class TrainingConfigManager:
         """
         return config.get("environment", {})
 
-    def get_data_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    def get_data_config(self, config: dict[str, Any]) -> dict[str, Any]:
         """
         Extract data configuration.
 
@@ -257,7 +256,7 @@ class TrainingConfigManager:
         """
         return config.get("data_config", {})
 
-    def get_feature_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    def get_feature_config(self, config: dict[str, Any]) -> dict[str, Any]:
         """
         Extract feature configuration.
 
@@ -268,7 +267,6 @@ class TrainingConfigManager:
             Feature config
         """
         return config.get("features", {})
-
 
 # Backwards compatibility alias for legacy name
 UnifiedTrainingConfigManager = TrainingConfigManager

@@ -13,7 +13,6 @@ from ztb.io.data_loader import DataLoader
 MODEL_PATH = Path("models/ppo_session.zip")
 DATA_PATH = Path("btc_jpy_real_dataset.csv")
 
-
 def main() -> None:
     # Import torch lazily to avoid import-time ABI issues
     try:
@@ -98,7 +97,6 @@ def main() -> None:
         )
 
     print("=" * 70)
-
 
 if __name__ == "__main__":
     main()

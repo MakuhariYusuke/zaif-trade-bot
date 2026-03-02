@@ -1,9 +1,10 @@
 """PPO algorithm trainer implementation."""
+from __future__ import annotations
 
 import logging
 import os
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import numpy as np
 
@@ -27,22 +28,21 @@ from ztb.training.unified_trainer.base.base_trainer import DataError, ModelError
 
 # from stable_baselines3.common.monitor import Monitor  # Removed to prevent reward corruption
 
-
 class PPOTrainer(BaseAlgorithmTrainer):
     """PPO algorithm trainer with enhanced features from SACTrainer."""
 
     def __init__(
         self,
-        config: Dict[str, Any],
-        logger: Optional[logging.Logger] = None,
+        config: dict[str, Any],
+        logger: logging.Logger | None = None,
         gradient_accumulation_steps: int = 1,
-        system_optimizer: Optional[Any] = None,
-        optimizer_tracker: Optional["OptimizerFeatureTracker"] = None,
+        system_optimizer: Any | None = None,
+        optimizer_tracker: OptimizerFeatureTracker | None = None,
     ):
         super().__init__(config, logger)
 
         # model will be instantiated later; annotate as optional to satisfy mypy
-        self.model: Optional[PPO] = None
+        self.model: PPO | None = None
         self.gradient_accumulation_steps = gradient_accumulation_steps
         self.system_optimizer = system_optimizer
         self.optimizer_tracker = optimizer_tracker
@@ -216,7 +216,7 @@ class PPOTrainer(BaseAlgorithmTrainer):
         if model is None:
             raise ModelError("Model not initialized before training")
 
-        # Set up dynamic LR scheduler with model optimizer if enabled
+        # set up dynamic LR scheduler with model optimizer if enabled
         if (
             self.lr_scheduler
             and hasattr(model, "policy")
@@ -259,7 +259,7 @@ class PPOTrainer(BaseAlgorithmTrainer):
         self.log_training_completion(training_time, self.training_stats)
         return True
 
-    def get_training_stats(self) -> Dict[str, Any]:
+    def get_training_stats(self) -> dict[str, Any]:
         """Get PPO training statistics."""
         return dict(self.training_stats)
 
@@ -281,11 +281,11 @@ class PPOTrainer(BaseAlgorithmTrainer):
             self.logger.error(f"❌ Failed to load model: {e}")
             return False
 
-    def validate_training(self, model_path: Optional[str] = None) -> Dict[str, Any]:
+    def validate_training(self, model_path: str | None = None) -> dict[str, Any]:
         """Validate trained PPO model."""
         try:
             # Use provided path or get from training stats
-            validation_model_path: Optional[str] = None
+            validation_model_path: str | None = None
             if model_path is None:
                 validation_model_path = self.training_stats.get("model_path")
 
@@ -312,7 +312,7 @@ class PPOTrainer(BaseAlgorithmTrainer):
 
     def _calculate_final_action_distribution(
         self, callback: TrainingProgressCallback
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Calculate final action distribution from callback data."""
         if not callback.discrete_actions:
             return {"HOLD": 0.0, "BUY": 0.0, "SELL": 0.0}
@@ -320,7 +320,7 @@ class PPOTrainer(BaseAlgorithmTrainer):
         total_actions = len(callback.discrete_actions)
 
         # Convert discrete actions to proper indices (SELL: -1 -> 2, HOLD: 0 -> 0, BUY: 1 -> 1)
-        discrete_indices: List[int] = []
+        discrete_indices: list[int] = []
         for action in callback.discrete_actions:
             if action == -1:  # SELL
                 discrete_indices.append(2)
@@ -340,7 +340,7 @@ class PPOTrainer(BaseAlgorithmTrainer):
             "SELL": discrete_counts[2] / total_actions,
         }
 
-    def analyze_results(self) -> Dict[str, Any]:
+    def analyze_results(self) -> dict[str, Any]:
         """Analyze training results and provide comprehensive summary."""
         try:
             self.logger.info("Analyzing PPO training results...")

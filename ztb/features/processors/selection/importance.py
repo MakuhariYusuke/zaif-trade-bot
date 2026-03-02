@@ -8,7 +8,7 @@ import argparse
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, cast
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -25,7 +25,6 @@ if project_root not in sys.path:
 
 from ztb.features import get_feature_manager
 from ztb.trading.environment.environment import HeavyTradingEnv
-
 
 def generate_synthetic_data(n_rows: int = 5000) -> pd.DataFrame:
     """合成データを生成"""
@@ -60,10 +59,9 @@ def generate_synthetic_data(n_rows: int = 5000) -> pd.DataFrame:
 
     return df
 
-
 def evaluate_policy(
     model: PPO, df: pd.DataFrame, n_episodes: int = 10
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """ポリシーを評価"""
 
     def make_env():  # type: ignore[no-untyped-def]
@@ -144,9 +142,8 @@ def evaluate_policy(
         "pnl": float(np.mean(episode_pnl)),
     }
 
-
 def permutation_importance(
-    model: PPO, df: pd.DataFrame, feature_cols: List[str], n_episodes: int = 10
+    model: PPO, df: pd.DataFrame, feature_cols: list[str], n_episodes: int = 10
 ) -> pd.DataFrame:
     """Permutation importance計算"""
     # ベースライン評価
@@ -180,7 +177,6 @@ def permutation_importance(
         )
 
     return pd.DataFrame(results)
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Permutation importance analysis")
@@ -243,7 +239,6 @@ def main() -> None:
     print("\nBottom 5 least important features (by delta_sharpe):")
     for _, row in sorted_results.tail(5).iterrows():
         print(f"  {row['feature']}: {row['delta_sharpe']:.6f}")
-
 
 if __name__ == "__main__":
     main()

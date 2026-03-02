@@ -13,12 +13,11 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
+from typing import Any, Awaitable, Callable
 
 import pandas as pd
 
 from ztb.trading.signal.common.utilities import calculate_volatility_from_prices
-
 
 # Mock classes for testing
 @dataclass
@@ -27,15 +26,13 @@ class Symbol:
     base_currency: str
     quote_currency: str
 
-
 @dataclass
 class TickData:
     symbol: str
     bid: Decimal
     ask: Decimal
     timestamp: datetime
-    volume: Optional[Decimal] = None
-
+    volume: Decimal | None = None
 
 @dataclass
 class BarData:
@@ -47,18 +44,15 @@ class BarData:
     volume: Decimal
     timestamp: datetime
 
-
 @dataclass
 class OrderBook:
     symbol: str
-    bids: List[tuple[Decimal, Decimal]]  # (price, quantity)
-    asks: List[tuple[Decimal, Decimal]]  # (price, quantity)
+    bids: list[tuple[Decimal, Decimal]]  # (price, quantity)
+    asks: list[tuple[Decimal, Decimal]]  # (price, quantity)
     timestamp: datetime
-
 
 class MarketDataProvider:
     pass
-
 
 class SimulationMode(Enum):
     """シミュレーションモード"""
@@ -66,7 +60,6 @@ class SimulationMode(Enum):
     REALTIME = "realtime"  # リアルタイム同期
     HISTORICAL = "historical"  # 過去データ再生
     ACCELERATED = "accelerated"  # 高速再生
-
 
 @dataclass
 class LatencyConfig:
@@ -78,7 +71,6 @@ class LatencyConfig:
     processing_latency_ms: int = 5  # 処理遅延
     queue_latency_ms: int = 5  # キュー遅延
 
-
 @dataclass
 class SlippageConfig:
     """スリッページ設定"""
@@ -88,7 +80,6 @@ class SlippageConfig:
     volume_impact_bps: int = 2  # 出来高インパクト
     market_impact_threshold: Decimal = Decimal("0.01")  # 市場影響閾値
 
-
 @dataclass
 class SimulatedTick:
     """シミュレートティック"""
@@ -97,13 +88,12 @@ class SimulatedTick:
     price: Decimal
     volume: Decimal
     timestamp: datetime
-    bid: Optional[Decimal] = None
-    ask: Optional[Decimal] = None
-    bid_volume: Optional[Decimal] = None
-    ask_volume: Optional[Decimal] = None
+    bid: Decimal | None = None
+    ask: Decimal | None = None
+    bid_volume: Decimal | None = None
+    ask_volume: Decimal | None = None
     latency_ms: int = 0
     slippage_bps: int = 0
-
 
 class MarketDataSimulator:
     """
@@ -116,8 +106,8 @@ class MarketDataSimulator:
     def __init__(
         self,
         market_data_provider: MarketDataProvider,
-        latency_config: Optional[LatencyConfig] = None,
-        slippage_config: Optional[SlippageConfig] = None,
+        latency_config: LatencyConfig | None = None,
+        slippage_config: SlippageConfig | None = None,
         simulation_mode: SimulationMode = SimulationMode.REALTIME,
     ):
         """
@@ -136,18 +126,18 @@ class MarketDataSimulator:
 
         # データ管理
         self.subscribed_symbols: set[str] = set()
-        self.latest_prices: Dict[str, SimulatedTick] = {}
-        self.price_history: Dict[str, List[SimulatedTick]] = {}
-        self.order_books: Dict[str, OrderBook] = {}
+        self.latest_prices: dict[str, SimulatedTick] = {}
+        self.price_history: dict[str, list[SimulatedTick]] = {}
+        self.order_books: dict[str, OrderBook] = {}
 
         # シミュレーション制御
         self.is_running = False
-        self.simulation_thread: Optional[threading.Thread] = None
+        self.simulation_thread: threading.Thread | None = None
         self.data_queue: queue.Queue = queue.Queue()
 
         # コールバック
-        self.tick_callbacks: List[Callable[[SimulatedTick], Awaitable[None]]] = []
-        self.bar_callbacks: List[Callable[[BarData], Awaitable[None]]] = []
+        self.tick_callbacks: list[Callable[[SimulatedTick], Awaitable[None]]] = []
+        self.bar_callbacks: list[Callable[[BarData], Awaitable[None]]] = []
 
         # パフォーマンス追跡
         self.total_latency_ms = 0
@@ -204,7 +194,7 @@ class MarketDataSimulator:
             self.subscribed_symbols.remove(symbol)
             self.logger.info(f"Unsubscribed from symbol: {symbol}")
 
-    def get_latest_price(self, symbol: str) -> Optional[SimulatedTick]:
+    def get_latest_price(self, symbol: str) -> SimulatedTick | None:
         """
         最新価格取得
 
@@ -212,13 +202,13 @@ class MarketDataSimulator:
             symbol: シンボル
 
         Returns:
-            Optional[SimulatedTick]: 最新ティックデータ
+            SimulatedTick | None: 最新ティックデータ
         """
         return self.latest_prices.get(symbol)
 
     def get_price_history(
-        self, symbol: str, limit: Optional[int] = None
-    ) -> List[SimulatedTick]:
+        self, symbol: str, limit: int | None = None
+    ) -> list[SimulatedTick]:
         """
         価格履歴取得
 
@@ -227,7 +217,7 @@ class MarketDataSimulator:
             limit: 取得件数制限
 
         Returns:
-            List[SimulatedTick]: 価格履歴
+            list[SimulatedTick]: 価格履歴
         """
         history = self.price_history.get(symbol, [])
         if limit:
@@ -239,8 +229,8 @@ class MarketDataSimulator:
         symbol: str,
         side: str,
         quantity: Decimal,
-        limit_price: Optional[Decimal] = None,
-    ) -> Tuple[Decimal, int, int]:
+        limit_price: Decimal | None = None,
+    ) -> tuple[Decimal, int, int]:
         """
         注文実行シミュレーション
 
@@ -251,7 +241,7 @@ class MarketDataSimulator:
             limit_price: 指値価格
 
         Returns:
-            Tuple[Decimal, int, int]: (実行価格, 遅延ms, スリッページbps)
+            tuple[Decimal, int, int]: (実行価格, 遅延ms, スリッページbps)
         """
         # 最新価格取得
         latest_tick = self.get_latest_price(symbol)
@@ -536,12 +526,12 @@ class MarketDataSimulator:
         """
         self.bar_callbacks.append(callback)
 
-    def get_performance_stats(self) -> Dict[str, Any]:
+    def get_performance_stats(self) -> dict[str, Any]:
         """
         パフォーマンス統計取得
 
         Returns:
-            Dict[str, Any]: パフォーマンス統計
+            dict[str, Any]: パフォーマンス統計
         """
         avg_latency = (
             self.total_latency_ms / self.latency_samples

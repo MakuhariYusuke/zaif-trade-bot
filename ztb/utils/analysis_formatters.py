@@ -6,10 +6,9 @@ performance metrics, and trading statistics.
 """
 
 import json
-from typing import Any, Dict
+from typing import Any
 
-
-def format_performance_summary(performance_summary: Dict[str, Any]) -> str:
+def format_performance_summary(performance_summary: dict[str, Any]) -> str:
     """
     Format performance summary for display.
     Args:
@@ -37,8 +36,7 @@ def format_performance_summary(performance_summary: Dict[str, Any]) -> str:
 
     return "\n".join(lines)
 
-
-def format_pattern_statistics(pattern_statistics: Dict[str, Any]) -> str:
+def format_pattern_statistics(pattern_statistics: dict[str, Any]) -> str:
     """
     Format pattern statistics for display.
     Args:
@@ -74,8 +72,7 @@ def format_pattern_statistics(pattern_statistics: Dict[str, Any]) -> str:
 
     return "\n".join(lines)
 
-
-def format_trading_results_summary(trading_results_summary: Dict[str, Any]) -> str:
+def format_trading_results_summary(trading_results_summary: dict[str, Any]) -> str:
     """
     Format trading results summary for display.
     Args:
@@ -99,8 +96,7 @@ def format_trading_results_summary(trading_results_summary: Dict[str, Any]) -> s
 
     return "\n".join(lines)
 
-
-def format_complete_analysis(analysis: Dict[str, Any]) -> str:
+def format_complete_analysis(analysis: dict[str, Any]) -> str:
     """Format complete analysis results for display."""
     sections = []
 
@@ -117,22 +113,19 @@ def format_complete_analysis(analysis: Dict[str, Any]) -> str:
 
     return "\n\n".join(sections)
 
-
-def format_analysis_as_json(analysis: Dict[str, Any], indent: int = 2) -> str:
+def format_analysis_as_json(analysis: dict[str, Any], indent: int = 2) -> str:
     """Format analysis results as JSON string."""
     return json.dumps(analysis, indent=indent, default=str)
 
-
-def print_analysis_results(analysis: Dict[str, Any], use_json: bool = False) -> None:
+def print_analysis_results(analysis: dict[str, Any], use_json: bool = False) -> None:
     """Print analysis results in formatted or JSON format."""
     if use_json:
         print(format_analysis_as_json(analysis))
     else:
         print(format_complete_analysis(analysis))
 
-
 def print_formatted_metrics(
-    metrics: Dict[str, Any], title: str = "Analysis Results"
+    metrics: dict[str, Any], title: str = "Analysis Results"
 ) -> None:
     """
     Print formatted metrics dictionary with consistent formatting.
@@ -168,8 +161,7 @@ def print_formatted_metrics(
 
     print(f"{'='*50}\n")
 
-
-def create_result_summary(results: Dict[str, Any]) -> str:
+def create_result_summary(results: dict[str, Any]) -> str:
     """
     結果辞書から要約文字列を生成
 
@@ -188,8 +180,7 @@ def create_result_summary(results: Dict[str, Any]) -> str:
 
     return " | ".join(summary_parts)
 
-
-def print_formatted_metrics(result: Dict[str, Any], title: str = "") -> None:
+def print_formatted_metrics(result: dict[str, Any], title: str = "") -> None:
     """
     Print formatted backtest metrics with consistent formatting.
 

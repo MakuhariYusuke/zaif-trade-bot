@@ -10,7 +10,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from collections import deque
-from typing import Any, Deque, Dict, List, Optional
+from typing import Any, Deque
 
 from ztb.trading.environment.constants import (
     BASIS_POINTS,
@@ -30,13 +30,12 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 @dataclass
 class TransactionCostConfig:
     """取引コスト設定"""
 
     # 取引所別手数料設定
-    exchange_fees: Dict[str, Dict[str, float]] = field(
+    exchange_fees: dict[str, dict[str, float]] = field(
         default_factory=lambda: {
             "zaif": {
                 "maker_fee": 0.0,  # メイカー手数料
@@ -73,7 +72,6 @@ class TransactionCostConfig:
     enable_market_impact: bool = True
     market_impact_factor: float = 0.1  # 市場インパクト係数
 
-
 @dataclass
 class PositionSizingConfig:
     """ポジションサイジング設定"""
@@ -101,7 +99,7 @@ class PositionSizingConfig:
     max_trade_size_jpy: float = DEFAULT_MAX_TRADE_SIZE_JPY  # 最大取引サイズ (円)
 
     # 通貨ペア別最小単位
-    min_trade_units: Dict[str, float] = field(
+    min_trade_units: dict[str, float] = field(
         default_factory=lambda: {
             "btc_jpy": 0.0001,  # BTC最小単位
             "eth_jpy": DEFAULT_FEE_RATE,  # ETH最小単位
@@ -109,7 +107,6 @@ class PositionSizingConfig:
             "mona_jpy": 1.0,  # MONA最小単位
         }
     )
-
 
 @dataclass
 class TradeOrder:
@@ -120,7 +117,7 @@ class TradeOrder:
     side: str  # "buy", "sell"
     order_type: str  # "market", "limit"
     quantity: float
-    price: Optional[float] = None
+    price: float | None = None
     timestamp: datetime = field(default_factory=datetime.now)
 
     # 実行結果
@@ -130,7 +127,7 @@ class TradeOrder:
     slippage: float = 0.0
     status: str = "pending"  # "pending", "executed", "cancelled", "rejected"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "order_id": self.order_id,
             "symbol": self.symbol,
@@ -145,7 +142,6 @@ class TradeOrder:
             "slippage": self.slippage,
             "status": self.status,
         }
-
 
 @dataclass
 class Position:
@@ -164,14 +160,13 @@ class Position:
         """時価評価額"""
         return self.quantity * self.current_price
 
-
 class TransactionCostCalculator(BaseComponent):
     """取引コスト計算器"""
 
     def __init__(
         self,
         config: TransactionCostConfig,
-        component_config: Optional[Dict[str, Any]] = None,
+        component_config: dict[str, Any] | None = None,
     ):
         super().__init__(name="TransactionCostCalculator", config=component_config)
         self.config = config
@@ -272,7 +267,6 @@ class TransactionCostCalculator(BaseComponent):
 
         return impact
 
-
 class PositionSizer(BaseComponent):
     """ポジションサイザー"""
 
@@ -280,14 +274,14 @@ class PositionSizer(BaseComponent):
         self,
         config: PositionSizingConfig,
         cost_calculator: TransactionCostCalculator,
-        component_config: Optional[Dict[str, Any]] = None,
+        component_config: dict[str, Any] | None = None,
     ):
         super().__init__(name="PositionSizer", config=component_config)
         self.config = config
         self.cost_calculator = cost_calculator
 
         # ボラティリティ履歴
-        self.volatility_history: Dict[str, List[float]] = {}
+        self.volatility_history: dict[str, list[float]] = {}
 
     def calculate_position_size(
         self,
@@ -449,14 +443,13 @@ class PositionSizer(BaseComponent):
 
         return rounded_size
 
-
 class TradeExecutionEngine(BaseComponent):
     """
     V433 Phase 3: 取引実行エンジン
     現実的コストと動的サイジングを考慮した実行システム
     """
 
-    def __init__(self, exchange: str = "zaif", config: Optional[Dict[str, Any]] = None):
+    def __init__(self, exchange: str = "zaif", config: dict[str, Any] | None = None):
         super().__init__(name="TradeExecutionEngine", config=config)
         self.exchange = exchange
 
@@ -469,8 +462,8 @@ class TradeExecutionEngine(BaseComponent):
         self.position_sizer = PositionSizer(self.sizing_config, self.cost_calculator)
 
         # 状態管理
-        self.positions: Dict[str, Position] = {}
-        self.pending_orders: Dict[str, TradeOrder] = {}
+        self.positions: dict[str, Position] = {}
+        self.pending_orders: dict[str, TradeOrder] = {}
         self.completed_orders: Deque[TradeOrder] = deque(maxlen=10000)
 
         # パフォーマンス追跡
@@ -512,7 +505,7 @@ class TradeExecutionEngine(BaseComponent):
         current_price: float,
         volatility: float = 0.0,
         win_rate: float = 0.5,
-    ) -> Optional[str]:
+    ) -> str | None:
         """注文を送信"""
         try:
             # 入力バリデーション
@@ -574,11 +567,11 @@ class TradeExecutionEngine(BaseComponent):
 
         return False
 
-    def get_position(self, symbol: str) -> Optional[Position]:
+    def get_position(self, symbol: str) -> Position | None:
         """ポジションを取得"""
         return self.positions.get(symbol)
 
-    def get_portfolio_status(self) -> Dict[str, Any]:
+    def get_portfolio_status(self) -> dict[str, Any]:
         """ポートフォリオ状態を取得"""
         total_value = self.available_capital
         unrealized_pnl = 0.0
@@ -776,11 +769,9 @@ class TradeExecutionEngine(BaseComponent):
 
         return current_price
 
-
 def create_trade_execution_engine(exchange: str = "zaif") -> TradeExecutionEngine:
     """TradeExecutionEngineのファクトリ関数"""
     return TradeExecutionEngine(exchange)
-
 
 # 使用例
 if __name__ == "__main__":

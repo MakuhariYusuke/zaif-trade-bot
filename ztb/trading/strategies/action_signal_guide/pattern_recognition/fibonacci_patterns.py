@@ -22,7 +22,6 @@ from .base import (
     SignalResult,
 )
 
-
 class FibonacciRetracementMatch(TypedDict):
     """Detected retracement information for a swing."""
 
@@ -34,14 +33,12 @@ class FibonacciRetracementMatch(TypedDict):
     start_idx: int
     end_idx: int
 
-
 @dataclass(frozen=True)
 class FibonacciLevelConfig:
     """Per-level configuration for retracement interpretation."""
 
     strength: float
     direction_factor: float
-
 
 class FibonacciAnalyzer:
     """Utility class for Fibonacci calculations and analysis."""
@@ -250,7 +247,6 @@ class FibonacciAnalyzer:
         resistance = sorted([level for level in retracements.values() if level > pivot])
         return {"support": support, "resistance": resistance}
 
-
 class _FibonacciPatternBase(CandlestickPatternRecognizer):
     """Shared behavior for Fibonacci recognizers."""
 
@@ -327,7 +323,6 @@ class _FibonacciPatternBase(CandlestickPatternRecognizer):
 
     def _passes_pattern_threshold(self, pattern_completeness: float) -> bool:
         return pattern_completeness >= self.pattern_completeness_threshold
-
 
 class FibonacciRetracementRecognizer(_FibonacciPatternBase):
     """Recognizes Fibonacci retracement levels in price action."""
@@ -455,7 +450,6 @@ class FibonacciRetracementRecognizer(_FibonacciPatternBase):
 
         return None
 
-
 class FibonacciExtensionRecognizer(_FibonacciPatternBase):
     """Recognizes Fibonacci extension targets."""
 
@@ -550,7 +544,6 @@ class FibonacciExtensionRecognizer(_FibonacciPatternBase):
                 )
 
         return None
-
 
 class FibonacciProjectionRecognizer(_FibonacciPatternBase):
     """Recognizes Fibonacci price projections from multiple swings."""

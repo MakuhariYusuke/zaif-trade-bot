@@ -1,6 +1,6 @@
 """Time series lag correlation analysis"""
 
-from typing import Any, Dict, List, cast
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -8,15 +8,14 @@ import pandas as pd
 from ztb.io.data_loader import DataLoader
 from ztb.utils.errors import safe_operation
 
-
-def compute_lag_correlations(frames: Dict[str, pd.DataFrame]) -> List[Dict[str, Any]]:
+def compute_lag_correlations(frames: dict[str, pd.DataFrame]) -> list[dict[str, Any]]:
     """Compute lag correlations for feature pairs.
 
     Lags: [1, 5, 10, 20]
     Returns top 10 pairs by absolute correlation.
     """
     return cast(
-        List[Dict[str, Any]],
+        list[dict[str, Any]],
         safe_operation(
             logger=None,  # Use default logger
             operation=lambda: _compute_lag_correlations_impl(frames),
@@ -25,10 +24,9 @@ def compute_lag_correlations(frames: Dict[str, pd.DataFrame]) -> List[Dict[str, 
         ),
     )
 
-
 def _compute_lag_correlations_impl(
-    frames: Dict[str, pd.DataFrame],
-) -> List[Dict[str, Any]]:
+    frames: dict[str, pd.DataFrame],
+) -> list[dict[str, Any]]:
     """Implementation of lag correlation computation."""
     if not frames:
         return []
@@ -79,17 +77,16 @@ def _compute_lag_correlations_impl(
     results.sort(key=lambda x: abs(x["correlation"]), reverse=True)  # type: ignore
     return results[:10]
 
-
 def analyze_timeseries(
     data_path: str = "ml-dataset-enhanced.csv",
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Analyze time series lag correlations in dataset.
 
     Args:
         data_path: Path to the dataset file
 
     Returns:
-        List of lag correlation results
+        list of lag correlation results
     """
     try:
         df = DataLoader.load_csv_strict(data_path)

@@ -9,12 +9,11 @@ import asyncio
 import time
 from collections import deque
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable
 
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 @dataclass
 class RateLimitConfig:
@@ -23,7 +22,6 @@ class RateLimitConfig:
     requests_per_second: float = 1.0
     burst_limit: int = 5
     window_seconds: float = 1.0
-
 
 class TokenBucketRateLimiter:
     """Token bucket rate limiter implementation."""
@@ -78,7 +76,6 @@ class TokenBucketRateLimiter:
             wait_time = max(0.01, 1.0 / self.config.requests_per_second)
             await asyncio.sleep(wait_time)
 
-
 class SlidingWindowRateLimiter:
     """Sliding window rate limiter implementation."""
 
@@ -123,12 +120,11 @@ class SlidingWindowRateLimiter:
             else:
                 await asyncio.sleep(0.01)
 
-
 class RateLimiter:
     """Unified rate limiter with multiple strategies."""
 
     def __init__(
-        self, config: Optional[RateLimitConfig] = None, strategy: str = "token_bucket"
+        self, config: RateLimitConfig | None = None, strategy: str = "token_bucket"
     ):
         """Initialize rate limiter.
 
@@ -187,23 +183,22 @@ class RateLimiter:
         # This is less accurate but avoids async complexity
         return True  # Placeholder - implement if needed
 
-
 class MultiRateLimiter:
     """Rate limiter for multiple categories/keys."""
 
-    def __init__(self, default_config: Optional[RateLimitConfig] = None):
+    def __init__(self, default_config: RateLimitConfig | None = None):
         """Initialize multi-rate limiter.
 
         Args:
             default_config: Default rate limit configuration
         """
         self.default_config = default_config or RateLimitConfig()
-        self.limiters: Dict[str, RateLimiter] = {}
+        self.limiters: dict[str, RateLimiter] = {}
         self._max_limiters = 256  # Prevent unbounded growth
         self._lock = asyncio.Lock()
 
     def get_limiter(
-        self, key: str, config: Optional[RateLimitConfig] = None
+        self, key: str, config: RateLimitConfig | None = None
     ) -> RateLimiter:
         """Get or create rate limiter for a key.
 
@@ -223,7 +218,7 @@ class MultiRateLimiter:
         return self.limiters[key]
 
     async def acquire(
-        self, key: str, tokens: int = 1, config: Optional[RateLimitConfig] = None
+        self, key: str, tokens: int = 1, config: RateLimitConfig | None = None
     ) -> bool:
         """Acquire permission for a keyed request.
 
@@ -239,7 +234,7 @@ class MultiRateLimiter:
         return await limiter.acquire(tokens)
 
     async def wait(
-        self, key: str, tokens: int = 1, config: Optional[RateLimitConfig] = None
+        self, key: str, tokens: int = 1, config: RateLimitConfig | None = None
     ) -> None:
         """Wait for permission for a keyed request.
 
@@ -251,7 +246,6 @@ class MultiRateLimiter:
         limiter = self.get_limiter(key, config)
         await limiter.wait(tokens)
 
-
 # Global rate limiter instances
 _api_limiter = MultiRateLimiter(
     RateLimitConfig(requests_per_second=2.0, burst_limit=10)
@@ -260,16 +254,13 @@ _file_limiter = MultiRateLimiter(
     RateLimitConfig(requests_per_second=1.0, burst_limit=3)
 )
 
-
 def get_api_limiter() -> MultiRateLimiter:
     """Get global API rate limiter."""
     return _api_limiter
 
-
 def get_file_limiter() -> MultiRateLimiter:
     """Get global file operation rate limiter."""
     return _file_limiter
-
 
 async def rate_limited_api_call(
     key: str, func: Callable[..., Any], *args: Any, **kwargs: Any
@@ -291,7 +282,6 @@ async def rate_limited_api_call(
     except Exception as e:
         logger.warning(f"API call failed for {key}: {e}")
         raise
-
 
 def create_rate_limiter_for_endpoint(
     endpoint: str, requests_per_minute: int = 60

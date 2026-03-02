@@ -5,7 +5,7 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import torch
@@ -13,7 +13,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 logger = logging.getLogger(__name__)
-
 
 class MultiModalFeatureEncoder(nn.Module):
     """
@@ -95,7 +94,7 @@ class MultiModalFeatureEncoder(nn.Module):
         price_features: torch.Tensor,
         text_embeddings: torch.Tensor,
         economic_features: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
+        attention_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         複数モダリティの特徴量を統合
@@ -212,7 +211,6 @@ class MultiModalFeatureEncoder(nn.Module):
 
         return output
 
-
 class MultiModalTradingAgent(nn.Module):
     """
     マルチモーダル取引エージェント
@@ -276,7 +274,7 @@ class MultiModalTradingAgent(nn.Module):
         price_features: torch.Tensor,
         text_embeddings: torch.Tensor,
         economic_features: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
+        attention_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         マルチモーダル特徴量をエンコード
@@ -287,7 +285,7 @@ class MultiModalTradingAgent(nn.Module):
 
     def get_action(
         self, state_features: torch.Tensor, deterministic: bool = False
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         行動を選択
 
@@ -327,7 +325,7 @@ class MultiModalTradingAgent(nn.Module):
 
     def get_value(
         self, state_features: torch.Tensor, action: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         状態行動価値を評価
 
@@ -345,7 +343,6 @@ class MultiModalTradingAgent(nn.Module):
         q2 = self.critic2(sa_features)
 
         return q1, q2
-
 
 class MultiModalDataPreprocessor:
     """
@@ -369,10 +366,10 @@ class MultiModalDataPreprocessor:
     def preprocess_batch(
         self,
         price_data: np.ndarray,
-        news_data: List[Dict],
+        news_data: list[dict],
         economic_data: np.ndarray,
-        dates: List[datetime],
-    ) -> Dict[str, torch.Tensor]:
+        dates: list[datetime],
+    ) -> dict[str, torch.Tensor]:
         """
         バッチデータの前処理
 
@@ -424,7 +421,7 @@ class MultiModalDataPreprocessor:
             "attention_mask": attention_mask,
         }
 
-    def _fit_scaler(self, data: np.ndarray) -> Dict[str, np.ndarray]:
+    def _fit_scaler(self, data: np.ndarray) -> dict[str, np.ndarray]:
         """特徴量スケーラーのフィッティング"""
         mean = np.mean(data, axis=0)
         std = np.std(data, axis=0)
@@ -433,13 +430,13 @@ class MultiModalDataPreprocessor:
         return {"mean": mean, "std": std}
 
     def _normalize_features(
-        self, data: np.ndarray, scaler: Dict[str, np.ndarray]
+        self, data: np.ndarray, scaler: dict[str, np.ndarray]
     ) -> np.ndarray:
         """特徴量の正規化"""
         return (data - scaler["mean"]) / scaler["std"]
 
     def _process_news_data(
-        self, news_data: List[Dict], batch_size: int, seq_len: int
+        self, news_data: list[dict], batch_size: int, seq_len: int
     ) -> torch.Tensor:
         """
         ニュースデータを埋め込みに変換
@@ -459,7 +456,7 @@ class MultiModalDataPreprocessor:
         return embeddings
 
     def _create_attention_mask(
-        self, news_data: List[Dict], batch_size: int, seq_len: int
+        self, news_data: list[dict], batch_size: int, seq_len: int
     ) -> torch.Tensor:
         """アテンションマスク作成"""
         mask = torch.zeros(batch_size, seq_len, dtype=torch.bool)
@@ -470,7 +467,6 @@ class MultiModalDataPreprocessor:
                     mask[b, t] = True  # マスク（パディング部分）
 
         return mask
-
 
 class MultiModalTrainer:
     """
@@ -513,11 +509,11 @@ class MultiModalTrainer:
 
     def update(
         self,
-        batch_data: Dict[str, Any],
+        batch_data: dict[str, Any],
         rewards: torch.Tensor,
-        next_batch_data: Dict[str, Any],
+        next_batch_data: dict[str, Any],
         dones: torch.Tensor,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         1ステップの学習更新
 
@@ -621,7 +617,6 @@ class MultiModalTrainer:
             target_param.data.copy_(
                 self.tau * param.data + (1 - self.tau) * target_param.data
             )
-
 
 # 使用例とテスト
 if __name__ == "__main__":

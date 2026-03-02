@@ -12,7 +12,7 @@ import socket
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # Add the ztb package to the path
 sys.path.insert(0, str(Path(__file__).parent.parent / "ztb"))
@@ -27,7 +27,6 @@ except ImportError as e:
     print(f"Missing dependencies: {e}", file=sys.stderr)
     print("Install with: pip install requests websockets", file=sys.stderr)
     sys.exit(1)
-
 
 class VenueHealthChecker:
     """Health checker for trading venue APIs."""
@@ -51,7 +50,7 @@ class VenueHealthChecker:
             raise ValueError(f"Unsupported venue: {venue}")
 
         # Health check results
-        self.results: Dict[str, Any] = {
+        self.results: dict[str, Any] = {
             "venue": venue,
             "symbol": symbol,
             "timestamp": None,
@@ -200,7 +199,7 @@ class VenueHealthChecker:
         else:
             return "unhealthy"
 
-    async def run_checks(self) -> Dict[str, Any]:
+    async def run_checks(self) -> dict[str, Any]:
         """Run all health checks."""
         self.results["timestamp"] = time.time()
 
@@ -220,7 +219,6 @@ class VenueHealthChecker:
         self.results["status"] = self.determine_overall_status()
 
         return self.results
-
 
 def main() -> None:
     parser = create_standard_parser("Check venue API health")
@@ -267,7 +265,6 @@ def main() -> None:
     except Exception as e:
         print(f"Health check failed: {e}", file=sys.stderr)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

@@ -6,7 +6,6 @@ without requiring interactive prompts or platform-specific dependencies.
 
 from typing import Any
 
-
 def confirm_long_running_operation(
     message: str, default: bool = False, **kwargs: Any
 ) -> bool:

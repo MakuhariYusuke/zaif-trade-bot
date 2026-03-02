@@ -9,14 +9,14 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable
 
 from ztb.utils.path_utils import get_project_root
 
 # ztb モジュールのインポートのためパスを追加
 sys.path.insert(0, str(get_project_root()))
 
-create_status_embed_func: Optional[Callable[[], Dict[str, Any]]] = None
+create_status_embed_func: Callable[[], dict[str, Any]] | None = None
 import_error_msg = ""
 
 try:
@@ -26,8 +26,7 @@ try:
 except ImportError as e:
     import_error_msg = str(e)
 
-
-def run_command_safely(cmd: str, timeout: int = 300) -> Dict[str, Any]:
+def run_command_safely(cmd: str, timeout: int = 300) -> dict[str, Any]:
     """Run a command safely and return structured result."""
     try:
         result = subprocess.run(
@@ -55,8 +54,7 @@ def run_command_safely(cmd: str, timeout: int = 300) -> Dict[str, Any]:
     except Exception as e:
         return {"success": False, "error": str(e), "command": cmd}
 
-
-def handle_status_request(params: Dict[str, Any]) -> Dict[str, Any]:
+def handle_status_request(params: dict[str, Any]) -> dict[str, Any]:
     """Handle status snapshot request."""
     if create_status_embed_func is None:
         return {
@@ -79,8 +77,7 @@ def handle_status_request(params: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         return {"success": False, "action": "status", "error": str(e)}
 
-
-def handle_run_request(params: Dict[str, Any]) -> Dict[str, Any]:
+def handle_run_request(params: dict[str, Any]) -> dict[str, Any]:
     """Handle run command request."""
     cmd = params.get("command")
     if not cmd:
@@ -97,8 +94,7 @@ def handle_run_request(params: Dict[str, Any]) -> Dict[str, Any]:
 
     return result
 
-
-def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
+def handle_request(request: dict[str, Any]) -> dict[str, Any]:
     """Handle a single request."""
     action = request.get("action")
     params = request.get("params", {})
@@ -113,7 +109,6 @@ def handle_request(request: Dict[str, Any]) -> Dict[str, Any]:
             "action": action,
             "error": f"Unknown action: {action}",
         }
-
 
 def main() -> None:
     """Main entry point - read JSON from stdin, write JSON to stdout."""
@@ -142,7 +137,6 @@ def main() -> None:
         error_response = {"success": False, "error": f"Unexpected error: {e}"}
         print(json.dumps(error_response, ensure_ascii=False), file=sys.stdout)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

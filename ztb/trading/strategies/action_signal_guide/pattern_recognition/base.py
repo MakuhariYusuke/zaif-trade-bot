@@ -26,10 +26,8 @@ from typing import (
 import numpy as np
 import pandas as pd
 
-
 F = TypeVar("F", bound=Callable[..., object])
 T = TypeVar("T")
-
 
 def timed(func: F) -> F:
     """Simple timing decorator for performance monitoring."""
@@ -43,7 +41,6 @@ def timed(func: F) -> F:
         return result
 
     return cast(F, wrapper)
-
 
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.utils.exceptions.custom_exceptions import ValidationError
@@ -69,29 +66,28 @@ try:
 except ImportError:
     # Fallback if types module not available
     if TYPE_CHECKING:
-        MultiTimeframeData = Dict[str, Dict[str, object]]
-        PatternThresholds = Dict[str, Union[int, float, None]]
-        PatternMetrics = Dict[str, Union[int, float, str]]
-        PatternResult = Dict[str, Union[int, float, str, PatternMetrics]]
-        SignalMetadata = Dict[
-            str, Union[int, float, str, bool, List[Union[int, float]]]
+        MultiTimeframeData = dict[str, dict[str, object]]
+        PatternThresholds = dict[str, int | float | None]
+        PatternMetrics = dict[str, int | float | str]
+        PatternResult = dict[str, int | float | str | PatternMetrics]
+        SignalMetadata = dict[
+            str, int | float | str | bool | list[int | float]
         ]
-        AnalysisResult = Dict[str, Union[float, str, bool, Dict[str, float]]]
-        MultiTimeframeAnalysis = Dict[str, AnalysisResult]
-        RegimeAdjustment = Dict[str, Union[int, float, str]]
+        AnalysisResult = dict[str, float | str | bool | dict[str, float]]
+        MultiTimeframeAnalysis = dict[str, AnalysisResult]
+        RegimeAdjustment = dict[str, int | float | str]
     else:
         # Runtime fallbacks
-        MultiTimeframeData = Dict[str, Dict[str, object]]
-        PatternThresholds = Dict[str, Union[int, float, None]]
-        PatternMetrics = Dict[str, Union[int, float, str]]
-        PatternResult = Dict[str, Union[int, float, str, PatternMetrics]]
-        SignalMetadata = Dict[
-            str, Union[int, float, str, bool, List[Union[int, float]]]
+        MultiTimeframeData = dict[str, dict[str, object]]
+        PatternThresholds = dict[str, int | float | None]
+        PatternMetrics = dict[str, int | float | str]
+        PatternResult = dict[str, int | float | str | PatternMetrics]
+        SignalMetadata = dict[
+            str, int | float | str | bool | list[int | float]
         ]
-        AnalysisResult = Dict[str, Union[float, str, bool, Dict[str, float]]]
-        MultiTimeframeAnalysis = Dict[str, AnalysisResult]
-        RegimeAdjustment = Dict[str, Union[int, float, str]]
-
+        AnalysisResult = dict[str, float | str | bool | dict[str, float]]
+        MultiTimeframeAnalysis = dict[str, AnalysisResult]
+        RegimeAdjustment = dict[str, int | float | str]
 
 class LRUCache(Generic[T]):
     """
@@ -100,14 +96,14 @@ class LRUCache(Generic[T]):
     Provides O(1) access time and automatic cleanup of old entries.
     """
 
-    def __init__(self, max_size: int = 1000, ttl_seconds: Optional[int] = None):
+    def __init__(self, max_size: int = 1000, ttl_seconds: int | None = None):
         self.max_size = max_size
         self.ttl_seconds = ttl_seconds
         self.cache: OrderedDict[str, T] = OrderedDict()
-        self.timestamps: Dict[str, float] = {}
+        self.timestamps: dict[str, float] = {}
         self._lock = threading.Lock()
 
-    def get(self, key: str) -> Optional[T]:
+    def get(self, key: str) -> T | None:
         """Get value from cache, moving it to end (most recently used)."""
         with self._lock:
             # Check TTL if enabled
@@ -123,7 +119,7 @@ class LRUCache(Generic[T]):
             return None
 
     def set(self, key: str, value: T) -> None:
-        """Set value in cache with LRU eviction."""
+        """set value in cache with LRU eviction."""
         with self._lock:
             if key in self.cache:
                 # Update existing entry
@@ -174,10 +170,9 @@ class LRUCache(Generic[T]):
 
             return len(expired_keys)
 
-
 def preprocess_features(
     data: pd.DataFrame,
-    feature_columns: List[str],
+    feature_columns: list[str],
     method: str = "robust",
     remove_outliers: bool = True,
     outlier_threshold: float = 3.0,
@@ -233,7 +228,6 @@ def preprocess_features(
 
     return processed_data
 
-
 def calculate_technical_features(data: pd.DataFrame, window: int = 20) -> pd.DataFrame:
     """
     Calculate additional technical features for pattern recognition.
@@ -276,7 +270,6 @@ def calculate_technical_features(data: pd.DataFrame, window: int = 20) -> pd.Dat
 
     return df
 
-
 class SignalResult:
     """Result of a pattern recognition signal."""
 
@@ -287,10 +280,8 @@ class SignalResult:
         direction: float,  # Continuous value from -1.0 (strong sell) to 1.0 (strong buy), 0.0 for neutral
         description: str,
         timestamp: object | None = None,
-        confidence: Optional[
-            float
-        ] = None,  # Confidence in pattern recognition (0.0-1.0), defaults to strength
-        metadata: Optional[SignalMetadata] = None,
+        confidence: float | None = None,  # Confidence in pattern recognition (0.0-1.0), defaults to strength
+        metadata: SignalMetadata | None = None,
         validity_period: int = 5,  # How many periods this signal is valid (required)
         risk_level: str = "medium",  # 'low', 'medium', 'high' (required)
     ) -> None:
@@ -352,7 +343,6 @@ class SignalResult:
         risk_multipliers = {"low": 0.5, "medium": 1.0, "high": 1.5}
         return risk_multipliers.get(self.risk_level, 1.0)
 
-
 class PatternRecognizer(ABC):
     """
     Base class for all pattern recognizers.
@@ -360,8 +350,8 @@ class PatternRecognizer(ABC):
     Provides common functionality and interface for pattern recognition.
     """
 
-    def __init__(self, config: Optional[Dict[str, object]] = None):
-        self.config: Dict[str, object] = dict(config) if config else {}
+    def __init__(self, config: dict[str, object] | None = None):
+        self.config: dict[str, object] = dict(config) if config else {}
         self.name = self.__class__.__name__
         self._validate_config()
         # Use LRU cache for signal results to prevent memory leaks and improve performance
@@ -381,9 +371,7 @@ class PatternRecognizer(ABC):
         # Define validation schema for common config parameters
         config_schema = {
             "enabled": bool,
-            "min_confidence": Union[
-                int, float
-            ],  # Will be validated for range separately
+            "min_confidence": int | float,  # Will be validated for range separately
             "lookback_period": int,
             "risk_level": str,  # Will be validated for specific values separately
         }
@@ -439,7 +427,7 @@ class PatternRecognizer(ABC):
                 value = self.config[config_key]
                 try:
                     validator.validate_type(
-                        value, Union[int, float], f"config.{config_key}"
+                        value, int | float, f"config.{config_key}"
                     )
                     if not (0.0 <= value <= 1.0):
                         raise ValidationError(
@@ -499,7 +487,7 @@ class PatternRecognizer(ABC):
         data: pd.DataFrame,
         index: int = -1,
         required_length: int = 1,
-        multi_timeframe_data: Optional[MultiTimeframeData] = None,
+        multi_timeframe_data: MultiTimeframeData | None = None,
     ) -> int:
         """
         Common validation for pattern recognition inputs.
@@ -573,7 +561,7 @@ class PatternRecognizer(ABC):
 
     @staticmethod
     def iter_multi_timeframe_frames(
-        multi_timeframe_data: Optional[MultiTimeframeData],
+        multi_timeframe_data: MultiTimeframeData | None,
         *,
         min_length: int = 1,
     ) -> list[pd.DataFrame]:
@@ -593,7 +581,7 @@ class PatternRecognizer(ABC):
     def preprocess_data(
         self,
         data: pd.DataFrame,
-        feature_columns: Optional[List[str]] = None,
+        feature_columns: list[str] | None = None,
         add_technical_features: bool = True,
         normalize_features: bool = True,
     ) -> pd.DataFrame:
@@ -722,7 +710,7 @@ class PatternRecognizer(ABC):
 
     def _adjust_thresholds_for_regime(
         self,
-        multi_timeframe_data: Optional[MultiTimeframeData],
+        multi_timeframe_data: MultiTimeframeData | None,
         pattern_type: str = "general",
     ) -> RegimeAdjustment:
         """
@@ -822,8 +810,8 @@ class PatternRecognizer(ABC):
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[MultiTimeframeData] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """
         Recognize pattern in the given data at the specified index.
 
@@ -840,8 +828,8 @@ class PatternRecognizer(ABC):
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[MultiTimeframeData] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """
         Recognize pattern with caching to avoid redundant calculations.
 
@@ -873,7 +861,7 @@ class PatternRecognizer(ABC):
         processed_data = self.preprocess_data(data)
 
         # Calculate new signal
-        signal: Optional[SignalResult] = self.recognize(
+        signal: SignalResult | None = self.recognize(
             processed_data, resolved_index, multi_timeframe_data
         )
         if signal is not None:
@@ -954,7 +942,7 @@ class PatternRecognizer(ABC):
         self,
         data: pd.DataFrame,
         index: int,
-        pattern_factors: Dict[str, float],
+        pattern_factors: dict[str, float],
         base_confidence: float = 0.5,
     ) -> float:
         """
@@ -1145,7 +1133,7 @@ class PatternRecognizer(ABC):
         return cast(float, np.mean(bodies)) if bodies else 0
 
     def is_bullish_candle(
-        self, data: Union[pd.DataFrame, pd.Series], index: Optional[int] = None
+        self, data: pd.DataFrame | pd.Series, index: int | None = None
     ) -> bool:
         """Check if candle is bullish."""
         if isinstance(data, pd.Series):
@@ -1158,7 +1146,7 @@ class PatternRecognizer(ABC):
             raise ValueError("Either provide a Series or DataFrame with index")
 
     def is_bearish_candle(
-        self, data: Union[pd.DataFrame, pd.Series], index: Optional[int] = None
+        self, data: pd.DataFrame | pd.Series, index: int | None = None
     ) -> bool:
         """Check if candle is bearish."""
         if isinstance(data, pd.Series):
@@ -1182,7 +1170,7 @@ class PatternRecognizer(ABC):
     @staticmethod
     def resolve_analysis_index(
         data_len: int, index: int, min_required_index: int = 0
-    ) -> Optional[int]:
+    ) -> int | None:
         """Resolve -1 style indices and validate bounds."""
         resolved = data_len - 1 if index < 0 else index
         if resolved < min_required_index or resolved >= data_len:
@@ -1202,7 +1190,6 @@ class PatternRecognizer(ABC):
         """Clamp value into [lower, upper]."""
         return float(min(upper, max(lower, value)))
 
-
 @dataclass(frozen=True)
 class IndicatorMarketContext:
     """Shared market-context values used by indicator recognizers."""
@@ -1210,11 +1197,10 @@ class IndicatorMarketContext:
     volatility_ratio: float = 1.0
     trend_strength: float = 0.0
 
-
 class IndicatorPatternRecognizer(PatternRecognizer):
     """Base recognizer for indicator-style patterns (RSI/MACD/ATR/ADX/etc.)."""
 
-    def __init__(self, config: Optional[Dict[str, object]] = None) -> None:
+    def __init__(self, config: dict[str, object] | None = None) -> None:
         super().__init__(config)
         self.enable_multi_timeframe = safe_config_get_bool(
             self.config, "enable_multi_timeframe", True
@@ -1224,7 +1210,7 @@ class IndicatorPatternRecognizer(PatternRecognizer):
 
     def resolve_indicator_index(
         self, data: pd.DataFrame, index: int, min_required_periods: int
-    ) -> Optional[int]:
+    ) -> int | None:
         """Resolve and validate index for indicator calculations."""
         if not self.validate_data(data):
             return None
@@ -1312,15 +1298,15 @@ class IndicatorPatternRecognizer(PatternRecognizer):
 
     @staticmethod
     def _as_context(
-        multi_timeframe_data: Optional[MultiTimeframeData],
-    ) -> Optional[Mapping[str, object]]:
+        multi_timeframe_data: MultiTimeframeData | None,
+    ) -> Mapping[str, object] | None:
         if isinstance(multi_timeframe_data, dict):
             return cast(Mapping[str, object], multi_timeframe_data)
         return None
 
     @staticmethod
     def _extract_context_scalar(
-        context: Optional[Mapping[str, object]], key: str, default: float = 0.0
+        context: Mapping[str, object] | None, key: str, default: float = 0.0
     ) -> float:
         if context is None:
             return default
@@ -1342,7 +1328,7 @@ class IndicatorPatternRecognizer(PatternRecognizer):
         return default
 
     def _extract_regime_cluster(
-        self, multi_timeframe_data: Optional[MultiTimeframeData], default: int = 1
+        self, multi_timeframe_data: MultiTimeframeData | None, default: int = 1
     ) -> int:
         context = self._as_context(multi_timeframe_data)
         cluster = int(self._extract_context_scalar(context, "regime_cluster", float(default)))
@@ -1350,7 +1336,7 @@ class IndicatorPatternRecognizer(PatternRecognizer):
 
     def calculate_mtf_confidence(
         self,
-        multi_timeframe_data: Optional[MultiTimeframeData],
+        multi_timeframe_data: MultiTimeframeData | None,
         *,
         momentum_key: str,
         momentum_delta: float,
@@ -1384,11 +1370,10 @@ class IndicatorPatternRecognizer(PatternRecognizer):
 
         return self.clamp(confidence, 0.5, 1.5)
 
-
 class TrendPatternRecognizer(PatternRecognizer):
     """Base recognizer with shared helpers for trend-window analysis."""
 
-    def __init__(self, config: Optional[Dict[str, object]] = None) -> None:
+    def __init__(self, config: dict[str, object] | None = None) -> None:
         super().__init__(config)
         self._regression_cache: OrderedDict[int, tuple[np.ndarray, float]] = OrderedDict()
         self._max_regression_cache_entries = max(
@@ -1446,7 +1431,6 @@ class TrendPatternRecognizer(PatternRecognizer):
             return -1
         return 0
 
-
 class CandlestickPatternRecognizer(PatternRecognizer):
     """
     Base class for candlestick pattern recognizers.
@@ -1480,7 +1464,7 @@ class CandlestickPatternRecognizer(PatternRecognizer):
         "doji": 0.5,
     }
 
-    def __init__(self, config: Optional[Dict[str, object]] = None) -> None:
+    def __init__(self, config: dict[str, object] | None = None) -> None:
         super().__init__(config)
         self.body_ratio_threshold = self.config.get("body_ratio_threshold", 0.6)
         self.shadow_ratio_threshold = self.config.get("shadow_ratio_threshold", 0.3)
@@ -1555,7 +1539,7 @@ class CandlestickPatternRecognizer(PatternRecognizer):
 
     def analyze_candle_characteristics(
         self, data: pd.DataFrame, index: int
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Analyze comprehensive candle characteristics for pattern recognition.
 
@@ -1609,14 +1593,14 @@ class CandlestickPatternRecognizer(PatternRecognizer):
         avg_body_size: float
 
     def analyze_multiple_candle_characteristics(
-        self, data: pd.DataFrame, indices: List[int]
+        self, data: pd.DataFrame, indices: list[int]
     ) -> MultiCandleCharacteristics:
         """
         Analyze characteristics for multiple candles.
 
         Args:
             data: OHLCV data
-            indices: List of candle indices to analyze
+            indices: list of candle indices to analyze
 
         Returns:
             Dictionary with lists of candle characteristics
@@ -1684,15 +1668,15 @@ class CandlestickPatternRecognizer(PatternRecognizer):
         return characteristics
 
     def validate_pattern_structure(
-        self, data: pd.DataFrame, indices: List[int], expected_directions: List[str]
+        self, data: pd.DataFrame, indices: list[int], expected_directions: list[str]
     ) -> bool:
         """
         Validate that candles at given indices match expected directions.
 
         Args:
             data: OHLCV data
-            indices: List of indices to check
-            expected_directions: List of expected directions ("bullish", "bearish", "any")
+            indices: list of indices to check
+            expected_directions: list of expected directions ("bullish", "bearish", "any")
 
         Returns:
             True if all candles match expected directions
@@ -1717,7 +1701,7 @@ class CandlestickPatternRecognizer(PatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int,
-        pattern_factors: Dict[str, float],
+        pattern_factors: dict[str, float],
         base_confidence: float = 0.5,
     ) -> float:
         """
@@ -1821,13 +1805,12 @@ class CandlestickPatternRecognizer(PatternRecognizer):
         except Exception:
             return 0.5
 
-
 class MultiCandlePatternRecognizer(PatternRecognizer):
     """
     Base class for multi-candle pattern recognizers.
     """
 
-    def __init__(self, config: Optional[Dict[str, object]] = None) -> None:
+    def __init__(self, config: dict[str, object] | None = None) -> None:
         super().__init__(config)
         self.min_trend_length = self.config.get("min_trend_length", 5)
 

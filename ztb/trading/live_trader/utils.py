@@ -11,7 +11,6 @@ from ztb.utils.path_utils import get_project_root
 
 PROJECT_ROOT = get_project_root()
 
-
 def _configure_live_logging(level: str) -> logging.Logger:
     """Configure logging for live trading run and return module logger."""
     numeric_level = getattr(logging, level.upper(), logging.INFO)
@@ -25,7 +24,6 @@ def _configure_live_logging(level: str) -> logging.Logger:
     logger = _setup_live_logger()
     logger.setLevel(numeric_level)
     return logger
-
 
 def _setup_live_logger() -> logging.Logger:
     """Ensure module logger writes to rotating log file and console exactly once."""

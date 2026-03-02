@@ -15,19 +15,16 @@ from ztb.io.common import PathLike
 from ztb.io.json_io import read_json_object, write_json
 from ztb.utils.safety import ensure_dict, safe_to_float
 
-
 class HyperParams(TypedDict):
     learning_rate: float
     batch_size: int
     gamma: float
     tau: float
 
-
 class ExperimentConfig(TypedDict):
     version: str
     description: str
     hyperparams: HyperParams
-
 
 class CommonConfig(TypedDict):
     output_base_dir: str
@@ -35,11 +32,9 @@ class CommonConfig(TypedDict):
     data_path: str
     timesteps: int
 
-
 class ExperimentSuiteConfig(TypedDict):
     experiments: list[ExperimentConfig]
     common_config: CommonConfig
-
 
 class ExperimentResult(TypedDict):
     version: str
@@ -54,16 +49,13 @@ class ExperimentResult(TypedDict):
     error: NotRequired[str]
     backtest_result: NotRequired[dict[str, object]]
 
-
 def _as_object_map(value: object) -> dict[str, object]:
     """Safely coerce object into dict."""
     return ensure_dict(value)
 
-
 def _as_float(value: object, default: float = 0.0) -> float:
     """Convert object to float with fallback."""
     return safe_to_float(value, default)
-
 
 def _as_int(value: object, default: int = 0) -> int:
     """Convert object to int with fallback."""
@@ -73,7 +65,6 @@ def _as_int(value: object, default: int = 0) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
-
 
 def _parse_hyperparams(value: object) -> HyperParams | None:
     """Parse hyper parameter section."""
@@ -93,7 +84,6 @@ def _parse_hyperparams(value: object) -> HyperParams | None:
         "tau": tau,
     }
 
-
 def _parse_experiment(value: object) -> ExperimentConfig | None:
     """Parse single experiment payload."""
     payload = _as_object_map(value)
@@ -109,7 +99,6 @@ def _parse_experiment(value: object) -> ExperimentConfig | None:
         "description": description,
         "hyperparams": hyperparams,
     }
-
 
 def _parse_common_config(value: object) -> CommonConfig | None:
     """Parse common config payload."""
@@ -132,7 +121,6 @@ def _parse_common_config(value: object) -> CommonConfig | None:
         "timesteps": timesteps,
     }
 
-
 def load_experiment_config(config_path: PathLike) -> ExperimentSuiteConfig:
     """実験設定ファイルを読み込み"""
     payload = read_json_object(config_path)
@@ -154,7 +142,6 @@ def load_experiment_config(config_path: PathLike) -> ExperimentSuiteConfig:
         "experiments": experiments,
         "common_config": common_config,
     }
-
 
 def run_single_experiment(
     experiment: ExperimentConfig, common_config: CommonConfig
@@ -269,7 +256,6 @@ def run_single_experiment(
             "error": str(e),
         }
 
-
 def save_experiment_results(
     results: list[ExperimentResult], output_path: PathLike
 ) -> None:
@@ -277,11 +263,9 @@ def save_experiment_results(
     write_json(output_path, results, indent=2, ensure_ascii=False)
     print(f"実験結果を保存: {output_path}")
 
-
 def _extract_backtest_result(result: ExperimentResult) -> dict[str, object]:
     """Get backtest payload if present."""
     return _as_object_map(result.get("backtest_result", {}))
-
 
 def generate_summary_report(
     results: list[ExperimentResult], output_path: PathLike
@@ -352,7 +336,6 @@ def generate_summary_report(
             f"最適設定: {best['version']} - 総報酬: {best['backtest_result'].get('total_reward', 0):.2f}"
         )
 
-
 def main():
     """メイン関数"""
     parser = argparse.ArgumentParser(description="SAC v434.2 複数実験自動化")
@@ -406,7 +389,6 @@ def main():
 
     print("\n=== 実験完了 ===")
     return 0
-
 
 if __name__ == "__main__":
     exit(main())

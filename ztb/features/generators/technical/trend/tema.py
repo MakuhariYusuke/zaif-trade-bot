@@ -17,14 +17,12 @@ from ztb.features.base import BaseFeature
 from ztb.features.registry import FeatureRegistry
 from ztb.utils.talib_wrapper import TaLibWrapper
 
-
 @FeatureRegistry.register("TEMA")
 def compute_tema(df: pd.DataFrame) -> pd.Series:
     """Triple Exponential Moving Average (TEMA)"""
     feature = TEMA()
     result_df = feature.compute(df)
     return result_df["tema_14"]
-
 
 class TEMA(BaseFeature):
     """

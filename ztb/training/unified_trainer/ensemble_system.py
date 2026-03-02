@@ -6,7 +6,7 @@ Ensemble System for SAC v428 - Enhanced modularity and maintainability.
 import time
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, TypedDict
+from typing import TypedDict
 
 import numpy as np
 
@@ -15,7 +15,6 @@ from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class EnsembleSpecialization(Enum):
     """アンサンブルメンバーの専門化タイプ"""
@@ -26,7 +25,6 @@ class EnsembleSpecialization(Enum):
     HIGH_VOL = "high_vol"
     LOW_VOL = "low_vol"
 
-
 class VotingMechanism(Enum):
     """投票メカニズムの種類"""
 
@@ -35,30 +33,25 @@ class VotingMechanism(Enum):
     CONSENSUS = "consensus"
     STABILITY_WEIGHTED = "stability_weighted"
 
-
 class ConsensusRequirementConfig(TypedDict, total=False):
     enabled: bool
     agreement_threshold: float
     force_hold_on_disagreement: bool
-
 
 class StabilityVotingConfig(TypedDict, total=False):
     enabled: bool
     stability_weight: float
     performance_weight: float
 
-
 class AdaptationConfig(TypedDict, total=False):
     enabled: bool
     performance_threshold: float
     rebalancing_interval: int
 
-
 class PredictionInfo(TypedDict):
     action: int
     confidence: float
     specialization: str
-
 
 @dataclass
 class EnsembleConfig:
@@ -66,7 +59,7 @@ class EnsembleConfig:
 
     enabled: bool = True
     members: int = 5
-    specializations: List[str] = field(
+    specializations: list[str] = field(
         default_factory=lambda: ["bull", "bear", "sideways", "high_vol", "low_vol"]
     )
     voting_mechanism: str = "weighted_confidence"
@@ -93,29 +86,27 @@ class EnsembleConfig:
         }
     )
 
-
 @dataclass
 class EnsembleMember:
     """アンサンブルメンバーの情報"""
 
     id: int
     specialization: EnsembleSpecialization
-    model: Optional[object] = None
+    model: object | None = None
     confidence: float = 0.5
     performance_score: float = 0.0
     stability_score: float = 0.0
     last_updated: float = field(default_factory=time.time)
-    training_stats: Dict[str, object] = field(default_factory=dict)
-
+    training_stats: dict[str, object] = field(default_factory=dict)
 
 class EnsemblePredictor:
     """アンサンブル予測器 - 保守性と分析性を重視した設計"""
 
     def __init__(self, config: EnsembleConfig):
         self.config = config
-        self.members: Dict[int, EnsembleMember] = {}
-        self.performance_history: List[Dict[str, object]] = []
-        self.decision_log: List[Dict[str, object]] = []
+        self.members: dict[int, EnsembleMember] = {}
+        self.performance_history: list[dict[str, object]] = []
+        self.decision_log: list[dict[str, object]] = []
         self.logger = get_logger(f"{__name__}.EnsemblePredictor")
 
         self._initialize_members()
@@ -147,7 +138,7 @@ class EnsemblePredictor:
             return default
 
     @staticmethod
-    def _as_object_map(value: object) -> Dict[str, object]:
+    def _as_object_map(value: object) -> dict[str, object]:
         if isinstance(value, dict):
             return {str(k): v for k, v in value.items()}
         return {}
@@ -165,8 +156,8 @@ class EnsemblePredictor:
 
     def _append_bounded_record(
         self,
-        records: List[Dict[str, object]],
-        record: Dict[str, object],
+        records: list[dict[str, object]],
+        record: dict[str, object],
         max_size: int = 10_000,
         retain_size: int = 5_000,
     ) -> None:
@@ -212,7 +203,7 @@ class EnsemblePredictor:
             self.logger.info(f"Removed ensemble member {member_id}")
 
     def update_member_performance(
-        self, member_id: int, performance: float, stability: Optional[float] = None
+        self, member_id: int, performance: float, stability: float | None = None
     ) -> None:
         """メンバーのパフォーマンスを更新"""
         if member_id in self.members:
@@ -252,7 +243,7 @@ class EnsemblePredictor:
 
         return min(max(confidence, 0.0), 1.0)
 
-    def predict(self, observation: np.ndarray) -> Tuple[int, Dict[str, object]]:
+    def predict(self, observation: np.ndarray) -> tuple[int, dict[str, object]]:
         """
         アンサンブル予測を実行
 
@@ -260,7 +251,7 @@ class EnsemblePredictor:
             observation: 観測データ
 
         Returns:
-            Tuple[int, Dict[str, object]]: (予測アクション, 分析情報)
+            tuple[int, dict[str, object]]: (予測アクション, 分析情報)
         """
         if not self.members:
             self.logger.warning(
@@ -269,8 +260,8 @@ class EnsemblePredictor:
             return 0, {"error": "no_members"}
 
         # 各メンバーの予測を取得
-        predictions: Dict[int, PredictionInfo] = {}
-        member_info: Dict[int, Dict[str, object]] = {}
+        predictions: dict[int, PredictionInfo] = {}
+        member_info: dict[int, dict[str, object]] = {}
 
         for member_id, member in self.members.items():
             try:
@@ -332,8 +323,8 @@ class EnsemblePredictor:
         return 0
 
     def _aggregate_predictions(
-        self, predictions: Dict[int, PredictionInfo]
-    ) -> Tuple[int, Dict[str, object]]:
+        self, predictions: dict[int, PredictionInfo]
+    ) -> tuple[int, dict[str, object]]:
         """予測を集約して最終決定を下す"""
         try:
             mechanism = VotingMechanism(self.config.voting_mechanism)
@@ -359,10 +350,10 @@ class EnsemblePredictor:
             return self._majority_vote(predictions)
 
     def _majority_vote(
-        self, predictions: Dict[int, PredictionInfo]
-    ) -> Tuple[int, Dict[str, object]]:
+        self, predictions: dict[int, PredictionInfo]
+    ) -> tuple[int, dict[str, object]]:
         """多数決"""
-        action_counts: Dict[int, int] = {}
+        action_counts: dict[int, int] = {}
         total_confidence = 0.0
 
         for pred_info in predictions.values():
@@ -387,10 +378,10 @@ class EnsemblePredictor:
         return final_action, analysis
 
     def _weighted_confidence_vote(
-        self, predictions: Dict[int, PredictionInfo]
-    ) -> Tuple[int, Dict[str, object]]:
+        self, predictions: dict[int, PredictionInfo]
+    ) -> tuple[int, dict[str, object]]:
         """信頼度加重投票"""
-        action_weights: Dict[int, float] = {}
+        action_weights: dict[int, float] = {}
         total_weight = 0.0
 
         for pred_info in predictions.values():
@@ -423,8 +414,8 @@ class EnsemblePredictor:
         return final_action, analysis
 
     def _consensus_vote(
-        self, predictions: Dict[int, PredictionInfo]
-    ) -> Tuple[int, Dict[str, object]]:
+        self, predictions: dict[int, PredictionInfo]
+    ) -> tuple[int, dict[str, object]]:
         """合意ベース投票"""
         consensus_config = self.config.consensus_requirement
 
@@ -435,7 +426,7 @@ class EnsemblePredictor:
         threshold = min(max(threshold, 0.0), 1.0)
         total_members = len(predictions)
 
-        action_counts: Dict[int, int] = {}
+        action_counts: dict[int, int] = {}
         for pred_info in predictions.values():
             action = pred_info["action"]
             action_counts[action] = action_counts.get(action, 0) + 1
@@ -470,8 +461,8 @@ class EnsemblePredictor:
         return final_action, analysis
 
     def _stability_weighted_vote(
-        self, predictions: Dict[int, PredictionInfo]
-    ) -> Tuple[int, Dict[str, object]]:
+        self, predictions: dict[int, PredictionInfo]
+    ) -> tuple[int, dict[str, object]]:
         """安定性加重投票"""
         stability_config = self.config.stability_voting
         stability_weight = self._as_float(
@@ -481,8 +472,8 @@ class EnsemblePredictor:
             stability_config.get("performance_weight", 0.6), 0.6
         )
 
-        action_scores: Dict[int, float] = {}
-        member_stability: Dict[int, float] = {}
+        action_scores: dict[int, float] = {}
+        member_stability: dict[int, float] = {}
 
         # 各メンバーの安定性情報を取得
         for member_id, pred_info in predictions.items():
@@ -521,12 +512,12 @@ class EnsemblePredictor:
 
         return final_action, analysis
 
-    def get_ensemble_stats(self) -> Dict[str, object]:
+    def get_ensemble_stats(self) -> dict[str, object]:
         """アンサンブルの統計情報を取得（分析用）"""
         if not self.members:
             return {"error": "no_members"}
 
-        member_stats: Dict[int, Dict[str, object]] = {}
+        member_stats: dict[int, dict[str, object]] = {}
         for member_id, member in self.members.items():
             member_stats[member_id] = {
                 "specialization": member.specialization.value,
@@ -561,7 +552,7 @@ class EnsemblePredictor:
             },
         }
 
-    def adapt_ensemble(self, market_conditions: Dict[str, object]) -> None:
+    def adapt_ensemble(self, market_conditions: dict[str, object]) -> None:
         """市場条件に基づいてアンサンブルを適応"""
         if not self._as_bool(self.config.adaptation.get("enabled", False), False):
             return
@@ -686,7 +677,7 @@ class EnsemblePredictor:
             ),
         )
 
-    def _coerce_member_record(self, raw_member: object) -> Optional[EnsembleMember]:
+    def _coerce_member_record(self, raw_member: object) -> EnsembleMember | None:
         member_map = self._as_object_map(raw_member)
         if not member_map:
             return None
@@ -709,10 +700,10 @@ class EnsemblePredictor:
             last_updated=self._as_float(member_map.get("last_updated"), time.time()),
         )
 
-    def _coerce_record_list(self, raw_records: object) -> List[Dict[str, object]]:
+    def _coerce_record_list(self, raw_records: object) -> list[dict[str, object]]:
         if not isinstance(raw_records, list):
             return []
-        records: List[Dict[str, object]] = []
+        records: list[dict[str, object]] = []
         for item in raw_records:
             if isinstance(item, dict):
                 records.append({str(k): v for k, v in item.items()})

@@ -102,7 +102,6 @@ def run_v434_2_pendulum_evaluation(model_path: str, episodes: int = 10):
 
     return result
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SAC v434.2 Pendulum Evaluation")
     parser.add_argument("--model", type=str, required=True, help="Model path")

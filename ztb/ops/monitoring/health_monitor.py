@@ -5,13 +5,12 @@ Health monitoring for the 24/7 trading service.
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, cast
+from typing import Any, cast
 
 import psutil
 
 from ztb.trading.environment.constants import BYTES_PER_GB, BYTES_PER_MB
 from ztb.utils.errors import safe_operation
-
 
 class HealthMonitor:
     """Monitor the health of the trading service."""
@@ -23,15 +22,15 @@ class HealthMonitor:
         self.last_health_check = 0.0
         self.health_check_interval = 60  # seconds
 
-    def check_overall_health(self) -> Dict[str, Any]:
+    def check_overall_health(self) -> dict[str, Any]:
         """
         Perform comprehensive health check.
 
         Returns:
-            Dict containing health status and metrics
+            dict containing health status and metrics
         """
         return cast(
-            Dict[str, Any],
+            dict[str, Any],
             safe_operation(
                 logger=self.logger,
                 operation=self._check_overall_health_impl,
@@ -45,9 +44,9 @@ class HealthMonitor:
             ),
         )
 
-    def _check_overall_health_impl(self) -> Dict[str, Any]:
+    def _check_overall_health_impl(self) -> dict[str, Any]:
         """Implementation of overall health check."""
-        health_status: Dict[str, Any] = {
+        health_status: dict[str, Any] = {
             "timestamp": time.time(),
             "service": self.service_name,
             "status": "healthy",
@@ -79,7 +78,7 @@ class HealthMonitor:
         self.last_health_check = time.time()
         return health_status
 
-    def _check_memory_usage(self) -> Dict[str, Any]:
+    def _check_memory_usage(self) -> dict[str, Any]:
         """Check memory usage."""
         try:
             process = psutil.Process()
@@ -95,7 +94,7 @@ class HealthMonitor:
         except Exception as e:
             return {"healthy": False, "error": str(e)}
 
-    def _check_cpu_usage(self) -> Dict[str, Any]:
+    def _check_cpu_usage(self) -> dict[str, Any]:
         """Check CPU usage."""
         try:
             process = psutil.Process()
@@ -108,7 +107,7 @@ class HealthMonitor:
         except Exception as e:
             return {"healthy": False, "error": str(e)}
 
-    def _check_disk_space(self) -> Dict[str, Any]:
+    def _check_disk_space(self) -> dict[str, Any]:
         """Check disk space availability."""
         try:
             disk_usage = psutil.disk_usage("/")
@@ -122,7 +121,7 @@ class HealthMonitor:
         except Exception as e:
             return {"healthy": False, "error": str(e)}
 
-    def _check_uptime(self) -> Dict[str, Any]:
+    def _check_uptime(self) -> dict[str, Any]:
         """Check service uptime."""
         try:
             uptime_seconds = time.time() - self.start_time
@@ -136,7 +135,7 @@ class HealthMonitor:
         except Exception as e:
             return {"healthy": False, "error": str(e)}
 
-    def _check_log_files(self) -> Dict[str, Any]:
+    def _check_log_files(self) -> dict[str, Any]:
         """Check log file health."""
         try:
             log_file = Path("trading_service.log")
@@ -154,7 +153,7 @@ class HealthMonitor:
         except Exception as e:
             return {"healthy": False, "error": str(e)}
 
-    def _check_configuration(self) -> Dict[str, Any]:
+    def _check_configuration(self) -> dict[str, Any]:
         """Check configuration file accessibility."""
         try:
             config_files = [
@@ -175,7 +174,7 @@ class HealthMonitor:
         except Exception as e:
             return {"healthy": False, "error": str(e)}
 
-    def _collect_metrics(self) -> Dict[str, Any]:
+    def _collect_metrics(self) -> dict[str, Any]:
         """Collect performance metrics."""
         try:
             process = psutil.Process()
@@ -188,7 +187,7 @@ class HealthMonitor:
         except Exception as e:
             return {"error": str(e)}
 
-    def should_restart(self, health_status: Dict[str, Any]) -> bool:
+    def should_restart(self, health_status: dict[str, Any]) -> bool:
         """
         Determine if service should restart based on health status.
 

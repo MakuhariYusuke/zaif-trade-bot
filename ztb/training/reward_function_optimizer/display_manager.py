@@ -20,14 +20,12 @@ logger = get_logger(__name__)
 
 ResultMap = dict[str, object]
 
-
 class TrialLike(Protocol):
     """Minimal trial-like protocol used by plotting helpers."""
 
     number: int
     value: float
     params: dict[str, object]
-
 
 class RewardFunctionDisplayManager:
     """
@@ -45,7 +43,7 @@ class RewardFunctionDisplayManager:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
 
-        # Set up plotting style
+        # set up plotting style
         plt.style.use("default")
         sns.set_palette("husl")
 
@@ -291,7 +289,7 @@ class RewardFunctionDisplayManager:
 
         Args:
             comparison_data: Comparison data dictionary
-            metric_names: List of metric names to display
+            metric_names: list of metric names to display
             show_plots: Whether to display plots
             save_plots: Whether to save plots
         """

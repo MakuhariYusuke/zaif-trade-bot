@@ -5,10 +5,10 @@ Common plotting utilities for consistent chart generation across the codebase.
 
 import matplotlib.pyplot as plt
 from pathlib import Path
-from typing import Optional, Tuple, Any
+from typing import Any
 
 def setup_plot_style():
-    """Set up consistent matplotlib style for all plots."""
+    """set up consistent matplotlib style for all plots."""
     plt.style.use('default')
     plt.rcParams['figure.figsize'] = (12, 6)
     plt.rcParams['font.size'] = 10
@@ -26,7 +26,7 @@ def save_plot(output_path: str | Path, dpi: int = 300, bbox_inches: str = 'tight
     plt.savefig(output_path, dpi=dpi, bbox_inches=bbox_inches)
     plt.close()
 
-def create_figure(figsize: Optional[Tuple[int, int]] = None) -> Any:
+def create_figure(figsize: tuple[int, int] | None = None) -> Any:
     """Create figure with consistent settings."""
     if figsize is None:
         figsize = (12, 6)

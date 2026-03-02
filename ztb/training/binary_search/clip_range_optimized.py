@@ -16,7 +16,6 @@ from ztb.training.binary_search.base_optimizer import (
     HyperparameterOptimizer,
 )
 
-
 class ClipRangeOptimizer(HyperparameterOptimizer):
     """Optimizer for clip_range parameter."""
 
@@ -27,7 +26,6 @@ class ClipRangeOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[float, float]:
         """Get the range for clip_range binary search."""
         return (0.1, 0.5)  # Reasonable range for PPO clip range
-
 
 def main() -> None:
     parser = BinarySearchArgumentParser.create_parser(
@@ -54,7 +52,6 @@ def main() -> None:
         print(
             f"\nOptimization complete. Best clip_range: {best_value}, Score: {best_score:.6f}"
         )
-
 
 if __name__ == "__main__":
     main()

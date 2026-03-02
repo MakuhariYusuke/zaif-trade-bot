@@ -13,14 +13,12 @@ import pandas as pd
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
 
-
 @FeatureRegistry.register("MFI")
 def compute_mfi(df: pd.DataFrame) -> pd.Series:
     """MFI (Money Flow Index)"""
     feature = MFI()
     result_df = feature.compute(df)
     return result_df["mfi"]
-
 
 class MFI(BaseFeature):
     """

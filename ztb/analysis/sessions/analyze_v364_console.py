@@ -9,7 +9,6 @@ v3.6.4のトレーニングログから:
 """
 
 import re
-from typing import List, Tuple
 
 CONSOLE_OUTPUT = """
 | train/                           |                                      |
@@ -31,10 +30,7 @@ CONSOLE_OUTPUT = """
 |    pan_total_samples             | 32                                   |
 """
 
-
-
-
-def analyze_distribution(counts: List[Tuple[int, int, int]]) -> None:
+def analyze_distribution(counts: list[tuple[int, int, int]]) -> None:
     """Analyze action distribution."""
     print("=" * 80)
     print("ACTUAL ACTION DISTRIBUTION ANALYSIS")
@@ -93,7 +89,6 @@ This provides balanced incentives without aggressive changes.
     """
     )
 
-
 def main() -> None:
     """Main analysis."""
     print("CONSOLE LOG ANALYSIS - v3.6.4 SELL Rate Investigation")
@@ -111,7 +106,6 @@ def main() -> None:
     print("\n" + "=" * 80)
     print("ANALYSIS COMPLETE - Ready for v3.6.5 configuration")
     print("=" * 80)
-
 
 if __name__ == "__main__":
     main()

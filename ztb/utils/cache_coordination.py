@@ -46,10 +46,9 @@ import logging
 import time
 from collections import OrderedDict
 from multiprocessing import Manager, RLock
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
-
 
 class CacheCoordinator:
     """
@@ -89,7 +88,7 @@ class CacheCoordinator:
 
         # Create shared memory for cache (multiprocessing-safe)
         self.manager = Manager()
-        self.shared_cache: Dict[str, Tuple[Any, float]] = self.manager.dict()
+        self.shared_cache: dict[str, tuple[Any, float]] = self.manager.dict()
         self.lock = self.manager.RLock()
 
         # Statistics
@@ -128,7 +127,7 @@ class CacheCoordinator:
             self.shared_cache[key] = (value, timestamp)
             logger.debug(f"Cached {key} (size: {self._estimate_size(value)} bytes)")
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """
         Get value from cache.
 
@@ -207,7 +206,7 @@ class CacheCoordinator:
                 return True
             return False
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Get cache statistics.
 
@@ -258,7 +257,6 @@ class CacheCoordinator:
             # Fallback: rough estimate
             return 100
 
-
 class FeatureCacheKey:
     """Helper for generating consistent cache keys for feature vectors."""
 
@@ -266,7 +264,7 @@ class FeatureCacheKey:
     def make_key(
         window_id: int,
         feature_name: str,
-        data_hash: Optional[str] = None,
+        data_hash: str | None = None,
     ) -> str:
         """
         Generate consistent cache key for feature data.

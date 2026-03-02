@@ -4,18 +4,18 @@ Dynamic Learning Rate Scheduler.
 Moved from sac_v430_training_optimizations.py in 063# SAC cleanup.
 Plateau detection + recovery scheduling for PyTorch optimizers.
 """
+from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import torch
-
 
 class DynamicLRScheduler:
     """Dynamic learning rate scheduler with plateau detection and recovery."""
 
     def __init__(
         self,
-        optimizer: Optional["torch.optim.Optimizer"],
+        optimizer: torch.optim.Optimizer | None,
         patience: int = 10,
         factor: float = 0.5,
         min_lr: float = 1e-6,
@@ -35,15 +35,15 @@ class DynamicLRScheduler:
         return self.optimizer.param_groups[0]["lr"]
 
     def _set_lr(self, lr: float) -> None:
-        """Set learning rate for all parameter groups."""
+        """set learning rate for all parameter groups."""
         if self.optimizer is None:
             return
         for param_group in self.optimizer.param_groups:
             param_group["lr"] = lr
 
-    def step(self, current_loss: float) -> Dict[str, Any]:
+    def step(self, current_loss: float) -> dict[str, Any]:
         """Update learning rate based on current loss."""
-        info: Dict[str, Any] = {"lr_changed": False, "lr": self._get_lr(), "action": "none"}
+        info: dict[str, Any] = {"lr_changed": False, "lr": self._get_lr(), "action": "none"}
 
         if current_loss < self.best_loss:
             self.best_loss = current_loss

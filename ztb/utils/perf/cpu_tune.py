@@ -1,13 +1,12 @@
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import psutil
 
-
 def auto_config_threads(
-    num_processes: int, pin_to_cores: Optional[List[int]] = None
-) -> Dict[str, Any]:
+    num_processes: int, pin_to_cores: list[int] | None = None
+) -> dict[str, Any]:
     """
     CPU最適化設定を自動決定
     物理コア数・並列プロセス数・コア割当を考慮して各ライブラリのスレッド数を決定
@@ -54,7 +53,6 @@ def auto_config_threads(
     }
 
     return config
-
 
 def apply_cpu_tuning() -> None:
     """

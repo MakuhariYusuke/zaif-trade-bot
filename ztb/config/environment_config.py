@@ -6,7 +6,6 @@ v456 環境設定の統一（Single Source of Truth）
 
 from dataclasses import dataclass
 
-
 @dataclass
 class TrainingConfig:
     """訓練環境の設定（スケールされた仮想資金）"""
@@ -42,7 +41,6 @@ class TrainingConfig:
     LEARNING_STARTS = 1000
     TOTAL_TIMESTEPS = 100000  # 10K → 100K に増加
 
-
 @dataclass
 class EvaluationConfig:
     """評価環境の設定（訓練と同じ）"""
@@ -61,7 +59,6 @@ class EvaluationConfig:
     VAL_RATIO = 0.15
     EMBARGO_DAYS = 7
 
-
 @dataclass
 class LiveConfig:
     """実運用環境の設定（本番資金）"""
@@ -76,16 +73,13 @@ class LiveConfig:
     FEE_RATE = 0.001
     SLIPPAGE_RATE = 0.0005
 
-
 def get_training_config():
     """訓練設定を取得"""
     return TrainingConfig()
 
-
 def get_evaluation_config():
     """評価設定を取得"""
     return EvaluationConfig()
-
 
 def get_live_config():
     """本番設定を取得"""

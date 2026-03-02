@@ -64,7 +64,6 @@ from .pattern_recognition.wave_counting import (
     WaveYRecognizer,
 )
 
-
 class RecognizerFactory:
     """Factory for creating pattern recognizers."""
 

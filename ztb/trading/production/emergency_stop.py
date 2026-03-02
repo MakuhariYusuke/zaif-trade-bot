@@ -11,13 +11,12 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable
 
 from ztb.trading.production.state_persistence import (
     read_state_payload,
     write_state_payload,
 )
-
 
 class EmergencyStopLevel(Enum):
     """緊急停止レベル"""
@@ -26,7 +25,6 @@ class EmergencyStopLevel(Enum):
     CRITICAL = "critical"  # 重要（主要機能停止）
     SEVERE = "severe"  # 重大（全機能停止）
     CATASTROPHIC = "catastrophic"  # 壊滅的（完全停止）
-
 
 class EmergencyStopTrigger(Enum):
     """緊急停止トリガー"""
@@ -38,7 +36,6 @@ class EmergencyStopTrigger(Enum):
     EXTERNAL_THREAT = "external_threat"  # 外部脅威
     PERFORMANCE_CRITICAL = "performance_critical"  # パフォーマンス危機
     RESOURCE_EXHAUSTION = "resource_exhaustion"  # リソース枯渇
-
 
 class SystemComponent(Enum):
     """システムコンポーネント"""
@@ -52,7 +49,6 @@ class SystemComponent(Enum):
     NETWORK = "network"  # ネットワーク
     MONITORING = "monitoring"  # 監視システム
 
-
 @dataclass
 class EmergencyStopAction:
     """緊急停止アクション"""
@@ -62,8 +58,7 @@ class EmergencyStopAction:
     action_type: str  # 'stop', 'pause', 'isolate', 'shutdown'
     priority: int  # 実行優先度（高いほど先に実行）
     timeout_seconds: int = 30
-    rollback_action: Optional[str] = None  # 復旧時のアクション
-
+    rollback_action: str | None = None  # 復旧時のアクション
 
 @dataclass
 class EmergencyStopEvent:
@@ -75,9 +70,8 @@ class EmergencyStopEvent:
     level: EmergencyStopLevel
     reason: str
     triggered_by: str
-    actions_taken: List[str] = field(default_factory=list)
+    actions_taken: list[str] = field(default_factory=list)
     status: str = "active"  # 'active', 'completed', 'failed', 'cancelled'
-
 
 @dataclass
 class EmergencyStopPlan:
@@ -87,10 +81,9 @@ class EmergencyStopPlan:
     level: EmergencyStopLevel
     name: str
     description: str
-    actions: List[EmergencyStopAction] = field(default_factory=list)
-    auto_trigger_conditions: Dict[str, Any] = field(default_factory=dict)
+    actions: list[EmergencyStopAction] = field(default_factory=list)
+    auto_trigger_conditions: dict[str, Any] = field(default_factory=dict)
     estimated_duration_seconds: int = 60
-
 
 class EmergencyStop:
     """
@@ -109,32 +102,32 @@ class EmergencyStop:
         """
         self.system_name = system_name
         self.is_emergency_stop_active = False
-        self.current_stop_level: Optional[EmergencyStopLevel] = None
-        self.stop_timestamp: Optional[datetime] = None
+        self.current_stop_level: EmergencyStopLevel | None = None
+        self.stop_timestamp: datetime | None = None
 
         # 緊急停止プラン
-        self.stop_plans: Dict[EmergencyStopLevel, EmergencyStopPlan] = {}
+        self.stop_plans: dict[EmergencyStopLevel, EmergencyStopPlan] = {}
         self._initialize_default_plans()
 
         # 自動トリガー条件
-        self.auto_trigger_conditions: Dict[str, Callable[[], bool]] = {}
+        self.auto_trigger_conditions: dict[str, Callable[[], bool]] = {}
 
         # イベント履歴
-        self.stop_events: List[EmergencyStopEvent] = []
+        self.stop_events: list[EmergencyStopEvent] = []
 
         # コンポーネント状態
-        self.component_states: Dict[SystemComponent, str] = {}
+        self.component_states: dict[SystemComponent, str] = {}
         self._initialize_component_states()
 
         # コールバック
-        self.stop_callbacks: List[Callable[[EmergencyStopEvent], Awaitable[None]]] = []
-        self.recovery_callbacks: List[
+        self.stop_callbacks: list[Callable[[EmergencyStopEvent], Awaitable[None]]] = []
+        self.recovery_callbacks: list[
             Callable[[EmergencyStopEvent], Awaitable[None]]
         ] = []
 
         # モニタリング
         self.monitoring_active = False
-        self.monitoring_thread: Optional[threading.Thread] = None
+        self.monitoring_thread: threading.Thread | None = None
 
         # ロギング
         self.logger = logging.getLogger(__name__)
@@ -602,12 +595,12 @@ class EmergencyStop:
             del self.auto_trigger_conditions[condition_id]
             self.logger.info(f"Auto trigger condition removed: {condition_id}")
 
-    def check_auto_trigger_conditions(self) -> List[Dict[str, Any]]:
+    def check_auto_trigger_conditions(self) -> list[dict[str, Any]]:
         """
         自動トリガー条件チェック
 
         Returns:
-            List[Dict[str, Any]]: トリガーされた条件リスト
+            list[dict[str, Any]]: トリガーされた条件リスト
         """
         triggered_conditions = []
 
@@ -628,12 +621,12 @@ class EmergencyStop:
 
         return triggered_conditions
 
-    def get_system_status(self) -> Dict[str, Any]:
+    def get_system_status(self) -> dict[str, Any]:
         """
         システム状態取得
 
         Returns:
-            Dict[str, Any]: システム状態
+            dict[str, Any]: システム状態
         """
         return {
             "system_name": self.system_name,
@@ -651,7 +644,7 @@ class EmergencyStop:
             "total_stop_events": len(self.stop_events),
         }
 
-    def get_stop_events(self, limit: Optional[int] = None) -> List[EmergencyStopEvent]:
+    def get_stop_events(self, limit: int | None = None) -> list[EmergencyStopEvent]:
         """
         停止イベント取得
 
@@ -659,7 +652,7 @@ class EmergencyStop:
             limit: 取得件数制限
 
         Returns:
-            List[EmergencyStopEvent]: 停止イベントリスト
+            list[EmergencyStopEvent]: 停止イベントリスト
         """
         events = self.stop_events
         if limit:

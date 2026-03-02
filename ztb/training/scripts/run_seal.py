@@ -11,10 +11,9 @@ import subprocess
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ztb.utils.file_utils import safe_json_dump, safe_json_load
-
 
 @dataclass
 class EnvironmentSnapshot:
@@ -25,11 +24,10 @@ class EnvironmentSnapshot:
     hostname: str
     user: str
     working_directory: str
-    git_commit: Optional[str] = None
-    git_branch: Optional[str] = None
-    requirements_hash: Optional[str] = None
-    config_hash: Optional[str] = None
-
+    git_commit: str | None = None
+    git_branch: str | None = None
+    requirements_hash: str | None = None
+    config_hash: str | None = None
 
 @dataclass
 class RunSeal:
@@ -39,10 +37,10 @@ class RunSeal:
     seed: int
     timestamp: str
     environment: EnvironmentSnapshot
-    config: Dict[str, Any]
-    metadata: Dict[str, Any]
+    config: dict[str, Any]
+    metadata: dict[str, Any]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "run_id": self.run_id,
@@ -53,7 +51,6 @@ class RunSeal:
             "metadata": self.metadata,
         }
 
-
 class RunSealManager:
     """Manages run seals for training reproducibility."""
 
@@ -63,9 +60,9 @@ class RunSealManager:
 
     def create_seal(
         self,
-        seed: Optional[int] = None,
-        config: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        seed: int | None = None,
+        config: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> RunSeal:
         """Create a new run seal."""
         run_id = self._generate_run_id()
@@ -94,7 +91,7 @@ class RunSealManager:
 
         return seal
 
-    def load_seal(self, run_id: str) -> Optional[RunSeal]:
+    def load_seal(self, run_id: str) -> RunSeal | None:
         """Load a run seal by ID."""
         seal_path = self.seal_dir / f"{run_id}.json"
         if not seal_path.exists():
@@ -113,10 +110,10 @@ class RunSealManager:
         )
 
     def list_seals(self) -> list[str]:
-        """List all available run seals."""
+        """list all available run seals."""
         return [f.stem for f in self.seal_dir.glob("*.json")]
 
-    def validate_environment(self, seal: RunSeal) -> Dict[str, bool]:
+    def validate_environment(self, seal: RunSeal) -> dict[str, bool]:
         """Validate current environment against seal."""
         current = self._capture_environment()
 
@@ -187,20 +184,17 @@ class RunSealManager:
         seal_path = self.seal_dir / f"{seal.run_id}.json"
         safe_json_dump(seal.to_dict(), str(seal_path), indent=2, ensure_ascii=False)
 
-
 # Global instance
 _run_seal_manager = RunSealManager()
-
 
 def get_run_seal_manager() -> RunSealManager:
     """Get global run seal manager."""
     return _run_seal_manager
 
-
 def create_run_seal(
-    seed: Optional[int] = None,
-    config: Optional[Dict[str, Any]] = None,
-    metadata: Optional[Dict[str, Any]] = None,
+    seed: int | None = None,
+    config: dict[str, Any] | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> RunSeal:
     """Convenience function to create a run seal."""
     return _run_seal_manager.create_seal(seed, config, metadata)

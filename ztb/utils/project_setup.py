@@ -6,8 +6,7 @@ from typing import Optional
 
 from ztb.utils.path_utils import get_project_root
 
-
-def setup_project_path(project_root: Optional[Path] = None) -> Path:
+def setup_project_path(project_root: Path | None = None) -> Path:
     """
     Setup project path and ensure it's in sys.path.
 
@@ -25,7 +24,6 @@ def setup_project_path(project_root: Optional[Path] = None) -> Path:
         sys.path.insert(0, project_root_str)
 
     return project_root
-
 
 def get_project_root_from_file(file_path: Path, levels_up: int = 2) -> Path:
     """

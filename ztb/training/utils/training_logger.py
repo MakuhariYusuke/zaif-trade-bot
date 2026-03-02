@@ -11,18 +11,17 @@ Training Logger Utility - 統一訓練ログユーティリティ
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ztb.io.json_io import write_json
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class TrainingConsoleLogger:
     """訓練ログの統一インターフェース"""
 
-    start_time: Optional[datetime]
+    start_time: datetime | None
 
     def __init__(self, algorithm: str, model_name: str, verbose: bool = True):
         """
@@ -67,9 +66,9 @@ class TrainingConsoleLogger:
 
     def print_training_start_banner(
         self,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         total_timesteps: int,
-        data_info: Optional[Dict[str, Any]] = None,
+        data_info: dict[str, Any] | None = None,
     ) -> None:
         """
         訓練開始時のバナーを表示
@@ -109,7 +108,7 @@ class TrainingConsoleLogger:
 
         print("\n" + "=" * 80 + "\n")
 
-    def _print_sac_config(self, config: Dict[str, Any]) -> None:
+    def _print_sac_config(self, config: dict[str, Any]) -> None:
         """SAC設定を表示"""
         sac_params = config.get("sac_hyperparameters") or config.get("sac_params", {})
 
@@ -137,7 +136,7 @@ class TrainingConsoleLogger:
                 formatted_value = self.format_value(value)
                 print(f"  {label:25s}: {formatted_value}")
 
-    def _print_ppo_config(self, config: Dict[str, Any]) -> None:
+    def _print_ppo_config(self, config: dict[str, Any]) -> None:
         """PPO設定を表示"""
         ppo_params = config.get("ppo_hyperparameters", {})
 
@@ -166,7 +165,7 @@ class TrainingConsoleLogger:
                 formatted_value = self.format_value(value)
                 print(f"  {label:25s}: {formatted_value}")
 
-    def _print_environment_config(self, config: Dict[str, Any]) -> None:
+    def _print_environment_config(self, config: dict[str, Any]) -> None:
         """環境設定を表示"""
         env_config = config.get("environment", {})
 
@@ -200,7 +199,7 @@ class TrainingConsoleLogger:
                 print(f"    {key:30s}: {formatted_value}")
 
     def print_training_progress(
-        self, current_step: int, total_steps: int, metrics: Dict[str, float]
+        self, current_step: int, total_steps: int, metrics: dict[str, float]
     ) -> None:
         """
         訓練進捗を表示
@@ -222,7 +221,7 @@ class TrainingConsoleLogger:
         print(message)
 
     def print_training_complete_banner(
-        self, result: Dict[str, Any], final_metrics: Optional[Dict[str, float]] = None
+        self, result: dict[str, Any], final_metrics: dict[str, float] | None = None
     ) -> None:
         """
         訓練完了時のバナーを表示
@@ -280,7 +279,7 @@ class TrainingConsoleLogger:
 
         print("\n" + "=" * 80 + "\n")
 
-    def save_metrics_json(self, metrics: Dict[str, Any], output_path: Path) -> None:
+    def save_metrics_json(self, metrics: dict[str, Any], output_path: Path) -> None:
         """
         メトリクスをJSON形式で保存（最適化スクリプト用）
 
@@ -307,7 +306,6 @@ class TrainingConsoleLogger:
 
         if self.verbose:
             print(f"📝 Metrics saved to: {output_path}")
-
 
 def create_training_logger(
     algorithm: str, model_name: str, verbose: bool = True

@@ -14,12 +14,11 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
-
 
 class StopReason(Enum):
     """Reasons for stopping trading."""
@@ -32,7 +31,6 @@ class StopReason(Enum):
     CONSECUTIVE_LOSSES = "consecutive_losses"
     MANUAL_OVERRIDE = "manual_override"
 
-
 @dataclass
 class StopCondition:
     """Configuration for a stop condition."""
@@ -44,11 +42,10 @@ class StopCondition:
     cooldown_period: int = 300  # seconds
     severity: str = "warning"  # warning, critical, emergency
 
-
 class AdvancedAutoStop:
     """Advanced automatic stop system for live trading."""
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize the auto-stop system.
 
@@ -63,14 +60,14 @@ class AdvancedAutoStop:
 
         # State tracking
         self.is_active = True
-        self.last_stop_time: Optional[datetime] = None
-        self.stop_reason: Optional[StopReason] = None
-        self.cooldown_until: Optional[datetime] = None
+        self.last_stop_time: datetime | None = None
+        self.stop_reason: StopReason | None = None
+        self.cooldown_until: datetime | None = None
 
         # Performance tracking
-        self.performance_history: List[Dict[str, Any]] = []
-        self.trade_history: List[Dict[str, Any]] = []
-        self.price_history: List[Tuple[datetime, float]] = []
+        self.performance_history: list[dict[str, Any]] = []
+        self.trade_history: list[dict[str, Any]] = []
+        self.price_history: list[tuple[datetime, float]] = []
 
         # Risk metrics
         self.current_drawdown = 0.0
@@ -80,7 +77,7 @@ class AdvancedAutoStop:
 
         logger.info("Advanced Auto-Stop system initialized")
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """Get default configuration."""
         return {
             "volatility_stop": {
@@ -125,7 +122,7 @@ class AdvancedAutoStop:
             },
         }
 
-    def _initialize_stop_conditions(self) -> Dict[str, StopCondition]:
+    def _initialize_stop_conditions(self) -> dict[str, StopCondition]:
         """Initialize stop conditions from config."""
         conditions = {}
 
@@ -169,7 +166,7 @@ class AdvancedAutoStop:
                     returns, window=len(returns), annualize=True, trading_days=60
                 )  # Hourly volatility (scaled from minute returns)
 
-    def update_trade_result(self, pnl: float, trade_info: Dict[str, Any]) -> None:
+    def update_trade_result(self, pnl: float, trade_info: dict[str, Any]) -> None:
         """
         Update trade result for risk analysis.
 
@@ -213,12 +210,12 @@ class AdvancedAutoStop:
         else:
             self.current_drawdown = 0.0
 
-    def check_stop_conditions(self) -> Tuple[bool, Optional[StopReason], str]:
+    def check_stop_conditions(self) -> tuple[bool, StopReason | None, str]:
         """
         Check all stop conditions.
 
         Returns:
-            Tuple of (should_stop, reason, message)
+            tuple of (should_stop, reason, message)
         """
         # Check cooldown period
         if self.cooldown_until and datetime.now() < self.cooldown_until:
@@ -241,7 +238,7 @@ class AdvancedAutoStop:
 
     def _check_single_condition(
         self, name: str, condition: StopCondition
-    ) -> Tuple[bool, Optional[StopReason], str]:
+    ) -> tuple[bool, StopReason | None, str]:
         """Check a single stop condition."""
         if name == "volatility_stop":
             return self._check_volatility_stop(condition)
@@ -260,7 +257,7 @@ class AdvancedAutoStop:
 
     def _check_volatility_stop(
         self, condition: StopCondition
-    ) -> Tuple[bool, Optional[StopReason], str]:
+    ) -> tuple[bool, StopReason | None, str]:
         """Check volatility-based stop."""
         if self.volatility > condition.threshold:
             return (
@@ -272,7 +269,7 @@ class AdvancedAutoStop:
 
     def _check_drawdown_stop(
         self, condition: StopCondition
-    ) -> Tuple[bool, Optional[StopReason], str]:
+    ) -> tuple[bool, StopReason | None, str]:
         """Check drawdown-based stop."""
         if self.current_drawdown > condition.threshold:
             return (
@@ -284,7 +281,7 @@ class AdvancedAutoStop:
 
     def _check_time_stop(
         self, condition: StopCondition
-    ) -> Tuple[bool, Optional[StopReason], str]:
+    ) -> tuple[bool, StopReason | None, str]:
         """Check time-based stop."""
         if self.last_stop_time:
             elapsed = (datetime.now() - self.last_stop_time).total_seconds()
@@ -298,7 +295,7 @@ class AdvancedAutoStop:
 
     def _check_performance_stop(
         self, condition: StopCondition
-    ) -> Tuple[bool, Optional[StopReason], str]:
+    ) -> tuple[bool, StopReason | None, str]:
         """Check performance-based stop."""
         if len(self.trade_history) < 10:
             return False, None, "Insufficient trade history"
@@ -317,7 +314,7 @@ class AdvancedAutoStop:
 
     def _check_market_condition_stop(
         self, condition: StopCondition
-    ) -> Tuple[bool, Optional[StopReason], str]:
+    ) -> tuple[bool, StopReason | None, str]:
         """Check market condition-based stop."""
         if len(self.price_history) < 50:
             return False, None, "Insufficient price history"
@@ -334,7 +331,7 @@ class AdvancedAutoStop:
 
     def _check_consecutive_losses_stop(
         self, condition: StopCondition
-    ) -> Tuple[bool, Optional[StopReason], str]:
+    ) -> tuple[bool, StopReason | None, str]:
         """Check consecutive losses stop."""
         if self.consecutive_losses >= condition.threshold:
             return (
@@ -370,7 +367,7 @@ class AdvancedAutoStop:
         logger.info("Trading resumed manually")
         return True
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """Get current status of the auto-stop system."""
         return {
             "is_active": self.is_active,
@@ -386,7 +383,6 @@ class AdvancedAutoStop:
                 [c for c in self.stop_conditions.values() if c.enabled]
             ),
         }
-
 
 def create_production_auto_stop() -> AdvancedAutoStop:
     """Create production-ready auto-stop system."""
@@ -434,7 +430,6 @@ def create_production_auto_stop() -> AdvancedAutoStop:
     }
 
     return AdvancedAutoStop(config)
-
 
 if __name__ == "__main__":
     # Example usage

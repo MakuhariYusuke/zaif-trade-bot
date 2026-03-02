@@ -9,19 +9,17 @@ Ensures type safety and consistent behavior across analysis components.
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, List, Optional, Protocol, TypeVar
+from typing import Any, Generic, Protocol, TypeVar
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")  # Type for analysis input
 U = TypeVar("U")  # Type for analysis output
 
-
 class AnalysisError(Exception):
     """Exception raised when analysis fails."""
 
     pass
-
 
 class Analyzer(Protocol[T, U]):
     """Protocol for analysis interfaces."""
@@ -33,7 +31,6 @@ class Analyzer(Protocol[T, U]):
     def validate_input(self, data: T) -> bool:
         """Validate input data."""
         ...
-
 
 class BaseAnalyzer(ABC, Generic[T, U], Analyzer[T, U]):
     """Base class for analysis components with common functionality."""
@@ -56,15 +53,14 @@ class BaseAnalyzer(ABC, Generic[T, U], Analyzer[T, U]):
         self.logger.error(f"Analysis error in {self.name}{context}: {error}")
         raise AnalysisError(f"Analysis failed: {error}") from error
 
-
 class AnalysisPipeline(Generic[T, U]):
     """Pipeline for chaining multiple analysis steps."""
 
-    def __init__(self, analyzers: List[Analyzer]):
+    def __init__(self, analyzers: list[Analyzer]):
         self.analyzers = analyzers
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    def execute(self, data: T) -> Dict[str, Any]:
+    def execute(self, data: T) -> dict[str, Any]:
         """
         Execute the analysis pipeline.
 
@@ -91,7 +87,6 @@ class AnalysisPipeline(Generic[T, U]):
 
         return results
 
-
 class AnalysisResultFormatter(ABC):
     """Base class for formatting analysis results."""
 
@@ -99,7 +94,6 @@ class AnalysisResultFormatter(ABC):
     def format_results(self, results: Any) -> str:
         """Format analysis results for display."""
         pass
-
 
 class BaseResultFormatter(Generic[U]):
     """Base class for result formatters."""
@@ -128,7 +122,6 @@ class BaseResultFormatter(Generic[U]):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         return f"Generated: {timestamp}\n\n{formatted}"
 
-
 class AnalysisValidator(Generic[T]):
     """Validator for analysis inputs and outputs."""
 
@@ -137,14 +130,14 @@ class AnalysisValidator(Generic[T]):
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def validate_input(
-        self, data: T, required_fields: Optional[List[str]] = None
+        self, data: T, required_fields: list[str] | None = None
     ) -> bool:
         """
         Validate input data structure.
 
         Args:
             data: Input data to validate
-            required_fields: List of required field names
+            required_fields: list of required field names
 
         Returns:
             True if validation passes
@@ -169,7 +162,7 @@ class AnalysisValidator(Generic[T]):
         return True
 
     def validate_output(
-        self, results: Any, expected_type: Optional[type] = None
+        self, results: Any, expected_type: type | None = None
     ) -> bool:
         """
         Validate analysis output.
@@ -195,10 +188,8 @@ class AnalysisValidator(Generic[T]):
 
         return True
 
-
 # Type-safe analysis result containers
 from typing import List as TypingList
-
 
 @dataclass
 class AnalysisSummary:
@@ -206,9 +197,9 @@ class AnalysisSummary:
 
     name: str
     description: str
-    metrics: Dict[str, Any]
-    warnings: Optional[TypingList[str]] = None
-    errors: Optional[TypingList[str]] = None
+    metrics: dict[str, Any]
+    warnings: TypingList[str] | None = None
+    errors: TypingList[str] | None = None
 
     def __post_init__(self):
         if self.warnings is None:
@@ -216,28 +207,26 @@ class AnalysisSummary:
         if self.errors is None:
             self.errors = []
 
-
 @dataclass
 class ComparativeAnalysisResult:
     """Container for comparative analysis results."""
 
     baseline_name: str
     comparison_name: str
-    metrics_comparison: Dict[str, Dict[str, Any]]
+    metrics_comparison: dict[str, dict[str, Any]]
     summary: str
-    recommendations: Optional[TypingList[str]] = None
+    recommendations: TypingList[str] | None = None
 
     def __post_init__(self):
         if self.recommendations is None:
             self.recommendations = []
-
 
 class DisplayManagerProtocol(Protocol):
     """Protocol for display managers."""
 
     def display_backtest_results(
         self,
-        results: Dict[str, Any],
+        results: dict[str, Any],
         title: str = "Backtest Results",
         show_plots: bool = True,
         save_plots: bool = True,
@@ -246,7 +235,7 @@ class DisplayManagerProtocol(Protocol):
         ...
 
     def display_analysis_results(
-        self, results: Dict[str, Any], title: str = "Analysis Results"
+        self, results: dict[str, Any], title: str = "Analysis Results"
     ) -> None:
         """Display analysis results."""
         ...

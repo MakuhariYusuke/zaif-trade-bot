@@ -8,10 +8,8 @@ This script is run in CI to prevent accidental schema changes without version bu
 
 import subprocess
 import sys
-from typing import Set
 
-
-def get_git_modified_files() -> Set[str]:
+def get_git_modified_files() -> set[str]:
     """Get list of modified files in current git changes."""
     try:
         result = subprocess.run(
@@ -36,8 +34,7 @@ def get_git_modified_files() -> Set[str]:
         print("Warning: Could not get git status", file=sys.stderr)
         return set()
 
-
-def check_schema_version_increment(modified_files: Set[str]) -> bool:
+def check_schema_version_increment(modified_files: set[str]) -> bool:
     """Check if schema version was incremented when schema files changed."""
     schema_files = {
         "schema/results_schema.json",
@@ -69,7 +66,6 @@ def check_schema_version_increment(modified_files: Set[str]) -> bool:
     print("✓ Schema version check passed")
     return True
 
-
 def main() -> int:
     """Main entry point."""
     if len(sys.argv) > 1 and sys.argv[1] == "--help":
@@ -83,7 +79,6 @@ def main() -> int:
         return 1
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

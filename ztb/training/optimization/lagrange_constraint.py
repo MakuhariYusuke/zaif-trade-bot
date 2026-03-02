@@ -14,14 +14,13 @@ Dual update: λ ← clip(λ + η * (|r_target - r_actual| - tolerance), 0, λ_ma
 """
 
 from collections import deque
-from typing import Any, Dict, Literal, Tuple, Union
+from typing import Any, Literal
 
 import numpy as np
 import torch
 from numpy.typing import NDArray
 
 ActionType = Literal["HOLD", "BUY", "SELL"]
-
 
 class LagrangeConstraint:
     """
@@ -86,8 +85,8 @@ class LagrangeConstraint:
     def compute_penalty(
         self,
         actions: NDArray[np.int64],
-        legal_masks: Union[NDArray[np.bool_], NDArray[np.floating[Any]]],
-    ) -> Tuple[float, Dict[str, float]]:
+        legal_masks: NDArray[np.bool_] | NDArray[np.floating[Any]],
+    ) -> tuple[float, dict[str, float]]:
         """
         Compute Lagrange penalty term.
 
@@ -96,7 +95,7 @@ class LagrangeConstraint:
             legal_masks: Legal action masks [batch_size, n_actions]
 
         Returns:
-            Tuple of (penalty, info_dict)
+            tuple of (penalty, info_dict)
             - penalty: Lagrange penalty (to subtract from PPO loss)
             - info_dict: Statistics for logging
         """
@@ -159,7 +158,7 @@ class LagrangeConstraint:
 
         return penalty, info
 
-    def get_statistics(self, window: int = 100) -> Dict[str, float]:
+    def get_statistics(self, window: int = 100) -> dict[str, float]:
         """
         Get moving statistics.
 
@@ -195,13 +194,12 @@ class LagrangeConstraint:
         self.penalties = []
         self.lambda_history = []
 
-
 def apply_lagrange_to_loss(
     ppo_loss: torch.Tensor,
     actions: NDArray[np.int64],
-    legal_masks: Union[NDArray[np.bool_], NDArray[np.floating[Any]]],
+    legal_masks: NDArray[np.bool_] | NDArray[np.floating[Any]],
     lagrange: LagrangeConstraint,
-) -> Tuple[torch.Tensor, Dict[str, float]]:
+) -> tuple[torch.Tensor, dict[str, float]]:
     """
     Apply Lagrange constraint to PPO loss.
 
@@ -212,7 +210,7 @@ def apply_lagrange_to_loss(
         lagrange: Lagrange constraint instance
 
     Returns:
-        Tuple of (constrained_loss, info_dict)
+        tuple of (constrained_loss, info_dict)
     """
     # Compute penalty
     penalty, info = lagrange.compute_penalty(actions, legal_masks)
@@ -222,7 +220,6 @@ def apply_lagrange_to_loss(
     constrained_loss = ppo_loss + penalty
 
     return constrained_loss, info
-
 
 def test_lagrange_constraint() -> None:
     """Test Lagrange constraint with synthetic data."""
@@ -273,7 +270,6 @@ def test_lagrange_constraint() -> None:
         print(f"  {key}: {value}")
 
     print("\n✅ Lagrange constraint test complete")
-
 
 if __name__ == "__main__":
     test_lagrange_constraint()

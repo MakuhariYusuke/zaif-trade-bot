@@ -4,8 +4,7 @@ format_utils.py
 Common formatting utilities for consistent output formatting across the codebase.
 """
 
-from typing import Any, Dict
-
+from typing import Any
 
 def format_time(seconds: float) -> str:
     """
@@ -32,7 +31,6 @@ def format_time(seconds: float) -> str:
         else:
             return f"{hours}h {secs:.1f}s"
 
-
 def format_number(num: float, precision: int = 2) -> str:
     """
     Format number with appropriate suffix (K, M, B).
@@ -53,7 +51,6 @@ def format_number(num: float, precision: int = 2) -> str:
     else:
         return f"{num:.{precision}f}"
 
-
 def format_percentage(value: float, precision: int = 2) -> str:
     """
     Format value as percentage.
@@ -66,7 +63,6 @@ def format_percentage(value: float, precision: int = 2) -> str:
         Formatted percentage string
     """
     return f"{value * 100:.{precision}f}%"
-
 
 def format_currency(amount: float, currency: str = "$", precision: int = 2) -> str:
     """
@@ -82,8 +78,7 @@ def format_currency(amount: float, currency: str = "$", precision: int = 2) -> s
     """
     return f"{currency}{amount:.{precision}f}"
 
-
-def format_metric_summary(results: Dict[str, Any]) -> str:
+def format_metric_summary(results: dict[str, Any]) -> str:
     """
     Format metric results as summary string.
 

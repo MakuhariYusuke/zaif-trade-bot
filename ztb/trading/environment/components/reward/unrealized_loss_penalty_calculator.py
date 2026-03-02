@@ -4,7 +4,6 @@ Calculates a penalty for holding a position with unrealized losses over time.
 
 from ztb.trading.environment.utils.config import RewardSettings
 
-
 class UnrealizedLossPenaltyCalculator:
     """
     Calculates a penalty that increases exponentially as a losing position is held.

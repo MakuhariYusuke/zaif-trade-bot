@@ -10,16 +10,13 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Dict, List, Optional
 
 from ztb.trading.production.state_persistence import (
     read_state_payload,
     write_state_payload,
 )
 
-
 # Mock classes for testing
-
 
 class OrderType(Enum):
     MARKET = "market"
@@ -29,12 +26,11 @@ class Order:
     symbol: str
     side: OrderSide
     quantity: Decimal
-    price: Optional[Decimal] = None
+    price: Decimal | None = None
     average_price: Decimal
-    current_price: Optional[Decimal] = None
+    current_price: Decimal | None = None
     unrealized_pnl: Decimal = Decimal("0")
     realized_pnl: Decimal = Decimal("0")
-
 
 @dataclass
 class Trade:
@@ -43,7 +39,6 @@ class Trade:
     symbol: str
 class RiskManager:
     pass
-
 
 class PortfolioState(Enum):
     """ポートフォリオ状態"""
@@ -64,7 +59,6 @@ class PortfolioState(Enum):
         else:  # SELL
             self.unrealized_pnl = (self.entry_price - current_price) * self.quantity
 
-
 @dataclass
 class VirtualTrade:
     """仮想取引"""
@@ -77,7 +71,6 @@ class VirtualTrade:
     timestamp: datetime
     commission: Decimal = field(default=Decimal("0"))
     realized_pnl: Decimal = field(default=Decimal("0"))
-
 
 @dataclass
 class PortfolioMetrics:
@@ -94,7 +87,6 @@ class PortfolioMetrics:
     total_trades: int
     winning_trades: int
     losing_trades: int
-
 
 class VirtualPortfolioManager:
     """
@@ -128,9 +120,9 @@ class VirtualPortfolioManager:
         # ポートフォリオ状態
         self.state = PortfolioState.ACTIVE
         self.cash_balance = initial_balance
-        self.positions: Dict[str, VirtualPosition] = {}
-        self.trades: List[VirtualTrade] = []
-        self.portfolio_history: List[PortfolioMetrics] = []
+        self.positions: dict[str, VirtualPosition] = {}
+        self.trades: list[VirtualTrade] = []
+        self.portfolio_history: list[PortfolioMetrics] = []
 
         # パフォーマンス追跡
         self.peak_value = initial_balance
@@ -357,7 +349,7 @@ class VirtualPortfolioManager:
 
         return realized_pnl
 
-    def update_prices(self, price_updates: Dict[str, Decimal]) -> None:
+    def update_prices(self, price_updates: dict[str, Decimal]) -> None:
         """
         価格更新
 
@@ -455,16 +447,16 @@ class VirtualPortfolioManager:
         self.state = PortfolioState.STOPPED
         self.logger.info("Trading stopped")
 
-    def get_positions(self) -> Dict[str, VirtualPosition]:
+    def get_positions(self) -> dict[str, VirtualPosition]:
         """
         ポジション取得
 
         Returns:
-            Dict[str, VirtualPosition]: ポジション辞書
+            dict[str, VirtualPosition]: ポジション辞書
         """
         return self.positions.copy()
 
-    def get_trades(self, limit: Optional[int] = None) -> List[VirtualTrade]:
+    def get_trades(self, limit: int | None = None) -> list[VirtualTrade]:
         """
         取引履歴取得
 
@@ -472,7 +464,7 @@ class VirtualPortfolioManager:
             limit: 取得件数制限
 
         Returns:
-            List[VirtualTrade]: 取引履歴
+            list[VirtualTrade]: 取引履歴
         """
         trades = self.trades
         if limit:

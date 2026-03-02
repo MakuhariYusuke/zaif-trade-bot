@@ -1,10 +1,9 @@
 import math
-from typing import Any, Dict, Optional, cast
+from typing import Any, Optional, cast
 
 from ztb.trading.environment.constants import EPSILON
 from ztb.trading.execution.model import ExecutionModel, ExecutionResult
 from ztb.trading.types import MarketState
-
 
 class PseudoHFTExecutionModel(ExecutionModel):
     """
@@ -15,7 +14,7 @@ class PseudoHFTExecutionModel(ExecutionModel):
     - Market Impact
     """
 
-    def __init__(self, config: Dict[str, Any]) -> None:
+    def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
         self.c_spread = float(config.get("c_spread", 0.3))
         self.c_vol = float(config.get("c_vol", 0.2))
@@ -84,9 +83,9 @@ class PseudoHFTExecutionModel(ExecutionModel):
         requested_size: float,
         current_atr: float = 0.0,
         current_volume: float = 0.0,
-        market_regime: Optional[str] = None,
+        market_regime: str | None = None,
         # Optional: Allow passing full market state if available, but keep signature compatible
-        market_data: Optional[Dict[str, Any]] = None,
+        market_data: dict[str, Any] | None = None,
     ) -> ExecutionResult:
         # Validate action_type
         if action_type not in ("buy", "sell"):

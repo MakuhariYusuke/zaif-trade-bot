@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """Check available datasets"""
 from pathlib import Path
-from typing import Dict
 
 from ztb.io.data_loader import DataLoader
 
-
-def check_dataset_quality(dataset_path: str = None) -> Dict[str, any]:
+def check_dataset_quality(dataset_path: str = None) -> dict[str, any]:
     """Check dataset quality and return information.
 
     Args:
@@ -51,7 +49,6 @@ def check_dataset_quality(dataset_path: str = None) -> Dict[str, any]:
             print()
 
     return results
-
 
 if __name__ == "__main__":
     check_dataset_quality()

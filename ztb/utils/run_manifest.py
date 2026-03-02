@@ -9,7 +9,7 @@ import hashlib
 import json
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
-from typing import Optional, cast
+from typing import cast
 
 from ztb.io.json_io import read_json_object, write_json
 from ztb.types.common import ConfigDict
@@ -19,11 +19,9 @@ from ztb.utils.git_utils import (
 )
 from ztb.utils.safety import ensure_dict
 
-
 def _as_object_map(value: object) -> dict[str, object]:
     """Safely coerce object to mapping."""
     return ensure_dict(value)
-
 
 def _as_string_list(value: object) -> list[str]:
     """Safely coerce object to list[str]."""
@@ -31,13 +29,11 @@ def _as_string_list(value: object) -> list[str]:
         return []
     return [item for item in value if isinstance(item, str)]
 
-
 def _as_short_text(value: object, limit: int = 16) -> str:
     """Convert value to a short printable text."""
     if isinstance(value, str):
         return value[:limit]
     return "N/A"
-
 
 def inference_config_to_dict(config: object) -> dict[str, object]:
     """
@@ -68,7 +64,6 @@ def inference_config_to_dict(config: object) -> dict[str, object]:
         if isinstance(k, str) and not k.startswith("_")
     }
 
-
 def get_git_sha() -> str:
     """
     Get current git commit SHA.
@@ -77,7 +72,6 @@ def get_git_sha() -> str:
         Git SHA (40-character hex string) or "unknown" if not in git repo
     """
     return _get_git_sha()
-
 
 def get_git_dirty_status() -> bool:
     """
@@ -88,7 +82,6 @@ def get_git_dirty_status() -> bool:
     """
     # Manifest generation is called frequently; tracked changes are sufficient.
     return _get_git_dirty_status(include_untracked=False)
-
 
 def compute_file_hash(file_path: Path) -> str:
     """
@@ -108,7 +101,6 @@ def compute_file_hash(file_path: Path) -> str:
             sha256.update(chunk)
 
     return sha256.hexdigest()
-
 
 def compute_dataset_metadata(dataset_path: Path) -> dict[str, object]:
     """
@@ -172,18 +164,17 @@ def compute_dataset_metadata(dataset_path: Path) -> dict[str, object]:
         "missing_ratio": round(missing_ratio, 6),
     }
 
-
 def generate_manifest(
     model_dir: Path,
     config: ConfigDict,
     feature_names: list[str],
     warmup: int,
-    schema_hash: Optional[str] = None,
-    scaler_hash: Optional[str] = None,
-    fingerprint: Optional[str] = None,
-    additional_metadata: Optional[dict[str, object]] = None,
-    inference_config: Optional[dict[str, object]] = None,
-    dataset_metadata: Optional[dict[str, object]] = None,
+    schema_hash: str | None = None,
+    scaler_hash: str | None = None,
+    fingerprint: str | None = None,
+    additional_metadata: dict[str, object] | None = None,
+    inference_config: dict[str, object] | None = None,
+    dataset_metadata: dict[str, object] | None = None,
 ) -> dict[str, object]:
     """
     Generate complete manifest for a training run.
@@ -191,7 +182,7 @@ def generate_manifest(
     Args:
         model_dir: Directory where model is saved
         config: Training configuration dictionary
-        feature_names: List of feature names used
+        feature_names: list of feature names used
         warmup: Warmup period used
         schema_hash: Hash of feature schema (optional, will compute if schema file exists)
         scaler_hash: Hash of normalization scaler (optional, will compute if scaler file exists)
@@ -262,7 +253,6 @@ def generate_manifest(
 
     return manifest
 
-
 def save_manifest(manifest: dict[str, object], output_path: Path) -> None:
     """
     Save manifest to JSON file.
@@ -272,7 +262,6 @@ def save_manifest(manifest: dict[str, object], output_path: Path) -> None:
         output_path: Path to save manifest.json
     """
     write_json(output_path, manifest, indent=2)
-
 
 def load_manifest(manifest_path: Path) -> dict[str, object]:
     """
@@ -290,7 +279,6 @@ def load_manifest(manifest_path: Path) -> dict[str, object]:
     """
     return read_json_object(manifest_path)
 
-
 def validate_manifest(manifest: dict[str, object]) -> tuple[bool, list[str]]:
     """
     Validate manifest structure and required fields.
@@ -299,7 +287,7 @@ def validate_manifest(manifest: dict[str, object]) -> tuple[bool, list[str]]:
         manifest: Manifest dictionary
 
     Returns:
-        Tuple of (is_valid, list_of_errors)
+        tuple of (is_valid, list_of_errors)
     """
     errors: list[str] = []
 
@@ -340,7 +328,6 @@ def validate_manifest(manifest: dict[str, object]) -> tuple[bool, list[str]]:
     is_valid = len(errors) == 0
     return is_valid, errors
 
-
 def compare_manifests(
     manifest1: dict[str, object],
     manifest2: dict[str, object],
@@ -355,7 +342,7 @@ def compare_manifests(
         ignore_git: If True, ignore git SHA differences (default: True)
 
     Returns:
-        Tuple of (are_compatible, list_of_differences)
+        tuple of (are_compatible, list_of_differences)
     """
     differences: list[str] = []
     hashes1 = _as_object_map(manifest1.get("hashes"))
@@ -395,7 +382,6 @@ def compare_manifests(
     are_compatible = len(differences) == 0
     return are_compatible, differences
 
-
 def preflight_dataset_check(
     dataset_path: Path,
     expected_manifest: dict[str, object],
@@ -410,7 +396,7 @@ def preflight_dataset_check(
         strict: If True, fail on any mismatch (default: True)
 
     Returns:
-        Tuple of (is_valid, list_of_errors)
+        tuple of (is_valid, list_of_errors)
     """
     errors: list[str] = []
 

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -7,14 +7,12 @@ from numpy.typing import NDArray
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
 
-
 @FeatureRegistry.register("Donchian_Pos_20")
 def compute_donchian_pos_20(df: pd.DataFrame) -> pd.Series:
     """Donchian Channel Position (20-period)"""
     feature = Donchian()
     result_df = feature.compute(df, periods=[20])
     return result_df["donchian_pos_20"]
-
 
 @FeatureRegistry.register("Donchian_Width_Rel_20")
 def compute_donchian_width_rel_20(df: pd.DataFrame) -> pd.Series:
@@ -23,14 +21,12 @@ def compute_donchian_width_rel_20(df: pd.DataFrame) -> pd.Series:
     result_df = feature.compute(df, periods=[20])
     return result_df["donchian_width_rel_20"]
 
-
 @FeatureRegistry.register("Donchian_Slope_20")
 def compute_donchian_slope_20(df: pd.DataFrame) -> pd.Series:
     """Donchian Channel Slope (20-period)"""
     feature = Donchian()
     result_df = feature.compute(df, periods=[20])
     return result_df["donchian_slope_20"]
-
 
 class Donchian(BaseFeature):
     """Donchian Channel with normalized position and relative width"""
@@ -45,7 +41,7 @@ class Donchian(BaseFeature):
         close: NDArray[np.floating[Any]],
         atr: NDArray[np.floating[Any]],
         period: int = 20,
-    ) -> Tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]]]:
+    ) -> tuple[NDArray[np.floating[Any]], NDArray[np.floating[Any]]]:
         """Compute Donchian Channel using pure numpy (no numba)"""
         n = len(high)
         upper = np.zeros(n)
@@ -71,8 +67,8 @@ class Donchian(BaseFeature):
     def compute(
         self,
         df: pd.DataFrame,
-        periods: Optional[List[int]] = None,
-        **params: Dict[str, Any],
+        periods: list[int] | None = None,
+        **params: dict[str, Any],
     ) -> pd.DataFrame:
         if periods is None:
             periods_raw = params.get("periods", [20, 55])

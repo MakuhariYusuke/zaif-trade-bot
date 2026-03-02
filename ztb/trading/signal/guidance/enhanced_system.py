@@ -5,7 +5,7 @@ Advanced signal processing system that integrates market regime adaptation
 with quality scoring and strategic guidance for optimal trading decisions.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -21,7 +21,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class EnhancedSignalGuidanceSystem(BaseSignalProcessor):
     """
     Enhanced signal guidance system with regime-adaptive processing
@@ -32,8 +31,8 @@ class EnhancedSignalGuidanceSystem(BaseSignalProcessor):
 
     def __init__(
         self,
-        config: Optional[Dict[str, Any]] = None,
-        threshold_manager: Optional[object] = None,
+        config: dict[str, Any] | None = None,
+        threshold_manager: object | None = None,
     ):
         super().__init__(config)
 
@@ -54,7 +53,7 @@ class EnhancedSignalGuidanceSystem(BaseSignalProcessor):
         self.performance_history = []
         self.regime_performance = {}
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         return {
             "regime_config": {
                 "lookback_periods": {"short": 20, "medium": 50, "long": 100},
@@ -84,7 +83,7 @@ class EnhancedSignalGuidanceSystem(BaseSignalProcessor):
             },
         }
 
-    def _initialize_regime_adaptation(self) -> Dict[str, Dict[str, Any]]:
+    def _initialize_regime_adaptation(self) -> dict[str, dict[str, Any]]:
         """Initialize regime-specific adaptation parameters"""
         return {
             # BUY特化レジーム（最高優先度 - Symmetric）
@@ -343,7 +342,7 @@ class EnhancedSignalGuidanceSystem(BaseSignalProcessor):
         )
 
     def _determine_adapted_action(
-        self, score: float, thresholds: Dict[str, float]
+        self, score: float, thresholds: dict[str, float]
     ) -> int:
         """Determine trading action based on adapted score and thresholds"""
         # Remove 'hold' from thresholds if present (not used in action determination)
@@ -362,7 +361,7 @@ class EnhancedSignalGuidanceSystem(BaseSignalProcessor):
 
     def _generate_strategic_guidance(
         self, adapted_result: SignalResult, current_regime: str, context: SignalContext
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate strategic guidance based on regime and signal analysis"""
         guidance = {
             "primary_action": self._action_to_string(adapted_result.discrete_action),
@@ -489,7 +488,7 @@ class EnhancedSignalGuidanceSystem(BaseSignalProcessor):
 
     def _generate_stop_loss_guidance(
         self, regime: str, context: SignalContext
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate stop loss guidance"""
         if len(context.market_data) < 2:
             return {"type": "PERCENTAGE", "value": 0.02}
@@ -529,7 +528,7 @@ class EnhancedSignalGuidanceSystem(BaseSignalProcessor):
 
     def _generate_take_profit_guidance(
         self, regime: str, context: SignalContext
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate take profit guidance"""
         if len(context.market_data) < 2:
             return {"type": "PERCENTAGE", "value": 0.05}
@@ -591,7 +590,7 @@ class EnhancedSignalGuidanceSystem(BaseSignalProcessor):
                 -regime_memory:
             ]
 
-    def _get_performance_metrics(self, regime: str) -> Dict[str, Any]:
+    def _get_performance_metrics(self, regime: str) -> dict[str, Any]:
         """Get performance metrics for current regime"""
         if regime not in self.regime_performance or not self.regime_performance[regime]:
             return {}
@@ -609,7 +608,7 @@ class EnhancedSignalGuidanceSystem(BaseSignalProcessor):
             "regime_adaptation_active": True,
         }
 
-    def get_system_status(self) -> Dict[str, Any]:
+    def get_system_status(self) -> dict[str, Any]:
         """Get comprehensive system status"""
         return {
             "regime_classifier_status": self.regime_classifier.get_regime_statistics(),

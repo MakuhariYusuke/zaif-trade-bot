@@ -1,7 +1,6 @@
 import threading
 import time
-from typing import Any, Dict, Optional, Tuple
-
+from typing import Any
 
 class MTFWeightManager:
     """
@@ -19,19 +18,19 @@ class MTFWeightManager:
         self._min_weights = {"1min": 0.10, "5min": 0.10, "15min": 0.01}
         self._max_weights = {"1min": 0.50, "5min": 0.80, "15min": 0.50}
         # telemetry for last applied candidate
-        self._last_applied_candidate: Optional[str] = None
-        self._last_applied_ts: Optional[float] = None
+        self._last_applied_candidate: str | None = None
+        self._last_applied_ts: float | None = None
         # lock for atomic updates
         self._lock = threading.Lock()
 
-    def get_weights(self) -> Dict[str, float]:
+    def get_weights(self) -> dict[str, float]:
         return dict(self._weights)
 
-    def get_last_applied_info(self) -> Tuple[Optional[str], Optional[float]]:
+    def get_last_applied_info(self) -> tuple[str | None, float | None]:
         """Return (candidate_id, timestamp) of last applied candidate, if any."""
         return self._last_applied_candidate, self._last_applied_ts
 
-    def set_weights(self, weights: Dict[str, float]) -> bool:
+    def set_weights(self, weights: dict[str, float]) -> bool:
         """Atomically set new weights.
 
         Accepts a dict of weights and optional `_candidate_id` key which will be used
@@ -126,7 +125,7 @@ class MTFWeightManager:
             except Exception:
                 return False
 
-    def update(self, step: int, metrics: Optional[Dict[str, Any]] = None) -> None:
+    def update(self, step: int, metrics: dict[str, Any] | None = None) -> None:
         """Conservative update rule for MTF weights.
 
         Expected metrics format (optional):
@@ -151,7 +150,7 @@ class MTFWeightManager:
             return None
 
         # Build an unnormalized score per timeframe using simple rules (sharpe preferred)
-        scores: Dict[str, float] = {}
+        scores: dict[str, float] = {}
         for tf, m in tf_metrics.items():
             if not isinstance(m, dict):
                 scores[tf] = 0.0

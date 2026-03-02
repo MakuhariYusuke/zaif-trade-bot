@@ -36,17 +36,16 @@ from ztb.analysis.common.types import NormalizerProtocol
 import numpy as np
 from numpy.typing import NDArray
 
-
 @dataclass
 class NormalizationStats(NormalizerProtocol):
     """Normalization statistics with validation capabilities."""
 
-    feature_names: List[str]
+    feature_names: list[str]
     mean: NDArray[np.float64]
     std: NDArray[np.float64]
     n_samples: int = 0
     version: str = "1.0"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Validate data consistency after initialization."""
@@ -64,7 +63,7 @@ class NormalizationStats(NormalizerProtocol):
     def from_vec_normalize(
         cls,
         vec_env: Any,
-        feature_names: Optional[List[str]] = None,
+        feature_names: list[str] | None = None,
     ) -> NormalizationStats:
         """
         Create normalization stats from VecNormalize environment.
@@ -111,7 +110,7 @@ class NormalizationStats(NormalizerProtocol):
     def from_scaler(
         cls,
         scaler: Any,
-        feature_names: List[str],
+        feature_names: list[str],
     ) -> NormalizationStats:
         """
         Create normalization stats from sklearn StandardScaler.
@@ -167,7 +166,7 @@ class NormalizationStats(NormalizerProtocol):
         other: NormalizationStats,
         strict: bool = True,
         tolerance: float = 1e-6,
-    ) -> Tuple[bool, List[str]]:
+    ) -> tuple[bool, list[str]]:
         """
         Validate normalization stats against another instance.
 
@@ -179,7 +178,7 @@ class NormalizationStats(NormalizerProtocol):
         Returns:
             (is_valid, error_messages)
         """
-        errors: List[str] = []
+        errors: list[str] = []
 
         # Check feature names
         if self.feature_names != other.feature_names:
@@ -375,7 +374,6 @@ class NormalizationStats(NormalizerProtocol):
 
         return scaler
 
-
 def save_scaler(
     model_dir: Path,
     stats: NormalizationStats,
@@ -389,7 +387,6 @@ def save_scaler(
     """
     scaler_path = model_dir / "scaler.npz"
     stats.save(scaler_path)
-
 
 def load_scaler(
     model_dir: Path,
@@ -422,7 +419,6 @@ def load_scaler(
             return None  # type: ignore
 
     return NormalizationStats.load(scaler_path)
-
 
 # Protocol implementation methods
 def fit(self, data: Any) -> None:

@@ -6,7 +6,6 @@ from __future__ import annotations
 import statistics
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List
 
 from tensorboard.backend.event_processing import event_accumulator
 from ztb.io.json_io import write_json
@@ -30,12 +29,11 @@ SCALARS_OF_INTEREST = [
     "train/learning_rate",
 ]
 
-
 @dataclass
 class MetricStats:
     tag: str
-    steps: List[int]
-    values: List[float]
+    steps: list[int]
+    values: list[float]
 
     @property
     def final_value(self) -> float:
@@ -57,7 +55,7 @@ class MetricStats:
     def std_value(self) -> float:
         return statistics.pstdev(self.values)
 
-    def to_dict(self) -> Dict[str, float]:
+    def to_dict(self) -> dict[str, float]:
         return {
             "final": self.final_value,
             "max": self.max_value,
@@ -66,8 +64,7 @@ class MetricStats:
             "std": self.std_value,
         }
 
-
-def load_metrics(events_dir: Path) -> Dict[str, MetricStats]:
+def load_metrics(events_dir: Path) -> dict[str, MetricStats]:
     events_file = next(events_dir.glob("**/events.out.tfevents.*"), None)
     if not events_file:
         raise FileNotFoundError(f"No TensorBoard events file under {events_dir}")
@@ -75,7 +72,7 @@ def load_metrics(events_dir: Path) -> Dict[str, MetricStats]:
     ea = event_accumulator.EventAccumulator(str(events_file))
     ea.Reload()
 
-    stats: Dict[str, MetricStats] = {}
+    stats: dict[str, MetricStats] = {}
     tags_dict = ea.Tags()
     raw_scalar_tags = tags_dict["scalars"] if "scalars" in tags_dict else []
     scalar_tags = (
@@ -91,9 +88,8 @@ def load_metrics(events_dir: Path) -> Dict[str, MetricStats]:
         stats[tag] = MetricStats(tag=tag, steps=steps, values=values)
     return stats
 
-
 def main() -> None:
-    comparison: Dict[str, Dict[str, Dict[str, float]]] = {}
+    comparison: dict[str, dict[str, dict[str, float]]] = {}
     print("=" * 100)
     print("Detailed TensorBoard Metric Comparison")
     print("=" * 100)
@@ -101,7 +97,7 @@ def main() -> None:
     for name, path in RUNS.items():
         print(f"\n--- {name} ---")
         metrics = load_metrics(path)
-        run_summary: Dict[str, Dict[str, float]] = {}
+        run_summary: dict[str, dict[str, float]] = {}
         for tag in SCALARS_OF_INTEREST:
             if tag not in metrics:
                 continue
@@ -117,17 +113,16 @@ def main() -> None:
     write_json(output_path, comparison, indent=2, ensure_ascii=False)
     print(f"\nSaved metric summary to {output_path}")
 
-
 def compare_training_metrics(
-    logdirs: List[str] = None,
-    metrics: Optional[List[str]] = None,
-    output_path: Optional[str] = None,
-) -> Dict[str, Dict[str, Dict[str, float]]]:
+    logdirs: list[str] = None,
+    metrics: list[str] | None = None,
+    output_path: str | None = None,
+) -> dict[str, dict[str, dict[str, float]]]:
     """Compare training metrics across different runs.
 
     Args:
-        logdirs: List of log directories to compare
-        metrics: List of metrics to compare
+        logdirs: list of log directories to compare
+        metrics: list of metrics to compare
         output_path: Path to save results
 
     Returns:
@@ -165,7 +160,6 @@ def compare_training_metrics(
         print(f"\nSaved metric summary to {output_file}")
 
     return comparison
-
 
 if __name__ == "__main__":
     main()

@@ -7,7 +7,7 @@ Phase 3: Risk Management & Statistical Validation
 多重検定補正、信頼区間評価、統計的有意性検定を提供。
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 from scipy import stats
@@ -21,7 +21,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class StatisticalValidator:
     """
     統計的検証フレームワーク
@@ -30,7 +29,7 @@ class StatisticalValidator:
     包括的な統計検証システム。
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         """
         Args:
             config: 統計検証設定
@@ -56,10 +55,10 @@ class StatisticalValidator:
 
     def validate_performance_metrics(
         self,
-        returns: List[float],
-        benchmark_returns: Optional[List[float]] = None,
+        returns: list[float],
+        benchmark_returns: list[float] | None = None,
         multiple_metrics: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         性能指標の統計的検証
 
@@ -77,7 +76,7 @@ class StatisticalValidator:
                 "valid": False,
             }
 
-        results: Dict[str, Any] = {}
+        results: dict[str, Any] = {}
 
         try:
             # 基本統計量
@@ -125,9 +124,9 @@ class StatisticalValidator:
 
     def validate_multiple_strategies(
         self,
-        strategy_returns: Dict[str, List[float]],
-        benchmark_returns: Optional[List[float]] = None,
-    ) -> Dict[str, Any]:
+        strategy_returns: dict[str, list[float]],
+        benchmark_returns: list[float] | None = None,
+    ) -> dict[str, Any]:
         """
         複数戦略の統計的比較検証
 
@@ -144,11 +143,11 @@ class StatisticalValidator:
                 "valid": False,
             }
 
-        results: Dict[str, Any] = {}
+        results: dict[str, Any] = {}
 
         try:
             # 個別戦略の検証
-            individual_results: Dict[str, Any] = {}
+            individual_results: dict[str, Any] = {}
             all_sharpes = []
 
             for strategy_name, returns in strategy_returns.items():
@@ -193,10 +192,10 @@ class StatisticalValidator:
 
     def validate_signal_quality(
         self,
-        predictions: List[float],
-        actual_returns: List[float],
-        signal_thresholds: Optional[List[float]] = None,
-    ) -> Dict[str, Any]:
+        predictions: list[float],
+        actual_returns: list[float],
+        signal_thresholds: list[float] | None = None,
+    ) -> dict[str, Any]:
         """
         シグナル品質の統計的検証
 
@@ -217,7 +216,7 @@ class StatisticalValidator:
                 "valid": False,
             }
 
-        results: Dict[str, Any] = {}
+        results: dict[str, Any] = {}
 
         try:
             # 基本相関分析
@@ -252,7 +251,7 @@ class StatisticalValidator:
 
         return results
 
-    def _calculate_basic_statistics(self, returns: List[float]) -> Dict[str, float]:
+    def _calculate_basic_statistics(self, returns: list[float]) -> dict[str, float]:
         """基本統計量計算"""
         returns_array = np.array(returns)
 
@@ -270,8 +269,8 @@ class StatisticalValidator:
         }
 
     def _calculate_sharpe_confidence_interval(
-        self, returns: List[float]
-    ) -> List[float]:
+        self, returns: list[float]
+    ) -> list[float]:
         """Sharpe ratioの信頼区間計算"""
         # ブートストラップ法による信頼区間推定
         sharpes = []
@@ -288,8 +287,8 @@ class StatisticalValidator:
         ]
 
     def _assess_metric_stability(
-        self, returns: List[float], metric: str
-    ) -> Dict[str, Any]:
+        self, returns: list[float], metric: str
+    ) -> dict[str, Any]:
         """指標の安定性評価"""
         if len(returns) < self.stability_window * 2:
             return {
@@ -315,8 +314,8 @@ class StatisticalValidator:
         }
 
     def _compare_with_benchmark(
-        self, strategy_returns: List[float], benchmark_returns: List[float]
-    ) -> Dict[str, Any]:
+        self, strategy_returns: list[float], benchmark_returns: list[float]
+    ) -> dict[str, Any]:
         """ベンチマークとの統計的比較"""
         # t検定
         t_stat, p_value = stats.ttest_ind(strategy_returns, benchmark_returns)
@@ -341,8 +340,8 @@ class StatisticalValidator:
         }
 
     def _compare_strategies_statistically(
-        self, strategy_returns: Dict[str, List[float]]
-    ) -> Dict[str, Any]:
+        self, strategy_returns: dict[str, list[float]]
+    ) -> dict[str, Any]:
         """戦略間の統計的比較（ANOVA）"""
         # 有効な戦略のみ抽出
         valid_strategies = {
@@ -370,8 +369,8 @@ class StatisticalValidator:
         }
 
     def _apply_multiple_testing_correction(
-        self, p_values: List[float]
-    ) -> Dict[str, Any]:
+        self, p_values: list[float]
+    ) -> dict[str, Any]:
         """多重検定補正適用"""
         if not p_values:
             return {"error": "No p-values provided"}
@@ -389,7 +388,7 @@ class StatisticalValidator:
             "alpha_corrected": float(alpha_corrected),
         }
 
-    def _analyze_performance_stability(self, returns: List[float]) -> Dict[str, Any]:
+    def _analyze_performance_stability(self, returns: list[float]) -> dict[str, Any]:
         """性能安定性分析"""
         # ドローダウン分析
         cumulative = np.cumsum(returns)
@@ -411,14 +410,14 @@ class StatisticalValidator:
             "volatility_stability": float(np.std(volatility)) if volatility else 0.0,
         }
 
-    def _calculate_correlation_p_value(self, x: List[float], y: List[float]) -> float:
+    def _calculate_correlation_p_value(self, x: list[float], y: list[float]) -> float:
         """相関係数のp値計算"""
         correlation, p_value = stats.pearsonr(x, y)
         return float(p_value)
 
     def _calculate_correlation_confidence_interval(
-        self, x: List[float], y: List[float]
-    ) -> List[float]:
+        self, x: list[float], y: list[float]
+    ) -> list[float]:
         """相関係数の信頼区間計算（Fisher変換使用）"""
         correlation, _ = stats.pearsonr(x, y)
 
@@ -438,10 +437,10 @@ class StatisticalValidator:
 
     def _analyze_signal_thresholds(
         self,
-        predictions: List[float],
-        actual_returns: List[float],
-        thresholds: List[float],
-    ) -> Dict[str, Any]:
+        predictions: list[float],
+        actual_returns: list[float],
+        thresholds: list[float],
+    ) -> dict[str, Any]:
         """シグナル閾値別分析"""
         results = {}
 
@@ -471,8 +470,8 @@ class StatisticalValidator:
         return results
 
     def _analyze_prediction_accuracy(
-        self, predictions: List[float], actual_returns: List[float]
-    ) -> Dict[str, Any]:
+        self, predictions: list[float], actual_returns: list[float]
+    ) -> dict[str, Any]:
         """予測精度分析"""
         # 方向予測精度
         pred_direction = np.sign(predictions)

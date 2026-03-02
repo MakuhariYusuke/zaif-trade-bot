@@ -16,7 +16,6 @@ from ztb.training.binary_search.base_optimizer import (
     HyperparameterOptimizer,
 )
 
-
 class LearningRateOptimizer(HyperparameterOptimizer):
     """Optimizer for learning_rate parameter."""
 
@@ -27,7 +26,6 @@ class LearningRateOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[float, float]:
         """Get the range for learning_rate binary search."""
         return (1e-5, 1e-2)  # Reasonable range for learning rates
-
 
 def main() -> None:
     parser = BinarySearchArgumentParser.create_parser(
@@ -56,7 +54,6 @@ def main() -> None:
         print(
             f"\nOptimization complete. Best learning_rate: {best_value}, Score: {best_score:.6f}"
         )
-
 
 if __name__ == "__main__":
     main()

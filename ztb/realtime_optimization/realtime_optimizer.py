@@ -8,7 +8,7 @@
 """
 
 import logging
-from typing import Dict, List, Optional, Any, Callable
+from typing import Any, Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 import threading
@@ -16,16 +16,14 @@ import time
 
 logger = logging.getLogger(__name__)
 
-
 @dataclass
 class OptimizationResult:
     """最適化結果"""
     timestamp: datetime
-    parameters: Dict[str, Any]
+    parameters: dict[str, Any]
     performance_score: float
     market_regime: str
     confidence: float
-
 
 @dataclass
 class MarketCondition:
@@ -35,7 +33,6 @@ class MarketCondition:
     volume: float
     regime: str
     timestamp: datetime
-
 
 class RealtimeOptimizer:
     """
@@ -66,14 +63,14 @@ class RealtimeOptimizer:
         self.optimization_interval = optimization_interval
         self.performance_window = performance_window
 
-        self.current_parameters: Dict[str, Any] = {}
-        self.optimization_history: List[OptimizationResult] = []
+        self.current_parameters: dict[str, Any] = {}
+        self.optimization_history: list[OptimizationResult] = []
         self.is_running = False
-        self.optimization_thread: Optional[threading.Thread] = None
+        self.optimization_thread: threading.Thread | None = None
 
         # パフォーマンス追跡
-        self.performance_scores: List[float] = []
-        self.market_conditions: List[MarketCondition] = []
+        self.performance_scores: list[float] = []
+        self.market_conditions: list[MarketCondition] = []
 
         logger.info("RealtimeOptimizer initialized")
 
@@ -194,7 +191,7 @@ class RealtimeOptimizer:
 
         return False
 
-    def _run_optimization(self, market_condition: MarketCondition) -> Dict[str, Any]:
+    def _run_optimization(self, market_condition: MarketCondition) -> dict[str, Any]:
         """
         最適化実行
 
@@ -202,7 +199,7 @@ class RealtimeOptimizer:
             market_condition: 市場条件
 
         Returns:
-            Dict[str, Any]: 新しいパラメータ
+            dict[str, Any]: 新しいパラメータ
         """
         try:
             # 市場条件に応じた最適化設定
@@ -265,7 +262,7 @@ class RealtimeOptimizer:
         else:
             return "dynamic"
 
-    def _extract_optimal_parameters(self, optimization_result: Any) -> Dict[str, Any]:
+    def _extract_optimal_parameters(self, optimization_result: Any) -> dict[str, Any]:
         """
         最適パラメータ抽出
 
@@ -273,7 +270,7 @@ class RealtimeOptimizer:
             optimization_result: 最適化結果
 
         Returns:
-            Dict[str, Any]: 最適パラメータ
+            dict[str, Any]: 最適パラメータ
         """
         # TODO: 最適化結果からのパラメータ抽出
         # ここではモック実装
@@ -285,7 +282,7 @@ class RealtimeOptimizer:
         }
 
     def _apply_parameters(self,
-                         parameters: Dict[str, Any],
+                         parameters: dict[str, Any],
                          market_condition: MarketCondition,
                          performance_score: float):
         """
@@ -326,30 +323,30 @@ class RealtimeOptimizer:
             if c.timestamp > cutoff_date
         ]
 
-    def get_current_parameters(self) -> Dict[str, Any]:
+    def get_current_parameters(self) -> dict[str, Any]:
         """
         現在のパラメータ取得
 
         Returns:
-            Dict[str, Any]: 現在のパラメータ
+            dict[str, Any]: 現在のパラメータ
         """
         return self.current_parameters.copy()
 
-    def get_optimization_history(self) -> List[OptimizationResult]:
+    def get_optimization_history(self) -> list[OptimizationResult]:
         """
         最適化履歴取得
 
         Returns:
-            List[OptimizationResult]: 最適化履歴
+            list[OptimizationResult]: 最適化履歴
         """
         return self.optimization_history.copy()
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """
         ステータス取得
 
         Returns:
-            Dict[str, Any]: 現在のステータス
+            dict[str, Any]: 現在のステータス
         """
         return {
             'is_running': self.is_running,

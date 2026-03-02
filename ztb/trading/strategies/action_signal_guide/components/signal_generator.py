@@ -4,11 +4,12 @@ SignalGenerator Component.
 This component is responsible for generating trading signals from observations.
 Follows Single Responsibility Principle by focusing only on signal generation.
 """
+from __future__ import annotations
 
 import time
 from collections import defaultdict
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
-from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Optional
 
 import pandas as pd
 
@@ -42,20 +43,17 @@ from .sac_integration import (
 )
 from .validation import DataSanitizer, SignalValidator
 
-
-def _get_action_signal_class() -> Type["ActionSignal"]:
+def _get_action_signal_class() -> type["ActionSignal"]:
     """Lazy import to avoid circular imports."""
     from ..action_signal_guide import ActionSignal
 
     return ActionSignal
-
 
 def _get_guidance_level_enum() -> type["GuidanceLevel"]:
     """Lazy import to avoid circular imports."""
     from ..action_signal_guide import GuidanceLevel
 
     return GuidanceLevel
-
 
 class SignalGenerator(ISignalGenerator):
     """
@@ -70,8 +68,8 @@ class SignalGenerator(ISignalGenerator):
     def __init__(
         self,
         config: "ActionSignalGuideConfig",
-        performance_tracker: Optional["IPerformanceTracker"] = None,
-        pattern_statistics: Optional["IPatternStatistics"] = None,
+        performance_tracker: IPerformanceTracker | None = None,
+        pattern_statistics: IPatternStatistics | None = None,
     ) -> None:
         """
         Initialize SignalGenerator.
@@ -85,32 +83,32 @@ class SignalGenerator(ISignalGenerator):
         self.guidance_level = config.guidance_level
         self.logger = get_logger("ztb.trading.strategies.signal_generator")
 
-        self.all_recognizers: List[PatternRecognizer] = []
+        self.all_recognizers: list[PatternRecognizer] = []
         self.performance_tracker = performance_tracker
         self.pattern_statistics = pattern_statistics
         # Internal error tracking to avoid log spam for repeated identical errors
-        self._error_counts: Dict[str, int] = {}
+        self._error_counts: dict[str, int] = {}
 
         # Adaptive algorithm components
-        self.adaptive_weights: Dict[str, float] = {}
-        self.pattern_performance_history: Dict[str, List[float]] = defaultdict(list)
-        self.market_regime_detector: Optional["MarketRegimeDetector"] = None
-        self.regime_processor: Optional["RegimeAdaptiveSignalProcessor"] = None
-        self.market_regime_adapter: Optional["RegimeAdaptiveSignalProcessor"] = None
-        self.market_analyzer: Optional["MarketConditionAnalyzer"] = None
-        self.sac_validator: Optional["SACSignalValidator"] = None
-        self.sac_integrator: Optional["SACDecisionIntegrator"] = None
-        self.sac_monitor: Optional["SACPerformanceMonitor"] = None
-        self.signal_validator: Optional["SignalValidator"] = None
-        self.data_sanitizer: Optional["DataSanitizer"] = None
-        self.performance_tracker: Optional["IPerformanceTracker"] = performance_tracker
-        self.multi_timeframe_analyzer: Optional["MultiTimeframeAnalyzer"] = None
-        self.signal_quality_filter: Optional["SignalQualityFilter"] = None
-        self.signal_quality_evaluator: Optional["SignalQualityEvaluator"] = None
+        self.adaptive_weights: dict[str, float] = {}
+        self.pattern_performance_history: dict[str, list[float]] = defaultdict(list)
+        self.market_regime_detector: MarketRegimeDetector | None = None
+        self.regime_processor: RegimeAdaptiveSignalProcessor | None = None
+        self.market_regime_adapter: RegimeAdaptiveSignalProcessor | None = None
+        self.market_analyzer: MarketConditionAnalyzer | None = None
+        self.sac_validator: SACSignalValidator | None = None
+        self.sac_integrator: SACDecisionIntegrator | None = None
+        self.sac_monitor: SACPerformanceMonitor | None = None
+        self.signal_validator: SignalValidator | None = None
+        self.data_sanitizer: DataSanitizer | None = None
+        self.performance_tracker: IPerformanceTracker | None = performance_tracker
+        self.multi_timeframe_analyzer: MultiTimeframeAnalyzer | None = None
+        self.signal_quality_filter: SignalQualityFilter | None = None
+        self.signal_quality_evaluator: SignalQualityEvaluator | None = None
 
         # Runtime context for adaptive filtering
         self._current_data = pd.DataFrame()
-        self._current_multi_timeframe_data: Optional[dict[str, object]] = None
+        self._current_multi_timeframe_data: dict[str, object] | None = None
         self._current_market_regime: object | None = None
         self._current_sac_decision: object | None = None
 
@@ -125,7 +123,7 @@ class SignalGenerator(ISignalGenerator):
         self.max_workers = (
             min(4, len(self.all_recognizers) // 2) if self.enable_parallel else 1
         )
-        self._parallel_executor: Optional[ThreadPoolExecutor] = None
+        self._parallel_executor: ThreadPoolExecutor | None = None
         self._parallel_executor_workers = 0
 
     def _initialize_adaptive_components(self) -> None:
@@ -427,8 +425,8 @@ class SignalGenerator(ISignalGenerator):
     def adapt_to_market_conditions(
         self,
         current_data: pd.DataFrame,
-        recent_performance: Dict[str, float],
-        market_regime: Optional[str] = None,
+        recent_performance: dict[str, float],
+        market_regime: str | None = None,
     ) -> None:
         """
         Adapt signal generation based on market conditions and recent performance.
@@ -451,7 +449,7 @@ class SignalGenerator(ISignalGenerator):
                 current_data, recent_performance
             )
 
-    def _update_adaptive_weights(self, recent_performance: Dict[str, float]) -> None:
+    def _update_adaptive_weights(self, recent_performance: dict[str, float]) -> None:
         """
         Update adaptive weights based on recent pattern performance.
 
@@ -495,11 +493,11 @@ class SignalGenerator(ISignalGenerator):
 
     def apply_adaptive_filtering(
         self,
-        signals: List["ActionSignal"],
+        signals: list["ActionSignal"],
         current_data: pd.DataFrame,
-        market_context: Optional[dict[str, object]] = None,
-        multi_timeframe_data: Optional[dict[str, object]] = None,
-    ) -> List["ActionSignal"]:
+        market_context: dict[str, object] | None = None,
+        multi_timeframe_data: dict[str, object] | None = None,
+    ) -> list["ActionSignal"]:
         """
         Apply adaptive filtering to generated signals.
 
@@ -552,8 +550,8 @@ class SignalGenerator(ISignalGenerator):
         return filtered_signals
 
     def _apply_adaptive_weighting(
-        self, signals: List["ActionSignal"]
-    ) -> List["ActionSignal"]:
+        self, signals: list["ActionSignal"]
+    ) -> list["ActionSignal"]:
         """
         Apply adaptive weighting to signals.
 
@@ -582,7 +580,7 @@ class SignalGenerator(ISignalGenerator):
 
         return signals
 
-    def get_adaptive_statistics(self) -> Dict[str, Union[float, dict, list]]:
+    def get_adaptive_statistics(self) -> dict[str, float | dict | list]:
         """
         Get statistics about adaptive algorithm performance.
 
@@ -601,7 +599,7 @@ class SignalGenerator(ISignalGenerator):
         self,
         data: pd.DataFrame,
         current_index: int,
-        multi_timeframe_data: Optional[dict[str, object]] = None,
+        multi_timeframe_data: dict[str, object] | None = None,
     ) -> "ActionSignal":
         """
         Generate trading signal from market data.
@@ -910,7 +908,7 @@ class SignalGenerator(ISignalGenerator):
         recognizers: list[PatternRecognizer],
         data: pd.DataFrame,
         current_index: int,
-        multi_timeframe_data: Optional[dict[str, object]],
+        multi_timeframe_data: dict[str, object] | None,
         action_signal_cls: type["ActionSignal"],
     ) -> tuple[list["ActionSignal"], dict[str, list["ActionSignal"]]]:
         """Generate signals using parallel processing with ThreadPoolExecutor."""
@@ -918,7 +916,7 @@ class SignalGenerator(ISignalGenerator):
         pattern_signals: dict[str, list["ActionSignal"]] = defaultdict(list)
 
         executor = self._get_parallel_executor()
-        futures: list[Future[tuple[Optional["ActionSignal"], Optional[str]]]] = [
+        futures: list[Future[tuple[ActionSignal | None, str | None]]] = [
             executor.submit(
                 self._process_recognizer,
                 recognizer,
@@ -991,7 +989,7 @@ class SignalGenerator(ISignalGenerator):
         recognizers: list[PatternRecognizer],
         data: pd.DataFrame,
         current_index: int,
-        multi_timeframe_data: Optional[dict[str, object]],
+        multi_timeframe_data: dict[str, object] | None,
         action_signal_cls: type["ActionSignal"],
     ) -> tuple[list["ActionSignal"], dict[str, list["ActionSignal"]]]:
         """Generate signals using sequential processing (fallback method)."""
@@ -1017,9 +1015,9 @@ class SignalGenerator(ISignalGenerator):
         recognizer: PatternRecognizer,
         data: pd.DataFrame,
         current_index: int,
-        multi_timeframe_data: Optional[dict[str, object]],
+        multi_timeframe_data: dict[str, object] | None,
         action_signal_cls: type["ActionSignal"],
-    ) -> tuple[Optional["ActionSignal"], Optional[str]]:
+    ) -> tuple[ActionSignal | None, str | None]:
         """Run a single recognizer and map its result to ActionSignal."""
         try:
             lookback_period = getattr(recognizer, "get_lookback_period", lambda: 20)()
@@ -1102,8 +1100,8 @@ class SignalGenerator(ISignalGenerator):
         self,
         all_signals: list["ActionSignal"],
         pattern_signals: dict[str, list["ActionSignal"]],
-        action_signal: Optional["ActionSignal"],
-        pattern_type: Optional[str],
+        action_signal: ActionSignal | None,
+        pattern_type: str | None,
     ) -> None:
         """Store generated signal and update pattern statistics."""
         if action_signal is None or pattern_type is None:
@@ -1126,8 +1124,8 @@ class SignalGenerator(ISignalGenerator):
         return "harmonic" in recognizer_name or "dow" in recognizer_name
 
     def _extract_timeframe_alignment(
-        self, multi_timeframe_data: Optional[dict[str, object]]
-    ) -> Optional[float]:
+        self, multi_timeframe_data: dict[str, object] | None
+    ) -> float | None:
         """
         Extract alignment score from multi-timeframe payload.
 
@@ -1166,10 +1164,10 @@ class SignalGenerator(ISignalGenerator):
 
     def _apply_quality_evaluation(
         self,
-        signals: List["ActionSignal"],
+        signals: list["ActionSignal"],
         current_data: pd.DataFrame,
         market_context: dict[str, object],
-    ) -> List["ActionSignal"]:
+    ) -> list["ActionSignal"]:
         """
         Apply quality evaluation to signals and filter based on quality scores.
 

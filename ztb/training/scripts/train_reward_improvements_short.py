@@ -31,7 +31,6 @@ CONFIGS = [
     },
 ]
 
-
 def run_training(config_info):
     """Run training for a single config."""
     config_path = project_root / config_info["path"]
@@ -74,7 +73,6 @@ def run_training(config_info):
     print("\n" + "=" * 80)
     display_training_complete({"session_id": session_id}, training_time)
     print("=" * 80 + "\n")
-
 
 def main():
     print("=" * 80)
@@ -120,7 +118,6 @@ def main():
     print("3. Compare HOLD/BUY/SELL ratios across v378/v379/v380")
     print("4. Proceed to risk metrics and backtesting")
     print("=" * 80 + "\n")
-
 
 if __name__ == "__main__":
     try:

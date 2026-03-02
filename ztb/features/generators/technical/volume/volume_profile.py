@@ -10,13 +10,11 @@ from numpy.typing import NDArray
 
 from ztb.features.core.registry import FeatureRegistry
 
-
 @FeatureRegistry.register("Volume_Profile_Point_of_Control")
 def compute_volume_profile_poc(df: pd.DataFrame) -> pd.Series:
     """Volume Profile Point of Control (price level with highest volume)"""
     extended_features = calculate_volume_profile_extended(df)
     return extended_features["volume_profile_poc"]
-
 
 @FeatureRegistry.register("Volume_Profile_Value_Area_High")
 def compute_volume_profile_vah(df: pd.DataFrame) -> pd.Series:
@@ -24,20 +22,17 @@ def compute_volume_profile_vah(df: pd.DataFrame) -> pd.Series:
     extended_features = calculate_volume_profile_extended(df)
     return extended_features["volume_profile_vah"]
 
-
 @FeatureRegistry.register("Volume_Profile_Value_Area_Low")
 def compute_volume_profile_val(df: pd.DataFrame) -> pd.Series:
     """Volume Profile Value Area Low (70% of volume)"""
     extended_features = calculate_volume_profile_extended(df)
     return extended_features["volume_profile_val"]
 
-
 @FeatureRegistry.register("Volume_Profile_Distribution")
 def compute_volume_profile_distribution(df: pd.DataFrame) -> pd.Series:
     """Volume Profile Distribution (normalized volume at each price level)"""
     extended_features = calculate_volume_profile_extended(df)
     return extended_features["volume_profile_distribution"]
-
 
 def calculate_volume_profile_extended(
     df: pd.DataFrame,
@@ -115,7 +110,6 @@ def calculate_volume_profile_extended(
     result["volume_profile_distribution"] = distribution_values
 
     return result
-
 
 def _compute_volume_profile_single(
     high: npt.NDArray[np.float64],
@@ -224,7 +218,6 @@ def _compute_volume_profile_single(
 
     return poc, vah, val, current_dist, full_dist
 
-
 def volume_profile_feature_summary() -> dict[str, str]:
     """
     Returns a dictionary summarizing each Volume Profile feature.
@@ -235,7 +228,6 @@ def volume_profile_feature_summary() -> dict[str, str]:
         "volume_profile_val": "Value Area Low - lower bound of 70% volume concentration",
         "volume_profile_distribution": "Normalized volume at current price level",
     }
-
 
 if __name__ == "__main__":
     # Simple test

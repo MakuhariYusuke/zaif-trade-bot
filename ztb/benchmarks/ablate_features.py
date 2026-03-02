@@ -10,7 +10,7 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, cast
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -35,14 +35,13 @@ from ztb.features import get_feature_manager
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.utils.errors import safe_operation
 
-
 class MetricsCallback(BaseCallback):
     """メトリクス収集コールバック"""
 
     def __init__(self, verbose: int = 0):
         super().__init__(verbose)
-        self.episode_rewards: List[float] = []
-        self.episode_lengths: List[int] = []
+        self.episode_rewards: list[float] = []
+        self.episode_lengths: list[int] = []
         self.current_episode_reward = 0
         self.current_episode_length = 0
 
@@ -61,7 +60,7 @@ class MetricsCallback(BaseCallback):
 
         return True
 
-    def get_metrics(self) -> Dict[str, float]:
+    def get_metrics(self) -> dict[str, float]:
         if not self.episode_rewards:
             return {
                 "mean_reward": 0.0,
@@ -114,9 +113,8 @@ class MetricsCallback(BaseCallback):
             "env_step_ms": float(env_step_ms),
         }
 
-
 def create_env_with_features(
-    df: pd.DataFrame, enabled_features: List[str]
+    df: pd.DataFrame, enabled_features: list[str]
 ) -> HeavyTradingEnv:
     """特徴量を有効化した環境を作成"""
     return cast(
@@ -129,9 +127,8 @@ def create_env_with_features(
         ),
     )
 
-
 def _create_env_with_features_impl(
-    df: pd.DataFrame, enabled_features: List[str]
+    df: pd.DataFrame, enabled_features: list[str]
 ) -> HeavyTradingEnv:
     """Implementation of environment creation with features."""
     # TODO: Implement proper feature filtering using FeatureRegistry API
@@ -145,13 +142,12 @@ def _create_env_with_features_impl(
 
     return env
 
-
 def run_training(
-    seed: int, timesteps: int, enabled_features: List[str], df: pd.DataFrame
-) -> Dict[str, float]:
+    seed: int, timesteps: int, enabled_features: list[str], df: pd.DataFrame
+) -> dict[str, float]:
     """学習実行"""
     return cast(
-        Dict[str, float],
+        dict[str, float],
         safe_operation(
             logger=None,  # Use default logger
             operation=lambda: _run_training_impl(seed, timesteps, enabled_features, df),
@@ -160,10 +156,9 @@ def run_training(
         ),
     )
 
-
 def _run_training_impl(
-    seed: int, timesteps: int, enabled_features: List[str], df: pd.DataFrame
-) -> Dict[str, float]:
+    seed: int, timesteps: int, enabled_features: list[str], df: pd.DataFrame
+) -> dict[str, float]:
     """Implementation of training execution."""
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -205,7 +200,6 @@ def _run_training_impl(
 
     env.close()
     return metrics
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Feature ablation analysis")
@@ -279,7 +273,7 @@ def main() -> None:
 
     # ベースライン（全特徴量ON）
     logging.info("Baseline (all features)...")
-    baseline_metrics: Dict[str, List[float]] = {}
+    baseline_metrics: dict[str, list[float]] = {}
     for seed in seeds:
         metrics = run_training(seed, args.timesteps, all_features, df)
         for key, value in metrics.items():
@@ -313,7 +307,7 @@ def main() -> None:
         logging.info(f"Ablating {ablated_feature}...")
         ablated_features = [f for f in all_features if f != ablated_feature]
 
-        ablation_metrics: Dict[str, List[float]] = {}
+        ablation_metrics: dict[str, list[float]] = {}
         for seed in seeds:
             metrics = run_training(seed, args.timesteps, ablated_features, df)
             for key, value in metrics.items():
@@ -370,7 +364,6 @@ def main() -> None:
         logging.info(
             f"{row['feature']}: {row['delta_sharpe_like']:.{args.float_precision}f}"
         )
-
 
 if __name__ == "__main__":
     main()

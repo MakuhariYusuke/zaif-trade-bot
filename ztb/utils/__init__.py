@@ -15,14 +15,12 @@ __LAZY_MODULE_ATTRS__ = {
 
 # CI trigger: no-op change to force GitHub Actions run
 
-
 def __getattr__(name: str) -> object:
     if name in __LAZY_MODULE_ATTRS__:
         module_name, attr = __LAZY_MODULE_ATTRS__[name]
         mod = __import__(module_name, fromlist=[attr])
         return getattr(mod, attr)
     raise AttributeError(f"module {__name__} has no attribute {name}")
-
 
 def __dir__() -> list[str]:
     return sorted(list(globals().keys()) + list(__LAZY_MODULE_ATTRS__.keys()))

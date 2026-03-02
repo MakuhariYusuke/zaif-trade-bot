@@ -6,11 +6,12 @@ A comprehensive backtesting framework that supports multiple trading strategies
 including SAC models, Action Signal Guide, and hybrid approaches. Designed to
 leverage SAC learning outcomes for enhanced analysis and strategy evaluation.
 """
+from __future__ import annotations
 
 import os
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -28,7 +29,6 @@ from .strategy_base import TradingStrategy, validate_trading_strategy
 
 logger = get_logger(__name__)
 
-
 @dataclass
 class BacktestConfig:
     """Configuration for backtest execution."""
@@ -38,23 +38,21 @@ class BacktestConfig:
     slippage: float = 0.0005  # 0.05%
     max_position_size: float = 1.0  # Max position as fraction of capital
     enable_shorting: bool = True
-    data_start_date: Optional[str] = None
-    data_end_date: Optional[str] = None
+    data_start_date: str | None = None
+    data_end_date: str | None = None
     warmup_periods: int = 100
-
 
 @dataclass
 class BacktestResult:
     """Results from a backtest run."""
 
     strategy_name: str
-    config: Dict[str, Union[str, int, float, bool]]
+    config: dict[str, str | int | float | bool]
     performance_metrics: BacktestMetrics
-    trade_history: List[Dict[str, Union[str, int, float]]]
-    portfolio_values: List[float]
+    trade_history: list[dict[str, str | int | float]]
+    portfolio_values: list[float]
     execution_time: float
-    metadata: Dict[str, Union[str, int, float, bool]]
-
+    metadata: dict[str, str | int | float | bool]
 
 class UnifiedBacktester:
     """
@@ -68,7 +66,7 @@ class UnifiedBacktester:
     - Automated reporting
     """
 
-    def __init__(self, config_manager: Optional["ConfigManager"] = None):
+    def __init__(self, config_manager: ConfigManager | None = None):
         """
         Initialize the unified backtester.
 
@@ -81,14 +79,14 @@ class UnifiedBacktester:
         self.logger = logger
 
         # Strategy registry
-        self.strategies: Dict[str, Union[TradingStrategy, StrategyAdapter]] = {}
-        self.active_strategy: Optional[Union[TradingStrategy, StrategyAdapter]] = None
+        self.strategies: dict[str, TradingStrategy | StrategyAdapter] = {}
+        self.active_strategy: TradingStrategy | StrategyAdapter | None = None
 
         # Signal performance analyzer
         self.signal_performance_analyzer = BacktestSignalPerformanceAnalyzer()
 
     def register_strategy(
-        self, name: str, strategy: Union[TradingStrategy, StrategyAdapter]
+        self, name: str, strategy: TradingStrategy | StrategyAdapter
     ) -> None:
         """
         Register a trading strategy.
@@ -109,7 +107,7 @@ class UnifiedBacktester:
 
     def set_active_strategy(self, name: str) -> None:
         """
-        Set the active strategy for backtesting.
+        set the active strategy for backtesting.
 
         Args:
             name: Strategy name
@@ -122,13 +120,13 @@ class UnifiedBacktester:
             raise ValueError(f"Strategy '{name}' not found. Available: {available}")
 
         self.active_strategy = self.strategies[name]
-        self.logger.info(f"Set active strategy: {name}")
+        self.logger.info(f"set active strategy: {name}")
 
     def run_backtest(
         self,
         strategy_name: str,
         data: pd.DataFrame,
-        config: Optional[BacktestConfig] = None,
+        config: BacktestConfig | None = None,
         save_results: bool = True,
         **kwargs,
     ) -> BacktestResult:
@@ -147,7 +145,7 @@ class UnifiedBacktester:
         """
         start_time = time.time()
 
-        # Set active strategy
+        # set active strategy
         self.set_active_strategy(strategy_name)
         strategy = self.active_strategy
 
@@ -190,7 +188,7 @@ class UnifiedBacktester:
 
     def _execute_backtest(
         self,
-        strategy: Union[TradingStrategy, StrategyAdapter],
+        strategy: TradingStrategy | StrategyAdapter,
         data: pd.DataFrame,
         config: BacktestConfig,
     ) -> BacktestResult:
@@ -251,8 +249,8 @@ class UnifiedBacktester:
         self,
         equity_series: pd.Series,
         orders_df: pd.DataFrame,
-        adaptation_summary: Optional[Dict[str, Any]],
-        signal_performance_summary: Optional[Dict[str, Any]],
+        adaptation_summary: dict[str, Any] | None,
+        signal_performance_summary: dict[str, Any] | None,
         strategy_name: str,
         config: BacktestConfig,
     ) -> BacktestResult:
@@ -299,16 +297,16 @@ class UnifiedBacktester:
 
     def compare_strategies(
         self,
-        strategy_names: List[str],
+        strategy_names: list[str],
         data: pd.DataFrame,
-        config: Optional[BacktestConfig] = None,
+        config: BacktestConfig | None = None,
         **kwargs,
-    ) -> Dict[str, BacktestResult]:
+    ) -> dict[str, BacktestResult]:
         """
         Compare multiple strategies on the same data.
 
         Args:
-            strategy_names: List of strategy names to compare
+            strategy_names: list of strategy names to compare
             data: Market data
             config: Backtest configuration
             **kwargs: Additional parameters
@@ -335,19 +333,19 @@ class UnifiedBacktester:
 
         return results
 
-    def get_available_strategies(self) -> List[str]:
+    def get_available_strategies(self) -> list[str]:
         """Get list of available strategies."""
         return list(self.strategies.keys())
 
     def run_advanced_analysis(
-        self, result: BacktestResult, analysis_types: Optional[List[str]] = None
-    ) -> Dict[str, Union[float, str, dict, list]]:
+        self, result: BacktestResult, analysis_types: list[str] | None = None
+    ) -> dict[str, float | str | dict | list]:
         """
         Run advanced analysis using integrated archived analysis functions.
 
         Args:
             result: Backtest result to analyze
-            analysis_types: List of analysis types to run (optional)
+            analysis_types: list of analysis types to run (optional)
 
         Returns:
             Advanced analysis results
@@ -408,7 +406,7 @@ class UnifiedBacktester:
 
     def _analyze_temporal_patterns_enhanced(
         self, result: BacktestResult
-    ) -> Dict[str, Union[float, str, dict, list]]:
+    ) -> dict[str, float | str | dict | list]:
         """Enhanced temporal pattern analysis."""
         portfolio_values = pd.Series(result.portfolio_values)
 
@@ -464,7 +462,7 @@ class UnifiedBacktester:
 
     def _analyze_recovery_patterns(
         self, portfolio_values: pd.Series
-    ) -> Dict[str, Union[float, int]]:
+    ) -> dict[str, float | int]:
         """Analyze recovery patterns after drawdowns."""
         peak = portfolio_values.expanding().max()
         drawdown = (portfolio_values - peak) / peak
@@ -554,7 +552,7 @@ class UnifiedBacktester:
 
             env = HeavyTradingEnv(data, env_config)
 
-            # Set model environment
+            # set model environment
             model.set_env(env)
 
             # Run backtest

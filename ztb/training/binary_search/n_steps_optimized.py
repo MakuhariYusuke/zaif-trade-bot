@@ -16,7 +16,6 @@ from ztb.training.binary_search.base_optimizer import (
     HyperparameterOptimizer,
 )
 
-
 class NStepsOptimizer(HyperparameterOptimizer):
     """Optimizer for n_steps parameter."""
 
@@ -27,7 +26,6 @@ class NStepsOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[int, int]:
         """Get the range for n_steps binary search."""
         return (1024, 4096)  # Reasonable range for number of steps per environment
-
 
 def main() -> None:
     parser = BinarySearchArgumentParser.create_parser(
@@ -54,7 +52,6 @@ def main() -> None:
         print(
             f"\nOptimization complete. Best n_steps: {best_value}, Score: {best_score:.6f}"
         )
-
 
 if __name__ == "__main__":
     main()

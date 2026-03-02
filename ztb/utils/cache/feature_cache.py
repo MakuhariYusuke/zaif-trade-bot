@@ -14,11 +14,10 @@ import threading
 import time
 import zlib
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, TypedDict, Union, cast
+from typing import Any, Callable, TypedDict, cast
 
 from ztb.trading.environment.constants import BYTES_PER_KB, BYTES_PER_MB
 from ztb.utils.path_utils import ensure_dir
-
 
 class FeatureCacheParams(TypedDict, total=False):
     """Parameters for feature cache"""
@@ -29,7 +28,6 @@ class FeatureCacheParams(TypedDict, total=False):
     end_date: str
     feature_set: str
     normalization: str
-
 
 try:
     pass
@@ -44,7 +42,6 @@ try:
     HAS_LZ4 = True
 except ImportError:
     HAS_LZ4 = False
-
 
 class FeatureCache:
     def __init__(
@@ -75,14 +72,14 @@ class FeatureCache:
         self._lock = threading.Lock()  # 並列アクセス用ロック
 
         # 圧縮関数（型アノテーション）
-        self._compress_func: Optional[Callable[[bytes], bytes]] = None
-        self._decompress_func: Optional[Callable[[bytes], bytes]] = None
+        self._compress_func: Callable[[bytes], bytes] | None = None
+        self._decompress_func: Callable[[bytes], bytes] | None = None
 
         # 圧縮方式の設定
         self._setup_compressor()
 
         # 統計情報
-        self.stats: Dict[str, Union[int, float]] = {
+        self.stats: dict[str, int | float] = {
             "hits": 0,
             "misses": 0,
             "evictions": 0,
@@ -91,7 +88,7 @@ class FeatureCache:
         }
 
     def _select_compressor(
-        self, data_size_bytes: int, access_pattern: Optional[str] = None
+        self, data_size_bytes: int, access_pattern: str | None = None
     ) -> str:
         """動的圧縮方式選択"""
         if access_pattern is None:
@@ -250,7 +247,7 @@ class FeatureCache:
         except ImportError:
             pass  # psutil未導入時は無視
 
-    def get(self, data_path: str, params: FeatureCacheParams) -> Optional[Any]:
+    def get(self, data_path: str, params: FeatureCacheParams) -> Any | None:
         key = self._key(data_path, params)
         f = self.cache_dir / f"{key}.pkl.z"
         if f.exists():
@@ -290,7 +287,7 @@ class FeatureCache:
 
         return f
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """キャッシュ統計情報を取得"""
         with self._lock:
             total_requests = self.stats["hits"] + self.stats["misses"]
@@ -337,7 +334,7 @@ class FeatureCache:
             logging.warning(f"[CACHE] Error getting cache size: {e}")
             return 0.0
 
-    def monitor_cache_health(self) -> Dict[str, Any]:
+    def monitor_cache_health(self) -> dict[str, Any]:
         """キャッシュの健全性を監視"""
         size_mb = self.get_cache_size_mb()
         warnings = []

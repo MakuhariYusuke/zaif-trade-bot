@@ -6,7 +6,7 @@ Analyzes trading performance across different market regimes (bull, bear, sidewa
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Optional, cast
 
 import numpy as np
 import pandas as pd
@@ -17,7 +17,6 @@ from ztb.metrics.metrics import max_drawdown
 
 # 年間取引日数
 from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
-
 
 @dataclass
 class RegimeSegment:
@@ -34,7 +33,6 @@ class RegimeSegment:
     duration_days: int
     confidence: float = 0.5
 
-
 @dataclass
 class RegimeMetrics:
     """Performance metrics for a regime."""
@@ -48,7 +46,6 @@ class RegimeMetrics:
     avg_trade_return: float
     volatility: float
     regime_duration_days: float
-
 
 class RegimeDetector:
     """Detects market regimes based on price movements."""
@@ -75,7 +72,7 @@ class RegimeDetector:
         self.volatility_threshold = volatility_threshold
         self.trend_threshold = trend_threshold
 
-    def detect_regimes(self, price_data: pd.DataFrame) -> List[RegimeSegment]:
+    def detect_regimes(self, price_data: pd.DataFrame) -> list[RegimeSegment]:
         """
         Detect market regimes in price data.
 
@@ -83,7 +80,7 @@ class RegimeDetector:
             price_data: DataFrame with 'close' column and datetime index
 
         Returns:
-            List of regime segments
+            list of regime segments
         """
         if "close" not in price_data.columns:
             raise ValueError("Price data must contain 'close' column")
@@ -175,7 +172,7 @@ class RegimeDetector:
 
     def _create_segment(
         self, data: pd.DataFrame, start_idx: int, end_idx: int, regime: MarketRegime
-    ) -> Optional[RegimeSegment]:
+    ) -> RegimeSegment | None:
         """Create a regime segment from data indices."""
         if start_idx > end_idx:
             return None
@@ -209,11 +206,10 @@ class RegimeDetector:
             confidence=0.8,  # Simple confidence based on trend strength
         )
 
-
 class RegimeEvaluator:
     """Evaluates trading performance across market regimes."""
 
-    def __init__(self, regime_detector: Optional[RegimeDetector] = None):
+    def __init__(self, regime_detector: RegimeDetector | None = None):
         """Initialize regime evaluator."""
         super().__init__()
         self.regime_detector = regime_detector or RegimeDetector()
@@ -221,15 +217,15 @@ class RegimeEvaluator:
     def evaluate_performance(
         self,
         price_data: pd.DataFrame,
-        trade_log: List[Dict[str, Any]],
-        baseline_strategies: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        trade_log: list[dict[str, Any]],
+        baseline_strategies: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Evaluate performance across regimes.
 
         Args:
             price_data: Market data with datetime index
-            trade_log: List of trade records
+            trade_log: list of trade records
             baseline_strategies: Optional baseline strategy results
 
         Returns:
@@ -286,7 +282,7 @@ class RegimeEvaluator:
         return regime_results
 
     def _get_regime_trades(
-        self, trades_df: pd.DataFrame, segments: List[RegimeSegment]
+        self, trades_df: pd.DataFrame, segments: list[RegimeSegment]
     ) -> pd.DataFrame:
         """Get trades that occurred within regime segments."""
         if trades_df.empty:
@@ -305,7 +301,7 @@ class RegimeEvaluator:
     def _calculate_regime_metrics(
         self,
         price_data: pd.DataFrame,
-        segments: List[RegimeSegment],
+        segments: list[RegimeSegment],
         trades: pd.DataFrame,
     ) -> RegimeMetrics:
         """Calculate performance metrics for a regime."""
@@ -358,10 +354,10 @@ class RegimeEvaluator:
         )
 
     def _compare_baselines(
-        self, regime_results: Dict[str, Any], baseline_strategies: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, regime_results: dict[str, Any], baseline_strategies: dict[str, Any]
+    ) -> dict[str, Any]:
         """Compare regime performance with baseline strategies."""
-        comparison: Dict[str, Any] = {}
+        comparison: dict[str, Any] = {}
 
         for regime_name, regime_data in regime_results.items():
             if regime_name == "baseline_comparison":
@@ -386,7 +382,7 @@ class RegimeEvaluator:
         return comparison
 
     def generate_report(
-        self, evaluation_results: Dict[str, Any], output_path: Optional[str] = None
+        self, evaluation_results: dict[str, Any], output_path: str | None = None
     ) -> str:
         """Generate human-readable regime evaluation report."""
         lines = []
@@ -435,7 +431,7 @@ class RegimeEvaluator:
 
         return report
 
-    def _calculate_trade_metrics(self, trades: List[Dict[str, Any]]) -> RegimeMetrics:
+    def _calculate_trade_metrics(self, trades: list[dict[str, Any]]) -> RegimeMetrics:
         """Calculate trade metrics for testing purposes."""
         if not trades:
             return RegimeMetrics(
@@ -508,7 +504,6 @@ class RegimeEvaluator:
             volatility=0.02,
             regime_duration_days=30.0,
         )
-
 
 def get_baseline_comparison_engine() -> Any:
     """Get baseline comparison engine for testing."""

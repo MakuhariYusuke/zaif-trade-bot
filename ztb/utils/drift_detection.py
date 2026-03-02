@@ -10,7 +10,7 @@ Thresholds:
 """
 
 from pathlib import Path
-from typing import Tuple, TypedDict
+from typing import TypedDict
 
 import numpy as np
 import pandas as pd
@@ -18,7 +18,6 @@ from numpy.typing import NDArray
 from scipy import stats
 
 from ztb.trading.environment.constants import EPSILON
-
 
 class DriftResultDict(TypedDict):
     """Drift detection result dictionary."""
@@ -34,7 +33,6 @@ class DriftResultDict(TypedDict):
     eval_mean: float
     train_std: float
     eval_std: float
-
 
 def calculate_psi(
     expected: NDArray[np.float32],
@@ -101,11 +99,10 @@ def calculate_psi(
 
     return float(psi)
 
-
 def calculate_ks(
     expected: NDArray[np.float32],
     actual: NDArray[np.float32],
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """
     Calculate Kolmogorov-Smirnov test statistic and p-value.
 
@@ -118,7 +115,7 @@ def calculate_ks(
         actual: Actual distribution (e.g., evaluation data)
 
     Returns:
-        Tuple of (statistic, p_value)
+        tuple of (statistic, p_value)
         - statistic: KS statistic (0 to 1, higher = more different)
         - p_value: Probability that distributions are the same
 
@@ -143,7 +140,6 @@ def calculate_ks(
     statistic, p_value = stats.ks_2samp(expected, actual)
 
     return (float(statistic), float(p_value))
-
 
 def detect_drift_single_feature(
     train_values: NDArray[np.float32],
@@ -207,7 +203,6 @@ def detect_drift_single_feature(
         "eval_std": eval_std,
     }
 
-
 def detect_drift_all_features(
     train_df: pd.DataFrame,
     eval_df: pd.DataFrame,
@@ -245,7 +240,6 @@ def detect_drift_all_features(
         results.append(result)
 
     return pd.DataFrame(results)
-
 
 def generate_drift_report_html(
     drift_df: pd.DataFrame,

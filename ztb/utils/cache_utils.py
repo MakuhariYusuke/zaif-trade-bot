@@ -7,10 +7,9 @@ This module provides various caching strategies including LRU, TTL, and memory-a
 import threading
 import time
 from functools import wraps
-from typing import Any, Callable, Dict, Optional, TypeVar
+from typing import Any, Callable, TypeVar
 
 F = TypeVar("F", bound=Callable[..., Any])
-
 
 class TTLCache:
     """
@@ -19,10 +18,10 @@ class TTLCache:
 
     def __init__(self, ttl_seconds: float = 300.0):  # 5 minutes default
         self.ttl = ttl_seconds
-        self.cache: Dict[str, tuple[Any, float]] = {}
+        self.cache: dict[str, tuple[Any, float]] = {}
         self.lock = threading.RLock()
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """Get value from cache if not expired."""
         with self.lock:
             if key in self.cache:
@@ -35,7 +34,7 @@ class TTLCache:
             return None
 
     def set(self, key: str, value: Any) -> None:
-        """Set value in cache with current timestamp."""
+        """set value in cache with current timestamp."""
         with self.lock:
             self.cache[key] = (value, time.time())
 
@@ -57,7 +56,6 @@ class TTLCache:
                 del self.cache[key]
             return len(expired_keys)
 
-
 class MemoryAwareCache:
     """
     Cache that respects memory limits and automatically evicts old entries.
@@ -65,7 +63,7 @@ class MemoryAwareCache:
 
     def __init__(self, max_memory_mb: float = 100.0):
         self.max_memory_bytes = max_memory_mb * 1024 * 1024
-        self.cache: Dict[
+        self.cache: dict[
             str, tuple[Any, float, int]
         ] = {}  # key -> (value, timestamp, size_bytes)
         self.current_memory = 0
@@ -87,7 +85,7 @@ class MemoryAwareCache:
         else:
             return 1000  # Default estimate for complex objects
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """Get value from cache."""
         with self.lock:
             if key in self.cache:
@@ -98,7 +96,7 @@ class MemoryAwareCache:
             return None
 
     def set(self, key: str, value: Any) -> None:
-        """Set value in cache with memory management."""
+        """set value in cache with memory management."""
         with self.lock:
             size = self._get_size(value)
 
@@ -118,7 +116,6 @@ class MemoryAwareCache:
         with self.lock:
             self.cache.clear()
             self.current_memory = 0
-
 
 def cached_with_ttl(ttl_seconds: float) -> Callable[[F], F]:
     """
@@ -149,7 +146,6 @@ def cached_with_ttl(ttl_seconds: float) -> Callable[[F], F]:
 
     return decorator
 
-
 def memory_cached(max_memory_mb: float = 50.0) -> Callable[[F], F]:
     """
     Decorator that caches function results with memory limits.
@@ -173,7 +169,6 @@ def memory_cached(max_memory_mb: float = 50.0) -> Callable[[F], F]:
         return wrapper  # type: ignore[return-value]
 
     return decorator
-
 
 # Global cache instances
 model_cache = TTLCache(ttl_seconds=3600)  # 1 hour for models

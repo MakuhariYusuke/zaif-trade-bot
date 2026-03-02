@@ -9,7 +9,7 @@ import time
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Callable, Dict, List, Optional
+from typing import Callable
 
 import numpy as np
 
@@ -25,7 +25,6 @@ from .types import (
     SafetyLevel,
     SafetyStatus,
 )
-
 
 @dataclass
 class SafetyConfig:
@@ -70,21 +69,19 @@ class SafetyConfig:
                 "emergency_shutdown_threshold must be less than critical_safety_threshold"
             )
 
-
 logger = logging.getLogger(__name__)
-
 
 class AnomalyDetector:
     """異常検知器"""
 
     def __init__(self, config: SafetyConfig):
         self.config = config
-        self.metric_history: Dict[str, deque] = defaultdict(lambda: deque(maxlen=1000))
-        self.baseline_stats: Dict[str, Dict[str, float]] = {}
+        self.metric_history: dict[str, deque] = defaultdict(lambda: deque(maxlen=1000))
+        self.baseline_stats: dict[str, dict[str, float]] = {}
 
     def detect_anomalies(
-        self, metrics: Dict[str, MetricValue]
-    ) -> List[AnomalyDetection]:
+        self, metrics: dict[str, MetricValue]
+    ) -> list[AnomalyDetection]:
         """異常検知"""
         anomalies = []
 
@@ -116,7 +113,7 @@ class AnomalyDetector:
 
     def _detect_single_anomaly(
         self, metric_name: str, value: float
-    ) -> Optional[AnomalyDetection]:
+    ) -> AnomalyDetection | None:
         """単一メトリクスの異常検知"""
         if metric_name not in self.baseline_stats:
             return None
@@ -146,13 +143,12 @@ class AnomalyDetector:
 
         return None
 
-
 class SafetyChecker:
     """安全チェック実行器"""
 
     def __init__(self, config: SafetyConfig):
         self.config = config
-        self.check_functions: Dict[str, Callable] = {}
+        self.check_functions: dict[str, Callable] = {}
         self._register_default_checks()
 
     def _register_default_checks(self) -> None:
@@ -166,8 +162,8 @@ class SafetyChecker:
         }
 
     def perform_safety_checks(
-        self, metrics: Dict[str, MetricValue], anomalies: List[AnomalyDetection]
-    ) -> List[SafetyCheck]:
+        self, metrics: dict[str, MetricValue], anomalies: list[AnomalyDetection]
+    ) -> list[SafetyCheck]:
         """安全チェック実行"""
         checks = []
 
@@ -191,7 +187,7 @@ class SafetyChecker:
         return checks
 
     def _check_system_health(
-        self, metrics: Dict[str, MetricValue], anomalies: List[AnomalyDetection]
+        self, metrics: dict[str, MetricValue], anomalies: list[AnomalyDetection]
     ) -> SafetyCheck:
         """システムヘルスチェック"""
         # CPU使用率チェック
@@ -231,7 +227,7 @@ class SafetyChecker:
         )
 
     def _check_performance_stability(
-        self, metrics: Dict[str, MetricValue], anomalies: List[AnomalyDetection]
+        self, metrics: dict[str, MetricValue], anomalies: list[AnomalyDetection]
     ) -> SafetyCheck:
         """パフォーマンス安定性チェック"""
         # 勝率チェック
@@ -271,7 +267,7 @@ class SafetyChecker:
         )
 
     def _check_resource_usage(
-        self, metrics: Dict[str, MetricValue], anomalies: List[AnomalyDetection]
+        self, metrics: dict[str, MetricValue], anomalies: list[AnomalyDetection]
     ) -> SafetyCheck:
         """リソース使用チェック"""
         # 基本的なリソースチェックはシステムヘルスチェックでカバー
@@ -285,7 +281,7 @@ class SafetyChecker:
         )
 
     def _check_error_rates(
-        self, metrics: Dict[str, MetricValue], anomalies: List[AnomalyDetection]
+        self, metrics: dict[str, MetricValue], anomalies: list[AnomalyDetection]
     ) -> SafetyCheck:
         """エラーレートチェック"""
         error_rate = metrics.get("error_rate")
@@ -309,7 +305,7 @@ class SafetyChecker:
         )
 
     def _check_market_conditions(
-        self, metrics: Dict[str, MetricValue], anomalies: List[AnomalyDetection]
+        self, metrics: dict[str, MetricValue], anomalies: list[AnomalyDetection]
     ) -> SafetyCheck:
         """市場状況チェック"""
         # ボラティリティチェック
@@ -333,14 +329,13 @@ class SafetyChecker:
             details={"volatility": volatility.value if volatility else None},
         )
 
-
 class FallbackHandler:
     """フォールバックハンドラー"""
 
     def __init__(self, config: SafetyConfig):
         self.config = config
-        self.active_fallbacks: Dict[str, FallbackAction] = {}
-        self.fallback_functions: Dict[FallbackType, Callable] = {
+        self.active_fallbacks: dict[str, FallbackAction] = {}
+        self.fallback_functions: dict[FallbackType, Callable] = {
             FallbackType.GRADUAL: self._execute_gradual_rollback,
             FallbackType.IMMEDIATE: self._execute_immediate_rollback,
             FallbackType.CONSERVATIVE: self._execute_conservative_mode,
@@ -385,7 +380,7 @@ class FallbackHandler:
         }
         return durations.get(fallback_type, 60)
 
-    def _get_rollback_steps(self, fallback_type: FallbackType) -> List[str]:
+    def _get_rollback_steps(self, fallback_type: FallbackType) -> list[str]:
         """ロールバックステップを取得"""
         steps = {
             FallbackType.GRADUAL: [
@@ -416,7 +411,7 @@ class FallbackHandler:
         }
         return steps.get(fallback_type, ["Execute fallback procedure"])
 
-    def _get_recovery_steps(self, fallback_type: FallbackType) -> List[str]:
+    def _get_recovery_steps(self, fallback_type: FallbackType) -> list[str]:
         """回復ステップを取得"""
         steps = {
             FallbackType.GRADUAL: [
@@ -470,7 +465,7 @@ class FallbackHandler:
         # 実際の実装では取引システムと連携
         time.sleep(0.1)  # シミュレーション
 
-    def get_active_fallbacks(self) -> List[FallbackAction]:
+    def get_active_fallbacks(self) -> list[FallbackAction]:
         """アクティブなフォールバックを取得"""
         return list(self.active_fallbacks.values())
 
@@ -482,17 +477,16 @@ class FallbackHandler:
             return True
         return False
 
-
 class RecoveryManager:
     """回復マネージャー"""
 
     def __init__(self, config: SafetyConfig):
         self.config = config
-        self.recovery_plans: Dict[str, RecoveryPlan] = {}
-        self.recovery_attempts: Dict[str, int] = defaultdict(int)
+        self.recovery_plans: dict[str, RecoveryPlan] = {}
+        self.recovery_attempts: dict[str, int] = defaultdict(int)
 
     def create_recovery_plan(
-        self, trigger_reason: str, steps: List[str], success_criteria: List[str]
+        self, trigger_reason: str, steps: list[str], success_criteria: list[str]
     ) -> str:
         """回復計画作成"""
         plan_id = f"recovery_{int(time.time())}"
@@ -552,7 +546,6 @@ class RecoveryManager:
             self.recovery_attempts[plan.triggered_by] += 1
             return False
 
-
 class SafetyManager:
     """安全マネージャー"""
 
@@ -563,7 +556,7 @@ class SafetyManager:
         self.fallback_handler = FallbackHandler(config)
         self.recovery_manager = RecoveryManager(config)
 
-        self.monitoring_thread: Optional[threading.Thread] = None
+        self.monitoring_thread: threading.Thread | None = None
         self.is_monitoring = False
 
         # 安全ステータス
@@ -640,7 +633,7 @@ class SafetyManager:
         # 自動対応
         self._handle_automatic_actions(safety_level, anomalies)
 
-    def _get_mock_metrics(self) -> Dict[str, MetricValue]:
+    def _get_mock_metrics(self) -> dict[str, MetricValue]:
         """モックメトリクス取得（実際の実装では監視システムから取得）"""
         return {
             "cpu_usage_percent": MetricValue(
@@ -664,7 +657,7 @@ class SafetyManager:
         }
 
     def _calculate_overall_safety_level(
-        self, checks: List[SafetyCheck], anomalies: List[AnomalyDetection]
+        self, checks: list[SafetyCheck], anomalies: list[AnomalyDetection]
     ) -> SafetyLevel:
         """全体安全レベル計算"""
         # クリティカルチェックがある場合
@@ -691,7 +684,7 @@ class SafetyManager:
 
         return SafetyLevel.NORMAL
 
-    def _calculate_health_score(self, checks: List[SafetyCheck]) -> float:
+    def _calculate_health_score(self, checks: list[SafetyCheck]) -> float:
         """ヘルススコア計算"""
         if not checks:
             return 1.0
@@ -711,7 +704,7 @@ class SafetyManager:
         return total_score / len(checks)
 
     def _handle_automatic_actions(
-        self, safety_level: SafetyLevel, anomalies: List[AnomalyDetection]
+        self, safety_level: SafetyLevel, anomalies: list[AnomalyDetection]
     ) -> None:
         """自動対応処理"""
         # 緊急レベルの場合
@@ -754,7 +747,7 @@ class SafetyManager:
         )
 
     def create_recovery_plan(
-        self, trigger_reason: str, steps: List[str], success_criteria: List[str]
+        self, trigger_reason: str, steps: list[str], success_criteria: list[str]
     ) -> str:
         """回復計画作成"""
         return self.recovery_manager.create_recovery_plan(

@@ -36,9 +36,6 @@ except ImportError as e:
     print("Required packages not available. Please install dependencies.")
     sys.exit(1)
 
-
-
-
 def run_backtest():
     """Run backtest with SAC v430 model."""
 
@@ -186,9 +183,6 @@ def run_backtest():
         traceback.print_exc()
         print("=" * 60)
         return None
-
-
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -8,7 +8,7 @@
 """
 
 import logging
-from typing import Dict, List, Optional, Any
+from typing import Any
 from dataclasses import dataclass
 from datetime import datetime
 import time
@@ -18,7 +18,6 @@ from .trading_api import TradingAPI, OrderInfo
 
 logger = logging.getLogger(__name__)
 
-
 @dataclass
 class TradingSignal:
     """トレーディングシグナル"""
@@ -26,10 +25,9 @@ class TradingSignal:
     action: str  # 'buy', 'sell', 'hold'
     confidence: float
     amount: float
-    price: Optional[float]
+    price: float | None
     timestamp: datetime
-    metadata: Dict[str, Any]
-
+    metadata: dict[str, Any]
 
 @dataclass
 class Position:
@@ -40,7 +38,6 @@ class Position:
     current_price: float
     unrealized_pnl: float
     timestamp: datetime
-
 
 class LiveTrader:
     """
@@ -56,7 +53,7 @@ class LiveTrader:
     def __init__(self,
                  trading_api: TradingAPI,
                  signal_generator: Any,  # シグナル生成オブジェクト
-                 risk_manager: Optional[Any] = None,
+                 risk_manager: Any | None = None,
                  max_positions: int = 5,
                  max_position_size: float = 0.01):
         """
@@ -75,10 +72,10 @@ class LiveTrader:
         self.max_positions = max_positions
         self.max_position_size = max_position_size
 
-        self.positions: List[Position] = []
-        self.active_orders: Dict[str, OrderInfo] = {}
+        self.positions: list[Position] = []
+        self.active_orders: dict[str, OrderInfo] = {}
         self.is_running = False
-        self.trading_thread: Optional[threading.Thread] = None
+        self.trading_thread: threading.Thread | None = None
 
         # パフォーマンス追跡
         self.total_trades = 0
@@ -386,12 +383,12 @@ class LiveTrader:
                    f"total_pnl={self.total_pnl:.2f}, "
                    f"positions={total_positions}")
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """
         ステータス取得
 
         Returns:
-            Dict[str, Any]: 現在のステータス
+            dict[str, Any]: 現在のステータス
         """
         return {
             'is_running': self.is_running,
@@ -448,7 +445,7 @@ class LiveTrader:
         except Exception as e:
             logger.error(f"Error in trading loop iteration: {e}")
 
-    def _check_risk_management(self, trade_signal: Dict[str, Any]) -> bool:
+    def _check_risk_management(self, trade_signal: dict[str, Any]) -> bool:
         """
         リスク管理チェック（テスト用）
 

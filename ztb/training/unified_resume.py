@@ -7,13 +7,12 @@ Provides a consistent interface for resuming training across different algorithm
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional, Protocol
+from typing import Any, Protocol
 
 from ztb.io.json_io import read_json
 from ztb.utils.checkpoint import TrainingStateManager
 
 logger = logging.getLogger(__name__)
-
 
 class ResumeCapableTrainer(Protocol):
     """Protocol for trainers that support resuming"""
@@ -21,24 +20,22 @@ class ResumeCapableTrainer(Protocol):
     def resume_training(
         self,
         training_state_path: str,
-        additional_timesteps: Optional[int] = None,
-        override_config: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        additional_timesteps: int | None = None,
+        override_config: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Resume training from a saved state"""
         ...
-
 
 @dataclass
 class ResumeOptions:
     """Configuration options for training resumption"""
 
     training_state_path: str
-    additional_timesteps: Optional[int] = None
-    override_config: Optional[Dict[str, Any]] = None
+    additional_timesteps: int | None = None
+    override_config: dict[str, Any] | None = None
     validate_compatibility: bool = True
     auto_save_state: bool = True
     backup_existing: bool = True
-
 
 class UnifiedResumeManager:
     """Unified manager for training resumption across different algorithms"""
@@ -49,7 +46,7 @@ class UnifiedResumeManager:
 
     def resume_training(
         self, trainer: ResumeCapableTrainer, options: ResumeOptions
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Resume training with unified interface"""
 
         try:
@@ -112,8 +109,8 @@ class UnifiedResumeManager:
             logger.error(f"Training resumption failed: {e}")
             raise
 
-    def list_available_training_states(self) -> Dict[str, Any]:
-        """List all available training states with metadata"""
+    def list_available_training_states(self) -> dict[str, Any]:
+        """list all available training states with metadata"""
 
         states = self.training_state_manager.list_training_states()
 
@@ -139,7 +136,7 @@ class UnifiedResumeManager:
             "all_states": states,
         }
 
-    def cleanup_old_training_states(self, keep_last: int = 5) -> Dict[str, Any]:
+    def cleanup_old_training_states(self, keep_last: int = 5) -> dict[str, Any]:
         """Clean up old training states, keeping only the most recent ones"""
 
         states = self.training_state_manager.list_training_states()
@@ -171,11 +168,10 @@ class UnifiedResumeManager:
             "message": f"Cleaned up {removed_count} old training states",
         }
 
-
 def create_resume_options(
     training_state_path: str,
-    additional_timesteps: Optional[int] = None,
-    override_config: Optional[Dict[str, Any]] = None,
+    additional_timesteps: int | None = None,
+    override_config: dict[str, Any] | None = None,
     **kwargs,
 ) -> ResumeOptions:
     """Helper function to create ResumeOptions with sensible defaults"""
@@ -187,13 +183,12 @@ def create_resume_options(
         **kwargs,
     )
 
-
 # Convenience functions for common use cases
 def resume_sac_training(
     config_path: str,
     training_state_path: str,
-    additional_timesteps: Optional[int] = None,
-) -> Dict[str, Any]:
+    additional_timesteps: int | None = None,
+) -> dict[str, Any]:
     """Convenience function to resume SAC training"""
 
     from ztb.training.sac_trainer import SACTrainer
@@ -214,13 +209,12 @@ def resume_sac_training(
     resume_manager = UnifiedResumeManager()
     return resume_manager.resume_training(trainer, options)
 
-
 def resume_sac_v434_2_training(
     data_path: str,
     training_state_path: str,
-    additional_timesteps: Optional[int] = None,
-    output_path: Optional[str] = None,
-) -> Dict[str, Any]:
+    additional_timesteps: int | None = None,
+    output_path: str | None = None,
+) -> dict[str, Any]:
     """Convenience function to resume SAC v434.2 training"""
 
     # This would need to be implemented based on the specific trainer

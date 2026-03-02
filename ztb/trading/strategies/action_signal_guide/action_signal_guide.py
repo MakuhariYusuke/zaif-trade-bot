@@ -4,12 +4,13 @@ Action Signal Guide - Main Implementation
 This module provides the main ActionSignalGuide class that integrates all pattern
 recognition systems for classical technical analysis signals in the SAC RL system.
 """
+from __future__ import annotations
 
 import logging
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, cast
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -44,30 +45,25 @@ from .types import (
     SignalMetadata,
 )
 
-
 class ActionSignalGuideError(Exception):
     """Base exception for ActionSignalGuide errors."""
 
     pass
-
 
 class ConfigurationError(ActionSignalGuideError):
     """Raised when configuration is invalid."""
 
     pass
 
-
 class SignalGenerationError(ActionSignalGuideError):
     """Raised when signal generation fails."""
 
     pass
 
-
 class MemoryError(ActionSignalGuideError):
     """Raised when memory operations fail."""
 
     pass
-
 
 def _get_action_signal_guide_config() -> type["ActionSignalGuideConfig"]:
     """Lazy import to avoid circular imports."""
@@ -75,20 +71,17 @@ def _get_action_signal_guide_config() -> type["ActionSignalGuideConfig"]:
 
     return ActionSignalGuideConfig
 
-
 def _get_guidance_level_enum() -> type["GuidanceLevel"]:
     """Lazy import to avoid circular imports."""
     from .action_signal_guide import GuidanceLevel
 
     return GuidanceLevel
 
-
 def _get_action_signal_class() -> type["ActionSignal"]:
     """Lazy import to avoid circular imports."""
     from .action_signal_guide import ActionSignal
 
     return ActionSignal
-
 
 class GuidanceLevel(Enum):
     NONE = "none"
@@ -97,7 +90,6 @@ class GuidanceLevel(Enum):
     STRONG = "strong"
     FULL = "full"
 
-
 @dataclass
 class RecognizerConfig:
     """Configuration for a pattern recognizer."""
@@ -105,9 +97,8 @@ class RecognizerConfig:
     name: str
     enabled: bool = True
     weight: float = 1.0
-    config: Optional[PatternConfig] = None
+    config: PatternConfig | None = None
     group: str = "default"
-
 
 @dataclass
 class ActionSignalGuideConfig:
@@ -121,7 +112,7 @@ class ActionSignalGuideConfig:
     enable_caching: bool = True
     cache_size: int = 1000
     lazy_loading: bool = False
-    feature_names: Optional[List[str]] = None
+    feature_names: list[str] | None = None
     value: object | None = None  # For backward compatibility
 
     # Short / debug mode for fast unit tests and debugging
@@ -171,19 +162,19 @@ class ActionSignalGuideConfig:
     enable_hierarchical_trend: bool = True  # 新統合トレンド分析
 
     # Recognizer configurations
-    candlestick_patterns: Optional[List[RecognizerConfig]] = None
-    fibonacci_patterns: Optional[List[RecognizerConfig]] = None
-    gann_patterns: Optional[List[RecognizerConfig]] = None
-    wave_patterns: Optional[List[RecognizerConfig]] = None
-    harmonic_patterns: Optional[List[RecognizerConfig]] = None
-    oscillator_patterns: Optional[List[RecognizerConfig]] = None
-    volume_patterns: Optional[List[RecognizerConfig]] = None
-    bollinger_patterns: Optional[List[RecognizerConfig]] = None
-    adx_patterns: Optional[List[RecognizerConfig]] = None
-    granville_patterns: Optional[List[RecognizerConfig]] = None
-    heikin_ashi_patterns: Optional[List[RecognizerConfig]] = None
-    dow_theory_patterns: Optional[List[RecognizerConfig]] = None
-    hierarchical_trend_patterns: Optional[List[RecognizerConfig]] = None
+    candlestick_patterns: list[RecognizerConfig] | None = None
+    fibonacci_patterns: list[RecognizerConfig] | None = None
+    gann_patterns: list[RecognizerConfig] | None = None
+    wave_patterns: list[RecognizerConfig] | None = None
+    harmonic_patterns: list[RecognizerConfig] | None = None
+    oscillator_patterns: list[RecognizerConfig] | None = None
+    volume_patterns: list[RecognizerConfig] | None = None
+    bollinger_patterns: list[RecognizerConfig] | None = None
+    adx_patterns: list[RecognizerConfig] | None = None
+    granville_patterns: list[RecognizerConfig] | None = None
+    heikin_ashi_patterns: list[RecognizerConfig] | None = None
+    dow_theory_patterns: list[RecognizerConfig] | None = None
+    hierarchical_trend_patterns: list[RecognizerConfig] | None = None
 
     def __post_init__(self) -> None:
         """Initialize default configurations if not provided."""
@@ -322,7 +313,6 @@ class ActionSignalGuideConfig:
                 ),
             ]
 
-
 @dataclass
 class ActionSignal:
     """Represents a complete action signal with all relevant information."""
@@ -334,7 +324,7 @@ class ActionSignal:
     signal_type: str
     description: str
     metadata: SignalMetadata
-    source_patterns: List[str]  # List of pattern names that contributed
+    source_patterns: list[str]  # list of pattern names that contributed
 
     @classmethod
     def neutral(cls) -> "ActionSignal":
@@ -349,7 +339,6 @@ class ActionSignal:
             metadata={},
             source_patterns=[],
         )
-
 
 class ActionSignalGuide:
     """
@@ -571,7 +560,7 @@ class ActionSignalGuide:
         self._signal_count_since_cleanup = 0
 
         # Feature names for observation conversion
-        self.feature_names: Optional[List[str]] = None
+        self.feature_names: list[str] | None = None
 
         # Initialize all pattern recognizers
         self._initialize_recognizers()
@@ -603,7 +592,7 @@ class ActionSignalGuide:
             # Default to moderate volatility ranging market
             return MarketRegime.MODERATE_VOLATILITY_RANGING
 
-    def _get_available_pattern_names(self) -> List[str]:
+    def _get_available_pattern_names(self) -> list[str]:
         """Get list of available pattern names for dynamic selection."""
         try:
             if hasattr(self, "_recognizer_factory"):
@@ -805,15 +794,15 @@ class ActionSignalGuide:
                 setattr(self, f"{name}_recognizers", recognizers)
 
             # Combine all recognizers efficiently
-            self.all_recognizers: List[PatternRecognizer] = []
+            self.all_recognizers: list[PatternRecognizer] = []
             for recognizer_type in recognizer_types.keys():
                 self.all_recognizers.extend(
                     getattr(self, f"{recognizer_type}_recognizers")
                 )
 
         # Initialize caching (always initialize, but only use if enabled)
-        self._signal_cache: Dict[str, object] = {}
-        self._cache_timestamps: Dict[str, float] = {}
+        self._signal_cache: dict[str, object] = {}
+        self._cache_timestamps: dict[str, float] = {}
 
     def _ensure_recognizers_loaded(self) -> None:
         """Ensure all recognizers are loaded for lazy loading mode."""
@@ -858,8 +847,8 @@ class ActionSignalGuide:
             delattr(self, "_recognizer_configs")
 
     def _create_recognizers_from_config(
-        self, configs: Optional[List[RecognizerConfig]]
-    ) -> List[PatternRecognizer]:
+        self, configs: list[RecognizerConfig] | None
+    ) -> list[PatternRecognizer]:
         """Create recognizers from configuration with enhanced error handling."""
         if not configs:
             return []
@@ -928,7 +917,7 @@ class ActionSignalGuide:
             current_index: Current bar index to analyze (0-based)
 
         Returns:
-            List of ActionSignal objects representing detected trading signals
+            list of ActionSignal objects representing detected trading signals
 
         Raises:
             ValueError: If current_index is out of bounds or data is insufficient
@@ -1202,7 +1191,7 @@ class ActionSignalGuide:
 
     def _apply_risk_adjustments(
         self, signal: "ActionSignal", data: pd.DataFrame, current_index: int
-    ) -> Optional["ActionSignal"]:
+    ) -> ActionSignal | None:
         """Apply risk-based adjustments to individual signals."""
         try:
             # Calculate ATR for risk assessment
@@ -1298,7 +1287,7 @@ class ActionSignalGuide:
             current_index: Current bar index
 
         Returns:
-            List of legacy ActionSignal objects
+            list of legacy ActionSignal objects
         """
         if signal.direction == 0:
             return []
@@ -1449,7 +1438,7 @@ class ActionSignalGuide:
         )
 
         # Safely get recognizer lists
-        def safe_list(attr_name: str) -> List[str]:
+        def safe_list(attr_name: str) -> list[str]:
             recognizers = getattr(self, attr_name, [])
             return [r.__class__.__name__ for r in recognizers]
 
@@ -1543,7 +1532,7 @@ class ActionSignalGuide:
 
     def set_guidance_level(self, level: GuidanceLevel) -> None:
         """
-        Set the guidance level for signal processing.
+        set the guidance level for signal processing.
 
         Args:
             level: The new guidance level (NONE, WEAK, STRONG, FULL)
@@ -1567,7 +1556,7 @@ class ActionSignalGuide:
         return self.performance_tracker.get_performance_summary()
 
     def get_pattern_statistics(
-        self, pattern_type: Optional[str] = None
+        self, pattern_type: str | None = None
     ) -> PatternStats:
         """
         Get pattern statistics from PatternStatistics component.
@@ -1605,8 +1594,8 @@ class ActionSignalGuide:
         self.logger.info("Statistics reset")
 
     def analyze_pattern_effectiveness(
-        self, trading_results: Optional[List[Dict[str, object]]] = None
-    ) -> Dict[str, object]:
+        self, trading_results: list[dict[str, object]] | None = None
+    ) -> dict[str, object]:
         """
         Analyze the effectiveness of different pattern recognizers.
 
@@ -1755,9 +1744,9 @@ class ActionSignalGuide:
 
     def analyze_sac_learning_correlation(
         self,
-        sac_learning_logs: Optional[List[Dict[str, object]]] = None,
+        sac_learning_logs: list[dict[str, object]] | None = None,
         correlation_window: int = 100,
-    ) -> Dict[str, object]:
+    ) -> dict[str, object]:
         """
         Analyze correlation between SAC learning performance and signal quality.
 
@@ -1777,8 +1766,8 @@ class ActionSignalGuide:
         signal_strength: float,
         signal_confidence: float,
         pattern_type: str,
-        historical_success_rate: Optional[float] = None,
-        consistency_score: Optional[float] = None,
+        historical_success_rate: float | None = None,
+        consistency_score: float | None = None,
     ) -> float:
         """
         Calculate comprehensive signal quality score.
@@ -1810,7 +1799,7 @@ class ActionSignalGuide:
             consistency_score,
         )
 
-    def generate_signal_performance_report(self) -> Dict[str, object]:
+    def generate_signal_performance_report(self) -> dict[str, object]:
         """
         Generate comprehensive signal performance report.
 
@@ -1865,11 +1854,11 @@ class ActionSignalGuide:
         success_rate = pattern_stats.get("successful_detections", 0) / max(1, pattern_stats.get("total_detections", 1))
         return min(1.0, max(0.0, success_rate))
 
-    def set_feature_names(self, feature_names: List[str]) -> None:
-        """Set feature names for observation conversion."""
+    def set_feature_names(self, feature_names: list[str]) -> None:
+        """set feature names for observation conversion."""
         self.feature_names = feature_names
 
-    def get_consolidated_signal(self, signals: SignalList) -> Optional["ActionSignal"]:
+    def get_consolidated_signal(self, signals: SignalList) -> ActionSignal | None:
         """
         Get a consolidated signal from a list of signals.
         Compatibility method for tests.
@@ -1927,7 +1916,7 @@ class ActionSignalGuide:
             self.config.signal_threshold = 1.0
             self.config.max_signal_strength = 0.0
 
-    def get_guidance_stats(self) -> Dict[str, object]:
+    def get_guidance_stats(self) -> dict[str, object]:
         """Get guidance statistics (backward compatibility)."""
         return {
             "mode": self.guidance_level.name
@@ -1951,7 +1940,7 @@ class ActionSignalGuide:
     def max_signal_strength(self) -> float:
         return getattr(self.config, "max_signal_strength", 0.0)
 
-    def get_action_recommendation(self, observation: np.ndarray) -> Tuple[int, float]:
+    def get_action_recommendation(self, observation: np.ndarray) -> tuple[int, float]:
         """
         Get recommended action and confidence based on observation.
         Compatibility method.
@@ -1992,7 +1981,7 @@ class ActionSignalGuide:
 
     def get_multi_timeframe_action_recommendation(
         self, observation: np.ndarray
-    ) -> Tuple[int, float]:
+    ) -> tuple[int, float]:
         """
         Get action recommendation considering multi-timeframe analysis.
         Compatibility method.
@@ -2093,7 +2082,7 @@ class ActionSignalGuide:
         except Exception as e:
             raise MemoryError(f"Failed to cleanup memory: {e}") from e
 
-    def get_performance_stats(self) -> Dict[str, object]:
+    def get_performance_stats(self) -> dict[str, object]:
         """Get performance statistics for monitoring."""
         from ztb.utils.memory_utils import get_memory_usage
 
@@ -2132,7 +2121,7 @@ class ActionSignalGuide:
 
         return stats
 
-    def update_config(self, new_config: Dict[str, object]) -> None:
+    def update_config(self, new_config: dict[str, object]) -> None:
         """
         Update configuration dynamically.
 

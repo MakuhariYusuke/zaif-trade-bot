@@ -19,7 +19,7 @@ import inspect
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, Tuple, Union
+from typing import Any
 
 from ztb.utils.file_utils import get_project_root
 
@@ -35,7 +35,6 @@ from ztb.training.binary_search.base_optimizer import (
 )  # noqa: E402
 from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS  # noqa: E402
 from ztb.training.models.custom_ppo import CustomPPO  # noqa: E402
-
 
 class LagrangeOptimizerBase(HyperparameterOptimizer):
     """Base class for Lagrange parameter optimizers using CustomPPO."""
@@ -113,7 +112,7 @@ class LagrangeOptimizerBase(HyperparameterOptimizer):
             **ppo_kwargs,
         )
 
-    def train_model(self, total_timesteps: int = 100000) -> Tuple[Any, Any, float]:
+    def train_model(self, total_timesteps: int = 100000) -> tuple[Any, Any, float]:
         """Train model and return model, callback, and elapsed time."""
         from ztb.training.binary_search.base_optimizer import TrainingCallback
 
@@ -132,7 +131,6 @@ class LagrangeOptimizerBase(HyperparameterOptimizer):
 
         return model, callback, elapsed
 
-
 class LagrangeRTargetOptimizer(LagrangeOptimizerBase):
     """Optimizer for Lagrange target SELL rate (r_target)."""
 
@@ -140,7 +138,7 @@ class LagrangeRTargetOptimizer(LagrangeOptimizerBase):
     def parameter_name(self) -> str:
         return "lagrange_r_target"
 
-    def get_parameter_range(self) -> Tuple[float, float]:
+    def get_parameter_range(self) -> tuple[float, float]:
         """Target SELL rate range: 10% to 25%."""
         return (0.10, 0.25)
 
@@ -153,7 +151,7 @@ class LagrangeRTargetOptimizer(LagrangeOptimizerBase):
 
     def evaluate_result(
         self, callback: Any
-    ) -> Tuple[float, Dict[str, Union[int, float]], Dict[str, Union[int, float]]]:
+    ) -> tuple[float, dict[str, int | float], dict[str, int | float]]:
         """
         Evaluate training result.
 
@@ -180,7 +178,6 @@ class LagrangeRTargetOptimizer(LagrangeOptimizerBase):
         # Score = reward only (no deviation penalty)
         return avg_reward, stats, action_dist
 
-
 class LagrangeToleranceOptimizer(LagrangeOptimizerBase):
     """Optimizer for Lagrange tolerance (acceptable deviation)."""
 
@@ -188,7 +185,7 @@ class LagrangeToleranceOptimizer(LagrangeOptimizerBase):
     def parameter_name(self) -> str:
         return "lagrange_tolerance"
 
-    def get_parameter_range(self) -> Tuple[float, float]:
+    def get_parameter_range(self) -> tuple[float, float]:
         """Tolerance range: 1% to 10%."""
         return (0.01, 0.10)
 
@@ -201,7 +198,6 @@ class LagrangeToleranceOptimizer(LagrangeOptimizerBase):
             self.ppo_params["lagrange_params"]["r_target"] = 0.15
         self.ppo_params["enable_lagrange"] = True
 
-
 class LagrangeEtaOptimizer(LagrangeOptimizerBase):
     """Optimizer for Lagrange dual variable learning rate (eta)."""
 
@@ -209,7 +205,7 @@ class LagrangeEtaOptimizer(LagrangeOptimizerBase):
     def parameter_name(self) -> str:
         return "lagrange_eta"
 
-    def get_parameter_range(self) -> Tuple[float, float]:
+    def get_parameter_range(self) -> tuple[float, float]:
         """Eta range: 0.001 to 0.1."""
         return (0.001, 0.1)
 
@@ -222,7 +218,6 @@ class LagrangeEtaOptimizer(LagrangeOptimizerBase):
             self.ppo_params["lagrange_params"]["r_target"] = 0.15
         self.ppo_params["enable_lagrange"] = True
 
-
 class LagrangeLambdaMaxOptimizer(LagrangeOptimizerBase):
     """Optimizer for Lagrange maximum dual variable value (lambda_max)."""
 
@@ -230,7 +225,7 @@ class LagrangeLambdaMaxOptimizer(LagrangeOptimizerBase):
     def parameter_name(self) -> str:
         return "lagrange_lambda_max"
 
-    def get_parameter_range(self) -> Tuple[float, float]:
+    def get_parameter_range(self) -> tuple[float, float]:
         """Lambda max range: 0.5 to 5.0."""
         return (0.5, 5.0)
 
@@ -243,7 +238,6 @@ class LagrangeLambdaMaxOptimizer(LagrangeOptimizerBase):
             self.ppo_params["lagrange_params"]["r_target"] = 0.15
         self.ppo_params["enable_lagrange"] = True
 
-
 class LagrangeWarmupStepsOptimizer(LagrangeOptimizerBase):
     """Optimizer for Lagrange warmup steps (constraint activation timing)."""
 
@@ -251,7 +245,7 @@ class LagrangeWarmupStepsOptimizer(LagrangeOptimizerBase):
     def parameter_name(self) -> str:
         return "lagrange_warmup_steps"
 
-    def get_parameter_range(self) -> Tuple[float, float]:
+    def get_parameter_range(self) -> tuple[float, float]:
         """Warmup steps range: 500 to 5000."""
         return (500, 5000)
 
@@ -263,7 +257,6 @@ class LagrangeWarmupStepsOptimizer(LagrangeOptimizerBase):
         if "r_target" not in self.ppo_params["lagrange_params"]:
             self.ppo_params["lagrange_params"]["r_target"] = 0.15
         self.ppo_params["enable_lagrange"] = True
-
 
 def main() -> None:
     """Main entry point."""
@@ -325,7 +318,6 @@ def main() -> None:
         print(f"Best {args.parameter}: {best_value}")
         print(f"Best score: {best_score:.6f}")
         print(f"{'=' * 80}")
-
 
 if __name__ == "__main__":
     main()

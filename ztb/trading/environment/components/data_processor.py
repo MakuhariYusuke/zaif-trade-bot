@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 # Data processing utilities for trading environment
 # 取引環境のデータ処理ユーティリティ
 
 import gc
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
@@ -14,7 +16,6 @@ if TYPE_CHECKING:
     from ztb.data.streaming_pipeline import StreamingPipeline
 
 logger = get_logger(__name__)
-
 
 class DataProcessor:
     """Handles data preprocessing, feature processing, and memory optimization."""
@@ -30,7 +31,7 @@ class DataProcessor:
         self._gc_step_interval = gc_step_interval
 
     def _log_memory_usage(
-        self, context: str, *, df_override: Optional[pd.DataFrame] = None
+        self, context: str, *, df_override: pd.DataFrame | None = None
     ) -> None:
         """Log memory usage for debugging."""
         if not self._memory_logging_enabled:
@@ -120,7 +121,7 @@ class DataProcessor:
 
     def fetch_streaming_snapshot(
         self,
-        streaming_pipeline: Optional["StreamingPipeline"],
+        streaming_pipeline: StreamingPipeline | None,
         required_rows: int,
         stream_batch_size: int,
     ) -> pd.DataFrame:
@@ -136,7 +137,7 @@ class DataProcessor:
         return snapshot.reset_index(drop=True)
 
     def prepare_stream_batch(
-        self, batch: pd.DataFrame, base_columns: List[str], df: pd.DataFrame
+        self, batch: pd.DataFrame, base_columns: list[str], df: pd.DataFrame
     ) -> pd.DataFrame:
         """環境が扱える形式にストリーミングデータを整形"""
         if batch.empty:
@@ -158,7 +159,7 @@ class DataProcessor:
         return self.preprocess_data(batch)
 
     def apply_feature_storage_dtype(
-        self, df: pd.DataFrame, features: List[str], config: dict[str, Any]
+        self, df: pd.DataFrame, features: list[str], config: dict[str, Any]
     ) -> None:
         """Ensure feature columns use the configured storage dtype"""
         feature_dtype = str(config.get("feature_storage_dtype", "float16")).lower()

@@ -44,7 +44,6 @@ from ztb.utils.safety import ensure_dict, safe_to_float
 
 logger = get_logger(__name__)
 
-
 class OptimizationOrchestrator:
     """
     Orchestrates the complete SAC v428 optimization pipeline.
@@ -318,7 +317,7 @@ class OptimizationOrchestrator:
         return regime_analysis
 
     def optimize_hyperparameters(
-        self, regime_analysis: Optional[ObjectMap] = None
+        self, regime_analysis: ObjectMap | None = None
     ) -> ObjectMap:
         """
         Run hyperparameter and reward function optimization.
@@ -577,7 +576,6 @@ Results Directory: {results.get('results_directory', self.results_dir)}
 
         return report
 
-
 def main():
     """Main execution function."""
     parser = argparse.ArgumentParser(
@@ -655,7 +653,6 @@ def main():
         print(
             "Please specify an action: --backtest-only, --analysis-only, --optimize-only, --full-pipeline, or --generate-report"
         )
-
 
 if __name__ == "__main__":
     main()

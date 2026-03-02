@@ -6,7 +6,7 @@ MAMLスタイルのメタラーニングによる迅速な市場適応
 import copy
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable
 
 import numpy as np
 import torch
@@ -16,7 +16,6 @@ import torch.optim as optim
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 @dataclass
 class MetaTaskData:
@@ -28,7 +27,6 @@ class MetaTaskData:
     next_states: torch.Tensor
     dones: torch.Tensor
     task_id: str
-
 
 @dataclass
 class MetaLearningConfig:
@@ -43,7 +41,6 @@ class MetaLearningConfig:
     task_batch_size: int = 32
     validation_split: float = 0.2
     early_stopping_patience: int = 50
-
 
 class MAML(nn.Module):
     """Model-Agnostic Meta-Learning"""
@@ -85,7 +82,7 @@ class MAML(nn.Module):
 
         return adapted_model
 
-    def meta_update(self, task_losses: List[torch.Tensor]):
+    def meta_update(self, task_losses: list[torch.Tensor]):
         """メタ更新"""
         self.meta_optimizer.zero_grad()
 
@@ -97,17 +94,15 @@ class MAML(nn.Module):
 
         return meta_loss.item()
 
-
 class Reptile(nn.Module):
     """Reptileアルゴリズム"""
-
 
     def forward(self, x):
         return self.model(x)
 
     def adapt_to_task(
         self, task_data: MetaTaskData, loss_fn: Callable
-    ) -> Tuple[nn.Module, Dict[str, Any]]:
+    ) -> tuple[nn.Module, dict[str, Any]]:
         """タスクへの適応"""
         adapted_model = copy.deepcopy(self.model)
         optimizer = optim.SGD(adapted_model.parameters(), lr=self.config.inner_lr)
@@ -153,7 +148,7 @@ class Reptile(nn.Module):
         }
 
     def meta_update(
-        self, adapted_models: List[nn.Module], task_infos: List[Dict[str, Any]]
+        self, adapted_models: list[nn.Module], task_infos: list[dict[str, Any]]
     ):
         """メタ更新"""
         self.meta_optimizer.zero_grad()
@@ -178,7 +173,6 @@ class Reptile(nn.Module):
 
         self.meta_optimizer.step()
 
-
 class MetaLearner:
     """メタラーニング統合クラス"""
 
@@ -186,7 +180,7 @@ class MetaLearner:
         self,
         base_model: nn.Module,
         algorithm: str = "maml",
-        config: Optional[MetaLearningConfig] = None,
+        config: MetaLearningConfig | None = None,
     ):
         self.base_model = base_model
         self.algorithm = algorithm
@@ -212,7 +206,7 @@ class MetaLearner:
         if len(self.task_buffer) > 100:
             self.task_buffer = self.task_buffer[-100:]
 
-    def sample_tasks(self, num_tasks: int) -> List[MetaTaskData]:
+    def sample_tasks(self, num_tasks: int) -> list[MetaTaskData]:
         """タスクサンプリング"""
         if len(self.task_buffer) < num_tasks:
             logger.warning(
@@ -226,7 +220,7 @@ class MetaLearner:
 
     def train_meta(
         self, loss_fn: Callable, num_epochs: int = 100
-    ) -> Dict[str, List[float]]:
+    ) -> dict[str, list[float]]:
         """メタ学習実行"""
         training_history = {
             "meta_losses": [],
@@ -331,7 +325,7 @@ class MetaLearner:
         return training_history
 
     def _evaluate_meta_performance(
-        self, tasks: List[MetaTaskData], loss_fn: Callable
+        self, tasks: list[MetaTaskData], loss_fn: Callable
     ) -> float:
         """メタ性能評価"""
         total_performance = 0
@@ -356,7 +350,7 @@ class MetaLearner:
         return total_performance / len(tasks) if tasks else 0.0
 
     def adapt_to_new_market(
-        self, market_data: MetaTaskData, adaptation_steps: Optional[int] = None
+        self, market_data: MetaTaskData, adaptation_steps: int | None = None
     ) -> nn.Module:
         """新規市場への適応"""
         if adaptation_steps is None:
@@ -398,11 +392,10 @@ class MetaLearner:
         self.best_performance = checkpoint["best_performance"]
         logger.info(f"Meta model loaded from {path}")
 
-
 class MarketMetaLearner:
     """市場特化メタラーニング"""
 
-    def __init__(self, state_dim: int, action_dim: int, hidden_dims: List[int] = None):
+    def __init__(self, state_dim: int, action_dim: int, hidden_dims: list[int] = None):
         if hidden_dims is None:
             hidden_dims = [256, 256]
 
@@ -440,7 +433,7 @@ class MarketMetaLearner:
 
         self.meta_learner.collect_task_data(task_data)
 
-    def train_on_markets(self, num_epochs: int = 100) -> Dict[str, List[float]]:
+    def train_on_markets(self, num_epochs: int = 100) -> dict[str, list[float]]:
         """複数市場でのメタ学習"""
 
         def market_loss(outputs, actions, rewards, next_outputs, dones):
@@ -451,7 +444,7 @@ class MarketMetaLearner:
         return self.meta_learner.train_meta(market_loss, num_epochs)
 
     def adapt_to_market(
-        self, market_name: str, market_data: Dict[str, np.ndarray]
+        self, market_name: str, market_data: dict[str, np.ndarray]
     ) -> nn.Module:
         """特定市場への適応"""
         task_data = MetaTaskData(
@@ -468,7 +461,7 @@ class MarketMetaLearner:
 
         return adapted_model
 
-    def get_market_model(self, market_name: str) -> Optional[nn.Module]:
+    def get_market_model(self, market_name: str) -> nn.Module | None:
         """市場モデル取得"""
         return self.market_models.get(market_name)
 
@@ -486,7 +479,7 @@ class MarketMetaLearner:
 
         return action
 
-    def get_adaptation_stats(self) -> Dict[str, Any]:
+    def get_adaptation_stats(self) -> dict[str, Any]:
         """適応統計取得"""
         return {
             "num_markets": len(self.market_models),

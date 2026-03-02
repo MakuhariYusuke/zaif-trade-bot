@@ -1,6 +1,5 @@
 import sys
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
@@ -11,9 +10,8 @@ sys.path.insert(0, str(project_root))
 from ztb.io.text_io import write_text
 from ztb.utils.config import TypedConfig
 
-
 def show_model_features(
-    model_path: Optional[str] = None, detailed: bool = False
+    model_path: str | None = None, detailed: bool = False
 ) -> dict:
     """Show model features information.
 
@@ -54,7 +52,6 @@ def show_model_features(
     print("\n✅ Full feature list saved to: model_features_110.txt")
 
     return result
-
 
 if __name__ == "__main__":
     show_model_features()

@@ -9,13 +9,12 @@ agent robustness (Domain Randomization).
 import dataclasses
 import logging
 import random
-from typing import Any, Dict, Tuple
+from typing import Any
 
 from ztb.trading.environment.utils.exchange_profile import ExchangeProfile
 from ztb.utils.fee_model import FixedFeeModel
 
 logger = logging.getLogger(__name__)
-
 
 @dataclasses.dataclass
 class DomainRandomizationConfig:
@@ -24,21 +23,21 @@ class DomainRandomizationConfig:
 
     Attributes:
         enabled: Whether domain randomization is enabled.
-        maker_fee_range: Tuple of (min, max) for maker fee rate.
-        taker_fee_range: Tuple of (min, max) for taker fee rate.
-        slippage_range: Tuple of (min, max) for slippage rate.
-        latency_range: Tuple of (min, max) for latency in ms.
+        maker_fee_range: tuple of (min, max) for maker fee rate.
+        taker_fee_range: tuple of (min, max) for taker fee rate.
+        slippage_range: tuple of (min, max) for slippage rate.
+        latency_range: tuple of (min, max) for latency in ms.
     """
 
     enabled: bool = False
-    maker_fee_range: Tuple[float, float] = (0.0005, 0.002)  # 0.05% - 0.2%
-    taker_fee_range: Tuple[float, float] = (0.0005, 0.002)  # 0.05% - 0.2%
-    slippage_range: Tuple[float, float] = (0.0, 0.005)  # 0.0% - 0.5%
-    latency_range: Tuple[float, float] = (0.0, 500.0)  # 0 - 500ms
+    maker_fee_range: tuple[float, float] = (0.0005, 0.002)  # 0.05% - 0.2%
+    taker_fee_range: tuple[float, float] = (0.0005, 0.002)  # 0.05% - 0.2%
+    slippage_range: tuple[float, float] = (0.0, 0.005)  # 0.0% - 0.5%
+    latency_range: tuple[float, float] = (0.0, 500.0)  # 0 - 500ms
     intensity: float = 1.0  # 0.0 - 1.0 (Scaling factor)
 
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> "DomainRandomizationConfig":
+    def from_dict(cls, config: dict[str, Any]) -> "DomainRandomizationConfig":
         """Create config from dictionary."""
         return cls(
             enabled=config.get("enabled", False),
@@ -48,7 +47,6 @@ class DomainRandomizationConfig:
             latency_range=tuple(config.get("latency_range", (0.0, 500.0))),
             intensity=float(config.get("intensity", 1.0)),
         )
-
 
 class DomainRandomizer:
     """

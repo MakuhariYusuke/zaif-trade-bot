@@ -16,7 +16,6 @@ sys.path.insert(0, str(project_root))
 
 from ztb.utils.path_utils import get_project_root
 
-
 def load_config():
     """Load v432.1 configuration"""
     config_path = (
@@ -27,7 +26,6 @@ def load_config():
         / "sac_v432_1_advanced_position_management.json"
     )
     return read_json(config_path)
-
 
 def simulate_market_data(num_steps=10000):
     """Generate synthetic market data for backtesting"""
@@ -58,7 +56,6 @@ def simulate_market_data(num_steps=10000):
         prices.append(max(new_price, 0.1))  # Prevent negative prices
 
     return np.array(prices)
-
 
 def calculate_dynamic_position_size(
     config, market_condition, confidence_score, volatility
@@ -95,7 +92,6 @@ def calculate_dynamic_position_size(
     position_size = base_size * vol_multiplier * conf_multiplier * regime_multiplier
     return min(position_size, apm_config["risk_management"]["max_position_size"])
 
-
 def check_entry_conditions(price, prev_price, market_condition, config):
     """Check if entry conditions are met"""
     entry_config = config["advanced_position_management"]["entry_conditions"]
@@ -131,7 +127,6 @@ def check_entry_conditions(price, prev_price, market_condition, config):
 
     return True
 
-
 def check_exit_conditions(position, entry_price, current_price, hold_periods, config):
     """Check if exit conditions are met"""
     exit_config = config["advanced_position_management"]["exit_conditions"]
@@ -158,7 +153,6 @@ def check_exit_conditions(position, entry_price, current_price, hold_periods, co
         return True, "time_exit"
 
     return False, None
-
 
 def simulate_sac_v432_1_action(
     price,
@@ -315,7 +309,6 @@ def simulate_sac_v432_1_action(
     final_reward = adjusted_rewards[final_action]
 
     return final_action, final_reward, detected_condition, confidence_score
-
 
 def run_backtest_simulation_v432_1(config, num_steps=10000, initial_capital=10000.0):
     """Run v432.1 backtest simulation with Advanced Position Management"""
@@ -547,7 +540,6 @@ def run_backtest_simulation_v432_1(config, num_steps=10000, initial_capital=1000
         "total_reward": total_reward,
     }
 
-
 def main():
     # Load configuration
     config = load_config()
@@ -572,7 +564,6 @@ def main():
     print(f"\nResults saved to: {output_file}")
     print("\n=== SAC v432.1 Advanced Position Management Evaluation Complete ===")
     print("Ready for unified trainer integration and further optimization")
-
 
 if __name__ == "__main__":
     main()

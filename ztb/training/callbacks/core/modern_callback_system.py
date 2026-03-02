@@ -20,8 +20,7 @@ from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol
-
+from typing import Any, Protocol
 
 class CallbackEvent(Enum):
     """Training callback events."""
@@ -38,7 +37,6 @@ class CallbackEvent(Enum):
     METRICS_UPDATE = "metrics_update"
     ERROR_OCCURRED = "error_occurred"
 
-
 class CallbackPriority(Enum):
     """Callback execution priority."""
 
@@ -47,7 +45,6 @@ class CallbackPriority(Enum):
     NORMAL = 2
     LOW = 3
     LOWEST = 4
-
 
 @dataclass
 class CallbackContext:
@@ -58,12 +55,11 @@ class CallbackContext:
     epoch: int = 0
     total_steps: int = 0
     total_epochs: int = 0
-    metrics: Dict[str, Any] = field(default_factory=dict)
-    model_info: Dict[str, Any] = field(default_factory=dict)
-    environment_info: Dict[str, Any] = field(default_factory=dict)
+    metrics: dict[str, Any] = field(default_factory=dict)
+    model_info: dict[str, Any] = field(default_factory=dict)
+    environment_info: dict[str, Any] = field(default_factory=dict)
     timestamp: float = field(default_factory=time.time)
-    custom_data: Dict[str, Any] = field(default_factory=dict)
-
+    custom_data: dict[str, Any] = field(default_factory=dict)
 
 class CallbackResult:
     """Result of callback execution."""
@@ -71,28 +67,25 @@ class CallbackResult:
     def __init__(
         self,
         success: bool,
-        data: Optional[Any] = None,
-        error: Optional[Exception] = None,
+        data: Any | None = None,
+        error: Exception | None = None,
     ):
         self.success = success
         self.data = data
         self.error = error
         self.execution_time = 0.0
 
-
 class CallbackProtocol(Protocol):
     """Protocol for callback functions."""
 
-    def __call__(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def __call__(self, context: CallbackContext) -> CallbackResult | None:
         ...
-
 
 class AsyncCallbackProtocol(Protocol):
     """Protocol for async callback functions."""
 
-    async def __call__(self, context: CallbackContext) -> Optional[CallbackResult]:
+    async def __call__(self, context: CallbackContext) -> CallbackResult | None:
         ...
-
 
 @dataclass
 class CallbackConfig:
@@ -101,16 +94,15 @@ class CallbackConfig:
     name: str
     enabled: bool = True
     priority: CallbackPriority = CallbackPriority.NORMAL
-    events: List[CallbackEvent] = field(default_factory=list)
-    config: Dict[str, Any] = field(default_factory=dict)
+    events: list[CallbackEvent] = field(default_factory=list)
+    config: dict[str, Any] = field(default_factory=dict)
     async_enabled: bool = False
-    timeout: Optional[float] = None
-
+    timeout: float | None = None
 
 class BaseCallback(ABC):
     """Base class for all callbacks."""
 
-    def __init__(self, config: Optional[CallbackConfig] = None):
+    def __init__(self, config: CallbackConfig | None = None):
         self.config = config or CallbackConfig(name=self.__class__.__name__)
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._execution_count = 0
@@ -123,52 +115,52 @@ class BaseCallback(ABC):
         return self.config.name
 
     @abstractmethod
-    def on_training_start(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_training_start(self, context: CallbackContext) -> CallbackResult | None:
         """Called when training starts."""
         pass
 
     @abstractmethod
-    def on_training_end(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_training_end(self, context: CallbackContext) -> CallbackResult | None:
         """Called when training ends."""
         pass
 
-    def on_epoch_start(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_epoch_start(self, context: CallbackContext) -> CallbackResult | None:
         """Called when an epoch starts."""
         return None
 
-    def on_epoch_end(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_epoch_end(self, context: CallbackContext) -> CallbackResult | None:
         """Called when an epoch ends."""
         return None
 
-    def on_step_start(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_step_start(self, context: CallbackContext) -> CallbackResult | None:
         """Called before each training step."""
         return None
 
-    def on_step_end(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_step_end(self, context: CallbackContext) -> CallbackResult | None:
         """Called after each training step."""
         return None
 
-    def on_evaluation_start(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_evaluation_start(self, context: CallbackContext) -> CallbackResult | None:
         """Called when evaluation starts."""
         return None
 
-    def on_evaluation_end(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_evaluation_end(self, context: CallbackContext) -> CallbackResult | None:
         """Called when evaluation ends."""
         return None
 
-    def on_checkpoint_save(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_checkpoint_save(self, context: CallbackContext) -> CallbackResult | None:
         """Called when a checkpoint is saved."""
         return None
 
-    def on_metrics_update(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_metrics_update(self, context: CallbackContext) -> CallbackResult | None:
         """Called when metrics are updated."""
         return None
 
-    def on_error(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_error(self, context: CallbackContext) -> CallbackResult | None:
         """Called when an error occurs."""
         return None
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get callback execution statistics."""
         return {
             "execution_count": self._execution_count,
@@ -179,15 +171,14 @@ class BaseCallback(ABC):
             "error_rate": self._error_count / max(1, self._execution_count),
         }
 
-
 class CallbackManager:
     """Manager for training callbacks with event-driven architecture."""
 
-    def __init__(self, logger: Optional[logging.Logger] = None):
+    def __init__(self, logger: logging.Logger | None = None):
         self.logger = logger or logging.getLogger(__name__)
-        self.callbacks: Dict[str, BaseCallback] = {}
-        self.event_handlers: Dict[
-            CallbackEvent, List[tuple[BaseCallback, CallbackPriority]]
+        self.callbacks: dict[str, BaseCallback] = {}
+        self.event_handlers: dict[
+            CallbackEvent, list[tuple[BaseCallback, CallbackPriority]]
         ] = {}
         self.async_executor = ThreadPoolExecutor(
             max_workers=4, thread_name_prefix="callback"
@@ -244,7 +235,7 @@ class CallbackManager:
 
     def trigger_event(
         self, event: CallbackEvent, context: CallbackContext
-    ) -> List[CallbackResult]:
+    ) -> list[CallbackResult]:
         """Trigger a callback event."""
         if event not in self.event_handlers:
             return []
@@ -282,13 +273,13 @@ class CallbackManager:
         self._stats["total_callbacks"] += len(results)
         return results
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get callback execution statistics."""
         return self._stats.copy()
 
     async def trigger_event_async(
         self, event: CallbackEvent, context: CallbackContext
-    ) -> List[CallbackResult]:
+    ) -> list[CallbackResult]:
         """Trigger a callback event asynchronously."""
         if event not in self.event_handlers:
             return []
@@ -315,7 +306,7 @@ class CallbackManager:
 
     def _execute_callback(
         self, callback: BaseCallback, event: CallbackEvent, context: CallbackContext
-    ) -> Optional[CallbackResult]:
+    ) -> CallbackResult | None:
         """Execute a callback for a specific event."""
         method_name = f"on_{event.value}"
         method = getattr(callback, method_name, None)
@@ -354,15 +345,15 @@ class CallbackManager:
             self.async_executor, self._execute_callback, callback, event, context
         )
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get callback manager statistics."""
         return dict(self._stats)
 
-    def list_callbacks(self) -> List[str]:
-        """List registered callback names."""
+    def list_callbacks(self) -> list[str]:
+        """list registered callback names."""
         return list(self.callbacks.keys())
 
-    def get_callback(self, name: str) -> Optional[BaseCallback]:
+    def get_callback(self, name: str) -> BaseCallback | None:
         """Get a callback by name."""
         return self.callbacks.get(name)
 
@@ -387,14 +378,12 @@ class CallbackManager:
         self.async_executor.shutdown(wait=True)
         self.logger.info("Callback manager shutdown complete")
 
-
 # Convenience functions for creating common callbacks
 def create_progress_callback(
     name: str = "progress", log_interval: int = 100
 ) -> BaseCallback:
     """Create a progress monitoring callback."""
     pass  # Implementation will be added
-
 
 def create_checkpoint_callback(
     name: str = "checkpoint",
@@ -404,13 +393,11 @@ def create_checkpoint_callback(
     """Create a checkpoint saving callback."""
     pass  # Implementation will be added
 
-
 def create_metrics_callback(
     name: str = "metrics", metrics_interval: int = 50
 ) -> BaseCallback:
     """Create a metrics collection callback."""
     pass  # Implementation will be added
-
 
 def create_logging_callback(
     name: str = "logging", log_level: str = "INFO"

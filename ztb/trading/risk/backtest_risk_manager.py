@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import pandas as pd
 
@@ -6,7 +6,6 @@ from ztb.trading.risk.interfaces import RiskManagerProtocol
 from ztb.trading.risk.risk_manager import RiskManager
 from ztb.trading.types import PositionManagementConfig
 from ztb.utils.cache_utils import TTLCache
-
 
 class BacktestRiskManager(RiskManagerProtocol):
     """A compact RiskManager implementation used by backtests.
@@ -16,7 +15,7 @@ class BacktestRiskManager(RiskManagerProtocol):
     with other risk management consumers.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         self.config = config or {}
         self.max_drawdown_limit = float(self.config.get("max_drawdown_limit", 0.15))
         self.max_position_size = float(self.config.get("max_position_size", 0.1))
@@ -59,7 +58,7 @@ class BacktestRiskManager(RiskManagerProtocol):
         self.current_drawdown = 0.0
         self.consecutive_losses = 0
         self.circuit_breaker_active = False
-        self.open_positions: Dict[str, Dict[str, Any]] = {}
+        self.open_positions: dict[str, dict[str, Any]] = {}
 
         # Caching for ATR and similar values for speed
         self.atr_cache = TTLCache(ttl_seconds=180)
@@ -98,10 +97,10 @@ class BacktestRiskManager(RiskManagerProtocol):
 
     def should_close_position(
         self,
-        position_data: Dict[str, Any],
+        position_data: dict[str, Any],
         current_price: float,
         current_portfolio_value: float,
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         # 高度な RiskManager が有効な場合はそれを使用
         if self.advanced_risk_manager:
             return self.advanced_risk_manager.should_close_position(
@@ -163,7 +162,7 @@ class BacktestRiskManager(RiskManagerProtocol):
 
     def calculate_atr_stop_levels(
         self, data: pd.DataFrame, entry_price: float, position_type: str
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         # 高度な RiskManager が有効な場合はそれを使用
         if self.advanced_risk_manager:
             return self.advanced_risk_manager.calculate_atr_stop_levels(
@@ -192,7 +191,7 @@ class BacktestRiskManager(RiskManagerProtocol):
         return stop_loss, take_profit
 
     def update_risk_metrics(
-        self, trade_result: Optional[Dict[str, Any]] = None
+        self, trade_result: dict[str, Any] | None = None
     ) -> None:
         # 高度な RiskManager が有効な場合はそれも更新
         if self.advanced_risk_manager:

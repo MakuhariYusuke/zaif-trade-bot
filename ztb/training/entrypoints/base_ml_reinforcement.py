@@ -13,7 +13,7 @@ from collections import deque
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any
 
 import psutil
 
@@ -22,7 +22,6 @@ from ztb.utils.checkpoint import HAS_LZ4
 from ztb.utils.file_utils import safe_json_load
 from ztb.utils.parallel_experiments import ResourceMonitor
 
-
 @dataclass
 class StepResult:
     """ステップ結果のデータ構造"""
@@ -30,8 +29,7 @@ class StepResult:
     step: int
     reward: float
     done: bool
-    info: Dict[str, Any]
-
+    info: dict[str, Any]
 
 @dataclass
 class CheckpointData:
@@ -40,18 +38,16 @@ class CheckpointData:
     episode: int
     total_steps: int
     best_reward: float
-    model_state: Dict[str, Any]
-    optimizer_state: Dict[str, Any]
-    step_results: List[StepResult]
+    model_state: dict[str, Any]
+    optimizer_state: dict[str, Any]
+    step_results: list[StepResult]
 
-
-MetricsData = Dict[str, Union[int, float, str, List[float], List[int], Dict[str, Any]]]
-
+MetricsData = dict[str, int | float | str | list[float] | list[int] | dict[str, Any]]
 
 class MLReinforcementExperiment(ScalingExperiment):
     """Base class for ML reinforcement learning experiments"""
 
-    def __init__(self, config: Dict[str, Any], total_steps: int):
+    def __init__(self, config: dict[str, Any], total_steps: int):
         self.strategy = config.get("strategy", "generalization")
 
         # 動的チェックポイント間隔設定
@@ -215,7 +211,6 @@ class MLReinforcementExperiment(ScalingExperiment):
         """メトリクス収集"""
         return self._get_current_metrics()
 
-
 def main() -> None:
     """メイン関数"""
     parser = argparse.ArgumentParser(description="ML Reinforcement Learning Experiment")
@@ -232,7 +227,6 @@ def main() -> None:
     experiment = MLReinforcementExperiment(config, total_steps=config["total_steps"])
     result = experiment.run()
     print(f"Experiment completed: {result}")
-
 
 if __name__ == "__main__":
     main()

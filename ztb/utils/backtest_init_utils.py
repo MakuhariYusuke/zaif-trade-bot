@@ -7,7 +7,7 @@ Provides consistent setup for config, model, data, and environment.
 """
 
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 import pandas as pd
 
@@ -16,15 +16,14 @@ from ztb.utils.config_utils import load_config_unified
 from ztb.utils.data_utils import load_csv_data
 from ztb.utils.training_utils import load_model
 
-
 def initialize_backtest_components(
-    config_path: Union[str, Path],
-    model_path: Union[str, Path],
-    data_path: Union[str, Path],
+    config_path: str | Path,
+    model_path: str | Path,
+    data_path: str | Path,
     algorithm: str = "SAC",
-    required_config_keys: Optional[list] = None,
-    env_config_overrides: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    required_config_keys: list | None = None,
+    env_config_overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Initialize all backtest components with unified utilities.
 
@@ -75,17 +74,16 @@ def initialize_backtest_components(
     # Load model
     model = load_model(model_path, algorithm=algorithm)
 
-    # Set environment for the model
+    # set environment for the model
     model.set_env(env)
     components["model"] = model
 
     return components
 
-
 def setup_backtest_environment(
-    config: Dict[str, Any],
+    config: dict[str, Any],
     data: pd.DataFrame,
-    env_config_overrides: Optional[Dict[str, Any]] = None,
+    env_config_overrides: dict[str, Any] | None = None,
 ) -> HeavyTradingEnv:
     """
     Setup backtest environment from config and data.
@@ -106,9 +104,8 @@ def setup_backtest_environment(
     # Create and return environment
     return HeavyTradingEnv(data, env_config)
 
-
 def validate_backtest_setup(
-    config: Dict[str, Any], model, data: pd.DataFrame, env
+    config: dict[str, Any], model, data: pd.DataFrame, env
 ) -> list:
     """
     Validate backtest setup components.
@@ -120,7 +117,7 @@ def validate_backtest_setup(
         env: Trading environment
 
     Returns:
-        List of validation warnings/errors
+        list of validation warnings/errors
     """
     warnings = []
 

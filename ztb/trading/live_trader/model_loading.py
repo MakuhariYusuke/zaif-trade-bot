@@ -1,6 +1,7 @@
 """Model loading implementation for live trading."""
+from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 import gymnasium as gym
 
@@ -20,7 +21,6 @@ from ztb.utils.logging_utils import get_logger
 if TYPE_CHECKING:
     from ztb.trading.live_trader.live_trader import LiveTrader
 
-
 class ModelLoading:
     """Handles model loading and initialization for live trading."""
 
@@ -29,7 +29,7 @@ class ModelLoading:
         self.live_trader = live_trader
         self.logger = get_logger(__name__)
 
-    def load_model(self) -> "Union[PPO, MaskablePPO, SAC]":
+    def load_model(self) -> "PPO | MaskablePPO | SAC":
         """Load the trained PPO, MaskablePPO, or SAC model.
 
         Bug #27 Fix: Now properly loads MaskablePPO models and uses
@@ -189,7 +189,7 @@ class ModelLoading:
         else:
             # Dry-run mode: skip schema loading entirely
             logger.info("Dry-run mode: skipping schema loading")
-            # Set expected features dynamically from feature set
+            # set expected features dynamically from feature set
             try:
                 from ztb.features.feature_set_manager import get_feature_manager
 

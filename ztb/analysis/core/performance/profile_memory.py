@@ -27,13 +27,11 @@ logger = logging.getLogger(__name__)
 # Add project to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-
 def get_memory_usage() -> float:
     """Get current process memory usage in MB."""
     process = psutil.Process(os.getpid())
     mem = process.memory_info().rss / BYTES_PER_MB
     return cast(float, mem)
-
 
 def log_memory(step_name: str) -> float:
     """Log current memory usage."""
@@ -41,9 +39,8 @@ def log_memory(step_name: str) -> float:
     logger.info(f"  💾 Memory: {mem:.1f} MB - {step_name}")
     return mem
 
-
 def profile_memory_usage(
-    code_path: Optional[str] = None, output_path: Optional[str] = None
+    code_path: str | None = None, output_path: str | None = None
 ) -> dict:
     """Profile memory usage during training setup.
 
@@ -249,7 +246,6 @@ def profile_memory_usage(
         traceback.print_exc()
         memory_profile["error"] = str(e)
         return memory_profile
-
 
 def main() -> bool:
     """Main entry point for memory profiling."""

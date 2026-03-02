@@ -8,23 +8,21 @@ Ensures consistency and detects discrepancies.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ztb.utils.errors import handle_error
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 @dataclass
 class ReconciliationItem:
     """Item to be reconciled."""
 
     item_id: str
-    internal_state: Dict[str, Any]
-    external_state: Dict[str, Any]
+    internal_state: dict[str, Any]
+    external_state: dict[str, Any]
     timestamp: float
-
 
 @dataclass
 class ReconciliationResult:
@@ -32,10 +30,9 @@ class ReconciliationResult:
 
     item_id: str
     is_consistent: bool
-    discrepancies: List[str]
-    actions_taken: List[str]
+    discrepancies: list[str]
+    actions_taken: list[str]
     timestamp: float
-
 
 class ReconciliationStrategy(ABC):
     """Abstract base class for reconciliation strategies."""
@@ -55,7 +52,6 @@ class ReconciliationStrategy(ABC):
     @abstractmethod
     def get_strategy_name(self) -> str:
         """Get strategy name."""
-
 
 class OrderReconciliationStrategy(ReconciliationStrategy):
     """Reconciliation strategy for orders."""
@@ -128,7 +124,6 @@ class OrderReconciliationStrategy(ReconciliationStrategy):
                 timestamp=item.timestamp,
             )
 
-
 class PositionReconciliationStrategy(ReconciliationStrategy):
     """Reconciliation strategy for positions."""
 
@@ -192,14 +187,13 @@ class PositionReconciliationStrategy(ReconciliationStrategy):
                 timestamp=item.timestamp,
             )
 
-
 class ReconciliationEngine:
     """Engine for running reconciliation processes."""
 
     def __init__(self) -> None:
         """Initialize reconciliation engine."""
         super().__init__()
-        self.strategies: Dict[str, ReconciliationStrategy] = {}
+        self.strategies: dict[str, ReconciliationStrategy] = {}
         self.register_default_strategies()
 
     def register_default_strategies(self) -> None:
@@ -215,8 +209,8 @@ class ReconciliationEngine:
         )
 
     def reconcile_items(
-        self, items: List[ReconciliationItem], strategy_name: str
-    ) -> List[ReconciliationResult]:
+        self, items: list[ReconciliationItem], strategy_name: str
+    ) -> list[ReconciliationResult]:
         """
         Reconcile multiple items using specified strategy.
 
@@ -225,7 +219,7 @@ class ReconciliationEngine:
             strategy_name: Name of strategy to use
 
         Returns:
-            List of reconciliation results
+            list of reconciliation results
         """
         if strategy_name not in self.strategies:
             raise ValueError(f"Unknown reconciliation strategy: {strategy_name}")
@@ -253,8 +247,8 @@ class ReconciliationEngine:
         return results
 
     def get_reconciliation_summary(
-        self, results: List[ReconciliationResult]
-    ) -> Dict[str, Any]:
+        self, results: list[ReconciliationResult]
+    ) -> dict[str, Any]:
         """
         Generate summary of reconciliation results.
 
@@ -281,10 +275,8 @@ class ReconciliationEngine:
             "results": results,
         }
 
-
 # Global instance
-_reconciliation_engine: Optional[ReconciliationEngine] = None
-
+_reconciliation_engine: ReconciliationEngine | None = None
 
 def get_reconciliation_engine() -> ReconciliationEngine:
     """Get global reconciliation engine instance."""

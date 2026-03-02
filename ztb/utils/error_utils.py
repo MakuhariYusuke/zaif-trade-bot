@@ -5,7 +5,7 @@ Error handling utilities for consistent error management across the codebase.
 
 import logging
 from contextlib import contextmanager
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, TypeVar
 
 from ztb.utils.logging_utils import get_logger
 
@@ -33,10 +33,10 @@ def safe_operation_context(operation_name: str, default_result: Any = None):
 def safe_execute(
     func: Callable[..., T],
     operation_name: str,
-    default_result: Optional[T] = None,
+    default_result: T | None = None,
     *args: Any,
     **kwargs: Any
-) -> Optional[T]:
+) -> T | None:
     """
     Safely execute a function with consistent error handling.
 
@@ -56,7 +56,7 @@ def safe_execute(
         logger.error(f"Error in {operation_name}: {e}")
         return default_result
 
-def log_and_continue(func: Callable[..., T]) -> Callable[..., Optional[T]]:
+def log_and_continue(func: Callable[..., T]) -> Callable[..., T | None]:
     """
     Decorator to log errors and continue execution.
 
@@ -66,7 +66,7 @@ def log_and_continue(func: Callable[..., T]) -> Callable[..., Optional[T]]:
     Returns:
         Decorated function that logs errors and returns None on failure
     """
-    def wrapper(*args: Any, **kwargs: Any) -> Optional[T]:
+    def wrapper(*args: Any, **kwargs: Any) -> T | None:
         try:
             return func(*args, **kwargs)
         except Exception as e:
@@ -74,14 +74,13 @@ def log_and_continue(func: Callable[..., T]) -> Callable[..., Optional[T]]:
             return None
     return wrapper
 
-
 def safe_operation(
     func: Callable[..., T],
-    operation_name: Optional[str] = None,
-    default_result: Optional[T] = None,
+    operation_name: str | None = None,
+    default_result: T | None = None,
     collect_errors: bool = False,
-    error_list: Optional[list] = None,
-) -> Optional[T]:
+    error_list: list | None = None,
+) -> T | None:
     """
     Execute a function safely with error handling.
     
@@ -92,7 +91,7 @@ def safe_operation(
         operation_name: Name for logging. If None, uses func.__name__
         default_result: Value to return on error
         collect_errors: If True, append errors to error_list instead of raising
-        error_list: List to collect errors into (required if collect_errors=True)
+        error_list: list to collect errors into (required if collect_errors=True)
     
     Returns:
         Function result or default_result on error

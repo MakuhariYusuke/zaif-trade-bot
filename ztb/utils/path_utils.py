@@ -8,7 +8,6 @@ import os
 from pathlib import Path
 from typing import Optional
 
-
 def get_project_root() -> Path:
     """
     Get the project root directory.
@@ -38,7 +37,6 @@ def get_project_root() -> Path:
     # Fallback: assume we're in ztb/utils/, so go up 2 levels
     return current.parent.parent.parent
 
-
 def ensure_dir(path: str | Path) -> Path:
     """
     Ensure a directory exists, creating it if necessary.
@@ -52,7 +50,6 @@ def ensure_dir(path: str | Path) -> Path:
     p = Path(path)
     p.mkdir(parents=True, exist_ok=True)
     return p
-
 
 def safe_path_join(*parts: str) -> Path:
     """
@@ -73,7 +70,6 @@ def safe_path_join(*parts: str) -> Path:
 
     return result
 
-
 def get_relative_path(from_path: Path, to_path: Path) -> Path:
     """
     Get relative path from one path to another.
@@ -91,7 +87,6 @@ def get_relative_path(from_path: Path, to_path: Path) -> Path:
         # Paths are on different drives (Windows)
         return to_path
 
-
 def find_files_by_extension(directory: Path, extension: str) -> list[Path]:
     """
     Find all files with a specific extension in a directory recursively.
@@ -101,15 +96,14 @@ def find_files_by_extension(directory: Path, extension: str) -> list[Path]:
         extension: File extension (without dot, e.g., 'py', 'json')
 
     Returns:
-        List of matching file paths
+        list of matching file paths
     """
     if not extension.startswith("."):
         extension = f".{extension}"
 
     return list(directory.rglob(f"*{extension}"))
 
-
-def get_cache_dir(subdir: Optional[str] = None) -> Path:
+def get_cache_dir(subdir: str | None = None) -> Path:
     """
     Get cache directory path, optionally with subdirectory.
 
@@ -124,8 +118,7 @@ def get_cache_dir(subdir: Optional[str] = None) -> Path:
         cache_dir = cache_dir / subdir
     return ensure_dir(cache_dir)
 
-
-def get_models_dir(subdir: Optional[str] = None) -> Path:
+def get_models_dir(subdir: str | None = None) -> Path:
     """
     Get models directory path, optionally with subdirectory.
 
@@ -140,7 +133,6 @@ def get_models_dir(subdir: Optional[str] = None) -> Path:
         models_dir = models_dir / subdir
     return ensure_dir(models_dir)
 
-
 def get_file_dir(file_path: str) -> Path:
     """
     Get the directory containing a file.
@@ -152,7 +144,6 @@ def get_file_dir(file_path: str) -> Path:
         Directory containing the file
     """
     return Path(file_path).parent
-
 
 def resolve_path(path: str | Path) -> Path:
     """
@@ -166,8 +157,7 @@ def resolve_path(path: str | Path) -> Path:
     """
     return Path(path).resolve()
 
-
-def get_config_dir(subdir: Optional[str] = None) -> Path:
+def get_config_dir(subdir: str | None = None) -> Path:
     """
     Get config directory path, optionally with subdirectory.
 
@@ -182,8 +172,7 @@ def get_config_dir(subdir: Optional[str] = None) -> Path:
         config_dir = config_dir / subdir
     return ensure_dir(config_dir)
 
-
-def get_data_dir(subdir: Optional[str] = None) -> Path:
+def get_data_dir(subdir: str | None = None) -> Path:
     """
     Get data directory path, optionally with subdirectory.
 
@@ -198,8 +187,7 @@ def get_data_dir(subdir: Optional[str] = None) -> Path:
         data_dir = data_dir / subdir
     return ensure_dir(data_dir)
 
-
-def get_logs_dir(subdir: Optional[str] = None) -> Path:
+def get_logs_dir(subdir: str | None = None) -> Path:
     """
     Get logs directory path, optionally with subdirectory.
 
@@ -214,8 +202,7 @@ def get_logs_dir(subdir: Optional[str] = None) -> Path:
         logs_dir = logs_dir / subdir
     return ensure_dir(logs_dir)
 
-
-def get_tensorboard_dir(subdir: Optional[str] = None) -> Path:
+def get_tensorboard_dir(subdir: str | None = None) -> Path:
     """
     Get tensorboard directory path, optionally with subdirectory.
 

@@ -6,7 +6,6 @@ HFT / Fast Intraday Proxy Features
 import numpy as np
 import pandas as pd
 
-
 def add_hft_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     Add HFT proxy features to the DataFrame.

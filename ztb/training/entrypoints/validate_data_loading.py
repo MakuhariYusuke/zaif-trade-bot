@@ -7,11 +7,10 @@ Validate ffill/bfill impact on reward calculations and learning
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 import pandas as pd
-
 
 class DataLoadingValidator:
     """Validate data loading and missing data handling"""
@@ -19,7 +18,7 @@ class DataLoadingValidator:
     def __init__(self) -> None:
         self.validation_results: list[Any] = []
 
-    def simulate_missing_data_scenarios(self) -> List[tuple[str, pd.DataFrame]]:
+    def simulate_missing_data_scenarios(self) -> list[tuple[str, pd.DataFrame]]:
         """Create test datasets with different missing data patterns"""
         # Generate base dataset (1 year of hourly data)
         dates = pd.date_range("2023-01-01", "2023-12-31", freq="1H")
@@ -116,7 +115,7 @@ class DataLoadingValidator:
 
     def calculate_reward_impact(
         self, original_data: pd.DataFrame, filled_data: pd.DataFrame
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Calculate impact of missing data filling on reward calculations"""
         # Simulate simple trading strategy rewards based on technical indicators
 
@@ -173,7 +172,7 @@ class DataLoadingValidator:
             "filled_count": filled_data.isnull().sum().sum(),
         }
 
-    def validate_cache_expiry(self) -> Dict[str, Any]:
+    def validate_cache_expiry(self) -> dict[str, Any]:
         """Validate cache expiry logic for long-running experiments"""
         # Simulate cache timestamps
         cache_creation = datetime.now() - timedelta(days=2)  # 2 days old cache
@@ -212,7 +211,7 @@ class DataLoadingValidator:
             print(f"\n📊 Scenario: {scenario_name}")
             print(f"  Original missing values: {original_data.isnull().sum().sum()}")
 
-            scenario_results: Dict[str, Any] = {
+            scenario_results: dict[str, Any] = {
                 "scenario": scenario_name,
                 "original_missing": int(original_data.isnull().sum().sum()),
                 "fill_method_results": [],
@@ -262,7 +261,7 @@ class DataLoadingValidator:
 
         print(f"\n💾 Results saved to {output_file}")
 
-    def _generate_summary(self) -> Dict[str, Any]:
+    def _generate_summary(self) -> dict[str, Any]:
         """Generate summary of validation results"""
         if not self.validation_results:
             return {}
@@ -296,7 +295,6 @@ class DataLoadingValidator:
             ),
             "cache_expiry_recommendation": "extend_to_48h",  # Based on analysis
         }
-
 
 if __name__ == "__main__":
     validator = DataLoadingValidator()

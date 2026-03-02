@@ -14,14 +14,12 @@ import pandas as pd
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
 
-
 @FeatureRegistry.register("Chaikin_AD")
 def compute_chaikin_ad(df: pd.DataFrame) -> pd.Series:
     """Chaikin AD using Ta-Lib wrapper"""
     feature = ChaikinAD()
     result_df = feature.compute(df)
     return result_df["chaikin_ad"]
-
 
 class ChaikinAD(BaseFeature):
     """

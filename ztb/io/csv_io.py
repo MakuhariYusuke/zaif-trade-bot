@@ -6,15 +6,14 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Iterable
 
 from ztb.io.common import PathLike, ensure_parent_dir
 
-
 def write_csv_dicts(
     path: PathLike,
-    rows: Iterable[Dict[str, Any]],
-    fieldnames: Optional[List[str]] = None,
+    rows: Iterable[dict[str, Any]],
+    fieldnames: list[str] | None = None,
 ) -> Path:
     target = ensure_parent_dir(path)
     rows_list = list(rows)

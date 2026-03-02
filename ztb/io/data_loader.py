@@ -13,19 +13,18 @@ All data loading should go through this module to ensure consistency.
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any, Dict, Iterator, Optional, Union, cast
+from typing import Any, Iterator, cast
 
 import pandas as pd
 
 from ztb.utils.errors import safe_operation
 from ztb.utils.file_utils import safe_json_load
 
-
 class DataLoader:
     """Unified data loader for ZTB."""
 
     @staticmethod
-    def _resolve_csv_engine(requested_engine: Optional[str]) -> Optional[str]:
+    def _resolve_csv_engine(requested_engine: str | None) -> str | None:
         """Resolve the CSV engine, preferring pyarrow when available."""
         if requested_engine:
             return requested_engine
@@ -36,7 +35,7 @@ class DataLoader:
         return "pyarrow"
 
     @staticmethod
-    def load_parquet(file_path: Union[str, Path]) -> pd.DataFrame:
+    def load_parquet(file_path: str | Path) -> pd.DataFrame:
         """Load data from Parquet file."""
         return cast(
             pd.DataFrame,
@@ -49,7 +48,7 @@ class DataLoader:
         )
 
     @staticmethod
-    def _load_parquet_impl(file_path: Union[str, Path]) -> pd.DataFrame:
+    def _load_parquet_impl(file_path: str | Path) -> pd.DataFrame:
         """Implementation of Parquet data loading."""
         file_path = Path(file_path)
         if not file_path.exists():
@@ -58,10 +57,10 @@ class DataLoader:
         return pd.read_parquet(file_path)
 
     @staticmethod
-    def load_json(file_path: Union[str, Path]) -> Dict[str, Any]:
+    def load_json(file_path: str | Path) -> dict[str, Any]:
         """Load data from JSON file."""
         return cast(
-            Dict[str, Any],
+            dict[str, Any],
             safe_operation(
                 logger=None,  # Use default logger
                 operation=lambda: DataLoader._load_json_impl(file_path),
@@ -71,16 +70,16 @@ class DataLoader:
         )
 
     @staticmethod
-    def _load_json_impl(file_path: Union[str, Path]) -> Dict[str, Any]:
+    def _load_json_impl(file_path: str | Path) -> dict[str, Any]:
         """Implementation of JSON data loading."""
         file_path = Path(file_path)
         if not file_path.exists():
             raise FileNotFoundError(f"JSON file not found: {file_path}")
 
-        return cast(Dict[str, Any], safe_json_load(file_path))
+        return cast(dict[str, Any], safe_json_load(file_path))
 
     @staticmethod
-    def load_sqlite(db_path: Union[str, Path], query: str) -> pd.DataFrame:
+    def load_sqlite(db_path: str | Path, query: str) -> pd.DataFrame:
         """Load data from SQLite database."""
         return cast(
             pd.DataFrame,
@@ -93,7 +92,7 @@ class DataLoader:
         )
 
     @staticmethod
-    def _load_sqlite_impl(db_path: Union[str, Path], query: str) -> pd.DataFrame:
+    def _load_sqlite_impl(db_path: str | Path, query: str) -> pd.DataFrame:
         """Implementation of SQLite data loading."""
         db_path = Path(db_path)
         if not db_path.exists():
@@ -104,7 +103,7 @@ class DataLoader:
 
     @staticmethod
     def load_csv(
-        file_path: Union[str, Path], *, strict: bool = False, **kwargs: Any
+        file_path: str | Path, *, strict: bool = False, **kwargs: Any
     ) -> pd.DataFrame:
         """Load data from CSV file."""
         if strict:
@@ -120,13 +119,13 @@ class DataLoader:
         )
 
     @staticmethod
-    def load_csv_strict(file_path: Union[str, Path], **kwargs: Any) -> pd.DataFrame:
+    def load_csv_strict(file_path: str | Path, **kwargs: Any) -> pd.DataFrame:
         """Load data from CSV file and raise on failure."""
         return DataLoader._load_csv_impl(file_path, **kwargs)
 
     @staticmethod
     def load_csv_iter(
-        file_path: Union[str, Path], chunksize: int, **kwargs: Any
+        file_path: str | Path, chunksize: int, **kwargs: Any
     ) -> Iterator[pd.DataFrame]:
         """Load CSV data in chunks."""
         file_path = Path(file_path)
@@ -143,10 +142,10 @@ class DataLoader:
 
     @staticmethod
     def load_csv_optimized(
-        file_path: Union[str, Path],
-        usecols: Optional[list[str]] = None,
-        dtype: Optional[dict[str, Any]] = None,
-        parse_dates: Optional[list[str]] = None,
+        file_path: str | Path,
+        usecols: list[str] | None = None,
+        dtype: dict[str, Any] | None = None,
+        parse_dates: list[str] | None = None,
         **kwargs: Any,
     ) -> pd.DataFrame:
         """Load CSV data with memory optimization."""
@@ -272,7 +271,7 @@ class DataLoader:
         return df
 
     @staticmethod
-    def _load_csv_impl(file_path: Union[str, Path], **kwargs: Any) -> pd.DataFrame:
+    def _load_csv_impl(file_path: str | Path, **kwargs: Any) -> pd.DataFrame:
         """Implementation of CSV data loading."""
         file_path = Path(file_path)
         if not file_path.exists():
@@ -293,7 +292,7 @@ class DataLoader:
         return cast(pd.DataFrame, pd.read_csv(file_path, **kwargs))
 
     @staticmethod
-    def save_parquet(df: pd.DataFrame, file_path: Union[str, Path]) -> None:
+    def save_parquet(df: pd.DataFrame, file_path: str | Path) -> None:
         """Save DataFrame to Parquet file."""
         safe_operation(
             logger=None,  # Use default logger
@@ -303,14 +302,14 @@ class DataLoader:
         )
 
     @staticmethod
-    def _save_parquet_impl(df: pd.DataFrame, file_path: Union[str, Path]) -> None:
+    def _save_parquet_impl(df: pd.DataFrame, file_path: str | Path) -> None:
         """Implementation of Parquet data saving."""
         file_path = Path(file_path)
         file_path.parent.mkdir(parents=True, exist_ok=True)
         df.to_parquet(file_path)
 
     @staticmethod
-    def save_json(data: Dict[str, Any], file_path: Union[str, Path]) -> None:
+    def save_json(data: dict[str, Any], file_path: str | Path) -> None:
         """Save data to JSON file."""
         safe_operation(
             logger=None,  # Use default logger
@@ -320,7 +319,7 @@ class DataLoader:
         )
 
     @staticmethod
-    def _save_json_impl(data: Dict[str, Any], file_path: Union[str, Path]) -> None:
+    def _save_json_impl(data: dict[str, Any], file_path: str | Path) -> None:
         """Implementation of JSON data saving."""
         file_path = Path(file_path)
         file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -329,7 +328,7 @@ class DataLoader:
 
     @staticmethod
     def save_sqlite(
-        df: pd.DataFrame, db_path: Union[str, Path], table_name: str
+        df: pd.DataFrame, db_path: str | Path, table_name: str
     ) -> None:
         """Save DataFrame to SQLite database."""
         safe_operation(
@@ -341,7 +340,7 @@ class DataLoader:
 
     @staticmethod
     def _save_sqlite_impl(
-        df: pd.DataFrame, db_path: Union[str, Path], table_name: str
+        df: pd.DataFrame, db_path: str | Path, table_name: str
     ) -> None:
         """Implementation of SQLite data saving."""
         db_path = Path(db_path)
@@ -349,9 +348,8 @@ class DataLoader:
         with sqlite3.connect(str(db_path)) as conn:
             df.to_sql(table_name, conn, if_exists="replace", index=False)
 
-
 # Convenience functions
-def load_ohlc_data(source: Union[str, Path, pd.DataFrame]) -> pd.DataFrame:
+def load_ohlc_data(source: str | Path | pd.DataFrame) -> pd.DataFrame:
     """
     Load OHLC data from various sources.
 
@@ -375,9 +373,8 @@ def load_ohlc_data(source: Union[str, Path, pd.DataFrame]) -> pd.DataFrame:
     else:
         raise ValueError(f"Unsupported file format: {source_path.suffix}")
 
-
 def save_evaluation_results(
-    results: Dict[str, Any], output_path: Union[str, Path]
+    results: dict[str, Any], output_path: str | Path
 ) -> None:
     """Save evaluation results to file."""
     output_path = Path(output_path)

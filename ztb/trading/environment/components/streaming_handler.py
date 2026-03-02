@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 # Streaming data handling utilities for trading environment
 # 取引環境のストリーミングデータ処理ユーティリティ
 
 import time
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
@@ -13,24 +15,23 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-
 class StreamingHandler:
     """Handles streaming data ingestion and processing."""
 
     def __init__(
         self,
-        streaming_pipeline: Optional["StreamingPipeline"] = None,
+        streaming_pipeline: StreamingPipeline | None = None,
         stream_batch_size: int = 256,
-        timestamp_column: Optional[str] = "timestamp",
-        episode_id_column: Optional[str] = "episode_id",
+        timestamp_column: str | None = "timestamp",
+        episode_id_column: str | None = "episode_id",
     ):
         self.streaming_pipeline = streaming_pipeline
         self.stream_batch_size = max(1, stream_batch_size)
         self._timestamp_column = timestamp_column
         self._episode_id_column = episode_id_column
-        self._stream_last_timestamp: Optional[pd.Timestamp] = None
+        self._stream_last_timestamp: pd.Timestamp | None = None
         self._stream_rows_appended = 0
-        self._base_columns: List[str] = []
+        self._base_columns: list[str] = []
 
     def fetch_streaming_snapshot(self, required_rows: int) -> pd.DataFrame:
         """ストリーミングパイプラインから初期スナップショットを取得"""
@@ -45,7 +46,7 @@ class StreamingHandler:
         return snapshot.reset_index(drop=True)
 
     def prepare_stream_batch(
-        self, batch: pd.DataFrame, base_columns: List[str], df: pd.DataFrame
+        self, batch: pd.DataFrame, base_columns: list[str], df: pd.DataFrame
     ) -> pd.DataFrame:
         """環境が扱える形式にストリーミングデータを整形"""
         if batch.empty:
@@ -69,10 +70,10 @@ class StreamingHandler:
     def append_streaming_rows(
         self,
         df: pd.DataFrame,
-        base_columns: List[str],
-        features: List[str],
+        base_columns: list[str],
+        features: list[str],
         config: dict[str, Any],
-    ) -> tuple[bool, pd.DataFrame, List[str]]:
+    ) -> tuple[bool, pd.DataFrame, list[str]]:
         """ストリーミングバッファから新規行を取り込み"""
         if not self.streaming_pipeline:
             return False, df, features

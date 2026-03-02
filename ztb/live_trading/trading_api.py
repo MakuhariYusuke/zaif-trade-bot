@@ -9,13 +9,12 @@ Zaif取引所API統合モジュール
 """
 
 import logging
-from typing import Dict, List, Optional, Any
+from typing import Any
 from dataclasses import dataclass
 from datetime import datetime
 import time
 
 logger = logging.getLogger(__name__)
-
 
 @dataclass
 class OrderInfo:
@@ -25,10 +24,9 @@ class OrderInfo:
     side: str  # 'buy' or 'sell'
     order_type: str  # 'limit' or 'market'
     amount: float
-    price: Optional[float]
+    price: float | None
     timestamp: datetime
     status: str  # 'open', 'filled', 'canceled', 'rejected'
-
 
 @dataclass
 class BalanceInfo:
@@ -37,7 +35,6 @@ class BalanceInfo:
     total: float
     free: float
     locked: float
-
 
 @dataclass
 class TickerInfo:
@@ -48,7 +45,6 @@ class TickerInfo:
     last: float
     volume: float
     timestamp: datetime
-
 
 class TradingAPI:
     """
@@ -96,7 +92,7 @@ class TradingAPI:
 
         self._last_request_time = time.time()
 
-    def _make_request(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    def _make_request(self, endpoint: str, params: dict[str, Any] | None = None) -> Any:
         """
         APIリクエスト実行（モック実装）
 
@@ -130,7 +126,7 @@ class TradingAPI:
 
         return {}
 
-    def get_ticker(self, symbol: str) -> Dict[str, Any]:
+    def get_ticker(self, symbol: str) -> dict[str, Any]:
         """
         ティッカー情報取得
 
@@ -138,7 +134,7 @@ class TradingAPI:
             symbol: 通貨ペア (例: 'BTC/JPY')
 
         Returns:
-            Dict[str, Any]: ティッカー情報
+            dict[str, Any]: ティッカー情報
         """
         try:
             response = self._make_request('ticker', {'symbol': symbol})
@@ -148,12 +144,12 @@ class TradingAPI:
             logger.error(f"Failed to get ticker for {symbol}: {e}")
             raise
 
-    def get_balance(self) -> Dict[str, float]:
+    def get_balance(self) -> dict[str, float]:
         """
         残高情報取得
 
         Returns:
-            Dict[str, float]: 通貨別残高
+            dict[str, float]: 通貨別残高
         """
         try:
             import ccxt
@@ -192,8 +188,8 @@ class TradingAPI:
                     symbol: str,
                     side: str,
                     amount: float,
-                    price: Optional[float] = None,
-                    order_type: str = 'limit') -> Dict[str, Any]:
+                    price: float | None = None,
+                    order_type: str = 'limit') -> dict[str, Any]:
         """
         注文作成
 
@@ -205,7 +201,7 @@ class TradingAPI:
             order_type: 注文タイプ ('limit' or 'market')
 
         Returns:
-            Dict[str, Any]: 注文情報
+            dict[str, Any]: 注文情報
         """
         try:
             params = {
@@ -280,7 +276,7 @@ class TradingAPI:
             logger.error(f"Failed to get order status {order_id}: {e}")
             raise
 
-    def get_open_orders(self, symbol: Optional[str] = None) -> List[OrderInfo]:
+    def get_open_orders(self, symbol: str | None = None) -> list[OrderInfo]:
         """
         未決済注文取得
 
@@ -288,7 +284,7 @@ class TradingAPI:
             symbol: 通貨ペア（指定なしの場合は全ペア）
 
         Returns:
-            List[OrderInfo]: 未決済注文リスト
+            list[OrderInfo]: 未決済注文リスト
         """
         try:
             self._rate_limit_wait()

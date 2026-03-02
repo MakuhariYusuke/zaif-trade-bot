@@ -27,7 +27,6 @@ except Exception:
 
 logger = logging.getLogger(__name__)
 
-
 class MemoryEfficientLoader:
     """
     Memory-efficient data loader that manages GPU memory during training.
@@ -111,7 +110,7 @@ class MemoryEfficientLoader:
         return len(self.data_loader)
 
     def set_epoch(self, epoch: int) -> None:
-        """Set epoch for distributed training."""
+        """set epoch for distributed training."""
         if hasattr(self.dataset, "set_epoch"):
             self.dataset.set_epoch(epoch)
 

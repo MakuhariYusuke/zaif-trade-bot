@@ -3,7 +3,7 @@
 """Compute risk metrics (Sharpe ratio, max drawdown) for reward function variants."""
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -13,24 +13,22 @@ from ztb.metrics.metrics import max_drawdown, sharpe_ratio
 # 年間取引日数
 from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
 
-
 def compute_sharpe_ratio(returns: pd.Series, risk_free_rate: float = 0.02) -> float:
     """Compute annualized Sharpe ratio."""
     return sharpe_ratio(
         returns, rf=risk_free_rate, period_per_year=TRADING_DAYS_PER_YEAR
     )
 
-
 def analyze_risk_metrics(
-    backtest_results: Optional[str] = None,
-    risk_measures: Optional[List[str]] = None,
-    output_path: Optional[str] = None,
-) -> Dict[str, Any]:
+    backtest_results: str | None = None,
+    risk_measures: list[str] | None = None,
+    output_path: str | None = None,
+) -> dict[str, Any]:
     """Analyze risk metrics from backtest results.
 
     Args:
         backtest_results: Path to backtest results file
-        risk_measures: List of risk measures to analyze
+        risk_measures: list of risk measures to analyze
         output_path: Path to save analysis results
 
     Returns:
@@ -50,7 +48,6 @@ def analyze_risk_metrics(
         write_json(output_path, results, indent=2, ensure_ascii=False)
 
     return results
-
 
 def main() -> None:
     """Main entry point."""
@@ -96,7 +93,6 @@ def main() -> None:
         print(f"   Volatility: {returns.std():.3f}")
     """Main entry point."""
     analyze_risk_metrics()
-
 
 if __name__ == "__main__":
     main()

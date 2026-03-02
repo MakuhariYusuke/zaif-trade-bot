@@ -15,7 +15,6 @@ import numpy as np
 project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(project_root))
 
-
 def run_multi_stage_phase(phase_name, timesteps, focus, base_config):
     """Run a single multi-stage training phase"""
 
@@ -125,7 +124,6 @@ def run_multi_stage_phase(phase_name, timesteps, focus, base_config):
         "elapsed_time": elapsed_time,
     }
 
-
 def run_multi_stage_training():
     """Run complete multi-stage training"""
 
@@ -221,7 +219,6 @@ def run_multi_stage_training():
     print("2. Evaluate performance across different market conditions")
     print("3. Monitor action distribution balance in live trading")
     print("4. Consider periodic model retraining based on market changes")
-
 
 if __name__ == "__main__":
     run_multi_stage_training()

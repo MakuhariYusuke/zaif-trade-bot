@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 from ztb.io.json_io import read_json, write_json
 
@@ -22,17 +22,16 @@ class ParameterType(Enum):
     CATEGORICAL = "categorical"  # カテゴリカル (e.g., optimizer: 'adam', 'sgd')
     LOG_UNIFORM = "log_uniform"  # 対数スケール (e.g., learning_rate: 1e-5 to 1e-2)
 
-
 @dataclass
 class ParameterSpace:
     """探索するパラメータ空間の定義"""
 
     name: str
     param_type: ParameterType
-    low: Optional[float] = None  # 最小値（CONTINUOUS, INTEGER, LOG_UNIFORMで使用）
-    high: Optional[float] = None  # 最大値（CONTINUOUS, INTEGER, LOG_UNIFORMで使用）
-    choices: Optional[List[Any]] = None  # 選択肢（CATEGORICALで使用）
-    default: Optional[Any] = None  # デフォルト値
+    low: float | None = None  # 最小値（CONTINUOUS, INTEGER, LOG_UNIFORMで使用）
+    high: float | None = None  # 最大値（CONTINUOUS, INTEGER, LOG_UNIFORMで使用）
+    choices: list[Any] | None = None  # 選択肢（CATEGORICALで使用）
+    default: Any | None = None  # デフォルト値
 
     def __post_init__(self) -> None:
         """バリデーション"""
@@ -68,7 +67,7 @@ class ParameterSpace:
         elif self.param_type == ParameterType.CATEGORICAL:
             return random.choice(self.choices)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         return {
             "name": self.name,
@@ -79,21 +78,20 @@ class ParameterSpace:
             "default": self.default,
         }
 
-
 @dataclass
 class TrialResult:
     """1回の試行（トライアル）の結果"""
 
     trial_id: int
-    parameters: Dict[str, Any]
-    metrics: Dict[str, float]  # e.g., {'critic_loss': 0.08, 'actor_loss': -4.26}
+    parameters: dict[str, Any]
+    metrics: dict[str, float]  # e.g., {'critic_loss': 0.08, 'actor_loss': -4.26}
     objective_value: float  # 最適化したい目的関数の値（小さいほど良い）
     duration_seconds: float
     success: bool
-    error_message: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    error_message: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         return {
             "trial_id": self.trial_id,
@@ -106,16 +104,15 @@ class TrialResult:
             "metadata": self.metadata,
         }
 
-
 @dataclass
 class OptimizationResult:
     """最適化全体の結果"""
 
     optimizer_name: str
-    best_parameters: Dict[str, Any]
+    best_parameters: dict[str, Any]
     best_objective_value: float
-    best_metrics: Dict[str, float]
-    all_trials: List[TrialResult]
+    best_metrics: dict[str, float]
+    all_trials: list[TrialResult]
     total_duration_seconds: float
     n_trials: int
     success_rate: float
@@ -216,7 +213,6 @@ class OptimizationResult:
         print(f"  総所要時間: {self.total_duration_seconds:.1f}秒")
         print("=" * 80)
 
-
 class OptimizerBase(ABC):
     """
     ハイパーパラメータ最適化の基底クラス
@@ -226,9 +222,9 @@ class OptimizerBase(ABC):
 
     def __init__(
         self,
-        parameter_spaces: List[ParameterSpace],
+        parameter_spaces: list[ParameterSpace],
         objective_function: Callable[[dict[str, Any]], TrialResult],
-        n_trials: Optional[int] = None,
+        n_trials: int | None = None,
         random_state: int = 42,
     ):
         """
@@ -244,9 +240,9 @@ class OptimizerBase(ABC):
         self.random_state = random_state
 
         # 結果保存用
-        self.trials: List[TrialResult] = []
-        self.best_trial: Optional[TrialResult] = None
-        self.start_time: Optional[float] = None
+        self.trials: list[TrialResult] = []
+        self.best_trial: TrialResult | None = None
+        self.start_time: float | None = None
 
     @abstractmethod
     def optimize(self) -> OptimizationResult:
@@ -258,7 +254,7 @@ class OptimizerBase(ABC):
         """
         pass
 
-    def _run_trial(self, trial_id: int, parameters: Dict[str, Any]) -> TrialResult:
+    def _run_trial(self, trial_id: int, parameters: dict[str, Any]) -> TrialResult:
         """
         1回の試行を実行
 

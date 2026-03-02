@@ -1,7 +1,6 @@
-from typing import Any, Dict, Optional, Protocol, Tuple, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 import pandas as pd
-
 
 @runtime_checkable
 class RiskManagerProtocol(Protocol):
@@ -26,10 +25,10 @@ class RiskManagerProtocol(Protocol):
 
     def should_close_position(
         self,
-        position_data: Dict[str, Any],
+        position_data: dict[str, Any],
         current_price: float,
         current_portfolio_value: float,
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         ...
 
     def get_risk_adjusted_position_size(
@@ -39,11 +38,11 @@ class RiskManagerProtocol(Protocol):
 
     def calculate_atr_stop_levels(
         self, data: pd.DataFrame, entry_price: float, position_type: str
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         ...
 
     def update_risk_metrics(
-        self, trade_result: Optional[Dict[str, Any]] = None
+        self, trade_result: dict[str, Any] | None = None
     ) -> None:
         ...
 

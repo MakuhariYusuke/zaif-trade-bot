@@ -10,24 +10,22 @@ import signal
 import subprocess
 import sys
 from types import FrameType
-from typing import List, Optional
 
 from ztb.utils.system_utils import popen_no_window
-
 
 class MonitoringLauncher:
     def __init__(
         self,
         correlation_id: str,
-        webhook_url: Optional[str] = None,
+        webhook_url: str | None = None,
         dry_run: bool = False,
     ):
         self.correlation_id = correlation_id
         self.webhook_url = webhook_url
         self.dry_run = dry_run
-        self.processes: List[subprocess.Popen[str]] = []
+        self.processes: list[subprocess.Popen[str]] = []
 
-    def get_commands(self) -> List[List[str]]:
+    def get_commands(self) -> list[list[str]]:
         """Get list of commands to run."""
         commands = [
             [
@@ -74,7 +72,7 @@ class MonitoringLauncher:
     def wait_and_cleanup(self) -> None:
         """Wait for processes and clean up on signal."""
 
-        def signal_handler(signum: int, frame: Optional[FrameType]) -> None:
+        def signal_handler(signum: int, frame: FrameType | None) -> None:
             print("\nReceived signal, terminating processes...")
             self.terminate_all()
             sys.exit(0)
@@ -109,7 +107,6 @@ class MonitoringLauncher:
             except Exception as e:
                 print(f"Error terminating PID {proc.pid}: {e}")
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Launch monitoring processes for Zaif Trade Bot session"
@@ -140,7 +137,6 @@ def main() -> None:
     launcher = MonitoringLauncher(args.correlation_id, args.webhook, dry_run)
     launcher.launch_processes()
     launcher.wait_and_cleanup()
-
 
 if __name__ == "__main__":
     main()

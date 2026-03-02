@@ -11,11 +11,9 @@ import yaml
 
 from ztb.io.common import PathLike, _to_path, atomic_write_text
 
-
 def read_yaml(path: PathLike, encoding: str = "utf-8") -> Any:
     target = _to_path(path)
     return yaml.safe_load(target.read_text(encoding=encoding))
-
 
 def write_yaml(
     path: PathLike,

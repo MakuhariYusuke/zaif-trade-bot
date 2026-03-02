@@ -13,19 +13,17 @@ import os
 import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ztb.utils.path_utils import ensure_dir, get_project_root
 from ztb.utils.performance_utils import timed, timed_with_memory
 
 logger = logging.getLogger(__name__)
 
-
 class FileOperationError(Exception):
     """ファイル操作エラー"""
 
     pass
-
 
 class BatchFileOperator:
     """
@@ -39,7 +37,7 @@ class BatchFileOperator:
 
     def __init__(
         self,
-        root_path: Optional[Path] = None,
+        root_path: Path | None = None,
         max_workers: int = 4,
         dry_run: bool = False,
         verbose: bool = True,
@@ -57,8 +55,8 @@ class BatchFileOperator:
         self.max_workers = max_workers
         self.dry_run = dry_run
         self.verbose = verbose
-        self.operations: List[Dict[str, Any]] = []
-        self.results: List[Dict[str, Any]] = []
+        self.operations: list[dict[str, Any]] = []
+        self.results: list[dict[str, Any]] = []
 
     def add_move(self, source: Path, destination: Path) -> None:
         """移動操作を追加"""
@@ -77,7 +75,7 @@ class BatchFileOperator:
         self.operations.append({"type": "delete", "path": path})
 
     @timed_with_memory
-    def execute(self) -> Dict[str, int]:
+    def execute(self) -> dict[str, int]:
         """
         全操作を並列実行
 
@@ -119,7 +117,7 @@ class BatchFileOperator:
         )
         return stats
 
-    def _execute_single(self, operation: Dict[str, Any]) -> Dict[str, Any]:
+    def _execute_single(self, operation: dict[str, Any]) -> dict[str, Any]:
         """単一操作を実行"""
         op_type = operation["type"]
 
@@ -135,7 +133,7 @@ class BatchFileOperator:
         except Exception as e:
             return {"status": "failed", "operation": operation, "error": str(e)}
 
-    def _move_file(self, source: Path, dest: Path) -> Dict[str, Any]:
+    def _move_file(self, source: Path, dest: Path) -> dict[str, Any]:
         """ファイル移動"""
         if not source.exists():
             return {
@@ -177,7 +175,7 @@ class BatchFileOperator:
             "destination": str(dest),
         }
 
-    def _copy_file(self, source: Path, dest: Path) -> Dict[str, Any]:
+    def _copy_file(self, source: Path, dest: Path) -> dict[str, Any]:
         """ファイルコピー"""
         if not source.exists():
             return {
@@ -207,7 +205,7 @@ class BatchFileOperator:
             "destination": str(dest),
         }
 
-    def _delete_file(self, path: Path) -> Dict[str, Any]:
+    def _delete_file(self, path: Path) -> dict[str, Any]:
         """ファイル削除"""
         if not path.exists():
             return {
@@ -232,7 +230,7 @@ class BatchFileOperator:
 
         return {"status": "success", "operation": "delete", "path": str(path)}
 
-    def _log_result(self, result: Dict[str, Any]) -> None:
+    def _log_result(self, result: dict[str, Any]) -> None:
         """結果をログ出力"""
         status = result["status"]
         op = result["operation"]
@@ -281,13 +279,12 @@ class BatchFileOperator:
             f"失敗: {stats['failed']}"
         )
 
-
 def scan_files_fast(
     root_path: Path,
     pattern: str = "*",
-    exclude_dirs: Optional[List[str]] = None,
-    max_depth: Optional[int] = None,
-) -> List[Path]:
+    exclude_dirs: list[str] | None = None,
+    max_depth: int | None = None,
+) -> list[Path]:
     """
     高速ファイルスキャン
 
@@ -342,9 +339,8 @@ def scan_files_fast(
 
     return results
 
-
 @timed
-def categorize_files(files: List[Path]) -> Dict[str, List[Path]]:
+def categorize_files(files: list[Path]) -> dict[str, list[Path]]:
     """
     ファイルをカテゴリ別に分類
 
@@ -354,7 +350,7 @@ def categorize_files(files: List[Path]) -> Dict[str, List[Path]]:
     Returns:
         カテゴリ別のファイル辞書
     """
-    categories: Dict[str, List[Path]] = {
+    categories: dict[str, list[Path]] = {
         "configs": [],
         "docs": [],
         "scripts": [],

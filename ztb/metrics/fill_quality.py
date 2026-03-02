@@ -19,7 +19,7 @@ from collections import deque
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, Iterable, Iterator, Mapping, Optional
+from typing import TYPE_CHECKING, Final, Iterable, Iterator, Mapping
 
 import numpy as np
 from scipy import stats
@@ -31,11 +31,9 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     import pandas as pd
 
-
 # ======================================================================
 # Data classes
 # ======================================================================
-
 
 @dataclass
 class FillRecord:
@@ -49,96 +47,96 @@ class FillRecord:
     side: str  # 'buy' or 'sell'
     order_price: float  # 発注価格
     order_quantity: float  # 発注数量
-    fill_price: Optional[float] = None  # 約定価格 (未約定は None)
+    fill_price: float | None = None  # 約定価格 (未約定は None)
     filled: bool = False
     cancelled: bool = False
     queue_wait_sec: float = 0.0  # 発注→約定 (or cancel) の秒数
-    mid_at_fill: Optional[float] = None  # 約定時の mid price
-    mid_30s_after: Optional[float] = None  # 約定 30 秒後の mid price
-    post_fill_30s_pnl: Optional[float] = None  # 30 秒後 PnL (bps)
-    adverse_selected: Optional[bool] = None  # 30 秒後に逆行したか (CM-3 deadzone 適用後)
-    adverse_selected_raw: Optional[bool] = None  # 020# O5: 生の逆行判定 (deadzone 非適用)
-    cancel_reason: Optional[str] = None  # CM-2: キャンセル理由 (api_error / timeout / post_only_reject)
-    run_id: Optional[str] = None  # 020# O4: 実験ラン識別子
-    git_sha: Optional[str] = None  # 020# O4: コミットハッシュ
+    mid_at_fill: float | None = None  # 約定時の mid price
+    mid_30s_after: float | None = None  # 約定 30 秒後の mid price
+    post_fill_30s_pnl: float | None = None  # 30 秒後 PnL (bps)
+    adverse_selected: bool | None = None  # 30 秒後に逆行したか (CM-3 deadzone 適用後)
+    adverse_selected_raw: bool | None = None  # 020# O5: 生の逆行判定 (deadzone 非適用)
+    cancel_reason: str | None = None  # CM-2: キャンセル理由 (api_error / timeout / post_only_reject)
+    run_id: str | None = None  # 020# O4: 実験ラン識別子
+    git_sha: str | None = None  # 020# O4: コミットハッシュ
     # 031# 追加フィールド
-    spread_at_order: Optional[float] = None  # 発注時スプレッド (JPY)
-    error_message: Optional[str] = None  # エラー詳細メッセージ
-    spread_offset_ratio: Optional[float] = None  # 使用した spread_offset_ratio
+    spread_at_order: float | None = None  # 発注時スプレッド (JPY)
+    error_message: str | None = None  # エラー詳細メッセージ
+    spread_offset_ratio: float | None = None  # 使用した spread_offset_ratio
     # 047# E3: multi-timeframe PnL 計測 (exit timing 最適化のデータ基盤)
-    mid_60s_after: Optional[float] = None   # 約定 60 秒後の mid price
-    mid_120s_after: Optional[float] = None  # 約定 120 秒後の mid price
-    post_fill_60s_pnl: Optional[float] = None   # 60 秒後 PnL (bps)
-    post_fill_120s_pnl: Optional[float] = None  # 120 秒後 PnL (bps)
+    mid_60s_after: float | None = None   # 約定 60 秒後の mid price
+    mid_120s_after: float | None = None  # 約定 120 秒後の mid price
+    post_fill_60s_pnl: float | None = None   # 60 秒後 PnL (bps)
+    post_fill_120s_pnl: float | None = None  # 120 秒後 PnL (bps)
     # 037# レジーム情報 (035# §7 Week 1)
-    regime: Optional[str] = None  # FillTestRegime.value (trending/ranging/high_vol/unknown)
-    regime_confidence: Optional[float] = None  # 0.0–1.0
-    regime_stability: Optional[int] = None  # 連続同一レジーム数
+    regime: str | None = None  # FillTestRegime.value (trending/ranging/high_vol/unknown)
+    regime_confidence: float | None = None  # 0.0–1.0
+    regime_stability: int | None = None  # 連続同一レジーム数
     # 156# §18: データシンク解消 — 下流分析で方向強度/ボラ比を活用
-    regime_trend_pct: Optional[float] = None    # トレンド強度 (%)
-    regime_volatility_ratio: Optional[float] = None  # ボラティリティ比
+    regime_trend_pct: float | None = None    # トレンド強度 (%)
+    regime_volatility_ratio: float | None = None  # ボラティリティ比
     # 054# AS 予測データ基盤 — orderbook imbalance + spread + mid trend
-    orderbook_imbalance: Optional[float] = None   # 板不均衡 [-1, +1] (+1=bid圧倒)
-    bid_depth_total: Optional[float] = None       # bid 側合計数量 (BTC)
-    ask_depth_total: Optional[float] = None       # ask 側合計数量 (BTC)
-    mid_price_trend_5s: Optional[float] = None    # 直前 5s の mid 変化率 (bps)
-    spread_bps: Optional[float] = None            # 発注時スプレッド (bps)
-    effective_offset_used: Optional[float] = None # 実際に適用された offset 比率
+    orderbook_imbalance: float | None = None   # 板不均衡 [-1, +1] (+1=bid圧倒)
+    bid_depth_total: float | None = None       # bid 側合計数量 (BTC)
+    ask_depth_total: float | None = None       # ask 側合計数量 (BTC)
+    mid_price_trend_5s: float | None = None    # 直前 5s の mid 変化率 (bps)
+    spread_bps: float | None = None            # 発注時スプレッド (bps)
+    effective_offset_used: float | None = None # 実際に適用された offset 比率
     # 062# SkipGate ML 判定情報
-    skip_gate_skipped: Optional[bool] = None      # SkipGate によるスキップ判定
-    skip_gate_score: Optional[float] = None       # SkipGate 予測スコア (AS確率 or PnL予測値)
-    skip_gate_reason: Optional[str] = None        # SkipGate 判定理由
+    skip_gate_skipped: bool | None = None      # SkipGate によるスキップ判定
+    skip_gate_score: float | None = None       # SkipGate 予測スコア (AS確率 or PnL予測値)
+    skip_gate_reason: str | None = None        # SkipGate 判定理由
     # 068# OB 品質 + SkipGate モデル使用ログ
-    ob_quality_ok: Optional[bool] = None          # OB 特徴量が品質基準を満たしたか
-    ob_age_ms: Optional[float] = None             # OB 取得からの経過ミリ秒
-    skip_gate_model_used: Optional[str] = None    # "primary" or "fallback"
+    ob_quality_ok: bool | None = None          # OB 特徴量が品質基準を満たしたか
+    ob_age_ms: float | None = None             # OB 取得からの経過ミリ秒
+    skip_gate_model_used: str | None = None    # "primary" or "fallback"
     # 084# SkipGate 可観測性改善: P(AS) と使用閾値を直接記録
-    skip_gate_as_prob: Optional[float] = None     # AS 確率 (0.0-1.0), mode="as" 時のみ
-    skip_gate_threshold_used: Optional[float] = None  # 実際に適用された閾値 (side別解決後)
+    skip_gate_as_prob: float | None = None     # AS 確率 (0.0-1.0), mode="as" 時のみ
+    skip_gate_threshold_used: float | None = None  # 実際に適用された閾値 (side別解決後)
     # 158# P1-6: 時間帯別 skip_gate 閾値調整のオフセット値 (bps)
-    skip_gate_hour_offset: Optional[float] = None    # 適用された hour-based offset (0.0=調整なし)
+    skip_gate_hour_offset: float | None = None    # 適用された hour-based offset (0.0=調整なし)
     # 094# stale order cancel-replace 追跡
     reprice_count: int = 0                        # 1 サイクル内で再発注した回数
     # 158# P1-3: reprice 累積 drift (bps) — 全 reprice の合計 drift を記録
-    reprice_drift_bps: Optional[float] = None     # 全 reprice 発動時の累積ドリフト (bps)
+    reprice_drift_bps: float | None = None     # 全 reprice 発動時の累積ドリフト (bps)
     # 100# P1-4: 実際の PnL 計測経過秒数 (early_exit で 30s 未満になる場合の記録)
-    actual_measurement_sec: Optional[float] = None  # mid_30s_after の実計測秒数
+    actual_measurement_sec: float | None = None  # mid_30s_after の実計測秒数
     # 120# A4: Early Exit 明示フラグ (推定ではなく PnlMeasurer の判定値を直接保存)
-    early_exit_triggered: Optional[bool] = None     # EE 発火したか (True/False/None=計測前)
+    early_exit_triggered: bool | None = None     # EE 発火したか (True/False/None=計測前)
     # 120# A4-2: EE 中断時点 PnL (post_fill_30s_pnl は固定30s、計測バイアス分離用)
-    pnl_at_exit_bps: Optional[float] = None          # EE 発動時の中断時点 PnL (bps)
+    pnl_at_exit_bps: float | None = None          # EE 発動時の中断時点 PnL (bps)
     # 120# P2-1: 寄与分解基盤 — FFD/VG イベントフラグ
-    ffd_boost_active: Optional[bool] = None          # FastFillDefense boost 中だったか
-    vg_triggered: Optional[bool] = None              # VolatilityGuard 発動したか
+    ffd_boost_active: bool | None = None          # FastFillDefense boost 中だったか
+    vg_triggered: bool | None = None              # VolatilityGuard 発動したか
     # 158# P2-6: VG 詳細ログ (ヒンドサイト分析用)
-    vg_velocity_bps: Optional[float] = None          # VG 評価時の mid_price_trend (bps)
-    vg_vpin: Optional[float] = None                  # VG 評価時の VPIN 値
-    vg_boost_factor: Optional[float] = None          # 実際に適用された boost 倍率 (1.0=未発動)
+    vg_velocity_bps: float | None = None          # VG 評価時の mid_price_trend (bps)
+    vg_vpin: float | None = None                  # VG 評価時の VPIN 値
+    vg_boost_factor: float | None = None          # 実際に適用された boost 倍率 (1.0=未発動)
     # 165# AS-R1: SkipGate 特徴量ログ (閾値キャリブレーション用)
-    price_velocity_bps: Optional[float] = None        # 直近60sの価格速度 (bps)
+    price_velocity_bps: float | None = None        # 直近60sの価格速度 (bps)
     # 129# D.2: 残高制約による side 強制切替フラグ (評価/学習での交絡分離用)
-    balance_forced_switch: Optional[bool] = None     # 残高不足で side が強制切替されたか
+    balance_forced_switch: bool | None = None     # 残高不足で side が強制切替されたか
     # 155# §9.4 #2: balance_forced_skip 連続回数追跡
-    balance_forced_consecutive: Optional[int] = None  # スキップ時点の連続 forced skip 数
+    balance_forced_consecutive: int | None = None  # スキップ時点の連続 forced skip 数
     # 151# P3-03: confidence lot 情報 (§10 #7 可観測性)
-    confidence_lot_factor: Optional[float] = None    # 適用された倍率 [0, 1]
-    order_lot_regime: Optional[float] = None         # regime_adjusted_lot (confidence 未適用)
-    order_lot_effective: Optional[float] = None      # 最終発注ロット (= order_quantity)
-    confidence_lot_mode: Optional[str] = None        # "as" / "pnl" / None (無効時)
+    confidence_lot_factor: float | None = None    # 適用された倍率 [0, 1]
+    order_lot_regime: float | None = None         # regime_adjusted_lot (confidence 未適用)
+    order_lot_effective: float | None = None      # 最終発注ロット (= order_quantity)
+    confidence_lot_mode: str | None = None        # "as" / "pnl" / None (無効時)
     # 158# P1-5: A/B テスト variant 識別子 (実験分析用)
-    ab_test_variant: Optional[str] = None             # 例: "sell_offset_015", None=実験なし
+    ab_test_variant: str | None = None             # 例: "sell_offset_015", None=実験なし
     # 166# C.7: cancel 失敗後に約定確認されたフラグ (Bug11 KPI 分離)
-    cancel_failed_likely_filled: Optional[bool] = None  # True=cancel失敗→約定検出
+    cancel_failed_likely_filled: bool | None = None  # True=cancel失敗→約定検出
     # 181# EV_weighted: 30s/120s 加重平均 PnL (178# §1.3 設計)
-    ev_weighted_pnl: Optional[float] = None  # 0.4*pnl30 + 0.6*pnl120 (bps)
+    ev_weighted_pnl: float | None = None  # 0.4*pnl30 + 0.6*pnl120 (bps)
     # 187# B-2: guard_trace — gated_regime + effective_cycle_interval 記録
-    gated_regime: Optional[str] = None              # ヒステリシス適用後の実効 regime
-    effective_cycle_interval: Optional[float] = None  # 使用されたサイクル間隔 (秒)
+    gated_regime: str | None = None              # ヒステリシス適用後の実効 regime
+    effective_cycle_interval: float | None = None  # 使用されたサイクル間隔 (秒)
     # 189# D: MacroRegime 統合
-    macro_trend: Optional[str] = None               # macro_strong_up / neutral / ... / macro_insufficient
-    macro_slope_5m: Optional[float] = None          # 5分 slope (bps/min)
-    macro_slope_15m: Optional[float] = None         # 15分 slope (bps/min)
-    macro_aligned: Optional[bool] = None            # micro/macro 一致フラグ
+    macro_trend: str | None = None               # macro_strong_up / neutral / ... / macro_insufficient
+    macro_slope_5m: float | None = None          # 5分 slope (bps/min)
+    macro_slope_15m: float | None = None         # 15分 slope (bps/min)
+    macro_aligned: bool | None = None            # micro/macro 一致フラグ
 
     def to_dict(self) -> dict:
         """JSON serializable dict."""
@@ -148,7 +146,6 @@ class FillRecord:
     def from_dict(cls, d: Mapping[str, object]) -> FillRecord:
         """Reconstruct from dict."""
         return cls(**_sanitize_fill_record_fields(d, context="FillRecord.from_dict"))
-
 
 _FILL_RECORD_FIELD_NAMES: Final[frozenset[str]] = get_dataclass_field_names(FillRecord)
 _SKIP_RECORD_PROTECTED_FIELDS: Final[frozenset[str]] = frozenset({
@@ -168,7 +165,6 @@ _SKIP_RECORD_PROTECTED_FIELDS: Final[frozenset[str]] = frozenset({
     "balance_forced_switch",
     "ab_test_variant",
 })
-
 
 def _sanitize_fill_record_fields(
     values: Mapping[str, object],
@@ -216,14 +212,12 @@ def _sanitize_fill_record_fields(
         )
     return filtered
 
-
 def build_fill_record(**data: object) -> FillRecord:
     """FillRecord の generic builder.
 
     known field のみを通す。必須フィールド不足は FillRecord 側の TypeError に委ねる。
     """
     return FillRecord(**_sanitize_fill_record_fields(data, context="build_fill_record"))
-
 
 def build_skip_fill_record(
     *,
@@ -272,7 +266,6 @@ def build_skip_fill_record(
     )
     return build_fill_record(**payload)
 
-
 def compute_record_pnl_jpy(record: FillRecord) -> float | None:
     """FillRecord の 30s PnL を JPY 概算へ変換.
 
@@ -288,7 +281,6 @@ def compute_record_pnl_jpy(record: FillRecord) -> float | None:
     if not (np.isfinite(pnl_bps) and np.isfinite(fill_price) and np.isfinite(order_qty)):
         return None
     return pnl_bps * 1e-4 * fill_price * order_qty
-
 
 @dataclass
 class FillMetrics:
@@ -339,7 +331,6 @@ class FillMetrics:
         """JSON serializable dict."""
         return asdict(self)
 
-
 @dataclass
 class PnlAccumulator:
     """Finite PnL 値だけを集計するストリーム集計器."""
@@ -359,7 +350,6 @@ class PnlAccumulator:
     @property
     def mean_bps(self) -> float:
         return self.total_bps / self.count if self.count else 0.0
-
 
 @dataclass
 class PnlWinAccumulator:
@@ -395,7 +385,6 @@ class PnlWinAccumulator:
     def win_rate(self) -> float:
         return self.positive_count / self.pnl.count if self.pnl.count else 0.0
 
-
 @dataclass
 class _DailyFillCount:
     """日次 fill rate 用の軽量カウンタ."""
@@ -408,11 +397,9 @@ class _DailyFillCount:
         if filled:
             self.filled += 1
 
-
 # ======================================================================
 # Metrics computation
 # ======================================================================
-
 
 def format_utc_day(timestamp: object, *, compact: bool = True) -> str | None:
     """epoch 秒を UTC 日付文字列へ変換する."""
@@ -428,7 +415,6 @@ def format_utc_day(timestamp: object, *, compact: bool = True) -> str | None:
     except (OverflowError, OSError, ValueError):
         return None
 
-
 def _mean_and_one_sided_pvalue(values: list[float]) -> tuple[float, float]:
     """平均値と片側 t 検定 p 値を返す."""
     if not values:
@@ -441,7 +427,6 @@ def _mean_and_one_sided_pvalue(values: list[float]) -> tuple[float, float]:
     if t_stat < 0:
         return mean_val, float(two_sided_p / 2)
     return mean_val, 1.0 - float(two_sided_p / 2)
-
 
 def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
     """FillRecord のリストから G1.1 Gate 指標を算出.
@@ -595,16 +580,14 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
         cancel_reason_breakdown=cancel_reason_breakdown,
     )
 
-
 # ======================================================================
 # G1.1 Gate Judgment
 # ======================================================================
 
-
 def g1_1_judgment(
     metrics: FillMetrics,
     thresholds: dict,
-    records: Optional[list[FillRecord]] = None,
+    records: list[FillRecord] | None = None,
 ) -> dict:
     """G1.1 Gate 合否判定.
 
@@ -731,11 +714,9 @@ def g1_1_judgment(
         "metrics_summary": metrics.to_dict(),
     }
 
-
 # ======================================================================
 # 116# Two-Stage Gate Judgment (115# review)
 # ======================================================================
-
 
 def g1_1_quick_judgment(
     metrics: FillMetrics,
@@ -845,7 +826,6 @@ def g1_1_quick_judgment(
         } if is_watch else None,
         "metrics_summary": metrics.to_dict(),
     }
-
 
 def g1_2_full_judgment(
     metrics: FillMetrics,
@@ -1020,11 +1000,9 @@ def g1_2_full_judgment(
         "metrics_summary": metrics.to_dict(),
     }
 
-
 # ======================================================================
 # I/O utilities
 # ======================================================================
-
 
 def save_fill_records(records: Iterable[FillRecord], path: str | Path) -> None:
     """JSONL 形式で FillRecord を保存.
@@ -1060,7 +1038,6 @@ def save_fill_records(records: Iterable[FillRecord], path: str | Path) -> None:
         except OSError:
             pass
     logger.info(f"Saved {count} fill records to {p}")
-
 
 def iter_fill_records(path: str | Path) -> Iterator[FillRecord]:
     """JSONL ファイルから FillRecord を逐次読み込み.
@@ -1099,11 +1076,9 @@ def iter_fill_records(path: str | Path) -> Iterator[FillRecord]:
         logger.info(f"Deduplicated {duplicates} records in {p.name}")
     logger.info(f"Loaded {loaded} fill records from {p}")
 
-
 def load_fill_records(path: str | Path) -> list[FillRecord]:
     """JSONL ファイルから FillRecord を読み込み."""
     return list(iter_fill_records(path))
-
 
 def fill_records_to_dataframe(records: Iterable[FillRecord]) -> "pd.DataFrame":
     """FillRecord iterable を DataFrame に変換する."""
@@ -1111,18 +1086,15 @@ def fill_records_to_dataframe(records: Iterable[FillRecord]) -> "pd.DataFrame":
 
     return pd.DataFrame.from_records(record.to_dict() for record in records)
 
-
 def _normalize_fill_record_date(value: str | None) -> str | None:
     if value is None:
         return None
     normalized = value.replace("-", "")
     return normalized if len(normalized) == 8 and normalized.isdigit() else None
 
-
 def _extract_fill_record_file_date(path: Path) -> str | None:
     date_part = path.stem.split("_")[-1]
     return date_part if len(date_part) == 8 and date_part.isdigit() else None
-
 
 def list_fill_record_files(
     directory: str | Path,
@@ -1161,7 +1133,6 @@ def list_fill_record_files(
             )
     return files
 
-
 def iter_fill_record_objects_from_files(files: Iterable[Path]) -> Iterator[dict[str, object]]:
     """指定ファイル群から raw object を逐次読み込み、cycle_id を跨いで重複排除する."""
     seen_ids: set[str] = set()
@@ -1173,7 +1144,6 @@ def iter_fill_record_objects_from_files(files: Iterable[Path]) -> Iterator[dict[
                     continue
                 seen_ids.add(cycle_id)
             yield record
-
 
 def iter_fill_record_objects_glob(
     directory: str | Path,
@@ -1196,7 +1166,6 @@ def iter_fill_record_objects_glob(
         )
     )
 
-
 def load_fill_record_objects_glob(
     directory: str | Path,
     *,
@@ -1214,7 +1183,6 @@ def load_fill_record_objects_glob(
         )
     )
 
-
 def _coerce_filter_timestamp(value: object) -> float | None:
     """filter 用 timestamp を有限 float に正規化する."""
     if isinstance(value, bool):
@@ -1224,7 +1192,6 @@ def _coerce_filter_timestamp(value: object) -> float | None:
         if math.isfinite(ts):
             return ts
     return None
-
 
 def apply_fill_record_filters(
     records: Iterable[Mapping[str, object]],
@@ -1270,7 +1237,6 @@ def apply_fill_record_filters(
     }
     return filtered, filters
 
-
 def _iter_fill_record_files(
     directory: Path,
     *,
@@ -1278,7 +1244,6 @@ def _iter_fill_record_files(
 ) -> Iterator[Path]:
     """内部互換: fill record 系 JSONL の対象ファイルを順序付きで列挙."""
     yield from list_fill_record_files(directory, include_emergency=include_emergency)
-
 
 def iter_fill_records_glob(
     directory: str | Path,
@@ -1297,7 +1262,6 @@ def iter_fill_records_glob(
             seen_ids.add(record.cycle_id)
             yield record
 
-
 def load_fill_records_glob(
     directory: str | Path,
     *,
@@ -1305,7 +1269,6 @@ def load_fill_records_glob(
 ) -> list[FillRecord]:
     """ディレクトリ内の全 JSONL ファイルから FillRecord を読み込み."""
     return list(iter_fill_records_glob(directory, include_emergency=include_emergency))
-
 
 def partition_clean_records(
     records: Iterable[FillRecord],
@@ -1351,7 +1314,6 @@ def partition_clean_records(
         )
     return clean, quarantine
 
-
 def filter_clean_records(
     records: list[FillRecord],
     *,
@@ -1362,7 +1324,6 @@ def filter_clean_records(
     list 入力の既存 API。新規コードでは `partition_clean_records()` を優先。
     """
     return partition_clean_records(records, require_git_sha=require_git_sha)
-
 
 def _quarantine_reason(r: FillRecord) -> str | None:
     """047# A5: レコードの quarantine 理由を返す (None=clean)."""
@@ -1387,11 +1348,9 @@ def _quarantine_reason(r: FillRecord) -> str | None:
             return "invalid_order_quantity"
     return None
 
-
 # ======================================================================
 # 051# P2-2: Round-trip 評価 (buy→sell ペアリング)
 # ======================================================================
-
 
 @dataclass
 class RoundTripRecord:
@@ -1416,7 +1375,6 @@ class RoundTripRecord:
     def sell_record(self) -> FillRecord:
         return self.exit_record if self.direction == "buy_first" else self.entry_record
 
-
 @dataclass
 class RoundTripMetrics:
     """Round-trip 集計指標.
@@ -1434,7 +1392,6 @@ class RoundTripMetrics:
     unpaired_buys: int = 0  # ペアリング未完了の buy 件数
     unpaired_sells: int = 0  # 055# ペアリング未完了の sell 件数
     net_inventory: int = 0  # 055# 純在庫 (unpaired_buys - unpaired_sells)
-
 
 def compute_round_trip_metrics(
     records: list[FillRecord],
@@ -1528,11 +1485,9 @@ def compute_round_trip_metrics(
         net_inventory=len(pending_buys) - len(pending_sells),
     ), trips
 
-
 # ======================================================================
 # 051# P2-4: レジーム別メトリクス
 # ======================================================================
-
 
 @dataclass
 class GroupedMetricsBase:
@@ -1543,7 +1498,6 @@ class GroupedMetricsBase:
     pnl_mean_bps: float = 0.0
     as_ratio: float = 0.0
 
-
 @dataclass
 class RegimeMetrics(GroupedMetricsBase):
     """レジーム別の集計指標."""
@@ -1551,7 +1505,6 @@ class RegimeMetrics(GroupedMetricsBase):
     regime: str = "unknown"
     fill_rate: float = 0.0
     queue_wait_median_sec: float = 0.0
-
 
 def _summarize_filled_records(
     records: list[FillRecord],
@@ -1580,7 +1533,6 @@ def _summarize_filled_records(
     as_ratio = (as_positive / as_total) if as_total else 0.0
     wait_median = float(np.median(queue_waits)) if queue_waits else 0.0
     return filled_count, pnl_acc.mean_bps, as_ratio, wait_median
-
 
 def compute_regime_metrics(records: list[FillRecord]) -> list[RegimeMetrics]:
     """051# P2-4: レジーム別にメトリクスを算出.
@@ -1617,18 +1569,15 @@ def compute_regime_metrics(records: list[FillRecord]) -> list[RegimeMetrics]:
         ))
     return result
 
-
 # ======================================================================
 # 051# UTC 時間帯別分析
 # ======================================================================
-
 
 @dataclass
 class HourlyMetrics(GroupedMetricsBase):
     """UTC 時間帯別の集計指標."""
 
     utc_hour: int = 0
-
 
 def compute_hourly_metrics(records: list[FillRecord]) -> list[HourlyMetrics]:
     """051# UTC 時間帯別にメトリクスを算出.

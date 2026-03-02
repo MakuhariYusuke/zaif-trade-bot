@@ -6,8 +6,7 @@ Type definitions for Explainability Module
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
-
+from typing import Any
 
 class ExplanationType(Enum):
     """説明タイプ"""
@@ -17,21 +16,18 @@ class ExplanationType(Enum):
     CONTRIBUTION_BREAKDOWN = "contribution_breakdown"
     COUNTERFACTUAL = "counterfactual"
 
-
 @dataclass
 class ExplainabilityFeatureImportance:
     """特徴量重要度"""
 
     feature_name: str
     importance_score: float
-    feature_category: Optional[str] = None
-    description: Optional[str] = None
-    confidence: Optional[float] = None
-
+    feature_category: str | None = None
+    description: str | None = None
+    confidence: float | None = None
 
 # Backwards compatibility: alias name expected by other modules
 FeatureImportance = ExplainabilityFeatureImportance
-
 
 @dataclass
 class DecisionExplanation:
@@ -39,28 +35,26 @@ class DecisionExplanation:
 
     decision_type: str  # BUY, SELL, HOLD
     confidence_score: float
-    primary_factors: List[ExplainabilityFeatureImportance]
-    contributing_factors: List[ExplainabilityFeatureImportance]
-    natural_language_explanation: Optional[str] = None
-    visualization_data: Optional[Dict[str, Any]] = None
-
+    primary_factors: list[ExplainabilityFeatureImportance]
+    contributing_factors: list[ExplainabilityFeatureImportance]
+    natural_language_explanation: str | None = None
+    visualization_data: dict[str, Any] | None = None
 
 @dataclass
 class VisualizationResult:
     """可視化結果"""
 
-    plots: Dict[str, Any]  # プロット名 -> プロットデータ
+    plots: dict[str, Any]  # プロット名 -> プロットデータ
     timestamp: datetime
     format: str  # png, svg, htmlなど
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         return {
             "plots": self.plots,
             "timestamp": self.timestamp.isoformat(),
             "format": self.format,
         }
-
 
 @dataclass
 class ExplanationResult:
@@ -71,13 +65,13 @@ class ExplanationResult:
     model_version: str
     explanation_type: ExplanationType
     target_prediction: Any
-    feature_importance: List[ExplainabilityFeatureImportance]
-    decision_explanation: Optional[DecisionExplanation] = None
-    visualization: Optional[VisualizationResult] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    feature_importance: list[ExplainabilityFeatureImportance]
+    decision_explanation: DecisionExplanation | None = None
+    visualization: VisualizationResult | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     processing_time_seconds: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         return {
             "explanation_id": self.explanation_id,
@@ -102,7 +96,6 @@ class ExplanationResult:
             "processing_time_seconds": self.processing_time_seconds,
         }
 
-
 @dataclass
 class ExplanationCache:
     """説明キャッシュ"""
@@ -119,26 +112,25 @@ class ExplanationCache:
 
         return datetime.now() - self.created_at > timedelta(seconds=self.ttl_seconds)
 
-
 @dataclass
 class VisualizationResult:
     """可視化結果"""
 
-    plots: Dict[str, Any]  # プロット名 -> プロットデータ
+    plots: dict[str, Any]  # プロット名 -> プロットデータ
     timestamp: datetime
     format: str  # png, svg, htmlなど
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         # Removed duplicated VisualizationResult and explanation cache declarations (they are defined above as ExplanationCache)
 
     total_explanations: int
-    explanation_types: Dict[str, int]
-    top_features: List[ExplainabilityFeatureImportance]
-    model_performance_insights: Dict[str, Any]
-    recommendations: List[str]
+    explanation_types: dict[str, int]
+    top_features: list[ExplainabilityFeatureImportance]
+    model_performance_insights: dict[str, Any]
+    recommendations: list[str]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         return {
             "report_id": self.report_id,
@@ -158,7 +150,6 @@ class VisualizationResult:
             "model_performance_insights": self.model_performance_insights,
             "recommendations": self.recommendations,
         }
-
 
 __all__ = [
     "ExplanationCache",

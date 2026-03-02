@@ -5,12 +5,11 @@ This module provides functionality for detecting and removing redundant features
 using correlation clustering and other redundancy metrics.
 """
 
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from sklearn.cluster import AgglomerativeClustering
-
 
 def calculate_feature_correlations(feature_df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -36,10 +35,9 @@ def calculate_feature_correlations(feature_df: pd.DataFrame) -> pd.DataFrame:
 
     return corr_matrix
 
-
 def find_highly_correlated_features(
     corr_matrix: pd.DataFrame, threshold: float = 0.8
-) -> List[Tuple[str, str, float]]:
+) -> list[tuple[str, str, float]]:
     """
     Find pairs of highly correlated features
 
@@ -48,7 +46,7 @@ def find_highly_correlated_features(
         threshold: Correlation threshold
 
     Returns:
-        List of (feature1, feature2, correlation) tuples
+        list of (feature1, feature2, correlation) tuples
     """
     if corr_matrix.empty:
         return []
@@ -76,10 +74,9 @@ def find_highly_correlated_features(
 
     return correlated_pairs  # type: ignore[return-value]
 
-
 def cluster_features_by_correlation(
     feature_df: pd.DataFrame, distance_threshold: float = 0.3
-) -> Dict[int, List[str]]:
+) -> dict[int, list[str]]:
     """
     Cluster features based on correlation distance
 
@@ -111,7 +108,7 @@ def cluster_features_by_correlation(
         cluster_labels = clustering.fit_predict(distance_matrix)
 
         # Group features by cluster
-        clusters: Dict[int, List[str]] = {}
+        clusters: dict[int, list[str]] = {}
         for feature, cluster_id in zip(corr_matrix.columns, cluster_labels):
             if cluster_id not in clusters:
                 clusters[cluster_id] = []
@@ -123,13 +120,12 @@ def cluster_features_by_correlation(
         print(f"Error in correlation clustering: {e}")
         return {0: list(feature_df.columns)}
 
-
 def select_representative_features_from_clusters(
-    clusters: Dict[int, List[str]],
+    clusters: dict[int, list[str]],
     feature_df: pd.DataFrame,
     target_returns: pd.Series,
     method: str = "correlation",
-) -> List[str]:
+) -> list[str]:
     """
     Select representative features from each cluster
 
@@ -140,7 +136,7 @@ def select_representative_features_from_clusters(
         method: Selection method ('correlation', 'variance', 'random')
 
     Returns:
-        List of selected feature names
+        list of selected feature names
     """
     selected_features = []
 
@@ -200,13 +196,12 @@ def select_representative_features_from_clusters(
 
     return selected_features
 
-
 def remove_redundant_features(
     feature_df: pd.DataFrame,
     target_returns: pd.Series,
     corr_threshold: float = 0.8,
     method: str = "correlation",
-) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+) -> tuple[pd.DataFrame, dict[str, Any]]:
     """
     Remove redundant features using correlation-based clustering
 
@@ -217,7 +212,7 @@ def remove_redundant_features(
         method: Feature selection method within clusters
 
     Returns:
-        Tuple of (reduced_feature_df, reduction_info)
+        tuple of (reduced_feature_df, reduction_info)
     """
     if feature_df.empty:
         return feature_df, {"status": "empty_input"}
@@ -266,10 +261,9 @@ def remove_redundant_features(
 
     return reduced_df, reduction_info
 
-
 def analyze_feature_redundancy(
     feature_df: pd.DataFrame, target_returns: pd.Series
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Comprehensive analysis of feature redundancy
 

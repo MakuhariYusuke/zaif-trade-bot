@@ -8,7 +8,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -21,7 +21,6 @@ from ztb.utils.file_utils import safe_json_dump
 # ロギング設定
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 class DataQualityAssurance:
     """
@@ -39,7 +38,7 @@ class DataQualityAssurance:
 
     def comprehensive_quality_check(
         self, df: pd.DataFrame, market: str = "BTC-JPY"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         包括的なデータ品質チェックを実行
 
@@ -74,7 +73,7 @@ class DataQualityAssurance:
         )
         return results
 
-    def _check_basic_integrity(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def _check_basic_integrity(self, df: pd.DataFrame) -> dict[str, Any]:
         """
         基本的なデータ整合性チェック
         """
@@ -125,7 +124,7 @@ class DataQualityAssurance:
 
         return integrity
 
-    def _check_statistical_properties(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def _check_statistical_properties(self, df: pd.DataFrame) -> dict[str, Any]:
         """
         統計的特性のチェック
         """
@@ -220,7 +219,7 @@ class DataQualityAssurance:
 
         return stats_check
 
-    def _check_market_realism(self, df: pd.DataFrame, market: str) -> Dict[str, Any]:
+    def _check_market_realism(self, df: pd.DataFrame, market: str) -> dict[str, Any]:
         """
         市場現実性のチェック
         """
@@ -290,7 +289,7 @@ class DataQualityAssurance:
 
         return realism
 
-    def _check_temporal_consistency(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def _check_temporal_consistency(self, df: pd.DataFrame) -> dict[str, Any]:
         """
         時系列の一貫性チェック
         """
@@ -362,7 +361,7 @@ class DataQualityAssurance:
 
         return temporal
 
-    def _detect_anomalies(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def _detect_anomalies(self, df: pd.DataFrame) -> dict[str, Any]:
         """
         異常値検知
         """
@@ -427,7 +426,7 @@ class DataQualityAssurance:
 
         return anomalies
 
-    def _assess_completeness(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def _assess_completeness(self, df: pd.DataFrame) -> dict[str, Any]:
         """
         データ完全性の評価
         """
@@ -465,7 +464,7 @@ class DataQualityAssurance:
 
         return completeness
 
-    def _calculate_overall_score(self, results: Dict[str, Any]) -> float:
+    def _calculate_overall_score(self, results: dict[str, Any]) -> float:
         """
         全体品質スコアの計算
         """
@@ -489,7 +488,7 @@ class DataQualityAssurance:
 
         return overall_score / total_weight if total_weight > 0 else 0.0
 
-    def _generate_recommendations(self, results: Dict[str, Any]) -> List[str]:
+    def _generate_recommendations(self, results: dict[str, Any]) -> list[str]:
         """
         改善推奨事項の生成
         """
@@ -549,7 +548,7 @@ class DataQualityAssurance:
 
         return recommendations
 
-    def save_quality_report(self, results: Dict[str, Any], filename: str) -> str:
+    def save_quality_report(self, results: dict[str, Any], filename: str) -> str:
         """
         品質レポートを保存
 
@@ -589,7 +588,6 @@ class DataQualityAssurance:
         logger.info(f"Quality report saved to {report_path}")
         return str(report_path)
 
-
 def main():
     """
     メイン実行関数
@@ -624,7 +622,6 @@ def main():
     # レポート保存
     filename = latest_file.stem
     dqa.save_quality_report(quality_results, filename)
-
 
 if __name__ == "__main__":
     main()

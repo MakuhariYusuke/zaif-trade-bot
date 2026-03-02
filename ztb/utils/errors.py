@@ -8,51 +8,43 @@ backwards-compatible, `safe_operation` accepts either style and will
 forward arbitrary args/kwargs to the wrapped operation.
 """
 
-from typing import Any, Callable, Dict, Optional
-
+from typing import Any, Callable
 
 class ZTBError(Exception):
     """Base exception for all Zaif Trade Bot errors."""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(message)
         self.message = message
         self.details = details or {}
-
 
 class TradingBotError(ZTBError):
     """Base exception for all trading bot errors (legacy compatibility)."""
 
     pass
 
-
 class InsufficientFundsError(TradingBotError):
     """Raised when trading operation fails due to insufficient funds."""
 
     pass
-
 
 class OrderError(TradingBotError):
     """Base class for order-related errors."""
 
     pass
 
-
 class OrderNotFoundError(OrderError):
     """Raised when trying to cancel or query a non-existent order."""
 
     pass
-
 
 class MinimumSizeError(OrderError):
     """Raised when order size is below exchange minimum requirements."""
 
     pass
 
-
 class ValidationError(ZTBError):
     """Data validation errors."""
-
 
 # Validation utility functions
 def validate_positive(value: float, name: str = "value") -> None:
@@ -68,7 +60,6 @@ def validate_positive(value: float, name: str = "value") -> None:
     if value <= 0:
         raise ValidationError(f"{name} must be positive, got {value}")
 
-
 def validate_non_negative(value: float, name: str = "value") -> None:
     """Validate that a value is non-negative.
 
@@ -82,7 +73,6 @@ def validate_non_negative(value: float, name: str = "value") -> None:
     if value < 0:
         raise ValidationError(f"{name} must be non-negative, got {value}")
 
-
 def validate_price(price: float, name: str = "price") -> None:
     """Validate that a price is positive.
 
@@ -94,7 +84,6 @@ def validate_price(price: float, name: str = "price") -> None:
         ValidationError: If price is not positive
     """
     validate_positive(price, name)
-
 
 def validate_quantity(quantity: float, name: str = "quantity") -> None:
     """Validate that a quantity is positive.
@@ -108,7 +97,6 @@ def validate_quantity(quantity: float, name: str = "quantity") -> None:
     """
     validate_positive(quantity, name)
 
-
 def validate_portfolio_value(value: float, name: str = "portfolio_value") -> None:
     """Validate that a portfolio value is non-negative.
 
@@ -120,7 +108,6 @@ def validate_portfolio_value(value: float, name: str = "portfolio_value") -> Non
         ValidationError: If value is negative
     """
     validate_non_negative(value, name)
-
 
 def validate_volatility(volatility: float, name: str = "volatility") -> None:
     """Validate that volatility is non-negative.
@@ -134,11 +121,10 @@ def validate_volatility(volatility: float, name: str = "volatility") -> None:
     """
     validate_non_negative(volatility, name)
 
-
 def validate_range(
     value: float,
-    min_val: Optional[float] = None,
-    max_val: Optional[float] = None,
+    min_val: float | None = None,
+    max_val: float | None = None,
     name: str = "value",
 ) -> None:
     """Validate that a value is within a specified range.
@@ -157,7 +143,6 @@ def validate_range(
     if max_val is not None and value > max_val:
         raise ValidationError(f"{name} must be <= {max_val}, got {value}")
 
-
 def validate_type(value: Any, expected_type: type, name: str = "value") -> None:
     """Validate that a value is of the expected type.
 
@@ -174,11 +159,10 @@ def validate_type(value: Any, expected_type: type, name: str = "value") -> None:
             f"{name} must be of type {expected_type.__name__}, got {type(value).__name__}"
         )
 
-
 def validate_price_range(
     price: float,
-    min_price: Optional[float] = None,
-    max_price: Optional[float] = None,
+    min_price: float | None = None,
+    max_price: float | None = None,
     name: str = "price",
 ) -> None:
     """Validate that a price is within reasonable bounds.
@@ -195,11 +179,10 @@ def validate_price_range(
     validate_positive(price, name)
     validate_range(price, min_price or 1.0, max_price or 100000000.0, name)
 
-
 def validate_quantity_range(
     quantity: float,
-    min_quantity: Optional[float] = None,
-    max_quantity: Optional[float] = None,
+    min_quantity: float | None = None,
+    max_quantity: float | None = None,
     name: str = "quantity",
 ) -> None:
     """Validate that a quantity is within reasonable bounds.
@@ -216,9 +199,8 @@ def validate_quantity_range(
     validate_positive(quantity, name)
     validate_range(quantity, min_quantity or 0.000001, max_quantity or 1000.0, name)
 
-
 def validate_batch(
-    values: Dict[str, Any], validators: Dict[str, Callable[[Any], None]]
+    values: dict[str, Any], validators: dict[str, Callable[[Any], None]]
 ) -> None:
     """Validate multiple values using specified validators.
 
@@ -238,10 +220,8 @@ def validate_batch(
 
     """Schema-related errors."""
 
-
 class ModelError(ZTBError):
     """Model loading and inference errors."""
-
 
 class NetworkError(ZTBError):
     """Network and API communication errors with retry information."""
@@ -249,11 +229,11 @@ class NetworkError(ZTBError):
     def __init__(
         self,
         message: str,
-        details: Optional[Dict[str, Any]] = None,
-        url: Optional[str] = None,
-        status_code: Optional[int] = None,
+        details: dict[str, Any] | None = None,
+        url: str | None = None,
+        status_code: int | None = None,
         retry_count: int = 0,
-        max_retries: Optional[int] = None,
+        max_retries: int | None = None,
     ):
         super().__init__(message, details)
         self.url = url
@@ -261,10 +241,8 @@ class NetworkError(ZTBError):
         self.retry_count = retry_count
         self.max_retries = max_retries
 
-
 class DatabaseError(ZTBError):
     """Database operation errors."""
-
 
 class TradingError(ZTBError):
     """Trading operation errors with position and order context."""
@@ -272,24 +250,21 @@ class TradingError(ZTBError):
     def __init__(
         self,
         message: str,
-        details: Optional[Dict[str, Any]] = None,
-        position: Optional[float] = None,
-        order_id: Optional[str] = None,
-        symbol: Optional[str] = None,
+        details: dict[str, Any] | None = None,
+        position: float | None = None,
+        order_id: str | None = None,
+        symbol: str | None = None,
     ):
         super().__init__(message, details)
         self.position = position
         self.order_id = order_id
         self.symbol = symbol
 
-
 class IdempotencyError(TradingBotError):
     """Idempotency-related errors."""
 
-
 class LockError(TradingBotError):
     """Locking and concurrency errors."""
-
 
 def handle_error(
     logger: Any, error: Exception, context: str = "", reraise: bool = True
@@ -307,7 +282,6 @@ def handle_error(
 
     if reraise:
         raise error
-
 
 def safe_operation(*args: Any, **kwargs: Any) -> Any:
     """Execute an operation safely, supporting multiple calling styles.
@@ -328,8 +302,8 @@ def safe_operation(*args: Any, **kwargs: Any) -> Any:
     reraise_critical = kwargs.pop("reraise_critical", False)
     error_types = kwargs.pop("error_types", None)
 
-    logger: Optional[Any] = None
-    operation: Optional[Callable[..., Any]] = None
+    logger: Any | None = None
+    operation: Callable[..., Any] | None = None
     call_args: tuple[Any, ...] = ()
 
     # Determine operation and logger from positional args or kwargs

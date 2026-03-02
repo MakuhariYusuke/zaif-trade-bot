@@ -26,11 +26,9 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-
 def _to_bool(s: pd.Series) -> pd.Series:
     """NaN → False の安全な bool 変換 (FutureWarning 回避)."""
     return s.fillna(False).infer_objects(copy=False).astype(bool)
-
 
 @dataclass
 class OnlineMonitorConfig:
@@ -46,7 +44,6 @@ class OnlineMonitorConfig:
     min_samples: int = 20
     #: PnL カラム名 (post_fill 30s or 120s)
     pnl_column: str = "post_fill_30s_pnl"
-
 
 @dataclass
 class OnlineMonitorResult:
@@ -90,7 +87,6 @@ class OnlineMonitorResult:
         if self.side_summary:
             d["side_summary"] = self.side_summary
         return d
-
 
 class OnlineMonitor:
     """141# P1-12: 直近 N fill ベースのオンライン比較モニター.
@@ -228,7 +224,6 @@ class OnlineMonitor:
                 result.side_summary[side_val] = side_info
 
         return result
-
 
 def log_online_monitor_summary(result: OnlineMonitorResult) -> None:
     """OnlineMonitorResult をログ出力."""

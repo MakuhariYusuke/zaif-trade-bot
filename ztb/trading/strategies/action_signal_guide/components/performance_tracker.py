@@ -8,7 +8,7 @@ Follows Single Responsibility Principle by focusing only on performance tracking
 import statistics
 import time
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, List, Optional, TypedDict, Union
+from typing import TYPE_CHECKING, TypedDict
 
 import pandas as pd
 
@@ -22,22 +22,19 @@ if TYPE_CHECKING:
     from ..types import PerformanceStats
     from ..action_signal_guide import ActionSignal
 
-
 class PortfolioState(TypedDict, total=False):
     value: float
     position: float
-
 
 class CorrelationEntry(TypedDict):
     timestamp: float
     signal_action: str
     signal_confidence: float
     signal_reason: str
-    sac_action: Optional[float]
+    sac_action: float | None
     market_regime: str
     portfolio_value: float
     position_size: float
-
 
 class PerformanceTracker(IPerformanceTracker):
     """
@@ -62,9 +59,9 @@ class PerformanceTracker(IPerformanceTracker):
         self.logger = get_logger("ztb.trading.strategies.performance_tracker")
 
         # Timing metrics
-        self.signal_generation_times: List[float] = []
-        self.pattern_recognition_times: Dict[str, List[float]] = defaultdict(list)
-        self.cache_operation_times: List[float] = []
+        self.signal_generation_times: list[float] = []
+        self.pattern_recognition_times: dict[str, list[float]] = defaultdict(list)
+        self.cache_operation_times: list[float] = []
 
         # Performance counters
         self.total_signals_generated = 0
@@ -74,22 +71,22 @@ class PerformanceTracker(IPerformanceTracker):
         self.errors = 0
 
         # Pattern-specific metrics
-        self.pattern_success_rates: Dict[str, Dict[str, int]] = defaultdict(
+        self.pattern_success_rates: dict[str, dict[str, int]] = defaultdict(
             lambda: {"success": 0, "total": 0}
         )
-        self.pattern_strengths: Dict[str, List[float]] = defaultdict(list)
-        self.pattern_confidences: Dict[str, List[float]] = defaultdict(list)
+        self.pattern_strengths: dict[str, list[float]] = defaultdict(list)
+        self.pattern_confidences: dict[str, list[float]] = defaultdict(list)
 
         # Memory and resource metrics
-        self.memory_usage_samples: List[float] = []
+        self.memory_usage_samples: list[float] = []
         self.start_time = time.time()
 
         # SAC correlation tracking
         self.max_history_size = 1000
         self._sac_history_high_water = self.max_history_size * 2
-        self.sac_action_history: List[float] = []
-        self.signal_sac_correlation_data: List[CorrelationEntry] = []
-        self.regime_performance_correlation: Dict[str, List[float]] = defaultdict(list)
+        self.sac_action_history: list[float] = []
+        self.signal_sac_correlation_data: list[CorrelationEntry] = []
+        self.regime_performance_correlation: dict[str, list[float]] = defaultdict(list)
 
     def record_pattern_recognition(
         self, pattern_type: str, duration: float, success: bool
@@ -209,9 +206,9 @@ class PerformanceTracker(IPerformanceTracker):
     def track_sac_correlation(
         self,
         signal: "ActionSignal",
-        sac_action: Optional[Union[int, float]] = None,
-        market_regime: Optional[str] = None,
-        portfolio_state: Optional[PortfolioState] = None,
+        sac_action: int | float | None = None,
+        market_regime: str | None = None,
+        portfolio_state: PortfolioState | None = None,
     ) -> None:
         """
         Track correlation between Action Signal Guide signals and SAC actions.
@@ -333,7 +330,7 @@ class PerformanceTracker(IPerformanceTracker):
         return summary
 
     def get_pattern_performance(
-        self, pattern_type: Optional[str] = None
+        self, pattern_type: str | None = None
     ) -> dict[str, object]:
         """
         Get detailed pattern performance metrics.
@@ -668,7 +665,7 @@ class PerformanceTracker(IPerformanceTracker):
             return default
 
     @classmethod
-    def _coerce_optional_float(cls, value: object) -> Optional[float]:
+    def _coerce_optional_float(cls, value: object) -> float | None:
         if value is None:
             return None
         return cls._coerce_float(value)

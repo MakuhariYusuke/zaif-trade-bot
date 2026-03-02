@@ -21,14 +21,12 @@ import logging
 import pickle
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
 _MIN_SAMPLES_DEFAULT = 30  # 校正に必要な最小サンプル数
-
 
 @dataclass
 class CalibrationStats:
@@ -39,7 +37,6 @@ class CalibrationStats:
     mae_before: float = 0.0  # 校正前の平均絶対誤差
     mae_after: float = 0.0   # 校正後の平均絶対誤差
     improvement_pct: float = 0.0  # MAE 改善率 (%)
-
 
 @dataclass
 class ScoreCalibratorConfig:
@@ -54,8 +51,7 @@ class ScoreCalibratorConfig:
     # 自動再学習間隔 (新規レコード数)
     refit_interval: int = 100
     # 永続化パス (None の場合はインメモリのみ)
-    persist_path: Optional[str] = None
-
+    persist_path: str | None = None
 
 class ScoreCalibrator:
     """Isotonic regression によるスコア校正器.

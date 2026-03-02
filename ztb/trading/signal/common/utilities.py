@@ -5,7 +5,7 @@ This module provides shared utility functions to reduce code duplication
 across signal processing components.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -14,16 +14,15 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 def validate_market_data(
-    data: pd.DataFrame, required_columns: List[str] = None
+    data: pd.DataFrame, required_columns: list[str] = None
 ) -> bool:
     """
     Validate market data DataFrame
 
     Args:
         data: Market data DataFrame
-        required_columns: List of required column names
+        required_columns: list of required column names
 
     Returns:
         True if valid, False otherwise
@@ -47,7 +46,6 @@ def validate_market_data(
 
     return True
 
-
 def calculate_returns(data: pd.DataFrame, method: str = "pct_change") -> pd.Series:
     """
     Calculate price returns
@@ -66,7 +64,6 @@ def calculate_returns(data: pd.DataFrame, method: str = "pct_change") -> pd.Seri
     else:
         pct_returns = data["close"].pct_change()
         return pct_returns.fillna(0)
-
 
 def calculate_volatility(
     returns: pd.Series, window: int = 20, method: str = "std"
@@ -94,7 +91,6 @@ def calculate_volatility(
         raise ValueError(f"Unknown volatility method: {method}")
 
     return vol.iloc[-1] if not vol.empty else 0.0
-
 
 def calculate_volatility_from_prices(
     prices: pd.Series,
@@ -131,8 +127,7 @@ def calculate_volatility_from_prices(
             pass
     return float(vol)
 
-
-def normalize_weights(weights: Dict[str, float]) -> Dict[str, float]:
+def normalize_weights(weights: dict[str, float]) -> dict[str, float]:
     """
     Normalize weights to sum to 1.0
 
@@ -150,10 +145,9 @@ def normalize_weights(weights: Dict[str, float]) -> Dict[str, float]:
         return dict.fromkeys(weights.keys(), 0.0)
     return {k: v / total for k, v in clipped.items()}
 
-
 def update_weights_with_dynamic_adjustment(
-    weights: Dict[str, float], adjustment: Optional[Dict[str, float]] = None
-) -> Dict[str, float]:
+    weights: dict[str, float], adjustment: dict[str, float] | None = None
+) -> dict[str, float]:
     """
     Apply optional adjustments to weights before normalizing.
 
@@ -173,7 +167,6 @@ def update_weights_with_dynamic_adjustment(
     }
     return normalize_weights(adjusted)
 
-
 def confidence_to_score_thresholds(
     confidence: float,
     default_buy: float = 75.0,
@@ -183,7 +176,7 @@ def confidence_to_score_thresholds(
     buy_max: float = None,
     sell_min: float = None,
     sell_max: float = None,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """
     Map a confidence threshold (0..1) to buy/sell score thresholds (0..100) with clamping
     and a minimum gap to preserve a HOLD zone.
@@ -196,7 +189,7 @@ def confidence_to_score_thresholds(
         buy_min/buy_max/sell_min/sell_max: optional clamp overrides
 
     Returns:
-        Tuple (buy_threshold, sell_threshold)
+        tuple (buy_threshold, sell_threshold)
     """
     # Safety: ensure 0..1
     c = max(0.0, min(1.0, float(confidence)))
@@ -243,7 +236,6 @@ def confidence_to_score_thresholds(
 
     return float(buy), float(sell)
 
-
 def clamp_value(value: float, min_val: float, max_val: float) -> float:
     """
     Clamp value to specified range
@@ -258,9 +250,8 @@ def clamp_value(value: float, min_val: float, max_val: float) -> float:
     """
     return max(min_val, min(max_val, value))
 
-
 def calculate_confidence_score(
-    score: float, thresholds: Dict[str, float] = None, method: str = "linear"
+    score: float, thresholds: dict[str, float] = None, method: str = "linear"
 ) -> float:
     """
     Calculate confidence score based on distance from thresholds
@@ -314,7 +305,6 @@ def calculate_confidence_score(
 
     return confidence
 
-
 def score_to_discrete_action(
     score: float,
     buy_threshold: float = 75.0,
@@ -350,15 +340,14 @@ def score_to_discrete_action(
             return 1
         return 0
 
-
 def get_dynamic_thresholds(
     confidence: float = 0.7,
-    threshold_manager: Optional[Any] = None,
-    market_data: Optional[pd.DataFrame] = None,
+    threshold_manager: Any | None = None,
+    market_data: pd.DataFrame | None = None,
     min_gap: float = 10.0,
     default_buy: float = 75.0,
     default_sell: float = 25.0,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """
     Obtain buy/sell score thresholds dynamically.
 
@@ -369,7 +358,7 @@ def get_dynamic_thresholds(
             while preserving a hold region using min_gap.
 
     Returns:
-        Tuple[buy_threshold, sell_threshold]
+        tuple[buy_threshold, sell_threshold]
     """
     # Best-effort use the ThresholdManager when available
     try:
@@ -398,7 +387,6 @@ def get_dynamic_thresholds(
         confidence, default_buy=default_buy, default_sell=default_sell, min_gap=min_gap
     )
 
-
 def smooth_series(series: pd.Series, method: str = "ema", span: int = 5) -> pd.Series:
     """
     Smooth time series data
@@ -419,7 +407,6 @@ def smooth_series(series: pd.Series, method: str = "ema", span: int = 5) -> pd.S
         return series.rolling(span).median()
     else:
         raise ValueError(f"Unknown smoothing method: {method}")
-
 
 def detect_outliers(
     series: pd.Series, method: str = "iqr", threshold: float = 1.5
@@ -452,7 +439,6 @@ def detect_outliers(
     else:
         raise ValueError(f"Unknown outlier detection method: {method}")
 
-
 def resample_data(
     data: pd.DataFrame, target_freq: str, method: str = "last"
 ) -> pd.DataFrame:
@@ -478,9 +464,8 @@ def resample_data(
 
     return resampled.dropna()
 
-
 def calculate_correlation_matrix(
-    data: pd.DataFrame, columns: List[str] = None
+    data: pd.DataFrame, columns: list[str] = None
 ) -> pd.DataFrame:
     """
     Calculate correlation matrix for specified columns
@@ -499,10 +484,9 @@ def calculate_correlation_matrix(
 
     return numeric_data.corr()
 
-
 def find_optimal_weights(
     returns: pd.DataFrame, target_return: float = None, method: str = "equal"
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Find optimal weights for portfolio/ensemble
 

@@ -5,8 +5,7 @@ This module provides comprehensive type definitions for SAC (Soft Actor-Critic)
 training reports and analysis results to improve type safety across the codebase.
 """
 
-from typing import Any, Dict, List, TypedDict
-
+from typing import Any, TypedDict
 
 class Metadata(TypedDict):
     """Metadata section of training report."""
@@ -15,7 +14,6 @@ class Metadata(TypedDict):
     algorithm: str
     model_name: str
     success: bool
-
 
 class SACHyperparameters(TypedDict):
     """SAC hyperparameters configuration."""
@@ -32,7 +30,6 @@ class SACHyperparameters(TypedDict):
     target_update_interval: int
     target_entropy: float
 
-
 class EnvironmentConfig(TypedDict):
     """Environment configuration."""
 
@@ -46,19 +43,17 @@ class EnvironmentConfig(TypedDict):
     curriculum_stage: str
     continuous_to_discrete_threshold: float
 
-
 class RewardSettings(TypedDict):
     """Reward function settings."""
 
     reward_scale: float
     reward_clip_min: float
     reward_clip_max: float
-    profit_bonuses: Dict[str, Any]  # Complex nested structure
-    action_bonuses: Dict[str, Any]  # Complex nested structure
-    behavior_penalties: Dict[str, Any]  # Complex nested structure
-    risk_penalties: Dict[str, Any]  # Complex nested structure
-    flags: Dict[str, bool]
-
+    profit_bonuses: dict[str, Any]  # Complex nested structure
+    action_bonuses: dict[str, Any]  # Complex nested structure
+    behavior_penalties: dict[str, Any]  # Complex nested structure
+    risk_penalties: dict[str, Any]  # Complex nested structure
+    flags: dict[str, bool]
 
 class Configuration(TypedDict):
     """Configuration section of training report."""
@@ -68,14 +63,13 @@ class Configuration(TypedDict):
     total_timesteps: int
     data_source: str
     data_path: str
-    data_config: Dict[str, Any]
+    data_config: dict[str, Any]
     sac_hyperparameters: SACHyperparameters
     environment: EnvironmentConfig
     reward_settings: RewardSettings
     checkpoint_interval: int
     notes: str
-    fixes_implemented: Dict[str, str]
-
+    fixes_implemented: dict[str, str]
 
 class ActionDistribution(TypedDict):
     """Action distribution statistics."""
@@ -83,7 +77,6 @@ class ActionDistribution(TypedDict):
     HOLD: float
     BUY: float
     SELL: float
-
 
 class OptimizationStats(TypedDict):
     """Optimization and performance statistics."""
@@ -93,7 +86,6 @@ class OptimizationStats(TypedDict):
     parallel_processing_enabled: bool
     cache_size: int
     data_optimization_applied: bool
-
 
 class TrainingStats(TypedDict):
     """Training statistics section."""
@@ -106,7 +98,6 @@ class TrainingStats(TypedDict):
     action_distribution: ActionDistribution
     optimization: OptimizationStats
 
-
 class TrainingPerformanceMetrics(TypedDict):
     """Performance metrics section."""
 
@@ -115,7 +106,6 @@ class TrainingPerformanceMetrics(TypedDict):
     action_diversity: float
     dominant_action: str
     dominant_action_ratio: float
-
 
 class SystemInfo(TypedDict):
     """System information section."""
@@ -126,7 +116,6 @@ class SystemInfo(TypedDict):
     memory_total: int
     memory_available: int
 
-
 class TrainingReport(TypedDict):
     """Complete training report structure."""
 
@@ -135,7 +124,6 @@ class TrainingReport(TypedDict):
     training_stats: TrainingStats
     performance_metrics: TrainingPerformanceMetrics
     system_info: SystemInfo
-
 
 # Analysis result types
 class AnalysisSummary(TypedDict):
@@ -146,8 +134,7 @@ class AnalysisSummary(TypedDict):
     failed_runs: int
     average_training_time: float
     average_steps_per_second: float
-    dominant_actions: Dict[str, int]
-
+    dominant_actions: dict[str, int]
 
 class ActionPattern(TypedDict):
     """Action pattern analysis result."""
@@ -156,7 +143,6 @@ class ActionPattern(TypedDict):
     frequency: float
     percentage: float
     trend: str
-
 
 class PerformanceComparison(TypedDict):
     """Performance comparison between runs."""
@@ -168,15 +154,13 @@ class PerformanceComparison(TypedDict):
     action_diversity: float
     dominant_action: str
 
-
 class SACAnalysisResult(TypedDict):
     """Complete SAC analysis result."""
 
     summary: AnalysisSummary
-    action_patterns: List[ActionPattern]
-    performance_comparisons: List[PerformanceComparison]
-    recommendations: List[str]
-
+    action_patterns: list[ActionPattern]
+    performance_comparisons: list[PerformanceComparison]
+    recommendations: list[str]
 
 class TrainingMetrics(TypedDict):
     """Training metrics extracted from reports."""
@@ -186,7 +170,6 @@ class TrainingMetrics(TypedDict):
     training_time_seconds: float
     action_distribution: ActionDistribution
     total_timesteps: int
-
 
 class SACModelConfig(TypedDict):
     """Model configuration extracted from reports."""
@@ -200,19 +183,17 @@ class SACModelConfig(TypedDict):
     environment: EnvironmentConfig
     reward_settings: RewardSettings
 
-
 class ActionAnalysisResult(TypedDict):
     """Result of action distribution analysis."""
 
     total_actions: int
     action_counts: ActionDistribution
-    action_percentages: Dict[str, float]
-    action_ratios: Dict[str, float]
+    action_percentages: dict[str, float]
+    action_ratios: dict[str, float]
     dominant_action: str
     dominant_ratio: float
     action_diversity: float
     trading_intensity: float
-
 
 class PositionHoldingAnalysis(TypedDict):
     """Result of position holding interval analysis."""

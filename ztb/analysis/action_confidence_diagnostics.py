@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -27,20 +27,17 @@ import pandas as pd
 from ztb.io.json_io import read_json
 from ztb.utils.file_utils import save_csv_data
 
-
 @dataclass
 class TradeWindow:
     entry_idx: int
     exit_idx: int
     entry_action: float
-    steps: List[Dict[str, Any]]
+    steps: list[dict[str, Any]]
 
-
-def load_trade_log(path: str) -> List[Dict[str, Any]]:
+def load_trade_log(path: str) -> list[dict[str, Any]]:
     return read_json(path)
 
-
-def extract_trades_from_step_logs(trades: List[Dict[str, Any]]) -> List[TradeWindow]:
+def extract_trades_from_step_logs(trades: list[dict[str, Any]]) -> list[TradeWindow]:
     """Group step-level trade events into trade windows.
 
     This function assumes each trade event dict contains at least:
@@ -52,8 +49,8 @@ def extract_trades_from_step_logs(trades: List[Dict[str, Any]]) -> List[TradeWin
 
     We consider a trade entry when position changes from 0 to non-zero, and exit when position returns to 0.
     """
-    windows: List[TradeWindow] = []
-    current_window_steps: List[Dict[str, Any]] = []
+    windows: list[TradeWindow] = []
+    current_window_steps: list[dict[str, Any]] = []
     entry_idx = -1
     entry_action = 0.0
 
@@ -117,8 +114,7 @@ def extract_trades_from_step_logs(trades: List[Dict[str, Any]]) -> List[TradeWin
 
     return windows
 
-
-def compute_trade_metrics(window: TradeWindow) -> Dict[str, Any]:
+def compute_trade_metrics(window: TradeWindow) -> dict[str, Any]:
     # cumulative pnl across steps
     # Prefer 'step_pnl' if available, otherwise fall back to 'pnl' (which might be total, so this is risky)
     pnls = [float(s.get("step_pnl", s.get("pnl", 0.0))) for s in window.steps]
@@ -139,8 +135,7 @@ def compute_trade_metrics(window: TradeWindow) -> Dict[str, Any]:
         "entry_step_pnl": entry_step_pnl,
     }
 
-
-def bin_and_aggregate(trade_metrics: List[Dict[str, Any]], bins: List[float]) -> pd.DataFrame:
+def bin_and_aggregate(trade_metrics: list[dict[str, Any]], bins: list[float]) -> pd.DataFrame:
     df = pd.DataFrame(trade_metrics)
     if df.empty:
         return pd.DataFrame()
@@ -164,7 +159,6 @@ def bin_and_aggregate(trade_metrics: List[Dict[str, Any]], bins: List[float]) ->
     )
 
     return agg.reset_index()
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -191,7 +185,6 @@ def main():
     summary = bin_and_aggregate(metrics, bins)
     save_csv_data(summary, args.out_csv, index=False)
     print(summary.to_string())
-
 
 if __name__ == "__main__":
     main()

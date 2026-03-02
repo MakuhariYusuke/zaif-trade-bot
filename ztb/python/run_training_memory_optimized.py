@@ -10,7 +10,6 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 from ztb.trading.environment.constants import BYTES_PER_MB
 
@@ -23,8 +22,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
-def get_memory_usage() -> Optional[float]:
+def get_memory_usage() -> float | None:
     """Get current memory usage in MB."""
     try:
         import psutil
@@ -34,7 +32,6 @@ def get_memory_usage() -> Optional[float]:
         return mem_info.rss / BYTES_PER_MB
     except ImportError:
         return None
-
 
 def monitor_memory(interval: int = 10) -> None:
     """Monitor memory usage periodically."""
@@ -53,10 +50,9 @@ def monitor_memory(interval: int = 10) -> None:
     thread = threading.Thread(target=_monitor, daemon=True)
     thread.start()
 
-
 def run_training_with_memory_optimization(
     config_path: str, force: bool = False
-) -> Optional[int]:
+) -> int | None:
     """Run training with memory optimization."""
     logger.info("=" * 80)
     logger.info("MEMORY-OPTIMIZED TRAINING RUNNER")
@@ -111,8 +107,7 @@ def run_training_with_memory_optimization(
         # Final cleanup
         gc.collect()
 
-
-def main() -> Optional[int]:
+def main() -> int | None:
     """Main entry point."""
     parser = argparse.ArgumentParser(
         description="Run training with memory optimization and monitoring"
@@ -142,7 +137,6 @@ def main() -> Optional[int]:
     except Exception as e:
         logger.error(f"Training failed: {e}", exc_info=True)
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

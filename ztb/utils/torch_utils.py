@@ -7,7 +7,7 @@ import os
 import sys
 import types
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 try:  # pragma: no cover - depends on interpreter build
     import site as _site
@@ -16,11 +16,10 @@ except Exception:  # pragma: no cover - site can be missing in embedded builds
 
 _TORCH_STUB_FLAG = "_zaif_torch_stub"
 _DLL_SETUP_DONE = False
-_DLL_SUMMARY: Dict[str, Any] | None = None
+_DLL_SUMMARY: dict[str, Any] | None = None
 
-
-def _candidate_site_roots() -> List[Path]:
-    roots: List[Path] = []
+def _candidate_site_roots() -> list[Path]:
+    roots: list[Path] = []
     seen: set[str] = set()
 
     if _site is not None:
@@ -50,14 +49,13 @@ def _candidate_site_roots() -> List[Path]:
 
     return roots
 
-
-def ensure_torch_dll_search_path(force: bool = False) -> Dict[str, Any]:
+def ensure_torch_dll_search_path(force: bool = False) -> dict[str, Any]:
     """Add torch/lib directories to PATH/DLL search path on Windows."""
 
     global _DLL_SETUP_DONE, _DLL_SUMMARY
 
     if os.name != "nt":
-        result: Dict[str, Any] = {"status": "non-windows"}
+        result: dict[str, Any] = {"status": "non-windows"}
         _DLL_SETUP_DONE = True
         _DLL_SUMMARY = result
         return result
@@ -65,7 +63,7 @@ def ensure_torch_dll_search_path(force: bool = False) -> Dict[str, Any]:
     if _DLL_SETUP_DONE and not force and _DLL_SUMMARY is not None:
         return _DLL_SUMMARY
 
-    summary: Dict[str, Any] = {
+    summary: dict[str, Any] = {
         "candidates": [],
         "added_to_dll_dir": [],
         "added_to_path": [],
@@ -98,7 +96,6 @@ def ensure_torch_dll_search_path(force: bool = False) -> Dict[str, Any]:
     _DLL_SUMMARY = summary
     return summary
 
-
 def _install_torch_stub() -> None:
     if "torch" in sys.modules and getattr(
         sys.modules["torch"], _TORCH_STUB_FLAG, False
@@ -107,7 +104,7 @@ def _install_torch_stub() -> None:
 
     class _StubOptimizer:
         def __init__(self, *args: Any, **kwargs: Any) -> None:
-            self.param_groups: List[Any] = []
+            self.param_groups: list[Any] = []
 
         def step(self) -> None:  # pragma: no cover - trivial
             return None
@@ -132,7 +129,6 @@ def _install_torch_stub() -> None:
     )
     sys.modules["torch"] = stub
 
-
 def is_torch_available() -> bool:
     ensure_torch_dll_search_path()
     try:
@@ -140,7 +136,6 @@ def is_torch_available() -> bool:
     except Exception:
         return False
     return not getattr(torch_mod, _TORCH_STUB_FLAG, False)
-
 
 def get_preferred_device() -> str:
     """Return 'cuda' if available else 'cpu'."""
@@ -154,7 +149,6 @@ def get_preferred_device() -> str:
     except Exception:
         pass
     return "cpu"
-
 
 def ensure_cpu_mode() -> None:
     """Force CPU-only operation where possible, install stub if torch missing."""
@@ -175,7 +169,6 @@ def ensure_cpu_mode() -> None:
     # to move tensors/devices explicitly. The environment variable above prevents CUDA
     # from being auto-selected in most setups.
     return
-
 
 # Apply DLL search path tweaks immediately when the module loads on Windows.
 if os.name == "nt":  # pragma: no cover - platform specific

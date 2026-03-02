@@ -6,7 +6,7 @@ Provides realistic trading simulation without real exchange connectivity.
 
 import asyncio
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -19,7 +19,6 @@ from ztb.trading.live.exchanges.base.broker_interfaces import (
 )
 from ztb.trading.live.orders.state import OrderStateMachine
 
-
 class SimBroker(IBroker):  # type: ignore[misc]
     """Simulated broker for paper trading."""
 
@@ -28,8 +27,8 @@ class SimBroker(IBroker):  # type: ignore[misc]
         initial_balance: float = 10000.0,
         slippage_bps: float = 5.0,
         commission_bps: float = 0.0,
-        price_feed: Optional[pd.DataFrame] = None,
-        venue_config: Optional[Dict[str, Any]] = None,
+        price_feed: pd.DataFrame | None = None,
+        venue_config: dict[str, Any] | None = None,
     ):
         """Initialize simulated broker."""
         self.initial_balance = initial_balance
@@ -40,8 +39,8 @@ class SimBroker(IBroker):  # type: ignore[misc]
 
         # Account state
         self.balance = {"JPY": initial_balance, "BTC": 0.0}
-        self.positions: Dict[str, Position] = {}
-        self.orders: Dict[str, Order] = {}
+        self.positions: dict[str, Position] = {}
+        self.orders: dict[str, Order] = {}
         self.order_counter = 0
 
         # Price feed for simulation
@@ -49,7 +48,7 @@ class SimBroker(IBroker):  # type: ignore[misc]
         self.current_time_index = 0
 
         # Trading history
-        self.trade_log: List[Dict[str, Any]] = []
+        self.trade_log: list[dict[str, Any]] = []
 
         # Order state management
         self.order_state_machine = OrderStateMachine()
@@ -59,7 +58,7 @@ class SimBroker(IBroker):  # type: ignore[misc]
         return any(s.get("symbol") == symbol for s in self.symbols)
 
     def _generate_idempotency_key(
-        self, symbol: str, side: str, quantity: float, price: Optional[float]
+        self, symbol: str, side: str, quantity: float, price: float | None
     ) -> str:
         """Generate idempotency key for order deduplication."""
         import hashlib
@@ -79,7 +78,7 @@ class SimBroker(IBroker):  # type: ignore[misc]
         """Calculate commission cost."""
         return notional * (self.commission_bps / 10000)
 
-    def _get_current_price(self, symbol: str) -> Optional[float]:
+    def _get_current_price(self, symbol: str) -> float | None:
         """Get current price from feed or generate synthetic."""
         if self.price_feed is not None and self.current_time_index < len(
             self.price_feed
@@ -99,11 +98,11 @@ class SimBroker(IBroker):  # type: ignore[misc]
         symbol: str,
         side: str,
         quantity: float,
-        price: Optional[float] = None,
+        price: float | None = None,
         order_type: str = "market",
-        client_order_id: Optional[str] = None,
-        sizing_reason: Optional[str] = None,
-        target_vol: Optional[float] = None,
+        client_order_id: str | None = None,
+        sizing_reason: str | None = None,
+        target_vol: float | None = None,
     ) -> Order:
         """Place a simulated order."""
         await asyncio.sleep(0.01)  # Simulate network latency
@@ -279,22 +278,22 @@ class SimBroker(IBroker):  # type: ignore[misc]
 
         return False
 
-    async def get_order_status(self, order_id: str) -> Optional[Order]:
+    async def get_order_status(self, order_id: str) -> Order | None:
         """Get order status."""
         return self.orders.get(order_id)
 
-    async def get_open_orders(self, symbol: Optional[str] = None) -> List[Order]:
+    async def get_open_orders(self, symbol: str | None = None) -> list[Order]:
         """Get open orders."""
         orders = [o for o in self.orders.values() if o.status == "pending"]
         if symbol:
             orders = [o for o in orders if o.symbol == symbol]
         return orders
 
-    async def get_positions(self) -> List[Position]:
+    async def get_positions(self) -> list[Position]:
         """Get current positions."""
         return list(self.positions.values())
 
-    async def get_balance(self, currency: Optional[str] = None) -> List[Balance]:
+    async def get_balance(self, currency: str | None = None) -> list[Balance]:
         """Get account balance."""
         balances = []
         for curr, amount in self.balance.items():
@@ -309,15 +308,15 @@ class SimBroker(IBroker):  # type: ignore[misc]
                 )
         return balances
 
-    async def get_current_price(self, symbol: str) -> Optional[float]:
+    async def get_current_price(self, symbol: str) -> float | None:
         """Get current market price."""
         return self._get_current_price(symbol)
 
-    def get_trade_log(self) -> List[Dict[str, Any]]:
+    def get_trade_log(self) -> list[dict[str, Any]]:
         """Get trading history."""
         return self.trade_log.copy()
 
-    def get_pnl_series(self) -> List[Dict[str, Any]]:
+    def get_pnl_series(self) -> list[dict[str, Any]]:
         """Get P&L time series."""
         pnl_data = []
         cumulative_pnl = 0.0

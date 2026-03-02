@@ -4,7 +4,7 @@
 ウォークフォワード分析で使用する戦略評価関数を提供します。
 """
 
-from typing import Callable, Dict
+from typing import Callable
 
 import pandas as pd
 
@@ -13,10 +13,9 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 def create_simple_strategy_evaluator(
     trades_data: list = None,
-) -> Callable[[pd.DataFrame, ParameterSet], Dict[str, float]]:
+) -> Callable[[pd.DataFrame, ParameterSet], dict[str, float]]:
     """
     シンプルな戦略評価関数を作成
 
@@ -29,7 +28,7 @@ def create_simple_strategy_evaluator(
 
     def strategy_evaluator(
         data: pd.DataFrame, params: ParameterSet
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         戦略を評価して性能指標を返す
 
@@ -110,9 +109,8 @@ def create_simple_strategy_evaluator(
 
     return strategy_evaluator
 
-
 def create_trend_following_strategy_evaluator() -> (
-    Callable[[pd.DataFrame, ParameterSet], Dict[str, float]]
+    Callable[[pd.DataFrame, ParameterSet], dict[str, float]]
 ):
     """
     トレンドフォロー戦略の評価関数を作成
@@ -123,7 +121,7 @@ def create_trend_following_strategy_evaluator() -> (
 
     def strategy_evaluator(
         data: pd.DataFrame, params: ParameterSet
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         トレンドフォロー戦略を評価
 

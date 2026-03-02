@@ -16,7 +16,7 @@ Compares:
 
 import json
 import os
-from typing import Any, Dict, Optional, cast
+from typing import Any, cast
 
 # Checkpoint directories
 CHECKPOINTS = {
@@ -32,14 +32,12 @@ CONFIGS = {
     "v380_aggressive": "configs/training/ppo_reward_v380_aggressive.json",
 }
 
-
-def load_config(config_path: str) -> Dict[str, Any]:
+def load_config(config_path: str) -> dict[str, Any]:
     """Load configuration file."""
     with open(config_path, "r", encoding="utf-8") as f:
-        return cast(Dict[str, Any], json.load(f))
+        return cast(dict[str, Any], json.load(f))
 
-
-def analyze_tensorboard_events(checkpoint_dir: str) -> Optional[Dict[str, Any]]:
+def analyze_tensorboard_events(checkpoint_dir: str) -> dict[str, Any] | None:
     """Extract metrics from tensorboard events file."""
     try:
         from tensorboard.backend.event_processing import event_accumulator
@@ -76,10 +74,9 @@ def analyze_tensorboard_events(checkpoint_dir: str) -> Optional[Dict[str, Any]]:
         print(f"  ❌ Error loading tensorboard events: {e}")
         return None
 
-
 def analyze_checkpoint_dir(
     name: str, checkpoint_dir: str, config_path: str
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Analyze a single checkpoint directory."""
     print(f"\n{'─'*80}")
     print(f"Analyzing: {name}")
@@ -130,8 +127,7 @@ def analyze_checkpoint_dir(
 
     return result
 
-
-def compare_results(results: Dict[str, Dict[str, Any]]) -> None:
+def compare_results(results: dict[str, dict[str, Any]]) -> None:
     """Compare results across all configurations."""
     print(f"\n{'='*80}")
     print("COMPARISON SUMMARY")
@@ -215,9 +211,6 @@ def compare_results(results: Dict[str, Dict[str, Any]]) -> None:
     print("3. Run backtest on best performing model")
     print("4. Analyze risk-adjusted metrics (Sharpe ratio, max drawdown)")
     print(f"{'='*80}\n")
-
-
-
 
 if __name__ == "__main__":
     main()

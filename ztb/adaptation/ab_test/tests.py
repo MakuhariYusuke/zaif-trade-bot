@@ -23,7 +23,6 @@ from ztb.adaptation.ab_test.types import (
     StatisticalTest,
 )
 
-
 class TestABTestAnalyzer(unittest.TestCase):
     """ABTestAnalyzerのテスト"""
 
@@ -200,7 +199,6 @@ class TestABTestAnalyzer(unittest.TestCase):
         except Exception as e:
             self.assertIsInstance(e, (ValueError, ZeroDivisionError))
 
-
 class TestABTestConfiguration(unittest.TestCase):
     """ABTestConfigのテスト"""
 
@@ -221,7 +219,6 @@ class TestABTestConfiguration(unittest.TestCase):
         self.assertEqual(perf_config.max_memory_mb, 2048)
         self.assertEqual(perf_config.max_workers, 8)
         self.assertEqual(perf_config.batch_size, 2000)
-
 
 class TestModelSelector(unittest.TestCase):
     """ModelSelectorのテスト"""
@@ -346,7 +343,6 @@ class TestModelSelector(unittest.TestCase):
             recommendations=["Continue testing"],
         )
 
-
         self.assertIsNone(decision["selected_variant"])
 
     def test_calculate_confidence_level(self):
@@ -402,7 +398,6 @@ class TestModelSelector(unittest.TestCase):
             test_id, metrics, timestamp
         )
         self.assertFalse(rollback_triggered)
-
 
 if __name__ == "__main__":
     unittest.main()

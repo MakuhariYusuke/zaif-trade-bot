@@ -1,9 +1,10 @@
 """Self-supervised learning trainer implementation."""
+from __future__ import annotations
 
 import logging
 import os
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import torch
 
@@ -17,24 +18,23 @@ from ztb.features.processors.optimization.features import OptimizerFeatureTracke
 from ztb.training.unified_trainer.base.base_trainer import DataError, ModelError
 from ztb.training.utils.training_stats import TrainingStats
 
-
 class SelfSupervisedTrainer(BaseAlgorithmTrainer):
     """Self-supervised learning trainer with enhanced features from SACTrainer."""
 
     def __init__(
         self,
-        config: Dict[str, Any],
-        logger: Optional[logging.Logger] = None,
+        config: dict[str, Any],
+        logger: logging.Logger | None = None,
         gradient_accumulation_steps: int = 1,
-        system_optimizer: Optional[Any] = None,
-        optimizer_tracker: Optional["OptimizerFeatureTracker"] = None,
+        system_optimizer: Any | None = None,
+        optimizer_tracker: OptimizerFeatureTracker | None = None,
     ):
         super().__init__(config, logger)
 
         # model will be instantiated later; annotate as optional to satisfy mypy
-        self.model: Optional[SSPTrainer] = None
+        self.model: SSPTrainer | None = None
         # Self-supervised trainer instance when created
-        self.ssp_trainer: Optional[SSPTrainer] = None
+        self.ssp_trainer: SSPTrainer | None = None
         # Loaded/created datasets (torch tensors)
         self.train_data = None
         self.val_data = None
@@ -264,7 +264,7 @@ class SelfSupervisedTrainer(BaseAlgorithmTrainer):
         if model is None:
             raise ModelError("Model not initialized before training")
 
-        # Set up dynamic LR scheduler with model optimizer if enabled
+        # set up dynamic LR scheduler with model optimizer if enabled
         if self.lr_scheduler and hasattr(model, "optimizer"):
             self.lr_scheduler.optimizer = model.optimizer
             self.log_structured_event("optimizer", "setup", {"scheduler": "dynamic_lr"})
@@ -352,7 +352,7 @@ class SelfSupervisedTrainer(BaseAlgorithmTrainer):
         self.log_training_completion(training_time, self.training_stats)
         return True
 
-    def get_training_stats(self) -> Dict[str, Any]:
+    def get_training_stats(self) -> dict[str, Any]:
         """Get self-supervised learning training statistics."""
         return dict(self.training_stats)
 
@@ -382,11 +382,11 @@ class SelfSupervisedTrainer(BaseAlgorithmTrainer):
             self.logger.error(f"❌ Failed to load model: {e}")
             return False
 
-    def validate_training(self, model_path: Optional[str] = None) -> Dict[str, Any]:
+    def validate_training(self, model_path: str | None = None) -> dict[str, Any]:
         """Validate trained self-supervised learning model."""
         try:
             # Use provided path or get from training stats
-            validation_model_path: Optional[str] = None
+            validation_model_path: str | None = None
             if model_path is None:
                 validation_model_path = self.training_stats.get("model_path")
 

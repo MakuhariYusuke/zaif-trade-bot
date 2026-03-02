@@ -9,7 +9,7 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 from scipy import stats
@@ -19,7 +19,6 @@ from ztb.utils.logging_utils import get_logger
 from ztb.metrics.metrics import max_drawdown
 
 logger = get_logger(__name__)
-
 
 @dataclass
 class RiskOverlayConfig:
@@ -44,7 +43,7 @@ class RiskOverlayConfig:
 
     # ストレステスト設定
     stress_test_enabled: bool = True
-    stress_test_scenarios: List[str] = field(
+    stress_test_scenarios: list[str] = field(
         default_factory=lambda: [
             "market_crash",
             "flash_crash",
@@ -56,13 +55,12 @@ class RiskOverlayConfig:
 
     # アラート設定
     risk_alert_enabled: bool = True
-    risk_alert_levels: List[float] = field(default_factory=lambda: [0.05, 0.10, 0.15])
+    risk_alert_levels: list[float] = field(default_factory=lambda: [0.05, 0.10, 0.15])
     alert_cooldown_minutes: int = 30
 
     # リスク調整
     dynamic_risk_adjustment: bool = True
     risk_adjustment_factor: float = 0.8  # リスク超過時の調整係数
-
 
 @dataclass
 class VaRCalculation:
@@ -81,7 +79,6 @@ class VaRCalculation:
     def var_breach(self) -> bool:
         """VaR制限違反"""
         return self.portfolio_var_pct > 0.10  # 10%制限
-
 
 @dataclass
 class RiskMetrics:
@@ -110,7 +107,6 @@ class RiskMetrics:
 
     timestamp: datetime = field(default_factory=datetime.now)
 
-
 @dataclass
 class RiskAlert:
     """リスクアラート"""
@@ -122,7 +118,6 @@ class RiskAlert:
     current_value: float
     timestamp: datetime = field(default_factory=datetime.now)
 
-
 class VaRCalculator:
     """VaR計算器"""
 
@@ -131,12 +126,12 @@ class VaRCalculator:
         self.logger = get_logger(__name__)
 
         # 価格履歴データ
-        self.price_history: Dict[str, deque] = {}
-        self.return_history: Dict[str, deque] = {}
+        self.price_history: dict[str, deque] = {}
+        self.return_history: dict[str, deque] = {}
 
         # VaR計算結果キャッシュ
-        self.var_cache: Optional[VaRCalculation] = None
-        self.cache_timestamp: Optional[datetime] = None
+        self.var_cache: VaRCalculation | None = None
+        self.cache_timestamp: datetime | None = None
 
     def update_price_data(self, symbol: str, price: float):
         """価格データを更新"""
@@ -159,9 +154,9 @@ class VaRCalculator:
 
     def calculate_portfolio_var(
         self,
-        positions: Dict[str, Any],
-        volatilities: Dict[str, float],
-        correlations: Dict[Tuple[str, str], float],
+        positions: dict[str, Any],
+        volatilities: dict[str, float],
+        correlations: dict[tuple[str, str], float],
     ) -> VaRCalculation:
         """ポートフォリオVaRを計算"""
         try:
@@ -203,7 +198,7 @@ class VaRCalculator:
             )
 
     def _calculate_portfolio_returns(
-        self, positions: Dict[str, Any], correlations: Dict[Tuple[str, str], float]
+        self, positions: dict[str, Any], correlations: dict[tuple[str, str], float]
     ) -> np.ndarray:
         """ポートフォリオリターンを計算"""
         symbols = list(positions.keys())
@@ -260,9 +255,9 @@ class VaRCalculator:
 
     def _calculate_parametric_var(
         self,
-        positions: Dict[str, Any],
-        volatilities: Dict[str, float],
-        correlations: Dict[Tuple[str, str], float],
+        positions: dict[str, Any],
+        volatilities: dict[str, float],
+        correlations: dict[tuple[str, str], float],
     ) -> VaRCalculation:
         """パラメトリックVaRを計算"""
         total_value = sum(pos.market_value for pos in positions.values())
@@ -328,7 +323,7 @@ class VaRCalculator:
         )
 
     def _calculate_historical_var(
-        self, portfolio_returns: np.ndarray, positions: Dict[str, Any]
+        self, portfolio_returns: np.ndarray, positions: dict[str, Any]
     ) -> VaRCalculation:
         """ヒストリカルVaRを計算"""
         total_value = sum(pos.market_value for pos in positions.values())
@@ -371,7 +366,6 @@ class VaRCalculator:
             time_horizon=self.config.var_time_horizon_days,
         )
 
-
 class StressTester:
     """ストレステスト実行器"""
 
@@ -405,8 +399,8 @@ class StressTester:
         }
 
     def run_stress_test(
-        self, portfolio_state: PortfolioState, current_prices: Dict[str, float]
-    ) -> Dict[str, Dict[str, float]]:
+        self, portfolio_state: PortfolioState, current_prices: dict[str, float]
+    ) -> dict[str, dict[str, float]]:
         """ストレステストを実行"""
         results = {}
 
@@ -424,10 +418,10 @@ class StressTester:
 
     def _run_single_scenario(
         self,
-        scenario: Dict[str, Any],
+        scenario: dict[str, Any],
         portfolio_state: PortfolioState,
-        current_prices: Dict[str, float],
-    ) -> Dict[str, float]:
+        current_prices: dict[str, float],
+    ) -> dict[str, float]:
         """単一シナリオを実行"""
         # ショック後の価格を計算
         shocked_prices = {}
@@ -463,7 +457,6 @@ class StressTester:
             "adjusted_volatility": adjusted_volatility,
             "breach_threshold": loss_pct > 0.20,  # 20%損失で重大
         }
-
 
 class EmergencyStopSystem:
     """緊急停止システム"""
@@ -539,7 +532,7 @@ class EmergencyStopSystem:
         self.emergency_stop_timestamp = None
         self.logger.info("Emergency stop reset")
 
-    def get_emergency_status(self) -> Dict[str, Any]:
+    def get_emergency_status(self) -> dict[str, Any]:
         """緊急停止状態を取得"""
         return {
             "triggered": self.emergency_stop_triggered,
@@ -547,7 +540,6 @@ class EmergencyStopSystem:
             "timestamp": self.emergency_stop_timestamp,
             "current_drawdown": self.current_drawdown,
         }
-
 
 class RiskOverlay:
     """
@@ -568,17 +560,17 @@ class RiskOverlay:
         self.emergency_stop = EmergencyStopSystem(self.config)
 
         # 状態管理
-        self.risk_metrics: Optional[RiskMetrics] = None
-        self.last_var_calculation: Optional[VaRCalculation] = None
-        self.alerts: List[RiskAlert] = []
+        self.risk_metrics: RiskMetrics | None = None
+        self.last_var_calculation: VaRCalculation | None = None
+        self.alerts: list[RiskAlert] = []
 
         # モニタリング
         self.monitoring_thread = None
         self.is_running = False
 
         # 価格データ
-        self.current_prices: Dict[str, float] = {}
-        self.price_update_times: Dict[str, datetime] = {}
+        self.current_prices: dict[str, float] = {}
+        self.price_update_times: dict[str, datetime] = {}
 
     def start_overlay(self):
         """リスクオーバーレイを開始"""
@@ -687,7 +679,7 @@ class RiskOverlay:
         # データが不十分な場合は保守的な推定値
         return 0.05
 
-    def _calculate_correlation_metrics(self) -> Tuple[float, float]:
+    def _calculate_correlation_metrics(self) -> tuple[float, float]:
         """相関指標を計算"""
         correlations = list(self.position_manager.correlations.values())
         if not correlations:
@@ -700,7 +692,7 @@ class RiskOverlay:
 
     def _calculate_concentration_metrics(
         self, portfolio_state: PortfolioState
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """集中度指標を計算"""
         if not portfolio_state.positions:
             return 0.0, 0.0
@@ -732,7 +724,7 @@ class RiskOverlay:
             volume_risk=0.0,
         )
 
-    def run_stress_tests(self) -> Dict[str, Dict[str, float]]:
+    def run_stress_tests(self) -> dict[str, dict[str, float]]:
         """ストレステストを実行"""
         portfolio_state = self.position_manager.portfolio_state
         return self.stress_tester.run_stress_test(portfolio_state, self.current_prices)
@@ -752,7 +744,7 @@ class RiskOverlay:
             portfolio_volatility,
         )
 
-    def generate_risk_alerts(self) -> List[RiskAlert]:
+    def generate_risk_alerts(self) -> list[RiskAlert]:
         """リスクアラートを生成"""
         alerts = []
 
@@ -861,7 +853,7 @@ class RiskOverlay:
                 self.logger.error(f"Risk overlay monitoring error: {e}")
                 time.sleep(30)
 
-    def get_risk_report(self) -> Dict[str, Any]:
+    def get_risk_report(self) -> dict[str, Any]:
         """リスクレポートを取得"""
         return {
             "risk_metrics": self.risk_metrics.__dict__ if self.risk_metrics else None,
@@ -881,11 +873,9 @@ class RiskOverlay:
             },
         }
 
-
 def create_risk_overlay(position_manager: PositionManager) -> RiskOverlay:
     """RiskOverlayのファクトリ関数"""
     return RiskOverlay(position_manager)
-
 
 # 使用例
 if __name__ == "__main__":

@@ -4,9 +4,6 @@ Drawdown Penalty Calculator Component.
 This component calculates penalties for excessive drawdowns.
 """
 
-from typing import List
-
-
 class DrawdownPenaltyCalculator:
     """
     Calculates penalty for drawdown exceeding safe limits.
@@ -16,7 +13,7 @@ class DrawdownPenaltyCalculator:
     """
 
     def calculate(
-        self, reward_history: List[float], drawdown_window: int = 20
+        self, reward_history: list[float], drawdown_window: int = 20
     ) -> float:
         """
         Calculate drawdown penalty.

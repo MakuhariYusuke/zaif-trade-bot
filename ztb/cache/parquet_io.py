@@ -6,7 +6,7 @@ Parquet I/O abstraction with configuration-driven compression, chunking, and col
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, cast
+from typing import Any, cast
 
 import pandas as pd
 import psutil
@@ -18,26 +18,23 @@ from ztb.utils.cache_utils import cached_with_ttl
 from ztb.utils.config_loader import ConfigLoader
 from .memory_cache import default_memory_manager
 
-
-def load_config(config_path: Path = Path("configs/io.yaml")) -> Dict[str, Any]:
+def load_config(config_path: Path = Path("configs/io.yaml")) -> dict[str, Any]:
     """Load I/O configuration"""
     if not config_path.exists():
         raise FileNotFoundError(f"Config file not found: {config_path}")
 
     return ConfigLoader.load(config_path)
 
-
 async def load_config_async(
     config_path: Path = Path("configs/io.yaml"),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Asynchronously load I/O configuration"""
     if not config_path.exists():
         raise FileNotFoundError(f"Config file not found: {config_path}")
 
     return await ConfigLoader.load_async(config_path)
 
-
-def load_features_config(features_config_path: Optional[Path] = None) -> Dict[str, Any]:
+def load_features_config(features_config_path: Path | None = None) -> dict[str, Any]:
     """Load features configuration for dependency analysis"""
     if features_config_path is None:
         features_config_path = Path("configs/features.yaml")
@@ -47,10 +44,9 @@ def load_features_config(features_config_path: Optional[Path] = None) -> Dict[st
 
     return ConfigLoader.load(features_config_path)
 
-
 async def load_features_config_async(
-    features_config_path: Optional[Path] = None,
-) -> Dict[str, Any]:
+    features_config_path: Path | None = None,
+) -> dict[str, Any]:
     """Asynchronously load features configuration for dependency analysis"""
     if features_config_path is None:
         features_config_path = Path("configs/features.yaml")
@@ -60,10 +56,9 @@ async def load_features_config_async(
 
     return await ConfigLoader.load_async(features_config_path)
 
-
 def analyze_column_dependencies(
-    features_config: Dict[str, Any], target_features: Optional[List[str]] = None
-) -> Set[str]:
+    features_config: dict[str, Any], target_features: list[str] | None = None
+) -> set[str]:
     """
     Analyze column dependencies from features configuration
 
@@ -72,9 +67,9 @@ def analyze_column_dependencies(
         target_features: Specific features to analyze (if None, analyze all)
 
     Returns:
-        Set of required column names
+        set of required column names
     """
-    required_columns: Set[str] = set()
+    required_columns: set[str] = set()
 
     # Base OHLCV columns that are always needed
     base_columns = {"open", "high", "low", "close", "volume", "timestamp"}
@@ -133,19 +128,18 @@ def analyze_column_dependencies(
     # Convert to list and sort for consistency
     return required_columns
 
-
 def smart_column_detection(
-    parquet_path: Path, required_columns: Optional[Set[str]] = None
-) -> List[str]:
+    parquet_path: Path, required_columns: set[str] | None = None
+) -> list[str]:
     """
     Smart column detection based on parquet metadata and requirements
 
     Args:
         parquet_path: Path to parquet file
-        required_columns: Set of required column names
+        required_columns: set of required column names
 
     Returns:
-        List of columns to read
+        list of columns to read
     """
     try:
         # Read parquet metadata to get available columns
@@ -164,15 +158,14 @@ def smart_column_detection(
 
             return columns_to_read
         else:
-            return cast(List[str], available_columns)
+            return cast(list[str], available_columns)
 
     except Exception as e:
         print(f"Error reading parquet metadata: {e}")
         return []
 
-
 def write_parquet(
-    df: pd.DataFrame, path: Path, config: Optional[Dict[str, Any]] = None
+    df: pd.DataFrame, path: Path, config: dict[str, Any] | None = None
 ) -> None:
     """Write DataFrame to Parquet with configuration"""
     if config is None:
@@ -196,12 +189,11 @@ def write_parquet(
         data_page_size=BYTES_PER_MB,  # 1MB pages
     )
 
-
 @cached_with_ttl(ttl_seconds=1800)  # Cache for 30 minutes
 def read_parquet(
     path: Path,
-    config: Optional[Dict[str, Any]] = None,
-    columns: Optional[List[str]] = None,
+    config: dict[str, Any] | None = None,
+    columns: list[str] | None = None,
     enable_memory_cache: bool = True,
 ) -> pd.DataFrame:
     """Read Parquet to DataFrame with memory monitoring and caching"""
@@ -255,13 +247,12 @@ def read_parquet(
 
     return df
 
-
 @cached_with_ttl(ttl_seconds=1800)  # Cache for 30 minutes
 def read_parquet_with_features(
     path: Path,
-    config: Optional[Dict[str, Any]] = None,
-    target_features: Optional[List[str]] = None,
-    features_config_path: Optional[Path] = None,
+    config: dict[str, Any] | None = None,
+    target_features: list[str] | None = None,
+    features_config_path: Path | None = None,
 ) -> pd.DataFrame:
     """
     Read Parquet with automatic column selection based on feature dependencies
@@ -317,9 +308,8 @@ def read_parquet_with_features(
     # Use optimized read_parquet with specific columns
     return read_parquet(path, config, columns_to_read)
 
-
 def convert_to_parquet(
-    input_path: Path, output_path: Path, compression: Optional[str] = None
+    input_path: Path, output_path: Path, compression: str | None = None
 ) -> None:
     """Convert CSV/JSON to Parquet"""
     if input_path.suffix.lower() == ".csv":
@@ -336,7 +326,6 @@ def convert_to_parquet(
     write_parquet(df, output_path, config)
     print(f"Converted {input_path} to {output_path}")
     print(f"Converted {input_path} to {output_path}")
-
 
 if __name__ == "__main__":
     import argparse

@@ -6,7 +6,7 @@ transferring knowledge from a large teacher model to a smaller student model.
 """
 
 import logging
-from typing import Dict, List, Optional
+from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -55,7 +55,6 @@ except Exception:
 
     F = _F
 logger = logging.getLogger(__name__)
-
 
 class DistillationLoss(nn.Module):
     """
@@ -125,7 +124,6 @@ class DistillationLoss(nn.Module):
 
             return _Scalar(total_loss)
 
-
 class IntermediateDistillationLoss(nn.Module):
     """
     Intermediate layer distillation loss for feature map transfer.
@@ -146,10 +144,10 @@ class IntermediateDistillationLoss(nn.Module):
 
     def forward(
         self,
-        student_features: List[torch.Tensor],
-        teacher_features: List[torch.Tensor],
-        student_attention: Optional[List[torch.Tensor]] = None,
-        teacher_attention: Optional[List[torch.Tensor]] = None,
+        student_features: list[torch.Tensor],
+        teacher_features: list[torch.Tensor],
+        student_attention: list[torch.Tensor] | None = None,
+        teacher_attention: list[torch.Tensor] | None = None,
     ) -> torch.Tensor:
         """
         Compute intermediate layer distillation loss.
@@ -187,13 +185,12 @@ class IntermediateDistillationLoss(nn.Module):
 
         return loss / max(num_layers, 1)
 
-
 class SACDistiller:
     """
     Knowledge distillation trainer for SAC models.
     """
 
-    def __init__(self, distillation_config: Optional[Dict[str, float]] = None) -> None:
+    def __init__(self, distillation_config: dict[str, float] | None = None) -> None:
         """
         Initialize the SAC distiller.
 
@@ -215,7 +212,7 @@ class SACDistiller:
             attention_weight=self.config["attention_weight"],
         )
 
-    def _get_default_config(self) -> Dict[str, float]:
+    def _get_default_config(self) -> dict[str, float]:
         """Get default distillation configuration."""
         return {
             "temperature": 2.0,  # Softening temperature
@@ -240,9 +237,9 @@ class SACDistiller:
         optimizer: torch.optim.Optimizer,
         device: torch.device,
         num_epochs: int = 10,
-        teacher_hooks: Optional[List[Dict[str, str]]] = None,
-        student_hooks: Optional[List[Dict[str, str]]] = None,
-    ) -> Dict[str, float]:
+        teacher_hooks: list[dict[str, str]] | None = None,
+        student_hooks: list[dict[str, str]] | None = None,
+    ) -> dict[str, float]:
         """
         Perform knowledge distillation training.
 
@@ -332,9 +329,9 @@ class SACDistiller:
     def _setup_feature_hooks(
         self,
         model: nn.Module,
-        hook_configs: List[Dict[str, str]],
-        feature_store: List[torch.Tensor],
-    ) -> List[torch.utils.hooks.RemovableHandle]:
+        hook_configs: list[dict[str, str]],
+        feature_store: list[torch.Tensor],
+    ) -> list[torch.utils.hooks.RemovableHandle]:
         """Setup forward hooks to capture intermediate features."""
         handles = []
 
@@ -361,9 +358,9 @@ class SACDistiller:
         optimizer: torch.optim.Optimizer,
         device: torch.device,
         epoch: int,
-        teacher_features: List[torch.Tensor],
-        student_features: List[torch.Tensor],
-    ) -> Dict[str, float]:
+        teacher_features: list[torch.Tensor],
+        student_features: list[torch.Tensor],
+    ) -> dict[str, float]:
         """Train one epoch of distillation."""
         teacher_loss_sum = 0.0
         student_loss_sum = 0.0
@@ -483,13 +480,12 @@ class SACDistiller:
         )
         return student_model
 
-
 class DistillationPipeline:
     """
     End-to-end distillation pipeline for SAC models.
     """
 
-    def __init__(self, config: Optional[Dict[str, float]] = None) -> None:
+    def __init__(self, config: dict[str, float] | None = None) -> None:
         self.config = config or {}
         self.distiller = SACDistiller(self.config.get("distillation", {}))
 
@@ -500,7 +496,7 @@ class DistillationPipeline:
         device: torch.device,
         compression_ratio: float = 0.5,
         num_epochs: int = 10,
-    ) -> Dict:
+    ) -> dict:
         """
         Run complete distillation pipeline.
 
@@ -571,7 +567,7 @@ class DistillationPipeline:
 
     def _collect_compression_stats(
         self, teacher_model: nn.Module, student_model: nn.Module
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Collect compression statistics."""
         teacher_params = sum(p.numel() for p in teacher_model.parameters())
         student_params = sum(p.numel() for p in student_model.parameters())

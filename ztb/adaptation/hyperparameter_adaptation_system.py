@@ -5,7 +5,7 @@ Dynamic Hyperparameter Adaptation Integration
 
 import logging
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -27,9 +27,7 @@ if TYPE_CHECKING:
 
 # from .monitoring.market_regime_detector import MarketRegimeDetector  # Optional
 
-
 logger = logging.getLogger(__name__)
-
 
 class HyperparameterAdaptationSystem:
     """ハイパーパラメータ適応システム統合"""
@@ -38,7 +36,7 @@ class HyperparameterAdaptationSystem:
         self,
         online_learning_pipeline: "OnlineLearningPipeline",
         evaluation_manager: ContinuousEvaluationManager,
-        market_regime_detector: Optional[Any] = None,
+        market_regime_detector: Any | None = None,
     ):
         self.online_learning = online_learning_pipeline
         self.evaluation_manager = evaluation_manager
@@ -49,8 +47,8 @@ class HyperparameterAdaptationSystem:
         self.market_aware_config = self._create_market_aware_config()
 
         # コンポーネント
-        self.dynamic_adapter: Optional[DynamicHyperparameterAdapter] = None
-        self.market_aware_manager: Optional[MarketAwareHyperparameterManager] = None
+        self.dynamic_adapter: DynamicHyperparameterAdapter | None = None
+        self.market_aware_manager: MarketAwareHyperparameterManager | None = None
 
         # 状態
         self.is_initialized = False
@@ -190,8 +188,8 @@ class HyperparameterAdaptationSystem:
             logger.error(f"Error stopping adaptation system: {e}")
 
     def adapt_hyperparameters(
-        self, market_data: Optional[pd.DataFrame] = None
-    ) -> Dict[str, Any]:
+        self, market_data: pd.DataFrame | None = None
+    ) -> dict[str, Any]:
         """ハイパーパラメータを適応"""
         try:
             if not self.is_initialized or not self.market_aware_manager:
@@ -235,7 +233,7 @@ class HyperparameterAdaptationSystem:
                 "performance_improvement": 0.0,
             }
 
-    def get_current_hyperparameters(self) -> Dict[str, float]:
+    def get_current_hyperparameters(self) -> dict[str, float]:
         """現在のハイパーパラメータを取得"""
         try:
             if not self.dynamic_adapter:
@@ -247,7 +245,7 @@ class HyperparameterAdaptationSystem:
             logger.error(f"Failed to get current hyperparameters: {e}")
             return {}
 
-    def get_adaptation_status(self) -> Dict[str, Any]:
+    def get_adaptation_status(self) -> dict[str, Any]:
         """適応状態を取得"""
         try:
             status = {
@@ -285,7 +283,7 @@ class HyperparameterAdaptationSystem:
             logger.error(f"Failed to get adaptation status: {e}")
             return {"error": str(e)}
 
-    def update_config(self, config_updates: Dict[str, Any]) -> bool:
+    def update_config(self, config_updates: dict[str, Any]) -> bool:
         """設定を更新"""
         try:
             # ハイパーパラメータ設定の更新
@@ -316,7 +314,7 @@ class HyperparameterAdaptationSystem:
             logger.error(f"Failed to update configuration: {e}")
             return False
 
-    def get_performance_metrics(self) -> Dict[str, Any]:
+    def get_performance_metrics(self) -> dict[str, Any]:
         """パフォーマンスメトリクスを取得"""
         try:
             metrics = {

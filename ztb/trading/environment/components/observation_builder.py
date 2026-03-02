@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 # Observation building utilities for trading environment
 # 取引環境の観測値構築ユーティリティ
 
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -12,19 +14,18 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class ObservationBuilder:
     """Handles observation construction and info generation."""
 
     def __init__(
         self,
-        features: List[str],
+        features: list[str],
         feature_matrix: NDArray[np.float32],
-        nonfinite_rows: Set[int],
-        nonfinite_warned_rows: Set[int],
-        scaler_mean: Optional[NDArray[np.float32]] = None,
-        scaler_std: Optional[NDArray[np.float32]] = None,
-        optimizer_tracker: Optional["OptimizerFeatureTracker"] = None,
+        nonfinite_rows: set[int],
+        nonfinite_warned_rows: set[int],
+        scaler_mean: NDArray[np.float32] | None = None,
+        scaler_std: NDArray[np.float32] | None = None,
+        optimizer_tracker: OptimizerFeatureTracker | None = None,
     ):
         super().__init__()
         self.features = features
@@ -132,9 +133,9 @@ class ObservationBuilder:
         position: float,
         total_pnl: float,
         trades_count: int,
-        features: List[str],
+        features: list[str],
         config: ConfigDict,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """追加情報を取得"""
         return {
             "current_step": current_step,
@@ -147,14 +148,14 @@ class ObservationBuilder:
             "pnl": total_pnl,
         }
 
-    def update_features(self, features: List[str]) -> None:
+    def update_features(self, features: list[str]) -> None:
         """特徴量リストを更新"""
         self.features = features
 
     def update_feature_matrix(
         self,
         feature_matrix: NDArray[np.float32],
-        nonfinite_rows: Set[int],
+        nonfinite_rows: set[int],
     ) -> None:
         """特徴量行列と非有限値情報を更新"""
         self._feature_matrix = feature_matrix
@@ -163,8 +164,8 @@ class ObservationBuilder:
 
     def update_scaler(
         self,
-        scaler_mean: Optional[NDArray[np.float32]],
-        scaler_std: Optional[NDArray[np.float32]],
+        scaler_mean: NDArray[np.float32] | None,
+        scaler_std: NDArray[np.float32] | None,
     ) -> None:
         """スケーラー情報を更新"""
         self.scaler_mean = scaler_mean

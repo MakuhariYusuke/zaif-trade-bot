@@ -17,7 +17,6 @@ from ztb.utils.file_utils import get_project_root
 project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
-
 def train_specialized_model(specialization, base_config):
     """Train a specialized model for specific market conditions"""
 
@@ -133,7 +132,6 @@ def train_specialized_model(specialization, base_config):
         "config": model_config,
     }
 
-
 def run_ensemble_training():
     """Run ensemble training with 5 specialized models"""
 
@@ -237,7 +235,6 @@ def run_ensemble_training():
     print("1. Run multi-stage training (exploration → exploitation → fine-tuning)")
     print("2. Perform comprehensive backtesting with ensemble model")
     print("3. Evaluate real-world performance and risk metrics")
-
 
 if __name__ == "__main__":
     run_ensemble_training()

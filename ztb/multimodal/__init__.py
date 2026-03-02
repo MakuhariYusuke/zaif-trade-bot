@@ -30,12 +30,10 @@ from .features import *
 from .models import *
 from .training import *
 
-
 # デフォルト設定の読み込み
 def get_default_config() -> MultimodalConfig:
     """デフォルト設定を取得"""
     return MultimodalConfig.from_yaml("ztb/multimodal/config/default.yaml")
-
 
 # クイックスタート関数
 def create_multimodal_agent(
@@ -67,7 +65,6 @@ def create_multimodal_agent(
 
     return agent
 
-
 def create_data_pipeline():
     """
     マルチモーダルデータ収集パイプラインを作成
@@ -82,7 +79,6 @@ def create_data_pipeline():
     preprocessor = MultiModalDataPreprocessor()
 
     return {"data_manager": data_manager, "preprocessor": preprocessor}
-
 
 # バージョン情報
 def get_version_info():
@@ -105,16 +101,13 @@ def get_version_info():
         ],
     }
 
-
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 # 初期化完了メッセージ
 logger.info("🤖 MultiModal Learning Module v%s initialized", __version__)
 logger.info("📊 Ready for multi-modal trading AI development")
-
 
 def __getattr__(name: str):
     """Lazily import submodules like `pretraining` when accessed as attributes.

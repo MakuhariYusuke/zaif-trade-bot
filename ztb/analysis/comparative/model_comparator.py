@@ -7,14 +7,13 @@ trading models using various metrics and statistical tests.
 """
 
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 from scipy import stats
 
 from ztb.io.json_io import read_json, write_json
 from ztb.utils.logging_utils import get_logger
-
 
 class ModelComparator:
     """Statistical comparison of trading models."""
@@ -23,7 +22,7 @@ class ModelComparator:
         """Initialize model comparator."""
         self.logger = get_logger(__name__)
 
-    def load_backtest_results(self, file_path: str) -> Dict[str, Any]:
+    def load_backtest_results(self, file_path: str) -> dict[str, Any]:
         """Load backtest results from JSON file.
 
         Args:
@@ -34,14 +33,14 @@ class ModelComparator:
         """
         return read_json(file_path)
 
-    def extract_trade_returns(self, trades: List[Dict[str, Any]]) -> List[float]:
+    def extract_trade_returns(self, trades: list[dict[str, Any]]) -> list[float]:
         """Extract individual trade returns from trades data.
 
         Args:
-            trades: List of trade dictionaries
+            trades: list of trade dictionaries
 
         Returns:
-            List of trade returns as percentages
+            list of trade returns as percentages
         """
         returns = []
         for trade in trades:
@@ -54,8 +53,8 @@ class ModelComparator:
         return returns
 
     def perform_statistical_tests(
-        self, model_results: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, model_results: dict[str, Any]
+    ) -> dict[str, Any]:
         """Perform t-tests and other statistical comparisons.
 
         Args:
@@ -94,7 +93,7 @@ class ModelComparator:
 
         return results
 
-    def p_mean_method(self, model_results: Dict[str, Any]) -> Dict[str, Any]:
+    def p_mean_method(self, model_results: dict[str, Any]) -> dict[str, Any]:
         """Implement p-mean method for model comparison.
 
         Args:
@@ -133,9 +132,9 @@ class ModelComparator:
 
     def compare_models(
         self,
-        model_results_files: Dict[str, str],
+        model_results_files: dict[str, str],
         output_path: str = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Complete model comparison pipeline.
 
         Args:
@@ -187,7 +186,7 @@ class ModelComparator:
 
         return comparison_results
 
-    def print_comparison_summary(self, results: Dict[str, Any]) -> None:
+    def print_comparison_summary(self, results: dict[str, Any]) -> None:
         """Print formatted comparison summary.
 
         Args:

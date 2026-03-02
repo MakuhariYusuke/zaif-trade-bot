@@ -129,7 +129,6 @@ RECOMMENDED_MIN_HOLDING_PERIOD = 3  # Prevent rapid flip-flopping
 DEFAULT_CORRELATION_THRESHOLD = DEFAULT_CORRELATION_THRESHOLD
 DEFAULT_VOLATILITY_THRESHOLD = DEFAULT_VOLATILITY_THRESHOLD
 
-
 # ============================================================================
 # Reward Function Constants
 # ============================================================================
@@ -176,7 +175,6 @@ MODERATE_CONSECUTIVE_HOLD_THRESHOLD = 5
 DEFAULT_RANGE_MARKET_HOLD_TOLERANCE = 0.0
 MODERATE_RANGE_MARKET_HOLD_TOLERANCE = 0.5
 
-
 # ============================================================================
 # Lagrange Constraint Constants (SELL Mitigation)
 # ============================================================================
@@ -191,7 +189,6 @@ DEFAULT_LAGRANGE_ETA = 0.062875
 DEFAULT_LAGRANGE_ETA_MIN = DEFAULT_LAGRANGE_ETA_MIN
 DEFAULT_LAGRANGE_ETA_MAX = 100.0
 DEFAULT_LAGRANGE_ETA_LR = DEFAULT_LAGRANGE_ETA_LR
-
 
 # ============================================================================
 # Curriculum Learning Constants
@@ -211,7 +208,6 @@ MIN_DIVERSITY_THRESHOLD_RELAXED = 0.2  # 20% active trading
 CONSECUTIVE_ACTION_PENALTY_STRONG = 0.01
 CONSECUTIVE_ACTION_PENALTY_MODERATE = 0.005
 CONSECUTIVE_ACTION_PENALTY_LIGHT = 0.002
-
 
 # ============================================================================
 # Model Performance Thresholds
@@ -233,7 +229,6 @@ REGIME_THRESHOLD = DEFAULT_VOLATILITY_THRESHOLD
 
 # Evaluation gates
 DEFAULT_CIRCUIT_BREAKER_THRESHOLD = 0.15
-
 
 # ============================================================================
 # Memory Optimization Constants
@@ -257,7 +252,6 @@ FEATURE_NAN_RATE_THRESHOLD = 0.10  # 10% max NaN rate
 FEATURE_OUTLIER_RATE_THRESHOLD = 0.30  # 30% max outlier rate
 FEATURE_CORRELATION_THRESHOLD = 0.95  # 95% max correlation
 
-
 # ============================================================================
 # Statistical Thresholds
 # ============================================================================
@@ -277,11 +271,9 @@ DEFAULT_MEMORY_THRESHOLD_MB = 10.0
 MEMORY_LEAK_THRESHOLD_PERCENT = 50.0
 OBJECT_LEAK_THRESHOLD = 10000
 
-
 # ============================================================================
 # Utility Functions
 # ============================================================================
-
 
 def get_action_name(action: int) -> str:
     """
@@ -296,7 +288,6 @@ def get_action_name(action: int) -> str:
     if 0 <= action < NUM_DISCRETE_ACTIONS:
         return ACTION_NAMES[action]
     return f"UNKNOWN_ACTION_{action}"
-
 
 def continuous_to_discrete_action(
     continuous_action: float,
@@ -325,7 +316,6 @@ def continuous_to_discrete_action(
     else:
         return ACTION_HOLD
 
-
 def discrete_to_continuous_action(discrete_action: int) -> float:
     """
     Convert discrete action to continuous action.
@@ -343,19 +333,18 @@ def discrete_to_continuous_action(discrete_action: int) -> float:
     else:  # HOLD
         return 0.0
 
-
 # ============================================================================
 # Environment-Specific Constants
 # ============================================================================
 
 import os
-from typing import Any, Dict
+from typing import Any
 
 # Environment detection
 ENVIRONMENT = os.getenv("TRADING_ENV", "dev").lower()
 
 # Environment-specific configurations
-ENV_CONFIGS: Dict[str, Dict[str, Any]] = {
+ENV_CONFIGS: dict[str, dict[str, Any]] = {
     "dev": {
         "fee_rate": 0.001,  # 0.1% for development testing
         "initial_balance": 10000.0,  # Small balance for quick testing
@@ -401,7 +390,6 @@ ENV_MAX_ACTION_HISTORY = CURRENT_ENV_CONFIG["max_action_history"]
 ENV_ENABLE_LOGGING = CURRENT_ENV_CONFIG["enable_logging"]
 ENV_ENABLE_MEMORY_PROFILING = CURRENT_ENV_CONFIG["enable_memory_profiling"]
 
-
 # Validation functions for environment configs
 def validate_environment_config() -> None:
     """
@@ -441,7 +429,6 @@ def validate_environment_config() -> None:
         raise ConfigurationError(
             f"Invalid batch_size: {config['batch_size']}. Must be positive"
         )
-
 
 # Validate on import
 validate_environment_config()

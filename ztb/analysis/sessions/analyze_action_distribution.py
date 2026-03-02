@@ -2,7 +2,7 @@
 """Extract and compare action distribution metrics from short training runs."""
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from tensorboard.backend.event_processing import event_accumulator
 from ztb.io.json_io import write_json
@@ -19,8 +19,7 @@ RUNS = {
     ),
 }
 
-
-def extract_action_metrics(run_dir: Path) -> Dict[str, Any]:
+def extract_action_metrics(run_dir: Path) -> dict[str, Any]:
     """Extract action distribution metrics from TensorBoard events."""
     events_file = next(run_dir.glob("**/events.out.tfevents.*"), None)
     if not events_file:
@@ -63,7 +62,6 @@ def extract_action_metrics(run_dir: Path) -> Dict[str, Any]:
 
     return metrics
 
-
 def main() -> None:
     results = {}
 
@@ -104,7 +102,6 @@ def main() -> None:
             print(".1%")
 
     print("\n" + "=" * 80)
-
 
 if __name__ == "__main__":
     main()

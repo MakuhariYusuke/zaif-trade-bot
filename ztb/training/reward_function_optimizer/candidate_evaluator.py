@@ -30,20 +30,18 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 from ztb.reporting.services.catalog import find_reports_for_model as _find_reports_from_catalog
 from ztb.utils.safety import ensure_dict, safe_open_json, safe_to_float
 
 ReportSignature = tuple[int, int]
 
-
 class CandidateEvaluationResult(TypedDict):
     mean_sharpe: float
     mean_total_return: float
     report_count: int
     run_artifacts: list[str]
-
 
 def _empty_result() -> CandidateEvaluationResult:
     return {
@@ -53,13 +51,11 @@ def _empty_result() -> CandidateEvaluationResult:
         "run_artifacts": [],
     }
 
-
 def _load_json_object(path: Path) -> dict[str, object] | None:
     payload = safe_open_json(path)
     if payload is None:
         return None
     return ensure_dict(payload)
-
 
 def _get_nested_str(payload: dict[str, object], keys: tuple[str, ...]) -> str | None:
     current: object = payload
@@ -71,7 +67,6 @@ def _get_nested_str(payload: dict[str, object], keys: tuple[str, ...]) -> str | 
         return current
     return None
 
-
 def _extract_candidate_model_name(payload: dict[str, object]) -> str | None:
     return _get_nested_str(payload, ("training", "model_name"))
 
@@ -82,10 +77,8 @@ def _report_signature(report_path: Path) -> ReportSignature | None:
     except OSError:
         return None
 
-
 def _find_reports_for_model(model_name: str, report_dir_path: Path) -> list[Path]:
     return _find_reports_from_catalog(model_name, reports_dir=report_dir_path)
-
 
 def _snapshot_report_state(report_paths: list[Path]) -> dict[Path, ReportSignature]:
     state: dict[Path, ReportSignature] = {}
@@ -94,7 +87,6 @@ def _snapshot_report_state(report_paths: list[Path]) -> dict[Path, ReportSignatu
         if signature is not None:
             state[report_path] = signature
     return state
-
 
 def _is_new_or_updated_report(
     report_path: Path, baseline_state: dict[Path, ReportSignature]
@@ -106,7 +98,6 @@ def _is_new_or_updated_report(
     if previous_signature is None:
         return True
     return current_signature != previous_signature
-
 
 def _collect_current_run_reports(
     model_name: str,
@@ -121,15 +112,14 @@ def _collect_current_run_reports(
     ]
     return sorted(current_run_reports)
 
-
 def evaluate_candidate(
     cfg_path: str,
     seeds: int = 3,
     timesteps: int = 2000,
     dry_run: bool = False,
     retries: int = 2,
-    timeout: Optional[int] = None,
-    report_dir: Optional[str] = "reports",
+    timeout: int | None = None,
+    report_dir: str | None = "reports",
 ) -> CandidateEvaluationResult:
     if dry_run:
         return _empty_result()
@@ -227,9 +217,8 @@ def evaluate_candidate(
         "run_artifacts": run_artifacts,
     }
 
-
 def _cleanup_partial_reports(
-    model_name: Optional[str],
+    model_name: str | None,
     report_dir_path: Path,
     baseline_state: dict[Path, ReportSignature] | None = None,
 ) -> None:

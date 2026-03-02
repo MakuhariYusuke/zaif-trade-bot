@@ -5,8 +5,7 @@ This module provides standardized environment configurations to reduce duplicati
 across training scripts and improve consistency.
 """
 
-from typing import Any, Dict, List, Optional, TypedDict, cast
-
+from typing import Any, Optional, TypedDict, cast
 
 class TradingEnvConfig(TypedDict, total=False):
     """Type definition for trading environment configuration."""
@@ -19,9 +18,8 @@ class TradingEnvConfig(TypedDict, total=False):
     max_position_size: float
     fee_model: str
     fee_rate: float
-    features: List[str]  # Optional field
+    features: list[str]  # Optional field
     atr_period: int
-
 
 # Default trading environment configuration
 DEFAULT_TRADING_ENV_CONFIG: TradingEnvConfig = {
@@ -36,16 +34,14 @@ DEFAULT_TRADING_ENV_CONFIG: TradingEnvConfig = {
     "atr_period": 14,
 }
 
-
 def get_trading_env_config(
-    overrides: Optional[Dict[str, Any]] = None,
+    overrides: dict[str, Any] | None = None,
 ) -> TradingEnvConfig:
     """Get trading environment configuration with optional overrides."""
-    config: Dict[str, Any] = dict(DEFAULT_TRADING_ENV_CONFIG)
+    config: dict[str, Any] = dict(DEFAULT_TRADING_ENV_CONFIG)
     if overrides:
         config.update(overrides)
     return cast(TradingEnvConfig, config)
-
 
 # Legacy constants for backward compatibility
 DEFAULT_REWARD_SCALING = DEFAULT_TRADING_ENV_CONFIG["reward_scaling"]

@@ -10,7 +10,7 @@ import os
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -25,7 +25,6 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-
 
 class YahooFinanceDataPipeline:
     """
@@ -56,7 +55,7 @@ class YahooFinanceDataPipeline:
         self.retry_delay = 5  # 秒
 
     def fetch_historical_data(
-        self, start_date: str, end_date: str, symbol: Optional[str] = None
+        self, start_date: str, end_date: str, symbol: str | None = None
     ) -> pd.DataFrame:
         """
         指定期間の過去データを取得
@@ -313,7 +312,7 @@ class YahooFinanceDataPipeline:
         logger.info(f"Data loaded from {filepath}")
         return df
 
-    def update_real_time_data(self, symbol: Optional[str] = None) -> pd.DataFrame:
+    def update_real_time_data(self, symbol: str | None = None) -> pd.DataFrame:
         """
         リアルタイムデータを取得して既存データに追加
 
@@ -339,7 +338,7 @@ class YahooFinanceDataPipeline:
 
         return new_data
 
-    def validate_data_quality(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def validate_data_quality(self, df: pd.DataFrame) -> dict[str, Any]:
         """
         データ品質の検証
 
@@ -414,7 +413,6 @@ class YahooFinanceDataPipeline:
         else:
             return obj
 
-
 def main():
     """
     メイン実行関数
@@ -465,7 +463,6 @@ def main():
     except Exception as e:
         logger.error(f"Data collection failed: {e}")
         raise
-
 
 if __name__ == "__main__":
     main()

@@ -9,7 +9,7 @@ integrated from archived paper trading scripts.
 from __future__ import annotations
 
 import warnings
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.utils.logging_utils import get_logger
@@ -28,11 +28,10 @@ warnings.warn(
     stacklevel=2,
 )
 
-
 class PaperTradingEvaluator:
     """Paper trading evaluator for comprehensive model evaluation."""
 
-    def __init__(self, config: Optional[EnvironmentConfig] = None):
+    def __init__(self, config: EnvironmentConfig | None = None):
         """Initialize paper trading evaluator.
 
         Args:
@@ -41,7 +40,7 @@ class PaperTradingEvaluator:
         self.logger = get_logger(__name__)
         self.config = config or EnvironmentConfig()
 
-        # Set default paper trading configuration
+        # set default paper trading configuration
         self.config.initial_portfolio_value = 200000.0
         self.config.transaction_cost = 1e-05
         self.config.max_position_size = 1.0
@@ -87,8 +86,8 @@ class PaperTradingEvaluator:
         model: SAC,
         env: HeavyTradingEnv,
         num_episodes: int = 10,
-        max_steps_per_episode: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_steps_per_episode: int | None = None,
+    ) -> dict[str, Any]:
         """Run paper trading simulation.
 
         Args:
@@ -112,8 +111,8 @@ class PaperTradingEvaluator:
         model_path: str,
         data_path: str,
         num_episodes: int = 10,
-        output_path: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        output_path: str | None = None,
+    ) -> dict[str, Any]:
         """Complete paper trading evaluation pipeline.
 
         Args:
@@ -133,7 +132,7 @@ class PaperTradingEvaluator:
             output_path=output_path,
         )
 
-    def print_summary(self, results: Dict[str, Any]) -> None:
+    def print_summary(self, results: dict[str, Any]) -> None:
         """Print formatted summary of paper trading results.
 
         Args:

@@ -25,7 +25,6 @@ HookCallable = Callable[[], None]
 ExpectedPredicate = Callable[[object], bool]
 ExpectedValue = object | ExpectedPredicate
 
-
 @dataclass
 class TestScenario:
     """テストシナリオ定義"""
@@ -41,7 +40,6 @@ class TestScenario:
     expected_results: dict[str, ExpectedValue] = field(default_factory=dict)
     tags: list[str] = field(default_factory=list)
 
-
 @dataclass
 class TestExecutionResult:
     """テスト実行結果"""
@@ -54,7 +52,6 @@ class TestExecutionResult:
     performance_metrics: dict[str, float] = field(default_factory=dict)
     logs: list[str] = field(default_factory=list)
     timestamp: datetime = field(default_factory=datetime.now)
-
 
 @dataclass
 class TestSuiteResult:
@@ -73,7 +70,6 @@ class TestSuiteResult:
     def success_rate(self) -> float:
         """成功率"""
         return self.passed_tests / self.total_tests if self.total_tests > 0 else 0.0
-
 
 class TestDataGenerator:
     """テストデータ生成器"""
@@ -199,7 +195,6 @@ class TestDataGenerator:
                 "price_changes": {},
                 "duration_seconds": 60,
             }
-
 
 class EndToEndTestRunner:
     """エンドツーエンドテスト実行器"""
@@ -424,18 +419,17 @@ class EndToEndTestRunner:
                 # リスト比較（簡易版）
                 if not isinstance(actual_value, (list, tuple)):
                     self.logger.warning(
-                        f"List type mismatch for {key}: expected list/tuple, got {type(actual_value).__name__}"
+                        f"list type mismatch for {key}: expected list/tuple, got {type(actual_value).__name__}"
                     )
                     return False
                 if len(actual_value) != len(expected_value):
                     self.logger.warning(
-                        f"List length mismatch for {key}: expected {len(expected_value)}, "
+                        f"list length mismatch for {key}: expected {len(expected_value)}, "
                         f"got {len(actual_value)}"
                     )
                     return False
 
         return True
-
 
 class ComprehensiveTestSuite:
     """包括的テストスイート"""
@@ -1050,13 +1044,11 @@ class ComprehensiveTestSuite:
         except Exception:
             return False
 
-
 def create_end_to_end_test_framework(
     integration_manager: V433IntegrationManager,
 ) -> ComprehensiveTestSuite:
     """エンドツーエンドテストフレームワークのファクトリ関数"""
     return ComprehensiveTestSuite(integration_manager)
-
 
 # 使用例
 if __name__ == "__main__":

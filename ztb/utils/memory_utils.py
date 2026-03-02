@@ -7,7 +7,7 @@ Enhanced with TTLCache memory management integration.
 """
 
 from contextlib import contextmanager
-from typing import Any, Dict, Generator, Optional, TypeVar
+from typing import Any, Generator, TypeVar
 
 import numpy as np
 import psutil
@@ -21,7 +21,6 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 T = TypeVar("T", bound=np.ndarray)
-
 
 @contextmanager
 def temporary_array(*args: Any, **kwargs: Any) -> Generator[NDArray[Any], None, None]:
@@ -50,9 +49,8 @@ def temporary_array(*args: Any, **kwargs: Any) -> Generator[NDArray[Any], None, 
         # Force garbage collection of the array
         del arr
 
-
 def memory_efficient_processing(
-    data: NDArray[Any], chunk_size: Optional[int] = None
+    data: NDArray[Any], chunk_size: int | None = None
 ) -> Generator[NDArray[Any], None, None]:
     """
     Generator for memory-efficient processing of large arrays.
@@ -77,7 +75,6 @@ def memory_efficient_processing(
         finally:
             # Clean up chunk
             del chunk
-
 
 class OperationMemoryTracker:
     """
@@ -145,7 +142,6 @@ class OperationMemoryTracker:
             if collected > 0:
                 logger.debug(f"Garbage collection freed {collected} objects")
 
-
 def optimize_array_dtype(arr: NDArray[Any]) -> NDArray[Any]:
     """
     Optimize array dtype for memory efficiency.
@@ -165,11 +161,10 @@ def optimize_array_dtype(arr: NDArray[Any]) -> NDArray[Any]:
 
     return arr
 
-
 def cleanup_training_memory(
-    env: Optional[Any] = None,
-    model: Optional[Any] = None,
-    data_cache: Optional[dict] = None,
+    env: Any | None = None,
+    model: Any | None = None,
+    data_cache: dict | None = None,
     force_gc: bool = True,
     optimize_cache: bool = True,
 ) -> None:
@@ -218,8 +213,7 @@ def cleanup_training_memory(
     except Exception as e:
         logger.warning(f"Memory cleanup failed: {e}")
 
-
-def get_memory_usage() -> Dict[str, float]:
+def get_memory_usage() -> dict[str, float]:
     """
     Get current memory usage statistics.
 
@@ -233,7 +227,7 @@ def get_memory_usage() -> Dict[str, float]:
         memory_info = process.memory_info()
 
         base_stats = {
-            "rss": memory_info.rss / BYTES_PER_MB,  # Resident Set Size
+            "rss": memory_info.rss / BYTES_PER_MB,  # Resident set Size
             "vms": memory_info.vms / BYTES_PER_MB,  # Virtual Memory Size
             "percent": process.memory_percent(),
         }
@@ -274,7 +268,6 @@ def get_memory_usage() -> Dict[str, float]:
             "cache_total_entries": 0,
         }
 
-
 def check_memory_pressure(threshold_mb: float = 1000.0) -> bool:
     """
     Check if memory usage is above threshold.
@@ -306,10 +299,9 @@ def check_memory_pressure(threshold_mb: float = 1000.0) -> bool:
 
     return False
 
-
 def cleanup_memory(
-    caches: Optional[Dict[str, Any]] = None,
-    managers: Optional[Dict[str, Any]] = None,
+    caches: dict[str, Any] | None = None,
+    managers: dict[str, Any] | None = None,
     force_gc: bool = True,
     optimize_cache: bool = True,
 ) -> None:

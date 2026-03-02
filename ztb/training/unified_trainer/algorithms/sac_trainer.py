@@ -1,4 +1,5 @@
 """SAC algorithm trainer implementation."""
+from __future__ import annotations
 
 import copy
 import dataclasses
@@ -6,7 +7,7 @@ import math
 import logging
 import os
 import time
-from typing import Dict, List, Optional, cast
+from typing import Optional, cast
 
 import numpy as np
 import torch
@@ -52,23 +53,22 @@ from ztb.utils.checkpoint import TrainingStateManager
 from ztb.utils.logging_utils import StructuredLogger
 from ztb.utils.training_utils import create_checkpoint_callback
 
-
 class SACTrainer(BaseAlgorithmTrainer):
     """SAC algorithm trainer with enhanced UI and monitoring."""
 
     def __init__(
         self,
         config: ConfigDict,
-        env: Optional["HeavyTradingEnv"] = None,
-        logger: Optional[logging.Logger] = None,
+        env: HeavyTradingEnv | None = None,
+        logger: logging.Logger | None = None,
         gradient_accumulation_steps: int = 1,
-        system_optimizer: Optional[object] = None,
-        optimizer_tracker: Optional["OptimizerFeatureTracker"] = None,
+        system_optimizer: object | None = None,
+        optimizer_tracker: OptimizerFeatureTracker | None = None,
     ):
         super().__init__(config, logger)
         self.env = env
         # model will be instantiated later; annotate as optional to satisfy mypy
-        self.model: Optional[object] = None
+        self.model: object | None = None
         self.gradient_accumulation_steps = gradient_accumulation_steps
         self.system_optimizer = system_optimizer
         self.optimizer_tracker = optimizer_tracker
@@ -112,7 +112,7 @@ class SACTrainer(BaseAlgorithmTrainer):
     # 統合経路により、すべてのアルゴリズム（SAC/PPO/DQN/A2C）で共通の特徴検出ロジックを使用
 
     @staticmethod
-    def _is_valid_feature_set_name(value: Optional[str]) -> bool:
+    def _is_valid_feature_set_name(value: str | None) -> bool:
         """Return True when value looks like an explicit, non-placeholder feature set."""
         if not isinstance(value, str):
             return False
@@ -134,9 +134,9 @@ class SACTrainer(BaseAlgorithmTrainer):
         ]
         return name in valid_sets
 
-    def _extract_feature_set(self, source: object) -> Optional[str]:
+    def _extract_feature_set(self, source: object) -> str | None:
         """Safely extract feature_set string from dict-like or object sources."""
-        candidate: Optional[str] = None
+        candidate: str | None = None
         if isinstance(source, dict):
             candidate = source.get("feature_set")
         elif hasattr(source, "feature_set"):
@@ -147,7 +147,7 @@ class SACTrainer(BaseAlgorithmTrainer):
             candidate = None
         return candidate
 
-    def _format_reward_params(self, params: Dict[str, object]) -> str:
+    def _format_reward_params(self, params: dict[str, object]) -> str:
         if not params:
             return "None"
         parts = []
@@ -156,8 +156,8 @@ class SACTrainer(BaseAlgorithmTrainer):
             parts.append(f"{key}={value}")
         return ", ".join(parts)
 
-    def _extract_expected_reward_params(self, config: ConfigDict) -> Dict[str, object]:
-        expected: Dict[str, object] = {}
+    def _extract_expected_reward_params(self, config: ConfigDict) -> dict[str, object]:
+        expected: dict[str, object] = {}
         if not isinstance(config, dict):
             return expected
 
@@ -176,8 +176,8 @@ class SACTrainer(BaseAlgorithmTrainer):
                 expected.update(dataclasses.asdict(reward_settings))
         return expected
 
-    def _collect_actual_reward_params(self, env: object) -> Dict[str, object]:
-        params: Dict[str, object] = {}
+    def _collect_actual_reward_params(self, env: object) -> dict[str, object]:
+        params: dict[str, object] = {}
         if env is None:
             return params
         reward_settings = getattr(env, "reward_settings", None)
@@ -191,7 +191,7 @@ class SACTrainer(BaseAlgorithmTrainer):
         return params
 
     def _log_reward_params_verification(
-        self, env: object, expected_params: Dict[str, object]
+        self, env: object, expected_params: dict[str, object]
     ) -> None:
         actual_params = self._collect_actual_reward_params(env)
         keys = sorted(expected_params.keys())
@@ -264,7 +264,7 @@ class SACTrainer(BaseAlgorithmTrainer):
         if net is None and gross is not None and fees is not None and slip is not None:
             net = float(gross) - float(fees) - float(slip)
 
-        def pct(value: Optional[float]) -> str:
+        def pct(value: float | None) -> str:
             if value is None or not initial_balance:
                 return "N/A"
             return f"{(float(value) / float(initial_balance)) * 100:+.2f}%"
@@ -320,7 +320,7 @@ class SACTrainer(BaseAlgorithmTrainer):
         self.logger.warning("Interpretation: %s", interpretation)
         self.logger.warning("============================================")
 
-    def _resolve_feature_set_override(self, env_candidate: object) -> Optional[str]:
+    def _resolve_feature_set_override(self, env_candidate: object) -> str | None:
         """Find the most reliable feature_set declaration in the stacked config."""
         config_dict = self.config if isinstance(self.config, dict) else {}
         training_section = (
@@ -333,7 +333,7 @@ class SACTrainer(BaseAlgorithmTrainer):
             config_dict.get("environment", {}),
             env_candidate,  # Lowest priority
         ]
-        fallback: Optional[str] = None
+        fallback: str | None = None
         for i, source in enumerate(candidates):
             candidate = self._extract_feature_set(source)
             if not candidate:
@@ -476,7 +476,7 @@ class SACTrainer(BaseAlgorithmTrainer):
             self.logger.error(f"SAC configuration validation failed: {e}")
             return False
 
-    def train(self, total_timesteps: Optional[int] = None) -> bool:
+    def train(self, total_timesteps: int | None = None) -> bool:
         """Execute SAC training with enhanced monitoring.
 
         Args:
@@ -488,9 +488,9 @@ class SACTrainer(BaseAlgorithmTrainer):
 
     def _execute_sac_training(
         self,
-        total_timesteps: Optional[int] = None,
-        callback: Optional[TrainingProgressCallback] = None,
-        start_time: Optional[float] = None,
+        total_timesteps: int | None = None,
+        callback: TrainingProgressCallback | None = None,
+        start_time: float | None = None,
     ) -> bool:
         """Execute core SAC training logic with structured logging.
 
@@ -1125,7 +1125,7 @@ class SACTrainer(BaseAlgorithmTrainer):
             if model is None:
                 raise ModelError("Model not initialized before training")
 
-            # Set up dynamic LR scheduler with model optimizer if enabled
+            # set up dynamic LR scheduler with model optimizer if enabled
             if (
                 self.lr_scheduler
                 and hasattr(model, "policy")
@@ -1435,7 +1435,7 @@ class SACTrainer(BaseAlgorithmTrainer):
         )
         return False
 
-    def _calculate_final_action_distribution(self, callback) -> Dict[str, float]:
+    def _calculate_final_action_distribution(self, callback) -> dict[str, float]:
         """Calculate final action distribution from callback data."""
         # Handle CallbackList
         if hasattr(callback, "callbacks"):
@@ -1447,7 +1447,7 @@ class SACTrainer(BaseAlgorithmTrainer):
         total_actions = len(callback.discrete_actions)
 
         # Convert discrete actions to proper indices (SELL: -1 -> 2, HOLD: 0 -> 0, BUY: 1 -> 1)
-        discrete_indices: List[int] = []
+        discrete_indices: list[int] = []
         for action in callback.discrete_actions:
             if action == -1:  # SELL
                 discrete_indices.append(2)
@@ -1467,10 +1467,10 @@ class SACTrainer(BaseAlgorithmTrainer):
             "SELL": discrete_counts[2] / total_actions,
         }
 
-    def get_training_stats(self) -> Dict[str, object]:
+    def get_training_stats(self) -> dict[str, object]:
         """Get training statistics."""
         # Cast to expected return type to satisfy static checkers
-        return cast(Dict[str, object], self.training_stats.copy())
+        return cast(dict[str, object], self.training_stats.copy())
 
     def load_model(self, model_path: str) -> bool:
         """Load a trained SAC model from file."""
@@ -1493,11 +1493,11 @@ class SACTrainer(BaseAlgorithmTrainer):
             self.logger.error(f"❌ Failed to load model: {e}")
             return False
 
-    def validate_training(self, model_path: Optional[str] = None) -> Dict[str, object]:
+    def validate_training(self, model_path: str | None = None) -> dict[str, object]:
         """Validate trained model."""
         try:
             # Use provided path or get from training stats
-            validation_model_path: Optional[str] = model_path
+            validation_model_path: str | None = model_path
             if model_path is None:
                 validation_model_path = self.training_stats.get("model_path")
 
@@ -1543,10 +1543,10 @@ class SACTrainer(BaseAlgorithmTrainer):
 
     def run_hyperparameter_optimization(
         self,
-        param_space: Dict[str, object],
+        param_space: dict[str, object],
         n_trials: int = 50,
         optimization_target: str = "final_reward",
-    ) -> Dict[str, object]:
+    ) -> dict[str, object]:
         """Run hyperparameter optimization for SAC."""
         try:
             self.logger.info(
@@ -1599,7 +1599,7 @@ class SACTrainer(BaseAlgorithmTrainer):
             self.logger.error(f"Hyperparameter optimization failed: {e}")
             return {"optimization_success": False, "error": str(e)}
 
-    def _evaluate_hyperparams(self, params: Dict[str, object]) -> float:
+    def _evaluate_hyperparams(self, params: dict[str, object]) -> float:
         """Evaluate a set of hyperparameters by training a model."""
         try:
             # Create config with test parameters
@@ -1628,11 +1628,11 @@ class SACTrainer(BaseAlgorithmTrainer):
 
     def run_training_with_overrides(
         self,
-        total_timesteps: Optional[int] = None,
-        learning_rate: Optional[float] = None,
-        batch_size: Optional[int] = None,
-        output_dir: Optional[str] = None,
-        resume_path: Optional[str] = None,
+        total_timesteps: int | None = None,
+        learning_rate: float | None = None,
+        batch_size: int | None = None,
+        output_dir: str | None = None,
+        resume_path: str | None = None,
     ) -> bool:
         """Run training with parameter overrides."""
         try:
@@ -1730,7 +1730,7 @@ class SACTrainer(BaseAlgorithmTrainer):
         except Exception as e:
             self.logger.debug(f"Failed to emit SAC completion log: {e}")
 
-    def _convert_to_sac_v435_config(self) -> Dict[str, object]:
+    def _convert_to_sac_v435_config(self) -> dict[str, object]:
         """Convert unified config to SAC v435 config format."""
         unified_config = self.config
 
@@ -1872,7 +1872,7 @@ class SACTrainer(BaseAlgorithmTrainer):
 
         return sac_config
 
-    def analyze_results(self) -> Dict[str, object]:
+    def analyze_results(self) -> dict[str, object]:
         """Analyze training results and provide comprehensive summary."""
         try:
             self.logger.info("Analyzing SAC training results...")

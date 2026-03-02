@@ -1,11 +1,10 @@
 """Trainer parameter definitions for interface unification."""
 
 from dataclasses import dataclass
-from typing import Callable, Dict, Optional, Union
+from typing import Callable, Optional
 
 from ztb.training.config.ppo_config import PPOConfig
 from ztb.training.evaluation.eval_gates import EvalGates
-
 
 @dataclass
 class TrainerParams:
@@ -28,11 +27,10 @@ class TrainerParams:
     data_path: str
     config: PPOConfig
     checkpoint_dir: str
-    eval_gates: Optional[EvalGates] = None
-    halt_callback: Optional[Callable[[str], None]] = None
+    eval_gates: EvalGates | None = None
+    halt_callback: Callable[[str], None] | None = None
     checkpoint_interval: int = 10000
     progress_bar: bool = True
-
 
 @dataclass
 class SELLMitigationParams(TrainerParams):
@@ -64,5 +62,5 @@ class SELLMitigationParams(TrainerParams):
     enable_target_entropy: bool = True  # Automatic entropy control
     enable_stratified_sampling: bool = True  # Stratified mini-batch
     allow_reverse: bool = False  # Reverse-as-Close flag (env config)
-    probe_csv_path: Optional[str] = None
-    lagrange_params: Optional[Dict[str, Union[int, float]]] = None
+    probe_csv_path: str | None = None
+    lagrange_params: dict[str, int | float] | None = None

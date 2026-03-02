@@ -8,12 +8,11 @@ to prevent duplicate orders and ensure reliable execution.
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class OrderState(Enum):
     """Order states in the lifecycle."""
@@ -27,7 +26,6 @@ class OrderState(Enum):
     EXPIRED = "expired"  # Expired
     FAILED = "failed"  # Failed to submit
 
-
 class OrderEvent(Enum):
     """Events that can trigger state transitions."""
 
@@ -40,7 +38,6 @@ class OrderEvent(Enum):
     EXPIRE = "expire"
     FAIL = "fail"
 
-
 @dataclass
 class OrderData:
     """Order data structure."""
@@ -50,14 +47,13 @@ class OrderData:
     symbol: str
     side: str  # 'buy' or 'sell'
     quantity: float
-    price: Optional[float] = None
+    price: float | None = None
     order_type: str = "market"
-    timestamp: Optional[float] = None
+    timestamp: float | None = None
 
     def __post_init__(self) -> None:
         if self.timestamp is None:
             self.timestamp = time.time()
-
 
 class OrderStateMachine:
     """State machine for order lifecycle with idempotency."""
@@ -148,7 +144,6 @@ class OrderStateMachine:
         """Get state transition history."""
         return self.state_history.copy()
 
-
 class IdempotencyManager:
     """Manages order idempotency to prevent duplicates."""
 
@@ -177,7 +172,7 @@ class IdempotencyManager:
         """Mark operation as processed."""
         self._processed_keys.add(idempotency_key)
 
-    def get_order_state_machine(self, order_id: str) -> Optional[OrderStateMachine]:
+    def get_order_state_machine(self, order_id: str) -> OrderStateMachine | None:
         """Get state machine for order."""
         return self._order_states.get(order_id)
 
@@ -202,10 +197,8 @@ class IdempotencyManager:
                 f"Cleaned up {len(expired_orders)} expired order state machines"
             )
 
-
 # Global instance
-_idempotency_manager: Optional[IdempotencyManager] = None
-
+_idempotency_manager: IdempotencyManager | None = None
 
 def get_idempotency_manager() -> IdempotencyManager:
     """Get global idempotency manager instance."""

@@ -4,8 +4,6 @@ Oscillator Pattern Recognizers - CCI, Stochastic, Williams %R, MFI
 This module provides pattern recognition for oscillator-based technical indicators.
 """
 
-from typing import Optional
-
 import pandas as pd
 
 try:
@@ -35,7 +33,6 @@ except ImportError:
 from ..types import PatternConfig
 from .base import MultiTimeframeData, PatternRecognizer, RegimeAdjustment, SignalResult
 
-
 def _coerce_level(value: object, default: float) -> float:
     """Safely coerce threshold level values into float."""
     try:
@@ -43,13 +40,11 @@ def _coerce_level(value: object, default: float) -> float:
     except (TypeError, ValueError):
         return default
 
-
 def _resolve_index(data: pd.DataFrame, index: int, *, min_required_index: int = 20) -> int | None:
     """Resolve negative indices and validate minimum history requirements."""
     return PatternRecognizer.resolve_analysis_index(
         len(data), index, min_required_index=min_required_index
     )
-
 
 def _build_analysis_view(
     data: pd.DataFrame,
@@ -68,14 +63,13 @@ def _build_analysis_view(
 
     return view, len(view) - 1
 
-
 class CCIRecognizer(PatternRecognizer):
     """
     Commodity Channel Index (CCI) pattern recognizer.
     Identifies overbought/oversold conditions and trend signals.
     """
 
-    def __init__(self, config: Optional[PatternConfig] = None):
+    def __init__(self, config: PatternConfig | None = None):
         super().__init__(config)
         self.pattern_type = "cci"
         self.overbought_level = self.config.get("overbought_level", 100)
@@ -91,8 +85,8 @@ class CCIRecognizer(PatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[MultiTimeframeData] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """
         Recognize CCI patterns with multi-timeframe support.
 
@@ -255,7 +249,7 @@ class CCIRecognizer(PatternRecognizer):
 
     def _adjust_thresholds_for_regime(
         self,
-        multi_timeframe_data: Optional[MultiTimeframeData],
+        multi_timeframe_data: MultiTimeframeData | None,
         pattern_type: str = "general"
     ) -> RegimeAdjustment:
         """
@@ -318,14 +312,13 @@ class CCIRecognizer(PatternRecognizer):
                 'oversold': self.oversold_level
             }
 
-
 class StochasticRecognizer(PatternRecognizer):
     """
     Stochastic Oscillator pattern recognizer.
     Identifies overbought/oversold conditions using %K and %D lines.
     """
 
-    def __init__(self, config: Optional[PatternConfig] = None):
+    def __init__(self, config: PatternConfig | None = None):
         super().__init__(config)
         self.pattern_type = "stochastic"
         self.overbought_level = self.config.get("overbought_level", 80)
@@ -341,8 +334,8 @@ class StochasticRecognizer(PatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[MultiTimeframeData] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """
         Recognize Stochastic patterns with multi-timeframe support.
 
@@ -549,7 +542,7 @@ class StochasticRecognizer(PatternRecognizer):
 
     def _adjust_thresholds_for_regime(
         self,
-        multi_timeframe_data: Optional[MultiTimeframeData],
+        multi_timeframe_data: MultiTimeframeData | None,
         pattern_type: str = "general"
     ) -> RegimeAdjustment:
         """
@@ -612,14 +605,13 @@ class StochasticRecognizer(PatternRecognizer):
                 'oversold': self.oversold_level
             }
 
-
 class WilliamsRRecognizer(PatternRecognizer):
     """
     Williams %R pattern recognizer.
     Identifies overbought/oversold conditions using Williams %R oscillator.
     """
 
-    def __init__(self, config: Optional[PatternConfig] = None):
+    def __init__(self, config: PatternConfig | None = None):
         super().__init__(config)
         self.pattern_type = "williams_r"
         self.overbought_level = self.config.get("overbought_level", -20)
@@ -635,8 +627,8 @@ class WilliamsRRecognizer(PatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[MultiTimeframeData] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """
         Recognize Williams %R patterns with multi-timeframe support.
 
@@ -805,7 +797,7 @@ class WilliamsRRecognizer(PatternRecognizer):
 
     def _adjust_thresholds_for_regime(
         self,
-        multi_timeframe_data: Optional[MultiTimeframeData],
+        multi_timeframe_data: MultiTimeframeData | None,
         pattern_type: str = "general"
     ) -> RegimeAdjustment:
         """
@@ -866,14 +858,13 @@ class WilliamsRRecognizer(PatternRecognizer):
                 'oversold': self.oversold_level
             }
 
-
 class MFIRecognizer(PatternRecognizer):
     """
     Money Flow Index (MFI) pattern recognizer.
     Identifies overbought/oversold conditions using volume-weighted momentum.
     """
 
-    def __init__(self, config: Optional[PatternConfig] = None):
+    def __init__(self, config: PatternConfig | None = None):
         super().__init__(config)
         self.pattern_type = "mfi"
         self.overbought_level = self.config.get("overbought_level", 80)
@@ -889,8 +880,8 @@ class MFIRecognizer(PatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[MultiTimeframeData] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """
         Recognize MFI patterns with multi-timeframe support.
 
@@ -1059,7 +1050,7 @@ class MFIRecognizer(PatternRecognizer):
 
     def _adjust_thresholds_for_regime(
         self,
-        multi_timeframe_data: Optional[MultiTimeframeData],
+        multi_timeframe_data: MultiTimeframeData | None,
         pattern_type: str = "general"
     ) -> RegimeAdjustment:
         """

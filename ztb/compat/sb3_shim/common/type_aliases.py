@@ -1,7 +1,7 @@
 """Minimal type aliases used by tests that import SB3 types."""
 from typing import Any, Callable
 
-# GymEnv is usually a Union[gym.Env, VecEnv], tests only need a placeholder
+# GymEnv is usually a gym.Env | VecEnv, tests only need a placeholder
 GymEnv = Any
 
 # Schedule is a callable taking a float and returning a float

@@ -17,7 +17,7 @@ allowing their gradients to flow properly during backpropagation.
 """
 
 import logging
-from typing import Any, Dict, Tuple, Union, cast
+from typing import Any, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -25,7 +25,6 @@ from numpy.typing import NDArray
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 
 logger = logging.getLogger(__name__)
-
 
 class PerActionAdvantageNormalizer:
     """
@@ -64,17 +63,7 @@ class PerActionAdvantageNormalizer:
         advantages: NDArray[np.float32],
         actions: NDArray[np.int64],
         return_statistics: bool = False,
-    ) -> Union[
-        NDArray[np.floating[Any]],
-        Tuple[
-            NDArray[np.floating[Any]],
-            Tuple[
-                NDArray[np.floating[Any]],
-                NDArray[np.floating[Any]],
-                NDArray[np.integer[Any]],
-            ],
-        ],
-    ]:
+    ) -> NDArray[np.floating[Any]] | tuple[ NDArray[np.floating[Any]], tuple[ NDArray[np.floating[Any]], NDArray[np.floating[Any]], NDArray[np.integer[Any]], ], ]:
         """
         Normalize advantages per action.
 
@@ -141,7 +130,7 @@ class PerActionAdvantageNormalizer:
 
         return normalized
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get current normalization statistics.
 
@@ -154,7 +143,6 @@ class PerActionAdvantageNormalizer:
             "action_stds": self.action_stds.tolist(),
             "total_samples": int(np.sum(self.action_counts)),
         }
-
 
 def normalize_advantages_per_action(
     advantages: NDArray[np.float32],
@@ -184,7 +172,6 @@ def normalize_advantages_per_action(
         NDArray[np.floating[Any]],
         normalizer.normalize(advantages, actions, return_statistics=False),
     )
-
 
 def test_pan_basic() -> None:
     """Test basic PAN functionality."""
@@ -243,7 +230,6 @@ def test_pan_basic() -> None:
     assert sell_pan_std > 0.5, "SELL gradient should not be crushed!"
 
     print("\n✅ PAN basic test passed!")
-
 
 if __name__ == "__main__":
     test_pan_basic()

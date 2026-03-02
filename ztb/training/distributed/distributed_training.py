@@ -4,13 +4,14 @@ Distributed Training Utilities for SAC Training
 This module provides distributed training capabilities for SAC using PyTorch's
 DDP (DistributedDataParallel) and DataParallel for multi-GPU/multi-node training.
 """
+from __future__ import annotations
 
 import logging
 import os
 import socket
 import time
 from contextlib import contextmanager
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 import torch
 try:
@@ -46,7 +47,6 @@ import torch.nn as nn
 
 logger = logging.getLogger(__name__)
 
-
 class DistributedTrainingConfig:
     """
     Configuration for distributed training setup.
@@ -59,7 +59,7 @@ class DistributedTrainingConfig:
         master_addr: str = "127.0.0.1",
         master_port: str = "12345",
         backend: str = "gloo",  # 'gloo' for CPU, 'nccl' for GPU
-        init_method: Optional[str] = None,
+        init_method: str | None = None,
         timeout: int = 1800,  # 30 minutes
     ):
         """
@@ -94,7 +94,7 @@ class DistributedTrainingConfig:
             init_method=os.environ.get("INIT_METHOD", None),
         )
 
-    def to_env(self) -> Dict[str, str]:
+    def to_env(self) -> dict[str, str]:
         """Convert config to environment variables."""
         return {
             "WORLD_SIZE": str(self.world_size),
@@ -103,7 +103,6 @@ class DistributedTrainingConfig:
             "MASTER_PORT": self.master_port,
             "DIST_BACKEND": self.backend,
         }
-
 
 class DistributedTrainer:
     """
@@ -114,7 +113,7 @@ class DistributedTrainer:
         self,
         model: nn.Module,
         config: DistributedTrainingConfig,
-        device: Optional[torch.device] = None,
+        device: torch.device | None = None,
         find_unused_parameters: bool = False,
     ):
         """
@@ -195,8 +194,8 @@ class DistributedTrainer:
     def save_checkpoint(
         self,
         checkpoint_path: str,
-        optimizer: Optional["torch.optim.Optimizer"] = None,
-        scheduler: Optional[Any] = None,
+        optimizer: torch.optim.Optimizer | None = None,
+        scheduler: Any | None = None,
         epoch: int = 0,
         **kwargs,
     ):
@@ -223,7 +222,7 @@ class DistributedTrainer:
         torch.save(checkpoint, checkpoint_path)
         logger.info(f"Saved checkpoint to {checkpoint_path}")
 
-    def load_checkpoint(self, checkpoint_path: str) -> Dict[str, Any]:
+    def load_checkpoint(self, checkpoint_path: str) -> dict[str, Any]:
         """Load distributed checkpoint."""
         checkpoint = torch.load(checkpoint_path, map_location=self.device)
 
@@ -269,7 +268,6 @@ class DistributedTrainer:
         """Check if current process is master."""
         return self.is_master
 
-
 def setup_distributed_training(config: DistributedTrainingConfig):
     """
     Setup distributed training environment.
@@ -285,7 +283,7 @@ def setup_distributed_training(config: DistributedTrainingConfig):
         return True
 
     try:
-        # Set environment variables
+        # set environment variables
         env_vars = config.to_env()
         for key, value in env_vars.items():
             os.environ[key] = value
@@ -320,13 +318,11 @@ def setup_distributed_training(config: DistributedTrainingConfig):
         logger.error(f"Failed to setup distributed training: {e}")
         return False
 
-
 def cleanup_distributed_training():
     """Cleanup distributed training environment."""
     if dist.is_initialized():
         dist.destroy_process_group()
         logger.info("Cleaned up distributed training")
-
 
 @contextmanager
 def distributed_context(config: DistributedTrainingConfig):
@@ -348,7 +344,6 @@ def distributed_context(config: DistributedTrainingConfig):
     finally:
         cleanup_distributed_training()
 
-
 def find_free_port() -> str:
     """Find a free port for distributed training."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -357,15 +352,14 @@ def find_free_port() -> str:
         port = s.getsockname()[1]
         return str(port)
 
-
 def launch_distributed_training(
     world_size: int,
     train_fn: Callable,
-    args: Optional[tuple] = None,
+    args: tuple | None = None,
     backend: str = "gloo",
     master_addr: str = "127.0.0.1",
-    master_port: Optional[str] = None,
-) -> List[mp.Process]:
+    master_port: str | None = None,
+) -> list[mp.Process]:
     """
     Launch distributed training processes.
 
@@ -378,7 +372,7 @@ def launch_distributed_training(
         master_port: Master port (auto-assigned if None)
 
     Returns:
-        List of process handles
+        list of process handles
     """
     if master_port is None:
         master_port = find_free_port()
@@ -394,7 +388,7 @@ def launch_distributed_training(
             backend=backend,
         )
 
-        # Set environment variables for this process
+        # set environment variables for this process
         env = os.environ.copy()
         env.update(config.to_env())
 
@@ -407,8 +401,7 @@ def launch_distributed_training(
 
     return processes
 
-
-def wait_for_processes(processes: List[mp.Process]):
+def wait_for_processes(processes: list[mp.Process]):
     """Wait for distributed training processes to complete."""
     for p in processes:
         p.join()
@@ -417,7 +410,6 @@ def wait_for_processes(processes: List[mp.Process]):
     for i, p in enumerate(processes):
         if p.exitcode != 0:
             logger.error(f"Process {i} exited with code {p.exitcode}")
-
 
 # Utility functions for distributed training
 def reduce_loss(loss: torch.Tensor, config: DistributedTrainingConfig) -> torch.Tensor:
@@ -440,10 +432,9 @@ def reduce_loss(loss: torch.Tensor, config: DistributedTrainingConfig) -> torch.
 
     return reduced_loss
 
-
 def gather_tensor(
     tensor: torch.Tensor, config: DistributedTrainingConfig
-) -> List[torch.Tensor]:
+) -> list[torch.Tensor]:
     """
     Gather tensor from all processes.
 
@@ -452,7 +443,7 @@ def gather_tensor(
         config: Distributed training configuration
 
     Returns:
-        List of tensors from all processes
+        list of tensors from all processes
     """
     if config.world_size <= 1:
         return [tensor]
@@ -462,7 +453,6 @@ def gather_tensor(
     dist.all_gather(gathered_list, tensor)
 
     return gathered_list
-
 
 def broadcast_tensor(
     tensor: torch.Tensor, src_rank: int, config: DistributedTrainingConfig
@@ -480,8 +470,7 @@ def broadcast_tensor(
 
     dist.broadcast(tensor, src=src_rank)
 
-
-def get_distributed_info() -> Dict[str, Any]:
+def get_distributed_info() -> dict[str, Any]:
     """Get information about distributed training setup."""
     if not dist.is_initialized():
         return {

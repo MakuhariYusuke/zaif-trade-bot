@@ -12,7 +12,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable
 
 import psutil
 import requests
@@ -21,7 +21,6 @@ from ztb.trading.production.state_persistence import (
     read_state_payload,
     write_state_payload,
 )
-
 
 class HealthStatus(Enum):
     """ヘルスステータス"""
@@ -32,7 +31,6 @@ class HealthStatus(Enum):
     CRITICAL = "critical"
     UNKNOWN = "unknown"
 
-
 class HealthCheckType(Enum):
     """ヘルスチェックタイプ"""
 
@@ -42,7 +40,6 @@ class HealthCheckType(Enum):
     NETWORK = "network"  # ネットワーク接続
     EXTERNAL_API = "external_api"  # 外部API
     BUSINESS_LOGIC = "business_logic"  # ビジネスロジック
-
 
 @dataclass
 class HealthCheck:
@@ -57,14 +54,13 @@ class HealthCheck:
     interval_seconds: int = 60
     failure_threshold: int = 3
     success_threshold: int = 2
-    last_check: Optional[datetime] = None
+    last_check: datetime | None = None
     last_status: HealthStatus = HealthStatus.UNKNOWN
     consecutive_failures: int = 0
     consecutive_successes: int = 0
-    response_time_ms: Optional[float] = None
-    error_message: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-
+    response_time_ms: float | None = None
+    error_message: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class HealthReport:
@@ -73,10 +69,9 @@ class HealthReport:
     report_id: str
     timestamp: datetime
     overall_status: HealthStatus
-    checks: List[HealthCheck] = field(default_factory=list)
-    summary: Dict[str, Any] = field(default_factory=dict)
-    recommendations: List[str] = field(default_factory=list)
-
+    checks: list[HealthCheck] = field(default_factory=list)
+    summary: dict[str, Any] = field(default_factory=dict)
+    recommendations: list[str] = field(default_factory=list)
 
 class HealthChecker:
     """
@@ -100,26 +95,26 @@ class HealthChecker:
         self.report_retention_days = report_retention_days
 
         # ヘルスチェック管理
-        self.health_checks: Dict[str, HealthCheck] = {}
+        self.health_checks: dict[str, HealthCheck] = {}
 
         # レポート管理
-        self.health_reports: List[HealthReport] = []
+        self.health_reports: list[HealthReport] = []
 
         # 自動修復設定
         self.auto_remediation_enabled = True
-        self.remediation_actions: Dict[
+        self.remediation_actions: dict[
             str, Callable[[HealthCheck], Awaitable[bool]]
         ] = {}
 
         # モニタリング
         self.monitoring_active = False
-        self.monitoring_thread: Optional[threading.Thread] = None
+        self.monitoring_thread: threading.Thread | None = None
 
         # コールバック
-        self.status_callbacks: List[
+        self.status_callbacks: list[
             Callable[[HealthStatus, HealthStatus], Awaitable[None]]
         ] = []
-        self.report_callbacks: List[Callable[[HealthReport], Awaitable[None]]] = []
+        self.report_callbacks: list[Callable[[HealthReport], Awaitable[None]]] = []
 
         # ロギング
         self.logger = logging.getLogger(__name__)
@@ -649,7 +644,7 @@ class HealthChecker:
 
         return report
 
-    def _calculate_overall_status(self, checks: List[HealthCheck]) -> HealthStatus:
+    def _calculate_overall_status(self, checks: list[HealthCheck]) -> HealthStatus:
         """
         全体ステータス計算
 
@@ -680,7 +675,7 @@ class HealthChecker:
 
         return HealthStatus.UNKNOWN
 
-    def _generate_summary(self, checks: List[HealthCheck]) -> Dict[str, Any]:
+    def _generate_summary(self, checks: list[HealthCheck]) -> dict[str, Any]:
         """
         要約生成
 
@@ -688,7 +683,7 @@ class HealthChecker:
             checks: ヘルスチェックリスト
 
         Returns:
-            Dict[str, Any]: 要約
+            dict[str, Any]: 要約
         """
         total_checks = len(checks)
         enabled_checks = len([c for c in checks if c.enabled])
@@ -714,7 +709,7 @@ class HealthChecker:
             "last_check_time": datetime.now().isoformat(),
         }
 
-    def _generate_recommendations(self, checks: List[HealthCheck]) -> List[str]:
+    def _generate_recommendations(self, checks: list[HealthCheck]) -> list[str]:
         """
         推奨事項生成
 
@@ -722,7 +717,7 @@ class HealthChecker:
             checks: ヘルスチェックリスト
 
         Returns:
-            List[str]: 推奨事項
+            list[str]: 推奨事項
         """
         recommendations = []
 
@@ -753,8 +748,8 @@ class HealthChecker:
         return recommendations
 
     def get_health_report(
-        self, report_id: Optional[str] = None
-    ) -> Optional[HealthReport]:
+        self, report_id: str | None = None
+    ) -> HealthReport | None:
         """
         ヘルスレポート取得
 
@@ -762,7 +757,7 @@ class HealthChecker:
             report_id: レポートID（指定なしの場合は最新）
 
         Returns:
-            Optional[HealthReport]: ヘルスレポート
+            HealthReport | None: ヘルスレポート
         """
         if report_id:
             for report in self.health_reports:
@@ -772,7 +767,7 @@ class HealthChecker:
         else:
             return self.health_reports[-1] if self.health_reports else None
 
-    def get_health_history(self, hours: int = 24) -> List[HealthReport]:
+    def get_health_history(self, hours: int = 24) -> list[HealthReport]:
         """
         ヘルス履歴取得
 
@@ -780,7 +775,7 @@ class HealthChecker:
             hours: 取得期間（時間）
 
         Returns:
-            List[HealthReport]: ヘルスレポートリスト
+            list[HealthReport]: ヘルスレポートリスト
         """
         cutoff_time = datetime.now() - timedelta(hours=hours)
         return [r for r in self.health_reports if r.timestamp >= cutoff_time]
@@ -813,7 +808,7 @@ class HealthChecker:
     def stop_checking(self) -> None:
         return self.stop_monitoring()
 
-    def get_health_status(self) -> Dict[str, Any]:
+    def get_health_status(self) -> dict[str, Any]:
         """Return a brief health status summary for external callers."""
         report = self.get_latest_report()
         if report is None:

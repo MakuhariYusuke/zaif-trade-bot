@@ -40,7 +40,6 @@ __all__ = [
     "MetricsCalculator",
 ]
 
-
 def __getattr__(name: str) -> object:
     target = _LAZY_MODULE_ATTRS.get(name)
     if target is None:
@@ -49,7 +48,6 @@ def __getattr__(name: str) -> object:
     value = getattr(import_module(module_name), attr_name)
     globals()[name] = value
     return value
-
 
 def __dir__() -> list[str]:
     return sorted(set(globals()) | set(__all__))

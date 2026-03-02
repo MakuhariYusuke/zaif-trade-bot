@@ -20,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from queue import Queue
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, TypedDict, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 
 import numpy as np
 
@@ -55,7 +55,6 @@ except ImportError:
 
 import zlib
 
-
 class MetadataTypedDict(TypedDict, total=False):
     """Metadata for checkpoints"""
 
@@ -65,7 +64,6 @@ class MetadataTypedDict(TypedDict, total=False):
     training_time: float
     model_name: str
     config_hash: str
-
 
 class TrainingContextTypedDict(TypedDict, total=False):
     """Training context metadata"""
@@ -78,7 +76,6 @@ class TrainingContextTypedDict(TypedDict, total=False):
     learning_rate: float
     entropy_coef: float
 
-
 class CheckpointData(TypedDict):
     """Checkpoint data structure"""
 
@@ -88,20 +85,19 @@ class CheckpointData(TypedDict):
     timestamp: float
     training_context: TrainingContextTypedDict  # Enhanced metadata for training context
 
-
 class TrainingStateCheckpointData(TypedDict):
     """Extended checkpoint data structure for complete training state"""
 
     # Model and training state
     model_state: dict[str, object]
     optimizer_state: dict[str, object]
-    replay_buffer_state: Optional[dict[str, object]]
+    replay_buffer_state: dict[str, object] | None
 
     # Training progress
     total_timesteps: int
     episode_count: int
-    episode_rewards: List[float]
-    episode_lengths: List[int]
+    episode_rewards: list[float]
+    episode_lengths: list[int]
 
     # Random state for reproducibility
     random_state: tuple[object, object, object]  # (random, numpy, torch) states
@@ -113,7 +109,6 @@ class TrainingStateCheckpointData(TypedDict):
     timestamp: float
     training_time: float
     version: str
-
 
 class CheckpointManager:
     """Unified checkpoint manager with async saving and generation management"""
@@ -136,11 +131,11 @@ class CheckpointManager:
         self.differential = differential
 
         # For differential checkpoints
-        self.last_full_checkpoint: Optional[CheckpointData] = None
-        self.last_checkpoint_path: Optional[str] = None
+        self.last_full_checkpoint: CheckpointData | None = None
+        self.last_checkpoint_path: str | None = None
 
         # Async saving queue
-        self.save_queue: Queue[Optional[dict[str, object]]] = Queue(maxsize=max_queue_size)
+        self.save_queue: Queue[dict[str, object] | None] = Queue(maxsize=max_queue_size)
         self.worker_thread = threading.Thread(target=self._save_worker, daemon=True)
         self.worker_thread.start()
 
@@ -156,8 +151,8 @@ class CheckpointManager:
         self,
         obj: object,
         step: int,
-        metadata: Optional[MetadataTypedDict] = None,
-        training_context: Optional[TrainingContextTypedDict] = None,
+        metadata: MetadataTypedDict | None = None,
+        training_context: TrainingContextTypedDict | None = None,
     ) -> None:
         """Save checkpoint asynchronously"""
         if self.save_queue.full():
@@ -178,13 +173,13 @@ class CheckpointManager:
         self,
         obj: object,
         step: int,
-        metadata: Optional[MetadataTypedDict] = None,
-        training_context: Optional[TrainingContextTypedDict] = None,
+        metadata: MetadataTypedDict | None = None,
+        training_context: TrainingContextTypedDict | None = None,
     ) -> str:
         """Save checkpoint synchronously (blocking)"""
         return self._save_checkpoint(obj, step, metadata or {}, training_context or {})
 
-    def load_latest(self) -> Tuple[CheckpointData, int, dict[str, object]]:
+    def load_latest(self) -> tuple[CheckpointData, int, dict[str, object]]:
         """Load the latest checkpoint with differential support"""
         checkpoints = list(self.save_dir.glob("checkpoint*.pkl*"))
         if not checkpoints:
@@ -327,7 +322,7 @@ class CheckpointManager:
         obj: object,
         step: int,
         metadata: dict[str, object],
-        training_context: Optional[dict[str, object]] = None,
+        training_context: dict[str, object] | None = None,
     ) -> str:
         """Internal save method with differential support"""
         checkpoint_data: CheckpointData = {
@@ -389,7 +384,7 @@ class CheckpointManager:
 
         return str(path)
 
-    def _load_checkpoint(self, path: str) -> Tuple[CheckpointData, int, dict[str, object]]:
+    def _load_checkpoint(self, path: str) -> tuple[CheckpointData, int, dict[str, object]]:
         """Internal load method with differential support"""
         try:
             with open(path, "rb") as f:
@@ -612,7 +607,6 @@ class CheckpointManager:
 
         return result
 
-
 class HierarchicalCheckpointManager:
     """
     Hierarchical checkpoint manager for ML training.
@@ -629,7 +623,7 @@ class HierarchicalCheckpointManager:
         self,
         save_dir: str = "models/checkpoints",
         compress: str = "zstd",
-        light_freq: Optional[List[int]] = None,
+        light_freq: list[int] | None = None,
         full_freq: int = 10000,
         archive_freq: int = 50000,
     ):
@@ -648,7 +642,7 @@ class HierarchicalCheckpointManager:
         self.keep_archive = -1  # -1 means keep all
 
         # Async saving
-        self.executor: Optional[ThreadPoolExecutor] = None
+        self.executor: ThreadPoolExecutor | None = None
         self._init_executor()
 
     def _init_executor(self) -> None:
@@ -689,8 +683,8 @@ class HierarchicalCheckpointManager:
         self,
         step: int,
         model_state: dict[str, object],
-        optimizer_state: Optional[dict[str, object]] = None,
-        metrics: Optional[dict[str, object]] = None,
+        optimizer_state: dict[str, object] | None = None,
+        metrics: dict[str, object] | None = None,
         checkpoint_type: str = "auto",
     ) -> None:
         """
@@ -728,8 +722,8 @@ class HierarchicalCheckpointManager:
         self,
         step: int,
         model_state: dict[str, object],
-        optimizer_state: Optional[dict[str, object]],
-        metrics: Optional[dict[str, object]],
+        optimizer_state: dict[str, object] | None,
+        metrics: dict[str, object] | None,
         checkpoint_type: str,
     ) -> None:
         """Synchronous checkpoint saving"""
@@ -824,7 +818,7 @@ class HierarchicalCheckpointManager:
             # Keep all archive checkpoints (no cleanup)
             pass
 
-    def find_recovery_checkpoint(self) -> Optional[Path]:
+    def find_recovery_checkpoint(self) -> Path | None:
         """
         Find the best checkpoint for recovery.
         Priority: latest full > latest archive > latest light
@@ -847,8 +841,8 @@ class HierarchicalCheckpointManager:
         return None
 
     def load_checkpoint(
-        self, checkpoint_path: Optional[Path] = None
-    ) -> Optional[dict[str, object]]:
+        self, checkpoint_path: Path | None = None
+    ) -> dict[str, object] | None:
         """
         Load checkpoint from file.
 
@@ -908,7 +902,6 @@ class HierarchicalCheckpointManager:
         if self.executor:
             self.executor.shutdown(wait=True)
 
-
 class TrainingStateManager:
     """Manager for saving and loading complete training state for resume functionality"""
 
@@ -924,11 +917,11 @@ class TrainingStateManager:
         model: BaseAlgorithm,
         total_timesteps: int,
         episode_count: int = 0,
-        episode_rewards: Optional[List[float]] = None,
-        episode_lengths: Optional[List[int]] = None,
-        config: Optional[ConfigDict] = None,
+        episode_rewards: list[float] | None = None,
+        episode_lengths: list[int] | None = None,
+        config: ConfigDict | None = None,
         training_time: float = 0.0,
-        filename: Optional[str] = None,
+        filename: str | None = None,
     ) -> str:
         """Save complete training state for later resumption"""
 
@@ -1110,8 +1103,8 @@ class TrainingStateManager:
 
         return pickle.loads(data)
 
-    def list_training_states(self) -> List[dict[str, object]]:
-        """List all saved training states with metadata"""
+    def list_training_states(self) -> list[dict[str, object]]:
+        """list all saved training states with metadata"""
         states = []
         for filepath in self.save_dir.glob("training_state_*.pkl*"):
 
@@ -1145,7 +1138,7 @@ class TrainingStateManager:
         self,
         training_state: TrainingStateCheckpointData,
         current_config: dict[str, object],
-        data_path: Optional[str] = None,
+        data_path: str | None = None,
     ) -> dict[str, object]:
         """Validate compatibility between saved training state and current setup"""
 

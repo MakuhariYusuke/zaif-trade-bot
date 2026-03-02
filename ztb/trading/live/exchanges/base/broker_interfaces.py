@@ -8,8 +8,6 @@ v460: OrderBookSnapshot / TradeRecord / MarketDataNotSupported added.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import List, Optional
-
 
 @dataclass
 class Order:
@@ -19,13 +17,12 @@ class Order:
     symbol: str
     side: str  # 'buy' or 'sell'
     quantity: float
-    price: Optional[float] = None  # Market order if None
+    price: float | None = None  # Market order if None
     order_type: str = "market"  # 'market' or 'limit'
     status: str = "pending"  # 'pending', 'filled', 'cancelled', 'rejected'
-    client_order_id: Optional[str] = None
-    sizing_reason: Optional[str] = None
-    target_vol: Optional[float] = None
-
+    client_order_id: str | None = None
+    sizing_reason: str | None = None
+    target_vol: float | None = None
 
 @dataclass
 class Position:
@@ -37,7 +34,6 @@ class Position:
     current_price: float
     pnl: float
 
-
 @dataclass
 class Balance:
     """Account balance representation."""
@@ -47,11 +43,9 @@ class Balance:
     locked: float
     total: float
 
-
 # ---------------------------------------------------------------------------
 # v460: Market data types
 # ---------------------------------------------------------------------------
-
 
 @dataclass
 class OrderBookSnapshot:
@@ -66,7 +60,6 @@ class OrderBookSnapshot:
     asks: list[tuple[float, float]] = field(default_factory=list)
     exchange: str = ""
 
-
 @dataclass
 class TradeRecord:
     """Single trade (execution) record."""
@@ -76,21 +69,17 @@ class TradeRecord:
     amount: float
     side: str  # 'buy' or 'sell'
 
-
 class MarketDataNotSupported(Exception):
     """Raised when an adapter does not support market data collection."""
-
 
 # ---------------------------------------------------------------------------
 # Normalisation helper — internal symbol is always lowercase.
 # Each adapter converts to exchange-native format in API calls.
 # ---------------------------------------------------------------------------
 
-
 def normalize_symbol(symbol: str) -> str:
     """Normalize symbol to lowercase internal representation."""
     return symbol.lower()
-
 
 class IBroker(ABC):
     """Abstract broker interface for trading operations."""
@@ -101,11 +90,11 @@ class IBroker(ABC):
         symbol: str,
         side: str,
         quantity: float,
-        price: Optional[float] = None,
+        price: float | None = None,
         order_type: str = "market",
-        client_order_id: Optional[str] = None,
-        sizing_reason: Optional[str] = None,
-        target_vol: Optional[float] = None,
+        client_order_id: str | None = None,
+        sizing_reason: str | None = None,
+        target_vol: float | None = None,
     ) -> Order:
         """Place a new order."""
 
@@ -114,23 +103,23 @@ class IBroker(ABC):
         """Cancel an existing order."""
 
     @abstractmethod
-    async def get_order_status(self, order_id: str) -> Optional[Order]:
+    async def get_order_status(self, order_id: str) -> Order | None:
         """Get status of a specific order."""
 
     @abstractmethod
-    async def get_open_orders(self, symbol: Optional[str] = None) -> List[Order]:
+    async def get_open_orders(self, symbol: str | None = None) -> list[Order]:
         """Get all open orders, optionally filtered by symbol."""
 
     @abstractmethod
-    async def get_positions(self) -> List[Position]:
+    async def get_positions(self) -> list[Position]:
         """Get current positions."""
 
     @abstractmethod
-    async def get_balance(self, currency: Optional[str] = None) -> List[Balance]:
+    async def get_balance(self, currency: str | None = None) -> list[Balance]:
         """Get account balance, optionally for specific currency."""
 
     @abstractmethod
-    async def get_current_price(self, symbol: str) -> Optional[float]:
+    async def get_current_price(self, symbol: str) -> float | None:
         """Get current market price for symbol."""
 
     # -------------------------------------------------------------------

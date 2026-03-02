@@ -10,7 +10,7 @@ import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from .modern_callback_system import (
     BaseCallback,
@@ -20,7 +20,6 @@ from .modern_callback_system import (
     CallbackPriority,
     CallbackResult,
 )
-
 
 @dataclass
 class ProgressCallbackConfig:
@@ -35,13 +34,12 @@ class ProgressCallbackConfig:
         if self.metrics_keys is None:
             self.metrics_keys = ["loss", "reward", "episode_reward"]
 
-
 class ProgressCallback(BaseCallback):
     """Callback for monitoring training progress."""
 
     def __init__(
         self,
-        config: Optional[CallbackConfig] = None,
+        config: CallbackConfig | None = None,
         log_interval: int = 100,
         show_eta: bool = True,
     ):
@@ -63,7 +61,7 @@ class ProgressCallback(BaseCallback):
         self._start_time = 0.0
         self._last_log_time = 0.0
 
-    def on_training_start(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_training_start(self, context: CallbackContext) -> CallbackResult | None:
         """Called when training starts."""
         self._start_time = time.time()
         self._last_log_time = self._start_time
@@ -75,7 +73,7 @@ class ProgressCallback(BaseCallback):
 
         return CallbackResult(success=True)
 
-    def on_step_end(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_step_end(self, context: CallbackContext) -> CallbackResult | None:
         """Called after each training step."""
         current_time = time.time()
 
@@ -111,7 +109,7 @@ class ProgressCallback(BaseCallback):
 
         return CallbackResult(success=True)
 
-    def on_training_end(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_training_end(self, context: CallbackContext) -> CallbackResult | None:
         """Called when training ends."""
         total_time = time.time() - self._start_time
         avg_steps_per_sec = context.total_steps / total_time if total_time > 0 else 0
@@ -122,7 +120,7 @@ class ProgressCallback(BaseCallback):
 
         return CallbackResult(success=True)
 
-    def _format_metrics(self, metrics: Dict[str, Any]) -> str:
+    def _format_metrics(self, metrics: dict[str, Any]) -> str:
         """Format metrics for display."""
         formatted = []
         for key in self.progress_config.metrics_keys:
@@ -133,7 +131,6 @@ class ProgressCallback(BaseCallback):
                 else:
                     formatted.append(f"{key}: {value}")
         return " | ".join(formatted)
-
 
 @dataclass
 class CheckpointCallbackConfig:
@@ -148,13 +145,12 @@ class CheckpointCallbackConfig:
     max_checkpoints: int = 5
     filename_prefix: str = "checkpoint"
 
-
 class CheckpointCallback(BaseCallback):
     """Callback for saving model checkpoints."""
 
     def __init__(
         self,
-        config: Optional[CallbackConfig] = None,
+        config: CallbackConfig | None = None,
         save_interval: int = 1000,
         save_path: str = "./checkpoints",
     ):
@@ -178,7 +174,7 @@ class CheckpointCallback(BaseCallback):
         )
         self._saved_checkpoints: list[str] = []
 
-    def on_step_end(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_step_end(self, context: CallbackContext) -> CallbackResult | None:
         """Called after each training step."""
         if context.step % self.checkpoint_config.save_interval == 0:
             return self._save_checkpoint(context, f"step_{context.step}")
@@ -219,7 +215,7 @@ class CheckpointCallback(BaseCallback):
             self.logger.error(f"Failed to save checkpoint: {e}")
             return CallbackResult(success=False, error=e)
 
-    def _is_better_metric(self, metrics: Dict[str, Any]) -> bool:
+    def _is_better_metric(self, metrics: dict[str, Any]) -> bool:
         """Check if current metric is better than best."""
         if self.checkpoint_config.best_metric not in metrics:
             return False
@@ -259,7 +255,7 @@ class CheckpointCallback(BaseCallback):
             -self.checkpoint_config.max_checkpoints :
         ]
 
-    def on_training_start(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_training_start(self, context: CallbackContext) -> CallbackResult | None:
         """Called when training starts."""
         # Initialize checkpoint tracking
         self._best_metric_value = (
@@ -268,11 +264,10 @@ class CheckpointCallback(BaseCallback):
         self._saved_checkpoints = []
         return CallbackResult(success=True)
 
-    def on_training_end(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_training_end(self, context: CallbackContext) -> CallbackResult | None:
         """Called when training ends."""
         # Save final checkpoint
         return self._save_checkpoint(context, "final")
-
 
 @dataclass
 class MetricsCallbackConfig:
@@ -288,13 +283,12 @@ class MetricsCallbackConfig:
         if self.metrics_keys is None:
             self.metrics_keys = ["loss", "reward", "episode_reward", "episode_length"]
 
-
 class MetricsCallback(BaseCallback):
     """Callback for collecting and logging training metrics."""
 
     def __init__(
         self,
-        config: Optional[CallbackConfig] = None,
+        config: CallbackConfig | None = None,
         collection_interval: int = 50,
         log_interval: int = 100,
     ):
@@ -315,8 +309,8 @@ class MetricsCallback(BaseCallback):
             collection_interval=collection_interval, log_interval=log_interval
         )
 
-        self._collected_metrics: list[Dict[str, Any]] = []
-        self._step_metrics: Dict[str, list] = {}
+        self._collected_metrics: list[dict[str, Any]] = []
+        self._step_metrics: dict[str, list] = {}
         self._tensorboard_writer = None
 
         if self.metrics_config.enable_tensorboard:
@@ -331,7 +325,7 @@ class MetricsCallback(BaseCallback):
                     "TensorBoard not available, disabling tensorboard logging"
                 )
 
-    def on_step_end(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_step_end(self, context: CallbackContext) -> CallbackResult | None:
         """Called after each training step."""
         # Collect metrics at specified interval
         if context.step % self.metrics_config.collection_interval == 0:
@@ -343,7 +337,7 @@ class MetricsCallback(BaseCallback):
 
         return CallbackResult(success=True)
 
-    def on_metrics_update(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_metrics_update(self, context: CallbackContext) -> CallbackResult | None:
         """Called when metrics are updated."""
         self._collect_metrics(context)
         return CallbackResult(success=True)
@@ -413,37 +407,36 @@ class MetricsCallback(BaseCallback):
                         f"  {key}: avg={avg:.4f}, min={min_val:.4f}, max={max_val:.4f}"
                     )
 
-    def get_metrics_history(self) -> list[Dict[str, Any]]:
+    def get_metrics_history(self) -> list[dict[str, Any]]:
         """Get the collected metrics history."""
         return self._collected_metrics.copy()
 
-    def get_latest_metrics(self) -> Dict[str, Any]:
+    def get_latest_metrics(self) -> dict[str, Any]:
         """Get the latest collected metrics."""
         if self._collected_metrics:
             return self._collected_metrics[-1].copy()
         return {}
 
-    def on_training_start(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_training_start(self, context: CallbackContext) -> CallbackResult | None:
         """Called when training starts."""
         # Initialize metrics collection
         self._collected_metrics = []
         self._step_metrics = {}
         return CallbackResult(success=True)
 
-    def on_training_end(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_training_end(self, context: CallbackContext) -> CallbackResult | None:
         """Called when training ends."""
         self._log_final_metrics_summary()
         if self._tensorboard_writer:
             self._tensorboard_writer.close()
         return CallbackResult(success=True)
 
-
 class LoggingCallback(BaseCallback):
     """Callback for enhanced logging of training events."""
 
     def __init__(
         self,
-        config: Optional[CallbackConfig] = None,
+        config: CallbackConfig | None = None,
         log_level: str = "INFO",
         include_context: bool = True,
     ):
@@ -462,14 +455,14 @@ class LoggingCallback(BaseCallback):
         self.log_level = getattr(logging, log_level.upper(), logging.INFO)
         self.include_context = include_context
 
-    def on_training_start(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_training_start(self, context: CallbackContext) -> CallbackResult | None:
         """Called when training starts."""
         self.logger.log(self.log_level, "🚀 Training session started")
         if self.include_context:
             self._log_context_details(context)
         return CallbackResult(success=True)
 
-    def on_training_end(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_training_end(self, context: CallbackContext) -> CallbackResult | None:
         """Called when training ends."""
         duration = context.timestamp - context.custom_data.get(
             "start_time", context.timestamp
@@ -479,7 +472,7 @@ class LoggingCallback(BaseCallback):
         )
         return CallbackResult(success=True)
 
-    def on_error(self, context: CallbackContext) -> Optional[CallbackResult]:
+    def on_error(self, context: CallbackContext) -> CallbackResult | None:
         """Called when an error occurs."""
         self.logger.error(
             f"❌ Training error occurred: {context.custom_data.get('error', 'Unknown error')}"
@@ -501,14 +494,12 @@ class LoggingCallback(BaseCallback):
         if details:
             self.logger.log(self.log_level, f"Context: {', '.join(details)}")
 
-
 # Convenience functions for creating callbacks
 def create_progress_callback(
     name: str = "progress", log_interval: int = 100, show_eta: bool = True
 ) -> ProgressCallback:
     """Create a progress monitoring callback."""
     return ProgressCallback(log_interval=log_interval, show_eta=show_eta)
-
 
 def create_checkpoint_callback(
     name: str = "checkpoint",
@@ -518,7 +509,6 @@ def create_checkpoint_callback(
     """Create a checkpoint saving callback."""
     return CheckpointCallback(save_interval=save_interval, save_path=save_path)
 
-
 def create_metrics_callback(
     name: str = "metrics", collection_interval: int = 50, log_interval: int = 100
 ) -> MetricsCallback:
@@ -526,7 +516,6 @@ def create_metrics_callback(
     return MetricsCallback(
         collection_interval=collection_interval, log_interval=log_interval
     )
-
 
 def create_logging_callback(
     name: str = "logging", log_level: str = "INFO"

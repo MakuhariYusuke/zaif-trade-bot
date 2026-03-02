@@ -12,8 +12,6 @@ through data augmentation and contrastive loss.
 - 表現学習を通じた金融時系列の特徴抽出
 """
 
-from typing import Dict, Optional, Tuple
-
 import torch
 import torch.nn as nn
 try:
@@ -23,7 +21,6 @@ except Exception:
     F = _F
 
 from ztb.trading.environment.components.memory_manager import MemoryManager
-
 
 class TimeSeriesAugmentation:
     """
@@ -38,7 +35,7 @@ class TimeSeriesAugmentation:
         scale_prob: float = 0.2,
         max_shift: int = 5,
         noise_std: float = 0.1,
-        scale_range: Tuple[float, float] = (0.8, 1.2),
+        scale_range: tuple[float, float] = (0.8, 1.2),
     ):
         """
         Initialize augmentation parameters
@@ -96,7 +93,6 @@ class TimeSeriesAugmentation:
             augmented = augmented * scale
 
         return augmented
-
 
 class ContrastiveLearningModel(nn.Module):
     """
@@ -174,7 +170,7 @@ class ContrastiveLearningModel(nn.Module):
 
     def forward(
         self, x1: torch.Tensor, x2: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass for contrastive learning
 
@@ -228,7 +224,6 @@ class ContrastiveLearningModel(nn.Module):
         loss = F.cross_entropy(sim_matrix, labels)
         return loss
 
-
 class ContrastiveLearningTrainer:
     """
     Trainer for Contrastive Learning
@@ -241,7 +236,7 @@ class ContrastiveLearningTrainer:
         optimizer: torch.optim.Optimizer,
         augmentation: TimeSeriesAugmentation,
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
-        memory_manager: Optional[MemoryManager] = None,
+        memory_manager: MemoryManager | None = None,
     ):
         """
         Initialize trainer
@@ -270,7 +265,7 @@ class ContrastiveLearningTrainer:
         )
         self.step_counter = 0
 
-    def train_step(self, batch: torch.Tensor) -> Dict[str, float]:
+    def train_step(self, batch: torch.Tensor) -> dict[str, float]:
         """
         Single training step with data augmentation
 
@@ -315,7 +310,7 @@ class ContrastiveLearningTrainer:
 
     def validate(
         self, val_data: torch.Tensor, batch_size: int = 32
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Validation on dataset
 

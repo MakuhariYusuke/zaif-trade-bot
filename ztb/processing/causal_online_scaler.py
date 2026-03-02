@@ -3,13 +3,10 @@ v459 Phase 0.2c: 因果性保証付きScaler
 Doc04仕様準拠: fit範囲管理、リーク検査、ゼロ分散対応
 """
 
-from typing import List, Optional
-
 import numpy as np
 import pandas as pd
 
 from ztb.processing.online_scaler import OnlineScaler
-
 
 class CausalOnlineScaler(OnlineScaler):
     """
@@ -31,10 +28,10 @@ class CausalOnlineScaler(OnlineScaler):
         """
         super().__init__(shape, epsilon, clip)
         self.std_floor = std_floor
-        self.fit_end_idx: Optional[int] = None
+        self.fit_end_idx: int | None = None
         self.fitted = False
     
-    def fit(self, data: pd.DataFrame, end_idx: int, feature_names: List[str]):
+    def fit(self, data: pd.DataFrame, end_idx: int, feature_names: list[str]):
         """
         Train期間のみでfit（因果性保証）
         
@@ -70,7 +67,7 @@ class CausalOnlineScaler(OnlineScaler):
         # リーク検査
         self._verify_no_leakage(data, end_idx, feature_names)
     
-    def _verify_no_leakage(self, data: pd.DataFrame, end_idx: int, feature_names: List[str]):
+    def _verify_no_leakage(self, data: pd.DataFrame, end_idx: int, feature_names: list[str]):
         """
         Val/Testデータの混入を検査
         

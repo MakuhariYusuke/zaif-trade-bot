@@ -68,7 +68,6 @@ from ztb.training.config.ppo_config import PPOConfig, get_ppo_config  # noqa: E4
 from ztb.utils.cli_common import CLIFormatter  # noqa: E402
 from ztb.io.data_loader import DataLoader
 
-
 class TrainingCallback(BaseCallback):
     """Capture episode statistics and action distribution for quick experiments."""
 
@@ -116,7 +115,7 @@ class TrainingCallback(BaseCallback):
 
         return True
 
-    def get_training_stats(self) -> Dict[str, Union[float, int]]:
+    def get_training_stats(self) -> dict[str, float | int]:
         if not self.episode_rewards:
             return {
                 "avg_reward": 0.0,
@@ -137,7 +136,7 @@ class TrainingCallback(BaseCallback):
 
     def get_action_distribution(
         self,
-    ) -> Dict[str, Union[int, float, Dict[str, float], Dict[str, int]]]:
+    ) -> dict[str, int | float | dict[str, float] | dict[str, int]]:
         if not self.actions_taken:
             return {
                 "hold_count": 0,
@@ -185,26 +184,24 @@ class TrainingCallback(BaseCallback):
             "action_percentages": percentages,
         }
 
-
 @dataclass
 class TrainingRunResult:
     """Aggregate outcome for a single hyperparameter evaluation."""
 
-    parameter_value: Union[int, float]
+    parameter_value: int | float
     score: float
-    stats: Dict[str, Union[int, float]]
-    action_distribution: Dict[str, Any]
+    stats: dict[str, int | float]
+    action_distribution: dict[str, Any]
     total_timesteps: int
-    model_path: Optional[str]
+    model_path: str | None
     elapsed_seconds: float
     iteration: int
     timestamp: str
-    note: Optional[str] = None
+    note: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         return data
-
 
 class HyperparameterOptimizer(ABC):
     """Shared utilities for the binary-search hyperparameter scripts."""
@@ -214,7 +211,7 @@ class HyperparameterOptimizer(ABC):
     enable_deviation_probes: bool
     enable_refinement: bool
 
-    warmup_quantiles: Tuple[float, ...]
+    warmup_quantiles: tuple[float, ...]
     deviation_probe_fraction: float
     deviation_score_margin: float
     refine_span_fraction: float
@@ -227,7 +224,7 @@ class HyperparameterOptimizer(ABC):
     stability_weight: float = 0.5
     target_action_pct: float = 33.3
 
-    def __init__(self, project_root: Optional[Path] = None) -> None:
+    def __init__(self, project_root: Path | None = None) -> None:
         super().__init__()
         from ztb.utils.path_utils import get_project_root
 
@@ -235,7 +232,7 @@ class HyperparameterOptimizer(ABC):
         self.data_path = self.project_root / "ml-dataset-enhanced.csv"
 
         self.random_seed = 42
-        self.training_row_limit: Optional[int] = 250_000
+        self.training_row_limit: int | None = 250_000
         self.stream_batch_size = 512
         self.env_max_features = 128
 
@@ -276,14 +273,14 @@ class HyperparameterOptimizer(ABC):
                 "verbose": 1,
             }
         )
-        self.ppo_params: Dict[str, Any] = dict(base_overrides)
+        self.ppo_params: dict[str, Any] = dict(base_overrides)
 
-        self._data_cache: Optional[pd.DataFrame] = None
-        self._result_cache: Dict[Tuple[str, int], TrainingRunResult] = {}
-        self.history: List[TrainingRunResult] = []
+        self._data_cache: pd.DataFrame | None = None
+        self._result_cache: dict[tuple[str, int], TrainingRunResult] = {}
+        self.history: list[TrainingRunResult] = []
 
         # Custom search range (overrides get_parameter_range if set)
-        self.custom_search_range: Optional[List[Union[int, float]]] = None
+        self.custom_search_range: list[int | float] | None = None
 
         # Sequencing heuristics
         self.enable_warmup_grid = True
@@ -303,11 +300,11 @@ class HyperparameterOptimizer(ABC):
         """Name of the parameter being optimized."""
 
     @abstractmethod
-    def get_parameter_range(self) -> Tuple[float, float]:
+    def get_parameter_range(self) -> tuple[float, float]:
         """Get the range (min, max) for binary search."""
 
     @abstractmethod
-    def update_ppo_params(self, value: Union[int, float]) -> None:
+    def update_ppo_params(self, value: int | float) -> None:
         """Update PPO parameters with the test value."""
         # Default implementation using parameter_name
         param_name = self.parameter_name()
@@ -321,7 +318,7 @@ class HyperparameterOptimizer(ABC):
                 f"update_ppo_params not implemented for {param_name}"
             )
 
-    def create_environment(self, **overrides: Dict[str, Any]) -> HeavyTradingEnv:
+    def create_environment(self, **overrides: dict[str, Any]) -> HeavyTradingEnv:
         config_dict = self.env_config.as_dict()
         if overrides:
             config_dict.update(overrides)
@@ -345,7 +342,7 @@ class HyperparameterOptimizer(ABC):
         self._data_cache = df
         return df
 
-    def _build_model_kwargs(self) -> Dict[str, Any]:
+    def _build_model_kwargs(self) -> dict[str, Any]:
         allowed_keys = {
             "learning_rate",
             "n_steps",
@@ -377,7 +374,7 @@ class HyperparameterOptimizer(ABC):
 
     def train_model(
         self, total_timesteps: int = 100_000
-    ) -> Tuple[MaskablePPO, TrainingCallback, float]:
+    ) -> tuple[MaskablePPO, TrainingCallback, float]:
         def make_env() -> Any:
             env = self.create_environment()
 
@@ -409,7 +406,7 @@ class HyperparameterOptimizer(ABC):
 
     def evaluate_result(
         self, callback: TrainingCallback
-    ) -> Tuple[float, Dict[str, Union[int, float]], Dict[str, Any]]:
+    ) -> tuple[float, dict[str, int | float], dict[str, Any]]:
         stats = callback.get_training_stats()
         action_dist = callback.get_action_distribution()
 
@@ -450,7 +447,7 @@ class HyperparameterOptimizer(ABC):
 
         return score, stats, action_dist
 
-    def _format_parameter_value(self, value: Union[int, float]) -> str:
+    def _format_parameter_value(self, value: int | float) -> str:
         if isinstance(value, int):
             return f"{value:d}"
         return f"{value:.6f}".rstrip("0").rstrip(".")
@@ -458,9 +455,9 @@ class HyperparameterOptimizer(ABC):
     def save_model(
         self,
         model: MaskablePPO,
-        value: Union[int, float],
-        iteration: Optional[int] = None,
-        note: Optional[str] = None,
+        value: int | float,
+        iteration: int | None = None,
+        note: str | None = None,
     ) -> str:
         param_str = self._format_parameter_value(value)
         parts = [self.parameter_name, param_str]
@@ -511,18 +508,18 @@ class HyperparameterOptimizer(ABC):
         if result.note:
             logger.info("Stage: %s", result.note)
 
-    def _cache_key(self, value: Union[int, float], timesteps: int) -> Tuple[str, int]:
+    def _cache_key(self, value: int | float, timesteps: int) -> tuple[str, int]:
         if isinstance(value, int):
             return f"int:{value}", timesteps
         return f"float:{float(value).hex()}", timesteps
 
-    def _coerce_parameter_value(self, value: Union[int, float]) -> Union[int, float]:
+    def _coerce_parameter_value(self, value: int | float) -> int | float:
         min_val, max_val = self.get_parameter_range()
         if isinstance(min_val, int) and isinstance(max_val, int):
             return int(round(float(value)))
         return float(value)
 
-    def _clip_to_range(self, value: Union[int, float]) -> Union[int, float]:
+    def _clip_to_range(self, value: int | float) -> int | float:
         min_val, max_val = self.get_parameter_range()
         if (
             isinstance(value, float)
@@ -548,7 +545,7 @@ class HyperparameterOptimizer(ABC):
         if getattr(args, "search_range", None) is not None:
             # Parse comma-separated values
             range_str = str(args.search_range)
-            values: List[Union[int, float]]
+            values: list[int | float]
             try:
                 # Try to parse as integers first
                 values = [int(v.strip()) for v in range_str.split(",")]
@@ -557,7 +554,7 @@ class HyperparameterOptimizer(ABC):
                 values = [float(v.strip()) for v in range_str.split(",")]
             self.custom_search_range = values
 
-    def _is_close(self, a: Union[int, float], b: Union[int, float]) -> bool:
+    def _is_close(self, a: int | float, b: int | float) -> bool:
         if isinstance(a, int) and isinstance(b, int):
             return a == b
         return math.isclose(
@@ -566,9 +563,9 @@ class HyperparameterOptimizer(ABC):
 
     def _value_in_range(
         self,
-        value: Union[int, float],
-        lower: Union[int, float],
-        upper: Union[int, float],
+        value: int | float,
+        lower: int | float,
+        upper: int | float,
     ) -> bool:
         if isinstance(lower, int) and isinstance(upper, int):
             value_int = int(round(float(value)))
@@ -582,12 +579,12 @@ class HyperparameterOptimizer(ABC):
 
     def _unique_candidates(
         self,
-        candidates: Iterable[Union[int, float]],
-        existing_keys: set[Tuple[str, int]],
+        candidates: Iterable[int | float],
+        existing_keys: set[tuple[str, int]],
         total_timesteps: int,
-    ) -> List[Union[int, float]]:
-        unique: List[Union[int, float]] = []
-        local_seen: set[Tuple[str, int]] = set()
+    ) -> list[int | float]:
+        unique: list[int | float] = []
+        local_seen: set[tuple[str, int]] = set()
         for candidate in candidates:
             coerced = self._clip_to_range(self._coerce_parameter_value(candidate))
             cache_key = self._cache_key(coerced, total_timesteps)
@@ -599,12 +596,12 @@ class HyperparameterOptimizer(ABC):
 
     def _generate_warmup_candidates(
         self,
-        lower_value: Union[int, float],
-        upper_value: Union[int, float],
+        lower_value: int | float,
+        upper_value: int | float,
         is_integer_range: bool,
-        existing_keys: set[Tuple[str, int]],
+        existing_keys: set[tuple[str, int]],
         total_timesteps: int,
-    ) -> List[Union[int, float]]:
+    ) -> list[int | float]:
         if not self.enable_warmup_grid:
             return []
 
@@ -650,13 +647,13 @@ class HyperparameterOptimizer(ABC):
 
     def _generate_deviation_probes(
         self,
-        midpoint_value: Union[int, float],
-        lower_value: Union[int, float],
-        upper_value: Union[int, float],
+        midpoint_value: int | float,
+        lower_value: int | float,
+        upper_value: int | float,
         is_integer_range: bool,
-        existing_keys: set[Tuple[str, int]],
+        existing_keys: set[tuple[str, int]],
         total_timesteps: int,
-    ) -> List[Union[int, float]]:
+    ) -> list[int | float]:
         if not self.enable_deviation_probes:
             return []
 
@@ -693,13 +690,13 @@ class HyperparameterOptimizer(ABC):
 
     def _generate_refinement_candidates(
         self,
-        best_value: Union[int, float],
-        lower_value: Union[int, float],
-        upper_value: Union[int, float],
+        best_value: int | float,
+        lower_value: int | float,
+        upper_value: int | float,
         is_integer_range: bool,
-        existing_keys: set[Tuple[str, int]],
+        existing_keys: set[tuple[str, int]],
         total_timesteps: int,
-    ) -> List[Union[int, float]]:
+    ) -> list[int | float]:
         if not self.enable_refinement:
             return []
 
@@ -735,7 +732,7 @@ class HyperparameterOptimizer(ABC):
         return self._unique_candidates(float_candidates, existing_keys, total_timesteps)
 
     def _record_result(
-        self, result: TrainingRunResult, cache_key: Tuple[str, int]
+        self, result: TrainingRunResult, cache_key: tuple[str, int]
     ) -> None:
         self.history.append(result)
         self._result_cache[cache_key] = result
@@ -748,7 +745,7 @@ class HyperparameterOptimizer(ABC):
             fp.write(json.dumps(result.to_dict(), ensure_ascii=False))
             fp.write("\n")
 
-    def _log_binary_search_event(self, event: str, payload: Dict[str, Any]) -> None:
+    def _log_binary_search_event(self, event: str, payload: dict[str, Any]) -> None:
         log_entry = {
             "event": event,
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -762,10 +759,10 @@ class HyperparameterOptimizer(ABC):
 
     def _evaluate_value(
         self,
-        value: Union[int, float],
+        value: int | float,
         total_timesteps: int,
         iteration: int,
-        note: Optional[str] = None,
+        note: str | None = None,
         use_cache: bool = True,
     ) -> TrainingRunResult:
         coerced_value = self._clip_to_range(self._coerce_parameter_value(value))
@@ -812,7 +809,7 @@ class HyperparameterOptimizer(ABC):
         return result
 
     def run_single_test(
-        self, value: Union[int, float], total_timesteps: int = 100_000
+        self, value: int | float, total_timesteps: int = 100_000
     ) -> float:
         result = self._evaluate_value(
             value,
@@ -824,13 +821,13 @@ class HyperparameterOptimizer(ABC):
         return result.score
 
     def _optimize_custom_range(
-        self, search_values: List[Union[int, float]], total_timesteps: int
-    ) -> Tuple[Union[int, float], float]:
+        self, search_values: list[int | float], total_timesteps: int
+    ) -> tuple[int | float, float]:
         """Evaluate specific values from custom search range and return the best."""
         logger.info("=== Custom Range Optimization for %s ===", self.parameter_name)
         logger.info("Evaluating values: %s", search_values)
 
-        best_result: Optional[TrainingRunResult] = None
+        best_result: TrainingRunResult | None = None
 
         for idx, value in enumerate(search_values, start=1):
             result = self._evaluate_value(
@@ -886,7 +883,7 @@ class HyperparameterOptimizer(ABC):
 
     def binary_search_optimize(
         self, max_iterations: int = 10, total_timesteps: int = 100_000
-    ) -> Tuple[Union[int, float], float]:
+    ) -> tuple[int | float, float]:
         # Use custom search range if provided, otherwise use default range
         if self.custom_search_range is not None:
             logger.info("Using custom search range: %s", self.custom_search_range)
@@ -907,13 +904,13 @@ class HyperparameterOptimizer(ABC):
             self._format_parameter_value(upper_value),
         )
 
-        evaluated_keys: set[Tuple[str, int]] = set()
+        evaluated_keys: set[tuple[str, int]] = set()
         evaluation_index = 0
 
         def evaluate_candidate(
-            raw_value: Union[int, float],
+            raw_value: int | float,
             stage: str,
-            iteration_label: Optional[int] = None,
+            iteration_label: int | None = None,
         ) -> TrainingRunResult:
             nonlocal evaluation_index
             evaluation_index += 1
@@ -1119,7 +1116,6 @@ class HyperparameterOptimizer(ABC):
         )
         return best_result.parameter_value, best_result.score
 
-
 class BinarySearchArgumentParser:
     """Common argument parser for binary search scripts."""
 
@@ -1208,7 +1204,7 @@ class BinarySearchArgumentParser:
         parser: argparse.ArgumentParser,
         param_name: str,
         param_type: type,
-        default_value: Union[int, float],
+        default_value: int | float,
     ) -> None:
         """Add parameter-specific argument to parser."""
         if param_type is int:

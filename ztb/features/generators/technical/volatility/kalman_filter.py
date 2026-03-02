@@ -4,14 +4,13 @@ Kalman Filter features for price smoothing and prediction.
 This module implements Kalman filter-based price smoothing and trend detection.
 """
 
-from typing import List, cast
+from typing import cast
 
 import numpy as np
 import pandas as pd
 
 from ztb.features.registry import FeatureRegistry
 from ztb.utils.errors import safe_operation
-
 
 @FeatureRegistry.register("KalmanFilter")
 def compute_kalman_filter(df: pd.DataFrame) -> "pd.Series[float]":
@@ -20,14 +19,12 @@ def compute_kalman_filter(df: pd.DataFrame) -> "pd.Series[float]":
     result_df = feature.compute(df)
     return result_df["kalman_price"]
 
-
 @FeatureRegistry.register("KalmanVelocity")
 def compute_kalman_velocity(df: pd.DataFrame) -> "pd.Series[float]":
     """Kalman filter velocity (trend strength)"""
     feature = KalmanFilter()
     result_df = feature.compute(df)
     return result_df["kalman_velocity"]
-
 
 class KalmanFilter:
     """Kalman filter for price smoothing and trend detection"""
@@ -49,7 +46,7 @@ class KalmanFilter:
         return self._name
 
     @property
-    def deps(self) -> List[str]:
+    def deps(self) -> list[str]:
         return self._deps
 
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -126,7 +123,6 @@ class KalmanFilter:
             index=df.index,
         )
 
-
 @FeatureRegistry.register("KalmanTrend")
 def compute_kalman_trend(df: pd.DataFrame) -> "pd.Series[float]":
     """Kalman filter based trend indicator"""
@@ -138,7 +134,6 @@ def compute_kalman_trend(df: pd.DataFrame) -> "pd.Series[float]":
     trend = np.sign(velocity) * np.minimum(np.abs(velocity) * 100, 1.0)
 
     return cast("pd.Series[float]", pd.Series(trend.astype(np.float32), index=df.index))
-
 
 @FeatureRegistry.register("KalmanResidual")
 def compute_kalman_residual(df: pd.DataFrame) -> "pd.Series[float]":

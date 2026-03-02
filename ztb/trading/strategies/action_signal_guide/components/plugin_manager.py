@@ -17,16 +17,13 @@ from ztb.utils.logging_utils import get_logger
 
 from ..pattern_recognition.base import PatternRecognizer
 
-
 PluginType = Literal["pattern_recognizer", "signal_processor", "analyzer"]
 PluginCallable = Callable[..., object]
-
 
 class PluginMetadata(TypedDict):
     type: PluginType
     target: object
     description: str
-
 
 class PluginManager:
     """
@@ -191,7 +188,7 @@ class PluginManager:
         self,
         plugin_type: PluginType | None = None,
     ) -> dict[str, PluginMetadata]:
-        """List all registered plugins."""
+        """list all registered plugins."""
         if plugin_type:
             return {
                 name: metadata

@@ -7,16 +7,15 @@ import csv
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
-
+from typing import Any
 
 class MetricsCollectionMixin:
     """Mixin class providing common metrics collection functionality."""
 
     def __init__(self):
-        self.metrics_csv_path: Optional[Path] = None
-        self.metrics_csv_writer: Optional[Any] = None
-        self.metrics_csv_file: Optional[Any] = None
+        self.metrics_csv_path: Path | None = None
+        self.metrics_csv_writer: Any | None = None
+        self.metrics_csv_file: Any | None = None
 
     def initialize_metrics_collection(
         self, output_dir: str = "results", filename_prefix: str = "training_metrics"
@@ -43,7 +42,7 @@ class MetricsCollectionMixin:
             self.metrics_csv_writer = None
             self.metrics_csv_file = None
 
-    def log_metrics_to_csv(self, step: int, metrics: Dict[str, Any]) -> None:
+    def log_metrics_to_csv(self, step: int, metrics: dict[str, Any]) -> None:
         """Log metrics to CSV file."""
         if self.metrics_csv_writer is None:
             return

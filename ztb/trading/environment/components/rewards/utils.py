@@ -1,4 +1,3 @@
-from typing import List
 
 
 class RewardUtils:
@@ -28,8 +27,8 @@ class RewardUtils:
 
     @staticmethod
     def calculate_balance_penalty(
-        action_counts: List[int],
-        target_ratios: List[float],
+        action_counts: list[int],
+        target_ratios: list[float],
         tolerance: float,
         penalty_coeff: float,
     ) -> float:
@@ -55,7 +54,7 @@ class RewardUtils:
 
     @staticmethod
     def calculate_balance_deviation_from_ratios(
-        ratios: List[float], target_ratios: List[float]
+        ratios: list[float], target_ratios: list[float]
     ) -> float:
         """Calculate sum of absolute deviations between action ratios and targets.
 
@@ -73,7 +72,7 @@ class RewardUtils:
 
     @staticmethod
     def calculate_balance_deviation_from_percentages(
-        percentages: List[float], target_pct: float
+        percentages: list[float], target_pct: float
     ) -> float:
         """Calculate sum of absolute deviations between percentages and a target percentage.
 
@@ -138,7 +137,7 @@ class RewardUtils:
 
     @staticmethod
     def calculate_activity_bonus(
-        recent_actions: List[int],
+        recent_actions: list[int],
         bonus_rate: float = 0.02,
         window_size: int = 5,
         min_trades: int = 2,

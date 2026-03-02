@@ -15,7 +15,6 @@ Usage:
 import functools
 from typing import Any, Callable
 
-
 class ErrorHandler:
     """Common error handler with logging, notification, and graceful shutdown"""
 
@@ -24,7 +23,6 @@ class ErrorHandler:
 
     def handle_error(self, error: Exception, context: str = "") -> None:
         """Handle error with logging and notification"""
-
 
 def catch_and_notify(func: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator to catch exceptions and notify"""

@@ -4,10 +4,9 @@ Distributed training utilities.
 """
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any
 
-
-def get_distributed_info() -> Dict[str, Any]:
+def get_distributed_info() -> dict[str, Any]:
     """
     Get distributed training information.
 
@@ -34,7 +33,6 @@ def get_distributed_info() -> Dict[str, Any]:
 
     return info
 
-
 def is_master_process() -> bool:
     """
     Check if current process is the master process.
@@ -44,7 +42,6 @@ def is_master_process() -> bool:
     """
     info = get_distributed_info()
     return info["rank"] == 0
-
 
 def get_device_count() -> int:
     """
@@ -63,10 +60,9 @@ def get_device_count() -> int:
     except ImportError:
         return 1
 
-
 def setup_distributed_training(
     backend: str = "nccl", init_method: str = "env://"
-) -> Optional[Any]:
+) -> Any | None:
     """
     Setup distributed training.
 

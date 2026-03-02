@@ -16,7 +16,6 @@ from pathlib import Path
 
 from ztb.utils.compat_wrapper import run_command_safely
 
-
 def acquire_lock(lock_file: Path) -> bool:
     """Acquire exclusive lock."""
     try:
@@ -27,11 +26,9 @@ def acquire_lock(lock_file: Path) -> bool:
     except Exception:
         return False
 
-
 def check_kill_file() -> bool:
     """Check for kill file."""
     return Path("ztb.stop").exists()
-
 
 def get_training_command(correlation_id: str, ppo_args: str = "") -> list[str]:
     """Get the training command to run."""
@@ -66,7 +63,6 @@ def get_training_command(correlation_id: str, ppo_args: str = "") -> list[str]:
             cmd.extend(ppo_args.split())
 
     return cmd
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Supervise training with auto-resume")
@@ -160,7 +156,6 @@ def main() -> int:
                 attempt += 1
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

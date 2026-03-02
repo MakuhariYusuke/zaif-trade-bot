@@ -38,7 +38,6 @@ ACTION_HOLD = 0
 ACTION_BUY = 1
 ACTION_SELL = -1
 
-
 # For backward compatibility, keep the old main function
 def _deprecated_main():
     """Deprecated main function. Use ztb.trading.live_trader.main.main() instead."""

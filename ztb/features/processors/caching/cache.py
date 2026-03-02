@@ -5,22 +5,21 @@ Provides a common caching mechanism for DataFrame-based feature calculations.
 """
 
 import hashlib
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 import pandas as pd
-
 
 class FeatureCache:
     """Unified cache for feature computations"""
 
     def __init__(self) -> None:
-        self._cache: Dict[str, pd.Series] = {}
+        self._cache: dict[str, pd.Series] = {}
 
     def generate_dataframe_hash(
         self,
         df: pd.DataFrame,
-        columns: List[str],
-        params: Optional[Dict[str, Any]] = None,
+        columns: list[str],
+        params: dict[str, Any] | None = None,
     ) -> str:
         """Generate hash for DataFrame + parameters"""
         values = []
@@ -56,7 +55,6 @@ class FeatureCache:
     def size(self) -> int:
         """Get number of cached items"""
         return len(self._cache)
-
 
 # Global instance
 feature_cache = FeatureCache()

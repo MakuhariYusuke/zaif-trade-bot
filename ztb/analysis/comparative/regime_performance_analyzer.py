@@ -11,7 +11,7 @@ This module provides detailed performance analysis segmented by market condition
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -24,7 +24,6 @@ from ztb.analysis.specialized.market.market_regime_classifier import (
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 @dataclass
 class RegimePerformanceMetrics:
@@ -43,9 +42,8 @@ class RegimePerformanceMetrics:
     sortino_ratio: float
     alpha: float
     beta: float
-    confidence_interval: Tuple[float, float]
+    confidence_interval: tuple[float, float]
     sample_size: int
-
 
 @dataclass
 class PerformanceComparison:
@@ -59,7 +57,6 @@ class PerformanceComparison:
     effect_size: float
     confidence_level: float
 
-
 class RegimePerformanceAnalyzer:
     """
     Advanced performance analysis system for different market conditions.
@@ -71,7 +68,7 @@ class RegimePerformanceAnalyzer:
     - Regime transitions
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize regime performance analyzer.
 
@@ -81,7 +78,7 @@ class RegimePerformanceAnalyzer:
         self.config = config or self._get_default_config()
         self.logger = get_logger(f"{self.__class__.__name__}")
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """Get default configuration."""
         return {
             "min_regime_periods": 10,
@@ -92,14 +89,14 @@ class RegimePerformanceAnalyzer:
         }
 
     def analyze_performance_by_regime(
-        self, backtest_results: Dict[str, Any], market_conditions: List[MarketCondition]
-    ) -> Dict[str, Any]:
+        self, backtest_results: dict[str, Any], market_conditions: list[MarketCondition]
+    ) -> dict[str, Any]:
         """
         Analyze trading performance segmented by market conditions.
 
         Args:
             backtest_results: Backtest results dictionary
-            market_conditions: List of market conditions
+            market_conditions: list of market conditions
 
         Returns:
             Comprehensive performance analysis by regime
@@ -141,8 +138,8 @@ class RegimePerformanceAnalyzer:
         }
 
     def _align_backtest_with_conditions(
-        self, backtest_results: Dict[str, Any], market_conditions: List[MarketCondition]
-    ) -> List[Dict[str, Any]]:
+        self, backtest_results: dict[str, Any], market_conditions: list[MarketCondition]
+    ) -> list[dict[str, Any]]:
         """
         Align backtest results with market conditions by timestamp.
 
@@ -151,7 +148,7 @@ class RegimePerformanceAnalyzer:
             market_conditions: Market conditions
 
         Returns:
-            List of aligned data points
+            list of aligned data points
         """
         aligned_data = []
 
@@ -224,8 +221,8 @@ class RegimePerformanceAnalyzer:
     def _find_closest_condition(
         self,
         trade_time_normalized: pd.Timestamp,
-        conditions_by_time: Dict[pd.Timestamp, MarketCondition],
-    ) -> Optional[MarketCondition]:
+        conditions_by_time: dict[pd.Timestamp, MarketCondition],
+    ) -> MarketCondition | None:
         """Find the closest market condition by timestamp."""
         if not conditions_by_time:
             return None
@@ -248,8 +245,8 @@ class RegimePerformanceAnalyzer:
         return closest_condition
 
     def _calculate_regime_performance(
-        self, aligned_data: List[Dict[str, Any]]
-    ) -> Dict[str, RegimePerformanceMetrics]:
+        self, aligned_data: list[dict[str, Any]]
+    ) -> dict[str, RegimePerformanceMetrics]:
         """Calculate performance metrics for each market regime."""
         regime_data = defaultdict(list)
 
@@ -278,7 +275,7 @@ class RegimePerformanceAnalyzer:
         return regime_performance
 
     def _calculate_performance_metrics(
-        self, trades: List[Dict[str, Any]]
+        self, trades: list[dict[str, Any]]
     ) -> RegimePerformanceMetrics:
         """Calculate comprehensive performance metrics for a set of trades."""
         if not trades:
@@ -370,7 +367,7 @@ class RegimePerformanceAnalyzer:
 
     def _calculate_confidence_interval(
         self, returns: np.ndarray, n_bootstrap: int = 1000
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """Calculate confidence interval using bootstrapping."""
         if len(returns) < 2:
             return (np.mean(returns), np.mean(returns))
@@ -390,8 +387,8 @@ class RegimePerformanceAnalyzer:
         return (ci_lower, ci_upper)
 
     def _calculate_volatility_performance(
-        self, aligned_data: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, aligned_data: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Calculate performance by volatility levels."""
         volatility_data = defaultdict(list)
 
@@ -413,8 +410,8 @@ class RegimePerformanceAnalyzer:
         return volatility_performance
 
     def _calculate_trend_correlations(
-        self, aligned_data: List[Dict[str, Any]]
-    ) -> Dict[str, float]:
+        self, aligned_data: list[dict[str, Any]]
+    ) -> dict[str, float]:
         """Calculate correlations between trend strength and performance."""
         trend_strengths = []
         performances = []
@@ -444,8 +441,8 @@ class RegimePerformanceAnalyzer:
         return correlations
 
     def _calculate_transition_impacts(
-        self, aligned_data: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, aligned_data: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Calculate performance impact of regime transitions."""
         if len(aligned_data) < 2:
             return {}
@@ -485,8 +482,8 @@ class RegimePerformanceAnalyzer:
         return dict(transition_impacts)
 
     def _calculate_statistical_comparisons(
-        self, regime_performance: Dict[str, RegimePerformanceMetrics]
-    ) -> List[PerformanceComparison]:
+        self, regime_performance: dict[str, RegimePerformanceMetrics]
+    ) -> list[PerformanceComparison]:
         """Calculate statistical comparisons between regimes."""
         comparisons = []
 
@@ -525,8 +522,8 @@ class RegimePerformanceAnalyzer:
         return comparisons
 
     def _calculate_summary_statistics(
-        self, aligned_data: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, aligned_data: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Calculate overall summary statistics."""
         total_trades = len(aligned_data)
         total_pnl = sum(item["trade"].get("pnl", 0) for item in aligned_data)
@@ -548,9 +545,9 @@ class RegimePerformanceAnalyzer:
 
     def _generate_recommendations(
         self,
-        regime_performance: Dict[str, RegimePerformanceMetrics],
-        comparisons: List[PerformanceComparison],
-    ) -> List[str]:
+        regime_performance: dict[str, RegimePerformanceMetrics],
+        comparisons: list[PerformanceComparison],
+    ) -> list[str]:
         """Generate actionable recommendations based on analysis."""
         recommendations = []
 

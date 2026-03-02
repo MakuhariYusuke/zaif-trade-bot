@@ -3,17 +3,16 @@ Base classes and protocols for trading features.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Protocol, Set, TypeVar
+from typing import Any, Protocol, TypeVar
 
 import pandas as pd
 
 from ztb.features.utils.rolling import rolling_mean, rolling_std
 
 # Define ConfigDict locally to avoid circular imports
-ConfigDict = Dict[str, Any]
+ConfigDict = dict[str, Any]
 
 T = TypeVar("T", covariant=True)
-
 
 class Feature(Protocol[T]):
     """Generic feature protocol"""
@@ -24,7 +23,7 @@ class Feature(Protocol[T]):
         ...
 
     @property
-    def deps(self) -> List[str]:
+    def deps(self) -> list[str]:
         """Dependencies (common preprocessing etc)"""
         ...
 
@@ -32,14 +31,13 @@ class Feature(Protocol[T]):
         """Compute feature with generic return type"""
         ...
 
-
 class ComputableFeature(Protocol):
     """Enhanced feature protocol with strict typing"""
 
     @property
 
     @property
-    def deps(self) -> List[str]:
+    def deps(self) -> list[str]:
         """Dependencies"""
         ...
 
@@ -47,18 +45,16 @@ class ComputableFeature(Protocol):
         """Compute feature with strict DataFrame return type"""
         ...
 
-
 class StrictComputableFeature(Protocol):
     """Strict computable feature protocol - no **params allowed"""
 
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
         ...
 
-
 class BaseFeature(ABC):
     """Base feature class"""
 
-    def __init__(self, name: str, deps: Optional[List[str]] = None):
+    def __init__(self, name: str, deps: list[str] | None = None):
         self._name = name
         self._deps = deps or []
 
@@ -67,11 +63,11 @@ class BaseFeature(ABC):
         return self._name
 
     @property
-    def deps(self) -> List[str]:
+    def deps(self) -> list[str]:
         return self._deps
 
     @property
-    def required_calculations(self) -> Set[str]:
+    def required_calculations(self) -> set[str]:
         """Required preprocessing calculations for this feature"""
         val = getattr(self, "_required_calculations", None)
         return val if val is not None else set()
@@ -80,15 +76,14 @@ class BaseFeature(ABC):
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
         """Compute feature"""
 
-
 class ParameterizedFeature(BaseFeature):
     """Base class for features that accept dynamic parameters"""
 
     def __init__(
         self,
         name: str,
-        deps: Optional[List[str]] = None,
-        default_params: Optional[Dict[str, Any]] = None,
+        deps: list[str] | None = None,
+        default_params: dict[str, Any] | None = None,
     ):
         self._default_params = default_params or {}
         self.default_params = default_params or {}
@@ -104,39 +99,35 @@ class ParameterizedFeature(BaseFeature):
     ) -> pd.DataFrame:
         """Actual computation with parameters"""
 
-
 class MovingAverageFeature(BaseFeature):
     """Base class for moving average based features"""
 
-    def __init__(self, name: str, deps: Optional[List[str]] = None):
+    def __init__(self, name: str, deps: list[str] | None = None):
         super().__init__(name, deps or ["close"])
 
     @abstractmethod
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
         """Compute moving average based feature"""
 
-
 class OscillatorFeature(BaseFeature):
     """Base class for oscillator based features"""
 
-    def __init__(self, name: str, deps: Optional[List[str]] = None):
+    def __init__(self, name: str, deps: list[str] | None = None):
         super().__init__(name, deps or ["close", "high", "low"])
 
     @abstractmethod
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
         """Compute oscillator based feature"""
 
-
 class ChannelFeature(BaseFeature):
     """Base class for channel/range based features"""
 
-    def __init__(self, name: str, deps: Optional[List[str]] = None):
+    def __init__(self, name: str, deps: list[str] | None = None):
         super().__init__(name, deps or ["high", "low", "close"])
 
     @abstractmethod
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:
         """Compute channel based feature"""
-
 
 class CommonPreprocessor:
     """Common preprocessor class"""
@@ -151,7 +142,7 @@ class CommonPreprocessor:
         if "price" in df.columns and "close" not in df.columns:
             df = df.rename(columns={"price": "close"})
             needs_copy = True
-        # List of required columns for feature computation.
+        # list of required columns for feature computation.
         # This list can be extended in the future if additional columns become necessary for new features.
         # Keeping this as a separate variable improves maintainability and clarity.
         required_cols = ["close", "high", "low", "volume"]

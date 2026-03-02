@@ -5,7 +5,7 @@ Integrates SignalPerformanceAnalyzer with the UnifiedBacktester framework,
 providing comprehensive signal analysis during backtest execution.
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import pandas as pd
 
@@ -14,7 +14,6 @@ from .performance_analyzer import BacktestPerformanceAnalyzer
 from .signal_tracker import SignalTracker
 
 logger = get_logger(__name__)
-
 
 class BacktestSignalPerformanceAnalyzer:
     """
@@ -38,7 +37,7 @@ class BacktestSignalPerformanceAnalyzer:
         self.performance_analyzer = BacktestPerformanceAnalyzer(max_history_size=max_history_size)
         self.logger = logger
 
-    def initialize_backtest(self, strategy_name: str, config: Dict[str, Union[str, int, float, bool]]) -> None:
+    def initialize_backtest(self, strategy_name: str, config: dict[str, str | int | float | bool]) -> None:
         """
         Initialize for a new backtest run.
 
@@ -57,12 +56,12 @@ class BacktestSignalPerformanceAnalyzer:
     def track_signal(
         self,
         timestamp: pd.Timestamp,
-        signal_data: Dict[str, Union[str, int, float, List[str]]],
+        signal_data: dict[str, str | int | float | list[str]],
         market_data: pd.Series,
         position_before: int,
         position_after: int,
         trade_executed: bool,
-        trade_result: Optional[Dict[str, Union[str, int, float]]] = None
+        trade_result: dict[str, str | int | float] | None = None
     ) -> None:
         """
         Track a signal during backtest execution.
@@ -96,8 +95,8 @@ class BacktestSignalPerformanceAnalyzer:
     def record_trade_outcome(
         self,
         signal_timestamp: pd.Timestamp,
-        trade_result: Dict[str, Union[str, int, float]],
-        signal_data: Dict[str, Union[str, int, float, List[str]]]
+        trade_result: dict[str, str | int | float],
+        signal_data: dict[str, str | int | float | list[str]]
     ) -> None:
         """
         Record trade outcome for signal performance analysis.
@@ -120,7 +119,7 @@ class BacktestSignalPerformanceAnalyzer:
         except Exception as e:
             self.logger.error(f"Failed to record trade outcome: {e}")
 
-    def get_performance_report(self) -> Dict[str, Any]:
+    def get_performance_report(self) -> dict[str, Any]:
         """
         Generate comprehensive signal performance report.
 

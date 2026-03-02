@@ -9,7 +9,6 @@ import os
 import subprocess
 import sys
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Check system status")
     parser.add_argument(
@@ -39,7 +38,6 @@ def main() -> None:
     else:
         print(f"Status check failed (exit code: {result.returncode})")
         sys.exit(result.returncode)
-
 
 if __name__ == "__main__":
     main()

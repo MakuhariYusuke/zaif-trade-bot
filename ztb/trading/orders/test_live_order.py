@@ -20,16 +20,12 @@ from dotenv import load_dotenv
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-
-
-
 def get_current_price() -> float:
     """Get current BTC/JPY price from Coincheck public API."""
     response = requests.get("https://coincheck.com/api/ticker", timeout=10)
     response.raise_for_status()
     data = response.json()
     return float(data["last"])
-
 
 def place_buy_order(api_key: str, api_secret: str, price: float, amount: float) -> dict:
     """Place a buy order on Coincheck."""
@@ -63,7 +59,6 @@ def place_buy_order(api_key: str, api_secret: str, price: float, amount: float) 
     else:
         error_msg = f"API Error {response.status_code}: {response.text}"
         raise Exception(error_msg)
-
 
 def main():
     """Main function to place a test buy order."""
@@ -135,7 +130,6 @@ def main():
     except Exception as e:
         print(f"❌ Error: {e}")
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

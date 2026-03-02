@@ -6,12 +6,11 @@ Fee model abstraction for trading costs
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from ztb.trading.environment.constants import DEFAULT_FEE_RATE
 from ztb.utils.file_utils import safe_json_load
 from ztb.utils.types import FeeModelProtocol
-
 
 class FeeModel(ABC, FeeModelProtocol):
     """Abstract base class for fee models"""
@@ -40,7 +39,6 @@ class FeeModel(ABC, FeeModelProtocol):
         Returns:
             Fee rate as decimal
         """
-
 
 class FixedFeeModel(FeeModel):
     """Fixed fee model with constant rates"""
@@ -71,11 +69,10 @@ class FixedFeeModel(FeeModel):
             return self.sell_fee_rate
         return self.buy_fee_rate
 
-
 class TieredFeeModel(FeeModel):
     """Tiered fee model with volume-based rates"""
 
-    def __init__(self, tiers: Optional[Dict[str, List[Tuple[float, float]]]] = None):
+    def __init__(self, tiers: dict[str, list[tuple[float, float]]] | None = None):
         """
         Initialize tiered fee model
 
@@ -129,11 +126,10 @@ class TieredFeeModel(FeeModel):
             return self.sell_tiers[0][1]
         return self.buy_tiers[0][1]
 
-
 class ExchangeFeeModel(FeeModel):
     """Exchange-specific fee model"""
 
-    def __init__(self, exchange_fees: Optional[Dict[str, Dict[str, float]]] = None):
+    def __init__(self, exchange_fees: dict[str, dict[str, float]] | None = None):
         """
         Initialize exchange fee model
 
@@ -152,7 +148,7 @@ class ExchangeFeeModel(FeeModel):
         self.current_exchange = "coincheck"
 
     def set_exchange(self, exchange: str) -> None:
-        """Set current exchange"""
+        """set current exchange"""
         if exchange in self.exchange_fees:
             self.current_exchange = exchange
         else:
@@ -170,13 +166,12 @@ class ExchangeFeeModel(FeeModel):
         )
         return exchange_rates.get(trade_type.lower(), 0.001)
 
-
 class FeeModelFactory:
     """Factory for creating fee models"""
 
     @staticmethod
     def create_fee_model(
-        model_type: str = "fixed", config: Optional[Dict[str, Any]] = None
+        model_type: str = "fixed", config: dict[str, Any] | None = None
     ) -> FeeModel:
         """
         Create fee model instance
@@ -207,8 +202,7 @@ class FeeModelFactory:
             logging.warning(f"Unknown fee model type: {model_type}, using fixed")
             return FixedFeeModel()
 
-
-def load_fee_model_from_config(config_path: str) -> Optional[FeeModel]:
+def load_fee_model_from_config(config_path: str) -> FeeModel | None:
     """Load fee model from configuration file"""
     try:
         config = safe_json_load(Path(config_path))

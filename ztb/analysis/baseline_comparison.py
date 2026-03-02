@@ -6,13 +6,12 @@ Compares trained model performance against baseline strategies.
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, cast
 
 import pandas as pd
 
 from ztb.io.text_io import write_text
 # 年間取引日数
-
 
 @dataclass
 class BaselineResult:
@@ -24,18 +23,16 @@ class BaselineResult:
     max_drawdown: float
     win_rate: float
     total_trades: int
-    metrics: Dict[str, Any]
-
+    metrics: dict[str, Any]
 
 @dataclass
 class ComparisonReport:
     """Comparison report between model and baselines."""
 
     model_result: BaselineResult
-    baseline_results: List[BaselineResult]
-    superiority_metrics: Dict[str, float]
-    statistical_tests: Dict[str, float]
-
+    baseline_results: list[BaselineResult]
+    superiority_metrics: dict[str, float]
+    statistical_tests: dict[str, float]
 
 class BaselineStrategy:
     """Base class for baseline strategies."""
@@ -46,7 +43,6 @@ class BaselineStrategy:
     def evaluate(self, price_data: pd.DataFrame, **kwargs: Any) -> BaselineResult:
         """Evaluate strategy on price data."""
         raise NotImplementedError
-
 
 class BuyAndHoldStrategy(BaselineStrategy):
     """Buy and hold baseline strategy."""
@@ -83,7 +79,6 @@ class BuyAndHoldStrategy(BaselineStrategy):
                 "holding_period_days": len(price_data),
             },
         )
-
 
 class SMAStrategy(BaselineStrategy):
     """Simple Moving Average crossover strategy."""
@@ -150,7 +145,6 @@ class SMAStrategy(BaselineStrategy):
             },
         )
 
-
 class BaselineComparisonEngine:
     """Engine for comparing model performance against baselines."""
 
@@ -168,7 +162,7 @@ class BaselineComparisonEngine:
         self,
         model_result: BaselineResult,
         price_data: pd.DataFrame,
-        strategies: Optional[List[str]] = None,
+        strategies: list[str] | None = None,
     ) -> ComparisonReport:
         """Compare model against baseline strategies."""
         if strategies is None:
@@ -194,8 +188,8 @@ class BaselineComparisonEngine:
         )
 
     def _calculate_superiority(
-        self, model: BaselineResult, baselines: List[BaselineResult]
-    ) -> Dict[str, float]:
+        self, model: BaselineResult, baselines: list[BaselineResult]
+    ) -> dict[str, float]:
         """Calculate superiority metrics over baselines."""
         metrics = {}
 
@@ -219,8 +213,8 @@ class BaselineComparisonEngine:
         return metrics
 
     def _run_statistical_tests(
-        self, model: BaselineResult, baselines: List[BaselineResult]
-    ) -> Dict[str, float]:
+        self, model: BaselineResult, baselines: list[BaselineResult]
+    ) -> dict[str, float]:
         """Run simplified statistical tests."""
         # Placeholder for statistical significance tests
         # In practice, would use t-tests, bootstrap, etc.
@@ -237,7 +231,7 @@ class BaselineComparisonEngine:
         return tests
 
     def generate_report(
-        self, comparison: ComparisonReport, output_path: Optional[str] = None
+        self, comparison: ComparisonReport, output_path: str | None = None
     ) -> str:
         """Generate human-readable comparison report."""
         lines = []
@@ -283,18 +277,17 @@ class BaselineComparisonEngine:
 
         return report
 
-
 class BaselineComparisonEngine:
     """Engine for comparing model performance against baseline strategies."""
 
-    def __init__(self, price_data: Optional[pd.DataFrame] = None):
+    def __init__(self, price_data: pd.DataFrame | None = None):
         self.price_data = price_data
         self.baseline_strategies = [
             BuyAndHoldStrategy("Buy and Hold"),
             SMAStrategy("SMA Crossover"),
         ]
 
-    def generate_baseline_results(self, price_data: pd.DataFrame) -> List[BaselineResult]:
+    def generate_baseline_results(self, price_data: pd.DataFrame) -> list[BaselineResult]:
         """Generate results for all baseline strategies."""
         results = []
         for strategy in self.baseline_strategies:
@@ -306,7 +299,7 @@ class BaselineComparisonEngine:
         return results
 
     def compare_with_baselines(
-        self, model_result: BaselineResult, baseline_results: List[BaselineResult]
+        self, model_result: BaselineResult, baseline_results: list[BaselineResult]
     ) -> ComparisonReport:
         """Compare model result with baseline results."""
         # Calculate superiority metrics
@@ -323,8 +316,8 @@ class BaselineComparisonEngine:
         )
 
     def _calculate_superiority(
-        self, model: BaselineResult, baselines: List[BaselineResult]
-    ) -> Dict[str, float]:
+        self, model: BaselineResult, baselines: list[BaselineResult]
+    ) -> dict[str, float]:
         """Calculate superiority metrics over baselines."""
         metrics = {}
         for baseline in baselines:
@@ -341,8 +334,8 @@ class BaselineComparisonEngine:
         return metrics
 
     def _run_statistical_tests(
-        self, model: BaselineResult, baselines: List[BaselineResult]
-    ) -> Dict[str, float]:
+        self, model: BaselineResult, baselines: list[BaselineResult]
+    ) -> dict[str, float]:
         """Run simplified statistical tests."""
         tests = {}
         for baseline in baselines:
@@ -353,7 +346,7 @@ class BaselineComparisonEngine:
             )
         return tests
 
-    def compare_multiple_evaluations(self, evaluations: List["WalkForwardResult"]) -> List[str]:
+    def compare_multiple_evaluations(self, evaluations: list["WalkForwardResult"]) -> list[str]:
         """Compare multiple WalkForwardResult evaluations."""
         from ztb.evaluation.walk_forward.types import WalkForwardResult
         
@@ -372,10 +365,8 @@ class BaselineComparisonEngine:
                 )
         return comparisons
 
-
 # Global instance
 _baseline_engine = BaselineComparisonEngine()
-
 
 def get_baseline_comparison_engine() -> BaselineComparisonEngine:
     """Get global baseline comparison engine."""

@@ -8,10 +8,9 @@ import gzip
 import json
 from collections import defaultdict
 from pathlib import Path
-from typing import Optional, Union, cast
+from typing import cast
 
-
-def parse_timestamp(line: str) -> Optional[str]:
+def parse_timestamp(line: str) -> str | None:
     """Extract date from JSON line."""
     try:
         data = json.loads(line.strip())
@@ -23,8 +22,7 @@ def parse_timestamp(line: str) -> Optional[str]:
         pass
     return None
 
-
-def compact_jsonl(file_path: Union[str, Path], apply: bool = False) -> None:
+def compact_jsonl(file_path: str | Path, apply: bool = False) -> None:
     """Compact JSONL file by date."""
     file_path = Path(file_path)
     if not file_path.exists():
@@ -66,7 +64,6 @@ def compact_jsonl(file_path: Union[str, Path], apply: bool = False) -> None:
             f.writelines(lines)
         print(f"Created {output_path} ({len(lines)} lines)")
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Compact JSONL logs by date into compressed files"
@@ -79,7 +76,6 @@ def main() -> None:
     args = parser.parse_args()
 
     compact_jsonl(args.file, args.apply)
-
 
 if __name__ == "__main__":
     main()

@@ -15,14 +15,12 @@ from ..base import BaseFeature
 from ..registry import FeatureRegistry
 from ..trend.ichimoku_ext import calculate_ichimoku_extended
 
-
 @FeatureRegistry.register("Ichimoku_Sanyaku_Kouten")
 def compute_ichimoku_sanyaku_kouten(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Sanyaku Kouten - Three Roles Reversal pattern"""
     feature = IchimokuSanyakuKouten()
     result_df = feature.compute(df)
     return result_df["ichimoku_sanyaku_kouten"]
-
 
 class IchimokuSanyakuKouten(BaseFeature):
     """

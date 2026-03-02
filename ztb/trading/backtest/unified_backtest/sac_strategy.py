@@ -5,9 +5,9 @@ SAC Trading Strategy
 Implements SAC (Soft Actor-Critic) based trading strategy for the unified backtest framework.
 Supports regime adaptation and leverages SAC learning outcomes.
 """
+from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -16,7 +16,6 @@ from ....utils.logging_utils import get_logger
 from .strategy_base import MLTradingStrategy
 
 logger = get_logger(__name__)
-
 
 class SACStrategy(MLTradingStrategy):
     """
@@ -33,8 +32,8 @@ class SACStrategy(MLTradingStrategy):
         self,
         name: str,
         model_path: str,
-        regime_classifier_path: Optional[str] = None,
-        feature_engineer: Optional["FeatureEngineer"] = None,
+        regime_classifier_path: str | None = None,
+        feature_engineer: FeatureEngineer | None = None,
     ):
         """
         Initialize SAC strategy.
@@ -50,13 +49,13 @@ class SACStrategy(MLTradingStrategy):
         self.feature_engineer = feature_engineer
 
         # SAC-specific attributes
-        self.regime_classifier: Optional["RegimeClassifier"] = None
-        self.current_regime: Optional[str] = None
+        self.regime_classifier: RegimeClassifier | None = None
+        self.current_regime: str | None = None
         self.action_space: tuple[float, float] = (-1.0, 1.0)
 
         # Learning outcome tracking
-        self.learning_metrics: Dict[str, Union[int, float, str]] = {}
-        self.regime_performance: Dict[str, list] = {}
+        self.learning_metrics: dict[str, int | float | str] = {}
+        self.regime_performance: dict[str, list] = {}
 
     def initialize(
         self, data: pd.DataFrame, backtest_config: "BacktestConfig", **kwargs
@@ -81,7 +80,7 @@ class SACStrategy(MLTradingStrategy):
             if self.feature_engineer:
                 self.feature_engineer.initialize(data)
 
-            # Set action space bounds
+            # set action space bounds
             self.action_space = kwargs.get("action_space", (-1.0, 1.0))
 
             self.is_initialized = True
@@ -131,7 +130,7 @@ class SACStrategy(MLTradingStrategy):
 
     def generate_signal(
         self, data: pd.DataFrame, current_position: int
-    ) -> Dict[str, Union[str, int, float, bool]]:
+    ) -> dict[str, str | int | float | bool]:
         """
         Generate trading signal using SAC model.
 
@@ -176,7 +175,7 @@ class SACStrategy(MLTradingStrategy):
 
     def _convert_action_to_signal(
         self, action: float
-    ) -> Dict[str, Union[str, int, float, bool]]:
+    ) -> dict[str, str | int | float | bool]:
         """
         Convert SAC continuous action to discrete trading signal.
 
@@ -217,7 +216,7 @@ class SACStrategy(MLTradingStrategy):
             }
 
     def _track_regime_performance(
-        self, signal: Dict[str, Union[str, int, float, bool]], regime: str
+        self, signal: dict[str, str | int | float | bool], regime: str
     ) -> None:
         """
         Track performance metrics by regime.
@@ -237,7 +236,7 @@ class SACStrategy(MLTradingStrategy):
             }
         )
 
-    def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
+    def update_hyperparameters(self, hyperparameters: dict[str, float]) -> None:
         """
         Update strategy hyperparameters.
 
@@ -253,14 +252,14 @@ class SACStrategy(MLTradingStrategy):
             # Update sell threshold (this is just an example)
             pass
 
-    def get_learning_outcomes(self) -> Dict[str, Union[int, float, str, dict, list]]:
+    def get_learning_outcomes(self) -> dict[str, int | float | str | dict | list]:
         """
         Get SAC learning outcomes and analysis.
 
         Returns:
             Dictionary containing learning metrics and insights
         """
-        outcomes: Dict[str, Union[int, float, str, dict, list]] = {
+        outcomes: dict[str, int | float | str | dict | list] = {
             "model_path": self.model_path,
             "regime_performance": self.regime_performance,
             "learning_metrics": self.learning_metrics,
@@ -272,16 +271,16 @@ class SACStrategy(MLTradingStrategy):
             total_signals = sum(
                 len(signals) for signals in self.regime_performance.values()
             )
-            regime_dist: Dict[str, float] = {}
+            regime_dist: dict[str, float] = {}
             for regime, signals in self.regime_performance.items():
                 regime_dist[regime] = len(signals) / total_signals
             outcomes["regime_distribution"] = regime_dist
 
         return outcomes
 
-    def get_config(self) -> Dict[str, Union[str, int, float, bool]]:
+    def get_config(self) -> dict[str, str | int | float | bool]:
         """Get strategy configuration."""
-        config: Dict[str, Union[str, int, float, bool]] = super().get_config()
+        config: dict[str, str | int | float | bool] = super().get_config()
         config.update(
             {
                 "model_path": self.model_path,

@@ -1,6 +1,6 @@
 """Training validation component."""
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -16,7 +16,6 @@ if TYPE_CHECKING:
 
 if TYPE_CHECKING:
     from ztb.training.unified_trainer.trainer import UnifiedTrainer
-
 
 class TrainingValidationManager:
     """Handles validation of training data, models, and training process."""
@@ -35,7 +34,7 @@ class TrainingValidationManager:
 
     def validate_training_data(self, observations: NDArray[np.float32],
                              actions: NDArray[np.int64], rewards: NDArray[np.float32],
-                             next_observations: NDArray[np.float32]) -> List[str]:
+                             next_observations: NDArray[np.float32]) -> list[str]:
         """Validate training data batch.
 
         Args:
@@ -45,7 +44,7 @@ class TrainingValidationManager:
             next_observations: Next observations
 
         Returns:
-            List of validation issues (empty if all valid)
+            list of validation issues (empty if all valid)
         """
         issues = []
 
@@ -83,8 +82,8 @@ class TrainingValidationManager:
 
         return issues
 
-    def validate_model_output(self, action_probs: Optional[NDArray[np.float32]] = None,
-                            values: Optional[NDArray[np.float32]] = None) -> List[str]:
+    def validate_model_output(self, action_probs: NDArray[np.float32] | None = None,
+                            values: NDArray[np.float32] | None = None) -> list[str]:
         """Validate model output.
 
         Args:
@@ -92,7 +91,7 @@ class TrainingValidationManager:
             values: Value estimates
 
         Returns:
-            List of validation issues (empty if all valid)
+            list of validation issues (empty if all valid)
         """
         issues = []
 
@@ -120,14 +119,14 @@ class TrainingValidationManager:
 
         return issues
 
-    def validate_training_progress(self, stats: Dict[str, Any]) -> List[str]:
+    def validate_training_progress(self, stats: dict[str, Any]) -> list[str]:
         """Validate training progress and detect potential issues.
 
         Args:
             stats: Training statistics
 
         Returns:
-            List of validation issues (empty if all valid)
+            list of validation issues (empty if all valid)
         """
         issues = []
 
@@ -154,7 +153,7 @@ class TrainingValidationManager:
         return issues
 
     def validate_environment_reset(self, observation: NDArray[np.float32],
-                                 info: Dict[str, Any]) -> List[str]:
+                                 info: dict[str, Any]) -> list[str]:
         """Validate environment reset.
 
         Args:
@@ -162,7 +161,7 @@ class TrainingValidationManager:
             info: Reset info
 
         Returns:
-            List of validation issues (empty if all valid)
+            list of validation issues (empty if all valid)
         """
         issues = []
 
@@ -183,12 +182,12 @@ class TrainingValidationManager:
 
         return issues
 
-    def validate_action_selection(self, action: int, legal_actions: Optional[List[int]] = None) -> None:
+    def validate_action_selection(self, action: int, legal_actions: list[int] | None = None) -> None:
         """Validate selected action.
 
         Args:
             action: Selected action
-            legal_actions: List of legal actions (if available)
+            legal_actions: list of legal actions (if available)
 
         Raises:
             ActionValidationError: If action is invalid
@@ -207,7 +206,7 @@ class TrainingValidationManager:
                 details={"action": action, "legal_actions": legal_actions}
             )
 
-    def get_validation_summary(self) -> Dict[str, Any]:
+    def get_validation_summary(self) -> dict[str, Any]:
         """Get summary of validation state.
 
         Returns:
@@ -220,7 +219,7 @@ class TrainingValidationManager:
             "validation_enabled": True,
         }
 
-    def _calculate_reward_trend(self, stats: Dict[str, Any]) -> float:
+    def _calculate_reward_trend(self, stats: dict[str, Any]) -> float:
         """Calculate reward trend over recent episodes.
 
         Args:

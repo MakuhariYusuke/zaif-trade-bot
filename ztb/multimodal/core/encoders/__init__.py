@@ -5,11 +5,8 @@
 
 __version__ = "1.0.0"
 
-from typing import List, Optional
-
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
-
 
 class BaseEncoder(nn.Module):
     """基本エンコーダークラス"""
@@ -17,7 +14,7 @@ class BaseEncoder(nn.Module):
     def __init__(
         self,
         input_dim: int,
-        hidden_dims: List[int],
+        hidden_dims: list[int],
         output_dim: int,
         dropout: float = 0.1,
     ):
@@ -44,7 +41,6 @@ class BaseEncoder(nn.Module):
         """順伝播"""
         return self.encoder(x)
 
-
 class PriceEncoder(BaseEncoder):
     """価格データエンコーダー
 
@@ -54,7 +50,7 @@ class PriceEncoder(BaseEncoder):
     def __init__(
         self,
         input_dim: int = 156,
-        hidden_dims: Optional[List[int]] = None,
+        hidden_dims: list[int] | None = None,
         output_dim: int = 64,
     ):
         if hidden_dims is None:
@@ -76,7 +72,6 @@ class PriceEncoder(BaseEncoder):
             x = x.mean(dim=1)  # (batch_size, feature_dim)
 
         return super().forward(x)
-
 
 class TextEncoder(nn.Module):
     """テキストデータエンコーダー
@@ -107,7 +102,7 @@ class TextEncoder(nn.Module):
                 param.requires_grad = False
 
     def forward(
-        self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None
+        self, input_ids: torch.Tensor, attention_mask: torch.Tensor | None = None
     ) -> torch.Tensor:
         """テキストをエンコード
 
@@ -130,7 +125,6 @@ class TextEncoder(nn.Module):
 
         return self.projection(cls_output)
 
-
 class EconomicEncoder(BaseEncoder):
     """経済指標エンコーダー
 
@@ -140,7 +134,7 @@ class EconomicEncoder(BaseEncoder):
     def __init__(
         self,
         input_dim: int = 20,
-        hidden_dims: Optional[List[int]] = None,
+        hidden_dims: list[int] | None = None,
         output_dim: int = 32,
     ):
         if hidden_dims is None:

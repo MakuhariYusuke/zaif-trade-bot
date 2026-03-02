@@ -24,7 +24,6 @@ ScoreMap = dict[str, float]
 HistoryRecord = dict[str, object]
 ParameterDefinition = ParameterSpace | ConfigMap
 
-
 class TrialLike(Protocol):
     """Minimal Optuna trial protocol used by the optimizer."""
 
@@ -37,7 +36,6 @@ class TrialLike(Protocol):
     def suggest_int(self, name: str, low: int, high: int) -> int: ...
 
     def suggest_categorical(self, name: str, choices: list[object]) -> object: ...
-
 
 class OptimizationEngine:
     """
@@ -237,7 +235,7 @@ class OptimizationEngine:
             stage: Reward function stage to optimize
             evaluation_function: Function that evaluates parameter performance
             n_trials: Number of optimization trials
-            objectives: List of objectives to optimize
+            objectives: list of objectives to optimize
             constraints: Optimization constraints
             parameter_spaces: Parameter spaces for different stages
 

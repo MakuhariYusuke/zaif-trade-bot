@@ -5,11 +5,8 @@
 
 __version__ = "1.0.0"
 
-from typing import Optional, Tuple
-
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
-
 
 class CrossModalAttention(nn.Module):
     """クロスモーダル・アテンション機構
@@ -69,7 +66,7 @@ class CrossModalAttention(nn.Module):
         price_features: torch.Tensor,
         text_features: torch.Tensor,
         economic_features: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
+        attention_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         クロスモーダル・アテンションの順伝播
@@ -121,7 +118,6 @@ class CrossModalAttention(nn.Module):
 
         return fused_features
 
-
 class MultiHeadCrossAttention(nn.Module):
     """マルチヘッド・クロス・アテンション
 
@@ -155,7 +151,7 @@ class MultiHeadCrossAttention(nn.Module):
         price_features: torch.Tensor,
         text_features: torch.Tensor,
         economic_features: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         マルチヘッド・クロス・アテンションの順伝播
 
@@ -200,7 +196,6 @@ class MultiHeadCrossAttention(nn.Module):
         }
 
         return integrated_features, attention_weights
-
 
 class AttentionFusion(nn.Module):
     """アテンションベースの特徴量フュージョン

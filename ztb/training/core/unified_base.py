@@ -8,18 +8,17 @@ Common functionality shared between trainers and analyzers.
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Optional, cast
+from typing import Any, cast
 
 from ztb.io.json_io import read_json, write_json
 from ztb.utils.logging_utils import get_logger, setup_logging
 from ztb.utils.safety import safe_config_get
 
-
 class UnifiedBase(ABC):
     """Base class for unified training and analysis systems."""
 
     def __init__(
-        self, config_path: Optional[str] = None, version: Optional[str] = None
+        self, config_path: str | None = None, version: str | None = None
     ):
         """
         Initialize base unified system.
@@ -30,7 +29,7 @@ class UnifiedBase(ABC):
         """
         self.config_path = Path(config_path) if config_path else None
         self.version = version
-        self.config: Dict[str, Any] = {}
+        self.config: dict[str, Any] = {}
         self.logger = get_logger(self.__class__.__name__)
 
         # Setup logging if config specifies level
@@ -45,17 +44,17 @@ class UnifiedBase(ABC):
             except Exception:
                 setup_logging(level=logging.INFO)
 
-    def load_config(self, config_path: str) -> Dict[str, Any]:
+    def load_config(self, config_path: str) -> dict[str, Any]:
         """Load configuration from file."""
         try:
             config = read_json(config_path)
             self.logger.info(f"Configuration loaded from: {config_path}")
-            return cast(Dict[str, Any], config)
+            return cast(dict[str, Any], config)
         except Exception as e:
             self.logger.error(f"Failed to load configuration: {e}")
             raise
 
-    def save_config(self, config: Dict[str, Any], output_path: str) -> None:
+    def save_config(self, config: dict[str, Any], output_path: str) -> None:
         """Save configuration to file."""
         try:
             write_json(output_path, config, indent=2, ensure_ascii=False)
@@ -64,7 +63,7 @@ class UnifiedBase(ABC):
             self.logger.error(f"Failed to save configuration: {e}")
             raise
 
-    def validate_config(self, config: Dict[str, Any], required_fields: list) -> bool:
+    def validate_config(self, config: dict[str, Any], required_fields: list) -> bool:
         """Validate configuration has required fields."""
         missing = [field for field in required_fields if field not in config]
         if missing:
@@ -77,24 +76,22 @@ class UnifiedBase(ABC):
         """Execute the main functionality."""
         pass
 
-
 class ConfigMixin:
     """Mixin for configuration management."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.config: Dict[str, Any] = {}
+        self.config: dict[str, Any] = {}
         self.logger = get_logger(self.__class__.__name__)
 
     def get_config_value(self, key: str, default: Any = None) -> Any:
         """Get configuration value with default."""
         return safe_config_get(self.config, key, default)
 
-    def update_config(self, updates: Dict[str, Any]) -> None:
+    def update_config(self, updates: dict[str, Any]) -> None:
         """Update configuration with new values."""
         self.config.update(updates)
         self.logger.debug(f"Configuration updated: {list(updates.keys())}")
-
 
 class LoggingMixin:
     """Mixin for enhanced logging."""
@@ -114,7 +111,7 @@ class LoggingMixin:
         status = "completed successfully" if success else "failed"
         self.logger.info(f"{operation.capitalize()} {status}", extra=kwargs)
 
-    def log_metrics(self, metrics: Dict[str, Any], prefix: str = "") -> None:
+    def log_metrics(self, metrics: dict[str, Any], prefix: str = "") -> None:
         """Log metrics in structured format."""
         for key, value in metrics.items():
             self.logger.info(f"{prefix}{key}: {value}")

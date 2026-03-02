@@ -22,13 +22,11 @@ if TYPE_CHECKING:
     # side-effects during test collection.
     from ..action_signal_guide import ActionSignal  # type: ignore
 
-
 class ValidationMetadata(TypedDict):
     validation_timestamp: pd.Timestamp
     rules_checked: list[str]
     total_issues: int
     total_warnings: int
-
 
 class ValidationRuleResult(TypedDict, total=False):
     passed: bool
@@ -36,12 +34,10 @@ class ValidationRuleResult(TypedDict, total=False):
     warnings: list[str]
     penalty: float
 
-
 class ValidationHistoryEntry(TypedDict):
     signal_id: str
     timestamp: pd.Timestamp
     result: "ValidationResult"
-
 
 class SanitizationResult(TypedDict, total=False):
     data: pd.DataFrame
@@ -49,13 +45,11 @@ class SanitizationResult(TypedDict, total=False):
     changes: str
     quality_penalty: float
 
-
 class SanitizationStep(TypedDict, total=False):
     rule: str
     applied: bool
     changes: str
     error: str
-
 
 class SanitizationReport(TypedDict):
     original_rows: int
@@ -63,7 +57,6 @@ class SanitizationReport(TypedDict):
     issues_found: list[str]
     data_quality_score: float
     final_rows: int
-
 
 class PerformanceRecord(TypedDict):
     signal_id: str
@@ -79,11 +72,9 @@ class PerformanceRecord(TypedDict):
     exit_time: pd.Timestamp
     recorded_at: pd.Timestamp
 
-
 class PerformanceTimeRange(TypedDict):
     start: pd.Timestamp
     end: pd.Timestamp
-
 
 class PerformanceMetrics(TypedDict):
     total_signals: int
@@ -98,11 +89,9 @@ class PerformanceMetrics(TypedDict):
     pattern_performance: dict[str, float]
     time_range: PerformanceTimeRange | None
 
-
 class CachedPerformanceMetrics(TypedDict):
     metrics: PerformanceMetrics
     calculated_at: pd.Timestamp
-
 
 @dataclass
 class ValidationResult:
@@ -113,7 +102,6 @@ class ValidationResult:
     issues: list[str]
     warnings: list[str]
     metadata: ValidationMetadata
-
 
 class SignalValidator:
     """
@@ -363,7 +351,6 @@ class SignalValidator:
             "penalty": 1.0,  # Logical issues don't reduce confidence as much
         }
 
-
 class DataSanitizer:
     """
     Sanitizes and cleans market data for signal processing.
@@ -392,7 +379,7 @@ class DataSanitizer:
             data: Raw market data
 
         Returns:
-            Tuple of (sanitized_data, sanitization_report)
+            tuple of (sanitized_data, sanitization_report)
         """
         sanitized_data = data.copy()
         report: SanitizationReport = {
@@ -600,7 +587,6 @@ class DataSanitizer:
             result["quality_penalty"] = 0.8
 
         return result
-
 
 class PerformanceTracker:
     """

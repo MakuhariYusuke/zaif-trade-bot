@@ -34,7 +34,6 @@ from ztb.utils.safety import ensure_dict, safe_to_float
 
 logger = logging.getLogger(__name__)
 
-
 @dataclass
 class StreamProcessingResult:
     """Result of streaming data processing."""
@@ -46,16 +45,13 @@ class StreamProcessingResult:
     data_quality_score: float = 1.0
     throughput: float = 0.0
 
-
 def _as_object_map(value: object) -> ObjectMap:
     """Safely convert arbitrary payloads into a mutable object map."""
     return ensure_dict(value)
 
-
 def _as_float(value: object, default: float = 0.0) -> float:
     """Best-effort float conversion used by feature/meter calculations."""
     return safe_to_float(value, default)
-
 
 class BaseStreamingProcessor(IStreamingProcessor):
     """Base implementation of streaming processor."""
@@ -660,7 +656,6 @@ class BaseStreamingProcessor(IStreamingProcessor):
         # Placeholder for metrics collector implementation
         return {}
 
-
 class AdvancedStreamingProcessor(BaseStreamingProcessor):
     """Advanced streaming processor with enhanced features."""
 
@@ -856,7 +851,6 @@ class AdvancedStreamingProcessor(BaseStreamingProcessor):
         except Exception as e:
             logger.warning(f"Data enhancement failed: {e}")
             return data
-
 
 def create_streaming_processor(config: RealTimeAdaptationConfig) -> IStreamingProcessor:
     """Factory function to create streaming processor."""

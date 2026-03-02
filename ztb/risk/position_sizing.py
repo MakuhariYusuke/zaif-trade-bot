@@ -7,7 +7,7 @@ Provides risk-based position sizing to achieve target portfolio volatility.
 from dataclasses import dataclass
 from decimal import ROUND_DOWN, Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -17,14 +17,12 @@ from ztb.utils.errors import safe_operation
 
 from .circuit_breakers import KillSwitchActivatedError, get_global_kill_switch
 
-
 class SizingMethod(Enum):
     """Position sizing methods."""
 
     EQUAL_WEIGHT = "equal_weight"
     VOL_TARGETING = "vol_targeting"
     KELLY_CRITERION = "kelly_criterion"
-
 
 @dataclass
 class PositionSize:
@@ -35,8 +33,7 @@ class PositionSize:
     sizing_reason: str
     target_vol_contribution: float
     current_portfolio_vol: float
-    sizing_chain: Dict[str, Any]  # Chain of sizing calculations
-
+    sizing_chain: dict[str, Any]  # Chain of sizing calculations
 
 class PositionSizer:
     """Handles position sizing with volatility targeting."""
@@ -59,12 +56,12 @@ class PositionSizer:
 
     def calculate_position_sizes(
         self,
-        signals: Dict[str, float],  # symbol -> signal strength (-1 to 1)
-        current_prices: Dict[str, float],
+        signals: dict[str, float],  # symbol -> signal strength (-1 to 1)
+        current_prices: dict[str, float],
         portfolio_value: float,
-        asset_volatilities: Dict[str, float],  # annualized volatilities
-        correlation_matrix: Optional[pd.DataFrame] = None,
-    ) -> List[PositionSize]:
+        asset_volatilities: dict[str, float],  # annualized volatilities
+        correlation_matrix: pd.DataFrame | None = None,
+    ) -> list[PositionSize]:
         """
         Calculate position sizes for given signals.
 
@@ -76,10 +73,10 @@ class PositionSizer:
             correlation_matrix: Asset correlation matrix (optional)
 
         Returns:
-            List of position sizes with sizing reasons
+            list of position sizes with sizing reasons
         """
         return cast(
-            List[PositionSize],
+            list[PositionSize],
             safe_operation(
                 logger=None,  # Will use default logger
                 operation=lambda: self._calculate_position_sizes_impl(
@@ -96,12 +93,12 @@ class PositionSizer:
 
     def _calculate_position_sizes_impl(
         self,
-        signals: Dict[str, float],  # symbol -> signal strength (-1 to 1)
-        current_prices: Dict[str, float],
+        signals: dict[str, float],  # symbol -> signal strength (-1 to 1)
+        current_prices: dict[str, float],
         portfolio_value: float,
-        asset_volatilities: Dict[str, float],  # annualized volatilities
-        correlation_matrix: Optional[pd.DataFrame] = None,
-    ) -> List[PositionSize]:
+        asset_volatilities: dict[str, float],  # annualized volatilities
+        correlation_matrix: pd.DataFrame | None = None,
+    ) -> list[PositionSize]:
         """Implementation of position size calculation."""
         if not signals:
             return []
@@ -125,12 +122,12 @@ class PositionSizer:
 
     def _equal_weight_sizing(
         self,
-        signals: Dict[str, float],
-        current_prices: Dict[str, float],
+        signals: dict[str, float],
+        current_prices: dict[str, float],
         portfolio_value: float,
-    ) -> List[PositionSize]:
+    ) -> list[PositionSize]:
         """Equal weight position sizing."""
-        positions: List[PositionSize] = []
+        positions: list[PositionSize] = []
         num_signals = len(signals)
         if num_signals == 0:
             return positions
@@ -159,12 +156,12 @@ class PositionSizer:
 
     def _vol_targeting_sizing(
         self,
-        signals: Dict[str, float],
-        current_prices: Dict[str, float],
+        signals: dict[str, float],
+        current_prices: dict[str, float],
         portfolio_value: float,
-        asset_volatilities: Dict[str, float],
-        correlation_matrix: Optional[pd.DataFrame] = None,
-    ) -> List[PositionSize]:
+        asset_volatilities: dict[str, float],
+        correlation_matrix: pd.DataFrame | None = None,
+    ) -> list[PositionSize]:
         """Volatility targeting position sizing."""
         positions = []
 
@@ -265,11 +262,11 @@ class PositionSizer:
 
     def _kelly_sizing(
         self,
-        signals: Dict[str, float],
-        current_prices: Dict[str, float],
+        signals: dict[str, float],
+        current_prices: dict[str, float],
         portfolio_value: float,
-        asset_volatilities: Dict[str, float],
-    ) -> List[PositionSize]:
+        asset_volatilities: dict[str, float],
+    ) -> list[PositionSize]:
         """Kelly criterion position sizing."""
         positions = []
 
@@ -313,9 +310,9 @@ class PositionSizer:
 
     def _estimate_portfolio_volatility(
         self,
-        signals: Dict[str, float],
-        asset_volatilities: Dict[str, float],
-        correlation_matrix: Optional[pd.DataFrame] = None,
+        signals: dict[str, float],
+        asset_volatilities: dict[str, float],
+        correlation_matrix: pd.DataFrame | None = None,
     ) -> float:
         """Estimate portfolio volatility from signals and asset data."""
         if correlation_matrix is None:
@@ -344,8 +341,8 @@ class PositionSizer:
         return cast(float, portfolio_vol)
 
     def estimate_asset_volatilities(
-        self, price_history: Dict[str, pd.Series], window: int = 30
-    ) -> Dict[str, float]:
+        self, price_history: dict[str, pd.Series], window: int = 30
+    ) -> dict[str, float]:
         """
         Estimate asset volatilities from price history.
 

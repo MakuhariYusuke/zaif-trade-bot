@@ -4,7 +4,7 @@
 勝率の低さや収益性の原因を詳細に分析
 """
 
-from typing import Any, Dict
+from typing import Any
 
 import matplotlib.pyplot as plt
 from ztb.analysis.common.plot_utils import setup_plot_style, save_plot
@@ -15,16 +15,13 @@ from ztb.analysis.common.types import EpisodeAnalysisResult, PortfolioAnalysisRe
 from ztb.io.text_io import write_text
 from ztb.io.data_loader import DataLoader
 
-
 def load_portfolio_values(portfolio_path: str) -> pd.DataFrame:
     """ポートフォリオ価値データを読み込み"""
     return DataLoader.load_csv_strict(portfolio_path)
 
-
 def load_trades(trades_path: str) -> pd.DataFrame:
     """取引データを読み込み"""
     return DataLoader.load_csv_strict(trades_path)
-
 
 def analyze_portfolio_performance(portfolio_df: pd.DataFrame) -> PortfolioAnalysisResult:
     """ポートフォリオパフォーマンスの詳細分析"""
@@ -73,7 +70,6 @@ def analyze_portfolio_performance(portfolio_df: pd.DataFrame) -> PortfolioAnalys
         "total_negative_return": np.sum(negative_returns) * 100,
     }
 
-
 def analyze_episode_performance(trades_df: pd.DataFrame) -> EpisodeAnalysisResult:
     """エピソードごとのパフォーマンス分析"""
     rewards = trades_df["reward"].values
@@ -99,10 +95,9 @@ def analyze_episode_performance(trades_df: pd.DataFrame) -> EpisodeAnalysisResul
 
     return episode_analysis
 
-
 def analyze_conversion(
     trades_df: pd.DataFrame,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """報酬とポートフォリオ変化の変換分析"""
     episode_portfolio_changes: list[float] = []
 
@@ -134,11 +129,10 @@ def analyze_conversion(
         "positive_change_episodes": positive_change,
     }
 
-
 def generate_detailed_report(
     portfolio_analysis: PortfolioAnalysisResult,
     episode_analysis: EpisodeAnalysisResult,
-    conversion_analysis: Dict[str, Any],
+    conversion_analysis: dict[str, Any],
 ) -> str:
     """詳細分析レポート生成"""
     return f"""# バックテスト詳細分析レポート
@@ -176,7 +170,6 @@ def generate_detailed_report(
 - **平均変化/エピソード**: {conversion_analysis['avg_portfolio_change_per_episode']:.2f}%
 - **変化標準偏差**: {conversion_analysis['portfolio_change_std']:.1f}%
 """
-
 
 def main() -> None:
     """バックテスト詳細分析を実行"""
@@ -218,7 +211,6 @@ def main() -> None:
     positive_count = conversion_analysis['positive_change_episodes']
     if ep_changes:
         print(f"勝率: {positive_count / len(ep_changes) * 100:.1f}%")
-
 
 if __name__ == "__main__":
     main()

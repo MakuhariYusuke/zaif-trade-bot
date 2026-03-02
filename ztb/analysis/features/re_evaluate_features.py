@@ -12,14 +12,13 @@ import re
 import sys
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, TypedDict, Union, cast
+from typing import Any, Callable, TypedDict, cast
 
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
 from ztb.utils.config_loader import ConfigLoader
-
 
 class EvaluationResult(TypedDict, total=False):
     """Type definition for feature evaluation results"""
@@ -31,9 +30,9 @@ class EvaluationResult(TypedDict, total=False):
     total_columns: int
     aligned_periods: int
     baseline_sharpe: float
-    cv_results: Dict[str, Any]
-    feature_correlations: Dict[str, float]
-    feature_performances: Dict[str, Any]
+    cv_results: dict[str, Any]
+    feature_correlations: dict[str, float]
+    feature_performances: dict[str, Any]
     best_delta_sharpe: float
     best_feature_name: str
     avg_correlation: float
@@ -50,7 +49,6 @@ class EvaluationResult(TypedDict, total=False):
     required_periods: int
     current_periods: int
 
-
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
@@ -63,9 +61,8 @@ from ztb.features.trend.ichimoku_ext import calculate_ichimoku_extended
 from ztb.features.volatility.kalman_ext import calculate_kalman_extended
 from ztb.metrics.metrics import calculate_all_metrics
 
-
 # Feature discovery system
-def discover_feature_classes(module_path: str) -> Dict[str, Any]:
+def discover_feature_classes(module_path: str) -> dict[str, Any]:
     """
     Dynamically discover feature classes from Python modules
 
@@ -94,10 +91,9 @@ def discover_feature_classes(module_path: str) -> Dict[str, Any]:
 
     return discovered_features
 
-
 def evaluate_feature_class(
     feature_class: Any, ohlc_data: pd.DataFrame, feature_name: str
-) -> Union[EvaluationResult, Dict[str, Any]]:
+) -> EvaluationResult | dict[str, Any]:
     """
     Evaluate a single feature class with timing and performance metrics
 
@@ -315,7 +311,6 @@ def evaluate_feature_class(
 
         return error_result
 
-
 class ComprehensiveFeatureReEvaluator:
     """
     Comprehensive re-evaluation system for harmful and experimental features
@@ -331,7 +326,7 @@ class ComprehensiveFeatureReEvaluator:
         self.harmful_path = harmful_path
         self.price_data_path = price_data_path
 
-        # Set cache to re-evaluation mode for shorter TTL
+        # set cache to re-evaluation mode for shorter TTL
         try:
             from cache.sqlite_cache import SQLiteCache
 
@@ -374,9 +369,9 @@ class ComprehensiveFeatureReEvaluator:
             "src.trading.features.wave3",
         ]
 
-        self.results: Dict[str, Any] = {"harmful": {}, "experimental": {}, "wave": {}}
+        self.results: dict[str, Any] = {"harmful": {}, "experimental": {}, "wave": {}}
 
-    def load_config(self) -> Dict[str, Any]:
+    def load_config(self) -> dict[str, Any]:
         """Load features configuration"""
         if os.path.exists(self.config_path):
             return ConfigLoader.load(self.config_path)
@@ -384,9 +379,9 @@ class ComprehensiveFeatureReEvaluator:
             print(f"Config file not found: {self.config_path}")
             return {}
 
-    def load_harmful_info(self) -> Dict[str, Dict[str, Any]]:
+    def load_harmful_info(self) -> dict[str, dict[str, Any]]:
         """Load harmful features information from markdown"""
-        harmful_info: Dict[str, Dict[str, Any]] = {}
+        harmful_info: dict[str, dict[str, Any]] = {}
 
         if not os.path.exists(self.harmful_path):
             print(f"Harmful features file not found: {self.harmful_path}")
@@ -416,7 +411,7 @@ class ComprehensiveFeatureReEvaluator:
 
         return harmful_info
 
-    def load_price_data(self) -> Optional[pd.DataFrame]:
+    def load_price_data(self) -> pd.DataFrame | None:
         """Load price data with I/O optimization"""
         if not os.path.exists(self.price_data_path):
             print(f"Price data file not found: {self.price_data_path}")
@@ -461,7 +456,7 @@ class ComprehensiveFeatureReEvaluator:
             print(f"Error loading price data: {e}")
             return None
 
-    def prepare_ohlc_data(self, symbol: str = "BTC/JPY") -> Optional[pd.DataFrame]:
+    def prepare_ohlc_data(self, symbol: str = "BTC/JPY") -> pd.DataFrame | None:
         """Prepare OHLC data for feature calculation"""
         if self.price_data is None or symbol not in self.price_data.columns:
             print(f"Symbol {symbol} not found in price data")
@@ -504,7 +499,7 @@ class ComprehensiveFeatureReEvaluator:
 
         return ohlc_df
 
-    def evaluate_experimental_features(self, ohlc_data: pd.DataFrame) -> Dict[str, Any]:
+    def evaluate_experimental_features(self, ohlc_data: pd.DataFrame) -> dict[str, Any]:
         """
         Evaluate experimental and wave features from Python modules
 
@@ -558,13 +553,13 @@ class ComprehensiveFeatureReEvaluator:
         return all_results
 
     def classify_experimental_feature_status(
-        self, evaluation_result: Dict[str, Any]
-    ) -> Tuple[str, str, str]:
+        self, evaluation_result: dict[str, Any]
+    ) -> tuple[str, str, str]:
         """
         Classify experimental feature status based on evaluation results
 
         Returns:
-            Tuple of (status_emoji, reason_tag, recommendation)
+            tuple of (status_emoji, reason_tag, recommendation)
         """
         if evaluation_result.get("status") != "success":
             if evaluation_result.get("status") == "error":
@@ -625,20 +620,20 @@ class ComprehensiveFeatureReEvaluator:
             )
 
     def classify_harmful_feature_status(
-        self, evaluation_result: Union[EvaluationResult, Dict[str, Any]]
-    ) -> Tuple[str, str, str]:
+        self, evaluation_result: EvaluationResult | dict[str, Any]
+    ) -> tuple[str, str, str]:
         """
         Classify harmful feature status based on evaluation results
 
         Returns:
-            Tuple of (status_emoji, reason_tag, recommendation)
+            tuple of (status_emoji, reason_tag, recommendation)
         """
         if not evaluation_result:
             return "⚪", "insufficient_data", "Insufficient data for evaluation"
 
-        composite = cast(Dict[str, Any], evaluation_result.get("composite_result", {}))
+        composite = cast(dict[str, Any], evaluation_result.get("composite_result", {}))
         best_individual = cast(
-            List[List[Any]], evaluation_result.get("best_individual_features", [])
+            list[list[Any]], evaluation_result.get("best_individual_features", [])
         )
 
         # Check composite performance first
@@ -686,7 +681,7 @@ class ComprehensiveFeatureReEvaluator:
 
     def evaluate_harmful_feature(
         self, feature_name: str, ohlc_data: pd.DataFrame
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Evaluate a single harmful feature with extended analysis
 
@@ -879,13 +874,13 @@ class ComprehensiveFeatureReEvaluator:
             return {}
 
     def classify_feature_status(
-        self, evaluation_result: Dict[str, Any]
-    ) -> Tuple[str, str]:
+        self, evaluation_result: dict[str, Any]
+    ) -> tuple[str, str]:
         """
         Classify feature status based on evaluation results
 
         Returns:
-            Tuple of (status_emoji, recommendation)
+            tuple of (status_emoji, recommendation)
         """
         if not evaluation_result:
             return "⚪", "Insufficient data for evaluation"
@@ -916,7 +911,7 @@ class ComprehensiveFeatureReEvaluator:
 
         return "🔴", "Keep in harmful list - No significant improvement"
 
-    def run_comprehensive_evaluation(self, symbol: str = "BTC/JPY") -> Dict[str, Any]:
+    def run_comprehensive_evaluation(self, symbol: str = "BTC/JPY") -> dict[str, Any]:
         """
         Run comprehensive evaluation of harmful and experimental features
 
@@ -978,7 +973,7 @@ class ComprehensiveFeatureReEvaluator:
             },
         }
 
-    def generate_comprehensive_report(self, evaluation_results: Dict[str, Any]) -> str:
+    def generate_comprehensive_report(self, evaluation_results: dict[str, Any]) -> str:
         """Generate comprehensive markdown report for all feature evaluations"""
         if not evaluation_results:
             return "# Comprehensive Feature Evaluation Report\n\nNo evaluation results available."
@@ -1126,7 +1121,7 @@ class ComprehensiveFeatureReEvaluator:
         ]
 
         if green_harmful:
-            report.append("### 🟢 Remove from Harmful List")
+            report.append("### 🟢 Remove from Harmful list")
             for feature in green_harmful:
                 report.append(
                     f"- **{feature}**: {harmful_results[feature].get('recommendation', '')}"
@@ -1175,7 +1170,7 @@ class ComprehensiveFeatureReEvaluator:
 
         return "\n".join(report)
 
-    def _generate_unverified_features_section(self) -> List[str]:
+    def _generate_unverified_features_section(self) -> list[str]:
         """Generate unverified features section for the report"""
         section = []
 
@@ -1270,7 +1265,7 @@ class ComprehensiveFeatureReEvaluator:
 
         return section
 
-    def generate_report(self, evaluation_results: Dict[str, Any]) -> str:
+    def generate_report(self, evaluation_results: dict[str, Any]) -> str:
         """Generate markdown report for harmful feature re-evaluation"""
         if not evaluation_results:
             return "# Harmful Feature Re-evaluation Report\n\nNo evaluation results available."
@@ -1335,7 +1330,6 @@ class ComprehensiveFeatureReEvaluator:
                 report.append("")
 
         return "\n".join(report)
-
 
 def main() -> None:
     """Main execution function"""
@@ -1408,7 +1402,6 @@ def main() -> None:
         )
     if red_features:
         print(f"  🔴 Avoid or fix ({len(red_features)}): {', '.join(red_features)}")
-
 
 if __name__ == "__main__":
     main()

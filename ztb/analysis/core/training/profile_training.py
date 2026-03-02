@@ -12,7 +12,7 @@ import sys
 import time
 from pathlib import Path
 from types import FrameType
-from typing import Any, Dict, Optional, Self
+from typing import Any, Self
 
 # Setup logging
 logging.basicConfig(
@@ -23,13 +23,12 @@ logger = logging.getLogger(__name__)
 # Add project to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-
 class Timer:
     """Context manager for timing code blocks."""
 
     def __init__(self, name: str):
         self.name = name
-        self.start_time: Optional[float] = None
+        self.start_time: float | None = None
 
     def __enter__(self) -> Self:
         self.start_time = time.time()
@@ -40,21 +39,18 @@ class Timer:
         elapsed = time.time() - self.start_time  # type: ignore
         logger.info(f"✅ {self.name} - COMPLETED in {elapsed:.2f}s")
 
-
 class TimeoutException(Exception):
     """Raised when operation times out."""
 
     pass
 
-
-def timeout_handler(signum: int, frame: Optional[FrameType]) -> None:
+def timeout_handler(signum: int, frame: FrameType | None) -> None:
     """Signal handler for timeout."""
     raise TimeoutException("Operation timed out")
 
-
 def profile_training(
     data_path: str = "ml-dataset-enhanced-balanced.csv",
-    config: Optional[Dict[str, Any]] = None,
+    config: dict[str, Any] | None = None,
 ) -> bool:
     """Profile training execution time.
 
@@ -91,7 +87,7 @@ def profile_training(
 
             from ztb.trading.environment.environment import HeavyTradingEnv
 
-            env_config: Dict[str, Any] = config  # Use provided config
+            env_config: dict[str, Any] = config  # Use provided config
             env = HeavyTradingEnv(df=df, config=env_config)
 
             def mask_fn(env: Any) -> Any:
@@ -181,7 +177,6 @@ def profile_training(
         logger.error(f"❌ ERROR: {e}", exc_info=True)
         logger.error("=" * 80)
         return False
-
 
 def main() -> None:
     """Main entry point for profiling."""

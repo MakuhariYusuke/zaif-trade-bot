@@ -12,7 +12,7 @@ import abc
 import copy
 import logging
 from datetime import datetime
-from typing import Callable, Optional
+from typing import Callable
 
 import numpy as np
 from sklearn.metrics import (
@@ -32,15 +32,12 @@ from ztb.training.callbacks.shared.utils.value_utils import (
 )
 from ztb.types.common import ObjectMap
 
-
 _HISTORY_LIMIT = 10_000
-
 
 def _append_bounded(
     history: list[float], value: float, max_len: int = _HISTORY_LIMIT
 ) -> None:
     _append_bounded_value(history, value, max_len)
-
 
 class _MonitoredCallback(NoOpMemoryOptimizedCallback):
     """Shared monitor/mode comparison logic for supervised callbacks."""
@@ -66,7 +63,6 @@ class _MonitoredCallback(NoOpMemoryOptimizedCallback):
             return current_value < (self.best_value - min_delta)
         return current_value > (self.best_value + min_delta)
 
-
 class EarlyStoppingCallback(_MonitoredCallback):
     """
     Early stopping callback for supervised learning.
@@ -90,12 +86,12 @@ class EarlyStoppingCallback(_MonitoredCallback):
 
         self.wait_count = 0
         self.stopped_epoch = 0
-        self.best_weights: Optional[object] = None
+        self.best_weights: object | None = None
         self.best_epoch = 0
         self.logger = logging.getLogger(__name__)
 
     def on_training_start(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         self._reset_best_value()
         self.wait_count = 0
@@ -109,7 +105,7 @@ class EarlyStoppingCallback(_MonitoredCallback):
         )
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         if logs is None:
             return
@@ -149,7 +145,7 @@ class EarlyStoppingCallback(_MonitoredCallback):
             )
 
     def on_training_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         if self.restore_best_weights and self.best_weights is not None:
             self.logger.info("Restoring best weights from epoch %s", self.best_epoch)
@@ -166,7 +162,6 @@ class EarlyStoppingCallback(_MonitoredCallback):
             "patience": self.patience,
             "should_stop": self.should_stop_training(),
         }
-
 
 class LearningRateSchedulerCallback(NoOpMemoryOptimizedCallback):
     """Learning rate scheduler callback with multiple scheduling strategies."""
@@ -206,7 +201,7 @@ class LearningRateSchedulerCallback(NoOpMemoryOptimizedCallback):
         return default if value is None else int(value)
 
     def on_training_start(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         self.current_lr = self.initial_lr
         self.lr_history = [self.current_lr]
@@ -218,7 +213,7 @@ class LearningRateSchedulerCallback(NoOpMemoryOptimizedCallback):
         )
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         log_data = logs or {}
         new_lr = self.scheduler(context.epoch, log_data)
@@ -284,7 +279,6 @@ class LearningRateSchedulerCallback(NoOpMemoryOptimizedCallback):
             "history_length": len(self.lr_history),
         }
 
-
 class ModelCheckpointCallback(_MonitoredCallback):
     """Checkpoint callback with monitor-driven best-model saving."""
 
@@ -302,11 +296,11 @@ class ModelCheckpointCallback(_MonitoredCallback):
         self.save_best_only = save_best_only
         self.save_weights_only = save_weights_only
         self.period = max(1, period)
-        self.best_filepath: Optional[str] = None
+        self.best_filepath: str | None = None
         self.logger = logging.getLogger(__name__)
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         if logs is None or context.epoch % self.period != 0:
             return
@@ -326,7 +320,7 @@ class ModelCheckpointCallback(_MonitoredCallback):
         self,
         context: LearningContext,
         logs: ObjectMap,
-        metric_value: Optional[float],
+        metric_value: float | None,
     ) -> None:
         try:
             format_vars: ObjectMap = dict(logs)
@@ -369,7 +363,6 @@ class ModelCheckpointCallback(_MonitoredCallback):
             "period": self.period,
         }
 
-
 class _BaseSupervisedMetricsCallback(NoOpMemoryOptimizedCallback, abc.ABC):
     """Shared extraction and scheduling logic for supervised metrics callbacks."""
 
@@ -378,7 +371,7 @@ class _BaseSupervisedMetricsCallback(NoOpMemoryOptimizedCallback, abc.ABC):
         self.compute_frequency = max(1, compute_frequency)
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         if context.epoch % self.compute_frequency != 0:
             return
@@ -397,7 +390,7 @@ class _BaseSupervisedMetricsCallback(NoOpMemoryOptimizedCallback, abc.ABC):
 
     def _extract_predictions_targets(
         self, logs: ObjectMap
-    ) -> Optional[tuple[np.ndarray, np.ndarray]]:
+    ) -> tuple[np.ndarray, np.ndarray] | None:
         predictions_obj = logs.get("predictions")
         targets_obj = logs.get("targets")
         if predictions_obj is None or targets_obj is None:
@@ -417,7 +410,6 @@ class _BaseSupervisedMetricsCallback(NoOpMemoryOptimizedCallback, abc.ABC):
         targets: np.ndarray,
     ) -> None:
         """Compute and store callback-specific metrics."""
-
 
 class ClassificationMetricsCallback(_BaseSupervisedMetricsCallback):
     """Compute and track classification metrics during training."""
@@ -489,7 +481,6 @@ class ClassificationMetricsCallback(_BaseSupervisedMetricsCallback):
             )
         return stats
 
-
 class RegressionMetricsCallback(_BaseSupervisedMetricsCallback):
     """Compute and track regression metrics during training."""
 
@@ -552,7 +543,6 @@ class RegressionMetricsCallback(_BaseSupervisedMetricsCallback):
             )
         return stats
 
-
 # Factory functions for easy instantiation
 
 def create_early_stopping(**kwargs) -> EarlyStoppingCallback:
@@ -564,7 +554,6 @@ def create_early_stopping(**kwargs) -> EarlyStoppingCallback:
     }
     defaults.update(kwargs)
     return EarlyStoppingCallback(**defaults)
-
 
 def create_learning_rate_scheduler(
     schedule_type: str = "step", **kwargs
@@ -579,7 +568,6 @@ def create_learning_rate_scheduler(
     defaults.update(kwargs)
     return LearningRateSchedulerCallback(schedule_type, **defaults)
 
-
 def create_model_checkpoint(**kwargs) -> ModelCheckpointCallback:
     """Create model checkpoint callback with default settings."""
     defaults: ObjectMap = {
@@ -590,20 +578,17 @@ def create_model_checkpoint(**kwargs) -> ModelCheckpointCallback:
     defaults.update(kwargs)
     return ModelCheckpointCallback(**defaults)
 
-
 def create_classification_metrics(**kwargs) -> ClassificationMetricsCallback:
     """Create classification metrics callback with default settings."""
     defaults: ObjectMap = {"compute_frequency": 1}
     defaults.update(kwargs)
     return ClassificationMetricsCallback(**defaults)
 
-
 def create_regression_metrics(**kwargs) -> RegressionMetricsCallback:
     """Create regression metrics callback with default settings."""
     defaults: ObjectMap = {"compute_frequency": 1}
     defaults.update(kwargs)
     return RegressionMetricsCallback(**defaults)
-
 
 __all__ = [
     "EarlyStoppingCallback",

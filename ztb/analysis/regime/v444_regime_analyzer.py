@@ -6,7 +6,6 @@ v444の12レジーム分類に対応した高度な分析システム
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
@@ -15,7 +14,6 @@ from ztb.types.common import ConfigSection, ObjectMap
 
 # Backward-compatible alias
 RegimeType = MarketRegime
-
 
 @dataclass
 class RegimePerformance:
@@ -31,7 +29,6 @@ class RegimePerformance:
     volatility: float
     risk_adjusted_score: float
 
-
 class V444RegimeAnalyzer:
     """SAC v444専用レジーム分析器"""
 
@@ -39,7 +36,7 @@ class V444RegimeAnalyzer:
         self.logger = logging.getLogger(__name__)
         self.regime_definitions = self._initialize_regime_definitions()
 
-    def _initialize_regime_definitions(self) -> Dict[str, ConfigSection]:
+    def _initialize_regime_definitions(self) -> dict[str, ConfigSection]:
         """レジーム定義の初期化"""
         return {
             "strong_bull_trend": {
@@ -138,7 +135,7 @@ class V444RegimeAnalyzer:
     def analyze_regime_performance_matrix(
         self,
         backtest_results: ObjectMap,
-        regime_data: Optional[ObjectMap] = None,
+        regime_data: ObjectMap | None = None,
     ) -> ObjectMap:
         """
         12レジーム分類のパフォーマンスマトリックス分析
@@ -192,7 +189,7 @@ class V444RegimeAnalyzer:
         return results
 
     def analyze_regime_transitions(
-        self, historical_data: pd.DataFrame, regime_labels: List[str]
+        self, historical_data: pd.DataFrame, regime_labels: list[str]
     ) -> ObjectMap:
         """
         レジーム間遷移分析
@@ -336,8 +333,8 @@ class V444RegimeAnalyzer:
         return rar_score * quality_bonus
 
     def _identify_optimal_regimes(
-        self, risk_adjusted_scores: Dict[str, float]
-    ) -> List[str]:
+        self, risk_adjusted_scores: dict[str, float]
+    ) -> list[str]:
         """最適レジームの特定"""
         sorted_regimes = sorted(
             risk_adjusted_scores.items(), key=lambda x: x[1], reverse=True
@@ -346,7 +343,7 @@ class V444RegimeAnalyzer:
 
     def _analyze_regime_distribution(
         self, backtest_results: ObjectMap
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """レジーム分布分析"""
         # 仮の実装
         return {
@@ -366,7 +363,7 @@ class V444RegimeAnalyzer:
         }
 
     def _compare_regime_performance(
-        self, performance_matrix: Dict[str, RegimePerformance]
+        self, performance_matrix: dict[str, RegimePerformance]
     ) -> ObjectMap:
         """レジーム間パフォーマンス比較"""
         return {
@@ -381,8 +378,8 @@ class V444RegimeAnalyzer:
         }
 
     def _calculate_transition_matrix(
-        self, regime_labels: List[str]
-    ) -> Dict[str, Dict[str, int]]:
+        self, regime_labels: list[str]
+    ) -> dict[str, dict[str, int]]:
         """遷移行列計算"""
         regimes = list(self.regime_definitions.keys())
         matrix = {
@@ -399,8 +396,8 @@ class V444RegimeAnalyzer:
         return matrix
 
     def _calculate_transition_probabilities(
-        self, transition_matrix: Dict[str, Dict[str, int]]
-    ) -> Dict[str, Dict[str, float]]:
+        self, transition_matrix: dict[str, dict[str, int]]
+    ) -> dict[str, dict[str, float]]:
         """遷移確率計算"""
         probabilities = {}
         for from_regime, transitions in transition_matrix.items():
@@ -416,7 +413,7 @@ class V444RegimeAnalyzer:
         return probabilities
 
     def _analyze_transition_impacts(
-        self, historical_data: pd.DataFrame, regime_labels: List[str]
+        self, historical_data: pd.DataFrame, regime_labels: list[str]
     ) -> ObjectMap:
         """遷移影響分析"""
         return {
@@ -426,8 +423,8 @@ class V444RegimeAnalyzer:
         }
 
     def _calculate_regime_stability_scores(
-        self, transition_probabilities: Dict[str, Dict[str, float]]
-    ) -> Dict[str, float]:
+        self, transition_probabilities: dict[str, dict[str, float]]
+    ) -> dict[str, float]:
         """レジーム安定性スコア計算"""
         stability_scores = {}
         for regime, probabilities in transition_probabilities.items():
@@ -438,8 +435,8 @@ class V444RegimeAnalyzer:
         return stability_scores
 
     def _identify_frequent_transitions(
-        self, transition_matrix: Dict[str, Dict[str, int]]
-    ) -> List[Tuple[str, str, int]]:
+        self, transition_matrix: dict[str, dict[str, int]]
+    ) -> list[tuple[str, str, int]]:
         """頻繁な遷移の特定"""
         transitions = []
         for from_regime, to_regimes in transition_matrix.items():
@@ -500,12 +497,11 @@ class V444RegimeAnalyzer:
         weights = [0.25, 0.25, 0.2, 0.15, 0.15]
         return sum(score * weight for score, weight in zip(scores, weights))
 
-
 def create_v444_regime_analysis_report(
     analyzer: V444RegimeAnalyzer,
     backtest_results: ObjectMap,
     historical_data: pd.DataFrame,
-    regime_labels: List[str],
+    regime_labels: list[str],
 ) -> ObjectMap:
     """
     SAC v444の包括的分析レポート生成
@@ -552,8 +548,7 @@ def create_v444_regime_analysis_report(
 
     return report
 
-
-def _generate_recommendations(report: ObjectMap) -> List[str]:
+def _generate_recommendations(report: ObjectMap) -> list[str]:
     """レコメンデーション生成"""
     recommendations = []
 
@@ -572,8 +567,7 @@ def _generate_recommendations(report: ObjectMap) -> List[str]:
 
     return recommendations
 
-
-def _extract_key_insights(report: ObjectMap) -> List[str]:
+def _extract_key_insights(report: ObjectMap) -> list[str]:
     """主要な洞察の抽出"""
     insights = []
 

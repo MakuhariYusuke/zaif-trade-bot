@@ -6,10 +6,9 @@ Base classes and protocols for trading strategies in the unified backtest framew
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Protocol, Union
+from typing import Any, Protocol
 
 import pandas as pd
-
 
 class TradingStrategy(Protocol):
     """
@@ -27,7 +26,7 @@ class TradingStrategy(Protocol):
         self,
         data: pd.DataFrame,
         current_position: int
-    ) -> Dict[str, Union[str, int, float, bool]]:
+    ) -> dict[str, str | int | float | bool]:
         """
         Generate trading signal.
 
@@ -39,8 +38,6 @@ class TradingStrategy(Protocol):
             Signal dict with 'action' and optional parameters
         """
         ...
-
-
 
 def validate_trading_strategy(strategy: Any) -> bool:
     """
@@ -88,7 +85,6 @@ def validate_trading_strategy(strategy: Any) -> bool:
 
     return True
 
-
 class BaseTradingStrategy(ABC):
     """
     Abstract base class for trading strategies.
@@ -104,7 +100,7 @@ class BaseTradingStrategy(ABC):
             name: Strategy name
         """
         self._name = name
-        self.config: Dict[str, Union[str, int, float, bool]] = {}
+        self.config: dict[str, str | int | float | bool] = {}
         self.is_initialized = False
 
     @property
@@ -134,7 +130,7 @@ class BaseTradingStrategy(ABC):
         self,
         data: pd.DataFrame,
         current_position: int
-    ) -> Dict[str, Union[str, int, float, bool]]:
+    ) -> dict[str, str | int | float | bool]:
         """
         Generate a trading signal for the current market data.
 
@@ -147,7 +143,7 @@ class BaseTradingStrategy(ABC):
         """
         pass
 
-    def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
+    def update_hyperparameters(self, hyperparameters: dict[str, float]) -> None:
         """
         Update strategy hyperparameters.
 
@@ -157,19 +153,18 @@ class BaseTradingStrategy(ABC):
         # Default implementation - override in subclasses if needed
         pass
 
-    def get_config(self) -> Dict[str, Union[str, int, float, bool]]:
+    def get_config(self) -> dict[str, str | int | float | bool]:
         """Get strategy configuration."""
         return self.config.copy()
 
-    def set_config(self, config: Dict[str, Union[str, int, float, bool]]) -> None:
-        """Set strategy configuration."""
+    def set_config(self, config: dict[str, str | int | float | bool]) -> None:
+        """set strategy configuration."""
         self.config.update(config)
 
     def reset(self) -> None:
         """Reset strategy state."""
         self.is_initialized = False
         self.config = {}
-
 
 class MLTradingStrategy(BaseTradingStrategy):
     """
@@ -179,7 +174,7 @@ class MLTradingStrategy(BaseTradingStrategy):
     feature engineering, and prediction.
     """
 
-    def __init__(self, name: str, model_path: Optional[str] = None):
+    def __init__(self, name: str, model_path: str | None = None):
         """
         Initialize ML trading strategy.
 
@@ -190,7 +185,7 @@ class MLTradingStrategy(BaseTradingStrategy):
         super().__init__(name)
         self.model_path = model_path
         self.model = None
-        self.feature_engineer: Optional['FeatureEngineer'] = None
+        self.feature_engineer: FeatureEngineer | None = None
 
     def load_model(self) -> None:
         """Load the trained model."""
@@ -212,7 +207,7 @@ class MLTradingStrategy(BaseTradingStrategy):
             return self.feature_engineer.engineer_features(data)
         return data
 
-    def predict(self, features: pd.DataFrame) -> Optional[list]:
+    def predict(self, features: pd.DataFrame) -> list | None:
         """
         Make prediction using the loaded model.
 
@@ -226,7 +221,6 @@ class MLTradingStrategy(BaseTradingStrategy):
             return self.model.predict(features)
         return None
 
-
 class SignalBasedStrategy(BaseTradingStrategy):
     """
     Base class for signal-based trading strategies.
@@ -238,7 +232,7 @@ class SignalBasedStrategy(BaseTradingStrategy):
     def __init__(self, name: str):
         """Initialize signal-based strategy."""
         super().__init__(name)
-        self.indicators: Dict[str, 'Indicator'] = {}
+        self.indicators: dict[str, 'Indicator'] = {}
         self.signals_history: list = []
 
     def add_indicator(self, name: str, indicator: 'Indicator') -> None:
@@ -251,7 +245,7 @@ class SignalBasedStrategy(BaseTradingStrategy):
         """
         self.indicators[name] = indicator
 
-    def get_indicator_value(self, name: str, data: pd.DataFrame, index: int) -> Optional[float]:
+    def get_indicator_value(self, name: str, data: pd.DataFrame, index: int) -> float | None:
         """
         Get indicator value for current data point.
 
@@ -267,6 +261,6 @@ class SignalBasedStrategy(BaseTradingStrategy):
             return self.indicators[name].calculate(data, index)
         return None
 
-    def store_signal(self, signal: Dict[str, Union[str, int, float, bool]]) -> None:
+    def store_signal(self, signal: dict[str, str | int | float | bool]) -> None:
         """Store signal in history."""
         self.signals_history.append(signal)

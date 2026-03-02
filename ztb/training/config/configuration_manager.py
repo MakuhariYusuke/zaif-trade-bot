@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 # ruff: noqa: E402
 """
 Unified Configuration Management System for Training.
@@ -18,19 +20,18 @@ from dataclasses import dataclass, field
 
 # from enum import Enum  # duplicate import removed
 from pathlib import Path
-from typing import Dict, List, Optional, Protocol, TypeVar, Union, cast
+from typing import Optional, Protocol, TypeVar, cast
 
 import jsonschema
 from ztb.config.schemas.zaif import DataConfig, EnvironmentConfig, TrainingConfig
 from ztb.types.common import ConfigDict, ConfigValue
 
-ConfigProfile = Dict[str, ConfigValue]
-ValidationResult = List[str]
+ConfigProfile = dict[str, ConfigValue]
+ValidationResult = list[str]
 
 # Type variables for generic functions
 T = TypeVar("T")
 ConfigType = TypeVar("ConfigType", bound=str)
-
 
 class ValidatorFunc(Protocol):
     """Protocol for validation functions."""
@@ -38,12 +39,10 @@ class ValidatorFunc(Protocol):
     def __call__(self, value: ConfigValue) -> bool:
         ...
 
-
 from enum import Enum
 
 # Configuration classes for type safety
 # DataConfig moved to ztb.config.schemas.zaif
-
 
 class ConfigFormat(Enum):
     """Supported configuration file formats."""
@@ -51,18 +50,15 @@ class ConfigFormat(Enum):
     JSON = "json"
     YAML = "yaml"
 
-
 class ValidationError(Exception):
     """Configuration validation error."""
 
     pass
 
-
 class ConfigLoadError(Exception):
     """Configuration loading error."""
 
     pass
-
 
 @dataclass
 class ValidationRule:
@@ -73,13 +69,12 @@ class ValidationRule:
     error_message: str
     required: bool = True
 
-
 @dataclass
 class ConfigSchema:
     """Configuration schema definition."""
 
     schema: ConfigDict
-    validators: List[ValidationRule] = field(default_factory=list)
+    validators: list[ValidationRule] = field(default_factory=list)
 
     def validate(self, config: ConfigDict) -> ValidationResult:
         """Validate configuration against schema and rules."""
@@ -101,10 +96,10 @@ class ConfigSchema:
 
         return errors
 
-    def _get_nested_value(self, config: ConfigDict, path: str) -> Optional[ConfigValue]:
+    def _get_nested_value(self, config: ConfigDict, path: str) -> ConfigValue | None:
         """Get nested value from configuration using dot notation."""
         keys = path.split(".")
-        current: Union[ConfigDict, ConfigValue] = config
+        current: ConfigDict | ConfigValue = config
 
         for key in keys:
             if isinstance(current, dict) and key in current:
@@ -112,8 +107,7 @@ class ConfigSchema:
             else:
                 return None
 
-        return cast(Optional[ConfigValue], current)
-
+        return cast(ConfigValue | None, current)
 
 class ConfigurationManager:
     """
@@ -128,11 +122,11 @@ class ConfigurationManager:
     - Comprehensive validation
     """
 
-    def __init__(self, logger: Optional[logging.Logger] = None):
+    def __init__(self, logger: logging.Logger | None = None):
         self.logger = logger or logging.getLogger(__name__)
-        self.schemas: Dict[str, ConfigSchema] = {}
-        self.loaded_configs: Dict[str, ConfigDict] = {}
-        self.profiles: Dict[str, ConfigProfile] = {}
+        self.schemas: dict[str, ConfigSchema] = {}
+        self.loaded_configs: dict[str, ConfigDict] = {}
+        self.profiles: dict[str, ConfigProfile] = {}
         self._register_default_schemas()
         self._register_default_profiles()
         self._register_default_schemas()
@@ -285,7 +279,7 @@ class ConfigurationManager:
         # Default to development
         return "dev"
 
-    def get_environment_profiles(self, environment: Optional[str] = None) -> List[str]:
+    def get_environment_profiles(self, environment: str | None = None) -> list[str]:
         """Get recommended profiles for the current environment."""
         if environment is None:
             environment = self.detect_environment()
@@ -315,13 +309,13 @@ class ConfigurationManager:
                 current[key] = {}  # type: ignore
             current = current[key]  # type: ignore
 
-        # Set the value
+        # set the value
         current[keys[-1]] = value  # type: ignore
         self.logger.debug(f"Updated config value: {path} = {value}")
         return config
 
     def reload_config(
-        self, config_path: Union[str, Path], config_type: str = "training"
+        self, config_path: str | Path, config_type: str = "training"
     ) -> ConfigDict:
         """Reload configuration from file, clearing any cached values."""
         config_path_str = str(config_path)
@@ -397,11 +391,11 @@ class ConfigurationManager:
 
     def load_config(
         self,
-        config_path: Union[str, Path],
+        config_path: str | Path,
         config_type: str = "training",
-        overrides: Optional[ConfigDict] = None,
-        env_prefix: Optional[str] = None,
-        profiles: Optional[List[str]] = None,
+        overrides: ConfigDict | None = None,
+        env_prefix: str | None = None,
+        profiles: list[str] | None = None,
     ) -> ConfigDict:
         """
         Load and validate configuration.
@@ -411,7 +405,7 @@ class ConfigurationManager:
             config_type: Type of configuration (for schema validation)
             overrides: Configuration overrides
             env_prefix: Environment variable prefix (e.g., "TRAINING_")
-            profiles: List of profile names to apply (e.g., ["sac_default", "dev"])
+            profiles: list of profile names to apply (e.g., ["sac_default", "dev"])
 
         Returns:
             Validated configuration dictionary
@@ -487,7 +481,7 @@ class ConfigurationManager:
                 # Convert environment variable value to appropriate type
                 typed_value = self._parse_env_value(env_value)
 
-                # Set nested configuration value
+                # set nested configuration value
                 self._set_nested_value(result, config_path, typed_value)
                 self.logger.debug(
                     f"Applied environment override: {env_key} = {typed_value}"
@@ -496,7 +490,7 @@ class ConfigurationManager:
         return result
 
     def _apply_profiles(
-        self, config: ConfigDict, profiles: List[str], config_type: str
+        self, config: ConfigDict, profiles: list[str], config_type: str
     ) -> ConfigDict:
         """Apply configuration profiles to configuration."""
         result = config.copy()
@@ -562,9 +556,9 @@ class ConfigurationManager:
         return cast(ConfigValue, value)
 
     def _set_nested_value(
-        self, config: ConfigDict, path: List[str], value: ConfigValue
+        self, config: ConfigDict, path: list[str], value: ConfigValue
     ) -> None:
-        """Set nested configuration value using path list."""
+        """set nested configuration value using path list."""
         current = config
         for key in path[:-1]:
             if key not in current:
@@ -589,8 +583,8 @@ class ConfigurationManager:
         return result
 
     def get_config_value(
-        self, config: ConfigDict, path: str, default: Optional[ConfigValue] = None
-    ) -> Optional[ConfigValue]:
+        self, config: ConfigDict, path: str, default: ConfigValue | None = None
+    ) -> ConfigValue | None:
         """
         Get configuration value using dot notation.
 
@@ -611,16 +605,16 @@ class ConfigurationManager:
             else:
                 return default
 
-        return cast(Optional[ConfigValue], current)
+        return cast(ConfigValue | None, current)
 
     def validate_config_file(
-        self, config_path: Union[str, Path], config_type: str = "training"
+        self, config_path: str | Path, config_type: str = "training"
     ) -> ValidationResult:
         """
         Validate configuration file without loading it.
 
         Returns:
-            List of validation errors (empty if valid)
+            list of validation errors (empty if valid)
         """
         try:
             config_path = Path(config_path)
@@ -642,7 +636,7 @@ class ConfigurationManager:
             return [f"Configuration validation failed: {e}"]
 
     def create_config_template(
-        self, config_type: str, output_path: Optional[Union[str, Path]] = None
+        self, config_type: str, output_path: str | Path | None = None
     ) -> ConfigDict:
         """
         Create configuration template from schema.
@@ -695,16 +689,16 @@ class ConfigurationManager:
             return True
         return False
 
-    def list_profiles(self) -> List[str]:
-        """List available configuration profiles."""
+    def list_profiles(self) -> list[str]:
+        """list available configuration profiles."""
         return list(self.profiles.keys())
 
-    def get_profile(self, name: str) -> Optional[ConfigProfile]:
+    def get_profile(self, name: str) -> ConfigProfile | None:
         """Get a configuration profile by name."""
         return self.profiles.get(name)
 
-    def list_available_schemas(self) -> List[str]:
-        """List available configuration schema types."""
+    def list_available_schemas(self) -> list[str]:
+        """list available configuration schema types."""
         return list(self.schemas.keys())
 
     def add_custom_schema(self, name: str, schema: ConfigSchema) -> None:
@@ -712,16 +706,14 @@ class ConfigurationManager:
         self.schemas[name] = schema
         self.logger.info(f"Custom schema added: {name}")
 
-
 # Global configuration manager instance
 config_manager = ConfigurationManager()
 
-
 def load_training_config(
-    config_path: Union[str, Path],
-    overrides: Optional[ConfigDict] = None,
+    config_path: str | Path,
+    overrides: ConfigDict | None = None,
     env_prefix: str = "TRAINING_",
-    profiles: Optional[List[str]] = None,
+    profiles: list[str] | None = None,
 ) -> ConfigDict:
     """
     Convenience function to load training configuration.
@@ -738,29 +730,26 @@ def load_training_config(
         config_path, "training", overrides, env_prefix, profiles
     )
 
-
-def validate_config_file(config_path: Union[str, Path]) -> ValidationResult:
+def validate_config_file(config_path: str | Path) -> ValidationResult:
     """
     Convenience function to validate configuration file.
 
     Returns:
-        List of validation errors (empty if valid)
+        list of validation errors (empty if valid)
     """
     return config_manager.validate_config_file(config_path, "training")
 
-
 def create_config_template(
-    output_path: Optional[Union[str, Path]] = None,
+    output_path: str | Path | None = None,
 ) -> ConfigDict:
     """Create training configuration template."""
     return config_manager.create_config_template("training", output_path)
 
-
 def create_typed_training_config(
-    config_path: Union[str, Path],
-    overrides: Optional[ConfigDict] = None,
+    config_path: str | Path,
+    overrides: ConfigDict | None = None,
     env_prefix: str = "TRAINING_",
-    profiles: Optional[List[str]] = None,
+    profiles: list[str] | None = None,
 ) -> TrainingConfig:
     """Create a typed training configuration from file."""
     config_dict = load_training_config(config_path, overrides, env_prefix, profiles)

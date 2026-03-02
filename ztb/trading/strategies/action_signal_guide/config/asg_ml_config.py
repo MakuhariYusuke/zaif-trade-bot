@@ -6,11 +6,9 @@ This module provides configuration management for ML-based components.
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 from ..interfaces.ml_interfaces import MLPredictionModel, OptimizationTarget
 from ztb.types.common import ConfigValue
-
 
 class MLModelType(Enum):
     """Machine learning model types."""
@@ -19,7 +17,6 @@ class MLModelType(Enum):
     TENSORFLOW = "tensorflow"
     PYTORCH = "pytorch"
     CUSTOM = "custom"
-
 
 @dataclass
 class MLModelConfig:
@@ -32,7 +29,6 @@ class MLModelConfig:
     cross_validation_folds: int = 5
     train_test_split: float = 0.2
     random_state: int = 42
-
 
 @dataclass
 class PatternOptimizerConfig:
@@ -87,7 +83,6 @@ class PatternOptimizerConfig:
             return False
         return True
 
-
 @dataclass
 class OnlineLearnerConfig:
     """Configuration for online learning."""
@@ -100,7 +95,6 @@ class OnlineLearnerConfig:
     performance_window: int = 50
     min_adaptation_interval: int = 10
     max_parameter_change: float = 0.2
-
 
 @dataclass
 class EnsemblePredictorConfig:
@@ -115,10 +109,9 @@ class EnsemblePredictorConfig:
             MLModelConfig(MLPredictionModel.GRADIENT_BOOSTING, MLModelType.SKLEARN),
         ]
     )
-    meta_model: Optional[MLModelConfig] = None
+    meta_model: MLModelConfig | None = None
     weight_update_frequency: int = 50
     min_model_weight: float = 0.1
-
 
 @dataclass
 class FeatureEngineeringConfig:
@@ -135,7 +128,6 @@ class FeatureEngineeringConfig:
     add_time_features: bool = True
     add_statistical_features: bool = True
     rolling_windows: list[int] = field(default_factory=lambda: [5, 10, 20, 50])
-
 
 @dataclass
 class MLIntegrationConfig:

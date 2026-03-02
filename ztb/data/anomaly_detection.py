@@ -5,7 +5,7 @@ Anomaly Detection for SAC v421
 
 from dataclasses import dataclass
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -45,7 +45,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 @dataclass
 class AnomalyResult:
     """異常検知結果"""
@@ -54,8 +53,7 @@ class AnomalyResult:
     anomaly_score: float
     method: str
     confidence: float
-    details: Dict[str, Any]
-
+    details: dict[str, Any]
 
 @dataclass
 class AnomalyStats:
@@ -64,9 +62,8 @@ class AnomalyStats:
     total_samples: int
     anomaly_count: int
     anomaly_rate: float
-    methods_used: List[str]
-    detection_history: List[AnomalyResult]
-
+    methods_used: list[str]
+    detection_history: list[AnomalyResult]
 
 class StatisticalAnomalyDetector:
     """統計的手法による異常検知"""
@@ -81,7 +78,7 @@ class StatisticalAnomalyDetector:
         self._use_manual_zscore = True
 
     def detect(
-        self, data: np.ndarray, feature_names: Optional[List[str]] = None
+        self, data: np.ndarray, feature_names: list[str] | None = None
     ) -> AnomalyResult:
         """異常検知実行"""
         try:
@@ -213,7 +210,6 @@ class StatisticalAnomalyDetector:
             },
         )
 
-
 class MLAnomalyDetector:
     """機械学習ベースの異常検知"""
 
@@ -333,12 +329,11 @@ class MLAnomalyDetector:
                 details={"error": str(e)},
             )
 
-
 class AutoencoderAnomalyDetector(nn.Module):
     """オートエンコーダーベースの異常検知"""
 
     def __init__(
-        self, input_dim: int, hidden_dims: List[int] = None, dropout_rate: float = 0.1
+        self, input_dim: int, hidden_dims: list[int] = None, dropout_rate: float = 0.1
     ):
         super().__init__()
         if hidden_dims is None:
@@ -484,14 +479,13 @@ class AutoencoderAnomalyDetector(nn.Module):
                 details={"error": str(e)},
             )
 
-
 class ComprehensiveAnomalyDetector:
     """包括的な異常検知システム"""
 
     def __init__(
         self,
-        statistical_methods: List[str] = None,
-        ml_methods: List[str] = None,
+        statistical_methods: list[str] = None,
+        ml_methods: list[str] = None,
         enable_autoencoder: bool = False,
         voting_threshold: float = 0.5,
     ):
@@ -563,8 +557,8 @@ class ComprehensiveAnomalyDetector:
         return success_count >= total_count * 0.5  # 50%以上成功したらOK
 
     def detect_anomalies(
-        self, data: np.ndarray, feature_names: Optional[List[str]] = None
-    ) -> Tuple[bool, Dict[str, Any]]:
+        self, data: np.ndarray, feature_names: list[str] | None = None
+    ) -> tuple[bool, dict[str, Any]]:
         """包括的な異常検知"""
         self.stats.total_samples += 1
 

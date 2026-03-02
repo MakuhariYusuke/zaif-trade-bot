@@ -11,7 +11,7 @@ Example:
     >>> unified = builder.build_unified_config()
 """
 
-from typing import Optional, TypeVar
+from typing import TypeVar
 
 from ztb.trading.constants import SAC_CONTINUOUS_THRESHOLD
 from ztb.trading.environment.utils.config import (
@@ -31,7 +31,6 @@ EnvironmentConfig = TradingEnvironmentConfig
 PPOCoreConfig = PPOConfig
 UnifiedConfig = ConfigMap
 TDefault = TypeVar("TDefault")
-
 
 class ConfigBuilder:
     """
@@ -53,7 +52,7 @@ class ConfigBuilder:
             config: 設定辞書（JSON設定ファイルから読み込んだもの）
         """
         self.config = ensure_dict(config)
-        self._config_manager: Optional[TrainingConfigManager] = None
+        self._config_manager: TrainingConfigManager | None = None
 
     @property
     def config_manager(self) -> TrainingConfigManager:
@@ -248,7 +247,7 @@ class ConfigBuilder:
         self,
         enable_streaming: bool = False,
         stream_batch_size: int = 256,
-        total_timesteps_override: Optional[int] = None,
+        total_timesteps_override: int | None = None,
     ) -> UnifiedConfig:
         """
         統合設定を構築。

@@ -7,14 +7,13 @@ Implements hard stops, trailing stops, and cooldown rules.
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from ztb.utils.errors import (
     validate_portfolio_value,
     validate_price,
     validate_volatility,
 )
-
 
 @dataclass
 class RiskLimits:
@@ -41,7 +40,6 @@ class RiskLimits:
     min_trade_interval_sec: int = 60  # Minimum trade interval in seconds
     required_sharpe_ratio: float = 1.0  # Required Sharpe ratio
 
-
 class RiskRuleEngine:
     """Engine for evaluating and enforcing risk rules."""
 
@@ -50,7 +48,7 @@ class RiskRuleEngine:
     POSITION_SHORT: str = "short"
 
     # Valid position sides
-    VALID_POSITION_SIDES: Tuple[str, ...] = (POSITION_LONG, POSITION_SHORT)
+    VALID_POSITION_SIDES: tuple[str, ...] = (POSITION_LONG, POSITION_SHORT)
 
     def __init__(self, limits: RiskLimits):
         """Initialize with risk limits."""
@@ -70,11 +68,11 @@ class RiskRuleEngine:
         self.trades_this_hour = 0
         self.hour_start_time = time.time()
 
-        self.trailing_stop_level: Optional[float] = None
+        self.trailing_stop_level: float | None = None
         self.trailing_stop_distance = 0.0
 
         # Trade history for analysis
-        self.trade_history: List[Dict[str, Any]] = []
+        self.trade_history: list[dict[str, Any]] = []
 
     def reset_daily_tracking(self) -> None:
         """Reset daily loss tracking at start of new day."""
@@ -98,7 +96,7 @@ class RiskRuleEngine:
         if self.daily_start_capital > 0:
             self.daily_loss = self.daily_start_capital - current_value
 
-    def check_daily_loss_limit(self) -> Tuple[bool, str]:
+    def check_daily_loss_limit(self) -> tuple[bool, str]:
         """Check if daily loss limit is exceeded."""
         if self.daily_start_capital <= 0:
             return True, ""
@@ -112,7 +110,7 @@ class RiskRuleEngine:
 
         return True, ""
 
-    def check_max_drawdown(self, peak_value: float) -> Tuple[bool, str]:
+    def check_max_drawdown(self, peak_value: float) -> tuple[bool, str]:
         """Check if maximum drawdown limit is exceeded."""
         if peak_value <= 0:
             return True, ""
@@ -126,7 +124,7 @@ class RiskRuleEngine:
 
         return True, ""
 
-    def check_position_size(self, position_notional: float) -> Tuple[bool, str]:
+    def check_position_size(self, position_notional: float) -> tuple[bool, str]:
         """Check if position size exceeds limits."""
         if position_notional > self.limits.max_position_notional:
             return (
@@ -136,7 +134,7 @@ class RiskRuleEngine:
 
         return True, ""
 
-    def check_single_trade_size(self, trade_notional: float) -> Tuple[bool, str]:
+    def check_single_trade_size(self, trade_notional: float) -> tuple[bool, str]:
         """Check if single trade size exceeds limits."""
         if self.portfolio_value <= 0:
             return True, ""
@@ -150,7 +148,7 @@ class RiskRuleEngine:
 
         return True, ""
 
-    def check_trade_frequency(self) -> Tuple[bool, str]:
+    def check_trade_frequency(self) -> tuple[bool, str]:
         """Check trade frequency limits."""
         current_time = time.time()
 
@@ -174,7 +172,7 @@ class RiskRuleEngine:
 
         return True, ""
 
-    def check_volatility_limit(self) -> Tuple[bool, str]:
+    def check_volatility_limit(self) -> tuple[bool, str]:
         """Check portfolio volatility against limits."""
         if self.portfolio_volatility > self.limits.max_volatility_pct:
             return (
@@ -184,7 +182,7 @@ class RiskRuleEngine:
 
         return True, ""
 
-    def check_performance_thresholds(self, sharpe_ratio: float) -> Tuple[bool, str]:
+    def check_performance_thresholds(self, sharpe_ratio: float) -> tuple[bool, str]:
         """Check if performance meets minimum thresholds."""
         if sharpe_ratio < self.limits.required_sharpe_ratio:
             return (
@@ -228,7 +226,7 @@ class RiskRuleEngine:
 
     def check_trailing_stop(
         self, current_price: float, position_side: str
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """Check if trailing stop is hit."""
         if self.trailing_stop_level is None:
             return True, ""
@@ -252,7 +250,7 @@ class RiskRuleEngine:
 
     def check_take_profit(
         self, entry_price: float, current_price: float, position_side: str
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """Check if take profit target is reached."""
         if position_side == self.POSITION_LONG:
             profit_pct = (current_price - entry_price) / entry_price
@@ -267,7 +265,7 @@ class RiskRuleEngine:
 
         return True, ""
 
-    def record_trade(self, trade_data: Dict[str, Any]) -> None:
+    def record_trade(self, trade_data: dict[str, Any]) -> None:
         """Record a completed trade."""
         self.trade_history.append({**trade_data, "timestamp": time.time()})
 
@@ -288,8 +286,8 @@ class RiskRuleEngine:
         trade_notional: float,
         position_notional: float,
         peak_value: float,
-        sharpe_ratio: Optional[float] = None,
-    ) -> Tuple[bool, str]:
+        sharpe_ratio: float | None = None,
+    ) -> tuple[bool, str]:
         """
         Comprehensive trade validation against all risk rules.
 

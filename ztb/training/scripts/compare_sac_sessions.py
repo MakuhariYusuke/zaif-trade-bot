@@ -17,7 +17,7 @@ python compare_sac_sessions.py --sessions 10 11 12 --log-dir checkpoints/sac_ses
 import argparse
 import json
 import os
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import numpy as np
 from scipy import stats
@@ -31,7 +31,6 @@ DEFAULT_OUTPUT_FILE = "sac_comparison.json"
 DEFAULT_LOG_DIR = "checkpoints/sac_session"
 DEFAULT_SESSION_IDS = [5, 6]  # SAC_5 = v395a, SAC_6 = v395c
 DEFAULT_ALPHA = 0.05
-
 
 def parse_arguments():
     """コマンドライン引数の解析"""
@@ -92,8 +91,7 @@ def parse_arguments():
 
     return parser.parse_args()
 
-
-def p_mean_method(values: List[float], method: str = "arithmetic") -> float:
+def p_mean_method(values: list[float], method: str = "arithmetic") -> float:
     """Compute p-mean (arithmetic or geometric) for a list of p-values.
 
     This is a small utility used for aggregate p-value reporting in comparisons.
@@ -109,12 +107,11 @@ def p_mean_method(values: List[float], method: str = "arithmetic") -> float:
     # Default arithmetic mean
     return float(sum(values) / len(values))
 
-
 def perform_statistical_tests(
-    session_data: Dict[int, Dict[str, List[float]]],
-    metrics: List[str],
+    session_data: dict[int, dict[str, list[float]]],
+    metrics: list[str],
     alpha: float = DEFAULT_ALPHA,
-) -> Dict[str, Dict[str, Any]]:
+) -> dict[str, dict[str, Any]]:
     """
     セッション間の統計的検定を実行
 
@@ -149,7 +146,7 @@ def perform_statistical_tests(
         - サンプルサイズが小さい場合、検定力が低下
         - 複数の検定を行う場合、p値の補正を検討
     """
-    results: Dict[str, Dict[str, Any]] = {}
+    results: dict[str, dict[str, Any]] = {}
     session_ids = list(session_data.keys())
 
     if len(session_ids) != 2:
@@ -193,15 +190,14 @@ def perform_statistical_tests(
 
     return results
 
-
 def compare_sac_sessions(
     log_dir: str,
-    session_ids: List[int],
-    metrics: List[str],
+    session_ids: list[int],
+    metrics: list[str],
     output_file: str,
     alpha: float,
     verbose: bool = False,
-) -> Tuple[Dict[int, Dict[str, Dict[str, float]]], Dict[str, Any]]:
+) -> tuple[dict[int, dict[str, dict[str, float]]], dict[str, Any]]:
     """
     複数のSACセッションを比較
 
@@ -210,15 +206,15 @@ def compare_sac_sessions(
         session_ids: 比較するセッションIDのリスト
 
     Returns:
-        Tuple of (session_stats, statistical_results)
+        tuple of (session_stats, statistical_results)
         session_stats: 各セッションのメトリクス統計
         statistical_results: 統計的検定結果とp平均法結果
     """
     print(f"📊 Comparing SAC sessions: {session_ids}")
     print("=" * 80)
 
-    results: Dict[int, Dict[str, Dict[str, float]]] = {}
-    session_raw_data: Dict[int, Dict[str, List[float]]] = {}  # 統計的検定用の生データ
+    results: dict[int, dict[str, dict[str, float]]] = {}
+    session_raw_data: dict[int, dict[str, list[float]]] = {}  # 統計的検定用の生データ
 
     for session_id in session_ids:
         session_path = os.path.join(log_dir, f"SAC_{session_id}")
@@ -376,7 +372,6 @@ def compare_sac_sessions(
     }
 
     return results, statistical_results
-
 
 if __name__ == "__main__":
     args = parse_arguments()

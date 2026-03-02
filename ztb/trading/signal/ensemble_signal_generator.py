@@ -21,11 +21,9 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 SourceScores = dict[str, float]
 SourceConfidences = dict[str, float]
 SourceWeights = dict[str, float]
-
 
 class MarketData(TypedDict, total=False):
     """Input payload for ensemble scoring."""
@@ -33,7 +31,6 @@ class MarketData(TypedDict, total=False):
     df: pd.DataFrame
     continuous_action: float
     portfolio: Mapping[str, float]
-
 
 class SignalReliability(TypedDict, total=False):
     """Structured reliability payload returned by the ensemble generator."""
@@ -49,7 +46,6 @@ class SignalReliability(TypedDict, total=False):
     recommendation: str
     error: str
 
-
 class SignalScorer(Protocol):
     """Protocol used to type heterogeneous scorer instances."""
 
@@ -61,7 +57,6 @@ class SignalScorer(Protocol):
     def get_confidence(self, market_data: MarketData) -> float:
         ...
 
-
 def _to_float(value: object, default: float = 0.0) -> float:
     """Convert object to float with safe fallback."""
     try:
@@ -69,14 +64,12 @@ def _to_float(value: object, default: float = 0.0) -> float:
     except (TypeError, ValueError):
         return default
 
-
 def _to_int(value: object, default: int = 0) -> int:
     """Convert object to int with safe fallback."""
     try:
         return int(value)
     except (TypeError, ValueError):
         return default
-
 
 def _to_bool(value: object, default: bool = False) -> bool:
     """Convert object to bool with safe fallback."""
@@ -91,7 +84,6 @@ def _to_bool(value: object, default: bool = False) -> bool:
         if normalized in {"false", "0", "no", "off"}:
             return False
     return default
-
 
 class BaseSignalScorer:
     """Base class for signal scorers"""
@@ -134,7 +126,6 @@ class BaseSignalScorer:
     def get_confidence(self, market_data: MarketData) -> float:
         """Get confidence level (0-1)"""
         return 0.5
-
 
 class TechnicalSignalScorer(BaseSignalScorer):
     """Technical analysis based signal scorer"""
@@ -205,7 +196,6 @@ class TechnicalSignalScorer(BaseSignalScorer):
 
         except Exception:
             return 0.3
-
 
 class PatternRecognitionScorer(BaseSignalScorer):
     """Pattern recognition based signal scorer"""
@@ -293,7 +283,6 @@ class PatternRecognitionScorer(BaseSignalScorer):
         except Exception:
             return 0.2
 
-
 class SentimentSignalScorer(BaseSignalScorer):
     """Sentiment-based signal scorer"""
 
@@ -332,7 +321,6 @@ class SentimentSignalScorer(BaseSignalScorer):
         """Get sentiment confidence"""
         # Sentiment data is typically less reliable
         return 0.4
-
 
 class VolumeProfileScorer(BaseSignalScorer):
     """Volume profile based signal scorer"""
@@ -394,7 +382,6 @@ class VolumeProfileScorer(BaseSignalScorer):
 
         except Exception:
             return 0.2
-
 
 class EnsembleSignalGenerator:
     """アンサンブルシグナル生成器"""
@@ -557,7 +544,7 @@ class EnsembleSignalGenerator:
             market_data: Market data dictionary
 
         Returns:
-            Tuple of (ensemble_score, confidence)
+            tuple of (ensemble_score, confidence)
         """
         try:
             scores, confidences = self._collect_scores_and_confidences(market_data)

@@ -5,7 +5,7 @@ Enhanced signal quality scorer with regime adaptation capabilities.
 Uses modular indicator system and configurable scoring logic.
 """
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -27,7 +27,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class SignalQualityScorer(BaseSignalProcessor):
     """
     Enhanced signal quality scorer with regime adaptation
@@ -38,8 +37,8 @@ class SignalQualityScorer(BaseSignalProcessor):
 
     def __init__(
         self,
-        config: Optional[Dict[str, Any]] = None,
-        threshold_manager: Optional[ThresholdManager] = None,
+        config: dict[str, Any] | None = None,
+        threshold_manager: ThresholdManager | None = None,
     ):
         super().__init__(config)
 
@@ -61,7 +60,7 @@ class SignalQualityScorer(BaseSignalProcessor):
         # Optional ThresholdManager for dynamic thresholds
         self.threshold_manager = threshold_manager
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """Get default configuration"""
         return {
             "weights": {
@@ -89,7 +88,7 @@ class SignalQualityScorer(BaseSignalProcessor):
             },
         }
 
-    def _initialize_indicators(self) -> Dict[str, Any]:
+    def _initialize_indicators(self) -> dict[str, Any]:
         """Initialize technical indicators"""
         indicator_configs = self.config.get("indicators", {})
 
@@ -103,7 +102,7 @@ class SignalQualityScorer(BaseSignalProcessor):
         }
 
     def calculate_score(
-        self, indicators: Dict[str, float], context: Optional[Dict[str, Any]] = None
+        self, indicators: dict[str, float], context: dict[str, Any] | None = None
     ) -> float:
         """
         Calculate signal quality score from indicators
@@ -133,8 +132,8 @@ class SignalQualityScorer(BaseSignalProcessor):
             return 50.0  # Neutral fallback
 
     def _calculate_component_scores(
-        self, indicators: Dict[str, float], context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, float]:
+        self, indicators: dict[str, float], context: dict[str, Any] | None = None
+    ) -> dict[str, float]:
         """Calculate individual component scores"""
         scores = {}
 
@@ -234,7 +233,7 @@ class SignalQualityScorer(BaseSignalProcessor):
 
         return scores
 
-    def _combine_scores(self, component_scores: Dict[str, float]) -> float:
+    def _combine_scores(self, component_scores: dict[str, float]) -> float:
         """Combine component scores with weights"""
         total_score = 0.0
         total_weight = 0.0
@@ -247,7 +246,7 @@ class SignalQualityScorer(BaseSignalProcessor):
         return total_score / total_weight if total_weight > 0 else 50.0
 
     def _apply_context_adjustments(
-        self, score: float, context: Dict[str, Any]
+        self, score: float, context: dict[str, Any]
     ) -> float:
         """Apply position and market context adjustments"""
         # Position adjustments
@@ -375,7 +374,7 @@ class SignalQualityScorer(BaseSignalProcessor):
                 metadata={"error": str(e)},
             )
 
-    def _calculate_indicators(self, data: pd.DataFrame) -> Dict[str, float]:
+    def _calculate_indicators(self, data: pd.DataFrame) -> dict[str, float]:
         """Calculate all technical indicators"""
         indicators = {}
 
@@ -389,7 +388,7 @@ class SignalQualityScorer(BaseSignalProcessor):
 
         return indicators
 
-    def _calculate_additional_indicators(self, data: pd.DataFrame) -> Dict[str, float]:
+    def _calculate_additional_indicators(self, data: pd.DataFrame) -> dict[str, float]:
         """Calculate additional indicators"""
         # Bollinger Bands position
         if len(data) >= 20:
@@ -452,8 +451,8 @@ class SignalQualityScorer(BaseSignalProcessor):
 
     # Legacy interface for backward compatibility
     def calculate_signal_quality(
-        self, df: pd.DataFrame, continuous_action: float, portfolio: Dict[str, Any]
-    ) -> Tuple[int, float]:
+        self, df: pd.DataFrame, continuous_action: float, portfolio: dict[str, Any]
+    ) -> tuple[int, float]:
         """
         Legacy interface for backward compatibility
         """
@@ -475,12 +474,12 @@ class SignalQualityScorer(BaseSignalProcessor):
 
         return discrete_action, final_score
 
-    def apply_thresholds(self, score: float) -> Tuple[int, float]:
+    def apply_thresholds(self, score: float) -> tuple[int, float]:
         """
         Apply thresholds to convert score to discrete action
 
         Returns:
-            Tuple of (discrete_action, confidence)
+            tuple of (discrete_action, confidence)
         """
         strong_buy_threshold = self.thresholds.get("strong_buy", 80)
         buy_threshold = self.thresholds.get("buy", 65)

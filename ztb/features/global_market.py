@@ -10,14 +10,11 @@ Features:
 - グローバル市場トレンド指標 (BTC Dominance, Global Volatility)
 """
 
-from typing import List
-
 import pandas as pd
 
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class GlobalMarketFeatureEngineer:
     """
@@ -83,7 +80,7 @@ class GlobalMarketFeatureEngineer:
         df: pd.DataFrame,
         target_col: str = "close",
         global_col: str = "close_global",
-        windows: List[int] = [1, 5, 15],
+        windows: list[int] = [1, 5, 15],
     ) -> pd.DataFrame:
         """
         Lead-Lag特徴量を生成する。

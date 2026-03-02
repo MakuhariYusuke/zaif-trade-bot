@@ -5,8 +5,6 @@ Extended Ichimoku features with cloud thickness, price-cloud distance, and laggi
 Multi-timeframe support: 1min to 1day equivalent timeframes
 """
 
-from typing import Dict, Optional
-
 import numpy as np
 import pandas as pd
 
@@ -27,8 +25,7 @@ ICHIMOKU_PARAMS = {
     },  # 1-day equivalent (traditional)
 }
 
-
-def get_ichimoku_params(timeframe: Timeframe) -> Dict[str, int]:
+def get_ichimoku_params(timeframe: Timeframe) -> dict[str, int]:
     """
     Get Ichimoku parameters for a specific timeframe.
 
@@ -40,241 +37,206 @@ def get_ichimoku_params(timeframe: Timeframe) -> Dict[str, int]:
     """
     return ICHIMOKU_PARAMS[timeframe]
 
-
 @FeatureRegistry.register("Ichimoku_Tenkan")
 def compute_ichimoku_tenkan(
-    df: pd.DataFrame, timeframe: Optional[Timeframe] = None
+    df: pd.DataFrame, timeframe: Timeframe | None = None
 ) -> pd.Series:
     """Ichimoku Tenkan-sen (Conversion Line)"""
     extended_features = calculate_ichimoku_extended(df, timeframe=timeframe)
     return extended_features["ichimoku_tenkan"]
 
-
 @FeatureRegistry.register("Ichimoku_Kijun")
 def compute_ichimoku_kijun(
-    df: pd.DataFrame, timeframe: Optional[Timeframe] = None
+    df: pd.DataFrame, timeframe: Timeframe | None = None
 ) -> pd.Series:
     """Ichimoku Kijun-sen (Base Line)"""
     extended_features = calculate_ichimoku_extended(df, timeframe=timeframe)
     return extended_features["ichimoku_kijun"]
 
-
 @FeatureRegistry.register("Ichimoku_Senkou_A")
 def compute_ichimoku_senkou_a(
-    df: pd.DataFrame, timeframe: Optional[Timeframe] = None
+    df: pd.DataFrame, timeframe: Timeframe | None = None
 ) -> pd.Series:
     """Ichimoku Senkou Span A (Leading Span A)"""
     extended_features = calculate_ichimoku_extended(df, timeframe=timeframe)
     return extended_features["ichimoku_senkou_a"]
 
-
 @FeatureRegistry.register("Ichimoku_Senkou_B")
 def compute_ichimoku_senkou_b(
-    df: pd.DataFrame, timeframe: Optional[Timeframe] = None
+    df: pd.DataFrame, timeframe: Timeframe | None = None
 ) -> pd.Series:
     """Ichimoku Senkou Span B (Leading Span B)"""
     extended_features = calculate_ichimoku_extended(df, timeframe=timeframe)
     return extended_features["ichimoku_senkou_b"]
 
-
 @FeatureRegistry.register("Ichimoku_Chikou")
 def compute_ichimoku_chikou(
-    df: pd.DataFrame, timeframe: Optional[Timeframe] = None
+    df: pd.DataFrame, timeframe: Timeframe | None = None
 ) -> pd.Series:
     """Ichimoku Chikou Span (Lagging Span)"""
     extended_features = calculate_ichimoku_extended(df, timeframe=timeframe)
     return extended_features["ichimoku_chikou"]
 
-
 @FeatureRegistry.register("Ichimoku_Cloud_Thickness")
 def compute_ichimoku_cloud_thickness(
-    df: pd.DataFrame, timeframe: Optional[Timeframe] = None
+    df: pd.DataFrame, timeframe: Timeframe | None = None
 ) -> pd.Series:
     """Ichimoku Cloud Thickness (volatility measure)"""
     extended_features = calculate_ichimoku_extended(df, timeframe=timeframe)
     return extended_features["ichimoku_cloud_thickness"]
 
-
 @FeatureRegistry.register("Ichimoku_Price_Cloud_Distance")
 def compute_ichimoku_price_cloud_distance(
-    df: pd.DataFrame, timeframe: Optional[Timeframe] = None
+    df: pd.DataFrame, timeframe: Timeframe | None = None
 ) -> pd.Series:
     """Ichimoku Price-Cloud Distance"""
     extended_features = calculate_ichimoku_extended(df, timeframe=timeframe)
     return extended_features["ichimoku_price_cloud_distance"]
 
-
 @FeatureRegistry.register("Ichimoku_Composite_Signal")
 def compute_ichimoku_composite_signal(
-    df: pd.DataFrame, timeframe: Optional[Timeframe] = None
+    df: pd.DataFrame, timeframe: Timeframe | None = None
 ) -> pd.Series:
     """Ichimoku Composite Signal"""
     extended_features = calculate_ichimoku_extended(df, timeframe=timeframe)
     return extended_features["ichimoku_composite_signal"]
 
-
 @FeatureRegistry.register("Ichimoku_Trend")
 def compute_ichimoku_trend(
-    df: pd.DataFrame, timeframe: Optional[Timeframe] = None
+    df: pd.DataFrame, timeframe: Timeframe | None = None
 ) -> pd.Series:
     """Ichimoku Trend Determination (1=bullish, -1=bearish, 0=neutral)"""
     extended_features = calculate_ichimoku_extended(df, timeframe=timeframe)
     return extended_features["ichimoku_trend"]
 
-
 # === Multi-Timeframe Ichimoku Features ===
-
 
 @FeatureRegistry.register("Ichimoku_Composite_Signal_M1")
 def compute_ichimoku_composite_signal_m1(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Composite Signal for 1-minute timeframe"""
     return compute_ichimoku_composite_signal(df, timeframe=Timeframe.M1)
 
-
 @FeatureRegistry.register("Ichimoku_Composite_Signal_M5")
 def compute_ichimoku_composite_signal_m5(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Composite Signal for 5-minute timeframe"""
     return compute_ichimoku_composite_signal(df, timeframe=Timeframe.M5)
-
 
 @FeatureRegistry.register("Ichimoku_Composite_Signal_M15")
 def compute_ichimoku_composite_signal_m15(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Composite Signal for 15-minute timeframe"""
     return compute_ichimoku_composite_signal(df, timeframe=Timeframe.M15)
 
-
 @FeatureRegistry.register("Ichimoku_Composite_Signal_H1")
 def compute_ichimoku_composite_signal_h1(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Composite Signal for 1-hour timeframe"""
     return compute_ichimoku_composite_signal(df, timeframe=Timeframe.H1)
-
 
 @FeatureRegistry.register("Ichimoku_Composite_Signal_H4")
 def compute_ichimoku_composite_signal_h4(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Composite Signal for 4-hour timeframe"""
     return compute_ichimoku_composite_signal(df, timeframe=Timeframe.H4)
 
-
 @FeatureRegistry.register("Ichimoku_Composite_Signal_D1")
 def compute_ichimoku_composite_signal_d1(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Composite Signal for daily timeframe"""
     return compute_ichimoku_composite_signal(df, timeframe=Timeframe.D1)
-
 
 @FeatureRegistry.register("Ichimoku_Trend_M1")
 def compute_ichimoku_trend_m1(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Trend for 1-minute timeframe"""
     return compute_ichimoku_trend(df, timeframe=Timeframe.M1)
 
-
 @FeatureRegistry.register("Ichimoku_Trend_M5")
 def compute_ichimoku_trend_m5(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Trend for 5-minute timeframe"""
     return compute_ichimoku_trend(df, timeframe=Timeframe.M5)
-
 
 @FeatureRegistry.register("Ichimoku_Trend_M15")
 def compute_ichimoku_trend_m15(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Trend for 15-minute timeframe"""
     return compute_ichimoku_trend(df, timeframe=Timeframe.M15)
 
-
 @FeatureRegistry.register("Ichimoku_Trend_H1")
 def compute_ichimoku_trend_h1(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Trend for 1-hour timeframe"""
     return compute_ichimoku_trend(df, timeframe=Timeframe.H1)
-
 
 @FeatureRegistry.register("Ichimoku_Trend_H4")
 def compute_ichimoku_trend_h4(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Trend for 4-hour timeframe"""
     return compute_ichimoku_trend(df, timeframe=Timeframe.H4)
 
-
 @FeatureRegistry.register("Ichimoku_Trend_D1")
 def compute_ichimoku_trend_d1(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Trend for daily timeframe"""
     return compute_ichimoku_trend(df, timeframe=Timeframe.D1)
-
 
 @FeatureRegistry.register("Ichimoku_Cloud_Thickness_M1")
 def compute_ichimoku_cloud_thickness_m1(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Cloud Thickness for 1-minute timeframe (volatility measure)"""
     return compute_ichimoku_cloud_thickness(df, timeframe=Timeframe.M1)
 
-
 @FeatureRegistry.register("Ichimoku_Cloud_Thickness_M5")
 def compute_ichimoku_cloud_thickness_m5(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Cloud Thickness for 5-minute timeframe (volatility measure)"""
     return compute_ichimoku_cloud_thickness(df, timeframe=Timeframe.M5)
-
 
 @FeatureRegistry.register("Ichimoku_Cloud_Thickness_M15")
 def compute_ichimoku_cloud_thickness_m15(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Cloud Thickness for 15-minute timeframe (volatility measure)"""
     return compute_ichimoku_cloud_thickness(df, timeframe=Timeframe.M15)
 
-
 @FeatureRegistry.register("Ichimoku_Cloud_Thickness_H1")
 def compute_ichimoku_cloud_thickness_h1(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Cloud Thickness for 1-hour timeframe (volatility measure)"""
     return compute_ichimoku_cloud_thickness(df, timeframe=Timeframe.H1)
-
 
 @FeatureRegistry.register("Ichimoku_Cloud_Thickness_H4")
 def compute_ichimoku_cloud_thickness_h4(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Cloud Thickness for 4-hour timeframe (volatility measure)"""
     return compute_ichimoku_cloud_thickness(df, timeframe=Timeframe.H4)
 
-
 @FeatureRegistry.register("Ichimoku_Cloud_Thickness_D1")
 def compute_ichimoku_cloud_thickness_d1(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Cloud Thickness for daily timeframe (volatility measure)"""
     return compute_ichimoku_cloud_thickness(df, timeframe=Timeframe.D1)
-
 
 @FeatureRegistry.register("Ichimoku_Price_Cloud_Distance_M1")
 def compute_ichimoku_price_cloud_distance_m1(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Price-Cloud Distance for 1-minute timeframe"""
     return compute_ichimoku_price_cloud_distance(df, timeframe=Timeframe.M1)
 
-
 @FeatureRegistry.register("Ichimoku_Price_Cloud_Distance_M5")
 def compute_ichimoku_price_cloud_distance_m5(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Price-Cloud Distance for 5-minute timeframe"""
     return compute_ichimoku_price_cloud_distance(df, timeframe=Timeframe.M5)
-
 
 @FeatureRegistry.register("Ichimoku_Price_Cloud_Distance_M15")
 def compute_ichimoku_price_cloud_distance_m15(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Price-Cloud Distance for 15-minute timeframe"""
     return compute_ichimoku_price_cloud_distance(df, timeframe=Timeframe.M15)
 
-
 @FeatureRegistry.register("Ichimoku_Price_Cloud_Distance_H1")
 def compute_ichimoku_price_cloud_distance_h1(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Price-Cloud Distance for 1-hour timeframe"""
     return compute_ichimoku_price_cloud_distance(df, timeframe=Timeframe.H1)
-
 
 @FeatureRegistry.register("Ichimoku_Price_Cloud_Distance_H4")
 def compute_ichimoku_price_cloud_distance_h4(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Price-Cloud Distance for 4-hour timeframe"""
     return compute_ichimoku_price_cloud_distance(df, timeframe=Timeframe.H4)
 
-
 @FeatureRegistry.register("Ichimoku_Price_Cloud_Distance_D1")
 def compute_ichimoku_price_cloud_distance_d1(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Price-Cloud Distance for daily timeframe"""
     return compute_ichimoku_price_cloud_distance(df, timeframe=Timeframe.D1)
 
-
 def calculate_ichimoku_extended(
     df: pd.DataFrame,
-    timeframe: Optional[Timeframe] = None,
-    tenkan_period: Optional[int] = None,
-    kijun_period: Optional[int] = None,
-    senkou_span_b_period: Optional[int] = None,
+    timeframe: Timeframe | None = None,
+    tenkan_period: int | None = None,
+    kijun_period: int | None = None,
+    senkou_span_b_period: int | None = None,
 ) -> pd.DataFrame:
     """
     Calculate extended Ichimoku features including:
@@ -428,8 +390,7 @@ def calculate_ichimoku_extended(
 
     return result
 
-
-def ichimoku_feature_summary() -> Dict[str, str]:
+def ichimoku_feature_summary() -> dict[str, str]:
     """
     Returns a dictionary summarizing each extended Ichimoku feature.
 
@@ -439,7 +400,7 @@ def ichimoku_feature_summary() -> Dict[str, str]:
     the output of `calculate_ichimoku_extended`.
 
     Returns:
-        Dict[str, str]: A mapping from feature names to their descriptions.
+        dict[str, str]: A mapping from feature names to their descriptions.
     """
     return {
         "ichimoku_tenkan": "Tenkan-sen (Conversion Line) - short-term trend",
@@ -459,7 +420,6 @@ def ichimoku_feature_summary() -> Dict[str, str]:
         "ichimoku_composite_signal": "Composite signal combining multiple Ichimoku elements",
         "ichimoku_trend": "Trend determination based on Ichimoku signals (1=bullish, -1=bearish, 0=neutral)",
     }
-
 
 if __name__ == "__main__":
     # Simple test

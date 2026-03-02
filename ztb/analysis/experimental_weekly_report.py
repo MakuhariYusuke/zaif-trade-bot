@@ -11,7 +11,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 from ztb.io.json_io import write_json
@@ -28,7 +28,6 @@ from ztb.evaluation.re_evaluate_features import (
     evaluate_feature_class,
 )
 
-
 @dataclass
 class ExperimentalFeatureMetrics:
     """Data class for experimental feature performance metrics"""
@@ -41,7 +40,6 @@ class ExperimentalFeatureMetrics:
     stability_score: float
     recommendation: str
     reason_code: str
-
 
 class ExperimentalWeeklyReporter:
     """Weekly performance report generator for experimental features"""
@@ -94,7 +92,7 @@ class ExperimentalWeeklyReporter:
             )
             conn.commit()
 
-    def evaluate_all_experimental_features(self) -> List[ExperimentalFeatureMetrics]:
+    def evaluate_all_experimental_features(self) -> list[ExperimentalFeatureMetrics]:
         """Evaluate all experimental features and return metrics"""
         all_metrics = []
 
@@ -126,7 +124,7 @@ class ExperimentalWeeklyReporter:
 
                     if result.get("status") == "success":
                         # Ensure result is treated as dict
-                        result_dict = cast(Dict[str, Any], result)
+                        result_dict = cast(dict[str, Any], result)
 
                         # Calculate derived metrics
                         stability_score = self._calculate_stability_score(result_dict)
@@ -159,7 +157,7 @@ class ExperimentalWeeklyReporter:
 
         return all_metrics
 
-    def _calculate_stability_score(self, result: Dict[str, Any]) -> float:
+    def _calculate_stability_score(self, result: dict[str, Any]) -> float:
         """Calculate stability score based on feature evaluation results"""
         stability_factors = []
 
@@ -193,7 +191,7 @@ class ExperimentalWeeklyReporter:
 
         return float(np.mean(stability_factors)) if stability_factors else 0.5
 
-    def _generate_recommendation(self, result: Dict[str, Any]) -> tuple[str, str]:
+    def _generate_recommendation(self, result: dict[str, Any]) -> tuple[str, str]:
         """Generate recommendation and reason code based on evaluation results"""
         nan_rate = result["nan_rate"]
         delta_sharpe = result.get("best_delta_sharpe", 0.0)
@@ -229,7 +227,7 @@ class ExperimentalWeeklyReporter:
             return "🟡 TUNE", "needs_tuning"
 
     def store_metrics(
-        self, metrics: List[ExperimentalFeatureMetrics], report_date: str
+        self, metrics: list[ExperimentalFeatureMetrics], report_date: str
     ) -> None:
         """Store metrics in historical database"""
         with sqlite3.connect(self.db_path) as conn:
@@ -257,7 +255,7 @@ class ExperimentalWeeklyReporter:
 
     def get_historical_trends(
         self, feature_name: str, weeks: int = 4
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get historical performance trends for a feature"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute(
@@ -274,7 +272,7 @@ class ExperimentalWeeklyReporter:
             columns = [desc[0] for desc in cursor.description]
             return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
-    def generate_weekly_report(self) -> Dict[str, Any]:
+    def generate_weekly_report(self) -> dict[str, Any]:
         """Generate comprehensive weekly report"""
         report_date = datetime.now().strftime("%Y-%m-%d")
 
@@ -301,8 +299,8 @@ class ExperimentalWeeklyReporter:
         return report
 
     def _generate_summary(
-        self, metrics: List[ExperimentalFeatureMetrics]
-    ) -> Dict[str, Any]:
+        self, metrics: list[ExperimentalFeatureMetrics]
+    ) -> dict[str, Any]:
         """Generate executive summary"""
         if not metrics:
             return {"message": "No metrics available"}
@@ -337,8 +335,8 @@ class ExperimentalWeeklyReporter:
         }
 
     def _generate_recommendations(
-        self, metrics: List[ExperimentalFeatureMetrics]
-    ) -> List[Dict[str, Any]]:
+        self, metrics: list[ExperimentalFeatureMetrics]
+    ) -> list[dict[str, Any]]:
         """Generate actionable recommendations"""
         recommendations = []
 
@@ -385,8 +383,8 @@ class ExperimentalWeeklyReporter:
         return recommendations
 
     def _generate_performance_analysis(
-        self, metrics: List[ExperimentalFeatureMetrics]
-    ) -> Dict[str, Any]:
+        self, metrics: list[ExperimentalFeatureMetrics]
+    ) -> dict[str, Any]:
         """Generate detailed performance analysis"""
         if not metrics:
             return {}
@@ -424,10 +422,10 @@ class ExperimentalWeeklyReporter:
         }
 
     def _generate_module_breakdown(
-        self, metrics: List[ExperimentalFeatureMetrics]
-    ) -> Dict[str, Any]:
+        self, metrics: list[ExperimentalFeatureMetrics]
+    ) -> dict[str, Any]:
         """Generate module-specific breakdown"""
-        modules: Dict[str, Dict[str, Any]] = {}
+        modules: dict[str, dict[str, Any]] = {}
 
         for metric in metrics:
             module = metric.module_name
@@ -465,8 +463,8 @@ class ExperimentalWeeklyReporter:
         return modules
 
     def _generate_trending_analysis(
-        self, metrics: List[ExperimentalFeatureMetrics]
-    ) -> Dict[str, Any]:
+        self, metrics: list[ExperimentalFeatureMetrics]
+    ) -> dict[str, Any]:
         """Generate trending analysis comparing to historical data"""
         trending = {}
 
@@ -495,7 +493,7 @@ class ExperimentalWeeklyReporter:
 
         return trending
 
-    def _metric_to_dict(self, metric: ExperimentalFeatureMetrics) -> Dict[str, Any]:
+    def _metric_to_dict(self, metric: ExperimentalFeatureMetrics) -> dict[str, Any]:
         """Convert ExperimentalFeatureMetrics to dictionary"""
         return {
             "feature_name": metric.feature_name,
@@ -509,11 +507,11 @@ class ExperimentalWeeklyReporter:
         }
 
     def export_report(
-        self, report: Dict[str, Any], format: str = "json"
-    ) -> Optional[Path]:
+        self, report: dict[str, Any], format: str = "json"
+    ) -> Path | None:
         """Export report to file"""
         report_date = report["report_date"]
-        output_file: Optional[Path] = None
+        output_file: Path | None = None
 
         # Check if format is supported
         if format not in ["json", "yaml", "markdown"]:
@@ -544,7 +542,7 @@ class ExperimentalWeeklyReporter:
         return None  # Fallback, though raise should prevent this
 
     def _export_markdown_report(
-        self, report: Dict[str, Any], output_file: Path
+        self, report: dict[str, Any], output_file: Path
     ) -> None:
         """Export report as Markdown"""
         lines = [
@@ -608,7 +606,6 @@ class ExperimentalWeeklyReporter:
 
         write_text(output_file, "\n".join(lines) + "\n")
 
-
 def main() -> None:
     """Main execution function"""
     reporter = ExperimentalWeeklyReporter()
@@ -626,7 +623,6 @@ def main() -> None:
     # Print summary
     summary = report["summary"]
     print(f"Recommendations: {summary['recommendation_breakdown']}")
-
 
 if __name__ == "__main__":
     main()

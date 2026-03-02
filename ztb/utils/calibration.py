@@ -5,46 +5,42 @@ Compute Brier score and reliability curves for action probability calibration.
 Helps monitor whether predicted probabilities are well-calibrated.
 """
 
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, TypedDict
 
 import numpy as np
 from numpy.typing import NDArray
 
 from ztb.metrics.metrics import calculate_distribution_stats
 
-
 class BrierScoreDict(TypedDict):
     """Brier score result dictionary."""
 
     overall_brier: float
-    per_action_brier: Dict[str, Optional[float]]  # Can be None when action never occurs
-    overall_brier_stats: Dict[str, float]  # Added stats
-
+    per_action_brier: dict[str, float | None]  # Can be None when action never occurs
+    overall_brier_stats: dict[str, float]  # Added stats
 
 class ReliabilityCurveDict(TypedDict):
     """Reliability curve result dictionary."""
 
-    bin_edges: List[float]
-    bin_counts: List[int]
-    bin_predicted_prob: List[float]
-    bin_observed_freq: List[float]
+    bin_edges: list[float]
+    bin_counts: list[int]
+    bin_predicted_prob: list[float]
+    bin_observed_freq: list[float]
     expected_calibration_error: float
-
 
 class CalibrationReportDict(TypedDict):
     """Calibration analysis report dictionary."""
 
     brier_score: BrierScoreDict
-    reliability_curves: Dict[str, ReliabilityCurveDict]
+    reliability_curves: dict[str, ReliabilityCurveDict]
     n_samples: int
     n_actions: int
-
 
 def compute_brier_score(
     predicted_probs: NDArray[np.float32],
     actual_actions: NDArray[np.int64],
     n_actions: int = 3,
-) -> Dict[str, Any]:  # Using Any for backward compatibility with tests
+) -> dict[str, Any]:  # Using Any for backward compatibility with tests
     """
     Compute Brier score for multi-class predictions.
 
@@ -72,7 +68,7 @@ def compute_brier_score(
     brier_stats = calculate_distribution_stats(brier_per_sample)
 
     # Per-action Brier score
-    per_action_brier: Dict[str, Optional[float]] = {}
+    per_action_brier: dict[str, float | None] = {}
     for action_idx in range(n_actions):
         action_name = (
             ["HOLD", "BUY", "SELL"][action_idx]
@@ -93,7 +89,6 @@ def compute_brier_score(
         "per_action": per_action_brier,  # For backward compatibility with tests
         "per_action_brier": per_action_brier,
     }
-
 
 def compute_reliability_curve(
     predicted_probs: NDArray[np.float32],
@@ -177,13 +172,12 @@ def compute_reliability_curve(
         "expected_calibration_error": float(ece),
     }
 
-
 def compute_full_calibration_report(
     predicted_probs: NDArray[np.float32],
     actual_actions: NDArray[np.int64],
     n_bins: int = 10,
-    action_names: Optional[List[str]] = None,
-) -> Dict[str, Any]:  # Using Any for backward compatibility
+    action_names: list[str] | None = None,
+) -> dict[str, Any]:  # Using Any for backward compatibility
     """
     Compute full calibration report with Brier scores and reliability curves.
 

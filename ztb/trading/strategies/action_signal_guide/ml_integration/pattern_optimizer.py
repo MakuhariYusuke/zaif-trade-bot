@@ -34,7 +34,6 @@ logger = logging.getLogger(__name__)
 
 RegressorModel = LinearRegression | RandomForestRegressor | GradientBoostingRegressor
 
-
 class ModelTrainingSuccess(TypedDict):
     model: RegressorModel
     cv_score: float
@@ -47,7 +46,6 @@ class ModelTrainingSuccess(TypedDict):
     metrics: dict[str, float]
     validation: float
 
-
 class ModelTrainingError(TypedDict):
     error: str
     accuracy: float
@@ -57,9 +55,7 @@ class ModelTrainingError(TypedDict):
     metrics: dict[str, float]
     validation: float
 
-
 ModelTrainingResult = ModelTrainingSuccess | ModelTrainingError
-
 
 @dataclass
 class PatternOptimizationResult:
@@ -72,7 +68,6 @@ class PatternOptimizationResult:
     optimization_score: float = 0.0
     training_time: float = 0.0
     validation_score: float = 0.0
-
 
 class BasePatternOptimizer(IPatternOptimizer):
     """Base implementation of pattern optimizer."""
@@ -539,7 +534,6 @@ class BasePatternOptimizer(IPatternOptimizer):
         except (TypeError, ValueError):
             return default
 
-
 class AdvancedPatternOptimizer(BasePatternOptimizer):
     """Advanced pattern optimizer with additional features."""
 
@@ -797,7 +791,6 @@ class AdvancedPatternOptimizer(BasePatternOptimizer):
             "rule_patterns": len([name for name in keys if "rule" in name]),
             "feature_patterns": len([name for name in keys if "feature" in name]),
         }
-
 
 def create_pattern_optimizer(config: MLIntegrationConfig) -> IPatternOptimizer:
     """Factory function to create pattern optimizer."""

@@ -7,7 +7,6 @@ through backtesting and statistical analysis.
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -16,7 +15,6 @@ from ztb.metrics import max_drawdown, sharpe_ratio
 from ztb.utils.logging_utils import get_logger
 
 from .signal_definitions import SignalDefinitions, SignalType
-
 
 @dataclass
 class SignalPerformance:
@@ -33,12 +31,11 @@ class SignalPerformance:
     max_drawdown: float
     total_return: float
 
-
 @dataclass
 class BacktestResult:
     """Results from signal backtesting."""
 
-    signal_performances: Dict[str, SignalPerformance]
+    signal_performances: dict[str, SignalPerformance]
     overall_win_rate: float
     overall_return: float
     benchmark_return: float
@@ -46,7 +43,6 @@ class BacktestResult:
     start_date: datetime
     end_date: datetime
     num_trades: int
-
 
 class SignalEvaluator:
     """
@@ -82,18 +78,18 @@ class SignalEvaluator:
     def backtest_signals(
         self,
         data: pd.DataFrame,
-        signals: List[str],
+        signals: list[str],
         initial_capital: float = 100000.0,
         position_size: float = 0.1,
-        stop_loss: Optional[float] = None,
-        take_profit: Optional[float] = None,
+        stop_loss: float | None = None,
+        take_profit: float | None = None,
     ) -> BacktestResult:
         """
         Backtest a set of signals on historical data.
 
         Args:
             data: Historical OHLCV data with features
-            signals: List of signal names to test
+            signals: list of signal names to test
             initial_capital: Starting capital
             position_size: Position size as fraction of capital
             stop_loss: Stop loss percentage (None for no stop loss)
@@ -270,8 +266,8 @@ class SignalEvaluator:
         position: float,
         entry_price: float,
         current_price: float,
-        stop_loss: Optional[float],
-        take_profit: Optional[float],
+        stop_loss: float | None,
+        take_profit: float | None,
     ) -> bool:
         """Check if position should be exited based on stop loss/take profit."""
         if position > 0:  # Long position
@@ -286,7 +282,7 @@ class SignalEvaluator:
                 return True
         return False
 
-    def compare_signals(self, results: Dict[str, BacktestResult]) -> pd.DataFrame:
+    def compare_signals(self, results: dict[str, BacktestResult]) -> pd.DataFrame:
         """
         Compare multiple backtest results.
 
@@ -314,14 +310,14 @@ class SignalEvaluator:
         return pd.DataFrame(comparison_data)
 
     def get_signal_correlation(
-        self, data: pd.DataFrame, signals: List[str]
+        self, data: pd.DataFrame, signals: list[str]
     ) -> pd.DataFrame:
         """
         Calculate correlation between signals and future returns.
 
         Args:
             data: Historical data with features
-            signals: List of signal names
+            signals: list of signal names
 
         Returns:
             DataFrame with signal correlations

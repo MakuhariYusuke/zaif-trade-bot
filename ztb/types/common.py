@@ -36,29 +36,28 @@ else:
     DataLoader = object
 
 # Action type for trading environments
-Action = Union[int, float, np.ndarray]
+Action = int | float | np.ndarray
 
 # Data types for analysis and training
-AnalysisData = Union[pd.DataFrame, np.ndarray, dict[str, object], List[dict[str, object]]]
-TrainingData = Union[pd.DataFrame, np.ndarray, dict[str, object], List[dict[str, object]]]
-
+AnalysisData = pd.DataFrame | np.ndarray | dict[str, object] | list[dict[str, object]]
+TrainingData = pd.DataFrame | np.ndarray | dict[str, object] | list[dict[str, object]]
 
 class SB3ModelProtocol(Protocol):
     """Protocol for Stable Baselines 3 models (SAC, PPO, etc.)."""
 
     def predict(
         self, obs: np.ndarray, deterministic: bool = True
-    ) -> Union[np.ndarray, Tuple[np.ndarray, object]]:
+    ) -> np.ndarray | tuple[np.ndarray, object]:
         """Predict action from observation."""
         ...
 
-    def save(self, path: Union[str, Path]) -> None:
+    def save(self, path: str | Path) -> None:
         """Save model to path."""
         ...
 
     @classmethod
     def load(
-        cls, path: Union[str, Path], env: Optional[object] = None
+        cls, path: str | Path, env: object | None = None
     ) -> "SB3ModelProtocol":
         """Load model from path."""
         ...
@@ -67,52 +66,41 @@ class SB3ModelProtocol(Protocol):
     device: str
     observation_space: spaces.Space
 
-
 # Backwards compatibility alias: AlertLevel is defined in types/alert_types.py
 try:
     from ztb.types.alert_types import AlertLevel  # type: ignore
 except Exception:
     AlertLevel = object  # type: ignore
 
-
-JSONSerializable = Union[
-    Dict[str, "JSONSerializable"], List["JSONSerializable"], str, int, float, bool, None
-]
-
+JSONSerializable = dict[str, "JSONSerializable"] | list["JSONSerializable"] | str | int | float | bool | None
 
 # More specific config types
-ConfigValue = Union[
-    str, int, float, bool, List["ConfigValue"], Dict[str, "ConfigValue"], None
-]
+ConfigValue = str | int | float | bool | list["ConfigValue"] | dict[str, "ConfigValue"] | None
 
 # Refined aliases for common use cases to improve static typing
-NumericConfigValue = Union[int, float]
-PrimitiveConfigValue = Union[str, int, float, bool, None]
-
+NumericConfigValue = int | float
+PrimitiveConfigValue = str | int | float | bool | None
 
 # Type guard helpers to narrow ConfigValue unions at runtime
 def is_numeric_config_value(value: ConfigValue) -> TypeGuard[NumericConfigValue]:
     return isinstance(value, (int, float))
 
-
-def is_config_dict(value: ConfigValue) -> TypeGuard[Dict[str, ConfigValue]]:
+def is_config_dict(value: ConfigValue) -> TypeGuard[dict[str, ConfigValue]]:
     return isinstance(value, dict)
 
-
-def is_config_list(value: ConfigValue) -> TypeGuard[List[ConfigValue]]:
+def is_config_list(value: ConfigValue) -> TypeGuard[list[ConfigValue]]:
     return isinstance(value, list)
-
 
 class BaseConfigDict(TypedDict, total=False):
     """Base configuration dictionary with common fields."""
 
     # Top-level structure
     version: str
-    training: Dict[str, ConfigValue]
-    environment: Dict[str, ConfigValue]
-    features: List[str]
-    model: Dict[str, ConfigValue]
-    evaluation: Dict[str, ConfigValue]
+    training: dict[str, ConfigValue]
+    environment: dict[str, ConfigValue]
+    features: list[str]
+    model: dict[str, ConfigValue]
+    evaluation: dict[str, ConfigValue]
 
     # Core settings (flattened for convenience)
     algorithm: str
@@ -149,44 +137,40 @@ class BaseConfigDict(TypedDict, total=False):
     n_eval_episodes: ConfigValue
 
     # Advanced settings
-    seed: Optional[int]
-    target_kl: Optional[ConfigValue]
-    buffer_size: Optional[ConfigValue]
-    tau: Optional[ConfigValue]
-    target_update_interval: Optional[ConfigValue]
+    seed: int | None
+    target_kl: ConfigValue | None
+    buffer_size: ConfigValue | None
+    tau: ConfigValue | None
+    target_update_interval: ConfigValue | None
     curriculum_stage: str
     stop_loss_threshold: ConfigValue
     max_consecutive_trades: ConfigValue
     min_holding_period: ConfigValue
     feature_storage_dtype: str
-    precision_columns: List[str]
+    precision_columns: list[str]
     parallel_enabled: bool
 
     # Dynamic fields for extensibility
-    v427_advanced_features: Dict[str, ConfigValue]
-    v433_adaptive: Dict[str, ConfigValue]
-    ensemble_system: Dict[str, ConfigValue]
+    v427_advanced_features: dict[str, ConfigValue]
+    v433_adaptive: dict[str, ConfigValue]
+    ensemble_system: dict[str, ConfigValue]
 
-
-ConfigDict = Union[
-    BaseConfigDict, Dict[str, ConfigValue]
-]  # Fallback for dynamic or legacy configs
-OptConfigDict = Optional[ConfigDict]
-PathLike = Union[str, Path]
+ConfigDict = BaseConfigDict | dict[str, ConfigValue]  # Fallback for dynamic or legacy configs
+OptConfigDict = ConfigDict | None
+PathLike = str | Path
 
 # Transitional aliases for staged `Any` reduction.
 # Prefer these aliases over ad-hoc `dict[str, object]` in new code.
-ConfigSection = Dict[str, ConfigValue]
-JSONDict = Dict[str, JSONSerializable]
-JSONList = List[JSONSerializable]
-MetricsDict = Dict[str, float]
-CountDict = Dict[str, int]
-StringMap = Dict[str, str]
-BoolMap = Dict[str, bool]
-ObjectMap = Dict[str, object]
-ObjectList = List[object]
-ObjectRecords = List[ObjectMap]
-
+ConfigSection = dict[str, ConfigValue]
+JSONDict = dict[str, JSONSerializable]
+JSONList = list[JSONSerializable]
+MetricsDict = dict[str, float]
+CountDict = dict[str, int]
+StringMap = dict[str, str]
+BoolMap = dict[str, bool]
+ObjectMap = dict[str, object]
+ObjectList = list[object]
+ObjectRecords = list[ObjectMap]
 
 # More specific types
 class TrainingStats(TypedDict, total=False):
@@ -196,17 +180,17 @@ class TrainingStats(TypedDict, total=False):
     episodes_completed: int
     average_reward: float
     best_reward: float
-    loss: Optional[float]
+    loss: float | None
     learning_rate: float
-    epsilon: Optional[float]
-    training_time_seconds: Optional[float]
-    convergence_achieved: Optional[bool]
+    epsilon: float | None
+    training_time_seconds: float | None
+    convergence_achieved: bool | None
     total_timesteps: int
     training_time: float
     steps_per_second: float
     model_path: str
     final_reward: float
-    action_distribution: Dict[str, float]
+    action_distribution: dict[str, float]
     curriculum_learning: bool
     stages_completed: int
     status: str
@@ -217,27 +201,23 @@ class TrainingStats(TypedDict, total=False):
     federated_learning: dict[str, object]
     continual_learning: dict[str, object]
 
-
 class ActionDistribution(TypedDict):
     """Action distribution for discrete actions."""
 
     action: int
     probability: float
-    q_value: Optional[float]
-
+    q_value: float | None
 
 class ModelResult(TypedDict):
     """Model evaluation result."""
 
     model_path: str
-    metrics: Dict[str, float]
-    predictions: Optional[list[object]]
-    confidence: Optional[float]
-
+    metrics: dict[str, float]
+    predictions: list[object] | None
+    confidence: float | None
 
 # Training-related lightweight protocols / aliases
 TrainingConfig = ConfigDict  # Keep for backward compatibility
-
 
 class EnsemblePredictor(Protocol):
     def get_ensemble_stats(self) -> dict[str, object]:
@@ -246,7 +226,6 @@ class EnsemblePredictor(Protocol):
     def adapt_ensemble(self, market_conditions: dict[str, object]) -> None:
         ...
 
-
 class AnomalyDetectorProtocol(Protocol):
     def fit_ml_detectors(
         self, training_data: "np.ndarray"
@@ -254,17 +233,15 @@ class AnomalyDetectorProtocol(Protocol):
         ...
 
     def detect_anomalies(
-        self, data: "np.ndarray", feature_names: Optional[List[str]] = None
-    ) -> Tuple[bool, dict[str, object]]:
+        self, data: "np.ndarray", feature_names: list[str] | None = None
+    ) -> tuple[bool, dict[str, object]]:
         ...
-
 
 class MetaLearnerProtocol(Protocol):
     meta_learner: object
 
     def train_on_markets(self, num_epochs: int) -> dict[str, object]:
         ...
-
 
 class FederatedLearnerProtocol(Protocol):
     def train_all_markets(self, loss_fn: object) -> dict[str, object]:
@@ -273,21 +250,18 @@ class FederatedLearnerProtocol(Protocol):
     def get_federated_stats(self) -> dict[str, object]:
         ...
 
-
 class ContinualLearnerProtocol(Protocol):
     def learn_task(self, *args: object, **kwargs: object) -> dict[str, object]:
         ...
 
-
 class TrainingReporterProtocol(Protocol):
     def generate_ensemble_report(
-        self, ensemble_stats: dict[str, object], decision_log: List[dict[str, object]]
+        self, ensemble_stats: dict[str, object], decision_log: list[dict[str, object]]
     ) -> dict[str, object]:
         ...
 
     def save_ensemble_report(self, report: dict[str, object]) -> str:
         ...
-
 
 class TrainingUIProtocol(Protocol):
     def print_warning(self, message: str) -> None:
@@ -298,7 +272,6 @@ class TrainingUIProtocol(Protocol):
 
     def print_info(self, message: str) -> None:
         ...
-
 
 # Lightweight TypedDicts for common hyperparameter/config shapes
 class SACHyperparams(TypedDict, total=False):
@@ -313,12 +286,10 @@ class SACHyperparams(TypedDict, total=False):
     target_entropy: float
     train_freq: int
 
-
 class EnsembleConfigDict(TypedDict, total=False):
     members: int
     voting_mechanism: str
-    specializations: List[str]
-
+    specializations: list[str]
 
 # Conservative protocol for SAC-like model objects used in trainers/analyzers.
 # Keep minimal to avoid over-constraining implementations from SB3 or custom wrappers.
@@ -332,7 +303,7 @@ class SACLikeModelProtocol(Protocol):
     # Runtime prediction API (may return action or (action, state))
     def predict(
         self, obs: np.ndarray, deterministic: bool = True
-    ) -> Union[np.ndarray, Tuple[np.ndarray, object]]:  # pragma: no cover - runtime
+    ) -> np.ndarray | tuple[np.ndarray, object]:  # pragma: no cover - runtime
         ...
 
     # Optional logger used by SB3 models
@@ -342,11 +313,10 @@ class SACLikeModelProtocol(Protocol):
     device: str
 
     # Replay buffer used by SAC implementations (if available)
-    replay_buffer: Optional[object]  # Keep as Any for now - complex buffer types
+    replay_buffer: object | None  # Keep as Any for now - complex buffer types
 
     # Observation space (has .shape)
     observation_space: spaces.Space
-
 
 # Base classes for components
 class BaseComponent:
@@ -359,7 +329,7 @@ class BaseComponent:
     """
 
     def __init__(
-        self, name: str = "", config: Optional[dict[str, object]] = None, **kwargs
+        self, name: str = "", config: dict[str, object] | None = None, **kwargs
     ):
         self.name = name or self.__class__.__name__
         self.config = config or {}
@@ -381,7 +351,6 @@ class BaseComponent:
         """Get component status."""
         return {"name": self.name, "status": "active"}
 
-
 # --- Layer 6 optimizer & curriculum types ---
 class StageChangeEvent(TypedDict, total=False):
     """Event payload emitted by BalanceCurriculumManager on stage changes.
@@ -398,14 +367,13 @@ class StageChangeEvent(TypedDict, total=False):
     step: int
     emergency: bool
 
-
 class AppliedCandidateTelemetry(TypedDict, total=False):
     """Telemetry object written to reports on applied candidate.
 
     Keys:
       - candidate_id: str
       - applied_at: float (timestamp)
-      - weights: Dict[str, float]
+      - weights: dict[str, float]
       - composite_score: float
       - mean_sharpe: float
       - mean_total_return: float
@@ -413,17 +381,15 @@ class AppliedCandidateTelemetry(TypedDict, total=False):
 
     candidate_id: str
     applied_at: float
-    weights: Dict[str, float]
+    weights: dict[str, float]
     composite_score: float
     mean_sharpe: float
     mean_total_return: float
-
 
 @dataclass
 class CandidateConfigDataclass:
     config_path: str
     candidate_id: str
-
 
 @dataclass
 class CandidateScoreDataclass:
@@ -432,8 +398,7 @@ class CandidateScoreDataclass:
     mean_total_return: float = 0.0
     composite_score: float = 0.0
     report_count: int = 0
-    run_artifacts: Optional[List[str]] = None
-
+    run_artifacts: list[str] | None = None
 
 # Backwards-compatible aliases used throughout the repo
 CandidateConfig = CandidateConfigDataclass

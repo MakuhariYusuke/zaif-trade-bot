@@ -5,12 +5,11 @@ System utilities for environment and hardware management.
 
 import importlib
 import os
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 def check_library_availability(library_name: str, feature_name: str) -> bool:
     """
@@ -30,8 +29,7 @@ def check_library_availability(library_name: str, feature_name: str) -> bool:
         logger.warning(f"{library_name} not available. {feature_name} will be disabled.")
         return False
 
-
-def safe_import(library_name: str, feature_name: str) -> Optional[Any]:
+def safe_import(library_name: str, feature_name: str) -> Any | None:
     """
     安全なライブラリインポートを実行
 
@@ -48,13 +46,12 @@ def safe_import(library_name: str, feature_name: str) -> Optional[Any]:
         logger.warning(f"{library_name} not available. {feature_name} will be disabled.")
         return None
 
-
-def create_library_flags() -> Dict[str, bool]:
+def create_library_flags() -> dict[str, bool]:
     """
     一般的なライブラリの利用可能性フラグを作成
 
     Returns:
-        Dict[str, bool]: ライブラリ名をキー、利用可能性を値とする辞書
+        dict[str, bool]: ライブラリ名をキー、利用可能性を値とする辞書
     """
     libraries = {
         'optuna': 'Bayesian optimization',
@@ -73,7 +70,6 @@ def create_library_flags() -> Dict[str, bool]:
         flags[f"{lib_name.upper()}_AVAILABLE"] = check_library_availability(lib_name, feature_desc)
 
     return flags
-
 
 def configure_pytorch_environment(cuda_optimizations: bool = True) -> None:
     """
@@ -100,8 +96,7 @@ def configure_pytorch_environment(cuda_optimizations: bool = True) -> None:
     os.environ["OMP_NUM_THREADS"] = "1"
     os.environ["MKL_NUM_THREADS"] = "1"
 
-
-def get_system_info() -> Dict[str, Any]:
+def get_system_info() -> dict[str, Any]:
     """Get basic system information."""
     return {
         "cuda_available": os.environ.get("CUDA_VISIBLE_DEVICES", "") != "",
@@ -110,7 +105,6 @@ def get_system_info() -> Dict[str, Any]:
         "memory_optimized": "PYTORCH_CUDA_ALLOC_CONF" in os.environ,
     }
 
-
 # ======================================================================
 # 169# subprocess popup 抑制 (Windows)
 # ======================================================================
@@ -118,8 +112,7 @@ def get_system_info() -> Dict[str, Any]:
 import subprocess
 import sys
 
-
-def popen_no_window(**extra_kwargs: Any) -> Dict[str, Any]:
+def popen_no_window(**extra_kwargs: Any) -> dict[str, Any]:
     """Windows でコンソールウィンドウがポップアップしない Popen kwargs を返す.
 
     169# Fix: launch_monitoring / ab_test_runner 等で subprocess.Popen が
@@ -132,7 +125,7 @@ def popen_no_window(**extra_kwargs: Any) -> Dict[str, Any]:
     Returns:
         dict: ``creationflags=CREATE_NO_WINDOW`` (Windows) or empty dict (非Windows).
     """
-    kwargs: Dict[str, Any] = {}
+    kwargs: dict[str, Any] = {}
     if sys.platform == "win32":
         # CREATE_NO_WINDOW = 0x08000000
         kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW

@@ -1,9 +1,10 @@
 """
 Algorithm-specific training implementations.
 """
+from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from ztb.training.unified_trainer.base.base_trainer import BaseAlgorithmTrainer
 
@@ -13,12 +14,10 @@ _LAZY_TRAINERS = {
     "SelfSupervisedTrainer": (".self_supervised_trainer", "SelfSupervisedTrainer"),
 }
 
-
 def _load_trainer(name: str):
     mod_name, attr = _LAZY_TRAINERS[name]
     module = __import__(f"{__name__}{mod_name}", fromlist=[attr])
     return getattr(module, attr)
-
 
 def __getattr__(name: str):
     if name in _LAZY_TRAINERS:
@@ -27,14 +26,13 @@ def __getattr__(name: str):
         return cls
     raise AttributeError(name)
 
-
 def create_algorithm_trainer(
     algorithm: str,
-    config: Dict[str, Any],
-    logger: Optional[logging.Logger] = None,
+    config: dict[str, Any],
+    logger: logging.Logger | None = None,
     gradient_accumulation_steps: int = 1,
-    system_optimizer: Optional[Any] = None,
-    optimizer_tracker: Optional["OptimizerFeatureTracker"] = None,
+    system_optimizer: Any | None = None,
+    optimizer_tracker: OptimizerFeatureTracker | None = None,
 ) -> BaseAlgorithmTrainer:
     """Factory function to create algorithm-specific trainer."""
     algorithm = algorithm.lower()
@@ -96,7 +94,6 @@ def create_algorithm_trainer(
         )
     else:
         raise ValueError(f"Unsupported algorithm: {algorithm}")
-
 
 __all__ = [
     "SACTrainer",

@@ -6,7 +6,6 @@ import json
 
 from ztb.training.unified_trainer import UnifiedTrainer
 
-
 def main():
     config_path = "configs/ppo_v394d_aggressive.json"
 
@@ -23,7 +22,6 @@ def main():
     print("\n=== Training Complete ===")
     if result:
         print("Training finished")
-
 
 if __name__ == "__main__":
     main()

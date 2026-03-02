@@ -6,7 +6,7 @@ import logging
 import math
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -16,7 +16,6 @@ from ztb.io.json_io import write_json
 from .types import WalkForwardResult
 
 logger = logging.getLogger(__name__)
-
 
 def classify_trade_type(position_before: float, position_after: float) -> str:
     """
@@ -62,13 +61,12 @@ def classify_trade_type(position_before: float, position_after: float) -> str:
     
     return "hold"
 
-
 def decompose_reverse_trade(
     position_before: float,
     position_after: float,
     price: float,
     timestamp: pd.Timestamp
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Doc04仕様: 反転取引を決済+新規エントリーに分解
     
@@ -125,7 +123,6 @@ def decompose_reverse_trade(
     
     return trades
 
-
 def to_serializable(obj):
     """JSON serializable に変換"""
     if isinstance(obj, np.integer):
@@ -142,7 +139,6 @@ def to_serializable(obj):
         return [to_serializable(item) for item in obj]
     else:
         return obj
-
 
 class WalkForwardReporter:
     """結果集約と報告"""
@@ -203,7 +199,7 @@ class WalkForwardReporter:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
-        result_dict: Dict[str, Any] = {
+        result_dict: dict[str, Any] = {
             "windows": len(self.result.windows),
             "average_val_roi": self.result.average_val_roi,
             "average_test_roi": self.result.average_test_roi,
@@ -240,7 +236,6 @@ class WalkForwardReporter:
         write_json(output_path, result_dict, indent=2)
         
         logger.info(f"✓ Results saved to {output_path}")
-
 
 class BacktestReporter:
     """バックテストの統計情報を管理"""
@@ -345,8 +340,8 @@ class BacktestReporter:
         size: float,
         fee: float,
         slippage: float,
-        timestamp: Optional[pd.Timestamp] = None,
-        close_reason: Optional[str] = None,  # ★ P1-1: Phase 2追加
+        timestamp: pd.Timestamp | None = None,
+        close_reason: str | None = None,  # ★ P1-1: Phase 2追加
     ):
         """
         Doc04仕様 + P0-3規約: 詳細Trade Type分類で取引記録
@@ -432,8 +427,8 @@ class BacktestReporter:
         size: float,
         fee: float,
         slippage: float,
-        timestamp: Optional[pd.Timestamp] = None,
-        close_reason: Optional[str] = None,  # ★ P1-1: Phase 2追加
+        timestamp: pd.Timestamp | None = None,
+        close_reason: str | None = None,  # ★ P1-1: Phase 2追加
     ):
         """
         単一取引の記録（内部用）
@@ -550,7 +545,7 @@ class BacktestReporter:
         total_days = len(self.portfolio_history) / 1440
         self.stats["trades_per_day"] = self.stats["total_trades"] / total_days if total_days > 0 else 0.0
     
-    def _calculate_sharpe_ratio(self, risk_free_rate: float = 0.0) -> Optional[float]:
+    def _calculate_sharpe_ratio(self, risk_free_rate: float = 0.0) -> float | None:
         """
         Doc04仕様: 日次集約Sharpe Ratio計算
         

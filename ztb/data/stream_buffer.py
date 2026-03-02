@@ -50,16 +50,13 @@ except Exception:  # pragma: no cover - optional dependency
     zstd = None  # type: ignore[assignment]
     HAS_ZSTD = False
 
-DataLike = Union[pd.DataFrame, Mapping[str, Any], Sequence[Mapping[str, Any]]]
-
+DataLike = pd.DataFrame | Mapping[str, Any] | Sequence[Mapping[str, Any]]
 
 class StreamBufferError(Exception):
     """Base exception for stream buffer operations."""
 
-
 class SchemaMismatchError(StreamBufferError):
     """Raised when appended data does not match the expected schema."""
-
 
 @dataclass(frozen=True)
 class BufferStats:
@@ -70,7 +67,6 @@ class BufferStats:
     capacity: int
     memory_bytes: int
 
-
 class _Chunk:
     """Internal storage wrapper that supports optional compression."""
 
@@ -80,16 +76,16 @@ class _Chunk:
         self,
         df: pd.DataFrame,
         *,
-        compression: Optional[str] = None,
+        compression: str | None = None,
         compress_min_rows: int = 0,
     ) -> None:
         df = df.reset_index(drop=True)
         self.rows = len(df)
         self.compression = compression if compression else None
-        self._compressed: Optional[bytes] = None
+        self._compressed: bytes | None = None
         if self.compression and self.rows >= compress_min_rows:
             self._compressed = _compress_df(df, self.compression)
-            self._df: Optional[pd.DataFrame] = None
+            self._df: pd.DataFrame | None = None
         else:
             self._df = df
 
@@ -121,7 +117,6 @@ class _Chunk:
     def clone_dataframe(self) -> pd.DataFrame:
         return self.materialize().copy()
 
-
 def _compress_df(df: pd.DataFrame, compression: str) -> bytes:
     payload = pickle.dumps(df, protocol=pickle.HIGHEST_PROTOCOL)
     result: Any
@@ -136,8 +131,7 @@ def _compress_df(df: pd.DataFrame, compression: str) -> bytes:
 
     return cast(bytes, result)
 
-
-def _decompress_df(data: bytes, compression: Optional[str]) -> pd.DataFrame:
+def _decompress_df(data: bytes, compression: str | None) -> pd.DataFrame:
     if compression == "zstd" and HAS_ZSTD and zstd is not None:
         payload = zstd.ZstdDecompressor().decompress(data)
     elif compression == "lz4" and HAS_LZ4 and lz4_frame is not None:
@@ -148,7 +142,6 @@ def _decompress_df(data: bytes, compression: Optional[str]) -> pd.DataFrame:
         payload = zlib.decompress(data)
     # pickle.loads returns Any; cast to DataFrame for typing
     return cast(pd.DataFrame, pickle.loads(payload))
-
 
 class StreamBuffer:
     """A memory-efficient circular buffer for streaming market data.
@@ -164,12 +157,12 @@ class StreamBuffer:
         self,
         capacity: int,
         *,
-        columns: Optional[Sequence[str]] = None,
-        dtypes: Optional[Mapping[str, Any]] = None,
-        on_trim: Optional[Callable[[pd.DataFrame], None]] = None,
-        compression: Optional[str] = None,
+        columns: Sequence[str] | None = None,
+        dtypes: Mapping[str, Any] | None = None,
+        on_trim: Callable[[pd.DataFrame], None] | None = None,
+        compression: str | None = None,
         compress_min_rows: int = 2000,
-        observability: Optional[ObservabilityClient] = None,
+        observability: ObservabilityClient | None = None,
         zero_copy: bool = False,
     ) -> None:
         if capacity <= 0:
@@ -187,8 +180,8 @@ class StreamBuffer:
             raise RuntimeError("lz4 compression requested but lz4.frame not installed")
 
         self.capacity = int(capacity)
-        self._columns: Optional[Tuple[str, ...]] = tuple(columns) if columns else None
-        self._dtype_map: Dict[str, Any] = dict(dtypes or {})
+        self._columns: tuple[str, ...] | None = tuple(columns) if columns else None
+        self._dtype_map: dict[str, Any] = dict(dtypes or {})
         self._chunks: Deque[_Chunk] = deque()
         self._rows = 0
         self._lock = threading.RLock()
@@ -236,7 +229,7 @@ class StreamBuffer:
                 raise StreamBufferError("buffer is empty")
 
             remaining = rows
-            collected: List[pd.DataFrame] = []
+            collected: list[pd.DataFrame] = []
             while remaining > 0 and self._chunks:
                 chunk = self._chunks[0]
                 df = chunk.materialize()
@@ -261,7 +254,7 @@ class StreamBuffer:
                 return pd.DataFrame(columns=self.columns)
             return pd.concat(collected, ignore_index=True, copy=False)
 
-    def to_dataframe(self, last_n: Optional[int] = None) -> pd.DataFrame:
+    def to_dataframe(self, last_n: int | None = None) -> pd.DataFrame:
         """Return the most recent `last_n` rows as a single `DataFrame`."""
         with self._lock:
             if self._rows == 0:
@@ -304,7 +297,7 @@ class StreamBuffer:
         return self._rows
 
     @property
-    def columns(self) -> Tuple[str, ...]:
+    def columns(self) -> tuple[str, ...]:
         if self._columns is None:
             return tuple()
         return self._columns

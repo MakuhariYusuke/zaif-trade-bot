@@ -6,17 +6,15 @@ Follows Single Responsibility Principle by focusing only on regime detection.
 """
 
 from collections import defaultdict, deque
-from typing import Dict, Protocol
+from typing import Protocol
 
 import numpy as np
 
 from ztb.utils.logging_utils import get_logger
 
-
 class IMarketRegimeDetector(Protocol):
     def detect_regime(self, current_price: float, step: int) -> str:
         """Detect the current market regime."""
-
 
 class MarketRegimeDetector(IMarketRegimeDetector):
     """
@@ -61,7 +59,7 @@ class MarketRegimeDetector(IMarketRegimeDetector):
         self.regime_step_counter = 0
 
         # Long-term regime statistics
-        self.regime_counts: Dict[str, int] = defaultdict(int)
+        self.regime_counts: dict[str, int] = defaultdict(int)
         self.total_steps_tracked = 0
 
     def detect_regime(self, current_price: float, step: int) -> str:

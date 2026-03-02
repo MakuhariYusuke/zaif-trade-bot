@@ -7,7 +7,6 @@ Analyzes all training results from SAC v423 series.
 
 import sys
 from pathlib import Path
-from typing import List, Optional
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -19,15 +18,13 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class SACv423SeriesAnalyzer:
     """Analyzer for SAC v423 series training results."""
 
     def __init__(self):
         self.reports_dir = Path("reports")
 
-
-    def load_training_report(self, report_path: Path) -> Optional[TrainingReport]:
+    def load_training_report(self, report_path: Path) -> TrainingReport | None:
         """Load training report from file."""
         try:
             return read_json(report_path)
@@ -158,9 +155,6 @@ class SACv423SeriesAnalyzer:
 
         print("\n✅ Series analysis complete!")
         print(f"📁 Analyzed {len(report_paths)} SAC v423 training results")
-
-
-
 
 if __name__ == "__main__":
     main()

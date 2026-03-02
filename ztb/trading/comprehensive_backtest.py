@@ -9,7 +9,7 @@ import warnings
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -25,18 +25,17 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 @dataclass
 class BacktestConfig:
     """バックテスト設定"""
 
     symbol: str = "btc_jpy"
     # Optional dates: many tests pass None expecting defaults; keep None to be init-friendly
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
     initial_balance: float = 100000.0  # 初期残高（円）
     # Backwards compatibility: allow 'initial_capital' to be passed.
-    initial_capital: Optional[float] = None
+    initial_capital: float | None = None
 
     def __post_init__(self):
         # If initial_capital was provided for backward compatibility, use it to set initial_balance
@@ -63,7 +62,6 @@ class BacktestConfig:
     benchmark_symbol: str = "BTC/JPY"
     data_frequency: str = "1H"
 
-
 @dataclass
 class BacktestResult:
     """バックテスト結果"""
@@ -88,21 +86,21 @@ class BacktestResult:
     alpha: float = 0.0
     beta: float = 0.0
     information_ratio: float = 0.0
-    equity_curve: List[float] = field(default_factory=list)
-    trade_log: List[dict[str, object]] = field(default_factory=list)
-    monthly_returns: Dict[str, float] = field(default_factory=dict)
-    drawdown_periods: List[dict[str, object]] = field(default_factory=list)
+    equity_curve: list[float] = field(default_factory=list)
+    trade_log: list[dict[str, object]] = field(default_factory=list)
+    monthly_returns: dict[str, float] = field(default_factory=dict)
+    drawdown_periods: list[dict[str, object]] = field(default_factory=list)
     # BTC関連フィールド
     initial_btc: float = 0.0
     final_btc: float = 0.0
     btc_return: float = 0.0
-    btc_holdings_history: List[float] = field(default_factory=list)
+    btc_holdings_history: list[float] = field(default_factory=list)
     net_btc_gained: float = 0.0
     execution_time: float = 0.0
     # Backwards-compatible fields
-    trades: Optional[List[dict[str, object]]] = None
-    performance_metrics: Optional[TradingPerformanceMetrics] = None
-    risk_metrics: Optional[object] = None
+    trades: list[dict[str, object]] | None = None
+    performance_metrics: TradingPerformanceMetrics | None = None
+    risk_metrics: object | None = None
     success: bool = False
 
     def __post_init__(self):
@@ -168,23 +166,19 @@ class BacktestResult:
                 pass
         return summary
 
-
 from ztb.evaluation.walk_forward import WalkForwardResult
-
 
 @dataclass
 class CrossValidationResult:
     """交差検証結果"""
 
-    fold_results: List[BacktestResult] = field(default_factory=list)
+    fold_results: list[BacktestResult] = field(default_factory=list)
     average_performance: dict[str, object] = field(default_factory=dict)
     performance_variance: dict[str, object] = field(default_factory=dict)
-    confidence_intervals: Dict[str, Tuple[float, float]] = field(default_factory=dict)
-
+    confidence_intervals: dict[str, tuple[float, float]] = field(default_factory=dict)
 
 # Backward compatible alias for older code/tests
 BacktestConfiguration = BacktestConfig
-
 
 class DataManager:
     """データ管理クラス"""
@@ -199,10 +193,10 @@ class DataManager:
             self.max_cache_entries = 8
 
         # データキャッシュ
-        self.price_cache: Dict[str, pd.DataFrame] = {}
-        self.fundamental_cache: Dict[str, pd.DataFrame] = {}
+        self.price_cache: dict[str, pd.DataFrame] = {}
+        self.fundamental_cache: dict[str, pd.DataFrame] = {}
 
-    def _prune_cache(self, cache: Dict[str, pd.DataFrame]) -> None:
+    def _prune_cache(self, cache: dict[str, pd.DataFrame]) -> None:
         """Prune cache to avoid unbounded growth in long runs."""
         while len(cache) > self.max_cache_entries:
             cache.pop(next(iter(cache)))
@@ -347,7 +341,6 @@ class DataManager:
         except Exception as e:
             self.logger.error(f"Failed to save backtest data: {e}")
 
-
 class BacktestEngine:
     """バックテストエンジン"""
 
@@ -374,9 +367,9 @@ class BacktestEngine:
         # バックテスト状態
         if not hasattr(self, "current_balance"):
             self.current_balance = 0.0
-        self.current_positions: Dict[str, dict[str, object]] = {}
-        self.trade_log: List[dict[str, object]] = []
-        self.equity_curve: List[float] = []
+        self.current_positions: dict[str, dict[str, object]] = {}
+        self.trade_log: list[dict[str, object]] = []
+        self.equity_curve: list[float] = []
 
     def run_backtest(self, config: BacktestConfig) -> BacktestResult:
         """バックテスト実行"""
@@ -474,7 +467,7 @@ class BacktestEngine:
         )
 
     def _execute_trading_strategy(
-        self, market_data: object, config: Optional[BacktestConfiguration] = None
+        self, market_data: object, config: BacktestConfiguration | None = None
     ) -> list[object]:
         # Existing loop logic moved into a callable helper
         # if MarketData object, extract df
@@ -524,7 +517,7 @@ class BacktestEngine:
 
     def _generate_signals(
         self, timestamp: pd.Timestamp, bar: pd.Series, config: BacktestConfig
-    ) -> Optional[List[dict[str, object]]]:
+    ) -> list[dict[str, object]] | None:
         # Returns a list of signals; for now single signal or None
         signal = self._generate_trading_signal(timestamp, bar, config)
         return [signal] if signal else []
@@ -551,7 +544,7 @@ class BacktestEngine:
             return getattr(t, key, default)
 
         # Pair-wise PnL calculation for buy/sell pairs (simple LIFO pairing)
-        open_positions: List[dict[str, object]] = []
+        open_positions: list[dict[str, object]] = []
         for t in self.trade_log:
             side = _get(t, "side", "").lower()
             price = _get(t, "price", 0.0)
@@ -589,11 +582,11 @@ class BacktestEngine:
         return metrics
 
     @property
-    def trades(self) -> List[dict[str, object]]:
+    def trades(self) -> list[dict[str, object]]:
         return self.trade_log
 
     @trades.setter
-    def trades(self, value: List[dict[str, object]]):
+    def trades(self, value: list[dict[str, object]]):
         self.trade_log = value
 
     def _process_bar(
@@ -644,7 +637,7 @@ class BacktestEngine:
 
     def _generate_trading_signal(
         self, timestamp: pd.Timestamp, bar: pd.Series, config: BacktestConfig
-    ) -> Optional[dict[str, object]]:
+    ) -> dict[str, object] | None:
         """取引シグナルの生成"""
         try:
             # V433システムからのシグナル取得
@@ -1013,7 +1006,6 @@ class BacktestEngine:
             net_btc_gained=net_btc_gained,
         )
 
-
 class WalkForwardAnalyzer:
     """ウォークフォワード分析器"""
 
@@ -1099,7 +1091,7 @@ class WalkForwardAnalyzer:
         )
 
     def _calculate_overall_performance(
-        self, in_sample: List[BacktestResult], out_sample: List[BacktestResult]
+        self, in_sample: list[BacktestResult], out_sample: list[BacktestResult]
     ) -> dict[str, object]:
         """全体パフォーマンスの計算"""
         in_sample_returns = [r.total_return for r in in_sample]
@@ -1119,7 +1111,7 @@ class WalkForwardAnalyzer:
         }
 
     def _evaluate_parameter_stability(
-        self, in_sample: List[BacktestResult], out_sample: List[BacktestResult]
+        self, in_sample: list[BacktestResult], out_sample: list[BacktestResult]
     ) -> dict[str, object]:
         """パラメータ安定性の評価"""
         # シグナル品質の安定性
@@ -1139,7 +1131,7 @@ class WalkForwardAnalyzer:
         }
 
     def _calculate_overfitting_metrics(
-        self, in_sample: List[BacktestResult], out_sample: List[BacktestResult]
+        self, in_sample: list[BacktestResult], out_sample: list[BacktestResult]
     ) -> dict[str, object]:
         """オーバーフィッティング指標の計算"""
         in_sample_sharpe = [r.sharpe_ratio for r in in_sample]
@@ -1156,10 +1148,8 @@ class WalkForwardAnalyzer:
             ),
         }
 
-
 class CrossValidationAnalyzer:
     """交差検証分析器"""
-
 
     def run_cross_validation(
         self, config: BacktestConfig, n_folds: int = 5
@@ -1209,7 +1199,7 @@ class CrossValidationAnalyzer:
         )
 
     def _calculate_average_performance(
-        self, fold_results: List[BacktestResult]
+        self, fold_results: list[BacktestResult]
     ) -> dict[str, object]:
         """平均パフォーマンスの計算"""
         returns = [r.total_return for r in fold_results]
@@ -1226,7 +1216,7 @@ class CrossValidationAnalyzer:
         }
 
     def _calculate_performance_variance(
-        self, fold_results: List[BacktestResult]
+        self, fold_results: list[BacktestResult]
     ) -> dict[str, object]:
         """パフォーマンス分散の計算"""
         returns = [r.total_return for r in fold_results]
@@ -1241,8 +1231,8 @@ class CrossValidationAnalyzer:
         }
 
     def _calculate_confidence_intervals(
-        self, fold_results: List[BacktestResult], confidence_level: float = 0.95
-    ) -> Dict[str, Tuple[float, float]]:
+        self, fold_results: list[BacktestResult], confidence_level: float = 0.95
+    ) -> dict[str, tuple[float, float]]:
         """信頼区間の計算"""
         from scipy import stats
 
@@ -1257,7 +1247,6 @@ class CrossValidationAnalyzer:
         margin_of_error = t_value * std / np.sqrt(n)
 
         return {"total_return": (mean - margin_of_error, mean + margin_of_error)}
-
 
 class ComprehensiveBacktestSystem:
     """
@@ -1276,9 +1265,9 @@ class ComprehensiveBacktestSystem:
         self.cross_validation_analyzer = CrossValidationAnalyzer(self.backtest_engine)
 
         # 結果保存
-        self.backtest_results: List[BacktestResult] = []
-        self.walk_forward_results: List[WalkForwardResult] = []
-        self.cross_validation_results: List[CrossValidationResult] = []
+        self.backtest_results: list[BacktestResult] = []
+        self.walk_forward_results: list[WalkForwardResult] = []
+        self.cross_validation_results: list[CrossValidationResult] = []
 
     def run_comprehensive_backtest(self, config: BacktestConfig) -> dict[str, object]:
         """包括的バックテスト実行"""
@@ -1312,7 +1301,7 @@ class ComprehensiveBacktestSystem:
         return results
 
     def run_parameter_optimization(
-        self, base_config: BacktestConfig, parameter_ranges: Dict[str, list[object]]
+        self, base_config: BacktestConfig, parameter_ranges: dict[str, list[object]]
     ) -> dict[str, object]:
         """パラメータ最適化実行"""
         self.logger.info("Running parameter optimization...")
@@ -1403,8 +1392,8 @@ class ComprehensiveBacktestSystem:
         }
 
     def _generate_parameter_grid(
-        self, parameter_ranges: Dict[str, list[object]]
-    ) -> List[dict[str, object]]:
+        self, parameter_ranges: dict[str, list[object]]
+    ) -> list[dict[str, object]]:
         """パラメータグリッド生成"""
         import itertools
 
@@ -1415,7 +1404,7 @@ class ComprehensiveBacktestSystem:
         return [dict(zip(keys, combo)) for combo in combinations]
 
     def _analyze_parameter_sensitivity(
-        self, optimization_results: List[dict[str, object]]
+        self, optimization_results: list[dict[str, object]]
     ) -> dict[str, object]:
         """パラメータ感度分析"""
         # 各パラメータの影響度を分析
@@ -1447,7 +1436,7 @@ class ComprehensiveBacktestSystem:
         return self.backtest_engine.run_backtest(stressed_config)
 
     def _evaluate_stress_resilience(
-        self, stress_results: List[dict[str, object]]
+        self, stress_results: list[dict[str, object]]
     ) -> dict[str, object]:
         """ストレス耐性評価"""
         base_result = self.backtest_results[0] if self.backtest_results else None
@@ -1614,7 +1603,7 @@ class ComprehensiveBacktestSystem:
         basic_stats: dict[str, object],
         performance: dict[str, object],
         risk: dict[str, object],
-    ) -> List[str]:
+    ) -> list[str]:
         """推奨事項生成"""
         recommendations = []
 
@@ -1647,13 +1636,11 @@ class ComprehensiveBacktestSystem:
 
         return recommendations
 
-
 def create_comprehensive_backtest_system(
     integration_manager: V433IntegrationManager,
 ) -> ComprehensiveBacktestSystem:
     """包括的バックテストシステムのファクトリ関数"""
     return ComprehensiveBacktestSystem(integration_manager)
-
 
 # 使用例
 if __name__ == "__main__":
@@ -1701,7 +1688,6 @@ if __name__ == "__main__":
             integration_manager.stop_system()
     else:
         print("Failed to initialize/start V433 system")
-
 
 __all__ = [
     "BacktestConfig",

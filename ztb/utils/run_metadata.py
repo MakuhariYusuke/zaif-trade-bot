@@ -33,11 +33,9 @@ from ztb.utils.git_utils import (
 
 logger = logging.getLogger(__name__)
 
-
 class PackageInfo(TypedDict):
     version: str
     hash: str | None
-
 
 class GitInfo(TypedDict):
     sha: str
@@ -45,7 +43,6 @@ class GitInfo(TypedDict):
     status: str
     remote_url: str
     is_dirty: str
-
 
 class RunMetadata:
     """Captures and manages run metadata."""
@@ -379,7 +376,6 @@ class RunMetadata:
             "metadata": self.metadata,
         }
 
-
 def capture_run_metadata(
     output_path: str,
     random_seed: int = 42,
@@ -395,7 +391,6 @@ def capture_run_metadata(
     metadata.capture_all_metadata()
     metadata.save_to_file(output_path)
     return metadata
-
 
 if __name__ == "__main__":
     # CLI usage

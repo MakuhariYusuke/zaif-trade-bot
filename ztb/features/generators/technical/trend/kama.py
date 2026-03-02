@@ -15,14 +15,12 @@ from ztb.features.base import ComputableFeature, MovingAverageFeature
 from ztb.features.registry import FeatureRegistry
 from ztb.utils.talib_wrapper import TaLibWrapper
 
-
 @FeatureRegistry.register("KAMA")
 def compute_kama(df: pd.DataFrame) -> pd.Series:
     """Kaufman's Adaptive Moving Average using Ta-Lib wrapper"""
     feature = KAMA()
     result_df = feature.compute(df)
     return result_df["kama"]
-
 
 class KAMA(MovingAverageFeature, ComputableFeature):
     """

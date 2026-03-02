@@ -7,17 +7,14 @@ mutual information, variance inflation factors, and data leakage detection.
 Used in advanced market analysis and feature engineering.
 """
 
-from typing import Dict, List
-
 import numpy as np
 import pandas as pd
 from sklearn.feature_selection import mutual_info_regression
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-
 def calculate_correlations(
     data: pd.DataFrame, method: str = "pearson"
-) -> Dict[str, pd.DataFrame]:
+) -> dict[str, pd.DataFrame]:
     """
     Calculate correlation matrix for the given data.
 
@@ -51,16 +48,15 @@ def calculate_correlations(
 
     return results
 
-
 def calculate_mutual_info(
-    X: pd.DataFrame, horizons: List[int], random_state: int = 42
-) -> Dict[str, pd.DataFrame]:
+    X: pd.DataFrame, horizons: list[int], random_state: int = 42
+) -> dict[str, pd.DataFrame]:
     """
     Calculate mutual information between features and target at different horizons.
 
     Args:
         X: Feature DataFrame
-        horizons: List of forecast horizons
+        horizons: list of forecast horizons
         random_state: Random state for reproducibility
 
     Returns:
@@ -104,7 +100,6 @@ def calculate_mutual_info(
 
     return results
 
-
 def calculate_vif(data: pd.DataFrame, threshold: float = 5.0) -> pd.DataFrame:
     """
     Calculate Variance Inflation Factor (VIF) for features.
@@ -141,7 +136,6 @@ def calculate_vif(data: pd.DataFrame, threshold: float = 5.0) -> pd.DataFrame:
     vif_data["multicollinear"] = vif_data["vif"] > threshold
 
     return vif_data
-
 
 def check_leaks(
     data: pd.DataFrame, target_col: str = "return", correlation_threshold: float = 0.95
@@ -215,7 +209,6 @@ def check_leaks(
             )
 
     return pd.DataFrame(results)
-
 
 def generate_synthetic_data(
     n_samples: int = 1000,

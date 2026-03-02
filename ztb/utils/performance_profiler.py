@@ -10,7 +10,7 @@ import pstats
 import time
 from contextlib import contextmanager
 from functools import wraps
-from typing import Any, Callable, Dict, Generator, List, Optional
+from typing import Any, Callable, Generator, Optional
 
 import pandas as pd
 import psutil
@@ -21,13 +21,12 @@ from ztb.analysis.common.types import PerformanceMonitorProtocol
 # Constants
 BYTES_PER_MB = 1024 * 1024
 
-
 class PerformanceProfiler(PerformanceMonitorProtocol):
     """Performance profiling utilities for feature computation"""
 
     def __init__(self) -> None:
         self.process = psutil.Process()
-        self._profile_stats: Optional[pstats.Stats] = None
+        self._profile_stats: pstats.Stats | None = None
 
     @classmethod
     def profile(cls, func: Callable) -> Callable:
@@ -82,14 +81,14 @@ class PerformanceProfiler(PerformanceMonitorProtocol):
     def benchmark_features(
         self,
         df: pd.DataFrame,
-        feature_names: Optional[List[str]] = None,
+        feature_names: list[str] | None = None,
         iterations: int = 3,
-    ) -> Dict[str, Dict[str, float]]:
+    ) -> dict[str, dict[str, float]]:
         """
         Benchmark individual feature computation performance
 
         Returns:
-            Dict mapping feature names to performance metrics
+            dict mapping feature names to performance metrics
         """
         if feature_names is None:
             feature_names = FeatureRegistry.list()
@@ -141,15 +140,15 @@ class PerformanceProfiler(PerformanceMonitorProtocol):
 
     def identify_bottlenecks(
         self,
-        benchmark_results: Dict[str, Dict[str, float]],
+        benchmark_results: dict[str, dict[str, float]],
         time_threshold_ms: float = 1.0,
         memory_threshold_mb: float = 10.0,
-    ) -> Dict[str, List[str]]:
+    ) -> dict[str, list[str]]:
         """
         Identify performance bottlenecks based on benchmarks
 
         Returns:
-            Dict with 'slow_features' and 'memory_hungry_features' lists
+            dict with 'slow_features' and 'memory_hungry_features' lists
         """
         slow_features = []
         memory_hungry_features = []
@@ -169,7 +168,7 @@ class PerformanceProfiler(PerformanceMonitorProtocol):
         }
 
     def print_benchmark_report(
-        self, benchmark_results: Dict[str, Dict[str, float]], top_n: int = 10
+        self, benchmark_results: dict[str, dict[str, float]], top_n: int = 10
     ) -> None:
         """Print a formatted benchmark report"""
         print("=" * 80)
@@ -223,9 +222,8 @@ class PerformanceProfiler(PerformanceMonitorProtocol):
             print("-" * 60)
             print("No features were successfully tested")
 
-
 def run_performance_analysis(
-    df: pd.DataFrame, feature_subset: Optional[List[str]] = None
+    df: pd.DataFrame, feature_subset: list[str] | None = None
 ) -> None:
     """
     Run complete performance analysis on feature computation
@@ -272,7 +270,6 @@ def run_performance_analysis(
 
     print("\n✅ Performance analysis complete!")
 
-
 if __name__ == "__main__":
     # Example usage
     import numpy as np
@@ -312,7 +309,6 @@ if __name__ == "__main__":
     ]
     run_performance_analysis(df, key_features)
 
-
 class MemoryProfiler:
     """
     Advanced memory profiling utilities for tracking memory usage patterns.
@@ -336,7 +332,7 @@ class MemoryProfiler:
             self.tracemalloc_available = False
             self.process = None
 
-    def get_memory_stats(self) -> Dict[str, Any]:
+    def get_memory_stats(self) -> dict[str, Any]:
         """
         Get comprehensive memory statistics.
 
@@ -368,7 +364,7 @@ class MemoryProfiler:
 
         return stats
 
-    def detect_memory_leaks(self, threshold_mb: float = 50.0) -> Dict[str, Any]:
+    def detect_memory_leaks(self, threshold_mb: float = 50.0) -> dict[str, Any]:
         """
         Detect potential memory leaks by analyzing allocation patterns.
 
@@ -403,7 +399,7 @@ class MemoryProfiler:
             "total_traced_mb": sum(stat.size for stat in top_stats) / BYTES_PER_MB,
         }
 
-    def profile_memory_usage(self, func: Callable, *args, **kwargs) -> Dict[str, Any]:
+    def profile_memory_usage(self, func: Callable, *args, **kwargs) -> dict[str, Any]:
         """
         Profile memory usage of a function call.
 
@@ -459,6 +455,6 @@ class MemoryProfiler:
         # Implementation for performance monitoring
         pass
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """Get current performance metrics."""
         return self.get_memory_usage()

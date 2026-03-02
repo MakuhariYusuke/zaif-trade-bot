@@ -9,7 +9,7 @@ import json
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -21,17 +21,15 @@ from .outlier_detection import OutlierDetector, OutlierHandler
 
 logger = logging.getLogger(__name__)
 
-
 @dataclass
 class PipelineResult:
     """パイプライン実行結果を格納するデータクラス。"""
 
     original_data: pd.DataFrame
     processed_data: pd.DataFrame
-    validation_results: List[Any]
-    processing_stats: Dict[str, Any]
-    quality_metrics: Dict[str, float]
-
+    validation_results: list[Any]
+    processing_stats: dict[str, Any]
+    quality_metrics: dict[str, float]
 
 class DataProcessingPipeline:
     """
@@ -41,7 +39,7 @@ class DataProcessingPipeline:
     エンドツーエンドのデータ処理ワークフローを提供。
     """
 
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: str | None = None):
         """
         DataProcessingPipelineを初期化。
 
@@ -72,7 +70,7 @@ class DataProcessingPipeline:
             "warnings_generated": [],
         }
 
-    def _load_config(self, config_path: str) -> Dict[str, Any]:
+    def _load_config(self, config_path: str) -> dict[str, Any]:
         """設定ファイルを読み込み。"""
         try:
             with open(config_path, "r", encoding="utf-8") as f:
@@ -86,7 +84,7 @@ class DataProcessingPipeline:
             logger.error(f"Failed to load config from {config_path}: {e}")
             return self._get_default_config()
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """デフォルト設定を取得。"""
         return {
             "random_seed": 42,
@@ -121,8 +119,8 @@ class DataProcessingPipeline:
     def process_data(
         self,
         data: pd.DataFrame,
-        steps: Optional[List[str]] = None,
-        custom_config: Optional[Dict[str, Any]] = None,
+        steps: list[str] | None = None,
+        custom_config: dict[str, Any] | None = None,
     ) -> PipelineResult:
         """
         データ処理パイプラインを実行。
@@ -294,7 +292,7 @@ class DataProcessingPipeline:
         logger.info(f"Data augmentation completed with {len(techniques)} techniques")
         return augmented_data
 
-    def _run_quality_checks(self, data: pd.DataFrame) -> Dict[str, float]:
+    def _run_quality_checks(self, data: pd.DataFrame) -> dict[str, float]:
         """品質チェックを実行。"""
         quality_config = self.config["quality_checks"]
 
@@ -339,7 +337,7 @@ class DataProcessingPipeline:
 
         return quality_metrics
 
-    def _generate_basic_schema(self, data: pd.DataFrame) -> Dict[str, Dict[str, Any]]:
+    def _generate_basic_schema(self, data: pd.DataFrame) -> dict[str, dict[str, Any]]:
         """基本的なスキーマを自動生成。"""
         schema = {}
 
@@ -378,14 +376,14 @@ class DataProcessingPipeline:
 
         return schema
 
-    def _get_numeric_columns(self, data: pd.DataFrame) -> List[str]:
+    def _get_numeric_columns(self, data: pd.DataFrame) -> list[str]:
         """数値列を取得。"""
         return data.select_dtypes(include=[np.number]).columns.tolist()
 
-    def _update_config(self, custom_config: Dict[str, Any]):
+    def _update_config(self, custom_config: dict[str, Any]):
         """設定を更新。"""
 
-        def update_dict(base: Dict[str, Any], update: Dict[str, Any]) -> Dict[str, Any]:
+        def update_dict(base: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
             for key, value in update.items():
                 if (
                     isinstance(value, dict)
@@ -415,7 +413,7 @@ class DataProcessingPipeline:
         except Exception as e:
             logger.error(f"Failed to save config to {config_path}: {e}")
 
-    def get_pipeline_status(self) -> Dict[str, Any]:
+    def get_pipeline_status(self) -> dict[str, Any]:
         """パイプラインの現在の状態を取得。"""
         return {
             "config": self.config,
@@ -429,11 +427,10 @@ class DataProcessingPipeline:
             },
         }
 
-
 def create_financial_data_pipeline(
-    augmentation_techniques: Optional[List[Dict[str, Any]]] = None,
-    outlier_methods: Optional[List[Dict[str, Any]]] = None,
-    validation_schema: Optional[Dict[str, Dict[str, Any]]] = None,
+    augmentation_techniques: list[dict[str, Any]] | None = None,
+    outlier_methods: list[dict[str, Any]] | None = None,
+    validation_schema: dict[str, dict[str, Any]] | None = None,
 ) -> DataProcessingPipeline:
     """
     金融データ向けのデータ処理パイプラインを作成。

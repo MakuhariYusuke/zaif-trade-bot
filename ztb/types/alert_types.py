@@ -6,8 +6,7 @@ Common type definitions for alerts and monitoring
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Optional
-
+from typing import Any
 
 class AlertLevel(Enum):
     """アラートレベル"""
@@ -17,7 +16,6 @@ class AlertLevel(Enum):
     CRITICAL = "critical"
     EMERGENCY = "emergency"
 
-
 class AlertStatus(Enum):
     """アラートステータス"""
 
@@ -25,7 +23,6 @@ class AlertStatus(Enum):
     ACKNOWLEDGED = "acknowledged"
     RESOLVED = "resolved"
     EXPIRED = "expired"
-
 
 @dataclass
 class AlertCondition:
@@ -40,7 +37,6 @@ class AlertCondition:
     description: str
     auto_resolve: bool = True
 
-
 @dataclass
 class Alert:
     """アラート"""
@@ -52,7 +48,7 @@ class Alert:
     level: AlertLevel
     status: AlertStatus
     triggered_at: datetime
-    resolved_at: Optional[datetime] = None
-    acknowledged_at: Optional[datetime] = None
+    resolved_at: datetime | None = None
+    acknowledged_at: datetime | None = None
     description: str = ""
-    context: Optional[Dict[str, Any]] = None
+    context: dict[str, Any] | None = None

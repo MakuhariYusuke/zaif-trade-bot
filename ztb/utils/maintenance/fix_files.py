@@ -5,7 +5,6 @@ Fix all Phase 5 files by removing invalid content at the end
 
 import os
 
-
 def fix_file(filepath: str) -> bool:
     """Fix a single file by removing invalid content at the end"""
     with open(filepath, "r", encoding="utf-8") as f:
@@ -28,7 +27,6 @@ def fix_file(filepath: str) -> bool:
         return True
     return False
 
-
 def main() -> None:
     """Main function"""
     # Get the project root directory (parent of scripts directory)
@@ -49,7 +47,6 @@ def main() -> None:
             fixed_count += 1
 
     print(f"Fixed {fixed_count} files")
-
 
 if __name__ == "__main__":
     main()

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -9,12 +9,11 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 def create_env_from_schema(
     model_name: str,
     df: pd.DataFrame,
-    config: Optional[Dict[str, Any]] = None,
-    models_dir: Optional[Path] = None,
+    config: dict[str, Any] | None = None,
+    models_dir: Path | None = None,
 ) -> HeavyTradingEnv:
     if models_dir is None:
         models_dir = Path("models")
@@ -99,9 +98,8 @@ def create_env_from_schema(
     env = HeavyTradingEnv(df=df, config=env_config, random_start=random_start)
     return env
 
-
 def create_env_from_model_path(
-    model_path: str, df: pd.DataFrame, config: Optional[Dict[str, Any]] = None
+    model_path: str, df: pd.DataFrame, config: dict[str, Any] | None = None
 ) -> HeavyTradingEnv:
     model_path_obj = Path(model_path)
     model_name = model_path_obj.stem

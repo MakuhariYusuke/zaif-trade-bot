@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from ztb.utils.errors import ValidationError
 
-
-def _resolve_price(self: Any, step: Optional[int] = None) -> float:
+def _resolve_price(self: Any, step: int | None = None) -> float:
     """Resolve the current price for the given step."""
     step = self.current_step if step is None else max(0, min(step, self.n_steps - 1))
     if step >= self.n_steps:
@@ -46,8 +45,7 @@ def _resolve_price(self: Any, step: Optional[int] = None) -> float:
         return float(numeric_candidates[0])
     return 0.0
 
-
-def _resolve_atr(self: Any, step: Optional[int] = None, default: float = 1.0) -> float:
+def _resolve_atr(self: Any, step: int | None = None, default: float = 1.0) -> float:
     """Resolve ATR value for the given step with sensible fallbacks."""
     step = self.current_step if step is None else max(0, min(step, self.n_steps - 1))
     if self._atr_array is not None and getattr(self._atr_array, "size", 0) > 0:

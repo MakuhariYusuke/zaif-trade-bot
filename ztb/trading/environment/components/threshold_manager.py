@@ -28,11 +28,9 @@ from ztb.utils.data.outlier_detection import calculate_z_score_single
 
 logger = logging.getLogger(__name__)
 
-
 class PerformanceAdjustment(TypedDict):
     confidence: float
     strength: float
-
 
 class AdaptiveSignalThresholds(TypedDict):
     confidence_threshold: float
@@ -40,18 +38,15 @@ class AdaptiveSignalThresholds(TypedDict):
     regime: str
     performance_adjustment: PerformanceAdjustment
 
-
 class RegimeCacheEntry(TypedDict):
     cache_key: str
     regime: str
     timestamp: pd.Timestamp
 
-
 class ThresholdCacheEntry(TypedDict):
     cache_key: str
     thresholds: AdaptiveSignalThresholds
     timestamp: pd.Timestamp
-
 
 class ThresholdManager:
     """
@@ -265,7 +260,7 @@ class ThresholdManager:
         return base_threshold
 
     def _apply_hybrid_regime_threshold_modifier(
-        self, base_threshold: float, regime: Optional[str]
+        self, base_threshold: float, regime: str | None
     ) -> float:
         """Apply HybridConfig regime_filter threshold modifier (v454 soft mode)."""
         if not regime:
@@ -320,11 +315,11 @@ class ThresholdManager:
 
     def get_threshold(
         self,
-        volatility: Optional[float] = None,
-        current_price: Optional[float] = None,
-        regime: Optional[str] = None,
-        base_value: Optional[float] = None,
-        raw_action_value: Optional[float] = None,
+        volatility: float | None = None,
+        current_price: float | None = None,
+        regime: str | None = None,
+        base_value: float | None = None,
+        raw_action_value: float | None = None,
     ) -> float:
         """
         Calculate the current action threshold.
@@ -434,7 +429,7 @@ class ThresholdManager:
                 for r in ["SIDEWAYS", "RANGING", "CONSOLIDATION"]
             ):
                 # Restore baseline behavior for normal ranging/consolidation
-                # v453 Final Fix: Set to 1.0 to allow profitable range trading (same as "Unknown" regime)
+                # v453 Final Fix: set to 1.0 to allow profitable range trading (same as "Unknown" regime)
                 adjusted_threshold *= 1.0
                 logger.debug(
                     f"Threshold multiplier 1.0 applied for ranging market: {adjusted_threshold:.4f}"
@@ -477,7 +472,7 @@ class ThresholdManager:
         }
 
     def detect_market_regime(
-        self, data: pd.DataFrame, current_index: Optional[int] = None
+        self, data: pd.DataFrame, current_index: int | None = None
     ) -> str:
         """
         Detect current market regime using advanced MarketRegimeDetector.

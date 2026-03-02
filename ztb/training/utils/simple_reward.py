@@ -3,7 +3,6 @@
 Simple reward function training test
 """
 
-
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.training.callbacks.callbacks import SimpleTrainingCallback
 from ztb.training.config.ppo_config import DEFAULT_INITIAL_PORTFOLIO_VALUE
@@ -16,7 +15,6 @@ from ztb.training.utils.training_utils import (
     save_model_with_path,
     setup_project_path,
 )
-
 
 def train_simple_reward(
     config_name: str = "default",
@@ -78,7 +76,6 @@ def train_simple_reward(
 
     env.close()
     return model_path
-
 
 if __name__ == "__main__":
     # Define fine-tuned reward scaling configurations

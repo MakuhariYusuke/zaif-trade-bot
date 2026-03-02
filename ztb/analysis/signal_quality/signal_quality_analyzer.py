@@ -7,14 +7,13 @@ Phase 3-1: シグナル品質向上 - シグナル品質評価メトリクス
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from ztb.metrics.metrics import max_drawdown
 from ztb.utils.performance_profiler import PerformanceProfiler
-
 
 @dataclass
 class SignalQualityMetrics:
@@ -46,7 +45,6 @@ class SignalQualityMetrics:
     drawdown_impact: float = 0.0  # ドローダウンへの影響度
     volatility_alignment: float = 0.0  # ボラティリティ適応度
 
-
 @dataclass
 class SignalEvaluationResult:
     """シグナル評価結果"""
@@ -56,7 +54,7 @@ class SignalEvaluationResult:
     signal_type: str  # 'buy', 'sell', 'hold'
     confidence: float
     quality_score: float
-    market_context: Dict[str, Any]
+    market_context: dict[str, Any]
     evaluation_metrics: SignalQualityMetrics
 
     # 評価結果
@@ -64,18 +62,17 @@ class SignalEvaluationResult:
     recommended_action: str = "hold"
     risk_adjusted_score: float = 0.0
 
-
 class SignalQualityAnalyzer:
     """シグナル品質分析器"""
 
     def __init__(self):
         self.profiler = PerformanceProfiler()
-        self.evaluation_history: List[SignalEvaluationResult] = []
+        self.evaluation_history: list[SignalEvaluationResult] = []
         self.max_history_size = 1000  # メモリ管理のため履歴サイズを制限
 
     def evaluate_signal_quality(
         self,
-        signals: List[Dict[str, Any]],
+        signals: list[dict[str, Any]],
         market_data: pd.DataFrame,
         evaluation_window: int = 24,  # 評価期間（時間）
     ) -> SignalQualityMetrics:
@@ -103,7 +100,7 @@ class SignalQualityAnalyzer:
 
         return metrics
 
-    def _categorize_signal(self, signal: Dict[str, Any], metrics: SignalQualityMetrics):
+    def _categorize_signal(self, signal: dict[str, Any], metrics: SignalQualityMetrics):
         """シグナルを分類"""
         signal_type = signal.get("action", signal.get("signal_type", "hold"))
 
@@ -117,7 +114,7 @@ class SignalQualityAnalyzer:
     def _calculate_quality_metrics(
         self,
         metrics: SignalQualityMetrics,
-        signals: List[Dict[str, Any]],
+        signals: list[dict[str, Any]],
         market_data: pd.DataFrame,
         evaluation_window: int,
     ):
@@ -144,7 +141,7 @@ class SignalQualityAnalyzer:
             )
 
     def _evaluate_market_alignment(
-        self, signals: List[Dict[str, Any]], market_data: pd.DataFrame
+        self, signals: list[dict[str, Any]], market_data: pd.DataFrame
     ) -> float:
         """市場トレンドとの整合性を評価"""
         if not signals or market_data.empty:
@@ -175,7 +172,7 @@ class SignalQualityAnalyzer:
         return alignment_score / max(total_signals, 1)
 
     def _evaluate_volume_confirmation(
-        self, signals: List[Dict[str, Any]], market_data: pd.DataFrame
+        self, signals: list[dict[str, Any]], market_data: pd.DataFrame
     ) -> float:
         """出来高確認の割合を評価"""
         if not signals or "volume" not in market_data.columns:
@@ -196,7 +193,7 @@ class SignalQualityAnalyzer:
         return confirmation_count / max(len(signals), 1)
 
     def _evaluate_timeframe_consistency(
-        self, signals: List[Dict[str, Any]], market_data: pd.DataFrame
+        self, signals: list[dict[str, Any]], market_data: pd.DataFrame
     ) -> float:
         """複数時間軸での整合性を評価"""
         # 簡易実装: 同じ方向のシグナルが複数時間軸で発生しているかを評価
@@ -218,7 +215,7 @@ class SignalQualityAnalyzer:
         return consistency_count / max(len(signals), 1)
 
     def _evaluate_drawdown_impact(
-        self, signals: List[Dict[str, Any]], market_data: pd.DataFrame
+        self, signals: list[dict[str, Any]], market_data: pd.DataFrame
     ) -> float:
         """ドローダウンへの影響度を評価"""
         if not signals or market_data.empty:
@@ -241,7 +238,7 @@ class SignalQualityAnalyzer:
         return np.mean(impact_scores) if impact_scores else 0.0
 
     def _evaluate_volatility_alignment(
-        self, signals: List[Dict[str, Any]], market_data: pd.DataFrame
+        self, signals: list[dict[str, Any]], market_data: pd.DataFrame
     ) -> float:
         """ボラティリティ適応度を評価"""
         if not signals or market_data.empty:
@@ -277,7 +274,7 @@ class SignalQualityAnalyzer:
     def _evaluate_prediction_performance(
         self,
         metrics: SignalQualityMetrics,
-        signals: List[Dict[str, Any]],
+        signals: list[dict[str, Any]],
         market_data: pd.DataFrame,
         evaluation_window: int,
     ):
@@ -340,7 +337,7 @@ class SignalQualityAnalyzer:
         avg_price = np.mean(y)
         return slope / avg_price if avg_price != 0 else 0.0
 
-    def generate_quality_report(self, metrics: SignalQualityMetrics) -> Dict[str, Any]:
+    def generate_quality_report(self, metrics: SignalQualityMetrics) -> dict[str, Any]:
         """品質レポートを生成"""
         return {
             "summary": {
@@ -368,7 +365,7 @@ class SignalQualityAnalyzer:
             "recommendations": self._generate_recommendations(metrics),
         }
 
-    def _generate_recommendations(self, metrics: SignalQualityMetrics) -> List[str]:
+    def _generate_recommendations(self, metrics: SignalQualityMetrics) -> list[str]:
         """改善 recommendations を生成"""
         recommendations = []
 

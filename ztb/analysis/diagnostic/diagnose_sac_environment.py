@@ -14,7 +14,7 @@ Critic Loss爆発とent_coef上昇の根本原因を特定するため、
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 
@@ -25,7 +25,6 @@ from ztb.training.algorithms.algorithm_factory import AlgorithmFactory
 from ztb.training.core.config_builder import ConfigBuilder
 from ztb.io.data_loader import DataLoader
 from ztb.io.json_io import read_json, write_json
-
 
 class EnvironmentDiagnostics:
     """環境診断クラス"""
@@ -74,7 +73,7 @@ class EnvironmentDiagnostics:
         print(f"  - Observation Space: {self.env.observation_space}")
         print(f"  - Initial Balance: {initial_balance:,.0f}")
 
-    def run_episode(self, episode_num: int, num_steps: int = 100) -> Dict[str, Any]:
+    def run_episode(self, episode_num: int, num_steps: int = 100) -> dict[str, Any]:
         """
         エピソード実行と診断
 
@@ -149,7 +148,7 @@ class EnvironmentDiagnostics:
 
         return episode_data
 
-    def analyze_episode(self, episode_data: Dict[str, Any]) -> Dict[str, Any]:
+    def analyze_episode(self, episode_data: dict[str, Any]) -> dict[str, Any]:
         """
         エピソードデータ分析
 
@@ -209,7 +208,7 @@ class EnvironmentDiagnostics:
 
         return analysis
 
-    def print_analysis(self, analysis: Dict[str, Any]) -> None:
+    def print_analysis(self, analysis: dict[str, Any]) -> None:
         """分析結果を見やすく表示"""
         print(f"\n{'='*80}")
         print(f"Episode {analysis['episode']} 分析結果")
@@ -260,7 +259,7 @@ class EnvironmentDiagnostics:
             for action, count in sorted(act_disc["distribution"].items()):
                 print(f"    Action {action}: {count} ({count/total*100:.1f}%)")
 
-    def generate_summary(self, all_analyses: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def generate_summary(self, all_analyses: list[dict[str, Any]]) -> dict[str, Any]:
         """
         全エピソードのサマリー生成
 
@@ -348,7 +347,7 @@ class EnvironmentDiagnostics:
 
         return summary
 
-    def print_summary(self, summary: Dict[str, Any]) -> None:
+    def print_summary(self, summary: dict[str, Any]) -> None:
         """サマリー表示"""
         print(f"\n{'='*80}")
         print("全体サマリー")
@@ -430,7 +429,6 @@ class EnvironmentDiagnostics:
         print("環境診断完了")
         print(f"{'='*80}\n")
 
-
 def main() -> None:
     """メイン実行"""
     # v395g設定を使用（最新バージョン）
@@ -440,7 +438,6 @@ def main() -> None:
 
     # 3エピソード、各100ステップで診断
     diagnostics.run(num_episodes=3, num_steps_per_episode=100)
-
 
 if __name__ == "__main__":
     main()

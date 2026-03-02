@@ -16,14 +16,12 @@ from ztb.features.core.registry import FeatureRegistry
 
 from .ichimoku_ext import calculate_ichimoku_extended
 
-
 @FeatureRegistry.register("Ichimoku_Momentum_Confirmation")
 def compute_ichimoku_momentum_confirmation(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Momentum Confirmation - lagging span momentum analysis"""
     feature = IchimokuMomentumConfirmation()
     result_df = feature.compute(df)
     return result_df["ichimoku_momentum_confirmation"]
-
 
 class IchimokuMomentumConfirmation(BaseFeature):
     """

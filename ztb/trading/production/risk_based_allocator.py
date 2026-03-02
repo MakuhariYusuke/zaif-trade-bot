@@ -11,13 +11,12 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable
 
 from ztb.trading.production.state_persistence import (
     read_state_payload,
     write_state_payload,
 )
-
 
 class AllocationStrategy(Enum):
     """配分戦略"""
@@ -28,14 +27,12 @@ class AllocationStrategy(Enum):
     PERFORMANCE_BASED = "performance_based"  # パフォーマンスベース
     RISK_ADJUSTED = "risk_adjusted"  # リスク調整
 
-
 class RiskThreshold(Enum):
     """リスク閾値"""
 
     CONSERVATIVE = "conservative"  # 保守的
     MODERATE = "moderate"  # 中間
     AGGRESSIVE = "aggressive"  # 積極的
-
 
 @dataclass
 class AllocationRule:
@@ -49,9 +46,8 @@ class AllocationRule:
     increment_percentage: float
     time_window_hours: int
     risk_threshold: RiskThreshold
-    conditions: Dict[str, Any] = field(default_factory=dict)
+    conditions: dict[str, Any] = field(default_factory=dict)
     enabled: bool = True
-
 
 @dataclass
 class RiskMetrics:
@@ -64,7 +60,6 @@ class RiskMetrics:
     correlation: float
     concentration_risk: float
 
-
 @dataclass
 class AllocationDecision:
     """配分決定"""
@@ -75,10 +70,9 @@ class AllocationDecision:
     current_percentage: float
     proposed_percentage: float
     reason: str
-    risk_assessment: Dict[str, Any]
+    risk_assessment: dict[str, Any]
     approved: bool
-    executed_at: Optional[datetime] = None
-
+    executed_at: datetime | None = None
 
 @dataclass
 class RolloutPhase:
@@ -89,12 +83,11 @@ class RolloutPhase:
     description: str
     target_percentage: float
     duration_hours: int
-    success_criteria: Dict[str, Any]
-    risk_limits: Dict[str, Any]
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    success_criteria: dict[str, Any]
+    risk_limits: dict[str, Any]
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     status: str = "pending"
-
 
 class RiskBasedAllocator:
     """
@@ -123,31 +116,31 @@ class RiskBasedAllocator:
         self.reallocation_interval_minutes = reallocation_interval_minutes
 
         # 配分ルール
-        self.allocation_rules: Dict[str, AllocationRule] = {}
+        self.allocation_rules: dict[str, AllocationRule] = {}
 
         # 現在の配分
-        self.current_allocations: Dict[str, float] = {}
+        self.current_allocations: dict[str, float] = {}
 
         # 移行フェーズ
-        self.rollout_phases: List[RolloutPhase] = []
-        self.current_phase: Optional[RolloutPhase] = None
+        self.rollout_phases: list[RolloutPhase] = []
+        self.current_phase: RolloutPhase | None = None
 
         # 配分決定履歴
-        self.allocation_decisions: List[AllocationDecision] = []
+        self.allocation_decisions: list[AllocationDecision] = []
 
         # リスク閾値設定
         self.risk_limits = self._get_risk_limits(risk_threshold)
 
         # モニタリング
         self.monitoring_active = False
-        self.monitoring_thread: Optional[threading.Thread] = None
+        self.monitoring_thread: threading.Thread | None = None
         self.last_reallocation = datetime.now()
 
         # コールバック
-        self.allocation_callbacks: List[
+        self.allocation_callbacks: list[
             Callable[[AllocationDecision], Awaitable[None]]
         ] = []
-        self.phase_callbacks: List[Callable[[RolloutPhase], Awaitable[None]]] = []
+        self.phase_callbacks: list[Callable[[RolloutPhase], Awaitable[None]]] = []
 
         # ロギング
         self.logger = logging.getLogger(__name__)
@@ -171,7 +164,7 @@ class RiskBasedAllocator:
             f"Allocation rule added: {rule.system_id} ({rule.strategy.value})"
         )
 
-    def define_rollout_phases(self, phases: List[RolloutPhase]) -> None:
+    def define_rollout_phases(self, phases: list[RolloutPhase]) -> None:
         """
         移行フェーズ定義
 
@@ -186,7 +179,7 @@ class RiskBasedAllocator:
 
     async def evaluate_allocation(
         self, system_id: str, risk_metrics: RiskMetrics
-    ) -> Optional[AllocationDecision]:
+    ) -> AllocationDecision | None:
         """
         配分評価
 
@@ -195,7 +188,7 @@ class RiskBasedAllocator:
             risk_metrics: リスク指標
 
         Returns:
-            Optional[AllocationDecision]: 配分決定
+            AllocationDecision | None: 配分決定
         """
         if system_id not in self.allocation_rules:
             return None
@@ -287,7 +280,7 @@ class RiskBasedAllocator:
             self.logger.error(f"Allocation execution failed: {e}")
             return False
 
-    def _assess_risk(self, risk_metrics: RiskMetrics) -> Dict[str, Any]:
+    def _assess_risk(self, risk_metrics: RiskMetrics) -> dict[str, Any]:
         """
         リスク評価
 
@@ -295,7 +288,7 @@ class RiskBasedAllocator:
             risk_metrics: リスク指標
 
         Returns:
-            Dict[str, Any]: リスク評価
+            dict[str, Any]: リスク評価
         """
         assessment = {
             "overall_risk_level": "low",
@@ -351,7 +344,7 @@ class RiskBasedAllocator:
         return assessment
 
     async def _calculate_proposed_allocation(
-        self, system_id: str, rule: AllocationRule, risk_assessment: Dict[str, Any]
+        self, system_id: str, rule: AllocationRule, risk_assessment: dict[str, Any]
     ) -> float:
         """
         新配分率計算
@@ -411,7 +404,7 @@ class RiskBasedAllocator:
         return proposed
 
     async def _performance_based_allocation(
-        self, system_id: str, rule: AllocationRule, risk_assessment: Dict[str, Any]
+        self, system_id: str, rule: AllocationRule, risk_assessment: dict[str, Any]
     ) -> float:
         """
         パフォーマンスベース配分
@@ -465,7 +458,7 @@ class RiskBasedAllocator:
         return proposed
 
     def _should_approve_allocation(
-        self, proposed: float, risk_assessment: Dict[str, Any]
+        self, proposed: float, risk_assessment: dict[str, Any]
     ) -> bool:
         """
         配分承認判定
@@ -492,7 +485,7 @@ class RiskBasedAllocator:
         return True
 
     def _generate_allocation_reason(
-        self, rule: AllocationRule, risk_assessment: Dict[str, Any], proposed: float
+        self, rule: AllocationRule, risk_assessment: dict[str, Any], proposed: float
     ) -> str:
         """
         配分理由生成
@@ -549,7 +542,7 @@ class RiskBasedAllocator:
                     f"Rollout phase progressed to: {self.current_phase.name}"
                 )
 
-    def _get_risk_limits(self, threshold: RiskThreshold) -> Dict[str, Any]:
+    def _get_risk_limits(self, threshold: RiskThreshold) -> dict[str, Any]:
         """
         リスク閾値取得
 
@@ -557,7 +550,7 @@ class RiskBasedAllocator:
             threshold: リスク閾値
 
         Returns:
-            Dict[str, Any]: リスク制限
+            dict[str, Any]: リスク制限
         """
         limits = {
             RiskThreshold.CONSERVATIVE: {
@@ -585,18 +578,18 @@ class RiskBasedAllocator:
 
         return limits.get(threshold, limits[RiskThreshold.MODERATE])
 
-    def get_current_allocations(self) -> Dict[str, float]:
+    def get_current_allocations(self) -> dict[str, float]:
         """
         現在の配分取得
 
         Returns:
-            Dict[str, float]: 現在の配分
+            dict[str, float]: 現在の配分
         """
         return self.current_allocations.copy()
 
     def get_allocation_history(
-        self, system_id: Optional[str] = None, limit: Optional[int] = None
-    ) -> List[AllocationDecision]:
+        self, system_id: str | None = None, limit: int | None = None
+    ) -> list[AllocationDecision]:
         """
         配分履歴取得
 
@@ -605,7 +598,7 @@ class RiskBasedAllocator:
             limit: 取得件数制限
 
         Returns:
-            List[AllocationDecision]: 配分決定履歴
+            list[AllocationDecision]: 配分決定履歴
         """
         history = self.allocation_decisions
 
@@ -617,12 +610,12 @@ class RiskBasedAllocator:
 
         return history
 
-    def get_rollout_status(self) -> Dict[str, Any]:
+    def get_rollout_status(self) -> dict[str, Any]:
         """
         移行状況取得
 
         Returns:
-            Dict[str, Any]: 移行状況
+            dict[str, Any]: 移行状況
         """
         return {
             "current_phase": {

@@ -11,7 +11,7 @@ import logging
 import os
 import warnings
 from pathlib import Path
-from typing import Any, Iterator, Literal, Optional, Union, cast
+from typing import Any, Iterator, Literal, cast
 
 import pandas as pd
 
@@ -26,7 +26,6 @@ warnings.warn(
     DeprecationWarning,
     stacklevel=2,
 )
-
 
 def load_csv_data_cached(
     file_path: str | Path,
@@ -112,7 +111,6 @@ def load_csv_data_cached(
     except Exception as e:
         raise ValueError(f"Failed to load/cache data from {file_path}: {e}") from e
 
-
 def optimize_dataframe_memory(df: pd.DataFrame) -> pd.DataFrame:
     """
     Optimize DataFrame memory usage by downcasting numeric types.
@@ -146,11 +144,10 @@ def optimize_dataframe_memory(df: pd.DataFrame) -> pd.DataFrame:
 
     return df_optimized
 
-
 def safe_merge_dataframes(
     left: pd.DataFrame,
     right: pd.DataFrame,
-    on: Optional[Union[str, list[str]]] = None,
+    on: str | list[str] | None = None,
     how: Literal["left", "right", "outer", "inner"] = "left",
     **kwargs: Any,
 ) -> pd.DataFrame:
@@ -178,7 +175,6 @@ def safe_merge_dataframes(
         return optimize_dataframe_memory(result)
     except Exception as e:
         raise ValueError(f"Failed to merge DataFrames: {e}") from e
-
 
 def load_csv_data(file_path: str | Path, **kwargs: Any) -> pd.DataFrame:
     """
@@ -212,7 +208,6 @@ def load_csv_data(file_path: str | Path, **kwargs: Any) -> pd.DataFrame:
     except Exception as e:
         raise ValueError(f"Failed to load data from {file_path}: {e}") from e
 
-
 def load_csv_data_strict(file_path: str | Path, **kwargs: Any) -> pd.DataFrame:
     """
     Load CSV data and raise on failure.
@@ -230,7 +225,6 @@ def load_csv_data_strict(file_path: str | Path, **kwargs: Any) -> pd.DataFrame:
         stacklevel=2,
     )
     return DataLoader.load_csv_strict(file_path, **kwargs)
-
 
 def load_csv_data_iter(
     file_path: str | Path, chunksize: int, **kwargs: Any
@@ -257,7 +251,6 @@ def load_csv_data_iter(
     )
     return DataLoader.load_csv_iter(file_path, chunksize, **kwargs)
 
-
 def load_csv_data_optimized(
     file_path: str | Path,
     usecols: list[str] | None = None,
@@ -270,7 +263,7 @@ def load_csv_data_optimized(
 
     Args:
         file_path: Path to the CSV file
-        usecols: List of columns to read (None for all columns)
+        usecols: list of columns to read (None for all columns)
         dtype: Dictionary mapping column names to dtypes for memory optimization
         **kwargs: Additional arguments passed to pd.read_csv
 
@@ -293,6 +286,5 @@ def load_csv_data_optimized(
         parse_dates=parse_dates,
         **kwargs,
     )
-
 
 logger = logging.getLogger(__name__)

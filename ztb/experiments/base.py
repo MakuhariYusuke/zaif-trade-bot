@@ -2,6 +2,7 @@
 Base classes for experiments in the trading RL system.
 実験基底クラス - 取引RLシステムの実験実行を統一
 """
+from __future__ import annotations
 
 import glob
 import json
@@ -32,7 +33,6 @@ from ztb.utils.run_metadata import RunMetadata
 if TYPE_CHECKING:
     from ztb.data.streaming_pipeline import PipelineStats, StreamingPipeline
 
-
 class ExperimentConfig(TypedDict, total=False):
     """実験設定の型定義"""
 
@@ -47,7 +47,6 @@ class ExperimentConfig(TypedDict, total=False):
     validation_split: float
     random_seed: int
 
-
 @dataclass
 class AggregationResult:
     """集約結果のデータ構造"""
@@ -55,20 +54,17 @@ class AggregationResult:
     aggregation_timestamp: str
     experiment_pattern: str
     total_experiments: int
-    results: List[ObjectMap]
+    results: list[ObjectMap]
     summary: ObjectMap
 
-
-MetricsValue = Union[int, float, str, List[float], List[int], Dict[str, object]]
-ExperimentMetrics = Dict[str, MetricsValue]
-
+MetricsValue = int | float | str | list[float] | list[int] | dict[str, object]
+ExperimentMetrics = dict[str, MetricsValue]
 
 class Notifiable(Protocol):
     """通知可能インターフェース"""
 
     def notify(self, message: str, level: str = "info") -> None:
         ...
-
 
 class Checkpointable(Protocol):
     """チェックポイント可能インターフェース"""
@@ -79,7 +75,6 @@ class Checkpointable(Protocol):
     def load_checkpoint(self, path: str) -> None:
         ...
 
-
 @dataclass
 class ExperimentResult:
     """実験結果の標準データ構造"""
@@ -89,13 +84,12 @@ class ExperimentResult:
     status: str  # "success", "failed", "partial"
     config: ExperimentConfig
     metrics: ExperimentMetrics
-    artifacts: Dict[str, str]  # ファイルパス
-    error_message: Optional[str] = None
+    artifacts: dict[str, str]  # ファイルパス
+    error_message: str | None = None
     execution_time_seconds: float = 0.0
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return asdict(self)
-
 
 class ExperimentBase(ABC):
     """
@@ -103,13 +97,13 @@ class ExperimentBase(ABC):
     すべての実験スクリプトはこのクラスを継承する
     """
 
-    def __init__(self, config: ExperimentConfig, experiment_name: Optional[str] = None):
+    def __init__(self, config: ExperimentConfig, experiment_name: str | None = None):
         super().__init__()
         self.config = config
         # 統一された命名規則: サブクラスは experiment_name を明示的に渡すか、クラス名から 'Experiment' を除去して小文字化
         self.experiment_name = experiment_name or self._default_experiment_name()
-        self.start_time: Optional[datetime] = None
-        self.end_time: Optional[datetime] = None
+        self.start_time: datetime | None = None
+        self.end_time: datetime | None = None
         self.logger = logging.getLogger(self.__class__.__name__)
 
         # 結果保存ディレクトリ
@@ -125,8 +119,8 @@ class ExperimentBase(ABC):
             save_dir=str(self.checkpoint_dir), keep_last=5, compress="zstd"
         )
 
-        self.streaming_pipeline: Optional["StreamingPipeline"] = None
-        self._streaming_metadata: Dict[str, object] = {}
+        self.streaming_pipeline: StreamingPipeline | None = None
+        self._streaming_metadata: dict[str, object] = {}
 
     @classmethod
     def _default_experiment_name(cls) -> str:
@@ -147,7 +141,7 @@ class ExperimentBase(ABC):
         self,
         pipeline: "StreamingPipeline",
         *,
-        metadata: Optional[Dict[str, object]] = None,
+        metadata: dict[str, object] | None = None,
     ) -> None:
         """Register a streaming pipeline for the experiment lifecycle."""
         self.streaming_pipeline = pipeline
@@ -159,17 +153,17 @@ class ExperimentBase(ABC):
             desc = pipeline.__class__.__name__
         self.logger.info("Streaming pipeline attached: %s", desc)
 
-    def get_streaming_stats(self) -> Optional["PipelineStats"]:
+    def get_streaming_stats(self) -> PipelineStats | None:
         if not self.streaming_pipeline:
             return None
         return self.streaming_pipeline.stats()
 
-    def _collect_streaming_metrics(self) -> Dict[str, object]:
+    def _collect_streaming_metrics(self) -> dict[str, object]:
         if not self.streaming_pipeline:
             return {}
 
         stats = self.streaming_pipeline.stats()
-        metrics: Dict[str, object] = {
+        metrics: dict[str, object] = {
             "stream_buffer_rows": stats.buffer.rows,
             "stream_buffer_capacity": stats.buffer.capacity,
             "stream_buffer_memory_bytes": stats.buffer.memory_bytes,
@@ -271,7 +265,7 @@ class ExperimentBase(ABC):
 
     @classmethod
     def aggregate_results(
-        cls, experiment_pattern: str = "*", output_file: Optional[str] = None
+        cls, experiment_pattern: str = "*", output_file: str | None = None
     ) -> AggregationResult:
         """
         複数の実験結果を集約してレポート生成
@@ -463,7 +457,6 @@ class ExperimentBase(ABC):
         except Exception as e:
             self.logger.warning(f"Failed to send notification: {e}")
 
-
 class ScalingExperiment(ExperimentBase):
     """
     大規模実験用の基底クラス
@@ -569,7 +562,7 @@ class ScalingExperiment(ExperimentBase):
     def collect_metrics(self) -> ExperimentMetrics:
         """実験メトリクスを収集"""
 
-    def collect_artifacts(self) -> Dict[str, str]:
+    def collect_artifacts(self) -> dict[str, str]:
         """実験アーティファクトを収集"""
         artifacts = {}
         # チェックポイントディレクトリ
@@ -580,7 +573,7 @@ class ScalingExperiment(ExperimentBase):
             artifacts["results"] = str(self.results_dir)
         return artifacts
 
-    def checkpoint_load(self) -> Tuple[Optional[object], int, Dict[str, object]]:
+    def checkpoint_load(self) -> tuple[object | None, int, dict[str, object]]:
         """最新のチェックポイントを読み込み"""
         try:
             return self.checkpoint_manager.load_latest()
@@ -589,7 +582,7 @@ class ScalingExperiment(ExperimentBase):
             return None, 0, {}
 
     def checkpoint_save(
-        self, obj: object, step: int, metadata: Optional[Dict[str, object]] = None
+        self, obj: object, step: int, metadata: dict[str, object] | None = None
     ) -> None:
         """チェックポイントを非同期保存"""
         self.checkpoint_manager.save_async(obj, step, metadata)

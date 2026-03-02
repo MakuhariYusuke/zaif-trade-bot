@@ -13,8 +13,6 @@ import sys
 import time
 from pathlib import Path
 from types import FrameType
-from typing import Optional
-
 
 def run_command(command: str) -> int:
     """Run the command and return exit code."""
@@ -29,12 +27,10 @@ def run_command(command: str) -> int:
         print(f"Command failed: {e}", file=sys.stderr)
         return 1
 
-
 def calculate_next_run(interval_sec: int, jitter_sec: int) -> float:
     """Calculate next run time with jitter."""
     jitter = random.uniform(-jitter_sec, jitter_sec)
     return time.time() + interval_sec + jitter
-
 
 def format_eta(seconds: float) -> str:
     """Format ETA as human readable string."""
@@ -44,7 +40,6 @@ def format_eta(seconds: float) -> str:
         return f"{seconds / 60:.1f}m"
     else:
         return f"{seconds / 3600:.1f}h"
-
 
 def perform_catchup(args: argparse.Namespace, kill_file: Path) -> None:
     """Perform catchup runs for missed intervals."""
@@ -94,7 +89,6 @@ def perform_catchup(args: argparse.Namespace, kill_file: Path) -> None:
     except OSError:
         print("Warning: Could not update last run time", file=sys.stderr)
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run commands periodically with jitter"
@@ -130,7 +124,7 @@ def main() -> None:
     kill_file = Path("ztb.stop")
     cycle_count = 0
 
-    def signal_handler(signum: int, frame: Optional[FrameType]) -> None:
+    def signal_handler(signum: int, frame: FrameType | None) -> None:
         print("\nStopping cronish...")
         sys.exit(0)
 
@@ -167,7 +161,6 @@ def main() -> None:
             time.sleep(eta)
         else:
             print("Running immediately (overdue)")
-
 
 if __name__ == "__main__":
     main()

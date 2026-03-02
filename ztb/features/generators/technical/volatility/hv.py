@@ -12,7 +12,6 @@ from ztb.features.registry import FeatureRegistry
 
 # 年間取引日数（一般的に252日）
 
-
 @FeatureRegistry.register("HV")
 def compute_hv(df: pd.DataFrame, period: int = 14) -> "pd.Series":
     """

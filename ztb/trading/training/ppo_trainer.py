@@ -30,5 +30,4 @@ else:  # Runtime: prefer to use the real implementation when available
             def __init__(self, *args, **kwargs) -> None:
                 raise RuntimeError("PPOTrainer implementation not available")
 
-
 __all__ = ["PPOTrainer"]

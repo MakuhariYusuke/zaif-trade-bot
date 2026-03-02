@@ -1,14 +1,13 @@
 """Base trainer class with common functionality."""
 
-from typing import Any, Dict
+from typing import Any
 
 from ztb.utils.logging_utils import get_logger
-
 
 class BaseTrainer:
     """Base class for all trainers."""
 
-    def __init__(self, config: Dict[str, Any]) -> None:
+    def __init__(self, config: dict[str, Any]) -> None:
         """
         Initialize base trainer.
 

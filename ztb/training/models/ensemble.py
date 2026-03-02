@@ -6,11 +6,10 @@ Combines multiple trained models for improved prediction accuracy and risk manag
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
+from typing import Any, Optional, TypedDict
 
 from ztb.utils.config import config
 from ztb.utils.logging_utils import get_logger
-
 
 # Type definitions for ensemble configuration
 class ModelConfig(TypedDict, total=False):
@@ -20,15 +19,13 @@ class ModelConfig(TypedDict, total=False):
     weight: float
     feature_set: str
 
-
 class EnsembleInfoDict(TypedDict):
     """Ensemble information dictionary."""
 
     num_models: int
-    model_paths: List[str]
-    weights: List[float]
-    feature_sets: List[str]
-
+    model_paths: list[str]
+    weights: list[float]
+    feature_sets: list[str]
 
 class RiskConfigDict(TypedDict, total=False):
     """Risk management configuration dictionary."""
@@ -40,8 +37,7 @@ class RiskConfigDict(TypedDict, total=False):
     min_order_size: float
     max_order_size: float
 
-
-from typing import Any, Callable, Dict, Protocol
+from typing import Any, Callable, Protocol
 
 import numpy as np
 from numpy.typing import NDArray
@@ -49,7 +45,6 @@ from sb3_contrib import MaskablePPO
 from stable_baselines3 import PPO
 
 logger = get_logger(__name__)
-
 
 # Protocol definitions for ensemble components
 class PredictorProtocol(Protocol):
@@ -61,7 +56,6 @@ class PredictorProtocol(Protocol):
         """Make a prediction based on observation."""
         ...
 
-
 class ActionMaskProvider(Protocol):
     """Protocol for environments that can provide action masks."""
 
@@ -69,30 +63,26 @@ class ActionMaskProvider(Protocol):
         """Get current action masks."""
         ...
 
-
 class TradingSystemProtocol(Protocol):
     """Protocol for trading system implementations."""
 
-    def trade(self, observation: NDArray[np.float32]) -> Dict[str, Any]:
+    def trade(self, observation: NDArray[np.float32]) -> dict[str, Any]:
         """Execute a trade based on observation."""
         ...
-
 
 class EnsemblePredictor(PredictorProtocol):
     """Ensemble predictor combining multiple trained models."""
 
     def __init__(
         self,
-        model_configs: List[ModelConfig],
-        mask_provider: Optional[
-            Callable[[NDArray[np.float32]], NDArray[np.bool_]]
-        ] = None,
+        model_configs: list[ModelConfig],
+        mask_provider: Callable[[NDArray[np.float32]], NDArray[np.bool_]] | None = None,
     ):
         """
         Initialize ensemble predictor.
 
         Args:
-            model_configs: List of model configurations with paths and weights
+            model_configs: list of model configurations with paths and weights
             mask_provider: Optional callable that returns action masks for current observation.
                           Required if any model is MaskablePPO. Should accept observation and
                           return boolean mask array. Example: lambda obs: env.get_action_masks()
@@ -104,7 +94,7 @@ class EnsemblePredictor(PredictorProtocol):
             raise ValueError("At least one model configuration required")
 
         self.model_configs = model_configs
-        self.models: List[Union[MaskablePPO, PPO]] = []
+        self.models: list[MaskablePPO | PPO] = []
         self.weights = []
         self.feature_sets = []
         self.mask_provider = mask_provider
@@ -118,7 +108,7 @@ class EnsemblePredictor(PredictorProtocol):
             try:
                 # Try loading as MaskablePPO first, then fall back to PPO
                 try:
-                    model: Union[MaskablePPO, PPO] = MaskablePPO.load(model_path)  # type: ignore[arg-type]
+                    model: MaskablePPO | PPO = MaskablePPO.load(model_path)  # type: ignore[arg-type]
                     self.has_maskable_ppo = True
                     logger.info(f"Loaded MaskablePPO model: {model_path}")
                 except Exception:
@@ -153,7 +143,7 @@ class EnsemblePredictor(PredictorProtocol):
 
     def predict(
         self, observation: NDArray[np.float32], deterministic: bool = True
-    ) -> Tuple[Any, Optional[Any]]:
+    ) -> tuple[Any, Any | None]:
         """
         Make ensemble prediction by combining predictions from multiple models.
 
@@ -166,7 +156,7 @@ class EnsemblePredictor(PredictorProtocol):
             deterministic: Whether to use deterministic prediction mode
 
         Returns:
-            Tuple of (ensemble_action, ensemble_state) where:
+            tuple of (ensemble_action, ensemble_state) where:
             - ensemble_action: Aggregated action prediction from all models
             - ensemble_state: State information from the first successful model
 
@@ -231,7 +221,7 @@ class EnsemblePredictor(PredictorProtocol):
             )
         else:
             # Discrete actions - weighted voting
-            action_counts: Dict[int, float] = {}
+            action_counts: dict[int, float] = {}
             for action, weight in zip(actions, self.weights[: len(actions)]):
                 action_val = (
                     int(action[0]) if hasattr(action, "__len__") else int(action)
@@ -250,7 +240,7 @@ class EnsemblePredictor(PredictorProtocol):
 
     def get_action_probabilities(
         self, observation: NDArray[np.float32]
-    ) -> Tuple[NDArray[np.float32], NDArray[np.float32]]:
+    ) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
         """
         Get action probabilities from ensemble with confidence weights.
 
@@ -258,13 +248,13 @@ class EnsemblePredictor(PredictorProtocol):
             observation: Input observation
 
         Returns:
-            Tuple of (ensemble_probabilities, confidence_weights)
+            tuple of (ensemble_probabilities, confidence_weights)
         """
         if not hasattr(self.models[0], "policy"):
             raise ValueError("Models must have policy for probability extraction")
 
-        probabilities: List[NDArray[np.float32]] = []
-        confidences: List[float] = []
+        probabilities: list[NDArray[np.float32]] = []
+        confidences: list[float] = []
 
         for model in self.models:
             try:
@@ -323,17 +313,14 @@ class EnsemblePredictor(PredictorProtocol):
             "feature_sets": self.feature_sets,
         }
 
-
 class EnsembleTradingSystem(TradingSystemProtocol):
     """Complete ensemble trading system with risk management."""
 
     def __init__(
         self,
-        model_configs: List[ModelConfig],
-        risk_configs: Optional[Dict[str, Any]] = None,
-        mask_provider: Optional[
-            Callable[[NDArray[np.float32]], NDArray[np.bool_]]
-        ] = None,
+        model_configs: list[ModelConfig],
+        risk_configs: dict[str, Any] | None = None,
+        mask_provider: Callable[[NDArray[np.float32]], NDArray[np.bool_]] | None = None,
     ):
         """
         Initialize ensemble trading system.
@@ -356,7 +343,7 @@ class EnsembleTradingSystem(TradingSystemProtocol):
 
         # Circuit breaker state
         self.circuit_breaker_triggered = False
-        self.price_history: List[float] = []
+        self.price_history: list[float] = []
 
         logger.info("Ensemble trading system initialized")
 
@@ -451,7 +438,7 @@ class EnsembleTradingSystem(TradingSystemProtocol):
         else:
             self.consecutive_losses = 0
 
-    def trade(self, observation: NDArray[np.float32]) -> Dict[str, Any]:
+    def trade(self, observation: NDArray[np.float32]) -> dict[str, Any]:
         """
         Execute a trade based on observation.
 
@@ -526,22 +513,19 @@ class EnsembleTradingSystem(TradingSystemProtocol):
                 1.0, len(self.ensemble.models) / 5.0
             )  # Max confidence at 5 models
 
-
 class EnsemblePredictorLegacy(PredictorProtocol):
     """Legacy ensemble predictor combining multiple trained models."""
 
     def __init__(
         self,
-        model_configs: List[Dict[str, Any]],
-        mask_provider: Optional[
-            Callable[[NDArray[np.float32]], NDArray[np.bool_]]
-        ] = None,
+        model_configs: list[dict[str, Any]],
+        mask_provider: Callable[[NDArray[np.float32]], NDArray[np.bool_]] | None = None,
     ):
         """
         Initialize ensemble predictor.
 
         Args:
-            model_configs: List of model configurations with paths and weights
+            model_configs: list of model configurations with paths and weights
             mask_provider: Optional callable that returns action masks for current observation
         """
         self.model_configs = model_configs
@@ -558,7 +542,7 @@ class EnsemblePredictorLegacy(PredictorProtocol):
             try:
                 # Try MaskablePPO first, then fall back to PPO
                 try:
-                    model: Union[MaskablePPO, PPO] = MaskablePPO.load(model_path)  # type: ignore[arg-type]
+                    model: MaskablePPO | PPO = MaskablePPO.load(model_path)  # type: ignore[arg-type]
                 except Exception:
                     model = PPO.load(model_path)  # type: ignore[arg-type]
 
@@ -589,7 +573,7 @@ class EnsemblePredictorLegacy(PredictorProtocol):
 
     def predict(
         self, observation: NDArray[np.float32], deterministic: bool = True
-    ) -> Tuple[NDArray[np.float32], Optional[np.ndarray[Any, Any]]]:
+    ) -> tuple[NDArray[np.float32], np.ndarray[Any, Any] | None]:
         """
         Make ensemble prediction.
 
@@ -598,7 +582,7 @@ class EnsemblePredictorLegacy(PredictorProtocol):
             deterministic: Whether to use deterministic prediction
 
         Returns:
-            Tuple of (action, state) where action is ensemble prediction
+            tuple of (action, state) where action is ensemble prediction
         """
         if not self.models:
             raise ValueError("No models loaded in ensemble")
@@ -643,7 +627,7 @@ class EnsemblePredictorLegacy(PredictorProtocol):
             )
         else:
             # Discrete actions - weighted voting
-            action_counts: Dict[int, float] = {}
+            action_counts: dict[int, float] = {}
             for action, weight in zip(actions, self.weights[: len(actions)]):
                 action_val = (
                     int(action[0]) if hasattr(action, "__len__") else int(action)
@@ -662,7 +646,7 @@ class EnsemblePredictorLegacy(PredictorProtocol):
 
     def get_action_probabilities(
         self, observation: NDArray[np.float32]
-    ) -> Tuple[NDArray[np.float32], NDArray[np.float32]]:
+    ) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
         """
         Get action probabilities from ensemble with confidence weights.
 
@@ -670,12 +654,12 @@ class EnsemblePredictorLegacy(PredictorProtocol):
             observation: Input observation
 
         Returns:
-            Tuple of (ensemble_probabilities, confidence_weights)
+            tuple of (ensemble_probabilities, confidence_weights)
         """
         if not hasattr(self.models[0], "policy"):
             raise ValueError("Models must have policy for probability extraction")
 
-        probabilities: List[NDArray[np.float32]] = []
+        probabilities: list[NDArray[np.float32]] = []
         confidences = []
 
         for model in self.models:
@@ -711,18 +695,14 @@ class EnsemblePredictorLegacy(PredictorProtocol):
 
         return ensemble_probabilities, weights
 
-
-
 class EnsembleTradingSystemLegacy:
     """Legacy complete ensemble trading system with risk management."""
 
     def __init__(
         self,
-        model_configs: List[Dict[str, Any]],
-        risk_configs: Optional[Dict[str, Any]] = None,
-        mask_provider: Optional[
-            Callable[[NDArray[np.float32]], NDArray[np.bool_]]
-        ] = None,
+        model_configs: list[dict[str, Any]],
+        risk_configs: dict[str, Any] | None = None,
+        mask_provider: Callable[[NDArray[np.float32]], NDArray[np.bool_]] | None = None,
     ):
         """
         Initialize ensemble trading system.
@@ -747,7 +727,7 @@ class EnsembleTradingSystemLegacy:
 
         # Circuit breaker state
         self.circuit_breaker_triggered = False
-        self.price_history: List[float] = []
+        self.price_history: list[float] = []
 
         logger.info("Ensemble trading system initialized")
 
@@ -827,20 +807,17 @@ class EnsembleTradingSystemLegacy:
                 1.0, len(self.ensemble.models) / 5.0
             )  # Max confidence at 5 models
 
-
 def create_default_ensemble() -> EnsembleTradingSystem:
     """Create default ensemble with available models."""
-    model_configs: List[ModelConfig] = config.get_model_dir()  # type: ignore[assignment]
+    model_configs: list[ModelConfig] = config.get_model_dir()  # type: ignore[assignment]
 
     return EnsembleTradingSystem(model_configs)
 
-
 def create_default_ensemble_legacy() -> EnsembleTradingSystemLegacy:
     """Create default legacy ensemble with available models."""
-    model_configs: List[Dict[str, Any]] = config.get_model_dir()  # type: ignore[assignment]
+    model_configs: list[dict[str, Any]] = config.get_model_dir()  # type: ignore[assignment]
 
     return EnsembleTradingSystemLegacy(model_configs)
-
 
 if __name__ == "__main__":
     # Example usage

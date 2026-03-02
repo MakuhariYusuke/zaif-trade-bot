@@ -14,13 +14,12 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import psutil
 
-
 def run_command(
-    cmd: list[str], cwd: Optional[Path] = None, timeout: int = 300
+    cmd: list[str], cwd: Path | None = None, timeout: int = 300
 ) -> tuple[int, str, str]:
     """Run a command and return exit code, stdout, stderr."""
     try:
@@ -30,7 +29,6 @@ def run_command(
         return result.returncode, result.stdout, result.stderr
     except subprocess.TimeoutExpired:
         return -1, "", f"Command timed out after {timeout}s"
-
 
 def check_go_no_go() -> bool:
     """Run basic go/no-go checks."""
@@ -53,8 +51,7 @@ def check_go_no_go() -> bool:
 
     return True
 
-
-def run_canary_test(duration_minutes: int = 3) -> tuple[bool, Dict[str, Any]]:
+def run_canary_test(duration_minutes: int = 3) -> tuple[bool, dict[str, Any]]:
     """Run short canary test with fault injection."""
     print(f"🧪 Running canary test ({duration_minutes} minutes)...")
 
@@ -94,8 +91,7 @@ def run_canary_test(duration_minutes: int = 3) -> tuple[bool, Dict[str, Any]]:
         print(stderr)
         return False, canary_results
 
-
-def update_executive_summary(canary_results: Dict[str, Any]) -> bool:
+def update_executive_summary(canary_results: dict[str, Any]) -> bool:
     """Update executive summary with latest results."""
     print("📊 Updating executive summary...")
 
@@ -129,8 +125,7 @@ def update_executive_summary(canary_results: Dict[str, Any]) -> bool:
         print("⚠️  Could not update executive summary")
         return False
 
-
-def create_release_bundle(output_dir: Path, canary_results: Dict[str, Any]) -> Path:
+def create_release_bundle(output_dir: Path, canary_results: dict[str, Any]) -> Path:
     """Create release preparation bundle."""
     print("📦 Creating release bundle...")
 
@@ -193,7 +188,6 @@ def create_release_bundle(output_dir: Path, canary_results: Dict[str, Any]) -> P
     print(f"✅ Release bundle created: {zip_path}")
     return zip_path
 
-
 def main() -> None:
     """Main release preparation workflow."""
     parser = argparse.ArgumentParser(description="Release preparation orchestrator")
@@ -225,7 +219,7 @@ def main() -> None:
 
     # Step 2: Canary test
     canary_success = True
-    canary_results: Dict[str, Any] = {}
+    canary_results: dict[str, Any] = {}
 
     if not args.skip_canary:
         canary_success, canary_results = run_canary_test(args.canary_duration)
@@ -254,7 +248,6 @@ def main() -> None:
         print("⚠️  Release preparation completed with warnings")
         print(f"📦 Bundle: {zip_path}")
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

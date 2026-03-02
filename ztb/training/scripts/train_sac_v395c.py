@@ -24,6 +24,5 @@ main = create_simple_main_template(
     extra_info,
 )
 
-
 if __name__ == "__main__":
     main()

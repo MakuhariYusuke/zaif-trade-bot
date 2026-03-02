@@ -4,16 +4,16 @@ Interfaces for ActionSignalGuide components.
 This module defines interfaces for the ActionSignalGuide system components,
 following SOLID principles for better maintainability and testability.
 """
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Optional
 
 import pandas as pd
 
 if TYPE_CHECKING:
     from ..action_signal_guide import ActionSignal
     from ..types import CacheStats, PatternStats, PerformanceStats
-
 
 class ISignalGenerator(ABC):
     """Interface for signal generation."""
@@ -23,7 +23,7 @@ class ISignalGenerator(ABC):
         self,
         data: pd.DataFrame,
         current_index: int,
-        multi_timeframe_data: Optional[dict] = None,
+        multi_timeframe_data: dict | None = None,
     ) -> "ActionSignal":
         """
         Generate trading signal from market data.
@@ -43,12 +43,11 @@ class ISignalGenerator(ABC):
         """Initialize all pattern recognizers."""
         pass
 
-
 class ICacheManager(ABC):
     """Interface for signal caching."""
 
     @abstractmethod
-    def get_cached_signal(self, cache_key: str) -> Optional[Union["ActionSignal", List["ActionSignal"]]]:
+    def get_cached_signal(self, cache_key: str) -> "ActionSignal" | list["ActionSignal"] | None:
         """
         Get cached signal if available and valid.
 
@@ -61,7 +60,7 @@ class ICacheManager(ABC):
         pass
 
     @abstractmethod
-    def cache_signal(self, cache_key: str, signal: Union["ActionSignal", List["ActionSignal"]]) -> None:
+    def cache_signal(self, cache_key: str, signal: "ActionSignal" | list["ActionSignal"]) -> None:
         """
         Cache a signal.
 
@@ -77,7 +76,7 @@ class ICacheManager(ABC):
         pass
 
     @abstractmethod
-    def invalidate_cache(self, pattern: Optional[str] = None) -> None:
+    def invalidate_cache(self, pattern: str | None = None) -> None:
         """
         Invalidate cache entries.
 
@@ -95,7 +94,6 @@ class ICacheManager(ABC):
             Dictionary with cache statistics
         """
         pass
-
 
 class IPerformanceTracker(ABC):
     """Interface for performance tracking."""
@@ -130,7 +128,6 @@ class IPerformanceTracker(ABC):
         """
         pass
 
-
 class IPatternStatistics(ABC):
     """Interface for pattern statistics tracking."""
 
@@ -147,7 +144,7 @@ class IPatternStatistics(ABC):
 
     @abstractmethod
     def get_pattern_statistics(
-        self, pattern_type: Optional[str] = None
+        self, pattern_type: str | None = None
     ) -> "PatternStats":
         """
         Get pattern statistics.

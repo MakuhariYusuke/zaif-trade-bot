@@ -2,7 +2,7 @@
 """Inspect full TensorBoard tag categories for reward improvement runs."""
 
 from pathlib import Path
-from typing import Any, Dict, cast
+from typing import Any, cast
 
 from tensorboard.backend.event_processing import event_accumulator
 
@@ -18,8 +18,7 @@ RUNS = {
     ),
 }
 
-
-def inspect_tags(run_dir: Path) -> Dict[str, Any]:
+def inspect_tags(run_dir: Path) -> dict[str, Any]:
     events_file = next(run_dir.glob("**/events.out.tfevents.*"), None)
     if not events_file:
         raise FileNotFoundError(f"No events file found in {run_dir}")
@@ -32,8 +31,7 @@ def inspect_tags(run_dir: Path) -> Dict[str, Any]:
         },
     )
     ea.Reload()
-    return cast(Dict[str, Any], ea.Tags())
-
+    return cast(dict[str, Any], ea.Tags())
 
 def main() -> None:
     for name, run_dir in RUNS.items():
@@ -52,7 +50,6 @@ def main() -> None:
             for tag in sorted(tag_list):
                 print(f"  {tag}")
             print()
-
 
 if __name__ == "__main__":
     main()

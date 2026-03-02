@@ -4,9 +4,10 @@ Base training callback classes for common functionality.
 This module provides abstract base classes and common implementations
 for training callbacks to reduce code duplication across training scripts.
 """
+from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback
@@ -18,7 +19,6 @@ if TYPE_CHECKING:
 
     from ztb.training.core.base_trainer import BaseTrainer
 
-
 class BaseTrainingCallback(BaseCallback, ABC):
     """
     Abstract base class for training callbacks with common functionality.
@@ -29,10 +29,10 @@ class BaseTrainingCallback(BaseCallback, ABC):
 
     def __init__(self, verbose: int = 0) -> None:
         super().__init__(verbose)
-        self.episode_rewards: List[float] = []
-        self.episode_lengths: List[int] = []
-        self.action_counts: List[Dict[str, int]] = []
-        self.portfolio_values: List[float] = []
+        self.episode_rewards: list[float] = []
+        self.episode_lengths: list[int] = []
+        self.action_counts: list[dict[str, int]] = []
+        self.portfolio_values: list[float] = []
         self.episode_count = 0
 
     def _on_step(self) -> bool:
@@ -44,7 +44,7 @@ class BaseTrainingCallback(BaseCallback, ABC):
         """Abstract method for handling rollout end - must be implemented by subclasses."""
         pass
 
-    def get_episode_stats(self) -> Dict[str, Any]:
+    def get_episode_stats(self) -> dict[str, Any]:
         """Get current episode statistics."""
         return {
             "episode_count": self.episode_count,
@@ -61,7 +61,6 @@ class BaseTrainingCallback(BaseCallback, ABC):
         self.action_counts.clear()
         self.portfolio_values.clear()
         self.episode_count = 0
-
 
 class SimpleTrainingCallback(BaseTrainingCallback):
     """
@@ -92,7 +91,6 @@ class SimpleTrainingCallback(BaseTrainingCallback):
 
         self.action_counts.append(action_count)
 
-
 class TradingTrainingCallback(BaseTrainingCallback):
     """
     Training callback specialized for trading environments.
@@ -102,8 +100,8 @@ class TradingTrainingCallback(BaseTrainingCallback):
 
     def __init__(self, verbose: int = 0) -> None:
         super().__init__(verbose)
-        self.position_sizes: List[float] = []
-        self.trade_counts: List[int] = []
+        self.position_sizes: list[float] = []
+        self.trade_counts: list[int] = []
 
     def _on_rollout_end(self) -> None:
         """Handle rollout end with trading-specific metrics."""
@@ -149,7 +147,7 @@ class TradingTrainingCallback(BaseTrainingCallback):
 
         self.action_counts.append(action_count)
 
-    def get_trading_stats(self) -> Dict[str, Any]:
+    def get_trading_stats(self) -> dict[str, Any]:
         """Get trading-specific statistics."""
         base_stats = self.get_episode_stats()
         base_stats.update(
@@ -159,7 +157,6 @@ class TradingTrainingCallback(BaseTrainingCallback):
             }
         )
         return base_stats
-
 
 class ProgressTrainingCallback(BaseCallback):
     """
@@ -178,8 +175,8 @@ class ProgressTrainingCallback(BaseCallback):
         super().__init__(verbose)
         self.trainer = trainer
         self.enable_progress_bar = enable_progress_bar
-        self.progress: Optional["Progress"] = None
-        self.task_id: Optional["TaskID"] = None
+        self.progress: Progress | None = None
+        self.task_id: TaskID | None = None
 
     def _on_training_start(self) -> None:
         """Initialize progress bar when training starts."""
@@ -240,7 +237,6 @@ class ProgressTrainingCallback(BaseCallback):
             self.progress = None
             self.task_id = None
 
-
 class EntropyScheduleCallback(BaseCallback):
     """
     Callback for applying entropy coefficient scheduling during training.
@@ -253,7 +249,7 @@ class EntropyScheduleCallback(BaseCallback):
         self,
         schedule_type: str = "cosine_decay",
         initial_ent_coef: float = 0.01,
-        final_ent_coef: Optional[float] = None,
+        final_ent_coef: float | None = None,
         total_timesteps: int = 100000,
         verbose: int = 0,
     ) -> None:
@@ -283,7 +279,6 @@ class EntropyScheduleCallback(BaseCallback):
 
         return True
 
-
 class CompositeTrainingCallback(BaseCallback):
     """
     Composite callback that combines multiple callbacks.
@@ -299,11 +294,11 @@ class CompositeTrainingCallback(BaseCallback):
         enable_entropy_schedule: bool = False,
         entropy_schedule_type: str = "cosine_decay",
         initial_ent_coef: float = 0.01,
-        final_ent_coef: Optional[float] = None,
+        final_ent_coef: float | None = None,
         enable_grad_probe_guard: bool = False,
-        grad_probe_config: Optional[Dict[str, Any]] = None,
+        grad_probe_config: dict[str, Any] | None = None,
         enable_tensorboard_metrics: bool = True,
-        action_labels: Optional[Dict[int, str]] = None,
+        action_labels: dict[int, str] | None = None,
         verbose: int = 0,
     ) -> None:
         super().__init__(verbose)
@@ -314,8 +309,8 @@ class CompositeTrainingCallback(BaseCallback):
         self.enable_tensorboard_metrics = enable_tensorboard_metrics
 
         # Progress tracking
-        self.progress: Optional["Progress"] = None
-        self.task_id: Optional["TaskID"] = None
+        self.progress: Progress | None = None
+        self.task_id: TaskID | None = None
 
         # Entropy scheduling
         self.schedule_type = entropy_schedule_type
@@ -326,7 +321,7 @@ class CompositeTrainingCallback(BaseCallback):
         self.total_timesteps = 100000  # Will be updated in _on_training_start
 
         # Gradient probe guard
-        self.grad_probe_guard: Optional[Any] = None
+        self.grad_probe_guard: Any | None = None
         if self.enable_grad_probe_guard:
             try:
                 from ztb.training.utils.grad_probe_guard import (
@@ -525,8 +520,6 @@ class CompositeTrainingCallback(BaseCallback):
             # Expose rollout end event to guard when available
             if hasattr(self.grad_probe_guard, "_on_rollout_end"):
                 self.grad_probe_guard._on_rollout_end()
-
-
 
 class CheckpointGCCallback(BaseCallback):
     """

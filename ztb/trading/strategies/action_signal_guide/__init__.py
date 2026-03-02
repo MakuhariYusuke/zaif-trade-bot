@@ -19,7 +19,6 @@ if TYPE_CHECKING:
         RecognizerConfig,
     )
 
-
 class GuidanceMode(Enum):
     """Modes of signal guidance."""
 
@@ -28,7 +27,6 @@ class GuidanceMode(Enum):
     MINIMAL_GUIDANCE = "minimal"  # Light guidance for advanced training
     FADE_OUT = "fade_out"  # Guidance that fades out over time
     NO_GUIDANCE = "none"  # No guidance (pure RL)
-
 
 # Export GuidanceMode as GuidanceLevel for backward compatibility
 GuidanceLevel = GuidanceMode
@@ -58,14 +56,12 @@ _LAZY_ATTRS: dict[str, tuple[str, str]] = {
     ),
 }
 
-
 def __getattr__(name: str):
     if name in _LAZY_ATTRS:
         module_name, attr_name = _LAZY_ATTRS[name]
         module = __import__(module_name, fromlist=[attr_name])
         return getattr(module, attr_name)
     raise AttributeError(f"module {__name__} has no attribute {name}")
-
 
 def __dir__():
     return sorted(list(globals().keys()) + list(_LAZY_ATTRS.keys()))

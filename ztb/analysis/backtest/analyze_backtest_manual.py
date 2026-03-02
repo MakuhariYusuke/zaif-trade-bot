@@ -6,7 +6,6 @@ SAC v430 Backtest Analysis - Profitability and Win Rate Analysis
 import os
 import sys
 from pathlib import Path
-from typing import Dict, List
 
 from ztb.trading.environment.constants import (
     ACTION_BUY,
@@ -22,14 +21,13 @@ import numpy as np
 
 from ztb.io.json_io import read_json, write_json
 
-def load_backtest_results(results_path: str) -> Dict:
+def load_backtest_results(results_path: str) -> dict:
     """Load backtest results from JSON file."""
     return read_json(results_path)
 
-
 def analyze_trades(
-    portfolio_history: List[float], actions_history: List[float]
-) -> List[Dict]:
+    portfolio_history: list[float], actions_history: list[float]
+) -> list[dict]:
     """Analyze trades from portfolio and action history."""
 
     trades = []
@@ -116,8 +114,7 @@ def analyze_trades(
 
     return trades
 
-
-def calculate_win_rate(trades: List[Dict]) -> Dict:
+def calculate_win_rate(trades: list[dict]) -> dict:
     """Calculate win rate and related metrics."""
 
     if not trades:
@@ -164,10 +161,9 @@ def calculate_win_rate(trades: List[Dict]) -> Dict:
         "max_drawdown": max_drawdown,
     }
 
-
 def analyze_profitability_over_time(
-    portfolio_history: List[float], timestamps: List[int]
-) -> Dict:
+    portfolio_history: list[float], timestamps: list[int]
+) -> dict:
     """Analyze profitability over different time periods."""
 
     portfolio_values = np.array(portfolio_history)
@@ -228,8 +224,7 @@ def analyze_profitability_over_time(
 
     return profitability
 
-
-def analyze_win_rate_causes(trades: List[Dict], actions_history: List[float]) -> Dict:
+def analyze_win_rate_causes(trades: list[dict], actions_history: list[float]) -> dict:
     """Analyze potential causes of low win rate."""
 
     if not trades:
@@ -287,7 +282,6 @@ def analyze_win_rate_causes(trades: List[Dict], actions_history: List[float]) ->
             else "Normal action patterns",
         },
     }
-
 
 def main():
     """Main analysis function."""
@@ -396,7 +390,6 @@ def main():
     print(f"💾 Detailed analysis saved to: {analysis_path}")
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

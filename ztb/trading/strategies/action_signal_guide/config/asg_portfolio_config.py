@@ -5,10 +5,9 @@ This module provides configuration management for portfolio-level optimization.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 from ..interfaces.portfolio_interfaces import AllocationStrategy, RiskMeasure
-
 
 class StressTestScenario(TypedDict, total=False):
     """Stress-test scenario payload."""
@@ -17,7 +16,6 @@ class StressTestScenario(TypedDict, total=False):
     shock: float
     volatility_multiplier: float
     correlation_increase: float
-
 
 class AllocationConstraintsPayload(TypedDict):
     """Allocation constraints summary."""
@@ -30,7 +28,6 @@ class AllocationConstraintsPayload(TypedDict):
     sector_limits: dict[str, float]
     region_limits: dict[str, float]
 
-
 class RiskLimitsPayload(TypedDict):
     """Risk limit summary."""
 
@@ -39,7 +36,6 @@ class RiskLimitsPayload(TypedDict):
     confidence_level: float
     risk_horizon: int
 
-
 class OptimizationSchedulePayload(TypedDict):
     """Optimization schedule summary."""
 
@@ -47,7 +43,6 @@ class OptimizationSchedulePayload(TypedDict):
     optimization_frequency: int
     correlation_update_frequency: int
     backtest_window: int
-
 
 @dataclass
 class StrategyAllocatorConfig:
@@ -60,7 +55,7 @@ class StrategyAllocatorConfig:
     max_allocation_weight: float = 0.3
     transaction_cost_rate: float = 0.001
     risk_tolerance: float = 0.5  # 0-1 scale
-    target_return: Optional[float] = None
+    target_return: float | None = None
     max_strategies: int = 10
     advanced_features: bool = True  # Enable advanced portfolio features
     min_allocation: dict[str, float] = field(
@@ -87,18 +82,16 @@ class StrategyAllocatorConfig:
             return False
         return True
 
-
 @dataclass
 class RiskParityConfig:
     """Configuration for risk parity allocation."""
 
     enabled: bool = True
     risk_measure: RiskMeasure = RiskMeasure.VARIANCE
-    target_risk_contribution: Optional[float] = None  # Equal risk contribution
+    target_risk_contribution: float | None = None  # Equal risk contribution
     max_iterations: int = 100
     tolerance: float = 1e-6
     regularization: float = 1e-8
-
 
 @dataclass
 class CorrelationManagerConfig:
@@ -112,7 +105,6 @@ class CorrelationManagerConfig:
     correlation_threshold: float = 0.7
     update_frequency: int = 50
 
-
 @dataclass
 class DiversificationEngineConfig:
     """Configuration for diversification analysis."""
@@ -122,7 +114,6 @@ class DiversificationEngineConfig:
     min_diversification_ratio: float = 1.5
     max_correlation_for_diversification: float = 0.3
     diversification_target: float = 2.0
-
 
 @dataclass
 class PortfolioRiskManagerConfig:
@@ -141,7 +132,6 @@ class PortfolioRiskManagerConfig:
         ]
     )
 
-
 @dataclass
 class PortfolioConstraints:
     """Portfolio allocation constraints."""
@@ -153,7 +143,6 @@ class PortfolioConstraints:
     max_strategies: int = 10
     sector_constraints: dict[str, float] = field(default_factory=dict)
     region_constraints: dict[str, float] = field(default_factory=dict)
-
 
 @dataclass
 class PortfolioOptimizationConfig:
@@ -184,7 +173,7 @@ class PortfolioOptimizationConfig:
 
     def __post_init__(self):
         """Initialize default configurations."""
-        # Set up default sector constraints if empty
+        # set up default sector constraints if empty
         if not self.constraints.sector_constraints:
             self.constraints.sector_constraints = {
                 "trend_following": 0.4,

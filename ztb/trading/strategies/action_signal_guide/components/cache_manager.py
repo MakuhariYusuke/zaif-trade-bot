@@ -21,9 +21,7 @@ if TYPE_CHECKING:
     from ..action_signal_guide import ActionSignal
     from ..types import CacheStats
 
-
 TCacheValue = TypeVar("TCacheValue")
-
 
 class CacheManager(ICacheManager):
     """

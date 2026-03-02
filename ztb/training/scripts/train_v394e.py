@@ -6,7 +6,6 @@ import json
 
 from ztb.training.unified_trainer import UnifiedTrainer
 
-
 def main():
     config_path = "configs/ppo_v394e_high_entropy.json"
 
@@ -28,7 +27,6 @@ def main():
     print("\n=== Training Complete ===")
     if result:
         print("Training finished")
-
 
 if __name__ == "__main__":
     main()

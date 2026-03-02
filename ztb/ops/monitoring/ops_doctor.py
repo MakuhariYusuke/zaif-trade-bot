@@ -7,12 +7,11 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
 
 from ztb.io.text_io import write_text
 
 def run_script(
-    script_name: str, args: list[str], cwd: Optional[str] = None
+    script_name: str, args: list[str], cwd: str | None = None
 ) -> tuple[int, str, str]:
     """Run a script and return exit code."""
     cmd = [sys.executable, f"ztb/ztb/ztb/scripts/{script_name}"] + args
@@ -25,7 +24,6 @@ def run_script(
         return 1, "", "Timeout"
     except Exception as e:
         return 1, "", str(e)
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Comprehensive health check runner")
@@ -93,7 +91,6 @@ def main() -> None:
 
     # Exit with fail count
     sys.exit(fail_count)
-
 
 if __name__ == "__main__":
     main()

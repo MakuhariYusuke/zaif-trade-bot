@@ -8,7 +8,7 @@ implementation is delegated to ztb.utils.circuit_breaker.
 
 import asyncio
 import time
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable
 
 from ztb.utils.circuit_breaker import (
     CircuitBreaker,
@@ -19,7 +19,6 @@ from ztb.utils.circuit_breaker import (
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class KillSwitch:
     """Global kill switch for emergency shutdown."""
@@ -90,21 +89,19 @@ class KillSwitch:
                 f"Kill switch '{self.name}' is active: {self._reason}"
             )
 
-
 class KillSwitchActivatedError(Exception):
     """Exception raised when kill switch is active."""
-
 
 class CircuitBreakerRegistry:
     """Registry for managing multiple circuit breakers."""
 
     def __init__(self) -> None:
         """Initialize registry."""
-        self.breakers: Dict[str, CircuitBreaker] = {}
+        self.breakers: dict[str, CircuitBreaker] = {}
         self._lock = asyncio.Lock()
 
     def get_or_create(
-        self, name: str, config: Optional[CircuitBreakerConfig] = None
+        self, name: str, config: CircuitBreakerConfig | None = None
     ) -> CircuitBreaker:
         """Get existing or create new circuit breaker.
 
@@ -119,7 +116,7 @@ class CircuitBreakerRegistry:
             self.breakers[name] = CircuitBreaker(name, config or CircuitBreakerConfig())
         return self.breakers[name]
 
-    def get_all_states(self) -> Dict[str, CircuitBreakerState]:
+    def get_all_states(self) -> dict[str, CircuitBreakerState]:
         """Get states of all circuit breakers."""
         return {name: breaker.get_state() for name, breaker in self.breakers.items()}
 
@@ -128,21 +125,17 @@ class CircuitBreakerRegistry:
         for breaker in self.breakers.values():
             breaker.reset()
 
-
 # Global instances
 _global_kill_switch = KillSwitch("global")
 _circuit_breaker_registry = CircuitBreakerRegistry()
-
 
 def get_global_kill_switch() -> KillSwitch:
     """Get global kill switch instance."""
     return _global_kill_switch
 
-
 def get_circuit_breaker_registry() -> CircuitBreakerRegistry:
     """Get global circuit breaker registry."""
     return _circuit_breaker_registry
-
 
 def emergency_shutdown(reason: str = "Emergency shutdown initiated") -> None:
     """Activate global emergency shutdown.
@@ -152,11 +145,9 @@ def emergency_shutdown(reason: str = "Emergency shutdown initiated") -> None:
     """
     _global_kill_switch.kill(reason)
 
-
 async def check_kill_switch() -> None:
     """Check global kill switch and raise if active."""
     await _global_kill_switch.check_and_raise()
-
 
 def create_api_circuit_breaker(endpoint: str) -> CircuitBreaker:
     """Create circuit breaker for API endpoint.
@@ -171,7 +162,6 @@ def create_api_circuit_breaker(endpoint: str) -> CircuitBreaker:
         failure_threshold=3, recovery_timeout=30.0, success_threshold=2, timeout=5.0
     )
     return _circuit_breaker_registry.get_or_create(f"api_{endpoint}", config)
-
 
 def create_database_circuit_breaker(db_name: str) -> CircuitBreaker:
     """Create circuit breaker for database connection.

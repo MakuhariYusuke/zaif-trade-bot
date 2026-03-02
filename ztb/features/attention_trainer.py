@@ -12,7 +12,7 @@ Attention Model Training for Adaptive Feature Selection
 
 import gc
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -83,7 +83,6 @@ from ztb.utils.path_utils import ensure_dir
 
 logger = get_logger(__name__)
 
-
 class FeatureAttentionLayer(
     (nn.Module) if nn is not None else _TorchUnavailablePlaceholder
 ):
@@ -130,7 +129,6 @@ class FeatureAttentionLayer(
 
         return weights
 
-
 class AttentionTrainingDataset(
     (Dataset) if Dataset is not None else _TorchUnavailablePlaceholder
 ):
@@ -152,9 +150,8 @@ class AttentionTrainingDataset(
     def __len__(self) -> int:
         return len(self.feature_data)
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         return self.feature_data[idx], self.rewards[idx], self.regimes[idx]
-
 
 class AttentionTrainer:
     """注意モデルトレーニングマネージャー"""
@@ -167,7 +164,7 @@ class AttentionTrainer:
         batch_size: int = 32,
         max_epochs: int = 50,
         patience: int = 10,
-        model_save_path: Optional[str] = None,
+        model_save_path: str | None = None,
         memory_manager=None,
     ):
         """
@@ -195,7 +192,7 @@ class AttentionTrainer:
         self.criterion = nn.MSELoss()
 
         # トレーニング履歴
-        self.training_history: List[Dict[str, float]] = []
+        self.training_history: list[dict[str, float]] = []
 
         # モデル保存パス
         self.model_save_path = Path(model_save_path) if model_save_path else None
@@ -203,16 +200,16 @@ class AttentionTrainer:
             ensure_dir(self.model_save_path.parent)
 
         # トレーニングデータ
-        self.feature_buffer: List[np.ndarray] = []
-        self.reward_buffer: List[float] = []
-        self.regime_buffer: List[int] = []
+        self.feature_buffer: list[np.ndarray] = []
+        self.reward_buffer: list[float] = []
+        self.regime_buffer: list[int] = []
 
         logger.info(
             f"Initialized AttentionTrainer with {n_features} features, hidden_dim={hidden_dim}"
         )
 
     def add_training_sample(
-        self, features: np.ndarray, reward: float, regime: Union[str, int]
+        self, features: np.ndarray, reward: float, regime: str | int
     ) -> None:
         """
         トレーニングサンプルを追加
@@ -255,7 +252,7 @@ class AttentionTrainer:
         """十分なトレーニングデータがあるか確認"""
         return len(self.feature_buffer) >= min_samples
 
-    def prepare_dataset(self) -> Optional[AttentionTrainingDataset]:
+    def prepare_dataset(self) -> AttentionTrainingDataset | None:
         """トレーニングデータセットを作成"""
         if not self.has_enough_data():
             logger.warning(
@@ -280,7 +277,7 @@ class AttentionTrainer:
             logger.error(f"Failed to prepare dataset: {e}")
             return None
 
-    def train_epoch(self, dataloader: DataLoader) -> Dict[str, float]:
+    def train_epoch(self, dataloader: DataLoader) -> dict[str, float]:
         """1エポックのトレーニング"""
         self.model.train()
         epoch_loss = 0.0
@@ -318,7 +315,7 @@ class AttentionTrainer:
         avg_loss = epoch_loss / max(n_batches, 1)
         return {"loss": avg_loss, "n_batches": n_batches}
 
-    def validate(self, dataloader: DataLoader) -> Dict[str, float]:
+    def validate(self, dataloader: DataLoader) -> dict[str, float]:
         """検証"""
         self.model.eval()
         val_loss = 0.0
@@ -345,7 +342,7 @@ class AttentionTrainer:
         avg_loss = val_loss / max(n_batches, 1)
         return {"val_loss": avg_loss, "n_batches": n_batches}
 
-    def train(self, val_split: float = 0.2) -> Dict[str, Any]:
+    def train(self, val_split: float = 0.2) -> dict[str, Any]:
         """
         モデルのトレーニング
 
@@ -483,9 +480,8 @@ class AttentionTrainer:
             logger.error(f"Failed to load model: {e}")
             return False
 
-
 def create_attention_trainer(
-    n_features: int, config: Optional[Dict[str, Any]] = None, memory_manager=None
+    n_features: int, config: dict[str, Any] | None = None, memory_manager=None
 ) -> AttentionTrainer:
     """
     注意モデルトレーナーを作成

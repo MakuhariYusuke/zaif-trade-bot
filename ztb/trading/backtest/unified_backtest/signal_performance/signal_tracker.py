@@ -6,14 +6,12 @@ collecting data for performance analysis.
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Union
 
 import pandas as pd
 
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 @dataclass
 class TrackedSignal:
@@ -23,13 +21,12 @@ class TrackedSignal:
     direction: float
     strength: float
     confidence: float
-    source_patterns: List[str]
-    market_data: Dict[str, float]
+    source_patterns: list[str]
+    market_data: dict[str, float]
     position_before: int
     position_after: int
     trade_executed: bool
-    trade_result: Optional[Dict[str, Union[str, int, float]]] = None
-
+    trade_result: dict[str, str | int | float] | None = None
 
 class SignalTracker:
     """
@@ -50,19 +47,19 @@ class SignalTracker:
             max_history_size: Maximum number of signals to track
         """
         self.max_history_size = max_history_size
-        self.signals: List[TrackedSignal] = []
+        self.signals: list[TrackedSignal] = []
         self.current_position = 0
         self.logger = logger
 
     def track_signal(
         self,
         timestamp: pd.Timestamp,
-        signal_data: Dict[str, Union[str, int, float, List[str]]],
+        signal_data: dict[str, str | int | float | list[str]],
         market_data: pd.Series,
         position_before: int,
         position_after: int,
         trade_executed: bool,
-        trade_result: Optional[Dict[str, Union[str, int, float]]] = None
+        trade_result: dict[str, str | int | float] | None = None
     ) -> None:
         """
         Track a signal during backtest execution.
@@ -108,36 +105,36 @@ class SignalTracker:
         except Exception as e:
             self.logger.warning(f"Failed to track signal: {e}")
 
-    def get_signal_history(self) -> List[TrackedSignal]:
+    def get_signal_history(self) -> list[TrackedSignal]:
         """Get complete signal tracking history."""
         return self.signals.copy()
 
-    def get_recent_signals(self, n: int = 100) -> List[TrackedSignal]:
+    def get_recent_signals(self, n: int = 100) -> list[TrackedSignal]:
         """Get most recent n signals."""
         return self.signals[-n:] if len(self.signals) > n else self.signals.copy()
 
-    def get_signals_by_pattern(self, pattern: str) -> List[TrackedSignal]:
+    def get_signals_by_pattern(self, pattern: str) -> list[TrackedSignal]:
         """Get signals that include a specific pattern."""
         return [
             signal for signal in self.signals
             if pattern in signal.source_patterns
         ]
 
-    def get_signals_by_type(self, signal_type: str) -> List[TrackedSignal]:
+    def get_signals_by_type(self, signal_type: str) -> list[TrackedSignal]:
         """Get signals of a specific type."""
         return [
             signal for signal in self.signals
             if signal.signal_type == signal_type
         ]
 
-    def get_trade_signals(self) -> List[TrackedSignal]:
+    def get_trade_signals(self) -> list[TrackedSignal]:
         """Get signals that resulted in trades."""
         return [
             signal for signal in self.signals
             if signal.trade_executed
         ]
 
-    def get_signal_statistics(self) -> Dict[str, Union[int, float, dict]]:
+    def get_signal_statistics(self) -> dict[str, int | float | dict]:
         """Get comprehensive signal statistics."""
         if not self.signals:
             return {"total_signals": 0}
@@ -193,7 +190,7 @@ class SignalTracker:
 
         return stats
 
-    def get_signal_summary(self) -> Dict[str, Union[int, float, dict]]:
+    def get_signal_summary(self) -> dict[str, int | float | dict]:
         """Get comprehensive signal summary for reporting."""
         return self.get_signal_statistics()
 

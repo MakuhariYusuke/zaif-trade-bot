@@ -10,15 +10,12 @@ class DummyVecEnv:
     def step(self, action):
         return None, 0, False, {}
 
-
 class VecFrameStack:
     pass
-
 
 class VecNormalize:
     def __init__(self, *args, **kwargs):
         pass
-
 
 __all__ = ["DummyVecEnv", "VecFrameStack", "VecNormalize"]
 

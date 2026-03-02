@@ -4,23 +4,22 @@ Position Duration Validator for SAC v428
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
-
 class PositionDurationValidator:
     """ポジション継続時間検証クラス"""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         self.config = config
         self.target_sell_buy_duration = 8.0
         self.target_buy_sell_duration = 8.0
         self.min_hold_ratio = 0.20
 
-    def validate_position_durations(self, actions: List[int]) -> Dict[str, Any]:
+    def validate_position_durations(self, actions: list[int]) -> dict[str, Any]:
         """ポジション継続時間を検証"""
         durations = self._calculate_position_durations(actions)
 
@@ -39,7 +38,7 @@ class PositionDurationValidator:
             "recommendations": self._generate_recommendations(validation_results),
         }
 
-    def _calculate_position_durations(self, actions: List[int]) -> Dict[str, Any]:
+    def _calculate_position_durations(self, actions: list[int]) -> dict[str, Any]:
         """ポジション継続時間を計算"""
         sell_to_buy_durations = []
         buy_to_sell_durations = []
@@ -91,7 +90,7 @@ class PositionDurationValidator:
             },
         }
 
-    def _calculate_overall_score(self, durations: Dict[str, Any]) -> float:
+    def _calculate_overall_score(self, durations: dict[str, Any]) -> float:
         """全体スコアを計算"""
         sell_buy_score = min(
             durations["sell_to_buy"]["mean"] / self.target_sell_buy_duration, 1.0
@@ -103,7 +102,7 @@ class PositionDurationValidator:
 
         return (sell_buy_score + buy_sell_score + hold_score) / 3.0
 
-    def _generate_recommendations(self, validation: Dict[str, Any]) -> List[str]:
+    def _generate_recommendations(self, validation: dict[str, Any]) -> list[str]:
         """改善推奨を生成"""
         recommendations = []
 
@@ -124,8 +123,8 @@ class PositionDurationValidator:
         return recommendations
 
     def analyze_training_durations(
-        self, training_results: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, training_results: dict[str, Any]
+    ) -> dict[str, Any]:
         """トレーニング中のポジション継続時間を分析"""
         if "actions" not in training_results:
             return {"error": "No actions data in training results"}
@@ -141,8 +140,8 @@ class PositionDurationValidator:
         return analysis
 
     def _analyze_training_correlation(
-        self, training_results: Dict[str, Any], durations: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, training_results: dict[str, Any], durations: dict[str, Any]
+    ) -> dict[str, Any]:
         """トレーニング進捗とポジション継続時間の相関を分析"""
         # 簡易的な相関分析（実際の実装ではより詳細に）
         return {

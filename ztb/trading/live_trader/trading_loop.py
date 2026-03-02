@@ -13,7 +13,6 @@ from ztb.utils.performance_utils import CodePerformanceMonitor
 if TYPE_CHECKING:
     from ztb.trading.live_trader.live_trader import LiveTrader
 
-
 class TradingLoop:
     """Handles the main trading loop execution for live trading."""
 

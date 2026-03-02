@@ -12,7 +12,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable
 
 import psutil
 
@@ -23,7 +23,6 @@ from ztb.trading.production.state_persistence import (
     write_state_payload,
 )
 
-
 class MetricType(Enum):
     """指標タイプ"""
 
@@ -31,7 +30,6 @@ class MetricType(Enum):
     COUNTER = "counter"  # カウンター（累積値）
     HISTOGRAM = "histogram"  # ヒストグラム（分布）
     SUMMARY = "summary"  # サマリー（統計量）
-
 
 class MetricSource(Enum):
     """指標ソース"""
@@ -41,7 +39,6 @@ class MetricSource(Enum):
     BUSINESS = "business"  # ビジネス指標
     EXTERNAL = "external"  # 外部サービス
 
-
 @dataclass
 class MetricValue:
     """指標値"""
@@ -49,9 +46,8 @@ class MetricValue:
     name: str
     value: float
     timestamp: datetime
-    labels: Dict[str, str] = field(default_factory=dict)
+    labels: dict[str, str] = field(default_factory=dict)
     metric_type: MetricType = MetricType.GAUGE
-
 
 @dataclass
 class MetricSeries:
@@ -62,9 +58,8 @@ class MetricSeries:
     source: MetricSource
     description: str
     unit: str
-    values: List[MetricValue] = field(default_factory=list)
-    last_updated: Optional[datetime] = None
-
+    values: list[MetricValue] = field(default_factory=list)
+    last_updated: datetime | None = None
 
 @dataclass
 class MetricAggregation:
@@ -82,7 +77,6 @@ class MetricAggregation:
     p99: float  # 99パーセンタイル
     period_start: datetime
     period_end: datetime
-
 
 class RealTimeMetrics:
     """
@@ -111,21 +105,21 @@ class RealTimeMetrics:
         self.max_series_per_metric = max_series_per_metric
 
         # 指標管理
-        self.metric_series: Dict[str, MetricSeries] = {}
-        self.metric_aggregations: Dict[str, List[MetricAggregation]] = {}
+        self.metric_series: dict[str, MetricSeries] = {}
+        self.metric_aggregations: dict[str, list[MetricAggregation]] = {}
 
         # 収集設定
         self.enabled_sources = set([MetricSource.SYSTEM, MetricSource.APPLICATION])
-        self.custom_collectors: Dict[str, Callable[[], List[MetricValue]]] = {}
+        self.custom_collectors: dict[str, Callable[[], list[MetricValue]]] = {}
 
         # 収集制御
         self.collection_active = False
-        self.collection_thread: Optional[threading.Thread] = None
+        self.collection_thread: threading.Thread | None = None
         self.last_collection = datetime.now()
 
         # コールバック
-        self.metric_callbacks: List[Callable[[MetricValue], Awaitable[None]]] = []
-        self.aggregation_callbacks: List[
+        self.metric_callbacks: list[Callable[[MetricValue], Awaitable[None]]] = []
+        self.aggregation_callbacks: list[
             Callable[[MetricAggregation], Awaitable[None]]
         ] = []
 
@@ -281,7 +275,7 @@ class RealTimeMetrics:
             self.logger.info(f"Metric unregistered: {name}")
 
     def record_metric(
-        self, name: str, value: float, labels: Optional[Dict[str, str]] = None
+        self, name: str, value: float, labels: dict[str, str] | None = None
     ) -> None:
         """
         指標値記録
@@ -321,7 +315,7 @@ class RealTimeMetrics:
                 self.logger.error(f"Metric callback error: {e}")
 
     def add_custom_collector(
-        self, collector_name: str, collector_func: Callable[[], List[MetricValue]]
+        self, collector_name: str, collector_func: Callable[[], list[MetricValue]]
     ) -> None:
         """
         カスタムコレクター追加
@@ -344,12 +338,12 @@ class RealTimeMetrics:
             del self.custom_collectors[collector_name]
             self.logger.info(f"Custom collector removed: {collector_name}")
 
-    def collect_system_metrics(self) -> List[MetricValue]:
+    def collect_system_metrics(self) -> list[MetricValue]:
         """
         システム指標収集
 
         Returns:
-            List[MetricValue]: 収集された指標値
+            list[MetricValue]: 収集された指標値
         """
         metrics = []
 
@@ -386,12 +380,12 @@ class RealTimeMetrics:
 
         return metrics
 
-    def collect_application_metrics(self) -> List[MetricValue]:
+    def collect_application_metrics(self) -> list[MetricValue]:
         """
         アプリケーションメトリクス収集
 
         Returns:
-            List[MetricValue]: 収集された指標値
+            list[MetricValue]: 収集された指標値
         """
         metrics = []
 
@@ -419,12 +413,12 @@ class RealTimeMetrics:
 
         return metrics
 
-    def collect_business_metrics(self) -> List[MetricValue]:
+    def collect_business_metrics(self) -> list[MetricValue]:
         """
         ビジネス指標収集
 
         Returns:
-            List[MetricValue]: 収集された指標値
+            list[MetricValue]: 収集された指標値
         """
         # 実際の実装ではビジネスロジックから指標を取得
         # ここではシミュレーション
@@ -484,10 +478,10 @@ class RealTimeMetrics:
     def get_metric_values(
         self,
         name: str,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        limit: Optional[int] = None,
-    ) -> List[MetricValue]:
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        limit: int | None = None,
+    ) -> list[MetricValue]:
         """
         指標値取得
 
@@ -498,7 +492,7 @@ class RealTimeMetrics:
             limit: 取得件数制限
 
         Returns:
-            List[MetricValue]: 指標値リスト
+            list[MetricValue]: 指標値リスト
         """
         if name not in self.metric_series:
             return []
@@ -521,7 +515,7 @@ class RealTimeMetrics:
 
     def get_metric_aggregation(
         self, name: str, period_minutes: int = 60
-    ) -> Optional[MetricAggregation]:
+    ) -> MetricAggregation | None:
         """
         指標集計取得
 
@@ -530,7 +524,7 @@ class RealTimeMetrics:
             period_minutes: 集計期間（分）
 
         Returns:
-            Optional[MetricAggregation]: 指標集計
+            MetricAggregation | None: 指標集計
         """
         if name not in self.metric_series:
             return None
@@ -580,7 +574,7 @@ class RealTimeMetrics:
             self.logger.error(f"Metric aggregation error for {name}: {e}")
             return None
 
-    def _percentile(self, values: List[float], percentile: float) -> float:
+    def _percentile(self, values: list[float], percentile: float) -> float:
         """
         パーセンタイル計算
 
@@ -604,12 +598,12 @@ class RealTimeMetrics:
         else:
             return values_sorted[f]
 
-    def get_all_metrics_summary(self) -> Dict[str, Any]:
+    def get_all_metrics_summary(self) -> dict[str, Any]:
         """
         全指標要約取得
 
         Returns:
-            Dict[str, Any]: 指標要約
+            dict[str, Any]: 指標要約
         """
         summary = {
             "total_metrics": len(self.metric_series),

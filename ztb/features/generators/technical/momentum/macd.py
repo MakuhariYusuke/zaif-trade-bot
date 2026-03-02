@@ -11,7 +11,6 @@ from ztb.utils.talib_wrapper import TaLibWrapper
 
 _talib = TaLibWrapper()
 
-
 @FeatureRegistry.register("MACD")
 def compute_macd(
     df: pd.DataFrame,

@@ -9,9 +9,6 @@ import numpy as np
 
 TRADING_DAYS_PER_YEAR = 252
 
-
-
-
 def analyze_training_report(report_path):
     """トレーニングレポートを分析"""
     print("🔍 トレーニングレポート分析")
@@ -58,7 +55,6 @@ def analyze_training_report(report_path):
             print(f"  シャープレシオ: {sharpe_ratio:.2f}")
     return data
 
-
 def analyze_ensemble_performance():
     """アンサンブルシステムのパフォーマンス分析"""
     print("\n🤖 アンサンブルシステム分析")
@@ -77,7 +73,6 @@ def analyze_ensemble_performance():
     print("  - 個別モデルの弱点を補完")
     print("  - 安定した意思決定")
     print("  - リスク分散効果")
-
 
 def generate_comprehensive_report(training_report, backtest_data):
     """包括的な分析レポートを生成"""
@@ -123,7 +118,6 @@ def generate_comprehensive_report(training_report, backtest_data):
 
     except Exception as e:
         print(f"❌ 分析中にエラーが発生しました: {e}")
-
 
 if __name__ == "__main__":
     main()

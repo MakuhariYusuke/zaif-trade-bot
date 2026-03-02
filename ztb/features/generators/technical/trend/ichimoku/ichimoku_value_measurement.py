@@ -16,14 +16,12 @@ from ztb.features.core.registry import FeatureRegistry
 
 from .ichimoku_ext import calculate_ichimoku_extended
 
-
 @FeatureRegistry.register("Ichimoku_Value_Measurement")
 def compute_ichimoku_value_measurement(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Value Measurement - price fluctuation measurement"""
     feature = IchimokuValueMeasurement()
     result_df = feature.compute(df)
     return result_df["ichimoku_value_measurement"]
-
 
 class IchimokuValueMeasurement(BaseFeature):
     """

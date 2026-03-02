@@ -7,7 +7,7 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 try:
     import markdown
@@ -22,7 +22,6 @@ try:
     HAS_JINJA2 = True
 except ImportError:
     HAS_JINJA2 = False
-
 
 class ReportGenerator:
     """レポート生成器"""
@@ -45,7 +44,7 @@ class ReportGenerator:
             self.jinja_env = None
 
     def generate_report(
-        self, results: Dict[str, Any], output_dir: Path, format: str = "json", **kwargs
+        self, results: dict[str, Any], output_dir: Path, format: str = "json", **kwargs
     ) -> Path:
         """
         レポート生成
@@ -72,7 +71,7 @@ class ReportGenerator:
         raise ValueError(f"Unsupported format: {format}")
 
     def _generate_json_report(
-        self, results: Dict[str, Any], output_dir: Path, timestamp: str
+        self, results: dict[str, Any], output_dir: Path, timestamp: str
     ) -> Path:
         """JSONレポート生成"""
         filename = f"analysis_report_{timestamp}.json"
@@ -93,7 +92,7 @@ class ReportGenerator:
         return filepath
 
     def _generate_html_report(
-        self, results: Dict[str, Any], output_dir: Path, timestamp: str, **kwargs
+        self, results: dict[str, Any], output_dir: Path, timestamp: str, **kwargs
     ) -> Path:
         """HTMLレポート生成"""
         filename = f"analysis_report_{timestamp}.html"
@@ -114,7 +113,7 @@ class ReportGenerator:
         return filepath
 
     def _generate_markdown_report(
-        self, results: Dict[str, Any], output_dir: Path, timestamp: str
+        self, results: dict[str, Any], output_dir: Path, timestamp: str
     ) -> Path:
         """Markdownレポート生成"""
         filename = f"analysis_report_{timestamp}.md"
@@ -127,7 +126,7 @@ class ReportGenerator:
         self.logger.info(f"Markdown report saved to: {filepath}")
         return filepath
 
-    def _generate_simple_html(self, results: Dict[str, Any], timestamp: str) -> str:
+    def _generate_simple_html(self, results: dict[str, Any], timestamp: str) -> str:
         """簡易HTMLレポート生成"""
         html = f"""
 <!DOCTYPE html>
@@ -195,7 +194,7 @@ class ReportGenerator:
 
         return html
 
-    def _generate_markdown_content(self, results: Dict[str, Any], timestamp: str) -> str:
+    def _generate_markdown_content(self, results: dict[str, Any], timestamp: str) -> str:
         """Markdownレポート生成（簡易）"""
         md = f"# 統合分析レポート ({timestamp})\n\n"
         for section, values in results.items():

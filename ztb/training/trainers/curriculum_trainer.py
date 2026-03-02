@@ -6,14 +6,13 @@ Handles curriculum learning with staged training.
 """
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ztb.training.core.config_manager import ConfigManager
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import get_project_root
 
 logger = get_logger(__name__)
-
 
 class CurriculumAlgorithmTrainer:
     """
@@ -30,7 +29,7 @@ class CurriculumAlgorithmTrainer:
         self.config_manager = config_manager
         self.logger = get_logger(__name__)
 
-    def train(self, unified_config: Dict[str, Any]) -> Optional[bool]:
+    def train(self, unified_config: dict[str, Any]) -> bool | None:
         """
         Execute curriculum learning training.
 
@@ -42,7 +41,7 @@ class CurriculumAlgorithmTrainer:
         """
         from ztb.training.experiments.curriculum_learning import main as curriculum_main
 
-        # Set up environment for curriculum learning
+        # set up environment for curriculum learning
         self.logger.info("Starting curriculum learning (P0→P2 staged approach)")
 
         # Validate data path

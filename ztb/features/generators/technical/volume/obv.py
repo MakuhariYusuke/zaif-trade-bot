@@ -12,7 +12,6 @@ from ztb.features.core.registry import FeatureRegistry
 from ztb.features.processors.caching.cache import feature_cache
 from ztb.utils.talib_wrapper import TaLibWrapper
 
-
 @FeatureRegistry.register("OBV")
 def compute_obv(df: pd.DataFrame) -> pd.Series:
     """Compute OBV (On-Balance Volume) using Ta-Lib wrapper"""

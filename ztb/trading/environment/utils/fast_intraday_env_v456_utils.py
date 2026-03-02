@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping
 
 import pandas as pd
 
@@ -11,17 +11,15 @@ from ztb.utils.env_metrics import unwrap_env
 
 logger = logging.getLogger(__name__)
 
-
 def _coerce_float(value: Any, default: float) -> float:
     try:
         return float(value)
     except (TypeError, ValueError):
         return default
 
-
 def create_fast_intraday_env_v456(
     df: pd.DataFrame, env_config: Mapping[str, Any]
-) -> Optional[FastIntradayEnvV456]:
+) -> FastIntradayEnvV456 | None:
     """Create a FastIntradayEnvV456 with config-driven parameters and reward wiring."""
     initial_balance = _coerce_float(env_config.get("initial_balance", 1_000_000.0), 1_000_000.0)
     max_position = _coerce_float(env_config.get("max_position_size", 1.0), 1.0)
@@ -56,7 +54,6 @@ def create_fast_intraday_env_v456(
 
     apply_reward_config(env, env_config)
     return env
-
 
 def apply_reward_config(env: Any, env_config: Mapping[str, Any]) -> None:
     """Apply reward settings/scale/clip to FastIntradayEnvV456-compatible environments."""

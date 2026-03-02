@@ -6,10 +6,7 @@ This module provides enhanced technical indicator calculations with improved
 accuracy and additional features for market regime analysis.
 """
 
-from typing import Tuple
-
 import numpy as np
-
 
 class EnhancedTechnicalIndicators:
     """
@@ -122,7 +119,7 @@ class EnhancedTechnicalIndicators:
         fast_period: int = 12,
         slow_period: int = 26,
         signal_period: int = 9,
-    ) -> Tuple[float, float, float]:
+    ) -> tuple[float, float, float]:
         """
         Calculate MACD (Moving Average Convergence Divergence).
 
@@ -133,7 +130,7 @@ class EnhancedTechnicalIndicators:
             signal_period: Signal line EMA period
 
         Returns:
-            Tuple of (MACD line, Signal line, Histogram) - last values as floats
+            tuple of (MACD line, Signal line, Histogram) - last values as floats
         """
         if len(prices) < slow_period:
             # Return zeros for insufficient data
@@ -160,7 +157,7 @@ class EnhancedTechnicalIndicators:
     @staticmethod
     def calculate_bollinger_bands(
         prices: np.ndarray, period: int = 20, num_std: float = 2.0
-    ) -> Tuple[float, float, float]:
+    ) -> tuple[float, float, float]:
         """
         Calculate Bollinger Bands.
 
@@ -170,7 +167,7 @@ class EnhancedTechnicalIndicators:
             num_std: Number of standard deviations
 
         Returns:
-            Tuple of (SMA, Upper band, Lower band) - last values as floats
+            tuple of (SMA, Upper band, Lower band) - last values as floats
         """
         if len(prices) < period:
             mean_price = np.mean(prices)

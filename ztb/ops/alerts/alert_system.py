@@ -9,12 +9,11 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class AlertPriority(Enum):
     """Alert priority levels."""
@@ -24,7 +23,6 @@ class AlertPriority(Enum):
     HIGH = "high"
     CRITICAL = "critical"
 
-
 @dataclass
 class HealthAlert:
     """Represents a health monitoring alert."""
@@ -33,17 +31,17 @@ class HealthAlert:
     message: str
     priority: AlertPriority
     source: str
-    details: Optional[Dict[str, Any]] = None
-    timestamp: Optional[float] = None
+    details: dict[str, Any] | None = None
+    timestamp: float | None = None
 
     def __post_init__(self) -> None:
-        """Set timestamp if not provided."""
+        """set timestamp if not provided."""
         if self.timestamp is None:
             import time
 
             self.timestamp = time.time()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert alert to dictionary."""
         return {
             "title": self.title,
@@ -54,21 +52,20 @@ class HealthAlert:
             "timestamp": self.timestamp,
         }
 
-
 @dataclass
 class AlertConfig:
     """Configuration for alert notifications."""
 
     # Email configuration
-    smtp_server: Optional[str] = None
+    smtp_server: str | None = None
     smtp_port: int = 587
-    smtp_username: Optional[str] = None
-    smtp_password: Optional[str] = None
-    email_from: Optional[str] = None
-    email_to: Optional[List[str]] = None
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    email_from: str | None = None
+    email_to: list[str] | None = None
 
     # Slack configuration
-    slack_webhook_url: Optional[str] = None
+    slack_webhook_url: str | None = None
 
     # Alert thresholds
     alert_on_critical: bool = True
@@ -95,7 +92,6 @@ class AlertConfig:
         """Check if Slack alerting is configured."""
         return self.slack_webhook_url is not None
 
-
 class AlertManager:
     """
     Manages health alerts and notifications.
@@ -105,8 +101,8 @@ class AlertManager:
 
     def __init__(self, config: AlertConfig):
         self.config = config
-        self.last_alert_times: Dict[str, float] = {}
-        self.alert_history: List[HealthAlert] = []
+        self.last_alert_times: dict[str, float] = {}
+        self.alert_history: list[HealthAlert] = []
 
     def should_alert(self, alert: HealthAlert) -> bool:
         """Determine if an alert should be sent based on configuration and cooldown."""
@@ -287,7 +283,7 @@ class AlertManager:
         else:
             logger.info(log_message)
 
-    def get_alert_history(self, limit: int = 50) -> List[HealthAlert]:
+    def get_alert_history(self, limit: int = 50) -> list[HealthAlert]:
         """Get recent alert history."""
         return self.alert_history[-limit:]
 
@@ -295,8 +291,7 @@ class AlertManager:
         """Clear alert history."""
         self.alert_history.clear()
 
-
-def create_alert_manager(config_path: Optional[str] = None) -> AlertManager:
+def create_alert_manager(config_path: str | None = None) -> AlertManager:
     """
     Create an AlertManager instance from configuration.
 
@@ -323,8 +318,7 @@ def create_alert_manager(config_path: Optional[str] = None) -> AlertManager:
 
     return AlertManager(config)
 
-
-def create_health_alert_from_result(result: Dict[str, Any]) -> Optional[HealthAlert]:
+def create_health_alert_from_result(result: dict[str, Any]) -> HealthAlert | None:
     """
     Create a health alert from health check result.
 

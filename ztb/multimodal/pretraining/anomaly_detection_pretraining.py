@@ -11,8 +11,6 @@ using reconstruction-based and prediction-based approaches.
 - ハイブリッドアプローチの統合
 """
 
-from typing import Dict, List, Optional, Tuple
-
 import torch
 import torch.nn as nn
 try:
@@ -32,7 +30,6 @@ except Exception:
 
 from ztb.trading.environment.components.memory_manager import MemoryManager
 
-
 class ReconstructionAnomalyDetector(nn.Module):
     """
     Reconstruction-based anomaly detection using autoencoder
@@ -42,7 +39,7 @@ class ReconstructionAnomalyDetector(nn.Module):
     def __init__(
         self,
         input_dim: int = 156,
-        hidden_dims: List[int] = [256, 128, 64],
+        hidden_dims: list[int] = [256, 128, 64],
         latent_dim: int = 32,
         seq_len: int = 100,
     ) -> None:
@@ -180,7 +177,6 @@ class ReconstructionAnomalyDetector(nn.Module):
             )  # Average over seq_len and features
             return mse_per_sample
 
-
 class PredictionAnomalyDetector(nn.Module):
     """
     Prediction-based anomaly detection using LSTM
@@ -281,7 +277,6 @@ class PredictionAnomalyDetector(nn.Module):
             mse_per_sample = mse_per_sample.mean(dim=1)  # Average over features
             return mse_per_sample
 
-
 class HybridAnomalyDetector(nn.Module):
     """
     Hybrid anomaly detection combining reconstruction and prediction
@@ -291,7 +286,7 @@ class HybridAnomalyDetector(nn.Module):
     def __init__(
         self,
         input_dim: int = 156,
-        hidden_dims: List[int] = [256, 128, 64],
+        hidden_dims: list[int] = [256, 128, 64],
         latent_dim: int = 32,
         lstm_hidden_dim: int = 128,
         lstm_num_layers: int = 2,
@@ -327,7 +322,7 @@ class HybridAnomalyDetector(nn.Module):
             input_dim=input_dim, hidden_dim=lstm_hidden_dim, num_layers=lstm_num_layers
         )
 
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass for both detectors
 
@@ -398,7 +393,6 @@ class HybridAnomalyDetector(nn.Module):
             hybrid_score = self.alpha * pred_score + (1 - self.alpha) * recon_score
             return hybrid_score
 
-
 class AnomalyDetectionPretrainer:
     """
     Pre-trainer for anomaly detection models
@@ -410,7 +404,7 @@ class AnomalyDetectionPretrainer:
         model: nn.Module,
         optimizer: torch.optim.Optimizer,
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
-        memory_manager: Optional[MemoryManager] = None,
+        memory_manager: MemoryManager | None = None,
     ):
         """
         Initialize pre-trainer
@@ -436,7 +430,7 @@ class AnomalyDetectionPretrainer:
         )
         self.step_counter = 0
 
-    def train_step(self, batch: torch.Tensor) -> Dict[str, float]:
+    def train_step(self, batch: torch.Tensor) -> dict[str, float]:
         """
         Single training step
 
@@ -470,7 +464,7 @@ class AnomalyDetectionPretrainer:
 
     def validate(
         self, val_data: torch.Tensor, batch_size: int = 32
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Validation on dataset
 

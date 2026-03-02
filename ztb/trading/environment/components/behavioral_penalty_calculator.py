@@ -3,7 +3,7 @@
 Behavioral Penalty Calculator - Component for calculating behavior-related penalties.
 """
 from collections import deque
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.trading.environment.utils.config import EnvironmentConfig
@@ -11,7 +11,6 @@ from ztb.utils.logging_utils import get_logger
 
 # Expose RewardUtils at module level for tests and external callers
 from .rewards.utils import RewardUtils
-
 
 class BehavioralPenaltyCalculator:
     """
@@ -22,7 +21,7 @@ class BehavioralPenaltyCalculator:
     - Emergency intervention for extreme bias (>30% BUY-SELL deviation)
     """
 
-    def __init__(self, config: EnvironmentConfig, trend_detector: Optional[Any] = None):
+    def __init__(self, config: EnvironmentConfig, trend_detector: Any | None = None):
         """
         Initializes the BehavioralPenaltyCalculator.
 
@@ -53,7 +52,7 @@ class BehavioralPenaltyCalculator:
         # Reserve space for lookback-based checks plus an extra slot for the current action.
         # This ensures a lookback of N will have access to N previous samples plus the current one.
         self.recent_actions: deque[int] = deque(maxlen=max_lookback + 1)
-        self._action_counts: List[int] = [0, 0, 0]  # [HOLD, BUY, SELL]
+        self._action_counts: list[int] = [0, 0, 0]  # [HOLD, BUY, SELL]
 
     def _load_settings(self):
         """Load settings from the environment configuration."""
@@ -597,7 +596,7 @@ class BehavioralPenaltyCalculator:
 
         return 0.0
 
-    def _adjust_targets_by_trend(self) -> Dict[str, float]:
+    def _adjust_targets_by_trend(self) -> dict[str, float]:
         """
         SAC v448 Layer 2: Adjust balance targets based on market trend.
 
@@ -643,7 +642,7 @@ class BehavioralPenaltyCalculator:
             "sell_target": adjusted_sell,
         }
 
-    def get_target_ratios(self) -> Dict[str, float]:
+    def get_target_ratios(self) -> dict[str, float]:
         """Public accessor for the current target ratios (hold, buy, sell).
 
         This is used by other components (e.g., RewardCalculator) to query
@@ -665,7 +664,7 @@ class BehavioralPenaltyCalculator:
         except Exception:
             self.logger.exception("Failed to reset trend_detector")
 
-    def _get_recent_counts(self, lookback: int | None = None) -> List[int]:
+    def _get_recent_counts(self, lookback: int | None = None) -> list[int]:
         """Return counts for [HOLD, BUY, SELL] from recent_actions for a specified lookback.
 
         If lookback is None use entire deque (full history held in the deque). This keeps counting

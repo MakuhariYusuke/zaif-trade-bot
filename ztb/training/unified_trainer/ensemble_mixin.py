@@ -5,7 +5,7 @@ Ensemble functionality mixin for training classes.
 This mixin provides ensemble prediction capabilities that can be added to any trainer.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 
@@ -17,7 +17,6 @@ from ztb.training.unified_trainer.reporting import TrainingReporter
 from ztb.training.unified_trainer.ui import TrainingUI
 from ztb.types.common import ConfigDict
 from ztb.utils.logging_utils import get_logger
-
 
 class EnsembleMixin:
     """
@@ -31,8 +30,8 @@ class EnsembleMixin:
 
         # Ensemble attributes
         self.ensemble_enabled = False
-        self.ensemble_system: Optional[EnsemblePredictor] = None
-        self.ensemble_config: Optional[EnsembleConfig] = None
+        self.ensemble_system: EnsemblePredictor | None = None
+        self.ensemble_config: EnsembleConfig | None = None
 
         # Initialize logger
         self.ensemble_logger = get_logger(f"{self.__class__.__name__}.Ensemble")
@@ -100,8 +99,8 @@ class EnsembleMixin:
             self.ensemble_enabled = False
 
     def predict_with_ensemble(
-        self, observation: np.ndarray, market_state: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, observation: np.ndarray, market_state: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Make prediction using ensemble system.
 
@@ -176,7 +175,7 @@ class EnsembleMixin:
         except Exception as e:
             self.ensemble_logger.error(f"Ensemble member update failed: {e}")
 
-    def get_ensemble_stats(self) -> Dict[str, Any]:
+    def get_ensemble_stats(self) -> dict[str, Any]:
         """
         Get current ensemble statistics.
 
@@ -192,7 +191,7 @@ class EnsembleMixin:
             self.ensemble_logger.error(f"Failed to get ensemble stats: {e}")
             return {"error": str(e)}
 
-    def adapt_ensemble_to_market(self, market_state: Dict[str, Any]) -> None:
+    def adapt_ensemble_to_market(self, market_state: dict[str, Any]) -> None:
         """
         Adapt ensemble to current market conditions.
 
@@ -209,7 +208,7 @@ class EnsembleMixin:
 
     def generate_ensemble_report(
         self, reporter: TrainingReporter, ui: TrainingUI
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Generate comprehensive ensemble analysis report.
 

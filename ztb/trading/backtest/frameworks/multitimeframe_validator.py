@@ -8,13 +8,12 @@ Phase 3-1: シグナル品質向上 - マルチタイムフレーム確認
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from ztb.utils.performance_profiler import PerformanceProfiler
-
 
 class TimeFrame(Enum):
     """時間軸定義"""
@@ -28,14 +27,13 @@ class TimeFrame(Enum):
     D1 = "1d"
     W1 = "1w"
 
-
 @dataclass
 class MultiTimeFrameSignal:
     """マルチタイムフレームシグナル"""
 
     primary_timeframe: TimeFrame
-    primary_signal: Dict[str, Any]
-    aligned_timeframes: List[TimeFrame]
+    primary_signal: dict[str, Any]
+    aligned_timeframes: list[TimeFrame]
     consistency_score: float
     alignment_strength: float
     timestamp: datetime
@@ -44,7 +42,6 @@ class MultiTimeFrameSignal:
     def is_consistent(self) -> bool:
         """整合性があるかを判定"""
         return self.consistency_score > 0.7 and len(self.aligned_timeframes) >= 2
-
 
 @dataclass
 class TimeFrameAlignmentResult:
@@ -55,7 +52,6 @@ class TimeFrameAlignmentResult:
     strength: float
     confidence: float
     is_aligned: bool
-
 
 class MultiTimeFrameValidator:
     """マルチタイムフレーム検証器"""
@@ -77,8 +73,8 @@ class MultiTimeFrameValidator:
 
     def validate_signal_consistency(
         self,
-        signal: Dict[str, Any],
-        market_data_dict: Dict[TimeFrame, pd.DataFrame],
+        signal: dict[str, Any],
+        market_data_dict: dict[TimeFrame, pd.DataFrame],
         primary_timeframe: TimeFrame = TimeFrame.H1,
     ) -> MultiTimeFrameSignal:
         """
@@ -129,7 +125,7 @@ class MultiTimeFrameValidator:
 
     def _evaluate_timeframe_alignment(
         self,
-        primary_signal: Dict[str, Any],
+        primary_signal: dict[str, Any],
         timeframe_data: pd.DataFrame,
         timeframe: TimeFrame,
         signal_timestamp: datetime,
@@ -182,7 +178,7 @@ class MultiTimeFrameValidator:
 
     def _find_closest_timestamp(
         self, data: pd.DataFrame, target_timestamp: datetime
-    ) -> Optional[int]:
+    ) -> int | None:
         """最も近いタイムスタンプのインデックスを見つける"""
         if data.index.empty:
             return None
@@ -201,7 +197,7 @@ class MultiTimeFrameValidator:
 
     def _extract_trend_signal(
         self, data: pd.DataFrame, idx: int, timeframe: TimeFrame
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         指定された時間軸と位置でのトレンドシグナルを抽出
         """
@@ -278,7 +274,7 @@ class MultiTimeFrameValidator:
         return False
 
     def _calculate_consistency_score(
-        self, alignment_results: List[TimeFrameAlignmentResult]
+        self, alignment_results: list[TimeFrameAlignmentResult]
     ) -> float:
         """整合性スコアを計算"""
         if not alignment_results:
@@ -305,11 +301,11 @@ class MultiTimeFrameValidator:
 
     def filter_consistent_signals(
         self,
-        signals: List[Dict[str, Any]],
-        market_data_dict: Dict[TimeFrame, pd.DataFrame],
+        signals: list[dict[str, Any]],
+        market_data_dict: dict[TimeFrame, pd.DataFrame],
         min_consistency_threshold: float = 0.7,
         min_alignment_strength: float = 0.5,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         整合性の高いシグナルのみをフィルタリング
 
@@ -320,7 +316,7 @@ class MultiTimeFrameValidator:
             min_alignment_strength: 最小整合強度
 
         Returns:
-            List[Dict[str, Any]]: フィルタリングされたシグナルリスト
+            list[dict[str, Any]]: フィルタリングされたシグナルリスト
         """
         filtered_signals = []
 
@@ -354,7 +350,7 @@ class MultiTimeFrameValidator:
 
         return filtered_signals
 
-    def get_consistency_statistics(self) -> Dict[str, Any]:
+    def get_consistency_statistics(self) -> dict[str, Any]:
         """整合性統計を取得"""
         # このメソッドは実際の使用履歴に基づいて統計を計算
         # 簡易実装として基本的な情報を返す

@@ -4,9 +4,6 @@ Stagnation Penalty Calculator Component.
 This component calculates penalties for portfolio stagnation.
 """
 
-from typing import List
-
-
 class StagnationPenaltyCalculator:
     """
     Calculates penalty for portfolio stagnation (lack of progress).
@@ -17,7 +14,7 @@ class StagnationPenaltyCalculator:
 
     def calculate(
         self,
-        portfolio_value_history: List[float],
+        portfolio_value_history: list[float],
         stagnation_window: int = 20,
         stagnation_threshold: float = 0.005,
     ) -> float:

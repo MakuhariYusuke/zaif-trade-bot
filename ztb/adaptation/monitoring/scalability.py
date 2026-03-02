@@ -7,7 +7,7 @@ import logging
 import threading
 import time
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -28,13 +28,12 @@ from .types import (
 
 logger = logging.getLogger(__name__)
 
-
 class LoadBalancer:
     """負荷分散器"""
 
     def __init__(self, config: ScalabilityConfig):
         self.config = config
-        self.instances: Dict[str, LoadDistribution] = {}
+        self.instances: dict[str, LoadDistribution] = {}
         self.current_index = 0
 
     def register_instance(self, instance_id: str, max_load: float = 100.0) -> None:
@@ -56,7 +55,7 @@ class LoadBalancer:
             del self.instances[instance_id]
             logger.info(f"Instance {instance_id} unregistered from load balancer")
 
-    def get_next_instance(self) -> Optional[str]:
+    def get_next_instance(self) -> str | None:
         """次のインスタンスを取得（負荷分散アルゴリズムに基づく）"""
         if not self.instances:
             return None
@@ -70,7 +69,7 @@ class LoadBalancer:
         else:
             return self._round_robin_selection()
 
-    def _round_robin_selection(self) -> Optional[str]:
+    def _round_robin_selection(self) -> str | None:
         """ラウンドロビン選択"""
         active_instances = [
             iid
@@ -85,7 +84,7 @@ class LoadBalancer:
         self.current_index += 1
         return instance_id
 
-    def _least_connections_selection(self) -> Optional[str]:
+    def _least_connections_selection(self) -> str | None:
         """最小接続数選択"""
         active_instances = [
             (iid, dist)
@@ -100,11 +99,11 @@ class LoadBalancer:
         active_instances.sort(key=lambda x: x[1].active_connections)
         return active_instances[0][0]
 
-    def _weighted_selection(self) -> Optional[str]:
+    def _weighted_selection(self) -> str | None:
         """重み付け選択（現在はラウンドロビンと同じ）"""
         return self._round_robin_selection()
 
-    def update_instance_load(self, instance_id: str, load_data: Dict[str, Any]) -> None:
+    def update_instance_load(self, instance_id: str, load_data: dict[str, Any]) -> None:
         """インスタンス負荷更新"""
         if instance_id not in self.instances:
             return
@@ -118,10 +117,9 @@ class LoadBalancer:
         dist.response_time_ms = load_data.get("response_time_ms", dist.response_time_ms)
         dist.timestamp = datetime.now()
 
-    def get_load_distribution(self) -> List[LoadDistribution]:
+    def get_load_distribution(self) -> list[LoadDistribution]:
         """負荷分布取得"""
         return list(self.instances.values())
-
 
 class AutoScaler:
     """自動スケーラー"""
@@ -129,13 +127,13 @@ class AutoScaler:
     def __init__(self, config: ScalabilityConfig, load_balancer: LoadBalancer):
         self.config = config
         self.load_balancer = load_balancer
-        self.scaling_history: List[ScalingAction] = []
+        self.scaling_history: list[ScalingAction] = []
         self.last_scaling_time = datetime.min
         self.current_instances = config.min_instances
 
     def evaluate_scaling(
-        self, resource_usage: List[ResourceUsage]
-    ) -> Optional[ScalingAction]:
+        self, resource_usage: list[ResourceUsage]
+    ) -> ScalingAction | None:
         """スケーリング評価"""
         if not self.config.auto_scaling_enabled:
             return None
@@ -213,24 +211,23 @@ class AutoScaler:
         else:
             return 0.0
 
-    def get_scaling_history(self, hours: int = 24) -> List[ScalingAction]:
+    def get_scaling_history(self, hours: int = 24) -> list[ScalingAction]:
         """スケーリング履歴取得"""
         cutoff_time = datetime.now() - timedelta(hours=hours)
         return [
             action for action in self.scaling_history if action.timestamp >= cutoff_time
         ]
 
-
 class ResourceOptimizer:
     """リソース最適化器"""
 
     def __init__(self, config: ScalabilityConfig):
         self.config = config
-        self.optimization_history: List[CostOptimization] = []
+        self.optimization_history: list[CostOptimization] = []
 
     def analyze_resource_usage(
-        self, resource_usage: List[ResourceUsage]
-    ) -> List[CostOptimization]:
+        self, resource_usage: list[ResourceUsage]
+    ) -> list[CostOptimization]:
         """リソース使用分析"""
         optimizations = []
 
@@ -263,19 +260,19 @@ class ResourceOptimizer:
 
         return optimizations
 
-    def _estimate_current_cost(self, usage: List[ResourceUsage]) -> float:
+    def _estimate_current_cost(self, usage: list[ResourceUsage]) -> float:
         """現在のコスト見積もり"""
         # 簡易的なコスト計算
         return len(usage) * 0.05  # 仮定のコスト
 
-    def _estimate_optimized_cost(self, usage: List[ResourceUsage]) -> float:
+    def _estimate_optimized_cost(self, usage: list[ResourceUsage]) -> float:
         """最適化後のコスト見積もり"""
         current_cost = self._estimate_current_cost(usage)
         return current_cost * (1 - self.config.cost_optimization_target)
 
     def _generate_recommendations(
         self, resource_type: ResourceType, utilization: float
-    ) -> List[str]:
+    ) -> list[str]:
         """推奨事項生成"""
         recommendations = []
 
@@ -293,14 +290,13 @@ class ResourceOptimizer:
         recommendations.append("Schedule regular resource usage reviews")
         return recommendations
 
-
 class DeploymentManager:
     """デプロイメントマネージャー"""
 
     def __init__(self, config: ScalabilityConfig):
         self.config = config
-        self.deployment_history: List[DeploymentPlan] = []
-        self.active_deployments: Dict[str, DeploymentPlan] = {}
+        self.deployment_history: list[DeploymentPlan] = []
+        self.active_deployments: dict[str, DeploymentPlan] = {}
 
     def create_deployment_plan(
         self, version: str, target_instances: int, rollout_strategy: str = "rolling"
@@ -366,7 +362,7 @@ class DeploymentManager:
             if plan_id in self.active_deployments:
                 del self.active_deployments[plan_id]
 
-    def _generate_rollback_plan(self, strategy: str) -> List[str]:
+    def _generate_rollback_plan(self, strategy: str) -> list[str]:
         """ロールバック計画生成"""
         if strategy == "rolling":
             return [
@@ -416,14 +412,13 @@ class DeploymentManager:
         # ロールバック実行（シミュレーション）
         time.sleep(1)
 
-
 class OperationsManager:
     """運用マネージャー"""
 
     def __init__(self, config: ScalabilityConfig):
         self.config = config
-        self.backup_history: List[datetime] = []
-        self.maintenance_schedule: List[datetime] = []
+        self.backup_history: list[datetime] = []
+        self.maintenance_schedule: list[datetime] = []
 
     def perform_backup(self) -> bool:
         """バックアップ実行"""
@@ -481,7 +476,6 @@ class OperationsManager:
 
         logger.info("Old data cleanup completed")
 
-
 class ScalabilityManager:
     """スケーラビリティマネージャー"""
 
@@ -493,7 +487,7 @@ class ScalabilityManager:
         self.deployment_manager = DeploymentManager(config)
         self.operations_manager = OperationsManager(config)
 
-        self.monitoring_thread: Optional[threading.Thread] = None
+        self.monitoring_thread: threading.Thread | None = None
         self.is_monitoring = False
 
         # 初期インスタンス登録
@@ -548,7 +542,7 @@ class ScalabilityManager:
                 logger.error(f"Scalability monitoring error: {e}")
                 time.sleep(5)
 
-    def _get_resource_usage(self) -> List[ResourceUsage]:
+    def _get_resource_usage(self) -> list[ResourceUsage]:
         """リソース使用状況取得"""
         # モックデータ（実際の実装ではシステムメトリクスから取得）
         return [
@@ -587,7 +581,7 @@ class ScalabilityManager:
                 instance_id = f"instance_{i+1}"
                 self.load_balancer.unregister_instance(instance_id)
 
-    def _implement_optimizations(self, optimizations: List[CostOptimization]) -> None:
+    def _implement_optimizations(self, optimizations: list[CostOptimization]) -> None:
         """最適化実装"""
         for optimization in optimizations:
             if optimization.implementation_status == "pending":

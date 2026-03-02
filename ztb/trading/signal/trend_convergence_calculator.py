@@ -12,7 +12,6 @@ Features:
 - ダイバージェンス検出
 """
 
-from typing import Dict, Union
 from dataclasses import dataclass
 import numpy as np
 from collections import defaultdict
@@ -24,7 +23,6 @@ from ztb.trading.signal.multi_timeframe_analyzer import (
 
 logger = get_logger(__name__)
 
-
 @dataclass
 class ConvergenceMetrics:
     """Detailed convergence metrics"""
@@ -33,7 +31,6 @@ class ConvergenceMetrics:
     momentum_harmony: float  # 0-100 (higher = harmonious momentum)
     divergence_penalty: float  # 0-50 (penalty for conflicting signals)
     confidence_level: float  # 0-100 (overall confidence in convergence)
-
 
 @dataclass
 class TrendConvergenceResult:
@@ -44,7 +41,6 @@ class TrendConvergenceResult:
     continuation_probability: float  # 0-100
     risk_adjusted_score: float  # 0-100 (adjusted for divergence risk)
     recommendation: str  # "strong_convergence", "moderate_convergence", "weak_convergence", "divergence"
-
 
 class TrendConvergenceCalculator:
     """
@@ -72,7 +68,7 @@ class TrendConvergenceCalculator:
 
         logger.info("TrendConvergenceCalculator initialized")
 
-    def calculate_convergence(self, trend_analyses: Dict[Timeframe, TrendAnalysis]) -> TrendConvergenceResult:
+    def calculate_convergence(self, trend_analyses: dict[Timeframe, TrendAnalysis]) -> TrendConvergenceResult:
         """
         Calculate comprehensive convergence analysis
 
@@ -126,7 +122,7 @@ class TrendConvergenceCalculator:
             recommendation=recommendation
         )
 
-    def _calculate_alignment_score(self, trend_analyses: Dict[Timeframe, TrendAnalysis]) -> float:
+    def _calculate_alignment_score(self, trend_analyses: dict[Timeframe, TrendAnalysis]) -> float:
         """
         Calculate alignment score based on directional agreement
 
@@ -136,7 +132,7 @@ class TrendConvergenceCalculator:
             return 50.0
 
         # Count directions
-        direction_counts: Dict[TrendDirection, int] = defaultdict(int)
+        direction_counts: dict[TrendDirection, int] = defaultdict(int)
         for analysis in trend_analyses.values():
             direction_counts[analysis.direction] += 1
 
@@ -154,7 +150,7 @@ class TrendConvergenceCalculator:
 
         return alignment_score
 
-    def _calculate_strength_consistency(self, trend_analyses: Dict[Timeframe, TrendAnalysis]) -> float:
+    def _calculate_strength_consistency(self, trend_analyses: dict[Timeframe, TrendAnalysis]) -> float:
         """
         Calculate consistency of trend strengths across timeframes
 
@@ -179,7 +175,7 @@ class TrendConvergenceCalculator:
 
         return consistency_score
 
-    def _calculate_momentum_harmony(self, trend_analyses: Dict[Timeframe, TrendAnalysis]) -> float:
+    def _calculate_momentum_harmony(self, trend_analyses: dict[Timeframe, TrendAnalysis]) -> float:
         """
         Calculate harmony of momentum across timeframes
 
@@ -201,7 +197,7 @@ class TrendConvergenceCalculator:
 
         return harmony_score
 
-    def _calculate_divergence_penalty(self, trend_analyses: Dict[Timeframe, TrendAnalysis]) -> float:
+    def _calculate_divergence_penalty(self, trend_analyses: dict[Timeframe, TrendAnalysis]) -> float:
         """
         Calculate penalty for conflicting signals
 
@@ -227,7 +223,7 @@ class TrendConvergenceCalculator:
 
         return divergence_penalty
 
-    def _calculate_confidence_level(self, trend_analyses: Dict[Timeframe, TrendAnalysis]) -> float:
+    def _calculate_confidence_level(self, trend_analyses: dict[Timeframe, TrendAnalysis]) -> float:
         """
         Calculate overall confidence in the convergence analysis
         """
@@ -247,7 +243,7 @@ class TrendConvergenceCalculator:
 
         return confidence
 
-    def _calculate_overall_trend_strength(self, trend_analyses: Dict[Timeframe, TrendAnalysis]) -> float:
+    def _calculate_overall_trend_strength(self, trend_analyses: dict[Timeframe, TrendAnalysis]) -> float:
         """
         Calculate overall trend strength across timeframes
         """
@@ -274,7 +270,7 @@ class TrendConvergenceCalculator:
 
         return weighted_strength / total_weight
 
-    def _calculate_continuation_probability(self, trend_analyses: Dict[Timeframe, TrendAnalysis],
+    def _calculate_continuation_probability(self, trend_analyses: dict[Timeframe, TrendAnalysis],
                                          convergence_score: float) -> float:
         """
         Calculate probability of trend continuation
@@ -341,7 +337,7 @@ class TrendConvergenceCalculator:
             recommendation="insufficient_data"
         )
 
-    def get_convergence_report(self, trend_analyses: Dict[Timeframe, TrendAnalysis]) -> Dict[str, Union[float, str, Dict[str, float]]]:
+    def get_convergence_report(self, trend_analyses: dict[Timeframe, TrendAnalysis]) -> dict[str, float | str | dict[str, float]]:
         """
         Get detailed convergence report
 

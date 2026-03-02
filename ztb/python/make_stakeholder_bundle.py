@@ -12,7 +12,6 @@ from pathlib import Path
 
 from ztb.utils.compat_wrapper import run_command_safely
 
-
 def main() -> int:
     """Main bundle creation logic."""
     print("Creating stakeholder evidence bundle...")
@@ -137,7 +136,7 @@ python -m pytest tests/ -v
 1. **Exchange Integration**: Implement ZaifAdapter for real trading
 2. **Live Monitoring**: Add real-time performance dashboards
 3. **Model Updates**: Implement RL model retraining pipelines
-4. **Alerting**: Set up risk threshold notifications
+4. **Alerting**: set up risk threshold notifications
 
 ---
 Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
@@ -165,7 +164,6 @@ Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
     else:
         print("⚠️ Some validations failed - check output above")
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

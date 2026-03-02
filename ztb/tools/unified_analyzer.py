@@ -10,7 +10,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
@@ -20,7 +20,6 @@ from ztb.analysis.core.analyzer import UnifiedAnalyzer
 from ztb.io.json_io import read_json
 from ztb.reporting.generators.analysis_rich import ReportGenerator
 from ztb.training.core.config_manager import ConfigManager
-
 
 class UnifiedAnalysisTool:
     """統合分析ツール"""
@@ -41,7 +40,7 @@ class UnifiedAnalysisTool:
         # ロギング設定
         self._setup_logging()
 
-    def _load_config(self) -> Dict[str, Any]:
+    def _load_config(self) -> dict[str, Any]:
         """設定ファイルを読み込み"""
         if not self.config_path.exists():
             raise FileNotFoundError(f"Config file not found: {self.config_path}")
@@ -62,8 +61,8 @@ class UnifiedAnalysisTool:
         self.logger = logging.getLogger(__name__)
 
     def run_analysis(
-        self, model_path: str, output_dir: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, model_path: str, output_dir: str | None = None
+    ) -> dict[str, Any]:
         """
         分析実行
 
@@ -149,7 +148,6 @@ class UnifiedAnalysisTool:
         self.logger.info(f"Loading model from: {model_file}")
         return {"model_path": str(model_file), "loaded": True}
 
-
 def main():
     """メイン関数"""
     parser = argparse.ArgumentParser(description="Unified Analysis Tool")
@@ -172,7 +170,6 @@ def main():
     except Exception as e:
         print(f"Error: {str(e)}", file=sys.stderr)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

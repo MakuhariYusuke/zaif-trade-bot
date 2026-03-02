@@ -7,7 +7,7 @@ Estimates GPU, power, and cloud costs based on run metadata and rates.
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional, cast
+from typing import Any, cast
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "ztb"))
 # Add the ztb package to the path
@@ -20,7 +20,6 @@ from ztb.utils.cli_common import (
     get_env_default,
 )
 from ztb.io.json_io import read_json, write_json
-
 
 def calculate_jp_residential_tiered(kwh: float) -> float:
     """Calculate electricity cost using Japanese residential tiered pricing (40A)."""
@@ -37,44 +36,41 @@ def calculate_jp_residential_tiered(kwh: float) -> float:
 
     return power_cost + basic_fee
 
-
 def load_metadata(
     correlation_id: str, artifacts_dir: Path = Path("artifacts")
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Load run metadata."""
     metadata_path = artifacts_dir / correlation_id / "run_metadata.json"
     if not metadata_path.exists():
         return None
 
     try:
-        return cast(Dict[str, Any], read_json(metadata_path))
+        return cast(dict[str, Any], read_json(metadata_path))
     except Exception:
         return None
 
-
 def load_summary(
     correlation_id: str, artifacts_dir: Path = Path("artifacts")
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Load summary for steps/sec calculation."""
     summary_path = artifacts_dir / correlation_id / "summary.json"
     if not summary_path.exists():
         return None
 
     try:
-        return cast(Dict[str, Any], read_json(summary_path))
+        return cast(dict[str, Any], read_json(summary_path))
     except Exception:
         return None
 
-
 def estimate_cost(
-    metadata: Dict[str, Any],
-    summary: Dict[str, Any],
+    metadata: dict[str, Any],
+    summary: dict[str, Any],
     gpu_rate: float,
     kwh_rate: float,
     cloud_rate: float = 0.0,
     tariff: str = "jp_residential_tiered",
-    manual_kwh: Optional[float] = None,
-) -> Dict[str, Any]:
+    manual_kwh: float | None = None,
+) -> dict[str, Any]:
     """Estimate costs."""
     # Extract duration (assume in seconds)
     duration_hours = metadata.get("duration_seconds", 0) / 3600
@@ -132,14 +128,12 @@ def estimate_cost(
         },
     }
 
-
-def save_estimate(estimate: Dict[str, Any], output_path: Path) -> None:
+def save_estimate(estimate: dict[str, Any], output_path: Path) -> None:
     """Save estimate as JSON."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     write_json(output_path, estimate, indent=2, ensure_ascii=False)
 
-
-def generate_markdown(estimate: Dict[str, Any]) -> str:
+def generate_markdown(estimate: dict[str, Any]) -> str:
     """Generate Markdown summary."""
     md = [f"# Cost Estimate: {estimate['correlation_id']}\n"]
     md.append(f"- Duration: {estimate['duration_hours']:.2f} hours")
@@ -160,7 +154,6 @@ def generate_markdown(estimate: Dict[str, Any]) -> str:
     md.append(f"- Cloud: ¥{estimate['rates']['cloud_rate_jpy_per_hour']:.0f}/hour")
 
     return "\n".join(md)
-
 
 def main() -> int:
     parser = create_standard_parser("Estimate training costs")
@@ -236,7 +229,6 @@ def main() -> int:
         print(json.dumps(estimate, indent=2, ensure_ascii=False))
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

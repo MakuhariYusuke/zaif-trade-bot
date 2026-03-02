@@ -4,15 +4,14 @@ Reward Calculator Utilities - Helper functions for reward calculation.
 This module contains utility functions and helper methods used by the reward calculator.
 """
 
-from typing import Any, Dict, Optional
-
+from typing import Any
 
 class RewardUtils:
     """Utility functions for reward calculation settings and common operations."""
 
     @staticmethod
     def get_setting_int(
-        settings: Optional[Dict[str, Any]], key: str, default: int
+        settings: dict[str, Any] | None, key: str, default: int
     ) -> int:
         """Get integer reward setting with fallback."""
         if settings and key in settings:
@@ -23,7 +22,7 @@ class RewardUtils:
 
     @staticmethod
     def get_setting_float(
-        settings: Optional[Dict[str, Any]], key: str, default: float
+        settings: dict[str, Any] | None, key: str, default: float
     ) -> float:
         """Get float reward setting with fallback."""
         if settings and key in settings:
@@ -34,7 +33,7 @@ class RewardUtils:
 
     @staticmethod
     def get_setting_bool(
-        settings: Optional[Dict[str, Any]], key: str, default: bool
+        settings: dict[str, Any] | None, key: str, default: bool
     ) -> bool:
         """Get boolean reward setting with fallback."""
         if settings and key in settings:

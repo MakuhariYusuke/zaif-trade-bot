@@ -16,7 +16,6 @@ sys.path.insert(0, str(project_root))
 
 from ztb.utils.path_utils import get_project_root
 
-
 def load_config():
     """Load v432.5 configuration"""
     config_path = (
@@ -27,9 +26,6 @@ def load_config():
         / "sac_v432_5_strict_entry_optimization.json"
     )
     return read_json(config_path)
-
-
-
 
 def calculate_dynamic_position_size(
     config, market_condition, confidence_score, volatility
@@ -74,7 +70,6 @@ def calculate_dynamic_position_size(
             return False
 
     return True
-
 
 def check_exit_conditions(position, entry_price, current_price, hold_periods, config):
     """Check if exit conditions are met"""
@@ -196,7 +191,6 @@ def check_exit_conditions(position, entry_price, current_price, hold_periods, co
     final_reward = adjusted_rewards[final_action]
 
     return final_action, final_reward, detected_condition, confidence_score
-
 
 def run_backtest_simulation_v432_3(config, num_steps=10000, initial_capital=10000.0):
     """Run v432.3 backtest simulation with Entry/Exit Enhancement"""
@@ -430,7 +424,6 @@ def run_backtest_simulation_v432_3(config, num_steps=10000, initial_capital=1000
         "total_reward": total_reward,
     }
 
-
 def main():
     # Load configuration
     config = load_config()
@@ -455,7 +448,6 @@ def main():
     print(f"\nResults saved to: {output_file}")
     print("\n=== SAC v432.5 Strict Entry Optimization Evaluation Complete ===")
     print("Ready for training integration and further optimization")
-
 
 if __name__ == "__main__":
     main()

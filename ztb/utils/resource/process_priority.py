@@ -13,7 +13,7 @@ and other resource management features for parallel training.
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, cast
+from typing import Any, cast
 
 import psutil
 
@@ -21,11 +21,10 @@ from ztb.utils.file_utils import safe_json_load
 
 logger = logging.getLogger(__name__)
 
-
 class ProcessPriorityManager:
     """Manager for process priority and CPU affinity settings"""
 
-    def __init__(self, config_path: Optional[str] = None) -> None:
+    def __init__(self, config_path: str | None = None) -> None:
         """
         Initialize priority manager.
 
@@ -46,22 +45,22 @@ class ProcessPriorityManager:
             self.config_path = Path(config_path)
         self.config = self._load_config()
 
-    def _load_config(self) -> Dict[str, Any]:
+    def _load_config(self) -> dict[str, Any]:
         """Load configuration"""
         if self.config_path.exists():
             config = safe_json_load(self.config_path)
-            return cast(Dict[str, Any], config)
+            return cast(dict[str, Any], config)
         return {}
 
-    def set_process_priority(self, model_type: str) -> Tuple[str, int]:
+    def set_process_priority(self, model_type: str) -> tuple[str, int]:
         """
-        Set process priority and CPU affinity for a model type
+        set process priority and CPU affinity for a model type
 
         Args:
             model_type: Type of model ('generalization' or 'aggressive')
 
         Returns:
-            Tuple of (priority_level, nice_value)
+            tuple of (priority_level, nice_value)
         """
         valid_model_types = {"generalization", "aggressive"}
         if model_type.lower() not in valid_model_types:
@@ -80,17 +79,17 @@ class ProcessPriorityManager:
         logger.info(f"Priority setting: {priority} (nice value: {nice_value})")
         logger.info(f"CPU affinity: {'enabled' if affinity_enabled else 'disabled'}")
 
-        # Set nice value (Linux only)
+        # set nice value (Linux only)
         self._set_nice_value(nice_value)
 
-        # Set CPU affinity (Linux only)
+        # set CPU affinity (Linux only)
         if affinity_enabled:
             self._set_cpu_affinity(model_type)
 
         return priority, nice_value
 
     def _set_nice_value(self, nice_value: int) -> None:
-        """Set process nice value"""
+        """set process nice value"""
         try:
             if hasattr(os, "nice"):
                 current_nice = os.nice(0)
@@ -106,7 +105,7 @@ class ProcessPriorityManager:
             logger.error(f"Nice value setting error: {e}")
 
     def _set_cpu_affinity(self, model_type: str) -> None:
-        """Set CPU affinity for the process"""
+        """set CPU affinity for the process"""
         try:
             if hasattr(os, "sched_setaffinity"):
                 # Use physical cores for affinity to improve performance
@@ -150,7 +149,7 @@ class ProcessPriorityManager:
         except OSError as e:
             logger.error(f"Failed to reset priority: {e}")
 
-    def get_nice_value(self) -> Optional[int]:
+    def get_nice_value(self) -> int | None:
         """Get current process nice value"""
         try:
             if hasattr(os, "nice"):

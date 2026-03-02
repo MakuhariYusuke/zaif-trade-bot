@@ -14,7 +14,6 @@ from ztb.io.json_io import read_json
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-
 def test_v431_reward_function():
     """Test v431 reward function configuration"""
 
@@ -77,7 +76,6 @@ def test_v431_reward_function():
     print("✅ v431 uses BONUS-based rewards for all actions (balanced reinforcement)")
     print("✅ Symmetric thresholds prevent value sticking")
     print("✅ All actions (BUY/SELL/HOLD) are rewarded, encouraging balanced trading")
-
 
 if __name__ == "__main__":
     test_v431_reward_function()

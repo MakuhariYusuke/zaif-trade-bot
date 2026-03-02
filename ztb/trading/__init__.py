@@ -5,7 +5,6 @@ CheckpointCallback = None
 SafetyCallback = None
 TensorBoardCallback = None
 
-
 def _load_ppo_trainer():
     """Lazy load PPO trainer components."""
     global \
@@ -27,11 +26,9 @@ def _load_ppo_trainer():
         except (ImportError, OSError):
             _ppo_available = False
 
-
 # Avoid importing environment at package import time to prevent heavy imports / side effects
 # Provide lazy access via module-level __getattr__ (PEP 562) to keep backwards compatibility
 HeavyTradingEnv = None
-
 
 def _get_HeavyTradingEnv():
     """Lazy loader for HeavyTradingEnv to avoid import-time side effects."""
@@ -49,7 +46,6 @@ def _get_HeavyTradingEnv():
         HeavyTradingEnv = None
         return None
 
-
 def __getattr__(name: str):
     if name == "HeavyTradingEnv":
         return _get_HeavyTradingEnv()
@@ -63,7 +59,6 @@ def __getattr__(name: str):
         return importlib.import_module(f"{__name__}.{name}")
     except Exception:
         raise AttributeError(f"module {__name__} has no attribute {name}")
-
 
 __all__ = [
     "HeavyTradingEnv",

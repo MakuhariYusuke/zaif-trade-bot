@@ -3,12 +3,10 @@
 Data augmentation script to add missing features for v434.2 backtest
 """
 
-
 import numpy as np
 import pandas as pd
 
 from ztb.utils.file_utils import save_csv_data
-
 
 def add_missing_features(df):
     """Add missing features required by v434.1 schema"""
@@ -191,7 +189,6 @@ def add_missing_features(df):
 
     return df
 
-
 def main():
     # Load existing dataset
     input_file = "data/btc_jpy_yahoo_real_20251021_featured.csv"
@@ -209,7 +206,6 @@ def main():
     # Save extended dataset
     save_csv_data(df_extended, output_file, index=False)
     print(f"Saved extended dataset to {output_file}")
-
 
 if __name__ == "__main__":
     main()

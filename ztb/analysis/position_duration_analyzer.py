@@ -10,7 +10,7 @@ import json
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -21,9 +21,6 @@ sys.path.insert(0, str(project_root))
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
-
-
 
 def main():
     position_analysis = analyzer.analyze_position_durations()

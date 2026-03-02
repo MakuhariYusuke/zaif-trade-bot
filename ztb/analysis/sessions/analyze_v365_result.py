@@ -4,16 +4,12 @@ v3.6.5結果分析 - コンソール出力から抽出
 """
 
 import re
-from typing import List, Tuple
 
 CONSOLE_OUTPUT = """
 |    pan_action_counts             | [19, 6, 7]                           |
 
 |    pan_action_counts             | [28, 3, 1]                           |
 """
-
-
-
 
 def main() -> None:
     print("=" * 80)
@@ -156,7 +152,6 @@ def main() -> None:
     - Combines multipliers + explicit penalties
     """
     )
-
 
 if __name__ == "__main__":
     main()

@@ -9,13 +9,12 @@ Author: SAC v448 Development Team
 """
 
 import logging
-from typing import List, Optional
+from typing import Optional
 
 import numpy as np
 
 from ztb.metrics import max_drawdown, sharpe_ratio
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
-
 
 class LongTermMetrics:
     """
@@ -52,7 +51,7 @@ class LongTermMetrics:
         )
     """
 
-    def __init__(self, logger: Optional[logging.Logger] = None) -> None:
+    def __init__(self, logger: logging.Logger | None = None) -> None:
         """
         Initialize long-term metrics calculator.
 
@@ -91,7 +90,7 @@ class LongTermMetrics:
         )
 
     @staticmethod
-    def action_balance_stability(action_history: List[int], window: int = 100) -> float:
+    def action_balance_stability(action_history: list[int], window: int = 100) -> float:
         """
         Measure stability of action distribution over time.
 
@@ -105,7 +104,7 @@ class LongTermMetrics:
             > 0.30: Poor (erratic behavior)
 
         Args:
-            action_history: List of actions (0=HOLD, 1=BUY, 2=SELL)
+            action_history: list of actions (0=HOLD, 1=BUY, 2=SELL)
             window: Window size for calculating distributions
 
         Returns:
@@ -173,7 +172,7 @@ class LongTermMetrics:
         balance_stability: float,
         max_dd: float,
         sharpe: float,
-        weights: Optional[dict] = None,
+        weights: dict | None = None,
     ) -> float:
         """
         Combined score favoring sustainable strategies.
@@ -250,7 +249,7 @@ class LongTermMetrics:
             episode_data: Dictionary containing:
                 - final_reward: float
                 - portfolio_values: np.ndarray
-                - action_history: List[int]
+                - action_history: list[int]
                 - gross_pnl: float (optional)
                 - transaction_costs: float (optional)
 

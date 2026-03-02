@@ -1,9 +1,11 @@
 """
 Model management for live trading bot.
 """
+from __future__ import annotations
+
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     try:
@@ -18,20 +20,19 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-
 class ModelManager:
     """Manages model loading and type detection."""
 
     def __init__(self) -> None:
-        self.model: Optional["Union[PPO, MaskablePPO, SAC]"] = None
+        self.model: PPO | MaskablePPO | SAC | None = None
         self._is_maskable_ppo: bool = False
         self._is_sac: bool = False
-        self.expected_features: Optional[int] = None
-        self.feature_names: Optional[list[str]] = None
-        self.model_schema_hash: Optional[str] = None
+        self.expected_features: int | None = None
+        self.feature_names: list[str] | None = None
+        self.model_schema_hash: str | None = None
         self.schema_available: bool = False
 
-    def load_model(self, model_path: Path) -> "Union[PPO, MaskablePPO, SAC]":
+    def load_model(self, model_path: Path) -> "PPO | MaskablePPO | SAC":
         """Load the trained model and detect its type.
 
         Args:
@@ -153,7 +154,7 @@ class ModelManager:
         """Check if model is SAC."""
         return self._is_sac
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Get model information dictionary."""
         return {
             "is_maskable_ppo": self._is_maskable_ppo,

@@ -3,7 +3,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-
 def calculate_base_features(df: pd.DataFrame, copy: bool = True) -> pd.DataFrame:
     """
     Calculate the 30 base features expected by v456 Factory.

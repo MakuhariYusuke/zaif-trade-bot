@@ -9,7 +9,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, cast
+from typing import Any, cast
 
 try:
     import jsonschema
@@ -20,7 +20,7 @@ except ImportError:
 
 from ztb.io.json_io import read_json, write_json
 
-def load_expectations() -> Dict[str, Any]:
+def load_expectations() -> dict[str, Any]:
     """Load validation expectations."""
     schema_path = Path("schema/artifacts_expectations.json")
     if not schema_path.exists():
@@ -31,12 +31,11 @@ def load_expectations() -> Dict[str, Any]:
             "metrics_schema": {},
         }
 
-    return cast(Dict[str, Any], read_json(schema_path))
-
+    return cast(dict[str, Any], read_json(schema_path))
 
 def validate_file_presence(
-    artifacts_dir: Path, expectations: Dict[str, Any]
-) -> List[str]:
+    artifacts_dir: Path, expectations: dict[str, Any]
+) -> list[str]:
     """Validate required files exist."""
     errors = []
 
@@ -51,8 +50,7 @@ def validate_file_presence(
 
     return errors
 
-
-def validate_file_sizes(artifacts_dir: Path) -> List[str]:
+def validate_file_sizes(artifacts_dir: Path) -> list[str]:
     """Validate file sizes are reasonable."""
     warnings = []
 
@@ -77,8 +75,7 @@ def validate_file_sizes(artifacts_dir: Path) -> List[str]:
 
     return warnings
 
-
-def validate_json_schema(file_path: Path, schema: Dict[str, Any]) -> List[str]:
+def validate_json_schema(file_path: Path, schema: dict[str, Any]) -> list[str]:
     """Validate JSON file against schema."""
     if not HAS_JSONSCHEMA or not schema:
         return []
@@ -97,8 +94,7 @@ def validate_json_schema(file_path: Path, schema: Dict[str, Any]) -> List[str]:
 
     return errors
 
-
-def validate_artifacts(correlation_id: str, strict: bool) -> Dict[str, Any]:
+def validate_artifacts(correlation_id: str, strict: bool) -> dict[str, Any]:
     """Validate artifacts for a session."""
     artifacts_dir = Path("artifacts") / correlation_id
     if not artifacts_dir.exists():
@@ -149,7 +145,6 @@ def validate_artifacts(correlation_id: str, strict: bool) -> Dict[str, Any]:
         "artifacts_dir": str(artifacts_dir),
     }
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Validate artifacts for Zaif Trade Bot session"
@@ -187,7 +182,6 @@ def main() -> None:
 
     if not result["valid"]:
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

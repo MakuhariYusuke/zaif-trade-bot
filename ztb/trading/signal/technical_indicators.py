@@ -12,8 +12,6 @@ Features:
 - Lightweight wrapper for signal quality scoring
 """
 
-from typing import Dict, Tuple, Union
-
 import numpy as np
 import pandas as pd
 
@@ -27,7 +25,6 @@ from ztb.utils.talib_wrapper import TaLibWrapper
 
 logger = get_logger(__name__)
 
-
 class TechnicalIndicators:
     """
     Lightweight technical indicators calculator for signal quality scoring
@@ -39,7 +36,7 @@ class TechnicalIndicators:
         self.talib = TaLibWrapper()
 
     def calculate_rsi(
-        self, prices: Union[np.ndarray, pd.Series], period: int = 14
+        self, prices: np.ndarray | pd.Series, period: int = 14
     ) -> float:
         """
         Calculate RSI (Relative Strength Index)
@@ -69,11 +66,11 @@ class TechnicalIndicators:
 
     def calculate_macd(
         self,
-        prices: Union[np.ndarray, pd.Series],
+        prices: np.ndarray | pd.Series,
         fast_period: int = 12,
         slow_period: int = 26,
         signal_period: int = 9,
-    ) -> Tuple[float, float, float]:
+    ) -> tuple[float, float, float]:
         """
         Calculate MACD (Moving Average Convergence Divergence)
 
@@ -84,7 +81,7 @@ class TechnicalIndicators:
             signal_period: Signal line period
 
         Returns:
-            Tuple of (MACD line, Signal line, Histogram)
+            tuple of (MACD line, Signal line, Histogram)
         """
         try:
             macd_line, signal_line, histogram = self.talib.macd(
@@ -107,10 +104,10 @@ class TechnicalIndicators:
 
     def calculate_bollinger_bands(
         self,
-        prices: Union[np.ndarray, pd.Series],
+        prices: np.ndarray | pd.Series,
         period: int = 20,
         std_dev: float = 2.0,
-    ) -> Tuple[float, float, float]:
+    ) -> tuple[float, float, float]:
         """
         Calculate Bollinger Bands
 
@@ -120,7 +117,7 @@ class TechnicalIndicators:
             std_dev: Standard deviation multiplier
 
         Returns:
-            Tuple of (Upper band, Middle band, Lower band)
+            tuple of (Upper band, Middle band, Lower band)
         """
         try:
             upper, middle, lower = self.talib.bbands(prices, period, std_dev)
@@ -146,9 +143,9 @@ class TechnicalIndicators:
 
     def calculate_atr(
         self,
-        high: Union[np.ndarray, pd.Series],
-        low: Union[np.ndarray, pd.Series],
-        close: Union[np.ndarray, pd.Series],
+        high: np.ndarray | pd.Series,
+        low: np.ndarray | pd.Series,
+        close: np.ndarray | pd.Series,
         period: int = 14,
     ) -> float:
         """
@@ -174,12 +171,12 @@ class TechnicalIndicators:
 
     def calculate_stochastic(
         self,
-        high: Union[np.ndarray, pd.Series],
-        low: Union[np.ndarray, pd.Series],
-        close: Union[np.ndarray, pd.Series],
+        high: np.ndarray | pd.Series,
+        low: np.ndarray | pd.Series,
+        close: np.ndarray | pd.Series,
         k_period: int = 14,
         d_period: int = 3,
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """
         Calculate Stochastic Oscillator
 
@@ -191,7 +188,7 @@ class TechnicalIndicators:
             d_period: %D period (default: 3)
 
         Returns:
-            Tuple of (%K, %D)
+            tuple of (%K, %D)
         """
         try:
             # Convert to DataFrame
@@ -230,7 +227,7 @@ class TechnicalIndicators:
             return (50.0, 50.0)
 
     def calculate_momentum(
-        self, prices: Union[np.ndarray, pd.Series], period: int = 10
+        self, prices: np.ndarray | pd.Series, period: int = 10
     ) -> float:
         """
         Calculate Momentum indicator
@@ -262,7 +259,7 @@ class TechnicalIndicators:
             logger.warning(f"Momentum calculation failed: {e}")
             return 0.0
 
-    def get_technical_signals(self, df: pd.DataFrame) -> Dict[str, float]:
+    def get_technical_signals(self, df: pd.DataFrame) -> dict[str, float]:
         """
         Get comprehensive technical signals from OHLCV data
 

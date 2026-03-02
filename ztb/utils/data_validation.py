@@ -7,7 +7,7 @@ This module provides common data validation functions used across the codebase.
 
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Optional
 
 import numpy as np
 import pandas as pd
@@ -16,11 +16,10 @@ from ztb.types.common import ConfigDict
 
 logger = logging.getLogger(__name__)
 
-
 def validate_dataframe(
     df: pd.DataFrame,
-    required_columns: List[str],
-    column_types: Optional[Dict[str, str]] = None,
+    required_columns: list[str],
+    column_types: dict[str, str] | None = None,
     min_rows: int = 1,
 ) -> bool:
     """
@@ -33,7 +32,7 @@ def validate_dataframe(
 
     Args:
         df: DataFrame to validate. Must contain trading data with proper structure.
-        required_columns: List of column names that must be present in the DataFrame.
+        required_columns: list of column names that must be present in the DataFrame.
                           Common examples: ['close', 'volume', 'timestamp']
         column_types: Optional mapping of column names to expected numpy/pandas dtypes.
                      Examples: {'close': 'float64', 'volume': 'int64'}
@@ -75,13 +74,12 @@ def validate_dataframe(
 
     return True
 
-
 def validate_numeric_array(
-    data: Union[np.ndarray[Any, np.dtype[np.floating[Any]]], pd.Series, List[float]],
+    data: np.ndarray[Any, np.dtype[np.floating[Any]]] | pd.Series | list[float],
     name: str = "data",
     allow_nan: bool = True,
-    min_value: Optional[float] = None,
-    max_value: Optional[float] = None,
+    min_value: float | None = None,
+    max_value: float | None = None,
 ) -> bool:
     """
     Validate numeric array data.
@@ -116,18 +114,17 @@ def validate_numeric_array(
 
     return True
 
-
 def validate_config_dict(
     config: ConfigDict,
-    required_keys: List[str],
-    validators: Optional[Dict[str, Callable[[Any], bool]]] = None,
+    required_keys: list[str],
+    validators: dict[str, Callable[[Any], bool]] | None = None,
 ) -> bool:
     """
     Validate configuration dictionary.
 
     Args:
         config: Configuration dictionary to validate
-        required_keys: List of required keys
+        required_keys: list of required keys
         validators: Optional dict of validator functions for specific keys
 
     Returns:
@@ -146,12 +143,11 @@ def validate_config_dict(
 
     return True
 
-
 def sanitize_numeric_value(
     value: Any,
     default: float = 0.0,
-    min_val: Optional[float] = None,
-    max_val: Optional[float] = None,
+    min_val: float | None = None,
+    max_val: float | None = None,
 ) -> float:
     """
     Sanitize a numeric value with bounds checking.
@@ -178,8 +174,7 @@ def sanitize_numeric_value(
 
     return result
 
-
-def validate_file_path(file_path: Union[str, Path], must_exist: bool = True) -> bool:
+def validate_file_path(file_path: str | Path, must_exist: bool = True) -> bool:
     """
     Validate file path.
 

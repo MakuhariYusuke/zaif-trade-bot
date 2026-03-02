@@ -10,7 +10,6 @@ import sys
 
 from ztb.utils.compat_wrapper import run_command_safely
 
-
 def run_command(command: list[str]) -> int:
     """Run command and return exit code."""
     try:
@@ -25,7 +24,6 @@ def run_command(command: list[str]) -> int:
     except Exception as e:
         print(f"Command failed: {e}", file=sys.stderr)
         return 1
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run nightly rollup operations")
@@ -55,7 +53,6 @@ def main() -> int:
 
     print("Nightly rollup completed successfully")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

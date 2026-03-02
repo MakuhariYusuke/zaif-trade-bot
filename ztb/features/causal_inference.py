@@ -12,7 +12,6 @@ Causal Inference Feature Selection for SAC v422
 
 import gc
 import os
-from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
@@ -37,7 +36,6 @@ from ztb.utils.memory.dtypes import optimize_dtypes
 
 logger = get_logger(__name__)
 
-
 class CausalFeatureSelector:
     """因果推論ベースの特徴量選択器"""
 
@@ -45,7 +43,7 @@ class CausalFeatureSelector:
         self,
         treatment_threshold: float = 0.1,
         min_samples: int = 1000,
-        max_features: Optional[int] = None,
+        max_features: int | None = None,
         memory_manager=None,
     ):
         """
@@ -70,8 +68,8 @@ class CausalFeatureSelector:
             logger.warning("sklearn not available, causal inference disabled")
 
         # 結果キャッシュ
-        self.causal_effects: Dict[str, float] = {}
-        self.selected_features: List[str] = []
+        self.causal_effects: dict[str, float] = {}
+        self.selected_features: list[str] = []
 
         logger.info(
             f"Initialized CausalFeatureSelector with treatment_threshold={treatment_threshold}"
@@ -82,8 +80,8 @@ class CausalFeatureSelector:
         df: pd.DataFrame,
         treatment_feature: str,
         outcome_feature: str,
-        confounders: List[str],
-    ) -> Dict[str, float]:
+        confounders: list[str],
+    ) -> dict[str, float]:
         """
         因果効果を推定
 
@@ -153,10 +151,10 @@ class CausalFeatureSelector:
     def select_features_causal(
         self,
         df: pd.DataFrame,
-        features: List[str],
+        features: list[str],
         outcome_feature: str = "reward",
-        confounders: Optional[List[str]] = None,
-    ) -> Tuple[List[str], Dict[str, Dict[str, float]]]:
+        confounders: list[str] | None = None,
+    ) -> tuple[list[str], dict[str, dict[str, float]]]:
         """
         因果推論による特徴量選択
 
@@ -249,7 +247,7 @@ class CausalFeatureSelector:
         logger.info(f"Selected {len(selected_features)} features via causal inference")
         return selected_features, selected_results
 
-    def get_feature_importance(self) -> Dict[str, float]:
+    def get_feature_importance(self) -> dict[str, float]:
         """
         特徴量の重要度を取得
 
@@ -298,11 +296,10 @@ class CausalFeatureSelector:
         except Exception as e:
             logger.error(f"Failed to update causal model: {e}")
 
-
 class CausalInferenceEngine:
     """因果推論エンジン"""
 
-    def __init__(self, config: Optional[Dict[str, any]] = None, memory_manager=None):
+    def __init__(self, config: dict[str, any] | None = None, memory_manager=None):
         """
         Args:
             config: 設定辞書
@@ -324,8 +321,8 @@ class CausalInferenceEngine:
         logger.info("Initialized CausalInferenceEngine")
 
     def analyze_causal_relationships(
-        self, df: pd.DataFrame, features: List[str], outcome_feature: str = "reward"
-    ) -> Dict[str, any]:
+        self, df: pd.DataFrame, features: list[str], outcome_feature: str = "reward"
+    ) -> dict[str, any]:
         """
         因果関係を分析
 
@@ -378,9 +375,8 @@ class CausalInferenceEngine:
         """
         self.selector.update_causal_model(new_data, outcome_feature)
 
-
 def create_causal_engine(
-    config: Optional[Dict[str, any]] = None, memory_manager=None
+    config: dict[str, any] | None = None, memory_manager=None
 ) -> CausalInferenceEngine:
     """
     因果推論エンジンを作成

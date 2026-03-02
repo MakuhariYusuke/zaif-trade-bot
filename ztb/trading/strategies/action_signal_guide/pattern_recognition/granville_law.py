@@ -17,19 +17,16 @@ except ImportError:
     def compute_obv(df: pd.DataFrame) -> pd.Series:
         return pd.Series([1000.0] * len(df), index=df.index)
 
-
 from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import (
     SignalResult,
     TrendPatternRecognizer,
 )
-
 
 class GranvilleSignal(TypedDict):
     direction: float
     strength: float
     description: str
     confidence: float
-
 
 class GranvilleLawRecognizer(TrendPatternRecognizer):
     """
@@ -115,7 +112,7 @@ class GranvilleLawRecognizer(TrendPatternRecognizer):
         Calculate price and volume changes over the analysis period.
 
         Returns:
-            Tuple of (price_change_ratio, volume_change_ratio)
+            tuple of (price_change_ratio, volume_change_ratio)
         """
         if len(data) < 2:
             return 0.0, 0.0

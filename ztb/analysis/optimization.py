@@ -7,7 +7,7 @@ including KAMA, ADX, and Kalman filters.
 
 import time
 from functools import lru_cache
-from typing import Any, Callable, Dict, Optional, Tuple, Union, cast
+from typing import Any, Callable, Union, cast
 
 import numba as nb  # type: ignore[import-untyped]
 import numpy as np
@@ -17,7 +17,6 @@ from numpy.typing import NDArray
 from ztb.training.reward_function_optimizer.reward_function_optimizer import (
     RewardFunctionOptimizer,
 )
-
 
 def optimize_kama(
     prices: pd.Series,
@@ -85,7 +84,6 @@ def optimize_kama(
 
     return pd.Series(kama_values, index=prices.index, name="KAMA")  # type: ignore
 
-
 def optimize_adx(
     high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14
 ) -> pd.DataFrame:
@@ -108,7 +106,7 @@ def optimize_adx(
         low_array: NDArray[np.float64],
         close_array: NDArray[np.float64],
         period: int,
-    ) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
         n = len(high_array)
         adx = np.full(n, np.nan)
         plus_di = np.full(n, np.nan)
@@ -191,7 +189,6 @@ def optimize_adx(
         index=high.index,
     )
 
-
 def optimize_kalman_filter(
     prices: pd.Series, process_noise: float = 1e-5, measurement_noise: float = 1e-3
 ) -> pd.Series[Any]:
@@ -250,7 +247,6 @@ def optimize_kalman_filter(
 
     return pd.Series(filtered_values, index=prices.index, name="Kalman_Filter")  # type: ignore
 
-
 @lru_cache(maxsize=128)
 def cached_computation(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
     """
@@ -266,7 +262,6 @@ def cached_computation(func: Callable[..., Any], *args: Any, **kwargs: Any) -> A
     """
     return func(*args, **kwargs)
 
-
 def clear_feature_caches() -> None:
     """
     特徴量計算のキャッシュをクリアしてメモリを解放
@@ -280,7 +275,6 @@ def clear_feature_caches() -> None:
     except AttributeError:
         # キャッシュがない場合は無視
         pass
-
 
 def vectorized_rolling_computation(
     data: pd.Series, window: int, func: Callable[[pd.Series, int], Any]
@@ -310,10 +304,9 @@ def vectorized_rolling_computation(
         # Fallback to apply
         return data.rolling(window=window, min_periods=1).apply(func, raw=True)
 
-
 def benchmark_feature_computation(
     feature_func: Callable[..., Any], *args: Any, n_runs: int = 5
-) -> Dict[str, float | int]:
+) -> dict[str, float | int]:
     """
     Benchmark feature computation performance
 
@@ -344,10 +337,9 @@ def benchmark_feature_computation(
         "n_runs": n_runs,  # int 許容 (型注釈を Union 化)
     }
 
-
 def optimize_feature_pipeline(
-    features_config: Dict[str, Any], ohlc_data: pd.DataFrame
-) -> Dict[str, Any]:
+    features_config: dict[str, Any], ohlc_data: pd.DataFrame
+) -> dict[str, Any]:
     """
     Optimize feature computation pipeline
 
@@ -368,9 +360,7 @@ def optimize_feature_pipeline(
     cache_key = hash(str(features_config) + str(ohlc_data.shape)) % 1000
 
     for feature_name, config in features_config.items():
-        result: Optional[
-            Union[pd.Series, pd.DataFrame]
-        ] = None  # 未バインド警告回避のため初期化
+        result: pd.Series | pd.DataFrame | None = None  # 未バインド警告回避のため初期化
 
         # キャッシュされた結果を使用（メモリ効率のため）
         feature_cache_key = f"{feature_name}_{cache_key}"
@@ -425,12 +415,11 @@ def optimize_feature_pipeline(
         "optimization_applied": list(slow_features),
     }
 
-
 def optimize_features_with_reward_feedback(
     ohlc_data: pd.DataFrame,
-    features_config: Dict[str, Dict[str, Any]],
-    reward_optimizer: Optional[RewardFunctionOptimizer] = None,
-) -> Dict[str, Any]:
+    features_config: dict[str, dict[str, Any]],
+    reward_optimizer: RewardFunctionOptimizer | None = None,
+) -> dict[str, Any]:
     """
     特徴量最適化を報酬関数最適化と統合
 
@@ -472,13 +461,12 @@ def optimize_features_with_reward_feedback(
         "optimization_method": "reward_feedback",
     }
 
-
 def _optimize_feature_params_with_reward(
     feature_name: str,
-    config: Dict[str, Any],
+    config: dict[str, Any],
     ohlc_data: pd.DataFrame,
     reward_optimizer: RewardFunctionOptimizer,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     報酬関数に基づいて特徴量パラメータを最適化
 

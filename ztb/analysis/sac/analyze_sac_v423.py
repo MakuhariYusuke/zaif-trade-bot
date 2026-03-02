@@ -9,8 +9,6 @@ import json
 import sys
 from pathlib import Path
 
-from typing import Optional
-
 import matplotlib.pyplot as plt
 
 # Add project root to path
@@ -24,10 +22,8 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class SACv423Analyzer:
     """Analyzer for SAC v423 training results."""
-
 
     def find_latest_training_results(self) -> list[Path]:
         """Find all recent training results."""
@@ -113,7 +109,7 @@ class SACv423Analyzer:
             )
             return None
 
-    def load_model_config(self, result_path: Path) -> Optional[ModelConfig]:
+    def load_model_config(self, result_path: Path) -> ModelConfig | None:
         """Load model configuration from the training directory or report file."""
         # If it's a report file, extract config from report
         if result_path.suffix == ".json" and "training_report" in result_path.name:
@@ -301,9 +297,6 @@ class SACv423Analyzer:
         print("- 行動分布が偏りすぎていないかチェック")
         print("- トレーニング時間を最適化")
         print("=" * 50)
-
-
-
 
 if __name__ == "__main__":
     main()

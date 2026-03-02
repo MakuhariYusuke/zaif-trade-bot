@@ -9,14 +9,13 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
 
 from ztb.metrics.metrics import max_drawdown, sharpe_ratio
 from ztb.utils.performance_profiler import PerformanceProfiler
-
 
 @dataclass
 class WalkForwardWindow:
@@ -38,7 +37,6 @@ class WalkForwardWindow:
         """テスト期間の日数"""
         return (self.test_end - self.test_start).days
 
-
 @dataclass
 class ParameterSet:
     """パラメータセット"""
@@ -50,7 +48,7 @@ class ParameterSet:
     max_positions: int
     name: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         return {
             "stop_loss_atr_multiplier": self.stop_loss_atr_multiplier,
@@ -61,16 +59,15 @@ class ParameterSet:
             "name": self.name,
         }
 
-
 @dataclass
 class OptimizationResult:
     """最適化結果"""
 
     window: WalkForwardWindow
     best_parameters: ParameterSet
-    in_sample_performance: Dict[str, float]
-    out_of_sample_performance: Dict[str, float]
-    parameter_scores: List[Tuple[ParameterSet, Dict[str, float]]]
+    in_sample_performance: dict[str, float]
+    out_of_sample_performance: dict[str, float]
+    parameter_scores: list[tuple[ParameterSet, dict[str, float]]]
 
     @property
     def sharpe_ratio_improvement(self) -> float:
@@ -83,7 +80,6 @@ class OptimizationResult:
     def is_overfitted(self) -> bool:
         """過学習の判定"""
         return self.sharpe_ratio_improvement < -0.2  # 0.2以上の悪化は過学習
-
 
 class ParameterSpace:
     """パラメータ空間定義"""
@@ -104,7 +100,7 @@ class ParameterSpace:
         # 最大ポジション数
         self.max_positions_list = [1, 3, 5, 10]
 
-    def generate_parameter_sets(self) -> List[ParameterSet]:
+    def generate_parameter_sets(self) -> list[ParameterSet]:
         """全パラメータセットを生成"""
         parameter_sets = []
 
@@ -148,7 +144,6 @@ class ParameterSpace:
             name="aggressive_defaults",
         )
 
-
 class WalkForwardAnalyzer:
     """ウォークフォワード分析器"""
 
@@ -164,7 +159,7 @@ class WalkForwardAnalyzer:
         test_days: int = 30,
         step_days: int = 15,
         min_samples: int = 1000,
-    ) -> List[WalkForwardWindow]:
+    ) -> list[WalkForwardWindow]:
         """
         スライディングウィンドウを作成
 
@@ -225,9 +220,9 @@ class WalkForwardAnalyzer:
     def optimize_parameters(
         self,
         train_data: pd.DataFrame,
-        strategy_func: Callable[[pd.DataFrame, ParameterSet], Dict[str, float]],
-        parameter_sets: Optional[List[ParameterSet]] = None,
-    ) -> Tuple[ParameterSet, Dict[str, float]]:
+        strategy_func: Callable[[pd.DataFrame, ParameterSet], dict[str, float]],
+        parameter_sets: list[ParameterSet] | None = None,
+    ) -> tuple[ParameterSet, dict[str, float]]:
         """
         トレーニングデータでパラメータを最適化
 
@@ -305,8 +300,8 @@ class WalkForwardAnalyzer:
         self,
         test_data: pd.DataFrame,
         parameters: ParameterSet,
-        strategy_func: Callable[[pd.DataFrame, ParameterSet], Dict[str, float]],
-    ) -> Dict[str, float]:
+        strategy_func: Callable[[pd.DataFrame, ParameterSet], dict[str, float]],
+    ) -> dict[str, float]:
         """
         アウトオブサンプル性能を評価
 
@@ -338,13 +333,13 @@ class WalkForwardAnalyzer:
     def walk_forward_optimization(
         self,
         data: pd.DataFrame,
-        strategy_func: Callable[[pd.DataFrame, ParameterSet], Dict[str, float]],
+        strategy_func: Callable[[pd.DataFrame, ParameterSet], dict[str, float]],
         train_days: int = 90,
         test_days: int = 30,
         step_days: int = 15,
-        parameter_sets: Optional[List[ParameterSet]] = None,
+        parameter_sets: list[ParameterSet] | None = None,
         min_samples: int = 30,
-    ) -> List[OptimizationResult]:
+    ) -> list[OptimizationResult]:
         """
         ウォークフォワード最適化を実行
 
@@ -409,7 +404,7 @@ class WalkForwardAnalyzer:
         )
         return results
 
-    def summarize_results(self, results: List[OptimizationResult]) -> Dict[str, Any]:
+    def summarize_results(self, results: list[OptimizationResult]) -> dict[str, Any]:
         """
         最適化結果を要約
 
@@ -461,8 +456,8 @@ class WalkForwardAnalyzer:
         return summary
 
     def _analyze_parameter_stability(
-        self, results: List[OptimizationResult]
-    ) -> Dict[str, Any]:
+        self, results: list[OptimizationResult]
+    ) -> dict[str, Any]:
         """パラメータの安定性を分析"""
         if not results:
             return {}
@@ -491,7 +486,7 @@ class WalkForwardAnalyzer:
             "unique_param_sets": len(param_counts),
         }
 
-    def _generate_recommendations(self, results: List[OptimizationResult]) -> List[str]:
+    def _generate_recommendations(self, results: list[OptimizationResult]) -> list[str]:
         """推奨事項を生成"""
         recommendations = []
 
@@ -515,9 +510,7 @@ class WalkForwardAnalyzer:
 
         return recommendations
 
-
 # ===== 戦略評価関数テンプレート =====
-
 
 class BaseStrategyEvaluator(ABC):
     """戦略評価の基底クラス"""
@@ -525,7 +518,7 @@ class BaseStrategyEvaluator(ABC):
     @abstractmethod
     def evaluate_strategy(
         self, data: pd.DataFrame, parameters: ParameterSet
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         戦略を評価
 
@@ -544,14 +537,13 @@ class BaseStrategyEvaluator(ABC):
         """Sharpe Ratioを計算"""
         return sharpe_ratio(returns, rf=risk_free_rate, period_per_year=252)
 
-    def calculate_win_rate(self, trades: List[Dict[str, Any]]) -> float:
+    def calculate_win_rate(self, trades: list[dict[str, Any]]) -> float:
         """勝率を計算"""
         if not trades:
             return 0.0
 
         winning_trades = sum(1 for trade in trades if trade.get("pnl", 0) > 0)
         return winning_trades / len(trades)
-
 
 # ===== 使用例 =====
 

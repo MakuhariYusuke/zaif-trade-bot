@@ -5,7 +5,7 @@ Phase 3統合: 統計的有意性評価
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -16,20 +16,18 @@ from ztb.metrics.metrics import max_drawdown, sharpe_ratio
 
 logger = get_logger(__name__)
 
-
 @dataclass
 class TradeResult:
     """取引結果のデータクラス"""
 
     entry_time: pd.Timestamp
     entry_price: float
-    exit_time: Optional[pd.Timestamp] = None
-    exit_price: Optional[float] = None
-    pnl: Optional[float] = None
+    exit_time: pd.Timestamp | None = None
+    exit_price: float | None = None
+    pnl: float | None = None
     position_size: float = 0.0
     signal_score: float = 0.0
     type: str = "BUY"
-
 
 class StatisticalValidator:
     """統計的シグナルバリデーション"""
@@ -39,9 +37,9 @@ class StatisticalValidator:
 
     def validate_signal_quality(
         self,
-        trades: List[Union[TradeResult, Dict[str, Any]]],
+        trades: list[TradeResult | dict[str, Any]],
         market_returns: np.ndarray,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         シグナルの統計的有意性を評価
         """
@@ -80,7 +78,7 @@ class StatisticalValidator:
 
     def _calculate_signal_returns(
         self,
-        trades: List[Union[TradeResult, Dict[str, Any]]],
+        trades: list[TradeResult | dict[str, Any]],
         market_returns: np.ndarray,
     ) -> np.ndarray:
         """シグナルベースのリターン計算"""

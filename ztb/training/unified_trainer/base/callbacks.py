@@ -6,7 +6,7 @@ Training callbacks for unified training system.
 import logging
 import time
 from collections import deque
-from typing import Any, Deque, List, Optional
+from typing import Any, Deque
 
 import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback
@@ -25,7 +25,6 @@ from ztb.training.constants import ENV_EVAL_FREQUENCY, DEFAULT_CHECK_FREQ
 from ztb.training.unified_trainer.base.lr_scheduler import DynamicLRScheduler
 from ztb.training.system_optimizer import SystemOptimizer
 
-
 class TrainingProgressCallback(BaseCallback):
     """Enhanced callback for monitoring training progress and action distribution."""
 
@@ -33,12 +32,12 @@ class TrainingProgressCallback(BaseCallback):
         self,
         check_freq: int = DEFAULT_CHECK_FREQ,
         verbose: int = 1,
-        system_optimizer: Optional[SystemOptimizer] = None,
-        metrics_csv_writer: Optional[Any] = None,
-        lr_scheduler: Optional[DynamicLRScheduler] = None,
-        early_stopping: Optional[Any] = None,
-        trainer_ref: Optional[Any] = None,
-        checkpoint_manager: Optional[Any] = None,
+        system_optimizer: SystemOptimizer | None = None,
+        metrics_csv_writer: Any | None = None,
+        lr_scheduler: DynamicLRScheduler | None = None,
+        early_stopping: Any | None = None,
+        trainer_ref: Any | None = None,
+        checkpoint_manager: Any | None = None,
     ):
         super().__init__(verbose)
         self.verbose = verbose  # Ensure verbose is always available (SB3 compat)
@@ -48,14 +47,14 @@ class TrainingProgressCallback(BaseCallback):
         self.lr_scheduler = lr_scheduler
         self.early_stopping = early_stopping
         self.trainer_ref = trainer_ref
-        self.trainer = trainer_ref  # Set trainer attribute for compatibility
+        self.trainer = trainer_ref  # set trainer attribute for compatibility
         self.checkpoint_manager = checkpoint_manager
 
         # Provide explicit type annotations so mypy can reason about these lists
         self.continuous_actions: Deque[float] = deque(maxlen=10000)
         self.discrete_actions: Deque[int] = deque(maxlen=10000)
         self.reward_history: Deque[float] = deque(maxlen=10000)
-        self.episode_rewards: List[float] = []
+        self.episode_rewards: list[float] = []
         self.start_time = time.time()
         self.last_log_time = self.start_time
 

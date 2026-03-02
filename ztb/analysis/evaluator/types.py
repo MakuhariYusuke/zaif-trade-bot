@@ -3,21 +3,19 @@
 Type definitions for evaluation module.
 """
 
-from typing import Any, Dict, List, TypedDict
-
+from typing import Any, TypedDict
 
 class SingleEpisodeResultDict(TypedDict):
     """Single episode evaluation result."""
 
-    rewards: List[float]
-    positions: List[float]
-    pnls: List[float]
-    actions: List[int]
-    states: List[Any]
-    portfolio_history: List[float]
-    price_history: List[float]
-    timestamps: List[Any]
-
+    rewards: list[float]
+    positions: list[float]
+    pnls: list[float]
+    actions: list[int]
+    states: list[Any]
+    portfolio_history: list[float]
+    price_history: list[float]
+    timestamps: list[Any]
 
 class EvaluationResult(TypedDict, total=False):
     """Type definition for comprehensive evaluation results.
@@ -57,24 +55,24 @@ class EvaluationResult(TypedDict, total=False):
     consecutive_losses: int
 
     # Advanced analysis
-    seasonality_analysis: Dict[str, Any]
-    market_regime_analysis: Dict[str, Any]
-    walkforward_analysis: Dict[str, Any]
-    stress_test_analysis: Dict[str, Any]
+    seasonality_analysis: dict[str, Any]
+    market_regime_analysis: dict[str, Any]
+    walkforward_analysis: dict[str, Any]
+    stress_test_analysis: dict[str, Any]
 
     # Episode data
-    rewards: List[float]
-    positions: List[float]
-    pnls: List[float]
-    actions: List[int]
-    states: List[Any]
-    action_history: List[int]
-    portfolio_history: List[float]
-    price_history: List[float]
-    timestamps: List[Any]
-    trade_pnls: List[float]
-    continuous_action_stats: Dict[str, Any]
+    rewards: list[float]
+    positions: list[float]
+    pnls: list[float]
+    actions: list[int]
+    states: list[Any]
+    action_history: list[int]
+    portfolio_history: list[float]
+    price_history: list[float]
+    timestamps: list[Any]
+    trade_pnls: list[float]
+    continuous_action_stats: dict[str, Any]
 
     # Model info
     model_path: str
-    evaluation_config: Dict[str, Any]
+    evaluation_config: dict[str, Any]

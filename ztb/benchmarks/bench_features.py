@@ -12,7 +12,7 @@ import time
 import tracemalloc
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -28,8 +28,7 @@ project_root = Path(__file__).resolve().parent.parent
 if project_root.exists():
     sys.path.append(str(project_root))
 
-
-def load_real_data(sample_path: Path, n_rows: Optional[int] = None) -> pd.DataFrame:
+def load_real_data(sample_path: Path, n_rows: int | None = None) -> pd.DataFrame:
     """実データを読み込み"""
     return cast(
         pd.DataFrame,
@@ -46,9 +45,8 @@ def load_real_data(sample_path: Path, n_rows: Optional[int] = None) -> pd.DataFr
         ),
     )
 
-
 def _load_real_data_impl(
-    sample_path: Path, n_rows: Optional[int] = None
+    sample_path: Path, n_rows: int | None = None
 ) -> pd.DataFrame:
     """Implementation of real data loading."""
     if sample_path.exists():
@@ -69,10 +67,9 @@ def _load_real_data_impl(
         n_rows or 1000, freq="1min", episode_length=None, volume_range=(100, 1000)
     )
 
-
 def benchmark_feature(
     feature_name: str, manager: type[FeatureRegistry], df: pd.DataFrame, n_runs: int = 5
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """単一特徴量のベンチマーク"""
     times = []
     memories = []
@@ -106,10 +103,9 @@ def benchmark_feature(
 
     return {"ms_real": float(np.median(times)), "peak_MB": float(np.max(memories))}
 
-
 def benchmark_bundle(
     manager: type[FeatureRegistry], df: pd.DataFrame, waves: Any, n_runs: int = 5
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """バンドルのベンチマーク（指定されたwavesで実行）"""
     times = []
     memories = []
@@ -129,7 +125,6 @@ def benchmark_bundle(
         memories.append(peak / BYTES_PER_MB)
 
     return {"ms_real": float(np.median(times)), "peak_MB": float(np.max(memories))}
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Benchmark trading features")
@@ -233,7 +228,6 @@ def main() -> None:
     )
     for _, row in sorted_results.head(5).iterrows():
         print(f"  - {row['feature']}: {row['ms_real']:.2f} ms")
-
 
 if __name__ == "__main__":
     main()

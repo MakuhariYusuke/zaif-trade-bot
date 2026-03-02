@@ -3,7 +3,7 @@ RSI (Relative Strength Index) Pattern Recognizer
 既存のRSI特徴量クラスを使用したパターン認識
 """
 
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 import pandas as pd
 
@@ -14,13 +14,11 @@ from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import 
     SignalResult,
 )
 
-
 class RSIRegimeThresholds(TypedDict):
     """Regime-adjusted RSI threshold levels."""
 
     overbought_level: float
     oversold_level: float
-
 
 class RSIPatternRecognizer(IndicatorPatternRecognizer):
     """
@@ -28,7 +26,7 @@ class RSIPatternRecognizer(IndicatorPatternRecognizer):
     既存のRSI特徴量クラスを使用したパターン認識
     """
 
-    def __init__(self, config: Optional[dict[str, object]] = None):
+    def __init__(self, config: dict[str, object] | None = None):
         super().__init__(config)
         self.rsi_period = int(self.config.get("rsi_period", 14))
         self.overbought_level = float(self.config.get("overbought_level", 70))
@@ -39,8 +37,8 @@ class RSIPatternRecognizer(IndicatorPatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[MultiTimeframeData] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """
         Recognize RSI-based patterns.
         RSIベースのパターン認識
@@ -238,7 +236,7 @@ class RSIPatternRecognizer(IndicatorPatternRecognizer):
         volatility_ratio: float = 1.0,
         trend_strength: float = 0.5,
         mtf_confidence: float = 1.0,
-    ) -> Optional[SignalResult]:
+    ) -> SignalResult | None:
         """
         Check for RSI divergence patterns.
         RSIダイバージェンスパターンのチェック
@@ -317,7 +315,7 @@ class RSIPatternRecognizer(IndicatorPatternRecognizer):
         self,
         current_rsi: float,
         previous_rsi: float,
-        multi_timeframe_data: Optional[MultiTimeframeData],
+        multi_timeframe_data: MultiTimeframeData | None,
     ) -> float:
         """Analyze multi-timeframe RSI alignment for enhanced signal confidence."""
         rsi_change = current_rsi - previous_rsi
@@ -330,7 +328,7 @@ class RSIPatternRecognizer(IndicatorPatternRecognizer):
 
     def _adjust_thresholds_for_regime(
         self,
-        multi_timeframe_data: Optional[MultiTimeframeData],
+        multi_timeframe_data: MultiTimeframeData | None,
         pattern_type: str = "general",
     ) -> RSIRegimeThresholds:
         """

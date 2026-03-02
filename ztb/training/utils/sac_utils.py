@@ -26,13 +26,11 @@ from ztb.io.json_io import read_json, read_json_object, write_json
 
 logger = logging.getLogger(__name__)
 
-
 class CommandResult(TypedDict):
     returncode: int
     stdout: str
     stderr: str
     timed_out: bool
-
 
 class SACUtilities:
     """Comprehensive SAC utility toolkit."""
@@ -410,13 +408,11 @@ class SACUtilities:
             "failed_omitted": max(len(failed) - failed_sample_limit, 0),
         }
 
-
 def _emit_result(result: dict[str, object], json_out: str | None) -> None:
     print(json.dumps(result, indent=2, ensure_ascii=False, default=str))
     if json_out:
         write_json(json_out, result, indent=2, ensure_ascii=False, default=str)
         logger.info("Wrote report to %s", json_out)
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="SAC utility toolkit")
@@ -480,7 +476,6 @@ def main() -> int:
         return 0
 
     return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -13,7 +13,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import psutil
 
@@ -25,13 +25,12 @@ from ztb.experiments.base import ExperimentBase, ExperimentResult
 from ztb.utils.data.data_generation import load_sample_data
 from ztb.utils.feature_testing import evaluate_feature_performance
 
-
 class SmokeTestExperiment(ExperimentBase):
     """Smoke test experiment for quick validation"""
 
     PASS_RATE_THRESHOLD = 0.5  # 成功判定の閾値
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         super().__init__(config, "smoke_test")
         self.total_steps = config.get("total_steps", 10000)
         self.dataset = config.get("dataset", "coingecko")
@@ -137,7 +136,6 @@ class SmokeTestExperiment(ExperimentBase):
             artifacts={},
         )
 
-
 def main():
     """Main entry point"""
     parser = argparse.ArgumentParser(description="Run smoke test for RL experiments")
@@ -186,7 +184,6 @@ def main():
     else:
         print("❌ Smoke test failed!")
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

@@ -6,7 +6,6 @@ from pathlib import Path
 from ztb.training.unified_trainer import UnifiedTrainer
 from ztb.utils.file_utils import safe_json_load
 
-
 def main():
     print("🧪 SAC v395a Test - 5k timesteps")
     print("=" * 60)
@@ -27,7 +26,6 @@ def main():
     else:
         print("❌ Test run failed")
     print("=" * 60)
-
 
 if __name__ == "__main__":
     main()

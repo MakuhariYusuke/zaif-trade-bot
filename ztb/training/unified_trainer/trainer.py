@@ -9,7 +9,7 @@ import os
 import threading
 import time
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Dict, List, Optional, cast
+from typing import TYPE_CHECKING, Optional, cast
 
 import pandas as pd
 
@@ -111,7 +111,6 @@ if TYPE_CHECKING:
 
     # Type-only import to avoid name collision with runtime EnsemblePredictor
 
-
 class UnifiedTrainer(BaseTrainer, TrainerProtocol):
     """
     Refactored Unified training interface with enhanced UI and modularity.
@@ -130,9 +129,9 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         dry_run: bool = False,
         enable_streaming: bool = False,
         stream_batch_size: int = 256,
-        max_features: Optional[int] = None,
-        total_timesteps: Optional[int] = None,
-        episodes: Optional[int] = None,
+        max_features: int | None = None,
+        total_timesteps: int | None = None,
+        episodes: int | None = None,
         gradient_accumulation_steps: int = 1,
         enable_distributed: bool = False,
         world_size: int = 1,
@@ -191,28 +190,28 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         # Keep the reporting.TrainingReporter (don't overwrite with components.TrainingReporter)
         # self.reporter = TrainingReporter(self.logger)
         # Algorithm trainer (created during run)
-        self.algorithm_trainer: Optional[BaseAlgorithmTrainer] = None
+        self.algorithm_trainer: BaseAlgorithmTrainer | None = None
         # Exposed model handle (if algorithm produces one during training)
-        self._model: Optional[object] = None
+        self._model: object | None = None
         # Optional explicit env override (if set externally)
-        self._env: Optional[object] = None
+        self._env: object | None = None
 
         # Anomaly Detection components
-        self.anomaly_detector: Optional[AnomalyDetectorProtocol] = None
+        self.anomaly_detector: AnomalyDetectorProtocol | None = None
 
         # Meta Learning components
-        self.meta_learner: Optional[MetaLearnerProtocol] = None
+        self.meta_learner: MetaLearnerProtocol | None = None
 
         # Federated Learning components (enhanced)
-        self.federated_learner: Optional[FederatedLearnerProtocol] = None
+        self.federated_learner: FederatedLearnerProtocol | None = None
 
         # Continual Learning components
-        self.continual_learner: Optional[ContinualLearnerProtocol] = None
+        self.continual_learner: ContinualLearnerProtocol | None = None
         self.task_counter = 0
 
         # Ensemble System components (enhanced for SAC v428 Phase 3)
-        self.ensemble_system: Optional[EnsemblePredictor] = None
-        self.ensemble_config: Optional[EnsembleConfig] = None
+        self.ensemble_system: EnsemblePredictor | None = None
+        self.ensemble_config: EnsembleConfig | None = None
         self.ensemble_enabled = (
             self.config.get("v427_advanced_features", {})
             .get("ensemble_system", {})
@@ -225,7 +224,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             self._initialize_ensemble_system(self.config)
 
         # Mixed Precision Training components
-        self.grad_scaler: Optional[GradScaler] = None
+        self.grad_scaler: GradScaler | None = None
         if AMP_AVAILABLE and self.config.get("enable_mixed_precision", False):
             try:
                 self.grad_scaler = GradScaler()
@@ -256,12 +255,12 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         )
 
         # Parallel config will be initialized when needed for parallel experiments
-        self.parallel_config: Optional[ConfigDict] = None
+        self.parallel_config: ConfigDict | None = None
 
         # Training results
         self.training_success: bool = False
         self.training_stats: TrainingStats = {}
-        self.training_report: Dict[str, object] = {}
+        self.training_report: dict[str, object] = {}
         self._feature_consistency_checked = False
         self._feature_consistency_ok = True
 
@@ -281,7 +280,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         # V433 Adaptive Learning Components: archived in 030#, dead code removed in 063#
 
     @property
-    def model(self) -> Optional[object]:
+    def model(self) -> object | None:
         """Return the underlying model from the algorithm trainer when available."""
         alg_trainer = self.algorithm_trainer
         if alg_trainer is not None and hasattr(alg_trainer, "model"):
@@ -291,8 +290,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         return self._model
 
     @model.setter
-    def model(self, value: Optional[object]) -> None:
-        """Set the model and propagate to the algorithm trainer if present."""
+    def model(self, value: object | None) -> None:
+        """set the model and propagate to the algorithm trainer if present."""
         self._model = value
         alg_trainer = self.algorithm_trainer
         if alg_trainer is not None and hasattr(alg_trainer, "model"):
@@ -302,7 +301,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 self.logger.debug("model propagation to alg_trainer failed: %s", e)
 
     @property
-    def env(self) -> Optional[object]:
+    def env(self) -> object | None:
         """Return the training environment if available."""
         if self._env is not None:
             return self._env
@@ -328,8 +327,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         return None
 
     @env.setter
-    def env(self, value: Optional[object]) -> None:
-        """Set the training environment and propagate when possible."""
+    def env(self, value: object | None) -> None:
+        """set the training environment and propagate when possible."""
         self._env = value
         alg_trainer = self.algorithm_trainer
         if alg_trainer is not None and hasattr(alg_trainer, "env"):
@@ -345,7 +344,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             except Exception as e:
                 self.logger.debug("model.set_env() failed: %s", e)
 
-    def get_environment_metrics(self) -> Dict[str, object]:
+    def get_environment_metrics(self) -> dict[str, object]:
         """Extract environment metrics such as balance and trade count."""
         from ztb.training.utils.env_metrics import extract_trainer_env_metrics
 
@@ -407,12 +406,12 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 ],
             )
 
-    def get_ensemble_stats(self) -> Dict[str, object]:
+    def get_ensemble_stats(self) -> dict[str, object]:
         """Get current ensemble statistics for monitoring."""
         if self.ensemble_system is None:
             return {"error": "ensemble_not_initialized"}
         # ensemble_system may return a non-typed mapping; cast to expected return type
-        return cast(Dict[str, object], self.ensemble_system.get_ensemble_stats())
+        return cast(dict[str, object], self.ensemble_system.get_ensemble_stats())
 
     def adapt_ensemble_to_market(self, market_conditions: ConfigDict) -> None:
         """Adapt ensemble system to current market conditions."""
@@ -1127,7 +1126,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                             raise TrainingError("Ensemble system unexpectedly missing")
 
                         ensemble_stats = cast(
-                            Dict[str, object], ensemble.get_ensemble_stats()
+                            dict[str, object], ensemble.get_ensemble_stats()
                         )
                         decision_log = getattr(ensemble, "decision_log", None)
 
@@ -1184,7 +1183,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         """Get training statistics."""
         return self.training_stats.copy()
 
-    def get_training_report(self) -> Dict[str, object]:
+    def get_training_report(self) -> dict[str, object]:
         """Get complete training report."""
         return self.training_report.copy()
 
@@ -1372,13 +1371,13 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             return False
 
     def _federated_average(
-        self, client_updates: List[Dict[str, object]]
-    ) -> Dict[str, object]:
+        self, client_updates: list[dict[str, object]]
+    ) -> dict[str, object]:
         """
         Perform federated averaging of client model updates.
 
         Args:
-            client_updates: List of client model states
+            client_updates: list of client model states
 
         Returns:
             Averaged global model state
@@ -1780,7 +1779,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         except Exception as e:
             self.logger.error(f"Continual learning integration failed: {e}")
 
-    def _prepare_task_data(self) -> Optional[TaskData]:
+    def _prepare_task_data(self) -> TaskData | None:
         """Prepare training data as task data for continual learning."""
         try:
             # トレーニングデータを取得（簡易版）
@@ -1895,7 +1894,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             self.logger.debug("_get_model_output_dim fallback to 1: %s", e)
             return 1
 
-    def _create_market_federated_configs(self) -> Dict[str, FederatedConfig]:
+    def _create_market_federated_configs(self) -> dict[str, FederatedConfig]:
         """Create federated configs for different markets."""
         base_config = FederatedConfig(
             num_clients=self.config.get("num_clients", 5),
@@ -1975,7 +1974,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         else:
             self.logger.info(f"✅  v454 features validation passed for {data_path}")
 
-    def _create_training_environment(self) -> Optional[object]:
+    def _create_training_environment(self) -> object | None:
         """トレーニング環境を作成 (renamed from _create_v433_training_environment in 063#)"""
         try:
             # Lazy import to avoid heavy runtime dependency and mypy import-untyped noise
@@ -2104,11 +2103,11 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
     def run_multi_period_backtest_v433(
         self,
         model_path: str,
-        data_path: Optional[str] = None,
-        window_sizes: Optional[List[int]] = None,
+        data_path: str | None = None,
+        window_sizes: list[int] | None = None,
         overlap_ratio: float = 0.5,
-        output_path: Optional[str] = None,
-    ) -> Dict[str, object]:
+        output_path: str | None = None,
+    ) -> dict[str, object]:
         """
         Run multi-period backtest analysis for SAC v445.3 model.
 
@@ -2118,12 +2117,12 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         Args:
             model_path: Path to the trained model
             data_path: Path to custom data file (optional)
-            window_sizes: List of window sizes in hours to test
+            window_sizes: list of window sizes in hours to test
             overlap_ratio: Overlap ratio between consecutive windows
             output_path: Path to save results (optional)
 
         Returns:
-            Dict containing backtest results
+            dict containing backtest results
         """
         try:
             import json
@@ -2140,7 +2139,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
         self.logger.info("Starting multi-period backtest analysis...")
 
-        # Set default window sizes
+        # set default window sizes
         if window_sizes is None:
             window_sizes = [24]  # Default to 24 hours
 
@@ -2240,7 +2239,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
     def _identify_market_periods(
         self, df, window_size_hours: int = 24, overlap_ratio: float = 0.5
-    ) -> List[Dict[str, object]]:
+    ) -> list[dict[str, object]]:
         """Identify different market periods (uptrend, downtrend, sideways)."""
         periods = []
 
@@ -2289,7 +2288,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
     def _test_period_with_model(
         self, model, env, df, start_idx: int, end_idx: int, period_name: str
-    ) -> Dict[str, object]:
+    ) -> dict[str, object]:
         """Test the model on a specific period."""
         # Reset environment and advance to start_idx
         obs, _ = env.reset()
@@ -2369,8 +2368,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         }
 
     def _analyze_results_by_trend(
-        self, results: List[Dict[str, object]]
-    ) -> Dict[str, object]:
+        self, results: list[dict[str, object]]
+    ) -> dict[str, object]:
         """Analyze results by trend type."""
         trend_groups = {}
         for result in results:
@@ -2411,15 +2410,15 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
     def run_multi_period_backtest(
         self,
-        periods: List[Dict[str, object]],
-        model_path: Optional[str] = None,
-        config_path: Optional[str] = None,
-    ) -> Dict[str, object]:
+        periods: list[dict[str, object]],
+        model_path: str | None = None,
+        config_path: str | None = None,
+    ) -> dict[str, object]:
         """
         Run multi-period backtest analysis.
 
         Args:
-            periods: List of period definitions with start/end dates
+            periods: list of period definitions with start/end dates
             model_path: Path to trained model (optional)
             config_path: Path to config file (optional)
 
@@ -2484,7 +2483,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
 
         return results
 
-    def _create_backtest_environment(self, config_path: Optional[str] = None):
+    def _create_backtest_environment(self, config_path: str | None = None):
         """Create environment for backtesting."""
         try:
             # Use existing environment creation logic
@@ -2505,7 +2504,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             self.logger.error(f"Failed to create backtest environment: {e}")
             return None
 
-    def _load_backtest_data(self, config_path: Optional[str] = None):
+    def _load_backtest_data(self, config_path: str | None = None):
         """Load data for backtesting."""
         try:
             # Use config to determine data path
@@ -2522,8 +2521,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             return None
 
     def _run_single_period_backtest(
-        self, model, env, df, period: Dict[str, object]
-    ) -> Dict[str, object]:
+        self, model, env, df, period: dict[str, object]
+    ) -> dict[str, object]:
         """Run backtest for a single period."""
         try:
             start_date = period.get("start_date")
@@ -2559,8 +2558,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             }
 
     def _calculate_overall_backtest_metrics(
-        self, period_results: List[Dict[str, object]]
-    ) -> Dict[str, object]:
+        self, period_results: list[dict[str, object]]
+    ) -> dict[str, object]:
         """Calculate overall metrics from period results."""
         if not period_results:
             return {}
@@ -2581,8 +2580,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         }
 
     def _analyze_backtest_regime_performance(
-        self, period_results: List[Dict[str, object]]
-    ) -> Dict[str, object]:
+        self, period_results: list[dict[str, object]]
+    ) -> dict[str, object]:
         """Analyze performance by market regime."""
         # Placeholder - would integrate with regime detection
         return {
@@ -2591,7 +2590,7 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             "sideways_performance": {"average_return": 0.0, "win_rate": 0.0},
         }
 
-    def _generate_backtest_recommendations(self, results: Dict[str, object]) -> List[str]:
+    def _generate_backtest_recommendations(self, results: dict[str, object]) -> list[str]:
         """Generate recommendations based on backtest results."""
         recommendations = []
         overall = results.get("overall_metrics", {})

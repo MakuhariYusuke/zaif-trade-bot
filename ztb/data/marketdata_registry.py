@@ -8,7 +8,7 @@ with factory pattern for instantiation and configuration.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Protocol, TypedDict, Unpack, cast
+from typing import Any, Protocol, TypedDict, Unpack, cast
 
 import pandas as pd
 
@@ -16,7 +16,6 @@ from ztb.data.coin_gecko_stream import CoinGeckoStream
 from ztb.data.streaming_pipeline import StreamingPipeline
 from ztb.trading.live.replay_market import ReplayMarket
 from ztb.utils.logging_utils import get_logger
-
 
 class MarketDataSourceConfig(TypedDict, total=False):
     """Configuration for market data sources"""
@@ -29,9 +28,7 @@ class MarketDataSourceConfig(TypedDict, total=False):
     cache_dir: str
     api_key: str
 
-
 logger = get_logger(__name__)
-
 
 class MarketDataSource(Protocol):
     """Protocol for market data sources."""
@@ -40,7 +37,6 @@ class MarketDataSource(Protocol):
         """Get market data from the source."""
         ...
 
-
 class MarketDataSourceFactory(ABC):
     """Abstract factory for creating market data sources."""
 
@@ -48,7 +44,6 @@ class MarketDataSourceFactory(ABC):
     def create(self, *args: Any, **kwargs: Any) -> MarketDataSource:
         """Create a market data source instance."""
         ...
-
 
 class CachedMarketDataFactory(MarketDataSourceFactory):
     """Factory for cached market data sources."""
@@ -63,7 +58,6 @@ class CachedMarketDataFactory(MarketDataSourceFactory):
 
         cache = PriceCache(cache_path)
         return cast(MarketDataSource, cache)
-
 
 class StreamingMarketDataFactory(MarketDataSourceFactory):
     """Factory for streaming market data sources."""
@@ -88,7 +82,6 @@ class StreamingMarketDataFactory(MarketDataSourceFactory):
 
         return pipeline
 
-
 class ReplayMarketDataFactory(MarketDataSourceFactory):
     """Factory for replay market data sources."""
 
@@ -103,13 +96,12 @@ class ReplayMarketDataFactory(MarketDataSourceFactory):
         replay = ReplayMarket(str(data_path), **kwargs)
         return cast(MarketDataSource, replay)
 
-
 class MarketDataSourceRegistry:
     """Registry for market data source factories."""
 
     def __init__(self) -> None:
         super().__init__()
-        self._factories: Dict[str, MarketDataSourceFactory] = {}
+        self._factories: dict[str, MarketDataSourceFactory] = {}
         self._register_default_factories()
 
     def _register_default_factories(self) -> None:
@@ -143,13 +135,11 @@ class MarketDataSourceRegistry:
         return factory.create(**kwargs)
 
     def list_available_sources(self) -> list[str]:
-        """List all available source types."""
+        """list all available source types."""
         return list(self._factories.keys())
 
-
 # Global registry instance
-_registry: Optional[MarketDataSourceRegistry] = None
-
+_registry: MarketDataSourceRegistry | None = None
 
 def get_market_data_registry() -> MarketDataSourceRegistry:
     """Get the global market data source registry."""
@@ -157,7 +147,6 @@ def get_market_data_registry() -> MarketDataSourceRegistry:
     if _registry is None:
         _registry = MarketDataSourceRegistry()
     return _registry
-
 
 def create_market_data_source(
     source_type: str, **kwargs: Unpack[MarketDataSourceConfig]

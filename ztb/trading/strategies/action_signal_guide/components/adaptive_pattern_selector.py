@@ -12,13 +12,12 @@ import time
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from enum import Enum
-from typing import Deque, Dict, List, Mapping, Optional, Set, Tuple, TypedDict
+from typing import Deque, Mapping, TypedDict
 
 import numpy as np
 
 from ztb.analysis.regime.market_regime_types import MarketRegime
 from ztb.utils.logging_utils import get_logger
-
 
 class PatternCategory(Enum):
     """Pattern categories for adaptive selection."""
@@ -31,7 +30,6 @@ class PatternCategory(Enum):
     FIBONACCI = "fibonacci"
     WAVE = "wave"
     GANN = "gann"
-
 
 @dataclass
 class PatternPerformance:
@@ -47,7 +45,6 @@ class PatternPerformance:
     last_used: float
     usage_count: int
 
-
 @dataclass
 class MarketCondition:
     """Current market condition assessment."""
@@ -58,7 +55,6 @@ class MarketCondition:
     volume_trend: float
     timestamp: float
 
-
 class PatternPerformanceSample(TypedDict):
     success: float
     strength: float
@@ -66,7 +62,6 @@ class PatternPerformanceSample(TypedDict):
     execution_time: float
     memory_usage: float
     timestamp: float
-
 
 class AdaptivePatternSelector:
     """
@@ -90,14 +85,14 @@ class AdaptivePatternSelector:
         self.config = dict(config)
 
         # Performance tracking
-        self.pattern_performance: Dict[str, PatternPerformance] = {}
-        self.performance_history: Dict[str, Deque[PatternPerformanceSample]] = defaultdict(
+        self.pattern_performance: dict[str, PatternPerformance] = {}
+        self.performance_history: dict[str, Deque[PatternPerformanceSample]] = defaultdict(
             lambda: deque(maxlen=1000)
         )
 
         # Market condition tracking
         self.market_history: Deque[MarketCondition] = deque(maxlen=100)
-        self.current_condition: Optional[MarketCondition] = None
+        self.current_condition: MarketCondition | None = None
 
         # Selection parameters
         self.min_success_rate = self._coerce_float(config.get("min_success_rate"), 0.4)
@@ -144,7 +139,7 @@ class AdaptivePatternSelector:
         except (TypeError, ValueError):
             return default
 
-    def _initialize_pattern_categories(self) -> Dict[str, PatternCategory]:
+    def _initialize_pattern_categories(self) -> dict[str, PatternCategory]:
         """Initialize pattern to category mappings."""
         return {
             # Trend patterns
@@ -248,7 +243,7 @@ class AdaptivePatternSelector:
 
     def _initialize_success_thresholds(
         self,
-    ) -> Dict[MarketRegime, Dict[PatternCategory, float]]:
+    ) -> dict[MarketRegime, dict[PatternCategory, float]]:
         """Initialize success rate thresholds by regime and category."""
         return {
             MarketRegime.STRONG_BULL_TREND: {
@@ -467,15 +462,15 @@ class AdaptivePatternSelector:
 
         self.market_history.append(self.current_condition)
 
-    def select_active_patterns(self, available_patterns: List[str]) -> Set[str]:
+    def select_active_patterns(self, available_patterns: list[str]) -> set[str]:
         """
         Select patterns to activate based on current conditions.
 
         Args:
-            available_patterns: List of available pattern names
+            available_patterns: list of available pattern names
 
         Returns:
-            Set of pattern names to activate
+            set of pattern names to activate
         """
         if not self.current_condition:
             # Default selection if no market condition available
@@ -529,7 +524,7 @@ class AdaptivePatternSelector:
         )
         return selected_patterns
 
-    def _default_pattern_selection(self, available_patterns: List[str]) -> Set[str]:
+    def _default_pattern_selection(self, available_patterns: list[str]) -> set[str]:
         """Default pattern selection when no market condition is available."""
         # Select high-reliability patterns
         reliable_patterns = {
@@ -545,17 +540,17 @@ class AdaptivePatternSelector:
         return set(available_patterns) & reliable_patterns
 
     def _rank_patterns_by_performance(
-        self, patterns: List[str], threshold: float
-    ) -> List[Tuple[str, float]]:
+        self, patterns: list[str], threshold: float
+    ) -> list[tuple[str, float]]:
         """
         Rank patterns by performance score.
 
         Args:
-            patterns: List of pattern names
+            patterns: list of pattern names
             threshold: Minimum success rate threshold
 
         Returns:
-            List of (pattern_name, score) tuples, sorted by score descending
+            list of (pattern_name, score) tuples, sorted by score descending
         """
         pattern_scores = []
 
@@ -599,20 +594,20 @@ class AdaptivePatternSelector:
 
     def _select_within_constraints(
         self,
-        ranked_patterns: List[Tuple[str, float]],
+        ranked_patterns: list[tuple[str, float]],
         _category: PatternCategory,
         max_count: int,
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Select patterns within resource constraints.
 
         Args:
-            ranked_patterns: List of (pattern, score) tuples
+            ranked_patterns: list of (pattern, score) tuples
             category: Pattern category
             max_count: Maximum number of patterns to select
 
         Returns:
-            List of selected pattern names
+            list of selected pattern names
         """
         selected = []
         total_time = 0
@@ -645,8 +640,8 @@ class AdaptivePatternSelector:
         return selected
 
     def _ensure_minimum_coverage(
-        self, selected: Set[str], available: List[str]
-    ) -> Set[str]:
+        self, selected: set[str], available: list[str]
+    ) -> set[str]:
         """Ensure minimum pattern coverage across categories."""
         # Ensure at least one pattern from each major category
         major_categories = {PatternCategory.TREND, PatternCategory.OSCILLATOR}
@@ -709,8 +704,8 @@ class AdaptivePatternSelector:
         """Get comprehensive pattern performance statistics."""
         total_patterns = len(self.pattern_performance)
         active_patterns = 0
-        category_distribution: Dict[str, int] = defaultdict(int)
-        performance_summary: Dict[str, dict[str, float | int]] = {}
+        category_distribution: dict[str, int] = defaultdict(int)
+        performance_summary: dict[str, dict[str, float | int]] = {}
         weighted_execution_time = 0.0
         weighted_memory_usage = 0.0
         total_usage_count = 0

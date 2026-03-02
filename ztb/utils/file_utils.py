@@ -7,7 +7,7 @@ File I/O utilities for ZTB system
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 import pandas as pd
 
@@ -17,7 +17,6 @@ from ztb.types.common import ConfigDict
 from ztb.utils.path_utils import get_project_root
 
 logger = logging.getLogger(__name__)
-
 
 def safe_json_load(file_path: Path, default: Any = None) -> Any:
     """
@@ -45,10 +44,9 @@ def safe_json_load(file_path: Path, default: Any = None) -> Any:
             return default()
         return default
 
-
 def safe_json_dump(
     data: Any,
-    file_path: Union[str, Path],
+    file_path: str | Path,
     indent: int = 2,
     default: Any = None,
     ensure_ascii: bool = False,
@@ -91,8 +89,7 @@ def safe_json_dump(
         logger.error(f"Failed to save JSON to {file_path}: {e}")
         return False
 
-
-def load_config_file(file_path: Path) -> Optional[Dict[str, Any]]:
+def load_config_file(file_path: Path) -> dict[str, Any] | None:
     """
     Load configuration from a JSON file.
 
@@ -112,7 +109,6 @@ def load_config_file(file_path: Path) -> Optional[Dict[str, Any]]:
 
     return config
 
-
 def save_config_file(config: ConfigDict, file_path: Path) -> bool:
     """
     Save configuration to a JSON file.
@@ -126,8 +122,7 @@ def save_config_file(config: ConfigDict, file_path: Path) -> bool:
     """
     return safe_json_dump(config, file_path)
 
-
-def read_text_file(file_path: Path, encoding: str = "utf-8") -> Optional[str]:
+def read_text_file(file_path: Path, encoding: str = "utf-8") -> str | None:
     """
     Read text content from a file.
 
@@ -143,7 +138,6 @@ def read_text_file(file_path: Path, encoding: str = "utf-8") -> Optional[str]:
     except Exception as e:
         logger.error(f"Failed to read text file {file_path}: {e}")
         return None
-
 
 def write_text_file(content: str, file_path: Path, encoding: str = "utf-8") -> bool:
     """
@@ -163,7 +157,6 @@ def write_text_file(content: str, file_path: Path, encoding: str = "utf-8") -> b
     except Exception as e:
         logger.error(f"Failed to write text file {file_path}: {e}")
         return False
-
 
 def append_text_file(content: str, file_path: Path, encoding: str = "utf-8") -> bool:
     """
@@ -186,7 +179,6 @@ def append_text_file(content: str, file_path: Path, encoding: str = "utf-8") -> 
         logger.error(f"Failed to append to text file {file_path}: {e}")
         return False
 
-
 def file_exists_and_not_empty(file_path: Path) -> bool:
     """
     Check if a file exists and is not empty.
@@ -205,8 +197,7 @@ def file_exists_and_not_empty(file_path: Path) -> bool:
     except Exception:
         return False
 
-
-def get_file_size(file_path: Path) -> Optional[int]:
+def get_file_size(file_path: Path) -> int | None:
     """
     Get file size in bytes.
 
@@ -222,8 +213,7 @@ def get_file_size(file_path: Path) -> Optional[int]:
         logger.error(f"Failed to get file size for {file_path}: {e}")
         return None
 
-
-def backup_file(file_path: Path, suffix: str = ".backup") -> Optional[Path]:
+def backup_file(file_path: Path, suffix: str = ".backup") -> Path | None:
     """
     Create a backup of a file.
 
@@ -249,9 +239,8 @@ def backup_file(file_path: Path, suffix: str = ".backup") -> Optional[Path]:
         logger.error(f"Failed to backup file {file_path}: {e}")
         return None
 
-
 def save_csv_data(
-    df: pd.DataFrame, file_path: Union[str, Path], index: bool = False, **kwargs: Any
+    df: pd.DataFrame, file_path: str | Path, index: bool = False, **kwargs: Any
 ) -> bool:
     """
     Safely save DataFrame to CSV file with error handling.

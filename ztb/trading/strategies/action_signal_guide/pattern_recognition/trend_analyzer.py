@@ -6,13 +6,12 @@ ADX, Wave Counting, Dow Theoryを統合した階層的トレンド分析
 
 from __future__ import annotations
 
-from typing import Literal, Optional, TypedDict
+from typing import Literal, TypedDict
 
 import numpy as np
 import pandas as pd
 
 from .base import SignalResult, TrendPatternRecognizer
-
 
 class PivotPoint(TypedDict):
     """Pivot point used by wave-structure analysis."""
@@ -21,13 +20,11 @@ class PivotPoint(TypedDict):
     index: int
     price: float
 
-
 class WaveStructure(TypedDict):
     """Wave-structure classification result."""
 
     pattern: str
     direction: int
-
 
 class PrimaryTrendAnalysis(TypedDict):
     """Primary trend payload (Dow-theory style)."""
@@ -39,14 +36,12 @@ class PrimaryTrendAnalysis(TypedDict):
     current_price: float
     normalized_slope: float
 
-
 class WaveAnalysis(TypedDict):
     """Wave analysis payload used for confidence adjustment."""
 
     pivots: list[PivotPoint]
     wave_structure: WaveStructure
     confidence: float
-
 
 class HierarchicalTrendAnalyzer(TrendPatternRecognizer):
     """
@@ -57,7 +52,7 @@ class HierarchicalTrendAnalyzer(TrendPatternRecognizer):
     Phase 3: 詳細波動分析 (Wave Counting) - 強トレンド時のみ
     """
 
-    def __init__(self, config: Optional[dict[str, object]] = None):
+    def __init__(self, config: dict[str, object] | None = None):
         super().__init__(config)
         self.pattern_type = "hierarchical_trend"
 
@@ -110,7 +105,7 @@ class HierarchicalTrendAnalyzer(TrendPatternRecognizer):
 
     def recognize(
         self, data: pd.DataFrame, index: int = -1, **kwargs
-    ) -> Optional[SignalResult]:
+    ) -> SignalResult | None:
         """
         階層的トレンド分析を実行
 
@@ -181,7 +176,7 @@ class HierarchicalTrendAnalyzer(TrendPatternRecognizer):
 
     def _analyze_primary_trend(
         self, data: pd.DataFrame, index: int
-    ) -> Optional[PrimaryTrendAnalysis]:
+    ) -> PrimaryTrendAnalysis | None:
         """Phase 1: Dow Theoryによる基本トレンド分析"""
         try:
             # 移動平均によるトレンド判定
@@ -283,7 +278,7 @@ class HierarchicalTrendAnalyzer(TrendPatternRecognizer):
 
     def _analyze_wave_patterns(
         self, data: pd.DataFrame, index: int
-    ) -> Optional[WaveAnalysis]:
+    ) -> WaveAnalysis | None:
         """Phase 3: Wave Countingによる詳細波動分析"""
         try:
             # 簡易的な波動パターン検出
@@ -357,7 +352,7 @@ class HierarchicalTrendAnalyzer(TrendPatternRecognizer):
         self,
         primary_trend: PrimaryTrendAnalysis,
         trend_strength: float,
-        wave_analysis: Optional[WaveAnalysis],
+        wave_analysis: WaveAnalysis | None,
     ) -> SignalResult:
         """統合シグナル生成"""
         direction = int(primary_trend["direction"])

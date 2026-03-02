@@ -16,12 +16,11 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from collections import deque
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Optional
 
 from ztb.training.callbacks.monitoring.metrics_collector import MetricsCollector
 from ztb.training.callbacks.performance.memory_optimizer import LRUCache
 from ztb.types.common import ObjectMap, ObjectRecords
-
 
 class ErrorSeverity(Enum):
     """Error severity levels."""
@@ -31,7 +30,6 @@ class ErrorSeverity(Enum):
     HIGH = "high"
     CRITICAL = "critical"
 
-
 class ErrorHandlingStrategy(Enum):
     """Error handling strategies."""
 
@@ -40,7 +38,6 @@ class ErrorHandlingStrategy(Enum):
     SKIP = "skip"  # Skip this callback
     DISABLE = "disable"  # Disable this callback
     ABORT = "abort"  # Abort training
-
 
 @dataclass
 class LearningContext:
@@ -69,7 +66,7 @@ class LearningContext:
     # Training state
     is_training: bool = True
     learning_rate: float = 0.001
-    loss: Optional[float] = None
+    loss: float | None = None
 
     # Learning type specific
     learning_type: str = "unknown"  # reinforcement, supervised, unsupervised, etc.
@@ -89,7 +86,6 @@ class LearningContext:
         except Exception:
             pass
 
-
 @dataclass
 class ErrorContext:
     """Context information for errors."""
@@ -104,8 +100,7 @@ class ErrorContext:
     severity: ErrorSeverity = ErrorSeverity.MEDIUM
     strategy: ErrorHandlingStrategy = ErrorHandlingStrategy.CONTINUE
 
-
-def safe_callback_execution(error_config: Optional[ObjectMap] = None):
+def safe_callback_execution(error_config: ObjectMap | None = None):
     """
     Decorator for applying safe error handling to callback methods.
 
@@ -130,7 +125,6 @@ def safe_callback_execution(error_config: Optional[ObjectMap] = None):
 
     return decorator
 
-
 class ErrorHandlingMixin:
     """
     Mixin class providing comprehensive error handling capabilities.
@@ -143,7 +137,7 @@ class ErrorHandlingMixin:
     - Error recovery patterns
     """
 
-    def __init__(self, error_handling_config: Optional[ObjectMap] = None):
+    def __init__(self, error_handling_config: ObjectMap | None = None):
         self.logger = logging.getLogger(self.__class__.__name__)
         self._error_config = error_handling_config or {
             "max_retries": 3,
@@ -155,7 +149,7 @@ class ErrorHandlingMixin:
         }
 
         self._error_history: deque[ErrorContext] = deque(maxlen=100)
-        self._error_counts: Dict[str, int] = {}
+        self._error_counts: dict[str, int] = {}
         self._consecutive_errors = 0
         self._error_lock = threading.RLock()
         self._is_recovering = False
@@ -700,7 +694,6 @@ class ErrorHandlingMixin:
             self._is_recovering = False
             self.logger.info("Error recovery mode disabled")
 
-
 class LearningCallback(abc.ABC):
     """
     Abstract base class for learning callbacks.
@@ -716,66 +709,66 @@ class LearningCallback(abc.ABC):
 
     @abc.abstractmethod
     def on_training_start(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         """Called at the start of training."""
         pass
 
     @abc.abstractmethod
     def on_training_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         """Called at the end of training."""
         pass
 
     @abc.abstractmethod
     def on_epoch_start(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         """Called at the start of each epoch."""
         pass
 
     @abc.abstractmethod
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         """Called at the end of each epoch."""
         pass
 
     @abc.abstractmethod
     def on_batch_start(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         """Called at the start of each batch."""
         pass
 
     @abc.abstractmethod
     def on_batch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         """Called at the end of each batch."""
         pass
 
     def on_validation_start(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         """Called at the start of validation (optional)."""
         pass
 
     def on_validation_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         """Called at the end of validation (optional)."""
         pass
 
     def on_test_start(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         """Called at the start of testing (optional)."""
         pass
 
     def on_test_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         """Called at the end of testing (optional)."""
         pass
@@ -789,7 +782,6 @@ class LearningCallback(abc.ABC):
             "description": self.__doc__ or "No description available",
         }
 
-
 class MemoryOptimizedCallback(LearningCallback, ErrorHandlingMixin):
     """
     Base class for memory-optimized callbacks with enhanced error handling.
@@ -802,7 +794,7 @@ class MemoryOptimizedCallback(LearningCallback, ErrorHandlingMixin):
     def __init__(
         self,
         cache_size: int = 1000,
-        error_handling_config: Optional[ObjectMap] = None,
+        error_handling_config: ObjectMap | None = None,
     ):
         LearningCallback.__init__(self)
         ErrorHandlingMixin.__init__(self, error_handling_config)
@@ -829,7 +821,7 @@ class MemoryOptimizedCallback(LearningCallback, ErrorHandlingMixin):
 
         self.safe_execute(_cache_operation)
 
-    def get_cached_data(self, key: str) -> Optional[object]:
+    def get_cached_data(self, key: str) -> object | None:
         """Retrieve cached data with error handling."""
 
         def _get_operation():
@@ -845,14 +837,13 @@ class MemoryOptimizedCallback(LearningCallback, ErrorHandlingMixin):
 
         self.safe_execute(_cache_metrics_operation)
 
-    def get_cached_metrics(self, key: str) -> Optional[ObjectMap]:
+    def get_cached_metrics(self, key: str) -> ObjectMap | None:
         """Retrieve cached metrics with error handling."""
 
         def _get_metrics_operation():
             return self.metrics_cache.get(key)
 
         return self.safe_execute(_get_metrics_operation)
-
 
 class NoOpMemoryOptimizedCallback(MemoryOptimizedCallback):
     """
@@ -863,35 +854,34 @@ class NoOpMemoryOptimizedCallback(MemoryOptimizedCallback):
     """
 
     def on_training_start(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         return None
 
     def on_training_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         return None
 
     def on_epoch_start(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         return None
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         return None
 
     def on_batch_start(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         return None
 
     def on_batch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         return None
-
 
 class MetricsCallback(LearningCallback):
     """
@@ -900,16 +890,16 @@ class MetricsCallback(LearningCallback):
     Provides integration with the metrics collection system.
     """
 
-    def __init__(self, metrics_collector: Optional[MetricsCollector] = None):
+    def __init__(self, metrics_collector: MetricsCollector | None = None):
         super().__init__()
         self.metrics_collector = metrics_collector
 
     def record_metric(
         self,
         name: str,
-        value: Union[int, float],
-        tags: Optional[Dict[str, str]] = None,
-        metadata: Optional[ObjectMap] = None,
+        value: int | float,
+        tags: dict[str, str] | None = None,
+        metadata: ObjectMap | None = None,
     ) -> None:
         """Record a metric value."""
         if self.metrics_collector:
@@ -920,7 +910,6 @@ class MetricsCallback(LearningCallback):
         if self.metrics_collector:
             return self.metrics_collector.get_latest_metrics()
         return {}
-
 
 class AdaptiveCallback(LearningCallback):
     """
@@ -940,7 +929,7 @@ class AdaptiveCallback(LearningCallback):
         return context.epoch % self.adaptation_frequency == 0
 
     def adapt(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> ObjectMap:
         """Perform adaptation and return adaptation details."""
         adaptation_info = {
@@ -958,12 +947,11 @@ class AdaptiveCallback(LearningCallback):
         """Get history of adaptations."""
         return list(self.adaptation_history)
 
-
 class CallbackManager:
     """Minimal callback manager so tests can import and register callbacks."""
 
     def __init__(self):
-        self.callbacks: List[object] = []
+        self.callbacks: list[object] = []
 
     def register(self, cb: object) -> None:
         self.callbacks.append(cb)
@@ -984,21 +972,21 @@ class CallbackManager:
 
     # Convenience event dispatchers used in tests/docs
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         self.notify("on_epoch_end", context, logs)
 
     def on_epoch_start(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         self.notify("on_epoch_start", context, logs)
 
     def on_batch_start(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         self.notify("on_batch_start", context, logs)
 
     def on_batch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         self.notify("on_batch_end", context, logs)

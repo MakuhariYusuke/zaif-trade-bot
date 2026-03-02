@@ -6,7 +6,7 @@ import dataclasses
 import gc
 import logging
 from collections import deque
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, TypeAlias, Union
+from typing import TYPE_CHECKING, Optional, TypeAlias
 
 import gymnasium as gym
 import numpy as np
@@ -104,7 +104,6 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-
 def deep_merge_dict(base: ObjectMap, update: ObjectMap) -> ObjectMap:
     """Deep merge two dictionaries."""
     result: ObjectMap = base.copy()
@@ -119,7 +118,6 @@ def deep_merge_dict(base: ObjectMap, update: ObjectMap) -> ObjectMap:
             result[key] = value
 
     return result
-
 
 class HeavyTradingEnv(
     gym.Env[NDArray[np.float32], int],
@@ -141,7 +139,7 @@ class HeavyTradingEnv(
     DEFAULT_PREPROCESS_CHUNK_SIZE = 32
 
     # --- START: Debug Methods ---
-    def enable_debug_mode(self, model: Optional[object] = None) -> None:
+    def enable_debug_mode(self, model: object | None = None) -> None:
         """Enable debug mode to get detailed info from the environment."""
         self._model = model
         self._debug_mode = True
@@ -257,13 +255,13 @@ class HeavyTradingEnv(
     action_executor: ActionExecutor
     data_manager: DataManager
     statistics_calculator: StatisticsCalculator
-    adaptive_feature_selector: Optional["AdaptiveFeatureSelector"]
+    adaptive_feature_selector: AdaptiveFeatureSelector | None
     state_manager: StateManager
     validation_manager: ValidationManager
 
     # Data attributes
     df: pd.DataFrame
-    features: List[str]
+    features: list[str]
     reward_settings: RewardSettings
     reward_history: deque[float]
     position_history: deque[float]
@@ -271,23 +269,23 @@ class HeavyTradingEnv(
     pnl_history: deque[float]
     trade_interval_history: deque[int]
     action_history: deque[int]
-    _current_episode_actions: List[int]
-    _action_counts: List[int]
+    _current_episode_actions: list[int]
+    _action_counts: list[int]
     _feature_matrix: NDArray[np.float32]
-    _price_array: Optional[NDArray[np.float32]]
-    _close_array: Optional[NDArray[np.float32]]
-    _atr_array: Optional[NDArray[np.float32]]
-    _episode_id_array: Optional[NDArray[np.generic]]
-    _timestamp_column: Optional[str]
-    _episode_id_column: Optional[str]
-    _stream_last_timestamp: Optional[pd.Timestamp]
+    _price_array: NDArray[np.float32] | None
+    _close_array: NDArray[np.float32] | None
+    _atr_array: NDArray[np.float32] | None
+    _episode_id_array: NDArray[np.generic] | None
+    _timestamp_column: str | None
+    _episode_id_column: str | None
+    _stream_last_timestamp: pd.Timestamp | None
     _stream_rows_appended: int
-    _last_trade_step: Optional[int]
+    _last_trade_step: int | None
     _obs_step_count: int
     _consecutive_trade_steps: int
     _max_history_length: int
     _max_action_history: int
-    _previous_portfolio_value: Optional[float]
+    _previous_portfolio_value: float | None
     current_step: int
     n_steps: int
     _position: float
@@ -298,8 +296,8 @@ class HeavyTradingEnv(
     portfolio_value_history: deque[float]
     _portfolio_value: float
     initial_portfolio_value: float
-    regime_str: Optional[str]
-    _entry_regime: Optional[str]
+    regime_str: str | None
+    _entry_regime: str | None
 
     # Bind helper functions as methods
     _initialize_data_manager = _initialize_data_manager
@@ -350,15 +348,15 @@ class HeavyTradingEnv(
     def __init__(
         self,
         df: pd.DataFrame,
-        config: Union[ObjectMap, EnvironmentConfig],
+        config: ObjectMap | EnvironmentConfig,
         initial_balance: float = 100_000.0,
         transaction_cost: float = 0.00075,
         max_position_size: float = 1.0,
         use_continuous_actions: bool = False,
-        action_space_type: Optional[str] = None,
-        streaming_pipeline: Optional["StreamingPipeline"] = None,
-        stream_to_bars_converter: Optional["StreamToBarsConverter"] = None,
-        fee_model: Optional[ExchangeFeeModel] = None,
+        action_space_type: str | None = None,
+        streaming_pipeline: StreamingPipeline | None = None,
+        stream_to_bars_converter: StreamToBarsConverter | None = None,
+        fee_model: ExchangeFeeModel | None = None,
         **kwargs: object,
     ) -> None:
         """Initialize the trading environment."""
@@ -452,7 +450,7 @@ class HeavyTradingEnv(
         )
 
         if getattr(self.config, "reward_settings", None):
-            reward_settings_dict: Optional[RewardSettings] = self.config.reward_settings
+            reward_settings_dict: RewardSettings | None = self.config.reward_settings
             if reward_settings_dict is not None:
                 reward_settings_dict_as_dict = dataclasses.asdict(reward_settings_dict)
                 merged = deep_merge_dict(
@@ -526,7 +524,7 @@ class HeavyTradingEnv(
         self._initialize_data(df)
         # Cache market regime per step to avoid O(n) classifier work on every step
         # (backtests call _get_current_market_regime multiple times per step).
-        self._market_regime_cache: list[Optional[V444RegimeType]] = [
+        self._market_regime_cache: list[V444RegimeType | None] = [
             None
         ] * self.n_steps
         self._initialize_features_and_spaces(max_features)
@@ -536,8 +534,8 @@ class HeavyTradingEnv(
         train_end_index = self.config.train_end_index
 
         # スケーラーを初期化
-        self.scaler_mean: Optional[NDArray[np.float64]] = None
-        self.scaler_std: Optional[NDArray[np.float64]] = None
+        self.scaler_mean: NDArray[np.float64] | None = None
+        self.scaler_std: NDArray[np.float64] | None = None
         if self.scaler_mean is None:
             self._compute_scaler_from_data(train_end_index=train_end_index)
 
@@ -620,9 +618,9 @@ class HeavyTradingEnv(
     def reset(
         self,
         *,
-        seed: Optional[int] = None,
-        options: Optional[ObjectMap] = None,
-    ) -> Tuple[NDArray[np.float32], dict[str, object]]:
+        seed: int | None = None,
+        options: ObjectMap | None = None,
+    ) -> tuple[NDArray[np.float32], dict[str, object]]:
         super().reset(seed=seed)
 
         # Domain Randomization
@@ -721,7 +719,7 @@ class HeavyTradingEnv(
         self.trades_count = pos_info["trades_count"]
 
     def get_legal_actions(self) -> NDArray[np.int_]:
-        market_regime: Optional[str] = None
+        market_regime: str | None = None
         try:
             regime_obj = self._get_current_market_regime()
             market_regime = (
@@ -838,10 +836,8 @@ class HeavyTradingEnv(
 
     def step(
         self,
-        action: Union[
-            int, np.ndarray
-        ],  # Can be int (discrete) or np.ndarray (continuous)
-    ) -> Tuple[NDArray[np.float32], float, bool, bool, dict[str, object]]:
+        action: int | np.ndarray,  # Can be int (discrete) or np.ndarray (continuous)
+    ) -> tuple[NDArray[np.float32], float, bool, bool, dict[str, object]]:
         # Get current market regime
         # Use _get_current_market_regime to ensure consistency with PositionManager
         # and support V444RegimeClassifier if enabled
@@ -1605,7 +1601,7 @@ class HeavyTradingEnv(
         self.statistics_calculator.reset()
         self.memory_manager.collect_garbage_aggressive()
 
-    def get_feature_names(self) -> List[str]:
+    def get_feature_names(self) -> list[str]:
         return self.features
 
     def get_statistics(self) -> StatisticsDict:
@@ -1617,7 +1613,7 @@ class HeavyTradingEnv(
     def get_trades_per_1k(self) -> float:
         return self.statistics_calculator.get_trades_per_1k_steps(self.current_step)
 
-    def get_last_actions(self) -> List[int]:
+    def get_last_actions(self) -> list[int]:
         return self._current_episode_actions.copy()
     
     # メトリクス抽出用プロパティ
@@ -1644,8 +1640,8 @@ class HeavyTradingEnv(
 
     def enable_market_regime_adaptation(
         self,
-        regime_classifier: Optional["MarketRegimeClassifier"] = None,
-        adaptation_config: Optional[ObjectMap] = None,
+        regime_classifier: MarketRegimeClassifier | None = None,
+        adaptation_config: ObjectMap | None = None,
     ) -> None:
         """
         Enable market regime adaptation for the environment
@@ -1668,11 +1664,10 @@ class HeavyTradingEnv(
         # Alias for backward compatibility
         self.regime_statistics = self.regime_stats
 
-        # Set the flag to indicate regime adaptation is enabled
+        # set the flag to indicate regime adaptation is enabled
         self.market_regime_adaptation_enabled = True
 
         logger.info("Market regime adaptation enabled in environment")
-
 
 class FlipHeavyTradingEnv(HeavyTradingEnv):
     """Flipped version of HeavyTradingEnv for symmetry testing."""
@@ -1717,8 +1712,8 @@ class FlipHeavyTradingEnv(HeavyTradingEnv):
         return flipped_obs
 
     def step(
-        self, action: Union[int, np.ndarray]
-    ) -> Tuple[NDArray[np.float32], float, bool, bool, dict[str, object]]:
+        self, action: int | np.ndarray
+    ) -> tuple[NDArray[np.float32], float, bool, bool, dict[str, object]]:
         flipped_action = action
         if action == ACTION_BUY:
             flipped_action = ACTION_SELL
@@ -1743,8 +1738,8 @@ class FlipHeavyTradingEnv(HeavyTradingEnv):
 
     def enable_market_regime_adaptation(
         self,
-        regime_classifier: Optional["MarketRegimeClassifier"] = None,
-        adaptation_config: Optional[ObjectMap] = None,
+        regime_classifier: MarketRegimeClassifier | None = None,
+        adaptation_config: ObjectMap | None = None,
     ) -> None:
         """
         FlipHeavyTradingEnv 用: 市場レジーム適応を有効化します。

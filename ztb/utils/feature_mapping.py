@@ -1,11 +1,10 @@
-from typing import List
+
 
 import pandas as pd
 
-
 def map_trained_features(
-    df: pd.DataFrame, trained_feature_names: List[str]
-) -> List[str]:
+    df: pd.DataFrame, trained_feature_names: list[str]
+) -> list[str]:
     """
     Attempt to map a list of trained feature names to column names in the provided DataFrame.
     Returns a list of matched column names (same length as trained_feature_names) if a full

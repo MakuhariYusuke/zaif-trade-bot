@@ -12,11 +12,10 @@ Example:
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Optional
 
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.vec_env import VecEnv
-
 
 class BaseRLAlgorithm(ABC):
     """
@@ -30,8 +29,8 @@ class BaseRLAlgorithm(ABC):
     def create_model(
         self,
         env: VecEnv,
-        config: Dict[str, Any],
-        tensorboard_log: Optional[str] = None,
+        config: dict[str, Any],
+        tensorboard_log: str | None = None,
     ) -> BaseAlgorithm:
         """
         モデルを作成する。
@@ -58,7 +57,7 @@ class BaseRLAlgorithm(ABC):
         self,
         model: BaseAlgorithm,
         total_timesteps: int,
-        callback: Optional[Callable[..., Any]] = None,
+        callback: Callable[..., Any] | None = None,
         **kwargs: Any,
     ) -> BaseAlgorithm:
         """
@@ -83,7 +82,7 @@ class BaseRLAlgorithm(ABC):
         pass
 
     @abstractmethod
-    def get_default_config(self) -> Dict[str, Any]:
+    def get_default_config(self) -> dict[str, Any]:
         """
         デフォルト設定を取得する。
 
@@ -115,7 +114,7 @@ class BaseRLAlgorithm(ABC):
         """
         pass
 
-    def validate_config(self, config: Dict[str, Any]) -> bool:
+    def validate_config(self, config: dict[str, Any]) -> bool:
         """
         設定の妥当性を検証する（オプション）。
 

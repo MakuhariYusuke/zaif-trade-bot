@@ -46,5 +46,4 @@ else:
             def train(self, *args, **kwargs) -> object:  # pragma: no cover
                 raise RuntimeError("PPOTrainer implementation not available")
 
-
 __all__ = ["PPOTrainer"]

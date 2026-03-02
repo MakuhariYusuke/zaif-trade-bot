@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # Add project root to path
 project_root = Path(__file__).parent
@@ -10,10 +10,9 @@ from ztb.io.data_loader import DataLoader
 from ztb.io.json_io import read_json
 from ztb.utils.config import TypedConfig
 
-
 def check_feature_schema(
     dataset_path: str = "ml-dataset-enhanced.csv",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Check feature schema compatibility.
 
     Args:
@@ -56,7 +55,6 @@ def check_feature_schema(
 
     except FileNotFoundError:
         return {"error": f"Dataset file not found: {dataset_path}"}
-
 
 if __name__ == "__main__":
     check_feature_schema()

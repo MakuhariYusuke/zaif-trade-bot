@@ -6,7 +6,6 @@ Uses the base optimizer class for common functionality.
 
 import sys
 from pathlib import Path
-from typing import Union
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -15,7 +14,6 @@ from ztb.training.binary_search.base_optimizer import (
     BinarySearchArgumentParser,
     HyperparameterOptimizer,
 )
-
 
 class RiskFreeRateOptimizer(HyperparameterOptimizer):
     """Optimizer for risk_free_rate parameter."""
@@ -28,10 +26,9 @@ class RiskFreeRateOptimizer(HyperparameterOptimizer):
         """Get the range for risk_free_rate binary search."""
         return (0.0, 0.1)  # Reasonable range for risk-free rates
 
-    def update_ppo_params(self, value: Union[int, float]) -> None:
+    def update_ppo_params(self, value: int | float) -> None:
         """Update environment config with risk_free_rate value."""
         self.env_config.risk_free_rate = float(value)
-
 
 def main() -> None:
     parser = BinarySearchArgumentParser.create_parser(
@@ -60,7 +57,6 @@ def main() -> None:
         print(
             f"\nOptimization complete. Best risk_free_rate: {best_value}, Score: {best_score:.6f}"
         )
-
 
 if __name__ == "__main__":
     main()

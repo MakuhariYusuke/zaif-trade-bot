@@ -6,8 +6,6 @@ to have sufficient historical data for computation.
 """
 
 import math
-from typing import Dict, Union
-
 
 def get_max_lookback() -> int:
     """
@@ -52,7 +50,6 @@ def get_max_lookback() -> int:
 
     return max_lookback
 
-
 def calculate_warmup(
     safety_margin: float = 0.1,
 ) -> int:
@@ -76,10 +73,9 @@ def calculate_warmup(
     warmup = math.ceil(max_lookback * (1.0 + safety_margin))
     return warmup
 
-
 def get_warmup_with_metadata(
     safety_margin: float = 0.1,
-) -> Dict[str, Union[int, float]]:
+) -> dict[str, int | float]:
     """
     Get warmup calculation with detailed metadata.
 
@@ -104,7 +100,6 @@ def get_warmup_with_metadata(
         "safety_margin": safety_margin,
         "warmup": warmup,
     }
-
 
 def validate_warmup(
     provided_warmup: int,

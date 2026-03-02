@@ -6,12 +6,10 @@ v394シリーズの訓練進捗モニタリング
 from datetime import datetime
 from pathlib import Path
 
-
 def parse_tensorboard_logs(session_dir: Path) -> dict[str, str]:
     """TensorBoardログから最新のメトリクスを取得（簡易版）"""
     # 実装は複雑なので、ここでは手動確認を推奨
     return {}
-
 
 def monitor_training_progress() -> None:
     """訓練進捗を表示"""
@@ -52,7 +50,6 @@ def monitor_training_progress() -> None:
     print("   - Look for 'pan_action_counts' in training logs")
     print("   - Format: [HOLD, BUY, SELL]")
     print("=" * 80)
-
 
 if __name__ == "__main__":
     monitor_training_progress()

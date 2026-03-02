@@ -4,8 +4,6 @@ Volume Pattern Recognizers - Chaikin AD
 This module provides pattern recognition for volume-based technical indicators.
 """
 
-from typing import Optional
-
 import pandas as pd
 
 try:
@@ -16,14 +14,13 @@ except ImportError:
 
 from .base import IndicatorPatternRecognizer, MultiTimeframeData, SignalResult
 
-
 class ChaikinADRecognizer(IndicatorPatternRecognizer):
     """
     Chaikin Accumulation/Distribution pattern recognizer.
     Identifies accumulation/distribution patterns using Chaikin AD.
     """
 
-    def __init__(self, config: Optional[dict[str, object]] = None):
+    def __init__(self, config: dict[str, object] | None = None):
         super().__init__(config)
         self.pattern_type = "chaikin_ad"
         self.confirmation_period = int(self.config.get("confirmation_period", 5))
@@ -33,8 +30,8 @@ class ChaikinADRecognizer(IndicatorPatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[MultiTimeframeData] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """
         Recognize Chaikin AD patterns.
 

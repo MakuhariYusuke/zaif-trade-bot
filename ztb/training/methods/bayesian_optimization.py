@@ -20,7 +20,7 @@ Bayesian Optimization: ベイズ最適化による効率的探索
 """
 
 import time
-from typing import Any, Callable, List
+from typing import Any, Callable
 
 from ztb.optimization.base import (
     OptimizationResult,
@@ -29,7 +29,6 @@ from ztb.optimization.base import (
     ParameterType,
     TrialResult,
 )
-
 
 class BayesianOptimizer(OptimizerBase):
     """
@@ -55,7 +54,7 @@ class BayesianOptimizer(OptimizerBase):
 
     def __init__(
         self,
-        parameter_spaces: List[ParameterSpace],
+        parameter_spaces: list[ParameterSpace],
         objective_function: Callable[[dict[str, Any]], TrialResult],
         n_trials: int = 30,
         n_initial_points: int = 10,
@@ -98,7 +97,7 @@ class BayesianOptimizer(OptimizerBase):
                 "インストール: pip install scikit-optimize"
             )
 
-    def _convert_to_skopt_space(self) -> List[Any]:
+    def _convert_to_skopt_space(self) -> list[Any]:
         """ParameterSpaceをskoptのスペースに変換"""
         from skopt.space import Categorical, Integer, Real
 
@@ -139,7 +138,7 @@ class BayesianOptimizer(OptimizerBase):
 
         return skopt_space
 
-    def _objective_wrapper(self, params: List[Any]) -> float:
+    def _objective_wrapper(self, params: list[Any]) -> float:
         """skopt用の目的関数ラッパー"""
         # リストを辞書に変換
         parameters = dict(zip(self.param_names, params))

@@ -7,7 +7,6 @@ for improved temporal pattern recognition in trading environments.
 """
 
 import math
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -26,7 +25,6 @@ except Exception:
     F = _FunctionalFallback()
 from stable_baselines3.common.policies import ActorCriticPolicy
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
-
 
 class LSTMFeatureExtractor(BaseFeaturesExtractor):
     """
@@ -128,7 +126,6 @@ class LSTMFeatureExtractor(BaseFeaturesExtractor):
 
         return features
 
-
 class PositionalEncoding(nn.Module):
     """
     Positional encoding for Transformer architecture.
@@ -163,7 +160,6 @@ class PositionalEncoding(nn.Module):
         """
         return x + self.pe[:, : x.size(1)]
 
-
 class TransformerBlock(nn.Module):
     """
     Transformer encoder block with multi-head attention.
@@ -186,7 +182,7 @@ class TransformerBlock(nn.Module):
         )
 
     def forward(
-        self, x: torch.Tensor, mask: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, mask: torch.Tensor | None = None
     ) -> torch.Tensor:
         """
         Forward pass through transformer block.
@@ -207,7 +203,6 @@ class TransformerBlock(nn.Module):
         x = self.norm2(x + ff_out)
 
         return x
-
 
 class TransformerFeatureExtractor(BaseFeaturesExtractor):
     """
@@ -309,7 +304,6 @@ class TransformerFeatureExtractor(BaseFeaturesExtractor):
 
         return features
 
-
 class LSTMPolicy(ActorCriticPolicy):
     """
     SAC policy using LSTM feature extractor.
@@ -323,7 +317,7 @@ class LSTMPolicy(ActorCriticPolicy):
             if param in kwargs:
                 lstm_kwargs[param] = kwargs.pop(param)
 
-        # Set default values if not provided
+        # set default values if not provided
         lstm_kwargs.setdefault("lstm_hidden_size", 128)
         lstm_kwargs.setdefault("lstm_layers", 2)
         lstm_kwargs.setdefault("dropout", 0.1)
@@ -334,11 +328,10 @@ class LSTMPolicy(ActorCriticPolicy):
             kwargs["features_extractor_kwargs"] = {}
         kwargs["features_extractor_kwargs"].update(lstm_kwargs)
 
-        # Set features extractor class
+        # set features extractor class
         kwargs["features_extractor_class"] = LSTMFeatureExtractor
 
         super().__init__(*args, **kwargs)
-
 
 class TransformerPolicy(ActorCriticPolicy):
     """
@@ -360,7 +353,7 @@ class TransformerPolicy(ActorCriticPolicy):
             if param in kwargs:
                 transformer_kwargs[param] = kwargs.pop(param)
 
-        # Set default values if not provided
+        # set default values if not provided
         transformer_kwargs.setdefault("d_model", 128)
         transformer_kwargs.setdefault("n_heads", 8)
         transformer_kwargs.setdefault("n_layers", 4)
@@ -373,11 +366,10 @@ class TransformerPolicy(ActorCriticPolicy):
             kwargs["features_extractor_kwargs"] = {}
         kwargs["features_extractor_kwargs"].update(transformer_kwargs)
 
-        # Set features extractor class
+        # set features extractor class
         kwargs["features_extractor_class"] = TransformerFeatureExtractor
 
         super().__init__(*args, **kwargs)
-
 
 class DepthwiseSeparableConv1d(nn.Module):
     """
@@ -403,7 +395,6 @@ class DepthwiseSeparableConv1d(nn.Module):
         x = self.depthwise(x)
         x = self.pointwise(x)
         return x
-
 
 class EfficientAttention(nn.Module):
     """
@@ -478,7 +469,6 @@ class EfficientAttention(nn.Module):
         )
         return self.out_proj(attn_output)
 
-
 class DynamicNetwork(nn.Module):
     """
     Dynamic network that adjusts computation based on input complexity.
@@ -531,7 +521,6 @@ class DynamicNetwork(nn.Module):
             x = x_out
 
         return x
-
 
 class EfficientFeatureExtractor(BaseFeaturesExtractor):
     """
@@ -632,7 +621,6 @@ class EfficientFeatureExtractor(BaseFeaturesExtractor):
         x = self.dynamic_net(x)
         return x
 
-
 class EfficientSACPolicy(ActorCriticPolicy):
     """
     SAC policy with efficient network architectures.
@@ -648,7 +636,7 @@ class EfficientSACPolicy(ActorCriticPolicy):
             "sequence_length": kwargs.pop("sequence_length", 10),
         }
 
-        # Set features extractor
+        # set features extractor
         kwargs["features_extractor_class"] = EfficientFeatureExtractor
         kwargs["features_extractor_kwargs"] = efficient_kwargs
 

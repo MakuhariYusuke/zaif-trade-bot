@@ -13,7 +13,6 @@ from ztb.trading.backtest.unified_backtest import UnifiedBacktester, BacktestCon
 from ztb.trading.backtest.unified_backtest.signal_performance import BacktestSignalPerformanceAnalyzer
 from ztb.trading.backtest.adapters import StrategyAdapter
 
-
 class MockStrategy(StrategyAdapter):
     """Mock strategy for testing."""
 
@@ -33,12 +32,11 @@ class MockStrategy(StrategyAdapter):
     def name(self):
         return "mock_strategy"
 
-
 class TestUnifiedBacktesterSignalIntegration(unittest.TestCase):
     """Test UnifiedBacktester with signal performance analyzer."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """set up test fixtures."""
         self.backtester = UnifiedBacktester()
 
         # Create mock market data
@@ -224,7 +222,6 @@ class TestUnifiedBacktesterSignalIntegration(unittest.TestCase):
             signal_perf = result.metadata["signal_performance"]
             self.assertIn("signal_tracking", signal_perf)
             self.assertIn("performance_analysis", signal_perf)
-
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,6 +1,5 @@
 from typing import Callable
 
-
 def run_main(main_fn: Callable[[], int]):
     """
     Run a main function that returns an exit code and ensure that the script
@@ -31,23 +30,21 @@ def run_main(main_fn: Callable[[], int]):
         exit_code = 1
     sys.exit(exit_code)
 
-
 def add_common_cli_args(parser):
     """Add common script CLI arguments like log-level"""
     parser.add_argument(
         "--log-level",
         default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
-        help="Set logging level",
+        help="set logging level",
     )
     return parser
 
-
 def configure_logging_from_args(args):
-    """Set up basic logging formatting from parsed args"""
+    """set up basic logging formatting from parsed args"""
     import logging
 
-    # Set basic configuration with timestamp and level if not yet configured
+    # set basic configuration with timestamp and level if not yet configured
     logging.basicConfig(
         level=getattr(logging, args.log_level, logging.INFO),
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",

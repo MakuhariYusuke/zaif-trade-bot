@@ -5,7 +5,7 @@ Provides adapters to wrap different trading strategies for unified backtest inte
 """
 
 import time
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Protocol
 
 import numpy as np
 import pandas as pd
@@ -18,13 +18,12 @@ from ztb.trading.risk.backtest_risk_manager import BacktestRiskManager
 from ztb.trading.risk.optimizers.integrated_signal_filter import IntegratedSignalFilter
 from ztb.utils.cache_utils import TTLCache
 
-
 class StrategyAdapter(Protocol):
     """Protocol for trading strategy adapters."""
 
     def generate_signal(
         self, data: pd.DataFrame, current_position: int
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate trading signal.
 
@@ -37,7 +36,7 @@ class StrategyAdapter(Protocol):
         """
         ...
 
-    def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
+    def update_hyperparameters(self, hyperparameters: dict[str, float]) -> None:
         """
         Update strategy hyperparameters.
 
@@ -46,12 +45,11 @@ class StrategyAdapter(Protocol):
         """
         ...
 
-
 class RLPolicyAdapter:
     """Adapter for RL policy (PPO trained model)."""
 
     def __init__(
-        self, model_path: Optional[str] = None, enable_150d_features: bool = False
+        self, model_path: str | None = None, enable_150d_features: bool = False
     ):
         """Initialize with trained model path and 150-dimensional feature support."""
         self.model_path = model_path
@@ -87,7 +85,7 @@ class RLPolicyAdapter:
 
     def generate_signal(
         self, data: pd.DataFrame, current_position: int
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate signal using RL policy with comprehensive error handling."""
         try:
             if self.model is None:
@@ -306,7 +304,7 @@ class RLPolicyAdapter:
             }
         )
 
-    def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
+    def update_hyperparameters(self, hyperparameters: dict[str, float]) -> None:
         """Update RL model hyperparameters."""
         # Update local hyperparameters
         self.hyperparameters.update(hyperparameters)
@@ -333,7 +331,7 @@ class RLPolicyAdapter:
         self.feature_cache.clear()
         print(f"Cleared feature cache ({cache_size} entries)")
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """Get feature cache statistics for monitoring."""
         total_entries = len(self.feature_cache)
         memory_usage = (
@@ -351,7 +349,7 @@ class RLPolicyAdapter:
 
     def _momentum_signal(
         self, data: pd.DataFrame, current_position: int
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Simple momentum-based signal as RL fallback."""
         if len(data) < 20:
             return {"action": "hold", "confidence": 0.5}
@@ -373,7 +371,6 @@ class RLPolicyAdapter:
         else:
             return {"action": "hold", "confidence": 0.5}
 
-
 class SMACrossoverAdapter:
     """Simple Moving Average crossover strategy."""
 
@@ -384,7 +381,7 @@ class SMACrossoverAdapter:
 
     def generate_signal(
         self, data: pd.DataFrame, current_position: int
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate SMA crossover signal."""
         if len(data) < self.slow_period:
             return {"action": "hold", "confidence": 0.5}
@@ -409,7 +406,7 @@ class SMACrossoverAdapter:
 
         return {"action": "hold", "confidence": 0.5}
 
-    def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
+    def update_hyperparameters(self, hyperparameters: dict[str, float]) -> None:
         """Update SMA strategy hyperparameters."""
         if "fast_period" in hyperparameters:
             self.fast_period = int(hyperparameters["fast_period"])
@@ -425,7 +422,7 @@ class SMACrossoverAdapter:
         self.feature_cache.clear()
         print(f"Cleared feature cache ({cache_size} entries)")
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """Get feature cache statistics for monitoring."""
         total_entries = len(self.feature_cache)
         memory_usage = (
@@ -439,7 +436,6 @@ class SMACrossoverAdapter:
             "estimated_memory_mb": memory_usage / BYTES_PER_MB,
             "features_enabled": self.enable_150d_features,
         }
-
 
 class BuyAndHoldAdapter:
     """Buy and hold strategy (benchmark)."""
@@ -468,16 +464,15 @@ class BuyAndHoldAdapter:
             }
         )
 
-    def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
+    def update_hyperparameters(self, hyperparameters: dict[str, float]) -> None:
         """Update buy and hold strategy hyperparameters."""
         # Buy and hold strategy doesn't have hyperparameters to update
         print("Buy and hold strategy: no hyperparameters to update")
 
-
 class ActionSignalGuideAdapter:
     """Adapter for Action Signal Guide strategy."""
 
-    def __init__(self, config: Optional[Any] = None):
+    def __init__(self, config: Any | None = None):
         """Initialize Action Signal Guide adapter."""
         from ztb.trading.strategies.action_signal_guide.action_signal_guide import (
             ActionSignalGuideConfig,
@@ -597,7 +592,7 @@ class ActionSignalGuideAdapter:
             # we just continue with defaults to avoid crashing the backtest
             pass
 
-    def _calculate_dynamic_thresholds(self, data: pd.DataFrame) -> Dict[str, float]:
+    def _calculate_dynamic_thresholds(self, data: pd.DataFrame) -> dict[str, float]:
         """Calculate dynamic thresholds using advanced threshold manager with caching."""
         # Create cache key
         cache_key = f"thresholds_{len(data)}_{hash(str(data.index[-1]) if len(data) > 0 else 'empty')}"
@@ -680,7 +675,7 @@ class ActionSignalGuideAdapter:
 
     def update_positions(
         self, current_price: float, current_time: pd.Timestamp
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Update open positions and check for stop loss/take profit triggers.
 
@@ -689,7 +684,7 @@ class ActionSignalGuideAdapter:
             current_time: Current timestamp
 
         Returns:
-            List of closed positions with results
+            list of closed positions with results
         """
         closed_positions = []
 
@@ -739,7 +734,7 @@ class ActionSignalGuideAdapter:
         stop_loss: float,
         take_profit: float,
         current_time: pd.Timestamp,
-        signal_data: Dict[str, Any],
+        signal_data: dict[str, Any],
     ) -> str:
         """
         Open a new position with risk management parameters.
@@ -772,8 +767,8 @@ class ActionSignalGuideAdapter:
         return position_id
 
     def _log_and_return(
-        self, result: Dict[str, Any], tag: str = "ADAPTER-RET"
-    ) -> Dict[str, Any]:
+        self, result: dict[str, Any], tag: str = "ADAPTER-RET"
+    ) -> dict[str, Any]:
         """Log the adapter return and return the provided result.
 
         This is a lightweight helper allowing consistent debug prints for the
@@ -788,7 +783,7 @@ class ActionSignalGuideAdapter:
 
     def generate_signal(
         self, data: pd.DataFrame, current_position: int
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate signal using Action Signal Guide with dynamic thresholds and risk management."""
         try:
             # Debug: ensure adapter generate_signal is being called
@@ -1144,7 +1139,7 @@ class ActionSignalGuideAdapter:
                 "error",
             )
 
-    def generate_signals_batch(self, data: pd.DataFrame) -> List[Dict[str, Any]]:
+    def generate_signals_batch(self, data: pd.DataFrame) -> list[dict[str, Any]]:
         """
         Generate signals for entire dataset in batch mode for efficient backtesting.
 
@@ -1155,7 +1150,7 @@ class ActionSignalGuideAdapter:
             data: OHLCV DataFrame with all historical data
 
         Returns:
-            List of signal dictionaries for each data point
+            list of signal dictionaries for each data point
         """
         if (
             not hasattr(self, "_batch_signals_cache")
@@ -1220,7 +1215,7 @@ class ActionSignalGuideAdapter:
                     print(f"Error generating signal at index {i}: {e}")
                     self._batch_signals_cache.append({"action": "hold"})
 
-    def _convert_signal_to_action(self, signal) -> Dict[str, Any]:
+    def _convert_signal_to_action(self, signal) -> dict[str, Any]:
         """Convert ActionSignal to action dictionary format."""
         # Convert ActionSignal.direction: -1.0 (strong sell) to 1.0 (strong buy)
         direction = signal.direction
@@ -1253,15 +1248,14 @@ class ActionSignalGuideAdapter:
             "description": signal.description,
         }
 
-    def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
+    def update_hyperparameters(self, hyperparameters: dict[str, float]) -> None:
         """Update strategy hyperparameters."""
         self.hyperparameters.update(hyperparameters)
         print(f"Updated Action Signal Guide hyperparameters: {self.hyperparameters}")
 
-    def get_signal_statistics(self) -> Dict[str, int]:
+    def get_signal_statistics(self) -> dict[str, int]:
         """Get signal generation statistics."""
         return self.signal_stats.copy()
-
 
 def create_adapter(strategy_name: str, **kwargs: Any) -> StrategyAdapter:
     """Factory function to create strategy adapters."""

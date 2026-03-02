@@ -10,14 +10,12 @@ Provides a single entry point for order preparation with:
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Optional
 
 from ztb.trading.live.core.idempotency_store import IdempotencyStore
 from ztb.trading.live.core.precision_policy import PrecisionPolicyManager
 from ztb.trading.live.data.symbols import SymbolNormalizer, Venue
 from ztb.utils.errors import IdempotencyError, ValidationError
 from ztb.utils.observability import generate_correlation_id
-
 
 @dataclass
 class PreparedOrder:
@@ -28,15 +26,14 @@ class PreparedOrder:
     client_order_id: str
     side: str
     quantity: Decimal
-    price: Optional[Decimal]
+    price: Decimal | None
     idempotency_token: str
     original_symbol: str
-
 
 class OrderPreparer:
     """Prepares orders with precision and idempotency safety."""
 
-    def __init__(self, idempotency_store: Optional[IdempotencyStore] = None) -> None:
+    def __init__(self, idempotency_store: IdempotencyStore | None = None) -> None:
         self.precision_manager = PrecisionPolicyManager()
         self.symbol_normalizer = SymbolNormalizer()
         self.idempotency_store = idempotency_store or IdempotencyStore()
@@ -47,8 +44,8 @@ class OrderPreparer:
         symbol: str,
         side: str,
         quantity: Decimal,
-        price: Optional[Decimal] = None,
-        client_order_id: Optional[str] = None,
+        price: Decimal | None = None,
+        client_order_id: str | None = None,
     ) -> PreparedOrder:
         """
         Prepare an order for submission with full safety checks.
@@ -134,7 +131,7 @@ class OrderPreparer:
         )
 
     def _validate_min_notional(
-        self, venue: str, symbol: str, quantity: Decimal, price: Optional[Decimal]
+        self, venue: str, symbol: str, quantity: Decimal, price: Decimal | None
     ) -> None:
         """Validate minimum notional value."""
         if price is None:

@@ -18,7 +18,6 @@ from ztb.training.policy_utils import predict_with_masks
 from ztb.io.data_loader import DataLoader
 from ztb.metrics.metrics import action_distribution as calculate_action_distribution
 
-
 def run_simple_backtest(
     model_path="models/progress_bar_test.zip",
     data_path="ml-dataset-enhanced.csv",
@@ -120,7 +119,6 @@ def run_simple_backtest(
         "total_pnl": total_pnl,
         "action_distribution": action_distribution,
     }
-
 
 if __name__ == "__main__":
     model_path = "ztb/training/models/scalping_15s_balance_quick_test_final.zip"

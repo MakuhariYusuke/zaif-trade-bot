@@ -23,7 +23,6 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-
 @dataclass
 class RetrainTriggerConfig:
     """トリガー設定."""
@@ -71,7 +70,6 @@ class RetrainTriggerConfig:
             raise ValueError(
                 f"base_interval_sec must be >= 1, got {self.base_interval_sec}"
             )
-
 
 @dataclass
 class RetrainTrigger:
@@ -221,7 +219,6 @@ class RetrainTrigger:
     def consecutive_skips(self) -> int:
         """連続スキップ回数."""
         return self._consecutive_skips
-
 
 # §9 #5: 後方互換エイリアス (段階的移行)
 RetainTriggerConfig = RetrainTriggerConfig

@@ -5,13 +5,12 @@ Manages parameter spaces for system-level optimization tasks.
 Extends the generic ParameterSpace concept for system configuration optimization.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from ztb.training.hyperparameter_optimizer import ParameterSpace
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class SystemParameterSpaceManager:
     """
@@ -24,7 +23,7 @@ class SystemParameterSpaceManager:
     def __init__(self):
         self.logger = get_logger(__name__)
 
-    def get_system_parameter_spaces(self) -> Dict[str, Dict[str, ParameterSpace]]:
+    def get_system_parameter_spaces(self) -> dict[str, dict[str, ParameterSpace]]:
         """
         Get parameter spaces for different system optimization tasks.
 
@@ -38,7 +37,7 @@ class SystemParameterSpaceManager:
             "market_adaptation": self._get_market_adaptation_space(),
         }
 
-    def get_trading_parameter_spaces(self) -> Dict[str, Dict[str, ParameterSpace]]:
+    def get_trading_parameter_spaces(self) -> dict[str, dict[str, ParameterSpace]]:
         """
         Get parameter spaces for trading system optimization.
 
@@ -52,7 +51,7 @@ class SystemParameterSpaceManager:
             "market_timing": self._get_market_timing_space(),
         }
 
-    def _get_environment_config_space(self) -> Dict[str, ParameterSpace]:
+    def _get_environment_config_space(self) -> dict[str, ParameterSpace]:
         """Get parameter space for environment configuration optimization."""
         return {
             "transaction_cost": ParameterSpace(
@@ -73,7 +72,7 @@ class SystemParameterSpaceManager:
             ),
         }
 
-    def _get_training_hyperparams_space(self) -> Dict[str, ParameterSpace]:
+    def _get_training_hyperparams_space(self) -> dict[str, ParameterSpace]:
         """Get parameter space for training hyperparameters."""
         return {
             "learning_rate": ParameterSpace(
@@ -92,7 +91,7 @@ class SystemParameterSpaceManager:
             ),
         }
 
-    def _get_risk_management_space(self) -> Dict[str, ParameterSpace]:
+    def _get_risk_management_space(self) -> dict[str, ParameterSpace]:
         """Get parameter space for risk management parameters."""
         return {
             "max_drawdown_limit": ParameterSpace(
@@ -109,7 +108,7 @@ class SystemParameterSpaceManager:
             ),
         }
 
-    def _get_market_adaptation_space(self) -> Dict[str, ParameterSpace]:
+    def _get_market_adaptation_space(self) -> dict[str, ParameterSpace]:
         """Get parameter space for market adaptation parameters."""
         return {
             "regime_sensitivity": ParameterSpace(
@@ -130,7 +129,7 @@ class SystemParameterSpaceManager:
             ),
         }
 
-    def _get_position_sizing_space(self) -> Dict[str, ParameterSpace]:
+    def _get_position_sizing_space(self) -> dict[str, ParameterSpace]:
         """Get parameter space for position sizing optimization."""
         return {
             "base_position_size": ParameterSpace(
@@ -147,7 +146,7 @@ class SystemParameterSpaceManager:
             ),
         }
 
-    def _get_entry_exit_rules_space(self) -> Dict[str, ParameterSpace]:
+    def _get_entry_exit_rules_space(self) -> dict[str, ParameterSpace]:
         """Get parameter space for entry/exit rules optimization."""
         return {
             "entry_threshold": ParameterSpace(
@@ -164,7 +163,7 @@ class SystemParameterSpaceManager:
             ),
         }
 
-    def _get_risk_controls_space(self) -> Dict[str, ParameterSpace]:
+    def _get_risk_controls_space(self) -> dict[str, ParameterSpace]:
         """Get parameter space for risk controls optimization."""
         return {
             "max_consecutive_losses": ParameterSpace(
@@ -181,7 +180,7 @@ class SystemParameterSpaceManager:
             ),
         }
 
-    def _get_market_timing_space(self) -> Dict[str, ParameterSpace]:
+    def _get_market_timing_space(self) -> dict[str, ParameterSpace]:
         """Get parameter space for market timing optimization."""
         return {
             "bull_threshold": ParameterSpace(
@@ -203,8 +202,8 @@ class SystemParameterSpaceManager:
         }
 
     def create_custom_parameter_space(
-        self, name: str, param_definitions: Dict[str, Dict[str, Any]]
-    ) -> Dict[str, ParameterSpace]:
+        self, name: str, param_definitions: dict[str, dict[str, Any]]
+    ) -> dict[str, ParameterSpace]:
         """
         Create a custom parameter space from definitions.
 

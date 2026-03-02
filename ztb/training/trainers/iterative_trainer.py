@@ -10,13 +10,12 @@ import os
 import sys
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from ztb.training.trainers.base_trainer import BaseTrainer
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class IterativeAlgorithmTrainer(BaseTrainer):
     """
@@ -24,8 +23,8 @@ class IterativeAlgorithmTrainer(BaseTrainer):
     """
 
     def _apply_trading_mode_presets(
-        self, unified_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, unified_config: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Apply trading mode presets to config.
 
@@ -78,7 +77,7 @@ class IterativeAlgorithmTrainer(BaseTrainer):
 
         return unified_config
 
-    def _build_run_1m_args(self, unified_config: Dict[str, Any]) -> list[str]:
+    def _build_run_1m_args(self, unified_config: dict[str, Any]) -> list[str]:
         """
         Build command line arguments for run_1m.py.
 
@@ -86,7 +85,7 @@ class IterativeAlgorithmTrainer(BaseTrainer):
             unified_config: Unified configuration
 
         Returns:
-            List of command line arguments
+            list of command line arguments
         """
         args = [
             "run_1m.py",
@@ -161,7 +160,7 @@ class IterativeAlgorithmTrainer(BaseTrainer):
 
         return args
 
-    def train(self, unified_config: Dict[str, Any]) -> Any:
+    def train(self, unified_config: dict[str, Any]) -> Any:
         """
         Execute iterative training.
 
@@ -203,7 +202,7 @@ class IterativeAlgorithmTrainer(BaseTrainer):
         # Import and use run_1m logic
         from ztb.training.scripts.run_1m import main as run_1m_main
 
-        # Set up arguments for run_1m
+        # set up arguments for run_1m
         sys.argv = self._build_run_1m_args(unified_config)
 
         # DEBUG: Print sys.argv

@@ -16,7 +16,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class PositionManager:
     """
     Manages trading positions including opening, closing, and PnL calculation.
@@ -32,7 +31,7 @@ class PositionManager:
         self,
         config: Any,  # EnvironmentConfig
         get_price_callback: Callable[[], float],  # Function to get current price
-        execution_model: Optional[ExecutionModel] = None,
+        execution_model: ExecutionModel | None = None,
     ):
         """
         Initialize PositionManager.
@@ -73,12 +72,12 @@ class PositionManager:
         action: int,
         current_step: int,
         min_holding_period: int = 0,
-        df: Optional[Any] = None,
+        df: Any | None = None,
         atr: float = 0.0,
         market_regime: str = "UNKNOWN",
-        current_hour: Optional[int] = None,
-        current_volatility: Optional[float] = None,
-        hybrid_filters: Optional[dict] = None,
+        current_hour: int | None = None,
+        current_volatility: float | None = None,
+        hybrid_filters: dict | None = None,
     ) -> float:
         """
         Execute trading action.
@@ -129,7 +128,7 @@ class PositionManager:
                 mode = str(regime_filter.get("mode", "hard")).lower()
 
                 permission_raw: Any = None
-                regime_constraint: Optional[dict[str, Any]] = None
+                regime_constraint: dict[str, Any] | None = None
                 if mode == "soft":
                     constraints = regime_filter.get("regime_constraints", {})
                     if isinstance(constraints, dict) and market_regime:
@@ -295,11 +294,11 @@ class PositionManager:
         self,
         direction: int,
         current_step: int,
-        df: Optional[Any] = None,
+        df: Any | None = None,
         atr: float = 0.0,
-        regime_data: Optional[Any] = None,
-        market_regime: Optional[str] = None,
-        hybrid_filters: Optional[dict] = None,
+        regime_data: Any | None = None,
+        market_regime: str | None = None,
+        hybrid_filters: dict | None = None,
     ) -> float:
         """
         Open position (entry cost immediately reflected).
@@ -543,7 +542,7 @@ class PositionManager:
         return entry_cost
 
     def close_position(
-        self, current_step: Optional[int] = None, atr: float = 0.0
+        self, current_step: int | None = None, atr: float = 0.0
     ) -> float:
         """
         Close current position.
@@ -709,6 +708,5 @@ class PositionManager:
         # 103# C0': emergency_stopラッチがeval時に取引をブロックする問題の修正
         if hasattr(self, "risk_manager") and hasattr(self.risk_manager, "reset"):
             self.risk_manager.reset()
-
 
 __all__ = ["PositionManager"]

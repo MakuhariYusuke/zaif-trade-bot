@@ -1,7 +1,6 @@
 """Minimal torch layers used by tests (features extractor shims)."""
-from typing import Any, Dict, Optional
+from typing import Any
 import torch.nn as nn
-
 
 class BaseFeaturesExtractor(nn.Module):
     def __init__(self, observation_space: Any, features_dim: int = 1):
@@ -11,7 +10,6 @@ class BaseFeaturesExtractor(nn.Module):
     @property
     def features_dim(self) -> int:
         return self._features_dim
-
 
 class FlattenExtractor(BaseFeaturesExtractor):
     def __init__(self, observation_space: Any, features_dim: int = 1):
@@ -24,6 +22,5 @@ class FlattenExtractor(BaseFeaturesExtractor):
         if isinstance(observations, torch.Tensor):
             return observations.view(observations.size(0), -1)
         return observations
-
 
 __all__ = ["BaseFeaturesExtractor", "FlattenExtractor"]

@@ -9,7 +9,7 @@ import logging
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable
 
 import psutil
 
@@ -20,7 +20,6 @@ from ztb.utils.memory_monitor import BackgroundMemoryMonitor
 
 logger = logging.getLogger(__name__)
 
-
 class HealthStatus(Enum):
     """Health status levels."""
 
@@ -29,7 +28,6 @@ class HealthStatus(Enum):
     UNHEALTHY = "unhealthy"
     UNKNOWN = "unknown"
 
-
 @dataclass
 class HealthCheckResult:
     """Result of a health check."""
@@ -37,10 +35,9 @@ class HealthCheckResult:
     name: str
     status: HealthStatus
     message: str
-    details: Dict[str, Any]
+    details: dict[str, Any]
     timestamp: float
     duration: float
-
 
 @dataclass
 class SystemMetrics:
@@ -53,15 +50,14 @@ class SystemMetrics:
     network_connections: int
     timestamp: float
 
-
 class HealthChecker:
     """Health checker for system components."""
 
-    def __init__(self, config: Optional[ZTBConfig] = None):
+    def __init__(self, config: ZTBConfig | None = None):
         self.config = config or ZTBConfig()
-        self.checks: Dict[str, Callable[[], HealthCheckResult]] = {}
-        self.circuit_breakers: Dict[str, CircuitBreaker] = {}
-        self.last_metrics: Optional[SystemMetrics] = None
+        self.checks: dict[str, Callable[[], HealthCheckResult]] = {}
+        self.circuit_breakers: dict[str, CircuitBreaker] = {}
+        self.last_metrics: SystemMetrics | None = None
         self.memory_monitor = BackgroundMemoryMonitor(self.config)
 
     def register_check(
@@ -151,7 +147,7 @@ class HealthChecker:
                 duration=time.time() - time.time(),  # Approximate
             )
 
-    def run_all_checks(self) -> Dict[str, HealthCheckResult]:
+    def run_all_checks(self) -> dict[str, HealthCheckResult]:
         """
         Run all registered health checks.
 
@@ -407,13 +403,13 @@ class HealthChecker:
         )
 
     def setup_default_checks(self) -> None:
-        """Set up default health checks."""
+        """set up default health checks."""
         self.register_check("system_health", self.check_system_health)
         self.register_check("memory_health", self.check_memory_health)
         self.register_check("database_connectivity", self.check_database_connectivity)
         self.register_check("external_api_health", self.check_external_api_health)
 
-    def get_health_summary(self) -> Dict[str, Any]:
+    def get_health_summary(self) -> dict[str, Any]:
         """
         Get a summary of all health checks and system status.
 

@@ -6,13 +6,12 @@
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 from ztb.io.common import PathLike
 from ztb.io.json_io import read_json_object, write_json
 
 logger = logging.getLogger(__name__)
-
 
 class TransactionCostConfigRecord(TypedDict):
     """Serializable transaction cost config."""
@@ -25,12 +24,10 @@ class TransactionCostConfigRecord(TypedDict):
     currency: str
     last_updated: str
 
-
 class TransactionCostConfigFile(TypedDict):
     """Top-level config payload."""
 
     venues: list[TransactionCostConfigRecord]
-
 
 class VenueRecommendation(TypedDict):
     """Venue recommendation payload."""
@@ -39,7 +36,6 @@ class VenueRecommendation(TypedDict):
     taker_fee_percent: float
     daily_cost_estimate: float
     score: float
-
 
 class PortfolioImpact(TypedDict):
     """Portfolio cost impact payload."""
@@ -52,12 +48,10 @@ class PortfolioImpact(TypedDict):
     annual_cost_ratio_percent: float
     break_even_trades: int
 
-
 class ErrorPayload(TypedDict):
     """Error payload."""
 
     error: str
-
 
 @dataclass
 class TransactionCostConfig:
@@ -86,7 +80,6 @@ class TransactionCostConfig:
         fee_rate = self.maker_fee if is_maker else self.taker_fee
         return min(max(fee_rate, self.min_fee), self.max_fee)
 
-
 class VenueTransactionCostManager:
     """
     取引所取引コスト管理クラス
@@ -111,7 +104,7 @@ class VenueTransactionCostManager:
         return venue_name.strip().lower()
 
     @classmethod
-    def _parse_config_record(cls, record: object) -> Optional[TransactionCostConfig]:
+    def _parse_config_record(cls, record: object) -> TransactionCostConfig | None:
         """Parse and validate one config record."""
         if not isinstance(record, dict):
             return None
@@ -286,7 +279,7 @@ class VenueTransactionCostManager:
         except Exception as e:
             logger.error(f"設定保存に失敗: {e}")
 
-    def get_cost_config(self, venue_name: str) -> Optional[TransactionCostConfig]:
+    def get_cost_config(self, venue_name: str) -> TransactionCostConfig | None:
         """
         指定取引所のコスト設定を取得
 
@@ -373,7 +366,6 @@ class VenueTransactionCostManager:
             if avg_cost_per_trade > 0
             else 0,
         }
-
 
 class AdaptiveCostEnvironment:
     """
@@ -487,7 +479,6 @@ class AdaptiveCostEnvironment:
         recommendations.sort(key=lambda x: x["score"], reverse=True)
         return recommendations[:5]  # 上位5件
 
-
 def create_cost_analysis_report():
     """
     取引コスト分析レポート作成
@@ -532,7 +523,6 @@ def create_cost_analysis_report():
             f"  {rec['venue_name']}: スコア {rec['score']:.3f}, "
             f"推定日次コスト: {rec['daily_cost_estimate']:.0f}円"
         )
-
 
 if __name__ == "__main__":
     create_cost_analysis_report()

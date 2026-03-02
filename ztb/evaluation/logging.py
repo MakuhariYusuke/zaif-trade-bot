@@ -7,7 +7,6 @@ from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
 
-
 class EvaluationLogger:
     """Append evaluation results to JSONL for offline inspection."""
 

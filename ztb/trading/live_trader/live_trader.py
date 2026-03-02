@@ -12,7 +12,7 @@ import time
 from collections import deque
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, Optional, cast
 
 from ztb.utils.exceptions.custom_exceptions import TradingError
 
@@ -127,7 +127,6 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_NAMES, ACTION_SELL
 
-
 class LivePositionConfig:
     """Configuration adapter for PositionManager in live trading.
 
@@ -135,7 +134,7 @@ class LivePositionConfig:
     Defined once at module level to avoid duplicate inline definitions (018# M5).
     """
 
-    def __init__(self, config_dict: Dict[str, Any]) -> None:
+    def __init__(self, config_dict: dict[str, Any]) -> None:
         self.allow_reverse = config_dict.get("allow_reverse", False)
         self.transaction_cost = config_dict.get("transaction_cost", 0.001)
         self.max_position_size = config_dict.get(
@@ -149,7 +148,6 @@ class LivePositionConfig:
             "initial_portfolio_value", 200000.0
         )
 
-
 class LiveTrader:
     """
     Live trading bot for BTC/JPY using trained PPO model.
@@ -159,8 +157,8 @@ class LiveTrader:
 
     def __init__(
         self,
-        model_path: Union[str, Path, LiveTradingOptions],
-        config: Optional[Dict[str, Any]] = None,
+        model_path: str | Path | LiveTradingOptions,
+        config: dict[str, Any] | None = None,
         disable_risk_limits: bool = False,
         dry_run: bool = False,
     ) -> None:
@@ -331,7 +329,7 @@ class LiveTrader:
         logger.debug(f"Trading config loaded: {self.config}")
         self.disable_risk_limits = options.disable_risk_limits
         self.dry_run = options.dry_run
-        self.notifier: Optional[DiscordNotifier] = None
+        self.notifier: DiscordNotifier | None = None
 
         # Initialize Discord notifications
         if not self.dry_run and os.getenv("DISCORD_WEBHOOK_URL"):
@@ -346,7 +344,7 @@ class LiveTrader:
         if prometheus_available:
             self._setup_metrics()
         else:
-            self.metrics: Optional[Dict[str, Any]] = None
+            self.metrics: dict[str, Any] | None = None
 
         # Adjust risk limits if disabled
         if self.disable_risk_limits:
@@ -386,7 +384,7 @@ class LiveTrader:
                     f"{venue.upper()}_API_KEY and/or {venue.upper()}_API_SECRET not set or empty - running in DEMO mode"
                 )
                 logger.warning(
-                    "Set environment variables or create .env file with API credentials for live trading"
+                    "set environment variables or create .env file with API credentials for live trading"
                 )
             # If API credentials are provided and not in dry-run, require explicit allow_production
             if not self.demo_mode:
@@ -398,7 +396,7 @@ class LiveTrader:
                 )
                 if not (allow_production_flag or env_allow):
                     raise TradingError(
-                        "Production trading is disabled by default. Set --allow-production or ZTB_ALLOW_PRODUCTION=1 to enable live trading."
+                        "Production trading is disabled by default. set --allow-production or ZTB_ALLOW_PRODUCTION=1 to enable live trading."
                     )
 
         try:
@@ -772,7 +770,7 @@ class LiveTrader:
         # Delegate to FeatureComputer
         return self.feature_computer.compute_features(live_trader=self)
 
-    def _compute_rsi(self, prices: List[float]) -> float:
+    def _compute_rsi(self, prices: list[float]) -> float:
         """Compute RSI indicator."""
         try:
             if len(prices) < 2:
@@ -925,7 +923,7 @@ class LiveTrader:
 
             return 0.0  # HOLD or no action
 
-    def get_health_status(self) -> Dict[str, Any]:
+    def get_health_status(self) -> dict[str, Any]:
         """Get comprehensive health status for monitoring."""
         return self.health_monitoring.get_health_status()
 
@@ -945,7 +943,7 @@ class LiveTrader:
                 [current_price] * self.config["price_history_length"]
             )
 
-    def _safe_update_price_history(self, prices: List[float]) -> None:
+    def _safe_update_price_history(self, prices: list[float]) -> None:
         """Safely update price history with None checks."""
         logger = get_logger(__name__)
         if prices and len(prices) > 0:
@@ -1002,7 +1000,7 @@ class LiveTrader:
 
             self._cleanup_counter = 0
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """Get default trading configuration with safety limits using ZTBConfig."""
         return {
             "reward_scaling": self.ztb_config.get_float("ZTB_REWARD_SCALING", 1.0),
@@ -1214,8 +1212,8 @@ class LiveTrader:
         return model
 
     async def get_account_balance(
-        self, currency: Optional[str] = None
-    ) -> Dict[str, float]:
+        self, currency: str | None = None
+    ) -> dict[str, float]:
         """
         Get account balance from exchange using existing adapter.
 
@@ -1223,7 +1221,7 @@ class LiveTrader:
             currency: Optional currency filter (e.g., 'BTC', 'JPY')
 
         Returns:
-            Dict mapping currency to available balance
+            dict mapping currency to available balance
 
         Example:
             >>> balances = await trader.get_account_balance()
@@ -1253,7 +1251,7 @@ class LiveTrader:
             return {}
 
     def _setup_metrics(self) -> None:
-        """Set up Prometheus metrics for monitoring."""
+        """set up Prometheus metrics for monitoring."""
         if not prometheus_available:
             return
 
@@ -1283,7 +1281,7 @@ class LiveTrader:
             ),
         }
 
-    def _get_historical_prices(self, limit: int = 100) -> List[float]:
+    def _get_historical_prices(self, limit: int = 100) -> list[float]:
         """Get historical BTC/JPY prices from Coincheck."""
         try:
             # Use Coincheck's trades API for historical data
@@ -1329,7 +1327,7 @@ class LiveTrader:
             current_price = self._get_current_price()
             return [current_price] * 14
 
-    def _calculate_rsi(self, prices: List[float], period: int = 14) -> float:
+    def _calculate_rsi(self, prices: list[float], period: int = 14) -> float:
         """Calculate RSI (Relative Strength Index) using existing utility."""
         from ztb.features.generators.technical.momentum.rsi import compute_rsi
 
@@ -1338,7 +1336,7 @@ class LiveTrader:
         last_val = rsi_series.iloc[-1]
         return float(last_val) if not pd.isna(last_val) else 50.0
 
-    def _calculate_sma(self, prices: List[float], period: int) -> float:
+    def _calculate_sma(self, prices: list[float], period: int) -> float:
         """Calculate Simple Moving Average."""
         from ztb.features.generators.technical.trend.sma import compute_sma
 
@@ -1348,7 +1346,7 @@ class LiveTrader:
         return float(last_val) if not pd.isna(last_val) else 0.0
 
     @timed
-    def _compute_live_features(self, prices: List[float]) -> Dict[str, float]:
+    def _compute_live_features(self, prices: list[float]) -> dict[str, float]:
         """Compute features available for live trading from price data."""
         if not features_available or len(prices) < 14:
             return {}

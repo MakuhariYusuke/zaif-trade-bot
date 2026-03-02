@@ -20,14 +20,13 @@ minority actions continue to be sampled.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import torch
 import torch.nn as nn
 
 logger = logging.getLogger(__name__)
-
 
 class TargetEntropyController:
     """
@@ -85,11 +84,11 @@ class TargetEntropyController:
 
     def reset_statistics(self) -> None:
         """Reset statistics tracking."""
-        self.history: Dict[str, List[float]] = {"alpha": [], "entropy": [], "loss": []}
+        self.history: dict[str, list[float]] = {"alpha": [], "entropy": [], "loss": []}
 
     @property
     def compute_entropy(
-        self, action_logits: torch.Tensor, actions: Optional[torch.Tensor] = None
+        self, action_logits: torch.Tensor, actions: torch.Tensor | None = None
     ) -> torch.Tensor:
         """
         Compute policy entropy from action logits.
@@ -114,7 +113,7 @@ class TargetEntropyController:
         # Return mean entropy
         return entropy.mean()
 
-    def update(self, current_entropy: torch.Tensor) -> Tuple[float, float]:
+    def update(self, current_entropy: torch.Tensor) -> tuple[float, float]:
         """
         Update temperature parameter.
 
@@ -122,7 +121,7 @@ class TargetEntropyController:
             current_entropy: Current policy entropy (scalar tensor)
 
         Returns:
-            Tuple of (temperature_loss, current_alpha)
+            tuple of (temperature_loss, current_alpha)
         """
         # Temperature loss: L = α · (H* - H_π)
         # We want to minimize this, which encourages H_π → H*
@@ -154,7 +153,7 @@ class TargetEntropyController:
 
         return loss_value, current_alpha
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get current statistics.
 

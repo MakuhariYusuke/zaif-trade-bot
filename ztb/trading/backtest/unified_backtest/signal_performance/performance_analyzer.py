@@ -5,7 +5,7 @@ Provides signal performance analysis specifically designed for backtest environm
 integrating with the unified backtest framework.
 """
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -14,7 +14,6 @@ from scipy import stats
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class BacktestPerformanceAnalyzer:
     """
@@ -37,18 +36,18 @@ class BacktestPerformanceAnalyzer:
         self.logger = get_logger("ztb.trading.backtest.signal_performance_analyzer")
 
         # Trade outcome tracking
-        self.trade_outcomes: List[Dict[str, Union[str, int, float]]] = []
-        self.backtest_correlations: List[Dict[str, Union[str, int, float]]] = []
+        self.trade_outcomes: list[dict[str, str | int | float]] = []
+        self.backtest_correlations: list[dict[str, str | int | float]] = []
 
         # Signal quality tracking (simplified for backtest)
-        self.signal_quality_history: List[Dict[str, Any]] = []
-        self.signal_sac_correlations: List[Dict[str, Any]] = []
+        self.signal_quality_history: list[dict[str, Any]] = []
+        self.signal_sac_correlations: list[dict[str, Any]] = []
 
     def record_trade_outcome(
         self,
         signal_timestamp: pd.Timestamp,
-        trade_result: Dict[str, Union[str, int, float]],
-        signal_data: Dict[str, Union[str, int, float, List[str]]]
+        trade_result: dict[str, str | int | float],
+        signal_data: dict[str, str | int | float | list[str]]
     ) -> None:
         """
         Record trade outcome associated with a signal.
@@ -87,7 +86,7 @@ class BacktestPerformanceAnalyzer:
         except Exception as e:
             self.logger.warning(f"Failed to record trade outcome: {e}")
 
-    def analyze_signal_trade_performance(self) -> Dict[str, Union[float, int, dict]]:
+    def analyze_signal_trade_performance(self) -> dict[str, float | int | dict]:
         """
         Analyze the relationship between signal characteristics and trade performance.
 
@@ -140,7 +139,7 @@ class BacktestPerformanceAnalyzer:
 
         return analysis
 
-    def _analyze_pattern_effectiveness_in_trades(self, df: pd.DataFrame) -> Dict[str, dict]:
+    def _analyze_pattern_effectiveness_in_trades(self, df: pd.DataFrame) -> dict[str, dict]:
         """Analyze which patterns are most effective in trades."""
         pattern_stats = {}
 
@@ -162,9 +161,9 @@ class BacktestPerformanceAnalyzer:
 
     def analyze_backtest_signal_correlations(
         self,
-        backtest_returns: List[float],
-        signal_features: Optional[Dict[str, List[float]]] = None
-    ) -> Dict[str, Union[float, int, dict]]:
+        backtest_returns: list[float],
+        signal_features: dict[str, list[float]] | None = None
+    ) -> dict[str, float | int | dict]:
         """
         Analyze correlations between backtest performance and signal features.
 
@@ -232,9 +231,9 @@ class BacktestPerformanceAnalyzer:
 
     def _analyze_signal_quality_impact(
         self,
-        backtest_returns: List[float],
-        signal_qualities: List[float]
-    ) -> Dict[str, Union[float, int]]:
+        backtest_returns: list[float],
+        signal_qualities: list[float]
+    ) -> dict[str, float | int]:
         """Analyze the impact of signal quality on backtest performance."""
         # Create quality-based portfolios
         high_quality_threshold = np.percentile(signal_qualities, 75)
@@ -263,7 +262,7 @@ class BacktestPerformanceAnalyzer:
             ),
         }
 
-    def generate_backtest_performance_report(self) -> Dict[str, Union[float, int, str, dict, list]]:
+    def generate_backtest_performance_report(self) -> dict[str, float | int | str | dict | list]:
         """
         Generate comprehensive backtest performance report.
 
@@ -284,7 +283,7 @@ class BacktestPerformanceAnalyzer:
 
         return base_report
 
-    def _generate_signal_effectiveness_summary(self) -> Dict[str, Union[float, int, str]]:
+    def _generate_signal_effectiveness_summary(self) -> dict[str, float | int | str]:
         """Generate summary of signal effectiveness in backtest context."""
         if not self.trade_outcomes:
             return {"status": "No trade data available"}
@@ -309,7 +308,7 @@ class BacktestPerformanceAnalyzer:
             "effective_signals": int((df['pnl'] > 0).sum()),
         }
 
-    def get_performance_report(self) -> Dict[str, Any]:
+    def get_performance_report(self) -> dict[str, Any]:
         """
         Generate comprehensive performance report.
 
@@ -360,7 +359,7 @@ class BacktestPerformanceAnalyzer:
 
         return float(quality_score)
 
-    def _analyze_backtest_correlations(self) -> Dict[str, Any]:
+    def _analyze_backtest_correlations(self) -> dict[str, Any]:
         """Analyze correlations in backtest data."""
         if len(self.trade_outcomes) < 2:
             return {"status": "Insufficient data for correlation analysis"}

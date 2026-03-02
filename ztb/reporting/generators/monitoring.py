@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import time
 from datetime import datetime
-from typing import Any, Dict, List, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 import numpy as np
 
@@ -21,7 +21,6 @@ else:
     MetricValue = Any
     ReportData = Any
     AlertManager = Any
-
 
 class ReportGenerator:
     """Generate monitoring reports from collected metrics and alerts."""
@@ -60,9 +59,9 @@ class ReportGenerator:
         )
 
     def _calculate_statistics(
-        self, metrics: Dict[str, List[MetricValue]]
-    ) -> Dict[str, Dict[str, float]]:
-        statistics: Dict[str, Dict[str, float]] = {}
+        self, metrics: dict[str, list[MetricValue]]
+    ) -> dict[str, dict[str, float]]:
+        statistics: dict[str, dict[str, float]] = {}
 
         for metric_name, values in metrics.items():
             if not values:
@@ -80,8 +79,8 @@ class ReportGenerator:
 
         return statistics
 
-    def _analyze_trends(self, metrics: Dict[str, List[MetricValue]]) -> Dict[str, str]:
-        trends: Dict[str, str] = {}
+    def _analyze_trends(self, metrics: dict[str, list[MetricValue]]) -> dict[str, str]:
+        trends: dict[str, str] = {}
 
         for metric_name, values in metrics.items():
             if len(values) < 2:
@@ -106,7 +105,7 @@ class ReportGenerator:
 
     def _analyze_alerts(
         self, alert_manager: AlertManager, period_days: int
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         alerts = alert_manager.get_alert_history(hours=period_days * 24)
 
         return {
@@ -117,9 +116,9 @@ class ReportGenerator:
         }
 
     def _analyze_performance(
-        self, metrics: Dict[str, List[MetricValue]]
-    ) -> Dict[str, Any]:
-        analysis: Dict[str, Any] = {}
+        self, metrics: dict[str, list[MetricValue]]
+    ) -> dict[str, Any]:
+        analysis: dict[str, Any] = {}
 
         if "win_rate" in metrics:
             win_rates = [v.value for v in metrics["win_rate"]]
@@ -136,9 +135,9 @@ class ReportGenerator:
         return analysis
 
     def _generate_recommendations(
-        self, trends: Dict[str, str], alert_analysis: Dict[str, Any]
-    ) -> List[str]:
-        recommendations: List[str] = []
+        self, trends: dict[str, str], alert_analysis: dict[str, Any]
+    ) -> list[str]:
+        recommendations: list[str] = []
 
         if trends.get("win_rate") == "decreasing":
             recommendations.append(

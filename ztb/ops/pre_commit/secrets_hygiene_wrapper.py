@@ -20,7 +20,6 @@ except Exception as e:
 
 import argparse
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("filenames", nargs="*")
@@ -45,7 +44,6 @@ def main():
             print(f"Potential secret found in {fname}")
             exit_code = 1
     sys.exit(exit_code)
-
 
 if __name__ == "__main__":
     main()

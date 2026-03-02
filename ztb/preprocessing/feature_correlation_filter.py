@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -30,7 +30,6 @@ if str(PROJECT_ROOT) not in sys.path:
 
 LOGGER = get_logger(__name__)
 
-
 class FeatureCorrelationProcessor:
     """Process and filter features based on correlation analysis."""
 
@@ -42,19 +41,19 @@ class FeatureCorrelationProcessor:
             correlation_threshold: Threshold for removing highly correlated features
         """
         self.correlation_threshold = correlation_threshold
-        self.correlation_matrix: Optional[pd.DataFrame] = None
+        self.correlation_matrix: pd.DataFrame | None = None
         self.features_to_remove: set[str] = set()
         self.scaler = StandardScaler()
 
     def analyze_correlations(
-        self, df: pd.DataFrame, feature_columns: List[str]
+        self, df: pd.DataFrame, feature_columns: list[str]
     ) -> pd.DataFrame:
         """
         Analyze correlations between features.
 
         Args:
             df: Input dataframe
-            feature_columns: List of feature column names
+            feature_columns: list of feature column names
 
         Returns:
             Correlation matrix
@@ -72,7 +71,7 @@ class FeatureCorrelationProcessor:
         )
 
     def _analyze_correlations_impl(
-        self, df: pd.DataFrame, feature_columns: List[str]
+        self, df: pd.DataFrame, feature_columns: list[str]
     ) -> pd.DataFrame:
         """Implementation of correlation analysis."""
         # Select only feature columns
@@ -91,12 +90,12 @@ class FeatureCorrelationProcessor:
         assert self.correlation_matrix is not None
         return self.correlation_matrix
 
-    def identify_highly_correlated_features(self) -> Set[str]:
+    def identify_highly_correlated_features(self) -> set[str]:
         """
         Identify features that are highly correlated and should be removed.
 
         Returns:
-            Set of feature names to remove
+            set of feature names to remove
         """
         if self.correlation_matrix is None:
             raise ValueError(
@@ -139,8 +138,8 @@ class FeatureCorrelationProcessor:
         return features_to_remove
 
     def filter_features(
-        self, df: pd.DataFrame, feature_columns: List[str]
-    ) -> Tuple[pd.DataFrame, List[str]]:
+        self, df: pd.DataFrame, feature_columns: list[str]
+    ) -> tuple[pd.DataFrame, list[str]]:
         """
         Filter out highly correlated features from dataframe.
 
@@ -149,7 +148,7 @@ class FeatureCorrelationProcessor:
             feature_columns: Original feature column names
 
         Returns:
-            Tuple of (filtered_dataframe, remaining_feature_columns)
+            tuple of (filtered_dataframe, remaining_feature_columns)
         """
         if not self.features_to_remove:
             self.identify_highly_correlated_features()
@@ -210,7 +209,7 @@ class FeatureCorrelationProcessor:
         plt.tight_layout()
         save_plot(output_path, dpi=300, bbox_inches="tight")
 
-    def get_correlation_report(self) -> Dict[str, Any]:
+    def get_correlation_report(self) -> dict[str, Any]:
         """
         Generate correlation analysis report.
 
@@ -247,13 +246,12 @@ class FeatureCorrelationProcessor:
             "removed_features": sorted(list(self.features_to_remove)),
         }
 
-
 def process_dataset(
     input_path: Path,
     output_path: Path,
     correlation_threshold: float = 0.95,
-    feature_prefixes: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    feature_prefixes: list[str] | None = None,
+) -> dict[str, Any]:
     """
     Process dataset by removing highly correlated features.
 
@@ -261,7 +259,7 @@ def process_dataset(
         input_path: Path to input dataset
         output_path: Path to save processed dataset
         correlation_threshold: Correlation threshold for feature removal
-        feature_prefixes: List of feature prefixes to consider (e.g., ['rsi', 'macd'])
+        feature_prefixes: list of feature prefixes to consider (e.g., ['rsi', 'macd'])
 
     Returns:
         Processing report
@@ -326,7 +324,6 @@ def process_dataset(
     LOGGER.info(f"Processing completed. Results saved to {output_path.parent}")
     return report
 
-
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Analyze and filter highly correlated features"
@@ -368,7 +365,6 @@ def main() -> int:
     LOGGER.info(f"Features remaining: {report['features_remaining']}")
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

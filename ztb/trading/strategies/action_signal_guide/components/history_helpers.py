@@ -10,7 +10,6 @@ from typing import TypeVar
 
 T = TypeVar("T")
 
-
 def append_with_compaction(
     history: list[T],
     value: T,

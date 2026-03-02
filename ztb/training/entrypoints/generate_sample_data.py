@@ -6,7 +6,6 @@ import pandas as pd
 
 from ztb.utils.talib_wrapper import TaLibWrapper
 
-
 def generate_sample_data(start_date: str, end_date: str, filename: str) -> pd.DataFrame:
     """サンプル取引データを生成"""
     # 日付範囲の作成
@@ -97,7 +96,6 @@ def generate_sample_data(start_date: str, end_date: str, filename: str) -> pd.Da
 
     return df
 
-
 def main() -> None:
     """メイン関数"""
     # 各月のデータ生成
@@ -114,7 +112,6 @@ def main() -> None:
         generate_sample_data(start_date, end_date, filename)
 
     print("All sample data generated successfully!")
-
 
 if __name__ == "__main__":
     main()

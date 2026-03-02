@@ -5,6 +5,7 @@ Enhanced Metrics Collection System.
 This module provides comprehensive metrics collection capabilities that work
 both during training and in standalone monitoring scenarios.
 """
+from __future__ import annotations
 
 import json
 import logging
@@ -14,12 +15,11 @@ from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable
 
 from ztb.io.state_persistence import read_state_payload, write_state_payload
 
 from ..performance.memory_optimizer import LRUCache, MemoryPool, WeakRefRegistry
-
 
 @dataclass
 class MetricDefinition:
@@ -29,20 +29,18 @@ class MetricDefinition:
     description: str = ""
     unit: str = ""
     metric_type: str = "gauge"  # gauge, counter, histogram, summary
-    tags: Dict[str, str] = field(default_factory=dict)
-    collect_interval: Optional[float] = None  # For periodic collection
-
+    tags: dict[str, str] = field(default_factory=dict)
+    collect_interval: float | None = None  # For periodic collection
 
 @dataclass
 class MetricValue:
     """A single metric measurement."""
 
     name: str
-    value: Union[int, float]
+    value: int | float
     timestamp: datetime
-    tags: Dict[str, str] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-
+    tags: dict[str, str] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class MetricSeries:
@@ -50,7 +48,7 @@ class MetricSeries:
 
     definition: MetricDefinition
     values: deque = field(default_factory=lambda: deque(maxlen=10000))
-    aggregations: Dict[str, Any] = field(default_factory=dict)
+    aggregations: dict[str, Any] = field(default_factory=dict)
 
     def add_value(self, value: MetricValue) -> None:
         """Add a new value to the series."""
@@ -85,7 +83,6 @@ class MetricSeries:
                     values[-1] - values[0]
                 ) / time_diff
 
-
 class MetricsCollector:
     """
     Enhanced metrics collector that works both during training and standalone.
@@ -104,9 +101,9 @@ class MetricsCollector:
         self.max_series_size = max_series_size
 
         # Core data structures
-        self.metric_definitions: Dict[str, MetricDefinition] = {}
-        self.metric_series: Dict[str, MetricSeries] = {}
-        self.custom_collectors: List[Callable[[], List[MetricValue]]] = []
+        self.metric_definitions: dict[str, MetricDefinition] = {}
+        self.metric_series: dict[str, MetricSeries] = {}
+        self.custom_collectors: list[Callable[[], list[MetricValue]]] = []
 
         # Memory optimization components
         self.metrics_cache = LRUCache(
@@ -119,12 +116,12 @@ class MetricsCollector:
 
         # Threading and synchronization
         self._lock = threading.RLock()
-        self._collection_thread: Optional[threading.Thread] = None
+        self._collection_thread: threading.Thread | None = None
         self._running = False
         self._collection_interval = 5.0  # seconds
 
         # Storage
-        self._storage_path: Optional[Path] = None
+        self._storage_path: Path | None = None
 
         # Performance tracking
         self.performance_stats = {
@@ -160,9 +157,9 @@ class MetricsCollector:
     def add_metric_value(
         self,
         name: str,
-        value: Union[int, float],
-        tags: Optional[Dict[str, str]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        value: int | float,
+        tags: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Add a metric value with memory optimization."""
         with self._lock:
@@ -184,7 +181,7 @@ class MetricsCollector:
             self.metric_series[name].add_value(metric_value)
             self._invalidate_latest_metrics_cache()
 
-    def add_custom_collector(self, collector: Callable[[], List[MetricValue]]) -> None:
+    def add_custom_collector(self, collector: Callable[[], list[MetricValue]]) -> None:
         """Add a custom metrics collector function."""
         with self._lock:
             self.custom_collectors.append(collector)
@@ -305,22 +302,22 @@ class MetricsCollector:
         self.metrics_cache.remove("latest_metrics")
 
     @staticmethod
-    def _coerce_str_dict(value: object) -> Dict[str, str]:
+    def _coerce_str_dict(value: object) -> dict[str, str]:
         """Coerce a JSON object into a `dict[str, str]`."""
         if not isinstance(value, dict):
             return {}
         return {str(k): str(v) for k, v in value.items()}
 
     @staticmethod
-    def _coerce_object_dict(value: object) -> Dict[str, Any]:
+    def _coerce_object_dict(value: object) -> dict[str, Any]:
         """Coerce a JSON object into a `dict[str, Any]`."""
         if not isinstance(value, dict):
             return {}
         return {str(k): v for k, v in value.items()}
 
-    def _serialize_metrics_payload(self) -> Dict[str, Any]:
+    def _serialize_metrics_payload(self) -> dict[str, Any]:
         """Build serializable metrics payload used for export and state."""
-        data: Dict[str, Any] = {
+        data: dict[str, Any] = {
             "export_time": datetime.now().isoformat(),
             "retention_hours": self.retention_hours,
             "metrics": {},
@@ -349,7 +346,7 @@ class MetricsCollector:
                 }
         return data
 
-    def _restore_metrics_payload(self, payload: Dict[str, Any]) -> None:
+    def _restore_metrics_payload(self, payload: dict[str, Any]) -> None:
         """Restore metric state from a serialized payload."""
         metrics_payload = payload.get("metrics", {})
         if not isinstance(metrics_payload, dict):
@@ -410,11 +407,11 @@ class MetricsCollector:
 
             self._invalidate_latest_metrics_cache()
 
-    def get_metric_series(self, name: str) -> Optional[MetricSeries]:
+    def get_metric_series(self, name: str) -> MetricSeries | None:
         """Get a metric series by name."""
         return self.metric_series.get(name)
 
-    def get_all_metrics(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_metrics(self) -> dict[str, dict[str, Any]]:
         """Get all current metric values and aggregations."""
         result = {}
         with self._lock:
@@ -434,7 +431,7 @@ class MetricsCollector:
 
     def get_metrics_in_range(
         self, name: str, start_time: datetime, end_time: datetime
-    ) -> List[MetricValue]:
+    ) -> list[MetricValue]:
         """Get metric values within a time range."""
         series = self.metric_series.get(name)
         if not series:
@@ -442,7 +439,7 @@ class MetricsCollector:
 
         return [v for v in series.values if start_time <= v.timestamp <= end_time]
 
-    def export_metrics(self, filepath: Union[str, Path], format: str = "json") -> None:
+    def export_metrics(self, filepath: str | Path, format: str = "json") -> None:
         """Export metrics data to file."""
         filepath = Path(filepath)
 
@@ -483,8 +480,8 @@ class MetricsCollector:
 
         self.logger.info(f"Exported metrics to {filepath}")
 
-    def set_storage_path(self, path: Union[str, Path]) -> None:
-        """Set path for persistent storage."""
+    def set_storage_path(self, path: str | Path) -> None:
+        """set path for persistent storage."""
         self._storage_path = Path(path)
         self._storage_path.mkdir(parents=True, exist_ok=True)
 
@@ -514,7 +511,7 @@ class MetricsCollector:
         except Exception as e:
             self.logger.error(f"Failed to load metrics state from {state_file}: {e}")
 
-    def get_latest_metrics(self) -> Dict[str, Any]:
+    def get_latest_metrics(self) -> dict[str, Any]:
         """Get latest metrics for all series with caching."""
         with self._lock:
             # Check cache first
@@ -556,7 +553,7 @@ class MetricsCollector:
 
     # get_all_metrics originally had a second alias implementation here; duplicate removed.
 
-    def get_performance_stats(self) -> Dict[str, Any]:
+    def get_performance_stats(self) -> dict[str, Any]:
         """Get performance statistics for memory optimization."""
         with self._lock:
             return {
@@ -584,10 +581,8 @@ class MetricsCollector:
         )
         return self.performance_stats["cache_hits"] / total if total > 0 else 0.0
 
-
 # Global metrics collector instance
-_global_metrics_collector: Optional[MetricsCollector] = None
-
+_global_metrics_collector: MetricsCollector | None = None
 
 def get_global_metrics_collector() -> MetricsCollector:
     """Get the global metrics collector instance."""
@@ -596,13 +591,11 @@ def get_global_metrics_collector() -> MetricsCollector:
         _global_metrics_collector = MetricsCollector()
     return _global_metrics_collector
 
-
-
 def collect_metric(
     name: str,
-    value: Union[int, float],
-    tags: Optional[Dict[str, str]] = None,
-    metadata: Optional[Dict[str, Any]] = None,
+    value: int | float,
+    tags: dict[str, str] | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> None:
     """Convenience function to collect a metric."""
     get_global_metrics_collector().add_metric_value(name, value, tags, metadata)

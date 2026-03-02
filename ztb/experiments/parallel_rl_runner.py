@@ -13,7 +13,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # Local module imports
 # current_dir: ztb/experiments の親ディレクトリ (ztb)
@@ -23,7 +23,6 @@ project_root = current_dir.parent  # Go up one more level to project root
 sys.path.insert(0, str(project_root))
 from ztb.utils.errors import safe_operation
 from ztb.utils.parallel_experiments import ResourceMonitor
-
 
 class ParallelRLExperimentRunner:
     """Parallel runner for reinforcement learning experiments"""
@@ -189,7 +188,7 @@ class ParallelRLExperimentRunner:
                 }
             )
 
-    def _run_single_experiment(self, exp_config: Dict[str, Any]) -> Dict[str, Any]:
+    def _run_single_experiment(self, exp_config: dict[str, Any]) -> dict[str, Any]:
         """Run a single experiment"""
         import sys  # Add this to bind sys in local scope
 
@@ -330,7 +329,7 @@ class ParallelRLExperimentRunner:
             self.logger_manager.log_error(error_msg, exp_name)
             return {"status": "failed", "error": error_msg, "log_file": str(log_file)}
 
-    def _extract_metrics_from_log(self, log_file: Path) -> Dict[str, Any]:
+    def _extract_metrics_from_log(self, log_file: Path) -> dict[str, Any]:
         """Extract metrics from experiment log file"""
         metrics = {}
 
@@ -426,7 +425,7 @@ class ParallelRLExperimentRunner:
             print(f"    Avg Reward: {metrics.get('avg_reward', 0):.4f}")
             print(f"    Execution Time: {metrics.get('execution_time', 0):.1f}s")
 
-    def _compare_strategies(self) -> Dict[str, Any]:
+    def _compare_strategies(self) -> dict[str, Any]:
         """Compare performance between strategies"""
         comparison = {}
 
@@ -463,7 +462,6 @@ class ParallelRLExperimentRunner:
                     f"Error terminating process {exp_name}: {e}", exp_name
                 )
 
-
 def main():
     """Main entry point"""
     print("Starting parallel reinforcement learning experiments...")
@@ -473,7 +471,6 @@ def main():
     runner.run_parallel_experiments()
 
     print("\nParallel execution completed!")
-
 
 if __name__ == "__main__":
     main()

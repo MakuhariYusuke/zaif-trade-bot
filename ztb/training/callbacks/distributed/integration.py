@@ -12,7 +12,7 @@ import logging
 import threading
 import time
 from datetime import datetime
-from typing import Callable, Mapping, Optional
+from typing import Callable, Mapping
 
 from ..monitoring.metrics_collector import MetricsCollector
 from ..monitoring.real_time_monitor import RealTimeMonitor
@@ -26,7 +26,6 @@ from .coordinator import (
 from .threading_mixin import BackgroundThreadController
 from .worker import TaskCallback, WorkerPool
 
-
 def _as_object_map(payload: object) -> dict[str, object]:
     if isinstance(payload, dict):
         normalized: dict[str, object] = {}
@@ -34,7 +33,6 @@ def _as_object_map(payload: object) -> dict[str, object]:
             normalized[str(key)] = value
         return normalized
     return {}
-
 
 def _safe_int(value: object, default: int = 0) -> int:
     if isinstance(value, bool):
@@ -46,7 +44,6 @@ def _safe_int(value: object, default: int = 0) -> int:
     except (TypeError, ValueError):
         return default
 
-
 class DistributedTrainingManager(BackgroundThreadController):
     """
     Manager for distributed training operations.
@@ -55,7 +52,7 @@ class DistributedTrainingManager(BackgroundThreadController):
     providing seamless scaling and fault tolerance.
     """
 
-    def __init__(self, config: Optional[DistributedConfig] = None):
+    def __init__(self, config: DistributedConfig | None = None):
         self.config = config or DistributedConfig()
         self.logger = logging.getLogger(__name__)
 
@@ -65,8 +62,8 @@ class DistributedTrainingManager(BackgroundThreadController):
 
         # Integration components
         self.memory_monitor = MemoryMonitor()
-        self.real_time_monitor: Optional[RealTimeMonitor] = None
-        self.metrics_collector: Optional[MetricsCollector] = None
+        self.real_time_monitor: RealTimeMonitor | None = None
+        self.metrics_collector: MetricsCollector | None = None
 
         # State
         self.is_initialized = False
@@ -76,21 +73,21 @@ class DistributedTrainingManager(BackgroundThreadController):
 
         # Synchronization
         self.sync_lock = threading.RLock()
-        self._sync_thread: Optional[threading.Thread] = None
+        self._sync_thread: threading.Thread | None = None
 
         # Callbacks
         self.training_callbacks: list[Callable[..., object]] = []
 
     def initialize(
         self,
-        real_time_monitor: Optional[RealTimeMonitor] = None,
-        metrics_collector: Optional[MetricsCollector] = None,
+        real_time_monitor: RealTimeMonitor | None = None,
+        metrics_collector: MetricsCollector | None = None,
     ) -> bool:
         """Initialize the distributed training manager."""
         try:
             self.logger.info("Initializing distributed training manager")
 
-            # Set up integrations
+            # set up integrations
             self.real_time_monitor = real_time_monitor
             self.metrics_collector = metrics_collector
 
@@ -197,8 +194,8 @@ class DistributedTrainingManager(BackgroundThreadController):
         self,
         task_type: str,
         task_data: Mapping[str, object],
-        callback: Optional[TaskCallback] = None,
-    ) -> Optional[str]:
+        callback: TaskCallback | None = None,
+    ) -> str | None:
         """Submit a training task to the distributed system."""
         if not self.training_active:
             return None
@@ -372,7 +369,6 @@ class DistributedTrainingManager(BackgroundThreadController):
                 self.logger.error(f"Error in synchronization loop: {e}")
                 time.sleep(5.0)
 
-
 class DistributedCallbackAdapter(DistributedCallbackMixin):
     """
     Adapter to add distributed capabilities to existing callbacks.
@@ -382,7 +378,7 @@ class DistributedCallbackAdapter(DistributedCallbackMixin):
     """
 
     def __init__(
-        self, base_callback: object, coordinator: Optional[DistributedCoordinator] = None
+        self, base_callback: object, coordinator: DistributedCoordinator | None = None
     ):
         super().__init__(coordinator)
         self.base_callback = base_callback
@@ -470,10 +466,8 @@ class DistributedCallbackAdapter(DistributedCallbackMixin):
 
         self.send_metrics_to_coordinator(metrics)
 
-
 # Global instance
-_global_distributed_manager: Optional[DistributedTrainingManager] = None
-
+_global_distributed_manager: DistributedTrainingManager | None = None
 
 def get_distributed_manager() -> DistributedTrainingManager:
     """Get the global distributed training manager instance."""

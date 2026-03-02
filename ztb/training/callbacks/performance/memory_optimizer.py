@@ -16,7 +16,7 @@ import time
 import weakref
 from collections import OrderedDict, deque
 from dataclasses import dataclass
-from typing import Callable, Generic, Optional, TypeVar, cast
+from typing import Callable, Generic, TypeVar, cast
 
 import psutil
 
@@ -27,10 +27,8 @@ V = TypeVar("V")
 T = TypeVar("T")
 RefGetter = Callable[[], object | None]
 
-
 def _default_pool_object() -> object:
     return {}
-
 
 @dataclass
 class MemoryConfig:
@@ -44,7 +42,6 @@ class MemoryConfig:
     memory_threshold_mb: int = 500  # Trigger cleanup at 500MB
     enable_gc_optimization: bool = True
 
-
 class _ThreadSafeStatsBase:
     """Shared lock/rate helpers for memory utility components."""
 
@@ -56,7 +53,6 @@ class _ThreadSafeStatsBase:
         if denominator <= 0:
             return 0.0
         return numerator / denominator
-
 
 class LRUCache(_ThreadSafeStatsBase, Generic[K, V]):
     """
@@ -79,7 +75,7 @@ class LRUCache(_ThreadSafeStatsBase, Generic[K, V]):
         self._hit_count = 0
         self._miss_count = 0
 
-    def get(self, key: K) -> Optional[V]:
+    def get(self, key: K) -> V | None:
         """Get an item from the cache."""
         with self._lock:
             if key in self._cache:
@@ -148,7 +144,6 @@ class LRUCache(_ThreadSafeStatsBase, Generic[K, V]):
         # Rough estimation
         return len(self._cache) * 0.001  # Assume ~1KB per entry
 
-
 class MemoryPool(_ThreadSafeStatsBase, Generic[T]):
     """
     Memory pool for reusing objects to reduce allocation overhead.
@@ -160,7 +155,7 @@ class MemoryPool(_ThreadSafeStatsBase, Generic[T]):
     """
 
     def __init__(
-        self, pool_size: int = 100, object_factory: Optional[Callable[[], T]] = None
+        self, pool_size: int = 100, object_factory: Callable[[], T] | None = None
     ):
         super().__init__()
         self.object_factory = object_factory or cast(
@@ -216,7 +211,6 @@ class MemoryPool(_ThreadSafeStatsBase, Generic[T]):
         with self._lock:
             return list(self._pool)
 
-
 class MemoryMonitor(_ThreadSafeStatsBase):
     """
     Memory usage monitor with automatic cleanup triggers.
@@ -227,12 +221,12 @@ class MemoryMonitor(_ThreadSafeStatsBase):
     - Memory leak detection
     """
 
-    def __init__(self, config: Optional[MemoryConfig] = None):
+    def __init__(self, config: MemoryConfig | None = None):
         super().__init__()
         self.config = config or MemoryConfig()
         self.logger = logging.getLogger(__name__)
         self._monitoring = False
-        self._monitor_thread: Optional[threading.Thread] = None
+        self._monitor_thread: threading.Thread | None = None
         self._last_memory_mb = 0.0
         self._memory_history: deque[float] = deque(maxlen=100)
         self._cleanup_callbacks: list[Callable[[], None]] = []
@@ -343,7 +337,6 @@ class MemoryMonitor(_ThreadSafeStatsBase):
                 self.logger.error(f"Error in memory monitor loop: {e}")
                 time.sleep(60.0)  # Back off on errors
 
-
 class WeakRefRegistry(_ThreadSafeStatsBase):
     """
     Registry for weak references to prevent memory leaks.
@@ -429,11 +422,9 @@ class WeakRefRegistry(_ThreadSafeStatsBase):
         with self._lock:
             return dict(self._refs)
 
-
 # Global instances
-_global_memory_monitor: Optional[MemoryMonitor] = None
-_global_weak_registry: Optional[WeakRefRegistry] = None
-
+_global_memory_monitor: MemoryMonitor | None = None
+_global_weak_registry: WeakRefRegistry | None = None
 
 def get_global_memory_monitor() -> MemoryMonitor:
     """Get the global memory monitor instance."""
@@ -441,7 +432,6 @@ def get_global_memory_monitor() -> MemoryMonitor:
     if _global_memory_monitor is None:
         _global_memory_monitor = MemoryMonitor()
     return _global_memory_monitor
-
 
 def get_global_weak_registry() -> WeakRefRegistry:
     """Get the global weak reference registry instance."""

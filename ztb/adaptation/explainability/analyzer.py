@@ -10,7 +10,7 @@ import os
 import time
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 try:
     import torch
@@ -61,13 +61,12 @@ from .types import (
 
 logger = logging.getLogger(__name__)
 
-
 class ExplainabilityAnalyzer:
     """説明可能性アナライザー"""
 
     def __init__(self, config: ExplainabilityConfig):
         self.config = config
-        self.cache: Dict[str, ExplanationCache] = {}
+        self.cache: dict[str, ExplanationCache] = {}
         self.feature_names = config.feature_names
         self.feature_categories = config.feature_categories
 
@@ -79,9 +78,9 @@ class ExplainabilityAnalyzer:
     def explain_prediction(
         self,
         model: nn.Module,
-        input_data: Union[np.ndarray, torch.Tensor, pd.DataFrame],
+        input_data: np.ndarray | torch.Tensor | pd.DataFrame,
         prediction: Any = None,
-        background_data: Optional[Union[np.ndarray, torch.Tensor]] = None,
+        background_data: np.ndarray | torch.Tensor | None = None,
     ) -> ExplanationResult:
         """
         予測の説明を生成
@@ -151,7 +150,7 @@ class ExplainabilityAnalyzer:
             )
 
     def _preprocess_input(
-        self, input_data: Union[np.ndarray, "torch.Tensor", pd.DataFrame]
+        self, input_data: np.ndarray | "torch.Tensor" | pd.DataFrame
     ):
         """Preprocess input data into a tensor (if torch available) or numpy array"""
         if torch is None:
@@ -181,8 +180,8 @@ class ExplainabilityAnalyzer:
         self,
         model: nn.Module,
         input_tensor: torch.Tensor,
-        background_data: Optional[torch.Tensor] = None,
-    ) -> List[FeatureImportance]:
+        background_data: torch.Tensor | None = None,
+    ) -> list[FeatureImportance]:
         """特徴量重要度の計算"""
         if self.config.explanation_method == ExplanationMethod.SHAP and SHAP_AVAILABLE:
             return self._calculate_shap_importance(model, input_tensor, background_data)
@@ -193,8 +192,8 @@ class ExplainabilityAnalyzer:
         self,
         model: nn.Module,
         input_tensor: torch.Tensor,
-        background_data: Optional[torch.Tensor] = None,
-    ) -> List[FeatureImportance]:
+        background_data: torch.Tensor | None = None,
+    ) -> list[FeatureImportance]:
         """SHAPベースの特徴量重要度計算"""
         try:
             # モデルを評価モードに
@@ -261,7 +260,7 @@ class ExplainabilityAnalyzer:
 
     def _calculate_basic_importance(
         self, model: nn.Module, input_tensor: torch.Tensor
-    ) -> List[FeatureImportance]:
+    ) -> list[FeatureImportance]:
         """基本的な特徴量重要度計算（勾配ベース）"""
         try:
             model.eval()
@@ -303,8 +302,8 @@ class ExplainabilityAnalyzer:
             return []
 
     def _generate_decision_explanation(
-        self, feature_importance: List[FeatureImportance], prediction: Any = None
-    ) -> Optional[DecisionExplanation]:
+        self, feature_importance: list[FeatureImportance], prediction: Any = None
+    ) -> DecisionExplanation | None:
         """決定説明の生成"""
         if not feature_importance or not self.config.generate_natural_language:
             return None
@@ -356,8 +355,8 @@ class ExplainabilityAnalyzer:
     def _generate_natural_language_explanation(
         self,
         decision_type: str,
-        primary_factors: List[FeatureImportance],
-        contributing_factors: List[FeatureImportance],
+        primary_factors: list[FeatureImportance],
+        contributing_factors: list[FeatureImportance],
     ) -> str:
         """自然言語説明の生成（高度化版）"""
         try:
@@ -458,8 +457,8 @@ class ExplainabilityAnalyzer:
             return "説明の生成に失敗しました。"
 
     def _analyze_market_context(
-        self, primary_factors: List[FeatureImportance]
-    ) -> Optional[str]:
+        self, primary_factors: list[FeatureImportance]
+    ) -> str | None:
         """市場状況の分析"""
         try:
             if not primary_factors:
@@ -490,8 +489,8 @@ class ExplainabilityAnalyzer:
             return None
 
     def _generate_risk_warning(
-        self, decision_type: str, primary_factors: List[FeatureImportance]
-    ) -> Optional[str]:
+        self, decision_type: str, primary_factors: list[FeatureImportance]
+    ) -> str | None:
         """リスク警告の生成"""
         try:
             if not primary_factors:
@@ -535,7 +534,7 @@ class ExplainabilityAnalyzer:
             return None
 
     def _calculate_decision_confidence(
-        self, feature_importance: List[FeatureImportance]
+        self, feature_importance: list[FeatureImportance]
     ) -> float:
         """決定の信頼度計算"""
         if not feature_importance:
@@ -569,10 +568,10 @@ class ExplainabilityAnalyzer:
 
     def _generate_visualizations(
         self,
-        feature_importance: List[FeatureImportance],
-        decision_explanation: Optional[DecisionExplanation],
+        feature_importance: list[FeatureImportance],
+        decision_explanation: DecisionExplanation | None,
         input_data: Any,
-    ) -> Optional[VisualizationResult]:
+    ) -> VisualizationResult | None:
         """可視化の生成"""
         if not self.config.enable_visualization:
             return None
@@ -617,8 +616,8 @@ class ExplainabilityAnalyzer:
             return None
 
     def _create_feature_importance_plot(
-        self, feature_importance: List[FeatureImportance]
-    ) -> Dict[str, Any]:
+        self, feature_importance: list[FeatureImportance]
+    ) -> dict[str, Any]:
         """特徴量重要度の棒グラフ作成"""
         try:
             if not MATPLOTLIB_AVAILABLE:
@@ -704,7 +703,7 @@ class ExplainabilityAnalyzer:
 
     def _create_decision_flowchart(
         self, decision_explanation: DecisionExplanation
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """決定プロセスのフローチャート作成"""
         try:
             if not MATPLOTLIB_AVAILABLE:
@@ -842,8 +841,8 @@ class ExplainabilityAnalyzer:
             return {"type": "error", "message": str(e)}
 
     def _create_feature_distribution_plot(
-        self, input_data: Any, feature_importance: List[FeatureImportance]
-    ) -> Dict[str, Any]:
+        self, input_data: Any, feature_importance: list[FeatureImportance]
+    ) -> dict[str, Any]:
         """特徴量分布の可視化"""
         try:
             if not MATPLOTLIB_AVAILABLE:
@@ -968,7 +967,7 @@ class ExplainabilityAnalyzer:
         else:
             return f"feature_{index}"
 
-    def _get_feature_description(self, feature_name: str) -> Optional[str]:
+    def _get_feature_description(self, feature_name: str) -> str | None:
         """特徴量の説明を取得"""
         return self.feature_names.get(feature_name)
 
@@ -991,7 +990,7 @@ class ExplainabilityAnalyzer:
 
     def get_cached_explanation(
         self, explanation_id: str
-    ) -> Optional[ExplanationResult]:
+    ) -> ExplanationResult | None:
         """キャッシュされた説明を取得"""
         if explanation_id not in self.cache:
             return None
@@ -1015,8 +1014,8 @@ class ExplainabilityAnalyzer:
         return len(expired_keys)
 
     def get_feature_importance_summary(
-        self, explanations: List[ExplanationResult]
-    ) -> Dict[str, Any]:
+        self, explanations: list[ExplanationResult]
+    ) -> dict[str, Any]:
         """特徴量重要度のサマリーを取得"""
         if not explanations:
             return {}
@@ -1050,7 +1049,7 @@ class ExplainabilityAnalyzer:
         return summary
 
     def generate_explanation_report(
-        self, explanations: List[ExplanationResult], output_path: Optional[str] = None
+        self, explanations: list[ExplanationResult], output_path: str | None = None
     ) -> str:
         """説明レポートの生成"""
         try:
@@ -1085,8 +1084,8 @@ class ExplainabilityAnalyzer:
             return f"Report generation failed: {e}"
 
     def _aggregate_explanation_data(
-        self, explanations: List[ExplanationResult]
-    ) -> Dict[str, Any]:
+        self, explanations: list[ExplanationResult]
+    ) -> dict[str, Any]:
         """説明データの集計"""
         try:
             # 基本統計
@@ -1132,7 +1131,7 @@ class ExplainabilityAnalyzer:
             return {}
 
     def _generate_html_report(
-        self, report_data: Dict[str, Any], explanations: List[ExplanationResult]
+        self, report_data: dict[str, Any], explanations: list[ExplanationResult]
     ) -> str:
         """HTMLレポートの生成"""
         try:
@@ -1269,7 +1268,7 @@ class ExplainabilityAnalyzer:
                 f"<html><body><h1>Report Generation Failed</h1><p>{e}</p></body></html>"
             )
 
-    def _generate_decision_chart_html(self, decision_counts: Dict[str, int]) -> str:
+    def _generate_decision_chart_html(self, decision_counts: dict[str, int]) -> str:
         """決定チャートのHTML生成"""
         if not decision_counts:
             return "<p>データなし</p>"
@@ -1293,7 +1292,7 @@ class ExplainabilityAnalyzer:
         chart_html += "</div>"
         return chart_html
 
-    def _generate_feature_table_html(self, feature_summary: Dict[str, Any]) -> str:
+    def _generate_feature_table_html(self, feature_summary: dict[str, Any]) -> str:
         """特徴量テーブルのHTML生成"""
         rows = ""
         for feature_name, data in list(feature_summary.items())[:10]:  # トップ10
@@ -1308,7 +1307,7 @@ class ExplainabilityAnalyzer:
         return rows
 
     def _generate_explanation_samples_html(
-        self, explanations: List[ExplanationResult]
+        self, explanations: list[ExplanationResult]
     ) -> str:
         """説明サンプルのHTML生成"""
         html = ""

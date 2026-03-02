@@ -2,7 +2,7 @@
 Trade execution management for live trading bot.
 """
 import logging
-from typing import Any, Dict, Protocol
+from typing import Any, Protocol
 
 import numpy as np
 
@@ -16,14 +16,12 @@ ACTION_BUY = 1
 ACTION_SELL = -1
 ACTION_NAMES = ["HOLD", "BUY", "SELL"]
 
-
 class TradeExecutorProtocol(Protocol):
     """Protocol for trade executors."""
 
     def execute_trade(self, side: str, amount: float) -> bool:
         """Execute a trade."""
         ...
-
 
 class PositionManagerProtocol(Protocol):
     """Protocol for position managers."""
@@ -32,13 +30,12 @@ class PositionManagerProtocol(Protocol):
         """Update position based on action."""
         ...
 
-
 class TradeExecutor:
     """Handles trade execution and position management."""
 
     def __init__(
         self,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         trade_executor: TradeExecutorProtocol,
         position_manager: PositionManagerProtocol,
         is_sac: bool = False,
@@ -94,5 +91,5 @@ class TradeExecutor:
 
     @is_sac.setter
     def is_sac(self, value: bool) -> None:
-        """Set SAC model flag."""
+        """set SAC model flag."""
         self._is_sac = value

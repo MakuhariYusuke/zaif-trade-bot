@@ -35,13 +35,11 @@ TradeList = list[ObjectMap]
 IterationList = list[ObjectMap]
 StrategyFunction = Callable[[object, float], object]
 
-
 def _as_object_map(value: object) -> ObjectMap:
     """Return dict-like payload or empty dict."""
     if isinstance(value, Mapping):
         return {str(k): v for k, v in value.items() if isinstance(k, str)}
     return {}
-
 
 def _as_float(value: object, default: float = 0.0) -> float:
     """Coerce value to float with safe fallback."""
@@ -50,14 +48,12 @@ def _as_float(value: object, default: float = 0.0) -> float:
     except (TypeError, ValueError):
         return default
 
-
 def _as_int(value: object, default: int = 0) -> int:
     """Coerce value to int with safe fallback."""
     try:
         return int(value)
     except (TypeError, ValueError):
         return default
-
 
 def _as_bool(value: object, default: bool = False) -> bool:
     """Coerce value to bool while preserving explicit bool values."""
@@ -73,7 +69,6 @@ def _as_bool(value: object, default: bool = False) -> bool:
             return False
     return default
 
-
 def _as_float_list(value: object) -> list[float]:
     """Normalize list-like values to a float list."""
     if isinstance(value, np.ndarray):
@@ -87,7 +82,6 @@ def _as_float_list(value: object) -> list[float]:
     if isinstance(value, list):
         return [_as_float(v, 0.0) for v in value]
     return []
-
 
 def _as_trade_list(value: object) -> TradeList:
     """Normalize trade records to list[dict[str, object]]."""
@@ -106,7 +100,6 @@ def _as_trade_list(value: object) -> TradeList:
             trades.append(_as_object_map(record))
     return trades
 
-
 def _last_portfolio_value(iteration: ObjectMap, default: float = 10000.0) -> float:
     """Extract last portfolio value from iteration payload safely."""
     portfolio_values = _as_float_list(iteration.get("portfolio_values", []))
@@ -114,13 +107,11 @@ def _last_portfolio_value(iteration: ObjectMap, default: float = 10000.0) -> flo
         return default
     return portfolio_values[-1]
 
-
 def _commission_to_bps(commission: float) -> float:
     """Accept decimal-rate or bps commission and normalize to bps."""
     if commission <= 1.0:
         return commission * 10000.0
     return commission
-
 
 class _FunctionStrategyAdapter:
     """Adapter that wraps plain strategy function for BacktestEngine."""
@@ -187,7 +178,6 @@ class _FunctionStrategyAdapter:
     def update_hyperparameters(self, hyperparameters: dict[str, float]) -> None:
         # Hyperparameter updates are currently not supported by this adapter.
         return None
-
 
 class IntegratedBacktestRunner:
     """

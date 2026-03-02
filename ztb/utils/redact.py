@@ -3,7 +3,6 @@ Redact sensitive data from content.
 """
 import re
 
-
 def is_safe_content(content: str) -> bool:
     """
     Check if content is safe (no sensitive data).

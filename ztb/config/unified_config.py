@@ -8,7 +8,7 @@ Unified Configuration System
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import json
 import yaml
@@ -19,14 +19,12 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class ConfigFormat(Enum):
     """設定ファイル形式"""
 
     JSON = "json"
     YAML = "yaml"
     AUTO = "auto"
-
 
 class ConfigType(Enum):
     """設定タイプ"""
@@ -36,7 +34,6 @@ class ConfigType(Enum):
     ENVIRONMENT = "environment"
     MODEL = "model"
     EVALUATION = "evaluation"
-
 
 @dataclass
 class UnifiedConfig:
@@ -53,39 +50,39 @@ class UnifiedConfig:
     description: str = ""
 
     # トレーニング設定
-    training: Dict[str, Any] = field(default_factory=dict)
+    training: dict[str, Any] = field(default_factory=dict)
 
     # 環境設定
-    environment: Dict[str, Any] = field(default_factory=dict)
+    environment: dict[str, Any] = field(default_factory=dict)
 
     # 特徴量設定
-    features: Dict[str, List[str]] = field(default_factory=dict)
+    features: dict[str, list[str]] = field(default_factory=dict)
 
     # 報酬設定
-    reward_settings: Dict[str, Any] = field(default_factory=dict)
+    reward_settings: dict[str, Any] = field(default_factory=dict)
 
     # アンサンブル設定
-    ensemble_system: Dict[str, Any] = field(default_factory=dict)
+    ensemble_system: dict[str, Any] = field(default_factory=dict)
 
     # 市場レジーム設定
-    market_regimes: Dict[str, Any] = field(default_factory=dict)
+    market_regimes: dict[str, Any] = field(default_factory=dict)
 
     # 検証設定
-    validation: Dict[str, Any] = field(default_factory=dict)
+    validation: dict[str, Any] = field(default_factory=dict)
 
     # ログ設定
-    logging: Dict[str, Any] = field(default_factory=dict)
+    logging: dict[str, Any] = field(default_factory=dict)
 
     # チェックポイント設定
-    checkpoint: Dict[str, Any] = field(default_factory=dict)
+    checkpoint: dict[str, Any] = field(default_factory=dict)
 
     # メタデータ
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_file(
         cls,
-        config_path: Union[str, Path],
+        config_path: str | Path,
         format_type: ConfigFormat = ConfigFormat.AUTO,
     ) -> "UnifiedConfig":
         """
@@ -152,7 +149,7 @@ class UnifiedConfig:
             ) from e
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "UnifiedConfig":
+    def from_dict(cls, data: dict[str, Any]) -> "UnifiedConfig":
         """
         辞書からUnifiedConfigを作成
 
@@ -214,7 +211,7 @@ class UnifiedConfig:
         except Exception as e:
             raise ValueError(f"Failed to create UnifiedConfig from data: {e}") from e
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         return {
             "model_name": self.model_name,
@@ -235,7 +232,7 @@ class UnifiedConfig:
 
     def save(
         self,
-        config_path: Union[str, Path],
+        config_path: str | Path,
         format_type: ConfigFormat = ConfigFormat.JSON,
     ) -> None:
         """設定をファイルに保存"""
@@ -251,7 +248,7 @@ class UnifiedConfig:
         """特徴量の総数を返す"""
         return sum(len(feature_list) for feature_list in self.features.values())
 
-    def validate(self) -> List[str]:
+    def validate(self) -> list[str]:
         """
         設定の妥当性を検証
 
@@ -351,7 +348,6 @@ class UnifiedConfig:
         pattern = r"^\d+\.\d+\.\d+(-[a-zA-Z0-9]+)?$"
         return bool(re.match(pattern, version))
 
-
 class UnifiedConfigManager:
     """
     統合設定マネージャー
@@ -360,25 +356,25 @@ class UnifiedConfigManager:
     """
 
     def __init__(self):
-        self.configs: Dict[str, UnifiedConfig] = {}
+        self.configs: dict[str, UnifiedConfig] = {}
         self.logger = get_logger(__name__)
 
-    def load_config(self, name: str, config_path: Union[str, Path]) -> UnifiedConfig:
+    def load_config(self, name: str, config_path: str | Path) -> UnifiedConfig:
         """設定を読み込み"""
         config = UnifiedConfig.from_file(config_path)
         self.configs[name] = config
         self.logger.info(f"Loaded config '{name}' from {config_path}")
         return config
 
-    def get_config(self, name: str) -> Optional[UnifiedConfig]:
+    def get_config(self, name: str) -> UnifiedConfig | None:
         """設定を取得"""
         return self.configs.get(name)
 
-    def list_configs(self) -> List[str]:
+    def list_configs(self) -> list[str]:
         """設定名の一覧を取得"""
         return list(self.configs.keys())
 
-    def validate_all_configs(self) -> Dict[str, List[str]]:
+    def validate_all_configs(self) -> dict[str, list[str]]:
         """すべての設定を検証"""
         results = {}
         for name, config in self.configs.items():

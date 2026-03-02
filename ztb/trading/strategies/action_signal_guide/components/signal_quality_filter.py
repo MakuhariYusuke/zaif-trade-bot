@@ -23,7 +23,6 @@ from ztb.trading.signal.common.utilities import (
 )
 from ztb.utils.logging_utils import get_logger
 
-
 @dataclass
 class SignalQualityMetrics:
     """Quality metrics for a trading signal."""
@@ -38,7 +37,6 @@ class SignalQualityMetrics:
     timestamp: float
     metadata: dict[str, object]
 
-
 class PatternQualityRecord(TypedDict):
     composite_score: float
     strength: float
@@ -47,7 +45,6 @@ class PatternQualityRecord(TypedDict):
     market_alignment: float
     risk_adjusted_score: float
     timestamp: float
-
 
 @dataclass
 class QualityThresholds:
@@ -59,7 +56,6 @@ class QualityThresholds:
     min_market_alignment: float
     max_signals_per_bar: int
 
-
 @dataclass(frozen=True)
 class MarketQualityContext:
     """Precomputed market context reused across per-signal quality scoring."""
@@ -68,7 +64,6 @@ class MarketQualityContext:
     recent_trend: float
     volatility: float
     is_high_volatility: bool
-
 
 class SignalQualityFilter:
     """
@@ -150,7 +145,7 @@ class SignalQualityFilter:
         Filter and rank signals based on quality metrics.
 
         Args:
-            signals: List of trading signals
+            signals: list of trading signals
             market_data: Current market data
             market_regime: Current market regime
 
@@ -780,7 +775,6 @@ class SignalQualityFilter:
         if any(key in regime_name for key in ["RANG", "SIDEWAYS", "CONSOLIDATION"]):
             return "RANGING"
         return "UNKNOWN"
-
 
 class SignalQualityEvaluator:
     """Compatibility evaluator used by advanced SignalGenerator pipelines."""

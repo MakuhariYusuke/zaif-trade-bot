@@ -4,7 +4,7 @@ Specialized lightweight environment for HFT/Scalping strategies.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -16,7 +16,6 @@ from ztb.trading.rewards.fast_intraday import compute_hft_reward
 from ztb.utils.fee_model import ExchangeFeeModel
 
 logger = logging.getLogger(__name__)
-
 
 class FastIntradayEnv(gym.Env):
     """
@@ -36,10 +35,10 @@ class FastIntradayEnv(gym.Env):
     def __init__(
         self,
         df: pd.DataFrame,
-        feature_columns: List[str],
+        feature_columns: list[str],
         initial_balance: float = 1_000_000.0,
         max_position: float = 1.0,  # e.g. 1.0 BTC
-        max_steps: Optional[int] = None,
+        max_steps: int | None = None,
         commission_rate: float = 0.001,  # 0.1%
         max_ttl_steps: int = 60, # 60 minutes
         cooldown_steps: int = 5,
@@ -47,7 +46,7 @@ class FastIntradayEnv(gym.Env):
         min_delta: float = 0.01, # Deadband
         drawdown_limit: float = 0.1, # 10% drawdown kills episode
         prewarm_steps: int = 100,
-        reward_params: Optional[Dict[str, float]] = None,
+        reward_params: dict[str, float] | None = None,
     ):
         super().__init__()
         
@@ -118,7 +117,7 @@ class FastIntradayEnv(gym.Env):
         # Scaler
         self.scaler = OnlineScaler(shape=(len(feature_columns),))
         
-    def reset(self, seed: Optional[int] = None, options: Optional[Dict[str, Any]] = None) -> Tuple[np.ndarray, Dict[str, Any]]:
+    def reset(self, seed: int | None = None, options: dict[str, Any] | None = None) -> tuple[np.ndarray, dict[str, Any]]:
         super().reset(seed=seed)
         
         # Random start
@@ -151,7 +150,7 @@ class FastIntradayEnv(gym.Env):
             
         return self._get_observation(), {}
         
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         # 0. Prepare Data
         price_now = self.close_prices[self.current_step]
         price_prev = self.close_prices[self.current_step - 1] if self.current_step > 0 else price_now

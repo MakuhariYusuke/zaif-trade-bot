@@ -83,7 +83,6 @@ NUMPY_AVAILABLE = importlib.util.find_spec("numpy") is not None
 if not NUMPY_AVAILABLE:
     logger.warning("NumPy not available. Some calculations will be limited.")
 
-
 @dataclass
 class RewardFunctionConfig:
     """Configuration for reward function optimization."""
@@ -95,7 +94,6 @@ class RewardFunctionConfig:
     )
     constraints: ConfigMap = field(default_factory=dict)
 
-
 @dataclass
 class RewardOptimizationResult:
     """Result of reward function optimization."""
@@ -105,7 +103,6 @@ class RewardOptimizationResult:
     optimization_history: list[HistoryRecord] = field(default_factory=list)
     optimization_time: float = 0.0
     convergence_info: ConfigMap = field(default_factory=dict)
-
 
 class RewardFunctionOptimizer:
     """
@@ -475,7 +472,7 @@ class RewardFunctionOptimizer:
 
         Args:
             params: Parameters to evaluate
-            objectives: List of objectives
+            objectives: list of objectives
             trial_number: Current trial number for logging
             evaluation_function: Optional custom evaluation function
 
@@ -727,7 +724,7 @@ class RewardFunctionOptimizer:
         Get dynamic objective weights based on current market and performance conditions.
 
         Args:
-            objectives: List of objectives to weight
+            objectives: list of objectives to weight
 
         Returns:
             Dictionary of objective weights
@@ -843,7 +840,6 @@ class RewardFunctionOptimizer:
 
         return {"parameters": parameters, "stage": stage, "file_path": str(config_path)}
 
-
     def optimize_from_config_file(
         self,
         config_file_path: str,
@@ -858,7 +854,7 @@ class RewardFunctionOptimizer:
             config_file_path: Path to JSON config file
             exploration_range: Fraction of current value to explore (±range)
             n_trials: Number of optimization trials
-            objectives: List of objectives to optimize
+            objectives: list of objectives to optimize
 
         Returns:
             Optimization result
@@ -1193,7 +1189,7 @@ class RewardFunctionOptimizer:
             stage: Reward function stage to optimize
             evaluation_function: Function that evaluates parameter performance
             n_trials: Number of optimization trials
-            objectives: List of objectives to optimize
+            objectives: list of objectives to optimize
             constraints: Optimization constraints
 
         Returns:
@@ -1263,11 +1259,11 @@ class RewardFunctionOptimizer:
         Args:
             stage: Reward function stage to optimize
             n_trials: Number of optimization trials
-            objectives: List of objectives to optimize
+            objectives: list of objectives to optimize
             constraints: Optimization constraints
 
         Returns:
-            List of Pareto optimal solutions
+            list of Pareto optimal solutions
         """
         if not OPTUNA_AVAILABLE:
             raise ImportError("Optuna is required for Pareto optimization")
@@ -1450,7 +1446,7 @@ class RewardFunctionOptimizer:
         Args:
             market_data: Current market data for stage selection
             n_trials: Number of optimization trials
-            objectives: List of objectives to optimize
+            objectives: list of objectives to optimize
 
         Returns:
             Optimization result with automatically selected stage

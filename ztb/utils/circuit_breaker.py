@@ -10,10 +10,9 @@ import logging
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
-
 
 class CircuitState(Enum):
     """Circuit breaker states."""
@@ -21,7 +20,6 @@ class CircuitState(Enum):
     CLOSED = "closed"  # Normal operation
     OPEN = "open"  # Failing, requests blocked
     HALF_OPEN = "half_open"  # Testing recovery
-
 
 @dataclass
 class CircuitBreakerConfig:
@@ -32,15 +30,13 @@ class CircuitBreakerConfig:
     success_threshold: int = 3  # Successes needed to close
     timeout: float = 10.0  # Request timeout in seconds
 
-
 class CircuitBreakerOpenException(Exception):
     """Exception raised when circuit breaker is open."""
-
 
 class CircuitBreaker:
     """Circuit breaker implementation."""
 
-    def __init__(self, name: str, config: Optional[CircuitBreakerConfig] = None) -> None:
+    def __init__(self, name: str, config: CircuitBreakerConfig | None = None) -> None:
         """
         Initialize circuit breaker.
 
@@ -53,7 +49,7 @@ class CircuitBreaker:
         self.state = CircuitState.CLOSED
         self.failure_count = 0
         self.success_count = 0
-        self.last_failure_time: Optional[float] = None
+        self.last_failure_time: float | None = None
         self._lock = asyncio.Lock()
 
     async def call(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
@@ -218,13 +214,11 @@ class CircuitBreaker:
             # No event loop, call synchronously
             self._on_failure_sync()
 
-
 # Global registry
 _circuit_breakers: dict[str, CircuitBreaker] = {}
 
-
 def get_circuit_breaker(
-    name: str, config: Optional[CircuitBreakerConfig] = None
+    name: str, config: CircuitBreakerConfig | None = None
 ) -> CircuitBreaker:
     """
     Get or create circuit breaker instance.
@@ -240,7 +234,6 @@ def get_circuit_breaker(
         _circuit_breakers[name] = CircuitBreaker(name, config or CircuitBreakerConfig())
 
     return _circuit_breakers[name]
-
 
 def reset_all_circuit_breakers() -> None:
     """Reset all circuit breakers to closed state."""

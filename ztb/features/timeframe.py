@@ -4,7 +4,6 @@ Common timeframe definitions for multi-timeframe feature calculations
 
 from enum import Enum
 
-
 class Timeframe(Enum):
     """Enumeration of supported timeframes for feature calculations."""
 
@@ -15,11 +14,9 @@ class Timeframe(Enum):
     H4 = "4hour"  # 4-hour equivalent
     D1 = "1day"  # 1-day equivalent
 
+from typing import Any
 
-from typing import Any, Dict
-
-
-def get_timeframe_params(timeframe: Timeframe) -> Dict[str, Any]:
+def get_timeframe_params(timeframe: Timeframe) -> dict[str, Any]:
     """
     Get common timeframe parameters for various calculations.
 

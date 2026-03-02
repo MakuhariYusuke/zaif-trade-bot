@@ -6,7 +6,6 @@ This module handles API credentials and configuration for bitFlyer exchange.
 
 from ztb.trading.live.exchanges.base.config import BaseExchangeConfig
 
-
 class BitflyerConfig(BaseExchangeConfig):
     """
     Configuration management for bitFlyer exchange.
@@ -17,25 +16,21 @@ class BitflyerConfig(BaseExchangeConfig):
         Get the environment variable names for bitFlyer.
 
         Returns:
-            Tuple of (api_key_env_var, api_secret_env_var)
+            tuple of (api_key_env_var, api_secret_env_var)
         """
         return "BITFLYER_API_KEY", "BITFLYER_API_SECRET"
 
-
 # Create a singleton instance for backward compatibility
 _config = BitflyerConfig()
-
 
 # Backward compatibility functions
 def get_bitflyer_credentials():
     """Get bitFlyer API credentials (backward compatibility)."""
     return _config.get_credentials()
 
-
 def get_bitflyer_credentials_optional():
     """Get bitFlyer API credentials optionally (backward compatibility)."""
     return _config.get_credentials_optional()
-
 
 def validate_credentials(api_key=None, api_secret=None):
     """Validate credentials (backward compatibility)."""

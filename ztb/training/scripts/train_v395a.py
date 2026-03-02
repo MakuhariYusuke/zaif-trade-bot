@@ -7,7 +7,6 @@ import json
 
 from ztb.training.unified_trainer import UnifiedTrainer
 
-
 def main():
     config_path = "configs/sac_v395a_auto_entropy.json"
 
@@ -65,7 +64,6 @@ def main():
     else:
         print("❌ Training failed or was interrupted")
     print(f"{'='*80}")
-
 
 if __name__ == "__main__":
     main()

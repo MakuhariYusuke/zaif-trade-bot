@@ -1,17 +1,16 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
-
 
 @dataclass
 class MarketData:
     symbol: str
     timeframe: str
     data: Any
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
 
     def validate_data(self) -> bool:
         # Basic validation: required OHLC fields and sanity checks
@@ -51,7 +50,6 @@ class MarketData:
 
         return True
 
-
 @dataclass
 class TradeRecord:
     trade_id: str
@@ -74,6 +72,5 @@ class TradeRecord:
     def pnl(self) -> float:
         # default placeholder, may be set on object
         return getattr(self, "_pnl", 0.0)
-
 
 __all__ = ["MarketData", "TradeRecord"]

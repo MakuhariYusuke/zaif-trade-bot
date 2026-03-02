@@ -13,7 +13,6 @@ from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.training.core.config_builder import ConfigBuilder
 from ztb.io.data_loader import DataLoader
 
-
 def diagnose_environment(
     config_path: str, num_episodes: int = 3, num_steps: int = 100
 ) -> None:
@@ -275,7 +274,6 @@ def diagnose_environment(
     print(f"\n{'='*80}")
     print("診断完了")
     print(f"{'='*80}\n")
-
 
 if __name__ == "__main__":
     diagnose_environment(

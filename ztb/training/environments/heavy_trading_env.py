@@ -5,7 +5,7 @@ Heavy trading environment for reinforcement learning.
 
 import dataclasses
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -19,7 +19,6 @@ from ztb.types.protocols import TradingEnvironment
 
 logger = logging.getLogger(__name__)
 
-
 class HeavyTradingEnv(gym.Env, TradingEnvironment):
     """
     Heavy trading environment for reinforcement learning.
@@ -29,8 +28,8 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
         self,
         data: pd.DataFrame,
         config: EnvironmentConfig,
-        feature_columns: Optional[List[str]] = None,
-        reward_settings: Optional[Dict[str, Any]] = None,
+        feature_columns: list[str] | None = None,
+        reward_settings: dict[str, Any] | None = None,
     ):
         """
         Initialize trading environment.
@@ -38,7 +37,7 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
         Args:
             data: Market data DataFrame
             config: Environment configuration
-            feature_columns: List of feature column names
+            feature_columns: list of feature column names
             reward_settings: Reward settings dictionary
         """
         super().__init__()
@@ -89,7 +88,7 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
         )
 
         # Initialize reward calculator with action signal guidance
-        reward_defaults: Dict[str, Any] = {
+        reward_defaults: dict[str, Any] = {
             "base_profit_bonus_atr_coeff": 5.0,
             "base_profit_bonus_portfolio_coeff": 10.0,
             "base_action_penalty": 0.02,
@@ -159,7 +158,7 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
 
     @position.setter
     def position(self, value: float) -> None:
-        """Set current position size."""
+        """set current position size."""
         self._position = value
 
     @property
@@ -169,7 +168,7 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
 
     @unrealized_pnl.setter
     def unrealized_pnl(self, value: float) -> None:
-        """Set current unrealized P&L."""
+        """set current unrealized P&L."""
         self._unrealized_pnl = value
 
     def reset(self, *, seed=None, options=None) -> np.ndarray:
@@ -195,7 +194,7 @@ class HeavyTradingEnv(gym.Env, TradingEnvironment):
 
     def step(
         self, action: np.ndarray
-    ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
+    ) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         """
         Execute one step in the environment.
 

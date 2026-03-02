@@ -1,6 +1,6 @@
 """Validation component for HeavyTradingEnv."""
 
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -10,7 +10,6 @@ from ztb.utils.logging_utils import get_logger
 
 if TYPE_CHECKING:
     from ztb.trading.environment.heavy_env.core import HeavyTradingEnv
-
 
 class ValidationManager:
     """Handles validation logic for trading environment."""
@@ -135,11 +134,11 @@ class ValidationManager:
 
         return reward
 
-    def validate_environment_state(self) -> List[str]:
+    def validate_environment_state(self) -> list[str]:
         """Validate overall environment state and return any issues.
 
         Returns:
-            List of validation issues (empty if all valid)
+            list of validation issues (empty if all valid)
         """
         issues = []
 
@@ -168,7 +167,7 @@ class ValidationManager:
 
         return issues
 
-    def get_validation_summary(self) -> Dict[str, Any]:
+    def get_validation_summary(self) -> dict[str, Any]:
         """Get summary of validation state.
 
         Returns:

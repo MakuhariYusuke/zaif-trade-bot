@@ -21,7 +21,7 @@ minority actions continue to be sampled.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -31,9 +31,7 @@ from torch.optim import Adam
 
 logger = logging.getLogger(__name__)
 
-
-HistoryDict = Dict[str, List[float]]
-
+HistoryDict = dict[str, list[float]]
 
 class TargetEntropyController:
     """Automatic entropy coefficient controller.
@@ -98,7 +96,7 @@ class TargetEntropyController:
     def compute_entropy(
         self,
         action_logits: Tensor,
-        actions: Optional[Tensor] = None,
+        actions: Tensor | None = None,
     ) -> Tensor:
         """
         Compute policy entropy from action logits.
@@ -123,7 +121,7 @@ class TargetEntropyController:
         # Return mean entropy
         return entropy.mean()
 
-    def update(self, current_entropy: Tensor) -> Tuple[float, float]:
+    def update(self, current_entropy: Tensor) -> tuple[float, float]:
         """
         Update temperature parameter.
 
@@ -131,7 +129,7 @@ class TargetEntropyController:
             current_entropy: Current policy entropy (scalar tensor)
 
         Returns:
-            Tuple of (temperature_loss, current_alpha)
+            tuple of (temperature_loss, current_alpha)
         """
         # Temperature loss: L = α · (H* - H_π)
         # We want to minimize this, which encourages H_π → H*
@@ -165,7 +163,7 @@ class TargetEntropyController:
 
         return loss_value, current_alpha
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get current statistics.
 
@@ -200,7 +198,6 @@ class TargetEntropyController:
             True if should update
         """
         return (step % update_frequency) == 0
-
 
 def test_target_entropy_controller() -> None:
     """Test Target Entropy Controller functionality."""
@@ -266,7 +263,6 @@ def test_target_entropy_controller() -> None:
             print(f"{key}: {value}")
 
     print("\n✅ Target Entropy Controller test passed!")
-
 
 if __name__ == "__main__":
     test_target_entropy_controller()

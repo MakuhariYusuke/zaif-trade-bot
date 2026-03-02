@@ -17,14 +17,12 @@ from ztb.features.core.registry import FeatureRegistry
 
 from .ichimoku_ext import calculate_ichimoku_extended
 
-
 @FeatureRegistry.register("Ichimoku_Time_Theory")
 def compute_ichimoku_time_theory(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Time Theory - temporal relationships between Tenkan and Kijun"""
     feature = IchimokuTimeTheory()
     result_df = feature.compute(df)
     return result_df["ichimoku_time_theory"]
-
 
 class IchimokuTimeTheory(BaseFeature):
     """

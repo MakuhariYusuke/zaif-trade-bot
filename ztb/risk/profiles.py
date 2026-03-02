@@ -6,10 +6,9 @@ Defines conservative, balanced, and aggressive risk profiles.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict
+from typing import Any
 
 from ztb.utils.config import get_config_value
-
 
 class RiskProfile(str, Enum):
     """Risk profile presets."""
@@ -17,7 +16,6 @@ class RiskProfile(str, Enum):
     CONSERVATIVE = "conservative"
     BALANCED = "balanced"
     AGGRESSIVE = "aggressive"
-
 
 @dataclass
 class RiskLimits:
@@ -43,9 +41,8 @@ class RiskLimits:
     stop_loss_pct: float  # Stop loss percentage
     take_profit_pct: float  # Take profit percentage
 
-
 # Predefined risk profiles
-RISK_PROFILES: Dict[RiskProfile, RiskLimits] = {
+RISK_PROFILES: dict[RiskProfile, RiskLimits] = {
     RiskProfile.CONSERVATIVE: RiskLimits(
         max_position_notional=50000.0,
         max_single_trade_pct=0.02,  # 2% of capital
@@ -84,7 +81,6 @@ RISK_PROFILES: Dict[RiskProfile, RiskLimits] = {
     ),
 }
 
-
 def get_risk_profile(profile_name: str) -> RiskLimits:
     """Get risk limits for a profile name."""
     try:
@@ -95,7 +91,6 @@ def get_risk_profile(profile_name: str) -> RiskLimits:
             f"Unknown risk profile: {profile_name}. "
             f"Available: {[p.value for p in RiskProfile]}"
         )
-
 
 def create_custom_risk_profile(**kwargs: Any) -> RiskLimits:
     """Create a custom risk profile from parameters."""

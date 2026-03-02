@@ -5,7 +5,6 @@ Implements volatility-adjusted slippage and latency simulation.
 """
 
 import random
-from typing import Optional
 
 import numpy as np
 
@@ -14,7 +13,6 @@ from ztb.utils.fee_model import FeeModel, FixedFeeModel
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class RealisticExecutionModel(ExecutionModel):
     """
@@ -30,8 +28,8 @@ class RealisticExecutionModel(ExecutionModel):
         atr_slippage_factor: float = 0.5,  # Multiplier for ATR-based slippage
         base_latency_ms: float = 50.0,
         latency_jitter_ms: float = 20.0,
-        fee_model: Optional[FeeModel] = None,
-        seed: Optional[int] = None,
+        fee_model: FeeModel | None = None,
+        seed: int | None = None,
     ):
         self.base_slippage = base_slippage
         self.atr_slippage_factor = atr_slippage_factor
@@ -50,7 +48,7 @@ class RealisticExecutionModel(ExecutionModel):
         requested_size: float,
         current_atr: float = 0.0,
         current_volume: float = 0.0,
-        market_regime: Optional[str] = None,
+        market_regime: str | None = None,
     ) -> ExecutionResult:
         # 1. Calculate Latency
         # Simple uniform jitter

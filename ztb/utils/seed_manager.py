@@ -39,16 +39,15 @@ else:
         HAS_NUMPY = False
         np = None
 
-
 class SeedManager:
     """Centralized seed management for reproducibility."""
 
     def __init__(self) -> None:
-        self.current_seed: Optional[int] = None
+        self.current_seed: int | None = None
         self.determinism_enabled = True
 
-    def set_seed(self, seed: Optional[int]) -> None:
-        """Set seed across all random number generators.
+    def set_seed(self, seed: int | None) -> None:
+        """set seed across all random number generators.
 
         Args:
             seed: Random seed. If None, uses system entropy.
@@ -59,14 +58,14 @@ class SeedManager:
 
         self.current_seed = seed
 
-        # Set Python random seed
+        # set Python random seed
         random.seed(seed)
 
-        # Set NumPy seed
+        # set NumPy seed
         if HAS_NUMPY:
             np.random.seed(seed)
 
-        # Set PyTorch seeds and enable deterministic behavior
+        # set PyTorch seeds and enable deterministic behavior
         tmod = None
         if HAS_TORCH and torch is not None:
             tmod = torch
@@ -99,7 +98,7 @@ class SeedManager:
         if tmod is None:
             return
 
-        # Set deterministic algorithms
+        # set deterministic algorithms
         try:
             tmod.backends.cudnn.deterministic = True
             tmod.backends.cudnn.benchmark = False
@@ -118,7 +117,7 @@ class SeedManager:
         except Exception as e:
             logger.debug("seed setting cudnn.allow_tf32 failed: %s", e)
 
-        # Set environment variables for additional determinism
+        # set environment variables for additional determinism
         os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
     def disable_determinism(self) -> None:
@@ -150,7 +149,7 @@ class SeedManager:
             except Exception as e:
                 logger.debug("seed setting cudnn.allow_tf32 failed: %s", e)
 
-    def get_current_seed(self) -> Optional[int]:
+    def get_current_seed(self) -> int | None:
         """Get the currently set seed."""
         return self.current_seed
 
@@ -184,10 +183,8 @@ class SeedManager:
 
         return self.generate_deterministic_seed(self.current_seed, context)
 
-
 # Global seed manager instance
-_seed_manager: Optional[SeedManager] = None
-
+_seed_manager: SeedManager | None = None
 
 def get_seed_manager() -> SeedManager:
     """Get global seed manager instance."""
@@ -196,14 +193,12 @@ def get_seed_manager() -> SeedManager:
         _seed_manager = SeedManager()
     return _seed_manager
 
-
-def set_global_seed(seed: Optional[int]) -> None:
-    """Set seed globally across all random number generators."""
+def set_global_seed(seed: int | None) -> None:
+    """set seed globally across all random number generators."""
     manager = get_seed_manager()
     manager.set_seed(seed)
 
-
-def get_current_global_seed() -> Optional[int]:
+def get_current_global_seed() -> int | None:
     """Get the currently set global seed."""
     manager = get_seed_manager()
     return manager.get_current_seed()

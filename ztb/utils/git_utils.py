@@ -24,7 +24,6 @@ _GIT_LFS_BYPASS = [
     "filter.lfs.smudge=cat",
 ]
 
-
 def _run_git(
     args: list[str], cwd: Path | None = None, timeout: int = 5
 ) -> subprocess.CompletedProcess[str] | None:
@@ -48,17 +47,14 @@ def _run_git(
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
         return None
 
-
 def get_git_output(args: list[str], cwd: Path | None = None, timeout: int = 5) -> str | None:
     result = _run_git(args, cwd=cwd, timeout=timeout)
     if result is None or result.returncode != 0:
         return None
     return result.stdout.strip()
 
-
 def get_git_sha(cwd: Path | None = None, timeout: int = 5) -> str:
     return get_git_output(["rev-parse", "HEAD"], cwd=cwd, timeout=timeout) or "unknown"
-
 
 def get_git_branch(cwd: Path | None = None, timeout: int = 5) -> str:
     return (
@@ -66,13 +62,11 @@ def get_git_branch(cwd: Path | None = None, timeout: int = 5) -> str:
         or "unknown"
     )
 
-
 def get_git_remote_url(cwd: Path | None = None, timeout: int = 5) -> str:
     return (
         get_git_output(["remote", "get-url", "origin"], cwd=cwd, timeout=timeout)
         or "unknown"
     )
-
 
 def get_git_status_lines(
     cwd: Path | None = None,
@@ -92,7 +86,6 @@ def get_git_status_lines(
         return lines[:max_lines]
     return lines
 
-
 def get_git_dirty_status(
     cwd: Path | None = None, timeout: int = 8, *, include_untracked: bool = False
 ) -> bool:
@@ -104,7 +97,6 @@ def get_git_dirty_status(
             max_lines=1,
         )
     ) > 0
-
 
 def get_git_status_summary(
     cwd: Path | None = None,

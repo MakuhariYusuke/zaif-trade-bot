@@ -5,7 +5,7 @@ This module separates data-related logic from the main environment class,
 including data initialization, streaming, and buffer management.
 """
 
-from typing import Any, Optional, Set
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -14,7 +14,6 @@ from numpy.typing import NDArray
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class DataManager:
     """
@@ -30,41 +29,41 @@ class DataManager:
 
     def __init__(self):
         """Initialize DataManager."""
-        self.df: Optional[pd.DataFrame] = None
+        self.df: pd.DataFrame | None = None
         self.features: list[str] = []
         self.n_steps: int = 0
         self.current_step: int = 0
 
         # Data buffers
-        self._feature_matrix: Optional[NDArray[np.float32]] = None
-        self._price_array: Optional[NDArray[np.float32]] = None
-        self._close_array: Optional[NDArray[np.float32]] = None
-        self._atr_array: Optional[NDArray[np.float32]] = None
-        self._episode_id_array: Optional[NDArray[Any]] = None
+        self._feature_matrix: NDArray[np.float32] | None = None
+        self._price_array: NDArray[np.float32] | None = None
+        self._close_array: NDArray[np.float32] | None = None
+        self._atr_array: NDArray[np.float32] | None = None
+        self._episode_id_array: NDArray[Any] | None = None
 
         # Metadata
-        self._timestamp_column: Optional[str] = None
-        self._episode_id_column: Optional[str] = None
-        self._stream_last_timestamp: Optional[pd.Timestamp] = None
+        self._timestamp_column: str | None = None
+        self._episode_id_column: str | None = None
+        self._stream_last_timestamp: pd.Timestamp | None = None
         self._stream_rows_appended: int = 0
 
         # Data quality tracking
-        self._nonfinite_rows: Set[int] = set()
-        self._nonfinite_warned_rows: Set[int] = set()
+        self._nonfinite_rows: set[int] = set()
+        self._nonfinite_warned_rows: set[int] = set()
 
     def initialize_data(
         self,
         df: pd.DataFrame,
         features: list[str],
-        timestamp_column: Optional[str] = None,
-        episode_id_column: Optional[str] = None,
+        timestamp_column: str | None = None,
+        episode_id_column: str | None = None,
     ) -> None:
         """
         Initialize data structures.
 
         Args:
             df: Input dataframe
-            features: List of feature names
+            features: list of feature names
             timestamp_column: Name of timestamp column
             episode_id_column: Name of episode ID column
 
@@ -153,7 +152,7 @@ class DataManager:
                 f"Step {step} exceeds available data (n_steps={self.n_steps})"
             )
 
-    def get_feature_matrix(self) -> Optional[NDArray[np.float32]]:
+    def get_feature_matrix(self) -> NDArray[np.float32] | None:
         """Get the feature matrix."""
         return self._feature_matrix
 

@@ -10,7 +10,6 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-
 def main():
     # Load and modify config for quick test
     config_path = project_root / "configs" / "training" / "ppo_improved_v376.json"
@@ -60,7 +59,6 @@ def main():
     print("Quick test completed successfully!")
     print("Ready to run full 30k timestep training")
     print("=" * 80)
-
 
 if __name__ == "__main__":
     try:

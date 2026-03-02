@@ -27,7 +27,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import pandas as pd
 
@@ -36,23 +36,22 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 @dataclass
 class FeaturesSchema:
     """Feature schema with validation capabilities."""
 
-    columns: List[str]
-    dtypes: Dict[str, str]
+    columns: list[str]
+    dtypes: dict[str, str]
     order_hash: str  # SHA256 of column order
-    statistics: Dict[str, Dict[str, float]] = field(default_factory=dict)
-    created_at: Optional[str] = None
+    statistics: dict[str, dict[str, float]] = field(default_factory=dict)
+    created_at: str | None = None
     version: str = "1.0"
 
     @classmethod
     def from_dataframe(
         cls,
         df: pd.DataFrame,
-        feature_columns: Optional[List[str]] = None,
+        feature_columns: list[str] | None = None,
         compute_stats: bool = True,
     ) -> FeaturesSchema:
         """
@@ -60,7 +59,7 @@ class FeaturesSchema:
 
         Args:
             df: Input DataFrame
-            feature_columns: List of feature column names (if None, use all numeric columns)
+            feature_columns: list of feature column names (if None, use all numeric columns)
             compute_stats: Whether to compute basic statistics (mean, std, min, max)
 
         Returns:
@@ -96,7 +95,7 @@ class FeaturesSchema:
         order_hash = hashlib.sha256(order_str.encode()).hexdigest()
 
         # Compute statistics
-        statistics: Dict[str, Dict[str, float]] = {}
+        statistics: dict[str, dict[str, float]] = {}
         if compute_stats:
             for col in feature_columns:
                 series = df[col].dropna()
@@ -139,10 +138,10 @@ class FeaturesSchema:
     def validate_dataframe(
         self,
         df: pd.DataFrame,
-        feature_columns: Optional[List[str]] = None,
+        feature_columns: list[str] | None = None,
         strict: bool = True,
         tolerance: float = 0.1,
-    ) -> Tuple[bool, List[str]]:
+    ) -> tuple[bool, list[str]]:
         """
         Validate DataFrame against schema.
 
@@ -161,7 +160,7 @@ class FeaturesSchema:
         if feature_columns is None:
             feature_columns = self.columns
 
-        errors: List[str] = []
+        errors: list[str] = []
 
         # Check column presence
         missing = [col for col in feature_columns if col not in df.columns]
@@ -249,7 +248,7 @@ class FeaturesSchema:
         # Exact match
         return d1 == d2
 
-    def diff(self, other: FeaturesSchema) -> Dict[str, Any]:
+    def diff(self, other: FeaturesSchema) -> dict[str, Any]:
         """
         Generate detailed diff between this schema and another.
 
@@ -259,7 +258,7 @@ class FeaturesSchema:
         Returns:
             Dictionary with diff details
         """
-        diff: Dict[str, Any] = {
+        diff: dict[str, Any] = {
             "columns_added": list(set(other.columns) - set(self.columns)),
             "columns_removed": list(set(self.columns) - set(other.columns)),
             "dtype_changes": {},
@@ -358,7 +357,7 @@ class FeaturesSchema:
         cls,
         path: Path,
         df: pd.DataFrame,
-        feature_columns: Optional[List[str]] = None,
+        feature_columns: list[str] | None = None,
         strict: bool = True,
     ) -> FeaturesSchema:
         """
@@ -391,11 +390,10 @@ class FeaturesSchema:
 
         return schema
 
-
 def create_and_save_schema(
     df: pd.DataFrame,
     model_dir: Path,
-    feature_columns: Optional[List[str]] = None,
+    feature_columns: list[str] | None = None,
 ) -> FeaturesSchema:
     """
     Convenience function: Create schema from DataFrame and save to model directory.
@@ -413,11 +411,10 @@ def create_and_save_schema(
     schema.save(schema_path)
     return schema
 
-
 def load_and_validate_schema(
     model_dir: Path,
     df: pd.DataFrame,
-    feature_columns: Optional[List[str]] = None,
+    feature_columns: list[str] | None = None,
     strict: bool = True,
 ) -> FeaturesSchema:
     """

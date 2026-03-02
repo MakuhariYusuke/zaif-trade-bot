@@ -1,20 +1,20 @@
 """
 Centralized configuration management.
 """
+from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from ztb.config.loaders.priority_loader import PriorityConfigLoader
 from ztb.config.schemas.zaif import UnifiedConfigLoader, ZaifTradeBotConfig
 from ztb.utils.config_manager import BaseConfigManager
 from ztb.utils.path_utils import get_project_root
 
-
 class ZaifTradeBotConfigManager(BaseConfigManager):
     """Configuration manager singleton."""
 
-    _instance: Optional["ZaifTradeBotConfigManager"] = None
-    _config: Optional[ZaifTradeBotConfig] = None
+    _instance: ZaifTradeBotConfigManager | None = None
+    _config: ZaifTradeBotConfig | None = None
 
     def __init__(self) -> None:
         if ZaifTradeBotConfigManager._instance is not None:
@@ -29,7 +29,7 @@ class ZaifTradeBotConfigManager(BaseConfigManager):
             cls._instance = cls()
         return cls._instance
 
-    def load_config(self, config_path: Optional[str] = None) -> ZaifTradeBotConfig:
+    def load_config(self, config_path: str | None = None) -> ZaifTradeBotConfig:
         """Load and merge configuration from all sources."""
         if config_path is None:
             # Try to find config files in standard locations
@@ -45,7 +45,7 @@ class ZaifTradeBotConfigManager(BaseConfigManager):
         self._config = ZaifTradeBotConfig(**merged)
         return self._config
 
-    def _find_default_config_path(self) -> Optional[str]:
+    def _find_default_config_path(self) -> str | None:
         """Find default configuration file path."""
         project_root = get_project_root()
         search_paths = [
@@ -116,7 +116,7 @@ class ZaifTradeBotConfigManager(BaseConfigManager):
 
         return sorted(list(set(config_files)))
 
-    def validate_config(self, config_path: Optional[str] = None) -> bool:
+    def validate_config(self, config_path: str | None = None) -> bool:
         """Validate configuration file."""
         try:
             if config_path:
@@ -152,7 +152,7 @@ class ZaifTradeBotConfigManager(BaseConfigManager):
         return value
 
     def set(self, key: str, value: Any) -> None:
-        """Set configuration value."""
+        """set configuration value."""
         # This would update the config, but for simplicity, just update the dict
         config_dict = self.get_config().model_dump()
         keys = key.split(".")
@@ -161,7 +161,6 @@ class ZaifTradeBotConfigManager(BaseConfigManager):
             d = d.setdefault(k, {})
         d[keys[-1]] = value
         self._config = ZaifTradeBotConfig(**config_dict)
-
 
 # Global instance
 config_manager = ZaifTradeBotConfigManager.get_instance()

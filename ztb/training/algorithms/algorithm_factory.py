@@ -17,10 +17,9 @@ Example:
     'ppo'
 """
 
-from typing import Any, Dict, Type
+from typing import Any
 
 from .base_algorithm import BaseRLAlgorithm
-
 
 class AlgorithmFactory:
     """
@@ -30,11 +29,11 @@ class AlgorithmFactory:
     新しいアルゴリズムを追加する場合は、register()で登録するだけでよい。
     """
 
-    _algorithms: Dict[str, Type[BaseRLAlgorithm]] = {}
+    _algorithms: dict[str, type[BaseRLAlgorithm]] = {}
 
     @classmethod
     def register(
-        cls, algorithm_name: str, algorithm_class: Type[BaseRLAlgorithm]
+        cls, algorithm_name: str, algorithm_class: type[BaseRLAlgorithm]
     ) -> None:
         """
         アルゴリズムを登録する。
@@ -145,7 +144,7 @@ class AlgorithmFactory:
         return False
 
     @classmethod
-    def get_info(cls) -> Dict[str, Any]:
+    def get_info(cls) -> dict[str, Any]:
         """
         登録済みアルゴリズムの情報を取得。
 

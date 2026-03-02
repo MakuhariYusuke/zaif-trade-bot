@@ -9,7 +9,6 @@ import pandas as pd
 from ztb.features.core.registry import FeatureRegistry
 from ztb.utils.talib_wrapper import TaLibWrapper
 
-
 @FeatureRegistry.register("CCI")
 def compute_cci(df: pd.DataFrame, period: int = 20) -> pd.Series:
     """Compute CCI (Commodity Channel Index) using Ta-Lib wrapper"""

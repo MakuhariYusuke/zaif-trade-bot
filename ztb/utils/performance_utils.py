@@ -8,7 +8,7 @@ memory usage, and execution times.
 import logging
 import time
 from functools import wraps
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, TypeVar
 
 import psutil
 
@@ -24,7 +24,6 @@ F = TypeVar("F", bound=Callable[..., Any])
 # TORCH_AVAILABLE will be set dynamically when needed.
 TORCH_AVAILABLE = False
 torch = None
-
 
 def timed(func: F) -> F:
     """
@@ -49,7 +48,6 @@ def timed(func: F) -> F:
             logger.debug(f"{func.__name__} took {duration:.4f}s")
 
     return wrapper  # type: ignore[return-value]
-
 
 def timed_with_memory(func: F) -> F:
     """
@@ -85,7 +83,6 @@ def timed_with_memory(func: F) -> F:
 
     return wrapper  # type: ignore[return-value]
 
-
 class CodePerformanceMonitor:
     """
     Context manager for monitoring code block performance.
@@ -94,9 +91,9 @@ class CodePerformanceMonitor:
     def __init__(self, name: str, log_level: int = logging.DEBUG):
         self.name = name
         self.log_level = log_level
-        self.start_time: Optional[float] = None
-        self.start_memory: Optional[int] = None
-        self.start_gpu_memory: Optional[int] = None
+        self.start_time: float | None = None
+        self.start_memory: int | None = None
+        self.start_gpu_memory: int | None = None
 
     def __enter__(self) -> None:
         self.start_time = time.perf_counter()
@@ -169,10 +166,8 @@ class CodePerformanceMonitor:
             f"CPU memory: {memory_delta / BYTES_PER_MB:+.1f}MB{gpu_memory_info}",
         )
 
-
 # Backwards compatibility alias
 PerformanceMonitor = CodePerformanceMonitor
-
 
 def profile_function(
     func: F, sample_rate: float = 1.0, log_threshold: float = 0.1

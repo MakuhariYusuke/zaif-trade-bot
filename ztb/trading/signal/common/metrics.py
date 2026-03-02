@@ -5,8 +5,6 @@ This module provides standardized metric calculations used across
 signal processing components.
 """
 
-from typing import Dict, List
-
 import numpy as np
 import pandas as pd
 
@@ -15,8 +13,7 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
-def calculate_trend_metrics(data: pd.DataFrame, window: int = 20) -> Dict[str, float]:
+def calculate_trend_metrics(data: pd.DataFrame, window: int = 20) -> dict[str, float]:
     """
     Calculate comprehensive trend metrics
 
@@ -87,10 +84,9 @@ def calculate_trend_metrics(data: pd.DataFrame, window: int = 20) -> Dict[str, f
         "bear_strength": float(bear_strength),
     }
 
-
 def calculate_momentum_metrics(
     data: pd.DataFrame, short_window: int = 10, long_window: int = 20
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Calculate momentum-based metrics
 
@@ -156,10 +152,9 @@ def calculate_momentum_metrics(
         else 0.0,
     }
 
-
 def calculate_volatility_metrics(
     data: pd.DataFrame, window: int = 20
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Calculate volatility-based metrics
 
@@ -235,8 +230,7 @@ def calculate_volatility_metrics(
         "volatility_percentile": float(vol_percentile),
     }
 
-
-def calculate_volume_metrics(data: pd.DataFrame, window: int = 20) -> Dict[str, float]:
+def calculate_volume_metrics(data: pd.DataFrame, window: int = 20) -> dict[str, float]:
     """
     Calculate volume-based metrics
 
@@ -290,10 +284,9 @@ def calculate_volume_metrics(data: pd.DataFrame, window: int = 20) -> Dict[str, 
         "volume_ma_ratio": float(volume_trend),
     }
 
-
 def calculate_support_resistance_metrics(
     data: pd.DataFrame, window: int = 20
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Calculate support and resistance metrics
 
@@ -355,9 +348,8 @@ def calculate_support_resistance_metrics(
         "resistance_level": float(resistance),
     }
 
-
 def calculate_composite_score(
-    indicator_scores: Dict[str, float], weights: Dict[str, float] = None
+    indicator_scores: dict[str, float], weights: dict[str, float] = None
 ) -> float:
     """
     Calculate composite score from multiple indicators
@@ -401,19 +393,18 @@ def calculate_composite_score(
     composite = round(float(composite), 6)
     return max(0.0, min(100.0, composite))
 
-
 def calculate_signal_quality_metrics(
-    predictions: List[int],
-    actual_returns: List[float],
-    confidence_scores: List[float] = None,
-) -> Dict[str, float]:
+    predictions: list[int],
+    actual_returns: list[float],
+    confidence_scores: list[float] = None,
+) -> dict[str, float]:
     """
     Calculate signal quality metrics
 
     Args:
-        predictions: List of predicted actions (-1, 0, 1)
-        actual_returns: List of actual returns
-        confidence_scores: List of confidence scores (optional)
+        predictions: list of predicted actions (-1, 0, 1)
+        actual_returns: list of actual returns
+        confidence_scores: list of confidence scores (optional)
 
     Returns:
         Dictionary of quality metrics

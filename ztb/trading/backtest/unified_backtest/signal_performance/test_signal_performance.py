@@ -20,12 +20,11 @@ from ztb.trading.backtest.unified_backtest.signal_performance import (
     BacktestPerformanceAnalyzer
 )
 
-
 class TestSignalTracker(unittest.TestCase):
     """Test SignalTracker functionality."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """set up test fixtures."""
         self.tracker = SignalTracker()
 
     def test_track_signal(self):
@@ -71,12 +70,11 @@ class TestSignalTracker(unittest.TestCase):
         self.assertEqual(len(signals_in_range), 1)
         self.assertEqual(signals_in_range[0].action, "sell")
 
-
 class TestBacktestPerformanceAnalyzer(unittest.TestCase):
     """Test BacktestPerformanceAnalyzer functionality."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """set up test fixtures."""
         self.analyzer = BacktestPerformanceAnalyzer()
 
     def test_record_trade_outcome_executed(self):
@@ -136,12 +134,11 @@ class TestBacktestPerformanceAnalyzer(unittest.TestCase):
         self.assertIn("trade_outcomes", report)
         self.assertEqual(len(report["trade_outcomes"]), 1)
 
-
 class TestBacktestSignalPerformanceAnalyzer(unittest.TestCase):
     """Test BacktestSignalPerformanceAnalyzer integration."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """set up test fixtures."""
         self.analyzer = BacktestSignalPerformanceAnalyzer()
 
     def test_track_signal_integration(self):
@@ -188,7 +185,6 @@ class TestBacktestSignalPerformanceAnalyzer(unittest.TestCase):
         self.assertIn("performance_analysis", report)
         self.assertIn("total_signals", report["signal_tracking"])
         self.assertIn("total_trades", report["performance_analysis"])
-
 
 if __name__ == '__main__':
     unittest.main()

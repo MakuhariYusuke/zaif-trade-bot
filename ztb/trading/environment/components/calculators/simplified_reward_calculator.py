@@ -1,7 +1,6 @@
 """Minimal simplified reward calculator used by script-level tests."""
 from typing import Sequence
 
-
 def calculate_downside_risk_reward(*args: object, **kwargs: object) -> float:
     # Delegates to metrics module in normal code; provide a trivial implementation
     returns = args[0] if args else []
@@ -10,12 +9,10 @@ def calculate_downside_risk_reward(*args: object, **kwargs: object) -> float:
     except Exception:
         return 0.0
 
-
 def calculate_trading_reward(returns: Sequence[float], penalty: float = 1.0) -> float:
     avg = sum(returns) / (len(returns) or 1)
     downside = calculate_downside_risk_reward(returns)
     return float(avg) - penalty * float(downside)
-
 
 class SimplifiedRewardCalculator:
     """Backwards-compatible wrapper exposing a simple class-based API used in some
@@ -32,7 +29,6 @@ class SimplifiedRewardCalculator:
         if isinstance(self.reward_settings, dict):
             penalty = self.reward_settings.get("penalty", penalty)
         return calculate_trading_reward(returns, penalty=penalty)
-
 
 __all__ = [
     "calculate_downside_risk_reward",

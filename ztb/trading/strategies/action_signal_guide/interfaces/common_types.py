@@ -31,7 +31,6 @@ SeriesMap: TypeAlias = dict[str, pd.Series]
 # Reusable callback/data-handler signatures.
 DataHandler: TypeAlias = Callable[[object], None]
 
-
 class IActionSignalGuideInterface(ABC):
     """Marker base class for Action Signal Guide interfaces."""
 

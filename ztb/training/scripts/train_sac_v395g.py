@@ -9,7 +9,6 @@ from ztb.training.unified_trainer import UnifiedTrainer
 from ztb.utils.file_utils import safe_json_load
 from ztb.utils.training_utils import display_training_complete
 
-
 def main():
     print("🔬 SAC v395g - Micro Reward Scale (1/10)")
     print("=" * 80)
@@ -68,7 +67,6 @@ def main():
     else:
         print("❌ Training failed")
     print("=" * 80)
-
 
 if __name__ == "__main__":
     main()

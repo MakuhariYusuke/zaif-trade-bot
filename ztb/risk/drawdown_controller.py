@@ -4,7 +4,7 @@ Drawdown Controller for SAC v435
 ドローダウン制御とリスク管理システム
 """
 
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 
@@ -12,14 +12,13 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class DrawdownController:
     """
     ドローダウン制御クラス
     ポートフォリオのドローダウンを監視し、リスクを制御
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         """
         Args:
             config: ドローダウン制御設定
@@ -42,7 +41,7 @@ class DrawdownController:
         self.reduction_threshold = config.get("reduction_threshold", 0.08)  # 8%
 
         # 状態追跡
-        self.portfolio_value_history: List[float] = []
+        self.portfolio_value_history: list[float] = []
         self.peak_value = 0.0
         self.current_drawdown = 0.0
         self.max_drawdown = 0.0
@@ -54,7 +53,7 @@ class DrawdownController:
 
     def update_portfolio_value(
         self, portfolio_value: float, step: int
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         ポートフォリオ価値を更新し、ドローダウンを計算
 
@@ -100,7 +99,7 @@ class DrawdownController:
 
         return control_info
 
-    def _apply_risk_controls(self, step: int) -> Dict[str, Any]:
+    def _apply_risk_controls(self, step: int) -> dict[str, Any]:
         """
         リスク制御を適用
 
@@ -176,7 +175,7 @@ class DrawdownController:
 
         return recovery_amount >= self.recovery_threshold
 
-    def get_risk_metrics(self) -> Dict[str, float]:
+    def get_risk_metrics(self) -> dict[str, float]:
         """
         リスク指標を取得
 

@@ -9,7 +9,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-
 class FeatureSelectionMethod(Enum):
     """特徴量選択手法"""
 
@@ -34,7 +33,6 @@ class FeatureSelectionMethod(Enum):
     VARIANCE_BASED = "variance_based"  # 分散ベース
     STABILITY_BASED = "stability_based"  # 安定性ベース
     MARKET_CONDITION_BASED = "market_condition_based"  # 市場条件ベース
-
 
 class MarketCondition(Enum):
     """市場条件"""
@@ -46,13 +44,12 @@ class MarketCondition(Enum):
     NEWS_DRIVEN = "news_driven"  # ニュース主導
     TECHNICAL = "technical"  # テクニカル主導
 
-
 @dataclass
 class AdaptiveFeatureConfig:
     """適応型特徴量選択設定"""
 
     # 選択手法設定
-    enabled_methods: List[FeatureSelectionMethod] = field(
+    enabled_methods: list[FeatureSelectionMethod] = field(
         default_factory=lambda: [
             FeatureSelectionMethod.IMPORTANCE_BASED,
             FeatureSelectionMethod.CORRELATION_BASED,
@@ -88,15 +85,14 @@ class AdaptiveFeatureConfig:
     stability_threshold: float = 0.8  # 安定性閾値
 
     # 重み付け設定
-    feature_weights: Dict[str, float] = field(default_factory=dict)  # 特徴量別重み
-    method_weights: Dict[FeatureSelectionMethod, float] = field(
+    feature_weights: dict[str, float] = field(default_factory=dict)  # 特徴量別重み
+    method_weights: dict[FeatureSelectionMethod, float] = field(
         default_factory=lambda: {
             FeatureSelectionMethod.IMPORTANCE_BASED: 0.4,
             FeatureSelectionMethod.CORRELATION_BASED: 0.3,
             FeatureSelectionMethod.MARKET_CONDITION_BASED: 0.3,
         }
     )
-
 
 @dataclass
 class FeatureImportance:
@@ -106,24 +102,22 @@ class FeatureImportance:
     importance_score: float
     method: FeatureSelectionMethod
     timestamp: datetime
-    market_condition: Optional[MarketCondition] = None
+    market_condition: MarketCondition | None = None
     confidence: float = 1.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
-
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class FeatureSelectionResult:
     """特徴量選択結果"""
 
-    selected_features: List[str]
-    feature_weights: Dict[str, float]
+    selected_features: list[str]
+    feature_weights: dict[str, float]
     selection_method: FeatureSelectionMethod
     market_condition: MarketCondition
     timestamp: datetime
     performance_score: float = 0.0
     stability_score: float = 1.0
     reason: str = ""
-
 
 class AdaptiveFeatureSelector:
     """適応型特徴量選択マネージャー"""
@@ -132,40 +126,40 @@ class AdaptiveFeatureSelector:
         self,
         online_learning_pipeline: "OnlineLearningPipeline",
         evaluation_manager: ContinuousEvaluationManager,
-        config: Optional[AdaptiveFeatureConfig] = None,
+        config: AdaptiveFeatureConfig | None = None,
     ):
         self.online_learning = online_learning_pipeline
         self.evaluation_manager = evaluation_manager
         self.config = config or AdaptiveFeatureConfig()
 
         # 特徴量管理
-        self.all_features: List[str] = []
-        self.selected_features: List[str] = []
-        self.feature_weights: Dict[str, float] = {}
-        self.feature_importance_history: Dict[str, List[FeatureImportance]] = {}
+        self.all_features: list[str] = []
+        self.selected_features: list[str] = []
+        self.feature_weights: dict[str, float] = {}
+        self.feature_importance_history: dict[str, list[FeatureImportance]] = {}
 
         # 市場条件追跡
         self.current_market_condition: MarketCondition = MarketCondition.CALM
-        self.market_condition_history: List[Tuple[datetime, MarketCondition]] = []
+        self.market_condition_history: list[tuple[datetime, MarketCondition]] = []
 
         # 選択結果履歴
-        self.selection_history: List[FeatureSelectionResult] = []
+        self.selection_history: list[FeatureSelectionResult] = []
 
         # モデルとスケーラー
-        self.importance_models: Dict[FeatureSelectionMethod, Any] = {}
-        self.scalers: Dict[str, StandardScaler] = {}
+        self.importance_models: dict[FeatureSelectionMethod, Any] = {}
+        self.scalers: dict[str, StandardScaler] = {}
 
         # 状態管理
         self.is_active = False
-        self.last_adaptation_time: Optional[datetime] = None
+        self.last_adaptation_time: datetime | None = None
 
         # コールバック
-        self.feature_selection_callbacks: List[
+        self.feature_selection_callbacks: list[
             Callable[[FeatureSelectionResult], None]
         ] = []
 
         # スレッド管理
-        self.adaptation_thread: Optional[threading.Thread] = None
+        self.adaptation_thread: threading.Thread | None = None
 
         # 初期化
         self._initialize_selector()
@@ -573,7 +567,7 @@ class AdaptiveFeatureSelector:
 
     def _get_market_condition_weights(
         self, market_condition: MarketCondition
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """市場条件に応じた重みを取得"""
         try:
             if market_condition == MarketCondition.TRENDING:
@@ -617,7 +611,7 @@ class AdaptiveFeatureSelector:
 
     def _combine_selections(
         self,
-        selection_results: Dict[FeatureSelectionMethod, FeatureSelectionResult],
+        selection_results: dict[FeatureSelectionMethod, FeatureSelectionResult],
         market_condition: MarketCondition,
         timestamp: datetime,
     ) -> FeatureSelectionResult:
@@ -766,7 +760,7 @@ class AdaptiveFeatureSelector:
         except Exception as e:
             logger.error(f"Failed to initialize importance models: {e}")
 
-    def _get_available_features(self) -> List[str]:
+    def _get_available_features(self) -> list[str]:
         """利用可能な特徴量を取得"""
         try:
             # オンライン学習パイプラインから特徴量を取得
@@ -803,7 +797,7 @@ class AdaptiveFeatureSelector:
                 logger.error(f"Adaptation worker error: {e}")
                 time.sleep(300)  # エラー時は5分待機
 
-    def _get_latest_data(self) -> Tuple[Optional[pd.DataFrame], Optional[pd.Series]]:
+    def _get_latest_data(self) -> tuple[pd.DataFrame | None, pd.Series | None]:
         """最新データを取得"""
         try:
             # オンライン学習パイプラインからデータを取得
@@ -828,7 +822,7 @@ class AdaptiveFeatureSelector:
             except Exception as e:
                 logger.error(f"Feature selection callback failed: {e}")
 
-    def get_selection_history(self, hours: int = 24) -> List[Dict[str, Any]]:
+    def get_selection_history(self, hours: int = 24) -> list[dict[str, Any]]:
         """選択履歴を取得"""
         try:
             cutoff_time = datetime.now() - timedelta(hours=hours)
@@ -855,7 +849,7 @@ class AdaptiveFeatureSelector:
 
     def get_feature_importance_stats(
         self, feature_name: str, hours: int = 24
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """特徴量重要度統計を取得"""
         try:
             if feature_name not in self.feature_importance_history:

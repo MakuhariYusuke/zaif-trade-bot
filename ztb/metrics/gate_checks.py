@@ -13,7 +13,6 @@ from __future__ import annotations
 import numpy as np
 from scipy.stats import mannwhitneyu
 
-
 def cliffs_delta(x: list[float], y: list[float]) -> float:
     """Cliff's Delta effect size — O(n log n) via Mann-Whitney U.
 
@@ -35,7 +34,6 @@ def cliffs_delta(x: list[float], y: list[float]) -> float:
     u_stat, _ = mannwhitneyu(x, y, alternative="two-sided")
     return float(2.0 * u_stat / (n1 * n2) - 1.0)
 
-
 def compare_single(
     model: list[float],
     baseline: list[float],
@@ -53,7 +51,6 @@ def compare_single(
         return 1.0, 0.0
     _, p = mannwhitneyu(model, baseline, alternative="greater")
     return p, cliffs_delta(model, baseline)
-
 
 def holm_bonferroni_gate(
     results: dict[str, tuple[list[float], list[float]]],
@@ -101,7 +98,6 @@ def holm_bonferroni_gate(
 
     return out
 
-
 def p_mean_gate(
     fold_p_values: list[float],
     alpha: float = 0.05,
@@ -130,7 +126,6 @@ def p_mean_gate(
         "n_folds": len(fold_p_values),
         "pass": float(p_geo) < alpha,
     }
-
 
 def g1_judgment(
     fold_results: dict[str, list[tuple[list[float], list[float]]]],

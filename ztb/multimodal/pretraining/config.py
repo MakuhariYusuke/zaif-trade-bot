@@ -12,7 +12,7 @@ techniques implemented in the pretraining module.
 - Training hyperparameters
 """
 
-from typing import Any, Dict
+from typing import Any
 
 # Default configuration for Masked Price Modeling
 MPM_CONFIG = {
@@ -181,8 +181,7 @@ PRODUCTION_CONFIG = {
     "random_seed": 42,
 }
 
-
-def get_config(config_type: str = "default") -> Dict[str, Any]:
+def get_config(config_type: str = "default") -> dict[str, Any]:
     """
     Get configuration by type
 
@@ -199,10 +198,9 @@ def get_config(config_type: str = "default") -> Dict[str, Any]:
     else:
         return SELF_SUPERVISED_CONFIG.copy()
 
-
 def update_config(
-    base_config: Dict[str, Any], updates: Dict[str, Any]
-) -> Dict[str, Any]:
+    base_config: dict[str, Any], updates: dict[str, Any]
+) -> dict[str, Any]:
     """
     Update configuration with custom parameters
 
@@ -215,7 +213,7 @@ def update_config(
     """
     config = base_config.copy()
 
-    def deep_update(d: Dict[str, Any], u: Dict[str, Any]) -> None:
+    def deep_update(d: dict[str, Any], u: dict[str, Any]) -> None:
         for k, v in u.items():
             if isinstance(v, dict) and k in d and isinstance(d[k], dict):
                 deep_update(d[k], v)

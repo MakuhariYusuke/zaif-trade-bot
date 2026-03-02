@@ -11,7 +11,6 @@ from datetime import datetime, timezone
 
 from ztb.utils.compat_wrapper import run_command_safely
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Start training session")
     parser.add_argument("--correlation-id", help="Correlation ID for the session")
@@ -27,7 +26,7 @@ def main() -> None:
 
     print(f"Starting training session with correlation ID: {corr_id}")
 
-    # Set environment variable
+    # set environment variable
     env = os.environ.copy()
     env["CORR"] = corr_id
 
@@ -47,7 +46,6 @@ def main() -> None:
     else:
         print(f"Failed to start training (exit code: {result['returncode']})")
         sys.exit(result["returncode"])
-
 
 if __name__ == "__main__":
     main()

@@ -8,7 +8,7 @@ Provides comprehensive analysis of training metrics, reward progression, and act
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import matplotlib.pyplot as plt
 
@@ -22,10 +22,8 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class SACv423Analyzer:
     """Analyzer for SAC v423 training results."""
-
 
     def find_latest_training_results(self) -> list[Path]:
         """Find all recent training results."""

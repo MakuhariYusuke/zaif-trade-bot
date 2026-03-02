@@ -23,7 +23,6 @@ from .signal_quality_filter import SignalQualityFilter
 if TYPE_CHECKING:
     from ..action_signal_guide import ActionSignal
 
-
 @dataclass
 class AdaptationMetrics:
     """Metrics for adaptation system performance."""
@@ -34,7 +33,6 @@ class AdaptationMetrics:
     adaptation_time: float
     market_regime: str
     timestamp: float
-
 
 class DynamicAdapter:
     """
@@ -107,7 +105,7 @@ class DynamicAdapter:
         Perform dynamic adaptation and signal filtering.
 
         Args:
-            available_patterns: List of available pattern names
+            available_patterns: list of available pattern names
             signals: Raw signals to filter
             market_data: Current market data
             market_regime: Current market regime

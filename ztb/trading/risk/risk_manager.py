@@ -7,7 +7,7 @@ This module provides comprehensive risk management functionality including:
 - Stop loss and take profit calculations
 """
 
-from typing import Dict, Optional, Tuple, Any
+from typing import Any
 
 import pandas as pd
 
@@ -16,7 +16,6 @@ from ztb.trading.trade_execution_engine import Position
 from ztb.trading.types import PositionManagementConfig, PortfolioState
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.errors import validate_price
-
 
 class RiskManager(RiskManagerProtocol):
     """リスクマネージャー"""
@@ -31,10 +30,10 @@ class RiskManager(RiskManagerProtocol):
 
         # リスク追跡
         self.portfolio_risk = 0.0
-        self.position_risks: Dict[str, float] = {}
+        self.position_risks: dict[str, float] = {}
 
     def calculate_portfolio_risk(
-        self, positions: Dict[str, Position], volatilities: Dict[str, float]
+        self, positions: dict[str, Position], volatilities: dict[str, float]
     ) -> float:
         """ポートフォリオリスクを計算"""
         if not positions:
@@ -64,7 +63,7 @@ class RiskManager(RiskManagerProtocol):
         self.portfolio_risk = total_risk
         return total_risk
 
-    def check_risk_limits(self, portfolio_state: PortfolioState) -> Dict[str, bool]:
+    def check_risk_limits(self, portfolio_state: PortfolioState) -> dict[str, bool]:
         """リスク制限をチェック"""
         checks = {
             "portfolio_risk_ok": True,
@@ -177,10 +176,10 @@ class RiskManager(RiskManagerProtocol):
 
     def should_close_position(
         self,
-        position_data: Dict[str, Any],
+        position_data: dict[str, Any],
         current_price: float,
         current_portfolio_value: float,
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """ポジションを閉じるべきか判断"""
         # position_data から Position オブジェクトを作成
         position = Position(
@@ -221,7 +220,7 @@ class RiskManager(RiskManagerProtocol):
 
     def calculate_atr_stop_levels(
         self, data: pd.DataFrame, entry_price: float, position_type: str
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """ATRベースのストップレベルを計算"""
         if "atr" not in data.columns:
             # ATRがない場合は固定パーセントを使用
@@ -252,7 +251,7 @@ class RiskManager(RiskManagerProtocol):
         return stop_price, take_price
 
     def update_risk_metrics(
-        self, trade_result: Optional[Dict[str, Any]] = None
+        self, trade_result: dict[str, Any] | None = None
     ) -> None:
         """リスクメトリクスを更新"""
         if trade_result:

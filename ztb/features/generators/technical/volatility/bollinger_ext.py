@@ -11,13 +11,11 @@ from numpy.typing import NDArray
 
 from ztb.features.registry import FeatureRegistry
 
-
 @FeatureRegistry.register("Bollinger_Squeeze")
 def compute_bollinger_squeeze(df: pd.DataFrame) -> pd.Series:
     """Bollinger Bands Squeeze (1=squeeze, 0=no squeeze)"""
     extended_features = calculate_bollinger_extended(df)
     return extended_features["bollinger_squeeze"]
-
 
 @FeatureRegistry.register("Bollinger_Bandwidth")
 def compute_bollinger_bandwidth(df: pd.DataFrame) -> pd.Series:
@@ -25,20 +23,17 @@ def compute_bollinger_bandwidth(df: pd.DataFrame) -> pd.Series:
     extended_features = calculate_bollinger_extended(df)
     return extended_features["bollinger_bandwidth"]
 
-
 @FeatureRegistry.register("Bollinger_Percent_B")
 def compute_bollinger_percent_b(df: pd.DataFrame) -> pd.Series:
     """Bollinger Bands %B (position within bands)"""
     extended_features = calculate_bollinger_extended(df)
     return extended_features["bollinger_percent_b"]
 
-
 @FeatureRegistry.register("Bollinger_Band_Expansion")
 def compute_bollinger_expansion(df: pd.DataFrame) -> pd.Series:
     """Bollinger Bands Expansion Rate"""
     extended_features = calculate_bollinger_extended(df)
     return extended_features["bollinger_expansion"]
-
 
 def calculate_bollinger_extended(
     df: pd.DataFrame,
@@ -90,7 +85,6 @@ def calculate_bollinger_extended(
 
     return result
 
-
 def _compute_bollinger_extended(
     upper: NDArray[np.floating[Any]],
     middle: NDArray[np.floating[Any]],
@@ -136,7 +130,6 @@ def _compute_bollinger_extended(
 
     return bandwidth, percent_b, squeeze, expansion
 
-
 def bollinger_feature_summary() -> dict[str, str]:
     """
     Returns a dictionary summarizing each extended Bollinger Bands feature.
@@ -150,7 +143,6 @@ def bollinger_feature_summary() -> dict[str, str]:
         "bollinger_squeeze": "Squeeze signal (1=squeeze, 0=no squeeze)",
         "bollinger_expansion": "Rate of band expansion/contraction",
     }
-
 
 if __name__ == "__main__":
     # Simple test

@@ -7,7 +7,7 @@ deterministic=Falseでの収益性を評価する
 
 import argparse
 from pathlib import Path
-from typing import Any, List, cast
+from typing import Any, cast
 
 import numpy as np
 from sb3_contrib import MaskablePPO
@@ -15,7 +15,6 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ztb.trading.environment.schema_env_factory import create_env_from_model_path
 from ztb.io.data_loader import DataLoader
-
 
 def run_stochastic_backtest(
     model_path: str,
@@ -48,8 +47,8 @@ def run_stochastic_backtest(
     print("Model loaded\n")
 
     # バックテスト実行
-    episode_rewards: List[float] = []
-    episode_returns: List[float] = []
+    episode_rewards: list[float] = []
+    episode_returns: list[float] = []
     total_trades = 0
     action_counts = {0: 0, 1: 0, 2: 0}  # HOLD, BUY, SELL
 
@@ -130,7 +129,6 @@ def run_stochastic_backtest(
     )
     print(f"{'='*80}")
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Stochastic Backtest")
     parser.add_argument("--model", required=True, help="Path to model file")
@@ -139,7 +137,6 @@ def main() -> None:
 
     args = parser.parse_args()
     run_stochastic_backtest(args.model, args.data, args.episodes)
-
 
 if __name__ == "__main__":
     main()

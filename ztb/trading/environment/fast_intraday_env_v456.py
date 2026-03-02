@@ -9,7 +9,7 @@ v455環境を拡張して、v456の88次元観測空間とGroupedFeatureScaler�
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -85,7 +85,6 @@ def _calculate_ichimoku_signal(df: pd.DataFrame) -> np.ndarray:
 
 logger = logging.getLogger(__name__)
 
-
 class FastIntradayEnvV456(gym.Env):
     """
     Fast Intraday Trading Environment v456
@@ -125,13 +124,13 @@ class FastIntradayEnvV456(gym.Env):
     def __init__(
         self,
         df: pd.DataFrame,
-        base_feature_columns: List[str],  # 30個のBase特徴量
-        mtf_feature_columns: List[str],   # 27個のMTF特徴量
-        regime_feature_columns: List[str],  # 13個のRegime特徴量
-        binance_df: Optional[pd.DataFrame] = None,  # グローバル市場データ
+        base_feature_columns: list[str],  # 30個のBase特徴量
+        mtf_feature_columns: list[str],   # 27個のMTF特徴量
+        regime_feature_columns: list[str],  # 13個のRegime特徴量
+        binance_df: pd.DataFrame | None = None,  # グローバル市場データ
         initial_balance: float = 1_000_000.0,
         max_position: float = 1.0,
-        max_steps: Optional[int] = None,
+        max_steps: int | None = None,
         commission_rate: float = 0.001,
         max_ttl_steps: int = 60,
         cooldown_steps: int = 5,
@@ -140,8 +139,8 @@ class FastIntradayEnvV456(gym.Env):
         drawdown_limit: float = 0.1,
         prewarm_steps: int = 100,
         reward_scale: float = 100000.0,
-        reward_clip: Optional[float] = 1.0,
-        reward_params: Optional[Dict[str, float]] = None,
+        reward_clip: float | None = 1.0,
+        reward_params: dict[str, float] | None = None,
         action_space_type: str = "2d_position_ttl",
         guidance_decay_steps: int = 50000,  # New parameter for curriculum decay
         dynamic_threshold_mode: str = "z_score",
@@ -149,7 +148,7 @@ class FastIntradayEnvV456(gym.Env):
         z_score_threshold: float = 3.0,
         z_score_method: str = "mad",
         min_action_threshold: float = 0.001,
-        env_config: Optional[Dict[str, Any]] = None,
+        env_config: dict[str, Any] | None = None,
     ):
         super().__init__()
         
@@ -425,9 +424,9 @@ class FastIntradayEnvV456(gym.Env):
         
     def reset(
         self,
-        seed: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None
-    ) -> Tuple[np.ndarray, Dict[str, Any]]:
+        seed: int | None = None,
+        options: dict[str, Any] | None = None
+    ) -> tuple[np.ndarray, dict[str, Any]]:
         """環境をリセット
         
         Args:
@@ -535,7 +534,7 @@ class FastIntradayEnvV456(gym.Env):
         else:
             return np.array([0.0])
     
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         """1ステップ実行"""
         # Store previous action for calibration
         self.previous_action = action[0]
@@ -547,7 +546,7 @@ class FastIntradayEnvV456(gym.Env):
         position_prev = self.position
         
         # ★ P1-1: close_reason初期化（スコープ全体で利用）
-        close_reason: Optional[str] = None
+        close_reason: str | None = None
         # ★ Doc19指摘[Major]: prev_entry_price初期化
         prev_entry_price = self.entry_price
         # ★ P0-3: trade_pnl初期化
@@ -1015,7 +1014,6 @@ class FastIntradayEnvV456(gym.Env):
             'regime': (13, 'Regime features (One-Hot)'),
             'account': (6, 'Account metrics (normalized)'),
         }
-
 
 if __name__ == "__main__":
     # Demo

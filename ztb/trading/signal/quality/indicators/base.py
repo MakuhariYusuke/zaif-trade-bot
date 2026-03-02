@@ -20,18 +20,15 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 IndicatorConfig = dict[str, object]
 IndicatorResult = dict[str, object]
 IndicatorWeights = dict[str, float]
-
 
 def _normalize_mapping(value: Mapping[str, object] | None) -> IndicatorConfig:
     """Normalize mapping keys to strings."""
     if value is None:
         return {}
     return {str(key): mapped for key, mapped in value.items()}
-
 
 def _to_int(value: object, default: int, minimum: int | None = None) -> int:
     """Convert object to int with optional lower bound."""
@@ -42,7 +39,6 @@ def _to_int(value: object, default: int, minimum: int | None = None) -> int:
     if minimum is not None and result < minimum:
         return minimum
     return result
-
 
 class BaseTechnicalIndicator(BaseIndicatorCalculator):
     """
@@ -132,7 +128,6 @@ class BaseTechnicalIndicator(BaseIndicatorCalculator):
         """Get minimum periods required for calculation."""
         return self._get_config_int("periods", 14, minimum=1)
 
-
 class BaseOscillatorIndicator(BaseTechnicalIndicator):
     """
     Base class for oscillator-type indicators (0-100 range).
@@ -162,7 +157,6 @@ class BaseOscillatorIndicator(BaseTechnicalIndicator):
             return "overbought"
         return "neutral"
 
-
 class BaseTrendIndicator(BaseTechnicalIndicator):
     """
     Base class for trend-following indicators.
@@ -186,7 +180,6 @@ class BaseTrendIndicator(BaseTechnicalIndicator):
         if value < -0.5:
             return "bearish"
         return "sideways"
-
 
 class BaseVolatilityIndicator(BaseTechnicalIndicator):
     """
@@ -214,7 +207,6 @@ class BaseVolatilityIndicator(BaseTechnicalIndicator):
             return "high"
         return "extreme"
 
-
 class BaseVolumeIndicator(BaseTechnicalIndicator):
     """
     Base class for volume-based indicators.
@@ -238,7 +230,6 @@ class BaseVolumeIndicator(BaseTechnicalIndicator):
         if value < 0.8:
             return "decreasing"
         return "neutral"
-
 
 class CompositeIndicator(BaseTechnicalIndicator):
     """
@@ -331,7 +322,6 @@ class CompositeIndicator(BaseTechnicalIndicator):
             "total_weight": 0.0,
         }
 
-
 class AdaptiveIndicator(BaseTechnicalIndicator):
     """
     Adaptive indicator that adjusts parameters based on market conditions.
@@ -364,7 +354,7 @@ class AdaptiveIndicator(BaseTechnicalIndicator):
         return parsed
 
     def set_market_regime(self, regime: str | None) -> None:
-        """Set current market regime for adaptation."""
+        """set current market regime for adaptation."""
         if isinstance(regime, str) and regime:
             self.market_regime = regime
         else:

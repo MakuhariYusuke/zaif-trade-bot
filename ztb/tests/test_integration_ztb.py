@@ -22,7 +22,6 @@ sys.path.insert(0, str(project_root))
 from ztb.training.ppo_trainer import PPOConfig
 from ztb.training.experiments.sell_mitigation_ppo_trainer import SELLBiasMitigationPPOTrainer
 
-
 def test_integration():
     """Test that all 4 features initialize correctly."""
     print("\n=== 4 High-Impact Modifications Integration Test ===\n")
@@ -115,7 +114,6 @@ def test_integration():
 
         traceback.print_exc()
         return False
-
 
 if __name__ == "__main__":
     success = test_integration()

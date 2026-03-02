@@ -32,11 +32,11 @@ import copy
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, cast
+from typing import Any, cast
 
 from ztb.utils.file_utils import safe_json_dump, safe_json_load
 
-jsonschema: Optional[Any] = None
+jsonschema: Any | None = None
 
 try:
     import jsonschema
@@ -50,13 +50,11 @@ except ImportError:
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from ztb.training.evaluation.eval_gates import EvalGates, GateResult, GateStatus
 
-
-def load_json_file(path: Path) -> Dict[str, Any]:
+def load_json_file(path: Path) -> dict[str, Any]:
     """Load JSON file."""
-    return cast(Dict[str, Any], safe_json_load(path))
+    return cast(dict[str, Any], safe_json_load(path))
 
-
-def load_cost_estimate(correlation_id: str) -> Optional[Dict[str, Any]]:
+def load_cost_estimate(correlation_id: str) -> dict[str, Any] | None:
     """Load cost estimate if available."""
     artifacts_dir = Path("artifacts") / correlation_id
     cost_file = artifacts_dir / "reports" / "cost_estimate.json"
@@ -64,8 +62,7 @@ def load_cost_estimate(correlation_id: str) -> Optional[Dict[str, Any]]:
         return load_json_file(cost_file)
     return None
 
-
-def aggregate_metrics(correlation_id: str) -> Dict[str, Any]:
+def aggregate_metrics(correlation_id: str) -> dict[str, Any]:
     """Aggregate latest metrics from artifacts."""
     artifacts_dir = Path("artifacts") / correlation_id
 
@@ -198,8 +195,7 @@ def aggregate_metrics(correlation_id: str) -> Dict[str, Any]:
 
     return summary
 
-
-def generate_executive_summary(summary: Dict[str, Any]) -> str:
+def generate_executive_summary(summary: dict[str, Any]) -> str:
     """Generate short executive excerpt in Markdown."""
     md = f"# Training Summary for {summary.get('correlation_id', 'Unknown')}\n\n"
     md += f"Generated: {summary['timestamp']}\n\n"
@@ -249,8 +245,7 @@ def generate_executive_summary(summary: Dict[str, Any]) -> str:
 
     return md
 
-
-def validate_summary(summary: Dict[str, Any]) -> bool:
+def validate_summary(summary: dict[str, Any]) -> bool:
     """Validate summary against schema."""
     if not HAS_JSONSCHEMA:
         print("jsonschema not available, skipping validation", file=sys.stderr)
@@ -274,8 +269,7 @@ def validate_summary(summary: Dict[str, Any]) -> bool:
         print("jsonschema not available, skipping validation", file=sys.stderr)  # type: ignore[unreachable]
         return True
 
-
-def redact_summary(summary: Dict[str, Any]) -> Dict[str, Any]:
+def redact_summary(summary: dict[str, Any]) -> dict[str, Any]:
     """Redact secrets from summary."""
     # Placeholder: remove sensitive fields
     redacted = copy.deepcopy(summary)  # Deep copy
@@ -291,7 +285,6 @@ def redact_summary(summary: Dict[str, Any]) -> Dict[str, Any]:
             ):
                 del config[key]
     return redacted
-
 
 def process_rollup(correlation_id: str) -> int:
     """Process rollup for given correlation_id."""
@@ -322,7 +315,6 @@ def process_rollup(correlation_id: str) -> int:
     print(f"Rollup complete: {summary_json}, {summary_md}")
     return 0
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Rollup artifacts and generate summary"
@@ -344,7 +336,6 @@ def main() -> None:
             time.sleep(args.interval_minutes * 60)
     else:
         sys.exit(process_rollup(args.correlation_id))
-
 
 if __name__ == "__main__":
     main()

@@ -7,7 +7,7 @@ Provides consistent result storage format across the project.
 """
 
 from pathlib import Path
-from typing import Optional, TypedDict, Union
+from typing import TypedDict
 
 import pandas as pd
 
@@ -18,12 +18,10 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class TrainingResultsPayload(TypedDict):
     results: dict[str, object]
     timestamp: str
     metadata: dict[str, object]
-
 
 class BacktestMetricsPayload(TypedDict):
     metrics: dict[str, object]
@@ -32,12 +30,11 @@ class BacktestMetricsPayload(TypedDict):
     portfolio_points: int
     total_trades: int
 
-
 def save_training_results(
     results: dict[str, object],
-    output_dir: Union[str, Path],
+    output_dir: str | Path,
     filename: str = "training_results.json",
-    metadata: Optional[dict[str, object]] = None,
+    metadata: dict[str, object] | None = None,
     overwrite: bool = True,
 ) -> str:
     """
@@ -76,9 +73,8 @@ def save_training_results(
     logger.info(f"Training results saved to {filepath}")
     return str(filepath)
 
-
 def load_training_results(
-    filepath: Union[str, Path], validate_keys: Optional[list[str]] = None
+    filepath: str | Path, validate_keys: list[str] | None = None
 ) -> dict[str, object]:
     """
     Load training results from JSON file.
@@ -117,21 +113,20 @@ def load_training_results(
     logger.info(f"Training results loaded from {filepath}")
     return results
 
-
 def save_backtest_results(
     portfolio_values: list,
     trade_history: list,
     metrics: dict[str, object],
-    output_dir: Union[str, Path],
+    output_dir: str | Path,
     filename_prefix: str = "backtest",
-    metadata: Optional[dict[str, object]] = None,
+    metadata: dict[str, object] | None = None,
 ) -> dict[str, str]:
     """
     Save backtest results with consistent format.
 
     Args:
-        portfolio_values: List of portfolio values over time
-        trade_history: List of trade records
+        portfolio_values: list of portfolio values over time
+        trade_history: list of trade records
         metrics: Performance metrics
         output_dir: Directory to save results
         filename_prefix: Prefix for result files
@@ -175,9 +170,8 @@ def save_backtest_results(
     logger.info(f"Backtest results saved to {output_dir}")
     return saved_files
 
-
 def load_backtest_results(
-    results_dir: Union[str, Path], filename_prefix: str = "backtest"
+    results_dir: str | Path, filename_prefix: str = "backtest"
 ) -> dict[str, object]:
     """
     Load backtest results from directory.

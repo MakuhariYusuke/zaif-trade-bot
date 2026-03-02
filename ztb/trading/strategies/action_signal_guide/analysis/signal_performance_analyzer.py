@@ -8,7 +8,7 @@ signals and SAC learning outcomes, providing quantitative metrics for signal qua
 import time
 from collections import defaultdict
 from collections.abc import Sequence
-from typing import Dict, List, Optional, TypedDict, Union
+from typing import TypedDict
 
 import numpy as np
 import pandas as pd
@@ -17,7 +17,6 @@ from scipy import stats
 from ztb.utils.logging_utils import get_logger
 
 from ..components.history_helpers import append_with_compaction
-
 
 class SignalQualityRecord(TypedDict):
     timestamp: float
@@ -28,12 +27,10 @@ class SignalQualityRecord(TypedDict):
     consistency_score: float
     quality_score: float
 
-
 class SACLearningLog(TypedDict, total=False):
     reward: float
     loss: float
     timestep: int
-
 
 class ContributionAnalysis(TypedDict):
     high_quality_avg_reward: float
@@ -42,15 +39,13 @@ class ContributionAnalysis(TypedDict):
     high_quality_count: int
     low_quality_count: int
 
-
 class SACCorrelationRecord(TypedDict):
     timestamp: float
     correlation: float
     p_value: float
-    rolling_correlations: Dict[str, float]
+    rolling_correlations: dict[str, float]
     contribution_analysis: ContributionAnalysis
     data_points: int
-
 
 class SignalPerformanceAnalyzer:
     """
@@ -85,16 +80,16 @@ class SignalPerformanceAnalyzer:
         self.pattern_statistics = pattern_statistics
 
         # Signal quality tracking
-        self.signal_quality_history: List[SignalQualityRecord] = []
-        self.signal_sac_correlations: List[SACCorrelationRecord] = []
+        self.signal_quality_history: list[SignalQualityRecord] = []
+        self.signal_sac_correlations: list[SACCorrelationRecord] = []
 
         # SAC learning metrics
-        self.sac_learning_curves: List[SACLearningLog] = []
-        self.sac_action_distributions: List[dict[str, float]] = []
+        self.sac_learning_curves: list[SACLearningLog] = []
+        self.sac_action_distributions: list[dict[str, float]] = []
 
         # Performance correlation data
-        self.signal_contribution_scores: Dict[str, List[float]] = defaultdict(list)
-        self.regime_signal_effectiveness: Dict[str, Dict[str, float]] = defaultdict(dict)
+        self.signal_contribution_scores: dict[str, list[float]] = defaultdict(list)
+        self.regime_signal_effectiveness: dict[str, dict[str, float]] = defaultdict(dict)
 
         # Quality scoring parameters
         self.quality_weights: dict[str, float] = {
@@ -164,12 +159,12 @@ class SignalPerformanceAnalyzer:
 
         return final_score
 
-    def _calculate_trend(self, values: Union[Sequence[float], pd.Series]) -> float:
+    def _calculate_trend(self, values: Sequence[float] | pd.Series) -> float:
         """
         Calculate trend direction and strength.
 
         Args:
-            values: List of values to analyze trend
+            values: list of values to analyze trend
 
         Returns:
             Trend coefficient (-1 to 1, positive = improving)
@@ -197,7 +192,7 @@ class SignalPerformanceAnalyzer:
 
     def analyze_sac_learning_correlation(
         self,
-        sac_learning_logs: Optional[List[SACLearningLog]] = None,
+        sac_learning_logs: list[SACLearningLog] | None = None,
         correlation_window: int = 100,
     ) -> dict[str, object]:
         """
@@ -249,7 +244,7 @@ class SignalPerformanceAnalyzer:
             correlation, p_value = 0.0, 1.0
 
         # Calculate rolling correlations
-        rolling_correlations: Dict[str, float] = {}
+        rolling_correlations: dict[str, float] = {}
         for window_size in self._rolling_windows(correlation_window):
             if len(sac_rewards) >= window_size:
                 try:
@@ -472,7 +467,7 @@ class SignalPerformanceAnalyzer:
 
         return effectiveness
 
-    def _generate_recommendations(self) -> List[str]:
+    def _generate_recommendations(self) -> list[str]:
         """Generate recommendations based on performance analysis."""
         recommendations = []
 

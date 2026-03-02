@@ -14,10 +14,9 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional, cast
+from typing import Any, cast
 
 from ztb.utils.file_utils import safe_json_load
-
 
 def find_tb_dirs(base_dir: Path) -> list[Path]:
     """Find TensorBoard directories in the base directory."""
@@ -35,8 +34,7 @@ def find_tb_dirs(base_dir: Path) -> list[Path]:
 
     return tb_dirs
 
-
-def extract_scalars(tb_dir: Path) -> Dict[str, Any]:
+def extract_scalars(tb_dir: Path) -> dict[str, Any]:
     """Extract latest scalar values from a TensorBoard directory."""
     # Simplified extraction - in real TB, this would parse event files
     # For this implementation, we'll look for a summary.json file or simulate
@@ -44,7 +42,7 @@ def extract_scalars(tb_dir: Path) -> Dict[str, Any]:
     summary_file = tb_dir / "scalars_summary.json"
     if summary_file.exists():
         try:
-            return cast(Dict[str, Any], safe_json_load(summary_file))
+            return cast(dict[str, Any], safe_json_load(summary_file))
         except Exception:
             pass
 
@@ -63,10 +61,9 @@ def extract_scalars(tb_dir: Path) -> Dict[str, Any]:
 
     return scalars
 
-
 def scrape_summaries(
-    run_dir: Path, output_file: Optional[Path] = None
-) -> Dict[str, Any]:
+    run_dir: Path, output_file: Path | None = None
+) -> dict[str, Any]:
     """Scrape summaries from all TB directories in run_dir."""
     tb_dirs = find_tb_dirs(run_dir)
 
@@ -88,7 +85,6 @@ def scrape_summaries(
         print(f"Summaries written to {output_file}")
 
     return summaries
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Extract TensorBoard scalars to JSON")
@@ -116,7 +112,6 @@ def main() -> None:
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

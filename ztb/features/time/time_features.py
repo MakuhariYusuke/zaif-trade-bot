@@ -3,13 +3,10 @@ time_features.py
 Time-based features for intraday and interday analysis
 """
 
-from typing import Union
-
 import numpy as np
 import pandas as pd
 
 from ztb.features.core.registry import FeatureRegistry
-
 
 @FeatureRegistry.register("Time_Monthly_Cycle")
 def compute_time_monthly_cycle(df: pd.DataFrame) -> pd.Series:
@@ -17,13 +14,11 @@ def compute_time_monthly_cycle(df: pd.DataFrame) -> pd.Series:
     extended_features = calculate_time_features_extended(df)
     return extended_features["time_monthly_cycle"]
 
-
 @FeatureRegistry.register("Time_Quarterly_Cycle")
 def compute_time_quarterly_cycle(df: pd.DataFrame) -> pd.Series:
     """Quarterly cycle progress (0-1, where 1 is end of quarter)"""
     extended_features = calculate_time_features_extended(df)
     return extended_features["time_quarterly_cycle"]
-
 
 @FeatureRegistry.register("Time_Session")
 def compute_time_session(df: pd.DataFrame) -> pd.Series:
@@ -31,13 +26,11 @@ def compute_time_session(df: pd.DataFrame) -> pd.Series:
     extended_features = calculate_time_features_extended(df)
     return extended_features["time_session"]
 
-
 @FeatureRegistry.register("Time_Day_of_Week")
 def compute_time_day_of_week(df: pd.DataFrame) -> pd.Series:
     """Day of Week (0=Monday, 6=Sunday)"""
     extended_features = calculate_time_features_extended(df)
     return extended_features["time_day_of_week"]
-
 
 @FeatureRegistry.register("Time_Hour_of_Day")
 def compute_time_hour_of_day(df: pd.DataFrame) -> pd.Series:
@@ -45,13 +38,11 @@ def compute_time_hour_of_day(df: pd.DataFrame) -> pd.Series:
     extended_features = calculate_time_features_extended(df)
     return extended_features["time_hour_of_day"]
 
-
 @FeatureRegistry.register("Time_Volatility_Adjustment")
 def compute_time_volatility_adjustment(df: pd.DataFrame) -> pd.Series:
     """Time-based Volatility Adjustment Factor"""
     extended_features = calculate_time_features_extended(df)
     return extended_features["time_volatility_adjustment"]
-
 
 def calculate_time_features_extended(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -70,7 +61,7 @@ def calculate_time_features_extended(df: pd.DataFrame) -> pd.DataFrame:
     result = pd.DataFrame(index=df.index)
 
     # Extract time components
-    datetime_index: Union[pd.DatetimeIndex, pd.Series]
+    datetime_index: pd.DatetimeIndex | pd.Series
     if isinstance(df.index, pd.DatetimeIndex):
         datetime_index = df.index
     elif "timestamp" in df.columns:
@@ -186,7 +177,6 @@ def calculate_time_features_extended(df: pd.DataFrame) -> pd.DataFrame:
 
     return result
 
-
 def time_feature_summary() -> dict[str, str]:
     """
     Returns a dictionary summarizing each time-based feature.
@@ -204,7 +194,6 @@ def time_feature_summary() -> dict[str, str]:
         "time_volatility_adjustment": "Time-based volatility multiplier",
         "time_session_progress": "Progress through trading session (0-1)",
     }
-
 
 if __name__ == "__main__":
     # Simple test

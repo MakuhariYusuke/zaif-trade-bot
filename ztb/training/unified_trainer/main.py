@@ -17,7 +17,6 @@ warnings.filterwarnings("ignore", category=RuntimeWarning, module="numpy")
 warnings.filterwarnings("ignore", category=UserWarning, module="pandas")
 warnings.filterwarnings("ignore", category=UserWarning, module="numpy")
 
-
 def main() -> None:
     """Main entry point for unified training."""
     # Parse command line arguments first to get log level
@@ -97,7 +96,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # Set up logging based on command line argument
+    # set up logging based on command line argument
     log_level_map = {
         "DEBUG": logging.DEBUG,
         "INFO": logging.INFO,
@@ -177,7 +176,6 @@ def main() -> None:
 
     success = trainer.run()
     sys.exit(0 if success else 1)
-
 
 if __name__ == "__main__":
     main()

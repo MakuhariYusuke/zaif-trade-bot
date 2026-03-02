@@ -8,7 +8,7 @@ import logging
 import time
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import TYPE_CHECKING, Mapping, Optional
+from typing import TYPE_CHECKING, Mapping
 
 from ztb.utils.types import LoggerProtocol
 
@@ -17,16 +17,15 @@ if TYPE_CHECKING:
 
 BYTES_PER_MB = 1024 * 1024
 
-
 def setup_logging(
     level: int = logging.INFO,
-    format_string: Optional[str] = None,
-    log_file: Optional[str] = None,
+    format_string: str | None = None,
+    log_file: str | None = None,
     max_bytes: int = 10 * BYTES_PER_MB,  # 10MB
     backup_count: int = 5,
 ) -> None:
     """
-    Set up basic logging configuration with optional file rotation.
+    set up basic logging configuration with optional file rotation.
 
     Args:
         level: Logging level (default: logging.INFO)
@@ -69,10 +68,9 @@ def setup_logging(
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
 
-
 def setup_logging_from_config(config: Mapping[str, object]) -> None:
     """
-    Set up logging from configuration dictionary.
+    set up logging from configuration dictionary.
 
     Args:
         config: Configuration dictionary with logging settings
@@ -97,7 +95,6 @@ def setup_logging_from_config(config: Mapping[str, object]) -> None:
         backup_count=backup_count,
     )
 
-
 def configure_log_levels(config: Mapping[str, object]) -> None:
     """
     Configure specific log levels for different modules.
@@ -115,7 +112,6 @@ def configure_log_levels(config: Mapping[str, object]) -> None:
             level = getattr(logging, level_val.upper(), logging.INFO)
             logging.getLogger(module).setLevel(level)
 
-
 def get_logger(name: str) -> logging.Logger:
     """
     Get a logger instance for the given name.
@@ -130,7 +126,6 @@ def get_logger(name: str) -> logging.Logger:
         Logger instance
     """
     return logging.getLogger(name)
-
 
 class StructuredLogger(LoggerProtocol):
     """
@@ -155,7 +150,7 @@ class StructuredLogger(LoggerProtocol):
         self.context: dict[str, object] = {}
 
     def set_context(self, **kwargs: object) -> None:
-        """Set logging context that will be included in all log messages."""
+        """set logging context that will be included in all log messages."""
         self.context.update(kwargs)
 
     def clear_context(self) -> None:
@@ -163,7 +158,7 @@ class StructuredLogger(LoggerProtocol):
         self.context.clear()
 
     def _format_message(
-        self, message: str, extra: Optional[dict[str, object]] = None
+        self, message: str, extra: dict[str, object] | None = None
     ) -> str:
         """Format message with context and extra data."""
         log_data = {**self.context}
@@ -180,22 +175,21 @@ class StructuredLogger(LoggerProtocol):
                 return f"{message} [{context_str}]"
             return message
 
-    def info(self, message: str, extra: Optional[dict[str, object]] = None) -> None:
+    def info(self, message: str, extra: dict[str, object] | None = None) -> None:
         """Log info message with context."""
         self.logger.info(self._format_message(message, extra))
 
-    def warning(self, message: str, extra: Optional[dict[str, object]] = None) -> None:
+    def warning(self, message: str, extra: dict[str, object] | None = None) -> None:
         """Log warning message with context."""
         self.logger.warning(self._format_message(message, extra))
 
-    def error(self, message: str, extra: Optional[dict[str, object]] = None) -> None:
+    def error(self, message: str, extra: dict[str, object] | None = None) -> None:
         """Log error message with context."""
         self.logger.error(self._format_message(message, extra))
 
-    def debug(self, message: str, extra: Optional[dict[str, object]] = None) -> None:
+    def debug(self, message: str, extra: dict[str, object] | None = None) -> None:
         """Log debug message with context."""
         self.logger.debug(self._format_message(message, extra))
-
 
 def create_structured_logger(name: str, json_format: bool = False) -> StructuredLogger:
     """
@@ -210,17 +204,14 @@ def create_structured_logger(name: str, json_format: bool = False) -> Structured
     """
     return StructuredLogger(name, json_format)
 
-
 # Standardized logging functions for common operations
 def log_data_loading(logger: logging.Logger, file_path: str, rows: int) -> None:
     """Standardized logging for data loading operations."""
     logger.info(f"✅ Data loaded: {rows:,} rows from {file_path}")
 
-
 def log_model_loading(logger: logging.Logger, model_path: str) -> None:
     """Standardized logging for model loading operations."""
     logger.info(f"✅ Model loaded from {model_path}")
-
 
 def log_training_start(
     logger: logging.Logger, model_name: str, config_summary: str = ""
@@ -231,7 +222,6 @@ def log_training_start(
         message += f" with config: {config_summary}"
     logger.info(message)
 
-
 def log_backtest_start(
     logger: logging.Logger, model_name: str, data_info: str = ""
 ) -> None:
@@ -240,7 +230,6 @@ def log_backtest_start(
     if data_info:
         message += f" using {data_info}"
     logger.info(message)
-
 
 def log_analysis_start(
     logger: logging.Logger, analysis_type: str, target: str = ""
@@ -251,7 +240,6 @@ def log_analysis_start(
         message += f" for {target}"
     logger.info(message)
 
-
 def log_success(logger: logging.Logger, operation: str, details: str = "") -> None:
     """Standardized logging for successful operations."""
     message = f"✅ {operation} completed successfully"
@@ -259,11 +247,9 @@ def log_success(logger: logging.Logger, operation: str, details: str = "") -> No
         message += f": {details}"
     logger.info(message)
 
-
 def log_error(logger: logging.Logger, operation: str, error: str) -> None:
     """Standardized logging for errors."""
     logger.error(f"❌ {operation} failed: {error}")
-
 
 def log_warning(logger: logging.Logger, message: str) -> None:
     """Standardized logging for warnings."""

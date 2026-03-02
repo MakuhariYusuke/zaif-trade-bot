@@ -3,13 +3,10 @@ v459 Phase 0.2c: 因果性保証付きGroupedFeatureScaler
 Doc04仕様準拠: 88次元中36次元の選択的スケーリング with 因果性保証
 """
 
-from typing import Optional
-
 import numpy as np
 import pandas as pd
 
 from ztb.features.grouping.grouped_scaler import GroupedFeatureScaler
-
 
 class CausalGroupedFeatureScaler(GroupedFeatureScaler):
     """
@@ -32,7 +29,7 @@ class CausalGroupedFeatureScaler(GroupedFeatureScaler):
         """
         super().__init__(epsilon, momentum, clip_value)
         self.std_floor = std_floor
-        self.fit_end_idx: Optional[int] = None
+        self.fit_end_idx: int | None = None
         self.fitted = False
     
     def fit(self, data: pd.DataFrame, end_idx: int):

@@ -6,13 +6,12 @@ Provides pattern correlation modeling and SAC action pattern coordination.
 """
 
 from collections.abc import Sequence
-from typing import Callable, Dict, List, Optional, Tuple, TypedDict
+from typing import Callable, Optional, TypedDict
 import numpy as np
 import pandas as pd
 from ztb.utils.logging_utils import get_logger
 
 from ..types import ActionSignal, SignalList
-
 
 class SACAggregationContext(TypedDict, total=False):
     """Optional SAC payload used during signal aggregation."""
@@ -20,11 +19,9 @@ class SACAggregationContext(TypedDict, total=False):
     recent_actions: Sequence[int | float | str]
     action_rewards: Sequence[int | float | str]
 
-
 AggregationStrategy = Callable[
-    [SignalList, pd.DataFrame, Optional[SACAggregationContext]], ActionSignal
+    [SignalList, pd.DataFrame, SACAggregationContext | None], ActionSignal
 ]
-
 
 class AdvancedSignalAggregator:
     """
@@ -41,13 +38,13 @@ class AdvancedSignalAggregator:
         self.logger = get_logger("ztb.trading.strategies.advanced_signal_aggregator")
 
         # Pattern correlation matrix
-        self.pattern_correlations: Dict[Tuple[str, str], float] = {}
+        self.pattern_correlations: dict[tuple[str, str], float] = {}
 
         # SAC action pattern learning
-        self.sac_action_patterns: Dict[str, List[float]] = {}
+        self.sac_action_patterns: dict[str, list[float]] = {}
 
         # Aggregation strategies
-        self.aggregation_strategies: Dict[str, AggregationStrategy] = {
+        self.aggregation_strategies: dict[str, AggregationStrategy] = {
             "weighted_average": self._weighted_average_aggregation,
             "correlation_aware": self._correlation_aware_aggregation,
             "sac_coordinated": self._sac_coordinated_aggregation,
@@ -58,14 +55,14 @@ class AdvancedSignalAggregator:
         self,
         signals: SignalList,
         market_data: pd.DataFrame,
-        sac_context: Optional[SACAggregationContext] = None,
+        sac_context: SACAggregationContext | None = None,
         strategy: str = "correlation_aware",
     ) -> ActionSignal:
         """
         Aggregate signals using advanced strategies.
 
         Args:
-            signals: List of ActionSignal objects
+            signals: list of ActionSignal objects
             market_data: Current market data
             sac_context: SAC system context (actions, rewards, etc.)
             strategy: Aggregation strategy to use
@@ -87,7 +84,7 @@ class AdvancedSignalAggregator:
         self,
         signals: SignalList,
         market_data: pd.DataFrame,
-        sac_context: Optional[SACAggregationContext] = None,
+        sac_context: SACAggregationContext | None = None,
     ) -> ActionSignal:
         """Standard weighted average aggregation."""
         total_weight = sum(s.strength * s.confidence for s in signals)
@@ -114,7 +111,7 @@ class AdvancedSignalAggregator:
         self,
         signals: SignalList,
         market_data: pd.DataFrame,
-        sac_context: Optional[SACAggregationContext] = None,
+        sac_context: SACAggregationContext | None = None,
     ) -> ActionSignal:
         """Correlation-aware aggregation considering pattern relationships."""
         if len(signals) < 2:
@@ -145,7 +142,7 @@ class AdvancedSignalAggregator:
         self,
         signals: SignalList,
         market_data: pd.DataFrame,
-        sac_context: Optional[SACAggregationContext] = None,
+        sac_context: SACAggregationContext | None = None,
     ) -> ActionSignal:
         """SAC-coordinated aggregation based on learned action patterns."""
         if not sac_context:
@@ -184,7 +181,7 @@ class AdvancedSignalAggregator:
         self,
         signals: SignalList,
         market_data: pd.DataFrame,
-        sac_context: Optional[SACAggregationContext] = None,
+        sac_context: SACAggregationContext | None = None,
     ) -> ActionSignal:
         """Time series consistent aggregation with trend validation."""
         if len(market_data) < 10:
@@ -192,7 +189,7 @@ class AdvancedSignalAggregator:
 
         # Analyze time series consistency
         trend_direction = self._analyze_market_trend(market_data)
-        consistency_scores: List[float] = []
+        consistency_scores: list[float] = []
 
         for signal in signals:
             consistency = self._calculate_signal_consistency(signal, market_data, trend_direction)
@@ -249,13 +246,13 @@ class AdvancedSignalAggregator:
         return max(0.5, min(1.5, factor))
 
     @staticmethod
-    def _coerce_actions(values: object) -> List[int]:
+    def _coerce_actions(values: object) -> list[int]:
         """Coerce mixed payload actions into integer action IDs."""
         if not isinstance(values, Sequence) or isinstance(
             values, (str, bytes, bytearray)
         ):
             return []
-        actions: List[int] = []
+        actions: list[int] = []
         for item in values:
             try:
                 actions.append(int(float(item)))
@@ -264,13 +261,13 @@ class AdvancedSignalAggregator:
         return actions
 
     @staticmethod
-    def _coerce_rewards(values: object) -> List[float]:
+    def _coerce_rewards(values: object) -> list[float]:
         """Coerce mixed payload rewards into float rewards."""
         if not isinstance(values, Sequence) or isinstance(
             values, (str, bytes, bytearray)
         ):
             return []
-        rewards: List[float] = []
+        rewards: list[float] = []
         for item in values:
             try:
                 rewards.append(float(item))
@@ -278,9 +275,9 @@ class AdvancedSignalAggregator:
                 continue
         return rewards
 
-    def _learn_action_patterns(self, actions: List[int], rewards: List[float]) -> Dict[str, float]:
+    def _learn_action_patterns(self, actions: list[int], rewards: list[float]) -> dict[str, float]:
         """Learn SAC action pattern preferences."""
-        pattern_scores: Dict[str, float] = {}
+        pattern_scores: dict[str, float] = {}
 
         # Simple pattern learning: action -> average reward
         unique_actions = set(actions)
@@ -291,7 +288,7 @@ class AdvancedSignalAggregator:
 
         return pattern_scores
 
-    def _calculate_sac_adjustment(self, signal: ActionSignal, action_scores: Dict[str, float]) -> float:
+    def _calculate_sac_adjustment(self, signal: ActionSignal, action_scores: dict[str, float]) -> float:
         """Calculate SAC-based adjustment for signal."""
         signal_action = str(signal.direction)  # Assume direction maps to action
         base_score = action_scores.get(signal_action, 0.0)

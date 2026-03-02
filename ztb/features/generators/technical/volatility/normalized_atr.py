@@ -15,14 +15,12 @@ from ztb.features.core.base import BaseFeature
 from ztb.features.core.registry import FeatureRegistry
 from ztb.utils.talib_wrapper import TaLibWrapper
 
-
 @FeatureRegistry.register("Normalized_ATR")
 def compute_normalized_atr(df: pd.DataFrame) -> pd.Series:
     """Normalized ATR using Ta-Lib wrapper"""
     feature = NormalizedATR()
     result_df = feature.compute(df)
     return result_df["normalized_atr"]
-
 
 class NormalizedATR(BaseFeature):
     """

@@ -9,7 +9,7 @@ import hmac
 import json
 import logging
 import time
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Literal
 
 import requests
 
@@ -27,12 +27,10 @@ from ..base.broker_interfaces import (
 
 logger = logging.getLogger(__name__)
 
-
 # Type definitions for API responses
-BitFlyerOrderResponse = Dict[str, Union[str, int, float]]
-BitFlyerBalanceResponse = List[Dict[str, Union[str, float]]]
-BitFlyerErrorResponse = Dict[str, str]
-
+BitFlyerOrderResponse = dict[str, str | int | float]
+BitFlyerBalanceResponse = list[dict[str, str | float]]
+BitFlyerErrorResponse = dict[str, str]
 
 class BitFlyerAdapter(BaseExchangeAdapter):
     """
@@ -45,12 +43,12 @@ class BitFlyerAdapter(BaseExchangeAdapter):
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        api_secret: Optional[str] = None,
+        api_key: str | None = None,
+        api_secret: str | None = None,
         dry_run: bool = True,
-        rate_limiter: Optional[RateLimiter] = None,
-        fixed_price: Optional[float] = None,
-        random_seed: Optional[int] = None,
+        rate_limiter: RateLimiter | None = None,
+        fixed_price: float | None = None,
+        random_seed: int | None = None,
     ) -> None:
         """Initialize bitFlyer adapter.
 
@@ -74,7 +72,7 @@ class BitFlyerAdapter(BaseExchangeAdapter):
 
         # Internal symbol convention is lowercase (normalize_symbol).
         # API calls convert to uppercase via .upper() as needed.
-        self._current_prices: Dict[str, float] = {"btc_jpy": 5000000.0}
+        self._current_prices: dict[str, float] = {"btc_jpy": 5000000.0}
 
     def _generate_signature(
         self, timestamp: str, method: str, path: str, body: str = ""
@@ -102,7 +100,7 @@ class BitFlyerAdapter(BaseExchangeAdapter):
         ).hexdigest()
         return signature
 
-    def _get_headers(self, method: str, path: str, body: str = "") -> Dict[str, str]:
+    def _get_headers(self, method: str, path: str, body: str = "") -> dict[str, str]:
         """Get authenticated headers for API request."""
         if not self.api_key:
             raise ValueError("API key is required for authentication")
@@ -121,7 +119,7 @@ class BitFlyerAdapter(BaseExchangeAdapter):
         self,
         method: Literal["GET", "POST"],
         path: str,
-        data: Optional[Dict[str, Any]] = None,
+        data: dict[str, Any] | None = None,
     ) -> Any:
         """Make authenticated API request to bitFlyer.
 
@@ -155,7 +153,7 @@ class BitFlyerAdapter(BaseExchangeAdapter):
             raise NetworkError(f"bitFlyer API error: {e}") from e
 
     # Abstract method implementations
-    async def _get_balance_real(self, currency: Optional[str] = None) -> List[Balance]:
+    async def _get_balance_real(self, currency: str | None = None) -> list[Balance]:
         """Get balance from bitFlyer API."""
         try:
             response = await self._make_request("GET", "/v1/me/getbalance")
@@ -185,11 +183,11 @@ class BitFlyerAdapter(BaseExchangeAdapter):
         symbol: str,
         side: str,
         quantity: float,
-        price: Optional[float] = None,
+        price: float | None = None,
         order_type: str = "market",
-        client_order_id: Optional[str] = None,
-        sizing_reason: Optional[str] = None,
-        target_vol: Optional[float] = None,
+        client_order_id: str | None = None,
+        sizing_reason: str | None = None,
+        target_vol: float | None = None,
     ) -> Order:
         """Place order via bitFlyer API."""
         try:
@@ -278,7 +276,7 @@ class BitFlyerAdapter(BaseExchangeAdapter):
                 # Re-raise other errors
                 raise
 
-    async def _get_order_status_real(self, order_id: str) -> Optional[Order]:
+    async def _get_order_status_real(self, order_id: str) -> Order | None:
         """Get order status from bitFlyer API."""
         try:
             params = {"child_order_acceptance_id": order_id}
@@ -334,7 +332,7 @@ class BitFlyerAdapter(BaseExchangeAdapter):
             logger.error(f"Failed to get order status from bitFlyer: {e}")
             return None
 
-    async def _get_open_orders_real(self, symbol: Optional[str] = None) -> List[Order]:
+    async def _get_open_orders_real(self, symbol: str | None = None) -> list[Order]:
         """Get open orders from bitFlyer API."""
         try:
             params = {}
@@ -374,7 +372,7 @@ class BitFlyerAdapter(BaseExchangeAdapter):
             logger.error(f"Failed to get open orders from bitFlyer: {e}")
             return []
 
-    async def _get_positions_real(self) -> List[Position]:
+    async def _get_positions_real(self) -> list[Position]:
         """Get positions from bitFlyer API."""
         try:
             response = await self._make_request("GET", "/v1/me/getpositions")
@@ -398,7 +396,7 @@ class BitFlyerAdapter(BaseExchangeAdapter):
             logger.error(f"Failed to get positions from bitFlyer: {e}")
             return []
 
-    async def _get_current_price_real(self, symbol: str) -> Optional[float]:
+    async def _get_current_price_real(self, symbol: str) -> float | None:
         """Get current price from bitFlyer API."""
         try:
             # 013# C-5 FIX: bitFlyer requires uppercase product_code

@@ -10,7 +10,7 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -27,7 +27,6 @@ from ztb.utils.logging_utils import setup_logging
         level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
     return logging.getLogger(__name__)
-
 
 def validate_training_setup(
     data_path: str, checkpoint_dir: str, correlation_id: str
@@ -50,8 +49,7 @@ def validate_training_setup(
 
     return True
 
-
-def build_training_config(args: argparse.Namespace) -> Dict[str, Any]:
+def build_training_config(args: argparse.Namespace) -> dict[str, Any]:
     """Build training configuration from command line arguments."""
     return {
         "total_timesteps": args.total_timesteps,
@@ -85,7 +83,6 @@ def build_training_config(args: argparse.Namespace) -> Dict[str, Any]:
             "include_rng_state": True,
         },
     }
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run canonical 1M timestep training")
@@ -260,7 +257,6 @@ def main() -> int:
     except Exception as e:
         logger.error(f"Training failed: {e}", exc_info=True)
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

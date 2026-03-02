@@ -7,7 +7,7 @@ import copy
 import random
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 import numpy as np
 import torch
@@ -25,7 +25,6 @@ from torch.utils.data import DataLoader
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 @dataclass
 class FederatedConfig:
@@ -47,32 +46,29 @@ class FederatedConfig:
     noise_multiplier: float = 1.0
 
     # クライアント設定
-    client_data_sizes: Optional[List[int]] = None  # 各クライアントのデータサイズ
+    client_data_sizes: list[int] | None = None  # 各クライアントのデータサイズ
     enable_client_weighting: bool = True  # データサイズによる重み付け
-
 
 @dataclass
 class ClientUpdate:
     """クライアント更新情報"""
 
     client_id: int
-    model_state: Dict[str, torch.Tensor]
+    model_state: dict[str, torch.Tensor]
     num_samples: int
-    loss_history: List[float]
-    privacy_spent: Optional[float] = None
-
+    loss_history: list[float]
+    privacy_spent: float | None = None
 
 @dataclass
 class FederatedRoundResult:
     """フェデレーテッドラウンド結果"""
 
     round_number: int
-    participating_clients: List[int]
+    participating_clients: list[int]
     global_loss: float
-    client_updates: List[ClientUpdate]
+    client_updates: list[ClientUpdate]
     privacy_budget_spent: float
-    convergence_metrics: Dict[str, float]
-
+    convergence_metrics: dict[str, float]
 
 class FederatedClient:
     """フェデレーテッドクライアント"""
@@ -82,7 +78,7 @@ class FederatedClient:
         client_id: int,
         model: nn.Module,
         config: FederatedConfig,
-        local_data: Optional[DataLoader] = None,
+        local_data: DataLoader | None = None,
     ):
         self.client_id = client_id
         self.model = copy.deepcopy(model)
@@ -122,12 +118,12 @@ class FederatedClient:
                 self.model.parameters(), lr=self.config.local_learning_rate
             )
 
-    def load_global_model(self, global_state: Dict[str, torch.Tensor]):
+    def load_global_model(self, global_state: dict[str, torch.Tensor]):
         """グローバルモデル読み込み"""
         self.model.load_state_dict(global_state)
 
     def train_local_model(
-        self, loss_fn: Callable, num_epochs: Optional[int] = None
+        self, loss_fn: Callable, num_epochs: int | None = None
     ) -> ClientUpdate:
         """ローカルモデル学習"""
         if num_epochs is None:
@@ -197,10 +193,9 @@ class FederatedClient:
             privacy_spent=privacy_spent,
         )
 
-    def get_model_state(self) -> Dict[str, torch.Tensor]:
+    def get_model_state(self) -> dict[str, torch.Tensor]:
         """モデル状態取得"""
         return self.model.state_dict()
-
 
 class FedAvgServer:
     """FedAvgサーバー"""
@@ -218,7 +213,7 @@ class FedAvgServer:
         """クライアント追加"""
         self.clients.append(client)
 
-    def initialize_clients(self, client_data_loaders: List[DataLoader]):
+    def initialize_clients(self, client_data_loaders: list[DataLoader]):
         """クライアント初期化"""
         if len(client_data_loaders) != len(self.clients):
             raise ValueError("Number of data loaders must match number of clients")
@@ -226,15 +221,15 @@ class FedAvgServer:
         for client, data_loader in zip(self.clients, client_data_loaders):
             client.local_data = data_loader
 
-    def select_clients(self) -> List[FederatedClient]:
+    def select_clients(self) -> list[FederatedClient]:
         """ラウンド参加クライアント選択"""
         num_participants = max(1, int(len(self.clients) * self.config.client_fraction))
         selected_clients = random.sample(self.clients, num_participants)
         return selected_clients
 
     def aggregate_updates(
-        self, client_updates: List[ClientUpdate]
-    ) -> Dict[str, torch.Tensor]:
+        self, client_updates: list[ClientUpdate]
+    ) -> dict[str, torch.Tensor]:
         """クライアント更新の集約（FedAvg）"""
         if not client_updates:
             return self.global_model.state_dict()
@@ -323,7 +318,7 @@ class FedAvgServer:
         return result
 
     def _compute_global_loss(
-        self, loss_fn: Callable, clients: List[FederatedClient]
+        self, loss_fn: Callable, clients: list[FederatedClient]
     ) -> float:
         """グローバル損失計算"""
         self.global_model.eval()
@@ -358,8 +353,8 @@ class FedAvgServer:
         return total_loss / total_samples if total_samples > 0 else 0.0
 
     def _compute_convergence_metrics(
-        self, client_updates: List[ClientUpdate]
-    ) -> Dict[str, float]:
+        self, client_updates: list[ClientUpdate]
+    ) -> dict[str, float]:
         """収束メトリクス計算"""
         if not client_updates:
             return {}
@@ -390,7 +385,7 @@ class FedAvgServer:
             "num_participating_clients": len(client_updates),
         }
 
-    def get_training_history(self) -> List[FederatedRoundResult]:
+    def get_training_history(self) -> list[FederatedRoundResult]:
         """トレーニング履歴取得"""
         return self.round_results.copy()
 
@@ -398,12 +393,11 @@ class FedAvgServer:
         """グローバルモデル取得"""
         return self.global_model
 
-
 class MarketFederatedLearner:
     """市場特化フェデレーテッドラーニング"""
 
     def __init__(
-        self, base_model: nn.Module, market_configs: Dict[str, FederatedConfig]
+        self, base_model: nn.Module, market_configs: dict[str, FederatedConfig]
     ):
         self.base_model = base_model
         self.market_configs = market_configs
@@ -416,7 +410,7 @@ class MarketFederatedLearner:
             self.market_servers[market_name] = server
 
     def add_market_client(
-        self, market_name: str, client_data: DataLoader, client_id: Optional[int] = None
+        self, market_name: str, client_data: DataLoader, client_id: int | None = None
     ):
         """市場クライアント追加"""
         if market_name not in self.market_servers:
@@ -436,8 +430,8 @@ class MarketFederatedLearner:
         logger.info(f"Added client {client_id} to market {market_name}")
 
     def train_market_federated(
-        self, market_name: str, loss_fn: Callable, num_rounds: Optional[int] = None
-    ) -> List[FederatedRoundResult]:
+        self, market_name: str, loss_fn: Callable, num_rounds: int | None = None
+    ) -> list[FederatedRoundResult]:
         """市場別フェデレーテッド学習"""
         if market_name not in self.market_servers:
             raise ValueError(f"Market {market_name} not configured")
@@ -460,7 +454,7 @@ class MarketFederatedLearner:
 
     def train_all_markets(
         self, loss_fn: Callable
-    ) -> Dict[str, List[FederatedRoundResult]]:
+    ) -> dict[str, list[FederatedRoundResult]]:
         """全市場フェデレーテッド学習"""
         results = {}
 
@@ -482,7 +476,7 @@ class MarketFederatedLearner:
 
         return variance < param_variance_threshold and loss_std < loss_std_threshold
 
-    def get_market_model(self, market_name: str) -> Optional[nn.Module]:
+    def get_market_model(self, market_name: str) -> nn.Module | None:
         """市場モデル取得"""
         server = self.market_servers.get(market_name)
         return server.get_global_model() if server else None
@@ -509,7 +503,7 @@ class MarketFederatedLearner:
         logger.info(f"Aggregated knowledge from {len(market_models)} markets")
         return aggregated_model
 
-    def get_federated_stats(self) -> Dict[str, Any]:
+    def get_federated_stats(self) -> dict[str, Any]:
         """フェデレーテッド統計取得"""
         stats = {}
 

@@ -1,9 +1,7 @@
 import logging
 
-
 from .base import RewardComponent, RewardContext
 from .utils import RewardUtils
-
 
 class ProfitOptimizedReward(RewardComponent):
     """
@@ -19,7 +17,6 @@ class ProfitOptimizedReward(RewardComponent):
 
     def get_name(self) -> str:
         return "profit_optimized"
-
 
     def calculate(self, context: RewardContext) -> float:
         # 1. Calculate base reward from PnL

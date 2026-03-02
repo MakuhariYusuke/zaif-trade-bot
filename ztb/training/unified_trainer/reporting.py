@@ -6,7 +6,6 @@ Training reporting and logging utilities.
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -23,11 +22,10 @@ STABILITY_WINDOWS = [10, 50, 100, 500]
 DEFAULT_PORTFOLIO_BASE = 10000
 FORECAST_PERIOD = 50
 
-
 class TrainingReporter:
     """Generate comprehensive training reports."""
 
-    def __init__(self, logger: Optional[logging.Logger] = None) -> None:
+    def __init__(self, logger: logging.Logger | None = None) -> None:
         self.logger: logging.Logger = logger or get_logger(__name__)
         self._event_logger = TrainingEventLogger(self.logger)
         # Keep a direct reference for generate_report's event capture.
@@ -176,7 +174,7 @@ class TrainingReporter:
             )  # steps per ms
 
         # Action distribution analysis
-        action_dist: Dict[str, float] = stats.get("action_distribution", {})
+        action_dist: dict[str, float] = stats.get("action_distribution", {})
         if action_dist:
             # Calculate action diversity (1.0 = perfectly balanced, 0.0 = single action)
             actions = list(action_dist.values())
@@ -211,16 +209,15 @@ class TrainingReporter:
         except Exception as e:
             return {"error": str(e)}
 
-
 class TrainingEventLogger:
     """Enhanced logging for training processes."""
 
-    def __init__(self, logger: Optional[logging.Logger] = None) -> None:
+    def __init__(self, logger: logging.Logger | None = None) -> None:
         self.logger: logging.Logger = logger or get_logger(__name__)
         self.events: ObjectRecords = []
 
     def log_event(
-        self, event_type: str, message: str, data: Optional[ObjectMap] = None
+        self, event_type: str, message: str, data: ObjectMap | None = None
     ) -> None:
         """Log a training event."""
         event = {
@@ -327,8 +324,8 @@ class TrainingEventLogger:
 
         # 決定の統計
         total_decisions = len(decision_log)
-        action_distribution: Dict[int, int] = {}
-        confidence_trends: List[float] = []
+        action_distribution: dict[int, int] = {}
+        confidence_trends: list[float] = []
 
         for decision in decision_log:
             predictions = decision.get("predictions", {})
@@ -366,8 +363,8 @@ class TrainingEventLogger:
         if not member_stats:
             return {"error": "no_member_data"}
 
-        specialization_performance: Dict[str, List[float]] = {}
-        member_details: Dict[str, ObjectMap] = {}
+        specialization_performance: dict[str, list[float]] = {}
+        member_details: dict[str, ObjectMap] = {}
 
         for member_id, stats in member_stats.items():
             spec = stats.get("specialization", "unknown")
@@ -419,7 +416,7 @@ class TrainingEventLogger:
         if not decision_log:
             return {"error": "no_decision_data"}
 
-        voting_methods: Dict[str, int] = {}
+        voting_methods: dict[str, int] = {}
         consensus_rates = {"reached": 0, "failed": 0}
         action_sequences = []
         confidence_patterns = []
@@ -459,7 +456,7 @@ class TrainingEventLogger:
                 confidence_patterns.append(pattern)
 
         # アクション遷移分析
-        transitions: Dict[str, int] = {}
+        transitions: dict[str, int] = {}
         for i in range(1, len(action_sequences)):
             prev_action = action_sequences[i - 1]
             curr_action = action_sequences[i]
@@ -532,7 +529,7 @@ class TrainingEventLogger:
 
         # 時間経過による安定性分析
         stability_windows = STABILITY_WINDOWS
-        stability_analysis: Dict[str, ObjectMap] = {}
+        stability_analysis: dict[str, ObjectMap] = {}
 
         for window_size in stability_windows:
             if len(decision_log) < window_size:
@@ -582,7 +579,7 @@ class TrainingEventLogger:
             return {"error": "no_decision_data"}
 
         # 市場条件ごとのパフォーマンス分析
-        market_conditions: Dict[str, ObjectMap] = {}
+        market_conditions: dict[str, ObjectMap] = {}
         adaptation_trends: ObjectRecords = []
 
         for decision in decision_log:
@@ -657,9 +654,9 @@ class TrainingEventLogger:
             return {"error": "no_decision_data"}
 
         # リスク指標の計算
-        drawdown_analysis: List[float] = []
-        volatility_analysis: List[float] = []
-        portfolio_values: List[float] = []
+        drawdown_analysis: list[float] = []
+        volatility_analysis: list[float] = []
+        portfolio_values: list[float] = []
 
         current_drawdown: float = 0.0
         peak_value: float = 0.0
@@ -760,8 +757,8 @@ class TrainingEventLogger:
 
         # 予測期間（次の決定数）
         forecast_period = FORECAST_PERIOD
-        confidence_forecast: List[float] = []
-        performance_forecast: List[float] = []
+        confidence_forecast: list[float] = []
+        performance_forecast: list[float] = []
 
         for i in range(forecast_period):
             conf_pred = confidence_trend[-1] + conf_slope * (i + 1)
@@ -837,7 +834,7 @@ class TrainingEventLogger:
 
     def _generate_adaptation_recommendations(
         self, condition_summary: ObjectMap
-    ) -> List[str]:
+    ) -> list[str]:
         """Generate adaptation improvement recommendations."""
         recommendations = []
 
@@ -865,7 +862,7 @@ class TrainingEventLogger:
 
     def _generate_forecast_recommendations(
         self, conf_slope: float, perf_slope: float
-    ) -> List[str]:
+    ) -> list[str]:
         """Generate forecast-based recommendations."""
         recommendations = []
 
@@ -888,7 +885,7 @@ class TrainingEventLogger:
 
         return recommendations
 
-    def _calculate_decision_stability(self, action_sequence: List[int]) -> float:
+    def _calculate_decision_stability(self, action_sequence: list[int]) -> float:
         """Calculate decision stability from action sequence."""
         if len(action_sequence) < 2:
             return 1.0
@@ -905,7 +902,7 @@ class TrainingEventLogger:
 
     def _generate_diversity_recommendations(
         self, spec_div: float, perf_div: float, conf_div: float
-    ) -> List[str]:
+    ) -> list[str]:
         """Generate diversity improvement recommendations."""
         recommendations = []
 

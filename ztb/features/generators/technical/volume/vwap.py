@@ -7,7 +7,6 @@ import pandas as pd
 
 from ztb.features.registry import FeatureRegistry
 
-
 @FeatureRegistry.register("VWAP")
 def compute_vwap(df: pd.DataFrame) -> pd.Series:
     """Compute VWAP (Volume Weighted Average Price)"""

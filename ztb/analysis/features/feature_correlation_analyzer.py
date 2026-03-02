@@ -5,7 +5,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,14 +21,13 @@ from ztb.io.text_io import write_text
 
 logger = logging.getLogger(__name__)
 
-
 class FeatureCorrelationAnalyzer:
     """
     特徴量相関分析クラス
     既存の相関分析機能を拡張して特徴量間の関係を分析
     """
 
-    def __init__(self, data_path: Optional[str] = None):
+    def __init__(self, data_path: str | None = None):
         """
         初期化
 
@@ -74,8 +73,8 @@ class FeatureCorrelationAnalyzer:
             return False
 
     def analyze_feature_correlations(
-        self, feature_matrix: np.ndarray, feature_names: List[str]
-    ) -> Dict[str, Any]:
+        self, feature_matrix: np.ndarray, feature_names: list[str]
+    ) -> dict[str, Any]:
         """
         特徴量間の相関分析
 
@@ -151,7 +150,7 @@ class FeatureCorrelationAnalyzer:
 
     def create_correlation_report(
         self,
-        analysis_results: Dict[str, Any],
+        analysis_results: dict[str, Any],
         output_path: str = "reports/feature_correlation_report.txt",
     ) -> None:
         """
@@ -202,7 +201,7 @@ class FeatureCorrelationAnalyzer:
 
     def visualize_correlations(
         self,
-        analysis_results: Dict[str, Any],
+        analysis_results: dict[str, Any],
         output_dir: str = "reports/correlation_plots",
     ) -> None:
         """
@@ -265,9 +264,9 @@ class FeatureCorrelationAnalyzer:
     def analyze_feature_importance_correlation(
         self,
         feature_matrix: np.ndarray,
-        feature_names: List[str],
+        feature_names: list[str],
         target_returns: np.ndarray,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         特徴量とリターンの相関分析（特徴量重要度）
 
@@ -323,7 +322,6 @@ class FeatureCorrelationAnalyzer:
             logger.error(f"特徴量重要度分析に失敗: {e}")
             return {}
 
-
 def create_sample_feature_analysis():
     """
     サンプル特徴量分析の実行例
@@ -370,7 +368,6 @@ def create_sample_feature_analysis():
     print("\n特徴量重要度ランキング（上位5位）:")
     for i, (name, metrics) in enumerate(ranking[:5]):
         print(f"  {i+1}. {name}: {metrics['importance']:.3f}")
-
 
 if __name__ == "__main__":
     create_sample_feature_analysis()

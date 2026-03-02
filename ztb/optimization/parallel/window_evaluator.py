@@ -29,7 +29,7 @@ import multiprocessing as mp
 import os
 import time
 from multiprocessing import Pool
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -45,10 +45,9 @@ from ztb.utils.cache_coordination import CacheCoordinator, FeatureCacheKey
 
 logger = logging.getLogger(__name__)
 
-
 def eval_window_worker(
-    worker_args: Dict[str, Any],
-) -> Tuple[int, Optional[WindowPerformance], Optional[str]]:
+    worker_args: dict[str, Any],
+) -> tuple[int, WindowPerformance | None, str | None]:
     """
     Worker process function for evaluating a single window.
 
@@ -67,10 +66,10 @@ def eval_window_worker(
             - 'algorithm_params': dict - Algorithm parameters
 
     Returns:
-        Tuple[window_id, result, error_message]
+        tuple[window_id, result, error_message]
         - window_id: int - Input window identifier
-        - result: Optional[WindowPerformance] - Evaluation result (None on error)
-        - error_message: Optional[str] - Error message (None on success)
+        - result: WindowPerformance | None - Evaluation result (None on error)
+        - error_message: str | None - Error message (None on success)
     """
     window_id = worker_args["window_id"]
     
@@ -135,7 +134,6 @@ def eval_window_worker(
     
     return window_id, result, error_message
 
-
 class ParallelWindowEvaluator:
     """
     Parallel Walk-Forward window evaluator using multiprocessing.Pool.
@@ -164,8 +162,8 @@ class ParallelWindowEvaluator:
 
     def __init__(
         self,
-        num_workers: Optional[int] = None,
-        checkpoint_mgr: Optional[Any] = None,
+        num_workers: int | None = None,
+        checkpoint_mgr: Any | None = None,
         enable_error_collection: bool = True,
         enable_caching: bool = True,
         cache_max_items: int = 1000,
@@ -185,8 +183,8 @@ class ParallelWindowEvaluator:
         self.num_workers = num_workers or os.cpu_count() or 4
         self.checkpoint_mgr = checkpoint_mgr
         self.enable_error_collection = enable_error_collection
-        self.results: Dict[int, WindowPerformance] = {}
-        self.errors: Dict[int, str] = {}
+        self.results: dict[int, WindowPerformance] = {}
+        self.errors: dict[int, str] = {}
         
         # Initialize cache coordinator
         self.enable_caching = enable_caching
@@ -206,20 +204,20 @@ class ParallelWindowEvaluator:
     def evaluate_windows_parallel(
         self,
         df: Any,
-        windows: List[Tuple[int, int, int]],
+        windows: list[tuple[int, int, int]],
         timesteps: int,
         env_factory: Any,
         algorithm_factory: Any,
         policy: str = "MlpPolicy",
-        algorithm_params: Optional[Dict[str, Any]] = None,
-        run_id: Optional[str] = None,
-    ) -> Tuple[Dict[int, WindowPerformance], Dict[int, str]]:
+        algorithm_params: dict[str, Any] | None = None,
+        run_id: str | None = None,
+    ) -> tuple[dict[int, WindowPerformance], dict[int, str]]:
         """
         Evaluate multiple windows in parallel.
 
         Args:
             df: Full dataset (DataFrame with OHLCV data)
-            windows: List of (train_end, val_end, test_end) tuples
+            windows: list of (train_end, val_end, test_end) tuples
             timesteps: Training timesteps per window
             env_factory: Environment factory callable
             algorithm_factory: Algorithm factory callable
@@ -228,9 +226,9 @@ class ParallelWindowEvaluator:
             run_id: Run identifier for checkpointing
 
         Returns:
-            Tuple[results, errors]
-            - results: Dict[window_id] → WindowPerformance
-            - errors: Dict[window_id] → error_message
+            tuple[results, errors]
+            - results: dict[window_id] → WindowPerformance
+            - errors: dict[window_id] → error_message
         """
         start_time = time.time()
         logger.info(
@@ -304,14 +302,14 @@ class ParallelWindowEvaluator:
     def evaluate_windows_parallel_cached(
         self,
         df: Any,
-        windows: List[Tuple[int, int, int]],
+        windows: list[tuple[int, int, int]],
         timesteps: int,
         env_factory: Any,
         algorithm_factory: Any,
         policy: str = "MlpPolicy",
-        algorithm_params: Optional[Dict[str, Any]] = None,
-        run_id: Optional[str] = None,
-    ) -> Tuple[Dict[int, WindowPerformance], Dict[int, str], Dict[str, Any]]:
+        algorithm_params: dict[str, Any] | None = None,
+        run_id: str | None = None,
+    ) -> tuple[dict[int, WindowPerformance], dict[int, str], dict[str, Any]]:
         """
         Evaluate windows in parallel with feature caching (20-30% additional speedup).
 
@@ -319,7 +317,7 @@ class ParallelWindowEvaluator:
 
         Args:
             df: Full dataset (DataFrame with OHLCV data)
-            windows: List of (train_end, val_end, test_end) tuples
+            windows: list of (train_end, val_end, test_end) tuples
             timesteps: Training timesteps per window
             env_factory: Environment factory callable
             algorithm_factory: Algorithm factory callable
@@ -328,10 +326,10 @@ class ParallelWindowEvaluator:
             run_id: Run identifier for checkpointing
 
         Returns:
-            Tuple[results, errors, cache_stats]
-            - results: Dict[window_id] → WindowPerformance
-            - errors: Dict[window_id] → error_message
-            - cache_stats: Dict with cache hit rate, size, etc.
+            tuple[results, errors, cache_stats]
+            - results: dict[window_id] → WindowPerformance
+            - errors: dict[window_id] → error_message
+            - cache_stats: dict with cache hit rate, size, etc.
         """
         if not self.enable_caching:
             logger.warning("Caching disabled; using standard parallel evaluation")
@@ -382,11 +380,11 @@ class ParallelWindowEvaluator:
 
         return results, errors, cache_stats
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """Get cache statistics.
 
         Returns:
-            Dict with cache performance metrics
+            dict with cache performance metrics
         """
         if self.cache_coordinator:
             return self.cache_coordinator.get_stats()
@@ -426,11 +424,11 @@ class ParallelWindowEvaluator:
         except Exception as e:
             logger.warning(f"Failed to save checkpoint: {e}")
 
-    def get_results_summary(self) -> Dict[str, Any]:
+    def get_results_summary(self) -> dict[str, Any]:
         """Get summary statistics of evaluation results.
 
         Returns:
-            Dict with aggregated metrics
+            dict with aggregated metrics
         """
         if not self.results:
             return {

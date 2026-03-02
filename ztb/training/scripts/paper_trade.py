@@ -17,7 +17,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TypedDict, Union, cast
+from typing import Any, TypedDict, cast
 
 import numpy as np
 
@@ -70,7 +70,6 @@ from ztb.utils.env_metrics import unwrap_env
 from ztb.io.data_loader import DataLoader
 from ztb.utils.file_utils import safe_json_dump, safe_json_load
 
-
 def detect_algorithm(model_path: Path) -> str:
     """Detect the RL algorithm from model path or config.
 
@@ -91,7 +90,6 @@ def detect_algorithm(model_path: Path) -> str:
     # Default to PPO for backward compatibility
     return "ppo"
 
-
 class TradeDict(TypedDict):
     """Trade information dictionary."""
 
@@ -104,16 +102,14 @@ class TradeDict(TypedDict):
     reward: float
     portfolio_change: float
 
-
 class EpisodeResultDict(TypedDict):
     """Episode result dictionary."""
 
     total_reward: float
     length: int
-    trades: List[TradeDict]
+    trades: list[TradeDict]
     final_portfolio: float
     total_trades: int
-
 
 class TradingStatsDict(TypedDict, total=False):
     """Comprehensive trading statistics dictionary.
@@ -146,13 +142,12 @@ class TradingStatsDict(TypedDict, total=False):
     volatility: float
 
     # Action analysis
-    action_distribution: Dict[int, int]
+    action_distribution: dict[int, int]
 
     # Performance stability
     consistency_score: float
     best_episode_return: float
     worst_episode_return: float
-
 
 class PaperTrader:
     """Paper trading simulator for evaluating trained models."""
@@ -161,9 +156,9 @@ class PaperTrader:
         self,
         model_path: str,
         test_data_path: str,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
         verbose: bool = False,
-        algorithm: Optional[str] = None,
+        algorithm: str | None = None,
     ):
         self.model_path = Path(model_path)
         self.test_data_path = Path(test_data_path)
@@ -174,14 +169,12 @@ class PaperTrader:
         self.logger = logging.getLogger(__name__)
 
         # Initialize instance variables
-        self.test_df: Optional[pd.DataFrame] = None
-        self.model: Optional[Union[MaskablePPO, SAC]] = None
-        self.env: Optional[DummyVecEnv] = None
-        self._base_env: Optional[TradingEnvironment] = None
-        self.episode_results: List[EpisodeResultDict] = []
-        self._normalization_stats: Optional[
-            Any
-        ] = None  # Store loaded normalization stats
+        self.test_df: pd.DataFrame | None = None
+        self.model: MaskablePPO | SAC | None = None
+        self.env: DummyVecEnv | None = None
+        self._base_env: TradingEnvironment | None = None
+        self.episode_results: list[EpisodeResultDict] = []
+        self._normalization_stats: Any | None = None  # Store loaded normalization stats
 
         self._setup_common_config()
 
@@ -218,13 +211,13 @@ class PaperTrader:
             self.env = self._create_env_sac()
 
         # Trading results
-        self.trades: List[TradeDict] = []
+        self.trades: list[TradeDict] = []
         self.portfolio_value: float = DEFAULT_INITIAL_BALANCE_SMALL  # Starting capital
         self.position: float = 0.0  # Current position size
 
         # Inference configuration (only for PPO)
         if self.algorithm == "ppo":
-            self.inference_config: Optional[InferenceConfig] = InferenceConfig(
+            self.inference_config: InferenceConfig | None = InferenceConfig(
                 temperature=float(cast(float, self.config.get("temperature", 0.7))),
                 tiebreaker_tau=float(
                     cast(float, self.config.get("tiebreaker_tau", 0.05))
@@ -250,7 +243,7 @@ class PaperTrader:
             }
         )
 
-    def _get_base_env(self) -> Optional[TradingEnvironment]:
+    def _get_base_env(self) -> TradingEnvironment | None:
         """Return the unwrapped TradingEnvironment for the current env."""
         if self._base_env is not None:
             return self._base_env
@@ -306,7 +299,7 @@ class PaperTrader:
         if expected_dim:
             config["target_feature_count"] = int(expected_dim)
         self.logger.info(f"SAC config: {config}")
-        env_kwargs: Dict[str, Any] = {
+        env_kwargs: dict[str, Any] = {
             "df": self.test_df,
             "config": config,
         }
@@ -339,7 +332,7 @@ class PaperTrader:
 
         # Get policy_kwargs from config
         policy_kwargs_raw = self.config.get("policy_kwargs", {})
-        policy_kwargs: Dict[str, Any] = (
+        policy_kwargs: dict[str, Any] = (
             policy_kwargs_raw if isinstance(policy_kwargs_raw, dict) else {}
         )
 
@@ -458,9 +451,9 @@ class PaperTrader:
         """Initialize feature schema for PPO models."""
         # Load and validate feature schema using Phase 3 FeatureSchemaManager
         self.schema_available = False
-        self.expected_features: Optional[int] = None
-        self.feature_names: Optional[List[str]] = None
-        self.schema_hash: Optional[str] = None
+        self.expected_features: int | None = None
+        self.feature_names: list[str] | None = None
+        self.schema_hash: str | None = None
 
         try:
             from ztb.training.core.feature_schema_manager import FeatureSchemaManager
@@ -644,7 +637,7 @@ class PaperTrader:
         total_reward = 0.0
         steps = 0
 
-        episode_trades: List[TradeDict] = []
+        episode_trades: list[TradeDict] = []
 
         while not done and steps < 10000:  # Max steps per episode
             # Get action from model
@@ -763,7 +756,7 @@ class PaperTrader:
         return episode_result
 
     def _calculate_statistics(
-        self, rewards: List[float], lengths: List[int]
+        self, rewards: list[float], lengths: list[int]
     ) -> TradingStatsDict:
         """Calculate comprehensive trading statistics."""
         # Get initial portfolio value from environment (not hardcoded)
@@ -826,7 +819,7 @@ class PaperTrader:
             )
 
         # Action distribution (CORRECT: discrete action indices)
-        action_counts: Dict[int, int] = {}
+        action_counts: dict[int, int] = {}
         for trade in self.trades:
             action = trade["action"]
             action_idx = action
@@ -900,8 +893,6 @@ class PaperTrader:
             import traceback
 
             self.logger.debug(f"Cleanup traceback: {traceback.format_exc()}")
-
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run paper trading evaluation")
@@ -1085,7 +1076,6 @@ def main() -> int:
         )
 
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

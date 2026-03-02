@@ -11,7 +11,7 @@ Features:
 - 計算エンジンの統合
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -25,7 +25,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class UnifiedFeatureEngineer:
     """
     統合特徴量エンジニアリングクラス
@@ -35,7 +34,7 @@ class UnifiedFeatureEngineer:
     """
 
     def __init__(
-        self, config: Optional[Dict[str, Any]] = None, config_path: Optional[str] = None
+        self, config: dict[str, Any] | None = None, config_path: str | None = None
     ):
         """
         初期化
@@ -61,7 +60,7 @@ class UnifiedFeatureEngineer:
         df: pd.DataFrame,
         feature_set: str = "curated",
         model_type: str = "generic",
-        external_data: Optional[pd.DataFrame] = None,
+        external_data: pd.DataFrame | None = None,
         external_suffix: str = "_global",
         **kwargs,
     ) -> pd.DataFrame:
@@ -161,7 +160,7 @@ class UnifiedFeatureEngineer:
         )
         return features_df
 
-    def get_available_features(self, model_type: str = "generic") -> List[str]:
+    def get_available_features(self, model_type: str = "generic") -> list[str]:
         """
         利用可能な特徴量リストを取得
 
@@ -181,7 +180,7 @@ class UnifiedFeatureEngineer:
             # レジストリから全特徴量を取得
             return list(self.registry._registry.keys())
 
-    def get_feature_sets(self) -> Dict[str, List[str]]:
+    def get_feature_sets(self) -> dict[str, list[str]]:
         """
         利用可能な特徴量セットを取得
 
@@ -200,8 +199,8 @@ class UnifiedFeatureEngineer:
         return sets
 
     def validate_features(
-        self, df: pd.DataFrame, feature_names: List[str]
-    ) -> Dict[str, bool]:
+        self, df: pd.DataFrame, feature_names: list[str]
+    ) -> dict[str, bool]:
         """
         特徴量の妥当性を検証
 
@@ -240,7 +239,7 @@ class UnifiedFeatureEngineer:
         target_feature: str = "returns",
         method: str = "correlation",
         **kwargs,
-    ) -> List[str]:
+    ) -> list[str]:
         """
         特徴量を最適化（選択）
 
@@ -480,13 +479,11 @@ class UnifiedFeatureEngineer:
 
         return features
 
-
 # グローバルインスタンス
-_unified_engineer: Optional[UnifiedFeatureEngineer] = None
-
+_unified_engineer: UnifiedFeatureEngineer | None = None
 
 def get_unified_feature_engineer(
-    config_path: Optional[str] = None,
+    config_path: str | None = None,
 ) -> UnifiedFeatureEngineer:
     """
     統合特徴量エンジニアのグローバルインスタンスを取得
@@ -503,7 +500,6 @@ def get_unified_feature_engineer(
     return _unified_engineer
     return _unified_engineer
     return _unified_engineer
-
 
 def generate_features(
     df: pd.DataFrame,
@@ -526,8 +522,7 @@ def generate_features(
     engineer = get_unified_feature_engineer()
     return engineer.generate_features(df, feature_set, model_type, **kwargs)
 
-
-def get_available_features(model_type: str = "generic") -> List[str]:
+def get_available_features(model_type: str = "generic") -> list[str]:
     """
     便利関数: 利用可能な特徴量を取得
 
@@ -540,7 +535,6 @@ def get_available_features(model_type: str = "generic") -> List[str]:
     engineer = get_unified_feature_engineer()
     return engineer.get_available_features(model_type)
 
-
 class V4FeatureExtractor:
     """
     V4 Feature Extractor for SAC models
@@ -549,7 +543,7 @@ class V4FeatureExtractor:
     短期間収益性向上のための最適化された特徴量抽出
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         初期化
 
@@ -611,7 +605,7 @@ class V4FeatureExtractor:
             logger.error(f"V4FeatureExtractor error: {e}")
             raise
 
-    def get_feature_names(self) -> List[str]:
+    def get_feature_names(self) -> list[str]:
         """
         特徴量名を取得
 

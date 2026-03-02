@@ -14,7 +14,6 @@ from ztb.io.json_io import read_json
 project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(project_root))
 
-
 def analyze_action_distribution():
     """Analyze the distribution of actions taken by SAC v430."""
 
@@ -73,7 +72,6 @@ def analyze_action_distribution():
 
     return actions
 
-
 def analyze_reward_function():
     """Analyze the reward function configuration."""
 
@@ -120,7 +118,6 @@ def analyze_reward_function():
             "   ⚠️  High action balance weight - strongly penalizes unbalanced actions"
         )
 
-
 def analyze_portfolio_behavior():
     """Analyze portfolio value changes and trading behavior."""
 
@@ -155,7 +152,6 @@ def analyze_portfolio_behavior():
         print("   ⚠️  Portfolio barely changes - very few/no trades executed!")
     elif unique_portfolios < len(portfolio) * 0.1:
         print("   ⚠️  Low portfolio diversity - limited trading activity")
-
 
 def analyze_environment_config():
     """Analyze environment configuration that might affect trading."""
@@ -192,7 +188,6 @@ def analyze_environment_config():
     # Check transaction cost impact
     if transaction_cost > 0.001:  # More than 0.1%
         print("   ⚠️  Transaction costs are relatively high")
-
 
 def generate_recommendations():
     """Generate recommendations based on analysis."""
@@ -232,7 +227,6 @@ def generate_recommendations():
     for rec in recommendations:
         print(rec)
 
-
 def main():
     """Main analysis function."""
     try:
@@ -254,7 +248,6 @@ def main():
         return 1
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

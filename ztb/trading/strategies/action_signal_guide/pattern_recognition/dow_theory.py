@@ -26,7 +26,6 @@ from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import 
     TrendPatternRecognizer,
 )
 
-
 class DowTrendState(TypedDict, total=False):
     direction: int
     strength: float
@@ -35,13 +34,11 @@ class DowTrendState(TypedDict, total=False):
     supertrend_direction: int
     volatility: float
 
-
 class DowSignalPayload(TypedDict):
     direction: float
     strength: float
     description: str
     confidence: float
-
 
 class DowTheoryRecognizer(TrendPatternRecognizer):
     """

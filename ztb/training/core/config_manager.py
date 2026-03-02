@@ -10,7 +10,7 @@ Handles all configuration-related operations including:
 """
 
 from copy import deepcopy
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ztb.training.algorithms.sac.sac_algorithm import DEFAULT_SAC_CONFIG
 from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG
@@ -19,13 +19,12 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class TrainingConfigManager(BaseConfigManager):
     """
     Manages configuration extraction and building for unified training.
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         """
         Initialize ConfigManager.
 
@@ -35,7 +34,7 @@ class TrainingConfigManager(BaseConfigManager):
         self.config = config
         self.logger = get_logger(__name__)
 
-    def load_config(self, *args, **kwargs) -> Dict[str, Any]:
+    def load_config(self, *args, **kwargs) -> dict[str, Any]:
         """Return the in-memory config for compatibility."""
         return self.config
 
@@ -44,7 +43,7 @@ class TrainingConfigManager(BaseConfigManager):
         raise NotImplementedError("TrainingConfigManager does not support save_config")
 
     def _get_config_value(
-        self, key: str, sections: Optional[List[str]] = None, default: Any = None
+        self, key: str, sections: list[str] | None = None, default: Any = None
     ) -> Any:
         """
         Get configuration value with priority order.
@@ -64,7 +63,7 @@ class TrainingConfigManager(BaseConfigManager):
 
         return default
 
-    def get_memory_optimization_config(self) -> Dict[str, Optional[int]]:
+    def get_memory_optimization_config(self) -> dict[str, int | None]:
         """
         Extract memory optimization parameters from config.
 
@@ -73,19 +72,19 @@ class TrainingConfigManager(BaseConfigManager):
         - max_features: Maximum number of features to use (variance-based selection)
 
         Returns:
-            Dict containing memory optimization settings
+            dict containing memory optimization settings
         """
         return {
             "data_rows_limit": self._get_config_value("data_rows_limit"),
             "max_features": self._get_config_value("max_features"),
         }
 
-    def get_environment_config(self) -> Dict[str, Any]:
+    def get_environment_config(self) -> dict[str, Any]:
         """
         Extract environment-specific parameters from config.
 
         Returns:
-            Dict containing environment settings like max_position_size,
+            dict containing environment settings like max_position_size,
             initial_balance, transaction_cost, etc.
         """
         # Check for nested training.environment structure
@@ -93,7 +92,7 @@ class TrainingConfigManager(BaseConfigManager):
         nested_env = (
             training_env.get("config", {}) if isinstance(training_env, dict) else {}
         )
-        environment: Dict[str, Any] = {}
+        environment: dict[str, Any] = {}
 
         if isinstance(nested_env, dict):
             environment.update(nested_env)
@@ -195,12 +194,12 @@ class TrainingConfigManager(BaseConfigManager):
 
         return environment
 
-    def get_ppo_core_config(self) -> Dict[str, Any]:
+    def get_ppo_core_config(self) -> dict[str, Any]:
         """
         Extract PPO algorithm-specific parameters from config.
 
         Returns:
-            Dict containing PPO hyperparameters (learning_rate, n_steps, etc.)
+            dict containing PPO hyperparameters (learning_rate, n_steps, etc.)
         """
         return {
             "learning_rate": self._get_config_value(
@@ -279,12 +278,12 @@ class TrainingConfigManager(BaseConfigManager):
             ),
         }
 
-    def get_sac_core_config(self) -> Dict[str, Any]:
+    def get_sac_core_config(self) -> dict[str, Any]:
         """
         Extract SAC (Soft Actor-Critic) algorithm-specific parameters from config.
 
         Returns:
-            Dict containing SAC hyperparameters
+            dict containing SAC hyperparameters
         """
         sections = ["sac_hyperparameters", "sac"]
         return {
@@ -350,7 +349,7 @@ class TrainingConfigManager(BaseConfigManager):
             "policy_kwargs": self._get_config_value("policy_kwargs", sections, None),
         }
 
-    def get_curriculum_config(self) -> Dict[str, Any]:
+    def get_curriculum_config(self) -> dict[str, Any]:
         sections = ["curriculum_learning", "curriculum"]
         return {
             "curriculum_stage": self._get_config_value("curriculum_stage", sections, 0),
@@ -369,12 +368,12 @@ class TrainingConfigManager(BaseConfigManager):
             "curriculum_level": self._get_config_value("curriculum_level", sections, 0),
         }
 
-    def get_feature_config(self) -> Dict[str, Any]:
+    def get_feature_config(self) -> dict[str, Any]:
         """
         Extract feature-related parameters from config.
 
         Returns:
-            Dict containing feature settings like feature_set, custom_features, etc.
+            dict containing feature settings like feature_set, custom_features, etc.
         """
         # Check for nested training.features structure
         training_features = self.config.get("training", {}).get("features", {})
@@ -394,9 +393,9 @@ class TrainingConfigManager(BaseConfigManager):
         self,
         enable_streaming: bool = False,
         stream_batch_size: int = 256,
-        total_timesteps_override: Optional[int] = None,
+        total_timesteps_override: int | None = None,
         debug_internal_state: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Build a unified configuration dict with all settings properly organized.
 
@@ -479,7 +478,6 @@ class TrainingConfigManager(BaseConfigManager):
         unified["environment"]["debug_internal_state"] = debug_internal_state
 
         return unified
-
 
 # Backwards compatibility alias
 # Historically tests and other modules imported `ConfigManager` from this module.

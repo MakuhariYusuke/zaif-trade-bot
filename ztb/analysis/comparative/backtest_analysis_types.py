@@ -5,8 +5,7 @@ This module contains shared type definitions used across different
 backtest analysis implementations.
 """
 
-from typing import Dict, List, Optional, TypedDict, Union
-
+from typing import TypedDict
 
 class RiskMetricsResult(TypedDict, total=False):
     """Aggregated risk metric results."""
@@ -19,32 +18,28 @@ class RiskMetricsResult(TypedDict, total=False):
     win_rate: float
     profit_factor: float
 
-
 class NormalityTestResult(TypedDict, total=False):
     """Result of normality statistical tests."""
 
-    shapiro_wilk: Optional[Dict[str, Optional[float]]]
-    kolmogorov_smirnov: Dict[str, float]
-    jarque_bera: Dict[str, float]
+    shapiro_wilk: dict[str, float | None] | None
+    kolmogorov_smirnov: dict[str, float]
+    jarque_bera: dict[str, float]
     error: str
-
 
 class AutocorrelationResult(TypedDict, total=False):
     """Result of autocorrelation analysis."""
 
-    autocorrelations: Dict[str, float]
-    ljung_box_test: Union[Dict[str, float], Dict[str, str]]
+    autocorrelations: dict[str, float]
+    ljung_box_test: dict[str, float] | dict[str, str]
     error: str
-
 
 class VolatilityClusteringResult(TypedDict, total=False):
     """Result of volatility clustering analysis."""
 
-    absolute_return_autocorrelation: Dict[str, float]
-    rolling_volatility: List[float]
+    absolute_return_autocorrelation: dict[str, float]
+    rolling_volatility: list[float]
     volatility_persistence: float
     error: str
-
 
 class RiskAdjustedMetricsResult(TypedDict, total=False):
     """Result of risk-adjusted performance metrics."""
@@ -56,41 +51,36 @@ class RiskAdjustedMetricsResult(TypedDict, total=False):
     max_drawdown: float
     error: str
 
-
 class StatisticalTestResult(TypedDict, total=False):
     """Result of statistical significance tests."""
 
-    t_test: Dict[str, Union[float, bool]]
-    mann_whitney_u: Optional[Dict[str, Optional[Union[float, bool]]]]
-    bartlett_test: Optional[Dict[str, Optional[Union[float, bool]]]]
+    t_test: dict[str, float | bool]
+    mann_whitney_u: dict[str, float | bool | None] | None
+    bartlett_test: dict[str, float | bool | None] | None
     error: str
-
 
 class TemporalPatternsResult(TypedDict, total=False):
     """Result of temporal pattern analysis."""
 
-    hourly_returns: Dict[str, float]
-    weekday_returns: Dict[str, float]
-
+    hourly_returns: dict[str, float]
+    weekday_returns: dict[str, float]
 
 class MarketConditionResult(TypedDict, total=False):
     """Result of market condition analysis."""
 
-    uptrend: Optional[Dict[str, Union[str, float]]]
-    downtrend: Optional[Dict[str, Union[str, float]]]
-    sideways: Optional[Dict[str, Union[str, float]]]
-
+    uptrend: dict[str, str | float] | None
+    downtrend: dict[str, str | float] | None
+    sideways: dict[str, str | float] | None
 
 class TradingFrequencyResult(TypedDict, total=False):
     """Result of trading frequency analysis."""
 
-    action_distribution: Dict[str, float]
+    action_distribution: dict[str, float]
     trade_frequency: float
     avg_trade_interval: float
     min_trade_interval: float
     max_trade_interval: float
     total_trades: int
-
 
 class ActionAveragesResult(TypedDict, total=False):
     """Result of action averages analysis."""
@@ -107,7 +97,6 @@ class ActionAveragesResult(TypedDict, total=False):
     transition_frequency: int
     total_transitions: int
 
-
 class PerformanceMetricsResult(TypedDict):
     """Standard performance metrics result."""
 
@@ -118,7 +107,6 @@ class PerformanceMetricsResult(TypedDict):
     win_rate: float
     num_trades: int
 
-
 class RegimeAnalysisResult(TypedDict):
     """Result of regime-based performance analysis."""
 
@@ -126,35 +114,31 @@ class RegimeAnalysisResult(TypedDict):
     low_volatility_performance: PerformanceMetricsResult
     volatility_regime_consistency: float
 
-
 class SeasonalAnalysisResult(TypedDict):
     """Result of seasonal performance analysis."""
 
-    hourly_performance: Dict[str, Optional[PerformanceMetricsResult]]
-    weekday_performance: Dict[str, Optional[PerformanceMetricsResult]]
-    monthly_performance: Dict[str, Optional[PerformanceMetricsResult]]
+    hourly_performance: dict[str, PerformanceMetricsResult | None]
+    weekday_performance: dict[str, PerformanceMetricsResult | None]
+    monthly_performance: dict[str, PerformanceMetricsResult | None]
     seasonal_consistency_score: float
-
 
 class RobustnessAnalysisResult(TypedDict):
     """Comprehensive robustness analysis result."""
 
     overall_performance: PerformanceMetricsResult
-    volatility_analysis: Optional[RegimeAnalysisResult]
-    trend_analysis: Optional[RegimeAnalysisResult]
-    drawdown_analysis: Optional[RegimeAnalysisResult]
-    seasonal_analysis: Optional[SeasonalAnalysisResult]
+    volatility_analysis: RegimeAnalysisResult | None
+    trend_analysis: RegimeAnalysisResult | None
+    drawdown_analysis: RegimeAnalysisResult | None
+    seasonal_analysis: SeasonalAnalysisResult | None
     robustness_score: float
-
 
 class CorrelationAnalysisResult(TypedDict):
     """Result of correlation and dependency analysis."""
 
     price_portfolio_correlation: float
-    lag_correlations: Dict[str, float]
+    lag_correlations: dict[str, float]
     beta: float
-    action_price_relationships: Dict[str, Dict[str, float]]
-
+    action_price_relationships: dict[str, dict[str, float]]
 
 class TransactionCostAnalysisResult(TypedDict):
     """Result of transaction cost impact analysis."""
@@ -165,31 +149,27 @@ class TransactionCostAnalysisResult(TypedDict):
     trades_per_step: float
     cost_efficiency_score: float
 
-
 class StressTestResult(TypedDict):
     """Result of stress testing under various market conditions."""
 
-    price_drop_10pct: Dict[str, Union[float, int]]
-    price_drop_20pct: Dict[str, Union[float, int]]
-    price_drop_30pct: Dict[str, Union[float, int]]
-    high_volatility: Dict[str, Union[float, int]]
-
+    price_drop_10pct: dict[str, float | int]
+    price_drop_20pct: dict[str, float | int]
+    price_drop_30pct: dict[str, float | int]
+    high_volatility: dict[str, float | int]
 
 class WalkForwardAnalysisResult(TypedDict, total=False):
     """Result of walk-forward efficiency analysis."""
 
-    window_metrics: Dict[str, Dict[str, float]]
-    adaptation_analysis: Dict[str, Union[float, int]]
-
+    window_metrics: dict[str, dict[str, float]]
+    adaptation_analysis: dict[str, float | int]
 
 class MicrostructureAnalysisResult(TypedDict):
     """Result of market microstructure analysis."""
 
-    price_impact: Optional[Dict[str, float]]
-    market_depth: Optional[Dict[str, float]]
-    spread_analysis: Optional[Dict[str, Union[float, str]]]
-    behavioral_patterns: Optional[Dict[str, float]]
-
+    price_impact: dict[str, float] | None
+    market_depth: dict[str, float] | None
+    spread_analysis: dict[str, float | str] | None
+    behavioral_patterns: dict[str, float] | None
 
 class SignalGuidanceAnalysisResult(TypedDict, total=False):
     """Analysis result for signal guidance episodes."""
@@ -210,7 +190,6 @@ class SignalGuidanceAnalysisResult(TypedDict, total=False):
     difference_pct: float
     correlation: float
 
-
 class BTCPerformanceResult(TypedDict, total=False):
     """Performs BTC-related tracking metrics."""
 
@@ -229,7 +208,6 @@ class BTCPerformanceResult(TypedDict, total=False):
     btc_trade_frequency: float
     btc_position_stability: float
 
-
 class AnalysisResult(TypedDict, total=False):
     """Comprehensive backtest analysis result."""
 
@@ -247,5 +225,4 @@ class AnalysisResult(TypedDict, total=False):
     transaction_cost_analysis: TransactionCostAnalysisResult
     walk_forward_analysis: WalkForwardAnalysisResult
     microstructure_analysis: MicrostructureAnalysisResult
-
 

@@ -7,7 +7,7 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict, cast
+from typing import Any, cast
 
 from skopt import gp_minimize
 from skopt.space import Integer, Real
@@ -35,7 +35,6 @@ SEARCH_SPACE = [
     Real(0.1, 0.3, name="clip_range"),
     Real(0.9, 0.99, name="gae_lambda"),
 ]
-
 
 def objective_function(
     learning_rate: float,
@@ -71,7 +70,7 @@ def objective_function(
         )
 
         # Override with optimized parameters
-        config_dict = cast(Dict[str, Any], base_config)
+        config_dict = cast(dict[str, Any], base_config)
         config_dict.update(params)
         config_dict.update(
             {
@@ -101,12 +100,10 @@ def objective_function(
         LOGGER.error(f"Training failed with params {params}: {e}")
         return 1000  # Large penalty for failed runs
 
-
 @use_named_args(SEARCH_SPACE)  # type: ignore[misc]
 def wrapped_objective(**params: Any) -> float:  # type: ignore[misc]
     """Wrapped objective function for skopt."""
     return objective_function(**params)
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -167,7 +164,6 @@ def main() -> int:
     LOGGER.info(f"Best score: {results['best_score']}")
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

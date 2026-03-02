@@ -5,7 +5,7 @@ Run all three reward configurations with full 30k timesteps
 import logging
 import sys
 import time
-from typing import Any, Dict
+from typing import Any
 
 from ztb.utils.file_utils import safe_json_load
 from ztb.utils.logging_utils import setup_logging
@@ -37,8 +37,7 @@ CONFIGS = [
     },
 ]
 
-
-def run_training(config_info: Dict[str, Any]) -> None:
+def run_training(config_info: dict[str, Any]) -> None:
     """Run training for a single config."""
     config_path = project_root / config_info["path"]
 
@@ -76,7 +75,6 @@ def run_training(config_info: Dict[str, Any]) -> None:
 
     trained_models.append(config_info['name'])
     logger.info(f"✅ Training completed: {config_info['name']}")
-
 
 def main() -> None:
     logger.info("=" * 80)
@@ -128,7 +126,6 @@ def main() -> None:
     print("   - Total reward improvement")
     print("   - Risk-adjusted performance")
     print("=" * 80 + "\n")
-
 
 if __name__ == "__main__":
     try:

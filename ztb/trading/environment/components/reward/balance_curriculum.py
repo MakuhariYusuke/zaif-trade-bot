@@ -6,7 +6,7 @@ dynamic progression and emergency intervention capabilities.
 """
 
 from collections import deque
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 import numpy as np
 
@@ -14,7 +14,6 @@ from ztb.trading.environment.utils.config import EnvironmentConfig
 from ztb.types.common import StageChangeEvent
 from ztb.utils.logging_utils import get_logger
 from ztb.trading.environment.components.rewards.utils import RewardUtils
-
 
 class BalanceCurriculumManager:
     """
@@ -76,13 +75,13 @@ class BalanceCurriculumManager:
         self.total_steps = 0
 
         # Stage history for analysis
-        self.stage_history: List[Dict[str, Any]] = []
+        self.stage_history: list[dict[str, Any]] = []
 
         # Metrics tracking
         self.recent_rewards = deque(maxlen=100)
         self.stage_rewards = deque(maxlen=50)
         # listeners for external stage change handling
-        self.stage_change_listeners: List[Callable[[StageChangeEvent], None]] = []
+        self.stage_change_listeners: list[Callable[[StageChangeEvent], None]] = []
 
         # Stage progression conditions (can be overridden by config)
         self.stage_conditions = self._initialize_stage_conditions()
@@ -96,7 +95,7 @@ class BalanceCurriculumManager:
             f"auto_progression={auto_progression}, initial_stage={self.current_stage}"
         )
 
-    def _initialize_stage_conditions(self) -> Dict[str, Dict[str, Any]]:
+    def _initialize_stage_conditions(self) -> dict[str, dict[str, Any]]:
         """Initialize default stage progression conditions."""
         return {
             "forced_balance": {
@@ -128,10 +127,10 @@ class BalanceCurriculumManager:
     def update(
         self,
         step: int,
-        action_counts: List[int],
-        recent_rewards: List[float],
-        portfolio_values: Optional[List[float]] = None,
-    ) -> Dict[str, Any]:
+        action_counts: list[int],
+        recent_rewards: list[float],
+        portfolio_values: list[float] | None = None,
+    ) -> dict[str, Any]:
         """
         Update curriculum state and check for stage progression or emergency.
 
@@ -146,7 +145,7 @@ class BalanceCurriculumManager:
             {
                 "stage": str,
                 "changed": bool,
-                "previous_stage": Optional[str],
+                "previous_stage": str | None,
                 "emergency": bool,
                 "steps_in_stage": int,
             }
@@ -206,7 +205,7 @@ class BalanceCurriculumManager:
 
         return status
 
-    def _check_emergency(self, action_counts: List[int]) -> bool:
+    def _check_emergency(self, action_counts: list[int]) -> bool:
         """
         Check if emergency conditions require reverting to forced_balance.
 
@@ -255,8 +254,8 @@ class BalanceCurriculumManager:
     def _should_progress(
         self,
         step: int,
-        action_counts: List[int],
-        portfolio_values: Optional[List[float]],
+        action_counts: list[int],
+        portfolio_values: list[float] | None,
     ) -> bool:
         """
         Check if current stage conditions are met for progression.
@@ -286,7 +285,7 @@ class BalanceCurriculumManager:
 
         return False
 
-    def _check_forced_balance_completion(self, action_counts: List[int]) -> bool:
+    def _check_forced_balance_completion(self, action_counts: list[int]) -> bool:
         """Check if forced_balance stage is ready to progress."""
         conditions = self.stage_conditions["forced_balance"]
         total_actions = sum(action_counts)
@@ -318,7 +317,7 @@ class BalanceCurriculumManager:
 
         return False
 
-    def _check_balanced_transition_completion(self, action_counts: List[int]) -> bool:
+    def _check_balanced_transition_completion(self, action_counts: list[int]) -> bool:
         """Check if balanced_transition stage is ready to progress."""
         conditions = self.stage_conditions["balanced_transition"]
 
@@ -350,8 +349,8 @@ class BalanceCurriculumManager:
 
     def _check_pnl_focused_completion(
         self,
-        action_counts: List[int],
-        portfolio_values: Optional[List[float]],
+        action_counts: list[int],
+        portfolio_values: list[float] | None,
     ) -> bool:
         """Check if pnl_focused stage is ready to progress."""
         conditions = self.stage_conditions["pnl_focused"]
@@ -376,7 +375,7 @@ class BalanceCurriculumManager:
 
         return False
 
-    def _get_next_stage(self) -> Optional[str]:
+    def _get_next_stage(self) -> str | None:
         """Get the next stage in progression sequence."""
         try:
             current_idx = self.STAGE_SEQUENCE.index(self.current_stage)
@@ -455,7 +454,7 @@ class BalanceCurriculumManager:
         """
         return self.current_stage
 
-    def get_stage_info(self) -> Dict[str, Any]:
+    def get_stage_info(self) -> dict[str, Any]:
         """
         Get detailed information about current curriculum state.
 

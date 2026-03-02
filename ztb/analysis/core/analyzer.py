@@ -5,10 +5,8 @@
 """
 
 import logging
-from typing import Dict, List, Optional
 
 from ztb.types.common import ObjectMap
-
 
 class UnifiedAnalyzer:
     """統合分析器"""
@@ -87,7 +85,7 @@ class UnifiedAnalyzer:
         }
 
     def analyze_comparison(
-        self, model: object, baseline_models: Optional[List[str]] = None, **kwargs
+        self, model: object, baseline_models: list[str] | None = None, **kwargs
     ) -> ObjectMap:
         """
         比較分析
@@ -339,8 +337,8 @@ class UnifiedAnalyzer:
         return risk_adjusted_score
 
     def _identify_optimal_regimes(
-        self, risk_adjusted_scores: Dict[str, float]
-    ) -> List[str]:
+        self, risk_adjusted_scores: dict[str, float]
+    ) -> list[str]:
         """最適レジームの特定"""
         sorted_regimes = sorted(
             risk_adjusted_scores.items(), key=lambda x: x[1], reverse=True
@@ -371,7 +369,7 @@ class UnifiedAnalyzer:
 
     def _calculate_regime_stability(
         self, transition_data: ObjectMap
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """レジーム安定性計算"""
         return {}
 

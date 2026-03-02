@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from ztb.analysis.common.types import ComprehensiveEvaluationClass
 
@@ -19,8 +19,6 @@ import pandas as pd
 if TYPE_CHECKING:
     from ztb.evaluation.walk_forward.types import TimeSeriesWindow, WindowPerformance
 
-
-
 from ztb.io.json_io import read_json, write_json
 from ztb.io.data_loader import DataLoader
 from ztb.trading.risk.risk_manager import RiskManagerProtocol
@@ -28,7 +26,6 @@ from ztb.training.unified_optimizer import UnifiedOptimizer
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class EvaluationMetric(Enum):
     """評価指標"""
@@ -44,7 +41,6 @@ class EvaluationMetric(Enum):
     BETA = "beta"
     ALPHA = "alpha"
 
-
 class EvaluationType(Enum):
     """評価タイプ"""
 
@@ -56,21 +52,18 @@ class EvaluationType(Enum):
     MONTE_CARLO = "monte_carlo"
     STRESS_TEST = "stress_test"
 
-
 @dataclass
 class EvaluationResult:
     """Structured evaluation result object used by UnifiedEvaluator tests."""
 
     metric: str | EvaluationMetric
     value: float
-    confidence_interval: Optional[tuple[float, float]] = None
-    benchmark_comparison: Optional[float] = None
+    confidence_interval: tuple[float, float] | None = None
+    benchmark_comparison: float | None = None
     metadata: dict[str, object] = field(default_factory=dict)
-
 
 class ComprehensiveEvaluation(ComprehensiveEvaluationClass):
     """包括的評価結果"""
-
 
 class UnifiedEvaluator:
     """
@@ -81,13 +74,13 @@ class UnifiedEvaluator:
 
     def __init__(
         self,
-        config: Optional[dict[str, object]] = None,
-        risk_manager: Optional[RiskManagerProtocol] = None,
-        unified_optimizer: Optional[UnifiedOptimizer] = None,
+        config: dict[str, object] | None = None,
+        risk_manager: RiskManagerProtocol | None = None,
+        unified_optimizer: UnifiedOptimizer | None = None,
     ) -> None:
         self.config: dict[str, object] = config or {}
-        self.risk_manager: Optional[RiskManagerProtocol] = risk_manager
-        self.unified_optimizer: Optional[UnifiedOptimizer] = unified_optimizer
+        self.risk_manager: RiskManagerProtocol | None = risk_manager
+        self.unified_optimizer: UnifiedOptimizer | None = unified_optimizer
         self.logger = get_logger(__name__)
 
     def evaluate_model(
@@ -95,7 +88,7 @@ class UnifiedEvaluator:
         model_path: str | Path,
         data_path: str | Path,
         evaluation_type: EvaluationType = EvaluationType.BACKTEST,
-        benchmark_data: Optional[str | Path] = None,
+        benchmark_data: str | Path | None = None,
     ) -> ComprehensiveEvaluation:
         """
         モデルを評価
@@ -223,8 +216,8 @@ class UnifiedEvaluator:
         model_path: str | Path,
         data_path: str | Path,
         evaluation_type: EvaluationType = EvaluationType.BACKTEST,
-        benchmark_data: Optional[str | Path] = None,
-        optimization_config: Optional[dict[str, object]] = None,
+        benchmark_data: str | Path | None = None,
+        optimization_config: dict[str, object] | None = None,
     ) -> dict[str, object]:
         """
         評価と最適化を統合して実行
@@ -293,7 +286,7 @@ class UnifiedEvaluator:
         model_name: str,
         model_path: str | Path,
         data_path: str | Path,
-        config: Optional[dict[str, object]] = None,
+        config: dict[str, object] | None = None,
     ) -> ComprehensiveEvaluation:
         evaluator = TradingEvaluator(str(model_path), str(data_path), config or {})
         try:
@@ -357,7 +350,7 @@ class UnifiedEvaluator:
         model_name: str,
         model_path: str | Path,
         data_path: str | Path,
-        config: Optional[dict[str, object]] = None,
+        config: dict[str, object] | None = None,
     ) -> ComprehensiveEvaluation:
         cfg = config or {}
         env_config = cfg.get("paper_trading_env_config")
@@ -422,7 +415,7 @@ class UnifiedEvaluator:
         self,
         model_name: str,
         data_path: str | Path,
-        config: Optional[dict[str, object]] = None,
+        config: dict[str, object] | None = None,
     ) -> ComprehensiveEvaluation:
         cfg = config or {}
         price_data_path = cfg.get("regime_price_data_path", data_path)
@@ -570,7 +563,7 @@ class UnifiedEvaluator:
         self,
         model_name: str,
         data_path: str | Path,
-        config: Optional[dict[str, object]] = None,
+        config: dict[str, object] | None = None,
     ) -> ComprehensiveEvaluation:
         cfg = config or {}
         windows_raw = cfg.get("walk_forward_windows", [])
@@ -958,7 +951,6 @@ class UnifiedEvaluator:
             robustness_tests=data.get("robustness_tests", {}),
         )
 
-
     def compare_evaluations(
         self, evaluations: list[ComprehensiveEvaluation]
     ) -> dict[str, object]:
@@ -1005,7 +997,6 @@ class UnifiedEvaluator:
             comparison["metric_rankings"][metric.value] = metric_values
 
         return comparison
-
 
 __all__ = [
     "ComprehensiveEvaluation",

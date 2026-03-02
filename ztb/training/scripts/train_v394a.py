@@ -7,7 +7,6 @@ from pathlib import Path
 from ztb.training.unified_trainer import UnifiedTrainer
 from ztb.utils.file_utils import safe_json_load
 
-
 def main():
     config_path = "configs/ppo_v394a_hold_penalty.json"
 
@@ -23,7 +22,6 @@ def main():
     print("\n=== Training Complete ===")
     if result:
         print("Training finished")
-
 
 if __name__ == "__main__":
     main()

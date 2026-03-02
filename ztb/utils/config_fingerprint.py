@@ -24,7 +24,7 @@ import hashlib
 import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from ztb.io.json_io import read_json
 from ztb.types.common import ConfigDict
@@ -32,7 +32,6 @@ from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 @dataclass
 class ConfigFingerprint:
@@ -49,19 +48,19 @@ class ConfigFingerprint:
 
     # Reward settings
     reward_scaling: float
-    reward_settings: Dict[str, Any] = field(default_factory=dict)
+    reward_settings: dict[str, Any] = field(default_factory=dict)
 
     # Training settings (optional, only for training phase)
-    learning_rate: Optional[float] = None
-    n_steps: Optional[int] = None
-    batch_size: Optional[int] = None
-    n_epochs: Optional[int] = None
-    gamma: Optional[float] = None
-    gae_lambda: Optional[float] = None
-    clip_range: Optional[float] = None
-    ent_coef: Optional[float] = None
-    vf_coef: Optional[float] = None
-    max_grad_norm: Optional[float] = None
+    learning_rate: float | None = None
+    n_steps: int | None = None
+    batch_size: int | None = None
+    n_epochs: int | None = None
+    gamma: float | None = None
+    gae_lambda: float | None = None
+    clip_range: float | None = None
+    ent_coef: float | None = None
+    vf_coef: float | None = None
+    max_grad_norm: float | None = None
 
     # Inference settings
     deterministic: bool = True
@@ -237,14 +236,14 @@ class ConfigFingerprint:
 
         return self_hash == other_hash
 
-    def diff(self, other: "ConfigFingerprint") -> Dict[str, Tuple[Any, Any]]:
+    def diff(self, other: "ConfigFingerprint") -> dict[str, tuple[Any, Any]]:
         """Compute differences between two fingerprints.
 
         Args:
             other: Other fingerprint to compare
 
         Returns:
-            Dict of {field: (self_value, other_value)} for differing fields
+            dict of {field: (self_value, other_value)} for differing fields
         """
         self_dict = asdict(self)
         other_dict = asdict(other)

@@ -16,14 +16,13 @@ Features:
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, cast
 
 from ztb.io.json_io import read_json, write_json
 from ztb.training.core.unified_trainer import UnifiedTrainer
 from ztb.utils.config import ZTBConfig
 
 logger = logging.getLogger(__name__)
-
 
 class CurriculumPhase:
     """Configuration for a single curriculum phase"""
@@ -56,14 +55,13 @@ class CurriculumPhase:
             f"  Min diversity: {self.min_diversity_threshold}"
         )
 
-
 class CurriculumTrainer:
     """Curriculum learning trainer with progressive difficulty"""
 
     def __init__(
         self,
         base_config_path: str,
-        output_dir: Optional[str] = None,
+        output_dir: str | None = None,
         experiment_name: str = "curriculum_v1",
     ):
         if output_dir is None:
@@ -80,7 +78,7 @@ class CurriculumTrainer:
         self.phases = self._define_curriculum_phases()
 
         # Training history
-        self.phase_results: List[Dict[str, Any]] = []
+        self.phase_results: list[dict[str, Any]] = []
 
         logger.info(f"Curriculum Trainer initialized: {experiment_name}")
         logger.info(f"Base config: {self.base_config_path}")
@@ -128,8 +126,8 @@ class CurriculumTrainer:
         return phases
 
     def _create_phase_config(
-        self, phase: CurriculumPhase, prev_model_path: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, phase: CurriculumPhase, prev_model_path: str | None = None
+    ) -> dict[str, Any]:
         """Create configuration for a specific phase"""
         # Copy base config
         phase_config = self.base_config.copy()
@@ -166,11 +164,11 @@ class CurriculumTrainer:
         if prev_model_path:
             phase_config["warm_start_model"] = prev_model_path
 
-        return cast(Dict[str, Any], phase_config)
+        return cast(dict[str, Any], phase_config)
 
     def run_phase(
-        self, phase: CurriculumPhase, prev_model_path: Optional[str] = None
-    ) -> Tuple[str, Dict[str, Any]]:
+        self, phase: CurriculumPhase, prev_model_path: str | None = None
+    ) -> tuple[str, dict[str, Any]]:
         """Run a single curriculum phase"""
         logger.info("\n" + "=" * 80)
         logger.info(f"STARTING PHASE {phase.phase_id}: {phase.name}")
@@ -211,7 +209,7 @@ class CurriculumTrainer:
 
         return str(model_path), results
 
-    def run_full_curriculum(self) -> Dict[str, Any]:
+    def run_full_curriculum(self) -> dict[str, Any]:
         """Run all curriculum phases sequentially"""
         logger.info("\n" + "#" * 80)
         logger.info(f"# STARTING CURRICULUM LEARNING: {self.experiment_name}")
@@ -250,7 +248,6 @@ class CurriculumTrainer:
             "phase_results": self.phase_results,
         }
 
-
 def main() -> None:
     """Main curriculum learning execution"""
     import argparse
@@ -285,7 +282,6 @@ def main() -> None:
     print(f"Final model: {results['final_model_path']}")
     print(f"Results: {results['results_path']}")
     print("=" * 80)
-
 
 if __name__ == "__main__":
     main()

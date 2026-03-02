@@ -8,15 +8,14 @@ functions across all trading bot CLI tools.
 import argparse
 import os
 from pathlib import Path
-from typing import Any, List, Optional
-
+from typing import Any
 
 class CLIFormatter:
     """Standardized CLI help text formatter."""
 
     @staticmethod
     def format_help(
-        description: str, default: Any = None, choices: Optional[List[str]] = None
+        description: str, default: Any = None, choices: list[str] | None = None
     ) -> str:
         """Format help text with consistent style."""
         help_parts = [description]
@@ -29,14 +28,13 @@ class CLIFormatter:
     @staticmethod
     @staticmethod
     def format_required_help(
-        description: str, choices: Optional[List[str]] = None
+        description: str, choices: list[str] | None = None
     ) -> str:
         """Format help text for required arguments."""
         help_parts = [description]
         if choices:
             help_parts.append(f"(choices: {', '.join(choices)})")
         return " ".join(help_parts)
-
 
 class CLIValidator:
     """Common validation functions for CLI arguments."""
@@ -84,7 +82,6 @@ class CLIValidator:
                 f"Unsupported venue: {venue}. Supported: {', '.join(supported_venues)}"
             )
         return venue.lower()
-
 
 class CommonArgs:
     """Common argument definitions for CLI tools."""
@@ -163,7 +160,6 @@ class CommonArgs:
             help="Show what would be done without making changes",
         )
 
-
 def create_standard_parser(description: str, **kwargs: Any) -> argparse.ArgumentParser:
     """Create a parser with standard formatting and behavior."""
     return argparse.ArgumentParser(
@@ -171,7 +167,6 @@ def create_standard_parser(description: str, **kwargs: Any) -> argparse.Argument
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         **kwargs,
     )
-
 
 def get_env_default(env_var: str, default: Any) -> Any:
     """Get value from environment variable or default."""

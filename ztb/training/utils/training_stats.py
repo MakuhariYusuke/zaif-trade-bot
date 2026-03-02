@@ -5,10 +5,9 @@ Training statistics tracking.
 
 import time
 from collections import defaultdict
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
-
 
 class TrainingStats:
     """
@@ -30,7 +29,7 @@ class TrainingStats:
         self,
         reward: float,
         episode_length: int,
-        metrics: Optional[Dict[str, Any]] = None,
+        metrics: dict[str, Any] | None = None,
     ) -> None:
         """
         Update statistics with new episode data.
@@ -53,7 +52,7 @@ class TrainingStats:
             self.best_reward = reward
             self.best_episode = self.episode_count
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """Get training summary statistics."""
         elapsed_time = time.time() - self.start_time
 
@@ -83,7 +82,7 @@ class TrainingStats:
         """Reset all statistics."""
         self.__init__()
 
-    def get_recent_stats(self, window: int = 10) -> Dict[str, Any]:
+    def get_recent_stats(self, window: int = 10) -> dict[str, Any]:
         """
         Get statistics for recent episodes.
 

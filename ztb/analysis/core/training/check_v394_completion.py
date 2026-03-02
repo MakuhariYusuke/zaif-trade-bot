@@ -5,7 +5,6 @@ v394シリーズの訓練完了確認とモデル移動
 import shutil
 from pathlib import Path
 
-
 def check_training_completion() -> None:
     """各v394バージョンの訓練完了状況を確認"""
 
@@ -86,7 +85,6 @@ def check_training_completion() -> None:
                 print(f"❓ {name:35s} | Session: {session_id:15s} | Unknown status")
 
     print("=" * 80)
-
 
 if __name__ == "__main__":
     check_training_completion()

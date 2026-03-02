@@ -36,7 +36,7 @@ import importlib.util
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import yaml
 
@@ -53,8 +53,7 @@ from ztb.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 STABLE_BASELINES3_AVAILABLE = importlib.util.find_spec("stable_baselines3") is not None
 
-
-def load_config(config_path: str) -> Dict[str, Any]:
+def load_config(config_path: str) -> dict[str, Any]:
     """Load configuration from JSON file."""
     path = Path(config_path)
     if not path.exists():
@@ -88,9 +87,8 @@ def load_config(config_path: str) -> Dict[str, Any]:
 
     return config
 
-
 def setup_progress_bar(
-    config: Dict[str, Any], cli_override: Optional[bool] = None
+    config: dict[str, Any], cli_override: bool | None = None
 ) -> bool:
     """
     Configure progress bar usage based on Stable-Baselines3 availability.
@@ -105,7 +103,7 @@ def setup_progress_bar(
     if config.get("_progress_configured"):
         return bool(config.get("progress_bar", False))
 
-    progress_preference: Optional[bool] = cli_override
+    progress_preference: bool | None = cli_override
 
     # Preserve backward compatibility with legacy config keys
     legacy_top_level = config.pop("progress_bar", None)
@@ -159,7 +157,6 @@ def setup_progress_bar(
 
     config["_progress_configured"] = True
     return use_progress_bar
-
 
 def main():
     parser = argparse.ArgumentParser(
@@ -282,7 +279,6 @@ def main():
     except Exception as e:
         logger.error(f"Training failed with error: {e}", exc_info=True)
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -7,7 +7,7 @@ Phase 3: Risk Management & Statistical Validation
 高度なリスク管理システム。
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 import pandas as pd
 
 from ztb.risk.risk_manager import RiskManager
@@ -17,7 +17,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class EnhancedRiskManager(RiskManager):
     """
     Phase 2統合拡張リスクマネージャー
@@ -26,7 +25,7 @@ class EnhancedRiskManager(RiskManager):
     収束スコアと時間軸別リスク評価による高度なリスク管理を実現。
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         """
         Args:
             config: 拡張リスク管理設定
@@ -59,9 +58,9 @@ class EnhancedRiskManager(RiskManager):
         current_price: float,
         portfolio_value: float,
         atr: float,
-        df: Optional[pd.DataFrame] = None,
+        df: pd.DataFrame | None = None,
         step: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Phase 2統合拡張リスク調整済みポジション計算
 
@@ -96,10 +95,10 @@ class EnhancedRiskManager(RiskManager):
 
     def _apply_multi_timeframe_risk_adjustment(
         self,
-        basic_risk_info: Dict[str, Any],
+        basic_risk_info: dict[str, Any],
         df: pd.DataFrame,
         step: int
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         マルチタイムフレームベースのリスク調整を適用
 
@@ -177,7 +176,7 @@ class EnhancedRiskManager(RiskManager):
     def _calculate_convergence_risk_multiplier(
         self,
         convergence_analysis: ConvergenceAnalysis,
-        timeframe_analyses: Dict[Timeframe, Any]
+        timeframe_analyses: dict[Timeframe, Any]
     ) -> float:
         """
         収束スコアベースのリスク乗数計算
@@ -210,7 +209,7 @@ class EnhancedRiskManager(RiskManager):
 
     def _calculate_timeframe_risk_multiplier(
         self,
-        timeframe_analyses: Dict[Timeframe, Any]
+        timeframe_analyses: dict[Timeframe, Any]
     ) -> float:
         """
         時間軸別リスク乗数計算
@@ -248,7 +247,7 @@ class EnhancedRiskManager(RiskManager):
 
         return min(1.5, max(0.5, sum(risk_multipliers)))
 
-    def get_risk_dashboard(self) -> Dict[str, Any]:
+    def get_risk_dashboard(self) -> dict[str, Any]:
         """
         リスク管理ダッシュボード情報取得
 

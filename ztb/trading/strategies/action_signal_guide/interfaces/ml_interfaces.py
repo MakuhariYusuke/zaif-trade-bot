@@ -9,7 +9,6 @@ from __future__ import annotations
 from abc import abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 import pandas as pd
 
@@ -23,7 +22,6 @@ from ztb.trading.strategies.action_signal_guide.interfaces.common_types import (
     TargetData,
 )
 
-
 class MLPredictionModel(Enum):
     """Types of ML prediction models."""
 
@@ -32,7 +30,6 @@ class MLPredictionModel(Enum):
     GRADIENT_BOOSTING = "gradient_boosting"
     NEURAL_NETWORK = "neural_network"
     ENSEMBLE = "ensemble"
-
 
 class OptimizationTarget(Enum):
     """Optimization targets for ML models."""
@@ -43,17 +40,15 @@ class OptimizationTarget(Enum):
     MAX_DRAWDOWN = "max_drawdown"
     WIN_RATE = "win_rate"
 
-
 @dataclass
 class MLTrainingData:
     """Training data structure for ML models."""
 
     features: FeatureData
     target: TargetData
-    feature_names: Optional[list[str]] = None
-    target_name: Optional[str] = None
-    metadata: Optional[MetadataMap] = None
-
+    feature_names: list[str] | None = None
+    target_name: str | None = None
+    metadata: MetadataMap | None = None
 
 @dataclass
 class MLPredictionResult:
@@ -65,7 +60,6 @@ class MLPredictionResult:
     model_name: str
     timestamp: float
 
-
 @dataclass
 class MLResult:
     """Generic result structure for ML operations."""
@@ -74,7 +68,6 @@ class MLResult:
     data: GenericData
     message: str
     metadata: MetadataMap
-
 
 class IPatternOptimizer(IActionSignalGuideInterface):
     """Interface for pattern combination optimization using ML."""
@@ -96,7 +89,6 @@ class IPatternOptimizer(IActionSignalGuideInterface):
     def get_optimization_metrics(self) -> MetricsMap:
         """Get current optimization model metrics."""
 
-
 class IOnlineLearner(IActionSignalGuideInterface):
     """Interface for online learning and parameter adaptation."""
 
@@ -117,7 +109,6 @@ class IOnlineLearner(IActionSignalGuideInterface):
     def get_learning_progress(self) -> MetricsMap:
         """Get online learning progress metrics."""
 
-
 class IEnsemblePredictor(IActionSignalGuideInterface):
     """Interface for ensemble prediction combining multiple ML models."""
 
@@ -134,7 +125,6 @@ class IEnsemblePredictor(IActionSignalGuideInterface):
     @abstractmethod
     def get_ensemble_statistics(self) -> MetricsMap:
         """Get ensemble model statistics."""
-
 
 class IFeatureEngineer(IActionSignalGuideInterface):
     """Interface for feature engineering and selection."""

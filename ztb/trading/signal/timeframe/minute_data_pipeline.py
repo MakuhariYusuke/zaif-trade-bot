@@ -4,7 +4,7 @@ Minute-level Data Pipeline for Phase 4
 分足データ取得・処理・管理パイプライン
 """
 
-from typing import Dict, List, Optional, Any
+from typing import Any
 import asyncio
 import time
 from datetime import datetime, timedelta
@@ -16,7 +16,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class MinuteDataPipeline:
     """
     分足データパイプライン
@@ -25,7 +24,7 @@ class MinuteDataPipeline:
     Phase 4のデータ基盤コンポーネント
     """
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize minute data pipeline
 
@@ -59,7 +58,7 @@ class MinuteDataPipeline:
 
         logger.info("MinuteDataPipeline initialized")
 
-    def _get_default_config(self) -> Dict:
+    def _get_default_config(self) -> dict:
         """Get default configuration"""
         return {
             'data_sources': {
@@ -81,7 +80,7 @@ class MinuteDataPipeline:
         }
 
     async def get_minute_data(self, symbol: str, timeframe: str = '5m',
-                            limit: int = 100) -> Optional[pd.DataFrame]:
+                            limit: int = 100) -> pd.DataFrame | None:
         """
         指定シンボルの分足データを取得
 
@@ -91,7 +90,7 @@ class MinuteDataPipeline:
             limit: 取得データ数
 
         Returns:
-            Optional[pd.DataFrame]: 分足データ
+            pd.DataFrame | None: 分足データ
         """
         if timeframe not in self.supported_timeframes:
             logger.error(f"Unsupported timeframe: {timeframe}")
@@ -130,7 +129,7 @@ class MinuteDataPipeline:
             return None
 
     async def get_multi_timeframe_data(self, symbol: str,
-                                     timeframes: List[str] = None) -> Dict[str, pd.DataFrame]:
+                                     timeframes: list[str] = None) -> dict[str, pd.DataFrame]:
         """
         複数タイムフレームのデータを並行取得
 
@@ -139,7 +138,7 @@ class MinuteDataPipeline:
             timeframes: 取得対象タイムフレームリスト
 
         Returns:
-            Dict[str, pd.DataFrame]: タイムフレーム別データ
+            dict[str, pd.DataFrame]: タイムフレーム別データ
         """
         if timeframes is None:
             timeframes = ['1m', '5m', '15m']
@@ -176,7 +175,7 @@ class MinuteDataPipeline:
             return {}
 
     async def _fetch_from_primary_source(self, symbol: str, timeframe: str,
-                                       limit: int) -> Optional[pd.DataFrame]:
+                                       limit: int) -> pd.DataFrame | None:
         """
         プライマリデータソースからデータを取得
 
@@ -186,7 +185,7 @@ class MinuteDataPipeline:
             limit: データ数
 
         Returns:
-            Optional[pd.DataFrame]: 取得データ
+            pd.DataFrame | None: 取得データ
         """
         primary_source = self.data_sources['primary']
 
@@ -206,7 +205,7 @@ class MinuteDataPipeline:
         return None
 
     async def _fetch_from_supplemental_sources(self, symbol: str, timeframe: str,
-                                             limit: int) -> Optional[pd.DataFrame]:
+                                             limit: int) -> pd.DataFrame | None:
         """
         補完データソースからデータを取得
 
@@ -216,7 +215,7 @@ class MinuteDataPipeline:
             limit: データ数
 
         Returns:
-            Optional[pd.DataFrame]: 取得データ
+            pd.DataFrame | None: 取得データ
         """
         supplemental_sources = self.data_sources.get('supplemental', [])
 
@@ -247,7 +246,7 @@ class MinuteDataPipeline:
 
         return None
 
-    async def _fetch_zaif_data(self, symbol: str, timeframe: str, limit: int) -> Optional[pd.DataFrame]:
+    async def _fetch_zaif_data(self, symbol: str, timeframe: str, limit: int) -> pd.DataFrame | None:
         """Zaif APIからデータを取得（実際の実装ではAPIコール）"""
         # 実際のAPI実装はここに
         # 現在はモックデータ生成
@@ -287,19 +286,19 @@ class MinuteDataPipeline:
             logger.error(f"Error fetching Zaif data: {e}")
             return None
 
-    async def _fetch_binance_data(self, symbol: str, timeframe: str, limit: int) -> Optional[pd.DataFrame]:
+    async def _fetch_binance_data(self, symbol: str, timeframe: str, limit: int) -> pd.DataFrame | None:
         """Binance APIからデータを取得"""
         # Binance API実装（実際のAPIキーが必要）
         logger.info("Binance data fetching not implemented yet")
         return None
 
-    async def _fetch_bitflyer_data(self, symbol: str, timeframe: str, limit: int) -> Optional[pd.DataFrame]:
+    async def _fetch_bitflyer_data(self, symbol: str, timeframe: str, limit: int) -> pd.DataFrame | None:
         """BitFlyer APIからデータを取得"""
         # BitFlyer API実装
         logger.info("BitFlyer data fetching not implemented yet")
         return None
 
-    async def _fetch_bybit_data(self, symbol: str, timeframe: str, limit: int) -> Optional[pd.DataFrame]:
+    async def _fetch_bybit_data(self, symbol: str, timeframe: str, limit: int) -> pd.DataFrame | None:
         """Bybit APIからデータを取得"""
         # Bybit API実装
         logger.info("Bybit data fetching not implemented yet")
@@ -387,7 +386,7 @@ class MinuteDataPipeline:
 
         logger.debug(f"Cleaned up {len(expired_keys)} expired cache entries")
 
-    def get_data_quality_metrics(self, data: pd.DataFrame) -> Dict[str, Any]:
+    def get_data_quality_metrics(self, data: pd.DataFrame) -> dict[str, Any]:
         """
         データ品質メトリクスを取得
 
@@ -395,7 +394,7 @@ class MinuteDataPipeline:
             data: 評価対象データ
 
         Returns:
-            Dict: 品質メトリクス
+            dict: 品質メトリクス
         """
         if data is None or len(data) == 0:
             return {'quality_score': 0, 'issues': ['empty_data']}
@@ -453,7 +452,7 @@ class MinuteDataPipeline:
         except Exception:
             return 0
 
-    def _calculate_quality_score(self, metrics: Dict[str, Any]) -> float:
+    def _calculate_quality_score(self, metrics: dict[str, Any]) -> float:
         """品質スコアを計算"""
         try:
             score = 100.0

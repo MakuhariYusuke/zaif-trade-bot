@@ -5,10 +5,9 @@ Heikin-Ashi is a Japanese candlestick technique that modifies the traditional
 candlestick chart to better reflect the trend and momentum.
 """
 
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 import pandas as pd
-
 
 from ztb.features.generators.technical.trend.heikin_ashi import HeikinAshi
 
@@ -18,7 +17,6 @@ from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import 
     SignalResult,
 )
 
-
 class HeikinAshiTrendSignal(TypedDict):
     """Internal signal payload for Heikin-Ashi trend analysis."""
 
@@ -26,7 +24,6 @@ class HeikinAshiTrendSignal(TypedDict):
     strength: float
     description: str
     confidence: float
-
 
 class HeikinAshiRecognizer(PatternRecognizer):
     """
@@ -37,7 +34,7 @@ class HeikinAshiRecognizer(PatternRecognizer):
     candlesticks and their color changes.
     """
 
-    def __init__(self, config: Optional[dict[str, object]] = None):
+    def __init__(self, config: dict[str, object] | None = None):
         super().__init__(config)
         self.pattern_type = "heikin_ashi"
         self.period = int(self.config.get("period", 1))  # Number of periods to look back
@@ -55,8 +52,8 @@ class HeikinAshiRecognizer(PatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[MultiTimeframeData] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """
         Recognize Heikin-Ashi patterns in the data.
 
@@ -127,7 +124,7 @@ class HeikinAshiRecognizer(PatternRecognizer):
 
     def _analyze_trend(
         self, current: pd.Series, previous: pd.Series
-    ) -> Optional[HeikinAshiTrendSignal]:
+    ) -> HeikinAshiTrendSignal | None:
         """
         Analyze trend based on Heikin-Ashi candle patterns using ratio-based measurements.
 

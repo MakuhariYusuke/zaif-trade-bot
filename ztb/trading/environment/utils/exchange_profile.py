@@ -6,10 +6,9 @@ exchange-specific characteristics such as fee models, liquidity, and latency.
 """
 
 import dataclasses
-from typing import Any, Dict
+from typing import Any
 
 from ztb.utils.fee_model import FeeModel, FeeModelFactory, FixedFeeModel
-
 
 @dataclasses.dataclass
 class ExchangeProfile:
@@ -35,7 +34,7 @@ class ExchangeProfile:
     taker_fee_rate: float = 0.001
 
     @classmethod
-    def from_dict(cls, config: Dict[str, Any]) -> "ExchangeProfile":
+    def from_dict(cls, config: dict[str, Any]) -> "ExchangeProfile":
         """
         Create an ExchangeProfile from a dictionary configuration.
 

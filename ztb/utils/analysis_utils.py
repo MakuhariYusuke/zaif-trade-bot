@@ -7,7 +7,6 @@ Provides consistent analysis patterns across the project.
 """
 
 from pathlib import Path
-from typing import Optional, Union
 
 import pandas as pd
 
@@ -16,9 +15,8 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 def load_analysis_data(
-    data_path: Union[str, Path], date_columns: Optional[list] = None, **kwargs
+    data_path: str | Path, date_columns: list | None = None, **kwargs
 ) -> pd.DataFrame:
     """
     Load data for analysis with consistent handling.
@@ -53,7 +51,6 @@ def load_analysis_data(
     except Exception as e:
         logger.error(f"Failed to load data from {data_path}: {e}")
         raise
-
 
 def print_basic_stats(df: pd.DataFrame, title: str = "Data Statistics") -> None:
     """

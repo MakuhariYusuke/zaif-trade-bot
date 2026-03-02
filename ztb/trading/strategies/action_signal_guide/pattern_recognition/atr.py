@@ -3,7 +3,7 @@ ATR (Average True Range) Pattern Recognizer
 既存のATR特徴量クラスを使用したパターン認識
 """
 
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 import pandas as pd
 
@@ -14,13 +14,11 @@ from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import 
     SignalResult,
 )
 
-
 class ATRRegimeThresholds(TypedDict):
     """Regime-adjusted ATR thresholds."""
 
     volatility_threshold: float
     low_volatility_threshold: float
-
 
 class ATRPatternRecognizer(IndicatorPatternRecognizer):
     """
@@ -28,7 +26,7 @@ class ATRPatternRecognizer(IndicatorPatternRecognizer):
     既存のATR特徴量クラスを使用したパターン認識
     """
 
-    def __init__(self, config: Optional[dict[str, object]] = None):
+    def __init__(self, config: dict[str, object] | None = None):
         super().__init__(config)
         self.atr_period = int(self.config.get("atr_period", 14))
         self.volatility_threshold = float(self.config.get("volatility_threshold", 1.0))
@@ -38,8 +36,8 @@ class ATRPatternRecognizer(IndicatorPatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[MultiTimeframeData] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """
         Recognize ATR-based patterns with multi-timeframe support.
         ATRベースのパターン認識（複数時間軸対応）
@@ -139,7 +137,7 @@ class ATRPatternRecognizer(IndicatorPatternRecognizer):
 
     def _analyze_breakout(
         self, data: pd.DataFrame, current_atr: float, avg_atr: float, index: int
-    ) -> Optional[SignalResult]:
+    ) -> SignalResult | None:
         """
         Analyze potential breakout during high volatility.
         高ボラティリティ時のブレイクアウト分析
@@ -159,7 +157,7 @@ class ATRPatternRecognizer(IndicatorPatternRecognizer):
 
     def _analyze_trend_strength(
         self, data: pd.DataFrame, atr_values: pd.Series, index: int
-    ) -> Optional[SignalResult]:
+    ) -> SignalResult | None:
         """
         Analyze trend strength using ATR changes.
         ATR変化によるトレンド強度分析
@@ -175,7 +173,7 @@ class ATRPatternRecognizer(IndicatorPatternRecognizer):
         self,
         current_atr: float,
         avg_atr: float,
-        multi_timeframe_data: Optional[MultiTimeframeData],
+        multi_timeframe_data: MultiTimeframeData | None,
     ) -> float:
         """Analyze multi-timeframe volatility alignment for enhanced confidence."""
         volatility_delta = self.safe_ratio(current_atr, avg_atr, default=1.0) - 1.0
@@ -190,7 +188,7 @@ class ATRPatternRecognizer(IndicatorPatternRecognizer):
 
     def _adjust_thresholds_for_regime(
         self,
-        multi_timeframe_data: Optional[MultiTimeframeData],
+        multi_timeframe_data: MultiTimeframeData | None,
         pattern_type: str = "general",
     ) -> ATRRegimeThresholds:
         """
@@ -235,7 +233,7 @@ class ATRPatternRecognizer(IndicatorPatternRecognizer):
         index: int,
         mtf_confidence: float,
         regime_adjusted_thresholds: ATRRegimeThresholds,
-    ) -> Optional[SignalResult]:
+    ) -> SignalResult | None:
         """
         Analyze potential breakout during high volatility with multi-timeframe confirmation.
         高ボラティリティ時のブレイクアウト分析（複数時間軸対応）
@@ -314,7 +312,7 @@ class ATRPatternRecognizer(IndicatorPatternRecognizer):
         atr_values: pd.Series,
         index: int,
         mtf_confidence: float,
-    ) -> Optional[SignalResult]:
+    ) -> SignalResult | None:
         """
         Analyze trend strength using ATR changes with multi-timeframe support.
         ATR変化によるトレンド強度分析（複数時間軸対応）

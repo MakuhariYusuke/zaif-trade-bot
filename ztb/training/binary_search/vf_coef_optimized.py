@@ -16,7 +16,6 @@ from ztb.training.binary_search.base_optimizer import (
     HyperparameterOptimizer,
 )
 
-
 class VfCoefOptimizer(HyperparameterOptimizer):
     """Optimizer for vf_coef parameter."""
 
@@ -27,7 +26,6 @@ class VfCoefOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[float, float]:
         """Get the range for vf_coef binary search."""
         return (0.1, 1.0)  # Reasonable range for value function coefficient
-
 
 def main() -> None:
     parser = BinarySearchArgumentParser.create_parser(
@@ -54,7 +52,6 @@ def main() -> None:
         print(
             f"\nOptimization complete. Best vf_coef: {best_value}, Score: {best_score:.6f}"
         )
-
 
 if __name__ == "__main__":
     main()

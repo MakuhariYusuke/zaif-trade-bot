@@ -7,7 +7,6 @@ This is a lightweight wrapper used by older tests that import
 
 from __future__ import annotations
 
-
 import pandas as pd
 
 from ztb.core.preprocessing import AnomalyDetector, NoiseFilter, SyntheticDataGenerator
@@ -23,7 +22,6 @@ __all__ = [
 AnomalyDetector = AnomalyDetector
 NoiseFilter = NoiseFilter
 SyntheticDataGenerator = SyntheticDataGenerator
-
 
 def preprocess_data(df: pd.DataFrame, config: dict | None = None) -> pd.DataFrame:
     """Minimal preprocess pipeline used in tests.

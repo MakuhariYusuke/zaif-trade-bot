@@ -5,12 +5,9 @@ Computes inverse frequency weights to handle action imbalance,
 with beta clipping, EMA smoothing, and safety guards.
 """
 
-from typing import Dict, Optional, Tuple
-
 import numpy as np
 
 from ztb.trading.environment.constants import EPSILON
-
 
 class ActionWeightCalculator:
     """
@@ -51,15 +48,15 @@ class ActionWeightCalculator:
         self.kl_consecutive_max = kl_consecutive_max
 
         # Internal state
-        self._smoothed_counts: Optional[Dict[str, float]] = None
+        self._smoothed_counts: dict[str, float] | None = None
         self._kl_consecutive_violations = 0
         self._weights_active = True
 
     def compute_weights(
         self,
-        action_counts: Dict[str, int],
+        action_counts: dict[str, int],
         apply_ema: bool = True,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Compute action weights from counts.
 
@@ -107,7 +104,7 @@ class ActionWeightCalculator:
 
         return weights_normalized
 
-    def _apply_ema(self, current_counts: Dict[str, int]) -> Dict[str, float]:
+    def _apply_ema(self, current_counts: dict[str, int]) -> dict[str, float]:
         """
         Apply EMA smoothing to action counts.
 
@@ -134,7 +131,7 @@ class ActionWeightCalculator:
         self,
         entropy: float,
         kl_violations_rate: float,
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Check safety guards and determine if weights should be disabled.
 
@@ -143,7 +140,7 @@ class ActionWeightCalculator:
             kl_violations_rate: Rate of target_kl violations (e.g., 0.02 = 2%)
 
         Returns:
-            Tuple of (should_revert, reason)
+            tuple of (should_revert, reason)
             - should_revert: True if weights should revert to 1.0
             - reason: Human-readable reason for revert
         """
@@ -175,11 +172,11 @@ class ActionWeightCalculator:
 
     def get_safe_weights(
         self,
-        action_counts: Dict[str, int],
+        action_counts: dict[str, int],
         entropy: float,
         kl_violations_rate: float,
         apply_ema: bool = True,
-    ) -> Tuple[Dict[str, float], bool, str]:
+    ) -> tuple[dict[str, float], bool, str]:
         """
         Get weights with safety guard checks.
 
@@ -190,7 +187,7 @@ class ActionWeightCalculator:
             apply_ema: Whether to apply EMA smoothing
 
         Returns:
-            Tuple of (weights, guard_triggered, reason)
+            tuple of (weights, guard_triggered, reason)
             - weights: Either computed weights or [1.0, 1.0, 1.0] if guard triggered
             - guard_triggered: True if safety guard was triggered
             - reason: Human-readable reason for guard trigger
@@ -206,12 +203,11 @@ class ActionWeightCalculator:
         weights = self.compute_weights(action_counts, apply_ema=apply_ema)
         return weights, False, ""
 
-
 def compute_action_weights(
-    action_counts: Dict[str, int],
+    action_counts: dict[str, int],
     beta: float = 3.0,
     epsilon: float = EPSILON,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """
     Compute inverse frequency weights (stateless version).
 
@@ -225,7 +221,6 @@ def compute_action_weights(
     """
     calculator = ActionWeightCalculator(beta=beta, epsilon=epsilon)
     return calculator.compute_weights(action_counts, apply_ema=False)
-
 
 def cosine_warmup_schedule(
     current_step: int,

@@ -4,7 +4,7 @@ Multimodal Learning Trainer for SAC v421
 """
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 import torch
@@ -18,7 +18,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class MultimodalSACTrainer(SACAlgorithmTrainer):
     """
     マルチモーダルSACトレーナー
@@ -28,8 +27,8 @@ class MultimodalSACTrainer(SACAlgorithmTrainer):
     def __init__(
         self,
         multimodal_config: MultimodalConfig,
-        sac_config: Dict[str, Any],
-        env_config: Dict[str, Any],
+        sac_config: dict[str, Any],
+        env_config: dict[str, Any],
     ):
         # SACAlgorithmTrainerの初期化をスキップして直接初期化
         self.multimodal_config = multimodal_config
@@ -70,8 +69,8 @@ class MultimodalSACTrainer(SACAlgorithmTrainer):
         price_data: torch.Tensor,
         text_data: torch.Tensor,
         economic_data: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
-    ) -> Dict[str, Any]:
+        attention_mask: torch.Tensor | None = None,
+    ) -> dict[str, Any]:
         """
         マルチモーダル学習を実行
 
@@ -116,7 +115,7 @@ class MultimodalSACTrainer(SACAlgorithmTrainer):
         text_data: torch.Tensor,
         economic_data: torch.Tensor,
         encoded_features: torch.Tensor,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """マルチモーダル特有のメトリクスを計算"""
         metrics = {}
 
@@ -204,8 +203,8 @@ class MultimodalSACTrainer(SACAlgorithmTrainer):
         price_data: torch.Tensor,
         text_data: torch.Tensor,
         economic_data: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
-    ) -> Dict[str, Any]:
+        attention_mask: torch.Tensor | None = None,
+    ) -> dict[str, Any]:
         """
         マルチモーダルモデルの評価
 

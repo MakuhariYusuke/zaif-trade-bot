@@ -1,11 +1,9 @@
 import logging
 from typing import Any
 
-
 from ztb.trading.constants import ACTION_BUY, ACTION_SELL
 
 from .base import RewardComponent, RewardContext
-
 
 class SmartIncentiveReward(RewardComponent):
     """
@@ -20,7 +18,6 @@ class SmartIncentiveReward(RewardComponent):
 
     def get_name(self) -> str:
         return "smart_incentive"
-
 
     def calculate(self, context: RewardContext) -> float:
         """

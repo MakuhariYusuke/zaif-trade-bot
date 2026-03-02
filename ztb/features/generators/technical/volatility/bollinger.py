@@ -9,7 +9,6 @@ import pandas as pd
 from ztb.features.core.registry import FeatureRegistry
 from ztb.utils.talib_wrapper import TaLibWrapper
 
-
 @FeatureRegistry.register("BB_Upper")
 def compute_bb_upper(
     df: pd.DataFrame, period: int = 20, std_dev: float = 2.0
@@ -18,7 +17,6 @@ def compute_bb_upper(
     close_prices = np.asarray(df["close"].values, dtype=float)
     upper, middle, lower = TaLibWrapper.bbands(close_prices, period, std_dev, std_dev)
     return pd.Series(upper, index=df.index).bfill()
-
 
 @FeatureRegistry.register("BB_Lower")
 def compute_bb_lower(
@@ -29,14 +27,12 @@ def compute_bb_lower(
     upper, middle, lower = TaLibWrapper.bbands(close_prices, period, std_dev, std_dev)
     return pd.Series(lower, index=df.index).bfill()
 
-
 @FeatureRegistry.register("BB_Middle")
 def compute_bb_middle(df: pd.DataFrame, period: int = 20) -> pd.Series:
     """Compute Bollinger Band Middle (SMA) with Ta-Lib support"""
     close_prices = np.asarray(df["close"].values, dtype=float)
     upper, middle, lower = TaLibWrapper.bbands(close_prices, period, 2.0, 2.0)
     return pd.Series(middle, index=df.index).bfill()
-
 
 @FeatureRegistry.register("BB_Width")
 def compute_bb_width(
@@ -49,7 +45,6 @@ def compute_bb_width(
     # Width = (upper - lower) / middle
     width = (upper - lower) / np.where(middle == 0, 1, middle)
     return pd.Series(width, index=df.index, dtype=float).fillna(0.0)
-
 
 @FeatureRegistry.register("BB_Position")
 def compute_bb_position(

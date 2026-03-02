@@ -5,8 +5,6 @@ Configuration for Explainability Module
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict
-
 
 class ExplanationMethod(Enum):
     """説明手法"""
@@ -16,14 +14,12 @@ class ExplanationMethod(Enum):
     INTEGRATED_GRADIENTS = "integrated_gradients"
     DEEP_LIFT = "deep_lift"
 
-
 class ExplanationScope(Enum):
     """説明範囲"""
 
     GLOBAL = "global"  # 全体的な特徴量重要度
     LOCAL = "local"  # 個別予測の説明
     COHORT = "cohort"  # グループベースの説明
-
 
 @dataclass
 class ExplainabilityConfig:
@@ -55,8 +51,8 @@ class ExplainabilityConfig:
     max_cached_explanations: int = 1000
 
     # 特徴量マッピング
-    feature_names: Dict[str, str] = field(default_factory=dict)
-    feature_categories: Dict[str, str] = field(default_factory=dict)
+    feature_names: dict[str, str] = field(default_factory=dict)
+    feature_categories: dict[str, str] = field(default_factory=dict)
 
     # レポート設定
     generate_reports: bool = True

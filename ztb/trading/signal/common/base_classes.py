@@ -7,7 +7,7 @@ across different signal processing components.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import pandas as pd
 
@@ -15,16 +15,14 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 @dataclass(frozen=True)
 class SignalContext:
     """Common signal processing context"""
 
     market_data: pd.DataFrame
-    position_context: Dict[str, Any]
-    portfolio_state: Dict[str, Any]
+    position_context: dict[str, Any]
+    portfolio_state: dict[str, Any]
     timestamp: pd.Timestamp
-
 
 @dataclass
 class SignalResult:
@@ -33,8 +31,7 @@ class SignalResult:
     discrete_action: int  # -1, 0, 1
     quality_score: float  # 0-100
     confidence: float  # 0-1
-    metadata: Dict[str, Any] = field(default_factory=dict)
-
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 class BaseSignalProcessor:
     """
@@ -43,7 +40,7 @@ class BaseSignalProcessor:
     Provides common functionality and interface standardization.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         # Merge provided config with defaults from subclass where available
         try:
             default_config = self._get_default_config() or {}
@@ -60,7 +57,7 @@ class BaseSignalProcessor:
             self.config = dict(default_config)
         self.logger = get_logger(self.__class__.__name__)
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """Get default configuration
 
         Default implementation returns empty dict; subclasses may override.
@@ -92,7 +89,6 @@ class BaseSignalProcessor:
             f"Score: {result.quality_score:.2f}, Confidence: {result.confidence:.2f}"
         )
 
-
 class BaseIndicatorCalculator(ABC):
     """
     Base class for technical indicator calculations
@@ -100,12 +96,12 @@ class BaseIndicatorCalculator(ABC):
     Standardizes indicator calculation interface and provides caching.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         self.config = config or {}
         self._cache = {}
 
     @abstractmethod
-    def calculate(self, data: pd.DataFrame) -> Dict[str, float]:
+    def calculate(self, data: pd.DataFrame) -> dict[str, float]:
         """Calculate indicator values"""
         pass
 
@@ -130,12 +126,12 @@ class BaseIndicatorCalculator(ABC):
 
         return f"{len(data)}_{index_str}_{last_row_vals}"
 
-    def get_cached_result(self, data: pd.DataFrame) -> Optional[Dict[str, float]]:
+    def get_cached_result(self, data: pd.DataFrame) -> dict[str, float] | None:
         """Get cached calculation result"""
         cache_key = self.get_cache_key(data)
         return self._cache.get(cache_key)
 
-    def cache_result(self, data: pd.DataFrame, result: Dict[str, float]):
+    def cache_result(self, data: pd.DataFrame, result: dict[str, float]):
         """Cache calculation result"""
         cache_key = self.get_cache_key(data)
         self._cache[cache_key] = result
@@ -146,7 +142,6 @@ class BaseIndicatorCalculator(ABC):
             oldest_key = next(iter(self._cache))
             del self._cache[oldest_key]
 
-
 class BaseSignalScorer(ABC):
     """
     Base class for signal quality scoring
@@ -154,29 +149,29 @@ class BaseSignalScorer(ABC):
     Provides common scoring functionality and threshold management.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         self.config = config or self._get_default_config()
         self.weights = self.config.get("weights", {})
         self.thresholds = self.config.get("thresholds", {})
 
     @abstractmethod
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """Get default configuration"""
         pass
 
     @abstractmethod
     def calculate_score(
-        self, indicators: Dict[str, float], context: Optional[Dict[str, Any]] = None
+        self, indicators: dict[str, float], context: dict[str, Any] | None = None
     ) -> float:
         """Calculate signal quality score"""
         pass
 
-    def apply_thresholds(self, score: float) -> Tuple[int, float]:
+    def apply_thresholds(self, score: float) -> tuple[int, float]:
         """
         Apply thresholds to convert score to discrete action
 
         Returns:
-            Tuple of (discrete_action, confidence)
+            tuple of (discrete_action, confidence)
         """
         buy_threshold = self.thresholds.get("buy", 75)
         sell_threshold = self.thresholds.get("sell", 25)
@@ -205,7 +200,7 @@ class BaseSignalScorer(ABC):
 
         return action, confidence
 
-    def update_weights(self, new_weights: Dict[str, float]):
+    def update_weights(self, new_weights: dict[str, float]):
         """Update scoring weights"""
         self.weights.update(new_weights)
         self._normalize_weights()
@@ -216,7 +211,6 @@ class BaseSignalScorer(ABC):
         if total_weight > 0:
             self.weights = {k: v / total_weight for k, v in self.weights.items()}
 
-
 class BaseRegimeAdapter(ABC):
     """
     Base class for market regime adaptation
@@ -224,7 +218,7 @@ class BaseRegimeAdapter(ABC):
     Provides common adaptation functionality and parameter management.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         self.config = config or self._get_default_config()
         self.adaptation_params = self.config.get("adaptation_params", {})
 
@@ -232,11 +226,11 @@ class BaseRegimeAdapter(ABC):
 
     @abstractmethod
     def adapt_parameters(
-        self, regime_type: str, base_params: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, regime_type: str, base_params: dict[str, Any]
+    ) -> dict[str, Any]:
         """Adapt parameters for specific regime"""
         pass
 
-    def get_regime_config(self, regime_type: str) -> Dict[str, Any]:
+    def get_regime_config(self, regime_type: str) -> dict[str, Any]:
         """Get configuration for specific regime"""
         return regime_type in self.adaptation_params

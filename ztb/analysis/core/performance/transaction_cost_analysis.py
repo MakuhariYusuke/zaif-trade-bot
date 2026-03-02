@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, TypedDict, cast
+from typing import Any, TypedDict, cast
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -24,7 +24,6 @@ from ztb.utils.errors import safe_operation
 
 LOGGER = logging.getLogger(__name__)
 
-
 class TransactionCostResult(TypedDict, total=False):
     """Result of transaction cost simulation for a single cost level."""
 
@@ -36,18 +35,17 @@ class TransactionCostResult(TypedDict, total=False):
     total_trades: int
     final_portfolio_value: float
     evaluation_timestamp: str
-    model_config: Dict[str, Any]
-
+    model_config: dict[str, Any]
 
 def simulate_transaction_costs(
-    model_path: Path, cost_range: List[float], data_path: Path, output_dir: Path
-) -> Dict[float, TransactionCostResult]:
+    model_path: Path, cost_range: list[float], data_path: Path, output_dir: Path
+) -> dict[float, TransactionCostResult]:
     """
     Simulate trading performance with different transaction costs.
 
     Args:
         model_path: Path to trained model
-        cost_range: List of transaction costs to test
+        cost_range: list of transaction costs to test
         data_path: Path to evaluation data
         output_dir: Output directory for results
 
@@ -55,7 +53,7 @@ def simulate_transaction_costs(
         Dictionary mapping cost to performance metrics
     """
     return cast(
-        Dict[float, TransactionCostResult],
+        dict[float, TransactionCostResult],
         safe_operation(
             logger=LOGGER,
             operation=lambda: _simulate_transaction_costs_impl(
@@ -66,10 +64,9 @@ def simulate_transaction_costs(
         ),
     )
 
-
 def _simulate_transaction_costs_impl(
-    model_path: Path, cost_range: List[float], data_path: Path, output_dir: Path
-) -> Dict[float, Dict[str, Any]]:
+    model_path: Path, cost_range: list[float], data_path: Path, output_dir: Path
+) -> dict[float, dict[str, Any]]:
     """Implementation of transaction cost simulation."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -169,17 +166,16 @@ def _simulate_transaction_costs_impl(
 
     return results
 
-
 def analyze_transaction_costs(
-    backtest_results: Optional[str] = None,
-    cost_structure: Optional[List[float]] = None,
-    output_path: Optional[str] = None,
-) -> Dict[float, TransactionCostResult]:
+    backtest_results: str | None = None,
+    cost_structure: list[float] | None = None,
+    output_path: str | None = None,
+) -> dict[float, TransactionCostResult]:
     """Analyze transaction costs impact on trading performance.
 
     Args:
         backtest_results: Path to backtest results file
-        cost_structure: List of transaction costs to analyze
+        cost_structure: list of transaction costs to analyze
         output_path: Path to save analysis results
 
     Returns:
@@ -210,7 +206,6 @@ def analyze_transaction_costs(
         }
         for cost in cost_structure
     }
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -260,7 +255,6 @@ def main() -> int:
             )
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

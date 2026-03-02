@@ -31,7 +31,6 @@ logger = logging.getLogger(__name__)
 
 ConfigMap = dict[str, object]
 
-
 # Default SAC configuration used by the tests
 DEFAULT_SAC_CONFIG = {
     "learning_rate": 3e-4,
@@ -87,7 +86,6 @@ DEFAULT_SAC_CONFIG = {
     "report_format": "html",
 }
 
-
 class SACAlgorithm(BaseRLAlgorithm):
     """
     SAC (Soft Actor-Critic) algorithm wrapper.
@@ -107,9 +105,9 @@ class SACAlgorithm(BaseRLAlgorithm):
     def __init__(self) -> None:
         """Initialize SACAlgorithm."""
         # Use conservative protocol to reduce raw Any in downstream code
-        self._model: Optional[SACLikeModelProtocol] = None
+        self._model: SACLikeModelProtocol | None = None
         self.compression_manager = None
-        self.explainability_analyzer: Optional[ExplainabilityAnalyzer] = None
+        self.explainability_analyzer: ExplainabilityAnalyzer | None = None
         logger.info("SACAlgorithm initialized")
 
     @property
@@ -130,7 +128,7 @@ class SACAlgorithm(BaseRLAlgorithm):
 
     @staticmethod
     def _resolve_policy_kwargs(
-        raw_kwargs: Optional[ConfigMap],
+        raw_kwargs: ConfigMap | None,
         network_type: str = "mlp",  # "mlp", "lstm", "transformer", "efficient"
         sequence_length: int = 10,
         lstm_hidden_size: int = 128,
@@ -140,7 +138,7 @@ class SACAlgorithm(BaseRLAlgorithm):
         transformer_n_layers: int = 4,
         transformer_d_ff: int = 512,
         network_dropout: float = 0.1,
-    ) -> Optional[ConfigMap]:
+    ) -> ConfigMap | None:
         """
         Normalize policy kwargs and configure advanced network architectures.
         """
@@ -408,7 +406,7 @@ class SACAlgorithm(BaseRLAlgorithm):
         self,
         env: VecEnv,
         config: ConfigMap,
-        tensorboard_log: Optional[str] = None,
+        tensorboard_log: str | None = None,
     ) -> BaseAlgorithm:
         """Create a SAC model instance using the provided environment and config.
 
@@ -540,7 +538,7 @@ class SACAlgorithm(BaseRLAlgorithm):
         if policy_kwargs is not None:
             sac_params["policy_kwargs"] = policy_kwargs
 
-        # Set policy based on network type
+        # set policy based on network type
         if network_type == "lstm":
             sac_params["policy"] = LSTMPolicy
         elif network_type == "transformer":
@@ -927,7 +925,7 @@ class SACAlgorithm(BaseRLAlgorithm):
     def _set_fine_tune_learning_rate(
         self, model: BaseAlgorithm, learning_rate: float
     ) -> None:
-        """Set learning rate for fine-tuning.
+        """set learning rate for fine-tuning.
 
         Args:
             model: SAC model
@@ -948,13 +946,13 @@ class SACAlgorithm(BaseRLAlgorithm):
                         # If the param_group isn't a mapping (e.g., Mock), skip
                         continue
 
-        logger.info(f"Set fine-tuning learning rate to {learning_rate}")
+        logger.info(f"set fine-tuning learning rate to {learning_rate}")
 
     def train(
         self,
         model: BaseAlgorithm,
         total_timesteps: int,
-        callback: Optional[Callable[..., object]] = None,
+        callback: Callable[..., object] | None = None,
         **kwargs: object,
     ) -> BaseAlgorithm:
         """Train the SAC model.
@@ -1004,7 +1002,7 @@ class SACAlgorithm(BaseRLAlgorithm):
         logger.info(f"SAC model saved to {save_path}")
 
     @staticmethod
-    def load(load_path: str, env: Optional[VecEnv] = None) -> BaseAlgorithm:
+    def load(load_path: str, env: VecEnv | None = None) -> BaseAlgorithm:
         """Load a model from disk.
 
         Args:
@@ -1092,8 +1090,8 @@ class SACAlgorithm(BaseRLAlgorithm):
         self,
         observations: object | Sequence[object],
         actions: Sequence[object] | None = None,
-        output_path: Optional[str] = None,
-    ) -> Optional[str]:
+        output_path: str | None = None,
+    ) -> str | None:
         """Generate an explanation report for a batch of observations.
 
         Args:
@@ -1130,9 +1128,9 @@ class SACAlgorithm(BaseRLAlgorithm):
 
             # Generate the report. The return type of
             # explainability_analyzer.generate_explanation_report may vary by
-            # implementation, so cast to Optional[str].
+            # implementation, so cast to str | None.
             return cast(
-                Optional[str],
+                str | None,
                 self.explainability_analyzer.generate_explanation_report(
                     explanations=explanations, output_path=output_path
                 ),

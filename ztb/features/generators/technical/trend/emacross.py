@@ -7,7 +7,7 @@ Output columns:
   - ema_above_sma: Binary indicator (1 if EMA > SMA, 0 otherwise)
 """
 
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -16,10 +16,9 @@ from ..base import ParameterizedFeature
 from ..registry import FeatureRegistry
 from ..timeframe import Timeframe
 
-
 @FeatureRegistry.register("EMACross_Diff")
 def compute_ema_cross_diff(
-    df: pd.DataFrame, timeframe: Optional[Timeframe] = None
+    df: pd.DataFrame, timeframe: Timeframe | None = None
 ) -> pd.Series:
     """EMA/SMA Cross Difference (normalized)"""
     feature = EMACross()
@@ -35,10 +34,9 @@ def compute_ema_cross_diff(
     result_df = feature.compute(df)
     return result_df["ema_sma_cross"]
 
-
 @FeatureRegistry.register("EMACross_Signal")
 def compute_ema_cross_signal(
-    df: pd.DataFrame, timeframe: Optional[Timeframe] = None
+    df: pd.DataFrame, timeframe: Timeframe | None = None
 ) -> pd.Series:
     """EMA/SMA Cross Signal (1 if EMA > SMA, 0 otherwise)"""
     feature = EMACross()
@@ -54,81 +52,67 @@ def compute_ema_cross_signal(
     result_df = feature.compute(df)
     return result_df["ema_above_sma"]
 
-
 # === Multi-Timeframe EMACross Features ===
-
 
 @FeatureRegistry.register("EMACross_Diff_M1")
 def compute_ema_cross_diff_m1(df: pd.DataFrame) -> pd.Series:
     """EMA/SMA Cross Difference for 1-minute timeframe"""
     return compute_ema_cross_diff(df, timeframe=Timeframe.M1)
 
-
 @FeatureRegistry.register("EMACross_Diff_M5")
 def compute_ema_cross_diff_m5(df: pd.DataFrame) -> pd.Series:
     """EMA/SMA Cross Difference for 5-minute timeframe"""
     return compute_ema_cross_diff(df, timeframe=Timeframe.M5)
-
 
 @FeatureRegistry.register("EMACross_Diff_M15")
 def compute_ema_cross_diff_m15(df: pd.DataFrame) -> pd.Series:
     """EMA/SMA Cross Difference for 15-minute timeframe"""
     return compute_ema_cross_diff(df, timeframe=Timeframe.M15)
 
-
 @FeatureRegistry.register("EMACross_Diff_H1")
 def compute_ema_cross_diff_h1(df: pd.DataFrame) -> pd.Series:
     """EMA/SMA Cross Difference for 1-hour timeframe"""
     return compute_ema_cross_diff(df, timeframe=Timeframe.H1)
-
 
 @FeatureRegistry.register("EMACross_Diff_H4")
 def compute_ema_cross_diff_h4(df: pd.DataFrame) -> pd.Series:
     """EMA/SMA Cross Difference for 4-hour timeframe"""
     return compute_ema_cross_diff(df, timeframe=Timeframe.H4)
 
-
 @FeatureRegistry.register("EMACross_Diff_D1")
 def compute_ema_cross_diff_d1(df: pd.DataFrame) -> pd.Series:
     """EMA/SMA Cross Difference for daily timeframe"""
     return compute_ema_cross_diff(df, timeframe=Timeframe.D1)
-
 
 @FeatureRegistry.register("EMACross_Signal_M1")
 def compute_ema_cross_signal_m1(df: pd.DataFrame) -> pd.Series:
     """EMA/SMA Cross Signal for 1-minute timeframe"""
     return compute_ema_cross_signal(df, timeframe=Timeframe.M1)
 
-
 @FeatureRegistry.register("EMACross_Signal_M5")
 def compute_ema_cross_signal_m5(df: pd.DataFrame) -> pd.Series:
     """EMA/SMA Cross Signal for 5-minute timeframe"""
     return compute_ema_cross_signal(df, timeframe=Timeframe.M5)
-
 
 @FeatureRegistry.register("EMACross_Signal_M15")
 def compute_ema_cross_signal_m15(df: pd.DataFrame) -> pd.Series:
     """EMA/SMA Cross Signal for 15-minute timeframe"""
     return compute_ema_cross_signal(df, timeframe=Timeframe.M15)
 
-
 @FeatureRegistry.register("EMACross_Signal_H1")
 def compute_ema_cross_signal_h1(df: pd.DataFrame) -> pd.Series:
     """EMA/SMA Cross Signal for 1-hour timeframe"""
     return compute_ema_cross_signal(df, timeframe=Timeframe.H1)
-
 
 @FeatureRegistry.register("EMACross_Signal_H4")
 def compute_ema_cross_signal_h4(df: pd.DataFrame) -> pd.Series:
     """EMA/SMA Cross Signal for 4-hour timeframe"""
     return compute_ema_cross_signal(df, timeframe=Timeframe.H4)
 
-
 @FeatureRegistry.register("EMACross_Signal_D1")
 def compute_ema_cross_signal_d1(df: pd.DataFrame) -> pd.Series:
     """EMA/SMA Cross Signal for daily timeframe"""
     return compute_ema_cross_signal(df, timeframe=Timeframe.D1)
-
 
 class EMACross(ParameterizedFeature):
     """
@@ -142,7 +126,7 @@ class EMACross(ParameterizedFeature):
             default_params={"fast_period": 5, "slow_period": 20},
         )
 
-    def get_deps(self, params: Optional[Dict[str, Any]] = None) -> List[str]:
+    def get_deps(self, params: dict[str, Any] | None = None) -> list[str]:
         if params is None:
             params = self.default_params
         fast_period = params.get("fast_period", 5)
@@ -150,7 +134,7 @@ class EMACross(ParameterizedFeature):
         return [f"ema_{fast_period}", f"rolling_mean_{slow_period}"]
 
     def _compute_with_params(
-        self, df: pd.DataFrame, **params: Dict[str, Any]
+        self, df: pd.DataFrame, **params: dict[str, Any]
     ) -> pd.DataFrame:
         """
         Compute EMA/SMA cross signals with configurable periods.

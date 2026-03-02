@@ -4,8 +4,6 @@ Timeseries Analysis Module
 時系列分析機能を提供するモジュール
 """
 
-from typing import Dict, List
-
 import numpy as np
 import pandas as pd
 
@@ -13,10 +11,9 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 def compute_lag_correlations(
-    frames: Dict[str, pd.DataFrame], max_lags: int = 10
-) -> List[Dict]:
+    frames: dict[str, pd.DataFrame], max_lags: int = 10
+) -> list[dict]:
     """
     複数のデータフレーム間のラグ相関係数を計算
 

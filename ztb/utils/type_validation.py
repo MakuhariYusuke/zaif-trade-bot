@@ -14,7 +14,6 @@ from numpy.typing import NDArray
 from ztb.types.common import ConfigDict, is_config_dict, is_numeric_config_value
 from ztb.utils.exceptions.custom_exceptions import ValidationError
 
-
 class TypeValidator:
     """
     Runtime type validator for function arguments and return values.
@@ -30,15 +29,15 @@ class TypeValidator:
 
         Performs comprehensive type checking including support for:
         - Basic types (int, str, float, etc.)
-        - Generic types (List[int], Dict[str, Any], etc.)
-        - Union types (Union[int, str])
-        - Optional types (Optional[str])
+        - Generic types (list[int], dict[str, Any], etc.)
+        - Union types (int | str)
+        - Optional types (str | None)
         - NumPy array types (NDArray[np.float64])
 
         Args:
             value: The value to validate against the expected type.
             expected_type: The type that value should conform to.
-                          Supports typing module constructs like Union, Optional, List, etc.
+                          Supports typing module constructs like Union, Optional, list, etc.
             name: Descriptive name of the value for error messages.
                  Defaults to "value".
 
@@ -48,8 +47,8 @@ class TypeValidator:
 
         Example:
             >>> TypeValidator.validate_type(42, int, "age")
-            >>> TypeValidator.validate_type([1, 2, 3], List[int], "numbers")
-            >>> TypeValidator.validate_type(None, Optional[str], "optional_name")
+            >>> TypeValidator.validate_type([1, 2, 3], list[int], "numbers")
+            >>> TypeValidator.validate_type(None, str | None, "optional_name")
         """
         if not TypeValidator._check_type(value, expected_type):
             raise TypeError(
@@ -105,7 +104,7 @@ class TypeValidator:
     @staticmethod
     def validate_array_shape(
         array: NDArray[np.floating],
-        expected_shape: Optional[tuple[int, ...]] = None,
+        expected_shape: tuple[int, ...] | None = None,
         name: str = "array",
     ) -> None:
         """
@@ -127,7 +126,7 @@ class TypeValidator:
     @staticmethod
     def validate_array_dtype(
         array: NDArray[np.floating],
-        expected_dtype: Optional[np.dtype[np.floating]] = None,
+        expected_dtype: np.dtype[np.floating] | None = None,
         name: str = "array",
     ) -> None:
         """
@@ -143,7 +142,6 @@ class TypeValidator:
         """
         if expected_dtype is not None and array.dtype != expected_dtype:
             raise TypeError(f"{name} dtype must be {expected_dtype}, got {array.dtype}")
-
 
 def runtime_type_check(func: Callable[..., Any]) -> Callable[..., Any]:
     """
@@ -197,7 +195,6 @@ def runtime_type_check(func: Callable[..., Any]) -> Callable[..., Any]:
 
     return wrapper
 
-
 # Convenience functions for common validations
 def validate_environment_config(config: ConfigDict) -> None:
     """
@@ -224,7 +221,6 @@ def validate_environment_config(config: ConfigDict) -> None:
     max_position_size = config.get("max_position_size", 1.0)
     if not is_numeric_config_value(max_position_size):
         raise ValidationError("max_position_size must be numeric")
-
 
 def validate_training_config(config: ConfigDict) -> None:
     """
@@ -255,7 +251,6 @@ def validate_training_config(config: ConfigDict) -> None:
     if not is_numeric_config_value(total_timesteps) or int(total_timesteps) <= 0:
         raise ValidationError("total_timesteps must be positive")
 
-
 def validate_feature_config(config: ConfigDict) -> None:
     """
     Validate feature configuration dictionary.
@@ -285,7 +280,6 @@ def validate_feature_config(config: ConfigDict) -> None:
         if "type" not in feature:
             raise ValidationError("Each feature must have a 'type' field")
 
-
 def validate_trading_config(config: ConfigDict) -> None:
     """
     Validate trading configuration dictionary.
@@ -309,7 +303,6 @@ def validate_trading_config(config: ConfigDict) -> None:
     if not is_numeric_config_value(max_pos) or float(max_pos) <= 0:
         raise ValidationError("max_position_size must be positive")
 
-
 def validate_model_config(config: ConfigDict) -> None:
     """
     Validate model configuration dictionary.
@@ -332,7 +325,6 @@ def validate_model_config(config: ConfigDict) -> None:
     bs = config.get("batch_size", 0)
     if not is_numeric_config_value(bs) or int(bs) <= 0:
         raise ValidationError("batch_size must be positive")
-
 
 def validate_array_type(arr: Any, expected_dtype: np.dtype[Any]) -> bool:
     """

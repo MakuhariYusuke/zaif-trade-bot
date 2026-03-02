@@ -3,7 +3,6 @@
 
 import gc
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 import psutil
@@ -14,13 +13,12 @@ from ztb.utils.path_utils import ensure_dir
 
 logger = get_logger(__name__)
 
-
 class MemoryManager:
     """Handles memory management and logging for the trading environment."""
 
     def __init__(
         self,
-        memory_log_path: Optional[str] = None,
+        memory_log_path: str | None = None,
         memory_logging_enabled: bool = False,
         memory_log_interval_steps: int = 2000,
         gc_step_interval: int = 0,
@@ -40,7 +38,7 @@ class MemoryManager:
             )
 
     def log_memory_usage(
-        self, context: str, *, df_override: Optional[pd.DataFrame] = None
+        self, context: str, *, df_override: pd.DataFrame | None = None
     ) -> None:
         """Log memory usage for debugging."""
         """
@@ -48,7 +46,7 @@ class MemoryManager:
 
         Args:
             context (str): Description or identifier for the logging context.
-            df_override (Optional[pd.DataFrame], optional): DataFrame whose memory usage will be logged instead of the default. Defaults to None.
+            df_override (pd.DataFrame | None, optional): DataFrame whose memory usage will be logged instead of the default. Defaults to None.
         """
 
         rss_mb = self._process.memory_info().rss / BYTES_PER_MB

@@ -15,7 +15,6 @@ from pathlib import Path
 project_root = Path(__file__).parent
 tests_dir = project_root / "tests" / "unit"
 
-
 def run_tests(with_coverage=False, verbose=False):
     """単体テストを実行"""
 
@@ -87,7 +86,6 @@ def run_tests(with_coverage=False, verbose=False):
 
     return exit_code
 
-
 def print_test_summary():
     """テストファイルのサマリーを表示"""
     print("\n" + "=" * 60)
@@ -108,7 +106,6 @@ def print_test_summary():
 
     print(f"\n Total test files: {len(test_files)}")
     print("=" * 60)
-
 
 def main():
     """メイン処理"""
@@ -132,7 +129,6 @@ def main():
     exit_code = run_tests(with_coverage=args.coverage, verbose=args.verbose)
 
     return exit_code
-
 
 if __name__ == "__main__":
     sys.exit(main())

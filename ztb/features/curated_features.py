@@ -6,13 +6,11 @@ PPOトレーナーなどで使用される特徴量セットを提供
 """
 
 from enum import Enum
-from typing import List
 
 from ztb.features.feature_set_manager import FeatureSetManager
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class FeatureSet(Enum):
     """特徴量セットの種類"""
@@ -21,8 +19,7 @@ class FeatureSet(Enum):
     FULL = "full"
     MINIMAL = "minimal"
 
-
-def get_feature_set(feature_set: str = "curated", config_path=None) -> List[str]:
+def get_feature_set(feature_set: str = "curated", config_path=None) -> list[str]:
     """
     指定された特徴量セットを取得
 
@@ -53,8 +50,7 @@ def get_feature_set(feature_set: str = "curated", config_path=None) -> List[str]
         logger.error(f"Error getting feature set '{feature_set}': {e}")
         return _get_default_curated_features()
 
-
-def get_features_to_remove() -> List[str]:
+def get_features_to_remove() -> list[str]:
     """
     削除すべき特徴量を取得
 
@@ -65,8 +61,7 @@ def get_features_to_remove() -> List[str]:
     # 現時点では空リストを返す
     return []
 
-
-def _get_default_curated_features() -> List[str]:
+def _get_default_curated_features() -> list[str]:
     """
     デフォルトのcurated特徴量セットを取得
 

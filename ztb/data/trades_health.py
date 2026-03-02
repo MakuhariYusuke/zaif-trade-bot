@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_RAW_DIR = Path("data/v460/raw")
 
-
 @dataclass(frozen=True)
 class TradesHealthResult:
     """trades 健全性チェック結果."""
@@ -39,7 +38,6 @@ class TradesHealthResult:
     missing_days: list[str]
     stale_hours: float  # 最新ファイルからの経過時間
     message: str
-
 
 def check_trades_health(
     raw_dir: Path | None = None,
@@ -125,11 +123,9 @@ def check_trades_health(
         message=msg,
     )
 
-
 # ---------------------------------------------------------------------------
 # 136# P1-02: Feature Staleness Monitor
 # ---------------------------------------------------------------------------
-
 
 @dataclass(frozen=True)
 class FeatureFreshnessResult:
@@ -140,7 +136,6 @@ class FeatureFreshnessResult:
     ob_stale_hours: float
     details: dict[str, str]
     message: str
-
 
 def _latest_mtime_hours(directory: Path, glob_pattern: str = "*.jsonl.gz") -> float:
     """ディレクトリ内の最新ファイル mtime から経過時間を返す."""
@@ -157,7 +152,6 @@ def _latest_mtime_hours(directory: Path, glob_pattern: str = "*.jsonl.gz") -> fl
     if latest_mtime == 0.0:
         return float("inf")
     return (datetime.now(timezone.utc).timestamp() - latest_mtime) / 3600
-
 
 def check_feature_freshness(
     raw_dir: Path | None = None,
@@ -214,7 +208,6 @@ def check_feature_freshness(
         details=details,
         message=msg,
     )
-
 
 if __name__ == "__main__":
     import argparse

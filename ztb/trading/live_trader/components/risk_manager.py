@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 from ztb.metrics.metrics import max_drawdown as calculate_max_drawdown
 from ztb.metrics.metrics import sharpe_ratio as calculate_sharpe_ratio
@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     import pandas as pd
 
     from ztb.trading.live_trader.live_trader import LiveTrader
-
 
 class RiskManager(BaseRiskManager):
     """Manages trading risk limits and emergency stops."""
@@ -208,10 +207,10 @@ class RiskManager(BaseRiskManager):
 
     def should_close_position(
         self,
-        position_data: Dict[str, Any],
+        position_data: dict[str, Any],
         current_price: float,
         current_portfolio_value: float,
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         # Use emergency stop and explicit stops if available in position_data
         stop_loss = position_data.get("stop_loss")
         take_profit = position_data.get("take_profit")
@@ -256,8 +255,8 @@ class RiskManager(BaseRiskManager):
         return float(self.live_trader.config.get("default_base_position", 0.01))
 
     def calculate_atr_stop_levels(
-        self, data: Optional[pd.DataFrame], entry_price: float, position_type: str
-    ) -> Tuple[float, float]:
+        self, data: pd.DataFrame | None, entry_price: float, position_type: str
+    ) -> tuple[float, float]:
         if data is not None and ("atr" in data.columns):
             base_atr = float(data["atr"].iloc[-1])
         else:
@@ -273,7 +272,7 @@ class RiskManager(BaseRiskManager):
         return float(stop_loss), float(take_profit)
 
     def update_risk_metrics(
-        self, trade_result: Optional[Dict[str, Any]] = None
+        self, trade_result: dict[str, Any] | None = None
     ) -> None:
         if trade_result:
             pnl = float(trade_result.get("pnl", 0.0))
@@ -318,7 +317,7 @@ class RiskManager(BaseRiskManager):
         self.live_trader.daily_trades = self.daily_trades
         self.logger.info("Daily risk limits reset")
 
-    def calculate_pnl_statistics(self) -> Dict[str, Any]:
+    def calculate_pnl_statistics(self) -> dict[str, Any]:
         """Calculate statistical metrics for PnL history.
 
         Returns:
@@ -378,7 +377,7 @@ class RiskManager(BaseRiskManager):
             "rolling_mean_return": rolling_mean[-1] if rolling_mean else 0.0,
         }
 
-    def get_risk_status(self) -> Dict[str, Any]:
+    def get_risk_status(self) -> dict[str, Any]:
         """Get current risk status for monitoring.
 
         Returns:

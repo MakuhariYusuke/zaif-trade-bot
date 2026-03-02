@@ -13,24 +13,22 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from collections import deque
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
-
 
 @dataclass
 class LearningExperience:
     """学習経験"""
 
     timestamp: datetime
-    market_condition: Dict[str, Any]
+    market_condition: dict[str, Any]
     action_taken: str
     reward: float
-    next_state: Dict[str, Any]
+    next_state: dict[str, Any]
     strategy_used: str
-
 
 @dataclass
 class StrategyPerformance:
@@ -43,7 +41,6 @@ class StrategyPerformance:
     max_drawdown: float
     sharpe_ratio: float
     last_updated: datetime
-
 
 class AdaptiveLearningSystem:
     """
@@ -75,11 +72,11 @@ class AdaptiveLearningSystem:
         self.strategy_evaluation_period = strategy_evaluation_period
 
         self.learning_experiences: deque[LearningExperience] = deque(maxlen=experience_window)
-        self.strategy_performances: Dict[str, StrategyPerformance] = {}
-        self.current_best_strategy: Optional[str] = None
+        self.strategy_performances: dict[str, StrategyPerformance] = {}
+        self.current_best_strategy: str | None = None
 
         self.is_learning = False
-        self.learning_thread: Optional[threading.Thread] = None
+        self.learning_thread: threading.Thread | None = None
 
         # 学習パラメータ
         self.learning_rate = 0.01
@@ -148,10 +145,10 @@ class AdaptiveLearningSystem:
 
     def add_experience(
         self,
-        market_condition: Dict[str, Any],
+        market_condition: dict[str, Any],
         action_taken: str,
         reward: float,
-        next_state: Dict[str, Any],
+        next_state: dict[str, Any],
         strategy_used: str,
     ):
         """
@@ -195,7 +192,7 @@ class AdaptiveLearningSystem:
             self.strategy_performances[strategy_name] = performance
 
     def _calculate_strategy_performance(
-        self, strategy_name: str, experiences: List[LearningExperience]
+        self, strategy_name: str, experiences: list[LearningExperience]
     ) -> StrategyPerformance:
         """
         戦略パフォーマンス計算
@@ -342,30 +339,30 @@ class AdaptiveLearningSystem:
             maxlen=self.experience_window,
         )
 
-    def get_best_strategy(self) -> Optional[str]:
+    def get_best_strategy(self) -> str | None:
         """
         最適戦略取得
 
         Returns:
-            Optional[str]: 最適戦略名
+            str | None: 最適戦略名
         """
         return self.current_best_strategy
 
-    def get_strategy_performances(self) -> Dict[str, StrategyPerformance]:
+    def get_strategy_performances(self) -> dict[str, StrategyPerformance]:
         """
         戦略パフォーマンス取得
 
         Returns:
-            Dict[str, StrategyPerformance]: 全戦略のパフォーマンス
+            dict[str, StrategyPerformance]: 全戦略のパフォーマンス
         """
         return self.strategy_performances.copy()
 
-    def get_learning_status(self) -> Dict[str, Any]:
+    def get_learning_status(self) -> dict[str, Any]:
         """
         学習ステータス取得
 
         Returns:
-            Dict[str, Any]: 学習ステータス
+            dict[str, Any]: 学習ステータス
         """
         return {
             "is_learning": self.is_learning,
@@ -376,7 +373,7 @@ class AdaptiveLearningSystem:
         }
 
     def recommend_action(
-        self, market_condition: Dict[str, Any], available_actions: List[str]
+        self, market_condition: dict[str, Any], available_actions: list[str]
     ) -> str:
         """
         アクション推奨
@@ -409,8 +406,8 @@ class AdaptiveLearningSystem:
     def _get_strategy_specific_action(
         self,
         strategy: str,
-        market_condition: Dict[str, Any],
-        available_actions: List[str],
+        market_condition: dict[str, Any],
+        available_actions: list[str],
     ) -> str:
         """
         戦略固有アクション取得
@@ -435,7 +432,7 @@ class AdaptiveLearningSystem:
             return available_actions[0] if available_actions else "hold"
 
     def _get_risk_based_action(
-        self, market_condition: Dict[str, Any], available_actions: List[str]
+        self, market_condition: dict[str, Any], available_actions: list[str]
     ) -> str:
         """
         リスクベースアクション取得

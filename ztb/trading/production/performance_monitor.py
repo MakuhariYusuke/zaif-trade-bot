@@ -14,14 +14,13 @@ from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Awaitable, Callable, Deque, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Deque
 
 from ztb.types.alert_types import AlertLevel
 from ztb.trading.production.state_persistence import (
     read_state_payload,
     write_state_payload,
 )
-
 
 class MonitorFrequency(Enum):
     """監視頻度"""
@@ -31,7 +30,6 @@ class MonitorFrequency(Enum):
     MEDIUM = "medium"  # 中頻度（5分）
     LOW = "low"  # 低頻度（15分）
 
-
 class AlertSeverity(Enum):
     """アラート重要度 (deprecated: use AlertLevel)"""
 
@@ -39,7 +37,6 @@ class AlertSeverity(Enum):
     WARNING = "warning"
     ERROR = "error"
     CRITICAL = "critical"
-
 
 @dataclass
 class PerformanceThreshold:
@@ -50,7 +47,6 @@ class PerformanceThreshold:
     error_threshold: float
     critical_threshold: float
     comparison: str  # '>', '<', '>=', '<='
-
 
 @dataclass
 class PerformanceAlert:
@@ -63,10 +59,9 @@ class PerformanceAlert:
     current_value: float
     threshold_value: float
     message: str
-    system_id: Optional[str] = None
+    system_id: str | None = None
     resolved: bool = False
-    resolved_at: Optional[datetime] = None
-
+    resolved_at: datetime | None = None
 
 @dataclass
 class PerformanceSnapshot:
@@ -75,10 +70,9 @@ class PerformanceSnapshot:
     snapshot_id: str
     timestamp: datetime
     system_id: str
-    metrics: Dict[str, float]
-    alerts: List[PerformanceAlert] = field(default_factory=list)
+    metrics: dict[str, float]
+    alerts: list[PerformanceAlert] = field(default_factory=list)
     overall_health: str = "healthy"
-
 
 @dataclass
 class HealthCheck:
@@ -90,8 +84,7 @@ class HealthCheck:
     component: str
     status: str  # 'healthy', 'degraded', 'unhealthy'
     response_time_ms: float
-    error_message: Optional[str] = None
-
+    error_message: str | None = None
 
 class ProductionPerformanceMonitor:
     """
@@ -120,34 +113,34 @@ class ProductionPerformanceMonitor:
         self.max_alerts_history = max_alerts_history
 
         # パフォーマンス閾値
-        self.performance_thresholds: Dict[str, PerformanceThreshold] = {}
+        self.performance_thresholds: dict[str, PerformanceThreshold] = {}
         self._setup_default_thresholds()
 
         # 監視対象システム
         self.monitored_systems: set[str] = set()
 
         # パフォーマンスデータ
-        self.performance_history: Dict[str, Deque[PerformanceSnapshot]] = {}
+        self.performance_history: dict[str, Deque[PerformanceSnapshot]] = {}
         self.alerts_history: Deque[PerformanceAlert] = deque(maxlen=max_alerts_history)
         self.health_checks: Deque[HealthCheck] = deque(maxlen=500)
 
         # アクティブアラート
-        self.active_alerts: Dict[str, PerformanceAlert] = {}
+        self.active_alerts: dict[str, PerformanceAlert] = {}
 
         # アラート抑制
-        self.alert_cooldowns: Dict[str, datetime] = {}
+        self.alert_cooldowns: dict[str, datetime] = {}
 
         # モニタリング制御
         self.monitoring_active = False
-        self.monitoring_thread: Optional[threading.Thread] = None
+        self.monitoring_thread: threading.Thread | None = None
         self.last_monitoring = datetime.now()
 
         # コールバック
-        self.alert_callbacks: List[Callable[[PerformanceAlert], Awaitable[None]]] = []
-        self.snapshot_callbacks: List[
+        self.alert_callbacks: list[Callable[[PerformanceAlert], Awaitable[None]]] = []
+        self.snapshot_callbacks: list[
             Callable[[PerformanceSnapshot], Awaitable[None]]
         ] = []
-        self.health_callbacks: List[Callable[[HealthCheck], Awaitable[None]]] = []
+        self.health_callbacks: list[Callable[[HealthCheck], Awaitable[None]]] = []
 
         # ロギング
         self.logger = logging.getLogger(__name__)
@@ -205,7 +198,7 @@ class ProductionPerformanceMonitor:
         self.logger.info(f"Performance threshold added: {threshold.metric_name}")
 
     def update_performance_metrics(
-        self, system_id: str, metrics: Dict[str, float]
+        self, system_id: str, metrics: dict[str, float]
     ) -> None:
         """
         パフォーマンス指標更新
@@ -256,8 +249,8 @@ class ProductionPerformanceMonitor:
                 self.logger.error(f"Snapshot callback error: {e}")
 
     def _check_thresholds(
-        self, system_id: str, metrics: Dict[str, float]
-    ) -> List[PerformanceAlert]:
+        self, system_id: str, metrics: dict[str, float]
+    ) -> list[PerformanceAlert]:
         """
         閾値チェック
 
@@ -266,7 +259,7 @@ class ProductionPerformanceMonitor:
             metrics: パフォーマンス指標
 
         Returns:
-            List[PerformanceAlert]: アラートリスト
+            list[PerformanceAlert]: アラートリスト
         """
         alerts = []
 
@@ -307,7 +300,7 @@ class ProductionPerformanceMonitor:
 
     def _evaluate_threshold(
         self, threshold: PerformanceThreshold, value: float
-    ) -> Optional[AlertLevel]:
+    ) -> AlertLevel | None:
         """
         閾値評価
 
@@ -316,7 +309,7 @@ class ProductionPerformanceMonitor:
             value: 現在の値
 
         Returns:
-            Optional[AlertLevel]: アラート重要度
+            AlertLevel | None: アラート重要度
         """
         if threshold.comparison == ">":
             if value >= threshold.critical_threshold:
@@ -386,7 +379,7 @@ class ProductionPerformanceMonitor:
 
         return f"{threshold.metric_name} is {comparison} threshold: {value:.2f} {threshold.comparison} {threshold_value:.2f}"
 
-    def _assess_overall_health(self, alerts: List[PerformanceAlert]) -> str:
+    def _assess_overall_health(self, alerts: list[PerformanceAlert]) -> str:
         """
         全体ヘルス評価
 
@@ -468,7 +461,7 @@ class ProductionPerformanceMonitor:
         system_id: str,
         component: str,
         response_time_ms: float,
-        error_message: Optional[str] = None,
+        error_message: str | None = None,
     ) -> None:
         """
         ヘルスチェック実行
@@ -514,7 +507,7 @@ class ProductionPerformanceMonitor:
 
     def get_performance_summary(
         self, system_id: str, hours: int = 24
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         パフォーマンス要約取得
 
@@ -523,7 +516,7 @@ class ProductionPerformanceMonitor:
             hours: 集計期間（時間）
 
         Returns:
-            Optional[Dict[str, Any]]: パフォーマンス要約
+            dict[str, Any] | None: パフォーマンス要約
         """
         if system_id not in self.performance_history:
             return None
@@ -606,8 +599,8 @@ class ProductionPerformanceMonitor:
         }
 
     def get_active_alerts(
-        self, system_id: Optional[str] = None
-    ) -> List[PerformanceAlert]:
+        self, system_id: str | None = None
+    ) -> list[PerformanceAlert]:
         """
         アクティブアラート取得
 
@@ -615,7 +608,7 @@ class ProductionPerformanceMonitor:
             system_id: システムID（指定なしの場合は全システム）
 
         Returns:
-            List[PerformanceAlert]: アクティブアラート
+            list[PerformanceAlert]: アクティブアラート
         """
         alerts = list(self.active_alerts.values())
 
@@ -625,8 +618,8 @@ class ProductionPerformanceMonitor:
         return alerts
 
     def get_alert_history(
-        self, system_id: Optional[str] = None, limit: Optional[int] = None
-    ) -> List[PerformanceAlert]:
+        self, system_id: str | None = None, limit: int | None = None
+    ) -> list[PerformanceAlert]:
         """
         アラート履歴取得
 
@@ -635,7 +628,7 @@ class ProductionPerformanceMonitor:
             limit: 取得件数制限
 
         Returns:
-            List[PerformanceAlert]: アラート履歴
+            list[PerformanceAlert]: アラート履歴
         """
         alerts = self.alerts_history
 

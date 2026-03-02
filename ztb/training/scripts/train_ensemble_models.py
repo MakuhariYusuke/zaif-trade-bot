@@ -8,7 +8,7 @@ import logging
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from ztb.utils.logging_utils import setup_logging
 from ztb.utils.path_utils import ensure_dir
@@ -52,11 +52,8 @@ MODEL_SPECS = [
     },
 ]
 
-
-
-
 def train_model(
-    base_config: Dict[str, Any], spec: Dict[str, Any], args: argparse.Namespace
+    base_config: dict[str, Any], spec: dict[str, Any], args: argparse.Namespace
 ) -> Path:
     """Train a single model according to *spec* and save it to disk."""
     config = deepcopy(base_config)
@@ -184,21 +181,19 @@ def train_model(
     )
     return parser.parse_args()
 
-
 def main() -> int:
     args = parse_args()
     setup_logging(level=logging.DEBUG if args.verbose else logging.INFO)
 
     base_config = build_base_config(args)
 
-    trained_models: List[Path] = []
+    trained_models: list[Path] = []
     for spec in MODEL_SPECS:
         trained_models.append(train_model(base_config, spec, args))
 
     LOGGER.info("Training completed for %d ensemble members", len(trained_models))
     LOGGER.info("Models saved: %s", ", ".join(str(p) for p in trained_models))
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

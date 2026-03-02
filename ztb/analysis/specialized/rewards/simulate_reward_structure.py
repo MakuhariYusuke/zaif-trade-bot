@@ -5,7 +5,6 @@
 実際の報酬計算をシミュレートして、なぜep_rew_mean=-495なのかを調査
 """
 
-
 def simulate_rewards() -> None:
     """Simulate rewards for different scenarios."""
 
@@ -163,7 +162,6 @@ def simulate_rewards() -> None:
      - Verify curriculum_stage is not interfering
     """
     )
-
 
 if __name__ == "__main__":
     simulate_rewards()

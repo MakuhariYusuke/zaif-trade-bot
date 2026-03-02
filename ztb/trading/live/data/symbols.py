@@ -6,8 +6,6 @@ Handles various symbol formats and normalizes them to standard base/quote pairs.
 
 import re
 from enum import Enum
-from typing import Dict, Set, Tuple
-
 
 class Venue(Enum):
     """Supported trading venues."""
@@ -15,7 +13,6 @@ class Venue(Enum):
     ZAIF = "zaif"
     COINCHECK = "coincheck"
     # TODO: Add more venues as needed
-
 
 class SymbolNormalizer:
     """Normalizes trading symbols across different exchanges."""
@@ -33,7 +30,7 @@ class SymbolNormalizer:
     ]
 
     # Known base currencies
-    _BASE_CURRENCIES: Set[str] = {
+    _BASE_CURRENCIES: set[str] = {
         "BTC",
         "ETH",
         "XRP",
@@ -47,10 +44,10 @@ class SymbolNormalizer:
     }
 
     # Known quote currencies
-    _QUOTE_CURRENCIES: Set[str] = {"JPY", "USD", "EUR", "BTC"}
+    _QUOTE_CURRENCIES: set[str] = {"JPY", "USD", "EUR", "BTC"}
 
     # Venue-specific symbol mappings
-    _VENUE_MAPPINGS: Dict[str, Dict[str, str]] = {
+    _VENUE_MAPPINGS: dict[str, dict[str, str]] = {
         "zaif": {
             "xem_jpy": "XEM_JPY",
             "mona_jpy": "MONA_JPY",
@@ -64,7 +61,7 @@ class SymbolNormalizer:
     }
 
     @classmethod
-    def normalize(cls, venue: Venue, symbol: str) -> Tuple[str, str]:
+    def normalize(cls, venue: Venue, symbol: str) -> tuple[str, str]:
         """Normalize a symbol for a specific venue.
 
         Args:
@@ -72,7 +69,7 @@ class SymbolNormalizer:
             symbol: Raw symbol string
 
         Returns:
-            Tuple of (base_currency, quote_currency)
+            tuple of (base_currency, quote_currency)
 
         Raises:
             ValueError: If symbol cannot be normalized

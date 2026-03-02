@@ -16,7 +16,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 def get_template(name: str) -> dict[str, Any]:
     """Get the schedule template for the given name."""
     templates = {
@@ -63,9 +62,8 @@ def get_template(name: str) -> dict[str, Any]:
 
     return templates[name]
 
-
 def list_templates() -> None:
-    """List all available templates."""
+    """list all available templates."""
     templates = [
         "daily",
         "hourly",
@@ -79,7 +77,6 @@ def list_templates() -> None:
         desc = get_template(template)["description"]
         print(f"  {template}: {desc}")
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Generate cronish.py schedule templates"
@@ -87,7 +84,7 @@ def main() -> None:
     parser.add_argument("--template", "-t", help="Template name to generate")
     parser.add_argument("--output", "-o", help="Output JSON file path")
     parser.add_argument(
-        "--list", "-l", action="store_true", help="List available templates"
+        "--list", "-l", action="store_true", help="list available templates"
     )
 
     args = parser.parse_args()
@@ -115,7 +112,6 @@ def main() -> None:
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

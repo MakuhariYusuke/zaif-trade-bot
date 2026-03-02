@@ -26,7 +26,6 @@ from ztb.trading.live_trader.config import (
 from ztb.trading.live_trader.live_trader import LiveTrader
 from ztb.trading.live_trader.utils import _configure_live_logging
 
-
 def main() -> None:
     """Main entry point for live trading."""
     try:
@@ -34,7 +33,6 @@ def main() -> None:
     except Exception as e:
         print(f"Error in main: {e}")
         raise
-
 
 def _main_impl() -> None:
     """Implementation of main function."""
@@ -76,7 +74,6 @@ def _main_impl() -> None:
     finally:
         # Keep handles referenced for potential future cleanup logic
         _ = (metrics_handle, health_handle)
-
 
 if __name__ == "__main__":
     main()

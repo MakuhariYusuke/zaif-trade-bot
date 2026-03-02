@@ -14,14 +14,12 @@ import pandas as pd
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
 
-
 @FeatureRegistry.register("CCI")
 def compute_cci(df: pd.DataFrame) -> pd.Series:
     """CCI (Commodity Channel Index) using Ta-Lib wrapper"""
     feature = CCI()
     result_df = feature.compute(df)
     return result_df["cci"]
-
 
 class CCI(BaseFeature):
     """

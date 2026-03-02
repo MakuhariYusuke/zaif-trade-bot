@@ -7,7 +7,7 @@ Type-safe, high-performance signal guidance for SAC action conversion
 from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -26,7 +26,6 @@ from ztb.trading.signal.multi_timeframe_analyzer import (
 from ztb.trading.signal.quality_scorer import SignalQualityScorer
 from ztb.trading.signal.trend_convergence_calculator import TrendConvergenceCalculator
 
-
 class MarketTrend(Enum):
     """Market trend enumeration"""
 
@@ -34,14 +33,12 @@ class MarketTrend(Enum):
     BEARISH = "bearish"
     NEUTRAL = "neutral"
 
-
 class SignalType(Enum):
     """Signal type enumeration"""
 
     BUY = 1
     SELL = -1
     HOLD = 0
-
 
 @dataclass
 class MarketContext:
@@ -51,7 +48,6 @@ class MarketContext:
     volume_trend: deque[float] = field(default_factory=lambda: deque(maxlen=10))
     trend_window: int = 10
     current_trend: MarketTrend = MarketTrend.NEUTRAL
-
 
 @dataclass
 class PositionContext:
@@ -66,16 +62,14 @@ class PositionContext:
     jpy_balance: float
     total_value: float
 
-
 @dataclass
 class SignalContext:
     """Structured signal context data"""
 
     recent_bias: Literal["buy", "sell", "neutral"]
     signal_streak: int
-    last_signal: Optional[SignalType]
+    last_signal: SignalType | None
     sell_signal_ratio: float
-
 
 @dataclass
 class GuidanceConfig:
@@ -97,7 +91,6 @@ class GuidanceConfig:
     signal_sell_probability: float = 0.25
     signal_sell_recent_threshold: float = 0.1
 
-
 class SignalGuidanceSystem:
     """
     Enhanced signal guidance system for SAC action conversion
@@ -111,8 +104,8 @@ class SignalGuidanceSystem:
 
     def __init__(
         self,
-        config: Optional[GuidanceConfig] = None,
-        threshold_manager: Optional[object] = None,
+        config: GuidanceConfig | None = None,
+        threshold_manager: object | None = None,
     ):
         self.config = config or GuidanceConfig()
         self.signal_history: deque[SignalType] = deque(maxlen=self.config.max_history)
@@ -130,7 +123,7 @@ class SignalGuidanceSystem:
         self.market_data_history: deque[pd.Series] = deque(maxlen=100)
         self.max_history_size = 100  # Keep last 100 data points for technical analysis
 
-    def update_market_context(self, row: pd.Series, portfolio: Dict[str, Any]) -> None:
+    def update_market_context(self, row: pd.Series, portfolio: dict[str, Any]) -> None:
         """Update market context for guidance decisions"""
         # Track price trend
         close_price = row.get("close", row.get("price", 0))
@@ -158,7 +151,7 @@ class SignalGuidanceSystem:
         """Get current market trend"""
         return self.market_context.current_trend
 
-    def get_position_context(self, portfolio: Dict[str, Any]) -> PositionContext:
+    def get_position_context(self, portfolio: dict[str, Any]) -> PositionContext:
         """Analyze current position context"""
         btc_balance = float(portfolio["btc_balance"])
         jpy_balance = float(portfolio["jpy_balance"])
@@ -235,7 +228,7 @@ class SignalGuidanceSystem:
         )
 
     def apply_guidance(
-        self, continuous_action: float, row: pd.Series, portfolio: Dict[str, Any]
+        self, continuous_action: float, row: pd.Series, portfolio: dict[str, Any]
     ) -> int:
         """Apply intelligent signal guidance using deterministic quality scoring with Phase 2 multi-timeframe enhancement"""
         try:
@@ -499,7 +492,7 @@ class SignalGuidanceSystem:
         return action
 
     def _create_market_dataframe(
-        self, row: pd.Series, portfolio: Dict[str, Any]
+        self, row: pd.Series, portfolio: dict[str, Any]
     ) -> pd.DataFrame:
         """Create market DataFrame from current row and historical context"""
         try:
@@ -527,7 +520,7 @@ class SignalGuidanceSystem:
             return self._create_fallback_dataframe(row, portfolio)
 
     def _create_fallback_dataframe(
-        self, row: pd.Series, portfolio: Dict[str, Any]
+        self, row: pd.Series, portfolio: dict[str, Any]
     ) -> pd.DataFrame:
         """Create fallback DataFrame when insufficient historical data is available"""
         # Use recent price trend for technical analysis
@@ -577,7 +570,7 @@ class SignalGuidanceSystem:
 
         return pd.DataFrame(data)
 
-    def _apply_position_safety(self, action: int, portfolio: Dict[str, Any]) -> int:
+    def _apply_position_safety(self, action: int, portfolio: dict[str, Any]) -> int:
         """Apply basic position-based safety checks (deterministic)"""
         # Get position information
         btc_balance = portfolio.get("btc_balance", 0.0)
@@ -640,7 +633,7 @@ class SignalGuidanceSystem:
         self,
         base_score: float,
         convergence_analysis: "ConvergenceAnalysis",
-        convergence_report: Dict[str, Union[float, str]],
+        convergence_report: dict[str, float | str],
     ) -> float:
         """
         Apply Phase 2 convergence enhancement to base quality score
@@ -724,7 +717,7 @@ class SignalGuidanceSystem:
             high_score_is_buy=HIGH_SCORE_IS_BUY,
         )
 
-    def get_multi_timeframe_analysis(self) -> Dict[str, Any]:
+    def get_multi_timeframe_analysis(self) -> dict[str, Any]:
         """
         Get comprehensive multi-timeframe analysis for Phase 2
 
@@ -783,7 +776,7 @@ class SignalGuidanceSystem:
             logger.error(f"Failed to get multi-timeframe analysis: {e}")
             return {"error": str(e), "phase": "Phase 2 - Error"}
 
-    def get_phase_2_status(self) -> Dict[str, Any]:
+    def get_phase_2_status(self) -> dict[str, Any]:
         """
         Get Phase 2 implementation status and metrics
 

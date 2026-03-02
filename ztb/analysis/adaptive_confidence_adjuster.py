@@ -8,14 +8,13 @@ Phase 3-2: パラメータ最適化 - 動的信頼度閾値調整システム
 import logging
 from dataclasses import dataclass
 from collections import deque
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from ztb.analysis.regime.market_regime_types import MarketRegime
 from ztb.utils.performance_profiler import PerformanceProfiler
-
 
 @dataclass
 class ConfidenceThresholds:
@@ -67,7 +66,7 @@ class ConfidenceThresholds:
         }
         return regime_thresholds.get(regime, self.base_threshold)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         return {
             "base_threshold": self.base_threshold,
@@ -93,7 +92,6 @@ class ConfidenceThresholds:
             "max_threshold": self.max_threshold,
         }
 
-
 @dataclass
 class AdaptiveThresholdDecision:
     """適応型閾値決定結果"""
@@ -108,7 +106,7 @@ class AdaptiveThresholdDecision:
     reasoning: str
     timestamp: pd.Timestamp
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         return {
             "current_threshold": self.current_threshold,
@@ -121,7 +119,6 @@ class AdaptiveThresholdDecision:
             "reasoning": self.reasoning,
             "timestamp": self.timestamp.isoformat(),
         }
-
 
 class MarketRegimeDetector:
     """市場レジーム検出器"""
@@ -306,25 +303,24 @@ class MarketRegimeDetector:
 
         return calculate_rsi(prices, period)
 
-
 class AdaptiveConfidenceAdjuster:
     """適応型信頼度調整器"""
 
-    def __init__(self, thresholds: Optional[ConfidenceThresholds] = None):
+    def __init__(self, thresholds: ConfidenceThresholds | None = None):
         self.thresholds = thresholds or ConfidenceThresholds()
         self.regime_detector = MarketRegimeDetector()
         self.profiler = PerformanceProfiler()
         self.logger = logging.getLogger(__name__)
 
         # パフォーマンス履歴
-        self.performance_history: List[Dict[str, Any]] = []
+        self.performance_history: list[dict[str, Any]] = []
         self.threshold_history: deque[float] = deque(maxlen=100)
 
     def calculate_adaptive_threshold(
         self,
         data: pd.DataFrame,
-        recent_performance: Optional[List[Dict[str, Any]]] = None,
-        current_volatility: Optional[float] = None,
+        recent_performance: list[dict[str, Any]] | None = None,
+        current_volatility: float | None = None,
     ) -> AdaptiveThresholdDecision:
         """
         適応型信頼度閾値を計算
@@ -392,7 +388,7 @@ class AdaptiveConfidenceAdjuster:
         )
 
     def _calculate_performance_adjustment(
-        self, recent_performance: Optional[List[Dict[str, Any]]]
+        self, recent_performance: list[dict[str, Any]] | None
     ) -> float:
         """パフォーマンスに基づく調整を計算"""
         if not recent_performance or len(recent_performance) < 5:
@@ -413,7 +409,7 @@ class AdaptiveConfidenceAdjuster:
         return adjustment
 
     def _calculate_volatility_adjustment(
-        self, data: pd.DataFrame, current_volatility: Optional[float]
+        self, data: pd.DataFrame, current_volatility: float | None
     ) -> float:
         """ボラティリティに基づく調整を計算"""
         if current_volatility is None:
@@ -499,8 +495,8 @@ class AdaptiveConfidenceAdjuster:
     def optimize_thresholds(
         self,
         historical_data: pd.DataFrame,
-        performance_data: List[Dict[str, Any]],
-        threshold_ranges: Optional[Dict[str, List[float]]] = None,
+        performance_data: list[dict[str, Any]],
+        threshold_ranges: dict[str, list[float]] | None = None,
     ) -> ConfidenceThresholds:
         """
         閾値パラメータを最適化
@@ -551,7 +547,7 @@ class AdaptiveConfidenceAdjuster:
         return best_thresholds or self.thresholds
 
     def _evaluate_thresholds(
-        self, data: pd.DataFrame, performance: List[Dict[str, Any]]
+        self, data: pd.DataFrame, performance: list[dict[str, Any]]
     ) -> float:
         """閾値設定を評価"""
         total_score = 0
@@ -585,7 +581,6 @@ class AdaptiveConfidenceAdjuster:
             total_score += threshold_score
 
         return total_score / evaluation_periods if evaluation_periods > 0 else 0.0
-
 
 # ===== 使用例 =====
 

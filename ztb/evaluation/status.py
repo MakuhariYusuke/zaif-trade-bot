@@ -5,7 +5,7 @@ is not available. Uses standardized error handling from ztb.utils.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ except ImportError as e:
         is not available. Provides a no-op interface for compatibility.
         """
 
-        def __init__(self, config: Dict[str, Any] | None = None) -> None:
+        def __init__(self, config: dict[str, Any] | None = None) -> None:
             """Initialize validator with optional config.
 
             Args:
@@ -45,7 +45,5 @@ except ImportError as e:
             """
             return True
 
-
 __all__ = ["CoverageValidator"]
-
 

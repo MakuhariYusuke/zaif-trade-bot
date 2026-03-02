@@ -25,7 +25,6 @@ from ztb.adaptation.monitoring.types import (
     MetricValue,
 )
 
-
 class TestMetricsCollector(unittest.TestCase):
     """MetricsCollectorのテスト"""
 
@@ -127,7 +126,6 @@ class TestMetricsCollector(unittest.TestCase):
         history = self.collector.get_metric_history("test_metric", hours=24 * 7)
         self.assertEqual(len(history), 1)
         self.assertEqual(history[0].value, 2.0)
-
 
 class TestAlertManager(unittest.TestCase):
     """AlertManagerのテスト"""
@@ -282,7 +280,6 @@ class TestAlertManager(unittest.TestCase):
         self.assertEqual(len(notifications_received), 1)
         self.assertEqual(notifications_received[0].level, AlertLevel.WARNING)
 
-
 class TestDashboardGenerator(unittest.TestCase):
     """DashboardGeneratorのテスト"""
 
@@ -353,7 +350,6 @@ class TestDashboardGenerator(unittest.TestCase):
         self.assertIn("win_rate", dashboard_data.time_series)
         self.assertEqual(dashboard_data.alert_summary["total_active"], 1)
         self.assertEqual(dashboard_data.alert_summary["by_level"]["warning"], 1)
-
 
 class TestPerformanceMonitor(unittest.TestCase):
     """PerformanceMonitorのテスト"""
@@ -513,7 +509,6 @@ class TestPerformanceMonitor(unittest.TestCase):
         self.assertEqual(report.period_days, 1)
         self.assertIn("test_perf_metric", report.statistics)
         self.assertIn("test_perf_metric", report.trends)
-
 
 if __name__ == "__main__":
     unittest.main()

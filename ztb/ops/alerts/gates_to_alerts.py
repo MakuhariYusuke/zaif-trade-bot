@@ -9,7 +9,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, cast
+from typing import Any, Callable, cast
 
 # Add the ztb package to the path
 sys.path.insert(0, str(Path(__file__).parent.parent / "ztb"))
@@ -22,24 +22,22 @@ try:
 
     has_alert_notifier = True
 except ImportError:
-    send_webhook: Optional[Callable[..., bool]] = None  # type: ignore[no-redef]
+    send_webhook: Callable[..., bool] | None = None  # type: ignore[no-redef]
     has_alert_notifier = False
 
-
-def load_gates(gates_path: Path) -> Dict[str, Any]:
+def load_gates(gates_path: Path) -> dict[str, Any]:
     """Load gates.json."""
     if not gates_path.exists():
         return {}
 
     try:
-        return cast(Dict[str, Any], read_json(gates_path))
+        return cast(dict[str, Any], read_json(gates_path))
     except Exception:
         return {}
 
-
 def check_gate_failures(
-    gates_data: Dict[str, Any], correlation_id: str
-) -> List[Dict[str, Any]]:
+    gates_data: dict[str, Any], correlation_id: str
+) -> list[dict[str, Any]]:
     """Check for gate failures and create alerts."""
     alerts = []
     gates = gates_data.get("gates", [])
@@ -63,9 +61,8 @@ def check_gate_failures(
 
     return alerts
 
-
 def send_alerts(
-    alerts: List[Dict[str, Any]],
+    alerts: list[dict[str, Any]],
     webhook_url: str,
     correlation_id: str,
     platform: str = "discord",
@@ -106,7 +103,6 @@ def send_alerts(
     )
 
     return 0 if success else 1
-
 
 def main() -> int:
     parser = create_standard_parser("Send gate failure alerts")
@@ -152,7 +148,6 @@ def main() -> int:
         return 1
 
     return send_alerts(alerts, webhook_url, args.correlation_id, platform)
-
 
 if __name__ == "__main__":
     sys.exit(main())

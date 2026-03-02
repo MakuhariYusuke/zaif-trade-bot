@@ -5,7 +5,7 @@ This module provides time series cross-validation functionality
 including rolling forward validation and multiple testing correction.
 """
 
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -14,10 +14,9 @@ from statsmodels.stats.multitest import fdrcorrection  # type: ignore[import-unt
 
 from ztb.metrics.metrics import calculate_all_metrics
 
-
 def rolling_forward_cv(
     returns: pd.Series, n_splits: int = 5, test_size: int = 60, gap: int = 0
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Perform rolling forward cross-validation on time series data.
 
@@ -28,7 +27,7 @@ def rolling_forward_cv(
         gap: Gap between train and test sets
 
     Returns:
-        List of CV results for each split
+        list of CV results for each split
     """
     if not isinstance(returns.index, pd.DatetimeIndex):
         raise ValueError("Returns must have DatetimeIndex")
@@ -67,13 +66,12 @@ def rolling_forward_cv(
 
     return cv_results
 
-
-def aggregate_cv_results(cv_results: List[Dict[str, Any]]) -> Dict[str, Any]:
+def aggregate_cv_results(cv_results: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Aggregate cross-validation results across all folds.
 
     Args:
-        cv_results: List of CV results from rolling_forward_cv
+        cv_results: list of CV results from rolling_forward_cv
 
     Returns:
         Aggregated statistics
@@ -96,20 +94,19 @@ def aggregate_cv_results(cv_results: List[Dict[str, Any]]) -> Dict[str, Any]:
         "fold_results": cv_results,
     }
 
-
 def apply_multiple_testing_correction(
-    p_values: List[float], method: str = "fdr_bh", alpha: float = 0.1
-) -> Tuple[np.ndarray[Any, np.dtype[Any]], np.ndarray[Any, np.dtype[Any]]]:
+    p_values: list[float], method: str = "fdr_bh", alpha: float = 0.1
+) -> tuple[np.ndarray[Any, np.dtype[Any]], np.ndarray[Any, np.dtype[Any]]]:
     """
     Apply multiple testing correction to p-values.
 
     Args:
-        p_values: List of p-values to correct
+        p_values: list of p-values to correct
         method: Correction method ('fdr_bh' for Benjamini-Hochberg)
         alpha: Significance level
 
     Returns:
-        Tuple of (rejected, corrected_p_values)
+        tuple of (rejected, corrected_p_values)
     """
     if method == "fdr_bh":
         rejected, corrected_p = fdrcorrection(p_values, alpha=alpha)
@@ -118,10 +115,9 @@ def apply_multiple_testing_correction(
 
     return rejected, corrected_p
 
-
 def evaluate_with_cv(
     feature_df: pd.DataFrame, returns: pd.Series, n_splits: int = 5, test_size: int = 60
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Evaluate features with cross-validation.
 

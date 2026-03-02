@@ -11,13 +11,11 @@ from numpy.typing import NDArray
 
 from ztb.features.registry import FeatureRegistry
 
-
 @FeatureRegistry.register("Supertrend_Strength")
 def compute_supertrend_strength(df: pd.DataFrame) -> pd.Series:
     """Supertrend Trend Strength (normalized distance from bands)"""
     extended_features = calculate_supertrend_extended(df)
     return extended_features["supertrend_strength"]
-
 
 @FeatureRegistry.register("Supertrend_Reversal_Signal")
 def compute_supertrend_reversal_signal(df: pd.DataFrame) -> pd.Series:
@@ -25,20 +23,17 @@ def compute_supertrend_reversal_signal(df: pd.DataFrame) -> pd.Series:
     extended_features = calculate_supertrend_extended(df)
     return extended_features["supertrend_reversal_signal"]
 
-
 @FeatureRegistry.register("Supertrend_Trend_Duration")
 def compute_supertrend_trend_duration(df: pd.DataFrame) -> pd.Series:
     """Supertrend Trend Duration (bars since last reversal)"""
     extended_features = calculate_supertrend_extended(df)
     return extended_features["supertrend_trend_duration"]
 
-
 @FeatureRegistry.register("Supertrend_Volatility_Filter")
 def compute_supertrend_volatility_filter(df: pd.DataFrame) -> pd.Series:
     """Supertrend Volatility Filter (ATR-normalized trend strength)"""
     extended_features = calculate_supertrend_extended(df)
     return extended_features["supertrend_volatility_filter"]
-
 
 def calculate_supertrend_extended(
     df: pd.DataFrame,
@@ -104,7 +99,6 @@ def calculate_supertrend_extended(
 
     return result
 
-
 def _compute_supertrend_extended(
     high: NDArray[np.floating[Any]],
     low: NDArray[np.floating[Any]],
@@ -166,7 +160,6 @@ def _compute_supertrend_extended(
 
     return strength, reversal_signal, trend_duration
 
-
 def supertrend_feature_summary() -> dict[str, str]:
     """
     Returns a dictionary summarizing each extended Supertrend feature.
@@ -179,7 +172,6 @@ def supertrend_feature_summary() -> dict[str, str]:
         "supertrend_trend_duration": "Bars since last trend reversal",
         "supertrend_volatility_filter": "Volatility-adjusted trend strength",
     }
-
 
 if __name__ == "__main__":
     # Simple test

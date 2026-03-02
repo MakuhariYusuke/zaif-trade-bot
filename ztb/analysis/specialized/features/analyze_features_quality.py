@@ -2,12 +2,10 @@
 特徴量の詳細分析スクリプト
 全特徴量をカテゴリ別に分類し、冗長・単独無意味な特徴を特定
 """
-from typing import Dict, List
 
 import pandas as pd
 
 from ztb.io.data_loader import DataLoader
-
 
 def main() -> None:
     # Load dataset
@@ -35,7 +33,7 @@ def main() -> None:
     print("=" * 100)
 
     # Categorize features
-    categories: Dict[str, List[str]] = {
+    categories: dict[str, list[str]] = {
         "価格基本": [],
         "平均足(HeikinAshi)": [],
         "一目均衡表(Ichimoku)": [],
@@ -278,7 +276,6 @@ def main() -> None:
     print("\n" + "=" * 100)
     print("分析完了")
     print("=" * 100)
-
 
 if __name__ == "__main__":
     main()

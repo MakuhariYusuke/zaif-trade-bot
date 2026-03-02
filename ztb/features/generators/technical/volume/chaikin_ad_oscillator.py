@@ -16,14 +16,12 @@ from ztb.utils.talib_wrapper import TaLibWrapper
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
 
-
 @FeatureRegistry.register("Chaikin_AD_Oscillator")
 def compute_chaikin_ad_oscillator(df: pd.DataFrame) -> pd.Series:
     """Chaikin AD Oscillator using Ta-Lib wrapper"""
     feature = ChaikinADOscillator()
     result_df = feature.compute(df)
     return result_df["chaikin_ad_oscillator"]
-
 
 class ChaikinADOscillator(BaseFeature):
     """

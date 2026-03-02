@@ -14,7 +14,6 @@ from typing import Optional
 import numpy as np
 import logging
 
-
 class TrendDetector:
     """
     Market trend detector using linear regression on price history.
@@ -41,8 +40,8 @@ class TrendDetector:
     def __init__(
         self,
         lookback: int = 20,
-        min_samples: Optional[int] = None,
-        logger: Optional[logging.Logger] = None
+        min_samples: int | None = None,
+        logger: logging.Logger | None = None
     ):
         """
         Initialize trend detector.

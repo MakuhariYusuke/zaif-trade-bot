@@ -6,7 +6,7 @@
 """
 
 import sys
-from typing import Any, Dict
+from typing import Any
 
 from ztb.utils.path_utils import get_project_root
 
@@ -16,7 +16,6 @@ sys.path.append(str(project_root))
 
 from ztb.utils import DiscordNotifier
 
-
 def send_1k_test_results() -> None:
     """1kステップテスト結果をDiscordに通知"""
 
@@ -24,7 +23,7 @@ def send_1k_test_results() -> None:
     notifier = DiscordNotifier()
 
     # テスト結果データ
-    test_results: Dict[str, Any] = {
+    test_results: dict[str, Any] = {
         "total_features": 29,
         "passed_features": 28,
         "failed_features": 1,
@@ -77,7 +76,6 @@ def send_1k_test_results() -> None:
     notifier.send_notification("🚀 強化学習テスト完了", message, color=color)
 
     print("✅ Discord通知送信完了")
-
 
 if __name__ == "__main__":
     send_1k_test_results()

@@ -4,7 +4,6 @@
 import logging
 import os
 from pathlib import Path
-from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -20,7 +19,6 @@ logger = logging.getLogger(__name__)
 # プロジェクトルートをパスに追加
 # sys.path.append(str(Path(__file__).parent.parent.parent))
 
-
 def detect_outliers_iqr(
     data: pd.DataFrame, column: str
 ) -> tuple[pd.DataFrame, float, float]:
@@ -30,7 +28,6 @@ def detect_outliers_iqr(
     )
 
     return _detect_outliers_iqr(data, column)
-
 
 def detect_outliers_zscore(
     data: pd.DataFrame, column: str, threshold: float = 3
@@ -42,14 +39,12 @@ def detect_outliers_zscore(
 
     return _detect_outliers_zscore(data, column, threshold)
 
-
 def project_path(*parts: str) -> Path:
     """プロジェクトルートからの相対パスを組み立てる"""
     return get_project_root().joinpath(*parts)
 
-
 def analyze_feature_distributions(
-    multiplier: float = 1.0, config_path: Union[str, Path, None] = None
+    multiplier: float = 1.0, config_path: str | Path | None = None
 ) -> None:
     """特徴量分布の詳細分析"""
     print("=== 詳細データ品質チェック ===")
@@ -250,7 +245,6 @@ def analyze_feature_distributions(
     else:
         print("主要特徴量がデータに存在しません。")
 
-
 def main() -> None:
     """メイン実行関数"""
     print("🔍 詳細データ品質チェック開始")
@@ -294,7 +288,6 @@ def main() -> None:
         import sys
 
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

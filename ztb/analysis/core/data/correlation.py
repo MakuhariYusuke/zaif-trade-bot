@@ -1,18 +1,17 @@
 """Correlation analysis utilities"""
 
-from typing import Dict, Optional, cast
+from typing import cast
 
 import pandas as pd
 
 from ztb.io.data_loader import DataLoader
 from ztb.utils.errors import safe_operation
 
-
 def compute_correlations(
-    frames: Dict[str, pd.DataFrame],
+    frames: dict[str, pd.DataFrame],
     nan_strategy: str = "drop",  # "drop", "fill", or "none"
     fill_value: float = 0.0,
-) -> Dict[str, Optional[pd.DataFrame]]:
+) -> dict[str, pd.DataFrame | None]:
     """Compute correlations for successful feature frames.
 
     Filters out high NaN columns (>30%) and constant columns.
@@ -20,10 +19,10 @@ def compute_correlations(
     nan_strategy: "drop" to drop rows with NaN, "fill" to fill NaN with fill_value, "none" to leave NaN as is.
     fill_value: value to use when nan_strategy is "fill".
     Returns:
-        Dict with 'pearson' and 'spearman' DataFrames or None if not computable.
+        dict with 'pearson' and 'spearman' DataFrames or None if not computable.
     """
     return cast(
-        Dict[str, Optional[pd.DataFrame]],
+        dict[str, pd.DataFrame | None],
         safe_operation(
             logger=None,  # Use default logger
             operation=lambda: _compute_correlations_impl(
@@ -34,12 +33,11 @@ def compute_correlations(
         ),
     )
 
-
 def _compute_correlations_impl(
-    frames: Dict[str, pd.DataFrame],
+    frames: dict[str, pd.DataFrame],
     nan_strategy: str,
     fill_value: float,
-) -> Dict[str, Optional[pd.DataFrame]]:
+) -> dict[str, pd.DataFrame | None]:
     """Implementation of correlation computation."""
     if not frames:
         return {"pearson": None, "spearman": None}
@@ -90,10 +88,9 @@ def _compute_correlations_impl(
     spearman = filtered_df.corr(method="spearman", numeric_only=True)
     return {"pearson": pearson, "spearman": spearman}
 
-
 def analyze_correlations(
     data_path: str = "ml-dataset-enhanced.csv", nan_strategy: str = "drop"
-) -> Dict[str, Optional[pd.DataFrame]]:
+) -> dict[str, pd.DataFrame | None]:
     """Analyze correlations in dataset.
 
     Args:

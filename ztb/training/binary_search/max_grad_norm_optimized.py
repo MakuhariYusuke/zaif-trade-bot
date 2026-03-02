@@ -16,7 +16,6 @@ from ztb.training.binary_search.base_optimizer import (
     HyperparameterOptimizer,
 )
 
-
 class MaxGradNormOptimizer(HyperparameterOptimizer):
     """Optimizer for max_grad_norm parameter."""
 
@@ -27,7 +26,6 @@ class MaxGradNormOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[float, float]:
         """Get the range for max_grad_norm binary search."""
         return (0.1, 10.0)  # Reasonable range for gradient clipping
-
 
 def main() -> None:
     parser = BinarySearchArgumentParser.create_parser(
@@ -56,7 +54,6 @@ def main() -> None:
         print(
             f"\nOptimization complete. Best max_grad_norm: {best_value}, Score: {best_score:.6f}"
         )
-
 
 if __name__ == "__main__":
     main()

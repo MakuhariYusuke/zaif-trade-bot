@@ -9,7 +9,6 @@ import os
 import subprocess
 import sys
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Clean up old artifacts")
     parser.add_argument(
@@ -46,7 +45,6 @@ def main() -> None:
     else:
         print(f"Artifact cleanup failed (exit code: {result.returncode})")
         sys.exit(result.returncode)
-
 
 if __name__ == "__main__":
     main()

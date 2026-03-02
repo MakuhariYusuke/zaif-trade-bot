@@ -10,7 +10,7 @@ Refactored to follow SOLID principles with component-based architecture.
 import dataclasses
 import inspect
 import logging
-from typing import Dict, List, Optional, Sequence, Union
+from typing import Sequence
 
 import numpy as np
 
@@ -43,14 +43,12 @@ from ..rewards.trading_focused import TradingFocusedReward
 from ..rewards.ultra_profit import UltraProfitReward
 from ..signal_integrator import SignalIntegrator
 
-
 # Add get_logger function for compatibility
 def get_logger(name: str) -> logging.Logger:
     """Get a logger instance."""
     import logging
 
     return logging.getLogger(name)
-
 
 class RewardCalculator:
     """
@@ -105,7 +103,7 @@ class RewardCalculator:
             self.logger.debug("Failed to log reward params in RewardCalculator: %s", e)
 
         # Internal state for tracking
-        self._action_counts: List[int] = [0, 0, 0]  # [HOLD, BUY, SELL]
+        self._action_counts: list[int] = [0, 0, 0]  # [HOLD, BUY, SELL]
         self._consecutive_idle_steps = 0
         self._consecutive_position_hold_steps = 0
         self._win_count = 0
@@ -113,8 +111,8 @@ class RewardCalculator:
         self.last_signal_strength: float = 0.0
         self.last_signal_reward: float = 0.0
         self._previous_portfolio_value = initial_portfolio_value
-        self._last_reward_components: Dict[str, Union[str, float]] = {}
-        self._recent_actions: List[int] = []  # Reset this list as well
+        self._last_reward_components: dict[str, str | float] = {}
+        self._recent_actions: list[int] = []  # Reset this list as well
         self.mtf_scheduler = None
 
         # Initialize components
@@ -464,7 +462,7 @@ class RewardCalculator:
 
         self._forced_balance_log_counter = 0
         self._forced_balance_log_interval = 100
-        self._forced_balance_last_state: Optional[str] = None
+        self._forced_balance_last_state: str | None = None
         self._forced_balance_last_summary_step = 0
         self._forced_balance_summary_interval = 500
 
@@ -534,7 +532,7 @@ class RewardCalculator:
             # If external code cleared _action_counts, we should also clear the recent_actions deque
             if recent is not None and len(recent) > 0 and sum(self._action_counts) == 0:
                 try:
-                    # Attempt to clear deque/List in-place if possible
+                    # Attempt to clear deque/list in-place if possible
                     recent.clear()
                 except Exception:
                     from collections import deque
@@ -723,18 +721,16 @@ class RewardCalculator:
                 return value
         return default
 
-    def get_last_reward_components(self) -> Dict[str, Union[str, float]]:
+    def get_last_reward_components(self) -> dict[str, str | float]:
         """Returns the components of the last calculated reward for debugging."""
         return self._last_reward_components
 
     def _get_nested_setting(
         self, key: str
-    ) -> Optional[Union[int, float, bool, str, dict, list, RewardSettings]]:
+    ) -> int | float | bool | str | dict | list | RewardSettings | None:
         """Get nested setting value using dot notation."""
         keys = key.split(".")
-        value: Union[
-            int, float, bool, str, dict, list, RewardSettings, None
-        ] = self.reward_settings
+        value: int | float | bool | str | dict | list | RewardSettings | None = self.reward_settings
 
         try:
             for k in keys:
@@ -829,10 +825,10 @@ class RewardCalculator:
         pnl: float,
         old_position: float,
         step: int,
-        observation: Optional[np.ndarray],
+        observation: np.ndarray | None,
         reward_history: Sequence[float],
         portfolio_value_history: Sequence[float],
-        continuous_action_value: Optional[float] = None,
+        continuous_action_value: float | None = None,
         trade_pnl: float = 0.0,
     ) -> float:
         """
@@ -849,7 +845,7 @@ class RewardCalculator:
             pnl: Profit/Loss from action
             old_position: Position before action
             step: Current step number
-            continuous_action_value: Optional[float] = None,
+            continuous_action_value: float | None = None,
             reward_history: History of rewards (deque or list)
             portfolio_value_history: History of portfolio values (deque or list)
             trade_pnl: Realized PnL from executed trades at this step (0.0 if no trade).
@@ -1153,7 +1149,7 @@ class RewardCalculator:
         reward: float,
         position: float,
         pnl: float,
-        observation: Optional[np.ndarray],
+        observation: np.ndarray | None,
         action: int,
         step: int,
         effective_max_position: float,
@@ -1199,12 +1195,12 @@ class RewardCalculator:
         position: float,
         old_position: float,
         action: int,
-        reward_history: List[float],
-        portfolio_value_history: List[float],
+        reward_history: list[float],
+        portfolio_value_history: list[float],
         current_price: float = 0.0,
         step: int = 0,
         transaction_cost: float = 0.0,
-        continuous_action_value: Optional[float] = None,
+        continuous_action_value: float | None = None,
     ) -> float:
         """
         Calculate simple reward based on PnL with v431 enhancements and v440.1 dynamic shaping.
@@ -1284,7 +1280,7 @@ class RewardCalculator:
             if action in [ACTION_BUY, ACTION_SELL]:  # 1 = BUY, 2 = SELL
                 reward += trade_frequency_bonus
 
-            continuous_action_value: Optional[float] = (None,)
+            continuous_action_value: float | None = (None,)
             position_change = abs(position - old_position)
             position_change_penalty = self.get_setting_float(
                 "position_change_penalty", 0.0
@@ -1417,7 +1413,7 @@ class RewardCalculator:
         action: int,
         pnl: float,
         reward_scaling: float,
-        continuous_action_value: Optional[float] = None,
+        continuous_action_value: float | None = None,
         **kwargs,
     ) -> float:
         """
@@ -1710,13 +1706,13 @@ class RewardCalculator:
         atr: float,
         pnl: float,
         reward_scaling: float,
-        observation: Optional[np.ndarray],
+        observation: np.ndarray | None,
         step: int,
         portfolio_value: float,
         transaction_cost: float,
         old_position: float,
-        reward_history: List[float],
-        portfolio_value_history: List[float],
+        reward_history: list[float],
+        portfolio_value_history: list[float],
     ) -> float:
         """Stage 2: PnL-focused reward with trend analysis."""
         # Delegate to PnlFocusedReward component
@@ -1753,7 +1749,7 @@ class RewardCalculator:
         current_price: float,
         atr: float,
         pnl: float,
-        observation: Optional[np.ndarray] = None,
+        observation: np.ndarray | None = None,
         step: int = 0,
         portfolio_value_delta: float = 0.0,
     ) -> float:
@@ -1896,7 +1892,7 @@ class RewardCalculator:
         atr: float,
         pnl: float,
         reward_scaling: float,
-        observation: Optional[np.ndarray],
+        observation: np.ndarray | None,
         step: int,
     ) -> float:
         """Stage: Stability optimized reward."""
@@ -1950,7 +1946,7 @@ class RewardCalculator:
         atr: float,
         pnl: float,
         reward_scaling: float,
-        observation: Optional[np.ndarray],
+        observation: np.ndarray | None,
         step: int,
         portfolio_value_delta: float,
     ) -> float:
@@ -2013,7 +2009,7 @@ class RewardCalculator:
         current_price: float,
         atr: float,
         pnl: float,
-        observation: Optional[np.ndarray] = None,
+        observation: np.ndarray | None = None,
     ) -> float:
         """
         Calculates a base reward value before stage-specific adjustments.
@@ -2032,7 +2028,7 @@ class RewardCalculator:
         effective_max_position: float,
         current_price: float,
         atr: float,
-        observation: Optional[np.ndarray],
+        observation: np.ndarray | None,
     ) -> float:
         """Stage: Risk management reward with unrealized loss penalty."""
         self._record_action(action)
@@ -2089,7 +2085,7 @@ class RewardCalculator:
         effective_max_position: float,
         current_price: float,
         atr: float,
-        observation: Optional[np.ndarray],
+        observation: np.ndarray | None,
     ) -> float:
         """Stage: Opportunity cost reward to penalize inaction when flat."""
         self._record_action(action)

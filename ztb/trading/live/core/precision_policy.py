@@ -7,8 +7,6 @@ Ensures orders comply with exchange-specific tick sizes and step sizes.
 from dataclasses import dataclass
 from decimal import ROUND_DOWN, ROUND_HALF_UP, ROUND_UP, Decimal
 from enum import Enum
-from typing import Dict, Optional
-
 
 class RoundingMode(Enum):
     """Rounding modes for price/quantity."""
@@ -16,7 +14,6 @@ class RoundingMode(Enum):
     DOWN = ROUND_DOWN
     UP = ROUND_UP
     HALF_UP = ROUND_HALF_UP
-
 
 @dataclass
 class PrecisionPolicy:
@@ -26,17 +23,16 @@ class PrecisionPolicy:
     quantity_step: Decimal  # Minimum quantity increment (e.g., 0.0001 for BTC)
     price_rounding: RoundingMode = RoundingMode.HALF_UP
     quantity_rounding: RoundingMode = RoundingMode.DOWN
-    min_quantity: Optional[Decimal] = None
-    max_quantity: Optional[Decimal] = None
-    min_price: Optional[Decimal] = None
-    max_price: Optional[Decimal] = None
-
+    min_quantity: Decimal | None = None
+    max_quantity: Decimal | None = None
+    min_price: Decimal | None = None
+    max_price: Decimal | None = None
 
 class PrecisionPolicyManager:
     """Manages precision policies for different venues and symbols."""
 
     # Default policies - can be loaded from config
-    _DEFAULT_POLICIES: Dict[str, Dict[str, PrecisionPolicy]] = {
+    _DEFAULT_POLICIES: dict[str, dict[str, PrecisionPolicy]] = {
         "coincheck": {
             "BTC_JPY": PrecisionPolicy(
                 price_tick=Decimal("0.01"),
@@ -99,7 +95,7 @@ class PrecisionPolicyManager:
         )
 
     def set_policy(self, venue: str, symbol: str, policy: PrecisionPolicy) -> None:
-        """Set precision policy for a venue and symbol."""
+        """set precision policy for a venue and symbol."""
         venue = venue.lower()
         symbol = symbol.upper()
         if venue not in self._policies:
@@ -160,20 +156,16 @@ class PrecisionPolicyManager:
 
         return price == quantized_price and quantity == quantized_quantity
 
-
 # Global instance
 _precision_manager = PrecisionPolicyManager()
-
 
 def get_precision_manager() -> PrecisionPolicyManager:
     """Get global precision policy manager."""
     return _precision_manager
 
-
 def quantize_price(venue: str, symbol: str, price: Decimal) -> Decimal:
     """Convenience function to quantize price."""
     return _precision_manager.quantize_price(venue, symbol, price)
-
 
 def quantize_quantity(venue: str, symbol: str, quantity: Decimal) -> Decimal:
     """Convenience function to quantize quantity."""

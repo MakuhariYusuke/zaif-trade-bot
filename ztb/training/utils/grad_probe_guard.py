@@ -15,7 +15,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Deque, Dict, List, Optional, Protocol
+from typing import Any, Deque, Protocol
 
 import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback
@@ -25,7 +25,6 @@ from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 @dataclass
 class GradProbeConfig:
@@ -37,8 +36,8 @@ class GradProbeConfig:
     check_interval: int = 1000  # Check every N steps
 
     # Action-specific monitoring
-    monitor_actions: List[str] = field(default_factory=lambda: ["SELL", "BUY", "HOLD"])
-    critical_actions: List[str] = field(
+    monitor_actions: list[str] = field(default_factory=lambda: ["SELL", "BUY", "HOLD"])
+    critical_actions: list[str] = field(
         default_factory=lambda: ["SELL"]
     )  # Actions that trigger halt
 
@@ -52,30 +51,27 @@ class GradProbeConfig:
     save_tensorboard_events: bool = True
     save_environment_state: bool = True
 
-
 @dataclass
 class GradProbeStats:
     """Statistics for gradient probe monitoring."""
 
     step: int
     timestamp: float
-    action_grads: Dict[str, float] = field(default_factory=dict)
-    grad_norms: Dict[str, float] = field(default_factory=dict)
-    is_zero: Dict[str, bool] = field(default_factory=dict)
-    consecutive_zero_count: Dict[str, int] = field(default_factory=dict)
-
+    action_grads: dict[str, float] = field(default_factory=dict)
+    grad_norms: dict[str, float] = field(default_factory=dict)
+    is_zero: dict[str, bool] = field(default_factory=dict)
+    consecutive_zero_count: dict[str, int] = field(default_factory=dict)
 
 class ModelProtocol(Protocol):
     """Protocol for model that supports gradient probe access."""
 
-    def get_parameters(self) -> Dict[str, Any]:
+    def get_parameters(self) -> dict[str, Any]:
         """Get model parameters."""
         ...
 
     def save(self, path: str) -> None:
         """Save model to path."""
         ...
-
 
 class GradProbeGuard(BaseCallback):
     """
@@ -98,9 +94,9 @@ class GradProbeGuard(BaseCallback):
 
     def __init__(
         self,
-        config: Optional[GradProbeConfig] = None,
+        config: GradProbeConfig | None = None,
         checkpoint_dir: str = "checkpoints",
-        session_id: Optional[str] = None,
+        session_id: str | None = None,
         verbose: int = 1,
     ) -> None:
         # BaseCallback implementations in some test stubs may not accept
@@ -125,10 +121,10 @@ class GradProbeGuard(BaseCallback):
 
         # Monitoring state
         self.history: Deque[GradProbeStats] = deque(maxlen=1000)
-        self.consecutive_zeros: Dict[str, int] = dict.fromkeys(self.config.monitor_actions, 0)
+        self.consecutive_zeros: dict[str, int] = dict.fromkeys(self.config.monitor_actions, 0)
         self.last_check_step = 0
         self.halt_triggered = False
-        self.halt_reason: Optional[str] = None
+        self.halt_reason: str | None = None
 
     def _init_callback(self) -> None:
         """Initialize callback (called by SB3)."""
@@ -170,7 +166,7 @@ class GradProbeGuard(BaseCallback):
 
         return True
 
-    def _extract_grad_stats(self) -> Optional[GradProbeStats]:
+    def _extract_grad_stats(self) -> GradProbeStats | None:
         """
         Extract gradient statistics from model.
 
@@ -218,7 +214,7 @@ class GradProbeGuard(BaseCallback):
 
     def _get_action_grad_norm(
         self, action_net: Any, action_name: str
-    ) -> Optional[float]:
+    ) -> float | None:
         """
         Get gradient norm for specific action.
 
@@ -316,7 +312,7 @@ class GradProbeGuard(BaseCallback):
         logger.info(f"📦 Archive complete: {archive_dir}")
         logger.error(f"🛑 Training halted due to: {self.halt_reason}")
 
-    def _create_manifest(self, stats: GradProbeStats, timestamp: str) -> Dict[str, Any]:
+    def _create_manifest(self, stats: GradProbeStats, timestamp: str) -> dict[str, Any]:
         """Create manifest for archive."""
         return {
             "session_id": self.session_id,
@@ -426,7 +422,7 @@ class GradProbeGuard(BaseCallback):
         except Exception as e:
             logger.error(f"❌ Failed to save TensorBoard events: {e}")
 
-    def get_stats_summary(self) -> Dict[str, Any]:
+    def get_stats_summary(self) -> dict[str, Any]:
         """Get summary of gradient probe statistics."""
         if not self.history:
             return {"status": "no_data"}

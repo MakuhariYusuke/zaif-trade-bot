@@ -12,7 +12,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # プロジェクトルートをパスに追加
 project_root = Path(__file__).parent.parent
@@ -25,10 +25,8 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class SACTrainingExecutor:
     """SAC v427/v429学習実行クラス"""
-
 
     def _setup_v429_config(self):
         """v429固有の設定を初期化"""
@@ -58,14 +56,14 @@ class SACTrainingExecutor:
 
         logger.info("v429設定を適用: 対称アクション変換有効")
 
-    def _load_config(self) -> Dict[str, Any]:
+    def _load_config(self) -> dict[str, Any]:
         """設定ファイル読み込み"""
         with open(self.config_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
     def phase_1_foundation_training(
         self, total_timesteps: int = 10000
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Phase 1: 初期学習実行
 
@@ -124,7 +122,7 @@ class SACTrainingExecutor:
         except Exception as e:
             logger.warning(f"Ray Tune最適化失敗: {e}")
 
-        def training_objective(params: Dict[str, Any]) -> float:
+        def training_objective(params: dict[str, Any]) -> float:
             """
             Ray Tune最適化のための目的関数
 
@@ -150,8 +148,8 @@ class SACTrainingExecutor:
             return max(0.1, score)  # 最低スコアを保証
 
     def phase_3_fine_tuning(
-        self, best_params: Dict[str, Any], total_timesteps: int = 500000
-    ) -> Dict[str, Any]:
+        self, best_params: dict[str, Any], total_timesteps: int = 500000
+    ) -> dict[str, Any]:
         """
         Phase 3: 微調整学習
 
@@ -184,7 +182,7 @@ class SACTrainingExecutor:
             logger.error(f"Phase 3学習失敗: {e}")
             return {"error": str(e)}
 
-    def phase_4_final_validation(self, model_path: str) -> Dict[str, Any]:
+    def phase_4_final_validation(self, model_path: str) -> dict[str, Any]:
         """
         Phase 4: 最終検証フェーズ
 
@@ -220,9 +218,6 @@ class SACTrainingExecutor:
 
         logger.info("=== SAC v427 学習パイプライン完了 ===")
         return pipeline_results
-
-
-
 
 if __name__ == "__main__":
     main()

@@ -16,10 +16,9 @@ import time
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Mapping, Optional
+from typing import Any, Mapping
 
 from .threading_mixin import BackgroundThreadController
-
 
 @dataclass
 class DistributedConfig:
@@ -36,7 +35,6 @@ class DistributedConfig:
     enable_thread_pool: bool = True
     compression_enabled: bool = True
 
-
 @dataclass
 class WorkerInfo:
     """Information about a worker process."""
@@ -46,8 +44,7 @@ class WorkerInfo:
     port: int
     status: str = "idle"  # idle, busy, error
     last_heartbeat: datetime = field(default_factory=datetime.now)
-    metrics: Dict[str, Any] = field(default_factory=dict)
-
+    metrics: dict[str, Any] = field(default_factory=dict)
 
 class Message:
     """Message for inter-process communication."""
@@ -57,7 +54,7 @@ class Message:
         msg_type: str,
         sender_id: int,
         data: Any,
-        timestamp: Optional[datetime] = None,
+        timestamp: datetime | None = None,
     ):
         self.msg_type = msg_type
         self.sender_id = sender_id
@@ -86,7 +83,6 @@ class Message:
             timestamp=timestamp,
         )
 
-
 class DistributedCoordinator(BackgroundThreadController):
     """
     Coordinator for distributed training operations.
@@ -98,7 +94,7 @@ class DistributedCoordinator(BackgroundThreadController):
     - Metrics aggregation
     """
 
-    def __init__(self, config: Optional[DistributedConfig] = None):
+    def __init__(self, config: DistributedConfig | None = None):
         self.config = config or DistributedConfig()
         self.logger = logging.getLogger(__name__)
         self.is_master = True
@@ -106,21 +102,21 @@ class DistributedCoordinator(BackgroundThreadController):
         self.master_port = self.config.master_port
 
         # Worker management
-        self.workers: Dict[int, WorkerInfo] = {}
+        self.workers: dict[int, WorkerInfo] = {}
         self.worker_lock = threading.RLock()
 
         # Communication
         self.message_queue: mp.Queue = mp.Queue(maxsize=self.config.max_queue_size)
-        self.response_queues: Dict[int, mp.Queue] = {}
+        self.response_queues: dict[int, mp.Queue] = {}
 
         # Threading
         self._running = False
-        self._coordinator_thread: Optional[threading.Thread] = None
-        self._heartbeat_thread: Optional[threading.Thread] = None
+        self._coordinator_thread: threading.Thread | None = None
+        self._heartbeat_thread: threading.Thread | None = None
 
         # Pools
-        self.process_pool: Optional[ProcessPoolExecutor] = None
-        self.thread_pool: Optional[ThreadPoolExecutor] = None
+        self.process_pool: ProcessPoolExecutor | None = None
+        self.thread_pool: ThreadPoolExecutor | None = None
 
         # Statistics
         self.stats = {
@@ -132,7 +128,7 @@ class DistributedCoordinator(BackgroundThreadController):
         }
 
     @staticmethod
-    def _normalize_worker_info(worker_info: object, default_port: int) -> Optional[WorkerInfo]:
+    def _normalize_worker_info(worker_info: object, default_port: int) -> WorkerInfo | None:
         """Normalize worker registration input into WorkerInfo."""
         if isinstance(worker_info, WorkerInfo):
             return worker_info
@@ -297,8 +293,8 @@ class DistributedCoordinator(BackgroundThreadController):
             return True
 
     def distribute_task(
-        self, task_data: Any, worker_id: Optional[int] = None
-    ) -> Optional[int]:
+        self, task_data: Any, worker_id: int | None = None
+    ) -> int | None:
         """Distribute a task to a worker."""
         with self.worker_lock:
             if not self.workers:
@@ -338,7 +334,7 @@ class DistributedCoordinator(BackgroundThreadController):
                 self.logger.error("Message queue full")
                 return None
 
-    def get_worker_stats(self) -> Dict[str, Any]:
+    def get_worker_stats(self) -> dict[str, Any]:
         """Get statistics about all workers."""
         with self.worker_lock:
             worker_snapshots = {
@@ -364,8 +360,8 @@ class DistributedCoordinator(BackgroundThreadController):
             }
 
     def aggregate_metrics(
-        self, worker_metrics: Dict[int, Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, worker_metrics: dict[int, dict[str, Any]]
+    ) -> dict[str, Any]:
         """Aggregate metrics from all workers."""
         if not worker_metrics:
             return {}
@@ -516,7 +512,6 @@ class DistributedCoordinator(BackgroundThreadController):
                 self.logger.error(f"Error in heartbeat loop: {e}")
                 time.sleep(10.0)
 
-
 class DistributedCallbackMixin:
     """
     Mixin class to add distributed capabilities to callbacks.
@@ -525,12 +520,12 @@ class DistributedCallbackMixin:
     communication with the coordinator.
     """
 
-    def __init__(self, coordinator: Optional[DistributedCoordinator] = None):
+    def __init__(self, coordinator: DistributedCoordinator | None = None):
         self.coordinator = coordinator
         self.worker_id = 0  # Default to master
         self.is_distributed = coordinator is not None
 
-    def send_metrics_to_coordinator(self, metrics: Dict[str, Any]) -> None:
+    def send_metrics_to_coordinator(self, metrics: dict[str, Any]) -> None:
         """Send metrics to the distributed coordinator."""
         if self.is_distributed and self.coordinator:
             message = Message("metrics", self.worker_id, metrics)
@@ -557,10 +552,8 @@ class DistributedCallbackMixin:
             except queue.Full:
                 logging.warning("Heartbeat queue full")
 
-
 # Global coordinator instance
 _global_coordinator = None
-
 
 def get_global_coordinator() -> DistributedCoordinator:
     """Get the global distributed coordinator instance."""

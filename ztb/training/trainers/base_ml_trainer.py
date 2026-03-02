@@ -5,7 +5,7 @@ Base ML Algorithm Trainer for Unified Training.
 Handles base ML reinforcement experiments.
 """
 
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 from ztb.utils.logging_utils import get_logger
 
@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from ztb.training.core.config_manager import ConfigManager
 
 logger = get_logger(__name__)
-
 
 class BaseMLAlgorithmTrainer:
     """
@@ -30,7 +29,7 @@ class BaseMLAlgorithmTrainer:
         self.config_manager = config_manager
         self.logger = get_logger(__name__)
 
-    def train(self, unified_config: Dict[str, Any]) -> Any:
+    def train(self, unified_config: dict[str, Any]) -> Any:
         """
         Execute base ML training.
 

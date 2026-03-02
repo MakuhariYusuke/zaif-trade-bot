@@ -5,7 +5,7 @@ This module provides utility functions for policy manipulation
 shared across different trainer implementations.
 """
 
-from typing import Any, Optional, Protocol, Tuple, Union
+from typing import Any, Protocol
 
 import numpy as np
 import torch
@@ -17,12 +17,9 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
-
-
 def predict_with_masks(
     deterministic: bool = False,
-) -> Tuple[NDArray[np.int64], Any]:
+) -> tuple[NDArray[np.int64], Any]:
     """
     Predict action with automatic action mask handling for MaskablePPO.
 
@@ -36,7 +33,7 @@ def predict_with_masks(
         deterministic: Whether to use deterministic policy
 
     Returns:
-        Tuple of (action, state)
+        tuple of (action, state)
 
     Raises:
         ValueError: If MaskablePPO model is used without env parameter
@@ -68,8 +65,7 @@ def predict_with_masks(
 
     return action, state
 
-
-def neutralize_policy_bias(model: Optional[MaskablePPO]) -> None:
+def neutralize_policy_bias(model: MaskablePPO | None) -> None:
     """
     Neutralize policy head bias to prevent initial action preferences.
 
@@ -140,7 +136,6 @@ def neutralize_policy_bias(model: Optional[MaskablePPO]) -> None:
             "Policy structure may be different than expected."
         )
 
-
 def get_policy_entropy_coefficient(model: MaskablePPO) -> float:
     """
     Get the current entropy coefficient from the model.
@@ -156,10 +151,9 @@ def get_policy_entropy_coefficient(model: MaskablePPO) -> float:
         return float(ent_coef)
     return 0.0
 
-
 def set_policy_entropy_coefficient(model: MaskablePPO, new_ent_coef: float) -> None:
     """
-    Set the entropy coefficient for the model.
+    set the entropy coefficient for the model.
 
     Args:
         model: The MaskablePPO model.
@@ -170,7 +164,6 @@ def set_policy_entropy_coefficient(model: MaskablePPO, new_ent_coef: float) -> N
         logger.debug(f"Updated entropy coefficient to {new_ent_coef:.6f}")
     else:
         logger.warning("Model does not have ent_coef attribute")
-
 
 def apply_cosine_decay_entropy(
     model: MaskablePPO,

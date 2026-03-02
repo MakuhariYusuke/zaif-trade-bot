@@ -1,7 +1,7 @@
 """Training state management component."""
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -9,7 +9,6 @@ from ztb.utils.logging_utils import get_logger
 
 if TYPE_CHECKING:
     from ztb.training.unified_trainer.trainer import UnifiedTrainer
-
 
 class TrainingStateManager:
     """Manages training state across episodes and timesteps."""
@@ -26,11 +25,11 @@ class TrainingStateManager:
         self.episodes_completed = 0
 
         # Performance tracking
-        self.episode_rewards: List[float] = []
-        self.episode_lengths: List[int] = []
-        self.loss_history: List[float] = []
-        self.value_loss_history: List[float] = []
-        self.policy_loss_history: List[float] = []
+        self.episode_rewards: list[float] = []
+        self.episode_lengths: list[int] = []
+        self.loss_history: list[float] = []
+        self.value_loss_history: list[float] = []
+        self.policy_loss_history: list[float] = []
 
         # Rolling statistics
         self.reward_window_size = 100
@@ -39,7 +38,7 @@ class TrainingStateManager:
         # Checkpoint state
         self.last_checkpoint_step = 0
         self.best_reward = float('-inf')
-        self.best_model_path: Optional[str] = None
+        self.best_model_path: str | None = None
 
         # Training metadata
         self.start_time = datetime.now()
@@ -52,8 +51,8 @@ class TrainingStateManager:
         self.episode_lengths.append(0)
         self.logger.debug(f"Started episode {self.current_episode}")
 
-    def update_timestep(self, reward: float, loss: Optional[float] = None,
-                       value_loss: Optional[float] = None, policy_loss: Optional[float] = None) -> None:
+    def update_timestep(self, reward: float, loss: float | None = None,
+                       value_loss: float | None = None, policy_loss: float | None = None) -> None:
         """Update state for current timestep.
 
         Args:
@@ -91,7 +90,7 @@ class TrainingStateManager:
             f"length={self.episode_lengths[-1]}"
         )
 
-    def get_training_stats(self) -> Dict[str, Any]:
+    def get_training_stats(self) -> dict[str, Any]:
         """Get comprehensive training statistics.
 
         Returns:
@@ -146,7 +145,7 @@ class TrainingStateManager:
             self.best_model_path = model_path
             self.logger.info(f"New best model saved: reward={current_reward:.2f}")
 
-    def get_recent_performance(self, window_size: Optional[int] = None) -> Dict[str, Any]:
+    def get_recent_performance(self, window_size: int | None = None) -> dict[str, Any]:
         """Get recent training performance metrics.
 
         Args:

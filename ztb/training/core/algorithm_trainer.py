@@ -9,7 +9,7 @@ REFACTORED (2025-10-11):
 - Other algorithms (base_ml, iterative, etc.) use legacy trainers (to be migrated)
 """
 
-from typing import Any, Dict
+from typing import Any
 
 # Legacy PPO trainer (deprecated, use AlgorithmFactory instead)
 # from ztb.training.trainers.ppo_trainer import PPOAlgorithmTrainer
@@ -22,7 +22,6 @@ from ztb.training.trainers.iterative_trainer import IterativeAlgorithmTrainer
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class AlgorithmTrainer:
     """
@@ -56,7 +55,7 @@ class AlgorithmTrainer:
         self.ensemble_trainer = EnsembleAlgorithmTrainer(config_manager)
         self.curriculum_trainer = CurriculumAlgorithmTrainer(config_manager)
 
-    def train(self, algorithm: str, unified_config: Dict[str, Any]) -> Any:
+    def train(self, algorithm: str, unified_config: dict[str, Any]) -> Any:
         """
         Execute training for specified algorithm.
 
@@ -85,7 +84,7 @@ class AlgorithmTrainer:
             raise ValueError(f"Unknown algorithm: {algorithm}")
 
     def _train_with_algorithm_factory(
-        self, algorithm: str, unified_config: Dict[str, Any]
+        self, algorithm: str, unified_config: dict[str, Any]
     ) -> Any:
         """
         Train using AlgorithmFactory (new architecture).

@@ -5,7 +5,6 @@ from pathlib import Path
 from ztb.io.data_loader import DataLoader
 from ztb.utils.memory.dtypes import downcast_df
 
-
 def csv_to_parquet_streaming(
     csv_path: str,
     parquet_path: str,

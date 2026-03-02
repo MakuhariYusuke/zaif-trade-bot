@@ -13,16 +13,14 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable
 
 from ztb.trading.production.state_persistence import (
     read_state_payload,
     write_state_payload,
 )
 
-
 # Mock classes for testing
-
 
 class OrderType(Enum):
     MARKET = "market"
@@ -32,11 +30,10 @@ class Order:
     symbol: str
     side: OrderSide
     quantity: Decimal
-    price: Optional[Decimal] = None
+    price: Decimal | None = None
     DYNAMIC = "dynamic"  # 動的調整
     PERFORMANCE_BASED = "performance_based"  # パフォーマンスベース
     GRADUAL = "gradual"  # 段階的移行
-
 
 class DistributionRule(Enum):
     """分散ルール"""
@@ -45,7 +42,6 @@ class DistributionRule(Enum):
     WEIGHTED_RANDOM = "weighted_random"  # 加重ランダム
     PERFORMANCE_WEIGHTED = "performance_weighted"  # パフォーマンス加重
     VOLUME_BASED = "volume_based"  # 出来高ベース
-
 
 @dataclass
 class SystemEndpoint:
@@ -59,7 +55,6 @@ class SystemEndpoint:
     last_health_check: datetime = field(default_factory=datetime.now)
     performance_score: float = 1.0  # パフォーマンススコア（0-1）
 
-
 @dataclass
 class DistributionConfig:
     """分散設定"""
@@ -72,7 +67,6 @@ class DistributionConfig:
     min_single_system_weight: int = 5  # 単一システム最小重量
     emergency_switch_threshold: float = 0.8  # 緊急切り替え閾値
 
-
 @dataclass
 class TrafficAllocation:
     """トラフィック配分"""
@@ -83,7 +77,6 @@ class TrafficAllocation:
     current_orders: int = 0
     success_rate: float = 1.0
     average_latency_ms: float = 0
-
 
 @dataclass
 class DistributionEvent:
@@ -96,8 +89,7 @@ class DistributionEvent:
     distribution_rule: str
     execution_time_ms: int
     success: bool
-    reason: Optional[str] = None
-
+    reason: str | None = None
 
 class TrafficDistributor:
     """
@@ -107,7 +99,7 @@ class TrafficDistributor:
     システム間の負荷分散とフェイルセーフを実現する。
     """
 
-    def __init__(self, config: Optional[DistributionConfig] = None):
+    def __init__(self, config: DistributionConfig | None = None):
         """
         初期化
 
@@ -117,15 +109,15 @@ class TrafficDistributor:
         self.config = config or DistributionConfig()
 
         # システムエンドポイント
-        self.endpoints: Dict[str, SystemEndpoint] = {}
-        self.endpoint_weights: Dict[str, int] = {}
+        self.endpoints: dict[str, SystemEndpoint] = {}
+        self.endpoint_weights: dict[str, int] = {}
 
         # トラフィック配分
-        self.allocations: Dict[str, TrafficAllocation] = {}
+        self.allocations: dict[str, TrafficAllocation] = {}
         self.total_weight = 0
 
         # 統計情報
-        self.distribution_events: List[DistributionEvent] = []
+        self.distribution_events: list[DistributionEvent] = []
         self.order_counter = 0
 
         # リバランス制御
@@ -134,14 +126,14 @@ class TrafficDistributor:
 
         # モニタリング
         self.monitoring_active = False
-        self.monitoring_thread: Optional[threading.Thread] = None
+        self.monitoring_thread: threading.Thread | None = None
 
         # コールバック
-        self.distribution_callbacks: List[
+        self.distribution_callbacks: list[
             Callable[[DistributionEvent], Awaitable[None]]
         ] = []
-        self.rebalance_callbacks: List[
-            Callable[[Dict[str, TrafficAllocation]], Awaitable[None]]
+        self.rebalance_callbacks: list[
+            Callable[[dict[str, TrafficAllocation]], Awaitable[None]]
         ] = []
 
         # ロギング
@@ -239,7 +231,7 @@ class TrafficDistributor:
             if self.config.mode == DistributionMode.PERFORMANCE_BASED:
                 self._trigger_rebalance()
 
-    async def distribute_order(self, order: Order) -> Optional[str]:
+    async def distribute_order(self, order: Order) -> str | None:
         """
         注文分散
 
@@ -247,7 +239,7 @@ class TrafficDistributor:
             order: 注文オブジェクト
 
         Returns:
-            Optional[str]: 割り当てられたシステムID
+            str | None: 割り当てられたシステムID
         """
         self.order_counter += 1
         order_id = f"ORD_{self.order_counter:08d}"
@@ -311,8 +303,8 @@ class TrafficDistributor:
             return None
 
     async def _select_system(
-        self, order: Order, active_endpoints: Dict[str, SystemEndpoint]
-    ) -> Optional[str]:
+        self, order: Order, active_endpoints: dict[str, SystemEndpoint]
+    ) -> str | None:
         """
         システム選択
 
@@ -321,7 +313,7 @@ class TrafficDistributor:
             active_endpoints: 有効なエンドポイント
 
         Returns:
-            Optional[str]: 選択されたシステムID
+            str | None: 選択されたシステムID
         """
         if self.config.rule == DistributionRule.ROUND_ROBIN:
             return self._round_robin_selection(active_endpoints)
@@ -340,8 +332,8 @@ class TrafficDistributor:
             return self._weighted_random_selection(active_endpoints)
 
     def _round_robin_selection(
-        self, active_endpoints: Dict[str, SystemEndpoint]
-    ) -> Optional[str]:
+        self, active_endpoints: dict[str, SystemEndpoint]
+    ) -> str | None:
         """
         ラウンドロビン選択
 
@@ -349,7 +341,7 @@ class TrafficDistributor:
             active_endpoints: 有効なエンドポイント
 
         Returns:
-            Optional[str]: 選択されたシステムID
+            str | None: 選択されたシステムID
         """
         endpoint_ids = list(active_endpoints.keys())
         if not endpoint_ids:
@@ -360,8 +352,8 @@ class TrafficDistributor:
         return endpoint_ids[selected_index]
 
     def _weighted_random_selection(
-        self, active_endpoints: Dict[str, SystemEndpoint]
-    ) -> Optional[str]:
+        self, active_endpoints: dict[str, SystemEndpoint]
+    ) -> str | None:
         """
         加重ランダム選択
 
@@ -369,7 +361,7 @@ class TrafficDistributor:
             active_endpoints: 有効なエンドポイント
 
         Returns:
-            Optional[str]: 選択されたシステムID
+            str | None: 選択されたシステムID
         """
         # 重量に基づく選択
         total_weight = sum(
@@ -390,8 +382,8 @@ class TrafficDistributor:
         return None
 
     def _performance_weighted_selection(
-        self, active_endpoints: Dict[str, SystemEndpoint]
-    ) -> Optional[str]:
+        self, active_endpoints: dict[str, SystemEndpoint]
+    ) -> str | None:
         """
         パフォーマンス加重選択
 
@@ -399,7 +391,7 @@ class TrafficDistributor:
             active_endpoints: 有効なエンドポイント
 
         Returns:
-            Optional[str]: 選択されたシステムID
+            str | None: 選択されたシステムID
         """
         # パフォーマンススコアに基づく選択
         total_score = sum(ep.performance_score for ep in active_endpoints.values())
@@ -417,8 +409,8 @@ class TrafficDistributor:
         return None
 
     def _volume_based_selection(
-        self, order: Order, active_endpoints: Dict[str, SystemEndpoint]
-    ) -> Optional[str]:
+        self, order: Order, active_endpoints: dict[str, SystemEndpoint]
+    ) -> str | None:
         """
         出来高ベース選択
 
@@ -427,7 +419,7 @@ class TrafficDistributor:
             active_endpoints: 有効なエンドポイント
 
         Returns:
-            Optional[str]: 選択されたシステムID
+            str | None: 選択されたシステムID
         """
         # 注文サイズに基づく選択（大口注文は特定システムに）
         order_value = order.quantity * order.price
@@ -466,10 +458,10 @@ class TrafficDistributor:
     async def _record_event(
         self,
         order_id: str,
-        assigned_system: Optional[str],
+        assigned_system: str | None,
         rule: str,
         success: bool,
-        reason: Optional[str] = None,
+        reason: str | None = None,
         execution_time_ms: int = 0,
     ) -> None:
         """
@@ -628,21 +620,21 @@ class TrafficDistributor:
                 self.logger.error(f"Monitoring loop error: {e}")
                 time.sleep(5)
 
-    def get_allocations(self) -> Dict[str, TrafficAllocation]:
+    def get_allocations(self) -> dict[str, TrafficAllocation]:
         """
         アロケーション取得
 
         Returns:
-            Dict[str, TrafficAllocation]: トラフィック配分
+            dict[str, TrafficAllocation]: トラフィック配分
         """
         return self.allocations.copy()
 
-    def get_distribution_stats(self) -> Dict[str, Any]:
+    def get_distribution_stats(self) -> dict[str, Any]:
         """
         分散統計取得
 
         Returns:
-            Dict[str, Any]: 分散統計
+            dict[str, Any]: 分散統計
         """
         total_events = len(self.distribution_events)
         if total_events == 0:
@@ -689,7 +681,7 @@ class TrafficDistributor:
         self.distribution_callbacks.append(callback)
 
     def add_rebalance_callback(
-        self, callback: Callable[[Dict[str, TrafficAllocation]], Awaitable[None]]
+        self, callback: Callable[[dict[str, TrafficAllocation]], Awaitable[None]]
     ) -> None:
         """
         リバランスコールバック追加

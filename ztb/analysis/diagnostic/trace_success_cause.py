@@ -4,7 +4,6 @@
 どの時点で何が変わったのかを徹底的に調査
 """
 
-
 def analyze_success_timeline() -> None:
     """成功までのタイムラインを追跡"""
     print("\n" + "=" * 80)
@@ -192,7 +191,6 @@ def analyze_success_timeline() -> None:
     print("=" * 80)
     print("成功の根本原因追跡 完了")
     print("=" * 80 + "\n")
-
 
 if __name__ == "__main__":
     analyze_success_timeline()

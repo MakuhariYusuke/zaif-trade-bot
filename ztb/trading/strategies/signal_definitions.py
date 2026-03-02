@@ -6,12 +6,11 @@ training wheels for reinforcement learning agents.
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import numpy as np
 
 from ztb.utils.talib_wrapper import TaLibWrapper
-
 
 class SignalType(Enum):
     """Types of trading signals."""
@@ -20,7 +19,6 @@ class SignalType(Enum):
     SELL = "sell"
     NEUTRAL = "neutral"
 
-
 class SignalStrength(Enum):
     """Strength levels of signals."""
 
@@ -28,7 +26,6 @@ class SignalStrength(Enum):
     MODERATE = 0.6
     STRONG = 0.8
     VERY_STRONG = 1.0
-
 
 class SignalDefinitions:
     """
@@ -47,7 +44,7 @@ class SignalDefinitions:
         self.signals = self._define_signals()
         self.talib = TaLibWrapper()
 
-    def _define_signals(self) -> Dict[str, Dict[str, Any]]:
+    def _define_signals(self) -> dict[str, dict[str, Any]]:
         """Define all classical technical signals."""
         return {
             # Moving Average Signals
@@ -292,11 +289,11 @@ class SignalDefinitions:
             },
         }
 
-    def get_signal_names(self) -> List[str]:
+    def get_signal_names(self) -> list[str]:
         """Get list of all defined signal names."""
         return list(self.signals.keys())
 
-    def get_signals_by_type(self, signal_type: SignalType) -> List[str]:
+    def get_signals_by_type(self, signal_type: SignalType) -> list[str]:
         """Get signals filtered by type."""
         return [
             name
@@ -305,8 +302,8 @@ class SignalDefinitions:
         ]
 
     def evaluate_signal(
-        self, signal_name: str, observation: np.ndarray, feature_names: List[str]
-    ) -> Tuple[SignalType, float]:
+        self, signal_name: str, observation: np.ndarray, feature_names: list[str]
+    ) -> tuple[SignalType, float]:
         """
         Evaluate a specific signal for given observation.
 
@@ -316,7 +313,7 @@ class SignalDefinitions:
             feature_names: Names of features in observation
 
         Returns:
-            Tuple of (signal_type, strength) if signal is active, else (NEUTRAL, 0.0)
+            tuple of (signal_type, strength) if signal is active, else (NEUTRAL, 0.0)
         """
         if signal_name not in self.signals:
             return SignalType.NEUTRAL, 0.0
@@ -337,7 +334,7 @@ class SignalDefinitions:
     # Signal evaluation functions
 
     def _golden_cross_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect golden cross pattern."""
         try:
@@ -385,7 +382,7 @@ class SignalDefinitions:
             return False
 
     def _death_cross_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect death cross pattern."""
         try:
@@ -433,7 +430,7 @@ class SignalDefinitions:
             return False
 
     def _rsi_oversold_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect RSI oversold condition."""
         try:
@@ -449,7 +446,7 @@ class SignalDefinitions:
             return False
 
     def _rsi_overbought_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect RSI overbought condition."""
         try:
@@ -465,7 +462,7 @@ class SignalDefinitions:
             return False
 
     def _macd_bullish_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect bullish MACD signal."""
         try:
@@ -481,7 +478,7 @@ class SignalDefinitions:
             return False
 
     def _macd_bearish_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect bearish MACD signal."""
         try:
@@ -497,7 +494,7 @@ class SignalDefinitions:
             return False
 
     def _bollinger_lower_touch_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect price touching lower Bollinger Band."""
         try:
@@ -529,7 +526,7 @@ class SignalDefinitions:
             return False
 
     def _bollinger_upper_touch_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect price touching upper Bollinger Band."""
         try:
@@ -561,7 +558,7 @@ class SignalDefinitions:
             return False
 
     def _stoch_oversold_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect stochastic oversold condition."""
         try:
@@ -581,7 +578,7 @@ class SignalDefinitions:
             return False
 
     def _stoch_overbought_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect stochastic overbought condition."""
         try:
@@ -601,7 +598,7 @@ class SignalDefinitions:
             return False
 
     def _range_bound_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect range-bound market condition."""
         try:
@@ -611,7 +608,7 @@ class SignalDefinitions:
             return False
 
     def _low_volatility_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect low volatility condition."""
         try:
@@ -627,7 +624,7 @@ class SignalDefinitions:
             return False
 
     def _adx_strong_trend_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect strong trend using ADX."""
         try:
@@ -643,7 +640,7 @@ class SignalDefinitions:
             return False
 
     def _plus_di_bullish_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect bullish directional movement (+DI > -DI)."""
         try:
@@ -673,7 +670,7 @@ class SignalDefinitions:
             return False
 
     def _minus_di_bearish_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect bearish directional movement (-DI > +DI)."""
         try:
@@ -703,7 +700,7 @@ class SignalDefinitions:
             return False
 
     def _williams_r_oversold_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect Williams %R oversold condition."""
         try:
@@ -723,7 +720,7 @@ class SignalDefinitions:
             return False
 
     def _williams_r_overbought_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect Williams %R overbought condition."""
         try:
@@ -743,7 +740,7 @@ class SignalDefinitions:
             return False
 
     def _cci_oversold_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect CCI oversold condition."""
         try:
@@ -759,7 +756,7 @@ class SignalDefinitions:
             return False
 
     def _cci_overbought_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect CCI overbought condition."""
         try:
@@ -775,7 +772,7 @@ class SignalDefinitions:
             return False
 
     def _trend_momentum_bullish_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect bullish trend + momentum combination."""
         try:
@@ -799,7 +796,7 @@ class SignalDefinitions:
             return False
 
     def _trend_momentum_bearish_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect bearish trend + momentum combination."""
         try:
@@ -823,7 +820,7 @@ class SignalDefinitions:
             return False
 
     def _oscillator_divergence_bullish_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect bullish divergence in multiple oscillators."""
         try:
@@ -841,7 +838,7 @@ class SignalDefinitions:
             return False
 
     def _oscillator_divergence_bearish_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect bearish divergence in multiple oscillators."""
         try:
@@ -859,7 +856,7 @@ class SignalDefinitions:
             return False
 
     def _volume_price_confirmation_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect volume-price trend confirmation."""
         try:
@@ -876,7 +873,7 @@ class SignalDefinitions:
             return False
 
     def _high_volatility_breakout_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect breakout during high volatility periods."""
         try:
@@ -900,7 +897,7 @@ class SignalDefinitions:
             return False
 
     def _low_volatility_breakout_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect false breakouts in low volatility (potential reversal)."""
         try:
@@ -917,7 +914,7 @@ class SignalDefinitions:
 
     # Sakata Five Methods (酒田五法) Signal Functions
     def _sankuu_tataki_komi_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect Three Crows pattern - three consecutive bearish candles."""
         try:
@@ -933,7 +930,7 @@ class SignalDefinitions:
             return False
 
     def _sante_daiinsen_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect Three Methods formation - large bearish candle."""
         try:
@@ -949,7 +946,7 @@ class SignalDefinitions:
             return False
 
     def _age_sanpo_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect Rising Three Methods - consolidation in uptrend."""
         try:
@@ -963,7 +960,7 @@ class SignalDefinitions:
             return False
 
     def _in_no_you_harami_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect Bullish Harami - small bullish candle inside bearish."""
         try:
@@ -979,7 +976,7 @@ class SignalDefinitions:
 
     # Wave Theory (波動論) Signal Functions
     def _elliott_wave_1_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect start of Elliott Wave 1 - impulsive wave beginning."""
         try:
@@ -993,7 +990,7 @@ class SignalDefinitions:
             return False
 
     def _elliott_wave_5_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect end of Elliott Wave 5 - impulsive wave completion."""
         try:
@@ -1009,7 +1006,7 @@ class SignalDefinitions:
             return False
 
     def _motive_wave_completion_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect motive wave completion pattern."""
         try:
@@ -1027,7 +1024,7 @@ class SignalDefinitions:
             return False
 
     def _corrective_wave_a_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect start of corrective wave A."""
         try:
@@ -1042,7 +1039,7 @@ class SignalDefinitions:
             return False
 
     def _time_wave_confluence_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect time wave confluence point."""
         try:
@@ -1060,7 +1057,7 @@ class SignalDefinitions:
             return False
 
     def _price_channel_breakout_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect price breaking out of established channel."""
         try:
@@ -1079,7 +1076,7 @@ class SignalDefinitions:
             return False
 
     def _reversal_candlestick_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect bullish reversal candlestick patterns."""
         try:
@@ -1101,7 +1098,7 @@ class SignalDefinitions:
             return False
 
     def _momentum_divergence_signal(
-        self, observation: np.ndarray, feature_names: List[str]
+        self, observation: np.ndarray, feature_names: list[str]
     ) -> bool:
         """Detect negative momentum divergence."""
         try:

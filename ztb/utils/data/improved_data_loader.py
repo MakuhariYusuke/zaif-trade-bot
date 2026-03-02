@@ -13,7 +13,6 @@ from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache, partial
 from pathlib import Path
-from typing import Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -25,7 +24,6 @@ from ztb.utils.cache_utils import cached_with_ttl
 from ztb.utils.errors import ZTBError
 
 logger = logging.getLogger(__name__)
-
 
 class ImprovedDataLoader:
     """
@@ -40,7 +38,7 @@ class ImprovedDataLoader:
 
     def __init__(
         self,
-        cache_dir: Optional[str] = None,
+        cache_dir: str | None = None,
         max_workers: int = 4,
         prefetch_buffer_size: int = 1000,
         enable_memory_mapping: bool = True,
@@ -93,7 +91,7 @@ class ImprovedDataLoader:
                 pass
 
     def load_csv_memory_mapped(
-        self, file_path: Union[str, Path], chunk_size: Optional[int] = None, **kwargs
+        self, file_path: str | Path, chunk_size: int | None = None, **kwargs
     ) -> pd.DataFrame:
         """
         Load CSV using memory mapping for large files.
@@ -137,7 +135,7 @@ class ImprovedDataLoader:
             raise ZTBError(f"Data loading failed: {e}")
 
     async def load_csv_async(
-        self, file_path: Union[str, Path], **kwargs
+        self, file_path: str | Path, **kwargs
     ) -> pd.DataFrame:
         """
         Load CSV asynchronously.
@@ -163,15 +161,15 @@ class ImprovedDataLoader:
     def compute_features_parallel(
         self,
         data: pd.DataFrame,
-        feature_functions: Dict[str, callable],
-        max_workers: Optional[int] = None,
+        feature_functions: dict[str, callable],
+        max_workers: int | None = None,
     ) -> pd.DataFrame:
         """
         Compute features in parallel.
 
         Args:
             data: Input DataFrame
-            feature_functions: Dict of feature name -> function
+            feature_functions: dict of feature name -> function
             max_workers: Number of parallel workers
 
         Returns:
@@ -202,7 +200,7 @@ class ImprovedDataLoader:
     def incremental_feature_computation(
         self,
         data: pd.DataFrame,
-        feature_functions: Dict[str, callable],
+        feature_functions: dict[str, callable],
         cache_key: str,
         force_recompute: bool = False,
     ) -> pd.DataFrame:
@@ -250,12 +248,12 @@ class ImprovedDataLoader:
 
         return result_df
 
-    async def prefetch_data(self, file_paths: List[Union[str, Path]], **kwargs) -> None:
+    async def prefetch_data(self, file_paths: list[str | Path], **kwargs) -> None:
         """
         Prefetch multiple files asynchronously.
 
         Args:
-            file_paths: List of file paths to prefetch
+            file_paths: list of file paths to prefetch
             **kwargs: Loading arguments
         """
         if not self.enable_async_loading:
@@ -287,7 +285,6 @@ class ImprovedDataLoader:
         self.executor.shutdown(wait=True)
         logger.info("DataLoader cleaned up")
 
-
 # Convenience functions
 @lru_cache(maxsize=32)
 def get_cached_data_loader(
@@ -296,10 +293,9 @@ def get_cached_data_loader(
     """Get cached data loader instance."""
     return ImprovedDataLoader(cache_dir=cache_dir, max_workers=max_workers)
 
-
 @cached_with_ttl(ttl_seconds=300)  # 5 minute cache
 def load_market_data_cached(
-    file_path: str, loader: Optional[ImprovedDataLoader] = None
+    file_path: str, loader: ImprovedDataLoader | None = None
 ) -> pd.DataFrame:
     """
     Load market data with caching.

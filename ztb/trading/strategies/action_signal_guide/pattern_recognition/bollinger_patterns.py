@@ -3,8 +3,6 @@ Bollinger Bands Pattern Recognizer
 ボリンジャーバンドパターン認識 - ボラティリティベースのシグナル生成
 """
 
-from typing import Optional
-
 import pandas as pd
 
 try:
@@ -34,11 +32,9 @@ except ImportError:
     ) -> pd.Series:
         return pd.Series([0.1] * len(df), index=df.index)
 
-
 from ztb.trading.constants import ACTION_HOLD
 
 from .base import CandlestickPatternRecognizer, MultiTimeframeData, SignalResult
-
 
 class BollingerBandsRecognizer(CandlestickPatternRecognizer):
     """
@@ -47,7 +43,7 @@ class BollingerBandsRecognizer(CandlestickPatternRecognizer):
     価格のボラティリティとトレンドを分析
     """
 
-    def __init__(self, config: Optional[dict[str, object]] = None):
+    def __init__(self, config: dict[str, object] | None = None):
         super().__init__(config)
         self.pattern_type = "bollinger"
         self.period = int(self.config.get("period", 20))
@@ -66,8 +62,8 @@ class BollingerBandsRecognizer(CandlestickPatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[MultiTimeframeData] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """
         Recognize Bollinger Bands patterns.
 

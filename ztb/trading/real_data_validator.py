@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -36,13 +35,12 @@ __all__ = [
     "DataValidationConfig",
 ]
 
-
 @dataclass
 class DataValidationConfig:
     # Backward-compatible comprehensive configuration expected by tests
     strict: bool = True
     allow_missing: bool = False
-    required_columns: Optional[list[str]] = None
+    required_columns: list[str] | None = None
 
     # Extended config fields used by test suite
     data_sources: list[str] = field(default_factory=list)
@@ -54,14 +52,12 @@ class DataValidationConfig:
     stationarity_test_p_value: float = 0.05
     cross_validation_folds: int = 5
 
-
 class _BaseCrossValidator:
     def cross_validate(
         self, model: object, data: object, folds: int = 5
     ) -> ObjectMap:
         """Simple cross-validation stub used in tests."""
         return {"mean_score": 0.0, "std_score": 0.0}
-
 
 @dataclass
 class ValidationResult:
@@ -78,12 +74,11 @@ class ValidationResult:
         issues_summary = ", ".join(self.issues) if self.issues else "None"
         return f"{status} - {self.score:.2f} - Issues: {issues_summary}"
 
-
 class DataIntegrityChecker:
     """Wrapper for underlying DataIntegrityChecker with stable API for tests."""
 
     def __init__(
-        self, integration_manager: object, config: Optional[DataValidationConfig] = None
+        self, integration_manager: object, config: DataValidationConfig | None = None
     ):
         self.integration_manager = integration_manager
         self.config = config
@@ -187,7 +182,6 @@ class DataIntegrityChecker:
                 issues.append(f"Column {col} contains negative values")
         return issues
 
-
 @dataclass
 class DataQualityMetrics:
     completeness_score: float = 0.0
@@ -205,10 +199,8 @@ class DataQualityMetrics:
         ]
         return round(float(sum(scores) / len(scores)) if scores else 0.0, 2)
 
-
 def _as_object_map(value: object) -> ObjectMap:
     return value if isinstance(value, dict) else {}
-
 
 def _to_string_list(value: object) -> list[str]:
     if isinstance(value, list):
@@ -216,7 +208,6 @@ def _to_string_list(value: object) -> list[str]:
     if isinstance(value, tuple):
         return [str(item) for item in value]
     return []
-
 
 def _map_raw_to_validation_result(
     raw_result: object, data_source: str = "unknown", validation_type: str = "unknown"
@@ -263,10 +254,9 @@ def _map_raw_to_validation_result(
         data_source=data_source, validation_type=validation_type, passed=True, score=1.0
     )
 
-
 class StatisticalValidator:
     def __init__(
-        self, integration_manager: object, config: Optional[DataValidationConfig] = None
+        self, integration_manager: object, config: DataValidationConfig | None = None
     ):
         self.integration_manager = integration_manager
         self.config = config
@@ -276,7 +266,7 @@ class StatisticalValidator:
             self._validator = None
 
     def run_statistical_tests(
-        self, data: object, data_source: Optional[str] = None
+        self, data: object, data_source: str | None = None
     ) -> ValidationResult:
         raw = None
         if self._validator and hasattr(self._validator, "run_statistical_tests"):
@@ -341,10 +331,9 @@ class StatisticalValidator:
         except Exception:
             return 0.0
 
-
 class AnomalyDetector:
     def __init__(
-        self, integration_manager: object, config: Optional[DataValidationConfig] = None
+        self, integration_manager: object, config: DataValidationConfig | None = None
     ):
         self.integration_manager = integration_manager
         self.config = config
@@ -354,7 +343,7 @@ class AnomalyDetector:
             self._detector = None
 
     def detect_anomalies(
-        self, data: object, data_source: Optional[str] = None
+        self, data: object, data_source: str | None = None
     ) -> ValidationResult:
         raw = None
         if self._detector and hasattr(self._detector, "detect_anomalies"):
@@ -423,10 +412,9 @@ class AnomalyDetector:
         modified_z_scores = 0.6745 * (arr - median) / mad
         return list(np.where(np.abs(modified_z_scores) > threshold)[0])
 
-
 class CrossValidator(_BaseCrossValidator):
     def __init__(
-        self, integration_manager: object, config: Optional[DataValidationConfig] = None
+        self, integration_manager: object, config: DataValidationConfig | None = None
     ):
         self.integration_manager = integration_manager
         self.config = config

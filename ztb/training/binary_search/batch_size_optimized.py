@@ -16,7 +16,6 @@ from ztb.training.binary_search.base_optimizer import (
     HyperparameterOptimizer,
 )
 
-
 class BatchSizeOptimizer(HyperparameterOptimizer):
     """Optimizer for batch_size parameter."""
 
@@ -27,7 +26,6 @@ class BatchSizeOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[int, int]:
         """Get the range for batch_size binary search."""
         return (16, 256)  # Reasonable range for batch sizes
-
 
 def main() -> None:
     parser = BinarySearchArgumentParser.create_parser(
@@ -54,7 +52,6 @@ def main() -> None:
         print(
             f"\nOptimization complete. Best batch_size: {best_value}, Score: {best_score:.6f}"
         )
-
 
 if __name__ == "__main__":
     main()

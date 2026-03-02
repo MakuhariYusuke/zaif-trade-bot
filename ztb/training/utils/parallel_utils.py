@@ -9,7 +9,7 @@ during training, data preprocessing, and evaluation phases.
 import logging
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -19,11 +19,10 @@ from ztb.io.data_loader import DataLoader
 
 logger = logging.getLogger(__name__)
 
-
 class CPUParallelProcessor:
     """CPU parallel processing utilities for training optimization."""
 
-    def __init__(self, n_workers: Optional[int] = None, use_multiprocessing: bool = True):
+    def __init__(self, n_workers: int | None = None, use_multiprocessing: bool = True):
         """
         Initialize parallel processor.
 
@@ -38,17 +37,17 @@ class CPUParallelProcessor:
         logger.info(f"Initialized CPUParallelProcessor with {self.n_workers} workers "
                    f"(multiprocessing: {use_multiprocessing})")
 
-    def parallel_map(self, func: Callable, items: List[Any], **kwargs) -> List[Any]:
+    def parallel_map(self, func: Callable, items: list[Any], **kwargs) -> list[Any]:
         """
         Apply function to each item in parallel.
 
         Args:
             func: Function to apply
-            items: List of items to process
+            items: list of items to process
             **kwargs: Additional arguments passed to func
 
         Returns:
-            List of results
+            list of results
         """
         if len(items) == 0:
             return []
@@ -74,7 +73,7 @@ class CPUParallelProcessor:
             return [func(item, **kwargs) for item in items]
 
     def parallel_batch_process(self, func: Callable, data: np.ndarray,
-                             batch_size: int = 1000, **kwargs) -> List[Any]:
+                             batch_size: int = 1000, **kwargs) -> list[Any]:
         """
         Process data in batches using parallel workers.
 
@@ -85,7 +84,7 @@ class CPUParallelProcessor:
             **kwargs: Additional arguments passed to func
 
         Returns:
-            List of batch results
+            list of batch results
         """
         if len(data) == 0:
             return []
@@ -101,11 +100,10 @@ class CPUParallelProcessor:
         # Process batches in parallel
         return self.parallel_map(func, batches, **kwargs)
 
-
 class DataLoaderParallelizer:
     """Parallel data loading and preprocessing utilities."""
 
-    def __init__(self, processor: Optional[CPUParallelProcessor] = None):
+    def __init__(self, processor: CPUParallelProcessor | None = None):
         """
         Initialize data loader parallelizer.
 
@@ -114,16 +112,16 @@ class DataLoaderParallelizer:
         """
         self.processor = processor or CPUParallelProcessor()
 
-    def parallel_csv_loading(self, file_paths: List[str], **read_kwargs) -> List[pd.DataFrame]:
+    def parallel_csv_loading(self, file_paths: list[str], **read_kwargs) -> list[pd.DataFrame]:
         """
         Load multiple CSV files in parallel.
 
         Args:
-            file_paths: List of CSV file paths
+            file_paths: list of CSV file paths
             **read_kwargs: Additional arguments for pd.read_csv
 
         Returns:
-            List of DataFrames
+            list of DataFrames
         """
         def load_csv(file_path: str) -> pd.DataFrame:
             try:
@@ -136,35 +134,35 @@ class DataLoaderParallelizer:
 
         return self.processor.parallel_map(load_csv, file_paths)
 
-    def parallel_data_preprocessing(self, dataframes: List[pd.DataFrame],
+    def parallel_data_preprocessing(self, dataframes: list[pd.DataFrame],
                                   preprocess_func: Callable[[pd.DataFrame], pd.DataFrame],
-                                  **kwargs) -> List[pd.DataFrame]:
+                                  **kwargs) -> list[pd.DataFrame]:
         """
         Apply preprocessing function to multiple DataFrames in parallel.
 
         Args:
-            dataframes: List of DataFrames to preprocess
+            dataframes: list of DataFrames to preprocess
             preprocess_func: Preprocessing function
             **kwargs: Additional arguments for preprocess_func
 
         Returns:
-            List of preprocessed DataFrames
+            list of preprocessed DataFrames
         """
         return self.processor.parallel_map(preprocess_func, dataframes, **kwargs)
 
-    def parallel_feature_engineering(self, dataframes: List[pd.DataFrame],
-                                   feature_funcs: List[Callable[[pd.DataFrame], pd.DataFrame]],
-                                   **kwargs) -> List[pd.DataFrame]:
+    def parallel_feature_engineering(self, dataframes: list[pd.DataFrame],
+                                   feature_funcs: list[Callable[[pd.DataFrame], pd.DataFrame]],
+                                   **kwargs) -> list[pd.DataFrame]:
         """
         Apply multiple feature engineering functions in parallel.
 
         Args:
-            dataframes: List of DataFrames
-            feature_funcs: List of feature engineering functions
+            dataframes: list of DataFrames
+            feature_funcs: list of feature engineering functions
             **kwargs: Additional arguments for feature functions
 
         Returns:
-            List of DataFrames with engineered features
+            list of DataFrames with engineered features
         """
         def apply_features(df: pd.DataFrame) -> pd.DataFrame:
             result_df = df.copy()
@@ -178,23 +176,22 @@ class DataLoaderParallelizer:
 
         return self.processor.parallel_map(apply_features, dataframes)
 
-
 class NumpyParallelUtils:
     """NumPy/SciPy parallel computation utilities."""
 
     @staticmethod
-    def parallel_array_operations(arrays: List[np.ndarray],
-                                operation: str, **kwargs) -> List[np.ndarray]:
+    def parallel_array_operations(arrays: list[np.ndarray],
+                                operation: str, **kwargs) -> list[np.ndarray]:
         """
         Apply NumPy operations to multiple arrays in parallel.
 
         Args:
-            arrays: List of numpy arrays
+            arrays: list of numpy arrays
             operation: Operation name ('mean', 'std', 'sum', etc.)
             **kwargs: Additional arguments for the operation
 
         Returns:
-            List of operation results
+            list of operation results
         """
         processor = CPUParallelProcessor(use_multiprocessing=False)  # Use threading for NumPy
 
@@ -214,22 +211,22 @@ class NumpyParallelUtils:
         return processor.parallel_map(apply_operation, arrays)
 
     @staticmethod
-    def parallel_statistical_tests(data_groups: List[Tuple[np.ndarray, np.ndarray]],
-                                 test_type: str = 'ttest_ind', **kwargs) -> List[Dict[str, Any]]:
+    def parallel_statistical_tests(data_groups: list[tuple[np.ndarray, np.ndarray]],
+                                 test_type: str = 'ttest_ind', **kwargs) -> list[dict[str, Any]]:
         """
         Perform statistical tests on multiple data groups in parallel.
 
         Args:
-            data_groups: List of (group1, group2) tuples
+            data_groups: list of (group1, group2) tuples
             test_type: Type of statistical test
             **kwargs: Additional arguments for the test
 
         Returns:
-            List of test results
+            list of test results
         """
         processor = CPUParallelProcessor(use_multiprocessing=False)
 
-        def perform_test(groups: Tuple[np.ndarray, np.ndarray]) -> Dict[str, Any]:
+        def perform_test(groups: tuple[np.ndarray, np.ndarray]) -> dict[str, Any]:
             try:
                 group1, group2 = groups
                 if test_type == 'ttest_ind':
@@ -253,11 +250,9 @@ class NumpyParallelUtils:
 
         return processor.parallel_map(perform_test, data_groups)
 
-
 # Global instances for easy access
 default_processor = CPUParallelProcessor()
 data_loader = DataLoaderParallelizer(default_processor)
-
 
 def get_optimal_worker_count() -> int:
     """
@@ -276,7 +271,6 @@ def get_optimal_worker_count() -> int:
     else:
         return cpu_count - 3
 
-
 def parallel_data_loading_example():
     """Example usage of parallel data loading."""
     # Example file paths
@@ -294,7 +288,6 @@ def parallel_data_loading_example():
 
     logger.info(f"Loaded and combined {len(dataframes)} files into {len(combined_df)} rows")
     return combined_df
-
 
 if __name__ == "__main__":
     # Test the parallel processor

@@ -6,11 +6,10 @@ including validation, performance metrics, and statistical significance testing.
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 import numpy as np
 from scipy import stats
-
 
 @dataclass
 class StatisticalTestResult:
@@ -23,7 +22,6 @@ class StatisticalTestResult:
     alpha: float = 0.05
     interpretation: str = ""
 
-
 @dataclass
 class RegimeValidationMetrics:
     """Validation metrics for regime detection."""
@@ -33,8 +31,7 @@ class RegimeValidationMetrics:
     recall: float
     f1_score: float
     sharpe_ratio: float  # Add Sharpe ratio
-    confusion_matrix: Dict[str, Dict[str, int]]
-
+    confusion_matrix: dict[str, dict[str, int]]
 
 class StatisticalAnalyzer:
     """
@@ -59,16 +56,16 @@ class StatisticalAnalyzer:
 
     def validate_regime_detection(
         self,
-        predicted_regimes: List[str],
-        actual_regimes: List[str],
-        regime_labels: Optional[List[str]] = None,
+        predicted_regimes: list[str],
+        actual_regimes: list[str],
+        regime_labels: list[str] | None = None,
     ) -> RegimeValidationMetrics:
         """
         Validate regime detection performance.
 
         Args:
-            predicted_regimes: List of predicted regime labels
-            actual_regimes: List of actual regime labels
+            predicted_regimes: list of predicted regime labels
+            actual_regimes: list of actual regime labels
             regime_labels: Optional list of all possible regime labels
 
         Returns:
@@ -146,7 +143,7 @@ class StatisticalAnalyzer:
         )
 
     def test_regime_stability(
-        self, regime_sequence: List[str], window_size: int = 20
+        self, regime_sequence: list[str], window_size: int = 20
     ) -> StatisticalTestResult:
         """
         Test regime detection stability using runs test.
@@ -209,14 +206,14 @@ class StatisticalAnalyzer:
         )
 
     def analyze_indicator_significance(
-        self, indicators: Dict[str, List[float]], regime_labels: List[str]
-    ) -> Dict[str, StatisticalTestResult]:
+        self, indicators: dict[str, list[float]], regime_labels: list[str]
+    ) -> dict[str, StatisticalTestResult]:
         """
         Analyze statistical significance of indicators for regime classification.
 
         Args:
             indicators: Dictionary of indicator values by regime
-            regime_labels: List of regime labels
+            regime_labels: list of regime labels
 
         Returns:
             Dictionary of statistical test results for each indicator
@@ -264,8 +261,8 @@ class StatisticalAnalyzer:
         return results
 
     def calculate_regime_transition_matrix(
-        self, regime_sequence: List[str]
-    ) -> Dict[str, Dict[str, float]]:
+        self, regime_sequence: list[str]
+    ) -> dict[str, dict[str, float]]:
         """
         Calculate regime transition probability matrix.
 
@@ -279,7 +276,7 @@ class StatisticalAnalyzer:
             return {}
 
         unique_regimes = list(set(regime_sequence))
-        transition_matrix: Dict[str, Dict[str, float]] = {
+        transition_matrix: dict[str, dict[str, float]] = {
             regime: dict.fromkeys(unique_regimes, 0.0)
             for regime in unique_regimes
         }
@@ -300,13 +297,13 @@ class StatisticalAnalyzer:
         return transition_matrix
 
     def perform_cross_validation(
-        self, regime_data: List[Tuple[Dict[str, float], str]], n_folds: int = 5
-    ) -> Dict[str, Any]:
+        self, regime_data: list[tuple[dict[str, float], str]], n_folds: int = 5
+    ) -> dict[str, Any]:
         """
         Perform cross-validation on regime detection.
 
         Args:
-            regime_data: List of (indicators, regime) tuples
+            regime_data: list of (indicators, regime) tuples
             n_folds: Number of cross-validation folds
 
         Returns:
@@ -346,7 +343,7 @@ class StatisticalAnalyzer:
             "cv_folds": n_folds,
         }
 
-    def _simple_regime_prediction(self, indicators: Dict[str, float]) -> str:
+    def _simple_regime_prediction(self, indicators: dict[str, float]) -> str:
         """
         Simple regime prediction based on indicator thresholds.
         This is a placeholder for actual ML-based prediction.
@@ -371,13 +368,13 @@ class StatisticalAnalyzer:
             return "weak_bull_trend" if momentum > 0 else "weak_bear_trend"
 
     def analyze_regime_detection_quality(
-        self, detection_results: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, detection_results: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """
         Comprehensive analysis of regime detection quality.
 
         Args:
-            detection_results: List of regime detection results
+            detection_results: list of regime detection results
 
         Returns:
             Quality analysis results

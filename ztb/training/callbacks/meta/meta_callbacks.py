@@ -9,7 +9,6 @@ tasks including MAML, few-shot learning, and adaptation monitoring.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import numpy as np
 
@@ -23,10 +22,8 @@ from ztb.training.callbacks.shared.utils.value_utils import (
 )
 from ztb.types.common import ObjectMap
 
-
 _HISTORY_LIMIT = 1_000
 _EPSILON = 1e-8
-
 
 def _as_float_list(value: object) -> list[float]:
     if not isinstance(value, list):
@@ -37,7 +34,6 @@ def _as_float_list(value: object) -> list[float]:
         if parsed_item is not None:
             parsed.append(parsed_item)
     return parsed
-
 
 def _as_float_map(value: object) -> dict[str, float]:
     if not isinstance(value, dict):
@@ -52,10 +48,8 @@ def _as_float_map(value: object) -> dict[str, float]:
         parsed[key] = val
     return parsed
 
-
 def _append_bounded(history: list[float], value: float, max_len: int = _HISTORY_LIMIT) -> None:
     _append_bounded_value(history, value, max_len)
-
 
 class _BaseMetaCallback(NoOpMemoryOptimizedCallback):
     """Shared base for meta callbacks with frequency gating."""
@@ -66,12 +60,11 @@ class _BaseMetaCallback(NoOpMemoryOptimizedCallback):
         self.logger = logging.getLogger(__name__)
 
     def _should_process(
-        self, context: LearningContext, logs: Optional[ObjectMap]
+        self, context: LearningContext, logs: ObjectMap | None
     ) -> bool:
         if logs is None:
             return False
         return context.epoch % self.compute_frequency == 0
-
 
 class MAMLCallback(_BaseMetaCallback):
     """
@@ -102,7 +95,7 @@ class MAMLCallback(_BaseMetaCallback):
         self.overfitting_indicators: list[float] = []
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         """Monitor MAML training progress."""
         if not self._should_process(context, logs):
@@ -232,7 +225,6 @@ class MAMLCallback(_BaseMetaCallback):
 
         return stats
 
-
 class FewShotCallback(_BaseMetaCallback):
     """
     Few-shot learning monitoring callback.
@@ -246,7 +238,7 @@ class FewShotCallback(_BaseMetaCallback):
         n_way: int = 5,
         k_shot: int = 1,
         compute_frequency: int = 1,
-        num_episodes: Optional[int] = None,
+        num_episodes: int | None = None,
     ):
         super().__init__(compute_frequency=compute_frequency)
         self.n_way = max(1, int(n_way))
@@ -261,7 +253,7 @@ class FewShotCallback(_BaseMetaCallback):
         self.episode_stats: list[ObjectMap] = []
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         """Monitor few-shot learning progress."""
         if not self._should_process(context, logs):
@@ -381,7 +373,6 @@ class FewShotCallback(_BaseMetaCallback):
 
         return stats
 
-
 class MetaAdaptationCallback(_BaseMetaCallback):
     """
     Meta adaptation monitoring callback.
@@ -409,7 +400,7 @@ class MetaAdaptationCallback(_BaseMetaCallback):
         self.adaptation_generalization: list[float] = []
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         """Monitor meta adaptation progress."""
         if not self._should_process(context, logs):
@@ -545,7 +536,6 @@ class MetaAdaptationCallback(_BaseMetaCallback):
 
         return stats
 
-
 # Factory functions for easy instantiation
 def create_maml(**kwargs: object) -> MAMLCallback:
     """Create MAML callback with default settings."""
@@ -557,7 +547,6 @@ def create_maml(**kwargs: object) -> MAMLCallback:
         num_inner_steps=int(num_inner_steps) if isinstance(num_inner_steps, int) else 5,
         adaptation_lr=float(adaptation_lr) if isinstance(adaptation_lr, (int, float)) else 0.01,
     )
-
 
 def create_meta_adaptation(**kwargs: object) -> MetaAdaptationCallback:
     """Create meta adaptation callback with default settings."""

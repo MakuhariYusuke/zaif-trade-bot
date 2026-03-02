@@ -39,12 +39,10 @@ from ztb.utils.observability import ObservabilityClient
 from .coin_gecko_stream import CoinGeckoStream, MarketDataBatch, StreamConfig
 from .stream_buffer import BufferStats, StreamBuffer
 
-
 class GetDataKwargs(TypedDict, total=False):
     """Kwargs for get_data method"""
 
     rows: int
-
 
 class StreamingPipelineConfig(TypedDict, total=False):
     """Configuration for streaming pipeline"""
@@ -56,9 +54,7 @@ class StreamingPipelineConfig(TypedDict, total=False):
     enable_observability: bool
     cache_dir: str
 
-
 logger = get_logger(__name__)
-
 
 def _default_validator(df: pd.DataFrame) -> pd.DataFrame:
     def perform_validation() -> pd.DataFrame:
@@ -84,16 +80,15 @@ def _default_validator(df: pd.DataFrame) -> pd.DataFrame:
         safe_operation(logger, perform_validation, "_default_validator()", df),
     )
 
-
 @dataclass
 class StreamingHealth:
     """Represents the current health of the streaming subsystem."""
 
     status: str = "ok"
     consecutive_failures: int = 0
-    last_error: Optional[str] = None
-    last_error_at: Optional[datetime] = None
-    last_success_at: Optional[datetime] = None
+    last_error: str | None = None
+    last_error_at: datetime | None = None
+    last_success_at: datetime | None = None
     memory_usage_mb: float = 0.0
     cpu_usage_percent: float = 0.0
 
@@ -119,41 +114,37 @@ class StreamingHealth:
             "cpu_usage_percent": self.cpu_usage_percent,
         }
 
-
 @dataclass
 class PipelineStats:
     buffer: BufferStats
-    last_batch_at: Optional[datetime] = None
+    last_batch_at: datetime | None = None
     last_batch_rows: int = 0
     total_rows_streamed: int = 0
     health: StreamingHealth = field(default_factory=StreamingHealth)
-
 
 class StreamingPipeline:
     """Coordinates streaming ingestion, buffering, and feature computation."""
 
     _shutdown: bool = False
     _background_stop: threading.Event
-    _background_thread: Optional[threading.Thread] = None
+    _background_thread: threading.Thread | None = None
 
     def __init__(
         self,
         stream_client: CoinGeckoStream,
         *,
         buffer_capacity: int = 1_000_000,
-        feature_names: Optional[Sequence[str]] = None,
+        feature_names: Sequence[str] | None = None,
         lookback_rows: int = 512,
-        stream_config: Optional[StreamConfig] = None,
+        stream_config: StreamConfig | None = None,
         validator: Callable[[pd.DataFrame], pd.DataFrame] = _default_validator,
-        metrics_callback: Optional[Callable[[PipelineStats], None]] = None,
+        metrics_callback: Callable[[PipelineStats], None] | None = None,
         async_features: bool = True,
         feature_workers: int = 1,
-        buffer_compression: Optional[
-            str
-        ] = "gzip",  # Compression algorithm: 'gzip', 'zlib', 'lz4', 'zstd', or None
+        buffer_compression: str | None = "gzip",  # Compression algorithm: 'gzip', 'zlib', 'lz4', 'zstd', or None
         buffer_compress_min_rows: int = 2000,
         max_backoff_seconds: float = 60.0,
-        observability: Optional[ObservabilityClient] = None,
+        observability: ObservabilityClient | None = None,
     ) -> None:
         self._shutdown = False
         self._background_stop = threading.Event()
@@ -192,16 +183,16 @@ class StreamingPipeline:
         self._buffer_compress_min_rows = buffer_compress_min_rows
 
         registry_features = FeatureRegistry.list()
-        self.feature_names: List[str] = (
+        self.feature_names: list[str] = (
             list(feature_names) if feature_names else registry_features
         )
         self._stats = PipelineStats(buffer=self.buffer.stats(), health=self._health)
 
         self._async_features = async_features
         self._feature_workers = feature_workers
-        self._executor: Optional[ThreadPoolExecutor] = None
-        self._prefetch_future: Optional[Future[Any]] = None
-        self._connection_monitor_thread: Optional[threading.Thread] = None
+        self._executor: ThreadPoolExecutor | None = None
+        self._prefetch_future: Future[Any] | None = None
+        self._connection_monitor_thread: threading.Thread | None = None
         self._connection_monitor_stop = threading.Event()
         self._last_connection_check = datetime.now(timezone.utc)
         self._connection_check_interval = 30.0  # seconds
@@ -222,8 +213,8 @@ class StreamingPipeline:
         start: datetime,
         end: datetime,
         *,
-        granularity: Optional[str] = None,
-        page_size: Optional[int] = None,
+        granularity: str | None = None,
+        page_size: int | None = None,
     ) -> pd.DataFrame:
         """Warm up the pipeline with historical data."""
         cfg = self.stream_config
@@ -240,8 +231,8 @@ class StreamingPipeline:
     def stream(
         self,
         *,
-        start_at: Optional[datetime] = None,
-        stop_event: Optional[threading.Event] = None,
+        start_at: datetime | None = None,
+        stop_event: threading.Event | None = None,
     ) -> Iterator[pd.DataFrame]:
         cfg = self.stream_config
         while True:
@@ -430,7 +421,7 @@ class StreamingPipeline:
             self._prefetch_future = self._executor.submit(lambda: list(self.stream()))
 
     def start_background_stream(
-        self, stop_event: Optional[threading.Event] = None
+        self, stop_event: threading.Event | None = None
     ) -> threading.Event:
         if self._shutdown:
             raise RuntimeError("pipeline already shut down")
@@ -684,7 +675,6 @@ class StreamingPipeline:
             self.observability.record_metrics(
                 {"stream_failures": float(self._health.consecutive_failures)}
             )
-
 
 # Factory function for registry integration
 def create_streaming_pipeline(

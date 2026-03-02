@@ -14,7 +14,6 @@ from pathlib import Path
 
 from ztb.trading.environment.constants import BYTES_PER_MB
 
-
 def rotate_log(log_path: Path, max_mb: float) -> None:
     """Rotate log if oversized."""
     if not log_path.exists():
@@ -29,7 +28,6 @@ def rotate_log(log_path: Path, max_mb: float) -> None:
                 shutil.copyfileobj(f_in, f_out)
         log_path.unlink()
         print(f"Rotated {log_path} to {rotated_path}")
-
 
 def delete_old_runs(root: Path, retention_days: int, dry_run: bool) -> None:
     """Delete old correlation directories."""
@@ -49,7 +47,6 @@ def delete_old_runs(root: Path, retention_days: int, dry_run: bool) -> None:
                         print(f"Deleted: {item}")
             except Exception as e:
                 print(f"Error checking {item}: {e}")
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Janitor for artifacts")
@@ -80,7 +77,6 @@ def main() -> int:
 
     print(f"Janitor complete (dry_run={dry_run})")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

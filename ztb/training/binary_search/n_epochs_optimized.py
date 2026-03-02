@@ -16,7 +16,6 @@ from ztb.training.binary_search.base_optimizer import (
     HyperparameterOptimizer,
 )
 
-
 class NEpochsOptimizer(HyperparameterOptimizer):
     """Optimizer for n_epochs parameter."""
 
@@ -27,7 +26,6 @@ class NEpochsOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[int, int]:
         """Get the range for n_epochs binary search."""
         return (4, 20)  # Reasonable range for number of epochs
-
 
 def main() -> None:
     parser = BinarySearchArgumentParser.create_parser(
@@ -54,7 +52,6 @@ def main() -> None:
         print(
             f"\nOptimization complete. Best n_epochs: {best_value}, Score: {best_score:.6f}"
         )
-
 
 if __name__ == "__main__":
     main()

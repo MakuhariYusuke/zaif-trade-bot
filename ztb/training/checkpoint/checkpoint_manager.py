@@ -38,20 +38,17 @@ logger = logging.getLogger(__name__)
 CheckpointMap = dict[str, object]
 CheckpointMetrics = dict[str, object]
 
-
 class CheckpointMetadata(TypedDict, total=False):
     timestamp: str
     schema_version: int
     correlation_id: str | None
     metrics: dict[str, float]
 
-
 class RNGStatePayload(TypedDict, total=False):
     python: object
     numpy: object
     torch: object
     torch_cuda: object
-
 
 class CheckpointPayload(TypedDict, total=False):
     schema_version: int
@@ -67,12 +64,10 @@ class CheckpointPayload(TypedDict, total=False):
     vec_normalize_stats: CheckpointMap
     checksum: str
 
-
 class CheckpointValidationResult(TypedDict):
     valid: bool
     errors: list[str]
     warnings: list[str]
-
 
 @dataclass
 class TrainingCheckpointConfig:
@@ -90,7 +85,6 @@ class TrainingCheckpointConfig:
     )
     include_rng_state: bool = True
 
-
 @dataclass
 class TrainingCheckpointSnapshot:
     """In-memory representation of a checkpoint suitable for resuming."""
@@ -103,7 +97,6 @@ class TrainingCheckpointSnapshot:
     def metrics(self) -> CheckpointMetrics:
         return cast(CheckpointMetrics, self.payload.get("metrics", {}))
 
-
 class TrainingCheckpointManager:
     """High-level manager for saving and restoring long-running training state."""
 
@@ -112,8 +105,8 @@ class TrainingCheckpointManager:
     def __init__(
         self,
         save_dir: str,
-        config: Optional[TrainingCheckpointConfig] = None,
-        observability: Optional[ObservabilityClient] = None,
+        config: TrainingCheckpointConfig | None = None,
+        observability: ObservabilityClient | None = None,
     ) -> None:
         # Keep the original string value to match older API expectations/tests
         # but also maintain a Path object for internal filesystem operations
@@ -140,10 +133,10 @@ class TrainingCheckpointManager:
         *,
         step: int,
         model: BaseAlgorithmType,
-        metrics: Optional[CheckpointMetrics] = None,
-        extra: Optional[CheckpointMap] = None,
-        stream_state: Optional[CheckpointMap] = None,
-        async_save: Optional[bool] = None,
+        metrics: CheckpointMetrics | None = None,
+        extra: CheckpointMap | None = None,
+        stream_state: CheckpointMap | None = None,
+        async_save: bool | None = None,
     ) -> None:
         payload = self._build_payload(
             model=model,
@@ -182,7 +175,7 @@ class TrainingCheckpointManager:
                 }
             )
 
-    def load_latest(self) -> Optional[TrainingCheckpointSnapshot]:
+    def load_latest(self) -> TrainingCheckpointSnapshot | None:
         try:
             payload, step, metadata = self._manager.load_latest()
         except FileNotFoundError:
@@ -255,7 +248,7 @@ class TrainingCheckpointManager:
     def validate_checkpoint_integrity(
         self,
         snapshot: TrainingCheckpointSnapshot,
-        model: Optional[BaseAlgorithmType] = None,
+        model: BaseAlgorithmType | None = None,
     ) -> CheckpointValidationResult:
         """
         Validate the integrity of a checkpoint snapshot.
@@ -265,7 +258,7 @@ class TrainingCheckpointManager:
             model: Optional model to validate against
 
         Returns:
-            Dict containing validation results with 'valid', 'errors', and 'warnings' keys
+            dict containing validation results with 'valid', 'errors', and 'warnings' keys
         """
         validation_result: CheckpointValidationResult = {
             "valid": True,
@@ -584,7 +577,7 @@ class TrainingCheckpointManager:
             logger.debug("Torch RNG state could not be captured", exc_info=True)
         return state
 
-    def _restore_rng_state(self, rng_state: Optional[RNGStatePayload]) -> None:
+    def _restore_rng_state(self, rng_state: RNGStatePayload | None) -> None:
         if not rng_state:
             return
         try:

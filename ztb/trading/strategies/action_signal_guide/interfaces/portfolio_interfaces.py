@@ -10,7 +10,6 @@ from __future__ import annotations
 from abc import abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -23,7 +22,6 @@ from ztb.trading.strategies.action_signal_guide.interfaces.common_types import (
     SeriesMap,
 )
 
-
 class AllocationStrategy(Enum):
     """Portfolio allocation strategies."""
 
@@ -34,7 +32,6 @@ class AllocationStrategy(Enum):
     MAXIMUM_SHARPE = "maximum_sharpe"
     HIERARCHICAL_RISK_PARITY = "hierarchical_risk_parity"
 
-
 class RiskMeasure(Enum):
     """Risk measurement methods."""
 
@@ -44,7 +41,6 @@ class RiskMeasure(Enum):
     CONDITIONAL_VAR = "conditional_var"
     MAX_DRAWDOWN = "max_drawdown"
     EXPECTED_SHORTFALL = "expected_shortfall"
-
 
 @dataclass
 class StrategyPerformance:
@@ -58,8 +54,7 @@ class StrategyPerformance:
     win_rate: float
     profit_factor: float
     timestamp: float
-    correlations: Optional[dict[str, float]] = None
-
+    correlations: dict[str, float] | None = None
 
 @dataclass
 class PortfolioAllocation:
@@ -72,7 +67,6 @@ class PortfolioAllocation:
     diversification_ratio: float
     timestamp: float
 
-
 @dataclass
 class CorrelationMatrix:
     """Strategy correlation matrix."""
@@ -80,7 +74,6 @@ class CorrelationMatrix:
     matrix: pd.DataFrame
     rolling_window: int
     last_updated: float
-
 
 class IStrategyAllocator(IActionSignalGuideInterface):
     """Interface for strategy allocation optimization."""
@@ -107,7 +100,6 @@ class IStrategyAllocator(IActionSignalGuideInterface):
     def get_allocation_history(self) -> list[PortfolioAllocation]:
         """Get historical allocation decisions."""
 
-
 class IRiskParityAllocator(IActionSignalGuideInterface):
     """Interface for risk parity allocation strategy."""
 
@@ -119,14 +111,13 @@ class IRiskParityAllocator(IActionSignalGuideInterface):
 
     @abstractmethod
     def optimize_risk_parity(
-        self, returns: pd.DataFrame, target_risk: Optional[float] = None
+        self, returns: pd.DataFrame, target_risk: float | None = None
     ) -> PortfolioAllocation:
         """Optimize portfolio using risk parity approach."""
 
     @abstractmethod
     def get_risk_parity_metrics(self) -> MetricsMap:
         """Get risk parity specific metrics."""
-
 
 class ICorrelationManager(IActionSignalGuideInterface):
     """Interface for managing strategy correlations."""
@@ -144,7 +135,6 @@ class ICorrelationManager(IActionSignalGuideInterface):
     @abstractmethod
     def get_correlation_stability(self) -> MetricsMap:
         """Get correlation stability metrics."""
-
 
 class IDiversificationEngine(IActionSignalGuideInterface):
     """Interface for portfolio diversification analysis."""
@@ -164,7 +154,6 @@ class IDiversificationEngine(IActionSignalGuideInterface):
     @abstractmethod
     def get_diversification_metrics(self) -> MetricsMap:
         """Get diversification analysis metrics."""
-
 
 class IPortfolioRiskManager(IActionSignalGuideInterface):
     """Interface for portfolio-level risk management."""

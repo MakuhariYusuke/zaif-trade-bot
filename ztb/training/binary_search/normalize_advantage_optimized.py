@@ -17,7 +17,6 @@ from ztb.training.binary_search.base_optimizer import (
     HyperparameterOptimizer,
 )
 
-
 class NormalizeAdvantageOptimizer(HyperparameterOptimizer):
     """Optimizer for normalize_advantage parameter."""
 
@@ -28,7 +27,6 @@ class NormalizeAdvantageOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[bool, bool]:
         """Get the range for normalize_advantage (both True and False)."""
         return (False, True)  # Test both boolean values
-
 
 def binary_search_optimize(
     self, max_iterations: int = 2, total_timesteps: int = 100000
@@ -64,7 +62,6 @@ def binary_search_optimize(
     print(f"\nBest normalize_advantage: {best_value} (score: {best_score:.6f})")
     return best_value, best_score
 
-
 def main() -> None:
     parser = BinarySearchArgumentParser.create_parser(
         "Optimize normalize_advantage parameter for PPO"
@@ -97,7 +94,6 @@ def main() -> None:
         print(
             f"\nOptimization complete. Best normalize_advantage: {best_value}, Score: {best_score:.6f}"
         )
-
 
 if __name__ == "__main__":
     main()

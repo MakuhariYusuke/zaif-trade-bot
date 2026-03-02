@@ -6,12 +6,10 @@ Follows Single Responsibility Principle by focusing only on reward shaping.
 """
 
 import math
-from typing import Optional
 
 from ztb.utils.logging_utils import get_logger
 
 from .interfaces import IDynamicRewardShaper, IMarketRegimeDetector
-
 
 class DynamicRewardShaper(IDynamicRewardShaper):
     """
@@ -25,7 +23,7 @@ class DynamicRewardShaper(IDynamicRewardShaper):
 
     def __init__(
         self,
-        market_regime_detector: Optional[IMarketRegimeDetector] = None,
+        market_regime_detector: IMarketRegimeDetector | None = None,
         enabled: bool = False,
         market_regime_awareness: bool = False,
         volatility_adjusted_rewards: bool = False,

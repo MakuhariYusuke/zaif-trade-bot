@@ -5,7 +5,6 @@ Uses the base optimizer class for common functionality.
 """
 
 import sys
-from typing import Union
 
 from ztb.utils.path_utils import get_project_root
 
@@ -16,7 +15,6 @@ from ztb.training.binary_search.base_optimizer import (
     BinarySearchArgumentParser,
     HyperparameterOptimizer,
 )
-
 
 class RewardScalingOptimizer(HyperparameterOptimizer):
     """Optimizer for reward_scaling parameter."""
@@ -29,10 +27,9 @@ class RewardScalingOptimizer(HyperparameterOptimizer):
         """Get the range for reward_scaling binary search."""
         return (0.1, 10.0)  # Reasonable range for reward scaling
 
-    def update_ppo_params(self, value: Union[int, float]) -> None:
+    def update_ppo_params(self, value: int | float) -> None:
         """Update environment config with reward_scaling value."""
         self.env_config.reward_scaling = float(value)
-
 
 def main() -> None:
     parser = BinarySearchArgumentParser.create_parser(
@@ -61,7 +58,6 @@ def main() -> None:
         print(
             f"\nOptimization complete. Best reward_scaling: {best_value}, Score: {best_score:.6f}"
         )
-
 
 if __name__ == "__main__":
     main()

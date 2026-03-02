@@ -6,15 +6,12 @@ Implements Action Signal Guide based trading strategy for the unified backtest f
 Supports pattern recognition and signal generation with SAC integration capabilities.
 """
 
-from typing import Dict, Optional, Union, List
-
 import pandas as pd
 
 from .strategy_base import SignalBasedStrategy
 from ....utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class ActionSignalGuideStrategy(SignalBasedStrategy):
     """
@@ -30,8 +27,8 @@ class ActionSignalGuideStrategy(SignalBasedStrategy):
     def __init__(
         self,
         name: str,
-        config_path: Optional[str] = None,
-        pattern_types: Optional[List[str]] = None
+        config_path: str | None = None,
+        pattern_types: list[str] | None = None
     ):
         """
         Initialize Action Signal Guide strategy.
@@ -39,21 +36,21 @@ class ActionSignalGuideStrategy(SignalBasedStrategy):
         Args:
             name: Strategy name
             config_path: Path to configuration file
-            pattern_types: List of pattern types to use
+            pattern_types: list of pattern types to use
         """
         super().__init__(name)
         self.config_path = config_path
         self.pattern_types = pattern_types or ["candlestick", "fibonacci", "wave"]
 
         # Action Signal Guide components
-        self.action_signal_guide: Optional['ActionSignalGuide'] = None
-        self.signal_filter: Optional['SignalFilter'] = None
+        self.action_signal_guide: ActionSignalGuide | None = None
+        self.signal_filter: SignalFilter | None = None
 
         # SAC integration
-        self.sac_correlation_data: List[Dict[str, Union[str, int, float]]] = []
+        self.sac_correlation_data: list[dict[str, str | int | float]] = []
 
         # Signal quality tracking
-        self.signal_quality_metrics: Dict[str, Union[int, float, list]] = {}
+        self.signal_quality_metrics: dict[str, int | float | list] = {}
 
     def initialize(
         self,
@@ -117,7 +114,7 @@ class ActionSignalGuideStrategy(SignalBasedStrategy):
             max_signals_per_hour=2,
         )
 
-    def _initialize_signal_filter(self, filter_config: Dict[str, Union[str, int, float]]) -> None:
+    def _initialize_signal_filter(self, filter_config: dict[str, str | int | float]) -> None:
         """Initialize signal filtering mechanism."""
         # Implementation for signal filtering
         pass
@@ -131,7 +128,7 @@ class ActionSignalGuideStrategy(SignalBasedStrategy):
         self,
         data: pd.DataFrame,
         current_position: int
-    ) -> Dict[str, Union[str, int, float, bool]]:
+    ) -> dict[str, str | int | float | bool]:
         """
         Generate trading signal using Action Signal Guide.
 
@@ -171,12 +168,12 @@ class ActionSignalGuideStrategy(SignalBasedStrategy):
             logger.warning(f"Error generating Action Signal Guide signal: {e}")
             return {"action": "hold", "reason": "error"}
 
-    def _apply_signal_filter(self, signal: Dict[str, Union[str, int, float, bool]]) -> Dict[str, Union[str, int, float, bool]]:
+    def _apply_signal_filter(self, signal: dict[str, str | int | float | bool]) -> dict[str, str | int | float | bool]:
         """Apply signal filtering."""
         # Implementation for signal filtering
         return signal
 
-    def _convert_asg_signal(self, asg_signal: Dict[str, Union[str, int, float, bool]]) -> Dict[str, Union[str, int, float, bool]]:
+    def _convert_asg_signal(self, asg_signal: dict[str, str | int | float | bool]) -> dict[str, str | int | float | bool]:
         """
         Convert Action Signal Guide signal to unified format.
 
@@ -210,8 +207,8 @@ class ActionSignalGuideStrategy(SignalBasedStrategy):
 
     def _track_signal_quality(
         self,
-        signal: Dict[str, Union[str, int, float, bool]],
-        row: Dict[str, Union[str, int, float]]
+        signal: dict[str, str | int | float | bool],
+        row: dict[str, str | int | float]
     ) -> None:
         """
         Track signal quality metrics.
@@ -232,7 +229,7 @@ class ActionSignalGuideStrategy(SignalBasedStrategy):
                 self.signal_quality_metrics["signals"] = []
             self.signal_quality_metrics["signals"].append(quality_data)
 
-    def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
+    def update_hyperparameters(self, hyperparameters: dict[str, float]) -> None:
         """
         Update strategy hyperparameters.
 
@@ -244,7 +241,7 @@ class ActionSignalGuideStrategy(SignalBasedStrategy):
             # This would update the Action Signal Guide configuration
             pass
 
-    def get_signal_quality_report(self) -> Dict[str, Union[int, float, str, dict, list]]:
+    def get_signal_quality_report(self) -> dict[str, int | float | str | dict | list]:
         """
         Get signal quality analysis report.
 
@@ -264,7 +261,7 @@ class ActionSignalGuideStrategy(SignalBasedStrategy):
         confidences = [s["confidence"] for s in signals if s["confidence"] is not None]
 
         # Pattern type distribution
-        pattern_types: Dict[str, int] = {}
+        pattern_types: dict[str, int] = {}
         for signal in signals:
             pattern = signal.get("pattern_type")
             if pattern:
@@ -279,18 +276,18 @@ class ActionSignalGuideStrategy(SignalBasedStrategy):
             "signals": signals,
         }
 
-    def get_sac_correlation_data(self) -> List[Dict[str, Union[str, int, float]]]:
+    def get_sac_correlation_data(self) -> list[dict[str, str | int | float]]:
         """
         Get data for SAC correlation analysis.
 
         Returns:
-            List of correlation data points
+            list of correlation data points
         """
         return self.sac_correlation_data.copy()
 
-    def get_config(self) -> Dict[str, Union[str, int, float, bool]]:
+    def get_config(self) -> dict[str, str | int | float | bool]:
         """Get strategy configuration."""
-        config: Dict[str, Union[str, int, float, bool]] = super().get_config()
+        config: dict[str, str | int | float | bool] = super().get_config()
         config.update({
             "config_path": self.config_path,
             "pattern_types": self.pattern_types,

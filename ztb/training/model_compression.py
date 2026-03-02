@@ -13,7 +13,7 @@ and can be integrated into the training pipeline.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -21,7 +21,6 @@ import torch.nn as nn
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class BaseCompressionTechnique(ABC):
     """Base class for model compression techniques."""
@@ -37,10 +36,9 @@ class BaseCompressionTechnique(ABC):
         pass
 
     @abstractmethod
-    def get_compression_stats(self) -> Dict[str, Any]:
+    def get_compression_stats(self) -> dict[str, Any]:
         """Get compression statistics."""
         pass
-
 
 class QuantizationCompressor(BaseCompressionTechnique):
     """
@@ -89,7 +87,7 @@ class QuantizationCompressor(BaseCompressionTechnique):
         logger.warning("Decompression for quantized models is not supported; returning provided model")
         return model
 
-    def get_compression_stats(self) -> Dict[str, Any]:
+    def get_compression_stats(self) -> dict[str, Any]:
         """Return basic compression stats for quantization."""
         return {
             "original_size_mb": self.original_size_mb,
@@ -116,7 +114,6 @@ class QuantizationCompressor(BaseCompressionTechnique):
                 zero_params += (module.weight == 0).sum().item()
 
         return zero_params / total_params if total_params > 0 else 0.0
-
 
 class PruningCompressor(BaseCompressionTechnique):
     """
@@ -240,7 +237,7 @@ class PruningCompressor(BaseCompressionTechnique):
         )
         return model
 
-    def get_compression_stats(self) -> Dict[str, Any]:
+    def get_compression_stats(self) -> dict[str, Any]:
         """Get pruning compression statistics."""
         return {
             "technique": "pruning",
@@ -261,7 +258,6 @@ class PruningCompressor(BaseCompressionTechnique):
             zero_params += (param == 0).sum().item()
 
         return zero_params / total_params if total_params > 0 else 0
-
 
 class KnowledgeDistillationCompressor(BaseCompressionTechnique):
     """
@@ -308,7 +304,7 @@ class KnowledgeDistillationCompressor(BaseCompressionTechnique):
         self.teacher_model = teacher_model
         self.student_model = model
 
-        # Set teacher to evaluation mode
+        # set teacher to evaluation mode
         self.teacher_model.eval()
 
         return model
@@ -354,14 +350,14 @@ class KnowledgeDistillationCompressor(BaseCompressionTechnique):
     # End of PruningCompressor
 
     def compress_model(
-        self, model: nn.Module, techniques: List[str], **kwargs
+        self, model: nn.Module, techniques: list[str], **kwargs
     ) -> nn.Module:
         """
         Apply multiple compression techniques to a model.
 
         Args:
             model: Model to compress
-            techniques: List of compression technique names to apply
+            techniques: list of compression technique names to apply
             **kwargs: Arguments for compression techniques
 
         Returns:
@@ -388,7 +384,7 @@ class KnowledgeDistillationCompressor(BaseCompressionTechnique):
 
         return compressed_model
 
-    def get_compression_report(self) -> Dict[str, Any]:
+    def get_compression_report(self) -> dict[str, Any]:
         """Get comprehensive compression report."""
         return {
             "compression_stats": self.compression_stats,
@@ -396,7 +392,7 @@ class KnowledgeDistillationCompressor(BaseCompressionTechnique):
             "techniques": list(self.compression_stats.keys()),
         }
 
-    def save_compressed_model(self, model: nn.Module, path: Union[str, Path]):
+    def save_compressed_model(self, model: nn.Module, path: str | Path):
         """Save compressed model to file."""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -412,7 +408,7 @@ class KnowledgeDistillationCompressor(BaseCompressionTechnique):
         logger.info(f"Compressed model saved to {path}")
 
     def load_compressed_model(
-        self, path: Union[str, Path], model_class: nn.Module
+        self, path: str | Path, model_class: nn.Module
     ) -> nn.Module:
         """Load compressed model from file."""
         path = Path(path)
@@ -426,18 +422,17 @@ class KnowledgeDistillationCompressor(BaseCompressionTechnique):
         logger.info(f"Compressed model loaded from {path}")
         return model
 
-
 class ModelCompressionManager:
     """Manager class for applying multiple compression techniques and tracking stats."""
 
     def __init__(self) -> None:
-        self.compressors: Dict[str, BaseCompressionTechnique] = {}
-        self.compression_stats: Dict[str, Any] = {}
+        self.compressors: dict[str, BaseCompressionTechnique] = {}
+        self.compression_stats: dict[str, Any] = {}
 
     def add_compressor(self, name: str, compressor: BaseCompressionTechnique) -> None:
         self.compressors[name] = compressor
 
-    def compress(self, model: nn.Module, techniques: List[str], **kwargs) -> nn.Module:
+    def compress(self, model: nn.Module, techniques: list[str], **kwargs) -> nn.Module:
         compressed_model = model
         for technique in techniques:
             compressor = self.compressors.get(technique)
@@ -451,12 +446,11 @@ class ModelCompressionManager:
                 logger.error(f"Failed to apply {technique}: {e}")
         return compressed_model
 
-    def get_compression_stats(self) -> Dict[str, Any]:
+    def get_compression_stats(self) -> dict[str, Any]:
         return self.compression_stats
 
-
 def create_compression_pipeline(
-    techniques_config: Dict[str, Dict[str, Any]],
+    techniques_config: dict[str, dict[str, Any]],
 ) -> Any:
     """
     Create a compression pipeline from configuration.

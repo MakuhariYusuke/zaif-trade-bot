@@ -13,13 +13,12 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable
 
 from ztb.trading.production.state_persistence import (
     read_state_payload,
     write_state_payload,
 )
-
 
 class RecoveryPhase(Enum):
     """復旧フェーズ"""
@@ -32,7 +31,6 @@ class RecoveryPhase(Enum):
     RECOVERY = "recovery"  # 復旧
     MONITORING = "monitoring"  # 監視
 
-
 class RecoveryStrategy(Enum):
     """復旧戦略"""
 
@@ -43,7 +41,6 @@ class RecoveryStrategy(Enum):
     DATA_RESTORE = "data_restore"  # データ復元
     SERVICE_RESTART = "service_restart"  # サービス再起動
 
-
 class RecoveryStatus(Enum):
     """復旧ステータス"""
 
@@ -52,7 +49,6 @@ class RecoveryStatus(Enum):
     COMPLETED = "completed"  # 完了
     FAILED = "failed"  # 失敗
     ROLLED_BACK = "rolled_back"  # ロールバック済み
-
 
 @dataclass
 class RecoveryCheckpoint:
@@ -63,9 +59,8 @@ class RecoveryCheckpoint:
     phase: RecoveryPhase
     status: RecoveryStatus
     description: str
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    error_message: Optional[str] = None
-
+    metadata: dict[str, Any] = field(default_factory=dict)
+    error_message: str | None = None
 
 @dataclass
 class RecoveryPlan:
@@ -76,10 +71,9 @@ class RecoveryPlan:
     strategy: RecoveryStrategy
     estimated_duration_minutes: int
     risk_level: str  # 'low', 'medium', 'high', 'critical'
-    phases: List[RecoveryPhase] = field(default_factory=list)
-    preconditions: List[str] = field(default_factory=list)
-    success_criteria: List[str] = field(default_factory=list)
-
+    phases: list[RecoveryPhase] = field(default_factory=list)
+    preconditions: list[str] = field(default_factory=list)
+    success_criteria: list[str] = field(default_factory=list)
 
 @dataclass
 class RecoveryExecution:
@@ -89,13 +83,12 @@ class RecoveryExecution:
     plan_id: str
     failure_description: str
     start_time: datetime
-    end_time: Optional[datetime] = None
+    end_time: datetime | None = None
     status: RecoveryStatus = RecoveryStatus.PENDING
-    current_phase: Optional[RecoveryPhase] = None
-    checkpoints: List[RecoveryCheckpoint] = field(default_factory=list)
-    metrics: Dict[str, Any] = field(default_factory=dict)
+    current_phase: RecoveryPhase | None = None
+    checkpoints: list[RecoveryCheckpoint] = field(default_factory=list)
+    metrics: dict[str, Any] = field(default_factory=dict)
     rollback_triggered: bool = False
-
 
 class RecoverySystem:
     """
@@ -121,29 +114,29 @@ class RecoverySystem:
         self.max_concurrent_recoveries = max_concurrent_recoveries
 
         # 復旧プラン
-        self.recovery_plans: Dict[str, RecoveryPlan] = {}
+        self.recovery_plans: dict[str, RecoveryPlan] = {}
         self._initialize_default_plans()
 
         # 実行管理
-        self.active_recoveries: Dict[str, RecoveryExecution] = {}
-        self.recovery_history: List[RecoveryExecution] = []
+        self.active_recoveries: dict[str, RecoveryExecution] = {}
+        self.recovery_history: list[RecoveryExecution] = []
 
         # バックアップ管理
-        self.backup_configs: Dict[str, Dict[str, Any]] = {}
-        self.backup_schedule: Dict[str, str] = {}  # cron形式
+        self.backup_configs: dict[str, dict[str, Any]] = {}
+        self.backup_schedule: dict[str, str] = {}  # cron形式
 
         # ヘルスチェック
-        self.health_checks: Dict[str, Callable[[], bool]] = {}
+        self.health_checks: dict[str, Callable[[], bool]] = {}
 
         # コールバック
-        self.recovery_callbacks: List[
+        self.recovery_callbacks: list[
             Callable[[RecoveryExecution], Awaitable[None]]
         ] = []
-        self.phase_callbacks: List[Callable[[RecoveryCheckpoint], Awaitable[None]]] = []
+        self.phase_callbacks: list[Callable[[RecoveryCheckpoint], Awaitable[None]]] = []
 
         # モニタリング
         self.monitoring_active = False
-        self.monitoring_thread: Optional[threading.Thread] = None
+        self.monitoring_thread: threading.Thread | None = None
 
         # ロギング
         self.logger = logging.getLogger(__name__)
@@ -267,9 +260,9 @@ class RecoverySystem:
     async def initiate_recovery(
         self,
         failure_description: str,
-        plan_id: Optional[str] = None,
+        plan_id: str | None = None,
         triggered_by: str = "system",
-    ) -> Optional[RecoveryExecution]:
+    ) -> RecoveryExecution | None:
         """
         復旧開始
 
@@ -279,7 +272,7 @@ class RecoverySystem:
             triggered_by: トリガー実行者
 
         Returns:
-            Optional[RecoveryExecution]: 復旧実行オブジェクト
+            RecoveryExecution | None: 復旧実行オブジェクト
         """
         # 同時実行数チェック
         if len(self.active_recoveries) >= self.max_concurrent_recoveries:
@@ -600,8 +593,8 @@ class RecoverySystem:
         phase: RecoveryPhase,
         status: RecoveryStatus,
         description: str,
-        metadata: Optional[Dict[str, Any]] = None,
-        error_message: Optional[str] = None,
+        metadata: dict[str, Any] | None = None,
+        error_message: str | None = None,
     ) -> None:
         """
         チェックポイント追加
@@ -674,18 +667,18 @@ class RecoverySystem:
         self.logger.info(f"Recovery cancelled: {execution_id}")
         return True
 
-    def get_active_recoveries(self) -> List[RecoveryExecution]:
+    def get_active_recoveries(self) -> list[RecoveryExecution]:
         """
         アクティブ復旧取得
 
         Returns:
-            List[RecoveryExecution]: アクティブ復旧リスト
+            list[RecoveryExecution]: アクティブ復旧リスト
         """
         return list(self.active_recoveries.values())
 
     def get_recovery_history(
-        self, limit: Optional[int] = None
-    ) -> List[RecoveryExecution]:
+        self, limit: int | None = None
+    ) -> list[RecoveryExecution]:
         """
         復旧履歴取得
 
@@ -693,7 +686,7 @@ class RecoverySystem:
             limit: 取得件数制限
 
         Returns:
-            List[RecoveryExecution]: 復旧履歴
+            list[RecoveryExecution]: 復旧履歴
         """
         history = self.recovery_history
         if limit:
@@ -721,7 +714,7 @@ class RecoverySystem:
         self.health_checks[check_name] = check_func
         self.logger.info(f"Health check added: {check_name}")
 
-    def configure_backup(self, backup_id: str, config: Dict[str, Any]) -> None:
+    def configure_backup(self, backup_id: str, config: dict[str, Any]) -> None:
         """
         バックアップ設定
 
@@ -781,12 +774,12 @@ class RecoverySystem:
             self.logger.error(f"Backup creation failed: {backup_id} - {e}")
             return False
 
-    def get_recovery_metrics(self) -> Dict[str, Any]:
+    def get_recovery_metrics(self) -> dict[str, Any]:
         """
         復旧メトリクス取得
 
         Returns:
-            Dict[str, Any]: メトリクス
+            dict[str, Any]: メトリクス
         """
         total_recoveries = len(self.recovery_history)
         successful_recoveries = len(

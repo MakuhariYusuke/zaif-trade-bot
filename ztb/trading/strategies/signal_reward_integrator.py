@@ -6,7 +6,7 @@ combining ActionSignalGuide functionality with reward calculation logic.
 Enhanced to support new pattern recognition systems (Granville's Law, Dow Theory, Heikin-Ashi).
 """
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 import numpy as np
 
@@ -14,7 +14,6 @@ from ztb.trading.strategies.action_signal_guide.action_signal_guide import (
     ActionSignalGuide,
 )
 from ztb.utils.logging_utils import get_logger
-
 
 class SignalRewardIntegrator:
     """
@@ -122,7 +121,7 @@ class SignalRewardIntegrator:
         self.logger.info("Initialized SignalRewardIntegrator with advanced integration")
 
     def integrate_signal_reward(
-        self, reward: float, observation: Optional[np.ndarray], action: int, step: int
+        self, reward: float, observation: np.ndarray | None, action: int, step: int
     ) -> float:
         """
         Apply advanced signal integration to the reward.
@@ -270,7 +269,7 @@ class SignalRewardIntegrator:
 
     def _get_individual_signals(
         self, observation: np.ndarray, action: int, step: int
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get individual signals from different pattern recognition systems.
 
@@ -280,7 +279,7 @@ class SignalRewardIntegrator:
             step: Current step
 
         Returns:
-            List of individual signal dictionaries
+            list of individual signal dictionaries
         """
         signals = []
 
@@ -356,7 +355,7 @@ class SignalRewardIntegrator:
         action: int,
         step: int,
         pattern_type: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         Get signal from a specific recognizer.
 
@@ -408,13 +407,13 @@ class SignalRewardIntegrator:
             return None
 
     def _analyze_pattern_signals(
-        self, signals: List[Dict[str, Any]], action: int
-    ) -> Dict[str, Any]:
+        self, signals: list[dict[str, Any]], action: int
+    ) -> dict[str, Any]:
         """
         Analyze signals by pattern type and calculate pattern-specific metrics.
 
         Args:
-            signals: List of individual signals
+            signals: list of individual signals
             action: Action taken
 
         Returns:
@@ -551,7 +550,7 @@ class SignalRewardIntegrator:
         return weights.get(pattern_type, 1.0)
 
     def _calculate_advanced_reward_modifier(
-        self, pattern_analysis: Dict[str, Any], action: int
+        self, pattern_analysis: dict[str, Any], action: int
     ) -> float:
         """
         Calculate advanced reward modifier based on pattern analysis.
@@ -595,7 +594,7 @@ class SignalRewardIntegrator:
 
         return modifier
 
-    def _calculate_dow_theory_modifier(self, pattern_analysis: Dict[str, Any]) -> float:
+    def _calculate_dow_theory_modifier(self, pattern_analysis: dict[str, Any]) -> float:
         """Calculate Dow Theory specific modifier."""
         dow_data = pattern_analysis["dow_theory"]
         if not dow_data["signals"]:
@@ -615,7 +614,7 @@ class SignalRewardIntegrator:
 
         return 0.0
 
-    def _calculate_granville_modifier(self, pattern_analysis: Dict[str, Any]) -> float:
+    def _calculate_granville_modifier(self, pattern_analysis: dict[str, Any]) -> float:
         """Calculate Granville's Law specific modifier."""
         granville_data = pattern_analysis["granville"]
         if not granville_data["signals"]:
@@ -634,7 +633,7 @@ class SignalRewardIntegrator:
         return 0.0
 
     def _calculate_heikin_ashi_modifier(
-        self, pattern_analysis: Dict[str, Any]
+        self, pattern_analysis: dict[str, Any]
     ) -> float:
         """Calculate Heikin-Ashi specific modifier."""
         heikin_data = pattern_analysis["heikin_ashi"]
@@ -653,7 +652,7 @@ class SignalRewardIntegrator:
 
         return 0.0
 
-    def _calculate_synergy_modifier(self, pattern_analysis: Dict[str, Any]) -> float:
+    def _calculate_synergy_modifier(self, pattern_analysis: dict[str, Any]) -> float:
         """Calculate cross-pattern synergy modifier."""
         # Check if multiple pattern types agree
         supporting_patterns = 0
@@ -675,7 +674,7 @@ class SignalRewardIntegrator:
 
         return 0.0
 
-    def _update_advanced_tracking(self, pattern_analysis: Dict[str, Any]) -> None:
+    def _update_advanced_tracking(self, pattern_analysis: dict[str, Any]) -> None:
         """Update advanced integration tracking statistics."""
         for pattern_type, data in pattern_analysis.items():
             if pattern_type in [
@@ -775,7 +774,7 @@ class SignalRewardIntegrator:
         """
         return self.signal_guide.get_signal_strength(observation, action, step)
 
-    def get_integration_stats(self) -> Dict[str, Any]:
+    def get_integration_stats(self) -> dict[str, Any]:
         """
         Get integration statistics including advanced pattern tracking.
 
@@ -862,7 +861,6 @@ class SignalRewardIntegrator:
 
         self.logger.debug("Reset SignalRewardIntegrator stats")
 
-
 # Legacy compatibility - SignalIntegration class for backward compatibility
 class SignalIntegration(SignalRewardIntegrator):
     """
@@ -897,7 +895,7 @@ class SignalIntegration(SignalRewardIntegrator):
         reward: float,
         next_observation: np.ndarray,
         done: bool,
-        info: Dict[str, Any],
+        info: dict[str, Any],
         step: int,
     ) -> float:
         """

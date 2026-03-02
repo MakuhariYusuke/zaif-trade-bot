@@ -5,12 +5,11 @@ Configuration management for Continuous Evaluation and Monitoring
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ztb.types.alert_types import AlertCondition, AlertLevel
 
 from .types import DashboardConfig, MetricType, ReportConfig
-
 
 class EvaluationMode(Enum):
     """評価モード"""
@@ -19,7 +18,6 @@ class EvaluationMode(Enum):
     PERIODIC = "periodic"
     ON_DEMAND = "on_demand"
 
-
 class AlertThreshold(Enum):
     """アラート閾値レベル"""
 
@@ -27,7 +25,6 @@ class AlertThreshold(Enum):
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
-
 
 @dataclass
 class MonitoringConfig:
@@ -39,7 +36,7 @@ class MonitoringConfig:
     retention_period_days: int = 30
 
     # メトリクス設定
-    enabled_metric_types: List[MetricType] = field(
+    enabled_metric_types: list[MetricType] = field(
         default_factory=lambda: [
             MetricType.PERFORMANCE,
             MetricType.RISK,
@@ -48,14 +45,14 @@ class MonitoringConfig:
     )
 
     # アラート設定
-    alert_conditions: List[AlertCondition] = field(default_factory=list)
+    alert_conditions: list[AlertCondition] = field(default_factory=list)
     alert_cooldown_seconds: int = 300
     max_concurrent_alerts: int = 10
 
     # 通知設定
-    notification_channels: List[str] = field(default_factory=lambda: ["log", "email"])
-    email_recipients: List[str] = field(default_factory=list)
-    slack_webhook_url: Optional[str] = None
+    notification_channels: list[str] = field(default_factory=lambda: ["log", "email"])
+    email_recipients: list[str] = field(default_factory=list)
+    slack_webhook_url: str | None = None
 
     # ダッシュボード設定
     dashboard_config: DashboardConfig = field(
@@ -79,7 +76,7 @@ class MonitoringConfig:
     )
 
     # レポート設定
-    report_configs: List[ReportConfig] = field(default_factory=list)
+    report_configs: list[ReportConfig] = field(default_factory=list)
 
     # 異常検知設定
     enable_anomaly_detection: bool = True
@@ -87,7 +84,7 @@ class MonitoringConfig:
     anomaly_threshold_sigma: float = 3.0
 
     # パフォーマンス閾値
-    performance_thresholds: Dict[str, Dict[str, float]] = field(
+    performance_thresholds: dict[str, dict[str, float]] = field(
         default_factory=lambda: {
             "win_rate": {"warning": 0.45, "critical": 0.40},
             "sharpe_ratio": {"warning": 1.0, "critical": 0.5},
@@ -97,7 +94,7 @@ class MonitoringConfig:
     )
 
     # システム閾値
-    system_thresholds: Dict[str, Dict[str, float]] = field(
+    system_thresholds: dict[str, dict[str, float]] = field(
         default_factory=lambda: {
             "cpu_usage_percent": {"warning": 80.0, "critical": 95.0},
             "memory_usage_mb": {"warning": 3072, "critical": 4096},
@@ -159,7 +156,6 @@ class MonitoringConfig:
                 )
             ]
 
-
 @dataclass
 class AlertEscalationRule:
     """アラートエスカレーションルール"""
@@ -167,13 +163,12 @@ class AlertEscalationRule:
     alert_level: AlertLevel
     escalation_delay_minutes: int
     escalate_to_level: AlertLevel
-    additional_recipients: List[str]
+    additional_recipients: list[str]
     escalation_message: str
 
     def should_escalate(self, alert_age_minutes: int) -> bool:
         """エスカレーションが必要か判定"""
         return alert_age_minutes >= self.escalation_delay_minutes
-
 
 @dataclass
 class ScalabilityConfig:
@@ -229,7 +224,6 @@ class ScalabilityConfig:
                 "scale_down_threshold must be less than scale_up_threshold"
             )
 
-
 @dataclass
 class EvaluationConfig:
     """評価設定"""
@@ -253,7 +247,7 @@ class EvaluationConfig:
     evaluation_mode: EvaluationMode = EvaluationMode.CONTINUOUS
 
     # パフォーマンス閾値
-    performance_thresholds: Dict[str, float] = field(
+    performance_thresholds: dict[str, float] = field(
         default_factory=lambda: {
             "min_accuracy": 0.4,
             "max_drawdown_threshold": 0.25,
@@ -263,7 +257,7 @@ class EvaluationConfig:
     )
 
     # 安全閾値
-    safety_thresholds: Dict[str, float] = field(
+    safety_thresholds: dict[str, float] = field(
         default_factory=lambda: {
             "max_anomalies": 5,
             "min_safety_score": 0.6,
@@ -272,7 +266,7 @@ class EvaluationConfig:
     )
 
     # ドリフト閾値
-    drift_thresholds: Dict[str, float] = field(
+    drift_thresholds: dict[str, float] = field(
         default_factory=lambda: {
             "drift_severity_threshold": 3.0,
             "drift_detection_confidence": 0.8,
@@ -280,7 +274,7 @@ class EvaluationConfig:
     )
 
     # アラート設定
-    alert_settings: Dict[str, Any] = field(
+    alert_settings: dict[str, Any] = field(
         default_factory=lambda: {
             "enable_email_alerts": False,
             "enable_slack_alerts": False,
@@ -290,7 +284,7 @@ class EvaluationConfig:
     )
 
     # 評価スコアの重み付け
-    evaluation_weights: Dict[str, float] = field(
+    evaluation_weights: dict[str, float] = field(
         default_factory=lambda: {
             "performance_weight": 0.4,
             "safety_weight": 0.3,
@@ -299,7 +293,7 @@ class EvaluationConfig:
     )
 
     # レポート設定
-    report_settings: Dict[str, Any] = field(
+    report_settings: dict[str, Any] = field(
         default_factory=lambda: {
             "generate_daily_reports": True,
             "generate_weekly_reports": True,
@@ -309,7 +303,7 @@ class EvaluationConfig:
     )
 
     # 異常検知設定
-    anomaly_detection: Dict[str, Any] = field(
+    anomaly_detection: dict[str, Any] = field(
         default_factory=lambda: {
             "enable_statistical_anomaly": True,
             "enable_ml_anomaly": False,
@@ -319,7 +313,7 @@ class EvaluationConfig:
     )
 
     # 自動対応設定
-    auto_response: Dict[str, Any] = field(
+    auto_response: dict[str, Any] = field(
         default_factory=lambda: {
             "enable_auto_restart": False,
             "enable_auto_rollback": False,
@@ -328,13 +322,12 @@ class EvaluationConfig:
         }
     )
 
-
 @dataclass
 class AlertConfig:
     """アラート設定"""
 
     # アラートレベルごとの設定
-    alert_levels: Dict[AlertThreshold, Dict[str, Any]] = field(
+    alert_levels: dict[AlertThreshold, dict[str, Any]] = field(
         default_factory=lambda: {
             AlertThreshold.LOW: {
                 "enabled": True,
@@ -364,7 +357,7 @@ class AlertConfig:
     )
 
     # アラートタイプごとの設定
-    alert_types: Dict[str, Dict[str, Any]] = field(
+    alert_types: dict[str, dict[str, Any]] = field(
         default_factory=lambda: {
             "performance": {
                 "enabled": True,
@@ -389,7 +382,6 @@ class AlertConfig:
         }
     )
 
-
 @dataclass
 class ContinuousMonitoringConfig:
     """継続的監視設定"""
@@ -403,7 +395,7 @@ class ContinuousMonitoringConfig:
     enable_debug_mode: bool = False
 
     # データ保持設定
-    data_retention: Dict[str, int] = field(
+    data_retention: dict[str, int] = field(
         default_factory=lambda: {
             "evaluation_history_days": 30,
             "alert_history_days": 90,
@@ -413,7 +405,7 @@ class ContinuousMonitoringConfig:
     )
 
     # 外部統合設定
-    integrations: Dict[str, Any] = field(
+    integrations: dict[str, Any] = field(
         default_factory=lambda: {
             "prometheus_enabled": False,
             "grafana_enabled": False,
@@ -422,7 +414,6 @@ class ContinuousMonitoringConfig:
             "email_smtp_config": None,
         }
     )
-
 
 # デフォルト設定
 DEFAULT_EVALUATION_CONFIG = EvaluationConfig()

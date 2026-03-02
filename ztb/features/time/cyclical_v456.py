@@ -14,8 +14,6 @@ Cyclical Time Features for v456
 
 import numpy as np
 import pandas as pd
-from typing import Union, List
-
 
 def calc_cyclical_time_features(
     df: pd.DataFrame,
@@ -81,7 +79,6 @@ def calc_cyclical_time_features(
     df['dow_cos'] = np.cos(2 * np.pi * days_of_week / 7)
     
     return df
-
 
 class CyclicalTimeFeatureExtractor:
     """
@@ -165,7 +162,6 @@ class CyclicalTimeFeatureExtractor:
         else:
             print(f"WARNING: Periodicity check failed. Diff: {diff}")
             return False
-
 
 # 使用例とテスト
 if __name__ == "__main__":

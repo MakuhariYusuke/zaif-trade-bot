@@ -41,7 +41,7 @@ UnifiedEvaluator 経由の実行を推奨します。
 import warnings
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -55,7 +55,6 @@ from ztb.metrics.metrics import sharpe_ratio as calculate_sharpe_ratio
 from ztb.metrics.metrics import win_rate as calculate_win_rate
 from ztb.utils.error_utils import safe_operation
 
-
 from .reporter import BacktestReporter
 
 from .checkpoint import CheckpointManager
@@ -63,12 +62,10 @@ from .types import TimeSeriesWindow, WindowPerformance
 
 logger = logging.getLogger(__name__)
 
-
 class WindowEvaluationError(Exception):
     """ウィンドウ評価エラー"""
 
     pass
-
 
 class WalkForwardModelEvaluator:
     """各ウィンドウでのSAC訓練・評価
@@ -82,9 +79,9 @@ class WalkForwardModelEvaluator:
 
     def __init__(
         self,
-        env_factory: Optional[Callable[[pd.DataFrame], Any]] = None,
-        algorithm_factory: Optional[Callable[[Any], SAC]] = None,
-        checkpoint_dir: Optional[str] = None,
+        env_factory: Callable[[pd.DataFrame], Any] | None = None,
+        algorithm_factory: Callable[[Any], SAC] | None = None,
+        checkpoint_dir: str | None = None,
     ) -> None:
         """初期化
 
@@ -104,9 +101,9 @@ class WalkForwardModelEvaluator:
             DeprecationWarning,
             stacklevel=2,
         )
-        self.models: Dict[int, SAC] = {}
-        self.results: Dict[int, WindowPerformance] = {}
-        self.errors: Dict[int, Exception] = {}  # エラー追跡
+        self.models: dict[int, SAC] = {}
+        self.results: dict[int, WindowPerformance] = {}
+        self.errors: dict[int, Exception] = {}  # エラー追跡
         self.env_factory = env_factory or self._default_env_factory
         self.algorithm_factory = algorithm_factory or self._default_algorithm_factory
         
@@ -167,7 +164,7 @@ class WalkForwardModelEvaluator:
         window: TimeSeriesWindow,
         timesteps: int = 10000,
         continue_on_error: bool = True,
-    ) -> Tuple[Optional[WindowPerformance], Optional[BacktestReporter]]:
+    ) -> tuple[WindowPerformance | None, BacktestReporter | None]:
         """ウィンドウ内で訓練・評価（例外処理強化版）
 
         Args:
@@ -178,7 +175,7 @@ class WalkForwardModelEvaluator:
                               Falseの場合、例外を発生させる
 
         Returns:
-            Optional[WindowPerformance]: ウィンドウの性能結果、エラーの場合はNone
+            WindowPerformance | None: ウィンドウの性能結果、エラーの場合はNone
         """
         try:
             logger.info(f"\n{'='*70}")
@@ -275,7 +272,7 @@ class WalkForwardModelEvaluator:
         window: TimeSeriesWindow,
         model: SAC,
         continue_on_error: bool = True,
-    ) -> Tuple[Optional[WindowPerformance], Optional[BacktestReporter]]:
+    ) -> tuple[WindowPerformance | None, BacktestReporter | None]:
         """事前トレーニング済みモデルでウィンドウを評価
 
         Args:
@@ -286,7 +283,7 @@ class WalkForwardModelEvaluator:
                               Falseの場合、例外を発生させる
 
         Returns:
-            Optional[WindowPerformance]: ウィンドウの性能結果、エラーの場合はNone
+            WindowPerformance | None: ウィンドウの性能結果、エラーの場合はNone
         """
         try:
             logger.info(f"\n{'='*70}")
@@ -324,7 +321,7 @@ class WalkForwardModelEvaluator:
             # 検証評価
             logger.info("\n[Validation Evaluation]")
             try:
-                val_result: Dict[str, Any] = self._evaluate_on_df(model, val_df, val_reporter, max_steps=len(val_df))
+                val_result: dict[str, Any] = self._evaluate_on_df(model, val_df, val_reporter, max_steps=len(val_df))
                 logger.info(f"  Val ROI: {val_result['roi']:.4f}")
                 logger.info(f"  Val Balance: {val_result['final_balance']:,.0f} JPY")
             except Exception as e:
@@ -333,7 +330,7 @@ class WalkForwardModelEvaluator:
             # テスト評価
             logger.info("\n[Test Evaluation (Out-of-Sample)]")
             try:
-                test_result: Dict[str, Any] = self._evaluate_on_df(model, test_df, test_reporter, max_steps=len(test_df))
+                test_result: dict[str, Any] = self._evaluate_on_df(model, test_df, test_reporter, max_steps=len(test_df))
                 logger.info(f"  Test ROI: {test_result['roi']:.4f}")
                 logger.info(f"  Test Balance: {test_result['final_balance']:,.0f} JPY")
             except Exception as e:
@@ -405,8 +402,8 @@ class WalkForwardModelEvaluator:
         model: SAC,
         df: pd.DataFrame,
         reporter: BacktestReporter,
-        max_steps: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_steps: int | None = None,
+    ) -> dict[str, Any]:
         """データフレーム上で評価（BacktestReporter統合版）
 
         v457 BacktestReporterを使用して正確な取引統計を計算します。
@@ -422,7 +419,7 @@ class WalkForwardModelEvaluator:
             max_steps: 最大ステップ数（指定時は全期間評価）
 
         Returns:
-            Dict[str, Any]: ROI, balance, metrics など
+            dict[str, Any]: ROI, balance, metrics など
 
         Raises:
             ValueError: 評価に失敗した場合
@@ -440,7 +437,7 @@ class WalkForwardModelEvaluator:
         obs, _ = eval_env.reset(seed=42, options={"start_step": 0, "max_steps": max_steps})  # 固定seed、全期間評価
         done: bool = False
         episode_reward: float = 0.0
-        balances: List[float] = [eval_env.initial_balance]
+        balances: list[float] = [eval_env.initial_balance]
         step_count: int = 0
         prev_position: float = 0.0  # 初期position
         prev_balance: float = eval_env.initial_balance  # 初期balance
@@ -561,12 +558,12 @@ class WalkForwardModelEvaluator:
     def evaluate_multiple_windows(
         self,
         df: pd.DataFrame,
-        windows: List[TimeSeriesWindow],
+        windows: list[TimeSeriesWindow],
         timesteps: int = 10000,
         continue_on_error: bool = True,
-        run_id: Optional[str] = None,
+        run_id: str | None = None,
         resume_from_checkpoint: bool = False,
-    ) -> Tuple[List[Tuple[Optional[WindowPerformance], Optional[BacktestReporter]]], Dict[int, Exception]]:
+    ) -> tuple[list[tuple[WindowPerformance | None, BacktestReporter | None]], dict[int, Exception]]:
         """複数ウィンドウを連続評価（例外分離・チェックポイント対応）
 
         Args:
@@ -579,7 +576,7 @@ class WalkForwardModelEvaluator:
             resume_from_checkpoint: Trueの場合、既存チェックポイントから復元して続行
 
         Returns:
-            Tuple[List[WindowPerformance], Dict[int, Exception]]:
+            tuple[list[WindowPerformance], dict[int, Exception]]:
                 - 成功したウィンドウの結果リスト
                 - エラーが発生したウィンドウの辞書（ウィンドウID -> 例外）
         """
@@ -606,8 +603,8 @@ class WalkForwardModelEvaluator:
                 f"Skipping {len(windows) - len(target_windows)} already completed windows"
             )
 
-        successful_results: List[Tuple[Optional[WindowPerformance], Optional[BacktestReporter]]] = []
-        errors: Dict[int, Exception] = {}
+        successful_results: list[tuple[WindowPerformance | None, BacktestReporter | None]] = []
+        errors: dict[int, Exception] = {}
 
         for i, window in enumerate(target_windows):
             logger.info(
@@ -665,11 +662,11 @@ class WalkForwardModelEvaluator:
 
         return successful_results, self.errors
 
-    def get_results_summary(self) -> Dict[str, Any]:
+    def get_results_summary(self) -> dict[str, Any]:
         """評価結果のサマリーを取得
 
         Returns:
-            Dict[str, Any]: 結果統計
+            dict[str, Any]: 結果統計
         """
         if not self.results:
             return {
@@ -700,7 +697,7 @@ class WalkForwardModelEvaluator:
 
     @staticmethod
     def _calculate_sharpe(
-        returns: List[float],
+        returns: list[float],
         rf_rate: float = 0.0,
     ) -> float:
         """廃止予定: ztb.metrics.metrics.sharpe_ratio() を使用してください
@@ -711,7 +708,7 @@ class WalkForwardModelEvaluator:
         return calculate_sharpe_ratio(np.array(returns), rf=rf_rate)
 
     @staticmethod
-    def _calculate_max_drawdown(balances: List[float]) -> float:
+    def _calculate_max_drawdown(balances: list[float]) -> float:
         """廃止予定: ztb.metrics.metrics.max_drawdown() を使用してください
 
         このメソッドは後方互換性のためのみに存在します。

@@ -12,7 +12,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable
 
 import psutil
 
@@ -24,8 +24,8 @@ class GoNoGoChecker:
 
     def __init__(self, workspace_root: Path):
         self.root = workspace_root
-        self.results: Dict[str, Any] = {}
-        self.checks: List[Dict[str, Any]] = []
+        self.results: dict[str, Any] = {}
+        self.checks: list[dict[str, Any]] = []
 
     def add_check(
         self,
@@ -78,7 +78,7 @@ class GoNoGoChecker:
 
         return all_passed
 
-    def generate_report(self) -> Dict[str, Any]:
+    def generate_report(self) -> dict[str, Any]:
         """Generate detailed JSON report."""
         return {
             "timestamp": time.time(),
@@ -98,7 +98,6 @@ class GoNoGoChecker:
                 for c in self.checks
             ],
         }
-
 
 def check_test_pipeline(checker: GoNoGoChecker) -> tuple[bool, str]:
     """Check if CI/CD pipeline tests pass."""
@@ -131,7 +130,6 @@ def check_test_pipeline(checker: GoNoGoChecker) -> tuple[bool, str]:
     except Exception as e:
         return False, f"Test execution error: {str(e)}"
 
-
 def check_dependencies(checker: GoNoGoChecker) -> tuple[bool, str]:
     """Check if all dependencies are installed."""
     try:
@@ -153,7 +151,6 @@ def check_dependencies(checker: GoNoGoChecker) -> tuple[bool, str]:
     except Exception as e:
         return False, f"Dependency check error: {str(e)}"
 
-
 def check_configuration(checker: GoNoGoChecker) -> tuple[bool, str]:
     """Check configuration files."""
     env_file = checker.root / ".env"
@@ -166,7 +163,6 @@ def check_configuration(checker: GoNoGoChecker) -> tuple[bool, str]:
         return False, ".env file incomplete"
 
     return True, "Configuration files present"
-
 
 def check_performance(checker: GoNoGoChecker) -> tuple[bool, str]:
     """Check system performance metrics."""
@@ -184,7 +180,6 @@ def check_performance(checker: GoNoGoChecker) -> tuple[bool, str]:
         return True, f"Performance OK (Memory: {memory.percent}%, CPU: {cpu_percent}%)"
     except Exception as e:
         return False, f"Performance check error: {str(e)}"
-
 
 def check_data_quality(checker: GoNoGoChecker) -> tuple[bool, str]:
     """Check data quality metrics."""
@@ -210,7 +205,6 @@ def check_data_quality(checker: GoNoGoChecker) -> tuple[bool, str]:
     except Exception as e:
         return False, f"Data quality check error: {str(e)}"
 
-
 def check_security(checker: GoNoGoChecker) -> tuple[bool, str]:
     """Check security posture."""
     try:
@@ -226,7 +220,6 @@ def check_security(checker: GoNoGoChecker) -> tuple[bool, str]:
         return True, "Security checks passed"
     except Exception as e:
         return False, f"Security check error: {str(e)}"
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Go/No-Go Checker for Zaif Trade Bot")
@@ -280,7 +273,6 @@ def main() -> None:
         print(json.dumps(report, indent=2, ensure_ascii=False))
 
     sys.exit(0 if success else 1)
-
 
 if __name__ == "__main__":
     main()

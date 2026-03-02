@@ -5,10 +5,9 @@ Reusable utility for aggregating trade data into OHLCV bars.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pandas as pd
-
 
 class StreamToBarsConverter:
     """Convert streaming trade data to OHLCV bars."""
@@ -21,9 +20,9 @@ class StreamToBarsConverter:
             bar_interval: Pandas frequency string (e.g., '1min', '5min')
         """
         self.bar_interval = bar_interval
-        self.pending_trades: List[Dict[str, Any]] = []
+        self.pending_trades: list[dict[str, Any]] = []
 
-    def add_trade(self, trade: Dict[str, Any]) -> None:
+    def add_trade(self, trade: dict[str, Any]) -> None:
         """
         Add a trade to the pending list.
 
@@ -36,7 +35,7 @@ class StreamToBarsConverter:
 
         self.pending_trades.append(trade)
 
-    def add_trades(self, trades: List[Dict[str, Any]]) -> None:
+    def add_trades(self, trades: list[dict[str, Any]]) -> None:
         """Add multiple trades."""
         for trade in trades:
             self.add_trade(trade)
@@ -63,7 +62,7 @@ class StreamToBarsConverter:
             unit="ms" if isinstance(df["timestamp"].iloc[0], (int, float)) else None,
         )
 
-        # Set timestamp as index
+        # set timestamp as index
         df.set_index("timestamp", inplace=True)
 
         # Sort by timestamp for proper resampling
@@ -89,8 +88,8 @@ class StreamToBarsConverter:
         return bars
 
     def get_current_bar(
-        self, current_time: Optional[datetime] = None
-    ) -> Optional[Dict[str, Any]]:
+        self, current_time: datetime | None = None
+    ) -> dict[str, Any] | None:
         """
         Get the current incomplete bar.
 
@@ -145,15 +144,14 @@ class StreamToBarsConverter:
         """Get count of pending trades."""
         return len(self.pending_trades)
 
-
 def trades_to_bars(
-    trades: List[Dict[str, Any]], bar_interval: str = "1min", symbol: str = "BTC_JPY"
+    trades: list[dict[str, Any]], bar_interval: str = "1min", symbol: str = "BTC_JPY"
 ) -> pd.DataFrame:
     """
     Convenience function to convert trades to bars in one call.
 
     Args:
-        trades: List of trade dicts
+        trades: list of trade dicts
         bar_interval: Bar interval (e.g., '1min')
         symbol: Trading symbol
 

@@ -7,7 +7,7 @@ across different components to ensure consistent typing patterns.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Generic, List, Optional, TypeVar, Union, cast
+from typing import Any, Generic, TypeVar, cast
 
 import numpy as np
 import pandas as pd
@@ -19,7 +19,6 @@ TConfig = TypeVar("TConfig")
 TState = TypeVar("TState")
 TValue = TypeVar("TValue")
 
-
 class ConfigurableMixin(Generic[TConfig]):
     """
     Mixin class for components that can be configured with a dictionary.
@@ -28,7 +27,7 @@ class ConfigurableMixin(Generic[TConfig]):
     proper typing support.
     """
 
-    def __init__(self, config: Optional[TConfig] = None) -> None:
+    def __init__(self, config: TConfig | None = None) -> None:
         self._config: TConfig = config if config is not None else cast(TConfig, {})
 
     @property
@@ -38,22 +37,21 @@ class ConfigurableMixin(Generic[TConfig]):
 
     @config.setter
     def config(self, value: TConfig) -> None:
-        """Set configuration."""
+        """set configuration."""
         self._config = value
 
-    def update_config(self, updates: Dict[str, Any]) -> None:
+    def update_config(self, updates: dict[str, Any]) -> None:
         """Update configuration with new values."""
         if hasattr(self._config, "update") and isinstance(self._config, dict):
             self._config.update(updates)
 
     def get_config_value(
-        self, key: str, default: Optional[TValue] = None
-    ) -> Optional[TValue]:
+        self, key: str, default: TValue | None = None
+    ) -> TValue | None:
         """Get configuration value with optional default."""
         if isinstance(self._config, dict):
             return safe_config_get(self._config, key, default)
         return default
-
 
 class StatisticsTracker(Generic[TState]):
     """
@@ -64,16 +62,16 @@ class StatisticsTracker(Generic[TState]):
     """
 
     def __init__(self) -> None:
-        self._statistics: Dict[str, Union[int, float, str, bool, None]] = {}
+        self._statistics: dict[str, int | float | str | bool | None] = {}
         self._state_history: list[TState] = []
 
     def update_statistics(
-        self, key: str, value: Union[int, float, str, bool, None]
+        self, key: str, value: int | float | str | bool | None
     ) -> None:
         """Update a specific statistic."""
         self._statistics[key] = value
 
-    def get_statistics(self) -> Dict[str, Union[int, float, str, bool, None]]:
+    def get_statistics(self) -> dict[str, int | float | str | bool | None]:
         """Get all current statistics."""
         return self._statistics.copy()
 
@@ -90,7 +88,6 @@ class StatisticsTracker(Generic[TState]):
         self._statistics.clear()
         self._state_history.clear()
 
-
 class ValidatableMixin(ABC):
     """
     Mixin for components that support validation.
@@ -105,7 +102,7 @@ class ValidatableMixin(ABC):
         Validate the component's current state.
 
         Returns:
-            Tuple of (is_valid, list_of_error_messages)
+            tuple of (is_valid, list_of_error_messages)
         """
         ...
 
@@ -119,10 +116,9 @@ class ValidatableMixin(ABC):
         _, errors = self.validate()
         return errors
 
-
 # Type aliases for common patterns
-ConfigDict = Dict[str, Any]
-PathLike = Union[str, Path]
+ConfigDict = dict[str, Any]
+PathLike = str | Path
 NumericArray = np.ndarray
 FloatArray = np.ndarray
 IntArray = np.ndarray
@@ -130,12 +126,12 @@ IntArray = np.ndarray
 # Data model type aliases
 DataFrame = pd.DataFrame
 Series = pd.Series
-ArrayLike = Union[np.ndarray[Any, np.dtype[Any]], List[float], List[int]]
-Scalar = Union[int, float, bool, str]
+ArrayLike = np.ndarray[Any, np.dtype[Any]] | list[float] | list[int]
+Scalar = int | float | bool | str
 
 # Trading domain types
-PriceData = Dict[str, Union[float, int]]
-MarketData = Dict[str, Any]
+PriceData = dict[str, float | int]
+MarketData = dict[str, Any]
 TradeAction = int
 PositionSize = float
 PortfolioValue = float

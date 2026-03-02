@@ -15,11 +15,10 @@ import sys
 from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 from ztb.io.json_io import read_json_object
 from ztb.io.text_io import write_text
-
 
 class RunSummary(TypedDict):
     run_dir: str
@@ -27,20 +26,17 @@ class RunSummary(TypedDict):
     gpu_hours: float
     start_time: str
 
-
 class DailyTotal(TypedDict):
     total_cost_jpy: float
     gpu_hours: float
     runs: list[RunSummary]
     run_count: int
 
-
 def _iter_run_dirs(runs_dir: Path) -> list[Path]:
     """Return run subdirectories under runs_dir."""
     if not runs_dir.exists():
         return []
     return [run_dir for run_dir in runs_dir.iterdir() if run_dir.is_dir()]
-
 
 def _load_run_json_file(run_dir: Path, filename: str) -> dict[str, object] | None:
     """Load one JSON object under a run directory."""
@@ -52,14 +48,12 @@ def _load_run_json_file(run_dir: Path, filename: str) -> dict[str, object] | Non
     except (ValueError, TypeError, OSError):
         return None
 
-
 def _to_float(value: object, default: float = 0.0) -> float:
     """Convert arbitrary value to float with safe fallback."""
     try:
         return float(value)
     except (TypeError, ValueError):
         return default
-
 
 def load_run_metadata(runs_dir: Path) -> list[dict[str, object]]:
     """Load run metadata from runs directory."""
@@ -72,7 +66,6 @@ def load_run_metadata(runs_dir: Path) -> list[dict[str, object]]:
         metadata_list.append(metadata)
     return metadata_list
 
-
 def load_cost_estimates(runs_dir: Path) -> dict[str, dict[str, object]]:
     """Load cost estimates from runs directory."""
     cost_estimates: dict[str, dict[str, object]] = {}
@@ -83,11 +76,10 @@ def load_cost_estimates(runs_dir: Path) -> dict[str, dict[str, object]]:
         cost_estimates[str(run_dir)] = cost_data
     return cost_estimates
 
-
 def aggregate_by_date(
     metadata_list: list[dict[str, object]],
     cost_estimates: dict[str, dict[str, object]],
-    target_date: Optional[date] = None,
+    target_date: date | None = None,
 ) -> dict[str, DailyTotal]:
     """Aggregate costs by date."""
     daily_totals: dict[str, DailyTotal] = defaultdict(
@@ -127,7 +119,6 @@ def aggregate_by_date(
         )
 
     return dict(daily_totals)
-
 
 def generate_markdown_report(daily_totals: dict[str, DailyTotal]) -> str:
     """Generate markdown report from daily totals."""
@@ -170,7 +161,6 @@ def generate_markdown_report(daily_totals: dict[str, DailyTotal]) -> str:
 
     return "\n".join(lines)
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Aggregate cost estimates into budget report"
@@ -209,7 +199,6 @@ def main() -> None:
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

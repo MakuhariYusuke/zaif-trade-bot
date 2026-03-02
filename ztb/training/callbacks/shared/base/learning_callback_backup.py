@@ -17,12 +17,11 @@ import traceback
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Optional
 
 from ztb.training.callbacks.monitoring.metrics_collector import MetricsCollector
 from ztb.training.callbacks.performance.memory_optimizer import LRUCache
 from ztb.training.callbacks.shared.base.learning_callback import ErrorHandlingStrategy
-
 
 class ErrorSeverity(Enum):
     """Error severity levels."""
@@ -32,17 +31,15 @@ class ErrorSeverity(Enum):
     HIGH = "high"
     CRITICAL = "critical"
 
-
 # Legacy ErrorContext/handler removed; use the canonical
 # dataclass-based `ErrorContext` and `ErrorHandlingMixin` defined below.
-
 
     def _should_skip_execution(self) -> bool:
         """Determine if execution should be skipped due to excessive errors."""
         threshold = self._error_config.get("error_threshold_before_disable", 5)
         return self._consecutive_errors >= threshold
 
-    def get_error_stats(self) -> Dict[str, Any]:
+    def get_error_stats(self) -> dict[str, Any]:
         """Get error statistics."""
         with self._error_lock:
             return {
@@ -81,7 +78,6 @@ class ErrorSeverity(Enum):
             self._is_recovering = False
             self.logger.info("Error recovery mode disabled")
 
-
 @dataclass
 class LearningContext:
     """
@@ -92,11 +88,10 @@ class LearningContext:
     batch: int = 0
     step: int = 0
     # Performance metrics
-    metrics: Dict[str, Any] = field(default_factory=dict)
+    metrics: dict[str, Any] = field(default_factory=dict)
 
     # Custom data
-    custom_data: Dict[str, Any] = field(default_factory=dict)
-
+    custom_data: dict[str, Any] = field(default_factory=dict)
 
 class ErrorHandlingMixin:
     """
@@ -188,7 +183,6 @@ class ErrorHandlingMixin:
         # High severity errors
         if error_type in ["ValueError", "TypeError", "AttributeError", "ImportError"]:
             return ErrorSeverity.HIGH
-
 
         # Check for error type specific strategy
         error_type = type(error_context.error).__name__
@@ -442,14 +436,13 @@ class ErrorHandlingMixin:
         for err in recent_errors:
         self.safe_execute(_cache_metrics_operation)
 
-    def get_cached_metrics(self, key: str) -> Optional[Dict[str, Any]]:
+    def get_cached_metrics(self, key: str) -> dict[str, Any] | None:
         """Retrieve cached metrics with error handling."""
 
         def _get_metrics_operation():
             return self.metrics_cache.get(key)
 
         return self.safe_execute(_get_metrics_operation)
-
 
 class MetricsCallback(LearningCallback):
     """
@@ -458,27 +451,26 @@ class MetricsCallback(LearningCallback):
     Provides integration with the metrics collection system.
     """
 
-    def __init__(self, metrics_collector: Optional[MetricsCollector] = None):
+    def __init__(self, metrics_collector: MetricsCollector | None = None):
         super().__init__()
         self.metrics_collector = metrics_collector
 
     def record_metric(
         self,
         name: str,
-        value: Union[int, float],
-        tags: Optional[Dict[str, str]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        value: int | float,
+        tags: dict[str, str] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Record a metric value."""
         if self.metrics_collector:
             self.metrics_collector.add_metric_value(name, value, tags, metadata)
 
-    def get_metrics_summary(self) -> Dict[str, Any]:
+    def get_metrics_summary(self) -> dict[str, Any]:
         """Get summary of collected metrics."""
         if self.metrics_collector:
             return self.metrics_collector.get_latest_metrics()
         return {}
-
 
 class AdaptiveCallback(LearningCallback):
     """
@@ -491,15 +483,15 @@ class AdaptiveCallback(LearningCallback):
     def __init__(self, adaptation_frequency: int = 10):
         super().__init__()
         self.adaptation_frequency = adaptation_frequency
-        self.adaptation_history: List[Dict[str, Any]] = []
+        self.adaptation_history: list[dict[str, Any]] = []
 
     def should_adapt(self, context: LearningContext) -> bool:
         """Determine if adaptation should occur."""
         return context.epoch % self.adaptation_frequency == 0
 
     def adapt(
-        self, context: LearningContext, logs: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, context: LearningContext, logs: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Perform adaptation and return adaptation details."""
         adaptation_info = {
             "epoch": context.epoch,
@@ -528,7 +520,7 @@ class AdaptiveCallback(LearningCallback):
                 return True
         return False
 
-    def get_callbacks(self) -> List[LearningCallback]:
+    def get_callbacks(self) -> list[LearningCallback]:
         """Get all registered callbacks."""
         return self.callbacks.copy()
 
@@ -536,9 +528,9 @@ class AdaptiveCallback(LearningCallback):
         self,
         method_name: str,
         context: LearningContext,
-        logs: Optional[Dict[str, Any]] = None,
-        timeout: Optional[float] = None,
-    ) -> Dict[str, Any]:
+        logs: dict[str, Any] | None = None,
+        timeout: float | None = None,
+    ) -> dict[str, Any]:
         """
         Call a specific method on all callbacks with enhanced error handling.
 
@@ -574,7 +566,6 @@ class AdaptiveCallback(LearningCallback):
                     break
 
                 callback_name = callback.__class__.__name__
-
 
                     results["successful_callbacks"] += 1
                     results["execution_times"][callback_name] = execution_time
@@ -617,7 +608,7 @@ class AdaptiveCallback(LearningCallback):
                 f"Stack trace for {callback_name}.{method_name}:\n{stack_trace}"
             )
 
-    def graceful_shutdown(self, timeout: Optional[float] = None) -> Dict[str, Any]:
+    def graceful_shutdown(self, timeout: float | None = None) -> dict[str, Any]:
         """
         Perform graceful shutdown of all callbacks.
 
@@ -715,7 +706,6 @@ def create_reinforcement_context(**kwargs) -> LearningContext:
     defaults.update(kwargs)
     return LearningContext(**defaults)
 
-
 def create_supervised_context(**kwargs) -> LearningContext:
     """Create a supervised learning context."""
     defaults = {"learning_type": "supervised", "algorithm_name": "unknown"}
@@ -723,8 +713,7 @@ def create_supervised_context(**kwargs) -> LearningContext:
     return LearningContext(**defaults)
     return LearningContext(**defaults)
 
-
-def safe_callback_execution(error_config: Optional[Dict[str, Any]] = None):
+def safe_callback_execution(error_config: dict[str, Any] | None = None):
     """
     Decorator for safe callback method execution with error handling.
 

@@ -16,7 +16,6 @@ sys.path.insert(0, str(project_root))
 from ztb.training.unified_trainer.algorithms import create_algorithm_trainer
 from ztb.utils.logging_utils import setup_logging
 
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="SAC v436 Signal Guided Training")
     parser.add_argument(
@@ -82,7 +81,6 @@ def main() -> int:
 
     print("\n✅ Training completed successfully!")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

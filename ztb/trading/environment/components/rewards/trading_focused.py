@@ -2,7 +2,6 @@ from ztb.trading.constants import ACTION_BUY, ACTION_SELL
 
 from .base import RewardComponent, RewardContext
 
-
 class TradingFocusedReward(RewardComponent):
     """
     Stage: Trading-focused reward that heavily penalizes HOLD and encourages trading.

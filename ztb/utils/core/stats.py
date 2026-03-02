@@ -12,15 +12,14 @@ Usage:
     corr = correlation(a, b)
 """
 
-from typing import Dict, List, Union, cast
+from typing import cast
 
 import numpy as np
 import pandas as pd
 
 from ztb.metrics.metrics import kurtosis, skewness
 
-
-def calculate_skew(data: Union[pd.Series, pd.DataFrame]) -> Union[float, int]:
+def calculate_skew(data: pd.Series | pd.DataFrame) -> float | int:
     """Calculate skewness of data"""
     if isinstance(data, pd.DataFrame):
         # For DataFrame, calculate mean skewness across numeric columns
@@ -33,8 +32,7 @@ def calculate_skew(data: Union[pd.Series, pd.DataFrame]) -> Union[float, int]:
         # For Series
         return cast(float, skewness(data.values))
 
-
-def calculate_kurtosis(data: Union[pd.Series, pd.DataFrame]) -> Union[float, int]:
+def calculate_kurtosis(data: pd.Series | pd.DataFrame) -> float | int:
     """Calculate kurtosis of data"""
     if isinstance(data, pd.DataFrame):
         # For DataFrame, calculate mean kurtosis across numeric columns
@@ -47,8 +45,7 @@ def calculate_kurtosis(data: Union[pd.Series, pd.DataFrame]) -> Union[float, int
         # For Series
         return cast(float, kurtosis(data.values))
 
-
-def nan_ratio(data: Union[pd.Series, pd.DataFrame]) -> float:
+def nan_ratio(data: pd.Series | pd.DataFrame) -> float:
     """Calculate NaN ratio (0.0 to 1.0)"""
     if isinstance(data, pd.DataFrame):
         total_cells = data.shape[0] * data.shape[1]
@@ -60,22 +57,19 @@ def nan_ratio(data: Union[pd.Series, pd.DataFrame]) -> float:
         nan_count = data.isnull().sum()
         return nan_count / total if total > 0 else 0.0
 
-
 def correlation(a: pd.Series, b: pd.Series) -> float:
     """Calculate Pearson correlation between two series"""
     return cast(float, a.corr(b))
 
-
-def count_features_by_category(feature_names: List[str]) -> Dict[str, int]:
+def count_features_by_category(feature_names: list[str]) -> dict[str, int]:
     """Count features by category"""
-    category_counts: Dict[str, int] = {}
+    category_counts: dict[str, int] = {}
 
     for feature_name in feature_names:
         category = get_feature_category(feature_name)
         category_counts[category] = category_counts.get(category, 0) + 1
 
     return category_counts
-
 
 def get_feature_category(feature_name: str) -> str:
     """Determine feature category from feature name"""

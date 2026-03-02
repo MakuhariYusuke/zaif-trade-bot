@@ -5,7 +5,6 @@ import numpy as np
 from .base import RewardComponent, RewardContext
 from .utils import RewardUtils
 
-
 class UltraProfitReward(RewardComponent):
     """
     Simplified ultra-profit reward that focuses on basic trading principles.
@@ -15,10 +14,8 @@ class UltraProfitReward(RewardComponent):
     ACTION_BUY = 1
     ACTION_SELL = -1
 
-
     def get_name(self) -> str:
         return "ultra_profit"
-
 
     def calculate(self, context: RewardContext) -> float:
         reward = 0.0

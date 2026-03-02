@@ -9,7 +9,6 @@ from ztb.features.core.registry import FeatureRegistry
 # Register scalping features
 register = FeatureRegistry.register
 
-
 @register("price_velocity")
 def price_velocity(df: pd.DataFrame) -> pd.Series:
     """Price velocity - rate of price change over short periods"""
@@ -21,7 +20,6 @@ def price_velocity(df: pd.DataFrame) -> pd.Series:
         else:
             velocity[i] = 0.0
     return pd.Series(velocity, index=df.index, name="price_velocity")
-
 
 @register("micro_trend")
 def micro_trend(df: pd.DataFrame, window: int = 5) -> pd.Series:
@@ -39,7 +37,6 @@ def micro_trend(df: pd.DataFrame, window: int = 5) -> pd.Series:
 
     return pd.Series(trend, index=df.index, name="micro_trend")
 
-
 @register("price_acceleration")
 def price_acceleration(df: pd.DataFrame, window: int = 3) -> pd.Series:
     """Price acceleration - second derivative of price (rate of change of velocity)"""
@@ -56,7 +53,6 @@ def price_acceleration(df: pd.DataFrame, window: int = 3) -> pd.Series:
             acceleration[i] = 0.0
 
     return pd.Series(acceleration, index=df.index, name="price_acceleration")
-
 
 @register("volume_surge")
 def volume_surge(
@@ -81,7 +77,6 @@ def volume_surge(
             surge[i] = 0.0
 
     return pd.Series(surge, index=df.index, name="volume_surge")
-
 
 @register("momentum_divergence")
 def momentum_divergence(
@@ -113,7 +108,6 @@ def momentum_divergence(
 
     return pd.Series(divergence, index=df.index, name="momentum_divergence")
 
-
 @register("tick_volume_ratio")
 def tick_volume_ratio(df: pd.DataFrame, window: int = 10) -> pd.Series:
     """Tick volume ratio - current volume relative to recent average"""
@@ -126,7 +120,6 @@ def tick_volume_ratio(df: pd.DataFrame, window: int = 10) -> pd.Series:
         ratio[i] = volume[i] / avg_volume if avg_volume > 0 else 1.0
 
     return pd.Series(ratio, index=df.index, name="tick_volume_ratio")
-
 
 @register("order_flow_imbalance")
 def order_flow_imbalance(df: pd.DataFrame) -> pd.Series:
@@ -147,7 +140,6 @@ def order_flow_imbalance(df: pd.DataFrame) -> pd.Series:
             imbalance[i] = 0.0
     return pd.Series(imbalance, index=df.index, name="order_flow_imbalance")
 
-
 @register("micro_volatility")
 def micro_volatility(df: pd.DataFrame, window: int = 5) -> pd.Series:
     """Micro volatility for scalping - percentage returns"""
@@ -166,7 +158,6 @@ def micro_volatility(df: pd.DataFrame, window: int = 5) -> pd.Series:
                 volatility[i] = np.std(returns)
     return pd.Series(volatility, index=df.index, name="micro_volatility")
 
-
 @register("spread_pressure")
 def spread_pressure(df: pd.DataFrame) -> pd.Series:
     """Spread pressure indicator for scalping"""
@@ -181,7 +172,6 @@ def spread_pressure(df: pd.DataFrame) -> pd.Series:
         )
         pressure[i] = spread / (body_ratio + 1e-6)  # Avoid division by zero
     return pd.Series(pressure, index=df.index, name="spread_pressure")
-
 
 @register("momentum_burst")
 def momentum_burst(df: pd.DataFrame, window: int = 3) -> pd.Series:
@@ -205,7 +195,6 @@ def momentum_burst(df: pd.DataFrame, window: int = 3) -> pd.Series:
         burst[i] = price_change * np.log(volume_ratio + 1.0)
     return pd.Series(burst, index=df.index, name="momentum_burst")
 
-
 @register("liquidity_surge")
 def liquidity_surge(df: pd.DataFrame, window: int = 5) -> pd.Series:
     """Liquidity surge detector"""
@@ -216,7 +205,6 @@ def liquidity_surge(df: pd.DataFrame, window: int = 5) -> pd.Series:
         recent_max = np.max(volume_window) if len(volume_window) > 0 else 0.0
         surge[i] = volume[i] / recent_max if recent_max > 0 else 1.0
     return pd.Series(surge, index=df.index, name="liquidity_surge")
-
 
 @register("realized_volatility")
 def realized_volatility(df: pd.DataFrame, window: int = 10) -> pd.Series:

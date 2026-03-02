@@ -12,10 +12,8 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
 
 from ztb.ops.alerts.jsonl_loader import load_alerts_from_jsonl
-
 
 AlertRecord = dict[str, object]
 
@@ -27,22 +25,20 @@ except ImportError:
     HAS_REQUESTS = False
     requests = None
 
-
 def load_alerts(
     jsonl_path: Path, since_seconds: int, min_level: str
-) -> List[AlertRecord]:
+) -> list[AlertRecord]:
     """Load alerts from JSONL file."""
     if not jsonl_path.exists():
         print(f"JSONL file not found: {jsonl_path}", file=sys.stderr)
         return []
     return load_alerts_from_jsonl(jsonl_path, since_seconds, min_level)
 
-
 def send_webhook(
     webhook_url: str,
     title: str,
     correlation_id: str,
-    alerts: List[AlertRecord],
+    alerts: list[AlertRecord],
     platform: str = "discord",
 ) -> bool:
     """Send alerts to webhook. Supports Slack and Discord with embeds."""
@@ -137,7 +133,6 @@ def send_webhook(
 
     return False
 
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Notify alerts via webhook")
     parser.add_argument("--correlation-id", required=True, help="Correlation ID")
@@ -211,7 +206,6 @@ def main() -> int:
         print(json.dumps(payload, indent=2))
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main() or 0)

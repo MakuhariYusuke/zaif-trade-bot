@@ -9,22 +9,19 @@ Ensures consistent directory structures and path resolution across components.
 import logging
 import os
 from pathlib import Path
-from typing import List, Optional, Union
 
 logger = logging.getLogger(__name__)
-
 
 class PathManagerError(Exception):
     """Exception raised when path management fails."""
 
     pass
 
-
 class AnalysisPathManager:
     """Centralized path manager for analysis components."""
 
     def __init__(
-        self, base_dir: Optional[Union[str, Path]] = None, create_dirs: bool = True
+        self, base_dir: str | Path | None = None, create_dirs: bool = True
     ):
         """
         Initialize path manager.
@@ -114,7 +111,7 @@ class AnalysisPathManager:
 
         return experiment_path
 
-    def find_latest_experiment_dir(self, experiment_name: str) -> Optional[Path]:
+    def find_latest_experiment_dir(self, experiment_name: str) -> Path | None:
         """
         Find the latest (most recent) experiment directory.
 
@@ -157,9 +154,9 @@ class AnalysisPathManager:
 
     def list_files(
         self, path_name: str, pattern: str = "*", recursive: bool = False
-    ) -> List[Path]:
+    ) -> list[Path]:
         """
-        List files in a standard path.
+        list files in a standard path.
 
         Args:
             path_name: Name of the standard path
@@ -167,7 +164,7 @@ class AnalysisPathManager:
             recursive: Whether to search recursively
 
         Returns:
-            List of matching file paths
+            list of matching file paths
         """
         base_path = self.get_path(path_name)
 
@@ -176,7 +173,7 @@ class AnalysisPathManager:
         else:
             return list(base_path.glob(pattern))
 
-    def ensure_path_exists(self, path: Union[str, Path]) -> Path:
+    def ensure_path_exists(self, path: str | Path) -> Path:
         """
         Ensure a path exists, creating it if necessary.
 
@@ -191,7 +188,7 @@ class AnalysisPathManager:
             path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
-    def get_relative_path(self, absolute_path: Union[str, Path]) -> Path:
+    def get_relative_path(self, absolute_path: str | Path) -> Path:
         """
         Get relative path from the base directory.
 
@@ -203,7 +200,7 @@ class AnalysisPathManager:
         """
         return Path(absolute_path).relative_to(self.base_dir)
 
-    def validate_path_access(self, path: Union[str, Path]) -> bool:
+    def validate_path_access(self, path: str | Path) -> bool:
         """
         Validate that a path is accessible.
 
@@ -216,13 +213,11 @@ class AnalysisPathManager:
         path = Path(path)
         return path.exists() and os.access(path, os.R_OK)
 
-
 # Global path manager instance
 _default_path_manager = None
 
-
 def get_path_manager(
-    base_dir: Optional[Union[str, Path]] = None,
+    base_dir: str | Path | None = None,
 ) -> AnalysisPathManager:
     """
     Get the global path manager instance.
@@ -239,7 +234,6 @@ def get_path_manager(
         _default_path_manager = AnalysisPathManager(base_dir)
 
     return _default_path_manager
-
 
 def resolve_project_path(relative_path: str) -> Path:
     """

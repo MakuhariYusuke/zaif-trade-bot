@@ -14,7 +14,7 @@ import threading
 import time
 from collections import deque
 from contextlib import contextmanager
-from typing import Callable, Deque, Dict, List
+from typing import Callable, Deque
 
 import numpy as np
 import psutil
@@ -27,7 +27,6 @@ from ztb.utils.memory_utils import OperationMemoryTracker
 from ztb.utils.performance_profiler import PerformanceProfiler
 
 logger = logging.getLogger(__name__)
-
 
 class SystemOptimizer:
     """
@@ -75,7 +74,7 @@ class SystemOptimizer:
         # Tracking state
         self.step_counter = 0
         self.memory_history: Deque[float] = deque(maxlen=5000)
-        self.performance_history: Deque[Dict[str, float]] = deque(maxlen=5000)
+        self.performance_history: Deque[dict[str, float]] = deque(maxlen=5000)
         self.cache_hits = 0
         self.cache_misses = 0
 
@@ -231,7 +230,7 @@ class SystemOptimizer:
             logger.debug(f"Cache miss for key: {key}, stored result")
             return result
 
-    def get_system_stats(self) -> Dict[str, object]:
+    def get_system_stats(self) -> dict[str, object]:
         """
         Get comprehensive system statistics.
 
@@ -310,7 +309,6 @@ class SystemOptimizer:
 
         logger.info("System optimizer statistics reset")
 
-
 class MemoryOptimizer:
     """
     Specialized memory optimization utilities.
@@ -347,7 +345,7 @@ class MemoryOptimizer:
             logger.debug("GPU cache cleared")
 
     @staticmethod
-    def get_memory_usage() -> Dict[str, float]:
+    def get_memory_usage() -> dict[str, float]:
         """
         Get current memory usage statistics.
 
@@ -368,7 +366,6 @@ class MemoryOptimizer:
 
         return stats
 
-
 class PerformanceOptimizer:
     """
     CPU performance optimization utilities.
@@ -377,7 +374,7 @@ class PerformanceOptimizer:
     @staticmethod
     def optimize_numpy_operations() -> None:
         """Optimize NumPy operations for performance."""
-        # Set optimal thread count for NumPy
+        # set optimal thread count for NumPy
         import os
 
         os.environ["OMP_NUM_THREADS"] = str(max(1, (psutil.cpu_count() or 1) // 2))
@@ -394,7 +391,7 @@ class PerformanceOptimizer:
             torch.backends.cudnn.deterministic = False
 
     @staticmethod
-    def get_cpu_stats() -> Dict[str, float]:
+    def get_cpu_stats() -> dict[str, float]:
         """
         Get CPU performance statistics.
 

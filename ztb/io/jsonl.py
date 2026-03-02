@@ -13,7 +13,6 @@ from ztb.io.common import PathLike, _to_path, ensure_parent_dir
 
 logger = logging.getLogger(__name__)
 
-
 def _parse_jsonl_object_line(
     line: str,
     *,
@@ -35,7 +34,6 @@ def _parse_jsonl_object_line(
             logger.warning("Skipping non-object JSONL line: %s:%d", source, line_no)
         return None
     return payload
-
 
 def iter_jsonl_objects(
     path: PathLike,
@@ -60,7 +58,6 @@ def iter_jsonl_objects(
             if parsed is not None:
                 yield parsed
 
-
 def read_jsonl_objects(
     path: PathLike,
     *,
@@ -77,7 +74,6 @@ def read_jsonl_objects(
             warn_malformed=warn_malformed,
         )
     )
-
 
 def append_jsonl(
     path: PathLike,

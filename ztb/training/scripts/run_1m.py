@@ -14,7 +14,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -23,7 +23,6 @@ sys.path.insert(0, str(project_root))
 from ztb.training.config.ppo_config import get_ppo_config
 from ztb.training.core.ppo_trainer import PPOTrainer
 from ztb.utils import DiscordNotifier
-
 
 def _create_streaming_pipeline(
     enable_streaming: bool, stream_batch_size: int, logger: logging.Logger
@@ -41,9 +40,6 @@ def _create_streaming_pipeline(
         getattr(pipeline.buffer, "capacity", "unknown"),
     )
     return pipeline
-
-
-
 
 def validate_training_setup(
     data_path: str, checkpoint_dir: str, correlation_id: str
@@ -65,8 +61,7 @@ def validate_training_setup(
 
     return _merge(base, overrides)
 
-
-def _load_unified_overrides() -> Dict[str, Any]:
+def _load_unified_overrides() -> dict[str, Any]:
     """Load serialized unified configuration overrides from the environment."""
     raw = os.environ.get("ZTB_UNIFIED_ITERATIVE_CONFIG")
     if not raw:
@@ -82,10 +77,9 @@ def _load_unified_overrides() -> Dict[str, Any]:
         )
         return {}
 
-
 def _apply_cli_overrides(
-    config: Dict[str, Any], args: argparse.Namespace
-) -> Dict[str, Any]:
+    config: dict[str, Any], args: argparse.Namespace
+) -> dict[str, Any]:
     """Apply CLI-sourced overrides on top of the merged configuration."""
     cfg = copy.deepcopy(config)
 
@@ -144,10 +138,9 @@ def _apply_cli_overrides(
 
     return cfg
 
-
 def build_training_config(
-    args: argparse.Namespace, config_overrides: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+    args: argparse.Namespace, config_overrides: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Build training configuration from command line arguments and overrides."""
 
     # Check if config file is provided - use new ConfigurationManager
@@ -164,7 +157,7 @@ def build_training_config(
         return _apply_cli_overrides(config, args)
 
     # Baseline PPO configuration (keeps legacy defaults for standalone usage)
-    base_config: Dict[str, Any] = {
+    base_config: dict[str, Any] = {
         "ppo": dict(get_ppo_config()),
         "memory_optimization": {},
         "features": {
@@ -184,7 +177,6 @@ def build_training_config(
 
     merged = _deep_merge(base_config, config_overrides or {})
     return _apply_cli_overrides(merged, args)
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run canonical 1M timestep training")
@@ -386,7 +378,6 @@ def main() -> int:
     except Exception as e:
         logger.error(f"Training failed: {e}", exc_info=True)
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

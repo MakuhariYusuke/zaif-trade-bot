@@ -12,7 +12,7 @@ Usage:
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -22,7 +22,6 @@ from ztb.utils.error_utils import safe_operation
 
 logger = logging.getLogger(__name__)
 
-
 class FeaturePipeline:
     """特徴量計算パイプライン（型安全）"""
     
@@ -31,7 +30,7 @@ class FeaturePipeline:
         self.mtf_features_count = mtf_features_count
         self.regime_features_count = regime_features_count
     
-    def validate_base_features(self, df: pd.DataFrame) -> List[str]:
+    def validate_base_features(self, df: pd.DataFrame) -> list[str]:
         """Base 特徴量（30次元）を検証・構築"""
         base_cols = [
             "open", "high", "low", "close", "volume",
@@ -58,10 +57,10 @@ class FeaturePipeline:
         
         return available_cols
     
-    def calculate_mtf_features(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str]]:
+    def calculate_mtf_features(self, df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
         """MTF 特徴量（27次元）を計算 (Resampling + Forward Fill)"""
         df_copy = df.copy()
-        mtf_cols: List[str] = []
+        mtf_cols: list[str] = []
         
         if "close" not in df_copy.columns:
             logger.warning("'close' column not found, skipping MTF features")
@@ -300,10 +299,10 @@ class FeaturePipeline:
         
         return momentum
     
-    def calculate_regime_features(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str]]:
+    def calculate_regime_features(self, df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
         """Regime 特徴量（13次元）を計算"""
         df_copy = df.copy()
-        regime_cols: List[str] = []
+        regime_cols: list[str] = []
         
         # Trend regime (3)
         trend_cols = self._calculate_trend_regime(df_copy)
@@ -325,9 +324,9 @@ class FeaturePipeline:
         return df_copy, regime_cols
     
     @staticmethod
-    def _calculate_trend_regime(df: pd.DataFrame) -> List[str]:
+    def _calculate_trend_regime(df: pd.DataFrame) -> list[str]:
         """Trend Regime (uptrend, neutral, downtrend)"""
-        cols: List[str] = []
+        cols: list[str] = []
         
         if "close" in df.columns:
             close = df["close"].values
@@ -347,9 +346,9 @@ class FeaturePipeline:
         return cols
     
     @staticmethod
-    def _calculate_volatility_regime(df: pd.DataFrame) -> List[str]:
+    def _calculate_volatility_regime(df: pd.DataFrame) -> list[str]:
         """Volatility Regime (low, medium, high)"""
-        cols: List[str] = []
+        cols: list[str] = []
         
         if "close" not in df.columns:
             return cols
@@ -378,9 +377,9 @@ class FeaturePipeline:
         return cols
     
     @staticmethod
-    def _calculate_volume_regime(df: pd.DataFrame) -> List[str]:
+    def _calculate_volume_regime(df: pd.DataFrame) -> list[str]:
         """Volume Regime (low, medium, high)"""
-        cols: List[str] = []
+        cols: list[str] = []
         
         if "volume" in df.columns:
             volume = df["volume"].values
@@ -400,9 +399,9 @@ class FeaturePipeline:
         return cols
     
     @staticmethod
-    def _calculate_price_regime(df: pd.DataFrame) -> List[str]:
+    def _calculate_price_regime(df: pd.DataFrame) -> list[str]:
         """Price Regime (oversold, neutral, overbought, extreme)"""
-        cols: List[str] = []
+        cols: list[str] = []
         
         if "close" in df.columns:
             close = df["close"].values
@@ -426,7 +425,6 @@ class FeaturePipeline:
         
         return cols
 
-
 class EnvironmentFactory:
     """FastIntradayEnvV456 の型安全ファクトリー"""
     
@@ -436,7 +434,7 @@ class EnvironmentFactory:
         initial_balance: float = 1_000_000.0,
         max_position: float = 1.0,
         commission_rate: float = 0.001,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
     ):
         """
         Args:
@@ -453,13 +451,13 @@ class EnvironmentFactory:
         self.config = config or {}
         self.pipeline = FeaturePipeline()
     
-    def prepare_features(self) -> Tuple[pd.DataFrame, Dict[str, List[str]]]:
+    def prepare_features(self) -> tuple[pd.DataFrame, dict[str, list[str]]]:
         """全特徴量を準備"""
         df: pd.DataFrame = self.df.copy()
-        feature_cols: Dict[str, List[str]] = {}
+        feature_cols: dict[str, list[str]] = {}
         
         # Base 特徴量
-        def prepare_base() -> List[str]:
+        def prepare_base() -> list[str]:
             nonlocal df
             cols = self.pipeline.validate_base_features(df)
             if len(cols) < 30:
@@ -480,7 +478,7 @@ class EnvironmentFactory:
         feature_cols["base"] = base_cols
         
         # MTF 特徴量
-        def prepare_mtf() -> List[str]:
+        def prepare_mtf() -> list[str]:
             nonlocal df
             df_with_mtf, mtf_cols = self.pipeline.calculate_mtf_features(df)
             df = df_with_mtf
@@ -494,7 +492,7 @@ class EnvironmentFactory:
         feature_cols["mtf"] = mtf_cols
         
         # Regime 特徴量
-        def prepare_regime() -> List[str]:
+        def prepare_regime() -> list[str]:
             nonlocal df
             df_with_regime, regime_cols = self.pipeline.calculate_regime_features(df)
             df = df_with_regime
@@ -509,7 +507,7 @@ class EnvironmentFactory:
         
         return df, feature_cols
     
-    def create_training_env(self, env_kwargs: Optional[Dict[str, Any]] = None) -> Optional[FastIntradayEnvV456]:
+    def create_training_env(self, env_kwargs: dict[str, Any] | None = None) -> FastIntradayEnvV456 | None:
         """訓練環境を作成（型安全）"""
         try:
             # 特徴量準備

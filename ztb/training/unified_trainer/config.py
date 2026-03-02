@@ -6,19 +6,17 @@ Configuration classes for Unified Trainer.
 from ztb.config.managers.ztb_manager import ZaifTradeBotConfigManager as ConfigManager
 from ztb.config.schemas.zaif import TrainingConfig, ZaifTradeBotConfig
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
-
+from typing import Any
 
 @dataclass
 class UnifiedTrainerConfig:
     """Configuration for Unified Trainer."""
     algorithm: str = "SAC"
     total_timesteps: int = 100000
-    config_path: Optional[str] = None
-    model_save_path: Optional[str] = None
-    log_dir: Optional[str] = None
-    additional_params: Optional[Dict[str, Any]] = None
-
+    config_path: str | None = None
+    model_save_path: str | None = None
+    log_dir: str | None = None
+    additional_params: dict[str, Any] | None = None
 
 def load_config(config_path: str) -> ZaifTradeBotConfig:
     """
@@ -32,7 +30,6 @@ def load_config(config_path: str) -> ZaifTradeBotConfig:
     """
     config_manager = ConfigManager.get_instance()
     return config_manager.load_config(config_path)
-
 
 def get_training_config(config: ZaifTradeBotConfig) -> TrainingConfig:
     """

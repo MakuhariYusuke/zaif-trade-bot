@@ -16,14 +16,12 @@ from ztb.utils.talib_wrapper import TaLibWrapper
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
 
-
 @FeatureRegistry.register("Ultimate_Oscillator")
 def compute_ultimate_oscillator(df: pd.DataFrame) -> pd.Series:
     """Ultimate Oscillator using Ta-Lib wrapper"""
     feature = UltimateOscillator()
     result_df = feature.compute(df)
     return result_df["ultimate_oscillator"]
-
 
 class UltimateOscillator(BaseFeature):
     """

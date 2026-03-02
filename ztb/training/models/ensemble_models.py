@@ -8,7 +8,7 @@ import logging
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from ztb.training.core.ppo_trainer import (  # noqa: E402  pylint: disable=wrong-import-position  # type: ignore[attr-defined]
     PPOTrainer,
@@ -50,8 +50,7 @@ MODEL_SPECS = [
     },
 ]
 
-
-def build_base_config(args: argparse.Namespace) -> Dict[str, Any]:
+def build_base_config(args: argparse.Namespace) -> dict[str, Any]:
     """Return a baseline PPO configuration shared by ensemble members."""
     return {
         "algorithm": "ppo",
@@ -78,9 +77,8 @@ def build_base_config(args: argparse.Namespace) -> Dict[str, Any]:
         "seed": args.seed,
     }
 
-
 def train_model(
-    base_config: Dict[str, Any], spec: Dict[str, Any], args: argparse.Namespace
+    base_config: dict[str, Any], spec: dict[str, Any], args: argparse.Namespace
 ) -> Path:
     """Train a single model according to *spec* and save it to disk."""
     config = deepcopy(base_config)
@@ -124,7 +122,6 @@ def train_model(
     from typing import cast
 
     return cast(Path, target_path)
-
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train PPO ensemble models")
@@ -252,6 +249,5 @@ def parse_args() -> argparse.Namespace:
         help="Enable verbose logging",
     )
     return parser.parse_args()
-
 
 # Main function removed - use scripts/train_ensemble_models.py instead

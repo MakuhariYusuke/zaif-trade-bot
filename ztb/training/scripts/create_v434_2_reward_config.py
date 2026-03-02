@@ -6,10 +6,9 @@ v434.1の問題（0%収益、過度な取引）を解決するための報酬関
 
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
-
-def create_v434_2_reward_config() -> Dict[str, Any]:
+def create_v434_2_reward_config() -> dict[str, Any]:
     """
     v434.2の改良された報酬関数設定を作成
     """
@@ -62,8 +61,7 @@ def create_v434_2_reward_config() -> Dict[str, Any]:
 
     return reward_config
 
-
-def create_v434_2_environment_config() -> Dict[str, Any]:
+def create_v434_2_environment_config() -> dict[str, Any]:
     """
     v434.2の環境設定を作成
     """
@@ -92,7 +90,6 @@ def create_v434_2_environment_config() -> Dict[str, Any]:
     }
 
     return env_config
-
 
 def save_v434_2_config():
     """
@@ -125,7 +122,6 @@ def save_v434_2_config():
     print("\n=== v434.2 環境設定改良内容 ===")
     for improvement in env_config["_improvements"]:
         print(f"• {improvement}")
-
 
 if __name__ == "__main__":
     save_v434_2_config()

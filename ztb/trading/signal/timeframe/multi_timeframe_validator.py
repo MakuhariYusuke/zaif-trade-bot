@@ -4,7 +4,7 @@ Multi-Timeframe Signal Validator for Phase 4
 複数タイムフレームでのシグナル整合性検証
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -16,7 +16,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class MultiTimeframeSignalValidator:
     """
     マルチタイムフレームシグナル検証器
@@ -25,7 +24,7 @@ class MultiTimeframeSignalValidator:
     信頼性の高いシグナルのみを通過させる
     """
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize multi-timeframe signal validator
 
@@ -50,7 +49,7 @@ class MultiTimeframeSignalValidator:
 
         logger.info("MultiTimeframeSignalValidator initialized")
 
-    def _get_default_config(self) -> Dict:
+    def _get_default_config(self) -> dict:
         """Get default configuration"""
         return {
             "consistency_threshold": 0.67,
@@ -62,9 +61,9 @@ class MultiTimeframeSignalValidator:
     def validate_signal_consistency(
         self,
         signal: float,
-        market_data: Dict[str, pd.DataFrame],
+        market_data: dict[str, pd.DataFrame],
         base_timeframe: str = None,
-    ) -> Tuple[float, Dict[str, Any]]:
+    ) -> tuple[float, dict[str, Any]]:
         """
         複数タイムフレームでのシグナル一致性を検証
 
@@ -74,7 +73,7 @@ class MultiTimeframeSignalValidator:
             base_timeframe: 基準タイムフレーム
 
         Returns:
-            Tuple[float, Dict]: (検証後シグナル, 検証結果詳細)
+            tuple[float, dict]: (検証後シグナル, 検証結果詳細)
         """
         if not market_data or len(market_data) < 2:
             # データが不足している場合は元のシグナルを返す
@@ -191,8 +190,8 @@ class MultiTimeframeSignalValidator:
             return 50.0
 
     def _evaluate_consistency(
-        self, base_signal: float, timeframe_signals: Dict[str, float]
-    ) -> Tuple[float, Dict[str, Any]]:
+        self, base_signal: float, timeframe_signals: dict[str, float]
+    ) -> tuple[float, dict[str, Any]]:
         """
         シグナルの一致性を評価
 
@@ -201,7 +200,7 @@ class MultiTimeframeSignalValidator:
             timeframe_signals: タイムフレーム別シグナル
 
         Returns:
-            Tuple[float, Dict]: (一致度スコア, 詳細情報)
+            tuple[float, dict]: (一致度スコア, 詳細情報)
         """
         if not timeframe_signals:
             return 0.0, {}
@@ -256,7 +255,7 @@ class MultiTimeframeSignalValidator:
         self,
         original_signal: float,
         consistency_score: float,
-        consistency_details: Dict[str, Any],
+        consistency_details: dict[str, Any],
     ) -> float:
         """
         一致度に基づいてシグナルを調整
@@ -320,8 +319,8 @@ class MultiTimeframeSignalValidator:
             return 0.0
 
     def get_validation_summary(
-        self, validation_results: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, validation_results: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """
         複数検証結果のサマリーを取得
 
@@ -329,7 +328,7 @@ class MultiTimeframeSignalValidator:
             validation_results: 検証結果のリスト
 
         Returns:
-            Dict: サマリー情報
+            dict: サマリー情報
         """
         if not validation_results:
             return {}

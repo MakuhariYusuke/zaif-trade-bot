@@ -8,14 +8,13 @@ import os
 import signal
 import threading
 from contextlib import contextmanager
-from typing import Iterable, Optional
+from typing import Iterable
 
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
-def configure_signal_handling(policy: str, log: Optional[object] = None) -> None:
+def configure_signal_handling(policy: str, log: object | None = None) -> None:
     """Configure process-wide signal handling based on policy.
 
     Policies:
@@ -47,13 +46,12 @@ def configure_signal_handling(policy: str, log: Optional[object] = None) -> None
 
     _get_logger(log).warning("Unknown signal policy: %s", policy)
 
-
 @contextmanager
 def suppress_signals(
     policy: str = "ignore",
     *,
     enabled: bool = True,
-    log: Optional[object] = None,
+    log: object | None = None,
 ) -> Iterable[None]:
     """Temporarily suppress signals within a critical section."""
     if not enabled or threading.current_thread() is not threading.main_thread():
@@ -84,13 +82,11 @@ def suppress_signals(
         if console_disabled:
             _set_console_ctrl_handler(False, log)
 
-
 def _signal_targets() -> list[int]:
     targets = [signal.SIGINT, signal.SIGTERM]
     if hasattr(signal, "SIGBREAK"):
         targets.append(signal.SIGBREAK)
     return targets
-
 
 def _log_signal(signum: int, frame) -> None:  # type: ignore[override]
     name = None
@@ -100,8 +96,7 @@ def _log_signal(signum: int, frame) -> None:  # type: ignore[override]
         name = str(signum)
     logger.error("Signal received: %s", name)
 
-
-def _set_console_ctrl_handler(ignore: bool, log: Optional[object]) -> bool:
+def _set_console_ctrl_handler(ignore: bool, log: object | None) -> bool:
     if os.name != "nt":
         return False
 
@@ -118,8 +113,7 @@ def _set_console_ctrl_handler(ignore: bool, log: Optional[object]) -> bool:
         _get_logger(log).debug("SetConsoleCtrlHandler unavailable: %s", exc)
         return False
 
-
-def _get_logger(log: Optional[object]):
+def _get_logger(log: object | None):
     if log is None:
         return logger
     return log

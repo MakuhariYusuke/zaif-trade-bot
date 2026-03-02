@@ -19,7 +19,6 @@ from ztb.training.utils.training_utils import (
     setup_project_path,
 )
 
-
 def main() -> None:
     """メイン実行関数"""
     print("=== カリキュラム学習 Stage 2: バランス維持しながら通常報酬関数へ移行 ===")
@@ -106,7 +105,6 @@ def main() -> None:
     print(f"ステップ数: {step_count}")
 
     env.close()
-
 
 if __name__ == "__main__":
     main()

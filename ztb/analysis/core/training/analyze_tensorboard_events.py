@@ -8,7 +8,6 @@ from typing import Any
 from tensorboard.backend.event_processing import event_accumulator
 from ztb.io.json_io import write_json
 
-
 def analyze_tensorboard_events(
     event_file_path: str, session_name: str
 ) -> dict[str, Any]:
@@ -82,7 +81,6 @@ def analyze_tensorboard_events(
 
     return metrics
 
-
 def compare_sessions(
     metrics1: dict[str, Any], metrics2: dict[str, Any], name1: str, name2: str
 ) -> None:
@@ -119,7 +117,6 @@ def compare_sessions(
                     else:
                         print(f"  ❌ {name1}の方が良い（損失が低い）")
 
-
 def main() -> None:
     # SAC_11 (v395g) - 失敗版
     sac11_path = Path("checkpoints/sac_session/SAC_11")
@@ -155,7 +152,6 @@ def main() -> None:
     print(f"\n{'='*80}")
     print("結果を sac_session_comparison.json に保存しました")
     print(f"{'='*80}\n")
-
 
 if __name__ == "__main__":
     main()

@@ -5,7 +5,6 @@ Statistical Analysis Engine for A/B Testing
 
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, Optional, Tuple
 
 import numpy as np
 import scipy.stats as stats
@@ -15,11 +14,10 @@ from .types import ABTestMetrics, StatisticalResult, StatisticalTest
 
 logger = logging.getLogger(__name__)
 
-
 class ABTestAnalyzer:
     """A/Bテスト統計分析エンジン"""
 
-    def __init__(self, config: Optional[ABTestConfig] = None):
+    def __init__(self, config: ABTestConfig | None = None):
         self.config = config or ABTestConfig()
         self.executor = ThreadPoolExecutor(
             max_workers=self.config.performance.max_workers
@@ -64,7 +62,7 @@ class ABTestAnalyzer:
             std_b=std_b,
         )
 
-    def _calculate_stats(self, data: np.ndarray) -> Dict[str, float]:
+    def _calculate_stats(self, data: np.ndarray) -> dict[str, float]:
         """基本統計量を計算"""
         return {"mean": np.mean(data), "std": np.std(data, ddof=1), "count": len(data)}
 
@@ -77,7 +75,7 @@ class ABTestAnalyzer:
 
     def _calculate_confidence_interval(
         self, data_a: np.ndarray, data_b: np.ndarray, confidence: float = 0.95
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """効果量の信頼区間を計算"""
         effect_size = self._calculate_effect_size(data_a, data_b)
         # 簡易的な信頼区間計算（実際にはより複雑な計算が必要）

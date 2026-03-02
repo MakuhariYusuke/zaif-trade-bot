@@ -18,7 +18,6 @@ from .evaluation_types import (
     SystemMetrics,
 )
 
-
 class TestContinuousEvaluationManager(unittest.TestCase):
     """継続的評価マネージャーのテスト"""
 
@@ -334,7 +333,6 @@ class TestContinuousEvaluationManager(unittest.TestCase):
 
         self.assertFalse(self.manager.is_running)
         self.assertGreater(len(self.manager.evaluation_history), 0)
-
 
 if __name__ == "__main__":
     unittest.main()

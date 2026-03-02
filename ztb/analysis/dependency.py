@@ -7,26 +7,25 @@ failure propagation.
 """
 
 from collections import defaultdict, deque
-from typing import Any, Dict, List, Optional, Set
-
+from typing import Any
 
 class DependencyGraph:
     """Directed Acyclic Graph for feature dependencies"""
 
     def __init__(self) -> None:
-        self.graph: Dict[str, Set[str]] = defaultdict(set)  # feature -> dependencies
-        self.reverse_graph: Dict[str, Set[str]] = defaultdict(
+        self.graph: dict[str, set[str]] = defaultdict(set)  # feature -> dependencies
+        self.reverse_graph: dict[str, set[str]] = defaultdict(
             set
         )  # feature -> dependents
-        self.failed_features: Set[str] = set()
-        self.blocked_features: Set[str] = set()
+        self.failed_features: set[str] = set()
+        self.blocked_features: set[str] = set()
 
     def add_dependency(self, feature: str, dependency: str) -> None:
         """Add a dependency relationship: feature depends on dependency"""
         self.graph[feature].add(dependency)
         self.reverse_graph[dependency].add(feature)
 
-    def add_feature_dependencies(self, feature: str, dependencies: List[str]) -> None:
+    def add_feature_dependencies(self, feature: str, dependencies: list[str]) -> None:
         """Add multiple dependencies for a feature"""
         for dep in dependencies:
             self.add_dependency(feature, dep)
@@ -79,7 +78,7 @@ class DependencyGraph:
 
         return False
 
-    def get_evaluation_order(self) -> List[str]:
+    def get_evaluation_order(self) -> list[str]:
         """
         Get topological sort order for feature evaluation.
         Features with no dependencies come first.
@@ -88,7 +87,7 @@ class DependencyGraph:
             raise ValueError("Dependency graph contains cycles")
 
         # Kahn's algorithm
-        in_degree: Dict[str, int] = defaultdict(int)
+        in_degree: dict[str, int] = defaultdict(int)
         for node in self.graph:
             for dep in self.graph[node]:
                 in_degree[dep] += 1
@@ -133,7 +132,7 @@ class DependencyGraph:
         """Check if a feature is blocked due to failed dependencies"""
         return feature in self.blocked_features
 
-    def get_dependency_chain(self, feature: str) -> List[str]:
+    def get_dependency_chain(self, feature: str) -> list[str]:
         """Get the full dependency chain for a feature"""
         chain = []
         visited = set()
@@ -149,7 +148,7 @@ class DependencyGraph:
         traverse(feature)
         return chain
 
-    def get_blocked_children(self, feature: str) -> List[str]:
+    def get_blocked_children(self, feature: str) -> list[str]:
         """Get all features blocked by this feature's failure"""
         blocked = []
         visited = set()
@@ -167,7 +166,7 @@ class DependencyGraph:
         collect_blocked(feature)
         return blocked
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert graph to dictionary representation"""
         return {
             "graph": {k: list(v) for k, v in self.graph.items()},
@@ -177,7 +176,7 @@ class DependencyGraph:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "DependencyGraph":
+    def from_dict(cls, data: dict[str, Any]) -> "DependencyGraph":
         """Create graph from dictionary representation"""
         graph = cls()
         graph.graph = defaultdict(
@@ -190,7 +189,7 @@ class DependencyGraph:
         graph.blocked_features = set(data.get("blocked_features", []))
         return graph
 
-    def get_evaluation_candidates(self, available_features: List[str]) -> List[str]:
+    def get_evaluation_candidates(self, available_features: list[str]) -> list[str]:
         """
         Get features that can be evaluated (all dependencies are available and not failed)
         """
@@ -210,16 +209,15 @@ class DependencyGraph:
 
         return candidates
 
-
 class FeatureDependencyManager:
     """Manager for feature dependencies and evaluation orchestration"""
 
     def __init__(self) -> None:
         self.graph = DependencyGraph()
-        self.feature_categories: Dict[str, str] = {}  # feature -> category
+        self.feature_categories: dict[str, str] = {}  # feature -> category
 
     def register_feature(
-        self, name: str, dependencies: List[str], category: str = "other"
+        self, name: str, dependencies: list[str], category: str = "other"
     ) -> None:
         """Register a feature with its dependencies"""
         self.graph.add_feature_dependencies(name, dependencies)
@@ -234,8 +232,8 @@ class FeatureDependencyManager:
         self,
         feature: str,
         success: bool,
-        error_details: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Dict[str, Any]]:
+        error_details: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
         """Mark the result of feature evaluation"""
         if not success:
             self.graph.mark_feature_failed(feature)
@@ -252,7 +250,7 @@ class FeatureDependencyManager:
 
         return None
 
-    def get_evaluation_plan(self, target_features: List[str]) -> Dict[str, Any]:
+    def get_evaluation_plan(self, target_features: list[str]) -> dict[str, Any]:
         """
         Create an evaluation plan considering dependencies
 
@@ -290,13 +288,13 @@ class FeatureDependencyManager:
             "has_cycles": self.graph.has_cycles(),
         }
 
-    def get_category_features(self, category: str) -> List[str]:
+    def get_category_features(self, category: str) -> list[str]:
         """Get all features in a specific category"""
         return [
             name for name, cat in self.feature_categories.items() if cat == category
         ]
 
-    def validate_graph(self) -> Dict[str, Any]:
+    def validate_graph(self) -> dict[str, Any]:
         """Validate the dependency graph"""
         issues = []
 
@@ -320,7 +318,6 @@ class FeatureDependencyManager:
             "total_features": len(self.feature_categories),
             "total_dependencies": sum(len(deps) for deps in self.graph.graph.values()),
         }
-
 
 def create_dependency_manager() -> FeatureDependencyManager:
     """Factory function to create dependency manager"""

@@ -16,7 +16,6 @@ from typing import Sequence
 
 logger = logging.getLogger(__name__)
 
-
 def append_jsonl_gz(
     path: Path,
     records: Sequence[dict[str, object]],
@@ -39,7 +38,6 @@ def append_jsonl_gz(
         for r in records:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
     return len(records)
-
 
 def read_jsonl_gz(path: Path) -> list[dict[str, object]]:
     """JSONL.gz ファイルを読み込み.

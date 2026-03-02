@@ -16,14 +16,12 @@ from ztb.features.core.registry import FeatureRegistry
 
 from .ichimoku_ext import calculate_ichimoku_extended
 
-
 @FeatureRegistry.register("Ichimoku_Cloud_Slope")
 def compute_ichimoku_cloud_slope(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Cloud Slope - cloud angle and direction analysis"""
     feature = IchimokuCloudSlope()
     result_df = feature.compute(df)
     return result_df["ichimoku_cloud_slope"]
-
 
 class IchimokuCloudSlope(BaseFeature):
     """

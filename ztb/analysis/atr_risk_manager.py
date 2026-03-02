@@ -8,7 +8,7 @@ ATR (Average True Range) を使用した動的リスク管理を実装します�
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from ztb.analysis.common.types import RiskProfile, RiskProfileLimits
 
 import numpy as np
@@ -16,10 +16,8 @@ import pandas as pd
 
 from ztb.utils.performance_profiler import PerformanceProfiler
 
-
 # RiskManagementMode is an alias for RiskProfile
 RiskManagementMode = RiskProfile
-
 
 @dataclass
 class ATRParameters(RiskProfileLimits):
@@ -32,7 +30,7 @@ class ATRParameters(RiskProfileLimits):
     max_stop_distance: float = 0.05  # 最大ストップ距離（5%）
     min_stop_distance: float = 0.005  # 最小ストップ距離（0.5%）
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         base_dict = super().to_dict() if hasattr(super(), 'to_dict') else {}
         return {
@@ -44,7 +42,6 @@ class ATRParameters(RiskProfileLimits):
             "max_stop_distance": self.max_stop_distance,
             "min_stop_distance": self.min_stop_distance,
         }
-
 
 @dataclass
 class RiskLevel:
@@ -64,7 +61,6 @@ class RiskLevel:
         """低ボラティリティか"""
         return self.volatility_percentile < 0.3
 
-
 @dataclass
 class PositionRiskLimits:
     """ポジションリスク制限"""
@@ -72,7 +68,7 @@ class PositionRiskLimits:
     entry_price: float
     stop_loss_price: float
     take_profit_price: float
-    trailing_stop_price: Optional[float]
+    trailing_stop_price: float | None
     risk_amount: float
     risk_percentage: float
     atr_value: float
@@ -100,21 +96,20 @@ class PositionRiskLimits:
         """Maximum position size derived from risk percentage (simple proxy)."""
         return self.risk_percentage
 
-
 class ATRRiskManager:
     """ATRベースリスクマネージャー"""
 
-    def __init__(self, atr_params: Optional[ATRParameters] = None):
+    def __init__(self, atr_params: ATRParameters | None = None):
         self.atr_params = atr_params or ATRParameters()
         self.profiler = PerformanceProfiler()
         self.logger = logging.getLogger(__name__)
 
         # ATR履歴（動的調整用）
-        self.atr_history: List[float] = []
-        self.volatility_history: List[float] = []
+        self.atr_history: list[float] = []
+        self.volatility_history: list[float] = []
 
     def calculate_atr(
-        self, data: pd.DataFrame, period: Optional[int] = None
+        self, data: pd.DataFrame, period: int | None = None
     ) -> pd.Series:
         """
         ATRを計算
@@ -313,7 +308,7 @@ class ATRRiskManager:
 
     def update_trailing_stop(
         self, current_price: float, limits: PositionRiskLimits, is_long: bool = True
-    ) -> Optional[float]:
+    ) -> float | None:
         """
         トレーリングストップを更新
 
@@ -351,7 +346,7 @@ class ATRRiskManager:
 
     def should_exit_position(
         self, current_price: float, limits: PositionRiskLimits, is_long: bool = True
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         ポジションを退出すべきかを判定
 
@@ -397,8 +392,8 @@ class ATRRiskManager:
     def optimize_atr_parameters(
         self,
         historical_data: pd.DataFrame,
-        trades: List[Dict[str, Any]],
-        parameter_ranges: Optional[Dict[str, List[float]]] = None,
+        trades: list[dict[str, Any]],
+        parameter_ranges: dict[str, list[float]] | None = None,
     ) -> ATRParameters:
         """
         ATRパラメータを最適化
@@ -444,7 +439,7 @@ class ATRRiskManager:
         return best_params or self.atr_params
 
     def _evaluate_parameters(
-        self, params: ATRParameters, data: pd.DataFrame, trades: List[Dict[str, Any]]
+        self, params: ATRParameters, data: pd.DataFrame, trades: list[dict[str, Any]]
     ) -> float:
         """パラメータを評価"""
         # ATR計算
@@ -494,7 +489,6 @@ class ATRRiskManager:
         score = total_return + (win_rate * 0.1)  # 勝率に10%の重み
 
         return score
-
 
 # ===== 使用例 =====
 

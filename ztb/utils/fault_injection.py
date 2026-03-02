@@ -14,7 +14,7 @@ from typing import (
     AsyncContextManager,
     AsyncGenerator,
     Callable,
-    Dict,
+    dict,
     Optional,
     Type,
 )
@@ -22,7 +22,6 @@ from typing import (
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 @dataclass
 class FaultInjectionConfig:
@@ -34,14 +33,13 @@ class FaultInjectionConfig:
     severity: float  # 0.0 to 1.0
     expected_action: str  # 'pause', 'resume', 'continue'
 
-
 class FaultInjector:
     """Manages fault injection during test execution."""
 
     def __init__(self) -> None:
         """Initialize fault injector."""
-        self.active_faults: Dict[str, FaultInjectionConfig] = {}
-        self._fault_handlers: Dict[str, Callable[..., Any]] = {}
+        self.active_faults: dict[str, FaultInjectionConfig] = {}
+        self._fault_handlers: dict[str, Callable[..., Any]] = {}
 
     def register_handler(self, fault_type: str, handler: Callable[..., Any]) -> None:
         """Register a handler for a specific fault type."""
@@ -65,7 +63,6 @@ class FaultInjector:
     def get_active_faults(self) -> list[str]:
         """Get list of currently active fault names."""
         return list(self.active_faults.keys())
-
 
 class FaultContext:
     """Context manager for fault injection."""
@@ -99,9 +96,9 @@ class FaultContext:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[Any],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: Any | None,
     ) -> None:
         """Exit fault context - deactivate the fault."""
         del self.injector.active_faults[self.config.name]
@@ -110,10 +107,8 @@ class FaultContext:
             f"FAULT_INJECTION_END: {self.config.name} correlation_id={self.correlation_id}"
         )
 
-
 # Global fault injector instance
-_fault_injector: Optional[FaultInjector] = None
-
+_fault_injector: FaultInjector | None = None
 
 def get_fault_injector() -> FaultInjector:
     """Get global fault injector instance."""
@@ -122,7 +117,6 @@ def get_fault_injector() -> FaultInjector:
         _fault_injector = FaultInjector()
         _register_default_handlers(_fault_injector)
     return _fault_injector
-
 
 def _register_default_handlers(injector: FaultInjector) -> None:
     """Register default fault handlers."""
@@ -179,7 +173,6 @@ def _register_default_handlers(injector: FaultInjector) -> None:
     injector.register_handler("cpu_pause", cpu_pause_handler)
     injector.register_handler("corrupted_checkpoint", corrupted_checkpoint_handler)
     injector.register_handler("stream_throttle", stream_throttle_handler)
-
 
 @contextlib.asynccontextmanager
 async def inject_fault(

@@ -7,7 +7,7 @@ capabilities to SAC training classes.
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 import numpy as np
 import pandas as pd
@@ -22,7 +22,6 @@ from ztb.io.state_persistence import read_state_payload, write_state_payload
 
 logger = logging.getLogger(__name__)
 
-
 class RegimePerformanceRecord(TypedDict):
     """Performance stats per regime."""
 
@@ -31,7 +30,6 @@ class RegimePerformanceRecord(TypedDict):
     avg_reward: float
     total_steps: int
 
-
 class RegimePerformanceSummaryRecord(TypedDict):
     """Public summary payload for a regime."""
 
@@ -39,13 +37,11 @@ class RegimePerformanceSummaryRecord(TypedDict):
     total_steps: int
     sample_count: int
 
-
 class SecondaryRegimeRecord(TypedDict):
     """Serializable secondary regime entry."""
 
     regime: str
     confidence: float
-
 
 class RegimeHistoryRecord(TypedDict):
     """Serializable regime history entry."""
@@ -55,7 +51,6 @@ class RegimeHistoryRecord(TypedDict):
     confidence: float
     secondary_regimes: list[SecondaryRegimeRecord]
 
-
 class RegimeExportPayload(TypedDict):
     """Serializable regime export payload."""
 
@@ -63,7 +58,6 @@ class RegimeExportPayload(TypedDict):
     regime_performance: dict[str, RegimePerformanceRecord]
     current_regime: str | None
     config: dict[str, object]
-
 
 class RegimeAdaptiveTrainerMixin(ABC):
     """
@@ -76,7 +70,7 @@ class RegimeAdaptiveTrainerMixin(ABC):
     - Performance tracking per regime
     """
 
-    def __init__(self, regime_config: Optional[dict[str, object]] = None):
+    def __init__(self, regime_config: dict[str, object] | None = None):
         """
         Initialize regime adaptive capabilities
 
@@ -84,8 +78,8 @@ class RegimeAdaptiveTrainerMixin(ABC):
             regime_config: Configuration for regime adaptation
         """
         self.regime_config = regime_config or self._get_default_regime_config()
-        self.regime_classifier: Optional[MarketRegimeClassifier] = None
-        self.current_regime: Optional[RegimeType] = None
+        self.regime_classifier: MarketRegimeClassifier | None = None
+        self.current_regime: RegimeType | None = None
         self.regime_history: list[RegimeDetectionResult] = []
         self.regime_performance: dict[str, RegimePerformanceRecord] = {}
         self.regime_adaptation_enabled = self.regime_config.get("enabled", True)
@@ -202,7 +196,7 @@ class RegimeAdaptiveTrainerMixin(ABC):
 
     def detect_market_regime(
         self, data: pd.DataFrame, current_index: int = -1
-    ) -> Optional[RegimeDetectionResult]:
+    ) -> RegimeDetectionResult | None:
         """
         Detect current market regime
 
@@ -392,7 +386,7 @@ class RegimeAdaptiveTrainerMixin(ABC):
         Get suggestions for improving regime adaptation
 
         Returns:
-            List of suggestion strings
+            list of suggestion strings
         """
         suggestions = []
 
@@ -511,7 +505,7 @@ class RegimeAdaptiveTrainerMixin(ABC):
         pass
 
     @abstractmethod
-    def get_current_market_data(self) -> Optional[pd.DataFrame]:
+    def get_current_market_data(self) -> pd.DataFrame | None:
         """
         Get current market data for regime detection
 

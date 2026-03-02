@@ -149,7 +149,6 @@ continuous_action < -0.3333 → SELL
 
     return report
 
-
 def save_report():
     """Save the analysis report to file."""
 
@@ -168,7 +167,6 @@ def save_report():
     print("SAC v430 詳細分析レポート")
     print("=" * 80)
     print(report)
-
 
 if __name__ == "__main__":
     save_report()

@@ -5,7 +5,7 @@ ReportGenerator: Unified report generation for experiments and quality gates.
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ztb.types.common import ConfigDict
 from ztb.io.csv_io import write_csv_dicts
@@ -13,21 +13,20 @@ from ztb.io.json_io import write_json
 from ztb.io.text_io import write_text
 from ztb.utils.path_utils import ensure_dir
 
-
 class ReportGenerator:
     """Unified report generator."""
 
-    def generate_csv(self, results: List[Dict[str, Any]], file_path: str) -> None:
+    def generate_csv(self, results: list[dict[str, Any]], file_path: str) -> None:
         """Generate CSV report."""
         if not results:
             return
         write_csv_dicts(file_path, results)
 
-    def generate_json(self, results: List[Dict[str, Any]], file_path: str) -> None:
+    def generate_json(self, results: list[dict[str, Any]], file_path: str) -> None:
         """Generate JSON report."""
         write_json(file_path, results, indent=2, ensure_ascii=False, default=str)
 
-    def generate_markdown(self, results: List[Dict[str, Any]], file_path: str) -> None:
+    def generate_markdown(self, results: list[dict[str, Any]], file_path: str) -> None:
         """Generate Markdown report."""
         if not results:
             return
@@ -57,7 +56,7 @@ class ReportGenerator:
         self,
         experiment_id: str,
         config: ConfigDict,
-        error: Optional[Exception] = None,
+        error: Exception | None = None,
     ) -> None:
         """Save minimal experiment dump on failure."""
         dump_dir = Path("logs/dumps")

@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 
-
 class GRUFeatureExtractor(BaseFeaturesExtractor):
     """
     GRU-based feature extractor for Recurrent RL.

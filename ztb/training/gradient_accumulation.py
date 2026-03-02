@@ -4,16 +4,16 @@ Gradient Accumulation Utilities for SAC Training
 This module provides gradient accumulation functionality to enable training
 with effectively larger batch sizes on limited GPU memory.
 """
+from __future__ import annotations
 
 import logging
 from contextlib import contextmanager
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable
 
 import torch
 import torch.nn as nn
 
 logger = logging.getLogger(__name__)
-
 
 class GradientAccumulator:
     """
@@ -23,10 +23,10 @@ class GradientAccumulator:
     def __init__(
         self,
         accumulation_steps: int = 1,
-        clip_grad_norm: Optional[float] = None,
-        clip_grad_value: Optional[float] = None,
+        clip_grad_norm: float | None = None,
+        clip_grad_value: float | None = None,
         mixed_precision: bool = False,
-        scaler: Optional["torch.cuda.amp.GradScaler"] = None,
+        scaler: torch.cuda.amp.GradScaler | None = None,
     ):
         """
         Initialize gradient accumulator.
@@ -60,8 +60,8 @@ class GradientAccumulator:
         self,
         loss: torch.Tensor,
         optimizer: "torch.optim.Optimizer",
-        scheduler: Optional[Any] = None,
-    ) -> Dict[str, Any]:
+        scheduler: Any | None = None,
+    ) -> dict[str, Any]:
         """
         Perform one accumulation step.
 
@@ -105,7 +105,7 @@ class GradientAccumulator:
         return step_info
 
     def _update_parameters(
-        self, optimizer: "torch.optim.Optimizer", scheduler: Optional[Any] = None
+        self, optimizer: "torch.optim.Optimizer", scheduler: Any | None = None
     ):
         """Update model parameters after gradient accumulation."""
         # Clip gradients if specified
@@ -152,7 +152,7 @@ class GradientAccumulator:
         self.step_count = 0
         self.accumulated_loss = 0.0
 
-    def _get_update_info(self) -> Dict[str, Any]:
+    def _get_update_info(self) -> dict[str, Any]:
         """Get information about the parameter update."""
         return {
             "parameters_updated": True,
@@ -166,7 +166,7 @@ class GradientAccumulator:
 
     @contextmanager
     def accumulation_context(
-        self, optimizer: "torch.optim.Optimizer", scheduler: Optional[Any] = None
+        self, optimizer: "torch.optim.Optimizer", scheduler: Any | None = None
     ):
         """
         Context manager for gradient accumulation.
@@ -199,7 +199,6 @@ class GradientAccumulator:
                     dummy_loss = torch.tensor(0.0, requires_grad=True)
                     self.accumulate_step(dummy_loss, optimizer, scheduler)
 
-
 class GradientAccumulationTrainer:
     """
     Trainer wrapper that adds gradient accumulation support.
@@ -210,7 +209,7 @@ class GradientAccumulationTrainer:
         model: nn.Module,
         optimizer: "torch.optim.Optimizer",
         accumulation_steps: int = 1,
-        clip_grad_norm: Optional[float] = None,
+        clip_grad_norm: float | None = None,
         mixed_precision: bool = False,
         device: str = "cpu",
     ):
@@ -253,10 +252,10 @@ class GradientAccumulationTrainer:
 
     def training_step(
         self,
-        batch: Union[torch.Tensor, Tuple[torch.Tensor, ...]],
+        batch: torch.Tensor | tuple[torch.Tensor, ...],
         loss_fn: Callable[[Any, Any], torch.Tensor],
-        scheduler: Optional[Any] = None,
-    ) -> Dict[str, Any]:
+        scheduler: Any | None = None,
+    ) -> dict[str, Any]:
         """
         Perform one training step with gradient accumulation.
 
@@ -298,7 +297,6 @@ class GradientAccumulationTrainer:
         """Reset gradient accumulator."""
         self.accumulator.reset()
 
-
 # Utility functions
 def create_gradient_accumulator(
     accumulation_steps: int = 4,
@@ -329,10 +327,9 @@ def create_gradient_accumulator(
         scaler=scaler,
     )
 
-
 def effective_batch_size_info(
     actual_batch_size: int, accumulation_steps: int, num_epochs: int = 1
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get information about effective batch size and training implications.
 

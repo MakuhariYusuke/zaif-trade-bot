@@ -30,7 +30,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Union, overload
+from typing import Any, overload
 
 import numpy as np
 import pandas as pd
@@ -89,13 +89,11 @@ from .backtest_analysis_types import (
 
 logger = get_logger(__name__)
 
-
 # Guard optional dependency imports for SciPy-based stats
 try:
     from scipy import stats as scipy_stats
 except (ImportError, OSError):
     scipy_stats = None
-
 
 # Utility function for coefficient of variation calculation - moved to metrics module
 # def _calculate_coefficient_of_variation(values: np.ndarray) -> float:
@@ -107,15 +105,14 @@ except (ImportError, OSError):
 #         return 0.0
 #     return np.std(values) / mean_val
 
-
 class BacktestAnalyzer(BaseAnalyzer):
     """汎用バックテスト分析クラス"""
 
     def __init__(
         self,
         results_path: str,
-        training_report_path: Optional[str] = None,
-        config: Optional[Dict[str, Any]] = None,
+        training_report_path: str | None = None,
+        config: dict[str, Any] | None = None,
     ):
         self.config = config or {}
         self.results_path = Path(results_path)
@@ -135,9 +132,9 @@ class BacktestAnalyzer(BaseAnalyzer):
         self.display_manager = AnalysisDisplayManager()
 
         # 計算結果のキャッシュ（効率化・メモリリーク防止）
-        self._metrics_cache: Dict[str, Any] = {}
-        self._returns_cache: Optional[np.ndarray] = None
-        self._daily_returns_cache: Optional[np.ndarray] = None
+        self._metrics_cache: dict[str, Any] = {}
+        self._returns_cache: np.ndarray | None = None
+        self._daily_returns_cache: np.ndarray | None = None
 
         # メモリ管理設定
         self._max_cache_size = 100  # MB
@@ -147,7 +144,7 @@ class BacktestAnalyzer(BaseAnalyzer):
         """日次リターンをメモリ効率的に計算・キャッシュ"""
         # キャッシュ属性の初期化（__init__未実行時の対応）
         if not hasattr(self, "_daily_returns_cache"):
-            self._daily_returns_cache: Optional[np.ndarray] = None
+            self._daily_returns_cache: np.ndarray | None = None
 
         # キャッシュチェック
         if self._daily_returns_cache is not None:
@@ -283,7 +280,6 @@ class BacktestAnalyzer(BaseAnalyzer):
         """Check if the loaded data is in unified format."""
         return "results" in self.data and isinstance(self.data.get("results"), list)
 
-
     def _get_valid_time_series(self) -> tuple[pd.DatetimeIndex, np.ndarray]:
         timestamps_raw = self.data.get("timestamps")
         portfolio_history = np.array(self.data.get("portfolio_history", []))
@@ -300,7 +296,7 @@ class BacktestAnalyzer(BaseAnalyzer):
 
         return timestamps[valid_mask], portfolio_history[valid_mask]
 
-    def _load_training_data(self) -> Optional[Dict[str, Any]]:
+    def _load_training_data(self) -> dict[str, Any] | None:
         """Load training report from JSON file."""
         if not self.training_report_path:
             return None
@@ -369,7 +365,7 @@ class BacktestAnalyzer(BaseAnalyzer):
 
     def analyze(
         self,
-        data: Optional[AnalysisData] = None,
+        data: AnalysisData | None = None,
         display: bool = False,
         show_plots: bool = True,
         save_plots: bool = True,
@@ -475,7 +471,7 @@ class BacktestAnalyzer(BaseAnalyzer):
 
     def display_results(
         self,
-        results: Optional[AnalysisResult] = None,
+        results: AnalysisResult | None = None,
         title: str = "Backtest Analysis Results",
         show_plots: bool = True,
         save_plots: bool = True,
@@ -506,7 +502,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             save_plots=save_plots,
         )
 
-    def _convert_to_display_format(self, results: AnalysisResult) -> Dict[str, Any]:
+    def _convert_to_display_format(self, results: AnalysisResult) -> dict[str, Any]:
         """
         Convert analysis results to format expected by AnalysisDisplayManager.
 
@@ -567,9 +563,9 @@ class BacktestAnalyzer(BaseAnalyzer):
         """リスク指標を計算（キャッシュ活用・バッチ処理）"""
         # キャッシュ属性の初期化（__init__未実行時の対応）
         if not hasattr(self, "_metrics_cache"):
-            self._metrics_cache: Dict[str, Any] = {}
-            self._returns_cache: Optional[np.ndarray] = None
-            self._daily_returns_cache: Optional[np.ndarray] = None
+            self._metrics_cache: dict[str, Any] = {}
+            self._returns_cache: np.ndarray | None = None
+            self._daily_returns_cache: np.ndarray | None = None
 
         # キャッシュチェック
         cache_key = "risk_metrics"
@@ -629,7 +625,7 @@ class BacktestAnalyzer(BaseAnalyzer):
         pnls = np.array(self.data["trade_pnls"])
         return profit_factor(pnls)
 
-    def calculate_enhanced_statistics(self) -> Dict[str, Any]:
+    def calculate_enhanced_statistics(self) -> dict[str, Any]:
         """改善された統計分析を実行"""
         if "portfolio_history" not in self.data:
             return {}
@@ -1022,7 +1018,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             downtrend_mask = (short_ma < long_ma).fillna(False).values
             sideways_mask = ~(uptrend_mask | downtrend_mask)
 
-            outputs: dict[str, Optional[Dict[str, Union[str, float]]]] = {
+            outputs: dict[str, dict[str, str | float] | None] = {
                 "uptrend": None,
                 "downtrend": None,
                 "sideways": None,
@@ -2272,7 +2268,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             "num_trades": len(pnls),
         }
 
-    def _analyze_by_volatility_regimes(self, pnls: np.ndarray) -> Dict[str, Any]:
+    def _analyze_by_volatility_regimes(self, pnls: np.ndarray) -> dict[str, Any]:
         """ボラティリティレジーム別の分析"""
         rolling_vol = pd.Series(pnls).rolling(50).std()
         # NaNを除外した有効なボラティリティデータを使用
@@ -2301,7 +2297,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             ),
         }
 
-    def _analyze_by_trend_regimes(self, pnls: np.ndarray) -> Dict[str, Any]:
+    def _analyze_by_trend_regimes(self, pnls: np.ndarray) -> dict[str, Any]:
         """トレンドレジーム別の分析"""
         # 移動平均でトレンドを判定
         ma_short = pd.Series(pnls).rolling(20).mean()
@@ -2332,7 +2328,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             ),
         }
 
-    def _analyze_by_drawdown_periods(self, pnls: np.ndarray) -> Dict[str, Any]:
+    def _analyze_by_drawdown_periods(self, pnls: np.ndarray) -> dict[str, Any]:
         """ドローダウン期間別の分析"""
         cumulative = np.cumprod(1 + pnls)
         peak = np.maximum.accumulate(cumulative)
@@ -2356,7 +2352,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             ),
         }
 
-    def _analyze_seasonal_performance(self, pnls: np.ndarray) -> Dict[str, Any]:
+    def _analyze_seasonal_performance(self, pnls: np.ndarray) -> dict[str, Any]:
         """季節性パフォーマンス分析"""
         if "timestamps" not in self.data:
             return {"error": "No timestamp data available"}
@@ -2417,7 +2413,7 @@ class BacktestAnalyzer(BaseAnalyzer):
         return consistency_score
 
     def _calculate_seasonal_consistency(
-        self, hourly: Dict, weekday: Dict, monthly: Dict
+        self, hourly: dict, weekday: dict, monthly: dict
     ) -> float:
         """季節性の一貫性を計算"""
         seasonal_scores = []
@@ -2448,7 +2444,7 @@ class BacktestAnalyzer(BaseAnalyzer):
 
         return np.mean(seasonal_scores) if seasonal_scores else 0.0
 
-    def _calculate_robustness_score(self, robustness_metrics: Dict) -> float:
+    def _calculate_robustness_score(self, robustness_metrics: dict) -> float:
         """総合的なロバストネススコアを計算"""
         scores = []
 
@@ -2486,7 +2482,7 @@ class BacktestAnalyzer(BaseAnalyzer):
 
         return np.mean(scores) if scores else 0.0
 
-    def _analyze_backtest_action_distribution(self) -> Dict[str, float]:
+    def _analyze_backtest_action_distribution(self) -> dict[str, float]:
         """バックテスト時のアクション分布を分析"""
         # action_distributionが既に計算済みの場合はそれを使用
         if "action_distribution" in self.data:
@@ -2659,7 +2655,7 @@ class BacktestAnalyzer(BaseAnalyzer):
             ),
         }
 
-    def perform_stress_tests(self) -> Dict[str, Any]:
+    def perform_stress_tests(self) -> dict[str, Any]:
         """ストレステストの実行"""
         if "portfolio_history" not in self.data:
             return {}
@@ -2735,7 +2731,7 @@ class BacktestAnalyzer(BaseAnalyzer):
 
         return stress_tests
 
-    def analyze_walk_forward_efficiency(self) -> Dict[str, Any]:
+    def analyze_walk_forward_efficiency(self) -> dict[str, Any]:
         """ウォークフォワード分析の効率性評価"""
         if "portfolio_history" not in self.data:
             return {}
@@ -2744,8 +2740,8 @@ class BacktestAnalyzer(BaseAnalyzer):
 
         # 移動窓分析（簡易的なウォークフォワードシミュレーション）
         window_sizes = [100, 200, 500]
-        window_metrics: Dict[str, Dict[str, float]] = {}
-        adaptation_analysis: Dict[str, Union[float, int]] = {}
+        window_metrics: dict[str, dict[str, float]] = {}
+        adaptation_analysis: dict[str, float | int] = {}
 
         for window_size in window_sizes:
             if len(portfolio_values) < window_size * 2:
@@ -2877,7 +2873,7 @@ class BacktestAnalyzer(BaseAnalyzer):
 
     def create_market_condition_balanced_dataset(
         self, output_path: str = "data/btc_balanced_dataset.csv"
-    ) -> Optional[pd.DataFrame]:
+    ) -> pd.DataFrame | None:
         """市場条件バランスの取れたデータセットを作成"""
         try:
             # BTCDataAugmentorを活用して多様な市場条件を追加
@@ -2906,7 +2902,6 @@ class BacktestAnalyzer(BaseAnalyzer):
             print(f"データセット作成エラー: {e}")
             return None
 
-
 def _json_friendly(value: Any) -> Any:
     if isinstance(value, (np.integer, np.floating)):
         return value.item()
@@ -2917,7 +2912,6 @@ def _json_friendly(value: Any) -> Any:
     if isinstance(value, (np.bool_,)):
         return bool(value)
     return str(value)
-
 
 def main() -> None:
     """メイン関数 - コマンドラインからバックテスト分析を実行"""
@@ -3104,7 +3098,6 @@ def main() -> None:
         return 1
 
     return 0
-
 
 if __name__ == "__main__":
     exit(main())

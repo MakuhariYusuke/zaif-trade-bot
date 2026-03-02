@@ -7,7 +7,6 @@ import pandas as pd
 
 from ztb.features.core.registry import FeatureRegistry
 
-
 @FeatureRegistry.register("ReturnStdDev")
 def compute_return_stddev(df: pd.DataFrame, period: int = 20) -> pd.Series:
     """Compute standard deviation of returns"""

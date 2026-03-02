@@ -5,7 +5,7 @@ Type definitions for Continuous Evaluation and Monitoring
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 try:
     # Import alert types from common types to avoid duplication and maintain
@@ -64,7 +64,6 @@ __all__ = [
     "AlertStatus",
 ]
 
-
 class MetricType(Enum):
     """メトリクスタイプ"""
 
@@ -74,7 +73,6 @@ class MetricType(Enum):
     MARKET = "market"  # 市場メトリクス
     ADAPTATION = "adaptation"  # 適応メトリクス
 
-
 @dataclass
 class MetricValue:
     """メトリクス値"""
@@ -83,9 +81,8 @@ class MetricValue:
     value: float
     timestamp: datetime
     metric_type: MetricType
-    tags: Dict[str, str] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-
+    tags: dict[str, str] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class TradingPerformanceMetrics:
@@ -112,7 +109,7 @@ class TradingPerformanceMetrics:
     alpha: float = 0.0
     beta: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return asdict(self)
 
@@ -160,7 +157,6 @@ class TradingPerformanceMetrics:
             # Don't raise from metrics computation, keep defaults
             pass
 
-
 @dataclass
 class RiskMetrics:
     """リスクメトリクス"""
@@ -205,21 +201,19 @@ class RiskMetrics:
             pass
         return score
 
-
 @dataclass
 class SystemMetrics:
     """システムメトリクス"""
 
     cpu_usage_percent: float
     memory_usage_mb: float
-    gpu_memory_usage_mb: Optional[float]
+    gpu_memory_usage_mb: float | None
     disk_usage_percent: float
     network_latency_ms: float
     api_response_time_ms: float
     error_rate: float
     uptime_seconds: float
     timestamp: datetime
-
 
 @dataclass
 class MarketMetrics:
@@ -231,7 +225,6 @@ class MarketMetrics:
     market_depth: float
     order_book_imbalance: float
     timestamp: datetime
-
 
 @dataclass
 class AdaptationMetrics:
@@ -245,29 +238,26 @@ class AdaptationMetrics:
     stability_score: float
     timestamp: datetime
 
-
 @dataclass
 class DashboardConfig:
     """ダッシュボード設定"""
 
     refresh_interval_seconds: int
-    metrics_to_display: List[str]
-    chart_types: Dict[str, str]
+    metrics_to_display: list[str]
+    chart_types: dict[str, str]
     alert_summary_enabled: bool
     historical_period_days: int
-
 
 @dataclass
 class ReportConfig:
     """レポート設定"""
 
     report_type: str  # "daily", "weekly", "monthly"
-    include_metrics: List[str]
+    include_metrics: list[str]
     include_alerts: bool
     include_charts: bool
-    recipients: List[str]
+    recipients: list[str]
     storage_path: str
-
 
 @dataclass
 class Notification:
@@ -278,29 +268,26 @@ class Notification:
     channel: str
     sent_at: datetime
     status: str  # "sent", "failed", "pending"
-    error_message: Optional[str] = None
-
+    error_message: str | None = None
 
 @dataclass
 class TimeSeriesData:
     """時系列データ"""
 
     metric_name: str
-    timestamps: List[datetime]
-    values: List[float]
-
+    timestamps: list[datetime]
+    values: list[float]
 
 @dataclass
 class DashboardData:
     """ダッシュボードデータ"""
 
     timestamp: datetime
-    latest_metrics: Dict[str, MetricValue]
-    time_series: Dict[str, TimeSeriesData]
-    alert_summary: Dict[str, Any]
-    performance_summary: Dict[str, Any]
+    latest_metrics: dict[str, MetricValue]
+    time_series: dict[str, TimeSeriesData]
+    alert_summary: dict[str, Any]
+    performance_summary: dict[str, Any]
     refresh_interval_seconds: int
-
 
 @dataclass
 class ReportData:
@@ -309,15 +296,13 @@ class ReportData:
     report_id: str
     generated_at: datetime
     period_days: int
-    statistics: Dict[str, Dict[str, float]]
-    trends: Dict[str, str]
-    alert_analysis: Dict[str, Any]
-    performance_analysis: Dict[str, Any]
-    recommendations: List[str]
-
+    statistics: dict[str, dict[str, float]]
+    trends: dict[str, str]
+    alert_analysis: dict[str, Any]
+    performance_analysis: dict[str, Any]
+    recommendations: list[str]
 
 # 安全メカニズム関連の型定義
-
 
 class SafetyLevel(Enum):
     """安全レベル"""
@@ -326,7 +311,6 @@ class SafetyLevel(Enum):
     WARNING = "warning"  # 警告状態
     CRITICAL = "critical"  # 重大な問題
     EMERGENCY = "emergency"  # 緊急停止
-
 
 class AnomalyType(Enum):
     """異常タイプ"""
@@ -337,7 +321,6 @@ class AnomalyType(Enum):
     MARKET = "market"  # 市場異常
     MODEL = "model"  # モデル異常
 
-
 class FallbackType(Enum):
     """フォールバックタイプ"""
 
@@ -346,7 +329,6 @@ class FallbackType(Enum):
     CONSERVATIVE = "conservative"  # 保守的モード
     SHUTDOWN = "shutdown"  # シャットダウン
 
-
 @dataclass
 class AnomalyDetection:
     """異常検知結果"""
@@ -354,11 +336,10 @@ class AnomalyDetection:
     anomaly_type: AnomalyType
     metric_name: str
     detected_value: float
-    expected_range: Tuple[float, float]
+    expected_range: tuple[float, float]
     confidence: float
     timestamp: datetime
-    context: Dict[str, Any]
-
+    context: dict[str, Any]
 
 @dataclass
 class SafetyCheck:
@@ -369,8 +350,7 @@ class SafetyCheck:
     passed: bool
     message: str
     timestamp: datetime
-    details: Dict[str, Any]
-
+    details: dict[str, Any]
 
 @dataclass
 class FallbackAction:
@@ -381,21 +361,19 @@ class FallbackAction:
     description: str
     priority: int
     estimated_duration_seconds: int
-    rollback_steps: List[str]
-    recovery_steps: List[str]
-
+    rollback_steps: list[str]
+    recovery_steps: list[str]
 
 @dataclass
 class SafetyStatus:
     """安全ステータス"""
 
     overall_safety_level: SafetyLevel
-    active_anomalies: List[AnomalyDetection]
-    recent_checks: List[SafetyCheck]
-    active_fallbacks: List[FallbackAction]
+    active_anomalies: list[AnomalyDetection]
+    recent_checks: list[SafetyCheck]
+    active_fallbacks: list[FallbackAction]
     last_updated: datetime
     system_health_score: float  # 0.0-1.0
-
 
 @dataclass
 class RecoveryPlan:
@@ -403,14 +381,12 @@ class RecoveryPlan:
 
     plan_id: str
     triggered_by: str
-    steps: List[str]
+    steps: list[str]
     estimated_completion_time: datetime
-    success_criteria: List[str]
-    rollback_plan: List[str]
-
+    success_criteria: list[str]
+    rollback_plan: list[str]
 
 # スケーラビリティと運用関連の型定義
-
 
 class ScalingStrategy(Enum):
     """スケーリング戦略"""
@@ -419,7 +395,6 @@ class ScalingStrategy(Enum):
     VERTICAL = "vertical"  # 垂直スケーリング（リソース増加）
     AUTO = "auto"  # 自動スケーリング
     MANUAL = "manual"  # 手動スケーリング
-
 
 class ResourceType(Enum):
     """リソースタイプ"""
@@ -430,7 +405,6 @@ class ResourceType(Enum):
     NETWORK = "network"
     GPU = "gpu"
 
-
 class ScalingDecision(Enum):
     """スケーリング決定"""
 
@@ -438,7 +412,6 @@ class ScalingDecision(Enum):
     SCALE_DOWN = "scale_down"  # スケールダウン
     NO_CHANGE = "no_change"  # 変更なし
     MAINTENANCE = "maintenance"  # メンテナンス
-
 
 class DeploymentStatus(Enum):
     """デプロイメントステータス"""
@@ -448,7 +421,6 @@ class DeploymentStatus(Enum):
     SUCCESS = "success"
     FAILED = "failed"
     ROLLED_BACK = "rolled_back"
-
 
 @dataclass
 class ResourceUsage:
@@ -460,7 +432,6 @@ class ResourceUsage:
     utilization_percentage: float
     timestamp: datetime
     instance_id: str
-
 
 @dataclass
 class ScalingAction:
@@ -476,7 +447,6 @@ class ScalingAction:
     timestamp: datetime
     executed_by: str
 
-
 @dataclass
 class LoadDistribution:
     """負荷分散"""
@@ -489,7 +459,6 @@ class LoadDistribution:
     response_time_ms: float
     timestamp: datetime
 
-
 @dataclass
 class DeploymentPlan:
     """デプロイメント計画"""
@@ -498,11 +467,10 @@ class DeploymentPlan:
     version: str
     target_instances: int
     rollout_strategy: str  # "rolling", "blue_green", "canary"
-    rollback_plan: List[str]
+    rollback_plan: list[str]
     estimated_duration_minutes: int
     created_at: datetime
     status: DeploymentStatus
-
 
 @dataclass
 class CostOptimization:
@@ -513,10 +481,9 @@ class CostOptimization:
     current_cost: float
     optimized_cost: float
     savings_percentage: float
-    recommendations: List[str]
+    recommendations: list[str]
     implementation_status: str
     timestamp: datetime
-
 
 @dataclass
 class ScalabilityMetrics:
@@ -532,7 +499,6 @@ class ScalabilityMetrics:
     uptime_percentage: float
     timestamp: datetime
 
-
 @dataclass
 class OperationsStatus:
     """運用ステータス"""
@@ -542,6 +508,6 @@ class OperationsStatus:
     next_maintenance: datetime
     active_alerts: int
     pending_updates: int
-    resource_utilization: Dict[str, float]
+    resource_utilization: dict[str, float]
     performance_score: float
     timestamp: datetime

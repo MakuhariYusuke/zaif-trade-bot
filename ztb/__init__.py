@@ -80,7 +80,6 @@ __all__ = [
     "__description__",
 ]
 
-
 def __getattr__(name: str) -> object:
     """Lazy import heavy submodules when accessed on the package.
 
@@ -92,15 +91,12 @@ def __getattr__(name: str) -> object:
         return getattr(module, attr_name)
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
-
 def __dir__() -> list[str]:
     return sorted(list(globals().keys()) + list(__LAZY_MODULE_ATTRIBUTES__.keys()))
-
 
 def get_version() -> str:
     """Get the current version of the package."""
     return __version__
-
 
 def get_config() -> "GlobalConfig":
     """Get the current configuration."""

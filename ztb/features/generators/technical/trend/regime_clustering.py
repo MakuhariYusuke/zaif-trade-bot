@@ -6,7 +6,7 @@ using volatility and trend strength indicators.
 """
 
 import logging
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -18,7 +18,6 @@ from ztb.utils.errors import safe_operation
 
 logger = logging.getLogger(__name__)
 
-
 @FeatureRegistry.register("RegimeClustering")
 def compute_regime_clustering(df: pd.DataFrame) -> pd.Series:
     """Market regime clustering based on volatility and trend strength"""
@@ -26,15 +25,14 @@ def compute_regime_clustering(df: pd.DataFrame) -> pd.Series:
     result_df = feature.compute(df)
     return result_df["regime_cluster"]
 
-
 class RegimeClustering:
     """Market regime detection using clustering of volatility and trend indicators"""
 
     def __init__(self) -> None:
         self.n_clusters = 3
         self.lookback_window = 20
-        self._scaler: Optional[StandardScaler] = None
-        self._kmeans: Optional[KMeans] = None
+        self._scaler: StandardScaler | None = None
+        self._kmeans: KMeans | None = None
         self._is_fitted = False
 
     def compute(self, df: pd.DataFrame) -> pd.DataFrame:

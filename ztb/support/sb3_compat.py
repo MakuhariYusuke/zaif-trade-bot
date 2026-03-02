@@ -11,7 +11,6 @@ from __future__ import annotations
 import sys
 from types import ModuleType
 
-
 def ensure_sb3_compat():
     try:
         sb3 = sys.modules.get("stable_baselines3")
@@ -41,6 +40,5 @@ def ensure_sb3_compat():
     except Exception:
         # Be conservative: we don't want fixes here to crash collection
         pass
-
 
 __all__ = ["ensure_sb3_compat"]

@@ -18,7 +18,6 @@ from ztb.utils.talib_wrapper import TaLibWrapper
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
 
-
 @FeatureRegistry.register("PSAR")
 def compute_psar(df: pd.DataFrame) -> pd.Series:
     """Parabolic SAR (Stop and Reverse)"""
@@ -26,14 +25,12 @@ def compute_psar(df: pd.DataFrame) -> pd.Series:
     result_df = feature.compute(df)
     return result_df["psar"]
 
-
 @FeatureRegistry.register("PSAR_Trend")
 def compute_psar_trend(df: pd.DataFrame) -> pd.Series:
     """Parabolic SAR Trend Direction (1=uptrend, -1=downtrend)"""
     feature = ParabolicSAR()
     result_df = feature.compute(df)
     return result_df["psar_trend"]
-
 
 class ParabolicSAR(BaseFeature):
     """

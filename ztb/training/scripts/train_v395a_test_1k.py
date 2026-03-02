@@ -13,7 +13,6 @@ sys.path.insert(0, str(project_root))
 from ztb.training.core.config_manager import ConfigManager
 from ztb.training.trainers.sac_trainer import SACAlgorithmTrainer
 
-
 def main():
     print("🧪 SAC v395a Test - 1k timesteps quick iteration")
     print("=" * 60)
@@ -33,7 +32,6 @@ def main():
 
     print("\n✅ Test run completed!")
     print("=" * 60)
-
 
 if __name__ == "__main__":
     main()

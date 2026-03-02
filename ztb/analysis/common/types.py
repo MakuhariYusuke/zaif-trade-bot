@@ -27,7 +27,6 @@ from ztb.types.common import ConfigSection, MetricsDict, ObjectMap, ObjectRecord
 
 T = TypeVar("T", covariant=True)
 
-
 # Risk Management Types
 class RiskProfile(Enum):
     """Risk profile levels."""
@@ -36,7 +35,6 @@ class RiskProfile(Enum):
     BALANCED = "balanced"
     AGGRESSIVE = "aggressive"
     DYNAMIC = "dynamic"
-
 
 @dataclass
 class RiskProfileLimits:
@@ -77,7 +75,6 @@ class RiskProfileLimits:
             "take_profit_pct": self.take_profit_pct,
         }
 
-
 # Protocol definitions
 class FeatureCalculator(Protocol):
     """Protocol for feature calculators."""
@@ -87,18 +84,16 @@ class FeatureCalculator(Protocol):
         ...
 
     @property
-    def feature_names(self) -> List[str]:
+    def feature_names(self) -> list[str]:
         """Get list of feature names."""
         ...
-
 
 class TrainerProtocol(Protocol):
     """Protocol for SAC trainers."""
 
-    def train(self) -> Union[bool, ObjectMap]:
+    def train(self) -> bool | ObjectMap:
         """Train the model."""
         ...
-
 
 class CallbackProtocol(Protocol):
     """Protocol for training callbacks."""
@@ -106,7 +101,6 @@ class CallbackProtocol(Protocol):
     def __call__(self, locals_: ObjectMap, globals_: ObjectMap) -> None:
         """Callback function."""
         ...
-
 
 @runtime_checkable
 class PerformanceMonitorProtocol(Protocol):
@@ -120,7 +114,6 @@ class PerformanceMonitorProtocol(Protocol):
         """Get current metrics."""
         ...
 
-
 @runtime_checkable
 class ThresholdManagerProtocol(Protocol):
     """Protocol for threshold managers."""
@@ -133,7 +126,6 @@ class ThresholdManagerProtocol(Protocol):
         """Update thresholds based on evaluation results."""
         ...
 
-
 @runtime_checkable
 class FeeModelProtocol(Protocol):
     """Protocol for fee models."""
@@ -145,7 +137,6 @@ class FeeModelProtocol(Protocol):
     def get_fee_rate(self, trade_type: str = "buy") -> float:
         """Get fee rate."""
         ...
-
 
 @runtime_checkable
 class NormalizerProtocol(Protocol):
@@ -163,7 +154,6 @@ class NormalizerProtocol(Protocol):
         """Inverse transform data."""
         ...
 
-
 @runtime_checkable
 class LoggerProtocol(Protocol):
     """Protocol for loggers."""
@@ -175,7 +165,6 @@ class LoggerProtocol(Protocol):
     def error(self, message: str, *args: object, **kwargs: object) -> None:
         """Log error message."""
         ...
-
 
 # Data Loading Types
 @dataclass
@@ -197,29 +186,25 @@ class DataSource:
         """Return whether the data source is considered reliable based on a threshold."""
         return float(self.reliability_score) >= float(threshold)
 
-
 # Analysis Types
 AnalysisResult = ObjectMap
 AnalysisConfig = ConfigSection
 
-
 class AnalysisInput(TypedDict, total=False):
     """Type for analysis input data."""
 
-    data: Union[object, ObjectMap, ObjectRecords]
+    data: object | ObjectMap | ObjectRecords
     config: AnalysisConfig
     metadata: ObjectMap
-
 
 class AnalysisOutput(TypedDict, total=False):
     """Type for analysis output data."""
 
     results: AnalysisResult
     summary: ObjectMap
-    plots: List[str]  # File paths to generated plots
-    reports: List[str]  # File paths to generated reports
+    plots: list[str]  # File paths to generated plots
+    reports: list[str]  # File paths to generated reports
     metadata: ObjectMap
-
 
 # Backtest Data Types
 class BacktestResult(TypedDict, total=False):
@@ -233,14 +218,13 @@ class BacktestResult(TypedDict, total=False):
     win_rate: float
     total_trades: int
     avg_trade_return_pct: float
-    portfolio_values: List[float]
+    portfolio_values: list[float]
     trades_history: ObjectRecords
     performance_metrics: MetricsDict
     trade_log: ObjectRecords
     regime_analysis: ObjectMap
     risk_metrics: MetricsDict
     benchmark_comparison: ObjectMap
-
 
 class TrainingResult(TypedDict, total=False):
     """Type for training result data."""
@@ -252,16 +236,14 @@ class TrainingResult(TypedDict, total=False):
     action_distribution: MetricsDict
     performance_metrics: ObjectMap
 
-
 class EvaluationResult(TypedDict, total=False):
     """Type for evaluation result data."""
 
     metric: str
     value: float
-    confidence_interval: Optional[Tuple[float, float]]
-    benchmark_comparison: Optional[float]
+    confidence_interval: tuple[float, float] | None
+    benchmark_comparison: float | None
     metadata: ObjectMap
-
 
 class ComprehensiveEvaluation(TypedDict, total=False):
     """Type for comprehensive evaluation data."""
@@ -269,13 +251,12 @@ class ComprehensiveEvaluation(TypedDict, total=False):
     model_name: str
     evaluation_type: str
     timestamp: str
-    results: Dict[str, EvaluationResult]
+    results: dict[str, EvaluationResult]
     summary_stats: ObjectMap
     risk_metrics: ObjectMap
     performance_metrics: ObjectMap
     market_regime_analysis: ObjectMap
     robustness_tests: ObjectMap
-
 
 # NOTE: This class is a dataclass version that includes methods.
 # The TypedDict versions above are kept for backward compatibility with type checking.
@@ -289,8 +270,8 @@ class ComprehensiveEvaluationClass:
     """
 
     model_name: str
-    evaluation_type: Union[str, Enum]  # accepts both str and EvaluationType enum
-    timestamp: Union[str, datetime]  # accepts both str and datetime
+    evaluation_type: str | Enum  # accepts both str and EvaluationType enum
+    timestamp: str | datetime  # accepts both str and datetime
     roi_out_of_sample: float = 0.0
     sharpe_ratio: float = 0.0
     max_drawdown: float = 0.0
@@ -303,7 +284,7 @@ class ComprehensiveEvaluationClass:
     market_regime_analysis: ObjectMap = field(default_factory=dict)
     robustness_tests: ObjectMap = field(default_factory=dict)
 
-    def get_metric_value(self, metric: object, default: Optional[float] = None) -> Optional[float]:
+    def get_metric_value(self, metric: object, default: float | None = None) -> float | None:
         """指定した指標の値を取得
 
         Handles results stored with either string keys or Enum keys and supports
@@ -395,8 +376,6 @@ class ComprehensiveEvaluationClass:
             "summary_score": float(self.get_summary_score()),
         }
 
-
-
 # Path Management Types
 class PathConfig(TypedDict, total=False):
     """Configuration for path management."""
@@ -405,20 +384,17 @@ class PathConfig(TypedDict, total=False):
     create_dirs: bool
     standard_paths: StringMap
 
-
 # Validation Types
-ValidationResult = Dict[str, Union[bool, List[str]]]
-
+ValidationResult = dict[str, bool | list[str]]
 
 class ValidationRule(TypedDict, total=False):
     """Type for validation rules."""
 
     field: str
     required: bool
-    type_check: Optional[type]
-    range_check: Optional[Dict[str, Union[int, float]]]
-    custom_validator: Optional[str]  # Function name for custom validation
-
+    type_check: type | None
+    range_check: dict[str, int | float] | None
+    custom_validator: str | None  # Function name for custom validation
 
 # Error Types
 class AnalysisErrorInfo(TypedDict, total=False):
@@ -430,26 +406,23 @@ class AnalysisErrorInfo(TypedDict, total=False):
     context: ObjectMap
     timestamp: str
 
-
 # Component Configuration Types
 class DataLoaderConfig(TypedDict, total=False):
     """Configuration for data loaders."""
 
     base_path: Path
-    required_files: List[str]
+    required_files: list[str]
     file_patterns: StringMap
     error_handling: str  # 'strict', 'warn', 'ignore'
-
 
 class AnalyzerConfig(TypedDict, total=False):
     """Configuration for analyzers."""
 
     name: str
-    input_validation: List[ValidationRule]
-    output_validation: List[ValidationRule]
+    input_validation: list[ValidationRule]
+    output_validation: list[ValidationRule]
     error_handling: str
     logging_level: str
-
 
 class PathManagerConfig(TypedDict, total=False):
     """Configuration for path managers."""
@@ -459,7 +432,6 @@ class PathManagerConfig(TypedDict, total=False):
     standard_paths: StringMap
     permissions_check: bool
 
-
 # Factory Types
 class ComponentFactory(Protocol[T]):
     """Protocol for component factories."""
@@ -468,16 +440,13 @@ class ComponentFactory(Protocol[T]):
         """Create a component instance from configuration."""
         ...
 
-
 # Registry Types
 ComponentRegistry = ObjectMap
 FactoryRegistry = dict[str, ComponentFactory[object]]
 
-
 # Utility Types
-FileInfo = Dict[str, Union[str, int, float]]
-DirectoryInfo = Dict[str, Union[List[FileInfo], int]]
-
+FileInfo = dict[str, str | int | float]
+DirectoryInfo = dict[str, list[FileInfo] | int]
 
 class SystemInfo(TypedDict, total=False):
     """System information for analysis components."""
@@ -487,7 +456,6 @@ class SystemInfo(TypedDict, total=False):
     available_memory: int
     cpu_count: int
     component_versions: StringMap
-
 
 # Risk Management Types
 class RiskStatus(TypedDict):
@@ -499,9 +467,8 @@ class RiskStatus(TypedDict):
     portfolio_volatility: float
     trades_this_hour: int
     max_trades_per_hour: int
-    trailing_stop_level: Optional[float]
+    trailing_stop_level: float | None
     cooldown_period: int
-
 
 class ExtendedRiskStatus(TypedDict, total=False):
     """Extended risk status with additional metrics."""
@@ -516,13 +483,11 @@ class ExtendedRiskStatus(TypedDict, total=False):
     entry_price: float
     statistics: ObjectMap  # 統計情報
 
-
 class TriggerStatus(TypedDict):
     """Trigger status."""
 
     triggered: bool
     reason: str
-
 
 class PositionMonitorResult(TypedDict):
     """Position monitoring result."""
@@ -530,14 +495,12 @@ class PositionMonitorResult(TypedDict):
     trailing_stop: TriggerStatus
     take_profit: TriggerStatus
 
-
 class RiskStatusReport(TypedDict):
     """Comprehensive risk status report."""
 
     profile: RiskProfileLimits
     current_status: RiskStatus
     limits: RiskProfileLimits
-
 
 class PortfolioAnalysisResult(TypedDict, total=False):
     """Portfolio performance analysis result."""
@@ -556,7 +519,6 @@ class PortfolioAnalysisResult(TypedDict, total=False):
     profit_factor: float
     total_positive_return: float
     total_negative_return: float
-
 
 class EpisodeAnalysisResult(TypedDict, total=False):
     """Episode performance analysis result."""

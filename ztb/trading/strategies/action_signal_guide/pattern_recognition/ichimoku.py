@@ -5,7 +5,7 @@ Ichimoku Cloud Pattern Recognizer
 """
 
 import logging
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 import pandas as pd
 
@@ -39,7 +39,6 @@ from ztb.trading.strategies.action_signal_guide.pattern_recognition.base import 
 
 LOGGER = logging.getLogger(__name__)
 
-
 class IchimokuSignals(TypedDict):
     """Structured Ichimoku component values."""
 
@@ -52,7 +51,6 @@ class IchimokuSignals(TypedDict):
     momentum_confirmation: float
     sanyaku_kouten: float
 
-
 DEFAULT_ICHIMOKU_SIGNALS: IchimokuSignals = {
     "diff_norm": 0.0,
     "cross": 0.0,
@@ -64,7 +62,6 @@ DEFAULT_ICHIMOKU_SIGNALS: IchimokuSignals = {
     "sanyaku_kouten": 0.0,
 }
 
-
 class IchimokuPatternRecognizer(IndicatorPatternRecognizer):
     """
     Ichimoku Cloud pattern recognition using existing Ichimoku feature classes.
@@ -72,7 +69,7 @@ class IchimokuPatternRecognizer(IndicatorPatternRecognizer):
     時間論・波動論・水準論の統合分析
     """
 
-    def __init__(self, config: Optional[dict[str, object]] = None):
+    def __init__(self, config: dict[str, object] | None = None):
         super().__init__(config)
         self.tenkan_kijun_threshold = float(
             self.config.get("tenkan_kijun_threshold", 0.02)
@@ -96,8 +93,8 @@ class IchimokuPatternRecognizer(IndicatorPatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[MultiTimeframeData] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """
         Recognize Ichimoku-based patterns using integrated theories.
         一目均衡表ベースのパターン認識（時間論・波動論・水準論の統合）
@@ -217,7 +214,7 @@ class IchimokuPatternRecognizer(IndicatorPatternRecognizer):
         index: int,
         volatility_ratio: float = 1.0,
         trend_strength: float = 0.5,
-    ) -> Optional[SignalResult]:
+    ) -> SignalResult | None:
         """
         Analyze integrated Ichimoku signals using multiple theories.
         複数理論による統合一目均衡表シグナル分析
@@ -272,7 +269,7 @@ class IchimokuPatternRecognizer(IndicatorPatternRecognizer):
         current_price: float,
         volatility_ratio: float = 1.0,
         trend_strength: float = 0.5,
-    ) -> Optional[SignalResult]:
+    ) -> SignalResult | None:
         """
         Analyze time theory signals (Tenkan-Kijun relationships).
         時間論シグナル分析（転換線・基準線の関係）
@@ -352,7 +349,7 @@ class IchimokuPatternRecognizer(IndicatorPatternRecognizer):
         current_price: float,
         volatility_ratio: float = 1.0,
         trend_strength: float = 0.5,
-    ) -> Optional[SignalResult]:
+    ) -> SignalResult | None:
         """
         Analyze wave theory signals (cloud wave patterns).
         波動論シグナル分析（雲の波動パターン）
@@ -395,7 +392,7 @@ class IchimokuPatternRecognizer(IndicatorPatternRecognizer):
         index: int,
         volatility_ratio: float = 1.0,
         trend_strength: float = 0.5,
-    ) -> Optional[SignalResult]:
+    ) -> SignalResult | None:
         """
         Analyze value measurement signals (price fluctuation analysis).
         水準論シグナル分析（価格変動分析）
@@ -434,7 +431,7 @@ class IchimokuPatternRecognizer(IndicatorPatternRecognizer):
         current_price: float,
         volatility_ratio: float = 1.0,
         trend_strength: float = 0.5,
-    ) -> Optional[SignalResult]:
+    ) -> SignalResult | None:
         """
         Analyze Sanyaku Kouten signals (three roles reversal).
         三役転換シグナル分析
@@ -460,7 +457,7 @@ class IchimokuPatternRecognizer(IndicatorPatternRecognizer):
         current_price: float,
         volatility_ratio: float = 1.0,
         trend_strength: float = 0.5,
-    ) -> Optional[SignalResult]:
+    ) -> SignalResult | None:
         """
         Analyze cloud expansion signals (trend strength).
         雲の拡大シグナル分析（トレンド強度）

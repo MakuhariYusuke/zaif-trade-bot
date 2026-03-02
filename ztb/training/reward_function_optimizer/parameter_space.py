@@ -13,7 +13,6 @@ logger = get_logger(__name__)
 
 ConfigMap = dict[str, object]
 
-
 class RewardFunctionParameterSpace:
     """
     Manages parameter spaces for reward function optimization.

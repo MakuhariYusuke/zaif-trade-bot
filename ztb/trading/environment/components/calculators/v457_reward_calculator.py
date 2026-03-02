@@ -1,4 +1,4 @@
-from typing import List, Optional, Any
+from typing import Any
 import numpy as np
 
 class V457RewardCalculator:
@@ -48,10 +48,10 @@ class V457RewardCalculator:
         pnl: float,
         old_position: float,
         step: int,
-        observation: Optional[np.ndarray],
-        reward_history: List[float],
-        portfolio_value_history: List[float],
-        continuous_action_value: Optional[float] = None,
+        observation: np.ndarray | None,
+        reward_history: list[float],
+        portfolio_value_history: list[float],
+        continuous_action_value: float | None = None,
         trade_pnl: float = 0.0,
     ) -> float:
         """

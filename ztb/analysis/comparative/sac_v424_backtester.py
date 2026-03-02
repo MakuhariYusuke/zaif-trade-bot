@@ -8,7 +8,7 @@ Provides comprehensive backtesting capabilities with cost-aware trading simulati
 
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -26,10 +26,8 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class SACv424Backtester:
     """Backtester for SAC v424 cost-aware model."""
-
 
     def load_model(self) -> None:
         """Load the trained SAC model."""
@@ -162,7 +160,7 @@ class SACv424Backtester:
 
         return results
 
-    def print_results(self, results: Dict[str, Any]) -> None:
+    def print_results(self, results: dict[str, Any]) -> None:
         """Print backtest results in a formatted way."""
         print("\n" + "=" * 60)
         print("SAC v424 COST-AWARE BACKTEST RESULTS")
@@ -179,7 +177,7 @@ class SACv424Backtester:
             print(f"  {action}: {pct:.1%}")
         print("=" * 60)
 
-    def save_results(self, results: Dict[str, Any], output_path: str) -> None:
+    def save_results(self, results: dict[str, Any], output_path: str) -> None:
         """Save backtest results to JSON file."""
         # Convert numpy types to native Python types for JSON serialization
         serializable_results = {}

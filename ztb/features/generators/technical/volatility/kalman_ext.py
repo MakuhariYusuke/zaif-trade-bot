@@ -4,7 +4,7 @@ kalman_ext.py
 Extended Kalman Filter analysis with residuals and autocorrelation
 """
 
-from typing import List, Optional, Tuple, cast
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -13,7 +13,6 @@ from numpy.typing import NDArray
 from ztb.features.registry import FeatureRegistry
 from ztb.metrics.metrics import kurtosis, skewness
 from ztb.trading.environment.constants import EPSILON
-
 
 class SimpleKalmanFilter:
     """
@@ -27,10 +26,10 @@ class SimpleKalmanFilter:
         self.process_variance = process_variance
         self.measurement_variance = measurement_variance
         # Declare instance variables with type annotations
-        self.posterior_estimate: Optional[float] = None
-        self.posterior_error_estimate: Optional[float] = None
-        self.estimates: List[float] = []
-        self.error_estimates: List[float] = []
+        self.posterior_estimate: float | None = None
+        self.posterior_error_estimate: float | None = None
+        self.estimates: list[float] = []
+        self.error_estimates: list[float] = []
         self.reset()
 
     def reset(self) -> None:
@@ -40,7 +39,7 @@ class SimpleKalmanFilter:
         self.estimates = []
         self.error_estimates = []
 
-    def update(self, measurement: float) -> Tuple[float, float]:
+    def update(self, measurement: float) -> tuple[float, float]:
         """
         Update filter with new measurement
 
@@ -48,7 +47,7 @@ class SimpleKalmanFilter:
             measurement: New observed value
 
         Returns:
-            Tuple of (estimate, error_estimate)
+            tuple of (estimate, error_estimate)
         """
         if self.posterior_estimate is None or self.posterior_error_estimate is None:
             # First measurement: initialize without prediction step
@@ -75,7 +74,6 @@ class SimpleKalmanFilter:
 
         return float(self.posterior_estimate), float(self.posterior_error_estimate)
 
-
 @FeatureRegistry.register("Kalman_Estimate")
 def compute_kalman_estimate(df: pd.DataFrame) -> pd.Series:
     """Kalman Filter Price Estimate"""
@@ -85,7 +83,6 @@ def compute_kalman_estimate(df: pd.DataFrame) -> pd.Series:
         if "kalman_estimate" in extended_features.columns
         else pd.Series([0.0] * len(df), index=df.index)
     )
-
 
 @FeatureRegistry.register("Kalman_Residual")
 def compute_kalman_residual(df: pd.DataFrame) -> pd.Series:
@@ -97,7 +94,6 @@ def compute_kalman_residual(df: pd.DataFrame) -> pd.Series:
         else pd.Series([0.0] * len(df), index=df.index)
     )
 
-
 @FeatureRegistry.register("Kalman_Residual_Norm")
 def compute_kalman_residual_norm(df: pd.DataFrame) -> pd.Series:
     """Kalman Filter Normalized Residual"""
@@ -107,7 +103,6 @@ def compute_kalman_residual_norm(df: pd.DataFrame) -> pd.Series:
         if "kalman_residual_normalized" in extended_features.columns
         else pd.Series([0.0] * len(df), index=df.index)
     )
-
 
 def calculate_kalman_extended(
     data: pd.DataFrame,
@@ -286,7 +281,6 @@ def calculate_kalman_extended(
 
     return result_df
 
-
 def calculate_kalman_signals(
     extended_features: pd.DataFrame,
     confidence_threshold: float = 0.7,
@@ -345,7 +339,6 @@ def calculate_kalman_signals(
 
     return pd.DataFrame(signals, index=extended_features.index)
 
-
 def generate_synthetic_data() -> pd.DataFrame:
     """Generate synthetic OHLCV data with regime changes."""
     np.random.seed(42)
@@ -370,7 +363,6 @@ def generate_synthetic_data() -> pd.DataFrame:
     )
     return data
 
-
 def print_feature_info(data: pd.DataFrame, extended_features: pd.DataFrame) -> None:
     print("Testing Kalman Extended Features...")
     print(f"Data shape: {data.shape}")
@@ -380,14 +372,12 @@ def print_feature_info(data: pd.DataFrame, extended_features: pd.DataFrame) -> N
     for i, col in enumerate(extended_features.columns):
         print(f"  {i + 1:2d}. {col}")
 
-
 def print_signal_info(signals: pd.DataFrame) -> None:
     print(f"\nSignals shape: {signals.shape}")
     print("Signal counts:")
     for col in signals.columns:
         signal_count = signals[col].sum()
         print(f"  {col}: {signal_count} signals")
-
 
 def print_residual_analysis(extended_features: pd.DataFrame) -> None:
     residuals = extended_features["kalman_residual"].dropna()
@@ -397,13 +387,11 @@ def print_residual_analysis(extended_features: pd.DataFrame) -> None:
     print(f"  Skewness: {skewness(residuals.values):.4f}")  # type: ignore[str-bytes-safe]
     print(f"  Kurtosis: {kurtosis(residuals.values):.4f}")  # type: ignore[str-bytes-safe]
 
-
 def print_autocorr_analysis(extended_features: pd.DataFrame) -> None:
     if "kalman_autocorr_lag1" in extended_features.columns:
         autocorr_1 = extended_features["kalman_autocorr_lag1"].dropna()
         print(f"  Lag-1 autocorr mean: {autocorr_1.mean():.4f}")
         print(f"  Lag-1 autocorr std: {autocorr_1.std():.4f}")
-
 
 def main() -> None:
     data = generate_synthetic_data()
@@ -416,7 +404,6 @@ def main() -> None:
     print_residual_analysis(extended_features)
     print_autocorr_analysis(extended_features)
     print("Kalman extended features test completed successfully!")
-
 
 if __name__ == "__main__":
     main()

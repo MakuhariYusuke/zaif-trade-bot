@@ -9,9 +9,6 @@ from pathlib import Path
 
 import numpy as np
 
-
-
-
 def simulate_market_data(num_steps=10000):
     """Generate synthetic market data for backtesting"""
     np.random.seed(42)  # For reproducible results
@@ -83,7 +80,6 @@ def simulate_market_data(num_steps=10000):
     action = np.random.choice(actions, p=action_prob)
 
     return action, adjusted_rewards[action.lower()]
-
 
 def run_backtest_simulation(config, num_steps=10000, initial_capital=10000.0):
     """Run backtest simulation"""
@@ -273,7 +269,6 @@ def run_backtest_simulation(config, num_steps=10000, initial_capital=10000.0):
         "total_reward": total_reward,
     }
 
-
 def main():
     # Load configuration
     config = load_config()
@@ -291,7 +286,6 @@ def main():
 
     print("\n=== SAC v431 Backtest Complete ===")
     print("Ready for validation and further analysis")
-
 
 if __name__ == "__main__":
     main()

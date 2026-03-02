@@ -14,7 +14,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-
 def add_microstructure_features(
     df: pd.DataFrame,
     window: int = 20,
@@ -115,7 +114,6 @@ def add_microstructure_features(
     df = df.ffill().fillna(0)
 
     return df
-
 
 # Canonical list of v460 microstructure feature columns
 MICROSTRUCTURE_FEATURES: list[str] = [

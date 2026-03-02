@@ -22,7 +22,6 @@ from .base import (
     SignalResult,
 )
 
-
 class CandleCharacteristics(TypedDict):
     """Structured characteristics returned by multi-candle analysis."""
 
@@ -34,9 +33,7 @@ class CandleCharacteristics(TypedDict):
     is_bearish: list[bool]
     avg_body_size: float
 
-
 PatternFactors = dict[str, float]
-
 
 class _CandlestickPatternBase(CandlestickPatternRecognizer, ABC):
     """Shared helpers for candlestick recognizers in this module."""
@@ -157,7 +154,6 @@ class _CandlestickPatternBase(CandlestickPatternRecognizer, ABC):
             metadata=result_metadata,
         )
 
-
 class _ThreeCandleStarBase(_CandlestickPatternBase, ABC):
     """Shared implementation for Morning/Evening Star recognizers."""
 
@@ -252,7 +248,6 @@ class _ThreeCandleStarBase(_CandlestickPatternBase, ABC):
             self.logger.error(f"Error recognizing {self.pattern_type} pattern: {e}")
             return None
 
-
 class _LongShadowReversalBase(_CandlestickPatternBase, ABC):
     """Shared implementation for Hammer/Hanging Man recognizers."""
 
@@ -343,7 +338,6 @@ class _LongShadowReversalBase(_CandlestickPatternBase, ABC):
         except Exception as e:
             self.logger.error(f"Error recognizing {self.pattern_type} pattern: {e}")
             return None
-
 
 class _ThreeConsecutiveReversalBase(_CandlestickPatternBase, ABC):
     """Shared implementation for Three Black Crows / Three White Soldiers."""
@@ -465,7 +459,6 @@ class _ThreeConsecutiveReversalBase(_CandlestickPatternBase, ABC):
             self.logger.error(f"Error recognizing {self.pattern_type} pattern: {e}")
             return None
 
-
 class _EngulfingPatternBase(_CandlestickPatternBase, ABC):
     """Shared implementation for bullish/bearish engulfing recognizers."""
 
@@ -557,7 +550,6 @@ class _EngulfingPatternBase(_CandlestickPatternBase, ABC):
         except Exception as e:
             self.logger.error(f"Error recognizing {self.pattern_type} pattern: {e}")
             return None
-
 
 class SakataFiveMethodsRecognizer(_CandlestickPatternBase):
     """Recognizes Sakata's Five Methods pattern.
@@ -708,7 +700,6 @@ class SakataFiveMethodsRecognizer(_CandlestickPatternBase):
         total_range = float(candle["high"] - candle["low"])
         return (body_size / total_range) >= 0.6 if total_range > 0 else False
 
-
 class MorningStarRecognizer(_ThreeCandleStarBase):
     """Recognizes Morning Star pattern.
     A three-candle bullish reversal pattern: large bearish, small, large bullish.
@@ -720,7 +711,6 @@ class MorningStarRecognizer(_ThreeCandleStarBase):
     midpoint_requires_close_above = True
     signal_direction = 1.0
     signal_description = "Morning Star: Bullish reversal pattern"
-
 
 class EveningStarRecognizer(_ThreeCandleStarBase):
     """Recognizes Evening Star pattern.
@@ -736,7 +726,6 @@ class EveningStarRecognizer(_ThreeCandleStarBase):
     signal_direction = -1.0
     signal_description = "Evening Star: Bearish reversal pattern"
 
-
 class HammerRecognizer(_LongShadowReversalBase):
     """Recognizes Hammer pattern.
     捨て子底
@@ -750,7 +739,6 @@ class HammerRecognizer(_LongShadowReversalBase):
     body_anchor_key = "close"
     signal_direction = 1.0
     signal_description = "Hammer: Bullish reversal pattern"
-
 
 class HangingManRecognizer(_LongShadowReversalBase):
     """Recognizes Hanging Man pattern.
@@ -766,7 +754,6 @@ class HangingManRecognizer(_LongShadowReversalBase):
     signal_direction = -1.0
     signal_description = "Hanging Man: Bearish reversal pattern"
 
-
 class ThreeBlackCrowsRecognizer(_ThreeConsecutiveReversalBase):
     """Recognizes Three Black Crows pattern.
     三羽烏（黒三兵）
@@ -781,7 +768,6 @@ class ThreeBlackCrowsRecognizer(_ThreeConsecutiveReversalBase):
     signal_direction = -1.0
     signal_description = "Three Black Crows: Bearish reversal pattern"
 
-
 class ThreeWhiteSoldiersRecognizer(_ThreeConsecutiveReversalBase):
     """Recognizes Three White Soldiers pattern.
     赤三兵
@@ -795,7 +781,6 @@ class ThreeWhiteSoldiersRecognizer(_ThreeConsecutiveReversalBase):
     closes_should_increase = True
     signal_direction = 1.0
     signal_description = "Three White Soldiers: Bullish reversal pattern"
-
 
 class RisingThreeMethodsRecognizer(_CandlestickPatternBase):
     """Recognizes Rising Three Methods pattern.
@@ -890,7 +875,6 @@ class RisingThreeMethodsRecognizer(_CandlestickPatternBase):
             self.logger.error(f"Error recognizing Rising Three Methods pattern: {e}")
             return None
 
-
 class BullishEngulfingRecognizer(_EngulfingPatternBase):
     """Recognizes Bullish Engulfing pattern.
     陽線はらみ足
@@ -903,7 +887,6 @@ class BullishEngulfingRecognizer(_EngulfingPatternBase):
     signal_direction = 1.0
     signal_description = "Bullish Engulfing: Strong reversal signal in downtrend"
 
-
 class BearishEngulfingRecognizer(_EngulfingPatternBase):
     """Recognizes Bearish Engulfing pattern.
     陰線はらみ足
@@ -915,7 +898,6 @@ class BearishEngulfingRecognizer(_EngulfingPatternBase):
     is_bullish_pattern = False
     signal_direction = -1.0
     signal_description = "Bearish Engulfing: Strong reversal signal in uptrend"
-
 
 class PiercingPatternRecognizer(_CandlestickPatternBase):
     """Recognizes Piercing Pattern.

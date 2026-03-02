@@ -4,14 +4,14 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable, Iterable, Optional
+from typing import Callable, Iterable
 
 from ztb.types.common import ObjectMap
 
 logger = logging.getLogger(__name__)
 
 MetricCaster = Callable[[object], object]
-MetricSpec = tuple[str, tuple[str, ...], Optional[MetricCaster]]
+MetricSpec = tuple[str, tuple[str, ...], MetricCaster | None]
 
 _BASE_METRIC_SPECS: tuple[MetricSpec, ...] = (
     ("final_balance", ("balance", "portfolio_value"), float),
@@ -32,8 +32,7 @@ _OPTIONAL_METRIC_SPECS: tuple[MetricSpec, ...] = (
     ("realized_pnl", ("realized_pnl",), float),
 )
 
-
-def resolve_env(source: object) -> Optional[object]:
+def resolve_env(source: object) -> object | None:
     """Resolve an environment from a trainer, model, or env-like object."""
     if source is None:
         return None
@@ -63,8 +62,7 @@ def resolve_env(source: object) -> Optional[object]:
 
     return None
 
-
-def unwrap_env(env: object, max_depth: int = 10) -> Optional[object]:
+def unwrap_env(env: object, max_depth: int = 10) -> object | None:
     """Unwrap VecEnv/Monitor-style wrappers to reach the base environment."""
     if env is None:
         return None
@@ -76,7 +74,6 @@ def unwrap_env(env: object, max_depth: int = 10) -> Optional[object]:
             break
         current = next_env
     return current
-
 
 def extract_env_metrics(
     env: object, include_optional: bool = False
@@ -98,7 +95,6 @@ def extract_env_metrics(
 
     return metrics
 
-
 def extract_trainer_env_metrics(
     trainer: object, include_optional: bool = False
 ) -> dict[str, object]:
@@ -106,12 +102,11 @@ def extract_trainer_env_metrics(
     env = resolve_env(trainer)
     return extract_env_metrics(env, include_optional=include_optional)
 
-
 def compute_balance_roi(
     metrics: dict[str, object],
     final_key: str = "final_balance",
     initial_key: str = "initial_balance",
-) -> Optional[float]:
+) -> float | None:
     """Compute ROI percentage from metrics when available."""
     try:
         final_balance = float(metrics[final_key])
@@ -125,16 +120,14 @@ def compute_balance_roi(
 
     return (final_balance - initial_balance) / initial_balance * 100
 
-
-def _safe_getattr(obj: object, name: str) -> Optional[object]:
+def _safe_getattr(obj: object, name: str) -> object | None:
     try:
         return getattr(obj, name)
     except Exception as e:
         logger.debug("metric extraction failed: %s", e)
         return None
 
-
-def _call_get_env(obj: object) -> Optional[object]:
+def _call_get_env(obj: object) -> object | None:
     try:
         getter = getattr(obj, "get_env", None)
     except Exception as e:
@@ -149,7 +142,6 @@ def _call_get_env(obj: object) -> Optional[object]:
             return None
     return None
 
-
 def _looks_like_env(obj: object) -> bool:
     try:
         if hasattr(obj, "step") and hasattr(obj, "reset"):
@@ -161,7 +153,6 @@ def _looks_like_env(obj: object) -> bool:
         return False
     return False
 
-
 def _unwrap_vec_env(env: object) -> object:
     try:
         envs = getattr(env, "envs", None)
@@ -172,8 +163,7 @@ def _unwrap_vec_env(env: object) -> object:
         return env
     return env
 
-
-def _next_wrapped_env(env: object) -> Optional[object]:
+def _next_wrapped_env(env: object) -> object | None:
     try:
         if hasattr(env, "unwrapped"):
             unwrapped = getattr(env, "unwrapped")
@@ -191,20 +181,18 @@ def _next_wrapped_env(env: object) -> Optional[object]:
         return None
     return None
 
-
 def _populate_metric_specs(
     metrics: dict[str, object], obj: object, specs: Iterable[MetricSpec]
 ) -> None:
     for key, attrs, caster in specs:
         _set_first_attr(metrics, key, obj, attrs, caster)
 
-
 def _set_first_attr(
     metrics: dict[str, object],
     key: str,
     obj: object,
     attr_names: Iterable[str],
-    caster: Optional[MetricCaster] = None,
+    caster: MetricCaster | None = None,
 ) -> None:
     for attr in attr_names:
         try:
@@ -223,7 +211,6 @@ def _set_first_attr(
         metrics[key] = value
         return
 
-
 def _set_sharpe_ratio(metrics: dict[str, object], env: object) -> None:
     try:
         getter = getattr(env, "get_sharpe_ratio", None)
@@ -238,7 +225,6 @@ def _set_sharpe_ratio(metrics: dict[str, object], env: object) -> None:
             logger.debug("metric extraction failed: %s", e)
             return
     _set_first_attr(metrics, "sharpe_ratio", env, ("sharpe_ratio",), caster=float)
-
 
 __all__ = [
     "compute_balance_roi",

@@ -1,18 +1,16 @@
-from typing import Any, Dict, List, Optional
-
+from typing import Any
 
 from ztb.adaptation.monitoring.types import RiskMetrics, TradingPerformanceMetrics
 from ztb.trading.common.models import MarketData, TradeRecord
 from ztb.trading.comprehensive_backtest import BacktestConfig as BacktestConfiguration
 from ztb.trading.comprehensive_backtest import BacktestEngine, BacktestResult
 
-
 class PerformanceAnalyzer:
     def __init__(self, integration_manager: Any = None):
         self.integration_manager = integration_manager
-        self.advanced_metrics_config: Dict[str, Any] = {}
+        self.advanced_metrics_config: dict[str, Any] = {}
 
-    def analyze_performance(self, *args, **kwargs) -> Dict[str, Any]:
+    def analyze_performance(self, *args, **kwargs) -> dict[str, Any]:
         # For backward compatibility, expect a BacktestResult as first arg
         try:
             result = args[0]
@@ -33,8 +31,8 @@ class PerformanceAnalyzer:
             return {}
 
     def _calculate_advanced_metrics(
-        self, trades: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, trades: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         # Provide simple metrics for compatibility and testing
         sharpe = 0.0
         sortino = 0.0
@@ -100,13 +98,12 @@ class PerformanceAnalyzer:
             "avg_trade_duration": 0.0,
         }
 
-
 class RiskManager:
     def __init__(self, integration_manager: Any = None):
         self.integration_manager = integration_manager
-        self.risk_limits: Dict[str, Any] = {}
+        self.risk_limits: dict[str, Any] = {}
 
-    def assess_risk(self, *args, **kwargs) -> Dict[str, Any]:
+    def assess_risk(self, *args, **kwargs) -> dict[str, Any]:
         # Simple risk assessment using risk metrics if provided
         try:
             result = args[0]
@@ -132,13 +129,12 @@ class RiskManager:
         except Exception:
             return {"risk_score": 0, "risk_adjusted_return": 0.0, "risk_warnings": []}
 
-
 class StrategyEvaluator:
     def __init__(self, integration_manager: Any = None):
         self.integration_manager = integration_manager
-        self.evaluation_criteria: Dict[str, Any] = {}
+        self.evaluation_criteria: dict[str, Any] = {}
 
-    def evaluate_strategy(self, *args, **kwargs) -> Dict[str, Any]:
+    def evaluate_strategy(self, *args, **kwargs) -> dict[str, Any]:
         try:
             result = args[0]
             metrics = getattr(result, "performance_metrics", None)
@@ -159,10 +155,9 @@ class StrategyEvaluator:
         except Exception:
             return {}
 
-
 class ComprehensiveBacktestingSystem:
     def __init__(
-        self, integration_manager: Any, config: Optional[BacktestConfiguration] = None
+        self, integration_manager: Any, config: BacktestConfiguration | None = None
     ):
         self.integration_manager = integration_manager
         self.config = config if config is not None else BacktestConfiguration()
@@ -176,7 +171,7 @@ class ComprehensiveBacktestingSystem:
         self.strategy_evaluator = StrategyEvaluator()
         self.risk_manager = RiskManager()
         self.performance_analyzer = PerformanceAnalyzer()
-        self.backtest_results: List[BacktestResult] = []
+        self.backtest_results: list[BacktestResult] = []
         self.is_running = False
 
     def run_comprehensive_backtest(
@@ -190,8 +185,8 @@ class ComprehensiveBacktestingSystem:
         return result
 
     def run_multiple_backtests(
-        self, configs: List[BacktestConfiguration], market_data: MarketData
-    ) -> List[BacktestResult]:
+        self, configs: list[BacktestConfiguration], market_data: MarketData
+    ) -> list[BacktestResult]:
         """Run multiple backtests sequentially and return the list of results."""
         results = []
         for c in configs:
@@ -199,7 +194,7 @@ class ComprehensiveBacktestingSystem:
             results.append(res)
         return results
 
-    def get_backtest_report(self) -> Dict[str, Any]:
+    def get_backtest_report(self) -> dict[str, Any]:
         """Generate a summary report from accumulated backtest results."""
         total = len(self.backtest_results)
         successful = sum(
@@ -222,7 +217,7 @@ class ComprehensiveBacktestingSystem:
         }
         return report
 
-    def compare_strategies(self) -> Dict[str, Any]:
+    def compare_strategies(self) -> dict[str, Any]:
         """Compare strategies from stored backtest results and return comparison metrics."""
         if not self.backtest_results:
             return {
@@ -250,7 +245,6 @@ class ComprehensiveBacktestingSystem:
         if getattr(result.risk_metrics, "max_drawdown", 0.0) > 0.25:
             return False
         return True
-
 
 __all__ = [
     "BacktestConfiguration",

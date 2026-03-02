@@ -2,7 +2,7 @@
 
 import os
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 import psutil
 
@@ -10,7 +10,6 @@ from ztb.utils.logging_utils import get_logger
 
 if TYPE_CHECKING:
     from ztb.trading.live_trader.live_trader import LiveTrader
-
 
 class HealthMonitoring:
     """Handles health status monitoring for live trading."""
@@ -20,7 +19,7 @@ class HealthMonitoring:
         self.live_trader = live_trader
         self.logger = get_logger(__name__)
 
-    def get_health_status(self) -> Dict[str, Any]:
+    def get_health_status(self) -> dict[str, Any]:
         """Get comprehensive health status for monitoring."""
         try:
             # Basic status

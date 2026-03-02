@@ -8,34 +8,31 @@ Ensures type safety and consistent error handling across analysis components.
 
 import logging
 from pathlib import Path
-from typing import Optional, Union
 
 from ztb.io.data_loader import DataLoader
 from ztb.io.json_io import read_json_object
-
 
 class DataLoadError(Exception):
     """Exception raised when data loading fails."""
 
     pass
 
-
 class BacktestDataLoader:
     """Standardized loader for backtest result data."""
 
-    def __init__(self, base_path: Optional[Union[str, Path]] = None):
+    def __init__(self, base_path: str | Path | None = None):
         self.base_path = Path(base_path) if base_path else Path("backtest_experiments")
         self.logger = logging.getLogger(self.__class__.__name__)
 
     def load_latest_backtest_results(
-        self, experiment_name: str, required_files: Optional[list[str]] = None
+        self, experiment_name: str, required_files: list[str] | None = None
     ) -> dict[str, object]:
         """
         Load the latest backtest results from an experiment directory.
 
         Args:
             experiment_name: Name of the experiment directory
-            required_files: List of required files to load
+            required_files: list of required files to load
 
         Returns:
             Dictionary containing loaded data
@@ -90,7 +87,7 @@ class BacktestDataLoader:
         return results
 
     def load_backtest_results_from_path(
-        self, results_path: Union[str, Path]
+        self, results_path: str | Path
     ) -> dict[str, object]:
         """
         Load backtest results from a specific path.
@@ -113,11 +110,10 @@ class BacktestDataLoader:
         else:
             raise DataLoadError(f"Path does not exist: {results_path}")
 
-
 class TrainingDataLoader:
     """Loader for training result data."""
 
-    def __init__(self, base_path: Optional[Union[str, Path]] = None):
+    def __init__(self, base_path: str | Path | None = None):
         self.base_path = Path(base_path) if base_path else Path("results")
         self.logger = logging.getLogger(self.__class__.__name__)
 
@@ -141,11 +137,10 @@ class TrainingDataLoader:
         except Exception as e:
             raise DataLoadError(f"Failed to load training results: {e}")
 
-
 class AnalysisDataLoader:
     """Loader for analysis-specific data files."""
 
-    def __init__(self, base_path: Optional[Union[str, Path]] = None):
+    def __init__(self, base_path: str | Path | None = None):
         self.base_path = Path(base_path) if base_path else Path("analysis")
         self.logger = logging.getLogger(self.__class__.__name__)
 
@@ -169,13 +164,11 @@ class AnalysisDataLoader:
         except Exception as e:
             raise DataLoadError(f"Failed to load analysis results: {e}")
 
-
 # Convenience functions for backward compatibility
-def load_backtest_results(results_path: Union[str, Path]) -> dict[str, object]:
+def load_backtest_results(results_path: str | Path) -> dict[str, object]:
     """Backward compatibility function for loading backtest results."""
     loader = BacktestDataLoader()
     return loader.load_backtest_results_from_path(results_path)
-
 
 def load_training_results(model_version: str) -> dict[str, object]:
     """Backward compatibility function for loading training results."""

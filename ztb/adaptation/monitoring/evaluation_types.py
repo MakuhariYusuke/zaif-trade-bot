@@ -5,24 +5,22 @@ Type definitions for Continuous Evaluation and Monitoring
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 from ztb.types.common import AlertLevel
 from ztb.types.evaluation_types import AlertType, EvaluationResult
 from ztb.types.evaluation_types import EvaluationMetrics
 
-
 @dataclass
 class MonitoringEvaluationResult(EvaluationResult):
     """監視拡張評価結果"""
 
-    drift_severity: Optional[int] = None
-    online_learning_metrics: Optional[Dict[str, Any]] = None
-    overall_score: Optional[float] = None
-    recommendations: List[str] = field(default_factory=list)
+    drift_severity: int | None = None
+    online_learning_metrics: dict[str, Any] | None = None
+    overall_score: float | None = None
+    recommendations: list[str] = field(default_factory=list)
     processing_time_seconds: float = 0.0
-    error: Optional[str] = None
-
+    error: str | None = None
 
 @dataclass
 class MonitoringAlert:
@@ -33,12 +31,11 @@ class MonitoringAlert:
     alert_level: AlertLevel
     message: str
     timestamp: datetime
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
     resolved: bool = False
-    resolved_timestamp: Optional[datetime] = None
+    resolved_timestamp: datetime | None = None
     acknowledged: bool = False
-    acknowledged_timestamp: Optional[datetime] = None
-
+    acknowledged_timestamp: datetime | None = None
 
 @dataclass
 class SystemMetrics:
@@ -52,10 +49,9 @@ class SystemMetrics:
     active_threads: int
 
     # オプションの追加メトリクス
-    gpu_usage: Optional[float] = None
-    network_io_bytes: Optional[int] = None
-    disk_io_bytes: Optional[int] = None
-
+    gpu_usage: float | None = None
+    network_io_bytes: int | None = None
+    disk_io_bytes: int | None = None
 
 @dataclass
 class AlertAggregation:
@@ -67,8 +63,7 @@ class AlertAggregation:
     first_alert_timestamp: datetime
     last_alert_timestamp: datetime
     average_severity: float
-    affected_components: List[str]
-
+    affected_components: list[str]
 
 @dataclass
 class EvaluationSummary:
@@ -81,9 +76,8 @@ class EvaluationSummary:
     score_trend: str  # "improving", "declining", "stable"
     drift_detection_rate: float
     alert_count: int
-    top_recommendations: List[str]
+    top_recommendations: list[str]
     system_health_score: float
-
 
 @dataclass
 class PerformanceReport:
@@ -93,12 +87,11 @@ class PerformanceReport:
     generated_at: datetime
     period_days: int
     overall_performance_score: float
-    key_metrics: Dict[str, float]
-    alerts_summary: Dict[str, int]
-    recommendations: List[str]
-    charts_data: Dict[str, Any] = field(default_factory=dict)
-    export_formats: List[str] = field(default_factory=lambda: ["pdf", "html", "json"])
-
+    key_metrics: dict[str, float]
+    alerts_summary: dict[str, int]
+    recommendations: list[str]
+    charts_data: dict[str, Any] = field(default_factory=dict)
+    export_formats: list[str] = field(default_factory=lambda: ["pdf", "html", "json"])
 
 @dataclass
 class AnomalyReport:
@@ -108,12 +101,11 @@ class AnomalyReport:
     detected_at: datetime
     anomaly_type: str
     severity_score: float
-    affected_metrics: List[str]
+    affected_metrics: list[str]
     description: str
-    recommended_actions: List[str]
+    recommended_actions: list[str]
     confidence_score: float
     false_positive_probability: float
-
 
 @dataclass
 class DriftAnalysisReport:
@@ -123,12 +115,11 @@ class DriftAnalysisReport:
     analysis_timestamp: datetime
     drift_detected: bool
     drift_severity: int
-    affected_features: List[str]
+    affected_features: list[str]
     drift_direction: str  # "positive", "negative", "neutral"
-    confidence_interval: Dict[str, float]
-    recommended_actions: List[str]
-    mitigation_suggestions: List[str]
-
+    confidence_interval: dict[str, float]
+    recommended_actions: list[str]
+    mitigation_suggestions: list[str]
 
 @dataclass
 class SystemHealthReport:
@@ -137,12 +128,11 @@ class SystemHealthReport:
     report_id: str
     assessment_timestamp: datetime
     overall_health_score: float
-    component_health_scores: Dict[str, float]
-    critical_issues: List[str]
-    warning_issues: List[str]
-    recommendations: List[str]
+    component_health_scores: dict[str, float]
+    critical_issues: list[str]
+    warning_issues: list[str]
+    recommendations: list[str]
     next_assessment_due: datetime
-
 
 # コールバック型定義
 AlertCallback = Callable[[MonitoringAlert], None]

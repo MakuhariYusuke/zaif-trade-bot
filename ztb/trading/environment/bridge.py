@@ -4,13 +4,14 @@ Trading bridge for paper trading to live trading transition.
 Provides VirtualTradingBridge for safe paper trading simulation
 and interfaces for live trading with Zaif API.
 """
+from __future__ import annotations
 
 import logging
 import random
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional, Union, cast
+from typing import Any, Literal, cast
 
 import pandas as pd
 import requests
@@ -21,7 +22,6 @@ from ztb.utils.errors import safe_operation
 
 logger = logging.getLogger(__name__)
 
-
 @dataclass
 class SlippageAnalysis:
     """Analysis of slippage impact on trading performance"""
@@ -30,7 +30,7 @@ class SlippageAnalysis:
     slippage_impact: float = 0.0  # Total slippage cost in base currency
     avg_slippage_percent: float = 0.0
     max_slippage_percent: float = 0.0
-    slippage_events: List[Dict[str, Any]] = field(default_factory=list)
+    slippage_events: list[dict[str, Any]] = field(default_factory=list)
 
     def add_slippage_event(
         self,
@@ -65,7 +65,7 @@ class SlippageAnalysis:
             self.max_slippage_percent, abs(slippage_percent)
         )
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """Get slippage analysis summary"""
         return {
             "total_orders": self.total_orders,
@@ -74,7 +74,6 @@ class SlippageAnalysis:
             "max_slippage_percent": self.max_slippage_percent,
             "slippage_events_count": len(self.slippage_events),
         }
-
 
 @dataclass
 class VirtualOrder:
@@ -85,11 +84,11 @@ class VirtualOrder:
     side: str  # 'buy' or 'sell'
     order_type: str  # 'market' or 'limit'
     quantity: float
-    price: Optional[float] = None
-    timestamp: Optional[datetime] = None
+    price: float | None = None
+    timestamp: datetime | None = None
     status: str = "filled"  # 'pending', 'filled', 'cancelled'
     filled_quantity: float = 0.0
-    filled_price: Optional[float] = None
+    filled_price: float | None = None
     commission: float = 0.0
 
     def __post_init__(self) -> None:
@@ -99,7 +98,6 @@ class VirtualOrder:
             self.filled_quantity = self.quantity
         if self.filled_price is None and self.status == "filled":
             self.filled_price = self.price
-
 
 class VirtualTradingBridge:
     """
@@ -117,8 +115,8 @@ class VirtualTradingBridge:
         self.initial_balance = initial_balance
         self.balance = initial_balance
         self.commission_rate = commission_rate
-        self.positions: Dict[str, float] = {}  # symbol -> quantity
-        self.orders: List[VirtualOrder] = []
+        self.positions: dict[str, float] = {}  # symbol -> quantity
+        self.orders: list[VirtualOrder] = []
         self.order_counter = 0
         self.slippage_analysis = SlippageAnalysis()
 
@@ -141,7 +139,7 @@ class VirtualTradingBridge:
     def calculate_slippage(
         self,
         symbol: str,
-        side: Union[Literal["buy"], Literal["sell"], str],
+        side: Literal["buy"] | Literal["sell"] | str,
         quantity: float,
     ) -> float:
         """
@@ -171,9 +169,9 @@ class VirtualTradingBridge:
     def place_market_order(
         self,
         symbol: str,
-        side: Union[Literal["buy"], Literal["sell"], str],
+        side: Literal["buy"] | Literal["sell"] | str,
         quantity: float,
-        current_price: Optional[float] = None,
+        current_price: float | None = None,
     ) -> VirtualOrder:
         """
         Place market order with immediate execution simulation.
@@ -274,7 +272,7 @@ class VirtualTradingBridge:
         """Get current position for symbol"""
         return self.positions.get(symbol, 0)
 
-    def get_order_history(self) -> List[VirtualOrder]:
+    def get_order_history(self) -> list[VirtualOrder]:
         """Get order history"""
         return self.orders.copy()
 
@@ -287,14 +285,13 @@ class VirtualTradingBridge:
         self.slippage_analysis = SlippageAnalysis()
         logger.info("Virtual trading bridge reset")
 
-    def get_slippage_analysis(self) -> Dict[str, Any]:
+    def get_slippage_analysis(self) -> dict[str, Any]:
         """Get slippage analysis summary"""
         return self.slippage_analysis.get_summary()
 
     def reset_analysis(self) -> None:
         """Reset slippage analysis"""
         self.slippage_analysis = SlippageAnalysis()
-
 
 class LiveTradingBridge:
     """
@@ -308,8 +305,8 @@ class LiveTradingBridge:
         self,
         api_key: str,
         api_secret: str,
-        risk_manager: Optional[Any] = None,
-        discord_webhook_url: Optional[str] = None,
+        risk_manager: Any | None = None,
+        discord_webhook_url: str | None = None,
     ):
         self.api_key = api_key
         self.api_secret = api_secret
@@ -331,7 +328,7 @@ class LiveTradingBridge:
         self.current_drawdown = 0.0
 
         # Position tracking
-        self.open_positions: Dict[str, Any] = {}  # symbol -> position info
+        self.open_positions: dict[str, Any] = {}  # symbol -> position info
         self.position_count = 0
 
         # Trading state
@@ -345,7 +342,7 @@ class LiveTradingBridge:
         self.max_retries: int = 5
         self.retry_interval: int = 600  # 10 minutes
         self.is_paused: bool = False
-        self.last_failure_time: Optional[float] = None
+        self.last_failure_time: float | None = None
 
         # Slippage analysis integration (Task 8)
         self.slippage_analysis = SlippageAnalysis()
@@ -551,7 +548,7 @@ class LiveTradingBridge:
                 if self.is_paused:
                     self._schedule_retry()
 
-    def get_watchdog_state(self) -> Dict[str, Any]:
+    def get_watchdog_state(self) -> dict[str, Any]:
         """Get current watchdog state for persistence"""
         return {
             "failed_attempts": self.failed_attempts,
@@ -561,7 +558,7 @@ class LiveTradingBridge:
             "retry_interval": self.retry_interval,
         }
 
-    def set_watchdog_state(self, state: Dict[str, Any]) -> None:
+    def set_watchdog_state(self, state: dict[str, Any]) -> None:
         """Restore watchdog state from persistence"""
         self.failed_attempts = state.get("failed_attempts", 0)
         self.is_paused = state.get("is_paused", False)
@@ -585,7 +582,7 @@ class LiveTradingBridge:
 
     def place_market_order(
         self, symbol: str, side: str, quantity: float
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Place live market order via Zaif API.
 
@@ -742,11 +739,9 @@ class LiveTradingBridge:
 
         return current_price
 
-
     def reset_slippage_analysis(self) -> None:
         """Reset slippage analysis"""
         self.slippage_analysis = SlippageAnalysis()
-
 
 class BridgeReplay:
     """
@@ -775,19 +770,19 @@ class BridgeReplay:
 
         self.bridge = VirtualTradingBridge(initial_balance=initial_balance)
         self.current_index = 0
-        self.replay_results: List[Dict[str, Any]] = []
+        self.replay_results: list[dict[str, Any]] = []
 
-    def get_market_price_at_time(self, timestamp: datetime) -> Optional[float]:
+    def get_market_price_at_time(self, timestamp: datetime) -> float | None:
         """Get market price at specific timestamp"""
         # Find the closest price before or at the timestamp
         mask = self.market_data["timestamp"] <= timestamp
         if not mask.any():
             return None
-        return cast(Optional[float], self.market_data[mask]["price"].iloc[-1])
+        return cast(float | None, self.market_data[mask]["price"].iloc[-1])
 
     def replay_order(
         self, symbol: str, side: str, quantity: float, timestamp: datetime
-    ) -> Optional[VirtualOrder]:
+    ) -> VirtualOrder | None:
         """
         Replay a single order at specific timestamp.
 
@@ -827,12 +822,12 @@ class BridgeReplay:
 
         return order
 
-    def replay_orders(self, orders: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def replay_orders(self, orders: list[dict[str, Any]]) -> dict[str, Any]:
         """
         Replay multiple orders.
 
         Args:
-            orders: List of order dicts with keys [symbol, side, quantity, timestamp]
+            orders: list of order dicts with keys [symbol, side, quantity, timestamp]
 
         Returns:
             Replay summary statistics
@@ -867,6 +862,6 @@ class BridgeReplay:
 
         return summary
 
-    def get_replay_results(self) -> List[Dict[str, Any]]:
+    def get_replay_results(self) -> list[dict[str, Any]]:
         """Get detailed replay results"""
         return self.replay_results.copy()

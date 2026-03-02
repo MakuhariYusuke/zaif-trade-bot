@@ -25,7 +25,6 @@ from ztb.trading.strategies.action_signal_guide.interfaces.common_types import (
     PayloadRecords,
 )
 
-
 class AdaptationTrigger(Enum):
     """Triggers for parameter adaptation."""
 
@@ -35,7 +34,6 @@ class AdaptationTrigger(Enum):
     SIGNAL_QUALITY_DROP = "signal_quality_drop"
     VOLATILITY_SPIKE = "volatility_spike"
 
-
 class StreamingDataType(Enum):
     """Types of streaming data."""
 
@@ -43,7 +41,6 @@ class StreamingDataType(Enum):
     SIGNAL_DATA = "signal_data"
     PERFORMANCE_DATA = "performance_data"
     EXTERNAL_FEED = "external_feed"
-
 
 @dataclass
 class StreamingDataPoint:
@@ -53,7 +50,6 @@ class StreamingDataPoint:
     data: object
     timestamp: float
     metadata: MetadataMap
-
 
 @dataclass
 class AdaptationDecision:
@@ -65,7 +61,6 @@ class AdaptationDecision:
     expected_impact: dict[str, float]
     timestamp: float
 
-
 @dataclass
 class ProcessingResult:
     """Result of data processing operation."""
@@ -75,7 +70,6 @@ class ProcessingResult:
     processing_time: float
     quality_score: float
     metadata: MetadataMap
-
 
 @dataclass
 class PerformanceMetrics:
@@ -90,7 +84,6 @@ class PerformanceMetrics:
     throughput: float
     timestamp: float
 
-
 @dataclass
 class FeedbackLoopData:
     """Data for feedback loop processing."""
@@ -100,7 +93,6 @@ class FeedbackLoopData:
     market_outcomes: list[float]
     performance_metrics: MetricsMap
     adaptation_history: list[AdaptationDecision]
-
 
 class IStreamingProcessor(IActionSignalGuideInterface):
     """Interface for processing streaming market data and signals."""
@@ -123,7 +115,6 @@ class IStreamingProcessor(IActionSignalGuideInterface):
     ) -> pd.DataFrame:
         """Get processed data for specified type and period."""
 
-
 class IAdaptiveThresholds(IActionSignalGuideInterface):
     """Interface for adaptive threshold management."""
 
@@ -145,7 +136,6 @@ class IAdaptiveThresholds(IActionSignalGuideInterface):
     def get_threshold_history(self) -> PayloadRecords:
         """Get historical threshold values."""
 
-
 class IPerformanceMonitor(IActionSignalGuideInterface):
     """Interface for real-time performance monitoring."""
 
@@ -164,7 +154,6 @@ class IPerformanceMonitor(IActionSignalGuideInterface):
     @abstractmethod
     def generate_performance_report(self) -> PayloadMap:
         """Generate comprehensive performance report."""
-
 
 class IFeedbackLoop(IActionSignalGuideInterface):
     """Interface for feedback loop processing and learning."""
@@ -187,7 +176,6 @@ class IFeedbackLoop(IActionSignalGuideInterface):
     def get_feedback_statistics(self) -> MetricsMap:
         """Get feedback loop processing statistics."""
 
-
 class IRealTimeOptimizer(IActionSignalGuideInterface):
     """Interface for real-time optimization algorithms."""
 
@@ -204,7 +192,6 @@ class IRealTimeOptimizer(IActionSignalGuideInterface):
     @abstractmethod
     def get_optimization_trajectory(self) -> PayloadRecords:
         """Get optimization parameter trajectory."""
-
 
 class IAdaptiveController(IActionSignalGuideInterface):
     """Interface for adaptive control systems."""

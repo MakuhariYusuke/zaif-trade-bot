@@ -6,14 +6,12 @@
 import logging
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 import requests
 
 logger = logging.getLogger(__name__)
-
 
 class FreeDataSourceManager:
     """
@@ -53,7 +51,7 @@ class FreeDataSourceManager:
 
     def fetch_fred_economic_data(
         self,
-        series_ids: List[str],
+        series_ids: list[str],
         start_date: str = "2020-01-01",
         end_date: str = None,
     ) -> pd.DataFrame:
@@ -113,7 +111,7 @@ class FreeDataSourceManager:
         query: str = "cryptocurrency OR bitcoin OR ethereum",
         language: str = "en",
         days_back: int = 7,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         NewsAPIからニュースデータを取得
         無料枠：1日100リクエストまで
@@ -255,18 +253,18 @@ class FreeDataSourceManager:
             logger.error(f"Failed to fetch Alpha Vantage data: {e}")
             return pd.DataFrame()
 
-    def _get_newsapi_key(self) -> Optional[str]:
+    def _get_newsapi_key(self) -> str | None:
         """NewsAPIキーを取得（環境変数または設定ファイルから）"""
         # 実際の実装では環境変数や設定ファイルから取得
         # ここではサンプルとしてNoneを返す
         return None  # TODO: 実際のAPIキーを設定
 
-    def _get_alpha_vantage_key(self) -> Optional[str]:
+    def _get_alpha_vantage_key(self) -> str | None:
         """Alpha Vantageキーを取得"""
         # 実際の実装では環境変数や設定ファイルから取得
         return None  # TODO: 実際のAPIキーを設定
 
-    def get_available_economic_indicators(self) -> Dict[str, str]:
+    def get_available_economic_indicators(self) -> dict[str, str]:
         """
         利用可能な経済指標のリストを返す
 
@@ -294,7 +292,6 @@ class FreeDataSourceManager:
             "GOLDAMGBD228NLBM": "Gold Fixing Price",
             "DHHNGSP": "Henry Hub Natural Gas Spot Price",
         }
-
 
 class PublicDatasetLoader:
     """
@@ -349,7 +346,6 @@ class PublicDatasetLoader:
 
         df = pd.DataFrame(data, index=dates)
         return df
-
 
 # 使用例
 if __name__ == "__main__":

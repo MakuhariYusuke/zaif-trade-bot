@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 import numpy as np
 
@@ -31,7 +31,6 @@ from ztb.metrics.fill_quality import (
 
 logger = logging.getLogger(__name__)
 
-
 @dataclass
 class MonteCarloConfig:
     """シミュレーション設定."""
@@ -43,7 +42,6 @@ class MonteCarloConfig:
     maker_fee_rate: float = 0.0    # Coincheck maker fee = 0%
     random_seed: int = 42
     confidence_levels: tuple[float, ...] = (0.05, 0.25, 0.50, 0.75, 0.95)
-
 
 @dataclass
 class MonteCarloResult:
@@ -88,7 +86,7 @@ class MonteCarloResult:
     breakeven_fill_rate: float    # fill rate needed for PnL ≥ 0
     breakeven_pnl_bps: float     # per-cycle bps needed for PnL ≥ 0
 
-    raw_monthly_pnls: Optional[np.ndarray] = field(default=None, repr=False)
+    raw_monthly_pnls: np.ndarray | None = field(default=None, repr=False)
 
     def to_dict(self) -> dict[str, Any]:
         """JSON-safe dict に変換 (027# 型統合: MonteCarloResult 自身に to_dict 追加)."""
@@ -121,7 +119,6 @@ class MonteCarloResult:
             "breakeven_pnl_bps": self.breakeven_pnl_bps,
         }
 
-
 # ---------------------------------------------------------------------------
 # Core simulator
 # ---------------------------------------------------------------------------
@@ -140,7 +137,7 @@ class PnLMonteCarloSimulator:
     def __init__(
         self,
         records: Sequence[FillRecord],
-        config: Optional[MonteCarloConfig] = None,
+        config: MonteCarloConfig | None = None,
     ) -> None:
         if not records:
             raise ValueError("No fill records provided")
@@ -298,8 +295,8 @@ class PnLMonteCarloSimulator:
 
     def sensitivity_analysis(
         self,
-        fill_rates: Optional[Sequence[float]] = None,
-        pnl_adjustments_bps: Optional[Sequence[float]] = None,
+        fill_rates: Sequence[float] | None = None,
+        pnl_adjustments_bps: Sequence[float] | None = None,
     ) -> list[dict[str, Any]]:
         """fill_rate / pnl_mean を変えた感度分析.
 

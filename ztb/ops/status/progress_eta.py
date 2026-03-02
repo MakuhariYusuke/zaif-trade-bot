@@ -11,13 +11,11 @@ import re
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, Tuple
 
 from ztb.io.text_io import read_last_lines
 from ztb.utils.file_utils import safe_json_dump, safe_json_load
 
-
-def estimate_steps_per_sec_from_metrics(metrics_path: Path) -> Optional[float]:
+def estimate_steps_per_sec_from_metrics(metrics_path: Path) -> float | None:
     """Estimate steps/sec from metrics.json."""
     if not metrics_path.exists():
         return None
@@ -34,8 +32,7 @@ def estimate_steps_per_sec_from_metrics(metrics_path: Path) -> Optional[float]:
 
     return None
 
-
-def estimate_steps_per_sec_from_logs(log_dir: Path) -> Optional[float]:
+def estimate_steps_per_sec_from_logs(log_dir: Path) -> float | None:
     """Estimate steps/sec from log files."""
     log_files = list(log_dir.glob("*.log"))
     if not log_files:
@@ -77,10 +74,9 @@ def estimate_steps_per_sec_from_logs(log_dir: Path) -> Optional[float]:
 
     return None
 
-
 def compute_eta(
     current_steps: int, total_steps: int, steps_per_sec: float
-) -> Tuple[str, str, float]:
+) -> tuple[str, str, float]:
     """Compute ETA, completion time, and percentage."""
     if steps_per_sec <= 0:
         return "unknown", "unknown", 0.0
@@ -92,7 +88,6 @@ def compute_eta(
     pct = (current_steps / total_steps) * 100 if total_steps > 0 else 0.0
 
     return f"{eta_seconds:.0f}s", completion_time, pct
-
 
 def update_summary(
     summary_path: Path, steps_per_sec: float, eta: str, completion_time: str, pct: float
@@ -116,7 +111,6 @@ def update_summary(
         print(f"Updated {summary_path} with progress info")
     except Exception as e:
         print(f"Error updating summary: {e}", file=sys.stderr)
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -174,7 +168,6 @@ def main() -> None:
 
     if args.update_summary:
         update_summary(summary_path, steps_per_sec, eta, completion_time, pct)
-
 
 if __name__ == "__main__":
     main()

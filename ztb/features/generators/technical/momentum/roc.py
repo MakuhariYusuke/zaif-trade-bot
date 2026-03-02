@@ -12,7 +12,6 @@ from ztb.features.core.registry import FeatureRegistry
 from ztb.features.processors.caching.cache import feature_cache
 from ztb.utils.talib_wrapper import TaLibWrapper
 
-
 @FeatureRegistry.register("ROC")
 def compute_roc(df: pd.DataFrame, period: int = 10) -> pd.Series:
     """Compute ROC (Rate of Change) using Ta-Lib wrapper"""

@@ -8,7 +8,7 @@ Phase 3-2: パラメータ最適化 - 統合最適化システム
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -23,7 +23,6 @@ from ztb.analysis.walk_forward_analyzer import (
 )
 from ztb.io.json_io import read_json, write_json
 from ztb.utils.performance_profiler import PerformanceProfiler
-
 
 @dataclass
 class IntegratedOptimizationConfig:
@@ -54,7 +53,7 @@ class IntegratedOptimizationConfig:
     )
     min_optimization_trades: int = 100
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         return {
             "train_days": self.train_days,
@@ -71,16 +70,15 @@ class IntegratedOptimizationConfig:
             "min_optimization_trades": self.min_optimization_trades,
         }
 
-
 @dataclass
 class IntegratedOptimizationResult:
     """統合最適化結果"""
 
-    walk_forward_results: List[OptimizationResult]
+    walk_forward_results: list[OptimizationResult]
     optimal_parameters: ParameterSet
     kelly_parameters: KellyParameters
-    performance_summary: Dict[str, Any]
-    regime_analysis: Dict[str, Any]
+    performance_summary: dict[str, Any]
+    regime_analysis: dict[str, Any]
     optimization_timestamp: datetime
     config_used: IntegratedOptimizationConfig
 
@@ -117,7 +115,7 @@ class IntegratedOptimizationResult:
             return cumulative_return - 1
         return 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         return {
             "optimal_parameters": self.optimal_parameters.to_dict(),
@@ -136,11 +134,10 @@ class IntegratedOptimizationResult:
             "config_used": self.config_used.to_dict(),
         }
 
-
 class IntegratedParameterOptimizer:
     """統合パラメータ最適化システム"""
 
-    def __init__(self, config: Optional[IntegratedOptimizationConfig] = None):
+    def __init__(self, config: IntegratedOptimizationConfig | None = None):
         self.config = config or IntegratedOptimizationConfig()
         self.profiler = PerformanceProfiler()
         self.logger = logging.getLogger(__name__)
@@ -154,12 +151,12 @@ class IntegratedParameterOptimizer:
         self.confidence_adjuster = AdaptiveConfidenceAdjuster()
 
         # 最適化履歴
-        self.optimization_history: List[IntegratedOptimizationResult] = []
+        self.optimization_history: list[IntegratedOptimizationResult] = []
 
     def create_integrated_strategy_evaluator(
         self,
-        base_strategy_func: Callable[[pd.DataFrame, ParameterSet], Dict[str, float]],
-    ) -> Callable[[pd.DataFrame, ParameterSet], Dict[str, float]]:
+        base_strategy_func: Callable[[pd.DataFrame, ParameterSet], dict[str, float]],
+    ) -> Callable[[pd.DataFrame, ParameterSet], dict[str, float]]:
         """
         統合された戦略評価関数を作成
 
@@ -172,7 +169,7 @@ class IntegratedParameterOptimizer:
 
         def integrated_evaluator(
             data: pd.DataFrame, params: ParameterSet
-        ) -> Dict[str, float]:
+        ) -> dict[str, float]:
             # 基本戦略評価
             base_performance = base_strategy_func(data, params)
 
@@ -256,7 +253,7 @@ class IntegratedParameterOptimizer:
 
     def _calculate_integrated_score(
         self,
-        base_performance: Dict[str, float],
+        base_performance: dict[str, float],
         risk_adjusted_return: float,
         filtered_win_rate: float,
     ) -> float:
@@ -277,8 +274,8 @@ class IntegratedParameterOptimizer:
     def run_integrated_optimization(
         self,
         market_data: pd.DataFrame,
-        base_strategy_func: Callable[[pd.DataFrame, ParameterSet], Dict[str, float]],
-        parameter_sets: Optional[List[ParameterSet]] = None,
+        base_strategy_func: Callable[[pd.DataFrame, ParameterSet], dict[str, float]],
+        parameter_sets: list[ParameterSet] | None = None,
     ) -> IntegratedOptimizationResult:
         """
         統合最適化を実行
@@ -353,7 +350,7 @@ class IntegratedParameterOptimizer:
         return result
 
     def _select_optimal_parameters(
-        self, results: List[OptimizationResult]
+        self, results: list[OptimizationResult]
     ) -> OptimizationResult:
         """最適パラメータを選択"""
         if not results:
@@ -380,8 +377,8 @@ class IntegratedParameterOptimizer:
         return max(results, key=key_func)
 
     def _analyze_market_regimes(
-        self, market_data: pd.DataFrame, results: List[OptimizationResult]
-    ) -> Dict[str, Any]:
+        self, market_data: pd.DataFrame, results: list[OptimizationResult]
+    ) -> dict[str, Any]:
         """市場レジームを分析"""
         regime_performance = {}
 
@@ -448,7 +445,7 @@ class IntegratedParameterOptimizer:
 
     def get_optimization_recommendations(
         self, result: IntegratedOptimizationResult
-    ) -> List[str]:
+    ) -> list[str]:
         """最適化結果に基づく推奨事項を生成"""
         recommendations = []
 
@@ -485,7 +482,6 @@ class IntegratedParameterOptimizer:
             )
 
         return recommendations
-
 
 # ===== 使用例とテスト =====
 
@@ -525,7 +521,7 @@ if __name__ == "__main__":
     # 基本戦略評価関数（モック）
     def mock_strategy_evaluator(
         data: pd.DataFrame, params: ParameterSet
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """モック戦略評価関数"""
         # 単純なリターンモデル
         returns = data["close"].pct_change().dropna()

@@ -17,7 +17,7 @@ Grid Search: 全組み合わせを網羅的に探索
 
 import itertools
 import time
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 from ztb.optimization.base import (
     OptimizationResult,
@@ -26,7 +26,6 @@ from ztb.optimization.base import (
     ParameterType,
     TrialResult,
 )
-
 
 class GridSearchOptimizer(OptimizerBase):
     """
@@ -49,9 +48,9 @@ class GridSearchOptimizer(OptimizerBase):
 
     def __init__(
         self,
-        parameter_spaces: List[ParameterSpace],
+        parameter_spaces: list[ParameterSpace],
         objective_function: Callable[[dict[str, Any]], TrialResult],
-        grid_resolution: Optional[Dict[str, List[Any]]] = None,
+        grid_resolution: dict[str, list[Any]] | None = None,
         random_state: int = 42,
     ):
         """
@@ -95,7 +94,7 @@ class GridSearchOptimizer(OptimizerBase):
 
         print(f"Grid Search: {self.n_trials} 通りの組み合わせを探索")
 
-    def _generate_default_grid(self, param_space: ParameterSpace) -> List[Any]:
+    def _generate_default_grid(self, param_space: ParameterSpace) -> list[Any]:
         """デフォルトのグリッド値を生成"""
         import numpy as np
 

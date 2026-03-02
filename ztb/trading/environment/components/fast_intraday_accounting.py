@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 @dataclass(frozen=True)
 class AccountingSnapshot:
     gross_pnl: float
@@ -10,7 +9,6 @@ class AccountingSnapshot:
     total_fees: float
     total_slippage: float
     portfolio_value: float
-
 
 class FastIntradayAccounting:
     """Track gross/net PnL and costs for FastIntradayEnvV456."""

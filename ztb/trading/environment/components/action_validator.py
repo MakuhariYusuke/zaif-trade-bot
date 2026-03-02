@@ -2,7 +2,7 @@
 # 取引環境のアクション検証ユーティリティ
 
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     from ztb.trading.environment.utils.config import EnvironmentConfig
 
 logger = get_logger(__name__)
-
 
 class ActionValidator:
     """Handles action validation and masking for trading actions."""
@@ -35,13 +34,13 @@ class ActionValidator:
         position: float,
         total_pnl: float,
         trades_count: int,
-        last_trade_step: Optional[int],
+        last_trade_step: int | None,
         consecutive_trade_steps: int,
-        close_array: Optional[NDArray[np.float32]] = None,
-        price_array: Optional[NDArray[np.float32]] = None,
-        df: Optional[Any] = None,
-        market_regime: Optional[str] = None,
-        hybrid_filters: Optional[dict] = None,
+        close_array: NDArray[np.float32] | None = None,
+        price_array: NDArray[np.float32] | None = None,
+        df: Any | None = None,
+        market_regime: str | None = None,
+        hybrid_filters: dict | None = None,
     ) -> NDArray[np.int_]:
         """現在の状態で合法なアクションを返す（1=合法, 0=非法）"""
         legal = np.zeros(3, dtype=np.int_)  # [HOLD, BUY, SELL] - デフォルト非法
@@ -179,8 +178,8 @@ class ActionValidator:
     def _resolve_price(
         self,
         current_step: int,
-        price_array: Optional[NDArray[np.float32]],
-        df: Optional[Any],
+        price_array: NDArray[np.float32] | None,
+        df: Any | None,
     ) -> float:
         """Resolve current price for action validation."""
         if price_array is not None and price_array.size > current_step:
@@ -203,12 +202,12 @@ class ActionValidator:
         self,
         current_step: int,
         threshold: float,
-        close_array: Optional[NDArray[np.float32]],
-        price_array: Optional[NDArray[np.float32]],
-        df: Optional[Any],
+        close_array: NDArray[np.float32] | None,
+        price_array: NDArray[np.float32] | None,
+        df: Any | None,
     ) -> bool:
         """Check if current market volatility exceeds threshold."""
-        price_slice: Optional[NDArray[np.float32]] = None
+        price_slice: NDArray[np.float32] | None = None
         start_idx = max(0, current_step - 20)
         end_idx = current_step
 

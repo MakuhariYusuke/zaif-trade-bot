@@ -7,17 +7,17 @@ advantage remains outside target range for extended period.
 
 Supports HOLD/BUY/SELL action monitoring.
 """
+from __future__ import annotations
 
 import csv
 from pathlib import Path
-from typing import Any, Dict, Literal, Optional, TextIO, Tuple
+from typing import Any, Literal, TextIO
 
 import numpy as np
 import torch
 from numpy.typing import NDArray
 
 ActionType = Literal["HOLD", "BUY", "SELL"]
-
 
 class ActionGradientProbe:
     """
@@ -33,7 +33,7 @@ class ActionGradientProbe:
         advantage_threshold: float = 0.0,
         consecutive_failures: int = 200,
         moving_window: int = 50,
-        save_path: Optional[Path] = None,
+        save_path: Path | None = None,
     ):
         """
         Initialize gradient probe.
@@ -62,8 +62,8 @@ class ActionGradientProbe:
         self.triggered = False
 
         # CSV writer
-        self.csv_file: Optional[TextIO] = None
-        self.csv_writer: Optional["csv.DictWriter[str]"] = None
+        self.csv_file: TextIO | None = None
+        self.csv_writer: csv.DictWriter[str] | None = None
         if save_path:
             save_path.parent.mkdir(parents=True, exist_ok=True)
             self.csv_file = open(save_path, "w", newline="")
@@ -89,7 +89,7 @@ class ActionGradientProbe:
         action_logits: torch.Tensor,
         advantages: NDArray[np.floating[Any]],
         actions: NDArray[np.int64],
-    ) -> Tuple[bool, Dict[str, float]]:
+    ) -> tuple[bool, dict[str, float]]:
         """
         Probe target action gradient and advantage.
 
@@ -99,7 +99,7 @@ class ActionGradientProbe:
             actions: Actual actions taken [batch_size]
 
         Returns:
-            Tuple of (is_healthy, info_dict)
+            tuple of (is_healthy, info_dict)
             - is_healthy: False if failsafe should trigger
             - info_dict: Probe statistics
         """
@@ -183,7 +183,7 @@ class ActionGradientProbe:
 
         return not should_stop, info
 
-    def get_statistics(self) -> Dict[str, float]:
+    def get_statistics(self) -> dict[str, float]:
         """Get probe statistics."""
         if len(self.grad_norms) == 0:
             return {
@@ -208,7 +208,6 @@ class ActionGradientProbe:
         """Close CSV file."""
         if self.csv_file:
             self.csv_file.close()
-
 
 def create_failsafe_dump(
     model: Any,
@@ -255,10 +254,8 @@ def create_failsafe_dump(
     print(f"\n⚠️  {probe.target_action} gradient probe failsafe triggered!")
     print("Review probe CSV and failsafe dump for diagnosis.")
 
-
 # Backward compatibility alias
 SELLGradientProbe = ActionGradientProbe
-
 
 def test_action_gradient_probe() -> None:
     """Test Action gradient probe with synthetic data."""
@@ -328,10 +325,8 @@ def test_action_gradient_probe() -> None:
 
     print("\n✅ Action gradient probe test complete")
 
-
 # Keep old function name for backward compatibility
 test_sell_gradient_probe = test_action_gradient_probe
-
 
 if __name__ == "__main__":
     test_action_gradient_probe()

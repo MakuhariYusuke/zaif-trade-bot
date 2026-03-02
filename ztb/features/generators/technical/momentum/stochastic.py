@@ -9,7 +9,6 @@ import pandas as pd
 from ztb.features.core.registry import FeatureRegistry
 from ztb.utils.talib_wrapper import TaLibWrapper
 
-
 @FeatureRegistry.register("Stochastic")
 def compute_stochastic(
     df: pd.DataFrame, period: int = 14, smooth_k: int = 3
@@ -30,7 +29,6 @@ def compute_stochastic(
 
     # Return %D (slowd) as it's the smoothed signal line
     return pd.Series(slowd, index=df.index).fillna(50)
-
 
 @FeatureRegistry.register("Stochastic_K")
 def compute_stochastic_k(

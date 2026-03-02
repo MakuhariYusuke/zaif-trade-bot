@@ -1,5 +1,5 @@
 import math
-from typing import Any, Dict, Optional
+from typing import Any
 
 from scipy.stats import beta
 
@@ -12,7 +12,6 @@ from ztb.trading.signal.types import (
 )
 from ztb.trading.types import MarketState
 
-
 class CalibrationMap:
     """
     Calibration Map for HFT Strategy (v455).
@@ -20,7 +19,7 @@ class CalibrationMap:
     using hierarchical fallback (Specific -> Regime -> Global) and EWMA.
     """
 
-    def __init__(self, config: Dict[str, Any]) -> None:
+    def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
         self.tau = float(config.get("ewma_tau", 100.0))  # Time constant for EWMA
         self.n_min = float(
@@ -32,7 +31,7 @@ class CalibrationMap:
         # - Level 1: f"{regime}_{action_bin}"
         # - Level 2: f"{regime}"
         # - Level 3: "global"
-        self.stats: Dict[str, Dict[str, float]] = {}
+        self.stats: dict[str, dict[str, float]] = {}
 
         # Initialize global stats
         self._init_stats("global")
@@ -126,11 +125,11 @@ class CalibrationMap:
 
         return {"l1": stats_l1, "fallback": stats_fallback, "n_min": self.n_min}
 
-    def get_state(self) -> Dict[str, Any]:
+    def get_state(self) -> dict[str, Any]:
         """Return serializable state."""
         return {"stats": self.stats}
 
-    def load_state(self, state: Dict[str, Any]) -> None:
+    def load_state(self, state: dict[str, Any]) -> None:
         """Load state from dictionary."""
         if "stats" in state:
             self.stats = state["stats"]
@@ -176,14 +175,13 @@ class CalibrationMap:
             "n_eff": n_eff,
         }
 
-
 class CalibrationGate:
     """
     Calibration Gate for HFT Strategy.
     Evaluates entry opportunity using CalibrationMap and CostModel.
     """
 
-    def __init__(self, config: Dict[str, Any], calibration_map: CalibrationMap) -> None:
+    def __init__(self, config: dict[str, Any], calibration_map: CalibrationMap) -> None:
         self.config = config
         self.calibration_map = calibration_map
         # Cost parameters
@@ -200,7 +198,7 @@ class CalibrationGate:
         self,
         fused_signal: FusedSignal,
         market_data: MarketState,
-        order_size: Optional[float] = None,
+        order_size: float | None = None,
     ) -> GateResult:
         """
         Evaluate entry.

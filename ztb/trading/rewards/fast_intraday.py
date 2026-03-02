@@ -4,7 +4,6 @@ Fast Intraday / HFT Reward Function
 
 import numpy as np
 
-
 def compute_hft_reward(
     price_prev: float,
     price_now: float,

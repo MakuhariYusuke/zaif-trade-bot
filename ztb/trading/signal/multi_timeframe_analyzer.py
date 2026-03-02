@@ -11,7 +11,7 @@ Features:
 - 短期・中期トレンドの統合評価
 """
 
-from typing import Dict, Optional, Tuple, Any
+from typing import Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
 import numpy as np
@@ -22,13 +22,11 @@ from ztb.trading.signal.technical_indicators import TechnicalIndicators
 
 logger = get_logger(__name__)
 
-
 class Timeframe(Enum):
     """Timeframe enumeration"""
     M1 = "1m"    # 1 minute
     M5 = "5m"    # 5 minutes
     M15 = "15m"  # 15 minutes
-
 
 class TrendDirection(Enum):
     """Trend direction enumeration"""
@@ -38,7 +36,6 @@ class TrendDirection(Enum):
     BEARISH = "bearish"
     STRONG_BEARISH = "strong_bearish"
 
-
 @dataclass
 class TimeframeData:
     """Timeframe-specific market data"""
@@ -47,7 +44,7 @@ class TimeframeData:
     volumes: deque = field(default_factory=lambda: deque(maxlen=100))
     timestamps: deque = field(default_factory=lambda: deque(maxlen=100))
 
-    def add_data(self, price: float, volume: float, timestamp: Optional[float] = None) -> None:
+    def add_data(self, price: float, volume: float, timestamp: float | None = None) -> None:
         """Add new price/volume data"""
         self.prices.append(price)
         self.volumes.append(volume)
@@ -66,7 +63,6 @@ class TimeframeData:
         """Check if we have minimum data points"""
         return len(self.prices) >= min_points
 
-
 @dataclass
 class TrendAnalysis:
     """Trend analysis result for a timeframe"""
@@ -77,7 +73,6 @@ class TrendAnalysis:
     macd_signal: str  # "bullish", "bearish", "neutral"
     bollinger_position: str  # "upper", "middle", "lower"
 
-
 @dataclass
 class ConvergenceAnalysis:
     """Multi-timeframe convergence analysis"""
@@ -86,7 +81,6 @@ class ConvergenceAnalysis:
     timeframe_agreement: float  # 0-1 (1.0 = all timeframes agree)
     short_term_bias: TrendDirection
     medium_term_bias: TrendDirection
-
 
 class MultiTimeframeAnalyzer:
     """
@@ -114,7 +108,7 @@ class MultiTimeframeAnalyzer:
         logger.info("MultiTimeframeAnalyzer initialized")
 
     def update_timeframe_data(self, timeframe: Timeframe, price: float,
-                            volume: float, timestamp: Optional[float] = None) -> None:
+                            volume: float, timestamp: float | None = None) -> None:
         """
         Update data for specific timeframe
 
@@ -131,7 +125,7 @@ class MultiTimeframeAnalyzer:
         self.timeframes[timeframe].add_data(price, volume, timestamp)
         logger.debug(f"Updated {timeframe.value} data: price={price}, volume={volume}")
 
-    def analyze_timeframe_trend(self, timeframe: Timeframe) -> Optional[TrendAnalysis]:
+    def analyze_timeframe_trend(self, timeframe: Timeframe) -> TrendAnalysis | None:
         """
         Analyze trend for specific timeframe
 
@@ -232,7 +226,7 @@ class MultiTimeframeAnalyzer:
         )
 
     def _calculate_trend_direction(self, prices: np.ndarray, rsi: float,
-                                 macd_signal: str) -> Tuple[TrendDirection, float, float]:
+                                 macd_signal: str) -> tuple[TrendDirection, float, float]:
         """
         Calculate trend direction, strength, and momentum
 
@@ -242,7 +236,7 @@ class MultiTimeframeAnalyzer:
             macd_signal: MACD signal
 
         Returns:
-            Tuple of (direction, strength, momentum)
+            tuple of (direction, strength, momentum)
         """
         # Price momentum (recent price change)
         if len(prices) >= 5:
@@ -291,7 +285,7 @@ class MultiTimeframeAnalyzer:
 
         return direction, strength, momentum
 
-    def _calculate_convergence_score(self, trend_analyses: Dict[Timeframe, TrendAnalysis]) -> float:
+    def _calculate_convergence_score(self, trend_analyses: dict[Timeframe, TrendAnalysis]) -> float:
         """
         Calculate convergence score across timeframes
 
@@ -320,11 +314,11 @@ class MultiTimeframeAnalyzer:
 
         return convergence_score
 
-    def _determine_dominant_trend(self, trend_analyses: Dict[Timeframe, TrendAnalysis]) -> TrendDirection:
+    def _determine_dominant_trend(self, trend_analyses: dict[Timeframe, TrendAnalysis]) -> TrendDirection:
         """
         Determine the dominant trend across timeframes
         """
-        direction_counts: Dict[TrendDirection, int] = {}
+        direction_counts: dict[TrendDirection, int] = {}
 
         for analysis in trend_analyses.values():
             direction_counts[analysis.direction] = direction_counts.get(analysis.direction, 0) + 1
@@ -334,7 +328,7 @@ class MultiTimeframeAnalyzer:
 
         return dominant_direction
 
-    def _calculate_timeframe_agreement(self, trend_analyses: Dict[Timeframe, TrendAnalysis]) -> float:
+    def _calculate_timeframe_agreement(self, trend_analyses: dict[Timeframe, TrendAnalysis]) -> float:
         """
         Calculate agreement ratio across timeframes (0-1)
         """
@@ -347,7 +341,7 @@ class MultiTimeframeAnalyzer:
 
         return agreement_count / len(trend_analyses)
 
-    def _calculate_short_term_bias(self, trend_analyses: Dict[Timeframe, TrendAnalysis]) -> TrendDirection:
+    def _calculate_short_term_bias(self, trend_analyses: dict[Timeframe, TrendAnalysis]) -> TrendDirection:
         """
         Calculate short-term bias from 1m and 5m timeframes
         """
@@ -360,7 +354,7 @@ class MultiTimeframeAnalyzer:
 
         return self._determine_dominant_trend(short_term_analyses)
 
-    def _calculate_medium_term_bias(self, trend_analyses: Dict[Timeframe, TrendAnalysis]) -> TrendDirection:
+    def _calculate_medium_term_bias(self, trend_analyses: dict[Timeframe, TrendAnalysis]) -> TrendDirection:
         """
         Calculate medium-term bias from 5m and 15m timeframes
         """
@@ -373,7 +367,7 @@ class MultiTimeframeAnalyzer:
 
         return self._determine_dominant_trend(medium_term_analyses)
 
-    def get_analysis_summary(self) -> Dict[str, Any]:
+    def get_analysis_summary(self) -> dict[str, Any]:
         """
         Get comprehensive analysis summary
 

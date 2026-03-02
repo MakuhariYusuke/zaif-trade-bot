@@ -6,28 +6,27 @@ Configuration validation and management for Unified Trainer.
 import json
 import os
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from ztb.types.common import ConfigDict
 from ztb.io.json_io import read_json
 from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 
-
 class TrainingConfigValidator:
     """Enhanced configuration validator with detailed error reporting."""
 
     def __init__(self, logger=None):
         self.logger = logger or get_logger(__name__)
-        self.errors: List[str] = []
-        self.warnings: List[str] = []
+        self.errors: list[str] = []
+        self.warnings: list[str] = []
 
-    def validate(self, config: ConfigDict) -> Tuple[bool, List[str], List[str]]:
+    def validate(self, config: ConfigDict) -> tuple[bool, list[str], list[str]]:
         """
         Validate configuration comprehensively.
 
         Returns:
-            Tuple of (is_valid, errors, warnings)
+            tuple of (is_valid, errors, warnings)
         """
         self.errors = []
         self.warnings = []
@@ -122,12 +121,12 @@ class TrainingConfigValidator:
                             f"SAC {param}={value} is outside recommended range [{min_val}, {max_val}]"
                         )
 
-    def _validate_ppo_config(self, config: Dict[str, Any]):
+    def _validate_ppo_config(self, config: dict[str, Any]):
         """Validate PPO-specific configuration."""
         # PPO validation not yet implemented - add warnings
         self.warnings.append("PPO configuration validation not yet fully implemented")
 
-    def _validate_data_config(self, config: Dict[str, Any]):
+    def _validate_data_config(self, config: dict[str, Any]):
         """Validate data configuration."""
         data_path = config.get("data_path", "btc_jpy_real_dataset.csv")
 
@@ -150,7 +149,7 @@ class TrainingConfigValidator:
         except OSError:
             self.warnings.append(f"Cannot access data file: {data_path}")
 
-    def _validate_environment_config(self, config: Dict[str, Any]):
+    def _validate_environment_config(self, config: dict[str, Any]):
         """Validate environment configuration."""
         env_config = config.get("environment", {})
 
@@ -180,7 +179,7 @@ class TrainingConfigValidator:
                         f"Environment {param}={value} is outside recommended range [{min_val}, {max_val}]"
                     )
 
-    def _validate_training_config(self, config: Dict[str, Any]):
+    def _validate_training_config(self, config: dict[str, Any]):
         """Validate training configuration."""
         # Total timesteps
         total_timesteps = config["training"]["total_timesteps"]
@@ -202,7 +201,6 @@ class TrainingConfigValidator:
                 f"model_name must be string, got {type(model_name).__name__}"
             )
 
-
 class ConfigurationFileManager:
     """Configuration management with validation and enhancement."""
 
@@ -213,12 +211,12 @@ class ConfigurationFileManager:
 
     def load_and_validate(
         self, config_path: str
-    ) -> Tuple[Optional[Dict[str, Any]], bool, List[str], List[str]]:
+    ) -> tuple[dict[str, Any] | None, bool, list[str], list[str]]:
         """
         Load configuration from file and validate it.
 
         Returns:
-            Tuple of (config, is_valid, errors, warnings)
+            tuple of (config, is_valid, errors, warnings)
         """
         try:
             config = read_json(config_path)
@@ -259,7 +257,7 @@ class ConfigurationFileManager:
             self.logger.error(error)
             return None, False, [error], []
 
-    def _enhance_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    def _enhance_config(self, config: dict[str, Any]) -> dict[str, Any]:
         """Enhance configuration with sensible defaults and computed values."""
         enhanced = config.copy()
 
@@ -279,7 +277,7 @@ class ConfigurationFileManager:
 
         return enhanced
 
-    def save_config(self, config: Dict[str, Any], file_path: str) -> bool:
+    def save_config(self, config: dict[str, Any], file_path: str) -> bool:
         """Save configuration to file."""
         try:
             safe_json_dump(config, file_path, indent=2, ensure_ascii=False)

@@ -6,7 +6,7 @@ UnifiedEvaluator uses these helpers for EvaluationType.PAPER_TRADING.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -21,13 +21,11 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 def _load_model(model_path: str) -> SAC:
     logger.info("Loading model from %s", model_path)
     model = SAC.load(model_path)
     logger.info("Model loaded successfully")
     return model
-
 
 def _load_data(data_path: str) -> pd.DataFrame:
     logger.info("Loading data from %s", data_path)
@@ -38,21 +36,19 @@ def _load_data(data_path: str) -> pd.DataFrame:
     logger.info("Loaded %s data points", len(df))
     return df
 
-
 def _create_environment(
-    df: pd.DataFrame, config: Optional[EnvironmentConfig]
+    df: pd.DataFrame, config: EnvironmentConfig | None
 ) -> HeavyTradingEnv:
     env_config = config or EnvironmentConfig()
     env = HeavyTradingEnv(df=df, config=env_config)
     return env
 
-
 def run_paper_trading(
     model: SAC,
     env: HeavyTradingEnv,
     num_episodes: int = 10,
-    max_steps_per_episode: Optional[int] = None,
-) -> Dict[str, Any]:
+    max_steps_per_episode: int | None = None,
+) -> dict[str, Any]:
     """Run paper trading simulation and return summary stats."""
     logger.info("Starting paper trading with %s episodes", num_episodes)
 
@@ -157,15 +153,14 @@ def run_paper_trading(
     logger.info("Paper trading completed")
     return summary
 
-
 def evaluate_paper_trading(
     model_path: str,
     data_path: str,
     num_episodes: int = 10,
-    env_config: Optional[EnvironmentConfig] = None,
-    max_steps_per_episode: Optional[int] = None,
-    output_path: Optional[str] = None,
-) -> Dict[str, Any]:
+    env_config: EnvironmentConfig | None = None,
+    max_steps_per_episode: int | None = None,
+    output_path: str | None = None,
+) -> dict[str, Any]:
     """Complete paper trading evaluation pipeline."""
     model = _load_model(model_path)
     df = _load_data(data_path)

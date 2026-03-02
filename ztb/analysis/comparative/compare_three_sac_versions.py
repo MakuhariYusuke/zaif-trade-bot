@@ -174,7 +174,6 @@ def compare_three_versions(log_dir: str) -> None:
     print(f"\n💾 Detailed comparison saved to: {output_file}")
     print("=" * 100)
 
-
 if __name__ == "__main__":
     log_dir = "checkpoints/sac_session"
     compare_three_versions(log_dir)

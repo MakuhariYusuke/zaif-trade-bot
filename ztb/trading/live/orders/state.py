@@ -10,13 +10,12 @@ import hashlib
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ztb.trading.live.orders.compat import OrderData
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class OrderState(enum.Enum):
     """Order states in the lifecycle."""
@@ -29,7 +28,6 @@ class OrderState(enum.Enum):
     REJECTED = "rejected"
     EXPIRED = "expired"
     FAILED = "failed"
-
 
 class OrderEvent(enum.Enum):
     """Events that can trigger order state transitions."""
@@ -44,7 +42,6 @@ class OrderEvent(enum.Enum):
     FAIL = "fail"
     RESET = "reset"
 
-
 @dataclass
 class OrderRecord:
     """Complete order record with state."""
@@ -55,10 +52,10 @@ class OrderRecord:
     average_price: float = 0.0
     fees: float = 0.0
     last_update: float = field(default_factory=time.time)
-    error_message: Optional[str] = None
-    external_order_id: Optional[str] = None
+    error_message: str | None = None
+    external_order_id: str | None = None
     idempotency_key: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Generate idempotency key if not provided."""
@@ -106,12 +103,11 @@ class OrderRecord:
         }
         return new_state in valid_transitions.get(self.state, set())
 
-
 class OrderStateMachine:
     """State machine for managing multiple orders."""
 
     def __init__(self) -> None:
-        self.orders: Dict[str, OrderRecord] = {}
+        self.orders: dict[str, OrderRecord] = {}
 
     def transition_order(self, order_id: str, event: OrderEvent, **kwargs: Any) -> bool:
         """Transition order to new state based on event.
@@ -177,7 +173,6 @@ class OrderStateMachine:
             f"Order {order_id} transitioned from {old_state.value} to {new_state.value}"
         )
         return True
-
 
 # Global order state machine instance
 _order_state_machine = OrderStateMachine()

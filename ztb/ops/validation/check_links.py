@@ -9,11 +9,9 @@ import argparse
 import os
 import re
 from pathlib import Path
-from typing import Optional
-
 
 def find_markdown_files(
-    roots: list[Path], exclude_patterns: Optional[list[str]] = None
+    roots: list[Path], exclude_patterns: list[str] | None = None
 ) -> list[Path]:
     """Find all Markdown files under the given roots, excluding patterns."""
     if exclude_patterns is None:
@@ -37,12 +35,10 @@ def find_markdown_files(
                     files.append(md)
     return files
 
-
 def extract_links(content: str) -> list[tuple[str, str]]:
     """Extract [text](url) links from content."""
     pattern = r"\[([^\]]+)\]\(([^)]+)\)"
     return re.findall(pattern, content)
-
 
 def extract_headers(content: str) -> list[tuple[int, str]]:
     """Extract headers and their anchors from content."""
@@ -63,7 +59,6 @@ def extract_headers(content: str) -> list[tuple[int, str]]:
             headers.append((level, anchor))
     return headers
 
-
 def check_link(file_path: Path, link: str, headers: list[tuple[int, str]]) -> bool:
     """Check if a link is valid."""
     if link.startswith(("http://", "https://", "mailto:")):
@@ -81,7 +76,6 @@ def check_link(file_path: Path, link: str, headers: list[tuple[int, str]]) -> bo
         return resolved.exists()
     except (OSError, RuntimeError):
         return False
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Check links in Markdown files")
@@ -125,7 +119,6 @@ def main() -> int:
     else:
         print("All links are valid.")
         return 0
-
 
 if __name__ == "__main__":
     exit(main())

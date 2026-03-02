@@ -3,7 +3,6 @@ v394d vs v394f 完全比較分析
 ent_coef 20倍でも結果はほぼ同じという衝撃的な事実
 """
 
-
 def analyze_v394_comparison() -> None:
     """v394d vs v394f の詳細比較"""
 
@@ -164,7 +163,6 @@ def analyze_v394_comparison() -> None:
     print("  3. 報酬関数の抜本的見直し")
     print("  4. 代替アルゴリズム（SAC等）の検討")
     print("=" * 80)
-
 
 if __name__ == "__main__":
     analyze_v394_comparison()

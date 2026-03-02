@@ -12,7 +12,7 @@ This prevents batch imbalance where majority scenarios dominate gradient updates
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -20,7 +20,6 @@ from numpy.typing import NDArray
 from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 
 logger = logging.getLogger(__name__)
-
 
 class StratifiedSampler:
     """
@@ -101,7 +100,7 @@ class StratifiedSampler:
 
     def bucket_indices(
         self, regimes: NDArray[np.int64], prev_actions: NDArray[np.int64]
-    ) -> Dict[Tuple[int, int], List[int]]:
+    ) -> dict[tuple[int, int], list[int]]:
         """
         Bucket transition indices by (regime, prev_action).
 
@@ -110,9 +109,9 @@ class StratifiedSampler:
             prev_actions: Previous action labels (0/1/2 for HOLD/BUY/SELL)
 
         Returns:
-            buckets: Dict[(regime_id, action_id)] -> [indices]
+            buckets: dict[(regime_id, action_id)] -> [indices]
         """
-        buckets: Dict[Tuple[int, int], List[int]] = {}
+        buckets: dict[tuple[int, int], list[int]] = {}
 
         # Initialize all buckets
         for regime in range(3):
@@ -137,7 +136,7 @@ class StratifiedSampler:
         prices: NDArray[np.float32],
         prev_actions: NDArray[np.int64],
         batch_size: int,
-        available_indices: Optional[NDArray[np.int64]] = None,
+        available_indices: NDArray[np.int64] | None = None,
     ) -> NDArray[np.int64]:
         """
         Sample a stratified batch.
@@ -220,7 +219,7 @@ class StratifiedSampler:
 
         return result
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Get statistics about bucket distribution."""
         return {
             "bucket_counts": self.bucket_counts.copy(),
@@ -235,7 +234,6 @@ class StratifiedSampler:
         self.bucket_counts.fill(0)
         self.bucket_samples_drawn.fill(0)
         self.total_batches_sampled = 0
-
 
 def test_stratified_sampler() -> None:
     """Basic test for StratifiedSampler."""
@@ -293,7 +291,6 @@ def test_stratified_sampler() -> None:
         print("⚠ Minority action not boosted (may need tuning)")
 
     print("\n✅ Stratified Sampler basic test complete!")
-
 
 if __name__ == "__main__":
     test_stratified_sampler()

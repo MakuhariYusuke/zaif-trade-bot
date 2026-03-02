@@ -8,13 +8,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, TypedDict
 
 try:
     import pandas as pd
 except ImportError:
     pd = None
-
 
 class AlertType(Enum):
     """アラートタイプ"""
@@ -24,16 +23,15 @@ class AlertType(Enum):
     DRIFT = "drift"
     SYSTEM = "system"
 
-
 @dataclass
 class EvaluationMetrics:
     """統合された評価メトリクス"""
 
     # ML/Classification metrics
-    accuracy: Optional[float] = None
-    precision: Optional[float] = None
-    recall: Optional[float] = None
-    f1_score: Optional[float] = None
+    accuracy: float | None = None
+    precision: float | None = None
+    recall: float | None = None
+    f1_score: float | None = None
 
     # Financial metrics
     total_return: float = 0.0
@@ -49,16 +47,14 @@ class EvaluationMetrics:
     consistency_score: float = 0.0
     recovery_factor: float = 0.0
 
-
 @dataclass
 class EvaluationResult:
     """評価結果"""
 
     timestamp: datetime
-    performance_metrics: Optional[EvaluationMetrics] = None
-    safety_metrics: Optional[Dict[str, Any]] = None
+    performance_metrics: EvaluationMetrics | None = None
+    safety_metrics: dict[str, Any] | None = None
     drift_detected: bool = False
-
 
 class SummaryStats(TypedDict):
     """サマリー統計の型定義"""
@@ -70,23 +66,20 @@ class SummaryStats(TypedDict):
     annual_return: float
     annual_volatility: float
 
-
 class BenchmarkSummaryStats(TypedDict):
     """ベンチマーク比較サマリー統計の型定義"""
 
-    best_benchmark: Optional[str]
-    worst_benchmark: Optional[str]
+    best_benchmark: str | None
+    worst_benchmark: str | None
     avg_information_ratio: float
     avg_alpha: float
-    benchmark_correlations: Dict[str, float]
-
+    benchmark_correlations: dict[str, float]
 
 class MultiBenchmarkSummary(TypedDict):
     """複数ベンチマークサマリーの型定義"""
 
-    comparisons: List[BenchmarkComparison]
-    summary_stats: Dict[str, Any]
-
+    comparisons: list[BenchmarkComparison]
+    summary_stats: dict[str, Any]
 
 @dataclass
 class BenchmarkComparison:
@@ -104,7 +97,6 @@ class BenchmarkComparison:
     max_drawdown_diff: float
     win_rate_vs_benchmark: float
 
-
 @dataclass
 class RollingComparison:
     """ローリング比較結果"""
@@ -115,13 +107,12 @@ class RollingComparison:
     rolling_tracking_error: pd.Series
     rolling_excess_returns: pd.Series
 
-
 @dataclass
 class BenchmarkComparisonResult:
     """包括的なベンチマーク比較結果"""
 
-    strategy_performance: Dict[str, float]
-    benchmark_performance: Dict[str, Dict[str, float]]
-    comparisons: List[BenchmarkComparison]
-    rolling_comparisons: Optional[List[RollingComparison]] = None
-    multi_benchmark_summary: Optional[MultiBenchmarkSummary] = None
+    strategy_performance: dict[str, float]
+    benchmark_performance: dict[str, dict[str, float]]
+    comparisons: list[BenchmarkComparison]
+    rolling_comparisons: list[RollingComparison] | None = None
+    multi_benchmark_summary: MultiBenchmarkSummary | None = None

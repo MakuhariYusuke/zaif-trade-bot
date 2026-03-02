@@ -8,11 +8,11 @@ Walk-Forward Analysis モジュール
 ```
 WalkForwardSplitter
     ↓ (generates)
-TimeSeriesWindow (List)
+TimeSeriesWindow (list)
     ↓ (for each window)
 WalkForwardModelEvaluator.train_and_evaluate_window()
     ↓ (generates)
-WindowPerformance (List)
+WindowPerformance (list)
     ↓ (aggregates)
 WalkForwardResult
     ↓ (reports)

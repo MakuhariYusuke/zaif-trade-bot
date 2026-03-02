@@ -9,15 +9,12 @@ Advanced Callbacks for SAC Training.
 
 from collections import deque
 from pathlib import Path
-from typing import Optional
-
 
 from stable_baselines3.common.callbacks import BaseCallback
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.training_utils import get_metric_from_logger
 
 logger = get_logger(__name__)
-
 
 class EarlyStoppingCallback(BaseCallback):
     """
@@ -58,7 +55,7 @@ class EarlyStoppingCallback(BaseCallback):
         self.cv_threshold = cv_threshold
 
         self.metric_history: deque = deque(maxlen=window_size)
-        self.best_metric: Optional[float] = None
+        self.best_metric: float | None = None
         self.steps_without_improvement = 0
         self.stopped_step = 0
 
@@ -152,10 +149,9 @@ class EarlyStoppingCallback(BaseCallback):
 
         return True  # 訓練継続
 
-    def _get_metric(self) -> Optional[float]:
+    def _get_metric(self) -> float | None:
         """現在のメトリクス値を取得"""
         return get_metric_from_logger(self.model, self.metric_name)
-
 
 class BestModelSaveCallback(BaseCallback):
     """訓練中に最良のモデルを自動的に保存する。
@@ -185,8 +181,8 @@ class BestModelSaveCallback(BaseCallback):
         self.mode = mode
         self.check_interval = check_interval
 
-        self.best_metric: Optional[float] = None
-        self.best_model_path: Optional[Path] = None
+        self.best_metric: float | None = None
+        self.best_model_path: Path | None = None
 
         # ディレクトリ作成
         self.save_path.mkdir(parents=True, exist_ok=True)
@@ -231,7 +227,7 @@ class BestModelSaveCallback(BaseCallback):
 
         return True
 
-    def _get_metric(self) -> Optional[float]:
+    def _get_metric(self) -> float | None:
         """現在のメトリクス値を取得"""
         if not hasattr(self.model, "logger") or self.model.logger is None:
             return None

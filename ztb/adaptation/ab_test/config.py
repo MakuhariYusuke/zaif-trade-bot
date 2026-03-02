@@ -4,10 +4,8 @@ Configuration management for A/B Testing Framework
 """
 
 from dataclasses import dataclass, field
-from typing import Dict
 
 from .types import ABTestConfiguration, ABTestVariant, StatisticalTest
-
 
 @dataclass
 class ABTestPerformanceConfig:
@@ -34,7 +32,6 @@ class ABTestPerformanceConfig:
     early_stopping_patience: int = 5
     early_stopping_min_samples: int = 500
 
-
 @dataclass
 class ABTestRiskConfig:
     """リスク管理設定"""
@@ -53,7 +50,6 @@ class ABTestRiskConfig:
     enable_automatic_rollback: bool = True
     rollback_cooldown_hours: int = 6
     rollback_trigger_threshold: float = 0.1
-
 
 @dataclass
 class ABTestStatisticalConfig:
@@ -77,7 +73,6 @@ class ABTestStatisticalConfig:
     confidence_interval_method: str = "bootstrap"
     bootstrap_iterations: int = 1000
 
-
 @dataclass
 class ABTestConfig:
     """A/Bテスト全体設定"""
@@ -100,7 +95,7 @@ class ABTestConfig:
 
     # 通知設定
     notifications_enabled: bool = True
-    alert_thresholds: Dict[str, float] = field(
+    alert_thresholds: dict[str, float] = field(
         default_factory=lambda: {
             "high_regression_rate": 0.1,
             "low_confidence": 0.8,

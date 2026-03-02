@@ -4,7 +4,6 @@ Adaptive Timeframe Manager for Phase 4: Minute-level Trading Support
 動的タイムフレーム適応による高頻度取引対応
 """
 
-from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 from enum import Enum
@@ -12,7 +11,6 @@ from enum import Enum
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class Timeframe(Enum):
     """サポートされるタイムフレーム"""
@@ -22,7 +20,6 @@ class Timeframe(Enum):
     POSITION = "1h"      # ポジション（1時間足）
     DAILY = "1d"         # 日次（1日足）
 
-
 class MarketCondition(Enum):
     """市場条件の分類"""
     LOW_VOLATILITY = "low_volatility"
@@ -30,7 +27,6 @@ class MarketCondition(Enum):
     HIGH_VOLATILITY = "high_volatility"
     TRENDING = "trending"
     RANGING = "ranging"
-
 
 class AdaptiveTimeframeManager:
     """
@@ -40,7 +36,7 @@ class AdaptiveTimeframeManager:
     Phase 4のコアコンポーネント
     """
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize adaptive timeframe manager
 
@@ -81,7 +77,7 @@ class AdaptiveTimeframeManager:
 
         logger.info("AdaptiveTimeframeManager initialized")
 
-    def _get_default_config(self) -> Dict:
+    def _get_default_config(self) -> dict:
         """Get default configuration"""
         return {
             'volatility_thresholds': {
@@ -144,7 +140,7 @@ class AdaptiveTimeframeManager:
             return MarketCondition.NORMAL
 
     def select_optimal_timeframe(self, df: pd.DataFrame,
-                               current_timeframe: str = None) -> Tuple[str, MarketCondition]:
+                               current_timeframe: str = None) -> tuple[str, MarketCondition]:
         """
         市場データに基づいて最適なタイムフレームを選択
 
@@ -153,7 +149,7 @@ class AdaptiveTimeframeManager:
             current_timeframe: 現在のタイムフレーム（オプション）
 
         Returns:
-            Tuple[str, MarketCondition]: (最適タイムフレーム, 市場条件)
+            tuple[str, MarketCondition]: (最適タイムフレーム, 市場条件)
         """
         # 市場条件を分析
         market_condition = self.analyze_market_condition(df)
@@ -175,7 +171,7 @@ class AdaptiveTimeframeManager:
 
         return optimal_timeframe, market_condition
 
-    def get_timeframe_hierarchy(self, base_timeframe: str) -> List[str]:
+    def get_timeframe_hierarchy(self, base_timeframe: str) -> list[str]:
         """
         指定タイムフレームの階層構造を取得
 
@@ -183,7 +179,7 @@ class AdaptiveTimeframeManager:
             base_timeframe: 基準となるタイムフレーム
 
         Returns:
-            List[str]: 確認用のタイムフレームリスト（短い順）
+            list[str]: 確認用のタイムフレームリスト（短い順）
         """
         hierarchy = {
             '1m': ['1m', '5m', '15m'],
@@ -244,7 +240,7 @@ class AdaptiveTimeframeManager:
         min_points = self.config['min_data_points'].get(timeframe, 50)
         return len(df) >= min_points
 
-    def get_adaptive_parameters(self, market_condition: MarketCondition) -> Dict:
+    def get_adaptive_parameters(self, market_condition: MarketCondition) -> dict:
         """
         市場条件に応じた適応パラメータを取得
 
@@ -252,7 +248,7 @@ class AdaptiveTimeframeManager:
             market_condition: 市場条件
 
         Returns:
-            Dict: 適応パラメータ
+            dict: 適応パラメータ
         """
         base_params = {
             'signal_sensitivity': 0.5,

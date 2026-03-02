@@ -15,9 +15,6 @@ import sys
 # real package here can cause confusing re-entry behavior.
 _real = None
 
-
-
-
 # Export either the real classes (if available) or the dummy ones.
 # errors when lightweight test stubs are present earlier in sys.modules).
 try:

@@ -4,11 +4,10 @@ Compatibility shim for TrainingReporter.
 Use ztb.training.unified_trainer.reporting.TrainingReporter as the source of truth.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ztb.training.unified_trainer.reporting import TrainingReporter as _TrainingReporter
 from ztb.types.common import ConfigDict
-
 
 class TrainingReporter(_TrainingReporter):
     """Compatibility wrapper to preserve legacy method signatures."""
@@ -16,14 +15,14 @@ class TrainingReporter(_TrainingReporter):
     def __init__(self, logger: Any) -> None:
         super().__init__(logger)
         self._last_config: ConfigDict = {}
-        self._last_stats: Dict[str, Any] = {}
+        self._last_stats: dict[str, Any] = {}
         self._last_success: bool = True
 
     def log_training_start(
         self,
         algorithm: str,
-        config: Optional[ConfigDict] = None,
-        total_timesteps: Optional[int] = None,
+        config: ConfigDict | None = None,
+        total_timesteps: int | None = None,
     ) -> None:
         cfg: ConfigDict = config or {}
         if total_timesteps is not None and isinstance(cfg, dict):
@@ -36,9 +35,9 @@ class TrainingReporter(_TrainingReporter):
 
     def log_training_complete(
         self,
-        final_metrics: Dict[str, Any],
+        final_metrics: dict[str, Any],
         training_time: float,
-        model_path: Optional[str] = None,
+        model_path: str | None = None,
     ) -> None:
         stats = {
             "final_metrics": final_metrics,
@@ -49,6 +48,6 @@ class TrainingReporter(_TrainingReporter):
         self._last_success = True
         super().log_training_complete(True, stats)
 
-    def generate_training_report(self) -> Dict[str, Any]:
+    def generate_training_report(self) -> dict[str, Any]:
         """Legacy entrypoint built from the most recent start/complete calls."""
         return self.generate_report(self._last_config, self._last_stats, self._last_success)

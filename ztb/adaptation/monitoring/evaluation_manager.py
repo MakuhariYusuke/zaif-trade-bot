@@ -2,13 +2,14 @@
 Continuous Evaluation and Monitoring Manager
 継続的評価と監視マネージャー
 """
+from __future__ import annotations
 
 import logging
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 
@@ -35,7 +36,6 @@ from .evaluation_types import (
 
 logger = logging.getLogger(__name__)
 
-
 class ContinuousEvaluationManager:
     """継続的評価マネージャー"""
 
@@ -44,8 +44,8 @@ class ContinuousEvaluationManager:
         monitor: PerformanceMonitor,
         safety_manager: SafetyManager,
         drift_manager: ConceptDriftManager,
-        online_learning: Optional["OnlineLearningPipeline"] = None,
-        explainability_analyzer: Optional["ExplainabilityAnalyzer"] = None,
+        online_learning: OnlineLearningPipeline | None = None,
+        explainability_analyzer: ExplainabilityAnalyzer | None = None,
     ):
         self.monitor = monitor
         self.safety_manager = safety_manager
@@ -57,15 +57,15 @@ class ContinuousEvaluationManager:
         self.evaluation_interval_seconds = 60  # 1分間隔
         self.alert_check_interval_seconds = 30  # 30秒間隔
 
-        self.evaluation_history: List[EvaluationResult] = []
-        self.active_alerts: List[MonitoringAlert] = []
-        self.system_metrics_history: List[SystemMetrics] = []
+        self.evaluation_history: list[EvaluationResult] = []
+        self.active_alerts: list[MonitoringAlert] = []
+        self.system_metrics_history: list[SystemMetrics] = []
 
-        self.alert_callbacks: List[Callable[[MonitoringAlert], None]] = []
-        self.evaluation_callbacks: List[Callable[[EvaluationResult], None]] = []
+        self.alert_callbacks: list[Callable[[MonitoringAlert], None]] = []
+        self.evaluation_callbacks: list[Callable[[EvaluationResult], None]] = []
 
         # スレッド管理
-        self.threads: List[threading.Thread] = []
+        self.threads: list[threading.Thread] = []
         self.executor = ThreadPoolExecutor(max_workers=4)
 
     def start_continuous_evaluation(self) -> bool:
@@ -186,7 +186,7 @@ class ContinuousEvaluationManager:
                 error=str(e),
             )
 
-    def _evaluate_performance(self) -> Optional[EvaluationMetrics]:
+    def _evaluate_performance(self) -> EvaluationMetrics | None:
         """パフォーマンス評価"""
         try:
             # 最新のメトリクスを取得
@@ -210,7 +210,7 @@ class ContinuousEvaluationManager:
             logger.error(f"Performance evaluation failed: {e}")
             return None
 
-    def _evaluate_safety(self) -> Optional[Dict[str, Any]]:
+    def _evaluate_safety(self) -> dict[str, Any] | None:
         """安全評価"""
         try:
             safety_status = self.safety_manager.get_safety_status()
@@ -226,7 +226,7 @@ class ContinuousEvaluationManager:
             logger.error(f"Safety evaluation failed: {e}")
             return None
 
-    def _evaluate_drift(self) -> Dict[str, Any]:
+    def _evaluate_drift(self) -> dict[str, Any]:
         """ドリフト評価"""
         try:
             # 最新のデータを用いたドリフト検知
@@ -263,7 +263,7 @@ class ContinuousEvaluationManager:
                 "error": str(e),
             }
 
-    def _evaluate_online_learning(self) -> Optional[Dict[str, Any]]:
+    def _evaluate_online_learning(self) -> dict[str, Any] | None:
         """オンライン学習評価"""
         if not self.online_learning:
             return None
@@ -283,7 +283,7 @@ class ContinuousEvaluationManager:
             logger.error(f"Online learning evaluation failed: {e}")
             return None
 
-    def _get_recent_data_for_drift_detection(self) -> Optional[np.ndarray]:
+    def _get_recent_data_for_drift_detection(self) -> np.ndarray | None:
         """ドリフト検知用の最近のデータを取得"""
         try:
             # モニターから最近の特徴量データを取得
@@ -308,7 +308,7 @@ class ContinuousEvaluationManager:
             logger.error(f"Failed to get recent data for drift detection: {e}")
             return None
 
-    def _calculate_overall_score(self, results: Dict[str, Any]) -> float:
+    def _calculate_overall_score(self, results: dict[str, Any]) -> float:
         """総合スコアの計算"""
         try:
             score = 0.0
@@ -347,7 +347,7 @@ class ContinuousEvaluationManager:
             logger.error(f"Overall score calculation failed: {e}")
             return 0.5
 
-    def _generate_recommendations(self, results: Dict[str, Any]) -> List[str]:
+    def _generate_recommendations(self, results: dict[str, Any]) -> list[str]:
         """推奨事項の生成"""
         recommendations = []
 
@@ -464,7 +464,7 @@ class ContinuousEvaluationManager:
         except Exception as e:
             logger.error(f"Alert generation failed: {e}")
 
-    def _check_performance_alerts(self) -> List[MonitoringAlert]:
+    def _check_performance_alerts(self) -> list[MonitoringAlert]:
         """パフォーマンスアラートのチェック"""
         alerts = []
 
@@ -506,7 +506,7 @@ class ContinuousEvaluationManager:
 
         return alerts
 
-    def _check_safety_alerts(self) -> List[MonitoringAlert]:
+    def _check_safety_alerts(self) -> list[MonitoringAlert]:
         """安全アラートのチェック"""
         alerts = []
 
@@ -542,7 +542,7 @@ class ContinuousEvaluationManager:
 
         return alerts
 
-    def _check_drift_alerts(self) -> List[MonitoringAlert]:
+    def _check_drift_alerts(self) -> list[MonitoringAlert]:
         """ドリフトアラートのチェック"""
         alerts = []
 
@@ -655,7 +655,7 @@ class ContinuousEvaluationManager:
             except Exception as e:
                 logger.error(f"Evaluation callback failed: {e}")
 
-    def get_evaluation_summary(self, hours: int = 24) -> Dict[str, Any]:
+    def get_evaluation_summary(self, hours: int = 24) -> dict[str, Any]:
         """評価サマリーの取得"""
         try:
             cutoff_time = datetime.now() - timedelta(hours=hours)
@@ -695,7 +695,7 @@ class ContinuousEvaluationManager:
             logger.error(f"Evaluation summary generation failed: {e}")
             return {"error": str(e)}
 
-    def get_active_alerts(self) -> List[MonitoringAlert]:
+    def get_active_alerts(self) -> list[MonitoringAlert]:
         """アクティブなアラートの取得"""
         return self.active_alerts.copy()
 

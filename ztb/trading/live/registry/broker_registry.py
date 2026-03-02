@@ -9,7 +9,7 @@ with type-safe factory pattern for multi-exchange support.
 
 import logging
 import os
-from typing import Any, Dict, Optional, Tuple, Type
+from typing import Any, Optional
 
 from ..exchanges.base.broker_interfaces import IBroker
 from ..exchanges.bitflyer.adapter import BitFlyerAdapter
@@ -19,11 +19,10 @@ logger = logging.getLogger(__name__)
 
 # 取引所名 → (API_KEY env var, API_SECRET env var) のマッピング
 # 新しい取引所を追加する場合はここにも追記する
-_CREDENTIAL_ENV_MAP: Dict[str, Tuple[str, str]] = {
+_CREDENTIAL_ENV_MAP: dict[str, tuple[str, str]] = {
     "coincheck": ("COINCHECK_API_KEY", "COINCHECK_API_SECRET"),
     "bitflyer": ("BITFLYER_API_KEY", "BITFLYER_API_SECRET"),
 }
-
 
 class BrokerRegistry:
     """Registry of available exchange adapters.
@@ -34,8 +33,8 @@ class BrokerRegistry:
     """
 
     def __init__(self) -> None:
-        self._brokers: Dict[str, Type[IBroker]] = {}
-        self._credential_env: Dict[str, Tuple[str, str]] = dict(_CREDENTIAL_ENV_MAP)
+        self._brokers: dict[str, type[IBroker]] = {}
+        self._credential_env: dict[str, tuple[str, str]] = dict(_CREDENTIAL_ENV_MAP)
         self._register_default_brokers()
 
     def _register_default_brokers(self) -> None:
@@ -46,8 +45,8 @@ class BrokerRegistry:
     def register_broker(
         self,
         name: str,
-        broker_class: Type[IBroker],
-        credential_env: Optional[Tuple[str, str]] = None,
+        broker_class: type[IBroker],
+        credential_env: tuple[str, str] | None = None,
     ) -> None:
         """Register an exchange adapter class.
 
@@ -86,7 +85,7 @@ class BrokerRegistry:
             )
         return self._brokers[name](**kwargs)
 
-    def get_credential_env_vars(self, name: str) -> Tuple[str, str]:
+    def get_credential_env_vars(self, name: str) -> tuple[str, str]:
         """Return ``(API_KEY_VAR, API_SECRET_VAR)`` for a registered broker.
 
         Raises:
@@ -101,7 +100,7 @@ class BrokerRegistry:
 
     def resolve_credentials(
         self, name: str
-    ) -> Tuple[Optional[str], Optional[str]]:
+    ) -> tuple[str | None, str | None]:
         """Resolve API credentials from environment variables.
 
         Returns:
@@ -117,8 +116,8 @@ class BrokerRegistry:
         name: str,
         *,
         dry_run: bool = True,
-        api_key: Optional[str] = None,
-        api_secret: Optional[str] = None,
+        api_key: str | None = None,
+        api_secret: str | None = None,
         **kwargs: Any,
     ) -> IBroker:
         """High-level adapter factory with auto credential resolution.
@@ -154,7 +153,7 @@ class BrokerRegistry:
                 key_var, secret_var = self.get_credential_env_vars(name)
                 raise ValueError(
                     f"API credentials required for live mode on {name}. "
-                    f"Set {key_var}/{secret_var} in .env or pass explicitly."
+                    f"set {key_var}/{secret_var} in .env or pass explicitly."
                 )
             raise ValueError(
                 f"API credentials required for live mode on {name}. "
@@ -176,10 +175,8 @@ class BrokerRegistry:
         """Check if a broker is registered."""
         return name in self._brokers
 
-
 # Global registry instance
-_broker_registry: Optional[BrokerRegistry] = None
-
+_broker_registry: BrokerRegistry | None = None
 
 def get_broker_registry() -> BrokerRegistry:
     """Get global broker registry instance (singleton)."""

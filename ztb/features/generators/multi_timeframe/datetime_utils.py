@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timezone
-from typing import Iterable, Optional
+from typing import Iterable
 
 import numpy as np
 import pandas as pd
@@ -17,11 +17,10 @@ import pandas as pd
 _DEFAULT_SAFE = "1" if os.name == "nt" else "0"
 _SAFE_DATETIME = os.getenv("ZTB_SAFE_DATETIME", _DEFAULT_SAFE) == "1"
 
-
 def safe_to_datetime_series(
     series: pd.Series,
     errors: str = "coerce",
-    utc: Optional[bool] = None,
+    utc: bool | None = None,
 ) -> pd.Series:
     """Convert a Series to datetime with a safe Python fallback.
 
@@ -45,11 +44,10 @@ def safe_to_datetime_series(
 
     return pd.Series(dt_index, index=series.index, name=series.name)
 
-
 def _parse_datetime_values(
     values: Iterable[object],
     errors: str = "coerce",
-    utc: Optional[bool] = None,
+    utc: bool | None = None,
 ) -> list[object]:
     parsed: list[object] = []
     has_tz = False
@@ -80,11 +78,10 @@ def _parse_datetime_values(
 
     return parsed
 
-
 def _parse_single_value(
     value: object,
     errors: str = "coerce",
-    utc: Optional[bool] = None,
+    utc: bool | None = None,
 ) -> object:
     if isinstance(value, pd.Timestamp):
         dt = value.to_pydatetime()
@@ -113,8 +110,7 @@ def _parse_single_value(
 
     return dt
 
-
-def _parse_epoch_number(value: object) -> Optional[datetime]:
+def _parse_epoch_number(value: object) -> datetime | None:
     try:
         val = float(value)
     except (TypeError, ValueError):
@@ -131,7 +127,6 @@ def _parse_epoch_number(value: object) -> Optional[datetime]:
         # Likely seconds
         return datetime.fromtimestamp(val, tz=timezone.utc)
     return None
-
 
 def _handle_parse_error(value: object, errors: str) -> object:
     if errors == "raise":

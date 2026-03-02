@@ -21,7 +21,6 @@ from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.io.data_loader import DataLoader
 from ztb.utils.config import TypedConfig
 
-
 def validate_model(model_path: str, data_path: str, num_episodes: int = 3) -> None:
     """Validate model behavior on sample data."""
     print(f"Loading model from {model_path}")
@@ -148,9 +147,8 @@ def validate_model(model_path: str, data_path: str, num_episodes: int = 3) -> No
         print("⚠️  Very imbalanced action distribution")
         print("   Consider retraining with:")
 
-
 def validate_model_behavior(
-    model_path: str, data_path: Optional[str] = None, num_episodes: int = 3
+    model_path: str, data_path: str | None = None, num_episodes: int = 3
 ) -> dict:
     """Validate model behavior on sample data.
 
@@ -163,7 +161,6 @@ def validate_model_behavior(
         Dictionary with validation results
     """
     return validate_model(model_path, data_path, num_episodes)
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Validate model behavior")
@@ -188,7 +185,6 @@ def main() -> None:
 
     args = parser.parse_args()
     validate_model(args.model_path, args.data_path, args.episodes)
-
 
 if __name__ == "__main__":
     main()

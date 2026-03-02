@@ -10,7 +10,7 @@ through unified configuration and minimal interface.
 import argparse
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
@@ -24,11 +24,10 @@ from ztb.utils.v4xx_config_converter import V4XXConfigConverter
 from ztb.optimization.parallel import ParallelWindowEvaluator
 from ztb.evaluation.walk_forward.checkpoint import CheckpointManager
 
-
 class V4XXUnifiedTrainer(UnifiedBase):
     """Lightweight unified trainer for all v4XX series models."""
 
-    def __init__(self, config_path: str, version: Optional[str] = None):
+    def __init__(self, config_path: str, version: str | None = None):
         """
         Initialize unified trainer.
 
@@ -58,7 +57,7 @@ class V4XXUnifiedTrainer(UnifiedBase):
             self.optimizer_tracker = None
             self.logger.info("Optimizer features disabled (legacy configuration)")
 
-    def _load_and_convert_config(self) -> Dict[str, Any]:
+    def _load_and_convert_config(self) -> dict[str, Any]:
         """Load and convert configuration to unified format."""
         try:
             # Load raw config
@@ -152,7 +151,7 @@ class V4XXUnifiedTrainer(UnifiedBase):
             self.logger.error(f"Training failed: {e}")
             raise
 
-    def save_config(self, output_path: Optional[str] = None):
+    def save_config(self, output_path: str | None = None):
         """Save the unified configuration."""
         if output_path is None and self.config_path:
             output_path = str(
@@ -172,10 +171,10 @@ class V4XXUnifiedTrainer(UnifiedBase):
         df: Any,
         windows: list,
         timesteps: int,
-        env_factory: Optional[Any] = None,
-        algorithm_factory: Optional[Any] = None,
-        num_workers: Optional[int] = None,
-        run_id: Optional[str] = None,
+        env_factory: Any | None = None,
+        algorithm_factory: Any | None = None,
+        num_workers: int | None = None,
+        run_id: str | None = None,
         enable_checkpointing: bool = True,
     ) -> tuple:
         """
@@ -185,7 +184,7 @@ class V4XXUnifiedTrainer(UnifiedBase):
 
         Args:
             df: Full dataset (DataFrame with OHLCV data)
-            windows: List of (train_end, val_end, test_end) tuples
+            windows: list of (train_end, val_end, test_end) tuples
             timesteps: Training timesteps per window
             env_factory: Environment factory callable (from config if None)
             algorithm_factory: Algorithm factory callable (from config if None)
@@ -194,10 +193,10 @@ class V4XXUnifiedTrainer(UnifiedBase):
             enable_checkpointing: Whether to save/restore checkpoints
 
         Returns:
-            Tuple[results_dict, errors_dict, summary_stats]
-            - results_dict: Dict[window_id] → WindowPerformance
-            - errors_dict: Dict[window_id] → error_message
-            - summary_stats: Dict with aggregated metrics
+            tuple[results_dict, errors_dict, summary_stats]
+            - results_dict: dict[window_id] → WindowPerformance
+            - errors_dict: dict[window_id] → error_message
+            - summary_stats: dict with aggregated metrics
 
         Example:
             results, errors, summary = trainer.evaluate_parallel(
@@ -259,10 +258,10 @@ class V4XXUnifiedTrainer(UnifiedBase):
         df: Any,
         windows: list,
         timesteps: int,
-        env_factory: Optional[Any] = None,
-        algorithm_factory: Optional[Any] = None,
-        num_workers: Optional[int] = None,
-        run_id: Optional[str] = None,
+        env_factory: Any | None = None,
+        algorithm_factory: Any | None = None,
+        num_workers: int | None = None,
+        run_id: str | None = None,
         enable_checkpointing: bool = True,
         cache_max_items: int = 1000,
         cache_ttl_seconds: int = 3600,
@@ -278,7 +277,7 @@ class V4XXUnifiedTrainer(UnifiedBase):
 
         Args:
             df: Full dataset (DataFrame with OHLCV data)
-            windows: List of (train_end, val_end, test_end) tuples
+            windows: list of (train_end, val_end, test_end) tuples
             timesteps: Training timesteps per window
             env_factory: Environment factory callable (from config if None)
             algorithm_factory: Algorithm factory callable (from config if None)
@@ -289,11 +288,11 @@ class V4XXUnifiedTrainer(UnifiedBase):
             cache_ttl_seconds: Cache entry time-to-live in seconds
 
         Returns:
-            Tuple[results_dict, errors_dict, summary_stats, cache_stats]
-            - results_dict: Dict[window_id] → WindowPerformance
-            - errors_dict: Dict[window_id] → error_message
-            - summary_stats: Dict with aggregated metrics
-            - cache_stats: Dict with cache hit rate, size, etc.
+            tuple[results_dict, errors_dict, summary_stats, cache_stats]
+            - results_dict: dict[window_id] → WindowPerformance
+            - errors_dict: dict[window_id] → error_message
+            - summary_stats: dict with aggregated metrics
+            - cache_stats: dict with cache hit rate, size, etc.
 
         Example:
             results, errors, summary, cache_stats = trainer.evaluate_parallel_cached(
@@ -367,7 +366,7 @@ class V4XXUnifiedTrainer(UnifiedBase):
         Get environment and algorithm factories from configuration.
 
         Returns:
-            Tuple[env_factory, algorithm_factory]
+            tuple[env_factory, algorithm_factory]
         """
         try:
             from ztb.evaluation.walk_forward.evaluator import (
@@ -403,7 +402,6 @@ class V4XXUnifiedTrainer(UnifiedBase):
         except Exception as e:
             self.logger.error(f"Failed to analyze results: {e}")
             raise
-
 
 def main():
     """Main entry point for unified training system."""
@@ -516,7 +514,6 @@ def main():
     except Exception as e:
         trainer.logger.error("❌ Training system failed: %s", e)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

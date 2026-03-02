@@ -20,7 +20,6 @@ from ztb.types.common import CandidateConfig, CandidateScore
 
 # CandidateConfig and CandidateScore dataclasses are defined in ztb.types.common
 
-
 class MTFOptimizer:
     """A minimal MTF optimizer for Layer 6.
 
@@ -249,7 +248,6 @@ class MTFOptimizer:
             except Exception:
                 pass
         return False
-
 
 if __name__ == "__main__":
     import argparse

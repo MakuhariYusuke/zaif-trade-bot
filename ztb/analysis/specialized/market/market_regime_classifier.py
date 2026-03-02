@@ -12,7 +12,7 @@ This module provides sophisticated market condition analysis including:
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -31,7 +31,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class VolatilityLevel(Enum):
     """Volatility level classifications."""
 
@@ -40,7 +39,6 @@ class VolatilityLevel(Enum):
     MEDIUM = "medium"
     HIGH = "high"
     VERY_HIGH = "very_high"
-
 
 @dataclass
 class MarketCondition:
@@ -52,8 +50,7 @@ class MarketCondition:
     trend_direction: float  # -1 (bear) to +1 (bull)
     confidence: float
     timestamp: datetime
-    features: Dict[str, float]
-
+    features: dict[str, float]
 
 class MarketRegimeClassifier:
     """
@@ -66,7 +63,7 @@ class MarketRegimeClassifier:
     - Volume analysis
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize market regime classifier.
 
@@ -76,7 +73,7 @@ class MarketRegimeClassifier:
         self.config = config or self._get_default_config()
         self.logger = get_logger(f"{self.__class__.__name__}")
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """Get default configuration."""
         return {
             "trend_window": 20,
@@ -93,7 +90,7 @@ class MarketRegimeClassifier:
         timestamp_column: str = "timestamp",
         price_column: str = "close",
         volume_column: str = "volume",
-    ) -> List[MarketCondition]:
+    ) -> list[MarketCondition]:
         """
         Classify market conditions for the entire dataset.
 
@@ -104,7 +101,7 @@ class MarketRegimeClassifier:
             volume_column: Name of volume column
 
         Returns:
-            List of MarketCondition objects
+            list of MarketCondition objects
         """
         if len(data) < self.config["min_periods"]:
             self.logger.warning(
@@ -245,12 +242,12 @@ class MarketRegimeClassifier:
             features=features,
         )
 
-    def _classify_trend_regime(self, row: pd.Series) -> Tuple[MarketRegime, float]:
+    def _classify_trend_regime(self, row: pd.Series) -> tuple[MarketRegime, float]:
         """
         Classify trend regime based on technical indicators.
 
         Returns:
-            Tuple of (regime, confidence)
+            tuple of (regime, confidence)
         """
         trend_direction = row.get("trend_direction", 0)
         trend_strength = row.get("trend_strength", 0)
@@ -281,12 +278,12 @@ class MarketRegimeClassifier:
         else:
             return MarketRegime.SIDEWAYS, 0.6
 
-    def _classify_volatility(self, row: pd.Series) -> Tuple[VolatilityLevel, float]:
+    def _classify_volatility(self, row: pd.Series) -> tuple[VolatilityLevel, float]:
         """
         Classify volatility level.
 
         Returns:
-            Tuple of (volatility_level, confidence)
+            tuple of (volatility_level, confidence)
         """
         volatility = row.get("volatility", 0)
         bb_width = row.get("bb_width", 0)
@@ -305,13 +302,13 @@ class MarketRegimeClassifier:
             return VolatilityLevel.VERY_LOW, 0.5
 
     def get_regime_statistics(
-        self, conditions: List[MarketCondition]
-    ) -> Dict[str, Any]:
+        self, conditions: list[MarketCondition]
+    ) -> dict[str, Any]:
         """
         Calculate statistics about market regime distribution.
 
         Args:
-            conditions: List of MarketCondition objects
+            conditions: list of MarketCondition objects
 
         Returns:
             Dictionary with regime statistics
@@ -339,8 +336,8 @@ class MarketRegimeClassifier:
         }
 
     def _calculate_regime_transitions(
-        self, conditions: List[MarketCondition]
-    ) -> Dict[str, int]:
+        self, conditions: list[MarketCondition]
+    ) -> dict[str, int]:
         """Calculate regime transition frequencies."""
         transitions = {}
         for i in range(1, len(conditions)):

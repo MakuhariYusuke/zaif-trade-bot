@@ -17,7 +17,6 @@ from ztb.utils.file_utils import get_project_root
 project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
-
 def run_curriculum_stage(stage_name, timesteps, learning_rate, base_config):
     """Run a single curriculum stage"""
 
@@ -101,7 +100,6 @@ def run_curriculum_stage(stage_name, timesteps, learning_rate, base_config):
         "elapsed_time": elapsed_time,
     }
 
-
 def run_curriculum_learning():
     """Run complete curriculum learning"""
 
@@ -162,7 +160,6 @@ def run_curriculum_learning():
     print("1. Execute ensemble training with specialized models")
     print("2. Run multi-stage training (exploration → exploitation → fine-tuning)")
     print("3. Perform comprehensive backtesting and evaluation")
-
 
 if __name__ == "__main__":
     run_curriculum_learning()

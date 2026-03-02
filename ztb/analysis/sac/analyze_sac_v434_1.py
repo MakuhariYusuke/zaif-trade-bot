@@ -7,7 +7,6 @@ from ztb.io.json_io import read_json
 
 from ztb.analysis.comparative.analyze_backtest import BacktestAnalyzer
 
-
 def main():
     # バックテスト結果を読み込み
     results = read_json("backtest_results_sac_model_20251022_041525.json")
@@ -29,7 +28,6 @@ def main():
 
         # 基本的な分析
         analyze_basic_results(results)
-
 
 def analyze_basic_results(results):
     """基本的な結果分析"""
@@ -92,7 +90,6 @@ def analyze_basic_results(results):
     print("   - SACの連続行動空間の有効活用")
     print("   - ポジションサイズの動的調整")
     print("   - リスク管理の統合")
-
 
 if __name__ == "__main__":
     main()

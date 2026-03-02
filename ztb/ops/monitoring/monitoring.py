@@ -11,7 +11,6 @@ from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 logger = logging.getLogger(__name__)
 
-
 class PrometheusExporter:
     """
     Prometheus metrics exporter for comprehensive monitoring.
@@ -176,7 +175,6 @@ class PrometheusExporter:
             # Notifications are optional; ignore failures at runtime
             pass
 
-
 class ResourceMonitor:
     """
     Resource monitor for disk and memory usage.
@@ -251,19 +249,15 @@ class ResourceMonitor:
         except ImportError:
             pass
 
-
 # Global exporter instance
 exporter = PrometheusExporter()
-
 
 def get_exporter() -> PrometheusExporter:
     """Get global Prometheus exporter instance"""
     return exporter
 
-
 # Global resource monitor instance
 resource_monitor = ResourceMonitor()
-
 
 def get_resource_monitor() -> ResourceMonitor:
     """Get global resource monitor instance"""

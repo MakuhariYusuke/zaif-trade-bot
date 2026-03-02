@@ -17,7 +17,6 @@ sys.path.insert(0, str(project_root))
 
 from ztb.utils.path_utils import get_project_root
 
-
 def load_config():
     """Load v432.4 configuration for real market evaluation"""
     config_path = (
@@ -28,7 +27,6 @@ def load_config():
         / "sac_v432_4_profit_focused_optimization.json"
     )
     return read_json(config_path)
-
 
 def simulate_market_data(num_steps=5000):
     """Load real market data for backtesting"""
@@ -45,9 +43,6 @@ def simulate_market_data(num_steps=5000):
     print(f"Loaded {len(prices)} real market data points")
     print(f"Price range: {prices.min():.2f} - {prices.max():.2f}")
     return prices
-
-
-
 
 def check_entry_conditions(price, prev_price, market_condition, config):
     """Check if entry conditions are met for v432.3 enhanced criteria"""
@@ -212,7 +207,6 @@ def check_entry_conditions(price, prev_price, market_condition, config):
     final_reward = adjusted_rewards[final_action]
 
     return final_action, final_reward, detected_condition, confidence_score
-
 
 def run_backtest_simulation_v432_3(config, num_steps=10000, initial_capital=10000.0):
     """Run v432.3 backtest simulation with Entry/Exit Enhancement"""
@@ -446,7 +440,6 @@ def run_backtest_simulation_v432_3(config, num_steps=10000, initial_capital=1000
         "total_reward": total_reward,
     }
 
-
 def main():
     # Load configuration
     config = load_config()
@@ -471,7 +464,6 @@ def main():
     print(f"\nResults saved to: {output_file}")
     print("\n=== SAC v432.7 Real Market Data Evaluation Complete ===")
     print("Ready for training integration and further optimization")
-
 
 if __name__ == "__main__":
     main()

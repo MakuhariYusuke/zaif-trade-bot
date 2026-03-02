@@ -20,7 +20,6 @@ __all__ = [
     "preprocess_data",
 ]
 
-
 class NoiseFilter:
     """Simple NoiseFilter shim used in older tests.
 
@@ -65,7 +64,6 @@ class NoiseFilter:
         df = self.filter_zscore(df, cols)
         df = self.filter_iqr(df, cols)
         return df
-
 
 class SyntheticDataGenerator:
     """Minimal synthetic data generator for tests.
@@ -166,7 +164,6 @@ class SyntheticDataGenerator:
                 ignore_index=True,
             )
 
-
 class AnomalyDetector:
     """Compatibility wrapper exposing simple api expected by legacy tests.
 
@@ -229,7 +226,6 @@ class AnomalyDetector:
 
         else:
             return self.detect_anomalies(df, method="statistical")
-
 
 def preprocess_data(df: pd.DataFrame, config: dict | None = None) -> pd.DataFrame:
     """Helper wrapper used by older tests.

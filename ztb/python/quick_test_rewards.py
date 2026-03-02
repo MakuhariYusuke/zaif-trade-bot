@@ -14,7 +14,6 @@ Usage:
 import json
 import subprocess
 import sys
-from typing import Dict
 
 # Test configurations
 CONFIGS = [
@@ -42,8 +41,7 @@ CONFIGS = [
 QUICK_TEST_TIMESTEPS = 2000
 QUICK_TEST_EVAL_FREQ = 500
 
-
-def modify_config_for_quick_test(config_path: str) -> Dict:
+def modify_config_for_quick_test(config_path: str) -> dict:
     """Load config and modify for quick testing."""
     with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
@@ -58,8 +56,7 @@ def modify_config_for_quick_test(config_path: str) -> Dict:
 
     return config
 
-
-def run_quick_test(config_info: Dict) -> bool:
+def run_quick_test(config_info: dict) -> bool:
     """Run a quick test with the given config."""
     print(f"\n{'='*80}")
     print(f"Testing: {config_info['name']}")
@@ -103,7 +100,6 @@ def run_quick_test(config_info: Dict) -> bool:
     except KeyboardInterrupt:
         print(f"\n⚠️ Test interrupted by user: {config_info['name']}")
         return False
-
 
 def main():
     """Run quick tests for all reward configurations."""
@@ -162,7 +158,6 @@ def main():
     print("3. Analyze reward trajectories and action distributions")
     print("4. Select best configuration for full 30k timesteps training")
     print(f"{'='*80}\n")
-
 
 if __name__ == "__main__":
     main()

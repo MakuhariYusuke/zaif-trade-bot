@@ -10,7 +10,6 @@ from ztb.utils.logging_utils import get_logger
 if TYPE_CHECKING:
     from ztb.trading.live_trader.live_trader import LiveTrader
 
-
 def _resolve_expected_obs_dim(live_trader: "LiveTrader") -> int:
     """モデルの観測空間から期待次元数を解決する.
 
@@ -30,7 +29,6 @@ def _resolve_expected_obs_dim(live_trader: "LiveTrader") -> int:
         return expected
 
     return 0  # 0 = 不明 → フォールバック (features をそのまま使う)
-
 
 class ActionPrediction:
     """Handles action prediction using the trained model."""

@@ -10,12 +10,10 @@ import yaml
 
 ConfigMap = dict[str, object]
 
-
 def _as_map(value: object) -> ConfigMap:
     if isinstance(value, dict):
         return dict(value)
     return {}
-
 
 class V4XXConfigConverter:
     """Normalize v4xx configs into a unified dict shape."""

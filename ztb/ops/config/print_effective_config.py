@@ -16,7 +16,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from ztb.config.loaders.priority_loader import load_config
 from ztb.io.json_io import write_json
 
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Print effective configuration")
     parser.add_argument("--config", type=str, help="Path to YAML config file")
@@ -36,7 +35,6 @@ def main() -> None:
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

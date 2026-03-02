@@ -4,7 +4,6 @@ ADXパターン認識 - トレンド強度と方向性分析
 """
 
 from collections.abc import Mapping
-from typing import Optional
 
 import pandas as pd
 
@@ -25,14 +24,13 @@ from ztb.utils.performance_utils import timed
 
 from .base import IndicatorPatternRecognizer, MultiTimeframeData, SignalResult
 
-
 class ADXRecognizer(IndicatorPatternRecognizer):
     """
     ADX (Average Directional Index) pattern recognizer.
     ADXベースのパターン認識 - トレンド強度と方向性分析
     """
 
-    def __init__(self, config: Optional[dict[str, object]] = None):
+    def __init__(self, config: dict[str, object] | None = None):
         super().__init__(config)
         self.pattern_type = "adx"
         self.period = int(self.config.get("period", 14))
@@ -48,8 +46,8 @@ class ADXRecognizer(IndicatorPatternRecognizer):
         self,
         data: pd.DataFrame,
         index: int = -1,
-        multi_timeframe_data: Optional[MultiTimeframeData] = None,
-    ) -> Optional[SignalResult]:
+        multi_timeframe_data: MultiTimeframeData | None = None,
+    ) -> SignalResult | None:
         """
         Recognize ADX patterns with multi-timeframe support.
 
@@ -320,7 +318,7 @@ class ADXRecognizer(IndicatorPatternRecognizer):
     def _analyze_adx_multi_timeframe_alignment(
         self,
         current_adx: float,
-        multi_timeframe_data: Optional[MultiTimeframeData],
+        multi_timeframe_data: MultiTimeframeData | None,
     ) -> float:
         """
         Analyze multi-timeframe alignment for enhanced signal confidence.
@@ -366,7 +364,7 @@ class ADXRecognizer(IndicatorPatternRecognizer):
 
     def _adjust_thresholds_for_regime(
         self,
-        multi_timeframe_data: Optional[MultiTimeframeData],
+        multi_timeframe_data: MultiTimeframeData | None,
         pattern_type: str = "general",
     ) -> dict[str, float]:
         """
@@ -415,7 +413,7 @@ class ADXRecognizer(IndicatorPatternRecognizer):
         current_minus_di: float,
         di_threshold: float,
         mtf_confidence: float
-    ) -> Optional[SignalResult]:
+    ) -> SignalResult | None:
         """
         Detect DI cross signals with multi-timeframe confirmation.
 

@@ -15,7 +15,6 @@ sys.path.insert(0, str(project_root))
 from ztb.training.unified_trainer.algorithms import create_algorithm_trainer
 from ztb.utils.logging_utils import setup_logging
 
-
 def train_variant(config_path: str, variant_name: str) -> bool:
     """Train a single variant."""
     print(f"\n🚀 Training {variant_name}...")
@@ -51,7 +50,6 @@ def train_variant(config_path: str, variant_name: str) -> bool:
     except Exception as e:
         print(f"❌ {variant_name} training failed: {e}")
         return False
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="SAC v436 All Variants Training")
@@ -99,7 +97,6 @@ def main() -> int:
     else:
         print("⚠️  Some variants failed. Check logs for details.")
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -19,13 +19,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-
 class SACDecisionPayload(TypedDict, total=False):
     action: str
     confidence: float
     timestamp: pd.Timestamp
     market_state: str
-
 
 class SACValidationResult(TypedDict):
     is_valid: bool
@@ -37,14 +35,12 @@ class SACValidationResult(TypedDict):
     sac_action: str
     signal_action: str
 
-
 class CorrelationHistoryEntry(TypedDict):
     timestamp: pd.Timestamp
     correlation_score: float
     pattern_type: str
     signal_confidence: float
     is_valid: bool
-
 
 class IntegratedDecision(TypedDict, total=False):
     action: str
@@ -55,7 +51,6 @@ class IntegratedDecision(TypedDict, total=False):
     sac_contribution: float
     market_adjustment: float
 
-
 class IntegrationHistoryEntry(TypedDict):
     timestamp: pd.Timestamp
     signal_action: str
@@ -64,7 +59,6 @@ class IntegrationHistoryEntry(TypedDict):
     signal_confidence: float
     sac_confidence: float
     integrated_confidence: float
-
 
 class PerformanceDecisionRecord(TypedDict):
     timestamp: pd.Timestamp
@@ -76,13 +70,11 @@ class PerformanceDecisionRecord(TypedDict):
     outcome: float
     market_volatility: float
 
-
 class SACPerformanceMetrics(TypedDict):
     signal_sac_agreement_rate: float
     integrated_decision_accuracy: float
     signal_guide_accuracy: float
     sac_accuracy: float
-
 
 def _coerce_float(value: object, default: float) -> float:
     """Coerce unknown numeric payloads to float safely."""
@@ -91,14 +83,12 @@ def _coerce_float(value: object, default: float) -> float:
     except (TypeError, ValueError):
         return default
 
-
 def _normalize_action(value: object, default: str = "") -> str:
     """Normalize action-like values (enum/string/object) into uppercase label."""
     candidate = getattr(value, "value", value)
     if candidate is None:
         return default
     return str(candidate).upper()
-
 
 def _coerce_timestamp(value: object, default: pd.Timestamp) -> pd.Timestamp:
     """Coerce timestamp-like values to pandas Timestamp for stable ordering."""
@@ -111,7 +101,6 @@ def _coerce_timestamp(value: object, default: pd.Timestamp) -> pd.Timestamp:
     except Exception:
         pass
     return default
-
 
 class SACSignalValidator:
     """
@@ -330,7 +319,6 @@ class SACSignalValidator:
                     retain=500,
                 )
 
-
 class SACDecisionIntegrator:
     """
     Integrates SAC decisions with Action Signal Guide for enhanced decision making.
@@ -535,7 +523,6 @@ class SACDecisionIntegrator:
                 adjustment *= 0.9
 
         return adjustment
-
 
 class SACPerformanceMonitor:
     """

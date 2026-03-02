@@ -6,7 +6,6 @@ Uses the base optimizer class for common functionality.
 
 import sys
 from pathlib import Path
-from typing import Union
 
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -15,7 +14,6 @@ from ztb.training.binary_search.base_optimizer import (
     BinarySearchArgumentParser,
     HyperparameterOptimizer,
 )
-
 
 class TransactionCostOptimizer(HyperparameterOptimizer):
     """Optimizer for transaction_cost parameter."""
@@ -28,10 +26,9 @@ class TransactionCostOptimizer(HyperparameterOptimizer):
         """Get the range for transaction_cost binary search."""
         return (0.0001, 0.01)  # Reasonable range for transaction costs
 
-    def update_ppo_params(self, value: Union[int, float]) -> None:
+    def update_ppo_params(self, value: int | float) -> None:
         """Update environment config with transaction_cost value."""
         self.env_config.transaction_cost = float(value)
-
 
 def main() -> None:
     parser = BinarySearchArgumentParser.create_parser(
@@ -62,7 +59,6 @@ def main() -> None:
         print(
             f"\nOptimization complete. Best transaction_cost: {best_value}, Score: {best_score:.6f}"
         )
-
 
 if __name__ == "__main__":
     main()

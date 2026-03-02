@@ -10,7 +10,6 @@ exploration diagnostics.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import numpy as np
 
@@ -24,13 +23,10 @@ from ztb.training.callbacks.shared.utils.value_utils import (
 )
 from ztb.types.common import ObjectMap
 
-
 _HISTORY_LIMIT = 1_000
-
 
 def _append_bounded(history: list[float], value: float, max_len: int) -> None:
     _append_bounded_value(history, value, max_len)
-
 
 class SACTemperatureScheduler(NoOpMemoryOptimizedCallback):
     """Adaptive entropy-temperature scheduler for SAC."""
@@ -42,7 +38,7 @@ class SACTemperatureScheduler(NoOpMemoryOptimizedCallback):
         max_temp: float = 2.0,
         decay_rate: float = 0.995,
         adaptive: bool = True,
-        final_temp: Optional[float] = None,
+        final_temp: float | None = None,
         window_size: int = 100,
     ):
         super().__init__()
@@ -59,7 +55,7 @@ class SACTemperatureScheduler(NoOpMemoryOptimizedCallback):
         self.logger = logging.getLogger(__name__)
 
     def on_training_start(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         self.current_temp = self.initial_temp
         self.reward_history.clear()
@@ -70,7 +66,7 @@ class SACTemperatureScheduler(NoOpMemoryOptimizedCallback):
         )
 
     def on_training_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         self.logger.info(
             "SAC temperature scheduler finished (final_temp=%.4f)",
@@ -78,7 +74,7 @@ class SACTemperatureScheduler(NoOpMemoryOptimizedCallback):
         )
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         if logs is None:
             return
@@ -136,7 +132,6 @@ class SACTemperatureScheduler(NoOpMemoryOptimizedCallback):
             "history_size": len(self.reward_history),
         }
 
-
 class SACValueFunctionMonitor(NoOpMemoryOptimizedCallback):
     """Monitor SAC Q/value stability and divergence signals."""
 
@@ -156,11 +151,11 @@ class SACValueFunctionMonitor(NoOpMemoryOptimizedCallback):
         self.q_value_gaps: list[float] = []
 
         self.convergence_epochs = 0
-        self.last_q_value: Optional[float] = None
+        self.last_q_value: float | None = None
         self.logger = logging.getLogger(__name__)
 
     def on_training_start(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         self.q_values_history.clear()
         self.value_history.clear()
@@ -170,7 +165,7 @@ class SACValueFunctionMonitor(NoOpMemoryOptimizedCallback):
         self.logger.info("SAC value function monitor initialized")
 
     def on_training_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         self.logger.info(
             "SAC value function monitor finished (convergence_epochs=%s)",
@@ -178,7 +173,7 @@ class SACValueFunctionMonitor(NoOpMemoryOptimizedCallback):
         )
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         if context.epoch % self.monitor_frequency != 0:
             return
@@ -249,7 +244,6 @@ class SACValueFunctionMonitor(NoOpMemoryOptimizedCallback):
 
         return stats
 
-
 class SACTargetNetworkUpdater(NoOpMemoryOptimizedCallback):
     """Adaptive target-network update-rate controller for SAC."""
 
@@ -276,7 +270,7 @@ class SACTargetNetworkUpdater(NoOpMemoryOptimizedCallback):
         self.logger = logging.getLogger(__name__)
 
     def on_training_start(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         self.current_tau = self.initial_tau
         self.q_loss_history.clear()
@@ -287,7 +281,7 @@ class SACTargetNetworkUpdater(NoOpMemoryOptimizedCallback):
         )
 
     def on_training_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         self.logger.info(
             "SAC target updater finished (final_tau=%.6f)",
@@ -295,7 +289,7 @@ class SACTargetNetworkUpdater(NoOpMemoryOptimizedCallback):
         )
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         if context.epoch % self.update_frequency != 0:
             return
@@ -344,7 +338,6 @@ class SACTargetNetworkUpdater(NoOpMemoryOptimizedCallback):
             "policy_stability_count": len(self.policy_loss_history),
         }
 
-
 class SACExplorationMonitor(NoOpMemoryOptimizedCallback):
     """Monitor SAC exploration quality and entropy/reward coupling."""
 
@@ -360,7 +353,7 @@ class SACExplorationMonitor(NoOpMemoryOptimizedCallback):
         self.logger = logging.getLogger(__name__)
 
     def on_training_start(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         self.action_entropy_history.clear()
         self.action_diversity_history.clear()
@@ -368,7 +361,7 @@ class SACExplorationMonitor(NoOpMemoryOptimizedCallback):
         self.entropy_reward_correlation.clear()
 
     def on_training_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         self.logger.info(
             "SAC exploration monitor finished (epochs=%s)",
@@ -376,7 +369,7 @@ class SACExplorationMonitor(NoOpMemoryOptimizedCallback):
         )
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         if context.epoch % self.monitor_frequency != 0:
             return
@@ -403,7 +396,7 @@ class SACExplorationMonitor(NoOpMemoryOptimizedCallback):
         if diversity is not None:
             _append_bounded(self.action_diversity_history, diversity, _HISTORY_LIMIT)
 
-    def _calculate_action_diversity(self, actions: object) -> Optional[float]:
+    def _calculate_action_diversity(self, actions: object) -> float | None:
         if actions is None:
             return None
 
@@ -463,7 +456,6 @@ class SACExplorationMonitor(NoOpMemoryOptimizedCallback):
 
         return stats
 
-
 # Factory functions for easy instantiation
 
 def create_sac_temperature_scheduler(**kwargs) -> SACTemperatureScheduler:
@@ -478,7 +470,6 @@ def create_sac_temperature_scheduler(**kwargs) -> SACTemperatureScheduler:
     defaults.update(kwargs)
     return SACTemperatureScheduler(**defaults)
 
-
 def create_sac_value_monitor(**kwargs) -> SACValueFunctionMonitor:
     """Create SAC value function monitor with default settings."""
     defaults: ObjectMap = {
@@ -488,7 +479,6 @@ def create_sac_value_monitor(**kwargs) -> SACValueFunctionMonitor:
     }
     defaults.update(kwargs)
     return SACValueFunctionMonitor(**defaults)
-
 
 def create_sac_target_updater(**kwargs) -> SACTargetNetworkUpdater:
     """Create SAC target network updater with default settings."""
@@ -503,13 +493,11 @@ def create_sac_target_updater(**kwargs) -> SACTargetNetworkUpdater:
     defaults.update(kwargs)
     return SACTargetNetworkUpdater(**defaults)
 
-
 def create_sac_exploration_monitor(**kwargs) -> SACExplorationMonitor:
     """Create SAC exploration monitor with default settings."""
     defaults: ObjectMap = {"monitor_frequency": 25}
     defaults.update(kwargs)
     return SACExplorationMonitor(**defaults)
-
 
 __all__ = [
     "SACTemperatureScheduler",

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable
 
 from pydantic import ValidationError
 
@@ -19,7 +19,6 @@ from ztb.io.yaml_io import read_yaml
 from ztb.types.common import ObjectMap
 from ztb.utils.path_utils import get_project_root
 
-
 def _as_object_map(value: object) -> ObjectMap:
     if not isinstance(value, dict):
         return {}
@@ -28,7 +27,6 @@ def _as_object_map(value: object) -> ObjectMap:
         if isinstance(key, str):
             normalized[key] = item
     return normalized
-
 
 class PriorityConfigLoader(BaseConfigLoader):
     """Configuration loader with source priority management."""
@@ -91,7 +89,7 @@ class PriorityConfigLoader(BaseConfigLoader):
         return self.load_yaml(str(base_path))
 
     def validate_config(
-        self, config: ObjectMap, schema: Optional[Callable[..., object]] = None
+        self, config: ObjectMap, schema: Callable[..., object] | None = None
     ) -> ObjectMap:
         """Validate configuration against a pydantic schema."""
         schema_class = schema or GlobalConfig
@@ -147,7 +145,7 @@ class PriorityConfigLoader(BaseConfigLoader):
         return config
 
     def _set_nested_value(self, config: ObjectMap, keys: list[str], value: object) -> None:
-        """Set value in nested dictionary structure."""
+        """set value in nested dictionary structure."""
         current = config
         for key in keys[:-1]:
             child = current.get(key)
@@ -176,8 +174,8 @@ class PriorityConfigLoader(BaseConfigLoader):
 
     def get_config(
         self,
-        config_path: Optional[str] = None,
-        cli_args: Optional[ObjectMap] = None,
+        config_path: str | None = None,
+        cli_args: ObjectMap | None = None,
     ) -> GlobalConfig:
         """Get validated GlobalConfig instance."""
         self.sources["defaults"] = _as_object_map(GlobalConfig().model_dump())
@@ -199,19 +197,16 @@ class PriorityConfigLoader(BaseConfigLoader):
         schema = GlobalConfig.model_json_schema()
         write_json(output_path, schema, indent=2, ensure_ascii=False)
 
-
 ConfigLoader = PriorityConfigLoader
 
-
 def load_config(
-    config_path: Optional[str] = None, cli_args: Optional[ObjectMap] = None
+    config_path: str | None = None, cli_args: ObjectMap | None = None
 ) -> GlobalConfig:
     """Load configuration with default loader."""
     loader = ConfigLoader()
     config = loader.get_config(config_path, cli_args)
     initialize_risk_profiles(config)
     return config
-
 
 def initialize_risk_profiles(config: GlobalConfig) -> None:
     """Initialize risk profile manager with config presets."""

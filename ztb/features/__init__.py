@@ -11,11 +11,9 @@ from .core.registry import FeatureRegistry
 from .feature_set_manager import get_feature_manager
 from .microstructure import MICROSTRUCTURE_FEATURES, add_microstructure_features
 
-
 def get_feature_manager() -> type[FeatureRegistry]:
     """Get the feature manager class"""
     return FeatureRegistry
-
 
 # Lazy import feature modules - only import when needed
 _FEATURE_MODULES: dict[str, ModuleType | None] = {
@@ -26,7 +24,6 @@ _FEATURE_MODULES: dict[str, ModuleType | None] = {
     "time": None,
     "utils": None,
 }
-
 
 def _ensure_module_loaded(module_name: str) -> None:
     """Ensure a feature module is loaded"""
@@ -55,6 +52,5 @@ def _ensure_module_loaded(module_name: str) -> None:
             from . import utils
 
             _FEATURE_MODULES[module_name] = utils
-
 
 __all__ = ["FeatureRegistry", "get_feature_manager", "add_microstructure_features", "MICROSTRUCTURE_FEATURES"]

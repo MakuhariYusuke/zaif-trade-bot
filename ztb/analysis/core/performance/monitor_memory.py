@@ -1,14 +1,12 @@
 """Monitor memory usage during training"""
 import sys
 import time
-from typing import Optional
 
 import psutil
 
 from ztb.trading.environment.constants import BYTES_PER_MB
 
-
-def monitor_memory_usage(pid: Optional[int] = None, duration: int = 60) -> dict:
+def monitor_memory_usage(pid: int | None = None, duration: int = 60) -> dict:
     """Monitor memory usage for a process.
 
     Args:
@@ -63,7 +61,6 @@ def monitor_memory_usage(pid: Optional[int] = None, duration: int = 60) -> dict:
         if memory_stats
         else 0,
     }
-
 
 if __name__ == "__main__":
     monitor_memory_usage()

@@ -5,7 +5,7 @@ Compare two effective-config JSON files and show differences.
 
 import argparse
 import sys
-from typing import Any, List
+from typing import Any
 
 from ztb.io.json_io import read_json
 
@@ -17,8 +17,7 @@ def load_json(file_path: str) -> Any:
         print(f"Error loading {file_path}: {e}", file=sys.stderr)
         sys.exit(1)
 
-
-def deep_diff(a: Any, b: Any, path: str = "") -> List[Any]:
+def deep_diff(a: Any, b: Any, path: str = "") -> list[Any]:
     """Recursively compare two dicts."""
     diffs = []
 
@@ -45,12 +44,10 @@ def deep_diff(a: Any, b: Any, path: str = "") -> List[Any]:
 
     return diffs
 
-
 def is_major_key(path: str) -> bool:
     """Check if the path contains a major configuration key."""
     major_keys = ["model", "policy", "learning_rate", "batch_size"]
     return any(key in path for key in major_keys)
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -82,7 +79,6 @@ def main() -> None:
         sys.exit(3)
     else:
         sys.exit(2)
-
 
 if __name__ == "__main__":
     main()

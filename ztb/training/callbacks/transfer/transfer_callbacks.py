@@ -9,7 +9,6 @@ fine-tuning stability, and source/target performance diagnostics.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import numpy as np
 from sklearn.metrics import accuracy_score, f1_score
@@ -25,13 +24,10 @@ from ztb.training.callbacks.shared.utils.value_utils import (
 )
 from ztb.types.common import ObjectMap
 
-
 _HISTORY_LIMIT = 1_000
-
 
 def _append_bounded(history: list[float], value: float, max_len: int = _HISTORY_LIMIT) -> None:
     _append_bounded_value(history, value, max_len)
-
 
 def _update_float_history_map(
     history_map: dict[str, list[float]],
@@ -49,7 +45,6 @@ def _update_float_history_map(
             continue
         history = history_map.setdefault(key, [])
         _append_bounded(history, value, max_len=max_len)
-
 
 class DomainAdaptationCallback(NoOpMemoryOptimizedCallback):
     """Monitor domain-adaptation progress and source-target feature shift."""
@@ -75,7 +70,7 @@ class DomainAdaptationCallback(NoOpMemoryOptimizedCallback):
         self.logger = logging.getLogger(__name__)
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         if context.epoch % self.compute_frequency != 0:
             return
@@ -239,14 +234,13 @@ class DomainAdaptationCallback(NoOpMemoryOptimizedCallback):
         stats.update(self._get_domain_shift_summary())
         return stats
 
-
 class FineTuningCallback(NoOpMemoryOptimizedCallback):
     """Monitor fine-tuning dynamics and catastrophic forgetting."""
 
     def __init__(
         self,
         compute_frequency: int = 1,
-        freeze_layers: Optional[list[str]] = None,
+        freeze_layers: list[str] | None = None,
         monitor_catastrophic_forgetting: bool = True,
     ):
         super().__init__(cache_size=1000)
@@ -266,7 +260,7 @@ class FineTuningCallback(NoOpMemoryOptimizedCallback):
         self.logger = logging.getLogger(__name__)
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         if context.epoch % self.compute_frequency != 0:
             return
@@ -367,14 +361,13 @@ class FineTuningCallback(NoOpMemoryOptimizedCallback):
 
         return stats
 
-
 class TransferPerformanceCallback(NoOpMemoryOptimizedCallback):
     """Monitor source/target transfer quality and overfitting trend."""
 
     def __init__(
         self,
         compute_frequency: int = 1,
-        evaluation_metrics: Optional[list[str]] = None,
+        evaluation_metrics: list[str] | None = None,
     ):
         super().__init__(cache_size=1000)
         self.compute_frequency = max(1, compute_frequency)
@@ -390,7 +383,7 @@ class TransferPerformanceCallback(NoOpMemoryOptimizedCallback):
         self.logger = logging.getLogger(__name__)
 
     def on_epoch_end(
-        self, context: LearningContext, logs: Optional[ObjectMap] = None
+        self, context: LearningContext, logs: ObjectMap | None = None
     ) -> None:
         if context.epoch % self.compute_frequency != 0:
             return
@@ -546,7 +539,6 @@ class TransferPerformanceCallback(NoOpMemoryOptimizedCallback):
 
         return stats
 
-
 # Factory functions for easy instantiation
 
 def create_domain_adaptation(**kwargs) -> DomainAdaptationCallback:
@@ -554,7 +546,6 @@ def create_domain_adaptation(**kwargs) -> DomainAdaptationCallback:
     defaults: ObjectMap = {"compute_frequency": 1, "adaptation_method": "auto"}
     defaults.update(kwargs)
     return DomainAdaptationCallback(**defaults)
-
 
 def create_fine_tuning(**kwargs) -> FineTuningCallback:
     """Create fine-tuning callback with default settings."""
@@ -565,13 +556,11 @@ def create_fine_tuning(**kwargs) -> FineTuningCallback:
     defaults.update(kwargs)
     return FineTuningCallback(**defaults)
 
-
 def create_transfer_performance(**kwargs) -> TransferPerformanceCallback:
     """Create transfer performance callback with default settings."""
     defaults: ObjectMap = {"compute_frequency": 1, "evaluation_metrics": ["accuracy", "f1"]}
     defaults.update(kwargs)
     return TransferPerformanceCallback(**defaults)
-
 
 __all__ = [
     "DomainAdaptationCallback",

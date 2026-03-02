@@ -17,7 +17,6 @@ def load_config():
     )
     return read_json(config_path)
 
-
 def simulate_market_data(num_steps=10000):
     """Generate synthetic market data for backtesting"""
     np.random.seed(42)  # For reproducible results
@@ -40,7 +39,6 @@ def simulate_market_data(num_steps=10000):
         prices.append(max(new_price, 0.1))  # Prevent negative prices
 
     return np.array(prices)
-
 
 def simulate_sac_v431_action(price, prev_price, position, config):
     """Simulate SAC v431 action based on market conditions and position"""
@@ -111,7 +109,6 @@ def simulate_sac_v431_action(price, prev_price, position, config):
     action = np.random.choice(actions, p=action_prob)
 
     return action, adjusted_rewards[action]
-
 
 def run_backtest_simulation(config, num_steps=10000, initial_capital=10000.0):
     """Run backtest simulation"""
@@ -291,7 +288,6 @@ def run_backtest_simulation(config, num_steps=10000, initial_capital=10000.0):
         "trades": trades,
     }
 
-
 def main():
     # Load configuration
     config = load_config()
@@ -301,7 +297,6 @@ def main():
 
     print("\n=== SAC v431 Backtest Complete ===")
     print("Ready for validation and further analysis")
-
 
 if __name__ == "__main__":
     main()

@@ -8,13 +8,12 @@ Phase 3-1: シグナル品質向上 - ボリュームフィルタ
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from ztb.utils.performance_profiler import PerformanceProfiler
-
 
 class VolumePattern(Enum):
     """出来高パターン"""
@@ -26,7 +25,6 @@ class VolumePattern(Enum):
     DRY_UP = "dry_up"
     ACCUMULATION = "accumulation"
     DISTRIBUTION = "distribution"
-
 
 @dataclass
 class VolumeAnalysisResult:
@@ -48,7 +46,6 @@ class VolumeAnalysisResult:
         """高リスクか"""
         return self.risk_level == "high"
 
-
 @dataclass
 class VolumeFilterCriteria:
     """ボリュームフィルタ基準"""
@@ -63,14 +60,13 @@ class VolumeFilterCriteria:
     adaptive_filtering: bool = True
     market_regime_adjustment: bool = True
 
-
 class VolumeFilter:
     """ボリュームフィルタ"""
 
     def __init__(self):
         self.profiler = PerformanceProfiler()
         self.filter_criteria = VolumeFilterCriteria()
-        self.volume_history: List[VolumeAnalysisResult] = []
+        self.volume_history: list[VolumeAnalysisResult] = []
         self.max_history_size = 1000  # メモリ管理のため履歴サイズを制限
 
     def analyze_volume_pattern(
@@ -158,7 +154,7 @@ class VolumeFilter:
 
     def _get_volume_at_timestamp(
         self, market_data: pd.DataFrame, timestamp: datetime
-    ) -> Optional[float]:
+    ) -> float | None:
         """指定時刻の出来高を取得"""
         if market_data.index.empty:
             return None
@@ -322,15 +318,15 @@ class VolumeFilter:
 
     def should_filter_signal(
         self,
-        signal: Dict[str, Any],
+        signal: dict[str, Any],
         market_data: pd.DataFrame,
-        custom_criteria: Optional[VolumeFilterCriteria] = None,
-    ) -> Tuple[bool, str, VolumeAnalysisResult]:
+        custom_criteria: VolumeFilterCriteria | None = None,
+    ) -> tuple[bool, str, VolumeAnalysisResult]:
         """
         シグナルをフィルタリングすべきかを判定
 
         Returns:
-            Tuple[bool, str, VolumeAnalysisResult]: (フィルタリング可否, 理由, 分析結果)
+            tuple[bool, str, VolumeAnalysisResult]: (フィルタリング可否, 理由, 分析結果)
         """
         criteria = custom_criteria or self.filter_criteria
 
@@ -418,7 +414,7 @@ class VolumeFilter:
                     1.0, self.filter_criteria.min_volume_ratio - 0.1
                 )
 
-    def get_volume_statistics(self) -> Dict[str, Any]:
+    def get_volume_statistics(self) -> dict[str, Any]:
         """出来高統計を取得"""
         if not self.volume_history:
             return {}

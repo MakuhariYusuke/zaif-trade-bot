@@ -10,8 +10,7 @@ import threading
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, Generator, Optional, cast
-
+from typing import Any, Generator, cast
 
 class IdempotencyStore:
     """SQLite-based idempotency store for order IDs."""
@@ -31,7 +30,7 @@ class IdempotencyStore:
         self._local = threading.local()
         self._lock_file = None
 
-        # Set up process-level locking for file-based databases
+        # set up process-level locking for file-based databases
         if db_path != ":memory:":
             db_file = Path(db_path)
             self._lock_file = db_file.with_suffix(".lock")
@@ -114,7 +113,7 @@ class IdempotencyStore:
             )
             conn.commit()
 
-    def check_and_store(self, client_order_id: str, order_data: Dict[str, Any]) -> bool:
+    def check_and_store(self, client_order_id: str, order_data: dict[str, Any]) -> bool:
         """
         Check if order_id exists, store if not.
 
@@ -147,7 +146,7 @@ class IdempotencyStore:
                 # Order ID already exists
                 return False
 
-    def get_order_data(self, client_order_id: str) -> Optional[Dict[str, Any]]:
+    def get_order_data(self, client_order_id: str) -> dict[str, Any] | None:
         """
         Get stored order data for client_order_id.
 
@@ -170,7 +169,7 @@ class IdempotencyStore:
 
             row = cursor.fetchone()
             if row:
-                return cast(Dict[str, Any], json.loads(row[0]))
+                return cast(dict[str, Any], json.loads(row[0]))
             return None
 
     def update_status(self, client_order_id: str, status: str) -> bool:
@@ -198,17 +197,17 @@ class IdempotencyStore:
             return cursor.rowcount > 0
 
     def list_orders(
-        self, status: Optional[str] = None, limit: int = 100
-    ) -> list[Dict[str, Any]]:
+        self, status: str | None = None, limit: int = 100
+    ) -> list[dict[str, Any]]:
         """
-        List stored orders.
+        list stored orders.
 
         Args:
             status: Filter by status (optional)
             limit: Maximum number of records
 
         Returns:
-            List of order records
+            list of order records
         """
         import json
 
@@ -237,7 +236,7 @@ class IdempotencyStore:
 
             results = []
             for row in cursor.fetchall():
-                order_data = cast(Dict[str, Any], json.loads(row[1]))
+                order_data = cast(dict[str, Any], json.loads(row[1]))
                 results.append(
                     {
                         "client_order_id": row[0],
@@ -270,7 +269,7 @@ class IdempotencyStore:
             conn.commit()
             return cursor.rowcount
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get store statistics."""
         with self._get_connection() as conn:
             # Total orders
@@ -284,23 +283,20 @@ class IdempotencyStore:
                 GROUP BY status
             """
             )
-            status_counts = cast(Dict[str, int], dict(cursor.fetchall()))
+            status_counts = cast(dict[str, int], dict(cursor.fetchall()))
 
             return {"total_orders": total_orders, "status_breakdown": status_counts}
-
 
 # Global instance and lock for thread safety
 _idempotency_store = IdempotencyStore()
 _idempotency_store_lock = threading.Lock()
 
-
 def get_idempotency_store() -> IdempotencyStore:
     """Get global idempotency store instance."""
     return _idempotency_store
 
-
 def set_global_store_path(db_path: str) -> None:
-    """Set global store database path in a thread-safe manner."""
+    """set global store database path in a thread-safe manner."""
     global _idempotency_store
     with _idempotency_store_lock:
         _idempotency_store = IdempotencyStore(db_path)

@@ -8,7 +8,7 @@ import os
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Optional
 
 import pandas as pd
 
@@ -23,46 +23,41 @@ from ztb.utils.logging_utils import get_logger
 from .callbacks import TrainingProgressCallback
 from .metrics_mixin import MetricsCollectionMixin
 
-
 class TrainingError(ZTBError):
     """Base exception for training-related errors."""
 
     pass
-
 
 class ConfigurationError(TrainingError):
     """Raised when training configuration is invalid."""
 
     pass
 
-
 class DataError(TrainingError):
     """Raised when training data is invalid or missing."""
 
     pass
-
 
 class ModelError(TrainingError):
     """Raised when model operations fail."""
 
     pass
 
-
 class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
     """Base class for algorithm-specific trainers with common training optimizations."""
 
-    def __init__(self, config: Dict[str, Any], logger: Optional[logging.Logger] = None):
+    def __init__(self, config: dict[str, Any], logger: logging.Logger | None = None):
         MetricsCollectionMixin.__init__(self)
         self.config = config
         self.logger = logger or get_logger(self.__class__.__name__)
 
         # Common training optimization components
         self.gradient_accumulation_steps: int = 1
-        self.system_optimizer: Optional[Any] = None
-        self.gradient_accumulator: Optional[GradientAccumulator] = None
-        self.lr_scheduler: Optional[DynamicLRScheduler] = None
-        self.early_stopping: Optional[EarlyStopping] = None
-        self.memory_loader: Optional[MemoryEfficientLoader] = None
+        self.system_optimizer: Any | None = None
+        self.gradient_accumulator: GradientAccumulator | None = None
+        self.lr_scheduler: DynamicLRScheduler | None = None
+        self.early_stopping: EarlyStopping | None = None
+        self.memory_loader: MemoryEfficientLoader | None = None
 
     def load_data(self, data_path: str) -> pd.DataFrame:
         """
@@ -202,7 +197,7 @@ class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
             raise TrainingError(f"Operation '{operation_name}' failed: {e}") from e
 
     def log_structured_event(
-        self, event_type: str, phase: str, details: Dict[str, Any], level: str = "info"
+        self, event_type: str, phase: str, details: dict[str, Any], level: str = "info"
     ) -> None:
         """Log structured training events for better analysis.
 
@@ -404,7 +399,7 @@ class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
         total_timesteps: int,
         model_path: str,
         **additional_stats,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Collect standardized training statistics.
 
         Args:
@@ -428,9 +423,9 @@ class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
     def log_training_start(
         self,
         algorithm_name: str,
-        total_timesteps: Optional[int] = None,
-        epochs: Optional[int] = None,
-        batch_size: Optional[int] = None,
+        total_timesteps: int | None = None,
+        epochs: int | None = None,
+        batch_size: int | None = None,
     ) -> None:
         """Log standardized training start message.
 
@@ -471,7 +466,7 @@ class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
         self.logger.info(f"🏃 {message}")
 
     def log_training_completion(
-        self, training_time: float, stats: Optional[Dict[str, Any]] = None
+        self, training_time: float, stats: dict[str, Any] | None = None
     ) -> None:
         """Log standardized training completion message.
 
@@ -571,7 +566,7 @@ class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
         pass
 
     @abstractmethod
-    def train(self, total_timesteps: Optional[int] = None) -> bool:
+    def train(self, total_timesteps: int | None = None) -> bool:
         """Execute training for this algorithm.
 
         Args:
@@ -580,7 +575,7 @@ class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
         pass
 
     @abstractmethod
-    def get_training_stats(self) -> Dict[str, Any]:
+    def get_training_stats(self) -> dict[str, Any]:
         """Get training statistics."""
         pass
 
@@ -592,6 +587,6 @@ class BaseAlgorithmTrainer(ABC, MetricsCollectionMixin):
         return self._logger
 
     @logger.setter
-    def logger(self, value: Optional[logging.Logger]) -> None:
-        """Set logger instance."""
+    def logger(self, value: logging.Logger | None) -> None:
+        """set logger instance."""
         self._logger = value or get_logger(self.__class__.__name__)

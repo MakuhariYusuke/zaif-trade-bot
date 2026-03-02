@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
+from typing import Any, Awaitable, Callable
 
 import scipy.stats as stats
 from ztb.trading.production.state_persistence import (
@@ -20,37 +20,32 @@ from ztb.trading.production.state_persistence import (
 
 # Mock classes for testing
 
-
 class OrderType(Enum):
     MARKET = "market"
     LIMIT = "limit"
-
 
 class OrderSide(Enum):
     BUY = "buy"
     SELL = "sell"
 
-
 class Position:
     symbol: str
     quantity: Decimal
     average_price: Decimal
-    current_price: Optional[Decimal] = None
+    current_price: Decimal | None = None
     unrealized_pnl: Decimal = Decimal("0")
     realized_pnl: Decimal = Decimal("0")
-
 
 class Order:
     order_id: str
     symbol: str
     side: OrderSide
     quantity: Decimal
-    price: Optional[Decimal] = None
+    price: Decimal | None = None
     average_price: Decimal
-    current_price: Optional[Decimal] = None
+    current_price: Decimal | None = None
     unrealized_pnl: Decimal = Decimal("0")
     realized_pnl: Decimal = Decimal("0")
-
 
 @dataclass
 class Trade:
@@ -62,7 +57,6 @@ class Trade:
     price: Decimal
     timestamp: datetime
     fee: Decimal = Decimal("0")
-
 
 class ComparisonMetric(Enum):
     """比較指標"""
@@ -77,7 +71,6 @@ class ComparisonMetric(Enum):
     TOTAL_TRADES = "total_trades"
     EXECUTION_LATENCY = "execution_latency"
 
-
 class StatisticalTest(Enum):
     """統計テスト"""
 
@@ -86,7 +79,6 @@ class StatisticalTest(Enum):
     WILCOXON = "wilcoxon"  # Wilcoxon符号順位検定
     KS_TEST = "ks_test"  # Kolmogorov-Smirnov検定
     LEVENE = "levene"  # Levene検定（等分散性）
-
 
 @dataclass
 class SystemResult:
@@ -103,9 +95,8 @@ class SystemResult:
     avg_loss: Decimal
     total_trades: int
     execution_latency_ms: float
-    trades: List[Trade] = field(default_factory=list)
-    positions: List[Position] = field(default_factory=list)
-
+    trades: list[Trade] = field(default_factory=list)
+    positions: list[Position] = field(default_factory=list)
 
 @dataclass
 class ComparisonResult:
@@ -120,11 +111,10 @@ class ComparisonResult:
     value_b: float
     difference: float
     percent_difference: float
-    statistical_tests: Dict[str, Dict[str, Any]] = field(default_factory=dict)
-    confidence_intervals: Dict[str, Tuple[float, float]] = field(default_factory=dict)
-    effect_size: Optional[float] = None
+    statistical_tests: dict[str, dict[str, Any]] = field(default_factory=dict)
+    confidence_intervals: dict[str, tuple[float, float]] = field(default_factory=dict)
+    effect_size: float | None = None
     interpretation: str = ""
-
 
 @dataclass
 class ComparativeAnalysis:
@@ -134,13 +124,12 @@ class ComparativeAnalysis:
     timestamp: datetime
     period_start: datetime
     period_end: datetime
-    systems_compared: List[str]
-    overall_winner: Optional[str]
+    systems_compared: list[str]
+    overall_winner: str | None
     confidence_level: float
-    key_findings: List[str] = field(default_factory=list)
-    recommendations: List[str] = field(default_factory=list)
-    comparison_results: List[ComparisonResult] = field(default_factory=list)
-
+    key_findings: list[str] = field(default_factory=list)
+    recommendations: list[str] = field(default_factory=list)
+    comparison_results: list[ComparisonResult] = field(default_factory=list)
 
 class ResultComparator:
     """
@@ -169,17 +158,17 @@ class ResultComparator:
         self.comparison_window_hours = comparison_window_hours
 
         # システム結果履歴
-        self.system_results: Dict[str, List[SystemResult]] = {}
+        self.system_results: dict[str, list[SystemResult]] = {}
 
         # 比較分析履歴
-        self.comparative_analyses: List[ComparativeAnalysis] = []
+        self.comparative_analyses: list[ComparativeAnalysis] = []
 
         # 比較設定
         self.enabled_metrics = {metric for metric in ComparisonMetric}
         self.enabled_tests = {test for test in StatisticalTest}
 
         # コールバック
-        self.analysis_callbacks: List[
+        self.analysis_callbacks: list[
             Callable[[ComparativeAnalysis], Awaitable[None]]
         ] = []
 
@@ -211,8 +200,8 @@ class ResultComparator:
         )
 
     async def perform_comparison(
-        self, system_a: str, system_b: str, analysis_period_hours: Optional[int] = None
-    ) -> Optional[ComparativeAnalysis]:
+        self, system_a: str, system_b: str, analysis_period_hours: int | None = None
+    ) -> ComparativeAnalysis | None:
         """
         比較実行
 
@@ -222,7 +211,7 @@ class ResultComparator:
             analysis_period_hours: 分析期間（時間）
 
         Returns:
-            Optional[ComparativeAnalysis]: 比較分析結果
+            ComparativeAnalysis | None: 比較分析結果
         """
         period_hours = analysis_period_hours or self.comparison_window_hours
         period_start = datetime.now() - timedelta(hours=period_hours)
@@ -266,7 +255,7 @@ class ResultComparator:
 
     def _get_results_in_period(
         self, system_id: str, period_start: datetime
-    ) -> List[SystemResult]:
+    ) -> list[SystemResult]:
         """
         期間内の結果取得
 
@@ -275,7 +264,7 @@ class ResultComparator:
             period_start: 期間開始
 
         Returns:
-            List[SystemResult]: 期間内の結果
+            list[SystemResult]: 期間内の結果
         """
         if system_id not in self.system_results:
             return []
@@ -288,8 +277,8 @@ class ResultComparator:
         self,
         system_a: str,
         system_b: str,
-        results_a: List[SystemResult],
-        results_b: List[SystemResult],
+        results_a: list[SystemResult],
+        results_b: list[SystemResult],
         period_start: datetime,
     ) -> ComparativeAnalysis:
         """
@@ -341,9 +330,9 @@ class ResultComparator:
         system_a: str,
         system_b: str,
         metric: ComparisonMetric,
-        results_a: List[SystemResult],
-        results_b: List[SystemResult],
-    ) -> Optional[ComparisonResult]:
+        results_a: list[SystemResult],
+        results_b: list[SystemResult],
+    ) -> ComparisonResult | None:
         """
         指標比較
 
@@ -355,7 +344,7 @@ class ResultComparator:
             results_b: システムB結果
 
         Returns:
-            Optional[ComparisonResult]: 比較結果
+            ComparisonResult | None: 比較結果
         """
         try:
             # 指標値抽出
@@ -408,8 +397,8 @@ class ResultComparator:
             return None
 
     def _extract_metric_values(
-        self, results: List[SystemResult], metric: ComparisonMetric
-    ) -> List[float]:
+        self, results: list[SystemResult], metric: ComparisonMetric
+    ) -> list[float]:
         """
         指標値抽出
 
@@ -418,7 +407,7 @@ class ResultComparator:
             metric: 比較指標
 
         Returns:
-            List[float]: 指標値リスト
+            list[float]: 指標値リスト
         """
         values = []
 
@@ -445,8 +434,8 @@ class ResultComparator:
         return values
 
     async def _run_statistical_tests(
-        self, values_a: List[float], values_b: List[float]
-    ) -> Dict[str, Dict[str, Any]]:
+        self, values_a: list[float], values_b: list[float]
+    ) -> dict[str, dict[str, Any]]:
         """
         統計テスト実行
 
@@ -455,7 +444,7 @@ class ResultComparator:
             values_b: システムBの値
 
         Returns:
-            Dict[str, Dict[str, Any]]: テスト結果
+            dict[str, dict[str, Any]]: テスト結果
         """
         results = {}
 
@@ -506,8 +495,8 @@ class ResultComparator:
         return results
 
     def _calculate_confidence_intervals(
-        self, values_a: List[float], values_b: List[float]
-    ) -> Dict[str, Tuple[float, float]]:
+        self, values_a: list[float], values_b: list[float]
+    ) -> dict[str, tuple[float, float]]:
         """
         信頼区間計算
 
@@ -516,7 +505,7 @@ class ResultComparator:
             values_b: システムBの値
 
         Returns:
-            Dict[str, Tuple[float, float]]: 信頼区間
+            dict[str, tuple[float, float]]: 信頼区間
         """
         intervals = {}
 
@@ -543,8 +532,8 @@ class ResultComparator:
         return intervals
 
     def _calculate_effect_size(
-        self, values_a: List[float], values_b: List[float]
-    ) -> Optional[float]:
+        self, values_a: list[float], values_b: list[float]
+    ) -> float | None:
         """
         効果量計算（Cohen's d）
 
@@ -553,7 +542,7 @@ class ResultComparator:
             values_b: システムBの値
 
         Returns:
-            Optional[float]: 効果量
+            float | None: 効果量
         """
         try:
             mean_a = statistics.mean(values_a)
@@ -606,8 +595,8 @@ class ResultComparator:
                 return f"{metric_name}: System A shows {abs(percent):.1f}% advantage (not statistically significant)"
 
     def _determine_overall_winner(
-        self, comparisons: List[ComparisonResult]
-    ) -> Optional[str]:
+        self, comparisons: list[ComparisonResult]
+    ) -> str | None:
         """
         全体勝者決定
 
@@ -615,7 +604,7 @@ class ResultComparator:
             comparisons: 比較結果リスト
 
         Returns:
-            Optional[str]: 勝者システムID
+            str | None: 勝者システムID
         """
         if not comparisons:
             return None
@@ -658,7 +647,7 @@ class ResultComparator:
 
     def _generate_findings_and_recommendations(
         self, analysis: ComparativeAnalysis
-    ) -> Tuple[List[str], List[str]]:
+    ) -> tuple[list[str], list[str]]:
         """
         発見と推奨事項生成
 
@@ -666,7 +655,7 @@ class ResultComparator:
             analysis: 比較分析
 
         Returns:
-            Tuple[List[str], List[str]]: (発見, 推奨事項)
+            tuple[list[str], list[str]]: (発見, 推奨事項)
         """
         findings = []
         recommendations = []
@@ -758,7 +747,7 @@ class ResultComparator:
 
     def get_latest_analysis(
         self, system_a: str, system_b: str
-    ) -> Optional[ComparativeAnalysis]:
+    ) -> ComparativeAnalysis | None:
         """
         最新分析取得
 
@@ -767,7 +756,7 @@ class ResultComparator:
             system_b: システムB ID
 
         Returns:
-            Optional[ComparativeAnalysis]: 最新比較分析
+            ComparativeAnalysis | None: 最新比較分析
         """
         for analysis in reversed(self.comparative_analyses):
             if set(analysis.systems_compared) == {system_a, system_b}:
@@ -775,8 +764,8 @@ class ResultComparator:
         return None
 
     def get_analysis_history(
-        self, system_a: str, system_b: str, limit: Optional[int] = None
-    ) -> List[ComparativeAnalysis]:
+        self, system_a: str, system_b: str, limit: int | None = None
+    ) -> list[ComparativeAnalysis]:
         """
         分析履歴取得
 
@@ -786,7 +775,7 @@ class ResultComparator:
             limit: 取得件数制限
 
         Returns:
-            List[ComparativeAnalysis]: 比較分析履歴
+            list[ComparativeAnalysis]: 比較分析履歴
         """
         history = [
             a
@@ -801,7 +790,7 @@ class ResultComparator:
 
     def get_performance_summary(
         self, system_id: str, hours: int = 24
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         パフォーマンス要約取得
 
@@ -810,7 +799,7 @@ class ResultComparator:
             hours: 集計期間（時間）
 
         Returns:
-            Optional[Dict[str, Any]]: パフォーマンス要約
+            dict[str, Any] | None: パフォーマンス要約
         """
         period_start = datetime.now() - timedelta(hours=hours)
         results = self._get_results_in_period(system_id, period_start)

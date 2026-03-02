@@ -8,12 +8,11 @@ balances, and order states against external sources for consistency and accuracy
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 @dataclass
 class PositionRecord:
@@ -27,7 +26,6 @@ class PositionRecord:
     unrealized_pnl: float
     timestamp: float
 
-
 @dataclass
 class BalanceRecord:
     """Balance record for reconciliation."""
@@ -37,7 +35,6 @@ class BalanceRecord:
     locked: float
     total: float
     timestamp: float
-
 
 @dataclass
 class OrderRecord:
@@ -51,7 +48,6 @@ class OrderRecord:
     status: str
     timestamp: float
 
-
 @dataclass
 class ReconciliationResult:
     """Result of reconciliation process."""
@@ -60,13 +56,11 @@ class ReconciliationResult:
     positions_match: bool
     balances_match: bool
     orders_match: bool
-    discrepancies: Dict[str, Any]
-    summary: Dict[str, Any]
-
+    discrepancies: dict[str, Any]
+    summary: dict[str, Any]
 
 class ReconciliationError(Exception):
     """Exception raised when reconciliation fails."""
-
 
 class BaseReconciler(ABC):
     """Base class for reconciliation operations."""
@@ -90,7 +84,7 @@ class BaseReconciler(ABC):
             Reconciliation result
         """
 
-    def get_last_result(self) -> Optional[ReconciliationResult]:
+    def get_last_result(self) -> ReconciliationResult | None:
         """Get last reconciliation result."""
         return None
 
@@ -105,19 +99,18 @@ class BaseReconciler(ABC):
         """
         return time.time() - self.last_reconciliation >= interval_seconds
 
-
 class PositionReconciler(BaseReconciler):
     """Reconciler for trading positions."""
 
     def __init__(self, name: str = "positions") -> None:
         """Initialize position reconciler."""
         super().__init__(name)
-        self._last_result: Optional[ReconciliationResult] = None
+        self._last_result: ReconciliationResult | None = None
 
     async def reconcile(
         self,
-        local_positions: List[PositionRecord],
-        external_positions: List[PositionRecord],
+        local_positions: list[PositionRecord],
+        external_positions: list[PositionRecord],
         tolerance: float = 0.001,
     ) -> ReconciliationResult:
         """Reconcile local vs external positions.
@@ -133,7 +126,7 @@ class PositionReconciler(BaseReconciler):
         self.last_reconciliation = time.time()
         self.reconciliation_count += 1
 
-        discrepancies: Dict[str, Any] = {}
+        discrepancies: dict[str, Any] = {}
         matches: int = 0
         total: int = 0
 
@@ -210,10 +203,9 @@ class PositionReconciler(BaseReconciler):
 
         return result
 
-    def get_last_result(self) -> Optional[ReconciliationResult]:
+    def get_last_result(self) -> ReconciliationResult | None:
         """Get last reconciliation result."""
         return self._last_result
-
 
 class BalanceReconciler(BaseReconciler):
     """Reconciler for account balances."""
@@ -221,12 +213,12 @@ class BalanceReconciler(BaseReconciler):
     def __init__(self, name: str = "balances") -> None:
         """Initialize balance reconciler."""
         super().__init__(name)
-        self._last_result: Optional[ReconciliationResult] = None
+        self._last_result: ReconciliationResult | None = None
 
     async def reconcile(
         self,
-        local_balances: List[BalanceRecord],
-        external_balances: List[BalanceRecord],
+        local_balances: list[BalanceRecord],
+        external_balances: list[BalanceRecord],
         tolerance: float = 0.001,
     ) -> ReconciliationResult:
         """Reconcile local vs external balances.
@@ -242,7 +234,7 @@ class BalanceReconciler(BaseReconciler):
         self.last_reconciliation = time.time()
         self.reconciliation_count += 1
 
-        discrepancies: Dict[str, Any] = {}
+        discrepancies: dict[str, Any] = {}
         matches: int = 0
         total: int = 0
 
@@ -319,17 +311,16 @@ class BalanceReconciler(BaseReconciler):
 
         return result
 
-
 class OrderReconciler(BaseReconciler):
     """Reconciler for order states."""
 
     def __init__(self, name: str = "orders") -> None:
         """Initialize order reconciler."""
         super().__init__(name)
-        self._last_result: Optional[ReconciliationResult] = None
+        self._last_result: ReconciliationResult | None = None
 
     async def reconcile(
-        self, local_orders: List[OrderRecord], external_orders: List[OrderRecord]
+        self, local_orders: list[OrderRecord], external_orders: list[OrderRecord]
     ) -> ReconciliationResult:
         """Reconcile local vs external orders.
 
@@ -343,7 +334,7 @@ class OrderReconciler(BaseReconciler):
         self.last_reconciliation = time.time()
         self.reconciliation_count += 1
 
-        discrepancies: Dict[str, Any] = {}
+        discrepancies: dict[str, Any] = {}
         matches: int = 0
         total: int = 0
 
@@ -421,10 +412,9 @@ class OrderReconciler(BaseReconciler):
 
         return result
 
-    def get_last_result(self) -> Optional[ReconciliationResult]:
+    def get_last_result(self) -> ReconciliationResult | None:
         """Get last reconciliation result."""
         return self._last_result
-
 
 class ComprehensiveReconciler(BaseReconciler):
     """Comprehensive reconciler that combines multiple reconciliation types."""
@@ -435,7 +425,7 @@ class ComprehensiveReconciler(BaseReconciler):
         self.position_reconciler = PositionReconciler()
         self.balance_reconciler = BalanceReconciler()
         self.order_reconciler = OrderReconciler()
-        self._last_result: Optional[ReconciliationResult] = None
+        self._last_result: ReconciliationResult | None = None
 
     async def reconcile(self, *args: Any, **kwargs: Any) -> ReconciliationResult:
         """Perform comprehensive reconciliation.
@@ -474,12 +464,12 @@ class ComprehensiveReconciler(BaseReconciler):
 
     async def reconcile_all(
         self,
-        local_positions: Optional[List[PositionRecord]] = None,
-        external_positions: Optional[List[PositionRecord]] = None,
-        local_balances: Optional[List[BalanceRecord]] = None,
-        external_balances: Optional[List[BalanceRecord]] = None,
-        local_orders: Optional[List[OrderRecord]] = None,
-        external_orders: Optional[List[OrderRecord]] = None,
+        local_positions: list[PositionRecord] | None = None,
+        external_positions: list[PositionRecord] | None = None,
+        local_balances: list[BalanceRecord] | None = None,
+        external_balances: list[BalanceRecord] | None = None,
+        local_orders: list[OrderRecord] | None = None,
+        external_orders: list[OrderRecord] | None = None,
     ) -> ReconciliationResult:
         """Perform comprehensive reconciliation.
 
@@ -559,42 +549,37 @@ class ComprehensiveReconciler(BaseReconciler):
 
         return comprehensive_result
 
-    def get_last_result(self) -> Optional[ReconciliationResult]:
+    def get_last_result(self) -> ReconciliationResult | None:
         """Get last comprehensive reconciliation result."""
         return self._last_result
 
-
 # Global reconciler instance
 _reconciler = ComprehensiveReconciler()
-
 
 def get_reconciler() -> ComprehensiveReconciler:
     """Get global reconciler instance."""
     return _reconciler
 
-
 # Coincheck-specific hooks for future integration
 def coincheck_position_reconciliation_hook(
-    local_positions: List[PositionRecord], broker_positions: List[PositionRecord]
-) -> List[PositionRecord]:
+    local_positions: list[PositionRecord], broker_positions: list[PositionRecord]
+) -> list[PositionRecord]:
     """Position reconciliation hook for Coincheck (placeholder for future implementation)."""
     # TODO: Implement Coincheck-specific position reconciliation
     logger.debug("Coincheck position reconciliation hook called")
     return broker_positions
 
-
 def coincheck_balance_reconciliation_hook(
-    local_balances: List[BalanceRecord], broker_balances: List[BalanceRecord]
-) -> List[BalanceRecord]:
+    local_balances: list[BalanceRecord], broker_balances: list[BalanceRecord]
+) -> list[BalanceRecord]:
     """Balance reconciliation hook for Coincheck (placeholder for future implementation)."""
     # TODO: Implement Coincheck-specific balance reconciliation
     logger.debug("Coincheck balance reconciliation hook called")
     return broker_balances
 
-
 def coincheck_order_reconciliation_hook(
-    local_orders: List[OrderRecord], broker_orders: List[OrderRecord]
-) -> Tuple[List[OrderRecord], List[str]]:
+    local_orders: list[OrderRecord], broker_orders: list[OrderRecord]
+) -> tuple[list[OrderRecord], list[str]]:
     """Order reconciliation hook for Coincheck (placeholder for future implementation)."""
     # TODO: Implement Coincheck-specific order reconciliation
     logger.debug("Coincheck order reconciliation hook called")

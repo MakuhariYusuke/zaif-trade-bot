@@ -6,7 +6,6 @@ during tests and should not be used for any real networking.
 """
 from contextlib import contextmanager
 
-
 class _NoopWS:
     def __init__(self, *args, **kwargs):
         pass
@@ -17,7 +16,6 @@ class _NoopWS:
     def close(self):
         return None
 
-
 @contextmanager
 def connect(*args, **kwargs):
     ws = _NoopWS()
@@ -26,7 +24,6 @@ def connect(*args, **kwargs):
     finally:
         ws.close()
 from contextlib import contextmanager
-
 
 @contextmanager
 def connect(*args, **kwargs):
@@ -54,14 +51,12 @@ replacement for the real library; it's only for test-time import safety.
 """
 from contextlib import contextmanager
 
-
 class _DummyConnection:
     def send(self, message):
         return None
 
     def recv(self):
         return None
-
 
 @contextmanager
 def connect(*args, **kwargs):

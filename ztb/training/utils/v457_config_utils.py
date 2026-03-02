@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping
 
 from ztb.utils.config_loader import load_yaml_config
-
 
 def load_config_dict(config_path: Path) -> dict[str, Any]:
     """Load a YAML config as a dict, returning {} for invalid or empty content."""
@@ -13,14 +12,12 @@ def load_config_dict(config_path: Path) -> dict[str, Any]:
         return {}
     return config
 
-
 def extract_training_config(config: Mapping[str, Any]) -> dict[str, Any]:
     """Extract training section as a dict."""
     training = config.get("training")
     if isinstance(training, Mapping):
         return dict(training)
     return {}
-
 
 def validate_env_config(env_config: dict[str, Any]) -> None:
     """
@@ -76,7 +73,6 @@ def validate_env_config(env_config: dict[str, Any]) -> None:
                         f"Must be one of {valid_models}"
                     )
 
-
 def extract_env_config(config: Mapping[str, Any]) -> dict[str, Any]:
     """
     Extract and validate training.environment section as a dict.
@@ -99,7 +95,6 @@ def extract_env_config(config: Mapping[str, Any]) -> dict[str, Any]:
         return env_dict
     return {}
 
-
 def extract_sac_params(config: Mapping[str, Any]) -> dict[str, Any]:
     """Extract training.sac_hyperparameters section as a dict."""
     training = extract_training_config(config)
@@ -108,8 +103,7 @@ def extract_sac_params(config: Mapping[str, Any]) -> dict[str, Any]:
         return dict(sac_params)
     return {}
 
-
-def extract_seed(config: Mapping[str, Any]) -> Optional[int]:
+def extract_seed(config: Mapping[str, Any]) -> int | None:
     """Extract training seed from config (training.seed or training.sac_hyperparameters.seed)."""
     training = extract_training_config(config)
     seed = None

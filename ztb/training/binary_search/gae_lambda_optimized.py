@@ -16,7 +16,6 @@ from ztb.training.binary_search.base_optimizer import (
     HyperparameterOptimizer,
 )
 
-
 class GaeLambdaOptimizer(HyperparameterOptimizer):
     """Optimizer for gae_lambda parameter."""
 
@@ -27,7 +26,6 @@ class GaeLambdaOptimizer(HyperparameterOptimizer):
     def get_parameter_range(self) -> tuple[float, float]:
         """Get the range for gae_lambda binary search."""
         return (0.8, 1.0)  # Reasonable range for GAE lambda
-
 
 def main() -> None:
     parser = BinarySearchArgumentParser.create_parser(
@@ -54,7 +52,6 @@ def main() -> None:
         print(
             f"\nOptimization complete. Best gae_lambda: {best_value}, Score: {best_score:.6f}"
         )
-
 
 if __name__ == "__main__":
     main()

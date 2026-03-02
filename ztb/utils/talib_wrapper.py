@@ -8,7 +8,7 @@ supporting both Ta-Lib and custom implementations with fallback logic.
 import logging
 import warnings
 from collections import OrderedDict
-from typing import Any, Dict, Tuple, Union, cast
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -50,9 +50,6 @@ logger = logging.getLogger(__name__)
 # ruff: noqa: E402
 from ztb.utils.performance_utils import timed
 
-
-
-
 class TaLibWrapper:
     """
     Wrapper class for Ta-Lib functions with fallback to custom implementations.
@@ -63,7 +60,7 @@ class TaLibWrapper:
     """
 
     # Default periods for technical indicators
-    DEFAULT_PERIODS: Dict[str, Union[int, float]] = {
+    DEFAULT_PERIODS: dict[str, int | float] = {
         "SMA": 30,
         "EMA": 30,
         "RSI": 14,
@@ -110,7 +107,7 @@ class TaLibWrapper:
 
     @staticmethod
     def _validate_input_data(
-        data: Union[NDArray[np.float64], pd.Series],
+        data: NDArray[np.float64] | pd.Series,
         name: str,
         strict_validation: bool = True,
     ) -> NDArray[np.float64]:
@@ -180,7 +177,7 @@ class TaLibWrapper:
 
     @timed
     def sma(
-        self, data: Union[NDArray[np.float64], pd.Series], period: int
+        self, data: NDArray[np.float64] | pd.Series, period: int
     ) -> NDArray[np.float64]:
         """
         Simple Moving Average.
@@ -233,7 +230,7 @@ class TaLibWrapper:
     @timed
     @staticmethod
     def ema(
-        data: Union[NDArray[np.float64], pd.Series], period: int
+        data: NDArray[np.float64] | pd.Series, period: int
     ) -> NDArray[np.float64]:
         """
         Exponential Moving Average.
@@ -276,7 +273,7 @@ class TaLibWrapper:
 
     @timed
     def rsi(
-        self, data: Union[NDArray[np.float64], pd.Series], period: int = 14
+        self, data: NDArray[np.float64] | pd.Series, period: int = 14
     ) -> NDArray[np.float64]:
         """
         Relative Strength Index.
@@ -311,16 +308,16 @@ class TaLibWrapper:
     @timed
     def bbands(
         self,
-        data: Union[NDArray[np.float64], pd.Series],
+        data: NDArray[np.float64] | pd.Series,
         period: int = 20,
         nbdevup: float = 2.0,
         nbdevdn: float = 2.0,
-    ) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
         """
         Bollinger Bands calculation.
 
         Returns:
-            Tuple of (Upper Band, Middle Band (SMA), Lower Band)
+            tuple of (Upper Band, Middle Band (SMA), Lower Band)
         """
 
         # Use the staticmethod implementation below for bbands calculations.
@@ -388,11 +385,11 @@ class TaLibWrapper:
 
     def macd(
         self,
-        data: Union[NDArray[np.float64], pd.Series],
+        data: NDArray[np.float64] | pd.Series,
         fast_period: int = 12,
         slow_period: int = 26,
         signal_period: int = 9,
-    ) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
         """
         MACD (Moving Average Convergence Divergence).
 
@@ -408,7 +405,7 @@ class TaLibWrapper:
             signal_period: Signal line EMA period (default: 9)
 
         Returns:
-            Tuple of (MACD line, Signal line, Histogram)
+            tuple of (MACD line, Signal line, Histogram)
 
         Raises:
             TaLibError: If input validation fails
@@ -478,13 +475,13 @@ class TaLibWrapper:
 
     def stoch(
         self,
-        high: Union[NDArray[np.float64], pd.Series],
-        low: Union[NDArray[np.float64], pd.Series],
-        close: Union[NDArray[np.float64], pd.Series],
+        high: NDArray[np.float64] | pd.Series,
+        low: NDArray[np.float64] | pd.Series,
+        close: NDArray[np.float64] | pd.Series,
         fastk_period: int = 14,
         slowk_period: int = 3,
         slowd_period: int = 3,
-    ) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """
         Stochastic Oscillator.
 
@@ -497,7 +494,7 @@ class TaLibWrapper:
             slowd_period: Slow %D period
 
         Returns:
-            Tuple of (Slow %K, Slow %D)
+            tuple of (Slow %K, Slow %D)
 
         Raises:
             TaLibError: If input validation fails
@@ -566,13 +563,13 @@ class TaLibWrapper:
 
     def stochf(
         self,
-        high: Union[NDArray[np.float64], pd.Series],
-        low: Union[NDArray[np.float64], pd.Series],
-        close: Union[NDArray[np.float64], pd.Series],
+        high: NDArray[np.float64] | pd.Series,
+        low: NDArray[np.float64] | pd.Series,
+        close: NDArray[np.float64] | pd.Series,
         fastk_period: int = 14,
         fastd_period: int = 3,
         fastd_matype: int = 0,
-    ) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """
         Stochastic Fast.
 
@@ -585,7 +582,7 @@ class TaLibWrapper:
             fastd_matype: Fast %D Moving Average Type (0=SMA)
 
         Returns:
-            Tuple of (Fast %K, Fast %D)
+            tuple of (Fast %K, Fast %D)
 
         Raises:
             TaLibError: If input validation fails
@@ -653,9 +650,9 @@ class TaLibWrapper:
 
     @staticmethod
     def adx(
-        high: Union[NDArray[np.float64], pd.Series],
-        low: Union[NDArray[np.float64], pd.Series],
-        close: Union[NDArray[np.float64], pd.Series],
+        high: NDArray[np.float64] | pd.Series,
+        low: NDArray[np.float64] | pd.Series,
+        close: NDArray[np.float64] | pd.Series,
         period: int = 14,
     ) -> NDArray[np.float64]:
         """
@@ -697,9 +694,9 @@ class TaLibWrapper:
 
     @staticmethod
     def plus_di(
-        high: Union[NDArray[np.float64], pd.Series],
-        low: Union[NDArray[np.float64], pd.Series],
-        close: Union[NDArray[np.float64], pd.Series],
+        high: NDArray[np.float64] | pd.Series,
+        low: NDArray[np.float64] | pd.Series,
+        close: NDArray[np.float64] | pd.Series,
         period: int = 14,
     ) -> NDArray[np.float64]:
         """
@@ -741,9 +738,9 @@ class TaLibWrapper:
 
     @staticmethod
     def minus_di(
-        high: Union[NDArray[np.float64], pd.Series],
-        low: Union[NDArray[np.float64], pd.Series],
-        close: Union[NDArray[np.float64], pd.Series],
+        high: NDArray[np.float64] | pd.Series,
+        low: NDArray[np.float64] | pd.Series,
+        close: NDArray[np.float64] | pd.Series,
         period: int = 14,
     ) -> NDArray[np.float64]:
         """
@@ -849,9 +846,9 @@ class TaLibWrapper:
 
     @staticmethod
     def williams_r(
-        high: Union[NDArray[np.float64], pd.Series],
-        low: Union[NDArray[np.float64], pd.Series],
-        close: Union[NDArray[np.float64], pd.Series],
+        high: NDArray[np.float64] | pd.Series,
+        low: NDArray[np.float64] | pd.Series,
+        close: NDArray[np.float64] | pd.Series,
         period: int = 14,
     ) -> NDArray[np.float64]:
         """
@@ -891,9 +888,9 @@ class TaLibWrapper:
 
     @staticmethod
     def cci(
-        high: Union[NDArray[np.float64], pd.Series],
-        low: Union[NDArray[np.float64], pd.Series],
-        close: Union[NDArray[np.float64], pd.Series],
+        high: NDArray[np.float64] | pd.Series,
+        low: NDArray[np.float64] | pd.Series,
+        close: NDArray[np.float64] | pd.Series,
         period: int = 20,
     ) -> NDArray[np.float64]:
         """
@@ -933,7 +930,7 @@ class TaLibWrapper:
 
     @staticmethod
     def tema(
-        data: Union[NDArray[np.float64], pd.Series], period: int
+        data: NDArray[np.float64] | pd.Series, period: int
     ) -> NDArray[np.float64]:
         """
         Triple Exponential Moving Average (TEMA).
@@ -967,7 +964,7 @@ class TaLibWrapper:
 
     @staticmethod
     def kama(
-        data: Union[NDArray[np.float64], pd.Series], period: int = 30
+        data: NDArray[np.float64] | pd.Series, period: int = 30
     ) -> NDArray[np.float64]:
         """
         Kaufman Adaptive Moving Average (KAMA).
@@ -999,7 +996,7 @@ class TaLibWrapper:
 
     @staticmethod
     def roc(
-        data: Union[NDArray[np.float64], pd.Series], period: int = 10
+        data: NDArray[np.float64] | pd.Series, period: int = 10
     ) -> NDArray[np.float64]:
         """
         Rate of Change (ROC).
@@ -1033,7 +1030,7 @@ class TaLibWrapper:
 
     @staticmethod
     def wma(
-        data: Union[NDArray[np.float64], pd.Series], period: int
+        data: NDArray[np.float64] | pd.Series, period: int
     ) -> NDArray[np.float64]:
         """
         Weighted Moving Average (WMA).
@@ -1065,10 +1062,10 @@ class TaLibWrapper:
 
     @staticmethod
     def mfi(
-        high: Union[NDArray[np.float64], pd.Series],
-        low: Union[NDArray[np.float64], pd.Series],
-        close: Union[NDArray[np.float64], pd.Series],
-        volume: Union[NDArray[np.float64], pd.Series],
+        high: NDArray[np.float64] | pd.Series,
+        low: NDArray[np.float64] | pd.Series,
+        close: NDArray[np.float64] | pd.Series,
+        volume: NDArray[np.float64] | pd.Series,
         period: int = 14,
     ) -> NDArray[np.float64]:
         """
@@ -1114,8 +1111,8 @@ class TaLibWrapper:
 
     @staticmethod
     def obv(
-        close: Union[NDArray[np.float64], pd.Series],
-        volume: Union[NDArray[np.float64], pd.Series],
+        close: NDArray[np.float64] | pd.Series,
+        volume: NDArray[np.float64] | pd.Series,
     ) -> NDArray[np.float64]:
         """
         On Balance Volume (OBV).
@@ -1147,8 +1144,8 @@ class TaLibWrapper:
 
     @staticmethod
     def sar(
-        high: Union[NDArray[np.float64], pd.Series],
-        low: Union[NDArray[np.float64], pd.Series],
+        high: NDArray[np.float64] | pd.Series,
+        low: NDArray[np.float64] | pd.Series,
         acceleration: float = 0.02,
         maximum: float = 0.2,
     ) -> NDArray[np.float64]:
@@ -1186,9 +1183,9 @@ class TaLibWrapper:
 
     @staticmethod
     def atr(
-        high: Union[NDArray[np.float64], pd.Series],
-        low: Union[NDArray[np.float64], pd.Series],
-        close: Union[NDArray[np.float64], pd.Series],
+        high: NDArray[np.float64] | pd.Series,
+        low: NDArray[np.float64] | pd.Series,
+        close: NDArray[np.float64] | pd.Series,
         period: int = 14,
     ) -> NDArray[np.float64]:
         """
@@ -1293,10 +1290,10 @@ class TaLibWrapper:
 
     @staticmethod
     def ad(
-        high: Union[NDArray[np.float64], pd.Series],
-        low: Union[NDArray[np.float64], pd.Series],
-        close: Union[NDArray[np.float64], pd.Series],
-        volume: Union[NDArray[np.float64], pd.Series],
+        high: NDArray[np.float64] | pd.Series,
+        low: NDArray[np.float64] | pd.Series,
+        close: NDArray[np.float64] | pd.Series,
+        volume: NDArray[np.float64] | pd.Series,
     ) -> NDArray[np.float64]:
         """
         Chaikin Accumulation/Distribution (AD) line.
@@ -1394,7 +1391,7 @@ class TaLibWrapper:
 
     @staticmethod
     def _sma_custom(
-        data: Union[NDArray[np.float64], pd.Series], period: int
+        data: NDArray[np.float64] | pd.Series, period: int
     ) -> NDArray[np.float64]:
         """Custom SMA implementation."""
         data = np.asarray(data, dtype=np.float64)
@@ -1403,7 +1400,7 @@ class TaLibWrapper:
 
     @staticmethod
     def _ema_custom(
-        data: Union[NDArray[np.float64], pd.Series], period: int
+        data: NDArray[np.float64] | pd.Series, period: int
     ) -> NDArray[np.float64]:
         """Custom EMA implementation."""
         data = np.asarray(data, dtype=np.float64)
@@ -1427,7 +1424,7 @@ class TaLibWrapper:
 
     @staticmethod
     def _rsi_custom(
-        data: Union[NDArray[np.float64], pd.Series], period: int = 14
+        data: NDArray[np.float64] | pd.Series, period: int = 14
     ) -> NDArray[np.float64]:
         """Custom RSI implementation."""
         data = np.asarray(data, dtype=float)
@@ -1458,11 +1455,11 @@ class TaLibWrapper:
 
     @staticmethod
     def _macd_custom(
-        data: Union[NDArray[np.float64], pd.Series],
+        data: NDArray[np.float64] | pd.Series,
         fast_period: int = 12,
         slow_period: int = 26,
         signal_period: int = 9,
-    ) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
         """Custom MACD implementation."""
         data = np.asarray(data, dtype=float)
         ema_fast = TaLibWrapper._ema_custom(data, fast_period)
@@ -1474,11 +1471,11 @@ class TaLibWrapper:
 
     @staticmethod
     def _bbands_custom(
-        data: Union[NDArray[np.float64], pd.Series],
+        data: NDArray[np.float64] | pd.Series,
         period: int = 20,
         nbdevup: float = 2.0,
         nbdevdn: float = 2.0,
-    ) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
         """Custom Bollinger Bands implementation."""
         data = np.asarray(data, dtype=float)
 
@@ -1509,9 +1506,9 @@ class TaLibWrapper:
 
     @staticmethod
     def _atr_custom(
-        high: Union[NDArray[np.float64], pd.Series],
-        low: Union[NDArray[np.float64], pd.Series],
-        close: Union[NDArray[np.float64], pd.Series],
+        high: NDArray[np.float64] | pd.Series,
+        low: NDArray[np.float64] | pd.Series,
+        close: NDArray[np.float64] | pd.Series,
         period: int = 14,
     ) -> NDArray[np.float64]:
         """Custom ATR implementation."""
@@ -1531,13 +1528,13 @@ class TaLibWrapper:
 
     @staticmethod
     def _stoch_custom(
-        high: Union[NDArray[np.float64], pd.Series],
-        low: Union[NDArray[np.float64], pd.Series],
-        close: Union[NDArray[np.float64], pd.Series],
+        high: NDArray[np.float64] | pd.Series,
+        low: NDArray[np.float64] | pd.Series,
+        close: NDArray[np.float64] | pd.Series,
         fastk_period: int = 14,
         slowk_period: int = 3,
         slowd_period: int = 3,
-    ) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """Custom Stochastic Oscillator implementation."""
         high = np.asarray(high, dtype=float)
         low = np.asarray(low, dtype=float)
@@ -1562,12 +1559,12 @@ class TaLibWrapper:
 
     @staticmethod
     def _stochf_custom(
-        high: Union[NDArray[np.float64], pd.Series],
-        low: Union[NDArray[np.float64], pd.Series],
-        close: Union[NDArray[np.float64], pd.Series],
+        high: NDArray[np.float64] | pd.Series,
+        low: NDArray[np.float64] | pd.Series,
+        close: NDArray[np.float64] | pd.Series,
         fastk_period: int = 14,
         fastd_period: int = 3,
-    ) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """Custom Stochastic Fast implementation."""
         high = np.asarray(high, dtype=float)
         low = np.asarray(low, dtype=float)
@@ -1594,9 +1591,9 @@ class TaLibWrapper:
 
     @staticmethod
     def _adx_custom(
-        high: Union[NDArray[np.float64], pd.Series],
-        low: Union[NDArray[np.float64], pd.Series],
-        close: Union[NDArray[np.float64], pd.Series],
+        high: NDArray[np.float64] | pd.Series,
+        low: NDArray[np.float64] | pd.Series,
+        close: NDArray[np.float64] | pd.Series,
         period: int = 14,
     ) -> NDArray[np.float64]:
         """Custom ADX implementation."""
@@ -1639,9 +1636,9 @@ class TaLibWrapper:
 
     @staticmethod
     def _williams_r_custom(
-        high: Union[NDArray[np.float64], pd.Series],
-        low: Union[NDArray[np.float64], pd.Series],
-        close: Union[NDArray[np.float64], pd.Series],
+        high: NDArray[np.float64] | pd.Series,
+        low: NDArray[np.float64] | pd.Series,
+        close: NDArray[np.float64] | pd.Series,
         period: int = 14,
     ) -> NDArray[np.float64]:
         """Custom Williams %R implementation."""
@@ -1665,9 +1662,9 @@ class TaLibWrapper:
 
     @staticmethod
     def _cci_custom(
-        high: Union[NDArray[np.float64], pd.Series],
-        low: Union[NDArray[np.float64], pd.Series],
-        close: Union[NDArray[np.float64], pd.Series],
+        high: NDArray[np.float64] | pd.Series,
+        low: NDArray[np.float64] | pd.Series,
+        close: NDArray[np.float64] | pd.Series,
         period: int = 20,
     ) -> NDArray[np.float64]:
         """Custom CCI implementation."""
@@ -1698,7 +1695,7 @@ class TaLibWrapper:
 
     @staticmethod
     def _tema_custom(
-        data: Union[NDArray[np.float64], pd.Series], period: int
+        data: NDArray[np.float64] | pd.Series, period: int
     ) -> NDArray[np.float64]:
         """Custom TEMA implementation."""
         data = np.asarray(data, dtype=float)
@@ -1715,7 +1712,7 @@ class TaLibWrapper:
 
     @staticmethod
     def _kama_custom(
-        data: Union[NDArray[np.float64], pd.Series], period: int = 30
+        data: NDArray[np.float64] | pd.Series, period: int = 30
     ) -> NDArray[np.float64]:
         """Custom KAMA implementation (simplified)."""
         data = np.asarray(data, dtype=float)
@@ -1726,7 +1723,7 @@ class TaLibWrapper:
 
     @staticmethod
     def _roc_custom(
-        data: Union[NDArray[np.float64], pd.Series], period: int = 10
+        data: NDArray[np.float64] | pd.Series, period: int = 10
     ) -> NDArray[np.float64]:
         """Custom ROC implementation."""
         data = np.asarray(data, dtype=np.float64)
@@ -1735,14 +1732,14 @@ class TaLibWrapper:
         denominator = np.where(rolled_data == 0, 1e-8, rolled_data).astype(np.float64)
         roc = (100 * (data - rolled_data) / denominator).astype(np.float64)
 
-        # Set first 'period' values to NaN
+        # set first 'period' values to NaN
         roc[:period] = np.nan
 
         return roc
 
     @staticmethod
     def _wma_custom(
-        data: Union[NDArray[np.float64], pd.Series], period: int
+        data: NDArray[np.float64] | pd.Series, period: int
     ) -> NDArray[np.float64]:
         """Custom WMA implementation."""
         data = np.asarray(data, dtype=float)
@@ -1756,7 +1753,7 @@ class TaLibWrapper:
         return result
 
     @staticmethod
-    def get_indicator_info() -> Dict[str, IndicatorInfo]:
+    def get_indicator_info() -> dict[str, IndicatorInfo]:
         return {
             "SMA": {
                 "description": "Simple Moving Average",

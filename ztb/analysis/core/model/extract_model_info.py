@@ -9,7 +9,6 @@ import sys
 import zipfile
 from pathlib import Path
 
-
 def extract_model_info(model_path: str) -> bool:
     """モデルZIPファイルから情報を抽出"""
     print(f"\n{'='*80}")
@@ -109,7 +108,6 @@ def extract_model_info(model_path: str) -> bool:
 
     return True
 
-
 def main() -> None:
     if len(sys.argv) < 2:
         print("Usage: python extract_model_info.py <model_path>")
@@ -120,7 +118,6 @@ def main() -> None:
 
     model_path = sys.argv[1]
     extract_model_info(model_path)
-
 
 if __name__ == "__main__":
     main()

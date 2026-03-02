@@ -10,7 +10,7 @@
 """
 
 import logging
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -19,7 +19,6 @@ from sklearn.preprocessing import StandardScaler
 
 logger = logging.getLogger(__name__)
 
-
 class DataAugmentation:
     """
     金融時系列データに対するデータ拡張を行うクラス。
@@ -27,7 +26,7 @@ class DataAugmentation:
     様々な拡張手法を組み合わせることで、モデルの頑健性を向上させる。
     """
 
-    def __init__(self, random_seed: Optional[int] = None):
+    def __init__(self, random_seed: int | None = None):
         """
         DataAugmentationを初期化。
 
@@ -39,12 +38,12 @@ class DataAugmentation:
             np.random.seed(random_seed)
 
         # スケーラーのキャッシュ
-        self.scalers: Dict[str, StandardScaler] = {}
+        self.scalers: dict[str, StandardScaler] = {}
 
     def apply_augmentations(
         self,
         data: pd.DataFrame,
-        augmentations: List[Dict[str, Union[str, float, int]]],
+        augmentations: list[dict[str, str | float | int]],
         probability: float = 1.0,
     ) -> pd.DataFrame:
         """
@@ -118,7 +117,7 @@ class DataAugmentation:
         return augmented_data
 
     def _add_gaussian_noise(
-        self, data: pd.DataFrame, std: float = 0.01, columns: Optional[List[str]] = None
+        self, data: pd.DataFrame, std: float = 0.01, columns: list[str] | None = None
     ) -> pd.DataFrame:
         """
         ガウスノイズを追加。
@@ -148,7 +147,7 @@ class DataAugmentation:
         self,
         data: pd.DataFrame,
         prob: float = 0.01,
-        columns: Optional[List[str]] = None,
+        columns: list[str] | None = None,
     ) -> pd.DataFrame:
         """
         Salt-and-pepperノイズを追加。
@@ -185,7 +184,7 @@ class DataAugmentation:
         self,
         data: pd.DataFrame,
         sigma: float = 0.2,
-        columns: Optional[List[str]] = None,
+        columns: list[str] | None = None,
     ) -> pd.DataFrame:
         """
         時間軸ワーピングを適用。
@@ -228,7 +227,7 @@ class DataAugmentation:
         self,
         data: pd.DataFrame,
         mix_ratio: float = 0.1,
-        columns: Optional[List[str]] = None,
+        columns: list[str] | None = None,
     ) -> pd.DataFrame:
         """
         特徴量ミキシングを適用。
@@ -272,7 +271,7 @@ class DataAugmentation:
         self,
         data: pd.DataFrame,
         scale_factor: float = 1.1,
-        columns: Optional[List[str]] = None,
+        columns: list[str] | None = None,
     ) -> pd.DataFrame:
         """
         スケーリング変換を適用。
@@ -303,7 +302,7 @@ class DataAugmentation:
         self,
         data: pd.DataFrame,
         missing_prob: float = 0.05,
-        columns: Optional[List[str]] = None,
+        columns: list[str] | None = None,
     ) -> pd.DataFrame:
         """
         欠損値をシミュレーション。
@@ -332,7 +331,7 @@ class DataAugmentation:
         return augmented_data
 
     def create_augmentation_pipeline(
-        self, pipeline_config: List[Dict[str, Union[str, float, int]]]
+        self, pipeline_config: list[dict[str, str | float | int]]
     ) -> Callable[[pd.DataFrame], pd.DataFrame]:
         """
         拡張パイプラインを作成。

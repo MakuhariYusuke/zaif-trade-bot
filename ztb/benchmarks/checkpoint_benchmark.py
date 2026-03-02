@@ -11,13 +11,12 @@ import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from ztb.trading.environment.constants import BYTES_PER_MB
-
 
 @dataclass
 class CheckpointResult:
@@ -28,8 +27,7 @@ class CheckpointResult:
     throughput_mb_per_second: float
     file_size_mb: float
     passed_gates: bool
-    gate_violations: List[str]
-
+    gate_violations: list[str]
 
 class CheckpointBenchmark:
     """Benchmark for checkpoint save/load operations."""
@@ -43,7 +41,7 @@ class CheckpointBenchmark:
             "max_checkpoint_size_mb": 1000,  # Maximum checkpoint size
         }
 
-    def create_test_model(self, size: str = "medium") -> Dict[str, Any]:
+    def create_test_model(self, size: str = "medium") -> dict[str, Any]:
         """Create a test model/checkpoint data structure."""
         if size == "small":
             # Small model: ~10MB
@@ -102,7 +100,7 @@ class CheckpointBenchmark:
 
         return data
 
-    def get_data_size_mb(self, data: Dict[str, Any]) -> float:
+    def get_data_size_mb(self, data: dict[str, Any]) -> float:
         """Estimate size of data in MB."""
         # Rough estimation
         total_elements = 0
@@ -120,7 +118,7 @@ class CheckpointBenchmark:
         return estimated_bytes / BYTES_PER_MB
 
     def benchmark_pickle_save(
-        self, data: Dict[str, Any], file_path: Path
+        self, data: dict[str, Any], file_path: Path
     ) -> CheckpointResult:
         """Benchmark pickle-based checkpoint saving."""
         print(f"Benchmarking pickle save to {file_path}...")
@@ -178,7 +176,7 @@ class CheckpointBenchmark:
         )
 
     def benchmark_json_save(
-        self, data: Dict[str, Any], file_path: Path
+        self, data: dict[str, Any], file_path: Path
     ) -> CheckpointResult:
         """Benchmark JSON-based checkpoint saving (metadata only)."""
         print(f"Benchmarking JSON save to {file_path}...")
@@ -215,7 +213,7 @@ class CheckpointBenchmark:
         )
 
     def benchmark_numpy_save(
-        self, data: Dict[str, Any], file_path: Path
+        self, data: dict[str, Any], file_path: Path
     ) -> CheckpointResult:
         """Benchmark numpy .npz save."""
         print(f"Benchmarking numpy save to {file_path}...")
@@ -273,7 +271,7 @@ class CheckpointBenchmark:
 
     def run_checkpoint_benchmarks(
         self, model_size: str = "medium"
-    ) -> List[CheckpointResult]:
+    ) -> list[CheckpointResult]:
         """Run all checkpoint benchmarks."""
         print(f"Running Checkpoint Performance Benchmarks ({model_size} model)...")
         print("=" * 60)
@@ -327,7 +325,6 @@ class CheckpointBenchmark:
 
         return results
 
-
 def main() -> None:
     """Main benchmark runner."""
     import argparse
@@ -350,7 +347,6 @@ def main() -> None:
     # Exit with code based on results
     all_passed = all(r.passed_gates for r in results)
     exit(0 if all_passed else 1)
-
 
 if __name__ == "__main__":
     main()

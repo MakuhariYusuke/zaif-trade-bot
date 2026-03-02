@@ -7,7 +7,7 @@ with improved technical indicators and clearer classification logic.
 
 from collections import deque
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -21,7 +21,6 @@ from ztb.metrics.technical import (
     calculate_macd,
     calculate_rsi,
 )
-
 
 class EnhancedRegimeAnalyzer:
     """
@@ -50,7 +49,7 @@ class EnhancedRegimeAnalyzer:
         # State tracking
         self.current_regime = None
         self.regime_confidence = 0.0
-        self.regime_history: List[RegimeDetectionResult] = []
+        self.regime_history: list[RegimeDetectionResult] = []
         self.step_counter = 0
 
         # Statistical baselines for adaptive thresholds
@@ -93,7 +92,7 @@ class EnhancedRegimeAnalyzer:
             }
 
     def update_price_data(
-        self, price: float, high: Optional[float] = None, low: Optional[float] = None
+        self, price: float, high: float | None = None, low: float | None = None
     ):
         """
         Update the analyzer with new price data.
@@ -108,7 +107,7 @@ class EnhancedRegimeAnalyzer:
         self.low_buffer.append(low if low is not None else price)
         self.step_counter += 1
 
-    def _calculate_indicators(self) -> Dict[str, float]:
+    def _calculate_indicators(self) -> dict[str, float]:
         """Calculate all technical indicators using existing feature generators."""
         prices = np.array(list(self.price_buffer))
         highs = np.array(list(self.high_buffer))
@@ -177,13 +176,13 @@ class EnhancedRegimeAnalyzer:
         }
 
     def _classify_regime(
-        self, indicators: Dict[str, float]
-    ) -> Tuple[MarketRegime, float, List[str]]:
+        self, indicators: dict[str, float]
+    ) -> tuple[MarketRegime, float, list[str]]:
         """
         Classify market regime with clear priority-based logic.
 
         Returns:
-            Tuple of (regime, confidence, classification_path)
+            tuple of (regime, confidence, classification_path)
         """
         rsi = indicators.get("rsi", 50.0)
         adx = indicators.get("adx", 25.0)
@@ -319,7 +318,7 @@ class EnhancedRegimeAnalyzer:
         self.step_counter = 0
         self._update_adaptive_thresholds()
 
-    def get_regime_statistics(self) -> Dict[str, Any]:
+    def get_regime_statistics(self) -> dict[str, Any]:
         """Get statistics about detected regimes."""
         if not self.regime_history:
             return {}

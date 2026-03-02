@@ -10,15 +10,12 @@ import numpy as np
 
 from ztb.io.json_io import read_json
 
-
-
 def load_backtest_results():
     """Load backtest results"""
     results_path = (
         Path(__file__).parent.parent / "evaluation" / "sac_v431_backtest_results.json"
     )
     return read_json(results_path)
-
 
 def analyze_reward_function_v431(config):
     """Analyze SAC v431 reward function structure"""
@@ -85,7 +82,6 @@ def analyze_reward_function_v431(config):
 
     print("✅ ボーナスベースのアプローチはv430のペナルティ問題を解決")
     print("✅ 市場適応型乗数は状況に応じた柔軟性を提供")
-
 
 def analyze_backtest_performance(results):
     """Analyze backtest performance metrics"""
@@ -160,7 +156,6 @@ def analyze_backtest_performance(results):
     else:
         print("❌ 低いリスク調整リターン")
 
-
 def generate_recommendations(results, config):
     """Generate improvement recommendations"""
     print("\n" + "=" * 80)
@@ -219,7 +214,6 @@ def generate_recommendations(results, config):
     print("3. より高度な学習技術の統合")
     print("4. リスク管理機能の強化")
 
-
 def main():
     """Main analysis function"""
     print("SAC v431 包括的検証レポート")
@@ -244,7 +238,6 @@ def main():
         import traceback
 
         traceback.print_exc()
-
 
 if __name__ == "__main__":
     main()

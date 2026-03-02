@@ -8,7 +8,7 @@ import argparse
 import os
 import warnings
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, TypedDict
+from typing import Any, TypedDict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -29,7 +29,6 @@ from ztb.metrics.metrics import calculate_performance_metrics, sharpe_ratio
 from ztb.io.data_loader import DataLoader
 from ztb.io.json_io import write_json
 
-
 @dataclass
 class BenchmarkComparisonAnalyzer:
     """ベンチマーク比較分析クラス"""
@@ -38,7 +37,7 @@ class BenchmarkComparisonAnalyzer:
 
     def calculate_regression_metrics(
         self, strategy_returns: pd.Series, benchmark_returns: pd.Series
-    ) -> Tuple[float, float, float, float]:
+    ) -> tuple[float, float, float, float]:
         """
         回帰分析による指標計算
 
@@ -143,8 +142,8 @@ class BenchmarkComparisonAnalyzer:
         self,
         strategy_returns: pd.Series,
         benchmark_returns: pd.Series,
-        window_sizes: Optional[List[int]] = None,
-    ) -> List[RollingComparison]:
+        window_sizes: list[int] | None = None,
+    ) -> list[RollingComparison]:
         """
         ローリング比較分析
 
@@ -197,7 +196,7 @@ class BenchmarkComparisonAnalyzer:
         return rolling_comparisons
 
     def multi_benchmark_comparison(
-        self, strategy_returns: pd.Series, benchmark_data: Dict[str, pd.Series]
+        self, strategy_returns: pd.Series, benchmark_data: dict[str, pd.Series]
     ) -> MultiBenchmarkSummary:
         """
         複数ベンチマークとの比較
@@ -210,7 +209,7 @@ class BenchmarkComparisonAnalyzer:
             複数ベンチマーク比較サマリー
         """
         comparisons = []
-        summary_stats: Dict[str, Any] = {
+        summary_stats: dict[str, Any] = {
             "best_benchmark": None,
             "worst_benchmark": None,
             "avg_information_ratio": 0.0,
@@ -264,7 +263,7 @@ class BenchmarkComparisonAnalyzer:
     def run_comprehensive_benchmark_analysis(
         self,
         strategy_returns: pd.Series,
-        benchmark_data: Dict[str, pd.Series],
+        benchmark_data: dict[str, pd.Series],
         include_rolling: bool = True,
     ) -> BenchmarkComparisonResult:
         """
@@ -331,7 +330,7 @@ class BenchmarkComparisonAnalyzer:
         )
 
     def plot_benchmark_comparison(
-        self, result: BenchmarkComparisonResult, save_path: Optional[str] = None
+        self, result: BenchmarkComparisonResult, save_path: str | None = None
     ) -> None:
         """ベンチマーク比較結果を可視化"""
         if not result.comparisons:
@@ -443,7 +442,6 @@ R2: {comparison.r_squared}""".format(comparison=comparison)
 
         plt.show()
 
-
     def export_results(self, result: BenchmarkComparisonResult, output_path: str) -> None:
         """分析結果を JSON ファイルにエクスポート"""
         export_data = {
@@ -466,7 +464,7 @@ R2: {comparison.r_squared}""".format(comparison=comparison)
     def analyze_benchmark_comparison(
         self,
         strategy_file: str,
-        benchmark_files: List[str]
+        benchmark_files: list[str]
     ) -> BenchmarkComparisonResult:
         """
         ファイルからベンチマーク比較分析を実行
@@ -495,7 +493,7 @@ R2: {comparison.r_squared}""".format(comparison=comparison)
         # 包括的な分析実行
         return self.run_comprehensive_benchmark_analysis(strategy_returns, benchmark_data)
 
-    def plot_rolling_comparison(self, rolling_comparisons: List[RollingComparison], save_path: Optional[str] = None) -> None:
+    def plot_rolling_comparison(self, rolling_comparisons: list[RollingComparison], save_path: str | None = None) -> None:
         """ローリング比較結果を可視化"""
         if not rolling_comparisons:
             print("No rolling comparisons available for plotting")
@@ -582,7 +580,6 @@ R2: {comparison.r_squared}""".format(comparison=comparison)
 
         plt.show()
 
-
 def main() -> None:
     """メイン関数"""
     parser = argparse.ArgumentParser(description="ベンチマーク比較分析")
@@ -614,7 +611,6 @@ def main() -> None:
     analyzer.export_results(result, json_path)
 
     print("Benchmark comparison analysis completed!")
-
 
 if __name__ == "__main__":
     main()

@@ -15,12 +15,11 @@ from ztb.risk.advanced_auto_stop import (
     create_production_auto_stop,
 )
 
-
 class TestAdvancedAutoStop(unittest.TestCase):
     """Test cases for AdvancedAutoStop class."""
 
     def setUp(self):
-        """Set up test fixtures."""
+        """set up test fixtures."""
         self.config = {
             "volatility_stop": {
                 "enabled": True,
@@ -102,7 +101,7 @@ class TestAdvancedAutoStop(unittest.TestCase):
 
     def test_volatility_stop_condition(self):
         """Test volatility-based stop condition."""
-        # Set high volatility
+        # set high volatility
         self.auto_stop.volatility = 0.06  # Above 5% threshold
 
         should_stop, reason, message = self.auto_stop._check_volatility_stop(
@@ -115,7 +114,7 @@ class TestAdvancedAutoStop(unittest.TestCase):
 
     def test_drawdown_stop_condition(self):
         """Test drawdown-based stop condition."""
-        # Set high drawdown
+        # set high drawdown
         self.auto_stop.current_drawdown = 0.12  # Above 10% threshold
 
         should_stop, reason, message = self.auto_stop._check_drawdown_stop(
@@ -128,7 +127,7 @@ class TestAdvancedAutoStop(unittest.TestCase):
 
     def test_consecutive_losses_stop(self):
         """Test consecutive losses stop condition."""
-        # Set consecutive losses
+        # set consecutive losses
         self.auto_stop.consecutive_losses = 6  # Above threshold
 
         should_stop, reason, message = self.auto_stop._check_consecutive_losses_stop(
@@ -143,7 +142,7 @@ class TestAdvancedAutoStop(unittest.TestCase):
 
     def test_stop_triggering(self):
         """Test stop condition triggering."""
-        # Set high volatility to trigger stop
+        # set high volatility to trigger stop
         self.auto_stop.volatility = 0.06
 
         should_stop, reason, message = self.auto_stop.check_stop_conditions()
@@ -217,12 +216,11 @@ class TestAdvancedAutoStop(unittest.TestCase):
 
         auto_stop = AdvancedAutoStop(config)
 
-        # Set high volatility but condition is disabled
+        # set high volatility but condition is disabled
         auto_stop.volatility = 0.06
 
         should_stop, reason, message = auto_stop.check_stop_conditions()
         self.assertFalse(should_stop)  # Should not stop due to disabled condition
-
 
 if __name__ == "__main__":
     unittest.main()

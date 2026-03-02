@@ -8,7 +8,7 @@ Compares RL agent performance against baselines across different market regimes.
 import argparse
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -18,13 +18,11 @@ from ztb.analysis.regime.regime_eval import RegimeEvaluator
 from ztb.evaluation.unified_evaluation import EvaluationType, UnifiedEvaluator
 from ztb.io.data_loader import DataLoader
 
-
-def load_trade_data(trade_log_path: Optional[str]) -> list[Any]:
+def load_trade_data(trade_log_path: str | None) -> list[Any]:
     """Load trade log from JSON file."""
     if trade_log_path is None:
         return []
     return read_json(trade_log_path)  # type: ignore
-
 
 def load_price_data(price_data_path: str) -> pd.DataFrame:
     """Load price data from CSV file."""
@@ -34,10 +32,9 @@ def load_price_data(price_data_path: str) -> pd.DataFrame:
         df.set_index("timestamp", inplace=True)
     return df
 
-
 def run_regime_evaluation(
-    price_data_path: str, trade_log_path: Optional[str], output_dir: str = "reports"
-) -> Dict[str, Any]:
+    price_data_path: str, trade_log_path: str | None, output_dir: str = "reports"
+) -> dict[str, Any]:
     """
     Run regime evaluation and generate reports.
 
@@ -141,7 +138,6 @@ def run_regime_evaluation(
 
     return regime_results
 
-
 def main() -> None:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(description="Run market regime evaluation")
@@ -191,7 +187,6 @@ def main() -> None:
 
         traceback.print_exc()
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

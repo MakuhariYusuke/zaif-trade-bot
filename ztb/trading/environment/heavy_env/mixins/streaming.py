@@ -12,11 +12,9 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 def _fetch_streaming_snapshot(self: Any, required_rows: int) -> Any:
     """Fetch an initial snapshot from the streaming pipeline."""
     return self.streaming_handler.fetch_streaming_snapshot(required_rows)
-
 
 def _prepare_stream_batch(self: Any, batch: pd.DataFrame) -> Any:
     """Normalize streaming data batches to match the environment schema."""
@@ -37,7 +35,6 @@ def _prepare_stream_batch(self: Any, batch: pd.DataFrame) -> Any:
 
     batch = batch[self._base_columns]
     return self.data_processor.preprocess_data(batch)
-
 
 def _append_streaming_rows(self: Any) -> bool:
     """Append new rows from the streaming buffer if available."""
@@ -90,7 +87,6 @@ def _append_streaming_rows(self: Any) -> bool:
 
     return True
 
-
 def _ensure_data_available(self: Any, index: int) -> None:
     """Ensure enough data is available for the requested index."""
     if index < self.n_steps:
@@ -107,7 +103,6 @@ def _ensure_data_available(self: Any, index: int) -> None:
         if attempts >= 5:
             break
         time.sleep(0.01)
-
 
 def _prime_streaming_data(self: Any) -> None:
     """Prime streaming buffers during environment reset."""

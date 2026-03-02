@@ -4,8 +4,9 @@ Type protocols for trading environment interfaces.
 This module defines protocols that standardize the interfaces for trading environments,
 improving type safety and code maintainability across the codebase.
 """
+from __future__ import annotations
 
-from typing import Any, Dict, Optional, Protocol, Tuple, Union
+from typing import Any, Protocol
 
 import numpy as np
 from numpy.typing import NDArray
@@ -19,7 +20,6 @@ except ImportError:
     DataFrame = Any  # type: ignore[misc,assignment]
 from gymnasium import spaces
 from numpy.typing import NDArray
-
 
 class TradingEnvironment(Protocol):
     """
@@ -38,11 +38,11 @@ class TradingEnvironment(Protocol):
 
     # State properties
     current_step: int
-    max_steps: Optional[int]
+    max_steps: int | None
 
     def reset(
-        self, *, seed: Optional[int] = None, options: Optional[Dict[str, Any]] = None
-    ) -> Tuple[NDArray[np.float32], Dict[str, Any]]:
+        self, *, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[NDArray[np.float32], dict[str, Any]]:
         """
         Reset the environment to initial state.
 
@@ -57,7 +57,7 @@ class TradingEnvironment(Protocol):
 
     def step(
         self, action: int
-    ) -> Tuple[NDArray[np.float32], float, bool, bool, Dict[str, Any]]:
+    ) -> tuple[NDArray[np.float32], float, bool, bool, dict[str, Any]]:
         """
         Execute one step in the environment.
 
@@ -65,11 +65,11 @@ class TradingEnvironment(Protocol):
             action: Action to take (0=hold, 1=buy, 2=sell)
 
         Returns:
-            Tuple of (observation, reward, terminated, truncated, info)
+            tuple of (observation, reward, terminated, truncated, info)
         """
         ...
 
-    def render(self) -> Optional[np.ndarray]:
+    def render(self) -> np.ndarray | None:
         """
         Render the current environment state.
 
@@ -127,7 +127,6 @@ class TradingEnvironment(Protocol):
         """Current unrealized profit/loss."""
         ...
 
-
 class FeatureRegistryProtocol(Protocol):
     """
     Protocol for feature registry interfaces.
@@ -140,7 +139,7 @@ class FeatureRegistryProtocol(Protocol):
         ...
 
     def compute_features(
-        self, data: Union[pd.DataFrame, Dict[str, Any]], feature_set: str = "full"
+        self, data: pd.DataFrame | dict[str, Any], feature_set: str = "full"
     ) -> NDArray[np.float32]:
         """
         Compute features for given data.
@@ -154,7 +153,7 @@ class FeatureRegistryProtocol(Protocol):
         """
         ...
 
-    def get_feature_info(self, feature_name: str) -> Dict[str, Any]:
+    def get_feature_info(self, feature_name: str) -> dict[str, Any]:
         """
         Get metadata for a specific feature.
 

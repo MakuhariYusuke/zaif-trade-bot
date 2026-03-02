@@ -34,7 +34,6 @@ SAC_CONTINUOUS_THRESHOLD_NEG = -0.3333  # Negative threshold for SELL action
 # Financial constants
 TRADING_DAYS_PER_YEAR = 252  # Standard number of trading days in a year
 
-
 def get_action_name(action: int) -> str:
     """
     Get human-readable name for action.
@@ -55,7 +54,6 @@ def get_action_name(action: int) -> str:
         return f"UNKNOWN_ACTION_{action}"
     return ACTION_NAMES[action]
 
-
 def get_action_count_index(action: int) -> int:
     """
     Get the index for action counts array [BUY, SELL, HOLD].
@@ -74,7 +72,6 @@ def get_action_count_index(action: int) -> int:
         return MULTIPLIER_INDEX_HOLD
     else:
         return 0  # Default to BUY index
-
 
 def normalize_action(action: float | int) -> int:
     """Normalize an action value to one of the discrete ACTION_* constants.

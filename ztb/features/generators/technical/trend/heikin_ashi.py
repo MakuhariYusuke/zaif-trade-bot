@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -7,10 +7,9 @@ from ....core.base import BaseFeature
 from ....core.registry import FeatureRegistry
 from ....timeframe import Timeframe
 
-
 @FeatureRegistry.register("HeikinAshi_Color")
 def compute_heikin_ashi_color(
-    df: pd.DataFrame, timeframe: Optional[Timeframe] = None
+    df: pd.DataFrame, timeframe: Timeframe | None = None
 ) -> pd.Series:
     """Heikin-Ashi Color: 1 (bullish), -1 (bearish), 0 (doji)"""
     feature = HeikinAshi()
@@ -21,7 +20,6 @@ def compute_heikin_ashi_color(
     # Calculate color: 1 for bullish (close > open), -1 for bearish (close < open), 0 for doji (close == open)
     color = np.where(ha_close > ha_open, 1, np.where(ha_close < ha_open, -1, 0))
     return pd.Series(color, index=df.index)
-
 
 class HeikinAshi(BaseFeature):
     """
@@ -39,7 +37,7 @@ class HeikinAshi(BaseFeature):
         super().__init__(name="HeikinAshi", deps=["open", "high", "low", "close"])
 
     def compute(
-        self, df: pd.DataFrame, timeframe: Optional[Timeframe] = None, **params: Any
+        self, df: pd.DataFrame, timeframe: Timeframe | None = None, **params: Any
     ) -> pd.DataFrame:
         """
         Args:
@@ -97,39 +95,32 @@ class HeikinAshi(BaseFeature):
 
         return ha_df
 
-
 # === Multi-Timeframe Heikin-Ashi Features ===
-
 
 @FeatureRegistry.register("HeikinAshi_Color_M1")
 def compute_heikin_ashi_color_m1(df: pd.DataFrame) -> pd.Series:
     """Heikin-Ashi Color for 1-minute timeframe"""
     return compute_heikin_ashi_color(df, timeframe=Timeframe.M1)
 
-
 @FeatureRegistry.register("HeikinAshi_Color_M5")
 def compute_heikin_ashi_color_m5(df: pd.DataFrame) -> pd.Series:
     """Heikin-Ashi Color for 5-minute timeframe"""
     return compute_heikin_ashi_color(df, timeframe=Timeframe.M5)
-
 
 @FeatureRegistry.register("HeikinAshi_Color_M15")
 def compute_heikin_ashi_color_m15(df: pd.DataFrame) -> pd.Series:
     """Heikin-Ashi Color for 15-minute timeframe"""
     return compute_heikin_ashi_color(df, timeframe=Timeframe.M15)
 
-
 @FeatureRegistry.register("HeikinAshi_Color_H1")
 def compute_heikin_ashi_color_h1(df: pd.DataFrame) -> pd.Series:
     """Heikin-Ashi Color for 1-hour timeframe"""
     return compute_heikin_ashi_color(df, timeframe=Timeframe.H1)
 
-
 @FeatureRegistry.register("HeikinAshi_Color_H4")
 def compute_heikin_ashi_color_h4(df: pd.DataFrame) -> pd.Series:
     """Heikin-Ashi Color for 4-hour timeframe"""
     return compute_heikin_ashi_color(df, timeframe=Timeframe.H4)
-
 
 @FeatureRegistry.register("HeikinAshi_Color_D1")
 def compute_heikin_ashi_color_d1(df: pd.DataFrame) -> pd.Series:

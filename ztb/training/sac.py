@@ -28,7 +28,7 @@ Examples:
 import argparse
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from ztb.utils.file_utils import get_project_root
 
@@ -51,7 +51,6 @@ from ztb.utils.path_utils import get_project_root
 project_root = get_project_root()
 
 logger = get_logger(__name__)
-
 
 class SACSuite:
     """Unified SAC toolkit interface."""
@@ -268,7 +267,7 @@ class SACSuite:
             logger.error(f"Utils command failed: {e}")
             return 1
 
-    def _print_config_results(self, results: Dict[str, Any]) -> None:
+    def _print_config_results(self, results: dict[str, Any]) -> None:
         """Print configuration check results."""
         print("\n" + "=" * SAC_PRINT_SEPARATOR_WIDTH)
         print("CONFIG CONSISTENCY CHECK")
@@ -288,7 +287,7 @@ class SACSuite:
                 for key, info in list(results["type_inconsistencies"].items())[:5]:
                     print(f"  • {key}: {info['types_found']}")
 
-    def _print_data_results(self, results: Dict[str, Any]) -> None:
+    def _print_data_results(self, results: dict[str, Any]) -> None:
         """Print data validation results."""
         print("\n" + "=" * SAC_PRINT_SEPARATOR_WIDTH)
         print("DATA VALIDATION")
@@ -309,7 +308,7 @@ class SACSuite:
                             f"  • {file_info['filename']}: {file_info.get('error', 'Missing required columns')}"
                         )
 
-    def _print_clean_results(self, results: Dict[str, Any]) -> None:
+    def _print_clean_results(self, results: dict[str, Any]) -> None:
         """Print cleanup results."""
         print("\n" + "=" * SAC_PRINT_SEPARATOR_WIDTH)
         print("PROJECT CLEANUP")
@@ -322,7 +321,7 @@ class SACSuite:
         if not results["dry_run"]:
             print("\n💡 Use --apply to actually remove files")
 
-    def _print_quality_results(self, results: Dict[str, Any]) -> None:
+    def _print_quality_results(self, results: dict[str, Any]) -> None:
         """Print code quality results."""
         print("\n" + "=" * SAC_PRINT_SEPARATOR_WIDTH)
         print("CODE QUALITY CHECK")
@@ -342,7 +341,7 @@ class SACSuite:
             else:
                 print(f"🔍 {check.title()}: ❌ {status}")
 
-    def _print_fix_results(self, results: Dict[str, Any]) -> None:
+    def _print_fix_results(self, results: dict[str, Any]) -> None:
         """Print fix results."""
         print("\n" + "=" * SAC_PRINT_SEPARATOR_WIDTH)
         print("COMMON ISSUE FIXES")
@@ -356,7 +355,6 @@ class SACSuite:
                 print(f"  • {fix}")
         else:
             print("\n✅ No fixes needed")
-
 
 def create_parser() -> argparse.ArgumentParser:
     """Create the main argument parser."""
@@ -449,7 +447,6 @@ def create_parser() -> argparse.ArgumentParser:
 
     return parser
 
-
 def main() -> int:
     """Main entry point."""
     parser = create_parser()
@@ -483,7 +480,6 @@ def main() -> int:
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -3,8 +3,6 @@ Common rolling operations and missing value handling.
 共通ローリング処理と欠損値処理
 """
 
-from typing import Dict, Optional, Union
-
 import numpy as np
 import pandas as pd
 
@@ -12,39 +10,33 @@ from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.memory.dtypes import OptimizationReport, optimize_dtypes
 from ztb.utils.path_utils import ensure_dir
 
-
 def rolling_mean(
-    series: pd.Series, window: int, min_periods: Optional[int] = None
+    series: pd.Series, window: int, min_periods: int | None = None
 ) -> pd.Series:
     """Rolling mean with proper handling"""
     if min_periods is None:
         min_periods = window
     return series.rolling(window=window, min_periods=min_periods).mean()
 
-
 def rolling_std(
-    series: pd.Series, window: int, min_periods: Optional[int] = None
+    series: pd.Series, window: int, min_periods: int | None = None
 ) -> pd.Series:
     """Rolling standard deviation with proper handling"""
     if min_periods is None:
         min_periods = window
     return series.rolling(window=window, min_periods=min_periods).std()
 
-
-def fillna(series: pd.Series, value: Union[float, int] = 0) -> pd.Series:
+def fillna(series: pd.Series, value: float | int = 0) -> pd.Series:
     """Fill NaN values"""
     return series.fillna(value)
-
 
 def ffill(series: pd.Series) -> pd.Series:
     """Forward fill NaN values"""
     return series.ffill()
 
-
 def bfill(series: pd.Series) -> pd.Series:
     """Backward fill NaN values"""
     return series.bfill()
-
 
 def safe_divide(
     numerator: pd.Series, denominator: pd.Series, default: float = 0.0
@@ -52,7 +44,6 @@ def safe_divide(
     """Safe division avoiding division by zero"""
     result = numerator / denominator.astype(float).replace(0, np.nan)
     return result.fillna(default)
-
 
 def optimize_dataframe_dtypes(
     df: pd.DataFrame,
@@ -96,12 +87,11 @@ def optimize_dataframe_dtypes(
 
     return optimized
 
-
 def generate_intermediate_report(
     step: int,
-    feature_times: Dict[str, float],
+    feature_times: dict[str, float],
     memory_usage: float,
-    nan_rates: Dict[str, float],
+    nan_rates: dict[str, float],
 ) -> None:
     """Generate intermediate report for feature computation progress"""
     from pathlib import Path

@@ -2,7 +2,7 @@
 Quality Gates for feature validation with adaptive thresholds
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -10,11 +10,10 @@ from ztb.metrics.metrics import kurtosis, skewness
 from ztb.utils.core.stats import nan_ratio
 from ztb.utils.thresholds import AdaptiveThresholdManager
 
-
 class QualityGates:
     """Quality Gates for feature validation with adaptive thresholds"""
 
-    def __init__(self, adaptive_manager: Optional[AdaptiveThresholdManager] = None):
+    def __init__(self, adaptive_manager: AdaptiveThresholdManager | None = None):
         super().__init__()
         self.adaptive_manager = adaptive_manager
         self.base_gates = {
@@ -24,7 +23,7 @@ class QualityGates:
             "kurtosis_threshold": 8.0,
         }
 
-    def get_adaptive_thresholds(self) -> Dict[str, float]:
+    def get_adaptive_thresholds(self) -> dict[str, float]:
         """Get adaptive thresholds from historical data"""
         if self.adaptive_manager:
             return self.adaptive_manager.get_adaptive_gates()
@@ -36,7 +35,7 @@ class QualityGates:
         price_data: pd.Series,
         mode: str = "normal",
         dataset: str = "synthetic",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Evaluate feature against quality gates"""
         gates = self.get_adaptive_thresholds()
 

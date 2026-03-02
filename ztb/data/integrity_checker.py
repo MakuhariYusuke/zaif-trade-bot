@@ -7,7 +7,7 @@ Checks for missing data, duplicates, and repairs automatically.
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import pandas as pd
 
@@ -15,7 +15,6 @@ from ztb.data.binance_data import load_parquet_pattern, save_parquet_chunked
 from ztb.ops.alerts.notifications import DiscordNotifier
 
 logger = logging.getLogger(__name__)
-
 
 class ParquetIntegrityChecker:
     """
@@ -28,12 +27,12 @@ class ParquetIntegrityChecker:
         self.data_dir = Path(data_dir)
         self.notifier = DiscordNotifier()
 
-    def _validate_schema(self, df: pd.DataFrame) -> List[str]:
+    def _validate_schema(self, df: pd.DataFrame) -> list[str]:
         """
         Validate DataFrame schema: column dtypes and timezone awareness.
 
         Returns:
-            List of validation issues
+            list of validation issues
         """
         issues = []
 
@@ -67,12 +66,12 @@ class ParquetIntegrityChecker:
 
     def check_integrity(
         self, symbol: str = "BTCUSDT", interval: str = "1m"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Check data integrity for the given symbol and interval.
 
         Returns:
-            Dict with integrity report
+            dict with integrity report
         """
         report = {
             "symbol": symbol,
@@ -164,7 +163,7 @@ class ParquetIntegrityChecker:
         return report
 
     def repair_integrity(
-        self, report: Dict[str, Any], auto_repair: bool = True
+        self, report: dict[str, Any], auto_repair: bool = True
     ) -> bool:
         """
         Repair data integrity issues.
@@ -247,7 +246,7 @@ class ParquetIntegrityChecker:
             self.notifier.send_notification("Data Integrity Repair", error_msg, "error")
             return False
 
-    def run_integrity_check(self, auto_repair: bool = True) -> Dict[str, Any]:
+    def run_integrity_check(self, auto_repair: bool = True) -> dict[str, Any]:
         """
         Run full integrity check and optional repair.
 

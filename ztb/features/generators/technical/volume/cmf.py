@@ -13,14 +13,12 @@ import pandas as pd
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
 
-
 @FeatureRegistry.register("CMF")
 def compute_cmf(df: pd.DataFrame) -> pd.Series:
     """Chaikin Money Flow (CMF)"""
     feature = ChaikinMoneyFlow()
     result_df = feature.compute(df)
     return result_df["cmf"]
-
 
 class ChaikinMoneyFlow(BaseFeature):
     """

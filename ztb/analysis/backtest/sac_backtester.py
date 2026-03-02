@@ -41,12 +41,11 @@ project_root = get_project_root()
 
 logger = get_logger(__name__)
 
-
 class SACBacktester:
     """Comprehensive SAC model backtester."""
 
     def __init__(
-        self, model_path: Optional[str] = None, config_path: Optional[str] = None
+        self, model_path: str | None = None, config_path: str | None = None
     ):
         """
         Initialize SAC backtester.
@@ -57,11 +56,11 @@ class SACBacktester:
         """
         self.model_path = Path(model_path) if model_path else None
         self.config_path = Path(config_path) if config_path else None
-        from typing import Any, Dict, Optional
+        from typing import Any
 
-        self.model: Optional[Any] = None
-        self.config: Optional[Dict[str, Any]] = None
-        self.env: Optional[Any] = None
+        self.model: Any | None = None
+        self.config: dict[str, Any] | None = None
+        self.env: Any | None = None
 
         if self.model_path and self.model_path.exists():
             self.load_model()
@@ -259,8 +258,8 @@ class SACBacktester:
         return result
 
     def _calculate_performance_metrics(
-        self, trades: List[Dict[str, Any]]
-    ) -> Dict[str, float]:
+        self, trades: list[dict[str, Any]]
+    ) -> dict[str, float]:
         """Calculate performance metrics from trades."""
         if not trades:
             return {"total_return": 0.0, "win_rate": 0.0, "total_trades": 0}
@@ -287,7 +286,7 @@ class SACBacktester:
             else 0.0,
         }
 
-    def _analyze_regimes(self, trades: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _analyze_regimes(self, trades: list[dict[str, Any]]) -> dict[str, Any]:
         """Analyze performance across different market regimes."""
         # Placeholder for regime analysis
         return {
@@ -297,7 +296,7 @@ class SACBacktester:
             "high_volatility_performance": 0.0,
         }
 
-    def _calculate_risk_metrics(self, trades: List[Dict[str, Any]]) -> Dict[str, float]:
+    def _calculate_risk_metrics(self, trades: list[dict[str, Any]]) -> dict[str, float]:
         """Calculate risk metrics from trades."""
         if not trades:
             return {"max_drawdown": 0.0, "volatility": 0.0}
@@ -321,7 +320,7 @@ class SACBacktester:
             else 0.0,
         }
 
-    def _compare_with_benchmark(self, trades: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _compare_with_benchmark(self, trades: list[dict[str, Any]]) -> dict[str, Any]:
         """Compare performance with benchmark (buy and hold)."""
         # Placeholder for benchmark comparison
         return {"vs_buy_hold": 0.0, "benchmark_return": 0.0, "outperformance": 0.0}
@@ -365,7 +364,6 @@ class SACBacktester:
 
     logger.info("%s", "=" * 60)
 
-
 def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser(description="SAC Backtest Suite")
@@ -408,7 +406,6 @@ def main() -> None:
         write_json(args.output, output_data, indent=2, ensure_ascii=False)
 
         print(f"\n📄 Results saved to: {args.output}")
-
 
 if __name__ == "__main__":
     main()

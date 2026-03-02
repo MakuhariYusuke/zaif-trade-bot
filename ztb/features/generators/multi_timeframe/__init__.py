@@ -8,7 +8,7 @@ Provides high-level API for generating features across multiple timeframes.
 from __future__ import annotations
 
 import gc
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import pandas as pd
 
@@ -26,7 +26,6 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class MultiTimeframeFeatureSystem:
     """
     Complete multi-timeframe feature engineering system.
@@ -37,9 +36,9 @@ class MultiTimeframeFeatureSystem:
 
     def __init__(
         self,
-        config_path: Optional[str] = None,
-        data_base_path: Optional[str] = None,
-        market_system: Optional[Any] = None,
+        config_path: str | None = None,
+        data_base_path: str | None = None,
+        market_system: Any | None = None,
     ):
         """
         Initialize multi-timeframe feature system.
@@ -76,8 +75,8 @@ class MultiTimeframeFeatureSystem:
 
     def process_multi_timeframe_data(
         self,
-        data_or_files: Optional[Union[pd.DataFrame, Dict[Timeframe, str]]] = None,
-        feature_set: Optional[str] = None,
+        data_or_files: pd.DataFrame | dict[Timeframe, str] | None = None,
+        feature_set: str | None = None,
         synchronize_data: bool = True,
         generate_missing_timeframes: bool = True,
     ) -> pd.DataFrame:
@@ -197,7 +196,7 @@ class MultiTimeframeFeatureSystem:
         )
         return integrated_features
 
-    def get_data_quality_report(self) -> Dict[str, Any]:
+    def get_data_quality_report(self) -> dict[str, Any]:
         """Get data quality report for loaded timeframes."""
         if not self._enabled:
             return {
@@ -209,7 +208,7 @@ class MultiTimeframeFeatureSystem:
             self.data_pipeline.timeframe_data
         )
 
-    def get_feature_counts(self) -> Dict[str, int]:
+    def get_feature_counts(self) -> dict[str, int]:
         """Get feature counts for each timeframe."""
         if not self._enabled:
             return {}
@@ -218,7 +217,7 @@ class MultiTimeframeFeatureSystem:
             self.data_pipeline.timeframe_data
         )
 
-    def validate_system(self) -> List[str]:
+    def validate_system(self) -> list[str]:
         """Validate the entire multi-timeframe system."""
         if not self._enabled:
             return ["Multi-timeframe features are disabled in global configuration"]
@@ -241,7 +240,7 @@ class MultiTimeframeFeatureSystem:
     def update_configuration(
         self,
         timeframe: Timeframe,
-        config_updates: Dict[str, Any],
+        config_updates: dict[str, Any],
     ) -> None:
         """Update configuration for specific timeframe."""
         if not self._enabled:
@@ -250,7 +249,7 @@ class MultiTimeframeFeatureSystem:
 
         self.config.update_timeframe_config(timeframe, config_updates)
 
-    def save_configuration(self, path: Optional[str] = None) -> None:
+    def save_configuration(self, path: str | None = None) -> None:
         """Save current configuration."""
         if not self._enabled:
             logger.warning("Multi-timeframe features are disabled")
@@ -275,7 +274,7 @@ class MultiTimeframeFeatureSystem:
         self.config.disable_timeframe(timeframe)
 
     def set_base_timeframe(self, timeframe: Timeframe) -> None:
-        """Set base timeframe for the system."""
+        """set base timeframe for the system."""
         if not self._enabled:
             logger.warning("Multi-timeframe features are disabled")
             return
@@ -284,7 +283,7 @@ class MultiTimeframeFeatureSystem:
         # Reinitialize feature engineer with new base timeframe
         self.feature_engineer.base_timeframe = timeframe
 
-    def get_system_info(self) -> Dict[str, Any]:
+    def get_system_info(self) -> dict[str, Any]:
         """Get system information and status."""
         if not self._enabled:
             return {
@@ -302,13 +301,11 @@ class MultiTimeframeFeatureSystem:
             "data_base_path": str(self.data_pipeline.data_base_path),
         }
 
-
 # Convenience functions for easy usage
 
-
 def create_multi_timeframe_system(
-    config_path: Optional[str] = None,
-    data_base_path: Optional[str] = None,
+    config_path: str | None = None,
+    data_base_path: str | None = None,
 ) -> MultiTimeframeFeatureSystem:
     """
     Create a multi-timeframe feature system with default settings.
@@ -325,11 +322,10 @@ def create_multi_timeframe_system(
         data_base_path=data_base_path,
     )
 
-
 def process_multi_timeframe_features(
-    data_files: Optional[Dict[Timeframe, str]] = None,
-    config_path: Optional[str] = None,
-    feature_set: Optional[str] = None,
+    data_files: dict[Timeframe, str] | None = None,
+    config_path: str | None = None,
+    feature_set: str | None = None,
 ) -> pd.DataFrame:
     """
     Convenience function to process multi-timeframe features in one call.
@@ -347,7 +343,6 @@ def process_multi_timeframe_features(
         data_files=data_files,
         feature_set=feature_set,
     )
-
 
 __all__ = [
     # Main classes

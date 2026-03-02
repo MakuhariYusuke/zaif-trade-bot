@@ -7,7 +7,7 @@ import argparse
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 # Optional health check endpoint
 try:
@@ -24,7 +24,6 @@ try:
     prometheus_available = True
 except ImportError:
     prometheus_available = False
-
 
 @dataclass
 class LiveTraderConfig:
@@ -43,7 +42,6 @@ class LiveTraderConfig:
     # Intervals (sec)
     retry_interval: float = 60.0        # Error retry / iteration wait interval
     order_poll_interval: float = 2.0    # Price fetch retry interval
-
 
 @dataclass(frozen=True)
 class LiveTradingOptions:
@@ -97,13 +95,11 @@ class LiveTradingOptions:
             ),
         )
 
-
 @dataclass
 class MetricsServerHandle:
     """Handle for metrics server lifecycle."""
 
     port: int
-
 
 @dataclass
 class HealthServerHandle:
@@ -111,7 +107,6 @@ class HealthServerHandle:
 
     port: int
     thread: "threading.Thread"
-
 
 def _build_argument_parser() -> argparse.ArgumentParser:
     """Create the CLI argument parser for live trading."""
@@ -162,10 +157,9 @@ def _build_argument_parser() -> argparse.ArgumentParser:
     )
     return parser
 
-
 def _start_metrics_server(
     options: LiveTradingOptions, logger
-) -> Optional[MetricsServerHandle]:
+) -> MetricsServerHandle | None:
     """Bootstrap Prometheus metrics server if requested and available."""
     if not options.enable_metrics:
         return None
@@ -179,12 +173,11 @@ def _start_metrics_server(
     logger.info("Prometheus metrics server started on port %s", options.metrics_port)
     return MetricsServerHandle(port=options.metrics_port)
 
-
 def _start_health_server(
     options: LiveTradingOptions,
     trader_status_provider,
     logger,
-) -> Optional[HealthServerHandle]:
+) -> HealthServerHandle | None:
     """Bootstrap Flask health endpoint if requested and available."""
     if not options.enable_health_check:
         return None
@@ -212,11 +205,10 @@ def _start_health_server(
     logger.info("Health check endpoint started on %s:%s", bind_host, options.health_port)
     return HealthServerHandle(port=options.health_port, thread=thread)
 
-
 class TradingConfig:
     """Configuration manager for trading parameters."""
 
-    def __init__(self, ztb_config: Optional[Any] = None) -> None:
+    def __init__(self, ztb_config: Any | None = None) -> None:
         """Initialize trading configuration.
 
         Args:
@@ -225,7 +217,7 @@ class TradingConfig:
         self.ztb_config = ztb_config
         self._config = self._get_default_config()
 
-    def _get_default_config(self) -> Dict[str, Any]:
+    def _get_default_config(self) -> dict[str, Any]:
         """Get default trading configuration with safety limits."""
         return {
             "reward_scaling": self._get_float("ZTB_REWARD_SCALING", 1.0),
@@ -268,11 +260,11 @@ class TradingConfig:
         """Get configuration value."""
         return self._config.get(key, default)
 
-    def update(self, updates: Dict[str, Any]) -> None:
+    def update(self, updates: dict[str, Any]) -> None:
         """Update configuration values."""
         self._config.update(updates)
 
     @property
-    def config(self) -> Dict[str, Any]:
+    def config(self) -> dict[str, Any]:
         """Get full configuration dictionary."""
         return self._config.copy()

@@ -1,12 +1,11 @@
 """Risk management utilities for training and evaluation."""
 
 import logging
-from typing import Dict, Any
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
-
-def setup_risk_management_config(risk_config: Dict[str, Any]) -> Dict[str, Any]:
+def setup_risk_management_config(risk_config: dict[str, Any]) -> dict[str, Any]:
     """Setup risk management configuration.
 
     Args:

@@ -6,7 +6,6 @@ pruning, low-rank approximation, and composite compression pipelines.
 """
 
 import logging
-from typing import Dict, Optional, Tuple
 
 import numpy as np
 import torch
@@ -16,13 +15,12 @@ from scipy.linalg import svd
 
 logger = logging.getLogger(__name__)
 
-
 class SACPruner:
     """
     Advanced pruning techniques for SAC models.
     """
 
-    def __init__(self, pruning_config: Optional[Dict] = None):
+    def __init__(self, pruning_config: dict | None = None):
         """
         Initialize the SAC pruner.
 
@@ -31,7 +29,7 @@ class SACPruner:
         """
         self.config = pruning_config or self._get_default_config()
 
-    def _get_default_config(self) -> Dict:
+    def _get_default_config(self) -> dict:
         """Get default pruning configuration."""
         return {
             "method": "l1_unstructured",  # 'l1_unstructured', 'l2_unstructured', 'structured'
@@ -43,7 +41,7 @@ class SACPruner:
             "retraining_epochs": 5,  # Epochs to retrain after pruning
         }
 
-    def analyze_pruning_opportunities(self, model: nn.Module) -> Dict:
+    def analyze_pruning_opportunities(self, model: nn.Module) -> dict:
         """
         Analyze model for pruning opportunities.
 
@@ -99,7 +97,7 @@ class SACPruner:
             and type(module) not in self.config["skip_modules"]
         )
 
-    def apply_pruning(self, model: nn.Module) -> Tuple[nn.Module, Dict]:
+    def apply_pruning(self, model: nn.Module) -> tuple[nn.Module, dict]:
         """
         Apply pruning to the model.
 
@@ -107,7 +105,7 @@ class SACPruner:
             model: Model to prune
 
         Returns:
-            Tuple of (pruned_model, pruning_stats)
+            tuple of (pruned_model, pruning_stats)
         """
         logger.info("Starting model pruning...")
 
@@ -171,8 +169,8 @@ class SACPruner:
         return self._apply_one_shot_pruning(model)
 
     def _collect_pruning_stats(
-        self, original_model: nn.Module, pruned_model: nn.Module, analysis: Dict
-    ) -> Dict:
+        self, original_model: nn.Module, pruned_model: nn.Module, analysis: dict
+    ) -> dict:
         """Collect comprehensive pruning statistics."""
         original_params = sum(p.numel() for p in original_model.parameters())
         pruned_params = sum(p.numel() for p in pruned_model.parameters())
@@ -192,13 +190,12 @@ class SACPruner:
 
         return stats
 
-
 class LowRankApproximator:
     """
     Low-rank approximation techniques for model compression.
     """
 
-    def __init__(self, lra_config: Optional[Dict] = None):
+    def __init__(self, lra_config: dict | None = None):
         """
         Initialize the low-rank approximator.
 
@@ -207,7 +204,7 @@ class LowRankApproximator:
         """
         self.config = lra_config or self._get_default_config()
 
-    def _get_default_config(self) -> Dict:
+    def _get_default_config(self) -> dict:
         """Get default low-rank approximation configuration."""
         return {
             "method": "svd",  # 'svd', 'tucker'
@@ -217,7 +214,7 @@ class LowRankApproximator:
             "rank_selection_threshold": 0.95,  # Cumulative energy threshold
         }
 
-    def analyze_low_rank_opportunities(self, model: nn.Module) -> Dict:
+    def analyze_low_rank_opportunities(self, model: nn.Module) -> dict:
         """
         Analyze model for low-rank approximation opportunities.
 
@@ -290,7 +287,7 @@ class LowRankApproximator:
             module, "weight"
         )
 
-    def apply_low_rank_approximation(self, model: nn.Module) -> Tuple[nn.Module, Dict]:
+    def apply_low_rank_approximation(self, model: nn.Module) -> tuple[nn.Module, dict]:
         """
         Apply low-rank approximation to the model.
 
@@ -298,7 +295,7 @@ class LowRankApproximator:
             model: Model to compress
 
         Returns:
-            Tuple of (compressed_model, compression_stats)
+            tuple of (compressed_model, compression_stats)
         """
         logger.info("Starting low-rank approximation...")
 
@@ -324,7 +321,7 @@ class LowRankApproximator:
             logger.error(f"Low-rank approximation failed: {e}")
             return model, {"status": "failed", "error": str(e)}
 
-    def _apply_svd_compression(self, model: nn.Module, analysis: Dict) -> nn.Module:
+    def _apply_svd_compression(self, model: nn.Module, analysis: dict) -> nn.Module:
         """Apply SVD-based low-rank approximation."""
         for module_info in analysis["compressible_modules"]:
             name = module_info["name"]
@@ -355,8 +352,8 @@ class LowRankApproximator:
         return model
 
     def _collect_lra_stats(
-        self, original_model: nn.Module, compressed_model: nn.Module, analysis: Dict
-    ) -> Dict:
+        self, original_model: nn.Module, compressed_model: nn.Module, analysis: dict
+    ) -> dict:
         """Collect low-rank approximation statistics."""
         original_params = sum(p.numel() for p in original_model.parameters())
         compressed_params = sum(p.numel() for p in compressed_model.parameters())
@@ -375,18 +372,17 @@ class LowRankApproximator:
 
         return stats
 
-
 class CompositeCompressor:
     """
     Composite compression pipeline combining multiple techniques.
     """
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         self.config = config or {}
         self.pruner = SACPruner(self.config.get("pruning", {}))
         self.lra = LowRankApproximator(self.config.get("lra", {}))
 
-    def run_compression_pipeline(self, model: nn.Module) -> Dict:
+    def run_compression_pipeline(self, model: nn.Module) -> dict:
         """
         Run composite compression pipeline.
 

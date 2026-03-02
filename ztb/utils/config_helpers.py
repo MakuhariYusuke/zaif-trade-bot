@@ -5,7 +5,7 @@ These helpers centralize runtime validations and type narrowing for
 configuration values. Prefer using these functions instead of direct
 indexing or dot navigation on dynamic ConfigDicts.
 """
-from typing import Optional, cast
+from typing import cast
 
 from ztb.types.common import (
     ConfigDict,
@@ -15,8 +15,7 @@ from ztb.types.common import (
 )
 from ztb.utils.exceptions.custom_exceptions import ValidationError
 
-
-def _get_by_path(config: ConfigDict, path: str) -> Optional[ConfigValue]:
+def _get_by_path(config: ConfigDict, path: str) -> ConfigValue | None:
     """Retrieve nested config value using dot notation.
 
     Returns None if any intermediate key doesn't exist or the structure
@@ -32,9 +31,8 @@ def _get_by_path(config: ConfigDict, path: str) -> Optional[ConfigValue]:
             return None
     return current
 
-
 def get_numeric(
-    config: ConfigDict, path: str, default: Optional[float] = None
+    config: ConfigDict, path: str, default: float | None = None
 ) -> float:
     val = _get_by_path(config, path)
     if val is None:
@@ -45,8 +43,7 @@ def get_numeric(
         raise ValidationError(f"Config '{path}' must be numeric, got {type(val)}")
     return float(val)
 
-
-def get_string(config: ConfigDict, path: str, default: Optional[str] = None) -> str:
+def get_string(config: ConfigDict, path: str, default: str | None = None) -> str:
     val = _get_by_path(config, path)
     if val is None:
         if default is None:
@@ -56,8 +53,7 @@ def get_string(config: ConfigDict, path: str, default: Optional[str] = None) -> 
         raise ValidationError(f"Config '{path}' must be a string, got {type(val)}")
     return val
 
-
-def get_bool(config: ConfigDict, path: str, default: Optional[bool] = None) -> bool:
+def get_bool(config: ConfigDict, path: str, default: bool | None = None) -> bool:
     val = _get_by_path(config, path)
     if val is None:
         if default is None:
@@ -67,8 +63,7 @@ def get_bool(config: ConfigDict, path: str, default: Optional[bool] = None) -> b
         raise ValidationError(f"Config '{path}' must be a bool, got {type(val)}")
     return val
 
-
-def get_int(config: ConfigDict, path: str, default: Optional[int] = None) -> int:
+def get_int(config: ConfigDict, path: str, default: int | None = None) -> int:
     val = _get_by_path(config, path)
     if val is None:
         if default is None:
@@ -77,7 +72,6 @@ def get_int(config: ConfigDict, path: str, default: Optional[int] = None) -> int
     if not isinstance(val, int):
         raise ValidationError(f"Config '{path}' must be an int, got {type(val)}")
     return val
-
 
 def get_dict(config: ConfigDict, path: str) -> ConfigDict:
     val = _get_by_path(config, path)

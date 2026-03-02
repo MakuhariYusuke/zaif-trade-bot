@@ -5,14 +5,13 @@ V432シリーズ検証分析スクリプト
 """
 
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 
 from ztb.io.json_io import read_json, write_json
 
-
-def load_v432_results() -> Dict[str, Dict[str, Any]]:
+def load_v432_results() -> dict[str, dict[str, Any]]:
     """v432シリーズの全結果ファイルを読み込む"""
     results_dir = Path("ztb/evaluation/v432")
     results = {}
@@ -43,8 +42,7 @@ def load_v432_results() -> Dict[str, Dict[str, Any]]:
 
     return results
 
-
-def analyze_synthetic_vs_real(results: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+def analyze_synthetic_vs_real(results: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """合成データ vs 現実データの比較分析"""
     synthetic_versions = ["v432.1", "v432.2", "v432.3", "v432.4", "v432.5", "v432.6"]
     real_version = "v432.7"
@@ -145,10 +143,9 @@ def analyze_synthetic_vs_real(results: Dict[str, Dict[str, Any]]) -> Dict[str, A
 
     return analysis
 
-
 def analyze_reward_system_evolution(
-    results: Dict[str, Dict[str, Any]],
-) -> Dict[str, Any]:
+    results: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
     """報酬システムの進化分析"""
     analysis = {
         "reward_evolution": [],
@@ -263,8 +260,7 @@ def analyze_reward_system_evolution(
 
     return analysis
 
-
-def analyze_entry_exit_logic(results: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+def analyze_entry_exit_logic(results: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """エントリー/出口ロジックの分析"""
     analysis = {
         "entry_logic_evolution": [],
@@ -357,8 +353,7 @@ def analyze_entry_exit_logic(results: Dict[str, Dict[str, Any]]) -> Dict[str, An
 
     return analysis
 
-
-def generate_v433_recommendations(analysis_results: Dict[str, Any]) -> List[str]:
+def generate_v433_recommendations(analysis_results: dict[str, Any]) -> list[str]:
     """v433に向けた推奨事項を生成"""
     recommendations = []
 
@@ -416,7 +411,6 @@ def generate_v433_recommendations(analysis_results: Dict[str, Any]) -> List[str]
     ]
 
     return high_priority + recommendations
-
 
 def main():
     """メイン分析実行"""
@@ -482,7 +476,6 @@ def main():
     print(f"✅ レポート保存: {report_path}")
 
     print("\n🎉 V432検証フェーズ完了 - V433開発準備完了")
-
 
 if __name__ == "__main__":
     main()

@@ -6,7 +6,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import yaml
 
@@ -14,7 +14,6 @@ from ztb.utils.config_loader import ConfigLoader
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class FeatureSetType(Enum):
     """特徴量セットの種類"""
@@ -24,18 +23,16 @@ class FeatureSetType(Enum):
     MINIMAL = "minimal"
     CUSTOM = "custom"
 
-
 @dataclass
 class FeatureSetConfig:
     """特徴量セットの設定"""
 
     name: str
     description: str
-    features: List[str]
+    features: list[str]
     enabled: bool = True
     version: str = "1.0"
-    metadata: Optional[Dict[str, Any]] = None
-
+    metadata: dict[str, Any] | None = None
 
 class FeatureSetManager:
     """
@@ -45,9 +42,9 @@ class FeatureSetManager:
     動的な追加・削除・有効化・無効化をサポート
     """
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None):
         self.config_path = config_path or Path("configs/features/feature_sets.yaml")
-        self.feature_sets: Dict[str, FeatureSetConfig] = {}
+        self.feature_sets: dict[str, FeatureSetConfig] = {}
         self._load_config()
 
     def _load_config(self) -> None:
@@ -69,7 +66,7 @@ class FeatureSetManager:
             logger.error(f"Failed to load feature sets config: {e}")
             self._create_default_config()
 
-    def _parse_config(self, config_data: Dict[str, Any]) -> None:
+    def _parse_config(self, config_data: dict[str, Any]) -> None:
         """設定データをパース"""
         for set_name, set_config in config_data.get("feature_sets", {}).items():
             if isinstance(set_config, dict):
@@ -126,7 +123,7 @@ class FeatureSetManager:
         # 設定を再読み込み
         self._load_config()
 
-    def _get_default_features(self) -> List[str]:
+    def _get_default_features(self) -> list[str]:
         """デフォルトの特徴量リストを取得（curated_features.pyから統合）"""
         # curated_features.py から統合した CURATED_FEATURES
         return [
@@ -320,7 +317,7 @@ class FeatureSetManager:
             "optimizer_adaptive_lr_score",  # 適応学習率スコア
         ]
 
-    def get_feature_set(self, name: str) -> List[str]:
+    def get_feature_set(self, name: str) -> list[str]:
         """指定された名前の特徴量セットを取得"""
         if name not in self.feature_sets:
             logger.warning(f"Feature set '{name}' not found, using 'curated'")
@@ -343,7 +340,7 @@ class FeatureSetManager:
     def add_feature_set(
         self,
         name: str,
-        features: List[str],
+        features: list[str],
         description: str = "",
         enabled: bool = True,
     ) -> bool:
@@ -367,9 +364,9 @@ class FeatureSetManager:
     def update_feature_set(
         self,
         name: str,
-        features: Optional[List[str]] = None,
-        description: Optional[str] = None,
-        enabled: Optional[bool] = None,
+        features: list[str] | None = None,
+        description: str | None = None,
+        enabled: bool | None = None,
     ) -> bool:
         """特徴量セットを更新"""
         if name not in self.feature_sets:
@@ -404,7 +401,7 @@ class FeatureSetManager:
         logger.info(f"Removed feature set '{name}'")
         return True
 
-    def add_features(self, set_name: str, features: List[str]) -> bool:
+    def add_features(self, set_name: str, features: list[str]) -> bool:
         """特徴量セットに特徴量を追加"""
         if set_name not in self.feature_sets:
             logger.warning(f"Feature set '{set_name}' not found")
@@ -424,7 +421,7 @@ class FeatureSetManager:
         logger.info(f"Added {len(new_features)} features to set '{set_name}'")
         return True
 
-    def remove_features(self, set_name: str, features: List[str]) -> bool:
+    def remove_features(self, set_name: str, features: list[str]) -> bool:
         """特徴量セットから特徴量を削除"""
         if set_name not in self.feature_sets:
             logger.warning(f"Feature set '{set_name}' not found")
@@ -448,7 +445,7 @@ class FeatureSetManager:
         logger.info(f"Removed {removed_count} features from set '{set_name}'")
         return True
 
-    def list_feature_sets(self) -> Dict[str, Dict[str, Any]]:
+    def list_feature_sets(self) -> dict[str, dict[str, Any]]:
         """利用可能な特徴量セットの一覧を取得"""
         return {
             name: {
@@ -485,10 +482,8 @@ class FeatureSetManager:
         with open(self.config_path, "w", encoding="utf-8") as f:
             yaml.dump(config_data, f, default_flow_style=False, allow_unicode=True)
 
-
 # グローバルインスタンス
-_feature_manager: Optional[FeatureSetManager] = None
-
+_feature_manager: FeatureSetManager | None = None
 
 def get_feature_manager() -> FeatureSetManager:
     """特徴量マネージャーのインスタンスを取得"""
@@ -497,14 +492,12 @@ def get_feature_manager() -> FeatureSetManager:
         _feature_manager = FeatureSetManager()
     return _feature_manager
 
-
-def get_feature_set(name: str = "curated") -> List[str]:
+def get_feature_set(name: str = "curated") -> list[str]:
     """特徴量セットを取得（後方互換性のための関数）"""
     manager = get_feature_manager()
     return manager.get_feature_set(name)
 
-
-def get_features_to_remove(feature_set_name: str = "curated") -> List[str]:
+def get_features_to_remove(feature_set_name: str = "curated") -> list[str]:
     """削除すべき特徴量を取得（後方互換性のための関数）"""
     # この関数は現在は使用されないが、後方互換のために残す
     return []

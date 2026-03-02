@@ -14,11 +14,11 @@ from ztb.types.common import ConfigSection, ObjectMap
 # Type aliases for configuration dictionaries
 SignalConfig = dict[
     str,
-    Union[bool, int, float, str, list[str], dict[str, Union[int, float, None]]],
+    bool | int | float | str | list[str] | dict[str, int | float | None],
 ]
 PatternConfig = dict[
     str,
-    Union[bool, int, float, str, list[str], dict[str, Union[int, float, None]]],
+    bool | int | float | str | list[str] | dict[str, int | float | None],
 ]
 
 # Type aliases for signals and results (using string forward references)
@@ -26,42 +26,41 @@ SignalList = list["ActionSignal"]  # type: ignore
 SignalHistory = list["ActionSignal"]  # type: ignore
 
 # Type aliases for statistics and metrics structures
-PerformanceStats = dict[str, Union[int, float, dict[str, Union[int, float]]]]
-PatternStats = dict[str, Union[int, float, dict[str, Union[int, float]]]]
-CacheStats = dict[str, Union[int, float]]
+PerformanceStats = dict[str, int | float | dict[str, int | float]]
+PatternStats = dict[str, int | float | dict[str, int | float]]
+CacheStats = dict[str, int | float]
 
 # Type aliases for signal metadata and statistics metadata
-SignalMetadata = dict[str, Union[int, float, str, bool, list[Union[int, float]]]]
+SignalMetadata = dict[str, int | float | str | bool | list[int | float]]
 StatisticsMetadata = ObjectMap
 
 # Type aliases for recognizer status structures
-RecognizerGroupStatus = dict[str, Union[bool, int, list[str]]]
-RecognizerStatus = dict[str, Union[int, str, dict[str, RecognizerGroupStatus]]]
+RecognizerGroupStatus = dict[str, bool | int | list[str]]
+RecognizerStatus = dict[str, int | str | dict[str, RecognizerGroupStatus]]
 
 # Union types for flexible inputs
-ConfigInput = Union["ActionSignalGuideConfig", ConfigSection, None]  # type: ignore
-GuidanceInput = Union["GuidanceLevel", str, None]  # type: ignore
+ConfigInput = "ActionSignalGuideConfig" | ConfigSection | None  # type: ignore
+GuidanceInput = "GuidanceLevel" | str | None  # type: ignore
 
 # Type aliases for multi-timeframe data structures
 MultiTimeframePayload = dict[str, object]
 MultiTimeframeData = dict[str, MultiTimeframePayload]  # timeframe -> {'data': DataFrame, ...}
 
 # More specific type aliases for pattern recognition components
-PatternThresholds = dict[str, Union[int, float, None]]
-PatternMetrics = dict[str, Union[int, float, str]]
-PatternResult = dict[str, Union[int, float, str, PatternMetrics]]
+PatternThresholds = dict[str, int | float | None]
+PatternMetrics = dict[str, int | float | str]
+PatternResult = dict[str, int | float | str | PatternMetrics]
 
 # Type aliases for analysis results and multi-timeframe analysis structures
-AnalysisResult = dict[str, Union[float, str, bool, dict[str, float]]]
+AnalysisResult = dict[str, float | str | bool | dict[str, float]]
 MultiTimeframeAnalysis = dict[str, AnalysisResult]
 
 # Type aliases for regime adjustments structures
-RegimeAdjustment = dict[str, Union[int, float, str]]
+RegimeAdjustment = dict[str, int | float | str]
 
 # Type aliases for validation and error handling structures
-ValidationResult = dict[str, Union[bool, str, list[str]]]
-ErrorInfo = dict[str, Union[str, int, dict[str, object]]]
-
+ValidationResult = dict[str, bool | str | list[str]]
+ErrorInfo = dict[str, str | int | dict[str, object]]
 
 if TYPE_CHECKING:
     # Import concrete classes for static type checking only to satisfy forward

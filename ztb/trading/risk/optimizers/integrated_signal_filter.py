@@ -7,7 +7,7 @@ Phase 3-1: シグナル品質向上 - 統合シグナルフィルタ
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -19,7 +19,6 @@ from ztb.trading.strategies.risk_management.confidence_scoring_engine import (
 )
 from ztb.utils.performance_profiler import PerformanceProfiler
 
-
 class SignalQuality(Enum):
     """シグナル品質レベル"""
 
@@ -28,7 +27,6 @@ class SignalQuality(Enum):
     MEDIUM = "medium"  # 中品質
     LOW = "low"  # 低品質
     POOR = "poor"  # 品質不良
-
 
 @dataclass
 class IntegratedFilterResult:
@@ -39,7 +37,7 @@ class IntegratedFilterResult:
     confidence_score: float
     volume_analysis: Any  # VolumeAnalysisResult
     price_action_analysis: Any  # PriceActionAnalysisResult
-    filter_reasons: List[str]
+    filter_reasons: list[str]
     recommended_action: str  # 'accept', 'reject', 'review'
     risk_assessment: str
 
@@ -52,7 +50,6 @@ class IntegratedFilterResult:
     def needs_review(self) -> bool:
         """レビューが必要か"""
         return self.recommended_action == "review"
-
 
 @dataclass
 class IntegratedFilterCriteria:
@@ -75,7 +72,6 @@ class IntegratedFilterCriteria:
     adaptive_filtering: bool = True
     market_regime_adjustment: bool = True
 
-
 class IntegratedSignalFilter:
     """統合シグナルフィルタ"""
 
@@ -88,14 +84,14 @@ class IntegratedSignalFilter:
         self.volume_filter = VolumeFilter()
         self.price_action_filter = PriceActionFilter()
 
-        self.filter_history: List[IntegratedFilterResult] = []
+        self.filter_history: list[IntegratedFilterResult] = []
         self.max_history_size = 1000  # メモリ管理のため履歴サイズを制限
 
     def evaluate_signal_quality(
         self,
-        signal: Dict[str, Any],
+        signal: dict[str, Any],
         market_data: pd.DataFrame,
-        additional_context: Optional[Dict[str, Any]] = None,
+        additional_context: dict[str, Any] | None = None,
     ) -> IntegratedFilterResult:
         """
         シグナルの総合品質を評価
@@ -198,9 +194,9 @@ class IntegratedSignalFilter:
         self,
         quality_score: float,
         confidence_score: float,
-        filter_reasons: List[str],
-        signal: Dict[str, Any],
-    ) -> Tuple[str, str]:
+        filter_reasons: list[str],
+        signal: dict[str, Any],
+    ) -> tuple[str, str]:
         """推奨アクションを決定"""
         # 厳格モード
         if self.filter_criteria.strict_mode:
@@ -268,8 +264,8 @@ class IntegratedSignalFilter:
             )
 
     def batch_evaluate_signals(
-        self, signals: List[Dict[str, Any]], market_data: pd.DataFrame
-    ) -> List[IntegratedFilterResult]:
+        self, signals: list[dict[str, Any]], market_data: pd.DataFrame
+    ) -> list[IntegratedFilterResult]:
         """
         複数のシグナルを一括評価
 
@@ -278,7 +274,7 @@ class IntegratedSignalFilter:
             market_data: 市場データ
 
         Returns:
-            List[IntegratedFilterResult]: 評価結果リスト
+            list[IntegratedFilterResult]: 評価結果リスト
         """
         results = []
 
@@ -288,7 +284,7 @@ class IntegratedSignalFilter:
 
         return results
 
-    def get_filter_statistics(self) -> Dict[str, Any]:
+    def get_filter_statistics(self) -> dict[str, Any]:
         """フィルタ統計を取得"""
         if not self.filter_history:
             return {}
@@ -356,7 +352,7 @@ class IntegratedSignalFilter:
         self.filter_criteria.min_quality_score = 0.6
         self.filter_criteria.min_confidence_score = 0.7
 
-    def export_filter_configuration(self) -> Dict[str, Any]:
+    def export_filter_configuration(self) -> dict[str, Any]:
         """フィルタ設定をエクスポート"""
         return {
             "criteria": self.filter_criteria.__dict__,

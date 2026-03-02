@@ -8,7 +8,7 @@ to ensure consistency and reduce duplication.
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, cast
 
 import yaml
 
@@ -21,8 +21,7 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
-def save_toml_to_file(config: ConfigDict, file_path: Union[str, Path]) -> None:
+def save_toml_to_file(config: ConfigDict, file_path: str | Path) -> None:
     """
     Save configuration as TOML to a file.
 
@@ -47,7 +46,6 @@ def save_toml_to_file(config: ConfigDict, file_path: Union[str, Path]) -> None:
     except Exception as e:
         raise ConfigurationError(f"Failed to save TOML config: {e}") from e
 
-
 def save_toml_to_file_obj(config: ConfigDict, file_obj) -> None:
     """
     Save configuration as TOML to a file object.
@@ -67,7 +65,6 @@ def save_toml_to_file_obj(config: ConfigDict, file_obj) -> None:
         _write_basic_toml(config, file_obj)
     except Exception as e:
         raise ConfigurationError(f"Failed to save TOML config: {e}") from e
-
 
 def _write_basic_toml(config: ConfigDict, file_obj, prefix: str = "") -> None:
     """
@@ -92,7 +89,6 @@ def _write_basic_toml(config: ConfigDict, file_obj, prefix: str = "") -> None:
                 formatted_value = str(value)
             file_obj.write(f"{key} = {formatted_value}\n".encode('utf-8'))
 
-
 class BaseConfigManager(ABC):
     """Abstract base class for configuration managers."""
 
@@ -104,7 +100,6 @@ class BaseConfigManager(ABC):
     def save_config(self, *args, **kwargs) -> None:
         pass
 
-
 class ConfigManager(BaseConfigManager):
     """
     Centralized configuration manager for ZTB system.
@@ -115,7 +110,7 @@ class ConfigManager(BaseConfigManager):
 
     SUPPORTED_FORMATS = {".yaml", ".yml", ".json", ".toml"}
 
-    def __init__(self, config_dir: Optional[Union[str, Path]] = None):
+    def __init__(self, config_dir: str | Path | None = None):
         """
         Initialize configuration manager.
 
@@ -124,7 +119,7 @@ class ConfigManager(BaseConfigManager):
         """
         self.config_dir = Path(config_dir) if config_dir else Path.cwd() / "config"
         self.config_dir.mkdir(exist_ok=True)
-        self._cache: Dict[str, ConfigDict] = {}
+        self._cache: dict[str, ConfigDict] = {}
 
     def load_config(
         self, config_name: str, config_type: str = "general", validate: bool = True
@@ -166,7 +161,7 @@ class ConfigManager(BaseConfigManager):
 
     def save_config(
         self,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         config_name: str,
         config_type: str = "general",
         format: str = "yaml",
@@ -196,7 +191,7 @@ class ConfigManager(BaseConfigManager):
                 f"Failed to save configuration '{config_name}': {e}"
             ) from e
 
-    def _find_config_file(self, config_name: str) -> Optional[Path]:
+    def _find_config_file(self, config_name: str) -> Path | None:
         """Find configuration file with supported extensions."""
         for ext in self.SUPPORTED_FORMATS:
             config_path = self.config_dir / f"{config_name}{ext}"
@@ -218,7 +213,7 @@ class ConfigManager(BaseConfigManager):
             raise ConfigurationError(f"Unsupported configuration format: {suffix}")
 
     def _save_config_file(
-        self, config: Dict[str, Any], config_path: Path, format: str
+        self, config: dict[str, Any], config_path: Path, format: str
     ) -> None:
         """Save configuration to file based on format."""
         if format == "yaml":
@@ -234,14 +229,14 @@ class ConfigManager(BaseConfigManager):
         """Load YAML configuration."""
         try:
             content = path.read_text(encoding="utf-8")
-            return cast(Dict[str, Any], yaml.safe_load(content) or {})
+            return cast(dict[str, Any], yaml.safe_load(content) or {})
         except Exception as e:
             raise ConfigurationError(f"Failed to load YAML config: {e}") from e
 
     def _load_json(self, path: Path) -> ConfigDict:
         """Load JSON configuration."""
         try:
-            return cast(Dict[str, Any], read_json(path))
+            return cast(dict[str, Any], read_json(path))
         except Exception as e:
             raise ConfigurationError(f"Failed to load JSON config: {e}") from e
 
@@ -353,10 +348,9 @@ class ConfigManager(BaseConfigManager):
         self._cache.clear()
         logger.info("Configuration cache cleared")
 
-    def get_cached_configs(self) -> Dict[str, ConfigDict]:
+    def get_cached_configs(self) -> dict[str, ConfigDict]:
         """Get all cached configurations."""
         return {key: value.copy() for key, value in self._cache.items()}
-
 
 def validate_config(config: Any, required_fields: list) -> bool:
     """
@@ -380,8 +374,7 @@ def validate_config(config: Any, required_fields: list) -> bool:
 
     return True
 
-
-def validate_dict_config(config: ConfigDict, required_keys: List[str]) -> bool:
+def validate_dict_config(config: ConfigDict, required_keys: list[str]) -> bool:
     """
     辞書型設定の必須キーを検証
 

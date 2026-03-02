@@ -9,7 +9,6 @@ import time
 import warnings
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Optional
 
 import numpy as np
 
@@ -29,12 +28,10 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 ObjectMap = dict[str, object]
 FloatMap = dict[str, float]
 StringMap = dict[str, str]
 CheckResultList = list[tuple[str, bool]]
-
 
 def _to_float(value: object, default: float = 0.0) -> float:
     """Best-effort float conversion with safe fallback."""
@@ -43,11 +40,9 @@ def _to_float(value: object, default: float = 0.0) -> float:
     except (TypeError, ValueError):
         return default
 
-
 def _as_object_map(value: object) -> ObjectMap:
     """Return a dict-like object or empty mapping."""
     return value if isinstance(value, dict) else {}
-
 
 @dataclass
 class IntegrationTestConfig:
@@ -58,7 +53,6 @@ class IntegrationTestConfig:
     stress_test_intensity: str = "moderate"  # ストレステスト強度
     data_volume: str = "normal"  # データ量
     network_conditions: str = "normal"  # ネットワーク条件
-
 
 @dataclass
 class SystemHealthCheck:
@@ -73,7 +67,6 @@ class SystemHealthCheck:
     warning_count: int = 0
     critical_issues: list[str] = field(default_factory=list)
     overall_health: str = "unknown"  # healthy, degraded, critical
-
 
 @dataclass
 class ProductionReadinessAssessment:
@@ -91,8 +84,7 @@ class ProductionReadinessAssessment:
     overall_readiness: float = 0.0
     blocking_issues: list[str] = field(default_factory=list)
     recommendations: list[str] = field(default_factory=list)
-    estimated_go_live_date: Optional[datetime] = None
-
+    estimated_go_live_date: datetime | None = None
 
 class ComponentIntegrationTester:
     """コンポーネント統合テスター"""
@@ -412,7 +404,6 @@ class ComponentIntegrationTester:
                 )
 
         return assessment
-
 
 class EndToEndValidationSystem:
     """エンドツーエンド検証システム"""
@@ -945,13 +936,11 @@ class EndToEndValidationSystem:
             "report_generated_at": datetime.now(),
         }
 
-
 def create_end_to_end_validation_system(
     integration_manager: V433IntegrationManager,
 ) -> EndToEndValidationSystem:
     """エンドツーエンド検証システムのファクトリ関数"""
     return EndToEndValidationSystem(integration_manager)
-
 
 # 使用例
 if __name__ == "__main__":

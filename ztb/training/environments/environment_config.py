@@ -4,13 +4,12 @@ Environment configuration for trading environments.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any
 
 DEFAULT_INITIAL_BALANCE = 10000.0
 DEFAULT_MAX_STEPS = 1000
 DEFAULT_COMMISSION = 0.001  # 0.1%
 DEFAULT_SLIPPAGE = 0.0005  # 0.05%
-
 
 @dataclass
 class EnvironmentConfig:
@@ -27,21 +26,21 @@ class EnvironmentConfig:
     min_position_change: float = 1e-5  # Minimum delta in position required to execute
     reward_scaling: float = 1.0
     observation_window: int = 60
-    feature_names: Optional[list] = None
+    feature_names: list | None = None
     feature_set: str = "high_quality"
     curriculum_stage: str = "pnl_focused"  # Default for v439 scalping
     continuous_to_discrete_threshold: float = 0.02  # Lowered for frequent actions
-    continuous_to_discrete_threshold_neg: Optional[float] = None
+    continuous_to_discrete_threshold_neg: float | None = None
     signal_guidance_enabled: bool = True
-    signal_guidance: Dict[str, Any] = field(default_factory=dict)
-    scalping_optimization: Dict[str, Any] = field(default_factory=dict)
+    signal_guidance: dict[str, Any] = field(default_factory=dict)
+    scalping_optimization: dict[str, Any] = field(default_factory=dict)
     use_continuous_actions: bool = False
-    behavior_optimization: Optional[Dict[str, Any]] = None
-    action_bonuses: Optional[Dict[str, Any]] = None
-    market_regime: Optional[Dict[str, Any]] = None
-    dynamic_reward_shaping: Optional[Dict[str, Any]] = None
+    behavior_optimization: dict[str, Any] | None = None
+    action_bonuses: dict[str, Any] | None = None
+    market_regime: dict[str, Any] | None = None
+    dynamic_reward_shaping: dict[str, Any] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary."""
         return {
             "initial_balance": self.initial_balance,
@@ -69,6 +68,6 @@ class EnvironmentConfig:
         }
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "EnvironmentConfig":
+    def from_dict(cls, config_dict: dict[str, Any]) -> "EnvironmentConfig":
         """Create config from dictionary."""
         return cls(**config_dict)

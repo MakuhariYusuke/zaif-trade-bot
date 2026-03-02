@@ -4,9 +4,6 @@ Growth Bonus Calculator Component.
 This component calculates bonuses for portfolio growth.
 """
 
-from typing import List
-
-
 class GrowthBonusCalculator:
     """
     Calculates bonus for portfolio growth above threshold.
@@ -17,7 +14,7 @@ class GrowthBonusCalculator:
 
     def calculate(
         self,
-        portfolio_value_history: List[float],
+        portfolio_value_history: list[float],
         growth_window: int = 30,
         growth_threshold: float = 0.005,
     ) -> float:

@@ -21,11 +21,10 @@ except ValueError:
     # causing find_spec to raise ValueError. Treat as not available in that case.
     STABLE_BASELINES3_AVAILABLE = False
 
-
 def configure_progress_bar(
     config: ConfigDict,
-    cli_override: Optional[bool] = None,
-    log: Optional[logging.Logger] = None,
+    cli_override: bool | None = None,
+    log: logging.Logger | None = None,
 ) -> bool:
     """
     Normalize progress bar settings and coordinate Stable-Baselines3 verbosity.
@@ -42,7 +41,7 @@ def configure_progress_bar(
         return bool(config.get("progress_bar", False))
 
     logger_obj = log or logger
-    progress_preference: Optional[bool] = cli_override
+    progress_preference: bool | None = cli_override
 
     legacy_top_level = config.pop("progress_bar", None)
     training_section = config.get("training")

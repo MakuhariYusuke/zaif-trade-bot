@@ -12,7 +12,7 @@ import pickle
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -26,7 +26,6 @@ from ztb.utils.performance_utils import timed
 
 logger = logging.getLogger(__name__)
 
-
 class DataGenerator:
     """
     Class for generating and managing synthetic market data.
@@ -37,7 +36,7 @@ class DataGenerator:
 
     def __init__(
         self,
-        cache_dir: Optional[str] = None,
+        cache_dir: str | None = None,
         enable_memory_cache: bool = True,
         default_seed: int = 42,
     ):
@@ -52,7 +51,7 @@ class DataGenerator:
         self.cache_dir = Path(cache_dir) if cache_dir else None
         self.enable_memory_cache = enable_memory_cache
         self.default_seed = default_seed
-        self._memory_cache: Dict[str, Any] = {}
+        self._memory_cache: dict[str, Any] = {}
 
         if self.cache_dir and self.cache_dir.exists():
             ensure_dir(self.cache_dir)
@@ -62,7 +61,7 @@ class DataGenerator:
         self,
         n_samples: int = 10000,
         version: str = "v2",
-        seed: Optional[int] = None,
+        seed: int | None = None,
     ) -> pd.DataFrame:
         """
         Generate synthetic market data for testing.
@@ -277,12 +276,12 @@ class DataGenerator:
                 cache_file.unlink()
             logger.info(f"Cleared disk cache: {self.cache_dir}")
 
-    def preload_datasets(self, datasets: List[str], max_workers: int = 2) -> None:
+    def preload_datasets(self, datasets: list[str], max_workers: int = 2) -> None:
         """
         Preload multiple datasets in parallel for faster subsequent access.
 
         Args:
-            datasets: List of dataset names to preload
+            datasets: list of dataset names to preload
             max_workers: Maximum number of parallel workers
         """
         logger.info(f"Preloading {len(datasets)} datasets with {max_workers} workers")
@@ -304,10 +303,10 @@ class DataGenerator:
         self,
         df: pd.DataFrame,
         base_path: Path,
-        partition_cols: Optional[List[str]] = None,
+        partition_cols: list[str] | None = None,
         compression: str = "zstd",
         chunk_rows: int = 1000000,
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Save DataFrame to Parquet files in chunks with optional partitioning.
 
@@ -319,7 +318,7 @@ class DataGenerator:
             chunk_rows: Number of rows per chunk
 
         Returns:
-            List of saved file paths
+            list of saved file paths
         """
         import pyarrow as pa
         import pyarrow.parquet as pq
@@ -362,8 +361,8 @@ class DataGenerator:
     def load_parquet_pattern(
         self,
         pattern: str,
-        columns: Optional[List[str]] = None,
-        filters: Optional[List[Any]] = None,
+        columns: list[str] | None = None,
+        filters: list[Any] | None = None,
     ) -> pd.DataFrame:
         """
         Load Parquet files matching a pattern with optional column selection and filtering.
@@ -389,8 +388,8 @@ class DataGenerator:
     def _load_parquet_pattern_impl(
         self,
         pattern: str,
-        columns: Optional[List[str]] = None,
-        filters: Optional[List[Any]] = None,
+        columns: list[str] | None = None,
+        filters: list[Any] | None = None,
     ) -> pd.DataFrame:
         """Implementation of parquet pattern loading"""
         import pyarrow.parquet as pq
@@ -415,7 +414,7 @@ class DataGenerator:
 
     def save_parquet_monthly_chunked(
         self, df: pd.DataFrame, path: str, chunk: str = "M", compression: str = "zstd"
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Save DataFrame to Parquet files in monthly chunks with zstd compression.
 
@@ -426,7 +425,7 @@ class DataGenerator:
             compression: Compression algorithm
 
         Returns:
-            List of saved file paths
+            list of saved file paths
         """
         import pyarrow as pa
         import pyarrow.parquet as pq
@@ -464,7 +463,7 @@ class DataGenerator:
         self,
         n_rows: int = 5000,
         freq: str = "1H",
-        episode_length: Optional[int] = None,
+        episode_length: int | None = None,
         volume_range: tuple[float, float] = (1000, 10000),
     ) -> pd.DataFrame:
         """Generate synthetic data for training."""
@@ -483,7 +482,7 @@ class DataGenerator:
         self,
         n_rows: int,
         freq: str,
-        episode_length: Optional[int],
+        episode_length: int | None,
         volume_range: tuple[float, float],
     ) -> pd.DataFrame:
         """Implementation of synthetic training data generation."""
@@ -550,15 +549,15 @@ class DataGenerator:
             return pickle.load(f)
 
     async def load_data_async(
-        self, file_paths: List[str], max_workers: int = 4, **kwargs
-    ) -> List[pd.DataFrame]:
+        self, file_paths: list[str], max_workers: int = 4, **kwargs
+    ) -> list[pd.DataFrame]:
         """
         Load multiple CSV files asynchronously.
         """
         return await read_csvs_async(file_paths, max_workers=max_workers, **kwargs)
 
     def prefetch_data(
-        self, file_paths: List[str], prefetch_size: int = 2, **kwargs
+        self, file_paths: list[str], prefetch_size: int = 2, **kwargs
     ) -> ThreadPoolExecutor:
         """
         Prefetch data files and warm in-memory cache.
@@ -574,7 +573,6 @@ class DataGenerator:
                     pass
         return executor
 
-
 def load_sample_data(n_samples: int = 100, version: str = "v1") -> pd.DataFrame:
     """Convenience helper used by tests to quickly get a sample dataset.
 
@@ -588,10 +586,8 @@ def load_sample_data(n_samples: int = 100, version: str = "v1") -> pd.DataFrame:
     dg = DataGenerator()
     return dg.generate_synthetic_market_data(n_samples=n_samples, version=version)
 
-
 # Global cache for backward compatibility
-_data_cache: Dict[str, Any] = {}
-
+_data_cache: dict[str, Any] = {}
 
 def generate_synthetic_market_data(
     n_samples: int = 10000, version: str = "v2", seed: int = 42
@@ -610,10 +606,9 @@ def generate_synthetic_market_data(
     generator = DataGenerator()
     return generator.generate_synthetic_market_data(n_samples, version, seed)
 
-
 def load_dataset(
     dataset: str = "synthetic",
-    cache_dir: Optional[str] = None,
+    cache_dir: str | None = None,
     force_reload: bool = False,
 ) -> pd.DataFrame:
     """
@@ -630,23 +625,21 @@ def load_dataset(
     generator = DataGenerator(cache_dir=cache_dir)
     return generator.load_dataset(dataset, force_reload)
 
-
 def preload_datasets(
-    datasets: List[str], cache_dir: str = "data/cache", max_workers: int = 2
+    datasets: list[str], cache_dir: str = "data/cache", max_workers: int = 2
 ) -> None:
     """
     Preload multiple datasets in parallel for faster subsequent access.
 
     Args:
-        datasets: List of dataset names to preload
+        datasets: list of dataset names to preload
         cache_dir: Cache directory
         max_workers: Maximum number of parallel workers
     """
     generator = DataGenerator(cache_dir=cache_dir)
     generator.preload_datasets(datasets, max_workers)
 
-
-def clear_cache(cache_dir: Optional[str] = None) -> None:
+def clear_cache(cache_dir: str | None = None) -> None:
     """
     Clear data cache.
 
@@ -656,14 +649,13 @@ def clear_cache(cache_dir: Optional[str] = None) -> None:
     generator = DataGenerator(cache_dir=cache_dir)
     generator.clear_cache()
 
-
 def save_parquet_chunked(
     df: pd.DataFrame,
     base_path: Path,
-    partition_cols: Optional[List[str]] = None,
+    partition_cols: list[str] | None = None,
     compression: str = "zstd",
     chunk_rows: int = 1000000,
-) -> List[str]:
+) -> list[str]:
     """
     Save DataFrame to Parquet files in chunks with optional partitioning.
 
@@ -675,18 +667,17 @@ def save_parquet_chunked(
         chunk_rows: Number of rows per chunk
 
     Returns:
-        List of saved file paths
+        list of saved file paths
     """
     generator = DataGenerator()
     return generator.save_parquet_chunked(
         df, base_path, partition_cols, compression, chunk_rows
     )
 
-
 def load_parquet_pattern(
     pattern: str,
-    columns: Optional[List[str]] = None,
-    filters: Optional[List[Any]] = None,
+    columns: list[str] | None = None,
+    filters: list[Any] | None = None,
 ) -> pd.DataFrame:
     """
     Load Parquet files matching a pattern with optional column selection and filtering.
@@ -702,10 +693,9 @@ def load_parquet_pattern(
     generator = DataGenerator()
     return generator.load_parquet_pattern(pattern, columns, filters)
 
-
 def save_parquet_monthly_chunked(
     df: pd.DataFrame, path: str, chunk: str = "M", compression: str = "zstd"
-) -> List[str]:
+) -> list[str]:
     """
     Save DataFrame to Parquet files in monthly chunks with zstd compression.
 
@@ -716,16 +706,15 @@ def save_parquet_monthly_chunked(
         compression: Compression algorithm
 
     Returns:
-        List of saved file paths
+        list of saved file paths
     """
     generator = DataGenerator()
     return generator.save_parquet_monthly_chunked(df, path, chunk, compression)
 
-
 def generate_synthetic_data(
     n_rows: int = 5000,
     freq: str = "1H",
-    episode_length: Optional[int] = None,
+    episode_length: int | None = None,
     volume_range: tuple[float, float] = (1000, 10000),
 ) -> pd.DataFrame:
     """Generate synthetic data for training."""

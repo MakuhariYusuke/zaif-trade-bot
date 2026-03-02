@@ -7,7 +7,7 @@ import time
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Deque, Dict, Iterator, List, Mapping, Optional, Sequence
+from typing import Any, Deque, Iterator, Mapping, Sequence
 
 import pandas as pd
 import requests
@@ -16,14 +16,11 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class CoinGeckoStreamError(RuntimeError):
     """Raised when the CoinGecko client cannot satisfy a request."""
 
-
 class RateLimitExceeded(CoinGeckoStreamError):
     """Raised when the API rate limit is exceeded after retries."""
-
 
 @dataclass
 class StreamConfig:
@@ -39,15 +36,13 @@ class StreamConfig:
         3  # number of historical steps to refetch per poll to ensure continuity
     )
 
-
 @dataclass
 class MarketDataBatch:
     """Container describing a batch of market data."""
 
     dataframe: pd.DataFrame
     fetched_at: datetime
-    request_params: Dict[str, Any]
-
+    request_params: dict[str, Any]
 
 class CoinGeckoStream:
     """Resilient client for CoinGecko market chart streaming."""
@@ -57,12 +52,12 @@ class CoinGeckoStream:
     def __init__(
         self,
         *,
-        session: Optional[requests.Session] = None,
+        session: requests.Session | None = None,
         timeout: float = 10.0,
         max_retries: int = 5,
         backoff_factor: float = 0.5,
         rate_limit_per_minute: int = 45,
-        base_url: Optional[str] = None,
+        base_url: str | None = None,
     ) -> None:
         self.session = session or requests.Session()
         self.timeout = timeout
@@ -97,7 +92,7 @@ class CoinGeckoStream:
 
         page_span = step * max(1, page_size - 1)
         current_start = start
-        frames: List[pd.DataFrame] = []
+        frames: list[pd.DataFrame] = []
 
         while current_start < end:
             current_end = min(end, current_start + page_span)
@@ -146,8 +141,8 @@ class CoinGeckoStream:
         self,
         config: StreamConfig,
         *,
-        start_at: Optional[datetime] = None,
-        stop_event: Optional[threading.Event] = None,
+        start_at: datetime | None = None,
+        stop_event: threading.Event | None = None,
     ) -> Iterator[MarketDataBatch]:
         """Yield batches of live market data."""
         last_timestamp = start_at
@@ -210,7 +205,7 @@ class CoinGeckoStream:
         vs_currency: str,
         start: datetime,
         end: datetime,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         path = f"/coins/{coin_id}/market_chart/range"
         params = {
             "vs_currency": vs_currency,
@@ -219,7 +214,7 @@ class CoinGeckoStream:
         }
         return self._request(path, params)
 
-    def _request(self, path: str, params: Mapping[str, Any]) -> Dict[str, Any]:
+    def _request(self, path: str, params: Mapping[str, Any]) -> dict[str, Any]:
         url = f"{self.base_url}{path}"
         attempt = 0
         while True:
@@ -260,7 +255,7 @@ class CoinGeckoStream:
                 )
 
             try:
-                data: Dict[str, Any] = response.json()
+                data: dict[str, Any] = response.json()
                 return data
             except ValueError as exc:
                 raise CoinGeckoStreamError(
@@ -327,8 +322,8 @@ class CoinGeckoStream:
 
     def __exit__(
         self,
-        _exc_type: Optional[type],
-        _exc: Optional[BaseException],
-        _tb: Optional[Any],
+        _exc_type: type | None,
+        _exc: BaseException | None,
+        _tb: Any | None,
     ) -> None:
         self.close()

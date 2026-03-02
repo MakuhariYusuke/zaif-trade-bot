@@ -4,7 +4,7 @@ Market Adaptation Manager for SAC v435
 市場状態変化への適応メカニズム
 """
 
-from typing import Any, Dict, List, cast
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -13,14 +13,13 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 class MarketAdaptationManager:
     """
     市場適応マネージャー
     市場状態の変化を検知し、取引戦略を適応させる
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         """
         Args:
             config: 市場適応設定
@@ -54,9 +53,9 @@ class MarketAdaptationManager:
 
         # 状態追跡
         self.current_regime = "sideways"
-        self.regime_history: List[str] = []
+        self.regime_history: list[str] = []
         self.regime_stability: float = 0.0
-        self.adaptation_factors: Dict[str, float] = {}
+        self.adaptation_factors: dict[str, float] = {}
 
         # 適応パラメータ
         self.trend_adaptation = 1.0
@@ -65,7 +64,7 @@ class MarketAdaptationManager:
 
     def adapt_to_market_conditions(
         self, df: pd.DataFrame, current_position: float, portfolio_value: float
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         市場状態に適応したパラメータを計算
 
@@ -177,7 +176,7 @@ class MarketAdaptationManager:
 
     def _calculate_adaptation_factors(
         self, df: pd.DataFrame, regime: str
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         適応係数を計算
 
@@ -268,8 +267,8 @@ class MarketAdaptationManager:
         self.regime_stability = consistency
 
     def _apply_adaptation(
-        self, factors: Dict[str, float], current_position: float, portfolio_value: float
-    ) -> Dict[str, Any]:
+        self, factors: dict[str, float], current_position: float, portfolio_value: float
+    ) -> dict[str, Any]:
         """
         適応を適用したパラメータを生成
 
@@ -306,7 +305,7 @@ class MarketAdaptationManager:
             "adaptation_factors": factors,
         }
 
-    def get_adaptation_metrics(self) -> Dict[str, Any]:
+    def get_adaptation_metrics(self) -> dict[str, Any]:
         """
         適応指標を取得
 

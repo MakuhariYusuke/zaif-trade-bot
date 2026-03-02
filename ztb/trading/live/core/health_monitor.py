@@ -4,10 +4,9 @@ Health monitoring for live trading bot.
 import gc
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
-
 
 class HealthMonitor:
     """Monitors system health and provides status information."""
@@ -17,7 +16,7 @@ class HealthMonitor:
         self._cleanup_interval = 100
         self._last_health_check = time.time()
 
-    def get_health_status(self) -> Dict[str, Any]:
+    def get_health_status(self) -> dict[str, Any]:
         """Get comprehensive health status."""
         import psutil  # type: ignore[import-untyped]
 
@@ -68,7 +67,7 @@ class HealthMonitor:
             self._cleanup_counter = 0
             logger.debug("Periodic cleanup completed")
 
-    def setup_metrics(self) -> Optional[Dict[str, Any]]:
+    def setup_metrics(self) -> dict[str, Any] | None:
         """Setup Prometheus metrics if available."""
         try:
             from prometheus_client import Counter, Gauge, Histogram  # type: ignore[import-untyped]
@@ -96,12 +95,12 @@ class HealthMonitor:
 
     def update_metrics(
         self,
-        metrics: Optional[Dict[str, Any]],
+        metrics: dict[str, Any] | None,
         price: float,
         pnl: float,
         position: float,
         trade_success: bool = False,
-        action: Optional[str] = None,
+        action: str | None = None,
     ) -> None:
         """Update metrics with current values."""
         if not metrics:

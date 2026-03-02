@@ -12,7 +12,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -26,17 +26,15 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 @dataclass
 class TrainingEvaluationResult:
     """Result of reward function parameter evaluation."""
 
     metrics: EvaluationMetrics
-    trade_history: List[Dict[str, Any]] = field(default_factory=list)
-    portfolio_history: List[Dict[str, Any]] = field(default_factory=list)
+    trade_history: list[dict[str, Any]] = field(default_factory=list)
+    portfolio_history: list[dict[str, Any]] = field(default_factory=list)
     evaluation_time: float = 0.0
-    market_conditions: Dict[str, Any] = field(default_factory=dict)
-
+    market_conditions: dict[str, Any] = field(default_factory=dict)
 
 class RewardFunctionEvaluator:
     """
@@ -49,7 +47,7 @@ class RewardFunctionEvaluator:
     - Performance metrics calculation
     """
 
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: str | None = None):
         """
         Initialize reward function evaluator.
 
@@ -67,7 +65,7 @@ class RewardFunctionEvaluator:
         # Load default evaluation settings
         self.evaluation_settings = self._load_evaluation_settings()
 
-    def _load_evaluation_settings(self) -> Dict[str, Any]:
+    def _load_evaluation_settings(self) -> dict[str, Any]:
         """Load evaluation settings from config file."""
         default_settings = {
             "evaluation_episodes": 10,
@@ -88,11 +86,11 @@ class RewardFunctionEvaluator:
 
     def evaluate_parameters(
         self,
-        parameters: Dict[str, Any],
+        parameters: dict[str, Any],
         stage: str,
-        market_data: Optional[pd.DataFrame] = None,
-        n_episodes: Optional[int] = None,
-        max_steps: Optional[int] = None,
+        market_data: pd.DataFrame | None = None,
+        n_episodes: int | None = None,
+        max_steps: int | None = None,
     ) -> TrainingEvaluationResult:
         """
         Evaluate reward function parameters.
@@ -168,7 +166,7 @@ class RewardFunctionEvaluator:
         return result
 
     def _create_reward_settings(
-        self, parameters: Dict[str, Any], stage: str
+        self, parameters: dict[str, Any], stage: str
     ) -> RewardSettings:
         """Create reward settings from parameters."""
         # Create default settings
@@ -260,8 +258,8 @@ class RewardFunctionEvaluator:
         market_condition: str,
         n_episodes: int,
         max_steps: int,
-        market_data: Optional[pd.DataFrame] = None,
-    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        market_data: pd.DataFrame | None = None,
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """
         Run evaluation episodes for a specific market condition.
 
@@ -273,7 +271,7 @@ class RewardFunctionEvaluator:
             market_data: Market data (optional)
 
         Returns:
-            Tuple of (trade_history, portfolio_history)
+            tuple of (trade_history, portfolio_history)
         """
         # This is a simplified implementation
         # In practice, this would integrate with the actual trading environment
@@ -333,7 +331,7 @@ class RewardFunctionEvaluator:
 
     def _generate_synthetic_episode_data(
         self, market_condition: str, max_steps: int
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Generate synthetic episode data for evaluation."""
         # Simplified synthetic data generation
         data = []
@@ -374,7 +372,7 @@ class RewardFunctionEvaluator:
 
         return data
 
-    def _simulate_trading_decision(self, market_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _simulate_trading_decision(self, market_data: dict[str, Any]) -> dict[str, Any]:
         """Simulate a trading decision for evaluation."""
         # Simplified trading decision simulation
         # In practice, this would use a trained model or heuristic
@@ -390,8 +388,8 @@ class RewardFunctionEvaluator:
 
     def _calculate_synthetic_reward(
         self,
-        action: Dict[str, Any],
-        market_data: Dict[str, Any],
+        action: dict[str, Any],
+        market_data: dict[str, Any],
         reward_settings: RewardSettings,
     ) -> float:
         """Calculate synthetic reward for evaluation (simplified implementation)."""
@@ -423,8 +421,8 @@ class RewardFunctionEvaluator:
 
     def _calculate_metrics(
         self,
-        trade_history: List[Dict[str, Any]],
-        portfolio_history: List[Dict[str, Any]],
+        trade_history: list[dict[str, Any]],
+        portfolio_history: list[dict[str, Any]],
         market_condition: str,
     ) -> EvaluationMetrics:
         """Calculate performance metrics from trade and portfolio history."""
@@ -499,7 +497,7 @@ class RewardFunctionEvaluator:
         )
 
     def _aggregate_metrics(
-        self, metrics_list: List[EvaluationMetrics]
+        self, metrics_list: list[EvaluationMetrics]
     ) -> EvaluationMetrics:
         """Aggregate metrics across different market conditions."""
 
@@ -538,7 +536,7 @@ class RewardFunctionEvaluator:
 
     def create_evaluation_function(
         self, stage: str
-    ) -> Callable[[Dict[str, Any]], Dict[str, float]]:
+    ) -> Callable[[dict[str, Any]], dict[str, float]]:
         """
         Create evaluation function for optimization.
 
@@ -549,7 +547,7 @@ class RewardFunctionEvaluator:
             Function that evaluates parameters and returns scores
         """
 
-        def evaluation_function(parameters: Dict[str, Any]) -> Dict[str, float]:
+        def evaluation_function(parameters: dict[str, Any]) -> dict[str, float]:
             """Evaluate parameters and return scores for optimization."""
             result = self.evaluate_parameters(parameters, stage)
 

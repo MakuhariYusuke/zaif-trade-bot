@@ -5,11 +5,8 @@
 
 __version__ = "1.0.0"
 
-from typing import Optional
-
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
-
 
 class TemporalIntegrationLayer(nn.Module):
     """時間的統合レイヤー
@@ -57,7 +54,7 @@ class TemporalIntegrationLayer(nn.Module):
         self.layer_norm = nn.LayerNorm(hidden_dim)
 
     def forward(
-        self, x: torch.Tensor, attention_mask: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, attention_mask: torch.Tensor | None = None
     ) -> torch.Tensor:
         """
         時間的統合の順伝播
@@ -91,7 +88,6 @@ class TemporalIntegrationLayer(nn.Module):
         output = self.layer_norm(output)
 
         return output
-
 
 class ModalityFusion(nn.Module):
     """モダリティ融合レイヤー
@@ -188,7 +184,6 @@ class ModalityFusion(nn.Module):
 
         return fused
 
-
 class MultiModalFeatureEncoder(nn.Module):
     """マルチモーダル特徴量エンコーダー
 
@@ -245,7 +240,7 @@ class MultiModalFeatureEncoder(nn.Module):
         price_data: torch.Tensor,
         text_data: torch.Tensor,
         economic_data: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
+        attention_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         マルチモーダル特徴量エンコーディング

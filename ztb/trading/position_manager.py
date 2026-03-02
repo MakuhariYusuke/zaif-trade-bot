@@ -10,7 +10,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import ROUND_DOWN, ROUND_UP, Decimal
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from ztb.trading.environment.constants import DEFAULT_FEE_RATE, DEFAULT_TOTAL_CAPITAL
 from ztb.trading.risk.risk_manager import RiskManager
@@ -21,7 +21,6 @@ from ztb.utils.errors import validate_price
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
 
 class MinimumUnitManager:
     """最小取引単位管理"""
@@ -54,7 +53,7 @@ class MinimumUnitManager:
 
     def validate_quantity(
         self, exchange: str, symbol: str, quantity: float
-    ) -> Tuple[bool, float]:
+    ) -> tuple[bool, float]:
         """数量を最小単位で検証・調整"""
         min_unit = self.get_min_unit(exchange, symbol)
         quantity_dec = Decimal(str(quantity))
@@ -99,9 +98,7 @@ class MinimumUnitManager:
         min_unit = self.get_min_unit(exchange, symbol)
         return float(min_unit * Decimal(str(price)))
 
-
 from ztb.trading.risk.risk_manager import RiskManager
-
 
 class PositionManager(BaseComponent):
     """
@@ -113,7 +110,7 @@ class PositionManager(BaseComponent):
         self,
         execution_engine: TradeExecutionEngine,
         exchange: str = "coincheck",
-        config: Optional[ConfigDict] = None,
+        config: ConfigDict | None = None,
     ) -> None:
         super().__init__(name="PositionManager", config=config)
         self.execution_engine = execution_engine
@@ -144,8 +141,8 @@ class PositionManager(BaseComponent):
         self.is_running = False
 
         # 市場データ
-        self.volatilities: Dict[str, float] = {}
-        self.correlations: Dict[Tuple[str, str], float] = {}
+        self.volatilities: dict[str, float] = {}
+        self.correlations: dict[tuple[str, str], float] = {}
 
     def start_management(self):
         """ポジション管理を開始"""
@@ -528,7 +525,7 @@ class PositionManager(BaseComponent):
         # 実際には市場データフィードから取得
         return 1000.0  # 仮定値
 
-    def get_portfolio_summary(self) -> Dict[str, Any]:
+    def get_portfolio_summary(self) -> dict[str, Any]:
         """ポートフォリオサマリーを取得"""
         return {
             "portfolio_state": self.portfolio_state.__dict__,
@@ -541,13 +538,11 @@ class PositionManager(BaseComponent):
             },
         }
 
-
 def create_position_manager(
     execution_engine: TradeExecutionEngine, exchange: str = "zaif"
 ) -> PositionManager:
     """PositionManagerのファクトリ関数"""
     return PositionManager(execution_engine, exchange)
-
 
 # 使用例
 if __name__ == "__main__":

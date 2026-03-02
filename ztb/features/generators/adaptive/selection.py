@@ -11,7 +11,7 @@ Adaptive Feature Selection for SAC v422
 
 import logging
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -36,7 +36,6 @@ from ztb.features.causal_inference import CausalInferenceEngine
 
 logger = logging.getLogger(__name__)
 
-
 class MarketRegimeClassifier:
     """市場状態分類器"""
 
@@ -50,7 +49,7 @@ class MarketRegimeClassifier:
         """
         self.adx_threshold = adx_threshold
         self.volatility_percentile = volatility_percentile
-        self.volatility_history: List[float] = []
+        self.volatility_history: list[float] = []
 
     def classify_market_regime(self, df: pd.DataFrame) -> str:
         """
@@ -112,11 +111,10 @@ class MarketRegimeClassifier:
         else:
             return "ranging"
 
-
 class FeaturesAdaptiveFeatureSelector:
     """適応型特徴量選択器"""
 
-    def __init__(self, feature_groups: Optional[Dict[str, List[str]]] = None):
+    def __init__(self, feature_groups: dict[str, list[str]] | None = None):
         """
         Args:
             feature_groups: 市場状態ごとの特徴量グループ
@@ -176,15 +174,15 @@ class FeaturesAdaptiveFeatureSelector:
 
         # Attention layer and trainer
         self.attention_layer = None
-        self.attention_trainer: Optional[AttentionTrainer] = None
-        self.causal_engine: Optional[CausalInferenceEngine] = None
+        self.attention_trainer: AttentionTrainer | None = None
+        self.causal_engine: CausalInferenceEngine | None = None
         # Use StandardScaler only if available
         if StandardScaler is not None:
             self.feature_scaler = StandardScaler()
         else:
             self.feature_scaler = None  # Will use manual normalization
 
-    def get_regime_weights(self, regime: str) -> Dict[str, float]:
+    def get_regime_weights(self, regime: str) -> dict[str, float]:
         """
         市場状態に応じた特徴量重みを取得
 
@@ -211,8 +209,8 @@ class FeaturesAdaptiveFeatureSelector:
         return weights
 
     def select_features_adaptive(
-        self, df: pd.DataFrame, all_features: List[str]
-    ) -> Tuple[List[str], np.ndarray]:
+        self, df: pd.DataFrame, all_features: list[str]
+    ) -> tuple[list[str], np.ndarray]:
         """
         適応型特徴量選択
 
@@ -258,10 +256,10 @@ class FeaturesAdaptiveFeatureSelector:
     def select_features(
         self,
         df: pd.DataFrame,
-        all_features: List[str],
+        all_features: list[str],
         use_causal: bool = False,
         outcome_feature: str = "reward",
-    ) -> Tuple[List[str], Dict[str, Any]]:
+    ) -> tuple[list[str], dict[str, Any]]:
         """
         統合された特徴量選択（適応型 + 因果推論）
 
@@ -294,7 +292,7 @@ class FeaturesAdaptiveFeatureSelector:
     def initialize_attention_trainer(
         self,
         n_features: int,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
         memory_manager=None,
     ) -> None:
         """
@@ -337,7 +335,7 @@ class FeaturesAdaptiveFeatureSelector:
         if self.attention_trainer is not None:
             self.attention_trainer.add_training_sample(features, reward, regime)
 
-    def train_attention_model(self) -> Dict[str, Any]:
+    def train_attention_model(self) -> dict[str, Any]:
         """
         注意モデルをトレーニング
 
@@ -365,8 +363,8 @@ class FeaturesAdaptiveFeatureSelector:
         return self.attention_trainer.load_model(model_path)
 
     def select_features_causal(
-        self, df: pd.DataFrame, features: List[str], outcome_feature: str = "reward"
-    ) -> Tuple[List[str], Dict[str, Any]]:
+        self, df: pd.DataFrame, features: list[str], outcome_feature: str = "reward"
+    ) -> tuple[list[str], dict[str, Any]]:
         """
         因果推論による特徴量選択
 
@@ -418,7 +416,7 @@ class FeaturesAdaptiveFeatureSelector:
             self.causal_engine.update_model(new_data, outcome_feature)
 
     def _apply_attention_weights(
-        self, df: pd.DataFrame, features: List[str], base_weights: np.ndarray
+        self, df: pd.DataFrame, features: list[str], base_weights: np.ndarray
     ) -> np.ndarray:
         """
         Attention mechanismによる重み調整
@@ -476,15 +474,12 @@ class FeaturesAdaptiveFeatureSelector:
         # TODO: Attention layerの学習
         pass
 
-
 def create_adaptive_selector() -> "AdaptiveFeatureSelector":
     """適応型特徴量選択器の作成"""
     return AdaptiveFeatureSelector()
 
-
 # Backwards compatibility: alias to expected name
 AdaptiveFeatureSelector = FeaturesAdaptiveFeatureSelector
-
 
 # テスト用関数
 def test_market_regime_classification():
@@ -539,7 +534,6 @@ def test_market_regime_classification():
 
     print(f"Detected market regime: {regime}")
     return regime
-
 
 if __name__ == "__main__":
     # テスト実行

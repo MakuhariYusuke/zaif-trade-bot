@@ -9,7 +9,6 @@ Supports SAC models, Action Signal Guide, and comprehensive analysis.
 import argparse
 import sys
 from pathlib import Path
-from typing import Optional, List
 
 import pandas as pd
 
@@ -26,7 +25,6 @@ from .unified_backtest import (
     DataManager,
 )
 
-
 def create_sac_strategy(model_path: str, name: str = "SAC_v444") -> SACStrategy:
     """Create SAC strategy instance."""
     return SACStrategy(
@@ -35,10 +33,9 @@ def create_sac_strategy(model_path: str, name: str = "SAC_v444") -> SACStrategy:
         regime_classifier_path=None,  # Can be added later
     )
 
-
 def create_action_signal_guide_strategy(
     name: str = "ActionSignalGuide",
-    pattern_types: Optional[list[str]] = None
+    pattern_types: list[str] | None = None
 ) -> ActionSignalGuideStrategy:
     """Create Action Signal Guide strategy instance."""
     return ActionSignalGuideStrategy(
@@ -46,12 +43,10 @@ def create_action_signal_guide_strategy(
         pattern_types=pattern_types or ["candlestick", "fibonacci", "wave"]
     )
 
-
 def load_data(data_path: str) -> pd.DataFrame:
     """Load market data for backtesting."""
     data_manager = DataManager()
     return data_manager.load_data(data_path)
-
 
 def run_single_backtest(
     strategy_name: str,
@@ -102,7 +97,6 @@ def run_single_backtest(
 
     print(f"\nResults saved to: {output_dir}")
 
-
 def run_comparison_backtest(
     strategy_names: list[str],
     data_path: str,
@@ -149,12 +143,11 @@ def run_comparison_backtest(
 
     print(f"\nComparison report saved to: {output_dir}")
 
-
 def run_advanced_analysis(
     strategy_name: str,
     data_path: str,
     config: BacktestConfig,
-    analysis_types: List[str],
+    analysis_types: list[str],
     output_dir: str = "backtest_results"
 ) -> None:
     """Run advanced analysis on backtest results."""
@@ -203,7 +196,6 @@ def run_advanced_analysis(
                     print(f"  {key}: {type(value).__name__}")
 
     print(f"\nAdvanced analysis completed. Results saved to: {output_dir}")
-
 
 def main():
     """Main CLI entry point."""
@@ -269,7 +261,6 @@ def main():
     else:
         print("Error: Must specify either --strategy, --strategies, or --advanced with --analysis-types")
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

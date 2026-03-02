@@ -8,12 +8,11 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 from time import sleep
-from typing import Callable, Optional
+from typing import Callable
 
 from ztb.io.json_io import read_json_object, write_json
 from ztb.training.reward_function_optimizer.mtf_optimizer import MTFOptimizer
 from ztb.types.common import CandidateConfig, StageChangeEvent
-
 
 @dataclass
 class MTFSchedulerConfig:
@@ -24,9 +23,8 @@ class MTFSchedulerConfig:
     timesteps: int = 2000
     strategy: str = "random"
     seed: int = 42
-    gate_composite_score: Optional[float] = None
-    gate_min_reports: Optional[int] = None
-
+    gate_composite_score: float | None = None
+    gate_min_reports: int | None = None
 
 class MTFScheduler:
     def __init__(self, manager, config: MTFSchedulerConfig) -> None:
@@ -45,7 +43,7 @@ class MTFScheduler:
 
     def run_once(
         self, dry_run: bool = True, apply: bool = True
-    ) -> Optional[CandidateConfig]:
+    ) -> CandidateConfig | None:
         # Run optimizer and optionally apply selected candidate to manager
         best_candidate, best_score = self._optimizer.run(dry_run=dry_run)
         if best_candidate is None:
@@ -135,7 +133,7 @@ class MTFScheduler:
         return best_candidate
 
     def create_stage_change_callback(
-        self, stage_filter: Optional[list] = None, dry_run: bool = True
+        self, stage_filter: list | None = None, dry_run: bool = True
     ) -> Callable[[StageChangeEvent], None]:
         """Create a callback to be used by BalanceCurriculumManager stage change listeners.
 

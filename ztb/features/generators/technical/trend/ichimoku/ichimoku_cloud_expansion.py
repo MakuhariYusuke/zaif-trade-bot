@@ -16,14 +16,12 @@ from ztb.features.core.registry import FeatureRegistry
 
 from .ichimoku_ext import calculate_ichimoku_extended
 
-
 @FeatureRegistry.register("Ichimoku_Cloud_Expansion")
 def compute_ichimoku_cloud_expansion(df: pd.DataFrame) -> pd.Series:
     """Ichimoku Cloud Expansion - cloud expansion and contraction analysis"""
     feature = IchimokuCloudExpansion()
     result_df = feature.compute(df)
     return result_df["ichimoku_cloud_expansion"]
-
 
 class IchimokuCloudExpansion(BaseFeature):
     """
