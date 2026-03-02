@@ -298,9 +298,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         if alg_trainer is not None and hasattr(alg_trainer, "model"):
             try:
                 setattr(alg_trainer, "model", value)
-            except Exception:
-                # Avoid crashing on custom trainer implementations
-                pass
+            except Exception as e:
+                self.logger.debug("model propagation to alg_trainer failed: %s", e)
 
     @property
     def env(self) -> Optional[object]:
@@ -315,14 +314,16 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
             if hasattr(model, "get_env"):
                 try:
                     return model.get_env()
-                except Exception:
+                except Exception as e:
+                    self.logger.debug("model.get_env() failed: %s", e)
                     return None
 
         alg_trainer = self.algorithm_trainer
         if alg_trainer is not None and hasattr(alg_trainer, "env"):
             try:
                 return getattr(alg_trainer, "env")
-            except Exception:
+            except Exception as e:
+                self.logger.debug("alg_trainer.env access failed: %s", e)
                 return None
         return None
 
@@ -334,15 +335,15 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
         if alg_trainer is not None and hasattr(alg_trainer, "env"):
             try:
                 setattr(alg_trainer, "env", value)
-            except Exception:
-                pass
+            except Exception as e:
+                self.logger.debug("env propagation to alg_trainer failed: %s", e)
 
         model = self.model
         if model is not None and hasattr(model, "set_env"):
             try:
                 model.set_env(value)
-            except Exception:
-                pass
+            except Exception as e:
+                self.logger.debug("model.set_env() failed: %s", e)
 
     def get_environment_metrics(self) -> Dict[str, object]:
         """Extract environment metrics such as balance and trade count."""
@@ -1793,8 +1794,9 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 try:
                     data_iter = iter(getattr(alg, "dataloader"))
                     batch = next(data_iter)
-                except Exception:
+                except Exception as e:
                     # Dataloader empty or not iterable
+                    self.logger.debug("Dataloader iteration failed: %s", e)
                     batch = None
 
                 if isinstance(batch, (list, tuple)) and len(batch) >= 2:
@@ -1872,7 +1874,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 if len(first_layer.shape) > 1
                 else first_layer.shape[0]
             )
-        except Exception:
+        except Exception as e:
+            self.logger.debug("_get_model_input_dim fallback to 10: %s", e)
             return 10
 
     def _get_model_output_dim(self) -> int:
@@ -1888,7 +1891,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                 return 1
             last_layer = params[-1]
             return int(last_layer.shape[0])
-        except Exception:
+        except Exception as e:
+            self.logger.debug("_get_model_output_dim fallback to 1: %s", e)
             return 1
 
     def _create_market_federated_configs(self) -> Dict[str, FederatedConfig]:
@@ -1983,7 +1987,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                     "ztb.trading.environment.heavy_env.core"
                 )
                 HeavyTradingEnv = getattr(mod, "HeavyTradingEnv", None)
-            except Exception:
+            except Exception as e:
+                self.logger.debug("HeavyTradingEnv import failed: %s", e)
                 HeavyTradingEnv = None
 
             env_config = (
@@ -2057,8 +2062,8 @@ class UnifiedTrainer(BaseTrainer, TrainerProtocol):
                     self.logger.info(
                         f"env_config_dict repr[:200]: {repr(env_config_dict)[:200]}"
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                self.logger.debug("env_config_dict preview failed: %s", e)
 
             try:
                 # For the constructed EnvironmentConfig object
