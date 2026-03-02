@@ -96,6 +96,39 @@ fast_fill_defense:
 | TestFFDConfigDefaults | 3 | FFDConfig デフォルト値 |
 | **合計** | **39** | |
 
+## 231# Self-review 指摘修正 (same commit)
+
+| # | 重大度 | 内容 |
+|---|--------|------|
+| R1 | HIGH | TTL 期限切れ時に streak 未リセット → stale 値永続化リスク |
+| R2 | HIGH | Slow fill + negative PnL が streak インクリメント → adverse 中に boost 早期解除 |
+| R3 | HIGH | Adverse fill 継続時に `boost_activated_at` 非更新 → TTL 窓内で防御解除 |
+| R4 | MEDIUM | `import_state` で JSON null → `int(None)` TypeError |
+| R5 | MEDIUM | Config バリデーションに上限なし → サイレント無効化 |
+| R8 | MEDIUM | L1+L2 同時発火時のログが L1 のみ |
+
+### R2 詳細: Kyle 1985 の正しい適用
+
+元の実装では `is_fast` が `False` でも `elif state.boost_active:` 分岐で
+`normal_fill_streak += 1` されていた。つまり slow fill で PnL が -20bps
+（L2 deadzone 超え）であっても「正常」と数えられ、boost 解除が加速していた。
+
+修正後:
+```python
+elif state.boost_active:
+    if has_negative_edge:
+        state.normal_fill_streak = 0  # adverse PnL → streak リセット
+    else:
+        state.normal_fill_streak += 1
+```
+
+### R3 詳細: TTL リフレッシュ
+
+情報トレーダーが断続的に攻撃を続ける場合、元の TTL は初回起点
+からのみ計時され、600s 後に攻撃中でも防御が切れる窓が生まれた。
+修正後は adverse fill のたびに `boost_activated_at = time.time()`
+がリフレッシュされ、攻撃が続く限り防御も続く。
+
 ## 既存テスト修正
 
 - `test_100_fast_fill_defense.py`:

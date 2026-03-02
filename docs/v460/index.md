@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-04 (230# FFD deadzone/streak + MCB/SAD guard + hasattr排除)
+> 最終更新: 2026-03-03 (231# Self-review: FFD ロジック強化 + import_state None安全)
 
 ---
 

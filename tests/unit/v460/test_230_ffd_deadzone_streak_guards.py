@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import inspect
+import time
 
 import pytest
 
@@ -58,13 +59,19 @@ def _activate_boost(ffd: FastFillDefense, side: str = "buy") -> None:
     assert ffd.is_boost_active(side)
 
 
-def _normal_fill(ffd: FastFillDefense, side: str = "buy") -> None:
+def _normal_fill(
+    ffd: FastFillDefense,
+    side: str = "buy",
+    *,
+    post_fill_pnl_bps: float | None = None,
+) -> None:
     """正常 fill (not fast, no negative edge)."""
     ffd.evaluate_fill(
         side,
         queue_wait_sec=60.0,
         fill_price=99_500 if side == "buy" else 100_500,
         mid_at_fill=100_000,
+        post_fill_pnl_bps=post_fill_pnl_bps,
     )
 
 
@@ -247,6 +254,48 @@ class TestFFDBoostGradualRelease:
         assert not ffd.is_boost_active("buy")
         assert ffd._get_state("buy").normal_fill_streak == 0
 
+    def test_slow_adverse_pnl_resets_streak(self) -> None:
+        """231# R2: slow fill でも negative PnL があれば streak リセット."""
+        ffd = _make_ffd(streak=3, deadzone_bps=2.0)
+        _activate_boost(ffd, "buy")
+        _normal_fill(ffd, "buy")  # streak=1
+        _normal_fill(ffd, "buy")  # streak=2
+        assert ffd._get_state("buy").normal_fill_streak == 2
+
+        # slow fill でも L2 negative edge がある→ streak リセット
+        _normal_fill(ffd, "buy", post_fill_pnl_bps=-5.0)
+        assert ffd._get_state("buy").normal_fill_streak == 0
+        assert ffd.is_boost_active("buy")  # boost は維持
+
+    def test_ttl_expiry_resets_streak(self) -> None:
+        """231# R1: TTL 期限切れで streak もクリア."""
+        ffd = _make_ffd(streak=3)
+        _activate_boost(ffd, "buy")
+        _normal_fill(ffd, "buy")  # streak=1
+
+        state = ffd._get_state("buy")
+        # TTL 強制期限切れ
+        state.boost_activated_at = time.time() - 700.0
+        ffd.get_boost_multiplier("buy")  # TTL check 発火
+
+        assert not ffd.is_boost_active("buy")
+        assert state.normal_fill_streak == 0
+
+    def test_adverse_refreshes_ttl(self) -> None:
+        """231# R3: 継続 adverse fill で TTL がリフレッシュ."""
+        ffd = _make_ffd(streak=3)
+        _activate_boost(ffd, "buy")
+
+        t_before = ffd._get_state("buy").boost_activated_at
+        time.sleep(0.01)
+        # 再度 adverse fill
+        ffd.evaluate_fill(
+            "buy", queue_wait_sec=1.0,
+            fill_price=101_000, mid_at_fill=100_000,
+        )
+        t_after = ffd._get_state("buy").boost_activated_at
+        assert t_after > t_before  # TTL リフレッシュされた
+
 
 # ======================================================================
 # H-2 state persistence
@@ -281,7 +330,7 @@ class TestFFDStreakStatePersistence:
         assert ffd._state_buy.normal_fill_streak == 2
         assert ffd._state_sell.normal_fill_streak == 0
 
-    def test_import_missing_streak_defaults_zero(self) -> None:
+    def test_import_null_streak_defaults_zero(self) -> None:
         """旧バージョン state (streak なし) → 0 にフォールバック."""
         ffd = _make_ffd(streak=3)
         state = {
@@ -295,6 +344,25 @@ class TestFFDStreakStatePersistence:
         ffd.import_state(state)
         assert ffd._state_buy.normal_fill_streak == 0
         assert ffd._state_sell.normal_fill_streak == 0
+
+    def test_import_none_value_streak(self) -> None:
+        """231# R4: JSON の null 値で import がクラッシュしない."""
+        ffd = _make_ffd(streak=3)
+        state = {
+            "buy_boost_active": True,
+            "buy_boost_multiplier": None,
+            "buy_boost_activated_at": None,
+            "buy_normal_fill_streak": None,
+            "sell_boost_active": None,
+            "sell_boost_multiplier": None,
+            "sell_boost_activated_at": None,
+            "sell_normal_fill_streak": None,
+        }
+        ffd.import_state(state)
+        # None → デフォルト値にフォールバック
+        assert ffd._state_buy.boost_multiplier == 1.0
+        assert ffd._state_buy.normal_fill_streak == 0
+        assert ffd._state_sell.boost_active is False
 
 
 # ======================================================================
@@ -455,6 +523,10 @@ class TestConfigValidation230:
         with pytest.raises(ValueError, match="ffd_l2_deadzone_bps"):
             FillTestConfig(ffd_l2_deadzone_bps=-1.0)
 
+    def test_ffd_l2_deadzone_bps_over_100_raises(self) -> None:
+        with pytest.raises(ValueError, match="ffd_l2_deadzone_bps"):
+            FillTestConfig(ffd_l2_deadzone_bps=101.0)
+
     def test_ffd_l2_deadzone_bps_zero_ok(self) -> None:
         cfg = FillTestConfig(ffd_l2_deadzone_bps=0.0)
         assert cfg.ffd_l2_deadzone_bps == 0.0
@@ -462,6 +534,10 @@ class TestConfigValidation230:
     def test_ffd_boost_release_streak_zero_raises(self) -> None:
         with pytest.raises(ValueError, match="ffd_boost_release_streak"):
             FillTestConfig(ffd_boost_release_streak=0)
+
+    def test_ffd_boost_release_streak_over_20_raises(self) -> None:
+        with pytest.raises(ValueError, match="ffd_boost_release_streak"):
+            FillTestConfig(ffd_boost_release_streak=21)
 
     def test_ffd_boost_release_streak_one_ok(self) -> None:
         cfg = FillTestConfig(ffd_boost_release_streak=1)

@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 231# Self-review: FFD ロジック強化 + import_state None安全 (2026-03-03)
+
+### Fixed (Bug — 230# レビュー指摘)
+- **R1: TTL 期限切れ時の streak 未リセット**: `get_boost_multiplier()` で TTL expired 時に `normal_fill_streak` が stale のまま残る→ `export_state()` 経由で永続化されるリスク。streak=0 リセット追加 (`fast_fill_defense.py`)
+- **R2: Slow fill + negative PnL が streak にカウント**: `is_fast=False` でも adverse PnL の fill が `normal_fill_streak++` され boost 早期解除。`elif` 分岐に `has_negative_edge` チェック追加 (`fast_fill_defense.py`)
+- **R3: Adverse fill 継続時の TTL 非リフレッシュ**: boost 有効中に再 adverse fill でも `boost_activated_at` が初回のまま→ TTL 窓内で防御解除。常時 `time.time()` 更新に変更 (`fast_fill_defense.py`)
+- **R4: `import_state` で JSON null → TypeError**: `state.get("key", default)` でキー存在但値 None の場合 `int(None)` クラッシュ。`x or default` パターンに変更 (`fast_fill_defense.py`)
+
+### Improved
+- **R5: Config バリデーション上限**: `ffd_l2_deadzone_bps ≤ 100.0`, `ffd_boost_release_streak ≤ 20` の上限を追加 (サイレント無効化防止) (`fill_config.py`)
+- **R8: L1+L2 同時発火ログ**: `layer_info` が L1 のみになる問題。"L1+L2" ラベル追加 (`fast_fill_defense.py`)
+
+### Tests
+- `test_230_ffd_deadzone_streak_guards.py` — 6 テスト追加 (R1: TTL streak, R2: slow adverse, R3: TTL refresh, R4: import null, R5: 上限 ×2)
+- 総テスト: 3154 passed, 0 failed
+
+
 ## 230# FFD deadzone/streak + MCB/SAD guard + hasattr排除 (2026-03-04)
 
 ### Fixed (Bug — High Priority)

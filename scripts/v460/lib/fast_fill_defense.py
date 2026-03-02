@@ -108,6 +108,7 @@ class FastFillDefense:
                 old_mult = state.boost_multiplier
                 state.boost_active = False
                 state.boost_multiplier = 1.0
+                state.normal_fill_streak = 0  # 231# R1: TTL期限切れで streak もクリア
                 logger.info(
                     f"[fast_fill_defense] TTL expired ({side}): "
                     f"multiplier {old_mult:.2f}→1.00 "
@@ -215,21 +216,27 @@ class FastFillDefense:
         if is_fast and has_negative_edge:
             if not state.boost_active:
                 state.boost_active = True
-                state.boost_activated_at = time.time()  # 175# TTL 起点
                 raw_boost = self._resolve_boost(side)
                 state.boost_multiplier = self._compute_capped_multiplier(side, raw_boost)
-                layer_info = "L1" if has_negative_edge_l1 else "L2(pnl)"
+                _layer = (
+                    "L1+L2" if (has_negative_edge_l1 and has_negative_edge_l2)
+                    else ("L1" if has_negative_edge_l1 else "L2(pnl)")
+                )
                 logger.info(
                     f"[fast_fill_defense] Activated ({side}): "
                     f"wait={queue_wait_sec:.1f}s (< {ff_threshold}s), "
-                    f"negative edge detected ({layer_info}). "
+                    f"negative edge detected ({_layer}). "
                     f"multiplier→{state.boost_multiplier:.2f}"
                 )
-            # 230# H-2: 新規/継続に関わらず adverse fill で streak リセット
+            # 231# R3: 新規/継続に関わらず TTL リフレッシュ + streak リセット
+            state.boost_activated_at = time.time()
             state.normal_fill_streak = 0
         elif state.boost_active:
-            # 230# H-2: Kyle 1985 — 情報漸次伝播: N 回連続正常 fill で解除
-            state.normal_fill_streak += 1
+            # 231# R2: slow fill でも negative edge があれば streak リセット
+            if has_negative_edge:
+                state.normal_fill_streak = 0
+            else:
+                state.normal_fill_streak += 1
             _required = max(1, self._config.boost_release_streak)
             if state.normal_fill_streak >= _required:
                 old_mult = state.boost_multiplier
@@ -288,11 +295,11 @@ class FastFillDefense:
 
     def import_state(self, state: dict[str, object]) -> None:
         """226# hot-reload 後の boost 状態復元."""
-        self._state_buy.boost_active = bool(state.get("buy_boost_active", False))
-        self._state_buy.boost_multiplier = float(state.get("buy_boost_multiplier", 1.0))
-        self._state_buy.boost_activated_at = float(state.get("buy_boost_activated_at", 0.0))
-        self._state_buy.normal_fill_streak = int(state.get("buy_normal_fill_streak", 0))
-        self._state_sell.boost_active = bool(state.get("sell_boost_active", False))
-        self._state_sell.boost_multiplier = float(state.get("sell_boost_multiplier", 1.0))
-        self._state_sell.boost_activated_at = float(state.get("sell_boost_activated_at", 0.0))
-        self._state_sell.normal_fill_streak = int(state.get("sell_normal_fill_streak", 0))
+        self._state_buy.boost_active = bool(state.get("buy_boost_active") or False)
+        self._state_buy.boost_multiplier = float(state.get("buy_boost_multiplier") or 1.0)
+        self._state_buy.boost_activated_at = float(state.get("buy_boost_activated_at") or 0.0)
+        self._state_buy.normal_fill_streak = int(state.get("buy_normal_fill_streak") or 0)
+        self._state_sell.boost_active = bool(state.get("sell_boost_active") or False)
+        self._state_sell.boost_multiplier = float(state.get("sell_boost_multiplier") or 1.0)
+        self._state_sell.boost_activated_at = float(state.get("sell_boost_activated_at") or 0.0)
+        self._state_sell.normal_fill_streak = int(state.get("sell_normal_fill_streak") or 0)

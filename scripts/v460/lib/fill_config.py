@@ -667,13 +667,13 @@ class FillTestConfig:
                 f"velocity_ema_alpha must be in (0, 1], got {self.velocity_ema_alpha}"
             )
         # 230# FFD 新規パラメータのバリデーション
-        if self.ffd_l2_deadzone_bps < 0:
+        if not (0.0 <= self.ffd_l2_deadzone_bps <= 100.0):
             raise ValueError(
-                f"ffd_l2_deadzone_bps must be >= 0, got {self.ffd_l2_deadzone_bps}"
+                f"ffd_l2_deadzone_bps must be in [0, 100], got {self.ffd_l2_deadzone_bps}"
             )
-        if self.ffd_boost_release_streak < 1:
+        if not (1 <= self.ffd_boost_release_streak <= 20):
             raise ValueError(
-                f"ffd_boost_release_streak must be >= 1, got {self.ffd_boost_release_streak}"
+                f"ffd_boost_release_streak must be in [1, 20], got {self.ffd_boost_release_streak}"
             )
 
 
