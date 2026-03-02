@@ -177,6 +177,9 @@ class FillTestConfig:
     # 224# B1: halt解除後ソフトリカバリ — lot 縮小で段階的復帰
     per_side_dd_recovery_cycles: int = 5        # リカバリ期間サイクル数 (0=無効)
     per_side_dd_recovery_lot_scale: float = 0.5 # リカバリ期間中の lot 倍率
+    # 225# 市場理論補強: regime-aware recovery lot ペナルティ
+    recovery_trending_penalty: float = 0.7  # trending 時のリカバリ lot 追加縮小倍率
+    recovery_high_vol_penalty: float = 0.8  # high_vol 時のリカバリ lot 追加縮小倍率
     # 049# E3 サンプリング: 全約定ではなくサンプリングで multi-timeframe 計測
     e3_sampling_ratio: float = 1.0  # 0.0-1.0, 1.0=全約定, 0.33=1/3 のみ
     # 049# side 別 offset: buy/sell で独立に offset を設定
@@ -1049,6 +1052,11 @@ class FillTestConfig:
             kwargs["per_side_dd_recovery_cycles"] = int(dd_guard["per_side_recovery_cycles"])
         if "per_side_recovery_lot_scale" in dd_guard:
             kwargs["per_side_dd_recovery_lot_scale"] = float(dd_guard["per_side_recovery_lot_scale"])
+        # 225# regime-aware recovery ペナルティ
+        if "recovery_trending_penalty" in dd_guard:
+            kwargs["recovery_trending_penalty"] = float(dd_guard["recovery_trending_penalty"])
+        if "recovery_high_vol_penalty" in dd_guard:
+            kwargs["recovery_high_vol_penalty"] = float(dd_guard["recovery_high_vol_penalty"])
 
         return kwargs
 

@@ -46,6 +46,11 @@ class FillTestRegime(str, Enum):
         """trending 系 (方向問わず) かどうか."""
         return self in (FillTestRegime.TRENDING, FillTestRegime.TRENDING_UP, FillTestRegime.TRENDING_DOWN)
 
+    @property
+    def is_high_vol(self) -> bool:
+        """225# 高ボラティリティレジームかどうか."""
+        return self == FillTestRegime.HIGH_VOL
+
 
 @dataclass
 class RegimeConfig:

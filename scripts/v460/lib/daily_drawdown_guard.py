@@ -113,6 +113,10 @@ class DailyDrawdownGuard:
                     self._state.total_halt_days + (1 if was_halted else 0)
                 ),
             )
+            # 225# 日替わり clarification:
+            # DailyDrawdownState() の初期化で side_recovery_remaining_buy/sell も 0 に
+            # リセットされる。これは意図的な設計 — 日替わりで前日の halt/recovery は
+            # 全て無効化し、新たな daily PnL 計上からやり直す。
             self._soft_triggered_today = False
             if prev_day:
                 logger.info(
@@ -275,6 +279,16 @@ class DailyDrawdownGuard:
             )
             return self._per_side_recovery_lot_scale
         return 1.0
+
+    def restore_recovery_counter(self, side: str) -> None:
+        """225# 6.1: 例外でサイクルが中断された場合にリカバリカウンタを復元.
+
+        get_recovery_lot_scale() でデクリメント済みのカウンタを +1 戻す。
+        """
+        if side == "buy":
+            self._state.side_recovery_remaining_buy += 1
+        elif side == "sell":
+            self._state.side_recovery_remaining_sell += 1
 
     def get_metrics(self) -> dict[str, object]:
         """監視/レポート用メトリクス."""

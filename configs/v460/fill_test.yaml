@@ -476,6 +476,9 @@ loss_control:
     # 224# B1: halt解除後ソフトリカバリ — lot半減で段階的復帰
     per_side_recovery_cycles: 5    # リカバリ期間サイクル数 (5×120s=10分; 0=無効)
     per_side_recovery_lot_scale: 0.5  # リカバリ期間中lot倍率 (0.5=半減)
+    # 225# 市場理論 (Avellaneda-Stoikov): regime-aware recovery ペナルティ
+    recovery_trending_penalty: 0.7    # trending 時は lot ×0.7 追加縮小 (AS リスク残存)
+    recovery_high_vol_penalty: 0.8    # high_vol 時は lot ×0.8 追加縮小 (在庫リスク増大)
 
 # ---- 102# チューニングパラメータ (散在マジックナンバーの外部化) ----
 tuning:

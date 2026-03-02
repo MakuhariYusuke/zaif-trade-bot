@@ -253,6 +253,9 @@ class FillTestState:
     # 209# H4: DynamicKillManager 状態永続化 (rolling PnL window + cooldown)
     sell_kill_state: dict[str, object] | None = None
     buy_kill_state: dict[str, object] | None = None
+    # 225# MCB/SAD 状態永続化 (再起動時に price_buffer/halt_until を復元)
+    mcb_state: dict[str, object] | None = None
+    sad_state: dict[str, object] | None = None
     # タイムスタンプ
     saved_at: float = 0.0
     saved_at_iso: str = ""

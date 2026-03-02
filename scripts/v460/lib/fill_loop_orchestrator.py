@@ -201,11 +201,26 @@ class FillLoopOrchestratorMixin:
 
         state file が stale/missing の場合のセーフティネット。
         DD warmup と同様、既存 fill records の post_fill_30s_pnl を replay する。
+
+        225# F1: 当日分のみ replay — B2 日替わり kill reset との矛盾を防止。
+        前日以前のデータを注入すると日替わり reset() の効果が無効化されるため、
+        DD warmup と同じ日付フィルタを適用する。
         """
+        from datetime import datetime, timezone
+
+        utc_today = datetime.now(timezone.utc).strftime("%Y%m%d")
         sell_count = 0
         buy_count = 0
+        skipped_old = 0
         for r in records:
             if not r.filled or r.post_fill_30s_pnl is None:
+                continue
+            # 225# F1: 当日分のみ — 前日以前は skip
+            r_date = datetime.fromtimestamp(
+                r.timestamp, tz=timezone.utc,
+            ).strftime("%Y%m%d")
+            if r_date != utc_today:
+                skipped_old += 1
                 continue
             if r.side == "sell":
                 self._sell_kill_mgr.track(r.post_fill_30s_pnl)
@@ -213,10 +228,11 @@ class FillLoopOrchestratorMixin:
             elif r.side == "buy":
                 self._buy_kill_mgr.track(r.post_fill_30s_pnl)
                 buy_count += 1
-        if sell_count > 0 or buy_count > 0:
+        if sell_count > 0 or buy_count > 0 or skipped_old > 0:
             logger.info(
-                f"[209# H4] Kill manager warmup from fill records: "
-                f"sell={sell_count}, buy={buy_count}"
+                f"[209# H4] Kill manager warmup from fill records (today only): "
+                f"sell={sell_count}, buy={buy_count}, "
+                f"skipped_old={skipped_old}"
             )
 
     # ------------------------------------------------------------------
@@ -260,6 +276,13 @@ class FillLoopOrchestratorMixin:
             # 209# H4: DynamicKillManager 状態永続化
             sell_kill_state=self._sell_kill_mgr.export_state(),
             buy_kill_state=self._buy_kill_mgr.export_state(),
+            # 225# MCB/SAD 状態永続化
+            mcb_state=(
+                self._mcb.export_state() if hasattr(self, "_mcb") and self._mcb is not None else None
+            ),
+            sad_state=(
+                self._sad.export_state() if hasattr(self, "_sad") and self._sad is not None else None
+            ),
             **self._get_regime_state_fields(),
         )
 
@@ -320,6 +343,23 @@ class FillLoopOrchestratorMixin:
                 f"history={len(self._buy_kill_mgr._pnl_history)}, "
                 f"cooldown={self._buy_kill_mgr._cooldown}, "
                 f"kills={self._buy_kill_mgr._total_kills}"
+            )
+        # 225# MCB/SAD 状態復元
+        _mcb_state = getattr(saved_state, "mcb_state", None)
+        if _mcb_state and hasattr(self, "_mcb") and self._mcb is not None:
+            self._mcb.import_state(_mcb_state)
+            logger.info(
+                f"[225#] MCB state restored: "
+                f"buffer={len(self._mcb._price_buffer)}, "
+                f"halts={self._mcb._total_halts}"
+            )
+        _sad_state = getattr(saved_state, "sad_state", None)
+        if _sad_state and hasattr(self, "_sad") and self._sad is not None:
+            self._sad.import_state(_sad_state)
+            logger.info(
+                f"[225#] SAD state restored: "
+                f"buffer={len(self._sad._spread_buffer)}, "
+                f"frozens={self._sad._total_frozens}"
             )
 
     # ------------------------------------------------------------------
@@ -990,6 +1030,8 @@ class FillLoopOrchestratorMixin:
                 alt_filtered = self._is_time_filtered(side=alt_side)
                 if alt_filtered:
                     # 両 side ともフィルタ → スリープ
+                    # 225# 5.1: fire count 記録
+                    self._inc_guard_fire("time_filter_both_sides")
                     # 140# §8.1-#2: skip record を生成し可観測性確保 (132# F4)
                     if not self._time_filter.in_filter:
                         self._time_filter.on_enter()
@@ -1159,6 +1201,8 @@ class FillLoopOrchestratorMixin:
                     # 両 side とも残高不足 → 従来通りの処理
                     self._last_side = next_side  # → 次の _next_side() が反対を返す
                     self._preflight_skip_count += 1
+                    # 225# 5.2: fire count 記録
+                    self._inc_guard_fire("preflight_insufficient")
 
                     # 140# §8.1-#2: preflight skip record 生成 (132# F4)
                     # 145# §9-#5: _make_skip_record DRY 化
@@ -1456,6 +1500,27 @@ class FillLoopOrchestratorMixin:
                 )
                 if _recovery_scale < 1.0:
                     self._inc_guard_fire("per_side_halt_recovery_active")
+                    # 225# 市場理論補強: regime-aware recovery scaling
+                    # Avellaneda-Stoikov 原理: 在庫リスクはボラティリティに比例
+                    # trending regime → AS リスク残存 → さらに保守的 (×0.7)
+                    # ranging regime → mean reversion 期待 → 通常スケール
+                    if (
+                        self._regime_detector is not None
+                        and hasattr(self._regime_detector, "current_regime")
+                    ):
+                        _regime = self._regime_detector.current_regime
+                        if _regime is not None and _regime.is_trending:
+                            _recovery_scale *= self.config.recovery_trending_penalty
+                            logger.info(
+                                f"[225#] Recovery penalty: trending regime → "
+                                f"scale={_recovery_scale:.3f}"
+                            )
+                        elif _regime is not None and _regime.is_high_vol:
+                            _recovery_scale *= self.config.recovery_high_vol_penalty
+                            logger.info(
+                                f"[225#] Recovery penalty: high_vol regime → "
+                                f"scale={_recovery_scale:.3f}"
+                            )
                 self._halt_recovery_lot_mult = _recovery_scale
 
                 record = await self.run_single_cycle(
@@ -1493,6 +1558,14 @@ class FillLoopOrchestratorMixin:
             except Exception as e:
                 # 024# R2: 例外分類 — サイクル実行エラーは継続可能
                 logger.error(f"Cycle execution error: {e}", exc_info=True)
+                # 225# 6.1: recovery counter が消費済みなのに lot 縮小が適用されなかった
+                # → カウンタを復元して次サイクルで再適用
+                if _recovery_scale < 1.0:
+                    self._daily_drawdown_guard.restore_recovery_counter(next_side)
+                    logger.info(
+                        f"[225# 6.1] Recovery counter restored for {next_side} "
+                        f"(cycle aborted by exception)"
+                    )
                 # 128# 例外時も dust sweep ロットを復元
                 self._balance_checker.restore_lot_after_dust_sweep()
                 # 166# SR-4: 例外 continue でも side 交互を保証
@@ -1665,8 +1738,18 @@ class FillLoopOrchestratorMixin:
                 )
             self._health_monitor.maybe_gc()
 
-            # 113# resilience: 状態永続化 (progress_log_interval ごと)
-            if self._cycle_count % self.config.progress_log_interval == 0:
+            # 113# resilience: 状態永続化
+            # 225# F2: progress_log_interval ごと OR _STATE_SAVE_INTERVAL_SEC 経過で保存
+            # 通常パスでも ~5 分間隔で state を保存し、クラッシュ時の損失を最小化
+            _now_mono_save = time.monotonic()
+            _progress_save = (
+                self._cycle_count % self.config.progress_log_interval == 0
+            )
+            _time_save = (
+                _now_mono_save - self._last_state_save_time
+                >= self._STATE_SAVE_INTERVAL_SEC
+            )
+            if _progress_save or _time_save:
                 # 129# lock heartbeat 更新 (state 保存と同期)
                 self._update_lock_heartbeat()
                 self._state_persistence.save(self._build_state_snapshot(
@@ -1674,7 +1757,12 @@ class FillLoopOrchestratorMixin:
                     filled_count=filled_count,
                     cumulative_pnl_jpy=cumulative_pnl_jpy,
                 ))
-                self._last_state_save_time = time.monotonic()  # 223#
+                self._last_state_save_time = _now_mono_save  # 223#
+                if _time_save and not _progress_save:
+                    logger.info(
+                        f"[225# F2] Normal-cycle time-based state save "
+                        f"(cycle={self._cycle_count})"
+                    )
 
             # --- 044# A-7: loss_cap 定期更新 (残高変動を反映) ---
             if (
