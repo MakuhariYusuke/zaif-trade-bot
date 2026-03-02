@@ -192,10 +192,35 @@ per-side halt は `halt_cycles=15` で解除されるが、解除直後に即座
 
 ---
 
+## 7. セルフレビュー (223# 実装の検証)
+
+### 7.1 確認項目と結果
+
+| # | 検証項目 | 結果 | 評価 |
+|---|----------|------|------|
+| R1 | `_is_sell_killed()` / `_is_buy_killed()` の呼び出し回数 — 副作用 (`_stale_counter++`) が 1 回/サイクルか | gate evaluate の引数として 1 回ずつ呼ばれる。OK | ✅ |
+| R2 | `_make_loop_skip_record` の `balance_forced_switch` パラメータ存在確認 | L337-368 に定義あり。OK | ✅ |
+| R3 | balance_forced halt block 後の `_last_side` 設定 — freeze + halt で空回りリスク | `freeze_remaining` がデクリメントされ数サイクルで解消。実害は軽微 | ⚠ LOW |
+| R4 | skip-time state save が gate_block path のみの問題 — 他 continue パスも stale? | DD halt は独自 save あり。他はいずれも短 sleep + 次ループで normal path 到達。gate_block のみで十分 | ✅ |
+| R5 | `_cycle_count` は `run_single_cycle` でのみ++ — skip 中は `progress_log_interval` 到達不能 | 223# skip-time save が正しく必要な理由。OK | ✅ |
+| R6 | `dual_kill_bypassed` / `probe_fired` / `force_release_fired` のテストカバレッジ | テスト 11 件追加 (`test_223_review_response.py`) | ✅ |
+
+### 7.2 盲点 — 今後の改善候補
+
+| # | 盲点 | 重要度 | 対応方針 |
+|---|------|--------|----------|
+| B1 | per-side halt 解除直後のソフトリカバリ不在 | MEDIUM | §6.1 参照。halt_cycles 解除後 3 サイクル lot 半減の検討 |
+| B2 | 日替わりリセット × dynamic kill rolling window の矛盾 | MEDIUM | §6.2 参照。日替わり時の warning 追加を検討 |
+| B3 | balance_forced_halt_block で `_balance_forced_skip_count` 未インクリメント | OK | continue で抜けるため下流に影響なし |
+| B4 | gate_block 以外の continue パスでの state stale | LOW | 短 sleep → 次ループで save 到達。gate_block のみ長時間固着リスクあり |
+
+---
+
 ## テスト結果
 
 ```
-2971 passed, 20 warnings in 146.63s
+2982 passed, 20 warnings in 167.46s
 ```
 
-既存テスト全件通過。新規フィールド (`dual_kill_bypassed`, `probe_fired`, `force_release_fired`) はデフォルト値 `False` のため後方互換。
+既存テスト 2971 件 + 新規 11 件 (`test_223_review_response.py`) 全件通過。
+新規フィールド (`dual_kill_bypassed`, `probe_fired`, `force_release_fired`) はデフォルト値 `False` のため後方互換。
