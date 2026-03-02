@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 229# コード衛生 + M-5 unknown counter fix + M-2 副作用 getter 改名 (2026-03-04)
+
+### Fixed (Bug)
+- **M-5: unknown regime counter reset 漏れ**: Gate 2-3 (ranging/trending) early return 時に `_consecutive_unknown_blocks` がリセットされず、unknown→ranging→unknown 遷移で偽バイパスが発動するリスクを修正。Gate 1 直後に非 unknown リセットを移動 (`cycle_gate_aggregator.py`)
+
+### Improved (Code Quality)
+- **H-1/Q5: hasattr 完全排除 (maker_price)**: `_apply_regime_boosts()` から 5x `hasattr(self._regime_detector, "current_regime")` + 1x `hasattr(self._regime_detector, "last_volatility_ratio")` を削除。`self._regime_detector is not None` パターンに統一 (`maker_price.py`)
+- **H-3: getattr(self, ...) 排除**: `_soft_drawdown_interval_multiplier` の `getattr()` 2箇所を直接アクセスに変更。クラスレベルデフォルト `= 1.0` が保証 (`fill_loop_orchestrator.py`)
+- **H-4: inline import time 排除 (FFD)**: `fast_fill_defense.py` の 2x `import time as _time` を module-level `import time` に統一
+- **H-5: inline import time 排除 (orchestrator)**: `fill_loop_orchestrator.py` の 1x `import time as _time` を既存 module-level import に統一
+- **Q1: getattr → 直接アクセス**: `getattr(self._config, "inv_decay_tau_sec", 0.0)` → `self._config.inv_decay_tau_sec` (`maker_price.py`)
+
+### Changed (API)
+- **M-2: `get_recovery_lot_scale()` → `consume_recovery_cycle()`**: 副作用のある getter (残カウンタデクリメント) を consume_ 命名に変更。呼出元 (orchestrator, tests) 全て更新 (`daily_drawdown_guard.py`)
+
+### Tests
+- `test_229_cleanup_counter_rename.py` — 25 テスト (FFD import × 3, hasattr排除 × 3, inv_decay直接 × 4, orchestrator getattr × 2, M-5 counter fix × 5, M-2 rename × 5, regression × 3)
+- 総テスト: 3109 passed, 0 failed
+
+
 ## 228# Inventory Time-Decay + hasattr排除 (2026-03-04)
 
 ### Added (Theory)

@@ -170,6 +170,11 @@ class CycleGateAggregator:
             self._consecutive_unknown_blocks += 1
             return result
 
+        # 229# M-5 fix: Gate 1 通過かつ非 unknown → カウンタリセット
+        # Gate 2-6 の early return で reset 漏れを防ぐ
+        if _regime != "unknown":
+            self._consecutive_unknown_blocks = 0
+
         # --- Gate 2: B1' ranging_buy_low_vol ---
         g2 = self._check_ranging_buy_low_vol(side, _regime, vol_ratio, balance_forced)
         result.checks.append(g2)
@@ -246,11 +251,8 @@ class CycleGateAggregator:
             self._consecutive_unknown_blocks += 1
             return result
 
-        # 219# unknown ブロックせず通過 → カウンタリセット
-        if _regime == "unknown":
-            pass  # regime が unknown だが gate はブロックしなかった (balance_forced 等)
-        else:
-            self._consecutive_unknown_blocks = 0
+        # 229# M-5: non-unknown リセットは Gate 1 直後で実施済み
+        # unknown 通過時はカウンタ維持 (bypass 継続のため)
 
         # --- Gate 8: narrow_spread_pause (197# B3→Gate 統合) ---
         g8 = self._check_narrow_spread(spread_jpy, mid_price)

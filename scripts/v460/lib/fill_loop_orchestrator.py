@@ -188,8 +188,7 @@ class FillLoopOrchestratorMixin:
             # hard limit チェック
             if daily_pnl_sum <= guard._hard_limit_bps:
                 guard.state.halted = True
-                import time as _time
-                guard.state.halt_triggered_at = _time.time()
+                guard.state.halt_triggered_at = time.time()
             logger.warning(
                 f"[203# F] DD warmup from fill records: {daily_fill_count} fills today, "
                 f"daily_pnl={daily_pnl_sum:+.2f}bps, "
@@ -272,9 +271,7 @@ class FillLoopOrchestratorMixin:
             # 210# L-2: one-sided 連続カウンタ永続化
             one_sided_consecutive_count=self._one_sided_consecutive_count,
             # 224#: soft drawdown interval 乗数永続化
-            soft_drawdown_interval_multiplier=getattr(
-                self, "_soft_drawdown_interval_multiplier", 1.0
-            ),
+            soft_drawdown_interval_multiplier=self._soft_drawdown_interval_multiplier,
             # 216# E: Guard 発火カウンタ永続化
             guard_fire_counts=dict(self._guard_fire_counts) if self._guard_fire_counts else None,
             # 209# H4: DynamicKillManager 状態永続化
@@ -381,7 +378,7 @@ class FillLoopOrchestratorMixin:
         regime = self._current_regime_value()
         base = self._cycle_strategy.effective_interval(regime)
         # 200# P0-2: soft drawdown で lot 半減不可 → interval 延長
-        soft_dd_mult = getattr(self, "_soft_drawdown_interval_multiplier", 1.0)
+        soft_dd_mult = self._soft_drawdown_interval_multiplier
         # 217# fix: alert_mode の interval_mult をスキップ/halt パスにも適用
         alert_im = self._alert_interval_mult
         _raw = base * multiplier * soft_dd_mult * alert_im
@@ -1517,7 +1514,7 @@ class FillLoopOrchestratorMixin:
 
             try:
                 # 224# B1: halt解除後ソフトリカバリ — lot 縮小倍率を算出
-                _recovery_scale = self._daily_drawdown_guard.get_recovery_lot_scale(
+                _recovery_scale = self._daily_drawdown_guard.consume_recovery_cycle(
                     next_side
                 )
                 if _recovery_scale < 1.0:

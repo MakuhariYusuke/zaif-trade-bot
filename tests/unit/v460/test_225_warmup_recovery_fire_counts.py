@@ -1,4 +1,4 @@
-"""225# F1/F2/6.1/5.1-5.2: warmup日付フィルタ + state save + recovery復元 + fire countテスト."""
+﻿"""225# F1/F2/6.1/5.1-5.2: warmup日付フィルタ + state save + recovery復元 + fire countテスト."""
 from __future__ import annotations
 
 import time
@@ -122,8 +122,8 @@ class TestRecoveryCounterRestore:
         guard.tick_side_halt()
         assert guard.state.side_recovery_remaining_buy == 3
 
-        # 1回消費 (get_recovery_lot_scale)
-        scale = guard.get_recovery_lot_scale("buy")
+        # 1回消費 (consume_recovery_cycle)
+        scale = guard.consume_recovery_cycle("buy")
         assert scale == 0.5
         assert guard.state.side_recovery_remaining_buy == 2
 
@@ -139,7 +139,7 @@ class TestRecoveryCounterRestore:
         guard.tick_side_halt()
         assert guard.state.side_recovery_remaining_sell == 3
 
-        scale = guard.get_recovery_lot_scale("sell")
+        scale = guard.consume_recovery_cycle("sell")
         assert scale == 0.5
         assert guard.state.side_recovery_remaining_sell == 2
 

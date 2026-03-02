@@ -256,11 +256,12 @@ class DailyDrawdownGuard:
                     f"recovery={self._per_side_recovery_cycles} cycles"
                 )
 
-    def get_recovery_lot_scale(self, side: str) -> float:
+    def consume_recovery_cycle(self, side: str) -> float:
         """224# B1: halt解除後のリカバリ期間中の lot 縮小倍率を返す.
 
         リカバリ残サイクル > 0 の場合、デクリメントして縮小倍率を返す。
         リカバリ期間外は 1.0 を返す。毎サイクル1回だけ呼ぶこと。
+        229# M-2: 副作用のある getter → consume_ 命名に変更。
         """
         if not self._per_side_enabled or self._per_side_recovery_cycles <= 0:
             return 1.0
@@ -283,7 +284,7 @@ class DailyDrawdownGuard:
     def restore_recovery_counter(self, side: str) -> None:
         """225# 6.1: 例外でサイクルが中断された場合にリカバリカウンタを復元.
 
-        get_recovery_lot_scale() でデクリメント済みのカウンタを +1 戻す。
+        consume_recovery_cycle() でデクリメント済みのカウンタを +1 戻す。
         """
         if side == "buy":
             self._state.side_recovery_remaining_buy += 1

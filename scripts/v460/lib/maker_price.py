@@ -240,7 +240,7 @@ class MakerPriceCalculator:
         古い fill 履歴に基づくポジション偏重の信頼性低下を反映。
         """
         raw = self._inv_net_imbalance
-        tau = getattr(self._config, "inv_decay_tau_sec", 0.0)
+        tau = self._config.inv_decay_tau_sec
         if not isinstance(tau, (int, float)) or tau <= 0 or self._inv_last_update_time <= 0:
             return raw
         elapsed = now - self._inv_last_update_time
@@ -510,7 +510,6 @@ class MakerPriceCalculator:
         # 176# B: 方向×サイド別 4 分岐 (trending_up/down × buy/sell)
         if (
             self._regime_detector is not None
-            and hasattr(self._regime_detector, "current_regime")
             and self._regime_detector.current_regime.is_trending
         ):
             _regime_val = self._regime_detector.current_regime.value
@@ -533,7 +532,6 @@ class MakerPriceCalculator:
         # 143# R-1a: high_vol 時にオフセットをブースト (AS リスク上昇に対応)
         if (
             self._regime_detector is not None
-            and hasattr(self._regime_detector, "current_regime")
             and self._regime_detector.current_regime == FillTestRegime.HIGH_VOL
             and cfg.regime_high_vol_offset_boost > 1.0
         ):
@@ -556,7 +554,6 @@ class MakerPriceCalculator:
         #  ask厚 (imbalance<0) → 短期下方回帰 → sell有利 → sell discount強化
         if (
             self._regime_detector is not None
-            and hasattr(self._regime_detector, "current_regime")
             and self._regime_detector.current_regime == FillTestRegime.RANGING
             and cfg.regime_ranging_offset_discount < 1.0
         ):
@@ -598,7 +595,6 @@ class MakerPriceCalculator:
         if (
             cfg.low_vol_offset_boost_enabled
             and self._regime_detector is not None
-            and hasattr(self._regime_detector, "last_volatility_ratio")
         ):
             vol_ratio = self._regime_detector.last_volatility_ratio
             if vol_ratio < cfg.low_vol_threshold:
@@ -630,7 +626,6 @@ class MakerPriceCalculator:
             cfg.unknown_buy_offset_boost > 1.0
             and side == "buy"
             and self._regime_detector is not None
-            and hasattr(self._regime_detector, "current_regime")
             and (
                 self._regime_detector.current_regime is None
                 or self._regime_detector.current_regime == FillTestRegime.UNKNOWN

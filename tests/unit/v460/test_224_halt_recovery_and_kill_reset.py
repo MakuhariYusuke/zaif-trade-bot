@@ -1,4 +1,4 @@
-"""224# B1/B2: halt解除後ソフトリカバリ + 日替わり×kill矛盾修正のテスト."""
+﻿"""224# B1/B2: halt解除後ソフトリカバリ + 日替わり×kill矛盾修正のテスト."""
 from __future__ import annotations
 
 import pytest
@@ -47,25 +47,25 @@ class TestHaltRecovery:
         assert guard.state.side_recovery_remaining_buy == 3
 
     def test_recovery_lot_scale_decrements(self) -> None:
-        """get_recovery_lot_scale がリカバリ期間中に縮小倍率を返しデクリメントする."""
+        """consume_recovery_cycle がリカバリ期間中に縮小倍率を返しデクリメントする."""
         guard = self._make_guard(recovery_cycles=3, recovery_lot_scale=0.5)
         # manually set recovery state
         guard.state.side_recovery_remaining_buy = 3
 
-        scale1 = guard.get_recovery_lot_scale("buy")
+        scale1 = guard.consume_recovery_cycle("buy")
         assert scale1 == 0.5
         assert guard.state.side_recovery_remaining_buy == 2
 
-        scale2 = guard.get_recovery_lot_scale("buy")
+        scale2 = guard.consume_recovery_cycle("buy")
         assert scale2 == 0.5
         assert guard.state.side_recovery_remaining_buy == 1
 
-        scale3 = guard.get_recovery_lot_scale("buy")
+        scale3 = guard.consume_recovery_cycle("buy")
         assert scale3 == 0.5
         assert guard.state.side_recovery_remaining_buy == 0
 
         # リカバリ終了 → 1.0
-        scale4 = guard.get_recovery_lot_scale("buy")
+        scale4 = guard.consume_recovery_cycle("buy")
         assert scale4 == 1.0
 
     def test_recovery_sell_side(self) -> None:
@@ -73,16 +73,16 @@ class TestHaltRecovery:
         guard = self._make_guard(recovery_cycles=2, recovery_lot_scale=0.5)
         guard.state.side_recovery_remaining_sell = 2
 
-        assert guard.get_recovery_lot_scale("sell") == 0.5
+        assert guard.consume_recovery_cycle("sell") == 0.5
         assert guard.state.side_recovery_remaining_sell == 1
         # buy 側は影響なし
-        assert guard.get_recovery_lot_scale("buy") == 1.0
+        assert guard.consume_recovery_cycle("buy") == 1.0
 
     def test_recovery_disabled_when_zero_cycles(self) -> None:
         """recovery_cycles=0 の場合は常に 1.0."""
         guard = self._make_guard(recovery_cycles=0)
         guard.state.side_recovery_remaining_buy = 5  # 強制設定しても無効
-        assert guard.get_recovery_lot_scale("buy") == 1.0
+        assert guard.consume_recovery_cycle("buy") == 1.0
 
     def test_recovery_disabled_when_per_side_disabled(self) -> None:
         """per_side_enabled=False の場合は常に 1.0."""
@@ -94,7 +94,7 @@ class TestHaltRecovery:
             per_side_recovery_cycles=5,
         )
         guard.state.side_recovery_remaining_buy = 3
-        assert guard.get_recovery_lot_scale("buy") == 1.0
+        assert guard.consume_recovery_cycle("buy") == 1.0
 
     def test_recovery_full_flow_halt_to_recovery(self) -> None:
         """halt → tick_side_halt で解除 → リカバリ → 通常: フルフロー."""
@@ -112,11 +112,11 @@ class TestHaltRecovery:
         assert guard.state.side_recovery_remaining_sell == 2
 
         # Phase 3: recovery — lot scale 0.5 for 2 cycles
-        assert guard.get_recovery_lot_scale("sell") == 0.5
-        assert guard.get_recovery_lot_scale("sell") == 0.5
+        assert guard.consume_recovery_cycle("sell") == 0.5
+        assert guard.consume_recovery_cycle("sell") == 0.5
 
         # Phase 4: normal
-        assert guard.get_recovery_lot_scale("sell") == 1.0
+        assert guard.consume_recovery_cycle("sell") == 1.0
 
     def test_recovery_in_export_import(self) -> None:
         """リカバリ状態が export/import で永続化される."""

@@ -11,6 +11,7 @@ run_fill_test.py からの God Object 分割:
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass
 from typing import Optional
 
@@ -94,8 +95,7 @@ class FastFillDefense:
         state = self._get_state(side)
         # 175# TTL decay: boost_ttl_sec を超過したら自動解除
         if state.boost_active and self._config.boost_ttl_sec > 0:
-            import time as _time
-            if (_time.time() - state.boost_activated_at) > self._config.boost_ttl_sec:
+            if (time.time() - state.boost_activated_at) > self._config.boost_ttl_sec:
                 old_mult = state.boost_multiplier
                 state.boost_active = False
                 state.boost_multiplier = 1.0
@@ -203,9 +203,8 @@ class FastFillDefense:
 
         if is_fast and has_negative_edge:
             if not state.boost_active:
-                import time as _time
                 state.boost_active = True
-                state.boost_activated_at = _time.time()  # 175# TTL 起点
+                state.boost_activated_at = time.time()  # 175# TTL 起点
                 raw_boost = self._resolve_boost(side)
                 state.boost_multiplier = self._compute_capped_multiplier(side, raw_boost)
                 layer_info = "L1" if has_negative_edge_l1 else "L2(pnl)"

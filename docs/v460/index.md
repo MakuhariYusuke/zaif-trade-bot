@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-04 (228# Inventory Time-Decay + hasattr排除)
+> 最終更新: 2026-03-04 (229# コード衛生 + M-5 unknown counter fix + M-2 rename)
 
 ---
 
@@ -219,6 +219,7 @@
 | 226 | fix | [226_ph2_fix_loss_boost_decay_mcb_ffd_state_inv_skew.md](226_ph2_fix_loss_boost_decay_mcb_ffd_state_inv_skew.md) | loss_boost指数減衰 + MCB/FFD state永続化 + inv_skew O(1) + toxic_veto修正 + halt中MCB/SAD更新 |
 | 227 | fix | [227_ph2_fix_ranging_obi_velocity_ema_import_optimization.md](227_ph2_fix_ranging_obi_velocity_ema_import_optimization.md) | Ranging×OBI方向非対称 + Velocity EMAフィルタ + import最適化 + getattr排除 + Config検証 |
 | 228 | fix | [228_ph2_fix_inv_decay_hasattr_removal.md](228_ph2_fix_inv_decay_hasattr_removal.md) | Inventory Time-Decay + hasattr排除 |
+| 229 | fix | [229_ph2_fix_code_hygiene_counter_rename.md](229_ph2_fix_code_hygiene_counter_rename.md) | コード衛生 + M-5 unknown counter fix + M-2 consume rename |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
