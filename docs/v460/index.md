@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-03 (238# 237# セルフレビュー: 型安全 + 残高スナップショット + TTL + サイドベトー)
+> 最終更新: 2026-03-03 (239# Feasible Quote Proactive: InfeasibleQuoteError + 制約前方移動)
 
 ---
 
@@ -229,6 +229,7 @@
 | 236 | fix | [236_ph2_fix_state_persistence_cqs_hasattr.md](236_ph2_fix_state_persistence_cqs_hasattr.md) | State永続化 + CQS分離 + hasattr排除 + per-side no_feasible |
 | 237 | fix | [237_ph2_fix_phantom_position_guard.md](237_ph2_fix_phantom_position_guard.md) | PhantomPositionGuard: status_unknown 幽霊ポジション検知・遅延照合 (232# §1.6) |
 | 238 | fix | [238_ph2_fix_237_self_review.md](238_ph2_fix_237_self_review.md) | 237# セルフレビュー: 型安全 + 残高スナップショット + TTL + サイドベトー |
+| 239 | fix | [239_ph2_fix_feasible_quote_proactive.md](239_ph2_fix_feasible_quote_proactive.md) | Feasible Quote Proactive: InfeasibleQuoteError + 制約前方移動 + fallback dedup (232# §1.5) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

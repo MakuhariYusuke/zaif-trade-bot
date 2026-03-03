@@ -23,6 +23,7 @@ from scripts.v460.lib.fill_config import (
     FillMonitorResult as _FillMonitorResult,
     PnlMeasurement as _PnlMeasurement,
 )
+from scripts.v460.lib.maker_price import InfeasibleQuoteError
 from scripts.v460.lib.ob_utils import best_bid_ask  # 200# 10-C: module-level import
 
 if TYPE_CHECKING:
@@ -71,6 +72,50 @@ class FillCycleExecutorMixin:
         """maker limit 価格を算出 — 120# MakerPriceCalculator に委譲."""
         r = await self._maker_price.compute(side, self.adapter, self.config.symbol)
         return r.price, r.spread, r.effective_offset_ratio
+
+    def _make_price_error_skip(
+        self,
+        *,
+        side: str,
+        cancel_reason: str,
+        cycle_id: str,
+        error: Exception,
+    ) -> FillRecord:
+        """239# maker price エラー時の fallback price + skip record 共通化.
+
+        155# §9.5 #3: 前回 mid_price をフォールバック参照。
+        156# §10 #5: 鮮度判定 — 閾値超は stale とみなす。
+        """
+        _fb_price, _fb_time = self._maker_price.get_fallback_price()
+        _fallback_price = _fb_price or 0.0
+        _fallback_age: float | None = None
+        _fallback_stale = False
+        _stale_sec = self.config.fallback_stale_sec
+        if _fallback_price > 0 and _fb_time is not None:
+            _fallback_age = time.time() - _fb_time
+            _fallback_stale = _fallback_age > _stale_sec
+            logger.info(
+                f"[155# ob_fallback] Using last mid_price={_fallback_price:.0f} "
+                f"age={_fallback_age:.1f}s stale={_fallback_stale} "
+                f"as reference for skip record"
+            )
+        elif _fallback_price > 0:
+            _fallback_stale = True
+            logger.info(
+                f"[155# ob_fallback] Using last mid_price={_fallback_price:.0f} "
+                f"(no timestamp, treated as stale) as reference for skip record"
+            )
+        return self._make_cycle_skip_record(
+            side=side,
+            cancel_reason=cancel_reason,
+            cycle_id=cycle_id,
+            order_price=_fallback_price if not _fallback_stale else 0.0,
+            spread_offset_ratio=self._maker_price.base_offset_ratio,
+            error_message=(
+                f"{error} [fallback_age={_fallback_age:.1f}s stale={_fallback_stale}]"
+                if _fallback_age is not None else str(error)
+            ),
+        )
 
     def _make_cycle_skip_record(
         self,
@@ -703,78 +748,45 @@ class FillCycleExecutorMixin:
             if self._consecutive_no_feasible is None:
                 self._consecutive_no_feasible = {}
             self._consecutive_no_feasible[side] = 0
+        except InfeasibleQuoteError as e:
+            # 239# 232# §1.5: 型安全な制約崩壊分類 — 文字列パース不要
+            ob_cancel_reason = e.reason
+            if e.reason == "spread_too_narrow":
+                logger.info(f"[158# §20-D] {e}")
+            else:
+                logger.warning(f"Maker price rejected: {e}")
+            # 234# no_feasible_quote 検出: spread 制約で連続失敗 (236# per-side)
+            if self._consecutive_no_feasible is None:
+                self._consecutive_no_feasible = {}
+            _cnf = self._consecutive_no_feasible.get(side, 0) + 1
+            self._consecutive_no_feasible[side] = _cnf
+            if _cnf >= 3:
+                ob_cancel_reason = CR.NO_FEASIBLE_QUOTE
+                logger.warning(
+                    f"[234#] NO_FEASIBLE_QUOTE: {_cnf} "
+                    f"consecutive infeasible quotes ({side}) — constraint set collapse "
+                    f"(min_spread={self.config.min_spread_jpy}, "
+                    f"sell_max_spread={self.config.sell_max_spread_jpy})"
+                )
+            return self._make_price_error_skip(
+                side=side, cancel_reason=ob_cancel_reason,
+                cycle_id=cycle_id, error=e,
+            )
         except Exception as e:
             # 130# orderbook_error 細分化
             err_msg = str(e).lower()
             if "timeout" in err_msg or "timed out" in err_msg:
                 ob_cancel_reason = "orderbook_timeout"
-                logger.error(f"Failed to compute maker price: {e}")
             elif "rate" in err_msg or "limit" in err_msg or "too many" in err_msg:
                 ob_cancel_reason = "orderbook_rate_limit"
-                logger.error(f"Failed to compute maker price: {e}")
             elif "empty" in err_msg or "no bid" in err_msg or "no ask" in err_msg:
                 ob_cancel_reason = "orderbook_empty"
-                logger.error(f"Failed to compute maker price: {e}")
-            elif "sell_guard" in err_msg:
-                # 234# sell_guard + spread_too_narrow が同時発生→ 制約集合崩壊
-                ob_cancel_reason = "sell_guard_reject"
-                logger.warning(f"Maker price rejected: {e}")
-            elif "spread too narrow" in err_msg:
-                # 158# §20-D: spread_too_narrow を専用分類 — ERROR→INFO 降格
-                ob_cancel_reason = "spread_too_narrow"
-                logger.info(f"[158# §20-D] {e}")
             else:
                 ob_cancel_reason = "orderbook_error"
-                logger.error(f"Failed to compute maker price: {e}")
-
-            # 234# no_feasible_quote 検出: spread 制約 (narrow/wide) で連続失敗
-            # 236# per-side 化
-            if ob_cancel_reason in ("spread_too_narrow", "sell_guard_reject"):
-                if self._consecutive_no_feasible is None:
-                    self._consecutive_no_feasible = {}
-                _cnf = self._consecutive_no_feasible.get(side, 0) + 1
-                self._consecutive_no_feasible[side] = _cnf
-                if _cnf >= 3:
-                    ob_cancel_reason = CR.NO_FEASIBLE_QUOTE
-                    logger.warning(
-                        f"[234#] NO_FEASIBLE_QUOTE: {_cnf} "
-                        f"consecutive infeasible quotes ({side}) — constraint set collapse "
-                        f"(min_spread={self.config.min_spread_jpy}, "
-                        f"sell_max_spread={self.config.sell_max_spread_jpy})"
-                    )
-            # 155# §9.5 #3: orderbook_error 時に前回 mid_price をフォールバック
-            # 156# §10 #5: 鮮度判定 — 閾値超は stale とみなす
-            # 156# §16 review: _prev_mid_* 直接アクセス → 公開メソッド化
-            _fb_price, _fb_time = self._maker_price.get_fallback_price()
-            _fallback_price = _fb_price or 0.0
-            _fallback_age: float | None = None
-            _fallback_stale = False
-            _stale_sec = self.config.fallback_stale_sec
-            if _fallback_price > 0 and _fb_time is not None:
-                _fallback_age = time.time() - _fb_time
-                _fallback_stale = _fallback_age > _stale_sec
-                logger.info(
-                    f"[155# ob_fallback] Using last mid_price={_fallback_price:.0f} "
-                    f"age={_fallback_age:.1f}s stale={_fallback_stale} "
-                    f"as reference for skip record"
-                )
-            elif _fallback_price > 0:
-                # no timestamp → stale 扱い (安全策)
-                _fallback_stale = True
-                logger.info(
-                    f"[155# ob_fallback] Using last mid_price={_fallback_price:.0f} "
-                    f"(no timestamp, treated as stale) as reference for skip record"
-                )
-            return self._make_cycle_skip_record(
-                side=side,
-                cancel_reason=ob_cancel_reason,
-                cycle_id=cycle_id,
-                order_price=_fallback_price if not _fallback_stale else 0.0,
-                spread_offset_ratio=self._maker_price.base_offset_ratio,
-                error_message=(
-                    f"{e} [fallback_age={_fallback_age:.1f}s stale={_fallback_stale}]"
-                    if _fallback_age is not None else str(e)
-                ),
+            logger.error(f"Failed to compute maker price: {e}")
+            return self._make_price_error_skip(
+                side=side, cancel_reason=ob_cancel_reason,
+                cycle_id=cycle_id, error=e,
             )
 
         # 113# R1: SkipGate 判定を _evaluate_skip_gate() に委譲

@@ -31,6 +31,24 @@ from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
 logger = logging.getLogger(__name__)
 
 
+class InfeasibleQuoteError(ValueError):
+    """239# 232# §1.5: 制約集合崩壊で quote 不可能時の専用例外.
+
+    ValueError のサブクラスなので既存 except ValueError / Exception は互換維持。
+    ``reason`` 属性で文字列パース不要の型安全な分類を提供。
+
+    Reasons:
+        - ``"spread_too_narrow"`` — spread < min_spread_jpy
+        - ``"sell_guard_reject"`` — sell 時 spread > sell_max_spread_jpy
+    """
+
+    __slots__ = ("reason",)
+
+    def __init__(self, reason: str, msg: str) -> None:
+        super().__init__(msg)
+        self.reason = reason
+
+
 class OrderbookProvider(Protocol):
     """板情報を提供するアダプタのプロトコル (型安全)."""
 
@@ -866,9 +884,27 @@ class MakerPriceCalculator:
         self._last_spread_time = now  # 210# M5: staleness tracking
 
         # 031# スプレッドフィルター
+        # 239# 232# §1.5: InfeasibleQuoteError で型安全分類
         if spread < cfg.min_spread_jpy:
-            raise ValueError(
-                f"Spread too narrow: {spread:.0f} JPY < min {cfg.min_spread_jpy:.0f}"
+            raise InfeasibleQuoteError(
+                reason="spread_too_narrow",
+                msg=f"Spread too narrow: {spread:.0f} JPY < min {cfg.min_spread_jpy:.0f}",
+            )
+
+        # 088# sell 専用: max_spread 超過で sell スキップ
+        # 239# 232# §1.5: offset 計算前に前方移動 — 構造的に不可能なサイクルの早期離脱
+        if (
+            side == "sell"
+            and cfg.sell_max_spread_jpy > 0
+            and spread > cfg.sell_max_spread_jpy
+        ):
+            logger.info(
+                f"[sell_guard] Spread {spread:.0f} JPY > max {cfg.sell_max_spread_jpy:.0f} "
+                f"— skipping sell order (088# → 239# early bailout)"
+            )
+            raise InfeasibleQuoteError(
+                reason="sell_guard_reject",
+                msg=f"sell_guard: spread {spread:.0f} > max {cfg.sell_max_spread_jpy:.0f}",
             )
 
         # === offset 決定ロジック ===
@@ -911,20 +947,6 @@ class MakerPriceCalculator:
             _dyn_floor = self._effective_sell_offset_floor()
             if _dyn_floor > 0:
                 effective_offset_ratio = max(effective_offset_ratio, _dyn_floor)
-
-        # 088# sell 専用: max_spread 超過で sell スキップ
-        if (
-            side == "sell"
-            and cfg.sell_max_spread_jpy > 0
-            and spread > cfg.sell_max_spread_jpy
-        ):
-            logger.info(
-                f"[sell_guard] Spread {spread:.0f} JPY > max {cfg.sell_max_spread_jpy:.0f} "
-                f"— skipping sell order (088#)"
-            )
-            raise ValueError(
-                f"sell_guard: spread {spread:.0f} > max {cfg.sell_max_spread_jpy:.0f}"
-            )
 
         # 163# ステージ抽出: _apply_regime_boosts()
         effective_offset_ratio = self._apply_regime_boosts(
