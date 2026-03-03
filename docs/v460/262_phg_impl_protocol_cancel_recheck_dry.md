@@ -1,8 +1,8 @@
 # 262# adaptation_engine Protocol化 + order_monitor cancel-recheck DRY
 
 > Issue: 262#  
-> Commit: (本ドキュメント作成時点で未コミット)  
-> テスト: 28 新規 / 3648 total (3616 passed, 32 skipped)
+> Commit: `d3228abd4`  
+> テスト: 28 新規 / 3648 total
 
 ---
 
