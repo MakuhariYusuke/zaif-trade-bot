@@ -250,6 +250,8 @@ class FillTestState:
     soft_drawdown_interval_multiplier: float = 1.0
     # 216# E: Guard 発火カウンタ永続化 (累積。再起動時に復元)
     guard_fire_counts: dict[str, int] | None = None
+    # 244# Guard reason category totals (市場都合/システム都合/回復動作)
+    guard_category_totals: dict[str, int] | None = None
     # 209# H4: DynamicKillManager 状態永続化 (rolling PnL window + cooldown)
     sell_kill_state: dict[str, object] | None = None
     buy_kill_state: dict[str, object] | None = None

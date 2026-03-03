@@ -318,6 +318,8 @@ class FillLoopOrchestratorMixin:
             soft_drawdown_interval_multiplier=self._soft_drawdown_interval_multiplier,
             # 216# E: Guard 発火カウンタ永続化
             guard_fire_counts=dict(self._guard_fire_counts) if self._guard_fire_counts else None,
+            # 244# Guard reason category totals
+            guard_category_totals=self._guard_category_totals(),
             # 209# H4: DynamicKillManager 状態永続化
             sell_kill_state=self._sell_kill_mgr.export_state(),
             buy_kill_state=self._buy_kill_mgr.export_state(),
@@ -354,6 +356,13 @@ class FillLoopOrchestratorMixin:
         if self._guard_fire_counts is None:
             self._guard_fire_counts = {}
         self._guard_fire_counts[guard_name] = self._guard_fire_counts.get(guard_name, 0) + 1
+
+    def _guard_category_totals(self) -> dict[str, int] | None:
+        """244# guard_fire_counts のカテゴリ別合計を返す."""
+        if not self._guard_fire_counts:
+            return None
+        from scripts.v460.lib.guard_reason_classifier import guard_category_totals
+        return guard_category_totals(self._guard_fire_counts)
 
     # ------------------------------------------------------------------
     # 216# §6 DRY: State 復元共通ヘルパー
@@ -2062,6 +2071,18 @@ class FillLoopOrchestratorMixin:
                     f"regime={regime_tag}, "
                     f"unsaved_batch={len(batch)}"
                 )
+                # 244# Guard reason category summary
+                if self._guard_fire_counts:
+                    from scripts.v460.lib.guard_reason_classifier import (
+                        guard_category_totals,
+                    )
+                    _cat_totals = guard_category_totals(self._guard_fire_counts)
+                    logger.info(
+                        f"Guard category: "
+                        f"market={_cat_totals['market']}, "
+                        f"system={_cat_totals['system']}, "
+                        f"recovery={_cat_totals['recovery']}"
+                    )
 
             # 113# resilience: HealthMonitor 定期チェック + GC
             health_status = self._health_monitor.maybe_check(self._cycle_count)

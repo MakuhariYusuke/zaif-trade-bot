@@ -105,6 +105,14 @@ class CycleGateResult:
         """blocking_reason → cancel_reasons モジュールの定数文字列."""
         return _GATE_TO_CANCEL_REASON.get(self.blocking_reason, self.blocking_reason)
 
+    @property
+    def blocking_category(self) -> str:
+        """244# blocking_reason の GuardCategory 分類 (market/system/recovery)."""
+        if not self.blocking_reason:
+            return ""
+        from scripts.v460.lib.guard_reason_classifier import classify_guard
+        return classify_guard(f"gate_{self.blocking_reason}").value
+
 
 class CycleGateAggregator:
     """193# per-cycle skip 判定の一元ゲート.
