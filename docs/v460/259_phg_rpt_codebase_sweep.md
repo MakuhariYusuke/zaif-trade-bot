@@ -1,155 +1,194 @@
-# 259# Codebase Sweep Report
+# 259# Codebase Sweep Report (v2 — 2026-03-04 更新)
 
 ## 概要
 
-258# (AS Reservation Price / VPIN Continuous / RegimeDetectorLike Protocol) 実装後のコードベーススイープ。
-残存する技術的負債、市場理論による補強余地、型安全向上箇所を洗い出す。
+258# (AS Reservation Price / VPIN Continuous / RegimeDetectorLike Protocol) 実装後の
+フルスイープ。5 カテゴリ × 定量分析。対象: `scripts/v460/lib/` 配下 51 ファイル
 
 ---
 
-## P1: 今回実装対象
+## 1. 型安全ギャップ (Type Safety Gaps)
 
-### MT-4: AS σ² 推定の改善 — RegimeDetector volatility_ratio 統合
+### 1-A. `getattr(` — 29 箇所
 
-**現状**: `_apply_as_reservation_shift()` (257#) の σ² 推定は Roll (1984) の
-spread-based micro-volatility proxy のみ: `σ = spread / (2·mid)`
+| ファイル | 行 | 種別 | 説明 |
+|---|---|---|---|
+| config_hot_reload.py | L353-354,372-373 | dataclass field 比較 | `getattr(self._config, f.name)` — fields ループ。構造上必要 |
+| config_hot_reload.py | L389 | callback dispatch | `getattr(runner, callback_name, None)` — Protocol 化で解消可 |
+| skip_gate_evaluator.py | L234,236 | trade field 取得 | **`trade: object` が根因** — TradeProtocol で解消可 |
+| skip_gate_evaluator.py | L484,519 | config 動的 side 参照 | `getattr(config, f"skip_gate_model_path_{side}")` — dict 化で代替可 |
+| skip_gate_evaluator.py | L830-852 | self attr 動的参照 | reload 用。side→attr map dict で代替可 |
+| skip_gate_evaluator.py | L991-1021 | adapter 動的参照 | **`adapter: object` が根因** |
+| fill_config.py | L691-692 | validation | dataclass field 動的検証 |
+| fill_cycle_executor.py | L1226 | order type check | `getattr(order, "order_id")` — OrderLike Protocol で解消済みのはず |
+| ob_utils.py | L61-73 | OB level 抽象化 | **261# P2-1 計画済み** |
+| resilience.py | L58 | CB state | `getattr(cb, name)` |
+| micro_circuit_breaker.py | L370 | 内部 deque | `getattr(self, attr)` |
+| fill_test_cli.py | L158 | log level | `getattr(logging, level_str)` — 標準パターン、許容 |
+| tasks/sac_train.py | L204,318 | gym env | gym 型が不安定、許容 |
 
-**問題**: bid-ask spread は流動性依存であり、実際のボラティリティと乖離する場合がある。
-特に薄板時に spread が広がっても真のボラティリティは低い場合、AS shift が過大になる。
+### 1-B. `hasattr(` — 6 箇所
 
-**改善**: `RegimeDetectorLike.last_volatility_ratio` は直近 window の
-returns std / baseline std を返す。これを σ 推定に組み込み:
-
-```
-σ_enhanced = σ_roll × max(vol_ratio, σ_floor)
-```
-
-vol_ratio > 1.0 (高ボラ) → σ 増幅 → AS shift 増大 (正しくリスク回避)
-vol_ratio < 1.0 (低ボラ) → σ 短縮 → AS shift 抑制 (不要な broad offset 防止)
-
-**理論的根拠**: Avellaneda-Stoikov (2008) §3 で σ² は realized volatility を
-想定。Roll (1984) proxy に realized vol ratio を乗ずることで、
-microstructure noise と true volatility を分離する hybrid estimator になる。
-
-**リスク**: 低 — `as_reservation_enabled=False` がデフォルトのため本番影響なし。
-regime_detector が None の場合は既存の Roll proxy にフォールバック。
-
-### F-3: adaptation_engine hasattr 残存 (2箇所)
-
-**現状**: `adaptation_engine.py` L211, L379 で `hasattr(regime_detector, "current_regime")` を使用。
-既に `RegimeDetectorLike` を import し型注釈も適用済みだが、hasattr が残存。
-
-**修正**: Protocol 型なので `regime_detector is not None` チェックのみで十分。
-`hasattr` 削除で 257# Protocol 化を完遂。
-
----
-
-## P2: 次回以降 (優先度順)
-
-### P2-1: OrderBookLevelLike Protocol (ob_utils / ob_recorder)
-
-`ob_utils.py` L30,39 / `ob_recorder.py` L67,69 で `getattr(level, "price/quantity/size")` を
-6箇所使用。`OrderBookLevelLike` Protocol を定義し isinstance check に置換。
-
-| ファイル | 件数 | 影響 |
+| ファイル | 行 | 説明 |
 |---|---|---|
-| ob_utils.py | 4 | extract_price/extract_size |
-| ob_recorder.py | 2 | _extract_level 内 |
+| skip_gate_evaluator.py | L680,717,751 | `hasattr(primary_decision, "features_used")` — **SkipDecision に必須フィールド化で解消** |
+| evaluator.py | L261 | `hasattr(model, "predict_proba")` — sklearn duck typing、許容 |
+| ob_utils.py | L59 | `hasattr(level, "quantity")` — **261# P2-1 計画済み** |
+| tasks/sac_train.py | L203 | gym 型、許容 |
 
-**→ 261# 実装済**: `@runtime_checkable OrderBookLevelLike` Protocol 定義。
-ob_utils は直接属性アクセス、ob_recorder は isinstance + _to_finite_float 経由で型検証。
+### 1-C. `: object` 型注釈 — ~20 箇所 (コメント除く)
 
-### P2-2: maker_price.py compute() 214行 → 150行以下
+| ファイル | 行 | 深刻度 | 説明 |
+|---|---|---|---|
+| skip_gate_evaluator.py | L221,225,242 | **高** | `trade: object`, `trades: object` — Trade Protocol 必要 |
+| skip_gate_evaluator.py | L900,910 | **高** | `adapter: object`, `maker_price_vpin_setter: object` |
+| adaptation_engine.py | L170,416 | **高** | `fast_fill_defense: object`, `adapter: object` → `type: ignore` 連鎖の根因 |
+| fill_loop_orchestrator.py | L89-91 | 中 | `_mcb/_sad/_cycle_strategy: object` — 228# 計画済み |
+| fill_cycle_executor.py | L58 | 低 | `_current_regime_value: object` |
+| ob_recorder.py | L36-131 | 中 | `value/levels/bids/asks: object` — 261# P2-1 計画済み |
+| ob_utils.py | L65,84 | 中 | `ob: object`, `levels: object` — 261# P2-1 計画済み |
+| config_access.py | L20-42 | 低 | `value: object` — coercion 関数、設計上意図的 |
+| order_monitor.py | L96 | 中 | Protocol 戻り値 `-> object` → SkipGateResult に変更可 |
+| config_loader.py | L25 | 低 | `raw: object` — 意図的 |
 
-ファイル内 GOD OBJECT 警告 (L85-98) で `compute()` 150行上限を明記済みだが現在 214行。
-loss_boost / FFD boost の 2ブロック (~50行) を `_apply_loss_boost()`, `_apply_ffd_boost()` に
-抽出すれば 150行以下に収まる。パイプライン構造なので安全。
+### 1-D. `type: ignore` — 12 箇所
 
-**→ 260# 実装済**: compute() 214→180行。`_apply_loss_boost()`, `_apply_ffd_boost()` 抽出。
-
-### P2-3: _apply_regime_boosts() 153行 → 5分割
-
-5つの独立 if ブロック (trending/high_vol/ranging/unknown/low_vol) を
-`_regime_boost_trending()`, `_regime_boost_high_vol()` 等に分割。
-各 ~30行、ロジック変更なし。
-
-**→ 260# 実装済**: 5 sub-method + dispatcher パターン。各 ~30行。
-
-### P2-4: skip_gate_evaluator getattr (4箇所)
-
-| 行 | コード | 推奨 |
+| ファイル | 行 | 原因 |
 |---|---|---|
-| L234,236 | `getattr(trade, key, default)` | TradeLike Protocol |
-| L830,852 | `getattr(self, attr_path/attr_hash)` | dict 化 |
-| L991,1015 | `getattr(adapter, "get_recent_trades/get_orderbook")` | GateAdapterProtocol |
-
-**状態**: L234/236 は dict/object dual-format で構造的に必要。L830/852 はメタプログラミング。
-L991/1015 は GateAdapterProtocol 定義で置換可能だが影響範囲大。保留。
-
-### P2-5: `_last_ob_snapshot: object | None` → `OrderBookSnapshot | None`
-
-maker_price.py L165。OB snapshot は `dict | SimpleNamespace` のいずれかが入る。
-型を特定し Protocol or Union で明示化。
-
-**→ 261# 実装済**: `OrderBookSnapshot` Protocol (bids/asks プロパティ) 定義。
-`OrderbookProvider.get_orderbook()` 戻り値も `OrderBookSnapshot` に型安全化。
-
-### P2-6: config_hot_reload.py L400 private attr getattr
-
-`getattr(runner, "_fast_fill_defense", None)` — private attribute への getattr。
-公開 property or Protocol method に置換。
-
-**→ 261# 実装済**: `_HotReloadableRunner` Protocol で宣言済みのため直接参照に変更。
-
-### P2-7: balance_checker.py adapter: object (3箇所)
-
-L88, 109, 165 で `adapter: object`。BalanceAdapterProtocol の定義が必要。
-
-**→ 261# 実装済**: `BalanceAdapterProtocol` + `_BalanceLike` Protocol 定義。
-`adapter: object` → `adapter: BalanceAdapterProtocol` に置換。type: ignore 排除。
+| skip_gate_evaluator.py | L1023-1024 | `ob.bids/asks  # type: ignore[attr-defined]` — adapter: object 由来 |
+| adaptation_engine.py | L268,319 | `type: ignore[union-attr]` — `fast_fill_defense: object|None` 由来 |
+| adaptation_engine.py | L426,434 | `type: ignore[attr-defined]` — `adapter: object` 由来 |
+| lock_manager.py | L14 | `psutil  # type: ignore[import-untyped]` — サードパーティ、許容 |
+| event_logger.py | L117 | `TeeWriter  # type: ignore[assignment]` — IO redirect、意図的 |
+| fill_cycle_executor.py | L58,66 | class-level default 型不一致 |
+| fill_loop_orchestrator.py | L97 | `deque[FillRecord]  # type: ignore[assignment]` |
+| fill_test_cli.py | L369 | `SIGBREAK  # type: ignore[attr-defined]` — Windows 固有、許容 |
 
 ---
 
-## P3: 市場理論 — 未実装の理論的補強
+## 2. メソッド複雑度 (100行超)
 
-### P3-1: AS 最適スプレッド幅 (δ*)
+| ファイル | メソッド | 行数 | 深刻度 | 備考 |
+|---|---|---|---|---|
+| fill_loop_orchestrator.py | `run_continuous()` | **~1694** (L635→L2329) | **🔴 致命的** | MAX LINES: 1200 超過 |
+| fill_cycle_executor.py | `run_single_cycle()` | **~705** (L675→L1380) | 🟠 高 | MAX LINES: 750 目前 |
+| skip_gate_evaluator.py | `evaluate()` | **~346** (L893→L1239) | 🟡 中 | velocity rule + ML + ev_weighted 一括 |
+| maker_price.py | `compute()` | **~180** (L1053→L1233) | 🟡 中 | 260# stage 分割後、パイプライン呼出しが長い |
+| skip_gate_evaluator.py | `_try_ev_weighted_decision()` | **~141** (L546→L687) | 🟡 中 | EV加重統合。分割候補 |
+| fill_cycle_executor.py | `_build_fill_record()` | **~108** (L534→L642) | 🟡 中 | field 数由来 |
+| maker_price.py | `_apply_volatility_guard()` | **~106** (L832→L938) | 🟡 中 | VG + VPIN continuous + damping |
 
-$$\delta^* = \gamma \sigma^2 \tau + \frac{2}{\gamma} \ln\left(1 + \frac{\gamma}{k}\right)$$
+---
 
-現在は `spread * offset_ratio` のヒューリスティックだが、AS 理論は fill rate `k` を
-含む最適スプレッド幅を導出可能。`k` の推定に fill_record の約定確率統計が必要。
+## 3. マーケット理論
 
-### P3-2: Kelly Criterion lot sizing
+### 実装済み
 
-$$f^* = \frac{p \cdot b - q}{b}$$
+| 理論 | ファイル | 行 | 状態 |
+|---|---|---|---|
+| **Avellaneda-Stoikov (2008)** reservation price | maker_price.py | L527-600 | ✅ 258# 実装 |
+| **AS 指数減衰** loss boost | maker_price.py | L980-1023 | ✅ 226# T1 |
+| **Roll (1984)** σ推定 proxy | maker_price.py | L564-566 | ✅ spread/(2·mid) |
+| **vol_ratio hybrid σ** | maker_price.py | L574-580 | ✅ 258# MT-4 |
+| **Inventory skewing** (time-decay) | maker_price.py | L264-283 | ✅ 228# C2 |
+| **AS offset** (EV-weighted) | skip_gate_evaluator.py | L687-758 | ✅ |
 
-`_recent_records` deque で win_rate (p) / avg_win:loss (b) は計算可能だが、
-short-horizon (< 100 fills) での統計的信頼性に課題。fractional Kelly (f*/2) で
-保守的に運用する案。
+### 未実装 — 拡張候補
 
-### P3-3: Kyle's Lambda — 自己注文価格インパクト
+| 理論 | 用途 | 優先度 |
+|---|---|---|
+| **Kelly Criterion** | lot sizing 最適化 ($f^* = \frac{pb-q}{b}$) | 🟡 中 — 資金効率直結 |
+| **Gueant-Lehalle-Fernandez-Tapia (2013)** | AS 有限期間拡張 — τ 動的化 | 🟡 中 |
+| **AS 最適スプレッド幅** δ* | fill rate k による理論的 spread | 低 — k 推定が困難 |
+| **Kyle (1985) λ** | 情報非対称性 | 低 — VPIN + imbalance で概ね代替 |
+| **Amihud illiquidity** | spread_adaptive 閾値動的化 | 低 — BTC/JPY は流動性十分 |
 
-$$\Delta P = \lambda \cdot Q$$
+**Active TODO/FIXME: 0 件** — 技術的負債としてクリーン。
 
-lot size に応じた価格インパクト推定。現在の offset は lot size に無関係だが、
-理論的には大きい lot ほど自己約定で price impact を受ける。
+---
 
-### P3-4: Amihud 非流動性比率
+## 4. エラーハンドリング — `except Exception` 78 箇所
 
-$$ILLIQ = \frac{1}{N} \sum \frac{|R_i|}{V_i}$$
+| ファイル | 件数 | 深刻度 | 備考 |
+|---|---|---|---|
+| order_monitor.py | **12** | 🟠 高 | API障害 vs ロジック不具合の区別が必要 |
+| skip_gate_evaluator.py | **12** | 🟡 中 | ML 評価の resilience — 一部 narrow 化可 |
+| fill_loop_orchestrator.py | **10** | 🟡 中 | ループ継続用 — 意図的だがログ分類不十分 |
+| fill_cycle_executor.py | **6** | 🟡 中 | PnL/注文監視フォールバック |
+| config_hot_reload.py | **5** | 低 | config reload resilience |
+| pnl_measurer.py | **5** | 🟡 中 | PnL 計測 resilience |
+| event_logger.py | **4** | 低 | ログ出力 resilience |
+| fill_test_cli.py | **4** | 低 | CLI トップレベル |
+| phantom_position_guard.py | **3** | 低 | balance check |
+| resilience.py | **3** | 低 | CB 自体 |
+| adaptation_engine.py | **3** | 低 | |
+| ob_utils.py | **3** | 低 | |
+| batch_persistence.py | **2** | 低 | |
+| lock_manager.py | **2** | 低 | |
+| tasks/sac_train.py | **2** | 低 | |
+| ab_judgment.py | **1** | 低 | |
+| balance_checker.py | **1** | 低 | |
 
-spread_adaptive の閾値動的化に使用可能。日次 ILLIQ が高い場合は
-narrow_spread_bps 閾値を引き上げる。
+**問題パターン**: `except Exception:` (変数なし = ログ不能) が 3 箇所:
+lock_manager.py L155, fill_loop_orchestrator.py L1235, fill_cycle_executor.py L1194
+
+---
+
+## 5. 未使用インポート / Dead Code
+
+| パターン | ファイル | 説明 |
+|---|---|---|
+| `Optional` + `X|None` 混在 | adaptation_engine.py, fill_cycle_executor.py, abstract_cycle_runner.py | `from __future__ import annotations` 下では `Optional` import 不要 |
+| `cast` 未使用の疑い | fill_cycle_executor.py L17 | `from typing import ..., cast` — 使用箇所要確認 |
+| 重複 Protocol 定義 | order_monitor.py L96 | 簡易 Protocol vs SkipGateEvaluator 実 Protocol が乖離 |
+
+---
+
+## 6. 優先度付き改善提案
+
+### 🔴 P1: 収益インパクト大 + 保守性改善
+
+| # | 項目 | 工数 | インパクト | 対象 |
+|---|---|---|---|---|
+| **P1-1** | `run_continuous()` 1694行分割 | 4-6h | **高** — バグ混入リスク根本原因 | fill_loop_orchestrator.py |
+| **P1-2** | `adapter: object` → Protocol 化 | 2-3h | **高** — type: ignore 6箇所 + getattr 8箇所 一括解消 | adaptation_engine.py, skip_gate_evaluator.py |
+| **P1-3** | order_monitor.py except narrow化 | 2h | 中 — API障害時の誤判定防止 | order_monitor.py |
+
+### 🟡 P2: 中期品質改善
+
+| # | 項目 | 工数 | 対象 |
+|---|---|---|---|
+| **P2-1** | 261# OB Protocol 完遂 (計画済み) | 1-2h | ob_utils.py, ob_recorder.py |
+| **P2-2** | `SkipDecision.features_used` 必須化 → hasattr 3箇所除去 | 30m | skip_gate_evaluator.py |
+| **P2-3** | Kelly Criterion lot sizing PoC | 3-4h | lot_sizer.py |
+| **P2-4** | `run_single_cycle()` 705行 — PnL計測分離 | 2h | fill_cycle_executor.py |
+| **P2-5** | `evaluate()` 346行 → velocity/ML/ev 3段階分離 | 2h | skip_gate_evaluator.py |
+
+### 🟢 P3: 低リスク清掃
+
+| # | 項目 | 工数 |
+|---|---|---|
+| **P3-1** | `Optional` → `X|None` 統一 + 未使用 import 削除 | 30m |
+| **P3-2** | `except Exception:` 変数なし 3 箇所にログ追加 | 15m |
+| **P3-3** | `config_access.py` `value: object` ドキュメント追記 | 15m |
 
 ---
 
 ## 統計サマリ
 
-| カテゴリ | 件数 | 状態 |
+| カテゴリ | 件数 | 前回比 |
 |---|---|---|
-| getattr 残存 | 35 | 15件 Protocol 化対象, 17件 構造上必要, 3件 dict 化推奨 |
-| hasattr 残存 | 7 | 2件 P1 対象 (adaptation_engine), 3件 skip_gate, 2件 許容 |
-| bare except | 0 | ✅ 完全排除済 |
-| `: object` 型注釈 | 43 | ~20件 Protocol 化対象, ~23件 許容 |
-| `Any` 型 | 0 | ✅ 完全排除済 |
-| 150行超メソッド | 4 | compute() 214行, _apply_regime_boosts() 153行, evaluate() 346行, run_continuous() 1694行 |
+| `getattr(` | 29 | -6 (261# 実施分) |
+| `hasattr(` | 6 | -2 (259# adaptation_engine 修正分) |
+| `: object` 型注釈 | ~20 (実質) | -7 (261# Protocol 化) |
+| `type: ignore` | 12 | ±0 |
+| `except Exception` | 78 | — (初回計測) |
+| `Any` 型 | 0 | ✅ 完全排除 |
+| bare `except` | 0 | ✅ 完全排除 |
+| TODO/FIXME (active) | 0 | ✅ |
+| 100行超メソッド | 7 | -2 (260# 分割分) |
+| 1000行超メソッド | 1 | ±0 (`run_continuous`) |
+
+**最重要ネクストアクション**: P1-1 + P1-2。
+前者はバグ混入リスクの根本原因、後者は `type: ignore`/`getattr` チェーンの根因。
+両者解消で型安全ギャップの **~40%** が一括消滅する。

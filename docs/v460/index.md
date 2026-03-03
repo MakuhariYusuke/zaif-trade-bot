@@ -250,8 +250,8 @@
 | 257 | rpt | [257_phg_rpt_codebase_sweep.md](257_phg_rpt_codebase_sweep.md) | Codebase Sweep: ドキュメント整合・市場理論・再利用・技術的負債 (P1×9, P2×47) |
 | 258 | impl | [258_phg_impl_as_reservation_vpin_continuous_protocol.md](258_phg_impl_as_reservation_vpin_continuous_protocol.md) | AS Reservation Price, VPIN Continuous, RegimeDetectorLike Protocol |
 | 259 | rpt+impl | [259_phg_rpt_codebase_sweep.md](259_phg_rpt_codebase_sweep.md) | Sweep + AS σ² vol_ratio 統合, adaptation_engine hasattr 排除 |
-| 260 | refactor | — | compute() extract method (_apply_loss_boost, _apply_ffd_boost) + _apply_regime_boosts 5-split |
-| 261 | impl | — | P2-1/5/6/7: OrderBookLevelLike, OrderBookSnapshot, BalanceAdapterProtocol, config_hot_reload getattr 排除 |
+| 260 | refactor | [260_phg_refactor_compute_extract_regime_split.md](260_phg_refactor_compute_extract_regime_split.md) | compute() extract method (_apply_loss_boost, _apply_ffd_boost) + _apply_regime_boosts 5-split |
+| 261 | impl | [261_phg_impl_protocol_type_safety.md](261_phg_impl_protocol_type_safety.md) | P2-1/5/6/7: OrderBookLevelLike, OrderBookSnapshot, BalanceAdapterProtocol, config_hot_reload getattr 排除 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
