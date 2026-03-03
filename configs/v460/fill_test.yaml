@@ -425,12 +425,12 @@ loss_control:
   # 156# D-4: trending_up のみ skip、trending_down sell は開放
   # 176# A: TRENDING(方向不明) も除外 → 実質 trending_up のみブロック
   skip_sell_trending_up_only: true
+  # 252# Sell Asymmetric Mode: Glosten-Milgrom 情報非対称下で high_vol sell もスキップ
+  sell_asymmetric_high_vol_enabled: false
   # 196# trending_sell ソフト化: hard skip → offset boost
   trending_sell_as_offset_enabled: true
   trending_sell_offset_boost_factor: 3.0    # 246# 2.0→3.0 (Kyle 1985: trending_up sell PnL=-0.919bps worst regime。245#分析: FR=27.7%→offset boost 必要)
-  # 197# balance_forced 時も trending offset を適用 (forced sell の AS リスク低減)
-  # 234# dead config: balance_forced gate bypass 廃止により、soft mode は常に offset 適用
-  balance_forced_apply_trending_offset: true
+  # 253# 削除済み: balance_forced_apply_trending_offset (234# dead config → 235# TODO 解消)
   # 234# P0-A: 縮退清算モード (Kill Gate blocked + balance_forced 時)
   degraded_liquidation_enabled: true        # 縮退清算モードの有効/無効
   degraded_liquidation_lot_mult: 0.2        # 通常 lot の 20% (min lot 相当)

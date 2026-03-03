@@ -469,11 +469,12 @@ class TestDutyCycleGuard:
 
 
 class TestDeadConfigDeprecation:
-    """balance_forced_apply_trending_offset の DEPRECATED 注釈."""
+    """253# balance_forced_apply_trending_offset 完全削除済."""
 
-    def test_field_exists_with_default_true(self) -> None:
+    def test_field_removed_253(self) -> None:
+        """253# フィールド削除済 (234# dead config → 253# 完全削除)."""
         cfg = FillTestConfig()
-        assert cfg.balance_forced_apply_trending_offset is True
+        assert not hasattr(cfg, "balance_forced_apply_trending_offset")
 
     def test_field_not_used_in_gate_aggregator(self) -> None:
         """Gate aggregator のソースで直接参照されていないこと."""

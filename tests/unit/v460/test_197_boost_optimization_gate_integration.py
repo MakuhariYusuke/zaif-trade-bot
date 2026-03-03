@@ -3,7 +3,7 @@
 テスト対象:
   A. velocity_offset_boost_factor 2.0→1.5 (データ駆動最適化)
   B. trending_sell_offset_boost_factor YAML 3.0→2.0 (regime 累積修正)
-  C. balance_forced + trending offset 適用 (balance_forced_apply_trending_offset)
+  C. balance_forced + trending offset 適用 (253# 削除済: dead config)
   D. Gate 8: narrow_spread_pause Gate 統合 (旧 B3)
   E. Gate 9: maker_price 事前チェック (spread_too_narrow / sell_guard_reject)
   F. maker_price._last_spread キャッシュ
@@ -52,7 +52,7 @@ def _make_config(**overrides: object) -> FillTestConfig:
         "velocity_offset_boost_factor": 1.5,
         "trending_sell_as_offset_enabled": True,
         "trending_sell_offset_boost_factor": 3.0,
-        "balance_forced_apply_trending_offset": False,
+        # 253# 削除済: balance_forced_apply_trending_offset (234# dead config)
         # narrow_spread
         "narrow_spread_pause_enabled": False,
         "narrow_spread_pause_bps": 3.0,
@@ -138,34 +138,20 @@ class TestTrendingBoostOptimization:
 
 
 class TestBalanceForcedTrendingOffset:
-    """197# balance_forced 時の trending offset 適用."""
+    """197# balance_forced 時の trending offset 適用.
 
-    def test_config_field_exists(self):
-        """balance_forced_apply_trending_offset フィールドが存在."""
+    253# NOTE: balance_forced_apply_trending_offset フィールドは 234# dead config
+    として削除済み。テストは CycleGateAggregator の実動作検証のみ残す。
+    """
+
+    def test_config_field_removed_253(self):
+        """253# balance_forced_apply_trending_offset フィールドが削除済み."""
         cfg = FillTestConfig()
-        assert hasattr(cfg, "balance_forced_apply_trending_offset")
-
-    def test_default_is_true(self):
-        """デフォルト True (197# forced sell 保護有効, YAML と整合)."""
-        cfg = FillTestConfig()
-        assert cfg.balance_forced_apply_trending_offset is True
-
-    def test_yaml_has_true(self):
-        """live YAML で True に設定されていること."""
-        import yaml  # type: ignore[import-untyped]
-
-        with open(Path("configs/v460/fill_test.yaml")) as f:
-            raw = yaml.safe_load(f)
-        assert raw["loss_control"]["balance_forced_apply_trending_offset"] is True
+        assert not hasattr(cfg, "balance_forced_apply_trending_offset")
 
     def test_balance_forced_always_applies_offset_234(self):
-        """234#: balance_forced_apply_trending_offset は dead config.
-
-        234# で balance_forced gate bypass 廃止。soft mode の trending
-        offset は balance_forced に関係なく常に適用される。
-        """
+        """234#: soft mode の trending offset は常に適用される."""
         gate = _make_gate(
-            balance_forced_apply_trending_offset=False,  # 234# dead config
             trending_sell_as_offset_enabled=True,
         )
         r = gate.evaluate(**_default_ctx(
@@ -175,10 +161,9 @@ class TestBalanceForcedTrendingOffset:
         # 234#: soft mode は常に offset を適用
         assert r.trending_offset_mult is not None
 
-    def test_balance_forced_with_opt_in_applies_offset(self):
-        """opt-in あり: balance_forced + trending → offset_mult 設定."""
+    def test_balance_forced_with_offset_applies(self):
+        """balance_forced + trending → offset_mult 設定."""
         gate = _make_gate(
-            balance_forced_apply_trending_offset=True,
             trending_sell_as_offset_enabled=True,
             trending_sell_offset_boost_factor=2.0,
         )
@@ -188,10 +173,9 @@ class TestBalanceForcedTrendingOffset:
         assert r.blocked is False
         assert r.trending_offset_mult == 2.0
 
-    def test_balance_forced_opt_in_not_blocked(self):
-        """opt-in 時でも forced sell は block されない."""
+    def test_balance_forced_not_blocked(self):
+        """forced sell は block されない."""
         gate = _make_gate(
-            balance_forced_apply_trending_offset=True,
             trending_sell_as_offset_enabled=True,
             trending_sell_offset_boost_factor=3.0,
         )
@@ -203,7 +187,6 @@ class TestBalanceForcedTrendingOffset:
     def test_balance_forced_trending_down_with_up_only(self):
         """trending_up_only=True + regime=trending_down → offset なし."""
         gate = _make_gate(
-            balance_forced_apply_trending_offset=True,
             trending_sell_as_offset_enabled=True,
             skip_sell_trending_up_only=True,
         )
@@ -214,9 +197,8 @@ class TestBalanceForcedTrendingOffset:
         assert r.trending_offset_mult is None
 
     def test_balance_forced_buy_side_unaffected(self):
-        """buy 側は balance_forced + trending でも offset なし."""
+        """buy 側は trending でも offset なし."""
         gate = _make_gate(
-            balance_forced_apply_trending_offset=True,
             trending_sell_as_offset_enabled=True,
         )
         r = gate.evaluate(**_default_ctx(
@@ -228,7 +210,6 @@ class TestBalanceForcedTrendingOffset:
     def test_audit_trail_trending_offset_detail_234(self):
         """234#: balance_forced は通常パスを通る → 196# soft mode detail."""
         gate = _make_gate(
-            balance_forced_apply_trending_offset=True,
             trending_sell_as_offset_enabled=True,
             trending_sell_offset_boost_factor=2.5,
         )
@@ -451,8 +432,7 @@ class TestBackwardCompatibility197:
         assert cfg.narrow_spread_pause_enabled is False
         # Gate 9: min_spread_jpy=0 → filter なし
         assert cfg.min_spread_jpy == 0.0
-        # balance_forced offset: enabled by default (197# YAML と整合)
-        assert cfg.balance_forced_apply_trending_offset is True
+        # 253# 削除済: balance_forced_apply_trending_offset (234# dead config)
 
     def test_all_nine_gates_pass(self):
         """全 9 ゲートが pass する条件."""
@@ -522,15 +502,14 @@ class TestBackwardCompatibility197:
 class TestYamlNewFields197:
     """197# YAML 新フィールドの検証."""
 
-    def test_yaml_has_balance_forced_trending_offset(self):
-        """YAML に balance_forced_apply_trending_offset が存在."""
+    def test_yaml_balance_forced_trending_offset_removed_253(self):
+        """253# YAML から balance_forced_apply_trending_offset が削除済."""
         import yaml  # type: ignore[import-untyped]
 
         with open(Path("configs/v460/fill_test.yaml")) as f:
             raw = yaml.safe_load(f)
         lc = raw["loss_control"]
-        assert "balance_forced_apply_trending_offset" in lc
-        assert lc["balance_forced_apply_trending_offset"] is True
+        assert "balance_forced_apply_trending_offset" not in lc
 
 
 class TestDesignConsistency197:

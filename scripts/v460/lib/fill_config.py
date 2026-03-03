@@ -437,11 +437,7 @@ class FillTestConfig:
     # enabled 時、trending sell をスキップせず offset を boost して保守的価格で sell 発注
     trending_sell_as_offset_enabled: bool = False
     trending_sell_offset_boost_factor: float = 2.0  # live YAML 既定値と整合
-    # 197# balance_forced 時も trending offset を適用 (live YAML 既定値)
-    # 234# NOTE: gate bypass 廃止により trending_sell の balance_forced 特別パスは削除。
-    # このフィールドは後方互換性のため残すが、実質 dead config。
-    # TODO(235#): YAML / hot_reload から参照が消えたら削除
-    balance_forced_apply_trending_offset: bool = True  # DEPRECATED: 234# dead config
+    # 253# 削除完了: balance_forced_apply_trending_offset (234# dead config → 235# TODO 解消)
     # 158# §20-B: 連続 trending sell skip 安全弁 — N 回超過で sell を強制許可 (0=無制限)
     max_consecutive_trending_sell_skip: int = 30
     # 171# Guard Paradox 対策: 在庫偏重時に sell ガードを自動緩和
@@ -1082,9 +1078,7 @@ class FillTestConfig:
             kwargs["trending_sell_as_offset_enabled"] = 止血["trending_sell_as_offset_enabled"]
         if 止血.get("trending_sell_offset_boost_factor") is not None:
             kwargs["trending_sell_offset_boost_factor"] = float(止血["trending_sell_offset_boost_factor"])
-        # 197# balance_forced 時の trending offset 適用
-        if 止血.get("balance_forced_apply_trending_offset") is not None:
-            kwargs["balance_forced_apply_trending_offset"] = 止血["balance_forced_apply_trending_offset"]
+        # 253# 削除済み: balance_forced_apply_trending_offset (234# dead config)
         # 158# §20-B: 連続 trending sell skip 安全弁
         if 止血.get("max_consecutive_trending_sell_skip") is not None:
             kwargs["max_consecutive_trending_sell_skip"] = 止血["max_consecutive_trending_sell_skip"]

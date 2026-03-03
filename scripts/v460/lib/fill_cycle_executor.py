@@ -27,6 +27,7 @@ from scripts.v460.lib.maker_price import InfeasibleQuoteError
 from scripts.v460.lib.ob_utils import best_bid_ask  # 200# 10-C: module-level import
 
 if TYPE_CHECKING:
+    from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
     from scripts.v460.lib.fill_config import FillTestConfig
     from scripts.v460.lib.order_monitor import OrderLike
     from scripts.v460.lib.phantom_position_guard import PhantomPositionGuard
@@ -58,6 +59,11 @@ class FillCycleExecutorMixin:
     # 237# PhantomPositionGuard: クラスレベルデフォルト (hasattr 排除)
     # 238# C-1: object → PhantomPositionGuard 型安全化 (TYPE_CHECKING)
     _phantom_guard: PhantomPositionGuard | None = None
+    # 253# getattr 排除: orchestrator Mixin が設定する属性のクラスレベルデフォルト
+    _alert_offset_mult: float = 1.0
+    _alert_lot_mult: float = 1.0
+    _halt_recovery_lot_mult: float = 1.0
+    _daily_drawdown_guard: DailyDrawdownGuard | None = None  # type: ignore[assignment]
 
     async def _compute_orderbook_imbalance(self, depth: int = 5) -> tuple[float, float, float]:
         """054# S1: 板不均衡を計算 — 120# MakerPriceCalculator に委譲."""
@@ -1029,7 +1035,8 @@ class FillCycleExecutorMixin:
                 )
 
         # 215# P0-C: alert_mode offset 乗数 — 全サイド共通
-        _alert_om = getattr(self, "_alert_offset_mult", 1.0)
+        # 253# getattr → クラスレベルデフォルトで型安全直接参照
+        _alert_om = self._alert_offset_mult
         if _alert_om != 1.0:
             order_price, effective_offset_ratio, _a_mult, _a_delta = (
                 self._apply_offset_multiplier(
@@ -1065,7 +1072,7 @@ class FillCycleExecutorMixin:
         )
 
         # 215# P0-C: alert_mode lot 乗数 — 縮小運転
-        _alert_lm = getattr(self, "_alert_lot_mult", 1.0)
+        _alert_lm = self._alert_lot_mult
         if _alert_lm != 1.0:
             _pre_lot = _order_lot
             _order_lot = max(self.config.order_quantity, _order_lot * _alert_lm)
@@ -1075,7 +1082,7 @@ class FillCycleExecutorMixin:
             )
 
         # 224# B1: halt解除後ソフトリカバリ lot 縮小
-        _recovery_lm = getattr(self, "_halt_recovery_lot_mult", 1.0)
+        _recovery_lm = self._halt_recovery_lot_mult
         if _recovery_lm < 1.0:
             _pre_lot = _order_lot
             _order_lot = max(self.config.order_quantity, _order_lot * _recovery_lm)
@@ -1085,7 +1092,7 @@ class FillCycleExecutorMixin:
             )
 
         # 246# DD halt cooldown release lot 縮小
-        _dd_guard = getattr(self, "_daily_drawdown_guard", None)
+        _dd_guard = self._daily_drawdown_guard
         if _dd_guard is not None:
             _cd_lm = _dd_guard.get_cooldown_lot_scale()
             if _cd_lm < 1.0:
@@ -1196,9 +1203,8 @@ class FillCycleExecutorMixin:
                 self._postonly_crossing_streak = 0  # 201# 非 crossing で streak リセット
             else:
                 # 201# review: crossing 連続発生を検出 → 高頻度時に warning
-                self._postonly_crossing_streak = getattr(
-                    self, "_postonly_crossing_streak", 0
-                ) + 1
+                # 253# getattr → クラスレベルデフォルト (L51) で安全な直接参照
+                self._postonly_crossing_streak += 1
                 if self._postonly_crossing_streak >= 3:
                     logger.warning(
                         f"[postonly_guard] 201# crossing streak={self._postonly_crossing_streak}"
@@ -1302,7 +1308,7 @@ class FillCycleExecutorMixin:
                         regime_str, regime_conf or 0.0, macro_result,
                     )
                     if not _macro_aligned:
-                        _action = getattr(self.config, "macro_regime_conflict_action", "log")
+                        _action = self.config.macro_regime_conflict_action
                         if _action == "downgrade":
                             regime_str = "ranging"
                             logger.info(

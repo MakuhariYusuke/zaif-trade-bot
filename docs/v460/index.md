@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-03 (252# Sell Asymmetric Gate, PhantomGuard 三値化, 型安全化)
+> 最終更新: 2026-03-03 (253# hot_reload 配線漏れ, dead config 削除, getattr 排除, bare except 改善)
 
 ---
 
@@ -243,6 +243,8 @@
 | 250 | impl | [250_ph2_impl_pl_split_freeze_side_probe.md](250_ph2_impl_pl_split_freeze_side_probe.md) | P/L 3分離・freeze side紐付け・quiescence deadlock防御・probe廃止基盤 |
 | 251 | rev | [251_ph2_pre_impl_review_report.md](251_ph2_pre_impl_review_report.md) | Pre-Implementation Review: 247#/248# 残 P1/P2 項目の実装準備レビュー |
 | 252 | impl | [252_ph2_impl_sell_asymmetric_phantom_ternary.md](252_ph2_impl_sell_asymmetric_phantom_ternary.md) | Sell Asymmetric Gate + PhantomGuard 三値化 + 型安全化 |
+| 253 | rev | [253_pre_impl_codebase_sweep_report.md](253_pre_impl_codebase_sweep_report.md) | 252# self-review + codebase sweep: P1×4 発見 |
+| 253 | impl | [253_ph2_impl_hot_reload_dead_config_getattr_bare_except.md](253_ph2_impl_hot_reload_dead_config_getattr_bare_except.md) | hot_reload 配線漏れ, dead config 削除, getattr 排除, bare except 改善 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

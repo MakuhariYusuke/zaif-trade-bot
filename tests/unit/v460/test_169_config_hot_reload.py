@@ -515,7 +515,7 @@ class TestReloadableFieldsConsistency:
             "velocity_offset_max_mult",
             "trending_sell_as_offset_enabled",
             "trending_sell_offset_boost_factor",
-            "balance_forced_apply_trending_offset",
+            # 253# 削除済: "balance_forced_apply_trending_offset",
         }
         missing = expected - _HOT_RELOADABLE_FIELDS
         assert missing == set(), (

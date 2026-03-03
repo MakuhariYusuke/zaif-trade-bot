@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 253# hot_reload 配線漏れ / dead config 削除 / getattr 排除 / bare except 改善 (2026-03-03)
+
+### Fixed
+- **252# hot_reload 配線漏れ**: `sell_asymmetric_high_vol_enabled` が `_HOT_RELOADABLE_FIELDS` に未登録 → 追加。YAML にも追加
+- **235# TODO 解消**: `balance_forced_apply_trending_offset` dead config 完全削除 (fill_config, config_hot_reload, YAML, 4テストファイル修正)
+
+### Changed
+- **getattr 6件排除** (`fill_cycle_executor.py`): `_alert_offset_mult`, `_alert_lot_mult`, `_halt_recovery_lot_mult`, `_daily_drawdown_guard`, `_postonly_crossing_streak`, `macro_regime_conflict_action` — クラスレベルデフォルト宣言 + 直接参照で型安全化
+- **TeeWriter bare except → logger.debug** (`event_logger.py`): `except Exception: pass` ×2 → `logger.debug(exc_info=True)` で可観測性向上
+
+### Tests
+- 19 テスト追加 (`test_253_hot_reload_dead_config_getattr_bare_except.py`)
+- 4 テストファイル更新 (test_196, test_197, test_234, test_169)
+- 総テスト: **3526 passed**
+
+
 ## 252# Sell Asymmetric Gate + PhantomGuard 三値化 + 型安全化 (2026-03-03)
 
 ### Added

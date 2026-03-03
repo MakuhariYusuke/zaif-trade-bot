@@ -36,7 +36,7 @@ def _make_config(**overrides):
         "skip_sell_trending_up_only": True,
         "trending_sell_as_offset_enabled": False,
         "trending_sell_offset_boost_factor": 2.0,
-        "balance_forced_apply_trending_offset": True,
+        # 253# 削除済み: balance_forced_apply_trending_offset (234# dead config)
         "max_consecutive_trending_sell_skip": 30,
         "sell_guard_inv_bypass_threshold": 0.3,
         # skip gate basics
@@ -333,10 +333,11 @@ class TestTrendingSellSoftGate:
         assert result.trending_offset_mult == 2.0
 
     def test_soft_mode_balance_forced_always_applies_offset_234(self):
-        """234#: balance_forced_apply_trending_offset は dead config.
+        """234#: soft mode の trending offset は常に適用.
 
         234# で balance_forced の gate bypass を廃止したため、
         soft mode は balance_forced に関係なく常に offset を適用する。
+        253# NOTE: balance_forced_apply_trending_offset フィールドは削除済み。
         """
         from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
@@ -344,7 +345,6 @@ class TestTrendingSellSoftGate:
             skip_sell_trending=True,
             skip_sell_trending_up_only=True,
             trending_sell_as_offset_enabled=True,
-            balance_forced_apply_trending_offset=False,  # 234# dead config
         )
         gate = CycleGateAggregator(cfg)
         result = gate.evaluate(
@@ -530,7 +530,7 @@ class TestConfigYamlParse196:
         lc = cfg["loss_control"]
         assert lc["trending_sell_as_offset_enabled"] is True
         assert lc["trending_sell_offset_boost_factor"] == 3.0  # 246# 2.0→3.0 sell 防御強化
-        assert lc["balance_forced_apply_trending_offset"] is True
+        # 253# 削除済み: balance_forced_apply_trending_offset
 
     def test_config_from_yaml_round_trip(self):
         """from_yaml で 196# フィールドが正しく parse されること."""
@@ -561,7 +561,7 @@ class TestConfigYamlParse196:
         assert cfg.velocity_offset_max_mult == 4.0
         assert cfg.trending_sell_as_offset_enabled is False
         assert cfg.trending_sell_offset_boost_factor == 2.0
-        assert cfg.balance_forced_apply_trending_offset is True
+        # 253# 削除済み: balance_forced_apply_trending_offset
 
 
 # =================================================================

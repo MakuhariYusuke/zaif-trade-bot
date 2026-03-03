@@ -95,7 +95,8 @@ class TeeWriter:
             try:
                 w.write(s)
             except Exception:
-                pass
+                # 253# bare except → debug ログで可観測性確保
+                logger.debug("TeeWriter.write failed for %s", type(w).__name__, exc_info=True)
         return len(s)
 
     def flush(self) -> None:
@@ -103,7 +104,8 @@ class TeeWriter:
             try:
                 w.flush()
             except Exception:
-                pass
+                # 253# bare except → debug ログで可観測性確保
+                logger.debug("TeeWriter.flush failed for %s", type(w).__name__, exc_info=True)
 
 
 def setup_stderr_mirror(results_dir: str | Path) -> None:

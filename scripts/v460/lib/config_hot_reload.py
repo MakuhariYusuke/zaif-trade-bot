@@ -177,10 +177,12 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "skip_buy_unknown_regime",
     "skip_sell_trending",
     "skip_sell_trending_up_only",
+    # 252# Sell Asymmetric Mode: high_vol でも sell skip (Glosten-Milgrom)
+    "sell_asymmetric_high_vol_enabled",
     # 196# trending sell soft offset
     "trending_sell_as_offset_enabled",
     "trending_sell_offset_boost_factor",
-    "balance_forced_apply_trending_offset",
+    # 253# 削除済み: balance_forced_apply_trending_offset (234# dead config)
     "max_consecutive_trending_sell_skip",
     "sell_guard_inv_bypass_threshold",  # 171# Guard Paradox 対策
     "skip_balance_forced",
