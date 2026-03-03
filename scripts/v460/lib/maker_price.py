@@ -548,6 +548,16 @@ class MakerPriceCalculator:
         # σ² estimate: spread-based micro-volatility proxy (Roll 1984)
         # spread / mid ≈ 2σ at bid-ask level → σ ≈ spread / (2·mid)
         sigma = spread / (2.0 * mid_price)
+
+        # 258# MT-4: RegimeDetector の realized vol ratio で hybrid 推定
+        # vol_ratio > 1.0 → 高ボラ局面 → σ 増幅 (リスク回避加速)
+        # vol_ratio < 1.0 → 低ボラ局面 → σ 抑制 (不要な broad offset 防止)
+        # regime_detector が None の場合は Roll proxy にフォールバック (vol_ratio=1.0)
+        vol_ratio = 1.0
+        if self._regime_detector is not None:
+            vol_ratio = max(self._regime_detector.last_volatility_ratio, 0.1)
+        sigma *= vol_ratio
+
         sigma_sq = sigma * sigma
 
         # AS reservation shift in offset ratio units:
@@ -569,8 +579,8 @@ class MakerPriceCalculator:
 
         if effective_offset_ratio != prev:
             logger.info(
-                f"[as_reservation] 257# {side} q={q:+.3f} γ={gamma:.3f} "
-                f"σ²={sigma_sq:.2e} τ={tau:.0f}s → "
+                f"[as_reservation] 258# {side} q={q:+.3f} γ={gamma:.3f} "
+                f"σ²={sigma_sq:.2e} vol_ratio={vol_ratio:.3f} τ={tau:.0f}s → "
                 f"offset {prev:.4f} → {effective_offset_ratio:.4f} "
                 f"(shift={shift:+.2e})"
             )

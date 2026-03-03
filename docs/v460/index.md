@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-03 (257# impl: AS Reservation Price + VPIN Continuous + RegimeDetectorLike Protocol)
+> 最終更新: 2026-03-03 (258# impl: AS σ² vol_ratio 統合 + adaptation_engine hasattr 排除)
 
 ---
 
@@ -243,13 +243,15 @@
 | 250 | impl | [250_ph2_impl_pl_split_freeze_side_probe.md](250_ph2_impl_pl_split_freeze_side_probe.md) | P/L 3分離・freeze side紐付け・quiescence deadlock防御・probe廃止基盤 |
 | 251 | rev | [251_ph2_pre_impl_review_report.md](251_ph2_pre_impl_review_report.md) | Pre-Implementation Review: 247#/248# 残 P1/P2 項目の実装準備レビュー |
 | 252 | impl | [252_ph2_impl_sell_asymmetric_phantom_ternary.md](252_ph2_impl_sell_asymmetric_phantom_ternary.md) | Sell Asymmetric Gate + PhantomGuard 三値化 + 型安全化 |
-| 253 | rev | [253_pre_impl_codebase_sweep_report.md](253_pre_impl_codebase_sweep_report.md) | 252# self-review + codebase sweep: P1×4 発見 |
-| 253 | impl | [253_ph2_impl_hot_reload_dead_config_getattr_bare_except.md](253_ph2_impl_hot_reload_dead_config_getattr_bare_except.md) | hot_reload 配線漏れ, dead config 削除, getattr 排除, bare except 改善 |
+| 253a | rev | [253_phg_rev_pre_impl_codebase_sweep.md](253_phg_rev_pre_impl_codebase_sweep.md) | 252# self-review + codebase sweep: P1×4 発見 |
+| 253b | impl | [253_ph2_impl_hot_reload_dead_config_getattr_bare_except.md](253_ph2_impl_hot_reload_dead_config_getattr_bare_except.md) | hot_reload 配線漏れ, dead config 削除, getattr 排除, bare except 改善 |
 | 254 | impl | — | frozen_side 永続化, orchestrator getattr 排除, bare except 改善 |
-| 255 | impl | [255_codebase_sweep_report.md](255_codebase_sweep_report.md) | skip_gate_evaluator/order_monitor getattr 排除, bare except → debug log |
-| 256 | impl | [256_self_review_and_sweep.md](256_self_review_and_sweep.md) | _recent_records 累積バグ修正, セルフレビュー |
-| 257 | rpt | [257_phg_rpt_codebase_sweep.md](257_phg_rpt_codebase_sweep.md) | Codebase Sweep: ドキュメント整合・市場理論・再利用・技術的負債 (P1×9, P2×47) |
-| 257 | impl | — | AS Reservation Price, VPIN Continuous, RegimeDetectorLike Protocol |
+| 255 | impl | [255_phg_rev_codebase_sweep.md](255_phg_rev_codebase_sweep.md) | skip_gate_evaluator/order_monitor getattr 排除, bare except → debug log |
+| 256 | impl | [256_phg_impl_recent_records_fix_self_review.md](256_phg_impl_recent_records_fix_self_review.md) | _recent_records 累積バグ修正, セルフレビュー |
+| 257a | rpt | [257_phg_rpt_codebase_sweep.md](257_phg_rpt_codebase_sweep.md) | Codebase Sweep: ドキュメント整合・市場理論・再利用・技術的負債 (P1×9, P2×47) |
+| 257b | impl | [257_phg_impl_as_reservation_vpin_continuous_protocol.md](257_phg_impl_as_reservation_vpin_continuous_protocol.md) | AS Reservation Price, VPIN Continuous, RegimeDetectorLike Protocol |
+| 258a | rpt | [258_phg_rpt_codebase_sweep.md](258_phg_rpt_codebase_sweep.md) | Codebase Sweep: getattr 35残存, object 43型, 150行超メソッド 4件 |
+| 258b | impl | — | AS σ² vol_ratio 統合, adaptation_engine hasattr 排除 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

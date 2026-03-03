@@ -207,9 +207,12 @@ class AdaptationEngine:
 
             min_side_samples = max(cfg.adapt_min_side_samples, cfg.min_adapt_samples // 2)
 
-            regime_tag = "n/a"
-            if regime_detector is not None and hasattr(regime_detector, "current_regime"):
-                regime_tag = regime_detector.current_regime.value
+            # 258# F-3: RegimeDetectorLike Protocol — 直接アクセス
+            regime_tag = (
+                regime_detector.current_regime.value
+                if regime_detector is not None
+                else "n/a"
+            )
 
             if len(buy_records) >= min_side_samples and len(sell_records) >= min_side_samples:
                 buy_metrics = compute_fill_metrics(buy_records)
@@ -375,9 +378,12 @@ class AdaptationEngine:
                 **self._build_lot_kwargs(),
             )
             # 131# D1: レジームタグを取得して compute_lot_size に渡す
-            regime_tag = "n/a"
-            if regime_detector is not None and hasattr(regime_detector, "current_regime"):
-                regime_tag = regime_detector.current_regime.value
+            # 258# F-3: RegimeDetectorLike Protocol — 直接アクセス
+            regime_tag = (
+                regime_detector.current_regime.value
+                if regime_detector is not None
+                else "n/a"
+            )
             lot_result = compute_lot_size(
                 fill_rate=metrics.fill_rate_p90,
                 as_ratio=metrics.adverse_selection_ratio,
