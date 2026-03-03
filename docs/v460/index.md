@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-04 (261# Protocol 型安全化: OrderBookLevelLike, OrderBookSnapshot, BalanceAdapterProtocol)
+> 最終更新: 2026-03-05 (262# adaptation_engine Protocol + order_monitor cancel-recheck DRY)
 
 ---
 
@@ -252,6 +252,7 @@
 | 259 | rpt+impl | [259_phg_rpt_codebase_sweep.md](259_phg_rpt_codebase_sweep.md) | Sweep + AS σ² vol_ratio 統合, adaptation_engine hasattr 排除 |
 | 260 | refactor | [260_phg_refactor_compute_extract_regime_split.md](260_phg_refactor_compute_extract_regime_split.md) | compute() extract method (_apply_loss_boost, _apply_ffd_boost) + _apply_regime_boosts 5-split |
 | 261 | impl | [261_phg_impl_protocol_type_safety.md](261_phg_impl_protocol_type_safety.md) | P2-1/5/6/7: OrderBookLevelLike, OrderBookSnapshot, BalanceAdapterProtocol, config_hot_reload getattr 排除 |
+| 262 | impl | [262_phg_impl_protocol_cancel_recheck_dry.md](262_phg_impl_protocol_cancel_recheck_dry.md) | adaptation_engine Protocol化 (type:ignore×4 排除) + order_monitor cancel-recheck DRY化 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

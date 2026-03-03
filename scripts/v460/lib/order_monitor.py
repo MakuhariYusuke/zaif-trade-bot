@@ -109,6 +109,24 @@ class _SkipDecisionLike(Protocol):
     def threshold_used(self) -> float | None: ...
 
 
+class _CancelFillCheck:
+    """262# cancel-recheck 結果."""
+
+    __slots__ = ("was_filled", "fill_price", "t_fill", "cancel_succeeded")
+
+    def __init__(
+        self,
+        was_filled: bool = False,
+        fill_price: float | None = None,
+        t_fill: float | None = None,
+        cancel_succeeded: bool = True,
+    ) -> None:
+        self.was_filled = was_filled
+        self.fill_price = fill_price
+        self.t_fill = t_fill
+        self.cancel_succeeded = cancel_succeeded
+
+
 class OrderMonitor:
     """約定ポーリング監視 — FillTestRunner から分割.
 
@@ -119,6 +137,57 @@ class OrderMonitor:
 
     def __init__(self, config: FillTestConfig) -> None:
         self._config = config
+
+    # ------------------------------------------------------------------
+    # 262# DRY: cancel → fill recheck ヘルパー (3箇所の重複を統合)
+    # ------------------------------------------------------------------
+    @staticmethod
+    async def _try_cancel_with_fill_recheck(
+        adapter: ExchangeAdapter,
+        order_id: str,
+        fallback_price: float,
+    ) -> _CancelFillCheck:
+        """注文キャンセルを試行し、失敗時に fill 済みかを再確認する.
+
+        cancel_order() → 例外 → "Failed to cancel" / "not found" 文字列
+        パターンで約定済み判定 → get_order_status で fill 確認。
+
+        Returns:
+            _CancelFillCheck: was_filled=True なら約定済み検出。
+        """
+        try:
+            await adapter.cancel_order(order_id)
+            return _CancelFillCheck()
+        except Exception as cancel_err:
+            cancel_msg = str(cancel_err)
+            cancel_lower = cancel_msg.lower()
+            if "failed to cancel" not in cancel_lower and "not found" not in cancel_lower:
+                # 予期しないキャンセルエラー → 呼び出し側で処理
+                logger.warning(f"Cancel order unexpected error: {cancel_err}")
+                return _CancelFillCheck(cancel_succeeded=False)
+
+            # "Failed to cancel" / "not found" → 約定済みの可能性 → recheck
+            try:
+                recheck = await adapter.get_order_status(order_id)
+                if (
+                    recheck is not None
+                    and _parse_order_state(recheck.status) == _STATE_FILLED
+                ):
+                    price = recheck.price if recheck.price else fallback_price
+                    logger.info(
+                        f"[cancel_recheck] Order actually filled during cancel "
+                        f"@ {price:.0f} JPY"
+                    )
+                    return _CancelFillCheck(
+                        was_filled=True,
+                        fill_price=price,
+                        t_fill=time.time(),
+                    )
+            except Exception as exc:
+                logger.debug("Recheck after cancel-fail raised: %s", exc)
+
+            logger.warning(f"Cancel failed (order may be gone): {cancel_err}")
+            return _CancelFillCheck(cancel_succeeded=False)
 
     @staticmethod
     def _resolve_regime_name(regime_detector: RegimeDetectorLike | None) -> str | None:
@@ -388,26 +457,15 @@ class OrderMonitor:
                             f"({side}: mid {mid_at_order:.0f}→{current_mid:.0f}). "
                             f"Cancel-only — not chasing adverse direction"
                         )
-                        try:
-                            await adapter.cancel_order(order.order_id)
-                        except Exception as cancel_err:
-                            if "Failed to cancel" in str(cancel_err) or "not found" in str(cancel_err).lower():
-                                try:
-                                    recheck = await adapter.get_order_status(order.order_id)
-                                    if recheck is not None and _parse_order_state(recheck.status) == _STATE_FILLED:
-                                        filled = True
-                                        fill_price = recheck.price if recheck.price else order_price
-                                        t_fill = time.time()
-                                        _cancel_failed_likely_filled = True
-                                        logger.info(
-                                            f"[stale_order] Order actually filled during cancel @ "
-                                            f"{fill_price:.0f} JPY"
-                                        )
-                                except Exception as exc:
-                                    logger.debug("Recheck after cancel-fail raised: %s", exc)
-                            if filled:
-                                break
-                            logger.warning(f"[stale_order] Adverse cancel failed: {cancel_err}")
+                        # 262# DRY: cancel-recheck ヘルパー
+                        chk = await self._try_cancel_with_fill_recheck(
+                            adapter, order.order_id, order_price,
+                        )
+                        if chk.was_filled:
+                            filled = True
+                            fill_price = chk.fill_price
+                            t_fill = chk.t_fill
+                            _cancel_failed_likely_filled = True
                         if not filled:
                             cancel_reason_poll = "stale_adverse_drift"
                         break
@@ -417,27 +475,17 @@ class OrderMonitor:
                             f"({side}: mid {mid_at_order:.0f}→{current_mid:.0f}). "
                             f"Cancelling & repricing (reprice #{reprice_count + 1})"
                         )
-                        # 1) 既存注文キャンセル
-                        try:
-                            await adapter.cancel_order(order.order_id)
-                        except Exception as cancel_err:
-                            if "Failed to cancel" in str(cancel_err) or "not found" in str(cancel_err).lower():
-                                try:
-                                    recheck = await adapter.get_order_status(order.order_id)
-                                    if recheck is not None and _parse_order_state(recheck.status) == _STATE_FILLED:
-                                        filled = True
-                                        fill_price = recheck.price if recheck.price else order_price
-                                        t_fill = time.time()
-                                        _cancel_failed_likely_filled = True  # 166# C.7
-                                        logger.info(
-                                            f"[stale_order] Order actually filled during cancel @ "
-                                            f"{fill_price:.0f} JPY"
-                                        )
-                                except Exception as exc:
-                                    logger.debug("Recheck after cancel-fail raised: %s", exc)
-                            if filled:
-                                break
-                            logger.warning(f"[stale_order] Cancel failed: {cancel_err}")
+                        # 1) 262# DRY: cancel-recheck ヘルパー
+                        chk = await self._try_cancel_with_fill_recheck(
+                            adapter, order.order_id, order_price,
+                        )
+                        if chk.was_filled:
+                            filled = True
+                            fill_price = chk.fill_price
+                            t_fill = chk.t_fill
+                            _cancel_failed_likely_filled = True  # 166# C.7
+                            break
+                        if not chk.cancel_succeeded:
                             continue
 
                         # 2) 100# P0-6: SkipGate による reprice ガード
@@ -513,32 +561,18 @@ class OrderMonitor:
             "stale_adverse_drift",
         )
         if not filled and not _already_cancelled:
-            try:
-                await adapter.cancel_order(order.order_id)
+            # 262# DRY: cancel-recheck ヘルパー
+            chk = await self._try_cancel_with_fill_recheck(
+                adapter, order.order_id, order_price,
+            )
+            if chk.was_filled:
+                filled = True
+                fill_price = chk.fill_price
+                t_fill = chk.t_fill
+                cancel_reason_poll = None
+                _cancel_failed_likely_filled = True  # 166# C.7
+            elif chk.cancel_succeeded:
                 logger.info(f"Cancelled unfilled order after {elapsed:.1f}s")
-            except Exception as e:
-                logger.warning(f"Cancel failed: {e}")
-                if "Failed to cancel" in str(e) or "not found" in str(e).lower():
-                    try:
-                        recheck = await adapter.get_order_status(order.order_id)
-                        if recheck is not None and _parse_order_state(recheck.status) == _STATE_FILLED:
-                            filled = True
-                            fill_price = (
-                                recheck.price if recheck.price else order_price
-                            )
-                            t_fill = time.time()
-                            cancel_reason_poll = None
-                            _cancel_failed_likely_filled = True  # 166# C.7
-                            logger.info(
-                                f"[Bug11] Order was actually filled @ "
-                                f"{fill_price:.0f} JPY (detected on cancel failure)"
-                            )
-                        else:
-                            logger.info(
-                                f"[Bug11] Recheck: order not found in transactions either"
-                            )
-                    except Exception as recheck_err:
-                        logger.warning(f"[Bug11] Recheck failed: {recheck_err}")
 
         pending_order_setter(None)
 

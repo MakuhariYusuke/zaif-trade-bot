@@ -22,9 +22,46 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
-from typing import Final, NamedTuple, Optional
+from typing import Final, NamedTuple, Optional, Protocol, Sequence
 
 from scripts.v460.lib.regime_detector import RegimeDetectorLike
+
+
+# ------------------------------------------------------------------
+# 262# Protocol 定義 — type: ignore 排除
+# ------------------------------------------------------------------
+class _LossCapBalanceLike(Protocol):
+    """残高エントリ — .currency / .total で通貨と合計残高を取得."""
+
+    @property
+    def currency(self) -> str: ...
+
+    @property
+    def total(self) -> float: ...
+
+
+class LossCapAdapterProtocol(Protocol):
+    """update_dynamic_loss_cap が adapter に要求する最小インタフェース.
+
+    NOTE: balance_checker.BalanceAdapterProtocol とは異なる。
+    - get_balance() は引数なし (全通貨一括) で .currency/.total を持つ。
+    - BalanceAdapterProtocol は get_balance(currency: str) で .free を持つ。
+    """
+
+    async def get_current_price(self, symbol: str) -> float | None: ...
+
+    async def get_balance(self) -> Sequence[_LossCapBalanceLike]: ...
+
+
+class FastFillDefenseLike(Protocol):
+    """try_auto_adapt が fast_fill_defense に要求する最小インタフェース."""
+
+    def update_base_offsets(
+        self,
+        base: float,
+        buy: float | None = None,
+        sell: float | None = None,
+    ) -> None: ...
 
 from ztb.metrics.fill_quality import (
     FillRecord,
@@ -167,7 +204,7 @@ class AdaptationEngine:
         base_offset_ratio_buy: float | None,
         base_offset_ratio_sell: float | None,
         regime_detector: RegimeDetectorLike | None = None,
-        fast_fill_defense: object | None = None,
+        fast_fill_defense: FastFillDefenseLike | None = None,
     ) -> AdaptationResult:
         """032# P0: 方策 A — fill メトリクスに基づく spread_offset_ratio 自動適応.
 
@@ -265,7 +302,7 @@ class AdaptationEngine:
                     )
 
                 if side_result.any_changed and fast_fill_defense is not None:
-                    fast_fill_defense.update_base_offsets(  # type: ignore[union-attr]
+                    fast_fill_defense.update_base_offsets(
                         base_offset_ratio,
                         new_buy,
                         new_sell,
@@ -316,7 +353,7 @@ class AdaptationEngine:
                         f"({adapt_result.action}: {adapt_result.reason})"
                     )
                     if fast_fill_defense is not None:
-                        fast_fill_defense.update_base_offsets(  # type: ignore[union-attr]
+                        fast_fill_defense.update_base_offsets(
                             new_base,
                             base_offset_ratio_buy,
                             new_sell,
@@ -413,7 +450,7 @@ class AdaptationEngine:
     # ------------------------------------------------------------------
     async def update_dynamic_loss_cap(
         self,
-        adapter: object,
+        adapter: LossCapAdapterProtocol,
         symbol: str,
     ) -> Optional[float]:
         """041# 動的 loss_cap: API から口座残高を取得し、残高×比率でキャップを算出.
@@ -423,7 +460,7 @@ class AdaptationEngine:
         """
         cfg = self._config
         try:
-            btc_price = await adapter.get_current_price(symbol)  # type: ignore[attr-defined]
+            btc_price = await adapter.get_current_price(symbol)
             if btc_price is None:
                 logger.warning(
                     "[loss_cap] BTC価格取得失敗 — フォールバック値を維持: "
@@ -431,7 +468,7 @@ class AdaptationEngine:
                 )
                 return None
 
-            balances = await adapter.get_balance()  # type: ignore[attr-defined]
+            balances = await adapter.get_balance()
             total_jpy = 0.0
             for b in balances:
                 currency = b.currency.upper()
