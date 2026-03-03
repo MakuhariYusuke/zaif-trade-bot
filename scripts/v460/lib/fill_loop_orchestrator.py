@@ -91,6 +91,10 @@ class FillLoopOrchestratorMixin:
     # 237# PhantomPositionGuard class-level default (hasattr 排除)
     # 238# C-1: object → PhantomPositionGuard 型安全化 (TYPE_CHECKING)
     _phantom_guard: PhantomPositionGuard | None = None
+    # 254# _recent_records: _check_stop_conditions が参照。テスト注入用。
+    _recent_records: list[FillRecord] = []  # type: ignore[assignment]
+    # 254# _heartbeat_task: run_continuous 内で代入、cleanup_heartbeat で参照
+    _heartbeat_task: asyncio.Task[None] | None = None
 
     def _is_sell_killed(self) -> bool:
         """133# P0-10 / 136# P1-03: sell 動的 kill 判定 — SellDynamicKillManager に委譲.
@@ -337,6 +341,8 @@ class FillLoopOrchestratorMixin:
             degraded_liquidation_duty_counter=self._degraded_liquidation_duty_counter,
             one_sided_cooldown_remaining=self._one_sided_cooldown_remaining,
             one_sided_freeze_remaining=self._one_sided_freeze_remaining,
+            # 254# 250# P1-4 永続化漏れ修正: freeze/cooldown の対象 side
+            one_sided_frozen_side=self._one_sided_frozen_side,
             consecutive_no_feasible=(
                 dict(self._consecutive_no_feasible)
                 if self._consecutive_no_feasible
@@ -389,7 +395,8 @@ class FillLoopOrchestratorMixin:
                 f"{self._one_sided_consecutive_count}"
             )
         # 224#: soft drawdown interval 乗数復元
-        _sd_mult = getattr(saved_state, "soft_drawdown_interval_multiplier", 1.0)
+        # 254# getattr → 直接参照 (FillTestState にフィールド存在)
+        _sd_mult = saved_state.soft_drawdown_interval_multiplier
         if _sd_mult != 1.0:
             self._soft_drawdown_interval_multiplier = _sd_mult
             logger.info(
@@ -417,7 +424,8 @@ class FillLoopOrchestratorMixin:
                 f"kills={self._buy_kill_mgr._total_kills}"
             )
         # 225# MCB/SAD 状態復元 (228# H3: hasattr → class-level None default)
-        _mcb_state = getattr(saved_state, "mcb_state", None)
+        # 254# getattr → 直接参照 (FillTestState にフィールド存在)
+        _mcb_state = saved_state.mcb_state
         if _mcb_state and self._mcb is not None:
             self._mcb.import_state(_mcb_state)
             logger.info(
@@ -425,7 +433,7 @@ class FillLoopOrchestratorMixin:
                 f"buffer={len(self._mcb._price_buffer)}, "
                 f"halts={self._mcb._total_halts}"
             )
-        _sad_state = getattr(saved_state, "sad_state", None)
+        _sad_state = saved_state.sad_state
         if _sad_state and self._sad is not None:
             self._sad.import_state(_sad_state)
             logger.info(
@@ -434,19 +442,26 @@ class FillLoopOrchestratorMixin:
                 f"frozens={self._sad._total_frozens}"
             )
         # 236# エスカレーション・縮退カウンタ復元
-        _duty = getattr(saved_state, "degraded_liquidation_duty_counter", 0)
+        # 254# getattr → 直接参照 (FillTestState にフィールド存在)
+        _duty = saved_state.degraded_liquidation_duty_counter
         if _duty > 0:
             self._degraded_liquidation_duty_counter = _duty
             logger.info(f"[236#] Degraded duty counter restored: {_duty}")
-        _cd = getattr(saved_state, "one_sided_cooldown_remaining", 0)
+        _cd = saved_state.one_sided_cooldown_remaining
         if _cd > 0:
             self._one_sided_cooldown_remaining = _cd
             logger.info(f"[236#] One-sided cooldown remaining restored: {_cd}")
-        _fr = getattr(saved_state, "one_sided_freeze_remaining", 0)
+        _fr = saved_state.one_sided_freeze_remaining
         if _fr > 0:
             self._one_sided_freeze_remaining = _fr
             logger.info(f"[236#] One-sided freeze remaining restored: {_fr}")
-        _cnf = getattr(saved_state, "consecutive_no_feasible", None)
+        # 254# 250# P1-4: frozen_side 永続化復元
+        # 254# getattr → 直接参照
+        _fs = saved_state.one_sided_frozen_side
+        if _fs is not None:
+            self._one_sided_frozen_side = _fs
+            logger.info(f"[254#] One-sided frozen side restored: {_fs}")
+        _cnf = saved_state.consecutive_no_feasible
         if _cnf:
             self._consecutive_no_feasible = dict(_cnf)
             logger.info(f"[236#] Consecutive no-feasible restored: {_cnf}")
@@ -530,10 +545,11 @@ class FillLoopOrchestratorMixin:
             strategy.activate_fallback(3600.0)
             return
         # avg pnl30 (直近 100 filled)
-        records = getattr(self, "_recent_records", getattr(self, "_records", []))
+        # 254# getattr → クラスレベルデフォルト直接参照
+        records = self._recent_records
         pnls = [
             r.post_fill_30s_pnl for r in records[-100:]
-            if getattr(r, "filled", False) and getattr(r, "post_fill_30s_pnl", None) is not None
+            if r.filled and r.post_fill_30s_pnl is not None
         ]
         if len(pnls) >= 10:
             avg = sum(pnls) / len(pnls)
@@ -1216,6 +1232,8 @@ class FillLoopOrchestratorMixin:
                                 mem_mb = proc.memory_info().rss / (1024 * 1024)
                                 mem_info = f"mem={mem_mb:.1f}MB, "
                             except Exception:
+                                # 254# bare except → debug log (psutil 不在/権限エラー可観測化)
+                                logger.debug("psutil memory check unavailable", exc_info=True)
                                 mem_info = ""
                             logger.info(
                                 f"[heartbeat] Still in time_filter zone "
@@ -2310,7 +2328,8 @@ class FillLoopOrchestratorMixin:
         run_continuous の呼び出し元で finally ブロックから呼ぶことで、
         未処理例外発生時の heartbeat タスクリークを防止する。
         """
-        task = getattr(self, "_heartbeat_task", None)
+        # 254# getattr → クラスレベルデフォルト直接参照
+        task = self._heartbeat_task
         if task is not None and not task.done():
             task.cancel()
             self._heartbeat_task = None

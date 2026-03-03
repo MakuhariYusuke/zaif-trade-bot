@@ -262,6 +262,8 @@ class FillTestState:
     degraded_liquidation_duty_counter: int = 0
     one_sided_cooldown_remaining: int = 0
     one_sided_freeze_remaining: int = 0
+    # 254# 250# P1-4 永続化漏れ修正: freeze/cooldown の対象 side
+    one_sided_frozen_side: str | None = None
     consecutive_no_feasible: dict[str, int] | None = None
     # 237# phantom position guard メトリクス永続化
     phantom_guard_metrics: dict[str, int | float] | None = None

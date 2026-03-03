@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 254# frozen_side 永続化 / orchestrator getattr 排除 / bare except 改善 (2026-03-03)
+
+### Fixed
+- **250# 永続化漏れ**: `_one_sided_frozen_side` が `FillTestState` に含まれず、プロセス再起動で freeze side 情報が消失 → FillTestState + snapshot/restore に追加。在庫リスク管理 (Glosten-Milgrom): 全 side 凍結は過剰防御、片側限定が正しい
+
+### Changed
+- **orchestrator getattr 8件排除**: `_restore_common_state()` の `getattr(saved_state, ...)` 7件 → `FillTestState` フィールド直接参照。`_check_regime_stop_conditions` の `getattr(self, "_recent_records", ...)` → クラスレベルデフォルト
+- **`_heartbeat_task` クラスレベルデフォルト**: `cleanup_heartbeat()` の getattr 排除
+- **heartbeat bare except → logger.debug**: psutil メモリチェックの `except Exception:` → `logger.debug(exc_info=True)` で可観測性向上
+
+### Tests
+- 10 テスト追加 (`test_254_frozen_side_persist_getattr_cleanup.py`)
+- 総テスト: **3536 passed**
+
+
 ## 253# hot_reload 配線漏れ / dead config 削除 / getattr 排除 / bare except 改善 (2026-03-03)
 
 ### Fixed
