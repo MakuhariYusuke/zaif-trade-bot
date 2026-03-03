@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-03 (247# 234–246レビュー: 未デプロイ検証, DD cooldown再武装不足, inventory中立前提の見直し)
+> 最終更新: 2026-03-03 (250# 249#レビュー: P/L 3分離, quiescence deadlock防御, probe廃止基盤, freeze side紐付け)
 
 ---
 
@@ -236,8 +236,11 @@
 | 243 | fix | [243_ph2_fix_yaml_wiring.md](243_ph2_fix_yaml_wiring.md) | 242# 追加設定の YAML 配線漏れ修正 + バリデーション補強 |
 | 244 | impl | [244_ph2_impl_guard_reason_classification.md](244_ph2_impl_guard_reason_classification.md) | Guard reason を MARKET/SYSTEM/RECOVERY に分類し、集計可視化を追加 |
 | 245 | rpt | [245_ph2_production_log_analysis_mar03.md](245_ph2_production_log_analysis_mar03.md) | 本番ログ分析 (2026-02-13〜2026-03-03): sell劣後・在庫中立前提・DD挙動を再点検 |
-| 246 | fix | [246_dd_cooldown_release_sell_defense.md](246_dd_cooldown_release_sell_defense.md) | DD Halt Cooldown Release + Sell Defence Hardening |
+| 246 | fix | [246_ph2_fix_dd_cooldown_release_sell_defense.md](246_ph2_fix_dd_cooldown_release_sell_defense.md) | DD Halt Cooldown Release + Sell Defence Hardening |
 | 247 | rev | [247_ph2_rev_234_246_functionality_market_theory_review.md](247_ph2_rev_234_246_functionality_market_theory_review.md) | 234#–246# レビュー: 未デプロイ検証, DD cooldown再武装不足, inventory中立前提の見直し |
+| 248 | rev | [248_ph2_gemini_31_pro_review_234_246_directional_alpha.md](248_ph2_gemini_31_pro_review_234_246_directional_alpha.md) | Gemini 3.1 Pro レビュー: Directional Alpha パラダイムシフト + P0提案5件 |
+| 249 | impl | [249_ph2_impl_directional_alpha_dd_rearm.md](249_ph2_impl_directional_alpha_dd_rearm.md) | Directional Alpha + DD Re-arm + Quiescence: 247#/248# P0 全5件実装 |
+| 250 | impl | [250_ph2_impl_pl_split_freeze_side_probe.md](250_ph2_impl_pl_split_freeze_side_probe.md) | P/L 3分離・freeze side紐付け・quiescence deadlock防御・probe廃止基盤 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

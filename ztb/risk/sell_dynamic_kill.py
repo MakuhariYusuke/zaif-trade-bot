@@ -82,6 +82,13 @@ class DynamicKillConfig:
     #: 新鮮な PnL データを取得するプローブサイクルを発動する。
     #: 0 = 無効 (従来互換)。
     #: 219# 30→10 に短縮 (60分→20分)。
+    #:
+    #: 250# 廃止検討 (247# P1-6):
+    #:   probe は 242#「No Trade = 正常」思想と矛盾する。
+    #:   Glosten-Milgrom の情報非対称下では、kill 中の強制取引 (probe) は
+    #:   情報優位者への無防備な流動性供給となり、逆選択コストを増大させる。
+    #:   242# toxic_kill_stale_multiplier で大幅緩和済みだが、
+    #:   将来的に 0 (無効) をデフォルトとすることを検討。
     max_stale_kill_cycles: int = 10
     #: 219# progressive probe: 連続 probe 時に interval を半減する際の下限。
     min_probe_interval: int = 2
@@ -391,6 +398,11 @@ class DynamicKillManager:
 
         # 218#/219# anti-stagnation: stale probe check + progressive interval
         # 242# Liveness relaxation: toxicity KILL + データ裏付けあり → interval 延長
+        # 250# 廃止検討注記 (247# P1-6):
+        #   probe は逆選択環境で情報劣位者が穴を開ける行為であり、
+        #   MM 理論 (Glosten-Milgrom 1985) 上は「No Quote」が最適解。
+        #   242# toxic_kill_stale_multiplier で実質的に無効化されるが、
+        #   max_stale_kill_cycles=0 で明示的に無効化可能。
         effective_max_stale = self._effective_probe_interval()
         _toxic_mult = self._toxic_kill_multiplier(regime)
         if _toxic_mult > 1:

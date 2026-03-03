@@ -229,6 +229,10 @@ class DailyDrawdownGuard:
             ):
                 self._state.cooldown_rearmed = True
                 self._state.cooldown_released = False
+                # 250# 防御的 halt_triggered_at 更新:
+                # cooldown_rearmed=True がガードになるため is_halted() の cooldown
+                # 再計算には使われないが、状態永続化 (export/import)
+                # とログ調査用に正確なタイムスタンプを保持。
                 self._state.halt_triggered_at = time.time()
                 result["halted"] = True
                 logger.warning(

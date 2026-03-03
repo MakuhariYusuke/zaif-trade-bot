@@ -233,10 +233,21 @@ class CycleGateAggregator:
         if _dual_kill:
             # 249# quiescence mode: dual_kill_bypass を無効化 — 両方 toxic なら静観
             if self._config.dual_kill_quiescence_enabled:
-                logger.info(
-                    f"[249#] DUAL KILL quiescence: both buy/sell killed — "
-                    f"resting (side={side}, no bypass)"
-                )
+                # 250# deadlock 防御: balance_forced + degraded 有効時は quiescence を
+                # 緩和し、degraded liquidation での縮退清算を許容する。
+                # 完全静観は「取引の意思がない」=正常だが、balance_forced は
+                # ポジションリバランスの強い要求を示すため、安全弁を提供。
+                if balance_forced and self._config.degraded_liquidation_enabled:
+                    logger.info(
+                        f"[250#] DUAL KILL quiescence + balance_forced: "
+                        f"allowing degraded liquidation (side={side})"
+                    )
+                    # bypass しない (各 kill gate で block) → degraded で救済
+                else:
+                    logger.info(
+                        f"[249#] DUAL KILL quiescence: both buy/sell killed — "
+                        f"resting (side={side}, no bypass)"
+                    )
                 # bypass しない → 各 kill gate が個別にブロック判定
             else:
                 # 旧挙動 (219#): 両方 kill なら全て通過させてデッドロック回避

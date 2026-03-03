@@ -77,6 +77,9 @@ class FillLoopOrchestratorMixin:
     # 234# one-sided エスカレーション: cooldown 残サイクル
     _one_sided_cooldown_remaining: int = 0
     _one_sided_freeze_remaining: int = 0
+    # 250# P1-4: freeze/cooldown が紐付いた side
+    # — None 時は全 side スキップ (後方互換), side 指定時はその side のみ
+    _one_sided_frozen_side: str | None = None
     # 223# skip-time state save: 最終 state save のモノトニック時刻
     _last_state_save_time: float = 0.0
     #: 223# skip パス中の state save 間隔 (秒)
@@ -715,6 +718,9 @@ class FillLoopOrchestratorMixin:
         cumulative_pnl_jpy = 0.0
         # 249# Total Equity MTM: BTC 増減を追跡 (buy=+, sell=-)
         cumulative_btc_delta = 0.0
+        # 250# P/L 3分離: adverse selection 累積カウント・bps 追跡
+        cumulative_adverse_count = 0
+        cumulative_adverse_bps = 0.0
         for r in clean_records:
             pnl_jpy = compute_record_pnl_jpy(r)
             if pnl_jpy is not None:
@@ -726,6 +732,11 @@ class FillLoopOrchestratorMixin:
                     cumulative_btc_delta += _qty
                 elif r.side == "sell":
                     cumulative_btc_delta -= _qty
+            # 250# resume 時の adverse selection 復元
+            if r.filled and r.adverse_selected is True:
+                cumulative_adverse_count += 1
+                if r.post_fill_30s_pnl is not None:
+                    cumulative_adverse_bps += r.post_fill_30s_pnl
 
         # 101# §2: soft_loss_cap_triggered をレジューム復元
         # 前回 run 中に soft cap 発動していた場合、再起動で False に戻ると
@@ -1464,43 +1475,57 @@ class FillLoopOrchestratorMixin:
             # ────────────────────────────────────────────────────
             # 234# one-sided エスカレーション: cooldown / freeze 発動チェック
             # ────────────────────────────────────────────────────
+            # 250# P1-4: freeze/cooldown は紐付いた side のみスキップ
+            # — 反対 side は通常実行を許可 (247# §1.10)
+            _frozen_side = self._one_sided_frozen_side  # None = all sides
             if self._one_sided_freeze_remaining > 0:
-                self._one_sided_freeze_remaining -= 1
-                logger.info(
-                    f"[234#] One-sided FREEZE active: skipping {next_side} "
-                    f"(remaining={self._one_sided_freeze_remaining})"
+                if _frozen_side is None or _frozen_side == next_side:
+                    self._one_sided_freeze_remaining -= 1
+                    logger.info(
+                        f"[234#] One-sided FREEZE active: skipping {next_side} "
+                        f"(frozen_side={_frozen_side}, "
+                        f"remaining={self._one_sided_freeze_remaining})"
+                    )
+                    self._inc_guard_fire("one_sided_freeze_skip")
+                    _skip_record = self._make_loop_skip_record(
+                        side=next_side,
+                        cancel_reason="one_sided_freeze_skip",
+                        order_quantity=self._current_lot,
+                    )
+                    batch.append(_skip_record)
+                    total_count += 1
+                    batch = self._batch_persistence.maybe_flush(batch, "one_sided_freeze_skip")
+                    self._last_side = next_side
+                    await self._effective_sleep()
+                    continue
+                # 250#: frozen_side と異なる side → スキップせず通過
+                logger.debug(
+                    f"[250#] Freeze side={_frozen_side}, current={next_side} — pass through"
                 )
-                self._inc_guard_fire("one_sided_freeze_skip")
-                _skip_record = self._make_loop_skip_record(
-                    side=next_side,
-                    cancel_reason="one_sided_freeze_skip",
-                    order_quantity=self._current_lot,
-                )
-                batch.append(_skip_record)
-                total_count += 1
-                batch = self._batch_persistence.maybe_flush(batch, "one_sided_freeze_skip")
-                self._last_side = next_side
-                await self._effective_sleep()
-                continue
 
             if self._one_sided_cooldown_remaining > 0:
-                self._one_sided_cooldown_remaining -= 1
-                logger.info(
-                    f"[234#] One-sided COOLDOWN skip: "
-                    f"remaining={self._one_sided_cooldown_remaining}"
+                if _frozen_side is None or _frozen_side == next_side:
+                    self._one_sided_cooldown_remaining -= 1
+                    logger.info(
+                        f"[234#] One-sided COOLDOWN skip: "
+                        f"frozen_side={_frozen_side}, "
+                        f"remaining={self._one_sided_cooldown_remaining}"
+                    )
+                    self._inc_guard_fire("one_sided_cooldown_skip")
+                    _skip_record = self._make_loop_skip_record(
+                        side=next_side,
+                        cancel_reason="one_sided_cooldown_skip",
+                        order_quantity=self._current_lot,
+                    )
+                    batch.append(_skip_record)
+                    total_count += 1
+                    batch = self._batch_persistence.maybe_flush(batch, "one_sided_cooldown_skip")
+                    self._last_side = next_side
+                    await self._effective_sleep()
+                    continue
+                logger.debug(
+                    f"[250#] Cooldown side={_frozen_side}, current={next_side} — pass through"
                 )
-                self._inc_guard_fire("one_sided_cooldown_skip")
-                _skip_record = self._make_loop_skip_record(
-                    side=next_side,
-                    cancel_reason="one_sided_cooldown_skip",
-                    order_quantity=self._current_lot,
-                )
-                batch.append(_skip_record)
-                total_count += 1
-                batch = self._batch_persistence.maybe_flush(batch, "one_sided_cooldown_skip")
-                self._last_side = next_side
-                await self._effective_sleep()
-                continue
 
             # 133# P0-08 / 154# C-1/C-2: balance_forced スキップ + deadlock 防止
             if _balance_forced and self.config.skip_balance_forced:
@@ -1866,6 +1891,8 @@ class FillLoopOrchestratorMixin:
                         if _freeze_off > 0 and _over >= _freeze_off:
                             _freeze_n = self.config.one_sided_escalation_freeze_cycles
                             self._one_sided_freeze_remaining = _freeze_n
+                            # 250# P1-4: freeze を発動した side を記録
+                            self._one_sided_frozen_side = next_side
                             # 235# B-5 fix: freeze 発動時にカウンタを limit まで巻き戻し
                             # freeze 消化後の即再発動を防止
                             self._one_sided_consecutive_count = _os_limit
@@ -1879,6 +1906,8 @@ class FillLoopOrchestratorMixin:
                         elif _cd_off > 0 and _over >= _cd_off:
                             _cd_n = self.config.one_sided_escalation_cooldown_cycles
                             self._one_sided_cooldown_remaining = _cd_n
+                            # 250# P1-4: cooldown を発動した side を記録
+                            self._one_sided_frozen_side = next_side
                             # 235# B-5 fix: cooldown 発動時もカウンタ巻き戻し
                             self._one_sided_consecutive_count = _os_limit
                             self._inc_guard_fire("one_sided_cooldown")
@@ -1903,6 +1932,7 @@ class FillLoopOrchestratorMixin:
                     self._one_sided_consecutive_count = 0
                     self._one_sided_cooldown_remaining = 0
                     self._one_sided_freeze_remaining = 0
+                    self._one_sided_frozen_side = None  # 250# reset
             except KeyboardInterrupt:
                 logger.info("KeyboardInterrupt — stopping gracefully")
                 self._kill_switch.kill("keyboard_interrupt")
@@ -1980,6 +2010,11 @@ class FillLoopOrchestratorMixin:
                         cumulative_btc_delta += _fill_qty
                     else:
                         cumulative_btc_delta -= _fill_qty
+                # 250# P/L 3分離: adverse selection インクリメンタル追跡
+                if record.adverse_selected is True:
+                    cumulative_adverse_count += 1
+                    if record.post_fill_30s_pnl is not None:
+                        cumulative_adverse_bps += record.post_fill_30s_pnl
                 # 168# §4.1 #3: 日次ドローダウンガード PnL 更新
                 if record.post_fill_30s_pnl is not None:
                     dd_result = self._daily_drawdown_guard.update_pnl(
@@ -2098,6 +2133,20 @@ class FillLoopOrchestratorMixin:
                         f"(spreadPnL={cumulative_pnl_jpy:+.1f} + "
                         f"btcMTM={_equity_btc_val:+.1f} "
                         f"@mid={_mtm_mid:.0f})"
+                    )
+                # 250# P/L 3分離: adverse selection 累積サマリ
+                # マーケットメイキング理論: AS は spread 収益を侵食する主要因。
+                # AS 件数と累積bps を可視化し、spread PnL との比率で
+                # 情報リスク (Glosten-Milgrom 逆選択コスト) の大きさを把握。
+                if cumulative_adverse_count > 0:
+                    _as_rate = (
+                        cumulative_adverse_count / filled_count * 100.0
+                        if filled_count > 0 else 0.0
+                    )
+                    logger.info(
+                        f"[250# AS] adverseFills={cumulative_adverse_count} "
+                        f"({_as_rate:.1f}%), "
+                        f"cumASbps={cumulative_adverse_bps:+.1f}bps"
                     )
                 # 244# Guard reason category summary
                 if self._guard_fire_counts:
