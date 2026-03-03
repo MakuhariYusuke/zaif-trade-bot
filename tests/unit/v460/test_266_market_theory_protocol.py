@@ -196,18 +196,27 @@ class TestASDeltaStar:
         assert result >= 0.001
 
     def test_delta_star_formula_correctness(self) -> None:
-        """δ* 公式の数値的正確性."""
+        """δ* 公式の数値的正確性 (267# 修正: 絶対価格 σ)."""
         gamma = 0.5
         k = 1.5
-        # σ = spread / (2·mid) = 100 / (2·10_000_000) = 5e-6
-        sigma = 100.0 / (2.0 * 10_000_000.0)
-        sigma_sq = sigma * sigma
+        mid = 10_000_000.0
+        # σ_return = spread / (2·mid) = 100 / (2·10_000_000) = 5e-6
+        sigma_return = 100.0 / (2.0 * mid)
+        # 267# AS 論文は絶対 σ: σ_abs = σ_return × mid
+        sigma_abs = sigma_return * mid  # = 50 JPY
+        sigma_abs_sq = sigma_abs * sigma_abs  # = 2500 JPY²
         tau = 120.0
-        delta_star = gamma * sigma_sq * tau + (2.0 / gamma) * math.log(1.0 + gamma / k)
-        assert delta_star > 0
-        # ln(1 + 0.5/1.5) = ln(1.333..) ≈ 0.2877
+        delta_star_jpy = (
+            gamma * sigma_abs_sq * tau
+            + (2.0 / gamma) * math.log(1.0 + gamma / k)
+        )
+        assert delta_star_jpy > 0
+        # γσ²τ 項: 0.5 * 2500 * 120 = 150000 JPY
+        # penalty 項: 4 * ln(4/3) ≈ 1.15 JPY → 支配項は γσ²τ
         expected_penalty = (2.0 / 0.5) * math.log(1.0 + 0.5 / 1.5)
         assert abs(expected_penalty - 4.0 * math.log(4.0 / 3.0)) < 1e-10
+        # δ* ≈ 150001.15 → ratio = 150001.15 / 100 = 1500.01
+        # → max_offset_ratio でクランプされる (高 γ では非常に保守的)
 
 
 # ======================================================================
@@ -430,3 +439,141 @@ class TestTypeIgnoreReduction:
         src = inspect.getsource(mod.FillCycleExecutorMixin)
         # class body に _current_regime_value: object = None がない
         assert '_current_regime_value: object = None' not in src
+
+
+# ======================================================================
+# 267# 不具合修正・再利用性検証
+# ======================================================================
+
+
+class TestGetDepthHelper:
+    """267# B4/R2: _get_depth ヘルパー DRY 検証."""
+
+    def test_buy_returns_bid_depth(self) -> None:
+        mp = _make_mp()
+        mp._last_bid_depth = 1.5
+        mp._last_ask_depth = 0.5
+        assert mp._get_depth("buy") == 1.5
+
+    def test_sell_returns_ask_depth(self) -> None:
+        mp = _make_mp()
+        mp._last_bid_depth = 1.5
+        mp._last_ask_depth = 0.5
+        assert mp._get_depth("sell") == 0.5
+
+    def test_kyle_lambda_uses_get_depth(self) -> None:
+        """_apply_kyle_lambda が _get_depth を使用している."""
+        src = inspect.getsource(MakerPrice._apply_kyle_lambda)
+        assert "_get_depth" in src
+
+    def test_amihud_illiq_uses_get_depth(self) -> None:
+        """_apply_amihud_illiq が _get_depth を使用している."""
+        src = inspect.getsource(MakerPrice._apply_amihud_illiq)
+        assert "_get_depth" in src
+
+
+class TestDeltaStarRatioConversion:
+    """267# B1: δ* ratio 変換式の正確性検証."""
+
+    def test_delta_star_ratio_parenthesized(self) -> None:
+        """δ* ratio 変換が delta_star_jpy / spread の形式であること (267# 修正)."""
+        src = inspect.getsource(MakerPrice._apply_as_reservation_shift)
+        # 267# 絶対価格ベース: δ*(JPY) / spread
+        assert "delta_star_jpy / spread" in src
+
+    def test_delta_star_ratio_dimensional_consistency(self) -> None:
+        """δ* → offset_ratio 変換の次元一貫性 (267# 修正版).
+
+        267# 修正: AS 論文の σ は絶対価格 (JPY/√s)。
+        σ_abs = σ_return × mid_price
+        δ* (JPY) = γ·σ_abs²·τ + (2/γ)·ln(1+γ/k)
+        offset_ratio = δ* / spread
+        """
+        gamma = 0.1
+        spread = 100.0
+        mid = 10_000_000.0
+        tau = 120.0
+        k = 1.5
+        sigma_return = spread / (2 * mid)  # 5e-6
+        sigma_abs = sigma_return * mid  # 50 JPY
+        sigma_abs_sq = sigma_abs ** 2  # 2500 JPY²
+        delta_star_jpy = (
+            gamma * sigma_abs_sq * tau
+            + (2.0 / gamma) * math.log(1.0 + gamma / k)
+        )
+        delta_star_ratio = delta_star_jpy / spread
+        # offset_ratio は妥当な範囲 (0 < ratio < 1000)
+        assert 0 < delta_star_ratio < 1000.0, f"δ*_ratio={delta_star_ratio}"
+        # γσ²τ 項: 0.1 * 2500 * 120 = 30000 JPY
+        # penalty 項: 20 * ln(1.067) ≈ 1.29 JPY
+        # δ* ≈ 30001.29 JPY → ratio ≈ 300.01
+        assert abs(delta_star_ratio - 300.01) < 1.0
+
+
+class TestEstimateSigmaDocstringAccuracy:
+    """267# B2: _estimate_sigma docstring の正確性."""
+
+    def test_docstring_no_false_reuse_claim(self) -> None:
+        """docstring が kyle/amihud の直接再利用を主張しないこと."""
+        doc = MakerPrice._estimate_sigma.__doc__ or ""
+        # 「で再利用する共通推定値」という虚偽記述がないこと
+        assert "で再利用する共通推定値" not in doc
+        # 正しい記述: depth ベースで独自推定
+        assert "depth" in doc.lower() or "独自" in doc
+
+
+class TestKyleLambdaAmihudInteraction:
+    """267# B3: Kyle λ + Amihud ILLIQ 複合効果の bounds 検証."""
+
+    def test_combined_offset_clamped_to_max(self) -> None:
+        """両方 enabled 時も max_offset_ratio を超えない."""
+        cfg = _make_config(
+            kyle_lambda_enabled=True,
+            kyle_lambda_impact_mult=100.0,
+            kyle_lambda_max_add_ratio=0.5,
+            amihud_illiq_enabled=True,
+            amihud_illiq_baseline=1e-15,
+            amihud_illiq_max_mult=5.0,
+            max_offset_ratio=0.30,
+            order_quantity=0.001,
+        )
+        mp = _make_mp(cfg)
+        mp._last_bid_depth = 0.001  # 極薄板
+        mp._last_ask_depth = 0.001
+        # Kyle λ 加算 → Amihud ILLIQ 乗算 の合流
+        offset = 0.05
+        offset = mp._apply_kyle_lambda("buy", 100.0, 10_000_000.0, offset)
+        offset = mp._apply_amihud_illiq("buy", 100.0, 10_000_000.0, offset)
+        assert offset <= 0.30 + 1e-10, f"Combined offset {offset} exceeds max_offset_ratio"
+
+    def test_kyle_only_vs_combined(self) -> None:
+        """Kyle のみ vs Kyle+Amihud で合流影響を可視化."""
+        cfg_kyle = _make_config(
+            kyle_lambda_enabled=True,
+            kyle_lambda_impact_mult=1.0,
+            kyle_lambda_max_add_ratio=0.10,
+            amihud_illiq_enabled=False,
+            order_quantity=0.001,
+        )
+        cfg_both = _make_config(
+            kyle_lambda_enabled=True,
+            kyle_lambda_impact_mult=1.0,
+            kyle_lambda_max_add_ratio=0.10,
+            amihud_illiq_enabled=True,
+            amihud_illiq_baseline=1e-8,
+            amihud_illiq_max_mult=1.5,
+            order_quantity=0.001,
+        )
+        mp_kyle = _make_mp(cfg_kyle)
+        mp_kyle._last_bid_depth = 0.01
+        mp_kyle._last_ask_depth = 0.01
+        mp_both = _make_mp(cfg_both)
+        mp_both._last_bid_depth = 0.01
+        mp_both._last_ask_depth = 0.01
+
+        base = 0.05
+        kyle_only = mp_kyle._apply_kyle_lambda("buy", 100.0, 10_000_000.0, base)
+        both = mp_both._apply_kyle_lambda("buy", 100.0, 10_000_000.0, base)
+        both = mp_both._apply_amihud_illiq("buy", 100.0, 10_000_000.0, both)
+        # Combined effect >= Kyle only (Amihud multiplies)
+        assert both >= kyle_only

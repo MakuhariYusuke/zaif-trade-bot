@@ -527,13 +527,20 @@ class MakerPriceCalculator:
     # ------------------------------------------------------------------
     # 266# 共有ヘルパー: σ推定 + τ動的化 (GLFT/AS δ*/Kyle で再利用)
     # ------------------------------------------------------------------
+    def _get_depth(self, side: str) -> float:
+        """267# DRY: side に応じた板 depth volume を返す.
+
+        Kyle λ / Amihud ILLIQ 等で共通使用するヘルパー。
+        """
+        return self._last_bid_depth if side == "buy" else self._last_ask_depth
+
     def _estimate_sigma(self, spread: float, mid_price: float) -> tuple[float, float]:
         """266# σ 推定: Roll (1984) micro-vol proxy × RegimeDetector vol_ratio.
 
         Returns:
             (sigma, vol_ratio) — σ 推定値と vol_ratio。
-            複数ステージ (_apply_as_reservation_shift, _apply_kyle_lambda,
-            _apply_amihud_illiq) で再利用する共通推定値。
+            _apply_as_reservation_shift (AS + δ*) で直接使用。
+            _apply_kyle_lambda, _apply_amihud_illiq は depth ベースで独自推定。
         """
         sigma = spread / (2.0 * mid_price) if mid_price > 0 else 0.0
         vol_ratio = 1.0
@@ -615,15 +622,23 @@ class MakerPriceCalculator:
             min(cfg.max_offset_ratio, effective_offset_ratio + shift),
         )
 
-        # 266# AS δ*: 理論的最適スプレッド幅下限
+        # 266#/267# AS δ*: 理論的最適スプレッド幅下限
         # δ* = γσ²τ + (2/γ)ln(1 + γ/k) (Avellaneda-Stoikov 2008 §4)
+        # 注意: AS 論文の σ は絶対価格 (JPY/√s) ベース。_estimate_sigma は
+        # リターンベース (無次元) なので σ_abs = σ_return × mid_price に変換。
+        # δ* (JPY) → offset_ratio = δ* / spread で変換。
         if cfg.as_delta_star_enabled and gamma > 0:
             k = cfg.as_delta_star_fill_rate_k
             if k > 0:
-                delta_star = gamma * sigma_sq * tau + (2.0 / gamma) * math.log(1.0 + gamma / k)
-                # δ* を offset ratio 単位に変換 (spread 基準)
+                sigma_abs = sigma * mid_price  # リターン → 絶対価格 (JPY)
+                sigma_abs_sq = sigma_abs * sigma_abs
+                delta_star_jpy = (
+                    gamma * sigma_abs_sq * tau
+                    + (2.0 / gamma) * math.log(1.0 + gamma / k)
+                )
+                # δ* (JPY) → offset_ratio (無次元)
                 if spread > 0:
-                    delta_star_ratio = delta_star / spread * mid_price
+                    delta_star_ratio = delta_star_jpy / spread
                     if effective_offset_ratio < delta_star_ratio:
                         logger.debug(
                             f"[as_delta_star] 266# {side} δ*={delta_star_ratio:.4f} "
@@ -891,8 +906,8 @@ class MakerPriceCalculator:
         if not cfg.kyle_lambda_enabled or spread <= 0 or mid_price <= 0:
             return effective_offset_ratio
 
-        # depth_volume は compute_imbalance で更新済み
-        depth = self._last_bid_depth if side == "buy" else self._last_ask_depth
+        # depth_volume は compute_imbalance で更新済み (267# _get_depth DRY)
+        depth = self._get_depth(side)
         if depth <= 0:
             return effective_offset_ratio
 
@@ -942,8 +957,8 @@ class MakerPriceCalculator:
         if not cfg.amihud_illiq_enabled or spread <= 0 or mid_price <= 0:
             return effective_offset_ratio
 
-        # 双方向の depth volume
-        total_depth = self._last_bid_depth + self._last_ask_depth
+        # 双方向の depth volume (267# _get_depth DRY)
+        total_depth = self._get_depth("buy") + self._get_depth("sell")
         if total_depth <= 0:
             return effective_offset_ratio
 

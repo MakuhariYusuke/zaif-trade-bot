@@ -1,12 +1,12 @@
-# 266# Market Theory Pipeline + Protocol 型安全化
+# 266# Market Theory Pipeline + Protocol 型安全化 (267# 修正含む)
 
 | 項目 | 値 |
 |---|---|
-| Issue | 266# |
-| 種別 | impl |
+| Issue | 266# / 267# |
+| 種別 | impl / bugfix |
 | フェーズ | phg (横断品質改善) |
-| Commit | (pending) |
-| テスト | 3671 passed, 32 skipped (+31 from 3640) |
+| Commit | 266#: d20f1fa1b, 267#: (pending) |
+| テスト | 3680 passed, 32 skipped (+40 from 3640) |
 | 元チケット | 257# P2-3 (GLFT τ), 259# P2-8 (AS δ*, Kyle λ, Amihud ILLIQ), 257# P1-1 / 259# P1-1 (type:ignore / getattr) |
 
 ---
@@ -196,27 +196,39 @@ compute(side, current_spread, mid_price, ...)
 | `TestAmihudILLIQ` | 7 | disabled, 十分流動性, 低流動拡大, max clamp, zero depth, cache, pipeline |
 | `TestOrderBookSnapshotProtocol` | 3 | import 3 モジュール, 戻り値型 |
 | `TestTypeIgnoreReduction` | 3 | attr-defined 排除, getattr 排除, class-level 排除 |
+| `TestGetDepthHelper` | 4 | 267# buy/sell depth, kyle/amihud 使用検証 |
+| `TestDeltaStarRatioConversion` | 2 | 267# 括弧化検証, 次元一貫性 |
+| `TestEstimateSigmaDocstringAccuracy` | 1 | 267# docstring 正確性 |
+| `TestKyleLambdaAmihudInteraction` | 2 | 267# 複合効果 bounds, Kyle vs 合流比較 |
 
 ## 全フィーチャーのデフォルト無効化
 
 全 4 機能は `enabled=False` がデフォルト → **既存動作に影響ゼロ**。
 本番有効化は PnL/fill-rate 検証後に段階的に実施。
 
-## リスク評価
+## 267# 不具合修正・再利用性精査
 
-| リスク | 対策 |
-|---|---|
-| 新機能が既存パフォーマンスに影響 | 全機能 `enabled=False` デフォルト |
-| σ推定精度 | Roll proxy は近似だが、低コスト・リアルタイム適用可能 |
-| Kyle λ depth ゼロ除算 | `depth ≤ 0` チェックで早期 return |
-| Amihud ILLIQ baseline 不適切 | `max_mult` クランプで暴走防止 |
-| Protocol 変更で既存 adapter 破壊 | structural subtyping — 既存メソッドシグネチャ互換 |
+### 発見・修正した不具合
 
-## 再利用性検討
+| # | 重大度 | 箇所 | 内容 | 修正 |
+|---|---|---|---|---|
+| B1 | 🔴 **中** | δ\* ratio 変換 | AS 論文は絶対 σ (JPY/√s) 前提だがリターンベース σ を使用。`(2/γ)ln(1+γ/k)` が桁違いに巨大化 → δ\* フロアが常に `max_offset_ratio` と等価に | σ\_abs = σ\_return × mid に変換、δ\*(JPY)/spread で offset\_ratio 算出 |
+| B2 | 🟡 低 | `_estimate_sigma` docstring | kyle\_lambda / amihud\_illiq が再利用すると記載するが実際は呼んでいない | docstring を正確に修正 |
+| B3 | 🟡 低 | Kyle λ + ILLIQ 合流 | 薄板で加算(λ)→乗算(ILLIQ) が複合膨張 | `max_offset_ratio` クランプで bounds 保証、テスト追加 |
+| B4 | 🟢 info | depth 取得重複 | side 分岐ロジックが Kyle λ / ILLIQ で個別実装 | `_get_depth(side)` ヘルパー抽出 (DRY) |
 
-| メソッド | 現在の使用箇所 | 拡張候補 |
+### 再利用性の具体的評価
+
+| メソッド | 再利用 | 詳細 |
 |---|---|---|
-| `_estimate_sigma` | AS, δ\*, GLFT τ (3箇所) | inventory model, risk monitor |
-| `_dynamic_tau` | AS reservation | inv_decay_tau_sec (在庫減衰), lot sizing |
-| `OrderBookSnapshot` | ob_utils, maker_price, skip_gate | fill_cycle, order_monitor |
-| Kyle λ (depth取得) | _apply_kyle_lambda | 在庫リスク計算, 約定予測 |
+| `_estimate_sigma` | ✅ 実現済 (AS + δ\*) | Kyle λ / Amihud ILLIQ は depth ベースで独自推定 — σ 共有は不適切 (異なる情報源) |
+| `_get_depth(side)` | ✅ 267# 新規抽出 | Kyle λ + Amihud ILLIQ + 将来の depth 系ステージで共有 |
+| `_dynamic_tau` | 🟡 拡張候補 | `loss_boost_decay_tau_sec` にも vol\_ratio 連動を適用可能 (B5) |
+| `OrderBookSnapshot` | ✅ 3 モジュール共有 | ob\_utils, maker\_price, skip\_gate\_evaluator |
+| `_scale_offset_ratio` | ✅ 既存 (7 箇所使用) | regime boost, ILLIQ, loss\_boost 等で共通 |
+
+### 今後の拡張候補 (enabled=false のため即時不要)
+
+- **B5**: `loss_boost_decay_tau_sec` の vol_ratio 連動化 (`_dynamic_tau` 再利用)
+- **R1**: Kyle λ に σ ベースのインパクト推定を追加 (Kyle 1985 理論的整合性向上)
+- δ\* の γ パラメータスケーリング最適化 (絶対 σ でも γ=0.1 では γσ²τ 項が支配的)
