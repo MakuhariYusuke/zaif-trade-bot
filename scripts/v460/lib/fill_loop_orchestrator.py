@@ -16,7 +16,7 @@ import asyncio
 import logging
 import time
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.alert_mode import load_alert_mode
@@ -66,6 +66,9 @@ class FillLoopOrchestratorMixin:
     _guard_fire_counts: dict[str, int] | None = None
     # 218# デッドロック検出: 連続ゲートブロックカウンタ
     _consecutive_gate_blocks: int = 0
+    # 236# hasattr 排除: クラスレベルデフォルトで属性存在を保証
+    _trending_sell_skip_count: int = 0
+    _balance_forced_skip_count: int = 0
     # 234# 縮退清算モード duty cycle カウンタ
     _degraded_liquidation_duty_counter: int = 0
     # 234# one-sided エスカレーション: cooldown 残サイクル
@@ -289,6 +292,15 @@ class FillLoopOrchestratorMixin:
             sad_state=(
                 self._sad.export_state() if self._sad is not None else None
             ),
+            # 236# エスカレーション・縮退カウンタ永続化
+            degraded_liquidation_duty_counter=self._degraded_liquidation_duty_counter,
+            one_sided_cooldown_remaining=self._one_sided_cooldown_remaining,
+            one_sided_freeze_remaining=self._one_sided_freeze_remaining,
+            consecutive_no_feasible=(
+                dict(self._consecutive_no_feasible)
+                if self._consecutive_no_feasible
+                else None
+            ),
             **self._get_regime_state_fields(),
         )
 
@@ -367,6 +379,23 @@ class FillLoopOrchestratorMixin:
                 f"buffer={len(self._sad._spread_buffer)}, "
                 f"frozens={self._sad._total_frozens}"
             )
+        # 236# エスカレーション・縮退カウンタ復元
+        _duty = getattr(saved_state, "degraded_liquidation_duty_counter", 0)
+        if _duty > 0:
+            self._degraded_liquidation_duty_counter = _duty
+            logger.info(f"[236#] Degraded duty counter restored: {_duty}")
+        _cd = getattr(saved_state, "one_sided_cooldown_remaining", 0)
+        if _cd > 0:
+            self._one_sided_cooldown_remaining = _cd
+            logger.info(f"[236#] One-sided cooldown remaining restored: {_cd}")
+        _fr = getattr(saved_state, "one_sided_freeze_remaining", 0)
+        if _fr > 0:
+            self._one_sided_freeze_remaining = _fr
+            logger.info(f"[236#] One-sided freeze remaining restored: {_fr}")
+        _cnf = getattr(saved_state, "consecutive_no_feasible", None)
+        if _cnf:
+            self._consecutive_no_feasible = dict(_cnf)
+            logger.info(f"[236#] Consecutive no-feasible restored: {_cnf}")
 
     # ------------------------------------------------------------------
     # 179# S1: _effective_sleep — regime 応答サイクル間隔の一元化

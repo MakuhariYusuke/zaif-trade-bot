@@ -49,7 +49,8 @@ class FillCycleExecutorMixin:
     # 201# review: 動的属性のクラスレベル宣言 (mypy 検出 + IDE 補完)
     _postonly_crossing_streak: int = 0
     # 234# no_feasible_quote 連続カウンタ (制約集合崩壊検出用)
-    _consecutive_no_feasible: int = 0
+    # 236# per-side 化: buy/sell 交互実行で相互リセットされる問題を修正
+    _consecutive_no_feasible: dict[str, int] | None = None
 
     async def _compute_orderbook_imbalance(self, depth: int = 5) -> tuple[float, float, float]:
         """054# S1: 板不均衡を計算 — 120# MakerPriceCalculator に委譲."""
@@ -342,7 +343,8 @@ class FillCycleExecutorMixin:
         _chase_drift: float | None = None
         _chase_max_rp: int | None = None
         if self._cycle_strategy is not None:
-            _regime = self._current_regime_value() if hasattr(self, "_current_regime_value") else None
+            # 236# hasattr 排除: _current_regime_value は fill_record_helpers Mixin で定義済み
+            _regime = self._current_regime_value()
             if self._cycle_strategy.is_chase_enabled(_regime, side):  # 187# B-1: side 方向制限
                 _chase_drift = self._cycle_strategy.chase_drift_bps()
                 _chase_max_rp = self._cycle_strategy.chase_max_reprice()
@@ -553,7 +555,8 @@ class FillCycleExecutorMixin:
         # 179# D: regime 別 post-fill wait
         _wait_override: float | None = None
         if self._cycle_strategy is not None:
-            _regime = self._current_regime_value() if hasattr(self, "_current_regime_value") else None
+            # 236# hasattr 排除: _current_regime_value は fill_record_helpers Mixin で定義済み
+            _regime = self._current_regime_value()
             # 200# G: vol_ratio 動的 wait スケーリング
             _vol_ratio: float | None = None
             if (
@@ -656,7 +659,10 @@ class FillCycleExecutorMixin:
         try:
             order_price, spread_at_order, effective_offset_ratio = await self._compute_maker_price(side)
             # 234# no_feasible_quote 連続カウンタリセット (成功時)
-            self._consecutive_no_feasible = 0
+            # 236# per-side 化
+            if self._consecutive_no_feasible is None:
+                self._consecutive_no_feasible = {}
+            self._consecutive_no_feasible[side] = 0
         except Exception as e:
             # 130# orderbook_error 細分化
             err_msg = str(e).lower()
@@ -682,13 +688,17 @@ class FillCycleExecutorMixin:
                 logger.error(f"Failed to compute maker price: {e}")
 
             # 234# no_feasible_quote 検出: spread 制約 (narrow/wide) で連続失敗
+            # 236# per-side 化
             if ob_cancel_reason in ("spread_too_narrow", "sell_guard_reject"):
-                self._consecutive_no_feasible += 1
-                if self._consecutive_no_feasible >= 3:
+                if self._consecutive_no_feasible is None:
+                    self._consecutive_no_feasible = {}
+                _cnf = self._consecutive_no_feasible.get(side, 0) + 1
+                self._consecutive_no_feasible[side] = _cnf
+                if _cnf >= 3:
                     ob_cancel_reason = CR.NO_FEASIBLE_QUOTE
                     logger.warning(
-                        f"[234#] NO_FEASIBLE_QUOTE: {self._consecutive_no_feasible} "
-                        f"consecutive infeasible quotes — constraint set collapse "
+                        f"[234#] NO_FEASIBLE_QUOTE: {_cnf} "
+                        f"consecutive infeasible quotes ({side}) — constraint set collapse "
                         f"(min_spread={self.config.min_spread_jpy}, "
                         f"sell_max_spread={self.config.sell_max_spread_jpy})"
                     )

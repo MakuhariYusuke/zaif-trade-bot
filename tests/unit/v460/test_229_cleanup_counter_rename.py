@@ -119,7 +119,11 @@ class TestFFDModuleLevelImport:
         assert ffd_mod.time is time
 
     def test_get_boost_multiplier_uses_time_time(self):
-        """TTL decay で time.time() を正しく使用."""
+        """TTL decay で time.time() を正しく使用.
+
+        236# CQS 分離: maybe_expire_boost() で TTL decay を先に実行後、
+        get_boost_multiplier() は純粋 getter として boost 値を返す。
+        """
         cfg = FastFillDefenseConfig(
             enabled=True, threshold_sec=1.0,
             offset_boost=2.0, boost_ttl_sec=1.0,  # TTL=1sec
@@ -129,7 +133,8 @@ class TestFFDModuleLevelImport:
         state.boost_active = True
         state.boost_multiplier = 2.0
         state.boost_activated_at = time.time() - 2.0  # 2秒前 > TTL 1秒 → expired
-        # TTL expired → 1.0 に戻る
+        # 236# maybe_expire_boost で TTL decay → その後 getter は 1.0
+        ffd.maybe_expire_boost("buy")
         assert ffd.get_boost_multiplier("buy") == 1.0
 
 

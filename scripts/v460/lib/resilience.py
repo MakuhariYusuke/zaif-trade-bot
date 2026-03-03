@@ -256,6 +256,11 @@ class FillTestState:
     # 225# MCB/SAD 状態永続化 (再起動時に price_buffer/halt_until を復元)
     mcb_state: dict[str, object] | None = None
     sad_state: dict[str, object] | None = None
+    # 236# 234# エスカレーション・縮退カウンタ永続化
+    degraded_liquidation_duty_counter: int = 0
+    one_sided_cooldown_remaining: int = 0
+    one_sided_freeze_remaining: int = 0
+    consecutive_no_feasible: dict[str, int] | None = None
     # タイムスタンプ
     saved_at: float = 0.0
     saved_at_iso: str = ""

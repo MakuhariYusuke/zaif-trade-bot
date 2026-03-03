@@ -268,7 +268,10 @@ class TestFFDBoostGradualRelease:
         assert ffd.is_boost_active("buy")  # boost は維持
 
     def test_ttl_expiry_resets_streak(self) -> None:
-        """231# R1: TTL 期限切れで streak もクリア."""
+        """231# R1: TTL 期限切れで streak もクリア.
+
+        236# CQS: maybe_expire_boost() で TTL decay を明示実行。
+        """
         ffd = _make_ffd(streak=3)
         _activate_boost(ffd, "buy")
         _normal_fill(ffd, "buy")  # streak=1
@@ -276,7 +279,7 @@ class TestFFDBoostGradualRelease:
         state = ffd._get_state("buy")
         # TTL 強制期限切れ
         state.boost_activated_at = time.time() - 700.0
-        ffd.get_boost_multiplier("buy")  # TTL check 発火
+        ffd.maybe_expire_boost("buy")  # 236# TTL check 発火
 
         assert not ffd.is_boost_active("buy")
         assert state.normal_fill_streak == 0
@@ -494,13 +497,16 @@ class TestFillCycleExecutorHasattr:
         src = inspect.getsource(mod)
         assert 'hasattr(self, "_macro_regime_detector")' not in src
 
-    def test_legitimate_hasattr_current_regime_value_remains(self) -> None:
-        """hasattr(self, '_current_regime_value') は mixin 確認で正当."""
+    def test_hasattr_current_regime_value_removed(self) -> None:
+        """236# hasattr(self, '_current_regime_value') は排除済み.
+
+        _current_regime_value は fill_record_helpers Mixin で定義されており、
+        Mixin 合成で常に利用可能。hasattr ガードは不要。
+        """
         from scripts.v460.lib import fill_cycle_executor as mod
 
         src = inspect.getsource(mod)
-        # 正当な mixin method 存在確認として残っている
-        assert 'hasattr(self, "_current_regime_value")' in src
+        assert 'hasattr(self, "_current_regime_value")' not in src
 
 
 # ======================================================================

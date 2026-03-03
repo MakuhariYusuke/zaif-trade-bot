@@ -99,10 +99,13 @@ class FastFillDefense:
             return common_value if sell_value is None else sell_value
         return common_value
 
-    def get_boost_multiplier(self, side: str) -> float:
-        """現サイクルの offset に適用する boost 乗数を返す."""
+    def maybe_expire_boost(self, side: str) -> None:
+        """236# CQS 分離: TTL 超過時に boost を自動解除 (副作用メソッド).
+
+        get_boost_multiplier() から副作用を分離。
+        呼び出しタイミング: サイクル冒頭 (maker_price 算出前) に1回。
+        """
         state = self._get_state(side)
-        # 175# TTL decay: boost_ttl_sec を超過したら自動解除
         if state.boost_active and self._config.boost_ttl_sec > 0:
             if (time.time() - state.boost_activated_at) > self._config.boost_ttl_sec:
                 old_mult = state.boost_multiplier
@@ -114,7 +117,13 @@ class FastFillDefense:
                     f"multiplier {old_mult:.2f}→1.00 "
                     f"(ttl={self._config.boost_ttl_sec:.0f}s)"
                 )
-        return state.boost_multiplier
+
+    def get_boost_multiplier(self, side: str) -> float:
+        """現サイクルの offset に適用する boost 乗数を返す (純粋 getter).
+
+        236# 副作用 (TTL decay) は maybe_expire_boost() に分離済み。
+        """
+        return self._get_state(side).boost_multiplier
 
     def is_boost_active(self, side: str) -> bool:
         """指定 side で boost が有効かどうか."""

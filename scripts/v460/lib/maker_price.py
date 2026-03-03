@@ -978,6 +978,8 @@ class MakerPriceCalculator:
         offset = max(cfg.min_offset_jpy, spread * effective_offset_ratio)
 
         # 100# FastFillDefense: per-side boost 乗数を適用
+        # 236# CQS: TTL decay を getter 前に明示的に実行
+        self._fast_fill_defense.maybe_expire_boost(side)
         boost_mult = self._fast_fill_defense.get_boost_multiplier(side)
         if boost_mult != 1.0:
             # 175# FFD boost 後も max_offset_ratio クランプを適用し、

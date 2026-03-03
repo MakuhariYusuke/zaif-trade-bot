@@ -17,7 +17,6 @@ from __future__ import annotations
 import dataclasses
 import logging
 import os
-import sys
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol

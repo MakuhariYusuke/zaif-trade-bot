@@ -90,6 +90,9 @@ class SkipGateEvaluator:
     # 126# hot-reload: モデルファイルのチェック間隔 (秒)
     # 158# YAML 外部化: config.hot_reload_check_interval_sec から読み込み (フォールバック用に残す)
     _HOT_RELOAD_CHECK_INTERVAL_SEC = 120.0  # デフォルト値 (config 未設定時のフォールバック)
+    # 236# hasattr 排除: クラスレベルでデフォルト値を保証
+    # None = __init__ 未実行 (mock/テスト用), 0.0 = 初期化済み
+    _last_reload_check: float | None = None
     _SIDE_MODEL_SLOTS: tuple[tuple[str, str, str, str], ...] = (
         ("buy", "_gate_buy", "_gate_path_buy", "_model_file_hash_buy"),
         ("sell", "_gate_sell", "_gate_path_sell", "_model_file_hash_sell"),
@@ -759,8 +762,8 @@ class SkipGateEvaluator:
         retrain_scheduler がアトミックに pkl を差し替えた場合、
         次の evaluate() 呼び出し時にこのメソッドで検出・リロードする。
         """
-        # __init__ がモック/スキップされた場合は何もしない
-        if not hasattr(self, "_last_reload_check"):
+        # 236# hasattr 排除: クラスレベルで None (= __init__ 未実行) をガード
+        if self._last_reload_check is None:
             return
         now = time.monotonic()
         # 158# YAML 外部化: config から hot_reload 間隔を取得

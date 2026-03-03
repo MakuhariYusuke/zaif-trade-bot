@@ -279,10 +279,9 @@ class FillRecordHelpersMixin:
         # 175# 各カウンタを独立したループで計算 (交互出現時の過大計上を防止)
         _tss_count = self._count_trailing_cancel_reason(existing, "trending_sell_skip")
         _bfs_count = self._count_trailing_cancel_reason(existing, "balance_forced_skip")
-        if hasattr(self, "_trending_sell_skip_count"):
-            self._trending_sell_skip_count = _tss_count
-        if hasattr(self, "_balance_forced_skip_count"):
-            self._balance_forced_skip_count = _bfs_count
+        # 236# hasattr 排除: クラスレベルデフォルトで属性存在を保証済み
+        self._trending_sell_skip_count = _tss_count
+        self._balance_forced_skip_count = _bfs_count
 
         logger.info(
             f"Resumed from existing records: n={len(existing)}, "
