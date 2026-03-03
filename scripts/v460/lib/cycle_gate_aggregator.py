@@ -31,6 +31,12 @@ if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
     from ztb.risk.sell_dynamic_kill import ToxicityAssessment
 
+# 241# S-3: ToxicityLevel 値をモジュールレベルでキャッシュ (hot path import 回避)
+from ztb.risk.sell_dynamic_kill import ToxicityLevel
+
+_ToxicityLevel_GREEN = ToxicityLevel.GREEN
+_ToxicityLevel_KILL = ToxicityLevel.KILL
+
 logger = logging.getLogger(__name__)
 
 # ゲート blocking_reason → cancel_reason 定数のマッピング
@@ -229,14 +235,9 @@ class CycleGateAggregator:
         g4 = self._check_buy_dynamic_kill(side, is_buy_killed, _dual_kill_bypass)
         result.checks.append(g4)
         if g4.blocked:
-            # 240# Toxicity Budget: KILL 未満なら段階的応答
-            if buy_toxicity is not None and self._apply_toxicity_graded(
-                result, buy_toxicity, g4, side, balance_forced,
-            ):
-                pass  # 段階的応答が適用された (blocked にはならない)
             # 234# 縮退清算モード: balance_forced + kill gate blocked
             # → 完全 block ではなく min lot + wide offset で安全に縮退清算
-            elif balance_forced and self._config.degraded_liquidation_enabled:
+            if balance_forced and self._config.degraded_liquidation_enabled:
                 result.degraded_liquidation = True
                 result.degraded_reason = g4.reason
                 logger.warning(
@@ -247,6 +248,10 @@ class CycleGateAggregator:
                 result.blocked = True
                 result.blocking_reason = g4.reason
                 return result
+        elif buy_toxicity is not None:
+            # 241# C-1 fix: pre-kill ゾーンで段階的応答を適用
+            # (gate 非 block 時に YELLOW/ORANGE → offset 拡大 + 参加率制限)
+            self._apply_toxicity_graded(result, buy_toxicity, g4, side)
 
         # --- Gate 5: sell_dynamic_kill ---
         g5 = self._check_sell_dynamic_kill(
@@ -255,13 +260,8 @@ class CycleGateAggregator:
         )
         result.checks.append(g5)
         if g5.blocked:
-            # 240# Toxicity Budget: KILL 未満なら段階的応答
-            if sell_toxicity is not None and self._apply_toxicity_graded(
-                result, sell_toxicity, g5, side, balance_forced,
-            ):
-                pass  # 段階的応答が適用された
             # 234# 縮退清算モード: balance_forced + kill gate blocked
-            elif balance_forced and self._config.degraded_liquidation_enabled:
+            if balance_forced and self._config.degraded_liquidation_enabled:
                 result.degraded_liquidation = True
                 result.degraded_reason = g5.reason
                 logger.warning(
@@ -272,6 +272,9 @@ class CycleGateAggregator:
                 result.blocked = True
                 result.blocking_reason = g5.reason
                 return result
+        elif sell_toxicity is not None:
+            # 241# C-1 fix: pre-kill ゾーンで段階的応答を適用
+            self._apply_toxicity_graded(result, sell_toxicity, g5, side)
 
         # --- Gate 6: velocity_skip (旧 C4-C5) ---
         g6 = self._check_velocity_skip(side, price_velocity_bps)
@@ -313,6 +316,7 @@ class CycleGateAggregator:
 
     # ================================================================
     # 240# Toxicity Budget — 段階的応答ヘルパー
+    # 241# C-1 fix: gate 非 block 時 (pre-kill ゾーン) に適用
     # ================================================================
 
     def _apply_toxicity_graded(
@@ -321,30 +325,21 @@ class CycleGateAggregator:
         toxicity: ToxicityAssessment,
         gate_check: GateCheckResult,
         side: str,
-        balance_forced: bool,
     ) -> bool:
         """240# Toxicity Budget 段階的応答を適用.
 
-        Gate 4/5 が blocked を返したとき、toxicity assessment が KILL 未満なら
-        hard block ではなく offset 拡大 / 参加率低下で対応する。
+        241# C-1 fix: Gate 4/5 が block しなかったとき (pre-kill ゾーン) に呼ばれ、
+        toxicity assessment が YELLOW/ORANGE なら offset 拡大 / 参加率低下で対応する。
 
         Glosten-Milgrom の逆選択プレミアム:
         - YELLOW: spread を拡大して逆選択コストを相殺
         - ORANGE: spread 拡大 + 確率的に不参加で期待損失を制限
 
         Returns:
-            True: 段階的応答が適用された (blocked にしない)
-            False: KILL レベルまたは budget 未適用 → 従来フロー継続
+            True: 段階的応答が適用された
+            False: GREEN/KILL → 適用なし
         """
-        from ztb.risk.sell_dynamic_kill import ToxicityLevel
-
-        if toxicity.level == ToxicityLevel.KILL:
-            return False
-
-        if toxicity.level == ToxicityLevel.GREEN:
-            # GREEN なのに gate blocked → check_kill の binary 判定は
-            # cooldown 以外で GREEN にならないため、通常はここに来ない。
-            # 安全策として従来フローに委譲。
+        if toxicity.level in (_ToxicityLevel_GREEN, _ToxicityLevel_KILL):
             return False
 
         # YELLOW / ORANGE: 段階的応答を適用
@@ -357,8 +352,7 @@ class CycleGateAggregator:
         logger.info(
             f"[240#] Toxicity budget {side}: {toxicity.level.value} "
             f"(score={toxicity.score:.3f}, offset_mult={toxicity.offset_mult:.2f}, "
-            f"participation={toxicity.participation_rate:.2f}) — "
-            f"graded response instead of {gate_check.reason}"
+            f"participation={toxicity.participation_rate:.2f})"
         )
         return True
 

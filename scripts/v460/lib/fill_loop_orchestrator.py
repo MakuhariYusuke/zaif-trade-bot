@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
     from scripts.v460.lib.phantom_position_guard import PhantomPositionGuard
     from ztb.metrics.fill_quality import FillRecord
+    from ztb.risk.sell_dynamic_kill import DynamicKillManager, ToxicityAssessment
 
 logger = logging.getLogger(__name__)
 
@@ -152,32 +153,33 @@ class FillLoopOrchestratorMixin:
 
     # ------------------------------------------------------------------
     # 240# Toxicity Budget — assess_toxicity (副作用なし)
+    # 241# C-3/S-1/S-2 fix: DRY 統一 + 型安全化 + getattr 除去
     # ------------------------------------------------------------------
-    def _assess_buy_toxicity(self) -> object | None:
-        """240# buy 側の toxicity budget 評価 (副作用なし).
+    def _assess_toxicity(
+        self, mgr: "DynamicKillManager",
+    ) -> "ToxicityAssessment | None":
+        """240# toxicity budget 評価 (副作用なし).
+
+        Args:
+            mgr: buy or sell の DynamicKillManager
 
         Returns:
             ToxicityAssessment or None (budget 無効時)
         """
-        if not getattr(self._buy_kill_mgr.config, "toxicity_budget_enabled", False):
+        if not mgr.config.toxicity_budget_enabled:
             return None
         regime: str | None = None
         if self._regime_detector is not None:
             regime = self._regime_detector.current_regime.value
-        return self._buy_kill_mgr.assess_toxicity(regime=regime)
+        return mgr.assess_toxicity(regime=regime)
 
-    def _assess_sell_toxicity(self) -> object | None:
-        """240# sell 側の toxicity budget 評価 (副作用なし).
+    def _assess_buy_toxicity(self) -> "ToxicityAssessment | None":
+        """240# buy 側の toxicity budget 評価."""
+        return self._assess_toxicity(self._buy_kill_mgr)
 
-        Returns:
-            ToxicityAssessment or None (budget 無効時)
-        """
-        if not getattr(self._sell_kill_mgr.config, "toxicity_budget_enabled", False):
-            return None
-        regime: str | None = None
-        if self._regime_detector is not None:
-            regime = self._regime_detector.current_regime.value
-        return self._sell_kill_mgr.assess_toxicity(regime=regime)
+    def _assess_sell_toxicity(self) -> "ToxicityAssessment | None":
+        """240# sell 側の toxicity budget 評価."""
+        return self._assess_toxicity(self._sell_kill_mgr)
 
     def _warmup_daily_drawdown_from_records(
         self, records: list["FillRecord"],
@@ -1576,6 +1578,13 @@ class FillLoopOrchestratorMixin:
                     "buy", regime_mult=_regime_mult,
                 )
 
+            # 241# C-2 fix: toxicity 評価を check_kill() の前に実行
+            # check_kill() は _cooldown をデクリメントする副作用があるため、
+            # assess_toxicity() を先に呼ばないと最終 cooldown サイクルで
+            # 状態が不整合になる (check_kill → killed=True, assess → GREEN)
+            _buy_tox = self._assess_buy_toxicity()
+            _sell_tox = self._assess_sell_toxicity()
+
             _gate_result = self._cycle_gate.evaluate(
                 side=next_side,
                 regime=(
@@ -1601,8 +1610,8 @@ class FillLoopOrchestratorMixin:
                 trending_sell_skip_count=self._trending_sell_skip_count,
                 buy_side_insufficient=_buy_side_insufficient,
                 # 240# Toxicity Budget (232# §2.2)
-                buy_toxicity=self._assess_buy_toxicity(),
-                sell_toxicity=self._assess_sell_toxicity(),
+                buy_toxicity=_buy_tox,
+                sell_toxicity=_sell_tox,
             )
 
             if _gate_result.blocked:

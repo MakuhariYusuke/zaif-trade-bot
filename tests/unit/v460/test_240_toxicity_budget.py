@@ -360,7 +360,12 @@ class TestGateAggregatorToxicityFields:
 
 
 class TestGateAggregatorGradedResponse:
-    """Gate 4/5 で YELLOW/ORANGE の段階的応答が適用される検証."""
+    """Gate 4/5 で YELLOW/ORANGE の段階的応答が適用される検証.
+
+    241# C-1 fix: 段階的応答は gate 非 block 時 (pre-kill ゾーン) に適用.
+    check_kill()=False (not killed) だが assess_toxicity()=YELLOW/ORANGE のとき、
+    offset 拡大 + 参加率制限が CycleGateResult に反映される。
+    """
 
     def _make_gate(self) -> object:
         from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
@@ -378,8 +383,8 @@ class TestGateAggregatorGradedResponse:
             degraded_liquidation_enabled=False,
         )
 
-    def test_yellow_buy_not_blocked(self) -> None:
-        """YELLOW toxicity → buy_dynamic_kill で blocked にならない."""
+    def test_yellow_buy_applies_offset(self) -> None:
+        """YELLOW toxicity (pre-kill) → is_buy_killed=False + offset 適用."""
         gate = self._make_gate()
         yellow = ToxicityAssessment(
             level=ToxicityLevel.YELLOW, score=0.5,
@@ -389,7 +394,7 @@ class TestGateAggregatorGradedResponse:
         result = gate.evaluate(
             side="buy", regime="ranging", vol_ratio=1.0,
             balance_forced=False, inv_net_imbalance=0.0,
-            is_buy_killed=True, is_sell_killed=False,
+            is_buy_killed=False, is_sell_killed=False,
             buy_toxicity=yellow,
         )
         assert not result.blocked
@@ -397,7 +402,7 @@ class TestGateAggregatorGradedResponse:
         assert result.participation_rate == 1.0
 
     def test_orange_sell_reduces_participation(self) -> None:
-        """ORANGE toxicity → sell_dynamic_kill で participation_rate < 1."""
+        """ORANGE toxicity (pre-kill) → is_sell_killed=False + participation < 1."""
         gate = self._make_gate()
         orange = ToxicityAssessment(
             level=ToxicityLevel.ORANGE, score=0.85,
@@ -407,7 +412,7 @@ class TestGateAggregatorGradedResponse:
         result = gate.evaluate(
             side="sell", regime="ranging", vol_ratio=1.0,
             balance_forced=False, inv_net_imbalance=0.0,
-            is_buy_killed=False, is_sell_killed=True,
+            is_buy_killed=False, is_sell_killed=False,
             sell_toxicity=orange,
         )
         assert not result.blocked
@@ -415,7 +420,7 @@ class TestGateAggregatorGradedResponse:
         assert result.participation_rate == 0.5
 
     def test_kill_still_blocks(self) -> None:
-        """KILL toxicity → 従来通り blocked."""
+        """is_buy_killed=True → gate blocked (KILL 時は binary kill 優先)."""
         gate = self._make_gate()
         kill = ToxicityAssessment(
             level=ToxicityLevel.KILL, score=1.2,
@@ -441,6 +446,50 @@ class TestGateAggregatorGradedResponse:
             buy_toxicity=None,
         )
         assert result.blocked
+
+    def test_green_toxicity_no_effect(self) -> None:
+        """241# GREEN toxicity → offset/participation 変更なし."""
+        gate = self._make_gate()
+        green = ToxicityAssessment(
+            level=ToxicityLevel.GREEN, score=0.1,
+            offset_mult=1.0, participation_rate=1.0,
+            threshold_used=-0.5, rolling_mean=-0.05,
+        )
+        result = gate.evaluate(
+            side="buy", regime="ranging", vol_ratio=1.0,
+            balance_forced=False, inv_net_imbalance=0.0,
+            is_buy_killed=False, is_sell_killed=False,
+            buy_toxicity=green,
+        )
+        assert not result.blocked
+        assert result.toxicity_offset_mult == 1.0
+        assert result.participation_rate == 1.0
+
+    def test_killed_but_degraded_liquidation(self) -> None:
+        """241# is_buy_killed=True + balance_forced → degraded liquidation."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
+
+        cfg = FillTestConfig(
+            buy_dynamic_kill_enabled=True,
+            sell_dynamic_kill_enabled=True,
+            degraded_liquidation_enabled=True,
+        )
+        gate = CycleGateAggregator(cfg)
+        orange = ToxicityAssessment(
+            level=ToxicityLevel.ORANGE, score=0.85,
+            offset_mult=2.5, participation_rate=0.5,
+            threshold_used=-0.5, rolling_mean=-0.425,
+        )
+        result = gate.evaluate(
+            side="buy", regime="ranging", vol_ratio=1.0,
+            balance_forced=True, inv_net_imbalance=0.0,
+            is_buy_killed=True, is_sell_killed=False,
+            buy_toxicity=orange,
+        )
+        # killed → degraded liquidation (toxicity は elif 分岐のため適用されない)
+        assert not result.blocked
+        assert result.degraded_liquidation
 
 
 # ═══════════════════════════════════════════════════════
@@ -506,6 +555,12 @@ class TestOrchestratorToxicityAssess:
         assert hasattr(FillLoopOrchestratorMixin, "_assess_buy_toxicity")
         assert hasattr(FillLoopOrchestratorMixin, "_assess_sell_toxicity")
 
+    def test_unified_assess_method_exists(self) -> None:
+        """241# S-2 DRY fix: 統一 _assess_toxicity() メソッドが存在."""
+        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+
+        assert hasattr(FillLoopOrchestratorMixin, "_assess_toxicity")
+
     def test_toxicity_passed_to_gate_evaluate(self) -> None:
         """gate_aggregator.evaluate() に buy_toxicity/sell_toxicity を渡している."""
         src = inspect.getsource(
@@ -527,6 +582,22 @@ class TestOrchestratorToxicityAssess:
         )
         assert "participation_rate" in src
         assert "toxicity_participation_skip" in src
+
+    def test_evaluation_order_toxicity_before_check_kill(self) -> None:
+        """241# C-2 fix: assess_toxicity が check_kill より先に評価される."""
+        src = inspect.getsource(
+            __import__(
+                "scripts.v460.lib.fill_loop_orchestrator",
+                fromlist=["FillLoopOrchestratorMixin"],
+            ).FillLoopOrchestratorMixin,
+        )
+        # _assess_buy_toxicity() の呼び出しが _is_buy_killed() の前にある
+        tox_pos = src.find("_assess_buy_toxicity()")
+        kill_pos = src.find("_is_buy_killed()")
+        assert tox_pos < kill_pos, (
+            "assess toxicity must be called before check_kill "
+            "to avoid stale cooldown observation"
+        )
 
 
 # ═══════════════════════════════════════════════════════
@@ -607,3 +678,153 @@ class TestBuyManagerToxicity:
             ToxicityLevel.ORANGE, ToxicityLevel.KILL,
         )
         assert a.threshold_used == -0.8
+
+
+# ═══════════════════════════════════════════════════════
+# 10. 241# S-4: DynamicKillConfig toxicity バリデーション
+# ═══════════════════════════════════════════════════════
+
+
+class TestDynamicKillConfigToxicityValidation:
+    """241# S-4: toxicity config フィールドのバリデーション検証."""
+
+    def test_valid_config_ok(self) -> None:
+        """正常な設定は例外なしで作成可能."""
+        DynamicKillConfig(
+            toxicity_budget_enabled=True,
+            toxicity_warn_level=0.3,
+            toxicity_caution_level=0.7,
+            toxicity_warn_offset_mult=1.0,
+            toxicity_caution_offset_mult=2.0,
+            toxicity_kill_offset_mult=3.0,
+            toxicity_caution_min_participation=0.33,
+        )
+
+    def test_warn_ge_caution_raises(self) -> None:
+        """warn_level >= caution_level → ValueError."""
+        with pytest.raises(ValueError, match="warn_level < caution_level"):
+            DynamicKillConfig(
+                toxicity_budget_enabled=True,
+                toxicity_warn_level=0.7,
+                toxicity_caution_level=0.3,
+            )
+
+    def test_warn_equals_caution_raises(self) -> None:
+        """warn_level == caution_level → ValueError."""
+        with pytest.raises(ValueError, match="warn_level < caution_level"):
+            DynamicKillConfig(
+                toxicity_budget_enabled=True,
+                toxicity_warn_level=0.5,
+                toxicity_caution_level=0.5,
+            )
+
+    def test_caution_above_one_raises(self) -> None:
+        """caution_level > 1.0 → ValueError."""
+        with pytest.raises(ValueError, match="caution_level <= 1.0"):
+            DynamicKillConfig(
+                toxicity_budget_enabled=True,
+                toxicity_warn_level=0.3,
+                toxicity_caution_level=1.5,
+            )
+
+    def test_warn_offset_below_one_raises(self) -> None:
+        """warn_offset_mult < 1.0 → ValueError."""
+        with pytest.raises(ValueError, match="warn_offset_mult must be >= 1.0"):
+            DynamicKillConfig(
+                toxicity_budget_enabled=True,
+                toxicity_warn_offset_mult=0.5,
+            )
+
+    def test_caution_offset_below_warn_offset_raises(self) -> None:
+        """caution_offset_mult < warn_offset_mult → ValueError."""
+        with pytest.raises(ValueError, match="caution_offset_mult must be >="):
+            DynamicKillConfig(
+                toxicity_budget_enabled=True,
+                toxicity_warn_offset_mult=2.0,
+                toxicity_caution_offset_mult=1.5,
+            )
+
+    def test_kill_offset_below_caution_offset_raises(self) -> None:
+        """kill_offset_mult < caution_offset_mult → ValueError."""
+        with pytest.raises(ValueError, match="kill_offset_mult must be >="):
+            DynamicKillConfig(
+                toxicity_budget_enabled=True,
+                toxicity_caution_offset_mult=3.0,
+                toxicity_kill_offset_mult=2.0,
+            )
+
+    def test_min_participation_zero_raises(self) -> None:
+        """min_participation <= 0 → ValueError."""
+        with pytest.raises(ValueError, match="caution_min_participation"):
+            DynamicKillConfig(
+                toxicity_budget_enabled=True,
+                toxicity_caution_min_participation=0.0,
+            )
+
+    def test_min_participation_above_one_raises(self) -> None:
+        """min_participation > 1.0 → ValueError."""
+        with pytest.raises(ValueError, match="caution_min_participation"):
+            DynamicKillConfig(
+                toxicity_budget_enabled=True,
+                toxicity_caution_min_participation=1.5,
+            )
+
+    def test_disabled_skips_validation(self) -> None:
+        """toxicity_budget_enabled=False → バリデーションをスキップ."""
+        # 不正な値でも enabled=False なら例外なし
+        cfg = DynamicKillConfig(
+            toxicity_budget_enabled=False,
+            toxicity_warn_level=0.9,
+            toxicity_caution_level=0.1,
+        )
+        assert not cfg.toxicity_budget_enabled
+
+
+# ═══════════════════════════════════════════════════════
+# 11. 241# C-2: 評価順序回帰テスト
+# ═══════════════════════════════════════════════════════
+
+
+class TestEvaluationOrderRegression:
+    """241# C-2 fix: assess_toxicity と check_kill の評価順序."""
+
+    def test_cooldown_last_cycle_assess_sees_cooldown(self) -> None:
+        """最終 cooldown サイクルでも assess_toxicity は KILL を返す.
+
+        check_kill() 前に assess_toxicity() を呼ぶことで、
+        cooldown デクリメント前の状態を正しく観測できる。
+        """
+        mgr = _make_mgr(threshold=-0.5, window=5)
+        # kill を発動: cooldown = resume_window = 5
+        for _ in range(5):
+            mgr.track(-1.0)
+        killed, _ = mgr.check_kill()
+        assert killed  # cooldown=5
+
+        # cooldown を 1 まで消費 (4回 check_kill)
+        for _ in range(4):
+            killed, _ = mgr.check_kill()
+        # この時点で cooldown=1
+
+        # 先に assess_toxicity → cooldown > 0 なので KILL
+        a = mgr.assess_toxicity()
+        assert a.level == ToxicityLevel.KILL
+
+        # その後 check_kill → cooldown をデクリメント
+        killed, _ = mgr.check_kill()
+        assert killed  # cooldown=1 → 0 のデクリメント中は True
+
+    def test_assess_before_check_kill_consistency(self) -> None:
+        """assess_toxicity を check_kill 前に呼んだ場合の一貫性."""
+        mgr = _make_mgr(threshold=-0.5, window=5)
+        # YELLOW zone: rolling_mean = -0.3, score = 0.6
+        for _ in range(5):
+            mgr.track(-0.3)
+
+        # assess 先
+        a = mgr.assess_toxicity()
+        assert a.level == ToxicityLevel.YELLOW
+
+        # check_kill: rolling_mean (-0.3) >= threshold (-0.5) → not killed
+        killed, _ = mgr.check_kill()
+        assert not killed  # 矛盾なし: YELLOW ≠ KILL

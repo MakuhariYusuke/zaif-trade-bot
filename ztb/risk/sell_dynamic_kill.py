@@ -112,13 +112,44 @@ class DynamicKillConfig:
     toxicity_caution_min_participation: float = 0.33
 
     def __post_init__(self) -> None:
-        """173# バリデーション: window/resume_window >= 1."""
+        """173# バリデーション + 241# S-4 toxicity config 制約チェック."""
         if self.window < 1:
             raise ValueError(f"DynamicKillConfig.window must be >= 1, got {self.window}")
         if self.resume_window < 0:
             raise ValueError(
                 f"DynamicKillConfig.resume_window must be >= 0, got {self.resume_window}"
             )
+        # 241# S-4: toxicity budget 設定バリデーション
+        if self.toxicity_budget_enabled:
+            if not (0.0 <= self.toxicity_warn_level < self.toxicity_caution_level <= 1.0):
+                raise ValueError(
+                    f"DynamicKillConfig: must satisfy "
+                    f"0 <= warn_level < caution_level <= 1.0, "
+                    f"got warn={self.toxicity_warn_level}, "
+                    f"caution={self.toxicity_caution_level}"
+                )
+            if self.toxicity_warn_offset_mult < 1.0:
+                raise ValueError(
+                    f"DynamicKillConfig.toxicity_warn_offset_mult must be >= 1.0, "
+                    f"got {self.toxicity_warn_offset_mult}"
+                )
+            if self.toxicity_caution_offset_mult < self.toxicity_warn_offset_mult:
+                raise ValueError(
+                    f"DynamicKillConfig.toxicity_caution_offset_mult must be >= "
+                    f"warn_offset_mult ({self.toxicity_warn_offset_mult}), "
+                    f"got {self.toxicity_caution_offset_mult}"
+                )
+            if self.toxicity_kill_offset_mult < self.toxicity_caution_offset_mult:
+                raise ValueError(
+                    f"DynamicKillConfig.toxicity_kill_offset_mult must be >= "
+                    f"caution_offset_mult ({self.toxicity_caution_offset_mult}), "
+                    f"got {self.toxicity_kill_offset_mult}"
+                )
+            if not (0.0 < self.toxicity_caution_min_participation <= 1.0):
+                raise ValueError(
+                    f"DynamicKillConfig.toxicity_caution_min_participation "
+                    f"must be in (0, 1.0], got {self.toxicity_caution_min_participation}"
+                )
 
 # 後方互換エイリアス
 SellKillConfig = DynamicKillConfig

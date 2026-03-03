@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-03 (240# Toxicity Budget: binary skip → continuous adverse-selection budget)
+> 最終更新: 2026-03-03 (241# Toxicity Budget セルフレビュー: dead code 修正 + 評価順序 + 型安全 + config バリデーション)
 
 ---
 
@@ -231,6 +231,7 @@
 | 238 | fix | [238_ph2_fix_237_self_review.md](238_ph2_fix_237_self_review.md) | 237# セルフレビュー: 型安全 + 残高スナップショット + TTL + サイドベトー |
 | 239 | fix | [239_ph2_fix_feasible_quote_proactive.md](239_ph2_fix_feasible_quote_proactive.md) | Feasible Quote Proactive: InfeasibleQuoteError + 制約前方移動 + fallback dedup (232# §1.5) |
 | 240 | fix | [240_ph2_fix_toxicity_budget.md](240_ph2_fix_toxicity_budget.md) | Toxicity Budget: binary skip → continuous adverse-selection budget (232# §2.2) |
+| 241 | fix | [241_ph2_fix_toxicity_budget_review.md](241_ph2_fix_toxicity_budget_review.md) | 240# セルフレビュー: dead code 修正 + 評価順序 + 型安全 + config バリデーション |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
