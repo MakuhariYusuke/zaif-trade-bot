@@ -393,10 +393,13 @@ class AdaptationEngine:
         cfg = self._config
         try:
             from scripts.v460.lib.lot_sizer import (
+                KellyEstimate,
                 LotSizingConfig,
                 compute_cumulative_pnl_jpy,
+                compute_kelly_fraction,
                 compute_lot_size,
                 compute_recent_pnl_bps,
+                kelly_recommended_lot,
             )
 
             records = self._load_clean_records()
@@ -414,6 +417,39 @@ class AdaptationEngine:
                 max_lot=cfg.max_lot,
                 **self._build_lot_kwargs(),
             )
+
+            # 264# Kelly Criterion 推定
+            kelly_est: KellyEstimate | None = None
+            kelly_yaml = self._yaml_cfg.get("kelly", {})
+            if kelly_yaml.get("enabled", False):
+                kelly_est = compute_kelly_fraction(
+                    records,
+                    min_samples=kelly_yaml.get("min_win_samples", 30),
+                    max_fraction=kelly_yaml.get("max_fraction", 0.25),
+                    fractional=kelly_yaml.get("fraction", 0.5),
+                )
+                if kelly_est is not None:
+                    equity_btc = kelly_yaml.get("equity_btc", 0.0)
+                    if equity_btc > 0:
+                        kelly_lot = kelly_recommended_lot(
+                            kelly_est, equity_btc, lot_config,
+                        )
+                        kelly_est = KellyEstimate(
+                            win_rate=kelly_est.win_rate,
+                            win_loss_ratio=kelly_est.win_loss_ratio,
+                            kelly_fraction=kelly_est.kelly_fraction,
+                            fractional_kelly=kelly_est.fractional_kelly,
+                            recommended_lot=kelly_lot,
+                            sample_count=kelly_est.sample_count,
+                            reason=kelly_est.reason,
+                        )
+                        logger.info(
+                            f"[方策B] Kelly: lot={kelly_lot:.4f} BTC "
+                            f"(f*={kelly_est.kelly_fraction:.4f}, "
+                            f"frac={kelly_est.fractional_kelly:.4f}, "
+                            f"equity={equity_btc:.4f} BTC)"
+                        )
+
             # 131# D1: レジームタグを取得して compute_lot_size に渡す
             # 258# F-3: RegimeDetectorLike Protocol — 直接アクセス
             regime_tag = (
@@ -429,6 +465,7 @@ class AdaptationEngine:
                 sample_count=metrics.total_orders,
                 config=lot_config,
                 regime_tag=regime_tag,
+                kelly_estimate=kelly_est,
             )
 
             if lot_result.changed:

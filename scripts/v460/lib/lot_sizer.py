@@ -2,10 +2,18 @@
 方策 B: 動的ロットサイジング — fill_test 実績に基づく発注数量の段階調整.
 
 033# 実装.
+264# Kelly Criterion 統合.
 
 概要:
   fill_test の FillMetrics + 累積 PnL から order_quantity を段階的に増減する。
   パフォーマンスが良好なら増量、悪化なら縮小して損失を抑制する。
+
+  264# Kelly Criterion:
+    f* = (p·b − q) / b
+    - p = 勝率 (post_fill_30s_pnl > 0 の割合)
+    - q = 1 − p
+    - b = 平均勝ち幅 / 平均負け幅
+    Fractional Kelly (f*/2) でリスク調整。ロットの「天井」として使用。
 
 ルール:
   - 収益性: 累積 PnL ≥ 0 AND 直近 PnL 平均 ≥ 0  → 増量候補
@@ -14,21 +22,40 @@
   - 上記 3 条件が全て満たされたとき → 1 段階増量
   - いずれか悪化時 → 1 段階減量 (最小ロットまで)
   - 損失キャップ接近時 → 強制的に最小ロットへ縮小
+  - Kelly 天井: step-based 増量結果を Kelly 推奨ロット以下にクランプ (264#)
 
 安全設計:
   - ハードリミット: min_lot / max_lot でクランプ
   - 段階調整: lot_step ずつ (急激な変更を防止)
   - 損失キャップ統合: 000# §3.9 の 10,000 JPY 実損上限を尊重
   - サンプル不足時は hold (判断材料不足)
+  - Kelly Criterion: Fractional Kelly (half-Kelly) + 上限キャップ (264#)
 """
 
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+import math
+from dataclasses import dataclass, field
 
 
 logger = logging.getLogger(__name__)
+
+
+# ------------------------------------------------------------------
+# 264# Kelly Criterion データクラス
+# ------------------------------------------------------------------
+@dataclass
+class KellyEstimate:
+    """Kelly Criterion 推定結果."""
+
+    win_rate: float  # p: 勝率 (0.0-1.0)
+    win_loss_ratio: float  # b: 平均勝ち幅/平均負け幅
+    kelly_fraction: float  # f*: 理論的最適ベット比率
+    fractional_kelly: float  # f*/fraction で調整後
+    recommended_lot: float  # BTC ロットサイズ (clamp 済み)
+    sample_count: int  # 使用サンプル数
+    reason: str  # 人間向け説明
 
 
 @dataclass
@@ -61,6 +88,13 @@ class LotSizingConfig:
     regime_hold_regimes: tuple[str, ...] = ("unknown",)  # 増量を hold するレジーム
     regime_decrease_regimes: tuple[str, ...] = ()  # 減量を強制するレジーム
 
+    # 264# Kelly Criterion
+    kelly_enabled: bool = False  # True で Kelly 天井を適用
+    kelly_fraction: float = 0.5  # Fractional Kelly (0.5 = half-Kelly)
+    kelly_min_win_samples: int = 30  # Kelly 推定に必要な最小 win+loss サンプル
+    kelly_max_fraction: float = 0.25  # f* 上限 (過剰リスク防止)
+    kelly_equity_btc: float = 0.0  # 口座残高 BTC (0 → Kelly 無効)
+
 
 @dataclass
 class LotSizingResult:
@@ -89,6 +123,7 @@ def compute_lot_size(
     sample_count: int,
     config: LotSizingConfig | None = None,
     regime_tag: str = "n/a",
+    kelly_estimate: KellyEstimate | None = None,
 ) -> LotSizingResult:
     """fill_test メトリクスに基づきロットサイズの推奨値を算出.
 
@@ -179,6 +214,19 @@ def compute_lot_size(
                 f"全条件クリアだが上限到達 ({current:.4f} >= {config.max_lot:.4f})",
             )
         new = current + config.lot_step
+
+        # 264# Kelly 天井: step-based 増量結果を Kelly 推奨ロット以下にクランプ
+        if kelly_estimate is not None and kelly_estimate.recommended_lot > 0:
+            kelly_lot = kelly_estimate.recommended_lot
+            if new > kelly_lot:
+                new = max(current, kelly_lot)  # 減量はしない (天井のみ)
+                return _make_result(
+                    new,
+                    "hold" if new == current else "increase",
+                    f"Kelly 天井適用: step→{current + config.lot_step:.4f} "
+                    f"→ Kelly={kelly_lot:.4f} ({kelly_estimate.reason})",
+                )
+
         return _make_result(
             new,
             "increase",
@@ -261,3 +309,130 @@ def compute_recent_pnl_bps(
     pnl_values = [r.post_fill_30s_pnl for r in recent if r.post_fill_30s_pnl is not None]
     total: float = sum(pnl_values)
     return total / len(recent)
+
+
+# ------------------------------------------------------------------
+# 264# Kelly Criterion — 理論的最適ロットサイジング
+# ------------------------------------------------------------------
+def compute_kelly_fraction(
+    records: list,
+    *,
+    min_samples: int = 30,
+    max_fraction: float = 0.25,
+    fractional: float = 0.5,
+) -> KellyEstimate | None:
+    """FillRecord から Kelly Criterion の最適ベット比率を算出.
+
+    Kelly の公式 (二値アウトカム):
+        f* = (p·b − q) / b
+    where:
+        p = 勝率 (PnL > 0 の約定割合)
+        q = 1 − p
+        b = 平均勝ちPnL / 平均負けPnL (絶対値比)
+
+    Fractional Kelly: f*/fractional で保守化 (default: half-Kelly = f*/2)。
+
+    Args:
+        records: FillRecord のリスト.
+        min_samples: Kelly 推定に必要な最小 win+loss 件数.
+        max_fraction: f* 上限 (0.25 = 最大25%ベット).
+        fractional: Kelly 比率の縮小係数 (0.5 = half-Kelly).
+
+    Returns:
+        KellyEstimate or None (サンプル不足時).
+    """
+    # 約定 + PnL 計測済みのレコードを抽出
+    filled = [
+        r for r in records
+        if r.filled
+        and r.post_fill_30s_pnl is not None
+        and r.fill_price is not None
+        and r.fill_price > 0
+    ]
+
+    wins = [r for r in filled if r.post_fill_30s_pnl > 0]
+    losses = [r for r in filled if r.post_fill_30s_pnl < 0]
+
+    total_decisive = len(wins) + len(losses)
+    if total_decisive < min_samples:
+        return None
+
+    # 勝率 p
+    p = len(wins) / total_decisive
+    q = 1.0 - p
+
+    # 平均勝ち/負けの bps 絶対値
+    avg_win_bps = sum(r.post_fill_30s_pnl for r in wins) / len(wins) if wins else 0.0
+    avg_loss_bps = abs(
+        sum(r.post_fill_30s_pnl for r in losses) / len(losses)
+    ) if losses else 0.0
+
+    # b = win/loss ratio (b=0 or loss=0 → Kelly 計算不能)
+    if avg_loss_bps < 1e-9:
+        # 損失なし → 全力投入 (Kelly=1.0) → max_fraction で制限
+        b = float("inf")
+        kelly_f = max_fraction
+    elif avg_win_bps < 1e-9:
+        # 勝ちなし → Kelly ≤ 0
+        b = 0.0
+        kelly_f = 0.0
+    else:
+        b = avg_win_bps / avg_loss_bps
+        kelly_f = (p * b - q) / b
+
+    # Kelly ≤ 0 → edge がない → ベットしない
+    if kelly_f <= 0:
+        return KellyEstimate(
+            win_rate=p,
+            win_loss_ratio=b if math.isfinite(b) else 0.0,
+            kelly_fraction=kelly_f,
+            fractional_kelly=0.0,
+            recommended_lot=0.0,
+            sample_count=total_decisive,
+            reason=f"Kelly≤0 (no edge): p={p:.3f}, b={b:.3f}, f*={kelly_f:.4f}",
+        )
+
+    # Fractional Kelly + 上限キャップ
+    frac_kelly = min(kelly_f * fractional, max_fraction)
+
+    return KellyEstimate(
+        win_rate=p,
+        win_loss_ratio=b if math.isfinite(b) else 999.0,
+        kelly_fraction=kelly_f,
+        fractional_kelly=frac_kelly,
+        recommended_lot=0.0,  # 呼び出し側で equity から算出
+        sample_count=total_decisive,
+        reason=(
+            f"Kelly: p={p:.3f}, b={b:.3f}, f*={kelly_f:.4f}, "
+            f"frac={frac_kelly:.4f} ({fractional:.0%} Kelly)"
+        ),
+    )
+
+
+def kelly_recommended_lot(
+    kelly: KellyEstimate,
+    equity_btc: float,
+    config: LotSizingConfig | None = None,
+) -> float:
+    """Kelly 推定結果から推奨ロットサイズ (BTC) を算出.
+
+    lot = fractional_kelly × equity_btc, clamped to [min_lot, max_lot].
+
+    Args:
+        kelly: compute_kelly_fraction() の結果.
+        equity_btc: 口座の BTC 建て残高 (JPY残高 / BTC価格 + BTC残高).
+        config: ロットサイジング設定 (min/max clamp 用).
+
+    Returns:
+        推奨ロットサイズ (BTC, lot_step 刻みに丸め).
+    """
+    if config is None:
+        config = LotSizingConfig()
+
+    if kelly.fractional_kelly <= 0 or equity_btc <= 0:
+        return config.min_lot
+
+    raw_lot = kelly.fractional_kelly * equity_btc
+    # lot_step 刻みに切り捨て
+    stepped = math.floor(raw_lot / config.lot_step) * config.lot_step
+    return clamp_lot(stepped, config)
