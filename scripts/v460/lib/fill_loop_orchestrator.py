@@ -442,12 +442,15 @@ class FillLoopOrchestratorMixin:
     # ------------------------------------------------------------------
     # 179# S1: _effective_sleep — regime 応答サイクル間隔の一元化
     # ------------------------------------------------------------------
-    async def _effective_sleep(self, *, multiplier: float = 1.0) -> None:
+    async def _effective_sleep(
+        self, *, multiplier: float = 1.0, max_override: float = 0.0,
+    ) -> None:
         """179# CycleStrategy に委譲し、regime 別サイクル間隔で sleep.
 
         skip/halt/error continue 全パスがこのメソッドを経由する。
         - multiplier=1.0 : 通常スキップ
         - multiplier=5.0 : halt (daily drawdown)
+        - max_override>0  : 242# quiescence 時の sleep 上限オーバーライド
         正常サイクル完了パスは rapid_exit ロジックを含むため直接呼ばない。
         200# P0-2: _soft_drawdown_interval_multiplier を追加乗算。
         """
@@ -459,8 +462,8 @@ class FillLoopOrchestratorMixin:
         alert_im = self._alert_interval_mult
         _raw = base * multiplier * soft_dd_mult * alert_im
         # 211#: max_cycle_sleep_sec キャップを _effective_sleep にも適用
-        # (209# M4 は通常パスのみ → halt 中 30 分スリープの原因)
-        _max = self.config.max_cycle_sleep_sec
+        # 242#: max_override > 0 なら quiescence 用の拡大上限を使用
+        _max = max_override if max_override > 0 else self.config.max_cycle_sleep_sec
         _sleep = min(_raw, _max) if _max > 0 else _raw
         await asyncio.sleep(_sleep)
 
@@ -1647,14 +1650,28 @@ class FillLoopOrchestratorMixin:
                 if _gate_result.blocking_reason:
                     self._inc_guard_fire(f"gate_{_gate_result.blocking_reason}")
 
-                # 218# デッドロック検出
+                # 218#/242# 連続ゲートブロック検出 + quiescence 状態遷移
                 self._consecutive_gate_blocks += 1
+                _quiescence_th = self.config.quiescence_gate_blocks_threshold
+                _in_quiescence = (
+                    _quiescence_th > 0
+                    and self._consecutive_gate_blocks >= _quiescence_th
+                )
                 if self._consecutive_gate_blocks >= 10 and self._consecutive_gate_blocks % 10 == 0:
-                    logger.warning(
-                        f"[218#] DEADLOCK WARNING: {self._consecutive_gate_blocks} "
-                        f"consecutive gate blocks (reason={_gate_result.blocking_reason}, "
-                        f"side={next_side})"
-                    )
+                    if _in_quiescence:
+                        # 242# quiescence: No Trade は正常系
+                        logger.info(
+                            f"[242#] QUIESCENCE: {self._consecutive_gate_blocks} "
+                            f"consecutive gate blocks — no-trade accepted as normal "
+                            f"(reason={_gate_result.blocking_reason}, side={next_side}, "
+                            f"sleep_cap={self.config.quiescence_sleep_sec:.0f}s)"
+                        )
+                    else:
+                        logger.warning(
+                            f"[218#] DEADLOCK WARNING: {self._consecutive_gate_blocks} "
+                            f"consecutive gate blocks (reason={_gate_result.blocking_reason}, "
+                            f"side={next_side})"
+                        )
 
                 # 223# skip-time lightweight state save: gate_block 連続中も
                 # _STATE_SAVE_INTERVAL_SEC 経過ごとに state 保存して stale 防止
@@ -1672,10 +1689,16 @@ class FillLoopOrchestratorMixin:
                     )
 
                 # 197# narrow_spread_pause: Gate 8 ブロック時は pause_sec 分待機
+                # 242# quiescence: sleep 上限を引き上げ (max_cycle_sleep → quiescence_sleep)
+                _q_sleep = (
+                    self.config.quiescence_sleep_sec
+                    if _in_quiescence and self.config.quiescence_sleep_sec > 0
+                    else 0.0
+                )
                 if _gate_result.blocking_reason == "narrow_spread_pause":
                     await asyncio.sleep(self.config.narrow_spread_pause_sec)
                 else:
-                    await self._effective_sleep()
+                    await self._effective_sleep(max_override=_q_sleep)
                 continue
             else:
                 # ゲート通過 → カウンタリセット

@@ -88,6 +88,12 @@ class DynamicKillConfig:
     #: 219# force release: この回数 consecutive probe が発火したら
     #: new data が来るまで kill を強制解除する。0 = 無効。
     max_force_release_probes: int = 5
+    # ---- 242# Liveness Constraint Relaxation (233# P1) ----
+    #: toxicity_budget が KILL でデータ裏付けありの場合、probe interval を
+    #: この倍率で延長する。1 = 従来互換 (延長なし)。10 = 約 3.3 時間間隔。
+    #: 市場理論的根拠: Glosten-Milgrom の逆選択リスクが KILL 水準のとき、
+    #: probe (強制取引) は損失を追加するだけ。長期休止を正常系として許容する。
+    toxic_kill_stale_multiplier: int = 10
     # ---- 240# Toxicity Budget (232# §2.2 Glosten-Milgrom) ----
     #: True で toxicity budget を有効化 (段階的応答)。
     #: False なら従来の binary kill のみ。
@@ -378,7 +384,11 @@ class DynamicKillManager:
             )
 
         # 218#/219# anti-stagnation: stale probe check + progressive interval
+        # 242# Liveness relaxation: toxicity KILL + データ裏付けあり → interval 延長
         effective_max_stale = self._effective_probe_interval()
+        _toxic_mult = self._toxic_kill_multiplier(regime)
+        if _toxic_mult > 1:
+            effective_max_stale *= _toxic_mult
         if effective_max_stale > 0 and self._stale_counter >= effective_max_stale:
             self._stale_counter = 0
             self._total_probe_cycles += 1
@@ -491,6 +501,26 @@ class DynamicKillManager:
         for _ in range(self._consecutive_probes):
             interval = max(self._config.min_probe_interval, (interval + 1) // 2)
         return interval
+
+    def _toxic_kill_multiplier(self, regime: str | None) -> int:
+        """242# toxicity KILL + データ裏付けありなら probe interval 延長倍率を返す.
+
+        Glosten-Milgrom の逆選択リスクが KILL 水準のとき、probe (強制取引) は
+        損失を追加するだけ。長期休止 (No Trade) を正常系として許容する。
+
+        Returns:
+            toxic_kill_stale_multiplier (データ裏付け KILL 時) or 1 (通常時)
+        """
+        mult = self._config.toxic_kill_stale_multiplier
+        if mult <= 1:
+            return 1
+        if not self._config.toxicity_budget_enabled:
+            return 1
+        tox = self.assess_toxicity(regime=regime)
+        # rolling_mean is not None = 十分なデータがある → kill は data-backed
+        if tox.level == ToxicityLevel.KILL and tox.rolling_mean is not None:
+            return mult
+        return 1
 
     def reset(self) -> None:
         """状態リセット."""
