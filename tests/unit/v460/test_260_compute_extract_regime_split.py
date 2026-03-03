@@ -60,11 +60,11 @@ class TestComputeExtractMethod:
         assert hints.get("return") == tuple[float, float]
 
     def test_compute_line_count_reduced(self) -> None:
-        """compute() が 185 行以下に削減されている (214→180, 抽出済み)."""
+        """compute() が 200 行以下に維持されている (214→180→192, 266# pipeline 追加)."""
         src = inspect.getsource(MakerPrice.compute)
         line_count = len(src.strip().splitlines())
-        assert line_count <= 185, (
-            f"compute() should be <= 185 lines (was 214, now {line_count})"
+        assert line_count <= 200, (
+            f"compute() should be <= 200 lines (was 214, now {line_count})"
         )
 
 

@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, cast
 
 from scripts.v460.lib.fill_config import FillTestConfig, SkipGateResult
+from scripts.v460.lib.ob_utils import OrderBookSnapshot
 from scripts.v460.ml.skip_gate import SkipDecision, build_features_from_market_state
 # ファイルの SHA256 ハッシュを算出 (126# hot-reload 用)
 from ztb.metrics.fill_quality import build_skip_fill_record
@@ -48,7 +49,7 @@ class SkipGateAdapter(Protocol):
 
     async def get_orderbook(
         self, symbol: str, depth: int = 1,
-    ) -> object: ...
+    ) -> OrderBookSnapshot | None: ...
 
 
 class _SkipGateConfigLike(Protocol):
@@ -1037,10 +1038,10 @@ class SkipGateEvaluator:
                         symbol,
                         depth=self._config.skip_gate_ob_depth,
                     )
-                    if ob and getattr(ob, "bids", None) and getattr(ob, "asks", None):
-                        # 256# 冗長 getattr 排除: L上で存在確認済み → 直接参照
-                        bids = ob.bids  # type: ignore[attr-defined]
-                        asks = ob.asks  # type: ignore[attr-defined]
+                    if ob and hasattr(ob, "bids") and hasattr(ob, "asks"):
+                        # 266# type:ignore 排除: OrderBookSnapshot Protocol 型安全化
+                        bids = ob.bids
+                        asks = ob.asks
                         # 145# §9-#3: tuple/object 両対応 (ob_utils 使用)
                         ob_bid = extract_price(bids[0])
                         ob_ask = extract_price(asks[0])

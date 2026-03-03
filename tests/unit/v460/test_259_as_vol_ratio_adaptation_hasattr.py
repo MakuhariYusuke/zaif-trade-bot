@@ -197,7 +197,8 @@ class TestASVolRatioIntegration:
 
     def test_source_references_vol_ratio(self) -> None:
         """ソースに vol_ratio 統合コードが存在."""
-        src = inspect.getsource(MakerPrice._apply_as_reservation_shift)
+        # 266# σ推定は _estimate_sigma に抽出済み
+        src = inspect.getsource(MakerPrice._estimate_sigma)
         assert "vol_ratio" in src
         assert "_regime_detector" in src
         assert "last_volatility_ratio" in src

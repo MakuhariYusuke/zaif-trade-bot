@@ -16,6 +16,17 @@ from typing import Protocol, Sequence, TypeAlias, Union, cast, runtime_checkable
 logger = logging.getLogger(__name__)
 
 
+# 266# 共有 Protocol: OrderBookSnapshot (maker_price.py から移管)
+class OrderBookSnapshot(Protocol):
+    """板スナップショット — .bids / .asks を持つ object."""
+
+    @property
+    def bids(self) -> Sequence[tuple[float, float]]: ...
+
+    @property
+    def asks(self) -> Sequence[tuple[float, float]]: ...
+
+
 # 261# P2-1: OrderBookLevelLike Protocol — getattr 排除
 @runtime_checkable
 class OrderBookLevelLike(Protocol):
@@ -62,15 +73,18 @@ def extract_size(level: OrderBookLevel) -> float:
 
 
 def best_bid_ask(
-    ob: object,
+    ob: OrderBookSnapshot | object | None,
 ) -> tuple[float | None, float | None]:
     """OrderBookSnapshot から best bid/ask を安全に抽出.
 
     Returns:
         (best_bid, best_ask) — データ不足時は None.
     """
-    bids = _coerce_levels(getattr(ob, "bids", None))
-    asks = _coerce_levels(getattr(ob, "asks", None))
+    if ob is None:
+        return None, None
+    # 266# getattr 排除: hasattr で存在確認後に直接アクセス
+    bids = _coerce_levels(ob.bids if hasattr(ob, "bids") else None)
+    asks = _coerce_levels(ob.asks if hasattr(ob, "asks") else None)
     bid = extract_price(bids[0]) if bids else None
     ask = extract_price(asks[0]) if asks else None
     return bid, ask
@@ -94,7 +108,7 @@ def _coerce_levels(levels: object) -> OrderBookLevels:
 class _HasGetOrderbook(Protocol):
     """Protocol for adapter with get_orderbook method."""
 
-    async def get_orderbook(self, symbol: str, depth: int = ...) -> object: ...
+    async def get_orderbook(self, symbol: str, depth: int = ...) -> OrderBookSnapshot | None: ...
 
 
 class MarketDataAccessor:
@@ -141,7 +155,10 @@ class MarketDataAccessor:
         """Bid-side depth volume up to *depth* levels."""
         try:
             ob = await self._adapter.get_orderbook(self._symbol, depth=depth)
-            bids = _coerce_levels(getattr(ob, "bids", None))
+            if ob is None:
+                return 0.0
+            # 266# getattr 排除: OrderBookSnapshot 直接アクセス
+            bids = _coerce_levels(ob.bids)
             return depth_volume(bids, depth) if bids else 0.0
         except Exception:
             # 255# bare except → debug log (OB fetch 例外可観測化)
@@ -152,7 +169,10 @@ class MarketDataAccessor:
         """Ask-side depth volume up to *depth* levels."""
         try:
             ob = await self._adapter.get_orderbook(self._symbol, depth=depth)
-            asks = _coerce_levels(getattr(ob, "asks", None))
+            if ob is None:
+                return 0.0
+            # 266# getattr 排除: OrderBookSnapshot 直接アクセス
+            asks = _coerce_levels(ob.asks)
             return depth_volume(asks, depth) if asks else 0.0
         except Exception:
             # 255# bare except → debug log (OB fetch 例外可観測化)

@@ -487,6 +487,26 @@ class FillTestConfig:
     as_reservation_enabled: bool = False     # True で AS reservation shift を有効化
     as_reservation_gamma: float = 0.1        # γ: リスク回避度 (0=中立, 高い=保守的)
     as_reservation_tau_sec: float = 120.0    # τ: 時間ホライゾン (秒)
+    # ---- 266# GLFT τ動的化: Guéant-Lehalle-Fernandez-Tapia (2013) ----
+    # ボラティリティに応じて τ を動的調整。高ボラ時は τ 短縮 (素早い在庫調整)、
+    # 低ボラ時は τ 延長 (緩やかな調整)。τ_eff = τ_base / vol_ratio。
+    as_tau_dynamic_enabled: bool = False     # True で τ 動的化を有効化
+    as_tau_dynamic_min_sec: float = 30.0     # τ 下限 (秒, 過度な短縮防止)
+    as_tau_dynamic_max_sec: float = 600.0    # τ 上限 (秒, 過度な延長防止)
+    # ---- 266# AS δ*: 最適スプレッド幅 (Avellaneda-Stoikov 2008 §4) ----
+    # δ* = γσ²τ + (2/γ)ln(1 + γ/k) — fill rate k に基づく理論的 offset 下限。
+    as_delta_star_enabled: bool = False      # True で δ* 下限を有効化
+    as_delta_star_fill_rate_k: float = 1.5   # fill rate κ (注文到着強度, 要チューニング)
+    # ---- 266# Kyle λ: 価格インパクト係数 (Kyle 1985) ----
+    # λ_est = spread / (2·depth_volume) — 自己注文の市場インパクト → offset 安全マージン。
+    kyle_lambda_enabled: bool = False        # True で Kyle λ offset 補正を有効化
+    kyle_lambda_impact_mult: float = 0.5     # λ×lot を offset に反映する倍率
+    kyle_lambda_max_add_ratio: float = 0.05  # offset 加算上限 (ratio 単位)
+    # ---- 266# Amihud ILLIQ: 非流動性比率 (Amihud 2002) ----
+    # ILLIQ = |ΔP/P| / Volume — 非流動性指標 → spread_adaptive 閾値を動的調整。
+    amihud_illiq_enabled: bool = False       # True で ILLIQ 補正を有効化
+    amihud_illiq_baseline: float = 0.001     # ILLIQ ベースライン (正規化基準)
+    amihud_illiq_max_mult: float = 1.5       # ILLIQ 由来の offset 倍率上限
     preflight_pause_enabled: bool = True       # True で SAFE_STOP 前に pause を挟む
     preflight_pause_threshold: int = 5         # この回数で pause 発動 (< max_preflight_skip)
     preflight_pause_sec: float = 300.0         # pause 時のスリープ秒数

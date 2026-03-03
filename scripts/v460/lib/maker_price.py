@@ -25,6 +25,7 @@ from typing import Final, NamedTuple, Protocol, Sequence
 
 from scripts.v460.lib.fast_fill_defense import FastFillDefense
 from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.ob_utils import OrderBookSnapshot
 from scripts.v460.lib.regime_detector import FillTestRegime, RegimeDetectorLike
 from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
 
@@ -49,14 +50,7 @@ class InfeasibleQuoteError(ValueError):
         self.reason = reason
 
 
-class OrderBookSnapshot(Protocol):
-    """板スナップショット — .bids / .asks を持つ object."""
-
-    @property
-    def bids(self) -> Sequence[tuple[float, float]]: ...
-
-    @property
-    def asks(self) -> Sequence[tuple[float, float]]: ...
+# 266# OrderBookSnapshot は ob_utils.py に移管済み (from scripts.v460.lib.ob_utils import OrderBookSnapshot)
 
 
 class OrderbookProvider(Protocol):
@@ -96,17 +90,20 @@ class MakerPriceCalculator:
     ╠══════════════════════════════════════════════════════════════╣
     ║  compute() は 163# で 306→143 行に分割済み。               ║
     ║  ステージパイプライン構造:                                  ║
-    ║    compute() → _apply_as_reservation_shift()  (258#)       ║
+    ║    compute() → _apply_as_reservation_shift()  (258#/266#)   ║
     ║              → _apply_regime_boosts()                      ║
     ║              → _apply_spread_adaptive()                    ║
+    ║              → _apply_kyle_lambda()           (266#)       ║
+    ║              → _apply_amihud_illiq()           (266#)       ║
     ║              → _apply_volatility_guard()                   ║
     ║              → _apply_imbalance_risk()                     ║
     ║              → _apply_loss_boost()            (260#)       ║
     ║              → _apply_ffd_boost()             (260#)       ║
+    ║  共有ヘルパー: _estimate_sigma(), _dynamic_tau()  (266#)   ║
     ║  新ロジック追加時は新しい _apply_*() private メソッドとして ║
     ║  パイプラインに挿入すること。compute() に直接書かない。     ║
     ║  compute() 行数上限: 150 行。                              ║
-    ║  クラス全体の行数上限: 700 行。超過時はモジュール分割。     ║
+    ║  クラス全体の行数上限: 850 行。超過時はモジュール分割。     ║
     ╚══════════════════════════════════════════════════════════════╝
     """
 
@@ -139,6 +136,7 @@ class MakerPriceCalculator:
         "_loss_boost_mult",          # 211# 204# I: per-fill loss offset boost
         "_loss_boost_set_time",      # 226# T1: boost 設定時刻 (指数減衰用)
         "_smoothed_velocity_bps",    # 227# C3: EMA-smoothed velocity (bid-ask bounce noise filter)
+        "_last_amihud_illiq",        # 266# Amihud ILLIQ キャッシュ
     )
 
     def __init__(
@@ -193,6 +191,8 @@ class MakerPriceCalculator:
         self._loss_boost_set_time: float = 0.0
         # 227# C3: EMA-smoothed velocity (bid-ask bounce noise filter)
         self._smoothed_velocity_bps: float | None = None
+        # 266# Amihud ILLIQ キャッシュ
+        self._last_amihud_illiq: float = 0.0
 
     def get_fallback_price(self) -> tuple[float | None, float | None]:
         """156# §16: OB エラー時のフォールバック価格と記録時刻を返す.
@@ -524,6 +524,44 @@ class MakerPriceCalculator:
             return MakerPriceResult(best_ask, spread, 0.0)
         return MakerPriceResult(price, spread, effective_offset_ratio)
 
+    # ------------------------------------------------------------------
+    # 266# 共有ヘルパー: σ推定 + τ動的化 (GLFT/AS δ*/Kyle で再利用)
+    # ------------------------------------------------------------------
+    def _estimate_sigma(self, spread: float, mid_price: float) -> tuple[float, float]:
+        """266# σ 推定: Roll (1984) micro-vol proxy × RegimeDetector vol_ratio.
+
+        Returns:
+            (sigma, vol_ratio) — σ 推定値と vol_ratio。
+            複数ステージ (_apply_as_reservation_shift, _apply_kyle_lambda,
+            _apply_amihud_illiq) で再利用する共通推定値。
+        """
+        sigma = spread / (2.0 * mid_price) if mid_price > 0 else 0.0
+        vol_ratio = 1.0
+        if self._regime_detector is not None:
+            vol_ratio = max(self._regime_detector.last_volatility_ratio, 0.1)
+        sigma *= vol_ratio
+        return sigma, vol_ratio
+
+    def _dynamic_tau(self, base_tau: float, vol_ratio: float) -> float:
+        """266# GLFT τ動的化: Guéant-Lehalle-Fernandez-Tapia (2013).
+
+        τ_eff = τ_base / vol_ratio — 高ボラ時は τ 短縮 (素早い在庫調整)、
+        低ボラ時は τ 延長 (緩やかな調整)。有限期間 AS モデルの拡張。
+
+        Args:
+            base_tau: as_reservation_tau_sec (ベース τ)
+            vol_ratio: RegimeDetector.last_volatility_ratio
+
+        Returns:
+            実効 τ (as_tau_dynamic_min_sec ≤ τ_eff ≤ as_tau_dynamic_max_sec)
+        """
+        cfg = self._config
+        if not cfg.as_tau_dynamic_enabled or vol_ratio <= 0:
+            return base_tau
+        tau_eff = base_tau / vol_ratio
+        tau_eff = max(cfg.as_tau_dynamic_min_sec, min(cfg.as_tau_dynamic_max_sec, tau_eff))
+        return tau_eff
+
     def _apply_as_reservation_shift(
         self,
         side: str,
@@ -536,13 +574,10 @@ class MakerPriceCalculator:
         Avellaneda-Stoikov (2008) 予約価格理論:
           r = s - q·γ·σ²·τ
 
-        既存の inventory skewing (162#) は在庫偏重に対する線形 offset 補正だが、
-        ボラティリティを考慮しない。AS 理論は「在庫リスクは σ² に比例する」ことを
-        示し、高 vol 局面での在庫偏重は低 vol 局面よりも大きな offset 調整を
-        必要とすることを定式化する。
-
-        σ² 推定: spread/mid を用いた micro-volatility proxy (Roll 1984)。
-        効果: 高ボラ + 在庫偏重 → offset shift 増大（リバランス加速）。
+        266# 拡張:
+          - _estimate_sigma(): Roll proxy × vol_ratio (他ステージと共有)
+          - _dynamic_tau(): GLFT τ動的化 (τ_eff = τ_base / vol_ratio)
+          - AS δ*: 理論的最適 offset 下限 (δ* = γσ²τ + (2/γ)ln(1 + γ/k))
         """
         cfg = self._config
         if not cfg.as_reservation_enabled:
@@ -554,29 +589,19 @@ class MakerPriceCalculator:
             return effective_offset_ratio
 
         gamma = cfg.as_reservation_gamma
-        tau = cfg.as_reservation_tau_sec
-        if gamma <= 0 or tau <= 0 or mid_price <= 0:
+        base_tau = cfg.as_reservation_tau_sec
+        if gamma <= 0 or base_tau <= 0 or mid_price <= 0:
             return effective_offset_ratio
 
-        # σ² estimate: spread-based micro-volatility proxy (Roll 1984)
-        # spread / mid ≈ 2σ at bid-ask level → σ ≈ spread / (2·mid)
-        sigma = spread / (2.0 * mid_price)
-
-        # 258# MT-4: RegimeDetector の realized vol ratio で hybrid 推定
-        # vol_ratio > 1.0 → 高ボラ局面 → σ 増幅 (リスク回避加速)
-        # vol_ratio < 1.0 → 低ボラ局面 → σ 抑制 (不要な broad offset 防止)
-        # regime_detector が None の場合は Roll proxy にフォールバック (vol_ratio=1.0)
-        vol_ratio = 1.0
-        if self._regime_detector is not None:
-            vol_ratio = max(self._regime_detector.last_volatility_ratio, 0.1)
-        sigma *= vol_ratio
-
+        # 266# 共有 σ 推定 (Roll 1984 × RegimeDetector vol_ratio)
+        sigma, vol_ratio = self._estimate_sigma(spread, mid_price)
         sigma_sq = sigma * sigma
+
+        # 266# GLFT τ動的化
+        tau = self._dynamic_tau(base_tau, vol_ratio)
 
         # AS reservation shift in offset ratio units:
         # delta = q · γ · σ² · τ
-        # buy side: long inventory (q>0) → increase offset (less aggressive buy)
-        # sell side: long inventory (q>0) → decrease offset (more aggressive sell)
         delta = q * gamma * sigma_sq * tau
         sign = 1.0 if side == "buy" else -1.0
         shift = delta * sign
@@ -590,10 +615,27 @@ class MakerPriceCalculator:
             min(cfg.max_offset_ratio, effective_offset_ratio + shift),
         )
 
+        # 266# AS δ*: 理論的最適スプレッド幅下限
+        # δ* = γσ²τ + (2/γ)ln(1 + γ/k) (Avellaneda-Stoikov 2008 §4)
+        if cfg.as_delta_star_enabled and gamma > 0:
+            k = cfg.as_delta_star_fill_rate_k
+            if k > 0:
+                delta_star = gamma * sigma_sq * tau + (2.0 / gamma) * math.log(1.0 + gamma / k)
+                # δ* を offset ratio 単位に変換 (spread 基準)
+                if spread > 0:
+                    delta_star_ratio = delta_star / spread * mid_price
+                    if effective_offset_ratio < delta_star_ratio:
+                        logger.debug(
+                            f"[as_delta_star] 266# {side} δ*={delta_star_ratio:.4f} "
+                            f"> offset={effective_offset_ratio:.4f} → floor applied"
+                        )
+                        effective_offset_ratio = min(delta_star_ratio, cfg.max_offset_ratio)
+
         if effective_offset_ratio != prev:
             logger.info(
-                f"[as_reservation] 258# {side} q={q:+.3f} γ={gamma:.3f} "
-                f"σ²={sigma_sq:.2e} vol_ratio={vol_ratio:.3f} τ={tau:.0f}s → "
+                f"[as_reservation] 266# {side} q={q:+.3f} γ={gamma:.3f} "
+                f"σ²={sigma_sq:.2e} vol_ratio={vol_ratio:.3f} "
+                f"τ={tau:.0f}s{'(dyn)' if cfg.as_tau_dynamic_enabled else ''} → "
                 f"offset {prev:.4f} → {effective_offset_ratio:.4f} "
                 f"(shift={shift:+.2e})"
             )
@@ -826,6 +868,112 @@ class MakerPriceCalculator:
                     f"{effective_offset_ratio:.4f} → {_dyn_floor:.4f}"
                 )
                 effective_offset_ratio = _dyn_floor
+
+        return effective_offset_ratio
+
+    def _apply_kyle_lambda(
+        self,
+        side: str,
+        spread: float,
+        mid_price: float,
+        effective_offset_ratio: float,
+    ) -> float:
+        """266# Kyle λ: 価格インパクト係数 (Kyle 1985).
+
+        λ_est = spread / (2 · depth_volume)
+        自己注文の市場インパクトを推定し、offset に安全マージンを加算する。
+        BTC/JPY 0.001 BTC の小注文では影響は軽微だが、板厚が薄い時間帯で
+        spread 拡大を先行的に行い、不利約定を予防する。
+
+        _estimate_sigma / _last_bid_depth / _last_ask_depth を再利用。
+        """
+        cfg = self._config
+        if not cfg.kyle_lambda_enabled or spread <= 0 or mid_price <= 0:
+            return effective_offset_ratio
+
+        # depth_volume は compute_imbalance で更新済み
+        depth = self._last_bid_depth if side == "buy" else self._last_ask_depth
+        if depth <= 0:
+            return effective_offset_ratio
+
+        # Kyle λ 推定: λ = spread / (2 · depth_volume)
+        kyle_lambda = spread / (2.0 * depth)
+
+        # 自己注文サイズ (config.order_quantity)
+        lot = cfg.order_quantity
+        # impact = λ · lot → offset ratio 単位に変換
+        impact_ratio = (kyle_lambda * lot / mid_price) * cfg.kyle_lambda_impact_mult
+        impact_ratio = min(impact_ratio, cfg.kyle_lambda_max_add_ratio)
+
+        if impact_ratio < 1e-8:
+            return effective_offset_ratio
+
+        prev = effective_offset_ratio
+        effective_offset_ratio = min(
+            cfg.max_offset_ratio,
+            effective_offset_ratio + impact_ratio,
+        )
+
+        if effective_offset_ratio != prev:
+            logger.debug(
+                f"[kyle_lambda] 266# {side} λ={kyle_lambda:.4e} depth={depth:.4f} "
+                f"lot={lot:.4f} → offset {prev:.4f}→{effective_offset_ratio:.4f} "
+                f"(+{impact_ratio:.2e})"
+            )
+
+        return effective_offset_ratio
+
+    def _apply_amihud_illiq(
+        self,
+        side: str,
+        spread: float,
+        mid_price: float,
+        effective_offset_ratio: float,
+    ) -> float:
+        """266# Amihud ILLIQ: 非流動性比率 (Amihud 2002).
+
+        ILLIQ = |ΔP/P| / Volume ≈ (spread/mid) / depth_volume
+        高 ILLIQ = 低流動性 → offset 拡大で保守的に。
+        spread_adaptive の固定閾値を連続的に補完する。
+
+        _estimate_sigma / _last_bid_depth / _last_ask_depth を再利用。
+        """
+        cfg = self._config
+        if not cfg.amihud_illiq_enabled or spread <= 0 or mid_price <= 0:
+            return effective_offset_ratio
+
+        # 双方向の depth volume
+        total_depth = self._last_bid_depth + self._last_ask_depth
+        if total_depth <= 0:
+            return effective_offset_ratio
+
+        # Amihud ILLIQ 推定: |R| / V ≈ (spread/mid) / depth
+        illiq = (spread / mid_price) / total_depth
+        self._last_amihud_illiq = illiq
+
+        # baseline 対比の倍率
+        baseline = cfg.amihud_illiq_baseline
+        if baseline <= 0:
+            return effective_offset_ratio
+
+        illiq_ratio = illiq / baseline
+        if illiq_ratio <= 1.0:
+            # 流動性十分 → 補正なし
+            return effective_offset_ratio
+
+        # ILLIQ 由来の offset 倍率 (上限あり)
+        mult = min(illiq_ratio, cfg.amihud_illiq_max_mult)
+        prev = effective_offset_ratio
+        effective_offset_ratio, _applied = self._scale_offset_ratio(
+            effective_offset_ratio, mult, max_ratio=cfg.max_offset_ratio,
+        )
+
+        if effective_offset_ratio != prev:
+            logger.debug(
+                f"[amihud_illiq] 266# {side} ILLIQ={illiq:.4e} "
+                f"ratio={illiq_ratio:.2f} mult={_applied:.3f} → "
+                f"offset {prev:.4f}→{effective_offset_ratio:.4f}"
+            )
 
         return effective_offset_ratio
 
@@ -1198,6 +1346,18 @@ class MakerPriceCalculator:
 
         # 163# ステージ抽出: _apply_spread_adaptive()
         effective_offset_ratio = self._apply_spread_adaptive(
+            side, spread, mid_price, effective_offset_ratio,
+        )
+
+        # 266# ステージ: _apply_kyle_lambda()
+        # Kyle (1985) 価格インパクト係数 → offset 安全マージン
+        effective_offset_ratio = self._apply_kyle_lambda(
+            side, spread, mid_price, effective_offset_ratio,
+        )
+
+        # 266# ステージ: _apply_amihud_illiq()
+        # Amihud (2002) 非流動性比率 → 低流動性時の offset 拡大
+        effective_offset_ratio = self._apply_amihud_illiq(
             side, spread, mid_price, effective_offset_ratio,
         )
 

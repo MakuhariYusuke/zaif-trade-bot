@@ -54,8 +54,7 @@ class FillCycleExecutorMixin:
     # 234# no_feasible_quote 連続カウンタ (制約集合崩壊検出用)
     # 236# per-side 化: buy/sell 交互実行で相互リセットされる問題を修正
     _consecutive_no_feasible: dict[str, int] | None = None
-    # 236# hasattr 排除: __init__ 前でも安全なクラスレベルデフォルト
-    _current_regime_value: object = None  # type: ignore[assignment]
+    # 266# _current_regime_value は fill_record_helpers Mixin が提供 (class-level 宣言不要)
     # 237# PhantomPositionGuard: クラスレベルデフォルト (hasattr 排除)
     # 238# C-1: object → PhantomPositionGuard 型安全化 (TYPE_CHECKING)
     _phantom_guard: PhantomPositionGuard | None = None
@@ -63,7 +62,7 @@ class FillCycleExecutorMixin:
     _alert_offset_mult: float = 1.0
     _alert_lot_mult: float = 1.0
     _halt_recovery_lot_mult: float = 1.0
-    _daily_drawdown_guard: DailyDrawdownGuard | None = None  # type: ignore[assignment]
+    _daily_drawdown_guard: DailyDrawdownGuard | None = None
 
     async def _compute_orderbook_imbalance(self, depth: int = 5) -> tuple[float, float, float]:
         """054# S1: 板不均衡を計算 — 120# MakerPriceCalculator に委譲."""
