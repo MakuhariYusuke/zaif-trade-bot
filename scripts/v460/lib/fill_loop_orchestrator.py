@@ -1660,6 +1660,7 @@ class FillLoopOrchestratorMixin:
                 if self._consecutive_gate_blocks >= 10 and self._consecutive_gate_blocks % 10 == 0:
                     if _in_quiescence:
                         # 242# quiescence: No Trade は正常系
+                        self._inc_guard_fire("quiescence")
                         logger.info(
                             f"[242#] QUIESCENCE: {self._consecutive_gate_blocks} "
                             f"consecutive gate blocks — no-trade accepted as normal "
