@@ -105,11 +105,17 @@ class TestDynamicKillConfigValidation243:
         with pytest.raises(ValueError, match="toxic_kill_stale_multiplier"):
             DynamicKillConfig(toxic_kill_stale_multiplier=-1)
 
-    def test_zero_ok(self) -> None:
-        """0 は許容 (probe 延長無し = 即時強制)."""
+    def test_zero_raises(self) -> None:
+        """0 は ValueError (>= 1 必須)."""
         from ztb.risk.sell_dynamic_kill import DynamicKillConfig
-        cfg = DynamicKillConfig(toxic_kill_stale_multiplier=0)
-        assert cfg.toxic_kill_stale_multiplier == 0
+        with pytest.raises(ValueError, match="toxic_kill_stale_multiplier"):
+            DynamicKillConfig(toxic_kill_stale_multiplier=0)
+
+    def test_one_ok(self) -> None:
+        """1 は許容 (延長無し = 通常)."""
+        from ztb.risk.sell_dynamic_kill import DynamicKillConfig
+        cfg = DynamicKillConfig(toxic_kill_stale_multiplier=1)
+        assert cfg.toxic_kill_stale_multiplier == 1
 
 
 # ============================================================

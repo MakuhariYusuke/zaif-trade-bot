@@ -48,6 +48,8 @@ class TestClassifyGuard244:
             ("phantom_position_detected", GuardCategory.SYSTEM),
             ("phantom_veto_block", GuardCategory.SYSTEM),
             ("degraded_liquidation_active", GuardCategory.SYSTEM),
+            # 244# SR-1: toxic_veto_set は市場都合
+            ("toxic_veto_set", GuardCategory.MARKET),
             # Recovery guards
             ("dynamic_kill_probe_sell", GuardCategory.RECOVERY),
             ("dynamic_kill_probe_buy", GuardCategory.RECOVERY),

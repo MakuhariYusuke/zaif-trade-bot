@@ -70,6 +70,8 @@ _CLASSIFICATION: Final[dict[str, GuardCategory]] = {
     "day_reset_kill_conflict": GuardCategory.SYSTEM,
     "degraded_liquidation_duty_skip": GuardCategory.SYSTEM,
     "degraded_liquidation_active": GuardCategory.SYSTEM,
+    # ── CycleGate 外の orchestrator 直接: 市場都合 (追加) ──
+    "toxic_veto_set": GuardCategory.MARKET,          # 244# SR-1: toxic fill → veto 設定
     # ── 回復動作 ──
     "dynamic_kill_probe_sell": GuardCategory.RECOVERY,
     "dynamic_kill_probe_buy": GuardCategory.RECOVERY,

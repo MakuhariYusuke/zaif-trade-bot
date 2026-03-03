@@ -53,7 +53,7 @@ class FillTestConfig:
     # sleep 上限を max_cycle_sleep_sec → quiescence_sleep_sec に引き上げる。
     # 市場理論的根拠: Glosten-Milgrom — 逆選択リスク極大時は流動性供給を撤退し、
     # 市場構造の変化を待つのが最適戦略。数時間の No Trade は異常ではなく正常系。
-    quiescence_gate_blocks_threshold: int = 20  # 連続ゲートブロック → quiescence
+    quiescence_gate_blocks_threshold: int = 20  # 0=無効  # 連続ゲートブロック → quiescence
     quiescence_sleep_sec: float = 1800.0  # quiescence 時 sleep 上限 (30分, 0=無効)
     order_timeout_sec: float = 90.0  # 注文タイムアウト (096# 300→90)
     order_timeout_sec_sell: float | None = None  # 155# S-3: sell 専用 timeout (None=共通値)

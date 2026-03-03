@@ -125,10 +125,10 @@ class DynamicKillConfig:
             raise ValueError(
                 f"DynamicKillConfig.resume_window must be >= 0, got {self.resume_window}"
             )
-        # 243# toxic_kill_stale_multiplier バリデーション
-        if self.toxic_kill_stale_multiplier < 0:
+        # 243# toxic_kill_stale_multiplier バリデーション (244# SR-5: >= 1 に強化)
+        if self.toxic_kill_stale_multiplier < 1:
             raise ValueError(
-                f"DynamicKillConfig.toxic_kill_stale_multiplier must be >= 0, "
+                f"DynamicKillConfig.toxic_kill_stale_multiplier must be >= 1, "
                 f"got {self.toxic_kill_stale_multiplier}"
             )
         # 241# S-4: toxicity budget 設定バリデーション
