@@ -294,6 +294,7 @@ class FillTestRunner(
             threshold_bps=config.sell_dynamic_kill_threshold_bps,
             resume_window=config.sell_dynamic_kill_resume_window,
             regime_thresholds=config.sell_dynamic_kill_regime_thresholds,  # 139# §9-#2
+            toxic_kill_stale_multiplier=config.sell_dynamic_kill_toxic_stale_mult,  # 243#
         ))
 
         # 157# §19: buy 動的 kill — sell との対称性確保
@@ -303,6 +304,7 @@ class FillTestRunner(
             threshold_bps=config.buy_dynamic_kill_threshold_bps,
             resume_window=config.buy_dynamic_kill_resume_window,
             regime_thresholds=config.buy_dynamic_kill_regime_thresholds,
+            toxic_kill_stale_multiplier=config.buy_dynamic_kill_toxic_stale_mult,  # 243#
         ))
 
         # 194# CycleGateAggregator: per-cycle skip 判定の一元化 (192# §3 対応)
@@ -434,6 +436,7 @@ class FillTestRunner(
             threshold_bps=self.config.sell_dynamic_kill_threshold_bps,
             resume_window=self.config.sell_dynamic_kill_resume_window,
             regime_thresholds=self.config.sell_dynamic_kill_regime_thresholds,
+            toxic_kill_stale_multiplier=self.config.sell_dynamic_kill_toxic_stale_mult,  # 243#
         ))
         if old_state:
             self._sell_kill_mgr.import_state(old_state)
@@ -449,6 +452,7 @@ class FillTestRunner(
             threshold_bps=self.config.buy_dynamic_kill_threshold_bps,
             resume_window=self.config.buy_dynamic_kill_resume_window,
             regime_thresholds=self.config.buy_dynamic_kill_regime_thresholds,
+            toxic_kill_stale_multiplier=self.config.buy_dynamic_kill_toxic_stale_mult,  # 243#
         ))
         if old_state:
             self._buy_kill_mgr.import_state(old_state)

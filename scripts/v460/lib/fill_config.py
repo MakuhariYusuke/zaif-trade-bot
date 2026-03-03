@@ -444,12 +444,15 @@ class FillTestConfig:
     sell_dynamic_kill_resume_window: int = 20     # 停止後、N サイクル後に再評価
     # 139# §9-#2: レジーム別閾値 (regime_name -> threshold_bps)
     sell_dynamic_kill_regime_thresholds: dict[str, float] = field(default_factory=dict)
+    # 243# 242# YAML 配線: toxic_kill_stale_multiplier
+    sell_dynamic_kill_toxic_stale_mult: int = 10   # 242# probe interval 延長倍率
     # ---- 157# §19: buy 動的 kill (rolling PnL ベースの自動停止 — sell との対称性) ----
     buy_dynamic_kill_enabled: bool = False   # True で buy rolling PnL 監視有効
     buy_dynamic_kill_window: int = 50        # rolling ウィンドウ (fill 数)
     buy_dynamic_kill_threshold_bps: float = -0.8  # buy は sell より寛容 (157#: 構造的に buy のほうが AS リスクが低い)
     buy_dynamic_kill_resume_window: int = 10      # 停止後、N サイクル後に再評価
     buy_dynamic_kill_regime_thresholds: dict[str, float] = field(default_factory=dict)
+    buy_dynamic_kill_toxic_stale_mult: int = 10    # 242# probe interval 延長倍率
     # ---- 137# P1-08: spread 狭小時の「休む」判定 ----
     narrow_spread_pause_enabled: bool = False     # True で spread 狭小時にサイクルスキップ
     narrow_spread_pause_bps: float = 3.0          # spread < この bps で狭小とみなす
@@ -669,6 +672,16 @@ class FillTestConfig:
         if self.max_cycle_sleep_sec < 0:
             raise ValueError(
                 f"max_cycle_sleep_sec must be >= 0, got {self.max_cycle_sleep_sec}"
+            )
+        # 243# quiescence バリデーション
+        if self.quiescence_sleep_sec < 0:
+            raise ValueError(
+                f"quiescence_sleep_sec must be >= 0, got {self.quiescence_sleep_sec}"
+            )
+        if self.quiescence_gate_blocks_threshold < 0:
+            raise ValueError(
+                f"quiescence_gate_blocks_threshold must be >= 0, "
+                f"got {self.quiescence_gate_blocks_threshold}"
             )
         # 227# M1: 追加バリデーション
         if self.loss_boost_decay_tau_sec <= 0:
@@ -1043,6 +1056,9 @@ class FillTestConfig:
         # 139# §9-#2: regime_thresholds YAML 配線
         if "regime_thresholds" in sell_kill:
             kwargs["sell_dynamic_kill_regime_thresholds"] = sell_kill["regime_thresholds"]
+        # 243# 242# toxic_stale_multiplier YAML 配線
+        if "toxic_stale_multiplier" in sell_kill:
+            kwargs["sell_dynamic_kill_toxic_stale_mult"] = int(sell_kill["toxic_stale_multiplier"])
 
         # 157# §19: buy 動的 kill
         buy_kill = 止血.get("buy_dynamic_kill", {})
@@ -1057,6 +1073,9 @@ class FillTestConfig:
                 kwargs[ck] = buy_kill[yk]
         if "regime_thresholds" in buy_kill:
             kwargs["buy_dynamic_kill_regime_thresholds"] = buy_kill["regime_thresholds"]
+        # 243# 242# toxic_stale_multiplier YAML 配線
+        if "toxic_stale_multiplier" in buy_kill:
+            kwargs["buy_dynamic_kill_toxic_stale_mult"] = int(buy_kill["toxic_stale_multiplier"])
 
         # 137# P1-08: narrow spread pause
         narrow_pause = 止血.get("narrow_spread_pause", {})
@@ -1274,6 +1293,7 @@ class FillTestConfig:
         # フラットキー (YAML キー == dataclass フィールド名)
         flat_keys = {
             "symbol", "order_quantity", "cycle_interval_sec", "max_cycle_sleep_sec",
+            "quiescence_gate_blocks_threshold", "quiescence_sleep_sec",  # 243#
             "order_timeout_sec",
             "order_timeout_sec_sell",
             "poll_interval_sec", "post_fill_wait_sec", "post_fill_wait_sec_sell",

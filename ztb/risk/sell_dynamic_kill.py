@@ -125,6 +125,12 @@ class DynamicKillConfig:
             raise ValueError(
                 f"DynamicKillConfig.resume_window must be >= 0, got {self.resume_window}"
             )
+        # 243# toxic_kill_stale_multiplier バリデーション
+        if self.toxic_kill_stale_multiplier < 0:
+            raise ValueError(
+                f"DynamicKillConfig.toxic_kill_stale_multiplier must be >= 0, "
+                f"got {self.toxic_kill_stale_multiplier}"
+            )
         # 241# S-4: toxicity budget 設定バリデーション
         if self.toxicity_budget_enabled:
             if not (0.0 <= self.toxicity_warn_level < self.toxicity_caution_level <= 1.0):
