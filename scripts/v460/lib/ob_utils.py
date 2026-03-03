@@ -122,6 +122,8 @@ class MarketDataAccessor:
             bids = _coerce_levels(getattr(ob, "bids", None))
             return depth_volume(bids, depth) if bids else 0.0
         except Exception:
+            # 255# bare except → debug log (OB fetch 例外可観測化)
+            logger.debug("bid_depth_volume fetch failed", exc_info=True)
             return 0.0
 
     async def ask_depth_volume(self, depth: int = 5) -> float:
@@ -131,4 +133,6 @@ class MarketDataAccessor:
             asks = _coerce_levels(getattr(ob, "asks", None))
             return depth_volume(asks, depth) if asks else 0.0
         except Exception:
+            # 255# bare except → debug log (OB fetch 例外可観測化)
+            logger.debug("ask_depth_volume fetch failed", exc_info=True)
             return 0.0

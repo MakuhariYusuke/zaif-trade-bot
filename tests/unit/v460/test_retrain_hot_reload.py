@@ -98,6 +98,8 @@ class TestHotReload:
         cfg.skip_gate_adaptive_ceiling = 0.80
         cfg.skip_sell_unknown_regime = False
         cfg.results_dir = "results/v460/fill_test"
+        # 255# getattr 排除対応: _check_and_reload_model で直接参照
+        cfg.hot_reload_check_interval_sec = 120.0
         return cfg
 
     def test_initial_hash_stored(self) -> None:

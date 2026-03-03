@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 255# skip_gate_evaluator / order_monitor getattr 排除 + bare except → debug log 一掃 (2026-03-03)
+
+### Changed
+- **skip_gate_evaluator getattr 5件排除**: `_gate_buy`/`_gate_sell` (__init__ 宣言済み) と `hot_reload_check_interval_sec` (FillTestConfig 宣言済み) の getattr → 直接参照
+- **order_monitor getattr 1件排除**: `stale_reprice_skip_gate_offset` (FillTestConfig 宣言済み) の getattr → 直接参照
+- **bare except → logger.debug 6件**: resilience (disk_usage), pnl_measurer (interim PnL), lock_manager (heartbeat), ob_utils (bid/ask depth ×2), fill_cycle_executor (リトライ OB fetch) — 全て `exc_info=True` で可観測化
+
+### Tests
+- 10 テスト追加 (`test_255_getattr_bare_except_cleanup.py`)
+- 既存テスト修正: `test_select_gate_no_attr` (__init__ 相当の属性設定追加), `test_no_reload_when_unchanged` (config mock に `hot_reload_check_interval_sec` 追加)
+- 総テスト: **3546** (3514 passed, 32 skipped)
+
+
 ## 254# frozen_side 永続化 / orchestrator getattr 排除 / bare except 改善 (2026-03-03)
 
 ### Fixed

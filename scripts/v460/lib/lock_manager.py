@@ -153,4 +153,5 @@ class LockManager:
                 parts.append(now_ts)
             self._lockfile_path.write_text("|".join(parts), encoding="utf-8")
         except Exception:
-            pass  # heartbeat 更新失敗は致命的ではない
+            # 255# bare except → debug log (heartbeat 更新失敗は致命的ではないが可観測化)
+            logger.debug("lockfile heartbeat update failed", exc_info=True)

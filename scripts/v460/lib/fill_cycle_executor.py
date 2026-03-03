@@ -1192,7 +1192,8 @@ class FillCycleExecutorMixin:
                             order_price = ob.bids[0][0] if side == "buy" else ob.asks[0][0]
                             logger.info(f"Retry with conservative price: {order_price:.0f}")
                     except Exception:
-                        pass  # 板取得失敗時は前回価格でリトライ
+                        # 255# bare except → debug log (リトライ時 OB fetch 失敗可観測化)
+                        logger.debug("OB fetch failed during retry, using previous price", exc_info=True)
 
         if order is None:
             # 200# B/I: postonly crossing は意図的 skip — circuit_breaker に通知しない

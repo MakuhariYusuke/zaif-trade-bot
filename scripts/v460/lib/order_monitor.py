@@ -153,11 +153,8 @@ class OrderMonitor:
                 recent_trades=None,
                 market_timestamp=market_timestamp,
             )
-            threshold_offset = -getattr(
-                self._config,
-                "stale_reprice_skip_gate_offset",
-                0.0,
-            )
+            # 255# getattr → 直接参照 (FillTestConfig.stale_reprice_skip_gate_offset: float = 0.0)
+            threshold_offset = -self._config.stale_reprice_skip_gate_offset
             rp_decision = cast(
                 _SkipDecisionLike,
                 skip_gate.evaluate(

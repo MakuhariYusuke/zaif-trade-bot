@@ -1284,12 +1284,14 @@ class TestRegimeAdaptiveThresholdIntegration:
             assert "hig_vol" in str(warn_calls[0])
 
     def test_select_gate_no_attr(self) -> None:
-        """142# M-1: _gate_buy/_gate_sell 属性がない場合も安全."""
+        """142# M-1: _gate_buy/_gate_sell が None の場合 unified にフォールバック."""
         from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
         evaluator = SkipGateEvaluator.__new__(SkipGateEvaluator)
         evaluator._skip_gate = MagicMock()
-        # _gate_buy, _gate_sell 属性を設定しない
+        # 255# __init__ 相当: _gate_buy/_gate_sell = None
+        evaluator._gate_buy = None
+        evaluator._gate_sell = None
 
         gate = evaluator._select_gate_for_side("buy")
         assert gate is evaluator._skip_gate

@@ -110,6 +110,8 @@ class PnlMeasurer:
                         m.pnl_at_exit_bps = interim_pnl
                         break
                 except Exception:
+                    # 255# bare except → debug log (interim PnL calc 例外可観測化)
+                    logger.debug("interim PnL calc failed at tick %d", tick, exc_info=True)
                     continue
             elapsed_monitor = (tick + 1) * monitor_sec if early_exit_triggered else ticks * monitor_sec
             remaining = wait_sec - elapsed_monitor

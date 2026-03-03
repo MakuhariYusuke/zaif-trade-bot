@@ -767,8 +767,8 @@ class SkipGateEvaluator:
             return
         now = time.monotonic()
         # 158# YAML 外部化: config から hot_reload 間隔を取得
-        _raw = getattr(self._config, "hot_reload_check_interval_sec", None)
-        interval = _raw if isinstance(_raw, (int, float)) else self._HOT_RELOAD_CHECK_INTERVAL_SEC
+        # 255# getattr → 直接参照 (FillTestConfig.hot_reload_check_interval_sec: float = 120.0)
+        interval = self._config.hot_reload_check_interval_sec
         if now - self._last_reload_check < interval:
             return
         self._last_reload_check = now
@@ -883,9 +883,10 @@ class SkipGateEvaluator:
         side 別モデルが存在する場合はそちらを優先し、
         なければ統一モデルにフォールバック。
         """
-        if side == "buy" and getattr(self, "_gate_buy", None) is not None:
+        # 255# getattr → 直接参照 (__init__ で _gate_buy/_gate_sell 宣言済み)
+        if side == "buy" and self._gate_buy is not None:
             return self._gate_buy
-        if side == "sell" and getattr(self, "_gate_sell", None) is not None:
+        if side == "sell" and self._gate_sell is not None:
             return self._gate_sell
         return self._skip_gate
 
@@ -917,7 +918,8 @@ class SkipGateEvaluator:
         """
         result = SkipGateResult()
         # 143# A.1 #2: unified 不在でも side モデルが使える場合は続行
-        if self._skip_gate is None and getattr(self, "_gate_buy", None) is None and getattr(self, "_gate_sell", None) is None:
+        # 255# getattr → 直接参照 (__init__ で宣言済み)
+        if self._skip_gate is None and self._gate_buy is None and self._gate_sell is None:
             return result
 
         # 126# hot-reload: モデルファイル変更を検出してリロード
