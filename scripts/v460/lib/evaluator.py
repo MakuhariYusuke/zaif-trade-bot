@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 import warnings
 from dataclasses import dataclass, field
-from typing import Callable, Optional, Protocol, cast
+from typing import Callable, Protocol, cast
 
 import numpy as np
 import pandas as pd
@@ -148,10 +148,10 @@ class FoldResult:
     f1_macro: float
     ic_spearman: float
     ic_pvalue: float
-    ic_high_conf: Optional[float] = None
+    ic_high_conf: float | None = None
     n_high_conf: int = 0
     target_rate: float = 0.5
-    mae: Optional[float] = None  # For regression targets
+    mae: float | None = None  # For regression targets
     is_classification: bool = True
     # Transient: per-fold signal for g1_judgment pairing.
     # Not serialized in to_dict() — only used in-memory.
@@ -349,7 +349,7 @@ def evaluate_multi_target(
     model_name: str = "XGBoost",
     n_folds: int = 5,
     train_ratio: float = 0.80,
-    regression_factory: Optional[ModelFactory] = None,
+    regression_factory: ModelFactory | None = None,
 ) -> dict[str, WalkForwardResult]:
     """Run walk-forward for all horizon × target combinations.
 

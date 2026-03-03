@@ -16,7 +16,7 @@ import logging
 import time
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
@@ -247,7 +247,7 @@ class FillRecordHelpersMixin:
         self._side_selector.last_side = value
 
     @staticmethod
-    def _get_git_sha() -> Optional[str]:
+    def _get_git_sha() -> str | None:
         """現在の git commit short hash を取得."""
         from ztb.utils.git_utils import get_git_sha as _get_shared_git_sha
 

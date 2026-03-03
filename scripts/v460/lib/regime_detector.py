@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 import numpy as np
 
@@ -125,7 +125,7 @@ class FillTestRegimeDetector:
             # 適応停止
     """
 
-    def __init__(self, config: Optional[RegimeConfig] = None) -> None:
+    def __init__(self, config: RegimeConfig | None = None) -> None:
         self.config = config or RegimeConfig()
         self._prices: list[tuple[float, float]] = []  # (timestamp, mid_price)
         self._raw_history: list[FillTestRegime] = []  # ヒステリシス用

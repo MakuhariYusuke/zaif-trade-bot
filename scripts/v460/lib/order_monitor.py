@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Awaitable, Callable
-from typing import Final, Optional, Protocol, cast, runtime_checkable
+from typing import Final, Protocol, cast, runtime_checkable
 
 from scripts.v460.lib.fill_config import FillMonitorResult, FillTestConfig
 from scripts.v460.lib.regime_detector import RegimeDetectorLike
@@ -42,13 +42,13 @@ class OrderStatusLike(Protocol):
     def status(self) -> str: ...
 
     @property
-    def price(self) -> Optional[float]: ...
+    def price(self) -> float | None: ...
 
 
 class ExchangeAdapter(Protocol):
     """OrderMonitor が必要とする adapter メソッド群."""
 
-    async def get_order_status(self, order_id: str) -> Optional[OrderStatusLike]: ...
+    async def get_order_status(self, order_id: str) -> OrderStatusLike | None: ...
     async def cancel_order(self, order_id: str) -> None: ...
     async def place_order(
         self,
@@ -258,7 +258,7 @@ class OrderMonitor:
         order_price: float,
         side: str,
         t_submit: float,
-        spread_at_order: Optional[float],
+        spread_at_order: float | None,
         effective_offset_ratio: float,
         *,
         shutdown_check: _KillSwitchLike,
@@ -281,9 +281,9 @@ class OrderMonitor:
 
         cfg = self._config
         filled = False
-        fill_price: Optional[float] = None
-        t_fill: Optional[float] = None
-        cancel_reason_poll: Optional[str] = None
+        fill_price: float | None = None
+        t_fill: float | None = None
+        cancel_reason_poll: str | None = None
         _cancel_failed_likely_filled = False  # 166# C.7
         elapsed = 0.0
         reprice_count = 0
@@ -316,7 +316,7 @@ class OrderMonitor:
         )
 
         # 094# 発注時 mid price を stale 判定の基準にする
-        mid_at_order: Optional[float] = None
+        mid_at_order: float | None = None
         if cfg.stale_order_enabled:
             try:
                 mid_at_order = await get_mid_price()

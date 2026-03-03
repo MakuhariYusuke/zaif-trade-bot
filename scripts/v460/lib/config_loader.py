@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import copy
 from pathlib import Path
-from typing import Optional, cast
+from typing import cast
 
 from ztb.io.yaml_io import read_yaml
 from ztb.types.common import ConfigSection, is_config_dict
@@ -45,7 +45,7 @@ def _deep_merge(base: ConfigSection, override: ConfigSection) -> ConfigSection:
 
 def load_config(
     experiment_path: str | Path,
-    base_path: Optional[str | Path] = None,
+    base_path: str | Path | None = None,
 ) -> ConfigSection:
     """Load experiment config with base.yaml merge.
 
@@ -127,7 +127,7 @@ def _validate(cfg: ConfigSection) -> None:
 
 
 def load_gate_thresholds(
-    path: Optional[str | Path] = None,
+    path: str | Path | None = None,
 ) -> ConfigSection:
     """Load gate_thresholds.yaml."""
     if path is None:
@@ -141,7 +141,7 @@ def load_gate_thresholds(
 
 
 def load_fill_test_config(
-    path: Optional[str | Path] = None,
+    path: str | Path | None = None,
 ) -> ConfigSection:
     """Load fill_test.yaml — fill test の全設定を YAML から読込.
 

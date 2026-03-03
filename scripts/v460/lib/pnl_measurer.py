@@ -17,7 +17,7 @@ import asyncio
 import logging
 import random as _rng
 import time
-from typing import Awaitable, Callable, Final, Optional
+from typing import Awaitable, Callable, Final
 
 from scripts.v460.lib.fill_config import FillTestConfig, PnlMeasurement
 
@@ -41,7 +41,7 @@ class PnlMeasurer:
     async def measure(
         self,
         filled: bool,
-        fill_price: Optional[float],
+        fill_price: float | None,
         side: str,
         *,
         get_mid_price: Callable[[], Awaitable[float]],

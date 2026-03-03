@@ -12,7 +12,7 @@ import time
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+
 
 from ztb.io.common import ensure_parent_dir
 from ztb.metrics.fill_quality import FillRecord, format_utc_day, save_fill_records
@@ -69,7 +69,7 @@ class BatchPersistence:
         Returns:
             True if save succeeded, False otherwise.
         """
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         for attempt in range(self._max_retries):
             try:
                 self._save_batch_by_date(batch)

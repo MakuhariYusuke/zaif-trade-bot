@@ -17,7 +17,7 @@ import sys
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, cast
+from typing import cast
 
 from ztb.types.common import ConfigSection, JSONDict
 from ztb.utils.git_utils import get_git_sha as _get_shared_git_sha
@@ -45,7 +45,7 @@ def _get_deps_hash() -> str:
         return "unknown"
 
 
-def _get_cuda_version() -> Optional[str]:
+def _get_cuda_version() -> str | None:
     """CUDA version or None."""
     try:
         import torch
@@ -91,12 +91,12 @@ class ManifestEntry:
     seed: int
     python_version: str
     deps_hash: str
-    cuda_version: Optional[str]
+    cuda_version: str | None
     started_at: str
-    finished_at: Optional[str] = None
+    finished_at: str | None = None
     status: str = "running"
     metrics: JSONDict = field(default_factory=dict)
-    gate_result: Optional[str] = None
+    gate_result: str | None = None
     artifacts: list[str] = field(default_factory=list)
 
     def to_dict(self) -> JSONDict:
@@ -109,7 +109,7 @@ class ManifestEntry:
 class ManifestWriter:
     """JSONL append-only manifest writer."""
 
-    def __init__(self, path: Optional[str | Path] = None) -> None:
+    def __init__(self, path: str | Path | None = None) -> None:
         self.path = Path(path) if path else _PROJECT_ROOT / "results" / "v460" / "manifest.jsonl"
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -149,7 +149,7 @@ class ManifestWriter:
         entry: ManifestEntry,
         metrics: JSONDict,
         gate_result: str,
-        artifacts: Optional[list[str]] = None,
+        artifacts: list[str] | None = None,
         status: str = "completed",
     ) -> None:
         """Write a completed manifest line.

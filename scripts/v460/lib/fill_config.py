@@ -8,7 +8,7 @@ FillTestConfig — fill_test 設定データクラス + サイクル内部デー
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ztb.metrics.fill_quality import FillRecord
@@ -278,8 +278,8 @@ class FillTestConfig:
     skip_gate_pnl_threshold: float = 0.0   # PnL 予測スキップ閾値 (mode=pnl)
     skip_gate_max_skip_rate: float = 0.3   # 連続スキップ率上限 (安全弁)
     # 068# §3.3: side 別閾値 (None は共通 as_threshold を使用)
-    skip_gate_as_threshold_buy: Optional[float] = None
-    skip_gate_as_threshold_sell: Optional[float] = None
+    skip_gate_as_threshold_buy: float | None = None
+    skip_gate_as_threshold_sell: float | None = None
     # 072# OB 特徴量トグル (ph2 通過後に True へ)
     skip_gate_use_ob_features: bool = False
     # 088# 動的閾値較正
@@ -1539,21 +1539,21 @@ class FillTestConfig:
 class SkipGateResult:
     """SkipGate ML 判定結果 (run_single_cycle 内部)."""
 
-    skipped: Optional[bool] = None
-    score: Optional[float] = None
-    reason: Optional[str] = None
-    model_used: Optional[str] = None
-    as_prob: Optional[float] = None
-    threshold_used: Optional[float] = None
+    skipped: bool | None = None
+    score: float | None = None
+    reason: str | None = None
+    model_used: str | None = None
+    as_prob: float | None = None
+    threshold_used: float | None = None
     # 158# P1-6: 時間帯別閾値調整のオフセット
     hour_offset: float = 0.0
     # 165# AS-R1: velocity logging
-    price_velocity_bps: Optional[float] = None
-    early_return_record: Optional[FillRecord] = None
+    price_velocity_bps: float | None = None
+    early_return_record: FillRecord | None = None
     # 193#: ev_weighted score (offset 修飾子用)
-    ev_score: Optional[float] = None
+    ev_score: float | None = None
     # 195#: velocity_skip ソフトモード — offset boost 倍率
-    velocity_offset_mult: Optional[float] = None
+    velocity_offset_mult: float | None = None
 
 
 @dataclass
@@ -1561,9 +1561,9 @@ class FillMonitorResult:
     """約定監視結果 (run_single_cycle 内部)."""
 
     filled: bool = False
-    fill_price: Optional[float] = None
-    t_fill: Optional[float] = None
-    cancel_reason: Optional[str] = None
+    fill_price: float | None = None
+    t_fill: float | None = None
+    cancel_reason: str | None = None
     queue_wait: float = 0.0
     reprice_count: int = 0
     # 158# P1-3: reprice 累積 drift (bps)
@@ -1581,20 +1581,20 @@ class FillMonitorResult:
 class PnlMeasurement:
     """PnL 計測結果 (run_single_cycle 内部)."""
 
-    mid_at_fill: Optional[float] = None
-    mid_30s_after: Optional[float] = None
-    mid_60s_after: Optional[float] = None
-    mid_120s_after: Optional[float] = None
-    post_fill_pnl: Optional[float] = None
-    post_fill_60s_pnl: Optional[float] = None
-    post_fill_120s_pnl: Optional[float] = None
-    adverse_selected: Optional[bool] = None
-    adverse_selected_raw: Optional[bool] = None
-    actual_measurement_sec: Optional[float] = None
+    mid_at_fill: float | None = None
+    mid_30s_after: float | None = None
+    mid_60s_after: float | None = None
+    mid_120s_after: float | None = None
+    post_fill_pnl: float | None = None
+    post_fill_60s_pnl: float | None = None
+    post_fill_120s_pnl: float | None = None
+    adverse_selected: bool | None = None
+    adverse_selected_raw: bool | None = None
+    actual_measurement_sec: float | None = None
     # 120# PnlMeasurer: early_exit_triggered を戻り値に含める
     early_exit_triggered: bool = False
     # 120# A4-2: EE 発動時の中断時点 PnL (post_fill_pnl は常に固定30s)
-    pnl_at_exit_bps: Optional[float] = None
+    pnl_at_exit_bps: float | None = None
 
 
 # ======================================================================

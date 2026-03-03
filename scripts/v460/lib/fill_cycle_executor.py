@@ -15,7 +15,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 from scripts.v460.lib import cancel_reasons as CR
 from scripts.v460.lib.fill_config import (
@@ -375,7 +375,7 @@ class FillCycleExecutorMixin:
         side: str,
         cycle_id: str,
         order_price: float,
-        spread_at_order: Optional[float],
+        spread_at_order: float | None,
         effective_offset_ratio: float,
         *,
         order_lot: float | None = None,
@@ -418,7 +418,7 @@ class FillCycleExecutorMixin:
         order_price: float,
         side: str,
         t_submit: float,
-        spread_at_order: Optional[float],
+        spread_at_order: float | None,
         effective_offset_ratio: float,
         *,
         order_lot: float | None = None,
@@ -642,7 +642,7 @@ class FillCycleExecutorMixin:
     async def _measure_post_fill_pnl(
         self,
         filled: bool,
-        fill_price: Optional[float],
+        fill_price: float | None,
         side: str,
     ) -> _PnlMeasurement:
         """約定後 PnL 計測 — 120# PnlMeasurer に委譲."""
@@ -750,7 +750,7 @@ class FillCycleExecutorMixin:
         logger.info(f"=== Cycle {self._cycle_count} ({side}) ===")
 
         # 1. maker limit 価格算出
-        spread_at_order: Optional[float] = None
+        spread_at_order: float | None = None
         effective_offset_ratio: float = self.config.spread_offset_ratio
         try:
             order_price, spread_at_order, effective_offset_ratio = await self._compute_maker_price(side)
@@ -1056,7 +1056,7 @@ class FillCycleExecutorMixin:
         # 2. 発注 (CM-2: リトライ付き)
         t_submit = time.time()
         order: object | None = None
-        last_error: Optional[str] = None
+        last_error: str | None = None
         cancel_reason: str = "unknown"  # 032# #6: ループ未実行時の NameError 防止
 
         # 105#: lot floor guard — 121# BalanceChecker に委譲
@@ -1264,12 +1264,12 @@ class FillCycleExecutorMixin:
             self._maker_price.update_inventory(side)
 
         # 037# レジーム検知更新 (035# §7 Week 1)
-        regime_str: Optional[str] = None
-        regime_conf: Optional[float] = None
-        regime_stab: Optional[int] = None
+        regime_str: str | None = None
+        regime_conf: float | None = None
+        regime_stab: int | None = None
         # 156# §18: データシンク解消 — trend_pct/volatility_ratio を FillRecord へ
-        regime_trend_pct: Optional[float] = None
-        regime_vol_ratio: Optional[float] = None
+        regime_trend_pct: float | None = None
+        regime_vol_ratio: float | None = None
         if self._regime_detector is not None:
             # 100# P1-6 fix: unfilled 時は order_price (offset 込み) ではなく
             # 直近の真の mid price を使用。order_price は offset を含むため
@@ -1289,10 +1289,10 @@ class FillCycleExecutorMixin:
                 regime_vol_ratio = regime_result.volatility_ratio
 
         # 189# D: MacroRegime 更新 + compose_regimes
-        _macro_trend: Optional[str] = None
-        _macro_slope_5m: Optional[float] = None
-        _macro_slope_15m: Optional[float] = None
-        _macro_aligned: Optional[bool] = None
+        _macro_trend: str | None = None
+        _macro_slope_5m: float | None = None
+        _macro_slope_15m: float | None = None
+        _macro_aligned: bool | None = None
         if self._macro_regime_detector is not None:
             _macro_price = mid_at_fill if mid_at_fill is not None else None
             if _macro_price is None:

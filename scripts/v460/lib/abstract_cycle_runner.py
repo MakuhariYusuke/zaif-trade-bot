@@ -16,7 +16,7 @@ import time
 import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ztb.metrics.fill_quality import FillRecord
@@ -43,7 +43,7 @@ class AbstractCycleRunner(ABC):
     @abstractmethod
     async def run_single_cycle(
         self,
-        side: Optional[str] = None,
+        side: str | None = None,
     ) -> "FillRecord":
         """1 サイクル: 発注 → 約定監視 → PnL 計測 → FillRecord 構築.
 
@@ -59,7 +59,7 @@ class AbstractCycleRunner(ABC):
     async def run_continuous(
         self,
         hours: float = 1.0,
-    ) -> List["FillRecord"]:
+    ) -> list["FillRecord"]:
         """メインオーケストレーションループ.
 
         Args:
@@ -80,7 +80,7 @@ class AbstractCycleRunner(ABC):
     def on_cycle_end(self, record: "FillRecord") -> None:
         """Called after a cycle completes. Override for post-cycle logic."""
 
-    def should_skip_cycle(self, side: str) -> Optional[str]:
+    def should_skip_cycle(self, side: str) -> str | None:
         """Return a cancel_reason string to skip this cycle, or None to proceed."""
         return None
 
@@ -89,7 +89,7 @@ class AbstractCycleRunner(ABC):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _new_cycle_id(prefix: Optional[str] = None) -> str:
+    def _new_cycle_id(prefix: str | None = None) -> str:
         """Generate a unique cycle ID (timestamp + uuid)."""
         base = f"{int(time.time())}_{uuid.uuid4().hex[:8]}"
         return f"{prefix}_{base}" if prefix else base

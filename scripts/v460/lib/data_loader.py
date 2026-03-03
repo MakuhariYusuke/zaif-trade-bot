@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 import numpy as np
 import pandas as pd
@@ -26,7 +26,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 def load_parquet(
     path: str | Path,
-    feature_cols: Optional[list[str]] = None,
+    feature_cols: list[str] | None = None,
 ) -> pd.DataFrame:
     """Load a Parquet file, optionally selecting columns.
 

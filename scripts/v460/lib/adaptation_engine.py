@@ -22,7 +22,7 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
-from typing import Final, NamedTuple, Optional, Protocol, Sequence
+from typing import Final, NamedTuple, Protocol, Sequence
 
 from scripts.v460.lib.regime_detector import RegimeDetectorLike
 
@@ -452,7 +452,7 @@ class AdaptationEngine:
         self,
         adapter: LossCapAdapterProtocol,
         symbol: str,
-    ) -> Optional[float]:
+    ) -> float | None:
         """041# 動的 loss_cap: API から口座残高を取得し、残高×比率でキャップを算出.
 
         Returns:

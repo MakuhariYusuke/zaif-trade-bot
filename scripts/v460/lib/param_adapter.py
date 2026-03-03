@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
+
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ def compute_adaptation(
     fill_rate: float,
     as_ratio: float,
     sample_count: int,
-    config: Optional[AdaptationConfig] = None,
+    config: AdaptationConfig | None = None,
 ) -> AdaptationResult:
     """fill_test メトリクスに基づき spread_offset_ratio の推奨値を算出.
 
@@ -166,7 +166,7 @@ def compute_adaptation(
     )
 
 
-def clamp_offset(value: float, config: Optional[AdaptationConfig] = None) -> float:
+def clamp_offset(value: float, config: AdaptationConfig | None = None) -> float:
     """offset 値を設定のハードリミット内に制限."""
     if config is None:
         config = AdaptationConfig()
@@ -193,8 +193,8 @@ def compute_side_adaptation(
     sell_as_ratio: float,
     sell_sample_count: int,
     *,
-    buy_config: Optional[AdaptationConfig] = None,
-    sell_config: Optional[AdaptationConfig] = None,
+    buy_config: AdaptationConfig | None = None,
+    sell_config: AdaptationConfig | None = None,
 ) -> SideAdaptationResult:
     """088# side 分離適応: buy/sell を独立に最適化.
 

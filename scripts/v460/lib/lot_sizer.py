@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
+
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ def compute_lot_size(
     recent_pnl_bps: float,
     cumulative_pnl_jpy: float,
     sample_count: int,
-    config: Optional[LotSizingConfig] = None,
+    config: LotSizingConfig | None = None,
     regime_tag: str = "n/a",
 ) -> LotSizingResult:
     """fill_test メトリクスに基づきロットサイズの推奨値を算出.
@@ -211,7 +211,7 @@ def compute_lot_size(
     )
 
 
-def clamp_lot(value: float, config: Optional[LotSizingConfig] = None) -> float:
+def clamp_lot(value: float, config: LotSizingConfig | None = None) -> float:
     """ロットサイズをハードリミット内に制限.
 
     Coincheck BTC の精度に合わせて小数第4位で丸める。

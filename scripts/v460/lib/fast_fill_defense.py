@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from typing import Optional
+
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +24,11 @@ class FastFillDefenseConfig:
 
     enabled: bool = False
     threshold_sec: float = 5.0
-    threshold_sec_buy: Optional[float] = None
-    threshold_sec_sell: Optional[float] = None
+    threshold_sec_buy: float | None = None
+    threshold_sec_sell: float | None = None
     offset_boost: float = 2.0
-    offset_boost_buy: Optional[float] = None
-    offset_boost_sell: Optional[float] = None
+    offset_boost_buy: float | None = None
+    offset_boost_sell: float | None = None
     # 102# YAML化: offset 上限・下限
     max_offset_ratio: float = 0.30
     min_offset_ratio: float = 0.01
@@ -70,8 +70,8 @@ class FastFillDefense:
         self,
         config: FastFillDefenseConfig,
         base_offset_ratio: float,
-        base_offset_ratio_buy: Optional[float] = None,
-        base_offset_ratio_sell: Optional[float] = None,
+        base_offset_ratio_buy: float | None = None,
+        base_offset_ratio_sell: float | None = None,
     ) -> None:
         self._config = config
         self._base_offset_ratio = base_offset_ratio
@@ -89,8 +89,8 @@ class FastFillDefense:
         side: str,
         common_value: float,
         *,
-        buy_value: Optional[float] = None,
-        sell_value: Optional[float] = None,
+        buy_value: float | None = None,
+        sell_value: float | None = None,
     ) -> float:
         """side 別値を解決し、未設定時は共通値へフォールバックする."""
         if side == "buy":
@@ -178,10 +178,10 @@ class FastFillDefense:
         self,
         side: str,
         queue_wait_sec: float,
-        fill_price: Optional[float],
-        mid_at_fill: Optional[float],
+        fill_price: float | None,
+        mid_at_fill: float | None,
         *,
-        post_fill_pnl_bps: Optional[float] = None,
+        post_fill_pnl_bps: float | None = None,
     ) -> None:
         """約定結果を評価し、boost 状態を更新する.
 
@@ -281,8 +281,8 @@ class FastFillDefense:
     def update_base_offsets(
         self,
         base: float,
-        buy: Optional[float] = None,
-        sell: Optional[float] = None,
+        buy: float | None = None,
+        sell: float | None = None,
     ) -> None:
         """param_adapter 等による base offset 更新を反映."""
         self._base_offset_ratio = base
