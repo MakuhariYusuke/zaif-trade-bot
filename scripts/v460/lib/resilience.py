@@ -261,6 +261,8 @@ class FillTestState:
     one_sided_cooldown_remaining: int = 0
     one_sided_freeze_remaining: int = 0
     consecutive_no_feasible: dict[str, int] | None = None
+    # 237# phantom position guard メトリクス永続化
+    phantom_guard_metrics: dict[str, int | float] | None = None
     # タイムスタンプ
     saved_at: float = 0.0
     saved_at_iso: str = ""

@@ -1477,6 +1477,8 @@ class FillMonitorResult:
     effective_timeout: float = 0.0
     # 166# C.7: cancel 失敗後に約定を検出した場合のフラグ (Bug11)
     cancel_failed_likely_filled: bool = False
+    # 237# phantom position guard: status_unknown 時の注文 ID (遅延照合用)
+    order_id_for_reconciliation: str | None = None
 
 
 @dataclass

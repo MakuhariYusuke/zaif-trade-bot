@@ -127,6 +127,8 @@ class FillRecord:
     ab_test_variant: str | None = None             # 例: "sell_offset_015", None=実験なし
     # 166# C.7: cancel 失敗後に約定確認されたフラグ (Bug11 KPI 分離)
     cancel_failed_likely_filled: bool | None = None  # True=cancel失敗→約定検出
+    # 237# phantom position guard: status_unknown 後の再照合待ちフラグ
+    pending_reconciliation: bool | None = None  # True=status_unknown発生→次サイクルで再照合
     # 181# EV_weighted: 30s/120s 加重平均 PnL (178# §1.3 設計)
     ev_weighted_pnl: float | None = None  # 0.4*pnl30 + 0.6*pnl120 (bps)
     # 187# B-2: guard_trace — gated_regime + effective_cycle_interval 記録

@@ -51,6 +51,10 @@ class FillCycleExecutorMixin:
     # 234# no_feasible_quote 連続カウンタ (制約集合崩壊検出用)
     # 236# per-side 化: buy/sell 交互実行で相互リセットされる問題を修正
     _consecutive_no_feasible: dict[str, int] | None = None
+    # 236# hasattr 排除: __init__ 前でも安全なクラスレベルデフォルト
+    _current_regime_value: object = None  # type: ignore[assignment]
+    # 237# PhantomPositionGuard: クラスレベルデフォルト (hasattr 排除)
+    _phantom_guard: object | None = None
 
     async def _compute_orderbook_imbalance(self, depth: int = 5) -> tuple[float, float, float]:
         """054# S1: 板不均衡を計算 — 120# MakerPriceCalculator に委譲."""
@@ -94,6 +98,34 @@ class FillCycleExecutorMixin:
             balance_forced_switch=balance_forced_switch,
             **extra,
         )
+
+    def _maybe_register_phantom(
+        self,
+        monitor: _FillMonitorResult,
+        side: str,
+        order_lot: float,
+        order_price: float,
+    ) -> bool:
+        """237# status_unknown 時に PhantomPositionGuard へ登録.
+
+        Returns:
+            True = pending_reconciliation (FillRecord に設定する)
+        """
+        if (
+            monitor.filled
+            or monitor.cancel_reason is None
+            or not monitor.cancel_reason.startswith("status_unknown")
+            or monitor.order_id_for_reconciliation is None
+        ):
+            return False
+        if self._phantom_guard is not None:
+            self._phantom_guard.register_unknown(
+                order_id=monitor.order_id_for_reconciliation,
+                side=side,
+                quantity=order_lot,
+                price=order_price,
+            )
+        return True
 
     def _resolve_fill_cancel_reason(
         self,
@@ -1148,6 +1180,8 @@ class FillCycleExecutorMixin:
         order_price = monitor.final_order_price  # stale reprice で変更される場合
         _effective_timeout = monitor.effective_timeout  # 145# §9-#2
         cancel_failed_likely_filled = monitor.cancel_failed_likely_filled  # 166# C.7
+        # 237# phantom guard 登録 (status_unknown 時)
+        _pending_reconciliation = self._maybe_register_phantom(monitor, side, _order_lot, order_price)
 
         # 113# R1: PnL 計測を _measure_post_fill_pnl() に委譲
         pnl = await self._measure_post_fill_pnl(filled, fill_price, side)
@@ -1271,6 +1305,10 @@ class FillCycleExecutorMixin:
             f"pnl={post_fill_pnl:.2f}bps" if post_fill_pnl is not None
             else f"Cycle {self._cycle_count} result: filled={filled}, wait={queue_wait:.1f}s"
         )
+
+        # 237# phantom guard: status_unknown 時の再照合待ちフラグ
+        if _pending_reconciliation:
+            record.pending_reconciliation = True
 
         # 113# resilience: API 成功を CircuitBreaker に記録
         await self._circuit_breaker.async_on_success()

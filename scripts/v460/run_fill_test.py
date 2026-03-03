@@ -359,6 +359,10 @@ class FillTestRunner(
         # 137# P1-08: narrow spread pause 連続カウンタ
         self._narrow_spread_consecutive: int = 0
 
+        # 237# PhantomPositionGuard: status_unknown 後のファントムポジション検出
+        from scripts.v460.lib.phantom_position_guard import PhantomPositionGuard
+        self._phantom_guard = PhantomPositionGuard()
+
         # 138# P1-10: preflight pause カウンタ (run 内の累積 pause 回数)
         self._preflight_pause_count: int = 0
 

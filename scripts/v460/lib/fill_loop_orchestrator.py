@@ -82,6 +82,8 @@ class FillLoopOrchestratorMixin:
     _mcb: object | None = None
     _sad: object | None = None
     _cycle_strategy: object | None = None
+    # 237# PhantomPositionGuard class-level default (hasattr 排除)
+    _phantom_guard: object | None = None
 
     def _is_sell_killed(self) -> bool:
         """133# P0-10 / 136# P1-03: sell 動的 kill 判定 — SellDynamicKillManager に委譲.
@@ -299,6 +301,12 @@ class FillLoopOrchestratorMixin:
             consecutive_no_feasible=(
                 dict(self._consecutive_no_feasible)
                 if self._consecutive_no_feasible
+                else None
+            ),
+            # 237# phantom position guard メトリクス
+            phantom_guard_metrics=(
+                self._phantom_guard.get_metrics()
+                if self._phantom_guard is not None
                 else None
             ),
             **self._get_regime_state_fields(),
@@ -987,6 +995,26 @@ class FillLoopOrchestratorMixin:
                     if self._in_hard_skip_hour:
                         logger.info(f"[205# §9.4] Hard skip ended (UTC {_utc_h}h)")
                         self._in_hard_skip_hour = False
+
+            # ────────────────────────────────────────────────────
+            # 237# Phantom Position Guard: 前サイクルの status_unknown を遅延再照合
+            # ────────────────────────────────────────────────────
+            if self._phantom_guard.has_pending:
+                try:
+                    _phantom_detections = await self._phantom_guard.reconcile(self.adapter)
+                    if _phantom_detections:
+                        self._inc_guard_fire("phantom_position_detected")
+                        for _pd in _phantom_detections:
+                            logger.critical(
+                                f"[237# PHANTOM] Inventory mismatch: "
+                                f"{_pd.side} {_pd.quantity:.6f} BTC @ {_pd.price:.0f} "
+                                f"(method={_pd.detection_method}) — "
+                                f"cautious mode activated"
+                            )
+                        # ファントム検出時: 安全側バイアス — interval 延長
+                        await self._effective_sleep(multiplier=3.0)
+                except Exception as _pg_err:
+                    logger.warning(f"[237# phantom_guard] Reconcile error: {_pg_err}")
 
             # 205# §9.5: 片側 DD Halt のサイクルカウンタ更新
             self._daily_drawdown_guard.tick_side_halt()

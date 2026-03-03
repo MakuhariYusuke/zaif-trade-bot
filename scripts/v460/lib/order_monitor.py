@@ -544,6 +544,15 @@ class OrderMonitor:
 
         pending_order_setter(None)
 
+        # 237# phantom position guard: status_unknown 時の注文 ID を記録
+        _order_id_for_reconciliation: str | None = None
+        if (
+            not filled
+            and cancel_reason_poll is not None
+            and cancel_reason_poll.startswith("status_unknown")
+        ):
+            _order_id_for_reconciliation = order.order_id
+
         return FillMonitorResult(
             filled=filled,
             fill_price=fill_price,
@@ -555,4 +564,5 @@ class OrderMonitor:
             final_order_price=order_price,
             effective_timeout=_effective_timeout,
             cancel_failed_likely_filled=_cancel_failed_likely_filled,  # 166# C.7
+            order_id_for_reconciliation=_order_id_for_reconciliation,  # 237#
         )
