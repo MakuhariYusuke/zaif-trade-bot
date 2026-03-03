@@ -671,6 +671,7 @@ class FillCycleExecutorMixin:
         one_sided_balance: bool = False,
         trending_offset_mult: float | None = None,
         degraded_liquidation: bool = False,
+        toxicity_offset_mult: float = 1.0,
     ) -> FillRecord:
         """1 サイクル: 発注 → 監視 → 結果記録.
 
@@ -682,6 +683,7 @@ class FillCycleExecutorMixin:
         158# P1-1: balance_forced_rescue — offset 倍増で安全にポジション解消.
         190# B: one_sided_balance — 片側残高時の ev_weighted threshold 緩和.
         234# degraded_liquidation — Kill Gate blocked + balance_forced 時の縮退清算.
+        240# toxicity_offset_mult — Toxicity Budget (232# §2.2) offset 乗数.
         """
         self._cycle_count += 1
         cycle_id = self._new_cycle_id()
@@ -976,6 +978,25 @@ class FillCycleExecutorMixin:
                 f"→ offset_mult={_trend_mult:.1f} "
                 f"(delta={_delta:+.0f}JPY, price={order_price:.0f})"
             )
+
+        # 240# Toxicity Budget (232# §2.2 Glosten-Milgrom): offset 拡大
+        # 逆選択リスクに応じた adverse selection premium をスプレッドに加算
+        if toxicity_offset_mult > 1.0:
+            order_price, effective_offset_ratio, _tox_mult, _tox_delta = (
+                self._apply_offset_multiplier(
+                    side=side,
+                    order_price=order_price,
+                    spread_at_order=spread_at_order,
+                    effective_offset_ratio=effective_offset_ratio,
+                    offset_mult=toxicity_offset_mult,
+                )
+            )
+            if _tox_mult is not None and _tox_delta is not None:
+                logger.info(
+                    f"[240# toxicity_offset] {side}: "
+                    f"offset_mult={_tox_mult:.2f} "
+                    f"(delta={_tox_delta:+.0f}JPY, price={order_price:.0f})"
+                )
 
         # 202# C: VG sell-side 補完 — maker_price VG が未発火かつ velocity が高い sell で
         # 補足的 offset boost を適用。mid_trend_bps は point-to-point のため sell 側で

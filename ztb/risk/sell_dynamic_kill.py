@@ -19,10 +19,52 @@ Usage:
 
 from __future__ import annotations
 
+import enum
 import logging
 from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 240# Toxicity Budget (232# §2.2 Glosten-Milgrom)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+class ToxicityLevel(enum.Enum):
+    """逆選択リスクの段階 (Glosten-Milgrom adverse-selection tiers).
+
+    GREEN  = 正常: そのまま参加
+    YELLOW = 警戒: スプレッドを広げて参加
+    ORANGE = 要注意: 確率的に 1/N 参加 + スプレッド拡大
+    KILL   = 危険: 完全停止 (従来の binary kill)
+    """
+
+    GREEN = "green"
+    YELLOW = "yellow"
+    ORANGE = "orange"
+    KILL = "kill"
+
+
+@dataclass(frozen=True, slots=True)
+class ToxicityAssessment:
+    """Toxicity budget 評価結果 (副作用なし).
+
+    Attributes:
+        level: 4段階の逆選択リスクレベル
+        score: 正規化 toxicity スコア [0, ∞) — 0=安全, 1.0=kill 閾値
+        offset_mult: 推奨 offset 乗数 (1.0=通常)
+        participation_rate: 推奨参加率 (1.0=全参加, 0.0=全停止)
+        threshold_used: 使用された kill 閾値 (bps)
+        rolling_mean: 直近 rolling PnL 平均 (bps), None=データ不足
+    """
+
+    level: ToxicityLevel
+    score: float
+    offset_mult: float
+    participation_rate: float
+    threshold_used: float
+    rolling_mean: float | None
 
 @dataclass
 class DynamicKillConfig:
@@ -46,6 +88,28 @@ class DynamicKillConfig:
     #: 219# force release: この回数 consecutive probe が発火したら
     #: new data が来るまで kill を強制解除する。0 = 無効。
     max_force_release_probes: int = 5
+    # ---- 240# Toxicity Budget (232# §2.2 Glosten-Milgrom) ----
+    #: True で toxicity budget を有効化 (段階的応答)。
+    #: False なら従来の binary kill のみ。
+    toxicity_budget_enabled: bool = False
+    #: YELLOW ゾーン開始点 (正規化スコア)。
+    #: score = rolling_mean / threshold (0=安全, 1.0=kill)。
+    #: warn_level=0.3 かつ threshold=-0.5 → rolling_mean < -0.15 で YELLOW。
+    toxicity_warn_level: float = 0.3
+    #: ORANGE ゾーン開始点。
+    #: caution_level=0.7 かつ threshold=-0.5 → rolling_mean < -0.35 で ORANGE。
+    toxicity_caution_level: float = 0.7
+    #: YELLOW ゾーン入口での offset 乗数。
+    #: ゾーン内で線形補間: warn_level→1.0, caution_level→caution_offset_mult。
+    toxicity_warn_offset_mult: float = 1.0
+    #: ORANGE ゾーン入口での offset 乗数。
+    #: ゾーン内で線形補間: caution_level→caution_offset_mult, 1.0→kill_offset_mult。
+    toxicity_caution_offset_mult: float = 2.0
+    #: KILL 直前 (score=1.0) での offset 乗数。
+    toxicity_kill_offset_mult: float = 3.0
+    #: ORANGE ゾーン最悪時の最低参加率 (0.0-1.0)。
+    #: ゾーン内で線形補間: caution_level→1.0, 1.0→min_participation。
+    toxicity_caution_min_participation: float = 0.33
 
     def __post_init__(self) -> None:
         """173# バリデーション: window/resume_window >= 1."""
@@ -148,6 +212,118 @@ class DynamicKillManager:
         rolling_mean = sum(recent) / len(recent)
         threshold = self._config.threshold_bps
         return rolling_mean < threshold, rolling_mean, len(self._pnl_history)
+
+    def assess_toxicity(self, regime: str | None = None) -> ToxicityAssessment:
+        """240# 副作用なしで toxicity budget を評価.
+
+        Glosten-Milgrom の逆選択リスクを正規化スコアで定量化し、
+        4 段階 (GREEN/YELLOW/ORANGE/KILL) にマッピングする。
+
+        スコア = max(0, rolling_mean / threshold) (threshold < 0 の場合)
+        - 0.0: 完全に安全
+        - warn_level (0.3): YELLOW ゾーン開始 → offset 拡大
+        - caution_level (0.7): ORANGE ゾーン開始 → 確率的参加
+        - 1.0: KILL 閾値到達
+
+        Args:
+            regime: レジーム名 (regime_thresholds 参照用)
+
+        Returns:
+            ToxicityAssessment (immutable, 副作用なし)
+        """
+        cfg = self._config
+
+        # 閾値決定 (レジーム別)
+        threshold = cfg.threshold_bps
+        if regime and regime in cfg.regime_thresholds:
+            threshold = cfg.regime_thresholds[regime]
+
+        # データ不足 or 無効 or force release → GREEN
+        if (
+            not cfg.enabled
+            or not cfg.toxicity_budget_enabled
+            or self._force_released
+        ):
+            return ToxicityAssessment(
+                level=ToxicityLevel.GREEN, score=0.0,
+                offset_mult=1.0, participation_rate=1.0,
+                threshold_used=threshold, rolling_mean=None,
+            )
+
+        window = cfg.window
+        if len(self._pnl_history) < window:
+            return ToxicityAssessment(
+                level=ToxicityLevel.GREEN, score=0.0,
+                offset_mult=1.0, participation_rate=1.0,
+                threshold_used=threshold, rolling_mean=None,
+            )
+
+        recent = self._pnl_history[-window:]
+        rolling_mean = sum(recent) / len(recent)
+
+        # 正規化スコア: 0=安全, 1.0=kill 閾値
+        # threshold は負なので rolling_mean/threshold → 正の値が危険
+        if threshold >= 0:
+            # threshold が 0 以上 (異常設定) → 安全扱い
+            score = 0.0
+        else:
+            score = max(0.0, rolling_mean / threshold)
+
+        # cooldown 中は kill 確定
+        if self._cooldown > 0:
+            return ToxicityAssessment(
+                level=ToxicityLevel.KILL, score=max(score, 1.0),
+                offset_mult=cfg.toxicity_kill_offset_mult,
+                participation_rate=0.0,
+                threshold_used=threshold, rolling_mean=rolling_mean,
+            )
+
+        # 段階判定
+        warn = cfg.toxicity_warn_level
+        caution = cfg.toxicity_caution_level
+
+        if score >= 1.0:
+            # KILL ゾーン
+            return ToxicityAssessment(
+                level=ToxicityLevel.KILL, score=score,
+                offset_mult=cfg.toxicity_kill_offset_mult,
+                participation_rate=0.0,
+                threshold_used=threshold, rolling_mean=rolling_mean,
+            )
+        elif score >= caution:
+            # ORANGE ゾーン: 確率的参加 + offset 拡大
+            # 線形補間: caution → 1.0
+            t = (score - caution) / (1.0 - caution) if caution < 1.0 else 0.0
+            offset_m = cfg.toxicity_caution_offset_mult + t * (
+                cfg.toxicity_kill_offset_mult - cfg.toxicity_caution_offset_mult
+            )
+            participation = 1.0 - t * (1.0 - cfg.toxicity_caution_min_participation)
+            return ToxicityAssessment(
+                level=ToxicityLevel.ORANGE, score=score,
+                offset_mult=offset_m,
+                participation_rate=participation,
+                threshold_used=threshold, rolling_mean=rolling_mean,
+            )
+        elif score >= warn:
+            # YELLOW ゾーン: offset 拡大のみ
+            # 線形補間: warn → caution
+            t = (score - warn) / (caution - warn) if caution > warn else 0.0
+            offset_m = cfg.toxicity_warn_offset_mult + t * (
+                cfg.toxicity_caution_offset_mult - cfg.toxicity_warn_offset_mult
+            )
+            return ToxicityAssessment(
+                level=ToxicityLevel.YELLOW, score=score,
+                offset_mult=offset_m,
+                participation_rate=1.0,
+                threshold_used=threshold, rolling_mean=rolling_mean,
+            )
+        else:
+            # GREEN ゾーン: 通常
+            return ToxicityAssessment(
+                level=ToxicityLevel.GREEN, score=score,
+                offset_mult=1.0, participation_rate=1.0,
+                threshold_used=threshold, rolling_mean=rolling_mean,
+            )
 
     def check_kill(self, regime: str | None = None) -> tuple[bool, DynamicKillTelemetry]:
         """kill すべきか判定.

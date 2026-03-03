@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 import time
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
@@ -148,6 +149,35 @@ class FillLoopOrchestratorMixin:
             and record.post_fill_30s_pnl is not None
         ):
             self._buy_kill_mgr.track(record.post_fill_30s_pnl)
+
+    # ------------------------------------------------------------------
+    # 240# Toxicity Budget — assess_toxicity (副作用なし)
+    # ------------------------------------------------------------------
+    def _assess_buy_toxicity(self) -> object | None:
+        """240# buy 側の toxicity budget 評価 (副作用なし).
+
+        Returns:
+            ToxicityAssessment or None (budget 無効時)
+        """
+        if not getattr(self._buy_kill_mgr.config, "toxicity_budget_enabled", False):
+            return None
+        regime: str | None = None
+        if self._regime_detector is not None:
+            regime = self._regime_detector.current_regime.value
+        return self._buy_kill_mgr.assess_toxicity(regime=regime)
+
+    def _assess_sell_toxicity(self) -> object | None:
+        """240# sell 側の toxicity budget 評価 (副作用なし).
+
+        Returns:
+            ToxicityAssessment or None (budget 無効時)
+        """
+        if not getattr(self._sell_kill_mgr.config, "toxicity_budget_enabled", False):
+            return None
+        regime: str | None = None
+        if self._regime_detector is not None:
+            regime = self._regime_detector.current_regime.value
+        return self._sell_kill_mgr.assess_toxicity(regime=regime)
 
     def _warmup_daily_drawdown_from_records(
         self, records: list["FillRecord"],
@@ -1570,6 +1600,9 @@ class FillLoopOrchestratorMixin:
                 price_velocity_bps=self._maker_price.last_mid_trend_bps,
                 trending_sell_skip_count=self._trending_sell_skip_count,
                 buy_side_insufficient=_buy_side_insufficient,
+                # 240# Toxicity Budget (232# §2.2)
+                buy_toxicity=self._assess_buy_toxicity(),
+                sell_toxicity=self._assess_sell_toxicity(),
             )
 
             if _gate_result.blocked:
@@ -1648,6 +1681,36 @@ class FillLoopOrchestratorMixin:
                     and self._regime_detector.current_regime.is_trending
                 ):
                     self._trending_sell_skip_count = 0
+
+            # ────────────────────────────────────────────────────
+            # 240# Toxicity Budget: 確率的参加率チェック
+            # ORANGE ゾーンでは 1/N の確率で参加 (Glosten-Milgrom)
+            # ────────────────────────────────────────────────────
+            if (
+                not _gate_result.blocked
+                and _gate_result.participation_rate < 1.0
+                and random.random() > _gate_result.participation_rate
+            ):
+                self._inc_guard_fire("toxicity_participation_skip")
+                logger.info(
+                    f"[240#] Toxicity participation skip: "
+                    f"rate={_gate_result.participation_rate:.2f}, "
+                    f"offset_mult={_gate_result.toxicity_offset_mult:.2f} "
+                    f"(side={next_side})"
+                )
+                _skip_record = self._make_loop_skip_record(
+                    side=next_side,
+                    cancel_reason="toxicity_participation_skip",
+                    order_quantity=self._current_lot,
+                )
+                batch.append(_skip_record)
+                total_count += 1
+                batch = self._batch_persistence.maybe_flush(
+                    batch, "toxicity_participation_skip",
+                )
+                self._last_side = next_side
+                await self._effective_sleep()
+                continue
 
             # ────────────────────────────────────────────────────
             # 234# 縮退清算モード: balance_forced + Kill Gate blocked
@@ -1733,6 +1796,7 @@ class FillLoopOrchestratorMixin:
                     one_sided_balance=_one_sided_balance,
                     trending_offset_mult=_gate_result.trending_offset_mult,
                     degraded_liquidation=_degraded_liquidation,
+                    toxicity_offset_mult=_gate_result.toxicity_offset_mult,
                 )
                 # 154# C-2: 実サイクル実行 → forced skip カウンタリセット
                 self._balance_forced_skip_count = 0

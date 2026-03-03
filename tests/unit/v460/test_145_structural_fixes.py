@@ -163,6 +163,7 @@ class TestCancelReasons:
             CR.HARD_SKIP_UTC_HOUR,             # 205# §9.4
             CR.TOXIC_FILL_SIDE_VETO,           # 205# §9.2
             CR.PHANTOM_SIDE_VETO,              # 238# S-2
+            CR.TOXICITY_PARTICIPATION_SKIP,    # 240# Toxicity Budget
             CR.PER_SIDE_DD_HALT,               # 205# §9.5
             CR.OPERATOR_HALT,                  # 215# alert_mode
             CR.MCB_HALT,                       # 211# P1-B
