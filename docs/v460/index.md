@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-03 (256# _recent_records 累積バグ修正, セルフレビュー完了)
+> 最終更新: 2026-03-03 (257# Codebase Sweep: ドキュメント整合・市場理論・技術的負債)
 
 ---
 
@@ -246,8 +246,9 @@
 | 253 | rev | [253_pre_impl_codebase_sweep_report.md](253_pre_impl_codebase_sweep_report.md) | 252# self-review + codebase sweep: P1×4 発見 |
 | 253 | impl | [253_ph2_impl_hot_reload_dead_config_getattr_bare_except.md](253_ph2_impl_hot_reload_dead_config_getattr_bare_except.md) | hot_reload 配線漏れ, dead config 削除, getattr 排除, bare except 改善 |
 | 254 | impl | — | frozen_side 永続化, orchestrator getattr 排除, bare except 改善 |
-| 255 | impl | — | skip_gate_evaluator/order_monitor getattr 排除, bare except → debug log |
-| 256 | impl | — | _recent_records 累積バグ修正, セルフレビュー |
+| 255 | impl | [255_codebase_sweep_report.md](255_codebase_sweep_report.md) | skip_gate_evaluator/order_monitor getattr 排除, bare except → debug log |
+| 256 | impl | [256_self_review_and_sweep.md](256_self_review_and_sweep.md) | _recent_records 累積バグ修正, セルフレビュー |
+| 257 | rpt | [257_phg_rpt_codebase_sweep.md](257_phg_rpt_codebase_sweep.md) | Codebase Sweep: ドキュメント整合・市場理論・再利用・技術的負債 (P1×9, P2×47) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
