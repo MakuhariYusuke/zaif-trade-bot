@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-05 (262# adaptation_engine Protocol + order_monitor cancel-recheck DRY)
+> 最終更新: 2026-03-06 (264# Kelly Criterion lot sizing)
 
 ---
 
@@ -253,6 +253,8 @@
 | 260 | refactor | [260_phg_refactor_compute_extract_regime_split.md](260_phg_refactor_compute_extract_regime_split.md) | compute() extract method (_apply_loss_boost, _apply_ffd_boost) + _apply_regime_boosts 5-split |
 | 261 | impl | [261_phg_impl_protocol_type_safety.md](261_phg_impl_protocol_type_safety.md) | P2-1/5/6/7: OrderBookLevelLike, OrderBookSnapshot, BalanceAdapterProtocol, config_hot_reload getattr 排除 |
 | 262 | impl | [262_phg_impl_protocol_cancel_recheck_dry.md](262_phg_impl_protocol_cancel_recheck_dry.md) | adaptation_engine Protocol化 (type:ignore×4 排除) + order_monitor cancel-recheck DRY化 |
+| 263 | impl | [263_phg_impl_optional_xnone_unification.md](263_phg_impl_optional_xnone_unification.md) | Optional[X]→X|None 統一 + 未使用import削除 (18ファイル, 87箇所) |
+| 264 | impl | [264_phg_impl_kelly_criterion_lot_sizing.md](264_phg_impl_kelly_criterion_lot_sizing.md) | Kelly Criterion lot sizing (f*=(pb-q)/b, Fractional Kelly 天井) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
