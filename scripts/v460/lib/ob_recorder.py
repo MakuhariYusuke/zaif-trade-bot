@@ -56,6 +56,9 @@ def _to_finite_float(value: object) -> float | None:
 def _normalize_levels(levels: object) -> list[list[float]]:
     if not isinstance(levels, Sequence) or isinstance(levels, (str, bytes, bytearray)):
         return []
+    # 261# P2-1: OrderBookLevelLike Protocol — isinstance + 直接属性アクセス
+    from scripts.v460.lib.ob_utils import OrderBookLevelLike
+
     normalized: list[list[float]] = []
     for level in levels:
         if isinstance(level, (list, tuple)):
@@ -63,11 +66,12 @@ def _normalize_levels(levels: object) -> list[list[float]]:
                 continue
             price = _to_finite_float(level[0])
             size = _to_finite_float(level[1])
+        elif isinstance(level, OrderBookLevelLike):
+            # Protocol 準拠: 直接属性アクセス → _to_finite_float で型検証
+            price = _to_finite_float(level.price)
+            size = _to_finite_float(level.quantity)
         else:
-            price = _to_finite_float(getattr(level, "price", None))
-            size = _to_finite_float(
-                getattr(level, "quantity", getattr(level, "size", None))
-            )
+            continue
         if price is None or size is None:
             continue
         normalized.append([price, size])

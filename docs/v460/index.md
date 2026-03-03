@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-04 (260# refactor: compute() extract method + regime_boosts 5-split)
+> 最終更新: 2026-03-04 (261# Protocol 型安全化: OrderBookLevelLike, OrderBookSnapshot, BalanceAdapterProtocol)
 
 ---
 
@@ -251,6 +251,7 @@
 | 258 | impl | [258_phg_impl_as_reservation_vpin_continuous_protocol.md](258_phg_impl_as_reservation_vpin_continuous_protocol.md) | AS Reservation Price, VPIN Continuous, RegimeDetectorLike Protocol |
 | 259 | rpt+impl | [259_phg_rpt_codebase_sweep.md](259_phg_rpt_codebase_sweep.md) | Sweep + AS σ² vol_ratio 統合, adaptation_engine hasattr 排除 |
 | 260 | refactor | — | compute() extract method (_apply_loss_boost, _apply_ffd_boost) + _apply_regime_boosts 5-split |
+| 261 | impl | — | P2-1/5/6/7: OrderBookLevelLike, OrderBookSnapshot, BalanceAdapterProtocol, config_hot_reload getattr 排除 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

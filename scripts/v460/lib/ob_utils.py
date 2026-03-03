@@ -11,13 +11,30 @@ best_bid_ask / depth_volume / spread 等の市場データ取得を型安全に�
 from __future__ import annotations
 
 import logging
-from typing import Protocol, Sequence, TypeAlias, Union, cast
+from typing import Protocol, Sequence, TypeAlias, Union, cast, runtime_checkable
 
 logger = logging.getLogger(__name__)
 
+
+# 261# P2-1: OrderBookLevelLike Protocol — getattr 排除
+@runtime_checkable
+class OrderBookLevelLike(Protocol):
+    """板データの 1 レベルを表す構造的型.
+
+    Coincheck adapter は NamedTuple/dataclass で price/quantity を返す場合がある。
+    tuple[float, float] 以外の object に対して .price / .quantity で安全にアクセスする。
+    """
+
+    @property
+    def price(self) -> float: ...
+
+    @property
+    def quantity(self) -> float: ...
+
+
 # 156# D-1: 型安全向上 — OB レベルの型を明示
 # tuple[float, float] (price, size) or NamedTuple/dataclass with .price/.quantity
-OrderBookLevel: TypeAlias = Union[tuple[float, float], "object"]
+OrderBookLevel: TypeAlias = Union[tuple[float, float], OrderBookLevelLike]
 OrderBookLevels: TypeAlias = Sequence[OrderBookLevel]
 
 
@@ -27,7 +44,8 @@ def extract_price(level: OrderBookLevel) -> float:
         if not level:
             return 0.0
         return float(level[0])
-    return float(getattr(level, "price", 0.0))
+    # 261# P2-1: OrderBookLevelLike Protocol — 直接アクセス
+    return float(level.price)
 
 
 def extract_size(level: OrderBookLevel) -> float:
@@ -36,7 +54,11 @@ def extract_size(level: OrderBookLevel) -> float:
         if len(level) < 2:
             return 0.0
         return float(level[1])
-    return float(getattr(level, "quantity", getattr(level, "size", 0.0)))
+    # 261# P2-1: OrderBookLevelLike Protocol — 直接アクセス
+    # quantity を優先し、size フォールバック (一部 adapter は size 名称)
+    if hasattr(level, "quantity"):
+        return float(level.quantity)
+    return float(getattr(level, "size", 0.0))
 
 
 def best_bid_ask(

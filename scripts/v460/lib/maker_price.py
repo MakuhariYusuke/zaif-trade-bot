@@ -21,7 +21,7 @@ import collections
 import logging
 import math
 import time
-from typing import Final, NamedTuple, Optional, Protocol
+from typing import Final, NamedTuple, Optional, Protocol, Sequence
 
 from scripts.v460.lib.fast_fill_defense import FastFillDefense
 from scripts.v460.lib.fill_config import FillTestConfig
@@ -49,10 +49,20 @@ class InfeasibleQuoteError(ValueError):
         self.reason = reason
 
 
+class OrderBookSnapshot(Protocol):
+    """板スナップショット — .bids / .asks を持つ object."""
+
+    @property
+    def bids(self) -> Sequence[tuple[float, float]]: ...
+
+    @property
+    def asks(self) -> Sequence[tuple[float, float]]: ...
+
+
 class OrderbookProvider(Protocol):
     """板情報を提供するアダプタのプロトコル (型安全)."""
 
-    async def get_orderbook(self, symbol: str, depth: int = 1) -> object: ...
+    async def get_orderbook(self, symbol: str, depth: int = 1) -> OrderBookSnapshot: ...
 
 
 class MakerPriceResult(NamedTuple):
@@ -164,7 +174,8 @@ class MakerPriceCalculator:
         self._last_vg_vpin: float | None = None
         self._last_vg_boost_factor: float | None = None
         # 129# OB recorder: 生スナップショットキャッシュ
-        self._last_ob_snapshot: object | None = None
+        # 261# P2-5: object → OrderBookSnapshot (型安全化)
+        self._last_ob_snapshot: OrderBookSnapshot | None = None
         # 162# Inventory Skewing: fill 履歴追跡
         _w = config.inventory_skewing_window if config.inventory_skewing_window > 0 else 100
         self._inv_fill_history: collections.deque[str] = collections.deque(maxlen=_w)

@@ -56,17 +56,24 @@ regime_detector が None の場合は既存の Roll proxy にフォールバッ�
 | ob_utils.py | 4 | extract_price/extract_size |
 | ob_recorder.py | 2 | _extract_level 内 |
 
+**→ 261# 実装済**: `@runtime_checkable OrderBookLevelLike` Protocol 定義。
+ob_utils は直接属性アクセス、ob_recorder は isinstance + _to_finite_float 経由で型検証。
+
 ### P2-2: maker_price.py compute() 214行 → 150行以下
 
 ファイル内 GOD OBJECT 警告 (L85-98) で `compute()` 150行上限を明記済みだが現在 214行。
 loss_boost / FFD boost の 2ブロック (~50行) を `_apply_loss_boost()`, `_apply_ffd_boost()` に
 抽出すれば 150行以下に収まる。パイプライン構造なので安全。
 
+**→ 260# 実装済**: compute() 214→180行。`_apply_loss_boost()`, `_apply_ffd_boost()` 抽出。
+
 ### P2-3: _apply_regime_boosts() 153行 → 5分割
 
 5つの独立 if ブロック (trending/high_vol/ranging/unknown/low_vol) を
 `_regime_boost_trending()`, `_regime_boost_high_vol()` 等に分割。
 各 ~30行、ロジック変更なし。
+
+**→ 260# 実装済**: 5 sub-method + dispatcher パターン。各 ~30行。
 
 ### P2-4: skip_gate_evaluator getattr (4箇所)
 
@@ -76,19 +83,30 @@ loss_boost / FFD boost の 2ブロック (~50行) を `_apply_loss_boost()`, `_a
 | L830,852 | `getattr(self, attr_path/attr_hash)` | dict 化 |
 | L991,1015 | `getattr(adapter, "get_recent_trades/get_orderbook")` | GateAdapterProtocol |
 
+**状態**: L234/236 は dict/object dual-format で構造的に必要。L830/852 はメタプログラミング。
+L991/1015 は GateAdapterProtocol 定義で置換可能だが影響範囲大。保留。
+
 ### P2-5: `_last_ob_snapshot: object | None` → `OrderBookSnapshot | None`
 
 maker_price.py L165。OB snapshot は `dict | SimpleNamespace` のいずれかが入る。
 型を特定し Protocol or Union で明示化。
+
+**→ 261# 実装済**: `OrderBookSnapshot` Protocol (bids/asks プロパティ) 定義。
+`OrderbookProvider.get_orderbook()` 戻り値も `OrderBookSnapshot` に型安全化。
 
 ### P2-6: config_hot_reload.py L400 private attr getattr
 
 `getattr(runner, "_fast_fill_defense", None)` — private attribute への getattr。
 公開 property or Protocol method に置換。
 
+**→ 261# 実装済**: `_HotReloadableRunner` Protocol で宣言済みのため直接参照に変更。
+
 ### P2-7: balance_checker.py adapter: object (3箇所)
 
 L88, 109, 165 で `adapter: object`。BalanceAdapterProtocol の定義が必要。
+
+**→ 261# 実装済**: `BalanceAdapterProtocol` + `_BalanceLike` Protocol 定義。
+`adapter: object` → `adapter: BalanceAdapterProtocol` に置換。type: ignore 排除。
 
 ---
 

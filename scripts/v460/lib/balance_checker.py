@@ -15,10 +15,27 @@ from __future__ import annotations
 
 import logging
 import time as _time
+from collections.abc import Sequence
+from typing import Protocol
 
 from scripts.v460.lib.fill_config import FillTestConfig
 
 logger = logging.getLogger(__name__)
+
+
+# 261# P2-7: BalanceAdapterProtocol — adapter: object の型安全化
+class _BalanceLike(Protocol):
+    """残高エントリ — .free で利用可能残高を取得."""
+
+    @property
+    def free(self) -> float: ...
+
+
+class BalanceAdapterProtocol(Protocol):
+    """BalanceChecker が adapter に要求する最小インタフェース."""
+
+    async def get_balance(self, currency: str) -> Sequence[_BalanceLike] | None: ...
+    async def get_current_price(self, symbol: str) -> float | None: ...
 
 # Coincheck 板取引 BTC 最小注文数量
 MIN_ORDER_BTC: float = 0.001  # フォールバック定数 (config 優先)
@@ -85,7 +102,7 @@ class BalanceChecker:
     async def check(
         self,
         side: str,
-        adapter: object,
+        adapter: BalanceAdapterProtocol,
         symbol: str,
         *,
         regime_mult: float = 1.0,
@@ -106,14 +123,14 @@ class BalanceChecker:
         return False
 
     async def _check_sell(
-        self, adapter: object, symbol: str, *, regime_mult: float = 1.0,
+        self, adapter: BalanceAdapterProtocol, symbol: str, *, regime_mult: float = 1.0,
     ) -> bool:
         """sell 残高チェック (BTC).
 
         145# §8-#1: regime_mult 対応 — 実効ロット (base × mult) で比較し、
         自動縮小時もレジーム倍率を考慮して base ロットを調整する。
         """
-        btc_balances = await adapter.get_balance("BTC")  # type: ignore[union-attr]
+        btc_balances = await adapter.get_balance("BTC")
         btc_free = sum(b.free for b in btc_balances) if btc_balances else 0.0
         self._last_btc_free = btc_free  # 238# C-2: phantom guard snapshot 用キャッシュ
 
@@ -162,19 +179,19 @@ class BalanceChecker:
         return self._maybe_dust_sweep(btc_free)
 
     async def _check_buy(
-        self, adapter: object, symbol: str, *, regime_mult: float = 1.0,
+        self, adapter: BalanceAdapterProtocol, symbol: str, *, regime_mult: float = 1.0,
     ) -> bool:
         """buy 残高チェック (JPY).
 
         145# §8-#1: regime_mult 対応 — 実効ロット (base × mult) で判定。
         """
-        price = await adapter.get_current_price(symbol)  # type: ignore[union-attr]
+        price = await adapter.get_current_price(symbol)
         if not price:
             return False
 
         effective_lot = self._current_lot * regime_mult
         jpy_needed = effective_lot * price * self._config.balance_margin_ratio
-        jpy_balances = await adapter.get_balance("JPY")  # type: ignore[union-attr]
+        jpy_balances = await adapter.get_balance("JPY")
         jpy_free = sum(b.free for b in jpy_balances) if jpy_balances else 0.0
         self._last_jpy_free = jpy_free  # 238# C-2: phantom guard snapshot 用キャッシュ
 

@@ -397,7 +397,8 @@ class ConfigHotReloader:
                     # 新インスタンスに差し替えるが、_maker_price 側は旧参照を保持したまま
                     # になるため、明示的に同期する。
                     if callback_name == "_rebuild_fast_fill_defense":
-                        _ffd = getattr(runner, "_fast_fill_defense", None)
+                        # 261# P2-6: _HotReloadableRunner Protocol で宣言済み → 直接参照
+                        _ffd = runner._fast_fill_defense
                         if _ffd is not None:
                             runner._maker_price.update_fast_fill_defense(_ffd)
                             logger.info(
