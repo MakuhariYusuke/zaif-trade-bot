@@ -1019,8 +1019,9 @@ class SkipGateEvaluator:
                             depth=self._config.skip_gate_ob_depth,
                         )
                         if ob and getattr(ob, "bids", None) and getattr(ob, "asks", None):
-                            bids = getattr(ob, "bids")
-                            asks = getattr(ob, "asks")
+                            # 256# 冗長 getattr 排除: L上で存在確認済み → 直接参照
+                            bids = ob.bids  # type: ignore[attr-defined]
+                            asks = ob.asks  # type: ignore[attr-defined]
                             # 145# §9-#3: tuple/object 両対応 (ob_utils 使用)
                             ob_bid = extract_price(bids[0])
                             ob_ask = extract_price(asks[0])

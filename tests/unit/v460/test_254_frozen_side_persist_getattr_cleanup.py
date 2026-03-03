@@ -70,9 +70,11 @@ class TestOrchestratorClassLevelDefaults:
     """254# P1-3/P1-4: クラスレベルデフォルト宣言."""
 
     def test_recent_records_class_default(self) -> None:
+        from collections import deque
         from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         assert hasattr(FillLoopOrchestratorMixin, "_recent_records")
-        assert FillLoopOrchestratorMixin._recent_records == []
+        assert isinstance(FillLoopOrchestratorMixin._recent_records, deque)
+        assert len(FillLoopOrchestratorMixin._recent_records) == 0
 
     def test_heartbeat_task_class_default(self) -> None:
         from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin

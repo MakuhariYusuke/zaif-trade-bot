@@ -16,6 +16,7 @@ import asyncio
 import logging
 import random
 import time
+from collections import deque
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
@@ -92,7 +93,8 @@ class FillLoopOrchestratorMixin:
     # 238# C-1: object → PhantomPositionGuard 型安全化 (TYPE_CHECKING)
     _phantom_guard: PhantomPositionGuard | None = None
     # 254# _recent_records: _check_stop_conditions が参照。テスト注入用。
-    _recent_records: list[FillRecord] = []  # type: ignore[assignment]
+    # 256# list → deque(maxlen=200): batch save でリセットされない累積バッファ
+    _recent_records: deque[FillRecord] = deque(maxlen=200)  # type: ignore[assignment]
     # 254# _heartbeat_task: run_continuous 内で代入、cleanup_heartbeat で参照
     _heartbeat_task: asyncio.Task[None] | None = None
 
@@ -545,12 +547,11 @@ class FillLoopOrchestratorMixin:
             strategy.activate_fallback(3600.0)
             return
         # avg pnl30 (直近 100 filled)
-        # 254# getattr → クラスレベルデフォルト直接参照
-        records = self._recent_records
+        # 256# deque 化: スライス不可のため list comprehension → スライス
         pnls = [
-            r.post_fill_30s_pnl for r in records[-100:]
+            r.post_fill_30s_pnl for r in self._recent_records
             if r.filled and r.post_fill_30s_pnl is not None
-        ]
+        ][-100:]
         if len(pnls) >= 10:
             avg = sum(pnls) / len(pnls)
             if avg < policy.pnl_floor_bps:
@@ -2058,6 +2059,9 @@ class FillLoopOrchestratorMixin:
                                 f"applying 3x interval multiplier instead of lot reduction"
                             )
             batch.append(record)
+            # 256# _recent_records 累積: _check_regime_stop_conditions が参照
+            # batch は save 時にリセットされるが、stop conditions は直近 N 件の PnL が必要
+            self._recent_records.append(record)
 
             # --- 046# soft/hard 二段 loss_cap ---
             # soft cap: ロット半減 (一度だけ)

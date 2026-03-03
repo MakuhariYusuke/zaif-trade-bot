@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-03 (255# getattr 排除 + bare except → debug log 一掃)
+> 最終更新: 2026-03-03 (256# _recent_records 累積バグ修正, セルフレビュー完了)
 
 ---
 
@@ -247,6 +247,7 @@
 | 253 | impl | [253_ph2_impl_hot_reload_dead_config_getattr_bare_except.md](253_ph2_impl_hot_reload_dead_config_getattr_bare_except.md) | hot_reload 配線漏れ, dead config 削除, getattr 排除, bare except 改善 |
 | 254 | impl | — | frozen_side 永続化, orchestrator getattr 排除, bare except 改善 |
 | 255 | impl | — | skip_gate_evaluator/order_monitor getattr 排除, bare except → debug log |
+| 256 | impl | — | _recent_records 累積バグ修正, セルフレビュー |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

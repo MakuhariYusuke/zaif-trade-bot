@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 256# _recent_records 累積バグ修正 + セルフレビュー完了 (2026-03-03)
+
+### Fixed
+- **181# stop conditions 潜在バグ**: `_recent_records` が `run_continuous` 内で未累積 → `_check_regime_stop_conditions` の avg_pnl30 チェックが永遠に空リストで不発動。`batch.append(record)` 直後に `self._recent_records.append(record)` 追加。`deque(maxlen=200)` でメモリ制限付き
+
+### Changed
+- **skip_gate_evaluator 冗長 getattr 2件排除**: L1021 の存在チェック通過後の `getattr(ob, "bids")` / `getattr(ob, "asks")` → `ob.bids` / `ob.asks` 直接参照
+
+### Self-Review
+- 254# / 255# 全変更箇所検証: clean ✅
+- bare except 残存: 0件 ✅
+- `type: ignore` without code: 0件 ✅
+- TODO in lib/: 0件 ✅
+- `Any` 型注釈: 0件 ✅
+
+### Tests
+- 4 テスト追加 (`test_256_recent_records_fix.py`)
+- 既存テスト修正: `test_recent_records_class_default` (deque 対応)
+- 総テスト: **3550** (3518 passed, 32 skipped)
+
+
 ## 255# skip_gate_evaluator / order_monitor getattr 排除 + bare except → debug log 一掃 (2026-03-03)
 
 ### Changed
