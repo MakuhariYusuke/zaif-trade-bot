@@ -194,6 +194,8 @@ class FillTestConfig:
     # 246# DD halt cooldown release: 集約 halt 後 N 秒で lot 縮小付き再開
     dd_cooldown_release_sec: float = 0.0       # 0=無効, 例: 7200=2h後に部分解除
     dd_cooldown_release_lot_scale: float = 0.3 # cooldown release 中の lot 倍率
+    # 249# DD halt cooldown re-arm: release 後の追加損失で再 halt
+    dd_cooldown_rearm_budget_bps: float = -10.0  # release 後にこの bps 以下で再 halt
     # 049# E3 サンプリング: 全約定ではなくサンプリングで multi-timeframe 計測
     e3_sampling_ratio: float = 1.0  # 0.0-1.0, 1.0=全約定, 0.33=1/3 のみ
     # 049# side 別 offset: buy/sell で独立に offset を設定
@@ -456,6 +458,8 @@ class FillTestConfig:
     buy_dynamic_kill_resume_window: int = 10      # 停止後、N サイクル後に再評価
     buy_dynamic_kill_regime_thresholds: dict[str, float] = field(default_factory=dict)
     buy_dynamic_kill_toxic_stale_mult: int = 10    # 242# probe interval 延長倍率
+    # 249# dual_kill_bypass → quiescence: 両方 kill 時は休止 (242# "No Trade = normal")
+    dual_kill_quiescence_enabled: bool = False  # True で dual_kill_bypass を無効化 → 静観
     # ---- 137# P1-08: spread 狭小時の「休む」判定 ----
     narrow_spread_pause_enabled: bool = False     # True で spread 狭小時にサイクルスキップ
     narrow_spread_pause_bps: float = 3.0          # spread < この bps で狭小とみなす
@@ -467,6 +471,8 @@ class FillTestConfig:
     inventory_skewing_window: int = 100        # 直近 N fill で在庫偏重を計算
     inventory_skewing_max_factor: float = 0.4  # 最大 offset 補正倍率 (0.4 = 40%)
     inventory_skewing_neutral_band: float = 0.1  # |imbalance| < この値なら補正なし
+    # 249# Regime-aware inv skewing: trending 時は在庫偏重補正を無効化
+    inv_skew_regime_gate_enabled: bool = False  # True で trending 時の inv_skew を停止
     # 228# C2: 在庫偏重の時間減衰 — 古い fill 履歴の影響を指数関数的に減衰
     inv_decay_tau_sec: float = 0.0             # 時間減衰 τ (秒, 0=無効, 1800推奨開始値)
     preflight_pause_enabled: bool = True       # True で SAFE_STOP 前に pause を挟む
@@ -712,6 +718,37 @@ class FillTestConfig:
         if not (1 <= self.ffd_boost_release_streak <= 20):
             raise ValueError(
                 f"ffd_boost_release_streak must be in [1, 20], got {self.ffd_boost_release_streak}"
+            )
+        # 249# 246# パラメータ境界バリデーション
+        if not (0.01 <= self.degraded_liquidation_lot_mult <= 1.0):
+            raise ValueError(
+                f"degraded_liquidation_lot_mult must be in [0.01, 1.0], "
+                f"got {self.degraded_liquidation_lot_mult}"
+            )
+        if self.degraded_liquidation_offset_mult < 1.0:
+            raise ValueError(
+                f"degraded_liquidation_offset_mult must be >= 1.0, "
+                f"got {self.degraded_liquidation_offset_mult}"
+            )
+        if self.degraded_liquidation_duty_cycle < 2:
+            raise ValueError(
+                f"degraded_liquidation_duty_cycle must be >= 2, "
+                f"got {self.degraded_liquidation_duty_cycle}"
+            )
+        if not (0.01 <= self.dd_cooldown_release_lot_scale <= 1.0):
+            raise ValueError(
+                f"dd_cooldown_release_lot_scale must be in [0.01, 1.0], "
+                f"got {self.dd_cooldown_release_lot_scale}"
+            )
+        if self.dd_cooldown_release_sec < 0:
+            raise ValueError(
+                f"dd_cooldown_release_sec must be >= 0, "
+                f"got {self.dd_cooldown_release_sec}"
+            )
+        if self.dd_cooldown_rearm_budget_bps > 0:
+            raise ValueError(
+                f"dd_cooldown_rearm_budget_bps must be <= 0, "
+                f"got {self.dd_cooldown_rearm_budget_bps}"
             )
 
 
@@ -1080,6 +1117,11 @@ class FillTestConfig:
         if "toxic_stale_multiplier" in buy_kill:
             kwargs["buy_dynamic_kill_toxic_stale_mult"] = int(buy_kill["toxic_stale_multiplier"])
 
+        # 249# dual_kill_quiescence
+        _dkq = 止血.get("dual_kill_quiescence_enabled")
+        if _dkq is not None:
+            kwargs["dual_kill_quiescence_enabled"] = bool(_dkq)
+
         # 137# P1-08: narrow spread pause
         narrow_pause = 止血.get("narrow_spread_pause", {})
         if narrow_pause.get("enabled") is not None:
@@ -1105,6 +1147,9 @@ class FillTestConfig:
         }.items():
             if yk in inv_skew:
                 kwargs[ck] = inv_skew[yk]
+        # 249# regime gate
+        if "regime_gate_enabled" in inv_skew:
+            kwargs["inv_skew_regime_gate_enabled"] = bool(inv_skew["regime_gate_enabled"])
 
         # 168# §4.1 #3: 日次ドローダウンガード
         dd_guard = 止血.get("daily_drawdown", {})
@@ -1183,6 +1228,9 @@ class FillTestConfig:
             kwargs["dd_cooldown_release_sec"] = float(dd_guard["cooldown_release_sec"])
         if "cooldown_release_lot_scale" in dd_guard:
             kwargs["dd_cooldown_release_lot_scale"] = float(dd_guard["cooldown_release_lot_scale"])
+        # 249# DD cooldown re-arm
+        if "cooldown_rearm_budget_bps" in dd_guard:
+            kwargs["dd_cooldown_rearm_budget_bps"] = float(dd_guard["cooldown_rearm_budget_bps"])
 
         return kwargs
 

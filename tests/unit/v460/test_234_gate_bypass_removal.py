@@ -452,19 +452,20 @@ class TestDeadParameterCleanup:
 
 
 class TestDutyCycleGuard:
-    """235# duty_cycle=1 や duty_cycle=0 でのガード検証."""
+    """235# duty_cycle=1 や duty_cycle=0 でのガード検証.
+
+    249# 以降、duty_cycle < 2 は ValueError に変更。
+    """
 
     def test_duty_cycle_config_min_1(self) -> None:
-        """duty_cycle=0 → max(0,1)=1 で除算エラーにならないこと."""
-        # Config レベルでは 0 設定可能だが、orchestrator で max(v,1) ガード
-        cfg = FillTestConfig(degraded_liquidation_duty_cycle=0)
-        assert cfg.degraded_liquidation_duty_cycle == 0  # 設定は維持
+        """249# duty_cycle=0 → ValueError."""
+        with pytest.raises(ValueError, match="degraded_liquidation_duty_cycle"):
+            FillTestConfig(degraded_liquidation_duty_cycle=0)
 
     def test_duty_cycle_1_means_every_cycle(self) -> None:
-        """duty_cycle=1 → 毎回実行 (skip なし)."""
-        cfg = FillTestConfig(degraded_liquidation_duty_cycle=1)
-        # max(1, 1) = 1, `_duty > 1` is False → skip なし
-        assert cfg.degraded_liquidation_duty_cycle == 1
+        """249# duty_cycle=1 → ValueError (min=2)."""
+        with pytest.raises(ValueError, match="degraded_liquidation_duty_cycle"):
+            FillTestConfig(degraded_liquidation_duty_cycle=1)
 
 
 class TestDeadConfigDeprecation:

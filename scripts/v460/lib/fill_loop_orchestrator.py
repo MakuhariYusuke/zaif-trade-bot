@@ -713,10 +713,19 @@ class FillLoopOrchestratorMixin:
 
         # 033# F4: レジューム時の累積 PnL 計算 (クリーンレコードのみ)
         cumulative_pnl_jpy = 0.0
+        # 249# Total Equity MTM: BTC 増減を追跡 (buy=+, sell=-)
+        cumulative_btc_delta = 0.0
         for r in clean_records:
             pnl_jpy = compute_record_pnl_jpy(r)
             if pnl_jpy is not None:
                 cumulative_pnl_jpy += pnl_jpy
+            # 249# resume 時にも btc delta 復元
+            if r.filled and r.order_quantity is not None:
+                _qty = float(r.order_quantity)
+                if r.side == "buy":
+                    cumulative_btc_delta += _qty
+                elif r.side == "sell":
+                    cumulative_btc_delta -= _qty
 
         # 101# §2: soft_loss_cap_triggered をレジューム復元
         # 前回 run 中に soft cap 発動していた場合、再起動で False に戻ると
@@ -1964,6 +1973,13 @@ class FillLoopOrchestratorMixin:
                 pnl_jpy = compute_record_pnl_jpy(record)
                 if pnl_jpy is not None:
                     cumulative_pnl_jpy += pnl_jpy
+                # 249# Total Equity MTM: BTC 増減インクリメンタル追跡
+                if record.order_quantity is not None:
+                    _fill_qty = float(record.order_quantity)
+                    if next_side == "buy":
+                        cumulative_btc_delta += _fill_qty
+                    else:
+                        cumulative_btc_delta -= _fill_qty
                 # 168# §4.1 #3: 日次ドローダウンガード PnL 更新
                 if record.post_fill_30s_pnl is not None:
                     dd_result = self._daily_drawdown_guard.update_pnl(
@@ -2067,10 +2083,22 @@ class FillLoopOrchestratorMixin:
                     f"fill rate={filled_count}/{total_count} "
                     f"({_fill_rate_pct:.1f}%), "
                     f"cumPnL={cumulative_pnl_jpy:.1f}JPY, "
+                    f"btcDelta={cumulative_btc_delta:+.4f}BTC, "
                     f"lot={self._current_lot:.4f}BTC, "
                     f"regime={regime_tag}, "
                     f"unsaved_batch={len(batch)}"
                 )
+                # 249# Total Equity MTM: JPY + BTC × mid_price として表示
+                _mtm_mid = self._maker_price.last_mid_price if self._maker_price else None
+                if _mtm_mid and _mtm_mid > 0:
+                    _equity_btc_val = cumulative_btc_delta * _mtm_mid
+                    _total_equity_delta = cumulative_pnl_jpy + _equity_btc_val
+                    logger.info(
+                        f"[249# MTM] totalEquityΔ={_total_equity_delta:+.1f}JPY "
+                        f"(spreadPnL={cumulative_pnl_jpy:+.1f} + "
+                        f"btcMTM={_equity_btc_val:+.1f} "
+                        f"@mid={_mtm_mid:.0f})"
+                    )
                 # 244# Guard reason category summary
                 if self._guard_fire_counts:
                     from scripts.v460.lib.guard_reason_classifier import (

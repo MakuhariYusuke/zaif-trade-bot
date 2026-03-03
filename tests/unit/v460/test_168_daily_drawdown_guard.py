@@ -317,6 +317,8 @@ class TestDailyDrawdownMetrics:
             "side_recovery_remaining_buy", "side_recovery_remaining_sell",
             # 246# cooldown release
             "cooldown_released", "cooldown_release_lot_scale",
+            # 249# cooldown re-arm
+            "cooldown_rearmed", "cooldown_rearm_pnl_bps",
         }
         assert set(m.keys()) == expected_keys
 

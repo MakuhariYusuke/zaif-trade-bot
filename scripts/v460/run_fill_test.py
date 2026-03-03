@@ -387,6 +387,7 @@ class FillTestRunner(
             per_side_recovery_lot_scale=config.per_side_dd_recovery_lot_scale,
             cooldown_release_sec=config.dd_cooldown_release_sec,
             cooldown_release_lot_scale=config.dd_cooldown_release_lot_scale,
+            cooldown_rearm_budget_bps=config.dd_cooldown_rearm_budget_bps,
         )
 
         # 044# A-7: loss_cap 更新カウンタ
@@ -473,6 +474,7 @@ class FillTestRunner(
             per_side_recovery_lot_scale=self.config.per_side_dd_recovery_lot_scale,
             cooldown_release_sec=self.config.dd_cooldown_release_sec,
             cooldown_release_lot_scale=self.config.dd_cooldown_release_lot_scale,
+            cooldown_rearm_budget_bps=self.config.dd_cooldown_rearm_budget_bps,
         )
         if old_state:
             self._daily_drawdown_guard.import_state(old_state)

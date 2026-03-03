@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-03 (241# Toxicity Budget セルフレビュー: dead code 修正 + 評価順序 + 型安全 + config バリデーション)
+> 最終更新: 2026-03-03 (247# 234–246レビュー: 未デプロイ検証, DD cooldown再武装不足, inventory中立前提の見直し)
 
 ---
 
@@ -232,6 +232,12 @@
 | 239 | fix | [239_ph2_fix_feasible_quote_proactive.md](239_ph2_fix_feasible_quote_proactive.md) | Feasible Quote Proactive: InfeasibleQuoteError + 制約前方移動 + fallback dedup (232# §1.5) |
 | 240 | fix | [240_ph2_fix_toxicity_budget.md](240_ph2_fix_toxicity_budget.md) | Toxicity Budget: binary skip → continuous adverse-selection budget (232# §2.2) |
 | 241 | fix | [241_ph2_fix_toxicity_budget_review.md](241_ph2_fix_toxicity_budget_review.md) | 240# セルフレビュー: dead code 修正 + 評価順序 + 型安全 + config バリデーション |
+| 242 | fix | [242_ph2_fix_liveness_constraint_relaxation.md](242_ph2_fix_liveness_constraint_relaxation.md) | Liveness Constraint Relaxation: dual_kill/片側硬直の緩和で No Trade を正常化 |
+| 243 | fix | [243_ph2_fix_yaml_wiring.md](243_ph2_fix_yaml_wiring.md) | 242# 追加設定の YAML 配線漏れ修正 + バリデーション補強 |
+| 244 | impl | [244_ph2_impl_guard_reason_classification.md](244_ph2_impl_guard_reason_classification.md) | Guard reason を MARKET/SYSTEM/RECOVERY に分類し、集計可視化を追加 |
+| 245 | rpt | [245_ph2_production_log_analysis_mar03.md](245_ph2_production_log_analysis_mar03.md) | 本番ログ分析 (2026-02-13〜2026-03-03): sell劣後・在庫中立前提・DD挙動を再点検 |
+| 246 | fix | [246_dd_cooldown_release_sell_defense.md](246_dd_cooldown_release_sell_defense.md) | DD Halt Cooldown Release + Sell Defence Hardening |
+| 247 | rev | [247_ph2_rev_234_246_functionality_market_theory_review.md](247_ph2_rev_234_246_functionality_market_theory_review.md) | 234#–246# レビュー: 未デプロイ検証, DD cooldown再武装不足, inventory中立前提の見直し |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

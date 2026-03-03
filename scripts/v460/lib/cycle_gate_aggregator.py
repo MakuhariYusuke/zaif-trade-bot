@@ -231,14 +231,21 @@ class CycleGateAggregator:
         _dual_kill = is_buy_killed and is_sell_killed
         _dual_kill_bypass = False
         if _dual_kill:
-            # 両方 kill なら、全て通過させる (219# force release もあるが、
-            # gate レベルで即座に1取引許可することで高速化)
-            _dual_kill_bypass = True
-            result.dual_kill_bypassed = True  # 223# metrics 用フラグ
-            logger.warning(
-                f"[219#] DUAL KILL bypass: both buy/sell killed — "
-                f"allowing {side} through to break deadlock"
-            )
+            # 249# quiescence mode: dual_kill_bypass を無効化 — 両方 toxic なら静観
+            if self._config.dual_kill_quiescence_enabled:
+                logger.info(
+                    f"[249#] DUAL KILL quiescence: both buy/sell killed — "
+                    f"resting (side={side}, no bypass)"
+                )
+                # bypass しない → 各 kill gate が個別にブロック判定
+            else:
+                # 旧挙動 (219#): 両方 kill なら全て通過させてデッドロック回避
+                _dual_kill_bypass = True
+                result.dual_kill_bypassed = True  # 223# metrics 用フラグ
+                logger.warning(
+                    f"[219#] DUAL KILL bypass: both buy/sell killed — "
+                    f"allowing {side} through to break deadlock"
+                )
 
         g4 = self._check_buy_dynamic_kill(side, is_buy_killed, _dual_kill_bypass)
         result.checks.append(g4)

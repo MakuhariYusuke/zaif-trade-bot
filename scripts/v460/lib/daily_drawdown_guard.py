@@ -52,6 +52,9 @@ class DailyDrawdownState:
     side_recovery_remaining_sell: int = 0
     # 246# cooldown release: 集約 halt からの部分解除
     cooldown_released: bool = False  # cooldown 経過で partial release された
+    # 249# cooldown re-arm: release 後の追加損失で再 halt
+    cooldown_rearm_pnl_bps: float = 0.0  # release 後の累積 PnL (bps)
+    cooldown_rearmed: bool = False  # re-arm で再 halt された
 
 
 class DailyDrawdownGuard:
@@ -77,6 +80,7 @@ class DailyDrawdownGuard:
         per_side_recovery_lot_scale: float = 0.5,
         cooldown_release_sec: float = 0.0,
         cooldown_release_lot_scale: float = 0.3,
+        cooldown_rearm_budget_bps: float = -10.0,
     ) -> None:
         self._enabled = enabled
         self._hard_limit_bps = hard_limit_bps
@@ -91,6 +95,8 @@ class DailyDrawdownGuard:
         # halt 後 cooldown_release_sec 経過で lot 縮小付き再開 (0=無効)
         self._cooldown_release_sec = cooldown_release_sec
         self._cooldown_release_lot_scale = cooldown_release_lot_scale
+        # 249# cooldown re-arm: release 後に追加損失が budget 超過で再 halt
+        self._cooldown_rearm_budget_bps = cooldown_rearm_budget_bps
         self._state = DailyDrawdownState()
         self._soft_triggered_today = False
 
@@ -214,6 +220,24 @@ class DailyDrawdownGuard:
                 )
                 result["side_halted"] = side
 
+        # 249# cooldown re-arm: release 後の追加損失を追跡して再 halt 判定
+        if self._state.cooldown_released and not self._state.cooldown_rearmed:
+            self._state.cooldown_rearm_pnl_bps += pnl_bps
+            if (
+                self._cooldown_rearm_budget_bps < 0
+                and self._state.cooldown_rearm_pnl_bps <= self._cooldown_rearm_budget_bps
+            ):
+                self._state.cooldown_rearmed = True
+                self._state.cooldown_released = False
+                self._state.halt_triggered_at = time.time()
+                result["halted"] = True
+                logger.warning(
+                    f"[249# rearm] DD cooldown RE-ARM: "
+                    f"post-release PnL {self._state.cooldown_rearm_pnl_bps:+.2f}bps "
+                    f"<= rearm budget {self._cooldown_rearm_budget_bps}bps — "
+                    f"re-halting (no further release this day)"
+                )
+
         return result
 
     def is_halted(self) -> bool:
@@ -228,10 +252,12 @@ class DailyDrawdownGuard:
         if not self._state.halted:
             return False
         # 246# cooldown release 判定
+        # 249# re-arm 済みの場合は二度目の release を許可しない
         if (
             self._cooldown_release_sec > 0
             and self._state.halt_triggered_at is not None
             and not self._state.cooldown_released
+            and not self._state.cooldown_rearmed  # 249# re-arm 後は永続 halt
         ):
             elapsed = time.time() - self._state.halt_triggered_at
             if elapsed >= self._cooldown_release_sec:
@@ -354,6 +380,9 @@ class DailyDrawdownGuard:
             # 246# cooldown release
             "cooldown_released": self._state.cooldown_released,
             "cooldown_release_lot_scale": self._cooldown_release_lot_scale,
+            # 249# cooldown re-arm
+            "cooldown_rearmed": self._state.cooldown_rearmed,
+            "cooldown_rearm_pnl_bps": round(self._state.cooldown_rearm_pnl_bps, 4),
         }
 
     def export_state(self) -> dict[str, object]:
@@ -379,6 +408,9 @@ class DailyDrawdownGuard:
             "side_recovery_remaining_sell": self._state.side_recovery_remaining_sell,
             # 246# cooldown release
             "cooldown_released": self._state.cooldown_released,
+            # 249# cooldown re-arm
+            "cooldown_rearmed": self._state.cooldown_rearmed,
+            "cooldown_rearm_pnl_bps": self._state.cooldown_rearm_pnl_bps,
         }
 
     def import_state(self, data: dict[str, object]) -> None:
@@ -413,6 +445,9 @@ class DailyDrawdownGuard:
         self._state.side_recovery_remaining_sell = int(data.get("side_recovery_remaining_sell", 0))
         # 246# cooldown release 状態復元
         self._state.cooldown_released = bool(data.get("cooldown_released", False))
+        # 249# cooldown re-arm 状態復元
+        self._state.cooldown_rearmed = bool(data.get("cooldown_rearmed", False))
+        self._state.cooldown_rearm_pnl_bps = float(data.get("cooldown_rearm_pnl_bps", 0.0))
         logger.info(
             f"[daily_drawdown] State restored: day={saved_day}, "
             f"pnl={self._state.daily_pnl_bps:+.2f}bps, halted={self._state.halted}, "

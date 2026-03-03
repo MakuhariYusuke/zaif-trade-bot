@@ -920,9 +920,21 @@ class MakerPriceCalculator:
         # buy 偏重(imbalance>0) -> buy offset拡大(抑制), sell offset縮小(促進)
         # sell 偏重(imbalance<0) -> sell offset拡大(抑制), buy offset縮小(促進)
         _decayed_imb = self._decayed_imbalance(now)
+        # 249# Regime-aware inventory skewing: trending 時は inv_skew を無効化
+        # — トレンド方向のポジション蓄積を在庫中立ロジックが阻害しないため
+        _inv_skew_regime_blocked = False
+        if cfg.inv_skew_regime_gate_enabled and self._regime_detector is not None:
+            _r = self._regime_detector.current_regime
+            if _r.is_trending:
+                _inv_skew_regime_blocked = True
+                logger.debug(
+                    f"[249# inv_skew_gate] regime={_r.value} — "
+                    f"inv_skew DISABLED (directional alpha preservation)"
+                )
         if (
             cfg.inventory_skewing_enabled
             and abs(_decayed_imb) > cfg.inventory_skewing_neutral_band
+            and not _inv_skew_regime_blocked  # 249# regime gate
         ):
             _imb = _decayed_imb
             _sign = 1.0 if side == "buy" else -1.0
