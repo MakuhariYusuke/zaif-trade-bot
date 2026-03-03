@@ -30,6 +30,27 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+# ------------------------------------------------------------------
+# 265# adapter: object → Protocol 型安全化
+# ------------------------------------------------------------------
+class SkipGateAdapter(Protocol):
+    """SkipGateEvaluator.evaluate() が必要とする adapter メソッド群.
+
+    ExchangeAdapter (order_monitor.py) とは責務が異なる:
+      - ExchangeAdapter: 注文管理 (place/cancel/status/OB)
+      - SkipGateAdapter: ML 特徴量取得 (trades/OB)
+    BaseBroker がどちらも実装するため、実運用上は同一オブジェクト。
+    """
+
+    async def get_recent_trades(
+        self, symbol: str, limit: int = 100,
+    ) -> object: ...
+
+    async def get_orderbook(
+        self, symbol: str, depth: int = 1,
+    ) -> object: ...
+
+
 class _SkipGateConfigLike(Protocol):
     mode: str
     as_threshold: float
@@ -897,7 +918,7 @@ class SkipGateEvaluator:
         order_price: float,
         spread_at_order: float | None,
         effective_offset_ratio: float,
-        adapter: object,
+        adapter: SkipGateAdapter,
         symbol: str,
         current_lot: float,
         run_id: str,
@@ -988,16 +1009,15 @@ class SkipGateEvaluator:
             # 直近約定データ取得
             recent_trades_data: list[dict[str, object]] | None = None
             try:
-                get_recent_trades = getattr(adapter, "get_recent_trades", None)
-                if callable(get_recent_trades):
-                    trades = await get_recent_trades(
-                        symbol,
-                        limit=self._config.skip_gate_recent_trades_limit,
-                    )
-                    recent_trades_data = self._normalize_recent_trades(
-                        trades,
-                        fallback_timestamp=market_ts,
-                    )
+                # 265# Protocol 型安全化: getattr → 直接呼び出し
+                trades = await adapter.get_recent_trades(
+                    symbol,
+                    limit=self._config.skip_gate_recent_trades_limit,
+                )
+                recent_trades_data = self._normalize_recent_trades(
+                    trades,
+                    fallback_timestamp=market_ts,
+                )
             except Exception as exc:
                 logger.debug("Trades formatting failed: %s", exc)
 
@@ -1012,21 +1032,20 @@ class SkipGateEvaluator:
                 self._ob_fetch_total_count += 1
                 try:
                     from scripts.v460.lib.ob_utils import extract_price, depth_volume
-                    get_orderbook = getattr(adapter, "get_orderbook", None)
-                    if callable(get_orderbook):
-                        ob = await get_orderbook(
-                            symbol,
-                            depth=self._config.skip_gate_ob_depth,
-                        )
-                        if ob and getattr(ob, "bids", None) and getattr(ob, "asks", None):
-                            # 256# 冗長 getattr 排除: L上で存在確認済み → 直接参照
-                            bids = ob.bids  # type: ignore[attr-defined]
-                            asks = ob.asks  # type: ignore[attr-defined]
-                            # 145# §9-#3: tuple/object 両対応 (ob_utils 使用)
-                            ob_bid = extract_price(bids[0])
-                            ob_ask = extract_price(asks[0])
-                            ob_bid_vol = depth_volume(bids, self._config.skip_gate_ob_depth)
-                            ob_ask_vol = depth_volume(asks, self._config.skip_gate_ob_depth)
+                    # 265# Protocol 型安全化: getattr → 直接呼び出し
+                    ob = await adapter.get_orderbook(
+                        symbol,
+                        depth=self._config.skip_gate_ob_depth,
+                    )
+                    if ob and getattr(ob, "bids", None) and getattr(ob, "asks", None):
+                        # 256# 冗長 getattr 排除: L上で存在確認済み → 直接参照
+                        bids = ob.bids  # type: ignore[attr-defined]
+                        asks = ob.asks  # type: ignore[attr-defined]
+                        # 145# §9-#3: tuple/object 両対応 (ob_utils 使用)
+                        ob_bid = extract_price(bids[0])
+                        ob_ask = extract_price(asks[0])
+                        ob_bid_vol = depth_volume(bids, self._config.skip_gate_ob_depth)
+                        ob_ask_vol = depth_volume(asks, self._config.skip_gate_ob_depth)
                 except Exception as e:
                     self._ob_fetch_fail_count += 1
                     # 156# D-1: 初回 + 10回毎に warning、それ以外は debug

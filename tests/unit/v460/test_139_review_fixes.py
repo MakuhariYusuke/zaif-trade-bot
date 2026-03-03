@@ -482,8 +482,9 @@ class TestRunContinuousBranchExecution:
         import scripts.v460.run_fill_test as rft
         source = inspect.getsource(rft.FillTestRunner.run_continuous)
         # 145# §9-#5: CR.PREFLIGHT_PAUSE 定数 + _make_skip_record に移行済み
+        # 265# extract: batch → st.batch に変更
         assert "CR.PREFLIGHT_PAUSE" in source
-        assert 'maybe_flush(batch, "preflight_pause")' in source
+        assert 'maybe_flush(st.batch, "preflight_pause")' in source
 
     def test_time_filter_both_sides_generates_record(self) -> None:
         """140# §8.1-#2: 両 side time_filter で FillRecord が生成される."""

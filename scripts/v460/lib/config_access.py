@@ -1,6 +1,14 @@
 """Small typed helpers for v460 config access.
 
 Centralizes repetitive config extraction/casting used across v460 tasks.
+
+Why ``value: object``?
+    YAML の ``cfg.get(key)`` は ``str | int | float | bool | list | dict | None``
+    のいずれかを返す。これらの *最も狭い共通基底型* は ``object`` であり、
+    ``Any`` を使わずに型安全を維持するために意図的に ``object`` を採用している。
+    各 ``as_*`` 関数内で ``isinstance`` ガードを行い、安全にキャストする。
+
+    259# P3-3: この設計意図の明文化。
 """
 
 from __future__ import annotations

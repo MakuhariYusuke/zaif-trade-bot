@@ -255,9 +255,13 @@ class TestFastFillDefenseSideLogic:
         assert defense._resolve_boost("sell") == 2.5
 
     def test_run_continuous_delegates_to_fast_fill_defense(self) -> None:
-        """run_continuous が FastFillDefense に委譲している."""
+        """run_continuous が FastFillDefense に委譲している.
+
+        265# extract: post-cycle 処理は _process_post_cycle に分離されたため、
+        そちらのソースコードを検査する。
+        """
         from scripts.v460.run_fill_test import FillTestRunner
-        source = inspect.getsource(FillTestRunner.run_continuous)
+        source = inspect.getsource(FillTestRunner._process_post_cycle)
         assert "fast_fill_defense" in source
         assert "evaluate_fill" in source
 

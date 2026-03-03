@@ -2472,11 +2472,14 @@ class Test049FastFillDefense:
         assert "_fast_fill_defense" in source
 
     def test_fast_fill_defense_logic_in_run_continuous(self) -> None:
-        """run_continuous に即約定防御ロジックが含まれる (FastFillDefense 委譲)."""
+        """run_continuous が FastFillDefense に委譲している.
+
+        265# extract: post-cycle 処理は _process_post_cycle に分離。
+        """
         import inspect
         from scripts.v460.run_fill_test import FillTestRunner
 
-        source = inspect.getsource(FillTestRunner.run_continuous)
+        source = inspect.getsource(FillTestRunner._process_post_cycle)
         assert "fast_fill_defense" in source
         assert "evaluate_fill" in source
 
@@ -2533,11 +2536,14 @@ class Test050FastFillDefenseRestore:
         assert "_maker_price" in source
 
     def test_offset_restore_logic_in_run_continuous(self) -> None:
-        """run_continuous に boost 解除ロジックが含まれる (FastFillDefense)."""
+        """run_continuous が boost 解除ロジックを含む.
+
+        265# extract: post-cycle 処理は _process_post_cycle に分離。
+        """
         import inspect
         from scripts.v460.run_fill_test import FillTestRunner
 
-        source = inspect.getsource(FillTestRunner.run_continuous)
+        source = inspect.getsource(FillTestRunner._process_post_cycle)
         # 100# FastFillDefense の evaluate_fill / reset_on_unfilled で管理
         assert "fast_fill_defense" in source
         assert "reset_on_unfilled" in source
@@ -2812,14 +2818,19 @@ class Test051BalanceAutoShrink:
         assert "_balance_checker" in runner_src
 
     def test_balance_shrink_logic_in_run_continuous(self) -> None:
-        """run_continuous に balance_shrink ロジックが含まれる."""
+        """run_continuous に balance_shrink ロジックが含まれる.
+
+        265# extract: loss_cap 処理は _process_post_cycle に分離。
+        """
         import inspect
         from scripts.v460.run_fill_test import FillTestRunner
 
-        source = inspect.getsource(FillTestRunner.run_continuous)
-        assert "balance_shrink" in source
-        # 121# pre_shrink_lot は _balance_checker 経由
-        assert "pre_shrink_lot" in source
+        # balance_shrink は run_continuous 内 (guard chain)
+        rc_source = inspect.getsource(FillTestRunner.run_continuous)
+        assert "balance_shrink" in rc_source
+        # 121# pre_shrink_lot は _process_post_cycle 内 (_balance_checker 経由)
+        post_source = inspect.getsource(FillTestRunner._process_post_cycle)
+        assert "pre_shrink_lot" in post_source
 
     def test_shrink_threshold_is_3(self) -> None:
         """連続 3 回で shrink 発動 (設定外部化済み)."""

@@ -629,11 +629,12 @@ class TestFillRecordBuilderIntegration:
         assert "_compute_fill_spread_bps(" in market_source
 
     def test_resume_and_reload_use_iter_glob(self) -> None:
+        # 265# extract: iter_fill_records_glob は _finalize_run に分離
         from tests.unit.v460._fill_test_source import read_fill_test_method_source
         resume_source = read_fill_test_method_source("resume_from_existing")
-        run_source = read_fill_test_method_source("run_continuous")
+        finalize_source = read_fill_test_method_source("_finalize_run")
         assert "iter_fill_records_glob(" in resume_source
-        assert "iter_fill_records_glob(" in run_source
+        assert "iter_fill_records_glob(" in finalize_source
 
 
 class TestCheckBalanceAcceptsRegimeMult:

@@ -17,6 +17,7 @@ import logging
 import random
 import time
 from collections import deque
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
@@ -32,6 +33,27 @@ if TYPE_CHECKING:
     from ztb.risk.sell_dynamic_kill import DynamicKillManager, ToxicityAssessment
 
 logger = logging.getLogger(__name__)
+
+
+# ------------------------------------------------------------------
+# 265# RunSessionState: run_continuous ローカル変数のカプセル化
+# ------------------------------------------------------------------
+@dataclass
+class RunSessionState:
+    """run_continuous 内のループ間共有状態.
+
+    265# extract: run_continuous の >20 ローカル変数を構造化し、
+    extract method 間での受渡しを型安全に行う。
+    """
+
+    total_count: int = 0
+    filled_count: int = 0
+    cumulative_pnl_jpy: float = 0.0
+    cumulative_btc_delta: float = 0.0
+    cumulative_adverse_count: int = 0
+    cumulative_adverse_bps: float = 0.0
+    batch: list[FillRecord] = field(default_factory=list)
+    batch_size: int = 10
 
 
 class FillLoopOrchestratorMixin:
@@ -632,33 +654,30 @@ class FillLoopOrchestratorMixin:
             logger.warning(f"[startup] Stale order check failed (non-fatal): {e}")
         return cancelled_count
 
-    async def run_continuous(self, hours: float) -> list[FillRecord]:
-        """指定時間、連続してサイクルを実行.
+    # ------------------------------------------------------------------
+    # 265# extract: run_continuous 初期化 → _init_run_session
+    # ------------------------------------------------------------------
+    async def _init_run_session(self) -> RunSessionState:
+        """run_continuous の初期化フェーズ.
 
-        009# §4.4: 7 日間 (168h) の実測想定.
-        中断→再開時は既存 fill_records を自動復元 (レジューム対応).
+        265# extract method: lock 取得, trades health check, レジューム復元,
+        state/regime/DD warmup, PnL 累積計算。
+        ~200 行の初期化ロジックを run_continuous から分離。
 
-        024# R1-R4: 保存失敗耐性・例外分離・メモリ制御を強化.
-        032# P0: 方策 A パラメータ適応統合.
-        033# 方策 B: 動的ロットサイジング統合.
-        033# F4: 累積 PnL 安全キャップ (000# §3.9).
+        Returns:
+            RunSessionState: ループ間共有状態 (total/filled count, PnL 累積等).
         """
         from scripts.v460.lib.event_logger import log_event as _log_event
         from ztb.data.trades_health import check_trades_health
         from ztb.metrics.fill_quality import (
             compute_record_pnl_jpy,
             filter_clean_records,
-            iter_fill_records_glob,
         )
-        from scripts.v460.lib.resilience import FillTestState
-
-        end_time = time.time() + hours * 3600
 
         # 044# 単一起動ロック取得
         self._acquire_lock()
 
         # 135# P2-09→P1: trades データ健全性チェック
-        # 160# fix: max_missing_days=1 で retrain_scheduler と同じ許容レベルに統一
         try:
             th = check_trades_health(
                 lookback_days=3,
@@ -672,8 +691,6 @@ class FillLoopOrchestratorMixin:
                         "[trades_health] retrain 品質が低下する可能性あり。"
                         "fill_test 内蔵 TradesRecorder の動作状態を確認してください"
                     )
-                # 148# P1: trades stale 自動イベント記録
-                # 159# §2.1 fix: latest_ts/age_hours → available_days[-1]/stale_hours
                 _log_event(
                     "trades_health_alert",
                     self._results_dir,
@@ -692,24 +709,22 @@ class FillLoopOrchestratorMixin:
         except Exception as e:
             logger.warning(f"[trades_health] check failed: {e}")
 
-        # 041# 動的 loss_cap: API 残高から算出
+        # 041# 動的 loss_cap
         if self.config.loss_cap_auto:
             await self._update_dynamic_loss_cap()
 
-        # 101# §4: soft_cap スナップショット — 起動時の残高ベースで固定
-        # 動的 loss_cap_jpy が変動しても soft_cap は連動しない
+        # 101# §4: soft_cap スナップショット
         self._soft_cap_jpy_snapshot = (
             self.config.loss_cap_jpy
             * self.config.soft_loss_cap_ratio
             / self.config.loss_cap_ratio
         )
 
-        # 042# 起動時の滞留注文クリア (前回プロセスの残注文防止)
+        # 042# 起動時の滞留注文クリア
         await self._cancel_stale_orders()
 
-        # レジューム: 既存レコードから状態復元
+        # レジューム
         existing_records = self.resume_from_existing()
-        # 046# clean/quarantine 分離: ゾンビプロセス由来レコードを除外して集計
         clean_records, quarantine_records = filter_clean_records(existing_records)
         if quarantine_records:
             logger.warning(
@@ -717,7 +732,7 @@ class FillLoopOrchestratorMixin:
                 f"PnL computation (blank git_sha)"
             )
 
-        # 088# schema health check: run_id / git_sha の自己検証
+        # 088# schema health check
         if not self._run_id or not self._run_id.strip():
             logger.error("[schema_health] CRITICAL: run_id is empty — data quality at risk")
         if not self._git_sha or not self._git_sha.strip():
@@ -727,53 +742,43 @@ class FillLoopOrchestratorMixin:
                 f"[schema_health] OK: run_id={self._run_id}, git_sha={self._git_sha}, "
                 f"clean={len(clean_records)}, quarantine={len(quarantine_records)}"
             )
-        # 024# O4: メモリ制御 — 全レコード保持ではなくカウンタのみ
-        total_count = len(existing_records)  # 全件カウント (quarantine 含む)
-        filled_count = sum(1 for r in existing_records if r.filled)
 
-        # 033# F4: レジューム時の累積 PnL 計算 (クリーンレコードのみ)
-        cumulative_pnl_jpy = 0.0
-        # 249# Total Equity MTM: BTC 増減を追跡 (buy=+, sell=-)
-        cumulative_btc_delta = 0.0
-        # 250# P/L 3分離: adverse selection 累積カウント・bps 追跡
-        cumulative_adverse_count = 0
-        cumulative_adverse_bps = 0.0
+        st = RunSessionState()
+        st.total_count = len(existing_records)
+        st.filled_count = sum(1 for r in existing_records if r.filled)
+        st.batch_size = self.config.batch_size
+
+        # 033# F4: レジューム時の累積 PnL 計算
         for r in clean_records:
             pnl_jpy = compute_record_pnl_jpy(r)
             if pnl_jpy is not None:
-                cumulative_pnl_jpy += pnl_jpy
-            # 249# resume 時にも btc delta 復元
+                st.cumulative_pnl_jpy += pnl_jpy
             if r.filled and r.order_quantity is not None:
                 _qty = float(r.order_quantity)
                 if r.side == "buy":
-                    cumulative_btc_delta += _qty
+                    st.cumulative_btc_delta += _qty
                 elif r.side == "sell":
-                    cumulative_btc_delta -= _qty
-            # 250# resume 時の adverse selection 復元
+                    st.cumulative_btc_delta -= _qty
             if r.filled and r.adverse_selected is True:
-                cumulative_adverse_count += 1
+                st.cumulative_adverse_count += 1
                 if r.post_fill_30s_pnl is not None:
-                    cumulative_adverse_bps += r.post_fill_30s_pnl
+                    st.cumulative_adverse_bps += r.post_fill_30s_pnl
 
-        # 101# §2: soft_loss_cap_triggered をレジューム復元
-        # 前回 run 中に soft cap 発動していた場合、再起動で False に戻ると
-        # 二重ロット半減が発生する。cumulative_pnl_jpy から論理的に判定。
+        # 101# §2: soft_loss_cap_triggered レジューム復元
         if existing_records and self.config.loss_cap_auto:
             soft_cap_jpy = (
                 self.config.loss_cap_jpy
                 * self.config.soft_loss_cap_ratio
                 / self.config.loss_cap_ratio
             )
-            if cumulative_pnl_jpy <= -soft_cap_jpy:
+            if st.cumulative_pnl_jpy <= -soft_cap_jpy:
                 self._soft_loss_cap_triggered = True
                 logger.info(
                     f"[resume] soft_loss_cap already triggered: "
-                    f"cumPnL={cumulative_pnl_jpy:.0f} JPY <= -{soft_cap_jpy:.0f} JPY"
+                    f"cumPnL={st.cumulative_pnl_jpy:.0f} JPY <= -{soft_cap_jpy:.0f} JPY"
                 )
-        # 101# P1-5: regime detector warm-up — 既存レコードの mid price で初期化
-        # window=20 に対して再起動後 20 サイクルは判定不安定になるため、
-        # レジューム時の既存レコード (直近 window*3 件) で事前投入する。
-        # 121# A4: StatePersistence から regime state を優先復元 (warm-up より正確)
+
+        # 101# P1-5: regime detector warm-up
         regime_restored = False
         if self._regime_detector is not None:
             saved_state = self._state_persistence.load()
@@ -786,13 +791,10 @@ class FillLoopOrchestratorMixin:
                 })
             self._restore_common_state(saved_state)
         else:
-            # regime_detector がない場合でも共通 state は復元
             saved_state = self._state_persistence.load()
             self._restore_common_state(saved_state)
 
-        # 203# F: DD warmup — state 復元失敗時 (stale/missing) は fill records から再計算
-        # state file が壊れている or 保存されていない場合のセーフティネット
-        # 215# P0-A: needs_warmup_repair() で per-side/soft 整合性も検出
+        # 203# F: DD warmup
         if (
             self._daily_drawdown_guard.enabled
             and existing_records
@@ -803,21 +805,19 @@ class FillLoopOrchestratorMixin:
         ):
             self._warmup_daily_drawdown_from_records(existing_records)
 
-        # 209# H4: Kill manager warmup — state 復元で PnL 履歴が空なら records から再計算
+        # 209# H4: Kill manager warmup
         if existing_records and len(self._sell_kill_mgr._pnl_history) == 0:
             self._warmup_kill_managers_from_records(existing_records)
 
         if self._regime_detector is not None and existing_records and not regime_restored:
-            # fallback: 旧方式の warm-up (state 復元失敗時)
             filled_with_mid = [
                 r for r in existing_records
                 if r.filled and r.mid_at_fill is not None
             ]
-            # window*multiplier (バッファ上限に合わせる) の直近分だけ投入
             warmup_window = self._regime_detector.config.window * self.config.regime_warmup_multiplier
             warmup_records = filled_with_mid[-warmup_window:]
             for r in warmup_records:
-                assert r.mid_at_fill is not None  # filtered above
+                assert r.mid_at_fill is not None
                 self._regime_detector.update(r.timestamp, r.mid_at_fill)
             if warmup_records:
                 logger.info(
@@ -827,8 +827,360 @@ class FillLoopOrchestratorMixin:
 
         del existing_records, clean_records, quarantine_records  # メモリ解放
 
-        batch: list[FillRecord] = self._batch_persistence.take_unsaved()  # 前回未保存分を引き継ぐ
-        batch_size = self.config.batch_size  # 032# #18: 設定化
+        st.batch = self._batch_persistence.take_unsaved()
+        return st
+
+    # ------------------------------------------------------------------
+    # 265# extract: post-cycle 処理 → _process_post_cycle
+    # ------------------------------------------------------------------
+    def _process_post_cycle(
+        self,
+        record: FillRecord,
+        next_side: str,
+        st: RunSessionState,
+    ) -> None:
+        """run_continuous の 約定後処理.
+
+        265# extract method: PnL 追跡, loss cooldown, toxic veto, DD update,
+        soft/hard loss_cap, FastFillDefense, batch persistence。
+        ~240 行の post-cycle ロジックを run_continuous から分離。
+
+        Args:
+            record: run_single_cycle の結果.
+            next_side: このサイクルの side.
+            st: ループ間共有状態.
+        """
+        from ztb.metrics.fill_quality import compute_record_pnl_jpy
+
+        st.total_count += 1
+        if record.filled:
+            st.filled_count += 1
+            self._track_sell_pnl(record)
+            self._track_buy_pnl(record)
+            # 202# A: 単一サイクル大損失クールダウン
+            if (
+                record.post_fill_30s_pnl is not None
+                and record.post_fill_30s_pnl <= self.config.loss_cooldown_threshold_bps
+            ):
+                self._loss_cooldown_mult = self.config.loss_cooldown_interval_mult
+                _lb = self.config.loss_boost_offset_mult
+                if _lb > 1.0:
+                    self._maker_price.set_loss_boost(_lb)
+                logger.warning(
+                    f"[202# A] Large cycle loss {record.post_fill_30s_pnl:.2f}bps "
+                    f"<= {self.config.loss_cooldown_threshold_bps:.1f}bps — "
+                    f"next interval ×{self._loss_cooldown_mult:.1f}"
+                    f", offset ×{_lb:.1f}"
+                )
+            else:
+                self._loss_cooldown_mult = 1.0
+            # 205# §9.2: Toxic Fill veto
+            if (
+                self.config.toxic_fill_veto_cycles > 0
+                and record.post_fill_30s_pnl is not None
+                and record.post_fill_30s_pnl <= self.config.toxic_fill_veto_threshold_bps
+            ):
+                if self._toxic_veto is None:
+                    self._toxic_veto = {}
+                self._toxic_veto[next_side] = self.config.toxic_fill_veto_cycles
+                self._inc_guard_fire("toxic_veto_set")
+                logger.warning(
+                    f"[205# §9.2] Toxic fill veto: {next_side} blocked for "
+                    f"{self.config.toxic_fill_veto_cycles} cycles "
+                    f"(pnl={record.post_fill_30s_pnl:.2f}bps "
+                    f"<= {self.config.toxic_fill_veto_threshold_bps:.1f}bps)"
+                )
+            # 033# F4: 累積 PnL
+            pnl_jpy = compute_record_pnl_jpy(record)
+            if pnl_jpy is not None:
+                st.cumulative_pnl_jpy += pnl_jpy
+            # 249# BTC delta
+            if record.order_quantity is not None:
+                _fill_qty = float(record.order_quantity)
+                if next_side == "buy":
+                    st.cumulative_btc_delta += _fill_qty
+                else:
+                    st.cumulative_btc_delta -= _fill_qty
+            # 250# adverse selection
+            if record.adverse_selected is True:
+                st.cumulative_adverse_count += 1
+                if record.post_fill_30s_pnl is not None:
+                    st.cumulative_adverse_bps += record.post_fill_30s_pnl
+            # 168# §4.1: daily drawdown PnL update
+            if record.post_fill_30s_pnl is not None:
+                dd_result = self._daily_drawdown_guard.update_pnl(
+                    record.post_fill_30s_pnl,
+                    side=next_side,
+                )
+                if dd_result.get("soft_triggered"):
+                    old_lot = self._current_lot
+                    new_lot = self._current_lot / 2
+                    if new_lot >= self.config.order_quantity:
+                        self._current_lot = new_lot
+                        self._balance_checker.pre_shrink_lot = self._current_lot
+                        logger.warning(
+                            f"[daily_drawdown] soft lot reduction: "
+                            f"{old_lot:.4f} → {self._current_lot:.4f} BTC"
+                        )
+                    else:
+                        self._soft_drawdown_interval_multiplier = self.config.soft_drawdown_interval_multiplier
+                        logger.warning(
+                            f"[daily_drawdown] min lot reached ({old_lot:.4f} BTC), "
+                            f"applying 3x interval multiplier instead of lot reduction"
+                        )
+        st.batch.append(record)
+        self._recent_records.append(record)
+
+        # soft/hard loss_cap
+        if self.config.loss_cap_auto and not self._soft_loss_cap_triggered:
+            if self._soft_cap_jpy_snapshot is not None:
+                soft_cap_jpy = self._soft_cap_jpy_snapshot
+            else:
+                soft_cap_jpy = (
+                    self.config.loss_cap_jpy
+                    * self.config.soft_loss_cap_ratio
+                    / self.config.loss_cap_ratio
+                )
+            if st.cumulative_pnl_jpy <= -soft_cap_jpy:
+                old_lot = self._current_lot
+                self._current_lot = max(
+                    self.config.order_quantity,
+                    self._current_lot / self.config.soft_loss_cap_lot_divisor,
+                )
+                self._soft_loss_cap_triggered = True
+                self._balance_checker.pre_shrink_lot = self._current_lot
+                logger.warning(
+                    f"[loss_cap] SOFT CAP: cumPnL={st.cumulative_pnl_jpy:.0f} JPY "
+                    f"<= -{soft_cap_jpy:.0f} JPY "
+                    f"({self.config.soft_loss_cap_ratio:.0%}). "
+                    f"ロット半減: {old_lot:.4f} → {self._current_lot:.4f} BTC"
+                )
+
+        if st.cumulative_pnl_jpy <= -self.config.loss_cap_jpy:
+            logger.error(
+                f"LOSS CAP REACHED (HARD): cumulative PnL = {st.cumulative_pnl_jpy:.0f} JPY "
+                f"(cap = -{self.config.loss_cap_jpy:.0f} JPY). Stopping fill test."
+            )
+            self._kill_switch.kill("hard_loss_cap")
+
+        # FastFillDefense
+        if record.filled:
+            self._fast_fill_defense.evaluate_fill(
+                side=record.side,
+                queue_wait_sec=record.queue_wait_sec,
+                fill_price=record.fill_price,
+                mid_at_fill=record.mid_at_fill,
+                post_fill_pnl_bps=record.post_fill_30s_pnl,
+            )
+        elif not record.filled:
+            self._fast_fill_defense.reset_on_unfilled(record.side)
+
+        # batch persistence
+        if len(st.batch) >= st.batch_size:
+            if self._batch_persistence.try_save_batch(st.batch):
+                st.batch = []
+                self._batch_persistence.reset_flush_timer()
+                self._adaptation_engine.invalidate_cache()
+        else:
+            st.batch = self._batch_persistence.maybe_flush(st.batch, "run_loop")
+
+    # ------------------------------------------------------------------
+    # 265# extract: progress log + state save + adaptation → _finalize_cycle
+    # ------------------------------------------------------------------
+    async def _log_progress_and_adapt(
+        self,
+        next_side: str,
+        st: RunSessionState,
+    ) -> None:
+        """run_continuous の per-cycle 後半: 進捗ログ、state save、adaptation.
+
+        265# extract method: progress log, health monitor, state persistence,
+        dynamic loss_cap refresh, parameter/lot adaptation, stop conditions。
+
+        Args:
+            next_side: このサイクルの side.
+            st: ループ間共有状態.
+        """
+        # 進捗ログ
+        if self._cycle_count % self.config.progress_log_interval == 0:
+            regime_tag = (
+                self._regime_detector.current_regime.value
+                if self._regime_detector else "n/a"
+            )
+            _fill_rate_pct = (
+                st.filled_count / st.total_count * 100.0
+                if st.total_count > 0 else 0.0
+            )
+            logger.info(
+                f"Progress: {self._cycle_count} cycles, "
+                f"fill rate={st.filled_count}/{st.total_count} "
+                f"({_fill_rate_pct:.1f}%), "
+                f"cumPnL={st.cumulative_pnl_jpy:.1f}JPY, "
+                f"btcDelta={st.cumulative_btc_delta:+.4f}BTC, "
+                f"lot={self._current_lot:.4f}BTC, "
+                f"regime={regime_tag}, "
+                f"unsaved_batch={len(st.batch)}"
+            )
+            # 249# Total Equity MTM
+            _mtm_mid = self._maker_price.last_mid_price if self._maker_price else None
+            if _mtm_mid and _mtm_mid > 0:
+                _equity_btc_val = st.cumulative_btc_delta * _mtm_mid
+                _total_equity_delta = st.cumulative_pnl_jpy + _equity_btc_val
+                logger.info(
+                    f"[249# MTM] totalEquityΔ={_total_equity_delta:+.1f}JPY "
+                    f"(spreadPnL={st.cumulative_pnl_jpy:+.1f} + "
+                    f"btcMTM={_equity_btc_val:+.1f} "
+                    f"@mid={_mtm_mid:.0f})"
+                )
+            # 250# P/L 3分離
+            if st.cumulative_adverse_count > 0:
+                _as_rate = (
+                    st.cumulative_adverse_count / st.filled_count * 100.0
+                    if st.filled_count > 0 else 0.0
+                )
+                logger.info(
+                    f"[250# AS] adverseFills={st.cumulative_adverse_count} "
+                    f"({_as_rate:.1f}%), "
+                    f"cumASbps={st.cumulative_adverse_bps:+.1f}bps"
+                )
+            # 244# Guard reason category summary
+            if self._guard_fire_counts:
+                from scripts.v460.lib.guard_reason_classifier import (
+                    guard_category_totals,
+                )
+                _cat_totals = guard_category_totals(self._guard_fire_counts)
+                logger.info(
+                    f"Guard category: "
+                    f"market={_cat_totals['market']}, "
+                    f"system={_cat_totals['system']}, "
+                    f"recovery={_cat_totals['recovery']}"
+                )
+
+        # 113# resilience: HealthMonitor + GC
+        health_status = self._health_monitor.maybe_check(self._cycle_count)
+        if health_status and health_status.get("level") == "critical":
+            logger.error(
+                f"[resilience] Health CRITICAL at cycle {self._cycle_count}: "
+                f"{health_status}"
+            )
+        self._health_monitor.maybe_gc()
+
+        # 113# resilience: 状態永続化
+        _now_mono_save = time.monotonic()
+        _progress_save = (
+            self._cycle_count % self.config.progress_log_interval == 0
+        )
+        _time_save = (
+            _now_mono_save - self._last_state_save_time
+            >= self._STATE_SAVE_INTERVAL_SEC
+        )
+        if _progress_save or _time_save:
+            self._update_lock_heartbeat()
+            self._state_persistence.save(self._build_state_snapshot(
+                total_count=st.total_count,
+                filled_count=st.filled_count,
+                cumulative_pnl_jpy=st.cumulative_pnl_jpy,
+            ))
+            self._last_state_save_time = _now_mono_save
+            if _time_save and not _progress_save:
+                logger.info(
+                    f"[225# F2] Normal-cycle time-based state save "
+                    f"(cycle={self._cycle_count})"
+                )
+
+        # 044# A-7: loss_cap 定期更新
+        if (
+            self.config.loss_cap_auto
+            and self._cycle_count % self._loss_cap_update_interval == 0
+            and self._cycle_count > 0
+        ):
+            await self._update_dynamic_loss_cap()
+
+        # 032# P0: 方策 A 適応
+        if (
+            self.config.enable_auto_adapt
+            and self._cycle_count % self.config.adapt_interval_cycles == 0
+            and st.total_count >= self.config.min_adapt_samples
+        ):
+            self._try_auto_adapt(st.total_count, st.filled_count)
+
+        # 033# 方策 B: 動的ロットサイジング
+        if (
+            self.config.enable_dynamic_lot
+            and self._cycle_count % self.config.lot_adapt_interval_cycles == 0
+            and st.total_count >= self.config.min_adapt_samples
+        ):
+            self._try_auto_lot_size()
+
+        # 181# 停止条件モニター
+        if (
+            self._cycle_strategy is not None
+            and self._cycle_count > 0
+            and self._cycle_count % 30 == 0
+        ):
+            self._check_regime_stop_conditions(st.filled_count, st.total_count)
+
+    # ------------------------------------------------------------------
+    # 265# extract: final cleanup → _finalize_run
+    # ------------------------------------------------------------------
+    async def _finalize_run(
+        self,
+        st: RunSessionState,
+        heartbeat_task: asyncio.Task[None],
+    ) -> list[FillRecord]:
+        """run_continuous の最終クリーンアップ.
+
+        265# extract method: 残バッチ保存, 最終 state 保存, heartbeat 停止。
+
+        Returns:
+            全レコード (リロード済み).
+        """
+        from ztb.metrics.fill_quality import iter_fill_records_glob
+
+        # 残りバッチを保存
+        if st.batch:
+            if not self._batch_persistence.try_save_batch(st.batch):
+                self._batch_persistence.emergency_dump(st.batch, "final")
+
+        # 最終状態保存
+        self._state_persistence.save(self._build_state_snapshot(
+            total_count=st.total_count,
+            filled_count=st.filled_count,
+            cumulative_pnl_jpy=st.cumulative_pnl_jpy,
+        ))
+        self._last_state_save_time = time.monotonic()
+
+        # heartbeat 停止
+        heartbeat_task.cancel()
+        self._heartbeat_task = None
+        try:
+            await heartbeat_task
+        except asyncio.CancelledError:
+            pass
+
+        logger.info(
+            f"Fill test completed: {st.total_count} cycles, "
+            f"{st.filled_count} filled"
+        )
+        return list(iter_fill_records_glob(str(self._results_dir)))
+
+    async def run_continuous(self, hours: float) -> list[FillRecord]:
+        """指定時間、連続してサイクルを実行.
+
+        009# §4.4: 7 日間 (168h) の実測想定.
+        中断→再開時は既存 fill_records を自動復元 (レジューム対応).
+
+        024# R1-R4: 保存失敗耐性・例外分離・メモリ制御を強化.
+        032# P0: 方策 A パラメータ適応統合.
+        033# 方策 B: 動的ロットサイジング統合.
+        033# F4: 累積 PnL 安全キャップ (000# §3.9).
+        265# extract: _init_run_session / _process_post_cycle /
+              _log_progress_and_adapt / _finalize_run に分割。
+        """
+        end_time = time.time() + hours * 3600
+
+        # 265# extract: 初期化ロジック (~200行) を分離
+        st = await self._init_run_session()
 
         # 148# P0: heartbeat 更新タスク — stale 誤判定防止
         async def _heartbeat_loop() -> None:
@@ -909,21 +1261,21 @@ class FillLoopOrchestratorMixin:
                     or self._halt_iter_count % _HALT_PERSIST_INTERVAL == 0
                 )
                 if _should_record_halt:
-                    batch.append(self._make_loop_skip_record(
+                    st.batch.append(self._make_loop_skip_record(
                         side="none",
                         cancel_reason=CR.DAILY_DRAWDOWN_HALT,
                         order_quantity=0.0,
                     ))
-                    total_count += 1
-                    batch = self._batch_persistence.maybe_flush(batch, "daily_drawdown_halt")
+                    st.total_count += 1
+                    st.batch = self._batch_persistence.maybe_flush(st.batch, "daily_drawdown_halt")
                 self._update_lock_heartbeat()
                 # 203# E: HALT 開始時は必ず state 保存 + 以降は N iter 毎
                 # 211# fix: halt 専用間隔に統一 (旧: progress_log_interval=50 → 8.3h)
                 if _should_record_halt:
                     self._state_persistence.save(self._build_state_snapshot(
-                        total_count=total_count,
-                        filled_count=filled_count,
-                        cumulative_pnl_jpy=cumulative_pnl_jpy,
+                        total_count=st.total_count,
+                        filled_count=st.filled_count,
+                        cumulative_pnl_jpy=st.cumulative_pnl_jpy,
                     ))
                     self._last_state_save_time = time.monotonic()  # 223#
                 # 211#: halt サイクル可視化ログ (entering + _HALT_PERSIST_INTERVAL 毎)
@@ -958,13 +1310,13 @@ class FillLoopOrchestratorMixin:
             # 215# P0-C: alert_mode.json — オペレータ緊急介入チェック
             _alert = load_alert_mode(self._results_dir)
             if _alert.halt:
-                batch.append(self._make_loop_skip_record(
+                st.batch.append(self._make_loop_skip_record(
                     side="none",
                     cancel_reason=CR.OPERATOR_HALT,
                     order_quantity=0.0,
                 ))
-                total_count += 1
-                batch = self._batch_persistence.maybe_flush(batch, "operator_halt")
+                st.total_count += 1
+                st.batch = self._batch_persistence.maybe_flush(st.batch, "operator_halt")
                 self._update_lock_heartbeat()
                 await self._effective_sleep(multiplier=5.0)
                 continue
@@ -983,13 +1335,13 @@ class FillLoopOrchestratorMixin:
                 _mcb_result = self._mcb.check(time.time())
                 if _mcb_result.level == MCBLevel.HALT:
                     self._inc_guard_fire("mcb_halt")
-                    batch.append(self._make_loop_skip_record(
+                    st.batch.append(self._make_loop_skip_record(
                         side="none",
                         cancel_reason=CR.MCB_HALT,
                         order_quantity=0.0,
                     ))
-                    total_count += 1
-                    batch = self._batch_persistence.maybe_flush(batch, "mcb_halt")
+                    st.total_count += 1
+                    st.batch = self._batch_persistence.maybe_flush(st.batch, "mcb_halt")
                     self._update_lock_heartbeat()
                     await self._effective_sleep(multiplier=5.0)
                     continue
@@ -1012,13 +1364,13 @@ class FillLoopOrchestratorMixin:
                 _sad_result = self._sad.check(time.time())
                 if _sad_result.level == SADLevel.FROZEN:
                     self._inc_guard_fire("sad_frozen")
-                    batch.append(self._make_loop_skip_record(
+                    st.batch.append(self._make_loop_skip_record(
                         side="none",
                         cancel_reason=CR.SAD_FROZEN,
                         order_quantity=0.0,
                     ))
-                    total_count += 1
-                    batch = self._batch_persistence.maybe_flush(batch, "sad_frozen")
+                    st.total_count += 1
+                    st.batch = self._batch_persistence.maybe_flush(st.batch, "sad_frozen")
                     self._update_lock_heartbeat()
                     await self._effective_sleep(multiplier=5.0)
                     continue
@@ -1037,14 +1389,14 @@ class FillLoopOrchestratorMixin:
             # 両方が同時に WARNING 以上 → 即 HALT (false positive 抑制)
             if _mcb_warning and _sad_warning:
                 self._inc_guard_fire("mcb_sad_escalation")
-                batch.append(self._make_loop_skip_record(
+                st.batch.append(self._make_loop_skip_record(
                     side="none",
                     cancel_reason=CR.MCB_SAD_ESCALATION,
                     order_quantity=0.0,
                 ))
-                total_count += 1
-                batch = self._batch_persistence.maybe_flush(
-                    batch, "mcb_sad_escalation"
+                st.total_count += 1
+                st.batch = self._batch_persistence.maybe_flush(
+                    st.batch, "mcb_sad_escalation"
                 )
                 self._update_lock_heartbeat()
                 await self._effective_sleep(multiplier=5.0)
@@ -1060,13 +1412,13 @@ class FillLoopOrchestratorMixin:
                     self._in_hard_skip_hour = True
                     if _hard_skip_entering:
                         self._inc_guard_fire("hard_skip_utc")
-                        batch.append(self._make_loop_skip_record(
+                        st.batch.append(self._make_loop_skip_record(
                             side="none",
                             cancel_reason=CR.HARD_SKIP_UTC_HOUR,
                             order_quantity=0.0,
                         ))
-                        total_count += 1
-                        batch = self._batch_persistence.maybe_flush(batch, "hard_skip_utc_hour")
+                        st.total_count += 1
+                        st.batch = self._batch_persistence.maybe_flush(st.batch, "hard_skip_utc_hour")
                         logger.info(
                             f"[205# §9.4] Hard skip: UTC {_utc_h}h is in "
                             f"hard_skip_utc_hours={self.config.hard_skip_utc_hours}"
@@ -1123,13 +1475,13 @@ class FillLoopOrchestratorMixin:
                 if self._daily_drawdown_guard.is_side_halted(_alt):
                     # 両サイド封鎖 → 集約 halt と同等扱い
                     self._inc_guard_fire("per_side_dd_both_halt")  # 223#
-                    batch.append(self._make_loop_skip_record(
+                    st.batch.append(self._make_loop_skip_record(
                         side="none",
                         cancel_reason=CR.PER_SIDE_DD_HALT,
                         order_quantity=0.0,
                     ))
-                    total_count += 1
-                    batch = self._batch_persistence.maybe_flush(batch, "per_side_dd_both_halt")
+                    st.total_count += 1
+                    st.batch = self._batch_persistence.maybe_flush(st.batch, "per_side_dd_both_halt")
                     self._update_lock_heartbeat()
                     await self._effective_sleep(multiplier=5.0)
                     continue
@@ -1159,13 +1511,13 @@ class FillLoopOrchestratorMixin:
                         if self._toxic_veto[_vs] <= 0:
                             del self._toxic_veto[_vs]
                             logger.info(f"[209# H-1] Toxic veto expired (both-blocked): {_vs}")
-                    batch.append(self._make_loop_skip_record(
+                    st.batch.append(self._make_loop_skip_record(
                         side="none",
                         cancel_reason=CR.TOXIC_FILL_SIDE_VETO,
                         order_quantity=0.0,
                     ))
-                    total_count += 1
-                    batch = self._batch_persistence.maybe_flush(batch, "toxic_veto_both")
+                    st.total_count += 1
+                    st.batch = self._batch_persistence.maybe_flush(st.batch, "toxic_veto_both")
                     await self._effective_sleep()
                     continue
                 else:
@@ -1188,13 +1540,13 @@ class FillLoopOrchestratorMixin:
                 ):
                     # 両サイド封鎖 → スキップ
                     self._inc_guard_fire("phantom_veto_block")
-                    batch.append(self._make_loop_skip_record(
+                    st.batch.append(self._make_loop_skip_record(
                         side="none",
                         cancel_reason=CR.PHANTOM_SIDE_VETO,
                         order_quantity=0.0,
                     ))
-                    total_count += 1
-                    batch = self._batch_persistence.maybe_flush(batch, "phantom_veto_both")
+                    st.total_count += 1
+                    st.batch = self._batch_persistence.maybe_flush(st.batch, "phantom_veto_both")
                     await self._effective_sleep()
                     continue
                 else:
@@ -1217,7 +1569,7 @@ class FillLoopOrchestratorMixin:
                     # 140# §8.1-#2: skip record を生成し可観測性確保 (132# F4)
                     if not self._time_filter.in_filter:
                         self._time_filter.on_enter()
-                        batch.append(self._make_loop_skip_record(
+                        st.batch.append(self._make_loop_skip_record(
                             side=next_side,
                             cancel_reason=CR.TIME_FILTER_BOTH_SIDES,
                             order_quantity=0.0,
@@ -1240,14 +1592,14 @@ class FillLoopOrchestratorMixin:
                                 f"[heartbeat] Still in time_filter zone "
                                 f"(UTC {utc_h}h), "
                                 f"{mem_info}"
-                                f"unsaved_batch={len(batch)}, "
+                                f"unsaved_batch={len(st.batch)}, "
                                 f"cycles={self._cycle_count}"
                             )
                             self._time_filter.last_heartbeat_time = now_ts
                             # 129# lock heartbeat 更新
                             self._update_lock_heartbeat()
                         # 107# R1: 重複 flush → _maybe_flush_batch 統合
-                        batch = self._batch_persistence.maybe_flush(batch, "time_filter")
+                        st.batch = self._batch_persistence.maybe_flush(st.batch, "time_filter")
                     await self._effective_sleep()  # 179# S1
                     continue
                 else:
@@ -1280,13 +1632,13 @@ class FillLoopOrchestratorMixin:
                             if not self._time_filter.in_filter:
                                 self._time_filter.on_enter()
                                 # 140# §8.1-#2: 086 deadlock 進入時も record 生成
-                                batch.append(self._make_loop_skip_record(
+                                st.batch.append(self._make_loop_skip_record(
                                     side=next_side,
                                     cancel_reason=CR.TIME_FILTER_086_DEADLOCK,
                                     order_quantity=0.0,
                                 ))
                             # 107# R1: 重複 flush → _maybe_flush_batch 統合
-                            batch = self._batch_persistence.maybe_flush(batch, "alt_side==last_side wait")
+                            st.batch = self._batch_persistence.maybe_flush(st.batch, "alt_side==last_side wait")
                             await self._effective_sleep()  # 179# S1
                             continue
                     else:
@@ -1365,15 +1717,15 @@ class FillLoopOrchestratorMixin:
                                         f"[226# S2] Toxic veto expired "
                                         f"(halt_block path): {_vs}"
                                     )
-                        batch.append(self._make_loop_skip_record(
+                        st.batch.append(self._make_loop_skip_record(
                             side=next_side,
                             cancel_reason=CR.PER_SIDE_DD_HALT,
                             order_quantity=self._current_lot,
                             balance_forced_switch=True,
                         ))
-                        total_count += 1
-                        batch = self._batch_persistence.maybe_flush(
-                            batch, "balance_forced_halt_recheck",
+                        st.total_count += 1
+                        st.batch = self._batch_persistence.maybe_flush(
+                            st.batch, "balance_forced_halt_recheck",
                         )
                         self._last_side = next_side
                         await self._effective_sleep()
@@ -1403,13 +1755,13 @@ class FillLoopOrchestratorMixin:
 
                     # 140# §8.1-#2: preflight skip record 生成 (132# F4)
                     # 145# §9-#5: _make_skip_record DRY 化
-                    batch.append(self._make_loop_skip_record(
+                    st.batch.append(self._make_loop_skip_record(
                         side=next_side,
                         cancel_reason=CR.PREFLIGHT_INSUFFICIENT,
                         order_quantity=self._current_lot,
                     ))
                     # 107# R1: 重複 flush → _maybe_flush_batch 統合
-                    batch = self._batch_persistence.maybe_flush(batch, "preflight skip")
+                    st.batch = self._batch_persistence.maybe_flush(st.batch, "preflight skip")
 
                     # 051# P2-3: Balance auto-shrink — 連続失敗でロット縮小を試行
                     # 052#: 最低ロットを min_order_btc に統一 (Coincheck 0.001 BTC)
@@ -1455,7 +1807,7 @@ class FillLoopOrchestratorMixin:
                         # 143# 140§7 #2: cycle_id に timestamp 付与で一意化
                         # 145# §9-#5: _make_skip_record DRY 化
                         _pause_record_ts = time.time()
-                        batch.append(self._make_loop_skip_record(
+                        st.batch.append(self._make_loop_skip_record(
                             timestamp=_pause_record_ts,
                             side="none",
                             cancel_reason=CR.PREFLIGHT_PAUSE,
@@ -1465,7 +1817,7 @@ class FillLoopOrchestratorMixin:
                             ),
                             order_quantity=0.0,
                         ))
-                        batch = self._batch_persistence.maybe_flush(batch, "preflight_pause")
+                        st.batch = self._batch_persistence.maybe_flush(st.batch, "preflight_pause")
                         self._preflight_skip_count = 0
                         await asyncio.sleep(pause_sec)
                         continue
@@ -1511,9 +1863,9 @@ class FillLoopOrchestratorMixin:
                         cancel_reason="one_sided_freeze_skip",
                         order_quantity=self._current_lot,
                     )
-                    batch.append(_skip_record)
-                    total_count += 1
-                    batch = self._batch_persistence.maybe_flush(batch, "one_sided_freeze_skip")
+                    st.batch.append(_skip_record)
+                    st.total_count += 1
+                    st.batch = self._batch_persistence.maybe_flush(st.batch, "one_sided_freeze_skip")
                     self._last_side = next_side
                     await self._effective_sleep()
                     continue
@@ -1536,9 +1888,9 @@ class FillLoopOrchestratorMixin:
                         cancel_reason="one_sided_cooldown_skip",
                         order_quantity=self._current_lot,
                     )
-                    batch.append(_skip_record)
-                    total_count += 1
-                    batch = self._batch_persistence.maybe_flush(batch, "one_sided_cooldown_skip")
+                    st.batch.append(_skip_record)
+                    st.total_count += 1
+                    st.batch = self._batch_persistence.maybe_flush(st.batch, "one_sided_cooldown_skip")
                     self._last_side = next_side
                     await self._effective_sleep()
                     continue
@@ -1617,9 +1969,9 @@ class FillLoopOrchestratorMixin:
                         balance_forced_switch=True,
                         balance_forced_consecutive=self._balance_forced_skip_count,
                     )
-                    batch.append(_skip_record)
-                    total_count += 1
-                    batch = self._batch_persistence.maybe_flush(batch, "balance_forced_skip")
+                    st.batch.append(_skip_record)
+                    st.total_count += 1
+                    st.batch = self._batch_persistence.maybe_flush(st.batch, "balance_forced_skip")
                     # 167# DL-5: _last_side を更新 (rescue=true 時は到達しないが防御的に)
                     self._last_side = next_side
                     await self._effective_sleep()  # 179# S1
@@ -1701,10 +2053,10 @@ class FillLoopOrchestratorMixin:
                     cancel_reason=_gate_result.cancel_reason,
                     order_quantity=self._current_lot,
                 )
-                batch.append(_skip_record)
-                total_count += 1
-                batch = self._batch_persistence.maybe_flush(
-                    batch, _gate_result.cancel_reason,
+                st.batch.append(_skip_record)
+                st.total_count += 1
+                st.batch = self._batch_persistence.maybe_flush(
+                    st.batch, _gate_result.cancel_reason,
                 )
                 self._last_side = next_side
 
@@ -1741,9 +2093,9 @@ class FillLoopOrchestratorMixin:
                 _now_mono = time.monotonic()
                 if _now_mono - self._last_state_save_time >= self._STATE_SAVE_INTERVAL_SEC:
                     self._state_persistence.save(self._build_state_snapshot(
-                        total_count=total_count,
-                        filled_count=filled_count,
-                        cumulative_pnl_jpy=cumulative_pnl_jpy,
+                        total_count=st.total_count,
+                        filled_count=st.filled_count,
+                        cumulative_pnl_jpy=st.cumulative_pnl_jpy,
                     ))
                     self._last_state_save_time = _now_mono
                     logger.info(
@@ -1798,10 +2150,10 @@ class FillLoopOrchestratorMixin:
                     cancel_reason="toxicity_participation_skip",
                     order_quantity=self._current_lot,
                 )
-                batch.append(_skip_record)
-                total_count += 1
-                batch = self._batch_persistence.maybe_flush(
-                    batch, "toxicity_participation_skip",
+                st.batch.append(_skip_record)
+                st.total_count += 1
+                st.batch = self._batch_persistence.maybe_flush(
+                    st.batch, "toxicity_participation_skip",
                 )
                 self._last_side = next_side
                 await self._effective_sleep()
@@ -1829,10 +2181,10 @@ class FillLoopOrchestratorMixin:
                         cancel_reason="degraded_liquidation_duty_skip",
                         order_quantity=self._current_lot,
                     )
-                    batch.append(_skip_record)
-                    total_count += 1
-                    batch = self._batch_persistence.maybe_flush(
-                        batch, "degraded_liquidation_duty_skip",
+                    st.batch.append(_skip_record)
+                    st.total_count += 1
+                    st.batch = self._batch_persistence.maybe_flush(
+                        st.batch, "degraded_liquidation_duty_skip",
                     )
                     self._last_side = next_side
                     await self._effective_sleep()
@@ -1977,278 +2329,11 @@ class FillLoopOrchestratorMixin:
             # 128# dust sweep 後のロット復元 (サイクル完了ごとに確実に実行)
             self._balance_checker.restore_lot_after_dust_sweep()
 
-            total_count += 1
-            if record.filled:
-                filled_count += 1
-                # 133# P0-10: sell PnL 追跡 (動的 kill 判定用)
-                self._track_sell_pnl(record)
-                # 157# §19: buy PnL 追跡 (動的 kill 判定用)
-                self._track_buy_pnl(record)
-                # 202# A: 単一サイクル大損失クールダウン — 連鎖損失防止
-                if (
-                    record.post_fill_30s_pnl is not None
-                    and record.post_fill_30s_pnl <= self.config.loss_cooldown_threshold_bps
-                ):
-                    self._loss_cooldown_mult = self.config.loss_cooldown_interval_mult
-                    # 211# 204# I: 大損後に次回 offset も拡大
-                    _lb = self.config.loss_boost_offset_mult
-                    if _lb > 1.0:
-                        self._maker_price.set_loss_boost(_lb)
-                    logger.warning(
-                        f"[202# A] Large cycle loss {record.post_fill_30s_pnl:.2f}bps "
-                        f"<= {self.config.loss_cooldown_threshold_bps:.1f}bps — "
-                        f"next interval ×{self._loss_cooldown_mult:.1f}"
-                        f", offset ×{_lb:.1f}"
-                    )
-                else:
-                    self._loss_cooldown_mult = 1.0
-                # 205# §9.2: Toxic Fill 同一サイド拒否 — 大損時に同一サイドを封鎖
-                if (
-                    self.config.toxic_fill_veto_cycles > 0
-                    and record.post_fill_30s_pnl is not None
-                    and record.post_fill_30s_pnl <= self.config.toxic_fill_veto_threshold_bps
-                ):
-                    if self._toxic_veto is None:
-                        self._toxic_veto = {}
-                    self._toxic_veto[next_side] = self.config.toxic_fill_veto_cycles
-                    self._inc_guard_fire("toxic_veto_set")
-                    logger.warning(
-                        f"[205# §9.2] Toxic fill veto: {next_side} blocked for "
-                        f"{self.config.toxic_fill_veto_cycles} cycles "
-                        f"(pnl={record.post_fill_30s_pnl:.2f}bps "
-                        f"<= {self.config.toxic_fill_veto_threshold_bps:.1f}bps)"
-                    )
-                # 033# F4: 累積 PnL インクリメンタル追跡
-                pnl_jpy = compute_record_pnl_jpy(record)
-                if pnl_jpy is not None:
-                    cumulative_pnl_jpy += pnl_jpy
-                # 249# Total Equity MTM: BTC 増減インクリメンタル追跡
-                if record.order_quantity is not None:
-                    _fill_qty = float(record.order_quantity)
-                    if next_side == "buy":
-                        cumulative_btc_delta += _fill_qty
-                    else:
-                        cumulative_btc_delta -= _fill_qty
-                # 250# P/L 3分離: adverse selection インクリメンタル追跡
-                if record.adverse_selected is True:
-                    cumulative_adverse_count += 1
-                    if record.post_fill_30s_pnl is not None:
-                        cumulative_adverse_bps += record.post_fill_30s_pnl
-                # 168# §4.1 #3: 日次ドローダウンガード PnL 更新
-                if record.post_fill_30s_pnl is not None:
-                    dd_result = self._daily_drawdown_guard.update_pnl(
-                        record.post_fill_30s_pnl,
-                        side=next_side,  # 205# §9.5: 片側 DD 追跡
-                    )
-                    if dd_result.get("soft_triggered"):
-                        old_lot = self._current_lot
-                        new_lot = self._current_lot / 2
-                        if new_lot >= self.config.order_quantity:
-                            # 200# P0-2: lot 半減可能
-                            self._current_lot = new_lot
-                            self._balance_checker.pre_shrink_lot = self._current_lot
-                            logger.warning(
-                                f"[daily_drawdown] soft lot reduction: "
-                                f"{old_lot:.4f} → {self._current_lot:.4f} BTC"
-                            )
-                        else:
-                            # 200# P0-2: 最小ロット到達 → interval 延長で exposure 削減
-                            self._soft_drawdown_interval_multiplier = self.config.soft_drawdown_interval_multiplier
-                            logger.warning(
-                                f"[daily_drawdown] min lot reached ({old_lot:.4f} BTC), "
-                                f"applying 3x interval multiplier instead of lot reduction"
-                            )
-            batch.append(record)
-            # 256# _recent_records 累積: _check_regime_stop_conditions が参照
-            # batch は save 時にリセットされるが、stop conditions は直近 N 件の PnL が必要
-            self._recent_records.append(record)
+            # 265# extract: post-cycle 処理 (~150行) を分離
+            self._process_post_cycle(record, next_side, st)
 
-            # --- 046# soft/hard 二段 loss_cap ---
-            # soft cap: ロット半減 (一度だけ)
-            # 101# §4: _soft_cap_jpy_snapshot を使用 (動的 loss_cap_jpy に連動させない)
-            if self.config.loss_cap_auto and not self._soft_loss_cap_triggered:
-                if self._soft_cap_jpy_snapshot is not None:
-                    soft_cap_jpy = self._soft_cap_jpy_snapshot
-                else:
-                    soft_cap_jpy = (
-                        self.config.loss_cap_jpy
-                        * self.config.soft_loss_cap_ratio
-                        / self.config.loss_cap_ratio
-                    )
-                if cumulative_pnl_jpy <= -soft_cap_jpy:
-                    old_lot = self._current_lot
-                    self._current_lot = max(
-                        self.config.order_quantity,  # 最小ロットは下回らない
-                        self._current_lot / self.config.soft_loss_cap_lot_divisor,
-                    )
-                    self._soft_loss_cap_triggered = True
-                    # 051# P2-3: shrink 復元先も更新
-                    self._balance_checker.pre_shrink_lot = self._current_lot
-                    logger.warning(
-                        f"[loss_cap] SOFT CAP: cumPnL={cumulative_pnl_jpy:.0f} JPY "
-                        f"<= -{soft_cap_jpy:.0f} JPY "
-                        f"({self.config.soft_loss_cap_ratio:.0%}). "
-                        f"ロット半減: {old_lot:.4f} → {self._current_lot:.4f} BTC"
-                    )
-
-            # hard cap: SAFE_STOP (既存 033# F4)
-            if cumulative_pnl_jpy <= -self.config.loss_cap_jpy:
-                logger.error(
-                    f"LOSS CAP REACHED (HARD): cumulative PnL = {cumulative_pnl_jpy:.0f} JPY "
-                    f"(cap = -{self.config.loss_cap_jpy:.0f} JPY). Stopping fill test."
-                )
-                self._kill_switch.kill("hard_loss_cap")
-
-            # --- 100# 即約定防御: FastFillDefense クラスに委譲 ---
-            # P0-5: side-aware (sell boost が buy に伝播しない)
-            # P0-3: two-layer neg_edge detection (即時 proxy + post-fill PnL)
-            # P1-2: side 別 base_offset_ratio による cap
-            if record.filled:
-                self._fast_fill_defense.evaluate_fill(
-                    side=record.side,
-                    queue_wait_sec=record.queue_wait_sec,
-                    fill_price=record.fill_price,
-                    mid_at_fill=record.mid_at_fill,
-                    post_fill_pnl_bps=record.post_fill_30s_pnl,
-                )
-            elif not record.filled:
-                self._fast_fill_defense.reset_on_unfilled(record.side)
-
-            # --- バッチ保存 (024# R1: 独立 try/except) ---
-            if len(batch) >= batch_size:
-                if self._batch_persistence.try_save_batch(batch):
-                    batch = []
-                    self._batch_persistence.reset_flush_timer()
-                    self._adaptation_engine.invalidate_cache()  # 120# TTL キャッシュ無効化
-                # 失敗時: batch は保持 → 次回再試行
-            # 079# 時間ベース定期flush: batch_size 未満でも一定時間経過で保存
-            else:
-                batch = self._batch_persistence.maybe_flush(batch, "run_loop")
-
-            # 進捗ログ
-            if self._cycle_count % self.config.progress_log_interval == 0:
-                regime_tag = (
-                    self._regime_detector.current_regime.value
-                    if self._regime_detector else "n/a"
-                )
-                _fill_rate_pct = (
-                    filled_count / total_count * 100.0
-                    if total_count > 0 else 0.0
-                )
-                logger.info(
-                    f"Progress: {self._cycle_count} cycles, "
-                    f"fill rate={filled_count}/{total_count} "
-                    f"({_fill_rate_pct:.1f}%), "
-                    f"cumPnL={cumulative_pnl_jpy:.1f}JPY, "
-                    f"btcDelta={cumulative_btc_delta:+.4f}BTC, "
-                    f"lot={self._current_lot:.4f}BTC, "
-                    f"regime={regime_tag}, "
-                    f"unsaved_batch={len(batch)}"
-                )
-                # 249# Total Equity MTM: JPY + BTC × mid_price として表示
-                _mtm_mid = self._maker_price.last_mid_price if self._maker_price else None
-                if _mtm_mid and _mtm_mid > 0:
-                    _equity_btc_val = cumulative_btc_delta * _mtm_mid
-                    _total_equity_delta = cumulative_pnl_jpy + _equity_btc_val
-                    logger.info(
-                        f"[249# MTM] totalEquityΔ={_total_equity_delta:+.1f}JPY "
-                        f"(spreadPnL={cumulative_pnl_jpy:+.1f} + "
-                        f"btcMTM={_equity_btc_val:+.1f} "
-                        f"@mid={_mtm_mid:.0f})"
-                    )
-                # 250# P/L 3分離: adverse selection 累積サマリ
-                # マーケットメイキング理論: AS は spread 収益を侵食する主要因。
-                # AS 件数と累積bps を可視化し、spread PnL との比率で
-                # 情報リスク (Glosten-Milgrom 逆選択コスト) の大きさを把握。
-                if cumulative_adverse_count > 0:
-                    _as_rate = (
-                        cumulative_adverse_count / filled_count * 100.0
-                        if filled_count > 0 else 0.0
-                    )
-                    logger.info(
-                        f"[250# AS] adverseFills={cumulative_adverse_count} "
-                        f"({_as_rate:.1f}%), "
-                        f"cumASbps={cumulative_adverse_bps:+.1f}bps"
-                    )
-                # 244# Guard reason category summary
-                if self._guard_fire_counts:
-                    from scripts.v460.lib.guard_reason_classifier import (
-                        guard_category_totals,
-                    )
-                    _cat_totals = guard_category_totals(self._guard_fire_counts)
-                    logger.info(
-                        f"Guard category: "
-                        f"market={_cat_totals['market']}, "
-                        f"system={_cat_totals['system']}, "
-                        f"recovery={_cat_totals['recovery']}"
-                    )
-
-            # 113# resilience: HealthMonitor 定期チェック + GC
-            health_status = self._health_monitor.maybe_check(self._cycle_count)
-            if health_status and health_status.get("level") == "critical":
-                logger.error(
-                    f"[resilience] Health CRITICAL at cycle {self._cycle_count}: "
-                    f"{health_status}"
-                )
-            self._health_monitor.maybe_gc()
-
-            # 113# resilience: 状態永続化
-            # 225# F2: progress_log_interval ごと OR _STATE_SAVE_INTERVAL_SEC 経過で保存
-            # 通常パスでも ~5 分間隔で state を保存し、クラッシュ時の損失を最小化
-            _now_mono_save = time.monotonic()
-            _progress_save = (
-                self._cycle_count % self.config.progress_log_interval == 0
-            )
-            _time_save = (
-                _now_mono_save - self._last_state_save_time
-                >= self._STATE_SAVE_INTERVAL_SEC
-            )
-            if _progress_save or _time_save:
-                # 129# lock heartbeat 更新 (state 保存と同期)
-                self._update_lock_heartbeat()
-                self._state_persistence.save(self._build_state_snapshot(
-                    total_count=total_count,
-                    filled_count=filled_count,
-                    cumulative_pnl_jpy=cumulative_pnl_jpy,
-                ))
-                self._last_state_save_time = _now_mono_save  # 223#
-                if _time_save and not _progress_save:
-                    logger.info(
-                        f"[225# F2] Normal-cycle time-based state save "
-                        f"(cycle={self._cycle_count})"
-                    )
-
-            # --- 044# A-7: loss_cap 定期更新 (残高変動を反映) ---
-            if (
-                self.config.loss_cap_auto
-                and self._cycle_count % self._loss_cap_update_interval == 0
-                and self._cycle_count > 0
-            ):
-                await self._update_dynamic_loss_cap()
-
-            # --- 032# P0: 方策 A パラメータ適応 ---
-            if (
-                self.config.enable_auto_adapt
-                and self._cycle_count % self.config.adapt_interval_cycles == 0
-                and total_count >= self.config.min_adapt_samples
-            ):
-                self._try_auto_adapt(total_count, filled_count)
-
-            # --- 033# 方策 B: 動的ロットサイジング ---
-            if (
-                self.config.enable_dynamic_lot
-                and self._cycle_count % self.config.lot_adapt_interval_cycles == 0
-                and total_count >= self.config.min_adapt_samples
-            ):
-                self._try_auto_lot_size()
-
-            # --- 181# 停止条件モニター: C/D/Chase 安全弁 ---
-            if (
-                self._cycle_strategy is not None
-                and self._cycle_count > 0
-                and self._cycle_count % 30 == 0  # ~1h@120s, ~30min@60s
-            ):
-                self._check_regime_stop_conditions(filled_count, total_count)
+            # 265# extract: 進捗ログ + state save + adaptation (~125行) を分離
+            await self._log_progress_and_adapt(next_side, st)
 
             # 次サイクルまで待機
             # 054# S3: rapid exit 時は interval を短縮
@@ -2297,34 +2382,8 @@ class FillLoopOrchestratorMixin:
                 _clamped = min(_raw_sleep, _max_sleep) if _max_sleep > 0 else _raw_sleep
                 await asyncio.sleep(_clamped)
 
-        # 残りバッチを保存
-        if batch:
-            if not self._batch_persistence.try_save_batch(batch):
-                # 最終手段: 緊急ダンプ
-                self._batch_persistence.emergency_dump(batch, "final")
-
-        # 113# resilience: 最終状態保存
-        self._state_persistence.save(self._build_state_snapshot(
-            total_count=total_count,
-            filled_count=filled_count,
-            cumulative_pnl_jpy=cumulative_pnl_jpy,
-        ))
-        self._last_state_save_time = time.monotonic()  # 223#
-
-        # 148# heartbeat タスク終了
-        heartbeat_task.cancel()
-        self._heartbeat_task = None
-        try:
-            await heartbeat_task
-        except asyncio.CancelledError:
-            pass
-
-        logger.info(
-            f"Fill test completed: {total_count} cycles, "
-            f"{filled_count} filled"
-        )
-        # 024# O4: 集計用に全レコードをリロード
-        return list(iter_fill_records_glob(str(self._results_dir)))
+        # 265# extract: 最終 cleanup (~35行) を分離
+        return await self._finalize_run(st, heartbeat_task)
 
     async def cleanup_heartbeat(self) -> None:
         """175# 異常終了時の heartbeat タスク cleanup.

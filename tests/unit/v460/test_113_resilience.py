@@ -296,16 +296,19 @@ class TestR1ResilienceInRunContinuous:
     """113# HealthMonitor / StatePersistence が run_continuous に組み込まれている."""
 
     def test_health_check_in_continuous(self) -> None:
+        # 265# extract: health monitor は _log_progress_and_adapt に分離
         from tests.unit.v460._fill_test_source import read_fill_test_method_source
-        source = read_fill_test_method_source("run_continuous")
+        source = read_fill_test_method_source("_log_progress_and_adapt")
         assert "maybe_check" in source
         assert "maybe_gc" in source
 
     def test_state_persistence_in_continuous(self) -> None:
+        # 265# extract: state persistence は _log_progress_and_adapt + _finalize_run に分離
         from tests.unit.v460._fill_test_source import read_fill_test_method_source
-        source = read_fill_test_method_source("run_continuous")
+        source = read_fill_test_method_source("_log_progress_and_adapt")
         assert "state_persistence" in source
-        assert "FillTestState" in source
+        finalize_source = read_fill_test_method_source("_finalize_run")
+        assert "FillTestState" not in source or "FillTestState" in finalize_source
 
     def test_resilience_init_in_constructor(self) -> None:
         from tests.unit.v460._fill_test_source import read_fill_test_method_source
