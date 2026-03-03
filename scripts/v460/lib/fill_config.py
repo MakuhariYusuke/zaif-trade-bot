@@ -191,6 +191,9 @@ class FillTestConfig:
     # 225# 市場理論補強: regime-aware recovery lot ペナルティ
     recovery_trending_penalty: float = 0.7  # trending 時のリカバリ lot 追加縮小倍率
     recovery_high_vol_penalty: float = 0.8  # high_vol 時のリカバリ lot 追加縮小倍率
+    # 246# DD halt cooldown release: 集約 halt 後 N 秒で lot 縮小付き再開
+    dd_cooldown_release_sec: float = 0.0       # 0=無効, 例: 7200=2h後に部分解除
+    dd_cooldown_release_lot_scale: float = 0.3 # cooldown release 中の lot 倍率
     # 049# E3 サンプリング: 全約定ではなくサンプリングで multi-timeframe 計測
     e3_sampling_ratio: float = 1.0  # 0.0-1.0, 1.0=全約定, 0.33=1/3 のみ
     # 049# side 別 offset: buy/sell で独立に offset を設定
@@ -1175,6 +1178,11 @@ class FillTestConfig:
             kwargs["recovery_trending_penalty"] = float(dd_guard["recovery_trending_penalty"])
         if "recovery_high_vol_penalty" in dd_guard:
             kwargs["recovery_high_vol_penalty"] = float(dd_guard["recovery_high_vol_penalty"])
+        # 246# DD halt cooldown release
+        if "cooldown_release_sec" in dd_guard:
+            kwargs["dd_cooldown_release_sec"] = float(dd_guard["cooldown_release_sec"])
+        if "cooldown_release_lot_scale" in dd_guard:
+            kwargs["dd_cooldown_release_lot_scale"] = float(dd_guard["cooldown_release_lot_scale"])
 
         return kwargs
 

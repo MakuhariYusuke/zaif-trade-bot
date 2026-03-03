@@ -315,6 +315,8 @@ class TestDailyDrawdownMetrics:
             "side_halted_buy", "side_halted_sell",
             # 224# B1: リカバリ
             "side_recovery_remaining_buy", "side_recovery_remaining_sell",
+            # 246# cooldown release
+            "cooldown_released", "cooldown_release_lot_scale",
         }
         assert set(m.keys()) == expected_keys
 
@@ -1059,4 +1061,165 @@ class TestLossBoostOffset211:
 
         cfg = FillTestConfig()
         assert cfg.loss_boost_offset_mult == 1.5
+
+
+# ========================================================================
+# 246# DD Halt Cooldown Release テスト
+# ========================================================================
+
+
+class TestCooldownRelease246:
+    """246# cooldown release: 集約 halt からの時間ベース部分解除."""
+
+    def test_cooldown_disabled_by_default(self) -> None:
+        """cooldown_release_sec=0 (デフォルト) では cooldown release 無効."""
+        guard = DailyDrawdownGuard(enabled=True, hard_limit_bps=-50.0)
+        guard.update_pnl(-60.0)
+        assert guard.is_halted() is True
+        assert guard.get_cooldown_lot_scale() == 1.0
+
+    def test_cooldown_not_released_before_timeout(self) -> None:
+        """halt 後、cooldown_release_sec 未経過では halted のまま."""
+        guard = DailyDrawdownGuard(
+            enabled=True, hard_limit_bps=-50.0,
+            cooldown_release_sec=3600.0, cooldown_release_lot_scale=0.3,
+        )
+        guard.update_pnl(-60.0)
+        assert guard.is_halted() is True
+        assert guard.get_cooldown_lot_scale() == 1.0
+
+    def test_cooldown_released_after_timeout(self) -> None:
+        """halt 後、cooldown_release_sec 経過で partial release."""
+        guard = DailyDrawdownGuard(
+            enabled=True, hard_limit_bps=-50.0,
+            cooldown_release_sec=3600.0, cooldown_release_lot_scale=0.3,
+        )
+        guard.update_pnl(-60.0)
+        assert guard.is_halted() is True
+        # Simulate time passage
+        guard._state.halt_triggered_at = time.time() - 3601.0
+        assert guard.is_halted() is False
+        assert guard._state.cooldown_released is True
+        assert guard.get_cooldown_lot_scale() == 0.3
+
+    def test_cooldown_lot_scale_default_when_not_released(self) -> None:
+        """cooldown 未解除時は lot_scale=1.0."""
+        guard = DailyDrawdownGuard(
+            enabled=True, hard_limit_bps=-50.0,
+            cooldown_release_sec=3600.0, cooldown_release_lot_scale=0.3,
+        )
+        assert guard.get_cooldown_lot_scale() == 1.0
+
+    def test_cooldown_released_persists_across_is_halted_calls(self) -> None:
+        """cooldown_released=True は永続 (同日中)."""
+        guard = DailyDrawdownGuard(
+            enabled=True, hard_limit_bps=-50.0,
+            cooldown_release_sec=100.0, cooldown_release_lot_scale=0.5,
+        )
+        guard.update_pnl(-60.0)
+        guard._state.halt_triggered_at = time.time() - 200.0
+        # First call: sets cooldown_released
+        assert guard.is_halted() is False
+        # Subsequent calls: still released
+        assert guard.is_halted() is False
+        assert guard.get_cooldown_lot_scale() == 0.5
+
+    def test_cooldown_export_import_roundtrip(self) -> None:
+        """cooldown_released が export/import で保持される."""
+        guard = DailyDrawdownGuard(
+            enabled=True, hard_limit_bps=-50.0,
+            cooldown_release_sec=100.0, cooldown_release_lot_scale=0.3,
+        )
+        guard.update_pnl(-60.0)
+        guard._state.halt_triggered_at = time.time() - 200.0
+        guard.is_halted()  # trigger cooldown release
+        assert guard._state.cooldown_released is True
+        exported = guard.export_state()
+        assert exported["cooldown_released"] is True
+
+        # Import into new guard
+        guard2 = DailyDrawdownGuard(
+            enabled=True, hard_limit_bps=-50.0,
+            cooldown_release_sec=100.0, cooldown_release_lot_scale=0.3,
+        )
+        guard2.import_state(exported)
+        assert guard2._state.cooldown_released is True
+        assert guard2.get_cooldown_lot_scale() == 0.3
+
+    def test_cooldown_reset_on_day_change(self) -> None:
+        """日替わりで cooldown_released がリセットされる."""
+        guard = DailyDrawdownGuard(
+            enabled=True, hard_limit_bps=-50.0,
+            cooldown_release_sec=100.0, cooldown_release_lot_scale=0.3,
+        )
+        guard.update_pnl(-60.0)
+        guard._state.halt_triggered_at = time.time() - 200.0
+        guard.is_halted()
+        assert guard._state.cooldown_released is True
+        # Force day reset
+        guard._state.current_day = "19700101"  # stale day
+        guard.maybe_reset_day()
+        assert guard._state.cooldown_released is False
+        assert guard._state.halted is False
+        assert guard.get_cooldown_lot_scale() == 1.0
+
+    def test_cooldown_metrics_include_fields(self) -> None:
+        """get_metrics() に cooldown_released, cooldown_release_lot_scale が含まれる."""
+        guard = DailyDrawdownGuard(
+            enabled=True, hard_limit_bps=-50.0,
+            cooldown_release_sec=7200.0, cooldown_release_lot_scale=0.3,
+        )
+        metrics = guard.get_metrics()
+        assert "cooldown_released" in metrics
+        assert metrics["cooldown_released"] is False
+        assert metrics["cooldown_release_lot_scale"] == 0.3
+
+    def test_cooldown_halt_blocked_cycles_not_incremented_when_released(self) -> None:
+        """cooldown release 後は halt_blocked_cycles がインクリメントされない."""
+        guard = DailyDrawdownGuard(
+            enabled=True, hard_limit_bps=-50.0,
+            cooldown_release_sec=100.0, cooldown_release_lot_scale=0.3,
+        )
+        guard.update_pnl(-60.0)
+        # Before cooldown: halt should increment blocked_cycles
+        blocked_before = guard._state.halt_blocked_cycles
+        guard.is_halted()
+        assert guard._state.halt_blocked_cycles == blocked_before + 1
+        # After cooldown release: no increment
+        guard._state.halt_triggered_at = time.time() - 200.0
+        guard.is_halted()
+        blocked_after = guard._state.halt_blocked_cycles
+        guard.is_halted()  # should still not increment
+        assert guard._state.halt_blocked_cycles == blocked_after
+
+
+class TestCooldownReleaseConfig246:
+    """246# FillTestConfig cooldown release フィールドテスト."""
+
+    def test_config_defaults(self) -> None:
+        """dd_cooldown_release_sec/lot_scale のデフォルト値."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        cfg = FillTestConfig()
+        assert cfg.dd_cooldown_release_sec == 0.0
+        assert cfg.dd_cooldown_release_lot_scale == 0.3
+
+    def test_config_yaml_parsing(self) -> None:
+        """YAML から cooldown_release 設定がパースされる."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        yaml_cfg = {
+            "loss_control": {
+                "daily_drawdown": {
+                    "enabled": True,
+                    "hard_limit_bps": -50.0,
+                    "soft_limit_bps": -30.0,
+                    "cooldown_release_sec": 7200.0,
+                    "cooldown_release_lot_scale": 0.5,
+                }
+            }
+        }
+        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        assert cfg.dd_cooldown_release_sec == 7200.0
+        assert cfg.dd_cooldown_release_lot_scale == 0.5
 

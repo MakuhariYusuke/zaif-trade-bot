@@ -1081,6 +1081,18 @@ class FillCycleExecutorMixin:
                 f"{_pre_lot:.6f} → {_order_lot:.6f}"
             )
 
+        # 246# DD halt cooldown release lot 縮小
+        _dd_guard = getattr(self, "_daily_drawdown_guard", None)
+        if _dd_guard is not None:
+            _cd_lm = _dd_guard.get_cooldown_lot_scale()
+            if _cd_lm < 1.0:
+                _pre_lot = _order_lot
+                _order_lot = max(self.config.order_quantity, _order_lot * _cd_lm)
+                logger.info(
+                    f"[246# cooldown_release] lot_scale={_cd_lm:.2f}: "
+                    f"{_pre_lot:.6f} → {_order_lot:.6f}"
+                )
+
         for attempt in range(1 + self.config.max_order_retries):
             try:
                 # 130# E1: postonly 二重確認 — 発注直前に mid price を再取得し

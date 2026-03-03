@@ -381,7 +381,7 @@ volatility_guard:
 # ---- 088# sell 専用ハードガード ----
 sell_guard:
   max_spread_jpy: 5000.0       # 168# P2-C1: 4000→5000。165# SO-1 offset_floor 0.20 で保護強化済 (prev: 085# 4677=-7.37bps)
-  offset_floor: 0.20           # 165# SO-1: 0.10->0.20 offset<0.2 sell -0.92bps 226件 推定+173bps (prev 105#: 0.08→0.10 sell offset 最低保証 (sell PnL -0.85bps 対策)
+  offset_floor: 0.30           # 246# 0.20→0.30 (Glosten-Milgrom: sell AS premium 増額。245#分析: sell pass_pnl=-1.316bps, win_rate=34.4% DEGRADED → 防御強化)
 
 # ---- 133# 止血施策 (P0-08/09/10) ----
 loss_control:
@@ -402,7 +402,7 @@ loss_control:
   loss_boost_decay_tau_sec: 300.0
   # 205# §9.2: Toxic Fill 同一サイド拒否 (大損後に同一方向を N サイクル完全封鎖)
   # 202# A の interval 延長は不十分 — 同一サイドの連鎖損失を根本遮断
-  toxic_fill_veto_threshold_bps: -5.0  # この PnL 以下で同一サイド拒否発動
+  toxic_fill_veto_threshold_bps: -3.0  # 246# -5.0→-3.0 (245#分析: -22.54bps tail risk。早期 veto で連鎖損失遮断)
   toxic_fill_veto_cycles: 3            # 拒否サイクル数 (0=無効)
   # 202# B: 片側残高枯渇時にも rescue offset を適用 (強制 sell の AS リスク抑制)
   one_sided_balance_rescue_offset: true
@@ -427,7 +427,7 @@ loss_control:
   skip_sell_trending_up_only: true
   # 196# trending_sell ソフト化: hard skip → offset boost
   trending_sell_as_offset_enabled: true
-  trending_sell_offset_boost_factor: 2.0    # 197# 3.0→2.0 (regime 1.8xとの累積で10000JPY spreadで総計 3.6x、実用的な保守的価格)
+  trending_sell_offset_boost_factor: 3.0    # 246# 2.0→3.0 (Kyle 1985: trending_up sell PnL=-0.919bps worst regime。245#分析: FR=27.7%→offset boost 必要)
   # 197# balance_forced 時も trending offset を適用 (forced sell の AS リスク低減)
   # 234# dead config: balance_forced gate bypass 廃止により、soft mode は常に offset 適用
   balance_forced_apply_trending_offset: true
@@ -444,7 +444,7 @@ loss_control:
   sell_dynamic_kill:
     enabled: true
     window: 50                     # rolling ウィンドウ (sell fill 数)
-    threshold_bps: -0.5            # この bps 以下で sell 停止
+    threshold_bps: -0.3            # 246# -0.5→-0.3 (245#分析: sell累積損失が-0.5到達前に大量損失蓄積。早期kill で防御)
     resume_window: 10              # 156# D-5: 20→10 (40分→約20分へ半減)
     # 139# §9-#2: レジーム別閾値 (regime_name -> threshold_bps)
     regime_thresholds:
@@ -504,6 +504,10 @@ loss_control:
     # 225# 市場理論 (Avellaneda-Stoikov): regime-aware recovery ペナルティ
     recovery_trending_penalty: 0.7    # trending 時は lot ×0.7 追加縮小 (AS リスク残存)
     recovery_high_vol_penalty: 0.8    # high_vol 時は lot ×0.8 追加縮小 (在庫リスク増大)
+    # 246# DD Halt Cooldown Release: halt後一定時間経過でlot縮小付き再開
+    # Optimal stopping theory: 無期限 halt の機会損失 > 縮小 lot でのリスク
+    cooldown_release_sec: 7200         # halt後2h(7200s)で部分再開 (0=無効)
+    cooldown_release_lot_scale: 0.3    # cooldown再開時lot倍率 (0.3=30%)
 
 # ---- 102# チューニングパラメータ (散在マジックナンバーの外部化) ----
 tuning:

@@ -123,13 +123,13 @@ class TestTrendingBoostOptimization:
         cfg = FillTestConfig()
         assert cfg.trending_sell_offset_boost_factor == 2.0
 
-    def test_yaml_trending_boost_is_2_0(self):
-        """live YAML が 2.0 に最適化されていること."""
+    def test_yaml_trending_boost_is_3_0(self):
+        """246# live YAML が 3.0 に強化されていること."""
         import yaml  # type: ignore[import-untyped]
 
         with open(Path("configs/v460/fill_test.yaml")) as f:
             raw = yaml.safe_load(f)
-        assert raw["loss_control"]["trending_sell_offset_boost_factor"] == 2.0
+        assert raw["loss_control"]["trending_sell_offset_boost_factor"] == 3.0
 
 
 # =================================================================

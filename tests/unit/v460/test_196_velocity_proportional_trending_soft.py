@@ -529,7 +529,7 @@ class TestConfigYamlParse196:
 
         lc = cfg["loss_control"]
         assert lc["trending_sell_as_offset_enabled"] is True
-        assert lc["trending_sell_offset_boost_factor"] == 2.0  # 197# 3.0→2.0 最適化
+        assert lc["trending_sell_offset_boost_factor"] == 3.0  # 246# 2.0→3.0 sell 防御強化
         assert lc["balance_forced_apply_trending_offset"] is True
 
     def test_config_from_yaml_round_trip(self):

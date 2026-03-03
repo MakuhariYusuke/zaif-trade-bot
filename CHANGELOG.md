@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 246# DD Halt Cooldown Release + Sell Defence Hardening (2026-03-03)
+
+### Added
+- **DD Halt Cooldown Release (Optimal Stopping Theory)**: DD hard halt 後、一定時間 (`cooldown_release_sec`, default 7200s=2h) 経過で lot 縮小 (`cooldown_release_lot_scale`, default 0.3=30%) 付き部分再開。DD halt 4/6日の 15h+ idle → 2h に短縮し、機会損失 ~85% 削減を狙う (`daily_drawdown_guard.py`, `fill_config.py`, `run_fill_test.py`, `fill_cycle_executor.py`)
+
+### Changed (Sell Defence Hardening — 245# 本番ログ分析に基づく)
+- **sell_guard.offset_floor**: 0.20 → 0.30 (Glosten-Milgrom: sell AS premium 増額。sell pass_pnl=-1.316bps 対策)
+- **sell_dynamic_kill.threshold_bps**: -0.5 → -0.3 (sell 損失蓄積の早期遮断)
+- **trending_sell_offset_boost_factor**: 2.0 → 3.0 (Kyle 1985: trending_up sell PnL=-0.919bps worst regime 対策)
+- **toxic_fill_veto_threshold_bps**: -5.0 → -3.0 (-22.54bps tail risk からの連鎖損失遮断)
+
+### Tests
+- 11 テスト追加 (`TestCooldownRelease246`, `TestCooldownReleaseConfig246`)
+- 3 テスト更新 (YAML 変更に追従)
+- 総テスト: **3420 passed**
+
+### Documentation
+- `docs/v460/245_ph2_production_log_analysis_mar03.md` — 18日間本番ログ分析
+- `docs/v460/246_dd_cooldown_release_sell_defense.md` — 246# 実装ドキュメント
+
+
 ## 231# Self-review: FFD ロジック強化 + import_state None安全 (2026-03-03)
 
 ### Fixed (Bug — 230# レビュー指摘)

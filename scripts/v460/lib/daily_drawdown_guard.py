@@ -50,6 +50,8 @@ class DailyDrawdownState:
     # 224# B1: halt解除後ソフトリカバリ — 残存リカバリサイクル
     side_recovery_remaining_buy: int = 0
     side_recovery_remaining_sell: int = 0
+    # 246# cooldown release: 集約 halt からの部分解除
+    cooldown_released: bool = False  # cooldown 経過で partial release された
 
 
 class DailyDrawdownGuard:
@@ -73,6 +75,8 @@ class DailyDrawdownGuard:
         per_side_halt_cycles: int = 0,
         per_side_recovery_cycles: int = 5,
         per_side_recovery_lot_scale: float = 0.5,
+        cooldown_release_sec: float = 0.0,
+        cooldown_release_lot_scale: float = 0.3,
     ) -> None:
         self._enabled = enabled
         self._hard_limit_bps = hard_limit_bps
@@ -83,6 +87,10 @@ class DailyDrawdownGuard:
         # 224# B1: halt解除後ソフトリカバリ
         self._per_side_recovery_cycles = per_side_recovery_cycles
         self._per_side_recovery_lot_scale = per_side_recovery_lot_scale
+        # 246# cooldown release: 集約 halt からの部分解除
+        # halt 後 cooldown_release_sec 経過で lot 縮小付き再開 (0=無効)
+        self._cooldown_release_sec = cooldown_release_sec
+        self._cooldown_release_lot_scale = cooldown_release_lot_scale
         self._state = DailyDrawdownState()
         self._soft_triggered_today = False
 
@@ -209,13 +217,43 @@ class DailyDrawdownGuard:
         return result
 
     def is_halted(self) -> bool:
-        """現在 halt 中かどうかを返す. 日替わりリセットを先にチェック."""
+        """現在 halt 中かどうかを返す. 日替わりリセットを先にチェック.
+
+        246# cooldown release: halt 後に cooldown_release_sec 経過していれば
+        cooldown_released=True に遷移し、False を返す（lot 縮小付き再開）。
+        """
         if not self._enabled:
             return False
         self.maybe_reset_day()
-        if self._state.halted:
-            self._state.halt_blocked_cycles += 1  # 173# 機会損失カウント
-        return self._state.halted
+        if not self._state.halted:
+            return False
+        # 246# cooldown release 判定
+        if (
+            self._cooldown_release_sec > 0
+            and self._state.halt_triggered_at is not None
+            and not self._state.cooldown_released
+        ):
+            elapsed = time.time() - self._state.halt_triggered_at
+            if elapsed >= self._cooldown_release_sec:
+                self._state.cooldown_released = True
+                logger.warning(
+                    f"[246# cooldown_release] DD halt cooldown expired: "
+                    f"elapsed={elapsed:.0f}s >= {self._cooldown_release_sec:.0f}s — "
+                    f"partial release (lot_scale={self._cooldown_release_lot_scale})"
+                )
+        if self._state.cooldown_released:
+            return False  # lot 縮小付き再開 — 呼び出し元で lot_scale を取得
+        self._state.halt_blocked_cycles += 1  # 173# 機会損失カウント
+        return True
+
+    def get_cooldown_lot_scale(self) -> float:
+        """246# cooldown release 中の lot 縮小倍率を返す.
+
+        cooldown_released=True の場合に縮小倍率、それ以外は 1.0 を返す。
+        """
+        if self._state.cooldown_released:
+            return self._cooldown_release_lot_scale
+        return 1.0
 
     def is_side_halted(self, side: str) -> bool:
         """205# §9.5: 指定サイドが片側封鎖中かどうかを返す."""
@@ -313,6 +351,9 @@ class DailyDrawdownGuard:
             # 224# B1: リカバリ状態
             "side_recovery_remaining_buy": self._state.side_recovery_remaining_buy,
             "side_recovery_remaining_sell": self._state.side_recovery_remaining_sell,
+            # 246# cooldown release
+            "cooldown_released": self._state.cooldown_released,
+            "cooldown_release_lot_scale": self._cooldown_release_lot_scale,
         }
 
     def export_state(self) -> dict[str, object]:
@@ -336,6 +377,8 @@ class DailyDrawdownGuard:
             # 224# B1: リカバリ状態永続化
             "side_recovery_remaining_buy": self._state.side_recovery_remaining_buy,
             "side_recovery_remaining_sell": self._state.side_recovery_remaining_sell,
+            # 246# cooldown release
+            "cooldown_released": self._state.cooldown_released,
         }
 
     def import_state(self, data: dict[str, object]) -> None:
@@ -368,6 +411,8 @@ class DailyDrawdownGuard:
         # 224# B1: リカバリ状態復元
         self._state.side_recovery_remaining_buy = int(data.get("side_recovery_remaining_buy", 0))
         self._state.side_recovery_remaining_sell = int(data.get("side_recovery_remaining_sell", 0))
+        # 246# cooldown release 状態復元
+        self._state.cooldown_released = bool(data.get("cooldown_released", False))
         logger.info(
             f"[daily_drawdown] State restored: day={saved_day}, "
             f"pnl={self._state.daily_pnl_bps:+.2f}bps, halted={self._state.halted}, "

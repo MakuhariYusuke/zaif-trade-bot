@@ -385,6 +385,8 @@ class FillTestRunner(
             per_side_halt_cycles=config.per_side_dd_halt_cycles,
             per_side_recovery_cycles=config.per_side_dd_recovery_cycles,
             per_side_recovery_lot_scale=config.per_side_dd_recovery_lot_scale,
+            cooldown_release_sec=config.dd_cooldown_release_sec,
+            cooldown_release_lot_scale=config.dd_cooldown_release_lot_scale,
         )
 
         # 044# A-7: loss_cap 更新カウンタ
@@ -469,6 +471,8 @@ class FillTestRunner(
             per_side_halt_cycles=self.config.per_side_dd_halt_cycles,
             per_side_recovery_cycles=self.config.per_side_dd_recovery_cycles,
             per_side_recovery_lot_scale=self.config.per_side_dd_recovery_lot_scale,
+            cooldown_release_sec=self.config.dd_cooldown_release_sec,
+            cooldown_release_lot_scale=self.config.dd_cooldown_release_lot_scale,
         )
         if old_state:
             self._daily_drawdown_guard.import_state(old_state)
