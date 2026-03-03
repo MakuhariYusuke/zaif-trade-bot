@@ -357,6 +357,11 @@ class FillTestConfig:
     volatility_guard_offset_boost_factor: float = 2.0
     # 168# InvSkew/VG 競合解消: InvSkew 緩和時に VG ブースト上限を制御
     vg_inv_skew_damping_enabled: bool = False
+    # ---- 257# VPIN Continuous Modulator: バイナリ → 連続スケーリング ----
+    # VPIN が min から threshold の間でも段階的に boost を適用し、
+    # 情報非対称性リスクを滑らかに offset に反映する。
+    vg_vpin_continuous_enabled: bool = False  # True で VPIN 連続スケーリング有効化
+    vg_vpin_continuous_min: float = 0.40     # 連続スケーリング開始の VPIN 下限
     # 211# P1-B: Micro Circuit Breaker (短期価格急変の自動検知・防御)
     mcb_enabled: bool = False
     mcb_caution_sigma: float = 1.0
@@ -476,6 +481,12 @@ class FillTestConfig:
     inv_skew_regime_gate_enabled: bool = False  # True で trending 時の inv_skew を停止
     # 228# C2: 在庫偏重の時間減衰 — 古い fill 履歴の影響を指数関数的に減衰
     inv_decay_tau_sec: float = 0.0             # 時間減衰 τ (秒, 0=無効, 1800推奨開始値)
+    # ---- 257# AS Reservation Price: Avellaneda-Stoikov 在庫×ボラ連動 offset ----
+    # 在庫リスクをボラティリティに応じて非対称 offset 補正する理論的基盤。
+    # 既存 inv_skew (線形) を σ²·τ で補完し、高ボラ時に在庫リバランスを加速。
+    as_reservation_enabled: bool = False     # True で AS reservation shift を有効化
+    as_reservation_gamma: float = 0.1        # γ: リスク回避度 (0=中立, 高い=保守的)
+    as_reservation_tau_sec: float = 120.0    # τ: 時間ホライゾン (秒)
     preflight_pause_enabled: bool = True       # True で SAFE_STOP 前に pause を挟む
     preflight_pause_threshold: int = 5         # この回数で pause 発動 (< max_preflight_skip)
     preflight_pause_sec: float = 300.0         # pause 時のスリープ秒数

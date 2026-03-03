@@ -19,11 +19,27 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Optional, Protocol, runtime_checkable
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+
+@runtime_checkable
+class RegimeDetectorLike(Protocol):
+    """257# regime_detector の型安全 Protocol.
+
+    maker_price / order_monitor / adaptation_engine 共用。
+    ``object | None`` → ``RegimeDetectorLike | None`` に置換し、
+    getattr / hasattr を排除する。
+    """
+
+    @property
+    def current_regime(self) -> "FillTestRegime": ...
+
+    @property
+    def last_volatility_ratio(self) -> float: ...
 
 
 class FillTestRegime(str, Enum):

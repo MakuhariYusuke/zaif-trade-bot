@@ -24,6 +24,8 @@ import time
 from pathlib import Path
 from typing import Final, NamedTuple, Optional
 
+from scripts.v460.lib.regime_detector import RegimeDetectorLike
+
 from ztb.metrics.fill_quality import (
     FillRecord,
     compute_fill_metrics,
@@ -164,7 +166,7 @@ class AdaptationEngine:
         base_offset_ratio: float,
         base_offset_ratio_buy: float | None,
         base_offset_ratio_sell: float | None,
-        regime_detector: object | None = None,
+        regime_detector: RegimeDetectorLike | None = None,
         fast_fill_defense: object | None = None,
     ) -> AdaptationResult:
         """032# P0: 方策 A — fill メトリクスに基づく spread_offset_ratio 自動適応.
@@ -339,7 +341,7 @@ class AdaptationEngine:
         self,
         current_lot: float,
         *,
-        regime_detector: object | None = None,
+        regime_detector: RegimeDetectorLike | None = None,
     ) -> tuple[bool, float]:
         """033# 方策 B — fill メトリクスに基づくロットサイズ自動適応.
 

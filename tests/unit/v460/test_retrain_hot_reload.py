@@ -568,6 +568,8 @@ class TestE2ERetrainHotReload:
             eval_cfg.skip_gate_adaptive_ceiling = 0.80
             eval_cfg.skip_sell_unknown_regime = False
             eval_cfg.results_dir = str(records_dir)
+            # 257# 255# getattr 排除: hot_reload_check_interval_sec 直接参照のため明示設定
+            eval_cfg.hot_reload_check_interval_sec = 120.0
 
             evaluator = SkipGateEvaluator(eval_cfg, Path(tmpdir))
             assert evaluator._skip_gate is not None

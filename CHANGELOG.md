@@ -6,6 +6,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 257# AS Reservation Price + VPIN Continuous + RegimeDetectorLike Protocol (2026-03-03)
+
+### Added — Market Theory
+- **MT-1: Avellaneda-Stoikov Reservation Price stage** (`_apply_as_reservation_shift`): 在庫×ボラティリティ連動 offset 補正。σ² を spread/mid で推定 (Roll 1984)。既存 inv_skew (線形) を σ²·τ で補完し、高ボラ局面での在庫リバランスを加速
+  - Config: `as_reservation_enabled`, `as_reservation_gamma`, `as_reservation_tau_sec`
+- **MT-3: VPIN Continuous Modulator**: VG の VPIN トリガーをバイナリ閾値判定 → 二次関数ランプに拡張。`vpin_boost = 1 + (max_boost-1) · norm²` で情報非対称性リスクを滑らかに反映
+  - Config: `vg_vpin_continuous_enabled`, `vg_vpin_continuous_min`
+
+### Changed — Type Safety
+- **F-2: `RegimeDetectorLike` Protocol** (regime_detector.py): `runtime_checkable` Protocol を定義し、`regime_detector: object | None` → `RegimeDetectorLike | None` に全 4 ファイルで統一
+  - maker_price.py: コンストラクタの型注釈
+  - order_monitor.py: `_resolve_regime_name` / `_should_block_reprice_with_skip_gate` / `monitor` 引数
+  - adaptation_engine.py: `try_auto_adapt` / `try_auto_lot_size` 引数
+- **`_resolve_regime_name` 簡素化**: getattr×2 + hasattr×1 → Protocol による直接アクセス (2行)
+
+### Fixed
+- **test_retrain_hot_reload MagicMock 不整合**: `hot_reload_check_interval_sec` 未設定で float vs MagicMock 比較 TypeError
+
+### Self-Review
+- bare except 残存: 0件 ✅
+- `type: ignore` without code: 0件 ✅
+- `regime_detector: object` 残存: 0件 ✅
+- `Any` 型注釈: 0件 ✅
+
+### Tests
+- 25 テスト追加 (`test_257_as_reservation_vpin_continuous_protocol.py`)
+  - F-2: Protocol runtime_checkable, mock 準拠, source 検証 (8 tests)
+  - MT-1: disabled/neutral/long-buy/long-sell/clamp/gamma-zero/spread比例/pipeline (8 tests)
+  - MT-3: binary unchanged/trigger/continuous min/partial/full/cap/quadratic shape/velocity priority/source (9 tests)
+- 1 既存テスト修正 (`test_retrain_hot_reload.py`)
+- 総テスト: **3575** (3575 passed)
+
+
 ## 256# _recent_records 累積バグ修正 + セルフレビュー完了 (2026-03-03)
 
 ### Fixed

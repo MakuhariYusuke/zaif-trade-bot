@@ -18,6 +18,7 @@ from collections.abc import Awaitable, Callable
 from typing import Final, Optional, Protocol, cast, runtime_checkable
 
 from scripts.v460.lib.fill_config import FillMonitorResult, FillTestConfig
+from scripts.v460.lib.regime_detector import RegimeDetectorLike
 
 logger = logging.getLogger(__name__)
 
@@ -120,14 +121,14 @@ class OrderMonitor:
         self._config = config
 
     @staticmethod
-    def _resolve_regime_name(regime_detector: object | None) -> str | None:
-        """regime detector から現在レジーム名を安全に取得する."""
-        if regime_detector is None or not hasattr(regime_detector, "current_regime"):
+    def _resolve_regime_name(regime_detector: RegimeDetectorLike | None) -> str | None:
+        """257# regime detector から現在レジーム名を型安全に取得する.
+
+        Protocol 化により duck-typing の動的属性検査を排除。
+        """
+        if regime_detector is None:
             return None
-        current_regime = getattr(regime_detector, "current_regime", None)
-        if current_regime is None:
-            return None
-        return getattr(current_regime, "value", None)
+        return regime_detector.current_regime.value
 
     def _should_block_reprice_with_skip_gate(
         self,
@@ -136,7 +137,7 @@ class OrderMonitor:
         side: str,
         spread_at_order: float | None,
         effective_offset_ratio: float,
-        regime_detector: object | None,
+        regime_detector: RegimeDetectorLike | None,
         market_timestamp: float,
     ) -> bool:
         """reprice 前の SkipGate ガードを共通処理する."""
@@ -196,7 +197,7 @@ class OrderMonitor:
         get_mid_price: Callable[[], Awaitable[float]],
         compute_maker_price: Callable[[str], Awaitable[tuple[float, float, float]]],
         skip_gate: _SkipGateLike | None = None,
-        regime_detector: object | None = None,
+        regime_detector: RegimeDetectorLike | None = None,
         current_lot: float = 0.001,
         chase_drift_bps_override: float | None = None,      # 179# Chase
         chase_max_reprice_override: int | None = None,       # 179# Chase

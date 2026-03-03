@@ -25,7 +25,7 @@ from typing import Final, NamedTuple, Optional, Protocol
 
 from scripts.v460.lib.fast_fill_defense import FastFillDefense
 from scripts.v460.lib.fill_config import FillTestConfig
-from scripts.v460.lib.regime_detector import FillTestRegime
+from scripts.v460.lib.regime_detector import FillTestRegime, RegimeDetectorLike
 from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
 
 logger = logging.getLogger(__name__)
@@ -86,7 +86,8 @@ class MakerPriceCalculator:
     ╠══════════════════════════════════════════════════════════════╣
     ║  compute() は 163# で 306→143 行に分割済み。               ║
     ║  ステージパイプライン構造:                                  ║
-    ║    compute() → _apply_regime_boosts()                      ║
+    ║    compute() → _apply_as_reservation_shift()  (257#)       ║
+    ║              → _apply_regime_boosts()                      ║
     ║              → _apply_spread_adaptive()                    ║
     ║              → _apply_volatility_guard()                   ║
     ║              → _apply_imbalance_risk()                     ║
@@ -132,7 +133,7 @@ class MakerPriceCalculator:
         self,
         config: FillTestConfig,
         fast_fill_defense: FastFillDefense,
-        regime_detector: object | None,
+        regime_detector: RegimeDetectorLike | None,
         *,
         base_offset_ratio: float,
         base_offset_ratio_buy: float | None = None,
@@ -510,6 +511,72 @@ class MakerPriceCalculator:
             return MakerPriceResult(best_ask, spread, 0.0)
         return MakerPriceResult(price, spread, effective_offset_ratio)
 
+    def _apply_as_reservation_shift(
+        self,
+        side: str,
+        spread: float,
+        mid_price: float,
+        effective_offset_ratio: float,
+    ) -> float:
+        """257# AS Reservation Price: Avellaneda-Stoikov 在庫×ボラ連動 offset.
+
+        Avellaneda-Stoikov (2008) 予約価格理論:
+          r = s - q·γ·σ²·τ
+
+        既存の inventory skewing (162#) は在庫偏重に対する線形 offset 補正だが、
+        ボラティリティを考慮しない。AS 理論は「在庫リスクは σ² に比例する」ことを
+        示し、高 vol 局面での在庫偏重は低 vol 局面よりも大きな offset 調整を
+        必要とすることを定式化する。
+
+        σ² 推定: spread/mid を用いた micro-volatility proxy (Roll 1984)。
+        効果: 高ボラ + 在庫偏重 → offset shift 増大（リバランス加速）。
+        """
+        cfg = self._config
+        if not cfg.as_reservation_enabled:
+            return effective_offset_ratio
+
+        now = time.time()
+        q = self._decayed_imbalance(now)
+        if abs(q) < cfg.inventory_skewing_neutral_band:
+            return effective_offset_ratio
+
+        gamma = cfg.as_reservation_gamma
+        tau = cfg.as_reservation_tau_sec
+        if gamma <= 0 or tau <= 0 or mid_price <= 0:
+            return effective_offset_ratio
+
+        # σ² estimate: spread-based micro-volatility proxy (Roll 1984)
+        # spread / mid ≈ 2σ at bid-ask level → σ ≈ spread / (2·mid)
+        sigma = spread / (2.0 * mid_price)
+        sigma_sq = sigma * sigma
+
+        # AS reservation shift in offset ratio units:
+        # delta = q · γ · σ² · τ
+        # buy side: long inventory (q>0) → increase offset (less aggressive buy)
+        # sell side: long inventory (q>0) → decrease offset (more aggressive sell)
+        delta = q * gamma * sigma_sq * tau
+        sign = 1.0 if side == "buy" else -1.0
+        shift = delta * sign
+
+        if abs(shift) < 1e-8:
+            return effective_offset_ratio
+
+        prev = effective_offset_ratio
+        effective_offset_ratio = max(
+            cfg.min_offset_ratio,
+            min(cfg.max_offset_ratio, effective_offset_ratio + shift),
+        )
+
+        if effective_offset_ratio != prev:
+            logger.info(
+                f"[as_reservation] 257# {side} q={q:+.3f} γ={gamma:.3f} "
+                f"σ²={sigma_sq:.2e} τ={tau:.0f}s → "
+                f"offset {prev:.4f} → {effective_offset_ratio:.4f} "
+                f"(shift={shift:+.2e})"
+            )
+
+        return effective_offset_ratio
+
     def _apply_regime_boosts(
         self, side: str, effective_offset_ratio: float,
     ) -> float:
@@ -720,7 +787,13 @@ class MakerPriceCalculator:
         mid_trend_bps: float | None,
         effective_offset_ratio: float,
     ) -> float:
-        """107# Volatility Guard: リアルタイム急変検知 → offset boost."""
+        """107# Volatility Guard: リアルタイム急変検知 → offset boost.
+
+        257# MT-3: VPIN 連続スケーリング対応。
+        vg_vpin_continuous_enabled=True の場合、VPIN が min から threshold の間で
+        二次関数的に boost を段階適用する。バイナリ閾値判定による急激な
+        offset ジャンプを回避し、情報非対称性リスクを滑らかに反映する。
+        """
         cfg = self._config
 
         if cfg.volatility_guard_enabled:
@@ -728,17 +801,48 @@ class MakerPriceCalculator:
             vg_reason = ""
             _vg_velocity = mid_trend_bps  # 158# P2-6: ログ用
             _vg_vpin = self._last_vpin    # 158# P2-6: ログ用
+
+            # --- Velocity trigger (unchanged) ---
+            velocity_boost = 1.0
             if (
                 mid_trend_bps is not None
                 and abs(mid_trend_bps) > cfg.volatility_guard_velocity_threshold_bps
             ):
-                vg_triggered = True
+                velocity_boost = cfg.volatility_guard_offset_boost_factor
                 vg_reason = f"velocity={mid_trend_bps:.1f}bps"
+
+            # --- VPIN trigger: 257# continuous or binary ---
+            vpin_boost = 1.0
             if self._last_vpin is not None:
-                if self._last_vpin > cfg.volatility_guard_vpin_threshold:
-                    vg_triggered = True
-                    vg_reason += (f"{'+' if vg_reason else ''}vpin="
-                                  f"{self._last_vpin:.2f}")
+                if cfg.vg_vpin_continuous_enabled:
+                    # 257# MT-3: 二次関数ランプ — 緩やかな onset と閾値付近の急峻化
+                    _min_vpin = cfg.vg_vpin_continuous_min
+                    _thresh = cfg.volatility_guard_vpin_threshold
+                    if self._last_vpin > _min_vpin and _thresh > _min_vpin:
+                        _norm = min(
+                            (self._last_vpin - _min_vpin) / (_thresh - _min_vpin),
+                            1.0,
+                        )
+                        vpin_boost = 1.0 + (
+                            cfg.volatility_guard_offset_boost_factor - 1.0
+                        ) * _norm * _norm  # quadratic ramp
+                        vg_reason += (
+                            f"{'+' if vg_reason else ''}vpin={self._last_vpin:.2f}"
+                            f"(cont={_norm:.2f})"
+                        )
+                else:
+                    # Legacy binary mode
+                    if self._last_vpin > cfg.volatility_guard_vpin_threshold:
+                        vpin_boost = cfg.volatility_guard_offset_boost_factor
+                        vg_reason += (
+                            f"{'+' if vg_reason else ''}vpin="
+                            f"{self._last_vpin:.2f}"
+                        )
+
+            # --- 最終 boost: velocity と VPIN の max ---
+            _raw_boost = max(velocity_boost, vpin_boost)
+            vg_triggered = _raw_boost > 1.0
+
             _vg_boost = 1.0  # 158# P2-6: 実際の boost 倍率
             if vg_triggered:
                 pre_offset = effective_offset_ratio
@@ -746,19 +850,19 @@ class MakerPriceCalculator:
                 # VG boost 倍率を抑制して在庫リバランス効果を保全する。
                 # damping: InvSkew factor が負(=sell offset 縮小)なら
                 #   effective_boost = 1 + (1 - |factor|) * (boost_factor - 1)
-                _raw_boost = cfg.volatility_guard_offset_boost_factor
                 if (
                     cfg.vg_inv_skew_damping_enabled
                     and self._last_inv_skew_factor < 0.0
                 ):
                     _damping = 1.0 - min(abs(self._last_inv_skew_factor), 1.0)
-                    _raw_boost = 1.0 + _damping * (_raw_boost - 1.0)
+                    _damped = 1.0 + _damping * (_raw_boost - 1.0)
                     logger.info(
                         f"[vg_damping] 168# InvSkew factor="
                         f"{self._last_inv_skew_factor:+.4f} → "
-                        f"VG boost {cfg.volatility_guard_offset_boost_factor:.2f}"
-                        f"→{_raw_boost:.4f}"
+                        f"VG boost {_raw_boost:.4f}"
+                        f"→{_damped:.4f}"
                     )
+                    _raw_boost = _damped
                 effective_offset_ratio, _vg_boost = self._scale_offset_ratio(
                     effective_offset_ratio,
                     _raw_boost,
@@ -959,6 +1063,12 @@ class MakerPriceCalculator:
             _dyn_floor = self._effective_sell_offset_floor()
             if _dyn_floor > 0:
                 effective_offset_ratio = max(effective_offset_ratio, _dyn_floor)
+
+        # 257# ステージ: _apply_as_reservation_shift()
+        # Avellaneda-Stoikov 在庫×ボラ連動 offset (inv_skew + σ² 補完)
+        effective_offset_ratio = self._apply_as_reservation_shift(
+            side, spread, mid_price, effective_offset_ratio,
+        )
 
         # 163# ステージ抽出: _apply_regime_boosts()
         effective_offset_ratio = self._apply_regime_boosts(
