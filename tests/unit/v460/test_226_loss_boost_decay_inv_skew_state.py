@@ -112,9 +112,10 @@ class TestLossBoostExponentialDecay:
         assert "_loss_boost_set_time" in MakerPrice.__slots__
 
     def test_compute_source_has_decay_formula(self) -> None:
-        """compute() に指数減衰の数式が実装されている (ソースコード検証)."""
-        src = inspect.getsource(MakerPrice.compute)
-        assert "exp(" in src, "math.exp() が compute() に存在すること"
+        """指数減衰の数式が _apply_loss_boost() に実装されている (ソースコード検証)."""
+        # 260# P2-2: loss boost は _apply_loss_boost() に抽出済み
+        src = inspect.getsource(MakerPrice._apply_loss_boost)
+        assert "exp(" in src, "math.exp() が _apply_loss_boost() に存在すること"
         assert "_loss_boost_set_time" in src
         assert "226# T1" in src
 

@@ -1,4 +1,4 @@
-# 257# AS Reservation Price + VPIN Continuous + RegimeDetectorLike Protocol
+# 258# AS Reservation Price + VPIN Continuous + RegimeDetectorLike Protocol
 
 > **種別**: impl (実装完了報告)  
 > **フェーズ**: phg (フェーズ横断: 市場理論・型安全)  

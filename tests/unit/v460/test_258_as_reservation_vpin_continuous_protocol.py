@@ -1,4 +1,4 @@
-"""257# AS Reservation Price / VPIN Continuous / RegimeDetectorLike Protocol テスト.
+"""258# AS Reservation Price / VPIN Continuous / RegimeDetectorLike Protocol テスト.
 
 MT-1: Avellaneda-Stoikov reservation price 在庫×ボラ連動 offset stage
 MT-3: VPIN binary → continuous quadratic modulator

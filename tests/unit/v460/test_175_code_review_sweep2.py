@@ -29,14 +29,12 @@ class TestFFDBoostClamp:
         """VG boost + FFD boost が重なっても max_offset_ratio でクランプ."""
         from scripts.v460.lib.maker_price import MakerPriceCalculator
         import inspect
-        source = inspect.getsource(MakerPriceCalculator.compute)
+        # 260# P2-2: FFD boost は _apply_ffd_boost() に抽出済み
+        source = inspect.getsource(MakerPriceCalculator._apply_ffd_boost)
         # FFD boost セクションが helper 経由で max_offset_ratio clamp を使うことを確認
         assert "boost_mult" in source
         assert "_scale_offset_ratio" in source
-        boost_idx = source.find("boost_mult")
-        helper_after_boost = source.find("_scale_offset_ratio", boost_idx)
-        max_after_helper = source.find("max_ratio=cfg.max_offset_ratio", helper_after_boost)
-        assert max_after_helper > 0, "FFD boost 後に helper clamp が必要"
+        assert "max_ratio=cfg.max_offset_ratio" in source, "FFD boost 後に helper clamp が必要"
 
 
 # ======================================================================

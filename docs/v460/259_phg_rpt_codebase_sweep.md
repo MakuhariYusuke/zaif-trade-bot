@@ -1,8 +1,8 @@
-# 258# Codebase Sweep Report
+# 259# Codebase Sweep Report
 
 ## 概要
 
-257# (AS Reservation Price / VPIN Continuous / RegimeDetectorLike Protocol) 実装後のコードベーススイープ。
+258# (AS Reservation Price / VPIN Continuous / RegimeDetectorLike Protocol) 実装後のコードベーススイープ。
 残存する技術的負債、市場理論による補強余地、型安全向上箇所を洗い出す。
 
 ---

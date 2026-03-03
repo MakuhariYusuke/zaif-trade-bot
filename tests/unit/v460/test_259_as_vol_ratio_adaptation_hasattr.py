@@ -1,4 +1,4 @@
-"""258# テスト — AS σ² vol_ratio 統合 + adaptation_engine hasattr 排除.
+"""259# テスト — AS σ² vol_ratio 統合 + adaptation_engine hasattr 排除.
 
 MT-4: Avellaneda-Stoikov σ² 推定の RegimeDetector volatility_ratio 統合
 F-3: adaptation_engine hasattr(regime_detector, "current_regime") 排除
