@@ -28,6 +28,7 @@ from scripts.v460.lib.ob_utils import best_bid_ask  # 200# 10-C: module-level im
 if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
     from scripts.v460.lib.order_monitor import OrderLike
+    from scripts.v460.lib.phantom_position_guard import PhantomPositionGuard
     from scripts.v460.lib.resilience import CircuitState
     from ztb.metrics.fill_quality import FillRecord
 
@@ -54,7 +55,8 @@ class FillCycleExecutorMixin:
     # 236# hasattr 排除: __init__ 前でも安全なクラスレベルデフォルト
     _current_regime_value: object = None  # type: ignore[assignment]
     # 237# PhantomPositionGuard: クラスレベルデフォルト (hasattr 排除)
-    _phantom_guard: object | None = None
+    # 238# C-1: object → PhantomPositionGuard 型安全化 (TYPE_CHECKING)
+    _phantom_guard: PhantomPositionGuard | None = None
 
     async def _compute_orderbook_imbalance(self, depth: int = 5) -> tuple[float, float, float]:
         """054# S1: 板不均衡を計算 — 120# MakerPriceCalculator に委譲."""
@@ -108,6 +110,9 @@ class FillCycleExecutorMixin:
     ) -> bool:
         """237# status_unknown 時に PhantomPositionGuard へ登録.
 
+        238# C-2: BalanceChecker の最終クエリ残高を snapshot として渡す。
+        これがないと Phase 2 (残高差分検出) が完全に無効。
+
         Returns:
             True = pending_reconciliation (FillRecord に設定する)
         """
@@ -119,11 +124,14 @@ class FillCycleExecutorMixin:
         ):
             return False
         if self._phantom_guard is not None:
+            # 238# C-2: BalanceChecker から取得済みの最新残高を snapshot として渡す
+            _btc_snap = getattr(self._balance_checker, 'last_btc_free', None)
             self._phantom_guard.register_unknown(
                 order_id=monitor.order_id_for_reconciliation,
                 side=side,
                 quantity=order_lot,
                 price=order_price,
+                balance_btc=_btc_snap,
             )
         return True
 

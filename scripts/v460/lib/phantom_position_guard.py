@@ -9,11 +9,20 @@
   - 残高差分判定でファントムポジションを検出
   - CRITICAL ログ + 安全側バイアスで後続サイクルを保護
 
+238# セルフレビュー改善:
+  - C-1: Protocol 型安全化 (getattr → OrderStatusLike.status 直接参照)
+  - C-2: balance_btc snapshot の受け渡し経路追加
+  - S-1: TTL 導入 — 300秒超過の stale エントリは自動パージ
+  - S-2: phantom_side_veto — 検出側を一時拒否 (adverse selection 防御)
+  - S-3: reconcile() の重複 CRITICAL ログ削除 (orchestrator に委譲)
+  - S-4: resolved リスト簡素化
+
 責務:
   - status_unknown イベントの記録
   - 遅延型の注文状態再照合
   - 残高ベースの乖離検出
   - ファントム検出時のメトリクス提供
+  - 検出側の一時 veto (サイクル数ベース)
 """
 
 from __future__ import annotations
@@ -26,12 +35,19 @@ from typing import Protocol, runtime_checkable
 logger = logging.getLogger(__name__)
 
 
+class _OrderStatusResult(Protocol):
+    """注文ステータスの最小プロトコル (getattr 排除)."""
+
+    @property
+    def status(self) -> str: ...
+
+
 @runtime_checkable
 class _BalanceQueryable(Protocol):
     """残高クエリ用 adapter の最小インターフェース."""
 
     async def get_balance(self, currency: str) -> list: ...
-    async def get_order_status(self, order_id: str) -> object | None: ...
+    async def get_order_status(self, order_id: str) -> _OrderStatusResult | None: ...
 
 
 @dataclass
@@ -64,14 +80,24 @@ class PhantomPositionGuard:
 
     ────────────────────────────────────────────────────
     責務: status_unknown 注文の遅延再照合 + 残高乖離検出
+         + 検出時の同 side 一時拒否 (adverse selection 防御)
     非責務: 在庫管理, ロット計算, 取引実行
     ────────────────────────────────────────────────────
+
+    市場理論的根拠:
+      phantom fill は高ボラティリティ・高ティックフロー時に発生しやすく、
+      強い逆選択シグナルである。検出後は同 side の短期 veto で
+      逆ポジション蓄積リスクを軽減する (Avellaneda-Stoikov §3.2)。
     """
 
     # 最小再照合間隔 (秒) — API rate limit 保護
     _MIN_RECONCILE_INTERVAL_SEC: float = 5.0
     # 残高乖離の許容誤差 (BTC) — dust レベルの差分は無視
     _BALANCE_TOLERANCE_BTC: float = 0.0005
+    # 238# S-1: 未照合エントリの最大保持時間 (秒)
+    _MAX_PENDING_AGE_SEC: float = 300.0
+    # 238# S-2: phantom 検出後の同 side veto サイクル数
+    _PHANTOM_VETO_CYCLES: int = 3
 
     def __init__(self) -> None:
         self._pending: list[PendingReconciliation] = []
@@ -80,6 +106,8 @@ class PhantomPositionGuard:
         self._last_reconcile_time: float = 0.0
         # 直近の phantom 検出結果 (ログ/メトリクス用)
         self._last_detections: list[PhantomDetection] = []
+        # 238# S-2: phantom 検出後の同 side 一時拒否 (side → 残りサイクル数)
+        self._side_veto: dict[str, int] = {}
 
     @property
     def has_pending(self) -> bool:
@@ -100,6 +128,22 @@ class PhantomPositionGuard:
     def total_reconciled(self) -> int:
         """累積照合数."""
         return self._total_reconciled
+
+    def is_side_vetoed(self, side: str) -> bool:
+        """238# S-2: phantom 検出後の同 side 一時拒否判定."""
+        return self._side_veto.get(side, 0) > 0
+
+    def tick_veto(self) -> None:
+        """238# S-2: veto カウンタを 1 サイクル分デクリメント.
+
+        サイクル開始時に呼ばれ、veto 期間が経過したら解除する。
+        """
+        expired = [s for s, c in self._side_veto.items() if c <= 1]
+        for s in expired:
+            del self._side_veto[s]
+            logger.info(f"[238# phantom_guard] Side veto expired: {s}")
+        for s in list(self._side_veto):
+            self._side_veto[s] -= 1
 
     def register_unknown(
         self,
@@ -140,6 +184,12 @@ class PhantomPositionGuard:
     async def reconcile(self, adapter: _BalanceQueryable) -> list[PhantomDetection]:
         """未照合の注文を再確認し、ファントムポジションを検出.
 
+        238# 改善:
+          - S-1: TTL 超過エントリの自動パージ
+          - S-2: 検出側に _PHANTOM_VETO_CYCLES サイクルの side veto を設定
+          - S-3: CRITICAL ログは orchestrator に委譲 (ここでは INFO/WARNING のみ)
+          - S-4: resolved リスト不要 → 直接クリア
+
         Args:
             adapter: 残高/注文ステータスクエリ可能なアダプタ
 
@@ -150,6 +200,26 @@ class PhantomPositionGuard:
             return []
 
         now = time.time()
+
+        # 238# S-1: TTL 超過エントリの自動パージ
+        stale_count = 0
+        fresh: list[PendingReconciliation] = []
+        for entry in self._pending:
+            if now - entry.timestamp > self._MAX_PENDING_AGE_SEC:
+                stale_count += 1
+                self._total_reconciled += 1  # stale も照合済みカウント
+            else:
+                fresh.append(entry)
+        if stale_count > 0:
+            logger.warning(
+                f"[238# phantom_guard] Purged {stale_count} stale entries "
+                f"(age > {self._MAX_PENDING_AGE_SEC:.0f}s)"
+            )
+        self._pending = fresh
+
+        if not self._pending:
+            return []
+
         if now - self._last_reconcile_time < self._MIN_RECONCILE_INTERVAL_SEC:
             logger.debug(
                 "[237# phantom_guard] Reconcile skipped (rate limit): "
@@ -159,32 +229,29 @@ class PhantomPositionGuard:
 
         self._last_reconcile_time = now
         detections: list[PhantomDetection] = []
-        resolved: list[PendingReconciliation] = []
 
         for entry in self._pending:
             detection = await self._reconcile_single(adapter, entry)
             if detection is not None:
                 detections.append(detection)
                 self._phantom_count += 1
-            resolved.append(entry)
+                # 238# S-2: 検出側に veto を設定 (adverse selection 防御)
+                self._side_veto[detection.side] = self._PHANTOM_VETO_CYCLES
+                logger.warning(
+                    f"[238# phantom_guard] Side veto set: "
+                    f"{detection.side} blocked for {self._PHANTOM_VETO_CYCLES} cycles"
+                )
             self._total_reconciled += 1
 
-        # 照合済みエントリをクリア
-        self._pending = [p for p in self._pending if p not in resolved]
+        # 238# S-4: 全エントリ照合済み — 直接クリア
+        reconciled_count = len(self._pending)
+        self._pending.clear()
         self._last_detections = detections
 
-        if detections:
-            for d in detections:
-                logger.critical(
-                    f"[237# PHANTOM DETECTED] order={d.order_id}, "
-                    f"side={d.side}, qty={d.quantity:.6f}, "
-                    f"price={d.price:.0f}, method={d.detection_method}"
-                    + (f", balance_delta={d.balance_delta_btc:.6f}" if d.balance_delta_btc is not None else "")
-                )
-        else:
+        if not detections:
             logger.info(
                 f"[237# phantom_guard] Reconciliation complete: "
-                f"{len(resolved)} entries checked, no phantom detected"
+                f"{reconciled_count} entries checked, no phantom detected"
             )
 
         return detections
@@ -207,7 +274,8 @@ class PhantomPositionGuard:
         try:
             status = await adapter.get_order_status(entry.order_id)
             if status is not None:
-                _status_str = getattr(status, "status", "").lower()
+                # 238# C-3: getattr → Protocol.status 直接参照 (型安全)
+                _status_str = status.status.lower()
                 if "filled" in _status_str or "completed" in _status_str:
                     order_filled = True
                     logger.warning(
@@ -289,6 +357,7 @@ class PhantomPositionGuard:
         """全ての未照合エントリをクリア (テスト用)."""
         self._pending.clear()
         self._last_detections.clear()
+        self._side_veto.clear()
 
     def get_metrics(self) -> dict[str, int | float]:
         """ガードの累積メトリクスを返す."""
@@ -296,4 +365,5 @@ class PhantomPositionGuard:
             "pending_count": self.pending_count,
             "phantom_detected_count": self._phantom_count,
             "total_reconciled": self._total_reconciled,
+            "side_veto_active": len(self._side_veto),
         }

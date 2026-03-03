@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-03 (232# 222–231レビュー: 本筋投入前の先回り点検, FFD妥当性, 実運用SHA乖離, 残存リスク)
+> 最終更新: 2026-03-03 (238# 237# セルフレビュー: 型安全 + 残高スナップショット + TTL + サイドベトー)
 
 ---
 
@@ -223,6 +223,12 @@
 | 230 | fix | [230_ph2_fix_ffd_deadzone_streak_guards.md](230_ph2_fix_ffd_deadzone_streak_guards.md) | FFD deadzone/streak + MCB/SAD guard + hasattr排除 |
 | 231 | fix | [231_ph2_fix_ffd_logic_hardening_null_safety.md](231_ph2_fix_ffd_logic_hardening_null_safety.md) | FFDロジック強化 + import_state None安全 |
 | 232 | rev | [232_ph2_rev_222_231_predeployment_risk_review.md](232_ph2_rev_222_231_predeployment_risk_review.md) | 222#–231# レビュー: 本筋投入前の先回り点検, FFD妥当性, 実運用SHA乖離, feasible set collapse, 残存リスク |
+| 233 | rev | [233_ph2_gemini_31_pro_final_judgement_and_breakthrough.md](233_ph2_gemini_31_pro_final_judgement_and_breakthrough.md) | Gemini 3.1 Pro 最終審判: 1時間破綻の真因 + アーキテクチャ根本欠陥 + Liveness制約 |
+| 234 | fix | [234_ph2_fix_gate_bypass_degraded_liquidation.md](234_ph2_fix_gate_bypass_degraded_liquidation.md) | Gate bypass + 縮退清算モード + one-sided エスカレーション |
+| 235 | fix | [235_ph2_fix_234_self_review_cleanup.md](235_ph2_fix_234_self_review_cleanup.md) | 234# セルフレビュー: FFD状態復元 + 清算モード改善 + CycleStrategy統合 |
+| 236 | fix | [236_ph2_fix_state_persistence_cqs_hasattr.md](236_ph2_fix_state_persistence_cqs_hasattr.md) | State永続化 + CQS分離 + hasattr排除 + per-side no_feasible |
+| 237 | fix | [237_ph2_fix_phantom_position_guard.md](237_ph2_fix_phantom_position_guard.md) | PhantomPositionGuard: status_unknown 幽霊ポジション検知・遅延照合 (232# §1.6) |
+| 238 | fix | [238_ph2_fix_237_self_review.md](238_ph2_fix_237_self_review.md) | 237# セルフレビュー: 型安全 + 残高スナップショット + TTL + サイドベトー |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

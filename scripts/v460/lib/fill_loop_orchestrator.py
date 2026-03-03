@@ -25,6 +25,7 @@ from scripts.v460.lib.spread_anomaly_detector import SADLevel
 
 if TYPE_CHECKING:
     from scripts.v460.lib.fill_config import FillTestConfig
+    from scripts.v460.lib.phantom_position_guard import PhantomPositionGuard
     from ztb.metrics.fill_quality import FillRecord
 
 logger = logging.getLogger(__name__)
@@ -83,7 +84,8 @@ class FillLoopOrchestratorMixin:
     _sad: object | None = None
     _cycle_strategy: object | None = None
     # 237# PhantomPositionGuard class-level default (hasattr 排除)
-    _phantom_guard: object | None = None
+    # 238# C-1: object → PhantomPositionGuard 型安全化 (TYPE_CHECKING)
+    _phantom_guard: PhantomPositionGuard | None = None
 
     def _is_sell_killed(self) -> bool:
         """133# P0-10 / 136# P1-03: sell 動的 kill 判定 — SellDynamicKillManager に委譲.
@@ -998,23 +1000,26 @@ class FillLoopOrchestratorMixin:
 
             # ────────────────────────────────────────────────────
             # 237# Phantom Position Guard: 前サイクルの status_unknown を遅延再照合
+            # 238# S-2: side veto カウンタ tick + reconcile
             # ────────────────────────────────────────────────────
-            if self._phantom_guard.has_pending:
-                try:
-                    _phantom_detections = await self._phantom_guard.reconcile(self.adapter)
-                    if _phantom_detections:
-                        self._inc_guard_fire("phantom_position_detected")
-                        for _pd in _phantom_detections:
-                            logger.critical(
-                                f"[237# PHANTOM] Inventory mismatch: "
-                                f"{_pd.side} {_pd.quantity:.6f} BTC @ {_pd.price:.0f} "
-                                f"(method={_pd.detection_method}) — "
-                                f"cautious mode activated"
-                            )
-                        # ファントム検出時: 安全側バイアス — interval 延長
-                        await self._effective_sleep(multiplier=3.0)
-                except Exception as _pg_err:
-                    logger.warning(f"[237# phantom_guard] Reconcile error: {_pg_err}")
+            if self._phantom_guard is not None:
+                self._phantom_guard.tick_veto()  # 238# S-2: veto デクリメント
+                if self._phantom_guard.has_pending:
+                    try:
+                        _phantom_detections = await self._phantom_guard.reconcile(self.adapter)
+                        if _phantom_detections:
+                            self._inc_guard_fire("phantom_position_detected")
+                            for _pd in _phantom_detections:
+                                logger.critical(
+                                    f"[237# PHANTOM] Inventory mismatch: "
+                                    f"{_pd.side} {_pd.quantity:.6f} BTC @ {_pd.price:.0f} "
+                                    f"(method={_pd.detection_method}) — "
+                                    f"cautious mode activated, side veto={self._phantom_guard._PHANTOM_VETO_CYCLES} cycles"
+                                )
+                            # ファントム検出時: 安全側バイアス — interval 延長
+                            await self._effective_sleep(multiplier=3.0)
+                    except Exception as _pg_err:
+                        logger.warning(f"[237# phantom_guard] Reconcile error: {_pg_err}")
 
             # 205# §9.5: 片側 DD Halt のサイクルカウンタ更新
             self._daily_drawdown_guard.tick_side_halt()
@@ -1086,6 +1091,34 @@ class FillLoopOrchestratorMixin:
                     logger.info(
                         f"[205# §9.2] Toxic veto: {next_side} blocked "
                         f"(remaining={self._toxic_veto[next_side]}), "
+                        f"switching to {_alt}"
+                    )
+                    next_side = _alt
+
+            # 238# S-2: Phantom side veto — phantom 検出後の同 side 一時拒否
+            if (
+                self._phantom_guard is not None
+                and self._phantom_guard.is_side_vetoed(next_side)
+            ):
+                _alt = "sell" if next_side == "buy" else "buy"
+                if (
+                    self._phantom_guard.is_side_vetoed(_alt)
+                    or self._daily_drawdown_guard.is_side_halted(_alt)
+                ):
+                    # 両サイド封鎖 → スキップ
+                    self._inc_guard_fire("phantom_veto_block")
+                    batch.append(self._make_loop_skip_record(
+                        side="none",
+                        cancel_reason=CR.PHANTOM_SIDE_VETO,
+                        order_quantity=0.0,
+                    ))
+                    total_count += 1
+                    batch = self._batch_persistence.maybe_flush(batch, "phantom_veto_both")
+                    await self._effective_sleep()
+                    continue
+                else:
+                    logger.info(
+                        f"[238# phantom_veto] {next_side} blocked → "
                         f"switching to {_alt}"
                     )
                     next_side = _alt

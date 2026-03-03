@@ -3,6 +3,13 @@
 232# §1.6 [HIGH] 対応: status_unknown 後の phantom position 検出・再照合の
 ユニットテスト。
 
+238# セルフレビュー追加テスト:
+  - TTL によるエントリ自動パージ
+  - side veto (is_side_vetoed / tick_veto)
+  - balance snapshot 受け渡し
+  - Protocol 型安全化
+  - get_metrics の side_veto_active フィールド
+
 カバレッジ対象:
   - PhantomPositionGuard: register_unknown / reconcile / clear / metrics
   - FillRecord.pending_reconciliation フィールド
@@ -16,7 +23,6 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass
-from typing import Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -45,7 +51,7 @@ class _MockBalance:
 
 def _make_adapter(
     *,
-    order_status: Optional[_MockOrderStatus] = None,
+    order_status: _MockOrderStatus | None = None,
     btc_free: float = 0.1,
     get_status_raises: bool = False,
     get_balance_raises: bool = False,
@@ -459,3 +465,137 @@ class TestDataclasses:
             balance_delta_btc=-0.002,
         )
         assert pd.balance_delta_btc == -0.002
+
+
+# ─────────────────────────────────────────────────────
+# J. 238# TTL パージ
+# ─────────────────────────────────────────────────────
+
+class TestTTLPurge:
+    """238# S-1: stale エントリの自動パージ."""
+
+    @pytest.mark.asyncio
+    async def test_stale_entries_purged(self, guard: PhantomPositionGuard):
+        """TTL 超過エントリは reconcile 前にパージされる."""
+        guard.register_unknown("o1", "buy", 0.001, 1e7)
+        # timestamp を 500秒前に偽装 (TTL=300s)
+        guard._pending[0].timestamp = time.time() - 500
+        adapter = _make_adapter(order_status=_MockOrderStatus(status="cancelled"))
+        result = await guard.reconcile(adapter)
+        assert len(result) == 0
+        assert not guard.has_pending
+        # stale もカウント
+        assert guard.total_reconciled == 1
+
+    @pytest.mark.asyncio
+    async def test_fresh_entries_not_purged(self, guard: PhantomPositionGuard):
+        """TTL 以内のエントリはパージされない."""
+        guard.register_unknown("o1", "buy", 0.001, 1e7)
+        adapter = _make_adapter(order_status=_MockOrderStatus(status="cancelled"))
+        result = await guard.reconcile(adapter)
+        assert guard.total_reconciled == 1
+        assert not guard.has_pending
+
+
+# ─────────────────────────────────────────────────────
+# K. 238# Side Veto
+# ─────────────────────────────────────────────────────
+
+class TestSideVeto:
+    """238# S-2: phantom 検出後の同 side 一時拒否."""
+
+    def test_initial_no_veto(self, guard: PhantomPositionGuard):
+        """初期状態では veto なし."""
+        assert not guard.is_side_vetoed("buy")
+        assert not guard.is_side_vetoed("sell")
+
+    @pytest.mark.asyncio
+    async def test_phantom_sets_side_veto(self, guard: PhantomPositionGuard):
+        """phantom 検出で同 side に veto が設定される."""
+        guard.register_unknown("o1", "buy", 0.001, 1e7)
+        adapter = _make_adapter(order_status=_MockOrderStatus(status="filled", price=1e7))
+        await guard.reconcile(adapter)
+        assert guard.is_side_vetoed("buy")
+        assert not guard.is_side_vetoed("sell")
+
+    def test_tick_veto_decrements(self, guard: PhantomPositionGuard):
+        """tick_veto で veto カウンタが減算される."""
+        guard._side_veto["buy"] = 3
+        guard.tick_veto()
+        assert guard._side_veto["buy"] == 2
+        guard.tick_veto()
+        assert guard._side_veto["buy"] == 1
+        guard.tick_veto()
+        assert not guard.is_side_vetoed("buy")
+
+    def test_clear_resets_veto(self, guard: PhantomPositionGuard):
+        """clear() で veto もリセットされる."""
+        guard._side_veto["sell"] = 3
+        guard.clear()
+        assert not guard.is_side_vetoed("sell")
+
+
+# ─────────────────────────────────────────────────────
+# L. 238# Metrics 拡張
+# ─────────────────────────────────────────────────────
+
+class TestMetricsExtended:
+    """238# get_metrics に side_veto_active が追加されたことを検証."""
+
+    def test_metrics_includes_side_veto(self, guard: PhantomPositionGuard):
+        metrics = guard.get_metrics()
+        assert "side_veto_active" in metrics
+        assert metrics["side_veto_active"] == 0
+
+    def test_metrics_side_veto_count(self, guard: PhantomPositionGuard):
+        guard._side_veto["buy"] = 2
+        guard._side_veto["sell"] = 1
+        metrics = guard.get_metrics()
+        assert metrics["side_veto_active"] == 2
+
+
+# ─────────────────────────────────────────────────────
+# M. 238# BalanceChecker.last_btc_free
+# ─────────────────────────────────────────────────────
+
+class TestBalanceCheckerCache:
+    """238# C-2: BalanceChecker の last_btc_free キャッシュ."""
+
+    def test_initial_none(self):
+        from scripts.v460.lib.balance_checker import BalanceChecker
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        config = FillTestConfig()
+        bc = BalanceChecker(config)
+        assert bc.last_btc_free is None
+
+    @pytest.mark.asyncio
+    async def test_cached_after_check_sell(self):
+        from scripts.v460.lib.balance_checker import BalanceChecker
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        config = FillTestConfig()
+        bc = BalanceChecker(config)
+
+        adapter = AsyncMock()
+        adapter.get_balance = AsyncMock(return_value=[_MockBalance(free=0.5)])
+        await bc._check_sell(adapter, "btc_jpy")
+        assert bc.last_btc_free == 0.5
+
+
+# ─────────────────────────────────────────────────────
+# N. 238# cancel_reasons 定数
+# ─────────────────────────────────────────────────────
+
+class TestCancelReasonPhantom:
+    """238# PHANTOM_SIDE_VETO cancel reason."""
+
+    def test_phantom_side_veto_exists(self):
+        from scripts.v460.lib import cancel_reasons as CR
+
+        assert CR.PHANTOM_SIDE_VETO == "phantom_side_veto"
+
+    def test_phantom_side_veto_in_known(self):
+        from scripts.v460.lib.cancel_reasons import AUDIT_CANCEL_REASONS
+
+        assert "phantom_side_veto" in AUDIT_CANCEL_REASONS

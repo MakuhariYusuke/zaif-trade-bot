@@ -44,6 +44,8 @@ POSTONLY_CROSSING_SKIP = "postonly_crossing_skip"
 HARD_SKIP_UTC_HOUR = "hard_skip_utc_hour"
 # 205# §9.2: Toxic Fill 同一サイド拒否 (大損後に同一方向を N サイクル封鎖)
 TOXIC_FILL_SIDE_VETO = "toxic_fill_side_veto"
+# 238# S-2: Phantom 検出後の同 side 一時拒否 (逆選択防御)
+PHANTOM_SIDE_VETO = "phantom_side_veto"
 # 205# §9.5: 片側 DD Halt (サイド別累積損失超過で片側封鎖)
 PER_SIDE_DD_HALT = "per_side_dd_halt"
 # 215# P0-C: alert_mode.json によるオペレータ緊急停止
@@ -78,6 +80,7 @@ AUDIT_CANCEL_REASONS: frozenset[str] = frozenset({
     POSTONLY_CROSSING_SKIP,
     HARD_SKIP_UTC_HOUR,
     TOXIC_FILL_SIDE_VETO,
+    PHANTOM_SIDE_VETO,
     PER_SIDE_DD_HALT,
     OPERATOR_HALT,
     MCB_HALT,
@@ -141,6 +144,7 @@ CancelReason = Literal[
     "postonly_crossing_skip",
     "hard_skip_utc_hour",
     "toxic_fill_side_veto",
+    "phantom_side_veto",
     "per_side_dd_halt",
     "operator_halt",
     "mcb_halt",

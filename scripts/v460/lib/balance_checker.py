@@ -39,6 +39,14 @@ class BalanceChecker:
         # 166# HF3: Insufficient 警告クールダウン (side別)
         self._insufficient_cooldown_sec: float = 120.0  # 同一 side 2分間抑制
         self._last_insufficient_log: dict[str, float] = {}  # side -> timestamp
+        # 238# C-2: 直前クエリの BTC/JPY 残高キャッシュ (phantom guard snapshot 用)
+        self._last_btc_free: float | None = None
+        self._last_jpy_free: float | None = None
+
+    @property
+    def last_btc_free(self) -> float | None:
+        """238# 直前の BTC 残高クエリ結果 (phantom guard snapshot 用)."""
+        return self._last_btc_free
 
     @property
     def current_lot(self) -> float:
@@ -102,6 +110,7 @@ class BalanceChecker:
         """
         btc_balances = await adapter.get_balance("BTC")  # type: ignore[union-attr]
         btc_free = sum(b.free for b in btc_balances) if btc_balances else 0.0
+        self._last_btc_free = btc_free  # 238# C-2: phantom guard snapshot 用キャッシュ
 
         effective_lot = self._current_lot * regime_mult
         if btc_free < effective_lot:
@@ -162,6 +171,7 @@ class BalanceChecker:
         jpy_needed = effective_lot * price * self._config.balance_margin_ratio
         jpy_balances = await adapter.get_balance("JPY")  # type: ignore[union-attr]
         jpy_free = sum(b.free for b in jpy_balances) if jpy_balances else 0.0
+        self._last_jpy_free = jpy_free  # 238# C-2: phantom guard snapshot 用キャッシュ
 
         if jpy_free < jpy_needed:
             # 052#: JPY 残高から発注可能なロットを逆算
