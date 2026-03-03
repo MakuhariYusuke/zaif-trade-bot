@@ -169,14 +169,17 @@ class FillCycleExecutorMixin:
         ):
             return False
         if self._phantom_guard is not None:
-            # 238# C-2: BalanceChecker から取得済みの最新残高を snapshot として渡す
-            _btc_snap = getattr(self._balance_checker, 'last_btc_free', None)
+            # 251# getattr → 型安全な property 直接参照 (238# C-2 完全化)
+            _btc_snap = self._balance_checker.last_btc_free
+            # 251# T-3: buy 側 JPY 残高照合用 snapshot 追加
+            _jpy_snap = self._balance_checker.last_jpy_free
             self._phantom_guard.register_unknown(
                 order_id=monitor.order_id_for_reconciliation,
                 side=side,
                 quantity=order_lot,
                 price=order_price,
                 balance_btc=_btc_snap,
+                balance_jpy=_jpy_snap,
             )
         return True
 

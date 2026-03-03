@@ -17,16 +17,27 @@
   - S-3: reconcile() の重複 CRITICAL ログ削除 (orchestrator に委譲)
   - S-4: resolved リスト簡素化
 
+251# 三値化改善:
+  - T-1: ReconcileResult 列挙型 (DETECTED / CLEAN / INCONCLUSIVE)
+         API 例外時に pending を破棄せず INCONCLUSIVE として保持→再試行
+  - T-2: reconcile_attempts カウンタ付き再試行上限
+  - T-3: buy 側 JPY 残高照合 (BTC のみだった Phase 2 を双方向化)
+
+  市場理論: API 障害時に「観測不能 ≠ clean」と区別することで
+  Bayesian 事後確率の安易な 0 更新を防ぐ (Gelman et al., BDA3 §3.7)
+
 責務:
   - status_unknown イベントの記録
   - 遅延型の注文状態再照合
-  - 残高ベースの乖離検出
+  - 残高ベースの乖離検出 (BTC + JPY 双方向)
   - ファントム検出時のメトリクス提供
   - 検出側の一時 veto (サイクル数ベース)
+  - INCONCLUSIVE 結果の再試行管理
 """
 
 from __future__ import annotations
 
+import enum
 import logging
 import time
 from dataclasses import dataclass, field
@@ -50,6 +61,19 @@ class _BalanceQueryable(Protocol):
     async def get_order_status(self, order_id: str) -> _OrderStatusResult | None: ...
 
 
+class ReconcileResult(enum.Enum):
+    """251# 三値化: 照合結果.
+
+    DETECTED    — ファントムポジション確認 (order filled or balance mismatch)
+    CLEAN       — 正常 (order cancelled or no mismatch)
+    INCONCLUSIVE — API 障害等で判定不能 → 再試行対象として保持
+    """
+
+    DETECTED = "detected"
+    CLEAN = "clean"
+    INCONCLUSIVE = "inconclusive"
+
+
 @dataclass
 class PendingReconciliation:
     """status_unknown 発生後の未照合レコード."""
@@ -61,6 +85,8 @@ class PendingReconciliation:
     timestamp: float
     balance_snapshot_btc: float | None = None  # 発注前 BTC 残高
     balance_snapshot_jpy: float | None = None  # 発注前 JPY 残高
+    # 251# T-2: 照合試行回数 (INCONCLUSIVE 保持の上限管理)
+    reconcile_attempts: int = 0
 
 
 @dataclass
@@ -71,8 +97,10 @@ class PhantomDetection:
     side: str
     quantity: float
     price: float
-    detection_method: str  # "order_recheck" | "balance_delta" | "both"
-    balance_delta_btc: float | None = None  # 実残高 - 期待残高
+    detection_method: str  # "order_recheck" | "balance_delta" | "balance_delta_jpy" | "both"
+    balance_delta_btc: float | None = None  # 実残高 - 期待残高 (BTC)
+    # 251# T-3: buy 側 JPY 残高乖離
+    balance_delta_jpy: float | None = None  # 実残高 - 期待残高 (JPY)
 
 
 class PhantomPositionGuard:
@@ -98,6 +126,10 @@ class PhantomPositionGuard:
     _MAX_PENDING_AGE_SEC: float = 300.0
     # 238# S-2: phantom 検出後の同 side veto サイクル数
     _PHANTOM_VETO_CYCLES: int = 3
+    # 251# T-2: INCONCLUSIVE 再試行上限 (超過 → stale と同様に強制パージ)
+    _MAX_RECONCILE_ATTEMPTS: int = 3
+    # 251# T-3: JPY 残高乖離の許容誤差 (JPY) — dust レベルの差分は無視
+    _BALANCE_TOLERANCE_JPY: float = 50.0
 
     def __init__(self) -> None:
         self._pending: list[PendingReconciliation] = []
@@ -229,10 +261,14 @@ class PhantomPositionGuard:
 
         self._last_reconcile_time = now
         detections: list[PhantomDetection] = []
+        # 251# T-1: INCONCLUSIVE エントリは再試行のため保持
+        inconclusive: list[PendingReconciliation] = []
 
         for entry in self._pending:
-            detection = await self._reconcile_single(adapter, entry)
-            if detection is not None:
+            entry.reconcile_attempts += 1
+            result, detection = await self._reconcile_single(adapter, entry)
+
+            if result == ReconcileResult.DETECTED and detection is not None:
                 detections.append(detection)
                 self._phantom_count += 1
                 # 238# S-2: 検出側に veto を設定 (adverse selection 防御)
@@ -241,14 +277,38 @@ class PhantomPositionGuard:
                     f"[238# phantom_guard] Side veto set: "
                     f"{detection.side} blocked for {self._PHANTOM_VETO_CYCLES} cycles"
                 )
-            self._total_reconciled += 1
+                self._total_reconciled += 1
+            elif result == ReconcileResult.INCONCLUSIVE:
+                # 251# T-2: 再試行上限チェック
+                if entry.reconcile_attempts >= self._MAX_RECONCILE_ATTEMPTS:
+                    logger.warning(
+                        f"[251# phantom_guard] INCONCLUSIVE entry exhausted retries "
+                        f"({entry.reconcile_attempts}/{self._MAX_RECONCILE_ATTEMPTS}): "
+                        f"order={entry.order_id} — force-purging"
+                    )
+                    self._total_reconciled += 1
+                else:
+                    logger.info(
+                        f"[251# phantom_guard] INCONCLUSIVE: order={entry.order_id} "
+                        f"(attempt {entry.reconcile_attempts}/{self._MAX_RECONCILE_ATTEMPTS}) "
+                        f"— retaining for next cycle"
+                    )
+                    inconclusive.append(entry)
+            else:
+                # CLEAN
+                self._total_reconciled += 1
 
-        # 238# S-4: 全エントリ照合済み — 直接クリア
-        reconciled_count = len(self._pending)
-        self._pending.clear()
+        # 251# T-1: INCONCLUSIVE エントリのみ保持、残りはクリア
+        reconciled_count = len(self._pending) - len(inconclusive)
+        self._pending = inconclusive
         self._last_detections = detections
 
-        if not detections:
+        if inconclusive:
+            logger.info(
+                f"[251# phantom_guard] Reconciliation: "
+                f"{reconciled_count} resolved, {len(inconclusive)} inconclusive retained"
+            )
+        elif not detections:
             logger.info(
                 f"[237# phantom_guard] Reconciliation complete: "
                 f"{reconciled_count} entries checked, no phantom detected"
@@ -260,15 +320,26 @@ class PhantomPositionGuard:
         self,
         adapter: _BalanceQueryable,
         entry: PendingReconciliation,
-    ) -> PhantomDetection | None:
+    ) -> tuple[ReconcileResult, PhantomDetection | None]:
         """1件の status_unknown 注文を再照合.
 
+        251# 三値化: API 障害時は INCONCLUSIVE を返し pending 保持。
+        「観測不能 ≠ clean」の原則に基づく (Bayesian 安全側推定)。
+
         Phase 1: 注文ステータス再確認 (order_id が分かっている場合)
-        Phase 2: 残高差分確認 (スナップショットがある場合)
+        Phase 2a: BTC 残高差分確認 (スナップショットがある場合)
+        Phase 2b: JPY 残高差分確認 (251# T-3: buy 側のみ)
+
+        Returns:
+            (ReconcileResult, PhantomDetection | None) のタプル
         """
         order_filled = False
         balance_mismatch = False
         balance_delta: float | None = None
+        balance_delta_jpy: float | None = None
+        # 251# T-1: API 障害フラグ (両 Phase とも失敗した場合 INCONCLUSIVE)
+        phase1_api_failed = False
+        phase2_api_failed = False
 
         # Phase 1: 注文ステータス再確認
         try:
@@ -289,7 +360,7 @@ class PhantomPositionGuard:
                         f"[237# phantom_guard] Order {entry.order_id} "
                         f"confirmed cancelled (status={_status_str})"
                     )
-                    return None
+                    return ReconcileResult.CLEAN, None
                 else:
                     logger.info(
                         f"[237# phantom_guard] Order {entry.order_id} "
@@ -300,8 +371,9 @@ class PhantomPositionGuard:
                 f"[237# phantom_guard] Order recheck failed for "
                 f"{entry.order_id}: {e}"
             )
+            phase1_api_failed = True
 
-        # Phase 2: 残高差分確認
+        # Phase 2a: BTC 残高差分確認
         if entry.balance_snapshot_btc is not None:
             try:
                 btc_balances = await adapter.get_balance("BTC")
@@ -309,7 +381,6 @@ class PhantomPositionGuard:
                 expected_btc = entry.balance_snapshot_btc
                 # buy = BTC 増加, sell = BTC 減少
                 if entry.side == "buy":
-                    expected_delta = 0.0  # 未約定なら変化なし
                     actual_delta = current_btc - expected_btc
                     if actual_delta > self._BALANCE_TOLERANCE_BTC:
                         balance_mismatch = True
@@ -331,8 +402,46 @@ class PhantomPositionGuard:
                         )
             except Exception as e:
                 logger.warning(
-                    f"[237# phantom_guard] Balance check failed: {e}"
+                    f"[237# phantom_guard] Balance check (BTC) failed: {e}"
                 )
+                phase2_api_failed = True
+
+        # Phase 2b: JPY 残高差分確認 (251# T-3: buy 側の支払い検証)
+        # buy 約定時は JPY が減少するため、snapshot との差分で検出可能
+        if entry.side == "buy" and entry.balance_snapshot_jpy is not None:
+            try:
+                jpy_balances = await adapter.get_balance("JPY")
+                current_jpy = sum(b.free for b in jpy_balances) if jpy_balances else 0.0
+                expected_jpy = entry.balance_snapshot_jpy
+                # buy 約定 → JPY 減少 (qty * price 分の支払い)
+                jpy_decrease = expected_jpy - current_jpy
+                expected_cost = entry.quantity * entry.price
+                if jpy_decrease > self._BALANCE_TOLERANCE_JPY and jpy_decrease > expected_cost * 0.5:
+                    balance_mismatch = True
+                    balance_delta_jpy = -jpy_decrease
+                    logger.warning(
+                        f"[251# phantom_guard] Balance mismatch (buy/JPY): "
+                        f"JPY delta={-jpy_decrease:+.0f} "
+                        f"(expected cost ~{expected_cost:.0f})"
+                    )
+            except Exception as e:
+                logger.warning(
+                    f"[251# phantom_guard] Balance check (JPY) failed: {e}"
+                )
+                # Phase 2b の失敗は Phase 2a と合算
+                if entry.balance_snapshot_btc is None:
+                    phase2_api_failed = True
+        elif entry.balance_snapshot_btc is None:
+            # スナップショットなし = Phase 2 スキップ (失敗ではない)
+            pass
+
+        # 251# T-1: 両 Phase とも API 障害 → INCONCLUSIVE
+        _has_snapshot = (
+            entry.balance_snapshot_btc is not None
+            or entry.balance_snapshot_jpy is not None
+        )
+        if phase1_api_failed and (phase2_api_failed or not _has_snapshot):
+            return ReconcileResult.INCONCLUSIVE, None
 
         # 判定
         if order_filled and balance_mismatch:
@@ -340,17 +449,22 @@ class PhantomPositionGuard:
         elif order_filled:
             method = "order_recheck"
         elif balance_mismatch:
-            method = "balance_delta"
+            # 251# T-3: JPY のみの検出を区別
+            if balance_delta is None and balance_delta_jpy is not None:
+                method = "balance_delta_jpy"
+            else:
+                method = "balance_delta"
         else:
-            return None
+            return ReconcileResult.CLEAN, None
 
-        return PhantomDetection(
+        return ReconcileResult.DETECTED, PhantomDetection(
             order_id=entry.order_id,
             side=entry.side,
             quantity=entry.quantity,
             price=entry.price,
             detection_method=method,
             balance_delta_btc=balance_delta,
+            balance_delta_jpy=balance_delta_jpy,
         )
 
     def clear(self) -> None:

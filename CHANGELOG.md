@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 252# Sell Asymmetric Gate + PhantomGuard 三値化 + 型安全化 (2026-03-03)
+
+### Added
+- **Sell Asymmetric Gate — high_vol regime 拡張 (248# P1-1)**: `sell_asymmetric_high_vol_enabled` config により high_vol regime での sell を trending と同様に抑制。Glosten-Milgrom 情報非対称モデルに基づく informed flow 防御 (`cycle_gate_aggregator.py`, `fill_config.py`)
+- **PhantomGuard 三値化 (251# T-1/T-2)**: `ReconcileResult` enum (DETECTED/CLEAN/INCONCLUSIVE) 導入。API 障害時に pending を即破棄せず INCONCLUSIVE として保持・再試行。「観測不能 ≠ clean」の Bayesian 安全側推定原則 (`phantom_position_guard.py`)
+- **PhantomGuard buy 側 JPY 残高照合 (251# T-3)**: buy 約定の JPY 残高乖離を Phase 2b で検出。`balance_delta_jpy` フィールド追加 (`phantom_position_guard.py`, `balance_checker.py`, `fill_cycle_executor.py`)
+- **BalanceChecker.last_jpy_free property**: 既存 `_last_jpy_free` キャッシュの公開 property 追加
+
+### Changed
+- **getattr → 型安全直接参照**: `fill_cycle_executor._maybe_register_phantom()` の `getattr(self._balance_checker, 'last_btc_free', None)` を `.last_btc_free` 直接参照に変更
+- **PhantomGuard PendingReconciliation**: `reconcile_attempts: int` カウンタ追加、`_MAX_RECONCILE_ATTEMPTS = 3` で再試行上限管理
+
+### Tests
+- 35 テスト追加 (`test_252_sell_asymmetric_phantom_ternary.py`)
+- 1 テスト更新 (`test_237` — API 障害テストの期待値を三値化対応に修正)
+- 総テスト: **3507 passed**
+
+### Documentation
+- `docs/v460/252_ph2_impl_sell_asymmetric_phantom_ternary.md` — 252# 実装ドキュメント
+
+
 ## 246# DD Halt Cooldown Release + Sell Defence Hardening (2026-03-03)
 
 ### Added

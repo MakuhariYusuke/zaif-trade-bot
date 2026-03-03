@@ -182,13 +182,19 @@ class TestReconcileOrderRecheck:
 
     @pytest.mark.asyncio
     async def test_order_status_api_error_no_crash(self, guard: PhantomPositionGuard):
-        """API エラー時にクラッシュしない."""
+        """API エラー時にクラッシュしない.
+
+        251# 三値化: API 障害 + snapshot なし → INCONCLUSIVE (pending 保持)。
+        旧動作 (即座クリア) からの意図的な変更。
+        """
         guard.register_unknown("order_001", "buy", 0.001, 1e7)
         adapter = _make_adapter(get_status_raises=True)
         result = await guard.reconcile(adapter)
-        # API エラー + balance snapshot なし → 検出不可
+        # API エラー + balance snapshot なし → INCONCLUSIVE (検出せず pending 保持)
         assert len(result) == 0
-        assert guard.total_reconciled == 1
+        # 251# 三値化: INCONCLUSIVE は pending に残る (旧: total_reconciled == 1)
+        assert guard.has_pending
+        assert guard.total_reconciled == 0
 
 
 # ─────────────────────────────────────────────────────

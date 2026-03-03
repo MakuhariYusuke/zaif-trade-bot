@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-03 (250# 249#レビュー: P/L 3分離, quiescence deadlock防御, probe廃止基盤, freeze side紐付け)
+> 最終更新: 2026-03-03 (252# Sell Asymmetric Gate, PhantomGuard 三値化, 型安全化)
 
 ---
 
@@ -241,6 +241,8 @@
 | 248 | rev | [248_ph2_gemini_31_pro_review_234_246_directional_alpha.md](248_ph2_gemini_31_pro_review_234_246_directional_alpha.md) | Gemini 3.1 Pro レビュー: Directional Alpha パラダイムシフト + P0提案5件 |
 | 249 | impl | [249_ph2_impl_directional_alpha_dd_rearm.md](249_ph2_impl_directional_alpha_dd_rearm.md) | Directional Alpha + DD Re-arm + Quiescence: 247#/248# P0 全5件実装 |
 | 250 | impl | [250_ph2_impl_pl_split_freeze_side_probe.md](250_ph2_impl_pl_split_freeze_side_probe.md) | P/L 3分離・freeze side紐付け・quiescence deadlock防御・probe廃止基盤 |
+| 251 | rev | [251_ph2_pre_impl_review_report.md](251_ph2_pre_impl_review_report.md) | Pre-Implementation Review: 247#/248# 残 P1/P2 項目の実装準備レビュー |
+| 252 | impl | [252_ph2_impl_sell_asymmetric_phantom_ternary.md](252_ph2_impl_sell_asymmetric_phantom_ternary.md) | Sell Asymmetric Gate + PhantomGuard 三値化 + 型安全化 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

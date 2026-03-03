@@ -428,6 +428,11 @@ class FillTestConfig:
     skip_sell_trending: bool = False  # True で trending 時 sell をスキップ (-0.687bps)
     # 156# D-4: trending 方向別分解 — True なら trending_up のみスキップ (trending_down sell を開放)
     skip_sell_trending_up_only: bool = False
+    # 251# Sell Asymmetric Mode (248# P1):
+    #   Glosten-Milgrom の情報非対称下、情報劣位者 (MM) の sell は
+    #   trending_up と同様に high_vol でも逆選択リスクが高い。
+    #   「No Trade = 正常」(242# 思想) を high_vol にも拡張。
+    sell_asymmetric_high_vol_enabled: bool = False
     # 196# trending_sell ソフト化: hard skip → offset boost
     # enabled 時、trending sell をスキップせず offset を boost して保守的価格で sell 発注
     trending_sell_as_offset_enabled: bool = False
@@ -1069,6 +1074,9 @@ class FillTestConfig:
         # 156# D-4: trending 方向別分解
         if 止血.get("skip_sell_trending_up_only") is not None:
             kwargs["skip_sell_trending_up_only"] = 止血["skip_sell_trending_up_only"]
+        # 251# Sell Asymmetric Mode: high_vol でも sell skip
+        if 止血.get("sell_asymmetric_high_vol_enabled") is not None:
+            kwargs["sell_asymmetric_high_vol_enabled"] = 止血["sell_asymmetric_high_vol_enabled"]
         # 196# trending sell ソフト化
         if 止血.get("trending_sell_as_offset_enabled") is not None:
             kwargs["trending_sell_as_offset_enabled"] = 止血["trending_sell_as_offset_enabled"]

@@ -453,23 +453,40 @@ class CycleGateAggregator:
         trending_sell_skip_count: int = 0,
         buy_side_insufficient: bool = False,
     ) -> GateCheckResult:
-        """A12: trending regime での sell 抑制.
+        """A12: trending / high_vol regime での sell 抑制 (Sell Asymmetric Gate).
 
         安全弁 (連続スキップ, HF4, inv_bypass) もここで判定。
         234# balance_forced でも Gate を統一適用 (gate bypass 廃止).
         235# balance_forced 引数を削除 (dead parameter cleanup).
+
+        251# Sell Asymmetric Mode (248# P1):
+        Glosten-Milgrom の情報非対称モデルでは、情報優位者が流動性を
+        消費する (informed flow) と、MM は逆選択により平均的に損失する。
+        trending_up での sell = 「上昇トレンドで BTC を手放す」= directional alpha の放棄。
+        high_vol での sell = 情報優位者の活動が最も激しい環境での無防備な流動性提供。
+        いずれも「No Trade = 正常」(242#) 思想が適用されるべき環境。
+
+        TP (利確) 例外: sell_guard_inv_bypass_threshold で在庫偏重が大きい場合のみ
+        sell を許可し、「過剰在庫の利確」という合理的な sell を残す。
         """
+        # 251# Sell Asymmetric: trending + high_vol を統合判定
         _is_trending = regime in ("trending", "trending_up", "trending_down")
+        _is_high_vol = regime == "high_vol"
 
         if not (
             self._config.skip_sell_trending
             and side == "sell"
-            and _is_trending
+            and (_is_trending or (_is_high_vol and self._config.sell_asymmetric_high_vol_enabled))
         ):
             return GateCheckResult(gate_name="trending_sell", blocked=False)
 
         # 176# A: trending_up_only モード
-        if self._config.skip_sell_trending_up_only and regime != "trending_up":
+        # 251# high_vol は trending_up_only の制約外 (独立したリスク要因)
+        if (
+            self._config.skip_sell_trending_up_only
+            and _is_trending
+            and regime != "trending_up"
+        ):
             return GateCheckResult(
                 gate_name="trending_sell",
                 blocked=False,

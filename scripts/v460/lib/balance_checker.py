@@ -49,6 +49,11 @@ class BalanceChecker:
         return self._last_btc_free
 
     @property
+    def last_jpy_free(self) -> float | None:
+        """251# 直前の JPY 残高クエリ結果 (phantom guard buy 側照合用)."""
+        return self._last_jpy_free
+
+    @property
     def current_lot(self) -> float:
         return self._current_lot
 
