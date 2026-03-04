@@ -147,10 +147,14 @@ class CycleGateAggregator:
     """
 
     #: 219# unknown regime 連続ブロックのバイパス閾値
+    #: 277# config 化 → config.unknown_regime_max_consecutive で外部設定可能
+    #: 後方互換: クラス属性として残す (テストが参照)
     UNKNOWN_REGIME_MAX_CONSECUTIVE: int = 10
 
     def __init__(self, config: FillTestConfig) -> None:
         self._config = config
+        # 277#: config から実際の閾値を取得 (YAML 上書き対応)
+        self.UNKNOWN_REGIME_MAX_CONSECUTIVE = config.unknown_regime_max_consecutive
         self._consecutive_unknown_blocks: int = 0  # 219# unknown regime 連続カウンタ
 
     def evaluate(
@@ -198,6 +202,7 @@ class CycleGateAggregator:
         _regime = regime or "unknown"
 
         # 219# unknown regime 連続バイパス: N サイクル連続 unknown で強制通過
+        # 277# config 化: config.unknown_regime_max_consecutive
         _unknown_bypass = (
             _regime == "unknown"
             and self._consecutive_unknown_blocks >= self.UNKNOWN_REGIME_MAX_CONSECUTIVE

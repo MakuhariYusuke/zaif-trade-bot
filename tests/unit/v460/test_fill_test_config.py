@@ -112,6 +112,8 @@ class TestFillTestConfigFromYaml:
             "symbol": "btc_jpy",
             "order_quantity": 0.002,
             "cycle_interval_sec": 60.0,
+            "order_timeout_sec": 45.0,  # 277# <= cycle_interval_sec
+            "max_cycle_sleep_sec": 300.0,  # 277# >= cycle_interval × halt_mult
             "spread_offset_ratio": 0.10,
             "as_deadzone_bps": 1.0,
             "save_fail_threshold": 5,

@@ -83,6 +83,10 @@ class MCBConfig:
     default_threshold_1h_pct: float = 2.0
     # 24h baseline 用のサンプリング間隔 (秒) — 記録密度制限
     baseline_sample_interval_sec: float = 10.0
+    # 277#: check() の呼出間隔 (秒) — cycle_interval_sec と同値にすべき。
+    # σ 履歴の maxlen = 24h / check_call_interval_sec で導出する。
+    # 旧: maxlen=720 を 24h/120s として暗黙仮定していた。
+    check_call_interval_sec: float = 120.0
 
 
 @dataclass
@@ -138,12 +142,17 @@ class MicroCircuitBreaker:
         max_samples = int(3600 / max(self._config.baseline_sample_interval_sec, 1.0)) + 100
         self._price_buffer: deque[_PriceSample] = deque(maxlen=max_samples)
         # 24h分の変動率履歴 (σ計算用)
+        # 277#: maxlen = 24h / check_call_interval_sec で導出。
         # check() は cycle 毎 (~120s) に呼ばれるため、24h/120s = 720 サンプル。
         # 217# self-review: 旧 maxlen (300/100/30) は窓 duration 基準だったが
-        # 実際の呼出頻度と不整合。全て 720 に統一して真の 24h σ を確保。
-        self._change_history_5m: deque[float] = deque(maxlen=720)
-        self._change_history_15m: deque[float] = deque(maxlen=720)
-        self._change_history_1h: deque[float] = deque(maxlen=720)
+        # 実際の呼出頻度と不整合。全て統一して真の 24h σ を確保。
+        _sigma_maxlen = max(
+            30,
+            int(86400 / max(self._config.check_call_interval_sec, 1.0)),
+        )
+        self._change_history_5m: deque[float] = deque(maxlen=_sigma_maxlen)
+        self._change_history_15m: deque[float] = deque(maxlen=_sigma_maxlen)
+        self._change_history_1h: deque[float] = deque(maxlen=_sigma_maxlen)
         self._last_sample_ts: float = 0.0
         self._halt_until: float = 0.0
         self._total_cautions: int = 0
@@ -321,6 +330,11 @@ class MicroCircuitBreaker:
             return None
         return ((latest.price - best.price) / best.price) * 100.0
 
+    # 277# 名前付き定数: σ 計算の最小サンプル数
+    _MIN_SIGMA_SAMPLES: int = 10
+    # 277# 名前付き定数: σ 極小時のフロア比率 (flat market 保護)
+    _SIGMA_FLOOR_RATIO: float = 0.1
+
     @staticmethod
     def _calc_threshold(history: deque[float], default_pct: float) -> float:
         """変動率履歴からσ (標準偏差) を計算. サンプル不足時はデフォルト値.
@@ -328,8 +342,7 @@ class MicroCircuitBreaker:
         σ = std(raw changes) — 生の変動率分布の標準偏差。
         sigma_Xm = |current_change| / σ は標準的な z-score 解釈に準拠。
         """
-        min_samples = 10
-        if len(history) < min_samples:
+        if len(history) < MicroCircuitBreaker._MIN_SIGMA_SAMPLES:
             return default_pct
         # σ = std of raw changes (NOT abs — abs would measure "volatility of
         # volatility", giving near-zero σ for constant-magnitude oscillations
@@ -339,7 +352,7 @@ class MicroCircuitBreaker:
         variance = sum((x - mean) ** 2 for x in history) / n
         sigma = math.sqrt(variance) if variance > 0 else default_pct
         # σ が極端に小さい場合 (flat market) はデフォルト閾値を下限に
-        return max(sigma, default_pct * 0.1)
+        return max(sigma, default_pct * MicroCircuitBreaker._SIGMA_FLOOR_RATIO)
 
     def export_state(self) -> dict[str, object]:
         """状態のエクスポート (永続化用)."""

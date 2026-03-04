@@ -131,6 +131,8 @@ class FillLoopOrchestratorMixin:
     # 223# skip-time state save: 最終 state save のモノトニック時刻
     _last_state_save_time: float = 0.0
     #: 223# skip パス中の state save 間隔 (秒)
+    #: 277# 理論的導出: max(300, cycle_interval × 3) — 3 サイクル分の最低間隔。
+    #: 過度な I/O を避けつつ再起動時の巻き戻しを 5 分以内に抑える。
     _STATE_SAVE_INTERVAL_SEC: float = 300.0
     # 228# H3: MCB/SAD/CycleStrategy class-level None defaults (hasattr 排除用)
     _mcb: object | None = None
@@ -225,8 +227,16 @@ class FillLoopOrchestratorMixin:
 
         state file が stale/missing の場合のセーフティネット。
         import_state が skip された後に呼ばれ、DD guard を正確な状態に復元する。
+
+        277# fix (B1): warmup は DD guard と同一 TZ で日付境界を判定する。
+        旧実装は UTC 固定だったが、DD guard._today() は _day_reset_tz (JST) を
+        使用するため、JST 0:00–9:00 に再起動すると日付判定が不一致になり
+        前日分 PnL が投入されず halt が遅延するリスクがあった。
         """
-        utc_today = datetime.now(timezone.utc).strftime("%Y%m%d")
+        guard = self._daily_drawdown_guard
+        # DD guard と同一の TZ を使用 (268# dd_day_reset_utc_offset_hours)
+        today_str = guard._today()
+        day_reset_tz = guard._day_reset_tz
         daily_pnl_sum = 0.0
         daily_fill_count = 0
         # 209# M1: 1回走査で全指標を計算 (元は2回走査)
@@ -235,9 +245,9 @@ class FillLoopOrchestratorMixin:
         for r in records:
             if not r.filled or r.post_fill_30s_pnl is None:
                 continue
-            # timestamp (epoch) を UTC 日付に変換
-            r_date = datetime.fromtimestamp(r.timestamp, tz=timezone.utc).strftime("%Y%m%d")
-            if r_date != utc_today:
+            # timestamp (epoch) を DD guard と同一 TZ の日付に変換 (277# B1 fix)
+            r_date = datetime.fromtimestamp(r.timestamp, tz=day_reset_tz).strftime("%Y%m%d")
+            if r_date != today_str:
                 continue
             daily_pnl_sum += r.post_fill_30s_pnl
             daily_fill_count += 1
@@ -248,10 +258,9 @@ class FillLoopOrchestratorMixin:
 
         if daily_fill_count > 0:
             # 1件ずつ update_pnl を呼ばず、直接 state を注入 (効率的)
-            guard = self._daily_drawdown_guard
             guard.state.daily_pnl_bps = daily_pnl_sum
             guard.state.daily_fill_count = daily_fill_count
-            guard.state.current_day = utc_today
+            guard.state.current_day = today_str
             # 207# §2: per-side PnL 注入
             guard.state.daily_pnl_bps_buy = daily_pnl_buy
             guard.state.daily_pnl_bps_sell = daily_pnl_sell
@@ -576,7 +585,8 @@ class FillLoopOrchestratorMixin:
 
         skip/halt/error continue 全パスがこのメソッドを経由する。
         - multiplier=1.0 : 通常スキップ
-        - multiplier=5.0 : halt (daily drawdown) — 276# config.halt_sleep_multiplier
+        - multiplier=config.halt_sleep_multiplier : halt (daily drawdown) — 276#
+        - multiplier=config.phantom_detection_sleep_multiplier : phantom 検出 — 277#
         - max_override>0  : 242# quiescence 時の sleep 上限オーバーライド
         正常サイクル完了パスは rapid_exit ロジックを含むため直接呼ばない。
         200# P0-2: _soft_drawdown_interval_multiplier を追加乗算。
@@ -700,19 +710,21 @@ class FillLoopOrchestratorMixin:
             logger.warning(
                 f"[181# stop] fill_rate={filled_count/total_count:.2%} → fallback"
             )
-            strategy.activate_fallback(3600.0)
+            strategy.activate_fallback(self.config.fallback_duration_sec)
             return
-        # avg pnl30 (直近 100 filled)
+        # avg pnl30 (277# config 化: sell_dynamic_kill_window × 2 が理論的導出)
         # 256# deque 化: スライス不可のため list comprehension → スライス
+        _pnl_window = self.config.sell_dynamic_kill_window * 2  # 277# 導出値
         pnls = [
             r.post_fill_30s_pnl for r in self._recent_records
             if r.filled and r.post_fill_30s_pnl is not None
-        ][-100:]
-        if len(pnls) >= 10:
+        ][-_pnl_window:]
+        _min_pnl_samples = max(1, self.config.min_adapt_samples // 5)  # 277# 導出値
+        if len(pnls) >= _min_pnl_samples:
             avg = sum(pnls) / len(pnls)
             if avg < policy.pnl_floor_bps:
                 logger.warning(f"[181# stop] avg_pnl30={avg:.2f}bps → fallback")
-                strategy.activate_fallback(3600.0)
+                strategy.activate_fallback(self.config.fallback_duration_sec)
 
     def _is_time_filtered(self, side: str | None = None) -> bool:
         """時間帯フィルター — 121# TimeFilter に委譲.
@@ -811,12 +823,15 @@ class FillLoopOrchestratorMixin:
         # 044# 単一起動ロック取得
         self._acquire_lock()
 
-        # 135# P2-09→P1: trades データ健全性チェック
+        # 135# P2-09→P1: trades データ健全性チェック (277# 定数命名)
+        _TRADES_HEALTH_LOOKBACK_DAYS = 3
+        _TRADES_HEALTH_STALE_HOURS = 36.0
+        _TRADES_HEALTH_MAX_MISSING = 1
         try:
             th = check_trades_health(
-                lookback_days=3,
-                stale_threshold_hours=36.0,
-                max_missing_days=1,
+                lookback_days=_TRADES_HEALTH_LOOKBACK_DAYS,
+                stale_threshold_hours=_TRADES_HEALTH_STALE_HOURS,
+                max_missing_days=_TRADES_HEALTH_MAX_MISSING,
             )
             if not th.healthy:
                 logger.warning(f"[trades_health] {th.message}")
@@ -1245,11 +1260,11 @@ class FillLoopOrchestratorMixin:
         ):
             self._try_auto_lot_size()
 
-        # 181# 停止条件モニター
+        # 181# 停止条件モニター (277# config 化: stop_condition_check_interval)
         if (
             self._cycle_strategy is not None
             and self._cycle_count > 0
-            and self._cycle_count % 30 == 0
+            and self._cycle_count % self.config.stop_condition_check_interval == 0
         ):
             self._check_regime_stop_conditions(st.filled_count, st.total_count)
 
@@ -1388,12 +1403,11 @@ class FillLoopOrchestratorMixin:
                 else:
                     self._halt_iter_count = self._halt_iter_count + 1
                 # 211# fix: halt 中は progress_log_interval(50) ではなく
-                # 専用間隔 _HALT_PERSIST_INTERVAL(10) で state/record を保存。
-                # 600s sleep × 50 = 8.3h は長すぎ、再起動時に進捗が大幅に巻き戻る。
-                _HALT_PERSIST_INTERVAL = 10
+                # 専用間隔 halt_persist_interval で state/record を保存。
+                # 277# config 化: halt_sleep(600s) × N 回毎に state save。
                 _should_record_halt = (
                     _halt_entering  # 開始時
-                    or self._halt_iter_count % _HALT_PERSIST_INTERVAL == 0
+                    or self._halt_iter_count % self.config.halt_persist_interval == 0
                 )
                 if _should_record_halt:
                     st.batch.append(self._make_loop_skip_record(
@@ -1555,8 +1569,10 @@ class FillLoopOrchestratorMixin:
                                     f"(method={_pd.detection_method}) — "
                                     f"cautious mode activated, side veto={self._phantom_guard._PHANTOM_VETO_CYCLES} cycles"
                                 )
-                            # ファントム検出時: 安全側バイアス — interval 延長
-                            await self._effective_sleep(multiplier=3.0)
+                            # ファントム検出時: 安全側バイアス — interval 延長 (277# config 化)
+                            await self._effective_sleep(
+                                multiplier=self.config.phantom_detection_sleep_multiplier,
+                            )
                     except Exception as _pg_err:
                         logger.warning(f"[237# phantom_guard] Reconcile error: {_pg_err}")
 
@@ -2186,7 +2202,14 @@ class FillLoopOrchestratorMixin:
                     _quiescence_th > 0
                     and self._consecutive_gate_blocks >= _quiescence_th
                 )
-                if self._consecutive_gate_blocks >= 10 and self._consecutive_gate_blocks % 10 == 0:
+                # 277# gate block ログ間隔: quiescence 閾値の半分で導出 (min 5)
+                _gate_log_interval = max(
+                    5, self.config.quiescence_gate_blocks_threshold // 2,
+                )
+                if (
+                    self._consecutive_gate_blocks >= _gate_log_interval
+                    and self._consecutive_gate_blocks % _gate_log_interval == 0
+                ):
                     if _in_quiescence:
                         # 242# quiescence: No Trade は正常系
                         self._inc_guard_fire("quiescence")

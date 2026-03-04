@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-04 (276# BlockingPolicy DRY: _execute_skip 14箇所統一 + halt_sleep_multiplier config化)
+> 最終更新: 2026-03-04 (277# マジックナンバー根拠化 + 271#-276# セルフレビュー)
 
 ---
 
@@ -268,6 +268,7 @@
 | 275 | impl | [275_ph2_impl_dry_separation_and_theory_expansion.md](275_ph2_impl_dry_separation_and_theory_expansion.md) | 責務分離 DRY: side パラメータ化 (_is_side_killed/_track_side_pnl) + toxic veto DRY + 市場理論 8モジュール拡大 (Hamilton/Lo/Garman/Brunnermeier/Copeland-Galai/Amihud/Hasbrouck/Greenwald-Stein) |
 | 276 | analysis | [276_blocking_policy_extraction_analysis.md](276_blocking_policy_extraction_analysis.md) | BlockingPolicy 抽出分析: 22 BP マッピング + 6 クラスタ + 市場理論コード活用候補 |
 | 276 | impl | [276_ph2_impl_blocking_policy_dry.md](276_ph2_impl_blocking_policy_dry.md) | BlockingPolicy DRY: _execute_skip ヘルパー (14箇所統一) + halt_sleep_multiplier config化 (Brunnermeier-Pedersen) |
+| 277 | impl | [277_magic_number_grounding.md](277_magic_number_grounding.md) | マジックナンバー根拠化 (5 config化 + 3 __post_init__検証 + B1 warmup TZ fix) + 271#-276# セルフレビュー |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

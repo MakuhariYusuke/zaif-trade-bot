@@ -70,7 +70,7 @@ def yaml_content_updated() -> str:
 symbol: btc_jpy
 spread_offset_ratio: 0.08
 cycle_interval_sec: 60.0
-order_timeout_sec: 90.0
+order_timeout_sec: 45.0
 min_spread_jpy: 5.0
 
 side_offset:

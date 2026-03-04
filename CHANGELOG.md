@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 277# マジックナンバー根拠化 + セルフレビュー (2026-03-04)
+
+### Changed
+- **FillTestConfig 新規フィールド 5 件**: `phantom_detection_sleep_multiplier` (AS §3.2), `halt_persist_interval`, `stop_condition_check_interval`, `fallback_duration_sec` (Kyle 1985), `unknown_regime_max_consecutive` (Hamilton 1989) — すべて YAML 設定可能
+- **orchestrator マジックナンバー → config/導出 6 箇所**: `3600.0`→`fallback_duration_sec`, `%30`→`stop_condition_check_interval`, `_HALT_PERSIST_INTERVAL=10`→config化, `multiplier=3.0`→`phantom_detection_sleep_multiplier`, `[-100:]`→`sell_dynamic_kill_window×2`導出, gate block ログ間隔→`quiescence_threshold//2`導出
+- **CycleGateAggregator**: `UNKNOWN_REGIME_MAX_CONSECUTIVE` をconfigから設定 (後方互換維持)
+- **MCB**: σ履歴maxlenを `86400/check_call_interval_sec` で動的導出 + `_MIN_SIGMA_SAMPLES`/`_SIGMA_FLOOR_RATIO` 名前付き定数化
+
+### Fixed
+- **B1 (HIGH) warmup TZ 不一致**: `_warmup_daily_drawdown_from_records` が UTC 固定で日付判定 → DD guard と同一 TZ (JST) で判定するよう修正。JST 0:00–9:00 の再起動時に当日 PnL が DD guard に投入されず halt 遅延するリスクを解消
+
+### Added
+- **`__post_init__` 構造的整合性バリデーション 3 件**: `max_cycle_sleep_sec >= halt_cap`, `order_timeout_sec <= cycle_interval`, `lock_stale >= heartbeat_period × 3`
+
+### Tests
+- `test_277_magic_number_grounding.py`: 34テスト (config フィールド・バリデーション・config 参照・MCB 導出・warmup TZ・ログ間隔導出)
+- 既存テスト修正: test_169, test_181, test_276, test_fill_test_config (新バリデーションとの整合)
+- 3827 passed, 32 skipped (276#比 +34)
+
+
 ## 276# BlockingPolicy DRY (2026-03-04)
 
 ### Changed

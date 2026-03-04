@@ -15,6 +15,16 @@ max_cycle_sleep_sec: 600.0    # 209#: sleep 乗数積み重ね上限 (10分)
 # 276#: halt 系 skip の sleep 倍率 (Brunnermeier-Pedersen 2009)
 # cycle_interval × halt_sleep_multiplier = halt 周期 (120s × 5.0 = 600s)
 halt_sleep_multiplier: 5.0
+# 277#: phantom 検出後の sleep 倍率 (Avellaneda-Stoikov §3.2, halt の中間的待機)
+phantom_detection_sleep_multiplier: 3.0
+# 277#: halt 中の state save 間隔 (halt イテレーション数)
+halt_persist_interval: 10
+# 277#: 停止条件モニターの実行間隔 (サイクル数, 30 × 120s = 1h)
+stop_condition_check_interval: 30
+# 277#: 停止条件発動時の fallback 持続時間 (秒, Kyle 1985 price discovery 収束)
+fallback_duration_sec: 3600.0
+# 277#: unknown regime 連続ブロックのバイパス閾値 (Hamilton 1989)
+unknown_regime_max_consecutive: 10
 order_timeout_sec: 90.0       # 096#: 300→90 (stale order + reprice で早期対応)
 order_timeout_sec_sell: 75.0  # 155# S-3: sell は速い撤退が有利 (90→75, -16.7%)
 poll_interval_sec: 5.0        # ポーリング間隔 (秒)

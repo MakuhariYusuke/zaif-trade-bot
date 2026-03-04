@@ -142,6 +142,12 @@ class TestCheckRegimeStopConditions:
             policy=policy,
         )
         obj._cycle_strategy = strategy
+        # 277# config mock: fallback_duration_sec, sell_dynamic_kill_window, min_adapt_samples
+        _mock_config = MagicMock()
+        _mock_config.fallback_duration_sec = 3600.0
+        _mock_config.sell_dynamic_kill_window = 50
+        _mock_config.min_adapt_samples = 50
+        obj.config = _mock_config
         # Bind the real method
         obj._check_regime_stop_conditions = (
             FillLoopOrchestratorMixin._check_regime_stop_conditions.__get__(obj)
@@ -152,7 +158,6 @@ class TestCheckRegimeStopConditions:
         """fill_rate < fill_rate_floor → fallback 起動."""
         orchestrator._recent_records = []
         orchestrator._check_regime_stop_conditions(filled_count=10, total_count=100)
-        orchestrator._cycle_strategy.activate_fallback(3600.0)
         # fill_rate = 10% < 35% → must have called activate_fallback
         assert orchestrator._cycle_strategy._fallback_until is not None
 

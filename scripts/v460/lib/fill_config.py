@@ -53,6 +53,20 @@ class FillTestConfig:
     # 取引再開までの待機時間を通常サイクルの N 倍に延長し、価格衝撃減衰を待つ。
     # デフォルト 5.0 はサイクル間隔 120s × 5 = 600s (10分) の halt 周期を意味する。
     halt_sleep_multiplier: float = 5.0
+    # 277# phantom 検出後の sleep 倍率 (Avellaneda-Stoikov §3.2)
+    # 在庫不一致検出時は逆選択リスクが高いため、halt ほど長くない中間的待機。
+    # デフォルト 3.0 → cycle_interval × 3.0 = 360s (6分)。
+    phantom_detection_sleep_multiplier: float = 3.0
+    # 277# halt 中の state/record 保存間隔 (halt イテレーション数)
+    # halt_sleep (600s) × 10 = 6000s (100分) 毎に state 保存。再起動時の巻き戻し防止。
+    halt_persist_interval: int = 10
+    # 277# fill_rate / avg_pnl30 停止条件モニターの実行間隔 (サイクル数)
+    # 30 cycles × 120s = 3600s (1h) — 過剰な計算を避けつつ市場変化に追従。
+    stop_condition_check_interval: int = 30
+    # 277# 停止条件発動時の fallback 持続時間 (秒)
+    # fill_rate 低下/avg_pnl30 悪化時に CycleStrategy を fallback に切替える期間。
+    # 理論的根拠: Kyle (1985) — 情報非対称性下では 1h の冷却期間で price discovery が収束。
+    fallback_duration_sec: float = 3600.0
     # 242# Quiescence (233# P1: No Trade = 正常系)
     # 連続 gate block が閾値を超えたら quiescence (静止) 状態と認定し、
     # sleep 上限を max_cycle_sleep_sec → quiescence_sleep_sec に引き上げる。
@@ -442,6 +456,10 @@ class FillTestConfig:
     # → 完全停止ではなく、halt を一時的に貫通して縮退清算 (degraded liquidation パラメータを流用)
     inventory_escape_enabled: bool = True           # Inventory Escape の有効/無効
     inventory_escape_duty_cycle: int = 5            # N サイクルに 1 回のみ実行 (halt 貫通は控えめ)
+    # 277# unknown regime 連続ブロックのバイパス閾値 (Hamilton 1989 regime-switching)
+    # unknown が N 回連続したら regime 判定不能として gate を強制バイパス。
+    # 10 × cycle_interval(120s) = 20 分 — regime 再評価の猶予期間。
+    unknown_regime_max_consecutive: int = 10
     # ---- 133# P0-09: unknown レジームでの buy スキップ ----
     skip_buy_unknown_regime: bool = False  # True で unknown レジーム時 buy もスキップ (-1.384bps)
     # ---- 155# §9: trending レジームでの sell 抑制 ----
@@ -805,6 +823,55 @@ class FillTestConfig:
             raise ValueError(
                 f"dd_cooldown_rearm_budget_bps must be <= 0, "
                 f"got {self.dd_cooldown_rearm_budget_bps}"
+            )
+        # 277# 構造的整合性バリデーション — config 間の暗黙的依存を明示的に検証
+        # max_cycle_sleep_sec は halt_sleep_multiplier × cycle_interval 以上であるべき
+        _halt_cap = self.cycle_interval_sec * self.halt_sleep_multiplier
+        if self.max_cycle_sleep_sec > 0 and self.max_cycle_sleep_sec < _halt_cap:
+            raise ValueError(
+                f"max_cycle_sleep_sec ({self.max_cycle_sleep_sec}) must be >= "
+                f"cycle_interval_sec × halt_sleep_multiplier ({_halt_cap}). "
+                f"halt sleep がキャップされると DD halt の回復待機が短縮される"
+            )
+        # order_timeout が cycle_interval 以上だと次サイクルが遅延
+        if self.order_timeout_sec > self.cycle_interval_sec:
+            raise ValueError(
+                f"order_timeout_sec ({self.order_timeout_sec}) must be <= "
+                f"cycle_interval_sec ({self.cycle_interval_sec}). "
+                f"タイムアウトがサイクル間隔を超えると次サイクルの開始が遅延する"
+            )
+        # lock_stale_heartbeat は lock_heartbeat_period の 3 倍以上
+        _min_stale = self.lock_heartbeat_period_sec * 3
+        if self.lock_stale_heartbeat_sec < _min_stale:
+            raise ValueError(
+                f"lock_stale_heartbeat_sec ({self.lock_stale_heartbeat_sec}) must be >= "
+                f"lock_heartbeat_period_sec × 3 ({_min_stale}). "
+                f"stale 閾値が短すぎると正常 heartbeat でも stale 判定される"
+            )
+        # halt_persist_interval / stop_condition_check_interval 正値
+        if self.halt_persist_interval < 1:
+            raise ValueError(
+                f"halt_persist_interval must be >= 1, got {self.halt_persist_interval}"
+            )
+        if self.stop_condition_check_interval < 1:
+            raise ValueError(
+                f"stop_condition_check_interval must be >= 1, "
+                f"got {self.stop_condition_check_interval}"
+            )
+        if self.phantom_detection_sleep_multiplier <= 0:
+            raise ValueError(
+                f"phantom_detection_sleep_multiplier must be > 0, "
+                f"got {self.phantom_detection_sleep_multiplier}"
+            )
+        if self.fallback_duration_sec <= 0:
+            raise ValueError(
+                f"fallback_duration_sec must be > 0, "
+                f"got {self.fallback_duration_sec}"
+            )
+        if self.unknown_regime_max_consecutive < 1:
+            raise ValueError(
+                f"unknown_regime_max_consecutive must be >= 1, "
+                f"got {self.unknown_regime_max_consecutive}"
             )
 
 
@@ -1483,6 +1550,11 @@ class FillTestConfig:
         flat_keys = {
             "symbol", "order_quantity", "cycle_interval_sec", "max_cycle_sleep_sec",
             "halt_sleep_multiplier",  # 276#
+            "phantom_detection_sleep_multiplier",  # 277#
+            "halt_persist_interval",  # 277#
+            "stop_condition_check_interval",  # 277#
+            "fallback_duration_sec",  # 277#
+            "unknown_regime_max_consecutive",  # 277#
             "quiescence_gate_blocks_threshold", "quiescence_sleep_sec",  # 243#
             "order_timeout_sec",
             "order_timeout_sec_sell",

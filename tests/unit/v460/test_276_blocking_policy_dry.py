@@ -218,6 +218,7 @@ class TestHaltSleepMultiplierConfig:
         from scripts.v460.lib.fill_config import FillTestConfig
         yaml_cfg = {
             "halt_sleep_multiplier": 7.0,
+            "max_cycle_sleep_sec": 840.0,  # 277# >= cycle_interval × halt_mult
             "results_dir": "results/test",
         }
         cfg = FillTestConfig.from_yaml(yaml_cfg)

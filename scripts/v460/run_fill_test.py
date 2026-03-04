@@ -327,6 +327,7 @@ class FillTestRunner(
             halt_cooldown_sec=config.mcb_halt_cooldown_sec,
             warning_offset_mult=config.mcb_warning_offset_mult,
             warning_interval_mult=config.mcb_warning_interval_mult,
+            check_call_interval_sec=config.cycle_interval_sec,  # 277#
         ))
 
         # 211# P1-C: Spread Anomaly Detector (流動性枯渇検知)
