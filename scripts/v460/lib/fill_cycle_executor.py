@@ -892,7 +892,7 @@ class FillCycleExecutorMixin:
             _pre_deg_lot = _regime_lot
             _regime_lot = max(
                 _regime_lot * self.config.degraded_liquidation_lot_mult,
-                self.config.min_lot,
+                self.config.min_order_btc,
             )
             logger.warning(
                 f"[234#] degraded_liquidation lot: "
