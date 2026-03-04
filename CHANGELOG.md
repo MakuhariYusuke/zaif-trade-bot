@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 278# fix: degraded_liquidation lot floor (2026-03-04)
+
+### Fixed
+- **CRITICAL: `config.min_lot` AttributeError**: `degraded_liquidation` パスで `self.config.min_lot` (LotSizingConfig) を参照 → `self.config.min_order_btc` (FillTestConfig) に修正。234# 実装時の Config 属性名取違えが原因で 4 サイクル連続 ERROR
+
+---
+
 ## 277# マジックナンバー根拠化 + セルフレビュー (2026-03-04)
 
 ### Changed
