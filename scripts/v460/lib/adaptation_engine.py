@@ -1,4 +1,4 @@
-"""120# AdaptationEngine — パラメータ適応 & ロットサイズ自動適応モジュール.
+"""120# AdaptationEngine — パラメータ適応 & ロットサイズ自動適忚モジュール.
 
 run_fill_test.py FillTestRunner からの God Object 分割:
 - _try_auto_adapt (142L) → try_auto_adapt()
@@ -7,6 +7,19 @@ run_fill_test.py FillTestRunner からの God Object 分割:
 - _build_lot_kwargs (22L) → _build_lot_kwargs()
 - _update_dynamic_loss_cap (47L) → update_dynamic_loss_cap()
 - streaming fill record 読み込みの TTL キャッシュ (メモリリーク修正)
+
+市場理論的根拠:
+  **Adaptive Market Hypothesis (AMH)** — Lo (2004) "The Adaptive Markets
+  Hypothesis: Market Efficiency from an Evolutionary Perspective".
+  市場の効率性は固定ではなく、参加者の学習と適応により時間変化する。
+  本モジュールはこの AMH の主張を実装し、実測データから
+  市場状況の変化を検出し、パラメータを適応的に調整する。
+
+  **Kelly Criterion 統合** — Kelly (1956) "A New Interpretation of
+  Information Rate".
+  lot_sizer 経由で Kelly 推定値をロットの天井として使用。
+  AMH + Kelly の組合せ: 市場状況に応じた情報の質に比例した
+  最適ベットサイズを動的に計算する。
 
 メモリリーク修正:
   _try_auto_adapt / _try_auto_lot_size が毎回全レコードをディスクからロードしていた

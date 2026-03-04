@@ -4,6 +4,17 @@
 5 分・15 分スロープを算出。micro regime と組み合わせて
 マクロ的なトレンド/レンジ/ボラ判定を行う基盤モジュール。
 
+市場理論的根拠:
+  **Regime-Switching Model** — Hamilton (1989) "A New Approach to the Economic
+  Analysis of Nonstationary Time Series and the Business Cycle".
+  マクロレベルの状態遷移を slope とボラティリティで検知。
+  micro regime (120s) が短期ノイズを含むのに対し、
+  macro regime (5m/15m) は構造的トレンドを捕捉する。
+
+  **Micro-Macro 矛盾検出**: micro = ranging なのに macro = trending の
+  場合、micro がノイズに惑わされている可能性がある。
+  compose_regimes() で矛盾を検出し、ログまたは regime 補正を行う。
+
 設計原則:
   - 入力: FillTestRegimeDetector と同じ (timestamp, mid_price) ストリーム
   - 5m/15m スロープは OLS 線形回帰で算出 (ノイズ耐性)
@@ -11,7 +22,7 @@
   - compose_regimes() で micro + macro を統合し、矛盾検出 + regime 増強
 
 MAX LINES: 250
-"""
+"""""
 
 from __future__ import annotations
 

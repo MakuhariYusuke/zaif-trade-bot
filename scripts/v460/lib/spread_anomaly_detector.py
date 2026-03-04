@@ -3,6 +3,22 @@
 bid-ask spread の急拡大を検知し、流動性枯渇時の約定リスクを自動回避する。
 価格が動く前に spread が拡大するケースが多く、最速の自動検知手段。
 
+市場理論的根拠:
+  **Bid-Ask Spread 理論** — Roll (1984) "A Simple Implicit Measure of the
+  Effective Bid-Ask Spread in an Efficient Market".
+  実効スプレッドは取引コストの最も原始的な指標。
+  その急拡大は流動性供給者の撤退を示す。
+
+  **Information-Based Spread** — Copeland & Galai (1983) "Information Effects
+  on the Bid-Ask Spread".
+  スプレッド拡大は情報優位トレーダーの存在確率上昇を反映。
+  FROZEN レベルでの自動 halt は、逆選択コストが約定利益を
+  上回る状態での取引回避に対応。
+
+  **Amihud Illiquidity** — Amihud (2002) "Illiquidity and Stock Returns".
+  流動性の低下は価格インパクトを増大させ、スプレッド異常検知は
+  このリスクの早期警報として機能する。
+
 段階的アクション:
   NORMAL — 通常運転
   WIDE   — offset を spread_ratio に連動して拡大
@@ -18,7 +34,7 @@ Usage:
     result = sad.check()
     if result.level == SADLevel.FROZEN:
         ...  # skip cycle
-"""
+"""""
 
 from __future__ import annotations
 

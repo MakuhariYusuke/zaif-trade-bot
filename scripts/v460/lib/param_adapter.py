@@ -4,6 +4,19 @@
 028# §3.1 準拠.
 032# 実装.
 
+市場理論的根拠:
+  **Avellaneda-Stoikov Model** — Avellaneda & Stoikov (2008) "High-Frequency
+  Trading in a Limit Order Book".
+  最適 market maker の reservation price と optimal spread は、
+  ボラティリティと在庫状態の関数として動的に調整される。
+  本モジュールは AS モデルの適応的 spread 調整を、
+  fill_rate と AS_ratio という実測フィードバックで実現する。
+
+  **逆選択回避** — Glosten & Milgrom (1985).
+  AS_ratio (逆方向約定率) が高い場合は、情報優位の
+  トレーダーに対して不利な約定が続いていることを意味し、
+  offset を拡大して板の外側に退避する。
+
 概要:
   SAC モデル自体は変えず、fill_test の FillMetrics から
   spread_offset_ratio を自動調整する。

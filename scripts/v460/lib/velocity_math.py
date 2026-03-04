@@ -4,6 +4,21 @@
 信号の種類は複数あるが、計算・符号規約・上限処理をここに集約することで
 「どのモジュールが何をどう計算しているか」の混乱を排除する。
 
+市場理論的根拠:
+  **Kyle λ (Price Impact)** — Kyle (1985) "Continuous Auctions and Insider
+  Trading".
+  価格変化の速度 (velocity) は、情報保有者の取引強度 (注文フロー) と
+  市場の流動性 (λ⁻¹) の比として解釈できる。
+  高 velocity = 情報優位トレーダーが活発 → 逆選択リスク増大。
+
+  **Hasbrouck Information Share** — Hasbrouck (1991) "Measuring the
+  Information Content of Stock Trades".
+  約定ごとの価格インパクトを情報シェアとして定量化。
+  trade_vel_60s はこの情報シェアの累積的な近似計測。
+
+アーキテクチャ:
+  本システムには目的の異なる 2 つの velocity 信号が存在する。
+
 アーキテクチャ:
   本システムには目的の異なる 2 つの velocity 信号が存在する。
 

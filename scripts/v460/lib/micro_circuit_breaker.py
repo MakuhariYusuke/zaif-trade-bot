@@ -3,6 +3,21 @@
 regime_detector (40分 hysteresis) と Volatility Guard (4h ATR) の間を埋める
 5分〜1時間の急変検知レイヤー。
 
+市場理論的根拠:
+  **Circuit Breaker 理論** — SEC Rule 80B (1988), Greenwald & Stein (1991)
+  "Transactional Risk, Market Crashes, and the Role of Circuit Breakers".
+  急激な価格変動時に取引を一時停止し、情報の非対称性が
+  緩和される時間を提供する。
+
+  **Liquidity Spiral** — Brunnermeier & Pedersen (2009) "Market Liquidity and
+  Funding Liquidity".
+  価格急落 → 担保価値下落 → 流動性枯渇 → さらなる価格下落の
+  自己強化ループ。MCB はこのスパイラルに巻き込まれる前に
+  自動的に halt することで損失を回避する。
+
+  **段階的アクションの論拠**: 一律の halt ではなく CAUTION → WARNING →
+  HALT の段階制御は、不必要な機会損失を避ける Liveness 配慮。
+
 段階的アクション:
   CAUTION  — ログ警告のみ
   WARNING  — offset_mult / interval_mult を拡大
@@ -17,7 +32,7 @@ Usage:
     result = mcb.check()
     if result.level == MCBLevel.HALT:
         ...  # skip cycle
-"""
+"""""
 
 from __future__ import annotations
 

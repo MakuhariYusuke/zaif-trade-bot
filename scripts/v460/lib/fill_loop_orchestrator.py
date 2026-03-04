@@ -145,66 +145,47 @@ class FillLoopOrchestratorMixin:
     # 254# _heartbeat_task: run_continuous 内で代入、cleanup_heartbeat で参照
     _heartbeat_task: asyncio.Task[None] | None = None
 
-    def _is_sell_killed(self) -> bool:
-        """133# P0-10 / 136# P1-03: sell 動的 kill 判定 — SellDynamicKillManager に委譲.
+    def _is_side_killed(self, side: str) -> bool:
+        """275# DRY: side パラメータ化 — dynamic kill 判定を単一メソッドに統合.
 
-        §9 #3: 現在レジームを check_kill() に渡し regime_thresholds を有効化。
+        旧 _is_sell_killed / _is_buy_killed の対称コードを統一。
+        Glosten-Milgrom (1985) 逆選択モデルに基づく動的 kill 判定を
+        side 非依存で実行する。
+
+        理論的根拠:
+          逆選択リスクは bid/ask 対称であり (Glosten & Milgrom 1985, §3),
+          kill 判定ロジック自体は side に依存しない。差異はインスタンス
+          (sell_kill_mgr vs buy_kill_mgr) とメトリクス suffix のみ。
         """
+        mgr = self._sell_kill_mgr if side == "sell" else self._buy_kill_mgr
         regime: str | None = None
         if self._regime_detector is not None:
             regime = self._regime_detector.current_regime.value
-        killed, telemetry = self._sell_kill_mgr.check_kill(regime=regime)
+        killed, telemetry = mgr.check_kill(regime=regime)
         # 223# probe/force_release メトリクス
         if telemetry.probe_fired:
-            self._inc_guard_fire("dynamic_kill_probe_sell")
+            self._inc_guard_fire(f"dynamic_kill_probe_{side}")
         if telemetry.force_release_fired:
-            self._inc_guard_fire("dynamic_kill_force_release_sell")
+            self._inc_guard_fire(f"dynamic_kill_force_release_{side}")
         if killed:
             logger.info(
-                f"[136# §9] sell kill: regime={regime or 'default'}, "
+                f"[275# DRY] {side} kill: regime={regime or 'default'}, "
                 f"threshold_used={telemetry.threshold_used}, "
                 f"cooldown_remaining={telemetry.cooldown_remaining}"
             )
         return killed
 
-    def _track_sell_pnl(self, record: "FillRecord") -> None:
-        """133# P0-10 / 136# P1-03: sell fill の PnL を追跡 — SellDynamicKillManager に委譲."""
-        if (
-            record.filled
-            and record.side == "sell"
-            and record.post_fill_30s_pnl is not None
-        ):
+    def _track_side_pnl(self, record: "FillRecord") -> None:
+        """275# DRY: side パラメータ化 — PnL 追跡を単一メソッドに統合.
+
+        Ho & Stoll (1981) の在庫リスクモデルでは、buy/sell の PnL 追跡は
+        対称であり、side ごとに個別実装する必要がない。
+        """
+        if not (record.filled and record.post_fill_30s_pnl is not None):
+            return
+        if record.side == "sell":
             self._sell_kill_mgr.track(record.post_fill_30s_pnl)
-
-    def _is_buy_killed(self) -> bool:
-        """157# §19: buy 動的 kill 判定 — BuyDynamicKillManager に委譲.
-
-        sell_dynamic_kill の buy 側対称版。
-        """
-        regime: str | None = None
-        if self._regime_detector is not None:
-            regime = self._regime_detector.current_regime.value
-        killed, telemetry = self._buy_kill_mgr.check_kill(regime=regime)
-        # 223# probe/force_release メトリクス
-        if telemetry.probe_fired:
-            self._inc_guard_fire("dynamic_kill_probe_buy")
-        if telemetry.force_release_fired:
-            self._inc_guard_fire("dynamic_kill_force_release_buy")
-        if killed:
-            logger.info(
-                f"[157# §19] buy kill: regime={regime or 'default'}, "
-                f"threshold_used={telemetry.threshold_used}, "
-                f"cooldown_remaining={telemetry.cooldown_remaining}"
-            )
-        return killed
-
-    def _track_buy_pnl(self, record: "FillRecord") -> None:
-        """157# §19: buy fill の PnL を追跡 — BuyDynamicKillManager に委譲."""
-        if (
-            record.filled
-            and record.side == "buy"
-            and record.post_fill_30s_pnl is not None
-        ):
+        elif record.side == "buy":
             self._buy_kill_mgr.track(record.post_fill_30s_pnl)
 
     # ------------------------------------------------------------------
@@ -950,8 +931,7 @@ class FillLoopOrchestratorMixin:
         st.total_count += 1
         if record.filled:
             st.filled_count += 1
-            self._track_sell_pnl(record)
-            self._track_buy_pnl(record)
+            self._track_side_pnl(record)
             # 202# A: 単一サイクル大損失クールダウン
             if (
                 record.post_fill_30s_pnl is not None
@@ -2140,8 +2120,8 @@ class FillLoopOrchestratorMixin:
                 ),
                 balance_forced=_balance_forced,
                 inv_net_imbalance=self._maker_price.inv_net_imbalance,
-                is_buy_killed=self._is_buy_killed(),
-                is_sell_killed=self._is_sell_killed(),
+                is_buy_killed=self._is_side_killed("buy"),
+                is_sell_killed=self._is_side_killed("sell"),
                 # 197# Gate 8-9: cached spread/mid for pre-check
                 spread_jpy=self._maker_price.last_spread,
                 mid_price=self._maker_price.last_mid_price,
@@ -2483,13 +2463,8 @@ class FillLoopOrchestratorMixin:
                 _loss_cd = self._loss_cooldown_mult
                 self._loss_cooldown_mult = 1.0  # 次サイクルではリセット
 
-                # 207# §3: Toxic veto カウンタ減算 (サイクル末尾で実行 — off-by-one 防止)
-                if self._toxic_veto:
-                    for _veto_side in list(self._toxic_veto.keys()):
-                        self._toxic_veto[_veto_side] -= 1
-                        if self._toxic_veto[_veto_side] <= 0:
-                            del self._toxic_veto[_veto_side]
-                            logger.info(f"[205# §9.2] Toxic veto expired: {_veto_side}")
+                # 207# §3 / 275# DRY: Toxic veto カウンタ減算 (サイクル末尾)
+                self._tick_toxic_veto("cycle_end")
 
                 # 207# §4: one-sided 連続実行制限到達時の interval 延長
                 _os_limit = self.config.one_sided_consecutive_limit

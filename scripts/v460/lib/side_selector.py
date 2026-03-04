@@ -7,7 +7,20 @@ FillTestRunner から buy/sell 交互ロジック + Smart Side を分離。
   - buy/sell 交互切替 (片側蓄積防止)
   - Smart Side: imbalance ベースの side 抑制/追従 (054# S2)
   - Rapid exit side 強制 (055# Fix)
-"""
+
+市場理論的根拠:
+  **Inventory Management Model** — Garman (1976) "Market Microstructure",
+  Ho & Stoll (1981) "Optimal Dealer Pricing Under Transactions and Return
+  Uncertainty".
+  ディーラーの在庫ポジションは中立からの乖離が大きいほど
+  リスクが増大する。buy/sell 交互で在庫中立性を維持し、
+  Smart Side で偏りが大きいときに中立化方向へ side を誘導する。
+
+  **在庫中立化の離散実装**: Stoll (1978) §3 が示す連続的
+  reservation price 調整を、side 選択という離散的意思決定として
+  実装。これは Avellaneda-Stoikov (2008) の optimal market maker が
+  在庫に応じて bid/ask 非対称に注文を配置する考え方の簡略版。
+"""""
 
 from __future__ import annotations
 

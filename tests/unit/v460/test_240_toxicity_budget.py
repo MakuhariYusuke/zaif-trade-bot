@@ -591,9 +591,12 @@ class TestOrchestratorToxicityAssess:
                 fromlist=["FillLoopOrchestratorMixin"],
             ).FillLoopOrchestratorMixin,
         )
-        # _assess_buy_toxicity() の呼び出しが _is_buy_killed() の前にある
+        # _assess_buy_toxicity() の呼び出しが _is_side_killed("buy") の前にある
         tox_pos = src.find("_assess_buy_toxicity()")
-        kill_pos = src.find("_is_buy_killed()")
+        # 275# DRY: _is_buy_killed() → _is_side_killed("buy") に統一
+        kill_pos = src.find('_is_side_killed("buy")')
+        if kill_pos < 0:
+            kill_pos = src.find("_is_side_killed('buy')")
         assert tox_pos < kill_pos, (
             "assess toxicity must be called before check_kill "
             "to avoid stale cooldown observation"
