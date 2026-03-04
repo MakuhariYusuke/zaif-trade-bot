@@ -354,7 +354,8 @@ class TestToxicVetoHaltBlockDecrement:
         # 226# S2 コメントが halt_block セクション後にある
         s2_idx = src.index("226# S2")
         # S2 は halt_block セクション内にある
-        assert abs(s2_idx - halt_block_idx) < 1000, (
+        # 269#: inventory escape 追加により S2 が複数箇所に存在するため余裕を拡大
+        assert abs(s2_idx - halt_block_idx) < 2000, (
             "226# S2 veto decrement should be near balance_forced_halt_block"
         )
 

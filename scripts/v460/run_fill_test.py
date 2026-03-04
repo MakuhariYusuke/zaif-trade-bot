@@ -295,6 +295,8 @@ class FillTestRunner(
             resume_window=config.sell_dynamic_kill_resume_window,
             regime_thresholds=config.sell_dynamic_kill_regime_thresholds,  # 139# §9-#2
             toxic_kill_stale_multiplier=config.sell_dynamic_kill_toxic_stale_mult,  # 243#
+            max_stale_kill_cycles=config.sell_dynamic_kill_max_stale_cycles,  # 269#
+            max_force_release_probes=config.sell_dynamic_kill_max_force_probes,  # 269#
         ))
 
         # 157# §19: buy 動的 kill — sell との対称性確保
@@ -305,6 +307,8 @@ class FillTestRunner(
             resume_window=config.buy_dynamic_kill_resume_window,
             regime_thresholds=config.buy_dynamic_kill_regime_thresholds,
             toxic_kill_stale_multiplier=config.buy_dynamic_kill_toxic_stale_mult,  # 243#
+            max_stale_kill_cycles=config.buy_dynamic_kill_max_stale_cycles,  # 269#
+            max_force_release_probes=config.buy_dynamic_kill_max_force_probes,  # 269#
         ))
 
         # 194# CycleGateAggregator: per-cycle skip 判定の一元化 (192# §3 対応)
@@ -385,6 +389,7 @@ class FillTestRunner(
             per_side_halt_cycles=config.per_side_dd_halt_cycles,
             per_side_recovery_cycles=config.per_side_dd_recovery_cycles,
             per_side_recovery_lot_scale=config.per_side_dd_recovery_lot_scale,
+            per_side_reanchor_budget_bps=config.per_side_dd_reanchor_budget_bps,
             cooldown_release_sec=config.dd_cooldown_release_sec,
             cooldown_release_lot_scale=config.dd_cooldown_release_lot_scale,
             cooldown_rearm_budget_bps=config.dd_cooldown_rearm_budget_bps,
@@ -473,6 +478,7 @@ class FillTestRunner(
             per_side_halt_cycles=self.config.per_side_dd_halt_cycles,
             per_side_recovery_cycles=self.config.per_side_dd_recovery_cycles,
             per_side_recovery_lot_scale=self.config.per_side_dd_recovery_lot_scale,
+            per_side_reanchor_budget_bps=self.config.per_side_dd_reanchor_budget_bps,
             cooldown_release_sec=self.config.dd_cooldown_release_sec,
             cooldown_release_lot_scale=self.config.dd_cooldown_release_lot_scale,
             cooldown_rearm_budget_bps=self.config.dd_cooldown_rearm_budget_bps,

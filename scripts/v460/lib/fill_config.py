@@ -188,6 +188,9 @@ class FillTestConfig:
     # 224# B1: halt解除後ソフトリカバリ — lot 縮小で段階的復帰
     per_side_dd_recovery_cycles: int = 5        # リカバリ期間サイクル数 (0=無効)
     per_side_dd_recovery_lot_scale: float = 0.5 # リカバリ期間中の lot 倍率
+    # 269# per-side halt PnL リアンカー: release 時に side PnL を部分リセット
+    # release 後は「過去の負債」ではなく「release 後の追加損失」で再 halt 判定
+    per_side_dd_reanchor_budget_bps: float = -15.0  # release 後にこの追加損失で再 halt (-15bps)
     # 225# 市場理論補強: regime-aware recovery lot ペナルティ
     recovery_trending_penalty: float = 0.7  # trending 時のリカバリ lot 追加縮小倍率
     recovery_high_vol_penalty: float = 0.8  # high_vol 時のリカバリ lot 追加縮小倍率
@@ -429,6 +432,11 @@ class FillTestConfig:
     degraded_liquidation_lot_mult: float = 0.2      # 通常 lot の 20% (min lot 相当)
     degraded_liquidation_offset_mult: float = 3.0   # offset を通常の 3 倍 (wide offset)
     degraded_liquidation_duty_cycle: int = 3        # N サイクルに 1 回のみ実行 (dutyCycle=3 → 33%)
+    # 269# P0: Inventory Escape Mode — balance_forced + per-side halt 時のデッドロック解消
+    # Codex 269# §4.1 / Gemini 270# Action A: 在庫過多で JPY 不足、反対 side は halt
+    # → 完全停止ではなく、halt を一時的に貫通して縮退清算 (degraded liquidation パラメータを流用)
+    inventory_escape_enabled: bool = True           # Inventory Escape の有効/無効
+    inventory_escape_duty_cycle: int = 5            # N サイクルに 1 回のみ実行 (halt 貫通は控えめ)
     # ---- 133# P0-09: unknown レジームでの buy スキップ ----
     skip_buy_unknown_regime: bool = False  # True で unknown レジーム時 buy もスキップ (-1.384bps)
     # ---- 155# §9: trending レジームでの sell 抑制 ----
@@ -459,6 +467,9 @@ class FillTestConfig:
     sell_dynamic_kill_regime_thresholds: dict[str, float] = field(default_factory=dict)
     # 243# 242# YAML 配線: toxic_kill_stale_multiplier
     sell_dynamic_kill_toxic_stale_mult: int = 10   # 242# probe interval 延長倍率
+    # 269# probe/force-release YAML 露出 (250# 廃止検討対応)
+    sell_dynamic_kill_max_stale_cycles: int = 10   # 0=probe無効 (No Trade=正常)
+    sell_dynamic_kill_max_force_probes: int = 5    # 0=force-release無効
     # ---- 157# §19: buy 動的 kill (rolling PnL ベースの自動停止 — sell との対称性) ----
     buy_dynamic_kill_enabled: bool = False   # True で buy rolling PnL 監視有効
     buy_dynamic_kill_window: int = 50        # rolling ウィンドウ (fill 数)
@@ -466,6 +477,8 @@ class FillTestConfig:
     buy_dynamic_kill_resume_window: int = 10      # 停止後、N サイクル後に再評価
     buy_dynamic_kill_regime_thresholds: dict[str, float] = field(default_factory=dict)
     buy_dynamic_kill_toxic_stale_mult: int = 10    # 242# probe interval 延長倍率
+    buy_dynamic_kill_max_stale_cycles: int = 10    # 269# 0=probe無効
+    buy_dynamic_kill_max_force_probes: int = 5     # 269# 0=force-release無効
     # 249# dual_kill_bypass → quiescence: 両方 kill 時は休止 (242# "No Trade = normal")
     dual_kill_quiescence_enabled: bool = False  # True で dual_kill_bypass を無効化 → 静観
     # ---- 137# P1-08: spread 狭小時の「休む」判定 ----
@@ -1030,6 +1043,9 @@ class FillTestConfig:
             "vpin_threshold": "volatility_guard_vpin_threshold",
             "offset_boost_factor": "volatility_guard_offset_boost_factor",
             "inv_skew_damping_enabled": "vg_inv_skew_damping_enabled",
+            # 269# VPIN continuous modulator YAML 配線
+            "vpin_continuous_enabled": "vg_vpin_continuous_enabled",
+            "vpin_continuous_min": "vg_vpin_continuous_min",
         }
         for yaml_key, config_key in vg_map.items():
             if yaml_key in vg:
@@ -1064,6 +1080,52 @@ class FillTestConfig:
         for yaml_key, config_key in sad_map.items():
             if yaml_key in sad:
                 kwargs[config_key] = sad[yaml_key]
+
+        # 269# 市場理論 YAML 配線 (258#/264#/266#)
+        # AS Reservation Price (Avellaneda-Stoikov)
+        as_res = yaml_cfg.get("as_reservation", {})
+        if as_res.get("enabled") is not None:
+            kwargs["as_reservation_enabled"] = bool(as_res["enabled"])
+        for yk, ck in {
+            "gamma": "as_reservation_gamma",
+            "tau_sec": "as_reservation_tau_sec",
+        }.items():
+            if yk in as_res:
+                kwargs[ck] = float(as_res[yk])
+        # GLFT τ動的化 (266#)
+        if as_res.get("tau_dynamic_enabled") is not None:
+            kwargs["as_tau_dynamic_enabled"] = bool(as_res["tau_dynamic_enabled"])
+        for yk, ck in {
+            "tau_dynamic_min_sec": "as_tau_dynamic_min_sec",
+            "tau_dynamic_max_sec": "as_tau_dynamic_max_sec",
+        }.items():
+            if yk in as_res:
+                kwargs[ck] = float(as_res[yk])
+        # AS δ* (266#)
+        if as_res.get("delta_star_enabled") is not None:
+            kwargs["as_delta_star_enabled"] = bool(as_res["delta_star_enabled"])
+        if "delta_star_fill_rate_k" in as_res:
+            kwargs["as_delta_star_fill_rate_k"] = float(as_res["delta_star_fill_rate_k"])
+        # Kyle λ (266#)
+        kyle = yaml_cfg.get("kyle_lambda", {})
+        if kyle.get("enabled") is not None:
+            kwargs["kyle_lambda_enabled"] = bool(kyle["enabled"])
+        for yk, ck in {
+            "impact_mult": "kyle_lambda_impact_mult",
+            "max_add_ratio": "kyle_lambda_max_add_ratio",
+        }.items():
+            if yk in kyle:
+                kwargs[ck] = float(kyle[yk])
+        # Amihud ILLIQ (266#)
+        amihud = yaml_cfg.get("amihud_illiq", {})
+        if amihud.get("enabled") is not None:
+            kwargs["amihud_illiq_enabled"] = bool(amihud["enabled"])
+        for yk, ck in {
+            "baseline": "amihud_illiq_baseline",
+            "max_mult": "amihud_illiq_max_mult",
+        }.items():
+            if yk in amihud:
+                kwargs[ck] = float(amihud[yk])
 
         # 088# sell 専用ハードガード
         sell_guard = yaml_cfg.get("sell_guard", {})
@@ -1134,6 +1196,11 @@ class FillTestConfig:
         # 243# 242# toxic_stale_multiplier YAML 配線
         if "toxic_stale_multiplier" in sell_kill:
             kwargs["sell_dynamic_kill_toxic_stale_mult"] = int(sell_kill["toxic_stale_multiplier"])
+        # 269# probe/force-release YAML 露出
+        if "max_stale_kill_cycles" in sell_kill:
+            kwargs["sell_dynamic_kill_max_stale_cycles"] = int(sell_kill["max_stale_kill_cycles"])
+        if "max_force_release_probes" in sell_kill:
+            kwargs["sell_dynamic_kill_max_force_probes"] = int(sell_kill["max_force_release_probes"])
 
         # 157# §19: buy 動的 kill
         buy_kill = 止血.get("buy_dynamic_kill", {})
@@ -1151,6 +1218,11 @@ class FillTestConfig:
         # 243# 242# toxic_stale_multiplier YAML 配線
         if "toxic_stale_multiplier" in buy_kill:
             kwargs["buy_dynamic_kill_toxic_stale_mult"] = int(buy_kill["toxic_stale_multiplier"])
+        # 269# probe/force-release YAML 露出
+        if "max_stale_kill_cycles" in buy_kill:
+            kwargs["buy_dynamic_kill_max_stale_cycles"] = int(buy_kill["max_stale_kill_cycles"])
+        if "max_force_release_probes" in buy_kill:
+            kwargs["buy_dynamic_kill_max_force_probes"] = int(buy_kill["max_force_release_probes"])
 
         # 249# dual_kill_quiescence
         _dkq = 止血.get("dual_kill_quiescence_enabled")
@@ -1241,6 +1313,11 @@ class FillTestConfig:
             kwargs["degraded_liquidation_offset_mult"] = float(止血["degraded_liquidation_offset_mult"])
         if "degraded_liquidation_duty_cycle" in 止血:
             kwargs["degraded_liquidation_duty_cycle"] = int(止血["degraded_liquidation_duty_cycle"])
+        # 269# Inventory Escape Mode
+        if "inventory_escape_enabled" in 止血:
+            kwargs["inventory_escape_enabled"] = bool(止血["inventory_escape_enabled"])
+        if "inventory_escape_duty_cycle" in 止血:
+            kwargs["inventory_escape_duty_cycle"] = int(止血["inventory_escape_duty_cycle"])
         # 205# §9.5: 片側 DD Halt (daily_drawdown サブキー)
         if dd_guard.get("per_side_enabled") is not None:
             kwargs["per_side_dd_enabled"] = dd_guard["per_side_enabled"]
@@ -1253,6 +1330,9 @@ class FillTestConfig:
             kwargs["per_side_dd_recovery_cycles"] = int(dd_guard["per_side_recovery_cycles"])
         if "per_side_recovery_lot_scale" in dd_guard:
             kwargs["per_side_dd_recovery_lot_scale"] = float(dd_guard["per_side_recovery_lot_scale"])
+        # 269# per-side halt PnL リアンカー
+        if "per_side_reanchor_budget_bps" in dd_guard:
+            kwargs["per_side_dd_reanchor_budget_bps"] = float(dd_guard["per_side_reanchor_budget_bps"])
         # 225# regime-aware recovery ペナルティ
         if "recovery_trending_penalty" in dd_guard:
             kwargs["recovery_trending_penalty"] = float(dd_guard["recovery_trending_penalty"])

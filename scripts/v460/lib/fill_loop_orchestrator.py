@@ -97,6 +97,8 @@ class FillLoopOrchestratorMixin:
     _balance_forced_skip_count: int = 0
     # 234# 縮退清算モード duty cycle カウンタ
     _degraded_liquidation_duty_counter: int = 0
+    # 269# Inventory Escape Mode duty cycle カウンタ
+    _inventory_escape_duty_counter: int = 0
     # 234# one-sided エスカレーション: cooldown 残サイクル
     _one_sided_cooldown_remaining: int = 0
     _one_sided_freeze_remaining: int = 0
@@ -363,6 +365,8 @@ class FillLoopOrchestratorMixin:
             ),
             # 236# エスカレーション・縮退カウンタ永続化
             degraded_liquidation_duty_counter=self._degraded_liquidation_duty_counter,
+            # 269# Inventory Escape Mode カウンタ永続化
+            inventory_escape_duty_counter=self._inventory_escape_duty_counter,
             one_sided_cooldown_remaining=self._one_sided_cooldown_remaining,
             one_sided_freeze_remaining=self._one_sided_freeze_remaining,
             # 254# 250# P1-4 永続化漏れ修正: freeze/cooldown の対象 side
@@ -471,6 +475,10 @@ class FillLoopOrchestratorMixin:
         if _duty > 0:
             self._degraded_liquidation_duty_counter = _duty
             logger.info(f"[236#] Degraded duty counter restored: {_duty}")
+        _ie_duty = saved_state.inventory_escape_duty_counter
+        if _ie_duty > 0:
+            self._inventory_escape_duty_counter = _ie_duty
+            logger.info(f"[269#] Inventory escape duty counter restored: {_ie_duty}")
         _cd = saved_state.one_sided_cooldown_remaining
         if _cd > 0:
             self._one_sided_cooldown_remaining = _cd
@@ -1465,6 +1473,7 @@ class FillLoopOrchestratorMixin:
             _balance_forced = False
             _is_rescue = False  # 158# P1-1: balance_forced rescue フラグ
             _one_sided_balance = False  # 190# B: 片側 balance フラグ (ev_weighted threshold 緩和用)
+            _inventory_escape = False  # 269# P0: Inventory Escape Mode
             # 073# side 別時間帯フィルター: side 決定後にフィルタリング
             # side 別リスト未設定時はグローバルリスト (041# 互換)
             next_side = self._next_side()
@@ -1699,37 +1708,91 @@ class FillLoopOrchestratorMixin:
                     # 223# P0: balance_forced 後に per-side halt を再チェック
                     # (222# 1.1 CRITICAL: halt 中の side を balance_forced で貫通するバグの修正)
                     if self._daily_drawdown_guard.is_side_halted(next_side):
-                        logger.warning(
-                            f"[223#] balance_forced → {next_side} is per-side halted — "
-                            f"refusing to bypass halt (safety > liveness)"
-                        )
-                        self._inc_guard_fire("balance_forced_halt_block")
-                        # 226# S2: balance_forced + halt_block で continue する際、
-                        # toxic_veto のカウンタも減算する。
-                        # さもないと veto 側が永久ループ (veto→balance_forced→halt→continue
-                        # でカウンタ不変 → 次 cycle も同一パスを通過)。
-                        if self._toxic_veto:
-                            for _vs in list(self._toxic_veto.keys()):
-                                self._toxic_veto[_vs] -= 1
-                                if self._toxic_veto[_vs] <= 0:
-                                    del self._toxic_veto[_vs]
-                                    logger.info(
-                                        f"[226# S2] Toxic veto expired "
-                                        f"(halt_block path): {_vs}"
-                                    )
-                        st.batch.append(self._make_loop_skip_record(
-                            side=next_side,
-                            cancel_reason=CR.PER_SIDE_DD_HALT,
-                            order_quantity=self._current_lot,
-                            balance_forced_switch=True,
-                        ))
-                        st.total_count += 1
-                        st.batch = self._batch_persistence.maybe_flush(
-                            st.batch, "balance_forced_halt_recheck",
-                        )
-                        self._last_side = next_side
-                        await self._effective_sleep()
-                        continue
+                        # ────────────────────────────────────────────
+                        # 269# P0: Inventory Escape Mode
+                        # Codex 269# §4.1 / Gemini 270# Action A:
+                        # balance_forced(= 元 side 残高不足) + per-side halt(= 切替先 halt)
+                        # → 両 side ブロックのデッドロック。
+                        # halt を一時的に貫通し、degraded liquidation パラメータで
+                        # 縮退売却を実行して在庫を解消する。
+                        # ────────────────────────────────────────────
+                        _ie_enabled = self.config.inventory_escape_enabled
+                        _ie_duty = max(self.config.inventory_escape_duty_cycle, 1)
+                        if _ie_enabled and next_side == "sell":
+                            self._inventory_escape_duty_counter += 1
+                            if _ie_duty > 1 and (self._inventory_escape_duty_counter % _ie_duty) != 1:
+                                # duty cycle スキップ: halt 貫通は控えめに
+                                logger.info(
+                                    f"[269#] Inventory escape duty skip: "
+                                    f"cycle {self._inventory_escape_duty_counter}/{_ie_duty}"
+                                )
+                                self._inc_guard_fire("inventory_escape_duty_skip")
+                            else:
+                                # duty cycle 実行回: halt を貫通して縮退清算
+                                logger.warning(
+                                    f"[269#] INVENTORY ESCAPE: bypassing per-side halt "
+                                    f"for {next_side} (balance_forced deadlock breakout, "
+                                    f"cycle {self._inventory_escape_duty_counter}/{_ie_duty})"
+                                )
+                                self._inc_guard_fire("inventory_escape_active")
+                                _inventory_escape = True
+                                # toxic_veto の減算は通常同様に行う (226# S2)
+                                if self._toxic_veto:
+                                    for _vs in list(self._toxic_veto.keys()):
+                                        self._toxic_veto[_vs] -= 1
+                                        if self._toxic_veto[_vs] <= 0:
+                                            del self._toxic_veto[_vs]
+                                            logger.info(
+                                                f"[226# S2] Toxic veto expired "
+                                                f"(inventory_escape path): {_vs}"
+                                            )
+                                # halt 貫通 → degraded liquidation として以降のパスに進む
+                                # (ループの continue をスキップして実行パスへ fallthrough)
+                        else:
+                            _inventory_escape = False
+
+                        if not _inventory_escape:
+                            logger.warning(
+                                f"[223#] balance_forced → {next_side} is per-side halted — "
+                                f"refusing to bypass halt (safety > liveness)"
+                            )
+                            self._inc_guard_fire("balance_forced_halt_block")
+                            # 226# S2: balance_forced + halt_block で continue する際、
+                            # toxic_veto のカウンタも減算する。
+                            if self._toxic_veto:
+                                for _vs in list(self._toxic_veto.keys()):
+                                    self._toxic_veto[_vs] -= 1
+                                    if self._toxic_veto[_vs] <= 0:
+                                        del self._toxic_veto[_vs]
+                                        logger.info(
+                                            f"[226# S2] Toxic veto expired "
+                                            f"(halt_block path): {_vs}"
+                                        )
+                            st.batch.append(self._make_loop_skip_record(
+                                side=next_side,
+                                cancel_reason=CR.PER_SIDE_DD_HALT,
+                                order_quantity=self._current_lot,
+                                balance_forced_switch=True,
+                            ))
+                            st.total_count += 1
+                            st.batch = self._batch_persistence.maybe_flush(
+                                st.batch, "balance_forced_halt_recheck",
+                            )
+                            # 269# P0-b: state save — halt_block 長期化に対する stale 防止
+                            _now_mono_hb = time.monotonic()
+                            if _now_mono_hb - self._last_state_save_time >= self._STATE_SAVE_INTERVAL_SEC:
+                                self._state_persistence.save(self._build_state_snapshot(
+                                    total_count=st.total_count,
+                                    filled_count=st.filled_count,
+                                    cumulative_pnl_jpy=st.cumulative_pnl_jpy,
+                                ))
+                                self._last_state_save_time = _now_mono_hb
+                                logger.info(
+                                    "[269#] skip-time state save (balance_forced_halt_block)"
+                                )
+                            self._last_side = next_side
+                            await self._effective_sleep()
+                            continue
                     # 200# E: 時間ベース頻度検出 — 短時間で連続 balance_forced が発生 → 警告
                     _now = time.time()
                     _last_bf_time = self._last_balance_forced_time
@@ -2206,6 +2269,13 @@ class FillLoopOrchestratorMixin:
                         f"{self._degraded_liquidation_duty_counter} duty cycles"
                     )
                 self._degraded_liquidation_duty_counter = 0
+                # 269# Inventory Escape カウンタもリセット
+                if self._inventory_escape_duty_counter > 0:
+                    logger.info(
+                        f"[269#] Inventory escape cleared after "
+                        f"{self._inventory_escape_duty_counter} duty cycles"
+                    )
+                self._inventory_escape_duty_counter = 0
 
             try:
                 # 224# B1: halt解除後ソフトリカバリ — lot 縮小倍率を算出
@@ -2242,7 +2312,7 @@ class FillLoopOrchestratorMixin:
                     balance_forced_rescue=_is_rescue,
                     one_sided_balance=_one_sided_balance,
                     trending_offset_mult=_gate_result.trending_offset_mult,
-                    degraded_liquidation=_degraded_liquidation,
+                    degraded_liquidation=_degraded_liquidation or _inventory_escape,
                     toxicity_offset_mult=_gate_result.toxicity_offset_mult,
                 )
                 # 154# C-2: 実サイクル実行 → forced skip カウンタリセット

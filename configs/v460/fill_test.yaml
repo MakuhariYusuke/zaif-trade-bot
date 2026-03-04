@@ -377,6 +377,39 @@ volatility_guard:
   # 168# InvSkew/VG 競合解消: InvSkew が sell offset を緩和した場面で
   #   VG ブーストを抑制し在庫リバランス効果を保全する
   inv_skew_damping_enabled: true
+  # 269# 257# VPIN Continuous Modulator: バイナリ→連続スケーリング
+  vpin_continuous_enabled: true     # 269# 有効化
+  vpin_continuous_min: 0.40         # 連続スケーリング開始の VPIN 下限
+
+# ---- 269# 市場理論 YAML 配線 (258#/264#/266#) ----
+# AS Reservation Price (Avellaneda-Stoikov 2008):
+#   在庫リスクをボラティリティに応じて非対称 offset 補正。
+#   既存 inv_skew (線形) を σ²·τ で補完し、高ボラ時に在庫リバランス加速。
+as_reservation:
+  enabled: true                    # 269# 有効化
+  gamma: 0.1                       # γ: リスク回避度 (高い=保守的)
+  tau_sec: 120.0                   # τ: 時間ホライゾン (秒)
+  # 266# GLFT τ動的化: vol_ratio に応じて τ を動的調整
+  tau_dynamic_enabled: true        # 269# 有効化
+  tau_dynamic_min_sec: 30.0        # τ 下限 (秒)
+  tau_dynamic_max_sec: 600.0       # τ 上限 (秒)
+  # 266# AS δ*: 最適スプレッド幅の理論的 offset 下限
+  delta_star_enabled: true         # 269# 有効化
+  delta_star_fill_rate_k: 1.5      # fill rate κ (注文到着強度)
+
+# Kyle λ (Kyle 1985): 価格インパクト係数
+#   λ_est = spread / (2·depth_volume) — 自己注文のインパクト → offset 安全マージン
+kyle_lambda:
+  enabled: true                    # 269# 有効化
+  impact_mult: 0.5                 # λ×lot を offset に反映する倍率
+  max_add_ratio: 0.05              # offset 加算上限 (ratio)
+
+# Amihud ILLIQ (Amihud 2002): 非流動性比率
+#   ILLIQ = |ΔP/P| / Volume — spread_adaptive 閾値の動的調整
+amihud_illiq:
+  enabled: true                    # 269# 有効化
+  baseline: 0.001                  # ILLIQ ベースライン (正規化基準)
+  max_mult: 1.5                    # ILLIQ 由来の offset 倍率上限
 
 # ---- 088# sell 専用ハードガード ----
 sell_guard:
@@ -436,6 +469,9 @@ loss_control:
   degraded_liquidation_lot_mult: 0.2        # 通常 lot の 20% (min lot 相当)
   degraded_liquidation_offset_mult: 3.0     # offset を通常の 3 倍 (wide offset)
   degraded_liquidation_duty_cycle: 3        # N サイクルに 1 回のみ実行 (33%)
+  # 269# P0: Inventory Escape Mode — balance_forced + per-side halt デッドロック解消
+  inventory_escape_enabled: true            # Inventory Escape の有効/無効
+  inventory_escape_duty_cycle: 5            # N サイクルに 1 回 (halt 貫通は控えめ: 20%)
   # 166# HF4: 連続 sell skip 安全弁上限を 3010 に短縮 (7.3 B.4)
   max_consecutive_trending_sell_skip: 10   # 171#: 20→10 (Guard Paradox対策: 安全弁を早期発動して sell 機会確保)
   # 171# Guard Paradox 対策: 在庫偏重時に sell ガードをバイパスする閾値
@@ -446,6 +482,10 @@ loss_control:
     window: 50                     # rolling ウィンドウ (sell fill 数)
     threshold_bps: -0.3            # 246# -0.5→-0.3 (245#分析: sell累積損失が-0.5到達前に大量損失蓄積。早期kill で防御)
     resume_window: 10              # 156# D-5: 20→10 (40分→約20分へ半減)
+    # 269# probe/force-release YAML 露出 (250# 思想: No Trade=正常)
+    # live 本番: 0 (probe 無効) — kill 中の強制取引は情報優位者への無防備な流動性供給
+    max_stale_kill_cycles: 0         # 0=probe無効 (No Trade=正常)
+    max_force_release_probes: 0      # 0=force-release無効
     # 139# §9-#2: レジーム別閾値 (regime_name -> threshold_bps)
     regime_thresholds:
       trending_up: -0.3            # 171#: -0.1→-0.3 (Guard Paradox対策: -0.1はほぼ全sell kill、在庫偏重の正フィードバック原因)
@@ -457,6 +497,8 @@ loss_control:
     window: 50                     # rolling ウィンドウ (buy fill 数)
     threshold_bps: -0.8            # buy は sell より寛容 (構造的に buy の AS リスクが低い)
     resume_window: 10              # 停止後、N サイクル後に再評価
+    max_stale_kill_cycles: 0         # 269# 0=probe無効
+    max_force_release_probes: 0      # 269# 0=force-release無効
     regime_thresholds:
       trending_down: -0.5          # 下降トレンド時は buy への許容を縮小
       trending_up: -1.5            # 上昇トレンド時は buy に寛容 (順張り)
@@ -505,6 +547,9 @@ loss_control:
     # 224# B1: halt解除後ソフトリカバリ — lot半減で段階的復帰
     per_side_recovery_cycles: 5    # リカバリ期間サイクル数 (5×120s=10分; 0=無効)
     per_side_recovery_lot_scale: 0.5  # リカバリ期間中lot倍率 (0.5=半減)
+    # 269# per-side halt PnL リアンカー: release 時に side PnL を部分リセット
+    # release 後は「過去の負債」ではなく「release 後の追加損失」で再 halt 判定
+    per_side_reanchor_budget_bps: -15.0  # release 後この追加損失で再 halt
     # 225# 市場理論 (Avellaneda-Stoikov): regime-aware recovery ペナルティ
     recovery_trending_penalty: 0.7    # trending 時は lot ×0.7 追加縮小 (AS リスク残存)
     recovery_high_vol_penalty: 0.8    # high_vol 時は lot ×0.8 追加縮小 (在庫リスク増大)

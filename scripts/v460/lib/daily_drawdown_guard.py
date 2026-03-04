@@ -56,6 +56,10 @@ class DailyDrawdownState:
     # 249# cooldown re-arm: release 後の追加損失で再 halt
     cooldown_rearm_pnl_bps: float = 0.0  # release 後の累積 PnL (bps)
     cooldown_rearmed: bool = False  # re-arm で再 halt された
+    # 269# per-side halt reanchor: halt 解除時点の PnL を基準点として記録
+    # 再 halt 判定は (current_pnl - reanchor) で行い、即時再 halt を防止
+    side_reanchor_pnl_buy: float = 0.0
+    side_reanchor_pnl_sell: float = 0.0
 
 
 class DailyDrawdownGuard:
@@ -82,6 +86,7 @@ class DailyDrawdownGuard:
         per_side_halt_cycles: int = 0,
         per_side_recovery_cycles: int = 5,
         per_side_recovery_lot_scale: float = 0.5,
+        per_side_reanchor_budget_bps: float = -15.0,
         cooldown_release_sec: float = 0.0,
         cooldown_release_lot_scale: float = 0.3,
         cooldown_rearm_budget_bps: float = -10.0,
@@ -96,6 +101,8 @@ class DailyDrawdownGuard:
         # 224# B1: halt解除後ソフトリカバリ
         self._per_side_recovery_cycles = per_side_recovery_cycles
         self._per_side_recovery_lot_scale = per_side_recovery_lot_scale
+        # 269# per-side halt reanchor: 解除後の再 halt 判定バジェット
+        self._per_side_reanchor_budget_bps = per_side_reanchor_budget_bps
         # 246# cooldown release: 集約 halt からの部分解除
         # halt 後 cooldown_release_sec 経過で lot 縮小付き再開 (0=無効)
         self._cooldown_release_sec = cooldown_release_sec
@@ -213,7 +220,16 @@ class DailyDrawdownGuard:
                 self._state.side_halted_buy if side == "buy"
                 else self._state.side_halted_sell
             )
-            if side_pnl <= self._per_side_hard_limit_bps and not is_halted:
+            # 269# reanchor: 解除済みの場合は reanchor 基準点からの差分で判定
+            _reanchor = (
+                self._state.side_reanchor_pnl_buy if side == "buy"
+                else self._state.side_reanchor_pnl_sell
+            )
+            _effective_pnl = side_pnl - _reanchor
+            # 再 halt 判定: reanchor budget を超過した場合のみ
+            # (reanchor=0 の初回は _effective_pnl == side_pnl で従来互換)
+            _threshold = self._per_side_reanchor_budget_bps if _reanchor != 0.0 else self._per_side_hard_limit_bps
+            if _effective_pnl <= _threshold and not is_halted:
                 if side == "buy":
                     self._state.side_halted_buy = True
                     self._state.side_halt_remaining_buy = self._per_side_halt_cycles
@@ -222,7 +238,8 @@ class DailyDrawdownGuard:
                     self._state.side_halt_remaining_sell = self._per_side_halt_cycles
                 logger.warning(
                     f"[daily_drawdown] PER-SIDE HALT: {side} PnL {side_pnl:+.2f}bps "
-                    f"<= {self._per_side_hard_limit_bps}bps — {side} 封鎖 "
+                    f"(effective={_effective_pnl:+.2f}bps vs threshold={_threshold}bps, "
+                    f"reanchor={_reanchor:+.2f}bps) — {side} 封鎖 "
                     f"(cycles={self._per_side_halt_cycles or 'until_day_reset'})"
                 )
                 result["side_halted"] = side
@@ -314,21 +331,27 @@ class DailyDrawdownGuard:
             self._state.side_halt_remaining_buy = max(0, self._state.side_halt_remaining_buy - 1)
             if self._state.side_halt_remaining_buy == 0:
                 self._state.side_halted_buy = False
+                # 269# reanchor: 解除時の PnL を基準点に設定
+                self._state.side_reanchor_pnl_buy = self._state.daily_pnl_bps_buy
                 # 224# B1: halt解除 → リカバリ期間開始
                 self._state.side_recovery_remaining_buy = self._per_side_recovery_cycles
                 logger.info(
                     f"[daily_drawdown] Per-side halt released: buy (cycles exhausted), "
-                    f"recovery={self._per_side_recovery_cycles} cycles"
+                    f"recovery={self._per_side_recovery_cycles} cycles, "
+                    f"reanchor_pnl={self._state.side_reanchor_pnl_buy:+.2f}bps"
                 )
         if self._state.side_halted_sell and self._per_side_halt_cycles > 0:
             self._state.side_halt_remaining_sell = max(0, self._state.side_halt_remaining_sell - 1)
             if self._state.side_halt_remaining_sell == 0:
                 self._state.side_halted_sell = False
+                # 269# reanchor: 解除時の PnL を基準点に設定
+                self._state.side_reanchor_pnl_sell = self._state.daily_pnl_bps_sell
                 # 224# B1: halt解除 → リカバリ期間開始
                 self._state.side_recovery_remaining_sell = self._per_side_recovery_cycles
                 logger.info(
                     f"[daily_drawdown] Per-side halt released: sell (cycles exhausted), "
-                    f"recovery={self._per_side_recovery_cycles} cycles"
+                    f"recovery={self._per_side_recovery_cycles} cycles, "
+                    f"reanchor_pnl={self._state.side_reanchor_pnl_sell:+.2f}bps"
                 )
 
     def consume_recovery_cycle(self, side: str) -> float:
@@ -422,6 +445,9 @@ class DailyDrawdownGuard:
             # 249# cooldown re-arm
             "cooldown_rearmed": self._state.cooldown_rearmed,
             "cooldown_rearm_pnl_bps": self._state.cooldown_rearm_pnl_bps,
+            # 269# per-side reanchor
+            "side_reanchor_pnl_buy": self._state.side_reanchor_pnl_buy,
+            "side_reanchor_pnl_sell": self._state.side_reanchor_pnl_sell,
         }
 
     def import_state(self, data: dict[str, object]) -> None:
@@ -459,6 +485,9 @@ class DailyDrawdownGuard:
         # 249# cooldown re-arm 状態復元
         self._state.cooldown_rearmed = bool(data.get("cooldown_rearmed", False))
         self._state.cooldown_rearm_pnl_bps = float(data.get("cooldown_rearm_pnl_bps", 0.0))
+        # 269# per-side reanchor 状態復元
+        self._state.side_reanchor_pnl_buy = float(data.get("side_reanchor_pnl_buy", 0.0))
+        self._state.side_reanchor_pnl_sell = float(data.get("side_reanchor_pnl_sell", 0.0))
         logger.info(
             f"[daily_drawdown] State restored: day={saved_day}, "
             f"pnl={self._state.daily_pnl_bps:+.2f}bps, halted={self._state.halted}, "

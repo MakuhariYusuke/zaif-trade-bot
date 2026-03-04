@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-04 (268# DD halt JST日付リセット + Balance-forced デッドロック発見)
+> 最終更新: 2026-03-04 (269# 249–268レビュー: side-halt deadlock 継続, degraded 到達不能, Inventory Escape 必須)
 
 ---
 
@@ -259,6 +259,7 @@
 | 266 | impl | [266_phg_impl_market_theory_protocol.md](266_phg_impl_market_theory_protocol.md) | GLFT τ動的化 + AS δ* + Kyle λ + Amihud ILLIQ + Protocol型安全化 (type:ignore×4, getattr×8 排除) |
 | 267 | bugfix | [267_phg_fix_delta_star_depth_dry.md](267_phg_fix_delta_star_depth_dry.md) | δ* 次元修正 (σ_return→σ_abs) + _get_depth DRY + docstring 正確化 |
 | 268 | bugfix | [268_phg_fix_dd_halt_jst_reset.md](268_phg_fix_dd_halt_jst_reset.md) | DD halt JST日付リセット: _utc_today→_today (day_reset_utc_offset_hours=9.0) |
+| 269 | rev | [269_ph2_rev_249_268_blocking_architecture_and_next_moves.md](269_ph2_rev_249_268_blocking_architecture_and_next_moves.md) | 249#–268# レビュー: side-halt deadlock 継続, degraded 到達不能, state stale, Inventory Escape Mode 提案 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
