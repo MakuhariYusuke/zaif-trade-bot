@@ -470,6 +470,8 @@ class FillTestConfig:
     # 269# probe/force-release YAML 露出 (250# 廃止検討対応)
     sell_dynamic_kill_max_stale_cycles: int = 10   # 0=probe無効 (No Trade=正常)
     sell_dynamic_kill_max_force_probes: int = 5    # 0=force-release無効
+    # 273# kill 時間上限 (268# I5: Pattern B kill↔halt 相互ロック防止)
+    sell_dynamic_kill_max_duration_sec: float = 0.0  # 0=無制限 (従来互換)
     # ---- 157# §19: buy 動的 kill (rolling PnL ベースの自動停止 — sell との対称性) ----
     buy_dynamic_kill_enabled: bool = False   # True で buy rolling PnL 監視有効
     buy_dynamic_kill_window: int = 50        # rolling ウィンドウ (fill 数)
@@ -479,6 +481,8 @@ class FillTestConfig:
     buy_dynamic_kill_toxic_stale_mult: int = 10    # 242# probe interval 延長倍率
     buy_dynamic_kill_max_stale_cycles: int = 10    # 269# 0=probe無効
     buy_dynamic_kill_max_force_probes: int = 5     # 269# 0=force-release無効
+    # 273# kill 時間上限 (268# I5)
+    buy_dynamic_kill_max_duration_sec: float = 0.0  # 0=無制限
     # 249# dual_kill_bypass → quiescence: 両方 kill 時は休止 (242# "No Trade = normal")
     dual_kill_quiescence_enabled: bool = False  # True で dual_kill_bypass を無効化 → 静観
     # ---- 137# P1-08: spread 狭小時の「休む」判定 ----
@@ -1201,6 +1205,9 @@ class FillTestConfig:
             kwargs["sell_dynamic_kill_max_stale_cycles"] = int(sell_kill["max_stale_kill_cycles"])
         if "max_force_release_probes" in sell_kill:
             kwargs["sell_dynamic_kill_max_force_probes"] = int(sell_kill["max_force_release_probes"])
+        # 273# kill 時間上限 YAML 配線
+        if "max_kill_duration_sec" in sell_kill:
+            kwargs["sell_dynamic_kill_max_duration_sec"] = float(sell_kill["max_kill_duration_sec"])
 
         # 157# §19: buy 動的 kill
         buy_kill = 止血.get("buy_dynamic_kill", {})
@@ -1223,6 +1230,9 @@ class FillTestConfig:
             kwargs["buy_dynamic_kill_max_stale_cycles"] = int(buy_kill["max_stale_kill_cycles"])
         if "max_force_release_probes" in buy_kill:
             kwargs["buy_dynamic_kill_max_force_probes"] = int(buy_kill["max_force_release_probes"])
+        # 273# kill 時間上限 YAML 配線
+        if "max_kill_duration_sec" in buy_kill:
+            kwargs["buy_dynamic_kill_max_duration_sec"] = float(buy_kill["max_kill_duration_sec"])
 
         # 249# dual_kill_quiescence
         _dkq = 止血.get("dual_kill_quiescence_enabled")

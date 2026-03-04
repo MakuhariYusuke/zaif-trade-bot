@@ -297,6 +297,7 @@ class FillTestRunner(
             toxic_kill_stale_multiplier=config.sell_dynamic_kill_toxic_stale_mult,  # 243#
             max_stale_kill_cycles=config.sell_dynamic_kill_max_stale_cycles,  # 269#
             max_force_release_probes=config.sell_dynamic_kill_max_force_probes,  # 269#
+            max_kill_duration_sec=config.sell_dynamic_kill_max_duration_sec,  # 273#
         ))
 
         # 157# §19: buy 動的 kill — sell との対称性確保
@@ -309,6 +310,7 @@ class FillTestRunner(
             toxic_kill_stale_multiplier=config.buy_dynamic_kill_toxic_stale_mult,  # 243#
             max_stale_kill_cycles=config.buy_dynamic_kill_max_stale_cycles,  # 269#
             max_force_release_probes=config.buy_dynamic_kill_max_force_probes,  # 269#
+            max_kill_duration_sec=config.buy_dynamic_kill_max_duration_sec,  # 273#
         ))
 
         # 194# CycleGateAggregator: per-cycle skip 判定の一元化 (192# §3 対応)
@@ -446,6 +448,7 @@ class FillTestRunner(
             resume_window=self.config.sell_dynamic_kill_resume_window,
             regime_thresholds=self.config.sell_dynamic_kill_regime_thresholds,
             toxic_kill_stale_multiplier=self.config.sell_dynamic_kill_toxic_stale_mult,  # 243#
+            max_kill_duration_sec=self.config.sell_dynamic_kill_max_duration_sec,  # 273#
         ))
         if old_state:
             self._sell_kill_mgr.import_state(old_state)
@@ -462,6 +465,7 @@ class FillTestRunner(
             resume_window=self.config.buy_dynamic_kill_resume_window,
             regime_thresholds=self.config.buy_dynamic_kill_regime_thresholds,
             toxic_kill_stale_multiplier=self.config.buy_dynamic_kill_toxic_stale_mult,  # 243#
+            max_kill_duration_sec=self.config.buy_dynamic_kill_max_duration_sec,  # 273#
         ))
         if old_state:
             self._buy_kill_mgr.import_state(old_state)

@@ -486,6 +486,8 @@ loss_control:
     # live 本番: 0 (probe 無効) — kill 中の強制取引は情報優位者への無防備な流動性供給
     max_stale_kill_cycles: 0         # 0=probe無効 (No Trade=正常)
     max_force_release_probes: 0      # 0=force-release無効
+    # 273# kill 時間上限 (268# I5: Pattern B kill↔halt 相互ロック防止)
+    max_kill_duration_sec: 1800      # 30分で自動解除 (268#: 92分持続事例への対策)
     # 139# §9-#2: レジーム別閾値 (regime_name -> threshold_bps)
     regime_thresholds:
       trending_up: -0.3            # 171#: -0.1→-0.3 (Guard Paradox対策: -0.1はほぼ全sell kill、在庫偏重の正フィードバック原因)
@@ -499,6 +501,7 @@ loss_control:
     resume_window: 10              # 停止後、N サイクル後に再評価
     max_stale_kill_cycles: 0         # 269# 0=probe無効
     max_force_release_probes: 0      # 269# 0=force-release無効
+    max_kill_duration_sec: 1800      # 273# 30分で自動解除
     regime_thresholds:
       trending_down: -0.5          # 下降トレンド時は buy への許容を縮小
       trending_up: -1.5            # 上昇トレンド時は buy に寛容 (順張り)

@@ -153,6 +153,8 @@ class CycleGateAggregator:
         # 240# Toxicity Budget (232# §2.2)
         buy_toxicity: ToxicityAssessment | None = None,
         sell_toxicity: ToxicityAssessment | None = None,
+        # 273# I6: halt 解除後 soft gate grace period
+        halt_recovery_active: bool = False,
     ) -> CycleGateResult:
         """全 per-cycle ゲートを順次評価.
 
@@ -190,7 +192,7 @@ class CycleGateAggregator:
         # --- Gate 1: unknown_regime_buy_skip ---
         g1 = self._check_unknown_regime_buy(side, _regime, _unknown_bypass)
         result.checks.append(g1)
-        if g1.blocked:
+        if g1.blocked and not halt_recovery_active:  # 273# recovery grace
             result.blocked = True
             result.blocking_reason = g1.reason
             self._consecutive_unknown_blocks += 1
@@ -204,7 +206,7 @@ class CycleGateAggregator:
         # --- Gate 2: B1' ranging_buy_low_vol ---
         g2 = self._check_ranging_buy_low_vol(side, _regime, vol_ratio)
         result.checks.append(g2)
-        if g2.blocked:
+        if g2.blocked and not halt_recovery_active:  # 273# recovery grace
             result.blocked = True
             result.blocking_reason = g2.reason
             return result
@@ -216,7 +218,7 @@ class CycleGateAggregator:
             buy_side_insufficient=buy_side_insufficient,
         )
         result.checks.append(g3)
-        if g3.blocked:
+        if g3.blocked and not halt_recovery_active:  # 273# recovery grace
             result.blocked = True
             result.blocking_reason = g3.reason
             return result
@@ -305,7 +307,7 @@ class CycleGateAggregator:
         # --- Gate 6: velocity_skip (旧 C4-C5) ---
         g6 = self._check_velocity_skip(side, price_velocity_bps)
         result.checks.append(g6)
-        if g6.blocked:
+        if g6.blocked and not halt_recovery_active:  # 273# recovery grace
             result.blocked = True
             result.blocking_reason = g6.reason
             return result
@@ -313,7 +315,7 @@ class CycleGateAggregator:
         # --- Gate 7: unknown_regime_sell_skip (旧 C2) ---
         g7 = self._check_unknown_regime_sell(side, _regime, _unknown_bypass)
         result.checks.append(g7)
-        if g7.blocked:
+        if g7.blocked and not halt_recovery_active:  # 273# recovery grace
             result.blocked = True
             result.blocking_reason = g7.reason
             self._consecutive_unknown_blocks += 1

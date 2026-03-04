@@ -354,6 +354,47 @@ class DailyDrawdownGuard:
                     f"reanchor_pnl={self._state.side_reanchor_pnl_sell:+.2f}bps"
                 )
 
+    def untick_side_halt(self) -> None:
+        """273# I3: 空サイクル halt カウント除外 — tick_side_halt の補償.
+
+        balance_forced_halt_block 等でサイクルが空振りした場合に呼び出し、
+        tick_side_halt() でデクリメントされたカウンタを 1 戻す。
+        これにより、実質的な取引試行がないサイクルを halt カウントから除外する。
+
+        268# 分析: デッドロック中 (balance_forced + per-side halt) の空サイクルが
+        halt_remaining を消費し、15サイクル×120s=30分の halt が実質的に
+        新データなしで経過 → halt 解除後も改善なしで即再halt (I2/I3)。
+        """
+        if not self._per_side_enabled:
+            return
+        if self._state.side_halted_buy and self._per_side_halt_cycles > 0:
+            # halt 解除されていない場合のみ補償
+            if self._state.side_halt_remaining_buy < self._per_side_halt_cycles:
+                self._state.side_halt_remaining_buy = min(
+                    self._per_side_halt_cycles,
+                    self._state.side_halt_remaining_buy + 1,
+                )
+        if self._state.side_halted_sell and self._per_side_halt_cycles > 0:
+            if self._state.side_halt_remaining_sell < self._per_side_halt_cycles:
+                self._state.side_halt_remaining_sell = min(
+                    self._per_side_halt_cycles,
+                    self._state.side_halt_remaining_sell + 1,
+                )
+
+    def is_in_recovery(self, side: str) -> bool:
+        """273# I6: 指定サイドが halt 解除後のリカバリ期間中か判定 (副作用なし).
+
+        CycleGateAggregator でソフトゲートを緩和する判定に使用。
+        consume_recovery_cycle() と異なり、カウンタのデクリメントは行わない。
+        """
+        if not self._per_side_enabled or self._per_side_recovery_cycles <= 0:
+            return False
+        if side == "buy":
+            return self._state.side_recovery_remaining_buy > 0
+        if side == "sell":
+            return self._state.side_recovery_remaining_sell > 0
+        return False
+
     def consume_recovery_cycle(self, side: str) -> float:
         """224# B1: halt解除後のリカバリ期間中の lot 縮小倍率を返す.
 

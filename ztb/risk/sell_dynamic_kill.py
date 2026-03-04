@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import enum
 import logging
+import time
 from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
@@ -123,6 +124,13 @@ class DynamicKillConfig:
     #: ORANGE ゾーン最悪時の最低参加率 (0.0-1.0)。
     #: ゾーン内で線形補間: caution_level→1.0, 1.0→min_participation。
     toxicity_caution_min_participation: float = 0.33
+    # ---- 273# Kill Time Limit (268# I5: kill 過剰持続防止) ----
+    #: kill 発動から自動解除するまでの最大秒数。0 = 無制限 (従来互換)。
+    #: 268# 分析: sell_dynamic_kill が 92 分持続し、per-side halt との相互ロック
+    #: (Pattern B) を引き起こした。時間上限を設けることで自動解除する。
+    #: 市場理論的根拠: kill が長期化すると rolling PnL ウィンドウが stale 化し、
+    #: 市場条件が変化しても反映されない。時間上限は情報の鮮度を保証する。
+    max_kill_duration_sec: float = 0.0
 
     def __post_init__(self) -> None:
         """173# バリデーション + 241# S-4 toxicity config 制約チェック."""
@@ -211,6 +219,7 @@ class DynamicKillManager:
         "_total_probe_cycles",
         "_consecutive_probes",  # 219#
         "_force_released",       # 219#
+        "_kill_activated_at",    # 273# kill 発動タイムスタンプ
     )
 
     def __init__(self, config: DynamicKillConfig | None = None, *, side: str = "sell") -> None:
@@ -224,6 +233,7 @@ class DynamicKillManager:
         self._total_probe_cycles: int = 0
         self._consecutive_probes: int = 0  # 219# progressive probe
         self._force_released: bool = False  # 219# force release active
+        self._kill_activated_at: float | None = None  # 273# kill 発動時刻
 
     @property
     def config(self) -> DynamicKillConfig:
@@ -237,6 +247,9 @@ class DynamicKillManager:
         if self._force_released:
             self._force_released = False
             logger.info(f"[219#] {self._side} force release ended — new data received")
+        # 273# 新データ投入 → kill timestamp リセット
+        # (新しい PnL が入ったので kill 判定は再評価される)
+        self._kill_activated_at = None
         # メモリ制限: 最大 window*3
         max_keep = self._config.window * 3
         if len(self._pnl_history) > max_keep:
@@ -396,6 +409,29 @@ class DynamicKillManager:
                 killed=False, rolling_mean=None, threshold=self._config.threshold_bps, regime=regime
             )
 
+        # 273# Kill Time Limit (268# I5 / Pattern B): 時間上限による自動解除
+        # kill が max_kill_duration_sec 以上持続した場合、rolling PnL が改善して
+        # いなくても強制解除する。halt 中に新データが入らず kill が永続する
+        # (268# 92分持続) パターンを防止。
+        _max_dur = self._config.max_kill_duration_sec
+        if (
+            _max_dur > 0
+            and self._kill_activated_at is not None
+            and (time.time() - self._kill_activated_at) >= _max_dur
+        ):
+            logger.warning(
+                f"[273#] {self._side} kill TIME LIMIT expired: "
+                f"active for {time.time() - self._kill_activated_at:.0f}s "
+                f"(limit={_max_dur:.0f}s) — auto-releasing"
+            )
+            self._cooldown = 0
+            self._kill_activated_at = None
+            self._stale_counter = 0
+            return False, self._make_telemetry(
+                killed=False, rolling_mean=None,
+                threshold=self._config.threshold_bps, regime=regime,
+            )
+
         # 218#/219# anti-stagnation: stale probe check + progressive interval
         # 242# Liveness relaxation: toxicity KILL + データ裏付けあり → interval 延長
         # 250# 廃止検討注記 (247# P1-6):
@@ -470,6 +506,9 @@ class DynamicKillManager:
             self._cooldown = self._config.resume_window
             self._total_kills += 1
             self._stale_counter += 1  # 218#
+            # 273# kill 発動時刻を記録 (既存 kill の延長でなければ)
+            if self._kill_activated_at is None:
+                self._kill_activated_at = time.time()
             logger.warning(
                 f"[157# §19] {self._side} dynamic kill activated: "
                 f"rolling{window} mean={rolling_mean:.3f}bps < {threshold}bps, "
@@ -550,6 +589,7 @@ class DynamicKillManager:
         self._total_probe_cycles = 0
         self._consecutive_probes = 0
         self._force_released = False
+        self._kill_activated_at = None  # 273#
 
     # ------------------------------------------------------------------
     # 209# H4: 状態永続化 — export / import
@@ -570,6 +610,7 @@ class DynamicKillManager:
             "total_probe_cycles": self._total_probe_cycles,
             "consecutive_probes": self._consecutive_probes,
             "force_released": self._force_released,
+            "kill_activated_at": self._kill_activated_at,  # 273#
         }
 
     def import_state(self, state: dict[str, object]) -> None:
@@ -591,6 +632,9 @@ class DynamicKillManager:
         self._total_probe_cycles = int(state.get("total_probe_cycles", 0))
         self._consecutive_probes = int(state.get("consecutive_probes", 0))
         self._force_released = bool(state.get("force_released", False))
+        # 273# kill_activated_at 復元
+        _kill_at = state.get("kill_activated_at")
+        self._kill_activated_at = float(_kill_at) if _kill_at is not None else None
         # side は import しない (コンストラクタで固定)
         # メモリ制限: window*3 に収める
         max_keep = self._config.window * 3

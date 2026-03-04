@@ -1541,6 +1541,8 @@ class FillLoopOrchestratorMixin:
                 if self._daily_drawdown_guard.is_side_halted(_alt):
                     # 両サイド封鎖 → 集約 halt と同等扱い
                     self._inc_guard_fire("per_side_dd_both_halt")  # 223#
+                    # 273# I3: 両サイド封鎖の空サイクルも halt カウントから除外
+                    self._daily_drawdown_guard.untick_side_halt()
                     st.batch.append(self._make_loop_skip_record(
                         side="none",
                         cancel_reason=CR.PER_SIDE_DD_HALT,
@@ -1802,6 +1804,10 @@ class FillLoopOrchestratorMixin:
                                 f"refusing to bypass halt (safety > liveness)"
                             )
                             self._inc_guard_fire("balance_forced_halt_block")
+                            # 273# I3: 空サイクルの halt カウント除外
+                            # この continue パスでは実質的な取引試行がないため
+                            # tick_side_halt() のデクリメントを補償する
+                            self._daily_drawdown_guard.untick_side_halt()
                             # 226# S2: balance_forced + halt_block で continue する際、
                             # toxic_veto のカウンタも減算する。
                             self._tick_toxic_veto("halt_block")
@@ -2092,6 +2098,13 @@ class FillLoopOrchestratorMixin:
             _buy_tox = self._assess_buy_toxicity()
             _sell_tox = self._assess_sell_toxicity()
 
+            # 273# I6: halt 解除後の soft gate grace period
+            # recovery 期間中はソフトゲート (trending_sell_skip, velocity_skip,
+            # unknown_regime) を緩和して再参入速度を改善する
+            _halt_recovery_active = self._daily_drawdown_guard.is_in_recovery(
+                next_side
+            )
+
             _gate_result = self._cycle_gate.evaluate(
                 side=next_side,
                 regime=(
@@ -2119,6 +2132,8 @@ class FillLoopOrchestratorMixin:
                 # 240# Toxicity Budget (232# §2.2)
                 buy_toxicity=_buy_tox,
                 sell_toxicity=_sell_tox,
+                # 273# I6: halt 解除後の soft gate grace period
+                halt_recovery_active=_halt_recovery_active,
             )
 
             if _gate_result.blocked:
