@@ -320,13 +320,200 @@ balance_forced_rescue モード同様の fast-path を用意。
 
 ---
 
+## 横展開 — ブロッキング機構の相互作用分析
+
+### 全ブロッキング層のインベントリ
+
+本 bot は 6 層の独立したブロッキング機構を持つ。各層は **局所的には正しい安全判断** を下すが、
+**複数層が同時に作用する場合の相互作用は設計時に考慮されていない**。
+
+| 層 | 機構 | 判断基準 | 解除条件 | 場所 |
+|---|---|---|---|---|
+| L1 | **DailyDrawdownGuard** (集約 halt) | daily PnL ≤ hard_limit_bps | 日替わりリセット or cooldown_release (2h) | `daily_drawdown_guard.py` |
+| L1' | **Per-side halt** | side PnL ≤ per_side_hard_limit_bps | 15 cycles (~90min) or 日替わり | 同上 |
+| L2 | **sell_dynamic_kill** | rolling sell PnL mean < threshold | rolling mean ≥ threshold (新 fill 必要) | `sell_dynamic_kill.py` |
+| L2' | **buy_dynamic_kill** | rolling buy PnL mean < threshold | 同上 (buy 側) | 同上 |
+| L3 | **CycleGateAggregator** (9 gates) | regime / vol / velocity / spread | 各 gate 固有 | `cycle_gate_aggregator.py` |
+| L4 | **SkipGateEvaluator** (ML gate) | ML model probability | 市場状況変化 | `skip_gate_evaluator.py` |
+| L5 | **Balance preflight** | JPY / BTC 残高 ≥ min lot | 反対 side の約定で残高回復 | `fill_loop_orchestrator.py` |
+| L6 | **Veto 系** (toxic / phantom) | 直前 fill の異常判定 | N cycles 自然減衰 | 同上 |
+
+### 相互作用マトリクス
+
+以下のマトリクスは、2 つの層が **同時に作用した場合** の結果を示す。
+
+```
+            L1   L1'  L2   L2'  L3   L4   L5   L6
+L1  (halt)   -    -    -    -    -    -   [C]   -
+L1' (p-halt) -    ■   [B]   -    -   [F]  [A]  [E]
+L2  (s-kill) -   [B]   -   [C]   -    -    -    -
+L2' (b-kill) -    -   [C]   -    -    -    -    -
+L3  (gate)   -    -    -    -    -    -    -    -
+L4  (ML)     -   [F]   -    -    -    -    -    -
+L5  (bal.)  [C]  [A]   -    -    -    -    -    -
+L6  (veto)   -   [E]   -    -    -    -    -    -
+
+■ = 同一層の自己ループ (I2: halt→release→即再halt)
+[A]–[F] = 後述のパターン ID
+```
+
+### 識別されたデッドロック/相互ロックパターン
+
+#### Pattern A 🔴 OBSERVED — Balance-forced + Per-side halt デッドロック
+
+```
+L5 (buy=JPY不足) + L1' (sell=per-side halt) → 完全停止
+```
+
+- **発生**: 3/4 に 3 回以上発生、各 72–90min
+- **メカニズム**: buy が JPY 不足 → `balance_forced_switch` で sell に切替 → 223# が per-side halt を尊重して拒否 → `continue` → 次サイクルも同一パス
+- **コード**: `fill_loop_orchestrator.py` L1699–1732
+- **根本原因**: 223# は「safety > liveness」原則で halt 貫通を禁止するが、**唯一の回復経路 (sell → JPY 獲得) を塞ぐため、liveness が永久に失われる**
+- **本日の実害**: 3h+ の完全停止、¥10,764k→¥10,655k (-1.0%) の下落を完全に見逃し
+
+#### Pattern B 🔴 OBSERVED — sell_dynamic_kill ←→ Per-side halt 相互ロック
+
+```
+L1' (sell halt) → sell 不可 → L2 に新 PnL 入力なし → kill 解除不能
+L2 (sell kill) ← kill 持続 → sell halt 解除後も kill が即座に再ブロック
+```
+
+- **発生**: 3/4 07:22–08:54 (92min)
+- **メカニズム**: sell_dynamic_kill は rolling sell PnL mean で判定するが、per-side halt 中は sell ができないため PnL が更新されず、kill の自然解除条件が満たされない。halt 解除後も kill が残存し、**kill → halt 解除 → kill ブロック → 新しい fill なし → kill 持続** のループに陥る
+- **コード**: `sell_dynamic_kill.py` (rolling mean 判定) + `daily_drawdown_guard.py` (per-side halt)
+- **根本原因**: L2 がフィードバック (新しい fill PnL) を必要とする解除条件だが、L1' が その フィードバックの供給を遮断する。**情報遮断による解除不能**
+
+#### Pattern C 🟡 CODE — Dual-kill + Quiescence + Balance-forced 3 層相互作用
+
+```
+L2 (sell kill) + L2' (buy kill) + 249# quiescence → 完全静観
+  + L5 (balance_forced) → 250# degraded liquidation で部分救済
+  + L1 (集約 halt) → ??? (未テスト)
+```
+
+- **発生**: 未観測だが、長期連敗シナリオで発生しうる
+- **メカニズム**: buy/sell 両方が killed → 249# quiescence が「静観」を選択。ここに balance_forced が重なると 250# が degraded liquidation を許可するが、**さらに集約 halt が重なった場合の挙動は未定義**
+- **コード**: `cycle_gate_aggregator.py` L237–256
+- **リスク**: 250# は集約 halt を考慮していない。集約 halt + dual kill + balance_forced の 3 条件が揃うと、250# が degraded liquidation を許可するが、orchestrator 側で集約 halt がブロックする可能性 → **検証が必要**
+
+#### Pattern D 🟡 POTENTIAL — Mirror of A (buy halt + sell BTC 不足)
+
+```
+L5 (sell=BTC不足) + L1' (buy=per-side halt) → 完全停止
+```
+
+- **発生**: **未観測** (buy per-side halt はログ全期間で 1 度も発生していない)
+- **メカニズム**: Pattern A の完全なミラー。buy per-side halt が発動し、かつ BTC 残高が sell 最小 lot 未満なら同一デッドロックに陥る
+- **発生確率**: 低い。buy PnL は市場参入直後にのみ大きく負になる傾向があり、per-side halt 閾値を超えにくい。ただし **アーキテクチャ上は同一の脆弱性**
+
+#### Pattern E 🟡 CODE — Toxic veto + Per-side halt カウンタ停滞
+
+```
+L6 (toxic veto on sell) + L1' (sell halt)
+→ veto カウンタが通常の cycle 消費で減衰しない
+→ 226# S2 修正で halt_block path でも減算するが、
+   halt 中の「実効的な veto 期間」が拡張される
+```
+
+- **発生**: 226# で部分修正済みだが、完全な解消ではない
+- **メカニズム**: toxic veto は N cycles で自然減衰する設計だが、per-side halt 中は orchestrator が `continue` する。226# S2 で halt_block パスでもカウンタ減算を追加したが、**halt 中のサイクル間隔は通常の 5 倍 (sleep ×5)** のため、実時間での veto 持続が 5 倍に拡張される
+- **コード**: `fill_loop_orchestrator.py` L1710–1725
+
+#### Pattern F 🟡 OBSERVED — Halt 解除後の多段ゲート再参入遅延
+
+```
+L1' 解除 → L3 (sell_guard_reject) → L3 (spread_too_narrow) → L4 (skip_gate)
+→ 実約定まで 18min
+```
+
+- **発生**: 3/4 13:27–13:45 (18min)
+- **メカニズム**: halt 解除後、orchestrator は通常フローに復帰する。しかし halt 中は市場を「見ていなかった」にも関わらず、通常時と同じ慎重さで全ゲートを適用する。sell_guard、spread、skip_gate が順次ブロックし、**halt 解除から実質的な市場参入まで 18 分の空白** が生じる
+- **影響**: halt 中に大きな価格変動があった場合、復帰遅延の間にさらなる損失が発生。**ただし安全性との兼ね合いがあるため、盲目的な fast-path は逆効果** になりうる
+
+#### 自己ループ (I2): Per-side halt → release → 即再 halt
+
+```
+L1' release → 1-2 fills → side PnL 累計がまだ閾値以下 → 即再 halt
+```
+
+- **発生**: 3/4 に 4 回発生。最短 8min (11:21→11:29, 1 fill のみ)
+- **メカニズム**: per-side halt は固定 cycle (15) で解除されるが、解除時に side PnL アキュムレータをリセットしない。累計 PnL が依然 -30bps 以下の状態で release されるため、1 回の負 fill で即座に再 halt
+- **コード**: `daily_drawdown_guard.py` L320–336 (`tick_side_halt`)。release 時は `side_halted_×=False` にするだけで PnL リセットなし
+
+### 構造的問題の診断
+
+#### 1. 各層の独立設計
+
+6 層のブロッキング機構は **順次追加** され、各 Issue/PR で個別に設計・テストされた:
+
+| 層 | 初出 Issue | 設計時に考慮した相互作用 |
+|---|---|---|
+| L1 (集約 halt) | 168# | ─ (最初の層) |
+| L1' (per-side halt) | 205# §9.5 | L1 との整合性のみ |
+| L2/L2' (dynamic kill) | 157#/171# | L5 (inv_bypass) |
+| L3 (cycle gate) | 193# | L2+L2' の dual-kill (219#) |
+| L4 (skip gate) | 124# | ─ (ML 独立判定) |
+| L5 (balance preflight) | 091# | L1' (223# で追加) |
+| L6 (toxic/phantom veto) | 205#/238# | L1' (226# S2 で追加) |
+
+**相互作用を横断的に検討した設計レビューは一度も行われていない。**
+各 Issue で発見された問題 (例: 223# のhalt貫通バグ → 223# で safety 優先に修正 → Pattern A のデッドロック発生) は **点の修正** であり、修正が新たな相互作用問題を生んでいる。
+
+#### 2. Safety と Liveness のトレードオフの非対称性
+
+全層が **"safety > liveness"** 原則で設計されている:
+
+- 223#: 「halt 中の side を balance_forced で貫通するバグ → **安全のため拒否**」
+- 249#: 「dual-kill bypass は危険 → **quiescence で静観**」
+- sell_dynamic_kill: 「PnL が悪い → **新しいエビデンスが入るまで永久 kill**」
+
+各層は独立に正しい判断だが、**複数層が同時に safety を選択すると、liveness がゼロ** になる。
+結果として bot は「何もしない」ことが最も安全な行動となるが、**maker bot にとって「何もしない」は方向リスクへの直接被曝** であり、実際には安全ではない。
+
+> **maker bot のリスク方程式**: `リスク = max(取引リスク, ポジション保有リスク)`
+>
+> 全層が取引リスクを最小化しても、ポジション保有リスクが無制限に増大すれば全体リスクは増加する。
+
+#### 3. フィードバック遮断
+
+Pattern B で顕著だが、**ブロッキングがブロッキングの解除条件を遮断する** 構造が存在する:
+
+```
+        ┌──── halt blocks sell ────┐
+        ↓                          │
+  sell_dynamic_kill           per-side halt
+  (needs new sell PnL)        (needs 15 cycles)
+        │                          ↑
+        └── kill blocks sell ──────┘
+```
+
+L1' と L2 は独立に判定するが、**L1' が L2 の解除に必要なデータ供給を遮断** し、
+L2 が L1' 解除後の唯一の回復経路をブロックする。
+
+### アーキテクチャ改善の方向性
+
+| レベル | 提案 | 難度 | 効果 |
+|---|---|---|---|
+| **点修正** | Pattern A: balance_forced + per-side halt + 反対側不可 → liquidation sell | 低 | 🔴 deadlock 即時解消 |
+| **点修正** | Pattern B: sell_dynamic_kill に時間上限 (30min) | 低 | 🔴 kill↔halt ループ解消 |
+| **点修正** | I2: per-side halt release 時に PnL 部分リセット | 低 | 🟡 即再halt 防止 |
+| **点修正** | Pattern F: halt 後 fast re-entry mode | 中 | 🟡 復帰遅延短縮 |
+| **構造改善** | **Cross-layer Liveness Monitor**: 全層を統合監視し、N 分以上の完全停止を検出したら最も弱い層を緩和する "circuit breaker for circuit breakers" | 中 | 🔴 全パターン包括的解消 |
+| **構造改善** | **Holding Risk Evaluator**: ポジション保有リスクを定量化し、保有リスク > 取引リスクの場合は safety 原則を段階的に緩和 | 高 | 🔴 根本原因 (safety/liveness 非対称) の解消 |
+
+---
+
 ## 269# 実装候補の優先順位
 
-| 優先度 | Issue | タイトル | 期待効果 |
-|---|---|---|---|
-| **P0** | I1 | Balance-forced deadlock 解消 | deadlock 完全排除。今日だけで 3h+ の機会損失 |
-| **P1** | I2 | Per-side halt → 即再halt 防止 | 90min halt→1fill→90min halt のループ排除 |
-| **P1** | I5 | sell_dynamic_kill 持続時間制限 | kill↔halt 相互ロック排除。反転上昇時の sell 機会確保 |
-| **P2** | I6 | halt 解除後の fast re-entry | 18min の再参入遅延を数分に短縮 |
+横展開分析を反映した更新版:
+
+| 優先度 | Issue | タイトル | パターン | 期待効果 |
+|---|---|---|---|---|
+| **P0** | I1 | Balance-forced deadlock Liquidation sell | A | deadlock 完全排除。3/4 だけで 3h+ の機会損失 |
+| **P1** | I5 | sell_dynamic_kill 時間上限 (30min) | B | kill↔halt 相互ロック解消。反転上昇時の sell 機会確保 |
+| **P1** | I2 | Per-side halt release 時 PnL 部分リセット | 自己ループ | 90min halt→1fill→90min halt のループ排除 |
+| **P2** | I6 | halt 解除後 fast re-entry mode | F | 18min の再参入遅延を数分に短縮 |
+| **P2** | I7 | Cross-layer Liveness Monitor | 全体 | N分完全停止→最弱層を緩和する包括安全弁 |
+| **P3** | I8 | Holding Risk Evaluator | 全体 | ポジション保有リスクの定量化。safety/liveness 非対称の根本解消 |
 | **P2** | I3 | 空サイクル halt カウント除外 | deadlock 中の意味のない時間経過排除 |
 | **P3** | I4 | JST リセット動作確認 | 今夜 00:00 JST で自動確認可能 |
