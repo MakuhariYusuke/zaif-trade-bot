@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-07 (266# GLFT τ動的化 + AS δ* + Kyle λ + Amihud ILLIQ + Protocol型安全化)
+> 最終更新: 2026-03-04 (268# DD halt JST日付リセット + Balance-forced デッドロック発見)
 
 ---
 
@@ -257,6 +257,8 @@
 | 264 | impl | [264_phg_impl_kelly_criterion_lot_sizing.md](264_phg_impl_kelly_criterion_lot_sizing.md) | Kelly Criterion lot sizing (f*=(pb-q)/b, Fractional Kelly 天井) |
 | 265 | refactor | [265_phg_refactor_run_continuous_extract_skip_gate_protocol.md](265_phg_refactor_run_continuous_extract_skip_gate_protocol.md) | run_continuous extract methods (1694→1221行) + SkipGateAdapter Protocol + P3-3 docs |
 | 266 | impl | [266_phg_impl_market_theory_protocol.md](266_phg_impl_market_theory_protocol.md) | GLFT τ動的化 + AS δ* + Kyle λ + Amihud ILLIQ + Protocol型安全化 (type:ignore×4, getattr×8 排除) |
+| 267 | bugfix | [267_phg_fix_delta_star_depth_dry.md](267_phg_fix_delta_star_depth_dry.md) | δ* 次元修正 (σ_return→σ_abs) + _get_depth DRY + docstring 正確化 |
+| 268 | bugfix | [268_phg_fix_dd_halt_jst_reset.md](268_phg_fix_dd_halt_jst_reset.md) | DD halt JST日付リセット: _utc_today→_today (day_reset_utc_offset_hours=9.0) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
