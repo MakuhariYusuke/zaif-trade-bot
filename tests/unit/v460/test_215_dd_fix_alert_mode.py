@@ -43,7 +43,7 @@ class TestDDNeedsWarmupRepair:
     def test_repair_needed_per_side_zero(self) -> None:
         """per-side PnL が 0.0 なのに total PnL が有意 → repair 必要."""
         guard = self._make_guard()
-        today = guard._utc_today()
+        today = guard._today()
         guard.import_state({
             "current_day": today,
             "daily_pnl_bps": -110.94,
@@ -58,7 +58,7 @@ class TestDDNeedsWarmupRepair:
     def test_repair_needed_soft_inconsistency(self) -> None:
         """soft_triggered_today=false だが PnL < soft_limit → repair."""
         guard = self._make_guard()
-        today = guard._utc_today()
+        today = guard._today()
         guard.import_state({
             "current_day": today,
             "daily_pnl_bps": -40.0,
@@ -73,7 +73,7 @@ class TestDDNeedsWarmupRepair:
     def test_no_repair_when_consistent(self) -> None:
         """per-side PnL と soft_triggered が正しい → repair 不要."""
         guard = self._make_guard()
-        today = guard._utc_today()
+        today = guard._today()
         guard.import_state({
             "current_day": today,
             "daily_pnl_bps": -40.0,

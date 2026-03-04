@@ -196,6 +196,8 @@ class FillTestConfig:
     dd_cooldown_release_lot_scale: float = 0.3 # cooldown release 中の lot 倍率
     # 249# DD halt cooldown re-arm: release 後の追加損失で再 halt
     dd_cooldown_rearm_budget_bps: float = -10.0  # release 後にこの bps 以下で再 halt
+    # 268# DD 日付リセット TZ: 0=UTC, 9=JST。JST 運用なら 9.0 推奨 (halt 最大時間が ~22h→14h に短縮)
+    dd_day_reset_utc_offset_hours: float = 9.0
     # 049# E3 サンプリング: 全約定ではなくサンプリングで multi-timeframe 計測
     e3_sampling_ratio: float = 1.0  # 0.0-1.0, 1.0=全約定, 0.33=1/3 のみ
     # 049# side 別 offset: buy/sell で独立に offset を設定
@@ -1264,6 +1266,9 @@ class FillTestConfig:
         # 249# DD cooldown re-arm
         if "cooldown_rearm_budget_bps" in dd_guard:
             kwargs["dd_cooldown_rearm_budget_bps"] = float(dd_guard["cooldown_rearm_budget_bps"])
+        # 268# DD day reset timezone
+        if "day_reset_utc_offset_hours" in dd_guard:
+            kwargs["dd_day_reset_utc_offset_hours"] = float(dd_guard["day_reset_utc_offset_hours"])
 
         return kwargs
 

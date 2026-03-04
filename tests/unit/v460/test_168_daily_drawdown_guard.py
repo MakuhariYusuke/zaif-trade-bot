@@ -1,4 +1,4 @@
-﻿"""168# §4.1 #3: DailyDrawdownGuard ユニットテスト.
+"""168# §4.1 #3: DailyDrawdownGuard ユニットテスト.
 
 テスト対象:
 - DailyDrawdownGuard クラス (日次 PnL 追跡、soft/hard 二段制御)
@@ -133,7 +133,7 @@ class TestDailyDrawdownDayReset:
 
         # 日付を進める
         tomorrow = _tomorrow_str()
-        with patch.object(DailyDrawdownGuard, "_utc_today", return_value=tomorrow):
+        with patch.object(DailyDrawdownGuard, "_today", return_value=tomorrow):
             assert not guard.is_halted()
             assert guard.state.daily_pnl_bps == 0.0
             assert guard.state.total_halt_days == 1  # halt された日がカウント
@@ -144,7 +144,7 @@ class TestDailyDrawdownDayReset:
         assert r["soft_triggered"] is True
 
         tomorrow = _tomorrow_str()
-        with patch.object(DailyDrawdownGuard, "_utc_today", return_value=tomorrow):
+        with patch.object(DailyDrawdownGuard, "_today", return_value=tomorrow):
             guard.maybe_reset_day()
             # soft 再発動可能
             r2 = guard.update_pnl(-12.0)
@@ -153,17 +153,17 @@ class TestDailyDrawdownDayReset:
     def test_total_halt_days_increments(self) -> None:
         guard = DailyDrawdownGuard(enabled=True, hard_limit_bps=-10.0, soft_limit_bps=-5.0)
         # 初日: 固定日付で開始 → update_pnl 内の maybe_reset_day が current day をセット
-        with patch.object(DailyDrawdownGuard, "_utc_today", return_value="20500101"):
+        with patch.object(DailyDrawdownGuard, "_today", return_value="20500101"):
             guard.update_pnl(-15.0)  # halt day 1
             assert guard.state.total_halt_days == 0  # not counted until reset
 
-        with patch.object(DailyDrawdownGuard, "_utc_today", return_value="20500102"):
+        with patch.object(DailyDrawdownGuard, "_today", return_value="20500102"):
             guard.maybe_reset_day()
             assert guard.state.total_halt_days == 1
 
             guard.update_pnl(-15.0)  # halt day 2
 
-        with patch.object(DailyDrawdownGuard, "_utc_today", return_value="20500103"):
+        with patch.object(DailyDrawdownGuard, "_today", return_value="20500103"):
             guard.maybe_reset_day()
             assert guard.state.total_halt_days == 2
 
@@ -204,7 +204,7 @@ class TestDailyDrawdownStatePersistence:
         # 翌日に import → 無視される
         new_guard = DailyDrawdownGuard(enabled=True, hard_limit_bps=-50.0, soft_limit_bps=-30.0)
         tomorrow = _tomorrow_str()
-        with patch.object(DailyDrawdownGuard, "_utc_today", return_value=tomorrow):
+        with patch.object(DailyDrawdownGuard, "_today", return_value=tomorrow):
             new_guard.import_state(exported)
         assert new_guard.state.daily_pnl_bps == 0.0
 
@@ -415,7 +415,7 @@ class TestPerSideDDHalt:
         assert guard.is_side_halted("sell")
 
         tomorrow = _tomorrow_str()
-        with patch.object(DailyDrawdownGuard, "_utc_today", return_value=tomorrow):
+        with patch.object(DailyDrawdownGuard, "_today", return_value=tomorrow):
             guard.maybe_reset_day()
             assert not guard.is_side_halted("sell")
             assert guard.state.daily_pnl_bps_sell == 0.0
@@ -568,7 +568,7 @@ class TestToxicVetoDayReset:
         """maybe_reset_day が True を返した際に veto クリアのトリガとなること。"""
         guard = DailyDrawdownGuard(enabled=True, hard_limit_bps=-50.0, soft_limit_bps=-30.0)
         tomorrow = _tomorrow_str()
-        with patch.object(DailyDrawdownGuard, "_utc_today", return_value=tomorrow):
+        with patch.object(DailyDrawdownGuard, "_today", return_value=tomorrow):
             assert guard.maybe_reset_day() is True
 
 
@@ -1224,4 +1224,141 @@ class TestCooldownReleaseConfig246:
         cfg = FillTestConfig.from_yaml(yaml_cfg)
         assert cfg.dd_cooldown_release_sec == 7200.0
         assert cfg.dd_cooldown_release_lot_scale == 0.5
+
+
+# ======================================================================
+# 268# DD 日付リセット JST 化テスト
+# ======================================================================
+
+
+class TestDayResetTimezone:
+    """268# DD 日付リセットのタイムゾーン設定テスト."""
+
+    def test_default_utc_offset_is_zero(self) -> None:
+        """デフォルトは UTC (offset=0)."""
+        guard = DailyDrawdownGuard(enabled=True)
+        assert guard._day_reset_tz.utcoffset(None).total_seconds() == 0
+
+    def test_jst_offset(self) -> None:
+        """JST (offset=9) で構築すると +9h の timezone が設定される."""
+        guard = DailyDrawdownGuard(enabled=True, day_reset_utc_offset_hours=9.0)
+        assert guard._day_reset_tz.utcoffset(None).total_seconds() == 9 * 3600
+
+    def test_jst_day_reset_at_midnight_jst(self) -> None:
+        """JST モードの日付リセットが JST 00:00 で発生する.
+
+        UTC 15:00 = JST 00:00 で日替わり → halt 解除。
+        UTC ベースだと 22h 以上かかるケースが 15h 以下に短縮。
+        """
+        from datetime import timedelta
+
+        guard = DailyDrawdownGuard(
+            enabled=True,
+            hard_limit_bps=-50.0,
+            soft_limit_bps=-30.0,
+            day_reset_utc_offset_hours=9.0,
+        )
+        # JST 3/3 10:51 に halt 発火相当
+        jst_halt_time = datetime(2026, 3, 3, 1, 51, tzinfo=timezone.utc)  # UTC 01:51 = JST 10:51
+        jst_day_str = "20260303"  # JST ベースの日付
+        guard._state.current_day = jst_day_str
+        guard._state.halted = True
+
+        # JST 3/3 23:59 (= UTC 14:59) → まだ同日
+        with patch.object(
+            DailyDrawdownGuard, '_today', return_value="20260303"
+        ):
+            assert guard.maybe_reset_day() is False
+            assert guard._state.halted is True
+
+        # JST 3/4 00:00 (= UTC 15:00) → 日替わり → リセット
+        with patch.object(
+            DailyDrawdownGuard, '_today', return_value="20260304"
+        ):
+            assert guard.maybe_reset_day() is True
+            assert guard._state.halted is False  # 新しい日 → halt 解除
+
+    def test_utc_mode_worst_case_is_22h(self) -> None:
+        """UTC ベースだと JST 10:51 発火 → リセットまで ~22h.
+
+        268# 根本原因: DD halt at UTC 01:51 → UTC day change at UTC 00:00+1d = 22h09m。
+        JST モードなら JST 10:51 → JST 00:00+1d = 13h09m に短縮。
+        """
+        from datetime import timedelta
+
+        # UTC ベース
+        halt_utc = datetime(2026, 3, 3, 1, 51, tzinfo=timezone.utc)  # = JST 10:51
+        next_utc_day = datetime(2026, 3, 4, 0, 0, tzinfo=timezone.utc)
+        utc_wait = (next_utc_day - halt_utc).total_seconds() / 3600
+        assert utc_wait == pytest.approx(22.15, abs=0.01)
+
+        # JST ベース
+        jst = timezone(timedelta(hours=9))
+        halt_jst = halt_utc.astimezone(jst)  # JST 10:51
+        next_jst_day = datetime(2026, 3, 4, 0, 0, tzinfo=jst)
+        jst_wait = (next_jst_day - halt_jst).total_seconds() / 3600
+        assert jst_wait == pytest.approx(13.15, abs=0.01)
+        assert jst_wait < utc_wait  # JST の方が短い
+
+    def test_config_default_is_jst(self) -> None:
+        """fill_config のデフォルトが JST (9.0) であること."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        cfg = FillTestConfig()
+        assert cfg.dd_day_reset_utc_offset_hours == 9.0
+
+    def test_config_yaml_parsing_tz(self) -> None:
+        """YAML から day_reset_utc_offset_hours がパースされる."""
+        from scripts.v460.lib.fill_config import FillTestConfig
+
+        yaml_cfg = {
+            "loss_control": {
+                "daily_drawdown": {
+                    "enabled": True,
+                    "hard_limit_bps": -50.0,
+                    "soft_limit_bps": -30.0,
+                    "day_reset_utc_offset_hours": 9.0,
+                }
+            }
+        }
+        cfg = FillTestConfig.from_yaml(yaml_cfg)
+        assert cfg.dd_day_reset_utc_offset_hours == 9.0
+
+    def test_today_uses_configured_tz(self) -> None:
+        """_today() がコンストラクタで設定した TZ を使用する."""
+        from datetime import timedelta
+
+        utc_guard = DailyDrawdownGuard(enabled=True, day_reset_utc_offset_hours=0.0)
+        jst_guard = DailyDrawdownGuard(enabled=True, day_reset_utc_offset_hours=9.0)
+
+        utc_today = utc_guard._today()
+        jst_today = jst_guard._today()
+
+        # 両方とも YYYYMMDD 形式
+        assert len(utc_today) == 8
+        assert len(jst_today) == 8
+        assert utc_today.isdigit()
+        assert jst_today.isdigit()
+
+    def test_import_state_respects_configured_tz(self) -> None:
+        """import_state が設定 TZ の today で stale 判定する."""
+        guard = DailyDrawdownGuard(
+            enabled=True,
+            day_reset_utc_offset_hours=9.0,
+        )
+        today_jst = guard._today()
+
+        # 同日の state → 正常復元
+        state = {"current_day": today_jst, "halted": True, "daily_pnl_bps": -50.0}
+        guard.import_state(state)
+        assert guard._state.halted is True
+
+        # 異なる日の state → stale で無視
+        guard2 = DailyDrawdownGuard(
+            enabled=True,
+            day_reset_utc_offset_hours=9.0,
+        )
+        state2 = {"current_day": "20200101", "halted": True, "daily_pnl_bps": -50.0}
+        guard2.import_state(state2)
+        assert guard2._state.halted is False  # stale → 未復元
 

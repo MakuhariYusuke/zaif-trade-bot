@@ -1,7 +1,8 @@
 """168# §4.1 #3: 日次ドローダウンガード.
 
 日次累計 PnL (bps) を追跡し、閾値を超過した場合にサイクル実行を
-一時停止する。UTC 日境界で自動リセット。
+一時停止する。設定可能なタイムゾーン日境界で自動リセット。
+268# 修正: UTC 固定 → day_reset_utc_offset_hours で JST 等に変更可能。
 
 既存の DrawdownController (ztb/risk/) はポートフォリオ価値ベースで
 RL 訓練環境向け。本クラスは fill test / ライブ取引向けに
@@ -12,7 +13,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import TypedDict
 
 from ztb.utils.logging_utils import get_logger
@@ -60,11 +61,14 @@ class DailyDrawdownState:
 class DailyDrawdownGuard:
     """日次ドローダウンガード.
 
-    - UTC 日ごとに累計 PnL (bps) を追跡
+    - 設定可能なタイムゾーン日ごとに累計 PnL (bps) を追跡
     - 閾値 (例: -50 bps) 以下になったら halt → 日替わりまでスキップ
     - ソフト/ハード二段:
       - soft: lot 半減 (既存 soft_loss_cap と同様の思想)
       - hard: halt (サイクル実行停止)
+
+    268# 修正: day_reset_utc_offset_hours で日付境界の TZ を設定可能。
+    デフォルト 0.0 = UTC。JST = 9.0 に設定すると日替わりが JST 00:00 に。
     """
 
     def __init__(
@@ -81,6 +85,7 @@ class DailyDrawdownGuard:
         cooldown_release_sec: float = 0.0,
         cooldown_release_lot_scale: float = 0.3,
         cooldown_rearm_budget_bps: float = -10.0,
+        day_reset_utc_offset_hours: float = 0.0,
     ) -> None:
         self._enabled = enabled
         self._hard_limit_bps = hard_limit_bps
@@ -97,6 +102,8 @@ class DailyDrawdownGuard:
         self._cooldown_release_lot_scale = cooldown_release_lot_scale
         # 249# cooldown re-arm: release 後に追加損失が budget 超過で再 halt
         self._cooldown_rearm_budget_bps = cooldown_rearm_budget_bps
+        # 268# 日付リセット TZ: 0.0=UTC, 9.0=JST
+        self._day_reset_tz = timezone(timedelta(hours=day_reset_utc_offset_hours))
         self._state = DailyDrawdownState()
         self._soft_triggered_today = False
 
@@ -113,10 +120,10 @@ class DailyDrawdownGuard:
         return self._state
 
     def maybe_reset_day(self) -> bool:
-        """UTC 日が変わっていればリセット. 変わった場合 True を返す."""
+        """設定TZ の日が変わっていればリセット. 変わった場合 True を返す."""
         if not self._enabled:
             return False
-        today = self._utc_today()
+        today = self._today()
         if today != self._state.current_day:
             prev_day = self._state.current_day
             prev_pnl = self._state.daily_pnl_bps
@@ -422,7 +429,7 @@ class DailyDrawdownGuard:
         if not self._enabled or not data:
             return
         saved_day = str(data.get("current_day", ""))
-        today = self._utc_today()
+        today = self._today()
         if saved_day != today:
             logger.info(
                 f"[daily_drawdown] State stale (saved={saved_day}, today={today}), skip import"
@@ -498,7 +505,10 @@ class DailyDrawdownGuard:
     # Internal
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _utc_today() -> str:
-        """Current UTC date as YYYYMMDD string."""
-        return datetime.now(timezone.utc).strftime("%Y%m%d")
+    def _today(self) -> str:
+        """Current date in configured timezone as YYYYMMDD string.
+
+        268# 修正: UTC固定 → self._day_reset_tz を使用。
+        JST (utc_offset=9) なら 00:00 JST = 15:00 UTC 前日 でリセット。
+        """
+        return datetime.now(self._day_reset_tz).strftime("%Y%m%d")

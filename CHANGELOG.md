@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 268# DD 日付リセット JST 化 (2026-03-04)
+
+### Fixed — Production Incident
+- **DD halt 最大 22h 問題の根本修正**: 3/3 10:51 JST に DD halt 発火後、UTC ベース日付リセット (00:00 UTC = 09:00 JST) まで ~22h 取引停止。JST 00:00 リセットに変更し最大待機を ~14h に短縮 (cooldown_release 2h と合わせ実質 2h 以内)
+  - Root Cause 1: 本番稼働 sha が 246# 以前 → `cooldown_release` 未搭載
+  - Root Cause 2: UTC 日境界が JST 09:00 → halt@JST 10:51 は新 UTC 日の 01:51 で最悪ケース
+  - Root Cause 3: 267# デプロイ時 hard_skip (UTC 21h) と cooldown_release が競合
+
+### Changed
+- **`DailyDrawdownGuard`**: `day_reset_utc_offset_hours` パラメータ追加 (デフォルト 0.0=UTC、本番 9.0=JST)
+  - `_utc_today()` → `_today()` にリネーム: 設定 TZ の日付を返す
+  - `maybe_reset_day()` / `import_state()` が設定 TZ を使用
+- **`FillTestConfig`**: `dd_day_reset_utc_offset_hours: float = 9.0` (デフォルト JST)
+  - YAML `loss_control.daily_drawdown.day_reset_utc_offset_hours` で設定可能
+- **`run_fill_test.py`**: 両 `DailyDrawdownGuard` 構築箇所に offset パラメータ伝播
+
+### Tests
+- 8 新テスト (TestDayResetTimezone): TZ 設定、JST 日替わりリセット、UTC ワーストケース検証、config デフォルト・YAML パース、state import stale 判定
+
 ## 257# AS Reservation Price + VPIN Continuous + RegimeDetectorLike Protocol (2026-03-03)
 
 ### Added — Market Theory
