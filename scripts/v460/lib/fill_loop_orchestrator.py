@@ -402,6 +402,70 @@ class FillLoopOrchestratorMixin:
         return guard_category_totals(self._guard_fire_counts)
 
     # ------------------------------------------------------------------
+    # 272# DRY: toxic_veto 減算ヘルパー (3 箇所の共通ロジック抽出)
+    # ------------------------------------------------------------------
+    def _tick_toxic_veto(self, context: str) -> None:
+        """全 toxic_veto カウンタを 1 減算し、期限切れを除去する.
+
+        L1518 (both-blocked), L1741 (inventory_escape), L1763 (halt_block) の
+        3 箇所で同一ロジックが重複していたものを一元化。
+        """
+        if not self._toxic_veto:
+            return
+        for _vs in list(self._toxic_veto.keys()):
+            self._toxic_veto[_vs] -= 1
+            if self._toxic_veto[_vs] <= 0:
+                del self._toxic_veto[_vs]
+                logger.info(f"[226# S2] Toxic veto expired ({context}): {_vs}")
+
+    # ------------------------------------------------------------------
+    # 272# DRY: skip-path state save ヘルパー (3 箇所の共通ロジック抽出)
+    # ------------------------------------------------------------------
+    def _maybe_skip_state_save(
+        self,
+        st: "RunSessionState",
+        context: str,
+    ) -> None:
+        """_STATE_SAVE_INTERVAL_SEC 経過時のみ state 保存する.
+
+        gate_block (L2156), halt_block (L1782), 等の skip パスで
+        同一ロジックが重複していたものを一元化。
+        """
+        _now_mono = time.monotonic()
+        if _now_mono - self._last_state_save_time >= self._STATE_SAVE_INTERVAL_SEC:
+            self._state_persistence.save(self._build_state_snapshot(
+                total_count=st.total_count,
+                filled_count=st.filled_count,
+                cumulative_pnl_jpy=st.cumulative_pnl_jpy,
+            ))
+            self._last_state_save_time = _now_mono
+            logger.info(f"[272#] skip-time state save ({context})")
+
+    # ------------------------------------------------------------------
+    # 272# DRY: MCB/SAD フィードヘルパー (halt loop / 将来の skip loop 共通)
+    # ------------------------------------------------------------------
+    def _feed_mcb_sad(self) -> None:
+        """MCB/SAD に最新の mid_price / spread をフィードする.
+
+        halt 中など check() を呼ばずにモデル更新だけを行うパスで使用。
+        halt 解除直後に陳腐化した σ で誤判定するのを防止する。
+        """
+        _now = time.time()
+        if self._mcb is not None and self._mcb.config.enabled:
+            _mcb_mid = self._maker_price.last_mid_price
+            if _mcb_mid is not None and _mcb_mid > 0:
+                self._mcb.update(_mcb_mid, _now)
+        if self._sad is not None and self._sad.config.enabled:
+            _sad_spread = self._maker_price.last_spread_raw
+            if _sad_spread is not None and _sad_spread > 0:
+                self._sad.update(_sad_spread, _now)
+
+    @staticmethod
+    def _opposite_side(side: str) -> str:
+        """反対サイドを返す."""
+        return "sell" if side == "buy" else "buy"
+
+    # ------------------------------------------------------------------
     # 216# §6 DRY: State 復元共通ヘルパー
     # ------------------------------------------------------------------
     def _restore_common_state(self, saved_state: "FillTestState | None") -> None:
@@ -1295,14 +1359,7 @@ class FillLoopOrchestratorMixin:
                 # 226# S5: halt 中も MCB/SAD に price/spread をフィードし続ける。
                 # halt 解除直後に陳腐化した σ で誤判定するのを防止。
                 # ※ check() は呼ばない (halt 中の二重ガードは不要)。
-                if self._mcb is not None and self._mcb.config.enabled:
-                    _mcb_mid = self._maker_price.last_mid_price
-                    if _mcb_mid is not None and _mcb_mid > 0:
-                        self._mcb.update(_mcb_mid, time.time())
-                if self._sad is not None and self._sad.config.enabled:
-                    _sad_spread = self._maker_price.last_spread_raw
-                    if _sad_spread is not None and _sad_spread > 0:
-                        self._sad.update(_sad_spread, time.time())
+                self._feed_mcb_sad()
                 await self._effective_sleep(multiplier=5.0)  # 179# S1: halt 中は 5x 間隔
                 continue
 
@@ -1480,7 +1537,7 @@ class FillLoopOrchestratorMixin:
 
             # 205# §9.5: 片側 DD Halt チェック — 封鎖されたサイドは回避
             if self._daily_drawdown_guard.is_side_halted(next_side):
-                _alt = "sell" if next_side == "buy" else "buy"
+                _alt = self._opposite_side(next_side)
                 if self._daily_drawdown_guard.is_side_halted(_alt):
                     # 両サイド封鎖 → 集約 halt と同等扱い
                     self._inc_guard_fire("per_side_dd_both_halt")  # 223#
@@ -1506,7 +1563,7 @@ class FillLoopOrchestratorMixin:
             # 205# §9.2: Toxic Fill 同一サイド拒否 — 封鎖されたサイドは反対に切替
             # 207# §5b: alt_side が per_side_dd で封鎖されている場合も考慮
             if self._toxic_veto and next_side in self._toxic_veto:
-                _alt = "sell" if next_side == "buy" else "buy"
+                _alt = self._opposite_side(next_side)
                 _alt_blocked = (
                     _alt in self._toxic_veto
                     or self._daily_drawdown_guard.is_side_halted(_alt)
@@ -1515,11 +1572,7 @@ class FillLoopOrchestratorMixin:
                     # 両サイド封鎖 (veto + per_side_dd 含む) → スキップ
                     # 209# H-1: デッドロック防止 — skip 時も veto カウンタを減算
                     self._inc_guard_fire("toxic_veto_block")
-                    for _vs in list(self._toxic_veto.keys()):
-                        self._toxic_veto[_vs] -= 1
-                        if self._toxic_veto[_vs] <= 0:
-                            del self._toxic_veto[_vs]
-                            logger.info(f"[209# H-1] Toxic veto expired (both-blocked): {_vs}")
+                    self._tick_toxic_veto("both-blocked")
                     st.batch.append(self._make_loop_skip_record(
                         side="none",
                         cancel_reason=CR.TOXIC_FILL_SIDE_VETO,
@@ -1542,7 +1595,7 @@ class FillLoopOrchestratorMixin:
                 self._phantom_guard is not None
                 and self._phantom_guard.is_side_vetoed(next_side)
             ):
-                _alt = "sell" if next_side == "buy" else "buy"
+                _alt = self._opposite_side(next_side)
                 if (
                     self._phantom_guard.is_side_vetoed(_alt)
                     or self._daily_drawdown_guard.is_side_halted(_alt)
@@ -1569,7 +1622,7 @@ class FillLoopOrchestratorMixin:
             side_filtered = self._is_time_filtered(side=next_side)
             if side_filtered:
                 # 反対 side でもフィルタされるか確認
-                alt_side = "sell" if next_side == "buy" else "buy"
+                alt_side = self._opposite_side(next_side)
                 alt_filtered = self._is_time_filtered(side=alt_side)
                 if alt_filtered:
                     # 両 side ともフィルタ → スリープ
@@ -1687,7 +1740,7 @@ class FillLoopOrchestratorMixin:
             _regime_mult = self._regime_lot_multiplier()
             if await self._check_balance_for_side(next_side, regime_mult=_regime_mult):
                 # 091# 即座に反対 side を試す: time_filter との組合せで停滞するのを防止
-                opposite = "sell" if next_side == "buy" else "buy"
+                opposite = self._opposite_side(next_side)
                 tried_opposite = False
                 if not await self._check_balance_for_side(opposite, regime_mult=_regime_mult):
                     # 反対 side は残高 OK → 即座に切替
@@ -1737,15 +1790,7 @@ class FillLoopOrchestratorMixin:
                                 self._inc_guard_fire("inventory_escape_active")
                                 _inventory_escape = True
                                 # toxic_veto の減算は通常同様に行う (226# S2)
-                                if self._toxic_veto:
-                                    for _vs in list(self._toxic_veto.keys()):
-                                        self._toxic_veto[_vs] -= 1
-                                        if self._toxic_veto[_vs] <= 0:
-                                            del self._toxic_veto[_vs]
-                                            logger.info(
-                                                f"[226# S2] Toxic veto expired "
-                                                f"(inventory_escape path): {_vs}"
-                                            )
+                                self._tick_toxic_veto("inventory_escape")
                                 # halt 貫通 → degraded liquidation として以降のパスに進む
                                 # (ループの continue をスキップして実行パスへ fallthrough)
                         else:
@@ -1759,15 +1804,7 @@ class FillLoopOrchestratorMixin:
                             self._inc_guard_fire("balance_forced_halt_block")
                             # 226# S2: balance_forced + halt_block で continue する際、
                             # toxic_veto のカウンタも減算する。
-                            if self._toxic_veto:
-                                for _vs in list(self._toxic_veto.keys()):
-                                    self._toxic_veto[_vs] -= 1
-                                    if self._toxic_veto[_vs] <= 0:
-                                        del self._toxic_veto[_vs]
-                                        logger.info(
-                                            f"[226# S2] Toxic veto expired "
-                                            f"(halt_block path): {_vs}"
-                                        )
+                            self._tick_toxic_veto("halt_block")
                             st.batch.append(self._make_loop_skip_record(
                                 side=next_side,
                                 cancel_reason=CR.PER_SIDE_DD_HALT,
@@ -1779,17 +1816,7 @@ class FillLoopOrchestratorMixin:
                                 st.batch, "balance_forced_halt_recheck",
                             )
                             # 269# P0-b: state save — halt_block 長期化に対する stale 防止
-                            _now_mono_hb = time.monotonic()
-                            if _now_mono_hb - self._last_state_save_time >= self._STATE_SAVE_INTERVAL_SEC:
-                                self._state_persistence.save(self._build_state_snapshot(
-                                    total_count=st.total_count,
-                                    filled_count=st.filled_count,
-                                    cumulative_pnl_jpy=st.cumulative_pnl_jpy,
-                                ))
-                                self._last_state_save_time = _now_mono_hb
-                                logger.info(
-                                    "[269#] skip-time state save (balance_forced_halt_block)"
-                                )
+                            self._maybe_skip_state_save(st, "balance_forced_halt_block")
                             self._last_side = next_side
                             await self._effective_sleep()
                             continue
@@ -2153,18 +2180,9 @@ class FillLoopOrchestratorMixin:
 
                 # 223# skip-time lightweight state save: gate_block 連続中も
                 # _STATE_SAVE_INTERVAL_SEC 経過ごとに state 保存して stale 防止
-                _now_mono = time.monotonic()
-                if _now_mono - self._last_state_save_time >= self._STATE_SAVE_INTERVAL_SEC:
-                    self._state_persistence.save(self._build_state_snapshot(
-                        total_count=st.total_count,
-                        filled_count=st.filled_count,
-                        cumulative_pnl_jpy=st.cumulative_pnl_jpy,
-                    ))
-                    self._last_state_save_time = _now_mono
-                    logger.info(
-                        f"[223#] skip-time state save "
-                        f"(gate_blocks={self._consecutive_gate_blocks})"
-                    )
+                self._maybe_skip_state_save(
+                    st, f"gate_blocks={self._consecutive_gate_blocks}"
+                )
 
                 # 197# narrow_spread_pause: Gate 8 ブロック時は pause_sec 分待機
                 # 242# quiescence: sleep 上限を引き上げ (max_cycle_sleep → quiescence_sleep)

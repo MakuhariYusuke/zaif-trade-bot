@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-04 (269# 249–268レビュー: side-halt deadlock 継続, degraded 到達不能, Inventory Escape 必須)
+> 最終更新: 2026-03-04 (272# DRY リファクタ: toxic_veto / state save / MCB-SAD feed / opposite_side ヘルパー抽出)
 
 ---
 
@@ -260,6 +260,9 @@
 | 267 | bugfix | [267_phg_fix_delta_star_depth_dry.md](267_phg_fix_delta_star_depth_dry.md) | δ* 次元修正 (σ_return→σ_abs) + _get_depth DRY + docstring 正確化 |
 | 268 | bugfix | [268_phg_fix_dd_halt_jst_reset.md](268_phg_fix_dd_halt_jst_reset.md) | DD halt JST日付リセット: _utc_today→_today (day_reset_utc_offset_hours=9.0) |
 | 269 | rev | [269_ph2_rev_249_268_blocking_architecture_and_next_moves.md](269_ph2_rev_249_268_blocking_architecture_and_next_moves.md) | 249#–268# レビュー: side-halt deadlock 継続, degraded 到達不能, state stale, Inventory Escape Mode 提案 |
+| 270 | rev | [270_ph2_gemini_31_pro_review_249_269_bureaucratic_deadlock.md](270_ph2_gemini_31_pro_review_249_269_bureaucratic_deadlock.md) | Gemini 3.1 Pro レビュー: Bureaucratic Deadlock, Debt Trap, Sleeping Giants, 在庫エスケープ提言 |
+| 271 | rev | [271_ph2_rev_269_270_review_validity_assessment.md](271_ph2_rev_269_270_review_validity_assessment.md) | 269#/270# レビュー妥当性評価 + Inventory Escape Mode + PnL reanchor + 市場理論YAML配線 実装完了 |
+| 272 | impl | — | DRY リファクタ: `_tick_toxic_veto` / `_maybe_skip_state_save` / `_feed_mcb_sad` / `_opposite_side` ヘルパー抽出 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
