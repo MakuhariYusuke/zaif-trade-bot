@@ -262,7 +262,7 @@
 | 269 | rev | [269_ph2_rev_249_268_blocking_architecture_and_next_moves.md](269_ph2_rev_249_268_blocking_architecture_and_next_moves.md) | 249#–268# レビュー: side-halt deadlock 継続, degraded 到達不能, state stale, Inventory Escape Mode 提案 |
 | 270 | rev | [270_ph2_gemini_31_pro_review_249_269_bureaucratic_deadlock.md](270_ph2_gemini_31_pro_review_249_269_bureaucratic_deadlock.md) | Gemini 3.1 Pro レビュー: Bureaucratic Deadlock, Debt Trap, Sleeping Giants, 在庫エスケープ提言 |
 | 271 | rev | [271_ph2_rev_269_270_review_validity_assessment.md](271_ph2_rev_269_270_review_validity_assessment.md) | 269#/270# レビュー妥当性評価 + Inventory Escape Mode + PnL reanchor + 市場理論YAML配線 実装完了 |
-| 272 | impl | — | DRY リファクタ: `_tick_toxic_veto` / `_maybe_skip_state_save` / `_feed_mcb_sad` / `_opposite_side` ヘルパー抽出 |
+| 272 | impl | [272_ph2_impl_dry_refactor_and_residual_analysis.md](272_ph2_impl_dry_refactor_and_residual_analysis.md) | DRY リファクタ: `_tick_toxic_veto` / `_maybe_skip_state_save` / `_feed_mcb_sad` / `_opposite_side` + 269# 残指摘の掘り下げ検証 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
