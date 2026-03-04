@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-04 (278# degraded_liquidation min_lot fix)
+> 最終更新: 2026-03-04 (279# 立ち位置確認 + 残課題浚い上げ)
 
 ---
 
@@ -270,6 +270,7 @@
 | 276 | impl | [276_ph2_impl_blocking_policy_dry.md](276_ph2_impl_blocking_policy_dry.md) | BlockingPolicy DRY: _execute_skip ヘルパー (14箇所統一) + halt_sleep_multiplier config化 (Brunnermeier-Pedersen) |
 | 277 | impl | [277_magic_number_grounding.md](277_magic_number_grounding.md) | マジックナンバー根拠化 (5 config化 + 3 __post_init__検証 + B1 warmup TZ fix) + 271#-276# セルフレビュー |
 | 278 | fix | [278_ph2_fix_degraded_liquidation_min_lot.md](278_ph2_fix_degraded_liquidation_min_lot.md) | CRITICAL fix: degraded_liquidation config.min_lot → config.min_order_btc (234# 属性名取違え) |
+| 279 | rpt | [279_ph2_rpt_position_and_remaining_tasks.md](279_ph2_rpt_position_and_remaining_tasks.md) | 0番ドキュメント立ち位置確認 + 残課題浚い上げ (R-1〜R-26) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
