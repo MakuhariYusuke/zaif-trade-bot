@@ -117,18 +117,21 @@ class TestOrchestratorEscalationCode:
         pytest.fail("continue not found in AND escalation block")
 
     def test_escalation_sleep_multiplier(self) -> None:
-        """AND escalation で sleep multiplier=5.0 が適用されること."""
+        """AND escalation で halt_sleep_multiplier が適用されること.
+
+        276# DRY: _execute_skip(multiplier=_halt_mult) 経由に移行。
+        276# config化: 5.0 → config.halt_sleep_multiplier (_halt_mult)。
+        """
         lines = self.src.split("\n")
         in_escalation = False
         for line in lines:
             if "_mcb_warning and _sad_warning" in line:
                 in_escalation = True
-            if in_escalation and "effective_sleep" in line:
-                assert "5.0" in line
-                return
+            if in_escalation and ("multiplier=5.0" in line or "multiplier=_halt_mult" in line):
+                return  # OK
             if in_escalation and "§9.4" in line:
                 break
-        pytest.fail("_effective_sleep(multiplier=5.0) not found in escalation block")
+        pytest.fail("halt multiplier not found in escalation block")
 
     def test_escalation_after_both_checks(self) -> None:
         """AND escalation が MCB と SAD の両チェックの後に配置されていること."""

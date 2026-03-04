@@ -12,6 +12,9 @@ symbol: btc_jpy
 order_quantity: 0.001         # 初期ロット (BTC) — Coincheck 最小
 cycle_interval_sec: 120.0     # サイクル間隔 (秒)
 max_cycle_sleep_sec: 600.0    # 209#: sleep 乗数積み重ね上限 (10分)
+# 276#: halt 系 skip の sleep 倍率 (Brunnermeier-Pedersen 2009)
+# cycle_interval × halt_sleep_multiplier = halt 周期 (120s × 5.0 = 600s)
+halt_sleep_multiplier: 5.0
 order_timeout_sec: 90.0       # 096#: 300→90 (stale order + reprice で早期対応)
 order_timeout_sec_sell: 75.0  # 155# S-3: sell は速い撤退が有利 (90→75, -16.7%)
 poll_interval_sec: 5.0        # ポーリング間隔 (秒)

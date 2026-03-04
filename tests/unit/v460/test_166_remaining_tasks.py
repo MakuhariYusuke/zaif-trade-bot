@@ -158,16 +158,23 @@ class TestDeadlockSideAlternation:
     """
 
     def test_orchestrator_code_has_deadlock_fix_unified(self):
-        """194# 統合ゲート blocked パスに _last_side 更新がある."""
+        """194# 統合ゲート blocked パスに _last_side 更新がある.
+
+        276# DRY: _execute_skip(update_last_side=True) 経由に移行。
+        """
         code = Path("scripts/v460/lib/fill_loop_orchestrator.py").read_text(
             encoding="utf-8"
         )
-        # 194# 統合ゲート: gate_result.blocked → _last_side = next_side
+        # 194# 統合ゲート: gate_result.blocked → _execute_skip(update_last_side=True)
         assert '_gate_result.blocked' in code
         idx = code.index('_gate_result.blocked')
         nearby = code[idx:idx + 1500]
-        assert 'self._last_side = next_side' in nearby, (
-            "unified gate blocked path missing _last_side update"
+        # 276#: _execute_skip 内で update_last_side=True が _last_side 更新を担う
+        has_direct = 'self._last_side = next_side' in nearby
+        has_via_helper = 'update_last_side=True' in nearby
+        assert has_direct or has_via_helper, (
+            "unified gate blocked path missing _last_side update "
+            "(either direct or via _execute_skip(update_last_side=True))"
         )
 
     def test_all_gate_reasons_mapped_to_cancel_reasons(self):

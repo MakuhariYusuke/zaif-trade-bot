@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-04 (275# 責務分離 DRY + 市場理論活用拡大: side パラメータ化 / toxic veto DRY / 8モジュール理論補強)
+> 最終更新: 2026-03-04 (276# BlockingPolicy DRY: _execute_skip 14箇所統一 + halt_sleep_multiplier config化)
 
 ---
 
@@ -266,6 +266,8 @@
 | 273 | impl | [273_ph2_impl_268_incident_resolution.md](273_ph2_impl_268_incident_resolution.md) | 268# インシデント残課題: I3 空サイクル halt 除外 / I5 kill 時間上限 / I6 halt 後 gate grace / Pattern B 解消 |
 | 274 | impl | [274_ph2_impl_theory_strengthening_and_pattern_c.md](274_ph2_impl_theory_strengthening_and_pattern_c.md) | 市場理論補強 (Stoll/Ho-Stoll/Glosten-Milgrom/Kyle/Avellaneda-Stoikov) + MacroRegime 観測有効化 + Kelly YAML + Pattern C 3層検証 + deprecated CLI 削除 |
 | 275 | impl | [275_ph2_impl_dry_separation_and_theory_expansion.md](275_ph2_impl_dry_separation_and_theory_expansion.md) | 責務分離 DRY: side パラメータ化 (_is_side_killed/_track_side_pnl) + toxic veto DRY + 市場理論 8モジュール拡大 (Hamilton/Lo/Garman/Brunnermeier/Copeland-Galai/Amihud/Hasbrouck/Greenwald-Stein) |
+| 276 | analysis | [276_blocking_policy_extraction_analysis.md](276_blocking_policy_extraction_analysis.md) | BlockingPolicy 抽出分析: 22 BP マッピング + 6 クラスタ + 市場理論コード活用候補 |
+| 276 | impl | [276_ph2_impl_blocking_policy_dry.md](276_ph2_impl_blocking_policy_dry.md) | BlockingPolicy DRY: _execute_skip ヘルパー (14箇所統一) + halt_sleep_multiplier config化 (Brunnermeier-Pedersen) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

@@ -576,7 +576,7 @@ class FillLoopOrchestratorMixin:
 
         skip/halt/error continue 全パスがこのメソッドを経由する。
         - multiplier=1.0 : 通常スキップ
-        - multiplier=5.0 : halt (daily drawdown)
+        - multiplier=5.0 : halt (daily drawdown) — 276# config.halt_sleep_multiplier
         - max_override>0  : 242# quiescence 時の sleep 上限オーバーライド
         正常サイクル完了パスは rapid_exit ロジックを含むため直接呼ばない。
         200# P0-2: _soft_drawdown_interval_multiplier を追加乗算。
@@ -625,6 +625,64 @@ class FillLoopOrchestratorMixin:
             balance_forced_switch=balance_forced_switch,
             **extra,
         )
+
+    # ------------------------------------------------------------------
+    # 276# DRY: _execute_skip — skip ceremony 共通ヘルパー
+    # ------------------------------------------------------------------
+    async def _execute_skip(
+        self,
+        st: RunSessionState,
+        *,
+        side: str,
+        cancel_reason: str,
+        flush_context: str = "",
+        order_quantity: float = 0.0,
+        heartbeat: bool = False,
+        state_save: bool = False,
+        state_save_context: str = "",
+        update_last_side: bool = False,
+        sleep: bool = True,
+        multiplier: float = 1.0,
+        max_override: float = 0.0,
+        **record_kwargs: object,
+    ) -> None:
+        """run_continuous skip パスの record → flush → sleep 一連処理を一元化.
+
+        22 箇所の blocking decision point に共通する 5-7 行の skip ceremony
+        (record 生成 → batch append → total_count++ → flush → heartbeat →
+        state_save → last_side 更新 → sleep) を単一呼出に集約する。
+
+        呼び出し側は ``await self._execute_skip(st, ...); continue`` のみ。
+
+        理論的根拠:
+          Skip ceremony はインフラ的処理 (observability / persistence /
+          heartbeat) であり、blocking decision ロジック (Amihud 2002 非流動性
+          コスト回避) とは直交する。重複は SRP 違反であり、変更時の一貫性
+          リスク (268# incident の遠因) を生む。
+        """
+        record = self._make_loop_skip_record(
+            side=side,
+            cancel_reason=cancel_reason,
+            order_quantity=order_quantity,
+            **record_kwargs,
+        )
+        st.batch.append(record)
+        st.total_count += 1
+        st.batch = self._batch_persistence.maybe_flush(
+            st.batch, flush_context or cancel_reason,
+        )
+        if heartbeat:
+            self._update_lock_heartbeat()
+        if state_save:
+            self._maybe_skip_state_save(
+                st, state_save_context or cancel_reason,
+            )
+        if update_last_side:
+            self._last_side = side
+        if sleep:
+            await self._effective_sleep(
+                multiplier=multiplier, max_override=max_override,
+            )
 
     # ------------------------------------------------------------------
     # 181# 停止条件モニター — C/D/Chase 安全弁
@@ -1316,6 +1374,8 @@ class FillLoopOrchestratorMixin:
                         self._inc_guard_fire("day_reset_kill_conflict")
 
             # 168# §4.1 #3: 日次ドローダウンガード — halt 中はスキップ
+            # 276# config 化: halt 系 sleep 倍率を YAML 設定から取得
+            _halt_mult = self.config.halt_sleep_multiplier
             if self._daily_drawdown_guard.is_halted():
                 # 日次 PnL 超過 → UTC 日替わりまでスキップ
                 # 200# K: halt record 削減 — 開始/終了 + N回毎のみ記録
@@ -1363,7 +1423,7 @@ class FillLoopOrchestratorMixin:
                 # halt 解除直後に陳腐化した σ で誤判定するのを防止。
                 # ※ check() は呼ばない (halt 中の二重ガードは不要)。
                 self._feed_mcb_sad()
-                await self._effective_sleep(multiplier=5.0)  # 179# S1: halt 中は 5x 間隔
+                await self._effective_sleep(multiplier=_halt_mult)  # 179# S1: halt 中は Nx 間隔
                 continue
 
             # 200# K: halt 終了時の記録 (前サイクルが halt だった場合)
@@ -1378,15 +1438,10 @@ class FillLoopOrchestratorMixin:
             # 215# P0-C: alert_mode.json — オペレータ緊急介入チェック
             _alert = load_alert_mode(self._results_dir)
             if _alert.halt:
-                st.batch.append(self._make_loop_skip_record(
-                    side="none",
-                    cancel_reason=CR.OPERATOR_HALT,
-                    order_quantity=0.0,
-                ))
-                st.total_count += 1
-                st.batch = self._batch_persistence.maybe_flush(st.batch, "operator_halt")
-                self._update_lock_heartbeat()
-                await self._effective_sleep(multiplier=5.0)
+                await self._execute_skip(
+                    st, side="none", cancel_reason=CR.OPERATOR_HALT,
+                    heartbeat=True, multiplier=_halt_mult,
+                )
                 continue
             # 215# P0-C: 非 halt オーバーライドをインスタンス変数に保存
             # (fill_cycle_executor から参照)
@@ -1403,15 +1458,10 @@ class FillLoopOrchestratorMixin:
                 _mcb_result = self._mcb.check(time.time())
                 if _mcb_result.level == MCBLevel.HALT:
                     self._inc_guard_fire("mcb_halt")
-                    st.batch.append(self._make_loop_skip_record(
-                        side="none",
-                        cancel_reason=CR.MCB_HALT,
-                        order_quantity=0.0,
-                    ))
-                    st.total_count += 1
-                    st.batch = self._batch_persistence.maybe_flush(st.batch, "mcb_halt")
-                    self._update_lock_heartbeat()
-                    await self._effective_sleep(multiplier=5.0)
+                    await self._execute_skip(
+                        st, side="none", cancel_reason=CR.MCB_HALT,
+                        heartbeat=True, multiplier=_halt_mult,
+                    )
                     continue
                 if _mcb_result.level == MCBLevel.WARNING:
                     _mcb_warning = True
@@ -1432,15 +1482,10 @@ class FillLoopOrchestratorMixin:
                 _sad_result = self._sad.check(time.time())
                 if _sad_result.level == SADLevel.FROZEN:
                     self._inc_guard_fire("sad_frozen")
-                    st.batch.append(self._make_loop_skip_record(
-                        side="none",
-                        cancel_reason=CR.SAD_FROZEN,
-                        order_quantity=0.0,
-                    ))
-                    st.total_count += 1
-                    st.batch = self._batch_persistence.maybe_flush(st.batch, "sad_frozen")
-                    self._update_lock_heartbeat()
-                    await self._effective_sleep(multiplier=5.0)
+                    await self._execute_skip(
+                        st, side="none", cancel_reason=CR.SAD_FROZEN,
+                        heartbeat=True, multiplier=_halt_mult,
+                    )
                     continue
                 if _sad_result.level == SADLevel.DRY:
                     _sad_warning = True
@@ -1457,17 +1502,10 @@ class FillLoopOrchestratorMixin:
             # 両方が同時に WARNING 以上 → 即 HALT (false positive 抑制)
             if _mcb_warning and _sad_warning:
                 self._inc_guard_fire("mcb_sad_escalation")
-                st.batch.append(self._make_loop_skip_record(
-                    side="none",
-                    cancel_reason=CR.MCB_SAD_ESCALATION,
-                    order_quantity=0.0,
-                ))
-                st.total_count += 1
-                st.batch = self._batch_persistence.maybe_flush(
-                    st.batch, "mcb_sad_escalation"
+                await self._execute_skip(
+                    st, side="none", cancel_reason=CR.MCB_SAD_ESCALATION,
+                    heartbeat=True, multiplier=_halt_mult,
                 )
-                self._update_lock_heartbeat()
-                await self._effective_sleep(multiplier=5.0)
                 continue
 
             # 205# §9.4: 時間帯 Hard Skip (Kyle proxy)
@@ -1546,15 +1584,11 @@ class FillLoopOrchestratorMixin:
                     self._inc_guard_fire("per_side_dd_both_halt")  # 223#
                     # 273# I3: 両サイド封鎖の空サイクルも halt カウントから除外
                     self._daily_drawdown_guard.untick_side_halt()
-                    st.batch.append(self._make_loop_skip_record(
-                        side="none",
-                        cancel_reason=CR.PER_SIDE_DD_HALT,
-                        order_quantity=0.0,
-                    ))
-                    st.total_count += 1
-                    st.batch = self._batch_persistence.maybe_flush(st.batch, "per_side_dd_both_halt")
-                    self._update_lock_heartbeat()
-                    await self._effective_sleep(multiplier=5.0)
+                    await self._execute_skip(
+                        st, side="none", cancel_reason=CR.PER_SIDE_DD_HALT,
+                        flush_context="per_side_dd_both_halt",
+                        heartbeat=True, multiplier=_halt_mult,
+                    )
                     continue
                 else:
                     # 223# P0: per-side halt switch を guard_fire_counts に記録
@@ -1578,14 +1612,10 @@ class FillLoopOrchestratorMixin:
                     # 209# H-1: デッドロック防止 — skip 時も veto カウンタを減算
                     self._inc_guard_fire("toxic_veto_block")
                     self._tick_toxic_veto("both-blocked")
-                    st.batch.append(self._make_loop_skip_record(
-                        side="none",
-                        cancel_reason=CR.TOXIC_FILL_SIDE_VETO,
-                        order_quantity=0.0,
-                    ))
-                    st.total_count += 1
-                    st.batch = self._batch_persistence.maybe_flush(st.batch, "toxic_veto_both")
-                    await self._effective_sleep()
+                    await self._execute_skip(
+                        st, side="none", cancel_reason=CR.TOXIC_FILL_SIDE_VETO,
+                        flush_context="toxic_veto_both",
+                    )
                     continue
                 else:
                     logger.info(
@@ -1607,14 +1637,10 @@ class FillLoopOrchestratorMixin:
                 ):
                     # 両サイド封鎖 → スキップ
                     self._inc_guard_fire("phantom_veto_block")
-                    st.batch.append(self._make_loop_skip_record(
-                        side="none",
-                        cancel_reason=CR.PHANTOM_SIDE_VETO,
-                        order_quantity=0.0,
-                    ))
-                    st.total_count += 1
-                    st.batch = self._batch_persistence.maybe_flush(st.batch, "phantom_veto_both")
-                    await self._effective_sleep()
+                    await self._execute_skip(
+                        st, side="none", cancel_reason=CR.PHANTOM_SIDE_VETO,
+                        flush_context="phantom_veto_both",
+                    )
                     continue
                 else:
                     logger.info(
@@ -1814,20 +1840,16 @@ class FillLoopOrchestratorMixin:
                             # 226# S2: balance_forced + halt_block で continue する際、
                             # toxic_veto のカウンタも減算する。
                             self._tick_toxic_veto("halt_block")
-                            st.batch.append(self._make_loop_skip_record(
-                                side=next_side,
+                            await self._execute_skip(
+                                st, side=next_side,
                                 cancel_reason=CR.PER_SIDE_DD_HALT,
                                 order_quantity=self._current_lot,
                                 balance_forced_switch=True,
-                            ))
-                            st.total_count += 1
-                            st.batch = self._batch_persistence.maybe_flush(
-                                st.batch, "balance_forced_halt_recheck",
+                                flush_context="balance_forced_halt_recheck",
+                                state_save=True,
+                                state_save_context="balance_forced_halt_block",
+                                update_last_side=True,
                             )
-                            # 269# P0-b: state save — halt_block 長期化に対する stale 防止
-                            self._maybe_skip_state_save(st, "balance_forced_halt_block")
-                            self._last_side = next_side
-                            await self._effective_sleep()
                             continue
                     # 200# E: 時間ベース頻度検出 — 短時間で連続 balance_forced が発生 → 警告
                     _now = time.time()
@@ -1957,16 +1979,12 @@ class FillLoopOrchestratorMixin:
                         f"remaining={self._one_sided_freeze_remaining})"
                     )
                     self._inc_guard_fire("one_sided_freeze_skip")
-                    _skip_record = self._make_loop_skip_record(
-                        side=next_side,
+                    await self._execute_skip(
+                        st, side=next_side,
                         cancel_reason="one_sided_freeze_skip",
                         order_quantity=self._current_lot,
+                        update_last_side=True,
                     )
-                    st.batch.append(_skip_record)
-                    st.total_count += 1
-                    st.batch = self._batch_persistence.maybe_flush(st.batch, "one_sided_freeze_skip")
-                    self._last_side = next_side
-                    await self._effective_sleep()
                     continue
                 # 250#: frozen_side と異なる side → スキップせず通過
                 logger.debug(
@@ -1982,16 +2000,12 @@ class FillLoopOrchestratorMixin:
                         f"remaining={self._one_sided_cooldown_remaining}"
                     )
                     self._inc_guard_fire("one_sided_cooldown_skip")
-                    _skip_record = self._make_loop_skip_record(
-                        side=next_side,
+                    await self._execute_skip(
+                        st, side=next_side,
                         cancel_reason="one_sided_cooldown_skip",
                         order_quantity=self._current_lot,
+                        update_last_side=True,
                     )
-                    st.batch.append(_skip_record)
-                    st.total_count += 1
-                    st.batch = self._batch_persistence.maybe_flush(st.batch, "one_sided_cooldown_skip")
-                    self._last_side = next_side
-                    await self._effective_sleep()
                     continue
                 logger.debug(
                     f"[250#] Cooldown side={_frozen_side}, current={next_side} — pass through"
@@ -2061,19 +2075,15 @@ class FillLoopOrchestratorMixin:
                         f"consecutive={self._balance_forced_skip_count}"
                     )
                     # 145# §9-#5: _make_skip_record DRY 化
-                    _skip_record = self._make_loop_skip_record(
-                        side=next_side,
+                    # 167# DL-5: _last_side を更新 (rescue=true 時は到達しないが防御的に)
+                    await self._execute_skip(
+                        st, side=next_side,
                         cancel_reason=CR.BALANCE_FORCED_SKIP,
                         order_quantity=self._current_lot,
                         balance_forced_switch=True,
                         balance_forced_consecutive=self._balance_forced_skip_count,
+                        update_last_side=True,
                     )
-                    st.batch.append(_skip_record)
-                    st.total_count += 1
-                    st.batch = self._batch_persistence.maybe_flush(st.batch, "balance_forced_skip")
-                    # 167# DL-5: _last_side を更新 (rescue=true 時は到達しないが防御的に)
-                    self._last_side = next_side
-                    await self._effective_sleep()  # 179# S1
                     continue
 
             # ════════════════════════════════════════════════════════════
@@ -2156,17 +2166,14 @@ class FillLoopOrchestratorMixin:
                         f"[{_gate_result.audit_summary}]"
                     )
 
-                _skip_record = self._make_loop_skip_record(
-                    side=next_side,
+                # 276# DRY: record → flush → last_side を _execute_skip に委譲
+                # sleep は quiescence / narrow_spread_pause 分岐があるため別途処理
+                await self._execute_skip(
+                    st, side=next_side,
                     cancel_reason=_gate_result.cancel_reason,
                     order_quantity=self._current_lot,
+                    update_last_side=True, sleep=False,
                 )
-                st.batch.append(_skip_record)
-                st.total_count += 1
-                st.batch = self._batch_persistence.maybe_flush(
-                    st.batch, _gate_result.cancel_reason,
-                )
-                self._last_side = next_side
 
                 # 224# guard_fire_counts: ゲートブロック理由を記録
                 if _gate_result.blocking_reason:
@@ -2244,18 +2251,12 @@ class FillLoopOrchestratorMixin:
                     f"offset_mult={_gate_result.toxicity_offset_mult:.2f} "
                     f"(side={next_side})"
                 )
-                _skip_record = self._make_loop_skip_record(
-                    side=next_side,
+                await self._execute_skip(
+                    st, side=next_side,
                     cancel_reason="toxicity_participation_skip",
                     order_quantity=self._current_lot,
+                    update_last_side=True,
                 )
-                st.batch.append(_skip_record)
-                st.total_count += 1
-                st.batch = self._batch_persistence.maybe_flush(
-                    st.batch, "toxicity_participation_skip",
-                )
-                self._last_side = next_side
-                await self._effective_sleep()
                 continue
 
             # ────────────────────────────────────────────────────
@@ -2275,18 +2276,12 @@ class FillLoopOrchestratorMixin:
                         f"(reason={_gate_result.degraded_reason})"
                     )
                     self._inc_guard_fire("degraded_liquidation_duty_skip")
-                    _skip_record = self._make_loop_skip_record(
-                        side=next_side,
+                    await self._execute_skip(
+                        st, side=next_side,
                         cancel_reason="degraded_liquidation_duty_skip",
                         order_quantity=self._current_lot,
+                        update_last_side=True,
                     )
-                    st.batch.append(_skip_record)
-                    st.total_count += 1
-                    st.batch = self._batch_persistence.maybe_flush(
-                        st.batch, "degraded_liquidation_duty_skip",
-                    )
-                    self._last_side = next_side
-                    await self._effective_sleep()
                     continue
                 # duty cycle 実行回: 進む
                 self._inc_guard_fire("degraded_liquidation_active")

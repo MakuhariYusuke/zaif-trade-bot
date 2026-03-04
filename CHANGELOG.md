@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 276# BlockingPolicy DRY (2026-03-04)
+
+### Changed
+- **`_execute_skip()` ヘルパー抽出**: 14箇所のskip ceremony (record→append→count→flush→heartbeat→sleep) を一元化。268# incident の遠因であったブロッキング複雑性を軽減
+- **`halt_sleep_multiplier` config化**: `multiplier=5.0` マジックナンバー6箇所を `FillTestConfig.halt_sleep_multiplier` (YAML設定可能) に統一。理論的根拠: Brunnermeier & Pedersen (2009) 流動性スパイラル
+- **gate_block path**: record→flush→last_side を `_execute_skip(sleep=False)` に委譲（quiescence/narrow_spread_pause は別途処理）
+
+### Tests
+- `test_276_blocking_policy_dry.py`: 32テスト (ヘルパー存在・シグネチャ・動作・config化・14箇所移行確認)
+- `test_166_remaining_tasks.py`: `update_last_side=True` パターン対応
+- `test_211_mcb_sad_escalation.py`: `multiplier=_halt_mult` パターン対応
+- 3793 passed, 32 skipped (275#比 +32)
+
+
 ## 268# DD 日付リセット JST 化 (2026-03-04)
 
 ### Fixed — Production Incident

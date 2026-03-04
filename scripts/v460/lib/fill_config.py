@@ -48,6 +48,11 @@ class FillTestConfig:
     # 209# M4: sleep 乗数積み重ねの上限 (0=無制限)
     # soft_dd_mult × loss_cooldown × one_sided_mult の積で interval が過大になるのを防止
     max_cycle_sleep_sec: float = 600.0  # 10分上限 (0=無制限)
+    # 276# halt_sleep_multiplier: halt/HALT 系 skip の sleep 倍率
+    # 理論的根拠: Brunnermeier & Pedersen (2009) — 流動性スパイラル発生時は
+    # 取引再開までの待機時間を通常サイクルの N 倍に延長し、価格衝撃減衰を待つ。
+    # デフォルト 5.0 はサイクル間隔 120s × 5 = 600s (10分) の halt 周期を意味する。
+    halt_sleep_multiplier: float = 5.0
     # 242# Quiescence (233# P1: No Trade = 正常系)
     # 連続 gate block が閾値を超えたら quiescence (静止) 状態と認定し、
     # sleep 上限を max_cycle_sleep_sec → quiescence_sleep_sec に引き上げる。
@@ -1477,6 +1482,7 @@ class FillTestConfig:
         # フラットキー (YAML キー == dataclass フィールド名)
         flat_keys = {
             "symbol", "order_quantity", "cycle_interval_sec", "max_cycle_sleep_sec",
+            "halt_sleep_multiplier",  # 276#
             "quiescence_gate_blocks_threshold", "quiescence_sleep_sec",  # 243#
             "order_timeout_sec",
             "order_timeout_sec_sell",
