@@ -82,6 +82,19 @@ confidence_lot:
   floor: 0.3                  # 最小 lot 倍率 [0, 1]
   mode: "as"                  # "as" only ("pnl" は凍結)
 
+# ---- 274# Kelly Criterion ロット天井 (264# 実装) ----
+# J.L. Kelly Jr. (1956) "A New Interpretation of Information Rate"
+# edge = win_rate * win_loss_ratio - (1 - win_rate)
+# f* = edge / win_loss_ratio → half-Kelly (fractional=0.5) でリスク調整
+# 用途: lot_sizer の step-based 増量結果を Kelly 推奨ロット以下にクランプ
+# edge < 0 ならロット=最小値 → 理論的ストッパー
+kelly:
+  enabled: true               # 274# 観測 + 天井適用開始
+  equity_btc: 0.002           # Kelly 推奨ロット計算用 BTC 建て自己資本
+  fraction: 0.5               # Fractional Kelly (0.5 = half-Kelly、保守的)
+  max_fraction: 0.25          # f* の上限 (暴走防止、full-Kelly の 25%)
+  min_win_samples: 30         # Kelly 推定に必要な最小 win+loss サンプル数
+
 # ---- 158# resilience (CircuitBreaker / HealthMonitor) YAML 外部化 ----
 resilience:
   circuit_breaker:
@@ -143,7 +156,7 @@ regime:
   ranging_buy_low_vol_as_offset: true
   # 189# D: MacroRegime (長周期レジーム) — micro との conflict 検出
   macro:
-    enabled: false              # 189# 初期は観測のみ (conflict_action=log)。Phase E で downgrade 移行
+    enabled: true               # 274# 観測モード有効化 (conflict_action=log)。macro_trend データ蓄積開始
     bucket_sec: 30.0            # macro 判定の bucket 幅 (秒)
     slope_threshold: 1.0        # trending 判定の slope 閾値 (bps/min)
     strong_threshold: 3.0       # strong trend の slope 閾値 (bps/min)

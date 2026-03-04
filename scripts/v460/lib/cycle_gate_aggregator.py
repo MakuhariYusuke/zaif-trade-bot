@@ -19,6 +19,25 @@
   executor     → (B3 はここで判定済み)
   skip_gate    → (C2, C4-C5 はここで判定済み、ML のみ残留)
   maker_price  → (D1-D3 はここで事前チェック済み)
+
+Gate 分類の市場理論的根拠 (273# I6 / 274#)
+──────────────────────────────────────────────
+**Hard Gates (Gate 4, 5, 8, 9)** — 市場構造的安全:
+  - Kill Gate (4, 5): Glosten-Milgrom (1985) の逆選択コスト。rolling PnL が
+    閾値以下 = informed flow に搾取されており、取引継続は期待負 PnL。
+    halt recovery 中でも免除不可 (逆選択は halt 前後で解消しない)。
+  - Spread/Price Gate (8, 9): 執行品質のハード制約。狭小スプレッドでは
+    maker 優位性 (bid-ask capture) が消滅し、取引コストが利益を上回る。
+    Roll (1984) の有効スプレッド理論による。
+
+**Soft Gates (Gate 1, 2, 3, 6, 7)** — 政策的判断:
+  - Regime Gate (1, 2, 3, 7): 市場レジームに基づく「条件付き期待値」判断。
+    unknown/trending/ranging は Oracle の不確実性を反映し、期待 PnL の
+    条件付き推定が負になる状況を回避する政策。しかし halt 解除直後は
+    ポジション再構築が最優先であり、短期的な政策緩和が合理的 (273# I6)。
+  - Velocity Gate (6): 価格速度が急変する場合の逆選択リスク警告。
+    Kyle (1985) の λ (price impact) に対応するが、推定精度が低く
+    hard gate とするには不十分。
 """
 
 from __future__ import annotations

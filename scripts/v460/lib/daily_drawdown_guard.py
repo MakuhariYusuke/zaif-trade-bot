@@ -7,6 +7,24 @@
 既存の DrawdownController (ztb/risk/) はポートフォリオ価値ベースで
 RL 訓練環境向け。本クラスは fill test / ライブ取引向けに
 bps ベースの軽量ガードを提供する。
+
+市場理論的根拠
+──────────────
+**Optimal Stopping Theory** (Chow, Robbins & Siegmund 1971):
+    ドローダウンは「損失が一時的か構造的かを判別できない」状態で発生する。
+    halt は情報が不十分な状態での行動を停止する最適停止判断に相当する。
+    halt_cycles は「情報到着を待つコスト vs 継続損失のコスト」のトレードオフ。
+
+**Holding Risk** (Stoll 1978 §3, Ho & Stoll 1981):
+    MM は在庫保有期間に比例した方向リスクを負う。halt 中は在庫の
+    unwinding が不能であり、holding risk が時間経過とともに蓄積する。
+    273# untick_side_halt はこのリスクを認識し、halt 期間の「意味ある冷却」を保証する。
+
+**Per-side halt の理論的解釈** (274#):
+    片側封鎖は「一方の side で逆選択コストが閾値を超えた」状態に対応する。
+    Glosten-Milgrom (1985) のモデルでは、情報非対称性が高い side で
+    スプレッドが拡大する。片側 halt はこのスプレッド拡大を
+    「取引停止」として実装した等価操作である。
 """
 
 from __future__ import annotations

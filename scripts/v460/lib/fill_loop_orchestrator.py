@@ -8,6 +8,29 @@ WARNING -- AI Coding Agent / 人間開発者への注意:
     責務: ループ制御 (side kill, time filter, balance forced, adaptation, cleanup)
     1 サイクルの実行ロジック (発注/約定/PnL) は fill_cycle_executor に属する。
     OB ラッパー / SkipGate 評価を追加しないこと。
+
+市場理論的位置づけ (274#)
+──────────────────────────
+**Inventory Risk Management** (Stoll 1978, Ho & Stoll 1981):
+    MM のオーケストレーションは「在庫リスクの動的管理」に帰結する。
+    side 選択 (buy/sell alternation) は在庫中立化のための基本操作であり、
+    balance_forced_switch は在庫偏重を強制的に修正するオーバーライド。
+    Ho-Stoll の最適スプレッドモデルでは、在庫保有量に応じて
+    bid/ask を非対称に調整する。本 orchestrator の side 選択は
+    この理論の離散的近似に相当する。
+
+**Liveness vs Safety トレードオフ**:
+    Market Maker は流動性提供の義務 (liveness) と損失回避 (safety) の
+    間でトレードオフに直面する。halt, kill, gate skip は safety 側の措置だが、
+    過剰な safety は duty cycle を低下させ MM の存在意義を損なう。
+    273# I3/I5/I6 はこのバランスを safety 過剰から liveness 側へ補正した。
+    269# §3.2 Liveness Budget はこのトレードオフを明示的に管理する将来施策。
+
+**Avellaneda-Stoikov (2008)** 最適マーケットメイク:
+    reservation price + optimal spread モデルは本 bot の
+    AS reservation, spread_offset_ratio, min_offset_jpy の理論的基盤。
+    orchestrator は A-S の「状態 → 最適行動」写像を
+    離散サイクルで逐次近似する。
 """
 
 from __future__ import annotations

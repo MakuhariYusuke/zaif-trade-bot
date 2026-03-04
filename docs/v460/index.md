@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-04 (273# 268# インシデント残課題解決: kill 時間上限 / 空サイクル halt 除外 / halt 後 gate grace)
+> 最終更新: 2026-03-04 (274# 市場理論補強 + MacroRegime/Kelly 有効化 + Pattern C 検証 + deprecated CLI 削除)
 
 ---
 
@@ -264,6 +264,7 @@
 | 271 | rev | [271_ph2_rev_269_270_review_validity_assessment.md](271_ph2_rev_269_270_review_validity_assessment.md) | 269#/270# レビュー妥当性評価 + Inventory Escape Mode + PnL reanchor + 市場理論YAML配線 実装完了 |
 | 272 | impl | [272_ph2_impl_dry_refactor_and_residual_analysis.md](272_ph2_impl_dry_refactor_and_residual_analysis.md) | DRY リファクタ: `_tick_toxic_veto` / `_maybe_skip_state_save` / `_feed_mcb_sad` / `_opposite_side` + 269# 残指摘の掘り下げ検証 |
 | 273 | impl | [273_ph2_impl_268_incident_resolution.md](273_ph2_impl_268_incident_resolution.md) | 268# インシデント残課題: I3 空サイクル halt 除外 / I5 kill 時間上限 / I6 halt 後 gate grace / Pattern B 解消 |
+| 274 | impl | [274_ph2_impl_theory_strengthening_and_pattern_c.md](274_ph2_impl_theory_strengthening_and_pattern_c.md) | 市場理論補強 (Stoll/Ho-Stoll/Glosten-Milgrom/Kyle/Avellaneda-Stoikov) + MacroRegime 観測有効化 + Kelly YAML + Pattern C 3層検証 + deprecated CLI 削除 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

@@ -38,10 +38,6 @@ def _build_arg_parser() -> argparse.ArgumentParser:
                         help="Dry-run モード (実際に発注しない)")
     parser.add_argument("--config", default=None,
                         help="設定 YAML パス (デフォルト: configs/v460/fill_test.yaml)")
-    parser.add_argument("--api-key", default=None,
-                        help="[DEPRECATED] .env から読込を推奨")
-    parser.add_argument("--api-secret", default=None,
-                        help="[DEPRECATED] .env から読込を推奨")
     parser.add_argument("--results-dir", default=None,
                         help="結果保存ディレクトリ (CLI > YAML)")
     parser.add_argument("--results-only", action="store_true",
@@ -83,22 +79,10 @@ def _create_adapter(args: argparse.Namespace) -> "IBroker":
         )
         sys.exit(1)
 
-    cli_api_key: str | None = None
-    cli_api_secret: str | None = None
-    if args.api_key or args.api_secret:
-        logger.warning(
-            "WARNING: --api-key/--api-secret はプロセスリストや履歴に平文で残ります。"
-            ".env ファイルからの読込を推奨します。"
-        )
-        cli_api_key = args.api_key
-        cli_api_secret = args.api_secret
-
     try:
         adapter = registry.create_adapter(
             exchange_name,
             dry_run=args.dry_run,
-            api_key=cli_api_key,
-            api_secret=cli_api_secret,
         )
     except ValueError as e:
         logger.error(str(e))
