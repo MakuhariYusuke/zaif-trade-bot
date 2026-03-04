@@ -1427,11 +1427,11 @@ class FillLoopOrchestratorMixin:
                         cumulative_pnl_jpy=st.cumulative_pnl_jpy,
                     ))
                     self._last_state_save_time = time.monotonic()  # 223#
-                # 211#: halt サイクル可視化ログ (entering + _HALT_PERSIST_INTERVAL 毎)
+                # 211#: halt サイクル可視化ログ (entering + halt_persist_interval 毎)
                 if _should_record_halt:
                     logger.info(
                         f"[daily_drawdown] Halt cycle #{self._halt_iter_count}"
-                        f" (next log @+{_HALT_PERSIST_INTERVAL} iters)"
+                        f" (next log @+{self.config.halt_persist_interval} iters)"
                     )
                 # 226# S5: halt 中も MCB/SAD に price/spread をフィードし続ける。
                 # halt 解除直後に陳腐化した σ で誤判定するのを防止。
