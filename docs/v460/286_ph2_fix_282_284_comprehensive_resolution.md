@@ -72,7 +72,9 @@
 **ファイル**: `scripts/v460/lib/fill_loop_orchestrator.py`, `scripts/v460/lib/fill_config.py`
 
 - `RunSessionState` に `forced_buy_fill_count`, `forced_buy_pnl_sum_bps`, `normal_buy_fill_count`, `normal_buy_pnl_sum_bps` 追加
-- `_process_post_cycle()` で `record.balance_forced` フラグに基づいて分離集計
+- `_process_post_cycle()` で `record.balance_forced_switch` フラグに基づいて分離集計
+  - (**287# hotfix**: 初期実装で `record.balance_forced` と誤記。正しい `FillRecord` 属性は `balance_forced_switch`。
+    属性名不一致により `AttributeError` でプロセスクラッシュ。`e7d2f50d9` で修正済み)
 - 定期ログ: `[286# P1-5] Buy KPI split: forced=N fills (+X.XXbps avg), normal=M fills (+Y.YYbps avg)`
 
 **Config**: `forced_buy_kpi_tracking_enabled: bool = True`
