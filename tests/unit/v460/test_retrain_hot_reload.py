@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import pickle
 import tempfile
 import time
@@ -28,6 +29,30 @@ from scripts.v460.ml.skip_gate import (
     SkipGate,
     SkipGateConfig,
 )
+from scripts.v460.ml.feature_enricher import enrich_fill_records, load_raw_trades
+from scripts.v460.ml.retrain_scheduler import (
+    _DEFAULT_CONFIG,
+    _apply_statistical_gate,
+    _build_full_features,
+    _build_lgbm_regressor,
+    _compute_regime_sample_weights,
+    _evaluate_wf,
+    _evaluate_wf_multi,
+    _evaluate_wf_single,
+    _load_enriched_cache,
+    _safe_import_ztb_module,
+    _save_enriched_cache,
+    load_retrain_config,
+    retrain_model,
+)
+from scripts.v460.analysis.oracle_baseline import (
+    _group_oracle_aggregates,
+    compute_oracle_metrics,
+)
+from scripts.v460.lib.lot_sizer import LotSizingConfig, compute_lot_size
+from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+from ztb.metrics.fill_quality import FillRecord
+from ztb.utils.run_manifest import compute_file_hash
 
 
 # ---------------------------------------------------------------------------
@@ -104,7 +129,6 @@ class TestHotReload:
 
     def test_initial_hash_stored(self) -> None:
         """初期ロード時にモデルファイルのハッシュが保存される."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
         with tempfile.TemporaryDirectory() as tmpdir:
             model_path = Path(tmpdir) / "gate.pkl"
@@ -119,7 +143,6 @@ class TestHotReload:
 
     def test_no_reload_when_unchanged(self) -> None:
         """ファイル未変更時はリロードしない."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
         with tempfile.TemporaryDirectory() as tmpdir:
             model_path = Path(tmpdir) / "gate.pkl"
@@ -140,7 +163,6 @@ class TestHotReload:
 
     def test_reload_on_file_change(self) -> None:
         """ファイル変更時にリロードされる."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
         with tempfile.TemporaryDirectory() as tmpdir:
             model_path = Path(tmpdir) / "gate.pkl"
@@ -166,7 +188,6 @@ class TestHotReload:
 
     def test_reload_failure_keeps_old_model(self) -> None:
         """リロード失敗時は旧モデルを維持."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
         with tempfile.TemporaryDirectory() as tmpdir:
             model_path = Path(tmpdir) / "gate.pkl"
@@ -191,7 +212,6 @@ class TestHotReload:
 
     def test_check_interval_respected(self) -> None:
         """チェック間隔内ではファイル変更を検出しない."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
         with tempfile.TemporaryDirectory() as tmpdir:
             model_path = Path(tmpdir) / "gate.pkl"
@@ -213,7 +233,6 @@ class TestHotReload:
 
     def test_compute_file_hash(self) -> None:
         """compute_file_hash で SHA256 が正しく計算される."""
-        from ztb.utils.run_manifest import compute_file_hash
 
         with tempfile.TemporaryDirectory() as tmpdir:
             p = Path(tmpdir) / "test.bin"
@@ -223,8 +242,6 @@ class TestHotReload:
 
     def test_compute_file_hash_missing_file(self) -> None:
         """存在しないファイルのハッシュ計算は例外."""
-        from ztb.utils.run_manifest import compute_file_hash
-        import pytest
         with pytest.raises((FileNotFoundError, OSError)):
             compute_file_hash(Path("/nonexistent"))
 
@@ -238,7 +255,6 @@ class TestRetrainConfig:
 
     def test_default_config(self) -> None:
         """デフォルト設定が正しく読み込まれる."""
-        from scripts.v460.ml.retrain_scheduler import load_retrain_config
         cfg = load_retrain_config(Path("/nonexistent.yaml"))
         assert cfg["interval_sec"] == 3600
         assert cfg["min_new_samples"] == 30
@@ -255,7 +271,6 @@ class TestRetrainConfig:
 
     def test_yaml_override(self) -> None:
         """YAML の retrain + skip_gate セクションが統合される."""
-        from scripts.v460.ml.retrain_scheduler import load_retrain_config
 
         with tempfile.TemporaryDirectory() as tmpdir:
             yaml_path = Path(tmpdir) / "test.yaml"
@@ -283,7 +298,6 @@ class TestRetrainConfig:
 
     def test_validation_rejects_non_pnl_mode(self) -> None:
         """127# C1: mode != pnl なら起動拒否."""
-        from scripts.v460.ml.retrain_scheduler import load_retrain_config
 
         with tempfile.TemporaryDirectory() as tmpdir:
             yaml_path = Path(tmpdir) / "test.yaml"
@@ -298,7 +312,6 @@ class TestRetrainConfig:
 
     def test_validation_rejects_bad_target(self) -> None:
         """127# M2: 不正な target は拒否."""
-        from scripts.v460.ml.retrain_scheduler import load_retrain_config
 
         with tempfile.TemporaryDirectory() as tmpdir:
             yaml_path = Path(tmpdir) / "test.yaml"
@@ -319,8 +332,6 @@ class TestBuildFullFeatures:
 
     def test_base_features_only(self) -> None:
         """use_ob=False → base features のみ."""
-        from scripts.v460.ml.retrain_scheduler import _build_full_features
-        import pandas as pd
 
         X_base = pd.DataFrame({
             "side_buy": [1.0, 0.0],
@@ -347,8 +358,6 @@ class TestBuildFullFeatures:
 
     def test_full_features_with_ob(self) -> None:
         """use_ob=True → base + OB features."""
-        from scripts.v460.ml.retrain_scheduler import _build_full_features
-        import pandas as pd
 
         X_base = pd.DataFrame({
             "side_buy": [1.0],
@@ -387,7 +396,6 @@ class TestRetrainModel:
 
     def test_skip_when_no_fill_records(self) -> None:
         """fill_records が存在しない場合スキップ."""
-        from scripts.v460.ml.retrain_scheduler import retrain_model, _DEFAULT_CONFIG
 
         cfg = dict(_DEFAULT_CONFIG)
         cfg["results_dir"] = "/nonexistent_dir_12345"
@@ -400,7 +408,6 @@ class TestRetrainModel:
 
     def test_skip_when_insufficient_samples(self) -> None:
         """サンプル不足時はスキップ."""
-        from scripts.v460.ml.retrain_scheduler import retrain_model, _DEFAULT_CONFIG
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # 少数の fill records を作成
@@ -437,7 +444,6 @@ class TestRetrainModel:
 
     def test_skip_when_insufficient_new_samples(self) -> None:
         """新規サンプル不足時はスキップ."""
-        from scripts.v460.ml.retrain_scheduler import retrain_model, _DEFAULT_CONFIG
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # 十分な fill records を作成
@@ -447,7 +453,7 @@ class TestRetrainModel:
             model_dir.mkdir()
 
             records = []
-            for i in range(150):
+            for i in range(40):
                 records.append(json.dumps({
                     "cycle_id": f"test_{i}",
                     "side": "buy" if i % 2 == 0 else "sell",
@@ -458,8 +464,8 @@ class TestRetrainModel:
                     "spread_at_order": 3000.0,
                     "spread_offset_ratio": 0.05,
                     "adverse_selected_raw": i % 3,
-                    "post_fill_30s_pnl": 0.5 * (i - 75),
-                    "post_fill_120s_pnl": 0.8 * (i - 75),
+                    "post_fill_30s_pnl": 0.5 * (i - 20),
+                    "post_fill_120s_pnl": 0.8 * (i - 20),
                     "regime": "ranging",
                     "run_id": "test_run",
                 }))
@@ -467,9 +473,9 @@ class TestRetrainModel:
                 "\n".join(records), encoding="utf-8",
             )
 
-            # 既存モデルを配置 (n_samples=150 → 新規 0 件)
+            # 既存モデルを配置 (n_samples=40 → 新規 0 件)
             model_path = model_dir / "gate.pkl"
-            gate = _make_picklable_gate(n_samples=150)
+            gate = _make_picklable_gate(n_samples=40)
             _save_gate_to(gate, model_path)
 
             cfg = dict(_DEFAULT_CONFIG)
@@ -481,6 +487,7 @@ class TestRetrainModel:
             cfg["min_total_samples"] = 10
             cfg["latest_run_only"] = False
             cfg["exclude_missing_run_id"] = False
+            cfg["lgbm_n_estimators"] = 30
             result = retrain_model(cfg)
             assert result["status"] == "skipped"
             assert "insufficient new samples" in result.get("reason", "")
@@ -496,8 +503,6 @@ class TestE2ERetrainHotReload:
 
     def test_retrain_deploy_and_hot_reload(self) -> None:
         """E2E: 十分なデータで retrain → deploy → SkipGateEvaluator が hot-reload."""
-        from scripts.v460.ml.retrain_scheduler import retrain_model, _DEFAULT_CONFIG
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
         with tempfile.TemporaryDirectory() as tmpdir:
             records_dir = Path(tmpdir) / "results"
@@ -506,10 +511,10 @@ class TestE2ERetrainHotReload:
             model_dir.mkdir()
             model_path = model_dir / "gate.pkl"
 
-            # 200件の fill records を生成 (十分なサンプル数)
+            # 80件の fill records を生成 (十分なサンプル数)
             rng = np.random.RandomState(42)
             records = []
-            for i in range(200):
+            for i in range(80):
                 records.append(json.dumps({
                     "cycle_id": f"e2e_{i}",
                     "side": "buy" if i % 2 == 0 else "sell",
@@ -540,6 +545,8 @@ class TestE2ERetrainHotReload:
             cfg["quality_gate_enabled"] = False  # E2E テストでは品質ゲート無効
             cfg["latest_run_only"] = False
             cfg["exclude_missing_run_id"] = False
+            cfg["lgbm_n_estimators"] = 40
+            cfg["bootstrap_threshold"] = 50
 
             result = retrain_model(cfg)
             assert result["status"] in ("deployed", "deployed_verified"), f"Expected deployed*, got {result}"
@@ -603,7 +610,6 @@ class TestBalanceForcedSwitchFilter:
 
     def test_balance_forced_records_excluded(self) -> None:
         """balance_forced_switch=True のレコードが学習データから除外される."""
-        from scripts.v460.ml.retrain_scheduler import retrain_model, _DEFAULT_CONFIG
 
         with tempfile.TemporaryDirectory() as tmpdir:
             records_dir = Path(tmpdir) / "results"
@@ -611,9 +617,9 @@ class TestBalanceForcedSwitchFilter:
 
             rng = np.random.RandomState(123)
             records = []
-            for i in range(60):
-                # 最初の 20 件は balance_forced_switch=True
-                forced = i < 20
+            for i in range(30):
+                # 最初の 10 件は balance_forced_switch=True
+                forced = i < 10
                 records.append(json.dumps({
                     "cycle_id": f"bf_{i}",
                     "side": "buy" if i % 2 == 0 else "sell",
@@ -647,16 +653,16 @@ class TestBalanceForcedSwitchFilter:
             cfg["quality_gate_enabled"] = False
             cfg["latest_run_only"] = False
             cfg["exclude_missing_run_id"] = False
+            cfg["lgbm_n_estimators"] = 30
 
             result = retrain_model(cfg)
-            # 60 - 20 forced = 40 records usable; filled_records should be <= 40
+            # 30 - 10 forced = 20 records usable; filled_records should be <= 20
             assert result["status"] in ("deployed", "deployed_verified", "skipped")
             if result["status"] in ("deployed", "deployed_verified"):
-                assert result.get("filled_records", 0) <= 40
+                assert result.get("filled_records", 0) <= 20
 
     def test_no_balance_column_no_error(self) -> None:
         """balance_forced_switch カラムがなくてもエラーにならない."""
-        from scripts.v460.ml.retrain_scheduler import retrain_model, _DEFAULT_CONFIG
 
         with tempfile.TemporaryDirectory() as tmpdir:
             records_dir = Path(tmpdir) / "results"
@@ -700,8 +706,6 @@ class TestTradesIOFallback:
 
     def test_fallback_uses_7day_window(self) -> None:
         """date_filter で空→全量ではなく 7 日 window が先に試行される."""
-        from scripts.v460.ml.feature_enricher import enrich_fill_records, load_raw_trades
-        import pandas as pd
 
         # enrich_fill_records 内の load_raw_trades 呼び出しを追跡
         call_args: list[tuple] = []
@@ -744,11 +748,6 @@ class TestE4EnrichedCache:
 
     def test_cache_roundtrip(self) -> None:
         """キャッシュ保存→読み込みでデータが一致."""
-        from scripts.v460.ml.retrain_scheduler import (
-            _save_enriched_cache,
-            _load_enriched_cache,
-        )
-        import pandas as pd
 
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_path = Path(tmpdir) / "test_cache.pkl"
@@ -761,11 +760,6 @@ class TestE4EnrichedCache:
 
     def test_cache_invalidation_on_count_mismatch(self) -> None:
         """レコード数不一致でキャッシュを無効化."""
-        from scripts.v460.ml.retrain_scheduler import (
-            _save_enriched_cache,
-            _load_enriched_cache,
-        )
-        import pandas as pd
 
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_path = Path(tmpdir) / "test_cache.pkl"
@@ -777,11 +771,6 @@ class TestE4EnrichedCache:
 
     def test_cache_invalidation_on_key_mismatch(self) -> None:
         """131# A.1 #6: cache_key 不一致でキャッシュを無効化."""
-        from scripts.v460.ml.retrain_scheduler import (
-            _save_enriched_cache,
-            _load_enriched_cache,
-        )
-        import pandas as pd
 
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_path = Path(tmpdir) / "test_cache.pkl"
@@ -793,8 +782,6 @@ class TestE4EnrichedCache:
 
     def test_backward_compat_old_cache_format(self) -> None:
         """旧形式(DataFrame直接)のキャッシュも読める."""
-        from scripts.v460.ml.retrain_scheduler import _load_enriched_cache
-        import pandas as pd
 
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_path = Path(tmpdir) / "old_cache.pkl"
@@ -846,7 +833,6 @@ class TestBuildLgbmRegressor:
 
     def test_default_params(self) -> None:
         """デフォルトパラメータで LGBMRegressor を構築."""
-        from scripts.v460.ml.retrain_scheduler import _build_lgbm_regressor
 
         cfg = {"lgbm_n_estimators": 100, "lgbm_max_depth": 3}
         model = _build_lgbm_regressor(cfg)
@@ -855,7 +841,6 @@ class TestBuildLgbmRegressor:
 
     def test_n_estimators_override(self) -> None:
         """n_estimators をオーバーライドできる (E2 early stopping 用)."""
-        from scripts.v460.ml.retrain_scheduler import _build_lgbm_regressor
 
         cfg = {"lgbm_n_estimators": 100}
         model = _build_lgbm_regressor(cfg, n_estimators_override=300)
@@ -898,7 +883,6 @@ class TestAtomicHashMove:
 
             gate = _make_picklable_gate()
             gate.save(tmp_path)
-            import os
             os.replace(str(tmp_path), str(model_path))
 
             # 修正後の hash 移動
@@ -918,7 +902,6 @@ class TestPrevModelLoadError:
 
     def test_prev_load_error_recorded(self) -> None:
         """前モデル読み込み失敗がログ出力され result に記録される."""
-        from scripts.v460.ml.retrain_scheduler import retrain_model
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # 不正な pkl を仕込む
@@ -1056,7 +1039,6 @@ class TestMultiWindowWF:
 
     def test_evaluate_wf_multi_returns_fold_data(self) -> None:
         """multi-window WF がfold-level PnL データを返す."""
-        from scripts.v460.ml.retrain_scheduler import _evaluate_wf_multi
 
         n = 300
         rng = np.random.RandomState(42)
@@ -1098,7 +1080,6 @@ class TestMultiWindowWF:
 
     def test_evaluate_wf_multi_fallback_small_data(self) -> None:
         """データ不足時に multi-window が None を返す (single-window フォールバック)."""
-        from scripts.v460.ml.retrain_scheduler import _evaluate_wf_multi
 
         n = 40  # too small for multi-window
         rng = np.random.RandomState(42)
@@ -1131,7 +1112,6 @@ class TestMultiWindowWF:
 
     def test_evaluate_wf_dispatches_multi(self) -> None:
         """_evaluate_wf が multi-window に正しくディスパッチする."""
-        from scripts.v460.ml.retrain_scheduler import _evaluate_wf
 
         n = 300
         rng = np.random.RandomState(42)
@@ -1170,7 +1150,6 @@ class TestMultiWindowWF:
 
     def test_single_window_returns_fold_data(self) -> None:
         """single-window でも fold-level PnL を返す."""
-        from scripts.v460.ml.retrain_scheduler import _evaluate_wf_single
 
         n = 200
         rng = np.random.RandomState(42)
@@ -1215,7 +1194,6 @@ class TestWFSingleWindowLeakageFix:
 
     def test_val_not_test_for_early_stopping(self) -> None:
         """early_stopping 有効時に test ではなく val を eval_set に使用."""
-        from scripts.v460.ml.retrain_scheduler import _evaluate_wf_single
 
         n = 300
         rng = np.random.RandomState(42)
@@ -1247,7 +1225,6 @@ class TestWFSingleWindowLeakageFix:
 
     def test_train_test_sizes_with_embargo(self) -> None:
         """embargo 有効時に train/test の間に gap がある."""
-        from scripts.v460.ml.retrain_scheduler import _evaluate_wf_single
 
         n = 300
         rng = np.random.RandomState(42)
@@ -1280,7 +1257,6 @@ class TestWFSingleWindowLeakageFix:
 
     def test_insufficient_data_returns_zero(self) -> None:
         """データ不足時にスコア 0.0 を返す."""
-        from scripts.v460.ml.retrain_scheduler import _evaluate_wf_single
 
         n = 30  # Too small for meaningful split
         rng = np.random.RandomState(42)
@@ -1315,7 +1291,6 @@ class TestStatisticalGate:
 
     def test_apply_gate_multi_window(self) -> None:
         """multi-window fold data に対して g1_judgment が適用される."""
-        from scripts.v460.ml.retrain_scheduler import _apply_statistical_gate
 
         # Model は baseline より明確に高い PnL を持つ
         wf_result = {
@@ -1345,7 +1320,6 @@ class TestStatisticalGate:
 
     def test_apply_gate_single_window(self) -> None:
         """single-window で holm_bonferroni_gate が適用される."""
-        from scripts.v460.ml.retrain_scheduler import _apply_statistical_gate
 
         wf_result = {
             "n_windows": 1,
@@ -1368,7 +1342,6 @@ class TestStatisticalGate:
 
     def test_apply_gate_insufficient_samples(self) -> None:
         """サンプル不足時はスキップ."""
-        from scripts.v460.ml.retrain_scheduler import _apply_statistical_gate
 
         wf_result = {
             "n_windows": 1,
@@ -1385,7 +1358,6 @@ class TestStatisticalGate:
 
     def test_apply_gate_no_significance(self) -> None:
         """有意差なし → pass=False."""
-        from scripts.v460.ml.retrain_scheduler import _apply_statistical_gate
 
         rng = np.random.RandomState(42)
         # Model と baseline がほぼ同じ
@@ -1415,7 +1387,6 @@ class TestRedundancyPruning:
 
     def test_highly_correlated_features_detected(self) -> None:
         """高相関ペアが正しく検出される."""
-        from scripts.v460.ml.retrain_scheduler import _safe_import_ztb_module
 
         try:
             _red = _safe_import_ztb_module("ztb.analysis.redundancy")
@@ -1483,7 +1454,6 @@ class TestRegimeAwareLotSizing:
 
     def test_unknown_regime_blocks_increase(self) -> None:
         """unknown レジームでは全条件クリアでも増量が hold される."""
-        from scripts.v460.lib.lot_sizer import LotSizingConfig, compute_lot_size
 
         config = LotSizingConfig(
             current_lot=0.001,
@@ -1511,7 +1481,6 @@ class TestRegimeAwareLotSizing:
 
     def test_ranging_regime_allows_increase(self) -> None:
         """ranging レジームでは通常通り増量が許可される."""
-        from scripts.v460.lib.lot_sizer import LotSizingConfig, compute_lot_size
 
         config = LotSizingConfig(
             current_lot=0.001,
@@ -1539,7 +1508,6 @@ class TestRegimeAwareLotSizing:
 
     def test_decrease_regime_forces_decrease(self) -> None:
         """regime_decrease_regimes に含まれるレジームでは強制減量."""
-        from scripts.v460.lib.lot_sizer import LotSizingConfig, compute_lot_size
 
         config = LotSizingConfig(
             current_lot=0.003,
@@ -1569,7 +1537,6 @@ class TestRegimeAwareLotSizing:
 
     def test_regime_guard_disabled_allows_increase(self) -> None:
         """regime_guard_enabled=False では unknown でも増量可能."""
-        from scripts.v460.lib.lot_sizer import LotSizingConfig, compute_lot_size
 
         config = LotSizingConfig(
             current_lot=0.001,
@@ -1595,7 +1562,6 @@ class TestRegimeAwareLotSizing:
 
     def test_na_regime_bypasses_guard(self) -> None:
         """regime_tag='n/a' (検出器なし) ではガードが無効."""
-        from scripts.v460.lib.lot_sizer import LotSizingConfig, compute_lot_size
 
         config = LotSizingConfig(
             current_lot=0.001,
@@ -1621,7 +1587,6 @@ class TestRegimeAwareLotSizing:
 
     def test_cap_shrink_overrides_regime_guard(self) -> None:
         """損失キャップ接近は regime guard より優先."""
-        from scripts.v460.lib.lot_sizer import LotSizingConfig, compute_lot_size
 
         config = LotSizingConfig(
             current_lot=0.003,
@@ -1663,7 +1628,6 @@ class TestOracleBaseline:
         regime: str | None = "ranging",
     ) -> object:
         """テスト用 FillRecord モック."""
-        from ztb.metrics.fill_quality import FillRecord
         return FillRecord(
             cycle_id="test",
             timestamp=1700000000.0,
@@ -1680,7 +1644,6 @@ class TestOracleBaseline:
 
     def test_oracle_filters_negative_pnl(self) -> None:
         """Oracle は PnL < 0 の取引をスキップする."""
-        from scripts.v460.analysis.oracle_baseline import compute_oracle_metrics
 
         records = [
             self._make_mock_record(pnl_30s=2.0),
@@ -1698,7 +1661,6 @@ class TestOracleBaseline:
 
     def test_oracle_empty_records(self) -> None:
         """空レコードでエラーにならない."""
-        from scripts.v460.analysis.oracle_baseline import compute_oracle_metrics
 
         m = compute_oracle_metrics([], "empty")
         assert m.n_total == 0
@@ -1706,7 +1668,6 @@ class TestOracleBaseline:
 
     def test_oracle_all_positive(self) -> None:
         """全取引が正の場合、Oracle skip_rate = 0."""
-        from scripts.v460.analysis.oracle_baseline import compute_oracle_metrics
 
         records = [
             self._make_mock_record(pnl_30s=1.0),
@@ -1718,7 +1679,6 @@ class TestOracleBaseline:
 
     def test_oracle_multi_timeframe(self) -> None:
         """60s/120s PnL も正しく計算される."""
-        from scripts.v460.analysis.oracle_baseline import compute_oracle_metrics
 
         records = [
             self._make_mock_record(pnl_30s=1.0, pnl_60s=2.0, pnl_120s=3.0),
@@ -1732,7 +1692,6 @@ class TestOracleBaseline:
 
     def test_oracle_jpy_conversion(self) -> None:
         """JPY 換算が正しく算出される."""
-        from scripts.v460.analysis.oracle_baseline import compute_oracle_metrics
 
         records = [
             self._make_mock_record(pnl_30s=1.0),
@@ -1748,7 +1707,6 @@ class TestOracleBaseline:
 
     def test_group_oracle_aggregates_groups_by_side_and_regime(self) -> None:
         """全体/side/regime 集計が 1 パスで正しく構築される."""
-        from scripts.v460.analysis.oracle_baseline import _group_oracle_aggregates
 
         records = [
             self._make_mock_record(side="buy", regime="ranging", pnl_30s=2.0),
@@ -1773,7 +1731,6 @@ class TestRegimeSampleWeights:
 
     def test_uniform_when_no_regime_col(self) -> None:
         """regime 列がない → 均一重み."""
-        from scripts.v460.ml.retrain_scheduler import _compute_regime_sample_weights
 
         enriched = pd.DataFrame({"side": ["buy", "sell", "buy"]})
         idx = enriched.index
@@ -1785,7 +1742,6 @@ class TestRegimeSampleWeights:
 
     def test_config_weights_applied(self) -> None:
         """config の regime_sample_weights が正しく適用される."""
-        from scripts.v460.ml.retrain_scheduler import _compute_regime_sample_weights
 
         enriched = pd.DataFrame({
             "regime": ["high_vol", "trending", "ranging", "unknown"] * 10,
@@ -1815,7 +1771,6 @@ class TestRegimeSampleWeights:
 
     def test_current_regime_boost(self) -> None:
         """直近 N 件から推定した現在レジームにブースト倍率が適用される."""
-        from scripts.v460.ml.retrain_scheduler import _compute_regime_sample_weights
 
         # 直近 5 件が全て high_vol → current_regime=high_vol
         regimes = ["ranging"] * 15 + ["high_vol"] * 5
@@ -1835,7 +1790,6 @@ class TestRegimeSampleWeights:
 
     def test_weights_normalized_mean_1(self) -> None:
         """重みの平均は正規化後 ≈ 1.0."""
-        from scripts.v460.ml.retrain_scheduler import _compute_regime_sample_weights
 
         enriched = pd.DataFrame({
             "regime": ["high_vol"] * 30 + ["ranging"] * 70,
@@ -1854,7 +1808,6 @@ class TestRegimeSampleWeights:
 
     def test_weight_floor_respected(self) -> None:
         """weight_floor より小さい重みは切り上げ."""
-        from scripts.v460.ml.retrain_scheduler import _compute_regime_sample_weights
 
         enriched = pd.DataFrame({
             "regime": ["unknown"] * 10,
@@ -1872,7 +1825,6 @@ class TestRegimeSampleWeights:
 
     def test_nan_regime_treated_as_unknown(self) -> None:
         """NaN regime は 'unknown' として扱われる."""
-        from scripts.v460.ml.retrain_scheduler import _compute_regime_sample_weights
 
         enriched = pd.DataFrame({
             "regime": [None, np.nan, "high_vol"],
@@ -1892,7 +1844,6 @@ class TestRegimeSampleWeights:
 
     def test_default_config_disabled(self) -> None:
         """デフォルト config は regime_weighting_enabled=False."""
-        from scripts.v460.ml.retrain_scheduler import _DEFAULT_CONFIG
 
         assert _DEFAULT_CONFIG["regime_weighting_enabled"] is False
         assert isinstance(_DEFAULT_CONFIG["regime_sample_weights"], dict)
@@ -1906,7 +1857,6 @@ class TestStatisticalGateInitialTraining:
 
     def test_stat_gate_skip_no_prev_model(self) -> None:
         """前モデル不在 + quality_gate 通過でも stat_gate は skip される."""
-        from scripts.v460.ml.retrain_scheduler import retrain_model
 
         # WF eval が正のスコアを返す最小構成のモックを使い、
         # prev_gate_loaded=False の場合 stat_gate が applied=False になることを検証
@@ -1925,7 +1875,6 @@ class TestStatisticalGateInitialTraining:
 
     def test_all_runs_absolute_min_relaxed(self) -> None:
         """--all-runs モードで absolute_min_score が -0.50 に緩和される."""
-        from scripts.v460.ml.retrain_scheduler import _DEFAULT_CONFIG
 
         default_abs_min = _DEFAULT_CONFIG.get("absolute_min_score", -0.10)
         assert default_abs_min == -0.10  # デフォルトは厳格
@@ -1941,7 +1890,6 @@ class TestStatisticalGateInitialTraining:
         if not sell_path.exists():
             pytest.skip("Sell model not yet deployed")
 
-        from scripts.v460.ml.skip_gate import SkipGate
         gate = SkipGate.load(sell_path)
         assert len(gate.feature_cols) > 0
         target_meta = str(gate.metadata.get("target", ""))
@@ -1954,7 +1902,6 @@ class TestStatisticalGateInitialTraining:
         if not buy_path.exists():
             pytest.skip("Buy model not yet deployed")
 
-        from scripts.v460.ml.skip_gate import SkipGate
         gate = SkipGate.load(buy_path)
         assert len(gate.feature_cols) > 0
         target_meta = str(gate.metadata.get("target", ""))

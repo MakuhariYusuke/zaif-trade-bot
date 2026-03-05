@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 288# test: v460 追加高速化 + import 重複排除 (2026-03-06)
+
+### Changed
+- **v460 テスト全体の再短縮**: `tests/unit/v460` を `--no-cov` で **58.81s** まで短縮（3919 passed）
+- **`test_websocket_client.py` 待機削減**: `test_start_sets_running` の固定 `asyncio.sleep(1.5)` を廃止し、`wait_for(ws._task)` で即時収束化
+- **`test_158_failure_modes.py` タイムアウト試験軽量化**:
+  - `CircuitBreaker` の回復待ちを `0.15s -> 0.03s` に短縮
+  - `test_timeout_returns_false` を重い擬似イベントループ実行から `TimeoutError` モックへ置換
+- **`test_retrain_hot_reload.py` 重いケースの負荷軽減**:
+  - E2E/フィルタ系テストの生成サンプルを縮小（200->80, 150->40, 60->30）
+  - `lgbm_n_estimators` をテスト用に抑制
+  - `bootstrap_threshold` を調整して既存アサーション整合性を維持
+
+### Refactored
+- **per-method import 集約**:
+  - `test_retrain_hot_reload.py`: 77 -> **4**
+  - `test_168_daily_drawdown_guard.py`: 62 -> **0**
+
+---
+
 
 ## 287# test: v460 テストスイート高速化 + DRY 整理 (2026-03-06)
 

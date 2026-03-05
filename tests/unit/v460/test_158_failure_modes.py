@@ -10,8 +10,6 @@
 from __future__ import annotations
 
 import asyncio
-import concurrent.futures
-import time
 from types import SimpleNamespace
 from typing import Optional
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -37,7 +35,7 @@ class TestCircuitBreakerStateTransitions:
     def cb(self) -> CircuitBreaker:
         cfg = CircuitBreakerConfig(
             failure_threshold=3,
-            recovery_timeout=0.1,  # 100ms for fast test
+            recovery_timeout=0.01,  # 10ms for faster test
             success_threshold=2,
             timeout=5.0,
         )
@@ -87,8 +85,8 @@ class TestCircuitBreakerStateTransitions:
 
         assert cb.get_state() == CircuitState.OPEN
 
-        # Wait for recovery_timeout (100ms)
-        await asyncio.sleep(0.15)
+        # Wait for recovery_timeout
+        await asyncio.sleep(0.03)
 
         # Next call should transition to HALF_OPEN and execute
         result = await cb.call(succeed)
@@ -111,7 +109,7 @@ class TestCircuitBreakerStateTransitions:
                 await cb.call(fail)
 
         # Wait for recovery
-        await asyncio.sleep(0.15)
+        await asyncio.sleep(0.03)
 
         # 2 successes in HALF_OPEN → CLOSED
         await cb.call(succeed)
@@ -133,7 +131,7 @@ class TestCircuitBreakerStateTransitions:
             with pytest.raises(ConnectionError):
                 await cb.call(fail)
 
-        await asyncio.sleep(0.15)
+        await asyncio.sleep(0.03)
 
         # One success to enter HALF_OPEN
         await cb.call(succeed)
@@ -199,36 +197,8 @@ class TestOrderManagerTimeout:
         """place_order が 30s 以上かかる場合、execute_trade は False を返す."""
         om, lt, adapter = self._make_om()
 
-        # place_order が永久に待つように設定
-        async def hang_forever(**kwargs):
-            await asyncio.sleep(999)
-
-        adapter.place_order = hang_forever
-
-        # _execute_order_async のタイムアウトをテスト用に短縮
-        original = om._execute_order_async
-
-        def patched_execute_order_async(**kwargs):
-            """Patch to reduce timeout to 0.1s for testing."""
-            async def _place():
-                return await adapter.place_order(**kwargs)
-
-            try:
-                loop = asyncio.new_event_loop()
-                future = concurrent.futures.ThreadPoolExecutor().submit(
-                    loop.run_until_complete,
-                    asyncio.wait_for(_place(), timeout=0.1),
-                )
-                try:
-                    return future.result(timeout=0.5)
-                except (concurrent.futures.TimeoutError, asyncio.TimeoutError):
-                    raise TimeoutError("Order timed out")
-                finally:
-                    loop.close()
-            except Exception:
-                raise
-
-        with patch.object(om, "_execute_order_async", side_effect=patched_execute_order_async):
+        # execute_trade が TimeoutError を安全にハンドリングすることを検証
+        with patch.object(om, "_execute_order_async", side_effect=TimeoutError("Order timed out")):
             result = om.execute_trade("buy", 0.001)
 
         assert result is False

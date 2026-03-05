@@ -12,15 +12,23 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
-from unittest.mock import patch
+from dataclasses import asdict, fields
+from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock, patch
 
 import pytest
 
+from scripts.v460.lib import cancel_reasons as CR
+from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 from scripts.v460.lib.daily_drawdown_guard import (
     DailyDrawdownGuard,
     DailyDrawdownState,
 )
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.maker_price import MakerPriceCalculator
+from scripts.v460.lib.resilience import FillTestState
+from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
+from ztb.utils.dataclass_utils import filter_known_dataclass_fields
 
 
 # ======================================================================
@@ -239,12 +247,10 @@ class TestDailyDrawdownCancelReason:
     """DAILY_DRAWDOWN_HALT 定数の存在と AUDIT set 所属."""
 
     def test_constant_exists(self) -> None:
-        from scripts.v460.lib import cancel_reasons as CR
         assert hasattr(CR, "DAILY_DRAWDOWN_HALT")
         assert CR.DAILY_DRAWDOWN_HALT == "daily_drawdown_halt"
 
     def test_in_audit_set(self) -> None:
-        from scripts.v460.lib import cancel_reasons as CR
         assert CR.DAILY_DRAWDOWN_HALT in CR.AUDIT_CANCEL_REASONS
 
 
@@ -257,7 +263,6 @@ class TestFillTestConfigDailyDrawdown:
     """FillTestConfig の新規フィールドのデフォルト値."""
 
     def test_default_values(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert cfg.daily_drawdown_enabled is False
         assert cfg.daily_drawdown_hard_limit_bps == -50.0
@@ -273,20 +278,16 @@ class TestFillTestStateDailyDrawdown:
     """FillTestState の daily_drawdown_state フィールド."""
 
     def test_default_none(self) -> None:
-        from scripts.v460.lib.resilience import FillTestState
         state = FillTestState()
         assert state.daily_drawdown_state is None
 
     def test_with_state_dict(self) -> None:
-        from scripts.v460.lib.resilience import FillTestState
         dd = {"current_day": "20260228", "daily_pnl_bps": -15.0, "halted": False}
         state = FillTestState(daily_drawdown_state=dd)
         assert state.daily_drawdown_state == dd
 
     def test_backward_compat_load(self) -> None:
         """旧 state ファイル (daily_drawdown_state なし) から FillTestState を生成可能."""
-        from dataclasses import fields
-        from scripts.v460.lib.resilience import FillTestState
         old_data = {"run_id": "test", "cycle_count": 100, "total_count": 50}
         valid_fields = {f.name for f in fields(FillTestState)}
         filtered = {k: v for k, v in old_data.items() if k in valid_fields}
@@ -340,7 +341,6 @@ class TestDailyDrawdownMetrics:
 def _tomorrow_str() -> str:
     """翌日の UTC 日付文字列 (テスト用)."""
     now = datetime.now(timezone.utc)
-    from datetime import timedelta
     tomorrow = now + timedelta(days=1)
     return tomorrow.strftime("%Y%m%d")
 
@@ -448,17 +448,14 @@ class TestCancelReasons205:
     """205# で追加した cancel_reason 定数。"""
 
     def test_hard_skip_utc_hour_exists(self) -> None:
-        from scripts.v460.lib import cancel_reasons as CR
         assert CR.HARD_SKIP_UTC_HOUR == "hard_skip_utc_hour"
         assert CR.HARD_SKIP_UTC_HOUR in CR.AUDIT_CANCEL_REASONS
 
     def test_toxic_fill_side_veto_exists(self) -> None:
-        from scripts.v460.lib import cancel_reasons as CR
         assert CR.TOXIC_FILL_SIDE_VETO == "toxic_fill_side_veto"
         assert CR.TOXIC_FILL_SIDE_VETO in CR.AUDIT_CANCEL_REASONS
 
     def test_per_side_dd_halt_exists(self) -> None:
-        from scripts.v460.lib import cancel_reasons as CR
         assert CR.PER_SIDE_DD_HALT == "per_side_dd_halt"
         assert CR.PER_SIDE_DD_HALT in CR.AUDIT_CANCEL_REASONS
 
@@ -472,18 +469,15 @@ class TestFillTestConfig205:
     """205# で追加した FillTestConfig フィールドのデフォルト値。"""
 
     def test_hard_skip_utc_hours_default(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert cfg.hard_skip_utc_hours == []
 
     def test_toxic_fill_veto_defaults(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert cfg.toxic_fill_veto_threshold_bps == -5.0
         assert cfg.toxic_fill_veto_cycles == 3
 
     def test_per_side_dd_defaults(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert cfg.per_side_dd_enabled is False
         assert cfg.per_side_dd_hard_limit_bps == -30.0
@@ -499,17 +493,14 @@ class TestFillTestStateToxicVeto:
     """207# §1: FillTestState に toxic_veto フィールドが存在し永続化可能。"""
 
     def test_toxic_veto_field_exists(self) -> None:
-        from scripts.v460.lib.resilience import FillTestState
         state = FillTestState()
         assert state.toxic_veto is None
 
     def test_toxic_veto_with_data(self) -> None:
-        from scripts.v460.lib.resilience import FillTestState
         state = FillTestState(toxic_veto={"buy": 3, "sell": 1})
         assert state.toxic_veto == {"buy": 3, "sell": 1}
 
     def test_toxic_veto_none_default(self) -> None:
-        from scripts.v460.lib.resilience import FillTestState
         state = FillTestState(toxic_veto=None)
         assert state.toxic_veto is None
 
@@ -610,7 +601,6 @@ class TestOneSidedConsecutiveConfig:
 
     def test_default_values(self) -> None:
         """FillTestConfig のデフォルト値が正しいこと。"""
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         cfg = FillTestConfig()
         assert cfg.one_sided_consecutive_limit == 5
@@ -618,7 +608,6 @@ class TestOneSidedConsecutiveConfig:
 
     def test_custom_values(self) -> None:
         """カスタム値を設定できること。"""
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         cfg = FillTestConfig(
             one_sided_consecutive_limit=10,
@@ -629,7 +618,6 @@ class TestOneSidedConsecutiveConfig:
 
     def test_disabled_when_zero(self) -> None:
         """limit=0 で無制限（無効化）となること。"""
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         cfg = FillTestConfig(one_sided_consecutive_limit=0)
         # limit=0 → 条件 `_os_limit > 0` が False → mult 不適用
@@ -668,47 +656,36 @@ class TestConfigValidation209:
 
     def test_negative_one_sided_limit_raises(self) -> None:
         """one_sided_consecutive_limit < 0 で ValueError。"""
-        import pytest
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         with pytest.raises(ValueError, match="one_sided_consecutive_limit"):
             FillTestConfig(one_sided_consecutive_limit=-1)
 
     def test_zero_one_sided_mult_raises(self) -> None:
         """one_sided_consecutive_interval_mult <= 0 で ValueError。"""
-        import pytest
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         with pytest.raises(ValueError, match="one_sided_consecutive_interval_mult"):
             FillTestConfig(one_sided_consecutive_interval_mult=0.0)
 
     def test_zero_cycle_interval_raises(self) -> None:
         """cycle_interval_sec <= 0 で ValueError。"""
-        import pytest
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         with pytest.raises(ValueError, match="cycle_interval_sec"):
             FillTestConfig(cycle_interval_sec=0.0)
 
     def test_zero_poll_interval_raises(self) -> None:
         """poll_interval_sec <= 0 で ValueError。"""
-        import pytest
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         with pytest.raises(ValueError, match="poll_interval_sec"):
             FillTestConfig(poll_interval_sec=-1.0)
 
     def test_max_cycle_sleep_default(self) -> None:
         """max_cycle_sleep_sec のデフォルト値が 600。"""
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         cfg = FillTestConfig()
         assert cfg.max_cycle_sleep_sec == 600.0
 
     def test_max_cycle_sleep_negative_raises(self) -> None:
         """max_cycle_sleep_sec < 0 で ValueError。"""
-        import pytest
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         with pytest.raises(ValueError, match="max_cycle_sleep_sec"):
             FillTestConfig(max_cycle_sleep_sec=-1.0)
@@ -779,7 +756,6 @@ class TestInstantVelocityBoundary209:
 
     def test_dt_equals_max_dt_returns_none(self) -> None:
         """dt == max_dt の場合は None (stale) を返すこと。"""
-        from scripts.v460.lib.velocity_math import compute_instant_velocity_bps
 
         result = compute_instant_velocity_bps(
             current_mid=10_100_000.0,
@@ -800,23 +776,15 @@ class TestFillTestStateOneSidedPersistence210:
 
     def test_field_default(self) -> None:
         """デフォルト値は 0."""
-        from scripts.v460.lib.resilience import FillTestState
-
         state = FillTestState()
         assert state.one_sided_consecutive_count == 0
 
     def test_round_trip(self) -> None:
         """dataclass asdict → FillTestState の往復でカウンタが保存/復元される."""
-        from dataclasses import asdict
-
-        from scripts.v460.lib.resilience import FillTestState
-
         state = FillTestState(one_sided_consecutive_count=7, toxic_veto={"buy": 2})
         d = asdict(state)
         assert d["one_sided_consecutive_count"] == 7
         # filter で復元
-        from ztb.utils.dataclass_utils import filter_known_dataclass_fields
-
         restored = FillTestState(**filter_known_dataclass_fields(FillTestState, d))
         assert restored.one_sided_consecutive_count == 7
         assert restored.toxic_veto == {"buy": 2}
@@ -828,10 +796,6 @@ class TestSpreadStaleness210:
     @staticmethod
     def _make_calc():
         """テスト用 MakerPriceCalculator を構築."""
-        from unittest.mock import MagicMock
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig()
         ffd = MagicMock()
         return MakerPriceCalculator(
@@ -867,10 +831,6 @@ class TestMidTrendBpsProperty210:
     @staticmethod
     def _make_calc():
         """テスト用 MakerPriceCalculator を構築."""
-        from unittest.mock import MagicMock
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig()
         ffd = MagicMock()
         return MakerPriceCalculator(
@@ -897,10 +857,6 @@ class TestFFDHotReloadSync210:
 
     def test_rebuild_syncs_ffd(self) -> None:
         """_rebuild_fast_fill_defense 後に _maker_price._fast_fill_defense が同期される."""
-        from unittest.mock import MagicMock
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-
         # シンプルなモック runner を構築
         class MockRunner:
             def __init__(self) -> None:
@@ -945,9 +901,6 @@ class TestVelocityGateWiring210:
 
     def test_velocity_skip_with_value(self) -> None:
         """price_velocity_bps が渡された場合に velocity gate が評価される."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig(
             sell_velocity_skip_enabled=True,
             sell_velocity_skip_threshold_bps=5.0,
@@ -969,9 +922,6 @@ class TestVelocityGateWiring210:
 
     def test_velocity_none_passes(self) -> None:
         """price_velocity_bps=None の場合は velocity gate を通過."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig(
             sell_velocity_skip_enabled=True,
             sell_velocity_skip_threshold_bps=5.0,
@@ -998,9 +948,6 @@ class TestVelocityGateWiring210:
 
     def test_velocity_soft_mode_passes(self) -> None:
         """velocity_skip_as_offset_enabled=True の場合は velocity gate を通過."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig(
             sell_velocity_skip_enabled=True,
             sell_velocity_skip_threshold_bps=5.0,
@@ -1034,11 +981,6 @@ class TestLossBoostOffset211:
 
     @staticmethod
     def _make_calc() -> "MakerPriceCalculator":
-        from unittest.mock import MagicMock
-
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-
         cfg = FillTestConfig()
         ffd = MagicMock()
         ffd.get_boost_multiplier.return_value = 1.0
@@ -1059,8 +1001,6 @@ class TestLossBoostOffset211:
 
     def test_loss_boost_config_default(self) -> None:
         """FillTestConfig.loss_boost_offset_mult のデフォルト値が 1.5."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig()
         assert cfg.loss_boost_offset_mult == 1.5
 
@@ -1200,16 +1140,12 @@ class TestCooldownReleaseConfig246:
 
     def test_config_defaults(self) -> None:
         """dd_cooldown_release_sec/lot_scale のデフォルト値."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig()
         assert cfg.dd_cooldown_release_sec == 0.0
         assert cfg.dd_cooldown_release_lot_scale == 0.3
 
     def test_config_yaml_parsing(self) -> None:
         """YAML から cooldown_release 設定がパースされる."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         yaml_cfg = {
             "loss_control": {
                 "daily_drawdown": {
@@ -1250,8 +1186,6 @@ class TestDayResetTimezone:
         UTC 15:00 = JST 00:00 で日替わり → halt 解除。
         UTC ベースだと 22h 以上かかるケースが 15h 以下に短縮。
         """
-        from datetime import timedelta
-
         guard = DailyDrawdownGuard(
             enabled=True,
             hard_limit_bps=-50.0,
@@ -1284,8 +1218,6 @@ class TestDayResetTimezone:
         268# 根本原因: DD halt at UTC 01:51 → UTC day change at UTC 00:00+1d = 22h09m。
         JST モードなら JST 10:51 → JST 00:00+1d = 13h09m に短縮。
         """
-        from datetime import timedelta
-
         # UTC ベース
         halt_utc = datetime(2026, 3, 3, 1, 51, tzinfo=timezone.utc)  # = JST 10:51
         next_utc_day = datetime(2026, 3, 4, 0, 0, tzinfo=timezone.utc)
@@ -1302,15 +1234,11 @@ class TestDayResetTimezone:
 
     def test_config_default_is_jst(self) -> None:
         """fill_config のデフォルトが JST (9.0) であること."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig()
         assert cfg.dd_day_reset_utc_offset_hours == 9.0
 
     def test_config_yaml_parsing_tz(self) -> None:
         """YAML から day_reset_utc_offset_hours がパースされる."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         yaml_cfg = {
             "loss_control": {
                 "daily_drawdown": {
@@ -1326,8 +1254,6 @@ class TestDayResetTimezone:
 
     def test_today_uses_configured_tz(self) -> None:
         """_today() がコンストラクタで設定した TZ を使用する."""
-        from datetime import timedelta
-
         utc_guard = DailyDrawdownGuard(enabled=True, day_reset_utc_offset_hours=0.0)
         jst_guard = DailyDrawdownGuard(enabled=True, day_reset_utc_offset_hours=9.0)
 

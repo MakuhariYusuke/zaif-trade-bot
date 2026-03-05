@@ -202,17 +202,19 @@ class TestCoincheckPublicWS:
     @pytest.mark.asyncio
     async def test_start_sets_running(self) -> None:
         ws = CoincheckPublicWS(
-            config=WebSocketConfig(max_reconnects=1)
+            config=WebSocketConfig(
+                max_reconnects=1,
+                reconnect_delay_initial=0.01,
+                reconnect_delay_max=0.01,
+            )
         )
         with patch(
             "ztb.trading.live.exchanges.coincheck.websocket_client.websockets.connect",
             side_effect=ConnectionRefusedError("test"),
         ):
             await ws.start([Channel.TRADES])
-            # Give task time to attempt connection and fail
-            await asyncio.sleep(0.1)
-            # Should stop after max_reconnects
-            await asyncio.sleep(1.5)
+            assert ws._task is not None
+            await asyncio.wait_for(ws._task, timeout=0.2)
             assert ws._running is False
 
     @pytest.mark.asyncio
