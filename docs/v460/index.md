@@ -271,7 +271,8 @@
 | 278 | impl | [278_ph2_impl_magic_number_grounding.md](278_ph2_impl_magic_number_grounding.md) | マジックナンバー根拠化 (5 config化 + 3 __post_init__検証 + B1 warmup TZ fix) + 271#-277# セルフレビュー |
 | 279 | fix | [279_ph2_fix_degraded_liquidation_min_lot.md](279_ph2_fix_degraded_liquidation_min_lot.md) | CRITICAL fix: degraded_liquidation config.min_lot → config.min_order_btc (234# 属性名取違え) |
 | 280 | rpt | [280_ph2_rpt_position_and_remaining_tasks.md](280_ph2_rpt_position_and_remaining_tasks.md) | 0番ドキュメント立ち位置確認 + 残課題浚い上げ (R-1〜R-26) |
-| 282 | fix | [282_ph2_fix_balance_forced_halt_deadlock.md](282_ph2_fix_balance_forced_halt_deadlock.md) | balance_forced + per-side halt 永久デッドロック修正 (untick除去×2 + IE双方向化) |
+| 281 | fix | [281_ph2_fix_halt_persist_interval_nameError.md](281_ph2_fix_halt_persist_interval_nameError.md) | CRITICAL fix: NameError `_HALT_PERSIST_INTERVAL` — 278# config化の参照漏れ (halt 時プロセス即死) |
+| 282 | fix | [282_ph2_fix_balance_forced_halt_deadlock.md](282_ph2_fix_balance_forced_halt_deadlock.md) | CRITICAL fix: balance_forced + per-side halt 永久デッドロック修正 (untick除去×2 + IE双方向化 + 15tests) |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

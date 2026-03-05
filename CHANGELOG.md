@@ -9,13 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 282# fix: balance_forced + per-side halt デッドロック修正 (2026-03-05)
 
 ### Fixed
-- **CRITICAL: 永久デッドロック**: BTC=0 + buy per-side halt の組合せで 8 時間以上の完全取引停止。273# I3 の `untick_side_halt()` が halt カウントダウンを完全に停止させ、halt が永久に解除されない (halt_remaining=12 固定)
-- **`untick_side_halt()` 除去 (2箇所)**: `balance_forced_halt_block` / `per_side_dd_both_halt` のパスから除去。halt を自然にカウントダウンさせ、`per_side_halt_cycles` (=15, 30分) 経過後に自動解除。reanchor (269#) が解除後の PnL 基準をリセット
-- **Inventory Escape 双方向化**: 269# の sell 限定 (`next_side == "sell"`) を撤廃。buy 方向でも degraded params + duty cycle (1-in-5) で縮退取得を許可し、BTC=0 パターンのデッドロック脱出を可能に
+- **CRITICAL: 永久デッドロック (8h11m 完全取引停止)**: BTC=0 + buy per-side halt の組合せで完全デッドロック。273# I3 の `untick_side_halt()` が halt カウントダウンを完全に停止 (tick/untick 1:1 相殺 → halt_remaining=12 固定)。Inventory Escape は sell 限定 (269# P0) で buy 方向不発。2 原因の複合が日替わりリセットまで最大 24h の停止を引き起こす
+- **`untick_side_halt()` 除去 (2箇所)**: `balance_forced_halt_block` / `per_side_dd_both_halt` のパスから除去。halt を自然にカウントダウンさせ、`per_side_halt_cycles` (=15) × `halt_sleep` (=600s) ≈ 150分 で自動解除。reanchor (269#) が解除後の PnL 基準をリセット
+- **Inventory Escape 双方向化**: 269# の sell 限定 (`next_side == "sell"`) を撤廃。buy 方向でも degraded params (lot ×0.2, offset ×3.0) + duty cycle (1-in-5) で縮退取得を許可し、BTC=0 パターンのデッドロック脱出を可能に。最悪ケース: IE buy 3 回 × ~5bps = ~15bps (vs. 逸失利益 ~60bps+)
 
 ### Added
 - **テスト 15 件** (`test_281_deadlock_fix.py`): ソースコード構造検証 (untick 除去, IE 双方向化), halt カウントダウン動作, デッドロック・シナリオ再現, メソッド存続確認
-- **レビュードキュメント** (`docs/issues/281_deadlock_fix.md`): Codex/Gemini 外部レビュー用
+- **レビュードキュメント** (`docs/v460/282_ph2_fix_balance_forced_halt_deadlock.md`): Codex/Gemini 外部レビュー用 (Q1-Q4)
+
+---
+
+## 281# fix: NameError `_HALT_PERSIST_INTERVAL` — 278# config化の参照漏れ (2026-03-05)
+
+### Fixed
+- **CRITICAL: プロセス即死**: 278# のマジックナンバー config化で `_HALT_PERSIST_INTERVAL` → `config.halt_persist_interval` 移行時、ログメッセージ内の参照 1 箇所が漏れ。daily_drawdown halt 突入時に NameError でクラッシュ
+- **参照修正 (2行)**: L1431 コメント + L1434 f-string を `self.config.halt_persist_interval` に修正
 
 ---
 
