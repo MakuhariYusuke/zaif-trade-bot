@@ -228,6 +228,28 @@ class TestForcedBuyKpiTracking:
         assert st.normal_buy_fill_count == 0
         assert st.normal_buy_pnl_sum_bps == 0.0
 
+    def test_fill_record_balance_forced_switch_attribute(self):
+        """FillRecord が balance_forced_switch 属性を持つこと (balance_forced ではない)."""
+        rec = FillRecord(
+            cycle_id="test", timestamp=0.0, side="buy",
+            order_price=100.0, order_quantity=0.001,
+            balance_forced_switch=True,
+        )
+        # 正しい属性名でアクセスできること
+        assert rec.balance_forced_switch is True
+        # 旧名 balance_forced は存在しないこと (AttributeError 回帰防止)
+        assert not hasattr(rec, "balance_forced")
+
+    def test_process_post_cycle_uses_balance_forced_switch(self):
+        """_process_post_cycle のソースが balance_forced_switch を使用していること."""
+        import inspect
+        source = inspect.getsource(FillLoopOrchestratorMixin._process_post_cycle)
+        # 修正前の誤った属性名が含まれていないこと
+        assert "record.balance_forced:" not in source
+        assert "record.balance_forced\n" not in source
+        # 正しい属性名が使用されていること
+        assert "record.balance_forced_switch" in source
+
 
 # ======================================================================
 # 6. Buy-side AS Guard (microprice 急落防御)

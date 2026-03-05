@@ -1102,7 +1102,7 @@ class FillLoopOrchestratorMixin:
                 and next_side == "buy"
                 and record.post_fill_30s_pnl is not None
             ):
-                if record.balance_forced:
+                if record.balance_forced_switch:
                     st.forced_buy_fill_count += 1
                     st.forced_buy_pnl_sum_bps += record.post_fill_30s_pnl
                 else:
