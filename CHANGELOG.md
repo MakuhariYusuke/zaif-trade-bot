@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## 281# fix: balance_forced + per-side halt デッドロック修正 (2026-03-05)
+## 282# fix: balance_forced + per-side halt デッドロック修正 (2026-03-05)
 
 ### Fixed
 - **CRITICAL: 永久デッドロック**: BTC=0 + buy per-side halt の組合せで 8 時間以上の完全取引停止。273# I3 の `untick_side_halt()` が halt カウントダウンを完全に停止させ、halt が永久に解除されない (halt_remaining=12 固定)

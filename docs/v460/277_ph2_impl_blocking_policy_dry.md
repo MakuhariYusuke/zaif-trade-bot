@@ -1,4 +1,4 @@
-# 276# BlockingPolicy DRY — skip ceremony 一元化 + halt multiplier config化
+# 277# BlockingPolicy DRY — skip ceremony 一元化 + halt multiplier config化
 
 ## 概要
 

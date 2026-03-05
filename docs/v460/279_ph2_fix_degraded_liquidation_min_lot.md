@@ -1,4 +1,4 @@
-# 278# fix: degraded_liquidation lot floor — config.min_lot → config.min_order_btc
+# 279# fix: degraded_liquidation lot floor — config.min_lot → config.min_order_btc
 
 **日付**: 2026-03-04
 **種別**: bugfix (CRITICAL — 本番 ERROR)
