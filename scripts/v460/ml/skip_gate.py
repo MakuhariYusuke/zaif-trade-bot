@@ -968,6 +968,8 @@ def train_and_save_skip_gate(
     raw_dir: Optional[Path] = None,
     output_path: Optional[Path] = None,
     *,
+    fill_df: Optional[pd.DataFrame] = None,
+    enriched_df: Optional[pd.DataFrame] = None,
     alpha: float = 10.0,
     threshold_bps: float = 0.0,
 ) -> SkipGate:
@@ -977,20 +979,25 @@ def train_and_save_skip_gate(
         results_dir: fill_records_*.jsonl のディレクトリ.
         raw_dir: raw data ディレクトリ.
         output_path: 出力先 pkl.
+        fill_df: 事前ロード済み fill records (指定時は load_fill_records を省略)。
+        enriched_df: 事前エンリッチ済みデータ (指定時は load/enrich を省略)。
         alpha: Ridge の正則化パラメータ.
         threshold_bps: スキップ閾値 (bps).
 
     Returns:
         学習済み SkipGate.
     """
-    from scripts.v460.ml.data_loader import load_fill_records
-    from scripts.v460.ml.feature_enricher import (
-        build_pnl_features,
-        enrich_fill_records,
-    )
+    from scripts.v460.ml.feature_enricher import build_pnl_features
 
-    df = load_fill_records(results_dir)
-    enriched_df = enrich_fill_records(df, raw_dir=raw_dir)
+    if enriched_df is None:
+        if fill_df is None:
+            from scripts.v460.ml.data_loader import load_fill_records
+
+            fill_df = load_fill_records(results_dir)
+        from scripts.v460.ml.feature_enricher import enrich_fill_records
+
+        enriched_df = enrich_fill_records(fill_df, raw_dir=raw_dir)
+
     X, y = build_pnl_features(enriched_df)
 
     # 059# P0-1: Pipeline化
@@ -1037,6 +1044,8 @@ def train_and_save_as_skip_gate(
     raw_dir: Optional[Path] = None,
     output_path: Optional[Path] = None,
     *,
+    fill_df: Optional[pd.DataFrame] = None,
+    enriched_df: Optional[pd.DataFrame] = None,
     as_threshold: float = 0.6,
     k: int = 8,
 ) -> SkipGate:
@@ -1049,6 +1058,8 @@ def train_and_save_as_skip_gate(
         results_dir: fill_records_*.jsonl のディレクトリ.
         raw_dir: raw data ディレクトリ.
         output_path: 出力先 pkl.
+        fill_df: 事前ロード済み fill records (指定時は load_fill_records を省略)。
+        enriched_df: 事前エンリッチ済みデータ (指定時は load/enrich を省略)。
         as_threshold: AS 確率のスキップ閾値.
         k: SelectKBest の k.
 
@@ -1058,14 +1069,19 @@ def train_and_save_as_skip_gate(
     from sklearn.feature_selection import SelectKBest, f_classif
     from sklearn.linear_model import LogisticRegression
 
-    from scripts.v460.ml.data_loader import load_fill_records
     from scripts.v460.ml.feature_enricher import (
         build_preorder_as_features,
-        enrich_fill_records,
     )
 
-    df = load_fill_records(results_dir)
-    enriched_df = enrich_fill_records(df, raw_dir=raw_dir)
+    if enriched_df is None:
+        if fill_df is None:
+            from scripts.v460.ml.data_loader import load_fill_records
+
+            fill_df = load_fill_records(results_dir)
+        from scripts.v460.ml.feature_enricher import enrich_fill_records
+
+        enriched_df = enrich_fill_records(fill_df, raw_dir=raw_dir)
+
     # 096# feature contract 統一: 注文前に観測可能な特徴量のみで学習
     X, y = build_preorder_as_features(enriched_df)
 

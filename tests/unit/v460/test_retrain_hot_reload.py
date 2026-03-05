@@ -92,6 +92,27 @@ def _save_gate_to(gate: SkipGate, path: Path) -> None:
     gate.save(path)
 
 
+def _identity_enrich(fill_df: pd.DataFrame, **_: object) -> pd.DataFrame:
+    """enrich を省略しつつ、学習に必要な最小特徴量を補完する軽量ヘルパー."""
+    enriched = fill_df.copy()
+    defaults: dict[str, float] = {
+        "trade_count_60s": 0.0,
+        "buy_ratio": 0.5,
+        "trade_flow_imbalance_60s": 0.0,
+        "avg_trade_size": 0.0,
+        "price_velocity_bps": 0.0,
+        "vpin_60s": 0.5,
+        "spread_bps_ob": 0.0,
+        "depth_imbalance_ob": 0.0,
+    }
+    for col, value in defaults.items():
+        if col not in enriched.columns:
+            enriched[col] = value
+            continue
+        enriched[col] = pd.to_numeric(enriched[col], errors="coerce").fillna(value)
+    return enriched
+
+
 # =====================================================================
 # Hot-Reload テスト
 # =====================================================================
@@ -488,7 +509,12 @@ class TestRetrainModel:
             cfg["latest_run_only"] = False
             cfg["exclude_missing_run_id"] = False
             cfg["lgbm_n_estimators"] = 30
-            result = retrain_model(cfg)
+            cfg["enriched_cache_enabled"] = False
+            with patch(
+                "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
+                side_effect=_identity_enrich,
+            ):
+                result = retrain_model(cfg)
             assert result["status"] == "skipped"
             assert "insufficient new samples" in result.get("reason", "")
 
@@ -654,8 +680,13 @@ class TestBalanceForcedSwitchFilter:
             cfg["latest_run_only"] = False
             cfg["exclude_missing_run_id"] = False
             cfg["lgbm_n_estimators"] = 30
+            cfg["enriched_cache_enabled"] = False
 
-            result = retrain_model(cfg)
+            with patch(
+                "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
+                side_effect=_identity_enrich,
+            ):
+                result = retrain_model(cfg)
             # 30 - 10 forced = 20 records usable; filled_records should be <= 20
             assert result["status"] in ("deployed", "deployed_verified", "skipped")
             if result["status"] in ("deployed", "deployed_verified"):
@@ -692,8 +723,13 @@ class TestBalanceForcedSwitchFilter:
             cfg["use_ob_features"] = False
             cfg["latest_run_only"] = False
             cfg["exclude_missing_run_id"] = False
+            cfg["enriched_cache_enabled"] = False
             # Should not raise
-            result = retrain_model(cfg)
+            with patch(
+                "scripts.v460.ml.retrain_scheduler.enrich_fill_records",
+                side_effect=_identity_enrich,
+            ):
+                result = retrain_model(cfg)
             assert result["status"] in ("skipped", "deployed")
 
 

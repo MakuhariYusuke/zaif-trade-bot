@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 290# test+perf: 追加DRY整理 + 実データ統合の重複排除 + 本体再利用経路追加 (2026-03-06)
+
+### Changed
+- **`tests/unit/v460` 再短縮**: `--no-cov` で **47.86s**（3919 passed）
+- **`test_retrain_hot_reload.py`**:
+  - `insufficient_new_samples` / `balance_forced` 系で `enrich_fill_records` を軽量モック化し、
+    目的ロジック（新規サンプル不足・forced除外）に集中
+  - テスト内専用 `identity_enrich` で必要特徴量を補完しつつ重い enrich を回避
+- **`test_enricher_skip_gate.py`**:
+  - `Test058Integration` に `@pytest.mark.slow` + `@pytest.mark.integration` を付与
+  - `real_enriched_df` class fixture を追加し、実データ enrich を1回に集約
+- **`test_fill_quality.py` DRY化**:
+  - `ztb.metrics.fill_quality` のメソッド内 import を大幅集約
+  - `inspect/os/time/Path/yaml/unittest.mock` 重複 import を整理
+  - method-level import: **160 -> 48**
+
+### Added
+- **本体再利用経路（`skip_gate.py`）**:
+  - `train_and_save_skip_gate()` に `fill_df` / `enriched_df` 引数を追加
+  - `train_and_save_as_skip_gate()` に `fill_df` / `enriched_df` 引数を追加
+  - 既存呼び出しは互換維持、事前ロード済みデータの再利用で重複 I/O/enrich を回避可能
+
+---
+
 ## 289# perf: 本体コード最適化 (retrain/manifest) + DRY化 (2026-03-06)
 
 ### Changed

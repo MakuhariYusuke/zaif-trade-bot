@@ -7,22 +7,44 @@ fill_quality.py の FillRecord / FillMetrics / compute / judgment を検証す�
 from __future__ import annotations
 
 import json
+import inspect
+import os
 import tempfile
 import time
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
 import pytest
+import yaml  # type: ignore[import-untyped]
 from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
 from ztb.metrics.fill_quality import (
     FillMetrics,
     FillRecord,
+    PnlWinAccumulator,
     _quarantine_reason,
+    apply_fill_record_filters,
+    build_fill_record,
+    build_skip_fill_record,
     compute_fill_metrics,
+    compute_hourly_metrics,
+    compute_record_pnl_jpy,
+    compute_regime_metrics,
+    compute_round_trip_metrics,
+    fill_records_to_dataframe,
     filter_clean_records,
     g1_1_judgment,
     g1_1_quick_judgment,
     g1_2_full_judgment,
+    iter_fill_record_objects_glob,
+    iter_fill_records,
+    iter_fill_records_glob,
+    list_fill_record_files,
+    load_fill_record_objects_glob,
+    load_fill_records,
+    load_fill_records_glob,
+    partition_clean_records,
+    save_fill_records,
 )
 
 _FAST_STATUS_UNKNOWN_RETRY_DELAYS = [0.0, 0.0, 0.0]
@@ -73,7 +95,6 @@ class TestFillRecord:
         assert not hasattr(r, "extra_key")
 
     def test_build_skip_fill_record_applies_known_extra_only(self) -> None:
-        from ztb.metrics.fill_quality import build_skip_fill_record
 
         r = build_skip_fill_record(
             cycle_id="skip_1",
@@ -99,7 +120,6 @@ class TestFillRecord:
         assert not hasattr(r, "unknown_extra")
 
     def test_build_fill_record_ignores_unknown_fields(self) -> None:
-        from ztb.metrics.fill_quality import build_fill_record
 
         r = build_fill_record(
             cycle_id="base_1",
@@ -118,7 +138,6 @@ class TestFillRecord:
         assert not hasattr(r, "stray_field")
 
     def test_compute_record_pnl_jpy(self) -> None:
-        from ztb.metrics.fill_quality import FillRecord, compute_record_pnl_jpy
 
         r = FillRecord(
             cycle_id="pnl_1",
@@ -317,14 +336,12 @@ class TestComputeFillMetrics:
         return records
 
     def test_empty_records(self) -> None:
-        from ztb.metrics.fill_quality import FillMetrics, compute_fill_metrics
 
         m = compute_fill_metrics([])
         assert m.total_orders == 0
         assert m.fill_rate_p90 == 0.0
 
     def test_all_filled(self) -> None:
-        from ztb.metrics.fill_quality import compute_fill_metrics
 
         records = self._make_records(n=50, fill_rate=1.0, days=2)
         m = compute_fill_metrics(records)
@@ -335,7 +352,6 @@ class TestComputeFillMetrics:
         assert m.cancel_ratio == 0.0
 
     def test_partial_fill(self) -> None:
-        from ztb.metrics.fill_quality import compute_fill_metrics
 
         records = self._make_records(n=100, fill_rate=0.7, days=5)
         m = compute_fill_metrics(records)
@@ -658,7 +674,6 @@ class TestG11QuickJudgment:
     """G1.1-quick (72h Kill Gate) テスト — 116# / 115# レビュー反映."""
 
     def _make_metrics(self, **overrides) -> "FillMetrics":
-        from ztb.metrics.fill_quality import FillMetrics
         defaults = dict(
             total_orders=400,
             filled_orders=280,
@@ -789,7 +804,6 @@ class TestG12FullJudgment:
     """G1.2-full (168h Qualification Gate) テスト — 116# / 115# レビュー反映."""
 
     def _make_metrics(self, **overrides) -> "FillMetrics":
-        from ztb.metrics.fill_quality import FillMetrics
         defaults = dict(
             total_orders=1057,
             filled_orders=714,
@@ -897,7 +911,6 @@ class TestComputeFillMetricsAttempted:
 
     def test_skip_gate_fields_populated(self) -> None:
         """skip_gate_skipped=True のレコードが正しく除外される."""
-        import time
         base_ts = time.time()
         records = []
         # 10 filled
@@ -934,7 +947,6 @@ class TestComputeFillMetricsAttempted:
 
     def test_no_skip_gate_records(self) -> None:
         """skip_gate なし → attempted = total."""
-        import time
         base_ts = time.time()
         records = [
             FillRecord(
@@ -952,7 +964,6 @@ class TestComputeFillMetricsAttempted:
 
     def test_cancel_reason_breakdown(self) -> None:
         """117# cancel reason 内訳が正しく集計される."""
-        import time
         base_ts = time.time()
         records = []
         # 5 filled
@@ -1006,7 +1017,6 @@ class TestFillRecordIO:
     """FillRecord の JSONL I/O テスト."""
 
     def test_save_load_roundtrip(self) -> None:
-        from ztb.metrics.fill_quality import FillRecord, load_fill_records, save_fill_records
 
         records = [
             FillRecord(
@@ -1028,7 +1038,6 @@ class TestFillRecordIO:
             assert loaded[4].side == "buy"
 
     def test_iter_load_roundtrip(self) -> None:
-        from ztb.metrics.fill_quality import FillRecord, iter_fill_records, save_fill_records
 
         records = [
             FillRecord(
@@ -1049,17 +1058,11 @@ class TestFillRecordIO:
             assert loaded[2].cycle_id == "iter_2"
 
     def test_load_nonexistent(self) -> None:
-        from ztb.metrics.fill_quality import load_fill_records
 
         records = load_fill_records("/nonexistent/path.jsonl")
         assert records == []
 
     def test_glob_load(self) -> None:
-        from ztb.metrics.fill_quality import (
-            FillRecord,
-            load_fill_records_glob,
-            save_fill_records,
-        )
 
         with tempfile.TemporaryDirectory() as tmpdir:
             for day in ["20260101", "20260102"]:
@@ -1079,11 +1082,6 @@ class TestFillRecordIO:
             assert len(all_records) == 6
 
     def test_glob_load_deduplicates_emergency_records(self) -> None:
-        from ztb.metrics.fill_quality import (
-            FillRecord,
-            load_fill_records_glob,
-            save_fill_records,
-        )
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -1104,11 +1102,6 @@ class TestFillRecordIO:
             assert all_records[0].cycle_id == "dup_1"
 
     def test_iter_glob_load_roundtrip(self) -> None:
-        from ztb.metrics.fill_quality import (
-            FillRecord,
-            iter_fill_records_glob,
-            save_fill_records,
-        )
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -1136,11 +1129,6 @@ class TestFillRecordIO:
             assert [r.cycle_id for r in loaded] == ["g_1", "g_2"]
 
     def test_iter_glob_load_can_exclude_emergency(self) -> None:
-        from ztb.metrics.fill_quality import (
-            FillRecord,
-            iter_fill_records_glob,
-            save_fill_records,
-        )
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -1175,7 +1163,6 @@ class TestFillRecordIO:
             assert [r.cycle_id for r in loaded] == ["main_1"]
 
     def test_fill_records_to_dataframe_accepts_iterator(self) -> None:
-        from ztb.metrics.fill_quality import FillRecord, fill_records_to_dataframe
 
         records = (
             FillRecord(
@@ -1193,11 +1180,6 @@ class TestFillRecordIO:
         assert list(df["order_price"]) == [100.0, 101.0]
 
     def test_iter_fill_record_objects_glob_roundtrip(self) -> None:
-        from ztb.metrics.fill_quality import (
-            FillRecord,
-            iter_fill_record_objects_glob,
-            save_fill_records,
-        )
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -1239,7 +1221,6 @@ class TestFillRecordIO:
             assert [record["cycle_id"] for record in loaded] == ["obj_1", "obj_2"]
 
     def test_apply_fill_record_filters_handles_invalid_timestamp(self) -> None:
-        from ztb.metrics.fill_quality import apply_fill_record_filters
 
         records = [
             {"cycle_id": "a", "timestamp": "bad", "run_id": "r1", "git_sha": "abc123"},
@@ -1258,7 +1239,6 @@ class TestFillRecordIO:
         assert applied["git_sha"] == "abc"
 
     def test_list_fill_record_files_supports_date_range(self) -> None:
-        from ztb.metrics.fill_quality import FillRecord, list_fill_record_files, save_fill_records
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -1296,7 +1276,6 @@ class TestFillRecordIO:
             assert [path.name for path in files] == ["fill_records_20260102.jsonl"]
 
     def test_load_fill_record_objects_glob_supports_date_range(self) -> None:
-        from ztb.metrics.fill_quality import FillRecord, load_fill_record_objects_glob, save_fill_records
 
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -1335,7 +1314,6 @@ class TestFillRecordIO:
 
     def test_load_corrupt_lines_skipped(self) -> None:
         """032# #19: 破損行はスキップして残りを正常読込."""
-        from ztb.metrics.fill_quality import FillRecord, load_fill_records
 
         valid_record = FillRecord(
             cycle_id="valid_0",
@@ -1388,7 +1366,6 @@ class TestGateCheckG11:
             assert result["gate_result"] == "NO_DATA"
 
     def test_g1_1_with_data(self) -> None:
-        from ztb.metrics.fill_quality import FillRecord, save_fill_records
         from scripts.v460.run_gate_check import run_g1_1
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1474,7 +1451,6 @@ class TestAdapterRealModeP20:
 
     def test_get_current_price_has_no_not_implemented(self) -> None:
         """get_current_price がreal modeで NotImplementedError を投げないことの静的確認."""
-        import inspect
         from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
         source = inspect.getsource(CoincheckAdapter.get_current_price)
@@ -1482,21 +1458,18 @@ class TestAdapterRealModeP20:
         assert "NotImplementedError" not in source
 
     def test_get_order_status_has_no_not_implemented(self) -> None:
-        import inspect
         from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
         source = inspect.getsource(CoincheckAdapter.get_order_status)
         assert "NotImplementedError" not in source
 
     def test_get_open_orders_has_no_not_implemented(self) -> None:
-        import inspect
         from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
         source = inspect.getsource(CoincheckAdapter.get_open_orders)
         assert "NotImplementedError" not in source
 
     def test_get_positions_has_no_not_implemented(self) -> None:
-        import inspect
         from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
         source = inspect.getsource(CoincheckAdapter.get_positions)
@@ -1559,7 +1532,6 @@ class TestFillTestRunnerSaveResilience:
 
     def test_try_save_batch_retry_on_failure(self, tmp_path: Path) -> None:
         """保存失敗時にリトライし、最終的に失敗を返す."""
-        from unittest.mock import patch
         bp = self._make_persistence(tmp_path)
         batch = [self._make_record()]
 
@@ -1572,7 +1544,6 @@ class TestFillTestRunnerSaveResilience:
 
     def test_try_save_batch_emergency_dump_after_3_failures(self, tmp_path: Path) -> None:
         """3回連続失敗で緊急ダンプが発動する."""
-        from unittest.mock import patch
         bp = self._make_persistence(tmp_path)
         bp._save_fail_count = 2  # 既に2回失敗
         batch = [self._make_record()]
@@ -1643,7 +1614,6 @@ class TestUnknownFillHandling:
 
     def _make_runner(self, tmp_path: Path) -> "FillTestRunner":
         """テスト用の FillTestRunner を作成 (adapter は AsyncMock)."""
-        from unittest.mock import AsyncMock, MagicMock
 
         adapter = AsyncMock()
         # get_orderbook の戻り値を設定
@@ -1689,7 +1659,6 @@ class TestUnknownFillHandling:
         self, tmp_path: Path,
     ) -> None:
         """get_order_status が None → retry で filled → filled=True."""
-        from unittest.mock import MagicMock
 
         runner = self._make_runner(tmp_path)
         filled_order = MagicMock()
@@ -1709,7 +1678,6 @@ class TestUnknownFillHandling:
         self, tmp_path: Path,
     ) -> None:
         """get_order_status が直接 filled → 通常の filled 処理."""
-        from unittest.mock import MagicMock
 
         runner = self._make_runner(tmp_path)
         filled_order = MagicMock()
@@ -1732,7 +1700,6 @@ class TestBug11CancelRaceCondition:
     """047# Bug11: cancel_order 失敗時に get_order_status で fill を再確認."""
 
     def _make_runner(self, tmp_path: Path) -> "FillTestRunner":
-        from unittest.mock import AsyncMock, MagicMock
 
         adapter = AsyncMock()
         ob_mock = MagicMock()
@@ -1755,7 +1722,6 @@ class TestBug11CancelRaceCondition:
     @pytest.mark.asyncio
     async def test_cancel_fail_detects_fill(self, tmp_path: Path) -> None:
         """cancel_order が "Failed to cancel" で失敗 → recheck で filled 検出."""
-        from unittest.mock import MagicMock
 
         runner = self._make_runner(tmp_path)
         # cancel_order fails with "Failed to cancel"
@@ -1805,9 +1771,6 @@ class TestInterimJudgment:
 
     def test_interim_3_days_200_samples(self) -> None:
         """n>=200 & 3日 → INTERIM (not FINAL)."""
-        from ztb.metrics.fill_quality import (
-            FillRecord, compute_fill_metrics, g1_1_judgment,
-        )
 
         records = []
         base_ts = 1700006400.0
@@ -1831,9 +1794,6 @@ class TestInterimJudgment:
 
     def test_final_7_days(self) -> None:
         """n>=200 & 7日 → FINAL."""
-        from ztb.metrics.fill_quality import (
-            FillRecord, compute_fill_metrics, g1_1_judgment,
-        )
 
         records = []
         base_ts = 1700006400.0
@@ -1857,9 +1817,6 @@ class TestInterimJudgment:
 
     def test_provisional_insufficient(self) -> None:
         """n<200 or days<3 → PROVISIONAL."""
-        from ztb.metrics.fill_quality import (
-            FillRecord, compute_fill_metrics, g1_1_judgment,
-        )
 
         records = [
             FillRecord(
@@ -1907,7 +1864,6 @@ class TestASCoverage:
 
     def test_coverage_in_dict(self) -> None:
         """to_dict() に coverage が含まれる."""
-        from ztb.metrics.fill_quality import FillMetrics
 
         m = FillMetrics(as_coverage=5, as_raw_coverage=3)
         d = m.to_dict()
@@ -1926,7 +1882,6 @@ class TestTimeFilterLogThrottle:
 
     def test_in_time_filter_flag_init(self) -> None:
         """_in_time_filter が False で初期化される (121# TimeFilter に委譲)."""
-        from unittest.mock import AsyncMock
 
         adapter = AsyncMock()
         config = FillTestConfig(enable_time_filter=True, skip_utc_hours=[0, 1])
@@ -2026,7 +1981,6 @@ class TestFilterCleanRecordsExpanded:
 
     def test_partition_accepts_generator(self) -> None:
         """iterable 入力でも clean/quarantine 分離できる."""
-        from ztb.metrics.fill_quality import partition_clean_records
 
         records = (
             rec for rec in [
@@ -2162,7 +2116,6 @@ class TestAtomicLock:
 
     def test_acquire_creates_lockfile(self, tmp_path: Path) -> None:
         """ロックファイルが作成される."""
-        from unittest.mock import AsyncMock
 
         adapter = AsyncMock()
         config = FillTestConfig(results_dir=str(tmp_path / "results"))
@@ -2171,14 +2124,11 @@ class TestAtomicLock:
         lock_path = runner._results_dir / "fill_test.lock"
         assert lock_path.exists()
         content = lock_path.read_text(encoding="utf-8")
-        import os
         assert str(os.getpid()) in content
         runner._release_lock()
 
     def test_acquire_blocks_second(self, tmp_path: Path) -> None:
         """既存の有効ロック → RuntimeError."""
-        from unittest.mock import AsyncMock
-        import os
 
         adapter = AsyncMock()
         config = FillTestConfig(results_dir=str(tmp_path / "results"))
@@ -2195,7 +2145,6 @@ class TestAtomicLock:
 
     def test_atomic_exclusive_create(self, tmp_path: Path) -> None:
         """open(O_CREAT|O_EXCL) で排他的作成が行われる."""
-        import os
         lock_path = tmp_path / "test.lock"
 
         # First create succeeds
@@ -2217,7 +2166,6 @@ class TestAPIResponseLogLevel:
 
     def test_api_response_log_is_debug(self) -> None:
         """adapter.py の API Response ログが logger.debug であることを確認."""
-        import inspect
         from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
         source = inspect.getsource(CoincheckAdapter._make_api_request)
@@ -2243,7 +2191,6 @@ class Test049CleanOnlyMainJudgment:
 
     def test_main_uses_filter_clean_records(self) -> None:
         """main() のソースに filter_clean_records が含まれることを確認."""
-        import inspect
         import scripts.v460.lib.fill_test_cli as cli_mod
 
         source = inspect.getsource(cli_mod)
@@ -2256,7 +2203,6 @@ class Test049CleanOnlyMainJudgment:
 
     def test_main_exit_code_uses_judgment_type(self) -> None:
         """049# §4-#1: 通常実行の exit code が judgment_type を参照."""
-        import inspect
         import scripts.v460.lib.fill_test_cli as cli_mod
 
         source = inspect.getsource(cli_mod)
@@ -2267,7 +2213,6 @@ class Test049CleanOnlyMainJudgment:
 
     def test_main_has_data_quality_output(self) -> None:
         """049# §6.1-#4: judgment に data_quality セクションが含まれる."""
-        import inspect
         import scripts.v460.lib.fill_test_cli as cli_mod
 
         source = inspect.getsource(cli_mod)
@@ -2326,7 +2271,6 @@ class Test049E3Sampling:
 
     def test_e3_sampling_ratio_zero_skips_all(self) -> None:
         """e3_sampling_ratio=0.0 で E3 計測がスキップされる (ソース確認)."""
-        import inspect
         from scripts.v460.lib.pnl_measurer import PnlMeasurer
 
         # 120#: E3 logic extracted to PnlMeasurer.measure
@@ -2362,7 +2306,6 @@ class Test049SideOffset:
         base_offset_ratio_buy/sell を参照する設計に変更。
         120#: maker_price.py に抽出済み。
         """
-        import inspect
         from scripts.v460.lib.maker_price import MakerPriceCalculator
 
         source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
@@ -2400,7 +2343,6 @@ class Test049FastFillDefense:
 
     def test_fast_fill_boost_flag_initialized(self) -> None:
         """100# FillTestRunner が FastFillDefense インスタンスを持つ."""
-        import inspect
 
         source = inspect.getsource(FillTestRunner.__init__)
         assert "_fast_fill_defense" in source
@@ -2410,7 +2352,6 @@ class Test049FastFillDefense:
 
         265# extract: post-cycle 処理は _process_post_cycle に分離。
         """
-        import inspect
 
         source = inspect.getsource(FillTestRunner._process_post_cycle)
         assert "fast_fill_defense" in source
@@ -2457,7 +2398,6 @@ class Test050FastFillDefenseRestore:
         新: FastFillDefense クラスに per-side 状態管理を委譲
         120#: offset 管理は MakerPriceCalculator に移動
         """
-        import inspect
 
         source = inspect.getsource(FillTestRunner.__init__)
         assert "_fast_fill_defense" in source
@@ -2469,7 +2409,6 @@ class Test050FastFillDefenseRestore:
 
         265# extract: post-cycle 処理は _process_post_cycle に分離。
         """
-        import inspect
 
         source = inspect.getsource(FillTestRunner._process_post_cycle)
         # 100# FastFillDefense の evaluate_fill / reset_on_unfilled で管理
@@ -2485,7 +2424,6 @@ class Test050EffectiveOffsetRecord:
 
         120#: maker_price.py に抽出済み。MakerPriceResult NamedTuple で返却。
         """
-        import inspect
         from scripts.v460.lib.maker_price import MakerPriceCalculator
 
         source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
@@ -2495,7 +2433,6 @@ class Test050EffectiveOffsetRecord:
 
     def test_run_single_cycle_unpacks_3_values(self) -> None:
         """run_single_cycle が 3 値展開を行う."""
-        import inspect
 
         source = inspect.getsource(FillTestRunner.run_single_cycle)
         assert "effective_offset_ratio" in source
@@ -2524,7 +2461,6 @@ class Test051RoundTripMetrics:
 
     def test_basic_round_trip(self) -> None:
         """buy→sell のシンプルなペアリング."""
-        from ztb.metrics.fill_quality import compute_round_trip_metrics
 
         records = [
             self._make_filled_record("buy", 14_500_000, 1000.0),
@@ -2541,7 +2477,6 @@ class Test051RoundTripMetrics:
 
     def test_multiple_round_trips(self) -> None:
         """複数ペアの FIFO マッチング."""
-        from ztb.metrics.fill_quality import compute_round_trip_metrics
 
         records = [
             self._make_filled_record("buy", 14_500_000, 1000.0),
@@ -2557,7 +2492,6 @@ class Test051RoundTripMetrics:
 
     def test_unpaired_buys(self) -> None:
         """sell が不足する場合の未ペア buy."""
-        from ztb.metrics.fill_quality import compute_round_trip_metrics
 
         records = [
             self._make_filled_record("buy", 14_500_000, 1000.0),
@@ -2570,7 +2504,6 @@ class Test051RoundTripMetrics:
 
     def test_empty_records(self) -> None:
         """空リスト."""
-        from ztb.metrics.fill_quality import compute_round_trip_metrics
 
         metrics, trips = compute_round_trip_metrics([])
         assert metrics.total_pairs == 0
@@ -2578,7 +2511,6 @@ class Test051RoundTripMetrics:
 
     def test_sell_without_buy_ignored(self) -> None:
         """buy なしの sell はペアリングされない."""
-        from ztb.metrics.fill_quality import compute_round_trip_metrics
 
         records = [
             self._make_filled_record("sell", 14_500_000, 1000.0),
@@ -2600,7 +2532,6 @@ class TestPnlWinAccumulator:
     """勝率付き PnL 集計 helper のテスト."""
 
     def test_tracks_mean_and_win_rate(self) -> None:
-        from ztb.metrics.fill_quality import PnlWinAccumulator
 
         acc = PnlWinAccumulator()
         acc.add(None)
@@ -2646,7 +2577,6 @@ class Test051RegimeMetrics:
 
     def test_basic_regime_grouping(self) -> None:
         """レジーム別に正しくグループされる."""
-        from ztb.metrics.fill_quality import compute_regime_metrics
 
         records = [
             self._make_record("trending", pnl=1.0, adverse=False),
@@ -2664,7 +2594,6 @@ class Test051RegimeMetrics:
 
     def test_unknown_regime(self) -> None:
         """regime=None は 'unknown' にマッピング."""
-        from ztb.metrics.fill_quality import compute_regime_metrics
 
         records = [self._make_record("unknown")]
         result = compute_regime_metrics(records)
@@ -2673,7 +2602,6 @@ class Test051RegimeMetrics:
 
     def test_empty_records(self) -> None:
         """空リスト."""
-        from ztb.metrics.fill_quality import compute_regime_metrics
 
         result = compute_regime_metrics([])
         assert result == []
@@ -2689,7 +2617,6 @@ class Test051HourlyMetrics:
 
     def test_basic_hourly(self) -> None:
         """UTC hour 別にグループされる."""
-        from ztb.metrics.fill_quality import FillRecord, compute_hourly_metrics
         from datetime import datetime, timezone
 
         # UTC 10:00 と 13:00 のレコード
@@ -2731,7 +2658,6 @@ class Test051BalanceAutoShrink:
 
     def test_balance_shrink_fields_exist(self) -> None:
         """BalanceChecker に balance_shrink 関連フィールドがある (121# 委譲)."""
-        import inspect
         from scripts.v460.lib.balance_checker import BalanceChecker
 
         source = inspect.getsource(BalanceChecker.__init__)
@@ -2746,7 +2672,6 @@ class Test051BalanceAutoShrink:
 
         265# extract: loss_cap 処理は _process_post_cycle に分離。
         """
-        import inspect
 
         # balance_shrink は run_continuous 内 (guard chain)
         rc_source = inspect.getsource(FillTestRunner.run_continuous)
@@ -2772,7 +2697,6 @@ class Test051MonitorExtensions:
 
     def test_print_report_accepts_clean_quarantine(self) -> None:
         """print_report が clean_count/quarantine_count を受け付ける."""
-        import inspect
         from scripts.v460.monitor_fill_test import print_report
 
         sig = inspect.signature(print_report)
@@ -2782,7 +2706,6 @@ class Test051MonitorExtensions:
 
     def test_run_monitor_uses_clean_records(self) -> None:
         """run_monitor が clean/quarantine 分離を使う."""
-        import inspect
         from scripts.v460.monitor_fill_test import run_monitor
 
         source = inspect.getsource(run_monitor)
@@ -2792,7 +2715,6 @@ class Test051MonitorExtensions:
         assert "quarantine_records" in source
 
     def test_run_monitor_uses_shared_pnl_helper(self) -> None:
-        import inspect
         from scripts.v460.monitor_fill_test import _check_cumulative_loss
 
         source = inspect.getsource(_check_cumulative_loss)
@@ -2804,11 +2726,6 @@ class Test051MonitorExtensions:
             print_report,  # noqa: F401
         )
         # インポートテスト (NameError にならないことを確認)
-        from ztb.metrics.fill_quality import (
-            compute_hourly_metrics,  # noqa: F401
-            compute_regime_metrics,  # noqa: F401
-            compute_round_trip_metrics,  # noqa: F401
-        )
 
 
 # ======================================================================
@@ -2825,7 +2742,6 @@ class Test052AdaptSellOffsetSync:
         096# 状態分離: _base_offset_ratio_sell を直接更新する設計に変更。
         120#: adaptation_engine.py に抽出済み。
         """
-        import inspect
         from scripts.v460.lib.adaptation_engine import AdaptationEngine
 
         source = inspect.getsource(AdaptationEngine.try_auto_adapt)
@@ -2836,8 +2752,6 @@ class Test052AdaptSellOffsetSync:
 
     def test_yaml_sell_offset_updated(self) -> None:
         """121# A2 で sell offset が 0.18 に更新されている."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
 
         yaml_path = Path("configs/v460/fill_test.yaml")
         with open(yaml_path) as f:
@@ -2846,8 +2760,6 @@ class Test052AdaptSellOffsetSync:
 
     def test_yaml_skip_utc_hours_buy_includes_12(self) -> None:
         """163# Step2: time_filter buy=[16]のみ。旧 UTC08/18 は regime_adaptive で復元."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
 
         yaml_path = Path("configs/v460/fill_test.yaml")
         with open(yaml_path) as f:
@@ -2860,8 +2772,6 @@ class Test052AdaptSellOffsetSync:
 
     def test_yaml_deadzone_updated(self) -> None:
         """052# で deadzone が 2.5 に更新されている."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
 
         yaml_path = Path("configs/v460/fill_test.yaml")
         with open(yaml_path) as f:
@@ -2870,7 +2780,6 @@ class Test052AdaptSellOffsetSync:
 
     def test_dynamic_lot_shrink_in_balance_check(self) -> None:
         """052# BalanceChecker にロット自動縮小が含まれる (121# 抽出)."""
-        import inspect
         from scripts.v460.lib.balance_checker import BalanceChecker
 
         source = inspect.getsource(BalanceChecker._check_buy)
@@ -2886,8 +2795,6 @@ class Test052AdaptSellOffsetSync:
 
     def test_yaml_skip_utc_hours_side_specific_089(self) -> None:
         """169# time_filter全廃: 条件ベースフィルタに完全移行."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
 
         yaml_path = Path("configs/v460/fill_test.yaml")
         with open(yaml_path) as f:
@@ -2907,7 +2814,6 @@ class Test052AdaptSellOffsetSync:
 
         120#: maker_price.py に抽出済み。
         """
-        import inspect
         from scripts.v460.lib.maker_price import MakerPriceCalculator
 
         source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
@@ -2923,8 +2829,6 @@ class Test052AdaptSellOffsetSync:
 
     def test_yaml_trending_offset_boost(self) -> None:
         """052# で trending_offset_boost が YAML に設定されている."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
 
         yaml_path = Path("configs/v460/fill_test.yaml")
         with open(yaml_path) as f:
@@ -2933,7 +2837,6 @@ class Test052AdaptSellOffsetSync:
 
     def test_balance_shrink_uses_min_order_btc(self) -> None:
         """052# balance_shrink の最低ロットが min_order_btc を使用する (121# YAML 外部化)."""
-        import inspect
 
         source = inspect.getsource(FillTestRunner.run_continuous)
         assert "min_order_btc" in source
@@ -2949,8 +2852,6 @@ class Test107TimeFilterDynamicGating:
 
     def test_yaml_sell_utc17_unblocked(self) -> None:
         """107# SELL UTC17 は +0.65 bps なのでブロック解除済み."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
 
         yaml_path = Path("configs/v460/fill_test.yaml")
         with open(yaml_path) as f:
@@ -2960,8 +2861,6 @@ class Test107TimeFilterDynamicGating:
 
     def test_yaml_skip_gate_target_rates_raised(self) -> None:
         """107# SkipGate target_skip_rate が引き上げられている."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
 
         yaml_path = Path("configs/v460/fill_test.yaml")
         with open(yaml_path) as f:
@@ -2972,8 +2871,6 @@ class Test107TimeFilterDynamicGating:
 
     def test_yaml_volatility_guard_section(self) -> None:
         """107# volatility_guard セクションが YAML に存在する."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
 
         yaml_path = Path("configs/v460/fill_test.yaml")
         with open(yaml_path) as f:
@@ -3001,7 +2898,6 @@ class Test107TimeFilterDynamicGating:
 
         120#: maker_price.py に抽出済み。
         """
-        import inspect
         from scripts.v460.lib.maker_price import MakerPriceCalculator
 
         source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
@@ -3019,8 +2915,6 @@ class Test107TimeFilterDynamicGating:
 
     def test_vg_inv_skew_damping_yaml_mapping(self) -> None:
         """168# YAML 'inv_skew_damping_enabled' が VG セクションで読み込まれる."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
 
         yaml_path = Path("configs/v460/fill_test.yaml")
         with open(yaml_path) as f:
@@ -3031,7 +2925,6 @@ class Test107TimeFilterDynamicGating:
 
     def test_vg_inv_skew_damping_code_present(self) -> None:
         """168# InvSkew/VG damping ロジックがソースに含まれる."""
-        import inspect
         from scripts.v460.lib.maker_price import MakerPriceCalculator
 
         source = inspect.getsource(MakerPriceCalculator)
@@ -3157,8 +3050,6 @@ class Test107TimeFilterDynamicGating:
 
     def test_p2c1_sell_guard_max_spread_yaml(self) -> None:
         """168# P2-C1: sell_guard max_spread_jpy が 5000 に更新済み."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
 
         with open(Path("configs/v460/fill_test.yaml")) as f:
             cfg = yaml.safe_load(f)
@@ -3169,8 +3060,6 @@ class Test107TimeFilterDynamicGating:
 
     def test_p2c2_reprice_tighten_yaml(self) -> None:
         """168# P2-C2: stale_order.reprice_tighten が YAML に設定済み."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
 
         with open(Path("configs/v460/fill_test.yaml")) as f:
             cfg = yaml.safe_load(f)
@@ -3186,8 +3075,6 @@ class Test107TimeFilterDynamicGating:
 
     def test_p2c3_reprice_skip_gate_offset_yaml(self) -> None:
         """168# P2-C3: stale_order.reprice_skip_gate_offset が YAML に設定済み."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
 
         with open(Path("configs/v460/fill_test.yaml")) as f:
             cfg = yaml.safe_load(f)
@@ -3206,7 +3093,6 @@ class Test107TimeFilterDynamicGating:
 
     def test_p2c3_reprice_skip_gate_offset_in_code(self) -> None:
         """168# P2-C3: order_monitor.py で reprice_skip_gate_offset が使用されている."""
-        import inspect
         from scripts.v460.lib.order_monitor import OrderMonitor
 
         source = inspect.getsource(OrderMonitor)
@@ -3223,14 +3109,12 @@ class Test107TimeFilterDynamicGating:
 
     def test_batch_persistence_used_in_run_continuous(self) -> None:
         """119# run_continuous 内で BatchPersistence.maybe_flush が使用されている."""
-        import inspect
 
         source = inspect.getsource(FillTestRunner.run_continuous)
         assert "_batch_persistence.maybe_flush" in source
 
     def test_vpin_caching_in_code(self) -> None:
         """107# VPIN が SkipGate features からキャッシュされている."""
-        import inspect
 
         # 113# R1: VPIN caching moved to _evaluate_skip_gate
         source = inspect.getsource(FillTestRunner._evaluate_skip_gate)
@@ -3246,7 +3130,6 @@ class TestHolmBonferroniPnL:
     """122# B2: g1_2_full_judgment の Holm-Bonferroni 補正テスト."""
 
     def _make_metrics(self, **overrides) -> "FillMetrics":
-        from ztb.metrics.fill_quality import FillMetrics
         defaults = dict(
             total_orders=1000,
             filled_orders=700,
@@ -3329,7 +3212,6 @@ class TestComputeMultiTimeframePnL:
 
     def test_pnl_60s_120s_populated(self) -> None:
         """PnL 60s/120s の mean/pvalue が算出される."""
-        import time
         base_ts = time.time()
         records = [
             FillRecord(
@@ -3349,7 +3231,6 @@ class TestComputeMultiTimeframePnL:
 
     def test_pnl_60s_120s_defaults_when_missing(self) -> None:
         """PnL 60s/120s データがない場合のデフォルト値."""
-        import time
         base_ts = time.time()
         records = [
             FillRecord(
@@ -3494,7 +3375,6 @@ class TestF4dPnLMeanFloor:
     """123# Gemini review Critical 1: PnL 平均が許容フロア未満なら WATCH/FAIL."""
 
     def _make_metrics(self, **overrides) -> "FillMetrics":
-        from ztb.metrics.fill_quality import FillMetrics
         defaults = dict(
             total_orders=1000,
             filled_orders=700,
