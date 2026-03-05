@@ -1598,8 +1598,11 @@ class FillLoopOrchestratorMixin:
                 if self._daily_drawdown_guard.is_side_halted(_alt):
                     # 両サイド封鎖 → 集約 halt と同等扱い
                     self._inc_guard_fire("per_side_dd_both_halt")  # 223#
-                    # 273# I3: 両サイド封鎖の空サイクルも halt カウントから除外
-                    self._daily_drawdown_guard.untick_side_halt()
+                    # 281# fix: 273# I3 の untick_side_halt() を除去
+                    # untick は halt カウントダウンを永久停止させ、
+                    # 日替わりリセットまでの長時間デッドロックの原因となる。
+                    # halt を自然満了させ、reanchor (269#) で解除後の
+                    # PnL 基準をリセットして安全に取引再開する。
                     await self._execute_skip(
                         st, side="none", cancel_reason=CR.PER_SIDE_DD_HALT,
                         flush_context="per_side_dd_both_halt",
@@ -1818,7 +1821,11 @@ class FillLoopOrchestratorMixin:
                         # ────────────────────────────────────────────
                         _ie_enabled = self.config.inventory_escape_enabled
                         _ie_duty = max(self.config.inventory_escape_duty_cycle, 1)
-                        if _ie_enabled and next_side == "sell":
+                        # 281# fix: Inventory Escape を双方向化
+                        # 269# 当初は sell 方向のみ (BTC 過剰在庫の縮退清算)
+                        # しかし逆パターン (BTC=0 + buy halt) でもデッドロック発生。
+                        # buy 方向でも degraded params で縮退取得を許可する。
+                        if _ie_enabled:
                             self._inventory_escape_duty_counter += 1
                             if _ie_duty > 1 and (self._inventory_escape_duty_counter % _ie_duty) != 1:
                                 # duty cycle スキップ: halt 貫通は控えめに
@@ -1849,10 +1856,12 @@ class FillLoopOrchestratorMixin:
                                 f"refusing to bypass halt (safety > liveness)"
                             )
                             self._inc_guard_fire("balance_forced_halt_block")
-                            # 273# I3: 空サイクルの halt カウント除外
-                            # この continue パスでは実質的な取引試行がないため
-                            # tick_side_halt() のデクリメントを補償する
-                            self._daily_drawdown_guard.untick_side_halt()
+                            # 281# fix: 273# I3 の untick_side_halt() を除去
+                            # balance_forced + halt_block の組合せでは untick が
+                            # halt カウントダウンを完全停止させ永久デッドロック化する。
+                            # (実例: BTC=0 + buy halt → 8時間以上の完全停止)
+                            # halt を自然にカウントダウンさせ、per_side_halt_cycles
+                            # 経過後に解除。reanchor (269#) が再halt 基準をリセット。
                             # 226# S2: balance_forced + halt_block で continue する際、
                             # toxic_veto のカウンタも減算する。
                             self._tick_toxic_veto("halt_block")

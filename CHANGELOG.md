@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 281# fix: balance_forced + per-side halt デッドロック修正 (2026-03-05)
+
+### Fixed
+- **CRITICAL: 永久デッドロック**: BTC=0 + buy per-side halt の組合せで 8 時間以上の完全取引停止。273# I3 の `untick_side_halt()` が halt カウントダウンを完全に停止させ、halt が永久に解除されない (halt_remaining=12 固定)
+- **`untick_side_halt()` 除去 (2箇所)**: `balance_forced_halt_block` / `per_side_dd_both_halt` のパスから除去。halt を自然にカウントダウンさせ、`per_side_halt_cycles` (=15, 30分) 経過後に自動解除。reanchor (269#) が解除後の PnL 基準をリセット
+- **Inventory Escape 双方向化**: 269# の sell 限定 (`next_side == "sell"`) を撤廃。buy 方向でも degraded params + duty cycle (1-in-5) で縮退取得を許可し、BTC=0 パターンのデッドロック脱出を可能に
+
+### Added
+- **テスト 15 件** (`test_281_deadlock_fix.py`): ソースコード構造検証 (untick 除去, IE 双方向化), halt カウントダウン動作, デッドロック・シナリオ再現, メソッド存続確認
+- **レビュードキュメント** (`docs/issues/281_deadlock_fix.md`): Codex/Gemini 外部レビュー用
+
+---
+
 ## 278# fix: degraded_liquidation lot floor (2026-03-04)
 
 ### Fixed
