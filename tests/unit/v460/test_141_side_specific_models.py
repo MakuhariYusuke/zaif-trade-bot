@@ -11,7 +11,9 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
+import logging
 import pickle
 import time
 from dataclasses import dataclass
@@ -22,13 +24,27 @@ from unittest.mock import MagicMock, patch, AsyncMock
 import numpy as np
 import pandas as pd
 import pytest
+import yaml
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+from scripts.v460.ml.retrain_scheduler import (
+    _DEFAULT_CONFIG,
+    _retrain_side_specific,
+    load_retrain_config,
+    retrain_model,
+)
+from scripts.v460.ml.skip_gate import SkipDecision, SkipGate, SkipGateConfig
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import Ridge
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from ztb.ml.online_monitor import OnlineMonitor, OnlineMonitorConfig
 
 try:
     import lightgbm  # noqa: F401
     _HAS_LIGHTGBM = True
 except ImportError:
     _HAS_LIGHTGBM = False
-
 
 # ---------------------------------------------------------------------------
 # §1: FillConfig — side 別モデルパスフィールド
@@ -38,7 +54,6 @@ class TestFillConfigSideModelPaths:
 
     def test_default_none(self) -> None:
         """デフォルトは None (統一モデルにフォールバック)."""
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         config = FillTestConfig()
         assert config.skip_gate_model_path_buy is None
@@ -46,7 +61,6 @@ class TestFillConfigSideModelPaths:
 
     def test_explicit_paths(self) -> None:
         """明示的にパスを指定できること."""
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         config = FillTestConfig(
             skip_gate_model_path_buy="models/v460/buy.pkl",
@@ -57,7 +71,6 @@ class TestFillConfigSideModelPaths:
 
     def test_yaml_parsing(self, tmp_path: Path) -> None:
         """YAML skip_gate セクションから model_path_buy/sell を読み取れること."""
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         yaml_content = {
             "symbol": "btc_jpy",
@@ -74,7 +87,6 @@ class TestFillConfigSideModelPaths:
         assert config.skip_gate_model_path_buy == "models/v460/buy.pkl"
         assert config.skip_gate_model_path_sell == "models/v460/sell.pkl"
 
-
 # ---------------------------------------------------------------------------
 # §2: retrain_scheduler — side_filter + _retrain_side_specific
 # ---------------------------------------------------------------------------
@@ -84,7 +96,6 @@ class TestRetrainSideFilter:
 
     def test_side_filter_in_result(self) -> None:
         """side_filter が result に記録されること."""
-        from scripts.v460.ml.retrain_scheduler import retrain_model
 
         cfg = {
             "model_path": "models/v460/test_side.pkl",
@@ -103,7 +114,6 @@ class TestRetrainSideFilter:
 
     def test_side_filter_insufficient_samples(self, tmp_path: Path) -> None:
         """side_min_samples 未満のデータ → skipped."""
-        import pandas as pd
 
         # fill_records を作成 (buy=3, sell=3 で min_samples=50 に足りない)
         records_dir = tmp_path / "results"
@@ -118,8 +128,6 @@ class TestRetrainSideFilter:
             "timestamp": [f"2026-03-01T00:0{i}:00Z" for i in range(6)],
         })
         df.to_json(records_dir / "fill_records_test.jsonl", orient="records", lines=True)
-
-        from scripts.v460.ml.retrain_scheduler import retrain_model
 
         cfg = {
             "model_path": str(tmp_path / "model.pkl"),
@@ -139,14 +147,12 @@ class TestRetrainSideFilter:
         assert "Insufficient buy samples" in result.get("reason", "")
         assert result.get("side_filter") == "buy"
 
-
 @pytest.mark.skipif(not _HAS_LIGHTGBM, reason="lightgbm not installed")
 class TestRetrainSideSpecificFunction:
     """141# §2: _retrain_side_specific 関数テスト."""
 
     def test_retrain_side_specific_calls_retrain_model(self, tmp_path: Path) -> None:
         """_retrain_side_specific が buy/sell 各 retrain_model を呼ぶこと."""
-        from scripts.v460.ml.retrain_scheduler import _retrain_side_specific
 
         history_path = tmp_path / "history.jsonl"
         cfg = {
@@ -172,7 +178,6 @@ class TestRetrainSideSpecificFunction:
 
     def test_retrain_side_specific_uses_target_per_side(self, tmp_path: Path) -> None:
         """side ごとに異なる target が使用されること."""
-        from scripts.v460.ml.retrain_scheduler import _retrain_side_specific
 
         history_path = tmp_path / "history.jsonl"
         calls: list[dict[str, Any]] = []
@@ -204,7 +209,6 @@ class TestRetrainSideSpecificFunction:
 
     def test_no_model_path_skips_side(self, tmp_path: Path) -> None:
         """model_path_buy/sell が空ならその side はスキップ."""
-        from scripts.v460.ml.retrain_scheduler import _retrain_side_specific
 
         history_path = tmp_path / "history.jsonl"
         cfg = {
@@ -227,7 +231,6 @@ class TestRetrainSideSpecificFunction:
 
     def test_history_written(self, tmp_path: Path) -> None:
         """side retrain 結果が history に書き込まれること."""
-        from scripts.v460.ml.retrain_scheduler import _retrain_side_specific
 
         history_path = tmp_path / "history.jsonl"
         cfg = {
@@ -252,17 +255,11 @@ class TestRetrainSideSpecificFunction:
             data = json.loads(line)
             assert "side_model" in data
 
-
 # ---------------------------------------------------------------------------
 # §3: SkipGateEvaluator — side 別モデルロード + ディスパッチ
 # ---------------------------------------------------------------------------
 def _create_mock_gate(tmp_path: Path, filename: str, target: str = "pnl30") -> Path:
     """テスト用 SkipGate pkl を作成."""
-    from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
-    from sklearn.impute import SimpleImputer
-    from sklearn.linear_model import Ridge
-    from sklearn.pipeline import Pipeline
-    from sklearn.preprocessing import StandardScaler
 
     feature_cols = ["side_buy", "spread_jpy", "offset_ratio"]
     pipeline = Pipeline([
@@ -271,7 +268,6 @@ def _create_mock_gate(tmp_path: Path, filename: str, target: str = "pnl30") -> P
         ("model", Ridge()),
     ])
     # Fit with dummy data
-    import pandas as pd
     X = pd.DataFrame(np.random.randn(10, 3), columns=feature_cols)
     y = np.random.randn(10)
     pipeline.fit(X, y)
@@ -288,14 +284,11 @@ def _create_mock_gate(tmp_path: Path, filename: str, target: str = "pnl30") -> P
     gate.save(path)
     return path
 
-
 class TestEvaluatorSideDispatch:
     """141# §3: SkipGateEvaluator の side 別モデルディスパッチ."""
 
     def test_select_gate_for_side_buy(self, tmp_path: Path) -> None:
         """buy 側モデルが存在する場合は buy 側モデルを返す."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         unified_path = _create_mock_gate(tmp_path, "unified.pkl")
         buy_path = _create_mock_gate(tmp_path, "buy.pkl", "pnl30")
@@ -322,8 +315,6 @@ class TestEvaluatorSideDispatch:
 
     def test_select_gate_for_side_both(self, tmp_path: Path) -> None:
         """buy/sell 両方存在する場合は各々を返す."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         unified_path = _create_mock_gate(tmp_path, "unified.pkl")
         buy_path = _create_mock_gate(tmp_path, "buy.pkl", "pnl30")
@@ -346,8 +337,6 @@ class TestEvaluatorSideDispatch:
 
     def test_no_side_models_uses_unified(self, tmp_path: Path) -> None:
         """side 別モデル未設定 → unified を使用."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         unified_path = _create_mock_gate(tmp_path, "unified.pkl")
 
@@ -367,8 +356,6 @@ class TestEvaluatorSideDispatch:
 
     def test_side_model_file_missing_uses_unified(self, tmp_path: Path) -> None:
         """side モデルファイルが存在しない → unified にフォールバック."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         unified_path = _create_mock_gate(tmp_path, "unified.pkl")
 
@@ -385,7 +372,6 @@ class TestEvaluatorSideDispatch:
         assert evaluator._gate_sell is None
         assert evaluator._skip_gate is not None
 
-
 # ---------------------------------------------------------------------------
 # §4: YAML→retrain config 反映
 # ---------------------------------------------------------------------------
@@ -394,8 +380,6 @@ class TestRetrainConfigSideSpecific:
 
     def test_load_retrain_config_side_fields(self, tmp_path: Path) -> None:
         """YAML から model_path_buy/sell と retrain section の side 設定を読める."""
-        import yaml
-        from scripts.v460.ml.retrain_scheduler import load_retrain_config
 
         yaml_content = {
             "skip_gate": {
@@ -430,8 +414,6 @@ class TestRetrainConfigSideSpecific:
 
     def test_load_retrain_config_no_side_fields(self, tmp_path: Path) -> None:
         """YAML に side 設定がない場合はデフォルト."""
-        import yaml
-        from scripts.v460.ml.retrain_scheduler import load_retrain_config
 
         yaml_content = {
             "skip_gate": {
@@ -450,7 +432,6 @@ class TestRetrainConfigSideSpecific:
         assert cfg["model_path_buy"] == ""
         assert cfg["model_path_sell"] == ""
 
-
 # ---------------------------------------------------------------------------
 # §5: 統合テスト (side dispatch + model_used タグ)
 # ---------------------------------------------------------------------------
@@ -459,8 +440,6 @@ class TestSideModelEvaluateIntegration:
 
     def test_evaluate_model_used_tag_side(self, tmp_path: Path) -> None:
         """side 別モデル使用時の model_used に 'side_buy' タグが含まれること."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         unified_path = _create_mock_gate(tmp_path, "unified.pkl")
         buy_path = _create_mock_gate(tmp_path, "buy.pkl", "pnl30")
@@ -504,8 +483,6 @@ class TestSideModelEvaluateIntegration:
 
     def test_evaluate_model_used_tag_unified(self, tmp_path: Path) -> None:
         """unified モデルにフォールバック時の model_used に 'unified' タグが含まれること."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         unified_path = _create_mock_gate(tmp_path, "unified.pkl")
 
@@ -545,8 +522,6 @@ class TestSideModelEvaluateIntegration:
 
     def test_evaluate_side_only_missing_side_returns_reason(self, tmp_path: Path) -> None:
         """unified無し + buy-only で sell 評価時は例外化せず理由を返す."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         buy_path = _create_mock_gate(tmp_path, "buy.pkl", "pnl30")
 
@@ -589,14 +564,11 @@ class TestSideModelEvaluateIntegration:
         assert result.reason == "no_model_for_side:sell"
         assert result.skipped is False
 
-
 class TestSideModelHotReload:
     """141# §5: side 別モデルの hot-reload テスト."""
 
     def test_hot_reload_new_side_model(self, tmp_path: Path) -> None:
         """最初は存在しなかった side モデルが後から配置されたらロードされること."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         unified_path = _create_mock_gate(tmp_path, "unified.pkl")
         buy_path = tmp_path / "buy.pkl"
@@ -623,8 +595,6 @@ class TestSideModelHotReload:
 
     def test_hot_reload_updated_side_model(self, tmp_path: Path) -> None:
         """既存 side モデルが更新されたらリロードされること."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         unified_path = _create_mock_gate(tmp_path, "unified.pkl")
         sell_path = _create_mock_gate(tmp_path, "sell.pkl", "pnl120")
@@ -641,16 +611,10 @@ class TestSideModelHotReload:
         old_hash = evaluator._model_file_hash_sell
 
         # sell モデルを再作成 (ハッシュが変わるように異なる乱数 seed を使用)
-        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
-        from sklearn.impute import SimpleImputer
-        from sklearn.linear_model import Ridge
-        from sklearn.pipeline import Pipeline as SkPipeline
-        from sklearn.preprocessing import StandardScaler
-        import pandas as pd
 
         np.random.seed(999)
         feature_cols = ["side_buy", "spread_jpy", "offset_ratio"]
-        pipeline = SkPipeline([
+        pipeline = Pipeline([
             ("imputer", SimpleImputer(strategy="median")),
             ("scaler", StandardScaler()),
             ("model", Ridge()),
@@ -673,7 +637,6 @@ class TestSideModelHotReload:
 
         assert evaluator._model_file_hash_sell != old_hash
 
-
 class TestSideSpecificWarmStartDisabled:
     """141# warm_start は side 別モデルで無効化されること."""
 
@@ -687,8 +650,6 @@ class TestSideSpecificWarmStartDisabled:
                 "side_filter": cfg.get("side_filter"),
             })
             return {"status": "skipped", "reason": "mock"}
-
-        from scripts.v460.ml.retrain_scheduler import _retrain_side_specific
 
         cfg = {
             "model_path_buy": str(tmp_path / "buy.pkl"),
@@ -707,13 +668,11 @@ class TestSideSpecificWarmStartDisabled:
         for call in calls:
             assert call["warm_start_enabled"] is False
 
-
 class TestSideSpecificCacheKey:
     """141# cache_key に side_filter が含まれること."""
 
     def test_cache_key_differs_by_side(self) -> None:
         """同一 target でも side_filter が異なればキャッシュキーが異なること."""
-        import hashlib
 
         target = "pnl30"
         feature_cols_str = "a,b,c"
@@ -733,7 +692,6 @@ class TestSideSpecificCacheKey:
         assert key_all != key_sell
         assert key_buy != key_sell
 
-
 # ---------------------------------------------------------------------------
 # §6: P1-04 regime 別 PnL 閾値オーバーライド
 # ---------------------------------------------------------------------------
@@ -742,34 +700,27 @@ class TestRegimeThresholdsConfig:
 
     def test_default_empty(self) -> None:
         """デフォルトは空辞書 (全レジーム共通閾値)."""
-        from scripts.v460.ml.skip_gate import SkipGateConfig
-
         cfg = SkipGateConfig()
         assert cfg.regime_thresholds == {}
 
     def test_explicit_thresholds(self) -> None:
         """明示的に regime_thresholds を設定できること."""
-        from scripts.v460.ml.skip_gate import SkipGateConfig
-
         cfg = SkipGateConfig(
             regime_thresholds={"high_vol": 0.2, "trending": -0.1}
         )
         assert cfg.regime_thresholds["high_vol"] == 0.2
         assert cfg.regime_thresholds["trending"] == -0.1
 
-
 class TestRegimeThresholdFillConfig:
     """141# §6-2: FillConfig.skip_gate_regime_thresholds."""
 
     def test_default_empty(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         config = FillTestConfig()
         assert config.skip_gate_regime_thresholds == {}
 
     def test_yaml_parsing(self) -> None:
         """YAML skip_gate.regime_thresholds が FillConfig に反映されること."""
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         yaml_dict = {
             "symbol": "btc_jpy",
@@ -789,7 +740,6 @@ class TestRegimeThresholdFillConfig:
             "trending": -0.1,
         }
 
-
 class TestRegimeThresholdEvaluate:
     """141# §6-3: SkipGate.evaluate() での regime 別閾値適用."""
 
@@ -799,7 +749,6 @@ class TestRegimeThresholdEvaluate:
         regime_thresholds: dict[str, float] | None = None,
     ) -> Any:
         """テスト用 SkipGate を構築 (PnL mode, Pipeline mock)."""
-        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
 
         cfg = SkipGateConfig(
             mode="pnl",
@@ -893,14 +842,11 @@ class TestRegimeThresholdEvaluate:
         )
         assert decision.should_skip is False  # 0.1 > 0.0 → pass
 
-
 class TestRegimeThresholdConfigOverrides:
     """141# §6-4: _apply_config_overrides で regime_thresholds が反映されること."""
 
     def test_overrides_applied(self) -> None:
         """SkipGateEvaluator._apply_config_overrides が regime_thresholds を設定する."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
         config = FillTestConfig(
             skip_gate_enabled=False,
@@ -918,8 +864,6 @@ class TestRegimeThresholdConfigOverrides:
 
     def test_overrides_empty_dict(self) -> None:
         """regime_thresholds 未設定時は空辞書が設定される."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
         config = FillTestConfig(skip_gate_enabled=False)
         evaluator = SkipGateEvaluator(config, Path("/tmp"))
@@ -931,15 +875,11 @@ class TestRegimeThresholdConfigOverrides:
 
         assert mock_gate.config.regime_thresholds == {}
 
-
 class TestRegimeThresholdEvaluatorIntegration:
     """141# §6-5: SkipGateEvaluator.evaluate() が regime を SkipGate に渡すこと."""
 
     def test_regime_passed_to_gate_evaluate(self) -> None:
         """evaluate() 呼び出しで regime パラメータが渡されること."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        from scripts.v460.ml.skip_gate import SkipDecision
 
         config = FillTestConfig(
             skip_gate_enabled=False,
@@ -996,7 +936,6 @@ class TestRegimeThresholdEvaluatorIntegration:
         call_kwargs = mock_gate.evaluate.call_args
         assert call_kwargs.kwargs.get("regime") == "high_vol"
 
-
 # ---------------------------------------------------------------------------
 # §7: P1-12 オンラインパフォーマンスモニター
 # ---------------------------------------------------------------------------
@@ -1004,7 +943,6 @@ class TestOnlineMonitorConfig:
     """141# §7-1: OnlineMonitorConfig フィールド."""
 
     def test_default_values(self) -> None:
-        from ztb.ml.online_monitor import OnlineMonitorConfig
 
         cfg = OnlineMonitorConfig()
         assert cfg.window == 100
@@ -1012,7 +950,6 @@ class TestOnlineMonitorConfig:
         assert cfg.min_skip_precision == 0.4
         assert cfg.min_samples == 20
         assert cfg.pnl_column == "post_fill_30s_pnl"
-
 
 class TestOnlineMonitorEvaluate:
     """141# §7-2: OnlineMonitor.evaluate() の基本動作."""
@@ -1046,7 +983,6 @@ class TestOnlineMonitorEvaluate:
         return pd.DataFrame(rows)
 
     def test_basic_evaluation(self) -> None:
-        from ztb.ml.online_monitor import OnlineMonitor, OnlineMonitorConfig
 
         records = self._make_records(n_pass=60, n_skip=20)
         monitor = OnlineMonitor(OnlineMonitorConfig(window=100))
@@ -1060,7 +996,6 @@ class TestOnlineMonitorEvaluate:
         assert result.degraded is False
 
     def test_degraded_detection(self) -> None:
-        from ztb.ml.online_monitor import OnlineMonitor, OnlineMonitorConfig
 
         records = self._make_records(n_pass=50, n_skip=10, pass_pnl_mean=-0.5)
         monitor = OnlineMonitor(OnlineMonitorConfig(
@@ -1072,7 +1007,6 @@ class TestOnlineMonitorEvaluate:
         assert "pass_mean_pnl" in (result.degraded_reason or "")
 
     def test_insufficient_samples(self) -> None:
-        from ztb.ml.online_monitor import OnlineMonitor, OnlineMonitorConfig
 
         records = self._make_records(n_pass=5, n_skip=2)
         monitor = OnlineMonitor(OnlineMonitorConfig(window=100, min_samples=20))
@@ -1082,13 +1016,11 @@ class TestOnlineMonitorEvaluate:
         assert result.degraded is False  # not enough samples to judge
 
     def test_empty_records(self) -> None:
-        from ztb.ml.online_monitor import OnlineMonitor
 
         result = OnlineMonitor().evaluate(pd.DataFrame())
         assert result.n_total == 0
 
     def test_side_summary(self) -> None:
-        from ztb.ml.online_monitor import OnlineMonitor, OnlineMonitorConfig
 
         records = self._make_records(n_pass=40, n_skip=20)
         monitor = OnlineMonitor(OnlineMonitorConfig(window=100))
@@ -1102,7 +1034,6 @@ class TestOnlineMonitorEvaluate:
 
     def test_skip_precision(self) -> None:
         """skip したうち score < 0 (正しく skip) の割合が計算されること."""
-        from ztb.ml.online_monitor import OnlineMonitor, OnlineMonitorConfig
 
         # skip_score_mean = -0.3 → 大半が < 0 → precision 高い
         records = self._make_records(n_pass=30, n_skip=30, skip_score_mean=-0.5)
@@ -1112,7 +1043,6 @@ class TestOnlineMonitorEvaluate:
         assert result.skip_precision > 0.8  # 大半 negative → high precision
 
     def test_to_dict(self) -> None:
-        from ztb.ml.online_monitor import OnlineMonitor, OnlineMonitorConfig
 
         records = self._make_records()
         result = OnlineMonitor(OnlineMonitorConfig(window=100)).evaluate(records)
@@ -1125,7 +1055,6 @@ class TestOnlineMonitorEvaluate:
 
     def test_window_truncation(self) -> None:
         """window より多い records がある場合、直近 window 件のみ使用."""
-        from ztb.ml.online_monitor import OnlineMonitor, OnlineMonitorConfig
 
         records = self._make_records(n_pass=200, n_skip=50)
         monitor = OnlineMonitor(OnlineMonitorConfig(window=50))
@@ -1133,18 +1062,15 @@ class TestOnlineMonitorEvaluate:
 
         assert result.n_total == 50
 
-
 class TestOnlineMonitorRetrain:
     """141# §7-3: _run_online_monitor の retrain_scheduler 統合テスト."""
 
     def test_default_config_has_online_monitor(self) -> None:
         """_DEFAULT_CONFIG に online_monitor_* キーがあること."""
-        from scripts.v460.ml.retrain_scheduler import _DEFAULT_CONFIG
 
         assert "online_monitor_enabled" in _DEFAULT_CONFIG
         assert "online_monitor_window" in _DEFAULT_CONFIG
         assert _DEFAULT_CONFIG["online_monitor_enabled"] is True
-
 
 # ---------------------------------------------------------------------------
 # §8: 142# 自己チェック修正 — C-1 regime + adaptive_threshold 統合テスト
@@ -1161,7 +1087,6 @@ class TestRegimeAdaptiveThresholdIntegration:
         adaptive_min_samples: int = 5,
     ) -> Any:
         """adaptive_threshold=True の SkipGate を構築."""
-        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
 
         cfg = SkipGateConfig(
             mode="pnl",
@@ -1257,9 +1182,6 @@ class TestRegimeAdaptiveThresholdIntegration:
 
     def test_regime_key_typo_warning(self) -> None:
         """142# M-3: 未知の regime キーで WARNING が出ること."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        import logging
 
         config = FillTestConfig(
             skip_gate_enabled=False,
@@ -1285,7 +1207,6 @@ class TestRegimeAdaptiveThresholdIntegration:
 
     def test_select_gate_no_attr(self) -> None:
         """142# M-1: _gate_buy/_gate_sell が None の場合 unified にフォールバック."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
         evaluator = SkipGateEvaluator.__new__(SkipGateEvaluator)
         evaluator._skip_gate = MagicMock()

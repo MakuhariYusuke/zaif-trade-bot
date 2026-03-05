@@ -6,30 +6,42 @@ test_regime_detector — 軽量レジーム検知のユニットテスト.
 
 from __future__ import annotations
 
+import importlib
+import inspect
 import math
+import os
 import time
+from datetime import datetime, timezone
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
-
+import yaml
+from scripts.v460.lib.adaptation_engine import AdaptationEngine
+from scripts.v460.lib.maker_price import MakerPriceCalculator
+from scripts.v460.lib.ob_utils import depth_volume, extract_price, extract_size
 from scripts.v460.lib.regime_detector import (
     FillTestRegime,
     FillTestRegimeDetector,
     RegimeConfig,
     RegimeResult,
 )
-
+from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+from scripts.v460.lib.time_filter import TimeFilter
+from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+from ztb.metrics.fill_quality import FillRecord, filter_clean_records
+from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
+from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
 # ======================================================================
 # Fixtures
 # ======================================================================
 
-
 @pytest.fixture
 def default_detector() -> FillTestRegimeDetector:
     """デフォルト設定の検知器."""
     return FillTestRegimeDetector()
-
 
 @pytest.fixture
 def quick_detector() -> FillTestRegimeDetector:
@@ -43,11 +55,9 @@ def quick_detector() -> FillTestRegimeDetector:
     )
     return FillTestRegimeDetector(config)
 
-
 # ======================================================================
 # Helper
 # ======================================================================
-
 
 def _feed_prices(
     detector: FillTestRegimeDetector,
@@ -62,11 +72,9 @@ def _feed_prices(
         results.append(result)
     return results
 
-
 # ======================================================================
 # Tests: 基本動作
 # ======================================================================
-
 
 class TestBasicRegimeDetection:
     """基本的なレジーム分類のテスト."""
@@ -128,11 +136,9 @@ class TestBasicRegimeDetection:
         high_vol = [r for r in results if r.regime == FillTestRegime.HIGH_VOL]
         assert len(high_vol) > 0, f"Expected high_vol, got {[r.regime.value for r in results[-10:]]}"
 
-
 # ======================================================================
 # Tests: ヒステリシス
 # ======================================================================
-
 
 class TestHysteresis:
     """ヒステリシスのテスト."""
@@ -179,11 +185,9 @@ class TestHysteresis:
         final = results[-1]
         assert final.regime.is_trending, f"Expected trending (via is_trending), got {final.regime}"
 
-
 # ======================================================================
 # Tests: 信頼度ゲート
 # ======================================================================
-
 
 class TestConfidenceGate:
     """信頼度ゲートのテスト."""
@@ -205,11 +209,9 @@ class TestConfidenceGate:
         for r in confirmed:
             assert r.regime == FillTestRegime.UNKNOWN
 
-
 # ======================================================================
 # Tests: RegimeResult
 # ======================================================================
-
 
 class TestRegimeResult:
     """RegimeResult のシリアライズテスト."""
@@ -230,11 +232,9 @@ class TestRegimeResult:
         assert isinstance(d["trend_pct"], float)
         assert isinstance(d["volatility_ratio"], float)
 
-
 # ======================================================================
 # Tests: RegimeConfig
 # ======================================================================
-
 
 class TestRegimeConfig:
     """RegimeConfig のデフォルト値テスト."""
@@ -248,11 +248,9 @@ class TestRegimeConfig:
         assert cfg.hysteresis_count == 3
         assert cfg.min_confidence == 0.4
 
-
 # ======================================================================
 # Tests: FillTestRegimeDetector 状態管理
 # ======================================================================
-
 
 class TestDetectorState:
     """検知器の内部状態テスト."""
@@ -281,7 +279,6 @@ class TestDetectorState:
         _feed_prices(detector, [100.0 + i * 0.001 for i in range(100)])
         assert detector.observation_count <= config.window * 3
 
-
 class TestIndicatorRobustness:
     """指標計算の数値安定性テスト."""
 
@@ -305,18 +302,15 @@ class TestIndicatorRobustness:
             assert math.isfinite(result.trend_pct)
             assert math.isfinite(result.volatility_ratio)
 
-
 # ======================================================================
 # Tests: FillRecord レジームフィールド
 # ======================================================================
-
 
 class TestFillRecordRegimeFields:
     """FillRecord のレジームフィールドテスト."""
 
     def test_regime_fields_default_none(self) -> None:
         """レジームフィールドのデフォルトは None."""
-        from ztb.metrics.fill_quality import FillRecord
 
         record = FillRecord(
             cycle_id="test",
@@ -331,7 +325,6 @@ class TestFillRecordRegimeFields:
 
     def test_regime_fields_serialization(self) -> None:
         """レジームフィールドが to_dict/from_dict で保持される."""
-        from ztb.metrics.fill_quality import FillRecord
 
         record = FillRecord(
             cycle_id="test",
@@ -355,7 +348,6 @@ class TestFillRecordRegimeFields:
 
     def test_backward_compatible_from_dict(self) -> None:
         """レジームフィールドがない旧データからも from_dict できる."""
-        from ztb.metrics.fill_quality import FillRecord
 
         old_data = {
             "cycle_id": "old",
@@ -369,18 +361,15 @@ class TestFillRecordRegimeFields:
         assert record.regime_confidence is None
         assert record.regime_stability is None
 
-
 # ======================================================================
 # Tests: FillTestConfig レジーム設定
 # ======================================================================
-
 
 class TestFillTestConfigRegime:
     """FillTestConfig のレジーム設定テスト."""
 
     def test_regime_defaults(self) -> None:
         """レジーム設定のデフォルト値."""
-        from scripts.v460.run_fill_test import FillTestConfig
 
         config = FillTestConfig()
         assert config.enable_regime is True
@@ -389,7 +378,6 @@ class TestFillTestConfigRegime:
 
     def test_regime_from_yaml(self) -> None:
         """YAML のレジームセクションが正しくパースされる."""
-        from scripts.v460.run_fill_test import FillTestConfig
 
         yaml_cfg = {
             "regime": {
@@ -409,18 +397,15 @@ class TestFillTestConfigRegime:
         assert config.regime_hysteresis_count == 5
         assert config.regime_min_confidence == 0.6
 
-
 # ======================================================================
 # Tests: 041# 新機能 (時間帯フィルター, 動的 loss_cap, deadzone)
 # ======================================================================
-
 
 class TestFillTestConfigTimeFilter:
     """041# 時間帯フィルター設定テスト."""
 
     def test_time_filter_defaults(self) -> None:
         """時間帯フィルターのデフォルトは無効."""
-        from scripts.v460.run_fill_test import FillTestConfig
 
         config = FillTestConfig()
         assert config.enable_time_filter is False
@@ -428,7 +413,6 @@ class TestFillTestConfigTimeFilter:
 
     def test_time_filter_from_yaml(self) -> None:
         """YAML の time_filter セクションが正しくパースされる."""
-        from scripts.v460.run_fill_test import FillTestConfig
 
         yaml_cfg = {
             "time_filter": {
@@ -442,7 +426,6 @@ class TestFillTestConfigTimeFilter:
 
     def test_time_filter_empty_hours(self) -> None:
         """skip_utc_hours 空リストでも有効化可能."""
-        from scripts.v460.run_fill_test import FillTestConfig
 
         yaml_cfg = {
             "time_filter": {
@@ -454,13 +437,11 @@ class TestFillTestConfigTimeFilter:
         assert config.enable_time_filter is True
         assert config.skip_utc_hours == []
 
-
 class TestFillTestConfigDynamicLossCap:
     """041# 動的 loss_cap 設定テスト."""
 
     def test_loss_cap_auto_defaults(self) -> None:
         """動的 loss_cap のデフォルトは無効."""
-        from scripts.v460.run_fill_test import FillTestConfig
 
         config = FillTestConfig()
         assert config.loss_cap_auto is False
@@ -468,7 +449,6 @@ class TestFillTestConfigDynamicLossCap:
 
     def test_loss_cap_auto_from_yaml(self) -> None:
         """YAML の safety セクションから動的 loss_cap が正しくパースされる."""
-        from scripts.v460.run_fill_test import FillTestConfig
 
         yaml_cfg = {
             "safety": {
@@ -484,7 +464,6 @@ class TestFillTestConfigDynamicLossCap:
 
     def test_loss_cap_auto_false_preserves_fixed(self) -> None:
         """loss_cap_auto=False 時は loss_cap_jpy がそのまま使われる."""
-        from scripts.v460.run_fill_test import FillTestConfig
 
         yaml_cfg = {
             "safety": {
@@ -496,13 +475,11 @@ class TestFillTestConfigDynamicLossCap:
         assert config.loss_cap_auto is False
         assert config.loss_cap_jpy == 7500.0
 
-
 class TestFillTestConfigDeadzone:
     """041# AS deadzone 変更のテスト."""
 
     def test_deadzone_from_yaml(self) -> None:
         """as_deadzone_bps が YAML から読み取れる."""
-        from scripts.v460.run_fill_test import FillTestConfig
 
         yaml_cfg = {"as_deadzone_bps": 2.0}
         config = FillTestConfig.from_yaml(yaml_cfg)
@@ -510,11 +487,9 @@ class TestFillTestConfigDeadzone:
 
     def test_deadzone_default(self) -> None:
         """as_deadzone_bps のデフォルトは 2.5 (052# 修正後)."""
-        from scripts.v460.run_fill_test import FillTestConfig
 
         config = FillTestConfig()
         assert config.as_deadzone_bps == 2.5
-
 
 class TestTimeFilterNoRecord:
     """041# 時間帯フィルターがレコードを生成しないことを検証.
@@ -524,8 +499,6 @@ class TestTimeFilterNoRecord:
 
     def test_is_time_filtered_disabled(self) -> None:
         """フィルター無効時は常に False."""
-        from scripts.v460.run_fill_test import FillTestConfig
-        from scripts.v460.lib.time_filter import TimeFilter
 
         config = FillTestConfig(enable_time_filter=False)
         tf = TimeFilter(config)
@@ -533,8 +506,6 @@ class TestTimeFilterNoRecord:
 
     def test_is_time_filtered_no_hours(self) -> None:
         """skip_utc_hours 未設定時は常に False."""
-        from scripts.v460.run_fill_test import FillTestConfig
-        from scripts.v460.lib.time_filter import TimeFilter
 
         config = FillTestConfig(enable_time_filter=True, skip_utc_hours=None)
         tf = TimeFilter(config)
@@ -542,8 +513,6 @@ class TestTimeFilterNoRecord:
 
     def test_is_time_filtered_empty_hours(self) -> None:
         """skip_utc_hours 空リスト時は常に False."""
-        from scripts.v460.run_fill_test import FillTestConfig
-        from scripts.v460.lib.time_filter import TimeFilter
 
         config = FillTestConfig(enable_time_filter=True, skip_utc_hours=[])
         tf = TimeFilter(config)
@@ -551,10 +520,6 @@ class TestTimeFilterNoRecord:
 
     def test_is_time_filtered_side_buy(self) -> None:
         """073# skip_utc_hours_buy 設定時は buy 側固有リストで判定."""
-        from scripts.v460.run_fill_test import FillTestConfig
-        from scripts.v460.lib.time_filter import TimeFilter
-        from unittest.mock import patch
-        from datetime import datetime, timezone
 
         config = FillTestConfig(
             enable_time_filter=True,
@@ -572,10 +537,6 @@ class TestTimeFilterNoRecord:
 
     def test_is_time_filtered_side_sell(self) -> None:
         """073# skip_utc_hours_sell 設定時は sell 側固有リストで判定."""
-        from scripts.v460.run_fill_test import FillTestConfig
-        from scripts.v460.lib.time_filter import TimeFilter
-        from unittest.mock import patch
-        from datetime import datetime, timezone
 
         config = FillTestConfig(
             enable_time_filter=True,
@@ -593,10 +554,6 @@ class TestTimeFilterNoRecord:
 
     def test_is_time_filtered_side_none_uses_global(self) -> None:
         """073# side=None はグローバルリストにフォールバック."""
-        from scripts.v460.run_fill_test import FillTestConfig
-        from scripts.v460.lib.time_filter import TimeFilter
-        from unittest.mock import patch
-        from datetime import datetime, timezone
 
         config = FillTestConfig(
             enable_time_filter=True,
@@ -614,8 +571,6 @@ class TestTimeFilterNoRecord:
 
     def test_yaml_side_specific_time_filter(self) -> None:
         """163# Step2 YAML side 別 time_filter (107# Phase 3 Step 2)."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
 
         yaml_path = Path("configs/v460/fill_test.yaml")
         with open(yaml_path) as f:
@@ -631,21 +586,18 @@ class TestTimeFilterNoRecord:
         assert tf["regime_adaptive_extra_buy"] == []
         assert tf["regime_adaptive_extra_sell"] == []
 
-
 class TestDynamicLossCapReserved:
     """041# reserved 残高が loss_cap 計算に含まれることを検証."""
 
     def test_loss_cap_includes_reserved_key(self) -> None:
         """JPY_RESERVED が currency として出てきた場合、集計に含む."""
         # 041# の _update_dynamic_loss_cap が JPY_RESERVED を認識するか
-        from scripts.v460.run_fill_test import FillTestConfig
 
         config = FillTestConfig(loss_cap_auto=True, loss_cap_ratio=0.05)
         # JPY = 1000, JPY_RESERVED = 10000, BTC = 0.001 × 10M = 10000
         # total = 21000, cap = 1050
         assert config.loss_cap_auto is True
         assert config.loss_cap_ratio == 0.05
-
 
 class TestJapaneseErrorClassification:
     """042# 日本語エラーメッセージの分類テスト."""
@@ -678,40 +630,30 @@ class TestJapaneseErrorClassification:
                 reason = "api_error"
             assert reason == expected, f"{error_msg!r} → {reason}, expected {expected}"
 
-
 class TestStaleOrderCleanup:
     """042# 起動時の滞留注文クリアテスト."""
 
     def test_cancel_stale_orders_method_exists(self) -> None:
         """_cancel_stale_orders メソッドが定義されている."""
-        from scripts.v460.run_fill_test import FillTestRunner
 
         assert hasattr(FillTestRunner, "_cancel_stale_orders")
-        import inspect
         assert inspect.iscoroutinefunction(FillTestRunner._cancel_stale_orders)
-
 
 # ======================================================================
 # 044# Fix Tests
 # ======================================================================
-
 
 class TestSingleInstanceLock:
     """044# Bug7: 単一起動ロック (lockfile + PID + stale回収)."""
 
     def test_acquire_release_lock_methods_exist(self) -> None:
         """_acquire_lock / _release_lock メソッドが定義されている."""
-        from scripts.v460.run_fill_test import FillTestRunner
 
         assert hasattr(FillTestRunner, "_acquire_lock")
         assert hasattr(FillTestRunner, "_release_lock")
 
     def test_lockfile_created_and_removed(self, tmp_path: "Path") -> None:
         """ロックファイルの生成・解放が正しく動作する."""
-        from pathlib import Path
-        from unittest.mock import MagicMock
-
-        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
 
         config = FillTestConfig(results_dir=str(tmp_path))
         adapter = MagicMock()
@@ -721,7 +663,6 @@ class TestSingleInstanceLock:
         lock_path = tmp_path / "fill_test.lock"
         assert lock_path.exists()
         content = lock_path.read_text(encoding="utf-8")
-        import os
         assert content.startswith(f"{os.getpid()}|")
 
         runner._release_lock()
@@ -729,10 +670,6 @@ class TestSingleInstanceLock:
 
     def test_stale_lockfile_reclaimed(self, tmp_path: "Path") -> None:
         """無効な PID のロックファイルは回収される."""
-        from pathlib import Path
-        from unittest.mock import MagicMock
-
-        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
 
         lock_path = tmp_path / "fill_test.lock"
         # 存在しない PID を書き込む
@@ -744,18 +681,15 @@ class TestSingleInstanceLock:
         # stale lock は回収されて新しいロックが取得される
         runner._acquire_lock()
         assert lock_path.exists()
-        import os
         content = lock_path.read_text(encoding="utf-8")
         assert content.startswith(f"{os.getpid()}|")
         runner._release_lock()
-
 
 class TestPreflightSkipLimit:
     """044# F8: 連続 preflight 失敗上限."""
 
     def test_config_has_max_preflight_skip(self) -> None:
         """max_preflight_skip 設定が存在し、デフォルト値が適切."""
-        from scripts.v460.run_fill_test import FillTestConfig
 
         config = FillTestConfig()
         assert hasattr(config, "max_preflight_skip")
@@ -763,9 +697,6 @@ class TestPreflightSkipLimit:
 
     def test_preflight_skip_count_initialized(self) -> None:
         """_preflight_skip_count が初期化されている."""
-        from unittest.mock import MagicMock
-
-        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
 
         config = FillTestConfig()
         adapter = MagicMock()
@@ -774,21 +705,15 @@ class TestPreflightSkipLimit:
 
     def test_max_consecutive_same_side_removed(self) -> None:
         """044# F7: 未使用の max_consecutive_same_side が削除されている."""
-        from scripts.v460.run_fill_test import FillTestConfig
 
         config = FillTestConfig()
         assert not hasattr(config, "max_consecutive_same_side")
-
 
 class TestCleanupSyncImproved:
     """044# A-4: _cleanup_sync の改善テスト."""
 
     def test_cleanup_releases_lock(self, tmp_path: "Path") -> None:
         """_cleanup_sync がロックファイルを解放する."""
-        from pathlib import Path
-        from unittest.mock import MagicMock
-
-        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
 
         config = FillTestConfig(results_dir=str(tmp_path))
         adapter = MagicMock()
@@ -801,15 +726,11 @@ class TestCleanupSyncImproved:
         runner._cleanup_sync()
         assert not lock_path.exists()
 
-
 class TestLossCapPeriodicUpdate:
     """044# A-7: loss_cap 定期更新."""
 
     def test_loss_cap_update_interval_exists(self) -> None:
         """_loss_cap_update_interval が初期化されている."""
-        from unittest.mock import MagicMock
-
-        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
 
         config = FillTestConfig()
         adapter = MagicMock()
@@ -817,17 +738,14 @@ class TestLossCapPeriodicUpdate:
         assert hasattr(runner, "_loss_cap_update_interval")
         assert runner._loss_cap_update_interval == 50
 
-
 class TestWindowsSignalHandler:
     """044# A-1: Windows SIGTERM 修正."""
 
     def test_platform_import(self) -> None:
         """platform モジュールが fill_test_cli でインポートされている."""
-        import importlib
         mod = importlib.import_module("scripts.v460.lib.fill_test_cli")
         # platform が import されていることを確認
         assert hasattr(mod, "platform")
-
 
 class TestRateLimitDoubleCheck:
     """044# E-1: get_order_status の二重 rate limit チェック.
@@ -837,13 +755,10 @@ class TestRateLimitDoubleCheck:
 
     def test_rate_limit_called_before_transactions(self) -> None:
         """_get_order_status_real のソースに _check_rate_limit がある."""
-        import inspect
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
         source = inspect.getsource(CoincheckAdapter._get_order_status_real)
         count = source.count("_check_rate_limit")
         assert count >= 1, f"Expected ≥1 rate limit checks in _get_order_status_real, found {count}"
-
 
 class TestPriceRounding:
     """044# E-3: price int()→round() 修正.
@@ -853,13 +768,10 @@ class TestPriceRounding:
 
     def test_price_uses_round_not_int(self) -> None:
         """_place_order_real のソースに round(price) が使われている."""
-        import inspect
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
         source = inspect.getsource(CoincheckAdapter._place_order_real)
         assert "round(price)" in source, "price should use round() not int()"
         assert "int(price)" not in source, "int(price) should be replaced by round(price)"
-
 
 class TestBalanceLocked:
     """044# E-4: get_balance が reserved を locked として解析.
@@ -869,26 +781,20 @@ class TestBalanceLocked:
 
     def test_balance_source_has_reserved_handling(self) -> None:
         """_get_balance_real のソースに _reserved の処理が含まれる."""
-        import inspect
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
         source = inspect.getsource(CoincheckAdapter._get_balance_real)
         assert "_reserved" in source, "_get_balance_real should handle *_reserved keys"
         assert "locked=0.0" not in source, "locked should not be hardcoded to 0.0"
 
-
 # ======================================================================
 # 046# テスト: Bug10, soft/hard loss_cap, clean/quarantine, balance filter
 # ======================================================================
-
 
 class TestBug10InsufficientFundsNoRetry:
     """046# Bug10: insufficient_funds 時にリトライしない."""
 
     def test_source_has_insufficient_funds_break(self) -> None:
         """run_single_cycle のソースに insufficient_funds → break が含まれる."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
 
         source = inspect.getsource(FillTestRunner.run_single_cycle)
         # 084# 改修: 非リトライ対象をセットで管理
@@ -906,13 +812,11 @@ class TestBug10InsufficientFundsNoRetry:
             cancel_reason = "insufficient_funds"
         assert cancel_reason == "insufficient_funds"
 
-
 class TestSoftHardLossCap:
     """046# soft/hard 二段 loss_cap."""
 
     def test_config_has_soft_loss_cap_ratio(self) -> None:
         """FillTestConfig に soft_loss_cap_ratio フィールドがある."""
-        from scripts.v460.run_fill_test import FillTestConfig
 
         config = FillTestConfig()
         assert hasattr(config, "soft_loss_cap_ratio")
@@ -920,8 +824,6 @@ class TestSoftHardLossCap:
 
     def test_soft_loss_cap_flag_initialized(self) -> None:
         """FillTestRunner に _soft_loss_cap_triggered が初期化される."""
-        from unittest.mock import MagicMock
-        from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
 
         config = FillTestConfig()
         adapter = MagicMock()
@@ -931,14 +833,12 @@ class TestSoftHardLossCap:
 
     def test_soft_cap_ratio_less_than_hard(self) -> None:
         """soft cap は hard cap より小さい."""
-        from scripts.v460.run_fill_test import FillTestConfig
 
         config = FillTestConfig()
         assert config.soft_loss_cap_ratio < config.loss_cap_ratio
 
     def test_yaml_parser_handles_soft_loss_cap(self) -> None:
         """from_yaml が soft_loss_cap_ratio を正しく解析する."""
-        from scripts.v460.run_fill_test import FillTestConfig
 
         yaml_cfg = {
             "safety": {
@@ -950,13 +850,11 @@ class TestSoftHardLossCap:
         config = FillTestConfig.from_yaml(yaml_cfg)
         assert config.soft_loss_cap_ratio == 0.03
 
-
 class TestCleanQuarantineFilter:
     """046# clean/quarantine データ分離."""
 
     def test_filter_separates_by_git_sha(self) -> None:
         """git_sha 有無でレコードが分離される."""
-        from ztb.metrics.fill_quality import FillRecord, filter_clean_records
 
         records = [
             FillRecord(cycle_id="1", timestamp=1.0, side="buy",
@@ -979,7 +877,6 @@ class TestCleanQuarantineFilter:
 
     def test_filter_disabled(self) -> None:
         """require_git_sha=False で全レコードがクリーン."""
-        from ztb.metrics.fill_quality import FillRecord, filter_clean_records
 
         records = [
             FillRecord(cycle_id="1", timestamp=1.0, side="buy",
@@ -994,7 +891,6 @@ class TestCleanQuarantineFilter:
 
     def test_all_clean(self) -> None:
         """全レコードに git_sha がある場合は quarantine=0."""
-        from ztb.metrics.fill_quality import FillRecord, filter_clean_records
 
         records = [
             FillRecord(cycle_id="1", timestamp=1.0, side="buy",
@@ -1005,7 +901,6 @@ class TestCleanQuarantineFilter:
         assert len(clean) == 1
         assert len(quarantine) == 0
 
-
 class TestBalanceCurrencyFilter:
     """046# balance 解析のゴミ通貨除外.
 
@@ -1014,8 +909,6 @@ class TestBalanceCurrencyFilter:
 
     def test_ignore_suffixes_in_source(self) -> None:
         """_get_balance_real のソースに _lending 等の除外ロジックがある."""
-        import inspect
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
         source = inspect.getsource(CoincheckAdapter._get_balance_real)
         for suffix in ["_lending", "_lend_in_use", "_lent", "_debt", "_tsumitate"]:
@@ -1026,21 +919,16 @@ class TestBalanceCurrencyFilter:
 
         120#: adaptation_engine.py に抽出済み。
         """
-        import inspect
-        from scripts.v460.lib.adaptation_engine import AdaptationEngine
 
         source = inspect.getsource(AdaptationEngine.update_dynamic_loss_cap)
         assert "JPY_RESERVED" not in source, "Dead check should be removed"
         assert "BTC_RESERVED" not in source, "Dead check should be removed"
-
 
 class TestBug086TimeFilterPositionAccumulation:
     """086# time_filter の side 切替が片側蓄積を引き起こすバグの修正検証."""
 
     def test_source_has_position_accumulation_guard(self) -> None:
         """run_continuous に片側蓄積防止ガードが含まれる."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
 
         source = inspect.getsource(FillTestRunner.run_continuous)
         assert "alt_side == self._last_side" in source, (
@@ -1050,11 +938,9 @@ class TestBug086TimeFilterPositionAccumulation:
             "086# 片側蓄積防止コメントが必要"
         )
 
-
 # ======================================================================
 # 156# Phase D テスト
 # ======================================================================
-
 
 class TestPhaseD4TrendingDirection:
     """156# D-4: trending 方向分解テスト."""
@@ -1108,7 +994,6 @@ class TestPhaseD4TrendingDirection:
 
     def test_regime_thresholds_match_direction(self) -> None:
         """regime_thresholds の key が D-4 方向別 value と一致."""
-        from ztb.risk.sell_dynamic_kill import SellKillConfig
 
         thresholds = {"trending_up": -0.3, "trending_down": -1.0, "ranging": -0.5}
         config = SellKillConfig(regime_thresholds=thresholds)
@@ -1116,13 +1001,11 @@ class TestPhaseD4TrendingDirection:
         assert FillTestRegime.TRENDING_UP.value in config.regime_thresholds
         assert FillTestRegime.TRENDING_DOWN.value in config.regime_thresholds
 
-
 class TestPhaseD4SkipSellTrendingUpOnly:
     """156# D-4: skip_sell_trending_up_only 設定テスト."""
 
     def test_config_field_exists(self) -> None:
         """skip_sell_trending_up_only フィールドが存在."""
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         config = FillTestConfig()
         assert hasattr(config, "skip_sell_trending_up_only")
@@ -1130,7 +1013,6 @@ class TestPhaseD4SkipSellTrendingUpOnly:
 
     def test_yaml_mapping(self) -> None:
         """YAML から skip_sell_trending_up_only がパースされる."""
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         yaml_cfg = {
             "loss_control": {
@@ -1140,43 +1022,36 @@ class TestPhaseD4SkipSellTrendingUpOnly:
         config = FillTestConfig.from_yaml(yaml_cfg)
         assert config.skip_sell_trending_up_only is True
 
-
 class TestPhaseD1ObUtils:
     """156# D-1: ob_utils 型安全向上テスト."""
 
     def test_extract_price_tuple(self) -> None:
         """tuple から price を抽出."""
-        from scripts.v460.lib.ob_utils import extract_price
 
         assert extract_price((15000000.0, 0.5)) == 15000000.0
 
     def test_extract_price_empty_tuple(self) -> None:
         """空 tuple は 0.0."""
-        from scripts.v460.lib.ob_utils import extract_price
 
         assert extract_price(()) == 0.0
 
     def test_extract_size_tuple(self) -> None:
         """tuple から size を抽出."""
-        from scripts.v460.lib.ob_utils import extract_size
 
         assert extract_size((15000000.0, 0.5)) == 0.5
 
     def test_depth_volume_basic(self) -> None:
         """depth_volume が合計出来高を返す."""
-        from scripts.v460.lib.ob_utils import depth_volume
 
         levels = [(100.0, 1.0), (99.0, 2.0), (98.0, 3.0)]
         assert depth_volume(levels, depth=2) == 3.0
         assert depth_volume(levels, depth=5) == 6.0
-
 
 class TestPhaseD5KillCooldown:
     """156# D-5: sell_dynamic_kill cooldown テスト."""
 
     def test_resume_window_10(self) -> None:
         """resume_window=10 で cooldown が 10 サイクルで解除."""
-        from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
 
         config = SellKillConfig(
             enabled=True, window=5, threshold_bps=-0.5, resume_window=10,
@@ -1202,18 +1077,15 @@ class TestPhaseD5KillCooldown:
         killed, tele = mgr.check_kill()
         assert killed is False
 
-
 # ======================================================================
 # 156# §18 セルフレビュー: データシンク解消 + enum 一貫性 + 未活用機能
 # ======================================================================
-
 
 class TestPhaseD18DataSinkResolution:
     """156# §18: trend_pct / volatility_ratio の FillRecord 伝搬テスト."""
 
     def test_fill_record_has_regime_trend_pct_field(self) -> None:
         """FillRecord に regime_trend_pct フィールドが存在."""
-        from ztb.metrics.fill_quality import FillRecord
 
         record = FillRecord(
             cycle_id="test",
@@ -1229,7 +1101,6 @@ class TestPhaseD18DataSinkResolution:
 
     def test_fill_record_data_sink_fields_serialize(self) -> None:
         """trend_pct / volatility_ratio が to_dict / from_dict で保持."""
-        from ztb.metrics.fill_quality import FillRecord
 
         record = FillRecord(
             cycle_id="test",
@@ -1250,7 +1121,6 @@ class TestPhaseD18DataSinkResolution:
 
     def test_backward_compat_no_data_sink_fields(self) -> None:
         """旧データ (trend_pct なし) からも from_dict できる."""
-        from ztb.metrics.fill_quality import FillRecord
 
         old = {"cycle_id": "x", "timestamp": 0.0, "side": "buy",
                "order_price": 100.0, "order_quantity": 0.001}
@@ -1258,20 +1128,16 @@ class TestPhaseD18DataSinkResolution:
         assert r.regime_trend_pct is None
         assert r.regime_volatility_ratio is None
 
-
 class TestPhaseD18EnumConsistency:
     """156# §18: maker_price.py の enum 直接比較テスト."""
 
     def test_maker_price_imports_fill_test_regime(self) -> None:
         """maker_price.py が FillTestRegime をインポートしている."""
-        import importlib
         mod = importlib.import_module("scripts.v460.lib.maker_price")
         assert hasattr(mod, "FillTestRegime")
 
     def test_high_vol_uses_enum_comparison(self) -> None:
         """maker_price.py の high_vol ロジックが enum 比較を使用."""
-        import inspect
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
 
         source = inspect.getsource(MakerPriceCalculator)
         assert "FillTestRegime.HIGH_VOL" in source
@@ -1282,15 +1148,11 @@ class TestPhaseD18EnumConsistency:
         assert '.value == "ranging"' not in source
         assert '.value == "unknown"' not in source
 
-
 class TestPhaseD18ObFetchStats:
     """156# §18: OB fetch 統計プロパティテスト."""
 
     def test_ob_fetch_stats_property_exists(self) -> None:
         """SkipGateEvaluator.ob_fetch_stats が返せる."""
-        from pathlib import Path
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
         config = FillTestConfig(skip_gate_enabled=False)
         evaluator = SkipGateEvaluator(config, Path("."))
@@ -1298,14 +1160,11 @@ class TestPhaseD18ObFetchStats:
         assert fail == 0
         assert total == 0
 
-
 class TestPhaseD18RangingYaml:
     """156# §18: ranging_offset_discount YAML 有効化テスト."""
 
     def test_yaml_has_ranging_discount(self) -> None:
         """YAML に ranging_offset_discount が設定されている."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
 
         yaml_path = Path("configs/v460/fill_test.yaml")
         with open(yaml_path) as f:

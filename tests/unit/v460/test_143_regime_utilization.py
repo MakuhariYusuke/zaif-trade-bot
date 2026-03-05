@@ -20,12 +20,25 @@ import asyncio
 import inspect
 import logging
 import time
+import types
 from dataclasses import dataclass, field
 from pathlib import Path
 from unittest.mock import MagicMock, AsyncMock, patch
 
 import pytest
 import yaml
+from scripts.v460.lib.fill_config import FillMonitorResult, FillTestConfig
+from scripts.v460.lib.maker_price import MakerPriceCalculator
+from scripts.v460.lib.order_monitor import OrderMonitor
+from scripts.v460.lib.regime_detector import (
+    FillTestRegime,
+    FillTestRegimeDetector,
+    RegimeConfig,
+)
+from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+from scripts.v460.run_fill_test import FillTestRunner
+from ztb.metrics.fill_quality import FillRecord, _quarantine_reason
+from ztb.ml import online_monitor
 
 # ======================================================================
 # R-1a: Offset regime adaptation tests
@@ -35,39 +48,32 @@ class TestRegimeOffsetBoostConfig:
     """143# R-1a: config フィールドの存在とデフォルト値."""
 
     def test_high_vol_offset_boost_default(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert hasattr(cfg, "regime_high_vol_offset_boost")
         assert cfg.regime_high_vol_offset_boost == 1.2
 
     def test_ranging_offset_discount_default(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert hasattr(cfg, "regime_ranging_offset_discount")
         assert cfg.regime_ranging_offset_discount == 1.0
 
     def test_regime_lot_multipliers_default_empty(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert hasattr(cfg, "regime_lot_multipliers")
         assert cfg.regime_lot_multipliers == {}
-
 
 class TestRegimeOffsetBoostSource:
     """143# R-1a: maker_price.py にレジーム別 offset ロジックが含まれることをソースで確認."""
 
     def test_high_vol_offset_boost_in_source(self) -> None:
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
         source = inspect.getsource(MakerPriceCalculator)
         assert "regime_high_vol_offset_boost" in source
         assert "high_vol" in source
 
     def test_ranging_offset_discount_in_source(self) -> None:
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
         source = inspect.getsource(MakerPriceCalculator)
         assert "regime_ranging_offset_discount" in source
         assert "ranging" in source
-
 
 class TestRegimeOffsetBoostFunctional:
     """143# R-1a: MakerPriceCalculator.compute のレジーム別 offset 動作テスト."""
@@ -82,8 +88,6 @@ class TestRegimeOffsetBoostFunctional:
         base_offset: float = 0.05,
     ) -> tuple:
         """テスト用の MakerPriceCalculator を生成."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
 
         cfg = FillTestConfig(
             regime_high_vol_offset_boost=high_vol_boost,
@@ -104,9 +108,8 @@ class TestRegimeOffsetBoostFunctional:
         # mock regime detector — 156# §18: FillTestRegime enum を直接使用
         regime_det = None
         if regime_value is not None:
-            from scripts.v460.lib.regime_detector import FillTestRegime as _R
             regime_det = MagicMock()
-            regime_det.current_regime = _R(regime_value)
+            regime_det.current_regime = FillTestRegime(regime_value)
 
         ffd = MagicMock()
         ffd.should_boost.return_value = False
@@ -220,12 +223,10 @@ class TestRegimeOffsetBoostFunctional:
         # boost が 1.0 なので差がない (unknown_buy_offset_boost=1.0 のデフォルト)
         assert abs(r1.effective_offset_ratio - r2.effective_offset_ratio) < 1e-6
 
-
 class TestRegimeOffsetYamlMapping:
     """143# R-1a: YAML → FillTestConfig のマッピング."""
 
     def test_yaml_high_vol_offset_boost(self, tmp_path: Path) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         yaml_data = {
             "regime": {
                 "high_vol_offset_boost": 1.3,
@@ -238,7 +239,6 @@ class TestRegimeOffsetYamlMapping:
         assert cfg.regime_ranging_offset_discount == 0.85
 
     def test_yaml_lot_multipliers(self, tmp_path: Path) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         yaml_data = {
             "regime": {
                 "lot_multipliers": {
@@ -256,7 +256,6 @@ class TestRegimeOffsetYamlMapping:
             "ranging": 1.0,
         }
 
-
 # ======================================================================
 # R-1b: Lot regime adaptation tests
 # ======================================================================
@@ -273,7 +272,6 @@ class TestRegimeAdjustedLot:
         regime_value: str | None = None,
     ) -> MagicMock:
         """FillTestRunner のモック — _regime_adjusted_lot のみテスト."""
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         config = FillTestConfig(
             order_quantity=base_lot,
@@ -295,8 +293,6 @@ class TestRegimeAdjustedLot:
 
         # _regime_adjusted_lot を実装からバインド
         # 145#: _regime_lot_multiplier も必要 (_regime_adjusted_lot が内部呼出し)
-        from scripts.v460.run_fill_test import FillTestRunner
-        import types
         runner._regime_lot_multiplier = types.MethodType(
             FillTestRunner._regime_lot_multiplier, runner,
         )
@@ -378,7 +374,6 @@ class TestRegimeAdjustedLot:
         )
         assert runner._regime_adjusted_lot() == 0.005
 
-
 # ======================================================================
 # Review fix tests (140#/141#)
 # ======================================================================
@@ -388,7 +383,6 @@ class TestQuarantineBypassCancelReason:
 
     def test_cancel_reason_bypasses_price_check(self) -> None:
         """cancel_reason がある場合、order_price=0 でも quarantine されない."""
-        from ztb.metrics.fill_quality import FillRecord, _quarantine_reason
 
         r = FillRecord(
             cycle_id="test_1",
@@ -406,7 +400,6 @@ class TestQuarantineBypassCancelReason:
 
     def test_no_cancel_reason_still_quarantined(self) -> None:
         """cancel_reason なしで order_price=0 は従来通り quarantine."""
-        from ztb.metrics.fill_quality import FillRecord, _quarantine_reason
 
         r = FillRecord(
             cycle_id="test_2",
@@ -421,24 +414,20 @@ class TestQuarantineBypassCancelReason:
         reason = _quarantine_reason(r)
         assert reason is not None
 
-
 class TestOnlineMonitorPreFilter:
     """141# A.1-#3: online_monitor pre-filter テスト."""
 
     def test_pre_filter_in_source(self) -> None:
         """online_monitor.py に skip_gate_skipped/filled の pre-filter がある."""
-        from ztb.ml import online_monitor
         source = inspect.getsource(online_monitor)
         assert "skip_gate_skipped" in source
         assert "filled" in source
-
 
 class TestSkipGateSideReloadIndependence:
     """141# A.1-#1: side hot-reload が unified early-return と独立."""
 
     def test_side_reload_before_unified_check_in_source(self) -> None:
         """_check_and_reload_model で side 再読込が unified hash チェックより先."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
         source = inspect.getsource(SkipGateEvaluator._check_and_reload_model)
         # side reload の呼び出しが unified hash チェック (_model_file_hash) より先
         side_idx = source.index("_check_and_reload_side_models")
@@ -448,17 +437,14 @@ class TestSkipGateSideReloadIndependence:
             "unified _model_file_hash check"
         )
 
-
 class TestEvaluateGuardAllowsSideOnly:
     """141# A.1-#2: evaluate() が side-only models でも動作."""
 
     def test_evaluate_guard_checks_side_models(self) -> None:
         """evaluate() のガードが _gate_buy/_gate_sell の存在もチェック."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
         source = inspect.getsource(SkipGateEvaluator.evaluate)
         assert "_gate_buy" in source
         assert "_gate_sell" in source
-
 
 # ======================================================================
 # 144# Review fix tests — behavioral / R-1c / R-1d
@@ -469,7 +455,6 @@ class TestQuarantineBypassNarrowed:
 
     def test_audit_cancel_reason_bypasses_quarantine(self) -> None:
         """_AUDIT_CANCEL_REASONS に含まれる reason は quarantine されない."""
-        from ztb.metrics.fill_quality import FillRecord, _quarantine_reason
 
         for reason in [
             "circuit_breaker_open", "preflight_pause", "preflight_insufficient",
@@ -490,7 +475,6 @@ class TestQuarantineBypassNarrowed:
 
     def test_non_audit_cancel_reason_quarantined(self) -> None:
         """監査系でない cancel_reason は quarantine される."""
-        from ztb.metrics.fill_quality import FillRecord, _quarantine_reason
 
         r = FillRecord(
             cycle_id="non_audit",
@@ -509,7 +493,6 @@ class TestQuarantineBypassNarrowed:
 
     def test_audit_reason_buy_side_valid_price(self) -> None:
         """audit cancel_reason + side=buy + valid price → clean."""
-        from ztb.metrics.fill_quality import FillRecord, _quarantine_reason
 
         r = FillRecord(
             cycle_id="audit_buy",
@@ -526,7 +509,6 @@ class TestQuarantineBypassNarrowed:
 
     def test_non_audit_reason_invalid_price_quarantined(self) -> None:
         """非監査系 reason + side=buy + order_price=0 → quarantined."""
-        from ztb.metrics.fill_quality import FillRecord, _quarantine_reason
 
         r = FillRecord(
             cycle_id="non_audit_price",
@@ -542,21 +524,17 @@ class TestQuarantineBypassNarrowed:
         reason = _quarantine_reason(r)
         assert reason == "invalid_order_price"
 
-
 class TestMinLotUnification:
     """144# #2: _regime_adjusted_lot の min_lot が config.min_order_btc を参照."""
 
     def test_min_lot_uses_config(self) -> None:
         """ハードコード 0.001 ではなく config.min_order_btc を参照."""
-        from scripts.v460.run_fill_test import FillTestRunner
         source = inspect.getsource(FillTestRunner._regime_adjusted_lot)
         assert "self.config.min_order_btc" in source
         assert "min_lot = 0.001" not in source
 
     def test_custom_min_order_btc_respected(self) -> None:
         """config.min_order_btc を変更すると min_lot が追従."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-        import types
 
         # min_order_btc = 0.005 に変更
         config = FillTestConfig(
@@ -574,7 +552,6 @@ class TestMinLotUnification:
         det.current_regime.value = "high_vol"
         runner._regime_detector = det
 
-        from scripts.v460.run_fill_test import FillTestRunner
         runner._regime_lot_multiplier = types.MethodType(
             FillTestRunner._regime_lot_multiplier, runner,
         )
@@ -585,14 +562,12 @@ class TestMinLotUnification:
         # 0.002 * 0.5 = 0.001 → clamped to min_order_btc = 0.005
         assert result == 0.005
 
-
 class TestPreflightLotAlignment:
     """144# #1 → 145# fix: regime-adjusted lot は per-cycle で _current_lot に永続化しない."""
 
     def test_regime_lot_no_persistent_mutation(self) -> None:
         """145# fix: run_single_cycle で _regime_adjusted_lot が呼ばれるが、
         _current_lot への永続化コードが除去されている."""
-        from scripts.v460.run_fill_test import FillTestRunner
         source = inspect.getsource(FillTestRunner.run_single_cycle)
         # 151# P3-03: _regime_lot を1回算出 → SkipGate + _effective_order_lot で共有
         # _regime_lot は SkipGate 前に算出 (lot_floor より先の場合あり)
@@ -608,17 +583,14 @@ class TestPreflightLotAlignment:
             "§8-#2/#3 fix: _current_lot への永続化コードが残っている"
         )
 
-
 class TestRegimeRepriceConfig:
     """144# R-1c: regime_reprice_adjustments config テスト."""
 
     def test_default_empty(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert cfg.regime_reprice_adjustments == {}
 
     def test_yaml_mapping(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         yaml_data = {
             "regime": {
                 "reprice_adjustments": {
@@ -635,17 +607,14 @@ class TestRegimeRepriceConfig:
             "ranging": 0,
         }
 
-
 class TestRegimeTimeoutConfig:
     """144# R-1d: regime_timeout_multipliers config テスト."""
 
     def test_default_empty(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert cfg.regime_timeout_multipliers == {}
 
     def test_yaml_mapping(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         yaml_data = {
             "regime": {
                 "timeout_multipliers": {
@@ -660,48 +629,39 @@ class TestRegimeTimeoutConfig:
             "trending": 1.3,
         }
 
-
 class TestRegimeRepriceInOrderMonitor:
     """144# R-1c: OrderMonitor の regime reprice offset がソースに含まれる."""
 
     def test_regime_reprice_offset_in_source(self) -> None:
-        from scripts.v460.lib.order_monitor import OrderMonitor
         source = inspect.getsource(OrderMonitor.monitor)
         assert "regime_reprice_adjustments" in source
         assert "_regime_reprice_offset" in source
 
     def test_reprice_offset_applied_to_stale_max(self) -> None:
         """_stale_max_rp = base + _regime_reprice_offset."""
-        from scripts.v460.lib.order_monitor import OrderMonitor
         source = inspect.getsource(OrderMonitor.monitor)
         assert "_stale_max_rp_base + _regime_reprice_offset" in source
-
 
 class TestRegimeTimeoutInOrderMonitor:
     """144# R-1d: OrderMonitor の regime timeout multiplier がソースに含まれる."""
 
     def test_regime_timeout_in_source(self) -> None:
-        from scripts.v460.lib.order_monitor import OrderMonitor
         source = inspect.getsource(OrderMonitor.monitor)
         assert "regime_timeout_multipliers" in source
         assert "_effective_timeout" in source
 
     def test_effective_timeout_used_in_loop(self) -> None:
         """while ループが _effective_timeout を使用."""
-        from scripts.v460.lib.order_monitor import OrderMonitor
         source = inspect.getsource(OrderMonitor.monitor)
         assert "elapsed < _effective_timeout" in source
         # 旧ハードコード timeout_sec が直接ループで使われていないこと
         assert "elapsed < cfg.order_timeout_sec" not in source
-
 
 class TestRegimeRepriceMonitorBehavioral:
     """144# R-1c: OrderMonitor の regime reprice を mock で動作確認."""
 
     def test_reprice_offset_increases_limit(self) -> None:
         """regime_reprice_adjustments で reprice 上限が増える."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.order_monitor import OrderMonitor
 
         cfg = FillTestConfig(
             stale_order_enabled=True,
@@ -727,8 +687,6 @@ class TestRegimeRepriceMonitorBehavioral:
 
     def test_negative_offset_clamps_to_zero(self) -> None:
         """regime_reprice_adjustments 負の値で max 0 にクランプ."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.order_monitor import OrderMonitor
 
         cfg = FillTestConfig(
             stale_max_reprice=1,
@@ -740,13 +698,11 @@ class TestRegimeRepriceMonitorBehavioral:
         src = inspect.getsource(OrderMonitor.monitor)
         assert "max(0," in src
 
-
 class TestRegimeTimeoutMonitorBehavioral:
     """144# R-1d: OrderMonitor の regime timeout を mock で動作確認."""
 
     def test_timeout_multiplier_applied(self) -> None:
         """regime_timeout_multipliers で effective timeout が変わる."""
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         cfg = FillTestConfig(
             order_timeout_sec=90.0,
@@ -759,7 +715,6 @@ class TestRegimeTimeoutMonitorBehavioral:
 
     def test_no_regime_uses_base_timeout(self) -> None:
         """regime=None の場合は base timeout を使用."""
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         cfg = FillTestConfig(
             order_timeout_sec=90.0,
@@ -770,13 +725,10 @@ class TestRegimeTimeoutMonitorBehavioral:
         assert mult == 1.0
         assert cfg.order_timeout_sec * mult == 90.0
 
-
 class TestOrderMonitorHelpers:
     """OrderMonitor の小ヘルパー契約を直接検証."""
 
     def test_resolve_regime_name(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.order_monitor import OrderMonitor
 
         monitor = OrderMonitor(FillTestConfig())
         regime_det = MagicMock()
@@ -787,8 +739,6 @@ class TestOrderMonitorHelpers:
         assert monitor._resolve_regime_name(None) is None
 
     def test_reprice_skip_gate_helper_uses_config_offset(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.order_monitor import OrderMonitor
 
         cfg = FillTestConfig(stale_reprice_skip_gate_offset=0.15)
         monitor = OrderMonitor(cfg)
@@ -821,11 +771,9 @@ class TestOrderMonitorHelpers:
         assert call.kwargs["threshold_offset"] == pytest.approx(-0.15)
         assert call.args[0]["regime_trending"] == 1.0
 
-
 # ======================================================================
 # 145# fix: lot management bug fixes (§8-#1/#2/#3, §9-#1, §9-#2)
 # ======================================================================
-
 
 class TestLotNoCompounding:
     """145# §8-#2 fix: _regime_adjusted_lot が _current_lot を永続化しない確認."""
@@ -838,7 +786,6 @@ class TestLotNoCompounding:
         multipliers: dict[str, float] | None = None,
         regime_value: str | None = None,
     ) -> MagicMock:
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         config = FillTestConfig(
             order_quantity=base_lot,
@@ -857,8 +804,6 @@ class TestLotNoCompounding:
         else:
             runner._regime_detector = None
 
-        from scripts.v460.run_fill_test import FillTestRunner
-        import types
         runner._regime_lot_multiplier = types.MethodType(
             FillTestRunner._regime_lot_multiplier, runner,
         )
@@ -917,15 +862,12 @@ class TestLotNoCompounding:
         # 0.003 * 1.5 = 0.0045 (shrink 後の base から計算)
         assert abs(lot_after - 0.0045) < 1e-8
 
-
 class TestMonitorReceivesOrderLot:
     """145# §9-#1 fix: _monitor_fill_polling が order_lot を monitor に渡す確認."""
 
     @pytest.mark.asyncio
     async def test_monitor_receives_order_lot_not_current_lot(self) -> None:
         """order_lot を渡すと, monitor.current_lot に反映される."""
-        from scripts.v460.run_fill_test import FillTestRunner
-        from scripts.v460.lib.fill_config import FillMonitorResult
 
         runner = MagicMock(spec=FillTestRunner)
         runner._current_lot = 0.001  # base lot
@@ -945,7 +887,6 @@ class TestMonitorReceivesOrderLot:
         runner._get_mid_price = AsyncMock(return_value=15000000.0)
         runner._compute_maker_price = AsyncMock(return_value=(15000000.0, 100.0, 0.0003))
 
-        import types
         runner._monitor_fill_polling = types.MethodType(
             FillTestRunner._monitor_fill_polling, runner,
         )
@@ -965,13 +906,11 @@ class TestMonitorReceivesOrderLot:
             f"Expected current_lot=0.0015, got: {actual_lot}"
         )
 
-
 class TestEffectiveTimeout:
     """145# §9-#2: FillMonitorResult.effective_timeout が正しく返される."""
 
     def test_effective_timeout_field(self) -> None:
         """effective_timeout フィールドが存在し値が設定される."""
-        from scripts.v460.lib.fill_config import FillMonitorResult
 
         result = FillMonitorResult(
             filled=False,
@@ -982,7 +921,6 @@ class TestEffectiveTimeout:
 
     def test_effective_timeout_default_zero(self) -> None:
         """デフォルトは 0.0."""
-        from scripts.v460.lib.fill_config import FillMonitorResult
 
         result = FillMonitorResult(filled=True)
         assert result.effective_timeout == 0.0
@@ -1030,11 +968,9 @@ class TestEffectiveTimeout:
         )
         assert old_cancel_reason == "unknown"  # 旧ロジックの欠陥を証明
 
-
 # ======================================================================
 # 152# Regime detector unknown reduction tests
 # ======================================================================
-
 
 class TestAcceleratedHysteresis:
     """152# A: UNKNOWN → first regime は accelerated hysteresis で高速確定."""
@@ -1046,11 +982,6 @@ class TestAcceleratedHysteresis:
         6 回目の update で 2 連続 → accelerated threshold (max(2, 3-1)=2) を満たし確定。
         旧ロジックでは 3 連続 (8 回目) が必要だった。
         """
-        from scripts.v460.lib.regime_detector import (
-            FillTestRegimeDetector,
-            FillTestRegime,
-            RegimeConfig,
-        )
 
         config = RegimeConfig(window=5, hysteresis_count=3, min_confidence=0.0)
         det = FillTestRegimeDetector(config)
@@ -1069,11 +1000,6 @@ class TestAcceleratedHysteresis:
 
     def test_normal_transition_still_needs_full_hysteresis(self) -> None:
         """UNKNOWN 以外 → 別レジームへの遷移は通常の hysteresis_count を使う."""
-        from scripts.v460.lib.regime_detector import (
-            FillTestRegimeDetector,
-            FillTestRegime,
-            RegimeConfig,
-        )
 
         config = RegimeConfig(
             window=5, hysteresis_count=3, min_confidence=0.0,
@@ -1099,17 +1025,11 @@ class TestAcceleratedHysteresis:
         det.update(9.0, base + 60 + 3 * 50_000)
         assert det.current_regime.is_trending
 
-
 class TestMajorityFallback:
     """152# B: UNKNOWN 長期化時の最頻分類フォールバック."""
 
     def test_choppy_market_triggers_majority_fallback(self) -> None:
         """choppy な市場で連続一致が成立しなくても、最頻分類で仮確定する."""
-        from scripts.v460.lib.regime_detector import (
-            FillTestRegimeDetector,
-            FillTestRegime,
-            RegimeConfig,
-        )
 
         config = RegimeConfig(
             window=5, hysteresis_count=3, min_confidence=0.0,
@@ -1143,11 +1063,6 @@ class TestMajorityFallback:
 
     def test_no_fallback_when_insufficient_raw_history(self) -> None:
         """raw_history が hysteresis_count * 2 未満なら fallback しない."""
-        from scripts.v460.lib.regime_detector import (
-            FillTestRegimeDetector,
-            FillTestRegime,
-            RegimeConfig,
-        )
 
         # hysteresis_count=4 → accelerated threshold = max(2, 3) = 3
         # fallback requires raw_history >= 8
@@ -1167,11 +1082,6 @@ class TestMajorityFallback:
 
     def test_accelerated_takes_priority_over_fallback(self) -> None:
         """accelerated hysteresis が先に確定すれば fallback は不要."""
-        from scripts.v460.lib.regime_detector import (
-            FillTestRegimeDetector,
-            FillTestRegime,
-            RegimeConfig,
-        )
 
         config = RegimeConfig(window=5, hysteresis_count=3, min_confidence=0.0)
         det = FillTestRegimeDetector(config)
@@ -1185,4 +1095,3 @@ class TestMajorityFallback:
         det.update(5.0, base + 50)
         det.update(6.0, base + 60)
         assert det.current_regime == FillTestRegime.RANGING  # accelerated 確定
-

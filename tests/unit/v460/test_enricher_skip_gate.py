@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gzip
 import json
 import tempfile
 from pathlib import Path
@@ -31,6 +32,13 @@ from scripts.v460.ml.skip_gate import (
 )
 
 _REAL_DATA_SAMPLE_ROWS = 1200
+
+
+def _write_jsonl_gz(path: Path, rows: list[dict[str, Any]]) -> None:
+    with gzip.open(path, "wt", encoding="utf-8") as f:
+        for row in rows:
+            f.write(json.dumps(row, ensure_ascii=False))
+            f.write("\n")
 
 
 # ======================================================================
@@ -301,6 +309,67 @@ class Test058EnrichFillRecords:
         # PnL は filled & pnl_notna, AS は filled & as_notna
         # 同じ合成データだがサンプル数は同等以上
         assert len(X_pnl) >= len(X_as) * 0.8
+
+
+# ======================================================================
+# raw load cache tests
+# ======================================================================
+
+
+class Test058RawLoadCache:
+    """raw orderbook/trades ローダーのキャッシュ挙動テスト."""
+
+    def test_trades_cache_invalidates_on_file_update(self, tmp_path: Path) -> None:
+        trades_dir = tmp_path / "trades"
+        trades_dir.mkdir()
+        trades_file = trades_dir / "20260220.jsonl.gz"
+
+        _write_jsonl_gz(
+            trades_file,
+            [{"ts": 1.0, "price": 100.0, "amount": 0.1, "side": "buy"}],
+        )
+
+        df1 = load_raw_trades(tmp_path, date_filter={"20260220"})
+        df2 = load_raw_trades(tmp_path, date_filter={"20260220"})
+        assert len(df1) == 1
+        assert len(df2) == 1
+        assert df1 is not df2  # cache hitでも呼び出し側に独立DataFrameを返す
+
+        _write_jsonl_gz(
+            trades_file,
+            [
+                {"ts": 1.0, "price": 100.0, "amount": 0.1, "side": "buy"},
+                {"ts": 2.0, "price": 101.0, "amount": 0.2, "side": "sell"},
+            ],
+        )
+        df3 = load_raw_trades(tmp_path, date_filter={"20260220"})
+        assert len(df3) == 2
+
+    def test_orderbook_cache_invalidates_on_file_update(self, tmp_path: Path) -> None:
+        ob_dir = tmp_path / "orderbook"
+        ob_dir.mkdir()
+        ob_file = ob_dir / "20260220.jsonl.gz"
+
+        _write_jsonl_gz(
+            ob_file,
+            [{"ts": 1.0, "bids": [[100.0, 0.2]], "asks": [[101.0, 0.3]]}],
+        )
+
+        df1 = load_raw_orderbook(tmp_path, date_filter={"20260220"})
+        df2 = load_raw_orderbook(tmp_path, date_filter={"20260220"})
+        assert len(df1) == 1
+        assert len(df2) == 1
+        assert df1 is not df2
+
+        _write_jsonl_gz(
+            ob_file,
+            [
+                {"ts": 1.0, "bids": [[100.0, 0.2]], "asks": [[101.0, 0.3]]},
+                {"ts": 2.0, "bids": [[102.0, 0.4]], "asks": [[103.0, 0.5]]},
+            ],
+        )
+        df3 = load_raw_orderbook(tmp_path, date_filter={"20260220"})
+        assert len(df3) == 2
 
 
 # ======================================================================

@@ -28,6 +28,82 @@ _DEFAULT_RAW_DIR = Path("data/v460/raw")
 _TRADE_WINDOW_SEC = 60  # 直近 60 秒の約定統計
 _OB_MATCH_TOLERANCE_SEC = 5  # 板スナップショットの許容誤差
 _MULTI_TF_WINDOWS = [30, 300]  # 秒 (primary 60s は既存)
+_RAW_LOAD_CACHE_MAX_ENTRIES = 8
+
+
+@dataclass(frozen=True)
+class _RawLoadCacheEntry:
+    """raw ロード結果の軽量キャッシュ."""
+
+    file_signature: tuple[tuple[str, int, int], ...]
+    df: pd.DataFrame
+
+
+_RAW_ORDERBOOK_CACHE: dict[tuple[str, tuple[str, ...] | None], _RawLoadCacheEntry] = {}
+_RAW_TRADES_CACHE: dict[tuple[str, tuple[str, ...] | None], _RawLoadCacheEntry] = {}
+
+
+def _normalize_date_filter(
+    date_filter: Optional[set[str]],
+) -> tuple[str, ...] | None:
+    """date_filter をハッシュ可能キーへ正規化."""
+    if date_filter is None:
+        return None
+    return tuple(sorted(date_filter))
+
+
+def _select_raw_files(
+    data_dir: Path,
+    date_filter: Optional[set[str]],
+) -> list[Path]:
+    """date_filter を適用した raw ファイル一覧を返す."""
+    files: list[Path] = []
+    for f in sorted(data_dir.glob("*.jsonl.gz")):
+        if date_filter is not None:
+            stem = f.stem.replace(".jsonl", "")
+            if stem not in date_filter:
+                continue
+        files.append(f)
+    return files
+
+
+def _build_file_signature(files: list[Path]) -> tuple[tuple[str, int, int], ...]:
+    """mtime+size ベースの軽量シグネチャを生成."""
+    signature: list[tuple[str, int, int]] = []
+    for f in files:
+        try:
+            st = f.stat()
+            signature.append((f.name, st.st_mtime_ns, st.st_size))
+        except OSError:
+            signature.append((f.name, -1, -1))
+    return tuple(signature)
+
+
+def _load_cached_raw_df(
+    cache: dict[tuple[str, tuple[str, ...] | None], _RawLoadCacheEntry],
+    cache_key: tuple[str, tuple[str, ...] | None],
+    file_signature: tuple[tuple[str, int, int], ...],
+) -> pd.DataFrame | None:
+    """シグネチャ一致時のみ shallow copy を返す."""
+    cached = cache.get(cache_key)
+    if cached is None or cached.file_signature != file_signature:
+        return None
+    return cached.df.copy(deep=False)
+
+
+def _store_raw_cache(
+    cache: dict[tuple[str, tuple[str, ...] | None], _RawLoadCacheEntry],
+    cache_key: tuple[str, tuple[str, ...] | None],
+    file_signature: tuple[tuple[str, int, int], ...],
+    df: pd.DataFrame,
+) -> None:
+    """キャッシュ保存。サイズ上限超過時は最古エントリを破棄."""
+    cache[cache_key] = _RawLoadCacheEntry(file_signature=file_signature, df=df)
+    if len(cache) <= _RAW_LOAD_CACHE_MAX_ENTRIES:
+        return
+    oldest = next(iter(cache))
+    if oldest != cache_key:
+        cache.pop(oldest, None)
 
 
 @dataclass(frozen=True)
@@ -268,49 +344,54 @@ def load_raw_orderbook(
     if not ob_dir.exists():
         return pd.DataFrame()
 
-    all_records: list[dict[str, object]] = []
-    for f in sorted(ob_dir.glob("*.jsonl.gz")):
-        # 130# 日付限定ロード
-        if date_filter is not None:
-            stem = f.stem.replace(".jsonl", "")
-            if stem not in date_filter:
-                continue
-        all_records.extend(read_jsonl_gz(f))
+    target_files = _select_raw_files(ob_dir, date_filter)
+    date_filter_key = _normalize_date_filter(date_filter)
+    cache_key = (str(ob_dir.resolve()), date_filter_key)
+    file_signature = _build_file_signature(target_files)
+    cached_df = _load_cached_raw_df(_RAW_ORDERBOOK_CACHE, cache_key, file_signature)
+    if cached_df is not None:
+        return cached_df
 
-    if not all_records:
-        return pd.DataFrame()
+    if not target_files:
+        empty = pd.DataFrame()
+        _store_raw_cache(_RAW_ORDERBOOK_CACHE, cache_key, file_signature, empty)
+        return empty.copy(deep=False)
 
     rows: list[dict[str, float]] = []
-    for r in all_records:
-        bids = r.get("bids", [])
-        asks = r.get("asks", [])
-        if not bids or not asks:
-            continue
-        best_bid = bids[0][0]
-        best_ask = asks[0][0]
-        mid = (best_bid + best_ask) / 2
-        if mid <= 0:
-            continue
-        bid_vol_5 = sum(s for _, s in bids[:5])
-        ask_vol_5 = sum(s for _, s in asks[:5])
-        total_depth = bid_vol_5 + ask_vol_5
-        rows.append({
-            "ts": r["ts"],
-            "best_bid": best_bid,
-            "best_ask": best_ask,
-            "mid_price": mid,
-            "spread_bps": (best_ask - best_bid) / mid * 10000,
-            "bid_vol_5": bid_vol_5,
-            "ask_vol_5": ask_vol_5,
-            "depth_imbalance": (
-                (bid_vol_5 - ask_vol_5) / total_depth
-                if total_depth > 0 else 0.0
-            ),
-        })
+    for f in target_files:
+        for r in read_jsonl_gz(f):
+            bids = r.get("bids", [])
+            asks = r.get("asks", [])
+            if not bids or not asks:
+                continue
+            best_bid = bids[0][0]
+            best_ask = asks[0][0]
+            mid = (best_bid + best_ask) / 2
+            if mid <= 0:
+                continue
+            bid_vol_5 = sum(s for _, s in bids[:5])
+            ask_vol_5 = sum(s for _, s in asks[:5])
+            total_depth = bid_vol_5 + ask_vol_5
+            rows.append({
+                "ts": r["ts"],
+                "best_bid": best_bid,
+                "best_ask": best_ask,
+                "mid_price": mid,
+                "spread_bps": (best_ask - best_bid) / mid * 10000,
+                "bid_vol_5": bid_vol_5,
+                "ask_vol_5": ask_vol_5,
+                "depth_imbalance": (
+                    (bid_vol_5 - ask_vol_5) / total_depth
+                    if total_depth > 0 else 0.0
+                ),
+            })
 
-    df = pd.DataFrame(rows).sort_values("ts").reset_index(drop=True)
+    df = pd.DataFrame(rows)
+    if not df.empty:
+        df = df.sort_values("ts").reset_index(drop=True)
     logger.info(f"Loaded {len(df)} orderbook snapshots")
-    return df
+    _store_raw_cache(_RAW_ORDERBOOK_CACHE, cache_key, file_signature, df)
+    return df.copy(deep=False)
 
 
 def load_raw_trades(
@@ -332,23 +413,30 @@ def load_raw_trades(
     if not tr_dir.exists():
         return pd.DataFrame()
 
+    target_files = _select_raw_files(tr_dir, date_filter)
+    date_filter_key = _normalize_date_filter(date_filter)
+    cache_key = (str(tr_dir.resolve()), date_filter_key)
+    file_signature = _build_file_signature(target_files)
+    cached_df = _load_cached_raw_df(_RAW_TRADES_CACHE, cache_key, file_signature)
+    if cached_df is not None:
+        return cached_df
+
+    if not target_files:
+        empty = pd.DataFrame()
+        _store_raw_cache(_RAW_TRADES_CACHE, cache_key, file_signature, empty)
+        return empty.copy(deep=False)
+
     all_records: list[dict[str, object]] = []
-    for f in sorted(tr_dir.glob("*.jsonl.gz")):
-        # 130# 日付限定ロード: ファイル名 YYYYMMDD.jsonl.gz から日付抽出
-        if date_filter is not None:
-            stem = f.stem.replace(".jsonl", "")  # "20260220" etc.
-            if stem not in date_filter:
-                continue
+    for f in target_files:
         all_records.extend(read_jsonl_gz(f))
 
-    if not all_records:
-        return pd.DataFrame()
-
     df = pd.DataFrame(all_records)
-    df = df.sort_values("ts").reset_index(drop=True)
+    if not df.empty:
+        df = df.sort_values("ts").reset_index(drop=True)
     n_days = len(date_filter) if date_filter else "all"
     logger.info(f"Loaded {len(df)} trades (days={n_days})")
-    return df
+    _store_raw_cache(_RAW_TRADES_CACHE, cache_key, file_signature, df)
+    return df.copy(deep=False)
 
 
 def _compute_trade_features(

@@ -14,28 +14,41 @@ Tests:
 
 from __future__ import annotations
 
-
+import importlib
 import inspect
 import os
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from scripts.v460.daily_health_check import (
+    _run_feature_freshness,
+    _run_trades_health,
+    run_daily_health_check,
+)
+from ztb.trading.live.exchanges.base.adapter import BaseExchangeAdapter
+from ztb.trading.live.exchanges.base.broker_interfaces import (
+    Balance,
+    IBroker,
+    Order,
+    Position,
+    normalize_symbol,
+)
+from ztb.trading.live.exchanges.bitflyer.adapter import BitFlyerAdapter
+from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-
 
 # ---------------------------------------------------------------------------
 # BrokerRegistry
 # ---------------------------------------------------------------------------
-
 
 class TestBrokerRegistry:
     """BrokerRegistry の型安全性・登録・検索."""
 
     def test_default_brokers_registered(self) -> None:
         """coincheck, bitflyer がデフォルト登録される."""
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
         reg = BrokerRegistry()
         names = reg.list_brokers()
@@ -44,7 +57,6 @@ class TestBrokerRegistry:
 
     def test_no_skeleton_or_sim(self) -> None:
         """旧 CoincheckSkeletonBroker, SimBroker は登録されない."""
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
         reg = BrokerRegistry()
         names = reg.list_brokers()
@@ -53,8 +65,6 @@ class TestBrokerRegistry:
 
     def test_get_broker_returns_ibroker(self) -> None:
         """get_broker() が IBroker インスタンスを返す."""
-        from ztb.trading.live.exchanges.base.broker_interfaces import IBroker
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
         reg = BrokerRegistry()
         adapter = reg.get_broker("coincheck", dry_run=True)
@@ -62,7 +72,6 @@ class TestBrokerRegistry:
 
     def test_get_broker_unknown_raises(self) -> None:
         """未登録名で ValueError."""
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
         reg = BrokerRegistry()
         with pytest.raises(ValueError, match="Unknown broker"):
@@ -70,7 +79,6 @@ class TestBrokerRegistry:
 
     def test_register_non_ibroker_raises(self) -> None:
         """IBroker 非サブクラスの登録で TypeError."""
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
         reg = BrokerRegistry()
         with pytest.raises(TypeError, match="not a subclass of IBroker"):
@@ -78,7 +86,6 @@ class TestBrokerRegistry:
 
     def test_has_broker(self) -> None:
         """has_broker() の動作確認."""
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
         reg = BrokerRegistry()
         assert reg.has_broker("coincheck") is True
@@ -86,14 +93,6 @@ class TestBrokerRegistry:
 
     def test_custom_adapter_registration(self) -> None:
         """新規取引所アダプタを動的に登録できる."""
-        from ztb.trading.live.exchanges.base.adapter import BaseExchangeAdapter
-        from ztb.trading.live.exchanges.base.broker_interfaces import (
-            Balance,
-            Order,
-            Position,
-        )
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
-
         class DummyExchangeAdapter(BaseExchangeAdapter):
             async def _get_balance_real(self, currency=None):
                 return []
@@ -124,25 +123,21 @@ class TestBrokerRegistry:
         adapter = reg.get_broker("dummy", dry_run=True)
         assert isinstance(adapter, BaseExchangeAdapter)
 
-
 # ---------------------------------------------------------------------------
 # BitFlyer adapter fixes
 # ---------------------------------------------------------------------------
-
 
 class TestBitFlyerAdapterFixes:
     """BitFlyer adapter の修正確認."""
 
     def test_make_request_uses_asyncio_to_thread(self) -> None:
         """_make_request が asyncio.to_thread を使用 (イベントループ非ブロック)."""
-        from ztb.trading.live.exchanges.bitflyer.adapter import BitFlyerAdapter
 
         src = inspect.getsource(BitFlyerAdapter._make_request)
         assert "asyncio.to_thread" in src
 
     def test_make_request_raises_network_error(self) -> None:
         """_make_request の docstring が NetworkError を記載."""
-        from ztb.trading.live.exchanges.bitflyer.adapter import BitFlyerAdapter
 
         src = inspect.getsource(BitFlyerAdapter._make_request)
         assert "NetworkError" in src
@@ -151,30 +146,25 @@ class TestBitFlyerAdapterFixes:
 
     def test_default_prices_lowercase(self) -> None:
         """BitFlyer のデフォルト価格キーが小文字 (btc_jpy)."""
-        from ztb.trading.live.exchanges.bitflyer.adapter import BitFlyerAdapter
 
         adapter = BitFlyerAdapter(dry_run=True)
         assert "btc_jpy" in adapter._current_prices
         assert "BTC_JPY" not in adapter._current_prices
 
-
 # ---------------------------------------------------------------------------
 # シンボル正規化
 # ---------------------------------------------------------------------------
-
 
 class TestSymbolNormalization:
     """内部シンボルが小文字統一であることの確認."""
 
     def test_normalize_symbol(self) -> None:
-        from ztb.trading.live.exchanges.base.broker_interfaces import normalize_symbol
 
         assert normalize_symbol("BTC_JPY") == "btc_jpy"
         assert normalize_symbol("btc_jpy") == "btc_jpy"
         assert normalize_symbol("Eth_Jpy") == "eth_jpy"
 
     def test_coincheck_default_prices_lowercase(self) -> None:
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
         adapter = CoincheckAdapter(dry_run=True)
         # BaseExchangeAdapter のデフォルトが btc_jpy
@@ -182,16 +172,13 @@ class TestSymbolNormalization:
 
     def test_bitflyer_api_calls_uppercase(self) -> None:
         """BitFlyer API 呼び出しではシンボルを .upper() する."""
-        from ztb.trading.live.exchanges.bitflyer.adapter import BitFlyerAdapter
 
         src = inspect.getsource(BitFlyerAdapter._place_order_real)
         assert "symbol.upper()" in src
 
-
 # ---------------------------------------------------------------------------
 # __init__.py パッケージ構造
 # ---------------------------------------------------------------------------
-
 
 class TestPackageInit:
     """__init__.py が存在し、主要クラスが公開されている."""
@@ -230,11 +217,9 @@ class TestPackageInit:
         )
         assert BitFlyerAdapter is not None
 
-
 # ---------------------------------------------------------------------------
 # ZaifAdapter / CoincheckSkeletonBroker 除去
 # ---------------------------------------------------------------------------
-
 
 class TestLegacyCleanup:
     """旧スタブ・skeleton の除去確認."""
@@ -263,31 +248,23 @@ class TestLegacyCleanup:
 
         assert not hasattr(br, "BrokerProtocol")
 
-
 # ---------------------------------------------------------------------------
 # 両アダプタ共通: BaseExchangeAdapter 継承
 # ---------------------------------------------------------------------------
-
 
 class TestAdapterInheritance:
     """全アダプタが BaseExchangeAdapter を継承."""
 
     def test_coincheck_inherits_base(self) -> None:
-        from ztb.trading.live.exchanges.base.adapter import BaseExchangeAdapter
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
         assert issubclass(CoincheckAdapter, BaseExchangeAdapter)
 
     def test_bitflyer_inherits_base(self) -> None:
-        from ztb.trading.live.exchanges.base.adapter import BaseExchangeAdapter
-        from ztb.trading.live.exchanges.bitflyer.adapter import BitFlyerAdapter
 
         assert issubclass(BitFlyerAdapter, BaseExchangeAdapter)
 
     def test_both_have_7_real_methods(self) -> None:
         """7 つの _*_real() 抽象メソッドが実装されている."""
-        from ztb.trading.live.exchanges.bitflyer.adapter import BitFlyerAdapter
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
         real_methods = [
             "_get_balance_real",
@@ -304,8 +281,6 @@ class TestAdapterInheritance:
 
     def test_both_have_market_data(self) -> None:
         """get_orderbook / get_recent_trades がオーバーライドされている."""
-        from ztb.trading.live.exchanges.bitflyer.adapter import BitFlyerAdapter
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 
         for cls in [CoincheckAdapter, BitFlyerAdapter]:
             # Should not raise MarketDataNotSupported
@@ -315,17 +290,14 @@ class TestAdapterInheritance:
             src = inspect.getsource(cls.get_orderbook)
             assert "MarketDataNotSupported" not in src
 
-
 # ---------------------------------------------------------------------------
 # 146# §16 BrokerRegistry — credential resolution + create_adapter
 # ---------------------------------------------------------------------------
-
 
 class TestBrokerRegistryCredentials:
     """credential env map と resolve_credentials テスト."""
 
     def test_credential_env_map_coincheck(self) -> None:
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
         reg = BrokerRegistry()
         key_var, secret_var = reg.get_credential_env_vars("coincheck")
@@ -333,7 +305,6 @@ class TestBrokerRegistryCredentials:
         assert secret_var == "COINCHECK_API_SECRET"
 
     def test_credential_env_map_bitflyer(self) -> None:
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
         reg = BrokerRegistry()
         key_var, secret_var = reg.get_credential_env_vars("bitflyer")
@@ -341,7 +312,6 @@ class TestBrokerRegistryCredentials:
         assert secret_var == "BITFLYER_API_SECRET"
 
     def test_resolve_credentials_from_env(self) -> None:
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
         reg = BrokerRegistry()
         with patch.dict(
@@ -353,7 +323,6 @@ class TestBrokerRegistryCredentials:
             assert secret == "test_secret"
 
     def test_resolve_credentials_empty_returns_none(self) -> None:
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
         reg = BrokerRegistry()
         with patch.dict(
@@ -366,7 +335,6 @@ class TestBrokerRegistryCredentials:
             assert secret is None
 
     def test_unknown_broker_credential_raises(self) -> None:
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
         reg = BrokerRegistry()
         with pytest.raises(ValueError, match="No credential env mapping"):
@@ -374,9 +342,6 @@ class TestBrokerRegistryCredentials:
 
     def test_custom_credential_env_on_register(self) -> None:
         """register_broker(credential_env=...) でカスタム env 登録."""
-        from ztb.trading.live.exchanges.base.adapter import BaseExchangeAdapter
-        from ztb.trading.live.exchanges.base.broker_interfaces import Order
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
         class _Stub(BaseExchangeAdapter):
             async def _get_balance_real(self, currency=None): return []
@@ -391,12 +356,10 @@ class TestBrokerRegistryCredentials:
         reg.register_broker("test_ex", _Stub, credential_env=("TE_KEY", "TE_SEC"))
         assert reg.get_credential_env_vars("test_ex") == ("TE_KEY", "TE_SEC")
 
-
 class TestBrokerRegistryCreateAdapter:
     """create_adapter() のテスト."""
 
     def test_create_dry_run_no_credentials(self) -> None:
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
         reg = BrokerRegistry()
         adapter = reg.create_adapter("coincheck", dry_run=True)
@@ -404,7 +367,6 @@ class TestBrokerRegistryCreateAdapter:
         assert adapter.dry_run  # type: ignore[attr-defined]
 
     def test_create_live_without_credentials_raises(self) -> None:
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
         reg = BrokerRegistry()
         with patch.dict(os.environ, {}, clear=True):
@@ -412,7 +374,6 @@ class TestBrokerRegistryCreateAdapter:
                 reg.create_adapter("coincheck", dry_run=False)
 
     def test_create_live_with_explicit_credentials(self) -> None:
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
         reg = BrokerRegistry()
         adapter = reg.create_adapter(
@@ -422,24 +383,20 @@ class TestBrokerRegistryCreateAdapter:
         assert not adapter.dry_run  # type: ignore[attr-defined]
 
     def test_create_bitflyer_dry_run(self) -> None:
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
         reg = BrokerRegistry()
         adapter = reg.create_adapter("bitflyer", dry_run=True)
         assert adapter is not None
 
     def test_create_unknown_raises(self) -> None:
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
         reg = BrokerRegistry()
         with pytest.raises(ValueError, match="Unknown broker"):
             reg.create_adapter("zaif")
 
-
 # ---------------------------------------------------------------------------
 # 146# §16 run_fill_test — レジストリ経由化 + --exchange 引数
 # ---------------------------------------------------------------------------
-
 
 class TestRunFillTestExchangeDecoupling:
     """run_fill_test.py から CoincheckAdapter 直接参照が除去されている."""
@@ -477,11 +434,9 @@ class TestRunFillTestExchangeDecoupling:
         )
         assert "registry.create_adapter(" in src
 
-
 # ---------------------------------------------------------------------------
 # 146# §16 run_observation — レジストリ経由化 + --exchange 引数
 # ---------------------------------------------------------------------------
-
 
 class TestRunObservationExchangeDecoupling:
     """run_observation.py の CoincheckAdapter 直接参照が除去されている."""
@@ -504,11 +459,9 @@ class TestRunObservationExchangeDecoupling:
         )
         assert '"--exchange"' in src
 
-
 # ---------------------------------------------------------------------------
 # 146# §16 registry __init__.py
 # ---------------------------------------------------------------------------
-
 
 class TestRegistryInit:
     """registry パッケージの __init__.py が正しくエクスポートする."""
@@ -519,20 +472,15 @@ class TestRegistryInit:
         assert BrokerRegistry is not None
         assert callable(get_broker_registry)
 
-
 # ---------------------------------------------------------------------------
 # 146# §11 review fixes
 # ---------------------------------------------------------------------------
-
 
 class TestS11ReviewFixes:
     """§11 レビュー指摘修正の回帰テスト."""
 
     def test_create_adapter_custom_broker_dry_run_without_credential_env(self) -> None:
         """§11 #1 (HIGH): credential_env 未登録のカスタム取引所で dry-run 生成可能."""
-        from ztb.trading.live.exchanges.base.adapter import BaseExchangeAdapter
-        from ztb.trading.live.exchanges.base.broker_interfaces import Order
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
         class _NoCredStub(BaseExchangeAdapter):
             async def _get_balance_real(self, currency=None): return []
@@ -553,9 +501,6 @@ class TestS11ReviewFixes:
 
     def test_create_adapter_custom_broker_live_without_creds_raises(self) -> None:
         """§11 #1 補完: credential_env 未登録 + live → ValueError."""
-        from ztb.trading.live.exchanges.base.adapter import BaseExchangeAdapter
-        from ztb.trading.live.exchanges.base.broker_interfaces import Order
-        from ztb.trading.live.registry.broker_registry import BrokerRegistry
 
         class _NoCredStub2(BaseExchangeAdapter):
             async def _get_balance_real(self, currency=None): return []
@@ -588,26 +533,21 @@ class TestS11ReviewFixes:
         )
         assert "sys.exit(1)" in src
 
-
 # ---------------------------------------------------------------------------
 # 146# P2-04/P3-04: daily_health_check
 # ---------------------------------------------------------------------------
-
 
 class TestDailyHealthCheck:
     """daily_health_check.py の構造テスト."""
 
     def test_module_importable(self) -> None:
         """daily_health_check.py がインポート可能."""
-        import importlib
         mod = importlib.import_module("scripts.v460.daily_health_check")
         assert hasattr(mod, "run_daily_health_check")
         assert hasattr(mod, "main")
 
     def test_run_daily_health_check_signature(self) -> None:
         """run_daily_health_check の引数シグネチャ."""
-        import inspect
-        from scripts.v460.daily_health_check import run_daily_health_check
         sig = inspect.signature(run_daily_health_check)
         params = list(sig.parameters.keys())
         assert "results_dir" in params
@@ -617,7 +557,6 @@ class TestDailyHealthCheck:
 
     def test_trades_health_integration(self) -> None:
         """_run_trades_health が呼び出し可能."""
-        from scripts.v460.daily_health_check import _run_trades_health
         result = _run_trades_health(days=1)
         assert "check" in result
         assert result["check"] == "trades_health"
@@ -626,7 +565,6 @@ class TestDailyHealthCheck:
 
     def test_feature_freshness_integration(self) -> None:
         """_run_feature_freshness が呼び出し可能."""
-        from scripts.v460.daily_health_check import _run_feature_freshness
         result = _run_feature_freshness()
         assert "check" in result
         assert result["check"] == "feature_freshness"

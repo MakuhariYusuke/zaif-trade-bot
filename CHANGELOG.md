@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 291# perf+dry: 追加重複排除 + feature_enricher raw I/O キャッシュ (2026-03-06)
+
+### Changed
+- **v460 テスト全体**: `--no-cov` 実行で **45.67s**（3923 passed）
+- **per-method import の追加集約**:
+  - `test_regime_detector.py`: **96 -> 0**
+  - `test_141_side_specific_models.py`: **73 -> 0**
+  - `test_143_regime_utilization.py`: **58 -> 0**
+  - `test_146_multi_exchange.py`: **57 -> 9**（import 検証系のみローカル保持）
+- **`feature_enricher.py` 本体最適化**:
+  - `load_raw_orderbook` / `load_raw_trades` に **mtime+size シグネチャ連動のメモリキャッシュ**を追加
+  - `date_filter` 付きファイル選択を共通化し、同一入力での重複 I/O を回避
+  - ファイル更新時はシグネチャ差分で自動 invalidate
+
+### Added
+- **キャッシュ回帰テスト** (`test_enricher_skip_gate.py`):
+  - `load_raw_trades` / `load_raw_orderbook` の cache hit 時整合性
+  - ファイル更新時の invalidation を検証
+
+---
+
 ## 290# test+perf: 追加DRY整理 + 実データ統合の重複排除 + 本体再利用経路追加 (2026-03-06)
 
 ### Changed
