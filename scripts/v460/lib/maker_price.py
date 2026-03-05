@@ -1171,7 +1171,7 @@ class MakerPriceCalculator:
                 cfg.buy_as_guard_offset_mult,
                 max_ratio=cfg.buy_as_guard_max_offset_ratio,
             )
-            logger.info(
+            logger.debug(
                 f"[286# buy_as_guard] velocity={mid_trend_bps:.2f}bps "
                 f"<= {cfg.buy_as_guard_velocity_threshold_bps:.1f}bps — "
                 f"buy offset expanded {_prev:.4f} → {effective_offset_ratio:.4f} "

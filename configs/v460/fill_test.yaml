@@ -437,6 +437,15 @@ amihud_illiq:
   baseline: 0.001                  # ILLIQ ベースライン (正規化基準)
   max_mult: 1.5                    # ILLIQ 由来の offset 倍率上限
 
+# 286# Buy-side AS Guard (Glosten-Milgrom 1985): 価格急落時の buy offset 拡大
+#   microprice velocity が閾値を下回ったら buy offset を mult 倍に拡大し逆選択防御。
+#   sell 側は下落が順方向のため適用外 (理論的非対称性)。
+buy_as_guard:
+  enabled: true                    # 286# 有効化
+  velocity_threshold_bps: -5.0     # velocity ≤ この値で発動 (bps)
+  offset_mult: 1.5                 # 発動時の buy offset 倍率
+  max_offset_ratio: 0.5            # offset 拡大の上限 ratio
+
 # ---- 088# sell 専用ハードガード ----
 sell_guard:
   max_spread_jpy: 5000.0       # 168# P2-C1: 4000→5000。165# SO-1 offset_floor 0.20 で保護強化済 (prev: 085# 4677=-7.37bps)
@@ -532,6 +541,20 @@ loss_control:
       trending_down: -0.5          # 下降トレンド時は buy への許容を縮小
       trending_up: -1.5            # 上昇トレンド時は buy に寛容 (順張り)
       high_vol: -0.5               # 高ボラ時は buy 抑制
+  # 286# 283# P1-4: 在庫連動 buy_dynamic_kill 緩和 (Ho & Stoll 1981)
+  # BTC 不足 (inv_net_imbalance < 0) 時に kill 閾値を offset して在庫補充 buy を許容
+  buy_dynamic_kill_inv_relaxation:
+    enabled: true                  # 286# 有効化
+    scale: 0.5                     # |imbalance| → offset 変換係数
+    max_bps: 0.3                   # 緩和上限 (bps)
+  # 286# 283# P1-5: 強制買い KPI 分離 (balance_forced fill の品質個別追跡)
+  forced_buy_kpi_tracking: true    # 286# 有効化 (デフォルト True)
+  # 286# 284# P1: 強制買い遅延実行 (Glosten-Milgrom 1985)
+  # balance_forced + buy + 急落中 → N サイクル待機 (逆選択回避の「待つ勇気」)
+  forced_buy_delay:
+    enabled: true                  # 286# 有効化
+    velocity_threshold_bps: -5.0   # velocity ≤ この値で遅延発動
+    cycles: 3                      # 遅延サイクル数
   # 249# dual_kill → quiescence: 両方kill時はbypassせず静観 (242# "No Trade = normal")
   dual_kill_quiescence_enabled: true
   # 137# P1-08: spread 狭小時 pause (too_narrow 拡張)

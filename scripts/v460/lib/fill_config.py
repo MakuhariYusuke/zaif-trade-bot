@@ -567,11 +567,15 @@ class FillTestConfig:
     # Glosten-Milgrom (1985): 価格急落時は情報非対称性リスクが急上昇し、
     # buy 側 maker は逆選択を被りやすい。velocity が閾値を超えたら
     # buy offset を強制拡大して AS 損失を抑制する。
+    amihud_illiq_max_mult: float = 1.5       # ILLIQ 由来の offset 倍率上限
+    # ---- 286# 283# P1-6: Buy-side AS Guard — microprice 急落時の buy offset 拡大 ----
+    # Glosten-Milgrom (1985): 価格急落時は情報非対称性リスクが急上昇し、
+    # buy 側 maker は逆選択を被りやすい。velocity が閾値を超えたら
+    # buy offset を強制拡大して AS 損失を抑制する。
     buy_as_guard_enabled: bool = False        # True で buy AS guard を有効化
     buy_as_guard_velocity_threshold_bps: float = -5.0  # velocity がこの値以下で発動
     buy_as_guard_offset_mult: float = 1.5     # 発動時の買い offset 倍率
     buy_as_guard_max_offset_ratio: float = 0.5  # offset 拡大の上限 ratio
-    amihud_illiq_max_mult: float = 1.5       # ILLIQ 由来の offset 倍率上限
     preflight_pause_enabled: bool = True       # True で SAFE_STOP 前に pause を挟む
     preflight_pause_threshold: int = 5         # この回数で pause 発動 (< max_preflight_skip)
     preflight_pause_sec: float = 300.0         # pause 時のスリープ秒数
@@ -1241,6 +1245,18 @@ class FillTestConfig:
             if yk in amihud:
                 kwargs[ck] = float(amihud[yk])
 
+        # 286# Buy-side AS Guard (Glosten-Milgrom 1985)
+        bag = yaml_cfg.get("buy_as_guard", {})
+        if bag.get("enabled") is not None:
+            kwargs["buy_as_guard_enabled"] = bool(bag["enabled"])
+        for yk, ck in {
+            "velocity_threshold_bps": "buy_as_guard_velocity_threshold_bps",
+            "offset_mult": "buy_as_guard_offset_mult",
+            "max_offset_ratio": "buy_as_guard_max_offset_ratio",
+        }.items():
+            if yk in bag:
+                kwargs[ck] = float(bag[yk])
+
         # 088# sell 専用ハードガード
         sell_guard = yaml_cfg.get("sell_guard", {})
         if sell_guard.get("max_spread_jpy") is not None:
@@ -1343,6 +1359,28 @@ class FillTestConfig:
         # 273# kill 時間上限 YAML 配線
         if "max_kill_duration_sec" in buy_kill:
             kwargs["buy_dynamic_kill_max_duration_sec"] = float(buy_kill["max_kill_duration_sec"])
+
+        # 286# 283# P1-4: 在庫連動 buy_dynamic_kill 緩和 (Ho & Stoll 1981)
+        inv_relax = 止血.get("buy_dynamic_kill_inv_relaxation", {})
+        if inv_relax.get("enabled") is not None:
+            kwargs["buy_dynamic_kill_inv_relaxation_enabled"] = bool(inv_relax["enabled"])
+        if "scale" in inv_relax:
+            kwargs["buy_dynamic_kill_inv_relaxation_scale"] = float(inv_relax["scale"])
+        if "max_bps" in inv_relax:
+            kwargs["buy_dynamic_kill_inv_relaxation_max_bps"] = float(inv_relax["max_bps"])
+
+        # 286# 283# P1-5: 強制買い KPI 分離
+        if 止血.get("forced_buy_kpi_tracking") is not None:
+            kwargs["forced_buy_kpi_tracking_enabled"] = bool(止血["forced_buy_kpi_tracking"])
+
+        # 286# 284# P1: 強制買い遅延実行 (Glosten-Milgrom 1985)
+        fbd = 止血.get("forced_buy_delay", {})
+        if fbd.get("enabled") is not None:
+            kwargs["forced_buy_delay_enabled"] = bool(fbd["enabled"])
+        if "velocity_threshold_bps" in fbd:
+            kwargs["forced_buy_delay_velocity_threshold_bps"] = float(fbd["velocity_threshold_bps"])
+        if "cycles" in fbd:
+            kwargs["forced_buy_delay_cycles"] = int(fbd["cycles"])
 
         # 249# dual_kill_quiescence
         _dkq = 止血.get("dual_kill_quiescence_enabled")
