@@ -206,3 +206,41 @@
 ### 次アクション
 1. `test_fill_quality.py`（49件）と `test_158_regime_deadlock_fix.py`（36件）の局所 import を優先集約
 2. `run_single_cycle` / `run_continuous` は source-string 検証依存が多いため、影響範囲を限定した抽出単位で段階分割
+
+---
+
+## 2026-03-06 / Session 037-006
+
+### 実施
+- DRY 改善（method 内 import 集約）
+  - `test_135_trades_and_gate.py`
+  - `test_145_s14_structural_refactors.py`
+  - `test_157_regime_features.py`
+  - `test_158_regime_deadlock_fix.py`
+  - `test_189_alt_horizon_macro_integration.py`
+  - `test_195_velocity_b1_soft.py`
+  - `test_262_protocol_cancel_recheck.py`
+- 上記 7 ファイルでローカル import をモジュール先頭へ移動し、重複 import を削減
+
+### 結果
+- 変更対象テスト:
+  - `214 passed in 6.83s`
+- v460 全体:
+  - `3942 passed, 20 warnings in 43.41s`（`--no-cov --tb=short`）
+  - `3942 passed, 20 warnings in 41.96s`（`--no-cov --durations=15`）
+- `--durations=15` 上位:
+  - `test_enricher_skip_gate` setup `1.42s`
+  - `test_retrain_hot_reload::test_retrain_deploy_and_hot_reload` call `0.52s`
+  - `test_ml_pipeline::test_train_gb_model` call `0.37s`
+
+### DRY 指標更新
+- 集約後の上位残件:
+  - `test_fill_quality.py` (49)
+  - `test_ob_recorder.py` (27)
+  - `test_175_code_review_sweep2.py` (27)
+  - `test_176_trending_offset_asymmetry.py` (25)
+
+### 次アクション
+1. `test_fill_quality.py` の import 検証テストを除いたローカル import を段階集約
+2. `test_ob_recorder.py` / `test_175_code_review_sweep2.py` を同様に先頭 import 化
+3. 速度面は `test_enricher_skip_gate` setup と `test_retrain_hot_reload` の重いケースを重点最適化

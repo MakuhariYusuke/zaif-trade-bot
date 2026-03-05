@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 297# refactor+dry: v460 import集約 第3弾 (2026-03-06)
+
+### Changed
+- **DRY 改善（method 内 import 集約）**
+  - `tests/unit/v460/test_135_trades_and_gate.py`
+  - `tests/unit/v460/test_145_s14_structural_refactors.py`
+  - `tests/unit/v460/test_157_regime_features.py`
+  - `tests/unit/v460/test_158_regime_deadlock_fix.py`
+  - `tests/unit/v460/test_189_alt_horizon_macro_integration.py`
+  - `tests/unit/v460/test_195_velocity_b1_soft.py`
+  - `tests/unit/v460/test_262_protocol_cancel_recheck.py`
+- 以上 7 ファイルで重複していた method 内 import をモジュール先頭へ集約し、反復 import 呼び出しと可読性低下を解消
+
+### Performance
+- `tests/unit/v460` (`--no-cov --durations=15`): **41.96s** (`3942 passed`)
+- slowest setup/call 上位は継続して `test_enricher_skip_gate` setup と ML/retrain 系で、今回集約対象の import 起因ボトルネックは縮小
+
+### Verification
+- 対象回帰セット:
+  - `214 passed in 6.83s`
+- 全体:
+  - `3942 passed, 20 warnings in 43.41s`
+  - `3942 passed, 20 warnings in 41.96s` (`--durations=15`)
+
+---
+
 ## 296# refactor+dry+core: MonteCarlo分割再利用 + テストimport集約 (2026-03-06)
 
 ### Changed
