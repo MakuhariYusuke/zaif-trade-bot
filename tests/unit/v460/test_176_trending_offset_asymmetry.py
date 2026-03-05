@@ -7,14 +7,21 @@
 
 from __future__ import annotations
 
-import ast
+import re
+from datetime import date, timedelta
+from pathlib import Path
 from unittest.mock import MagicMock
 
+import pandas as pd
 import pytest
+import scripts.v460.ml.retrain_scheduler as retrain_scheduler_mod
+import yaml  # type: ignore[import-untyped]
 
+from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
 from scripts.v460.lib.fill_config import FillTestConfig
 from scripts.v460.lib.maker_price import MakerPriceCalculator
 from scripts.v460.lib.regime_detector import FillTestRegime
+from scripts.v460.ml.skip_gate import build_features_from_market_state
 
 
 # =================================================================
@@ -32,7 +39,6 @@ class TestTrendingSkipExclusion:
 
         194#: CycleGateAggregator のソースで確認。
         """
-        from pathlib import Path
         src = Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8")
         assert 'trending_up' in src, "trending_up check must exist in cycle_gate_aggregator"
         assert 'regime != "trending_up"' in src, (
@@ -41,13 +47,11 @@ class TestTrendingSkipExclusion:
 
     def test_orchestrator_allows_trending_down_sell(self) -> None:
         """trending_down 時の sell は通過する (既存動作の維持確認)."""
-        from pathlib import Path
         src = Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8")
         assert 'trending_up' in src
 
     def test_no_old_trending_down_only_check(self) -> None:
         """旧コード `== "trending_down"` 条件が削除されていること."""
-        from pathlib import Path
         src = Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8")
         assert 'regime == "trending_down"' not in src, (
             "176# A: old trending_down-only passthrough must be removed"
@@ -107,9 +111,6 @@ class TestDirectionalBoostConfig:
 
     def test_live_yaml_has_direction_boosts(self) -> None:
         """本番 YAML に方向別 boost が設定されている."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
-
         yaml_path = Path("configs/v460/fill_test.yaml")
         with open(yaml_path) as f:
             cfg = yaml.safe_load(f)
@@ -126,9 +127,6 @@ class TestDirectionalBoostConfig:
         196#: ハードスキップではなく offset boost で保守的 sell 発注に変換。
         skip_sell_trending=true でゲート条件を有効化しつつ、soft mode で block しない。
         """
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
-
         yaml_path = Path("configs/v460/fill_test.yaml")
         with open(yaml_path) as f:
             cfg = yaml.safe_load(f)
@@ -357,8 +355,6 @@ class TestHotReloadDirectionalFields:
 
     def test_directional_fields_in_hot_reloadable(self) -> None:
         """4 つの方向別フィールドが _HOT_RELOADABLE_FIELDS に含まれる."""
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
-
         expected = [
             "trending_up_buy_offset_boost",
             "trending_up_sell_offset_boost",
@@ -372,8 +368,6 @@ class TestHotReloadDirectionalFields:
 
     def test_existing_trending_fields_still_present(self) -> None:
         """既存の trending boost フィールドも維持されている."""
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
-
         assert "regime_trending_offset_boost" in _HOT_RELOADABLE_FIELDS
         assert "regime_trending_offset_boost_buy" in _HOT_RELOADABLE_FIELDS
         assert "regime_trending_offset_boost_sell" in _HOT_RELOADABLE_FIELDS
@@ -387,9 +381,6 @@ class TestMLFeatureTrendingDirection:
 
     def test_skip_gate_build_features_trending_up(self) -> None:
         """skip_gate build_features_from_market_state で regime='trending_up' → regime_trending=1.0."""
-        from scripts.v460.ml.skip_gate import build_features_from_market_state
-        import numpy as np
-
         features = build_features_from_market_state(
             side="buy",
             spread_jpy=100.0,
@@ -402,8 +393,6 @@ class TestMLFeatureTrendingDirection:
 
     def test_skip_gate_build_features_trending_down(self) -> None:
         """skip_gate build_features_from_market_state で regime='trending_down' → regime_trending=1.0."""
-        from scripts.v460.ml.skip_gate import build_features_from_market_state
-
         features = build_features_from_market_state(
             side="sell",
             spread_jpy=100.0,
@@ -416,8 +405,6 @@ class TestMLFeatureTrendingDirection:
 
     def test_skip_gate_build_features_trending_undirected(self) -> None:
         """skip_gate build_features_from_market_state で regime='trending' → regime_trending=1.0."""
-        from scripts.v460.ml.skip_gate import build_features_from_market_state
-
         features = build_features_from_market_state(
             side="buy",
             spread_jpy=100.0,
@@ -430,8 +417,6 @@ class TestMLFeatureTrendingDirection:
 
     def test_skip_gate_build_features_ranging_not_trending(self) -> None:
         """ranging は regime_trending=0.0."""
-        from scripts.v460.ml.skip_gate import build_features_from_market_state
-
         features = build_features_from_market_state(
             side="buy",
             spread_jpy=100.0,
@@ -444,7 +429,6 @@ class TestMLFeatureTrendingDirection:
 
     def test_feature_enricher_trending_up(self) -> None:
         """feature_enricher で regime='trending_up' → regime_trending=1."""
-        import pandas as pd
         df = pd.DataFrame({
             "regime": ["trending_up", "trending_down", "ranging", "trending"],
         })
@@ -461,9 +445,6 @@ class TestYAMLRegimeDirectionKeys:
 
     def test_skip_gate_regime_thresholds_has_directions(self) -> None:
         """skip_gate regime_thresholds に trending_up/trending_down が存在."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
-
         with open(Path("configs/v460/fill_test.yaml")) as f:
             cfg = yaml.safe_load(f)
 
@@ -473,9 +454,6 @@ class TestYAMLRegimeDirectionKeys:
 
     def test_regime_sample_weights_has_directions(self) -> None:
         """retrain regime_sample_weights に trending_up/trending_down が存在."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
-
         with open(Path("configs/v460/fill_test.yaml")) as f:
             cfg = yaml.safe_load(f)
 
@@ -485,9 +463,6 @@ class TestYAMLRegimeDirectionKeys:
 
     def test_dynamic_kill_thresholds_already_directional(self) -> None:
         """sell/buy dynamic_kill regime_thresholds は既に方向別 (回帰確認)."""
-        from pathlib import Path
-        import yaml  # type: ignore[import-untyped]
-
         with open(Path("configs/v460/fill_test.yaml")) as f:
             cfg = yaml.safe_load(f)
 
@@ -497,9 +472,7 @@ class TestYAMLRegimeDirectionKeys:
 
     def test_retrain_scheduler_defaults_have_directions(self) -> None:
         """retrain_scheduler.py デフォルト dict に trending_up/down が追加済み."""
-        import scripts.v460.ml.retrain_scheduler as mod
-
-        defaults = mod._DEFAULT_CONFIG
+        defaults = retrain_scheduler_mod._DEFAULT_CONFIG
         weights = defaults["regime_sample_weights"]
         assert "trending_up" in weights
         assert "trending_down" in weights
@@ -513,10 +486,6 @@ class TestChangelogDateConsistency:
 
     def test_no_future_dates_in_changelog(self) -> None:
         """CHANGELOG の日付が大幅な未来日でないこと (174# の誤日付修正確認)."""
-        from pathlib import Path
-        import re
-        from datetime import date, timedelta
-
         content = Path("CHANGELOG.md").read_text(encoding="utf-8")
         today = date.today()
         threshold = today + timedelta(days=2)  # 1日程度のズレは許容

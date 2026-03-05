@@ -15,7 +15,18 @@
 
 from __future__ import annotations
 
+import inspect
+from unittest.mock import MagicMock, patch
+
 import pytest
+from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
+from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+from scripts.v460.lib.fill_record_helpers import FillRecordHelpersMixin
+from scripts.v460.lib.maker_price import MakerPriceCalculator
+from scripts.v460.lib.order_monitor import OrderMonitor
+from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
 
 # ======================================================================
@@ -27,8 +38,6 @@ class TestFFDBoostClamp:
 
     def test_boost_clamped_to_max(self) -> None:
         """VG boost + FFD boost が重なっても max_offset_ratio でクランプ."""
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-        import inspect
         # 260# P2-2: FFD boost は _apply_ffd_boost() に抽出済み
         source = inspect.getsource(MakerPriceCalculator._apply_ffd_boost)
         # FFD boost セクションが helper 経由で max_offset_ratio clamp を使うことを確認
@@ -45,17 +54,14 @@ class TestBuyDynamicKillWindowValidation:
     """buy_dynamic_kill_window のバリデーション."""
 
     def test_zero_raises(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         with pytest.raises(ValueError, match="buy_dynamic_kill_window"):
             FillTestConfig(buy_dynamic_kill_window=0)
 
     def test_negative_raises(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         with pytest.raises(ValueError, match="buy_dynamic_kill_window"):
             FillTestConfig(buy_dynamic_kill_window=-1)
 
     def test_valid_default(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert cfg.buy_dynamic_kill_window >= 1
 
@@ -68,8 +74,6 @@ class TestCalibratorNotDoubled:
     """_check_and_reload_model で _inject_calibrator が二重呼び出しされない."""
 
     def test_no_double_inject(self) -> None:
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        import inspect
         source = inspect.getsource(SkipGateEvaluator._check_and_reload_model)
         # コメント以外の行で _inject_calibrator が呼ばれていないこと
         code_lines = [
@@ -94,7 +98,6 @@ class TestYAMLInvDiscountBinding:
     """sell_offset_floor_inv_discount が YAML からパース可能."""
 
     def test_parse_from_yaml(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         yaml_cfg = {
             "sell_guard": {
                 "offset_floor_inv_discount": 0.3,
@@ -104,7 +107,6 @@ class TestYAMLInvDiscountBinding:
         assert kwargs.get("sell_offset_floor_inv_discount") == 0.3
 
     def test_parse_none_skipped(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         yaml_cfg = {"sell_guard": {}}
         kwargs = FillTestConfig._parse_stale_vg_section(yaml_cfg)
         assert "sell_offset_floor_inv_discount" not in kwargs
@@ -126,7 +128,6 @@ class TestStaleSideHotReload:
         "stale_max_reprice_sell",
     ])
     def test_stale_side_field_reloadable(self, field: str) -> None:
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
         assert field in _HOT_RELOADABLE_FIELDS
 
 
@@ -138,8 +139,6 @@ class TestDeadCodeRemoved:
     """update_inventory の n==0 dead code が除去されている."""
 
     def test_no_n_equals_zero_check(self) -> None:
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-        import inspect
         source = inspect.getsource(MakerPriceCalculator.update_inventory)
         assert "n == 0" not in source
 
@@ -153,9 +152,6 @@ class TestSkipCounterSeparation:
 
     def test_interleaved_records_count_correctly(self) -> None:
         """交互に来た場合、各カウンタは末尾の連続数のみ."""
-        from unittest.mock import MagicMock, patch
-        from scripts.v460.lib.fill_record_helpers import FillRecordHelpersMixin
-
         class FakeRunner(FillRecordHelpersMixin):
             def __init__(self) -> None:
                 self._cycle_count = 0
@@ -189,9 +185,6 @@ class TestSkipCounterSeparation:
 
     def test_consecutive_same_type(self) -> None:
         """同一タイプの連続カウントは正しい."""
-        from unittest.mock import MagicMock, patch
-        from scripts.v460.lib.fill_record_helpers import FillRecordHelpersMixin
-
         class FakeRunner(FillRecordHelpersMixin):
             def __init__(self) -> None:
                 self._cycle_count = 0
@@ -229,18 +222,15 @@ class TestFFDBoostTTL:
     """FFD boost の TTL decay 機能."""
 
     def test_boost_ttl_config_default(self) -> None:
-        from scripts.v460.lib.fast_fill_defense import FastFillDefenseConfig
         cfg = FastFillDefenseConfig()
         assert cfg.boost_ttl_sec == 600.0
 
     def test_boost_ttl_field_in_config(self) -> None:
-        from scripts.v460.lib.fast_fill_defense import FastFillDefenseConfig
         cfg = FastFillDefenseConfig(boost_ttl_sec=300.0)
         assert cfg.boost_ttl_sec == 300.0
 
     def test_boost_activated_at_tracked(self) -> None:
         """boost 活性化時に activated_at が記録される."""
-        from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
         cfg = FastFillDefenseConfig(enabled=True, threshold_sec=5.0, offset_boost=2.0)
         defense = FastFillDefense(cfg, base_offset_ratio=0.05)
         defense.evaluate_fill(
@@ -260,8 +250,6 @@ class TestOrderMonitorProtocols:
     """order_monitor の引数型が Protocol 化されている."""
 
     def test_monitor_signature_typed(self) -> None:
-        from scripts.v460.lib.order_monitor import OrderMonitor
-        import inspect
         sig = inspect.signature(OrderMonitor.monitor)
         params = sig.parameters
         # object ではなく型付きであること
@@ -270,15 +258,11 @@ class TestOrderMonitorProtocols:
         assert "KillSwitch" in shutdown_ann
 
     def test_pending_order_setter_callable(self) -> None:
-        from scripts.v460.lib.order_monitor import OrderMonitor
-        import inspect
         sig = inspect.signature(OrderMonitor.monitor)
         ann = str(sig.parameters["pending_order_setter"].annotation)
         assert "Callable" in ann
 
     def test_get_mid_price_awaitable(self) -> None:
-        from scripts.v460.lib.order_monitor import OrderMonitor
-        import inspect
         sig = inspect.signature(OrderMonitor.monitor)
         ann = str(sig.parameters["get_mid_price"].annotation)
         assert "Callable" in ann or "Awaitable" in ann
@@ -292,7 +276,5 @@ class TestHeartbeatCleanup:
     """cleanup_heartbeat メソッドが存在すること."""
 
     def test_cleanup_method_exists(self) -> None:
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         assert hasattr(FillLoopOrchestratorMixin, "cleanup_heartbeat")
-        import inspect
         assert inspect.iscoroutinefunction(FillLoopOrchestratorMixin.cleanup_heartbeat)

@@ -39,6 +39,21 @@ class TradesHealthResult:
     stale_hours: float  # 最新ファイルからの経過時間
     message: str
 
+def _collect_available_days(trades_dir: Path) -> list[str]:
+    """trades ディレクトリから YYYYMMDD 日付キーを抽出して昇順返却."""
+    if not trades_dir.exists():
+        return []
+    available: list[str] = []
+    for path in trades_dir.iterdir():
+        name = path.name
+        if not name.endswith(".jsonl.gz"):
+            continue
+        day = name[:-9]  # strip ".jsonl.gz"
+        if len(day) == 8 and day.isdigit():
+            available.append(day)
+    available.sort()
+    return available
+
 def check_trades_health(
     raw_dir: Path | None = None,
     expected_days: list[str] | None = None,
@@ -65,14 +80,10 @@ def check_trades_health(
     d = raw_dir or _DEFAULT_RAW_DIR
     tr_dir = d / "trades"
     now_utc = datetime.now(timezone.utc)
+    now_ts = now_utc.timestamp()
 
     # 利用可能な日の列挙
-    available: list[str] = []
-    if tr_dir.exists():
-        for f in sorted(tr_dir.glob("*.jsonl.gz")):
-            stem = f.stem.replace(".jsonl", "")
-            if len(stem) == 8 and stem.isdigit():
-                available.append(stem)
+    available = _collect_available_days(tr_dir)
     available_set = set(available)
 
     # 期待日リスト
@@ -88,15 +99,11 @@ def check_trades_health(
     missing = [day for day in expected_days if day not in available_set]
 
     # 鮮度チェック
-    stale_hours = float("inf")
-    if available:
-        latest_day = available[-1]
-        latest_file = tr_dir / f"{latest_day}.jsonl.gz"
-        if latest_file.exists():
-            mtime = latest_file.stat().st_mtime
-            stale_hours = (now_utc.timestamp() - mtime) / 3600
-        else:
-            stale_hours = float("inf")
+    stale_hours = _latest_mtime_hours(
+        tr_dir,
+        glob_pattern="????????.jsonl.gz",
+        now_ts=now_ts,
+    )
 
     # 判定
     # 158# 修正: max_missing_days で欠損許容。ただし鮮度は必須。

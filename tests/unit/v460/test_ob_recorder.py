@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import gzip
+import inspect
 import json
 import math
 import time
@@ -14,6 +15,12 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.maker_price import MakerPriceCalculator
+from scripts.v460.lib.ob_recorder import OBRecorder
+from scripts.v460.ml.feature_enricher import _find_nearest_ob, load_raw_orderbook
+from ztb.trading.live.exchanges.base.broker_interfaces import OrderBookSnapshot
 
 
 # ===== OBRecorder テスト =====
@@ -23,24 +30,20 @@ class TestOBRecorderBasic:
     """OBRecorder の基本動作."""
 
     def test_record_adds_to_buffer(self) -> None:
-        from scripts.v460.lib.ob_recorder import OBRecorder
         rec = OBRecorder(enabled=True)
         rec.record([[100, 1.0]], [[101, 1.0]], timestamp=1000.0)
         assert rec.buffer_size == 1
 
     def test_record_disabled_noop(self) -> None:
-        from scripts.v460.lib.ob_recorder import OBRecorder
         rec = OBRecorder(enabled=False)
         rec.record([[100, 1.0]], [[101, 1.0]], timestamp=1000.0)
         assert rec.buffer_size == 0
 
     def test_flush_empty_returns_zero(self) -> None:
-        from scripts.v460.lib.ob_recorder import OBRecorder
         rec = OBRecorder(enabled=True)
         assert rec.flush() == 0
 
     def test_total_written_tracks_cumulative(self) -> None:
-        from scripts.v460.lib.ob_recorder import OBRecorder
         rec = OBRecorder(raw_dir=Path("/tmp/test_ob_recorder_tw"), enabled=True)
         rec.record([[100, 1.0]], [[101, 1.0]], timestamp=1000.0)
         rec.record([[100, 2.0]], [[101, 2.0]], timestamp=1001.0)
@@ -49,8 +52,6 @@ class TestOBRecorderBasic:
         assert rec.buffer_size == 0
 
     def test_record_preserves_zero_timestamp(self, tmp_path: Path) -> None:
-        from scripts.v460.lib.ob_recorder import OBRecorder
-
         rec = OBRecorder(raw_dir=tmp_path, enabled=True)
         rec.record([[100, 1.0]], [[101, 1.0]], timestamp=0.0)
         rec.flush()
@@ -62,15 +63,11 @@ class TestOBRecorderBasic:
         assert data["ts"] == 0.0
 
     def test_record_ignores_malformed_snapshot(self) -> None:
-        from scripts.v460.lib.ob_recorder import OBRecorder
-
         rec = OBRecorder(enabled=True)
         rec.record([MagicMock()], [[101, 1.0]], timestamp=1000.0)
         assert rec.buffer_size == 0
 
     def test_record_sanitizes_magicmock_timestamp(self, tmp_path: Path) -> None:
-        from scripts.v460.lib.ob_recorder import OBRecorder
-
         rec = OBRecorder(raw_dir=tmp_path, enabled=True)
         rec.record([[100, 1.0]], [[101, 1.0]], timestamp=MagicMock())
         rec.flush()
@@ -87,7 +84,6 @@ class TestOBRecorderFlush:
     """OBRecorder の flush → JSONL.gz 書き出し."""
 
     def test_flush_creates_jsonl_gz(self, tmp_path: Path) -> None:
-        from scripts.v460.lib.ob_recorder import OBRecorder
         rec = OBRecorder(raw_dir=tmp_path, enabled=True)
         bids = [[14500000, 0.1], [14499000, 0.2]]
         asks = [[14501000, 0.1], [14502000, 0.2]]
@@ -110,7 +106,6 @@ class TestOBRecorderFlush:
         assert data["exchange"] == "coincheck"
 
     def test_flush_appends_to_existing(self, tmp_path: Path) -> None:
-        from scripts.v460.lib.ob_recorder import OBRecorder
         rec = OBRecorder(raw_dir=tmp_path, enabled=True)
         rec.record([[100, 1.0]], [[101, 1.0]], timestamp=1000.0)
         rec.flush()
@@ -125,7 +120,6 @@ class TestOBRecorderFlush:
 
     def test_flush_tuple_bids_asks_normalized(self, tmp_path: Path) -> None:
         """tuple 形式の bids/asks が list に変換されること."""
-        from scripts.v460.lib.ob_recorder import OBRecorder
         rec = OBRecorder(raw_dir=tmp_path, enabled=True)
         rec.record([(100.0, 1.0)], [(101.0, 1.0)], timestamp=1000.0)
         rec.flush()
@@ -140,7 +134,6 @@ class TestOBRecorderAutoFlush:
     """flush_interval 経過時の自動 flush."""
 
     def test_auto_flush_on_interval(self, tmp_path: Path) -> None:
-        from scripts.v460.lib.ob_recorder import OBRecorder
         rec = OBRecorder(raw_dir=tmp_path, flush_interval=0, enabled=True)
         # flush_interval=0 なので record 時に即座に flush
         rec._last_flush = time.time() - 1  # 過去にする
@@ -155,7 +148,6 @@ class TestOBRecorderFormat:
 
     def test_format_compatible_with_feature_enricher(self, tmp_path: Path) -> None:
         """feature_enricher.load_raw_orderbook() で読めるフォーマット."""
-        from scripts.v460.lib.ob_recorder import OBRecorder
         rec = OBRecorder(raw_dir=tmp_path, enabled=True)
         bids = [[14500000.0, 0.1], [14499000.0, 0.2], [14498000.0, 0.3],
                 [14497000.0, 0.4], [14496000.0, 0.5]]
@@ -165,7 +157,6 @@ class TestOBRecorderFormat:
         rec.flush()
 
         # feature_enricher で読み込めることを検証
-        from scripts.v460.ml.feature_enricher import load_raw_orderbook
         ob_df = load_raw_orderbook(tmp_path)
         assert len(ob_df) == 1
         assert ob_df.iloc[0]["ts"] == 1000.0
@@ -182,11 +173,6 @@ class TestMakerPriceOBCache:
 
     @pytest.mark.asyncio
     async def test_last_ob_snapshot_stored(self) -> None:
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
-        from ztb.trading.live.exchanges.base.broker_interfaces import OrderBookSnapshot
-
         config = FillTestConfig()
         ffd = FastFillDefense(
             config=FastFillDefenseConfig(),
@@ -217,11 +203,6 @@ class TestMakerPriceOBCache:
     @pytest.mark.asyncio
     async def test_ob_snapshot_has_bids_asks(self) -> None:
         """キャッシュされた OB の bids/asks が OBRecorder に渡せる形式."""
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
-        from ztb.trading.live.exchanges.base.broker_interfaces import OrderBookSnapshot
-
         config = FillTestConfig()
         ffd = FastFillDefense(
             config=FastFillDefenseConfig(),
@@ -259,12 +240,6 @@ class TestOBRecorderIntegration:
     @pytest.mark.asyncio
     async def test_end_to_end_record_and_enrich(self, tmp_path: Path) -> None:
         """OB record → flush → feature_enricher で OB matched > 0."""
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
-        from scripts.v460.lib.ob_recorder import OBRecorder
-        from ztb.trading.live.exchanges.base.broker_interfaces import OrderBookSnapshot
-
         config = FillTestConfig()
         ffd = FastFillDefense(
             config=FastFillDefenseConfig(),
@@ -299,7 +274,6 @@ class TestOBRecorderIntegration:
         rec.flush()
 
         # Verify feature_enricher can match
-        from scripts.v460.ml.feature_enricher import load_raw_orderbook, _find_nearest_ob
         ob_df = load_raw_orderbook(tmp_path)
         assert len(ob_df) == 1
         features = _find_nearest_ob(ob_df, 1000.0, tolerance_sec=5)

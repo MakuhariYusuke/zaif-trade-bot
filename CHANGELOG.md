@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 299# perf+dry+core: trades_health走査最適化 + v460 import集約追加 (2026-03-06)
+
+### Changed
+- **本体コード最適化（挙動不変）**
+  - `ztb/data/trades_health.py`
+    - `check_trades_health()` の available day 収集を `_collect_available_days()` に抽出
+    - stale 判定を `_latest_mtime_hours(..., now_ts=...)` へ統一し、走査ロジックを共通化
+- **DRY 改善（method 内 import 集約）**
+  - `tests/unit/v460/test_ob_recorder.py`
+  - `tests/unit/v460/test_175_code_review_sweep2.py`
+  - `tests/unit/v460/test_176_trending_offset_asymmetry.py`
+
+### Verification
+- 変更対象回帰:
+  - `211 passed in 3.91s`
+  - `122 passed in 2.79s`（追加集約分）
+- 全体:
+  - `3946 passed, 19 warnings in 51.08s`
+  - `3946 passed, 19 warnings in 51.01s` (`--durations=12`)
+
+### Performance Notes
+- `--durations=12` 上位は継続して integration/ML 系:
+  - `test_enricher_skip_gate` setup `1.62s`
+  - `test_v460_core::TestManifest::test_write_and_read` call `0.54s`
+  - `test_retrain_hot_reload` 系 `0.37s` 前後
+
+---
+
 ## 298# perf+core: Trades/OB recorder hotpath最適化 (2026-03-06)
 
 ### Changed

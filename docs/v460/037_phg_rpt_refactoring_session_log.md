@@ -281,3 +281,41 @@
 1. `test_enricher_skip_gate` の setup 実データ構築を fixture キャッシュ化
 2. `test_retrain_hot_reload` の I/O 依存ケースを軽量モックに段階置換
 3. `test_fill_quality.py` の import 検証系を除くローカル import 集約を継続
+
+---
+
+## 2026-03-06 / Session 037-008
+
+### 実施
+- 本体コード最適化（挙動不変）
+  - `ztb/data/trades_health.py`
+    - `check_trades_health()` の日付抽出を `_collect_available_days()` へ抽出
+    - stale 判定を `_latest_mtime_hours(..., now_ts=...)` へ統一し、走査ロジックを共通化
+- DRY 改善（method 内 import 集約）
+  - `test_ob_recorder.py`
+  - `test_175_code_review_sweep2.py`
+  - `test_176_trending_offset_asymmetry.py`
+
+### 結果
+- 変更対象テスト:
+  - `211 passed in 3.91s`
+  - `122 passed in 2.79s`（追加集約）
+- v460 全体:
+  - `3946 passed, 19 warnings in 51.08s`（`--no-cov --tb=short`）
+  - `3946 passed, 19 warnings in 51.01s`（`--no-cov --durations=12`）
+- `--durations=12` 上位:
+  - `test_enricher_skip_gate` setup `1.62s`
+  - `test_v460_core::TestManifest::test_write_and_read` call `0.54s`
+  - `test_retrain_hot_reload` 系 call `0.37s` 前後
+
+### DRY 指標更新
+- 集約後の上位残件:
+  - `test_fill_quality.py` (49)
+  - `test_188_split_evc_macro.py` (24)
+  - `test_190_ev_weighted_safety.py` (23)
+  - `test_gate_judgment.py` (22)
+
+### 次アクション
+1. `test_fill_quality.py`（import 検証系を除く）を段階集約
+2. `test_188_split_evc_macro.py` / `test_190_ev_weighted_safety.py` の先頭 import 化
+3. 速度面は `test_enricher_skip_gate` setup と `test_retrain_hot_reload` の高負荷ケースを優先
