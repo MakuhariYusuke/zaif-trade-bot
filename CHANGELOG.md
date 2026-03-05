@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 295# perf+dry+core: run_single_cycle圧縮 + fill_metrics日次集計最適化 + import集約 (2026-03-06)
+
+### Changed
+- **本体コード（保守性/性能）**
+  - `scripts/v460/lib/fill_cycle_executor.py`
+    - `run_single_cycle()` から `decision_path` 導出を `_derive_decision_path()` に抽出
+    - サイクル結果ログを `_log_cycle_result()` に抽出
+    - 関数内ドキュメントを圧縮し、構造テストの行数制約を再充足
+  - `ztb/metrics/fill_quality.py`
+    - `compute_fill_metrics()` の日次集計キーを文字列日付生成から UTC 日バケット整数へ変更
+    - 日次レート計算のループを簡素化し、反復時の変換コストを削減
+- **DRY 改善（method 内 import 集約）**
+  - `tests/unit/v460/test_113_resilience.py`
+  - `tests/unit/v460/test_155_hindsight_review.py`
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - 重複する method 内 import をモジュール先頭へ集約（循環依存がある箇所は局所 import を維持）
+
+### Performance
+- `tests/unit/v460` (`--no-cov --durations=20`): **43.18s**
+  - 結果: `3939 passed, 1 failed`
+  - 失敗は既知の別枠変更起因: `test_292_observability::test_production_yaml_has_ranging_threshold`
+- slowest setup:
+  - `test_enricher_skip_gate.py::Test058Integration::test_enrichment_with_real_data` setup **1.39s**
+
+---
+
 ## 294# perf+dry+core: MonteCarlo高速化 + gate_check import集約 (2026-03-06)
 
 ### Changed

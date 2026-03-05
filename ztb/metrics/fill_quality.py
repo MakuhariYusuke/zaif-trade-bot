@@ -31,6 +31,8 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     import pandas as pd
 
+_SECONDS_PER_DAY: Final[float] = 86_400.0
+
 # ======================================================================
 # Data classes
 # ======================================================================
@@ -134,7 +136,7 @@ class FillRecord:
     # 292# P0: ev_weighted 可観測性強化 (290#/291# review)
     ev_score_pretrade: float | None = None        # ランタイム ev_score (ex-ante 予測値)
     ev_offset_mult_applied: float | None = None   # 実適用 offset 乗数 (1.0=変更なし)
-    decision_path: str | None = None              # "primary_only" / "ev_offset" / "ev_emergency_skip"
+    decision_path: str | None = None              # "primary_only" / "ev_offset" / "ev_no_change" / "ev_emergency_skip"
     # 187# B-2: guard_trace — gated_regime + effective_cycle_interval 記録
     gated_regime: str | None = None              # ヒステリシス適用後の実効 regime
     effective_cycle_interval: float | None = None  # 使用されたサイクル間隔 (秒)
@@ -424,6 +426,19 @@ def format_utc_day(timestamp: object, *, compact: bool = True) -> str | None:
     except (OverflowError, OSError, ValueError):
         return None
 
+def _utc_day_bucket(timestamp: object) -> int | None:
+    """epoch 秒を UTC 日単位バケットに変換する."""
+    try:
+        ts = float(timestamp)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(ts):
+        return None
+    try:
+        return int(ts // _SECONDS_PER_DAY)
+    except (OverflowError, ValueError):
+        return None
+
 def _mean_and_one_sided_pvalue(values: list[float]) -> tuple[float, float]:
     """平均値と片側 t 検定 p 値を返す."""
     if not values:
@@ -453,7 +468,7 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
     cancelled_count = 0
     cancel_reason_breakdown: dict[str, int] = {}
     skip_gate_count = 0
-    daily_groups: dict[str, _DailyFillCount] = {}
+    daily_groups: dict[int, _DailyFillCount] = {}
     wait_times: list[float] = []
     pnl_values: list[float] = []
     pnl60_values: list[float] = []
@@ -494,7 +509,7 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
         if record.skip_gate_skipped is True or record.cancel_reason == "skip_gate":
             skip_gate_count += 1
 
-        day_key = format_utc_day(record.timestamp, compact=False)
+        day_key = _utc_day_bucket(record.timestamp)
         if day_key is None:
             continue
         day_stats = daily_groups.get(day_key)
@@ -504,7 +519,8 @@ def compute_fill_metrics(records: list[FillRecord]) -> FillMetrics:
         day_stats.add(filled=record.filled)
 
     daily_fill_rates: list[float] = []
-    for _day, day_stats in sorted(daily_groups.items()):
+    for day_key in sorted(daily_groups):
+        day_stats = daily_groups[day_key]
         daily_fill_rates.append(
             day_stats.filled / day_stats.total if day_stats.total > 0 else 0.0
         )

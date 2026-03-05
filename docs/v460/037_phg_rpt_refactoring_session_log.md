@@ -146,3 +146,33 @@
 ### 次アクション
 1. `test_fill_quality.py` の残存 method import（46件）を副作用検証テストを除いて段階集約
 2. `test_200_an_improvements.py` / `test_155_hindsight_review.py` の重複 import を同様に集約
+
+---
+
+## 2026-03-06 / Session 037-004
+
+### 実施
+- DRY 改善（method 内 import 集約）
+  - `test_113_resilience.py`: resilience 系 / source helper import を先頭集約
+  - `test_155_hindsight_review.py`: hindsight_filter / FillConfig / cancel_reasons / source helper import を先頭集約
+  - `test_enricher_skip_gate.py`: sklearn / skip_gate / data_loader / datetime の反復 import を先頭集約
+- 本体コード改善
+  - `scripts/v460/lib/fill_cycle_executor.py`
+    - `run_single_cycle()` の派生値導出を `_derive_decision_path()` へ抽出
+    - 結果ログを `_log_cycle_result()` へ抽出
+    - 行数制約テストを満たすよう関数内ドキュメントを圧縮
+  - `ztb/metrics/fill_quality.py`
+    - `compute_fill_metrics()` の日次集計を UTC 日バケット（整数キー）化し、日付文字列変換の反復コストを削減
+
+### 結果
+- 変更対象テスト:
+  - `test_113_resilience.py` / `test_155_hindsight_review.py` / `test_200_an_improvements.py` / `test_enricher_skip_gate.py`: `179 passed`
+  - `test_fill_quality.py` 含む回帰セット: `288 passed`
+- v460 全体:
+  - `3939 passed, 1 failed, 20 warnings in 43.18s`（`--no-cov --durations=20`）
+  - 失敗 1 件は既知の別枠変更起因:
+    - `test_292_observability.py::TestForcedBuyDelayRegimeYAML::test_production_yaml_has_ranging_threshold`
+
+### 次アクション
+1. `test_fill_quality.py`（残 49 件）を import 検証系を除いて段階集約
+2. `test_196_velocity_proportional_trending_soft.py` / `test_173_code_review_fixes.py` など上位残件を順次 DRY 化

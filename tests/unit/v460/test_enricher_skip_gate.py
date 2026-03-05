@@ -5,12 +5,17 @@ from __future__ import annotations
 import gzip
 import json
 import tempfile
+from datetime import datetime as dt
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LogisticRegression, Ridge
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 from scripts.v460.ml.feature_enricher import (
     MICRO_FEATURE_COLS,
@@ -27,9 +32,13 @@ from scripts.v460.ml.skip_gate import (
     SkipDecision,
     SkipGate,
     SkipGateConfig,
+    _BASE_FEATURE_COLS,
     build_features_from_market_state,
+    get_gate_feature_cols,
     train_and_save_skip_gate,
+    warm_start_skip_gate_thresholds,
 )
+from scripts.v460.ml.data_loader import build_as_features, load_fill_records
 
 _REAL_DATA_SAMPLE_ROWS = 800
 
@@ -383,8 +392,6 @@ class Test058SkipGate:
     @pytest.fixture
     def trained_gate(self, synthetic_fill_df: pd.DataFrame) -> SkipGate:
         """合成データで学習した SkipGate."""
-        from sklearn.linear_model import Ridge
-        from sklearn.preprocessing import StandardScaler
 
         df = synthetic_fill_df.copy()
         for col in MICRO_FEATURE_COLS:
@@ -464,8 +471,6 @@ class Test061SkipGateASMode:
     @pytest.fixture
     def as_gate(self, synthetic_fill_df: pd.DataFrame) -> SkipGate:
         """合成データで AS モードの SkipGate を構築."""
-        from sklearn.linear_model import LogisticRegression
-        from sklearn.preprocessing import StandardScaler
 
         df = synthetic_fill_df.copy()
         for col in MICRO_FEATURE_COLS:
@@ -527,10 +532,6 @@ class Test065SkipGateNoOB:
     @pytest.fixture
     def trade_only_gate(self) -> SkipGate:
         """Trade-only 特徴量の SkipGate (071# OB 除去後)."""
-        from sklearn.impute import SimpleImputer
-        from sklearn.linear_model import LogisticRegression
-        from sklearn.pipeline import Pipeline
-        from sklearn.preprocessing import StandardScaler
 
         cols = ["side_buy", "hour_sin", "hour_cos", "spread_jpy", "trade_count_60s"]
         rng = np.random.RandomState(99)
@@ -577,10 +578,6 @@ class Test068SkipGateSideThreshold:
     @pytest.fixture
     def as_gate(self) -> SkipGate:
         """AS モードの SkipGate (高 AS 確率を返す)."""
-        from sklearn.impute import SimpleImputer
-        from sklearn.linear_model import LogisticRegression
-        from sklearn.pipeline import Pipeline
-        from sklearn.preprocessing import StandardScaler
 
         cols = ["hour_sin", "hour_cos", "spread_jpy"]
         rng = np.random.RandomState(42)
@@ -642,7 +639,6 @@ class Test071OBRemoved:
 
     def test_no_ob_quality_method(self) -> None:
         """_check_ob_quality メソッドが存在しない."""
-        from scripts.v460.ml.skip_gate import SkipGate, SkipGateConfig
         gate = SkipGate(
             model=None, scaler=None, feature_cols=[],
             config=SkipGateConfig(),
@@ -651,7 +647,6 @@ class Test071OBRemoved:
 
     def test_no_ob_critical_features(self) -> None:
         """OB_CRITICAL_FEATURES が存在しない."""
-        from scripts.v460.ml.skip_gate import SkipGate
         assert not hasattr(SkipGate, "OB_CRITICAL_FEATURES")
 
     def test_gate_feature_cols_no_ob(self) -> None:
@@ -666,7 +661,6 @@ class Test072OBToggle:
 
     def test_get_gate_feature_cols_no_ob(self) -> None:
         """use_ob=False で OB 特徴量を含まない (16 cols)."""
-        from scripts.v460.ml.skip_gate import get_gate_feature_cols
         cols = get_gate_feature_cols(use_ob=False)
         assert len(cols) == 16
         assert "spread_bps_ob" not in cols
@@ -675,7 +669,6 @@ class Test072OBToggle:
 
     def test_get_gate_feature_cols_with_ob(self) -> None:
         """use_ob=True で OB 特徴量を含む (19 cols)."""
-        from scripts.v460.ml.skip_gate import get_gate_feature_cols
         cols = get_gate_feature_cols(use_ob=True)
         assert len(cols) == 19
         assert "spread_bps_ob" in cols
@@ -752,13 +745,11 @@ class Test072OBToggle:
 
     def test_skip_gate_config_use_ob_default(self) -> None:
         """SkipGateConfig.use_ob_features のデフォルトは False."""
-        from scripts.v460.ml.skip_gate import SkipGateConfig
         cfg = SkipGateConfig()
         assert cfg.use_ob_features is False
 
     def test_feature_count_consistency(self) -> None:
         """get_gate_feature_cols と build_features の出力が一致."""
-        from scripts.v460.ml.skip_gate import get_gate_feature_cols
         # OB なし
         cols_no_ob = get_gate_feature_cols(use_ob=False)
         feats_no_ob = build_features_from_market_state(
@@ -908,7 +899,6 @@ class Test058Integration:
     def real_fill_df(self, real_data_available: bool) -> pd.DataFrame:
         if not real_data_available:
             pytest.skip("No real data")
-        from scripts.v460.ml.data_loader import load_fill_records
 
         df = load_fill_records()
         if len(df) == 0:
@@ -978,7 +968,6 @@ class Test059LeakDetection:
 
     def test_data_loader_preserves_nan_in_spread(self) -> None:
         """data_loader.build_as_features が spread_jpy の NaN を保持."""
-        from scripts.v460.ml.data_loader import build_as_features
 
         n = 20
         rng = np.random.RandomState(42)
@@ -1027,8 +1016,6 @@ class Test059SkipRateHistory:
 
     def test_skip_rate_records_final_decision(self) -> None:
         """force-pass override 後の最終決定が _recent_skips に記録される."""
-        from sklearn.linear_model import Ridge
-        from sklearn.preprocessing import StandardScaler
 
         # 常に negative PnL を予測するモデル
         feature_cols = ["f1", "f2", "f3", "f4"]
@@ -1073,8 +1060,6 @@ class Test059SkipRateHistory:
 
     def test_skip_rate_does_not_oscillate(self) -> None:
         """059# P0-2: skip 率がスパイクしないこと."""
-        from sklearn.linear_model import Ridge
-        from sklearn.preprocessing import StandardScaler
 
         feature_cols = ["f1", "f2", "f3"]
         scaler = StandardScaler()
@@ -1115,7 +1100,6 @@ class Test059TimestampConsistency:
 
     def test_market_timestamp_matches_fromtimestamp(self) -> None:
         """market_timestamp を指定した場合、fromtimestamp と同じ時刻特徴になる."""
-        from datetime import datetime as dt
 
         ts = 1700000000.0
         now = dt.fromtimestamp(ts)
@@ -1175,8 +1159,6 @@ class Test059PickleHash:
 
     def test_save_creates_hash_file(self) -> None:
         """save がハッシュファイルを作成する."""
-        from sklearn.linear_model import Ridge
-        from sklearn.preprocessing import StandardScaler
 
         scaler = StandardScaler()
         scaler.fit(np.ones((5, 3)))
@@ -1199,8 +1181,6 @@ class Test059PickleHash:
 
     def test_load_detects_corruption(self) -> None:
         """改竄されたファイルを検出する."""
-        from sklearn.linear_model import Ridge
-        from sklearn.preprocessing import StandardScaler
 
         scaler = StandardScaler()
         scaler.fit(np.ones((5, 3)))
@@ -1226,8 +1206,6 @@ class Test059PickleHash:
 
     def test_load_without_hash_file_succeeds(self) -> None:
         """ハッシュファイルがない場合は警告なしでロード."""
-        from sklearn.linear_model import Ridge
-        from sklearn.preprocessing import StandardScaler
 
         scaler = StandardScaler()
         scaler.fit(np.ones((5, 3)))
@@ -1303,10 +1281,7 @@ class Test106R3AdaptiveThreshold:
     @pytest.fixture()
     def adaptive_gate(self) -> SkipGate:
         """adaptive_threshold=True の SkipGate."""
-        from sklearn.linear_model import Ridge
-        from sklearn.preprocessing import StandardScaler
 
-        from scripts.v460.ml.skip_gate import SkipGateConfig, _BASE_FEATURE_COLS
 
         cfg = SkipGateConfig(
             mode="as",
@@ -1379,10 +1354,7 @@ class Test106R3WarmStart:
     @pytest.fixture()
     def adaptive_gate(self) -> SkipGate:
         """adaptive_threshold=True の SkipGate (warmup 可能)."""
-        from sklearn.linear_model import Ridge
-        from sklearn.preprocessing import StandardScaler
 
-        from scripts.v460.ml.skip_gate import SkipGateConfig, _BASE_FEATURE_COLS
 
         cfg = SkipGateConfig(
             mode="as",
@@ -1411,7 +1383,6 @@ class Test106R3WarmStart:
         self, adaptive_gate: SkipGate, tmp_path: Path,
     ) -> None:
         """fill_records から P(AS) 履歴を正しく復元する."""
-        from scripts.v460.ml.skip_gate import warm_start_skip_gate_thresholds
 
         # テスト用 fill_records を作成
         records = []
@@ -1435,7 +1406,6 @@ class Test106R3WarmStart:
         self, adaptive_gate: SkipGate, tmp_path: Path,
     ) -> None:
         """空のディレクトリでも例外なく動作する."""
-        from scripts.v460.ml.skip_gate import warm_start_skip_gate_thresholds
 
         warm_start_skip_gate_thresholds(adaptive_gate, str(tmp_path), window=10)
         assert len(adaptive_gate._pas_history_buy) == 0
@@ -1445,7 +1415,6 @@ class Test106R3WarmStart:
         self, adaptive_gate: SkipGate, tmp_path: Path,
     ) -> None:
         """十分なサンプルがあれば warm_start 後に閾値較正が発動する."""
-        from scripts.v460.ml.skip_gate import warm_start_skip_gate_thresholds
 
         records = []
         for i in range(20):
@@ -1467,7 +1436,6 @@ class Test106R3WarmStart:
         self, adaptive_gate: SkipGate, tmp_path: Path,
     ) -> None:
         """複数ファイル時は新しいレコード側を優先して復元する."""
-        from scripts.v460.ml.skip_gate import warm_start_skip_gate_thresholds
 
         old_records = [
             json.dumps({

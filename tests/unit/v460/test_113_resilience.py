@@ -14,6 +14,17 @@ from typing import Optional
 
 import pytest
 
+from scripts.v460.lib.regime_detector import FillTestRegimeDetector
+from scripts.v460.lib.resilience import (
+    FillTestHealthMonitor,
+    FillTestState,
+    FillTestStatePersistence,
+    HealthThresholds,
+    create_api_circuit_breaker,
+)
+from tests.unit.v460._fill_test_source import read_fill_test_method_source
+from ztb.utils.circuit_breaker import CircuitBreaker, CircuitState
+
 
 # =====================================================================
 # A. resilience.py — ユニットテスト
@@ -23,17 +34,12 @@ class TestCircuitBreakerFactory:
     """create_api_circuit_breaker() のテスト."""
 
     def test_factory_returns_circuit_breaker(self) -> None:
-        from scripts.v460.lib.resilience import create_api_circuit_breaker
-        from ztb.utils.circuit_breaker import CircuitBreaker, CircuitState
-
         cb = create_api_circuit_breaker()
         assert isinstance(cb, CircuitBreaker)
         assert cb.state == CircuitState.CLOSED
         assert cb.name == "coincheck_api"
 
     def test_factory_defaults(self) -> None:
-        from scripts.v460.lib.resilience import create_api_circuit_breaker
-
         cb = create_api_circuit_breaker()
         assert cb.config.failure_threshold == 5
         assert cb.config.recovery_timeout == 120.0
@@ -41,8 +47,6 @@ class TestCircuitBreakerFactory:
         assert cb.config.timeout == 30.0
 
     def test_factory_custom_params(self) -> None:
-        from scripts.v460.lib.resilience import create_api_circuit_breaker
-
         cb = create_api_circuit_breaker(
             failure_threshold=3, recovery_timeout=60.0,
         )
@@ -54,16 +58,12 @@ class TestHealthMonitor:
     """FillTestHealthMonitor のテスト."""
 
     def test_init_defaults(self) -> None:
-        from scripts.v460.lib.resilience import FillTestHealthMonitor, HealthThresholds
-
         hm = FillTestHealthMonitor()
         assert hm._thresholds.rss_warn_mb == 1500.0
         assert hm._thresholds.gc_interval_cycles == 100
 
     def test_maybe_check_skips_if_too_early(self) -> None:
         """check_interval_sec 以内は None を返す."""
-        from scripts.v460.lib.resilience import FillTestHealthMonitor, HealthThresholds
-
         hm = FillTestHealthMonitor(HealthThresholds(check_interval_sec=9999))
         # 初回は last_check_time=0 なので実行される
         result = hm.maybe_check(1)
@@ -74,8 +74,6 @@ class TestHealthMonitor:
 
     def test_maybe_gc_runs_after_interval(self) -> None:
         """gc_interval_cycles 回呼ぶと GC が実行される."""
-        from scripts.v460.lib.resilience import FillTestHealthMonitor, HealthThresholds
-
         hm = FillTestHealthMonitor(HealthThresholds(gc_interval_cycles=3))
         hm.maybe_gc()  # counter=1
         hm.maybe_gc()  # counter=2
@@ -87,8 +85,6 @@ class TestStatePersistence:
     """FillTestStatePersistence のテスト."""
 
     def test_save_and_load(self) -> None:
-        from scripts.v460.lib.resilience import FillTestStatePersistence, FillTestState
-
         with tempfile.TemporaryDirectory() as tmp:
             sp = FillTestStatePersistence(Path(tmp))
             state = FillTestState(
@@ -108,15 +104,11 @@ class TestStatePersistence:
             assert loaded.cumulative_pnl_jpy == pytest.approx(-123.4)
 
     def test_load_nonexistent_returns_none(self) -> None:
-        from scripts.v460.lib.resilience import FillTestStatePersistence
-
         with tempfile.TemporaryDirectory() as tmp:
             sp = FillTestStatePersistence(Path(tmp))
             assert sp.load() is None
 
     def test_save_creates_json(self) -> None:
-        from scripts.v460.lib.resilience import FillTestStatePersistence, FillTestState
-
         with tempfile.TemporaryDirectory() as tmp:
             sp = FillTestStatePersistence(Path(tmp))
             sp.save(FillTestState(run_id="abc"))
@@ -128,8 +120,6 @@ class TestStatePersistence:
 
     def test_atomic_write(self) -> None:
         """tmp ファイル経由の atomic write."""
-        from scripts.v460.lib.resilience import FillTestStatePersistence, FillTestState
-
         with tempfile.TemporaryDirectory() as tmp:
             sp = FillTestStatePersistence(Path(tmp))
             sp.save(FillTestState(run_id="x"))
@@ -138,8 +128,6 @@ class TestStatePersistence:
 
     def test_regime_state_save_and_load(self) -> None:
         """121# A4: regime state がシリアライズ/デシリアライズされる."""
-        from scripts.v460.lib.resilience import FillTestStatePersistence, FillTestState
-
         with tempfile.TemporaryDirectory() as tmp:
             sp = FillTestStatePersistence(Path(tmp))
             state = FillTestState(
@@ -160,8 +148,6 @@ class TestStatePersistence:
 
     def test_regime_state_backward_compatible(self) -> None:
         """121# A4: regime フィールドなしの旧 JSON からも load できる."""
-        from scripts.v460.lib.resilience import FillTestStatePersistence
-
         with tempfile.TemporaryDirectory() as tmp:
             sp = FillTestStatePersistence(Path(tmp))
             # 旧形式 (regime フィールドなし)
@@ -175,8 +161,6 @@ class TestStatePersistence:
 
     def test_load_non_object_json_returns_none(self) -> None:
         """状態JSONがobject以外の場合は安全に None を返す."""
-        from scripts.v460.lib.resilience import FillTestStatePersistence
-
         with tempfile.TemporaryDirectory() as tmp:
             sp = FillTestStatePersistence(Path(tmp))
             (Path(tmp) / "fill_test_state.json").write_text("[1,2,3]", encoding="utf-8")
@@ -187,8 +171,6 @@ class TestRegimeDetectorPersistence:
     """121# A4: FillTestRegimeDetector の get_state/restore_state テスト."""
 
     def test_get_state_returns_dict(self) -> None:
-        from scripts.v460.lib.regime_detector import FillTestRegimeDetector
-
         det = FillTestRegimeDetector()
         state = det.get_state()
         assert state["confirmed"] == "unknown"
@@ -197,8 +179,6 @@ class TestRegimeDetectorPersistence:
         assert state["raw_history"] == []
 
     def test_restore_state_roundtrip(self) -> None:
-        from scripts.v460.lib.regime_detector import FillTestRegimeDetector
-
         det = FillTestRegimeDetector()
         # 20 回 update してレジームを確定させる
         base_price = 14_500_000.0
@@ -214,8 +194,6 @@ class TestRegimeDetectorPersistence:
         assert det2.observation_count == len(saved["prices"])
 
     def test_restore_state_invalid_returns_false(self) -> None:
-        from scripts.v460.lib.regime_detector import FillTestRegimeDetector
-
         det = FillTestRegimeDetector()
         assert not det.restore_state({"confirmed": "INVALID_VALUE"})
 
@@ -229,32 +207,27 @@ class TestR1MethodExtraction:
 
     def test_run_single_cycle_delegates_to_skip_gate(self) -> None:
         """run_single_cycle が _evaluate_skip_gate を呼ぶ."""
-        from tests.unit.v460._fill_test_source import read_fill_test_method_source
         source = read_fill_test_method_source("run_single_cycle")
         assert "_evaluate_skip_gate" in source
 
     def test_run_single_cycle_delegates_to_monitor(self) -> None:
         """run_single_cycle が _monitor_fill_polling を呼ぶ."""
-        from tests.unit.v460._fill_test_source import read_fill_test_method_source
         source = read_fill_test_method_source("run_single_cycle")
         assert "_monitor_fill_polling" in source
 
     def test_run_single_cycle_delegates_to_pnl(self) -> None:
         """run_single_cycle が _measure_post_fill_pnl を呼ぶ."""
-        from tests.unit.v460._fill_test_source import read_fill_test_method_source
         source = read_fill_test_method_source("run_single_cycle")
         assert "_measure_post_fill_pnl" in source
 
     def test_run_single_cycle_under_400_lines(self) -> None:
         """run_single_cycle が 710 行以下 (R1 目標 + 162# Inv-Skewing + 181# StopCond + 187# guard_trace + 195# vel_offset + 196# trend_offset + 202# C VG sell supplement + 215# DD halt/guard_fire + 234# degraded_liquidation + 237# phantom_guard)."""
-        from tests.unit.v460._fill_test_source import read_fill_test_method_source
         source = read_fill_test_method_source("run_single_cycle")
         line_count = len(source.splitlines())
         assert line_count <= 710, f"run_single_cycle is {line_count} lines (> 710)"
 
     def test_extracted_methods_exist(self) -> None:
         """抽出メソッドが FillTestRunner に存在."""
-        from tests.unit.v460._fill_test_source import read_fill_test_method_source
         assert read_fill_test_method_source("_evaluate_skip_gate")
         assert read_fill_test_method_source("_monitor_fill_polling")
         assert read_fill_test_method_source("_measure_post_fill_pnl")
@@ -275,19 +248,16 @@ class TestR1CircuitBreakerInRunSingleCycle:
     """113# CircuitBreaker が run_single_cycle に組み込まれている."""
 
     def test_circuit_breaker_guard_in_source(self) -> None:
-        from tests.unit.v460._fill_test_source import read_fill_test_method_source
         source = read_fill_test_method_source("run_single_cycle")
         assert "circuit_breaker" in source
         # 145# §9-#6: CR.CIRCUIT_BREAKER_OPEN 定数に移行済み
         assert "CIRCUIT_BREAKER_OPEN" in source
 
     def test_circuit_breaker_success_recording(self) -> None:
-        from tests.unit.v460._fill_test_source import read_fill_test_method_source
         source = read_fill_test_method_source("run_single_cycle")
         assert "_on_success" in source
 
     def test_circuit_breaker_failure_recording(self) -> None:
-        from tests.unit.v460._fill_test_source import read_fill_test_method_source
         source = read_fill_test_method_source("run_single_cycle")
         assert "_on_failure" in source
 
@@ -297,21 +267,18 @@ class TestR1ResilienceInRunContinuous:
 
     def test_health_check_in_continuous(self) -> None:
         # 265# extract: health monitor は _log_progress_and_adapt に分離
-        from tests.unit.v460._fill_test_source import read_fill_test_method_source
         source = read_fill_test_method_source("_log_progress_and_adapt")
         assert "maybe_check" in source
         assert "maybe_gc" in source
 
     def test_state_persistence_in_continuous(self) -> None:
         # 265# extract: state persistence は _log_progress_and_adapt + _finalize_run に分離
-        from tests.unit.v460._fill_test_source import read_fill_test_method_source
         source = read_fill_test_method_source("_log_progress_and_adapt")
         assert "state_persistence" in source
         finalize_source = read_fill_test_method_source("_finalize_run")
         assert "FillTestState" not in source or "FillTestState" in finalize_source
 
     def test_resilience_init_in_constructor(self) -> None:
-        from tests.unit.v460._fill_test_source import read_fill_test_method_source
         source = read_fill_test_method_source("__init__")
         assert "_circuit_breaker" in source
         assert "_health_monitor" in source
