@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 296# refactor+dry+core: MonteCarlo分割再利用 + テストimport集約 (2026-03-06)
+
+### Changed
+- **本体コード分割（再利用性向上）**
+  - `ztb/risk/pnl_monte_carlo.py`
+    - `run()` / `sensitivity_analysis()` で共通だったシミュレーション処理をヘルパーへ抽出
+      - `_extract_filled_pnl_bps()`
+      - `_simulate_monthly_pnls()`
+      - `_compute_breakeven()`
+      - `_passes_g11()`
+    - 既存ロジックを保ったまま責務を分割し、同一計算を再利用
+- **DRY 改善（method 内 import 集約）**
+  - `tests/unit/v460/test_196_velocity_proportional_trending_soft.py`
+    - 反復 import をモジュール先頭へ集約（YAML 読込関連の局所 import は維持）
+  - `tests/unit/v460/test_173_code_review_fixes.py`
+    - 反復 import をモジュール先頭へ集約
+
+### Performance
+- `tests/unit/v460` (`--no-cov --durations=15`): **41.54s** (`3940 passed`)
+  - 直前計測比: **42.70s -> 41.54s**（約 **-1.16s**）
+
+---
+
 ## 295# perf+dry+core: run_single_cycle圧縮 + fill_metrics日次集計最適化 + import集約 (2026-03-06)
 
 ### Changed

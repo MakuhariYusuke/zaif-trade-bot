@@ -5,7 +5,23 @@ CRITICAL/HIGH/MED の修正を検証するテストスイート。
 
 from __future__ import annotations
 
+import inspect
+import typing
+from unittest.mock import MagicMock
+
 import pytest
+
+from scripts.v460.analysis.hindsight_filter import (
+    _DIRECT_CATEGORY_BY_REASON,
+    _REGIME_GUARD_REASONS,
+)
+from scripts.v460.lib import cancel_reasons as CR
+from scripts.v460.lib.cancel_reasons import CancelReason
+from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
+from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.maker_price import MakerPriceCalculator
+from ztb.risk.sell_dynamic_kill import DynamicKillConfig
 
 
 # ======================================================================
@@ -17,25 +33,21 @@ class TestDynamicKillConfigValidation:
 
     def test_window_zero_raises(self) -> None:
         """window=0 で ValueError."""
-        from ztb.risk.sell_dynamic_kill import DynamicKillConfig
         with pytest.raises(ValueError, match="window must be >= 1"):
             DynamicKillConfig(window=0)
 
     def test_window_negative_raises(self) -> None:
         """window=-1 で ValueError."""
-        from ztb.risk.sell_dynamic_kill import DynamicKillConfig
         with pytest.raises(ValueError, match="window must be >= 1"):
             DynamicKillConfig(window=-1)
 
     def test_resume_window_negative_raises(self) -> None:
         """resume_window=-1 で ValueError."""
-        from ztb.risk.sell_dynamic_kill import DynamicKillConfig
         with pytest.raises(ValueError, match="resume_window must be >= 0"):
             DynamicKillConfig(resume_window=-1)
 
     def test_valid_config(self) -> None:
         """正常値で例外なし."""
-        from ztb.risk.sell_dynamic_kill import DynamicKillConfig
         cfg = DynamicKillConfig(window=10, resume_window=0)
         assert cfg.window == 10
         assert cfg.resume_window == 0
@@ -49,17 +61,14 @@ class TestSellGuardInvBypassValidation:
     """fill_config の sell_guard_inv_bypass_threshold バリデーション."""
 
     def test_negative_raises(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         with pytest.raises(ValueError, match="sell_guard_inv_bypass_threshold"):
             FillTestConfig(sell_guard_inv_bypass_threshold=-0.1)
 
     def test_above_one_raises(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         with pytest.raises(ValueError, match="sell_guard_inv_bypass_threshold"):
             FillTestConfig(sell_guard_inv_bypass_threshold=1.1)
 
     def test_valid_boundary(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig(sell_guard_inv_bypass_threshold=0.0)
         assert cfg.sell_guard_inv_bypass_threshold == 0.0
         cfg2 = FillTestConfig(sell_guard_inv_bypass_threshold=1.0)
@@ -74,14 +83,11 @@ class TestCancelReasonLiteralType:
     """cancel_reasons.CancelReason 型が存在し有効."""
 
     def test_cancel_reason_type_exists(self) -> None:
-        from scripts.v460.lib.cancel_reasons import CancelReason
         # CancelReason は Literal 型
         assert CancelReason is not None
 
     def test_all_constants_in_literal(self) -> None:
         """全定数が CancelReason Literal に含まれる."""
-        import typing
-        from scripts.v460.lib import cancel_reasons as CR
         # Literal のメンバーを取得
         args = typing.get_args(CR.CancelReason)
         # 定数がすべて含まれていることを確認
@@ -101,7 +107,6 @@ class TestDailyDrawdownHaltBlockedCycles:
     """halt_blocked_cycles カウンタのテスト."""
 
     def test_halt_blocked_cycles_increments(self) -> None:
-        from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
         guard = DailyDrawdownGuard(enabled=True, hard_limit_bps=-10.0)
         guard.update_pnl(-15.0)  # halt trigger
         assert guard.is_halted()
@@ -110,7 +115,6 @@ class TestDailyDrawdownHaltBlockedCycles:
         assert guard.state.halt_blocked_cycles == 2
 
     def test_halt_blocked_in_metrics(self) -> None:
-        from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
         guard = DailyDrawdownGuard(enabled=True, hard_limit_bps=-10.0)
         guard.update_pnl(-15.0)
         guard.is_halted()
@@ -119,7 +123,6 @@ class TestDailyDrawdownHaltBlockedCycles:
         assert m["halt_blocked_cycles"] == 1
 
     def test_halt_blocked_in_export(self) -> None:
-        from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
         guard = DailyDrawdownGuard(enabled=True, hard_limit_bps=-10.0)
         guard.update_pnl(-15.0)
         guard.is_halted()
@@ -136,7 +139,6 @@ class TestDrawdownActionTypedDict:
     """update_pnl の戻り値が DrawdownAction TypedDict."""
 
     def test_update_pnl_returns_typed_dict(self) -> None:
-        from scripts.v460.lib.daily_drawdown_guard import DailyDrawdownGuard
         guard = DailyDrawdownGuard(enabled=True, hard_limit_bps=-50.0)
         result = guard.update_pnl(-10.0)
         assert isinstance(result, dict)
@@ -155,20 +157,14 @@ class TestOrderbookProviderType:
     """maker_price.py の adapter パラメータ型が OrderbookProvider."""
 
     def test_compute_imbalance_type_annotation(self) -> None:
-        import inspect
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
         sig = inspect.signature(MakerPriceCalculator.compute_imbalance)
         assert "OrderbookProvider" in str(sig.parameters["adapter"].annotation)
 
     def test_get_mid_price_type_annotation(self) -> None:
-        import inspect
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
         sig = inspect.signature(MakerPriceCalculator.get_mid_price)
         assert "OrderbookProvider" in str(sig.parameters["adapter"].annotation)
 
     def test_compute_type_annotation(self) -> None:
-        import inspect
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
         sig = inspect.signature(MakerPriceCalculator.compute)
         assert "OrderbookProvider" in str(sig.parameters["adapter"].annotation)
 
@@ -181,27 +177,21 @@ class TestHotReloadFieldsAdded:
     """config_hot_reload の _HOT_RELOADABLE_FIELDS に必要フィールドが存在."""
 
     def test_sell_offset_floor_reloadable(self) -> None:
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
         assert "sell_offset_floor" in _HOT_RELOADABLE_FIELDS
 
     def test_sell_offset_floor_inv_discount_reloadable(self) -> None:
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
         assert "sell_offset_floor_inv_discount" in _HOT_RELOADABLE_FIELDS
 
     def test_sell_max_spread_jpy_reloadable(self) -> None:
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
         assert "sell_max_spread_jpy" in _HOT_RELOADABLE_FIELDS
 
     def test_unknown_buy_offset_boost_reloadable(self) -> None:
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
         assert "unknown_buy_offset_boost" in _HOT_RELOADABLE_FIELDS
 
     def test_fallback_stale_sec_reloadable(self) -> None:
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
         assert "fallback_stale_sec" in _HOT_RELOADABLE_FIELDS
 
     def test_post_fill_wait_sec_sell_reloadable(self) -> None:
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
         assert "post_fill_wait_sec_sell" in _HOT_RELOADABLE_FIELDS
 
 
@@ -213,20 +203,16 @@ class TestHindsightFilterReasons:
     """hindsight_filter の cancel_reason 分類が CR 定数を使用."""
 
     def test_regime_guard_has_ranging_low_vol(self) -> None:
-        from scripts.v460.analysis.hindsight_filter import _REGIME_GUARD_REASONS
         assert "ranging_low_vol_skip" in _REGIME_GUARD_REASONS
 
     def test_regime_guard_has_velocity_skip(self) -> None:
-        from scripts.v460.analysis.hindsight_filter import _REGIME_GUARD_REASONS
         assert "skip_gate_rule_velocity_sell" in _REGIME_GUARD_REASONS
         assert "skip_gate_rule_velocity_buy" in _REGIME_GUARD_REASONS
 
     def test_direct_category_has_daily_drawdown(self) -> None:
-        from scripts.v460.analysis.hindsight_filter import _DIRECT_CATEGORY_BY_REASON
         assert "daily_drawdown_halt" in _DIRECT_CATEGORY_BY_REASON
 
     def test_regime_guard_has_unknown_sell_skip(self) -> None:
-        from scripts.v460.analysis.hindsight_filter import _REGIME_GUARD_REASONS
         assert "unknown_regime_sell_skip" in _REGIME_GUARD_REASONS
 
 
@@ -240,8 +226,6 @@ class TestDynamicSellOffsetFloor:
     @staticmethod
     def _make_calc(cfg: object) -> object:
         """MakerPriceCalculator を必須引数付きで生成."""
-        from unittest.mock import MagicMock
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
         ffd = MagicMock()
         return MakerPriceCalculator(
             cfg,  # type: ignore[arg-type]
@@ -252,7 +236,6 @@ class TestDynamicSellOffsetFloor:
 
     def test_effective_floor_no_invskew(self) -> None:
         """InvSkew 非活性時は通常フロア."""
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig(
             sell_offset_floor=0.20,
             sell_guard_inv_bypass_threshold=0.3,
@@ -264,7 +247,6 @@ class TestDynamicSellOffsetFloor:
 
     def test_effective_floor_with_invskew(self) -> None:
         """InvSkew 活性時はフロアが割引."""
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig(
             sell_offset_floor=0.20,
             sell_guard_inv_bypass_threshold=0.3,
@@ -277,13 +259,11 @@ class TestDynamicSellOffsetFloor:
 
     def test_effective_floor_disabled(self) -> None:
         """sell_offset_floor=0 のとき常に 0."""
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig(sell_offset_floor=0.0)
         calc = self._make_calc(cfg)
         assert calc._effective_sell_offset_floor() == 0.0
 
     def test_config_default_inv_discount(self) -> None:
         """sell_offset_floor_inv_discount のデフォルトは 0.5."""
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert cfg.sell_offset_floor_inv_discount == 0.5

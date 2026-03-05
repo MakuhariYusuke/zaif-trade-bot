@@ -172,6 +172,73 @@ class PnLMonteCarloSimulator:
     # Simulation
     # ------------------------------------------------------------------
 
+    def _extract_filled_pnl_bps(self) -> np.ndarray:
+        """約定済みレコードから PnL(bps) 配列を抽出する."""
+        filled = [r for r in self.records if r.filled]
+        pnl_bps = np.array(
+            [r.post_fill_30s_pnl for r in filled if r.post_fill_30s_pnl is not None]
+        )
+        if len(pnl_bps) == 0:
+            return np.array([0.0], dtype=np.float64)
+        return pnl_bps.astype(np.float64, copy=False)
+
+    def _simulate_monthly_pnls(
+        self,
+        *,
+        fill_rate: float,
+        pnl_bps: np.ndarray,
+        cycles_per_month: int,
+        jpy_per_bps: float,
+    ) -> np.ndarray:
+        """1条件分の月次PnL分布をシミュレーションする."""
+        monthly_pnls = np.zeros(self.config.n_simulations, dtype=np.float64)
+        fills_per_sim = self._rng.binomial(
+            cycles_per_month,
+            fill_rate,
+            size=self.config.n_simulations,
+        )
+        for i, fills_this_month in enumerate(fills_per_sim):
+            fills_this_month = int(fills_this_month)
+            if fills_this_month <= 0:
+                continue
+            sampled_pnl = self._rng.choice(pnl_bps, size=fills_this_month, replace=True)
+            monthly_pnls[i] = float(np.sum(sampled_pnl * jpy_per_bps))
+        return monthly_pnls
+
+    @staticmethod
+    def _compute_breakeven(
+        *,
+        fill_rate: float,
+        pnl_mean_bps: float,
+    ) -> tuple[float, float]:
+        """損益分岐の補助指標を返す."""
+        breakeven_pnl_bps = 0.0
+        if pnl_mean_bps > 0:
+            breakeven_fill_rate = 0.0
+        elif pnl_mean_bps < 0:
+            breakeven_fill_rate = 1.0
+        else:
+            breakeven_fill_rate = fill_rate
+        return breakeven_fill_rate, breakeven_pnl_bps
+
+    @staticmethod
+    def _passes_g11(
+        *,
+        fill_rate: float,
+        cancel_ratio: float,
+        queue_wait_median: float,
+        pnl_mean_bps: float,
+        as_ratio: float,
+    ) -> bool:
+        """G1.1 条件の PASS/FAIL を返す."""
+        return (
+            fill_rate >= 0.90
+            and cancel_ratio <= 0.30
+            and queue_wait_median <= 60.0
+            and pnl_mean_bps >= 0.0
+            and as_ratio <= 0.20
+        )
+
     def run(self) -> MonteCarloResult:
         """Run Monte Carlo simulation."""
         cfg = self.config
@@ -188,13 +255,7 @@ class PnLMonteCarloSimulator:
         queue_wait_median = metrics.queue_wait_median_sec
 
         # PnL distribution (bps) — bootstrap sampling 用の生配列
-        filled = [r for r in self.records if r.filled]
-        pnl_bps = np.array([
-            r.post_fill_30s_pnl for r in filled
-            if r.post_fill_30s_pnl is not None
-        ])
-        if len(pnl_bps) == 0:
-            pnl_bps = np.array([0.0])  # fallback for 0 fills
+        pnl_bps = self._extract_filled_pnl_bps()
 
         pnl_std = float(np.std(pnl_bps, ddof=1)) if len(pnl_bps) > 1 else 0.0
 
@@ -202,24 +263,12 @@ class PnLMonteCarloSimulator:
         cycles_per_month = cfg.cycles_per_day * cfg.days_per_month
         notional = cfg.lot_size_btc * cfg.btc_price_jpy  # JPY per cycle
         jpy_per_bps = 1e-4 * notional
-
-        # Bootstrap: resample per-cycle PnL from observed distribution
-        # Each simulation = 1 month of cycles
-        monthly_pnls = np.zeros(cfg.n_simulations, dtype=np.float64)
-        fills_per_sim = self._rng.binomial(
-            cycles_per_month, fill_rate, size=cfg.n_simulations
+        monthly_pnls = self._simulate_monthly_pnls(
+            fill_rate=fill_rate,
+            pnl_bps=pnl_bps,
+            cycles_per_month=cycles_per_month,
+            jpy_per_bps=jpy_per_bps,
         )
-
-        for i, fills_this_month in enumerate(fills_per_sim):
-            # 1. Sample fill/cancel outcomes (Bernoulli with observed fill_rate)
-            fills_this_month = int(fills_this_month)
-
-            # 2. Bootstrap sample PnL (bps) for each filled cycle
-            if fills_this_month > 0:
-                sampled_pnl = self._rng.choice(pnl_bps, size=fills_this_month, replace=True)
-                # Convert bps → JPY
-                cycle_pnls_jpy = sampled_pnl * jpy_per_bps
-                monthly_pnls[i] = float(np.sum(cycle_pnls_jpy))
 
         # --- Percentiles ---
         percentiles: dict[str, float] = {}
@@ -239,28 +288,18 @@ class PnLMonteCarloSimulator:
         # What fill_rate would make expected PnL = 0?
         # E[monthly PnL] = cycles * fill_rate * E[pnl_bps] * 1e-4 * notional
         # = 0  when fill_rate = 0 or E[pnl_bps] = 0
-        if pnl_mean != 0:
-            # breakeven_fill_rate is trivial: any fill_rate gives E[PnL] > 0 if mean > 0
-            # More useful: at what mean_bps do we break even at current fill_rate?
-            breakeven_pnl_bps = 0.0  # always break even at 0 by definition
-        else:
-            breakeven_pnl_bps = 0.0
-
-        # At current mean PnL, minimum fill_rate for positive expected PnL
-        if pnl_mean > 0:
-            breakeven_fill_rate = 0.0  # any positive fill_rate is profitable
-        elif pnl_mean < 0:
-            breakeven_fill_rate = 1.0  # can't break even with negative mean PnL
-        else:
-            breakeven_fill_rate = fill_rate
+        breakeven_fill_rate, breakeven_pnl_bps = self._compute_breakeven(
+            fill_rate=fill_rate,
+            pnl_mean_bps=pnl_mean,
+        )
 
         # --- G1.1 pass/fail (000# §3.3) ---
-        g11_pass = (
-            fill_rate >= 0.90
-            and cancel_ratio <= 0.30
-            and queue_wait_median <= 60.0
-            and pnl_mean >= 0.0
-            and as_ratio <= 0.20
+        g11_pass = self._passes_g11(
+            fill_rate=fill_rate,
+            cancel_ratio=cancel_ratio,
+            queue_wait_median=queue_wait_median,
+            pnl_mean_bps=pnl_mean,
+            as_ratio=as_ratio,
         )
 
         return MonteCarloResult(
@@ -317,13 +356,7 @@ class PnLMonteCarloSimulator:
             pnl_adjustments_bps = [-2.0, -1.0, 0.0, 1.0, 2.0]
 
         cfg = self.config
-        filled = [r for r in self.records if r.filled]
-        pnl_bps = np.array([
-            r.post_fill_30s_pnl for r in filled
-            if r.post_fill_30s_pnl is not None
-        ])
-        if len(pnl_bps) == 0:
-            pnl_bps = np.array([0.0])
+        pnl_bps = self._extract_filled_pnl_bps()
 
         notional = cfg.lot_size_btc * cfg.btc_price_jpy
         jpy_per_bps = 1e-4 * notional
@@ -333,15 +366,12 @@ class PnLMonteCarloSimulator:
         for fr in fill_rates:
             for adj in pnl_adjustments_bps:
                 adjusted_pnl = pnl_bps + adj
-                monthly = np.zeros(cfg.n_simulations, dtype=np.float64)
-                fills_per_sim = self._rng.binomial(
-                    cycles_per_month, fr, size=cfg.n_simulations
+                monthly = self._simulate_monthly_pnls(
+                    fill_rate=fr,
+                    pnl_bps=adjusted_pnl,
+                    cycles_per_month=cycles_per_month,
+                    jpy_per_bps=jpy_per_bps,
                 )
-                for i, fills in enumerate(fills_per_sim):
-                    fills = int(fills)
-                    if fills > 0:
-                        sampled = self._rng.choice(adjusted_pnl, size=fills, replace=True)
-                        monthly[i] = float(np.sum(sampled * jpy_per_bps))
 
                 results.append({
                     "fill_rate": fr,

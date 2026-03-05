@@ -16,11 +16,20 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from scripts.v460.lib.cycle_gate_aggregator import (
+    CycleGateAggregator,
+    CycleGateResult,
+    GateCheckResult,
+)
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
+from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
+from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+from scripts.v460.run_fill_test import FillTestRunner
+
 
 def _make_config(**overrides):
     """テスト用の FillTestConfig を簡易生成."""
-    from scripts.v460.lib.fill_config import FillTestConfig
-
     defaults = {
         # velocity skip
         "sell_velocity_skip_enabled": True,
@@ -85,14 +94,10 @@ class TestVelocityProportionalConfig:
     """196# velocity_offset_proportional config フィールド."""
 
     def test_default_proportional_false(self):
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig()
         assert cfg.velocity_offset_proportional is False
 
     def test_default_max_mult(self):
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig()
         assert cfg.velocity_offset_max_mult == 4.0
 
@@ -155,7 +160,6 @@ class TestVelocityProportionalInSkipGate:
 
     def test_proportional_helper_applies_ratio(self):
         """比例モード時は閾値超過量に応じて boost される."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
         boost, proportional = SkipGateEvaluator._compute_velocity_offset_multiplier(
             observed_velocity_bps=9.0,
@@ -169,7 +173,6 @@ class TestVelocityProportionalInSkipGate:
 
     def test_zero_threshold_falls_back_to_fixed(self):
         """threshold=0 でも 0除算せず固定 boost にフォールバック."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
         boost, proportional = SkipGateEvaluator._compute_velocity_offset_multiplier(
             observed_velocity_bps=9.0,
@@ -183,7 +186,6 @@ class TestVelocityProportionalInSkipGate:
 
     def test_boost_is_clamped_to_safe_range(self):
         """1.0 未満の設定は攻撃的にならないよう 1.0 に丸める."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
         boost, proportional = SkipGateEvaluator._compute_velocity_offset_multiplier(
             observed_velocity_bps=9.0,
@@ -205,14 +207,10 @@ class TestTrendingSellSoftConfig:
     """196# trending_sell_as_offset config フィールド."""
 
     def test_default_trending_sell_as_offset_disabled(self):
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig()
         assert cfg.trending_sell_as_offset_enabled is False
 
     def test_default_trending_sell_offset_boost_factor(self):
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig()
         assert cfg.trending_sell_offset_boost_factor == 2.0
 
@@ -222,7 +220,6 @@ class TestTrendingSellSoftGate:
 
     def test_soft_mode_not_blocked(self):
         """soft mode 時は blocked=False."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         cfg = _make_config(
             skip_sell_trending=True,
@@ -245,7 +242,6 @@ class TestTrendingSellSoftGate:
 
     def test_hard_mode_blocks(self):
         """hard mode (デフォルト) は blocked=True."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         cfg = _make_config(
             skip_sell_trending=True,
@@ -267,7 +263,6 @@ class TestTrendingSellSoftGate:
 
     def test_soft_mode_trending_down_not_up_only(self):
         """trending_up_only=True + regime=trending_down → soft mode 不適用 (通常 pass)."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         cfg = _make_config(
             skip_sell_trending=True,
@@ -290,7 +285,6 @@ class TestTrendingSellSoftGate:
 
     def test_soft_mode_buy_side_unaffected(self):
         """buy 側は trending_sell gate に影響されない."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         cfg = _make_config(
             skip_sell_trending=True,
@@ -312,7 +306,6 @@ class TestTrendingSellSoftGate:
 
     def test_soft_mode_balance_forced_applies_by_default(self):
         """balance_forced=True でも live YAML 既定では trending offset を適用."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         cfg = _make_config(
             skip_sell_trending=True,
@@ -339,8 +332,6 @@ class TestTrendingSellSoftGate:
         soft mode は balance_forced に関係なく常に offset を適用する。
         253# NOTE: balance_forced_apply_trending_offset フィールドは削除済み。
         """
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
-
         cfg = _make_config(
             skip_sell_trending=True,
             skip_sell_trending_up_only=True,
@@ -365,8 +356,6 @@ class TestTrendingSellSoftGate:
 
         hard mode で必要だった bypass params は soft mode では到達しない。
         """
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
-
         cfg = _make_config(
             skip_sell_trending=True,
             skip_sell_trending_up_only=False,  # all trending
@@ -390,7 +379,6 @@ class TestTrendingSellSoftGate:
 
     def test_audit_trail_includes_196_detail(self):
         """audit trail に 196# の detail が含まれること."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         cfg = _make_config(
             skip_sell_trending=True,
@@ -419,22 +407,17 @@ class TestTrendingOffsetInExecutor:
 
     def test_trending_offset_mult_parameter_exists(self):
         """run_single_cycle に trending_offset_mult パラメータが存在."""
-        from scripts.v460.run_fill_test import FillTestRunner
-
         sig = inspect.signature(FillTestRunner.run_single_cycle)
         assert "trending_offset_mult" in sig.parameters
 
     def test_trending_offset_in_source(self):
         """fill_cycle_executor に 196# trend_offset ブロックが存在."""
-        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
-
         source = inspect.getsource(FillCycleExecutorMixin.run_single_cycle)
         assert "196# trend_offset" in source
         assert "trending_offset_mult" in source
 
     def test_offset_helper_ignores_non_protective_multiplier(self):
         """1.0 以下の倍率は適用せず、価格を攻撃的にしない."""
-        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
 
         price, ratio, applied_mult, delta = FillCycleExecutorMixin._apply_offset_multiplier(
             side="sell",
@@ -450,7 +433,6 @@ class TestTrendingOffsetInExecutor:
 
     def test_offset_helper_supports_aggressive_mode(self):
         """193# EV モードでは multiplier>1.0 で mid に近づく."""
-        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
 
         price, ratio, applied_mult, delta = FillCycleExecutorMixin._apply_offset_multiplier(
             side="buy",
@@ -470,14 +452,10 @@ class TestGateCheckResultOffsetMult:
     """196# GateCheckResult に offset_mult フィールドが追加."""
 
     def test_offset_mult_field_exists(self):
-        from scripts.v460.lib.cycle_gate_aggregator import GateCheckResult
-
         result = GateCheckResult(gate_name="test", blocked=False)
         assert result.offset_mult is None
 
     def test_offset_mult_with_value(self):
-        from scripts.v460.lib.cycle_gate_aggregator import GateCheckResult
-
         result = GateCheckResult(
             gate_name="trending_sell",
             blocked=False,
@@ -490,8 +468,6 @@ class TestCycleGateResultTrendingOffset:
     """196# CycleGateResult に trending_offset_mult フィールドが追加."""
 
     def test_trending_offset_mult_default_none(self):
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateResult
-
         result = CycleGateResult()
         assert result.trending_offset_mult is None
 
@@ -536,7 +512,6 @@ class TestConfigYamlParse196:
         """from_yaml で 196# フィールドが正しく parse されること."""
         from pathlib import Path
         import yaml  # type: ignore[import-untyped]
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         # FillTestConfig.from_yaml はトップレベル構造に依存するため
         # 個別セクションを直接検証
@@ -574,22 +549,16 @@ class TestBackwardCompatibility196:
 
     def test_velocity_proportional_default_off(self):
         """velocity_offset_proportional のデフォルトは False."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig()
         assert cfg.velocity_offset_proportional is False
 
     def test_trending_sell_soft_default_off(self):
         """trending_sell_as_offset_enabled のデフォルトは False."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig()
         assert cfg.trending_sell_as_offset_enabled is False
 
     def test_hard_mode_trending_sell_unchanged(self):
         """hard mode (デフォルト) の trending_sell 動作が変わらないこと."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
-
         cfg = _make_config(
             skip_sell_trending=True,
             skip_sell_trending_up_only=True,
@@ -611,8 +580,6 @@ class TestBackwardCompatibility196:
 
     def test_hard_mode_bypass_valves_still_work(self):
         """hard mode で bypass 安全弁 (HF4, inv_bypass) が引き続き動作."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
-
         cfg = _make_config(
             skip_sell_trending=True,
             skip_sell_trending_up_only=False,
@@ -640,15 +607,11 @@ class TestDesignConsistency196:
 
     def test_soft_pattern_in_cycle_gate(self):
         """CycleGateAggregator._check_trending_sell に 196# ソフトモードが存在."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
-
         source = inspect.getsource(CycleGateAggregator._check_trending_sell)
         assert "trending_sell_as_offset_enabled" in source
         assert "trending_sell_offset_boost_factor" in source
 
     def test_orchestrator_passes_trending_offset(self):
         """orchestrator が trending_offset_mult を run_single_cycle に渡すこと."""
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
-
         source = inspect.getsource(FillLoopOrchestratorMixin.run_continuous)
         assert "trending_offset_mult" in source

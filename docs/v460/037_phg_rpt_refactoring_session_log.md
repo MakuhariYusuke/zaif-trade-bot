@@ -176,3 +176,33 @@
 ### 次アクション
 1. `test_fill_quality.py`（残 49 件）を import 検証系を除いて段階集約
 2. `test_196_velocity_proportional_trending_soft.py` / `test_173_code_review_fixes.py` など上位残件を順次 DRY 化
+
+---
+
+## 2026-03-06 / Session 037-005
+
+### 実施
+- 本体コード分割（巨大化対策 + 再利用化）
+  - `ztb/risk/pnl_monte_carlo.py`
+    - `run()` と `sensitivity_analysis()` の重複処理を共通ヘルパーに分離
+      - `_extract_filled_pnl_bps()`
+      - `_simulate_monthly_pnls()`
+      - `_compute_breakeven()`
+      - `_passes_g11()`
+    - 既存計算フローを維持しつつ、責務を明確化して再利用可能化
+- DRY 改善（method 内 import 集約）
+  - `test_196_velocity_proportional_trending_soft.py`: 反復 import を先頭集約（YAML 読込のみ局所維持）
+  - `test_173_code_review_fixes.py`: 反復 import を先頭集約
+
+### 結果
+- 変更対象テスト:
+  - `test_pnl_monte_carlo.py` / `test_196_velocity_proportional_trending_soft.py` / `test_173_code_review_fixes.py`: `102 passed`
+- v460 全体:
+  - `3940 passed, 20 warnings in 41.54s`（`--no-cov --durations=15`）
+- DRY 指標更新:
+  - `test_196_velocity_proportional_trending_soft.py`: method 内 import `36 -> 6`（YAML 部分のみ残存）
+  - `test_173_code_review_fixes.py`: method 内 import `36 -> 0`
+
+### 次アクション
+1. `test_fill_quality.py`（49件）と `test_158_regime_deadlock_fix.py`（36件）の局所 import を優先集約
+2. `run_single_cycle` / `run_continuous` は source-string 検証依存が多いため、影響範囲を限定した抽出単位で段階分割
