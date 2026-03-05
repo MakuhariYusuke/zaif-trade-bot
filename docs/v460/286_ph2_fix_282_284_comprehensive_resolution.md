@@ -73,8 +73,9 @@
 
 - `RunSessionState` に `forced_buy_fill_count`, `forced_buy_pnl_sum_bps`, `normal_buy_fill_count`, `normal_buy_pnl_sum_bps` 追加
 - `_process_post_cycle()` で `record.balance_forced_switch` フラグに基づいて分離集計
-  - (**287# hotfix**: 初期実装で `record.balance_forced` と誤記。正しい `FillRecord` 属性は `balance_forced_switch`。
-    属性名不一致により `AttributeError` でプロセスクラッシュ。`e7d2f50d9` で修正済み)
+  - (**287#**: 初期実装で `record.balance_forced` と誤記。正しい `FillRecord` 属性は `balance_forced_switch`。
+    属性名不一致により `AttributeError` でプロセスクラッシュ。`e7d2f50d9` で修正済み。
+    詳細: [287_ph2_fix_balance_forced_switch_attribute.md](287_ph2_fix_balance_forced_switch_attribute.md))
 - 定期ログ: `[286# P1-5] Buy KPI split: forced=N fills (+X.XXbps avg), normal=M fills (+Y.YYbps avg)`
 
 **Config**: `forced_buy_kpi_tracking_enabled: bool = True`
@@ -145,7 +146,7 @@ buy maker は逆選択リスクが増大するため、スプレッドを拡大�
 
 ## テスト
 
-- **新規**: `test_286_comprehensive_resolution.py` — 35 テストケース (9 クラス)
+- **新規**: `test_286_comprehensive_resolution.py` — 37 テストケース (9 クラス, 287# 回帰テスト 2 件含む)
 - **修正**: `test_244_guard_reason_classification.py` — 再分類に対応
 - **結果**: v460 suite 3887 passed, 32 skipped, 0 failed
 
@@ -180,5 +181,5 @@ buy maker は逆選択リスクが増大するため、スプレッドを拡大�
 7. `scripts/v460/lib/maker_price.py` — _apply_buy_as_guard()
 8. `scripts/v460/lib/guard_reason_classifier.py` — SYSTEM→RECOVERY 再分類
 9. `tests/unit/v460/test_244_guard_reason_classification.py` — 再分類対応
-10. `tests/unit/v460/test_286_comprehensive_resolution.py` — 35 テスト (NEW)
-11. `docs/v460/286_ph2_fix_282_284_comprehensive_resolution.md` — 本ドキュメント (NEW)
+10. `tests/unit/v460/test_286_comprehensive_resolution.py` — 37 テスト (287# 回帰テスト 2 件追加)
+11. `docs/v460/286_ph2_fix_282_284_comprehensive_resolution.md` — 本ドキュメント
