@@ -14,6 +14,23 @@ from unittest.mock import patch
 import numpy as np
 import pandas as pd
 import pytest
+from scripts.v460.lib.config_loader import _deep_merge, load_config
+from scripts.v460.lib.data_loader import (
+    check_nan_ratio,
+    compute_data_hash,
+    generate_targets,
+    load_parquet,
+    split_train_eval,
+)
+from scripts.v460.lib.manifest import ManifestWriter, compute_config_hash
+from scripts.v460.run_gate_check import run_g0, run_g1_judgment
+from ztb.metrics.gate_checks import (
+    cliffs_delta,
+    g1_judgment,
+    holm_bonferroni_gate,
+    p_mean_gate,
+)
+from ztb.trading.live.exchanges.coincheck.adapter import _parse_timestamp
 
 try:
     import xgboost  # noqa: F401
@@ -31,25 +48,21 @@ class TestCliffsD:
     """cliffs_delta のテスト."""
 
     def test_perfect_dominance(self) -> None:
-        from ztb.metrics.gate_checks import cliffs_delta
         x = [10.0, 11.0, 12.0]
         y = [1.0, 2.0, 3.0]
         assert cliffs_delta(x, y) == 1.0
 
     def test_no_dominance(self) -> None:
-        from ztb.metrics.gate_checks import cliffs_delta
         x = [1.0, 2.0, 3.0]
         y = [1.0, 2.0, 3.0]
         assert cliffs_delta(x, y) == 0.0
 
     def test_reverse_dominance(self) -> None:
-        from ztb.metrics.gate_checks import cliffs_delta
         x = [1.0, 2.0, 3.0]
         y = [10.0, 11.0, 12.0]
         assert cliffs_delta(x, y) == -1.0
 
     def test_empty(self) -> None:
-        from ztb.metrics.gate_checks import cliffs_delta
         assert cliffs_delta([], [1.0]) == 0.0
 
 
@@ -57,7 +70,6 @@ class TestHolmBonferroniGate:
     """holm_bonferroni_gate のテスト."""
 
     def test_all_pass(self) -> None:
-        from ztb.metrics.gate_checks import holm_bonferroni_gate
         # 003# #20: seed fixation for reproducibility
         np.random.seed(42)
         # Model strongly dominates baseline → should pass
@@ -72,7 +84,6 @@ class TestHolmBonferroniGate:
         assert gate["target_b"]["pass"] is True
 
     def test_no_pass(self) -> None:
-        from ztb.metrics.gate_checks import holm_bonferroni_gate
         # Model ≈ baseline → should fail
         np.random.seed(42)
         model = list(np.random.normal(0.0, 1.0, 200))
@@ -82,7 +93,6 @@ class TestHolmBonferroniGate:
         assert bool(gate["target_a"]["pass"]) is False
 
     def test_empty(self) -> None:
-        from ztb.metrics.gate_checks import holm_bonferroni_gate
         assert holm_bonferroni_gate({}) == {}
 
 
@@ -90,19 +100,16 @@ class TestPMeanGate:
     """p_mean_gate のテスト."""
 
     def test_all_significant(self) -> None:
-        from ztb.metrics.gate_checks import p_mean_gate
         result = p_mean_gate([0.01, 0.02, 0.03], alpha=0.05)
         assert result["pass"] is True
         assert result["n_folds"] == 3
         assert result["p_geometric"] < 0.05
 
     def test_none_significant(self) -> None:
-        from ztb.metrics.gate_checks import p_mean_gate
         result = p_mean_gate([0.5, 0.6, 0.7], alpha=0.05)
         assert result["pass"] is False
 
     def test_empty(self) -> None:
-        from ztb.metrics.gate_checks import p_mean_gate
         result = p_mean_gate([])
         assert result["pass"] is False
 
@@ -111,7 +118,6 @@ class TestG1Judgment:
     """g1_judgment のテスト (§5.3 厳密仕様)."""
 
     def test_pass_scenario(self) -> None:
-        from ztb.metrics.gate_checks import g1_judgment
 
         np.random.seed(42)
         # 5 folds where model clearly dominates
@@ -126,7 +132,6 @@ class TestG1Judgment:
         assert "h5_direction" in result["passed_targets"]
 
     def test_fail_scenario(self) -> None:
-        from ztb.metrics.gate_checks import g1_judgment
 
         np.random.seed(42)
         folds = []
@@ -140,7 +145,6 @@ class TestG1Judgment:
         assert result["passed_targets"] == []
 
     def test_empty(self) -> None:
-        from ztb.metrics.gate_checks import g1_judgment
         result = g1_judgment({})
         assert result["g1_pass"] is False
 
@@ -153,7 +157,6 @@ class TestConfigLoader:
     """config_loader のテスト."""
 
     def test_deep_merge(self) -> None:
-        from scripts.v460.lib.config_loader import _deep_merge
         base = {"a": 1, "b": {"c": 2, "d": 3}, "e": 5}
         override = {"b": {"c": 99}, "f": 6, "_meta": "skip"}
         merged = _deep_merge(base, override)
@@ -165,7 +168,6 @@ class TestConfigLoader:
         assert "_meta" not in merged
 
     def test_load_config_validation_error(self, tmp_path: Path) -> None:
-        from scripts.v460.lib.config_loader import load_config
 
         base = {"data": {"train_end_index": None}, "features": {"selected": None}}
         base_path = tmp_path / "base.yaml"
@@ -181,7 +183,6 @@ class TestConfigLoader:
             load_config(exp_path, base_path=base_path)
 
     def test_load_config_valid(self, tmp_path: Path) -> None:
-        from scripts.v460.lib.config_loader import load_config
 
         base = {
             "data": {"train_end_index": None, "ohlcv_path": "test.parquet"},
@@ -215,7 +216,6 @@ class TestDataLoader:
     """data_loader のテスト."""
 
     def test_load_parquet(self, tmp_path: Path) -> None:
-        from scripts.v460.lib.data_loader import load_parquet
 
         df = pd.DataFrame({"close": [100, 101, 102], "feature_a": [1, 2, 3]})
         p = tmp_path / "test.parquet"
@@ -226,7 +226,6 @@ class TestDataLoader:
         assert "close" in loaded.columns
 
     def test_load_parquet_select_cols(self, tmp_path: Path) -> None:
-        from scripts.v460.lib.data_loader import load_parquet
 
         df = pd.DataFrame({"close": [100], "a": [1], "b": [2], "c": [3]})
         p = tmp_path / "test.parquet"
@@ -237,7 +236,6 @@ class TestDataLoader:
         assert "close" in loaded.columns  # always kept
 
     def test_split_train_eval(self) -> None:
-        from scripts.v460.lib.data_loader import split_train_eval
 
         df = pd.DataFrame({"x": range(100)})
         train, eval_ = split_train_eval(df, 80)
@@ -245,7 +243,6 @@ class TestDataLoader:
         assert len(eval_) == 20
 
     def test_generate_targets(self) -> None:
-        from scripts.v460.lib.data_loader import generate_targets
 
         df = pd.DataFrame({"close": [100.0, 101.0, 102.0, 103.0, 104.0]})
         result = generate_targets(df, horizons=[1], target_types=["direction"])
@@ -254,7 +251,6 @@ class TestDataLoader:
         assert result["target_direction_h1"].iloc[0] == 1
 
     def test_check_nan_ratio(self) -> None:
-        from scripts.v460.lib.data_loader import check_nan_ratio
 
         df = pd.DataFrame({"a": [1, 2, np.nan], "b": [4, 5, 6]})
         result = check_nan_ratio(df, max_ratio=0.5)
@@ -262,7 +258,6 @@ class TestDataLoader:
         assert result["nan_cells"] == 1
 
     def test_compute_data_hash(self, tmp_path: Path) -> None:
-        from scripts.v460.lib.data_loader import compute_data_hash
 
         p = tmp_path / "test.bin"
         p.write_bytes(b"hello")
@@ -278,7 +273,6 @@ class TestManifest:
     """manifest.py のテスト."""
 
     def test_write_and_read(self, tmp_path: Path) -> None:
-        from scripts.v460.lib.manifest import ManifestWriter
 
         mw = ManifestWriter(path=tmp_path / "manifest.jsonl")
         entry = mw.start_run(
@@ -301,7 +295,6 @@ class TestManifest:
         assert entries[1]["gate_result"] == "PASS"
 
     def test_config_hash_deterministic(self) -> None:
-        from scripts.v460.lib.manifest import compute_config_hash
 
         cfg = {"a": 1, "b": "c"}
         h1 = compute_config_hash(cfg)
@@ -310,7 +303,6 @@ class TestManifest:
         assert len(h1) == 16
 
     def test_read_all_skips_malformed_lines(self, tmp_path: Path) -> None:
-        from scripts.v460.lib.manifest import ManifestWriter
 
         manifest_path = tmp_path / "manifest.jsonl"
         with open(manifest_path, "w", encoding="utf-8") as f:
@@ -325,7 +317,6 @@ class TestManifest:
         assert run_ids == ["ok1", "ok2"]
 
     def test_start_run_with_empty_data_path_is_pending(self, tmp_path: Path) -> None:
-        from scripts.v460.lib.manifest import ManifestWriter
 
         mw = ManifestWriter(path=tmp_path / "manifest.jsonl")
         entry = mw.start_run(
@@ -338,7 +329,6 @@ class TestManifest:
         assert entry.data_hash == "pending"
 
     def test_start_run_with_directory_data_path_is_pending(self, tmp_path: Path) -> None:
-        from scripts.v460.lib.manifest import ManifestWriter
 
         mw = ManifestWriter(path=tmp_path / "manifest.jsonl")
         entry = mw.start_run(
@@ -408,27 +398,22 @@ class TestTimestampParsing:
     """003# #4: coincheck _parse_timestamp のテスト."""
 
     def test_float_passthrough(self) -> None:
-        from ztb.trading.live.exchanges.coincheck.adapter import _parse_timestamp
         assert _parse_timestamp(1234567890.5) == 1234567890.5
 
     def test_epoch_string(self) -> None:
-        from ztb.trading.live.exchanges.coincheck.adapter import _parse_timestamp
         result = _parse_timestamp("1234567890")
         assert result == 1234567890.0
 
     def test_iso8601(self) -> None:
-        from ztb.trading.live.exchanges.coincheck.adapter import _parse_timestamp
         result = _parse_timestamp("2025-01-01T00:00:00Z")
         assert isinstance(result, float)
         assert result > 0
 
     def test_iso8601_with_offset(self) -> None:
-        from ztb.trading.live.exchanges.coincheck.adapter import _parse_timestamp
         result = _parse_timestamp("2025-01-01T09:00:00+09:00")
         assert isinstance(result, float)
 
     def test_garbage_fallback(self) -> None:
-        from ztb.trading.live.exchanges.coincheck.adapter import _parse_timestamp
         result = _parse_timestamp("not-a-timestamp")
         assert isinstance(result, float)  # Falls back to time.time()
 
@@ -499,7 +484,6 @@ class TestDataLoaderEdgeCases:
 
     def test_direction_nan_preserved(self) -> None:
         """003# #12: NaN in returns should produce NaN direction, not 0."""
-        from scripts.v460.lib.data_loader import generate_targets
 
         # Last row has no forward close → ret is NaN
         df = pd.DataFrame({"close": [100.0, 101.0, 102.0]})
@@ -510,7 +494,6 @@ class TestDataLoaderEdgeCases:
 
     def test_column_order_deterministic(self, tmp_path: Path) -> None:
         """003# #13: column order is stable across calls."""
-        from scripts.v460.lib.data_loader import load_parquet
 
         df = pd.DataFrame({"close": [100], "z": [1], "a": [2], "m": [3]})
         p = tmp_path / "test.parquet"
@@ -521,7 +504,6 @@ class TestDataLoaderEdgeCases:
         assert cols1 == cols2  # Same order regardless of input
 
     def test_missing_column_raises(self, tmp_path: Path) -> None:
-        from scripts.v460.lib.data_loader import load_parquet
 
         df = pd.DataFrame({"close": [100], "a": [1]})
         p = tmp_path / "test.parquet"
@@ -535,7 +517,6 @@ class TestGateCheckG0FeatureColumns:
     """003# #18: G0 column count uses feature columns only."""
 
     def test_feature_column_count_excludes_targets(self, tmp_path: Path) -> None:
-        from scripts.v460.run_gate_check import run_g0
 
         df = pd.DataFrame({
             "close": [100.0, 101.0, 102.0],
@@ -609,8 +590,6 @@ class TestG0HashPrefix:
     """G0 hash prefix matching テスト."""
 
     def test_hash_prefix_match(self, tmp_path: Path) -> None:
-        from scripts.v460.run_gate_check import run_g0
-        from scripts.v460.lib.data_loader import compute_data_hash
 
         df = pd.DataFrame({
             "feat_a": [1, 2, 3],
@@ -632,7 +611,6 @@ class TestG0HashPrefix:
         assert result["gate_result"] == "PASS"
 
     def test_hash_mismatch(self, tmp_path: Path) -> None:
-        from scripts.v460.run_gate_check import run_g0
 
         df = pd.DataFrame({
             "feat_a": [1, 2, 3],
@@ -667,7 +645,6 @@ class TestGateCheckG1AnyLogic:
 
     def test_any_pass_single_target(self) -> None:
         """1 target だけ閾値クリア → extra_any_pass = True."""
-        from scripts.v460.run_gate_check import run_g1_judgment
 
         # 2 targets: 1 passes thresholds, 1 fails
         targets = {
@@ -703,7 +680,6 @@ class TestGateCheckG1AnyLogic:
 
     def test_all_fail_no_extra_pass(self) -> None:
         """全 target が閾値未達 → extra_any_pass = False."""
-        from scripts.v460.run_gate_check import run_g1_judgment
 
         targets = {
             "direction_h1": {
@@ -801,7 +777,6 @@ class TestGateCheckCacheCompat:
 
     def test_cached_judgment_used(self) -> None:
         """g1_judgment_cache があればそれを使用し、fold_results を再計算しない."""
-        from scripts.v460.run_gate_check import run_g1_judgment
 
         # Stats-only fold_results (g1_judgment() に直接渡すとクラッシュする)
         exp_results = {
@@ -843,7 +818,6 @@ class TestGateCheckCacheCompat:
 
     def test_stats_only_no_cache_fallback(self) -> None:
         """g1_judgment_cache がなく fold_results が stats → FAIL (クラッシュしない)."""
-        from scripts.v460.run_gate_check import run_g1_judgment
 
         exp_results = {
             "xgboost": {
@@ -880,7 +854,6 @@ class TestConfigLoaderTaskPreservation:
 
     def test_task_preserved(self, tmp_path: Path) -> None:
         """実験 YAML の _task が load_config 結果に含まれる."""
-        from scripts.v460.lib.config_loader import load_config
 
         base_yaml = tmp_path / "base.yaml"
         base_yaml.write_text(yaml.dump({
@@ -900,7 +873,6 @@ class TestConfigLoaderTaskPreservation:
 
     def test_task_default(self, tmp_path: Path) -> None:
         """_task 未指定時はデフォルト feature_info."""
-        from scripts.v460.lib.config_loader import load_config
 
         base_yaml = tmp_path / "base.yaml"
         base_yaml.write_text(yaml.dump({

@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 287# test: v460 テストスイート高速化 + DRY 整理 (2026-03-06)
+
+### Changed
+- **v460 実行時間短縮**: `tests/unit/v460` を `--no-cov` で **約180s → 70.01s** へ短縮（3919 passed）
+- **`test_fill_quality.py` 待機短縮**: `status_unknown_retry_delays` をテスト用に 0 秒化し、10秒級テストを解消
+- **`test_168_daily_health_integration.py` 通知I/O隔離**: `ztb.utils.notify.get_notifier` をモックし外部通知待機を除去
+- **`test_enricher_skip_gate.py` 実データ統合の軽量化**: 実データをサブセット化し、実データテスト2件の実行時間を大幅短縮
+- **`test_169_config_hot_reload.py` の `time.sleep()` 排除**: mtime 更新ヘルパーで sleep 依存を削除
+- **`scripts/v460/lib/manifest.py` キャッシュ化**: `git/deps/cuda` 情報取得に `lru_cache` を適用し `pip freeze` の反復コストを削減
+
+### Added
+- **`tests/unit/v460/conftest.py` 新規作成**:
+  - `v460_fill_test_config` (標準 FillTestConfig fixture)
+  - `v460_fill_record_factory` (必須引数: `cycle_id`, `order_price`, `order_quantity`)
+  - `v460_fast_fill_defense_config` / `v460_fast_fill_defense`
+  - `v460_maker_price_calculator`
+  - `v460_tmp_results_dir` (tmp_path ベース共通 tempdir)
+
+### Refactored
+- **per-method import 集約**:
+  - `test_fill_quality.py`: 280 → **160**
+  - `test_v460_core.py`: 57 → **12**
+
+---
+
 ## 286# fix: 282#–284# 課題包括的解決 + 市場理論補強 (2026-03-06)
 
 ### Fixed

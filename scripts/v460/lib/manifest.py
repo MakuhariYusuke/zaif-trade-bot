@@ -14,6 +14,7 @@ import hashlib
 import json
 import subprocess
 import sys
+from functools import lru_cache
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -28,11 +29,13 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 logger = logging.getLogger(__name__)
 
 
+@lru_cache(maxsize=1)
 def _get_git_sha() -> str:
     """Current git commit SHA."""
     return _get_shared_git_sha(cwd=_PROJECT_ROOT)[:12]
 
 
+@lru_cache(maxsize=1)
 def _get_deps_hash() -> str:
     """SHA-256 of `pip freeze` output for reproducibility."""
     try:
@@ -45,6 +48,7 @@ def _get_deps_hash() -> str:
         return "unknown"
 
 
+@lru_cache(maxsize=1)
 def _get_cuda_version() -> str | None:
     """CUDA version or None."""
     try:

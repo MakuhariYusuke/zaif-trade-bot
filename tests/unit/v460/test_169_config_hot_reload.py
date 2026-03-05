@@ -148,6 +148,14 @@ def _make_mock_runner(config: FillTestConfig) -> MagicMock:
     return runner
 
 
+def _write_yaml_with_updated_mtime(path: Path, content: str) -> None:
+    """mtime 差分を sleep なしで保証して YAML を更新する."""
+    path.write_text(content, encoding="utf-8")
+    current = path.stat().st_mtime
+    bumped = max(time.time(), current + 1.0)
+    os.utime(path, (bumped, bumped))
+
+
 # ======================================================================
 # Tests: 基本動作
 # ======================================================================
@@ -205,8 +213,7 @@ class TestConfigHotReloaderBasic:
         runner = _make_mock_runner(base_config)
 
         # YAML を更新
-        time.sleep(0.05)  # mtime の変化を保証
-        temp_yaml.write_text(yaml_content_updated, encoding="utf-8")
+        _write_yaml_with_updated_mtime(temp_yaml, yaml_content_updated)
 
         reloader._last_check_time = 0.0  # force check
         with patch("scripts.v460.lib.config_hot_reload.ConfigHotReloader._do_reload") as mock_reload:
@@ -266,8 +273,7 @@ class TestConfigFieldUpdate:
         runner = _make_mock_runner(base_config)
 
         # YAML を更新して直接 _do_reload
-        time.sleep(0.05)
-        temp_yaml.write_text(yaml_content_updated, encoding="utf-8")
+        _write_yaml_with_updated_mtime(temp_yaml, yaml_content_updated)
 
         result = reloader._do_reload(runner)
         assert result is True
@@ -304,8 +310,7 @@ spread_offset_ratio: 0.05
         )
         runner = _make_mock_runner(base_config)
 
-        time.sleep(0.05)
-        temp_yaml.write_text(updated_yaml, encoding="utf-8")
+        _write_yaml_with_updated_mtime(temp_yaml, updated_yaml)
 
         reloader._do_reload(runner)
 
@@ -337,8 +342,7 @@ class TestComponentRebuild:
         )
         runner = _make_mock_runner(base_config)
 
-        time.sleep(0.05)
-        temp_yaml.write_text(yaml_content_updated, encoding="utf-8")
+        _write_yaml_with_updated_mtime(temp_yaml, yaml_content_updated)
 
         reloader._do_reload(runner)
 
@@ -360,8 +364,7 @@ class TestComponentRebuild:
         )
         runner = _make_mock_runner(base_config)
 
-        time.sleep(0.05)
-        temp_yaml.write_text(yaml_content_updated, encoding="utf-8")
+        _write_yaml_with_updated_mtime(temp_yaml, yaml_content_updated)
 
         reloader._do_reload(runner)
 
@@ -382,8 +385,7 @@ class TestComponentRebuild:
         )
         runner = _make_mock_runner(base_config)
 
-        time.sleep(0.05)
-        temp_yaml.write_text(yaml_content_updated, encoding="utf-8")
+        _write_yaml_with_updated_mtime(temp_yaml, yaml_content_updated)
 
         reloader._do_reload(runner)
 
@@ -418,8 +420,7 @@ class TestReloadErrorHandling:
         runner = _make_mock_runner(base_config)
 
         # 不正 YAML を書き込み
-        time.sleep(0.05)
-        temp_yaml.write_text("invalid: [yaml: {broken", encoding="utf-8")
+        _write_yaml_with_updated_mtime(temp_yaml, "invalid: [yaml: {broken")
 
         reloader._last_check_time = 0.0
         result = reloader.maybe_reload(runner)
@@ -462,8 +463,7 @@ class TestReloadErrorHandling:
         runner = _make_mock_runner(base_config)
 
         # mtime を人為的に変更して _do_reload を発動
-        time.sleep(0.05)
-        temp_yaml.write_text("spread_offset_ratio: 0.10", encoding="utf-8")
+        _write_yaml_with_updated_mtime(temp_yaml, "spread_offset_ratio: 0.10")
         reloader._last_check_time = 0.0
 
         with patch.object(reloader, "_do_reload", side_effect=RuntimeError("test")):

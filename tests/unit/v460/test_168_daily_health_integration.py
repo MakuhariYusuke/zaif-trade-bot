@@ -270,7 +270,9 @@ class TestDailyHealthCheckIntegration:
 
         from scripts.v460.daily_health_check import run_daily_health_check
 
-        report = run_daily_health_check(skip_monte_carlo=True)
+        with patch("ztb.utils.notify.get_notifier") as mock_get_notifier:
+            mock_get_notifier.return_value = MagicMock()
+            report = run_daily_health_check(skip_monte_carlo=True)
 
         assert len(report["checks"]) == 6
         check_names = [c["check"] for c in report["checks"]]
@@ -309,6 +311,8 @@ class TestDailyHealthCheckIntegration:
 
         from scripts.v460.daily_health_check import run_daily_health_check
 
-        report = run_daily_health_check(skip_monte_carlo=True)
+        with patch("ztb.utils.notify.get_notifier") as mock_get_notifier:
+            mock_get_notifier.return_value = MagicMock()
+            report = run_daily_health_check(skip_monte_carlo=True)
 
         assert report["overall_healthy"] is False

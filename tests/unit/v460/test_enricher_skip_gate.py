@@ -30,6 +30,8 @@ from scripts.v460.ml.skip_gate import (
     train_and_save_skip_gate,
 )
 
+_REAL_DATA_SAMPLE_ROWS = 1200
+
 
 # ======================================================================
 # Fixtures
@@ -824,34 +826,57 @@ class Test058MarketStateFeatures:
 class Test058Integration:
     """実データが存在する場合の統合テスト."""
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def real_data_available(self) -> bool:
         return (
             Path("results/v460/fill_test/fill_records_20260213.jsonl").exists()
             and Path("data/v460/raw/orderbook").exists()
         )
 
-    def test_enrichment_with_real_data(self, real_data_available: bool) -> None:
+    @pytest.fixture(scope="class")
+    def real_fill_df(self, real_data_available: bool) -> pd.DataFrame:
+        if not real_data_available:
+            pytest.skip("No real data")
+        from scripts.v460.ml.data_loader import load_fill_records
+
+        df = load_fill_records()
+        if len(df) == 0:
+            pytest.skip("No fill records")
+        n_rows = min(len(df), _REAL_DATA_SAMPLE_ROWS)
+        return df.tail(n_rows).copy()
+
+    def test_enrichment_with_real_data(
+        self,
+        real_data_available: bool,
+        real_fill_df: pd.DataFrame,
+    ) -> None:
         """実データでのエンリッチメント."""
         if not real_data_available:
             pytest.skip("No real data")
 
-        from scripts.v460.ml.data_loader import load_fill_records
-
-        df = load_fill_records()
-        enriched = enrich_fill_records(df)
+        enriched = enrich_fill_records(real_fill_df)
         assert "spread_bps_ob" in enriched.columns
         n_matched = enriched["spread_bps_ob"].notna().sum()
         assert n_matched > 0
 
-    def test_train_skip_gate_real(self, real_data_available: bool) -> None:
+    def test_train_skip_gate_real(
+        self,
+        real_data_available: bool,
+        real_fill_df: pd.DataFrame,
+    ) -> None:
         """実データでの SkipGate 学習."""
         if not real_data_available:
             pytest.skip("No real data")
 
+        from unittest.mock import patch
+
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "test_gate.pkl"
-            gate = train_and_save_skip_gate(output_path=path)
+            with patch(
+                "scripts.v460.ml.data_loader.load_fill_records",
+                return_value=real_fill_df,
+            ):
+                gate = train_and_save_skip_gate(output_path=path)
             assert path.exists()
             assert gate.metadata["n_samples"] > 100
 
