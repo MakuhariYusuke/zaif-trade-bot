@@ -525,6 +525,9 @@ class FillTestConfig:
     forced_buy_delay_cycles: int = 3                # 遅延サイクル数
     # 292# P1: ranging/trending_down 時の緩和閾値 (None=共通値使用)
     forced_buy_delay_velocity_threshold_ranging_bps: float | None = None
+    # 294# P0: 連続ブロック上限 — デッドロック防止
+    # velocity が閾値以下を維持すると delay が毎サイクル再アームされ永久ブロックする問題への対策
+    forced_buy_delay_max_consecutive: int = 10  # 連続 N サイクルブロック後は強制突破
     # 249# dual_kill_bypass → quiescence: 両方 kill 時は休止 (242# "No Trade = normal")
     dual_kill_quiescence_enabled: bool = False  # True で dual_kill_bypass を無効化 → 静観
     # ---- 137# P1-08: spread 狭小時の「休む」判定 ----
@@ -1390,6 +1393,8 @@ class FillTestConfig:
             kwargs["forced_buy_delay_velocity_threshold_ranging_bps"] = float(
                 fbd["velocity_threshold_ranging_bps"]
             )
+        if "max_consecutive" in fbd:
+            kwargs["forced_buy_delay_max_consecutive"] = int(fbd["max_consecutive"])
 
         # 249# dual_kill_quiescence
         _dkq = 止血.get("dual_kill_quiescence_enabled")

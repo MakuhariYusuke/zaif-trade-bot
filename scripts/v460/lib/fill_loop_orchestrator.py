@@ -132,6 +132,8 @@ class FillLoopOrchestratorMixin:
     _one_sided_freeze_remaining: int = 0
     # 286# 284# P1: 強制買い遅延実行 (Glosten-Milgrom 1985)
     _forced_buy_delay_remaining: int = 0
+    # 294# P0: 連続ブロックカウンタ (デッドロック防止)
+    _forced_buy_delay_consecutive: int = 0
     # 250# P1-4: freeze/cooldown が紐付いた side
     # — None 時は全 side スキップ (後方互換), side 指定時はその side のみ
     _one_sided_frozen_side: str | None = None
@@ -2203,7 +2205,13 @@ class FillLoopOrchestratorMixin:
                     _cur_regime = self._regime_detector.current_regime.value
                     if _cur_regime in ("ranging", "trending_down"):
                         _thr = _ranging_thr
-                if _vel is not None and _vel <= _thr:
+                # 294# P0: 連続ブロック上限チェック — デッドロック防止
+                _max_consec = self.config.forced_buy_delay_max_consecutive
+                if (
+                    _vel is not None
+                    and _vel <= _thr
+                    and self._forced_buy_delay_consecutive < _max_consec
+                ):
                     self._forced_buy_delay_remaining = max(
                         self._forced_buy_delay_remaining,
                         self.config.forced_buy_delay_cycles,
@@ -2211,11 +2219,21 @@ class FillLoopOrchestratorMixin:
                     logger.info(
                         f"[286# GM delay] Forced buy delayed: "
                         f"velocity={_vel:.2f}bps <= {_thr:.1f}bps, "
-                        f"waiting {self._forced_buy_delay_remaining} cycles"
+                        f"waiting {self._forced_buy_delay_remaining} cycles "
+                        f"(consec={self._forced_buy_delay_consecutive}/{_max_consec})"
+                    )
+                elif self._forced_buy_delay_consecutive >= _max_consec:
+                    # デッドロック突破: カウンタをリセットして通過させる
+                    self._forced_buy_delay_remaining = 0
+                    logger.warning(
+                        f"[294# GM deadlock break] Forced buy delay exceeded "
+                        f"max_consecutive={_max_consec}, forcing through. "
+                        f"velocity={_vel}bps, regime={getattr(getattr(self._regime_detector, 'current_regime', None), 'value', 'N/A')}"
                     )
 
             if self._forced_buy_delay_remaining > 0 and next_side == "buy":
                 self._forced_buy_delay_remaining -= 1
+                self._forced_buy_delay_consecutive += 1
                 self._inc_guard_fire("forced_buy_delay")
                 await self._execute_skip(
                     st, side=next_side,
@@ -2225,6 +2243,9 @@ class FillLoopOrchestratorMixin:
                     update_last_side=True,
                 )
                 continue
+            else:
+                # delay を通過 → 連続カウンタをリセット
+                self._forced_buy_delay_consecutive = 0
 
             # ════════════════════════════════════════════════════════════
             # 194# CycleGateAggregator: per-cycle skip 判定の一元化

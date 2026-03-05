@@ -244,3 +244,40 @@
 1. `test_fill_quality.py` の import 検証テストを除いたローカル import を段階集約
 2. `test_ob_recorder.py` / `test_175_code_review_sweep2.py` を同様に先頭 import 化
 3. 速度面は `test_enricher_skip_gate` setup と `test_retrain_hot_reload` の重いケースを重点最適化
+
+---
+
+## 2026-03-06 / Session 037-007
+
+### 実施
+- 本体コード最適化（挙動不変）
+  - `ztb/data/trades_recorder.py`
+    - `record_trades()` の時系列正規化に fast-path を追加
+      - 昇順: そのまま
+      - 降順: `reversed()`
+      - 非単調のみ `sorted()`
+    - `flush()` の watermark 更新をバッファ追跡値 (`_buffer_max_key`) で更新
+      し、`max()` 再走査を削除
+    - dict→`TradeEntry` 変換を `_to_trade_entry()` に集約
+  - `scripts/v460/lib/ob_recorder.py`
+    - `_normalize_levels()` の反復 import を解消
+    - `record()` の時刻取得 (`time.time`) を 1 回化
+    - ループ内 `append` 束縛で軽量化
+
+### 結果
+- 変更対象テスト:
+  - `test_135_trades_and_gate.py`
+  - `test_ob_recorder.py`
+  - `test_261_protocol_type_safety.py`
+  - 合計: `63 passed in 2.03s`
+- v460 全体:
+  - `3946 passed, 19 warnings in 45.72s`（`--no-cov --tb=short`）
+  - `3946 passed, 19 warnings in 43.67s`（`--no-cov --durations=15`）
+- `--durations=15` 上位:
+  - `test_enricher_skip_gate` setup `1.65s`
+  - `test_ml_pipeline::test_train_gb_model` call `0.54s`
+
+### 次アクション
+1. `test_enricher_skip_gate` の setup 実データ構築を fixture キャッシュ化
+2. `test_retrain_hot_reload` の I/O 依存ケースを軽量モックに段階置換
+3. `test_fill_quality.py` の import 検証系を除くローカル import 集約を継続

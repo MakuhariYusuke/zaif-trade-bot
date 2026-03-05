@@ -195,6 +195,7 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "forced_buy_delay_velocity_threshold_bps",
     "forced_buy_delay_cycles",
     "forced_buy_delay_velocity_threshold_ranging_bps",
+    "forced_buy_delay_max_consecutive",     # 294# deadlock prevention
     # --- velocity skip ---
     "sell_velocity_skip_enabled",
     "sell_velocity_skip_threshold_bps",

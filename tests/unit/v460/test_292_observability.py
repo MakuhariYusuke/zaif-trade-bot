@@ -228,5 +228,46 @@ class TestHotReloadFieldCoverage:
             "forced_buy_delay_velocity_threshold_bps",
             "forced_buy_delay_cycles",
             "forced_buy_delay_velocity_threshold_ranging_bps",
+            "forced_buy_delay_max_consecutive",
         }
         assert expected.issubset(self.fields)
+
+
+# =====================================================================
+# E. Config — 294# P0: forced_buy_delay_max_consecutive
+# =====================================================================
+
+class TestForcedBuyDelayMaxConsecutive:
+    """294# P0: forced_buy_delay_max_consecutive によるデッドロック防止."""
+
+    def test_default_value(self) -> None:
+        cfg = FillTestConfig()
+        assert cfg.forced_buy_delay_max_consecutive == 10
+
+    def test_explicit_value(self) -> None:
+        cfg = FillTestConfig(forced_buy_delay_max_consecutive=5)
+        assert cfg.forced_buy_delay_max_consecutive == 5
+
+    def test_from_yaml(self) -> None:
+        yaml_data = {
+            "止血": {
+                "forced_buy_delay": {
+                    "enabled": True,
+                    "max_consecutive": 8,
+                }
+            }
+        }
+        cfg = FillTestConfig.from_yaml(yaml_data)
+        assert cfg.forced_buy_delay_max_consecutive == 8
+
+    def test_production_yaml_has_max_consecutive(self) -> None:
+        yaml_path = _PROJECT_ROOT / "configs" / "v460" / "fill_test.yaml"
+        if not yaml_path.exists():
+            pytest.skip("fill_test.yaml not found")
+        import yaml as _yaml  # type: ignore[import-untyped]
+
+        with open(yaml_path) as f:
+            y = _yaml.safe_load(f)
+        fbd = y.get("loss_control", {}).get("forced_buy_delay", {})
+        assert "max_consecutive" in fbd
+        assert fbd["max_consecutive"] == 10

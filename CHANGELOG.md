@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 298# perf+core: Trades/OB recorder hotpath最適化 (2026-03-06)
+
+### Changed
+- **本体コード最適化（挙動不変）**
+  - `ztb/data/trades_recorder.py`
+    - `record_trades()` の時系列正規化で fast-path 追加
+      - 既に昇順: そのまま処理
+      - 降順: `reversed()` で処理
+      - 混在順のみ `sorted()` 実行
+    - `flush()` の watermark 更新を `max()` 再走査から
+      バッファ追跡値 (`_buffer_max_key`) 利用へ変更
+    - Trade dict → `TradeEntry` 変換を `_to_trade_entry()` に集約
+  - `scripts/v460/lib/ob_recorder.py`
+    - `_normalize_levels()` の反復 import をモジュール先頭化
+    - `record()` の `time.time()` 呼び出しを1回化し再利用
+    - `append` のローカル束縛でループ内オーバーヘッドを軽減
+
+### Verification
+- 関連回帰:
+  - `test_135_trades_and_gate.py`
+  - `test_ob_recorder.py`
+  - `test_261_protocol_type_safety.py`
+  - 結果: `63 passed in 2.03s`
+- 全体:
+  - `3946 passed, 19 warnings in 45.72s`
+  - `3946 passed, 19 warnings in 43.67s` (`--durations=15`)
+
+---
+
 ## 297# refactor+dry: v460 import集約 第3弾 (2026-03-06)
 
 ### Changed

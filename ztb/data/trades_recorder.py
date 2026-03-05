@@ -54,6 +54,7 @@ class TradesRecorder:
         "_total_written",
         "_seen_keys",
         "_watermark",
+        "_buffer_max_key",
         "_flush_fail_count",
     )
 
@@ -72,10 +73,52 @@ class TradesRecorder:
         self._total_written: int = 0
         # 重複排除: watermark = 既出 trade の max key (flush 跨ぎ対応)
         self._watermark: TradeEntry | None = None
+        # 現在バッファ内の max key (flush 時の再走査回避)
+        self._buffer_max_key: TradeEntry | None = None
         # 同一 flush 内の重複防止用 set (flush ごとにリセット)
         self._seen_keys: set[TradeEntry] = set()
         # flush 失敗カウンタ (連続失敗時の emergency dump 用)
         self._flush_fail_count: int = 0
+
+    @staticmethod
+    def _to_trade_entry(trade: dict[str, object]) -> TradeEntry:
+        """入力 dict を TradeEntry に正規化."""
+        return TradeEntry(
+            ts=float(trade.get("ts", 0)),
+            price=float(trade.get("price", 0)),
+            amount=float(trade.get("amount", 0)),
+            side=str(trade.get("side", "")),
+        )
+
+    @staticmethod
+    def _iter_chronological(
+        trades: list[dict[str, object]],
+    ) -> list[dict[str, object]] | reversed[dict[str, object]]:
+        """timestamp 昇順で反復できる形に変換.
+
+        既に昇順/降順が保証される入力では sort を避ける。
+        """
+        if len(trades) <= 1:
+            return trades
+
+        prev_ts = float(trades[0].get("ts", 0))
+        ascending = True
+        descending = True
+        for trade in trades[1:]:
+            ts = float(trade.get("ts", 0))
+            if ts < prev_ts:
+                ascending = False
+            if ts > prev_ts:
+                descending = False
+            if not ascending and not descending:
+                break
+            prev_ts = ts
+
+        if ascending:
+            return trades
+        if descending:
+            return reversed(trades)
+        return sorted(trades, key=lambda t: float(t.get("ts", 0)))
 
     @property
     def enabled(self) -> bool:
@@ -107,16 +150,11 @@ class TradesRecorder:
             return 0
 
         # §9.1 #1: API 降順レスポンス対応 — timestamp 昇順正規化
-        sorted_trades = sorted(trades, key=lambda t: float(t.get("ts", 0)))
+        ordered_trades = self._iter_chronological(trades)
 
         added = 0
-        for t in sorted_trades:
-            key = TradeEntry(
-                ts=float(t.get("ts", 0)),
-                price=float(t.get("price", 0)),
-                amount=float(t.get("amount", 0)),
-                side=str(t.get("side", "")),
-            )
+        for t in ordered_trades:
+            key = self._to_trade_entry(t)
             # §9.2 #A: 完全 key (ts+price+amount+side) で watermark 比較
             if self._watermark is not None and key <= self._watermark:
                 continue
@@ -130,6 +168,8 @@ class TradesRecorder:
                 "amount": key.amount,
                 "side": key.side,
             })
+            if self._buffer_max_key is None or key > self._buffer_max_key:
+                self._buffer_max_key = key
             added += 1
 
         # メモリ保護: バッファ上限
@@ -158,14 +198,15 @@ class TradesRecorder:
         if not self._enabled:
             return 0
         # TradeRecord → dict 変換 (型に依存しない duck-typing)
-        dicts: list[dict[str, object]] = []
-        for tr in trade_records:  # type: ignore[union-attr]
-            dicts.append({
+        dicts = [
+            {
                 "ts": getattr(tr, "timestamp", 0.0),
                 "price": getattr(tr, "price", 0.0),
                 "amount": getattr(tr, "amount", 0.0),
                 "side": getattr(tr, "side", ""),
-            })
+            }
+            for tr in trade_records  # type: ignore[union-attr]
+        ]
         return self.record_trades(dicts)
 
     def flush(self) -> int:
@@ -187,17 +228,11 @@ class TradesRecorder:
         try:
             append_jsonl_gz(path, self._buffer)
             self._total_written += n
-            # §9.1 #1: watermark = buffer 内の max key で更新
-            max_key = max(
-                TradeEntry(
-                    ts=float(r["ts"]),
-                    price=float(r["price"]),
-                    amount=float(r["amount"]),
-                    side=str(r["side"]),
-                )
-                for r in self._buffer
-            )
-            if self._watermark is None or max_key > self._watermark:
+            # §9.1 #1: watermark = buffer 内 max key で更新
+            max_key = self._buffer_max_key
+            if max_key is not None and (
+                self._watermark is None or max_key > self._watermark
+            ):
                 self._watermark = max_key
             logger.debug(f"Trades recorder: flushed {n} trades → {day}")
             self._flush_fail_count = 0
@@ -215,9 +250,11 @@ class TradesRecorder:
                 )
                 self._buffer.clear()
                 self._seen_keys.clear()
+                self._buffer_max_key = None
                 self._flush_fail_count = 0
             return 0
         self._buffer.clear()
         self._seen_keys.clear()
+        self._buffer_max_key = None
         self._last_flush = time.time()
         return n

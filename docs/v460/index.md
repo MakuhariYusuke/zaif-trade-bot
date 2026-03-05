@@ -283,6 +283,8 @@
 | 290 | rev | [290_ph2_rev_289_buy_side_systems_market_corrections.md](290_ph2_rev_289_buy_side_systems_market_corrections.md) | 289レビュー補正: ev_as_offset前提で「ev利用犇9.6%」解釈を修正。buy不振を在庫修復交絡+低情報帯参加+観測不足の複合問題として再定義 |
 | 291 | rev | [291_ph2_gemini_31_pro_review_289_290_buy_side_blindspots.md](291_ph2_gemini_31_pro_review_289_290_buy_side_blindspots.md) | Gemini 3.1 Proレビュー: Queue Position放棄・強制買い毒性・観測不足の指摘 |
 | 292 | impl | [292_ph2_impl_ev_weighted_observability_enhancement.md](292_ph2_impl_ev_weighted_observability_enhancement.md) | 290#/291#レビュー実装: FillRecord 3フィールド追加(ev_score_pretrade/offset_mult/decision_path) + reprice deadband + forced_buy_delayレジーム強化 |
+| 293 | analysis | [293_ph2_blind_spot_analysis_buy_side_execution.md](293_ph2_blind_spot_analysis_buy_side_execution.md) | 290#/291#査読補完: セルフレビューによるblind spot分析 |
+| 294 | fix | [294_ph2_fix_forced_buy_delay_deadlock.md](294_ph2_fix_forced_buy_delay_deadlock.md) | CRITICAL fix: forced_buy_delay リアームループによる永久buyブロック。max_consecutive上限で解消 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

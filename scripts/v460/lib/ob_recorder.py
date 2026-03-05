@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TypedDict
 
+from scripts.v460.lib.ob_utils import OrderBookLevelLike
 from ztb.io.jsonl_gz import append_jsonl_gz
 
 logger = logging.getLogger(__name__)
@@ -56,10 +57,9 @@ def _to_finite_float(value: object) -> float | None:
 def _normalize_levels(levels: object) -> list[list[float]]:
     if not isinstance(levels, Sequence) or isinstance(levels, (str, bytes, bytearray)):
         return []
-    # 261# P2-1: OrderBookLevelLike Protocol — isinstance + 直接属性アクセス
-    from scripts.v460.lib.ob_utils import OrderBookLevelLike
 
     normalized: list[list[float]] = []
+    append_level = normalized.append
     for level in levels:
         if isinstance(level, (list, tuple)):
             if len(level) < 2:
@@ -74,7 +74,7 @@ def _normalize_levels(levels: object) -> list[list[float]]:
             continue
         if price is None or size is None:
             continue
-        normalized.append([price, size])
+        append_level([price, size])
     return normalized
 
 
@@ -137,8 +137,9 @@ class OBRecorder:
         if not self._enabled:
             return
         ts = _to_finite_float(timestamp)
+        now_ts = time.time()
         if ts is None:
-            ts = time.time()
+            ts = now_ts
         norm_bids = _normalize_levels(bids)
         norm_asks = _normalize_levels(asks)
         # 不完全なスナップショットは捨てる (flush 失敗の連鎖を防ぐ)
@@ -159,7 +160,7 @@ class OBRecorder:
                 f"OB recorder: buffer cap reached ({_BUFFER_CAP}), forcing flush"
             )
             self.flush()
-        elif time.time() - self._last_flush >= self._flush_interval:
+        elif now_ts - self._last_flush >= self._flush_interval:
             self.flush()
 
     def flush(self) -> int:
