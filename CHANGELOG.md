@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 286# fix: 282#–284# 課題包括的解決 + 市場理論補強 (2026-03-06)
+
+### Fixed
+- **283# P0-1 強化: Lock Manager portalocker 二重ロック**: `portalocker` による OS レベル排他制御 (LOCK_EX|LOCK_NB) 追加。ゾンビプロセス待機 (`_wait_for_pid_exit`) + グレースフルフォールバック
+- **283# P0-3: Events start/stop ペア保証**: `finally` ブロックで crash 時も必ず stop イベント記録。セッション境界の完全ペアリング
+- **283# MEDIUM-4: Guard Dominance 解消**: 7 件のガードを SYSTEM→RECOVERY に再分類 (`balance_forced_halt_block`, `one_sided_freeze/cooldown_skip`, `degraded_liquidation_*`, `inventory_escape_*`)
+
+### Added
+- **Split-Brain 事後検出**: `detect_split_brain()` — FillRecord の `run_id`/`pid` 走査、CRITICAL ログ出力
+- **buy_dynamic_kill 在庫連動緩和 (Ho & Stoll 1981)**: 在庫不均衡に基づく kill 閾値オフセット。BTC 不足時に buy kill を緩和し在庫補充を許容
+- **強制買い KPI 分離**: `RunSessionState` に forced/normal buy 分離トラッキング。品質監視精度向上
+- **Buy 側 AS 防御 (Glosten-Milgrom 1985)**: `_apply_buy_as_guard()` パイプラインステージ。価格下落時に buy offset 拡大で逆選択防御
+- **強制買い遅延実行 (Glosten-Milgrom 1985)**: 下落中の forced buy にサイクル遅延。guard reason `forced_buy_delay` (MARKET 分類)
+- **Config 11 フィールド**: `buy_dynamic_kill_inv_relaxation_*`, `buy_as_guard_*`, `forced_buy_delay_*`, `forced_buy_kpi_tracking_enabled` (全て安全デフォルト)
+- **テスト 35 件** (`test_286_comprehensive_resolution.py`): Lock/Split-Brain/Events/KillRelax/KPI/ASGuard/Delay/GuardReclass/ThresholdOffset
+
+---
+
 ## 285# fix: 283#/284# P0 対応 — Split-Brain 検知 + 設定相互制約 (2026-03-06)
 
 ### Fixed

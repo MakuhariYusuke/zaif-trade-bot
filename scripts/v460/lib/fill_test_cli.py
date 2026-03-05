@@ -407,7 +407,10 @@ def fill_test_main() -> None:
             )
         except Exception:
             logger.debug("Discord notification skipped (stop)", exc_info=True)
-        if stop_reason and not stop_reason.startswith("crash:"):
+        # 286# 283# P0-3: start/stop ペア保証 — crash 時も必ず stop イベントを記録。
+        # crash イベントは except ブロックで既に記録済みだが、
+        # stop イベントはセッション境界の確定に必要 (split-brain 事後検出の基盤)。
+        if stop_reason:
             log_event(
                 "stop",
                 config.results_dir,

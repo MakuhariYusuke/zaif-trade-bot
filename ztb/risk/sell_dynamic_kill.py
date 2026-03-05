@@ -388,12 +388,16 @@ class DynamicKillManager:
                 threshold_used=threshold, rolling_mean=rolling_mean,
             )
 
-    def check_kill(self, regime: str | None = None) -> tuple[bool, DynamicKillTelemetry]:
+    def check_kill(self, regime: str | None = None, *, threshold_offset_bps: float = 0.0) -> tuple[bool, DynamicKillTelemetry]:
         """kill すべきか判定.
 
         Args:
             regime: 現在のマーケットレジーム名。
                 regime_thresholds にキーがあれば、その閾値を使用。
+            threshold_offset_bps: 286# 283# P1-4: 在庫連動の閾値調整 (bps)。
+                正値 → 緩和 (kill されにくくなる)、負値 → 厳格化。
+                Ho & Stoll (1981) 在庫リスクモデルに基づき、在庫偏重度に
+                応じて動的 kill 閾値を段階的に緩和する。
 
         Returns:
             (killed, telemetry)
@@ -501,6 +505,12 @@ class DynamicKillManager:
         threshold = self._config.threshold_bps
         if regime and regime in self._config.regime_thresholds:
             threshold = self._config.regime_thresholds[regime]
+
+        # 286# 283# P1-4: 在庫連動の閾値緩和 (Ho & Stoll 1981)
+        # threshold_offset_bps > 0 は閾値を less negative にする (kill されにくくなる)
+        # 例: threshold=-0.8, offset=+0.3 → effective=-0.5 (緩和)
+        if threshold_offset_bps != 0.0:
+            threshold += threshold_offset_bps
 
         if rolling_mean < threshold:
             self._cooldown = self._config.resume_window

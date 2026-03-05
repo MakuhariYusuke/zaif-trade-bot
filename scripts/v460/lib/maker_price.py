@@ -1140,6 +1140,45 @@ class MakerPriceCalculator:
 
         return effective_offset_ratio
 
+    def _apply_buy_as_guard(
+        self,
+        side: str,
+        mid_trend_bps: float | None,
+        effective_offset_ratio: float,
+    ) -> float:
+        """286# 283# P1-6 / 284# P1: Buy-side AS Guard.
+
+        Glosten-Milgrom (1985): 価格急落時は情報トレーダーが sell 主導で
+        参入し、buy maker は逆選択コストを被る。microprice velocity が
+        閾値を超えて下落中の場合、buy offset を強制拡大して防御する。
+
+        sell 側は下落時に順方向であり AS リスクが相対的に低いため、
+        このガードは buy のみに適用する (理論的非対称性)。
+        """
+        cfg = self._config
+        if not cfg.buy_as_guard_enabled:
+            return effective_offset_ratio
+        if side != "buy":
+            return effective_offset_ratio
+        if mid_trend_bps is None:
+            return effective_offset_ratio
+
+        # velocity が閾値以下 (急落中) で発動
+        if mid_trend_bps <= cfg.buy_as_guard_velocity_threshold_bps:
+            _prev = effective_offset_ratio
+            effective_offset_ratio, _applied = self._scale_offset_ratio(
+                effective_offset_ratio,
+                cfg.buy_as_guard_offset_mult,
+                max_ratio=cfg.buy_as_guard_max_offset_ratio,
+            )
+            logger.info(
+                f"[286# buy_as_guard] velocity={mid_trend_bps:.2f}bps "
+                f"<= {cfg.buy_as_guard_velocity_threshold_bps:.1f}bps — "
+                f"buy offset expanded {_prev:.4f} → {effective_offset_ratio:.4f} "
+                f"(mult={_applied:.2f})"
+            )
+        return effective_offset_ratio
+
     def _apply_loss_boost(
         self,
         side: str,
@@ -1384,6 +1423,12 @@ class MakerPriceCalculator:
         # 163# ステージ抽出: _apply_imbalance_risk()
         effective_offset_ratio = self._apply_imbalance_risk(
             side, imb, effective_offset_ratio,
+        )
+
+        # 286# ステージ: _apply_buy_as_guard()
+        # 283# P1-6 / 284# P1: Buy-side AS 防御 — microprice 急落時の offset 拡大
+        effective_offset_ratio = self._apply_buy_as_guard(
+            side, mid_trend_bps, effective_offset_ratio,
         )
 
         # 260# P2-2: loss_boost / FFD boost をパイプラインステージとして抽出

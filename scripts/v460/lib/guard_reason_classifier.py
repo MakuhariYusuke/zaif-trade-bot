@@ -59,17 +59,24 @@ _CLASSIFICATION: Final[dict[str, GuardCategory]] = {
     "dd_halt": GuardCategory.SYSTEM,
     "per_side_dd_both_halt": GuardCategory.SYSTEM,
     "per_side_halt_switch": GuardCategory.SYSTEM,
-    "balance_forced_halt_block": GuardCategory.SYSTEM,
     "preflight_insufficient": GuardCategory.SYSTEM,
-    "one_sided_freeze_skip": GuardCategory.SYSTEM,
-    "one_sided_cooldown_skip": GuardCategory.SYSTEM,
     "hard_skip_utc": GuardCategory.SYSTEM,
     "time_filter_both_sides": GuardCategory.SYSTEM,
     "phantom_position_detected": GuardCategory.SYSTEM,
     "phantom_veto_block": GuardCategory.SYSTEM,
     "day_reset_kill_conflict": GuardCategory.SYSTEM,
-    "degraded_liquidation_duty_skip": GuardCategory.SYSTEM,
-    "degraded_liquidation_active": GuardCategory.SYSTEM,
+    # ── 286# 再分類: SYSTEM → RECOVERY (283# MEDIUM-4 guard dominance 改善)
+    # 以下は system 起因のブロックだが、デッドロック回避・在庫管理の
+    # リカバリ動作であるため RECOVERY に分類。system カテゴリの過大計上を是正する。
+    "balance_forced_halt_block": GuardCategory.RECOVERY,
+    "one_sided_freeze_skip": GuardCategory.RECOVERY,
+    "one_sided_cooldown_skip": GuardCategory.RECOVERY,
+    "degraded_liquidation_duty_skip": GuardCategory.RECOVERY,
+    "degraded_liquidation_active": GuardCategory.RECOVERY,
+    "inventory_escape_duty_skip": GuardCategory.RECOVERY,
+    "inventory_escape_active": GuardCategory.RECOVERY,
+    # 286# 新規 guard reasons
+    "forced_buy_delay": GuardCategory.MARKET,   # Glosten-Milgrom: 逆選択回避の待機
     # ── CycleGate 外の orchestrator 直接: 市場都合 (追加) ──
     "toxic_veto_set": GuardCategory.MARKET,          # 244# SR-1: toxic fill → veto 設定
     # ── 回復動作 ──

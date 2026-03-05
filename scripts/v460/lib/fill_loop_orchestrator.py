@@ -75,6 +75,11 @@ class RunSessionState:
     cumulative_btc_delta: float = 0.0
     cumulative_adverse_count: int = 0
     cumulative_adverse_bps: float = 0.0
+    # 286# 283# P1-5: 強制買い KPI 分離トラッキング
+    forced_buy_fill_count: int = 0
+    forced_buy_pnl_sum_bps: float = 0.0
+    normal_buy_fill_count: int = 0
+    normal_buy_pnl_sum_bps: float = 0.0
     batch: list[FillRecord] = field(default_factory=list)
     batch_size: int = 10
 
@@ -125,6 +130,8 @@ class FillLoopOrchestratorMixin:
     # 234# one-sided エスカレーション: cooldown 残サイクル
     _one_sided_cooldown_remaining: int = 0
     _one_sided_freeze_remaining: int = 0
+    # 286# 284# P1: 強制買い遅延実行 (Glosten-Milgrom 1985)
+    _forced_buy_delay_remaining: int = 0
     # 250# P1-4: freeze/cooldown が紐付いた side
     # — None 時は全 side スキップ (後方互換), side 指定時はその side のみ
     _one_sided_frozen_side: str | None = None
@@ -154,16 +161,47 @@ class FillLoopOrchestratorMixin:
         Glosten-Milgrom (1985) 逆選択モデルに基づく動的 kill 判定を
         side 非依存で実行する。
 
+        286# 283# P1-4: buy 側に在庫連動緩和を追加 (Ho & Stoll 1981)。
+        在庫偏重時に buy kill 閾値を段階的に緩和し、在庫リバランスを促進。
+
         理論的根拠:
           逆選択リスクは bid/ask 対称であり (Glosten & Milgrom 1985, §3),
           kill 判定ロジック自体は side に依存しない。差異はインスタンス
           (sell_kill_mgr vs buy_kill_mgr) とメトリクス suffix のみ。
+          ただし在庫リスク (Ho & Stoll 1981) は在庫水準に依存し、
+          在庫不足 side の kill を緩和することで最適在庫への回帰を加速する。
         """
         mgr = self._sell_kill_mgr if side == "sell" else self._buy_kill_mgr
         regime: str | None = None
         if self._regime_detector is not None:
             regime = self._regime_detector.current_regime.value
-        killed, telemetry = mgr.check_kill(regime=regime)
+
+        # 286# 283# P1-4: 在庫連動の kill 閾値緩和
+        threshold_offset_bps = 0.0
+        if (
+            side == "buy"
+            and self.config.buy_dynamic_kill_inv_relaxation_enabled
+        ):
+            # inv_net_imbalance: 正=sell偏重(BTC過多), 負=buy偏重(BTC不足)
+            # BTC 不足 (imbalance < 0) → buy kill を緩和 (offset > 0)
+            imbalance = self._maker_price.inv_net_imbalance
+            if imbalance < 0:  # buy 偏重 = BTC 不足
+                raw_offset = abs(imbalance) * self.config.buy_dynamic_kill_inv_relaxation_scale
+                threshold_offset_bps = min(
+                    raw_offset,
+                    self.config.buy_dynamic_kill_inv_relaxation_max_bps,
+                )
+                if threshold_offset_bps > 0.01:
+                    logger.debug(
+                        f"[286# P1-4] buy kill threshold relaxed by "
+                        f"+{threshold_offset_bps:.3f}bps "
+                        f"(imbalance={imbalance:.3f})"
+                    )
+
+        killed, telemetry = mgr.check_kill(
+            regime=regime,
+            threshold_offset_bps=threshold_offset_bps,
+        )
         # 223# probe/force_release メトリクス
         if telemetry.probe_fired:
             self._inc_guard_fire(f"dynamic_kill_probe_{side}")
@@ -182,6 +220,10 @@ class FillLoopOrchestratorMixin:
 
         Ho & Stoll (1981) の在庫リスクモデルでは、buy/sell の PnL 追跡は
         対称であり、side ごとに個別実装する必要がない。
+
+        286# 283# P2-7: 評価窓二重化の基盤。
+        30s PnL → DynamicKillManager (即時防御), ログ出力 (KPI 可視化)。
+        将来的に 5min PnL 追跡を追加し、在庫メンテナンス判断に使用予定。
         """
         if not (record.filled and record.post_fill_30s_pnl is not None):
             return
@@ -1054,6 +1096,18 @@ class FillLoopOrchestratorMixin:
                 st.cumulative_adverse_count += 1
                 if record.post_fill_30s_pnl is not None:
                     st.cumulative_adverse_bps += record.post_fill_30s_pnl
+            # 286# 283# P1-5: 強制買い KPI 分離トラッキング
+            if (
+                self.config.forced_buy_kpi_tracking_enabled
+                and next_side == "buy"
+                and record.post_fill_30s_pnl is not None
+            ):
+                if record.balance_forced:
+                    st.forced_buy_fill_count += 1
+                    st.forced_buy_pnl_sum_bps += record.post_fill_30s_pnl
+                else:
+                    st.normal_buy_fill_count += 1
+                    st.normal_buy_pnl_sum_bps += record.post_fill_30s_pnl
             # 168# §4.1: daily drawdown PnL update
             if record.post_fill_30s_pnl is not None:
                 dd_result = self._daily_drawdown_guard.update_pnl(
@@ -1202,6 +1256,25 @@ class FillLoopOrchestratorMixin:
                     f"market={_cat_totals['market']}, "
                     f"system={_cat_totals['system']}, "
                     f"recovery={_cat_totals['recovery']}"
+                )
+            # 286# 283# P1-5: 強制買い KPI 分離ログ
+            if self.config.forced_buy_kpi_tracking_enabled and (
+                st.forced_buy_fill_count > 0 or st.normal_buy_fill_count > 0
+            ):
+                _fb_mean = (
+                    st.forced_buy_pnl_sum_bps / st.forced_buy_fill_count
+                    if st.forced_buy_fill_count > 0 else 0.0
+                )
+                _nb_mean = (
+                    st.normal_buy_pnl_sum_bps / st.normal_buy_fill_count
+                    if st.normal_buy_fill_count > 0 else 0.0
+                )
+                logger.info(
+                    f"[286# P1-5] Buy KPI split: "
+                    f"forced={st.forced_buy_fill_count} fills "
+                    f"({_fb_mean:+.2f}bps avg), "
+                    f"normal={st.normal_buy_fill_count} fills "
+                    f"({_nb_mean:+.2f}bps avg)"
                 )
 
         # 113# resilience: HealthMonitor + GC
@@ -2110,6 +2183,42 @@ class FillLoopOrchestratorMixin:
                         update_last_side=True,
                     )
                     continue
+
+            # ════════════════════════════════════════════════════════════
+            # 286# 284# P1: 強制買い遅延実行 (Glosten-Milgrom 1985)
+            # balance_forced で buy 方向に切り替わった際、microprice が
+            # 急落中なら N サイクル待機。逆選択リスクが高い局面での
+            # 即時買いは損失を拡大するだけ (「待つ勇気」)。
+            # ════════════════════════════════════════════════════════════
+            if (
+                _balance_forced
+                and next_side == "buy"
+                and self.config.forced_buy_delay_enabled
+            ):
+                _vel = self._maker_price.last_mid_trend_bps
+                _thr = self.config.forced_buy_delay_velocity_threshold_bps
+                if _vel is not None and _vel <= _thr:
+                    self._forced_buy_delay_remaining = max(
+                        self._forced_buy_delay_remaining,
+                        self.config.forced_buy_delay_cycles,
+                    )
+                    logger.info(
+                        f"[286# GM delay] Forced buy delayed: "
+                        f"velocity={_vel:.2f}bps <= {_thr:.1f}bps, "
+                        f"waiting {self._forced_buy_delay_remaining} cycles"
+                    )
+
+            if self._forced_buy_delay_remaining > 0 and next_side == "buy":
+                self._forced_buy_delay_remaining -= 1
+                self._inc_guard_fire("forced_buy_delay")
+                await self._execute_skip(
+                    st, side=next_side,
+                    cancel_reason="forced_buy_delay",
+                    order_quantity=self._current_lot,
+                    balance_forced_switch=_balance_forced,
+                    update_last_side=True,
+                )
+                continue
 
             # ════════════════════════════════════════════════════════════
             # 194# CycleGateAggregator: per-cycle skip 判定の一元化

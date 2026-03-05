@@ -19,7 +19,7 @@ from collections import deque
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, Iterable, Iterator, Mapping
+from typing import TYPE_CHECKING, Final, Iterable, Iterator, Mapping, Sequence
 
 import numpy as np
 from scipy import stats
@@ -1084,6 +1084,77 @@ def iter_fill_records(path: str | Path) -> Iterator[FillRecord]:
 def load_fill_records(path: str | Path) -> list[FillRecord]:
     """JSONL ファイルから FillRecord を読み込み."""
     return list(iter_fill_records(path))
+
+
+def detect_split_brain(
+    records: Sequence[FillRecord],
+    *,
+    overlap_window_sec: float = 300.0,
+) -> list[dict[str, object]]:
+    """286# 283# P0-1: Split-Brain (多重起動) を事後検出する.
+
+    同一時刻帯に複数の run_id または pid が記録を書き込んでいるケースを検出。
+    FillRecord.pid (285# 追加) と run_id を使用。
+
+    検出ロジック:
+    - 隣接レコード間で run_id が異なり、かつ timestamp 差が overlap_window_sec 以内
+      → Split-Brain イベントとして報告
+    - pid が異なる場合も同様
+
+    Args:
+        records: 時系列順の FillRecord リスト
+        overlap_window_sec: 時間重複を判定する窓幅 (秒)
+
+    Returns:
+        検出された Split-Brain イベントのリスト。各要素は:
+        {"timestamp": float, "run_id_a": str, "run_id_b": str,
+         "pid_a": int|None, "pid_b": int|None, "gap_sec": float}
+    """
+    if len(records) < 2:
+        return []
+
+    events: list[dict[str, object]] = []
+    for i in range(1, len(records)):
+        prev, curr = records[i - 1], records[i]
+        # run_id チェック
+        if prev.run_id and curr.run_id and prev.run_id != curr.run_id:
+            gap = abs(curr.timestamp - prev.timestamp)
+            if gap <= overlap_window_sec:
+                events.append({
+                    "timestamp": curr.timestamp,
+                    "run_id_a": prev.run_id,
+                    "run_id_b": curr.run_id,
+                    "pid_a": prev.pid,
+                    "pid_b": curr.pid,
+                    "gap_sec": gap,
+                })
+        # 同一 run_id でも pid が異なるケース (プロセス入替の検出)
+        elif (
+            prev.pid is not None
+            and curr.pid is not None
+            and prev.pid != curr.pid
+            and prev.run_id == curr.run_id
+        ):
+            gap = abs(curr.timestamp - prev.timestamp)
+            if gap <= overlap_window_sec:
+                events.append({
+                    "timestamp": curr.timestamp,
+                    "run_id_a": prev.run_id,
+                    "run_id_b": curr.run_id,
+                    "pid_a": prev.pid,
+                    "pid_b": curr.pid,
+                    "gap_sec": gap,
+                })
+
+    if events:
+        logger.critical(
+            f"[286# SPLIT-BRAIN] {len(events)} overlapping process events "
+            f"detected! Multiple processes wrote to the same JSONL. "
+            f"First event: run_ids={events[0].get('run_id_a')}/{events[0].get('run_id_b')}, "
+            f"pids={events[0].get('pid_a')}/{events[0].get('pid_b')}"
+        )
+    return events
+
 
 def fill_records_to_dataframe(records: Iterable[FillRecord]) -> "pd.DataFrame":
     """FillRecord iterable を DataFrame に変換する."""

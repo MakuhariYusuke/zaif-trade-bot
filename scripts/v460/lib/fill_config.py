@@ -506,6 +506,21 @@ class FillTestConfig:
     buy_dynamic_kill_max_force_probes: int = 5     # 269# 0=force-release無効
     # 273# kill 時間上限 (268# I5)
     buy_dynamic_kill_max_duration_sec: float = 0.0  # 0=無制限
+    # 286# 283# P1-4: 在庫連動の buy_dynamic_kill 閾値緩和 (Ho & Stoll 1981)
+    # 在庫偏重時 (BTC 不足) に buy kill を緩和して在庫リバランスを促進。
+    # 閾値オフセット = min(|imbalance| × scale, max_bps)
+    # 例: imbalance=-0.5 (buy寄り=BTC不足), scale=0.5, max=0.3 → offset=+0.25bps → 緩和
+    buy_dynamic_kill_inv_relaxation_enabled: bool = False  # True で在庫連動緩和を有効化
+    buy_dynamic_kill_inv_relaxation_scale: float = 0.5     # |imbalance| → offset 変換スケール
+    buy_dynamic_kill_inv_relaxation_max_bps: float = 0.3   # 緩和の上限 (bps)
+    # 286# 283# P1-5: 強制買い KPI 分離
+    # balance_forced の fill を通常 buy とは別に集計し、品質低下の原因特定を可能にする。
+    forced_buy_kpi_tracking_enabled: bool = True  # True で強制買い PnL を分離ログ
+    # 286# 284# P1: 強制買い遅延実行 (Glosten-Milgrom 1985)
+    # balance_forced 時に microprice 急落中なら N サイクル待機して逆選択回避。
+    forced_buy_delay_enabled: bool = False          # True で遅延実行を有効化
+    forced_buy_delay_velocity_threshold_bps: float = -5.0  # velocity がこの値以下で遅延発動
+    forced_buy_delay_cycles: int = 3                # 遅延サイクル数
     # 249# dual_kill_bypass → quiescence: 両方 kill 時は休止 (242# "No Trade = normal")
     dual_kill_quiescence_enabled: bool = False  # True で dual_kill_bypass を無効化 → 静観
     # ---- 137# P1-08: spread 狭小時の「休む」判定 ----
@@ -548,6 +563,14 @@ class FillTestConfig:
     # ILLIQ = |ΔP/P| / Volume — 非流動性指標 → spread_adaptive 閾値を動的調整。
     amihud_illiq_enabled: bool = False       # True で ILLIQ 補正を有効化
     amihud_illiq_baseline: float = 0.001     # ILLIQ ベースライン (正規化基準)
+    # ---- 286# 283# P1-6: Buy-side AS Guard — microprice 急落時の buy offset 拡大 ----
+    # Glosten-Milgrom (1985): 価格急落時は情報非対称性リスクが急上昇し、
+    # buy 側 maker は逆選択を被りやすい。velocity が閾値を超えたら
+    # buy offset を強制拡大して AS 損失を抑制する。
+    buy_as_guard_enabled: bool = False        # True で buy AS guard を有効化
+    buy_as_guard_velocity_threshold_bps: float = -5.0  # velocity がこの値以下で発動
+    buy_as_guard_offset_mult: float = 1.5     # 発動時の買い offset 倍率
+    buy_as_guard_max_offset_ratio: float = 0.5  # offset 拡大の上限 ratio
     amihud_illiq_max_mult: float = 1.5       # ILLIQ 由来の offset 倍率上限
     preflight_pause_enabled: bool = True       # True で SAFE_STOP 前に pause を挟む
     preflight_pause_threshold: int = 5         # この回数で pause 発動 (< max_preflight_skip)
