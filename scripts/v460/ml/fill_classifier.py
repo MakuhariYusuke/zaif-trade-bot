@@ -13,7 +13,6 @@ from typing import cast
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     average_precision_score,
@@ -21,9 +20,8 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 from sklearn.model_selection import TimeSeriesSplit
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
 
+from scripts.v460.ml.data_loader import make_preprocessing_pipeline
 from scripts.v460.ml.model_protocols import (
     FeatureTransformer,
     ProbabilisticEstimator,
@@ -89,11 +87,7 @@ def train_fill_classifier(
 
     for train_idx, test_idx in tscv.split(X_values):
         # 059# P0-1: Pipeline化 — 補完・スケーリングを fold 内で実施
-        pipe = Pipeline([
-            ("imputer", SimpleImputer(strategy="median")),
-            ("scaler", StandardScaler()),
-            ("model", _make_model()),
-        ])
+        pipe = make_preprocessing_pipeline(_make_model())
         pipe.fit(X_values[train_idx], y_values[train_idx])
 
         y_test = y_values[test_idx]
@@ -106,12 +100,8 @@ def train_fill_classifier(
         del pipe
 
     # Final model — 059# P0-1: Pipeline化
-    final_pipe = Pipeline([
-        ("imputer", SimpleImputer(strategy="median")),
-        ("scaler", StandardScaler()),
-        ("model", _make_model()),
-    ])
-    final_pipe.fit(X, y)
+    final_pipe = make_preprocessing_pipeline(_make_model())
+    final_pipe.fit(X_values, y_values)
 
     final_model = cast(ProbabilisticEstimator, final_pipe.named_steps["model"])
     scaler_final = cast(FeatureTransformer, final_pipe.named_steps["scaler"])

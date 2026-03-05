@@ -26,6 +26,7 @@ from sklearn.model_selection import TimeSeriesSplit
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
+from scripts.v460.ml.data_loader import make_preprocessing_pipeline
 from scripts.v460.ml.model_protocols import PipelineStep, ProbabilisticEstimator
 
 logger = logging.getLogger(__name__)
@@ -97,16 +98,7 @@ def train_as_classifier(
 
         # 060# v2: Feature selection (CV内で特徴量選択 → リーク防止)
         k = min(n_features_select, X_values.shape[1]) if n_features_select else None
-        steps: list[PipelineStep] = [
-            ("imputer", SimpleImputer(strategy="median")),
-        ]
-        if k is not None:
-            steps.append(("selector", SelectKBest(f_classif, k=k)))
-        steps.extend([
-            ("scaler", StandardScaler()),
-            ("model", clf),
-        ])
-        pipe = Pipeline(steps)
+        pipe = _build_training_pipeline(clf, k)
         pipe.fit(X_values[train_idx], y_train)
         probs = pipe.predict_proba(X_values[test_idx])[:, 1]
 
@@ -125,17 +117,8 @@ def train_as_classifier(
     # Final model on all data (for feature importance extraction only)
     final_clf = _build_classifier(model_type, n_features_select)
     k_final = min(n_features_select, X.shape[1]) if n_features_select else None
-    final_steps: list[PipelineStep] = [
-        ("imputer", SimpleImputer(strategy="median")),
-    ]
-    if k_final is not None:
-        final_steps.append(("selector", SelectKBest(f_classif, k=k_final)))
-    final_steps.extend([
-        ("scaler", StandardScaler()),
-        ("model", final_clf),
-    ])
-    final_pipe = Pipeline(final_steps)
-    final_pipe.fit(X, y)
+    final_pipe = _build_training_pipeline(final_clf, k_final)
+    final_pipe.fit(X_values, y_values)
     final_model = cast(ProbabilisticEstimator, final_pipe.named_steps["model"])
     scaler_final = final_pipe  # Return Pipeline instead of bare scaler
 
@@ -312,3 +295,20 @@ def _build_classifier(
         subsample=0.8,
         random_state=42,
     )
+
+
+def _build_training_pipeline(
+    clf: ProbabilisticEstimator,
+    k_features: int | None,
+) -> Pipeline:
+    """学習用パイプラインを構築（selector あり/なし）."""
+    if k_features is None:
+        return make_preprocessing_pipeline(clf)
+
+    steps: list[PipelineStep] = [
+        ("imputer", SimpleImputer(strategy="median")),
+        ("selector", SelectKBest(f_classif, k=k_features)),
+        ("scaler", StandardScaler()),
+        ("model", clf),
+    ]
+    return Pipeline(steps)

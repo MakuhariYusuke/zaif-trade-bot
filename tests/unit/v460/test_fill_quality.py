@@ -1506,6 +1506,29 @@ class TestFillTestRunnerSaveResilience:
         runner = FillTestRunner(adapter, config)
         return runner
 
+    def _make_cleanup_runner(self, tmp_path: Path) -> "FillTestRunner":
+        """_cleanup_sync 専用の軽量 runner."""
+        from scripts.v460.lib.batch_persistence import BatchPersistence
+
+        runner = FillTestRunner.__new__(FillTestRunner)
+        runner._ob_recorder = MagicMock()
+        runner._ob_recorder.flush.return_value = 0
+        runner._trades_recorder = MagicMock()
+        runner._trades_recorder.flush.return_value = 0
+        runner._pending_order_id = None
+        runner.adapter = MagicMock()
+        runner._release_lock = MagicMock()
+        results_dir = tmp_path / "results"
+        results_dir.mkdir(parents=True, exist_ok=True)
+        runner._batch_persistence = BatchPersistence(
+            results_dir=results_dir,
+            max_retries=3,
+            save_fail_threshold=3,
+            retry_backoff_sec=0.0,
+            flush_interval_sec=600.0,
+        )
+        return runner
+
     def _make_record(self, ts: float = 1700000000.0, side: str = "buy") -> "FillRecord":
         return FillRecord(
             cycle_id=f"test_{int(ts)}",
@@ -1589,7 +1612,7 @@ class TestFillTestRunnerSaveResilience:
 
     def test_cleanup_sync_saves_unsaved_batch(self, tmp_path: Path) -> None:
         """atexit で未保存バッチが退避される."""
-        runner = self._make_runner(tmp_path)
+        runner = self._make_cleanup_runner(tmp_path)
         runner._batch_persistence._unsaved_batch = [self._make_record()]
 
         runner._cleanup_sync()
@@ -1600,7 +1623,7 @@ class TestFillTestRunnerSaveResilience:
 
     def test_cleanup_sync_no_unsaved_no_dump(self, tmp_path: Path) -> None:
         """未保存バッチが空なら緊急ダンプは作成されない."""
-        runner = self._make_runner(tmp_path)
+        runner = self._make_cleanup_runner(tmp_path)
 
         runner._cleanup_sync()
 

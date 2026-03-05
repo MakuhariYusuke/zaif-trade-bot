@@ -55,3 +55,39 @@
 2. ...
 ```
 
+---
+
+## 2026-03-06 / Session 037-001
+
+### 実施
+- テスト軽量化
+  - `test_ml_pipeline.py`
+    - GB 学習テストの `n_splits` を `3 -> 2` に調整
+    - 実データ統合テストで `load_fill_records()` 後に `tail(1500)` サブセット化
+    - `load_fill_records` キャッシュの invalidation 回帰テストを追加
+  - `test_enricher_skip_gate.py`
+    - 実データサンプル上限 `_REAL_DATA_SAMPLE_ROWS` を `1200 -> 800` に調整
+  - `test_fill_quality.py`
+    - `_cleanup_sync` 専用の軽量 runner ヘルパーを追加し、重い初期化を回避
+
+### 本体最適化
+- `scripts/v460/ml/data_loader.py`
+  - `load_fill_records()` に file signature (`name`, `mtime_ns`, `size`) 連動キャッシュを追加
+  - `run_id_filter` / `exclude_missing_run_id` を含むキーで安全に再利用
+  - ファイル更新時は自動 invalidate
+- `scripts/v460/ml/as_classifier.py`
+  - 既存 `make_preprocessing_pipeline()` を再利用するパイプライン構築へ寄せて DRY 化
+  - final fit を配列ベースに統一
+- `scripts/v460/ml/fill_classifier.py`
+  - 既存 `make_preprocessing_pipeline()` 再利用へ統一
+  - final fit を配列ベースに統一
+
+### 結果
+- 変更対象テスト: `383 passed`（`test_ml_pipeline` / `test_fill_quality` / `test_enricher_skip_gate` / `test_retrain_hot_reload` / `test_ob_recorder`）
+- v460 全体: `3924 passed, 20 warnings in 45.64s` (`--no-cov`)
+- slowest setup:
+  - `test_enricher_skip_gate::Test058Integration::test_enrichment_with_real_data` setup `1.42s`
+
+### 次アクション
+1. method 内 import 上位の残件 (`test_136_p1_retrain_kill.py`, `test_145_structural_fixes.py`, `test_139_review_fixes.py`) を順次集約
+2. `pnl_monte_carlo` 系の重い計算テストを deterministic mock 置換できる箇所を抽出

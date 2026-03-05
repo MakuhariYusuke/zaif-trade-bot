@@ -206,7 +206,7 @@ class Test057ASClassifier:
     def test_train_gb_model(self, synthetic_fill_df: pd.DataFrame) -> None:
         """GradientBoosting で学習."""
         X, y = build_as_features(synthetic_fill_df)
-        metrics, model, scaler, _ = train_as_classifier(X, y, model_type="gb", n_splits=3)
+        metrics, model, scaler, _ = train_as_classifier(X, y, model_type="gb", n_splits=2)
         assert metrics.feature_importances is not None
         assert len(metrics.feature_importances) == X.shape[1]
 
@@ -258,7 +258,7 @@ class Test057FillClassifier:
     def test_train_gb(self, synthetic_fill_df: pd.DataFrame) -> None:
         """GradientBoosting で学習."""
         X, y = build_fill_features(synthetic_fill_df)
-        metrics, model, scaler = train_fill_classifier(X, y, model_type="gb", n_splits=3)
+        metrics, model, scaler = train_fill_classifier(X, y, model_type="gb", n_splits=2)
         assert metrics.feature_importances is not None
 
     def test_fill_rate_correct(self, synthetic_fill_df: pd.DataFrame) -> None:
@@ -273,6 +273,8 @@ class Test057FillClassifier:
 # ======================================================================
 
 
+@pytest.mark.slow
+@pytest.mark.integration
 class Test057Integration:
     """実データが存在する場合の統合テスト."""
 
@@ -286,6 +288,47 @@ class Test057Integration:
         if not real_data_available:
             pytest.skip("No real fill records")
         df = load_fill_records()
+        if len(df) > 1500:
+            # 統合テストはロード経路の健全性確認が主目的のため、特徴量構築はサブセットで十分。
+            df = df.tail(1500).copy()
         assert len(df) >= 100
         X, y = build_as_features(df)
         assert len(X) >= 50
+
+
+class Test057DataLoaderCache:
+    """load_fill_records のファイル更新連動キャッシュ."""
+
+    def test_cache_invalidates_when_file_changes(self, tmp_path: Path) -> None:
+        p = tmp_path / "fill_records_20260101.jsonl"
+        first = {
+            "cycle_id": "c1",
+            "timestamp": 1700000000.0,
+            "side": "buy",
+            "order_price": 15000000.0,
+            "order_quantity": 0.001,
+            "filled": True,
+            "adverse_selected_raw": True,
+            "queue_wait_sec": 10.0,
+        }
+        second = {
+            "cycle_id": "c2",
+            "timestamp": 1700000060.0,
+            "side": "sell",
+            "order_price": 15000010.0,
+            "order_quantity": 0.001,
+            "filled": False,
+            "adverse_selected_raw": None,
+            "queue_wait_sec": 12.0,
+        }
+        p.write_text(json.dumps(first) + "\n", encoding="utf-8")
+
+        df1 = load_fill_records(tmp_path)
+        df2 = load_fill_records(tmp_path)
+        assert len(df1) == 1
+        assert len(df2) == 1
+        assert df1 is not df2
+
+        p.write_text("\n".join([json.dumps(first), json.dumps(second)]) + "\n", encoding="utf-8")
+        df3 = load_fill_records(tmp_path)
+        assert len(df3) == 2

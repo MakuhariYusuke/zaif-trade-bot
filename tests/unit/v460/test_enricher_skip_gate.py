@@ -31,7 +31,7 @@ from scripts.v460.ml.skip_gate import (
     train_and_save_skip_gate,
 )
 
-_REAL_DATA_SAMPLE_ROWS = 1200
+_REAL_DATA_SAMPLE_ROWS = 800
 
 
 def _write_jsonl_gz(path: Path, rows: list[dict[str, Any]]) -> None:

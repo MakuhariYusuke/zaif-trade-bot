@@ -6,6 +6,7 @@ fill_records_*.jsonl を読み込み、AS/Fill 分類用の特徴量を生成す
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -17,6 +18,69 @@ from sklearn.preprocessing import StandardScaler
 from scripts.v460.ml.frame_utils import compute_local_hour_cyclic
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class _FillRecordCacheEntry:
+    """fill_records ロード結果のキャッシュ."""
+
+    file_signature: tuple[tuple[str, int, int], ...]
+    df: pd.DataFrame
+
+
+_FILL_RECORDS_CACHE_MAX_ENTRIES = 8
+_FILL_RECORDS_CACHE: dict[tuple[str, tuple[str, ...] | None, bool], _FillRecordCacheEntry] = {}
+
+
+def _normalize_run_id_filter(
+    run_id_filter: Optional[str | list[str]],
+) -> tuple[str, ...] | None:
+    """run_id_filter をキャッシュキー用に正規化."""
+    if run_id_filter is None:
+        return None
+    if isinstance(run_id_filter, str):
+        return (run_id_filter,)
+    return tuple(run_id_filter)
+
+
+def _build_file_signature(files: list[Path]) -> tuple[tuple[str, int, int], ...]:
+    """mtime + size ベースの軽量シグネチャ."""
+    signature: list[tuple[str, int, int]] = []
+    for f in files:
+        try:
+            st = f.stat()
+            signature.append((f.name, st.st_mtime_ns, st.st_size))
+        except OSError:
+            signature.append((f.name, -1, -1))
+    return tuple(signature)
+
+
+def _load_fill_records_cache(
+    cache_key: tuple[str, tuple[str, ...] | None, bool],
+    file_signature: tuple[tuple[str, int, int], ...],
+) -> pd.DataFrame | None:
+    """シグネチャ一致時に copy を返す."""
+    cached = _FILL_RECORDS_CACHE.get(cache_key)
+    if cached is None or cached.file_signature != file_signature:
+        return None
+    return cached.df.copy(deep=True)
+
+
+def _store_fill_records_cache(
+    cache_key: tuple[str, tuple[str, ...] | None, bool],
+    file_signature: tuple[tuple[str, int, int], ...],
+    df: pd.DataFrame,
+) -> None:
+    """キャッシュ保存。上限超過時は最古エントリを削除."""
+    _FILL_RECORDS_CACHE[cache_key] = _FillRecordCacheEntry(
+        file_signature=file_signature,
+        df=df,
+    )
+    if len(_FILL_RECORDS_CACHE) <= _FILL_RECORDS_CACHE_MAX_ENTRIES:
+        return
+    oldest = next(iter(_FILL_RECORDS_CACHE))
+    if oldest != cache_key:
+        _FILL_RECORDS_CACHE.pop(oldest, None)
 
 
 def make_preprocessing_pipeline(
@@ -63,6 +127,13 @@ def load_fill_records(
     if not files:
         raise FileNotFoundError(f"No fill_records_*.jsonl in {d}")
 
+    run_id_filter_key = _normalize_run_id_filter(run_id_filter)
+    cache_key = (str(d.resolve()), run_id_filter_key, bool(exclude_missing_run_id))
+    file_signature = _build_file_signature(files)
+    cached_df = _load_fill_records_cache(cache_key, file_signature)
+    if cached_df is not None:
+        return cached_df
+
     df = fill_records_to_dataframe(
         iter_fill_records_glob(d, include_emergency=False)
     )
@@ -80,7 +151,8 @@ def load_fill_records(
         f"Loaded {len(df)} records from {len(files)} files"
         + (f" (filtered from {total})" if len(df) != total else "")
     )
-    return df
+    _store_fill_records_cache(cache_key, file_signature, df)
+    return df.copy(deep=True)
 
 
 def build_as_features(

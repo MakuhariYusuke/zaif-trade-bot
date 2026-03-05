@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 292# perf+dry: load_fill_records cache + ML tests/core lightening (2026-03-06)
+
+### Changed
+- **`scripts/v460/ml/data_loader.py`**
+  - `load_fill_records()` に file signature (`name`, `mtime_ns`, `size`) 連動キャッシュを追加
+  - `run_id_filter` / `exclude_missing_run_id` をキーに含め、条件別に安全再利用
+  - ファイル更新時は自動 invalidation
+- **`scripts/v460/ml/as_classifier.py`**
+  - 既存 `make_preprocessing_pipeline()` を再利用する構成へ寄せて前処理組み立てを DRY 化
+  - final fit を配列ベースに統一
+- **`scripts/v460/ml/fill_classifier.py`**
+  - 既存 `make_preprocessing_pipeline()` 再利用へ統一
+  - final fit を配列ベースに統一
+- **`tests/unit/v460` 軽量化**
+  - `test_ml_pipeline.py`: GB 系テストの `n_splits` 調整 (`3 -> 2`)、
+    実データ統合テストを `tail(1500)` に制限
+  - `test_enricher_skip_gate.py`: 実データサンプル上限を `1200 -> 800`
+  - `test_fill_quality.py`: `_cleanup_sync` テストを軽量 runner 化
+
+### Added
+- `test_ml_pipeline.py` に `load_fill_records` キャッシュ invalidation 回帰テストを追加
+
+### Performance
+- `tests/unit/v460` (`--no-cov --durations=20`): **45.64s** (`3924 passed`)
+
+---
+
 ## docs(v460): セッション記録ハブを 037 に移行 (2026-03-06)
 
 ### Changed
