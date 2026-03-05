@@ -300,6 +300,7 @@
 | 033 | rpt | [033_phg_rpt_dynamic_lot_sizing.md](033_phg_rpt_dynamic_lot_sizing.md) | 方策B: 動的ロットサイジング + 安全キャップ |
 | 034 | rpt | [034_phg_rpt_action_space_analysis.md](034_phg_rpt_action_space_analysis.md) | エージェント行動空間・執行パラメータ制御の歴史的分析 |
 | 036 | plan | [036_phg_plan_any_reduction_preparation.md](036_phg_plan_any_reduction_preparation.md) | Any 削減マスター (計画・進捗・方針 一元化) |
+| 037 | rpt/master | [037_phg_rpt_refactoring_session_log.md](037_phg_rpt_refactoring_session_log.md) | リファクタリングセッションログ運用ハブ（036参照） |
 | 038 | rpt | [038_phg_rpt_any_cleanup_step3_completion.md](038_phg_rpt_any_cleanup_step3_completion.md) | 統合済み通知 (036へ集約) |
 | 042 | fix | [042_phg_fix_fill_test_3bugs_3improvements.md](042_phg_fix_fill_test_3bugs_3improvements.md) | fill test 3バグ修正 + 3追加改善 + ゾンビプロセス発見 |
 | 080 | rpt | [080_phg_dedup_and_inheritance.md](080_phg_dedup_and_inheritance.md) | 重複排除 & 継承ベース統合 (~3,000行削減) |
@@ -339,7 +340,7 @@
 
 以下の番号はスキップまたは統合済み:
 
-002–004, 006–008, 011–012, 016–017, 020, 024–027, 029–030, 035, 037, 039,
+002–004, 006–008, 011–012, 016–017, 020, 024–027, 029–030, 035, 039,
 044–045, 049, 055–056, 089
 
 > 欠番は主にセッション内作業ノートの非文書化、番号統合 (038→036)、

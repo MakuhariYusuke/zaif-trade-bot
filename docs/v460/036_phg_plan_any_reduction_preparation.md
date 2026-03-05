@@ -3809,7 +3809,7 @@ python scripts/quality/any_inventory.py --top 25 --json-out results/type_any_inv
 1. 変更前後で `any_inventory.py` を実行し、`type_debt` の純減を確認する。  
 2. CI では段階的に `--max-type-any` の上限を下げる。  
 3. 1PR で触る領域は 2-4 ファイルに限定し、型統合と動作確認を同時に行う。  
-4. 036 を正本とし、037-039 は統合済み参照スタブのみを維持する。  
+4. 036 を履歴正本、037 を運用ログ正本とする。038-039 は統合済み参照/予備として扱う。  
 
 ---
 

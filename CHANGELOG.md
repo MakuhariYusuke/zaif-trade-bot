@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## docs(v460): セッション記録ハブを 037 に移行 (2026-03-06)
+
+### Changed
+- `docs/v460/037_phg_rpt_refactoring_session_log.md` を新規作成し、リファクタリング記録の運用ハブを 037 に統一
+- `docs/v460/index.md` に 037 を追加し、欠番一覧から 037 を除外
+- `docs/v460/036_phg_plan_any_reduction_preparation.md` の運用方針を更新
+  - 036: 履歴正本
+  - 037: 運用ログ正本
+
+---
+
 ## 291# perf+dry: 追加重複排除 + feature_enricher raw I/O キャッシュ (2026-03-06)
 
 ### Changed
