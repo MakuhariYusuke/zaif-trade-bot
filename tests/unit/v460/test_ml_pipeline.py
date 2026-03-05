@@ -288,9 +288,9 @@ class Test057Integration:
         if not real_data_available:
             pytest.skip("No real fill records")
         df = load_fill_records()
-        if len(df) > 1500:
+        if len(df) > 1000:
             # 統合テストはロード経路の健全性確認が主目的のため、特徴量構築はサブセットで十分。
-            df = df.tail(1500).copy()
+            df = df.tail(1000).copy()
         assert len(df) >= 100
         X, y = build_as_features(df)
         assert len(X) >= 50

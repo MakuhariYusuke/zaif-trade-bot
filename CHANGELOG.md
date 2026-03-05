@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 294# perf+dry+core: MonteCarlo高速化 + gate_check import集約 (2026-03-06)
+
+### Changed
+- **テスト性能改善**
+  - `tests/unit/v460/test_pnl_monte_carlo.py`
+    - 高負荷ケースの `n_simulations` を用途別に縮小（統計的一貫性検証は維持）
+    - 例: `1000 -> 300`, `500 -> 200`, `200 -> 120`, `50 -> 20`
+  - `tests/unit/v460/test_ml_pipeline.py`
+    - 実データ統合テストの特徴量構築対象を `tail(1500) -> tail(1000)` に軽量化
+- **DRY 改善（method 内 import 集約）**
+  - `tests/unit/v460/test_gate_check.py`
+    - `run_gate_check` 系の method 内 import を先頭集約（**45 -> 0**）
+- **本体コード最適化**
+  - `ztb/risk/pnl_monte_carlo.py`
+    - `run()` / `sensitivity_analysis()` で `binomial` をベクトル一括生成
+    - `jpy_per_bps` の前計算を導入し、内側ループの演算を削減
+    - 挙動は維持しつつ乱数生成・反復処理のオーバーヘッドを削減
+
+### Performance
+- `tests/unit/v460` (`--no-cov --durations=30`): **40.10s** (`3924 passed`)
+  - 直前計測比: **42.87s -> 40.10s**（約 **-2.77s**）
+- `tests/unit/v460/test_pnl_monte_carlo.py` 単体:
+  - **2.43s -> 1.73s**（約 **-0.70s**）
+
+---
+
 ## 293# perf+dry+core: import集約 + 実待機削減 + trades_health軽量化 (2026-03-06)
 
 ### Changed

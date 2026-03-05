@@ -241,7 +241,7 @@ class TestSimulationRun:
     def test_positive_pnl_scenario(self) -> None:
         """全 filled, PnL 全正 → 月次PnL > 0 が期待される."""
         recs = [_make_record(f"pos_{i}", pnl_bps=1.0 + i * 0.1) for i in range(10)]
-        cfg = MonteCarloConfig(n_simulations=500, random_seed=42)
+        cfg = MonteCarloConfig(n_simulations=200, random_seed=42)
         sim = PnLMonteCarloSimulator(recs, cfg)
         result = sim.run()
 
@@ -252,7 +252,7 @@ class TestSimulationRun:
     def test_negative_pnl_scenario(self) -> None:
         """全 filled, PnL 全負 → 月次PnL < 0 が期待される."""
         recs = [_make_record(f"neg_{i}", pnl_bps=-2.0 - i * 0.1) for i in range(10)]
-        cfg = MonteCarloConfig(n_simulations=500, random_seed=42)
+        cfg = MonteCarloConfig(n_simulations=200, random_seed=42)
         sim = PnLMonteCarloSimulator(recs, cfg)
         result = sim.run()
 
@@ -287,8 +287,8 @@ class TestSimulationRun:
     def test_reproducibility_with_seed(self) -> None:
         """同じ seed → 同結果."""
         recs = _make_records_typical(8, 2)
-        cfg1 = MonteCarloConfig(n_simulations=200, random_seed=12345)
-        cfg2 = MonteCarloConfig(n_simulations=200, random_seed=12345)
+        cfg1 = MonteCarloConfig(n_simulations=120, random_seed=12345)
+        cfg2 = MonteCarloConfig(n_simulations=120, random_seed=12345)
 
         result1 = PnLMonteCarloSimulator(recs, cfg1).run()
         result2 = PnLMonteCarloSimulator(recs, cfg2).run()
@@ -299,8 +299,8 @@ class TestSimulationRun:
     def test_different_seed_different_results(self) -> None:
         """異なる seed → 異なる結果 (統計結果は近いが厳密不一致)."""
         recs = _make_records_typical(8, 2)
-        cfg1 = MonteCarloConfig(n_simulations=1000, random_seed=1)
-        cfg2 = MonteCarloConfig(n_simulations=1000, random_seed=999)
+        cfg1 = MonteCarloConfig(n_simulations=300, random_seed=1)
+        cfg2 = MonteCarloConfig(n_simulations=300, random_seed=999)
 
         result1 = PnLMonteCarloSimulator(recs, cfg1).run()
         result2 = PnLMonteCarloSimulator(recs, cfg2).run()
@@ -312,7 +312,7 @@ class TestSimulationRun:
     def test_var_cvar_relationship(self) -> None:
         """CVaR ≤ VaR (CVaR は tail mean で VaR 以下)."""
         recs = _make_records_typical(8, 2)
-        cfg = MonteCarloConfig(n_simulations=1000, random_seed=42)
+        cfg = MonteCarloConfig(n_simulations=300, random_seed=42)
         sim = PnLMonteCarloSimulator(recs, cfg)
         result = sim.run()
 
@@ -401,7 +401,7 @@ class TestSensitivityAnalysis:
     def test_higher_fill_rate_more_pnl(self) -> None:
         """fill_rate 高い方が PnL mean 高い (PnL mean > 0 のとき)."""
         recs = [_make_record(f"pos_{i}", pnl_bps=1.0) for i in range(10)]
-        cfg = MonteCarloConfig(n_simulations=200, random_seed=42)
+        cfg = MonteCarloConfig(n_simulations=120, random_seed=42)
         sim = PnLMonteCarloSimulator(recs, cfg)
 
         results = sim.sensitivity_analysis(
@@ -415,7 +415,7 @@ class TestSensitivityAnalysis:
     def test_positive_adjustment_increases_pnl(self) -> None:
         """pnl_adj > 0 → PnL 増加."""
         recs = _make_records_typical(8, 2)
-        cfg = MonteCarloConfig(n_simulations=200, random_seed=42)
+        cfg = MonteCarloConfig(n_simulations=120, random_seed=42)
         sim = PnLMonteCarloSimulator(recs, cfg)
 
         results = sim.sensitivity_analysis(
@@ -428,7 +428,7 @@ class TestSensitivityAnalysis:
 
     def test_default_grid_size(self) -> None:
         recs = _make_records_typical(8, 2)
-        cfg = MonteCarloConfig(n_simulations=50)
+        cfg = MonteCarloConfig(n_simulations=20)
         sim = PnLMonteCarloSimulator(recs, cfg)
 
         results = sim.sensitivity_analysis()

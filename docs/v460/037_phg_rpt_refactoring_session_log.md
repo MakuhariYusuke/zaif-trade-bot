@@ -118,3 +118,31 @@
 ### 次アクション
 1. `pnl_monte_carlo` 系（最上位 call durations）の計算グリッドを deterministic 軽量プロファイルへ段階分離
 2. `test_fill_quality.py` の残存 method import（46件）を import検証系を除いて段階集約
+
+---
+
+## 2026-03-06 / Session 037-003
+
+### 実施
+- `pnl_monte_carlo` 系の軽量化
+  - `test_pnl_monte_carlo.py` の高負荷ケースで `n_simulations` を用途別に縮小
+  - `ztb/risk/pnl_monte_carlo.py` の `run()` / `sensitivity_analysis()` を部分ベクトル化
+    - `binomial(..., size=n_simulations)` を一括生成
+    - `jpy_per_bps` を前計算
+- DRY 改善
+  - `test_gate_check.py` の `run_gate_check` 関連 method 内 import を先頭集約（45 -> 0）
+- 追加のテスト軽量化
+  - `test_ml_pipeline.py` の実データ統合サブセットを `1500 -> 1000` に調整
+
+### 結果
+- 変更対象テスト: `165 passed`（`test_pnl_monte_carlo` / `test_gate_check` / `test_ml_pipeline` / `test_enricher_skip_gate`）
+- v460 全体: `3924 passed, 19 warnings in 40.10s`（`--no-cov --durations=30`）
+- 計測更新:
+  - 前回: `42.87s`
+  - 今回: `40.10s`（約 `-2.77s`）
+- 補足:
+  - `test_pnl_monte_carlo.py` 単体は `2.43s -> 1.73s`（約 `-0.70s`）
+
+### 次アクション
+1. `test_fill_quality.py` の残存 method import（46件）を副作用検証テストを除いて段階集約
+2. `test_200_an_improvements.py` / `test_155_hindsight_review.py` の重複 import を同様に集約

@@ -23,6 +23,15 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 import sys
 
 sys.path.insert(0, str(_PROJECT_ROOT))
+from scripts.v460.run_gate_check import (
+    main,
+    run_g0,
+    run_g1_1,
+    run_g1_judgment,
+    run_g2_judgment,
+    run_g3_judgment,
+    run_g4_judgment,
+)
 
 
 # =====================================================================
@@ -119,7 +128,6 @@ class TestRunG0:
         self, mock_thresh, mock_hash, mock_load, mock_nan, mock_manifest,
     ) -> None:
         """全チェック PASS のケース."""
-        from scripts.v460.run_gate_check import run_g0
 
         mock_thresh.return_value = {"g0_data": _default_thresholds_g0()}
         mock_hash.return_value = "abcdef1234567890abcdef1234567890"
@@ -145,7 +153,6 @@ class TestRunG0:
         self, mock_thresh, mock_hash, mock_load, mock_nan, mock_manifest,
     ) -> None:
         """ハッシュ不一致 → FAIL."""
-        from scripts.v460.run_gate_check import run_g0
 
         mock_thresh.return_value = {"g0_data": _default_thresholds_g0()}
         mock_hash.return_value = "aaaa1111bbbb2222"
@@ -170,7 +177,6 @@ class TestRunG0:
         self, mock_thresh, mock_hash, mock_load, mock_nan, mock_manifest,
     ) -> None:
         """expected_hash=None → hash チェック skip (PASS)."""
-        from scripts.v460.run_gate_check import run_g0
 
         mock_thresh.return_value = {"g0_data": _default_thresholds_g0()}
         mock_hash.return_value = "abcdef1234567890"
@@ -194,7 +200,6 @@ class TestRunG0:
         self, mock_thresh, mock_hash, mock_load, mock_nan, mock_manifest,
     ) -> None:
         """特徴量カラム < 4 → FAIL."""
-        from scripts.v460.run_gate_check import run_g0
 
         mock_thresh.return_value = {"g0_data": _default_thresholds_g0()}
         mock_hash.return_value = "abcdef1234567890"
@@ -219,7 +224,6 @@ class TestRunG0:
         self, mock_thresh, mock_hash, mock_load, mock_nan, mock_manifest,
     ) -> None:
         """NaN 比率超過 → FAIL."""
-        from scripts.v460.run_gate_check import run_g0
 
         mock_thresh.return_value = {"g0_data": _default_thresholds_g0()}
         mock_hash.return_value = "abcdef1234567890"
@@ -244,7 +248,6 @@ class TestRunG0:
         self, mock_thresh, mock_hash, mock_load, mock_nan, mock_manifest,
     ) -> None:
         """manifest 不在 → FAIL."""
-        from scripts.v460.run_gate_check import run_g0
 
         mock_thresh.return_value = {"g0_data": _default_thresholds_g0()}
         mock_hash.return_value = "abcdef1234567890"
@@ -298,7 +301,6 @@ class TestRunG1Judgment:
     @patch("scripts.v460.run_gate_check.load_gate_thresholds")
     def test_g1_pass(self, mock_thresh) -> None:
         """G1 全パス."""
-        from scripts.v460.run_gate_check import run_g1_judgment
 
         mock_thresh.return_value = {"g1_info": _default_thresholds_g1()}
         with tempfile.NamedTemporaryFile(
@@ -314,7 +316,6 @@ class TestRunG1Judgment:
     @patch("scripts.v460.run_gate_check.load_gate_thresholds")
     def test_g1_judgment_cache_fail(self, mock_thresh) -> None:
         """g1_judgment_cache が FAIL → 全体 FAIL."""
-        from scripts.v460.run_gate_check import run_g1_judgment
 
         mock_thresh.return_value = {"g1_info": _default_thresholds_g1()}
         with tempfile.NamedTemporaryFile(
@@ -329,7 +330,6 @@ class TestRunG1Judgment:
     @patch("scripts.v460.run_gate_check.load_gate_thresholds")
     def test_g1_low_ic(self, mock_thresh) -> None:
         """IC 不足 → threshold_checks FAIL → 全体 FAIL."""
-        from scripts.v460.run_gate_check import run_g1_judgment
 
         mock_thresh.return_value = {"g1_info": _default_thresholds_g1()}
         data = self._make_g1_results(ic_mean=0.005)  # below 0.02
@@ -347,7 +347,6 @@ class TestRunG1Judgment:
     @patch("scripts.v460.run_gate_check.load_gate_thresholds")
     def test_g1_low_accuracy(self, mock_thresh) -> None:
         """accuracy 不足 → FAIL."""
-        from scripts.v460.run_gate_check import run_g1_judgment
 
         mock_thresh.return_value = {"g1_info": _default_thresholds_g1()}
         data = self._make_g1_results(acc_mean=0.48)  # below 0.51
@@ -365,7 +364,6 @@ class TestRunG1Judgment:
     @patch("scripts.v460.run_gate_check.load_gate_thresholds")
     def test_g1_insufficient_sig_folds(self, mock_thresh) -> None:
         """sig_folds 不足 → FAIL."""
-        from scripts.v460.run_gate_check import run_g1_judgment
 
         mock_thresh.return_value = {"g1_info": _default_thresholds_g1()}
         data = self._make_g1_results(sig_count=1)  # below 2
@@ -383,7 +381,6 @@ class TestRunG1Judgment:
     @patch("scripts.v460.run_gate_check.load_gate_thresholds")
     def test_g1_no_cache_no_raw_folds(self, mock_thresh) -> None:
         """cache なし + raw fold_results なし → FAIL (stats-only)."""
-        from scripts.v460.run_gate_check import run_g1_judgment
 
         mock_thresh.return_value = {"g1_info": _default_thresholds_g1()}
         data = {
@@ -409,7 +406,6 @@ class TestRunG1Judgment:
     @patch("scripts.v460.run_gate_check.load_gate_thresholds")
     def test_g1_no_xgboost_no_extra_checks(self, mock_thresh) -> None:
         """xgboost ブロック空 → extra_any_pass=False → FAIL."""
-        from scripts.v460.run_gate_check import run_g1_judgment
 
         mock_thresh.return_value = {"g1_info": _default_thresholds_g1()}
         data = {
@@ -448,7 +444,6 @@ class TestRunG1_1:
 
     def test_g1_1_pass(self) -> None:
         """良好な fill_records → PASS."""
-        from scripts.v460.run_gate_check import run_g1_1
 
         records = _make_fill_records(
             n=50, fill_rate=0.98, pnl_mean=0.2, as_ratio=0.05, queue_wait=20.0,
@@ -463,7 +458,6 @@ class TestRunG1_1:
 
     def test_g1_1_low_fill_rate(self) -> None:
         """低 fill_rate → FAIL (K1_attempted_fill_rate)."""
-        from scripts.v460.run_gate_check import run_g1_1
 
         records = _make_fill_records(n=50, fill_rate=0.50)
         with tempfile.TemporaryDirectory() as tmp:
@@ -475,7 +469,6 @@ class TestRunG1_1:
 
     def test_g1_1_no_data(self) -> None:
         """データなし → NO_DATA."""
-        from scripts.v460.run_gate_check import run_g1_1
 
         with tempfile.TemporaryDirectory() as tmp:
             result = run_g1_1(tmp)
@@ -484,7 +477,6 @@ class TestRunG1_1:
 
     def test_g1_1_negative_pnl(self) -> None:
         """大幅負 PnL → K4_pnl_kill FAIL."""
-        from scripts.v460.run_gate_check import run_g1_1
 
         records = _make_fill_records(
             n=100, fill_rate=0.98, pnl_mean=-2.0, as_ratio=0.05,
@@ -500,7 +492,6 @@ class TestRunG1_1:
         """DeprecationWarning が発行されること."""
         import warnings
 
-        from scripts.v460.run_gate_check import run_g1_1
 
         with tempfile.TemporaryDirectory() as tmp:
             with warnings.catch_warnings(record=True) as w:
@@ -615,7 +606,6 @@ class TestG2Train:
 
     def test_g2_pass(self) -> None:
         """全 seed 良好 → PASS."""
-        from scripts.v460.run_gate_check import run_g2_judgment
 
         data = _make_g2_results(n_seeds=5, gross_roi_mean=0.05, ic_std=0.005, roi_var_pct=2.0)
         with tempfile.TemporaryDirectory() as tmp:
@@ -628,7 +618,6 @@ class TestG2Train:
 
     def test_g2_no_data(self) -> None:
         """seed_results 空 → NO_DATA."""
-        from scripts.v460.run_gate_check import run_g2_judgment
 
         data = {"seed_results": [], "convergence": {}}
         with tempfile.TemporaryDirectory() as tmp:
@@ -639,7 +628,6 @@ class TestG2Train:
 
     def test_g2_low_positive_ratio(self) -> None:
         """positive seed 比率不足 → FAIL."""
-        from scripts.v460.run_gate_check import run_g2_judgment
 
         data = _make_g2_results(n_seeds=5, gross_roi_mean=-0.03)
         with tempfile.TemporaryDirectory() as tmp:
@@ -650,7 +638,6 @@ class TestG2Train:
 
     def test_g2_high_ic_std(self) -> None:
         """IC seed 間標準偏差が大きい → FAIL."""
-        from scripts.v460.run_gate_check import run_g2_judgment
 
         data = _make_g2_results(n_seeds=5, ic_std=0.10)
         with tempfile.TemporaryDirectory() as tmp:
@@ -661,7 +648,6 @@ class TestG2Train:
 
     def test_g2_poor_convergence(self) -> None:
         """ROI variance 高い → FAIL."""
-        from scripts.v460.run_gate_check import run_g2_judgment
 
         data = _make_g2_results(n_seeds=5, roi_var_pct=15.0)
         with tempfile.TemporaryDirectory() as tmp:
@@ -672,7 +658,6 @@ class TestG2Train:
 
     def test_g2_worst_seed_bad(self) -> None:
         """worst seed の ROI が閾値以下 → FAIL."""
-        from scripts.v460.run_gate_check import run_g2_judgment
 
         # 手動で1つの seed を -5% にする
         data = _make_g2_results(n_seeds=5, gross_roi_mean=0.05)
@@ -694,7 +679,6 @@ class TestG3Pnl:
 
     def test_g3_pass(self) -> None:
         """全指標良好 → PASS."""
-        from scripts.v460.run_gate_check import run_g3_judgment
 
         data = _make_g3_results(pf_mean=1.4, sharpe_mean=1.5, max_dd=0.08)
         with tempfile.TemporaryDirectory() as tmp:
@@ -707,7 +691,6 @@ class TestG3Pnl:
 
     def test_g3_no_data(self) -> None:
         """seed_metrics 空 → NO_DATA."""
-        from scripts.v460.run_gate_check import run_g3_judgment
 
         data = {"seed_metrics": []}
         with tempfile.TemporaryDirectory() as tmp:
@@ -718,7 +701,6 @@ class TestG3Pnl:
 
     def test_g3_low_pf_median(self) -> None:
         """PF 中央値低い → FAIL."""
-        from scripts.v460.run_gate_check import run_g3_judgment
 
         data = _make_g3_results(pf_mean=0.8)
         with tempfile.TemporaryDirectory() as tmp:
@@ -729,7 +711,6 @@ class TestG3Pnl:
 
     def test_g3_low_pf_worst(self) -> None:
         """PF worst が閾値以下 → FAIL."""
-        from scripts.v460.run_gate_check import run_g3_judgment
 
         data = _make_g3_results(pf_mean=1.2)
         data["seed_metrics"][0]["pf"] = 0.5  # worst = 0.5 < 0.95
@@ -741,7 +722,6 @@ class TestG3Pnl:
 
     def test_g3_fee_exceeds_gross(self) -> None:
         """gross < fee → FAIL."""
-        from scripts.v460.run_gate_check import run_g3_judgment
 
         data = _make_g3_results(gross=0.001, fee=0.005)
         with tempfile.TemporaryDirectory() as tmp:
@@ -752,7 +732,6 @@ class TestG3Pnl:
 
     def test_g3_high_drawdown(self) -> None:
         """Max DD > 15% → FAIL."""
-        from scripts.v460.run_gate_check import run_g3_judgment
 
         data = _make_g3_results(max_dd=0.25)
         with tempfile.TemporaryDirectory() as tmp:
@@ -763,7 +742,6 @@ class TestG3Pnl:
 
     def test_g3_low_sharpe(self) -> None:
         """Sharpe annual 低い → FAIL."""
-        from scripts.v460.run_gate_check import run_g3_judgment
 
         data = _make_g3_results(sharpe_mean=0.3)
         with tempfile.TemporaryDirectory() as tmp:
@@ -783,7 +761,6 @@ class TestG4Live:
 
     def test_g4_pass(self) -> None:
         """全指標良好 → PASS."""
-        from scripts.v460.run_gate_check import run_g4_judgment
 
         data = _make_g4_results()
         with tempfile.TemporaryDirectory() as tmp:
@@ -796,7 +773,6 @@ class TestG4Live:
 
     def test_g4_low_uptime(self) -> None:
         """稼働日数不足 → FAIL."""
-        from scripts.v460.run_gate_check import run_g4_judgment
 
         data = _make_g4_results(uptime_days=3.0)
         with tempfile.TemporaryDirectory() as tmp:
@@ -807,7 +783,6 @@ class TestG4Live:
 
     def test_g4_high_downtime(self) -> None:
         """ダウンタイム比率超過 → FAIL."""
-        from scripts.v460.run_gate_check import run_g4_judgment
 
         data = _make_g4_results(downtime_ratio=0.05)
         with tempfile.TemporaryDirectory() as tmp:
@@ -818,7 +793,6 @@ class TestG4Live:
 
     def test_g4_no_circuit_breaker(self) -> None:
         """Circuit Breaker 未テスト → FAIL."""
-        from scripts.v460.run_gate_check import run_g4_judgment
 
         data = _make_g4_results(circuit_breaker_tested=False)
         with tempfile.TemporaryDirectory() as tmp:
@@ -829,7 +803,6 @@ class TestG4Live:
 
     def test_g4_g3_not_maintained(self) -> None:
         """G3 指標未維持 → FAIL."""
-        from scripts.v460.run_gate_check import run_g4_judgment
 
         data = _make_g4_results(g3_maintained=False)
         with tempfile.TemporaryDirectory() as tmp:
@@ -840,7 +813,6 @@ class TestG4Live:
 
     def test_g4_slow_emergency_stop(self) -> None:
         """緊急停止応答遅延 → FAIL."""
-        from scripts.v460.run_gate_check import run_g4_judgment
 
         data = _make_g4_results(emergency_stop_sec=5.0)
         with tempfile.TemporaryDirectory() as tmp:
@@ -851,7 +823,6 @@ class TestG4Live:
 
     def test_g4_multiple_failures(self) -> None:
         """複数指標 FAIL → FAIL + 全チェック記録."""
-        from scripts.v460.run_gate_check import run_g4_judgment
 
         data = _make_g4_results(
             uptime_days=2.0,
@@ -878,7 +849,6 @@ class TestCLI:
     @patch("scripts.v460.run_gate_check.run_g0")
     def test_cli_g0(self, mock_run_g0) -> None:
         """--gate G0 で run_g0 が呼ばれる."""
-        from scripts.v460.run_gate_check import main
 
         mock_run_g0.return_value = {"gate": "G0-data", "gate_result": "PASS", "checks": {}}
 
@@ -892,7 +862,6 @@ class TestCLI:
     @patch("scripts.v460.run_gate_check.run_g1_judgment")
     def test_cli_g1(self, mock_run_g1) -> None:
         """--gate G1 で run_g1_judgment が呼ばれる."""
-        from scripts.v460.run_gate_check import main
 
         mock_run_g1.return_value = {"gate": "G1-info", "gate_result": "FAIL", "checks": {}}
 
@@ -906,7 +875,6 @@ class TestCLI:
     @patch("scripts.v460.run_gate_check.run_g1_1")
     def test_cli_g1_1(self, mock_run_g1_1) -> None:
         """--gate G1.1 で run_g1_1 が呼ばれる."""
-        from scripts.v460.run_gate_check import main
 
         mock_run_g1_1.return_value = {
             "gate": "G1.1-exec",
@@ -925,7 +893,6 @@ class TestCLI:
     @patch("scripts.v460.run_gate_check.run_g0")
     def test_cli_output_file(self, mock_run_g0) -> None:
         """--output で結果を JSON 出力."""
-        from scripts.v460.run_gate_check import main
 
         mock_run_g0.return_value = {"gate": "G0-data", "gate_result": "PASS", "checks": {}}
 
@@ -945,7 +912,6 @@ class TestCLI:
     @patch("scripts.v460.run_gate_check.run_g2_judgment")
     def test_cli_g2(self, mock_run_g2) -> None:
         """--gate G2 で run_g2_judgment が呼ばれる."""
-        from scripts.v460.run_gate_check import main
 
         mock_run_g2.return_value = {"gate": "G2-train", "gate_result": "PASS", "checks": {}}
 
@@ -959,7 +925,6 @@ class TestCLI:
     @patch("scripts.v460.run_gate_check.run_g3_judgment")
     def test_cli_g3(self, mock_run_g3) -> None:
         """--gate G3 で run_g3_judgment が呼ばれる."""
-        from scripts.v460.run_gate_check import main
 
         mock_run_g3.return_value = {"gate": "G3-pnl", "gate_result": "FAIL", "checks": {}}
 
@@ -973,7 +938,6 @@ class TestCLI:
     @patch("scripts.v460.run_gate_check.run_g4_judgment")
     def test_cli_g4(self, mock_run_g4) -> None:
         """--gate G4 で run_g4_judgment が呼ばれる."""
-        from scripts.v460.run_gate_check import main
 
         mock_run_g4.return_value = {"gate": "G4-live", "gate_result": "PASS", "checks": {}}
 

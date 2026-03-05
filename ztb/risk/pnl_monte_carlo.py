@@ -201,20 +201,24 @@ class PnLMonteCarloSimulator:
         # --- Monte Carlo ---
         cycles_per_month = cfg.cycles_per_day * cfg.days_per_month
         notional = cfg.lot_size_btc * cfg.btc_price_jpy  # JPY per cycle
+        jpy_per_bps = 1e-4 * notional
 
         # Bootstrap: resample per-cycle PnL from observed distribution
         # Each simulation = 1 month of cycles
-        monthly_pnls = np.zeros(cfg.n_simulations)
+        monthly_pnls = np.zeros(cfg.n_simulations, dtype=np.float64)
+        fills_per_sim = self._rng.binomial(
+            cycles_per_month, fill_rate, size=cfg.n_simulations
+        )
 
-        for i in range(cfg.n_simulations):
+        for i, fills_this_month in enumerate(fills_per_sim):
             # 1. Sample fill/cancel outcomes (Bernoulli with observed fill_rate)
-            fills_this_month = self._rng.binomial(cycles_per_month, fill_rate)
+            fills_this_month = int(fills_this_month)
 
             # 2. Bootstrap sample PnL (bps) for each filled cycle
             if fills_this_month > 0:
                 sampled_pnl = self._rng.choice(pnl_bps, size=fills_this_month, replace=True)
-                # Convert bps → JPY: pnl_bps * 1e-4 * notional
-                cycle_pnls_jpy = sampled_pnl * 1e-4 * notional
+                # Convert bps → JPY
+                cycle_pnls_jpy = sampled_pnl * jpy_per_bps
                 monthly_pnls[i] = float(np.sum(cycle_pnls_jpy))
 
         # --- Percentiles ---
@@ -322,18 +326,22 @@ class PnLMonteCarloSimulator:
             pnl_bps = np.array([0.0])
 
         notional = cfg.lot_size_btc * cfg.btc_price_jpy
+        jpy_per_bps = 1e-4 * notional
         cycles_per_month = cfg.cycles_per_day * cfg.days_per_month
         results: list[dict[str, Any]] = []
 
         for fr in fill_rates:
             for adj in pnl_adjustments_bps:
                 adjusted_pnl = pnl_bps + adj
-                monthly = np.zeros(cfg.n_simulations)
-                for i in range(cfg.n_simulations):
-                    fills = self._rng.binomial(cycles_per_month, fr)
+                monthly = np.zeros(cfg.n_simulations, dtype=np.float64)
+                fills_per_sim = self._rng.binomial(
+                    cycles_per_month, fr, size=cfg.n_simulations
+                )
+                for i, fills in enumerate(fills_per_sim):
+                    fills = int(fills)
                     if fills > 0:
                         sampled = self._rng.choice(adjusted_pnl, size=fills, replace=True)
-                        monthly[i] = float(np.sum(sampled * 1e-4 * notional))
+                        monthly[i] = float(np.sum(sampled * jpy_per_bps))
 
                 results.append({
                     "fill_rate": fr,
