@@ -290,14 +290,16 @@ class TestFFDBoostGradualRelease:
         _activate_boost(ffd, "buy")
 
         t_before = ffd._get_state("buy").boost_activated_at
-        time.sleep(0.01)
+        # 実待機せず、過去時刻へ戻して refresh を検証
+        stale_ttl = t_before - 1.0
+        ffd._get_state("buy").boost_activated_at = stale_ttl
         # 再度 adverse fill
         ffd.evaluate_fill(
             "buy", queue_wait_sec=1.0,
             fill_price=101_000, mid_at_fill=100_000,
         )
         t_after = ffd._get_state("buy").boost_activated_at
-        assert t_after > t_before  # TTL リフレッシュされた
+        assert t_after > stale_ttl  # TTL リフレッシュされた
 
 
 # ======================================================================

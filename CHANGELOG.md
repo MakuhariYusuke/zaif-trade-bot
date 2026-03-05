@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 293# perf+dry+core: import集約 + 実待機削減 + trades_health軽量化 (2026-03-06)
+
+### Changed
+- **テストDRY整理（per-method import集約）**
+  - `tests/unit/v460/test_136_p1_retrain_kill.py`: method内 import を **54 -> 1** に削減（alias確認テストのみ局所import維持）
+  - `tests/unit/v460/test_139_review_fixes.py`: method内 import を **48 -> 0** に削減
+  - `tests/unit/v460/test_145_structural_fixes.py`: method内 import を **52 -> 0** に削減
+- **実待機の除去**
+  - `tests/unit/v460/test_158_failure_modes.py`:
+    - `CircuitBreaker` 回復待機の `asyncio.sleep(0.03)` を `time.time` モックへ置換
+    - timeoutテストを `asyncio.Event().wait()` + `timeout=0.01` へ変更
+  - `tests/unit/v460/test_230_ffd_deadzone_streak_guards.py`:
+    - `time.sleep(0.01)` を廃止し、TTL時刻の明示操作で検証
+- **本体コード軽量化（挙動不変）**
+  - `ztb/data/trades_health.py`:
+    - `datetime.now(...)` の重複呼び出しを集約
+    - 欠損日判定を list 参照から set 参照へ最適化
+    - `_latest_mtime_hours()` に `now_ts` 注入を追加し、`check_feature_freshness` で共通時刻を再利用
+
+### Performance
+- `tests/unit/v460` (`--no-cov --durations=20`): **42.87s** (`3924 passed`)
+  - 直前計測比: **44.92s -> 42.87s**（約 **-2.05s**）
+
+---
+
 ## 292# perf+dry: load_fill_records cache + ML tests/core lightening (2026-03-06)
 
 ### Changed

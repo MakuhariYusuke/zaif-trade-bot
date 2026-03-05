@@ -17,15 +17,33 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
+import pickle
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+import numpy as np
+import pandas as pd
 import pytest
+import scripts.v460.lib.pnl_measurer as pm
+import scripts.v460.ml.feature_enricher as fe
+import scripts.v460.ml.retrain_scheduler as rs
+import scripts.v460.run_fill_test as rft
 import yaml
+from scripts.v460.lib.cycle_gate_aggregator import _GATE_TO_CANCEL_REASON
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+from tests.unit.v460._fill_test_source import (
+    FILL_LOOP_ORCHESTRATOR,
+    read_fill_test_runner_source,
+    read_source_text,
+)
+from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
+from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
 
 
 # ---------------------------------------------------------------------------
@@ -36,8 +54,6 @@ class TestEvaluatorCalibratorInjection:
 
     def test_inject_calibrator_disabled(self, tmp_path: Path) -> None:
         """score_calibration=False → _score_calibrator=None."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         config = FillTestConfig(
             skip_gate_enabled=False,
@@ -50,9 +66,6 @@ class TestEvaluatorCalibratorInjection:
 
     def test_inject_calibrator_enabled_with_pkl(self, tmp_path: Path) -> None:
         """score_calibration=True + 有効 pkl → calibrator が注入される."""
-        import pickle
-        import numpy as np
-        from ztb.ml.score_calibrator import ScoreCalibrator, ScoreCalibratorConfig
 
         # 学習済み calibrator pkl を作成
         cal = ScoreCalibrator(ScoreCalibratorConfig(enabled=True, min_samples=5))
@@ -63,10 +76,6 @@ class TestEvaluatorCalibratorInjection:
 
         cal_path = tmp_path / "cal.pkl"
         cal.save(cal_path)
-
-        # _inject_calibrator を直接テスト
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         config = FillTestConfig(
             skip_gate_enabled=False,  # SkipGate 本体はロードしない
@@ -87,8 +96,6 @@ class TestEvaluatorCalibratorInjection:
 
     def test_inject_calibrator_no_path(self) -> None:
         """score_calibration=True + path=None → None 設定 + ログ."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         config = FillTestConfig(
             skip_gate_enabled=False,
@@ -104,8 +111,6 @@ class TestEvaluatorCalibratorInjection:
 
     def test_inject_calibrator_missing_file(self, tmp_path: Path) -> None:
         """存在しない pkl → fallback (ScoreCalibrator default)."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         config = FillTestConfig(
             skip_gate_enabled=False,
@@ -124,8 +129,6 @@ class TestEvaluatorCalibratorInjection:
 
     def test_hot_reload_re_injects_calibrator(self) -> None:
         """_check_and_reload_model 内で _inject_calibrator が呼ばれる."""
-        import inspect
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
         source = inspect.getsource(SkipGateEvaluator._check_and_reload_model)
         assert "_inject_calibrator" in source
 
@@ -137,12 +140,10 @@ class TestCalibratorConfigModeRemoved:
     """139# §8-#3: ScoreCalibratorConfig から mode が削除されている."""
 
     def test_no_mode_field(self) -> None:
-        from ztb.ml.score_calibrator import ScoreCalibratorConfig
         cfg = ScoreCalibratorConfig()
         assert not hasattr(cfg, "mode")
 
     def test_mode_kwarg_raises(self) -> None:
-        from ztb.ml.score_calibrator import ScoreCalibratorConfig
         with pytest.raises(TypeError):
             ScoreCalibratorConfig(mode="pnl")  # type: ignore[call-arg]
 
@@ -155,7 +156,6 @@ class TestPreflightPauseAuditRecord:
 
     def test_source_has_audit_record(self) -> None:
         """run_fill_test.py の preflight pause ブロックに _make_skip_record がある."""
-        from tests.unit.v460._fill_test_source import read_fill_test_runner_source  # noqa: E501
         source = read_fill_test_runner_source()  # 163# mixin 分割対応
         # 145# §9-#5: CR.PREFLIGHT_PAUSE 定数に移行済み
         assert "PREFLIGHT_PAUSE" in source
@@ -169,33 +169,27 @@ class TestFillConfigBoundaryValidation:
     """139# §8-#6: FillTestConfig の __post_init__ バリデーション."""
 
     def test_preflight_pause_threshold_minimum(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         with pytest.raises(ValueError, match="preflight_pause_threshold"):
             FillTestConfig(preflight_pause_threshold=0)
 
     def test_preflight_max_pauses_non_negative(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         with pytest.raises(ValueError, match="preflight_max_pauses"):
             FillTestConfig(preflight_max_pauses=-1)
 
     def test_preflight_pause_sec_non_negative(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         with pytest.raises(ValueError, match="preflight_pause_sec"):
             FillTestConfig(preflight_pause_sec=-1.0)
 
     def test_calibrator_min_samples_minimum(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         with pytest.raises(ValueError, match="calibrator_min_samples"):
             FillTestConfig(skip_gate_calibrator_min_samples=0)
 
     def test_calibrator_refit_interval_minimum(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
         with pytest.raises(ValueError, match="calibrator_refit_interval"):
             FillTestConfig(skip_gate_calibrator_refit_interval=0)
 
     def test_valid_config_passes(self) -> None:
         """正常値はバリデーション通過."""
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig(
             preflight_pause_threshold=1,
             preflight_max_pauses=0,
@@ -220,9 +214,6 @@ class TestRetrainNewSamplesRunSwitch:
         mock_gate._pipeline = None
 
         # 最低限の retrain_model 入力を作成
-        import pandas as pd
-        import numpy as np
-
         n_current = 93
         X = pd.DataFrame(np.random.randn(n_current, 5), columns=[f"f{i}" for i in range(5)])
         y = pd.Series(np.random.randn(n_current))
@@ -272,14 +263,12 @@ class TestRegimeThresholdsWiring:
 
     def test_config_has_regime_thresholds_field(self) -> None:
         """FillTestConfig に sell_dynamic_kill_regime_thresholds フィールドがある."""
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert hasattr(cfg, "sell_dynamic_kill_regime_thresholds")
         assert cfg.sell_dynamic_kill_regime_thresholds == {}
 
     def test_yaml_parsing(self, tmp_path: Path) -> None:
         """YAML の regime_thresholds が正しくパースされる."""
-        from scripts.v460.lib.fill_config import FillTestConfig
         yaml_data = {
             "止血": {
                 "sell_dynamic_kill": {
@@ -301,7 +290,6 @@ class TestRegimeThresholdsWiring:
 
     def test_sell_kill_manager_receives_thresholds(self) -> None:
         """SellKillConfig に regime_thresholds が渡される."""
-        from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
         thresholds = {"trending_up": -0.3, "ranging": -0.5}
         mgr = SellDynamicKillManager(SellKillConfig(
             enabled=True,
@@ -334,16 +322,11 @@ class TestNarrowSpreadPauseActualWait:
 
     def test_pause_sec_present_in_config(self) -> None:
         """narrow_spread_pause_sec 設定が存在."""
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig(narrow_spread_pause_enabled=True, narrow_spread_pause_sec=5.0)
         assert cfg.narrow_spread_pause_sec == 5.0
 
     def test_run_fill_test_calls_asyncio_sleep(self) -> None:
         """run_fill_test.py の narrow_spread_pause ブロックに asyncio.sleep がある."""
-        from tests.unit.v460._fill_test_source import (
-            FILL_LOOP_ORCHESTRATOR,
-            read_source_text,
-        )
         source = read_source_text(FILL_LOOP_ORCHESTRATOR)  # 163# mixin 分割
         # narrow_spread_pause の分岐内に asyncio.sleep が存在することを確認
         # 139# §9-#3 で追加
@@ -358,15 +341,12 @@ class TestFeeSpecClarification:
 
     def test_pnl_measurer_comment_documents_scope(self) -> None:
         """pnl_measurer.py に maker-only 仕様明記のコメントがある."""
-        import inspect
-        import scripts.v460.lib.pnl_measurer as pm
         source = inspect.getsource(pm)
         assert "maker fee のみ控除" in source or "maker fee only" in source.lower()
         assert "taker" in source.lower()  # taker についての言及がある
 
     def test_taker_fee_is_reserved_field(self) -> None:
         """taker_fee_bps は FillTestConfig に存在するが、PnL 計算では未使用."""
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig(taker_fee_bps=0.1)
         assert cfg.taker_fee_bps == 0.1
         # 実際の計算で使われないことは pnl_measurer.py の実装で保証
@@ -381,8 +361,6 @@ class TestTradesFallbackSafety:
 
     def test_enricher_no_full_load_fallback(self) -> None:
         """feature_enricher.py に date_filter=None の 3段目がない."""
-        import inspect
-        import scripts.v460.ml.feature_enricher as fe
         source = inspect.getsource(fe)
         # 139# §9-#5: 全量ロード廃止確認
         assert "date_filter=None全量ロード廃止" in source
@@ -405,7 +383,6 @@ class TestIntegrationRegimeKillFlow:
 
     def test_full_regime_kill_cycle(self) -> None:
         """regime=trending_up で kill → cooldown → resume."""
-        from ztb.risk.sell_dynamic_kill import SellDynamicKillManager, SellKillConfig
         mgr = SellDynamicKillManager(SellKillConfig(
             enabled=True,
             window=3,
@@ -466,8 +443,6 @@ class TestRunContinuousBranchExecution:
 
     def test_preflight_pause_no_attribute_error(self, tmp_path: Path) -> None:
         """preflight_pause 分岐で _append_fill_record が呼ばれず batch.append が使われる."""
-        import inspect
-        import scripts.v460.run_fill_test as rft
         source = inspect.getsource(rft.FillTestRunner)
         # _append_fill_record が存在しないことを確認
         assert not hasattr(rft.FillTestRunner, "_append_fill_record"), \
@@ -478,8 +453,6 @@ class TestRunContinuousBranchExecution:
 
     def test_preflight_pause_uses_batch_append(self) -> None:
         """preflight_pause ブロック内で batch.append + maybe_flush が使われている."""
-        import inspect
-        import scripts.v460.run_fill_test as rft
         source = inspect.getsource(rft.FillTestRunner.run_continuous)
         # 145# §9-#5: CR.PREFLIGHT_PAUSE 定数 + _make_skip_record に移行済み
         # 265# extract: batch → st.batch に変更
@@ -488,16 +461,12 @@ class TestRunContinuousBranchExecution:
 
     def test_time_filter_both_sides_generates_record(self) -> None:
         """140# §8.1-#2: 両 side time_filter で FillRecord が生成される."""
-        import inspect
-        import scripts.v460.run_fill_test as rft
         source = inspect.getsource(rft.FillTestRunner.run_continuous)
         # 145# §9-#6: CR 定数に移行済み
         assert "CR.TIME_FILTER_BOTH_SIDES" in source
 
     def test_preflight_insufficient_generates_record(self) -> None:
         """140# §8.1-#2: preflight 残高不足で FillRecord が生成される."""
-        import inspect
-        import scripts.v460.run_fill_test as rft
         source = inspect.getsource(rft.FillTestRunner.run_continuous)
         # 145# §9-#6: CR 定数に移行済み
         assert "CR.PREFLIGHT_INSUFFICIENT" in source
@@ -509,8 +478,6 @@ class TestRunContinuousBranchExecution:
         194#: A10-A14 は CycleGateAggregator に移行。
              orchestrator に残る CR 定数のみチェック。
         """
-        import inspect
-        import scripts.v460.run_fill_test as rft
         source = inspect.getsource(rft.FillTestRunner.run_continuous)
         # orchestrator に残る CR 定数 (system-level halt + balance)
         expected_cr_constants = [
@@ -525,7 +492,6 @@ class TestRunContinuousBranchExecution:
                 f'{cr_const} not found in run_continuous'
 
         # 194#: A10-A14 は CycleGateAggregator 側で cancel_reason マッピング
-        from scripts.v460.lib.cycle_gate_aggregator import _GATE_TO_CANCEL_REASON
         assert "unknown_regime_buy_skip" in _GATE_TO_CANCEL_REASON.values()
         assert "sell_dynamic_kill" in _GATE_TO_CANCEL_REASON.values()
 
@@ -538,8 +504,6 @@ class TestRetrainRunIdComparison:
 
     def test_metadata_includes_source_run_id(self) -> None:
         """retrain_model の metadata に source_run_id が含まれる."""
-        import inspect
-        import scripts.v460.ml.retrain_scheduler as rs
         source = inspect.getsource(rs)
         assert '"source_run_id"' in source
         assert '"run_switched"' in source

@@ -64,6 +64,7 @@ def check_trades_health(
     """
     d = raw_dir or _DEFAULT_RAW_DIR
     tr_dir = d / "trades"
+    now_utc = datetime.now(timezone.utc)
 
     # 利用可能な日の列挙
     available: list[str] = []
@@ -72,19 +73,19 @@ def check_trades_health(
             stem = f.stem.replace(".jsonl", "")
             if len(stem) == 8 and stem.isdigit():
                 available.append(stem)
+    available_set = set(available)
 
     # 期待日リスト
     # §9.2 #B: 当日 UTC を除外し「昨日から N 日遡り」で生成。
     # 日跨ぎ直後 (00:00-01:00 UTC) に当日ファイル未生成で false warning を防止。
     if expected_days is None:
-        now = datetime.now(timezone.utc)
         expected_days = [
-            (now - timedelta(days=i + 1)).strftime("%Y%m%d")
+            (now_utc - timedelta(days=i + 1)).strftime("%Y%m%d")
             for i in range(lookback_days)
         ]
 
     # 欠損日
-    missing = [d for d in expected_days if d not in available]
+    missing = [day for day in expected_days if day not in available_set]
 
     # 鮮度チェック
     stale_hours = float("inf")
@@ -93,7 +94,7 @@ def check_trades_health(
         latest_file = tr_dir / f"{latest_day}.jsonl.gz"
         if latest_file.exists():
             mtime = latest_file.stat().st_mtime
-            stale_hours = (datetime.now(timezone.utc).timestamp() - mtime) / 3600
+            stale_hours = (now_utc.timestamp() - mtime) / 3600
         else:
             stale_hours = float("inf")
 
@@ -137,7 +138,12 @@ class FeatureFreshnessResult:
     details: dict[str, str]
     message: str
 
-def _latest_mtime_hours(directory: Path, glob_pattern: str = "*.jsonl.gz") -> float:
+def _latest_mtime_hours(
+    directory: Path,
+    glob_pattern: str = "*.jsonl.gz",
+    *,
+    now_ts: float | None = None,
+) -> float:
     """ディレクトリ内の最新ファイル mtime から経過時間を返す."""
     if not directory.exists():
         return float("inf")
@@ -151,7 +157,8 @@ def _latest_mtime_hours(directory: Path, glob_pattern: str = "*.jsonl.gz") -> fl
             continue
     if latest_mtime == 0.0:
         return float("inf")
-    return (datetime.now(timezone.utc).timestamp() - latest_mtime) / 3600
+    current_ts = now_ts if now_ts is not None else datetime.now(timezone.utc).timestamp()
+    return (current_ts - latest_mtime) / 3600
 
 def check_feature_freshness(
     raw_dir: Path | None = None,
@@ -173,9 +180,10 @@ def check_feature_freshness(
         FeatureFreshnessResult
     """
     d = raw_dir or _DEFAULT_RAW_DIR
+    now_ts = datetime.now(timezone.utc).timestamp()
 
-    tr_hours = _latest_mtime_hours(d / "trades")
-    ob_hours = _latest_mtime_hours(d / "orderbook")
+    tr_hours = _latest_mtime_hours(d / "trades", now_ts=now_ts)
+    ob_hours = _latest_mtime_hours(d / "orderbook", now_ts=now_ts)
 
     details: dict[str, str] = {}
     issues: list[str] = []

@@ -91,3 +91,30 @@
 ### 次アクション
 1. method 内 import 上位の残件 (`test_136_p1_retrain_kill.py`, `test_145_structural_fixes.py`, `test_139_review_fixes.py`) を順次集約
 2. `pnl_monte_carlo` 系の重い計算テストを deterministic mock 置換できる箇所を抽出
+
+---
+
+## 2026-03-06 / Session 037-002
+
+### 実施
+- method 内 import 集約（DRY）
+  - `test_136_p1_retrain_kill.py`: 反復 import を先頭集約（alias import 検証のみ局所維持）
+  - `test_139_review_fixes.py`: `FillTestConfig` / `SkipGateEvaluator` / `SellDynamicKillManager` 等を先頭集約
+  - `test_145_structural_fixes.py`: `ob_utils`, `cancel_reasons`, `FillTestRunner` 等を先頭集約
+- 実待機削減
+  - `test_158_failure_modes.py`: `asyncio.sleep(0.03)` 待機を `time.time` モックに置換
+  - `test_158_failure_modes.py`: timeout ケースを `Event().wait()` + `timeout=0.01` に短縮
+  - `test_230_ffd_deadzone_streak_guards.py`: `time.sleep(0.01)` を除去し、TTL 時刻の明示操作で検証
+- 本体最適化（挙動不変）
+  - `ztb/data/trades_health.py`: `now` 取得の重複削減、missing 判定 set 化、`_latest_mtime_hours(now_ts=...)` 導入
+
+### 結果
+- 変更対象テスト: `201 passed`（`test_136` / `test_139` / `test_145` / `test_158` / `test_230`）
+- v460 全体: `3924 passed, 19 warnings in 42.87s`（`--no-cov --durations=20`）
+- 計測更新:
+  - 前回: `44.92s`
+  - 今回: `42.87s`（約 `-2.05s`）
+
+### 次アクション
+1. `pnl_monte_carlo` 系（最上位 call durations）の計算グリッドを deterministic 軽量プロファイルへ段階分離
+2. `test_fill_quality.py` の残存 method import（46件）を import検証系を除いて段階集約

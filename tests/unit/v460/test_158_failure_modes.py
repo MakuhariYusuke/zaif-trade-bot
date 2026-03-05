@@ -85,11 +85,10 @@ class TestCircuitBreakerStateTransitions:
 
         assert cb.get_state() == CircuitState.OPEN
 
-        # Wait for recovery_timeout
-        await asyncio.sleep(0.03)
-
-        # Next call should transition to HALF_OPEN and execute
-        result = await cb.call(succeed)
+        # 実待機せず time を進め、HALF_OPEN 遷移を確認
+        fake_now = (cb.last_failure_time or 0.0) + cb.config.recovery_timeout + 0.001
+        with patch("ztb.utils.circuit_breaker.time.time", return_value=fake_now):
+            result = await cb.call(succeed)
         assert result == "ok"
         # State should be HALF_OPEN (1 success, need 2)
         assert cb.get_state() == CircuitState.HALF_OPEN
@@ -108,11 +107,10 @@ class TestCircuitBreakerStateTransitions:
             with pytest.raises(ConnectionError):
                 await cb.call(fail)
 
-        # Wait for recovery
-        await asyncio.sleep(0.03)
-
+        fake_now = (cb.last_failure_time or 0.0) + cb.config.recovery_timeout + 0.001
         # 2 successes in HALF_OPEN → CLOSED
-        await cb.call(succeed)
+        with patch("ztb.utils.circuit_breaker.time.time", return_value=fake_now):
+            await cb.call(succeed)
         assert cb.get_state() == CircuitState.HALF_OPEN
         await cb.call(succeed)
         assert cb.get_state() == CircuitState.CLOSED
@@ -131,10 +129,10 @@ class TestCircuitBreakerStateTransitions:
             with pytest.raises(ConnectionError):
                 await cb.call(fail)
 
-        await asyncio.sleep(0.03)
-
+        fake_now = (cb.last_failure_time or 0.0) + cb.config.recovery_timeout + 0.001
         # One success to enter HALF_OPEN
-        await cb.call(succeed)
+        with patch("ztb.utils.circuit_breaker.time.time", return_value=fake_now):
+            await cb.call(succeed)
         assert cb.get_state() == CircuitState.HALF_OPEN
 
         # Failure in HALF_OPEN → back to OPEN
@@ -159,10 +157,10 @@ class TestCircuitBreakerStateTransitions:
     @pytest.mark.asyncio
     async def test_timeout_counts_as_failure(self, cb: CircuitBreaker) -> None:
         """Function exceeding timeout → asyncio.TimeoutError → counts as failure."""
-        cb.config.timeout = 0.05  # 50ms
+        cb.config.timeout = 0.01
 
         async def slow():
-            await asyncio.sleep(1.0)
+            await asyncio.Event().wait()
             return "late"
 
         with pytest.raises(asyncio.TimeoutError):
