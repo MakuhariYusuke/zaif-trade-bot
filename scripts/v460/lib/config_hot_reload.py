@@ -249,6 +249,201 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "max_cycle_sleep_sec",
     # 212# §3.2: Soft DD interval multiplier
     "soft_drawdown_interval_multiplier",
+    # ══════════════════════════════════════════════════════════════════
+    # 295# 一括追加: 運用パラメータの包括的 Hot-Reload 対応
+    # ══════════════════════════════════════════════════════════════════
+    # --- AS (Avellaneda-Stoikov / delta-star) ---
+    "as_reservation_enabled",
+    "as_reservation_gamma",
+    "as_reservation_tau_sec",
+    "as_tau_dynamic_enabled",
+    "as_tau_dynamic_min_sec",
+    "as_tau_dynamic_max_sec",
+    "as_delta_star_enabled",
+    "as_delta_star_fill_rate_k",
+    # as_deadzone_bps は上部 offset セクションで登録済み
+    # --- Amihud illiquidity ---
+    "amihud_illiq_enabled",
+    "amihud_illiq_baseline",
+    "amihud_illiq_max_mult",
+    # --- Kyle lambda ---
+    "kyle_lambda_enabled",
+    "kyle_lambda_impact_mult",
+    "kyle_lambda_max_add_ratio",
+    # --- balance / inventory ---
+    "balance_forced_cooldown_sec",
+    "balance_freeze_cycles",
+    "balance_margin_ratio",
+    "balance_shrink_consecutive",
+    "balance_shrink_divisor",
+    "one_sided_balance_rescue_offset",
+    # --- inventory skewing ---
+    "inventory_skewing_enabled",
+    "inventory_skewing_window",
+    "inventory_skewing_max_factor",
+    "inventory_skewing_neutral_band",
+    "inv_skew_regime_gate_enabled",
+    "inv_decay_tau_sec",
+    # --- degraded liquidation ---
+    "degraded_liquidation_enabled",
+    "degraded_liquidation_lot_mult",
+    "degraded_liquidation_offset_mult",
+    "degraded_liquidation_duty_cycle",
+    # --- inventory escape ---
+    "inventory_escape_enabled",
+    "inventory_escape_duty_cycle",
+    # --- DD cooldown / recovery ---
+    "dd_cooldown_release_sec",
+    "dd_cooldown_release_lot_scale",
+    "dd_cooldown_rearm_budget_bps",
+    "dd_day_reset_utc_offset_hours",
+    "per_side_dd_recovery_cycles",
+    "per_side_dd_recovery_lot_scale",
+    "per_side_dd_reanchor_budget_bps",
+    "recovery_trending_penalty",
+    "recovery_high_vol_penalty",
+    # --- one-sided escalation ---
+    "one_sided_escalation_cooldown_offset",
+    "one_sided_escalation_cooldown_cycles",
+    "one_sided_escalation_freeze_offset",
+    "one_sided_escalation_freeze_cycles",
+    # --- dual kill quiescence ---
+    "dual_kill_quiescence_enabled",
+    "quiescence_gate_blocks_threshold",
+    "quiescence_sleep_sec",
+    # --- MCB (Market Circuit Breaker) ---
+    "mcb_enabled",
+    "mcb_caution_sigma",
+    "mcb_warning_sigma",
+    "mcb_halt_sigma",
+    "mcb_warning_interval_mult",
+    "mcb_warning_offset_mult",
+    "mcb_halt_cooldown_sec",
+    # --- SAD (Spread Anomaly Detector) ---
+    "sad_enabled",
+    "sad_wide_ratio",
+    "sad_dry_ratio",
+    "sad_frozen_ratio",
+    "sad_baseline_window_sec",
+    # --- buy AS guard ---
+    "buy_as_guard_enabled",
+    "buy_as_guard_velocity_threshold_bps",
+    "buy_as_guard_offset_mult",
+    "buy_as_guard_max_offset_ratio",
+    # --- SkipGate EV warning ---
+    "skip_gate_ev_warning_threshold",
+    "skip_gate_ev_warning_offset_factor",
+    # --- SkipGate adaptive ---
+    "skip_gate_adaptive_ceiling",
+    "skip_gate_adaptive_floor",
+    "skip_gate_adaptive_min_samples",
+    "skip_gate_adaptive_step",
+    "skip_gate_adaptive_window",
+    "skip_gate_calibrator_min_samples",
+    "skip_gate_calibrator_refit_interval",
+    "skip_gate_regime_thresholds",
+    "skip_gate_score_calibration",
+    "skip_gate_ob_depth",
+    "skip_gate_recent_trades_limit",
+    "skip_gate_use_ob_features",
+    # --- imbalance / OBI ---
+    "imbalance_enabled",
+    "imbalance_threshold",
+    "imbalance_skip_threshold",
+    "imbalance_offset_boost",
+    "imbalance_depth",
+    "ranging_obi_threshold",
+    "ranging_obi_asymmetry_factor",
+    # --- narrow spread boost ---
+    "narrow_spread_boost",
+    "narrow_spread_boost_buy",
+    "narrow_spread_boost_sell",
+    "narrow_spread_bps",
+    "narrow_spread_pause_sec",
+    # --- wide spread ---
+    "wide_spread_bps",
+    "wide_spread_ratio",
+    # --- spread adaptive ---
+    "spread_adaptive_enabled",
+    # --- early exit ---
+    "early_exit_enabled",
+    "early_exit_threshold_bps",
+    "early_exit_monitor_interval_sec",
+    "early_exit_rapid_interval_sec",
+    # --- E3 measurement ---
+    "e3_60s_multiplier",
+    "e3_120s_multiplier",
+    # --- dynamic kill advanced ---
+    "sell_dynamic_kill_max_duration_sec",
+    "sell_dynamic_kill_max_force_probes",
+    "sell_dynamic_kill_max_stale_cycles",
+    "sell_dynamic_kill_toxic_stale_mult",
+    "buy_dynamic_kill_max_duration_sec",
+    "buy_dynamic_kill_max_force_probes",
+    "buy_dynamic_kill_max_stale_cycles",
+    "buy_dynamic_kill_toxic_stale_mult",
+    "buy_dynamic_kill_inv_relaxation_enabled",
+    "buy_dynamic_kill_inv_relaxation_scale",
+    "buy_dynamic_kill_inv_relaxation_max_bps",
+    # --- VG advanced ---
+    "volatility_guard_vpin_threshold",
+    "volatility_guard_velocity_window_sec",
+    "vg_vpin_continuous_enabled",
+    "vg_vpin_continuous_min",
+    "vg_inv_skew_damping_enabled",
+    # --- loss / PnL ---
+    "loss_boost_decay_tau_sec",
+    "loss_cap_auto",
+    "loss_cap_update_interval",
+    "loss_cap_warning_ratio",
+    "min_loss_cap_jpy",
+    "pnl_fee_deduction_enabled",
+    "soft_loss_cap_lot_divisor",
+    "recent_pnl_window",
+    # --- lot / adapt ---
+    "enable_dynamic_lot",
+    "confidence_lot_mode",
+    "enable_auto_adapt",
+    "adapt_interval_cycles",
+    "adapt_min_side_samples",
+    "adapt_recency_window",
+    "min_adapt_samples",
+    "lot_adapt_interval_cycles",
+    # --- low vol boost ---
+    "low_vol_boost_proportional",
+    "low_vol_boost_min",
+    # --- ranging buy ---
+    "ranging_buy_low_vol_as_offset",
+    # --- unknown regime ---
+    "unknown_regime_max_consecutive",
+    # --- smart side ---
+    "smart_side_enabled",
+    "smart_side_mode",
+    "smart_side_max_consecutive",
+    # --- FFD advanced ---
+    "ffd_boost_release_streak",
+    "ffd_l2_deadzone_bps",
+    # --- stale cooldown ---
+    "stale_cooldown_sec",
+    # --- preflight ---
+    "preflight_pause_enabled",
+    "preflight_pause_threshold",
+    "preflight_pause_sec",
+    "preflight_max_pauses",
+    "max_preflight_skip",
+    # --- misc operational ---
+    "forced_buy_kpi_tracking_enabled",
+    "dust_sweep_enabled",
+    "phantom_detection_sleep_multiplier",
+    "max_086_consecutive_wait",
+    "fallback_duration_sec",
+    "velocity_ema_alpha",
+    "mid_trend_validity_sec",
+    # --- regime multipliers (not structural) ---
+    "regime_warmup_multiplier",
+    "regime_high_vol_multiplier",
+    "regime_timeout_multipliers",
+    "regime_reprice_adjustments",
 })
 
 # 構造体再構築が必要なコンポーネントのマッピング

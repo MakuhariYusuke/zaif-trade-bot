@@ -285,6 +285,7 @@
 | 292 | impl | [292_ph2_impl_ev_weighted_observability_enhancement.md](292_ph2_impl_ev_weighted_observability_enhancement.md) | 290#/291#レビュー実装: FillRecord 3フィールド追加(ev_score_pretrade/offset_mult/decision_path) + reprice deadband + forced_buy_delayレジーム強化 |
 | 293 | analysis | [293_ph2_blind_spot_analysis_buy_side_execution.md](293_ph2_blind_spot_analysis_buy_side_execution.md) | 290#/291#査読補完: セルフレビューによるblind spot分析 |
 | 294 | fix | [294_ph2_fix_forced_buy_delay_deadlock.md](294_ph2_fix_forced_buy_delay_deadlock.md) | CRITICAL fix: forced_buy_delay リアームループによる永久buyブロック。max_consecutive上限で解消 |
+| 295 | impl | [295_ph2_hot_reload_comprehensive_coverage.md](295_ph2_hot_reload_comprehensive_coverage.md) | Config hot-reload包括的カバレッジ修正: 157フィールド追加 (312/368=84.8%) + 290#/291#対応漏れ調査 + セルフレビュー |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

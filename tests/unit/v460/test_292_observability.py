@@ -271,3 +271,100 @@ class TestForcedBuyDelayMaxConsecutive:
         fbd = y.get("loss_control", {}).get("forced_buy_delay", {})
         assert "max_consecutive" in fbd
         assert fbd["max_consecutive"] == 10
+
+
+# =====================================================================
+# F. Hot-Reload — 295# 包括的カバレッジ検証
+# =====================================================================
+
+class TestHotReloadComprehensiveCoverage:
+    """295# hot-reload 包括カバレッジ: 運用パラメータが漏れなく登録されている."""
+
+    @pytest.fixture(autouse=True)
+    def _load(self) -> None:
+        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
+        self.fields = _HOT_RELOADABLE_FIELDS
+
+    # --- 295# 追加カテゴリのサンプル検証 ---
+
+    def test_as_fields(self) -> None:
+        """AS/Avellaneda-Stoikov 関連."""
+        expected = {
+            "as_reservation_enabled", "as_reservation_gamma",
+            "as_delta_star_enabled", "as_delta_star_fill_rate_k",
+        }
+        assert expected.issubset(self.fields)
+
+    def test_amihud_kyle_fields(self) -> None:
+        """Amihud / Kyle 市場インパクト."""
+        expected = {
+            "amihud_illiq_enabled", "amihud_illiq_baseline",
+            "kyle_lambda_enabled", "kyle_lambda_impact_mult",
+        }
+        assert expected.issubset(self.fields)
+
+    def test_inventory_fields(self) -> None:
+        """Inventory skewing / balance."""
+        expected = {
+            "inventory_skewing_enabled", "inventory_skewing_window",
+            "balance_forced_cooldown_sec", "balance_margin_ratio",
+        }
+        assert expected.issubset(self.fields)
+
+    def test_degraded_and_escape_fields(self) -> None:
+        """縮退清算 / Inventory Escape."""
+        expected = {
+            "degraded_liquidation_enabled", "degraded_liquidation_lot_mult",
+            "inventory_escape_enabled", "inventory_escape_duty_cycle",
+        }
+        assert expected.issubset(self.fields)
+
+    def test_dd_cooldown_recovery_fields(self) -> None:
+        """DD cooldown / recovery."""
+        expected = {
+            "dd_cooldown_release_sec", "dd_cooldown_release_lot_scale",
+            "per_side_dd_recovery_cycles", "recovery_trending_penalty",
+        }
+        assert expected.issubset(self.fields)
+
+    def test_mcb_sad_fields(self) -> None:
+        """MCB / SAD."""
+        expected = {
+            "mcb_enabled", "mcb_caution_sigma", "mcb_halt_cooldown_sec",
+            "sad_enabled", "sad_wide_ratio", "sad_baseline_window_sec",
+        }
+        assert expected.issubset(self.fields)
+
+    def test_skip_gate_advanced_fields(self) -> None:
+        """SkipGate EV warning / adaptive."""
+        expected = {
+            "skip_gate_ev_warning_threshold",
+            "skip_gate_adaptive_ceiling", "skip_gate_adaptive_floor",
+            "skip_gate_regime_thresholds",
+        }
+        assert expected.issubset(self.fields)
+
+    def test_dynamic_kill_advanced_fields(self) -> None:
+        """Dynamic kill 上級パラメータ."""
+        expected = {
+            "sell_dynamic_kill_max_duration_sec",
+            "buy_dynamic_kill_inv_relaxation_enabled",
+        }
+        assert expected.issubset(self.fields)
+
+    def test_no_duplicate_in_frozenset(self) -> None:
+        """frozenset なので重複は論理的に不可能だが、ソース上の重複を検知."""
+        import re
+        src = (_PROJECT_ROOT / "scripts" / "v460" / "lib" / "config_hot_reload.py").read_text()
+        start = src.index("_HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({")
+        end = src.index("})", start) + 2
+        raw_fields = re.findall(r'"(\\w+)"', src[start:end])
+        from collections import Counter
+        dupes = {k: v for k, v in Counter(raw_fields).items() if v > 1}
+        assert not dupes, f"Duplicate entries in source: {dupes}"
+
+    def test_minimum_coverage_count(self) -> None:
+        """最低 310 フィールドが登録されている (295# で 312 想定)."""
+        assert len(self.fields) >= 310, (
+            f"Expected >=310 hot-reloadable fields, got {len(self.fields)}"
+        )
