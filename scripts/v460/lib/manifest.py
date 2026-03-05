@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from functools import lru_cache
@@ -37,7 +38,28 @@ def _get_git_sha() -> str:
 
 @lru_cache(maxsize=1)
 def _get_deps_hash() -> str:
-    """SHA-256 of `pip freeze` output for reproducibility."""
+    """Dependency fingerprint hash.
+
+    Fast path uses importlib.metadata to avoid subprocess overhead.
+    Falls back to `pip freeze` for compatibility.
+    """
+    try:
+        from importlib import metadata
+
+        lines: list[str] = []
+        for dist in metadata.distributions():
+            name = dist.metadata.get("Name") or dist.metadata.get("name")
+            if not name:
+                continue
+            version = dist.version or "unknown"
+            lines.append(f"{name}=={version}")
+        if lines:
+            lines.sort()
+            return hashlib.sha256("\n".join(lines).encode()).hexdigest()[:16]
+    except Exception:
+        # metadata API unavailable/broken -> fallback below
+        pass
+
     try:
         result = subprocess.run(
             [sys.executable, "-m", "pip", "freeze"],
@@ -50,7 +72,25 @@ def _get_deps_hash() -> str:
 
 @lru_cache(maxsize=1)
 def _get_cuda_version() -> str | None:
-    """CUDA version or None."""
+    """Best-effort CUDA version or None.
+
+    By default this avoids importing torch (very expensive) unless:
+      - torch is already imported in this process, or
+      - ZTB_MANIFEST_DETECT_CUDA=1 is set.
+    """
+    detect_cuda = os.getenv("ZTB_MANIFEST_DETECT_CUDA", "").lower() in {"1", "true", "yes", "on"}
+
+    if not detect_cuda:
+        torch_mod = sys.modules.get("torch")
+        if torch_mod is None:
+            return None
+        try:
+            if torch_mod.cuda.is_available():  # type: ignore[attr-defined]
+                return cast(str | None, torch_mod.version.cuda)  # type: ignore[attr-defined]
+        except Exception:
+            return None
+        return None
+
     try:
         import torch
         if torch.cuda.is_available():
@@ -172,8 +212,6 @@ class ManifestWriter:
         self._append(entry)
 
     def _append(self, entry: ManifestEntry) -> None:
-        import os
-
         with open(self.path, "a", encoding="utf-8") as f:
             f.write(entry.to_json() + "\n")
             f.flush()

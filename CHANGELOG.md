@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 289# perf: 本体コード最適化 (retrain/manifest) + DRY化 (2026-03-06)
+
+### Changed
+- **`retrain_scheduler.py` 本体最適化**:
+  - `retrain_model()` に **raw record 下限の早期スキップ**を追加し、`enrich_fill_records()` 前に不要処理を回避
+  - Bootstrap/Stability のしきい値判定を `_resolve_phase_thresholds()` に集約（DRY）
+  - heavy dependency (`lightgbm`, `sklearn`) の import を **training path 到達時に遅延**
+- **`manifest.py` 本体最適化**:
+  - 依存ハッシュ計算を `importlib.metadata` 優先に変更（`pip freeze` subprocess はフォールバック）
+  - CUDA 検出を軽量化し、`torch` 未ロード時は重い import を回避
+    (`ZTB_MANIFEST_DETECT_CUDA=1` で従来同等の積極検出を有効化)
+  - `_append()` のローカル `import os` を削除してモジュール先頭に統一
+
+### Performance
+- `TestManifest::test_write_and_read`: **2.48s -> 0.37s**
+- `TestRetrainModel::test_skip_when_insufficient_samples`: **~1.9s -> 0.01s**
+- `tests/unit/v460` (`--no-cov`): **52.04s (3919 passed)**
+
+---
+
 ## 288# test: v460 追加高速化 + import 重複排除 (2026-03-06)
 
 ### Changed

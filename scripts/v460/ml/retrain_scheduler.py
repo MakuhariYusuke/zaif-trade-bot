@@ -72,6 +72,27 @@ FoldPnlSamples = tuple[list[float], list[float]]
 _shutdown_event = threading.Event()
 
 
+def _resolve_phase_thresholds(cfg: ConfigMap, sample_count: int) -> tuple[str, int, int]:
+    """130# Bootstrap 2段しきい値を一箇所で解決する.
+
+    Returns:
+        (phase, min_total, min_new)
+    """
+    bootstrap_threshold = safe_to_int(cfg.get("bootstrap_threshold", 100), 100)
+    is_bootstrap = sample_count < bootstrap_threshold
+    if is_bootstrap:
+        return (
+            "bootstrap",
+            safe_to_int(cfg.get("bootstrap_min_total_samples", 30), 30),
+            safe_to_int(cfg.get("bootstrap_min_new_samples", 10), 10),
+        )
+    return (
+        "stable",
+        safe_to_int(cfg.get("min_total_samples", 100), 100),
+        safe_to_int(cfg.get("min_new_samples", 30), 30),
+    )
+
+
 def _install_signal_handlers() -> None:
     """SIGTERM/SIGINT で graceful 停止するためのハンドラを設定."""
     def _handler(signum: int, _frame: object) -> None:
@@ -1055,15 +1076,6 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
         再学習結果のサマリー dict。
         "status" が "deployed" ならモデルが差し替えられた。
     """
-    from sklearn.impute import SimpleImputer
-    from sklearn.pipeline import Pipeline
-    from sklearn.preprocessing import StandardScaler
-
-    try:
-        import lightgbm as lgb
-    except ImportError:
-        return {"status": "error", "reason": "lightgbm not installed"}
-
     model_path = Path(str(cfg.get("model_path", "")))
     results_dir = Path(str(cfg.get("results_dir", "results/v460/fill_test")))
     target = str(cfg.get("target", "pnl120"))
@@ -1135,6 +1147,20 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
                 "side_filter": side_filter,
             }
         result["side_filter"] = side_filter
+
+    # raw records 数だけで不可能なケースは enrichment 前に早期スキップ
+    # X_valid <= len(records) なので、この下限を下回る場合は以降の重い処理は不要。
+    _bootstrap_min_total = safe_to_int(cfg.get("bootstrap_min_total_samples", 30), 30)
+    _stable_min_total = safe_to_int(cfg.get("min_total_samples", 100), 100)
+    _min_total_lower_bound = min(_bootstrap_min_total, _stable_min_total)
+    if len(records) < _min_total_lower_bound:
+        phase, min_total, _ = _resolve_phase_thresholds(cfg, len(records))
+        return {
+            **result,
+            "phase": phase,
+            "status": "skipped",
+            "reason": f"insufficient raw samples: {len(records)} < {min_total} ({phase})",
+        }
 
     enriched = None
     # E4: enriched data cache — I/O コスト削減
@@ -1247,18 +1273,13 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
         result["regime_weighting"] = {"regime_weighting": "disabled"}
 
     # Step 2: 最小サンプルチェック (130# Bootstrap 2段化)
-    bootstrap_threshold = safe_to_int(cfg.get("bootstrap_threshold", 100), 100)
-    is_bootstrap = len(X_valid) < bootstrap_threshold
-    if is_bootstrap:
-        min_total = safe_to_int(cfg.get("bootstrap_min_total_samples", 30), 30)
-        result["phase"] = "bootstrap"
+    phase, min_total, min_new = _resolve_phase_thresholds(cfg, len(X_valid))
+    result["phase"] = phase
+    if phase == "bootstrap":
         logger.info(
-            f"130# Bootstrap phase: {len(X_valid)} < {bootstrap_threshold}, "
-            f"using min_total={min_total}"
+            f"130# Bootstrap phase: {len(X_valid)} < "
+            f"{safe_to_int(cfg.get('bootstrap_threshold', 100), 100)}, using min_total={min_total}"
         )
-    else:
-        min_total = safe_to_int(cfg.get("min_total_samples", 100), 100)
-        result["phase"] = "stable"
     if len(X_valid) < min_total:
         return {
             **result,
@@ -1303,10 +1324,6 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
             result["prev_model_load_error"] = str(e)
 
     # Step 3: 新規サンプルチェック (130# Bootstrap 2段化)
-    if is_bootstrap:
-        min_new = safe_to_int(cfg.get("bootstrap_min_new_samples", 10), 10)
-    else:
-        min_new = safe_to_int(cfg.get("min_new_samples", 30), 30)
     # 140# §8.1-#3: run_id 直接比較で run 切替を検出 (139# のヒューリスティックを補強)
     # latest_run_only=true で現 run の run_id と前モデルの source_run_id を比較。
     # 不一致 or prev_source_run_id が空 (旧モデル) かつ raw < 0 なら run 切替。
@@ -1343,6 +1360,12 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
             "status": "skipped",
             "reason": f"insufficient new samples: {new_samples} < {min_new} ({result['phase']})",
         }
+
+    # training path に入る時点で依存を確認 (skip path では import しない)
+    try:
+        import lightgbm as lgb
+    except ImportError:
+        return {"status": "error", "reason": "lightgbm not installed"}
 
     logger.info(
         f"Retraining: {len(X_valid)} samples ({new_samples} new), "
@@ -1551,6 +1574,10 @@ def retrain_model(cfg: ConfigMap) -> ConfigMap:
             logger.warning(f"C3: Redundancy pruning failed: {e}")
 
     # 前処理 (Pipeline 内の fit を手動実行 — E1/E2 のため)
+    from sklearn.impute import SimpleImputer
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import StandardScaler
+
     imputer = SimpleImputer(strategy="median")
     scaler = StandardScaler()
     X_imp = pd.DataFrame(
