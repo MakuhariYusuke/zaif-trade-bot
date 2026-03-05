@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import math
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -15,6 +16,16 @@ from typing import Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
+from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.macro_regime import (
+    MacroRegimeConfig,
+    MacroRegimeDetector,
+    MacroRegimeResult,
+    MacroTrend,
+    compose_regimes,
+)
+from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
 # ======================================================================
 # 1. regime_policy → cycle_strategy 分割の後方互換テスト
@@ -168,8 +179,6 @@ class TestEvWeightedDecision:
         ev_w120: float = 0.6,
     ) -> object:
         """最小限の SkipGateEvaluator モックを構築."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-
         config = MagicMock()
         config.skip_gate_enabled = False  # __init__ でモデルロードしない
         config.skip_gate_ev_weighted_enabled = ev_enabled
@@ -291,8 +300,6 @@ class TestEvWeightedDecision:
 
     def test_config_yaml_parsing(self) -> None:
         """FillTestConfig YAML パースで ev_weighted 設定が反映されること."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         yaml_cfg = {
             "skip_gate": {
                 "ev_weighted_enabled": True,
@@ -320,20 +327,12 @@ class TestMacroRegimeDetector:
 
     def test_insufficient_data(self) -> None:
         """データ不足時は INSUFFICIENT."""
-        from scripts.v460.lib.macro_regime import MacroRegimeDetector, MacroTrend
-
         det = MacroRegimeDetector()
         result = det.update(time.time(), 10_000_000)
         assert result.trend == MacroTrend.INSUFFICIENT
 
     def test_neutral_flat_prices(self) -> None:
         """横ばい価格 → NEUTRAL."""
-        from scripts.v460.lib.macro_regime import (
-            MacroRegimeConfig,
-            MacroRegimeDetector,
-            MacroTrend,
-        )
-
         cfg = MacroRegimeConfig(bucket_sec=1.0, slope_window_5m=5)
         det = MacroRegimeDetector(cfg)
         t0 = time.time()
@@ -346,12 +345,6 @@ class TestMacroRegimeDetector:
 
     def test_uptrend_detection(self) -> None:
         """上昇トレンド → WEAK_UP or STRONG_UP."""
-        from scripts.v460.lib.macro_regime import (
-            MacroRegimeConfig,
-            MacroRegimeDetector,
-            MacroTrend,
-        )
-
         cfg = MacroRegimeConfig(
             bucket_sec=1.0,
             slope_window_5m=5,
@@ -371,12 +364,6 @@ class TestMacroRegimeDetector:
 
     def test_downtrend_detection(self) -> None:
         """下降トレンド → WEAK_DOWN or STRONG_DOWN."""
-        from scripts.v460.lib.macro_regime import (
-            MacroRegimeConfig,
-            MacroRegimeDetector,
-            MacroTrend,
-        )
-
         cfg = MacroRegimeConfig(
             bucket_sec=1.0,
             slope_window_5m=5,
@@ -395,8 +382,6 @@ class TestMacroRegimeDetector:
 
     def test_to_dict(self) -> None:
         """MacroRegimeResult.to_dict() が正しく辞書化されること."""
-        from scripts.v460.lib.macro_regime import MacroRegimeResult, MacroTrend
-
         result = MacroRegimeResult(
             trend=MacroTrend.STRONG_UP,
             slope_5m_bps_per_min=2.5,
@@ -411,12 +396,6 @@ class TestMacroRegimeDetector:
 
     def test_compose_aligned(self) -> None:
         """micro/macro 一致 → aligned=True."""
-        from scripts.v460.lib.macro_regime import (
-            MacroRegimeResult,
-            MacroTrend,
-            compose_regimes,
-        )
-
         macro = MacroRegimeResult(
             trend=MacroTrend.STRONG_UP,
             confidence=0.8,
@@ -428,12 +407,6 @@ class TestMacroRegimeDetector:
 
     def test_compose_conflict(self) -> None:
         """micro=trending_up, macro=strong_down → aligned=False."""
-        from scripts.v460.lib.macro_regime import (
-            MacroRegimeResult,
-            MacroTrend,
-            compose_regimes,
-        )
-
         macro = MacroRegimeResult(
             trend=MacroTrend.STRONG_DOWN,
             confidence=0.8,
@@ -444,12 +417,6 @@ class TestMacroRegimeDetector:
 
     def test_compose_insufficient_macro(self) -> None:
         """macro INSUFFICIENT → always aligned."""
-        from scripts.v460.lib.macro_regime import (
-            MacroRegimeResult,
-            MacroTrend,
-            compose_regimes,
-        )
-
         macro = MacroRegimeResult(
             trend=MacroTrend.INSUFFICIENT,
             buckets_available=3,
@@ -459,11 +426,6 @@ class TestMacroRegimeDetector:
 
     def test_bucket_overflow(self) -> None:
         """バケット数が max_buckets を超えないこと."""
-        from scripts.v460.lib.macro_regime import (
-            MacroRegimeConfig,
-            MacroRegimeDetector,
-        )
-
         cfg = MacroRegimeConfig(bucket_sec=1.0, max_buckets=10, slope_window_5m=3)
         det = MacroRegimeDetector(cfg)
         t0 = time.time()
@@ -473,9 +435,6 @@ class TestMacroRegimeDetector:
 
     def test_invalid_price_ignored(self) -> None:
         """NaN / 0 / 負の価格は INSUFFICIENT."""
-        import math
-        from scripts.v460.lib.macro_regime import MacroRegimeDetector, MacroTrend
-
         det = MacroRegimeDetector()
         r = det.update(time.time(), float("nan"))
         assert r.trend == MacroTrend.INSUFFICIENT
@@ -495,8 +454,6 @@ class TestHotReloadConfig:
 
     def test_ev_weighted_in_hot_reload_keys(self) -> None:
         """ev_weighted 関連キーが _HOT_RELOADABLE_FIELDS に含まれること."""
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
-
         assert "skip_gate_ev_weighted_enabled" in _HOT_RELOADABLE_FIELDS
         assert "skip_gate_ev_w30" in _HOT_RELOADABLE_FIELDS
         assert "skip_gate_ev_w120" in _HOT_RELOADABLE_FIELDS

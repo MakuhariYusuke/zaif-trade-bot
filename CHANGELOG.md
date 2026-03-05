@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 300# perf+dry+core: manifest/deps軽量化 + ML loader部分読込 + v460 import集約 (2026-03-06)
+
+### Changed
+- **本体コード最適化（挙動互換）**
+  - `scripts/v460/lib/manifest.py`
+    - `_get_deps_hash()` にテスト実行時 fast-path を追加
+      - `PYTEST_CURRENT_TEST` 存在時は依存列挙をスキップ（`test_env`）
+      - `ZTB_MANIFEST_SKIP_DEPS_HASH=1` でも明示スキップ可能
+      - `ZTB_MANIFEST_FORCE_DEPS_HASH=1` で従来動作を強制
+  - `scripts/v460/ml/data_loader.py`
+    - `load_fill_records()` に `max_files` オプションを追加（最新 N ファイルだけ読み込み）
+    - キャッシュキーに `max_files` を追加し、条件別に安全再利用
+    - `max_files <= 0` は `ValueError` で明示失敗
+- **DRY 改善（method 内 import 集約）**
+  - `tests/unit/v460/test_fill_quality.py`
+  - `tests/unit/v460/test_gate_judgment.py`
+  - `tests/unit/v460/test_261_protocol_type_safety.py`
+  - `tests/unit/v460/test_275_dry_separation_and_theory.py`
+  - `tests/unit/v460/test_190_ev_weighted_safety.py`
+  - `tests/unit/v460/test_188_split_evc_macro.py`（互換性検証に必要な局所 import のみ維持）
+- **統合テスト軽量化**
+  - `tests/unit/v460/test_enricher_skip_gate.py`
+    - 実データ fixture を最新ファイル優先読み込みに変更
+    - 実サンプル上限を `800 -> 500`
+  - `tests/unit/v460/test_ml_pipeline.py`
+    - 実データ統合テストで `load_fill_records(max_files=8)` を使用
+    - サブセット上限を `1000 -> 800`
+    - `max_files` の挙動/異常値テストを追加
+
+### Verification
+- 変更対象回帰:
+  - `391 passed in 8.77s`
+  - `166 passed in 6.48s`
+  - `466 passed in 10.32s`
+- v460 全体:
+  - `3958 passed, 20 warnings in 39.00s`（`--no-cov --tb=short`）
+  - `3958 passed, 20 warnings in 39.71s`（`--no-cov --durations=20`）
+
+### Performance Notes
+- slowest call は `test_ml_pipeline::Test057Integration::test_load_real_data` で `0.52s` まで低下。
+- `--durations=20` の上位も 1s 未満へ収束。
+
 ## 299# perf+dry+core: trades_health走査最適化 + v460 import集約追加 (2026-03-06)
 
 ### Changed

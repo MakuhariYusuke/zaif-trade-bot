@@ -319,3 +319,44 @@
 1. `test_fill_quality.py`（import 検証系を除く）を段階集約
 2. `test_188_split_evc_macro.py` / `test_190_ev_weighted_safety.py` の先頭 import 化
 3. 速度面は `test_enricher_skip_gate` setup と `test_retrain_hot_reload` の高負荷ケースを優先
+
+---
+
+## 2026-03-06 / Session 037-009
+
+### 実施
+- 本体コード最適化（挙動互換）
+  - `scripts/v460/lib/manifest.py`
+    - `_get_deps_hash()` にテスト fast-path を追加し、pytest 実行時の依存列挙コストを回避
+  - `scripts/v460/ml/data_loader.py`
+    - `load_fill_records()` に `max_files` を追加（最新 N ファイルだけ読み込み）
+    - キャッシュキーに `max_files` を追加
+    - `max_files <= 0` は `ValueError` で明示
+- DRY 改善（method 内 import 集約）
+  - `test_fill_quality.py`
+  - `test_gate_judgment.py`
+  - `test_261_protocol_type_safety.py`
+  - `test_275_dry_separation_and_theory.py`
+  - `test_190_ev_weighted_safety.py`
+  - `test_188_split_evc_macro.py`（互換検証用の局所 import は維持）
+- 統合テスト軽量化
+  - `test_enricher_skip_gate.py`: 最新ファイル優先ロード + サンプル上限 `500`
+  - `test_ml_pipeline.py`: `load_fill_records(max_files=8)` + サブセット上限 `800`
+  - `test_ml_pipeline.py`: `max_files` の挙動テストを追加
+
+### 結果
+- 変更対象テスト:
+  - `391 passed in 8.77s`
+  - `166 passed in 6.48s`
+  - `466 passed in 10.32s`
+- v460 全体:
+  - `3958 passed, 20 warnings in 39.00s`（`--no-cov --tb=short`）
+  - `3958 passed, 20 warnings in 39.71s`（`--no-cov --durations=20`）
+- `--durations=20` 上位:
+  - `test_ml_pipeline::Test057Integration::test_load_real_data` call `0.52s`
+  - 以降も 1s 未満
+
+### 次アクション
+1. `test_146_multi_exchange.py` / `test_v460_core.py` の import 検証系以外を段階集約
+2. `test_retrain_hot_reload.py` の重い統合ケースに `max_files`/subset 方針を横展開
+3. `scripts/v460/lib/manifest.py` の fast-path に対する明示ユニットテストを追加

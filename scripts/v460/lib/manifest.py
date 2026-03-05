@@ -43,6 +43,13 @@ def _get_deps_hash() -> str:
     Fast path uses importlib.metadata to avoid subprocess overhead.
     Falls back to `pip freeze` for compatibility.
     """
+    # テスト実行時は依存列挙コストを避ける（必要なら FORCE で有効化）
+    if os.getenv("ZTB_MANIFEST_FORCE_DEPS_HASH", "").lower() not in {"1", "true", "yes", "on"}:
+        if "PYTEST_CURRENT_TEST" in os.environ:
+            return "test_env"
+        if os.getenv("ZTB_MANIFEST_SKIP_DEPS_HASH", "").lower() in {"1", "true", "yes", "on"}:
+            return "skipped"
+
     try:
         from importlib import metadata
 

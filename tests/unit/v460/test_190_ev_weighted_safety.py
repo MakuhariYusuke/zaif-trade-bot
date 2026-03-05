@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import copy
+import inspect
 import math
 import time
 from pathlib import Path
@@ -18,6 +19,11 @@ from typing import Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
+import yaml
+from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
+from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
 
 # ======================================================================
@@ -36,9 +42,6 @@ class TestEvWeightedConsecutiveSkipSafety:
         one_sided_shift: float = -1.0,
     ) -> "SkipGateEvaluator":
         """テスト用の SkipGateEvaluator (最小構成) を生成."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-
         config = FillTestConfig(
             skip_gate_enabled=False,  # モデルロード不要
             skip_gate_ev_weighted_enabled=ev_enabled,
@@ -196,9 +199,6 @@ class TestOneSidedBalanceThresholdRelaxation:
         shift: float = -1.0,
         max_consecutive: int = 0,
     ) -> "SkipGateEvaluator":
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-
         config = FillTestConfig(
             skip_gate_enabled=False,
             skip_gate_ev_weighted_enabled=True,
@@ -304,21 +304,15 @@ class TestFillConfigNewFields:
     """190# FillTestConfig の新規フィールド確認."""
 
     def test_default_max_consecutive_skip(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig()
         assert cfg.skip_gate_ev_max_consecutive_skip == 0
 
     def test_default_one_sided_threshold_shift(self) -> None:
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         cfg = FillTestConfig()
         assert cfg.skip_gate_ev_one_sided_threshold_shift == 0.0
 
     def test_yaml_parse_new_fields(self) -> None:
         """YAML パーサーが新フィールドを読み込めること."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         yaml_dict = {
             "skip_gate": {
                 "ev_max_consecutive_skip": 5,
@@ -339,19 +333,13 @@ class TestHotReload190Keys:
     """190# 新規フィールドの hot-reload 設定テスト."""
 
     def test_ev_max_consecutive_skip_hot_reloadable(self) -> None:
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
-
         assert "skip_gate_ev_max_consecutive_skip" in _HOT_RELOADABLE_FIELDS
 
     def test_ev_one_sided_threshold_shift_hot_reloadable(self) -> None:
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
-
         assert "skip_gate_ev_one_sided_threshold_shift" in _HOT_RELOADABLE_FIELDS
 
     def test_pnl_threshold_hot_reloadable(self) -> None:
         """190#: pnl_threshold も hot-reload 可能であること."""
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
-
         assert "skip_gate_pnl_threshold" in _HOT_RELOADABLE_FIELDS
 
 
@@ -365,8 +353,6 @@ class TestYAMLIntegrity190:
 
     @pytest.fixture()
     def yaml_config(self) -> dict:
-        import yaml
-
         yaml_path = Path("configs/v460/fill_test.yaml")
         if not yaml_path.exists():
             pytest.skip("fill_test.yaml not found")
@@ -409,9 +395,6 @@ class TestOneSidedBalanceParam:
 
     def test_run_single_cycle_accepts_one_sided_balance(self) -> None:
         """run_single_cycle が one_sided_balance キーワード引数を受け付けること."""
-        import inspect
-        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
-
         sig = inspect.signature(FillCycleExecutorMixin.run_single_cycle)
         params = sig.parameters
         assert "one_sided_balance" in params
@@ -419,9 +402,6 @@ class TestOneSidedBalanceParam:
 
     def test_evaluate_skip_gate_accepts_one_sided_balance(self) -> None:
         """_evaluate_skip_gate が one_sided_balance キーワード引数を受け付けること."""
-        import inspect
-        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
-
         sig = inspect.signature(FillCycleExecutorMixin._evaluate_skip_gate)
         params = sig.parameters
         assert "one_sided_balance" in params
@@ -429,9 +409,6 @@ class TestOneSidedBalanceParam:
 
     def test_evaluator_evaluate_accepts_one_sided_balance(self) -> None:
         """SkipGateEvaluator.evaluate が one_sided_balance を受け付けること."""
-        import inspect
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-
         sig = inspect.signature(SkipGateEvaluator.evaluate)
         params = sig.parameters
         assert "one_sided_balance" in params
@@ -447,9 +424,6 @@ class TestEvWeightedReasonStrings:
     """190# ev_weighted のスキップ理由文字列が正しく設定されること."""
 
     def _make_evaluator(self, max_consec: int = 5) -> "SkipGateEvaluator":
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-
         config = FillTestConfig(
             skip_gate_enabled=False,
             skip_gate_ev_weighted_enabled=True,
@@ -532,9 +506,6 @@ class TestEvWeightedDeadlockScenario:
 
     def test_deadlock_scenario_resolves(self) -> None:
         """BTC=0→buy のみ→ev_weighted 5連続 skip→安全弁で取引再開."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-
         evaluator = SkipGateEvaluator(
             FillTestConfig(
                 skip_gate_enabled=False,
@@ -591,9 +562,6 @@ class TestEvWeightedDeadlockScenario:
 
     def test_marginal_score_passes_with_one_sided(self) -> None:
         """marginally negative score が one_sided 緩和で PASS になること."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-
         evaluator = SkipGateEvaluator(
             FillTestConfig(
                 skip_gate_enabled=False,

@@ -7,7 +7,19 @@
 
 from __future__ import annotations
 
+import importlib
+import inspect
+
 import pytest
+import scripts.v460.lib.adaptation_engine as adaptation_engine_mod
+import scripts.v460.lib.macro_regime as macro_regime_mod
+import scripts.v460.lib.micro_circuit_breaker as micro_circuit_breaker_mod
+import scripts.v460.lib.param_adapter as param_adapter_mod
+import scripts.v460.lib.regime_detector as regime_detector_mod
+import scripts.v460.lib.side_selector as side_selector_mod
+import scripts.v460.lib.spread_anomaly_detector as spread_anomaly_detector_mod
+import scripts.v460.lib.velocity_math as velocity_math_mod
+from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -20,12 +32,10 @@ class TestSideParameterization:
 
     def test_is_side_killed_method_exists(self) -> None:
         """_is_side_killed メソッドが存在すること."""
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         assert hasattr(FillLoopOrchestratorMixin, "_is_side_killed")
 
     def test_old_methods_removed(self) -> None:
         """旧 _is_sell_killed / _is_buy_killed が除去されていること."""
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         assert not hasattr(FillLoopOrchestratorMixin, "_is_sell_killed"), \
             "_is_sell_killed should be replaced by _is_side_killed"
         assert not hasattr(FillLoopOrchestratorMixin, "_is_buy_killed"), \
@@ -33,12 +43,10 @@ class TestSideParameterization:
 
     def test_track_side_pnl_method_exists(self) -> None:
         """_track_side_pnl メソッドが存在すること."""
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         assert hasattr(FillLoopOrchestratorMixin, "_track_side_pnl")
 
     def test_old_track_methods_removed(self) -> None:
         """旧 _track_sell_pnl / _track_buy_pnl が除去されていること."""
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         assert not hasattr(FillLoopOrchestratorMixin, "_track_sell_pnl"), \
             "_track_sell_pnl should be replaced by _track_side_pnl"
         assert not hasattr(FillLoopOrchestratorMixin, "_track_buy_pnl"), \
@@ -46,13 +54,11 @@ class TestSideParameterization:
 
     def test_is_side_killed_docstring_has_theory(self) -> None:
         """_is_side_killed docstring に Glosten-Milgrom 参照がある."""
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         doc = FillLoopOrchestratorMixin._is_side_killed.__doc__ or ""
         assert "Glosten-Milgrom" in doc or "Glosten" in doc
 
     def test_track_side_pnl_docstring_has_theory(self) -> None:
         """_track_side_pnl docstring に Ho & Stoll 参照がある."""
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         doc = FillLoopOrchestratorMixin._track_side_pnl.__doc__ or ""
         assert "Ho" in doc or "Stoll" in doc
 
@@ -67,8 +73,6 @@ class TestToxicVetoDRY:
 
     def test_no_inline_veto_decrement_in_source(self) -> None:
         """orchestrator のサイクル末尾に inline veto デクリメントが残っていないこと."""
-        import inspect
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         source = inspect.getsource(FillLoopOrchestratorMixin)
         # 旧コード: "self._toxic_veto[_veto_side] -= 1" がサイクル末尾に
         # 残っていないことを確認 (_tick_toxic_veto 内は許容)
@@ -94,8 +98,6 @@ class TestToxicVetoDRY:
 
     def test_tick_toxic_veto_called_in_cycle_end(self) -> None:
         """サイクル末尾で _tick_toxic_veto("cycle_end") が呼ばれていること."""
-        import inspect
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         source = inspect.getsource(FillLoopOrchestratorMixin)
         assert '_tick_toxic_veto("cycle_end")' in source
 
@@ -110,57 +112,49 @@ class TestMarketTheoryDocstrings275:
 
     def test_regime_detector_theory(self) -> None:
         """regime_detector に Hamilton (1989) + AMH (Lo 2004) 参照がある."""
-        import scripts.v460.lib.regime_detector as mod
-        doc = mod.__doc__ or ""
+        doc = regime_detector_mod.__doc__ or ""
         assert "Hamilton" in doc
         assert "Adaptive Market" in doc or "Lo (2004)" in doc or "AMH" in doc
 
     def test_side_selector_theory(self) -> None:
         """side_selector に Garman / Ho & Stoll 在庫管理理論がある."""
-        import scripts.v460.lib.side_selector as mod
-        doc = mod.__doc__ or ""
+        doc = side_selector_mod.__doc__ or ""
         assert "Garman" in doc or "Ho & Stoll" in doc
         assert "Inventory" in doc or "在庫" in doc
 
     def test_param_adapter_theory(self) -> None:
         """param_adapter に Avellaneda-Stoikov + Glosten-Milgrom がある."""
-        import scripts.v460.lib.param_adapter as mod
-        doc = mod.__doc__ or ""
+        doc = param_adapter_mod.__doc__ or ""
         assert "Avellaneda" in doc
         assert "Glosten" in doc
 
     def test_micro_circuit_breaker_theory(self) -> None:
         """micro_circuit_breaker に Circuit Breaker + Liquidity Spiral がある."""
-        import scripts.v460.lib.micro_circuit_breaker as mod
-        doc = mod.__doc__ or ""
+        doc = micro_circuit_breaker_mod.__doc__ or ""
         assert "Circuit Breaker" in doc
         assert "Brunnermeier" in doc or "Liquidity Spiral" in doc
 
     def test_spread_anomaly_detector_theory(self) -> None:
         """spread_anomaly_detector に Roll + Copeland & Galai がある."""
-        import scripts.v460.lib.spread_anomaly_detector as mod
-        doc = mod.__doc__ or ""
+        doc = spread_anomaly_detector_mod.__doc__ or ""
         assert "Roll" in doc
         assert "Copeland" in doc or "Information-Based" in doc
 
     def test_velocity_math_theory(self) -> None:
         """velocity_math に Kyle λ + Hasbrouck がある."""
-        import scripts.v460.lib.velocity_math as mod
-        doc = mod.__doc__ or ""
+        doc = velocity_math_mod.__doc__ or ""
         assert "Kyle" in doc
         assert "Hasbrouck" in doc
 
     def test_macro_regime_theory(self) -> None:
         """macro_regime に Hamilton + Regime-Switching がある."""
-        import scripts.v460.lib.macro_regime as mod
-        doc = mod.__doc__ or ""
+        doc = macro_regime_mod.__doc__ or ""
         assert "Hamilton" in doc
         assert "Regime-Switching" in doc or "Regime" in doc
 
     def test_adaptation_engine_theory(self) -> None:
         """adaptation_engine に AMH + Kelly がある."""
-        import scripts.v460.lib.adaptation_engine as mod
-        doc = mod.__doc__ or ""
+        doc = adaptation_engine_mod.__doc__ or ""
         assert "Adaptive Market" in doc or "AMH" in doc or "Lo (2004)" in doc
         assert "Kelly" in doc
 
@@ -175,15 +169,12 @@ class TestOppositeSideReuse:
 
     def test_opposite_side_exists_as_static(self) -> None:
         """_opposite_side が staticmethod として存在."""
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         assert hasattr(FillLoopOrchestratorMixin, "_opposite_side")
         assert FillLoopOrchestratorMixin._opposite_side("buy") == "sell"
         assert FillLoopOrchestratorMixin._opposite_side("sell") == "buy"
 
     def test_opposite_side_used_in_source(self) -> None:
         """_opposite_side が複数箇所で呼ばれていること (DRY 活用確認)."""
-        import inspect
-        from scripts.v460.lib.fill_loop_orchestrator import FillLoopOrchestratorMixin
         source = inspect.getsource(FillLoopOrchestratorMixin)
         # _opposite_side の呼び出し回数をカウント (定義行を除く)
         call_count = source.count("self._opposite_side(") + source.count(
@@ -219,7 +210,6 @@ class TestMarketTheoryCoverage:
         self, module_path: str, expected_theory: str,
     ) -> None:
         """各モジュールに期待される理論参照が存在する."""
-        import importlib
         mod = importlib.import_module(module_path)
         doc = mod.__doc__ or ""
         assert expected_theory in doc, (

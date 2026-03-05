@@ -287,10 +287,10 @@ class Test057Integration:
         """実データのロードと AS 特徴量構築."""
         if not real_data_available:
             pytest.skip("No real fill records")
-        df = load_fill_records()
-        if len(df) > 1000:
+        df = load_fill_records(max_files=8)
+        if len(df) > 800:
             # 統合テストはロード経路の健全性確認が主目的のため、特徴量構築はサブセットで十分。
-            df = df.tail(1000).copy()
+            df = df.tail(800).copy()
         assert len(df) >= 100
         X, y = build_as_features(df)
         assert len(X) >= 50
@@ -332,3 +332,40 @@ class Test057DataLoaderCache:
         p.write_text("\n".join([json.dumps(first), json.dumps(second)]) + "\n", encoding="utf-8")
         df3 = load_fill_records(tmp_path)
         assert len(df3) == 2
+
+    def test_max_files_loads_latest_only(self, tmp_path: Path) -> None:
+        older = {
+            "cycle_id": "old_1",
+            "timestamp": 1700000000.0,
+            "side": "buy",
+            "order_price": 15000000.0,
+            "order_quantity": 0.001,
+            "filled": True,
+            "adverse_selected_raw": False,
+            "queue_wait_sec": 11.0,
+        }
+        newer = {
+            "cycle_id": "new_1",
+            "timestamp": 1700001000.0,
+            "side": "sell",
+            "order_price": 15000100.0,
+            "order_quantity": 0.001,
+            "filled": True,
+            "adverse_selected_raw": True,
+            "queue_wait_sec": 9.0,
+        }
+        (tmp_path / "fill_records_20260101.jsonl").write_text(
+            json.dumps(older) + "\n",
+            encoding="utf-8",
+        )
+        (tmp_path / "fill_records_20260102.jsonl").write_text(
+            json.dumps(newer) + "\n",
+            encoding="utf-8",
+        )
+
+        df = load_fill_records(tmp_path, max_files=1)
+        assert df["cycle_id"].tolist() == ["new_1"]
+
+    def test_max_files_invalid_raises(self, tmp_path: Path) -> None:
+        with pytest.raises(ValueError, match="max_files must be >= 1"):
+            load_fill_records(tmp_path, max_files=0)

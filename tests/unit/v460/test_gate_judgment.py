@@ -12,7 +12,9 @@ import tempfile
 from dataclasses import replace
 from pathlib import Path
 
+import numpy as np
 import pytest
+from scripts.v460.gate_judgment import _load_all_records, _side_metrics, run_gate_judgment
 
 from ztb.metrics.fill_quality import FillRecord, save_fill_records
 
@@ -127,8 +129,6 @@ class TestRunGateJudgment:
 
     def test_basic_result_structure(self) -> None:
         """基本的な result dict の構造を検証."""
-        from scripts.v460.gate_judgment import run_gate_judgment
-
         records = _make_records_mixed(n_filled=50, n_cancelled=10, days=3)
         result = run_gate_judgment(records, _default_gate_cfg())
 
@@ -139,8 +139,6 @@ class TestRunGateJudgment:
 
     def test_data_summary_counts(self) -> None:
         """data_summary のレコード数が正確."""
-        from scripts.v460.gate_judgment import run_gate_judgment
-
         records = _make_records_mixed(n_filled=48, n_cancelled=9, days=3)
         result = run_gate_judgment(records, _default_gate_cfg())
 
@@ -151,8 +149,6 @@ class TestRunGateJudgment:
 
     def test_metrics_keys(self) -> None:
         """metrics に必要な全キーが含まれる."""
-        from scripts.v460.gate_judgment import run_gate_judgment
-
         records = _make_records_mixed(n_filled=50, n_cancelled=10)
         result = run_gate_judgment(records, _default_gate_cfg())
 
@@ -168,8 +164,6 @@ class TestRunGateJudgment:
 
     def test_gate_judgment_has_gate_result(self) -> None:
         """G1.1/G1.2 に gate_result キーがある."""
-        from scripts.v460.gate_judgment import run_gate_judgment
-
         records = _make_records_mixed(n_filled=50, n_cancelled=10)
         result = run_gate_judgment(records, _default_gate_cfg())
 
@@ -180,8 +174,6 @@ class TestRunGateJudgment:
 
     def test_side_breakdown(self) -> None:
         """side_breakdown=True で buy/sell 別メトリクスが含まれる."""
-        from scripts.v460.gate_judgment import run_gate_judgment
-
         records = _make_records_mixed(n_filled=50, n_cancelled=10)
         result = run_gate_judgment(
             records, _default_gate_cfg(), side_breakdown=True,
@@ -195,8 +187,6 @@ class TestRunGateJudgment:
 
     def test_no_side_breakdown_by_default(self) -> None:
         """side_breakdown=False (default) では含まれない."""
-        from scripts.v460.gate_judgment import run_gate_judgment
-
         records = _make_records_mixed(n_filled=50, n_cancelled=10)
         result = run_gate_judgment(records, _default_gate_cfg())
 
@@ -204,8 +194,6 @@ class TestRunGateJudgment:
 
     def test_json_serializable(self) -> None:
         """result は JSON シリアライズ可能."""
-        from scripts.v460.gate_judgment import run_gate_judgment
-
         records = _make_records_mixed(n_filled=50, n_cancelled=10)
         result = run_gate_judgment(
             records, _default_gate_cfg(), side_breakdown=True,
@@ -217,8 +205,6 @@ class TestRunGateJudgment:
 
     def test_elapsed_hours_zero_for_single_record(self) -> None:
         """レコード 1 件の場合 elapsed_hours=0."""
-        from scripts.v460.gate_judgment import run_gate_judgment
-
         records = [_make_record(cycle_id="single")]
         result = run_gate_judgment(records, _default_gate_cfg())
 
@@ -234,8 +220,6 @@ class TestGateJudgmentMonteCarlo:
 
     def test_monte_carlo_disabled_by_default(self) -> None:
         """monte_carlo=False ではキーが含まれない."""
-        from scripts.v460.gate_judgment import run_gate_judgment
-
         records = _make_records_mixed(n_filled=50, n_cancelled=10)
         result = run_gate_judgment(records, _default_gate_cfg())
 
@@ -243,8 +227,6 @@ class TestGateJudgmentMonteCarlo:
 
     def test_monte_carlo_enabled(self) -> None:
         """monte_carlo=True で MC 結果が含まれる."""
-        from scripts.v460.gate_judgment import run_gate_judgment
-
         records = _make_records_mixed(n_filled=50, n_cancelled=10)
         result = run_gate_judgment(
             records, _default_gate_cfg(),
@@ -263,9 +245,6 @@ class TestGateJudgmentMonteCarlo:
 
     def test_monte_carlo_pnl_consistency(self) -> None:
         """MC の PnL mean が observed mean と整合性がある."""
-        import numpy as np
-        from scripts.v460.gate_judgment import run_gate_judgment
-
         np.random.seed(42)  # 123# Gemini review: seed 固定で Flaky 防止
 
         # 正 PnL のデータ
@@ -287,9 +266,6 @@ class TestGateJudgmentMonteCarlo:
 
     def test_monte_carlo_risk_metrics(self) -> None:
         """MC の risk metrics が妥当な範囲."""
-        import numpy as np
-        from scripts.v460.gate_judgment import run_gate_judgment
-
         np.random.seed(77)  # 123# Gemini review: seed 固定で Flaky 防止
 
         records = _make_records_mixed(n_filled=50, n_cancelled=10)
@@ -306,9 +282,6 @@ class TestGateJudgmentMonteCarlo:
 
     def test_monte_carlo_custom_lot(self) -> None:
         """mc_lot パラメータが反映される."""
-        import numpy as np
-        from scripts.v460.gate_judgment import run_gate_judgment
-
         np.random.seed(123)  # 123# Gemini review: seed 固定で Flaky 防止
 
         records = _make_records_mixed(n_filled=50, n_cancelled=10)
@@ -329,8 +302,6 @@ class TestGateJudgmentMonteCarlo:
 
     def test_monte_carlo_json_serializable(self) -> None:
         """MC 結果を含む result が JSON シリアライズ可能."""
-        from scripts.v460.gate_judgment import run_gate_judgment
-
         records = _make_records_mixed(n_filled=50, n_cancelled=10)
         result = run_gate_judgment(
             records, _default_gate_cfg(),
@@ -351,16 +322,12 @@ class TestLoadAllRecords:
 
     def test_empty_directory(self) -> None:
         """空ディレクトリでは空リスト返却."""
-        from scripts.v460.gate_judgment import _load_all_records
-
         with tempfile.TemporaryDirectory() as tmpdir:
             records = _load_all_records(Path(tmpdir))
             assert records == []
 
     def test_load_single_file(self) -> None:
         """JSONL 1 ファイルからの読み込み."""
-        from scripts.v460.gate_judgment import _load_all_records
-
         with tempfile.TemporaryDirectory() as tmpdir:
             recs = _make_records_mixed(n_filled=10, n_cancelled=2, days=1)
             save_fill_records(recs, Path(tmpdir) / "fill_records_20260220.jsonl")
@@ -370,8 +337,6 @@ class TestLoadAllRecords:
 
     def test_load_multiple_files(self) -> None:
         """複数 JSONL ファイルからの読み込み."""
-        from scripts.v460.gate_judgment import _load_all_records
-
         with tempfile.TemporaryDirectory() as tmpdir:
             recs1 = _make_records_mixed(n_filled=5, n_cancelled=1, days=1)
             recs2 = [
@@ -394,8 +359,6 @@ class TestSideMetrics:
 
     def test_buy_metrics(self) -> None:
         """buy 側のメトリクスが算出される."""
-        from scripts.v460.gate_judgment import _side_metrics
-
         records = _make_records_mixed(n_filled=50, n_cancelled=10)
         buy_m = _side_metrics(records, "buy")
 
@@ -405,8 +368,6 @@ class TestSideMetrics:
 
     def test_empty_side(self) -> None:
         """該当 side が 0 件の場合."""
-        from scripts.v460.gate_judgment import _side_metrics
-
         records = [_make_record(side="buy") for _ in range(5)]
         sell_m = _side_metrics(records, "sell")
 

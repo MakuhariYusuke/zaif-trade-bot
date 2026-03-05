@@ -11,13 +11,34 @@ import inspect
 import os
 import tempfile
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
 import pytest
+import scripts.v460.lib.fill_test_cli as cli_mod
 import yaml  # type: ignore[import-untyped]
+from scripts.v460.analysis.vg_and_trend import (
+    _match_vg_to_records,
+    _parse_vg_activations,
+    analyze_8h_trend,
+    analyze_daily_trend,
+    analyze_vg_effectiveness,
+)
+from scripts.v460.lib.adaptation_engine import AdaptationEngine
+from scripts.v460.lib.balance_checker import BalanceChecker, MIN_ORDER_BTC
+from scripts.v460.lib.batch_persistence import BatchPersistence
+from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
+from scripts.v460.lib.maker_price import MakerPriceCalculator
+from scripts.v460.lib.order_monitor import OrderMonitor
+from scripts.v460.lib.pnl_measurer import PnlMeasurer
+from scripts.v460.monitor_fill_test import _check_cumulative_loss, print_report, run_monitor
 from scripts.v460.run_fill_test import FillTestConfig, FillTestRunner
+from scripts.v460.run_gate_check import run_g1_1
+from ztb.data.market_data_collector import MarketDataCollector
+from ztb.trading.live.exchanges.base.broker_interfaces import TradeRecord
+from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
 from ztb.metrics.fill_quality import (
     FillMetrics,
     FillRecord,
@@ -1359,15 +1380,11 @@ class TestGateCheckG11:
     """run_gate_check.py の G1.1 対応テスト."""
 
     def test_g1_1_no_data(self) -> None:
-        from scripts.v460.run_gate_check import run_g1_1
-
         with tempfile.TemporaryDirectory() as tmpdir:
             result = run_g1_1(tmpdir)
             assert result["gate_result"] == "NO_DATA"
 
     def test_g1_1_with_data(self) -> None:
-        from scripts.v460.run_gate_check import run_g1_1
-
         with tempfile.TemporaryDirectory() as tmpdir:
             # 高 fill rate のデータを作成
             records = []
@@ -1404,9 +1421,6 @@ class TestTradeDedupTuple:
     """F8: trade dedup がタプル比較で正しく動作するテスト."""
 
     def test_dedup_skips_older(self) -> None:
-        from ztb.data.market_data_collector import MarketDataCollector
-        from ztb.trading.live.exchanges.base.broker_interfaces import TradeRecord
-
         collector = MarketDataCollector.__new__(MarketDataCollector)
         collector._tr_buffer = []
         collector._last_trade_id = None
@@ -1424,9 +1438,6 @@ class TestTradeDedupTuple:
 
     def test_dedup_numeric_comparison(self) -> None:
         """F8 の本質: 文字列比較だと "10.5" < "9.5" になるバグの修正確認."""
-        from ztb.data.market_data_collector import MarketDataCollector
-        from ztb.trading.live.exchanges.base.broker_interfaces import TradeRecord
-
         collector = MarketDataCollector.__new__(MarketDataCollector)
         collector._tr_buffer = []
         collector._last_trade_id = None
@@ -1451,27 +1462,19 @@ class TestAdapterRealModeP20:
 
     def test_get_current_price_has_no_not_implemented(self) -> None:
         """get_current_price がreal modeで NotImplementedError を投げないことの静的確認."""
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-
         source = inspect.getsource(CoincheckAdapter.get_current_price)
         # 009# P2-0: real mode should NOT raise NotImplementedError
         assert "NotImplementedError" not in source
 
     def test_get_order_status_has_no_not_implemented(self) -> None:
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-
         source = inspect.getsource(CoincheckAdapter.get_order_status)
         assert "NotImplementedError" not in source
 
     def test_get_open_orders_has_no_not_implemented(self) -> None:
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-
         source = inspect.getsource(CoincheckAdapter.get_open_orders)
         assert "NotImplementedError" not in source
 
     def test_get_positions_has_no_not_implemented(self) -> None:
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-
         source = inspect.getsource(CoincheckAdapter.get_positions)
         assert "NotImplementedError" not in source
 
@@ -1485,8 +1488,6 @@ class TestFillTestRunnerSaveResilience:
 
     def _make_persistence(self, tmp_path: Path) -> "BatchPersistence":
         """テスト用の BatchPersistence を作成."""
-        from scripts.v460.lib.batch_persistence import BatchPersistence
-
         results_dir = tmp_path / "results"
         results_dir.mkdir(parents=True, exist_ok=True)
         return BatchPersistence(
@@ -1499,17 +1500,13 @@ class TestFillTestRunnerSaveResilience:
 
     def _make_runner(self, tmp_path: Path) -> "FillTestRunner":
         """テスト用の FillTestRunner を作成 (adapter は mock)."""
-        from unittest.mock import MagicMock as Mock
-
-        adapter = Mock()
+        adapter = MagicMock()
         config = FillTestConfig(results_dir=str(tmp_path / "results"))
         runner = FillTestRunner(adapter, config)
         return runner
 
     def _make_cleanup_runner(self, tmp_path: Path) -> "FillTestRunner":
         """_cleanup_sync 専用の軽量 runner."""
-        from scripts.v460.lib.batch_persistence import BatchPersistence
-
         runner = FillTestRunner.__new__(FillTestRunner)
         runner._ob_recorder = MagicMock()
         runner._ob_recorder.flush.return_value = 0
@@ -2189,8 +2186,6 @@ class TestAPIResponseLogLevel:
 
     def test_api_response_log_is_debug(self) -> None:
         """adapter.py の API Response ログが logger.debug であることを確認."""
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-
         source = inspect.getsource(CoincheckAdapter._make_api_request)
         # logger.info("API Response ...") が存在しないことを確認
         assert 'logger.info(f"API Response status' not in source
@@ -2214,8 +2209,6 @@ class Test049CleanOnlyMainJudgment:
 
     def test_main_uses_filter_clean_records(self) -> None:
         """main() のソースに filter_clean_records が含まれることを確認."""
-        import scripts.v460.lib.fill_test_cli as cli_mod
-
         source = inspect.getsource(cli_mod)
         # filter_clean_records が使われている
         assert "filter_clean_records" in source
@@ -2226,8 +2219,6 @@ class Test049CleanOnlyMainJudgment:
 
     def test_main_exit_code_uses_judgment_type(self) -> None:
         """049# §4-#1: 通常実行の exit code が judgment_type を参照."""
-        import scripts.v460.lib.fill_test_cli as cli_mod
-
         source = inspect.getsource(cli_mod)
         # FINAL/INTERIM 分岐がある
         assert 'jtype == "FINAL"' in source or "judgment_type" in source
@@ -2236,8 +2227,6 @@ class Test049CleanOnlyMainJudgment:
 
     def test_main_has_data_quality_output(self) -> None:
         """049# §6.1-#4: judgment に data_quality セクションが含まれる."""
-        import scripts.v460.lib.fill_test_cli as cli_mod
-
         source = inspect.getsource(cli_mod)
         assert '"data_quality"' in source
         assert '"clean_records"' in source
@@ -2294,8 +2283,6 @@ class Test049E3Sampling:
 
     def test_e3_sampling_ratio_zero_skips_all(self) -> None:
         """e3_sampling_ratio=0.0 で E3 計測がスキップされる (ソース確認)."""
-        from scripts.v460.lib.pnl_measurer import PnlMeasurer
-
         # 120#: E3 logic extracted to PnlMeasurer.measure
         source = inspect.getsource(PnlMeasurer.measure)
         assert "e3_sampling_ratio" in source
@@ -2329,8 +2316,6 @@ class Test049SideOffset:
         base_offset_ratio_buy/sell を参照する設計に変更。
         120#: maker_price.py に抽出済み。
         """
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-
         source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
         # 096# 状態分離: base_offset_ratio* を使用
         assert "base_offset_ratio" in source
@@ -2447,8 +2432,6 @@ class Test050EffectiveOffsetRecord:
 
         120#: maker_price.py に抽出済み。MakerPriceResult NamedTuple で返却。
         """
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-
         source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
         assert "effective_offset_ratio" in source
         # MakerPriceResult に price, spread, effective_offset_ratio を格納
@@ -2640,8 +2623,6 @@ class Test051HourlyMetrics:
 
     def test_basic_hourly(self) -> None:
         """UTC hour 別にグループされる."""
-        from datetime import datetime, timezone
-
         # UTC 10:00 と 13:00 のレコード
         t_10 = datetime(2025, 2, 15, 10, 0, tzinfo=timezone.utc).timestamp()
         t_13 = datetime(2025, 2, 15, 13, 0, tzinfo=timezone.utc).timestamp()
@@ -2681,8 +2662,6 @@ class Test051BalanceAutoShrink:
 
     def test_balance_shrink_fields_exist(self) -> None:
         """BalanceChecker に balance_shrink 関連フィールドがある (121# 委譲)."""
-        from scripts.v460.lib.balance_checker import BalanceChecker
-
         source = inspect.getsource(BalanceChecker.__init__)
         assert "_balance_shrink_active" in source
         assert "_pre_shrink_lot" in source
@@ -2720,8 +2699,6 @@ class Test051MonitorExtensions:
 
     def test_print_report_accepts_clean_quarantine(self) -> None:
         """print_report が clean_count/quarantine_count を受け付ける."""
-        from scripts.v460.monitor_fill_test import print_report
-
         sig = inspect.signature(print_report)
         params = list(sig.parameters.keys())
         assert "clean_count" in params
@@ -2729,8 +2706,6 @@ class Test051MonitorExtensions:
 
     def test_run_monitor_uses_clean_records(self) -> None:
         """run_monitor が clean/quarantine 分離を使う."""
-        from scripts.v460.monitor_fill_test import run_monitor
-
         source = inspect.getsource(run_monitor)
         assert "partition_clean_records" in source
         assert "iter_fill_records_glob" in source
@@ -2738,17 +2713,13 @@ class Test051MonitorExtensions:
         assert "quarantine_records" in source
 
     def test_run_monitor_uses_shared_pnl_helper(self) -> None:
-        from scripts.v460.monitor_fill_test import _check_cumulative_loss
-
         source = inspect.getsource(_check_cumulative_loss)
         assert "compute_record_pnl_jpy" in source
 
     def test_monitor_imports_new_functions(self) -> None:
         """monitor が新しい分析関数をインポート."""
-        from scripts.v460.monitor_fill_test import (
-            print_report,  # noqa: F401
-        )
         # インポートテスト (NameError にならないことを確認)
+        assert callable(print_report)
 
 
 # ======================================================================
@@ -2765,8 +2736,6 @@ class Test052AdaptSellOffsetSync:
         096# 状態分離: _base_offset_ratio_sell を直接更新する設計に変更。
         120#: adaptation_engine.py に抽出済み。
         """
-        from scripts.v460.lib.adaptation_engine import AdaptationEngine
-
         source = inspect.getsource(AdaptationEngine.try_auto_adapt)
         # 096# 状態分離: base_offset_ratio_sell を使用
         assert "base_offset_ratio_sell" in source
@@ -2803,16 +2772,12 @@ class Test052AdaptSellOffsetSync:
 
     def test_dynamic_lot_shrink_in_balance_check(self) -> None:
         """052# BalanceChecker にロット自動縮小が含まれる (121# 抽出)."""
-        from scripts.v460.lib.balance_checker import BalanceChecker
-
         source = inspect.getsource(BalanceChecker._check_buy)
         assert "_min_order_btc" in source
         assert "affordable_lot" in source
 
     def test_min_order_btc_constant(self) -> None:
         """052# min_order_btc が Coincheck 最小注文量 0.001 に設定されている (121# YAML 外部化)."""
-        from scripts.v460.lib.balance_checker import MIN_ORDER_BTC
-
         assert MIN_ORDER_BTC == 0.001
         assert FillTestConfig().min_order_btc == 0.001
 
@@ -2837,8 +2802,6 @@ class Test052AdaptSellOffsetSync:
 
         120#: maker_price.py に抽出済み。
         """
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-
         source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
         assert "trending" in source
         assert "regime_trending_offset_boost" in source
@@ -2921,8 +2884,6 @@ class Test107TimeFilterDynamicGating:
 
         120#: maker_price.py に抽出済み。
         """
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-
         source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
         assert "volatility_guard" in source
         assert "velocity_threshold_bps" in source or "vpin_threshold" in source
@@ -2948,8 +2909,6 @@ class Test107TimeFilterDynamicGating:
 
     def test_vg_inv_skew_damping_code_present(self) -> None:
         """168# InvSkew/VG damping ロジックがソースに含まれる."""
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-
         source = inspect.getsource(MakerPriceCalculator)
         assert "vg_inv_skew_damping_enabled" in source
         assert "_last_inv_skew_factor" in source
@@ -2957,8 +2916,6 @@ class Test107TimeFilterDynamicGating:
 
     def test_vg_damping_reduces_boost_when_inv_skew_negative(self) -> None:
         """168# InvSkew factor<0 時に VG boost が dampen される."""
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-
         cfg = FillTestConfig(
             volatility_guard_enabled=True,
             volatility_guard_velocity_threshold_bps=10.0,
@@ -2966,11 +2923,6 @@ class Test107TimeFilterDynamicGating:
             vg_inv_skew_damping_enabled=True,
             max_offset_ratio=1.0,
         )
-        from scripts.v460.lib.fast_fill_defense import (
-            FastFillDefense,
-            FastFillDefenseConfig,
-        )
-
         _ffd = FastFillDefense(FastFillDefenseConfig(), base_offset_ratio=0.05)
         calc = MakerPriceCalculator(
             cfg, _ffd, regime_detector=None, base_offset_ratio=0.05,
@@ -2989,8 +2941,6 @@ class Test107TimeFilterDynamicGating:
 
     def test_vg_damping_no_effect_when_factor_positive(self) -> None:
         """168# InvSkew factor>=0 では VG boost は通常通り."""
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-
         cfg = FillTestConfig(
             volatility_guard_enabled=True,
             volatility_guard_velocity_threshold_bps=10.0,
@@ -2998,11 +2948,6 @@ class Test107TimeFilterDynamicGating:
             vg_inv_skew_damping_enabled=True,
             max_offset_ratio=1.0,
         )
-        from scripts.v460.lib.fast_fill_defense import (
-            FastFillDefense,
-            FastFillDefenseConfig,
-        )
-
         _ffd = FastFillDefense(FastFillDefenseConfig(), base_offset_ratio=0.05)
         calc = MakerPriceCalculator(
             cfg, _ffd, regime_detector=None, base_offset_ratio=0.05,
@@ -3016,8 +2961,6 @@ class Test107TimeFilterDynamicGating:
 
     def test_vg_damping_disabled_full_boost(self) -> None:
         """168# damping 無効時は従来通り full boost."""
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-
         cfg = FillTestConfig(
             volatility_guard_enabled=True,
             volatility_guard_velocity_threshold_bps=10.0,
@@ -3025,11 +2968,6 @@ class Test107TimeFilterDynamicGating:
             vg_inv_skew_damping_enabled=False,  # disabled
             max_offset_ratio=1.0,
         )
-        from scripts.v460.lib.fast_fill_defense import (
-            FastFillDefense,
-            FastFillDefenseConfig,
-        )
-
         _ffd = FastFillDefense(FastFillDefenseConfig(), base_offset_ratio=0.05)
         calc = MakerPriceCalculator(
             cfg, _ffd, regime_detector=None, base_offset_ratio=0.05,
@@ -3043,8 +2981,6 @@ class Test107TimeFilterDynamicGating:
 
     def test_vg_damping_extreme_factor_caps_at_one(self) -> None:
         """168# |factor| > 1.0 は 1.0 で cap → boost=1.0 (完全抑制)."""
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-
         cfg = FillTestConfig(
             volatility_guard_enabled=True,
             volatility_guard_velocity_threshold_bps=10.0,
@@ -3052,11 +2988,6 @@ class Test107TimeFilterDynamicGating:
             vg_inv_skew_damping_enabled=True,
             max_offset_ratio=1.0,
         )
-        from scripts.v460.lib.fast_fill_defense import (
-            FastFillDefense,
-            FastFillDefenseConfig,
-        )
-
         _ffd = FastFillDefense(FastFillDefenseConfig(), base_offset_ratio=0.05)
         calc = MakerPriceCalculator(
             cfg, _ffd, regime_detector=None, base_offset_ratio=0.05,
@@ -3116,8 +3047,6 @@ class Test107TimeFilterDynamicGating:
 
     def test_p2c3_reprice_skip_gate_offset_in_code(self) -> None:
         """168# P2-C3: order_monitor.py で reprice_skip_gate_offset が使用されている."""
-        from scripts.v460.lib.order_monitor import OrderMonitor
-
         source = inspect.getsource(OrderMonitor)
         assert "stale_reprice_skip_gate_offset" in source
         assert "threshold_offset" in source  # evaluate に offset を渡している
@@ -3126,8 +3055,6 @@ class Test107TimeFilterDynamicGating:
 
     def test_batch_persistence_in_code(self) -> None:
         """119# BatchPersistence 委譲が存在する."""
-        from scripts.v460.lib.batch_persistence import BatchPersistence
-
         assert hasattr(BatchPersistence, "maybe_flush")
 
     def test_batch_persistence_used_in_run_continuous(self) -> None:
@@ -3303,8 +3230,6 @@ class TestVGAndTrendAnalysis:
 
     def test_analyze_vg_effectiveness_basic(self) -> None:
         """VG 効果分析が VG/非VG 群を正しく分離."""
-        from scripts.v460.analysis.vg_and_trend import analyze_vg_effectiveness
-
         records = self._make_records(20)
         vg_ids = {records[0].cycle_id, records[5].cycle_id, records[10].cycle_id}
 
@@ -3315,8 +3240,6 @@ class TestVGAndTrendAnalysis:
 
     def test_analyze_vg_empty_vg(self) -> None:
         """VG 発動 0 件でもエラーにならない."""
-        from scripts.v460.analysis.vg_and_trend import analyze_vg_effectiveness
-
         records = self._make_records(10)
         result = analyze_vg_effectiveness(records, set())
         assert result["vg_filled"]["n"] == 0
@@ -3324,8 +3247,6 @@ class TestVGAndTrendAnalysis:
 
     def test_analyze_daily_trend(self) -> None:
         """日別トレンドが正しく分割される."""
-        from scripts.v460.analysis.vg_and_trend import analyze_daily_trend
-
         records = self._make_records(20, base_ts=1708000000.0)
         daily = analyze_daily_trend(records)
         assert len(daily) >= 1
@@ -3336,8 +3257,6 @@ class TestVGAndTrendAnalysis:
 
     def test_analyze_8h_trend(self) -> None:
         """8h帯別トレンドが出力される."""
-        from scripts.v460.analysis.vg_and_trend import analyze_8h_trend
-
         records = self._make_records(20, base_ts=1708000000.0)
         periods = analyze_8h_trend(records)
         assert len(periods) >= 1
@@ -3346,15 +3265,11 @@ class TestVGAndTrendAnalysis:
 
     def test_parse_vg_activations_empty(self) -> None:
         """存在しないログで空リスト."""
-        from scripts.v460.analysis.vg_and_trend import _parse_vg_activations
-
         result = _parse_vg_activations(Path("/nonexistent/log_file.log"))
         assert result == []
 
     def test_match_vg_to_records(self) -> None:
         """VG タイムスタンプが records と正しくマッチ."""
-        from scripts.v460.analysis.vg_and_trend import _match_vg_to_records
-
         ts = 1708000000.0
         records = [
             FillRecord(
@@ -3374,8 +3289,6 @@ class TestVGAndTrendAnalysis:
 
     def test_match_vg_side_mismatch(self) -> None:
         """VG side が record side と異なる場合はマッチしない."""
-        from scripts.v460.analysis.vg_and_trend import _match_vg_to_records
-
         ts = 1708000000.0
         records = [
             FillRecord(

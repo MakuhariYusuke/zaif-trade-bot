@@ -29,7 +29,7 @@ class _FillRecordCacheEntry:
 
 
 _FILL_RECORDS_CACHE_MAX_ENTRIES = 8
-_FILL_RECORDS_CACHE: dict[tuple[str, tuple[str, ...] | None, bool], _FillRecordCacheEntry] = {}
+_FILL_RECORDS_CACHE: dict[tuple[str, tuple[str, ...] | None, bool, int | None], _FillRecordCacheEntry] = {}
 
 
 def _normalize_run_id_filter(
@@ -56,7 +56,7 @@ def _build_file_signature(files: list[Path]) -> tuple[tuple[str, int, int], ...]
 
 
 def _load_fill_records_cache(
-    cache_key: tuple[str, tuple[str, ...] | None, bool],
+    cache_key: tuple[str, tuple[str, ...] | None, bool, int | None],
     file_signature: tuple[tuple[str, int, int], ...],
 ) -> pd.DataFrame | None:
     """シグネチャ一致時に copy を返す."""
@@ -67,7 +67,7 @@ def _load_fill_records_cache(
 
 
 def _store_fill_records_cache(
-    cache_key: tuple[str, tuple[str, ...] | None, bool],
+    cache_key: tuple[str, tuple[str, ...] | None, bool, int | None],
     file_signature: tuple[tuple[str, int, int], ...],
     df: pd.DataFrame,
 ) -> None:
@@ -81,6 +81,15 @@ def _store_fill_records_cache(
     oldest = next(iter(_FILL_RECORDS_CACHE))
     if oldest != cache_key:
         _FILL_RECORDS_CACHE.pop(oldest, None)
+
+
+def _normalize_max_files(max_files: Optional[int]) -> int | None:
+    """max_files の入力を正規化."""
+    if max_files is None:
+        return None
+    if max_files <= 0:
+        raise ValueError("max_files must be >= 1")
+    return int(max_files)
 
 
 def make_preprocessing_pipeline(
@@ -104,6 +113,7 @@ def load_fill_records(
     *,
     run_id_filter: Optional[str | list[str]] = None,
     exclude_missing_run_id: bool = False,
+    max_files: Optional[int] = None,
 ) -> pd.DataFrame:
     """fill_records_*.jsonl を読み込んで DataFrame に変換.
 
@@ -112,31 +122,46 @@ def load_fill_records(
         run_id_filter: 指定した run_id のみに絞り込む (122# E13).
             str なら単一 run_id, list なら複数 run_id でフィルタ.
         exclude_missing_run_id: True で run_id が None/欠損のレコードを除外.
+        max_files: 最新側から読み込む fill_records ファイル数の上限.
 
     Returns:
         全レコードの DataFrame (cancelled 含む).
     """
     from ztb.metrics.fill_quality import (
         fill_records_to_dataframe,
-        iter_fill_records_glob,
+        iter_fill_records,
         list_fill_record_files,
     )
 
     d = results_dir or _DEFAULT_RESULTS_DIR
+    max_files_limit = _normalize_max_files(max_files)
     files = list_fill_record_files(d, include_emergency=False)
     if not files:
         raise FileNotFoundError(f"No fill_records_*.jsonl in {d}")
+    if max_files_limit is not None and len(files) > max_files_limit:
+        files = files[-max_files_limit:]
 
     run_id_filter_key = _normalize_run_id_filter(run_id_filter)
-    cache_key = (str(d.resolve()), run_id_filter_key, bool(exclude_missing_run_id))
+    cache_key = (
+        str(d.resolve()),
+        run_id_filter_key,
+        bool(exclude_missing_run_id),
+        max_files_limit,
+    )
     file_signature = _build_file_signature(files)
     cached_df = _load_fill_records_cache(cache_key, file_signature)
     if cached_df is not None:
         return cached_df
 
-    df = fill_records_to_dataframe(
-        iter_fill_records_glob(d, include_emergency=False)
-    )
+    seen_ids: set[str] = set()
+    records = []
+    for path in files:
+        for record in iter_fill_records(path):
+            if record.cycle_id in seen_ids:
+                continue
+            seen_ids.add(record.cycle_id)
+            records.append(record)
+    df = fill_records_to_dataframe(records)
     total = len(df)
 
     # 122# E13: run_id フィルタリング (異なるラン設定の混在による交絡防止)
