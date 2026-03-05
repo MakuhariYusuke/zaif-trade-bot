@@ -13,6 +13,7 @@ WARNING -- AI Coding Agent / 人間開発者への注意:
 from __future__ import annotations
 
 import logging
+import os
 import time
 import uuid
 from pathlib import Path
@@ -97,6 +98,7 @@ class FillRecordHelpersMixin:
             regime=regime,
             balance_forced_switch=balance_forced_switch,
             ab_test_variant=self.config.ab_test_variant or None,  # 158# P1-5
+            pid=os.getpid(),  # 285# 283# P0-1: Split-Brain 検知用
             **extra,
         )
 

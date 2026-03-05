@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-05 (282# balance_forced+halt デッドロック修正)
+> 最終更新: 2026-03-06 (285# 283#/284# P0 対応: Split-Brain 検知 pid + 設定相互制約)
 
 ---
 
@@ -273,6 +273,9 @@
 | 280 | rpt | [280_ph2_rpt_position_and_remaining_tasks.md](280_ph2_rpt_position_and_remaining_tasks.md) | 0番ドキュメント立ち位置確認 + 残課題浚い上げ (R-1〜R-26) |
 | 281 | fix | [281_ph2_fix_halt_persist_interval_nameError.md](281_ph2_fix_halt_persist_interval_nameError.md) | CRITICAL fix: NameError `_HALT_PERSIST_INTERVAL` — 278# config化の参照漏れ (halt 時プロセス即死) |
 | 282 | fix | [282_ph2_fix_balance_forced_halt_deadlock.md](282_ph2_fix_balance_forced_halt_deadlock.md) | CRITICAL fix: balance_forced + per-side halt 永久デッドロック修正 (untick除去×2 + IE双方向化 + 15tests) |
+| 283 | rev | [283_ph2_rev_271_282_deadlock_and_preincident_market_analysis.md](283_ph2_rev_271_282_deadlock_and_preincident_market_analysis.md) | 271〜282レビュー: デッドロック再検証 + 発生前ログの市場理論分析 + 見落とし是正提案 |
+| 284 | rev | [284_ph2_gemini_31_pro_review_271_283_split_brain_and_buy_toxicity.md](284_ph2_gemini_31_pro_review_271_283_split_brain_and_buy_toxicity.md) | Gemini 3.1 Pro セカンドオピニオン: 282# 修正評価 + Split-Brain P0確認 + buy 毒性分析 |
+| 285 | fix | [285_ph2_fix_split_brain_guard_and_config_constraint.md](285_ph2_fix_split_brain_guard_and_config_constraint.md) | 283#/284# P0 対応: FillRecord pid 追加 + per_side_dd/IE 相互制約 + 282# doc 修正 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 

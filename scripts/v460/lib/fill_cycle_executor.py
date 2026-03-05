@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 from typing import TYPE_CHECKING, cast
 
@@ -585,6 +586,7 @@ class FillCycleExecutorMixin:
             "order_quantity": order_lot,
             "run_id": self._run_id,
             "git_sha": self._git_sha,
+            "pid": os.getpid(),  # 285# 283# P0-1: Split-Brain 検知用
         }
         payload.update(
             self._build_fill_measurement_fields(

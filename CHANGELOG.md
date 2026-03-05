@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## 285# fix: 283#/284# P0 対応 — Split-Brain 検知 + 設定相互制約 (2026-03-06)
+
+### Fixed
+- **283# P0-1: Split-Brain 検知基盤**: `FillRecord` に `pid` フィールド追加。fill/skip 両レコードで `os.getpid()` を記録し、同一時刻帯に複数 run_id/pid が存在すれば多重起動を事後検出可能に
+- **283# P0-2: per_side_dd + IE 相互制約**: `FillTestConfig.__post_init__` に `per_side_dd_halt_cycles=0` (永続封鎖) + `inventory_escape_enabled=False` の組合せを禁止するバリデーション追加。282# デッドロックの再発を設定レベルで防止
+- **282# ドキュメント修正**: 時刻境界 5 箇所 (13:08→13:17: 実データに基づく正確な per_side halt 開始時刻) + 用語修正 ("関連 issue 番号"→"関連ドキュメント番号")
+
+### Added
+- **テスト 9 件** (`test_285_split_brain_guard.py`): 設定相互制約バリデーション (4件) + FillRecord pid フィールド (5件: 存在・設定・to_dict・from_dict・後方互換)
+
+---
+
 ## 282# fix: balance_forced + per-side halt デッドロック修正 (2026-03-05)
 
 ### Fixed

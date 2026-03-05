@@ -873,6 +873,21 @@ class FillTestConfig:
                 f"unknown_regime_max_consecutive must be >= 1, "
                 f"got {self.unknown_regime_max_consecutive}"
             )
+        # 285# 283# P0-2: per-side halt + IE 相互制約
+        # halt_cycles=0 (日替わりまで永続封鎖) かつ IE 無効だと
+        # balance_forced + per-side halt で永久デッドロックが再発する (282# 実証済)。
+        if (
+            self.per_side_dd_enabled
+            and self.per_side_dd_halt_cycles == 0
+            and not self.inventory_escape_enabled
+        ):
+            raise ValueError(
+                "per_side_dd_halt_cycles=0 (永続封鎖) と "
+                "inventory_escape_enabled=False の組合せは禁止。"
+                "balance_forced + per-side halt の永久デッドロックが発生する "
+                "(282# 実証済)。halt_cycles >= 1 にするか "
+                "inventory_escape_enabled=True にしてください"
+            )
 
 
     # ================================================================
