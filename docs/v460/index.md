@@ -1,7 +1,7 @@
 ﻿# v460 ドキュメント索引
 
 > **v460 "Microstructure Edge"** — Coincheck BTC/JPY maker 執行品質検証  
-> 最終更新: 2026-03-06 (287# balance_forced→balance_forced_switch AttributeError修正)
+> 最終更新: 2026-03-06 (288# SkipGate再訓練評価 + retrain_scheduler整合性確認)
 
 ---
 
@@ -278,6 +278,7 @@
 | 285 | fix | [285_ph2_fix_split_brain_guard_and_config_constraint.md](285_ph2_fix_split_brain_guard_and_config_constraint.md) | 283#/284# P0 対応: FillRecord pid 追加 + per_side_dd/IE 相互制約 + 282# doc 修正 |
 | 286 | fix | [286_ph2_fix_282_284_comprehensive_resolution.md](286_ph2_fix_282_284_comprehensive_resolution.md) | 282#–284# 課題包括的解決: Lock portalocker強化, Split-Brain検知, KPI分離, AS防御, Guard再分類 |
 | 287 | fix | [287_ph2_fix_balance_forced_switch_attribute.md](287_ph2_fix_balance_forced_switch_attribute.md) | CRITICAL fix: `record.balance_forced` → `balance_forced_switch` AttributeError修正 (286# P1-5 属性名誤記) |
+| 288 | rpt | [288_ph2_ph3_rpt_skipgate_retrain_assessment.md](288_ph2_ph3_rpt_skipgate_retrain_assessment.md) | SkipGate全データ再訓練評価 + retrain_scheduler(126#)整合性確認。全5モデル品質ゲート棄却=既存最適化済 |
 
 ### ph3 — コード整理・SAC (先行調査・一部実装済)
 
