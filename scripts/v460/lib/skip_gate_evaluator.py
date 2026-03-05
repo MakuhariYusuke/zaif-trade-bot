@@ -327,6 +327,8 @@ class SkipGateEvaluator:
         skip_gate_threshold_used: float | None = None,
         skip_gate_hour_offset: float | None = None,
         price_velocity_bps: float | None = None,
+        ev_score_pretrade: float | None = None,
+        decision_path: str | None = None,
     ) -> "FillRecord":
         """skip 系の early return 用 FillRecord を共通生成."""
         return build_skip_fill_record(
@@ -352,6 +354,8 @@ class SkipGateEvaluator:
             spread_offset_ratio=spread_offset_ratio,
             regime=regime,
             price_velocity_bps=price_velocity_bps,
+            ev_score_pretrade=ev_score_pretrade,
+            decision_path=decision_path,
         )
 
     @staticmethod
@@ -1244,6 +1248,14 @@ class SkipGateEvaluator:
                     run_id=run_id,
                     git_sha=git_sha,
                     regime=regime_value,  # 160#
+                    # 292# BS-3: skip レコードにも ev 可観測性フィールドを記録
+                    ev_score_pretrade=result.ev_score,
+                    decision_path=(
+                        "ev_emergency_skip"
+                        if result.ev_score is not None and "emergency_skip" in result.reason
+                        else "ev_normal_skip" if result.ev_score is not None
+                        else None
+                    ),
                 )
             else:
                 logger.debug(

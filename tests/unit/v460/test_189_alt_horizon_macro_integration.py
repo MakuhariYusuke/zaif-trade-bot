@@ -12,12 +12,28 @@
 from __future__ import annotations
 
 import copy
+import importlib
+import math
+import tempfile
 import time
 from pathlib import Path
 from typing import Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
+import yaml
+from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.macro_regime import (
+    MacroRegimeConfig,
+    MacroRegimeDetector,
+    MacroRegimeResult,
+    MacroTrend,
+    compose_regimes,
+)
+from scripts.v460.ml.retrain_scheduler import _DEFAULT_CONFIG, load_retrain_config
+from scripts.v460.ml.train_alt_horizon import _ALT_SPECS
+from ztb.metrics.fill_quality import FillRecord
 
 
 # ======================================================================
@@ -30,7 +46,6 @@ class TestRetrainMultiHorizon:
 
     def test_default_config_has_alt_keys(self) -> None:
         """_DEFAULT_CONFIG に alt_horizon 関連キーが存在すること."""
-        from scripts.v460.ml.retrain_scheduler import _DEFAULT_CONFIG
 
         assert "alt_horizon_enabled" in _DEFAULT_CONFIG
         assert _DEFAULT_CONFIG["alt_horizon_enabled"] is False
@@ -99,11 +114,6 @@ class TestRetrainMultiHorizon:
 
     def test_load_retrain_config_inherits_alt_paths(self) -> None:
         """load_retrain_config が skip_gate.model_path_buy_long を継承すること."""
-        from scripts.v460.ml.retrain_scheduler import load_retrain_config
-
-        import tempfile
-        import yaml
-
         yaml_data = {
             "skip_gate": {
                 "model_path": "models/v460/skip_gate_lgbm_pnl120.pkl",
@@ -185,8 +195,6 @@ class TestFillRecordMacroFields:
 
     def test_macro_fields_default_none(self) -> None:
         """macro フィールドのデフォルトが None であること."""
-        from ztb.metrics.fill_quality import FillRecord
-
         rec = FillRecord(**self._BASE)
         assert rec.macro_trend is None
         assert rec.macro_slope_5m is None
@@ -195,8 +203,6 @@ class TestFillRecordMacroFields:
 
     def test_macro_fields_set(self) -> None:
         """macro フィールドに値をセットできること."""
-        from ztb.metrics.fill_quality import FillRecord
-
         rec = FillRecord(
             **self._BASE,
             macro_trend="macro_strong_up",
@@ -211,8 +217,6 @@ class TestFillRecordMacroFields:
 
     def test_to_dict_roundtrip(self) -> None:
         """to_dict → from_dict で macro フィールドが保存されること."""
-        from ztb.metrics.fill_quality import FillRecord
-
         original = FillRecord(
             **self._BASE,
             macro_trend="macro_weak_down",
@@ -233,8 +237,6 @@ class TestFillRecordMacroFields:
 
     def test_to_dict_none_fields(self) -> None:
         """macro フィールドが None のまま to_dict → from_dict."""
-        from ztb.metrics.fill_quality import FillRecord
-
         rec = FillRecord(**self._BASE)
         d = rec.to_dict()
         assert "macro_trend" in d
@@ -245,8 +247,6 @@ class TestFillRecordMacroFields:
 
     def test_from_dict_ignores_unknown_macro(self) -> None:
         """from_dict が不明な macro_ プレフィックス フィールドを無視."""
-        from ztb.metrics.fill_quality import FillRecord
-
         d = {**self._BASE, "macro_trend": "neutral", "macro_future_field": 42}
         rec = FillRecord.from_dict(d)
         assert rec.macro_trend == "neutral"
@@ -263,8 +263,6 @@ class TestFillTestConfigMacroYAML:
 
     def test_macro_enabled(self) -> None:
         """regime.macro.enabled → enable_macro_regime."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         yaml_cfg = {
             "regime": {
                 "macro": {
@@ -285,16 +283,12 @@ class TestFillTestConfigMacroYAML:
 
     def test_macro_disabled_default(self) -> None:
         """regime.macro 未設定 → enable_macro_regime=False (デフォルト)."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         config = FillTestConfig.from_yaml({})
         assert config.enable_macro_regime is False
         assert config.macro_regime_conflict_action == "log"
 
     def test_macro_partial_config(self) -> None:
         """regime.macro の一部のみ設定 → 残りはデフォルト."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         yaml_cfg = {
             "regime": {
                 "macro": {
@@ -310,8 +304,6 @@ class TestFillTestConfigMacroYAML:
 
     def test_ev_weighted_yaml_roundtrip(self) -> None:
         """skip_gate セクションの ev_weighted 設定がパースされること."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         yaml_cfg = {
             "skip_gate": {
                 "ev_weighted_enabled": True,
@@ -339,12 +331,6 @@ class TestComposeRegimesConflict:
 
     def test_trending_up_vs_strong_down_conflict(self) -> None:
         """micro=trending_up + macro=strong_down → aligned=False."""
-        from scripts.v460.lib.macro_regime import (
-            MacroRegimeResult,
-            MacroTrend,
-            compose_regimes,
-        )
-
         macro = MacroRegimeResult(
             trend=MacroTrend.STRONG_DOWN,
             confidence=0.9,
@@ -355,12 +341,6 @@ class TestComposeRegimesConflict:
 
     def test_trending_down_vs_strong_up_conflict(self) -> None:
         """micro=trending_down + macro=strong_up → aligned=False."""
-        from scripts.v460.lib.macro_regime import (
-            MacroRegimeResult,
-            MacroTrend,
-            compose_regimes,
-        )
-
         macro = MacroRegimeResult(
             trend=MacroTrend.STRONG_UP,
             confidence=0.8,
@@ -371,12 +351,6 @@ class TestComposeRegimesConflict:
 
     def test_ranging_no_conflict(self) -> None:
         """micro=ranging → macro との conflict なし (ranging は中立)."""
-        from scripts.v460.lib.macro_regime import (
-            MacroRegimeResult,
-            MacroTrend,
-            compose_regimes,
-        )
-
         macro = MacroRegimeResult(
             trend=MacroTrend.STRONG_UP,
             confidence=0.9,
@@ -387,12 +361,6 @@ class TestComposeRegimesConflict:
 
     def test_neutral_macro_no_conflict(self) -> None:
         """macro=NEUTRAL → always aligned."""
-        from scripts.v460.lib.macro_regime import (
-            MacroRegimeResult,
-            MacroTrend,
-            compose_regimes,
-        )
-
         macro = MacroRegimeResult(
             trend=MacroTrend.NEUTRAL,
             confidence=0.5,
@@ -403,12 +371,6 @@ class TestComposeRegimesConflict:
 
     def test_insufficient_macro_always_aligned(self) -> None:
         """macro=INSUFFICIENT → always aligned (データ不足は conflict 不可)."""
-        from scripts.v460.lib.macro_regime import (
-            MacroRegimeResult,
-            MacroTrend,
-            compose_regimes,
-        )
-
         macro = MacroRegimeResult(
             trend=MacroTrend.INSUFFICIENT,
             buckets_available=2,
@@ -418,12 +380,6 @@ class TestComposeRegimesConflict:
 
     def test_weak_up_vs_weak_down_conflict(self) -> None:
         """micro=trending_up + macro=weak_down → aligned=False (弱くても逆方向)."""
-        from scripts.v460.lib.macro_regime import (
-            MacroRegimeResult,
-            MacroTrend,
-            compose_regimes,
-        )
-
         macro = MacroRegimeResult(
             trend=MacroTrend.WEAK_DOWN,
             confidence=0.6,
@@ -443,8 +399,6 @@ class TestFillCycleExecutorMacroIntegration:
 
     def test_build_fill_record_accepts_macro_fields(self) -> None:
         """_build_fill_record が macro フィールドを FillRecord に設定すること."""
-        from ztb.metrics.fill_quality import FillRecord
-
         # FillRecord 直接構築で確認 (executor 内部メソッドの出力を模倣)
         rec = FillRecord(
             cycle_id="c1",
@@ -534,15 +488,11 @@ class TestHotReloadMacroKeys:
 
     def test_macro_keys_in_hot_reload(self) -> None:
         """enable_macro_regime, macro_regime_conflict_action が hot-reload 可能."""
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
-
         assert "enable_macro_regime" in _HOT_RELOADABLE_FIELDS
         assert "macro_regime_conflict_action" in _HOT_RELOADABLE_FIELDS
 
     def test_ev_weighted_keys_in_hot_reload(self) -> None:
         """ev_weighted 関連キーが hot-reload 可能 (188# から存在)."""
-        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
-
         assert "skip_gate_ev_weighted_enabled" in _HOT_RELOADABLE_FIELDS
         assert "skip_gate_ev_w30" in _HOT_RELOADABLE_FIELDS
         assert "skip_gate_ev_w120" in _HOT_RELOADABLE_FIELDS
@@ -559,8 +509,6 @@ class TestYAMLIntegrity:
     @pytest.fixture()
     def yaml_config(self) -> dict:
         """fill_test.yaml をロードして dict で返す."""
-        import yaml
-
         yaml_path = Path("configs/v460/fill_test.yaml")
         if not yaml_path.exists():
             pytest.skip("fill_test.yaml not found")
@@ -633,12 +581,6 @@ class TestMacroRegimeEdgeCases:
 
     def test_compose_regimes_high_vol_micro(self) -> None:
         """micro=high_vol は trending ではないので conflict なし."""
-        from scripts.v460.lib.macro_regime import (
-            MacroRegimeResult,
-            MacroTrend,
-            compose_regimes,
-        )
-
         macro = MacroRegimeResult(
             trend=MacroTrend.STRONG_UP,
             confidence=0.9,
@@ -649,12 +591,6 @@ class TestMacroRegimeEdgeCases:
 
     def test_compose_regimes_unknown_micro(self) -> None:
         """micro=unknown は方向なし → aligned=True."""
-        from scripts.v460.lib.macro_regime import (
-            MacroRegimeResult,
-            MacroTrend,
-            compose_regimes,
-        )
-
         macro = MacroRegimeResult(
             trend=MacroTrend.STRONG_DOWN,
             confidence=0.8,
@@ -665,11 +601,6 @@ class TestMacroRegimeEdgeCases:
 
     def test_macro_slope_fields_populated(self) -> None:
         """update 後に slope_5m, slope_15m が設定されること."""
-        from scripts.v460.lib.macro_regime import (
-            MacroRegimeConfig,
-            MacroRegimeDetector,
-        )
-
         cfg = MacroRegimeConfig(bucket_sec=1.0, slope_window_5m=5)
         det = MacroRegimeDetector(cfg)
         t0 = time.time()
@@ -678,13 +609,10 @@ class TestMacroRegimeEdgeCases:
 
         result = det.update(t0 + 40, 10_000_200)
         # slope が計算されていること (NaN でないこと)
-        import math
         assert not math.isnan(result.slope_5m_bps_per_min)
 
     def test_fill_config_macro_field_types(self) -> None:
         """FillTestConfig の macro フィールドの型が正しいこと."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         config = FillTestConfig()
         assert isinstance(config.enable_macro_regime, bool)
         assert isinstance(config.macro_regime_bucket_sec, float)
@@ -703,15 +631,12 @@ class TestTrainAltHorizonScript:
 
     def test_script_importable(self) -> None:
         """train_alt_horizon.py がインポート可能であること."""
-        import importlib
         mod = importlib.import_module("scripts.v460.ml.train_alt_horizon")
         assert hasattr(mod, "_ALT_SPECS")
         assert hasattr(mod, "train_one")
 
     def test_alt_specs_coverage(self) -> None:
         """_ALT_SPECS に buy/sell 両方のスペックがあること."""
-        from scripts.v460.ml.train_alt_horizon import _ALT_SPECS
-
         assert "buy" in _ALT_SPECS
         assert "sell" in _ALT_SPECS
         # buy の alt は pnl120
@@ -721,8 +646,6 @@ class TestTrainAltHorizonScript:
 
     def test_alt_specs_model_paths(self) -> None:
         """_ALT_SPECS の model_file が正しい命名規則に従うこと."""
-        from scripts.v460.ml.train_alt_horizon import _ALT_SPECS
-
         buy_fname = _ALT_SPECS["buy"]["model_file"]
         sell_fname = _ALT_SPECS["sell"]["model_file"]
 

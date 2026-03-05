@@ -991,6 +991,10 @@ class FillCycleExecutorMixin:
                     f"→ offset_mult={_applied_mult:.3f} "
                     f"(delta={_delta:+.0f}JPY, price={order_price:.0f})"
                 )
+            else:
+                # 292# BS-4: mult=1.0 等で変更なしの場合も計算値を記録
+                # (ev_score_pretrade + decision_path="ev_no_change" と合わせて判別可能)
+                _ev_offset_mult_applied = _ev_mult
 
         # 195#: velocity_skip ソフトモード — offset boost 適用
         # velocity が閾値を超えた場合、hard skip ではなく offset を拡大して保守的に発注

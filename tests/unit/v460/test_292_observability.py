@@ -82,7 +82,10 @@ class TestFillRecordObservabilityFields:
 
     def test_decision_path_values(self) -> None:
         """有効な decision_path 値が保持される."""
-        for path in ("primary_only", "ev_offset", "ev_emergency_skip", "ev_no_change"):
+        for path in (
+            "primary_only", "ev_offset", "ev_emergency_skip",
+            "ev_no_change", "ev_normal_skip",
+        ):
             r = FillRecord(
                 cycle_id="dp", timestamp=0.0, side="buy",
                 order_price=100.0, order_quantity=0.01,
@@ -199,6 +202,31 @@ class TestForcedBuyDelayRegimeYAML:
 
         with open(yaml_path) as f:
             y = _yaml.safe_load(f)
-        fbd = y.get("止血", {}).get("forced_buy_delay", {})
+        fbd = y.get("loss_control", {}).get("forced_buy_delay", {})
         assert "velocity_threshold_ranging_bps" in fbd
         assert fbd["velocity_threshold_ranging_bps"] == pytest.approx(-3.0)
+
+
+# =====================================================================
+# D. Hot-Reload — 292# v3: 新フィールドがリロード対象
+# =====================================================================
+
+class TestHotReloadFieldCoverage:
+    """292# v3: 新設 config フィールドが Hot-Reload 対象に含まれる."""
+
+    @pytest.fixture(autouse=True)
+    def _load_hot_reload_fields(self) -> None:
+        from scripts.v460.lib.config_hot_reload import _HOT_RELOADABLE_FIELDS
+        self.fields = _HOT_RELOADABLE_FIELDS
+
+    def test_stale_reprice_min_delta_jpy_in_hot_reload(self) -> None:
+        assert "stale_reprice_min_delta_jpy" in self.fields
+
+    def test_forced_buy_delay_fields_in_hot_reload(self) -> None:
+        expected = {
+            "forced_buy_delay_enabled",
+            "forced_buy_delay_velocity_threshold_bps",
+            "forced_buy_delay_cycles",
+            "forced_buy_delay_velocity_threshold_ranging_bps",
+        }
+        assert expected.issubset(self.fields)

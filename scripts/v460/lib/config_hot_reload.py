@@ -144,6 +144,7 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "stale_drift_bps",
     "stale_max_reprice",
     "stale_reprice_tighten",
+    "stale_reprice_min_delta_jpy",     # 292# reprice deadband
     "stale_reprice_skip_gate_offset",
     # 175# stale side 別フィールド
     "stale_check_after_sec_buy",
@@ -189,6 +190,11 @@ _HOT_RELOADABLE_FIELDS: frozenset[str] = frozenset({
     "balance_forced_deadlock_limit",
     "balance_forced_rescue_enabled",
     "balance_forced_rescue_offset_mult",
+    # 292# forced_buy_delay (286# 初期実装 + 292# regime 強化)
+    "forced_buy_delay_enabled",
+    "forced_buy_delay_velocity_threshold_bps",
+    "forced_buy_delay_cycles",
+    "forced_buy_delay_velocity_threshold_ranging_bps",
     # --- velocity skip ---
     "sell_velocity_skip_enabled",
     "sell_velocity_skip_threshold_bps",

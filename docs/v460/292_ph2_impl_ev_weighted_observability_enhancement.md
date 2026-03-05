@@ -97,27 +97,105 @@ reprice 自体がコストとなっている場合、微小な価格改善は qu
 
 ---
 
-## 3. テスト
+## 3. ブラインドスポット修正 (292# v2)
 
-16/16 PASSED (`test_292_observability.py`):
-- FillRecord 新フィールド: default None、round-trip、build_fill_record 受容
-- Config: stale_reprice_min_delta_jpy default/explicit/YAML
-- Config: forced_buy_delay_velocity_threshold_ranging_bps default/explicit/YAML
-- 本番 YAML 存在確認
+290#/291# レビュアー双方が見落としていた実装バグ 3件を独自分析で発見・修正:
 
-既存テスト: 256/256 PASSED (リグレッションなし)
+### 3.1 BS-1 (CRITICAL): Reprice Deadband がキャンセル後に評価されていた
+
+**問題**: deadband チェックが `cancel` → `compute_maker_price` → deadband 判定の順序で、
+deadband スキップしてもキュー位置は既に失われている。
+
+**修正**: `compute_maker_price` をキャンセル前に実行し、
+`|new_price - order_price| < min_delta_jpy` の場合はキャンセル自体をスキップ。  
+→ **キュー位置が完全に保護される**
+
+**ファイル**: `scripts/v460/lib/order_monitor.py` (favorable drift セクション)
+
+### 3.2 BS-3 (HIGH): Skip レコードに ev フィールドが欠落
+
+**問題**: `_make_skip_fill_record` で生成される emergency_skip レコードに
+`ev_score_pretrade`, `decision_path` が含まれていなかった。  
+→ 「ev_emergency_skip は発生しているのか？」の分析が不可能。
+
+**修正**: `_make_skip_fill_record` に `ev_score_pretrade`, `decision_path` の
+optional パラメータを追加し、emergency_skip 時に自動で渡す。
+
+**ファイル**: `scripts/v460/lib/skip_gate_evaluator.py`
+
+### 3.3 BS-4 (MEDIUM): mult=1.0 と「ev 未計算」の区別不能
+
+**問題**: `_apply_offset_multiplier` が mult=1.0 で `None` を返すと、
+`ev_offset_mult_applied = None` → ev 未計算と同じ状態になる。
+
+**修正**: else 分岐で `_ev_mult` (計算済み乗数) を記録。
+`ev_offset_mult_applied=1.0, decision_path="ev_no_change"` で明示的に区別。
+
+**ファイル**: `scripts/v460/lib/fill_cycle_executor.py`
 
 ---
 
-## 4. 変更ファイル一覧
+## 4. セルフレビュー追加修正 (292# v3)
+
+### 4.1 BUG-1/BUG-2 (P0): Config Hot-Reload 配線漏れ
+
+**問題**: `stale_reprice_min_delta_jpy` と `forced_buy_delay_*` 4フィールドが
+`config_hot_reload.py` の `_HOT_RELOADABLE_FIELDS` に未登録。  
+→ YAML 変更してもプロセス再起動なしでは反映されない。
+
+**修正**: `_HOT_RELOADABLE_FIELDS` に 5 フィールドを追加。
+
+**ファイル**: `scripts/v460/lib/config_hot_reload.py`
+
+### 4.2 M-3 (P2): Normal skip の `decision_path` 曖昧性
+
+**問題**: ev_score 計算済みだが SkipGate の通常判定で skip された場合、
+`decision_path=None` で「ev 未計算」と見分けがつかない。
+
+**修正**: `"ev_normal_skip"` を新たに追加。decision_path 全体系は:
+- `primary_only`: ev 未計算 (ev_weighted 無効 or alt model 不在)
+- `ev_offset`: ev_score 計算 → offset 乗数で価格調整
+- `ev_no_change`: ev_score 計算 → mult ≈ 1.0 で変更なし
+- `ev_emergency_skip`: ev_score << threshold → 緊急 skip
+- `ev_normal_skip`: ev_score 計算済みだが ML 判定で通常 skip
+
+**ファイル**: `scripts/v460/lib/skip_gate_evaluator.py`, `ztb/metrics/fill_quality.py`
+
+### 4.3 両レビュアー共通の見落とし
+
+| 見落とし | 深刻度 | 対応 |
+|---|---|---|
+| Config Hot-Reload 配線 | HIGH | 4.1 で修正 |
+| 複合 Offset 判別不能 | MEDIUM | 将来課題 (velocity/trending/toxicity_offset をそれぞれ記録) |
+| Skip 時の ev_score/path 曖昧 | LOW | 4.2 で修正 |
+
+---
+
+## 5. テスト
+
+18/18 PASSED (`test_292_observability.py`):
+- FillRecord 新フィールド: default None、round-trip、build_fill_record 受容
+- decision_path: 5 値全て (`primary_only`, `ev_offset`, `ev_emergency_skip`, `ev_no_change`, `ev_normal_skip`)
+- Config: stale_reprice_min_delta_jpy default/explicit/YAML
+- Config: forced_buy_delay_velocity_threshold_ranging_bps default/explicit/YAML
+- Hot-Reload: 新設 5 フィールドが `_HOT_RELOADABLE_FIELDS` に含まれることの検証
+- 本番 YAML 存在確認
+
+v460 全体: 3910 passed, 32 skipped (リグレッションなし)
+
+---
+
+## 6. 変更ファイル一覧
 
 | ファイル | 変更内容 |
 |---|---|
-| `ztb/metrics/fill_quality.py` | FillRecord 3 フィールド追加 |
-| `scripts/v460/lib/fill_cycle_executor.py` | ev_score/offset_mult 捕捉、decision_path 導出、配線 |
+| `ztb/metrics/fill_quality.py` | FillRecord 3 フィールド追加、decision_path に `ev_no_change`/`ev_normal_skip` 追加 |
+| `scripts/v460/lib/fill_cycle_executor.py` | ev_score/offset_mult 捕捉、decision_path 導出、BS-4 else 分岐 |
 | `scripts/v460/lib/fill_config.py` | `stale_reprice_min_delta_jpy`, `forced_buy_delay_velocity_threshold_ranging_bps` |
-| `scripts/v460/lib/order_monitor.py` | reprice deadband チェック |
+| `scripts/v460/lib/config_hot_reload.py` | 新設フィールド 5 件を Hot-Reload 対象に追加 |
+| `scripts/v460/lib/order_monitor.py` | reprice deadband チェック、BS-1 キャンセル前評価 |
 | `scripts/v460/lib/fill_loop_orchestrator.py` | regime-aware delay 閾値 |
+| `scripts/v460/lib/skip_gate_evaluator.py` | BS-3 skip レコード ev フィールド + ev_normal_skip 追加 |
 | `configs/v460/fill_test.yaml` | `reprice_min_delta_jpy: 500`, `velocity_threshold_ranging_bps: -3.0` |
 | `docs/v460/289_ph2_analysis_buy_side_improvement.md` | v4 修正 (model_used 誤プロキシ) |
-| `tests/unit/v460/test_292_observability.py` | 新テスト 16 件 |
+| `tests/unit/v460/test_292_observability.py` | 新テスト 18 件 |

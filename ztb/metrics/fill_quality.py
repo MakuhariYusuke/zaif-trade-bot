@@ -136,7 +136,7 @@ class FillRecord:
     # 292# P0: ev_weighted 可観測性強化 (290#/291# review)
     ev_score_pretrade: float | None = None        # ランタイム ev_score (ex-ante 予測値)
     ev_offset_mult_applied: float | None = None   # 実適用 offset 乗数 (1.0=変更なし)
-    decision_path: str | None = None              # "primary_only" / "ev_offset" / "ev_no_change" / "ev_emergency_skip"
+    decision_path: str | None = None              # "primary_only" / "ev_offset" / "ev_no_change" / "ev_emergency_skip" / "ev_normal_skip"
     # 187# B-2: guard_trace — gated_regime + effective_cycle_interval 記録
     gated_regime: str | None = None              # ヒステリシス適用後の実効 regime
     effective_cycle_interval: float | None = None  # 使用されたサイクル間隔 (秒)

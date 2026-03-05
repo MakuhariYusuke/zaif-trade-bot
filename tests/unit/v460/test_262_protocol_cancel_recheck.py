@@ -10,12 +10,22 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+from pathlib import Path
 from typing import Optional, Sequence
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+import scripts.v460.lib.adaptation_engine as adaptation_engine_mod
+from scripts.v460.lib.adaptation_engine import (
+    AdaptationEngine,
+    FastFillDefenseLike,
+    LossCapAdapterProtocol,
+    _LossCapBalanceLike,
+)
 from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.fast_fill_defense import FastFillDefense, FastFillDefenseConfig
+from scripts.v460.lib.order_monitor import OrderMonitor, _CancelFillCheck
 
 
 # ======================================================================
@@ -44,32 +54,21 @@ class TestAdaptationEngineProtocols:
 
     def test_fast_fill_defense_like_protocol_exists(self) -> None:
         """FastFillDefenseLike Protocol がインポート可能."""
-        from scripts.v460.lib.adaptation_engine import FastFillDefenseLike
-
         assert hasattr(FastFillDefenseLike, "update_base_offsets")
 
     def test_loss_cap_adapter_protocol_exists(self) -> None:
         """LossCapAdapterProtocol がインポート可能."""
-        from scripts.v460.lib.adaptation_engine import LossCapAdapterProtocol
-
         # Protocol メソッドの存在確認
         assert hasattr(LossCapAdapterProtocol, "get_current_price")
         assert hasattr(LossCapAdapterProtocol, "get_balance")
 
     def test_loss_cap_balance_like_protocol_exists(self) -> None:
         """_LossCapBalanceLike Protocol がインポート可能."""
-        from scripts.v460.lib.adaptation_engine import _LossCapBalanceLike
-
         assert hasattr(_LossCapBalanceLike, "currency")
         assert hasattr(_LossCapBalanceLike, "total")
 
     def test_try_auto_adapt_signature_uses_ffd_protocol(self) -> None:
         """try_auto_adapt の fast_fill_defense 引数が FastFillDefenseLike 型."""
-        from scripts.v460.lib.adaptation_engine import (
-            AdaptationEngine,
-            FastFillDefenseLike,
-        )
-
         sig = inspect.signature(AdaptationEngine.try_auto_adapt)
         ffd_param = sig.parameters["fast_fill_defense"]
         ann = str(ffd_param.annotation)
@@ -78,11 +77,6 @@ class TestAdaptationEngineProtocols:
 
     def test_update_dynamic_loss_cap_signature_uses_protocol(self) -> None:
         """update_dynamic_loss_cap の adapter 引数が LossCapAdapterProtocol 型."""
-        from scripts.v460.lib.adaptation_engine import (
-            AdaptationEngine,
-            LossCapAdapterProtocol,
-        )
-
         sig = inspect.signature(AdaptationEngine.update_dynamic_loss_cap)
         adapter_param = sig.parameters["adapter"]
         ann = str(adapter_param.annotation)
@@ -91,9 +85,7 @@ class TestAdaptationEngineProtocols:
 
     def test_no_type_ignore_in_adaptation_engine(self) -> None:
         """adaptation_engine.py にコード行の type: ignore が残っていないことを確認."""
-        import scripts.v460.lib.adaptation_engine as mod
-
-        src = inspect.getsource(mod)
+        src = inspect.getsource(adaptation_engine_mod)
         # コメント行 (# で始まる行) やドキュメント文字列中の言及は除外
         code_lines = [
             line for line in src.splitlines()
@@ -108,12 +100,6 @@ class TestAdaptationEngineProtocols:
 
     def test_fast_fill_defense_satisfies_protocol(self) -> None:
         """実際の FastFillDefense クラスが FastFillDefenseLike Protocol を満たす."""
-        from scripts.v460.lib.adaptation_engine import FastFillDefenseLike
-        from scripts.v460.lib.fast_fill_defense import (
-            FastFillDefense,
-            FastFillDefenseConfig,
-        )
-
         ffd = FastFillDefense(
             FastFillDefenseConfig(enabled=False),
             base_offset_ratio=0.05,
@@ -123,10 +109,6 @@ class TestAdaptationEngineProtocols:
 
     def test_update_dynamic_loss_cap_with_mock_adapter(self) -> None:
         """LossCapAdapterProtocol を満たすモックで update_dynamic_loss_cap 呼び出し."""
-        from pathlib import Path
-
-        from scripts.v460.lib.adaptation_engine import AdaptationEngine
-
         cfg = _make_config(
             loss_cap_ratio=0.5,
             min_loss_cap_jpy=1000.0,
@@ -160,10 +142,6 @@ class TestAdaptationEngineProtocols:
 
     def test_update_dynamic_loss_cap_returns_none_on_error(self) -> None:
         """adapter エラー時に None を返す."""
-        from pathlib import Path
-
-        from scripts.v460.lib.adaptation_engine import AdaptationEngine
-
         cfg = _make_config(loss_cap_jpy=50000.0)
         engine = AdaptationEngine(cfg, yaml_cfg={}, results_dir=Path("/tmp"))
 
@@ -212,8 +190,6 @@ class TestCancelFillCheck:
     """262# _CancelFillCheck 結果クラスのテスト."""
 
     def test_default_values(self) -> None:
-        from scripts.v460.lib.order_monitor import _CancelFillCheck
-
         chk = _CancelFillCheck()
         assert chk.was_filled is False
         assert chk.fill_price is None
@@ -221,8 +197,6 @@ class TestCancelFillCheck:
         assert chk.cancel_succeeded is True
 
     def test_filled_values(self) -> None:
-        from scripts.v460.lib.order_monitor import _CancelFillCheck
-
         chk = _CancelFillCheck(
             was_filled=True,
             fill_price=15_000_000.0,
@@ -234,16 +208,12 @@ class TestCancelFillCheck:
         assert chk.cancel_succeeded is True
 
     def test_cancel_failed(self) -> None:
-        from scripts.v460.lib.order_monitor import _CancelFillCheck
-
         chk = _CancelFillCheck(cancel_succeeded=False)
         assert chk.cancel_succeeded is False
         assert chk.was_filled is False
 
     def test_slots_defined(self) -> None:
         """__slots__ がメモリ効率のために定義されている."""
-        from scripts.v460.lib.order_monitor import _CancelFillCheck
-
         assert hasattr(_CancelFillCheck, "__slots__")
         assert "was_filled" in _CancelFillCheck.__slots__
         assert "cancel_succeeded" in _CancelFillCheck.__slots__
@@ -254,8 +224,6 @@ class TestTryCancelWithFillRecheck:
 
     def test_cancel_success(self) -> None:
         """cancel_order 成功時: cancel_succeeded=True, was_filled=False."""
-        from scripts.v460.lib.order_monitor import OrderMonitor
-
         adapter = AsyncMock()
         adapter.cancel_order = AsyncMock(return_value=None)
 
@@ -270,8 +238,6 @@ class TestTryCancelWithFillRecheck:
 
     def test_cancel_failed_to_cancel_and_filled(self) -> None:
         """'Failed to cancel' エラー + fill 確認 → was_filled=True."""
-        from scripts.v460.lib.order_monitor import OrderMonitor
-
         adapter = AsyncMock()
         adapter.cancel_order = AsyncMock(
             side_effect=Exception("Failed to cancel order")
@@ -291,8 +257,6 @@ class TestTryCancelWithFillRecheck:
 
     def test_cancel_not_found_and_filled(self) -> None:
         """'not found' エラー + fill 確認 → was_filled=True."""
-        from scripts.v460.lib.order_monitor import OrderMonitor
-
         adapter = AsyncMock()
         adapter.cancel_order = AsyncMock(
             side_effect=Exception("Order not found")
@@ -311,8 +275,6 @@ class TestTryCancelWithFillRecheck:
 
     def test_cancel_failed_to_cancel_but_not_filled(self) -> None:
         """'Failed to cancel' エラー + pending → cancel_succeeded=False."""
-        from scripts.v460.lib.order_monitor import OrderMonitor
-
         adapter = AsyncMock()
         adapter.cancel_order = AsyncMock(
             side_effect=Exception("Failed to cancel")
@@ -331,8 +293,6 @@ class TestTryCancelWithFillRecheck:
 
     def test_cancel_unexpected_error(self) -> None:
         """予期しないエラー → cancel_succeeded=False, was_filled=False."""
-        from scripts.v460.lib.order_monitor import OrderMonitor
-
         adapter = AsyncMock()
         adapter.cancel_order = AsyncMock(
             side_effect=Exception("Network timeout")
@@ -348,8 +308,6 @@ class TestTryCancelWithFillRecheck:
 
     def test_cancel_failed_recheck_also_fails(self) -> None:
         """cancel + recheck 両方失敗 → cancel_succeeded=False."""
-        from scripts.v460.lib.order_monitor import OrderMonitor
-
         adapter = AsyncMock()
         adapter.cancel_order = AsyncMock(
             side_effect=Exception("Failed to cancel")
@@ -368,8 +326,6 @@ class TestTryCancelWithFillRecheck:
 
     def test_cancel_filled_without_price_uses_fallback(self) -> None:
         """fill 確認時に price=None → fallback_price を使用."""
-        from scripts.v460.lib.order_monitor import OrderMonitor
-
         adapter = AsyncMock()
         adapter.cancel_order = AsyncMock(
             side_effect=Exception("Failed to cancel order")
@@ -388,8 +344,6 @@ class TestTryCancelWithFillRecheck:
 
     def test_cancel_recheck_returns_none(self) -> None:
         """recheck が None を返す → was_filled=False."""
-        from scripts.v460.lib.order_monitor import OrderMonitor
-
         adapter = AsyncMock()
         adapter.cancel_order = AsyncMock(
             side_effect=Exception("not found")
@@ -419,36 +373,26 @@ class TestOrderMonitorCancelRecheckDRY:
         3箇所の重複パターンが _try_cancel_with_fill_recheck に統合されたため、
         monitor() メソッド本体には 'Failed to cancel' の文字列判定が無い。
         """
-        from scripts.v460.lib.order_monitor import OrderMonitor
-
         src = inspect.getsource(OrderMonitor.monitor)
         assert '"Failed to cancel"' not in src
         assert "'Failed to cancel'" not in src
 
     def test_helper_method_exists(self) -> None:
         """_try_cancel_with_fill_recheck メソッドが存在する."""
-        from scripts.v460.lib.order_monitor import OrderMonitor
-
         assert hasattr(OrderMonitor, "_try_cancel_with_fill_recheck")
         assert callable(OrderMonitor._try_cancel_with_fill_recheck)
 
     def test_cancel_fill_check_class_exists(self) -> None:
         """_CancelFillCheck クラスがインポート可能."""
-        from scripts.v460.lib.order_monitor import _CancelFillCheck
-
         assert _CancelFillCheck is not None
 
     def test_monitor_uses_helper_for_cancel(self) -> None:
         """monitor() が _try_cancel_with_fill_recheck を使用している."""
-        from scripts.v460.lib.order_monitor import OrderMonitor
-
         src = inspect.getsource(OrderMonitor.monitor)
         assert "_try_cancel_with_fill_recheck" in src
 
     def test_helper_is_static_method(self) -> None:
         """_try_cancel_with_fill_recheck が staticmethod (self 不要)."""
-        from scripts.v460.lib.order_monitor import OrderMonitor
-
         # staticmethod なので __func__ を持たない
         method = OrderMonitor.__dict__.get("_try_cancel_with_fill_recheck")
         assert isinstance(method, staticmethod)
@@ -469,8 +413,6 @@ class TestOrderMonitorExceptCount:
         262# 後: 5箇所 (poll, mid_at_order, SkipGate, place_order, stale_check)
         ヘルパーに 2箇所 (cancel + recheck)
         """
-        from scripts.v460.lib.order_monitor import OrderMonitor
-
         monitor_src = inspect.getsource(OrderMonitor.monitor)
         monitor_count = monitor_src.count("except Exception")
         # 3箇所のcancel-recheck (各2 except = 6) → helper (2) に統合
@@ -479,8 +421,6 @@ class TestOrderMonitorExceptCount:
 
     def test_helper_except_exception_count(self) -> None:
         """ヘルパー内の except Exception は 2箇所 (cancel + recheck)."""
-        from scripts.v460.lib.order_monitor import OrderMonitor
-
         helper_src = inspect.getsource(
             OrderMonitor._try_cancel_with_fill_recheck
         )

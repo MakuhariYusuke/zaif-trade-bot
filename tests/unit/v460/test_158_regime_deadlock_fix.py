@@ -10,12 +10,25 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import time
 from pathlib import Path
 from typing import Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import yaml
+
+from scripts.v460.lib import cancel_reasons as CR
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.regime_detector import (
+    FillTestRegime,
+    FillTestRegimeDetector,
+    RegimeConfig,
+)
+from scripts.v460.run_fill_test import FillTestRunner
+from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
+from ztb.utils.errors import NetworkError
 
 
 # =====================================================================
@@ -28,8 +41,6 @@ class TestRegimeUpdateDuringSkip:
 
     def test_run_fill_test_has_regime_update_in_main_loop(self) -> None:
         """メインループ (run メソッド) に §20-A のレジーム更新コードが存在."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
 
         source = inspect.getsource(FillTestRunner.run_continuous)
         # §20-A: main loop regime update
@@ -43,9 +54,6 @@ class TestRegimeUpdateDuringSkip:
         194#: skip chain は CycleGateAggregator に集約。
         orchestrator 内で §20-A が _cycle_gate.evaluate() より前にあることを確認。
         """
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
-
         source = inspect.getsource(FillTestRunner.run_continuous)
         idx_regime_update = source.find("§20-A")
         idx_gate_evaluate = source.find("_cycle_gate.evaluate(")
@@ -61,11 +69,6 @@ class TestRegimeUpdateDuringSkip:
 
     def test_regime_detector_update_with_fallback_price(self) -> None:
         """FillTestRegimeDetector.update() が fallback price で正常動作."""
-        from scripts.v460.lib.regime_detector import (
-            FillTestRegimeDetector,
-            RegimeConfig,
-        )
-
         config = RegimeConfig(window=5)
         detector = FillTestRegimeDetector(config)
 
@@ -81,12 +84,6 @@ class TestRegimeUpdateDuringSkip:
 
     def test_regime_transitions_with_constant_price(self) -> None:
         """同一価格を継続投入すると trending から脱出 (ranging へ遷移)."""
-        from scripts.v460.lib.regime_detector import (
-            FillTestRegimeDetector,
-            FillTestRegime,
-            RegimeConfig,
-        )
-
         config = RegimeConfig(window=5, hysteresis_count=2)
         detector = FillTestRegimeDetector(config)
 
@@ -116,9 +113,6 @@ class TestRegimeUpdateLogging:
 
     def test_transition_log_format(self) -> None:
         """ソースに遷移ログフォーマットが含まれる."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
-
         source = inspect.getsource(FillTestRunner.run_continuous)
         assert "Regime transition in main loop" in source
 
@@ -133,36 +127,27 @@ class TestMaxConsecutiveTrendingSellSkip:
 
     def test_config_field_exists(self) -> None:
         """FillTestConfig に max_consecutive_trending_sell_skip フィールドが存在."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         config = FillTestConfig()
         assert hasattr(config, "max_consecutive_trending_sell_skip")
         assert config.max_consecutive_trending_sell_skip == 30  # default
 
     def test_config_field_customizable(self) -> None:
         """max_consecutive_trending_sell_skip をカスタム値で設定可能."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         config = FillTestConfig(max_consecutive_trending_sell_skip=50)
         assert config.max_consecutive_trending_sell_skip == 50
 
     def test_config_field_disable_with_zero(self) -> None:
         """max_consecutive_trending_sell_skip=0 で無制限."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         config = FillTestConfig(max_consecutive_trending_sell_skip=0)
         assert config.max_consecutive_trending_sell_skip == 0
 
     def test_yaml_parsing(self) -> None:
         """YAML 止血セクション → max_consecutive_trending_sell_skip マッピング."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         yaml_str = """
 止血:
   skip_sell_trending: true
   max_consecutive_trending_sell_skip: 20
 """
-        import yaml
         yaml_cfg = yaml.safe_load(yaml_str)
         config = FillTestConfig.from_yaml(yaml_cfg)
         assert config.max_consecutive_trending_sell_skip == 20
@@ -170,17 +155,11 @@ class TestMaxConsecutiveTrendingSellSkip:
 
     def test_runner_has_counter(self) -> None:
         """FillTestRunner に _trending_sell_skip_count カウンタが存在."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
-
         source = inspect.getsource(FillTestRunner.__init__)
         assert "_trending_sell_skip_count" in source
 
     def test_safety_valve_code_in_run(self) -> None:
         """run メソッドに §20-B 安全弁ロジックが含まれる."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
-
         source = inspect.getsource(FillTestRunner.run_continuous)
         assert "§20-B" in source
         assert "safety valve" in source.lower() or "安全弁" in source
@@ -189,9 +168,6 @@ class TestMaxConsecutiveTrendingSellSkip:
 
     def test_counter_reset_on_cycle_execution(self) -> None:
         """run_single_cycle 実行後に trending_sell_skip_count がリセットされるコードが存在."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
-
         source = inspect.getsource(FillTestRunner.run_continuous)
         # カウンタリセットが run_single_cycle 後に存在
         idx_run_single = source.rfind("run_single_cycle(")
@@ -201,9 +177,6 @@ class TestMaxConsecutiveTrendingSellSkip:
 
     def test_consecutive_log_format(self) -> None:
         """skip ログに consecutive カウント情報が含まれる."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
-
         source = inspect.getsource(FillTestRunner.run_continuous)
         assert "consecutive=" in source
 
@@ -218,9 +191,6 @@ class TestCancelFailedHandling:
 
     def test_adapter_catches_failed_to_cancel(self) -> None:
         """_cancel_order_real が 'Failed to cancel' で WARNING ログ → re-raise."""
-        import inspect
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-
         source = inspect.getsource(CoincheckAdapter._cancel_order_real)
         assert "failed to cancel" in source.lower()
         assert "§20-C" in source
@@ -263,9 +233,6 @@ class TestCancelFailedHandling:
     @pytest.mark.asyncio
     async def test_cancel_failed_to_cancel_re_raises(self) -> None:
         """'Failed to cancel' は re-raise する (order_monitor の fill recheck 保持)."""
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-        from ztb.utils.errors import NetworkError
-
         adapter = CoincheckAdapter.__new__(CoincheckAdapter)
         adapter.api_base_url = "https://coincheck.com"
         adapter.request_timeout = 5
@@ -281,9 +248,6 @@ class TestCancelFailedHandling:
     @pytest.mark.asyncio
     async def test_cancel_not_found_returns_false(self) -> None:
         """'not found' は return False (例外なし)."""
-        from ztb.trading.live.exchanges.coincheck.adapter import CoincheckAdapter
-        from ztb.utils.errors import NetworkError
-
         adapter = CoincheckAdapter.__new__(CoincheckAdapter)
         adapter.api_base_url = "https://coincheck.com"
         adapter.request_timeout = 5
@@ -307,25 +271,17 @@ class TestSpreadTooNarrowClassification:
 
     def test_cancel_reason_constant_exists(self) -> None:
         """SPREAD_TOO_NARROW 定数が cancel_reasons に存在."""
-        from scripts.v460.lib import cancel_reasons as CR
-
         assert hasattr(CR, "SPREAD_TOO_NARROW")
         assert CR.SPREAD_TOO_NARROW == "spread_too_narrow"
 
     def test_spread_too_narrow_classification_in_source(self) -> None:
         """run_single_cycle に spread_too_narrow 分類コードが存在."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
-
         source = inspect.getsource(FillTestRunner.run_single_cycle)
         assert "spread too narrow" in source.lower() or "spread_too_narrow" in source.lower()
         assert "§20-D" in source
 
     def test_spread_too_narrow_log_level_is_info(self) -> None:
         """spread_too_narrow は logger.info で出力 (ERROR ではない)."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
-
         source = inspect.getsource(FillTestRunner.run_single_cycle)
         # "spread too narrow" 周辺に logger.info がある
         idx = source.find("spread too narrow")
@@ -347,9 +303,6 @@ class TestIntegrationConsistency:
 
     def test_all_skip_paths_covered_by_regime_update(self) -> None:
         """§20-A のレジーム更新がすべてのスキップパスの前に配置されている."""
-        import inspect
-        from scripts.v460.run_fill_test import FillTestRunner
-
         source = inspect.getsource(FillTestRunner.run_continuous)
 
         # §20-A の位置
@@ -375,7 +328,6 @@ class TestIntegrationConsistency:
 
         194#: trending_sell ロジックは CycleGateAggregator に集約。
         """
-        from pathlib import Path
         source = Path("scripts/v460/lib/cycle_gate_aggregator.py").read_text(encoding="utf-8")
         # 安全弁 (consecutive safety valve, HF4, inv_bypass) が共存
         assert "158#" in source  # consecutive safety valve
@@ -384,8 +336,6 @@ class TestIntegrationConsistency:
 
     def test_fill_config_defaults_are_safe(self) -> None:
         """デフォルト設定で安全弁が有効 (0 ではない)."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         config = FillTestConfig()
         assert config.max_consecutive_trending_sell_skip > 0
         assert config.balance_forced_deadlock_limit > 0

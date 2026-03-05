@@ -470,6 +470,40 @@ class OrderMonitor:
                             cancel_reason_poll = "stale_adverse_drift"
                         break
                     if drift_bps >= _stale_drift and is_favorable_drift:
+                        # 292# BS-1: cancel 前に deadband 判定 — queue position 保護
+                        # compute_maker_price を先に呼び、価格差が小さければ
+                        # cancel せずに既存注文を維持 (queue priority 保全)
+                        _pre_cancel_new_price: float | None = None
+                        _deadband_skip = False
+                        _min_delta = cfg.stale_reprice_min_delta_jpy
+                        if _min_delta > 0:
+                            try:
+                                _pre_result = await compute_maker_price(side)
+                                _pre_cancel_new_price = _pre_result[0]
+                                # 158# P1-2: reprice offset tightening (事前計算)
+                                _tighten = cfg.stale_reprice_tighten
+                                if _tighten != 1.0 and current_mid > 0:
+                                    _gap = abs(_pre_cancel_new_price - current_mid)
+                                    _tightened_gap = _gap * _tighten
+                                    if side == "buy":
+                                        _pre_cancel_new_price = round(current_mid - _tightened_gap)
+                                    else:
+                                        _pre_cancel_new_price = round(current_mid + _tightened_gap)
+                                if abs(_pre_cancel_new_price - order_price) < _min_delta:
+                                    _deadband_skip = True
+                                    logger.info(
+                                        f"[stale_order] Reprice deadband (pre-cancel): "
+                                        f"|{_pre_cancel_new_price:.0f} - {order_price:.0f}| = "
+                                        f"{abs(_pre_cancel_new_price - order_price):.0f} < "
+                                        f"min_delta={_min_delta:.0f} JPY. "
+                                        f"Keeping existing order to protect queue position"
+                                    )
+                            except Exception as pre_err:
+                                logger.debug(f"[stale_order] Pre-cancel price check failed: {pre_err}")
+
+                        if _deadband_skip:
+                            continue
+
                         logger.info(
                             f"[stale_order] Favorable drift {drift_bps:.1f}bps "
                             f"({side}: mid {mid_at_order:.0f}→{current_mid:.0f}). "
@@ -524,18 +558,6 @@ class OrderMonitor:
                                 min_order_btc,
                                 int(current_lot / min_order_btc) * min_order_btc,
                             )
-                            # 292# P1: reprice deadband — queue position 保護
-                            _min_delta = cfg.stale_reprice_min_delta_jpy
-                            if _min_delta > 0 and abs(new_price - order_price) < _min_delta:
-                                logger.info(
-                                    f"[stale_order] Reprice deadband: "
-                                    f"|{new_price:.0f} - {order_price:.0f}| = "
-                                    f"{abs(new_price - order_price):.0f} < "
-                                    f"min_delta={_min_delta:.0f} JPY. "
-                                    f"Skip reprice to protect queue position"
-                                )
-                                # キャンセル済みなので再発注 (同じ価格で queue 復帰)
-                                new_price = order_price
                             new_order = await adapter.place_order(
                                 symbol=cfg.symbol,
                                 side=side,

@@ -17,6 +17,23 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import yaml
+import ztb.analysis.regime as regime_module
+from scripts.v460.lib import cancel_reasons as CR
+from scripts.v460.lib.fill_config import FillTestConfig
+from scripts.v460.lib.maker_price import MakerPriceCalculator
+from scripts.v460.lib.regime_detector import FillTestRegime
+from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
+import scripts.v460.ml.retrain_scheduler as rs
+from scripts.v460.ml.retrain_scheduler import _DEFAULT_CONFIG, load_retrain_config
+from ztb.analysis.regime import MarketRegime, MarketRegimeDetector
+from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
+from ztb.risk.sell_dynamic_kill import (
+    BuyDynamicKillManager,
+    DynamicKillConfig,
+    DynamicKillManager,
+    SellDynamicKillManager,
+    SellKillConfig,
+)
 
 
 # =====================================================================
@@ -29,43 +46,32 @@ class TestDynamicKillManagerDRY:
 
     def test_sell_kill_manager_backward_compat(self) -> None:
         """SellDynamicKillManager / SellKillConfig エイリアスが存続."""
-        from ztb.risk.sell_dynamic_kill import (
-            SellDynamicKillManager,
-            SellKillConfig,
-            DynamicKillManager,
-            DynamicKillConfig,
-        )
         assert SellDynamicKillManager is DynamicKillManager
         assert SellKillConfig is DynamicKillConfig
 
     def test_sell_kill_manager_default_side(self) -> None:
         """SellDynamicKillManager() のデフォルト side は 'sell'."""
-        from ztb.risk.sell_dynamic_kill import SellDynamicKillManager
         mgr = SellDynamicKillManager()
         assert mgr.side == "sell"
 
     def test_buy_kill_manager_side(self) -> None:
         """BuyDynamicKillManager() の side は 'buy'."""
-        from ztb.risk.sell_dynamic_kill import BuyDynamicKillManager
         mgr = BuyDynamicKillManager()
         assert mgr.side == "buy"
 
     def test_dynamic_kill_manager_custom_side(self) -> None:
         """DynamicKillManager(side='custom') のカスタム side."""
-        from ztb.risk.sell_dynamic_kill import DynamicKillManager
         mgr = DynamicKillManager(side="custom")
         assert mgr.side == "custom"
 
     def test_telemetry_includes_side(self) -> None:
         """テレメトリに side フィールドが含まれる."""
-        from ztb.risk.sell_dynamic_kill import BuyDynamicKillManager
         mgr = BuyDynamicKillManager()
         _, telemetry = mgr.check_kill()
         assert telemetry.side == "buy"
 
     def test_sell_telemetry_side(self) -> None:
         """sell side テレメトリ確認."""
-        from ztb.risk.sell_dynamic_kill import SellDynamicKillManager
         mgr = SellDynamicKillManager()
         _, telemetry = mgr.check_kill()
         assert telemetry.side == "sell"
@@ -76,7 +82,6 @@ class TestBuyDynamicKillManager:
 
     def test_buy_kill_activation(self) -> None:
         """rolling PnL が閾値以下で buy kill 発動."""
-        from ztb.risk.sell_dynamic_kill import BuyDynamicKillManager, DynamicKillConfig
         cfg = DynamicKillConfig(window=5, threshold_bps=-1.0, resume_window=3)
         mgr = BuyDynamicKillManager(cfg)
         for _ in range(5):
@@ -89,7 +94,6 @@ class TestBuyDynamicKillManager:
 
     def test_buy_kill_not_activated_above_threshold(self) -> None:
         """rolling PnL が閾値以上では kill しない."""
-        from ztb.risk.sell_dynamic_kill import BuyDynamicKillManager, DynamicKillConfig
         cfg = DynamicKillConfig(window=5, threshold_bps=-1.0, resume_window=3)
         mgr = BuyDynamicKillManager(cfg)
         for _ in range(5):
@@ -99,7 +103,6 @@ class TestBuyDynamicKillManager:
 
     def test_buy_kill_regime_threshold_override(self) -> None:
         """レジーム別閾値が基本閾値をオーバーライド."""
-        from ztb.risk.sell_dynamic_kill import BuyDynamicKillManager, DynamicKillConfig
         cfg = DynamicKillConfig(
             window=5,
             threshold_bps=-1.0,
@@ -115,7 +118,6 @@ class TestBuyDynamicKillManager:
 
     def test_buy_kill_cooldown(self) -> None:
         """cooldown 期間中は kill 維持."""
-        from ztb.risk.sell_dynamic_kill import BuyDynamicKillManager, DynamicKillConfig
         cfg = DynamicKillConfig(window=3, threshold_bps=-0.5, resume_window=2)
         mgr = BuyDynamicKillManager(cfg)
         for _ in range(3):
@@ -132,7 +134,6 @@ class TestBuyDynamicKillManager:
 
     def test_buy_kill_disabled(self) -> None:
         """enabled=False では kill しない."""
-        from ztb.risk.sell_dynamic_kill import BuyDynamicKillManager, DynamicKillConfig
         cfg = DynamicKillConfig(enabled=False, window=3, threshold_bps=-0.5)
         mgr = BuyDynamicKillManager(cfg)
         for _ in range(3):
@@ -151,7 +152,6 @@ class TestFillConfigBuyDynamicKill:
 
     def test_default_buy_dynamic_kill_disabled(self) -> None:
         """デフォルトでは buy_dynamic_kill は無効."""
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert cfg.buy_dynamic_kill_enabled is False
         assert cfg.buy_dynamic_kill_window == 50
@@ -160,7 +160,6 @@ class TestFillConfigBuyDynamicKill:
 
     def test_yaml_buy_dynamic_kill_parsing(self) -> None:
         """YAML から buy_dynamic_kill 設定を読み込む."""
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         yaml_data = {
             "loss_control": {
@@ -191,7 +190,6 @@ class TestTrendingOffsetAsymmetry:
 
     def test_config_default_none(self) -> None:
         """デフォルトでは side-specific boost は None (共通値にフォールバック)."""
-        from scripts.v460.lib.fill_config import FillTestConfig
         cfg = FillTestConfig()
         assert cfg.regime_trending_offset_boost_buy is None
         assert cfg.regime_trending_offset_boost_sell is None
@@ -199,7 +197,6 @@ class TestTrendingOffsetAsymmetry:
 
     def test_yaml_side_specific_boost(self) -> None:
         """YAML から side-specific boost を読み込む."""
-        from scripts.v460.lib.fill_config import FillTestConfig
 
         yaml_data = {
             "regime": {
@@ -215,10 +212,6 @@ class TestTrendingOffsetAsymmetry:
 
     def test_maker_price_buy_uses_buy_boost(self) -> None:
         """maker_price が buy 時に buy-specific boost を使用."""
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
-        from scripts.v460.lib.fill_config import FillTestConfig
-        from scripts.v460.lib.regime_detector import FillTestRegime
-
         cfg = FillTestConfig(
             regime_trending_offset_boost=1.5,
             regime_trending_offset_boost_buy=1.0,  # buy は boost なし
@@ -264,7 +257,6 @@ class TestTrendingOffsetAsymmetry:
 
     def test_maker_price_source_has_side_specific_boost(self) -> None:
         """maker_price のソースに side 別 boost ロジックが存在."""
-        from scripts.v460.lib.maker_price import MakerPriceCalculator
         source = inspect.getsource(MakerPriceCalculator)  # 163# mixin split: compute→class全体
         assert "regime_trending_offset_boost_buy" in source
         assert "regime_trending_offset_boost_sell" in source
@@ -280,12 +272,10 @@ class TestAdvancedRegimeDetectorArchived:
 
     def test_not_exported_from_regime_init(self) -> None:
         """regime パッケージから AdvancedRegimeDetector が export されていない."""
-        from ztb.analysis.regime import __all__
-        assert "AdvancedRegimeDetector" not in __all__
+        assert "AdvancedRegimeDetector" not in regime_module.__all__
 
     def test_regime_init_imports_work(self) -> None:
         """regime パッケージの残存 import が正常."""
-        from ztb.analysis.regime import MarketRegime, MarketRegimeDetector
         assert MarketRegime is not None
         assert MarketRegimeDetector is not None
 
@@ -300,7 +290,6 @@ class TestStaleCheckSellReduction:
 
     def test_yaml_stale_check_sell_20s(self) -> None:
         """fill_test.yaml の stale_check_after_sec_sell が 20.0."""
-        import yaml
         yaml_path = Path("configs/v460/fill_test.yaml")
         with open(yaml_path) as f:
             data = yaml.safe_load(f)
@@ -317,11 +306,9 @@ class TestBuyDynamicKillCancelReason:
     """BUY_DYNAMIC_KILL cancel reason 定数テスト."""
 
     def test_constant_exists(self) -> None:
-        from scripts.v460.lib import cancel_reasons as CR
         assert CR.BUY_DYNAMIC_KILL == "buy_dynamic_kill"
 
     def test_in_audit_frozenset(self) -> None:
-        from scripts.v460.lib import cancel_reasons as CR
         assert CR.BUY_DYNAMIC_KILL in CR.AUDIT_CANCEL_REASONS
 
 
@@ -335,19 +322,16 @@ class TestRetrainPipelineIntegrity:
 
     def test_retrain_scheduler_importable(self) -> None:
         """retrain_scheduler がインポート可能."""
-        import scripts.v460.ml.retrain_scheduler as rs
         assert hasattr(rs, "retrain_model")
         assert hasattr(rs, "load_retrain_config")
         assert hasattr(rs, "run_scheduler")
 
     def test_retrain_trigger_importable(self) -> None:
         """RetrainTrigger がインポート可能."""
-        from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
         assert RetrainTrigger is not None
 
     def test_retrain_trigger_regime_multipliers(self) -> None:
         """RetrainTrigger のレジーム別 interval 倍率."""
-        from ztb.ml.retrain_trigger import RetrainTrigger, RetrainTriggerConfig
 
         cfg = RetrainTriggerConfig(
             base_interval_sec=3600,
@@ -371,24 +355,20 @@ class TestRetrainPipelineIntegrity:
 
     def test_retrain_config_loads_from_yaml(self) -> None:
         """load_retrain_config が fill_test.yaml から正常に設定を読み込む."""
-        from scripts.v460.ml.retrain_scheduler import load_retrain_config
         cfg = load_retrain_config(Path("configs/v460/fill_test.yaml"))
         assert cfg["mode"] == "pnl"
         assert "model_path" in cfg
 
     def test_retrain_scheduler_has_regime_weighting(self) -> None:
         """retrain_scheduler が regime weighting 設定を持つ."""
-        from scripts.v460.ml.retrain_scheduler import _DEFAULT_CONFIG
         assert "regime_weighting_enabled" in _DEFAULT_CONFIG
         assert "regime_sample_weights" in _DEFAULT_CONFIG
         assert "regime_current_boost" in _DEFAULT_CONFIG
 
     def test_skip_gate_evaluator_hot_reload_exists(self) -> None:
         """SkipGateEvaluator に hot-reload メソッドが存在."""
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
         assert hasattr(SkipGateEvaluator, "_check_and_reload_model")
         # _compute_file_hash は ztb.utils.run_manifest.compute_file_hash へ委譲
-        import inspect
         src = inspect.getsource(SkipGateEvaluator)
         assert "compute_file_hash" in src
 
@@ -411,7 +391,6 @@ class TestYAMLConsistency:
 
     def test_buy_dynamic_kill_yaml_exists(self) -> None:
         """fill_test.yaml に buy_dynamic_kill セクションが存在."""
-        import yaml
         with open("configs/v460/fill_test.yaml") as f:
             data = yaml.safe_load(f)
         buy_kill = data.get("loss_control", {}).get("buy_dynamic_kill", {})
@@ -422,7 +401,6 @@ class TestYAMLConsistency:
 
     def test_trending_offset_asymmetry_yaml(self) -> None:
         """fill_test.yaml に trending_offset_boost_buy/sell が存在."""
-        import yaml
         with open("configs/v460/fill_test.yaml") as f:
             data = yaml.safe_load(f)
         regime = data.get("regime", {})

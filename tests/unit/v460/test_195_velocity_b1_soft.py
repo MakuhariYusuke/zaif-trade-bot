@@ -5,10 +5,15 @@
 - B1' ranging_buy_low_vol: hard skip → maker_price low_vol_offset_boost に委譲
 """
 
+import inspect
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
+from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
+from scripts.v460.lib.fill_config import FillTestConfig, SkipGateResult
+from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
+from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
 
 
 # ─── helpers ─────────────────────────────────────────────────────────
@@ -40,8 +45,6 @@ class _MockSkipDecision:
 
 def _make_config(**overrides):
     """FillTestConfig の最小構成."""
-    from scripts.v460.lib.fill_config import FillTestConfig
-
     defaults = dict(
         skip_gate_enabled=False,
         skip_gate_ev_weighted_enabled=False,
@@ -63,8 +66,6 @@ def _make_config(**overrides):
 
 def _make_evaluator(config=None, **overrides):
     """SkipGateEvaluator の最小構成."""
-    from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-
     if config is None:
         config = _make_config(**overrides)
     return SkipGateEvaluator(config, Path("."))
@@ -81,7 +82,6 @@ class TestVelocitySkipSoftMode:
         evaluator = _make_evaluator(
             velocity_skip_as_offset_enabled=False,
         )
-        from scripts.v460.lib.fill_config import SkipGateResult
 
         result = SkipGateResult()
         gate_features = {"price_velocity_bps": 10.0}
@@ -115,15 +115,11 @@ class TestVelocitySkipSoftMode:
 
     def test_velocity_offset_mult_field_exists(self) -> None:
         """SkipGateResult.velocity_offset_mult フィールドの存在確認."""
-        from scripts.v460.lib.fill_config import SkipGateResult
-
         result = SkipGateResult()
         assert result.velocity_offset_mult is None
 
     def test_velocity_offset_mult_set(self) -> None:
         """velocity_offset_mult が設定可能であること."""
-        from scripts.v460.lib.fill_config import SkipGateResult
-
         result = SkipGateResult()
         result.velocity_offset_mult = 2.0
         assert result.velocity_offset_mult == 2.0
@@ -201,8 +197,6 @@ class TestVelocityOffsetExecutor:
 
     def test_velocity_offset_not_applied_when_none(self) -> None:
         """velocity_offset_mult=None のとき価格変更なし."""
-        from scripts.v460.lib.fill_config import SkipGateResult
-
         result = SkipGateResult()
         assert result.velocity_offset_mult is None
         # → executor は velocity_offset ブロックをスキップ (条件不成立)
@@ -216,7 +210,6 @@ class TestRangingBuyLowVolSoftMode:
 
     def test_b1_hard_block_legacy(self) -> None:
         """ソフト化無効時、ranging+buy+low_vol → hard block (旧動作)."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         config = _make_config(
             skip_ranging_buy_low_vol=True,
@@ -237,7 +230,6 @@ class TestRangingBuyLowVolSoftMode:
 
     def test_b1_soft_mode_no_block(self) -> None:
         """ソフト化有効時、ranging+buy+low_vol → block しない."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         config = _make_config(
             skip_ranging_buy_low_vol=True,
@@ -257,7 +249,6 @@ class TestRangingBuyLowVolSoftMode:
 
     def test_b1_soft_mode_audit_trail(self) -> None:
         """ソフト化有効時の audit trail に 195# の情報が含まれる."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         config = _make_config(
             skip_ranging_buy_low_vol=True,
@@ -283,7 +274,6 @@ class TestRangingBuyLowVolSoftMode:
 
     def test_b1_sell_not_affected(self) -> None:
         """sell 側は B1' の影響を受けない."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         config = _make_config(
             skip_ranging_buy_low_vol=True,
@@ -303,7 +293,6 @@ class TestRangingBuyLowVolSoftMode:
 
     def test_b1_disabled_completely(self) -> None:
         """skip_ranging_buy_low_vol=False なら何も起きない."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         config = _make_config(
             skip_ranging_buy_low_vol=False,
@@ -323,7 +312,6 @@ class TestRangingBuyLowVolSoftMode:
 
     def test_b1_balance_forced_does_not_bypass(self) -> None:
         """234#: balance_forced=True でも B1' はブロック (gate bypass 廃止)."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         config = _make_config(
             skip_ranging_buy_low_vol=True,
@@ -344,7 +332,6 @@ class TestRangingBuyLowVolSoftMode:
 
     def test_b1_vol_ratio_above_threshold_no_effect(self) -> None:
         """vol_ratio >= threshold なら B1' は発動しない."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         config = _make_config(
             skip_ranging_buy_low_vol=True,
@@ -371,7 +358,6 @@ class TestVelocitySkipSoftGateAggregator:
 
     def test_velocity_hard_block_legacy(self) -> None:
         """ソフト化無効時、velocity 超過 → hard block (旧動作)."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         config = _make_config(
             velocity_skip_as_offset_enabled=False,
@@ -392,7 +378,6 @@ class TestVelocitySkipSoftGateAggregator:
 
     def test_velocity_soft_mode_no_block(self) -> None:
         """ソフト化有効時、velocity 超過 → block しない."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         config = _make_config(
             velocity_skip_as_offset_enabled=True,
@@ -412,7 +397,6 @@ class TestVelocitySkipSoftGateAggregator:
 
     def test_velocity_buy_soft_mode_no_block(self) -> None:
         """buy velocity ソフト化有効時も block しない."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         config = _make_config(
             velocity_skip_as_offset_enabled=True,
@@ -439,29 +423,21 @@ class TestConfigYamlParse:
 
     def test_default_velocity_skip_as_offset_disabled(self) -> None:
         """velocity_skip_as_offset_enabled のデフォルトは False."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         config = FillTestConfig()
         assert config.velocity_skip_as_offset_enabled is False
 
     def test_default_velocity_offset_boost_factor(self) -> None:
         """velocity_offset_boost_factor のデフォルトは 1.5 (197# 最適化)."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         config = FillTestConfig()
         assert config.velocity_offset_boost_factor == 1.5
 
     def test_default_ranging_buy_low_vol_as_offset_disabled(self) -> None:
         """ranging_buy_low_vol_as_offset のデフォルトは False."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         config = FillTestConfig()
         assert config.ranging_buy_low_vol_as_offset is False
 
     def test_yaml_parse_velocity_soft(self) -> None:
         """YAML から velocity ソフト化設定が正しく読み込まれること."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         yaml_data = {
             "skip_gate": {
                 "velocity_skip_as_offset_enabled": True,
@@ -474,8 +450,6 @@ class TestConfigYamlParse:
 
     def test_yaml_parse_b1_soft(self) -> None:
         """YAML から B1' ソフト化設定が正しく読み込まれること."""
-        from scripts.v460.lib.fill_config import FillTestConfig
-
         yaml_data = {
             "regime": {
                 "ranging_buy_low_vol_as_offset": True,
@@ -493,14 +467,11 @@ class TestBackwardCompatibility:
 
     def test_velocity_disabled_does_not_add_offset_mult(self) -> None:
         """velocity_skip_as_offset_enabled=False → velocity_offset_mult は None."""
-        from scripts.v460.lib.fill_config import SkipGateResult
-
         result = SkipGateResult()
         assert result.velocity_offset_mult is None
 
     def test_b1_disabled_still_blocks(self) -> None:
         """ranging_buy_low_vol_as_offset=False → hard block (旧動作)."""
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
 
         config = _make_config(
             skip_ranging_buy_low_vol=True,
@@ -527,19 +498,11 @@ class TestDesignConsistency:
 
     def test_executor_has_velocity_offset_block(self) -> None:
         """fill_cycle_executor.py に velocity offset ブロックが存在すること."""
-        import inspect
-
-        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
-
         source = inspect.getsource(FillCycleExecutorMixin)
         assert "195# vel_offset" in source
 
     def test_executor_velocity_after_ev(self) -> None:
         """velocity offset ブロックが ev_offset ブロックの後にあること."""
-        import inspect
-
-        from scripts.v460.lib.fill_cycle_executor import FillCycleExecutorMixin
-
         source = inspect.getsource(FillCycleExecutorMixin)
         ev_pos = source.find("193# ev_offset")
         vel_pos = source.find("195# vel_offset")
@@ -549,18 +512,10 @@ class TestDesignConsistency:
 
     def test_skip_gate_has_velocity_soft_mode(self) -> None:
         """skip_gate_evaluator.py に velocity ソフトモードのコードが存在すること."""
-        import inspect
-
-        from scripts.v460.lib.skip_gate_evaluator import SkipGateEvaluator
-
         source = inspect.getsource(SkipGateEvaluator)
         assert "195# velocity" in source or "velocity_skip_as_offset" in source
 
     def test_cycle_gate_has_b1_soft_mode(self) -> None:
         """cycle_gate_aggregator.py に B1' ソフトモードのコードが存在すること."""
-        import inspect
-
-        from scripts.v460.lib.cycle_gate_aggregator import CycleGateAggregator
-
         source = inspect.getsource(CycleGateAggregator)
         assert "195# B1'→offset" in source

@@ -9,14 +9,24 @@ OBRecorder: ztb/io/jsonl_gz.py 共通化リファクタ
 
 from __future__ import annotations
 
+import logging
+import os
 import gzip
 import json
 import time
+from contextlib import nullcontext
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
+from scripts.v460.gate_judgment import _filter_by_run_id, _get_unique_run_ids
+from scripts.v460.lib.ob_recorder import OBRecorder
+from ztb.data.trades_health import check_trades_health
+from ztb.data.trades_recorder import TradesRecorder
+from ztb.metrics.fill_quality import FillRecord
 from ztb.io.jsonl_gz import append_jsonl_gz, read_jsonl_gz
 
 
@@ -61,7 +71,6 @@ class TestTradesRecorderBasic:
     """TradesRecorder の基本動作."""
 
     def test_record_adds_to_buffer(self) -> None:
-        from ztb.data.trades_recorder import TradesRecorder
         rec = TradesRecorder(enabled=True)
         n = rec.record_trades([
             {"ts": 1000.0, "price": 14500000.0, "amount": 0.01, "side": "buy"},
@@ -70,7 +79,6 @@ class TestTradesRecorderBasic:
         assert rec.buffer_size == 1
 
     def test_record_disabled_noop(self) -> None:
-        from ztb.data.trades_recorder import TradesRecorder
         rec = TradesRecorder(enabled=False)
         n = rec.record_trades([
             {"ts": 1000.0, "price": 14500000.0, "amount": 0.01, "side": "buy"},
@@ -79,12 +87,10 @@ class TestTradesRecorderBasic:
         assert rec.buffer_size == 0
 
     def test_flush_empty_returns_zero(self) -> None:
-        from ztb.data.trades_recorder import TradesRecorder
         rec = TradesRecorder(enabled=True)
         assert rec.flush() == 0
 
     def test_total_written_tracks_cumulative(self, tmp_path: Path) -> None:
-        from ztb.data.trades_recorder import TradesRecorder
         rec = TradesRecorder(raw_dir=tmp_path, enabled=True)
         rec.record_trades([
             {"ts": 1000.0, "price": 14500000.0, "amount": 0.01, "side": "buy"},
@@ -99,14 +105,12 @@ class TestTradesRecorderDedup:
     """TradesRecorder の重複排除."""
 
     def test_dedup_same_trade(self) -> None:
-        from ztb.data.trades_recorder import TradesRecorder
         rec = TradesRecorder(enabled=True)
         trade = {"ts": 1000.0, "price": 14500000.0, "amount": 0.01, "side": "buy"}
         rec.record_trades([trade, trade, trade])
         assert rec.buffer_size == 1
 
     def test_dedup_old_trades_skipped(self, tmp_path: Path) -> None:
-        from ztb.data.trades_recorder import TradesRecorder
         rec = TradesRecorder(raw_dir=tmp_path, enabled=True)
         # 最初のバッチ
         rec.record_trades([
@@ -127,7 +131,6 @@ class TestTradesRecorderFlush:
     """TradesRecorder の flush → JSONL.gz 書き出し."""
 
     def test_flush_creates_jsonl_gz(self, tmp_path: Path) -> None:
-        from ztb.data.trades_recorder import TradesRecorder
         rec = TradesRecorder(raw_dir=tmp_path, enabled=True)
         rec.record_trades([
             {"ts": 1000.5, "price": 14500000.0, "amount": 0.01, "side": "buy"},
@@ -149,8 +152,6 @@ class TestTradesRecorderFromAdapter:
     """record_from_adapter: TradeRecord オブジェクトからの記録."""
 
     def test_record_from_adapter_duck_typing(self) -> None:
-        from ztb.data.trades_recorder import TradesRecorder
-
         @dataclass
         class FakeTradeRecord:
             timestamp: float
@@ -177,11 +178,9 @@ class TestTradesHealth:
     """trades_health.check_trades_health の検証."""
 
     def test_healthy_when_all_present(self, tmp_path: Path) -> None:
-        from ztb.data.trades_health import check_trades_health
         tr_dir = tmp_path / "trades"
         tr_dir.mkdir(parents=True)
         # §9.2 #B: lookback は昨日起算 → days=1,2,3 のファイルが必要
-        from datetime import datetime, timedelta, timezone
         now = datetime.now(timezone.utc)
         for i in range(1, 4):
             day = (now - timedelta(days=i)).strftime("%Y%m%d")
@@ -192,11 +191,9 @@ class TestTradesHealth:
         assert len(result.missing_days) == 0
 
     def test_unhealthy_when_missing(self, tmp_path: Path) -> None:
-        from ztb.data.trades_health import check_trades_health
         tr_dir = tmp_path / "trades"
         tr_dir.mkdir(parents=True)
         # 1日分のみ (昨日分) → 3日必要なので missing
-        from datetime import datetime, timedelta, timezone
         day = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y%m%d")
         path = tr_dir / f"{day}.jsonl.gz"
         append_jsonl_gz(path, [{"ts": time.time(), "price": 1.0, "amount": 0.01, "side": "buy"}])
@@ -205,9 +202,6 @@ class TestTradesHealth:
         assert len(result.missing_days) > 0
 
     def test_stale_detection(self, tmp_path: Path) -> None:
-        import os
-
-        from ztb.data.trades_health import check_trades_health
         tr_dir = tmp_path / "trades"
         tr_dir.mkdir(parents=True)
         # 古いファイル (stale): mtime を48時間前に設定
@@ -225,7 +219,6 @@ class TestTradesHealth:
         assert result.stale_hours > 24.0
 
     def test_no_trades_dir(self, tmp_path: Path) -> None:
-        from ztb.data.trades_health import check_trades_health
         result = check_trades_health(raw_dir=tmp_path, lookback_days=1)
         assert result.healthy is False
         assert len(result.available_days) == 0
@@ -242,7 +235,6 @@ class TestPerRunGateFiltering:
     def _make_record(
         self, run_id: str, ts: float = 1000.0, side: str = "buy"
     ) -> "FillRecord":
-        from ztb.metrics.fill_quality import FillRecord
         return FillRecord(
             cycle_id=f"test_{ts}",
             timestamp=ts,
@@ -261,7 +253,6 @@ class TestPerRunGateFiltering:
         )
 
     def test_filter_by_specific_run_id(self) -> None:
-        from scripts.v460.gate_judgment import _filter_by_run_id
         records = [
             self._make_record("run_A", ts=1000.0),
             self._make_record("run_B", ts=1001.0),
@@ -272,7 +263,6 @@ class TestPerRunGateFiltering:
         assert all(r.run_id == "run_A" for r in filtered)
 
     def test_filter_latest_run(self) -> None:
-        from scripts.v460.gate_judgment import _filter_by_run_id
         records = [
             self._make_record("run_A", ts=1000.0),
             self._make_record("run_B", ts=2000.0),  # latest
@@ -283,7 +273,6 @@ class TestPerRunGateFiltering:
         assert filtered[0].run_id == "run_B"
 
     def test_filter_no_args_returns_all(self) -> None:
-        from scripts.v460.gate_judgment import _filter_by_run_id
         records = [
             self._make_record("run_A", ts=1000.0),
             self._make_record("run_B", ts=2000.0),
@@ -292,7 +281,6 @@ class TestPerRunGateFiltering:
         assert len(filtered) == 2
 
     def test_get_unique_run_ids_sorted(self) -> None:
-        from scripts.v460.gate_judgment import _get_unique_run_ids
         records = [
             self._make_record("run_B", ts=2000.0),
             self._make_record("run_A", ts=1000.0),
@@ -311,7 +299,6 @@ class TestOBRecorderRefactored:
     """OBRecorder が ztb/io/jsonl_gz 共通化後も正常動作すること."""
 
     def test_flush_creates_jsonl_gz(self, tmp_path: Path) -> None:
-        from scripts.v460.lib.ob_recorder import OBRecorder
         rec = OBRecorder(raw_dir=tmp_path, enabled=True)
         rec.record([[14500000, 0.1]], [[14501000, 0.1]], timestamp=1000.5)
         n = rec.flush()
@@ -325,7 +312,6 @@ class TestOBRecorderRefactored:
         assert data["exchange"] == "coincheck"
 
     def test_append_to_existing(self, tmp_path: Path) -> None:
-        from scripts.v460.lib.ob_recorder import OBRecorder
         rec = OBRecorder(raw_dir=tmp_path, enabled=True)
         rec.record([[100, 1.0]], [[101, 1.0]], timestamp=1000.0)
         rec.flush()
@@ -346,7 +332,6 @@ class TestTradesRecorderDescOrder:
 
     def test_descending_response_sorted(self, tmp_path: Path) -> None:
         """降順 API レスポンスが ts 昇順に正規化されて記録される."""
-        from ztb.data.trades_recorder import TradesRecorder
         rec = TradesRecorder(raw_dir=tmp_path, enabled=True)
         # 降順入力
         n = rec.record_trades([
@@ -365,7 +350,6 @@ class TestTradesRecorderDescOrder:
 
     def test_flush_cross_dedup_with_descending(self, tmp_path: Path) -> None:
         """flush 跨ぎで降順レスポンスが再送された場合に重複排除される."""
-        from ztb.data.trades_recorder import TradesRecorder
         rec = TradesRecorder(raw_dir=tmp_path, enabled=True)
         # batch 1: ts=1001, 1002 (降順入力)
         rec.record_trades([
@@ -392,7 +376,6 @@ class TestTradesRecorderSideDedup:
 
     def test_different_side_not_deduped(self) -> None:
         """同一 ts/price/amount でも side が異なれば両方記録される."""
-        from ztb.data.trades_recorder import TradesRecorder
         rec = TradesRecorder(enabled=True)
         n = rec.record_trades([
             {"ts": 1000.0, "price": 100.0, "amount": 0.01, "side": "buy"},
@@ -407,9 +390,6 @@ class TestTradesRecorderFlushRetry:
 
     def test_flush_failure_preserves_buffer(self, tmp_path: Path) -> None:
         """I/O エラーで flush 失敗時、buffer が保持されること."""
-        from unittest.mock import patch
-
-        from ztb.data.trades_recorder import TradesRecorder
         rec = TradesRecorder(raw_dir=tmp_path, enabled=True)
         rec.record_trades([
             {"ts": 1000.0, "price": 100.0, "amount": 0.01, "side": "buy"},
@@ -430,9 +410,6 @@ class TestTradesRecorderFlushRetry:
 
     def test_three_consecutive_failures_drops_buffer(self, tmp_path: Path) -> None:
         """3 回連続 flush 失敗でバッファを emergency drop."""
-        from unittest.mock import patch
-
-        from ztb.data.trades_recorder import TradesRecorder
         rec = TradesRecorder(raw_dir=tmp_path, enabled=True)
         rec.record_trades([
             {"ts": 1000.0, "price": 100.0, "amount": 0.01, "side": "buy"},
@@ -449,9 +426,6 @@ class TestTradesHealthLookbackYesterday:
 
     def test_today_not_required(self, tmp_path: Path) -> None:
         """当日(UTC)のファイルが無くても unhealthy にならない."""
-        from datetime import datetime, timedelta, timezone
-
-        from ztb.data.trades_health import check_trades_health
         tr_dir = tmp_path / "trades"
         tr_dir.mkdir(parents=True)
         now = datetime.now(timezone.utc)
@@ -468,7 +442,6 @@ class TestPerRunGateFallbackWarning:
     """§9.1 #4: --latest-run fallback 時の WARNING."""
 
     def _make_record(self, run_id: str | None, ts: float) -> "FillRecord":
-        from ztb.metrics.fill_quality import FillRecord
         return FillRecord(
             cycle_id=f"test_{ts}",
             timestamp=ts,
@@ -488,9 +461,6 @@ class TestPerRunGateFallbackWarning:
 
     def test_latest_run_no_valid_returns_all_with_warning(self) -> None:
         """run_id が全て None/blank の場合、全件返却 + 警告."""
-        import logging
-
-        from scripts.v460.gate_judgment import _filter_by_run_id
         records = [
             self._make_record(None, ts=1000.0),
             self._make_record("", ts=2000.0),
@@ -502,5 +472,4 @@ class TestPerRunGateFallbackWarning:
 
 def _noop_ctx():
     """テスト用 no-op context manager."""
-    from contextlib import nullcontext
     return nullcontext()
